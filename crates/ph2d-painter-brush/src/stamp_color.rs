@@ -30,6 +30,12 @@ impl ColorStampMask {
     pub fn size(&self) -> u32 {
         self.size
     }
+
+    /// The premultiplied-RGBA texels (`size·size·4`), for the panel's coloured Shape preview.
+    #[must_use]
+    pub fn data(&self) -> &[u8] {
+        &self.data
+    }
 }
 
 /// Render the unit multi-layer coloured stamp at `size`×`size`. `layers` are the Shape silhouette layers

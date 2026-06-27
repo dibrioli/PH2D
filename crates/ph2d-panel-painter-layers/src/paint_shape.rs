@@ -278,6 +278,13 @@ fn paint_shape_preview(
     // checker toward white by the coverage. The ramp applies regardless of the Grain (Enio 2026-06-26).
     let mut clut = [[0.0f32; 4]; 256];
     let colored = shape_ramp_preview_lut(&brush, &mut clut);
+    // Per-Layer Color: the tool publishes the multi-layer COLOURED composite (premultiplied RGBA) — show
+    // it over the checker instead of the grayscale/ramp silhouette, so the preview reflects the layer
+    // colours (the per-layer pixels live only in the tool). `None` ⇒ the grayscale/ramp path below.
+    let color_preview = brush
+        .shape_per_layer_color
+        .then(state::current_brush_shape_color_preview)
+        .flatten();
     let ox = (bw - side) / 2;
     let mut buf = vec![0u8; (bw * bh * 4) as usize];
     for py in 0..bh {
@@ -294,7 +301,16 @@ fn paint_shape_preview(
                 0.0
             };
             let i = ((py * bw + px) * 4) as usize;
-            let px4 = if colored && inside {
+            let px4 = if let Some((cp, cw, ch)) = color_preview.as_ref().filter(|_| inside) {
+                // The multi-layer coloured composite (premultiplied RGBA, `cw×ch`) sampled at the scaled
+                // tip coord, composited OVER the checker: `checker·(1−a) + premul_rgb`.
+                let sx = ((px - ox) * cw / side).min(cw - 1);
+                let sy = (py * ch / side).min(ch - 1);
+                let o = ((sy * cw + sx) * 4) as usize;
+                let a = f32::from(cp[o + 3]) / 255.0; // LITERAL-PX-OK: 8-bit alpha normalize
+                let over = |prem: u8| (f32::from(c) * (1.0 - a) + f32::from(prem)) as u8; // LITERAL-PX-OK: premul over checker
+                [over(cp[o]), over(cp[o + 1]), over(cp[o + 2]), 255]
+            } else if colored && inside {
                 // `ramp[coverage]` (sRGB straight) composited over the checker at coverage × stop alpha.
                 let s = clut[((cf * 255.0) as usize).min(255)]; // LITERAL-PX-OK: 256-entry LUT index
                 let a = (cf * s[3]).clamp(0.0, 1.0);

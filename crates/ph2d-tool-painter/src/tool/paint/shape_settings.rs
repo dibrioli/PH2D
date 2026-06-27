@@ -212,6 +212,32 @@ impl PainterTool {
         self.paint.shape_layers.set_layer_color(i, rgb);
     }
 
+    /// Render the multi-layer **coloured Shape preview** (premultiplied RGBA, `size×size`) for the panel:
+    /// the per-layer composite (each layer tinted, higher above lower) at the current Shape frame. `None`
+    /// unless Per-Layer Color is on with captured layers. A single small composite — cheap; the panel
+    /// composites it over its checker. Tracks the live Shape transform / colours (re-rendered per frame).
+    #[must_use]
+    pub fn brush_shape_color_preview(&self) -> Option<(Vec<u8>, u32)> {
+        if !self.paint.shape_layers.is_color_mode() {
+            return None;
+        }
+        const SIZE: u32 = 128;
+        let masks = self.paint.shape_layers.masks();
+        let colors = self
+            .paint
+            .shape_layers
+            .resolved_colors(self.paint.brush.color);
+        let grain = self.paint.texture_image.as_ref().map(|i| i.as_mask());
+        let stamp = ph2d_painter_brush::render_color_stamp_mask(
+            &self.paint.brush,
+            &masks,
+            &colors,
+            grain.as_ref(),
+            SIZE,
+        );
+        Some((stamp.data().to_vec(), SIZE))
+    }
+
     /// `(layer count, per-layer-colour mode on)` for the panel — the checkbox only shows for `> 1` layer.
     #[must_use]
     pub fn brush_shape_layers(&self) -> (u8, bool) {

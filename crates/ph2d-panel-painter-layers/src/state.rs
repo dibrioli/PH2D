@@ -53,6 +53,13 @@ thread_local! {
     static CURRENT_BRUSH_SHAPE_IMAGE: RefCell<Option<TextureImageSnapshot>> =
         const { RefCell::new(None) };
 
+    /// The brush's multi-layer **coloured Shape preview** as `(premultiplied RGBA, w, h)` — published by
+    /// the host each frame when Per-Layer Color is on (the per-layer composite). `None` otherwise; the
+    /// Shape preview then falls back to the grayscale silhouette. The colours need the per-layer pixels,
+    /// which only the tool has, so it renders + publishes the composite.
+    static CURRENT_BRUSH_SHAPE_COLOR_PREVIEW: RefCell<Option<TextureImageSnapshot>> =
+        const { RefCell::new(None) };
+
     /// Dock-view mode published per-frame: `true` = Layers/Effects body, `false`
     /// = Brush-properties body. The header toggle flips the tool's
     /// `dock_shows_layers`; the bridge publishes it here and `paint` branches.
@@ -439,6 +446,17 @@ pub fn set_current_brush_shape_image(image: Option<TextureImageSnapshot>) {
 /// Read the published brush **Shape** image (cheap `Arc` clone). `None` → the silhouette is the falloff.
 pub(crate) fn current_brush_shape_image() -> Option<TextureImageSnapshot> {
     CURRENT_BRUSH_SHAPE_IMAGE.with(|c| c.borrow().clone())
+}
+
+/// Publish the multi-layer **coloured Shape preview** `(premultiplied RGBA, w, h)` for the Shape preview
+/// (Per-Layer Color mode); `None` clears it (the preview falls back to the grayscale silhouette).
+pub fn set_current_brush_shape_color_preview(preview: Option<TextureImageSnapshot>) {
+    CURRENT_BRUSH_SHAPE_COLOR_PREVIEW.with(|c| *c.borrow_mut() = preview);
+}
+
+/// Read the published coloured Shape preview (cheap `Arc` clone). `None` → use the grayscale silhouette.
+pub(crate) fn current_brush_shape_color_preview() -> Option<TextureImageSnapshot> {
+    CURRENT_BRUSH_SHAPE_COLOR_PREVIEW.with(|c| c.borrow().clone())
 }
 
 /// Publica o modo do dock (`true` = Layers/Effects, `false` = Brush). Chamado

@@ -14,24 +14,20 @@ use ph2d_painter_brush::{
     StrokeMethod, StrokePoint,
 };
 
-/// Brush + Stroke-section parameter snapshot & setters (submodule so it shares `PaintState`'s
-/// private brush access; split out to keep both files under the workspace LOC cap).
+/// Brush + Stroke-section parameter snapshot & setters (shares `PaintState`'s private brush access).
 mod brush_settings;
 /// The Curve stroke method's on-canvas point editor (submodule, as `brush_settings`).
 mod curve;
-/// Bézier tangent-handle geometry for the Curve / Free Hand editor (hit-test, aligned mirror, overlay
-/// snapshot); split from `curve` for the LOC cap.
-mod curve_tangent;
+mod curve_handle; // per-anchor handle kinds (Free/Aligned/Vector/Auto) + derived geometry; split from `curve`
+mod curve_tangent; // Bézier tangent-handle hit-test, aligned mirror, overlay snapshot; split from `curve`
 /// Per-dab randomize setters (Jitter Scale / Rotate / Randomize Color); split from `brush_settings`
 /// for the LOC cap (same submodule rationale).
 mod jitter_settings;
 /// Multi-layer Shape (z-ordered layers + per-layer-colour state); split from `paint.rs` (LOC cap).
 mod shape_layers;
-/// Imported-image slots (Grain + Shape) + Shape geometry + Grain Depth setters; split from
-/// `brush_settings` for the LOC cap.
+/// Imported-image slots (Grain + Shape) + Shape geometry + Grain Depth setters; split from `brush_settings`.
 mod shape_settings;
-/// The cached multi-layer coloured stamp (bake the per-layer composite once, blit per dab).
-mod stamp_color_cache;
+mod stamp_color_cache; // the cached multi-layer coloured stamp (bake the composite once, blit per dab)
 mod stamp_color_dynamic;
 /// Seamless Tiling (wrap-around painting) — dab replication across sprite edges + the toggles.
 mod tiling;

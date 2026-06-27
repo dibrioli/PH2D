@@ -5,18 +5,13 @@
 //!
 //! ## Interaction
 //!
-//! 1. **Draw** — press-drag-release a straight line (like Line). On release, three control points
-//!    appear: the two endpoints + the midpoint.
-//! 2. **Edit** — the session persists. Drag a control point to move it; click empty / near the curve
-//!    to ADD a point there (and immediately drag it); the points auto-smooth with chordal Bézier
-//!    handles ([`ph2d_painter_brush::auto_handles`], re-computed each edit — no overshoot), so moving
-//!    points sculpts curves of any shape. The painted stroke previews live along the spline (no trail).
-//! 3. **Delete** — select a point (click it) and press Delete (keeps ≥ 2 points).
-//! 4. **Commit / cancel** — Enter bakes the stroke (one undo entry); Esc discards it.
-//!
-//! Keyboard (Enter / Esc / Delete) and the control-point/spine overlay live in the shell (the frozen
+//! **Draw** a straight line (press-drag-release); on release 3 control points appear. **Edit**: drag a
+//! point to move it, drag its tangent handles to sculpt, click near the curve to ADD a point; per-anchor
+//! handle kinds ([`curve_handle`]) drive the smoothing. **Delete** the selected point; **Commit** (Enter)
+//! bakes one undo entry, **cancel** (Esc) discards. Keyboard + the overlay live in the shell (the frozen
 //! `CanvasPointer` carries no keys); this module exposes the verbs they drive.
 
+use super::curve_handle::{self, HandleKind};
 use super::curve_tangent;
 use super::*;
 
@@ -38,13 +33,15 @@ pub(super) struct CurveEditor {
     /// Control points along the curve, image-space px. One while drawing the initial line, then
     /// `≥ 2` once editing (the 3-point line, growing as points are added).
     points: Vec<[f32; 2]>,
-    /// Per-anchor **Bézier handles** `[in, out]` (absolute px), parallel to `points` (the curve is a cubic
-    /// Bézier through the anchors). Populated for BOTH methods: the authored Curve gets chordal
-    /// [`ph2d_painter_brush::auto_handles`] (re-smoothed each edit — no overshoot); Free Hand gets the
-    /// FITTED tangents (faithful to the stroke). The `freehand` flag picks the edit behaviour: Free Hand
-    /// rigid-translates a dragged anchor's handles, the authored Curve re-smooths the whole polygon. EMPTY
-    /// only transiently (the draw-phase straight-line preview) ⇒ the Catmull-Rom fallback in `flatten_spine`.
+    /// Per-anchor **Bézier handles** `[in, out]` (absolute px), parallel to `points` once editing. Each
+    /// anchor's `kinds` entry drives how they update (Auto/Vector derived, Aligned/Free manual). EMPTY only
+    /// transiently (the draw-phase straight-line preview) ⇒ the Catmull-Rom fallback in `flatten_spine`.
     handles: Vec<[[f32; 2]; 2]>,
+    /// Per-anchor **handle kind** (Free / Aligned / Vector / Auto), parallel to `points` once editing — the
+    /// vector-app continuity type chosen via the right-click menu. Derived kinds (Auto / Vector) are
+    /// recomputed from the points by [`curve_handle::rebuild`] on every edit; manual kinds (Aligned / Free)
+    /// keep the artist's tangents. Empty during the draw phase (handles not materialised yet).
+    kinds: Vec<HandleKind>,
     /// The selected (highlighted) point — the Delete target. `None` = nothing selected.
     selected: Option<usize>,
     /// The point being dragged this gesture (`Some` between a grab-Down and its Up).
@@ -80,6 +77,9 @@ pub struct CurveOverlay {
     /// The selected anchor's draggable Bézier **tangent handles** (drawn as dots on stems off the point),
     /// or `None` when nothing is selected / the handles are collapsed. See [`TangentHandles`].
     pub tangents: Option<TangentHandles>,
+    /// The selected anchor's **handle kind** as a wire `u8` (`0 = Free`, `1 = Aligned`, `2 = Vector`,
+    /// `3 = Auto`), or `None` when nothing is selected — lets the shell mark the active item in the menu.
+    pub selected_kind: Option<u8>,
 }
 
 impl PainterTool {
@@ -109,6 +109,7 @@ impl PainterTool {
             self.paint.curve = Some(CurveEditor {
                 points: vec![pos],
                 handles: Vec::new(),
+                kinds: Vec::new(),
                 selected: None,
                 grabbed: None,
                 grabbed_handle: None,
@@ -131,21 +132,16 @@ impl PainterTool {
             ed.grabbed = Some(i);
             false
         } else if let Some(h) = tangent {
-            // A tangent handle of the selected anchor (drawn off the point) — grab it, not the curve.
-            ed.grabbed_handle = Some(h);
+            ed.grabbed_handle = Some(h); // a tangent handle off the selected anchor — grab it, not the curve
             false
         } else if ed.points.len() < MAX_CURVE_POINTS {
             let i = curve_insert_index(&ed.points, pos);
             ed.points.insert(i, pos);
-            if ed.freehand {
-                // Free Hand: the inserted point is a corner — zero-length handles, kept in sync.
-                if ed.handles.len() + 1 == ed.points.len() {
-                    ed.handles.insert(i, [pos, pos]);
-                }
-            } else {
-                // Authored Curve: re-smooth the whole polygon through the new point.
-                ed.handles = ph2d_painter_brush::auto_handles(&ed.points);
+            ed.kinds.insert(i, HandleKind::Auto); // a fresh point starts smooth; the menu can change it
+            if ed.handles.len() + 1 == ed.points.len() {
+                ed.handles.insert(i, [pos, pos]); // placeholder; rebuild fills it
             }
+            curve_handle::rebuild(&ed.points, &ed.kinds, &mut ed.handles);
             ed.selected = Some(i);
             ed.grabbed = Some(i);
             true
@@ -168,8 +164,8 @@ impl PainterTool {
         };
         if !ed.editing {
             if ed.freehand {
-                // Free Hand draw: lazy-mouse stabilize the cursor (the "how regular" knob), then accumulate
-                // the filtered point (min-spacing gated) and preview the stroke along the captured path.
+                // Free Hand draw: lazy-mouse stabilize, accumulate the filtered point (min-spacing gated),
+                // preview along the captured path.
                 ed.stabilized = lazy_mouse_step(ed.stabilized, pos, stabilizer);
                 let p = ed.stabilized;
                 let last = *ed.points.last().unwrap_or(&ed.anchor);
@@ -188,34 +184,34 @@ impl PainterTool {
             return true;
         }
         if let Some((i, is_out)) = ed.grabbed_handle {
-            // Dragging a tangent handle: set the grabbed `[in|out]` slot, mirror the opposite to stay
-            // aligned (length-preserving), and PIN the handles (`freehand = true`) so a later anchor drag
-            // rigid-translates them instead of auto-resmoothing the hand-edited tangent away.
-            if i < ed.handles.len() && i < ed.points.len() {
+            // Dragging a tangent: a derived (Auto/Vector) point becomes Aligned; Aligned mirrors the
+            // opposite (collinear); Free moves only the dragged side.
+            if i < ed.handles.len() && i < ed.points.len() && i < ed.kinds.len() {
+                if matches!(ed.kinds[i], HandleKind::Auto | HandleKind::Vector) {
+                    ed.kinds[i] = HandleKind::Aligned;
+                }
                 let anchor = ed.points[i];
                 ed.handles[i][usize::from(is_out)] = pos;
-                curve_tangent::mirror_tangent(&mut ed.handles[i], anchor, is_out);
-                ed.freehand = true;
+                if ed.kinds[i] == HandleKind::Aligned {
+                    curve_tangent::mirror_tangent(&mut ed.handles[i], anchor, is_out);
+                }
             }
         } else {
             match ed.grabbed {
                 Some(g) => {
                     let old = ed.points[g];
                     ed.points[g] = pos;
-                    if ed.freehand {
-                        // Free Hand: rigid-translate the FITTED handle with the anchor (keep the captured
-                        // tangents), so the curve stays faithful to the drawn stroke.
+                    // Carry the moved anchor's MANUAL handles with it (rigid); rebuild re-derives the rest.
+                    if ed.kinds.get(g).is_some_and(|k| k.is_manual())
+                        && let Some(h) = ed.handles.get_mut(g)
+                    {
                         let d = [pos[0] - old[0], pos[1] - old[1]];
-                        if let Some(h) = ed.handles.get_mut(g) {
-                            *h = [
-                                [h[0][0] + d[0], h[0][1] + d[1]],
-                                [h[1][0] + d[0], h[1][1] + d[1]],
-                            ];
-                        }
-                    } else {
-                        // Authored Curve: re-smooth via chordal auto-handles (no overshoot).
-                        ed.handles = ph2d_painter_brush::auto_handles(&ed.points);
+                        *h = [
+                            [h[0][0] + d[0], h[0][1] + d[1]],
+                            [h[1][0] + d[0], h[1][1] + d[1]],
+                        ];
                     }
+                    curve_handle::rebuild(&ed.points, &ed.kinds, &mut ed.handles);
                 }
                 None => return true, // editing but nothing grabbed — ignore stray moves
             }
@@ -235,9 +231,8 @@ impl PainterTool {
             return true;
         }
         if ed.freehand {
-            // Free Hand released → append the final point, FIT the captured path to cubic Béziers and keep
-            // the anchors + their tangent HANDLES (Schneider): the handles ARE the fitted tangents, so
-            // flattening them reproduces the stroke faithfully (no Catmull-Rom deformation). Enter edit mode.
+            // Free Hand released → append the final point, FIT the path to cubic Béziers keeping the
+            // anchors + their tangent HANDLES (Schneider): flattening them reproduces the stroke faithfully.
             let last = *ed.points.last().unwrap_or(&ed.anchor);
             if dist2(last, pos) >= MIN_CAPTURE_DIST_SQ {
                 ed.points.push(pos);
@@ -248,8 +243,7 @@ impl PainterTool {
                     ed.points = fit.anchors;
                     ed.handles = fit.handles; // Bézier mode — faithful tangents
                 } else {
-                    // Pathologically busy scribble over the editor cap → decimate to anchors + drop the
-                    // handles (graceful Catmull-Rom fallback; the per-frame hit-test stays bounded).
+                    // Busy scribble over the cap → decimate to anchors, drop handles (rebuild re-derives).
                     ed.points = cap_curve_points(fit.anchors);
                     ed.handles = Vec::new();
                 }
@@ -258,17 +252,19 @@ impl PainterTool {
                 ed.points = vec![ed.anchor, pos]; // a tap/short flick → a degenerate 2-point curve
                 ed.handles = Vec::new();
             }
+            // The fitted tangents are the artist's smooth handles → Aligned (manual, kept across edits).
+            ed.kinds = vec![HandleKind::Aligned; ed.points.len()];
             ed.selected = None;
         } else {
-            // Curve line released → materialize start / midpoint / end. The midpoint is pre-selected so
-            // the artist can bend the line immediately. Authored curves use chordal auto-handles (the
-            // no-overshoot Bézier smooth) — re-smoothed on every later edit (Enio 2026-06-27).
+            // Curve line released → materialize start / midpoint / end (midpoint pre-selected to bend
+            // immediately). Authored points start Auto (no-overshoot chordal smooth) until the menu changes.
             let a = ed.anchor;
             let mid = [(a[0] + pos[0]) * 0.5, (a[1] + pos[1]) * 0.5];
             ed.points = vec![a, mid, pos];
-            ed.handles = ph2d_painter_brush::auto_handles(&ed.points);
+            ed.kinds = vec![HandleKind::Auto; 3];
             ed.selected = Some(1);
         }
+        curve_handle::rebuild(&ed.points, &ed.kinds, &mut ed.handles);
         ed.grabbed = None;
         ed.editing = true;
         self.curve_refill();
@@ -291,13 +287,13 @@ impl PainterTool {
             return false;
         }
         ed.points.remove(sel);
-        if ed.freehand {
-            if sel < ed.handles.len() {
-                ed.handles.remove(sel); // keep the parallel handles invariant
-            }
-        } else {
-            ed.handles = ph2d_painter_brush::auto_handles(&ed.points); // authored: re-smooth
+        if sel < ed.handles.len() {
+            ed.handles.remove(sel); // keep the parallel handles + kinds invariants
         }
+        if sel < ed.kinds.len() {
+            ed.kinds.remove(sel);
+        }
+        curve_handle::rebuild(&ed.points, &ed.kinds, &mut ed.handles); // re-derive Auto/Vector neighbours
         ed.selected = Some(sel.min(ed.points.len() - 1));
         ed.grabbed = None;
         self.curve_refill();
@@ -351,11 +347,20 @@ impl PainterTool {
     /// Bézier mode (the explicit handles are kept; dragging a point translates them). The undo snapshot +
     /// drag-preview carry over, so the whole thing still bakes/undoes as one. `false` if no shape is open.
     pub(crate) fn convert_open_shape_to_curve(&mut self) -> bool {
-        let Some((points, handles)) = self.circle_to_curve().or_else(|| self.polygon_to_curve())
+        // The circle's arcs are smooth (Aligned); the polygon's corners are sharp (Free). Each keeps its
+        // explicit handles; a later anchor drag rigid-translates them (both kinds are manual).
+        let Some((points, handles, kind)) = self
+            .circle_to_curve()
+            .map(|(p, h)| (p, h, HandleKind::Aligned))
+            .or_else(|| {
+                self.polygon_to_curve()
+                    .map(|(p, h)| (p, h, HandleKind::Free))
+            })
         else {
             return false;
         };
         let anchor = points[0];
+        let kinds = vec![kind; points.len()];
         let seed = self.paint.seed;
         self.paint.seed = self.paint.seed.wrapping_add(1);
         self.paint.circle = None;
@@ -364,6 +369,7 @@ impl PainterTool {
         self.paint.curve = Some(CurveEditor {
             points,
             handles,
+            kinds,
             selected: None,
             grabbed: None,
             grabbed_handle: None,
@@ -418,15 +424,47 @@ impl PainterTool {
                 self.paint.shape_grab_tol_px,
             )
         });
+        let selected_kind = ed.selected.and_then(|s| ed.kinds.get(s)).map(|k| k.wire());
         Some(CurveOverlay {
             points: ed.points.clone(),
             selected: ed.selected,
             spine,
             tangents,
+            selected_kind,
         })
     }
 
-    // ── internals ────────────────────────────────────────────────────────────────────
+    /// Set the selected point's **handle kind** from the right-click menu's wire `u8` (`0 = Free` /
+    /// `1 = Aligned` / `2 = Vector` / `3 = Auto`); re-derives the geometry (a sharp point switched to a
+    /// manual kind is seeded with smooth tangents to drag) and re-fills. `true` if a point accepted it.
+    pub fn set_curve_handle_kind(&mut self, wire: u8) -> bool {
+        let Some(kind) = HandleKind::from_wire(wire) else {
+            return false;
+        };
+        let Some(ed) = self.paint.curve.as_mut() else {
+            return false;
+        };
+        if !ed.editing {
+            return false;
+        }
+        let Some(sel) = ed.selected.filter(|&s| s < ed.points.len()) else {
+            return false;
+        };
+        if ed.kinds.len() != ed.points.len() {
+            ed.kinds = vec![HandleKind::Auto; ed.points.len()];
+        }
+        ed.kinds[sel] = kind;
+        // Switching a sharp (collapsed) point to a manual kind: seed a visible tangent to drag.
+        if kind.is_manual() && curve_handle::is_collapsed(ed.handles.get(sel), ed.points[sel]) {
+            let auto = ph2d_painter_brush::auto_handles(&ed.points);
+            if let (Some(h), Some(a)) = (ed.handles.get_mut(sel), auto.get(sel)) {
+                *h = *a;
+            }
+        }
+        curve_handle::rebuild(&ed.points, &ed.kinds, &mut ed.handles);
+        self.curve_refill();
+        true
+    }
 
     /// Re-fill the painted preview from the editor's current control points + handles (edit phase).
     pub(super) fn curve_refill(&mut self) {
@@ -442,11 +480,9 @@ impl PainterTool {
         self.curve_fill(&pts, &handles, seed);
     }
 
-    /// Build a fresh [`Stroke`] from the live brush spec + `seed`, flatten the curve (Bézier handles when
-    /// present, else Catmull-Rom), fill spaced dabs along the spine, and route them through the restore +
-    /// re-stamp preview (so the reshaping curve leaves no trail and `commit` keeps the last fill).
-    /// Fresh-per-fill ⇒ the preview always reflects the current brush and is deterministic for identical
-    /// input. `handles = &[]` ⇒ Catmull-Rom (the draw-phase preview + the authored Curve method).
+    /// Build a fresh [`Stroke`] from the live brush + `seed`, flatten the curve (Bézier when `handles`
+    /// present, else Catmull-Rom), fill spaced dabs along the spine, and route them through restore +
+    /// re-stamp (no trail; `commit` keeps the last fill). Fresh-per-fill ⇒ deterministic for equal input.
     fn curve_fill(&mut self, pts: &[[f32; 2]], handles: &[[[f32; 2]; 2]], seed: u64) {
         let mut spine = Vec::new();
         flatten_spine(pts, handles, &mut spine);

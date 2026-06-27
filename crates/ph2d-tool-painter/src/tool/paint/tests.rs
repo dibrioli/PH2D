@@ -976,6 +976,92 @@ fn a_hand_edited_tangent_is_pinned_through_a_later_anchor_move() {
     );
 }
 
+/// Open a 3-point Curve (along y=32) in edit mode with the midpoint (index 1) selected, grab tol set.
+fn open_curve_midpoint_selected() -> PainterTool {
+    use ph2d_painter_brush::StrokeMethod;
+    let mut t = white_canvas(64, 2.0);
+    t.paint.brush.stroke_method = StrokeMethod::Curve;
+    t.set_shape_grab_tol_px(4.0);
+    t.on_canvas_pointer(cp([8.0, 32.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([56.0, 32.0], PointerPhase::Move));
+    t.on_canvas_pointer(cp([56.0, 32.0], PointerPhase::Up));
+    t
+}
+
+#[test]
+fn handle_kind_menu_pick_updates_the_selected_point() {
+    // The right-click menu's wire u8 (0=Free 1=Aligned 2=Vector 3=Auto) routes to the selected point and
+    // the overlay reports the active kind (Enio 2026-06-27). Authored points start Auto (3).
+    let mut t = open_curve_midpoint_selected();
+    assert_eq!(
+        t.curve_overlay().unwrap().selected_kind,
+        Some(3),
+        "authored point starts Auto"
+    );
+    for wire in [2u8, 0, 1, 3] {
+        assert!(t.set_curve_handle_kind(wire), "kind {wire} applied");
+        assert_eq!(t.curve_overlay().unwrap().selected_kind, Some(wire));
+    }
+    assert!(
+        !t.set_curve_handle_kind(9),
+        "an out-of-range wire is rejected"
+    );
+}
+
+#[test]
+fn free_handle_does_not_mirror_the_opposite() {
+    // A Free point's tangents are independent: dragging one must NOT swing the other (contrast the Aligned
+    // mirror). Switch the midpoint to Free (seeds smooth handles), then pull its out handle up.
+    let mut t = open_curve_midpoint_selected();
+    assert!(t.set_curve_handle_kind(0)); // Free
+    let tan = t
+        .curve_overlay()
+        .unwrap()
+        .tangents
+        .expect("seeded tangents");
+    let out = tan.out_handle.expect("out present");
+    let in_before = tan.in_handle.expect("in present");
+    t.on_canvas_pointer(cp(out, PointerPhase::Down));
+    t.on_canvas_pointer(cp([out[0], out[1] - 12.0], PointerPhase::Move));
+    t.on_canvas_pointer(cp([out[0], out[1] - 12.0], PointerPhase::Up));
+    let tan2 = t.curve_overlay().unwrap().tangents.unwrap();
+    assert!(
+        (tan2.in_handle.unwrap()[1] - in_before[1]).abs() < 1e-3,
+        "Free: the in handle stayed put (no mirror): {:?} vs {:?}",
+        tan2.in_handle,
+        in_before
+    );
+    // And it stayed Free (a Free tangent edit does not convert to Aligned).
+    assert_eq!(t.curve_overlay().unwrap().selected_kind, Some(0));
+}
+
+#[test]
+fn vector_handles_point_at_the_neighbours_after_a_move() {
+    // Move the midpoint off-axis, then make it Vector: its tangents must point 1/3 toward the two
+    // neighbour anchors (a polyline-like joint), regardless of the prior smooth handles.
+    let mut t = open_curve_midpoint_selected();
+    t.on_canvas_pointer(cp([32.0, 32.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([32.0, 12.0], PointerPhase::Move));
+    t.on_canvas_pointer(cp([32.0, 12.0], PointerPhase::Up));
+    assert!(t.set_curve_handle_kind(2)); // Vector
+    let tan = t
+        .curve_overlay()
+        .unwrap()
+        .tangents
+        .expect("vector tangents shown");
+    // out toward (56,32): (32,12)+((56-32)/3,(32-12)/3) = (40, 18.667); in toward (8,32): (24, 18.667).
+    let out = tan.out_handle.unwrap();
+    let in_h = tan.in_handle.unwrap();
+    assert!(
+        (out[0] - 40.0).abs() < 0.5 && (out[1] - 18.667).abs() < 0.5,
+        "out={out:?}"
+    );
+    assert!(
+        (in_h[0] - 24.0).abs() < 0.5 && (in_h[1] - 18.667).abs() < 0.5,
+        "in={in_h:?}"
+    );
+}
+
 #[test]
 fn color_ramp_edits_change_the_appearance_signature() {
     // Regression (Enio 2026-06-27): the real-time re-fill trigger compared only the BrushSpec, but the

@@ -68,62 +68,36 @@ O golden test (§2.2) prova a invariante: com os dois OFF, **qualquer combinaç�
 
 A garantia central (§1.3): **com os master toggles `Use Rendering` e `Use Wet Mix` em OFF — o default de fábrica — a saída é BYTE-IDÊNTICA à de hoje.** Tudo de novo fica atrás dos master toggles + modo/flags; o caminho legado nunca é editado in-place. A engine atual é **intocável** sem opt-in explícito do usuário.
 
-### 2.1 Crie o checkpoint ANTES de tocar em qualquer arquivo
-```bash
-# tag imutável do estado pré-feature (ponto de revert garantido)
-git tag painter-pre-rendering-modes
+### 2.1 Checkpoint — ✅ JÁ FEITO pelo Coordenador (você só cria a sua branch)
 
-# branch local de trabalho (você NÃO pusha — CLAUDE.md §3)
-git switch -c feat/painter-rendering-modes
+⚠️ **NÃO recrie a tag nem o backup — já existem (Coordenador, 2026-06-27).** Recriar gera artefatos/erros duplicados.
+- **Tag de revert:** `painter-pre-rendering-modes` → `e719cdee` (estado pré-feature), **já no GitHub** — confirme com `git ls-remote --tags origin painter-pre-rendering-modes`.
+- **Docs** (este handoff + `07` + INDEX) commitados em `main` (`b2128599`), **CI verde**.
+- Diff `tag→HEAD` = **só docs**; o **código do sistema de pintura+layers é byte-idêntico** ao do backup. Sua linha de base de regressão é o HEAD atual (golden, §2.2).
 
-# confira que a tag aponta pro HEAD limpo
-git tag --points-at HEAD          # deve listar painter-pre-rendering-modes
-git status                         # anote os M/?? que JÁ existem (WIP alheio) — não toque neles
-```
-> Há WIP pré-existente em `ph2d-painter-brush/src/lib.rs`, `stamp_color.rs`, `ph2d-tool-painter/src/tool/paint.rs`, `docs/Painter/HANDOFF_rake_rewrite.md` (git status de abertura). **NÃO** stage nem commite esses arquivos a menos que VOCÊ os tenha editado para esta feature. `git add -- <só meus paths>`, sempre.
-
-### 2.1b ⛑️ BACKUP COMPLETO de segurança do sistema de pintura + layers (Enio, 2026-06-27)
-
-Antes de codar, faça um backup **completo e verificável** de TODO o sistema atual de pintura de texturas + layers — não só dos crates que você vai editar. **Três camadas** (redundância proposital); `backups/` é gitignored, então fica local e não polui o git.
-
-**Sistema = 5 crates + ids de chrome + docs:** `ph2d-painter-brush` (engine), `ph2d-tool-painter` (host: `tool/paint`, `tool/layers`, `compositor/`, `undo`), `ph2d-painter-effects` (adjustments + blend modes), `ph2d-panel-painter-layers` (UI de layers + brush), `ph2d-color` (linear/sRGB/premul/OKLCH do compositor).
-
-**(1) Snapshot em arquivo dos crates do sistema** (convenção do repo — `backups/wash_*`, `backups/painter_*`):
+Você só cria a sua **branch de trabalho** a partir do `main` atual:
 ```bash
 cd /Volumes/MAC_EXTERNO/PROJETOS/_PH2D_definitiva
-DEST=backups/painting_layers_full_2026-06-27
-mkdir -p "$DEST"
-cp -R crates/ph2d-painter-brush        "$DEST"/
-cp -R crates/ph2d-tool-painter         "$DEST"/   # inclui tool/paint, tool/layers, compositor/, undo
-cp -R crates/ph2d-painter-effects      "$DEST"/   # adjustments + blend modes
-cp -R crates/ph2d-panel-painter-layers "$DEST"/   # UI de layers + brush
-cp -R crates/ph2d-color                "$DEST"/   # cor usada pelo compositor
-cp -R crates/ph2d-editor-core/src/ids/chrome "$DEST"/chrome_ids   # ids de UI do painter
-cp -R docs/Painter                     "$DEST"/docs_Painter       # docs vivas
-rm -rf "$DEST"/*/target 2>/dev/null               # NUNCA copie target/
+git switch main && git pull --ff-only          # esteja no b2128599 (ou mais novo)
+git switch -c feat/painter-rendering-modes      # sua branch (você NÃO pusha — CLAUDE.md §3)
+git status                                       # rode SEMPRE antes de stage
 ```
+> **Anti-colisão:** se `git status` mostrar `M`/`??` que não são seus (ex.: `docs/Painter/HANDOFF_rake_rewrite.md` — doc de outra feature), **NÃO** stage nem comite. `git add -- <só os seus paths>`, sempre ([feedback-parallel-agent-collision]).
 
-**(2) Tarball comprimido** (arquivo único, fácil de guardar FORA do disco do projeto — pendrive/nuvem):
-```bash
-tar --exclude='target' -czf backups/painting_layers_full_2026-06-27.tar.gz \
-  crates/ph2d-painter-brush crates/ph2d-tool-painter crates/ph2d-painter-effects \
-  crates/ph2d-panel-painter-layers crates/ph2d-color docs/Painter
-```
+### 2.1b ⛑️ BACKUP COMPLETO — ✅ JÁ FEITO (não refaça)
 
-**(3) Git bundle — o seguro mais forte (repo portátil completo COM histórico):**
-```bash
-git bundle create backups/ph2d-full-2026-06-27.bundle --all   # todo o histórico + HEAD num arquivo
-git bundle verify backups/ph2d-full-2026-06-27.bundle          # prova integridade
-```
-> O bundle só pega o que está **commitado**; como há **WIP não-commitado** na árvore (§2.1), os passos (1)/(2) é que preservam esse WIP. Os três juntos cobrem: working tree atual (1,2) + histórico restaurável em qualquer máquina (3).
+O backup completo e verificado (SHA-256) do **sistema de pintura + layers** já existe em **4 localizações** (o código não mudou desde então — só docs). **Não refaça** — geraria duplicatas.
 
-**Verifique o backup antes de prosseguir** (backup não testado não é backup):
-```bash
-du -sh "$DEST" backups/painting_layers_full_2026-06-27.tar.gz backups/ph2d-full-2026-06-27.bundle
-test -d "$DEST/ph2d-tool-painter/src/compositor" && echo "OK: compositor no snapshot"
-tar -tzf backups/painting_layers_full_2026-06-27.tar.gz | head
-```
-**Restaurar (se algo der MUITO errado):** copie os crates de volta de `$DEST/`, **ou** `git clone backups/ph2d-full-2026-06-27.bundle restore/` para um repo limpo no estado commitado. Combine com a tag/branch do §2.1 para o revert de código.
+| Camada | Local | Conteúdo |
+|---|---|---|
+| Local | `backups/painting_layers_full_2026-06-27/` + `.tar.gz` + `ph2d-full-2026-06-27.bundle` | 5 crates + ids + docs + repo git completo |
+| Off-local 1 | `~/PH2D_safety_backups/2026-06-27/` (disco interno do Mac) | tarball + bundle |
+| Off-local 2 | `~/Library/Mobile Documents/.../PH2D_safety_backups/2026-06-27/` (iCloud) | tarball + bundle |
+| Off-site | GitHub — tag `painter-pre-rendering-modes` @ `e719cdee` | histórico commitado |
+
+> **Sistema =** `ph2d-painter-brush` · `ph2d-tool-painter` (`tool/paint`, `tool/layers`, `compositor/`, `undo`) · `ph2d-painter-effects` · `ph2d-panel-painter-layers` · `ph2d-color`.
+> **Restauração:** `backups/RESTORE_painting_layers_2026-06-27.md` (tarball / `git reset --hard <tag>` / `git clone` do bundle).
+> **Ao fechar um marco grande** (ex.: fim da Fase 1), crie uma tag **nova** (`painter-rendering-fase1`) — **não** sobrescreva a `painter-pre-rendering-modes`.
 
 ### 2.2 Golden / snapshot PINANDO a saída atual — ANTES de qualquer mudança
 Antes de adicionar o enum, escreva um teste que renderiza um traço determinístico e **fixa o hash do canvas resultante** com o engine de hoje. Esse golden é o que pega regressão no caminho Direct.

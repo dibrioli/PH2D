@@ -12,9 +12,16 @@
     "rust-analyzer.cargo.features": ["bevy_ecs"],
     "rust-analyzer.check.command": "clippy",
     "rust-analyzer.check.allTargets": true,
+    // `backups/` holds verbatim crate snapshots (ph2d-color, ph2d-painter-brush, …)
+    // whose Cargo.toml duplicate real package names. They are NOT workspace members
+    // (root Cargo.toml globs only `crates/*`), so cargo ignores them — but rust-analyzer
+    // auto-discovers standalone Cargo.toml and would surface phantom "duplicate package"
+    // diagnostics. Exclude them from RA so the Problems panel stays clean.
+    "rust-analyzer.files.excludeDirs": ["backups"],
 
     "files.watcherExclude": {
-        "**/target/**": true
+        "**/target/**": true,
+        "**/backups/**": true
     },
     "files.exclude": {
         "**/target": true,

@@ -15,12 +15,14 @@ use ph2d_a11y::NodeId;
 use ph2d_editor_core::action_bus::EditorAction;
 use ph2d_editor_core::interaction::InteractiveState;
 use ph2d_editor_core::paint::{
-    fill_circle, fill_rounded_rect, paint_text_centered, resolve, stroke_rounded_rect,
+    fill_circle, fill_rounded_rect, flat_button_surface, paint_text_centered, resolve,
+    stroke_rounded_rect,
 };
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::tool::PanelEvent;
 use ph2d_editor_core::widget::{
-    ColorSwatch, SwatchSize, SwatchState, TextInputState, paint_color_swatch, paint_number_chip,
+    ButtonState, ColorSwatch, SwatchSize, SwatchState, TextInputState, paint_color_swatch,
+    paint_number_chip,
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ColorToken, ROW_H_PX, Radius, Spacing, TypeToken};
@@ -228,10 +230,16 @@ fn icon_button(
     id: NodeId,
     active: bool,
 ) {
+    // Active toggles stay accent; otherwise the fill follows the button's ButtonState (hover/press) via
+    // the central `flat_button_surface`, so every control button shows mouse feedback.
     let (bg, fg) = if active {
         (ColorToken::Accent, ColorToken::Bg0)
     } else {
-        (ColorToken::Bg2, ColorToken::Text1)
+        let state = match ctx.host.store().get(id) {
+            Some(InteractiveState::Button { state }) => *state,
+            _ => ButtonState::Normal,
+        };
+        (flat_button_surface(state), ColorToken::Text1)
     };
     fill_rounded_rect(ctx.scene, r, Radius::Sm.px(), resolve(bg, theme));
     paint_text_centered(

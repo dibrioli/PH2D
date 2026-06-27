@@ -61,6 +61,22 @@ pub fn resolve(token: ColorToken, theme: Theme) -> Color {
     token_to_vello(token.resolve(theme))
 }
 
+/// The **mouse-feedback surface** for a flat panel button, by its current [`crate::widget::ButtonState`]
+/// — the single source so every flat button across the app shows hover/press feedback consistently:
+/// idle `Bg2`, Hovered/Focused `BgElev` (a subtle lift), Pressed `AccentSoft` (a clear press). These are
+/// the same hover/press surfaces the canonical [`crate::widget::Button`] uses. A button painter reads the
+/// id's `ButtonState` from the [`crate::interaction::WidgetStore`] (`store().get(id)`) and fills with
+/// `resolve(flat_button_surface(state), theme)` instead of a fixed `Bg2`, so the press is visible.
+#[must_use]
+pub fn flat_button_surface(state: crate::widget::ButtonState) -> ColorToken {
+    use crate::widget::ButtonState;
+    match state {
+        ButtonState::Pressed => ColorToken::AccentSoft,
+        ButtonState::Hovered | ButtonState::Focused => ColorToken::BgElev,
+        _ => ColorToken::Bg2,
+    }
+}
+
 /// Convert our pixel `Rect` to a Vello `Rect` (which uses f64).
 pub fn rect_to_vello(r: Rect) -> VelloRect {
     VelloRect::new(

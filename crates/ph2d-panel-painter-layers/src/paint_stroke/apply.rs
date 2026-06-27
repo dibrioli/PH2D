@@ -6,10 +6,13 @@
 
 use crate::paint::register_button;
 use ph2d_editor_core::ids as core_ids;
+use ph2d_editor_core::interaction::InteractiveState;
 use ph2d_editor_core::paint::{
-    fill_rounded_rect, paint_icon, paint_text_centered, resolve, stroke_rounded_rect,
+    fill_rounded_rect, flat_button_surface, paint_icon, paint_text_centered, resolve,
+    stroke_rounded_rect,
 };
 use ph2d_editor_core::panel::PaintCtx;
+use ph2d_editor_core::widget::ButtonState;
 use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ColorToken, ROW_H_PX, Radius, Spacing, StrokeToken, TypeToken};
 
@@ -87,7 +90,13 @@ fn button(
     label: Option<&str>,
     id: ph2d_a11y::NodeId,
 ) {
-    fill_rounded_rect(ctx.scene, r, Radius::Sm.px(), resolve(ColorToken::Bg2, theme));
+    // Fill follows the button's ButtonState (idle / hover / press) via the central `flat_button_surface`,
+    // so the click is visible — same source every flat button uses.
+    let state = match ctx.host.store().get(id) {
+        Some(InteractiveState::Button { state }) => *state,
+        _ => ButtonState::Normal,
+    };
+    fill_rounded_rect(ctx.scene, r, Radius::Sm.px(), resolve(flat_button_surface(state), theme));
     stroke_rounded_rect(
         ctx.scene,
         r,

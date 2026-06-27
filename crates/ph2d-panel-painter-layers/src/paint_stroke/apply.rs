@@ -32,32 +32,51 @@ pub(super) fn paint_apply_row(
     // Width of the trailing cluster: ✕ alone, or E + ✕ (with a gap) when convertible.
     let icons = if with_edit { sq * 2.0 + gap } else { sq };
     let one_row = content_w >= 84.0 * 2.0 + icons + gap * 2.0;
-    let (text_w, apply_y, keep_y, keep_x) = if one_row {
+    let apply = core_ids::PAINTER_BRUSH_STROKE_APPLY;
+    let keep = core_ids::PAINTER_BRUSH_STROKE_APPLY_KEEP;
+    if one_row {
+        // Apply | Apply & Keep | E ✕ — three abutting clusters that exactly fill `content_w`. The icon
+        // cluster sits AFTER Apply & Keep (a past bug placed both at the same x, so the Keep fill covered
+        // E/✕ and stole their clicks).
         let w = (content_w - icons - gap * 2.0) * 0.5;
-        (w, y, y, x + w + gap)
+        button(
+            ctx,
+            theme,
+            Rect::new(x, y, w, ROW_H_PX),
+            Some("Apply"),
+            apply,
+        );
+        let keep_x = x + w + gap;
+        button(
+            ctx,
+            theme,
+            Rect::new(keep_x, y, w, ROW_H_PX),
+            Some("Apply & Keep"),
+            keep,
+        );
+        paint_icon_cluster(ctx, theme, keep_x + w + gap, y, sq, gap, with_edit);
+        y + ROW_H_PX + Spacing::Xs.px()
     } else {
         // Narrow: Apply (+ icons) on row 1; Apply & Keep full-width on row 2.
-        (content_w - icons - gap, y, y + ROW_H_PX + gap, x)
-    };
-    let apply = core_ids::PAINTER_BRUSH_STROKE_APPLY;
-    button(
-        ctx,
-        theme,
-        Rect::new(x, apply_y, text_w, ROW_H_PX),
-        Some("Apply"),
-        apply,
-    );
-    paint_icon_cluster(ctx, theme, x + text_w + gap, apply_y, sq, gap, with_edit);
-    let kw = if one_row { text_w } else { content_w };
-    let keep = core_ids::PAINTER_BRUSH_STROKE_APPLY_KEEP;
-    button(
-        ctx,
-        theme,
-        Rect::new(keep_x, keep_y, kw, ROW_H_PX),
-        Some("Apply & Keep"),
-        keep,
-    );
-    keep_y + ROW_H_PX + Spacing::Xs.px()
+        let text_w = content_w - icons - gap;
+        button(
+            ctx,
+            theme,
+            Rect::new(x, y, text_w, ROW_H_PX),
+            Some("Apply"),
+            apply,
+        );
+        paint_icon_cluster(ctx, theme, x + text_w + gap, y, sq, gap, with_edit);
+        let keep_y = y + ROW_H_PX + gap;
+        button(
+            ctx,
+            theme,
+            Rect::new(x, keep_y, content_w, ROW_H_PX),
+            Some("Apply & Keep"),
+            keep,
+        );
+        keep_y + ROW_H_PX + Spacing::Xs.px()
+    }
 }
 
 /// Paint the trailing square-icon cluster at `ix`: the optional **E**dit button then the **✕** Delete.

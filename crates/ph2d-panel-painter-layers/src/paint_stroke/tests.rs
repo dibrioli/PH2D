@@ -46,6 +46,65 @@ fn painted_hit_ids(method: StrokeMethod) -> Vec<NodeId> {
         .collect()
 }
 
+/// As [`painted_hit_ids`] but keep each id's registered hit rect, for geometry assertions.
+fn painted_hit_rects(method: StrokeMethod, content_w: f32) -> Vec<(NodeId, Rect)> {
+    let mut host = MockPanelHost::with_panel::<crate::PainterLayersPanel>();
+    let mut scene = VectorScene::new();
+    let mut text = TextSystem::without_system_fonts();
+    let viewport = Rect::new(0.0, 0.0, 360.0, 4000.0);
+    let layout = HeroLayout::for_viewport(viewport);
+    let brush = BrushSettings {
+        stroke_method: method.to_u8(),
+        ..crate::paint_brush::FALLBACK_BRUSH
+    };
+    {
+        let mut ctx = PaintCtx {
+            host: &mut host,
+            layout: &layout,
+            viewport,
+            scene: &mut scene,
+            text_system: &mut text,
+        };
+        paint_stroke_section(&mut ctx, Theme::default(), 0.0, content_w, 0.0, brush);
+    }
+    host.hit_index_mut().iter_registrations().collect()
+}
+
+/// Regression (Enio 2026-06-27): in the wide one-row layout the Apply & Keep button was painted at the
+/// SAME x as the trailing E/✕ icon cluster, so its fill covered them and stole their clicks ("the X
+/// disappeared and we still don't have the E button"). The bake buttons and the icon cluster must occupy
+/// DISJOINT hit rects. Checked for Circle (E + ✕ present) at a wide content width that forces one row.
+#[test]
+fn apply_keep_does_not_overlap_the_edit_and_delete_icons() {
+    let rects = painted_hit_rects(StrokeMethod::Circle, 320.0);
+    let find = |id: NodeId| {
+        rects
+            .iter()
+            .find(|(rid, _)| *rid == id)
+            .map(|(_, r)| *r)
+            .unwrap_or_else(|| panic!("{id:?} registered no hit rect"))
+    };
+    let keep = find(core_ids::PAINTER_BRUSH_STROKE_APPLY_KEEP);
+    let overlaps =
+        |a: Rect, b: Rect| a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
+    for icon in [
+        core_ids::PAINTER_BRUSH_STROKE_EDIT,
+        core_ids::PAINTER_BRUSH_STROKE_DELETE,
+    ] {
+        let r = find(icon);
+        assert!(
+            !overlaps(keep, r),
+            "Apply & Keep {keep:?} overlaps {icon:?} {r:?} — the icon is covered/unclickable"
+        );
+    }
+    // And Apply must not overlap Apply & Keep either.
+    let apply = find(core_ids::PAINTER_BRUSH_STROKE_APPLY);
+    assert!(
+        !overlaps(apply, keep),
+        "Apply {apply:?} overlaps Apply & Keep {keep:?}"
+    );
+}
+
 /// Dots: per-event method — Spacing and Dash/Length are no-ops, so they stay hidden; Jitter,
 /// Input Samples and the Stabilizer (Blender enables smooth-stroke for Dots) show.
 #[test]
@@ -347,7 +406,11 @@ fn edit_button_registers_only_for_circle_and_polygon() {
             "{m:?} must paint the Edit (E) button"
         );
     }
-    for m in [StrokeMethod::Curve, StrokeMethod::FreeHand, StrokeMethod::Line] {
+    for m in [
+        StrokeMethod::Curve,
+        StrokeMethod::FreeHand,
+        StrokeMethod::Line,
+    ] {
         assert!(
             !painted_hit_ids(m).contains(&core_ids::PAINTER_BRUSH_STROKE_EDIT),
             "{m:?} must NOT paint the Edit button (not a convertible parametric shape)"

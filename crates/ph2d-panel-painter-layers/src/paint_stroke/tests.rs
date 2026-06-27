@@ -304,6 +304,39 @@ fn polygon_shows_spacing_dash_jitter_samples_hides_stabilize_rate_edge() {
     }
 }
 
+/// Apply / Apply & Keep: the two bake buttons register hit rects ONLY for the methods with a
+/// persistent on-canvas shape editor (Curve/Free Hand/Circle/Polygon) — so a real click can reach
+/// them — and stay hidden for the finalise-on-up methods (Line/Space). A regression guard for the
+/// "Apply does nothing" report: no hit rect ⇒ no Click ⇒ dead button (the populate-register gotcha).
+#[test]
+fn apply_buttons_register_hit_rects_for_the_editor_methods_only() {
+    for m in [
+        StrokeMethod::Curve,
+        StrokeMethod::FreeHand,
+        StrokeMethod::Circle,
+        StrokeMethod::Polygon,
+    ] {
+        let ids = painted_hit_ids(m);
+        for b in [
+            core_ids::PAINTER_BRUSH_STROKE_APPLY,
+            core_ids::PAINTER_BRUSH_STROKE_APPLY_KEEP,
+            core_ids::PAINTER_BRUSH_STROKE_DELETE,
+        ] {
+            assert!(
+                ids.contains(&b),
+                "{m:?} must paint a hit rect for {b:?} (else the button is dead). painted = {ids:?}"
+            );
+        }
+    }
+    for m in [StrokeMethod::Line, StrokeMethod::Space] {
+        let ids = painted_hit_ids(m);
+        assert!(
+            !ids.contains(&core_ids::PAINTER_BRUSH_STROKE_APPLY),
+            "{m:?} finalises on pen-up — no Apply button. painted = {ids:?}"
+        );
+    }
+}
+
 /// Drag Dot: the most-restricted method (no jitter, no spacing, no stabilizer — the dot sits
 /// raw under the cursor) — only Method + Input Samples survive. UI-honesty for "Drag Dot wrong".
 #[test]

@@ -242,6 +242,10 @@ impl PainterTool {
                 self.commit_open_shape_keep();
                 return true;
             }
+            if *id == core_ids::PAINTER_BRUSH_STROKE_DELETE {
+                self.cancel_open_shape(); // drop the open shape without baking
+                return true;
+            }
         }
         let PanelEvent::SetValue(id, v) = event else {
             return false;

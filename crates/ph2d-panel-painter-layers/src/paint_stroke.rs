@@ -9,16 +9,13 @@
 //! real range (the `BRUSH_*_MAX` constants are the single source). Edits forward over the frozen
 //! `PanelEvent` channel (drained in [`crate::event`]).
 
-use crate::paint::register_button;
 use crate::paint_brush::paint_dropdown_row;
 use crate::paint_brush_top::{paint_checkbox_row, paint_slider_chip_row};
 use crate::state;
 use ph2d_editor_core::ids::{
     self as core_ids, painter_brush_jitter_unit_option_id, painter_brush_stroke_method_option_id,
 };
-use ph2d_editor_core::paint::{
-    fill_rounded_rect, paint_text, paint_text_centered, resolve, stroke_rounded_rect,
-};
+use ph2d_editor_core::paint::{fill_rounded_rect, paint_text, resolve, stroke_rounded_rect};
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::widget::DropdownOption;
 use ph2d_editor_core::zones::Rect;
@@ -490,85 +487,6 @@ fn stroke_method_options() -> Vec<DropdownOption<u8>> {
         .collect()
 }
 
-/// Paint the **Apply / Apply & Keep** button row, returning the next `y`. Both buttons share one row;
-/// when the panel is too narrow for two readable buttons side by side, the second wraps to its own row
-/// below (so the labels never clip). Mirrors the ramp controls' one-row/wrap split.
-fn paint_apply_row(
-    ctx: &mut PaintCtx,
-    theme: ph2d_tokens::Theme,
-    x: f32,
-    content_w: f32,
-    y: f32,
-) -> f32 {
-    let gap = Spacing::Xs.px();
-    // Minimum readable width for the wider "Apply & Keep" label; below `2·min + gap` we stack.
-    let min_w = 96.0;
-    let one_row = content_w >= min_w * 2.0 + gap;
-    if one_row {
-        let w = (content_w - gap) * 0.5;
-        apply_button(ctx, theme, Rect::new(x, y, w, ROW_H_PX), "Apply", false);
-        apply_button(
-            ctx,
-            theme,
-            Rect::new(x + w + gap, y, w, ROW_H_PX),
-            "Apply & Keep",
-            true,
-        );
-        y + ROW_H_PX + Spacing::Xs.px()
-    } else {
-        apply_button(
-            ctx,
-            theme,
-            Rect::new(x, y, content_w, ROW_H_PX),
-            "Apply",
-            false,
-        );
-        let y2 = y + ROW_H_PX + gap;
-        apply_button(
-            ctx,
-            theme,
-            Rect::new(x, y2, content_w, ROW_H_PX),
-            "Apply & Keep",
-            true,
-        );
-        y2 + ROW_H_PX + Spacing::Xs.px()
-    }
-}
-
-/// One Apply button: `keep` picks the [`core_ids::PAINTER_BRUSH_STROKE_APPLY_KEEP`] id (bake + keep the
-/// editor) vs [`core_ids::PAINTER_BRUSH_STROKE_APPLY`] (bake + drop). Registers the Button slot so the
-/// dispatch can emit `Click` (the tool routes it in `route_brush_dab_event`).
-fn apply_button(ctx: &mut PaintCtx, theme: ph2d_tokens::Theme, r: Rect, label: &str, keep: bool) {
-    let id = if keep {
-        core_ids::PAINTER_BRUSH_STROKE_APPLY_KEEP
-    } else {
-        core_ids::PAINTER_BRUSH_STROKE_APPLY
-    };
-    fill_rounded_rect(
-        ctx.scene,
-        r,
-        Radius::Sm.px(),
-        resolve(ColorToken::Bg2, theme),
-    );
-    stroke_rounded_rect(
-        ctx.scene,
-        r,
-        Radius::Sm.px(),
-        StrokeToken::Thin.px(),
-        resolve(ColorToken::Border, theme),
-    );
-    paint_text_centered(
-        ctx.text_system,
-        ctx.scene,
-        label,
-        r,
-        TypeToken::Base.px(),
-        resolve(ColorToken::Text1, theme),
-    );
-    register_button(ctx.host.store_mut(), id);
-    ctx.host.hit_index_mut().register(id, r);
-}
-
 /// The two jitter units as dropdown options.
 fn jitter_unit_options() -> Vec<DropdownOption<u8>> {
     [0u8, 1]
@@ -582,6 +500,10 @@ fn jitter_unit_options() -> Vec<DropdownOption<u8>> {
         })
         .collect()
 }
+
+/// The Apply / Apply & Keep / Delete button row (split out for the LOC cap).
+mod apply;
+use apply::paint_apply_row;
 
 #[cfg(test)]
 mod tests;

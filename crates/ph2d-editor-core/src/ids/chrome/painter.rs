@@ -159,15 +159,15 @@ pub fn painter_brush_falloff_option_id(preset: u8) -> NodeId {
 // ── Stroke section (the layers-panel "Stroke" sub-section; Blender Stroke panel) ──
 // Clean-room port of the Blender 2D-paint "Stroke" controls — all forward over the frozen `PanelEvent`.
 
-/// Brush "Stroke Method" dropdown chip (Dots/Airbrush/Anchored/Space/DragDot/Line/Curve).
-/// `SelectOption` → `set_brush_stroke_method`. Options via [`painter_brush_stroke_method_option_id`].
+/// Brush "Stroke Method" dropdown chip. `SelectOption` → `set_brush_stroke_method`.
 pub const PAINTER_BRUSH_STROKE_METHOD: NodeId = hash_node_id("painter_brush.stroke_method");
-/// "Apply" button (shape methods): bake the pending stroke + DISCARD the curve. `Click` → `commit_open_shape`.
+/// "Apply" (shape methods): bake the stroke + DISCARD the curve. `Click` → `commit_open_shape`.
 pub const PAINTER_BRUSH_STROKE_APPLY: NodeId = hash_node_id("painter_brush.stroke_apply");
-/// "Apply & Keep" button: bake the stroke but KEEP the editable curve for re-apply. `Click` → `commit_open_shape_keep`.
+/// "Apply & Keep": bake but KEEP the editable curve for re-apply. `Click` → `commit_open_shape_keep`.
 pub const PAINTER_BRUSH_STROKE_APPLY_KEEP: NodeId = hash_node_id("painter_brush.stroke_apply_keep");
-/// Brush "Rate" slider — the airbrush timer period in seconds (`0..1` track → `[0.01, 1.0]` s).
-/// Shown only for the Airbrush method. `SetValue` → `set_brush_airbrush_rate_norm`.
+/// "Delete" (trash icon): drop the open shape WITHOUT baking. `Click` → `cancel_open_shape`.
+pub const PAINTER_BRUSH_STROKE_DELETE: NodeId = hash_node_id("painter_brush.stroke_delete");
+/// Brush "Rate" slider — airbrush timer period (`0..1` → `[0.01,1.0]`s, Airbrush only). `SetValue`.
 pub const PAINTER_BRUSH_RATE: NodeId = hash_node_id("painter_brush.rate");
 /// "Edge to Edge" toggle (Blender `BRUSH_EDGE_TO_EDGE`) — Anchored only. `Click` → `set_brush_edge_to_edge`.
 pub const PAINTER_BRUSH_EDGE_TO_EDGE: NodeId = hash_node_id("painter_brush.edge_to_edge");

@@ -234,3 +234,35 @@ fn stroke_method_option_forwards_selectoption() {
          seam dead. drained = {actions:?}"
     );
 }
+
+/// Apply / Apply & Keep / Delete (the Stroke shape-editor buttons) MUST forward as
+/// `ToolPanelEvent(Click(id))` — the `try_apply_brush_event` allowlist was missing them, so the
+/// buttons painted, registered hit rects and were SILENTLY DEAD (Enio 2026-06-27 "Apply não funciona").
+/// This seam is the exact layer that was broken: paint + populate + tool-route were all fine.
+#[test]
+fn stroke_apply_buttons_forward_their_click() {
+    for clicked in [
+        core_ids::PAINTER_BRUSH_STROKE_APPLY,
+        core_ids::PAINTER_BRUSH_STROKE_APPLY_KEEP,
+        core_ids::PAINTER_BRUSH_STROKE_DELETE,
+    ] {
+        let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
+        let mut st = PainterLayersPanelState;
+        let outcome =
+            host.apply_panel_event::<PainterLayersPanel>(&mut st, WidgetEvent::Click(clicked));
+        assert_eq!(
+            outcome,
+            EventOutcome::Consumed,
+            "stroke button {clicked:?} click ignored — the try_apply_brush_event allowlist arm is missing"
+        );
+        let actions = host.drained_actions();
+        assert!(
+            actions.iter().any(|a| matches!(
+                a,
+                EditorAction::ToolPanelEvent(PanelEvent::Click(id)) if *id == clicked
+            )),
+            "stroke button {clicked:?} never forwarded as ToolPanelEvent(Click) — seam dead \
+             (the original 'Apply does nothing' bug). drained = {actions:?}"
+        );
+    }
+}

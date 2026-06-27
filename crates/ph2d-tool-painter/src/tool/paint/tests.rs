@@ -795,6 +795,53 @@ fn free_hand_stabilizer_smooths_the_capture() {
 }
 
 #[test]
+fn apply_buttons_route_through_panel_click() {
+    use ph2d_editor_core::ids as core_ids;
+    use ph2d_editor_core::tool::{PanelEvent, Tool};
+    use ph2d_painter_brush::StrokeMethod;
+    // The panel's Apply / Apply & Keep buttons forward as PanelEvent::Click — this exercises the FULL
+    // wiring (handle_panel_event → route_brush_dab_event → commit), not just the verbs (Enio 2026-06-27).
+    let mut t = white_canvas(64, 6.0);
+    t.paint.brush.stroke_method = StrokeMethod::Curve;
+    t.on_canvas_pointer(cp([12.0, 32.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([52.0, 32.0], PointerPhase::Move));
+    t.on_canvas_pointer(cp([52.0, 32.0], PointerPhase::Up));
+    assert!(t.curve_overlay().is_some(), "a curve editor is open");
+    t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_BRUSH_STROKE_APPLY_KEEP));
+    assert!(
+        t.curve_overlay().is_some(),
+        "Apply & Keep via Click bakes but keeps the curve"
+    );
+    assert!(px(&t, 64, 32, 32)[0] < 200, "the stroke was baked by the Click");
+    t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_BRUSH_STROKE_APPLY));
+    assert!(
+        t.curve_overlay().is_none(),
+        "plain Apply via Click discards the curve"
+    );
+}
+
+#[test]
+fn delete_button_drops_the_open_shape_without_baking() {
+    use ph2d_editor_core::ids as core_ids;
+    use ph2d_editor_core::tool::{PanelEvent, Tool};
+    use ph2d_painter_brush::StrokeMethod;
+    // The trash button cancels the open shape editor WITHOUT baking it — the canvas stays pristine.
+    let mut t = white_canvas(64, 6.0);
+    t.paint.brush.stroke_method = StrokeMethod::Curve;
+    t.on_canvas_pointer(cp([12.0, 32.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([52.0, 32.0], PointerPhase::Move));
+    t.on_canvas_pointer(cp([52.0, 32.0], PointerPhase::Up));
+    assert!(t.curve_overlay().is_some(), "a curve editor is open");
+    t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_BRUSH_STROKE_DELETE));
+    assert!(t.curve_overlay().is_none(), "Delete drops the editor");
+    assert_eq!(
+        px(&t, 64, 32, 32),
+        [255, 255, 255, 255],
+        "Delete did NOT bake — canvas pristine"
+    );
+}
+
+#[test]
 fn apply_keep_bakes_but_keeps_the_editable_curve() {
     use ph2d_painter_brush::StrokeMethod;
     // "Apply & Keep" bakes the pending stroke yet keeps the editable curve (for re-apply / reshape);

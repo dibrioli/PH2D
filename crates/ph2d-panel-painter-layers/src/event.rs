@@ -433,6 +433,11 @@ fn try_apply_brush_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> O
                 || core_ids::PAINTER_BRUSH_TEXTURE_RAMP_BUTTONS.contains(&id)
                 || core_ids::PAINTER_SHAPE_RAMP_BUTTONS.contains(&id)
                 || id == core_ids::PAINTER_BRUSH_FALLOFF_ADD // Custom-falloff "+" point button
+                // Stroke shape-editor buttons: Apply / Apply & Keep / Delete (the tool commits/keeps/
+                // cancels the open Curve/Circle/Polygon). MUST be forwarded here or the Click is dropped.
+                || id == core_ids::PAINTER_BRUSH_STROKE_APPLY
+                || id == core_ids::PAINTER_BRUSH_STROKE_APPLY_KEEP
+                || id == core_ids::PAINTER_BRUSH_STROKE_DELETE
                 || core_ids::PAINTER_BRUSH_SECTION_RESETS.contains(&id) =>
         {
             host.bus_mut()

@@ -174,6 +174,7 @@ pub fn populate(store: &mut WidgetStore) {
         ph2d_editor_core::ids::PAINTER_BRUSH_STROKE_APPLY,
         ph2d_editor_core::ids::PAINTER_BRUSH_STROKE_APPLY_KEEP,
         ph2d_editor_core::ids::PAINTER_BRUSH_STROKE_DELETE,
+        ph2d_editor_core::ids::PAINTER_BRUSH_STROKE_EDIT,
         ph2d_editor_core::ids::PAINTER_BRUSH_TILING_RESET,
     ] {
         store.register(

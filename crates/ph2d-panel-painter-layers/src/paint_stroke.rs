@@ -80,7 +80,8 @@ pub(crate) fn paint_stroke_section(
     //    bakes but keeps the handles for re-apply/reshape. Two buttons share one row, stacking to a
     //    column when the panel is too narrow (mirrors the ramp controls' responsive split). ──
     if method.has_open_shape() {
-        y = paint_apply_row(ctx, theme, x, content_w, y);
+        // Circle / Polygon also get an "Edit" (E) button to convert to an editable curve.
+        y = paint_apply_row(ctx, theme, x, content_w, y, method.is_convertible_shape());
     }
 
     // ── Edge to Edge — only Anchored (the drag-sized stamp spans anchor→cursor) ──

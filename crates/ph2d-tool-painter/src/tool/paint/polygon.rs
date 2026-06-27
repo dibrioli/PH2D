@@ -195,6 +195,26 @@ impl PainterTool {
         self.paint.polygon = None;
     }
 
+    /// Convert the editing polygon to an editable curve (anchors + `[in, out]` handles): the N corner
+    /// vertices + a closing vertex, with ZERO-length (sharp-corner) handles so the converted curve is the
+    /// exact polygon to start, then the artist can pull handles to round any edge. `None` unless editing.
+    /// Drives the panel's **Edit** (E) button via [`PainterTool::convert_open_shape_to_curve`].
+    #[allow(clippy::type_complexity)]
+    pub(super) fn polygon_to_curve(&self) -> Option<(Vec<[f32; 2]>, Vec<[[f32; 2]; 2]>)> {
+        let ed = self.paint.polygon.as_ref()?;
+        if !ed.editing {
+            return None;
+        }
+        let mut points = Vec::new();
+        polygon_perimeter(ed.center, ed.u, ed.rx, ed.ry, ed.sides, &mut points);
+        if points.is_empty() {
+            return None;
+        }
+        points.push(points[0]); // close the loop so the curve reads as the closed polygon
+        let handles = points.iter().map(|&p| [p, p]).collect(); // zero handles = sharp corners
+        Some((points, handles))
+    }
+
     /// Snapshot the Polygon editor for the shell overlay — `None` until editing.
     #[must_use]
     pub fn polygon_overlay(&self) -> Option<PolygonOverlay> {

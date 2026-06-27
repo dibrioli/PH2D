@@ -245,6 +245,7 @@ fn stroke_apply_buttons_forward_their_click() {
         core_ids::PAINTER_BRUSH_STROKE_APPLY,
         core_ids::PAINTER_BRUSH_STROKE_APPLY_KEEP,
         core_ids::PAINTER_BRUSH_STROKE_DELETE,
+        core_ids::PAINTER_BRUSH_STROKE_EDIT,
     ] {
         let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
         let mut st = PainterLayersPanelState;

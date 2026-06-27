@@ -317,6 +317,37 @@ impl PainterTool {
         self.curve_commit_keep() || self.circle_commit_keep() || self.polygon_commit_keep()
     }
 
+    /// Convert an open **Circle / Polygon** into an editable Bézier **Curve** (the panel's **Edit** / E
+    /// button): take the shape's anchors + handles (faithful — a 4-arc circle, a sharp polygon), drop the
+    /// shape editor, switch the method to Curve so pointers route to the curve editor, and open it in
+    /// Bézier mode (the explicit handles are kept; dragging a point translates them). The undo snapshot +
+    /// drag-preview carry over, so the whole thing still bakes/undoes as one. `false` if no shape is open.
+    pub(crate) fn convert_open_shape_to_curve(&mut self) -> bool {
+        let Some((points, handles)) = self.circle_to_curve().or_else(|| self.polygon_to_curve())
+        else {
+            return false;
+        };
+        let anchor = points[0];
+        let seed = self.paint.seed;
+        self.paint.seed = self.paint.seed.wrapping_add(1);
+        self.paint.circle = None;
+        self.paint.polygon = None;
+        self.paint.brush.stroke_method = StrokeMethod::Curve; // route future pointers to the curve editor
+        self.paint.curve = Some(CurveEditor {
+            points,
+            handles,
+            selected: None,
+            grabbed: None,
+            editing: true,
+            freehand: true, // keep the explicit handles (drag translates them), like the Free Hand fit
+            stabilized: anchor,
+            anchor,
+            seed,
+        });
+        self.curve_refill();
+        true
+    }
+
     /// Cancel the curve (Esc): revert the painted preview to the pristine pixels and discard the
     /// session WITHOUT an undo entry (nothing was committed). Returns `true` when a session was open.
     pub fn curve_cancel(&mut self) -> bool {

@@ -184,6 +184,13 @@ impl StrokeMethod {
             Self::Curve | Self::FreeHand | Self::Circle | Self::Polygon
         )
     }
+
+    /// True for the parametric shapes that the panel's **Edit** (E) button can convert into an editable
+    /// Bézier curve — `Circle` and `Polygon`. (Curve / Free Hand are already curves, so they get no E.)
+    #[must_use]
+    pub fn is_convertible_shape(self) -> bool {
+        matches!(self, Self::Circle | Self::Polygon)
+    }
 }
 
 /// The unit the per-dab position jitter is measured in — Blender's `BRUSH_ABSOLUTE_JITTER` flag.
@@ -303,6 +310,23 @@ mod tests {
             assert!(
                 !m.has_open_shape(),
                 "{m:?} finalises on pen-up — no Apply row"
+            );
+        }
+    }
+
+    #[test]
+    fn is_convertible_shape_is_circle_and_polygon_only() {
+        assert!(StrokeMethod::Circle.is_convertible_shape());
+        assert!(StrokeMethod::Polygon.is_convertible_shape());
+        for m in [
+            StrokeMethod::Curve,
+            StrokeMethod::FreeHand,
+            StrokeMethod::Line,
+            StrokeMethod::Space,
+        ] {
+            assert!(
+                !m.is_convertible_shape(),
+                "{m:?} is not a convertible parametric shape"
             );
         }
     }

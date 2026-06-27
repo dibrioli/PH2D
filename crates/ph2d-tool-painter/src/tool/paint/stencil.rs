@@ -271,6 +271,10 @@ impl PainterTool {
                 self.cancel_open_shape(); // drop the open shape without baking
                 return true;
             }
+            if *id == core_ids::PAINTER_BRUSH_STROKE_EDIT {
+                self.convert_open_shape_to_curve(); // Circle/Polygon → editable Bézier curve
+                return true;
+            }
         }
         let PanelEvent::SetValue(id, v) = event else {
             return false;

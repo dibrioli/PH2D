@@ -337,6 +337,24 @@ fn apply_buttons_register_hit_rects_for_the_editor_methods_only() {
     }
 }
 
+/// The Edit (E) button — convert to an editable curve — paints a hit rect ONLY for the convertible
+/// parametric shapes (Circle / Polygon), not for Curve / Free Hand (already curves) or Line.
+#[test]
+fn edit_button_registers_only_for_circle_and_polygon() {
+    for m in [StrokeMethod::Circle, StrokeMethod::Polygon] {
+        assert!(
+            painted_hit_ids(m).contains(&core_ids::PAINTER_BRUSH_STROKE_EDIT),
+            "{m:?} must paint the Edit (E) button"
+        );
+    }
+    for m in [StrokeMethod::Curve, StrokeMethod::FreeHand, StrokeMethod::Line] {
+        assert!(
+            !painted_hit_ids(m).contains(&core_ids::PAINTER_BRUSH_STROKE_EDIT),
+            "{m:?} must NOT paint the Edit button (not a convertible parametric shape)"
+        );
+    }
+}
+
 /// Drag Dot: the most-restricted method (no jitter, no spacing, no stabilizer — the dot sits
 /// raw under the cursor) — only Method + Input Samples survive. UI-honesty for "Drag Dot wrong".
 #[test]

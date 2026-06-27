@@ -192,6 +192,42 @@ impl PainterTool {
         self.paint.circle = None;
     }
 
+    /// Convert the editing ellipse to an editable Bézier curve (anchors + `[in, out]` handles): the four
+    /// cardinal points + a closing point, with the canonical `k = 0.5523` tangent handles so the curve
+    /// reproduces the ellipse exactly, then the artist can drag the points/handles. `None` unless editing.
+    /// Drives the panel's **Edit** (E) button via [`PainterTool::convert_open_shape_to_curve`].
+    #[allow(clippy::type_complexity)]
+    pub(super) fn circle_to_curve(&self) -> Option<(Vec<[f32; 2]>, Vec<[[f32; 2]; 2]>)> {
+        let ed = self.paint.circle.as_ref()?;
+        if !ed.editing {
+            return None;
+        }
+        const K: f32 = 0.552_285; // 4-arc cubic-Bézier circle constant
+        let (c, u) = (ed.center, ed.u);
+        let v = [-u[1], u[0]];
+        let pt = |su: f32, sv: f32| {
+            [
+                c[0] + su * ed.rx * u[0] + sv * ed.ry * v[0],
+                c[1] + su * ed.rx * u[1] + sv * ed.ry * v[1],
+            ]
+        };
+        let (right, top, left, bottom) = (pt(1.0, 0.0), pt(0.0, 1.0), pt(-1.0, 0.0), pt(0.0, -1.0));
+        let hv = [v[0] * K * ed.ry, v[1] * K * ed.ry]; // tangent handle at right/left (along ±v)
+        let hu = [u[0] * K * ed.rx, u[1] * K * ed.rx]; // tangent handle at top/bottom (along ±u)
+        let sub = |a: [f32; 2], b: [f32; 2]| [a[0] - b[0], a[1] - b[1]];
+        let add = |a: [f32; 2], b: [f32; 2]| [a[0] + b[0], a[1] + b[1]];
+        // CCW right→top→left→bottom→right; handles are `[in, out]` per anchor.
+        let points = vec![right, top, left, bottom, right];
+        let handles = vec![
+            [sub(right, hv), add(right, hv)],
+            [add(top, hu), sub(top, hu)],
+            [add(left, hv), sub(left, hv)],
+            [sub(bottom, hu), add(bottom, hu)],
+            [sub(right, hv), add(right, hv)],
+        ];
+        Some((points, handles))
+    }
+
     /// Snapshot the Circle editor for the shell overlay — `None` until editing (the handles appear
     /// once the radius drag is released).
     #[must_use]

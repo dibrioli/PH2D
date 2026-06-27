@@ -3,9 +3,7 @@
 //! PAINTER_CURVE_*, PAINTER_GRADIENT_*, PAINTER_MIXER_*, PAINTER_SELCOLOR_*).
 use super::{NodeId, hash_node_id};
 
-/// Painter sidebar panel container — the typed `ph2d-panel-painter-sidebar`
-/// outer rect. Right-docked (same geometry slot as the Inspector) and
-/// only visible while the `painter` tool is active. W2.T2.1 plan §5.
+/// Painter sidebar panel container (`ph2d-panel-painter-sidebar` outer rect; right-docked, painter-only).
 pub const PAINTER_SIDEBAR_PANEL: NodeId = hash_node_id("painter_sidebar_panel");
 /// Size slider (size_px) no Painter sidebar (normalizado 0..1).
 pub const PAINTER_SIDEBAR_SIZE_SLIDER: NodeId = hash_node_id("painter_sidebar.size_slider");
@@ -161,12 +159,14 @@ pub fn painter_brush_falloff_option_id(preset: u8) -> NodeId {
 
 /// Brush "Stroke Method" dropdown chip. `SelectOption` → `set_brush_stroke_method`.
 pub const PAINTER_BRUSH_STROKE_METHOD: NodeId = hash_node_id("painter_brush.stroke_method");
-/// "Apply" (shape methods): bake the stroke + DISCARD the curve. `Click` → `commit_open_shape`.
+/// "Apply": bake the stroke + DISCARD the curve. `Click` → `commit_open_shape`.
 pub const PAINTER_BRUSH_STROKE_APPLY: NodeId = hash_node_id("painter_brush.stroke_apply");
-/// "Apply & Keep": bake but KEEP the editable curve for re-apply. `Click` → `commit_open_shape_keep`.
+/// "Apply & Keep": bake but KEEP the editable curve. `Click` → `commit_open_shape_keep`.
 pub const PAINTER_BRUSH_STROKE_APPLY_KEEP: NodeId = hash_node_id("painter_brush.stroke_apply_keep");
-/// "Delete" (trash icon): drop the open shape WITHOUT baking. `Click` → `cancel_open_shape`.
+/// "Delete" (✕): drop the open shape WITHOUT baking. `Click` → `cancel_open_shape`.
 pub const PAINTER_BRUSH_STROKE_DELETE: NodeId = hash_node_id("painter_brush.stroke_delete");
+/// "Edit" (E): convert the open Circle/Polygon to an editable curve. `Click` → `convert_open_shape_to_curve`.
+pub const PAINTER_BRUSH_STROKE_EDIT: NodeId = hash_node_id("painter_brush.stroke_edit");
 /// Brush "Rate" slider — airbrush timer period (`0..1` → `[0.01,1.0]`s, Airbrush only). `SetValue`.
 pub const PAINTER_BRUSH_RATE: NodeId = hash_node_id("painter_brush.rate");
 /// "Edge to Edge" toggle (Blender `BRUSH_EDGE_TO_EDGE`) — Anchored only. `Click` → `set_brush_edge_to_edge`.

@@ -15,68 +15,69 @@ use ph2d_editor_core::widget::{ButtonState, flat_button_surface};
 use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ColorToken, ROW_H_PX, Radius, Spacing, StrokeToken, TypeToken};
 
-/// Paint the Apply / Apply & Keep / Delete row, returning the next `y`. The two text buttons plus the
-/// square trash share one row; when the panel is too narrow for two readable text buttons, "Apply & Keep"
-/// wraps to its own row below — "Apply" keeps the trash beside it so cancel is always reachable.
+/// Paint the Apply / Apply & Keep + trailing square-icon cluster (optional **E**dit, then **✕** Delete)
+/// row, returning the next `y`. `with_edit` adds the E button (Circle/Polygon → editable curve), left of
+/// ✕. The two text buttons share the row; when the panel is too narrow for two readable text buttons,
+/// "Apply & Keep" wraps below and "Apply" keeps the icon cluster beside it so Edit/Delete stay reachable.
 pub(super) fn paint_apply_row(
     ctx: &mut PaintCtx,
     theme: ph2d_tokens::Theme,
     x: f32,
     content_w: f32,
     y: f32,
+    with_edit: bool,
 ) -> f32 {
     let gap = Spacing::Xs.px();
-    let del = ROW_H_PX; // the trash button is a square icon
-    let apply = core_ids::PAINTER_BRUSH_STROKE_APPLY;
-    let keep = core_ids::PAINTER_BRUSH_STROKE_APPLY_KEEP;
-    let delete = core_ids::PAINTER_BRUSH_STROKE_DELETE;
-    // One row when two readable text buttons + the square trash fit; else "Apply & Keep" wraps below and
-    // the trash stays beside "Apply" so cancel is always reachable. `84` = min readable text-button width.
-    if content_w >= 84.0 * 2.0 + del + gap * 2.0 {
-        let w = (content_w - del - gap * 2.0) * 0.5;
-        button(
-            ctx,
-            theme,
-            Rect::new(x, y, w, ROW_H_PX),
-            Some("Apply"),
-            apply,
-        );
-        let kr = Rect::new(x + w + gap, y, w, ROW_H_PX);
-        button(ctx, theme, kr, Some("Apply & Keep"), keep);
-        button(
-            ctx,
-            theme,
-            Rect::new(x + (w + gap) * 2.0, y, del, ROW_H_PX),
-            None,
-            delete,
-        );
-        y + ROW_H_PX + Spacing::Xs.px()
+    let sq = ROW_H_PX; // square icon-button side
+    // Width of the trailing cluster: ✕ alone, or E + ✕ (with a gap) when convertible.
+    let icons = if with_edit { sq * 2.0 + gap } else { sq };
+    let one_row = content_w >= 84.0 * 2.0 + icons + gap * 2.0;
+    let (text_w, apply_y, keep_y, keep_x) = if one_row {
+        let w = (content_w - icons - gap * 2.0) * 0.5;
+        (w, y, y, x + w + gap)
     } else {
-        let aw = content_w - del - gap;
-        button(
-            ctx,
-            theme,
-            Rect::new(x, y, aw, ROW_H_PX),
-            Some("Apply"),
-            apply,
-        );
-        button(
-            ctx,
-            theme,
-            Rect::new(x + aw + gap, y, del, ROW_H_PX),
-            None,
-            delete,
-        );
-        let y2 = y + ROW_H_PX + gap;
-        button(
-            ctx,
-            theme,
-            Rect::new(x, y2, content_w, ROW_H_PX),
-            Some("Apply & Keep"),
-            keep,
-        );
-        y2 + ROW_H_PX + Spacing::Xs.px()
+        // Narrow: Apply (+ icons) on row 1; Apply & Keep full-width on row 2.
+        (content_w - icons - gap, y, y + ROW_H_PX + gap, x)
+    };
+    let apply = core_ids::PAINTER_BRUSH_STROKE_APPLY;
+    button(
+        ctx,
+        theme,
+        Rect::new(x, apply_y, text_w, ROW_H_PX),
+        Some("Apply"),
+        apply,
+    );
+    paint_icon_cluster(ctx, theme, x + text_w + gap, apply_y, sq, gap, with_edit);
+    let kw = if one_row { text_w } else { content_w };
+    let keep = core_ids::PAINTER_BRUSH_STROKE_APPLY_KEEP;
+    button(
+        ctx,
+        theme,
+        Rect::new(keep_x, keep_y, kw, ROW_H_PX),
+        Some("Apply & Keep"),
+        keep,
+    );
+    keep_y + ROW_H_PX + Spacing::Xs.px()
+}
+
+/// Paint the trailing square-icon cluster at `ix`: the optional **E**dit button then the **✕** Delete.
+fn paint_icon_cluster(
+    ctx: &mut PaintCtx,
+    theme: ph2d_tokens::Theme,
+    ix: f32,
+    iy: f32,
+    sq: f32,
+    gap: f32,
+    with_edit: bool,
+) {
+    let mut cx = ix;
+    if with_edit {
+        let edit = core_ids::PAINTER_BRUSH_STROKE_EDIT;
+        button(ctx, theme, Rect::new(cx, iy, sq, ROW_H_PX), Some("E"), edit);
+        cx += sq + gap;
     }
+    let delete = core_ids::PAINTER_BRUSH_STROKE_DELETE;
+    button(ctx, theme, Rect::new(cx, iy, sq, ROW_H_PX), None, delete);
 }
 
 /// One stroke shape-editor button. `label = Some(text)` paints a text button (Apply / Apply & Keep);
@@ -95,7 +96,12 @@ fn button(
         Some(InteractiveState::Button { state }) => *state,
         _ => ButtonState::Normal,
     };
-    fill_rounded_rect(ctx.scene, r, Radius::Sm.px(), resolve(flat_button_surface(state), theme));
+    fill_rounded_rect(
+        ctx.scene,
+        r,
+        Radius::Sm.px(),
+        resolve(flat_button_surface(state), theme),
+    );
     stroke_rounded_rect(
         ctx.scene,
         r,

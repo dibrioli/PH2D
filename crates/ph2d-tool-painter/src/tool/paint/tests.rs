@@ -856,6 +856,61 @@ fn brush_param_change_refills_open_curve_in_real_time() {
 }
 
 #[test]
+fn edit_button_converts_circle_into_an_editable_curve() {
+    use ph2d_editor_core::ids as core_ids;
+    use ph2d_editor_core::tool::{PanelEvent, Tool};
+    use ph2d_painter_brush::StrokeMethod;
+    // The Edit (E) button turns an open Circle into an editable Bézier curve: the circle editor closes, a
+    // curve editor opens (with the closing anchor so it reads closed), and the method switches to Curve so
+    // pointers route to the curve editor (Enio 2026-06-27).
+    let mut t = white_canvas(64, 3.0);
+    t.paint.brush.stroke_method = StrokeMethod::Circle;
+    t.on_canvas_pointer(cp([32.0, 32.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([52.0, 32.0], PointerPhase::Move)); // radius 20
+    t.on_canvas_pointer(cp([52.0, 32.0], PointerPhase::Up));
+    assert!(t.circle_overlay().is_some(), "a circle editor is open");
+    t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_BRUSH_STROKE_EDIT));
+    assert!(t.circle_overlay().is_none(), "the circle editor closed");
+    let ov = t.curve_overlay().expect("a curve editor opened");
+    assert_eq!(
+        t.brush_settings().stroke_method,
+        StrokeMethod::Curve.to_u8(),
+        "method is now Curve"
+    );
+    assert!(
+        ov.points.len() >= 4,
+        "circle → at least the 4 cardinal anchors"
+    );
+    assert_eq!(
+        *ov.points.first().unwrap(),
+        *ov.points.last().unwrap(),
+        "closing anchor = a closed loop"
+    );
+}
+
+#[test]
+fn edit_button_converts_polygon_into_a_sharp_editable_curve() {
+    use ph2d_editor_core::ids as core_ids;
+    use ph2d_editor_core::tool::{PanelEvent, Tool};
+    use ph2d_painter_brush::StrokeMethod;
+    let mut t = white_canvas(64, 3.0);
+    t.paint.brush.stroke_method = StrokeMethod::Polygon;
+    t.on_canvas_pointer(cp([32.0, 32.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([52.0, 32.0], PointerPhase::Move));
+    t.on_canvas_pointer(cp([52.0, 32.0], PointerPhase::Up));
+    assert!(t.polygon_overlay().is_some(), "a polygon editor is open");
+    t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_BRUSH_STROKE_EDIT));
+    assert!(t.polygon_overlay().is_none(), "the polygon editor closed");
+    let ov = t.curve_overlay().expect("a curve editor opened");
+    assert_eq!(
+        *ov.points.first().unwrap(),
+        *ov.points.last().unwrap(),
+        "closed loop"
+    );
+    assert!(ov.points.len() >= 4, "polygon vertices became anchors");
+}
+
+#[test]
 fn delete_button_drops_the_open_shape_without_baking() {
     use ph2d_editor_core::ids as core_ids;
     use ph2d_editor_core::tool::{PanelEvent, Tool};

@@ -15,14 +15,13 @@ use ph2d_a11y::NodeId;
 use ph2d_editor_core::action_bus::EditorAction;
 use ph2d_editor_core::interaction::InteractiveState;
 use ph2d_editor_core::paint::{
-    fill_circle, fill_rounded_rect, flat_button_surface, paint_text_centered, resolve,
-    stroke_rounded_rect,
+    fill_circle, fill_rounded_rect, paint_text_centered, resolve, stroke_rounded_rect,
 };
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::tool::PanelEvent;
 use ph2d_editor_core::widget::{
-    ButtonState, ColorSwatch, SwatchSize, SwatchState, TextInputState, paint_color_swatch,
-    paint_number_chip,
+    ButtonState, ColorSwatch, SwatchSize, SwatchState, TextInputState, flat_button_surface,
+    paint_color_swatch, paint_number_chip,
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ColorToken, ROW_H_PX, Radius, Spacing, TypeToken};

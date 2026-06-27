@@ -33,6 +33,21 @@ pub enum ButtonState {
     Loading,
 }
 
+/// The **mouse-feedback surface** for a flat panel button, by its current [`ButtonState`] — the single
+/// source so every flat button across the app shows hover/press feedback consistently: idle `Bg2`,
+/// Hovered/Focused `BgElev` (a subtle lift), Pressed `AccentSoft` (a clear press) — the same hover/press
+/// surfaces the canonical [`Button`] uses. A button painter reads the id's `ButtonState` from the
+/// [`crate::interaction::WidgetStore`] (`store().get(id)`) and fills with `flat_button_surface(state)`
+/// instead of a fixed `Bg2`, so the press is visible.
+#[must_use]
+pub fn flat_button_surface(state: ButtonState) -> ColorToken {
+    match state {
+        ButtonState::Pressed => ColorToken::AccentSoft,
+        ButtonState::Hovered | ButtonState::Focused => ColorToken::BgElev,
+        _ => ColorToken::Bg2,
+    }
+}
+
 /// Visual variant. The geometry is identical across kinds — only the
 /// token palette changes — except for [`ButtonKind::IconOnly`] which
 /// renders a square chip with no label and an icon centered.

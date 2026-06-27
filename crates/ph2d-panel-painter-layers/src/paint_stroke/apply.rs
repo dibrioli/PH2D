@@ -8,11 +8,10 @@ use crate::paint::register_button;
 use ph2d_editor_core::ids as core_ids;
 use ph2d_editor_core::interaction::InteractiveState;
 use ph2d_editor_core::paint::{
-    fill_rounded_rect, flat_button_surface, paint_icon, paint_text_centered, resolve,
-    stroke_rounded_rect,
+    fill_rounded_rect, paint_icon, paint_text_centered, resolve, stroke_rounded_rect,
 };
 use ph2d_editor_core::panel::PaintCtx;
-use ph2d_editor_core::widget::ButtonState;
+use ph2d_editor_core::widget::{ButtonState, flat_button_surface};
 use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ColorToken, ROW_H_PX, Radius, Spacing, StrokeToken, TypeToken};
 

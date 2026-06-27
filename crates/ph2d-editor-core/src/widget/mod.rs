@@ -66,7 +66,9 @@ pub use blender_color_picker::{
     paint_blender_color_picker_with_store, paint_blender_color_picker_with_store_compat, parse_hex,
     rgba_to_hsv, value_pick, wheel_pick,
 };
-pub use button::{Button, ButtonKind, ButtonState, ICON_BUTTON_SIZE_PX, paint_button};
+pub use button::{
+    Button, ButtonKind, ButtonState, ICON_BUTTON_SIZE_PX, flat_button_surface, paint_button,
+};
 pub use card::{Card, paint_card, pop_card_body_clip, push_card_body_clip};
 pub use checkbox::{CHECKBOX_BOX_PX, Checkbox, CheckboxState, CheckboxValue, paint_checkbox};
 pub use color_picker::{ColorPicker, ColorPickerMode, paint_color_picker};

@@ -44,9 +44,12 @@ impl PainterTool {
         if self.paint.shape_layers.is_color_mode() && brush.shape_silhouette_active(has_shape_image)
         {
             // Per-dab dynamics the constant-orientation cached path can't express → the per-pixel dynamic
-            // path: Shape Rake / Random rotation, Randomize Color (`d.color`), or Grain Jitter Rotate.
+            // path: Shape Rake / Random rotation, Randomize Color, or Grain Jitter Rotate. Randomize Color
+            // is `has_colour_jitter_amount()` (Hue/Sat/Val > 0) — the engine's actual gate; the legacy
+            // `color_jitter_enabled` flag is dead (the panel drives it by amount), so checking it here
+            // meant Randomize Color alone never reached the dynamic path (it only worked WITH Rake/Random).
             if brush.shape_has_per_dab_rotation(has_shape_image)
-                || brush.color_jitter_enabled
+                || brush.has_colour_jitter_amount()
                 || brush.has_per_dab_rotation()
             {
                 self.stamp_dabs_per_layer_dynamic(dabs, &brush, alpha_locked, w, h);

@@ -687,7 +687,7 @@ fn per_layer_color_dynamic_randomize_color_tints_per_dab() {
     // for the whole stroke and would ignore `d.color`).
     let mut t = white_canvas(64, 6.0);
     t.paint.brush.stroke_method = StrokeMethod::Space;
-    t.paint.brush.color_jitter_enabled = true; // routes to the dynamic path
+    t.paint.brush.color_jitter_hue = 0.5; // Randomize Color active (amount > 0) → routes to the dynamic path
     t.set_brush_shape_layers(vec![(vec![255u8; 64], 8, 8), (vec![255u8; 64], 8, 8)]);
     t.toggle_brush_shape_per_layer_color(); // layers un-coloured → they take the per-dab base colour
     let dab = |cx: f32, col: [f32; 3]| Dab {
@@ -745,7 +745,7 @@ fn per_layer_color_randomize_jitters_custom_layer_colours() {
     let mut t = white_canvas(64, 6.0);
     t.paint.brush.stroke_method = StrokeMethod::Space;
     t.paint.brush.color = [0.5, 0.5, 0.5];
-    t.paint.brush.color_jitter_enabled = true;
+    t.paint.brush.color_jitter_hue = 0.5; // Randomize Color active (amount > 0)
     t.set_brush_shape_layers(vec![(vec![255u8; 64], 8, 8), (vec![255u8; 64], 8, 8)]);
     t.toggle_brush_shape_per_layer_color();
     t.set_brush_shape_layer_color(0, [0.0, 1.0, 0.0]);
@@ -779,7 +779,8 @@ fn editing_the_shape_source_re_captures_and_keeps_colours() {
     t.paint.brush.stroke_method = StrokeMethod::Space;
     t.on_canvas_pointer(cp([20.0, 20.0], PointerPhase::Down));
     t.on_canvas_pointer(cp([24.0, 24.0], PointerPhase::Move));
-    t.on_canvas_pointer(cp([24.0, 24.0], PointerPhase::Up)); // pointer-up → auto re-capture
+    t.on_canvas_pointer(cp([24.0, 24.0], PointerPhase::Up));
+    t.refresh_shape_source_if_changed(); // the bridge calls this each frame; the paint changed the source
     let s = t.brush_settings();
     assert!(
         s.shape_layer_color_on[0],
@@ -793,6 +794,24 @@ fn editing_the_shape_source_re_captures_and_keeps_colours() {
     assert!(
         s.shape_per_layer_color,
         "per-layer-colour mode survives the re-capture"
+    );
+}
+
+#[test]
+fn changing_source_layer_opacity_re_captures_the_shape() {
+    // Editing the reference sprite WITHOUT painting — here a layer's opacity — must still update the brush
+    // Shape. The per-frame revision poll catches opacity / visibility / undo, not only paint strokes.
+    let mut t = PainterTool::default();
+    t.bind_document(1, vec![255u8; 64 * 64 * 4], 64, 64);
+    let l2 = t.layers.add_raster("L2", 64, 64).expect("add layer");
+    t.capture_layers_as_brush_shape();
+    let ver0 = t.brush_shape_image_version();
+    t.set_layer_opacity(l2, 0.5); // edit the source, no painting
+    t.refresh_shape_source_if_changed();
+    assert_ne!(
+        t.brush_shape_image_version(),
+        ver0,
+        "an opacity change on the source re-captures the Shape"
     );
 }
 

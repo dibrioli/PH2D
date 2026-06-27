@@ -174,19 +174,34 @@ impl PainterTool {
                 self.paint.shape_layers.restore_colors(&on, &color);
             }
             self.shape_source_doc = self.bound_doc;
+            self.shape_source_revision = self.shape_source_content_revision();
         }
     }
 
-    /// Auto-refresh the multi-layer Shape after a stroke IF it was captured from the sprite we just
-    /// painted on (`shape_source_doc == bound_doc`) — so editing the reference sprite updates the brush
-    /// Shape live, preserving the per-layer colours (via [`Self::capture_layers_as_brush_shape`]). A no-op
-    /// when no multi-layer Shape is bound or the active sprite isn't its source.
-    pub(super) fn refresh_shape_from_source_after_stroke(&mut self) {
-        if self.shape_source_doc.is_some()
-            && self.shape_source_doc == self.bound_doc
-            && !self.paint.shape_layers.is_empty()
+    /// The Shape source document's content revision — `layers_revision` (opacity / visibility / blend /
+    /// structure / undo) folded with `pixel_clock` (paint / undo). Any edit to the active source bumps one
+    /// of them, so [`Self::refresh_shape_source_if_changed`] re-captures when it differs from capture time.
+    fn shape_source_content_revision(&self) -> u64 {
+        self.layers_revision
+            .wrapping_mul(0x100_0000_01b3)
+            .wrapping_add(self.pixel_clock)
+    }
+
+    /// Auto-refresh the multi-layer Shape when its source sprite changed (the bridge calls this each
+    /// frame). Re-captures — preserving the per-layer colours — when the active doc IS the Shape source
+    /// and its content revision moved since the last capture, so editing the reference sprite (paint,
+    /// **opacity**, visibility, **undo/redo**, …) updates the brush Shape without a manual re-capture.
+    /// Skipped mid-stroke (waits for pointer-up) so a drag re-captures once, not per dab.
+    pub fn refresh_shape_source_if_changed(&mut self) {
+        if self.shape_source_doc.is_none()
+            || self.shape_source_doc != self.bound_doc
+            || self.paint.shape_layers.is_empty()
+            || self.paint.stroke.is_some()
         {
-            self.capture_layers_as_brush_shape();
+            return;
+        }
+        if self.shape_source_content_revision() != self.shape_source_revision {
+            self.capture_layers_as_brush_shape(); // also refreshes `shape_source_revision`
         }
     }
 

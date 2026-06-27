@@ -371,9 +371,6 @@ impl PainterTool {
         // Drag Dot: the dab at the release point is the commit — keep it (drop the restore record).
         self.commit_drag_preview();
         self.close_stroke();
-        // If this sprite is the multi-layer Shape's source, re-capture it (keeping colours) so the Shape
-        // tracks edits to the reference sprite without a manual re-capture.
-        self.refresh_shape_from_source_after_stroke();
     }
 
     /// Finalize the current stroke: drop the in-progress state and push one undo

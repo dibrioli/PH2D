@@ -137,6 +137,10 @@ pub struct PainterTool {
     /// same sprite re-captures the Shape automatically (preserving the per-layer colours) instead of
     /// needing a manual re-capture. `None` until a multi-layer Shape is captured.
     shape_source_doc: Option<u64>,
+    /// The Shape source's content revision (`layers_revision` + `pixel_clock`) at capture time. Any edit
+    /// to the active source — paint, opacity, visibility, structure, undo/redo — bumps one of those, so a
+    /// per-frame compare detects the change and re-captures (covering edits that aren't paint strokes).
+    shape_source_revision: u64,
 }
 
 impl Default for PainterTool {
@@ -168,6 +172,7 @@ impl Default for PainterTool {
             bound_doc: None,
             doc_cache: BTreeMap::new(),
             shape_source_doc: None,
+            shape_source_revision: 0,
         }
     }
 }

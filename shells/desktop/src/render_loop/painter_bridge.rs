@@ -313,6 +313,11 @@ pub(super) fn dispatch(
                     ph2d_panel_painter_layers::set_current_brush_shape_image(img);
                 }
             }
+            // (Shape source linkage) If the multi-layer Shape was captured from the ACTIVE sprite, re-capture
+            // it when that sprite changed (paint / opacity / visibility / undo) — keeping the per-layer
+            // colours. Cheap revision compare per frame; re-captures only on a change. Before the preview
+            // refresh so the preview reflects the re-captured Shape the same frame.
+            painter.refresh_shape_source_if_changed();
             // (Shape preview, Per-Layer Color) Publish the multi-layer COLOURED composite so the Shape
             // preview shows the per-layer colours — the colours need the per-layer pixels, which only the
             // tool has. The tool re-bakes the composite ONLY when the Shape appearance changes (a cheap

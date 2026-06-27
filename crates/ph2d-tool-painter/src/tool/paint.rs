@@ -428,19 +428,19 @@ impl PainterTool {
         self.bump_layer_pixels(active);
     }
 
-    /// Conservative pixel bbox a dab of `radius` at `center` can touch, clamped to the canvas.
+    /// Pixel bbox a dab of `radius` at `center` can touch — the drag-preview **save/restore + dirty-upload**
+    /// region, so it MUST be a superset of the blit/accumulate write bounds (`floor(c−r) .. ceil(c+r)+1`):
+    /// a `round(c)±(ceil(r)+1)` box misses the high edge by 1px for `frac(center) < 0.5`, leaving a stale
+    /// edge row un-restored / un-uploaded (the thin horizontal trails on the upscaled canvas). Enio 2026-06-27.
     fn dab_bbox(&self, center: [f32; 2], radius: f32) -> Option<Region> {
         let (w, h) = self.source_size;
         if w == 0 || h == 0 {
             return None;
         }
-        let r = radius.ceil() as i64 + 1;
-        let cx = center[0].round() as i64;
-        let cy = center[1].round() as i64;
-        let x0 = (cx - r).clamp(0, w as i64);
-        let y0 = (cy - r).clamp(0, h as i64);
-        let x1 = (cx + r).clamp(0, w as i64);
-        let y1 = (cy + r).clamp(0, h as i64);
+        let x0 = (center[0] - radius).floor().max(0.0) as i64;
+        let y0 = (center[1] - radius).floor().max(0.0) as i64;
+        let x1 = ((center[0] + radius).ceil() as i64 + 1).min(w as i64);
+        let y1 = ((center[1] + radius).ceil() as i64 + 1).min(h as i64);
         if x1 <= x0 || y1 <= y0 {
             return None;
         }

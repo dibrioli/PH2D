@@ -892,6 +892,67 @@ fn per_layer_color_fill_method_uses_canvas_base_and_self_clears() {
 }
 
 #[test]
+fn dab_bbox_covers_the_paint_write_bounds() {
+    // Regression (Enio 2026-06-27): `dab_bbox` is the drag-preview SAVE/RESTORE + dirty-upload region for
+    // the fill methods. It MUST be a superset of every paint path's write bounds — `floor(c−r)..ceil(c+r)+1`
+    // (the blit/accumulate loop) — or an edge row can paint outside the saved region and never get restored
+    // (a CPU trail) / never get re-uploaded (a stale row on the upscaled GPU texture: the thin horizontal
+    // lines). The old `round(c)±(ceil(r)+1)` box violated this by 1px for fractional centres (e.g. c=0.4,
+    // r=1.7). This pins the invariant directly.
+    let t = white_canvas(64, 3.0);
+    for &c in &[0.1f32, 0.4, 0.5, 0.6, 0.9, 12.3, 31.5, 47.7] {
+        for &r in &[1.0f32, 1.7, 2.5, 3.0, 5.5, 8.2] {
+            let want_x0 = (c - r).floor().max(0.0) as i64;
+            let want_x1 = ((c + r).ceil() as i64 + 1).min(64);
+            let bb = t.dab_bbox([c, c], r).expect("dab in-canvas has a bbox");
+            assert!(
+                (bb.x as i64) <= want_x0 && (bb.x + bb.w) as i64 >= want_x1,
+                "dab_bbox x [{},{}) must cover paint bounds [{want_x0},{want_x1}) for c={c} r={r}",
+                bb.x,
+                bb.x + bb.w
+            );
+        }
+    }
+}
+
+#[test]
+fn line_per_layer_color_moving_endpoint_leaves_no_trail() {
+    use ph2d_painter_brush::StrokeMethod;
+    // Draw a Line (press at A, drag the endpoint around) with Per-Layer Color on. Each move re-stamps the
+    // whole line via the drag-preview restore; an earlier endpoint position must be fully restored — no
+    // thin trail survives along where the line used to be (Enio 2026-06-27). Drives the real pointer path.
+    let mut t = white_canvas(64, 3.0);
+    t.paint.brush.stroke_method = StrokeMethod::Line;
+    t.set_brush_shape_layers(vec![(vec![255u8; 64], 8, 8)]); // full square silhouette → coverage to the edge
+    t.toggle_brush_shape_per_layer_color();
+    t.set_brush_shape_layer_color(0, [1.0, 0.0, 0.0]);
+    let a = [10.0, 31.0];
+    t.on_canvas_pointer(cp(a, PointerPhase::Down));
+    // Sweep the endpoint to several positions (the line pivots around A), then settle near A.
+    for b in [[52.0, 12.0], [52.0, 50.0], [52.0, 31.0], [16.0, 31.0]] {
+        t.on_canvas_pointer(cp(b, PointerPhase::Move));
+    }
+    t.on_canvas_pointer(cp([16.0, 31.0], PointerPhase::Up));
+    // The final line is the short A=(10,31)→(16,31) segment (y≈31, x≈7..19). Any painted pixel well away
+    // from it (e.g. y<24 or y>38, or x>26) is a trail from an earlier endpoint the move failed to restore.
+    let mut trail = Vec::new();
+    for y in 0..64u32 {
+        for x in 0..64u32 {
+            let far = y < 24 || y > 38 || x > 26;
+            if far && px(&t, 64, x, y) != [255, 255, 255, 255] {
+                trail.push((x, y));
+            }
+        }
+    }
+    assert!(
+        trail.is_empty(),
+        "moving the Line endpoint left a trail at {} pixels, e.g. {:?}",
+        trail.len(),
+        &trail[..trail.len().min(8)]
+    );
+}
+
+#[test]
 fn per_layer_color_randomize_jitters_custom_layer_colours() {
     use ph2d_painter_brush::{Dab, StrokeMethod};
     // Randomize Color must jitter the per-layer CUSTOM colours too (the artist's case), not only the

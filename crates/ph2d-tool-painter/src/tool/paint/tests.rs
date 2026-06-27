@@ -870,16 +870,109 @@ fn reducing_strength_with_an_open_curve_does_not_erase_it() {
     t.on_canvas_pointer(cp([8.0, 32.0], PointerPhase::Down));
     t.on_canvas_pointer(cp([56.0, 32.0], PointerPhase::Move));
     t.on_canvas_pointer(cp([56.0, 32.0], PointerPhase::Up)); // curve along y=32, full strength
-    assert!(px(&t, 64, 32, 32)[0] < 200, "the curve painted at full strength");
+    assert!(
+        px(&t, 64, 32, 32)[0] < 200,
+        "the curve painted at full strength"
+    );
     // Drag the slider down (each event re-fills). At 0.7 a fresh fill is clearly dark (~130); the stale-
     // mask bug instead left it white (~255, "erased"). Assert it stays clearly painted.
     for v in [0.9_f64, 0.7] {
-        t.handle_panel_event(PanelEvent::SetValue(core_ids::PAINTER_BRUSH_STRENGTH_SLIDER, v));
+        t.handle_panel_event(PanelEvent::SetValue(
+            core_ids::PAINTER_BRUSH_STRENGTH_SLIDER,
+            v,
+        ));
     }
     assert!(
         px(&t, 64, 32, 32)[0] < 180,
         "reducing Strength must keep the curve painted (not erase to white): {:?}",
         px(&t, 64, 32, 32)
+    );
+}
+
+#[test]
+fn dragging_a_tangent_handle_reshapes_the_curve_and_mirrors_the_opposite() {
+    use ph2d_painter_brush::StrokeMethod;
+    // Gizmo (Enio 2026-06-27): the selected anchor exposes draggable Bézier tangent handles. Grabbing the
+    // OUT handle (off the point) and pulling it must move that handle (not the anchor) and swing the IN
+    // handle to stay aligned (collinear through the anchor) — the standard smooth-handle behaviour.
+    let mut t = white_canvas(64, 2.0);
+    t.paint.brush.stroke_method = StrokeMethod::Curve;
+    t.set_shape_grab_tol_px(4.0);
+    t.on_canvas_pointer(cp([8.0, 32.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([56.0, 32.0], PointerPhase::Move));
+    t.on_canvas_pointer(cp([56.0, 32.0], PointerPhase::Up)); // 3-pt curve, midpoint (idx 1) selected
+    let ov = t.curve_overlay().expect("curve open");
+    assert_eq!(ov.selected, Some(1));
+    let tan = ov
+        .tangents
+        .expect("the selected interior anchor exposes tangents");
+    let out = tan.out_handle.expect("out handle present");
+    let anchor = tan.anchor;
+    assert!((anchor[1] - 32.0).abs() < 1e-3, "midpoint sits on y=32");
+    // Grab the out handle and pull it straight up.
+    t.on_canvas_pointer(cp(out, PointerPhase::Down));
+    let target = [out[0], out[1] - 12.0];
+    t.on_canvas_pointer(cp(target, PointerPhase::Move));
+    t.on_canvas_pointer(cp(target, PointerPhase::Up));
+    let tan2 = t
+        .curve_overlay()
+        .unwrap()
+        .tangents
+        .expect("tangents still shown");
+    let out2 = tan2.out_handle.unwrap();
+    assert!(
+        (out2[0] - target[0]).abs() < 0.6 && (out2[1] - target[1]).abs() < 0.6,
+        "the out handle followed the drag: {out2:?}"
+    );
+    // Aligned mirror: the out pull went UP (−y from anchor) ⇒ the in handle swings DOWN (+y).
+    let in2 = tan2.in_handle.unwrap();
+    assert!(
+        in2[1] - tan2.anchor[1] > 0.5,
+        "the in handle mirrored downward: {in2:?}"
+    );
+    // The anchor itself did not move (we grabbed the handle, not the point).
+    assert!(
+        (tan2.anchor[0] - anchor[0]).abs() < 1e-3 && (tan2.anchor[1] - anchor[1]).abs() < 1e-3,
+        "the anchor stayed put"
+    );
+}
+
+#[test]
+fn a_hand_edited_tangent_is_pinned_through_a_later_anchor_move() {
+    use ph2d_painter_brush::StrokeMethod;
+    // Once a tangent is hand-edited the curve is PINNED (no auto-resmooth), so a later anchor drag
+    // rigid-translates the handles instead of recomputing flat chordal tangents — the artist's sculpted
+    // curvature survives. Pull a tangent up, then nudge the anchor, and assert the vertical pull persists.
+    let mut t = white_canvas(64, 2.0);
+    t.paint.brush.stroke_method = StrokeMethod::Curve;
+    t.set_shape_grab_tol_px(4.0);
+    t.on_canvas_pointer(cp([8.0, 32.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([56.0, 32.0], PointerPhase::Move));
+    t.on_canvas_pointer(cp([56.0, 32.0], PointerPhase::Up));
+    let out = t
+        .curve_overlay()
+        .unwrap()
+        .tangents
+        .unwrap()
+        .out_handle
+        .unwrap();
+    // Hand-edit the out tangent (pull up) → pins the handles.
+    t.on_canvas_pointer(cp(out, PointerPhase::Down));
+    let pulled = [out[0], out[1] - 12.0];
+    t.on_canvas_pointer(cp(pulled, PointerPhase::Move));
+    t.on_canvas_pointer(cp(pulled, PointerPhase::Up));
+    // Now grab the midpoint anchor and nudge it; pinned ⇒ the out handle keeps its vertical offset.
+    t.on_canvas_pointer(cp([32.0, 32.0], PointerPhase::Down)); // hits anchor 1
+    t.on_canvas_pointer(cp([32.0, 30.0], PointerPhase::Move));
+    t.on_canvas_pointer(cp([32.0, 30.0], PointerPhase::Up));
+    let tan = t.curve_overlay().unwrap().tangents.expect("still selected");
+    let out_after = tan.out_handle.unwrap();
+    // If the curve had auto-resmoothed (NOT pinned), the out handle would be flat (≈ anchor.y); pinned, it
+    // keeps a clear vertical pull above the (now-moved) anchor.
+    assert!(
+        tan.anchor[1] - out_after[1] > 5.0,
+        "the sculpted vertical tangent survived the anchor move (pinned): out={out_after:?} anchor={:?}",
+        tan.anchor
     );
 }
 
@@ -892,13 +985,22 @@ fn color_ramp_edits_change_the_appearance_signature() {
     let mut t = white_canvas(64, 4.0);
     let s0 = t.appearance_sig();
     t.toggle_texture_ramp_enabled();
-    assert!(t.appearance_sig() != s0, "enabling the Color Ramp must change the appearance sig");
+    assert!(
+        t.appearance_sig() != s0,
+        "enabling the Color Ramp must change the appearance sig"
+    );
     let s1 = t.appearance_sig();
     t.ramp_add_stop();
-    assert!(t.appearance_sig() != s1, "adding a ramp stop must change the appearance sig");
+    assert!(
+        t.appearance_sig() != s1,
+        "adding a ramp stop must change the appearance sig"
+    );
     let s2 = t.appearance_sig();
     t.toggle_texture_ramp_bw();
-    assert!(t.appearance_sig() != s2, "the ramp B&W toggle must change the appearance sig");
+    assert!(
+        t.appearance_sig() != s2,
+        "the ramp B&W toggle must change the appearance sig"
+    );
 }
 
 #[test]

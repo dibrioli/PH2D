@@ -19,6 +19,9 @@ use ph2d_painter_brush::{
 mod brush_settings;
 /// The Curve stroke method's on-canvas point editor (submodule, as `brush_settings`).
 mod curve;
+/// Bézier tangent-handle geometry for the Curve / Free Hand editor (hit-test, aligned mirror, overlay
+/// snapshot); split from `curve` for the LOC cap.
+mod curve_tangent;
 /// Per-dab randomize setters (Jitter Scale / Rotate / Randomize Color); split from `brush_settings`
 /// for the LOC cap (same submodule rationale).
 mod jitter_settings;
@@ -33,6 +36,7 @@ mod stamp_color_dynamic;
 /// Seamless Tiling (wrap-around painting) — dab replication across sprite edges + the toggles.
 mod tiling;
 pub use curve::CurveOverlay;
+pub use curve_tangent::TangentHandles;
 /// The Circle stroke method's on-canvas ellipse editor (same submodule rationale as `curve`).
 mod circle;
 pub use circle::CircleOverlay;

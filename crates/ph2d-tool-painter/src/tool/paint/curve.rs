@@ -17,6 +17,7 @@
 //! Keyboard (Enter / Esc / Delete) and the control-point/spine overlay live in the shell (the frozen
 //! `CanvasPointer` carries no keys); this module exposes the verbs they drive.
 
+use super::curve_tangent;
 use super::*;
 
 use ph2d_painter_brush::{Stroke, flatten_catmull_rom, lazy_mouse_step};
@@ -48,6 +49,9 @@ pub(super) struct CurveEditor {
     selected: Option<usize>,
     /// The point being dragged this gesture (`Some` between a grab-Down and its Up).
     grabbed: Option<usize>,
+    /// The **tangent handle** being dragged this gesture: `(anchor index, is_out)` where `is_out` picks the
+    /// `[in, out]` slot. `Some` between a handle grab-Down and its Up; takes precedence over `grabbed`.
+    grabbed_handle: Option<(usize, bool)>,
     /// `false` while drawing the initial straight line (Down→Up), `true` once editing the points.
     editing: bool,
     /// **Free Hand** mode ([`StrokeMethod::FreeHand`]): the draw phase captures the freehand path into
@@ -73,6 +77,9 @@ pub struct CurveOverlay {
     /// The flattened spine (image-space px) — drawn as the curve guide; matches the painted dabs exactly
     /// (Bézier handles for the Free Hand fit, else Catmull-Rom — same `flatten_spine`).
     pub spine: Vec<[f32; 2]>,
+    /// The selected anchor's draggable Bézier **tangent handles** (drawn as dots on stems off the point),
+    /// or `None` when nothing is selected / the handles are collapsed. See [`TangentHandles`].
+    pub tangents: Option<TangentHandles>,
 }
 
 impl PainterTool {
@@ -104,6 +111,7 @@ impl PainterTool {
                 handles: Vec::new(),
                 selected: None,
                 grabbed: None,
+                grabbed_handle: None,
                 editing: false,
                 freehand: matches!(self.paint.brush.stroke_method, StrokeMethod::FreeHand),
                 stabilized: pos,
@@ -115,9 +123,16 @@ impl PainterTool {
         if !ed.editing {
             return true; // mid initial-line drag — ignore extra Downs
         }
+        let tangent = ed
+            .selected
+            .and_then(|s| curve_tangent::tangent_hit(&ed.points, &ed.handles, s, pos, tol));
         let need_refill = if let Some(i) = curve_hit(&ed.points, pos, tol) {
             ed.selected = Some(i);
             ed.grabbed = Some(i);
+            false
+        } else if let Some(h) = tangent {
+            // A tangent handle of the selected anchor (drawn off the point) — grab it, not the curve.
+            ed.grabbed_handle = Some(h);
             false
         } else if ed.points.len() < MAX_CURVE_POINTS {
             let i = curve_insert_index(&ed.points, pos);
@@ -172,26 +187,38 @@ impl PainterTool {
             self.curve_fill(&pts, &[], seed);
             return true;
         }
-        match ed.grabbed {
-            Some(g) => {
-                let old = ed.points[g];
-                ed.points[g] = pos;
-                if ed.freehand {
-                    // Free Hand: rigid-translate the FITTED handle with the anchor (keep the captured
-                    // tangents), so the curve stays faithful to the drawn stroke.
-                    let d = [pos[0] - old[0], pos[1] - old[1]];
-                    if let Some(h) = ed.handles.get_mut(g) {
-                        *h = [
-                            [h[0][0] + d[0], h[0][1] + d[1]],
-                            [h[1][0] + d[0], h[1][1] + d[1]],
-                        ];
-                    }
-                } else {
-                    // Authored Curve: re-smooth via chordal auto-handles (no overshoot).
-                    ed.handles = ph2d_painter_brush::auto_handles(&ed.points);
-                }
+        if let Some((i, is_out)) = ed.grabbed_handle {
+            // Dragging a tangent handle: set the grabbed `[in|out]` slot, mirror the opposite to stay
+            // aligned (length-preserving), and PIN the handles (`freehand = true`) so a later anchor drag
+            // rigid-translates them instead of auto-resmoothing the hand-edited tangent away.
+            if i < ed.handles.len() && i < ed.points.len() {
+                let anchor = ed.points[i];
+                ed.handles[i][usize::from(is_out)] = pos;
+                curve_tangent::mirror_tangent(&mut ed.handles[i], anchor, is_out);
+                ed.freehand = true;
             }
-            None => return true, // editing but nothing grabbed — ignore stray moves
+        } else {
+            match ed.grabbed {
+                Some(g) => {
+                    let old = ed.points[g];
+                    ed.points[g] = pos;
+                    if ed.freehand {
+                        // Free Hand: rigid-translate the FITTED handle with the anchor (keep the captured
+                        // tangents), so the curve stays faithful to the drawn stroke.
+                        let d = [pos[0] - old[0], pos[1] - old[1]];
+                        if let Some(h) = ed.handles.get_mut(g) {
+                            *h = [
+                                [h[0][0] + d[0], h[0][1] + d[1]],
+                                [h[1][0] + d[0], h[1][1] + d[1]],
+                            ];
+                        }
+                    } else {
+                        // Authored Curve: re-smooth via chordal auto-handles (no overshoot).
+                        ed.handles = ph2d_painter_brush::auto_handles(&ed.points);
+                    }
+                }
+                None => return true, // editing but nothing grabbed — ignore stray moves
+            }
         }
         self.curve_refill();
         true
@@ -204,6 +231,7 @@ impl PainterTool {
         };
         if ed.editing {
             ed.grabbed = None;
+            ed.grabbed_handle = None;
             return true;
         }
         if ed.freehand {
@@ -338,6 +366,7 @@ impl PainterTool {
             handles,
             selected: None,
             grabbed: None,
+            grabbed_handle: None,
             editing: true,
             freehand: true, // keep the explicit handles (drag translates them), like the Free Hand fit
             stabilized: anchor,
@@ -380,10 +409,20 @@ impl PainterTool {
         }
         let mut spine = Vec::new();
         flatten_spine(&ed.points, &ed.handles, &mut spine);
+        let tangents = ed.selected.and_then(|s| {
+            curve_tangent::build_tangents(
+                &ed.points,
+                &ed.handles,
+                s,
+                ed.grabbed_handle,
+                self.paint.shape_grab_tol_px,
+            )
+        });
         Some(CurveOverlay {
             points: ed.points.clone(),
             selected: ed.selected,
             spine,
+            tangents,
         })
     }
 

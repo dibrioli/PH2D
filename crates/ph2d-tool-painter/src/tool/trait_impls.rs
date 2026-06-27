@@ -47,11 +47,13 @@ impl Tool for PainterTool {
         // SetValue, SelectOption}, each routed to the matching layer / adjustment edit.
         use ph2d_editor_core::ids::{self as core_ids, PainterLayerWidget};
         use ph2d_editor_core::tool::PanelEvent;
+        let brush_before = self.current_brush_spec(); // re-fill an open shape live on a brush change
         if self.route_texture_layer_event(&event)
             || self.route_brush_jitter_event(&event)
             || self.route_brush_stencil_event(&event)
             || self.route_brush_dab_event(&event)
         {
+            self.refill_if_brush_changed(brush_before);
             return;
         }
         match event {
@@ -77,7 +79,6 @@ impl Tool for PainterTool {
             PanelEvent::Click(id) if id == core_ids::PAINTER_LAYERS_GROUP => {
                 self.group_selected();
             }
-            // ── Modifier toolbar (acts on the ACTIVE layer) ────────────────
             PanelEvent::Click(id) if id == core_ids::PAINTER_LAYERS_MASK => {
                 self.add_mask_to_active();
             }
@@ -116,7 +117,6 @@ impl Tool for PainterTool {
             PanelEvent::Click(id) if id == core_ids::PAINTER_BRUSH_EDGE_TO_EDGE => {
                 self.toggle_brush_edge_to_edge();
             }
-            // ── Texture section toggles + "New" (assign the default procedural). ─
             PanelEvent::Click(id) if id == core_ids::PAINTER_BRUSH_TEXTURE_RAKE => {
                 self.toggle_brush_texture_rake();
             }
@@ -126,7 +126,6 @@ impl Tool for PainterTool {
             PanelEvent::Click(id) if id == core_ids::PAINTER_BRUSH_TEXTURE_NEW => {
                 self.new_brush_texture();
             }
-            // ── Texture Color Ramp: enable toggle + add / remove stop. ─────
             PanelEvent::Click(id) if id == core_ids::PAINTER_BRUSH_TEXTURE_RAMP_ENABLE => {
                 self.toggle_texture_ramp_enabled();
             }
@@ -477,6 +476,7 @@ impl Tool for PainterTool {
             }
             PanelEvent::Toggle(_, _) => {}
         }
+        self.refill_if_brush_changed(brush_before);
     }
 
     /// Per-frame heartbeat (ADR-0040-amendment-2): drives the airbrush timer (deposit dabs at the

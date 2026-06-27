@@ -812,11 +812,46 @@ fn apply_buttons_route_through_panel_click() {
         t.curve_overlay().is_some(),
         "Apply & Keep via Click bakes but keeps the curve"
     );
-    assert!(px(&t, 64, 32, 32)[0] < 200, "the stroke was baked by the Click");
+    assert!(
+        px(&t, 64, 32, 32)[0] < 200,
+        "the stroke was baked by the Click"
+    );
     t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_BRUSH_STROKE_APPLY));
     assert!(
         t.curve_overlay().is_none(),
         "plain Apply via Click discards the curve"
+    );
+}
+
+#[test]
+fn brush_param_change_refills_open_curve_in_real_time() {
+    use ph2d_editor_core::ids as core_ids;
+    use ph2d_editor_core::tool::{PanelEvent, Tool};
+    use ph2d_painter_brush::StrokeMethod;
+    // While a Curve editor is open, changing a brush param (here Size) must re-fill the pending stroke
+    // immediately — not only when a gizmo handle is nudged (Enio 2026-06-27). Draw a thin horizontal
+    // curve, then grow the brush via the panel Size slider and assert a pixel ABOVE the thin line (white
+    // before) is now painted by the wider stroke.
+    let mut t = white_canvas(64, 2.0);
+    t.paint.brush.stroke_method = StrokeMethod::Curve;
+    t.on_canvas_pointer(cp([8.0, 32.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([56.0, 32.0], PointerPhase::Move));
+    t.on_canvas_pointer(cp([56.0, 32.0], PointerPhase::Up)); // 3-point curve along y=32
+    assert!(t.curve_overlay().is_some(), "a curve editor is open");
+    assert_eq!(
+        px(&t, 64, 32, 25),
+        [255, 255, 255, 255],
+        "9px above the thin line is white before growing the brush"
+    );
+    // Grow the brush — routed in the match arm, which re-fills the open shape.
+    t.handle_panel_event(PanelEvent::SetValue(
+        core_ids::PAINTER_BRUSH_SIZE_SLIDER,
+        0.6,
+    ));
+    assert_ne!(
+        px(&t, 64, 32, 25),
+        [255, 255, 255, 255],
+        "the wider brush re-filled the curve in real time (no gizmo nudge needed)"
     );
 }
 

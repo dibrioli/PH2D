@@ -215,7 +215,7 @@ impl PainterTool {
     // ── internals ────────────────────────────────────────────────────────────────────
 
     /// Re-fill the painted preview from the editor's current polygon (a fresh `Stroke` per fill).
-    fn polygon_refill(&mut self) {
+    pub(super) fn polygon_refill(&mut self) {
         let Some(ed) = self.paint.polygon.as_ref() else {
             return;
         };

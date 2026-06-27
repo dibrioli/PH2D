@@ -213,7 +213,7 @@ impl PainterTool {
 
     /// Re-fill the painted preview from the editor's current ellipse (a fresh `Stroke` per fill, so
     /// the preview always reflects the live brush spec and is deterministic for identical params).
-    fn circle_refill(&mut self) {
+    pub(super) fn circle_refill(&mut self) {
         let Some(ed) = self.paint.circle.as_ref() else {
             return;
         };

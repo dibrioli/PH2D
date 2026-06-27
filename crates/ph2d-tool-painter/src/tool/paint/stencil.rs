@@ -9,7 +9,9 @@
 
 use super::PainterTool;
 use ph2d_editor_core::tool::{CanvasPointer, PanelEvent, PointerPhase};
-use ph2d_painter_brush::{ImageMask, TEX_ANGLE_MAX_DEG, render_stencil_preview, stencil_frame};
+use ph2d_painter_brush::{
+    BrushSpec, ImageMask, TEX_ANGLE_MAX_DEG, render_stencil_preview, stencil_frame,
+};
 use std::sync::Arc;
 
 /// The rotate ring reaches this multiple of the scale-grab radius PAST each corner — a click inside the
@@ -226,6 +228,29 @@ impl PainterTool {
             _ => return false,
         }
         true
+    }
+
+    /// The live brush spec (cheap `Copy`) — snapshot it before handling a panel event so
+    /// [`Self::refill_if_brush_changed`] can detect a change and re-fill an open shape editor.
+    pub(crate) fn current_brush_spec(&self) -> BrushSpec {
+        self.paint.brush
+    }
+
+    /// Re-fill the open shape editor's painted preview (Curve / Free Hand / Circle / Polygon) with the
+    /// current brush — each refill no-ops unless its editor is open + editing, so at most one runs.
+    pub(crate) fn refill_open_shape(&mut self) {
+        self.curve_refill();
+        self.circle_refill();
+        self.polygon_refill();
+    }
+
+    /// Re-fill the open shape editor IFF the brush changed since `before` — so a size / spacing / flow /
+    /// falloff tweak from the panel updates the pending Curve/Circle/Polygon stroke in REAL TIME, not only
+    /// when a gizmo handle is nudged. Apply/Delete clicks + layer ops don't touch the brush → no re-stamp.
+    pub(crate) fn refill_if_brush_changed(&mut self, before: BrushSpec) {
+        if self.paint.brush != before {
+            self.refill_open_shape();
+        }
     }
 
     /// Route the brush **dab/stroke** chrome events: the flatten/rotate gizmo `SetValue`s (Shape panel),

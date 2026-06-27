@@ -359,7 +359,7 @@ impl PainterTool {
     // ── internals ────────────────────────────────────────────────────────────────────
 
     /// Re-fill the painted preview from the editor's current control points + handles (edit phase).
-    fn curve_refill(&mut self) {
+    pub(super) fn curve_refill(&mut self) {
         let Some(ed) = self.paint.curve.as_ref() else {
             return;
         };

@@ -1228,6 +1228,37 @@ fn edit_button_converts_circle_into_an_editable_curve() {
 }
 
 #[test]
+fn edit_after_offset_bakes_first_so_the_converted_circle_is_not_deformed() {
+    use ph2d_editor_core::ids as core_ids;
+    use ph2d_editor_core::tool::{PanelEvent, Tool};
+    use ph2d_painter_brush::StrokeMethod;
+    // Regression (Enio 2026-06-28): E (Edit) with a live Offset converted the BASE circle and then re-applied
+    // the offset on top (double offset → deformed curve). Now convert bakes the offset first: the slider
+    // resets to 0.5 and the converted anchors sit at the OFFSET (effective) radius, evenly around the centre.
+    let mut t = white_canvas(96, 3.0);
+    t.paint.brush.stroke_method = StrokeMethod::Circle;
+    t.on_canvas_pointer(cp([48.0, 48.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([68.0, 48.0], PointerPhase::Move)); // radius 20
+    t.on_canvas_pointer(cp([68.0, 48.0], PointerPhase::Up));
+    t.handle_panel_event(PanelEvent::SetValue(core_ids::PAINTER_BRUSH_OFFSET, 0.6)); // +20px → radius ~40
+    t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_BRUSH_STROKE_EDIT));
+    assert!(
+        (t.brush_settings().offset - 0.5).abs() < 1e-4,
+        "Edit baked the offset → slider reset to 0.5"
+    );
+    let ov = t.curve_overlay().expect("a curve opened");
+    assert_eq!(ov.points.len(), 4, "4 cardinal anchors");
+    // Every anchor is ~40px from the centre (the effective radius), so the circle is NOT deformed.
+    for p in &ov.points {
+        let r = ((p[0] - 48.0).powi(2) + (p[1] - 48.0).powi(2)).sqrt();
+        assert!(
+            (r - 40.0).abs() < 2.0,
+            "anchor sits at the offset radius ~40: r={r}"
+        );
+    }
+}
+
+#[test]
 fn edit_button_converts_polygon_into_a_sharp_editable_curve() {
     use ph2d_editor_core::ids as core_ids;
     use ph2d_editor_core::tool::{PanelEvent, Tool};

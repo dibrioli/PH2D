@@ -130,9 +130,9 @@ impl PainterTool {
         if !ed.editing {
             return true; // mid initial-line drag — ignore extra Downs
         }
-        let tangent = ed
-            .selected
-            .and_then(|s| curve_tangent::tangent_hit(&ed.points, &ed.handles, s, pos, tol));
+        let tangent = ed.selected.and_then(|s| {
+            curve_tangent::tangent_hit(&ed.points, &ed.handles, s, pos, tol, ed.closed)
+        });
         let need_refill = if let Some(i) = curve_geom::curve_hit(&ed.points, pos, tol) {
             ed.selected = Some(i);
             ed.grabbed = Some(i);
@@ -354,6 +354,11 @@ impl PainterTool {
     /// shape editor, switch the method to Curve so pointers route here, keeping the explicit handles. Undo +
     /// drag-preview carry over, so the whole thing still bakes/undoes as one. `false` if no shape is open.
     pub(crate) fn convert_open_shape_to_curve(&mut self) -> bool {
+        // Bake any live Offset into the shape's radii FIRST (resets the slider), so the conversion reads the
+        // displayed shape and the new curve isn't offset a second time by `curve_refill` (which would deform
+        // it — Enio 2026-06-28). At most one editor is open; each bake no-ops otherwise.
+        self.bake_circle_offset();
+        self.bake_polygon_offset();
         // The circle's arcs are smooth (Aligned); the polygon's corners are sharp (Free). Each keeps its
         // explicit handles; a later anchor drag rigid-translates them (both kinds are manual).
         let Some((points, handles, kind)) = self
@@ -433,6 +438,7 @@ impl PainterTool {
                 s,
                 ed.grabbed_handle,
                 self.paint.shape_grab_tol_px,
+                ed.closed,
             )
         });
         let selected_kind = ed.selected.and_then(|s| ed.kinds.get(s)).map(|k| k.wire());

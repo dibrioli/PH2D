@@ -27,6 +27,7 @@ pub(super) fn tangent_hit(
     sel: usize,
     pos: [f32; 2],
     tol: f32,
+    closed: bool,
 ) -> Option<(usize, bool)> {
     if handles.len() != points.len() || sel >= points.len() {
         return None;
@@ -34,9 +35,11 @@ pub(super) fn tangent_hit(
     let anchor = points[sel];
     let tol2 = tol * tol;
     let mut best: Option<(bool, f32)> = None;
+    // On a CLOSED loop both sides of every anchor are used (the first anchor's in-handle wraps to the last
+    // segment, the last anchor's out-handle wraps to the first); on an open curve the endpoints have one.
     let candidates = [
-        (false, sel > 0, handles[sel][0]),
-        (true, sel + 1 < points.len(), handles[sel][1]),
+        (false, sel > 0 || closed, handles[sel][0]),
+        (true, sel + 1 < points.len() || closed, handles[sel][1]),
     ];
     for (is_out, used, h) in candidates {
         if !used || dist2(h, anchor) <= tol2 {
@@ -86,15 +89,18 @@ pub(super) fn build_tangents(
     sel: usize,
     grabbed: Option<(usize, bool)>,
     tol: f32,
+    closed: bool,
 ) -> Option<TangentHandles> {
     if handles.len() != points.len() || sel >= points.len() {
         return None;
     }
     let anchor = points[sel];
     let tol2 = tol * tol;
-    let in_handle = (sel > 0 && dist2(handles[sel][0], anchor) > tol2).then_some(handles[sel][0]);
-    let out_handle = (sel + 1 < points.len() && dist2(handles[sel][1], anchor) > tol2)
-        .then_some(handles[sel][1]);
+    // A closed loop uses BOTH sides of every anchor (see `tangent_hit`); an open curve drops the endpoints.
+    let in_used = sel > 0 || closed;
+    let out_used = sel + 1 < points.len() || closed;
+    let in_handle = (in_used && dist2(handles[sel][0], anchor) > tol2).then_some(handles[sel][0]);
+    let out_handle = (out_used && dist2(handles[sel][1], anchor) > tol2).then_some(handles[sel][1]);
     if in_handle.is_none() && out_handle.is_none() {
         return None;
     }

@@ -300,7 +300,10 @@ mod tests {
             StrokeMethod::Anchored,
             StrokeMethod::Line,
         ] {
-            assert!(!m.has_open_shape(), "{m:?} finalises on pen-up — no Apply row");
+            assert!(
+                !m.has_open_shape(),
+                "{m:?} finalises on pen-up — no Apply row"
+            );
         }
     }
 

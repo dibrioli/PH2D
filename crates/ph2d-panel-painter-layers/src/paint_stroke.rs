@@ -318,16 +318,13 @@ fn paint_jitter_card(
     let sm = Spacing::Sm.px();
     let font = TypeToken::Sm.px();
     let title_h = ROW_H_PX;
-    // Rotation jitter spins the whole dab stamp (Shape silhouette + Grain), so it's meaningful with a
-    // Shape OR a texture assigned (a bare round falloff is isotropic).
-    let has_rotation = brush.texture_kind != 0 || brush.shape_kind != 0;
-    // Pre-compute the card height (each row includes its own trailing spacing). Position + Scale +
-    // Spacing are param rows (ROW_H + Xs); Unit is a dropdown row (ROW_H + Sm); Rotation (Shape/texture)
-    // is one more param row. The trailing `+ xs` is bottom breathing room.
-    let mut rows_h = (ROW_H_PX + xs) + (ROW_H_PX + sm) + (ROW_H_PX + xs) + (ROW_H_PX + xs);
-    if has_rotation {
-        rows_h += ROW_H_PX + xs;
-    }
+    // Rotation jitter spins the whole dab stamp (Shape silhouette + Grain). It's ALWAYS shown in the Jitter
+    // card (Enio 2026-06-28) — the artist sets it up before assigning a Shape/texture; a bare round falloff
+    // is just isotropic, so it reads as a no-op there (like every paint app's rotation jitter).
+    // Pre-compute the card height (each row includes its own trailing spacing): Position + Scale + Spacing +
+    // Rotation are param rows (ROW_H + Xs); Unit is a dropdown row (ROW_H + Sm). Trailing `+ xs` = breathing.
+    let rows_h =
+        (ROW_H_PX + xs) + (ROW_H_PX + sm) + (ROW_H_PX + xs) + (ROW_H_PX + xs) + (ROW_H_PX + xs);
     let card_h = pad + title_h + rows_h + xs;
     let card = Rect::new(x, y, content_w, card_h);
     fill_rounded_rect(
@@ -414,20 +411,19 @@ fn paint_jitter_card(
         core_ids::PAINTER_BRUSH_JITTER_SPACING_CHIP,
         brush.jitter_spacing,
     );
-    // Rotation: per-dab stamp-rotation scatter (Shape + Grain) — meaningful with a Shape or texture.
-    if has_rotation {
-        iy = paint_slider_chip_row(
-            ctx,
-            theme,
-            inner_x,
-            inner_w,
-            iy,
-            "Rotation",
-            core_ids::PAINTER_BRUSH_JITTER_ROTATE,
-            core_ids::PAINTER_BRUSH_JITTER_ROTATE_CHIP,
-            brush.jitter_rotate,
-        );
-    }
+    // Rotation: per-dab stamp-rotation scatter (Shape + Grain) — always shown (Enio 2026-06-28). The last
+    // row, so its returned `y` is unused (the card height is pre-computed above).
+    paint_slider_chip_row(
+        ctx,
+        theme,
+        inner_x,
+        inner_w,
+        iy,
+        "Rotation",
+        core_ids::PAINTER_BRUSH_JITTER_ROTATE,
+        core_ids::PAINTER_BRUSH_JITTER_ROTATE_CHIP,
+        brush.jitter_rotate,
+    );
     let _ = iy;
     y + card_h + Spacing::Sm.px()
 }

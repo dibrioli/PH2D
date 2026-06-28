@@ -413,7 +413,8 @@ mod tests {
         // Quarter arc from (r,0) to (0,r): out of P0 = (r, k), in of P1 = (k, r).
         let pts = vec![[r, 0.0], [0.0, r]];
         let handles = vec![[[r, 0.0], [r, k]], [[k, r], [0.0, r]]];
-        let mid = [r * 0.7071, r * 0.7071]; // ~45° point on the unit circle × r
+        let d = std::f32::consts::FRAC_1_SQRT_2;
+        let mid = [r * d, r * d]; // ~45° point on the unit circle × r
         let ins = curve_insert(&pts, &handles, false, mid);
         assert_eq!(ins.index, 1);
         // The split anchor is within ~1px of the true arc midpoint (radius preserved).

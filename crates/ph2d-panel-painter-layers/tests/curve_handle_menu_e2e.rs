@@ -52,7 +52,8 @@ fn curve_handle_click_parks_pending_kind_with_panel_installed() {
              (a sibling panel likely ate it)"
         );
         assert_eq!(
-            hero.pending_curve_point_handle, Some(expected_wire),
+            hero.pending_curve_point_handle,
+            Some(expected_wire),
             "the handle-kind choice never reached chrome::curve_point_handle — pending is {:?}, expected \
              Some({expected_wire})",
             hero.pending_curve_point_handle

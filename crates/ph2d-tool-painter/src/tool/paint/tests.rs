@@ -1450,7 +1450,7 @@ fn line_per_layer_color_moving_endpoint_leaves_no_trail() {
     let mut trail = Vec::new();
     for y in 0..64u32 {
         for x in 0..64u32 {
-            let far = y < 24 || y > 38 || x > 26;
+            let far = !(24..=38).contains(&y) || x > 26;
             if far && px(&t, 64, x, y) != [255, 255, 255, 255] {
                 trail.push((x, y));
             }

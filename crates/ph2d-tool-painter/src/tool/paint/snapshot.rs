@@ -59,6 +59,7 @@ impl PainterTool {
             stroke_method: b.stroke_method.to_u8(),
             spacing: b.spacing,
             offset: self.paint.shape_offset_norm,
+            offset_precise: self.paint.offset_precise,
             space_attenuation: b.space_attenuation,
             accumulate: b.accumulate,
             jitter: b.jitter,
@@ -122,6 +123,12 @@ impl PainterTool {
     /// Set the **Offset** slider track (`0..1`, `0.5` = no offset) — perpendicular path offset for shapes.
     pub fn set_brush_offset(&mut self, norm: f32) {
         self.paint.shape_offset_norm = norm.clamp(0.0, 1.0);
+    }
+
+    /// Set the **Offset algorithm** (`true` = Precise / CAD reconstruction, `false` = Simple / control-point)
+    /// — the Offset-card toggle; overrides the per-method default until the method changes. Live next frame.
+    pub fn set_offset_precise(&mut self, precise: bool) {
+        self.paint.offset_precise = precise;
     }
 
     /// The Offset slider mapped to px: `(norm−0.5)·2·MAX` (`MAX = 100`), so the centred `0.5` track is `0`.

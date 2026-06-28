@@ -439,6 +439,10 @@ fn try_apply_brush_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> O
                 || id == core_ids::PAINTER_BRUSH_STROKE_APPLY_KEEP
                 || id == core_ids::PAINTER_BRUSH_STROKE_DELETE
                 || id == core_ids::PAINTER_BRUSH_STROKE_EDIT
+                // Simplify + the Offset-card Simple / Precise algorithm toggle.
+                || id == core_ids::PAINTER_BRUSH_STROKE_SIMPLIFY
+                || id == core_ids::PAINTER_BRUSH_OFFSET_SIMPLE
+                || id == core_ids::PAINTER_BRUSH_OFFSET_PRECISE
                 || core_ids::PAINTER_BRUSH_SECTION_RESETS.contains(&id) =>
         {
             host.bus_mut()

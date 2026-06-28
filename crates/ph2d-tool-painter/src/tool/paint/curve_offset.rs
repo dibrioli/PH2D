@@ -37,6 +37,25 @@ pub(super) fn offset_curve_refined(
     (op, oh, origin)
 }
 
+/// Pick the offset algorithm by the panel's Offset-card toggle: `precise` ⇒ [`offset_curve_refined`]
+/// (CAD-grade densify-to-tolerance), else the plain [`offset_curve`] (control-point offset) with an identity
+/// origin map (no anchors inserted). The single entry point the Curve editor offsets through.
+pub(super) fn offset_curve_select(
+    precise: bool,
+    points: &[[f32; 2]],
+    handles: &[[[f32; 2]; 2]],
+    d: f32,
+    closed: bool,
+) -> RefinedOffset {
+    if precise {
+        offset_curve_refined(points, handles, d, closed)
+    } else {
+        let (op, oh) = offset_curve(points, handles, d, closed);
+        let origin = (0..op.len()).map(Some).collect();
+        (op, oh, origin)
+    }
+}
+
 /// Offset the curve's **control geometry** perpendicular by `d` px. Each anchor shifts along its averaged
 /// right-normal, then each tangent handle is RECALCULATED — rotated + scaled to follow its (now moved)
 /// segment — rather than rigidly translated, so the offset stays faithful: a circle offsets to a clean

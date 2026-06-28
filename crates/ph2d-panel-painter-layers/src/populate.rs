@@ -176,6 +176,10 @@ pub fn populate(store: &mut WidgetStore) {
         ph2d_editor_core::ids::PAINTER_BRUSH_STROKE_APPLY_KEEP,
         ph2d_editor_core::ids::PAINTER_BRUSH_STROKE_DELETE,
         ph2d_editor_core::ids::PAINTER_BRUSH_STROKE_EDIT,
+        // Simplify (re-fit the curve) + the Offset-card Simple / Precise algorithm toggle.
+        ph2d_editor_core::ids::PAINTER_BRUSH_STROKE_SIMPLIFY,
+        ph2d_editor_core::ids::PAINTER_BRUSH_OFFSET_SIMPLE,
+        ph2d_editor_core::ids::PAINTER_BRUSH_OFFSET_PRECISE,
         ph2d_editor_core::ids::PAINTER_BRUSH_TILING_RESET,
     ] {
         store.register(

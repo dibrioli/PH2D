@@ -96,6 +96,8 @@ pub struct BrushSettings {
     pub spacing: f32,
     /// **Offset** slider track (`0..1`, `0.5` = no offset) — perpendicular path offset for the shape editors.
     pub offset: f32,
+    /// Offset algorithm: `true` = **Precise** (CAD reconstruction), `false` = **Simple** (control-point).
+    pub offset_precise: bool,
     /// "Adjust Strength for Spacing" on/off.
     pub space_attenuation: bool,
     /// **Accumulate** on/off: off (default) caps a stroke at Strength.
@@ -134,11 +136,10 @@ pub struct BrushSettings {
     pub texture_offset: [f32; 2],
     /// Texture per-axis scale (`0.1..10`; `1.0` = one tile).
     pub texture_size: [f32; 2],
-    /// **Stencil** rect centre, per axis (`−1..1`) — the gizmo placement, independent of the texture
-    /// tiling. Only meaningful under the Stencil mapping (the panel shows its own card there).
+    /// **Stencil** rect centre, per axis (`−1..1`) — the gizmo placement, independent of the texture tiling.
     pub stencil_offset: [f32; 2],
-    /// **Stencil** rect half-extent as a canvas fraction, per axis (`0.1..10`; default `0.5` = 50 % of
-    /// the sprite). Independent of [`Self::texture_size`]; Stencil mapping only.
+    /// **Stencil** rect half-extent as a canvas fraction, per axis (`0.1..10`; default `0.5` = 50 % of the
+    /// sprite). Independent of [`Self::texture_size`]; Stencil mapping only.
     pub stencil_size: [f32; 2],
     /// **Stencil** rect rotation in whole degrees (`0..=360`). Independent of [`Self::texture_angle_deg`].
     pub stencil_angle_deg: u16,
@@ -175,8 +176,7 @@ pub struct BrushSettings {
     pub shape_layer_color_on: [bool; MAX_SHAPE_LAYERS],
     /// Per-layer custom colour (straight RGB), used when [`Self::shape_layer_color_on`]`[i]`.
     pub shape_layer_color: [[f32; 3]; MAX_SHAPE_LAYERS],
-    /// **Dab Flatten** (`0..1`; `0` = round) — the Shape-panel gizmo squishes the dab footprint (falloff
-    /// + Shape + View-Grain) into an ellipse. See [`Self::dab_angle_deg`].
+    /// **Dab Flatten** (`0..1`; `0` = round) — the Shape gizmo squishes the dab footprint into an ellipse.
     pub dab_flatten: f32,
     /// **Dab rotation** of the flatten/rotate gizmo, whole degrees (`0..=360`).
     pub dab_angle_deg: u16,
@@ -264,8 +264,7 @@ impl PainterTool {
             .set_point(id, distance, strength);
     }
 
-    /// Insert a `Custom` falloff control point at the widest gap (strength sampled on the curve).
-    /// Returns the new stable id, or `None` at the point cap. Drives the panel's "+" button.
+    /// Insert a `Custom` falloff point at the widest gap; returns the new id, or `None` at the cap (panel "+").
     pub fn add_brush_falloff_point(&mut self) -> Option<u8> {
         self.paint.brush.custom_falloff.add_point()
     }
@@ -357,6 +356,8 @@ impl PainterTool {
             self.polygon_cancel();
         }
         self.paint.brush.stroke_method = method;
+        // Default the offset algorithm per method (Curve / Free Hand → Precise; Circle / Polygon → Simple).
+        self.paint.offset_precise = matches!(method, StrokeMethod::Curve | StrokeMethod::FreeHand);
     }
 
     /// Set spacing as a fraction of diameter (slider track), clamped to the interactive range.

@@ -1,19 +1,21 @@
-//! The **Apply / Apply & Keep / Delete** button row under the Stroke-Method dropdown — shown for the
-//! methods with a persistent on-canvas shape editor (Curve / Free Hand / Circle / Polygon). Split from
-//! `paint_stroke` for the workspace LOC cap. Apply bakes + drops the editor, Apply & Keep bakes + keeps
-//! it, the trash Deletes without baking; each forwards a `Click` (the tool routes it in
-//! `route_brush_dab_event`). Registering the Button slot is what lets the dispatch emit the `Click`.
+//! The Stroke-Method chrome shown for the open-shape methods (Curve / Free Hand / Circle / Polygon): the
+//! **Simplify** button, the **Apply / Apply & Keep / Edit / Delete** row, and the **Offset** card (the
+//! offset slider + a **Simple / Precise** algorithm toggle). Split from `paint_stroke` for the workspace
+//! LOC cap. Each control forwards a `Click` / `SetValue` the tool routes in `route_brush_dab_event`;
+//! registering the Button slot is what lets the dispatch emit the `Click`.
 
 use crate::paint::register_button;
+use crate::paint_brush_top::paint_slider_chip_row;
 use ph2d_editor_core::ids as core_ids;
 use ph2d_editor_core::interaction::InteractiveState;
 use ph2d_editor_core::paint::{
-    fill_rounded_rect, paint_icon, paint_text_centered, resolve, stroke_rounded_rect,
+    fill_rounded_rect, paint_icon, paint_text, paint_text_centered, resolve, stroke_rounded_rect,
 };
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::widget::{ButtonState, flat_button_surface};
 use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ColorToken, ROW_H_PX, Radius, Spacing, StrokeToken, TypeToken};
+use ph2d_tool_painter::BrushSettings;
 
 /// Paint the Apply / Apply & Keep + trailing square-icon cluster (optional **E**dit, then **✕** Delete)
 /// row, returning the next `y`. `with_edit` adds the E button (Circle/Polygon → editable curve), left of
@@ -78,6 +80,151 @@ pub(super) fn paint_apply_row(
         );
         keep_y + ROW_H_PX + Spacing::Xs.px()
     }
+}
+
+/// Paint the **Simplify** button row (full width) directly under the Stroke-Method dropdown — re-fits the
+/// editable curve to a clean minimal control polygon (the tool's `curve_simplify`, same Free Hand fit).
+/// Shown for the four open-shape methods; a no-op when no curve editor is open. Returns the next `y`.
+pub(super) fn paint_simplify_row(
+    ctx: &mut PaintCtx,
+    theme: ph2d_tokens::Theme,
+    x: f32,
+    content_w: f32,
+    y: f32,
+) -> f32 {
+    button(
+        ctx,
+        theme,
+        Rect::new(x, y, content_w, ROW_H_PX),
+        Some("Simplify"),
+        core_ids::PAINTER_BRUSH_STROKE_SIMPLIFY,
+    );
+    y + ROW_H_PX + Spacing::Xs.px()
+}
+
+/// Paint the **Offset** card (modeled on the Jitter card): the perpendicular-offset slider, then — under
+/// an "Algorithm" label — a two-segment toggle, **Simple** (plain control-point offset) vs **Precise**
+/// (CAD-grade reconstruction). Shown for the open-shape methods. Returns the next `y`.
+pub(super) fn paint_offset_card(
+    ctx: &mut PaintCtx,
+    theme: ph2d_tokens::Theme,
+    x: f32,
+    content_w: f32,
+    y: f32,
+    brush: BrushSettings,
+) -> f32 {
+    let (pad, xs, font, title_h) = (
+        Spacing::Sm.px(),
+        Spacing::Xs.px(),
+        TypeToken::Sm.px(),
+        ROW_H_PX,
+    );
+    let rows_h = (ROW_H_PX + xs) * 3.0; // slider + label + toggle
+    let card_h = pad + title_h + rows_h + xs;
+    let card = Rect::new(x, y, content_w, card_h);
+    fill_rounded_rect(
+        ctx.scene,
+        card,
+        Radius::Md.px(),
+        resolve(ColorToken::Bg1, theme),
+    );
+    stroke_rounded_rect(
+        ctx.scene,
+        card,
+        Radius::Md.px(),
+        StrokeToken::Default.px(),
+        resolve(ColorToken::Border, theme),
+    );
+    let inner_x = x + pad;
+    let inner_w = (content_w - pad * 2.0).max(0.0);
+    let label = |ctx: &mut PaintCtx, text, ly| {
+        paint_text(
+            ctx.text_system,
+            ctx.scene,
+            text,
+            inner_x,
+            ly + (title_h - font) * 0.5,
+            font,
+            inner_w,
+            resolve(ColorToken::Text2, theme),
+        );
+    };
+    label(ctx, "Offset", y + pad);
+    let mut iy = y + pad + title_h;
+    iy = paint_slider_chip_row(
+        ctx,
+        theme,
+        inner_x,
+        inner_w,
+        iy,
+        "Distance",
+        core_ids::PAINTER_BRUSH_OFFSET,
+        core_ids::PAINTER_BRUSH_OFFSET_CHIP,
+        brush.offset,
+    );
+    label(ctx, "Algorithm", iy);
+    iy += ROW_H_PX + xs;
+    let bw = (inner_w - xs) * 0.5;
+    toggle_button(
+        ctx,
+        theme,
+        Rect::new(inner_x, iy, bw, ROW_H_PX),
+        "Simple",
+        core_ids::PAINTER_BRUSH_OFFSET_SIMPLE,
+        !brush.offset_precise,
+    );
+    toggle_button(
+        ctx,
+        theme,
+        Rect::new(inner_x + bw + xs, iy, bw, ROW_H_PX),
+        "Precise",
+        core_ids::PAINTER_BRUSH_OFFSET_PRECISE,
+        brush.offset_precise,
+    );
+    y + card_h + Spacing::Sm.px()
+}
+
+/// One segment of the offset-algorithm toggle: like [`button`] but the SELECTED segment reads pressed
+/// (`Bg2` fill + accent border, bright label) while the other stays flat. A `Click` selects it.
+fn toggle_button(
+    ctx: &mut PaintCtx,
+    theme: ph2d_tokens::Theme,
+    r: Rect,
+    label: &str,
+    id: ph2d_a11y::NodeId,
+    selected: bool,
+) {
+    let (fill, border, text) = if selected {
+        (ColorToken::Bg2, ColorToken::Accent, ColorToken::Text1)
+    } else {
+        let state = match ctx.host.store().get(id) {
+            Some(InteractiveState::Button { state }) => *state,
+            _ => ButtonState::Normal,
+        };
+        (
+            flat_button_surface(state),
+            ColorToken::Border,
+            ColorToken::Text2,
+        )
+    };
+    fill_rounded_rect(ctx.scene, r, Radius::Sm.px(), resolve(fill, theme));
+    stroke_rounded_rect(
+        ctx.scene,
+        r,
+        Radius::Sm.px(),
+        StrokeToken::Thin.px(),
+        resolve(border, theme),
+    );
+    paint_text_centered(
+        ctx.text_system,
+        ctx.scene,
+        label,
+        r,
+        TypeToken::Base.px(),
+        resolve(text, theme),
+    );
+    register_button(ctx.host.store_mut(), id);
+    ctx.host.hit_index_mut().register(id, r);
 }
 
 /// Paint the trailing square-icon cluster at `ix`: the optional **E**dit button then the **✕** Delete.

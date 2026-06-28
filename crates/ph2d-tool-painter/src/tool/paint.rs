@@ -17,6 +17,7 @@ use ph2d_painter_brush::{
 mod brush_settings;
 /// The Curve stroke method's on-canvas point editor (submodule, as `brush_settings`).
 mod curve;
+mod curve_commit; // Apply / Apply & Keep commit verbs for the Curve editor; split from `curve`
 mod curve_geom; // flatten (incl. closed seam) + point hit-test/nearest/insert; split from `curve`
 mod curve_gizmo; // whole-curve transform gizmo (move/scale/rotate the entire curve); split from `curve`
 mod curve_handle; // per-anchor handle kinds (Free/Aligned/Vector/Auto) + derived geometry; split from `curve`
@@ -110,13 +111,11 @@ pub(crate) struct PaintState {
     tiling: [bool; 2],
     /// **Repeat Image**: the shell draws the sprite in the 8 neighbour directions (3×3); with Tiling on, those tiles are paintable (the shell wraps the pointer back).
     repeat_image: bool,
-    /// Cleared per frame; `paint_extend` sets it on a move. A parked (false) frame lets `paint_tick`
-    /// settle the stabilizer toward the cursor — high-stabilizer catch-up on a pause, not only on up.
+    /// Cleared per frame; set by `paint_extend` on a move. A parked frame lets `paint_tick` settle the stabilizer.
     moved_this_frame: bool,
     /// Restore record for the in-progress Drag Dot's single moving dab; `None` for every other method.
     drag_preview: Option<DragPreview>,
-    /// The press point of the in-progress stroke — the pivot the Line method's Alt-constrain snaps the
-    /// cursor around (45° increments). `None` when no stroke is open.
+    /// The press point of the in-progress stroke — the pivot the Line's Alt-constrain snaps around (45°).
     line_anchor: Option<[f32; 2]>,
     /// Alt held this event — constrains the Line to 45° increments (Blender `constrain_line`); set by the shell each pointer event.
     line_constrain: bool,
@@ -128,16 +127,18 @@ pub(crate) struct PaintState {
     circle: Option<circle::CircleEditor>,
     /// In-progress Polygon session (the on-canvas regular-N-gon editor); `None` when idle. [`polygon`].
     polygon: Option<polygon::PolygonEditor>,
-    /// Control-handle grab radius (image px) for the shape editors — the shell forwards a screen-constant
-    /// value scaled by the sprite footprint before each pointer event.
+    /// Control-handle grab radius (image px) for the shape editors — the shell forwards a screen-constant,
+    /// footprint-scaled value each pointer event.
     shape_grab_tol_px: f32,
     /// **Offset** slider track (`0..1`, `0.5` = none) — perpendicular path offset for the shape editors.
     shape_offset_norm: f32,
+    /// Offset algorithm: `true` = **Precise** (CAD reconstruction), `false` = **Simple** (control-point).
+    /// Defaulted per Stroke:Method by [`Self::set_brush_stroke_method`]; the Offset-card toggle overrides it.
+    offset_precise: bool,
     /// In-progress Stencil overlay drag (move/resize/rotate the texture rect); `None` when idle.
     stencil_grab: Option<stencil::StencilGrab>,
-    /// Seconds left on the transient in-gizmo Stencil texture preview (panel-param path): armed by a
-    /// texture/stencil param change, decayed each [`PainterTool::paint_tick`]. The handle drag shows the
-    /// preview via [`Self::stencil_grab`] instead. See [`stencil::StencilPreview`].
+    /// Seconds left on the transient in-gizmo Stencil texture preview (panel-param path): armed by a texture
+    /// /stencil param change, decayed each [`PainterTool::paint_tick`]. See [`stencil::StencilPreview`].
     stencil_preview_s: f32,
     /// Imported brush-**Grain** luminance (heavy → not in the `Copy` spec); borrowed as an `ImageMask`.
     texture_image: Option<brush_settings::BrushTextureImage>,
@@ -145,12 +146,10 @@ pub(crate) struct PaintState {
     texture_image_pending: bool,
     /// Bumped whenever [`texture_image`] changes, so the stamp cache re-renders the Image mask.
     texture_image_version: u64,
-    /// Imported brush-**Shape** luminance (the silhouette tip; heavy → not in the `Copy` spec), borrowed
-    /// as an `ImageMask`. `None` ⇒ the silhouette is the falloff. Mirrors [`texture_image`]. Set by the
-    /// shell (Hierarchy "Use as Brush Shape"); cleared by the Shape section reset.
+    /// Imported brush-**Shape** luminance (the silhouette tip; heavy → not in the `Copy` spec), borrowed as
+    /// an `ImageMask`. `None` ⇒ silhouette = falloff. Set by the shell ("Use as Brush Shape"); reset clears it.
     shape_image: Option<brush_settings::BrushTextureImage>,
-    /// Set when the user picks the Image source in the Shape dropdown; the shell polls it to open a
-    /// file picker (mirror of [`texture_image_pending`] for the Grain slot).
+    /// Set when the user picks the Image source in the Shape dropdown; the shell polls it to open a picker.
     shape_image_pending: bool,
     /// Bumped whenever [`shape_image`] changes, so the stamp cache re-renders the Shape mask.
     shape_image_version: u64,
@@ -222,6 +221,7 @@ impl Default for PaintState {
             polygon: None,
             shape_grab_tol_px: DEFAULT_SHAPE_GRAB_TOL_PX,
             shape_offset_norm: 0.5, // centred → 0px offset (default byte-identical)
+            offset_precise: true, // default method is Curve → Precise (set_brush_stroke_method re-defaults)
             stencil_grab: None,
             stencil_preview_s: 0.0,
             texture_image: None,

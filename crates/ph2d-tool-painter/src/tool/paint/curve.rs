@@ -260,8 +260,8 @@ impl PainterTool {
             return true;
         }
         if ed.freehand {
-            // Free Hand released → append the final point, FIT the path to cubic Béziers keeping the
-            // anchors + their tangent HANDLES (Schneider): flattening them reproduces the stroke faithfully.
+            // Free Hand released → append the final point, FIT the path to cubic Béziers (Schneider) keeping
+            // the anchors + tangent handles so flattening reproduces the stroke faithfully.
             let last = *ed.points.last().unwrap_or(&ed.anchor);
             if curve_geom::dist2(last, pos) >= MIN_CAPTURE_DIST_SQ {
                 ed.points.push(pos);
@@ -285,8 +285,7 @@ impl PainterTool {
             ed.kinds = vec![HandleKind::Aligned; ed.points.len()];
             ed.selected = None;
         } else {
-            // Curve line released → materialize start / midpoint / end (midpoint pre-selected to bend
-            // immediately). Authored points start Auto (no-overshoot chordal smooth) until the menu changes.
+            // Curve line released → start / midpoint / end (mid pre-selected to bend); Auto kind until the menu.
             let a = ed.anchor;
             let mid = [(a[0] + pos[0]) * 0.5, (a[1] + pos[1]) * 0.5];
             ed.points = vec![a, mid, pos];
@@ -329,72 +328,39 @@ impl PainterTool {
         true
     }
 
-    /// Commit the curve (Enter): keep the painted dabs + push one undo entry. `true` when a session was open.
-    pub fn curve_commit(&mut self) -> bool {
-        let Some(ed) = self.paint.curve.as_ref() else {
+    /// **Simplify** the editable curve (the Simplify button): re-fit it to a clean minimal control polygon
+    /// via the Free Hand fit, collapsing a dense offset reconstruction (or any busy curve) back to a faithful
+    /// handful, then re-fill the preview. `true` when a curve editor was open and the fit applied.
+    pub fn curve_simplify(&mut self) -> bool {
+        let Some(ed) = self.paint.curve.as_ref().filter(|e| e.editing) else {
             return false;
         };
-        if !ed.editing {
-            return false; // mid initial-drag — nothing to bake yet
-        }
-        self.paint.curve = None;
-        self.commit_drag_preview(); // drop the restore record → the painted curve stays
-        if let Some(before) = self.paint.stroke_undo.take() {
-            self.commit_structural_edit(before);
-        }
-        self.paint.shape_offset_norm = 0.5; // the offset baked into the painted dabs → reset the slider
-        true
-    }
-
-    /// Commit the curve but KEEP the editor open (Apply & Keep): bake the painted preview, then simplify
-    /// (Free Hand fit) + re-baseline so further edits restore onto the baked canvas. `true` when open.
-    pub fn curve_commit_keep(&mut self) -> bool {
-        if !self.paint.curve.as_ref().is_some_and(|ed| ed.editing) {
+        let Some((p, h)) = curve_geom::simplify_curve(
+            &ed.points,
+            &ed.handles,
+            ed.closed,
+            FREEHAND_FIT_ERROR,
+            MAX_CURVE_POINTS,
+        ) else {
             return false;
-        }
-        self.bake_curve_offset(); // lock the offset into the kept geometry, reset the slider (offset now 0)
-        // Simplify the kept curve with the Free Hand fit (collapse the reconstruction's dense anchors).
-        if let Some(ed) = self.paint.curve.as_mut().filter(|e| e.editing)
-            && let Some((p, h)) = curve_geom::simplify_curve(
-                &ed.points,
-                &ed.handles,
-                ed.closed,
-                FREEHAND_FIT_ERROR,
-                MAX_CURVE_POINTS,
-            )
-        {
-            ed.kinds = vec![HandleKind::Aligned; p.len()];
-            (ed.points, ed.handles, ed.selected) = (p, h, None);
-            curve_handle::rebuild(&ed.points, &ed.kinds, &mut ed.handles, ed.closed);
-        }
-        self.commit_drag_preview(); // drop the restore record → the painted curve stays baked
-        if let Some(before) = self.paint.stroke_undo.take() {
-            self.commit_structural_edit(before);
-        }
-        // Re-baseline onto the baked canvas; KEEP the editor (the curve persists as a re-applicable shape).
-        self.paint.stroke_undo = Some(self.snapshot_model());
-        self.paint.drag_preview = None;
+        };
+        let ed = self.paint.curve.as_mut().expect("curve present");
+        ed.kinds = vec![HandleKind::Aligned; p.len()];
+        (ed.points, ed.handles, ed.selected) = (p, h, None);
+        curve_handle::rebuild(&ed.points, &ed.kinds, &mut ed.handles, ed.closed);
+        self.curve_refill();
         true
-    }
-
-    /// Commit whichever on-canvas shape editor is open but KEEP it editable (the **Apply & Keep** button)
-    /// — the keep-mode aggregator paired with [`PainterTool::commit_open_shape`]. At most one is open.
-    pub fn commit_open_shape_keep(&mut self) -> bool {
-        self.curve_commit_keep() || self.circle_commit_keep() || self.polygon_commit_keep()
     }
 
     /// Convert an open **Circle / Polygon** into an editable Bézier **Curve** (the panel's **Edit** / E
-    /// button): take the shape's anchors + handles (faithful — a 4-arc circle, a sharp polygon), drop the
-    /// shape editor, switch the method to Curve so pointers route here, keeping the explicit handles. Undo +
-    /// drag-preview carry over, so the whole thing still bakes/undoes as one. `false` if no shape is open.
+    /// button): take the shape's faithful anchors + handles, drop the shape editor, switch the method to Curve
+    /// so pointers route here. Undo + drag-preview carry over (bakes/undoes as one). `false` if none open.
     pub(crate) fn convert_open_shape_to_curve(&mut self) -> bool {
-        // Bake any live Offset into the shape's radii FIRST (resets the slider), so the conversion reads the
-        // displayed shape and the new curve isn't offset a second time by `curve_refill` (which would deform
-        // it — Enio 2026-06-28). At most one editor is open; each bake no-ops otherwise.
+        // Bake any live Offset into the shape's radii FIRST (resets the slider) so the conversion reads the
+        // displayed shape, not a doubly-offset one. At most one editor is open; each bake no-ops otherwise.
         self.bake_circle_offset();
         self.bake_polygon_offset();
-        // The circle's arcs are smooth (Aligned); the polygon's corners are sharp (Free). Each keeps its
-        // explicit handles; a later anchor drag rigid-translates them (both kinds are manual).
+        // Circle arcs are smooth (Aligned); polygon corners sharp (Free). Both keep explicit (manual) handles.
         let Some((points, handles, kind)) = self
             .circle_to_curve()
             .map(|(p, h)| (p, h, HandleKind::Aligned))
@@ -463,7 +429,8 @@ impl PainterTool {
         }
         // Offset the CONTROL geometry (handles recalculated, not deformed), so the dots + tangents + spine
         // guide all move WITH the paint and stay consistent on the offset curve (Enio 2026-06-28).
-        let (points, handles, origin) = curve_offset::offset_curve_refined(
+        let (points, handles, origin) = curve_offset::offset_curve_select(
+            self.paint.offset_precise,
             &ed.points,
             &ed.handles,
             self.shape_offset_px(),
@@ -559,8 +526,13 @@ impl PainterTool {
     fn curve_fill(&mut self, pts: &[[f32; 2]], handles: &[[[f32; 2]; 2]], closed: bool, seed: u64) {
         // Offset the CONTROL geometry (handles recalculated), so the painted spine matches the overlay guide
         // and carries no deformation; flatten the offset curve to the dab spine.
-        let (pts, handles, _) =
-            curve_offset::offset_curve_refined(pts, handles, self.shape_offset_px(), closed);
+        let (pts, handles, _) = curve_offset::offset_curve_select(
+            self.paint.offset_precise,
+            pts,
+            handles,
+            self.shape_offset_px(),
+            closed,
+        );
         let mut spine = Vec::new();
         curve_geom::flatten_spine(&pts, &handles, closed, &mut spine);
         let mut stroke = Stroke::new(self.paint.brush, self.paint.dynamics, seed);
@@ -575,11 +547,12 @@ impl PainterTool {
     /// editor. Called before any edit gesture (hit-test = displayed dots) and on Apply & Keep.
     pub(super) fn bake_curve_offset(&mut self) {
         let off = self.shape_offset_px();
+        let precise = self.paint.offset_precise;
         if off != 0.0
             && let Some(ed) = self.paint.curve.as_mut().filter(|ed| ed.editing)
         {
             let (p, h, origin) =
-                curve_offset::offset_curve_refined(&ed.points, &ed.handles, off, ed.closed);
+                curve_offset::offset_curve_select(precise, &ed.points, &ed.handles, off, ed.closed);
             // Carry kinds (original anchors keep theirs; inserted points = Free) + remap the selection.
             let kinds: Vec<HandleKind> = origin
                 .iter()

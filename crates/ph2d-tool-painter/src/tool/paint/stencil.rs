@@ -338,6 +338,18 @@ impl PainterTool {
                 self.convert_open_shape_to_curve(); // Circle/Polygon → editable Bézier curve
                 return true;
             }
+            if *id == core_ids::PAINTER_BRUSH_STROKE_SIMPLIFY {
+                self.curve_simplify(); // reduce the editable curve to a clean control polygon
+                return true;
+            }
+            if *id == core_ids::PAINTER_BRUSH_OFFSET_SIMPLE {
+                self.set_offset_precise(false);
+                return true;
+            }
+            if *id == core_ids::PAINTER_BRUSH_OFFSET_PRECISE {
+                self.set_offset_precise(true);
+                return true;
+            }
         }
         let PanelEvent::SetValue(id, v) = event else {
             return false;

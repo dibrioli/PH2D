@@ -883,3 +883,42 @@ fn shape_image_rotates_with_the_basis_angle() {
         at(90)
     );
 }
+
+#[test]
+fn jitter_footprint_rotates_the_grain_deterministically_not_randomly() {
+    // Enio: "Jitter Rot shouldn't act like Random Angle." With random_angle OFF, the Grain follows the
+    // footprint — a deterministic rotation locked to the brush, NOT a per-dab random one.
+    let s = TextureSettings {
+        kind: TextureKind::Noise,
+        mapping: TextureMapping::ViewPlane,
+        ..Default::default()
+    };
+    let (center, radius) = ([10.0_f32, 10.0], 8.0_f32);
+    let fp45 = FootprintDeform::new(0.0, 45);
+    // Two DIFFERENT rng seeds, same footprint: identical (no per-dab randomness → not Random Angle).
+    let mut ra = 1u64;
+    let mut rb = 9_999u64;
+    let ba = dab_basis(&s, [0.0, 0.0], &mut ra, [64.0, 64.0], [1.0, 0.0], fp45);
+    let bb = dab_basis(&s, [0.0, 0.0], &mut rb, [64.0, 64.0], [1.0, 0.0], fp45);
+    let va = sample(&s, &ba, 14, 12, center, radius, None);
+    let vb = sample(&s, &bb, 14, 12, center, radius, None);
+    assert!(
+        (va - vb).abs() < 1e-6,
+        "same footprint ⇒ same Grain regardless of rng (NOT random angle): {va} vs {vb}"
+    );
+    // Rotating the footprint DOES rotate the Grain (it's locked to the brush, not fixed).
+    let mut rc = 1u64;
+    let b0 = dab_basis(
+        &s,
+        [0.0, 0.0],
+        &mut rc,
+        [64.0, 64.0],
+        [1.0, 0.0],
+        FootprintDeform::new(0.0, 0),
+    );
+    let v0 = sample(&s, &b0, 14, 12, center, radius, None);
+    assert!(
+        (va - v0).abs() > 1e-4,
+        "the Grain rotates WITH the footprint (jitter spins the whole stamp): {va} vs {v0}"
+    );
+}

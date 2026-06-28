@@ -373,6 +373,61 @@ fn accumulate_off_caps_a_stroke_at_strength_while_on_builds_up() {
     );
 }
 
+#[test]
+fn accumulate_off_grain_caps_each_texel_at_its_weighted_coverage() {
+    use crate::ImageMask;
+    use crate::texture::{TexDabBasis, TextureKind, TextureSettings};
+    // A flat 50 %-grey Grain image ⇒ grain ≈ 0.5 everywhere. With Accumulate OFF, a texel's coverage must
+    // top out at grain × Strength (~0.5) no matter how many overlapping dabs cross it — re-passing must NOT
+    // climb the semi-transparent texture to full opacity (the "textured areas fill in" bug, Enio 2026-06-27).
+    let (w, h) = (16u32, 16u32);
+    let grey = vec![128u8; 64];
+    let img = ImageMask {
+        lum: &grey,
+        width: 8,
+        height: 8,
+    };
+    let spec = BrushSpec {
+        radius_px: 5.0,
+        color: [0.0, 0.0, 0.0], // black over white
+        blend: BrushBlend::Mix,
+        falloff: Falloff::Constant,
+        hardness: 1.0,
+        strength: 1.0,
+        texture: TextureSettings {
+            kind: TextureKind::Image,
+            ..Default::default()
+        },
+        ..Default::default()
+    };
+    let basis = TexDabBasis::identity();
+    let center = [8.0, 8.0];
+    let i = (8 * w as usize + 8) * 4;
+    let mut buf = solid(w, h, [255, 255, 255, 255]);
+    let mut mask = vec![0u8; (w * h) as usize];
+    for _ in 0..10 {
+        let _ = stamp_dab_textured_masked(
+            &mut buf,
+            w,
+            h,
+            center,
+            &spec,
+            1.0,
+            false,
+            Some(&basis),
+            Some(&img),
+            None,
+            Some(&mut mask),
+        );
+    }
+    // grain ≈ 0.502 → final coverage ≈ 0.502 → white→~127, NOT driven toward black by the re-passes.
+    assert!(
+        (i32::from(buf[i]) - 127).abs() <= 8,
+        "grain caps the texel at ~0.5 coverage even after 10 passes: {} (want ~127, not black)",
+        buf[i]
+    );
+}
+
 // ── W0: dual-slot (Shape × Grain) composition ───────────────────────────────────────────────
 
 #[test]

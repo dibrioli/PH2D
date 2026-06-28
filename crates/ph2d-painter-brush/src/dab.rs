@@ -434,7 +434,7 @@ fn stamp_band(ctx: &DabCtx, dst: &mut [u8], mut mask: Option<&mut [u8]>, band_y0
             let t = ctx
                 .footprint
                 .falloff_t(dx * ctx.inv_radius, dy * ctx.inv_radius);
-            let mut w = if let Some(sh) = ctx.shape {
+            let w = if let Some(sh) = ctx.shape {
                 let raw = crate::texture::sample_shape_silhouette(
                     &ctx.spec.shape,
                     sh.basis,
@@ -455,12 +455,14 @@ fn stamp_band(ctx: &DabCtx, dst: &mut [u8], mut mask: Option<&mut [u8]>, band_y0
             if w <= 0.0 {
                 continue;
             }
-            // Default: the brush's single colour. The texture multiplies the falloff mask, exactly
-            // as the falloff multiplies coverage (texel 0 → nothing, 1 → full falloff). With a Color
-            // Ramp the texture value instead indexes the ramp for the per-texel COLOUR; the ramp's
-            // alpha does what `ctx.alpha_mode` selects (nothing / less coverage / the pixel's alpha).
+            // Default colour = the brush's; a Color Ramp instead indexes the ramp by the texture value for
+            // the per-texel COLOUR, its alpha per `ctx.alpha_mode` (none / less coverage / the pixel's alpha).
             let mut color = ctx.spec.color;
             let mut stamp_alpha = 1.0_f32; // mode TextureAlpha: the source pixel's own alpha
+            // `w` = dab PROFILE (falloff × silhouette, the build factor); `g` = texture COVERAGE factor
+            // (Grain / Strength-ramp) kept SEPARATE so it CAPS the pixel — a 0.3 grain texel tops at
+            // 0.3·Strength under re-passing, not climbing to full (the "fills in" bug). `g=1` ⇒ identical.
+            let mut g = 1.0_f32;
             if let Some(b) = ctx.tex {
                 let s = crate::texture::sample(
                     &ctx.spec.texture,
@@ -476,7 +478,7 @@ fn stamp_band(ctx: &DabCtx, dst: &mut [u8], mut mask: Option<&mut [u8]>, band_y0
                     color = [c[0], c[1], c[2]];
                     match ctx.alpha_mode {
                         RampAlphaMode::None => {}             // recolour only — alpha ignored
-                        RampAlphaMode::Strength => w *= c[3], // less coverage where translucent
+                        RampAlphaMode::Strength => g *= c[3], // less coverage where translucent
                         RampAlphaMode::TextureAlpha => stamp_alpha = c[3],
                     }
                 } else {
@@ -484,23 +486,22 @@ fn stamp_band(ctx: &DabCtx, dst: &mut [u8], mut mask: Option<&mut [u8]>, band_y0
                     // depth = 1 (default) this is exactly `g`, so a default brush stays byte-identical
                     // (the `>= 1.0` short-circuits the lerp's f32 rounding back to a bare multiply).
                     let depth = ctx.spec.grain_depth();
-                    let g_eff = if depth >= 1.0 {
+                    g *= if depth >= 1.0 {
                         s
                     } else {
                         1.0 + (s - 1.0) * depth
                     };
-                    w *= g_eff;
                 }
-                if w <= 0.0 {
+                if w * g <= 0.0 {
                     continue;
                 }
             } else if let Some(lut) = ctx.ramp {
-                // No Grain + a Colour Ramp on (Shape's ramp): silhouette `w` indexes it for the COLOUR; alpha per `alpha_mode` (a Strength `w → 0` is caught downstream).
+                // No Grain + a Colour Ramp on (Shape's ramp): silhouette `w` indexes it for the COLOUR; alpha per `alpha_mode` (a Strength `g → 0` is caught downstream).
                 let c = ramp_sample(lut, w);
                 color = [c[0], c[1], c[2]];
                 match ctx.alpha_mode {
                     RampAlphaMode::None => {}
-                    RampAlphaMode::Strength => w *= c[3],
+                    RampAlphaMode::Strength => g *= c[3],
                     RampAlphaMode::TextureAlpha => stamp_alpha = c[3],
                 }
             }
@@ -517,31 +518,30 @@ fn stamp_band(ctx: &DabCtx, dst: &mut [u8], mut mask: Option<&mut [u8]>, band_y0
             // mode (colour blend modes keep the dest alpha; you only paint where there's coverage).
             let out = if matches!(ctx.alpha_mode, RampAlphaMode::TextureAlpha) && ctx.ramp.is_some()
             {
-                let m = w * ctx.coverage;
+                let m = w * g * ctx.coverage;
                 if m <= 0.0 {
                     continue;
                 }
                 stamp_rgba(prev, color, stamp_alpha, m)
             } else {
                 let a = match mask.as_deref_mut() {
-                    // Accumulate OFF: cap the pixel's TOTAL stroke coverage at the dab target
-                    // `ctx.coverage`. `m` is the coverage laid down so far this stroke; a dab grows it
-                    // toward the cap by its local weight `w` (falloff×texture), and we blend the alpha
-                    // that takes the canvas from `m` to the new coverage (overlapping dabs, incl. a
-                    // back-and-forth pass, build toward — never past — Strength). `w ≤ 1` ⇒ no overshoot.
+                    // Accumulate OFF: cap each pixel at the TEXTURE-WEIGHTED target `coverage × g`, so a
+                    // grain texel tops at `g·Strength` however many dabs cross it (`w` builds toward the
+                    // cap). `g = 1` (no texture) ⇒ byte-identical to the old flat cap (Enio 2026-06-27).
                     Some(m_buf) => {
                         let mi = r * (ctx.stride / 4) + px as usize;
                         let m = f32::from(m_buf[mi]) / 255.0;
-                        if m >= ctx.coverage {
-                            continue; // already capped this stroke
+                        let cap = (g * ctx.coverage).min(1.0);
+                        if m >= cap {
+                            continue; // already at this texel's weighted cap
                         }
-                        let add = w * (ctx.coverage - m);
+                        let add = w * (cap - m);
                         m_buf[mi] = ((m + add) * 255.0 + 0.5) as u8;
                         let a = add / (1.0 - m).max(1e-4);
                         if ctx.preserve_alpha { a * prev[3] } else { a }
                     }
-                    None if ctx.preserve_alpha => w * ctx.coverage * prev[3],
-                    None => w * ctx.coverage,
+                    None if ctx.preserve_alpha => w * g * ctx.coverage * prev[3],
+                    None => w * g * ctx.coverage,
                 };
                 if a <= 0.0 {
                     continue;

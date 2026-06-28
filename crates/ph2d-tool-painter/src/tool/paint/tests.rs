@@ -3282,6 +3282,66 @@ fn stencil_dab_paints_only_inside_the_rect() {
     );
 }
 
+#[test]
+fn per_layer_color_grain_stencil_masks_to_the_rect_not_the_whole_dab() {
+    use ph2d_painter_brush::{Dab, StrokeMethod, TextureKind, TextureMapping, TextureSettings};
+    // Regression (Enio 2026-06-27): with Per-Layer Color ON, a Grain mapped Stencil was baked into the
+    // dab-LOCAL cached coloured stamp, which can't represent the canvas-fixed rect → the colour leaked
+    // OUTSIDE the Stencil (worst on a big Anchored dab). Canvas-fixed Grain now routes to the per-pixel
+    // dynamic path, which masks the rect. A pixel inside the dab but outside the rect must stay white.
+    let mut t = white_canvas(64, 30.0);
+    t.paint.brush.stroke_method = StrokeMethod::Space;
+    t.set_brush_shape_layers(vec![(vec![255u8; 64], 8, 8), (vec![255u8; 64], 8, 8)]);
+    t.toggle_brush_shape_per_layer_color();
+    t.set_brush_shape_layer_color(0, [1.0, 0.0, 0.0]);
+    t.set_brush_shape_layer_color(1, [0.0, 1.0, 0.0]);
+    t.paint.brush.texture = TextureSettings {
+        kind: TextureKind::Noise,
+        mapping: TextureMapping::Stencil,
+        stencil_size: [0.3, 0.3], // central rect ≈ [22.4 .. 41.6]
+        ..Default::default()
+    };
+    let dab = Dab {
+        center: [32.0, 32.0],
+        radius_px: 30.0, // covers the canvas; the silhouette (full square) reaches well past the rect
+        coverage: 1.0,
+        color: [0.0, 0.0, 0.0],
+        rotation: [1.0, 0.0],
+        dir: [0.0, 0.0],
+    };
+    t.stamp_dabs(&[dab]);
+    // (32,10): inside the dab radius (dy = 22 < 30) but ABOVE the rect (y < 22.4) → masked = white.
+    assert_eq!(
+        px(&t, 64, 32, 10),
+        [255, 255, 255, 255],
+        "Per-Layer Color + Grain Stencil masks to the rect — inside the dab but outside the rect stays white"
+    );
+}
+
+#[test]
+fn anchored_stencil_does_not_leak_outside_the_rect_during_the_drag() {
+    use ph2d_painter_brush::{StrokeMethod, TextureKind, TextureMapping, TextureSettings};
+    // Regression (Enio 2026-06-27): an Anchored stroke with a Grain mapped Stencil leaked colour OUTSIDE
+    // the rect while dragging (the interactive preview stamped texture-free for speed → no stencil mask).
+    // A small central rect; the Anchored anchor sits in a corner well outside it; after the size-drag the
+    // anchor pixel (dab centre, falloff = 1) must stay white — the stencil masks the live preview too.
+    let mut t = white_canvas(64, 30.0);
+    t.paint.brush.texture = TextureSettings {
+        kind: TextureKind::Noise,
+        mapping: TextureMapping::Stencil,
+        stencil_size: [0.3, 0.3], // central rect ≈ [22.4 .. 41.6]
+        ..Default::default()
+    };
+    t.set_brush_stroke_method(StrokeMethod::Anchored.to_u8());
+    assert!(t.on_canvas_pointer(cp([8.0, 8.0], PointerPhase::Down))); // anchor in the corner (outside rect)
+    let _ = t.on_canvas_pointer(cp([8.0, 50.0], PointerPhase::Move)); // grow radius ≈ 42 (covers the canvas)
+    assert_eq!(
+        px(&t, 64, 8, 8),
+        [255, 255, 255, 255],
+        "the Anchored preview is masked by the stencil — the corner outside the rect stays white"
+    );
+}
+
 /// A `PainterTool` with a centred full-canvas Stencil texture (handles at the canvas corners +
 /// centre), ready for the drag-gesture tests.
 fn stencil_tool() -> PainterTool {

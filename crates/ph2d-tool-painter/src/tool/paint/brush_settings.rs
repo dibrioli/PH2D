@@ -448,9 +448,14 @@ impl PainterTool {
         }
     }
 
-    /// Set the texture mapping from a wire discriminant (out-of-range → View Plane).
+    /// Set the texture mapping (out-of-range → View Plane); switching INTO Stencil seeds the Grain Size to
+    /// `(0.5, 0.5)` — denser reads better inside the rect + matches the rect's own default extent (Enio).
     pub fn set_brush_texture_mapping(&mut self, m: u8) {
-        self.paint.brush.texture.mapping = TextureMapping::from_u8(m);
+        let m = TextureMapping::from_u8(m);
+        if m.is_stencil() && !self.paint.brush.texture.mapping.is_stencil() {
+            self.paint.brush.texture.size = [0.5, 0.5];
+        }
+        self.paint.brush.texture.mapping = m;
         self.arm_stencil_preview();
     }
 
@@ -472,8 +477,7 @@ impl PainterTool {
         tex.random_angle = !tex.random_angle;
     }
 
-    /// Set the texture offset for `axis` (`0` = X, `1` = Y) from the slider's `0..1` track, mapped
-    /// linearly onto `[TEX_OFFSET_MIN, TEX_OFFSET_MAX]` (tile fractions).
+    /// Set the texture offset for `axis` (`0`=X / `1`=Y) from the `0..1` track → `[TEX_OFFSET_MIN, MAX]` (tiles).
     pub fn set_brush_texture_offset_norm(&mut self, axis: usize, t: f32) {
         if axis < 2 {
             let span = TEX_OFFSET_MAX - TEX_OFFSET_MIN;
@@ -481,8 +485,7 @@ impl PainterTool {
         }
     }
 
-    /// Set the texture scale for `axis` (`0` = X, `1` = Y) from the slider's `0..1` track, mapped
-    /// linearly onto `[TEX_SIZE_MIN, TEX_SIZE_MAX]`.
+    /// Set the texture scale for `axis` (`0`=X / `1`=Y) from the `0..1` track → `[TEX_SIZE_MIN, TEX_SIZE_MAX]`.
     pub fn set_brush_texture_size_norm(&mut self, axis: usize, t: f32) {
         if axis < 2 {
             let span = TEX_SIZE_MAX - TEX_SIZE_MIN;
@@ -490,8 +493,7 @@ impl PainterTool {
         }
     }
 
-    /// Set per-pattern parameter `slot` from the slider's `0..1` track (stored normalized; each
-    /// pattern maps its own range — see `ph2d_painter_brush::param_specs`).
+    /// Set per-pattern parameter `slot` from the `0..1` track (normalized; each pattern maps its own range).
     pub fn set_brush_texture_param_norm(&mut self, slot: usize, t: f32) {
         if slot < ph2d_painter_brush::MAX_TEX_PARAMS {
             self.paint.brush.texture.params[slot] = t.clamp(0.0, 1.0);
@@ -499,14 +501,12 @@ impl PainterTool {
         self.arm_stencil_preview();
     }
 
-    /// Enable / disable the texture **Color Ramp**: when on, the texture's scalar drives the per-texel
-    /// paint colour (via the ramp) instead of only attenuating the brush's single colour.
+    /// Enable / disable the texture **Color Ramp** (on → the texture's scalar drives the per-texel colour).
     pub fn set_texture_ramp_enabled(&mut self, on: bool) {
         self.paint.texture_ramp_enabled = on;
     }
 
-    /// Replace the texture Color Ramp (the reusable `ph2d_color::ColorRamp`); re-bakes the LUT before
-    /// the next ramped stamp.
+    /// Replace the texture Color Ramp (`ph2d_color::ColorRamp`); re-bakes the LUT before the next stamp.
     pub fn set_texture_ramp(&mut self, ramp: ph2d_color::ColorRamp) {
         self.paint.texture_ramp = ramp;
         self.paint.texture_ramp_dirty = true;

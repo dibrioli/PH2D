@@ -263,8 +263,7 @@ impl TextureMapping {
         matches!(self, Self::Random)
     }
 
-    /// Whether the per-dab Rake / Random rotation applies. Stencil has its own fixed frame, so it
-    /// ignores them (the panel hides those controls for Stencil).
+    /// Whether the per-dab Rake / Random rotation applies (Stencil has its own fixed frame → ignores them).
     #[must_use]
     pub fn uses_dab_rotation(self) -> bool {
         !matches!(self, Self::Stencil)
@@ -274,6 +273,13 @@ impl TextureMapping {
     #[must_use]
     pub fn is_stencil(self) -> bool {
         matches!(self, Self::Stencil)
+    }
+
+    /// Canvas-fixed mappings (Tiled / Stencil): sample at the canvas pixel ([`sample`], which masks the
+    /// Stencil rect), never the dab-local [`sample_unit`] (no rect → leaks past it).
+    #[must_use]
+    pub fn is_canvas_fixed(self) -> bool {
+        matches!(self, Self::Tiled | Self::Stencil)
     }
 }
 
@@ -353,9 +359,8 @@ impl TextureSettings {
                 && !self.random_angle)
     }
 
-    /// Texture is canvas-fixed + dab-independent → cache each canvas pixel's value once per stroke
-    /// (see [`crate::stamp::blit_canvas_cached`]). True for static **Tiled** / **Stencil**; Rake /
-    /// Random vary per dab, so they stay per-pixel.
+    /// Texture is canvas-fixed + dab-independent → cache each canvas pixel once per stroke
+    /// ([`crate::stamp::blit_canvas_cached`]). Static **Tiled** / **Stencil**; Rake / Random stay per-pixel.
     #[must_use]
     pub fn is_canvas_cacheable(&self) -> bool {
         self.is_active()
@@ -368,10 +373,9 @@ impl TextureSettings {
     }
 }
 
-/// A borrowed grayscale (luminance) image supplied to [`sample`] for [`TextureKind::Image`]. One
-/// byte per texel, row-major; the engine samples it bilinearly (centre-coord) and tiles it (`fract`)
-/// so it composes with every mapping. Kept borrowed so the heavy pixels stay owned by the caller
-/// (the `Copy` settings can't hold them).
+/// A borrowed grayscale (luminance) image supplied to [`sample`] for [`TextureKind::Image`]. One byte per
+/// texel, row-major; sampled bilinearly (centre-coord) + tiled (`fract`) so it composes with every mapping.
+/// Kept borrowed so the heavy pixels stay owned by the caller (the `Copy` settings can't hold them).
 #[derive(Clone, Copy, Debug)]
 pub struct ImageMask<'a> {
     /// Luminance bytes, row-major, at least `width * height` long.
@@ -382,10 +386,9 @@ pub struct ImageMask<'a> {
     pub height: u32,
 }
 
-/// Per-dab resolved texture frame: the texture pattern's rotated unit basis (`u`, `v`), the per-dab
-/// random translation, and — for Stencil — the rect (centre / half-extent / own rotation basis
-/// `stencil_u`,`v`; `u`/`v` then carry the texture angle within the rect). Computed once per dab by
-/// [`dab_basis`] so per-pixel [`sample`] is cheap.
+/// Per-dab resolved texture frame: the pattern's rotated unit basis (`u`, `v`), the per-dab random
+/// translation, and — for Stencil — the rect (centre / half-extent / own rotation `stencil_u`,`v`; `u`/`v`
+/// then carry the texture angle within it). Computed once per dab by [`dab_basis`] so [`sample`] is cheap.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct TexDabBasis {
     u: [f32; 2],
@@ -420,10 +423,9 @@ impl TexDabBasis {
     }
 }
 
-/// Resolve the per-dab texture frame from the settings, the stroke tangent `dab_dir` (Rake; falls back
-/// to [`TextureSettings::angle_deg`] for a near-zero tangent), a splitmix64 `rng` (Random), the canvas
-/// (Stencil rect), the per-dab **Jitter Rotate** vector `extra_rot` (`[1,0]` = none) and the brush-dab
-/// `footprint` flatten/rotate (footprint-relative only — Tiled / Stencil ignore it). Deterministic.
+/// Resolve the per-dab texture frame from the settings, the stroke tangent `dab_dir` (Rake; falls back to
+/// [`TextureSettings::angle_deg`]), a splitmix64 `rng` (Random), the canvas (Stencil rect), the per-dab
+/// **Jitter Rotate** `extra_rot` (`[1,0]` = none) and the dab `footprint` (Tiled / Stencil ignore it).
 #[must_use]
 pub fn dab_basis(
     s: &TextureSettings,
@@ -467,9 +469,8 @@ pub fn dab_basis(
     }
 }
 
-/// Sample the texture at canvas pixel `(px, py)` for a dab centred at `center` with `radius` (the
-/// values already known inside [`crate::dab::stamp_dab`]). Returns the coverage multiplier in
-/// `[0, 1]`; `1.0` when no texture is assigned (so the dab is unchanged).
+/// Sample the texture at canvas pixel `(px, py)` for a dab centred at `center` with `radius`. Returns the
+/// coverage multiplier in `[0, 1]`; `1.0` when no texture is assigned (so the dab is unchanged).
 #[must_use]
 pub fn sample(
     s: &TextureSettings,

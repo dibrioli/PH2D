@@ -493,7 +493,14 @@ pub fn accumulate_shape_layer_rgba(
             // that tints this layer's colour) with one — the alpha channel scales coverage either way.
             let mut tint = color;
             if let Some((gb, gi)) = grain {
-                let g = crate::texture::sample_unit(&spec.texture, gb, u, v, gi);
+                // Canvas-fixed Grain (Tiled / Stencil) MUST sample at the absolute canvas pixel so the
+                // Stencil rect mask applies; the dab-local `sample_unit` has no rect → colour leaked
+                // outside the Stencil (Enio 2026-06-27). View grain keeps the scale-invariant unit form.
+                let g = if spec.texture.mapping.is_canvas_fixed() {
+                    crate::texture::sample(&spec.texture, gb, px, py, center, radius, gi)
+                } else {
+                    crate::texture::sample_unit(&spec.texture, gb, u, v, gi)
+                };
                 let m = grain_modulation(g, depth, grain_ramp);
                 tint = [color[0] * m[0], color[1] * m[1], color[2] * m[2]];
                 a *= m[3];

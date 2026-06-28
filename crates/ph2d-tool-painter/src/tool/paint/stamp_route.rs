@@ -48,10 +48,16 @@ impl PainterTool {
             // is `has_colour_jitter_amount()` (Hue/Sat/Val > 0) — the engine's actual gate; the legacy
             // `color_jitter_enabled` flag is dead (the panel drives it by amount), so checking it here
             // meant Randomize Color alone never reached the dynamic path (it only worked WITH Rake/Random).
+            // A canvas-fixed Grain (Tiled / Stencil) cannot be baked into the dab-LOCAL coloured stamp
+            // (`render_color_stamp_mask` samples in stamp-local coords) — doing so ignored the Stencil
+            // rect entirely, so the colour leaked OUTSIDE it (worst with a big Anchored dab). The per-pixel
+            // dynamic path samples the Grain at each canvas pixel through its canvas-fixed basis, so it
+            // masks the rect correctly (Enio 2026-06-27).
             if brush.shape_has_per_dab_rotation(has_shape_image)
                 || brush.grain_has_per_dab_rotation()
                 || brush.has_colour_jitter_amount()
                 || brush.has_per_dab_rotation()
+                || (brush.texture.is_active() && brush.texture.mapping.is_canvas_fixed())
             {
                 self.stamp_dabs_per_layer_dynamic(dabs, &brush, alpha_locked, w, h);
             } else {

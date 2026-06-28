@@ -414,11 +414,11 @@ impl PainterTool {
         // compounds into crossings (Enio 2026-06-28).
         let (points, handles) = curve_offset::offset_curve(&ed.points, &ed.handles, d, ed.closed);
         let osel = ed.selected;
-        // The painted guide (spine) uses the REFINED offset so it hugs the true parallel curve BETWEEN anchors
-        // (the densified anchors are paint-only); the sparse dots above sit on this guide.
-        let (rp, rh, _) = curve_offset::offset_curve_refined(&ed.points, &ed.handles, d, ed.closed);
+        // The painted guide (spine) offsets the FLATTENED curve as a polyline (even distance everywhere); the
+        // sparse dots above are the control-point offset and may sit slightly inside the guide at sharp corners.
         let mut spine = Vec::new();
-        curve_geom::flatten_spine(&rp, &rh, ed.closed, &mut spine);
+        curve_geom::flatten_spine(&ed.points, &ed.handles, ed.closed, &mut spine);
+        spine = curve_offset::offset_polyline(&spine, d, ed.closed);
         // Trim only the DRAWING (the painted spine + guide), NOT the control points — so the curve keeps its
         // fidelity and the anchors may cross; the crossed loop just isn't painted (Enio 2026-06-28).
         if self.paint.offset_trim {
@@ -509,12 +509,11 @@ impl PainterTool {
     /// present, else Catmull-Rom), fill spaced dabs along the spine, and route them through restore +
     /// re-stamp (no trail; `commit` keeps the last fill). Fresh-per-fill ⇒ deterministic for equal input.
     fn curve_fill(&mut self, pts: &[[f32; 2]], handles: &[[[f32; 2]; 2]], closed: bool, seed: u64) {
-        // Offset the CONTROL geometry (handles recalculated), so the painted spine matches the overlay guide
-        // and carries no deformation; flatten the offset curve to the dab spine.
-        let (pts, handles, _) =
-            curve_offset::offset_curve_refined(pts, handles, self.shape_offset_px(), closed);
+        // Flatten the TRUE curve, then offset the POLYLINE by d — an even distance everywhere, immune to how
+        // the handles are conditioned (the control-point offset bulged on edited handles + undershot corners).
         let mut spine = Vec::new();
-        curve_geom::flatten_spine(&pts, &handles, closed, &mut spine);
+        curve_geom::flatten_spine(pts, handles, closed, &mut spine);
+        spine = curve_offset::offset_polyline(&spine, self.shape_offset_px(), closed);
         // Trim only the painted spine (matches the guide) — the control points keep crossing, full fidelity.
         if self.paint.offset_trim {
             spine = trim_offset_spine(&spine, closed);

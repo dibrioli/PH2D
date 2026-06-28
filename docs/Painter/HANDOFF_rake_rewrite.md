@@ -7,6 +7,80 @@
 
 ---
 
+## ⚠️ ATUALIZAÇÃO 2026-06-26 — RELEIA ANTES DE TUDO (o repo mudou muito desde 06-24)
+
+Este handoff é de **2026-06-24**. Entre lá e **2026-06-26** landou um monte de coisa (Shape/Grain
+dual-texture, value-ramp, Stencil card, **flatten/rotate gizmo**, elliptical ring, sliders canônicos).
+**A reescrita do Rake AINDA NÃO COMEÇOU** — `Dab` continua sem `dir`, **não há** tag `rake-pre-rewrite`,
+e o WIP no working tree é Shape/Grain ramp + Stencil (não toque). Confie no repo, não no §8 antigo —
+corrigido aqui (§1–§7 desta atualização sobrescrevem o que conflitar abaixo):
+
+### 1. 🔑 Correção técnica do §3 (o erro que mais custa): carimbar `dir` cru NÃO conserta
+O §3 vende "o motor já calcula direção limpa em `stroke.rs` e a joga fora". **Meia-verdade.** Aquele
+`dir` (`walk_space`) é a direção de uma sub-corda de **~3px** do spline Hermite achatado — **mesma
+classe de ruído** da corda entre centros de dab. Carimbar esse `dir` no `Dab` = repetir a anarquia.
+**O que conserta é o EMA:** filtrar a tangente do caminho **ao longo do comprimento de arco**, no
+motor. Algoritmo HR-5-safe (transcendental-free — `sqrt` é permitido, `sin/cos/atan2/exp` não):
+```
+// por passo de comprimento `step_len` com tangente unitária `t`:
+alpha   = step_len / (step_len + SMOOTH_LEN)   // racional, length-parametrizado (~½–1× diâmetro)
+heading = normalize(heading + alpha*(t - heading))
+```
+Length-weighted ⇒ o comportamento independe da densidade de dab (spacing/tamanho). É o que
+MyPaint/Krita fazem. **Mantenha esse ponto inegociável no design.**
+
+### 2. 🔴 São DOIS rakes, não um (Shape + Grain)
+O dual-texture (ADR-0100) landou DEPOIS do handoff. Hoje há **dois** sistemas paralelos:
+`rake_dir`/`rake_accum` (Grain) **e** `shape_rake_dir`/`shape_rake_accum` (Shape). Ambos em
+`PaintState` (`paint.rs:105-114`), resetados em `paint_begin` (`paint.rs:284-287`), usados nos **dois**
+loops de `stamp_cache.rs`. **A virada "heading no `Dab`" unifica os dois de graça** — `d.dir` é
+propriedade do caminho, não do slot; alimenta Shape e Grain. Apague os **4** campos (não 2), as **8**
+writebacks e os **4** resets. Seguir o §8 literal deixa o par `shape_rake_*` órfão (causa nº 1: fio órfão).
+
+### 3. `advance_rake` MUDOU DE ARQUIVO → `paint/rake.rs`
+Não está mais em `stamp_cache.rs`. Vive em **`crates/ph2d-tool-painter/src/tool/paint/rake.rs`**
+(99 LOC: `advance_rake` + `RAKE_LERP` + `RAKE_BASELINE_MIN_PX` + `mod rake_tests`). A reescrita
+**deleta o módulo inteiro** + a linha `use super::rake::advance_rake;` (`stamp_cache.rs:7`) + o `mod rake;`.
+
+### 4. `dab_basis` ganhou um 6º parâmetro: `footprint` (flatten/rotate) — PRESERVE
+O gizmo flatten/rotate (`18f5049b`) adicionou `footprint: FootprintDeform` ao `dab_basis`
+(`texture.rs:427`; novo módulo `crates/ph2d-painter-brush/src/footprint.rs`) + `spec.footprint_deform()`.
+Os loops passam `spec.footprint_deform()` por dab. **Isso é ortogonal ao Rake** — só troque a fonte de
+`dab_dir` (arg 2) por `d.dir`; **não mexa** no `footprint` (arg 6) nem no branch Rake de `dab_basis`
+(intacto: `else if s.rake { normalize_or(dab_dir, rotate_by_degrees(s.angle_deg)) }`). `TexDabBasis`
+também ganhou `stencil_u`/`stencil_v` (Stencil) — irrelevante p/ Rake, não toque.
+
+### 5. Casos-limite que o §5/§6 subespecifica (vão morder)
+- **`fill_line_preview` salva/restaura estado** (`stroke.rs:229-247`) p/ re-stampar a linha idêntica.
+  O `heading` é estado de `Stroke` → **tem que entrar na tupla save/restore**, senão deriva entre previews.
+- **`anchored_dab` NÃO passa por `dab_at`** (`stroke.rs:474`) — constrói o `Dab` direto. Heading do
+  Anchored = direção do arraste (`cursor − anchor`); setar explícito ali ou Anchored fica sem rake.
+- **Reversões ~180°:** `dot(heading,t) < 0` faz o lerp passar por comprimento-zero → snap (o
+  `advance_rake` atual já trata; preserve a lógica no EMA). Início de traço: `heading=[0,0]` → fallback Angle.
+
+### 6. LOC — `stroke.rs` está em 599/600 (teto): NÃO cabe in-place
+`stroke.rs`=**599/600**, `texture.rs`=600/600, `brush_settings.rs`=600/600, `paint.rs`=596/600
+(gate `architecture_workspace_file_loc_cap`, conta linha crua). Adicionar `dir` no `Dab` + heading EMA
++ save/restore **estoura o cap**. **Extraia o EMA p/ módulo novo** `crates/ph2d-painter-brush/src/heading.rs`
+(nasce <600, testável isolado). Os outros encolhem ao apagar rake (stamp_cache 524→menos; paint 596→menos;
+brush_settings 600→menos). `texture.rs` **não cresce** (branch Rake intacto).
+
+### 7. Mapa de arquivos CORRIGIDO (substitui o §8)
+| Arquivo | Ação |
+|---|---|
+| **`tool/paint/rake.rs`** (99 LOC) | **DELETE o módulo inteiro** + `use super::rake::advance_rake;` (stamp_cache:7) + `mod rake;` |
+| `tool/paint.rs` | apague **4** campos (`rake_dir`/`accum` + `shape_rake_dir`/`accum`, ~L105-114) + Default (~L214-217) + **4** resets em `paint_begin` (~L284-287) |
+| `tool/paint/stamp_cache.rs` | nos **2** loops: apague shape_rake+rake locals/writebacks; repasse `d.dir` aos dois `dab_basis`; **MANTENHA** `spec.footprint_deform()` |
+| `tool/paint/brush_settings.rs` | apague `dab_tangent` (`:66`; único consumidor era stamp_cache — confirmado por grep) |
+| `painter-brush/src/stroke.rs` + **`heading.rs`(novo)** | `dir:[f32;2]` no `Dab` (`:27`); heading EMA no módulo novo, chamado em `walk_space`; reset em `begin`; save/restore em `fill_line_preview`; heading explícito em `anchored_dab` |
+| `painter-brush/src/texture.rs` | **NÃO TOCAR** branch Rake nem `footprint`; `dab_basis` só recebe `d.dir` como `dab_dir` |
+
+> Baseline de teste do §1 (132/127) está velho — **re-meça** antes de mexer. SHA do Rake atual:
+> `c6f56f56` (v2, ainda vivo, agora soterrado). O resto (§5 pesquisa, §6 provar, §7 guard-rails,
+> §9 aceitação) continua válido.
+
+---
+
 ## §0 — Missão
 
 O **Rake** (“a rotação da textura segue a direção do traço”) já foi remendado **duas vezes** nesta sessão e **continua ruim**. Sua missão tem três atos, nesta ordem:
@@ -78,6 +152,9 @@ let dir = [(to[0] - from[0]) / seg, (to[1] - from[1]) / seg];  // direção do s
 
 ## §4 — ATO 1: arrancar o Rake atual + limpar
 
+> ⚠️ **Superfície abaixo DESATUALIZADA** — `advance_rake` saiu p/ `paint/rake.rs`, são **2** rakes
+> (Shape+Grain) e `dab_basis` ganhou `footprint`. Use o mapa corrigido em **ATUALIZAÇÃO 2026-06-26 §7**.
+
 Remova **cirurgicamente** (sem `git revert`). Superfície a deletar:
 
 **`crates/ph2d-tool-painter/src/tool/paint/stamp_cache.rs`**
@@ -148,6 +225,9 @@ Commits locais por bloco coerente (rip-out; engine heading; tool simplification;
 ---
 
 ## §8 — Mapa de arquivos (preciso)
+
+> ⚠️ **Linhas/arquivos abaixo são de 06-24 e mudaram.** Mapa autoritativo = **ATUALIZAÇÃO 2026-06-26 §7**
+> (`advance_rake`→`paint/rake.rs`; dual-slot Shape+Grain; `dab_basis` com 6º arg `footprint`; LOC novos).
 
 **Engine (`crates/ph2d-painter-brush/src/`):**
 - `stroke.rs` — `Dab` (`:27`, **adicione o heading aqui**); `walk_space` (`:374`, `dir` limpo na `:383`); `walk_smoothed` (`:426`); `dab_at` (`:516`, **carimbe o heading aqui**); `begin`/`extend`/`finish`/`fill_segment`/`tick` (todos os caminhos que emitem dab).

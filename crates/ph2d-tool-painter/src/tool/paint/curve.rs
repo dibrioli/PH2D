@@ -152,15 +152,25 @@ impl PainterTool {
             ed.gizmo = Some(g); // a transform-gizmo handle (box corner / edge / centre / rotate ring)
             false
         } else if ed.points.len() < MAX_CURVE_POINTS {
-            let i = curve_geom::curve_insert_index(&ed.points, pos);
-            ed.points.insert(i, pos);
-            ed.kinds.insert(i, HandleKind::Auto); // a fresh point starts smooth; the menu can change it
-            if ed.handles.len() + 1 == ed.points.len() {
-                ed.handles.insert(i, [pos, pos]); // placeholder; rebuild fills it
+            // Subdivide the curve at the NEAREST point on it (incl. the closing seam for a converted
+            // Circle / Polygon) via a de Casteljau split — the new anchor lands on the curve and the shape
+            // is unchanged. Parallel handles ⇒ update the segment's neighbour handles + splice the new one;
+            // a degenerate (handle-less) draw-phase curve just takes the projected point.
+            let ins = curve_geom::curve_insert(&ed.points, &ed.handles, ed.closed, pos);
+            let parallel = ed.handles.len() == ed.points.len();
+            if parallel {
+                ed.handles[ins.prev_idx][1] = ins.prev_out; // pre-insert indices are still valid
+                ed.handles[ins.next_idx][0] = ins.next_in;
+            }
+            ed.points.insert(ins.index, ins.anchor);
+            // A split point is smooth (its handles are collinear); rebuild keeps it (Aligned is manual).
+            ed.kinds.insert(ins.index, HandleKind::Aligned);
+            if parallel {
+                ed.handles.insert(ins.index, ins.handles);
             }
             curve_handle::rebuild(&ed.points, &ed.kinds, &mut ed.handles, ed.closed);
-            ed.selected = Some(i);
-            ed.grabbed = Some(i);
+            ed.selected = Some(ins.index);
+            ed.grabbed = Some(ins.index);
             true
         } else {
             ed.selected = curve_geom::curve_nearest(&ed.points, pos);

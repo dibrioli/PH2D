@@ -83,22 +83,127 @@ pub(super) fn curve_nearest(pts: &[[f32; 2]], pos: [f32; 2]) -> Option<usize> {
     best
 }
 
-/// Insert position for a new point at `pos`: just after the segment whose body it lies closest to, so a
-/// click on/near the curve subdivides it there (a click in open space drops into the nearest run).
-pub(super) fn curve_insert_index(pts: &[[f32; 2]], pos: [f32; 2]) -> usize {
-    if pts.len() < 2 {
-        return pts.len();
-    }
-    let mut best = 0usize;
-    let mut bestd = f32::INFINITY;
-    for i in 0..pts.len() - 1 {
-        let d = dist2_point_seg(pos, pts[i], pts[i + 1]);
-        if d < bestd {
-            bestd = d;
-            best = i;
+/// A point insertion on the curve: where to splice the new anchor + the **de Casteljau split** of the
+/// chosen cubic, so the new point lands exactly on the curve and the SHAPE is unchanged (the split sums
+/// to the original arc). Applied by [`super::PainterTool::curve_down`].
+pub(super) struct CurveInsert {
+    /// Index to insert the new anchor at (`prev_idx + 1`; the closing-seam insert appends at the end).
+    pub index: usize,
+    /// The new anchor (the split point — exactly on the curve).
+    pub anchor: [f32; 2],
+    /// The new anchor's `[in, out]` handles (collinear — a smooth split point).
+    pub handles: [[f32; 2]; 2],
+    /// The segment's start anchor index; its OUT handle becomes [`Self::prev_out`].
+    pub prev_idx: usize,
+    /// The segment's end anchor index (pre-insert); its IN handle becomes [`Self::next_in`].
+    pub next_idx: usize,
+    /// Replacement OUT handle for `prev_idx` (de Casteljau Q0) — a sharp/collapsed side stays collapsed.
+    pub prev_out: [f32; 2],
+    /// Replacement IN handle for `next_idx` (de Casteljau Q2).
+    pub next_in: [f32; 2],
+}
+
+/// Find where to insert a new anchor for a click at `pos`: the NEAREST point on the actual curve over
+/// EVERY segment — including the closing seam when `closed` (the converted Circle / Polygon bug: the old
+/// straight-control-polygon scan ignored the seam + landed off the bulge) — then split that cubic there.
+pub(super) fn curve_insert(
+    points: &[[f32; 2]],
+    handles: &[[[f32; 2]; 2]],
+    closed: bool,
+    pos: [f32; 2],
+) -> CurveInsert {
+    let n = points.len();
+    let bezier = handles.len() == n && n >= 2;
+    let seg_count = if closed { n } else { n - 1 };
+    let mut best_d = f32::INFINITY;
+    let mut best: Option<(usize, usize, f32, [[f32; 2]; 4])> = None; // (i, j, t, cubic)
+    for i in 0..seg_count {
+        let j = (i + 1) % n;
+        // The cubic for segment i→j: a collapsed handle ⇒ that control point sits on its anchor (a line).
+        let cubic = if bezier {
+            [points[i], handles[i][1], handles[j][0], points[j]]
+        } else {
+            [points[i], points[i], points[j], points[j]]
+        };
+        let (t, d) = nearest_t_on_cubic(&cubic, pos);
+        if d < best_d {
+            best_d = d;
+            best = Some((i, j, t, cubic));
         }
     }
-    best + 1
+    let Some((i, j, t, cubic)) = best else {
+        return CurveInsert {
+            index: n,
+            anchor: pos,
+            handles: [pos, pos],
+            prev_idx: 0,
+            next_idx: 0,
+            prev_out: pos,
+            next_in: pos,
+        };
+    };
+    let [q0, r0, s, r1, q2] = split_cubic(&cubic, t);
+    CurveInsert {
+        index: i + 1,
+        anchor: s,
+        handles: [r0, r1],
+        prev_idx: i,
+        next_idx: j,
+        prev_out: q0,
+        next_in: q2,
+    }
+}
+
+/// Nearest parameter `t ∈ [0, 1]` on the cubic `b` to `pos` + its squared distance: a coarse scan then a
+/// few ternary-search refinements (transcendental-free; the curve is unimodal enough locally).
+fn nearest_t_on_cubic(b: &[[f32; 2]; 4], pos: [f32; 2]) -> (f32, f32) {
+    const STEPS: usize = 24;
+    let mut best_t = 0.0;
+    let mut best_d = f32::INFINITY;
+    for k in 0..=STEPS {
+        let t = k as f32 / STEPS as f32;
+        let d = dist2(cubic_at(b, t), pos);
+        if d < best_d {
+            best_d = d;
+            best_t = t;
+        }
+    }
+    let span = 1.0 / STEPS as f32;
+    let (mut lo, mut hi) = ((best_t - span).max(0.0), (best_t + span).min(1.0));
+    for _ in 0..24 {
+        let m1 = lo + (hi - lo) / 3.0;
+        let m2 = hi - (hi - lo) / 3.0;
+        if dist2(cubic_at(b, m1), pos) < dist2(cubic_at(b, m2), pos) {
+            hi = m2;
+        } else {
+            lo = m1;
+        }
+    }
+    let t = (lo + hi) * 0.5;
+    (t, dist2(cubic_at(b, t), pos))
+}
+
+/// Evaluate the cubic Bézier `b` at `t` (Bernstein form; transcendental-free).
+fn cubic_at(b: &[[f32; 2]; 4], t: f32) -> [f32; 2] {
+    let u = 1.0 - t;
+    let w = [u * u * u, 3.0 * u * u * t, 3.0 * u * t * t, t * t * t];
+    [
+        b[0][0] * w[0] + b[1][0] * w[1] + b[2][0] * w[2] + b[3][0] * w[3],
+        b[0][1] * w[0] + b[1][1] * w[1] + b[2][1] * w[2] + b[3][1] * w[3],
+    ]
+}
+
+/// **de Casteljau** split of cubic `b` at `t` → `[prev_out, new_in, anchor, new_out, next_in]`: the two
+/// sub-cubics `[P0, q0, r0, s]` + `[s, r1, q2, P3]` reproduce `b` exactly, so subdividing never deforms it.
+fn split_cubic(b: &[[f32; 2]; 4], t: f32) -> [[f32; 2]; 5] {
+    let lerp = |a: [f32; 2], c: [f32; 2]| [a[0] + (c[0] - a[0]) * t, a[1] + (c[1] - a[1]) * t];
+    let q0 = lerp(b[0], b[1]);
+    let q1 = lerp(b[1], b[2]);
+    let q2 = lerp(b[2], b[3]);
+    let r0 = lerp(q0, q1);
+    let r1 = lerp(q1, q2);
+    let s = lerp(r0, r1);
+    [q0, r0, s, r1, q2]
 }
 
 /// Offset the curve's **control geometry** perpendicular by `d` px (the Offset slider). Each anchor shifts
@@ -225,23 +330,6 @@ fn vertex_normal(points: &[[f32; 2]], i: usize, closed: bool) -> [f32; 2] {
     }
 }
 
-/// Squared distance from `p` to the segment `a→b` — transcendental-free (projection + clamp).
-fn dist2_point_seg(p: [f32; 2], a: [f32; 2], b: [f32; 2]) -> f32 {
-    let abx = b[0] - a[0];
-    let aby = b[1] - a[1];
-    let apx = p[0] - a[0];
-    let apy = p[1] - a[1];
-    let denom = abx * abx + aby * aby;
-    let t = if denom > 0.0 {
-        ((apx * abx + apy * aby) / denom).clamp(0.0, 1.0)
-    } else {
-        0.0
-    };
-    let cx = a[0] + abx * t;
-    let cy = a[1] + aby * t;
-    dist2(p, [cx, cy])
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -295,5 +383,44 @@ mod tests {
             assert_eq!(oh[i][0], op[i], "in handle stays collapsed at {i}");
             assert_eq!(oh[i][1], op[i], "out handle stays collapsed at {i}");
         }
+    }
+
+    #[test]
+    fn insert_on_a_closed_loop_picks_the_seam_segment_for_a_click_near_it() {
+        // Regression (Enio 2026-06-28): inserting on a CLOSED curve must consider the closing seam
+        // (last → first). A square loop `(0,0)→(20,0)→(20,20)→(0,20)→back`; the seam (segment 3→0) is the
+        // LEFT edge (x=0). A click just outside it must splice AFTER index 3 (`index == 4`, an append) and
+        // land the new anchor ON that edge — the old straight-control scan ignored the seam entirely.
+        let pts = vec![[0.0, 0.0], [20.0, 0.0], [20.0, 20.0], [0.0, 20.0]];
+        let handles: Vec<[[f32; 2]; 2]> = pts.iter().map(|&p| [p, p]).collect(); // sharp corners
+        let ins = curve_insert(&pts, &handles, true, [-1.0, 10.0]); // near the seam (left edge, x=0)
+        assert_eq!(ins.index, 4, "the seam segment 3→0 → append at the end");
+        assert_eq!(ins.prev_idx, 3);
+        assert_eq!(ins.next_idx, 0);
+        assert!(
+            (ins.anchor[0]).abs() < 1e-3 && (ins.anchor[1] - 10.0).abs() < 1.0,
+            "the new anchor sits on the seam edge: {:?}",
+            ins.anchor
+        );
+    }
+
+    #[test]
+    fn insert_splits_an_arc_without_deforming_it() {
+        // A de Casteljau split lands the anchor ON the cubic and the two sub-arcs reproduce it — so the
+        // new anchor lies on the curve at the nearest parameter (a quarter-circle arc; click near its mid).
+        let r = 20.0;
+        let k = 0.55228 * r;
+        // Quarter arc from (r,0) to (0,r): out of P0 = (r, k), in of P1 = (k, r).
+        let pts = vec![[r, 0.0], [0.0, r]];
+        let handles = vec![[[r, 0.0], [r, k]], [[k, r], [0.0, r]]];
+        let mid = [r * 0.7071, r * 0.7071]; // ~45° point on the unit circle × r
+        let ins = curve_insert(&pts, &handles, false, mid);
+        assert_eq!(ins.index, 1);
+        // The split anchor is within ~1px of the true arc midpoint (radius preserved).
+        let radius = (ins.anchor[0] * ins.anchor[0] + ins.anchor[1] * ins.anchor[1]).sqrt();
+        assert!(
+            (radius - r).abs() < 0.5,
+            "split anchor stays on the arc: r={radius}"
+        );
     }
 }

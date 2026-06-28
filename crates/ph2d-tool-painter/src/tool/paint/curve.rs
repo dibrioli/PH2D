@@ -17,9 +17,9 @@ use super::curve_offset;
 use ph2d_painter_brush::{Stroke, lazy_mouse_step};
 
 /// Most control points a Curve session may hold — bounds the per-frame re-fill + hit-test.
-const MAX_CURVE_POINTS: usize = 64;
+pub(super) const MAX_CURVE_POINTS: usize = 64;
 /// Free Hand: cubic-fit error tolerance (px) — max deviation of the fitted curve from the captured path.
-const FREEHAND_FIT_ERROR: f32 = 4.0;
+pub(super) const FREEHAND_FIT_ERROR: f32 = 4.0;
 /// Free Hand: minimum squared spacing (px²) between captured path points — keeps the raw capture bounded.
 const MIN_CAPTURE_DIST_SQ: f32 = 4.0;
 /// Free Hand: hard cap on raw captured points during the drag (before the fit).
@@ -54,11 +54,6 @@ pub(super) struct CurveEditor {
     seed: u64,
     /// `true` once the user inserted a point — gates Simplify for Curve / converted shapes (Free Hand: always).
     pub(super) added_point: bool,
-    /// Per-session **edit** undo / redo stacks — point edits + Offset; see [`super::curve_undo`].
-    pub(super) edit_undo: Vec<super::curve_undo::EditSnapshot>,
-    pub(super) edit_redo: Vec<super::curve_undo::EditSnapshot>,
-    /// `true` mid Offset-slider drag, so a contiguous run of slider values coalesces to one undo step.
-    pub(super) offset_dragging: bool,
 }
 
 /// A read-only snapshot of the Curve editor for the shell's overlay (control dots + auto-smoothed spine).
@@ -92,12 +87,11 @@ impl PainterTool {
     /// Pointer-down: start a session when idle; else grab the point under the cursor, or insert one on a miss.
     fn curve_down(&mut self, pos: [f32; 2]) -> bool {
         let tol = self.paint.shape_grab_tol_px;
+        self.flush_shape_txn(); // close any coalesced Offset drag as its own undo entry first
         self.bake_curve_offset(); // an edit gesture locks in any live Offset (so hit-test = displayed dots)
-        let off = self.paint.shape_offset_norm; // snapshot the (post-bake) Offset with the gesture for undo
-        let Some(ed) = self.paint.curve.as_mut() else {
-            // No session → snapshot for undo + begin drawing the initial straight line.
-            let before = self.snapshot_model();
-            self.paint.stroke_undo = Some(before);
+        if self.paint.curve.is_none() {
+            // No session → open the creation txn (`before` = no shape) + begin drawing the initial line.
+            self.paint.stroke_undo = Some(self.snapshot_model());
             self.paint.drag_preview = None;
             self.paint.shape_offset_norm = 0.5; // a fresh curve starts with no Offset (not the last one's)
             let seed = self.paint.seed;
@@ -117,16 +111,14 @@ impl PainterTool {
                 anchor: pos,
                 seed,
                 added_point: false,
-                edit_undo: Vec::new(),
-                edit_redo: Vec::new(),
-                offset_dragging: false,
             });
             return true;
-        };
-        if !ed.editing {
+        }
+        if !self.paint.curve.as_ref().is_some_and(|ed| ed.editing) {
             return true; // mid initial-line drag — ignore extra Downs
         }
-        ed.begin_edit(off); // tentatively snapshot for undo; curve_up discards it if nothing changed
+        self.begin_shape_txn(); // bracket this edit gesture; curve_up drops it if nothing changed
+        let ed = self.paint.curve.as_mut().expect("curve present");
         let tangent = ed.selected.and_then(|s| {
             curve_tangent::tangent_hit(&ed.points, &ed.handles, s, pos, tol, ed.closed)
         });
@@ -252,7 +244,6 @@ impl PainterTool {
 
     /// Pointer-up: release a grab (edit), or finalize the initial line into a 3-point editable curve.
     fn curve_up(&mut self, pos: [f32; 2]) -> bool {
-        let off = self.paint.shape_offset_norm;
         let Some(ed) = self.paint.curve.as_mut() else {
             return false;
         };
@@ -260,7 +251,7 @@ impl PainterTool {
             ed.grabbed = None;
             ed.grabbed_handle = None;
             ed.gizmo = None;
-            ed.commit_edit(off); // keep the gesture's undo snapshot iff it changed the curve
+            self.commit_shape_txn(); // record this edit gesture iff it changed the curve / Offset
             return true;
         }
         if ed.freehand {
@@ -300,25 +291,24 @@ impl PainterTool {
         ed.grabbed = None;
         ed.editing = true;
         self.curve_refill();
+        self.commit_shape_txn(); // the initial line is the curve's CREATION → one undo entry
         true
     }
 
     /// Delete the selected control point (Delete key). Keeps `≥ 2` points; `true` when one was removed.
     pub fn curve_delete_selected(&mut self) -> bool {
-        let off = self.paint.shape_offset_norm;
-        let Some(ed) = self.paint.curve.as_mut() else {
-            return false;
-        };
-        if !ed.editing {
-            return false;
-        }
-        let Some(sel) = ed.selected else {
-            return false;
-        };
-        if ed.points.len() <= 2 || sel >= ed.points.len() {
+        let deletable = self.paint.curve.as_ref().is_some_and(|ed| {
+            ed.editing
+                && ed
+                    .selected
+                    .is_some_and(|s| ed.points.len() > 2 && s < ed.points.len())
+        });
+        if !deletable {
             return false;
         }
-        ed.push_edit(off); // a delete is one undo step
+        self.begin_shape_txn(); // a delete is one undo step
+        let ed = self.paint.curve.as_mut().expect("curve present");
+        let sel = ed.selected.expect("checked deletable");
         ed.points.remove(sel);
         if sel < ed.handles.len() {
             ed.handles.remove(sel); // keep the parallel handles + kinds invariants
@@ -330,35 +320,15 @@ impl PainterTool {
         ed.selected = Some(sel.min(ed.points.len() - 1));
         ed.grabbed = None;
         self.curve_refill();
-        true
-    }
-
-    /// **Simplify** the editable curve (the Simplify button): re-fit it to a clean minimal control polygon
-    /// via the Free Hand fit, then re-fill. `true` when a curve editor was open and the fit applied.
-    pub fn curve_simplify(&mut self) -> bool {
-        let Some(ed) = self.paint.curve.as_ref().filter(|e| e.editing) else {
-            return false;
-        };
-        let Some((p, h)) = curve_geom::simplify_curve(
-            &ed.points,
-            &ed.handles,
-            ed.closed,
-            FREEHAND_FIT_ERROR,
-            MAX_CURVE_POINTS,
-        ) else {
-            return false;
-        };
-        let ed = self.paint.curve.as_mut().expect("curve present");
-        ed.kinds = vec![HandleKind::Aligned; p.len()];
-        (ed.points, ed.handles, ed.selected) = (p, h, None);
-        curve_handle::rebuild(&ed.points, &ed.kinds, &mut ed.handles, ed.closed);
-        self.curve_refill();
+        self.commit_shape_txn();
         true
     }
 
     /// Convert an open **Circle / Polygon** into an editable Bézier **Curve** (the panel's **Edit** / E
     /// button): take its faithful anchors, drop the shape editor, switch the method to Curve. `false` if none.
     pub(crate) fn convert_open_shape_to_curve(&mut self) -> bool {
+        self.flush_shape_txn(); // close any coalesced Offset drag first
+        let before = self.capture_shape_model(); // the open Circle / Polygon (for undo of the conversion)
         // Bake any live Offset into the shape's radii FIRST (resets the slider) so the conversion reads the
         // displayed shape, not a doubly-offset one. At most one editor is open; each bake no-ops otherwise.
         self.bake_circle_offset();
@@ -372,7 +342,7 @@ impl PainterTool {
                     .map(|(p, h)| (p, h, HandleKind::Free))
             })
         else {
-            return false;
+            return false; // nothing was editing → no conversion, nothing to record
         };
         let anchor = points[0];
         let kinds = vec![kind; points.len()];
@@ -396,11 +366,10 @@ impl PainterTool {
             anchor,
             seed,
             added_point: false,
-            edit_undo: Vec::new(),
-            edit_redo: Vec::new(),
-            offset_dragging: false,
         });
         self.curve_refill();
+        let after = self.capture_shape_model(); // the new Curve overlay
+        self.undo.record_structural(before, after); // Edit (Circle/Polygon → Curve) is one undo step
         true
     }
 
@@ -486,20 +455,20 @@ impl PainterTool {
         let Some(kind) = HandleKind::from_wire(wire) else {
             return false;
         };
-        let off = self.paint.shape_offset_norm;
-        let Some(ed) = self.paint.curve.as_mut() else {
-            return false;
-        };
-        if !ed.editing {
+        let ok = self
+            .paint
+            .curve
+            .as_ref()
+            .is_some_and(|ed| ed.editing && ed.selected.is_some_and(|s| s < ed.points.len()));
+        if !ok {
             return false;
         }
-        let Some(sel) = ed.selected.filter(|&s| s < ed.points.len()) else {
-            return false;
-        };
+        self.begin_shape_txn(); // a handle-kind change is one undo step
+        let ed = self.paint.curve.as_mut().expect("curve present");
+        let sel = ed.selected.expect("checked above");
         if ed.kinds.len() != ed.points.len() {
             ed.kinds = vec![HandleKind::Auto; ed.points.len()];
         }
-        ed.push_edit(off); // a handle-kind change is one undo step
         ed.kinds[sel] = kind;
         // Switching a sharp (collapsed) point to a manual kind: seed a visible tangent to drag. Closed-aware,
         // so a converted Polygon / Circle seam anchor gets BOTH arms (not the one-armed open-curve seed).
@@ -514,6 +483,7 @@ impl PainterTool {
         }
         curve_handle::rebuild(&ed.points, &ed.kinds, &mut ed.handles, ed.closed);
         self.curve_refill();
+        self.commit_shape_txn();
         true
     }
 
@@ -581,5 +551,49 @@ fn trim_offset_spine(spine: &[[f32; 2]], closed: bool) -> Vec<[f32; 2]> {
         curve_offset::trim_self_intersections_closed(spine)
     } else {
         curve_offset::trim_self_intersections(spine)
+    }
+}
+
+impl CurveEditor {
+    /// Capture the editable state for the unified undo timeline (handle kinds → wire `u8`); the transient
+    /// grab / gizmo fields are not stored (a gesture is always closed at snapshot time).
+    pub(super) fn to_state(&self) -> crate::undo::CurveState {
+        crate::undo::CurveState {
+            points: self.points.clone(),
+            handles: self.handles.clone(),
+            kinds: self.kinds.iter().map(|k| k.wire()).collect(),
+            selected: self.selected,
+            added_point: self.added_point,
+            closed: self.closed,
+            editing: self.editing,
+            freehand: self.freehand,
+            seed: self.seed,
+            anchor: self.anchor,
+            stabilized: self.stabilized,
+        }
+    }
+
+    /// Rebuild the editor from a restored snapshot — the inverse of [`Self::to_state`]; grabs/gizmo idle.
+    pub(super) fn from_state(s: crate::undo::CurveState) -> Self {
+        CurveEditor {
+            points: s.points,
+            handles: s.handles,
+            kinds: s
+                .kinds
+                .iter()
+                .map(|&w| HandleKind::from_wire(w).unwrap_or(HandleKind::Free))
+                .collect(),
+            selected: s.selected,
+            grabbed: None,
+            grabbed_handle: None,
+            gizmo: None,
+            editing: s.editing,
+            closed: s.closed,
+            freehand: s.freehand,
+            stabilized: s.stabilized,
+            anchor: s.anchor,
+            seed: s.seed,
+            added_point: s.added_point,
+        }
     }
 }

@@ -75,11 +75,11 @@ impl PainterTool {
     /// handle under the cursor.
     fn circle_down(&mut self, pos: [f32; 2]) -> bool {
         let tol = self.paint.shape_grab_tol_px;
+        self.flush_shape_txn(); // close any coalesced Offset drag as its own undo entry first
         self.bake_circle_offset(); // an edit gesture locks in any live Offset (hit-test = displayed handles)
-        let Some(ed) = self.paint.circle.as_mut() else {
-            // No session → snapshot for undo + begin the centre-out drag (centre = press point).
-            let before = self.snapshot_model();
-            self.paint.stroke_undo = Some(before);
+        if self.paint.circle.is_none() {
+            // No session → open the creation txn (`before` = no shape) + begin the centre-out radius drag.
+            self.paint.stroke_undo = Some(self.snapshot_model());
             self.paint.drag_preview = None;
             let seed = self.paint.seed;
             self.paint.seed = self.paint.seed.wrapping_add(1);
@@ -93,10 +93,12 @@ impl PainterTool {
                 seed,
             });
             return true;
-        };
-        if !ed.editing {
+        }
+        if !self.paint.circle.as_ref().is_some_and(|ed| ed.editing) {
             return true; // mid radius-drag — ignore extra Downs
         }
+        self.begin_shape_txn(); // bracket this reshape gesture; circle_up drops it if nothing changed
+        let ed = self.paint.circle.as_mut().expect("circle present");
         let handles = circle_handles(ed.center, ed.u, ed.rx, ed.ry, tol * ROTATE_GAP_FACTOR);
         ed.grabbed = circle_hit(&handles, pos, tol);
         true
@@ -130,6 +132,7 @@ impl PainterTool {
         };
         if ed.editing {
             ed.grabbed = None;
+            self.commit_shape_txn(); // record this reshape gesture iff it changed the ellipse
             return true;
         }
         let r = dist(ed.center, pos).max(MIN_AXIS_PX);
@@ -137,40 +140,40 @@ impl PainterTool {
         ed.ry = r;
         ed.editing = true;
         self.circle_refill();
+        self.commit_shape_txn(); // the radius drag is the ellipse's CREATION → one undo entry
         true
     }
 
     /// Commit the ellipse (Enter): keep the painted outline + push one undo entry. Returns `true`
     /// when a committable session was open (the shell consumes Enter only then).
     pub fn circle_commit(&mut self) -> bool {
-        let Some(ed) = self.paint.circle.as_ref() else {
-            return false;
-        };
-        if !ed.editing {
-            return false; // mid radius-drag — nothing to bake yet
+        if !self.paint.circle.as_ref().is_some_and(|ed| ed.editing) {
+            return false; // none open / mid radius-drag — nothing to bake yet
         }
+        self.flush_shape_txn(); // close any coalesced Offset drag as its own entry first
+        let before = self.capture_shape_model(); // the open ellipse (for undo of the Apply)
         self.paint.circle = None;
-        self.commit_drag_preview(); // drop the restore record → the painted ellipse stays
-        if let Some(before) = self.paint.stroke_undo.take() {
-            self.commit_structural_edit(before);
-        }
+        self.commit_drag_preview(); // drop the restore record → the painted ellipse stays baked
         self.paint.shape_offset_norm = 0.5; // the offset baked into the painted dabs → reset the slider
+        let after = self.capture_shape_model(); // shape gone, pixels baked
+        self.undo.record_structural(before, after); // Apply (bake + close) is one undo entry
         true
     }
 
     /// Commit the ellipse (**Apply**) but KEEP the editor + its handles open for re-apply/reshape (the
-    /// "Apply & Keep" button); re-baselines the undo + restore onto the now-baked canvas. See
+    /// "Apply & Keep" button). The bake is ONE undo entry whose `after` keeps the editor open over the baked
+    /// pixels — so it interleaves with the surrounding shape edits on the unified timeline. See
     /// [`PainterTool::curve_commit_keep`].
     pub fn circle_commit_keep(&mut self) -> bool {
         if !self.paint.circle.as_ref().is_some_and(|ed| ed.editing) {
             return false;
         }
+        self.flush_shape_txn();
+        let before = self.capture_shape_model(); // ellipse + live preview, pre-bake
         self.bake_circle_offset(); // lock the offset into the kept radii, reset the slider (offset now 0)
-        self.commit_drag_preview();
-        if let Some(before) = self.paint.stroke_undo.take() {
-            self.commit_structural_edit(before);
-        }
-        self.paint.stroke_undo = Some(self.snapshot_model());
+        self.commit_drag_preview(); // the painted ellipse becomes permanent (no live preview left)
+        let after = self.capture_shape_model(); // ellipse kept open, pixels baked, no preview
+        self.undo.record_structural(before, after);
         self.paint.drag_preview = None;
         true
     }
@@ -287,6 +290,33 @@ impl PainterTool {
         stroke.fill_ellipse_preview(center, u, erx, ery, &mut dabs);
         self.stamp_drag_preview(&dabs);
         self.paint.dabs = dabs;
+    }
+}
+
+impl CircleEditor {
+    /// Capture the ellipse for the unified undo timeline; the transient `grabbed` is not stored.
+    pub(super) fn to_state(&self) -> crate::undo::CircleState {
+        crate::undo::CircleState {
+            center: self.center,
+            u: self.u,
+            rx: self.rx,
+            ry: self.ry,
+            editing: self.editing,
+            seed: self.seed,
+        }
+    }
+
+    /// Rebuild the editor from a restored snapshot (grab idle) — the inverse of [`Self::to_state`].
+    pub(super) fn from_state(s: crate::undo::CircleState) -> Self {
+        CircleEditor {
+            center: s.center,
+            u: s.u,
+            rx: s.rx,
+            ry: s.ry,
+            grabbed: None,
+            editing: s.editing,
+            seed: s.seed,
+        }
     }
 }
 

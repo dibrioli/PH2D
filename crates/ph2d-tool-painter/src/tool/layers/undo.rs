@@ -17,6 +17,11 @@ impl PainterTool {
             images: self.images.clone(),
             canvas_rgba: Arc::clone(&self.canvas_rgba),
             selection: self.selection.clone(),
+            // Layer ops carry no open shape / live preview; the shape paths override these via
+            // `capture_shape_model` (see `tool::paint::shape_snapshot`).
+            shape: None,
+            offset_norm: self.shape_offset_norm(),
+            preview_patch: None,
         }
     }
 
@@ -29,6 +34,11 @@ impl PainterTool {
         self.images = m.images;
         self.canvas_rgba = m.canvas_rgba;
         self.selection = m.selection;
+        self.set_shape_offset_norm(m.offset_norm);
+        // Reinstate (or clear) the open shape overlay: peel the snapshot canvas back to its pristine
+        // baseline (strip the preview patch) and re-stamp the editor's geometry, so dots + pixels stay in
+        // sync. A `None` shape just clears the editors. See `tool::paint::shape_snapshot`.
+        self.restore_shape_overlay(m.shape, m.preview_patch);
         // Every layer's pixels may have changed identity → bump all content
         // versions so the GPU compositor re-uploads each slice, and drop the CPU
         // composite cache + bump the panel `layers_revision`.

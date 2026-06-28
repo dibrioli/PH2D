@@ -44,13 +44,12 @@ impl PainterTool {
     /// Returns `true` if an edit was undone. Driven by the shell's undo gesture /
     /// shortcut.
     pub fn undo_last(&mut self) -> bool {
-        // While a shape is being authored, undo is CAPTURED by the session: a curve walks its per-session
-        // edit history (point moves / inserts / deletes / handle-kind changes + the Offset slider) step by
-        // step — it never Applies the shape (Enio 2026-06-27) nor touches the layer history (which would
-        // orphan the on-screen handles). Circle / Polygon have no editable history → undo no-ops there.
-        if self.is_editing_shape() {
-            return self.curve_undo_edit();
-        }
+        // ONE unified timeline: shape authoring (create / point-edit / reshape / Offset) and pixel bakes
+        // (Apply / Apply & Keep) are all `ModelSnapshot` entries, so undo walks them in reverse chronological
+        // order regardless of kind. Each entry carries the open-shape editor state, so a restore reinstates
+        // the overlay together with the pixels — they can never desync (Enio 2026-06-28). First close any
+        // coalesced Offset drag still in flight so it undoes as its own step.
+        self.flush_shape_txn();
         if let Some(model) = self.undo.undo() {
             self.restore_model(*model);
             true
@@ -59,14 +58,9 @@ impl PainterTool {
         }
     }
 
-    /// Redo the most recently undone structural layer edit. Returns `true` if an
-    /// edit was redone.
+    /// Redo the most recently undone edit on the unified timeline. Returns `true` if an edit was redone.
     pub fn redo_last(&mut self) -> bool {
-        // Mirror of [`Self::undo_last`]: while a shape is authored, redo replays a curve edit (or no-ops),
-        // never Applying the shape or touching history.
-        if self.is_editing_shape() {
-            return self.curve_redo_edit();
-        }
+        self.flush_shape_txn();
         if let Some(model) = self.undo.redo() {
             self.restore_model(*model);
             true
@@ -75,16 +69,16 @@ impl PainterTool {
         }
     }
 
-    /// `true` if there is at least one structural edit to undo.
+    /// `true` if there is at least one edit to undo (an open in-flight shape transaction counts).
     #[must_use]
     pub fn can_undo(&self) -> bool {
-        self.can_curve_undo() || self.undo.can_undo()
+        self.has_pending_shape_txn() || self.undo.can_undo()
     }
 
-    /// `true` if there is at least one undone structural edit to redo.
+    /// `true` if there is at least one undone edit to redo.
     #[must_use]
     pub fn can_redo(&self) -> bool {
-        self.can_curve_redo() || self.undo.can_redo()
+        self.undo.can_redo()
     }
 
     // ── Apply / preview drive ───────────────────────────────────────────

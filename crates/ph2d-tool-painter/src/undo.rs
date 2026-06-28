@@ -39,6 +39,101 @@ pub struct ModelSnapshot {
     pub images: BTreeMap<RtLayerId, LayerImage>,
     pub canvas_rgba: Arc<Vec<u8>>,
     pub selection: BTreeSet<RtLayerId>,
+    /// The open on-canvas shape editor (Curve / Circle / Polygon), captured so a structural undo/redo
+    /// restores the live overlay TOGETHER with the pixels — the two can never desync. `None` = no shape
+    /// open (a layer op, or a committed/cancelled shape).
+    pub shape: Option<Box<ShapeEditState>>,
+    /// The **Offset** slider track at capture time, restored alongside the shape so undoing an Offset drag
+    /// reinstates its value. Ignored when `shape` is `None`.
+    pub offset_norm: f32,
+    /// The in-progress drag-preview's saved pixels, if a shape preview was live — so a restore can peel the
+    /// preview back to the pristine baseline before re-stamping the editor's geometry (no double paint).
+    pub preview_patch: Option<PreviewPatch>,
+}
+
+/// Plain-data snapshot of an open on-canvas shape editor, stored in a [`ModelSnapshot`] so a structural
+/// undo/redo reinstates the editable overlay with the pixels. Geometry only — the transient grab/gizmo
+/// fields reset to idle on restore. Curve handle kinds are kept as their wire `u8` so this module stays
+/// free of the editor types.
+#[derive(Clone, Debug, PartialEq)]
+pub enum ShapeEditState {
+    Curve(CurveState),
+    Circle(CircleState),
+    Polygon(PolygonState),
+}
+
+/// Editable Curve / Free Hand state (see `tool::paint::curve::CurveEditor`).
+#[derive(Clone, Debug, PartialEq)]
+pub struct CurveState {
+    pub points: Vec<[f32; 2]>,
+    pub handles: Vec<[[f32; 2]; 2]>,
+    pub kinds: Vec<u8>,
+    pub selected: Option<usize>,
+    pub added_point: bool,
+    pub closed: bool,
+    pub editing: bool,
+    pub freehand: bool,
+    pub seed: u64,
+    pub anchor: [f32; 2],
+    pub stabilized: [f32; 2],
+}
+
+/// Editable Circle (ellipse) state (see `tool::paint::circle::CircleEditor`).
+#[derive(Clone, Debug, PartialEq)]
+pub struct CircleState {
+    pub center: [f32; 2],
+    pub u: [f32; 2],
+    pub rx: f32,
+    pub ry: f32,
+    pub editing: bool,
+    pub seed: u64,
+}
+
+/// Editable Polygon state (see `tool::paint::polygon::PolygonEditor`).
+#[derive(Clone, Debug, PartialEq)]
+pub struct PolygonState {
+    pub center: [f32; 2],
+    pub u: [f32; 2],
+    pub rx: f32,
+    pub ry: f32,
+    pub sides: u32,
+    pub editing: bool,
+    pub seed: u64,
+}
+
+impl ShapeEditState {
+    /// Geometry equality IGNORING the curve's `selected` index — selecting a point is not an undoable
+    /// change (the no-op check in `commit_shape_txn` drops it), though selection IS restored on undo.
+    #[must_use]
+    pub fn geom_eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Self::Curve(a), Self::Curve(b)) => {
+                a.points == b.points
+                    && a.handles == b.handles
+                    && a.kinds == b.kinds
+                    && a.added_point == b.added_point
+                    && a.closed == b.closed
+                    && a.editing == b.editing
+                    && a.freehand == b.freehand
+                    && a.seed == b.seed
+                    && a.anchor == b.anchor
+                    && a.stabilized == b.stabilized
+            }
+            _ => self == other,
+        }
+    }
+}
+
+/// The in-progress drag-preview's saved pixels (a small bbox), carried in a [`ModelSnapshot`] so a restore
+/// can peel the live preview back to the pristine baseline before re-stamping it (no double paint). `None`
+/// for a snapshot taken with no live preview (layer ops, a committed shape).
+#[derive(Clone, Debug, PartialEq)]
+pub struct PreviewPatch {
+    pub x: u32,
+    pub y: u32,
+    pub w: u32,
+    pub h: u32,
+    pub pixels: Vec<u8>,
 }
 
 /// Default cap on retained undo entries (ring depth). The caller can raise or
@@ -173,6 +268,9 @@ mod tests {
             images: BTreeMap::new(),
             canvas_rgba: Arc::new(vec![active_px; 16]),
             selection: BTreeSet::new(),
+            shape: None,
+            offset_norm: 0.5,
+            preview_patch: None,
         }
     }
 

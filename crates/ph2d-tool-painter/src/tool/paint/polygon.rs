@@ -80,10 +80,11 @@ impl PainterTool {
     /// Pointer-down: start a session (begin the centre-out drag) when idle; otherwise grab a handle.
     fn polygon_down(&mut self, pos: [f32; 2]) -> bool {
         let tol = self.paint.shape_grab_tol_px;
+        self.flush_shape_txn(); // close any coalesced Offset drag as its own undo entry first
         self.bake_polygon_offset(); // an edit gesture locks in any live Offset (hit-test = displayed handles)
-        let Some(ed) = self.paint.polygon.as_mut() else {
-            let before = self.snapshot_model();
-            self.paint.stroke_undo = Some(before);
+        if self.paint.polygon.is_none() {
+            // No session → open the creation txn (`before` = no shape) + begin the centre-out radius drag.
+            self.paint.stroke_undo = Some(self.snapshot_model());
             self.paint.drag_preview = None;
             let seed = self.paint.seed;
             self.paint.seed = self.paint.seed.wrapping_add(1);
@@ -98,10 +99,12 @@ impl PainterTool {
                 seed,
             });
             return true;
-        };
-        if !ed.editing {
+        }
+        if !self.paint.polygon.as_ref().is_some_and(|ed| ed.editing) {
             return true;
         }
+        self.begin_shape_txn(); // bracket this reshape gesture; polygon_up drops it if nothing changed
+        let ed = self.paint.polygon.as_mut().expect("polygon present");
         let handles = polygon_handles(ed.center, ed.u, ed.rx, ed.ry, ed.sides, tol);
         ed.grabbed = polygon_hit(&handles, pos, tol);
         true
@@ -135,6 +138,7 @@ impl PainterTool {
         };
         if ed.editing {
             ed.grabbed = None;
+            self.commit_shape_txn(); // record this reshape gesture iff it changed the polygon
             return true;
         }
         let r = dist(ed.center, pos).max(MIN_AXIS_PX);
@@ -142,40 +146,39 @@ impl PainterTool {
         ed.ry = r;
         ed.editing = true;
         self.polygon_refill();
+        self.commit_shape_txn(); // the radius drag is the polygon's CREATION → one undo entry
         true
     }
 
     /// Commit the polygon (Enter): keep the painted outline + push one undo entry. Returns `true`
     /// when a committable session was open.
     pub fn polygon_commit(&mut self) -> bool {
-        let Some(ed) = self.paint.polygon.as_ref() else {
-            return false;
-        };
-        if !ed.editing {
+        if !self.paint.polygon.as_ref().is_some_and(|ed| ed.editing) {
             return false;
         }
+        self.flush_shape_txn(); // close any coalesced Offset drag as its own entry first
+        let before = self.capture_shape_model(); // the open polygon (for undo of the Apply)
         self.paint.polygon = None;
-        self.commit_drag_preview();
-        if let Some(before) = self.paint.stroke_undo.take() {
-            self.commit_structural_edit(before);
-        }
+        self.commit_drag_preview(); // drop the restore record → the painted polygon stays baked
         self.paint.shape_offset_norm = 0.5; // the offset baked into the painted dabs → reset the slider
+        let after = self.capture_shape_model();
+        self.undo.record_structural(before, after); // Apply (bake + close) is one undo entry
         true
     }
 
     /// Commit the polygon (**Apply**) but KEEP the editor + handles open for re-apply/reshape (the
-    /// "Apply & Keep" button); re-baselines the undo + restore onto the now-baked canvas. See
-    /// [`PainterTool::curve_commit_keep`].
+    /// "Apply & Keep" button). The bake is ONE undo entry whose `after` keeps the editor open over the baked
+    /// pixels, interleaving with the surrounding shape edits. See [`PainterTool::curve_commit_keep`].
     pub fn polygon_commit_keep(&mut self) -> bool {
         if !self.paint.polygon.as_ref().is_some_and(|ed| ed.editing) {
             return false;
         }
+        self.flush_shape_txn();
+        let before = self.capture_shape_model(); // polygon + live preview, pre-bake
         self.bake_polygon_offset(); // lock the offset into the kept radii, reset the slider (offset now 0)
-        self.commit_drag_preview();
-        if let Some(before) = self.paint.stroke_undo.take() {
-            self.commit_structural_edit(before);
-        }
-        self.paint.stroke_undo = Some(self.snapshot_model());
+        self.commit_drag_preview(); // the painted polygon becomes permanent (no live preview left)
+        let after = self.capture_shape_model(); // polygon kept open, pixels baked, no preview
+        self.undo.record_structural(before, after);
         self.paint.drag_preview = None;
         true
     }
@@ -274,6 +277,35 @@ impl PainterTool {
         stroke.fill_polygon_preview(center, u, erx, ery, sides, &mut dabs);
         self.stamp_drag_preview(&dabs);
         self.paint.dabs = dabs;
+    }
+}
+
+impl PolygonEditor {
+    /// Capture the polygon for the unified undo timeline; the transient `grabbed` is not stored.
+    pub(super) fn to_state(&self) -> crate::undo::PolygonState {
+        crate::undo::PolygonState {
+            center: self.center,
+            u: self.u,
+            rx: self.rx,
+            ry: self.ry,
+            sides: self.sides,
+            editing: self.editing,
+            seed: self.seed,
+        }
+    }
+
+    /// Rebuild the editor from a restored snapshot (grab idle) — the inverse of [`Self::to_state`].
+    pub(super) fn from_state(s: crate::undo::PolygonState) -> Self {
+        PolygonEditor {
+            center: s.center,
+            u: s.u,
+            rx: s.rx,
+            ry: s.ry,
+            sides: s.sides,
+            grabbed: None,
+            editing: s.editing,
+            seed: s.seed,
+        }
     }
 }
 

@@ -2392,13 +2392,20 @@ fn curve_add_delete_and_commit() {
     assert!(t.curve_overlay().is_none(), "committed → no session");
     let painted = px(&t, 64, 8, 32);
     assert_eq!(painted, [0, 0, 0, 255], "committed dabs survive");
-    // One undo step: undo restores the pristine canvas.
+    // Unified timeline: the FIRST undo un-bakes (reopens the shape over the pre-bake pixels); undoing every
+    // step then walks back through the edits + creation to the pristine canvas.
     assert!(t.undo_last());
+    assert!(
+        t.curve_overlay().is_some(),
+        "undo of Apply reopens the curve (un-bake)"
+    );
+    while t.undo_last() {}
     assert_eq!(
         px(&t, 64, 8, 32),
         [255, 255, 255, 255],
-        "the whole curve undoes as one step"
+        "undoing every step reaches the pristine canvas"
     );
+    assert!(t.curve_overlay().is_none(), "fully undone → no session");
 }
 
 /// Switching the stroke method away from Curve mid-session discards it (reverts the preview).
@@ -2524,6 +2531,46 @@ fn draw_circle(t: &mut PainterTool, cx: f32, cy: f32, r: f32) {
 }
 
 #[test]
+fn interleaved_shape_edits_and_bakes_undo_in_reverse_order() {
+    // The headline of the unified timeline (Enio 2026-06-28): create → edit → Apply&Keep → edit → Apply&Keep,
+    // then undo walks back bake → edit → bake → edit → creation, ONE sequence regardless of step kind. Track
+    // the ellipse's rx (right-handle distance from centre) — deterministic, no pixel flakiness.
+    let mut t = circle_tool();
+    let rx = |t: &PainterTool| -> f32 {
+        let o = t.circle_overlay().expect("ring open");
+        (o.handles[0][0] - o.handles[5][0]).abs()
+    };
+    draw_circle(&mut t, 64.0, 64.0, 20.0); // entry 1: creation, rx = 20
+    assert!((rx(&t) - 20.0).abs() < 0.5, "created at rx=20");
+    // Edit A: drag the right axis handle 84 → 94 (rx 20 → 30).
+    t.on_canvas_pointer(cp([84.0, 64.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([94.0, 64.0], PointerPhase::Move));
+    t.on_canvas_pointer(cp([94.0, 64.0], PointerPhase::Up)); // entry 2: edit rx 20 → 30
+    assert!((rx(&t) - 30.0).abs() < 0.5, "edit A grew rx to 30");
+    assert!(t.circle_commit_keep()); // entry 3: bake (editor kept open)
+    // Edit B: drag the right handle 94 → 104 (rx 30 → 40).
+    t.on_canvas_pointer(cp([94.0, 64.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([104.0, 64.0], PointerPhase::Move));
+    t.on_canvas_pointer(cp([104.0, 64.0], PointerPhase::Up)); // entry 4: edit rx 30 → 40
+    assert!((rx(&t) - 40.0).abs() < 0.5, "edit B grew rx to 40");
+    assert!(t.circle_commit_keep()); // entry 5: bake
+
+    assert!(t.undo_last()); // un-bake 5 — editor stays at rx=40
+    assert!((rx(&t) - 40.0).abs() < 0.5, "un-bake keeps rx=40");
+    assert!(t.undo_last()); // undo edit B
+    assert!((rx(&t) - 30.0).abs() < 0.5, "edit B undone → rx=30");
+    assert!(t.undo_last()); // un-bake 3
+    assert!((rx(&t) - 30.0).abs() < 0.5, "un-bake keeps rx=30");
+    assert!(t.undo_last()); // undo edit A
+    assert!((rx(&t) - 20.0).abs() < 0.5, "edit A undone → rx=20");
+    assert!(t.undo_last()); // undo creation
+    assert!(
+        t.circle_overlay().is_none(),
+        "creation undone last → no ring"
+    );
+}
+
+#[test]
 fn circle_draw_creates_an_editable_ellipse_outline() {
     let mut t = circle_tool();
     t.on_canvas_pointer(cp([64.0, 64.0], PointerPhase::Down));
@@ -2610,7 +2657,7 @@ fn circle_centre_handle_moves_the_ellipse() {
 }
 
 #[test]
-fn circle_commit_keeps_the_ring_and_is_one_undo_step() {
+fn circle_commit_unbakes_then_undo_removes_the_ring() {
     let mut t = circle_tool();
     draw_circle(&mut t, 64.0, 64.0, 20.0);
     assert!(t.circle_commit());
@@ -2620,12 +2667,19 @@ fn circle_commit_keeps_the_ring_and_is_one_undo_step() {
         [0, 0, 0, 255],
         "committed ring survives"
     );
+    // Unified timeline: undo of Apply reopens the ring (un-bake); a further undo removes its creation.
     assert!(t.undo_last());
+    assert!(
+        t.circle_overlay().is_some(),
+        "undo of Apply reopens the ring (un-bake)"
+    );
+    while t.undo_last() {}
     assert_eq!(
         px(&t, 128, 84, 64),
         [255, 255, 255, 255],
-        "one undo removes the whole ring"
+        "undoing every step reaches the pristine canvas"
     );
+    assert!(t.circle_overlay().is_none(), "fully undone → no session");
 }
 
 #[test]
@@ -2805,7 +2859,7 @@ fn polygon_centre_handle_moves() {
 
 #[test]
 fn polygon_commit_cancel_and_undo() {
-    // Commit keeps the outline + is one undo step.
+    // Commit keeps the outline; the unified timeline un-bakes on the first undo, then walks back to pristine.
     let mut t = polygon_tool();
     draw_polygon(&mut t, 64.0, 64.0, 20.0);
     assert_eq!(px(&t, 128, 64, 84), [0, 0, 0, 255], "outline painted");
@@ -2817,10 +2871,15 @@ fn polygon_commit_cancel_and_undo() {
         "committed outline survives"
     );
     assert!(t.undo_last());
+    assert!(
+        t.polygon_overlay().is_some(),
+        "undo of Apply reopens the polygon (un-bake)"
+    );
+    while t.undo_last() {}
     assert_eq!(
         px(&t, 128, 64, 84),
         [255, 255, 255, 255],
-        "one undo removes it"
+        "undoing every step reaches pristine"
     );
 
     // Cancel reverts.
@@ -4335,11 +4394,18 @@ fn a_curve_point_move_is_undoable_and_redoable() {
 
 #[test]
 fn selecting_a_curve_point_is_not_an_undo_step() {
-    // A pure selection click (down + up, no drag) must not push an undo entry.
+    // A pure selection click (down + up, no drag) must not push an undo entry. The drawn curve already has
+    // ONE entry (its creation), so the proof is: a single undo jumps straight to the creation (the shape
+    // closes) rather than first reverting a phantom select step.
     let mut t = open_curve_midpoint_selected();
     t.on_canvas_pointer(cp([8.0, 32.0], PointerPhase::Down));
     t.on_canvas_pointer(cp([8.0, 32.0], PointerPhase::Up));
-    assert!(!t.can_undo(), "selecting a point is not an edit");
+    assert!(t.undo_last());
+    assert!(
+        t.curve_overlay().is_none(),
+        "one undo removed the creation — the select was not its own step"
+    );
+    assert!(!t.can_undo(), "nothing remains after the creation undo");
 }
 
 #[test]
@@ -4407,11 +4473,15 @@ fn undo_sequence_open_shape_before_paint_history() {
         [0, 0, 0, 255],
         "committed first ring still there"
     );
-    // Undo #2 now removes the committed first ring — the paint history, AFTER the open shape.
-    assert!(t.undo_last(), "undo the committed first ring");
+    // Now the first ring's own steps unwind in order: its Apply un-bakes (reopens the ring), then its
+    // creation reverts to pristine — AFTER the open shape, one unified sequence.
+    assert!(t.undo_last(), "un-bake the first ring (its Apply)");
+    assert!(t.circle_overlay().is_some(), "first ring reopened");
+    assert!(t.undo_last(), "undo the first ring's creation");
     assert_eq!(
         px(&t, 128, 84, 64),
         [255, 255, 255, 255],
         "first ring undone last"
     );
+    assert!(t.circle_overlay().is_none(), "first ring fully gone");
 }

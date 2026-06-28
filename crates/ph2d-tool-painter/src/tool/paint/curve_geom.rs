@@ -6,6 +6,10 @@
 
 use ph2d_painter_brush::{flatten_bezier, flatten_catmull_rom};
 
+/// A curve's control geometry: anchor `points` + their parallel `[in, out]` Bézier `handles`. Aliased to
+/// keep [`simplify_curve`]'s signature under clippy's type-complexity lint.
+pub(super) type ControlGeometry = (Vec<[f32; 2]>, Vec<[[f32; 2]; 2]>);
+
 /// Flatten the curve to a dense spine: Bézier (explicit handles) else the Catmull-Rom auto-smooth. When
 /// `closed`, append the closing segment (last anchor → first, via `handles[last].out` + `handles[0].in`),
 /// reusing `flatten_bezier` on that 2-anchor sub-curve. The fill and the overlay both call this, so the
@@ -54,6 +58,44 @@ pub(super) fn cap_curve_points(out: Vec<[f32; 2]>, max: usize) -> Vec<[f32; 2]> 
         .collect();
     capped[max - 1] = out[last];
     capped
+}
+
+/// Simplify a curve to a clean minimal control polygon via the **Free Hand fit** (Schneider): flatten it to
+/// a dense spine, then re-fit cubic Béziers within `max_error` px. Apply & Keep uses this to collapse the
+/// offset reconstruction's dense anchors back to a faithful, editable handful (the same algorithm a Free
+/// Hand stroke is simplified with). `None` — caller keeps the current geometry — when the curve is too
+/// short, the fit is degenerate, or it would exceed `max_points`. A CLOSED loop has its duplicated seam
+/// anchor merged (drop the end, graft its incoming handle onto the start) so no doubled dot remains.
+pub(super) fn simplify_curve(
+    points: &[[f32; 2]],
+    handles: &[[[f32; 2]; 2]],
+    closed: bool,
+    max_error: f32,
+    max_points: usize,
+) -> Option<ControlGeometry> {
+    if points.len() < 3 {
+        return None;
+    }
+    let mut spine = Vec::new();
+    flatten_spine(points, handles, closed, &mut spine);
+    if spine.len() < 3 {
+        return None;
+    }
+    let fit = ph2d_painter_brush::fit_curve(&spine, max_error);
+    let (mut anchors, mut h) = (fit.anchors, fit.handles);
+    if anchors.len() < 2 || anchors.len() > max_points || h.len() != anchors.len() {
+        return None;
+    }
+    if closed && anchors.len() >= 3 {
+        let n = anchors.len();
+        if dist2(anchors[0], anchors[n - 1]) < 1.0 {
+            let in_h = h[n - 1][0]; // the seam's incoming tangent
+            anchors.pop();
+            h.pop();
+            h[0][0] = in_h; // graft it onto the start anchor so the seam keeps its curve
+        }
+    }
+    Some((anchors, h))
 }
 
 /// Index of the control point within `tol` px of `pos` (closest wins), or `None` on a miss.

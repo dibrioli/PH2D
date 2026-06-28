@@ -404,4 +404,36 @@ mod tests {
             );
         }
     }
+
+    #[test]
+    fn simplify_collapses_a_reconstructed_offset_back_to_a_clean_curve() {
+        // Apply & Keep: the offset reconstruction densifies a curvy segment to many anchors, then the Free
+        // Hand fit must collapse it back to a faithful handful — fewer anchors, spine essentially unchanged.
+        use super::super::curve_geom::{flatten_spine, simplify_curve};
+        let pts = vec![[0.0, 0.0], [120.0, 0.0]];
+        let handles = vec![[[0.0, 0.0], [10.0, 80.0]], [[110.0, -80.0], [120.0, 0.0]]];
+        let (dp, dh, _) = offset_curve_refined(&pts, &handles, 12.0, false);
+        assert!(dp.len() > 6, "the reconstruction densified: {}", dp.len());
+        let (sp, sh) = simplify_curve(&dp, &dh, false, 4.0, 64).expect("simplifies");
+        assert!(
+            sp.len() < dp.len(),
+            "fewer anchors: {} < {}",
+            sp.len(),
+            dp.len()
+        );
+        let (mut a, mut b) = (Vec::new(), Vec::new());
+        flatten_spine(&dp, &dh, false, &mut a);
+        flatten_spine(&sp, &sh, false, &mut b);
+        for q in &b {
+            let best = a
+                .iter()
+                .map(|w| dist2(*q, *w))
+                .fold(f32::INFINITY, f32::min);
+            assert!(
+                best.sqrt() < 6.0,
+                "simplified spine stays on the shape: {}",
+                best.sqrt()
+            );
+        }
+    }
 }

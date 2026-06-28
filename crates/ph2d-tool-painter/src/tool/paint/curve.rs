@@ -1,15 +1,11 @@
-//! The **Curve** stroke method — a simplified on-canvas Bézier-ish path editor (PH2D's divergence
-//! from Blender's curve-OBJECT workflow; `docs/Painter/`). A submodule of [`super`] (`paint`) so it
-//! shares `PaintState`'s private access and the canvas helpers (save/restore/stamp); split out to
-//! keep `paint.rs` under the workspace LOC cap.
+//! The **Curve** stroke method — a simplified on-canvas Bézier-ish path editor (PH2D's divergence from
+//! Blender's curve-OBJECT workflow; `docs/Painter/`). A submodule of [`super`] (`paint`) so it shares
+//! `PaintState`'s private access + the canvas helpers; split out to keep `paint.rs` under the LOC cap.
 //!
-//! ## Interaction
-//!
-//! **Draw** a straight line (press-drag-release); on release 3 control points appear. **Edit**: drag a
-//! point to move it, drag its tangent handles to sculpt, click near the curve to ADD a point; per-anchor
-//! handle kinds ([`curve_handle`]) drive the smoothing. **Delete** the selected point; **Commit** (Enter)
-//! bakes one undo entry, **cancel** (Esc) discards. Keyboard + the overlay live in the shell (the frozen
-//! `CanvasPointer` carries no keys); this module exposes the verbs they drive.
+//! **Draw** a straight line (press-drag-release) → 3 control points. **Edit**: drag a point to move, drag
+//! its tangent handles to sculpt, click near the curve to ADD a point; handle kinds ([`curve_handle`]) drive
+//! smoothing. **Delete** the selected; **Commit** (Enter) bakes one undo entry, **cancel** (Esc) discards.
+//! Keyboard + overlay live in the shell; this module exposes the verbs they drive.
 
 use super::curve_handle::{self, HandleKind};
 use super::curve_tangent;
@@ -33,39 +29,34 @@ const MAX_FREEHAND_CAPTURE: usize = 4096;
 /// In-progress Curve session: the editable control polygon (image-space px) + the current
 /// selection / grab + the draw-vs-edit phase. Held in [`PaintState::curve`]; `None` when idle.
 pub(super) struct CurveEditor {
-    /// Control points along the curve, image-space px. One while drawing the initial line, then
-    /// `≥ 2` once editing (the 3-point line, growing as points are added).
+    /// Control points (image-space px): one while drawing the initial line, then `≥ 2` once editing.
     pub(super) points: Vec<[f32; 2]>,
-    /// Per-anchor **Bézier handles** `[in, out]` (absolute px), parallel to `points` once editing. Each
-    /// anchor's `kinds` entry drives how they update (Auto/Vector derived, Aligned/Free manual). EMPTY only
-    /// transiently (the draw-phase straight-line preview) ⇒ the Catmull-Rom fallback in `flatten_spine`.
+    /// Per-anchor **Bézier handles** `[in, out]` (absolute px), parallel to `points` once editing; the
+    /// `kinds` entry drives updates. EMPTY transiently (draw-phase preview) ⇒ Catmull-Rom in `flatten_spine`.
     handles: Vec<[[f32; 2]; 2]>,
-    /// Per-anchor **handle kind** (Free / Aligned / Vector / Auto), parallel to `points` once editing — the
-    /// vector-app continuity type chosen via the right-click menu. Derived kinds (Auto / Vector) are
-    /// recomputed from the points by [`curve_handle::rebuild`] on every edit; manual kinds (Aligned / Free)
-    /// keep the artist's tangents. Empty during the draw phase (handles not materialised yet).
+    /// Per-anchor **handle kind** (Free / Aligned / Vector / Auto), parallel to `points` once editing. Derived
+    /// (Auto / Vector) are recomputed by [`curve_handle::rebuild`] each edit; manual (Aligned / Free) keep the
+    /// artist's tangents. Empty during the draw phase.
     kinds: Vec<HandleKind>,
     /// The selected (highlighted) point — the Delete target. `None` = nothing selected.
     pub(super) selected: Option<usize>,
     /// The point being dragged this gesture (`Some` between a grab-Down and its Up).
     grabbed: Option<usize>,
-    /// The **tangent handle** being dragged this gesture: `(anchor index, is_out)` where `is_out` picks the
-    /// `[in, out]` slot. `Some` between a handle grab-Down and its Up; takes precedence over `grabbed`.
+    /// The **tangent handle** dragged this gesture: `(anchor, is_out)` picking the `[in, out]` slot. `Some`
+    /// between its grab-Down and Up; takes precedence over `grabbed`.
     grabbed_handle: Option<(usize, bool)>,
-    /// The active **whole-curve transform** drag (the bounding-box gizmo: move / scale / rotate). `Some`
-    /// between a gizmo-handle grab-Down and its Up; takes precedence over anchor / tangent grabs.
+    /// The active **whole-curve transform** drag (the bbox gizmo: move / scale / rotate). `Some` between its
+    /// grab-Down and Up; takes precedence over anchor / tangent grabs.
     gizmo: Option<curve_gizmo::GizmoGrab>,
     /// `false` while drawing the initial straight line (Down→Up), `true` once editing the points.
     pub(super) editing: bool,
-    /// `true` when the curve is a **closed loop** (converted from a Circle / Polygon): the spine + fill +
-    /// offset close back from the last anchor to the first, and there is no duplicate seam anchor.
+    /// `true` when the curve is a **closed loop** (converted Circle / Polygon): the spine / fill / offset wrap
+    /// last → first, no duplicate seam anchor.
     pub(super) closed: bool,
-    /// **Free Hand** mode ([`StrokeMethod::FreeHand`]): the draw phase captures the freehand path into
-    /// `points` (instead of a straight anchor→cursor line) and simplifies it to control points on release;
-    /// from then on it's an ordinary editable curve. `false` for the plain [`StrokeMethod::Curve`].
+    /// **Free Hand** mode ([`StrokeMethod::FreeHand`]): the draw phase captures the path into `points` +
+    /// simplifies to control points on release, then an ordinary editable curve. `false` for plain Curve.
     freehand: bool,
-    /// Free Hand only: the lazy-mouse **stabilizer**'s filtered cursor position (lags the raw cursor by
-    /// the brush `stabilizer` intensity), so the captured path is smoothed live as it's drawn.
+    /// Free Hand only: the lazy-mouse **stabilizer**'s filtered cursor (lags raw by the brush `stabilizer`).
     stabilized: [f32; 2],
     /// The initial line's press point — the curve's first endpoint + the draw-phase pivot.
     anchor: [f32; 2],
@@ -80,24 +71,20 @@ pub struct CurveOverlay {
     pub points: Vec<[f32; 2]>,
     /// The selected point index (drawn highlighted), if any.
     pub selected: Option<usize>,
-    /// The flattened spine (image-space px) — drawn as the curve guide; matches the painted dabs exactly
-    /// (Bézier handles for the Free Hand fit, else Catmull-Rom — same `flatten_spine`).
+    /// The flattened spine (px) — the curve guide; matches the painted dabs exactly (same `flatten_spine`).
     pub spine: Vec<[f32; 2]>,
-    /// The selected anchor's draggable Bézier **tangent handles** (drawn as dots on stems off the point),
-    /// or `None` when nothing is selected / the handles are collapsed. See [`TangentHandles`].
+    /// The selected anchor's draggable Bézier **tangent handles**, or `None` when none selected / collapsed.
     pub tangents: Option<TangentHandles>,
-    /// The selected anchor's **handle kind** as a wire `u8` (`0 = Free`, `1 = Aligned`, `2 = Vector`,
-    /// `3 = Auto`), or `None` when nothing is selected — lets the shell mark the active item in the menu.
+    /// The selected anchor's **handle kind** wire `u8` (`0=Free 1=Aligned 2=Vector 3=Auto`), or `None` —
+    /// lets the shell mark the active menu item.
     pub selected_kind: Option<u8>,
-    /// The whole-curve **transform gizmo** (bounding-box move / scale / rotate handles), or `None` when the
-    /// curve is too small to frame. Drawn around the curve so the artist can transform it as one.
+    /// The whole-curve **transform gizmo** (bbox move / scale / rotate), or `None` when too small to frame.
     pub transform_gizmo: Option<TransformGizmo>,
 }
 
 impl PainterTool {
-    /// Route a canvas pointer event through the Curve editor (the painter calls this instead of the
-    /// generic paint path while the active method is [`StrokeMethod::Curve`]). Returns `true` when
-    /// the event was consumed (so the shell keeps the gesture open).
+    /// Route a canvas pointer through the Curve editor (called instead of the generic paint path while the
+    /// method is [`StrokeMethod::Curve`]). `true` when consumed (the shell keeps the gesture open).
     pub(super) fn curve_pointer(&mut self, ev: CanvasPointer) -> bool {
         match ev.phase {
             PointerPhase::Down => self.curve_down(ev.pos),
@@ -359,14 +346,27 @@ impl PainterTool {
         true
     }
 
-    /// Commit the curve but KEEP the editor open (the "Apply & Keep" button): bake the painted preview (one
-    /// undo entry) and RE-BASELINE onto the baked canvas so further edits restore onto it + the next apply is
-    /// a fresh undo entry. Returns `true` when a committable session was open.
+    /// Commit the curve but KEEP the editor open (Apply & Keep): bake the painted preview, then simplify
+    /// (Free Hand fit) + re-baseline so further edits restore onto the baked canvas. `true` when open.
     pub fn curve_commit_keep(&mut self) -> bool {
         if !self.paint.curve.as_ref().is_some_and(|ed| ed.editing) {
             return false;
         }
         self.bake_curve_offset(); // lock the offset into the kept geometry, reset the slider (offset now 0)
+        // Simplify the kept curve with the Free Hand fit (collapse the reconstruction's dense anchors).
+        if let Some(ed) = self.paint.curve.as_mut().filter(|e| e.editing)
+            && let Some((p, h)) = curve_geom::simplify_curve(
+                &ed.points,
+                &ed.handles,
+                ed.closed,
+                FREEHAND_FIT_ERROR,
+                MAX_CURVE_POINTS,
+            )
+        {
+            ed.kinds = vec![HandleKind::Aligned; p.len()];
+            (ed.points, ed.handles, ed.selected) = (p, h, None);
+            curve_handle::rebuild(&ed.points, &ed.kinds, &mut ed.handles, ed.closed);
+        }
         self.commit_drag_preview(); // drop the restore record → the painted curve stays baked
         if let Some(before) = self.paint.stroke_undo.take() {
             self.commit_structural_edit(before);

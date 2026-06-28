@@ -2460,9 +2460,9 @@ fn curve_grab_tolerance_grabs_near_and_adds_far() {
 /// clears the points); the NEXT undo removes the committed stroke. Regression for "the drawing
 /// vanished but the control points stayed" — undo must not strand the points over a reverted canvas.
 #[test]
-fn curve_undo_walks_edits_and_never_applies() {
+fn curve_undo_walks_edits_then_undoes_the_creation() {
     // Undo must NOT Apply an open curve (Enio 2026-06-27): while authoring it walks the per-session edit
-    // history; only an explicit commit bakes it.
+    // history, and once that's exhausted the next undo removes the curve (undoes the creation) — never bakes.
     let mut t = white_canvas(64, 3.0);
     t.paint.brush.stroke_method = StrokeMethod::Curve;
     t.paint.brush.hardness = 1.0;
@@ -2472,13 +2472,6 @@ fn curve_undo_walks_edits_and_never_applies() {
 
     t.on_canvas_pointer(cp([8.0, 32.0], PointerPhase::Down));
     t.on_canvas_pointer(cp([56.0, 32.0], PointerPhase::Up)); // 3 points, painted, editing
-
-    // A freshly drawn curve with no edits: undo is a no-op — it does not Apply the curve.
-    assert!(!t.undo_last(), "undo does not apply the open curve");
-    assert!(
-        t.curve_overlay().is_some(),
-        "the curve stays open and editable"
-    );
 
     // Move the midpoint, then undo — the edit reverts and the curve STAYS open (never applied).
     let before = t.curve_overlay().unwrap().points;
@@ -2499,6 +2492,18 @@ fn curve_undo_walks_edits_and_never_applies() {
     assert!(
         t.curve_overlay().is_some(),
         "still open — undo never applied it"
+    );
+
+    // No edits left → the next undo undoes the CREATION: the curve is gone, the canvas reverts to white.
+    assert!(t.undo_last(), "undo removes the just-created curve");
+    assert!(
+        t.curve_overlay().is_none(),
+        "creation undone — the curve is gone (not applied)"
+    );
+    assert_eq!(
+        px(&t, 64, 8, 32),
+        [255, 255, 255, 255],
+        "the painted preview reverted to the white canvas"
     );
 }
 

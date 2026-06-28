@@ -30,11 +30,9 @@ const MAX_FREEHAND_CAPTURE: usize = 4096;
 pub(super) struct CurveEditor {
     /// Control points (image-space px): one while drawing the initial line, then `≥ 2` once editing.
     pub(super) points: Vec<[f32; 2]>,
-    /// Per-anchor **Bézier handles** `[in, out]` (absolute px), parallel to `points` once editing; the
-    /// `kinds` entry drives updates. EMPTY transiently (draw-phase preview) ⇒ Catmull-Rom in `flatten_spine`.
+    /// Per-anchor **Bézier handles** `[in, out]` (px), parallel to `points`. EMPTY in the draw-phase preview.
     pub(super) handles: Vec<[[f32; 2]; 2]>,
-    /// Per-anchor **handle kind** (Free / Aligned / Vector / Auto), parallel to `points`. Auto / Vector are
-    /// recomputed by [`curve_handle::rebuild`] each edit; Aligned / Free are kept. Empty in the draw phase.
+    /// Per-anchor **handle kind** (Free / Aligned / Vector / Auto). Auto/Vector recomputed each edit, rest kept.
     pub(super) kinds: Vec<HandleKind>,
     /// The selected (highlighted) point — the Delete target. `None` = nothing selected.
     pub(super) selected: Option<usize>,
@@ -65,8 +63,7 @@ pub(super) struct CurveEditor {
     pub(super) offset_dragging: bool,
 }
 
-/// A read-only snapshot of the Curve editor for the shell's on-canvas overlay (control dots + the
-/// auto-smoothed spine). `None` until the line is released (the chrome appears with the 3 points).
+/// A read-only snapshot of the Curve editor for the shell's overlay (control dots + auto-smoothed spine).
 pub struct CurveOverlay {
     /// Control points (image-space px) — drawn as draggable dots.
     pub points: Vec<[f32; 2]>,
@@ -105,6 +102,7 @@ impl PainterTool {
             let before = self.snapshot_model();
             self.paint.stroke_undo = Some(before);
             self.paint.drag_preview = None;
+            self.paint.shape_offset_norm = 0.5; // a fresh curve starts with no Offset (not the last one's)
             let seed = self.paint.seed;
             self.paint.seed = self.paint.seed.wrapping_add(1);
             self.paint.curve = Some(CurveEditor {
@@ -423,6 +421,7 @@ impl PainterTool {
             self.restore_region(&prev.rect, &prev.pixels);
         }
         self.paint.stroke_undo = None;
+        self.paint.shape_offset_norm = 0.5; // a cancelled curve must NOT carry its Offset to the next one
         true
     }
 
@@ -432,6 +431,7 @@ impl PainterTool {
         self.paint.curve = None;
         self.paint.drag_preview = None;
         self.paint.stroke_undo = None;
+        self.paint.shape_offset_norm = 0.5;
     }
 
     /// Snapshot the Curve editor for the shell overlay — `None` until editing (the chrome appears

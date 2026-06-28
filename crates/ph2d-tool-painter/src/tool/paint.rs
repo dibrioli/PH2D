@@ -1,6 +1,5 @@
-//! Canvas painting — drives the clean-room Blender brush engine
-//! (`ph2d-painter-brush`) from pointer samples, writing dabs into the active
-//! raster layer's `canvas_rgba`.
+//! Canvas painting — drives the clean-room Blender brush engine (`ph2d-painter-brush`) from pointer
+//! samples, writing dabs into the active raster layer's `canvas_rgba`.
 //!
 //! The brush *behaviour* (falloff, spacing, pressure, blend) is the engine's; this module is only the
 //! glue between the editor's [`CanvasPaintTool`] contract (ADR-0040 Amendment 3) and the painter's
@@ -21,6 +20,7 @@ mod curve;
 mod curve_geom; // flatten (incl. closed seam) + point hit-test/nearest/insert; split from `curve`
 mod curve_gizmo; // whole-curve transform gizmo (move/scale/rotate the entire curve); split from `curve`
 mod curve_handle; // per-anchor handle kinds (Free/Aligned/Vector/Auto) + derived geometry; split from `curve`
+mod curve_offset; // perpendicular offset (parallel curve) + CAD-grade reconstruction; split from `curve_geom`
 mod curve_tangent; // Bézier tangent-handle hit-test, aligned mirror, overlay snapshot; split from `curve`
 /// Per-dab randomize setters (Jitter Scale / Rotate / Randomize Color); split from `brush_settings`.
 mod jitter_settings;

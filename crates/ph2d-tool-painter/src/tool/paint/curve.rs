@@ -17,6 +17,7 @@ use super::*;
 
 use super::curve_geom;
 use super::curve_gizmo;
+use super::curve_offset;
 use ph2d_painter_brush::{Stroke, lazy_mouse_step};
 
 /// Most control points a Curve session may hold — bounds the per-frame re-fill + hit-test.
@@ -462,11 +463,19 @@ impl PainterTool {
         }
         // Offset the CONTROL geometry (handles recalculated, not deformed), so the dots + tangents + spine
         // guide all move WITH the paint and stay consistent on the offset curve (Enio 2026-06-28).
-        let (points, handles) =
-            curve_geom::offset_curve(&ed.points, &ed.handles, self.shape_offset_px(), ed.closed);
+        let (points, handles, origin) = curve_offset::offset_curve_refined(
+            &ed.points,
+            &ed.handles,
+            self.shape_offset_px(),
+            ed.closed,
+        );
         let mut spine = Vec::new();
         curve_geom::flatten_spine(&points, &handles, ed.closed, &mut spine);
-        let tangents = ed.selected.and_then(|s| {
+        // The reconstruction inserts anchors, so remap the selected index onto its densified position.
+        let osel = ed
+            .selected
+            .and_then(|s| origin.iter().position(|o| *o == Some(s)));
+        let tangents = osel.and_then(|s| {
             curve_tangent::build_tangents(
                 &points,
                 &handles,
@@ -485,7 +494,7 @@ impl PainterTool {
             curve_gizmo::overlay(&points, self.paint.shape_grab_tol_px, grabbed, rotating);
         Some(CurveOverlay {
             points,
-            selected: ed.selected,
+            selected: osel,
             spine,
             tangents,
             selected_kind,
@@ -550,7 +559,8 @@ impl PainterTool {
     fn curve_fill(&mut self, pts: &[[f32; 2]], handles: &[[[f32; 2]; 2]], closed: bool, seed: u64) {
         // Offset the CONTROL geometry (handles recalculated), so the painted spine matches the overlay guide
         // and carries no deformation; flatten the offset curve to the dab spine.
-        let (pts, handles) = curve_geom::offset_curve(pts, handles, self.shape_offset_px(), closed);
+        let (pts, handles, _) =
+            curve_offset::offset_curve_refined(pts, handles, self.shape_offset_px(), closed);
         let mut spine = Vec::new();
         curve_geom::flatten_spine(&pts, &handles, closed, &mut spine);
         let mut stroke = Stroke::new(self.paint.brush, self.paint.dynamics, seed);
@@ -560,18 +570,30 @@ impl PainterTool {
         self.paint.dabs = dabs;
     }
 
-    /// **Bake** the live Offset into the curve's control geometry (so the curve now sits where the offset
-    /// preview showed it — anchors moved, handles recalculated) and reset the slider to centre. A no-op when
-    /// there's no offset or no open editor. Called before any edit gesture (so the hit-test matches the
-    /// displayed dots) and on Apply & Keep.
+    /// **Bake** the live Offset into the curve's control geometry (anchors moved, handles recalculated, the
+    /// reconstruction's extra anchors folded in) and reset the slider. A no-op without an offset / open
+    /// editor. Called before any edit gesture (hit-test = displayed dots) and on Apply & Keep.
     pub(super) fn bake_curve_offset(&mut self) {
         let off = self.shape_offset_px();
         if off != 0.0
             && let Some(ed) = self.paint.curve.as_mut().filter(|ed| ed.editing)
         {
-            let (p, h) = curve_geom::offset_curve(&ed.points, &ed.handles, off, ed.closed);
+            let (p, h, origin) =
+                curve_offset::offset_curve_refined(&ed.points, &ed.handles, off, ed.closed);
+            // Carry kinds (original anchors keep theirs; inserted points = Free) + remap the selection.
+            let kinds: Vec<HandleKind> = origin
+                .iter()
+                .map(|o| {
+                    o.and_then(|i| ed.kinds.get(i).copied())
+                        .unwrap_or(HandleKind::Free)
+                })
+                .collect();
+            ed.selected = ed
+                .selected
+                .and_then(|s| origin.iter().position(|o| *o == Some(s)));
             ed.points = p;
             ed.handles = h;
+            ed.kinds = kinds;
             self.paint.shape_offset_norm = 0.5;
         }
     }

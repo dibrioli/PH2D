@@ -1,7 +1,8 @@
 //! Pure geometry helpers for the Curve / Free Hand editor — flattening (incl. the closed-loop seam),
 //! point hit-test / nearest / insert-index, and the small distance primitives. Transcendental-free
 //! (projection + `sqrt` only, HR-5). Split from [`super::curve`] for the workspace LOC cap; these are
-//! free fns with no `CurveEditor` access, so the editor calls them as `curve_geom::*`.
+//! free fns with no `CurveEditor` access, so the editor calls them as `curve_geom::*`. The perpendicular
+//! **offset** lives in the sibling [`super::curve_offset`] (it reuses [`cubic_at`] + [`split_cubic`] here).
 
 use ph2d_painter_brush::{flatten_bezier, flatten_catmull_rom};
 
@@ -183,8 +184,8 @@ fn nearest_t_on_cubic(b: &[[f32; 2]; 4], pos: [f32; 2]) -> (f32, f32) {
     (t, dist2(cubic_at(b, t), pos))
 }
 
-/// Evaluate the cubic Bézier `b` at `t` (Bernstein form; transcendental-free).
-fn cubic_at(b: &[[f32; 2]; 4], t: f32) -> [f32; 2] {
+/// Evaluate the cubic Bézier `b` at `t` (Bernstein form; transcendental-free). Shared with the offset.
+pub(super) fn cubic_at(b: &[[f32; 2]; 4], t: f32) -> [f32; 2] {
     let u = 1.0 - t;
     let w = [u * u * u, 3.0 * u * u * t, 3.0 * u * t * t, t * t * t];
     [
@@ -195,7 +196,8 @@ fn cubic_at(b: &[[f32; 2]; 4], t: f32) -> [f32; 2] {
 
 /// **de Casteljau** split of cubic `b` at `t` → `[prev_out, new_in, anchor, new_out, next_in]`: the two
 /// sub-cubics `[P0, q0, r0, s]` + `[s, r1, q2, P3]` reproduce `b` exactly, so subdividing never deforms it.
-fn split_cubic(b: &[[f32; 2]; 4], t: f32) -> [[f32; 2]; 5] {
+/// Shared with the offset reconstruction.
+pub(super) fn split_cubic(b: &[[f32; 2]; 4], t: f32) -> [[f32; 2]; 5] {
     let lerp = |a: [f32; 2], c: [f32; 2]| [a[0] + (c[0] - a[0]) * t, a[1] + (c[1] - a[1]) * t];
     let q0 = lerp(b[0], b[1]);
     let q1 = lerp(b[1], b[2]);
@@ -206,184 +208,9 @@ fn split_cubic(b: &[[f32; 2]; 4], t: f32) -> [[f32; 2]; 5] {
     [q0, r0, s, r1, q2]
 }
 
-/// Offset the curve's **control geometry** perpendicular by `d` px (the Offset slider). Each anchor shifts
-/// along its averaged right-normal, then each tangent handle is RECALCULATED — rotated + scaled to follow
-/// its (now moved) segment — rather than rigidly translated, so the offset curve stays faithful: a circle
-/// offsets to a clean concentric circle (handles scale by the radius ratio), sharp corners stay sharp
-/// (a collapsed handle has a zero vector → stays collapsed), and there's no control-level deformation
-/// (the rigid-translate version warped tight bends — Enio 2026-06-28). The spine, dots, tangents + paint
-/// all derive from this, so they move TOGETHER. `closed` wraps the endpoints. Transcendental-free (the
-/// segment rotation is a complex multiply from the chord unit vectors' dot/cross). `d == 0` (or a length
-/// mismatch) ⇒ unchanged clones.
-pub(super) fn offset_curve(
-    points: &[[f32; 2]],
-    handles: &[[[f32; 2]; 2]],
-    d: f32,
-    closed: bool,
-) -> (Vec<[f32; 2]>, Vec<[[f32; 2]; 2]>) {
-    let n = points.len();
-    if d == 0.0 || n < 2 || handles.len() != n {
-        return (points.to_vec(), handles.to_vec());
-    }
-    // 1. Offset the anchors along their averaged vertex normals.
-    let op: Vec<[f32; 2]> = (0..n)
-        .map(|i| {
-            let nrm = vertex_normal(points, i, closed);
-            [points[i][0] + nrm[0] * d, points[i][1] + nrm[1] * d]
-        })
-        .collect();
-    // 2. Recalculate handles per segment: `out[a]` + `in[b]` share segment a→b's rotate+scale, so they
-    //    track the offset chord. Default to a translate (fallback for the unused open endpoints / degenerate
-    //    segments), then overwrite each segment's two handles.
-    let mut oh: Vec<[[f32; 2]; 2]> = (0..n)
-        .map(|i| {
-            let dv = [op[i][0] - points[i][0], op[i][1] - points[i][1]];
-            [
-                [handles[i][0][0] + dv[0], handles[i][0][1] + dv[1]],
-                [handles[i][1][0] + dv[0], handles[i][1][1] + dv[1]],
-            ]
-        })
-        .collect();
-    let seg_count = if closed { n } else { n - 1 };
-    for s in 0..seg_count {
-        let (a, b) = (s, (s + 1) % n);
-        let xf = SegXform::new(points[a], points[b], op[a], op[b]);
-        oh[a][1] = xf.apply(points[a], handles[a][1], op[a]); // out handle of a
-        oh[b][0] = xf.apply(points[b], handles[b][0], op[b]); // in handle of b
-    }
-    (op, oh)
-}
-
-/// The rotate-and-scale that maps a base segment's chord to its offset chord — applied to a tangent handle
-/// so it follows the offset (a circle's handles scale by the radius ratio, no spurious bend). Identity for
-/// a degenerate base segment.
-struct SegXform {
-    cos: f32,
-    sin: f32,
-    scale: f32,
-}
-
-impl SegXform {
-    fn new(a: [f32; 2], b: [f32; 2], oa: [f32; 2], ob: [f32; 2]) -> Self {
-        let old = [b[0] - a[0], b[1] - a[1]];
-        let new = [ob[0] - oa[0], ob[1] - oa[1]];
-        let old_len = (old[0] * old[0] + old[1] * old[1]).sqrt();
-        let new_len = (new[0] * new[0] + new[1] * new[1]).sqrt();
-        if old_len <= 1e-6 || new_len <= 1e-6 {
-            return Self {
-                cos: 1.0,
-                sin: 0.0,
-                scale: 1.0,
-            };
-        }
-        let (ox, oy) = (old[0] / old_len, old[1] / old_len);
-        let (nx, ny) = (new[0] / new_len, new[1] / new_len);
-        Self {
-            cos: ox * nx + oy * ny, // dot → cos of the turn from old→new chord direction
-            sin: ox * ny - oy * nx, // cross → sin of the turn
-            scale: new_len / old_len,
-        }
-    }
-
-    /// Re-place `handle` (an absolute control point) relative to its offset anchor: rotate its vector off the
-    /// old anchor by the segment turn, scale by the chord ratio, re-anchor at the offset anchor.
-    fn apply(&self, anchor: [f32; 2], handle: [f32; 2], offset_anchor: [f32; 2]) -> [f32; 2] {
-        let v = [handle[0] - anchor[0], handle[1] - anchor[1]];
-        let rx = (v[0] * self.cos - v[1] * self.sin) * self.scale;
-        let ry = (v[0] * self.sin + v[1] * self.cos) * self.scale;
-        [offset_anchor[0] + rx, offset_anchor[1] + ry]
-    }
-}
-
-/// The unit **right-normal** at anchor `i` (averaged over its incident segments), so a positive offset
-/// outsets a CCW closed loop. Zero vector for a degenerate vertex (the point doesn't move).
-fn vertex_normal(points: &[[f32; 2]], i: usize, closed: bool) -> [f32; 2] {
-    let n = points.len();
-    let prev = if i > 0 {
-        Some((points[i - 1], points[i]))
-    } else if closed {
-        Some((points[n - 1], points[i]))
-    } else {
-        None
-    };
-    let next = if i + 1 < n {
-        Some((points[i], points[i + 1]))
-    } else if closed {
-        Some((points[i], points[0]))
-    } else {
-        None
-    };
-    let mut acc = [0.0f32, 0.0];
-    for (a, b) in [prev, next].into_iter().flatten() {
-        let (dx, dy) = (b[0] - a[0], b[1] - a[1]);
-        let len = (dx * dx + dy * dy).sqrt();
-        if len > 1e-6 {
-            acc[0] += dy / len; // right-normal of direction (dx,dy) is (dy, -dx)
-            acc[1] += -dx / len;
-        }
-    }
-    let al = (acc[0] * acc[0] + acc[1] * acc[1]).sqrt();
-    if al > 1e-6 {
-        [acc[0] / al, acc[1] / al]
-    } else {
-        [0.0, 0.0]
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn offsetting_a_circle_stays_concentric_and_scales_the_handles() {
-        // 4 cardinal anchors, radius 20, with circle tangent handles (k ≈ 0.5523·r). Offsetting the closed
-        // loop outward must keep every anchor equidistant from the centre (a clean concentric circle) AND
-        // scale the handles by the radius ratio — proof the recompute follows the curve without deforming it
-        // (the old rigid translate warped it — Enio 2026-06-28).
-        let r = 20.0f32;
-        let k = 0.55228f32 * r;
-        let pts = vec![[r, 0.0], [0.0, r], [-r, 0.0], [0.0, -r]];
-        let handles = vec![
-            [[r, -k], [r, k]],   // (r,0): tangent vertical
-            [[k, r], [-k, r]],   // (0,r): tangent horizontal
-            [[-r, k], [-r, -k]], // (-r,0)
-            [[-k, -r], [k, -r]], // (0,-r)
-        ];
-        let (op, oh) = offset_curve(&pts, &handles, 10.0, true);
-        let radius = |p: [f32; 2]| (p[0] * p[0] + p[1] * p[1]).sqrt();
-        let r0 = radius(op[0]);
-        for p in &op {
-            assert!(
-                (radius(*p) - r0).abs() < 1e-3,
-                "all anchors equidistant: {p:?}"
-            );
-        }
-        assert!(
-            (r0 - 30.0).abs() < 1e-3,
-            "offset outward to radius 30: {r0}"
-        );
-        let hlen =
-            |a: [f32; 2], h: [f32; 2]| ((h[0] - a[0]).powi(2) + (h[1] - a[1]).powi(2)).sqrt();
-        let want = k * r0 / r; // scaled by the radius ratio
-        assert!(
-            (hlen(op[0], oh[0][1]) - want).abs() < 0.05,
-            "handle scaled by the radius ratio: {} vs {want}",
-            hlen(op[0], oh[0][1])
-        );
-    }
-
-    #[test]
-    fn a_sharp_corner_stays_sharp_under_offset() {
-        // A collapsed (sharp) handle has a zero vector, so the recompute leaves it collapsed on the offset
-        // anchor — a Polygon corner offsets to a corner, not a rounded blob.
-        let pts = vec![[0.0, 0.0], [20.0, 0.0], [20.0, 20.0]];
-        let handles = vec![[[0.0, 0.0]; 2], [[20.0, 0.0]; 2], [[20.0, 20.0]; 2]];
-        let (op, oh) = offset_curve(&pts, &handles, 5.0, false);
-        for i in 0..op.len() {
-            assert_eq!(oh[i][0], op[i], "in handle stays collapsed at {i}");
-            assert_eq!(oh[i][1], op[i], "out handle stays collapsed at {i}");
-        }
-    }
 
     #[test]
     fn insert_on_a_closed_loop_picks_the_seam_segment_for_a_click_near_it() {

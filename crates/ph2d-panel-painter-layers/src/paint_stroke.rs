@@ -58,46 +58,8 @@ pub(crate) fn paint_stroke_section(
     // matches_blender` in `ph2d-painter-brush`.
     let method = StrokeMethod::from_u8(brush.stroke_method);
 
-    // ── Method dropdown (always). When a curve with points is drawn on the canvas, a square Save-As-Object
-    //    button (floppy icon, same size as the shape ✕ cancel button) sits at the right end of this row; the
-    //    dropdown shrinks to make room. ──
-    let show_save = brush.has_drawn_curve;
-    let save_sq = ROW_H_PX;
-    let save_gap = Spacing::Xs.px();
-    let dd_w = if show_save {
-        (content_w - save_sq - save_gap).max(0.0)
-    } else {
-        content_w
-    };
-    let (ny, open) = paint_dropdown_row(
-        ctx,
-        theme,
-        x,
-        dd_w,
-        y,
-        "Method",
-        core_ids::PAINTER_BRUSH_STROKE_METHOD,
-        brush.stroke_method,
-        stroke_method_name(brush.stroke_method),
-    );
-    if show_save {
-        // FUTURE (not implemented yet — Enio 2026-06-28): this button will persist the drawn curve TOGETHER
-        // with the current Brush/Layer panel settings as a dynamic OBJECT, so the whole thing can be reloaded
-        // later and even animated. For now it only paints + shows a tooltip; clicking it is a deliberate
-        // no-op (no route in the tool) until the object format + reload/animation pipeline land.
-        let r = Rect::new(x + content_w - save_sq, y, save_sq, ROW_H_PX);
-        apply::paint_icon_button(
-            ctx,
-            theme,
-            r,
-            ph2d_editor_core::IconId::Save,
-            core_ids::PAINTER_BRUSH_STROKE_SAVE_OBJECT,
-        );
-    }
-    y = ny;
-    if let Some(r) = open {
-        state::set_pending_brush_stroke_method_dd(Some((r, brush.stroke_method)));
-    }
+    // ── Method dropdown (always) + the Save-As-Object button beside it (split out for the fn LOC cap) ──
+    y = paint_method_row(ctx, theme, x, content_w, y, brush);
 
     // ── Apply / Apply & Keep — only the methods with a persistent on-canvas shape editor (Curve /
     //    Free Hand / Circle / Polygon). Apply bakes the open shape and drops the editor; Apply & Keep
@@ -445,6 +407,57 @@ fn paint_jitter_card(
     );
     let _ = iy;
     y + card_h + Spacing::Sm.px()
+}
+
+/// Paint the **Method** dropdown row, returning the next `y`. When a curve with points is drawn on the
+/// canvas, a square **Save-As-Object** button (floppy icon, same size as the shape ✕ cancel button) sits at
+/// the right end of the row and the dropdown shrinks to make room. Split from [`paint_stroke_section`] for
+/// the per-fn LOC cap.
+fn paint_method_row(
+    ctx: &mut PaintCtx,
+    theme: ph2d_tokens::Theme,
+    x: f32,
+    content_w: f32,
+    y: f32,
+    brush: BrushSettings,
+) -> f32 {
+    let show_save = brush.has_drawn_curve;
+    let save_sq = ROW_H_PX;
+    let save_gap = Spacing::Xs.px();
+    let dd_w = if show_save {
+        (content_w - save_sq - save_gap).max(0.0)
+    } else {
+        content_w
+    };
+    let (ny, open) = paint_dropdown_row(
+        ctx,
+        theme,
+        x,
+        dd_w,
+        y,
+        "Method",
+        core_ids::PAINTER_BRUSH_STROKE_METHOD,
+        brush.stroke_method,
+        stroke_method_name(brush.stroke_method),
+    );
+    if show_save {
+        // FUTURE (not implemented yet — Enio 2026-06-28): this button will persist the drawn curve TOGETHER
+        // with the current Brush/Layer panel settings as a dynamic OBJECT, so the whole thing can be reloaded
+        // later and even animated. For now it only paints + shows a tooltip; clicking it is a deliberate
+        // no-op (no route in the tool) until the object format + reload/animation pipeline land.
+        let r = Rect::new(x + content_w - save_sq, y, save_sq, ROW_H_PX);
+        apply::paint_icon_button(
+            ctx,
+            theme,
+            r,
+            ph2d_editor_core::IconId::Save,
+            core_ids::PAINTER_BRUSH_STROKE_SAVE_OBJECT,
+        );
+    }
+    if let Some(r) = open {
+        state::set_pending_brush_stroke_method_dd(Some((r, brush.stroke_method)));
+    }
+    ny
 }
 
 /// A faint, left-aligned section divider label in a `ROW_H_PX` cell. `pub(crate)` so the Texture

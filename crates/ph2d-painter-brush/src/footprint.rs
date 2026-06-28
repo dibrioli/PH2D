@@ -51,6 +51,19 @@ impl FootprintDeform {
         self.inv_minor == 1.0 && self.cos == 1.0 && self.sin == 0.0
     }
 
+    /// Compose an extra rotation `rotor` (a unit vector `[cos, sin]`) onto this deform's frame — the
+    /// per-dab **Jitter Rotate** spins the whole footprint (flatten + the falloff/Shape/View-Grain it
+    /// drives) by a random angle each dab, on top of the brush's own dab angle. `rotor = [1, 0]` ⇒
+    /// unchanged. Transcendental-free (complex multiply of the two rotors); the flatten is preserved.
+    #[must_use]
+    pub fn rotated_by(self, rotor: [f32; 2]) -> Self {
+        Self {
+            cos: self.cos * rotor[0] - self.sin * rotor[1],
+            sin: self.cos * rotor[1] + self.sin * rotor[0],
+            inv_minor: self.inv_minor,
+        }
+    }
+
     /// Apply to a footprint unit coord `[u, v]` (pixel offset ÷ radius): rotate by `-angle` into the
     /// ellipse frame, then stretch the minor axis. The falloff reads [`Self::falloff_t`]; the Shape /
     /// Grain samplers feed `apply(f)` into their own Size/rotation/offset.

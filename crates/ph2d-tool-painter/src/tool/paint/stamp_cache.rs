@@ -325,14 +325,17 @@ impl PainterTool {
             // The Rake heading is the dab's own smoothed path direction `d.dir` (computed once in the
             // engine, where the path geometry is known). Both slots read the same heading; `dab_basis`
             // ignores it unless that slot's Rake is on, and falls back to the base Angle for `[0, 0]`.
+            // Jitter Rotate spins the whole footprint (falloff + Shape + View-Grain); per-slot Random Angle
+            // stays the basis `extra_rot = [1, 0]` so the pattern-within isn't double-rotated.
+            let fp = spec.footprint_deform().rotated_by(d.rotation);
             let shape_basis = shape_active.then(|| {
                 ph2d_painter_brush::texture::dab_basis(
                     &spec.shape,
                     d.dir,
                     &mut tex_rng,
                     [w as f32, h as f32],
-                    d.rotation, // Jitter Rotate spins the Shape with the Grain (the whole stamp)
-                    spec.footprint_deform(),
+                    [1.0, 0.0],
+                    fp,
                 )
             });
             let shape_in = shape_basis
@@ -348,8 +351,8 @@ impl PainterTool {
                     d.dir,
                     &mut tex_rng,
                     [w as f32, h as f32],
-                    d.rotation,
-                    spec.footprint_deform(),
+                    [1.0, 0.0],
+                    fp,
                 )
             });
             if let Some(r) = ph2d_painter_brush::stamp_dab_ramped(
@@ -366,6 +369,7 @@ impl PainterTool {
                 lut,
                 alpha_mode,
                 mask.as_deref_mut(),
+                d.rotation,
             ) {
                 let rect = Region {
                     x: r.x,
@@ -431,14 +435,17 @@ impl PainterTool {
             // engine). Shape draws its Random from `tex_rng` here, *before* the Grain, so a brush with
             // no Shape Random leaves the Grain stream byte-identical; `dab_basis` ignores `d.dir` unless
             // that slot's Rake is on, falling back to the base Angle for `[0, 0]`.
+            // Jitter Rotate spins the whole footprint (falloff + Shape + View-Grain); the per-slot Random
+            // Angle stays the basis `extra_rot = [1, 0]` so the pattern-within isn't double-rotated.
+            let fp = spec.footprint_deform().rotated_by(d.rotation);
             let shape_basis = shape_active.then(|| {
                 ph2d_painter_brush::texture::dab_basis(
                     &spec.shape,
                     d.dir,
                     &mut tex_rng,
                     [w as f32, h as f32],
-                    d.rotation, // Jitter Rotate spins the Shape with the Grain (the whole stamp)
-                    spec.footprint_deform(),
+                    [1.0, 0.0],
+                    fp,
                 )
             });
             let shape_in = shape_basis
@@ -454,8 +461,8 @@ impl PainterTool {
                     d.dir,
                     &mut tex_rng,
                     [w as f32, h as f32],
-                    d.rotation,
-                    spec.footprint_deform(),
+                    [1.0, 0.0],
+                    fp,
                 )
             });
             if let Some(r) = ph2d_painter_brush::stamp_dab_textured_masked(
@@ -470,6 +477,7 @@ impl PainterTool {
                 image.as_ref(),
                 shape_in,
                 mask.as_deref_mut(),
+                d.rotation,
             ) {
                 let rect = Region {
                     x: r.x,

@@ -50,9 +50,7 @@ pub struct DirtyRect {
 /// scaled by the destination's existing alpha, so paint only lands where the layer already has
 /// opacity (it recolours the shape without growing it).
 ///
-/// Panics in debug if `buf` is smaller than `width * height * 4`.
-///
-/// This is the texture-free fast path; it delegates to [`stamp_dab_textured`] with no texture.
+/// Panics in debug if `buf` is too small. The texture-free fast path (delegates to [`stamp_dab_textured`]).
 #[must_use]
 pub fn stamp_dab(
     buf: &mut [u8],
@@ -77,13 +75,10 @@ pub fn stamp_dab(
     )
 }
 
-/// As [`stamp_dab`], but the brush texture ([`BrushSpec::texture`]) modulates each texel's coverage
-/// when `tex` is `Some` and a texture kind is assigned. `tex` is the per-dab texture frame resolved
-/// once by [`crate::texture::dab_basis`] (rotation + per-dab random offset); `image` supplies the
-/// pixels for [`crate::TextureKind::Image`] (ignored by the procedural kinds). Passing `None`/`None`
-/// — or an inactive texture — reproduces [`stamp_dab`] exactly. See [`crate::texture`].
-// Mirrors [`stamp_dab`]'s established positional signature plus the per-dab texture frame; bundling
-// the buffer/geometry into a struct here would diverge from the sibling fast path for no real gain.
+/// As [`stamp_dab`], but the brush texture ([`BrushSpec::texture`]) modulates each texel's coverage when
+/// `tex` is `Some`. `tex` is the per-dab frame from [`crate::texture::dab_basis`] (rotation + random
+/// offset); `image` supplies the pixels for [`crate::TextureKind::Image`]. `None`/`None` (or an inactive
+/// texture) reproduces [`stamp_dab`] exactly. See [`crate::texture`].
 #[allow(clippy::too_many_arguments)]
 #[must_use]
 pub fn stamp_dab_textured(
@@ -112,13 +107,13 @@ pub fn stamp_dab_textured(
         None,
         RampAlphaMode::None,
         None,
+        [1.0, 0.0],
     )
 }
 
-/// As [`stamp_dab_textured`], plus the **Accumulate-OFF** per-stroke coverage `mask` (canvas-sized,
-/// 1 byte/pixel). With `Some`, each pixel's stroke coverage is capped at the dab target (Strength) —
-/// overlapping dabs, incl. a back-and-forth pass, build toward but never past it; the caller resets
-/// the mask per stroke. With `None` this is exactly [`stamp_dab_textured`]. See [`stamp_dab_inner`].
+/// As [`stamp_dab_textured`], plus the **Accumulate-OFF** per-stroke coverage `mask` (canvas-sized, 1
+/// byte/px): with `Some`, each pixel's stroke coverage caps at the dab target (Strength) — overlapping /
+/// back-and-forth dabs build toward but never past it. `None` ⇒ exactly [`stamp_dab_textured`].
 #[allow(clippy::too_many_arguments)]
 #[must_use]
 pub fn stamp_dab_textured_masked(
@@ -133,6 +128,7 @@ pub fn stamp_dab_textured_masked(
     image: Option<&ImageMask>,
     shape: Option<ShapeInput>,
     mask: Option<&mut [u8]>,
+    dab_rotation: [f32; 2],
 ) -> Option<DirtyRect> {
     stamp_dab_inner(
         buf,
@@ -148,16 +144,15 @@ pub fn stamp_dab_textured_masked(
         None,
         RampAlphaMode::None,
         mask,
+        dab_rotation,
     )
 }
 
-/// As [`stamp_dab_textured`], but a baked **Color Ramp** LUT (256 straight-RGBA entries, in the
-/// layer's colour space) maps each texel's texture value to a COLOUR: the brush paints `lut[t]`'s RGB,
-/// so the texture's scalar drives the painted colour (via the ramp) rather than only attenuating the
-/// brush's single colour. What the ramp's **alpha** does is selected by `alpha_mode` (see
-/// [`RampAlphaMode`]): ignored, scaling per-texel coverage, or driving the painted pixel's own alpha
-/// (punching the sprite transparent). Requires an active texture (`tex` resolved); with no texture
-/// there is nothing to index, so it falls back to the plain stamp.
+/// As [`stamp_dab_textured`], but a baked **Color Ramp** LUT (256 straight-RGBA entries) maps each
+/// texel's texture value to a COLOUR: the brush paints `lut[t]`'s RGB, so the texture's scalar drives
+/// the painted colour (not just attenuating the single colour). The ramp **alpha** does what `alpha_mode`
+/// selects ([`RampAlphaMode`]): ignored, scaling coverage, or driving the pixel's own alpha (punch
+/// transparent). With no texture there's nothing to index, so it falls back to the plain stamp.
 #[allow(clippy::too_many_arguments)]
 #[must_use]
 pub fn stamp_dab_ramped(
@@ -175,6 +170,7 @@ pub fn stamp_dab_ramped(
     alpha_mode: RampAlphaMode,
     // Accumulate-OFF per-stroke cap so a Color-Ramp stroke honours Accumulate (TextureAlpha uncapped), Enio 2026-06-25.
     mask: Option<&mut [u8]>,
+    dab_rotation: [f32; 2],
 ) -> Option<DirtyRect> {
     stamp_dab_inner(
         buf,
@@ -190,6 +186,7 @@ pub fn stamp_dab_ramped(
         Some(ramp),
         alpha_mode,
         mask,
+        dab_rotation,
     )
 }
 
@@ -212,6 +209,9 @@ fn stamp_dab_inner(
     // pixel's stroke coverage at the dab target (the tool passes it only when Accumulate is off and
     // Strength < 1, where the cap is observable); `None` ⇒ the build-up path (Accumulate ON).
     mask: Option<&mut [u8]>,
+    // Per-dab **Jitter Rotate** rotor (`[1, 0]` = none): spins the whole footprint (falloff + Shape +
+    // View-Grain) a random angle this dab. Independent of the per-slot Random Angle (pattern-within).
+    dab_rotation: [f32; 2],
 ) -> Option<DirtyRect> {
     debug_assert!(
         buf.len() >= (width as usize) * (height as usize) * 4,
@@ -250,7 +250,7 @@ fn stamp_dab_inner(
         // this; the filter is belt-and-braces so an inactive Shape can never blank the falloff).
         shape: shape.filter(|_| spec.shape.is_active()),
         alpha_mode,
-        footprint: spec.footprint_deform(),
+        footprint: spec.footprint_deform().rotated_by(dab_rotation),
         center,
         cx,
         cy,

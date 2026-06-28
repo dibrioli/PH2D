@@ -66,17 +66,18 @@ impl PainterTool {
                     radius_px: d.radius_px,
                     ..*brush
                 };
-                let fp = spec.footprint_deform();
+                // Jitter Rotate spins the whole footprint (and the Shape / View-Grain it drives); the
+                // per-slot Random Angle stays the basis `extra_rot = [1, 0]` so the pattern isn't
+                // double-rotated. Shape draws its Random from `tex_rng` before the Grain (byte-identical
+                // when off); Rake follows `d.dir`.
+                let fp = spec.footprint_deform().rotated_by(d.rotation);
                 let dims = [w as f32, h as f32];
-                // Shape draws its Random from `tex_rng` before the Grain (byte-identical stream when off);
-                // Rake follows `d.dir`. Both slots compose the per-dab Jitter Rotate (`d.rotation`) so the
-                // whole stamp spins together.
                 let shape_basis = ph2d_painter_brush::texture::dab_basis(
                     &spec.shape,
                     d.dir,
                     &mut tex_rng,
                     dims,
-                    d.rotation,
+                    [1.0, 0.0],
                     fp,
                 );
                 let grain_basis = grain_active.then(|| {
@@ -85,7 +86,7 @@ impl PainterTool {
                         d.dir,
                         &mut tex_rng,
                         dims,
-                        d.rotation,
+                        [1.0, 0.0],
                         fp,
                     )
                 });

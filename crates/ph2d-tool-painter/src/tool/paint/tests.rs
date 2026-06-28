@@ -3352,6 +3352,29 @@ fn jitter_rotate_reaches_curve_fill() {
 }
 
 #[test]
+fn jitter_rotate_spins_a_flattened_falloff_with_no_texture() {
+    use ph2d_painter_brush::StrokeMethod;
+    // Enio 2026-06-28: Jitter Rotate spins the brush FOOTPRINT (the flatten + rotation circle), so a
+    // flattened round brush with NO Texture and NO Shape still rotates per dab (the `Texture: None` case).
+    let run = |seed: u64| {
+        let mut t = white_canvas(64, 10.0);
+        t.paint.brush.dab_flatten = 0.5; // elliptical footprint (anisotropic under rotation)
+        t.paint.brush.stroke_method = StrokeMethod::Space;
+        t.set_brush_jitter_rotate(1.0);
+        t.paint.seed = seed;
+        t.on_canvas_pointer(cp([14.0, 32.0], PointerPhase::Down));
+        t.on_canvas_pointer(cp([50.0, 32.0], PointerPhase::Move));
+        t.on_canvas_pointer(cp([50.0, 32.0], PointerPhase::Up));
+        (*t.canvas_rgba).clone()
+    };
+    assert_ne!(
+        run(1),
+        run(999),
+        "Jitter Rotate spins the flattened footprint even with no Texture / Shape"
+    );
+}
+
+#[test]
 fn jitter_rotate_reaches_the_paint() {
     use ph2d_painter_brush::StrokeMethod;
     let bar = directional_bar();

@@ -50,6 +50,7 @@ fn ramped_stamp_paints_the_ramp_colours_not_the_brush_colour() {
         &lut,
         crate::ramp_alpha::RampAlphaMode::None,
         None,
+        [1.0, 0.0],
     )
     .expect("ramped dab painted");
     let (mut red, mut blue, mut green) = (0, 0, 0);
@@ -108,6 +109,7 @@ fn ramp_alpha_dab(buf: &mut [u8], w: u32, h: u32, a1: f32, mode: crate::ramp_alp
         &lut,
         mode,
         None,
+        [1.0, 0.0],
     )
     .expect("ramped dab painted");
 }
@@ -350,6 +352,7 @@ fn accumulate_off_caps_a_stroke_at_strength_while_on_builds_up() {
             None,
             None,
             Some(&mut mask),
+            [1.0, 0.0],
         );
     }
     assert!(
@@ -361,7 +364,18 @@ fn accumulate_off_caps_a_stroke_at_strength_while_on_builds_up() {
     let mut on = solid(w, h, [255, 255, 255, 255]);
     for _ in 0..5 {
         stamp_dab_textured_masked(
-            &mut on, w, h, center, &spec, 1.0, false, None, None, None, None,
+            &mut on,
+            w,
+            h,
+            center,
+            &spec,
+            1.0,
+            false,
+            None,
+            None,
+            None,
+            None,
+            [1.0, 0.0],
         )
         .expect("dab painted");
     }
@@ -418,6 +432,7 @@ fn accumulate_off_grain_caps_each_texel_at_its_weighted_coverage() {
             Some(&img),
             None,
             Some(&mut mask),
+            [1.0, 0.0],
         );
     }
     // grain ≈ 0.502 → final coverage ≈ 0.502 → white→~127, NOT driven toward black by the re-passes.

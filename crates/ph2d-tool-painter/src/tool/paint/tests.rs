@@ -3319,6 +3319,33 @@ fn per_layer_color_grain_stencil_masks_to_the_rect_not_the_whole_dab() {
 }
 
 #[test]
+fn jitter_rotate_spins_the_shape_silhouette_per_dab() {
+    use ph2d_painter_brush::StrokeMethod;
+    // Regression (Enio 2026-06-28): Stroke **Jitter Rotate** now spins the whole dab STAMP, the Shape
+    // silhouette included (it used to rotate only the texture, so a shape-only brush ignored it). An
+    // asymmetric shape painted WITH jitter rotation lands differently than without.
+    let mut bar = vec![0u8; 64]; // 8×8: top 3 rows white = a horizontal bar (asymmetric under rotation)
+    for px in bar.iter_mut().take(3 * 8) {
+        *px = 255;
+    }
+    let stroke = |jr: f32| {
+        let mut t = white_canvas(48, 8.0);
+        t.set_brush_shape_image(bar.clone(), 8, 8);
+        t.paint.brush.stroke_method = StrokeMethod::Space;
+        t.set_brush_jitter_rotate(jr);
+        t.on_canvas_pointer(cp([10.0, 24.0], PointerPhase::Down));
+        t.on_canvas_pointer(cp([38.0, 24.0], PointerPhase::Move));
+        t.on_canvas_pointer(cp([38.0, 24.0], PointerPhase::Up));
+        (*t.canvas_rgba).clone()
+    };
+    assert_ne!(
+        stroke(0.0),
+        stroke(1.0),
+        "Jitter Rotate changes the painted result by spinning the Shape per dab"
+    );
+}
+
+#[test]
 fn grain_ramp_stencil_does_not_paint_outside_the_rect() {
     use ph2d_painter_brush::texture::{TextureKind, TextureMapping};
     // Regression (Enio 2026-06-28): a Grain **Color Ramp** indexed by the grain value painted `ramp[0]`

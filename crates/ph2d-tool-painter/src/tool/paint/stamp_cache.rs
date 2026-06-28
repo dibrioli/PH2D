@@ -331,7 +331,7 @@ impl PainterTool {
                     d.dir,
                     &mut tex_rng,
                     [w as f32, h as f32],
-                    [1.0, 0.0],
+                    d.rotation, // Jitter Rotate spins the Shape with the Grain (the whole stamp)
                     spec.footprint_deform(),
                 )
             });
@@ -437,7 +437,7 @@ impl PainterTool {
                     d.dir,
                     &mut tex_rng,
                     [w as f32, h as f32],
-                    [1.0, 0.0],
+                    d.rotation, // Jitter Rotate spins the Shape with the Grain (the whole stamp)
                     spec.footprint_deform(),
                 )
             });

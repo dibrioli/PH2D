@@ -144,9 +144,10 @@ pub struct BrushSpec {
     /// **Jitter Scale** (PH2D, not Blender): per-dab radius scatter, `0..1`. Each dab's radius is
     /// multiplied by `1 ± amount`, clamped so it never collapses. `0` = no scatter.
     pub jitter_scale: f32,
-    /// **Jitter Rotate** (PH2D, not Blender): per-dab texture-rotation scatter, `0..1`. Each dab's
-    /// texture frame is rotated by `±(amount · 180°)`. Only visible with a texture (round dabs are
-    /// isotropic) and only for mappings that use per-dab rotation (not Stencil). `0` = no scatter.
+    /// **Jitter Rotate** (PH2D, not Blender): per-dab stamp-rotation scatter, `0..1`. Each dab's WHOLE
+    /// stamp — the Shape silhouette AND the Grain frame together — is rotated by `±(amount · 180°)`.
+    /// Visible with a Shape or a texture (a bare round falloff is isotropic); mappings that don't use
+    /// per-dab rotation (Stencil) opt out. `0` = no scatter.
     pub jitter_rotate: f32,
     /// **Jitter Spacing** (PH2D, not Blender): per-gap scatter of the distance between dab centres,
     /// `0..1`. Each gap along the Space walk is multiplied by `1 ± amount` (clamped so it stays ≥ 1px),
@@ -256,15 +257,17 @@ impl BrushSpec {
         crate::texture::compose_shape_silhouette_kind(self.shape.kind, shape_val, falloff)
     }
 
-    /// Whether the **Shape** slot rotates its silhouette frame per dab (Rake follows the stroke, or a
-    /// per-dab Random angle), so the constant-orientation caches can't apply — each dab needs its own
-    /// Shape basis. Only meaningful when the Shape is the active silhouette. Mirrors
-    /// [`Self::has_per_dab_rotation`] for the Grain.
+    /// Whether the **Shape** slot rotates its silhouette frame per dab — Rake (follows the stroke), a
+    /// per-dab Random angle, OR the Stroke **Jitter Rotate** (which spins the WHOLE dab stamp, Shape +
+    /// Grain together) — so the constant-orientation caches can't apply (each dab needs its own Shape
+    /// basis). Only meaningful when the Shape is the active silhouette. Mirrors [`Self::has_per_dab_rotation`].
     #[must_use]
     pub fn shape_has_per_dab_rotation(&self, has_shape_image: bool) -> bool {
         self.shape_silhouette_active(has_shape_image)
-            && (self.shape.rake || self.shape.random_angle)
             && self.shape.mapping.uses_dab_rotation()
+            && (self.shape.rake
+                || self.shape.random_angle
+                || (self.jitter_rotate > 0.0 && self.stroke_method.allows_jitter()))
     }
 
     /// Whether the **Grain** slot rotates its texture frame per dab (Rake follows the stroke, or a per-dab
@@ -394,6 +397,27 @@ mod tests {
         assert!(!b.has_per_dab_rotation());
         assert_eq!(b.jitter_scale, 0.0);
         assert_eq!(b.jitter_rotate, 0.0);
+    }
+
+    #[test]
+    fn jitter_rotate_makes_an_active_shape_rotate_per_dab() {
+        use crate::texture::TextureKind;
+        // Jitter Rotate spins the whole stamp, so an active Shape with jitter > 0 needs a per-dab basis
+        // (routes off the constant-orientation caches) even without Shape Rake/Random (Enio 2026-06-28).
+        let mut b = BrushSpec {
+            jitter_rotate: 0.5,
+            ..Default::default()
+        };
+        b.shape.kind = TextureKind::Image;
+        assert!(
+            b.shape_has_per_dab_rotation(true),
+            "an active Shape + Jitter Rotate rotates per dab"
+        );
+        // No Shape ⇒ nothing to rotate (the bare falloff is isotropic).
+        assert!(!b.shape_has_per_dab_rotation(false));
+        // Jitter off ⇒ no per-dab rotation (byte-identical baseline).
+        b.jitter_rotate = 0.0;
+        assert!(!b.shape_has_per_dab_rotation(true));
     }
 
     #[test]

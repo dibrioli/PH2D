@@ -186,6 +186,7 @@ impl PainterTool {
             self.restore_region(&prev.rect, &prev.pixels);
         }
         self.paint.stroke_undo = None;
+        self.paint.shape_offset_norm = 0.5; // a cancelled shape must NOT carry its Offset to the next one
         true
     }
 

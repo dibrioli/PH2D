@@ -2643,21 +2643,22 @@ fn circle_cancel_reverts_all_pixels() {
 }
 
 #[test]
-fn circle_undo_does_not_apply_while_authoring() {
+fn circle_undo_removes_the_creation_not_applies_it() {
     let mut t = circle_tool();
     draw_circle(&mut t, 64.0, 64.0, 20.0);
     assert!(t.circle_overlay().is_some(), "handles visible");
-    // Undo must NOT apply the circle (Enio 2026-06-27): it no-ops while the shape is authored.
-    assert!(!t.undo_last(), "undo does not apply the open circle");
-    assert!(t.circle_overlay().is_some(), "the circle stays open");
-    // Commit explicitly (Apply), then one undo removes the committed ring.
-    assert!(t.commit_open_shape());
-    assert!(t.circle_overlay().is_none());
-    assert!(t.undo_last());
+    assert_eq!(px(&t, 128, 84, 64), [0, 0, 0, 255], "ring painted");
+    // Undo must NOT apply the circle (Enio 2026-06-28): it undoes the CREATION — the ring is gone, the
+    // canvas reverts, the handles close. Folds into the same undo sequence as the paint flow.
+    assert!(t.undo_last(), "undo removes the just-created circle");
+    assert!(
+        t.circle_overlay().is_none(),
+        "the circle is gone (creation undone)"
+    );
     assert_eq!(
         px(&t, 128, 84, 64),
         [255, 255, 255, 255],
-        "undo removes the committed ring"
+        "the painted ring reverted to white (not baked)"
     );
 }
 
@@ -2828,17 +2829,18 @@ fn polygon_commit_cancel_and_undo() {
     assert!(t.cancel_open_shape());
     assert_eq!(px(&t, 128, 64, 84), [255, 255, 255, 255], "cancel reverted");
 
-    // Undo while authoring is a no-op — it must NOT apply the polygon (Enio 2026-06-27).
+    // Undo while authoring removes the CREATION (reverts the canvas) — it must NOT apply the polygon.
     let mut t = polygon_tool();
     draw_polygon(&mut t, 64.0, 64.0, 20.0);
-    assert!(!t.undo_last(), "undo does not apply the open polygon");
-    assert!(t.polygon_overlay().is_some(), "the polygon stays open");
-    assert!(t.commit_open_shape());
-    assert!(t.undo_last());
+    assert!(t.undo_last(), "undo removes the just-created polygon");
+    assert!(
+        t.polygon_overlay().is_none(),
+        "the polygon is gone (creation undone)"
+    );
     assert_eq!(
         px(&t, 128, 64, 84),
         [255, 255, 255, 255],
-        "undo removes the committed outline"
+        "the painted outline reverted to white (not baked)"
     );
 }
 
@@ -4380,5 +4382,36 @@ fn an_offset_change_is_undoable_on_an_open_curve() {
     assert!(
         (t.brush_settings().offset - off0).abs() < 1e-4,
         "offset reverted by undo"
+    );
+}
+
+#[test]
+fn undo_sequence_open_shape_before_paint_history() {
+    // The undo order is a single sequence: an OPEN shape's creation undoes first, only then the committed
+    // paint history (Enio 2026-06-28).
+    let mut t = circle_tool();
+    draw_circle(&mut t, 64.0, 64.0, 20.0);
+    assert!(
+        t.commit_open_shape(),
+        "first ring committed (a paint-history entry)"
+    );
+    assert_eq!(px(&t, 128, 84, 64), [0, 0, 0, 255], "first ring on canvas");
+    // A second circle, still authoring.
+    draw_circle(&mut t, 64.0, 64.0, 10.0);
+    assert!(t.circle_overlay().is_some(), "second circle open");
+    // Undo #1 removes the OPEN second circle (creation); the committed first ring is untouched.
+    assert!(t.undo_last(), "undo the open second circle");
+    assert!(t.circle_overlay().is_none(), "second circle gone");
+    assert_eq!(
+        px(&t, 128, 84, 64),
+        [0, 0, 0, 255],
+        "committed first ring still there"
+    );
+    // Undo #2 now removes the committed first ring — the paint history, AFTER the open shape.
+    assert!(t.undo_last(), "undo the committed first ring");
+    assert_eq!(
+        px(&t, 128, 84, 64),
+        [255, 255, 255, 255],
+        "first ring undone last"
     );
 }

@@ -115,10 +115,10 @@ impl PainterTool {
             || self.paint.polygon.is_some()
     }
 
-    /// Undo one in-session curve edit (geometry or Offset), re-filling the preview. When the edit history is
-    /// exhausted, the next undo cancels the **creation** itself (reverts the painted curve + resets the
-    /// Offset), so a curve folds into the same undo sequence as the paint flow (Enio 2026-06-28). `true` when
-    /// something was undone. A no-op for a Circle / Polygon (no editable history).
+    /// Undo one step of an open shape session. A Curve walks its edit history (geometry or Offset) first;
+    /// once exhausted — or immediately for a Circle / Polygon (no edit history) — the next undo cancels the
+    /// **creation** of whichever shape is open (reverts the painted preview + resets the Offset), so authoring
+    /// folds into the same undo sequence as the paint flow (Enio 2026-06-28). `true` when something was undone.
     pub(crate) fn curve_undo_edit(&mut self) -> bool {
         let cur = self.paint.shape_offset_norm;
         let restored = self
@@ -132,8 +132,9 @@ impl PainterTool {
             self.curve_refill();
             return true;
         }
-        // No edits left → undo the creation: cancel the session (reverts the canvas + resets the Offset).
-        self.paint.curve.as_ref().is_some_and(|ed| ed.editing) && self.curve_cancel()
+        // No edits left → undo the CREATION of whichever shape is open (Curve / Circle / Polygon): cancel it,
+        // reverting the painted preview + resetting the Offset, so the next undo continues into the paint flow.
+        self.cancel_open_shape()
     }
 
     /// Redo one in-session curve edit. Mirror of [`Self::curve_undo_edit`].

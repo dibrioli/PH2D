@@ -82,7 +82,19 @@ pub(super) fn trim_and_refit(
         return None; // no loop was cut
     }
     let fit = ph2d_painter_brush::fit_curve(&trimmed, max_error);
-    (fit.anchors.len() >= 2).then_some((fit.anchors, fit.handles))
+    let (mut anchors, mut h) = (fit.anchors, fit.handles);
+    if anchors.len() < 2 {
+        return None;
+    }
+    // CLOSED loop: the fit's first / last anchors coincide at the seam — merge them (drop the end, graft its
+    // incoming handle onto the start) so the closed flatten doesn't double-trace (the nested-curves bug).
+    if closed && anchors.len() >= 3 && dist2(anchors[0], anchors[anchors.len() - 1]) < 1.0 {
+        let in_h = h[h.len() - 1][0];
+        anchors.pop();
+        h.pop();
+        h[0][0] = in_h;
+    }
+    Some((anchors, h))
 }
 
 /// Intersection point of segments `a0→a1` and `b0→b1` when they cross in BOTH interiors (strict, so a

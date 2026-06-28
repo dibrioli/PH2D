@@ -19,14 +19,12 @@ use ph2d_painter_brush::{Stroke, lazy_mouse_step};
 /// Most control points a Curve session may hold — bounds the per-frame re-fill + hit-test.
 const MAX_CURVE_POINTS: usize = 64;
 /// Free Hand: cubic-fit error tolerance (px) — max deviation of the fitted curve from the captured path.
-/// A touch above the stabilizer's residual jitter, so a steady stroke collapses to a handful of anchors.
 const FREEHAND_FIT_ERROR: f32 = 4.0;
 /// Free Hand: minimum squared spacing (px²) between captured path points — keeps the raw capture bounded.
 const MIN_CAPTURE_DIST_SQ: f32 = 4.0;
 /// Free Hand: hard cap on raw captured points during the drag (before the fit).
 const MAX_FREEHAND_CAPTURE: usize = 4096;
-/// In-progress Curve session: the editable control polygon (px) + selection / grab + draw-vs-edit phase.
-/// Held in [`PaintState::curve`]; `None` when idle.
+/// In-progress Curve session: editable control polygon + selection/grab + phase. In [`PaintState::curve`].
 pub(super) struct CurveEditor {
     /// Control points (image-space px): one while drawing the initial line, then `≥ 2` once editing.
     pub(super) points: Vec<[f32; 2]>,
@@ -81,8 +79,7 @@ pub struct CurveOverlay {
 }
 
 impl PainterTool {
-    /// Route a canvas pointer through the Curve editor (vs the generic paint path while the method is
-    /// [`StrokeMethod::Curve`]). `true` when consumed (the shell keeps the gesture open).
+    /// Route a canvas pointer through the Curve editor (vs the generic paint path). `true` when consumed.
     pub(super) fn curve_pointer(&mut self, ev: CanvasPointer) -> bool {
         match ev.phase {
             PointerPhase::Down => self.curve_down(ev.pos),
@@ -306,8 +303,7 @@ impl PainterTool {
         true
     }
 
-    /// Delete the selected control point (Delete key). Keeps `≥ 2` points so a curve always remains;
-    /// returns `true` when a point was removed (the shell consumes the key only then).
+    /// Delete the selected control point (Delete key). Keeps `≥ 2` points; `true` when one was removed.
     pub fn curve_delete_selected(&mut self) -> bool {
         let off = self.paint.shape_offset_norm;
         let Some(ed) = self.paint.curve.as_mut() else {
@@ -338,8 +334,7 @@ impl PainterTool {
     }
 
     /// **Simplify** the editable curve (the Simplify button): re-fit it to a clean minimal control polygon
-    /// via the Free Hand fit, collapsing a dense offset reconstruction (or any busy curve) back to a faithful
-    /// handful, then re-fill the preview. `true` when a curve editor was open and the fit applied.
+    /// via the Free Hand fit, then re-fill. `true` when a curve editor was open and the fit applied.
     pub fn curve_simplify(&mut self) -> bool {
         let Some(ed) = self.paint.curve.as_ref().filter(|e| e.editing) else {
             return false;
@@ -362,8 +357,7 @@ impl PainterTool {
     }
 
     /// Convert an open **Circle / Polygon** into an editable Bézier **Curve** (the panel's **Edit** / E
-    /// button): take the shape's faithful anchors + handles, drop the shape editor, switch the method to Curve
-    /// so pointers route here. Undo + drag-preview carry over (bakes/undoes as one). `false` if none open.
+    /// button): take its faithful anchors, drop the shape editor, switch the method to Curve. `false` if none.
     pub(crate) fn convert_open_shape_to_curve(&mut self) -> bool {
         // Bake any live Offset into the shape's radii FIRST (resets the slider) so the conversion reads the
         // displayed shape, not a doubly-offset one. At most one editor is open; each bake no-ops otherwise.
@@ -410,8 +404,7 @@ impl PainterTool {
         true
     }
 
-    /// Cancel the curve (Esc): revert the painted preview to the pristine pixels and discard the
-    /// session WITHOUT an undo entry (nothing was committed). Returns `true` when a session was open.
+    /// Cancel the curve (Esc): revert the painted preview to pristine + discard the session. `true` if open.
     pub fn curve_cancel(&mut self) -> bool {
         if self.paint.curve.is_none() {
             return false;
@@ -442,23 +435,26 @@ impl PainterTool {
         if !ed.editing {
             return None;
         }
-        // Offset the CONTROL geometry (handles recalculated, not deformed), so the dots + tangents + spine
-        // guide all move WITH the paint and stay consistent on the offset curve (Enio 2026-06-28).
-        let (points, handles, origin) = curve_offset::offset_curve_refined(
+        // Offset the CONTROL geometry (handles recalculated), so dots + tangents + spine + paint move WITH it.
+        let (mut points, mut handles, origin) = curve_offset::offset_curve_refined(
             &ed.points,
             &ed.handles,
             self.shape_offset_px(),
             ed.closed,
         );
-        let mut spine = Vec::new();
-        curve_geom::flatten_spine(&points, &handles, ed.closed, &mut spine);
-        if self.paint.offset_trim {
-            spine = curve_offset::trim_self_intersections(&spine);
-        }
-        // The reconstruction inserts anchors, so remap the selected index onto its densified position.
-        let osel = ed
+        // Remap the selected index onto the densified (inserted-anchor) position.
+        let mut osel = ed
             .selected
             .and_then(|s| origin.iter().position(|o| *o == Some(s)));
+        // Trim in REAL TIME: re-fit with the crossed loop deleted, so dots + guide + paint show it live.
+        if self.paint.offset_trim
+            && let Some((tp, th)) =
+                curve_offset::trim_and_refit(&points, &handles, ed.closed, FREEHAND_FIT_ERROR)
+        {
+            (points, handles, osel) = (tp, th, None);
+        }
+        let mut spine = Vec::new();
+        curve_geom::flatten_spine(&points, &handles, ed.closed, &mut spine);
         let tangents = osel.and_then(|s| {
             curve_tangent::build_tangents(
                 &points,
@@ -545,13 +541,17 @@ impl PainterTool {
     fn curve_fill(&mut self, pts: &[[f32; 2]], handles: &[[[f32; 2]; 2]], closed: bool, seed: u64) {
         // Offset the CONTROL geometry (handles recalculated), so the painted spine matches the overlay guide
         // and carries no deformation; flatten the offset curve to the dab spine.
-        let (pts, handles, _) =
+        let (mut pts, mut handles, _) =
             curve_offset::offset_curve_refined(pts, handles, self.shape_offset_px(), closed);
+        // Trim in real time: paint the re-fitted curve with the crossed loop deleted (matches the overlay).
+        if self.paint.offset_trim
+            && let Some((tp, th)) =
+                curve_offset::trim_and_refit(&pts, &handles, closed, FREEHAND_FIT_ERROR)
+        {
+            (pts, handles) = (tp, th);
+        }
         let mut spine = Vec::new();
         curve_geom::flatten_spine(&pts, &handles, closed, &mut spine);
-        if self.paint.offset_trim {
-            spine = curve_offset::trim_self_intersections(&spine);
-        }
         let mut stroke = Stroke::new(self.paint.brush, self.paint.dynamics, seed);
         let mut dabs = std::mem::take(&mut self.paint.dabs);
         stroke.fill_polyline_preview(&spine, &mut dabs);

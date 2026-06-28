@@ -65,6 +65,26 @@ pub(super) fn trim_self_intersections(poly: &[[f32; 2]]) -> Vec<[f32; 2]> {
     pts
 }
 
+/// **Trim + delete the excess anchors**: if the offset curve's spine self-intersects, trim the loop and
+/// re-fit the trimmed polyline to a clean control polygon (so the crossed anchors are GONE, not just the
+/// painted spine). Used by the bake (Apply & Keep). `None` when nothing crosses (keep the curve as-is) or
+/// the fit is degenerate. `max_error` is the Free Hand fit tolerance.
+pub(super) fn trim_and_refit(
+    points: &[[f32; 2]],
+    handles: &[[[f32; 2]; 2]],
+    closed: bool,
+    max_error: f32,
+) -> Option<super::curve_geom::ControlGeometry> {
+    let mut spine = Vec::new();
+    super::curve_geom::flatten_spine(points, handles, closed, &mut spine);
+    let trimmed = trim_self_intersections(&spine);
+    if trimmed.len() == spine.len() {
+        return None; // no loop was cut
+    }
+    let fit = ph2d_painter_brush::fit_curve(&trimmed, max_error);
+    (fit.anchors.len() >= 2).then_some((fit.anchors, fit.handles))
+}
+
 /// Intersection point of segments `a0→a1` and `b0→b1` when they cross in BOTH interiors (strict, so a
 /// shared endpoint isn't a crossing), else `None`. Parametric: `a0 + t·(a1−a0)`, `t,u ∈ (ε, 1−ε)`.
 fn seg_cross(a0: [f32; 2], a1: [f32; 2], b0: [f32; 2], b1: [f32; 2]) -> Option<[f32; 2]> {

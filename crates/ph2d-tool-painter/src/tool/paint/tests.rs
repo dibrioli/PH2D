@@ -2460,39 +2460,45 @@ fn curve_grab_tolerance_grabs_near_and_adds_far() {
 /// clears the points); the NEXT undo removes the committed stroke. Regression for "the drawing
 /// vanished but the control points stayed" — undo must not strand the points over a reverted canvas.
 #[test]
-fn curve_undo_commits_first_then_undoes() {
+fn curve_undo_walks_edits_and_never_applies() {
+    // Undo must NOT Apply an open curve (Enio 2026-06-27): while authoring it walks the per-session edit
+    // history; only an explicit commit bakes it.
     let mut t = white_canvas(64, 3.0);
     t.paint.brush.stroke_method = StrokeMethod::Curve;
     t.paint.brush.hardness = 1.0;
     t.paint.brush.falloff = Falloff::Constant;
     t.paint.brush.space_attenuation = false;
+    t.set_shape_grab_tol_px(4.0);
 
     t.on_canvas_pointer(cp([8.0, 32.0], PointerPhase::Down));
     t.on_canvas_pointer(cp([56.0, 32.0], PointerPhase::Up)); // 3 points, painted, editing
+
+    // A freshly drawn curve with no edits: undo is a no-op — it does not Apply the curve.
+    assert!(!t.undo_last(), "undo does not apply the open curve");
     assert!(
         t.curve_overlay().is_some(),
-        "points visible while authoring"
+        "the curve stays open and editable"
     );
-    assert_eq!(px(&t, 64, 8, 32), [0, 0, 0, 255], "curve painted");
 
-    // Undo #1: applies the curve — points cleared, the painted curve survives (no orphan state).
-    assert!(t.undo_last());
+    // Move the midpoint, then undo — the edit reverts and the curve STAYS open (never applied).
+    let before = t.curve_overlay().unwrap().points;
+    t.on_canvas_pointer(cp([32.0, 32.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([32.0, 12.0], PointerPhase::Move));
+    t.on_canvas_pointer(cp([32.0, 12.0], PointerPhase::Up));
+    assert_ne!(
+        t.curve_overlay().unwrap().points,
+        before,
+        "the midpoint moved"
+    );
+    assert!(t.undo_last(), "the move is undone");
+    assert_eq!(
+        t.curve_overlay().unwrap().points,
+        before,
+        "reverted to pre-move"
+    );
     assert!(
-        t.curve_overlay().is_none(),
-        "first undo applied the curve (points cleared)"
-    );
-    assert_eq!(
-        px(&t, 64, 8, 32),
-        [0, 0, 0, 255],
-        "the painted curve survives the commit"
-    );
-
-    // Undo #2: now undoes the committed stroke — back to the pristine canvas.
-    assert!(t.undo_last());
-    assert_eq!(
-        px(&t, 64, 8, 32),
-        [255, 255, 255, 255],
-        "second undo removes the committed curve"
+        t.curve_overlay().is_some(),
+        "still open — undo never applied it"
     );
 }
 
@@ -2632,27 +2638,21 @@ fn circle_cancel_reverts_all_pixels() {
 }
 
 #[test]
-fn circle_undo_commits_first_then_undoes() {
+fn circle_undo_does_not_apply_while_authoring() {
     let mut t = circle_tool();
     draw_circle(&mut t, 64.0, 64.0, 20.0);
     assert!(t.circle_overlay().is_some(), "handles visible");
-    // Undo #1 applies the circle (handles gone, ring survives).
-    assert!(t.undo_last());
-    assert!(
-        t.circle_overlay().is_none(),
-        "first undo applied the circle"
-    );
-    assert_eq!(
-        px(&t, 128, 84, 64),
-        [0, 0, 0, 255],
-        "ring survives the commit"
-    );
-    // Undo #2 removes the committed ring.
+    // Undo must NOT apply the circle (Enio 2026-06-27): it no-ops while the shape is authored.
+    assert!(!t.undo_last(), "undo does not apply the open circle");
+    assert!(t.circle_overlay().is_some(), "the circle stays open");
+    // Commit explicitly (Apply), then one undo removes the committed ring.
+    assert!(t.commit_open_shape());
+    assert!(t.circle_overlay().is_none());
     assert!(t.undo_last());
     assert_eq!(
         px(&t, 128, 84, 64),
         [255, 255, 255, 255],
-        "second undo removes the ring"
+        "undo removes the committed ring"
     );
 }
 
@@ -2823,24 +2823,17 @@ fn polygon_commit_cancel_and_undo() {
     assert!(t.cancel_open_shape());
     assert_eq!(px(&t, 128, 64, 84), [255, 255, 255, 255], "cancel reverted");
 
-    // Undo while authoring commits first.
+    // Undo while authoring is a no-op — it must NOT apply the polygon (Enio 2026-06-27).
     let mut t = polygon_tool();
     draw_polygon(&mut t, 64.0, 64.0, 20.0);
-    assert!(t.undo_last());
-    assert!(
-        t.polygon_overlay().is_none(),
-        "first undo applied the polygon"
-    );
-    assert_eq!(
-        px(&t, 128, 64, 84),
-        [0, 0, 0, 255],
-        "outline survives the commit"
-    );
+    assert!(!t.undo_last(), "undo does not apply the open polygon");
+    assert!(t.polygon_overlay().is_some(), "the polygon stays open");
+    assert!(t.commit_open_shape());
     assert!(t.undo_last());
     assert_eq!(
         px(&t, 128, 64, 84),
         [255, 255, 255, 255],
-        "second undo removes it"
+        "undo removes the committed outline"
     );
 }
 
@@ -4365,5 +4358,22 @@ fn simplify_is_hidden_until_a_point_is_added_on_a_plain_curve() {
     assert!(
         t.brush_settings().can_simplify,
         "adding a point unlocks Simplify"
+    );
+}
+
+#[test]
+fn an_offset_change_is_undoable_on_an_open_curve() {
+    // The Offset slider is woven into curve undo (Enio 2026-06-27): changing it then undoing reverts it.
+    let mut t = open_curve_midpoint_selected();
+    let off0 = t.brush_settings().offset;
+    t.set_brush_offset(0.8);
+    assert!(
+        (t.brush_settings().offset - 0.8).abs() < 1e-4,
+        "offset applied"
+    );
+    assert!(t.undo_last(), "the offset change is undone");
+    assert!(
+        (t.brush_settings().offset - off0).abs() < 1e-4,
+        "offset reverted by undo"
     );
 }

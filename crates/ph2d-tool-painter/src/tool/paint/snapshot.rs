@@ -126,7 +126,12 @@ impl PainterTool {
     }
 
     /// Set the **Offset** slider track (`0..1`, `0.5` = no offset) — perpendicular path offset for shapes.
+    /// While a curve is open, the first value of a drag snapshots for undo (coalesced into one step).
     pub fn set_brush_offset(&mut self, norm: f32) {
+        let cur = self.paint.shape_offset_norm;
+        if let Some(ed) = self.paint.curve.as_mut().filter(|e| e.editing) {
+            ed.begin_offset_edit(cur);
+        }
         self.paint.shape_offset_norm = norm.clamp(0.0, 1.0);
     }
 

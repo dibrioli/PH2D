@@ -18,43 +18,37 @@ use ph2d_painter_brush::{Stroke, lazy_mouse_step};
 
 /// Most control points a Curve session may hold — bounds the per-frame re-fill + hit-test.
 const MAX_CURVE_POINTS: usize = 64;
-/// Free Hand: cubic-fit error tolerance (px) — the max the fitted curve may deviate from the captured
-/// path. Larger ⇒ fewer, cleaner control points. Sits a touch above the stabilizer's residual jitter so
-/// a steady stroke collapses to a handful of anchors rather than tracing every wobble.
+/// Free Hand: cubic-fit error tolerance (px) — max deviation of the fitted curve from the captured path.
+/// A touch above the stabilizer's residual jitter, so a steady stroke collapses to a handful of anchors.
 const FREEHAND_FIT_ERROR: f32 = 4.0;
 /// Free Hand: minimum squared spacing (px²) between captured path points — keeps the raw capture bounded.
 const MIN_CAPTURE_DIST_SQ: f32 = 4.0;
 /// Free Hand: hard cap on raw captured points during the drag (before the fit).
 const MAX_FREEHAND_CAPTURE: usize = 4096;
-/// In-progress Curve session: the editable control polygon (image-space px) + the current
-/// selection / grab + the draw-vs-edit phase. Held in [`PaintState::curve`]; `None` when idle.
+/// In-progress Curve session: the editable control polygon (px) + selection / grab + draw-vs-edit phase.
+/// Held in [`PaintState::curve`]; `None` when idle.
 pub(super) struct CurveEditor {
     /// Control points (image-space px): one while drawing the initial line, then `≥ 2` once editing.
     pub(super) points: Vec<[f32; 2]>,
     /// Per-anchor **Bézier handles** `[in, out]` (absolute px), parallel to `points` once editing; the
     /// `kinds` entry drives updates. EMPTY transiently (draw-phase preview) ⇒ Catmull-Rom in `flatten_spine`.
     pub(super) handles: Vec<[[f32; 2]; 2]>,
-    /// Per-anchor **handle kind** (Free / Aligned / Vector / Auto), parallel to `points` once editing. Derived
-    /// (Auto / Vector) are recomputed by [`curve_handle::rebuild`] each edit; manual (Aligned / Free) keep the
-    /// artist's tangents. Empty during the draw phase.
+    /// Per-anchor **handle kind** (Free / Aligned / Vector / Auto), parallel to `points`. Auto / Vector are
+    /// recomputed by [`curve_handle::rebuild`] each edit; Aligned / Free are kept. Empty in the draw phase.
     pub(super) kinds: Vec<HandleKind>,
     /// The selected (highlighted) point — the Delete target. `None` = nothing selected.
     pub(super) selected: Option<usize>,
     /// The point being dragged this gesture (`Some` between a grab-Down and its Up).
     grabbed: Option<usize>,
-    /// The **tangent handle** dragged this gesture: `(anchor, is_out)` picking the `[in, out]` slot. `Some`
-    /// between its grab-Down and Up; takes precedence over `grabbed`.
+    /// The **tangent handle** dragged: `(anchor, is_out)`. `Some` between grab-Down/Up; beats `grabbed`.
     grabbed_handle: Option<(usize, bool)>,
-    /// The active **whole-curve transform** drag (the bbox gizmo: move / scale / rotate). `Some` between its
-    /// grab-Down and Up; takes precedence over anchor / tangent grabs.
+    /// The **whole-curve transform** drag (bbox gizmo: move / scale / rotate). `Some` Down→Up; beats grabs.
     gizmo: Option<curve_gizmo::GizmoGrab>,
     /// `false` while drawing the initial straight line (Down→Up), `true` once editing the points.
     pub(super) editing: bool,
-    /// `true` when the curve is a **closed loop** (converted Circle / Polygon): the spine / fill / offset wrap
-    /// last → first, no duplicate seam anchor.
+    /// `true` for a **closed loop** (converted Circle / Polygon): spine / fill / offset wrap last → first.
     pub(super) closed: bool,
-    /// **Free Hand** mode ([`StrokeMethod::FreeHand`]): the draw phase captures the path into `points` +
-    /// simplifies to control points on release, then an ordinary editable curve. `false` for plain Curve.
+    /// **Free Hand** mode: the draw phase captures the path + simplifies on release. `false` for plain Curve.
     freehand: bool,
     /// Free Hand only: the lazy-mouse **stabilizer**'s filtered cursor (lags raw by the brush `stabilizer`).
     stabilized: [f32; 2],
@@ -62,13 +56,13 @@ pub(super) struct CurveEditor {
     anchor: [f32; 2],
     /// Per-session jitter seed, fixed at begin so every re-fill of the same points is identical.
     seed: u64,
-    /// `true` once the user has inserted a point on this curve. Gates the Simplify button for Curve +
-    /// converted Circle/Polygon (Free Hand exposes Simplify immediately — its whole point is the fit).
+    /// `true` once the user inserted a point — gates Simplify for Curve / converted shapes (Free Hand: always).
     pub(super) added_point: bool,
-    /// Per-session **edit** undo / redo stacks — point moves / inserts / deletes / handle-kind changes, woven
-    /// into the painter's Ctrl+Z/Y (see [`super::curve_undo`]). Cleared with the session.
+    /// Per-session **edit** undo / redo stacks — point edits + Offset; see [`super::curve_undo`].
     pub(super) edit_undo: Vec<super::curve_undo::EditSnapshot>,
     pub(super) edit_redo: Vec<super::curve_undo::EditSnapshot>,
+    /// `true` mid Offset-slider drag, so a contiguous run of slider values coalesces to one undo step.
+    pub(super) offset_dragging: bool,
 }
 
 /// A read-only snapshot of the Curve editor for the shell's on-canvas overlay (control dots + the
@@ -90,8 +84,8 @@ pub struct CurveOverlay {
 }
 
 impl PainterTool {
-    /// Route a canvas pointer through the Curve editor (called instead of the generic paint path while the
-    /// method is [`StrokeMethod::Curve`]). `true` when consumed (the shell keeps the gesture open).
+    /// Route a canvas pointer through the Curve editor (vs the generic paint path while the method is
+    /// [`StrokeMethod::Curve`]). `true` when consumed (the shell keeps the gesture open).
     pub(super) fn curve_pointer(&mut self, ev: CanvasPointer) -> bool {
         match ev.phase {
             PointerPhase::Down => self.curve_down(ev.pos),
@@ -101,11 +95,11 @@ impl PainterTool {
         }
     }
 
-    /// Pointer-down: start a session (begin drawing the line) when idle; otherwise grab the control
-    /// point under the cursor, or — on a miss — insert a new point there and grab it.
+    /// Pointer-down: start a session when idle; else grab the point under the cursor, or insert one on a miss.
     fn curve_down(&mut self, pos: [f32; 2]) -> bool {
         let tol = self.paint.shape_grab_tol_px;
         self.bake_curve_offset(); // an edit gesture locks in any live Offset (so hit-test = displayed dots)
+        let off = self.paint.shape_offset_norm; // snapshot the (post-bake) Offset with the gesture for undo
         let Some(ed) = self.paint.curve.as_mut() else {
             // No session → snapshot for undo + begin drawing the initial straight line.
             let before = self.snapshot_model();
@@ -130,13 +124,14 @@ impl PainterTool {
                 added_point: false,
                 edit_undo: Vec::new(),
                 edit_redo: Vec::new(),
+                offset_dragging: false,
             });
             return true;
         };
         if !ed.editing {
             return true; // mid initial-line drag — ignore extra Downs
         }
-        ed.begin_edit(); // tentatively snapshot for undo; curve_up discards it if nothing changed
+        ed.begin_edit(off); // tentatively snapshot for undo; curve_up discards it if nothing changed
         let tangent = ed.selected.and_then(|s| {
             curve_tangent::tangent_hit(&ed.points, &ed.handles, s, pos, tol, ed.closed)
         });
@@ -262,6 +257,7 @@ impl PainterTool {
 
     /// Pointer-up: release a grab (edit), or finalize the initial line into a 3-point editable curve.
     fn curve_up(&mut self, pos: [f32; 2]) -> bool {
+        let off = self.paint.shape_offset_norm;
         let Some(ed) = self.paint.curve.as_mut() else {
             return false;
         };
@@ -269,7 +265,7 @@ impl PainterTool {
             ed.grabbed = None;
             ed.grabbed_handle = None;
             ed.gizmo = None;
-            ed.commit_edit(); // keep the gesture's undo snapshot iff it changed the curve
+            ed.commit_edit(off); // keep the gesture's undo snapshot iff it changed the curve
             return true;
         }
         if ed.freehand {
@@ -315,6 +311,7 @@ impl PainterTool {
     /// Delete the selected control point (Delete key). Keeps `≥ 2` points so a curve always remains;
     /// returns `true` when a point was removed (the shell consumes the key only then).
     pub fn curve_delete_selected(&mut self) -> bool {
+        let off = self.paint.shape_offset_norm;
         let Some(ed) = self.paint.curve.as_mut() else {
             return false;
         };
@@ -327,7 +324,7 @@ impl PainterTool {
         if ed.points.len() <= 2 || sel >= ed.points.len() {
             return false;
         }
-        ed.push_edit(); // a delete is one undo step
+        ed.push_edit(off); // a delete is one undo step
         ed.points.remove(sel);
         if sel < ed.handles.len() {
             ed.handles.remove(sel); // keep the parallel handles + kinds invariants
@@ -409,6 +406,7 @@ impl PainterTool {
             added_point: false,
             edit_undo: Vec::new(),
             edit_redo: Vec::new(),
+            offset_dragging: false,
         });
         self.curve_refill();
         true
@@ -495,6 +493,7 @@ impl PainterTool {
         let Some(kind) = HandleKind::from_wire(wire) else {
             return false;
         };
+        let off = self.paint.shape_offset_norm;
         let Some(ed) = self.paint.curve.as_mut() else {
             return false;
         };
@@ -507,7 +506,7 @@ impl PainterTool {
         if ed.kinds.len() != ed.points.len() {
             ed.kinds = vec![HandleKind::Auto; ed.points.len()];
         }
-        ed.push_edit(); // a handle-kind change is one undo step
+        ed.push_edit(off); // a handle-kind change is one undo step
         ed.kinds[sel] = kind;
         // Switching a sharp (collapsed) point to a manual kind: seed a visible tangent to drag. Closed-aware,
         // so a converted Polygon / Circle seam anchor gets BOTH arms (not the one-armed open-curve seed).
@@ -565,22 +564,33 @@ impl PainterTool {
     /// editor. Called before any edit gesture (hit-test = displayed dots) and on Apply & Keep.
     pub(super) fn bake_curve_offset(&mut self) {
         let off = self.shape_offset_px();
+        let trim = self.paint.offset_trim;
         if off != 0.0
             && let Some(ed) = self.paint.curve.as_mut().filter(|ed| ed.editing)
         {
-            let (p, h, origin) =
+            let (mut p, mut h, origin) =
                 curve_offset::offset_curve_refined(&ed.points, &ed.handles, off, ed.closed);
             // Carry kinds (original anchors keep theirs; inserted points = Free) + remap the selection.
-            let kinds: Vec<HandleKind> = origin
+            let mut kinds: Vec<HandleKind> = origin
                 .iter()
                 .map(|o| {
                     o.and_then(|i| ed.kinds.get(i).copied())
                         .unwrap_or(HandleKind::Free)
                 })
                 .collect();
-            ed.selected = ed
+            let mut sel = ed
                 .selected
                 .and_then(|s| origin.iter().position(|o| *o == Some(s)));
+            // Trim: DELETE the crossed (excess) anchors by re-fitting the trimmed spine to a clean curve.
+            if trim
+                && let Some((tp, th)) =
+                    curve_offset::trim_and_refit(&p, &h, ed.closed, FREEHAND_FIT_ERROR)
+            {
+                kinds = vec![HandleKind::Aligned; tp.len()];
+                sel = None;
+                (p, h) = (tp, th);
+            }
+            ed.selected = sel;
             ed.points = p;
             ed.handles = h;
             ed.kinds = kinds;

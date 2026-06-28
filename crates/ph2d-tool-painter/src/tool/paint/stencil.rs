@@ -33,6 +33,8 @@ pub(crate) struct AppearanceSig {
     ramp_dirty: bool,
     /// The Offset slider track — changing it must re-fill the open shape (it shifts the stamped path).
     shape_offset: f32,
+    /// The Offset **Trim** checkbox — toggling it must re-fill (it cuts the spine's self-intersections).
+    offset_trim: bool,
 }
 
 /// The rotate ring reaches this multiple of the scale-grab radius PAST each corner — a click inside the
@@ -296,6 +298,7 @@ impl PainterTool {
             shape_ramp_len: self.paint.shape_color_ramp.len(),
             ramp_dirty: self.paint.texture_ramp_dirty || self.paint.shape_ramp_dirty,
             shape_offset: self.paint.shape_offset_norm,
+            offset_trim: self.paint.offset_trim,
         }
     }
 

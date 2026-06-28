@@ -44,16 +44,12 @@ impl PainterTool {
     /// Returns `true` if an edit was undone. Driven by the shell's undo gesture /
     /// shortcut.
     pub fn undo_last(&mut self) -> bool {
-        // While a curve is being edited, undo walks its per-session edit history (point moves / inserts /
-        // deletes / handle-kind changes) step-by-step — woven into the same Ctrl+Z as the paint flow.
-        if self.curve_undo_edit() {
-            return true;
-        }
-        // With no edits left, a shape still being authored (handles visible) is an in-progress edit: the
-        // next undo COMMITS it (applies the shape, clears the handles) rather than touching the layer
-        // history — else the history undo would wipe the painted preview, orphaning the handles on screen.
-        if self.commit_open_shape() {
-            return true;
+        // While a shape is being authored, undo is CAPTURED by the session: a curve walks its per-session
+        // edit history (point moves / inserts / deletes / handle-kind changes + the Offset slider) step by
+        // step — it never Applies the shape (Enio 2026-06-27) nor touches the layer history (which would
+        // orphan the on-screen handles). Circle / Polygon have no editable history → undo no-ops there.
+        if self.is_editing_shape() {
+            return self.curve_undo_edit();
         }
         if let Some(model) = self.undo.undo() {
             self.restore_model(*model);
@@ -66,14 +62,10 @@ impl PainterTool {
     /// Redo the most recently undone structural layer edit. Returns `true` if an
     /// edit was redone.
     pub fn redo_last(&mut self) -> bool {
-        // Mirror of [`Self::undo_last`]: replay a curve edit if one was undone this session, before history.
-        if self.curve_redo_edit() {
-            return true;
-        }
-        // Same in-progress guard as [`Self::undo_last`]: finalise an open shape before navigating
-        // history, so a stray redo can't strand the handles over a reverted canvas.
-        if self.commit_open_shape() {
-            return true;
+        // Mirror of [`Self::undo_last`]: while a shape is authored, redo replays a curve edit (or no-ops),
+        // never Applying the shape or touching history.
+        if self.is_editing_shape() {
+            return self.curve_redo_edit();
         }
         if let Some(model) = self.undo.redo() {
             self.restore_model(*model);

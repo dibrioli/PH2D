@@ -434,7 +434,7 @@ fn draw_stencil_overlay(
                 camera,
                 window_size,
             );
-            use ph2d_vector::{Affine, BezPath, Brush, Circle, Color, Fill, Point, Rect, Stroke};
+            use ph2d_vector::{Affine, Point};
             let c = affine.as_coeffs();
             let scale = (c[0] * c[0] + c[1] * c[1]).sqrt();
             let map = |p: [f32; 2]| affine * Point::new(f64::from(p[0]), f64::from(p[1]));
@@ -463,25 +463,11 @@ fn draw_stencil_overlay(
                 );
             }
             let scene = vector_scene.inner_mut();
-            let guide = Color::new([1.0, 0.62, 0.20, 0.9]); // LITERAL-COLOR-OK: stencil outline
-            let mut path = BezPath::new();
-            path.move_to(map(overlay.corners[0]));
-            for &p in &overlay.corners[1..] {
-                path.line_to(map(p));
-            }
-            path.close_path();
-            scene.stroke(
-                &Stroke::new(1.5),
-                Affine::IDENTITY,
-                &Brush::Solid(guide),
-                None,
-                &path,
-            );
-            // Corner handles: SQUARES = scale, CIRCLES = rotate (when the cursor is in a corner's rotate
-            // ring, or a rotate drag is live — the sprite gizmo's square→circle cue). Centre = move dot.
-            // The grabbed handle is larger + orange.
-            let handle = Color::new([0.95, 0.95, 0.97, 0.95]); // LITERAL-COLOR-OK: stencil handle
-            let grab = Color::new([1.0, 0.62, 0.20, 1.0]); // LITERAL-COLOR-OK: grabbed handle
+            // The Sprite-gizmo box + handles (theme tokens, a touch darker), so the Stencil rect reads like
+            // the Sprite transform gizmo. Corners flip to circles as the rotate cue; the centre is a square.
+            let pal = super::painter_bridge_gizmo::palette(hero.theme);
+            let box_pts: Vec<Point> = overlay.corners.iter().map(|&p| map(p)).collect();
+            super::painter_bridge_gizmo::stroke_box(scene, &box_pts, &pal);
             let inner = f64::from(overlay.scale_tol_px) * scale;
             let outer = f64::from(overlay.rotate_tol_px) * scale;
             let cur = Point::new(f64::from(cursor.0), f64::from(cursor.1));
@@ -494,41 +480,15 @@ fn draw_stencil_overlay(
                 d > inner && d <= outer && cur.distance(center_sp) > sp.distance(center_sp)
             });
             let draw_circle = overlay.rotating || over_rotate;
-            for (i, &p) in overlay.corners.iter().enumerate() {
+            for &p in &overlay.corners {
                 let sp = map(p);
-                let grabbed = overlay.grabbed == Some(i as u8);
-                let col = if grabbed { grab } else { handle };
-                let r = if grabbed { 6.0 } else { 4.0 };
                 if draw_circle {
-                    scene.fill(
-                        Fill::NonZero,
-                        Affine::IDENTITY,
-                        &Brush::Solid(col),
-                        None,
-                        &Circle::new(sp, r),
-                    );
+                    super::painter_bridge_gizmo::circle_handle(scene, sp, &pal);
                 } else {
-                    let sq = Rect::new(sp.x - r, sp.y - r, sp.x + r, sp.y + r);
-                    scene.fill(
-                        Fill::NonZero,
-                        Affine::IDENTITY,
-                        &Brush::Solid(col),
-                        None,
-                        &sq,
-                    );
+                    super::painter_bridge_gizmo::square_handle(scene, sp, &pal);
                 }
             }
-            // Centre move handle (always a dot).
-            let cgrab = overlay.grabbed == Some(4);
-            let cc = if cgrab { grab } else { handle };
-            let cr = if cgrab { 6.0 } else { 4.0 };
-            scene.fill(
-                Fill::NonZero,
-                Affine::IDENTITY,
-                &Brush::Solid(cc),
-                None,
-                &Circle::new(map(overlay.center), cr),
-            );
+            super::painter_bridge_gizmo::square_handle(scene, center_sp, &pal);
         }
     }
 }

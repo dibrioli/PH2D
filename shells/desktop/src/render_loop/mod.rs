@@ -31,6 +31,8 @@ pub(crate) mod painter_bridge;
 /// The Curve / Free Hand editor overlay (spine + control dots + tangent handles), split from
 /// `painter_bridge_overlays` for the HR-18 file-LOC cap.
 pub(crate) mod painter_bridge_curve_overlay;
+/// Shared Sprite-style gizmo painting for the Curve + Stencil transform gizmos (theme tokens, darker).
+pub(crate) mod painter_bridge_gizmo;
 /// On-canvas editing chrome (brush ring + Curve/Circle/Polygon/Stencil overlays), split from
 /// `painter_bridge` for the HR-18 file-LOC cap.
 pub(crate) mod painter_bridge_overlays;

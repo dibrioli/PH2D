@@ -100,8 +100,7 @@ pub struct BrushSettings {
     pub offset_trim: bool,
     /// Whether the Simplify button shows: a curve is editing AND (Free Hand, or the user has added a point).
     pub can_simplify: bool,
-    /// Whether a curve with points is currently drawn on the canvas (a Curve / Free Hand / converted-shape
-    /// editor is editing) — gates the "Save As Object" button beside the Stroke Method dropdown.
+    /// A curve with points is being edited (Curve / Free Hand / converted shape) — gates the Save-As-Object button.
     pub has_drawn_curve: bool,
     /// "Adjust Strength for Spacing" on/off.
     pub space_attenuation: bool,
@@ -143,8 +142,7 @@ pub struct BrushSettings {
     pub texture_size: [f32; 2],
     /// **Stencil** rect centre, per axis (`−1..1`) — the gizmo placement, independent of the texture tiling.
     pub stencil_offset: [f32; 2],
-    /// **Stencil** rect half-extent as a canvas fraction, per axis (`0.1..10`; default `0.5` = 50 % of the
-    /// sprite). Independent of [`Self::texture_size`]; Stencil mapping only.
+    /// **Stencil** rect half-extent as a canvas fraction, per axis (`0.1..10`, default `0.5`); Stencil mapping only.
     pub stencil_size: [f32; 2],
     /// **Stencil** rect rotation in whole degrees (`0..=360`). Independent of [`Self::texture_angle_deg`].
     pub stencil_angle_deg: u16,
@@ -172,8 +170,7 @@ pub struct BrushSettings {
     pub shape_params: [f32; ph2d_painter_brush::MAX_TEX_PARAMS],
     /// Number of captured Shape layers (`0` = single-image / falloff; `> 1` shows the Per-Layer Color UI).
     pub shape_layer_count: u8,
-    /// Capturable layers in the active document (visible top-level rasters) — the "Use Document Layers"
-    /// button shows only when `> 1`.
+    /// Capturable layers in the active document (visible top-level rasters); "Use Document Layers" shows when `> 1`.
     pub document_layer_count: u8,
     /// "Per-Layer Color" mode — each Shape layer paints its own colour, higher above lower; hides the ramp.
     pub shape_per_layer_color: bool,

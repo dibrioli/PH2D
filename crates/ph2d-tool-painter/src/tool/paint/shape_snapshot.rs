@@ -152,6 +152,17 @@ impl PainterTool {
     pub(crate) fn set_shape_offset_norm(&mut self, norm: f32) {
         self.paint.shape_offset_norm = norm;
     }
+
+    /// The **accumulated** Offset (px) from prior Apply & Keep presses — the cross-module accessor for the
+    /// undo glue (the field is private to the `paint` module).
+    pub(crate) fn shape_offset_base_px(&self) -> f32 {
+        self.paint.shape_offset_base_px
+    }
+
+    /// Set the accumulated Offset (used by `restore_model` to reinstate a snapshot's accumulated Offset).
+    pub(crate) fn set_shape_offset_base_px(&mut self, px: f32) {
+        self.paint.shape_offset_base_px = px;
+    }
 }
 
 /// Whether a shape transaction's `before → after` is a real undo step: an Offset change, a geometry change

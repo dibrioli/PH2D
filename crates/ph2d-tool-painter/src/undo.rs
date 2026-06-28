@@ -46,6 +46,9 @@ pub struct ModelSnapshot {
     /// The **Offset** slider track at capture time, restored alongside the shape so undoing an Offset drag
     /// reinstates its value. Ignored when `shape` is `None`.
     pub offset_norm: f32,
+    /// The **accumulated** Offset (px) from prior Apply & Keep presses (see `PaintState::shape_offset_base_px`),
+    /// restored with `offset_norm` so undoing an Apply & Keep reinstates the pre-commit Offset exactly.
+    pub offset_base_px: f32,
     /// The in-progress drag-preview's saved pixels, if a shape preview was live — so a restore can peel the
     /// preview back to the pristine baseline before re-stamping the editor's geometry (no double paint).
     pub preview_patch: Option<PreviewPatch>,
@@ -270,6 +273,7 @@ mod tests {
             selection: BTreeSet::new(),
             shape: None,
             offset_norm: 0.5,
+            offset_base_px: 0.0,
             preview_patch: None,
         }
     }

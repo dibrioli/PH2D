@@ -140,8 +140,24 @@ impl PainterTool {
         self.paint.offset_trim = !self.paint.offset_trim;
     }
 
-    /// The Offset slider mapped to px: `(norm−0.5)·2·MAX` (`MAX = 100`), so the centred `0.5` track is `0`.
+    /// The EFFECTIVE offset (px) applied to the pristine base geometry: the accumulated offset from prior
+    /// Apply & Keep presses PLUS the live slider. The whole pipeline (overlay, fill, materialise bake) reads
+    /// this, so the offset is always a single offset of the base — never an offset-of-an-offset.
     pub(crate) fn shape_offset_px(&self) -> f32 {
+        self.paint.shape_offset_base_px + self.slider_offset_px()
+    }
+
+    /// The Offset SLIDER's own contribution mapped to px: `(norm−0.5)·2·MAX` (`MAX = 100`), `0` at the
+    /// centred `0.5` track. The accumulator ([`Self::shape_offset_px`]) adds prior committed offsets on top.
+    pub(crate) fn slider_offset_px(&self) -> f32 {
         (self.paint.shape_offset_norm - 0.5) * 2.0 * 100.0
+    }
+
+    /// **Apply & Keep**'s offset step: fold the live slider into the accumulator and re-centre the slider —
+    /// the EFFECTIVE offset (and so the displayed curve) is unchanged, but the slider is free to push further
+    /// in the same direction. Does NOT touch the geometry (the base curve stays pristine).
+    pub(crate) fn accumulate_offset(&mut self) {
+        self.paint.shape_offset_base_px += self.slider_offset_px();
+        self.paint.shape_offset_norm = 0.5;
     }
 }

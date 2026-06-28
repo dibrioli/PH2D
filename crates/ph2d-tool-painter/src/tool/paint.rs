@@ -82,9 +82,8 @@ pub const BRUSH_AIRBRUSH_RATE_MAX_S: f32 = AIRBRUSH_RATE_MAX_S;
 pub use brush_settings::{BrushSettings, PANEL_RAMP_STOPS, brush_falloff_weight_at};
 pub use shape_layers::MAX_SHAPE_LAYERS;
 
-/// A single Drag Dot's restore record: the pristine canvas pixels under the dab's footprint (RGBA8,
-/// row-major over `rect`) saved *before* it was stamped, so the next move can erase it — the dot
-/// follows the cursor leaving no trail, only the dab at the release point survives.
+/// A Drag Dot's restore record: the pristine pixels under the dab's footprint (RGBA8, row-major over `rect`),
+/// saved before stamping so the next move erases it — the dot leaves no trail, only the release dab survives.
 struct DragPreview {
     rect: Region,
     pixels: Vec<u8>,
@@ -127,18 +126,18 @@ pub(crate) struct PaintState {
     circle: Option<circle::CircleEditor>,
     /// In-progress Polygon session (the on-canvas regular-N-gon editor); `None` when idle. [`polygon`].
     polygon: Option<polygon::PolygonEditor>,
-    /// Control-handle grab radius (image px) for the shape editors — the shell forwards a screen-constant,
-    /// footprint-scaled value each pointer event.
+    /// Control-handle grab radius (image px) for the shape editors — shell forwards a footprint-scaled value.
     shape_grab_tol_px: f32,
     /// **Offset** slider track (`0..1`, `0.5` = none) — perpendicular path offset for the shape editors.
     shape_offset_norm: f32,
-    /// **Trim** (Offset card): when set, the offset spine's self-intersections are cut — a point is inserted
-    /// at the crossing and the looped excess dropped (see [`curve_offset::trim_self_intersections`]).
+    /// **Accumulated** offset (px) from prior Apply & Keep presses; the EFFECTIVE offset is
+    /// `shape_offset_base_px + slider` — always a single offset of the pristine base, so it never compounds.
+    shape_offset_base_px: f32,
+    /// **Trim** (Offset card): cut the offset spine's self-intersections — drawing-only (see [`curve_offset`]).
     offset_trim: bool,
     /// In-progress Stencil overlay drag (move/resize/rotate the texture rect); `None` when idle.
     stencil_grab: Option<stencil::StencilGrab>,
-    /// Seconds left on the transient in-gizmo Stencil texture preview (panel-param path): armed by a texture
-    /// /stencil param change, decayed each [`PainterTool::paint_tick`]. See [`stencil::StencilPreview`].
+    /// Seconds left on the transient in-gizmo Stencil texture preview (decayed each `paint_tick`).
     stencil_preview_s: f32,
     /// Imported brush-**Grain** luminance (heavy → not in the `Copy` spec); borrowed as an `ImageMask`.
     texture_image: Option<brush_settings::BrushTextureImage>,
@@ -221,7 +220,8 @@ impl Default for PaintState {
             polygon: None,
             shape_grab_tol_px: DEFAULT_SHAPE_GRAB_TOL_PX,
             shape_offset_norm: 0.5, // centred → 0px offset (default byte-identical)
-            offset_trim: false,     // self-intersection trimming off by default
+            shape_offset_base_px: 0.0,
+            offset_trim: false, // self-intersection trimming off by default
             stencil_grab: None,
             stencil_preview_s: 0.0,
             texture_image: None,

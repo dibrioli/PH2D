@@ -21,6 +21,7 @@ impl PainterTool {
             // `capture_shape_model` (see `tool::paint::shape_snapshot`).
             shape: None,
             offset_norm: self.shape_offset_norm(),
+            offset_base_px: self.shape_offset_base_px(),
             preview_patch: None,
         }
     }
@@ -35,6 +36,7 @@ impl PainterTool {
         self.canvas_rgba = m.canvas_rgba;
         self.selection = m.selection;
         self.set_shape_offset_norm(m.offset_norm);
+        self.set_shape_offset_base_px(m.offset_base_px);
         // Reinstate (or clear) the open shape overlay: peel the snapshot canvas back to its pristine
         // baseline (strip the preview patch) and re-stamp the editor's geometry, so dots + pixels stay in
         // sync. A `None` shape just clears the editors. See `tool::paint::shape_snapshot`.

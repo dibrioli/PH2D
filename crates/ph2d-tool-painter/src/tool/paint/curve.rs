@@ -93,7 +93,8 @@ impl PainterTool {
             // No session → open the creation txn (`before` = no shape) + begin drawing the initial line.
             self.paint.stroke_undo = Some(self.snapshot_model());
             self.paint.drag_preview = None;
-            self.paint.shape_offset_norm = 0.5; // a fresh curve starts with no Offset (not the last one's)
+            self.paint.shape_offset_base_px = 0.0; // a fresh curve starts with no Offset (not the last one's)
+            self.paint.shape_offset_norm = 0.5;
             let seed = self.paint.seed;
             self.paint.seed = self.paint.seed.wrapping_add(1);
             self.paint.curve = Some(CurveEditor {
@@ -383,7 +384,8 @@ impl PainterTool {
             self.restore_region(&prev.rect, &prev.pixels);
         }
         self.paint.stroke_undo = None;
-        self.paint.shape_offset_norm = 0.5; // a cancelled curve must NOT carry its Offset to the next one
+        self.paint.shape_offset_base_px = 0.0; // a cancelled curve must NOT carry its Offset to the next one
+        self.paint.shape_offset_norm = 0.5;
         true
     }
 
@@ -393,6 +395,7 @@ impl PainterTool {
         self.paint.curve = None;
         self.paint.drag_preview = None;
         self.paint.stroke_undo = None;
+        self.paint.shape_offset_base_px = 0.0;
         self.paint.shape_offset_norm = 0.5;
     }
 
@@ -523,21 +526,18 @@ impl PainterTool {
         self.paint.dabs = dabs;
     }
 
-    /// **Bake** the live Offset into the curve's control geometry (anchors moved, handles recalculated) and
-    /// reset the slider — the SPARSE (plain) offset, so the editable curve keeps its anchor count + handle
-    /// kinds and re-offsetting never compounds. A no-op without an offset / open editor. Called before any
-    /// edit gesture (hit-test = displayed dots) and on Apply & Keep.
+    /// **Materialise** the EFFECTIVE offset (accumulator + slider) into the curve's control geometry via the
+    /// SPARSE offset (anchor count + kinds kept, dots match the display) and zero it. A no-op without an
+    /// offset / open editor. Before an EDIT gesture only (hit-test = dots); Apply & Keep accumulates instead.
     pub(super) fn bake_curve_offset(&mut self) {
         let off = self.shape_offset_px();
         if off != 0.0
             && let Some(ed) = self.paint.curve.as_mut().filter(|ed| ed.editing)
         {
-            // The sparse offset keeps the original anchor count + kinds (densification is a paint-only concern)
-            // and the selection maps 1:1, so re-offsetting the baked curve stays clean — no bizarre crossings
-            // from offsetting an already-densified polyline (Enio 2026-06-28).
             let (p, h) = curve_offset::offset_curve(&ed.points, &ed.handles, off, ed.closed);
             ed.points = p;
             ed.handles = h;
+            self.paint.shape_offset_base_px = 0.0;
             self.paint.shape_offset_norm = 0.5;
         }
     }

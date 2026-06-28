@@ -4435,6 +4435,70 @@ fn simplify_is_hidden_until_a_point_is_added_on_a_plain_curve() {
 }
 
 #[test]
+fn curve_apply_and_keep_keeps_the_exact_curve_and_recentres_the_slider() {
+    // Apply & Keep must NOT move or alter the curve (Enio 2026-06-28): the live offset is folded into the
+    // accumulator and the slider re-centred, so the displayed curve is byte-identical and only the slider
+    // changes — letting the user keep offsetting in the same direction.
+    let mut t = open_curve_midpoint_selected();
+    t.set_brush_offset(0.6); // +20px offset
+    let before = t.curve_overlay().unwrap().points;
+    assert!(t.curve_commit_keep());
+    let after = t.curve_overlay().unwrap().points;
+    assert_eq!(
+        before, after,
+        "Apply & Keep did not move/alter the displayed curve"
+    );
+    assert!(
+        (t.brush_settings().offset - 0.5).abs() < 1e-4,
+        "the slider re-centred to 0.5"
+    );
+}
+
+#[test]
+fn apply_and_keep_folds_offset_into_accumulator_and_continues_outward() {
+    // The accumulator in action on the Circle (offset = radii): Apply & Keep keeps the displayed ring put,
+    // re-centres the slider, and a further offset CONTINUES from the kept position (not the base radius).
+    let mut t = circle_tool();
+    draw_circle(&mut t, 64.0, 64.0, 20.0); // base radius 20
+    let disp_r = |t: &PainterTool| -> f32 {
+        let o = t.circle_overlay().expect("ring open");
+        (o.handles[0][0] - o.handles[5][0]).abs()
+    };
+    t.set_brush_offset(0.55); // +10px → displayed radius 30
+    assert!((disp_r(&t) - 30.0).abs() < 0.5, "offset shows radius 30");
+    assert!(t.circle_commit_keep());
+    assert!(
+        (disp_r(&t) - 30.0).abs() < 0.5,
+        "Apply & Keep did NOT move the shape (still 30)"
+    );
+    assert!(
+        (t.brush_settings().offset - 0.5).abs() < 1e-4,
+        "the slider re-centred to 0.5"
+    );
+    // Undo the Apply & Keep → the slider reverts; the shape stays at 30 the whole time.
+    assert!(t.undo_last());
+    assert!(
+        (t.brush_settings().offset - 0.55).abs() < 1e-4,
+        "undo restores the pre-commit slider"
+    );
+    assert!(
+        (disp_r(&t) - 30.0).abs() < 0.5,
+        "shape unchanged through undo"
+    );
+    assert!(t.redo_last());
+    assert!(
+        (t.brush_settings().offset - 0.5).abs() < 1e-4,
+        "redo re-centres again"
+    );
+    // Continue outward: another +10 adds to the accumulated 10 over base 20 → displayed radius 40.
+    t.set_brush_offset(0.55);
+    assert!(
+        (disp_r(&t) - 40.0).abs() < 0.5,
+        "offset continues outward from the kept position (40, not 30)"
+    );
+}
+
+#[test]
 fn an_offset_change_is_undoable_on_an_open_curve() {
     // The Offset slider is woven into curve undo (Enio 2026-06-27): changing it then undoing reverts it.
     let mut t = open_curve_midpoint_selected();

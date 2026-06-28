@@ -81,6 +81,8 @@ impl PainterTool {
             // No session → open the creation txn (`before` = no shape) + begin the centre-out radius drag.
             self.paint.stroke_undo = Some(self.snapshot_model());
             self.paint.drag_preview = None;
+            self.paint.shape_offset_base_px = 0.0; // a fresh ellipse starts with no Offset
+            self.paint.shape_offset_norm = 0.5;
             let seed = self.paint.seed;
             self.paint.seed = self.paint.seed.wrapping_add(1);
             self.paint.circle = Some(CircleEditor {
@@ -154,7 +156,8 @@ impl PainterTool {
         let before = self.capture_shape_model(); // the open ellipse (for undo of the Apply)
         self.paint.circle = None;
         self.commit_drag_preview(); // drop the restore record → the painted ellipse stays baked
-        self.paint.shape_offset_norm = 0.5; // the offset baked into the painted dabs → reset the slider
+        self.paint.shape_offset_base_px = 0.0; // the offset baked into the painted dabs → reset the Offset
+        self.paint.shape_offset_norm = 0.5;
         let after = self.capture_shape_model(); // shape gone, pixels baked
         self.undo.record_structural(before, after); // Apply (bake + close) is one undo entry
         true
@@ -170,9 +173,9 @@ impl PainterTool {
         }
         self.flush_shape_txn();
         let before = self.capture_shape_model(); // ellipse + live preview, pre-bake
-        self.bake_circle_offset(); // lock the offset into the kept radii, reset the slider (offset now 0)
+        self.accumulate_offset(); // fold the slider into the accumulator + re-centre it (radii untouched)
         self.commit_drag_preview(); // the painted ellipse becomes permanent (no live preview left)
-        let after = self.capture_shape_model(); // ellipse kept open, pixels baked, no preview
+        let after = self.capture_shape_model(); // ellipse kept open (same radii), pixels baked, no preview
         self.undo.record_structural(before, after);
         self.paint.drag_preview = None;
         true
@@ -189,7 +192,8 @@ impl PainterTool {
             self.restore_region(&prev.rect, &prev.pixels);
         }
         self.paint.stroke_undo = None;
-        self.paint.shape_offset_norm = 0.5; // a cancelled shape must NOT carry its Offset to the next one
+        self.paint.shape_offset_base_px = 0.0; // a cancelled shape must NOT carry its Offset to the next one
+        self.paint.shape_offset_norm = 0.5;
         true
     }
 
@@ -264,7 +268,8 @@ impl PainterTool {
         ((rx + off).max(0.5), (ry + off).max(0.5))
     }
 
-    /// **Bake** the live Offset into the ellipse radii + reset the slider — see [`Self::bake_curve_offset`].
+    /// **Materialise** the EFFECTIVE offset into the ellipse radii + zero the offset — see
+    /// [`Self::bake_curve_offset`]. Called before an edit gesture; Apply & Keep accumulates instead.
     pub(super) fn bake_circle_offset(&mut self) {
         let off = self.shape_offset_px();
         if off != 0.0
@@ -273,6 +278,7 @@ impl PainterTool {
         {
             ed.rx = (ed.rx + off).max(0.5);
             ed.ry = (ed.ry + off).max(0.5);
+            self.paint.shape_offset_base_px = 0.0;
             self.paint.shape_offset_norm = 0.5;
         }
     }

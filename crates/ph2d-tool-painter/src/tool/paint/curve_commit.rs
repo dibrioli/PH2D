@@ -15,24 +15,27 @@ impl PainterTool {
         let before = self.capture_shape_model(); // the open curve (for undo of the Apply)
         self.paint.curve = None;
         self.commit_drag_preview(); // drop the restore record → the painted curve stays baked
-        self.paint.shape_offset_norm = 0.5; // the offset baked into the painted dabs → reset the slider
+        self.paint.shape_offset_base_px = 0.0; // the offset baked into the painted dabs → reset the Offset
+        self.paint.shape_offset_norm = 0.5;
         let after = self.capture_shape_model(); // shape gone, pixels baked
         self.undo.record_structural(before, after); // Apply (bake + close) is one undo entry
         true
     }
 
     /// Commit the curve but KEEP the editor open (Apply & Keep): bake the painted preview as ONE undo entry
-    /// whose `after` keeps the editor open over the baked pixels — so it interleaves with the surrounding
-    /// shape edits on the unified timeline. `true` when open. (Simplify is its own button now.)
+    /// whose `after` keeps the editor open over the baked pixels — interleaving with the surrounding shape
+    /// edits. The curve geometry is UNCHANGED: the live offset is folded into the accumulator and the slider
+    /// re-centred, so the displayed curve doesn't move but the user can keep offsetting in the same direction
+    /// (Enio 2026-06-28). `true` when open. (Simplify is its own button now.)
     pub fn curve_commit_keep(&mut self) -> bool {
         if !self.paint.curve.as_ref().is_some_and(|ed| ed.editing) {
             return false;
         }
         self.flush_shape_txn();
         let before = self.capture_shape_model(); // curve + live preview, pre-bake
-        self.bake_curve_offset(); // lock the offset into the kept geometry, reset the slider (offset now 0)
+        self.accumulate_offset(); // fold the slider into the accumulator + re-centre it (geometry untouched)
         self.commit_drag_preview(); // the painted curve becomes permanent (no live preview left)
-        let after = self.capture_shape_model(); // curve kept open, pixels baked, no preview
+        let after = self.capture_shape_model(); // curve kept open (same geometry), pixels baked, no preview
         self.undo.record_structural(before, after);
         self.paint.drag_preview = None;
         true

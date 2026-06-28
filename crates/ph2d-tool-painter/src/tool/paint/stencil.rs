@@ -88,8 +88,9 @@ pub struct StencilPreview {
 pub(super) enum StencilGrab {
     /// Dragging the centre handle moves the rect; the cursor keeps its grab offset from the centre.
     Move { offset: [f32; 2] },
-    /// Dragging corner `0..=3` scales the rect about its centre.
-    Scale { corner: u8 },
+    /// Dragging corner `0..=3` scales the rect about its centre. `start_size` is the rect's Size at grab,
+    /// so a **uniform** (Shift) scale can preserve the aspect ratio by the dominant-axis factor.
+    Scale { corner: u8, start_size: [f32; 2] },
     /// Dragging the ring just outside corner `0..=3` rotates the rect about its centre. `grab_angle` is
     /// the pointer's angle (rad) at grab; `start_deg` the stencil angle then — the drag adds the delta.
     Rotate {
@@ -104,7 +105,7 @@ impl StencilGrab {
     fn handle(self) -> u8 {
         match self {
             Self::Move { .. } => 4,
-            Self::Scale { corner } | Self::Rotate { corner, .. } => corner,
+            Self::Scale { corner, .. } | Self::Rotate { corner, .. } => corner,
         }
     }
 
@@ -119,6 +120,12 @@ impl PainterTool {
     pub(super) fn stencil_edit_active(&self) -> bool {
         let t = &self.paint.brush.texture;
         t.is_active() && t.mapping.is_stencil()
+    }
+
+    /// Set whether a Stencil corner scale is UNIFORM (Shift held) this event — the shell forwards the live
+    /// Shift state before each pointer event, like [`PainterTool::set_line_constrain`].
+    pub fn set_uniform_scale(&mut self, on: bool) {
+        self.paint.scale_uniform = on;
     }
 
     /// Route a canvas pointer through the Stencil handle editor. Returns `true` only when it
@@ -144,7 +151,10 @@ impl PainterTool {
         // Inner ring on a corner = scale.
         for (i, &c) in o.corners.iter().enumerate() {
             if dist(c, pos) <= tol {
-                self.paint.stencil_grab = Some(StencilGrab::Scale { corner: i as u8 });
+                self.paint.stencil_grab = Some(StencilGrab::Scale {
+                    corner: i as u8,
+                    start_size: self.paint.brush.texture.stencil_size,
+                });
                 return true;
             }
         }
@@ -191,14 +201,28 @@ impl PainterTool {
                 self.set_brush_stencil_offset(0, nc[0] / canvas[0] * 2.0 - 1.0);
                 self.set_brush_stencil_offset(1, nc[1] / canvas[1] * 2.0 - 1.0);
             }
-            StencilGrab::Scale { .. } => {
+            StencilGrab::Scale { start_size, .. } => {
                 // Half-extent = |projection of (cursor − centre) onto each rotated axis|; symmetric
                 // about the centre. stencil Size = 2·half / canvas.
                 let rel = [pos[0] - center[0], pos[1] - center[1]];
                 let du = (rel[0] * u[0] + rel[1] * u[1]).abs();
                 let dv = (rel[0] * v[0] + rel[1] * v[1]).abs();
-                self.set_brush_stencil_size(0, 2.0 * du / canvas[0]);
-                self.set_brush_stencil_size(1, 2.0 * dv / canvas[1]);
+                let (mut nsx, mut nsy) = (2.0 * du / canvas[0], 2.0 * dv / canvas[1]);
+                // Shift = UNIFORM scale (the Sprite gizmo's aspect-lock): keep the grab-time aspect ratio
+                // by applying the dominant-axis factor (larger relative change) to both axes.
+                if self.paint.scale_uniform {
+                    let rx = ratio(nsx, start_size[0]);
+                    let ry = ratio(nsy, start_size[1]);
+                    let f = if (rx - 1.0).abs() > (ry - 1.0).abs() {
+                        rx
+                    } else {
+                        ry
+                    };
+                    nsx = start_size[0] * f;
+                    nsy = start_size[1] * f;
+                }
+                self.set_brush_stencil_size(0, nsx);
+                self.set_brush_stencil_size(1, nsy);
             }
             StencilGrab::Rotate {
                 grab_angle,
@@ -412,6 +436,11 @@ fn dist(a: [f32; 2], b: [f32; 2]) -> f32 {
     let dx = a[0] - b[0];
     let dy = a[1] - b[1];
     (dx * dx + dy * dy).sqrt()
+}
+
+/// `num / den`, or `1.0` for a (near) zero denominator — a degenerate axis can't define a scale factor.
+fn ratio(num: f32, den: f32) -> f32 {
+    if den.abs() > 1e-6 { num / den } else { 1.0 }
 }
 
 /// Preview buffer dims: the longer rect axis gets [`STENCIL_PREVIEW_MAX`] px; the other tracks the rect

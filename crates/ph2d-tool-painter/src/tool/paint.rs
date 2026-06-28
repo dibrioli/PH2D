@@ -57,11 +57,9 @@ mod stamp_route;
 /// until the shell forwards a screen-scaled value via [`PainterTool::set_shape_grab_tol_px`].
 const DEFAULT_SHAPE_GRAB_TOL_PX: f32 = 8.0;
 
-/// Smallest brush radius the size UI maps to, in image pixels. The size slider's
-/// `0..1` track and the `[` / `]` keyboard nudge both clamp here.
+/// Smallest brush radius the size UI maps to (image px); the size slider + `[` / `]` nudge clamp here.
 pub const BRUSH_SIZE_MIN_PX: f32 = 1.0;
-/// Largest brush radius the size UI maps to, in image pixels. (The engine's own
-/// allocation cap is higher; this is the interactive range, not a hard limit.)
+/// Largest brush radius the size UI maps to (image px); the interactive range, not the engine's hard cap.
 pub const BRUSH_SIZE_MAX_PX: f32 = 512.0;
 
 // Interactive UI ranges for the Stroke section's non-`0..1` sliders: the `0..1` track maps onto `0..MAX`.
@@ -72,9 +70,8 @@ pub const BRUSH_JITTER_ABS_MAX_PX: f32 = 64.0;
 /// Max value for the Input Samples / Dash Length count sliders (mirrors the engine's
 /// input-sample window cap).
 pub const BRUSH_COUNT_SLIDER_MAX: u32 = MAX_INPUT_SAMPLES as u32;
-/// Airbrush **Rate** slider floor / ceiling, in seconds — the panel maps its `0..1` track linearly
-/// onto `[MIN, MAX]` and the tool clamps to it. Re-exported from the engine's Blender soft range
-/// (default `0.1`) so the panel value↔track map shares the single source.
+/// Airbrush **Rate** slider floor / ceiling (seconds) — the panel maps its `0..1` track linearly onto
+/// `[MIN, MAX]`. Re-exported from the engine's Blender soft range so the value↔track map shares one source.
 pub const BRUSH_AIRBRUSH_RATE_MIN_S: f32 = AIRBRUSH_RATE_MIN_S;
 /// See [`BRUSH_AIRBRUSH_RATE_MIN_S`].
 pub const BRUSH_AIRBRUSH_RATE_MAX_S: f32 = AIRBRUSH_RATE_MAX_S;
@@ -123,6 +120,8 @@ pub(crate) struct PaintState {
     line_anchor: Option<[f32; 2]>,
     /// Alt held this event — constrains the Line to 45° increments (Blender `constrain_line`); set by the shell each pointer event.
     line_constrain: bool,
+    /// Shift held this event — a Stencil corner scale becomes UNIFORM (aspect-locked, like the Sprite gizmo); set by the shell each pointer event.
+    scale_uniform: bool,
     /// In-progress Curve session (the on-canvas point editor); `None` when idle. [`curve`].
     curve: Option<curve::CurveEditor>,
     /// In-progress Circle session (the on-canvas ellipse editor); `None` when idle. [`circle`].
@@ -217,6 +216,7 @@ impl Default for PaintState {
             drag_preview: None,
             line_anchor: None,
             line_constrain: false,
+            scale_uniform: false,
             curve: None,
             circle: None,
             polygon: None,

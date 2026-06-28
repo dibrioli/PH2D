@@ -418,6 +418,7 @@ impl App {
         };
         painter.set_shape_grab_tol_px(grab_tol_img);
         painter.set_line_constrain(alt);
+        painter.set_uniform_scale(self.modifiers.shift_key()); // Shift = uniform Stencil scale (Sprite gizmo)
         painter.on_canvas_pointer(ev)
     }
 

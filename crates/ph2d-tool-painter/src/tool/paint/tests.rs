@@ -3366,6 +3366,34 @@ fn grain_ramp_stencil_does_not_paint_outside_the_rect() {
 }
 
 #[test]
+fn stencil_corner_drag_with_shift_scales_uniformly() {
+    use ph2d_painter_brush::{TextureKind, TextureMapping, TextureSettings};
+    // Shift held → a Stencil corner scale preserves the grab-time aspect ratio (the Sprite gizmo's
+    // aspect-lock): dragging mostly along X grows BOTH axes by the X factor, keeping the 2:1 rect 2:1.
+    let mut t = white_canvas(64, 10.0);
+    t.paint.brush.texture = TextureSettings {
+        kind: TextureKind::Checker,
+        mapping: TextureMapping::Stencil,
+        stencil_size: [0.4, 0.2], // a 2:1 rect (centred)
+        ..Default::default()
+    };
+    let corner = t.stencil_overlay().unwrap().corners[2]; // [++] bottom-right
+    t.set_uniform_scale(true);
+    assert!(
+        t.on_canvas_pointer(cp(corner, PointerPhase::Down)),
+        "grab the corner"
+    );
+    t.on_canvas_pointer(cp([60.0, 34.0], PointerPhase::Move)); // grow X a lot, Y barely
+    let s = t.brush_settings();
+    let aspect = s.stencil_size[0] / s.stencil_size[1];
+    assert!(
+        (aspect - 2.0).abs() < 0.05,
+        "uniform scale keeps the 2:1 aspect: {aspect} ({:?})",
+        s.stencil_size
+    );
+}
+
+#[test]
 fn anchored_stencil_does_not_leak_outside_the_rect_during_the_drag() {
     use ph2d_painter_brush::{StrokeMethod, TextureKind, TextureMapping, TextureSettings};
     // Regression (Enio 2026-06-27): an Anchored stroke with a Grain mapped Stencil leaked colour OUTSIDE

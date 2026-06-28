@@ -8,10 +8,10 @@
 
 use ph2d_editor_core::ids as core_ids;
 use ph2d_editor_core::interaction::InteractiveState;
-use ph2d_editor_core::paint::{fill_circle, resolve, stroke_polyline};
+use ph2d_editor_core::paint::{fill_circle, paint_text, resolve, stroke_polyline};
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::zones::Rect;
-use ph2d_tokens::{ColorToken, Spacing};
+use ph2d_tokens::{ColorToken, ROW_H_PX, Spacing, TypeToken};
 use ph2d_tool_painter::BrushSettings;
 
 const GIZMO_PX: f32 = 104.0; // LITERAL-PX-OK: the square gizmo extent
@@ -33,6 +33,19 @@ pub(crate) fn paint_shape_dab_gizmo(
     y: f32,
     brush: BrushSettings,
 ) -> f32 {
+    // Section label naming the feature (the gizmo itself is just a template, Enio 2026-06-28).
+    let font = TypeToken::Sm.px();
+    paint_text(
+        ctx.text_system,
+        ctx.scene,
+        "Flatten & Rotate",
+        x,
+        y + (ROW_H_PX - font) * 0.5,
+        font,
+        content_w,
+        resolve(ColorToken::Text2, theme),
+    );
+    let y = y + ROW_H_PX;
     let size = GIZMO_PX.min(content_w.max(0.0));
     let gx = x + (content_w - size) * 0.5;
     let canvas = Rect::new(gx, y, size, size);

@@ -436,25 +436,23 @@ impl PainterTool {
             return None;
         }
         // Offset the CONTROL geometry (handles recalculated), so dots + tangents + spine + paint move WITH it.
-        let (mut points, mut handles, origin) = curve_offset::offset_curve_refined(
+        let (points, handles, origin) = curve_offset::offset_curve_refined(
             &ed.points,
             &ed.handles,
             self.shape_offset_px(),
             ed.closed,
         );
         // Remap the selected index onto the densified (inserted-anchor) position.
-        let mut osel = ed
+        let osel = ed
             .selected
             .and_then(|s| origin.iter().position(|o| *o == Some(s)));
-        // Trim in REAL TIME: re-fit with the crossed loop deleted, so dots + guide + paint show it live.
-        if self.paint.offset_trim
-            && let Some((tp, th)) =
-                curve_offset::trim_and_refit(&points, &handles, ed.closed, FREEHAND_FIT_ERROR)
-        {
-            (points, handles, osel) = (tp, th, None);
-        }
         let mut spine = Vec::new();
         curve_geom::flatten_spine(&points, &handles, ed.closed, &mut spine);
+        // Trim only the DRAWING (the painted spine + guide), NOT the control points — so the curve keeps its
+        // fidelity and the anchors may cross; the crossed loop just isn't painted (Enio 2026-06-28).
+        if self.paint.offset_trim {
+            spine = curve_offset::trim_self_intersections(&spine);
+        }
         let tangents = osel.and_then(|s| {
             curve_tangent::build_tangents(
                 &points,
@@ -541,17 +539,14 @@ impl PainterTool {
     fn curve_fill(&mut self, pts: &[[f32; 2]], handles: &[[[f32; 2]; 2]], closed: bool, seed: u64) {
         // Offset the CONTROL geometry (handles recalculated), so the painted spine matches the overlay guide
         // and carries no deformation; flatten the offset curve to the dab spine.
-        let (mut pts, mut handles, _) =
+        let (pts, handles, _) =
             curve_offset::offset_curve_refined(pts, handles, self.shape_offset_px(), closed);
-        // Trim in real time: paint the re-fitted curve with the crossed loop deleted (matches the overlay).
-        if self.paint.offset_trim
-            && let Some((tp, th)) =
-                curve_offset::trim_and_refit(&pts, &handles, closed, FREEHAND_FIT_ERROR)
-        {
-            (pts, handles) = (tp, th);
-        }
         let mut spine = Vec::new();
         curve_geom::flatten_spine(&pts, &handles, closed, &mut spine);
+        // Trim only the painted spine (matches the guide) — the control points keep crossing, full fidelity.
+        if self.paint.offset_trim {
+            spine = curve_offset::trim_self_intersections(&spine);
+        }
         let mut stroke = Stroke::new(self.paint.brush, self.paint.dynamics, seed);
         let mut dabs = std::mem::take(&mut self.paint.dabs);
         stroke.fill_polyline_preview(&spine, &mut dabs);
@@ -564,33 +559,23 @@ impl PainterTool {
     /// editor. Called before any edit gesture (hit-test = displayed dots) and on Apply & Keep.
     pub(super) fn bake_curve_offset(&mut self) {
         let off = self.shape_offset_px();
-        let trim = self.paint.offset_trim;
         if off != 0.0
             && let Some(ed) = self.paint.curve.as_mut().filter(|ed| ed.editing)
         {
-            let (mut p, mut h, origin) =
+            let (p, h, origin) =
                 curve_offset::offset_curve_refined(&ed.points, &ed.handles, off, ed.closed);
-            // Carry kinds (original anchors keep theirs; inserted points = Free) + remap the selection.
-            let mut kinds: Vec<HandleKind> = origin
+            // Carry kinds (original anchors keep theirs; inserted points = Free) + remap the selection. Trim
+            // is a DRAWING-only effect (it never deletes anchors), so the baked control geometry is untouched.
+            let kinds: Vec<HandleKind> = origin
                 .iter()
                 .map(|o| {
                     o.and_then(|i| ed.kinds.get(i).copied())
                         .unwrap_or(HandleKind::Free)
                 })
                 .collect();
-            let mut sel = ed
+            ed.selected = ed
                 .selected
                 .and_then(|s| origin.iter().position(|o| *o == Some(s)));
-            // Trim: DELETE the crossed (excess) anchors by re-fitting the trimmed spine to a clean curve.
-            if trim
-                && let Some((tp, th)) =
-                    curve_offset::trim_and_refit(&p, &h, ed.closed, FREEHAND_FIT_ERROR)
-            {
-                kinds = vec![HandleKind::Aligned; tp.len()];
-                sel = None;
-                (p, h) = (tp, th);
-            }
-            ed.selected = sel;
             ed.points = p;
             ed.handles = h;
             ed.kinds = kinds;

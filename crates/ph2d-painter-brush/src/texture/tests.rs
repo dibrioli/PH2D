@@ -837,3 +837,49 @@ fn stencil_image_fills_the_rect_once_at_size_one() {
         "one fill spans most of the gradient: l={l} r={r}"
     );
 }
+
+#[test]
+fn shape_image_rotates_with_the_basis_angle() {
+    use crate::ImageMask;
+    // Left half white, right half black (a directional image). With the basis Angle at 0 a point left of
+    // centre samples the WHITE half; rotating the basis 90° must sample elsewhere (the rotation reaches
+    // the shape sampler). If this fails, the engine doesn't rotate; if it passes, the bug is in wiring.
+    let mut lum = vec![0u8; 16 * 16];
+    for y in 0..16 {
+        for x in 0..8 {
+            lum[y * 16 + x] = 255;
+        }
+    }
+    let img = ImageMask {
+        lum: &lum,
+        width: 16,
+        height: 16,
+    };
+    let mk = |angle: u16| TextureSettings {
+        kind: TextureKind::Image,
+        mapping: TextureMapping::ViewPlane,
+        angle_deg: angle,
+        ..Default::default()
+    };
+    let at = |angle: u16| {
+        let s = mk(angle);
+        let mut rng = 0u64;
+        let b = dab_basis(
+            &s,
+            [0.0, 0.0],
+            &mut rng,
+            [64.0, 64.0],
+            [1.0, 0.0],
+            FootprintDeform::identity(),
+        );
+        // pixel (24,32): left of centre (32,32), radius 16 → rel ≈ (-0.47, 0.03).
+        sample_shape_silhouette(&s, &b, 24, 32, [32.0, 32.0], 16.0, Some(&img))
+    };
+    assert_ne!(
+        at(0),
+        at(90),
+        "the shape image rotates with the basis angle: {} vs {}",
+        at(0),
+        at(90)
+    );
+}

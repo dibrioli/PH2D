@@ -3318,30 +3318,118 @@ fn per_layer_color_grain_stencil_masks_to_the_rect_not_the_whole_dab() {
     );
 }
 
-#[test]
-fn jitter_rotate_spins_the_shape_silhouette_per_dab() {
-    use ph2d_painter_brush::StrokeMethod;
-    // Regression (Enio 2026-06-28): Stroke **Jitter Rotate** now spins the whole dab STAMP, the Shape
-    // silhouette included (it used to rotate only the texture, so a shape-only brush ignored it). An
-    // asymmetric shape painted WITH jitter rotation lands differently than without.
-    let mut bar = vec![0u8; 64]; // 8×8: top 3 rows white = a horizontal bar (asymmetric under rotation)
+// Diagnostics (Enio 2026-06-28): does each per-dab rotation actually reach the painted result? Two
+// strokes with DIFFERENT seeds must differ — the seed only feeds the rotation here, so identical = the
+// rotation was DROPPED (the cached-vs-per-pixel path confound is avoided: both runs use the SAME path).
+fn directional_bar() -> Vec<u8> {
+    let mut bar = vec![0u8; 64]; // 8×8, top 3 rows white = directional under rotation
     for px in bar.iter_mut().take(3 * 8) {
         *px = 255;
     }
-    let stroke = |jr: f32| {
+    bar
+}
+
+#[test]
+fn jitter_rotate_reaches_curve_fill() {
+    use ph2d_painter_brush::StrokeMethod;
+    let bar = directional_bar();
+    let run = |seed: u64| {
+        let mut t = white_canvas(64, 8.0);
+        t.set_brush_shape_image(bar.clone(), 8, 8);
+        t.paint.brush.stroke_method = StrokeMethod::Curve;
+        t.set_brush_jitter_rotate(1.0);
+        t.paint.seed = seed;
+        t.on_canvas_pointer(cp([10.0, 32.0], PointerPhase::Down));
+        t.on_canvas_pointer(cp([54.0, 32.0], PointerPhase::Move));
+        t.on_canvas_pointer(cp([54.0, 32.0], PointerPhase::Up));
+        (*t.canvas_rgba).clone()
+    };
+    assert_ne!(
+        run(1),
+        run(999),
+        "Jitter Rotate must vary the Curve fill with the seed"
+    );
+}
+
+#[test]
+fn jitter_rotate_reaches_the_paint() {
+    use ph2d_painter_brush::StrokeMethod;
+    let bar = directional_bar();
+    let run = |seed: u64| {
         let mut t = white_canvas(48, 8.0);
         t.set_brush_shape_image(bar.clone(), 8, 8);
         t.paint.brush.stroke_method = StrokeMethod::Space;
-        t.set_brush_jitter_rotate(jr);
+        t.set_brush_jitter_rotate(1.0);
+        t.paint.seed = seed;
         t.on_canvas_pointer(cp([10.0, 24.0], PointerPhase::Down));
         t.on_canvas_pointer(cp([38.0, 24.0], PointerPhase::Move));
         t.on_canvas_pointer(cp([38.0, 24.0], PointerPhase::Up));
         (*t.canvas_rgba).clone()
     };
     assert_ne!(
-        stroke(0.0),
-        stroke(1.0),
-        "Jitter Rotate changes the painted result by spinning the Shape per dab"
+        run(1),
+        run(999),
+        "Jitter Rotate must vary with the seed (rotation reaches the paint)"
+    );
+}
+
+#[test]
+fn shape_random_angle_reaches_the_paint() {
+    use ph2d_painter_brush::StrokeMethod;
+    let bar = directional_bar();
+    let run = |seed: u64| {
+        let mut t = white_canvas(48, 8.0);
+        t.set_brush_shape_image(bar.clone(), 8, 8);
+        t.paint.brush.stroke_method = StrokeMethod::Space;
+        t.toggle_brush_shape_random();
+        t.paint.seed = seed;
+        t.on_canvas_pointer(cp([10.0, 24.0], PointerPhase::Down));
+        t.on_canvas_pointer(cp([38.0, 24.0], PointerPhase::Move));
+        t.on_canvas_pointer(cp([38.0, 24.0], PointerPhase::Up));
+        (*t.canvas_rgba).clone()
+    };
+    assert_ne!(
+        run(1),
+        run(999),
+        "Shape Random Angle must vary with the seed (rotation reaches the paint)"
+    );
+}
+
+#[test]
+fn grain_random_angle_reaches_the_paint() {
+    use ph2d_painter_brush::{StrokeMethod, TextureKind};
+    let run = |seed: u64| {
+        let mut t = white_canvas(48, 8.0);
+        t.paint.brush.texture.kind = TextureKind::Stripes; // a directional grain
+        t.paint.brush.texture.size = [0.5, 0.5];
+        t.paint.brush.stroke_method = StrokeMethod::Space;
+        t.toggle_brush_texture_random();
+        t.paint.seed = seed;
+        t.on_canvas_pointer(cp([10.0, 24.0], PointerPhase::Down));
+        t.on_canvas_pointer(cp([38.0, 24.0], PointerPhase::Move));
+        t.on_canvas_pointer(cp([38.0, 24.0], PointerPhase::Up));
+        (*t.canvas_rgba).clone()
+    };
+    assert_ne!(
+        run(1),
+        run(999),
+        "Grain Random Angle must vary with the seed (rotation reaches the paint)"
+    );
+}
+
+#[test]
+fn jitter_rotate_panel_event_sets_the_field() {
+    use ph2d_editor_core::ids as core_ids;
+    use ph2d_editor_core::tool::{PanelEvent, Tool};
+    let mut t = white_canvas(48, 8.0);
+    t.handle_panel_event(PanelEvent::SetValue(
+        core_ids::PAINTER_BRUSH_JITTER_ROTATE,
+        0.7,
+    ));
+    assert!(
+        (t.brush_settings().jitter_rotate - 0.7).abs() < 1e-4,
+        "the panel slider event must set jitter_rotate: {}",
+        t.brush_settings().jitter_rotate
     );
 }
 

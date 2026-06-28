@@ -441,6 +441,47 @@ fn edit_button_registers_only_for_circle_and_polygon() {
     }
 }
 
+/// Save As Object: the floppy button beside the Method dropdown registers a hit rect ONLY while a curve
+/// with points is drawn (`has_drawn_curve`), and stays hidden otherwise — so it appears exactly when the
+/// curve can be saved.
+#[test]
+fn save_as_object_button_shows_only_when_a_curve_is_drawn() {
+    let painted = |has_drawn_curve: bool| -> Vec<NodeId> {
+        let mut host = MockPanelHost::with_panel::<crate::PainterLayersPanel>();
+        let mut scene = VectorScene::new();
+        let mut text = TextSystem::without_system_fonts();
+        let viewport = Rect::new(0.0, 0.0, 360.0, 4000.0);
+        let layout = HeroLayout::for_viewport(viewport);
+        let brush = BrushSettings {
+            stroke_method: StrokeMethod::Curve.to_u8(),
+            has_drawn_curve,
+            ..crate::paint_brush::FALLBACK_BRUSH
+        };
+        {
+            let mut ctx = PaintCtx {
+                host: &mut host,
+                layout: &layout,
+                viewport,
+                scene: &mut scene,
+                text_system: &mut text,
+            };
+            paint_stroke_section(&mut ctx, Theme::default(), 0.0, 320.0, 0.0, brush);
+        }
+        host.hit_index_mut()
+            .iter_registrations()
+            .map(|(id, _)| id)
+            .collect()
+    };
+    assert!(
+        painted(true).contains(&core_ids::PAINTER_BRUSH_STROKE_SAVE_OBJECT),
+        "the Save As Object button shows when a curve with points is drawn"
+    );
+    assert!(
+        !painted(false).contains(&core_ids::PAINTER_BRUSH_STROKE_SAVE_OBJECT),
+        "the Save As Object button stays hidden when no curve is drawn"
+    );
+}
+
 /// Drag Dot: the most-restricted method (no jitter, no spacing, no stabilizer — the dot sits
 /// raw under the cursor) — only Method + Input Samples survive. UI-honesty for "Drag Dot wrong".
 #[test]

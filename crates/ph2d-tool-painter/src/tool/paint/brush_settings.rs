@@ -100,6 +100,9 @@ pub struct BrushSettings {
     pub offset_trim: bool,
     /// Whether the Simplify button shows: a curve is editing AND (Free Hand, or the user has added a point).
     pub can_simplify: bool,
+    /// Whether a curve with points is currently drawn on the canvas (a Curve / Free Hand / converted-shape
+    /// editor is editing) — gates the "Save As Object" button beside the Stroke Method dropdown.
+    pub has_drawn_curve: bool,
     /// "Adjust Strength for Spacing" on/off.
     pub space_attenuation: bool,
     /// **Accumulate** on/off: off (default) caps a stroke at Strength.

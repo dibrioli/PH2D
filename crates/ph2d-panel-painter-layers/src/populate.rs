@@ -179,6 +179,10 @@ pub fn populate(store: &mut WidgetStore) {
         // Simplify (re-fit the curve) + the Offset-card Trim checkbox.
         ph2d_editor_core::ids::PAINTER_BRUSH_STROKE_SIMPLIFY,
         ph2d_editor_core::ids::PAINTER_BRUSH_OFFSET_TRIM,
+        // Save As Object (floppy) — shown beside the Method dropdown only while a curve is drawn. The
+        // action is not wired yet (clicking is a deliberate no-op); registering the slot gives it hover /
+        // press feedback + a tooltip now, and lets the future route deliver the Click without a re-register.
+        ph2d_editor_core::ids::PAINTER_BRUSH_STROKE_SAVE_OBJECT,
         ph2d_editor_core::ids::PAINTER_BRUSH_TILING_RESET,
     ] {
         store.register(
@@ -188,6 +192,11 @@ pub fn populate(store: &mut WidgetStore) {
             },
         );
     }
+    // Mouse-over hint for the (not-yet-wired) Save As Object button.
+    store.set_tooltip(
+        ph2d_editor_core::ids::PAINTER_BRUSH_STROKE_SAVE_OBJECT,
+        "Save As Object",
+    );
     // Blend + Falloff + Stroke-Method + Jitter-Unit chips are Dropdowns (generic
     // open/close dispatch); their options are popover buttons.
     for id in [

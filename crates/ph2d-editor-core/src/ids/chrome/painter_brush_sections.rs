@@ -39,6 +39,11 @@ pub const PAINTER_BRUSH_OFFSET: NodeId = hash_node_id("painter_brush.offset");
 pub const PAINTER_BRUSH_OFFSET_CHIP: NodeId = hash_node_id("painter_brush.offset_chip");
 /// "Simplify": re-fit the editable curve to a clean minimal control polygon. `Click` → `curve_simplify`.
 pub const PAINTER_BRUSH_STROKE_SIMPLIFY: NodeId = hash_node_id("painter_brush.stroke_simplify");
+/// "Save As Object" (floppy icon) beside the Stroke Method dropdown — shown only while a curve with points
+/// is drawn on the canvas. FUTURE (not wired yet): persist the drawn curve + the current Brush/Layer panel
+/// settings as a dynamic object that can be reloaded and even animated later.
+pub const PAINTER_BRUSH_STROKE_SAVE_OBJECT: NodeId =
+    hash_node_id("painter_brush.stroke_save_object");
 /// "Trim" checkbox: cut the offset spine's self-intersections. `Click` → `toggle_offset_trim`.
 pub const PAINTER_BRUSH_OFFSET_TRIM: NodeId = hash_node_id("painter_brush.offset_trim");
 pub const PAINTER_BRUSH_DASH_RATIO_CHIP: NodeId = hash_node_id("painter_brush.dash_ratio_chip");

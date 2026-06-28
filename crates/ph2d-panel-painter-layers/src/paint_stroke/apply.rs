@@ -192,9 +192,8 @@ fn paint_icon_cluster(
     button(ctx, theme, Rect::new(cx, iy, sq, ROW_H_PX), None, delete);
 }
 
-/// One stroke shape-editor button. `label = Some(text)` paints a text button (Apply / Apply & Keep);
-/// `None` paints the square Close (✕) icon (Delete). All three share the same chrome (fill / border /
-/// height) so Delete reads as a peer, not an alarm. Registers the Button slot so the dispatch can `Click`.
+/// One stroke shape-editor TEXT button (Apply / Apply & Keep / E). Shares the flat-button chrome (fill /
+/// border / height) so the row reads as peers. Registers the Button slot so the dispatch can `Click`.
 fn button(
     ctx: &mut PaintCtx,
     theme: ph2d_tokens::Theme,
@@ -202,6 +201,12 @@ fn button(
     label: Option<&str>,
     id: ph2d_a11y::NodeId,
 ) {
+    // The icon-only ✕ Delete delegates to the shared icon-button chrome so it stays size-matched with the
+    // Save-As-Object button beside the Method dropdown.
+    let Some(text) = label else {
+        paint_icon_button(ctx, theme, r, ph2d_editor_core::IconId::Close, id);
+        return;
+    };
     // Fill follows the button's ButtonState (idle / hover / press) via the central `flat_button_surface`,
     // so the click is visible — same source every flat button uses.
     let state = match ctx.host.store().get(id) {
@@ -221,27 +226,53 @@ fn button(
         StrokeToken::Thin.px(),
         resolve(ColorToken::Border, theme),
     );
-    match label {
-        Some(text) => paint_text_centered(
-            ctx.text_system,
-            ctx.scene,
-            text,
-            r,
-            TypeToken::Base.px(),
-            resolve(ColorToken::Text1, theme),
-        ),
-        None => {
-            let pad = Spacing::Sm.px(); // inset so the ✕ reads at the button's full height
-            let icon = Rect::new(r.x + pad, r.y + pad, r.w - pad * 2.0, r.h - pad * 2.0);
-            paint_icon(
-                ctx.scene,
-                ph2d_editor_core::IconId::Close,
-                icon,
-                resolve(ColorToken::Text1, theme),
-                StrokeToken::Default.px(),
-            );
-        }
-    }
+    paint_text_centered(
+        ctx.text_system,
+        ctx.scene,
+        text,
+        r,
+        TypeToken::Base.px(),
+        resolve(ColorToken::Text1, theme),
+    );
+    register_button(ctx.host.store_mut(), id);
+    ctx.host.hit_index_mut().register(id, r);
+}
+
+/// Paint a square ICON button (fill / border / centered `icon`) + register its Button slot + hit rect — the
+/// shared chrome for the ✕ Delete and the Save-As-Object button, so they read as size-matched peers.
+pub(super) fn paint_icon_button(
+    ctx: &mut PaintCtx,
+    theme: ph2d_tokens::Theme,
+    r: Rect,
+    icon: ph2d_editor_core::IconId,
+    id: ph2d_a11y::NodeId,
+) {
+    let state = match ctx.host.store().get(id) {
+        Some(InteractiveState::Button { state }) => *state,
+        _ => ButtonState::Normal,
+    };
+    fill_rounded_rect(
+        ctx.scene,
+        r,
+        Radius::Sm.px(),
+        resolve(flat_button_surface(state), theme),
+    );
+    stroke_rounded_rect(
+        ctx.scene,
+        r,
+        Radius::Sm.px(),
+        StrokeToken::Thin.px(),
+        resolve(ColorToken::Border, theme),
+    );
+    let pad = Spacing::Sm.px(); // inset so the glyph reads at the button's full height
+    let icon_r = Rect::new(r.x + pad, r.y + pad, r.w - pad * 2.0, r.h - pad * 2.0);
+    paint_icon(
+        ctx.scene,
+        icon,
+        icon_r,
+        resolve(ColorToken::Text1, theme),
+        StrokeToken::Default.px(),
+    );
     register_button(ctx.host.store_mut(), id);
     ctx.host.hit_index_mut().register(id, r);
 }

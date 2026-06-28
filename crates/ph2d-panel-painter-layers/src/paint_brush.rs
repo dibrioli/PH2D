@@ -84,6 +84,7 @@ pub(crate) const FALLBACK_BRUSH: BrushSettings = BrushSettings {
     offset: 0.5,              // LITERAL-PX-OK: centred Offset track = no perpendicular offset
     offset_trim: false,       // self-intersection trim off by default
     can_simplify: false,      // no curve editor in the fallback snapshot
+    has_drawn_curve: false,   // no drawn curve in the fallback snapshot
     space_attenuation: false, // Adjust Strength off by default (Enio 2026-06-24; mirrors BrushSpec::default)
     accumulate: false,
     jitter: 0.0,

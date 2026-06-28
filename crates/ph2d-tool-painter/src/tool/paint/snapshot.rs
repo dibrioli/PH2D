@@ -65,6 +65,9 @@ impl PainterTool {
                     && (b.stroke_method == ph2d_painter_brush::StrokeMethod::FreeHand
                         || ed.added_point)
             }),
+            // A curve with points exists whenever the point editor is editing (Curve / Free Hand, or a
+            // Circle/Polygon converted via Edit) — gates the Save-As-Object button.
+            has_drawn_curve: self.paint.curve.as_ref().is_some_and(|ed| ed.editing),
             space_attenuation: b.space_attenuation,
             accumulate: b.accumulate,
             jitter: b.jitter,

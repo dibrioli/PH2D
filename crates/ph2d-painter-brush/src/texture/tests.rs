@@ -804,3 +804,36 @@ fn render_shape_preview_masks_procedural_with_falloff() {
         sum(&buf_flat)
     );
 }
+
+#[test]
+fn stencil_image_fills_the_rect_once_at_size_one() {
+    use crate::ImageMask;
+    // A horizontal gradient image (left dark → right bright). In Stencil at Size (1,1) it fills the rect
+    // ONCE — sampling left→right across the rect is monotonic over the FULL gradient (the old 4-tile
+    // window repeated it, forcing the user to set Size 0.5 for a 1:1 fit; Enio 2026-06-28).
+    let lum: Vec<u8> = (0..16).map(|i| (i * 17) as u8).collect(); // 16×1 ramp 0..255
+    let img = ImageMask {
+        lum: &lum,
+        width: 16,
+        height: 1,
+    };
+    let s = TextureSettings {
+        kind: TextureKind::Image,
+        mapping: TextureMapping::Stencil,
+        stencil_size: [1.0, 1.0], // rect = the whole 64² canvas
+        size: [1.0, 1.0],
+        ..Default::default()
+    };
+    let mut rng = 0u64;
+    let b = basis(&s, [0.0, 0.0], &mut rng);
+    let at = |x: i64| sample(&s, &b, x, 32, [32.0, 32.0], 30.0, Some(&img));
+    let (l, m, r) = (at(6), at(32), at(58));
+    assert!(
+        l < m && m < r,
+        "image fills the rect once (monotonic L<M<R): {l} {m} {r}"
+    );
+    assert!(
+        r - l > 0.6,
+        "one fill spans most of the gradient: l={l} r={r}"
+    );
+}

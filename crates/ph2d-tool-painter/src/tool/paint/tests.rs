@@ -3319,6 +3319,26 @@ fn per_layer_color_grain_stencil_masks_to_the_rect_not_the_whole_dab() {
 }
 
 #[test]
+fn grain_ramp_stencil_does_not_paint_outside_the_rect() {
+    use ph2d_painter_brush::texture::{TextureKind, TextureMapping};
+    // Regression (Enio 2026-06-28): a Grain **Color Ramp** indexed by the grain value painted `ramp[0]`
+    // OUTSIDE the Stencil rect — `sample()` returns 0 there, which the ramp read as a colour (not "no
+    // paint"). The rect must mask the ramp path too. A central rect; a dab covers the canvas; a pixel
+    // inside the dab but outside the rect must stay white.
+    let mut t = white_canvas(64, 30.0);
+    t.paint.brush.texture.kind = TextureKind::Noise;
+    t.paint.brush.texture.mapping = TextureMapping::Stencil;
+    t.paint.brush.texture.stencil_size = [0.3, 0.3]; // central rect ≈ [22.4 .. 41.6]
+    t.set_texture_ramp_enabled(true); // grain value → ramp colour
+    t.on_canvas_pointer(cp([32.0, 32.0], PointerPhase::Down)); // radius 30 dab over the canvas
+    assert_eq!(
+        px(&t, 64, 32, 8),
+        [255, 255, 255, 255],
+        "the Grain ramp is masked by the Stencil — inside the dab but outside the rect stays white"
+    );
+}
+
+#[test]
 fn anchored_stencil_does_not_leak_outside_the_rect_during_the_drag() {
     use ph2d_painter_brush::{StrokeMethod, TextureKind, TextureMapping, TextureSettings};
     // Regression (Enio 2026-06-27): an Anchored stroke with a Grain mapped Stencil leaked colour OUTSIDE

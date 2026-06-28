@@ -448,14 +448,9 @@ impl PainterTool {
         }
     }
 
-    /// Set the texture mapping (out-of-range → View Plane); switching INTO Stencil seeds the Grain Size to
-    /// `(0.5, 0.5)` — denser reads better inside the rect + matches the rect's own default extent (Enio).
+    /// Set the texture mapping from a wire discriminant (out-of-range → View Plane).
     pub fn set_brush_texture_mapping(&mut self, m: u8) {
-        let m = TextureMapping::from_u8(m);
-        if m.is_stencil() && !self.paint.brush.texture.mapping.is_stencil() {
-            self.paint.brush.texture.size = [0.5, 0.5];
-        }
-        self.paint.brush.texture.mapping = m;
+        self.paint.brush.texture.mapping = TextureMapping::from_u8(m);
         self.arm_stencil_preview();
     }
 

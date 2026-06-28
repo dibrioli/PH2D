@@ -482,9 +482,8 @@ fn stamp_band(ctx: &DabCtx, dst: &mut [u8], mut mask: Option<&mut [u8]>, band_y0
                         RampAlphaMode::TextureAlpha => stamp_alpha = c[3],
                     }
                 } else {
-                    // GRAIN with Depth: `g_eff = 1 + (g − 1)·depth` (Procreate Grain Depth). At
-                    // depth = 1 (default) this is exactly `g`, so a default brush stays byte-identical
-                    // (the `>= 1.0` short-circuits the lerp's f32 rounding back to a bare multiply).
+                    // GRAIN with Depth: `g_eff = 1 + (g − 1)·depth` (Procreate). At depth = 1 (default)
+                    // this is exactly `g` (the `>= 1.0` short-circuits the lerp), so a brush stays identical.
                     let depth = ctx.spec.grain_depth();
                     g *= if depth >= 1.0 {
                         s
@@ -492,6 +491,7 @@ fn stamp_band(ctx: &DabCtx, dst: &mut [u8], mut mask: Option<&mut [u8]>, band_y0
                         1.0 + (s - 1.0) * depth
                     };
                 }
+                g *= crate::texture::stencil_gate(&ctx.spec.texture, b, px, py); // rect mask, ramp-safe
                 if w * g <= 0.0 {
                     continue;
                 }

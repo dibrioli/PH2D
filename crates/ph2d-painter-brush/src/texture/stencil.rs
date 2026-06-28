@@ -4,7 +4,9 @@
 //! other mappings. Shared by [`super::dab_basis`], the tool's overlay, and [`super::sample`] so the
 //! painted mask and its outline agree exactly.
 
-use super::{TEX_SIZE_MAX, TEX_SIZE_MIN, TexDabBasis, TextureSettings, rotate_by_degrees};
+use super::{
+    TEX_SIZE_MAX, TEX_SIZE_MIN, TexDabBasis, TextureKind, TextureSettings, rotate_by_degrees,
+};
 
 /// Procedural tiles the **Stencil** rect spans per axis, so the pattern reads (one tile would be a
 /// flat cell). Density is fixed; the rect's on-canvas size is the brush's [`TextureSettings::stencil_size`].
@@ -75,10 +77,36 @@ pub(super) fn stencil_tex_coord(
     let cv = ly * sy;
     let ru = cu * b.u[0] + cv * b.u[1];
     let rv = cu * b.v[0] + cv * b.v[1];
-    Some([
-        (ru + 1.0) * 0.5 * STENCIL_TILES + s.offset[0],
-        (rv + 1.0) * 0.5 * STENCIL_TILES + s.offset[1],
-    ])
+    Some(stencil_window(s, [ru, rv]))
+}
+
+/// Map the rect-local rotated coord `r ∈ [-1, 1]²` onto the pattern's sample window + Offset. An **Image**
+/// fills the rect ONCE at Size `(1, 1)` — its coord goes STRAIGHT to [`super::patterns::sample_image`]
+/// (which does its own `½ + ½` → `[0, 1]` fill), so the painted stencil matches the Grain preview (also
+/// once at size 1). Procedurals map onto the multi-tile [`STENCIL_TILES`] window so their cells read
+/// (Enio 2026-06-28).
+fn stencil_window(s: &TextureSettings, r: [f32; 2]) -> [f32; 2] {
+    if matches!(s.kind, TextureKind::Image) {
+        [r[0] + s.offset[0], r[1] + s.offset[1]]
+    } else {
+        [
+            (r[0] + 1.0) * 0.5 * STENCIL_TILES + s.offset[0],
+            (r[1] + 1.0) * 0.5 * STENCIL_TILES + s.offset[1],
+        ]
+    }
+}
+
+/// `0.0` when canvas pixel `(px, py)` falls OUTSIDE a Stencil-mapped texture's rect (deposit nothing),
+/// else `1.0`. Unlike [`super::sample`] this is a pure rect MASK independent of the grain VALUE — so a
+/// Grain Color Ramp can't paint `ramp[0]` outside the rect (`sample` returns `0` there, which a ramp
+/// reads as a colour, not as "no paint" — Enio 2026-06-28). `1.0` for every non-Stencil mapping.
+#[must_use]
+pub fn stencil_gate(s: &TextureSettings, b: &TexDabBasis, px: i64, py: i64) -> f32 {
+    if !s.mapping.is_stencil() {
+        return 1.0;
+    }
+    let p = [px as f32 + 0.5, py as f32 + 0.5];
+    f32::from(stencil_tex_coord(s, b, p).is_some())
 }
 
 /// Render the Grain pattern as it tiles **inside** the Stencil rect into an RGBA8 `w`×`h` buffer
@@ -111,10 +139,7 @@ pub fn render_stencil_preview(
             let cv = ly * sy;
             let ru = cu * tu[0] + cv * tu[1];
             let rv = cu * tv[0] + cv * tv[1];
-            let tex = [
-                (ru + 1.0) * 0.5 * STENCIL_TILES + s.offset[0],
-                (rv + 1.0) * 0.5 * STENCIL_TILES + s.offset[1],
-            ];
+            let tex = stencil_window(s, [ru, rv]); // same window as the painted stencil (image fills 1:1)
             let g = enc(super::patterns::sample_kind(s.kind, tex, s.params, image));
             let i = ((py * w + px) * 4) as usize;
             out[i] = g;

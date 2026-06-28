@@ -38,6 +38,7 @@ pub(super) fn draw_overlays(
         camera,
         window_size,
         vector_scene,
+        cursor,
     );
     draw_circle_overlay(painter, hero, sim, camera, window_size, vector_scene);
     draw_polygon_overlay(painter, hero, sim, camera, window_size, vector_scene);

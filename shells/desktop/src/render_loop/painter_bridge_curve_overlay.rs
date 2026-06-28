@@ -19,6 +19,7 @@ pub(super) fn draw_curve_overlay(
     camera: &Camera2d,
     window_size: WindowSize,
     vector_scene: &mut VectorScene,
+    cursor: (f32, f32),
 ) {
     // ── Curve editor overlay (control dots + the auto-smoothed spine + the selected anchor's tangents) ──
     // Drawn while a Curve session is being EDITED, regardless of the cursor / panels — it's the editing
@@ -56,9 +57,26 @@ pub(super) fn draw_curve_overlay(
                 let [mn, mx] = gz.bbox;
                 let box_pts = [map(mn), map([mx[0], mn[1]]), map(mx), map([mn[0], mx[1]])];
                 super::painter_bridge_gizmo::stroke_box(scene, &box_pts, &pal);
+                // Corners flip to circles on mouse-OVER the rotate ring (not only mid-drag) — the cue must
+                // match the tool's hit-test: the band just OUTSIDE a corner (farther from the centre than
+                // it), so it doesn't light up for points inside the box. Image-px tol → screen via `scale`.
+                let scale = {
+                    let c = affine.as_coeffs();
+                    (c[0] * c[0] + c[1] * c[1]).sqrt()
+                };
+                let cur = Point::new(f64::from(cursor.0), f64::from(cursor.1));
+                let center_sp = map(gz.handles[8]);
+                let inner = f64::from(gz.scale_tol_px) * scale;
+                let outer = f64::from(gz.rotate_tol_px) * scale;
+                let over_rotate = gz.handles[..4].iter().any(|&h| {
+                    let sp = map(h);
+                    let d = sp.distance(cur);
+                    d > inner && d <= outer && cur.distance(center_sp) > sp.distance(center_sp)
+                });
+                let circle_corners = gz.rotating || over_rotate;
                 for (i, &h) in gz.handles.iter().enumerate() {
                     let p = map(h);
-                    if gz.rotating && i < 4 {
+                    if circle_corners && i < 4 {
                         super::painter_bridge_gizmo::circle_handle(scene, p, &pal);
                     } else {
                         super::painter_bridge_gizmo::square_handle(scene, p, &pal);

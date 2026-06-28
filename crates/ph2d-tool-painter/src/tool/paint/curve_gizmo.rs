@@ -26,6 +26,12 @@ pub struct TransformGizmo {
     pub grabbed: Option<u8>,
     /// The active grab is a rotation (the shell draws the corners as rotate rings, not scale squares).
     pub rotating: bool,
+    /// Image-px hit radius: `≤ scale_tol_px` from a corner = scale; the ring `scale_tol_px..=rotate_tol_px`
+    /// just outside it = rotate. The shell scales these by the sprite footprint for the HOVER cue (so the
+    /// corners flip to circles on mouse-over, not only mid-drag) — matches the Stencil gizmo.
+    pub scale_tol_px: f32,
+    /// Outer edge of the rotate ring (image px) — see [`Self::scale_tol_px`].
+    pub rotate_tol_px: f32,
 }
 
 /// What a live gizmo drag does + the snapshot it maps. Held in the `CurveEditor` only between pointer-down
@@ -103,6 +109,8 @@ pub(super) fn overlay(
         handles: gizmo_handles(bbox),
         grabbed,
         rotating,
+        scale_tol_px: tol,
+        rotate_tol_px: tol * GIZMO_ROTATE_BAND,
     })
 }
 

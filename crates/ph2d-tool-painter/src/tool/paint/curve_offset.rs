@@ -1,31 +1,24 @@
 //! Perpendicular **offset** (parallel curve) of the Curve / Free Hand control geometry — the Offset slider.
-//! Two layers: [`offset_curve`] moves the control points (exact for lines + circles, the Tiller–Hanson
-//! family), and [`offset_curve_refined`] first *reconstructs* the curve with extra anchors wherever that
-//! control-point offset would stray from the true parallel curve (adaptive subdivision to a sub-pixel
-//! tolerance — the CAD-grade approach, cf. Levien 2022), so a tight, varying-curvature bend offsets
-//! faithfully while the result stays an ordinary editable anchor/handle curve. Transcendental-free (the
-//! segment rotation is a complex multiply from chord unit vectors; normals are `sqrt`-normalised — HR-5).
-//! Split from [`super::curve_geom`] for the workspace LOC cap; free fns, called as `curve_offset::*`.
+//! [`offset_curve`] moves the control points (exact for lines + circles, Tiller–Hanson); [`offset_curve_refined`]
+//! first *reconstructs* the curve with extra anchors wherever that control-point offset would stray from the
+//! true parallel curve (adaptive subdivision to sub-pixel tolerance — CAD-grade, cf. Levien 2022), staying an
+//! ordinary editable anchor/handle curve. Transcendental-free (rotation = complex multiply from chord unit
+//! vectors; normals `sqrt`-normalised — HR-5). Free fns, called as `curve_offset::*`.
 
 use super::curve_geom::{cubic_at, dist2, split_cubic};
 
-/// Adaptive-subdivision tolerance for the offset reconstruction: the max px the densified offset may stray
-/// from the true parallel curve before a segment is split. Sub-pixel ⇒ a visually perfect offset.
+/// Adaptive-subdivision tolerance: max px the densified offset may stray before a segment is split (sub-pixel).
 const OFFSET_TOL_PX: f32 = 0.3;
-/// Depth cap on the offset subdivision (≤ 2^6 leaves per input segment) — bounds the work near a cusp
-/// (where `|d|·curvature → 1` and no single cubic can follow the offset; we densify, we don't trim).
+/// Depth cap on the offset subdivision (≤ 2^6 leaves per input segment) — bounds the work near a cusp.
 const MAX_OFFSET_SUBDIV: u32 = 6;
 
-/// The reconstruction's output: offset `(points, handles)` plus, per output anchor, the ORIGINAL anchor
-/// index it came from (`None` = inserted by the subdivision). Aliased for clippy's type-complexity lint.
+/// Offset `(points, handles)` + per output anchor its ORIGINAL index (`None` = inserted). Aliased for clippy.
 type RefinedOffset = (Vec<[f32; 2]>, Vec<[[f32; 2]; 2]>, Vec<Option<usize>>);
 
 /// [`offset_curve`] preceded by [`densify_for_offset`]: the offset hugs the true parallel curve even through
-/// tight, varying-curvature bends — the CAD-grade result — while staying an ordinary editable anchor/handle
-/// curve (Tiller–Hanson control-point offsetting alone is exact only for lines + circles; subdivision to a
-/// tolerance is the fix). The returned `Vec<Option<usize>>` maps each output anchor to the ORIGINAL anchor
-/// it came from (`None` = inserted), so a bake carries the handle kinds + selection across the
-/// reconstruction. `d == 0` ⇒ unchanged clones + identity map.
+/// tight, varying-curvature bends (Tiller–Hanson alone is exact only for lines + circles; subdivision is the
+/// fix), staying an editable anchor/handle curve. The `Vec<Option<usize>>` maps each output anchor to its
+/// ORIGINAL (`None` = inserted), so a bake carries kinds + selection. `d == 0` ⇒ unchanged clones + identity.
 pub(super) fn offset_curve_refined(
     points: &[[f32; 2]],
     handles: &[[[f32; 2]; 2]],
@@ -38,12 +31,10 @@ pub(super) fn offset_curve_refined(
 }
 
 /// **Trim** an OPEN offset spine's self-intersections (the Offset card's Trim checkbox): where the path
-/// crosses itself — an offset whose distance exceeds the local radius of curvature folds the concave side
-/// into a loop — insert ONE point at the crossing and drop the looped excess between the two crossing
-/// segments. Repeats until no crossing remains (multiple loops). A strict-interior test means shared
-/// endpoints / adjacent segments never trigger. Transcendental-free (cross products + one divide). `poly`
-/// is the dab/guide polyline; a no-op when nothing crosses. For CLOSED spines use
-/// [`trim_self_intersections_closed`] (area-ranked, so it keeps the main region not an arbitrary ear).
+/// crosses itself (an over-offset folds a concave side into a loop), insert ONE point at the crossing and
+/// drop the looped excess. Repeats for multiple loops. Strict-interior (shared/adjacent endpoints never
+/// trigger), transcendental-free. `poly` is the dab/guide polyline; CLOSED spines use
+/// [`trim_self_intersections_closed`] (area-ranked).
 pub(super) fn trim_self_intersections(poly: &[[f32; 2]]) -> Vec<[f32; 2]> {
     let mut pts = poly.to_vec();
     while let Some((i, j, x)) = first_crossing(&pts) {
@@ -56,13 +47,10 @@ pub(super) fn trim_self_intersections(poly: &[[f32; 2]]) -> Vec<[f32; 2]> {
     pts
 }
 
-/// **Trim** a CLOSED offset spine's self-intersections, keeping the main region and discarding the "ears"
-/// an over-offset folds onto a concave side. A self-crossing splits the loop into two sub-loops; the ear is
-/// the SMALLER (by area) — the unwanted crossed region — so this keeps the larger sub-loop and drops the
-/// ear at every crossing, robust to WHICH crossing is found first and to multiple ears (the naive "drop
-/// `i+1..=j`" picked an arbitrary closed area, and an orientation test fails because a spike-ear can wind
-/// the same way as the body — Enio 2026-06-28). Transcendental-free (segment cross products + the shoelace
-/// area). A no-op when nothing crosses.
+/// **Trim** a CLOSED offset spine: a self-crossing splits the loop into two sub-loops; the ear is the SMALLER
+/// (by shoelace area), so keep the larger and drop the ear at every crossing — robust to which crossing is
+/// found first + multiple ears (naive "drop `i+1..=j`" picked an arbitrary area; an orientation test fails as
+/// a spike-ear can wind like the body — Enio 2026-06-28). Transcendental-free; no-op when nothing crosses.
 pub(super) fn trim_self_intersections_closed(poly: &[[f32; 2]]) -> Vec<[f32; 2]> {
     let mut pts = poly.to_vec();
     // An explicit closing vertex lets the scan cover the last→first edge (where an ear often crosses).
@@ -87,9 +75,8 @@ pub(super) fn trim_self_intersections_closed(poly: &[[f32; 2]]) -> Vec<[f32; 2]>
     pts
 }
 
-/// The first self-crossing `(i, j, x)` of `poly` (segments `i` and `j`, crossing point `x`), scanning in
-/// index order so the trim is deterministic; `None` when the path is simple. Strict-interior (shared /
-/// adjacent endpoints never count).
+/// The first self-crossing `(i, j, x)` of `poly` (segments `i`, `j`; point `x`), scanned in index order so the
+/// trim is deterministic; `None` when simple. Strict-interior (shared / adjacent endpoints never count).
 fn first_crossing(pts: &[[f32; 2]]) -> Option<(usize, usize, [f32; 2])> {
     for i in 0..pts.len().saturating_sub(1) {
         for j in (i + 2)..pts.len().saturating_sub(1) {
@@ -101,8 +88,8 @@ fn first_crossing(pts: &[[f32; 2]]) -> Option<(usize, usize, [f32; 2])> {
     None
 }
 
-/// Twice the signed area of the polygon `pts` (shoelace; closes `last → first` implicitly). Only the
-/// MAGNITUDE is used (to rank two sub-loops at a crossing — the smaller is the ear). Transcendental-free.
+/// Twice the signed area of polygon `pts` (shoelace, closes implicitly). Only the MAGNITUDE is used (rank two
+/// sub-loops at a crossing — the smaller is the ear). Transcendental-free.
 fn signed_area(pts: &[[f32; 2]]) -> f32 {
     let n = pts.len();
     let mut a = 0.0f32;
@@ -130,13 +117,10 @@ fn seg_cross(a0: [f32; 2], a1: [f32; 2], b0: [f32; 2], b1: [f32; 2]) -> Option<[
     (t > E && t < 1.0 - E && u > E && u < 1.0 - E).then(|| [a0[0] + r[0] * t, a0[1] + r[1] * t])
 }
 
-/// Offset the curve's **control geometry** perpendicular by `d` px. Each anchor shifts along its averaged
-/// right-normal, then each tangent handle is RECALCULATED — rotated + scaled to follow its (now moved)
-/// segment — rather than rigidly translated, so the offset stays faithful: a circle offsets to a clean
-/// concentric circle (handles scale by the radius ratio), sharp corners stay sharp (a collapsed handle has a
-/// zero vector → stays collapsed), and there's no control-level deformation. The spine, dots, tangents +
-/// paint all derive from this, so they move TOGETHER. `closed` wraps the endpoints. `d == 0` (or a length
-/// mismatch) ⇒ unchanged clones.
+/// Offset the curve's **control geometry** perpendicular by `d` px: each anchor shifts along its averaged
+/// right-normal, then each handle is rotated + scaled to follow its moved segment (a circle stays concentric;
+/// a collapsed handle stays collapsed → sharp corner). Spine/dots/tangents/paint all derive from this, moving
+/// TOGETHER. `closed` wraps the endpoints; `d == 0` (or a length mismatch) ⇒ unchanged clones.
 pub(super) fn offset_curve(
     points: &[[f32; 2]],
     handles: &[[[f32; 2]; 2]],
@@ -244,8 +228,7 @@ fn densify_for_offset(
     (op, oh, origin)
 }
 
-/// Recursively split `b` (a leaf of the original segment `seg`) at its midpoint until the control-polygon
-/// offset error ([`cubic_offset_error`]) is within tolerance or the depth cap is hit, collecting the leaves.
+/// Recursively split leaf `b` (segment `seg`) at its midpoint until [`cubic_offset_error`] ≤ tol / depth cap.
 fn subdivide_for_offset(
     b: [[f32; 2]; 4],
     seg: usize,
@@ -262,16 +245,12 @@ fn subdivide_for_offset(
     subdivide_for_offset([s, r1, q2, b[3]], seg, depth + 1, d, out);
 }
 
-/// Px error of offsetting one cubic by `d` with the control-polygon rule (endpoint normals + the segment
-/// rotate/scale of [`SegXform`], exactly as [`offset_curve`] does at the leaf level): build that offset
-/// cubic and measure its max deviation from the TRUE offset `C(t) + d·N(t)` over the span. ≈ 0 for a line
-/// or a circular arc (the rule is exact there); grows with `|d|·curvature` on a varying-curvature bend.
+/// Px error of offsetting one cubic by `d` with the control-polygon rule (endpoint normals + [`SegXform`], as
+/// [`offset_curve`] does per leaf): max deviation from the TRUE offset `C(t) + d·N(t)`. ≈ 0 for a line / arc
+/// (exact there); grows with `|d|·curvature` on a varying-curvature bend.
 fn cubic_offset_error(b: &[[f32; 2]; 4], d: f32) -> f32 {
-    let (Some(n0), Some(n3)) = (
-        unit_right_normal(cubic_tangent(b, 0.0)),
-        unit_right_normal(cubic_tangent(b, 1.0)),
-    ) else {
-        return 0.0; // degenerate endpoint tangent — nothing meaningful to offset
+    let (Some(n0), Some(n3)) = (endpoint_normal(b, true), endpoint_normal(b, false)) else {
+        return 0.0; // a zero-length segment (P0 == P1 == P2 == P3) — nothing to offset
     };
     let oa = [b[0][0] + n0[0] * d, b[0][1] + n0[1] * d];
     let ob = [b[3][0] + n3[0] * d, b[3][1] + n3[1] * d];
@@ -290,11 +269,24 @@ fn cubic_offset_error(b: &[[f32; 2]; 4], d: f32) -> f32 {
     max_err
 }
 
-/// Unit **right-normal** `(dy, −dx)/|v|` of a direction `v` (matches [`vertex_normal`]'s convention), or
-/// `None` for a degenerate (≈ zero-length) direction.
+/// Unit **right-normal** `(dy, −dx)/|v|` of direction `v` (matches [`vertex_normal`]); `None` if ≈ zero-length.
 fn unit_right_normal(v: [f32; 2]) -> Option<[f32; 2]> {
     let len = (v[0] * v[0] + v[1] * v[1]).sqrt();
     (len > 1e-6).then(|| [v[1] / len, -v[0] / len])
+}
+
+/// Right-normal at a cubic ENDPOINT (`start` = t≈0 else t≈1), robust to a **collapsed handle**: a converted
+/// **Polygon** `Free` corner zeros the analytic tangent when curved, so fall back to the first non-coincident
+/// control point (the real cusp direction) — else the segment skips densification + self-crosses (Enio 2026-06-28).
+fn endpoint_normal(b: &[[f32; 2]; 4], start: bool) -> Option<[f32; 2]> {
+    let cands = if start {
+        [[b[1], b[0]], [b[2], b[0]], [b[3], b[0]]]
+    } else {
+        [[b[3], b[2]], [b[3], b[1]], [b[3], b[0]]]
+    };
+    cands
+        .into_iter()
+        .find_map(|[p, q]| unit_right_normal([p[0] - q[0], p[1] - q[1]]))
 }
 
 /// Tangent (first derivative) of cubic `b` at `t`: `B'(t) = 3[u²(P1−P0) + 2ut(P2−P1) + t²(P3−P2)]`.
@@ -307,9 +299,8 @@ fn cubic_tangent(b: &[[f32; 2]; 4], t: f32) -> [f32; 2] {
     ]
 }
 
-/// The rotate-and-scale that maps a base segment's chord to its offset chord — applied to a tangent handle
-/// so it follows the offset (a circle's handles scale by the radius ratio, no spurious bend). Identity for
-/// a degenerate base segment.
+/// The rotate-and-scale mapping a base segment's chord to its offset chord — applied to a tangent handle so it
+/// follows the offset (a circle's handles scale by the radius ratio). Identity for a degenerate base segment.
 struct SegXform {
     cos: f32,
     sin: f32,
@@ -338,8 +329,7 @@ impl SegXform {
         }
     }
 
-    /// Re-place `handle` (an absolute control point) relative to its offset anchor: rotate its vector off the
-    /// old anchor by the segment turn, scale by the chord ratio, re-anchor at the offset anchor.
+    /// Re-place absolute `handle` at its offset anchor: rotate off the old anchor by the segment turn + scale.
     fn apply(&self, anchor: [f32; 2], handle: [f32; 2], offset_anchor: [f32; 2]) -> [f32; 2] {
         let v = [handle[0] - anchor[0], handle[1] - anchor[1]];
         let rx = (v[0] * self.cos - v[1] * self.sin) * self.scale;
@@ -348,8 +338,8 @@ impl SegXform {
     }
 }
 
-/// The unit **right-normal** at anchor `i` (averaged over its incident segments), so a positive offset
-/// outsets a CCW closed loop. Zero vector for a degenerate vertex (the point doesn't move).
+/// Unit **right-normal** at anchor `i` (averaged over its incident segments), so a positive offset outsets a
+/// CCW loop. Zero for a degenerate vertex (the point doesn't move).
 fn vertex_normal(points: &[[f32; 2]], i: usize, closed: bool) -> [f32; 2] {
     let n = points.len();
     let prev = if i > 0 {
@@ -496,6 +486,26 @@ mod tests {
                 cubic_offset_error(&leaf, d)
             );
         }
+    }
+
+    #[test]
+    fn a_collapsed_endpoint_handle_curve_still_densifies() {
+        // A converted-Polygon corner stays `Free` with a COLLAPSED handle; curving the adjacent segment zeros
+        // the cubic's t=0 tangent. It must STILL densify — it was skipped as degenerate, so the curved segment
+        // fell back to the old control-point offset and self-crossed (Enio 2026-06-28).
+        let b = [[0.0, 0.0], [0.0, 0.0], [10.0, 80.0], [120.0, 0.0]]; // collapsed start handle, real curvature
+        assert!(
+            cubic_offset_error(&b, 12.0) > OFFSET_TOL_PX,
+            "real offset error despite the zero analytic start tangent"
+        );
+        let pts = vec![[0.0, 0.0], [120.0, 0.0]];
+        let handles = vec![[[0.0, 0.0], [0.0, 0.0]], [[10.0, 80.0], [120.0, 0.0]]];
+        let (dp, _, _) = densify_for_offset(&pts, &handles, false, 12.0);
+        assert!(
+            dp.len() > 2,
+            "the curved degenerate-endpoint segment densified: {}",
+            dp.len()
+        );
     }
 
     #[test]

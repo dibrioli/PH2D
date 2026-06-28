@@ -30,93 +30,6 @@ pub(super) fn offset_curve_refined(
     (op, oh, origin)
 }
 
-/// **Trim** an OPEN offset spine's self-intersections (the Offset card's Trim checkbox): where the path
-/// crosses itself (an over-offset folds a concave side into a loop), insert ONE point at the crossing and
-/// drop the looped excess. Repeats for multiple loops. Strict-interior (shared/adjacent endpoints never
-/// trigger), transcendental-free. `poly` is the dab/guide polyline; CLOSED spines use
-/// [`trim_self_intersections_closed`] (area-ranked).
-pub(super) fn trim_self_intersections(poly: &[[f32; 2]]) -> Vec<[f32; 2]> {
-    let mut pts = poly.to_vec();
-    while let Some((i, j, x)) = first_crossing(&pts) {
-        // Keep `0..=i`, drop the loop `i+1..=j`, splice the crossing point in, keep `j+1..`.
-        let mut next = pts[..=i].to_vec();
-        next.push(x);
-        next.extend_from_slice(&pts[j + 1..]);
-        pts = next;
-    }
-    pts
-}
-
-/// **Trim** a CLOSED offset spine: a self-crossing splits the loop into two sub-loops; the ear is the SMALLER
-/// (by shoelace area), so keep the larger and drop the ear at every crossing — robust to which crossing is
-/// found first + multiple ears (naive "drop `i+1..=j`" picked an arbitrary area; an orientation test fails as
-/// a spike-ear can wind like the body — Enio 2026-06-28). Transcendental-free; no-op when nothing crosses.
-pub(super) fn trim_self_intersections_closed(poly: &[[f32; 2]]) -> Vec<[f32; 2]> {
-    let mut pts = poly.to_vec();
-    // An explicit closing vertex lets the scan cover the last→first edge (where an ear often crosses).
-    if pts.len() >= 2 && pts.first() != pts.last() {
-        pts.push(pts[0]);
-    }
-    while let Some((i, j, x)) = first_crossing(&pts) {
-        // The crossing `x` joins two sub-loops: inner = `x → pts[i+1..=j]`, outer = `pts[..=i] → x → pts[j+1..]`.
-        let inner: Vec<[f32; 2]> = std::iter::once(x)
-            .chain(pts[i + 1..=j].iter().copied())
-            .collect();
-        let mut outer = pts[..=i].to_vec();
-        outer.push(x);
-        outer.extend_from_slice(&pts[j + 1..]);
-        // Keep the larger region; the small loop is the unwanted crossed area (ear) → drop it.
-        pts = if signed_area(&inner).abs() >= signed_area(&outer).abs() {
-            inner
-        } else {
-            outer
-        };
-    }
-    pts
-}
-
-/// The first self-crossing `(i, j, x)` of `poly` (segments `i`, `j`; point `x`), scanned in index order so the
-/// trim is deterministic; `None` when simple. Strict-interior (shared / adjacent endpoints never count).
-fn first_crossing(pts: &[[f32; 2]]) -> Option<(usize, usize, [f32; 2])> {
-    for i in 0..pts.len().saturating_sub(1) {
-        for j in (i + 2)..pts.len().saturating_sub(1) {
-            if let Some(x) = seg_cross(pts[i], pts[i + 1], pts[j], pts[j + 1]) {
-                return Some((i, j, x));
-            }
-        }
-    }
-    None
-}
-
-/// Twice the signed area of polygon `pts` (shoelace, closes implicitly). Only the MAGNITUDE is used (rank two
-/// sub-loops at a crossing — the smaller is the ear). Transcendental-free.
-fn signed_area(pts: &[[f32; 2]]) -> f32 {
-    let n = pts.len();
-    let mut a = 0.0f32;
-    for i in 0..n {
-        let p = pts[i];
-        let q = pts[(i + 1) % n];
-        a += p[0] * q[1] - q[0] * p[1];
-    }
-    a
-}
-
-/// Intersection point of segments `a0→a1` and `b0→b1` when they cross in BOTH interiors (strict, so a
-/// shared endpoint isn't a crossing), else `None`. Parametric: `a0 + t·(a1−a0)`, `t,u ∈ (ε, 1−ε)`.
-fn seg_cross(a0: [f32; 2], a1: [f32; 2], b0: [f32; 2], b1: [f32; 2]) -> Option<[f32; 2]> {
-    let r = [a1[0] - a0[0], a1[1] - a0[1]];
-    let s = [b1[0] - b0[0], b1[1] - b0[1]];
-    let denom = r[0] * s[1] - r[1] * s[0];
-    if denom.abs() < 1e-6 {
-        return None; // parallel / degenerate
-    }
-    let d = [b0[0] - a0[0], b0[1] - a0[1]];
-    let t = (d[0] * s[1] - d[1] * s[0]) / denom;
-    let u = (d[0] * r[1] - d[1] * r[0]) / denom;
-    const E: f32 = 1e-4;
-    (t > E && t < 1.0 - E && u > E && u < 1.0 - E).then(|| [a0[0] + r[0] * t, a0[1] + r[1] * t])
-}
-
 /// Offset the curve's **control geometry** perpendicular by `d` px: each anchor shifts along its averaged
 /// right-normal, then each handle is rotated + scaled to follow its moved segment (a circle stays concentric;
 /// a collapsed handle stays collapsed → sharp corner). Spine/dots/tangents/paint all derive from this, moving
@@ -131,10 +44,10 @@ pub(super) fn offset_curve(
     if d == 0.0 || n < 2 || handles.len() != n {
         return (points.to_vec(), handles.to_vec());
     }
-    // 1. Offset the anchors along their averaged vertex normals.
+    // 1. Offset the anchors along their tangent-based vertex normals (perpendicular to the CURVE → even).
     let op: Vec<[f32; 2]> = (0..n)
         .map(|i| {
-            let nrm = vertex_normal(points, i, closed);
+            let nrm = vertex_normal(points, handles, i, closed);
             [points[i][0] + nrm[0] * d, points[i][1] + nrm[1] * d]
         })
         .collect();
@@ -338,32 +251,38 @@ impl SegXform {
     }
 }
 
-/// Unit **right-normal** at anchor `i` (averaged over its incident segments), so a positive offset outsets a
-/// CCW loop. Zero for a degenerate vertex (the point doesn't move).
-fn vertex_normal(points: &[[f32; 2]], i: usize, closed: bool) -> [f32; 2] {
+/// Unit right-normal at anchor `i` for offsetting, from the curve's actual Bézier **tangents** so the anchor
+/// moves perpendicular to the CURVE — the chord gives an UNEVEN distance wherever it diverges from the tangent
+/// (a converted-Polygon corner you then curved). Each side uses its handle tangent, falling back to the chord
+/// when the handle is collapsed (a straight `Free` edge — there the chord IS the tangent). A positive offset
+/// outsets a CCW loop; zero for a degenerate vertex.
+fn vertex_normal(
+    points: &[[f32; 2]],
+    handles: &[[[f32; 2]; 2]],
+    i: usize,
+    closed: bool,
+) -> [f32; 2] {
     let n = points.len();
-    let prev = if i > 0 {
-        Some((points[i - 1], points[i]))
-    } else if closed {
-        Some((points[n - 1], points[i]))
-    } else {
-        None
-    };
-    let next = if i + 1 < n {
-        Some((points[i], points[i + 1]))
-    } else if closed {
-        Some((points[i], points[0]))
-    } else {
-        None
-    };
+    let bez = handles.len() == n;
+    let sub = |a: [f32; 2], b: [f32; 2]| [a[0] - b[0], a[1] - b[1]];
+    let prev = (i > 0).then(|| i - 1).or_else(|| closed.then(|| n - 1));
+    let next = (i + 1 < n).then(|| i + 1).or_else(|| closed.then_some(0));
+    let tan_in = bez.then(|| sub(points[i], handles[i][0])); // travel arriving at i
+    let tan_out = bez.then(|| sub(handles[i][1], points[i])); // travel leaving i
     let mut acc = [0.0f32, 0.0];
-    for (a, b) in [prev, next].into_iter().flatten() {
-        let (dx, dy) = (b[0] - a[0], b[1] - a[1]);
-        let len = (dx * dx + dy * dy).sqrt();
-        if len > 1e-6 {
-            acc[0] += dy / len; // right-normal of direction (dx,dy) is (dy, -dx)
-            acc[1] += -dx / len;
+    let mut add = |tan: Option<[f32; 2]>, chord: [f32; 2]| {
+        let t = tan
+            .filter(|v| v[0] * v[0] + v[1] * v[1] > 1e-6)
+            .unwrap_or(chord);
+        if let Some(nm) = unit_right_normal(t) {
+            acc = [acc[0] + nm[0], acc[1] + nm[1]];
         }
+    };
+    if let Some(p) = prev {
+        add(tan_in, sub(points[i], points[p]));
+    }
+    if let Some(x) = next {
+        add(tan_out, sub(points[x], points[i]));
     }
     let al = (acc[0] * acc[0] + acc[1] * acc[1]).sqrt();
     if al > 1e-6 {
@@ -489,6 +408,23 @@ mod tests {
     }
 
     #[test]
+    fn vertex_normal_follows_the_handle_tangent_not_the_chord() {
+        // An anchor whose handles define a HORIZONTAL tangent must offset VERTICALLY (⊥ the curve), even when
+        // its chords to the neighbours point elsewhere — the even-offset property a converted Polygon lacked.
+        let pts = vec![[0.0, 0.0], [10.0, 10.0], [40.0, 30.0]];
+        let handles = vec![
+            [[0.0, 0.0], [3.0, 0.0]],
+            [[5.0, 10.0], [15.0, 10.0]], // middle anchor's tangent is horizontal (in→out along +x)
+            [[40.0, 30.0], [40.0, 30.0]],
+        ];
+        let nrm = vertex_normal(&pts, &handles, 1, false);
+        assert!(
+            nrm[0].abs() < 0.05,
+            "normal is vertical (⊥ the horizontal tangent): {nrm:?}"
+        );
+    }
+
+    #[test]
     fn a_collapsed_endpoint_handle_curve_still_densifies() {
         // A converted-Polygon corner stays `Free` with a COLLAPSED handle; curving the adjacent segment zeros
         // the cubic's t=0 tangent. It must STILL densify — it was skipped as degenerate, so the curved segment
@@ -538,63 +474,5 @@ mod tests {
                 best.sqrt()
             );
         }
-    }
-
-    #[test]
-    fn trim_cuts_a_self_intersecting_loop() {
-        // A polyline that crosses itself: the trailing segment dives back across the leading one. Trim splices
-        // the crossing point in and drops the looped excess between the two crossing segments.
-        let poly = vec![
-            [0.0, 0.0],
-            [10.0, 0.0],
-            [10.0, 10.0],
-            [5.0, 10.0],
-            [5.0, -5.0],
-        ];
-        let out = trim_self_intersections(&poly);
-        assert_eq!(out.len(), 3, "loop removed: {out:?}");
-        assert_eq!(out[0], [0.0, 0.0]);
-        assert!(
-            (out[1][0] - 5.0).abs() < 1e-3 && out[1][1].abs() < 1e-3,
-            "crossing point (5,0) spliced: {:?}",
-            out[1]
-        );
-        assert_eq!(out[2], [5.0, -5.0]);
-    }
-
-    #[test]
-    fn trim_leaves_a_non_crossing_polyline_untouched() {
-        let poly = vec![[0.0, 0.0], [10.0, 0.0], [20.0, 5.0], [30.0, 0.0]];
-        assert_eq!(trim_self_intersections(&poly), poly);
-    }
-
-    #[test]
-    fn closed_trim_keeps_the_main_region_and_drops_the_reversed_ear() {
-        // A big CCW square with a small inward ear folded onto the top edge (the over-offset case): the path
-        // dives in, crosses, and comes back, forming a tiny reversed loop. The orientation-aware closed trim
-        // must keep the big square and excise the ear — NOT pick the small unwanted closed area.
-        // Walk a big square; on the top edge insert a crossing ear (down-across-up) that loops back.
-        let poly = vec![
-            [0.0, 0.0],
-            [40.0, 0.0],
-            [60.0, 20.0], // dive inward
-            [40.0, 20.0], // cross back left → forms a small loop (ear) with the next leg
-            [60.0, 0.0],
-            [100.0, 0.0],
-            [100.0, 100.0],
-            [0.0, 100.0],
-        ];
-        let out = trim_self_intersections_closed(&poly);
-        // The ear vertices (the inward dip) are gone; the four big corners survive.
-        for corner in [[0.0, 0.0], [100.0, 0.0], [100.0, 100.0], [0.0, 100.0]] {
-            assert!(
-                out.iter().any(|p| dist2(*p, corner) < 1e-3),
-                "main corner {corner:?} kept: {out:?}"
-            );
-        }
-        assert!(
-            !out.iter().any(|p| dist2(*p, [60.0, 20.0]) < 1e-3),
-            "the ear's tip is dropped: {out:?}"
-        );
     }
 }

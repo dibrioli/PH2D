@@ -23,6 +23,7 @@ mod curve_gizmo; // whole-curve transform gizmo (move/scale/rotate the entire cu
 mod curve_handle; // per-anchor handle kinds (Free/Aligned/Vector/Auto) + derived geometry; split from `curve`
 mod curve_offset; // perpendicular offset (parallel curve) + CAD-grade reconstruction; split from `curve_geom`
 mod curve_tangent; // Bézier tangent-handle hit-test, aligned mirror, overlay snapshot; split from `curve`
+mod curve_trim; // self-intersection trim of the offset spine (open + closed); split from `curve_offset`
 /// Per-dab randomize setters (Jitter Scale / Rotate / Randomize Color); split from `brush_settings`.
 mod jitter_settings;
 /// Multi-layer Shape (z-ordered layers + per-layer-colour state); split from `paint.rs` (LOC cap).
@@ -82,8 +83,7 @@ pub const BRUSH_AIRBRUSH_RATE_MAX_S: f32 = AIRBRUSH_RATE_MAX_S;
 pub use brush_settings::{BrushSettings, PANEL_RAMP_STOPS, brush_falloff_weight_at};
 pub use shape_layers::MAX_SHAPE_LAYERS;
 
-/// A Drag Dot's restore record: the pristine pixels under the dab's footprint (RGBA8, row-major over `rect`),
-/// saved before stamping so the next move erases it — the dot leaves no trail, only the release dab survives.
+/// A Drag Dot's restore record: pristine pixels under the dab footprint (RGBA8 over `rect`), saved before stamping so the next move erases it (no trail).
 struct DragPreview {
     rect: Region,
     pixels: Vec<u8>,

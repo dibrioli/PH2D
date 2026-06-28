@@ -548,9 +548,9 @@ impl PainterTool {
 /// crossed area; an OPEN curve drops the looped excess. The control points are never touched (drawing-only).
 fn trim_offset_spine(spine: &[[f32; 2]], closed: bool) -> Vec<[f32; 2]> {
     if closed {
-        curve_offset::trim_self_intersections_closed(spine)
+        super::curve_trim::trim_self_intersections_closed(spine)
     } else {
-        curve_offset::trim_self_intersections(spine)
+        super::curve_trim::trim_self_intersections(spine)
     }
 }
 

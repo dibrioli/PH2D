@@ -435,23 +435,22 @@ impl PainterTool {
         if !ed.editing {
             return None;
         }
-        // Offset the CONTROL geometry (handles recalculated), so dots + tangents + spine + paint move WITH it.
-        let (points, handles, origin) = curve_offset::offset_curve_refined(
-            &ed.points,
-            &ed.handles,
-            self.shape_offset_px(),
-            ed.closed,
-        );
-        // Remap the selected index onto the densified (inserted-anchor) position.
-        let osel = ed
-            .selected
-            .and_then(|s| origin.iter().position(|o| *o == Some(s)));
+        let d = self.shape_offset_px();
+        // Dots + tangents track the SPARSE control offset (plain Tiller–Hanson): its anchors sit exactly on the
+        // true parallel curve (segment endpoints are offset-exact), so the editable curve keeps its ORIGINAL
+        // anchor count — no densified clutter, the selection maps 1:1, and re-offsetting a baked curve never
+        // compounds into crossings (Enio 2026-06-28).
+        let (points, handles) = curve_offset::offset_curve(&ed.points, &ed.handles, d, ed.closed);
+        let osel = ed.selected;
+        // The painted guide (spine) uses the REFINED offset so it hugs the true parallel curve BETWEEN anchors
+        // (the densified anchors are paint-only); the sparse dots above sit on this guide.
+        let (rp, rh, _) = curve_offset::offset_curve_refined(&ed.points, &ed.handles, d, ed.closed);
         let mut spine = Vec::new();
-        curve_geom::flatten_spine(&points, &handles, ed.closed, &mut spine);
+        curve_geom::flatten_spine(&rp, &rh, ed.closed, &mut spine);
         // Trim only the DRAWING (the painted spine + guide), NOT the control points — so the curve keeps its
         // fidelity and the anchors may cross; the crossed loop just isn't painted (Enio 2026-06-28).
         if self.paint.offset_trim {
-            spine = curve_offset::trim_self_intersections(&spine);
+            spine = trim_offset_spine(&spine, ed.closed);
         }
         let tangents = osel.and_then(|s| {
             curve_tangent::build_tangents(
@@ -545,7 +544,7 @@ impl PainterTool {
         curve_geom::flatten_spine(&pts, &handles, closed, &mut spine);
         // Trim only the painted spine (matches the guide) — the control points keep crossing, full fidelity.
         if self.paint.offset_trim {
-            spine = curve_offset::trim_self_intersections(&spine);
+            spine = trim_offset_spine(&spine, closed);
         }
         let mut stroke = Stroke::new(self.paint.brush, self.paint.dynamics, seed);
         let mut dabs = std::mem::take(&mut self.paint.dabs);
@@ -554,32 +553,33 @@ impl PainterTool {
         self.paint.dabs = dabs;
     }
 
-    /// **Bake** the live Offset into the curve's control geometry (anchors moved, handles recalculated, the
-    /// reconstruction's extra anchors folded in) and reset the slider. A no-op without an offset / open
-    /// editor. Called before any edit gesture (hit-test = displayed dots) and on Apply & Keep.
+    /// **Bake** the live Offset into the curve's control geometry (anchors moved, handles recalculated) and
+    /// reset the slider — the SPARSE (plain) offset, so the editable curve keeps its anchor count + handle
+    /// kinds and re-offsetting never compounds. A no-op without an offset / open editor. Called before any
+    /// edit gesture (hit-test = displayed dots) and on Apply & Keep.
     pub(super) fn bake_curve_offset(&mut self) {
         let off = self.shape_offset_px();
         if off != 0.0
             && let Some(ed) = self.paint.curve.as_mut().filter(|ed| ed.editing)
         {
-            let (p, h, origin) =
-                curve_offset::offset_curve_refined(&ed.points, &ed.handles, off, ed.closed);
-            // Carry kinds (original anchors keep theirs; inserted points = Free) + remap the selection. Trim
-            // is a DRAWING-only effect (it never deletes anchors), so the baked control geometry is untouched.
-            let kinds: Vec<HandleKind> = origin
-                .iter()
-                .map(|o| {
-                    o.and_then(|i| ed.kinds.get(i).copied())
-                        .unwrap_or(HandleKind::Free)
-                })
-                .collect();
-            ed.selected = ed
-                .selected
-                .and_then(|s| origin.iter().position(|o| *o == Some(s)));
+            // The sparse offset keeps the original anchor count + kinds (densification is a paint-only concern)
+            // and the selection maps 1:1, so re-offsetting the baked curve stays clean — no bizarre crossings
+            // from offsetting an already-densified polyline (Enio 2026-06-28).
+            let (p, h) = curve_offset::offset_curve(&ed.points, &ed.handles, off, ed.closed);
             ed.points = p;
             ed.handles = h;
-            ed.kinds = kinds;
             self.paint.shape_offset_norm = 0.5;
         }
+    }
+}
+
+/// Trim the offset spine's self-intersections for painting. A CLOSED curve keeps the larger region and
+/// drops the smaller "ear" loops an over-offset folds onto a concave side — so it never paints an unwanted
+/// crossed area; an OPEN curve drops the looped excess. The control points are never touched (drawing-only).
+fn trim_offset_spine(spine: &[[f32; 2]], closed: bool) -> Vec<[f32; 2]> {
+    if closed {
+        curve_offset::trim_self_intersections_closed(spine)
+    } else {
+        curve_offset::trim_self_intersections(spine)
     }
 }

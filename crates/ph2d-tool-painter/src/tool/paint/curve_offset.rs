@@ -37,25 +37,16 @@ pub(super) fn offset_curve_refined(
     (op, oh, origin)
 }
 
-/// **Trim** a flattened offset spine's self-intersections (the Offset card's Trim checkbox): where the path
+/// **Trim** an OPEN offset spine's self-intersections (the Offset card's Trim checkbox): where the path
 /// crosses itself — an offset whose distance exceeds the local radius of curvature folds the concave side
 /// into a loop — insert ONE point at the crossing and drop the looped excess between the two crossing
 /// segments. Repeats until no crossing remains (multiple loops). A strict-interior test means shared
 /// endpoints / adjacent segments never trigger. Transcendental-free (cross products + one divide). `poly`
-/// is the dab/guide polyline (open, or closed-as-polyline); a no-op when nothing crosses.
+/// is the dab/guide polyline; a no-op when nothing crosses. For CLOSED spines use
+/// [`trim_self_intersections_closed`] (area-ranked, so it keeps the main region not an arbitrary ear).
 pub(super) fn trim_self_intersections(poly: &[[f32; 2]]) -> Vec<[f32; 2]> {
     let mut pts = poly.to_vec();
-    loop {
-        let mut hit = None;
-        'scan: for i in 0..pts.len().saturating_sub(1) {
-            for j in (i + 2)..pts.len().saturating_sub(1) {
-                if let Some(x) = seg_cross(pts[i], pts[i + 1], pts[j], pts[j + 1]) {
-                    hit = Some((i, j, x));
-                    break 'scan;
-                }
-            }
-        }
-        let Some((i, j, x)) = hit else { break };
+    while let Some((i, j, x)) = first_crossing(&pts) {
         // Keep `0..=i`, drop the loop `i+1..=j`, splice the crossing point in, keep `j+1..`.
         let mut next = pts[..=i].to_vec();
         next.push(x);
@@ -63,6 +54,64 @@ pub(super) fn trim_self_intersections(poly: &[[f32; 2]]) -> Vec<[f32; 2]> {
         pts = next;
     }
     pts
+}
+
+/// **Trim** a CLOSED offset spine's self-intersections, keeping the main region and discarding the "ears"
+/// an over-offset folds onto a concave side. A self-crossing splits the loop into two sub-loops; the ear is
+/// the SMALLER (by area) — the unwanted crossed region — so this keeps the larger sub-loop and drops the
+/// ear at every crossing, robust to WHICH crossing is found first and to multiple ears (the naive "drop
+/// `i+1..=j`" picked an arbitrary closed area, and an orientation test fails because a spike-ear can wind
+/// the same way as the body — Enio 2026-06-28). Transcendental-free (segment cross products + the shoelace
+/// area). A no-op when nothing crosses.
+pub(super) fn trim_self_intersections_closed(poly: &[[f32; 2]]) -> Vec<[f32; 2]> {
+    let mut pts = poly.to_vec();
+    // An explicit closing vertex lets the scan cover the last→first edge (where an ear often crosses).
+    if pts.len() >= 2 && pts.first() != pts.last() {
+        pts.push(pts[0]);
+    }
+    while let Some((i, j, x)) = first_crossing(&pts) {
+        // The crossing `x` joins two sub-loops: inner = `x → pts[i+1..=j]`, outer = `pts[..=i] → x → pts[j+1..]`.
+        let inner: Vec<[f32; 2]> = std::iter::once(x)
+            .chain(pts[i + 1..=j].iter().copied())
+            .collect();
+        let mut outer = pts[..=i].to_vec();
+        outer.push(x);
+        outer.extend_from_slice(&pts[j + 1..]);
+        // Keep the larger region; the small loop is the unwanted crossed area (ear) → drop it.
+        pts = if signed_area(&inner).abs() >= signed_area(&outer).abs() {
+            inner
+        } else {
+            outer
+        };
+    }
+    pts
+}
+
+/// The first self-crossing `(i, j, x)` of `poly` (segments `i` and `j`, crossing point `x`), scanning in
+/// index order so the trim is deterministic; `None` when the path is simple. Strict-interior (shared /
+/// adjacent endpoints never count).
+fn first_crossing(pts: &[[f32; 2]]) -> Option<(usize, usize, [f32; 2])> {
+    for i in 0..pts.len().saturating_sub(1) {
+        for j in (i + 2)..pts.len().saturating_sub(1) {
+            if let Some(x) = seg_cross(pts[i], pts[i + 1], pts[j], pts[j + 1]) {
+                return Some((i, j, x));
+            }
+        }
+    }
+    None
+}
+
+/// Twice the signed area of the polygon `pts` (shoelace; closes `last → first` implicitly). Only the
+/// MAGNITUDE is used (to rank two sub-loops at a crossing — the smaller is the ear). Transcendental-free.
+fn signed_area(pts: &[[f32; 2]]) -> f32 {
+    let n = pts.len();
+    let mut a = 0.0f32;
+    for i in 0..n {
+        let p = pts[i];
+        let q = pts[(i + 1) % n];
+        a += p[0] * q[1] - q[0] * p[1];
+    }
+    a
 }
 
 /// Intersection point of segments `a0→a1` and `b0→b1` when they cross in BOTH interiors (strict, so a
@@ -507,5 +556,35 @@ mod tests {
     fn trim_leaves_a_non_crossing_polyline_untouched() {
         let poly = vec![[0.0, 0.0], [10.0, 0.0], [20.0, 5.0], [30.0, 0.0]];
         assert_eq!(trim_self_intersections(&poly), poly);
+    }
+
+    #[test]
+    fn closed_trim_keeps_the_main_region_and_drops_the_reversed_ear() {
+        // A big CCW square with a small inward ear folded onto the top edge (the over-offset case): the path
+        // dives in, crosses, and comes back, forming a tiny reversed loop. The orientation-aware closed trim
+        // must keep the big square and excise the ear — NOT pick the small unwanted closed area.
+        // Walk a big square; on the top edge insert a crossing ear (down-across-up) that loops back.
+        let poly = vec![
+            [0.0, 0.0],
+            [40.0, 0.0],
+            [60.0, 20.0], // dive inward
+            [40.0, 20.0], // cross back left → forms a small loop (ear) with the next leg
+            [60.0, 0.0],
+            [100.0, 0.0],
+            [100.0, 100.0],
+            [0.0, 100.0],
+        ];
+        let out = trim_self_intersections_closed(&poly);
+        // The ear vertices (the inward dip) are gone; the four big corners survive.
+        for corner in [[0.0, 0.0], [100.0, 0.0], [100.0, 100.0], [0.0, 100.0]] {
+            assert!(
+                out.iter().any(|p| dist2(*p, corner) < 1e-3),
+                "main corner {corner:?} kept: {out:?}"
+            );
+        }
+        assert!(
+            !out.iter().any(|p| dist2(*p, [60.0, 20.0]) < 1e-3),
+            "the ear's tip is dropped: {out:?}"
+        );
     }
 }

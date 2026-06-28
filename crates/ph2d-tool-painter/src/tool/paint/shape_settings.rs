@@ -21,6 +21,12 @@ impl PainterTool {
         self.paint.texture_image_pending = false;
         // Invalidate the cached stamp's baked Image mask.
         self.paint.texture_image_version = self.paint.texture_image_version.wrapping_add(1);
+        // Seed the Stencil rect's Size to the IMAGE's aspect ratio, so a Grain image painted through the
+        // Stencil isn't squashed — the rect now matches the picture (Enio 2026-06-28). Dormant until the
+        // mapping is Stencil; resetting on each new image is the "initial size" the user asked for.
+        let (cw, ch) = self.source_size;
+        self.paint.brush.texture.stencil_size =
+            stencil_size_for_image(width, height, [cw as f32, ch as f32]);
         // None→Grain (a direct image assign that didn't go through `set_brush_texture_kind`): flip the
         // Shape ramp colour→tone + reset the now-Grain colour ramp.
         if was_none {
@@ -354,5 +360,22 @@ impl PainterTool {
         if axis < 2 {
             self.paint.brush.shape.size[axis] = v.clamp(TEX_SIZE_MIN, TEX_SIZE_MAX);
         }
+    }
+}
+
+/// The Stencil rect Size (canvas fractions per axis) whose on-canvas rect carries the IMAGE's aspect
+/// ratio, fit into a half-canvas box (the larger axis at `0.5`). Because the rect's pixel size is
+/// `size · canvas` per axis, `rect_w / rect_h = img_w / img_h` ⇒ `sx / sy = (img_w/img_h)·(ch/cw)`.
+/// Falls back to a centred square for a degenerate image / canvas.
+fn stencil_size_for_image(img_w: u32, img_h: u32, canvas: [f32; 2]) -> [f32; 2] {
+    const BASE: f32 = 0.5;
+    if img_w == 0 || img_h == 0 || canvas[0] <= 0.0 || canvas[1] <= 0.0 {
+        return [BASE, BASE];
+    }
+    let r = (img_w as f32 / img_h as f32) * (canvas[1] / canvas[0]);
+    if r >= 1.0 {
+        [BASE, BASE / r]
+    } else {
+        [BASE * r, BASE]
     }
 }

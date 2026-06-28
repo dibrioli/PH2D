@@ -3366,6 +3366,26 @@ fn grain_ramp_stencil_does_not_paint_outside_the_rect() {
 }
 
 #[test]
+fn loading_a_grain_image_sets_the_stencil_size_to_the_image_aspect() {
+    // Enio 2026-06-28: a Grain Image's Stencil rect takes the image's aspect ratio so it isn't squashed.
+    // A square canvas + a 2:1 image ⇒ stencil_size aspect 2:1 (the wider axis at the 0.5 half-canvas box).
+    let mut t = white_canvas(64, 8.0);
+    t.set_brush_texture_image(vec![128u8; 32 * 16], 32, 16); // 2:1 image
+    let s = t.brush_settings().stencil_size;
+    assert!(
+        (s[0] - 0.5).abs() < 1e-4 && (s[1] - 0.25).abs() < 1e-4,
+        "2:1 image → stencil_size [0.5, 0.25]: {s:?}"
+    );
+    // A tall 1:2 image flips it (taller than wide).
+    t.set_brush_texture_image(vec![128u8; 16 * 32], 16, 32);
+    let s = t.brush_settings().stencil_size;
+    assert!(
+        (s[0] - 0.25).abs() < 1e-4 && (s[1] - 0.5).abs() < 1e-4,
+        "1:2 image → stencil_size [0.25, 0.5]: {s:?}"
+    );
+}
+
+#[test]
 fn stencil_corner_drag_with_shift_scales_uniformly() {
     use ph2d_painter_brush::{TextureKind, TextureMapping, TextureSettings};
     // Shift held → a Stencil corner scale preserves the grab-time aspect ratio (the Sprite gizmo's

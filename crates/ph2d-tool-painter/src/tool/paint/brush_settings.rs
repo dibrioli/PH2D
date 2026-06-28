@@ -98,6 +98,8 @@ pub struct BrushSettings {
     pub offset: f32,
     /// **Trim** the offset's self-intersections (Offset card checkbox).
     pub offset_trim: bool,
+    /// Whether the Simplify button shows: a curve is editing AND (Free Hand, or the user has added a point).
+    pub can_simplify: bool,
     /// "Adjust Strength for Spacing" on/off.
     pub space_attenuation: bool,
     /// **Accumulate** on/off: off (default) caps a stroke at Strength.

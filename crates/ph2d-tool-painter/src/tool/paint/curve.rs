@@ -33,11 +33,11 @@ pub(super) struct CurveEditor {
     pub(super) points: Vec<[f32; 2]>,
     /// Per-anchor **Bézier handles** `[in, out]` (absolute px), parallel to `points` once editing; the
     /// `kinds` entry drives updates. EMPTY transiently (draw-phase preview) ⇒ Catmull-Rom in `flatten_spine`.
-    handles: Vec<[[f32; 2]; 2]>,
+    pub(super) handles: Vec<[[f32; 2]; 2]>,
     /// Per-anchor **handle kind** (Free / Aligned / Vector / Auto), parallel to `points` once editing. Derived
     /// (Auto / Vector) are recomputed by [`curve_handle::rebuild`] each edit; manual (Aligned / Free) keep the
     /// artist's tangents. Empty during the draw phase.
-    kinds: Vec<HandleKind>,
+    pub(super) kinds: Vec<HandleKind>,
     /// The selected (highlighted) point — the Delete target. `None` = nothing selected.
     pub(super) selected: Option<usize>,
     /// The point being dragged this gesture (`Some` between a grab-Down and its Up).
@@ -62,6 +62,13 @@ pub(super) struct CurveEditor {
     anchor: [f32; 2],
     /// Per-session jitter seed, fixed at begin so every re-fill of the same points is identical.
     seed: u64,
+    /// `true` once the user has inserted a point on this curve. Gates the Simplify button for Curve +
+    /// converted Circle/Polygon (Free Hand exposes Simplify immediately — its whole point is the fit).
+    pub(super) added_point: bool,
+    /// Per-session **edit** undo / redo stacks — point moves / inserts / deletes / handle-kind changes, woven
+    /// into the painter's Ctrl+Z/Y (see [`super::curve_undo`]). Cleared with the session.
+    pub(super) edit_undo: Vec<super::curve_undo::EditSnapshot>,
+    pub(super) edit_redo: Vec<super::curve_undo::EditSnapshot>,
 }
 
 /// A read-only snapshot of the Curve editor for the shell's on-canvas overlay (control dots + the
@@ -120,12 +127,16 @@ impl PainterTool {
                 stabilized: pos,
                 anchor: pos,
                 seed,
+                added_point: false,
+                edit_undo: Vec::new(),
+                edit_redo: Vec::new(),
             });
             return true;
         };
         if !ed.editing {
             return true; // mid initial-line drag — ignore extra Downs
         }
+        ed.begin_edit(); // tentatively snapshot for undo; curve_up discards it if nothing changed
         let tangent = ed.selected.and_then(|s| {
             curve_tangent::tangent_hit(&ed.points, &ed.handles, s, pos, tol, ed.closed)
         });
@@ -159,6 +170,7 @@ impl PainterTool {
             curve_handle::rebuild(&ed.points, &ed.kinds, &mut ed.handles, ed.closed);
             ed.selected = Some(ins.index);
             ed.grabbed = Some(ins.index);
+            ed.added_point = true; // unlocks the Simplify button for Curve / converted shapes
             true
         } else {
             ed.selected = curve_geom::curve_nearest(&ed.points, pos);
@@ -257,6 +269,7 @@ impl PainterTool {
             ed.grabbed = None;
             ed.grabbed_handle = None;
             ed.gizmo = None;
+            ed.commit_edit(); // keep the gesture's undo snapshot iff it changed the curve
             return true;
         }
         if ed.freehand {
@@ -314,6 +327,7 @@ impl PainterTool {
         if ed.points.len() <= 2 || sel >= ed.points.len() {
             return false;
         }
+        ed.push_edit(); // a delete is one undo step
         ed.points.remove(sel);
         if sel < ed.handles.len() {
             ed.handles.remove(sel); // keep the parallel handles + kinds invariants
@@ -392,6 +406,9 @@ impl PainterTool {
             stabilized: anchor,
             anchor,
             seed,
+            added_point: false,
+            edit_undo: Vec::new(),
+            edit_redo: Vec::new(),
         });
         self.curve_refill();
         true
@@ -490,6 +507,7 @@ impl PainterTool {
         if ed.kinds.len() != ed.points.len() {
             ed.kinds = vec![HandleKind::Auto; ed.points.len()];
         }
+        ed.push_edit(); // a handle-kind change is one undo step
         ed.kinds[sel] = kind;
         // Switching a sharp (collapsed) point to a manual kind: seed a visible tangent to drag. Closed-aware,
         // so a converted Polygon / Circle seam anchor gets BOTH arms (not the one-armed open-curve seed).

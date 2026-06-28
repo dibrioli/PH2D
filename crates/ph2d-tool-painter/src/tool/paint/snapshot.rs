@@ -60,6 +60,11 @@ impl PainterTool {
             spacing: b.spacing,
             offset: self.paint.shape_offset_norm,
             offset_trim: self.paint.offset_trim,
+            can_simplify: self.paint.curve.as_ref().is_some_and(|ed| {
+                ed.editing
+                    && (b.stroke_method == ph2d_painter_brush::StrokeMethod::FreeHand
+                        || ed.added_point)
+            }),
             space_attenuation: b.space_attenuation,
             accumulate: b.accumulate,
             jitter: b.jitter,

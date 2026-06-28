@@ -23,6 +23,7 @@ mod curve_gizmo; // whole-curve transform gizmo (move/scale/rotate the entire cu
 mod curve_handle; // per-anchor handle kinds (Free/Aligned/Vector/Auto) + derived geometry; split from `curve`
 mod curve_offset; // perpendicular offset (parallel curve) + CAD-grade reconstruction; split from `curve_geom`
 mod curve_tangent; // Bézier tangent-handle hit-test, aligned mirror, overlay snapshot; split from `curve`
+mod curve_undo; // per-session undo/redo of curve edits (woven into the paint Ctrl+Z); split from `curve`
 /// Per-dab randomize setters (Jitter Scale / Rotate / Randomize Color); split from `brush_settings`.
 mod jitter_settings;
 /// Multi-layer Shape (z-ordered layers + per-layer-colour state); split from `paint.rs` (LOC cap).
@@ -68,8 +69,7 @@ pub const BRUSH_SIZE_MAX_PX: f32 = 512.0;
 pub const BRUSH_SPACING_MAX: f32 = 1.0;
 /// Max absolute jitter the slider reaches, in pixels (View unit).
 pub const BRUSH_JITTER_ABS_MAX_PX: f32 = 64.0;
-/// Max value for the Input Samples / Dash Length count sliders (mirrors the engine's
-/// input-sample window cap).
+/// Max value for the Input Samples / Dash Length count sliders (the engine's input-sample window cap).
 pub const BRUSH_COUNT_SLIDER_MAX: u32 = MAX_INPUT_SAMPLES as u32;
 /// Airbrush **Rate** slider floor / ceiling (seconds) — the panel maps its `0..1` track linearly onto
 /// `[MIN, MAX]`. Re-exported from the engine's Blender soft range so the value↔track map shares one source.

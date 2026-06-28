@@ -4306,3 +4306,64 @@ fn sample_composite_at_uv_reads_the_painted_colour() {
         "an unpainted pixel reads the opaque white canvas, not transparent"
     );
 }
+
+#[test]
+fn a_curve_point_move_is_undoable_and_redoable() {
+    // Editing a curve weaves into the paint Ctrl+Z: grab the selected midpoint, drag it, then undo/redo the
+    // move step-by-step (Enio 2026-06-27).
+    let mut t = open_curve_midpoint_selected();
+    let before = t.curve_overlay().unwrap().points;
+    t.on_canvas_pointer(cp([32.0, 32.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([32.0, 10.0], PointerPhase::Move));
+    t.on_canvas_pointer(cp([32.0, 10.0], PointerPhase::Up));
+    let moved = t.curve_overlay().unwrap().points;
+    assert_ne!(moved, before, "the midpoint moved");
+    assert!(t.can_undo(), "the curve edit is undoable");
+    assert!(t.undo_last(), "undo the move");
+    assert_eq!(
+        t.curve_overlay().unwrap().points,
+        before,
+        "reverted to pre-move"
+    );
+    assert!(t.redo_last(), "redo the move");
+    assert_eq!(
+        t.curve_overlay().unwrap().points,
+        moved,
+        "re-applied the move"
+    );
+}
+
+#[test]
+fn selecting_a_curve_point_is_not_an_undo_step() {
+    // A pure selection click (down + up, no drag) must not push an undo entry.
+    let mut t = open_curve_midpoint_selected();
+    t.on_canvas_pointer(cp([8.0, 32.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([8.0, 32.0], PointerPhase::Up));
+    assert!(!t.can_undo(), "selecting a point is not an edit");
+}
+
+#[test]
+fn simplify_is_hidden_until_a_point_is_added_on_a_plain_curve() {
+    // A freshly drawn Curve exposes no Simplify button until the user inserts a point (Enio 2026-06-27);
+    // adding one (click on the curve away from existing points) unlocks it.
+    let mut t = open_curve_midpoint_selected();
+    assert!(
+        !t.brush_settings().can_simplify,
+        "no Simplify before a point is added"
+    );
+    // Select an endpoint first so the midpoint's tangent handles don't intercept the insert click.
+    t.on_canvas_pointer(cp([8.0, 32.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([8.0, 32.0], PointerPhase::Up));
+    let n0 = t.curve_overlay().unwrap().points.len();
+    t.on_canvas_pointer(cp([44.0, 32.0], PointerPhase::Down)); // click on the curve, away from any anchor
+    t.on_canvas_pointer(cp([44.0, 32.0], PointerPhase::Up));
+    assert_eq!(
+        t.curve_overlay().unwrap().points.len(),
+        n0 + 1,
+        "a point was inserted"
+    );
+    assert!(
+        t.brush_settings().can_simplify,
+        "adding a point unlocks Simplify"
+    );
+}

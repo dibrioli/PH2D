@@ -44,10 +44,14 @@ impl PainterTool {
     /// Returns `true` if an edit was undone. Driven by the shell's undo gesture /
     /// shortcut.
     pub fn undo_last(&mut self) -> bool {
-        // A shape being authored (Curve/Circle — handles still visible) is an in-progress edit. The
-        // first undo COMMITS it (applies the shape, clears the handles) instead of touching the layer
-        // history — otherwise the history undo would wipe the painted preview while leaving the
-        // handles orphaned on screen. The NEXT undo then undoes the committed stroke normally.
+        // While a curve is being edited, undo walks its per-session edit history (point moves / inserts /
+        // deletes / handle-kind changes) step-by-step — woven into the same Ctrl+Z as the paint flow.
+        if self.curve_undo_edit() {
+            return true;
+        }
+        // With no edits left, a shape still being authored (handles visible) is an in-progress edit: the
+        // next undo COMMITS it (applies the shape, clears the handles) rather than touching the layer
+        // history — else the history undo would wipe the painted preview, orphaning the handles on screen.
         if self.commit_open_shape() {
             return true;
         }
@@ -62,6 +66,10 @@ impl PainterTool {
     /// Redo the most recently undone structural layer edit. Returns `true` if an
     /// edit was redone.
     pub fn redo_last(&mut self) -> bool {
+        // Mirror of [`Self::undo_last`]: replay a curve edit if one was undone this session, before history.
+        if self.curve_redo_edit() {
+            return true;
+        }
         // Same in-progress guard as [`Self::undo_last`]: finalise an open shape before navigating
         // history, so a stray redo can't strand the handles over a reverted canvas.
         if self.commit_open_shape() {
@@ -78,13 +86,13 @@ impl PainterTool {
     /// `true` if there is at least one structural edit to undo.
     #[must_use]
     pub fn can_undo(&self) -> bool {
-        self.undo.can_undo()
+        self.can_curve_undo() || self.undo.can_undo()
     }
 
     /// `true` if there is at least one undone structural edit to redo.
     #[must_use]
     pub fn can_redo(&self) -> bool {
-        self.undo.can_redo()
+        self.can_curve_redo() || self.undo.can_redo()
     }
 
     // ── Apply / preview drive ───────────────────────────────────────────

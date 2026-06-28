@@ -81,7 +81,10 @@ pub(crate) fn paint_stroke_section(
     //    column when the panel is too narrow (mirrors the ramp controls' responsive split). ──
     if method.has_open_shape() {
         // Simplify — re-fit the editable curve to a clean minimal control polygon (directly below Method).
-        y = paint_simplify_row(ctx, theme, x, content_w, y);
+        // Shown only once it applies: Free Hand always, Curve / converted shapes after a point is added.
+        if brush.can_simplify {
+            y = paint_simplify_row(ctx, theme, x, content_w, y);
+        }
         // Circle / Polygon also get an "Edit" (E) button to convert to an editable curve.
         y = paint_apply_row(ctx, theme, x, content_w, y, method.is_convertible_shape());
         // Offset card — the perpendicular-offset slider + the Simple / Precise algorithm toggle.

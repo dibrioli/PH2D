@@ -342,12 +342,8 @@ impl PainterTool {
                 self.curve_simplify(); // reduce the editable curve to a clean control polygon
                 return true;
             }
-            if *id == core_ids::PAINTER_BRUSH_OFFSET_SIMPLE {
-                self.set_offset_precise(false);
-                return true;
-            }
-            if *id == core_ids::PAINTER_BRUSH_OFFSET_PRECISE {
-                self.set_offset_precise(true);
+            if *id == core_ids::PAINTER_BRUSH_OFFSET_TRIM {
+                self.toggle_offset_trim();
                 return true;
             }
         }

@@ -37,23 +37,48 @@ pub(super) fn offset_curve_refined(
     (op, oh, origin)
 }
 
-/// Pick the offset algorithm by the panel's Offset-card toggle: `precise` ⇒ [`offset_curve_refined`]
-/// (CAD-grade densify-to-tolerance), else the plain [`offset_curve`] (control-point offset) with an identity
-/// origin map (no anchors inserted). The single entry point the Curve editor offsets through.
-pub(super) fn offset_curve_select(
-    precise: bool,
-    points: &[[f32; 2]],
-    handles: &[[[f32; 2]; 2]],
-    d: f32,
-    closed: bool,
-) -> RefinedOffset {
-    if precise {
-        offset_curve_refined(points, handles, d, closed)
-    } else {
-        let (op, oh) = offset_curve(points, handles, d, closed);
-        let origin = (0..op.len()).map(Some).collect();
-        (op, oh, origin)
+/// **Trim** a flattened offset spine's self-intersections (the Offset card's Trim checkbox): where the path
+/// crosses itself — an offset whose distance exceeds the local radius of curvature folds the concave side
+/// into a loop — insert ONE point at the crossing and drop the looped excess between the two crossing
+/// segments. Repeats until no crossing remains (multiple loops). A strict-interior test means shared
+/// endpoints / adjacent segments never trigger. Transcendental-free (cross products + one divide). `poly`
+/// is the dab/guide polyline (open, or closed-as-polyline); a no-op when nothing crosses.
+pub(super) fn trim_self_intersections(poly: &[[f32; 2]]) -> Vec<[f32; 2]> {
+    let mut pts = poly.to_vec();
+    loop {
+        let mut hit = None;
+        'scan: for i in 0..pts.len().saturating_sub(1) {
+            for j in (i + 2)..pts.len().saturating_sub(1) {
+                if let Some(x) = seg_cross(pts[i], pts[i + 1], pts[j], pts[j + 1]) {
+                    hit = Some((i, j, x));
+                    break 'scan;
+                }
+            }
+        }
+        let Some((i, j, x)) = hit else { break };
+        // Keep `0..=i`, drop the loop `i+1..=j`, splice the crossing point in, keep `j+1..`.
+        let mut next = pts[..=i].to_vec();
+        next.push(x);
+        next.extend_from_slice(&pts[j + 1..]);
+        pts = next;
     }
+    pts
+}
+
+/// Intersection point of segments `a0→a1` and `b0→b1` when they cross in BOTH interiors (strict, so a
+/// shared endpoint isn't a crossing), else `None`. Parametric: `a0 + t·(a1−a0)`, `t,u ∈ (ε, 1−ε)`.
+fn seg_cross(a0: [f32; 2], a1: [f32; 2], b0: [f32; 2], b1: [f32; 2]) -> Option<[f32; 2]> {
+    let r = [a1[0] - a0[0], a1[1] - a0[1]];
+    let s = [b1[0] - b0[0], b1[1] - b0[1]];
+    let denom = r[0] * s[1] - r[1] * s[0];
+    if denom.abs() < 1e-6 {
+        return None; // parallel / degenerate
+    }
+    let d = [b0[0] - a0[0], b0[1] - a0[1]];
+    let t = (d[0] * s[1] - d[1] * s[0]) / denom;
+    let u = (d[0] * r[1] - d[1] * r[0]) / denom;
+    const E: f32 = 1e-4;
+    (t > E && t < 1.0 - E && u > E && u < 1.0 - E).then(|| [a0[0] + r[0] * t, a0[1] + r[1] * t])
 }
 
 /// Offset the curve's **control geometry** perpendicular by `d` px. Each anchor shifts along its averaged
@@ -454,5 +479,33 @@ mod tests {
                 best.sqrt()
             );
         }
+    }
+
+    #[test]
+    fn trim_cuts_a_self_intersecting_loop() {
+        // A polyline that crosses itself: the trailing segment dives back across the leading one. Trim splices
+        // the crossing point in and drops the looped excess between the two crossing segments.
+        let poly = vec![
+            [0.0, 0.0],
+            [10.0, 0.0],
+            [10.0, 10.0],
+            [5.0, 10.0],
+            [5.0, -5.0],
+        ];
+        let out = trim_self_intersections(&poly);
+        assert_eq!(out.len(), 3, "loop removed: {out:?}");
+        assert_eq!(out[0], [0.0, 0.0]);
+        assert!(
+            (out[1][0] - 5.0).abs() < 1e-3 && out[1][1].abs() < 1e-3,
+            "crossing point (5,0) spliced: {:?}",
+            out[1]
+        );
+        assert_eq!(out[2], [5.0, -5.0]);
+    }
+
+    #[test]
+    fn trim_leaves_a_non_crossing_polyline_untouched() {
+        let poly = vec![[0.0, 0.0], [10.0, 0.0], [20.0, 5.0], [30.0, 0.0]];
+        assert_eq!(trim_self_intersections(&poly), poly);
     }
 }

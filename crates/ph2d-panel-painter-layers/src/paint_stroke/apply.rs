@@ -1,11 +1,11 @@
 //! The Stroke-Method chrome shown for the open-shape methods (Curve / Free Hand / Circle / Polygon): the
 //! **Simplify** button, the **Apply / Apply & Keep / Edit / Delete** row, and the **Offset** card (the
-//! offset slider + a **Simple / Precise** algorithm toggle). Split from `paint_stroke` for the workspace
+//! offset slider + a **Trim** self-intersection checkbox). Split from `paint_stroke` for the workspace
 //! LOC cap. Each control forwards a `Click` / `SetValue` the tool routes in `route_brush_dab_event`;
 //! registering the Button slot is what lets the dispatch emit the `Click`.
 
 use crate::paint::register_button;
-use crate::paint_brush_top::paint_slider_chip_row;
+use crate::paint_brush_top::{paint_checkbox_row, paint_slider_chip_row};
 use ph2d_editor_core::ids as core_ids;
 use ph2d_editor_core::interaction::InteractiveState;
 use ph2d_editor_core::paint::{
@@ -102,9 +102,9 @@ pub(super) fn paint_simplify_row(
     y + ROW_H_PX + Spacing::Xs.px()
 }
 
-/// Paint the **Offset** card (modeled on the Jitter card): the perpendicular-offset slider, then — under
-/// an "Algorithm" label — a two-segment toggle, **Simple** (plain control-point offset) vs **Precise**
-/// (CAD-grade reconstruction). Shown for the open-shape methods. Returns the next `y`.
+/// Paint the **Offset** card (modeled on the Jitter card): the perpendicular-offset slider, then a **Trim**
+/// checkbox (cut the offset's self-intersections — insert a point at the crossing, drop the looped excess).
+/// Shown for the open-shape methods. Returns the next `y`.
 pub(super) fn paint_offset_card(
     ctx: &mut PaintCtx,
     theme: ph2d_tokens::Theme,
@@ -119,7 +119,7 @@ pub(super) fn paint_offset_card(
         TypeToken::Sm.px(),
         ROW_H_PX,
     );
-    let rows_h = (ROW_H_PX + xs) * 3.0; // slider + label + toggle
+    let rows_h = (ROW_H_PX + xs) * 2.0; // slider + Trim checkbox
     let card_h = pad + title_h + rows_h + xs;
     let card = Rect::new(x, y, content_w, card_h);
     fill_rounded_rect(
@@ -137,19 +137,16 @@ pub(super) fn paint_offset_card(
     );
     let inner_x = x + pad;
     let inner_w = (content_w - pad * 2.0).max(0.0);
-    let label = |ctx: &mut PaintCtx, text, ly| {
-        paint_text(
-            ctx.text_system,
-            ctx.scene,
-            text,
-            inner_x,
-            ly + (title_h - font) * 0.5,
-            font,
-            inner_w,
-            resolve(ColorToken::Text2, theme),
-        );
-    };
-    label(ctx, "Offset", y + pad);
+    paint_text(
+        ctx.text_system,
+        ctx.scene,
+        "Offset",
+        inner_x,
+        y + pad + (title_h - font) * 0.5,
+        font,
+        inner_w,
+        resolve(ColorToken::Text2, theme),
+    );
     let mut iy = y + pad + title_h;
     iy = paint_slider_chip_row(
         ctx,
@@ -162,69 +159,17 @@ pub(super) fn paint_offset_card(
         core_ids::PAINTER_BRUSH_OFFSET_CHIP,
         brush.offset,
     );
-    label(ctx, "Algorithm", iy);
-    iy += ROW_H_PX + xs;
-    let bw = (inner_w - xs) * 0.5;
-    toggle_button(
+    paint_checkbox_row(
         ctx,
         theme,
-        Rect::new(inner_x, iy, bw, ROW_H_PX),
-        "Simple",
-        core_ids::PAINTER_BRUSH_OFFSET_SIMPLE,
-        !brush.offset_precise,
-    );
-    toggle_button(
-        ctx,
-        theme,
-        Rect::new(inner_x + bw + xs, iy, bw, ROW_H_PX),
-        "Precise",
-        core_ids::PAINTER_BRUSH_OFFSET_PRECISE,
-        brush.offset_precise,
+        inner_x,
+        inner_w,
+        iy,
+        core_ids::PAINTER_BRUSH_OFFSET_TRIM,
+        "Trim",
+        brush.offset_trim,
     );
     y + card_h + Spacing::Sm.px()
-}
-
-/// One segment of the offset-algorithm toggle: like [`button`] but the SELECTED segment reads pressed
-/// (`Bg2` fill + accent border, bright label) while the other stays flat. A `Click` selects it.
-fn toggle_button(
-    ctx: &mut PaintCtx,
-    theme: ph2d_tokens::Theme,
-    r: Rect,
-    label: &str,
-    id: ph2d_a11y::NodeId,
-    selected: bool,
-) {
-    let (fill, border, text) = if selected {
-        (ColorToken::Bg2, ColorToken::Accent, ColorToken::Text1)
-    } else {
-        let state = match ctx.host.store().get(id) {
-            Some(InteractiveState::Button { state }) => *state,
-            _ => ButtonState::Normal,
-        };
-        (
-            flat_button_surface(state),
-            ColorToken::Border,
-            ColorToken::Text2,
-        )
-    };
-    fill_rounded_rect(ctx.scene, r, Radius::Sm.px(), resolve(fill, theme));
-    stroke_rounded_rect(
-        ctx.scene,
-        r,
-        Radius::Sm.px(),
-        StrokeToken::Thin.px(),
-        resolve(border, theme),
-    );
-    paint_text_centered(
-        ctx.text_system,
-        ctx.scene,
-        label,
-        r,
-        TypeToken::Base.px(),
-        resolve(text, theme),
-    );
-    register_button(ctx.host.store_mut(), id);
-    ctx.host.hit_index_mut().register(id, r);
 }
 
 /// Paint the trailing square-icon cluster at `ix`: the optional **E**dit button then the **✕** Delete.

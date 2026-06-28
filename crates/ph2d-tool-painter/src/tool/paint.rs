@@ -132,9 +132,9 @@ pub(crate) struct PaintState {
     shape_grab_tol_px: f32,
     /// **Offset** slider track (`0..1`, `0.5` = none) — perpendicular path offset for the shape editors.
     shape_offset_norm: f32,
-    /// Offset algorithm: `true` = **Precise** (CAD reconstruction), `false` = **Simple** (control-point).
-    /// Defaulted per Stroke:Method by [`Self::set_brush_stroke_method`]; the Offset-card toggle overrides it.
-    offset_precise: bool,
+    /// **Trim** (Offset card): when set, the offset spine's self-intersections are cut — a point is inserted
+    /// at the crossing and the looped excess dropped (see [`curve_offset::trim_self_intersections`]).
+    offset_trim: bool,
     /// In-progress Stencil overlay drag (move/resize/rotate the texture rect); `None` when idle.
     stencil_grab: Option<stencil::StencilGrab>,
     /// Seconds left on the transient in-gizmo Stencil texture preview (panel-param path): armed by a texture
@@ -221,7 +221,7 @@ impl Default for PaintState {
             polygon: None,
             shape_grab_tol_px: DEFAULT_SHAPE_GRAB_TOL_PX,
             shape_offset_norm: 0.5, // centred → 0px offset (default byte-identical)
-            offset_precise: true, // default method is Curve → Precise (set_brush_stroke_method re-defaults)
+            offset_trim: false,     // self-intersection trimming off by default
             stencil_grab: None,
             stencil_preview_s: 0.0,
             texture_image: None,

@@ -39,10 +39,8 @@ pub const PAINTER_BRUSH_OFFSET: NodeId = hash_node_id("painter_brush.offset");
 pub const PAINTER_BRUSH_OFFSET_CHIP: NodeId = hash_node_id("painter_brush.offset_chip");
 /// "Simplify": re-fit the editable curve to a clean minimal control polygon. `Click` → `curve_simplify`.
 pub const PAINTER_BRUSH_STROKE_SIMPLIFY: NodeId = hash_node_id("painter_brush.stroke_simplify");
-/// Offset-algorithm toggle — "Simple" (plain control-point offset). `Click` → `set_offset_precise(false)`.
-pub const PAINTER_BRUSH_OFFSET_SIMPLE: NodeId = hash_node_id("painter_brush.offset_simple");
-/// Offset-algorithm toggle — "Precise" (CAD reconstruction). `Click` → `set_offset_precise(true)`.
-pub const PAINTER_BRUSH_OFFSET_PRECISE: NodeId = hash_node_id("painter_brush.offset_precise");
+/// "Trim" checkbox: cut the offset spine's self-intersections. `Click` → `toggle_offset_trim`.
+pub const PAINTER_BRUSH_OFFSET_TRIM: NodeId = hash_node_id("painter_brush.offset_trim");
 pub const PAINTER_BRUSH_DASH_RATIO_CHIP: NodeId = hash_node_id("painter_brush.dash_ratio_chip");
 pub const PAINTER_BRUSH_DASH_LENGTH_CHIP: NodeId = hash_node_id("painter_brush.dash_length_chip");
 pub const PAINTER_BRUSH_INPUT_SAMPLES_CHIP: NodeId =

@@ -96,8 +96,8 @@ pub struct BrushSettings {
     pub spacing: f32,
     /// **Offset** slider track (`0..1`, `0.5` = no offset) — perpendicular path offset for the shape editors.
     pub offset: f32,
-    /// Offset algorithm: `true` = **Precise** (CAD reconstruction), `false` = **Simple** (control-point).
-    pub offset_precise: bool,
+    /// **Trim** the offset's self-intersections (Offset card checkbox).
+    pub offset_trim: bool,
     /// "Adjust Strength for Spacing" on/off.
     pub space_attenuation: bool,
     /// **Accumulate** on/off: off (default) caps a stroke at Strength.
@@ -356,8 +356,6 @@ impl PainterTool {
             self.polygon_cancel();
         }
         self.paint.brush.stroke_method = method;
-        // Default the offset algorithm per method (Curve / Free Hand → Precise; Circle / Polygon → Simple).
-        self.paint.offset_precise = matches!(method, StrokeMethod::Curve | StrokeMethod::FreeHand);
     }
 
     /// Set spacing as a fraction of diameter (slider track), clamped to the interactive range.

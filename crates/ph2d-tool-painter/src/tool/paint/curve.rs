@@ -429,8 +429,7 @@ impl PainterTool {
         }
         // Offset the CONTROL geometry (handles recalculated, not deformed), so the dots + tangents + spine
         // guide all move WITH the paint and stay consistent on the offset curve (Enio 2026-06-28).
-        let (points, handles, origin) = curve_offset::offset_curve_select(
-            self.paint.offset_precise,
+        let (points, handles, origin) = curve_offset::offset_curve_refined(
             &ed.points,
             &ed.handles,
             self.shape_offset_px(),
@@ -438,6 +437,9 @@ impl PainterTool {
         );
         let mut spine = Vec::new();
         curve_geom::flatten_spine(&points, &handles, ed.closed, &mut spine);
+        if self.paint.offset_trim {
+            spine = curve_offset::trim_self_intersections(&spine);
+        }
         // The reconstruction inserts anchors, so remap the selected index onto its densified position.
         let osel = ed
             .selected
@@ -526,15 +528,13 @@ impl PainterTool {
     fn curve_fill(&mut self, pts: &[[f32; 2]], handles: &[[[f32; 2]; 2]], closed: bool, seed: u64) {
         // Offset the CONTROL geometry (handles recalculated), so the painted spine matches the overlay guide
         // and carries no deformation; flatten the offset curve to the dab spine.
-        let (pts, handles, _) = curve_offset::offset_curve_select(
-            self.paint.offset_precise,
-            pts,
-            handles,
-            self.shape_offset_px(),
-            closed,
-        );
+        let (pts, handles, _) =
+            curve_offset::offset_curve_refined(pts, handles, self.shape_offset_px(), closed);
         let mut spine = Vec::new();
         curve_geom::flatten_spine(&pts, &handles, closed, &mut spine);
+        if self.paint.offset_trim {
+            spine = curve_offset::trim_self_intersections(&spine);
+        }
         let mut stroke = Stroke::new(self.paint.brush, self.paint.dynamics, seed);
         let mut dabs = std::mem::take(&mut self.paint.dabs);
         stroke.fill_polyline_preview(&spine, &mut dabs);
@@ -547,12 +547,11 @@ impl PainterTool {
     /// editor. Called before any edit gesture (hit-test = displayed dots) and on Apply & Keep.
     pub(super) fn bake_curve_offset(&mut self) {
         let off = self.shape_offset_px();
-        let precise = self.paint.offset_precise;
         if off != 0.0
             && let Some(ed) = self.paint.curve.as_mut().filter(|ed| ed.editing)
         {
             let (p, h, origin) =
-                curve_offset::offset_curve_select(precise, &ed.points, &ed.handles, off, ed.closed);
+                curve_offset::offset_curve_refined(&ed.points, &ed.handles, off, ed.closed);
             // Carry kinds (original anchors keep theirs; inserted points = Free) + remap the selection.
             let kinds: Vec<HandleKind> = origin
                 .iter()

@@ -45,9 +45,64 @@ pub(super) fn draw_curve_overlay(
                 camera,
                 window_size,
             );
-            use ph2d_vector::{Affine, BezPath, Brush, Circle, Color, Fill, Point, Stroke};
+            use ph2d_vector::{Affine, BezPath, Brush, Circle, Color, Fill, Point, Rect, Stroke};
             let map = |p: [f32; 2]| affine * Point::new(f64::from(p[0]), f64::from(p[1]));
             let scene = vector_scene.inner_mut();
+            // Transform gizmo — the bounding box + its move / scale / rotate handles. Drawn FIRST (under the
+            // spine + dots) so the editing geometry stays visually dominant.
+            if let Some(gz) = overlay.transform_gizmo.as_ref() {
+                let frame = Color::new([0.55, 0.72, 1.0, 0.45]); // LITERAL-COLOR-OK: gizmo frame
+                let handle = Color::new([0.80, 0.86, 0.95, 0.95]); // LITERAL-COLOR-OK: gizmo handle
+                let grab = Color::new([1.0, 0.62, 0.20, 1.0]); // LITERAL-COLOR-OK: grabbed gizmo handle
+                let [mn, mx] = gz.bbox;
+                let mut box_path = BezPath::new();
+                box_path.move_to(map(mn));
+                box_path.line_to(map([mx[0], mn[1]]));
+                box_path.line_to(map(mx));
+                box_path.line_to(map([mn[0], mx[1]]));
+                box_path.close_path();
+                scene.stroke(
+                    &Stroke::new(1.0),
+                    Affine::IDENTITY,
+                    &Brush::Solid(frame),
+                    None,
+                    &box_path,
+                );
+                for (i, &h) in gz.handles.iter().enumerate() {
+                    let is_grabbed = gz.grabbed == Some(i as u8);
+                    let c = if is_grabbed { grab } else { handle };
+                    let p = map(h);
+                    if i == 8 {
+                        // Centre = move handle: a small ring.
+                        scene.stroke(
+                            &Stroke::new(1.5),
+                            Affine::IDENTITY,
+                            &Brush::Solid(c),
+                            None,
+                            &Circle::new(p, if is_grabbed { 6.0 } else { 4.5 }),
+                        );
+                    } else if gz.rotating && i < 4 {
+                        // Rotating: corners read as rings.
+                        scene.stroke(
+                            &Stroke::new(1.5),
+                            Affine::IDENTITY,
+                            &Brush::Solid(c),
+                            None,
+                            &Circle::new(p, if is_grabbed { 5.0 } else { 3.5 }),
+                        );
+                    } else {
+                        // Scale handles: small squares.
+                        let r = if is_grabbed { 4.0 } else { 3.0 };
+                        scene.fill(
+                            Fill::NonZero,
+                            Affine::IDENTITY,
+                            &Brush::Solid(c),
+                            None,
+                            &Rect::new(p.x - r, p.y - r, p.x + r, p.y + r),
+                        );
+                    }
+                }
+            }
             // Spine guide — the auto-smoothed curve through the control points.
             if overlay.spine.len() >= 2 {
                 let mut path = BezPath::new();

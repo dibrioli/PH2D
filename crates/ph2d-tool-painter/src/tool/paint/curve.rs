@@ -16,6 +16,7 @@ use super::curve_tangent;
 use super::*;
 
 use super::curve_geom;
+use super::curve_gizmo;
 use ph2d_painter_brush::{Stroke, lazy_mouse_step};
 
 /// Most control points a Curve session may hold — bounds the per-frame re-fill + hit-test.
@@ -50,6 +51,9 @@ pub(super) struct CurveEditor {
     /// The **tangent handle** being dragged this gesture: `(anchor index, is_out)` where `is_out` picks the
     /// `[in, out]` slot. `Some` between a handle grab-Down and its Up; takes precedence over `grabbed`.
     grabbed_handle: Option<(usize, bool)>,
+    /// The active **whole-curve transform** drag (the bounding-box gizmo: move / scale / rotate). `Some`
+    /// between a gizmo-handle grab-Down and its Up; takes precedence over anchor / tangent grabs.
+    gizmo: Option<curve_gizmo::GizmoGrab>,
     /// `false` while drawing the initial straight line (Down→Up), `true` once editing the points.
     pub(super) editing: bool,
     /// `true` when the curve is a **closed loop** (converted from a Circle / Polygon): the spine + fill +
@@ -84,6 +88,9 @@ pub struct CurveOverlay {
     /// The selected anchor's **handle kind** as a wire `u8` (`0 = Free`, `1 = Aligned`, `2 = Vector`,
     /// `3 = Auto`), or `None` when nothing is selected — lets the shell mark the active item in the menu.
     pub selected_kind: Option<u8>,
+    /// The whole-curve **transform gizmo** (bounding-box move / scale / rotate handles), or `None` when the
+    /// curve is too small to frame. Drawn around the curve so the artist can transform it as one.
+    pub transform_gizmo: Option<TransformGizmo>,
 }
 
 impl PainterTool {
@@ -118,6 +125,7 @@ impl PainterTool {
                 selected: None,
                 grabbed: None,
                 grabbed_handle: None,
+                gizmo: None,
                 editing: false,
                 closed: false, // authored / Free Hand curves are open
                 freehand: matches!(self.paint.brush.stroke_method, StrokeMethod::FreeHand),
@@ -139,6 +147,9 @@ impl PainterTool {
             false
         } else if let Some(h) = tangent {
             ed.grabbed_handle = Some(h); // a tangent handle off the selected anchor — grab it, not the curve
+            false
+        } else if let Some(g) = curve_gizmo::grab(&ed.points, &ed.handles, pos, tol) {
+            ed.gizmo = Some(g); // a transform-gizmo handle (box corner / edge / centre / rotate ring)
             false
         } else if ed.points.len() < MAX_CURVE_POINTS {
             let i = curve_geom::curve_insert_index(&ed.points, pos);
@@ -191,6 +202,17 @@ impl PainterTool {
             self.curve_fill(&pts, &[], false, seed);
             return true;
         }
+        if let Some(grab) = &ed.gizmo {
+            // Whole-curve transform: re-map the grab snapshot, then rebuild derived (Auto / Vector) handles
+            // for the new geometry — manual handles already rode the affine transform.
+            let (p, h) = curve_gizmo::apply(grab, pos);
+            ed.points = p;
+            ed.handles = h;
+            let closed = ed.closed;
+            curve_handle::rebuild(&ed.points, &ed.kinds, &mut ed.handles, closed);
+            self.curve_refill();
+            return true;
+        }
         if let Some((i, is_out)) = ed.grabbed_handle {
             // Dragging a tangent: a derived (Auto/Vector) point becomes Aligned; Aligned/Symmetric mirror
             // the opposite (collinear, keep-length / equal-length); Free moves only the dragged side.
@@ -236,6 +258,7 @@ impl PainterTool {
         if ed.editing {
             ed.grabbed = None;
             ed.grabbed_handle = None;
+            ed.gizmo = None;
             return true;
         }
         if ed.freehand {
@@ -385,6 +408,7 @@ impl PainterTool {
             selected: None,
             grabbed: None,
             grabbed_handle: None,
+            gizmo: None,
             editing: true,
             closed: true,   // a converted Circle / Polygon is a closed loop
             freehand: true, // keep the explicit handles (drag translates them), like the Free Hand fit
@@ -443,12 +467,19 @@ impl PainterTool {
             )
         });
         let selected_kind = ed.selected.and_then(|s| ed.kinds.get(s)).map(|k| k.wire());
+        let (grabbed, rotating) = match &ed.gizmo {
+            Some(g) => (Some(g.handle), curve_gizmo::is_rotate(g)),
+            None => (None, false),
+        };
+        let transform_gizmo =
+            curve_gizmo::overlay(&points, self.paint.shape_grab_tol_px, grabbed, rotating);
         Some(CurveOverlay {
             points,
             selected: ed.selected,
             spine,
             tangents,
             selected_kind,
+            transform_gizmo,
         })
     }
 

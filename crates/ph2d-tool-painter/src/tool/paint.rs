@@ -21,6 +21,7 @@ mod curve;
 mod curve_geom; // flatten (incl. closed seam) + point hit-test/nearest/insert; split from `curve`
 mod curve_handle; // per-anchor handle kinds (Free/Aligned/Vector/Auto) + derived geometry; split from `curve`
 mod curve_tangent; // Bézier tangent-handle hit-test, aligned mirror, overlay snapshot; split from `curve`
+mod curve_gizmo; // whole-curve transform gizmo (move/scale/rotate the entire curve); split from `curve`
 /// Per-dab randomize setters (Jitter Scale / Rotate / Randomize Color); split from `brush_settings`.
 mod jitter_settings;
 /// Multi-layer Shape (z-ordered layers + per-layer-colour state); split from `paint.rs` (LOC cap).
@@ -32,6 +33,7 @@ mod stamp_color_dynamic;
 /// Seamless Tiling (wrap-around painting) — dab replication across sprite edges + the toggles.
 mod tiling;
 pub use curve::CurveOverlay;
+pub use curve_gizmo::TransformGizmo;
 pub use curve_tangent::TangentHandles;
 /// The Circle stroke method's on-canvas ellipse editor (same submodule rationale as `curve`).
 mod circle;

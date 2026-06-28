@@ -448,9 +448,13 @@ impl PainterTool {
         }
     }
 
-    /// Set the texture mapping from a wire discriminant (out-of-range → View Plane).
+    /// Set the texture mapping from a wire discriminant (out-of-range → View Plane). Re-fits a loaded
+    /// Grain Image's aspect for the new mapping (Stencil → the rect; the rest → the Size), so the image
+    /// is never squashed in any mode (Enio 2026-06-28).
     pub fn set_brush_texture_mapping(&mut self, m: u8) {
-        self.paint.brush.texture.mapping = TextureMapping::from_u8(m);
+        let m = TextureMapping::from_u8(m);
+        self.paint.brush.texture.mapping = m;
+        self.fit_grain_image_aspect(m);
         self.arm_stencil_preview();
     }
 

@@ -3477,22 +3477,40 @@ fn grain_ramp_stencil_does_not_paint_outside_the_rect() {
 }
 
 #[test]
-fn loading_a_grain_image_sets_the_stencil_size_to_the_image_aspect() {
-    // Enio 2026-06-28: a Grain Image's Stencil rect takes the image's aspect ratio so it isn't squashed.
-    // A square canvas + a 2:1 image ⇒ stencil_size aspect 2:1 (the wider axis at the 0.5 half-canvas box).
+fn loading_a_grain_image_fits_the_aspect_for_each_mapping() {
+    use ph2d_painter_brush::TextureMapping;
+    // Enio 2026-06-28: a Grain Image is never squashed. STENCIL shapes the rect to the image (Size 1:1);
+    // the other mappings put the aspect in the Grain Size (`sx:sy = h:w`).
     let mut t = white_canvas(64, 8.0);
-    t.set_brush_texture_image(vec![128u8; 32 * 16], 32, 16); // 2:1 image
-    let s = t.brush_settings().stencil_size;
+
+    // Stencil: a 2:1 image → stencil_size aspect 2:1 (wider axis at the 0.5 box); Size stays 1:1.
+    t.set_brush_texture_mapping(TextureMapping::Stencil.to_u8());
+    t.set_brush_texture_image(vec![128u8; 32 * 16], 32, 16); // 2:1
+    let b = t.brush_settings();
     assert!(
-        (s[0] - 0.5).abs() < 1e-4 && (s[1] - 0.25).abs() < 1e-4,
-        "2:1 image → stencil_size [0.5, 0.25]: {s:?}"
+        (b.stencil_size[0] - 0.5).abs() < 1e-4 && (b.stencil_size[1] - 0.25).abs() < 1e-4,
+        "2:1 image → stencil_size [0.5, 0.25]: {:?}",
+        b.stencil_size
     );
-    // A tall 1:2 image flips it (taller than wide).
-    t.set_brush_texture_image(vec![128u8; 16 * 32], 16, 32);
-    let s = t.brush_settings().stencil_size;
+    assert_eq!(
+        b.texture_size,
+        [1.0, 1.0],
+        "Stencil image fills the rect once (Size 1:1)"
+    );
+
+    // View Plane: the aspect goes into the Grain Size — a 2:1 image → [0.5, 1.0] (h:w), so it's not squashed.
+    t.set_brush_texture_mapping(TextureMapping::ViewPlane.to_u8());
+    let s = t.brush_settings().texture_size;
     assert!(
-        (s[0] - 0.25).abs() < 1e-4 && (s[1] - 0.5).abs() < 1e-4,
-        "1:2 image → stencil_size [0.25, 0.5]: {s:?}"
+        (s[0] - 0.5).abs() < 1e-4 && (s[1] - 1.0).abs() < 1e-4,
+        "2:1 image (View) → Size [0.5, 1.0]: {s:?}"
+    );
+    // A tall 1:2 image flips it.
+    t.set_brush_texture_image(vec![128u8; 16 * 32], 16, 32); // 1:2
+    let s = t.brush_settings().texture_size;
+    assert!(
+        (s[0] - 1.0).abs() < 1e-4 && (s[1] - 0.5).abs() < 1e-4,
+        "1:2 image (View) → Size [1.0, 0.5]: {s:?}"
     );
 }
 

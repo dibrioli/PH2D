@@ -7,6 +7,7 @@ use super::brush_settings::BrushTextureImage;
 use crate::tool::PainterTool;
 use ph2d_painter_brush::{
     TEX_ANGLE_MAX_DEG, TEX_OFFSET_MAX, TEX_OFFSET_MIN, TEX_SIZE_MAX, TEX_SIZE_MIN, TextureKind,
+    TextureMapping,
 };
 
 impl PainterTool {
@@ -21,12 +22,9 @@ impl PainterTool {
         self.paint.texture_image_pending = false;
         // Invalidate the cached stamp's baked Image mask.
         self.paint.texture_image_version = self.paint.texture_image_version.wrapping_add(1);
-        // Seed the Stencil rect's Size to the IMAGE's aspect ratio, so a Grain image painted through the
-        // Stencil isn't squashed — the rect now matches the picture (Enio 2026-06-28). Dormant until the
-        // mapping is Stencil; resetting on each new image is the "initial size" the user asked for.
-        let (cw, ch) = self.source_size;
-        self.paint.brush.texture.stencil_size =
-            stencil_size_for_image(width, height, [cw as f32, ch as f32]);
+        // Fit the image's aspect ratio so it's never squashed — the Stencil rect takes the aspect; the
+        // other mappings put it in the Grain Size (Enio 2026-06-28). Reset on each new image.
+        self.fit_grain_image_aspect(self.paint.brush.texture.mapping);
         // None→Grain (a direct image assign that didn't go through `set_brush_texture_kind`): flip the
         // Shape ramp colour→tone + reset the now-Grain colour ramp.
         if was_none {
@@ -361,6 +359,39 @@ impl PainterTool {
             self.paint.brush.shape.size[axis] = v.clamp(TEX_SIZE_MIN, TEX_SIZE_MAX);
         }
     }
+
+    /// Re-fit a loaded Grain **Image** so its aspect ratio is respected for `mapping` (never squashed):
+    /// **Stencil** shapes the rect to the image (Size stays `1:1`, the image fills it once); the other
+    /// mappings put the aspect in the Grain **Size** (`sx : sy = h : w`, so a unit dab step maps to a
+    /// square image step — the tile reads at the image's proportions). No-op without an image. The shell
+    /// re-calls this on a new image and on a mapping change (Enio 2026-06-28).
+    pub(super) fn fit_grain_image_aspect(&mut self, mapping: TextureMapping) {
+        let Some((w, h)) = self.paint.texture_image.as_ref().map(|i| {
+            let (_, w, h) = i.parts();
+            (w, h)
+        }) else {
+            return;
+        };
+        if mapping.is_stencil() {
+            let (cw, ch) = self.source_size;
+            self.paint.brush.texture.size = [1.0, 1.0];
+            self.paint.brush.texture.stencil_size =
+                stencil_size_for_image(w, h, [cw as f32, ch as f32]);
+        } else {
+            self.paint.brush.texture.size = grain_size_for_image(w, h);
+        }
+    }
+}
+
+/// The Grain **Size** (`sx : sy = h : w`, larger axis at `1.0`) that keeps an Image's pixels square in
+/// View / Tiled — a unit dab step maps to `[sx·w, sy·h]` in image px, so `sx·w = sy·h` ⇒ no squash.
+/// A 2:1 image → `[0.5, 1.0]`. Falls back to `[1, 1]` for a degenerate image.
+fn grain_size_for_image(img_w: u32, img_h: u32) -> [f32; 2] {
+    if img_w == 0 || img_h == 0 {
+        return [1.0, 1.0];
+    }
+    let a = img_w as f32 / img_h as f32; // image aspect
+    if a >= 1.0 { [1.0 / a, 1.0] } else { [1.0, a] }
 }
 
 /// The Stencil rect Size (canvas fractions per axis) whose on-canvas rect carries the IMAGE's aspect

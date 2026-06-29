@@ -13,6 +13,7 @@
 | **[02_plano_de_implementacao.md](02_plano_de_implementacao.md)** | **Passo a passo** — Fases 0→6, tasks T0.1…T6, owners, gates, seam tests |
 | **[03_algoritmos_referencia_blender.md](03_algoritmos_referencia_blender.md)** | Algoritmos a portar (falloff, dab, spacing, pressão, undo) + mapa arquivo-Blender→alvo-PH2D |
 | **[blender_ui_reference/](blender_ui_reference/)** | 17 telas do manual Blender (CC-BY-SA) + manifesto de UI |
+| **[BUGS_painter.md](BUGS_painter.md)** | Log de bugs não-triviais (sintoma → causa-raiz → tentativas que falharam → solução). Bug #1: offset de quina (offset-then-trim / split côncavo) |
 
 ## Linha de trabalho: dois slots de textura (Shape + Grain) — paridade Procreate
 

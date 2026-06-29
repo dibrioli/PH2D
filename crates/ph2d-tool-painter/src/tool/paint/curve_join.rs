@@ -57,7 +57,11 @@ pub(super) fn offset_curve(
         } else {
             // ONE anchor: a lone side (open endpoint) keeps its unit normal; otherwise the miter (unit when
             // smooth, the clamped apex when convex).
-            let disp = if count < 2 { sides[0] } else { miter(sides[0], sides[1]) };
+            let disp = if count < 2 {
+                sides[0]
+            } else {
+                miter(sides[0], sides[1])
+            };
             in_slot[i] = op.len();
             out_slot[i] = op.len();
             op.push(at(disp));
@@ -161,10 +165,17 @@ mod tests {
         let radius = |p: [f32; 2]| (p[0] * p[0] + p[1] * p[1]).sqrt();
         let r0 = radius(op[0]);
         for p in &op {
-            assert!((radius(*p) - r0).abs() < 1e-3, "all anchors equidistant: {p:?}");
+            assert!(
+                (radius(*p) - r0).abs() < 1e-3,
+                "all anchors equidistant: {p:?}"
+            );
         }
-        assert!((r0 - 30.0).abs() < 1e-3, "offset outward to radius 30: {r0}");
-        let hlen = |a: [f32; 2], h: [f32; 2]| ((h[0] - a[0]).powi(2) + (h[1] - a[1]).powi(2)).sqrt();
+        assert!(
+            (r0 - 30.0).abs() < 1e-3,
+            "offset outward to radius 30: {r0}"
+        );
+        let hlen =
+            |a: [f32; 2], h: [f32; 2]| ((h[0] - a[0]).powi(2) + (h[1] - a[1]).powi(2)).sqrt();
         let want = k * r0 / r; // scaled by the radius ratio
         assert!(
             (hlen(op[0], oh[0][1]) - want).abs() < 0.05,
@@ -195,8 +206,17 @@ mod tests {
         let pts = vec![[0.0, 10.0], [10.0, 0.0], [20.0, 10.0]]; // a V; its inside is concave for d < 0
         let handles = vec![[[0.0, 10.0]; 2], [[10.0, 0.0]; 2], [[20.0, 10.0]; 2]];
         let (op, _oh, remap) = offset_curve(&pts, &handles, -5.0, false);
-        assert_eq!(op.len(), 4, "concave corner split into two anchors: {}", op.len());
-        assert_eq!(remap, vec![0, 1, 1, 2], "both split anchors map to corner 1: {remap:?}");
+        assert_eq!(
+            op.len(),
+            4,
+            "concave corner split into two anchors: {}",
+            op.len()
+        );
+        assert_eq!(
+            remap,
+            vec![0, 1, 1, 2],
+            "both split anchors map to corner 1: {remap:?}"
+        );
         let (p_in, p_out) = (op[1], op[2]);
         assert!(
             p_in[0] > 10.0 && p_out[0] < 10.0,
@@ -204,7 +224,12 @@ mod tests {
         );
         // Convex (d > 0) on the same corner does NOT split.
         let (op2, _, _) = offset_curve(&pts, &handles, 5.0, false);
-        assert_eq!(op2.len(), 3, "the convex side stays one miter anchor: {}", op2.len());
+        assert_eq!(
+            op2.len(),
+            3,
+            "the convex side stays one miter anchor: {}",
+            op2.len()
+        );
     }
 
     #[test]
@@ -219,7 +244,10 @@ mod tests {
         ];
         let (sides, count) = side_normals(&pts, &handles, 1, false);
         assert_eq!(count, 2);
-        assert!(sides[0][0].abs() < 0.05 && sides[1][0].abs() < 0.05, "both normals vertical: {sides:?}");
+        assert!(
+            sides[0][0].abs() < 0.05 && sides[1][0].abs() < 0.05,
+            "both normals vertical: {sides:?}"
+        );
     }
 
     #[test]
@@ -227,13 +255,22 @@ mod tests {
         // A 90° corner miters to d/cos45° = √2 (the true parallel-curve corner, no undershoot); a near-
         // antiparallel (very acute) corner clamps to the miter limit instead of shooting to infinity.
         let m = miter([0.0, -1.0], [1.0, 0.0]);
-        assert!((m[0] - 1.0).abs() < 1e-3 && (m[1] + 1.0).abs() < 1e-3, "miter vector (1,-1): {m:?}");
+        assert!(
+            (m[0] - 1.0).abs() < 1e-3 && (m[1] + 1.0).abs() < 1e-3,
+            "miter vector (1,-1): {m:?}"
+        );
         let len = (m[0] * m[0] + m[1] * m[1]).sqrt();
-        assert!((len - std::f32::consts::SQRT_2).abs() < 1e-3, "miter length √2: {len}");
+        assert!(
+            (len - std::f32::consts::SQRT_2).abs() < 1e-3,
+            "miter length √2: {len}"
+        );
         let h = (1.0f32 - 0.99 * 0.99).sqrt();
         let acute = miter([1.0, 0.0], [-0.99, h]); // ~172° apart
         let alen = (acute[0] * acute[0] + acute[1] * acute[1]).sqrt();
-        assert!(alen <= MITER_LIMIT + 1e-3, "acute convex corner clamped: {alen}");
+        assert!(
+            alen <= MITER_LIMIT + 1e-3,
+            "acute convex corner clamped: {alen}"
+        );
     }
 
     #[test]
@@ -241,6 +278,9 @@ mod tests {
         // n1 ≈ n2 ⇒ the miter collapses to the plain unit normal ⇒ circles / Auto / Vector are unchanged.
         let n = [0.6f32, 0.8];
         let m = miter(n, n);
-        assert!((m[0] - n[0]).abs() < 1e-4 && (m[1] - n[1]).abs() < 1e-4, "unit normal: {m:?}");
+        assert!(
+            (m[0] - n[0]).abs() < 1e-4 && (m[1] - n[1]).abs() < 1e-4,
+            "unit normal: {m:?}"
+        );
     }
 }

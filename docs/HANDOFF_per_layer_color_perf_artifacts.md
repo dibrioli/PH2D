@@ -1,6 +1,64 @@
 # HANDOFF — Per-Layer Color (layers-as-brush): slowness + rectangular stripe artifacts
 
-> **Status:** OPEN. Evaluation only — no fix applied in this pass (Enio 2026-06-28).
+> **Status:** **CLOSED ON CPU — moving to a full GPU painter migration (Enio 2026-06-28).** CPU work is
+> done; no further CPU mitigations (Enio explicitly declined spacing/brush/layer guidance). See §1.R for
+> the measured story and the FOLLOW-UP block below for the live-smoke results that closed it.
+>
+> **What landed (CPU):** (1) fused alpha-only accumulate kernel = **3.2–4.5×** on the 96.5% bottleneck
+> (§1.R); (2) **per-frame pointer coalescing** for the restore-based fill methods (Curve/Line/Circle/
+> Polygon) in the shell — collapses the per-event whole-shape re-stamp storm to ONE stamp/frame; (3) a
+> **widened HUD `paint ms`** (all stamps + dispatch, not just the flush) + an `ev/stamp` counter + a
+> `PH2D_PAINT_FULL_UPLOAD` bisection toggle, for ongoing diagnosis.
+>
+> **Live smoke verdict (Enio):** at the tested config (Shape image 512² × 3 layers, painting a 1024²
+> sprite, **cached path** — no per-dab dynamics) FPS is still low because a SINGLE cached stamp ≈ 110 ms;
+> coalescing can't beat single-stamp cost, and small Spacing (<0.1 → huge dab count) + big brush (S∝r²)
+> dominate `O(D·N·S)`.
+>
+> **Artifact — REFINED diagnosis (Enio drew a mockup 2026-06-28).** Symptom: thin horizontal **slivers of
+> the actual shape content** appear below the shape at rect-aligned positions, **transient (gone within a
+> frame), and ONLY on the first few uses of a shape — then never again after many shapes.** It **persists
+> under `PH2D_PAINT_FULL_UPLOAD=1`** → it is in the CPU preview buffer, NOT the partial GPU upload (§3-A
+> upload **RULED OUT**) and NOT perf-tearing (which would be persistent at low FPS, not first-uses-only).
+> Root: a **stale preview BASE in the dirty-rect "recompose-only-the-brush-bbox" optimization**
+> (`take_preview_arc` patches only `dirty_rect` into the persistent `composited` cache; before that cache
+> is fully overwritten early in a session, un-recomposed regions show stale content — self-heals once the
+> base is fully written, hence "first few times then stops"). The common restore/recompose paths are
+> tested-correct (`*_leaves_no_trail`, `*_reverts_all_pixels` green); this is a rare early-session
+> warmup transient. **NOTE for the FULL_UPLOAD toggle:** it forces full *upload* but NOT full *recompose*
+> — a stale `composited` cache uploads stale-full, so the toggle can't clear this class (a
+> `PH2D_PAINT_FULL_RECOMPOSE` toggle would; not added — see decision).
+>
+> **Mitigation LANDED (Enio asked for it 2026-06-28):** `PainterTool::reseed_preview_base()`
+> (`tool/layers/cache.rs`) forces a full recompose + full upload on the FIRST frame of every shape
+> session — wired into the "no session yet" creation block of Curve / **Free Hand** (shares the Curve
+> editor) / Circle / Polygon. So a new shape never patches a possibly-stale `composited` cache; it always
+> starts from a byte-correct base. Lighter than `invalidate_composite` (no `edited_since_bind`, no
+> adjustment-cache drop — nothing was painted yet). Cost: one full recompose/upload per shape creation
+> (a user click) — imperceptible. 238 tests green. This closes the early-session sliver window on CPU.
+>
+> **ARTIFACT STILL OPEN (Enio 2026-06-29 — "alarme falso, o bug ainda existe").** Signature is an
+> uninitialized GPU read (virtual rectangle; garbage only the FIRST time a region is painted; clean
+> forever after). FOUR fixes failed to clear it: (1) `PH2D_PAINT_FULL_UPLOAD`, (2) reclassify-as-tearing,
+> (3) `reseed_preview_base`, (4) **clear-on-alloc of the `IndividualTextureStore` slot**
+> (`individual.rs::clear_all_mips_transparent` in `create_entry_empty`). The slot clear LANDED and is
+> correct/defensive (guard `acquire_empty_slot_reads_back_transparent_not_garbage` green — an empty slot
+> now reads all-zero) but did NOT fix the visible artifact → the slot was not the source, or it is
+> **overwritten by a copy from an upstream uninitialized buffer**. **`out`/premul VERIFIED CLEAN
+> (2026-06-29) — static analysis EXHAUSTED.** `cs_flat` (`layer_composite.wgsl`) starts `acc = vec4(0)`
+> (does NOT read prior `out`) and `textureStore`s EVERY texel; the painter's `try_drive` always `seed_full`
+> → full-canvas dispatch → `out` fully written each dirty frame. `cs_main` (`preview_premul.wgsl`) writes
+> every in-bounds texel over the full canvas. So out/premul are seeded too — NOT the source. EVERY pipeline
+> buffer now proves seeded by static read, yet the uninitialized-read symptom is real → 4 wrong static
+> guesses; static analysis is EXHAUSTED. **Next MUST be runtime reproduction, not a 5th guess:** (1) MAGENTA
+> debug-clear the slot/out (magenta artifact ⇒ sampled un-written; garbage ⇒ overwritten by an un-traced
+> source); (2) Xcode GPU frame capture of the artifact frame; (3) re-examine NON-preview paths
+> (`draw_repeat_image`, `painter_bridge_overlays` on-canvas overlays, the brush-ring/cursor — the mockup
+> slivers were near the gizmos, not necessarily in the painted result).
+>
+> **GPU-migration caveat (still captured):** the GPU painter MUST clear every preview texture on alloc and
+> seed the FULL base every session — never rely on "the first write covers it". The GPU migration (§4.2)
+> deletes the whole CPU dirty-rect machinery; the perf cliff dissolves there.
 > **Owner of next step:** a single implementer agent (this is a perf + correctness bug in the painter
 > stamp path; stays inside `ph2d-tool-painter` + possibly `ph2d-painter-brush`).
 > **Author of this handoff:** evaluated the whole path statically + verified the off-file invariant the
@@ -63,6 +121,77 @@ bug than a ⅓-second stall. Bench-green ≠ live-green; instrument the ACTIVE p
   pen; the *timing* does not.
 
 Write the numbers into this file before proposing a fix.
+
+---
+
+## §1.R — MEASURED (2026-06-28, `--release`, Apple Silicon 8 GiB)
+
+Harness landed: `crates/ph2d-tool-painter/src/tool/paint/tests.rs` mod `per_layer_perf`
+(`#[ignore]`, drives the real `on_canvas_pointer` API, no GUI). Reproduce:
+```
+cargo test -p ph2d-tool-painter --release per_layer_perf_sweep -- --ignored --nocapture
+PH2D_PAINT_PROF=1 cargo test -p ph2d-tool-painter --release per_layer_perf_worst -- --ignored --nocapture
+```
+Each row = µs per pointer-Move (a Curve in draw mode re-fills the whole anchor→cursor line every
+Move). Diagonal vs Horizontal are EQUAL length ⇒ equal dab count, so D/H isolates bbox-bound cost.
+
+| canvas | radius | N layers | **move µs** | D/H ratio | take_preview_arc µs |
+|---|---|---|---|---|---|
+| 1024² | 8  | 2  | 6 300 | 1.2× | ≤3.6 ms |
+| 1024² | 8  | 16 | 49 400 | 1.2× | ≤3.6 ms |
+| 1024² | 40 | 16 | 194 000 | 1.0× | ≤4.6 ms |
+| 1024² | 100| 2  | 60 000 | 1.0× | ≤6.5 ms |
+| 1024² | 100| 16 | **474 000** | 1.0× | ≤6.5 ms |
+
+**Phase split at the worst config (1024² · r100 · N16 · diagonal, 31 dabs, bb 626×626):**
+`accumulate_us ≈ 454 000 (96.5%)` · `recomposite_us ≈ 16 200 (3.4%)` · `take_preview_arc ≈ 0.4 ms`.
+
+### AFTER the CPU constant-win (`accumulate_color_stamps_fused`, 2026-06-28)
+Fused per-layer pass: all stamps share `size` ⇒ bilinear coords + the 4 texel offsets computed ONCE per
+canvas pixel (not ×N), and only the ALPHA channel is sampled (per-layer-colour discards the stamp RGB).
+Byte-identical to the old per-layer loop — gate `fused_per_layer_accumulate_is_bit_identical_to_sequential`
+in `ph2d-painter-brush`. Re-measured `move µs` (1024²):
+
+| radius·N | before | after | × |
+|---|---|---|---|
+| r8 · N2  | 6 300 | 1 982 | 3.2× |
+| r8 · N16 | 49 400 | 11 712 | 4.2× |
+| r40 · N16 | 194 000 | 44 504 | 4.4× |
+| r100 · N16 | 474 000 | 105 557 | 4.5× |
+
+Moderate (N≤4, r≤40) now 2–12 ms (usable). The extreme r100·N16 = 105 ms is the deferred GPU case (§4.2).
+
+### What the numbers PROVE (and what they REFUTE)
+- **The bottleneck is ONE kernel: `accumulate_color_stamp_coverage` = 96.5%.** D dabs × N layers ×
+  the ~(2r)² footprint, each a discarded-RGB bilinear `sample_color_mask` (~22 ns/px). Cost ≈
+  **O(D · N · S)**, re-done for the WHOLE shape every Move.
+- **Cost ∝ N (linear):** ×7.9 from N=2→16. The per-layer loop is the multiplier.
+- **Cost ∝ radius (≈linear):** via D·S = length·radius (spacing scales with radius, so D∝1/r, S∝r²).
+- **NOT bbox-bound — REFUTES §2.2 + §2.3 as the cliff.** D/H ≈ 1.0 even though the diagonal bbox is
+  ~17× the horizontal: the save/restore memcpy (§2.2) and the O(bbox·N) recomposite *sweep* incl. the
+  O(N)-per-empty-pixel skip (§2.3) are **negligible**. The zero-coverage skip already works.
+- **`take_preview_arc` / dirty-rect / partial-upload is NOT the perf cliff** (≤6.5 ms, ~0 on a trivial
+  doc stack). The §3-A "rectangular optimization" is **not where the time goes**.
+- **Stripe (§3): evidence favors §3-D (perf-induced tearing).** The composite/upload path is
+  self-consistent and cheap; a 50–474 ms/Move stall tears frames. Still owes a visual smoke to confirm,
+  but it is NOT a rect-bound bug in the measured paths. Fixing the accumulate should dissolve it.
+
+### Consequence for §4 (revised ranking)
+- §4.1-**III** (tight recomposite / kill the skip) — **LOW value**: it targets the 3.4% recomposite,
+  not the 96.5% accumulate. Drop it.
+- §4.1-**I** (re-stamp only the changed span) — reduces D, but only for LOCAL edits on multi-point
+  curves; the worst measured case is a 2-point line whose whole geometry re-stamps every Move → no
+  help there. Medium value, high risk (topology rebuild → two-strikes).
+- **Cheap CPU constant-win (NEW, do first):** the accumulate discards RGB yet samples it. An
+  alpha-only `sample_color_mask` + radial early-out (skip the ~21% out-of-disk box corners pre-sample)
+  + fuse the N per-layer passes into ONE footprint pass (compute (u,v)/idx once, inner loop over N).
+  Estimated ~2–3× on the 96.5% kernel. Zero invariant change, isolated to `ph2d-painter-brush` +
+  the `stamp_dabs_cached_color` call site. Makes MODERATE configs (N≤4, r≤40) usable; does **not**
+  save the extreme.
+- **§4.2 GPU is the only path to interactive at the extreme** (big brush × N16 × 4K). The 96.5% kernel
+  is 20 M independent per-pixel samples — an ideal compute shader (`cs_accumulate` per dab-batch,
+  per-layer coverage in parallel, single-submit, no readback). Matches Enio's strategic note. Needs a
+  bit-parity gate vs the CPU kernel before it can replace it.
 
 ---
 

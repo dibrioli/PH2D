@@ -37,7 +37,10 @@ pub(super) fn offset_curve_refined(
     // The corner JOIN may SPLIT a concave corner into two anchors (so the spine crosses + Trim cuts) — compose
     // its per-output `remap` (output → dense index) with the dense `origin` to keep each output's source.
     let (op, oh, remap) = super::curve_join::offset_curve(&dp, &dh, d, closed);
-    let origin = remap.iter().map(|&i| origin.get(i).copied().flatten()).collect();
+    let origin = remap
+        .iter()
+        .map(|&i| origin.get(i).copied().flatten())
+        .collect();
     (op, oh, origin)
 }
 
@@ -236,7 +239,12 @@ impl SegXform {
     }
 
     /// Re-place absolute `handle` at its offset anchor: rotate off the old anchor by the segment turn + scale.
-    pub(super) fn apply(&self, anchor: [f32; 2], handle: [f32; 2], offset_anchor: [f32; 2]) -> [f32; 2] {
+    pub(super) fn apply(
+        &self,
+        anchor: [f32; 2],
+        handle: [f32; 2],
+        offset_anchor: [f32; 2],
+    ) -> [f32; 2] {
         let v = [handle[0] - anchor[0], handle[1] - anchor[1]];
         let rx = (v[0] * self.cos - v[1] * self.sin) * self.scale;
         let ry = (v[0] * self.sin + v[1] * self.cos) * self.scale;

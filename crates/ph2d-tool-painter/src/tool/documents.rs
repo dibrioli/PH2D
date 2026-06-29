@@ -82,6 +82,7 @@ impl PainterTool {
         self.images = doc.images;
         self.layer_pixel_versions = doc.layer_pixel_versions;
         self.source_size = doc.source_size;
+        self.resolve_symmetry_geometry(); // re-pin the auto-centre symmetry pivot to the restored canvas
         self.undo = doc.undo;
         self.selection = doc.selection;
         self.composited = None;

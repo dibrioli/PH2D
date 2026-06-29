@@ -235,6 +235,63 @@ fn stroke_method_option_forwards_selectoption() {
     );
 }
 
+// ── Symmetry section seam (Use / Circular / X-Y-Custom axis / Segments / pick buttons / reset) ──
+// Same discipline as the Stroke section above: one assertion per control SHAPE, proving the real
+// WidgetEvent forwards the EXACT PanelEvent the tool's `route_brush_jitter_event` arm consumes. A
+// forgotten `event.rs` membership leaves the new section painted, clickable and silently dead.
+
+/// Every Symmetry button/checkbox/axis-segment forwards as `ToolPanelEvent(Click(id))` (the
+/// `PAINTER_BRUSH_SYMMETRY_CLICKABLE` allowlist arm). Covers Use / Circular / X / Y / Custom /
+/// Draw-Line / Pick-Center / Reset in one sweep.
+#[test]
+fn symmetry_click_controls_forward_their_click() {
+    for clicked in core_ids::PAINTER_BRUSH_SYMMETRY_CLICKABLE {
+        let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
+        let mut st = PainterLayersPanelState;
+        let outcome =
+            host.apply_panel_event::<PainterLayersPanel>(&mut st, WidgetEvent::Click(clicked));
+        assert_eq!(
+            outcome,
+            EventOutcome::Consumed,
+            "symmetry control {clicked:?} click ignored — the event.rs Click allowlist is missing the id"
+        );
+        let actions = host.drained_actions();
+        assert!(
+            actions.iter().any(|a| matches!(
+                a,
+                EditorAction::ToolPanelEvent(PanelEvent::Click(id)) if *id == clicked
+            )),
+            "symmetry control {clicked:?} never forwarded as ToolPanelEvent(Click) — seam dead. \
+             drained = {actions:?}"
+        );
+    }
+}
+
+/// Slider shape: a Segments drag forwards `SetValue(PAINTER_BRUSH_SYMMETRY_SEGMENTS, _)` (consumed by
+/// the tool's `set_symmetry_segments` arm, which maps the `0..1` track onto the 3..12 count).
+#[test]
+fn symmetry_segments_slider_forwards_setvalue() {
+    let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
+    let mut st = PainterLayersPanelState;
+    let id = core_ids::PAINTER_BRUSH_SYMMETRY_SEGMENTS;
+    let outcome =
+        host.apply_panel_event::<PainterLayersPanel>(&mut st, WidgetEvent::ValueChanged(id));
+    assert_eq!(
+        outcome,
+        EventOutcome::Consumed,
+        "Segments slider drag ignored — the event.rs ValueChanged arm is missing the id"
+    );
+    let actions = host.drained_actions();
+    assert!(
+        actions.iter().any(|a| matches!(
+            a,
+            EditorAction::ToolPanelEvent(PanelEvent::SetValue(i, _)) if *i == id
+        )),
+        "Segments drag never forwarded as SetValue(PAINTER_BRUSH_SYMMETRY_SEGMENTS) — seam dead. \
+         drained = {actions:?}"
+    );
+}
+
 /// Apply / Apply & Keep / Delete (the Stroke shape-editor buttons) MUST forward as
 /// `ToolPanelEvent(Click(id))` — the `try_apply_brush_event` allowlist was missing them, so the
 /// buttons painted, registered hit rects and were SILENTLY DEAD (Enio 2026-06-27 "Apply não funciona").

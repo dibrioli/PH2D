@@ -42,6 +42,7 @@ pub mod stamp_color;
 pub mod stamp_ramped;
 pub mod stroke;
 pub mod stroke_method;
+pub mod symmetry;
 pub mod texture;
 
 pub use blend::{BrushBlend, MAX_BRUSH_BLEND_MODES, blend_over};
@@ -74,6 +75,7 @@ pub use stroke::{
     flatten_catmull_rom, polygon_perimeter,
 };
 pub use stroke_method::{JitterUnit, StrokeMethod};
+pub use symmetry::{MirrorAxis, SYMMETRY_MAX_SEGMENTS, SYMMETRY_MIN_SEGMENTS, SymmetrySettings};
 pub use texture::patterns::{render_texture_layer, render_texture_preview};
 pub use texture::{
     DEG_STEP, ImageMask, MAX_TEX_PARAMS, ParamSpec, TEX_ANGLE_MAX_DEG, TEX_OFFSET_MAX,

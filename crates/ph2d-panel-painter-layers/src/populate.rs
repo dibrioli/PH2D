@@ -82,6 +82,8 @@ pub fn populate(store: &mut WidgetStore) {
         // Stabilizer intensity — the single "how regular" knob (reuses the STABILIZE id, now a
         // slider instead of the removed toggle).
         ph2d_editor_core::ids::PAINTER_BRUSH_STABILIZE,
+        // Symmetry radial segment-count slider (`3..=12`; its chip uses the mapped-integer link below).
+        ph2d_editor_core::ids::PAINTER_BRUSH_SYMMETRY_SEGMENTS,
     ];
     for id in brush_sliders {
         store.register(
@@ -185,6 +187,16 @@ pub fn populate(store: &mut WidgetStore) {
         ph2d_editor_core::ids::PAINTER_BRUSH_STROKE_SAVE_OBJECT,
         ph2d_editor_core::ids::PAINTER_BRUSH_TILING_RESET,
     ] {
+        store.register(
+            id,
+            InteractiveState::Button {
+                state: ButtonState::Normal,
+            },
+        );
+    }
+    // Symmetry section: "Use" / "Circular" checkboxes, the X/Y/Custom axis segments, the two
+    // canvas pick buttons (Draw Line / Pick Center), and the section reset — all forward a plain Click.
+    for id in ph2d_editor_core::ids::PAINTER_BRUSH_SYMMETRY_CLICKABLE {
         store.register(
             id,
             InteractiveState::Button {
@@ -339,6 +351,32 @@ fn register_brush_slider_chips(store: &mut WidgetStore) {
         store.link_slider_number(slider, chip);
         store.set_number_range(chip, 0.0, 1.0, step);
     }
+    // Symmetry **segment count** chip — unlike the `0..1` rows above, it shows a whole-number 3..12.
+    // The mapped-integer link projects the slider's `0..1` track onto `3..12` (`display = track*9 + 3`)
+    // and snaps to an integer; `set_number_range` makes its drag/stepper span 3..12 by ones.
+    store.register(
+        core_ids::PAINTER_BRUSH_SYMMETRY_SEGMENTS_CHIP,
+        InteractiveState::NumberInput {
+            state: TextInputState::Normal,
+            value: 6.0,
+            buffer: String::new(),
+            caret: 0,
+            last_committed: 6.0,
+            selection_anchor: None,
+        },
+    );
+    store.link_slider_number_mapped_integer(
+        core_ids::PAINTER_BRUSH_SYMMETRY_SEGMENTS,
+        core_ids::PAINTER_BRUSH_SYMMETRY_SEGMENTS_CHIP,
+        9.0, // scale: 0..1 track → a span of 9 (3 → 12)
+        3.0, // offset: the track's 0 maps to 3 segments
+    );
+    store.set_number_range(
+        core_ids::PAINTER_BRUSH_SYMMETRY_SEGMENTS_CHIP,
+        3.0,
+        12.0,
+        1.0,
+    );
 }
 
 /// Mark each collapsible Brush section's header (click-to-collapse) + make its colour dot a picker
@@ -372,6 +410,10 @@ fn register_collapsible_sections(store: &mut WidgetStore) {
             core_ids::PAINTER_BRUSH_TILING_SECTION_COLOR,
         ),
         (
+            core_ids::PAINTER_BRUSH_SYMMETRY_SECTION,
+            core_ids::PAINTER_BRUSH_SYMMETRY_SECTION_COLOR,
+        ),
+        (
             core_ids::PAINTER_SHAPE_RAMP_SECTION,
             core_ids::PAINTER_SHAPE_RAMP_SECTION_COLOR,
         ),
@@ -383,6 +425,7 @@ fn register_collapsible_sections(store: &mut WidgetStore) {
         core_ids::PAINTER_BRUSH_RANDOMIZE_SECTION,
         core_ids::PAINTER_BRUSH_COLOR_RAMP_SECTION,
         core_ids::PAINTER_BRUSH_TILING_SECTION,
+        core_ids::PAINTER_BRUSH_SYMMETRY_SECTION,
         core_ids::PAINTER_SHAPE_RAMP_SECTION,
     ] {
         store.set_collapsed(collapsed, true);

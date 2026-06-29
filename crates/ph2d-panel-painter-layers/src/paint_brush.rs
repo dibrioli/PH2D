@@ -78,6 +78,13 @@ pub(crate) const FALLBACK_BRUSH: BrushSettings = BrushSettings {
     eraser: false,
     tiling: [false, false],
     repeat_image: false,
+    // Symmetry section — disabled by default (mirror X, 6 segments), no pick mode armed.
+    symmetry_enabled: false,
+    symmetry_circular: false,
+    symmetry_axis: 0, // MirrorAxis::X
+    symmetry_segments: 6,
+    symmetry_pick_line: false,
+    symmetry_pick_center: false,
     // Stroke section (mirrors BrushSpec::default / Blender defaults).
     stroke_method: 3,         // Space
     spacing: 0.10,            // LITERAL-PX-OK: Blender brush default (mirrors BrushSpec::default)
@@ -250,9 +257,11 @@ pub(crate) fn paint_brush_body(
     y = sep(ctx.scene, theme, x, content_w, y);
     y = crate::paint_texture::paint_texture_section(ctx, theme, x, content_w, y, brush, false);
 
-    // ── Section 9: Stroke · Section 10: Tiling (last section, collapsed by default) ──
+    // ── Section 9: Stroke · Section 9b: Symmetry · Section 10: Tiling (last two collapsed by default) ──
     y = sep(ctx.scene, theme, x, content_w, y);
     y = crate::paint_stroke::paint_stroke_section(ctx, theme, x, content_w, y, brush);
+    y = sep(ctx.scene, theme, x, content_w, y);
+    y = crate::paint_symmetry::paint_symmetry_section(ctx, theme, x, content_w, y, brush);
     y = sep(ctx.scene, theme, x, content_w, y);
     y = crate::paint_stroke::paint_tiling_section(ctx, theme, x, content_w, y, brush);
 

@@ -10,6 +10,7 @@ use crate::blend::BrushBlend;
 use crate::falloff::Falloff;
 use crate::falloff_curve::FalloffCurve;
 use crate::stroke_method::{JitterUnit, StrokeMethod};
+use crate::symmetry::SymmetrySettings;
 use crate::texture::TextureSettings;
 
 /// Largest brush radius the engine will allocate a dab for, in pixels. Derived from the editor
@@ -153,6 +154,12 @@ pub struct BrushSpec {
     /// `0..1`. Each gap along the Space walk is multiplied by `1 ± amount` (clamped so it stays ≥ 1px),
     /// so dabs land irregularly instead of on a perfectly even grid. `0` = even spacing.
     pub jitter_spacing: f32,
+
+    // ── Drawing symmetry (mirror / radial; see [`crate::symmetry`]) ──────────────────────────────
+    /// **Symmetry**: replicate every dab across a mirror line (X / Y / a custom line) or as N radial
+    /// copies about a centre. Default disabled, so a default brush paints byte-identically. The
+    /// geometry (centre / custom-line direction) is in canvas pixels, resolved by the tool.
+    pub symmetry: SymmetrySettings,
 }
 
 impl Default for BrushSpec {
@@ -193,6 +200,7 @@ impl Default for BrushSpec {
             jitter_scale: 0.0,
             jitter_rotate: 0.0,
             jitter_spacing: 0.0,
+            symmetry: SymmetrySettings::default(),
         }
     }
 }

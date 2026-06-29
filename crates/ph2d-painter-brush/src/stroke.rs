@@ -173,7 +173,7 @@ impl Stroke {
         if self.spec.stroke_method.emits_on_begin() {
             let pr = self.method_pressure(p.pressure);
             let dab = self.dab_at(p.pos, pr, self.method_overlap());
-            out.push(dab);
+            crate::symmetry::push_symmetric(out, dab, &self.spec.symmetry);
             self.tot_samples = self.tot_samples.wrapping_add(1);
         }
         self.warmup_gate(out);
@@ -241,7 +241,8 @@ impl Stroke {
                 } else {
                     [0.0, 0.0]
                 };
-                out.push(self.anchored_dab(center, radius, dir));
+                let dab = self.anchored_dab(center, radius, dir);
+                crate::symmetry::push_symmetric(out, dab, &self.spec.symmetry);
             }
             // Line: a straight line from the anchor (down point, `last_pos`, never advanced) to the
             // cursor, filled with spaced dabs. We live-preview it (consistent with Anchored/Drag Dot)
@@ -299,7 +300,7 @@ impl Stroke {
         if self.spec.dash_on(self.tot_samples) {
             let pr = self.method_pressure(pressure);
             let d = self.dab_at(a, pr, self.method_overlap());
-            out.push(d);
+            crate::symmetry::push_symmetric(out, d, &self.spec.symmetry);
         }
         self.tot_samples = self.tot_samples.wrapping_add(1);
         self.walk_space(StrokePoint { pos: b, pressure }, out);
@@ -344,7 +345,7 @@ impl Stroke {
             self.airbrush_accum_s -= rate;
             let pr = self.method_pressure(self.last_pressure);
             let d = self.dab_at(self.last_pos, pr, 1.0); // per-event: no spacing attenuation
-            out.push(d);
+            crate::symmetry::push_symmetric(out, d, &self.spec.symmetry);
             self.tot_samples = self.tot_samples.wrapping_add(1);
             emitted += 1;
             // Stall guard: a frame-driven tick can hand us a huge `dt` after a hitch (GC/resize/
@@ -392,7 +393,7 @@ impl Stroke {
             self.heading = crate::heading::advance(self.heading, dir, to_next, smooth_len);
             if self.spec.dash_on(self.tot_samples) {
                 let d = self.dab_at(pos, pressure, overlap);
-                out.push(d);
+                crate::symmetry::push_symmetric(out, d, &self.spec.symmetry);
             }
             self.tot_samples = self.tot_samples.wrapping_add(1);
             self.accum = 0.0;
@@ -458,7 +459,7 @@ impl Stroke {
     /// space-attenuation (that normalises *dense spacing*, which these don't have).
     fn emit_single(&mut self, pos: [f32; 2], pressure: f32, out: &mut Vec<Dab>) {
         let d = self.dab_at(pos, pressure, 1.0);
-        out.push(d);
+        crate::symmetry::push_symmetric(out, d, &self.spec.symmetry);
         self.tot_samples = self.tot_samples.wrapping_add(1);
     }
 

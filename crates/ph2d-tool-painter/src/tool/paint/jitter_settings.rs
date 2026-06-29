@@ -5,7 +5,7 @@
 
 use crate::tool::PainterTool;
 use ph2d_editor_core::tool::PanelEvent;
-use ph2d_painter_brush::{BrushSpec, TextureSettings};
+use ph2d_painter_brush::{BrushSpec, MirrorAxis, TextureSettings};
 
 impl PainterTool {
     /// Route the per-dab randomize controls (Randomize Color enable + Hue/Sat/Value, Jitter Scale,
@@ -67,6 +67,40 @@ impl PainterTool {
                 self.reset_brush_tiling();
                 true
             }
+            // ── Symmetry section: master / circular toggles, the X/Y/Custom axis segments, the two
+            //    canvas pick-mode buttons, and the section reset. Plain paint state (no undo). ─
+            PanelEvent::Click(id) if *id == core_ids::PAINTER_BRUSH_SYMMETRY_USE => {
+                self.toggle_symmetry_enabled();
+                true
+            }
+            PanelEvent::Click(id) if *id == core_ids::PAINTER_BRUSH_SYMMETRY_CIRCULAR => {
+                self.toggle_symmetry_circular();
+                true
+            }
+            PanelEvent::Click(id) if *id == core_ids::PAINTER_BRUSH_SYMMETRY_AXIS_X => {
+                self.set_symmetry_axis(MirrorAxis::X);
+                true
+            }
+            PanelEvent::Click(id) if *id == core_ids::PAINTER_BRUSH_SYMMETRY_AXIS_Y => {
+                self.set_symmetry_axis(MirrorAxis::Y);
+                true
+            }
+            PanelEvent::Click(id) if *id == core_ids::PAINTER_BRUSH_SYMMETRY_AXIS_CUSTOM => {
+                self.set_symmetry_axis(MirrorAxis::Custom);
+                true
+            }
+            PanelEvent::Click(id) if *id == core_ids::PAINTER_BRUSH_SYMMETRY_DRAW_LINE => {
+                self.begin_symmetry_pick_line();
+                true
+            }
+            PanelEvent::Click(id) if *id == core_ids::PAINTER_BRUSH_SYMMETRY_PICK_CENTER => {
+                self.begin_symmetry_pick_center();
+                true
+            }
+            PanelEvent::Click(id) if *id == core_ids::PAINTER_BRUSH_SYMMETRY_RESET => {
+                self.reset_symmetry();
+                true
+            }
             PanelEvent::SetValue(id, v) => {
                 let v = *v as f32;
                 match *id {
@@ -125,6 +159,11 @@ impl PainterTool {
                         {
                             self.set_brush_shape_param_norm(slot, v);
                         }
+                        true
+                    }
+                    // Symmetry segment count: the `0..1` track maps onto the integer span 3..12.
+                    x if x == core_ids::PAINTER_BRUSH_SYMMETRY_SEGMENTS => {
+                        self.set_symmetry_segments((3.0 + v * 9.0).round() as u32);
                         true
                     }
                     _ => false,

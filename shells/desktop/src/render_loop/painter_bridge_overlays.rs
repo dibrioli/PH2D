@@ -51,6 +51,79 @@ pub(super) fn draw_overlays(
         vector_scene,
         cursor,
     );
+    draw_symmetry_overlay(painter, hero, sim, camera, window_size, vector_scene);
+}
+
+/// Discrete **symmetry** guides: a dashed mirror line (X / Y / custom) or N dashed radial spokes from
+/// the centre, so the artist sees where strokes will be replicated. No-op unless symmetry is enabled
+/// and a sprite is selected. Pure draw, like the rest of this module; mirrors the brush-ring affine so
+/// the guides ride the sprite's scale / aspect / rotation exactly where the engine mirrors the dabs.
+#[allow(clippy::too_many_arguments)]
+fn draw_symmetry_overlay(
+    painter: &PainterTool,
+    hero: &HeroScreen,
+    sim: &SimWorld,
+    camera: &Camera2d,
+    window_size: WindowSize,
+    vector_scene: &mut VectorScene,
+) {
+    let sym = painter.symmetry();
+    if !sym.enabled {
+        return;
+    }
+    let Some(bits) = hero.gizmo.selection else {
+        return;
+    };
+    let (iw, ih) = painter.canvas_size();
+    if iw == 0 || ih == 0 {
+        return;
+    }
+    let entity = ph2d_ecs::Entity::from_bits(bits);
+    let (Some(tr), Some(sprite)) = (
+        sim.world().get::<crate::Transform>(entity),
+        sim.world().get::<ph2d_render::Sprite>(entity),
+    ) else {
+        return;
+    };
+    let affine = super::bgremoval_preview::sprite_image_to_screen_affine(
+        iw,
+        ih,
+        tr,
+        sprite,
+        camera,
+        window_size,
+    );
+    use ph2d_vector::{Affine, BezPath, Brush, Color, Point, Stroke};
+    let map = |x: f64, y: f64| affine * Point::new(x, y);
+    let scene = vector_scene.inner_mut();
+    // Subtle light guide; dashed in SCREEN px (the path is already mapped, stroked under IDENTITY), so
+    // the dash reads the same at any zoom.
+    let color = Color::new([0.85, 0.85, 0.92, 0.5]); // LITERAL-COLOR-OK: subtle symmetry guide overlay
+    let dash = Stroke::new(1.0).with_dashes(0.0, [5.0, 4.0]); // LITERAL-PX-OK: screen-px dash on/off run
+    let cx = f64::from(sym.center[0]);
+    let cy = f64::from(sym.center[1]);
+    // Extend lines by the canvas diagonal so they always cross the whole sprite, whatever the centre.
+    let span = (f64::from(iw) * f64::from(iw) + f64::from(ih) * f64::from(ih)).sqrt();
+    if sym.circular {
+        // N rotational sectors → N dashed spokes from the centre, `360/n` apart.
+        use std::f64::consts::TAU;
+        let n = sym.segments();
+        for k in 0..n {
+            let (s, co) = (f64::from(k) * TAU / f64::from(n)).sin_cos();
+            let mut path = BezPath::new();
+            path.move_to(map(cx, cy));
+            path.line_to(map(cx + co * span, cy + s * span));
+            scene.stroke(&dash, Affine::IDENTITY, &Brush::Solid(color), None, &path);
+        }
+    } else {
+        // Mirror line through the centre along the axis direction, extended both ways.
+        let d = sym.mirror_dir();
+        let (dx, dy) = (f64::from(d[0]), f64::from(d[1]));
+        let mut path = BezPath::new();
+        path.move_to(map(cx - dx * span, cy - dy * span));
+        path.line_to(map(cx + dx * span, cy + dy * span));
+        scene.stroke(&dash, Affine::IDENTITY, &Brush::Solid(color), None, &path);
+    }
 }
 
 /// **Repeat Image**: draw the painted composite repeated in the 8 neighbour positions around the

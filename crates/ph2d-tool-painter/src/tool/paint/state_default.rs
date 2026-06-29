@@ -1,0 +1,72 @@
+//! `PaintState::default` — the initial brush/stroke/texture/ramp state. Split from `paint.rs` for the
+//! workspace LOC cap (the struct definition stays there; this is just its sizeable `Default` body). A
+//! child module of `paint`, so it keeps construction access to `PaintState`'s module-private fields.
+
+use super::*;
+
+impl Default for PaintState {
+    fn default() -> Self {
+        Self {
+            // Moderate black brush (10 px); the brush-settings UI drives size/colour later.
+            brush: BrushSpec {
+                radius_px: 10.0,
+                ..BrushSpec::default()
+            },
+            dynamics: Dynamics::default(),
+            stroke: None,
+            dabs: Vec::new(),
+            seed: 0,
+            tex_rng: 0,
+            stroke_undo: None,
+            eraser: false,
+            tiling: [false, false],
+            repeat_image: false,
+            symmetry_pick: None,
+            symmetry_line_start: None,
+            symmetry_auto_center: true,
+            moved_this_frame: false,
+            drag_preview: None,
+            line_anchor: None,
+            line_constrain: false,
+            scale_uniform: false,
+            curve: None,
+            circle: None,
+            polygon: None,
+            shape_grab_tol_px: DEFAULT_SHAPE_GRAB_TOL_PX,
+            shape_offset_norm: 0.5, // centred → 0px offset (default byte-identical)
+            shape_offset_base_px: 0.0,
+            offset_trim: false, // self-intersection trimming off by default
+            stencil_grab: None,
+            stencil_preview_s: 0.0,
+            texture_image: None,
+            texture_image_pending: false,
+            texture_image_version: 0,
+            shape_image: None,
+            shape_image_pending: false,
+            shape_image_version: 0,
+            shape_layers: shape_layers::ShapeLayers::default(),
+            stamp_cache: None,
+            color_stamp_cache: None,
+            ramp_color_stamp_cache: None,
+            canvas_tex_cache: None,
+            texture_ramp: ph2d_color::ColorRamp::default(),
+            texture_ramp_enabled: false,
+            texture_ramp_bw: false,
+            texture_ramp_lut: Vec::new(),
+            texture_ramp_dirty: true,
+            ramp_lut_version: 0,
+            texture_ramp_alpha_mode: ph2d_painter_brush::RampAlphaMode::None,
+            shape_color_ramp: ph2d_color::ColorRamp::default(),
+            shape_color_ramp_enabled: false,
+            shape_color_ramp_bw: false,
+            shape_color_ramp_alpha_mode: ph2d_painter_brush::RampAlphaMode::None,
+            shape_ramp_lut: Vec::new(),
+            shape_ramp_dirty: true,
+            shape_ramp_version: 0,
+            ramp_lut_owner: ramp_lut::RampLutOwner::None,
+            stroke_mask: Vec::new(),
+            per_layer_stroke: stamp_color_cache::PerLayerStroke::default(),
+            shape_color_preview: stamp_color_cache::ShapeColorPreview::default(),
+        }
+    }
+}

@@ -34,6 +34,9 @@ mod shape_settings;
 mod shape_snapshot; // unified shape+paint undo: each create/edit/bake = one ModelSnapshot on the timeline
 mod stamp_color_cache; // the cached multi-layer coloured stamp (bake the composite once, blit per dab)
 mod stamp_color_dynamic;
+/// Drawing symmetry (mirror / radial) — engine glue, canvas-centre resolution + on-canvas pick modes.
+mod symmetry;
+pub(crate) use symmetry::SymmetryPick;
 /// Seamless Tiling (wrap-around painting) — dab replication across sprite edges + the toggles.
 mod tiling;
 pub use curve::CurveOverlay;
@@ -56,6 +59,8 @@ mod snapshot;
 mod stamp_cache;
 /// The stamp route dispatcher (Shape + Grain → which of the 4 stamp paths); split for the LOC cap.
 mod stamp_route;
+/// `PaintState::default` body — split out for the workspace file-LOC cap (struct stays in `paint.rs`).
+mod state_default;
 
 /// Default control-handle grab radius in image px (the Curve and Circle editors share one tolerance),
 /// until the shell forwards a screen-scaled value via [`PainterTool::set_shape_grab_tol_px`].
@@ -81,8 +86,9 @@ pub const BRUSH_AIRBRUSH_RATE_MAX_S: f32 = AIRBRUSH_RATE_MAX_S;
 
 // The panel-facing snapshot [`BrushSettings`] + the falloff preview helper `brush_falloff_weight_at`
 // live in the `brush_settings` submodule (their single clamp source); re-exported for the `paint::` path.
-pub use brush_settings::{BrushSettings, PANEL_RAMP_STOPS, brush_falloff_weight_at};
+pub use brush_settings::{BrushSettings, PANEL_RAMP_STOPS};
 pub use shape_layers::MAX_SHAPE_LAYERS;
+pub use snapshot::brush_falloff_weight_at;
 
 /// A Drag Dot's restore record: pristine pixels under the dab footprint (RGBA8 over `rect`), saved before stamping so the next move erases it (no trail).
 struct DragPreview {
@@ -111,6 +117,12 @@ pub(crate) struct PaintState {
     tiling: [bool; 2],
     /// **Repeat Image**: the shell draws the sprite in the 8 neighbour directions (3×3); with Tiling on, those tiles are paintable (the shell wraps the pointer back).
     repeat_image: bool,
+    /// **Symmetry** on-canvas pick mode armed (draw mirror line / pick radial centre); `None` = paint normally. [`symmetry`].
+    symmetry_pick: Option<symmetry::SymmetryPick>,
+    /// First endpoint captured while drawing the custom symmetry line; `None` when not mid-draw.
+    symmetry_line_start: Option<[f32; 2]>,
+    /// Whether the symmetry centre auto-tracks the canvas centre (X/Y mirror + radial default); a user-drawn line / picked centre clears it. See [`PainterTool::resolve_symmetry_geometry`].
+    symmetry_auto_center: bool,
     /// Cleared per frame; set by `paint_extend` on a move. A parked frame lets `paint_tick` settle the stabilizer.
     moved_this_frame: bool,
     /// Restore record for the in-progress Drag Dot's single moving dab; `None` for every other method.
@@ -194,70 +206,6 @@ pub(crate) struct PaintState {
     shape_color_preview: stamp_color_cache::ShapeColorPreview,
 }
 
-impl Default for PaintState {
-    fn default() -> Self {
-        Self {
-            // Moderate black brush (10 px); the brush-settings UI drives size/colour later.
-            brush: BrushSpec {
-                radius_px: 10.0,
-                ..BrushSpec::default()
-            },
-            dynamics: Dynamics::default(),
-            stroke: None,
-            dabs: Vec::new(),
-            seed: 0,
-            tex_rng: 0,
-            stroke_undo: None,
-            eraser: false,
-            tiling: [false, false],
-            repeat_image: false,
-            moved_this_frame: false,
-            drag_preview: None,
-            line_anchor: None,
-            line_constrain: false,
-            scale_uniform: false,
-            curve: None,
-            circle: None,
-            polygon: None,
-            shape_grab_tol_px: DEFAULT_SHAPE_GRAB_TOL_PX,
-            shape_offset_norm: 0.5, // centred → 0px offset (default byte-identical)
-            shape_offset_base_px: 0.0,
-            offset_trim: false, // self-intersection trimming off by default
-            stencil_grab: None,
-            stencil_preview_s: 0.0,
-            texture_image: None,
-            texture_image_pending: false,
-            texture_image_version: 0,
-            shape_image: None,
-            shape_image_pending: false,
-            shape_image_version: 0,
-            shape_layers: shape_layers::ShapeLayers::default(),
-            stamp_cache: None,
-            color_stamp_cache: None,
-            ramp_color_stamp_cache: None,
-            canvas_tex_cache: None,
-            texture_ramp: ph2d_color::ColorRamp::default(),
-            texture_ramp_enabled: false,
-            texture_ramp_bw: false,
-            texture_ramp_lut: Vec::new(),
-            texture_ramp_dirty: true,
-            ramp_lut_version: 0,
-            texture_ramp_alpha_mode: ph2d_painter_brush::RampAlphaMode::None,
-            shape_color_ramp: ph2d_color::ColorRamp::default(),
-            shape_color_ramp_enabled: false,
-            shape_color_ramp_bw: false,
-            shape_color_ramp_alpha_mode: ph2d_painter_brush::RampAlphaMode::None,
-            shape_ramp_lut: Vec::new(),
-            shape_ramp_dirty: true,
-            shape_ramp_version: 0,
-            ramp_lut_owner: ramp_lut::RampLutOwner::None,
-            stroke_mask: Vec::new(),
-            per_layer_stroke: stamp_color_cache::PerLayerStroke::default(),
-            shape_color_preview: stamp_color_cache::ShapeColorPreview::default(),
-        }
-    }
-}
-
 impl PainterTool {
     /// `true` when the active layer can be painted and the working buffer is sized — a **Raster** layer
     /// OR a **Mask** (its coverage buffer is bound to `canvas_rgba` like a raster's, so painting writes
@@ -284,6 +232,9 @@ impl PainterTool {
         // accumulation (so the recomposite snapshots THIS stroke's pre-pixels) — both per stroke.
         self.paint.stroke_mask.clear();
         self.paint.per_layer_stroke.reset();
+        // Pin the symmetry centre to the current canvas centre for the auto-centre modes before the
+        // stroke captures the spec (the engine mirrors/rotates about `brush.symmetry.center`).
+        self.resolve_symmetry_geometry();
         let mut stroke = Stroke::new(self.paint.brush, self.paint.dynamics, self.paint.seed);
         // Seed the texture RNG from this stroke's seed, decorrelated from the jitter stream so the
         // two don't lock-step (HR-5: deterministic per stroke).
@@ -343,6 +294,9 @@ impl PainterTool {
         if self.paint.stencil_preview_s > 0.0 {
             self.paint.stencil_preview_s = (self.paint.stencil_preview_s - dt_s).max(0.0);
         }
+        // Keep the auto-centre symmetry pivot on the canvas centre every frame (also no-op when idle),
+        // so the dashed overlay guide stays correct after a resize / fresh-sprite bind without paint.
+        self.resolve_symmetry_geometry();
         let parked = !self.paint.moved_this_frame;
         self.paint.moved_this_frame = false;
         let Some(mut stroke) = self.paint.stroke.take() else {
@@ -552,6 +506,11 @@ impl CanvasPaintTool for PainterTool {
     fn on_canvas_pointer(&mut self, ev: CanvasPointer) -> bool {
         if ev.phase == PointerPhase::Hover {
             return false; // hover is cursor/preview only
+        }
+        // While a Symmetry pick mode is armed, the canvas sets the mirror line / radial centre instead
+        // of painting (works on any layer, so it precedes the paintable-target gate).
+        if self.symmetry_pick_active() {
+            return self.symmetry_pick_pointer(ev);
         }
         if !self.paint_target_ready() {
             // Active layer isn't paintable (mask/group/adjustment) or no canvas:

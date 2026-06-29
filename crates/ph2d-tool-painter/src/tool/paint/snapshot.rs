@@ -4,7 +4,19 @@
 
 use super::brush_settings::{BrushSettings, PANEL_RAMP_STOPS, size_px_to_norm};
 use crate::tool::PainterTool;
-use ph2d_painter_brush::{FalloffPoint, MAX_FALLOFF_POINTS};
+use ph2d_painter_brush::{Falloff, FalloffPoint, MAX_FALLOFF_POINTS, eval_falloff_curve};
+
+/// Strength of the brush's active falloff at normalized distance `t` (`0` = centre, `1` = rim), for
+/// the panel's live curve preview — the editable points for `Custom`, else the [`Falloff`] formula.
+/// Lives beside the snapshot it reads (moved from `brush_settings` for the file-LOC cap).
+#[must_use]
+pub fn brush_falloff_weight_at(s: &BrushSettings, t: f32) -> f32 {
+    if s.falloff == Falloff::Custom.to_u8() {
+        eval_falloff_curve(&s.falloff_points[..s.falloff_len as usize], t)
+    } else {
+        Falloff::from_u8(s.falloff).weight(t)
+    }
+}
 
 impl PainterTool {
     /// Snapshot the active brush for the panel's Brush section.
@@ -56,6 +68,12 @@ impl PainterTool {
             eraser: self.paint.eraser,
             tiling: self.paint.tiling,
             repeat_image: self.paint.repeat_image,
+            symmetry_enabled: b.symmetry.enabled,
+            symmetry_circular: b.symmetry.circular,
+            symmetry_axis: b.symmetry.axis.to_u8(),
+            symmetry_segments: b.symmetry.segments(),
+            symmetry_pick_line: self.paint.symmetry_pick == Some(super::SymmetryPick::Line),
+            symmetry_pick_center: self.paint.symmetry_pick == Some(super::SymmetryPick::Center),
             stroke_method: b.stroke_method.to_u8(),
             spacing: b.spacing,
             offset: self.paint.shape_offset_norm,

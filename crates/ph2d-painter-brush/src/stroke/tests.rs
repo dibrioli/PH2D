@@ -61,6 +61,81 @@ fn begin_emits_one_dab_at_down() {
 }
 
 #[test]
+fn symmetry_disabled_paints_byte_identically() {
+    // A populated-but-disabled symmetry block must not perturb a single dab (the no-regression
+    // guarantee: turning the feature off is exactly the old engine).
+    let spec = straight_spec(10.0, 0.5);
+    assert!(!spec.symmetry.enabled);
+    let pts = [pt(0.0, 0.0, 1.0), pt(100.0, 0.0, 1.0)];
+    let baseline = collect_stroke(spec, no_dynamics(), &pts);
+    let mut spec2 = spec;
+    spec2.symmetry.center = [50.0, 50.0];
+    spec2.symmetry.circular = true;
+    spec2.symmetry.radial_segments = 8; // all ignored while `enabled == false`
+    assert_eq!(
+        baseline,
+        collect_stroke(spec2, no_dynamics(), &pts),
+        "disabled symmetry must be byte-identical to no symmetry"
+    );
+}
+
+#[test]
+fn mirror_x_doubles_each_dab_and_preserves_the_base() {
+    let mut spec = straight_spec(10.0, 0.5);
+    let pts = [pt(0.0, 0.0, 1.0), pt(100.0, 0.0, 1.0)];
+    let baseline = collect_stroke(spec, no_dynamics(), &pts);
+    assert!(!baseline.is_empty());
+    spec.symmetry = crate::symmetry::SymmetrySettings {
+        enabled: true,
+        axis: crate::symmetry::MirrorAxis::X,
+        center: [50.0, 0.0],
+        ..Default::default()
+    };
+    let mirrored = collect_stroke(spec, no_dynamics(), &pts);
+    assert_eq!(
+        mirrored.len(),
+        baseline.len() * 2,
+        "one mirror copy per base dab"
+    );
+    // Emission is interleaved base, mirror, base, mirror, … — the base dabs are untouched and the
+    // mirror reflects x across the line at 50 (x' = 100 − x), y unchanged.
+    for (i, b) in baseline.iter().enumerate() {
+        assert_eq!(&mirrored[i * 2], b, "base dab {i} preserved verbatim");
+        let m = &mirrored[i * 2 + 1];
+        assert!(
+            (m.center[0] - (100.0 - b.center[0])).abs() < 1e-3,
+            "dab {i} mirror x"
+        );
+        assert!(
+            (m.center[1] - b.center[1]).abs() < 1e-3,
+            "dab {i} mirror y unchanged"
+        );
+    }
+}
+
+#[test]
+fn radial_multiplies_dab_count_by_segments() {
+    for n in [3u32, 5, 8, 12] {
+        let mut spec = straight_spec(10.0, 0.5);
+        let pts = [pt(0.0, 0.0, 1.0), pt(100.0, 0.0, 1.0)];
+        let baseline = collect_stroke(spec, no_dynamics(), &pts);
+        spec.symmetry = crate::symmetry::SymmetrySettings {
+            enabled: true,
+            circular: true,
+            radial_segments: n,
+            center: [50.0, 50.0],
+            ..Default::default()
+        };
+        let radial = collect_stroke(spec, no_dynamics(), &pts);
+        assert_eq!(
+            radial.len() as u32,
+            baseline.len() as u32 * n,
+            "n={n}: n copies per dab"
+        );
+    }
+}
+
+#[test]
 fn space_method_emits_at_arc_length_intervals() {
     // radius 10 → diameter 20; spacing 0.5 → step 10 px. A straight 0→100 drag lays dabs every
     // 10 px ON the x axis — the smoother collapses to a straight line for collinear input.

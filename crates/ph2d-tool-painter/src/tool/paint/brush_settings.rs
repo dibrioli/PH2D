@@ -10,7 +10,7 @@ use crate::tool::PainterTool;
 use ph2d_painter_brush::{
     BrushBlend, Falloff, FalloffPoint, HandleType, ImageMask, JitterUnit, MAX_FALLOFF_POINTS,
     StrokeMethod, TEX_ANGLE_MAX_DEG, TEX_OFFSET_MAX, TEX_OFFSET_MIN, TEX_SIZE_MAX, TEX_SIZE_MIN,
-    TextureKind, TextureMapping, eval_falloff_curve,
+    TextureKind, TextureMapping,
 };
 
 /// An imported brush-texture image: owned grayscale luminance + dims, held in [`super::PaintState`]
@@ -88,6 +88,15 @@ pub struct BrushSettings {
     pub tiling: [bool; 2],
     /// **Repeat Image** tile-preview toggle (the on-canvas 3×3 grid).
     pub repeat_image: bool,
+
+    // ── Symmetry (drawing mirror / radial; section above Tiling). `symmetry_axis` = `MirrorAxis::to_u8`
+    //    (0 X / 1 Y / 2 Custom); segments 3..12; the two `*_pick_*` flags = a canvas pick mode is armed. ──
+    pub symmetry_enabled: bool,
+    pub symmetry_circular: bool,
+    pub symmetry_axis: u8,
+    pub symmetry_segments: u32,
+    pub symmetry_pick_line: bool,
+    pub symmetry_pick_center: bool,
 
     // ── Stroke section (raw values; the panel maps to slider tracks via the BRUSH_*_MAX consts) ──
     /// Stroke-method wire discriminant ([`StrokeMethod::to_u8`]).
@@ -218,17 +227,6 @@ pub struct BrushSettings {
 /// Max ramp stops the panel snapshot carries (a ramp may hold up to `MAX_RAMP_STOPS = 32`; the editor
 /// shows the first this-many — more than enough for hand-authored gradients).
 pub const PANEL_RAMP_STOPS: usize = 16;
-
-/// Strength of the brush's active falloff at normalized distance `t` (`0` = centre, `1` = rim), for
-/// the panel's live curve preview — the editable points for `Custom`, else the [`Falloff`] formula.
-#[must_use]
-pub fn brush_falloff_weight_at(s: &BrushSettings, t: f32) -> f32 {
-    if s.falloff == Falloff::Custom.to_u8() {
-        eval_falloff_curve(&s.falloff_points[..s.falloff_len as usize], t)
-    } else {
-        Falloff::from_u8(s.falloff).weight(t)
-    }
-}
 
 /// Map a radius in pixels onto the size slider's `0..1` track (inverse of [`size_norm_to_px`]).
 /// Squared track → finer control at small sizes.

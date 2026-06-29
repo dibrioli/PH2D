@@ -8,7 +8,7 @@
 | # | Bug | Área | Estado | Data |
 |---|---|---|---|---|
 | [1](#bug-1--offset-de-curva-as-quinas-não-ficavam-paralelas-nem-cruzavam) | Offset de curva — quinas (não-paralelas, depois não-cruzavam) | Stroke shape-editor (Curve/Circle/Polygon/Free Hand) | ✅ Resolvido | 2026-06-29 |
-| [2](#bug-2--per-layer-color-fps-despenca--artefatos-retangulares-retângulo-virtual) | Per-Layer Color — FPS despenca (✅) + artefatos retangulares ("retângulo virtual", 🔴 **ABERTO**) | Stamp path (CPU) + GPU preview | 🔶 Parcial: perf resolvido · artefato ABERTO | 2026-06-29 |
+| [2](#bug-2--per-layer-color-fps-despenca--artefatos-retangulares-retângulo-virtual) | Per-Layer Color — FPS despenca + artefatos retangulares ("retângulo virtual") | Stamp path (CPU) + GPU preview slot | ✅ Resolvido | 2026-06-29 |
 
 ---
 
@@ -195,76 +195,72 @@ A observação 4 é a assinatura inequívoca de **leitura de memória GPU não-i
 escrita a 1ª vez; uma vez escrita, válida para sempre. E **imune ao FULL_UPLOAD e ao reseed** porque ambos mexem
 em buffers **CPU já semeados** — e se o stack é GPU-elegível, o `gpu_owns_preview` **desliga o caminho CPU inteiro**.
 
-### Estado do artefato: 🔴 **ABERTO** (perf resolvido, artefato persiste)
+### Causa-raiz (a verdadeira) + a saga do falso-negativo
 
 A assinatura é **leitura de memória GPU não-inicializada** (retângulo virtual; garbage só na 1ª vez que a região é
-desenhada; limpo pra sempre depois). Mas o artefato **sobrevive a TODAS as tentativas até aqui** — então o buffer
-culpado ainda **não** foi identificado.
+desenhada; limpo pra sempre depois — e **não-determinístico**: memória não-inicializada às vezes calha de ser
+transparente/preta, às vezes lixo visível). Trace exaustivo: **todos** os buffers semeados **EXCETO um** — o slot do
+[`IndividualTextureStore`](../../crates/ph2d-render/src/individual.rs) (a textura que o sprite amostra via
+`PreviewOverride`) era criado em `create_entry_empty` **sem clear** (texturas wgpu nascem com lixo). O caminho
+GPU-preview adquire esse slot **vazio** (`acquire_empty`) e o preenche por **cópia de região** depois → uma região
+amostrada antes da 1ª cópia lê garbage. Retângulo = a região; primeira-vez = antes do 1º write; limpo-pra-sempre = a
+textura persiste escrita.
 
-### Tentativas que falharam — e por quê
+**O falso-negativo que custou 3 rounds.** O clear-on-alloc do slot foi a 1ª hipótese certa — mas o teste do Enio logo
+após disse *"alarme falso, ainda existe"*, o que me fez **descartar** a hipótese e caçar `out`/premul (que verifiquei
+limpos) e reprodução runtime. **Era um binário stale**: o `play.command` daquele momento rodou um build **sem o clear
+compilado** (ou pegou um cache), então o artefato (não-determinístico) ainda aparecia. Num **rebuild limpo** (`play.command`
+sem env, depois do ship), o clear-on-alloc está ativo e o artefato **não voltou em vários testes**.
 
-| # | Tentativa | Por que pareceu certo | Por que falhou |
-|---|---|---|---|
-| 1 | `PH2D_PAINT_FULL_UPLOAD` (upload full do slot CPU) | "Se é upload parcial, full resolve" | Persistiu → não é cobertura do upload; e no stack GPU-elegível o `gpu_owns_preview` desliga o caminho CPU. |
-| 2 | Reclassificar como **tearing por perf** (§3-D) | FPS=9 → frames rasgados é plausível | "Primeiras vezes, depois nunca" **contradiz** tearing (seria persistente). |
-| 3 | `reseed_preview_base` (full recompose no início da sessão de forma) | Forçaria base correta | Re-semeia o `composited` **CPU**; não tocou a textura **GPU**. Persistiu. |
-| 4 | **Clear-on-alloc do slot** (`clear_all_mips_transparent` em `create_entry_empty`) | O slot exibido nascia sem clear (`acquire_empty`) → garbage | **Persistiu.** O slot estava no caminho certo (GPU), mas ou não é a fonte, ou é **sobrescrito** por uma cópia de buffer ainda-não-inicializado a montante (`out`/premul). |
+### Tentativas / a ordem real (incluindo o falso-negativo)
 
-**A lição-mãe (até aqui):** três fixes miraram buffers que se provaram **já semeados** (CPU `composited`, slot via
-FULL_UPLOAD, slot empty via clear-on-alloc). Cada "não mudou" me fez reclassificar a causa — **cedo demais** em #1 e
-#2. A análise estática mostra TODOS os buffers semeados, o que é paradoxal frente ao sintoma real → falta reproduzir.
+| # | Passo | Resultado |
+|---|---|---|
+| 1 | `PH2D_PAINT_FULL_UPLOAD` (upload full do slot CPU) | Persistiu → não é cobertura do upload; e no stack GPU-elegível o `gpu_owns_preview` desliga o caminho CPU. |
+| 2 | Reclassificar como **tearing por perf** (§3-D) | Errado — "primeiras vezes, depois nunca" contradiz tearing (seria persistente). |
+| 3 | `reseed_preview_base` (full recompose por sessão de forma) | Re-semeia o `composited` **CPU**; defensivo correto, mas não era o buffer (GPU). |
+| 4 | **Clear-on-alloc do slot** (`clear_all_mips_transparent`) — **O FIX** | Falso-negativo (binário stale) me fez achar que falhou → descartei. |
+| 5 | Verificar `out`/premul (shaders) | Limpos (escrevem todo texel) — não eram a fonte. Confirmou que o pipeline todo estava semeado **menos o slot do passo 4**. |
+| 6 | Rebuild limpo + re-teste (Enio) | **Artefato resolvido.** O passo 4 era o fix o tempo todo. |
 
-### Próximo passo — `out`/premul VERIFICADOS limpos (2026-06-29); análise estática ESGOTADA
+### A solução final (clear-on-alloc)
 
-O suspeito eram as texturas internas do compositor GPU (`out` + premul, STORAGE sem clear). **Verificado nos
-shaders: NÃO são a fonte.**
-- **`out`:** `cs_flat` ([`layer_composite.wgsl`](../../crates/ph2d-render/src/shaders/layer_composite.wgsl)) inicia
-  `acc = vec4(0,0,0,0)` (transparente — **não** lê o `out` anterior) e faz `textureStore` em **todo** texel; o
-  `try_drive` do painter sempre dispara `seed_full` → região = canvas → `out` totalmente escrito todo frame sujo.
-- **premul:** `cs_main` ([`preview_premul.wgsl`](../../crates/ph2d-render/src/shaders/preview_premul.wgsl)) escreve
-  todo texel in-bounds; `run()` despacha o canvas inteiro. Totalmente escrito.
+`clear_all_mips_transparent` ([`texture_clear.rs`](../../crates/ph2d-render/src/texture_clear.rs), chamado em
+`individual.rs::create_entry_empty`): render-pass `LoadOp::Clear(TRANSPARENT)` sobre **todos** os níveis de mip (o
+sampler trilinear lê qualquer nível e `regen_mips` só roda após o 1º upload — então cada nível precisa nascer limpo,
+não só o 0). Custo: uma vez na alocação do slot. Agora qualquer amostragem-antes-do-write mostra **transparente** (e
+deterministicamente), não lixo.
 
-**Conclusão:** TODOS os buffers do pipeline se provam semeados na análise estática (CPU composited, slot, layer
-textures, `out`, premul, mips, mapas), e mesmo assim o sintoma (uninitialized-read) é real. **A análise estática
-esgotou** — errei o buffer 4× chutando. O próximo passo **TEM** que ser reprodução runtime, não um 5º chute:
-1. **Diagnóstico magenta:** limpar o slot (ou `out`) com cor-debug viva. Artefato magenta ⇒ aquele buffer é
-   amostrado não-escrito; artefato garbage ⇒ é sobrescrito por uma fonte ainda não-rastreada.
-2. **Captura GPU** (Xcode frame capture) do frame do artefato — vê o conteúdo real da textura amostrada.
-3. **Re-examinar caminhos NÃO-preview:** a `draw_repeat_image` (preview 3×3), os overlays on-canvas
-   (`painter_bridge_overlays`), ou o cursor/brush-ring — os slivers no mockup estavam perto dos gizmos, não
-   necessariamente no resultado pintado.
-
-### O que JÁ foi descartado (red herrings registrados)
+### O que NÃO era a causa (red herrings registrados)
 
 - **Upload parcial de GPU / `preview_upload_bbox`** (§3-A): cobertura provada consistente; FULL_UPLOAD descartou.
 - **Tearing por perf** (§3-D): contradito pelo "primeiras vezes, depois nunca".
-- **Cache `composited` CPU stale / drag-preview restore:** auto-consistentes (trail-freedom verdes); reseed não resolveu.
-- **Slot do `IndividualTextureStore` não-inicializado:** clear-on-alloc landou (correto e defensivo — guard verde) mas
-  **não** resolveu o artefato → o slot não era a fonte (ou é sobrescrito a montante).
-- **`regen_mips` / `ensure_slice`:** ambos os caminhos de cópia regeneram mips; `ensure_slice` sobe o buffer inteiro.
+- **Cache `composited` CPU stale / drag-preview restore:** auto-consistentes (trail-freedom verdes).
+- **`out`/premul (compositor GPU):** `cs_flat` parte de `acc=vec4(0)` e escreve todo texel; `cs_main` (premul) idem,
+  canvas inteiro. Ambos totalmente escritos cada frame — não eram a fonte.
 
-### Verificação (do que LANDOU)
+### Verificação
 
-- **Perf (✅ resolvido):** harness `per_layer_perf` (`#[ignore]`, `--release`) + gate de paridade byte
-  `fused_per_layer_accumulate_is_bit_identical_to_sequential`; **3.2–4.5×**; smoke do Enio: "FPS melhor".
-- **Defensivos que LANDARAM mas NÃO resolveram o artefato (mantidos por serem corretos):** `reseed_preview_base`
-  (full recompose por sessão de forma) + clear-on-alloc do slot (guard `acquire_empty_slot_reads_back_transparent_not_garbage`
-  verde — um slot vazio agora lê all-zero, antes garbage). 6/6 `individual_readback` verdes.
-- **Artefato:** ❌ persiste (Enio 2026-06-29). **Continua ABERTO.**
+- **Perf (✅):** harness `per_layer_perf` (`#[ignore]`, `--release`) + gate de paridade byte
+  `fused_per_layer_accumulate_is_bit_identical_to_sequential`; **3.2–4.5×**.
+- **Artefato (✅):** guard `acquire_empty_slot_reads_back_transparent_not_garbage` (slot vazio lê all-zero, antes
+  garbage); 6/6 `individual_readback` verdes.
+- **Smoke do Enio (2026-06-29):** "Testei várias vezes, o bug/artefato não voltou a aparecer" (`play.command`, rebuild limpo).
 
-### Lições generalizáveis (parciais — o artefato ainda ensina)
+### Lições generalizáveis
 
-1. **Dois sintomas juntos podem ter causas independentes.** Perf (kernel CPU) e artefato (textura GPU) foram
-   reportados juntos; só medindo/traçando cada um isoladamente eles se separaram. A perf foi resolvida; o artefato não.
-2. **"Não mudou" não autoriza reclassificar a causa.** Reclassifiquei cedo demais (#1 upload → #2 tearing) — cada
-   "não resolveu" só prova que **aquele buffer** estava ok, não que a CLASSE mudou. Confirme QUAL caminho/buffer o
-   fix afeta antes de descartar a hipótese.
-3. **Análise estática "tudo semeado" + sintoma vivo = reproduza, não chute.** Errei o buffer 2× chutando. Com todos os
-   buffers parecendo semeados no código, o passo certo é REPRODUZIR (teste headless / diagnóstico magenta), não um 3º chute.
-4. **Texturas wgpu nascem com lixo.** Toda textura amostrável-antes-do-1º-write-completo precisa de clear-on-alloc;
-   limpe **todos** os níveis de mip. (O clear do slot é correto mesmo não tendo resolvido este bug.)
-5. **Meça antes de culpar.** O split de fases (96.5% num kernel) refutou a teoria do handoff em uma medição. Ver
-   [feedback_measure_perf_symptom_scale](file:///Users/dibrioli/.claude/projects/-Volumes-MAC-EXTERNO-PROJETOS--PH2D-definitiva/memory/feedback_measure_perf_symptom_scale.md).
+1. **Verifique um REBUILD LIMPO antes de declarar um fix morto.** O falso-negativo ("ainda existe") foi um binário
+   stale — eu **descartei o fix certo** e gastei 3 rounds caçando o buffer errado. Bug não-determinístico + build
+   incremental = "ainda aparece" pode ser só o binário antigo. Force o rebuild (toque o crate / `--release` limpo)
+   antes de abandonar a hipótese.
+2. **"Não mudou" não autoriza reclassificar a causa** — só prova que **aquele** buffer/build estava ok. Vale dobrado
+   quando o sintoma é não-determinístico (memória não-inicializada).
+3. **Texturas wgpu nascem com lixo.** Toda textura amostrável-antes-do-1º-write-completo precisa de clear-on-alloc;
+   limpe **todos** os níveis de mip (o `regen_mips` só roda depois do 1º upload).
+4. **"Primeira vez, depois nunca" = leitura não-inicializada.** Escrito-uma-vez-fica-válido aponta direto pra um
+   buffer sem clear-on-alloc (foi a pista que cravou o slot).
+5. **Meça antes de culpar (perf).** O split de fases (96.5% num kernel) refutou a teoria do handoff em uma medição.
+   Ver [feedback_measure_perf_symptom_scale](file:///Users/dibrioli/.claude/projects/-Volumes-MAC-EXTERNO-PROJETOS--PH2D-definitiva/memory/feedback_measure_perf_symptom_scale.md).
 
 ---
 

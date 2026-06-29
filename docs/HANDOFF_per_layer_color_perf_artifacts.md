@@ -8,7 +8,8 @@
 > (§1.R); (2) **per-frame pointer coalescing** for the restore-based fill methods (Curve/Line/Circle/
 > Polygon) in the shell — collapses the per-event whole-shape re-stamp storm to ONE stamp/frame; (3) a
 > **widened HUD `paint ms`** (all stamps + dispatch, not just the flush) + an `ev/stamp` counter + a
-> `PH2D_PAINT_FULL_UPLOAD` bisection toggle, for ongoing diagnosis.
+> `PH2D_PAINT_FULL_UPLOAD` bisection toggle, for ongoing diagnosis; (4) **rectangular-artifact RESOLVED** —
+> clear-on-alloc of the GPU preview slot (see FOLLOW-UP). The whole Bug #2 is now closed on CPU.
 >
 > **Live smoke verdict (Enio):** at the tested config (Shape image 512² × 3 layers, painting a 1024²
 > sprite, **cached path** — no per-dab dynamics) FPS is still low because a SINGLE cached stamp ≈ 110 ms;
@@ -37,24 +38,21 @@
 > adjustment-cache drop — nothing was painted yet). Cost: one full recompose/upload per shape creation
 > (a user click) — imperceptible. 238 tests green. This closes the early-session sliver window on CPU.
 >
-> **ARTIFACT STILL OPEN (Enio 2026-06-29 — "alarme falso, o bug ainda existe").** Signature is an
-> uninitialized GPU read (virtual rectangle; garbage only the FIRST time a region is painted; clean
-> forever after). FOUR fixes failed to clear it: (1) `PH2D_PAINT_FULL_UPLOAD`, (2) reclassify-as-tearing,
-> (3) `reseed_preview_base`, (4) **clear-on-alloc of the `IndividualTextureStore` slot**
-> (`individual.rs::clear_all_mips_transparent` in `create_entry_empty`). The slot clear LANDED and is
-> correct/defensive (guard `acquire_empty_slot_reads_back_transparent_not_garbage` green — an empty slot
-> now reads all-zero) but did NOT fix the visible artifact → the slot was not the source, or it is
-> **overwritten by a copy from an upstream uninitialized buffer**. **`out`/premul VERIFIED CLEAN
-> (2026-06-29) — static analysis EXHAUSTED.** `cs_flat` (`layer_composite.wgsl`) starts `acc = vec4(0)`
-> (does NOT read prior `out`) and `textureStore`s EVERY texel; the painter's `try_drive` always `seed_full`
-> → full-canvas dispatch → `out` fully written each dirty frame. `cs_main` (`preview_premul.wgsl`) writes
-> every in-bounds texel over the full canvas. So out/premul are seeded too — NOT the source. EVERY pipeline
-> buffer now proves seeded by static read, yet the uninitialized-read symptom is real → 4 wrong static
-> guesses; static analysis is EXHAUSTED. **Next MUST be runtime reproduction, not a 5th guess:** (1) MAGENTA
-> debug-clear the slot/out (magenta artifact ⇒ sampled un-written; garbage ⇒ overwritten by an un-traced
-> source); (2) Xcode GPU frame capture of the artifact frame; (3) re-examine NON-preview paths
-> (`draw_repeat_image`, `painter_bridge_overlays` on-canvas overlays, the brush-ring/cursor — the mockup
-> slivers were near the gizmos, not necessarily in the painted result).
+> **ARTIFACT RESOLVED — clear-on-alloc was the fix all along (Enio confirmed 2026-06-29: "tested several
+> times, the bug/artifact did not reappear", `play.command` clean rebuild).** Signature was an uninitialized
+> GPU read (virtual rectangle; garbage only the FIRST time a region is painted; clean forever after;
+> NON-deterministic — undefined memory is sometimes transparent, sometimes visible). Root cause: the
+> `IndividualTextureStore` slot (sprite samples it via `PreviewOverride`) was created WITHOUT clearing; the
+> GPU-preview path acquires it empty (`acquire_empty`) and fills it by a later region copy, so a region
+> sampled before the first copy reads garbage. **Fix:** `clear_all_mips_transparent`
+> (`individual.rs::create_entry_empty` → `texture_clear.rs`) — render-pass clear of EVERY mip on creation
+> (`regen_mips` runs only after the first upload, so all levels must be seeded). Guard:
+> `acquire_empty_slot_reads_back_transparent_not_garbage` (empty slot now reads all-zero).
+>
+> **Lesson — the false negative cost 3 rounds.** The slot clear was the FIRST right hypothesis, but a
+> STALE BINARY ("alarme falso, ainda existe") made me discard it and chase `out`/premul (verified clean —
+> `cs_flat`/`cs_main` write every texel) + runtime repro. A non-deterministic bug + incremental build =
+> "still appears" can just be the OLD binary. **Verify a CLEAN rebuild before declaring a fix dead.**
 >
 > **GPU-migration caveat (still captured):** the GPU painter MUST clear every preview texture on alloc and
 > seed the FULL base every session — never rely on "the first write covers it". The GPU migration (§4.2)

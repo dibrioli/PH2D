@@ -12,6 +12,9 @@ use super::curve_handle::HandleKind;
 const OFFSET_TOL_PX: f32 = 0.3;
 /// Depth cap on the offset subdivision (≤ 2^6 leaves per input segment) — bounds the work near a cusp.
 const MAX_OFFSET_SUBDIV: u32 = 6;
+/// Miter limit: cap a sharp corner's offset displacement to this multiple of `d` so an acute spike truncates
+/// rather than shooting to infinity (cf. SVG `stroke-miterlimit` = 4, Clipper `MiterLimit`).
+const MITER_LIMIT: f32 = 4.0;
 
 /// Offset `(points, handles)` + per output anchor its ORIGINAL index (`None` = inserted). Aliased for clippy.
 type RefinedOffset = (Vec<[f32; 2]>, Vec<[[f32; 2]; 2]>, Vec<Option<usize>>);
@@ -282,11 +285,12 @@ impl SegXform {
     }
 }
 
-/// Unit right-normal at anchor `i` for offsetting, from the curve's actual Bézier **tangents** so the anchor
-/// moves perpendicular to the CURVE — the chord gives an UNEVEN distance wherever it diverges from the tangent
-/// (a converted-Polygon corner you then curved). Each side uses its handle tangent, falling back to the chord
-/// when the handle is collapsed (a straight `Free` edge — there the chord IS the tangent). A positive offset
-/// outsets a CCW loop; zero for a degenerate vertex.
+/// **Miter** offset displacement at anchor `i` (per unit `d`): the two side-normals (arriving + leaving edge,
+/// each ⊥ the Bézier **tangent**, chord fallback for a collapsed handle) combined as the INTERSECTION of the
+/// two offset edges — so a CORNER lands on the true parallel-curve miter `d / cos δ` out, not the averaged-
+/// normal undershoot `d` (the "quinas mais curtas que as curvas" bug — Enio 2026-06-28). A SMOOTH vertex
+/// (n_in ≈ n_out) yields a unit vector ⇒ circles / Auto / Vector stay byte-identical; an open endpoint has one
+/// side ⇒ its plain unit normal. A positive offset outsets a CCW loop; zero for a degenerate vertex.
 fn vertex_normal(
     points: &[[f32; 2]],
     handles: &[[[f32; 2]; 2]],
@@ -300,27 +304,44 @@ fn vertex_normal(
     let next = (i + 1 < n).then(|| i + 1).or_else(|| closed.then_some(0));
     let tan_in = bez.then(|| sub(points[i], handles[i][0])); // travel arriving at i
     let tan_out = bez.then(|| sub(handles[i][1], points[i])); // travel leaving i
-    let mut acc = [0.0f32, 0.0];
-    let mut add = |tan: Option<[f32; 2]>, chord: [f32; 2]| {
+    // The (up to two) unit side-normals: one per incident edge, ⊥ its tangent (chord fallback).
+    let mut sides = [[0.0f32; 2]; 2];
+    let mut count = 0usize;
+    let mut push = |tan: Option<[f32; 2]>, chord: [f32; 2]| {
         let t = tan
             .filter(|v| v[0] * v[0] + v[1] * v[1] > 1e-6)
             .unwrap_or(chord);
         if let Some(nm) = unit_right_normal(t) {
-            acc = [acc[0] + nm[0], acc[1] + nm[1]];
+            sides[count] = nm;
+            count += 1;
         }
     };
     if let Some(p) = prev {
-        add(tan_in, sub(points[i], points[p]));
+        push(tan_in, sub(points[i], points[p]));
     }
     if let Some(x) = next {
-        add(tan_out, sub(points[x], points[i]));
+        push(tan_out, sub(points[x], points[i]));
     }
-    let al = (acc[0] * acc[0] + acc[1] * acc[1]).sqrt();
-    if al > 1e-6 {
-        [acc[0] / al, acc[1] / al]
-    } else {
-        [0.0, 0.0]
+    match count {
+        0 => [0.0, 0.0],
+        1 => sides[0],
+        _ => miter(sides[0], sides[1]),
     }
+}
+
+/// Combine two unit side-normals into the offset displacement: `(n1+n2)/(1+n1·n2)`, the intersection of the
+/// two offset edges = the bisector at distance `1/cos δ` (the true miter). Smooth (n1 ≈ n2) ⇒ unit ⇒ no
+/// change; clamped to [`MITER_LIMIT`] so an acute spike (near-antiparallel normals → miter → ∞) truncates
+/// along the bisector instead of shooting out. Transcendental-free.
+fn miter(n1: [f32; 2], n2: [f32; 2]) -> [f32; 2] {
+    let s = [n1[0] + n2[0], n1[1] + n2[1]];
+    let sl = (s[0] * s[0] + s[1] * s[1]).sqrt();
+    if sl < 1e-6 {
+        return [0.0, 0.0]; // antiparallel cusp: no well-defined offset direction
+    }
+    let denom = 1.0 + n1[0] * n2[0] + n1[1] * n2[1];
+    let mag = (sl / denom.max(1e-6)).min(MITER_LIMIT); // |miter| = 1/cos δ; cap the spike (denom→0 ⇒ ∞)
+    [s[0] / sl * mag, s[1] / sl * mag]
 }
 
 #[cfg(test)]
@@ -505,5 +526,48 @@ mod tests {
                 best.sqrt()
             );
         }
+    }
+
+    #[test]
+    fn a_corner_offsets_to_the_true_miter_distance_not_the_undershot_average() {
+        // A right-angle corner (collapsed handles → sharp): the offset anchor must reach the true parallel-
+        // curve miter at d/cos45° = d·√2 along the bisector, NOT the averaged-normal undershoot d. This is the
+        // fix for "quinas mais curtas que as curvas" — corners are no longer pulled in (Enio 2026-06-28).
+        let pts = vec![[0.0, 0.0], [20.0, 0.0], [20.0, 20.0]];
+        let handles = vec![[[0.0, 0.0]; 2], [[20.0, 0.0]; 2], [[20.0, 20.0]; 2]];
+        let m = vertex_normal(&pts, &handles, 1, false);
+        assert!(
+            (m[0] - 1.0).abs() < 1e-3 && (m[1] + 1.0).abs() < 1e-3,
+            "miter vector (1,-1): {m:?}"
+        );
+        let len = (m[0] * m[0] + m[1] * m[1]).sqrt();
+        assert!(
+            (len - std::f32::consts::SQRT_2).abs() < 1e-3,
+            "miter length = 1/cos45° = √2: {len}"
+        );
+    }
+
+    #[test]
+    fn a_smooth_vertex_miter_stays_unit_so_circles_do_not_change() {
+        // n_in ≈ n_out (a smooth, continuous-tangent vertex) ⇒ the miter collapses to the plain unit normal,
+        // guaranteeing circles / Auto / Vector offsets stay byte-identical to before the corner fix.
+        let n = [0.6f32, 0.8];
+        let m = miter(n, n);
+        assert!(
+            (m[0] - n[0]).abs() < 1e-4 && (m[1] - n[1]).abs() < 1e-4,
+            "smooth miter is the unit normal: {m:?}"
+        );
+    }
+
+    #[test]
+    fn an_acute_spike_is_clamped_to_the_miter_limit() {
+        // Near-antiparallel side-normals (a very sharp corner) would miter toward infinity; the limit truncates
+        // the displacement along the bisector so the offset never shoots out into a spike.
+        let n1 = [1.0f32, 0.0];
+        let h = (1.0f32 - 0.99 * 0.99).sqrt();
+        let n2 = [-0.99f32, h]; // ~172° from n1, unit length
+        let m = miter(n1, n2);
+        let len = (m[0] * m[0] + m[1] * m[1]).sqrt();
+        assert!(len <= MITER_LIMIT + 1e-3, "clamped to the miter limit: {len}");
     }
 }

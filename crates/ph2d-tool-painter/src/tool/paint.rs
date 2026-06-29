@@ -21,6 +21,7 @@ mod curve_commit; // Apply / Apply & Keep commit verbs for the Curve editor; spl
 mod curve_geom; // flatten (incl. closed seam) + point hit-test/nearest/insert; split from `curve`
 mod curve_gizmo; // whole-curve transform gizmo (move/scale/rotate the entire curve); split from `curve`
 mod curve_handle; // per-anchor handle kinds (Free/Aligned/Vector/Auto) + derived geometry; split from `curve`
+mod curve_join; // corner joins for the offset: smooth-merge / convex-miter / concave-split; split from `curve_offset`
 mod curve_offset; // perpendicular offset (parallel curve) + CAD-grade reconstruction; split from `curve_geom`
 mod curve_tangent; // Bézier tangent-handle hit-test, aligned mirror, overlay snapshot; split from `curve`
 mod curve_trim; // self-intersection trim of the offset spine (open + closed); split from `curve_offset`

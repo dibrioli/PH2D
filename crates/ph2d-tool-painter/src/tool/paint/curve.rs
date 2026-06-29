@@ -90,9 +90,9 @@ impl PainterTool {
         self.flush_shape_txn(); // close any coalesced Offset drag as its own undo entry first
         self.bake_curve_offset(); // an edit gesture locks in any live Offset (so hit-test = displayed dots)
         if self.paint.curve.is_none() {
-            // No session → open the creation txn (`before` = no shape) + begin drawing the initial line.
-            self.paint.stroke_undo = Some(self.snapshot_model());
+            self.paint.stroke_undo = Some(self.snapshot_model()); // open the creation txn (`before` = no shape)
             self.paint.drag_preview = None;
+            self.reseed_preview_base(); // fresh shape session → full recompose+upload (no stale-base sliver)
             self.paint.shape_offset_base_px = 0.0; // a fresh curve starts with no Offset (not the last one's)
             self.paint.shape_offset_norm = 0.5;
             let seed = self.paint.seed;

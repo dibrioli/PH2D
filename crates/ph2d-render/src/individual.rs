@@ -762,7 +762,8 @@ fn create_entry(
 /// upload). Shared by [`create_entry`] (which then writes pixels) and
 /// [`IndividualTextureStore::acquire_empty`] (which leaves the fill to a later
 /// GPU copy). The texture/view/bind-group are otherwise identical, so a slot
-/// created either way is sampled the same way.
+/// created either way is sampled the same way. Cleared transparent on creation
+/// ([`crate::texture_clear`]) so a sample before the first fill reads transparent.
 fn create_entry_empty(
     gpu: &GpuContext,
     material_bgl: &wgpu::BindGroupLayout,
@@ -782,17 +783,16 @@ fn create_entry_empty(
         sample_count: 1,
         dimension: wgpu::TextureDimension::D2,
         format: wgpu::TextureFormat::Rgba8UnormSrgb,
-        // COPY_SRC required for `readback()` to copy this texture's contents back
-        // into a staging buffer (F2 — Image Tools edit path on Individual-source
-        // sprites). COPY_DST also feeds `copy_from_texture` (the Painter GPU
-        // preview blit). RENDER_ATTACHMENT lets `MipGenerator` blit each mip
-        // level (2026-06-17 trilinear-minification fix).
+        // COPY_SRC: `readback()` staging copy (Image Tools edit on Individual sprites). COPY_DST: feeds
+        // `copy_from_texture` (Painter GPU preview blit). RENDER_ATTACHMENT: `MipGenerator` mip blits.
         usage: wgpu::TextureUsages::TEXTURE_BINDING
             | wgpu::TextureUsages::COPY_DST
             | wgpu::TextureUsages::COPY_SRC
             | wgpu::TextureUsages::RENDER_ATTACHMENT,
         view_formats: &[],
     });
+    // Clear-on-alloc: an EMPTY slot (`acquire_empty`) is sampled before its first fill → else garbage.
+    crate::texture_clear::clear_all_mips_transparent(gpu, &texture, mip_count);
     // The sampled view spans ALL mip levels (default) so the trilinear sampler can
     // pick the right level; the generator makes its own single-level views.
     let view = texture.create_view(&wgpu::TextureViewDescriptor::default());

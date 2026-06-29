@@ -59,6 +59,7 @@ pub mod sprite;
 /// for the ratified spec, and ADR-0070 + ADR-0070-amendment-2 for
 /// the wrapper-enum back-compat contract.
 pub mod sprite_versioned;
+mod texture_clear;
 pub mod tonemap;
 pub mod vello_pass;
 

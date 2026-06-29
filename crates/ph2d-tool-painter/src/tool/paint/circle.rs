@@ -81,6 +81,7 @@ impl PainterTool {
             // No session → open the creation txn (`before` = no shape) + begin the centre-out radius drag.
             self.paint.stroke_undo = Some(self.snapshot_model());
             self.paint.drag_preview = None;
+            self.reseed_preview_base(); // fresh shape session → full recompose+upload (no stale-base sliver)
             self.paint.shape_offset_base_px = 0.0; // a fresh ellipse starts with no Offset
             self.paint.shape_offset_norm = 0.5;
             let seed = self.paint.seed;

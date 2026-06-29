@@ -409,8 +409,15 @@ pub(super) fn dispatch(
                 // `bx+bw<=w && by+bh<=h` guard keeps `extract_region` in bounds
                 // (defensive — a bad bbox falls back to full, never panics the
                 // render loop). Everything else → full upload.
-                let partial =
-                    painter_dirty_bbox.and_then(|(bx, by, bw, bh)| match *painter_preview_gpu {
+                // Bisection toggle `PH2D_PAINT_FULL_UPLOAD=1`: force a FULL upload (disable the B.1 partial
+                // lane) to bisect the "rectangular artifacts". See `HANDOFF_per_layer_color_perf_artifacts`.
+                static FORCE_FULL_UPLOAD: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+                let force_full = *FORCE_FULL_UPLOAD
+                    .get_or_init(|| std::env::var_os("PH2D_PAINT_FULL_UPLOAD").is_some());
+                let partial = (!force_full)
+                    .then_some(painter_dirty_bbox)
+                    .flatten()
+                    .and_then(|(bx, by, bw, bh)| match *painter_preview_gpu {
                         Some(gpu)
                             if gpu.entity_bits == preview.entity_bits
                                 && gpu.width == preview.width

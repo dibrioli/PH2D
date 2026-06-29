@@ -244,3 +244,30 @@ fn replace_pixels_region_rejects_out_of_bounds_and_bad_length() {
 
     let _ = store.release(id);
 }
+
+/// Clear-on-alloc guard: a slot acquired EMPTY (`acquire_empty`, the Painter GPU-preview path) must read
+/// back fully TRANSPARENT, never undefined GPU memory. Without the `clear_all_mips_transparent` on
+/// creation, a frame sampling the slot before its first fill shows garbage — the "thin sliver of the
+/// shape appears on the first paint of a region" artifact (HANDOFF_per_layer_color_perf_artifacts §1.R).
+#[test]
+fn acquire_empty_slot_reads_back_transparent_not_garbage() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("skipping: no headless GPU adapter");
+        return;
+    };
+    let bgl = material_bgl(&gpu);
+    let mut store = IndividualTextureStore::new(&gpu);
+    // Sizes that exercise row padding + a non-power-of-two (so the mip chain has odd levels).
+    for (w, h) in [(64u32, 64u32), (300u32, 200u32), (7u32, 5u32)] {
+        let id = store.acquire_empty(&gpu, &bgl, w, h);
+        let (ow, oh, output) = store.readback(&gpu, id).expect("readback empty slot");
+        assert_eq!((ow, oh), (w, h));
+        assert!(
+            output.iter().all(|&b| b == 0),
+            "empty slot {w}×{h} must be cleared transparent on alloc, found non-zero bytes \
+             (first at {:?}) — clear-on-alloc regressed",
+            output.iter().position(|&b| b != 0)
+        );
+        let _ = store.release(id);
+    }
+}

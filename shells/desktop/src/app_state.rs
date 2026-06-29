@@ -419,6 +419,28 @@ pub(crate) struct App {
     /// as `last_bgremoval_pushed_entity` — Wave 10 driver helpers
     /// (`ph2d_tool_runtime::drive_source_push`) consume it directly.
     pub(crate) last_painter_pushed_entity: Option<u64>,
+    /// Coalescing (perf): latest canvas pointer position buffered while a restore-based painter stroke
+    /// is open (Curve/Circle/Polygon/Line/Anchored/DragDot — `PainterTool::coalesces_canvas_motion`).
+    /// The frame loop flushes ONE Move per frame from this instead of re-stamping the whole shape on
+    /// every raw winit `CursorMoved` between frames — the FPS-drop / "Raw rises" fix
+    /// (`HANDOFF_per_layer_color_perf_artifacts` §1.R). `None` = nothing pending.
+    pub(crate) pending_painter_move: Option<(f32, f32)>,
+    /// Diagnostics (HUD): raw winit `CursorMoved` events since the last frame (input rate).
+    pub(crate) input_events_this_frame: u32,
+    /// Diagnostics (HUD): canvas pointer Moves delivered to the painter this frame (= whole-shape
+    /// re-stamps). With coalescing this is ≤1 even when `input_events_this_frame` is high.
+    pub(crate) paint_stamps_this_frame: u32,
+    /// Diagnostics (HUD): last frame's painter preview produce/upload dispatch time (µs).
+    pub(crate) last_dispatch_us: u64,
+    /// Diagnostics (HUD): total canvas re-stamp time this frame (µs) — the once-per-frame coalesced
+    /// flush PLUS every incremental per-event stamp (Space/Dots/Airbrush) since the last frame. Snapshot
+    /// + reset into `last_paint_stamp_us` at the top of `run_render_frame`.
+    pub(crate) paint_stamp_us_this_frame: u64,
+    /// Diagnostics (HUD): the previous frame's total re-stamp time (µs) — snapshot of
+    /// `paint_stamp_us_this_frame`; folded with the dispatch time into `paint_ms_ewma`.
+    pub(crate) last_paint_stamp_us: u64,
+    /// Diagnostics (HUD): EWMA of painter CPU per frame (stamp flush + dispatch), milliseconds.
+    pub(crate) paint_ms_ewma: f32,
     /// Cached on-canvas live preview for the Painter tool — drained
     /// from `PainterTool::current_preview` (the layer composite) each
     /// frame the canvas was painted into. The CPU source of truth for

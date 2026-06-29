@@ -143,3 +143,83 @@ fn grain_colour_ramp_tints_the_composite() {
         "the Grain ramp tints the white tip green: {rgb:?}"
     );
 }
+
+/// PARITY GATE — `accumulate_color_stamps_fused` (the per-Move bottleneck fast path) must produce
+/// BYTE-IDENTICAL coverage maps + the same touched rect as N sequential `accumulate_color_stamp_coverage`
+/// calls (the reference oracle). This is the executable assertion that the perf opt changed nothing
+/// observable: it guards HR-5 (cross-platform replay hash) and the `ph2d-tool-painter` per-layer-colour
+/// correctness tests, which both rest on this kernel. If it ever goes RED, the fused path diverged.
+#[test]
+fn fused_per_layer_accumulate_is_bit_identical_to_sequential() {
+    let spec = shape_image_spec();
+    // 4 layers with distinct silhouettes (so the per-layer alpha — hence coverage — genuinely differs).
+    let l0 = layer([true, true, true, true]); // full
+    let l1 = layer([false, true, true, false]); // anti-diagonal-ish
+    let l2 = layer([true, false, false, true]); // diagonal
+    let l3 = layer([false, false, true, true]); // bottom row
+    let cols = [
+        [1.0, 0.0, 0.0],
+        [0.0, 1.0, 0.0],
+        [0.0, 0.0, 1.0],
+        [1.0, 1.0, 0.0],
+    ];
+    let stamps: Vec<ColorStampMask> = [&l0, &l1, &l2, &l3]
+        .iter()
+        .zip(cols.iter())
+        .map(|(l, c)| render_color_stamp_mask(&spec, &[mask(l)], &[*c], None, None, 24))
+        .collect();
+    let n = stamps.len();
+
+    let (w, h) = (40u32, 40u32);
+    let len = (w as usize) * (h as usize);
+    // A handful of OVERLAPPING dabs at fractional centres + varied radii + partial coverage — exercises
+    // bilinear taps, the `over` build-up across dabs, and clamped edges.
+    let dabs: [([f32; 2], f32, f32); 5] = [
+        ([18.3, 19.7], 9.0, 0.8),
+        ([22.6, 21.1], 7.5, 1.0),
+        ([15.0, 24.4], 11.2, 0.5),
+        ([20.0, 20.0], 6.0, 0.35),
+        ([2.4, 3.9], 8.0, 0.9), // clipped against the canvas origin
+    ];
+
+    let mut seq: Vec<Vec<u8>> = (0..n).map(|_| vec![0u8; len]).collect();
+    let mut fused: Vec<Vec<u8>> = (0..n).map(|_| vec![0u8; len]).collect();
+    for &(center, radius, cov) in &dabs {
+        // Reference: union the per-layer rects exactly as the old call site did.
+        let mut seq_rect: Option<crate::dab::DirtyRect> = None;
+        for (i, stamp) in stamps.iter().enumerate() {
+            if let Some(r) =
+                accumulate_color_stamp_coverage(&mut seq[i], w, h, center, radius, stamp, cov)
+            {
+                seq_rect = Some(match seq_rect {
+                    None => r,
+                    Some(a) => {
+                        let x0 = a.x.min(r.x);
+                        let y0 = a.y.min(r.y);
+                        let x1 = (a.x + a.w).max(r.x + r.w);
+                        let y1 = (a.y + a.h).max(r.y + r.h);
+                        crate::dab::DirtyRect {
+                            x: x0,
+                            y: y0,
+                            w: x1 - x0,
+                            h: y1 - y0,
+                        }
+                    }
+                });
+            }
+        }
+        let fused_rect =
+            accumulate_color_stamps_fused(&mut fused, w, h, center, radius, &stamps, cov);
+        assert_eq!(
+            fused_rect.map(|r| (r.x, r.y, r.w, r.h)),
+            seq_rect.map(|r| (r.x, r.y, r.w, r.h)),
+            "fused touched-rect must equal the union of the sequential per-layer rects"
+        );
+    }
+    for i in 0..n {
+        assert_eq!(
+            fused[i], seq[i],
+            "layer {i}: fused coverage map must be byte-identical to the sequential kernel"
+        );
+    }
+}

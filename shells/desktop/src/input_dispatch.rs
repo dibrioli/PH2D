@@ -175,6 +175,9 @@ impl App {
     }
 
     pub(crate) fn on_cursor_moved(&mut self, position: PhysicalPosition<f64>) {
+        // Diagnostics: count every raw winit move (input rate), paired with `paint_stamps_this_frame`
+        // in the HUD so the coalescing is visible (high events → 1 stamp).
+        self.input_events_this_frame = self.input_events_this_frame.saturating_add(1);
         let prev = self.last_pointer;
         self.last_pointer = (position.x as f32, position.y as f32);
         // M14.4e: cache the latest cursor for DroppedFile — winit's

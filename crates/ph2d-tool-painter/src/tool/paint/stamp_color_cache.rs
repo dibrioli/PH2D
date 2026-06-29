@@ -15,7 +15,7 @@ use super::{Region, union_region};
 use crate::tool::PainterTool;
 use ph2d_painter_brush::{
     BrushSpec, Dab, Falloff, FalloffCurve, RampAlphaMode, StrokeMethod, TextureSettings,
-    accumulate_color_stamp_coverage, blend_over, blit_color_stamp, render_color_stamp_mask,
+    accumulate_color_stamps_fused, blend_over, blit_color_stamp, render_color_stamp_mask,
     render_ramp_color_stamp,
 };
 use std::sync::Arc;
@@ -134,24 +134,25 @@ impl PainterTool {
         let mut bbox: Option<Region> = None;
         for d in dabs {
             let cov = (d.coverage * brush.flow * brush.strength).clamp(0.0, 1.0);
-            for (i, stamp) in stamps.iter().enumerate() {
-                if let Some(r) = accumulate_color_stamp_coverage(
-                    &mut self.paint.per_layer_stroke.cov[i],
-                    w,
-                    h,
-                    d.center,
-                    d.radius_px,
-                    stamp,
-                    cov,
-                ) {
-                    let rect = Region {
-                        x: r.x,
-                        y: r.y,
-                        w: r.w,
-                        h: r.h,
-                    };
-                    bbox = Some(bbox.map_or(rect, |acc| union_region(acc, rect)));
-                }
+            // One fused pass over the dab footprint accumulates ALL layers (shared bilinear coords,
+            // alpha-only) — byte-identical to a per-layer loop but the painter's per-Move bottleneck, so
+            // the redundant per-layer coordinate math is hoisted out (`HANDOFF_per_layer_color_perf` §1.R).
+            if let Some(r) = accumulate_color_stamps_fused(
+                &mut self.paint.per_layer_stroke.cov,
+                w,
+                h,
+                d.center,
+                d.radius_px,
+                &stamps,
+                cov,
+            ) {
+                let rect = Region {
+                    x: r.x,
+                    y: r.y,
+                    w: r.w,
+                    h: r.h,
+                };
+                bbox = Some(bbox.map_or(rect, |acc| union_region(acc, rect)));
             }
         }
         self.paint.color_stamp_cache = Some((stamps, key));

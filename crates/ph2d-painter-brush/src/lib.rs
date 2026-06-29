@@ -63,8 +63,9 @@ pub use sampler::MAX_INPUT_SAMPLES;
 pub use spec::{AIRBRUSH_RATE_MAX_S, AIRBRUSH_RATE_MIN_S, BrushSpec};
 pub use stamp::{StampMask, blit_canvas_cached, blit_stamp, render_stamp_mask};
 pub use stamp_color::{
-    ColorStampMask, accumulate_color_stamp_coverage, accumulate_shape_layer_rgba, blit_color_stamp,
-    render_color_stamp_mask, render_ramp_color_stamp,
+    ColorStampMask, accumulate_color_stamp_coverage, accumulate_color_stamps_fused,
+    accumulate_shape_layer_rgba, blit_color_stamp, render_color_stamp_mask,
+    render_ramp_color_stamp,
 };
 pub use stamp_ramped::blit_stamp_ramped;
 pub use stroke::stabilize::lazy_mouse_step;

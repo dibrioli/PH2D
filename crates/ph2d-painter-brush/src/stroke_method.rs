@@ -90,6 +90,31 @@ impl StrokeMethod {
         matches!(self, Self::Space)
     }
 
+    /// Whether this method only ever shows the **latest** pointer position, so a host may coalesce a burst
+    /// of raw pointer Moves into ONE delivery per frame with zero visible change.
+    ///
+    /// True for the restore + whole-shape re-stamp **fill** methods (Curve / Circle / Polygon / Line /
+    /// Anchored / Drag Dot): each Move restores the previous footprint and re-stamps from scratch, so an
+    /// intermediate Move's pixels are reverted by the next Move anyway — only the last one per frame
+    /// survives to the preview drain. Coalescing them is byte-identical AND removes the per-event re-stamp
+    /// storm (the FPS-drop / "Raw rises" path — `HANDOFF_per_layer_color_perf_artifacts` §1.R).
+    ///
+    /// False for the **incremental** methods (Space / Dots / Airbrush — each Move deposits permanent dabs
+    /// along the path) and **Free Hand** (each Move captures a path sample): those must see every event or
+    /// the stroke loses dabs / path points. They are cheap per Move regardless.
+    #[must_use]
+    pub fn coalesces_canvas_motion(self) -> bool {
+        matches!(
+            self,
+            Self::Curve
+                | Self::Circle
+                | Self::Polygon
+                | Self::Line
+                | Self::Anchored
+                | Self::DragDot
+        )
+    }
+
     /// True when the **Spacing** param (and its "Adjust Strength" attenuation toggle)
     /// is meaningful — the methods that lay dabs at a fixed arc-length interval
     /// (Blender: SPACE/LINE/CURVE). Same set as [`uses_dash`](Self::uses_dash) today

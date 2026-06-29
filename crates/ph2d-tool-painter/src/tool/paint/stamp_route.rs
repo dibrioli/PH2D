@@ -8,6 +8,15 @@ use crate::tool::PainterTool;
 use ph2d_painter_brush::Dab;
 
 impl PainterTool {
+    /// Whether the active stroke method lets the shell coalesce a burst of raw pointer Moves into ONE
+    /// delivery per frame (the restore + whole-shape re-stamp fill methods only show the latest position,
+    /// so it is byte-identical). Delegates to [`ph2d_painter_brush::StrokeMethod::coalesces_canvas_motion`].
+    /// The FPS-drop / "Raw rises" fix (`HANDOFF_per_layer_color_perf_artifacts` §1.R).
+    #[must_use]
+    pub fn coalesces_canvas_motion(&self) -> bool {
+        self.paint.brush.stroke_method.coalesces_canvas_motion()
+    }
+
     /// Stamp a batch of dabs into `canvas_rgba` (with the brush Shape + Grain, if any) + accumulate the
     /// dirty rect. With **Tiling** on, each dab is first replicated across the wrapped sprite edges
     /// (`tiling::tiled_dabs`) so a stroke near a border is seamless when the sprite repeats as a tile.

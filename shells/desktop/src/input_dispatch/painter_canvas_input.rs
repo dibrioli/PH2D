@@ -288,12 +288,37 @@ impl App {
 
     /// CursorMoved while a painter stroke is open: deliver as [`PointerPhase::Move`].
     /// Returns `true` (early-returning the move) while a stroke is active.
+    ///
+    /// **Per-frame coalescing (perf):** for the restore + whole-shape re-stamp methods
+    /// ([`PainterTool::coalesces_canvas_motion`]) every raw winit `CursorMoved` between frames used to
+    /// re-stamp the ENTIRE shape — a death-spiral under high-Hz input (more events → more re-stamps →
+    /// slower frame → more events), and all but the last per frame are reverted by the next move's
+    /// restore, so wasted. Here those Moves are BUFFERED (latest wins) and flushed once per frame by
+    /// [`Self::flush_pending_painter_move`]; incremental / Free Hand methods (which deposit dabs / capture
+    /// path samples per event) deliver immediately as before. See `HANDOFF_per_layer_color_perf` §1.R.
     pub(crate) fn painter_canvas_move(&mut self, px: f32, py: f32) -> bool {
         if !STROKE_ACTIVE.with(Cell::get) {
             return false;
         }
+        if self.painter_coalesces_motion() {
+            // Coalesce: keep only the latest position; the frame loop delivers ONE Move per frame.
+            self.pending_painter_move = Some((px, py));
+            return true; // consume the move (don't pan / drive a gizmo) — delivered at the frame flush
+        }
+        // Non-coalescing delivery is authoritative for the latest position: drop any move buffered while
+        // the method was still coalescing (a mid-stroke method flip), so the frame flush can't later
+        // re-stamp at that now-stale position.
+        self.pending_painter_move = None;
+        // Incremental methods stamp per raw event (between frames). Time each so the HUD's "paint ms"
+        // reflects the REAL per-frame painter cost, not just the once-per-frame coalesced flush.
+        let t0 = std::time::Instant::now();
         let delivered = self.deliver_canvas_pointer(px, py, 1.0, PointerPhase::Move);
-        if !delivered {
+        self.paint_stamp_us_this_frame = self
+            .paint_stamp_us_this_frame
+            .saturating_add(t0.elapsed().as_micros() as u64);
+        if delivered {
+            self.paint_stamps_this_frame = self.paint_stamps_this_frame.saturating_add(1);
+        } else {
             // Painter no longer active / selection gone — abandon the stroke so we
             // stop swallowing moves.
             STROKE_ACTIVE.with(|s| s.set(false));
@@ -301,11 +326,44 @@ impl App {
         delivered
     }
 
+    /// Whether the active tool is the Painter in a stroke method that only ever shows the latest pointer
+    /// position (so its Moves may be coalesced to one delivery per frame). Scoped mutable downcast — the
+    /// `Tool` trait exposes only `as_any_mut`, and the read is cheap.
+    fn painter_coalesces_motion(&mut self) -> bool {
+        self.gfx
+            .as_mut()
+            .and_then(|g| g.tools.active_mut())
+            .and_then(|t| t.as_any_mut().downcast_mut::<PainterTool>())
+            .is_some_and(|p| p.coalesces_canvas_motion())
+    }
+
+    /// Deliver the buffered (coalesced) painter Move, if any, as one [`PointerPhase::Move`]. Called once
+    /// per frame at the top of `run_render_frame` (before the encode window) and before a pen-up, so the
+    /// final position is stamped before the stroke commits.
+    pub(crate) fn flush_pending_painter_move(&mut self) {
+        let Some((px, py)) = self.pending_painter_move.take() else {
+            return; // nothing buffered — incremental stamps (if any) are timed in `painter_canvas_move`
+        };
+        let t0 = std::time::Instant::now();
+        let delivered = self.deliver_canvas_pointer(px, py, 1.0, PointerPhase::Move);
+        self.paint_stamp_us_this_frame = self
+            .paint_stamp_us_this_frame
+            .saturating_add(t0.elapsed().as_micros() as u64);
+        if delivered {
+            self.paint_stamps_this_frame = self.paint_stamps_this_frame.saturating_add(1);
+        } else {
+            STROKE_ACTIVE.with(|s| s.set(false));
+        }
+    }
+
     /// Primary Up: close any open painter stroke. No-op when not painting.
     pub(crate) fn painter_canvas_up(&mut self) {
         if !STROKE_ACTIVE.with(Cell::get) {
             return;
         }
+        // Stamp any buffered (coalesced) final position BEFORE the commit, so the released shape matches
+        // the last cursor position rather than the previous frame's flush.
+        self.flush_pending_painter_move();
         STROKE_ACTIVE.with(|s| s.set(false));
         let (px, py) = self.last_pointer;
         self.deliver_canvas_pointer(px, py, 1.0, PointerPhase::Up);

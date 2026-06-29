@@ -53,6 +53,25 @@ pub struct BottomHudStats {
     /// the user can see "60 fps synced · 2400 raw" and gauge how
     /// much headroom each new sprite costs.
     pub raw_fps: f32,
+    /// Diagnostics: wall-clock NOT spent in the CPU encode window —
+    /// `frame_ms − cpu_encode_ms`, i.e. the present/vsync acquire stall
+    /// PLUS any between-frames input work (the gap that makes "Raw" rise
+    /// while FPS falls). Watch this spike when a stroke stutters.
+    pub present_stall_ms: f32,
+    /// Diagnostics: painter CPU per frame (EWMA) — ALL canvas re-stamps this
+    /// frame (the once-per-frame coalesced flush for fill methods, PLUS every
+    /// incremental per-event stamp for Space/Dots/Airbrush) + the preview
+    /// produce/upload dispatch. The per-layer-color cost lands here, NOT in
+    /// `raw_fps` (it runs outside the encode window).
+    pub paint_ms: f32,
+    /// Diagnostics: raw winit `CursorMoved` events since the last frame
+    /// (the input rate). Pairs with `paint_stamps` to expose coalescing.
+    pub input_events: u32,
+    /// Diagnostics: canvas pointer Moves actually delivered to the tool
+    /// this frame (= whole-shape re-stamps). With per-frame coalescing this
+    /// is ≤1 even when `input_events` is high; if it tracks `input_events`,
+    /// the stroke is re-stamping per raw event (the FPS-drop path).
+    pub paint_stamps: u32,
 }
 
 pub fn paint_bottom_hud(
@@ -84,6 +103,16 @@ pub fn paint_bottom_hud(
             StatusSegment::new(format!(
                 "{} fps \u{00b7} {:.1} ms \u{00b7} {} raw",
                 stats.fps as u32, stats.frame_ms, stats.raw_fps as u32
+            )),
+            // Diagnostics (M14.7+): present/input stall + painter CPU per frame.
+            StatusSegment::new(format!(
+                "{:.1} stall \u{00b7} {:.1} paint ms",
+                stats.present_stall_ms, stats.paint_ms
+            )),
+            // Diagnostics: input rate vs delivered re-stamps (coalescing gauge).
+            StatusSegment::new(format!(
+                "{}\u{2192}{} ev/stamp",
+                stats.input_events, stats.paint_stamps
             )),
             StatusSegment::new(draws_label),
             StatusSegment::new(sprite_label).tone(SegmentTone::Accent),

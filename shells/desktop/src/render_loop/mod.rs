@@ -85,6 +85,18 @@ fn frame_prof_on() -> bool {
 
 impl crate::App {
     pub(super) fn run_render_frame(&mut self) {
+        // Coalesced painter Move: stamp the LATEST buffered canvas position ONCE this frame, replacing
+        // the per-raw-CursorMoved whole-shape re-stamp storm that ran between frames (the FPS-drop /
+        // "Raw rises" path — `HANDOFF_per_layer_color_perf_artifacts` §1.R). Done before `cpu_start` so
+        // the re-stamp stays OUT of the encode window and "Raw" keeps its encode-only meaning.
+        self.flush_pending_painter_move();
+        // Snapshot + reset the per-frame input/stamp diagnostics for the HUD (input rate vs delivered
+        // re-stamps — coalescing collapses a burst of events to one stamp here). `paint_stamp_us`
+        // accumulates BOTH the coalesced flush (just now) and any incremental per-event stamps since the
+        // last frame, so "paint ms" is the real per-frame painter cost (not just the flush).
+        let diag_input_events = std::mem::take(&mut self.input_events_this_frame);
+        let diag_paint_stamps = std::mem::take(&mut self.paint_stamps_this_frame);
+        self.last_paint_stamp_us = std::mem::take(&mut self.paint_stamp_us_this_frame);
         // M14.7 polish (10.1): tag the start of CPU work for the
         // raw-fps measurement. Stopped after `queue.submit` (before
         // the present blocks on vsync) so the EWMA tracks pure
@@ -469,6 +481,9 @@ impl crate::App {
                 self.last_pointer,
                 self.frame_ms_ewma,
                 self.frame_cpu_ms_ewma,
+                diag_input_events,
+                diag_paint_stamps,
+                self.paint_ms_ewma,
             );
             // ─────────────────────────────────────────────────────────
             // Wave 2.5 PR 11.8 closeout — consolidated bus drain.
@@ -1141,7 +1156,7 @@ impl crate::App {
             // current_preview drain + pending_commit capture; on-canvas
             // overlay paints the canvas RGBA over the sprite footprint.
             // Sidebar Procreate-style lands in W2 (ph2d-panel-painter).
-            let _painter_dispatch_t0 = frame_prof_on().then(Instant::now);
+            let painter_dispatch_t0 = Instant::now();
             let painter_apply_committed = painter_bridge::dispatch(
                 hero,
                 tools,
@@ -1162,8 +1177,16 @@ impl crate::App {
                 &mut self.painter_redo_requested,
                 toasts,
             );
-            if let Some(t) = _painter_dispatch_t0 {
-                FRAME_PROF_DISPATCH_US.with(|c| c.set(t.elapsed().as_micros() as u64));
+            // Always measure (one Instant/frame) so the HUD's "paint ms" gauge is live, not gated on
+            // the frame profiler. EWMA the painter CPU per frame = this frame's preview dispatch +
+            // the coalesced re-stamp flush; publish reads it (1-frame lag — fine for a smoothed gauge).
+            self.last_dispatch_us = painter_dispatch_t0.elapsed().as_micros() as u64;
+            const PAINT_ALPHA: f32 = 0.1;
+            let paint_ms_now = (self.last_dispatch_us + self.last_paint_stamp_us) as f32 / 1000.0;
+            self.paint_ms_ewma =
+                PAINT_ALPHA * paint_ms_now + (1.0 - PAINT_ALPHA) * self.paint_ms_ewma;
+            if frame_prof_on() {
+                FRAME_PROF_DISPATCH_US.with(|c| c.set(self.last_dispatch_us));
             }
             // Vector Pen tool ⟷ shell bridge. Per-frame world-space
             // render of committed scene paths + in-progress overlay. The

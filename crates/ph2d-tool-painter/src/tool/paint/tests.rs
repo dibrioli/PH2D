@@ -4549,3 +4549,178 @@ fn undo_sequence_open_shape_before_paint_history() {
     );
     assert!(t.circle_overlay().is_none(), "first ring fully gone");
 }
+
+// ============================================================================
+// FASE A — Per-Layer Color perf-measurement harness.
+// Tracker: docs/HANDOFF_per_layer_color_perf_artifacts.md §1 (owed numbers).
+// Ignored by default. Run in RELEASE — dev (opt-0) lies about perf
+// (project_painter_composite_perf):
+//   cargo test -p ph2d-tool-painter --release per_layer_perf -- --ignored --nocapture
+//
+// Design: drive the real pointer API (no GUI needed for timing). A Curve in
+// DRAW mode re-fills the whole anchor->cursor line every Move, so K identical
+// Moves at a fixed cursor = pure per-move cost at a fixed geometry. Comparing a
+// DIAGONAL vs a HORIZONTAL line of the SAME length (same dab count D) isolates
+// the bbox-bound cost (save/restore memcpy + O(bbox.N) recomposite + the
+// composite_region in take_preview_arc) from the dab-count-bound cost (the
+// whole-shape re-stamp + the O(D.N.S) accumulate). N-scaling (2 vs 16 shape
+// layers) isolates the x N loops from the N-independent memcpy.
+// ============================================================================
+#[cfg(test)]
+mod per_layer_perf {
+    use super::*;
+    use ph2d_painter_brush::{Falloff, StrokeMethod};
+    use std::time::Instant;
+
+    /// White `size`x`size` canvas, `n_shape` full 16x16 Shape layers (distinct colours), Per-Layer
+    /// Color ON, Curve method, hard disk `radius`. `doc_extra` extra raster doc layers make the
+    /// document stack non-trivial (exercises `take_preview_arc`'s `composite_region` lane).
+    fn setup(size: u32, n_shape: usize, doc_extra: usize, radius: f32) -> PainterTool {
+        let mut t = white_canvas(size, radius);
+        t.paint.brush.stroke_method = StrokeMethod::Curve;
+        t.paint.brush.hardness = 1.0;
+        t.paint.brush.falloff = Falloff::Constant;
+        t.paint.brush.space_attenuation = false;
+        let layers: Vec<(Vec<u8>, u32, u32)> = (0..n_shape)
+            .map(|_| (vec![255u8; 16 * 16], 16, 16))
+            .collect();
+        t.set_brush_shape_layers(layers);
+        t.toggle_brush_shape_per_layer_color();
+        for i in 0..n_shape {
+            let f = i as f32;
+            t.set_brush_shape_layer_color(
+                i,
+                [(f * 0.13) % 1.0, (f * 0.27) % 1.0, (f * 0.41) % 1.0],
+            );
+        }
+        for k in 0..doc_extra {
+            t.add_raster_layer(format!("L{k}"));
+        }
+        assert!(
+            t.paint.shape_layers.is_color_mode(),
+            "harness must be in per-layer-colour mode"
+        );
+        t
+    }
+
+    /// Time K identical full-line re-fills (the Curve draw branch re-fills anchor->p1 every Move) and
+    /// the matching `take_preview_arc` drains. Returns `(avg_move_us, avg_preview_us)`.
+    fn measure(t: &mut PainterTool, p0: [f32; 2], p1: [f32; 2], k: usize) -> (f64, f64) {
+        t.on_canvas_pointer(cp(p0, PointerPhase::Down));
+        t.on_canvas_pointer(cp(p1, PointerPhase::Move)); // establish the full line
+        let _ = t.take_preview_arc(); // drain the establish frame
+        let mut move_ns = 0u128;
+        let mut prev_ns = 0u128;
+        for _ in 0..k {
+            let a = Instant::now();
+            t.on_canvas_pointer(cp(p1, PointerPhase::Move));
+            move_ns += a.elapsed().as_nanos();
+            let b = Instant::now();
+            let _ = t.take_preview_arc();
+            prev_ns += b.elapsed().as_nanos();
+        }
+        let kf = k as f64;
+        (move_ns as f64 / kf / 1000.0, prev_ns as f64 / kf / 1000.0)
+    }
+
+    /// Diagonal vs horizontal endpoints of EQUAL length `len`, inset `m` from the canvas origin.
+    fn endpoints(size: u32, m: f32, len: f32, diagonal: bool) -> ([f32; 2], [f32; 2]) {
+        if diagonal {
+            let d = len / std::f32::consts::SQRT_2;
+            ([m, m], [m + d, m + d])
+        } else {
+            ([m, size as f32 * 0.5], [m + len, size as f32 * 0.5])
+        }
+    }
+
+    #[test]
+    #[ignore = "perf measurement — run explicitly in --release"]
+    fn per_layer_perf_sweep() {
+        println!(
+            "\n{:>6} {:>5} {:>4} {:>4} | {:>10} {:>10} | {:>10} {:>10} | {:>7}",
+            "size", "r", "N", "doc", "D.move", "D.prev", "H.move", "H.prev", "D/H"
+        );
+        for &size in &[256u32, 1024u32] {
+            let m = size as f32 * 0.1;
+            let len = size as f32 * 0.6;
+            for &radius in &[8.0_f32, 40.0, 100.0] {
+                for &n in &[2usize, 16usize] {
+                    for &doc in &[0usize, 1usize] {
+                        let mut td = setup(size, n, doc, radius);
+                        let (d0, d1) = (
+                            endpoints(size, m, len, true).0,
+                            endpoints(size, m, len, true).1,
+                        );
+                        let (dm, dp) = measure(&mut td, d0, d1, 30);
+                        let mut th = setup(size, n, doc, radius);
+                        let (h0, h1) = (
+                            endpoints(size, m, len, false).0,
+                            endpoints(size, m, len, false).1,
+                        );
+                        let (hm, hp) = measure(&mut th, h0, h1, 30);
+                        println!(
+                            "{size:>6} {radius:>5.0} {n:>4} {doc:>4} | {dm:>10.1} {dp:>10.1} | {hm:>10.1} {hp:>10.1} | {:>6.1}x",
+                            if hm > 0.0 { dm / hm } else { 0.0 }
+                        );
+                    }
+                }
+            }
+        }
+        println!(
+            "\nus per Move. move=curve_fill+save/restore+accumulate+recomposite; prev=take_preview_arc."
+        );
+        println!(
+            "D/H = diagonal/horizontal at EQUAL dab count: >>1 => bbox-bound; ~1 => D.S.N-bound."
+        );
+        println!("time ~prop N => the xN per-layer loops dominate.\n");
+    }
+
+    /// Worst observed config (1024 r100 N16, diagonal) in isolation so `PH2D_PAINT_PROF=1` prints a
+    /// clean accumulate-vs-recomposite split:
+    ///   PH2D_PAINT_PROF=1 cargo test -p ph2d-tool-painter --release per_layer_perf_worst -- --ignored --nocapture
+    #[test]
+    #[ignore = "perf measurement — run explicitly in --release with PH2D_PAINT_PROF=1"]
+    fn per_layer_perf_worst() {
+        let size = 1024u32;
+        let m = size as f32 * 0.1;
+        let len = size as f32 * 0.6;
+        let mut t = setup(size, 16, 0, 100.0);
+        let (p0, p1) = (
+            endpoints(size, m, len, true).0,
+            endpoints(size, m, len, true).1,
+        );
+        let (mv, pv) = measure(&mut t, p0, p1, 8);
+        println!("worst: move_us={mv:.1} prev_us={pv:.1}");
+    }
+}
+
+/// `coalesces_canvas_motion` gates per-frame pointer coalescing in the shell. It must be true EXACTLY for
+/// the restore + whole-shape re-stamp fill methods (latest-position-only, so coalescing is byte-identical)
+/// and false for the incremental / capture methods (Space/Dots/Airbrush/Free Hand) that need every event.
+/// Guards the FPS-drop fix (`HANDOFF_per_layer_color_perf_artifacts` §1.R) against a method slipping into
+/// the wrong bucket (e.g. coalescing Free Hand would drop captured path points).
+#[test]
+fn coalesces_canvas_motion_is_true_only_for_restore_based_fill_methods() {
+    use ph2d_painter_brush::StrokeMethod;
+    let mut t = white_canvas(8, 2.0);
+    let cases = [
+        (StrokeMethod::Curve, true),
+        (StrokeMethod::Circle, true),
+        (StrokeMethod::Polygon, true),
+        (StrokeMethod::Line, true),
+        (StrokeMethod::Anchored, true),
+        (StrokeMethod::DragDot, true),
+        (StrokeMethod::Space, false),
+        (StrokeMethod::Dots, false),
+        (StrokeMethod::Airbrush, false),
+        (StrokeMethod::FreeHand, false),
+    ];
+    for (method, want) in cases {
+        t.paint.brush.stroke_method = method;
+        assert_eq!(
+            t.coalesces_canvas_motion(),
+            want,
+            "{method:?} coalesce bucket"
+        );
+    }
+}

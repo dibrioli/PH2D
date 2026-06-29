@@ -85,6 +85,9 @@ pub(super) fn publish(
     last_pointer: (f32, f32),
     frame_ms_ewma: f32,
     frame_cpu_ms_ewma: f32,
+    input_events: u32,
+    paint_stamps: u32,
+    paint_ms: f32,
 ) {
     // M14.4a: if live-bridge enabled, rebuild HierarchySnapshot
     // from SimWorld + push into HeroScreen BEFORE paint. The
@@ -178,6 +181,9 @@ pub(super) fn publish(
     // a startup-edge measurement of 0 doesn't blow up to
     // `inf`; real workloads stabilize within a few frames.
     let raw_fps = 1000.0 / frame_cpu_ms_ewma.max(0.001);
+    // Diagnostics: wall-clock NOT in the CPU-encode window = present/vsync acquire stall PLUS any
+    // between-frames input work — the gap that makes "Raw" rise while FPS falls (HANDOFF §1.R).
+    let present_stall_ms = (frame_ms_ewma - frame_cpu_ms_ewma).max(0.0);
     hero.stats = ph2d_editor::BottomHudStats {
         fps,
         frame_ms: frame_ms_ewma,
@@ -185,6 +191,10 @@ pub(super) fn publish(
         sprite_count,
         entity_count,
         raw_fps,
+        present_stall_ms,
+        paint_ms,
+        input_events,
+        paint_stamps,
     };
     // Hierarchy counts use PresentWorld's archetype components
     // (Transform + Sprite + Visibility + ChildOf + Children).

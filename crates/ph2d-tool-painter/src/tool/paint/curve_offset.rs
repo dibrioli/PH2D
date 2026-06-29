@@ -12,9 +12,14 @@ use super::curve_handle::HandleKind;
 const OFFSET_TOL_PX: f32 = 0.3;
 /// Depth cap on the offset subdivision (≤ 2^6 leaves per input segment) — bounds the work near a cusp.
 const MAX_OFFSET_SUBDIV: u32 = 6;
-/// Miter limit: cap a sharp corner's offset displacement to this multiple of `d` so an acute spike truncates
-/// rather than shooting to infinity (cf. SVG `stroke-miterlimit` = 4, Clipper `MiterLimit`).
+/// Miter limit for a CONVEX corner (offset on the OUTSIDE of the turn — a gap): cap the displacement to this
+/// multiple of `d` so an acute corner doesn't shoot out into a spike (cf. SVG `stroke-miterlimit` = 4). A
+/// convex spike can't self-cross, so Trim couldn't clean it — hence the bound.
 const MITER_LIMIT: f32 = 4.0;
+/// Cap for a CONCAVE corner (offset on the INSIDE of the turn). NOT the convex limit: a concave corner reaches
+/// the two offset edges' true intersection so the path self-crosses and the **Trim** pass removes the ear (the
+/// CAD "offset then trim" the user wants — Enio 2026-06-28). Bounded only to keep coords finite at a cusp.
+const CONCAVE_MITER_CAP: f32 = 64.0;
 
 /// Offset `(points, handles)` + per output anchor its ORIGINAL index (`None` = inserted). Aliased for clippy.
 type RefinedOffset = (Vec<[f32; 2]>, Vec<[[f32; 2]; 2]>, Vec<Option<usize>>);
@@ -81,7 +86,7 @@ pub(super) fn offset_curve(
     // 1. Offset the anchors along their tangent-based vertex normals (perpendicular to the CURVE → even).
     let op: Vec<[f32; 2]> = (0..n)
         .map(|i| {
-            let nrm = vertex_normal(points, handles, i, closed);
+            let nrm = vertex_normal(points, handles, i, closed, d);
             [points[i][0] + nrm[0] * d, points[i][1] + nrm[1] * d]
         })
         .collect();
@@ -290,12 +295,14 @@ impl SegXform {
 /// two offset edges — so a CORNER lands on the true parallel-curve miter `d / cos δ` out, not the averaged-
 /// normal undershoot `d` (the "quinas mais curtas que as curvas" bug — Enio 2026-06-28). A SMOOTH vertex
 /// (n_in ≈ n_out) yields a unit vector ⇒ circles / Auto / Vector stay byte-identical; an open endpoint has one
-/// side ⇒ its plain unit normal. A positive offset outsets a CCW loop; zero for a degenerate vertex.
+/// side ⇒ its plain unit normal. `d`'s sign picks the offset side, so the combine knows convex (clamp) from
+/// concave (cross + Trim). A positive offset outsets a CCW loop; zero for a degenerate vertex.
 fn vertex_normal(
     points: &[[f32; 2]],
     handles: &[[[f32; 2]; 2]],
     i: usize,
     closed: bool,
+    d: f32,
 ) -> [f32; 2] {
     let n = points.len();
     let bez = handles.len() == n;
@@ -325,22 +332,26 @@ fn vertex_normal(
     match count {
         0 => [0.0, 0.0],
         1 => sides[0],
-        _ => miter(sides[0], sides[1]),
+        _ => miter(sides[0], sides[1], d),
     }
 }
 
 /// Combine two unit side-normals into the offset displacement: `(n1+n2)/(1+n1·n2)`, the intersection of the
-/// two offset edges = the bisector at distance `1/cos δ` (the true miter). Smooth (n1 ≈ n2) ⇒ unit ⇒ no
-/// change; clamped to [`MITER_LIMIT`] so an acute spike (near-antiparallel normals → miter → ∞) truncates
-/// along the bisector instead of shooting out. Transcendental-free.
-fn miter(n1: [f32; 2], n2: [f32; 2]) -> [f32; 2] {
+/// two offset edges = the bisector at distance `1/cos δ` (the true miter). Smooth (n1 ≈ n2) ⇒ unit ⇒ no change.
+/// A CONVEX corner (offset on the OUTSIDE of the turn) clamps to [`MITER_LIMIT`] so an acute spike can't shoot
+/// out; a CONCAVE corner (INSIDE — the two edges overlap) is left at the true intersection up to
+/// [`CONCAVE_MITER_CAP`], so the offset self-CROSSES there and the Trim pass removes the ear (the CAD "offset
+/// then trim" — Enio 2026-06-28). Convex ⇔ the turn `n1×n2` agrees with `d`'s sign. Transcendental-free.
+fn miter(n1: [f32; 2], n2: [f32; 2], d: f32) -> [f32; 2] {
     let s = [n1[0] + n2[0], n1[1] + n2[1]];
     let sl = (s[0] * s[0] + s[1] * s[1]).sqrt();
     if sl < 1e-6 {
         return [0.0, 0.0]; // antiparallel cusp: no well-defined offset direction
     }
-    let denom = 1.0 + n1[0] * n2[0] + n1[1] * n2[1];
-    let mag = (sl / denom.max(1e-6)).min(MITER_LIMIT); // |miter| = 1/cos δ; cap the spike (denom→0 ⇒ ∞)
+    let denom = (1.0 + n1[0] * n2[0] + n1[1] * n2[1]).max(1e-6);
+    let convex = (n1[0] * n2[1] - n1[1] * n2[0]) * d >= 0.0; // offset side is the OUTSIDE of the turn → a gap
+    let cap = if convex { MITER_LIMIT } else { CONCAVE_MITER_CAP };
+    let mag = (sl / denom).min(cap); // |miter| = 1/cos δ; convex bounds the spike, concave reaches the crossing
     [s[0] / sl * mag, s[1] / sl * mag]
 }
 
@@ -469,7 +480,7 @@ mod tests {
             [[5.0, 10.0], [15.0, 10.0]], // middle anchor's tangent is horizontal (in→out along +x)
             [[40.0, 30.0], [40.0, 30.0]],
         ];
-        let nrm = vertex_normal(&pts, &handles, 1, false);
+        let nrm = vertex_normal(&pts, &handles, 1, false, 5.0);
         assert!(
             nrm[0].abs() < 0.05,
             "normal is vertical (⊥ the horizontal tangent): {nrm:?}"
@@ -535,7 +546,7 @@ mod tests {
         // fix for "quinas mais curtas que as curvas" — corners are no longer pulled in (Enio 2026-06-28).
         let pts = vec![[0.0, 0.0], [20.0, 0.0], [20.0, 20.0]];
         let handles = vec![[[0.0, 0.0]; 2], [[20.0, 0.0]; 2], [[20.0, 20.0]; 2]];
-        let m = vertex_normal(&pts, &handles, 1, false);
+        let m = vertex_normal(&pts, &handles, 1, false, 5.0);
         assert!(
             (m[0] - 1.0).abs() < 1e-3 && (m[1] + 1.0).abs() < 1e-3,
             "miter vector (1,-1): {m:?}"
@@ -552,7 +563,7 @@ mod tests {
         // n_in ≈ n_out (a smooth, continuous-tangent vertex) ⇒ the miter collapses to the plain unit normal,
         // guaranteeing circles / Auto / Vector offsets stay byte-identical to before the corner fix.
         let n = [0.6f32, 0.8];
-        let m = miter(n, n);
+        let m = miter(n, n, 1.0);
         assert!(
             (m[0] - n[0]).abs() < 1e-4 && (m[1] - n[1]).abs() < 1e-4,
             "smooth miter is the unit normal: {m:?}"
@@ -560,14 +571,29 @@ mod tests {
     }
 
     #[test]
-    fn an_acute_spike_is_clamped_to_the_miter_limit() {
-        // Near-antiparallel side-normals (a very sharp corner) would miter toward infinity; the limit truncates
-        // the displacement along the bisector so the offset never shoots out into a spike.
+    fn an_acute_convex_corner_is_clamped_to_the_miter_limit() {
+        // Near-antiparallel side-normals (a very sharp corner) on the CONVEX side would miter toward infinity;
+        // the limit truncates the displacement along the bisector so the offset never shoots out into a spike.
         let n1 = [1.0f32, 0.0];
         let h = (1.0f32 - 0.99 * 0.99).sqrt();
-        let n2 = [-0.99f32, h]; // ~172° from n1, unit length
-        let m = miter(n1, n2);
+        let n2 = [-0.99f32, h]; // ~172° from n1, unit length; turn n1×n2 = h > 0
+        let m = miter(n1, n2, 1.0); // d > 0 with turn > 0 ⇒ convex
         let len = (m[0] * m[0] + m[1] * m[1]).sqrt();
-        assert!(len <= MITER_LIMIT + 1e-3, "clamped to the miter limit: {len}");
+        assert!(len <= MITER_LIMIT + 1e-3, "convex clamped to the miter limit: {len}");
+    }
+
+    #[test]
+    fn an_acute_concave_corner_is_not_clamped_so_it_crosses_for_trim() {
+        // The SAME acute corner on the CONCAVE side (d flips the offset inside the turn) must reach the two
+        // offset edges' true intersection (≈ 1/cos δ, past the convex limit) so it crosses + Trim cleans.
+        let n1 = [1.0f32, 0.0];
+        let h = (1.0f32 - 0.99 * 0.99).sqrt();
+        let n2 = [-0.99f32, h];
+        let m = miter(n1, n2, -1.0); // d < 0 with turn > 0 ⇒ concave
+        let len = (m[0] * m[0] + m[1] * m[1]).sqrt();
+        assert!(
+            len > MITER_LIMIT && len <= CONCAVE_MITER_CAP,
+            "concave reaches the true crossing, past the convex limit: {len}"
+        );
     }
 }

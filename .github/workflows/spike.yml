@@ -190,13 +190,27 @@ jobs:
     # sccache crashed all rustc invocations. Reverted; deferred until
     # GHA cache is reliable.
     #
-    # Cap bumped from 30 to 45 min after Phase 2. First green run
-    # (25841492076) clocked Windows at 29m37s — only 23s under the
-    # old cap. 45 min gives breathing room for normal variance + any
-    # future bump in heavy deps (wgpu, wasmtime, bevy_ecs). If
-    # Windows ever creeps past 40 min, re-enter the speed-up loop
-    # (scope reduction or self-hosted runner).
-    timeout-minutes: 45
+    # Cap history: 30 → 45 (Phase 2; warm Windows ~12-29 min) → 90
+    # (2026-06-30). The 45-min cap only ever fit a WARM build. When the
+    # Swatinem/rust-cache key misses, Windows does a COLD rebuild of the
+    # whole graph incl. the vendored native deps (dav1d/rav1e via
+    # meson+nasm+MSBuild) and blows well past 45 min — the nextest build
+    # alone took ~40 min in run 28473978977. A cancelled job NEVER runs
+    # rust-cache's save step, so a cold run that times out leaves the
+    # cache cold → the next run is cold again → permanent stuck-cold loop.
+    #
+    # The key misses on toolchain drift, not on our commits: CI installs
+    # `dtolnay/rust-toolchain@stable`, so a new stable release rotates the
+    # rust-cache rustc-hash and invalidates every OS's cache at once
+    # (observed 2026-06-30: lockfiles-hash identical, rustc-hash changed).
+    # Linux/macOS absorb a cold rebuild under the cap and re-warm; only
+    # Windows couldn't. 90 min lets a cold Windows build COMPLETE and save
+    # a warm cache, so the pipeline self-heals on every drift/eviction
+    # instead of wedging. Warm Windows stays ~12 min, far under the cap.
+    # Follow-up to avoid the slow re-warm entirely: pin the toolchain
+    # action to 1.95 (matches rust-toolchain.toml) so stable releases stop
+    # rotating the cache key.
+    timeout-minutes: 90
     strategy:
       fail-fast: false
       matrix:

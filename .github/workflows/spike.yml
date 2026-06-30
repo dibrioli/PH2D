@@ -39,7 +39,14 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
+      # Toolchain channel is PINNED to 1.95 (matches rust-toolchain.toml), not
+      # @stable. @stable rotates Swatinem/rust-cache's rustc-hash on every Rust
+      # release, busting every per-OS cache at once and forcing cold rebuilds —
+      # the 2026-06-30 stuck-cold Windows loop (run 28473978977). A fixed channel
+      # keeps the cache key stable across releases. Bump these `@1.95` refs in
+      # lockstep with rust-toolchain.toml when the pin moves. (MSRV job keeps its
+      # own @1.92.)
+      - uses: dtolnay/rust-toolchain@1.95
         with:
           components: clippy, rustfmt
       - uses: Swatinem/rust-cache@v2
@@ -217,7 +224,7 @@ jobs:
         os: [ubuntu-latest, macos-latest, windows-latest]
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@1.95
 
       # Force-install the toolchain pinned in `rust-toolchain.toml`
       # (channel 1.95). Without this, `cargo nextest …` on macos-latest
@@ -415,7 +422,7 @@ jobs:
         os: [ubuntu-latest, macos-latest, windows-latest]
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@1.95
       - uses: Swatinem/rust-cache@v2
         with:
           shared-key: ${{ matrix.os }}
@@ -516,7 +523,7 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@1.95
       - uses: Swatinem/rust-cache@v2
         with:
           shared-key: bench

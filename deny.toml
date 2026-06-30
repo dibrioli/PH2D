@@ -113,6 +113,14 @@ ignore = [
     # adds a 32-bit target. (Solo Coord 2026-05-29 — flagged to Enio;
     # bump-vs-ignore is his to override.)
     "RUSTSEC-2026-0151",
+    # `ttf-parser` unmaintained (RUSTSEC-2026-0192) — author archived it,
+    # recommends `skrifa` (already in our tree via vello/fontations). No CVE;
+    # informational. Pulled transitively ONLY on Linux/Wayland:
+    # ttf-parser ← owned_ttf_parser ← ab_glyph ← sctk-adwaita ← winit
+    # (client-side window-decoration title text). Not compiled on macOS/Windows;
+    # unused by any PH2D code. Accepted until winit's Wayland CSD chain migrates.
+    # (Coord 2026-06-30 — advisory landed post last green push; ship-blocking.)
+    "RUSTSEC-2026-0192",
 ]
 
 # ----------------------------------------------------------------------------

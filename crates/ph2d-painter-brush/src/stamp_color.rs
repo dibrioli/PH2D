@@ -130,7 +130,9 @@ pub fn render_color_stamp_mask(
                 // silhouette); else the flat resolved colour. Layers still composite "over" (z-order) —
                 // the per-layer blend modes apply at the on-canvas recomposite, not in this preview bake.
                 let c = match layer_rgb.get(li).and_then(|o| o.as_ref()) {
-                    Some(img) => crate::texture::sample_shape_rgb_unit(&spec.shape, &shape_basis, u, v, img),
+                    Some(img) => {
+                        crate::texture::sample_shape_rgb_unit(&spec.shape, &shape_basis, u, v, img)
+                    }
                     None => layer_colors.get(li).copied().unwrap_or([0.0, 0.0, 0.0]),
                 };
                 let inv_a = 1.0 - a;

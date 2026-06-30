@@ -33,7 +33,16 @@ fn center_rgba(stamp: &ColorStampMask) -> ([f32; 3], f32) {
 fn single_full_layer_paints_its_colour_everywhere() {
     let spec = shape_image_spec();
     let l = layer([true, true, true, true]);
-    let stamp = render_color_stamp_mask(&spec, &[mask(&l)], &[[1.0, 0.0, 0.0]], &[], &[], None, None, 16);
+    let stamp = render_color_stamp_mask(
+        &spec,
+        &[mask(&l)],
+        &[[1.0, 0.0, 0.0]],
+        &[],
+        &[],
+        None,
+        None,
+        16,
+    );
     let (rgb, a) = center_rgba(&stamp);
     assert!(a > 0.95, "full layer ⇒ opaque: {a}");
     assert!(
@@ -102,7 +111,16 @@ fn blit_composites_the_stamp_colour_onto_the_canvas() {
     // A 1-layer blue stamp blitted opaquely onto a black canvas turns the centre blue.
     let spec = shape_image_spec();
     let l = layer([true, true, true, true]);
-    let stamp = render_color_stamp_mask(&spec, &[mask(&l)], &[[0.0, 0.0, 1.0]], &[], &[], None, None, 32);
+    let stamp = render_color_stamp_mask(
+        &spec,
+        &[mask(&l)],
+        &[[0.0, 0.0, 1.0]],
+        &[],
+        &[],
+        None,
+        None,
+        32,
+    );
     let (w, h) = (16u32, 16u32);
     let mut buf = vec![0u8; (w * h * 4) as usize];
     let rect = blit_color_stamp(&mut buf, w, h, [8.0, 8.0], 6.0, &stamp, &spec, 1.0, false);
@@ -119,8 +137,26 @@ fn blit_composites_the_stamp_colour_onto_the_canvas() {
 fn deterministic_render() {
     let spec = shape_image_spec();
     let l = layer([true, false, true, true]);
-    let a = render_color_stamp_mask(&spec, &[mask(&l)], &[[0.3, 0.6, 0.9]], &[], &[], None, None, 24);
-    let b = render_color_stamp_mask(&spec, &[mask(&l)], &[[0.3, 0.6, 0.9]], &[], &[], None, None, 24);
+    let a = render_color_stamp_mask(
+        &spec,
+        &[mask(&l)],
+        &[[0.3, 0.6, 0.9]],
+        &[],
+        &[],
+        None,
+        None,
+        24,
+    );
+    let b = render_color_stamp_mask(
+        &spec,
+        &[mask(&l)],
+        &[[0.3, 0.6, 0.9]],
+        &[],
+        &[],
+        None,
+        None,
+        24,
+    );
     assert_eq!(a.data, b.data, "same inputs ⇒ byte-identical stamp (HR-5)");
 }
 

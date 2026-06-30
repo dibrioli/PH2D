@@ -14,10 +14,11 @@ use super::stamp_cache::mask_size_for;
 use super::{Region, union_region};
 use crate::tool::PainterTool;
 use ph2d_painter_brush::{
-    BrushSpec, Dab, Falloff, FalloffCurve, RampAlphaMode, StrokeMethod, TextureSettings,
-    accumulate_color_stamps_fused, blend_over, blit_color_stamp, render_color_stamp_mask,
-    render_ramp_color_stamp,
+    BrushSpec, ColorStampMask, Dab, Falloff, FalloffCurve, ImageRgb, RampAlphaMode, StrokeMethod,
+    TextureSettings, accumulate_color_stamps_fused, blend_over, blit_color_stamp,
+    render_color_stamp_mask, render_ramp_color_stamp,
 };
+use ph2d_painter_effects::{BlendMode, apply_blend};
 use std::sync::Arc;
 
 /// Per-stroke accumulation for the per-layer-colour **recomposite**: the pre-stroke `canvas_rgba`
@@ -77,6 +78,45 @@ pub(super) struct ColorStampKey {
     dab_flatten: f32,
     dab_angle_deg: u16,
     size: u32,
+}
+
+/// Composite the per-layer **premultiplied** preview stamps (all at `size`) bottom→top under their
+/// per-layer blend modes into one premultiplied-RGBA buffer — the thumbnail equivalent of the on-canvas
+/// recomposite's stage-1, so the preview shows the blends. The bottom layer's blend is inert (composited
+/// onto the transparent backdrop), matching the "base layer has no blend" rule. HR-5: float-only + the
+/// effects blend formulas.
+fn composite_preview_blended(stamps: &[ColorStampMask], blends: &[u8], size: u32) -> Vec<u8> {
+    let n = (size as usize) * (size as usize);
+    let mut out = vec![0u8; n * 4];
+    let enc = |x: f32| (x.clamp(0.0, 1.0) * 255.0 + 0.5) as u8;
+    for p in 0..n {
+        let o = p * 4;
+        let mut s = [0.0f32; 4]; // straight rgba — the composite so far
+        for (li, stamp) in stamps.iter().enumerate() {
+            let d = stamp.data();
+            let pa = f32::from(d[o + 3]) / 255.0;
+            if pa <= 0.0 {
+                continue;
+            }
+            let inv = 1.0 / pa;
+            let src = [
+                f32::from(d[o]) / 255.0 * inv,
+                f32::from(d[o + 1]) / 255.0 * inv,
+                f32::from(d[o + 2]) / 255.0 * inv,
+                pa,
+            ];
+            s = apply_blend(
+                BlendMode::from_u8(blends.get(li).copied().unwrap_or(0)),
+                s,
+                src,
+            );
+        }
+        out[o] = enc(s[0] * s[3]);
+        out[o + 1] = enc(s[1] * s[3]);
+        out[o + 2] = enc(s[2] * s[3]);
+        out[o + 3] = enc(s[3]);
+    }
+    out
 }
 
 impl PainterTool {
@@ -166,6 +206,14 @@ impl PainterTool {
         // old per-layer `blend_over` double-applied Multiply/Screen/… across overlapping layers (and was a
         // no-op on a transparent canvas for the colour modes) → the blend mode looked ignored (Enio).
         let colors = self.paint.shape_layers.resolved_colors(brush.color);
+        // Per-layer blend mode + opacity (a brush-only scale on each layer's tip contribution). Texture
+        // Color isn't possible on this cached path (it routes to the dynamic path). `any_blend` gates the
+        // per-layer-blend stage-1: with all Normal, keep the byte-identical premultiplied source-over.
+        let blends: Vec<u8> = (0..n)
+            .map(|i| self.paint.shape_layers.effective_blend(i))
+            .collect();
+        let opac = self.paint.shape_layers.opacities();
+        let any_blend = blends.iter().any(|&b| b != 0);
         let blend = brush.blend;
         {
             let buf = Arc::make_mut(&mut self.canvas_rgba);
@@ -180,18 +228,42 @@ impl PainterTool {
                     if !pls.cov.iter().take(n).any(|m| m[idx] != 0) {
                         continue;
                     }
-                    // (1) Premultiplied stroke = the layers composited over each other (z-order).
-                    let mut s = [0.0f32; 4];
-                    for (i, c) in colors.iter().enumerate() {
-                        let a = f32::from(pls.cov[i][idx]) / 255.0;
-                        if a > 0.0 {
-                            let inv = 1.0 - a;
-                            s[0] = c[0] * a + s[0] * inv;
-                            s[1] = c[1] * a + s[1] * inv;
-                            s[2] = c[2] * a + s[2] * inv;
-                            s[3] = a + s[3] * inv;
+                    // (1) Composite the Shape layers among themselves (z-order) into one STRAIGHT stroke
+                    // colour+alpha. Default (all Normal): premultiplied source-over, then un-premultiply —
+                    // byte-identical to the prior path. With a per-layer blend pick: each layer composites
+                    // onto the accumulated lower layers under its own mode (the layer-system blend formulas).
+                    let stroke = if any_blend {
+                        let mut s = [0.0f32; 4]; // straight rgba
+                        for (i, c) in colors.iter().enumerate() {
+                            let a = f32::from(pls.cov[i][idx]) / 255.0 * opac[i];
+                            if a > 0.0 {
+                                s = apply_blend(
+                                    BlendMode::from_u8(blends[i]),
+                                    s,
+                                    [c[0], c[1], c[2], a],
+                                );
+                            }
                         }
-                    }
+                        s
+                    } else {
+                        let mut s = [0.0f32; 4]; // premultiplied rgba
+                        for (i, c) in colors.iter().enumerate() {
+                            let a = f32::from(pls.cov[i][idx]) / 255.0 * opac[i];
+                            if a > 0.0 {
+                                let inv = 1.0 - a;
+                                s[0] = c[0] * a + s[0] * inv;
+                                s[1] = c[1] * a + s[1] * inv;
+                                s[2] = c[2] * a + s[2] * inv;
+                                s[3] = a + s[3] * inv;
+                            }
+                        }
+                        if s[3] > 0.0 {
+                            let inv = 1.0 / s[3];
+                            [s[0] * inv, s[1] * inv, s[2] * inv, s[3]]
+                        } else {
+                            [0.0; 4]
+                        }
+                    };
                     // Base: the pre-stroke snapshot (incremental) or the canvas itself (fills — already
                     // restored to the pre-shape this move). Copy 4 bytes so the read ends before the write.
                     let pre = {
@@ -199,11 +271,10 @@ impl PainterTool {
                         [base[p4], base[p4 + 1], base[p4 + 2], base[p4 + 3]]
                     };
                     let mut acc = pre.map(|b| f32::from(b) / 255.0);
-                    // (2) Blend the stroke onto the base once (un-premultiply for `blend_over`).
-                    if s[3] > 0.0 {
+                    // (2) Blend the stroke onto the base once via the Brush blend mode.
+                    if stroke[3] > 0.0 {
                         let pre_alpha = acc[3];
-                        let inv = 1.0 / s[3];
-                        acc = blend_over(blend, acc, [s[0] * inv, s[1] * inv, s[2] * inv], s[3]);
+                        acc = blend_over(blend, acc, [stroke[0], stroke[1], stroke[2]], stroke[3]);
                         if alpha_locked {
                             acc[3] = pre_alpha; // alpha-lock: paint modifies colour, not the layer's alpha
                         }
@@ -258,10 +329,14 @@ impl PainterTool {
                 .iter()
                 .zip(colors.iter())
                 .map(|(m, c)| {
+                    // This cached path is tint-only (Texture Color routes to the dynamic path), so no
+                    // per-pixel RGB is sampled here; opacity is applied at recomposite (so `&[1.0]`).
                     render_color_stamp_mask(
                         brush,
                         std::slice::from_ref(m),
                         std::slice::from_ref(c),
+                        &[None],
+                        &[1.0],
                         grain_image.as_ref(),
                         grain_ramp,
                         size,
@@ -322,17 +397,36 @@ impl PainterTool {
         self.paint.shape_color_preview.cache = want.map(|key| {
             let masks = self.paint.shape_layers.masks();
             let colors = self.paint.shape_layers.resolved_colors(brush.color);
+            let layer_rgb: Vec<Option<ImageRgb>> = (0..masks.len())
+                .map(|i| self.paint.shape_layers.rgb_image(i))
+                .collect();
+            let opac = self.paint.shape_layers.opacities();
+            let blends: Vec<u8> = (0..masks.len())
+                .map(|i| self.paint.shape_layers.effective_blend(i))
+                .collect();
             let grain = self.paint.texture_image.as_ref().map(|i| i.as_mask());
             let grain_ramp = grain_ramp_active.then_some(self.paint.texture_ramp_lut.as_slice());
-            let stamp = render_color_stamp_mask(
-                &brush,
-                &masks,
-                &colors,
-                grain.as_ref(),
-                grain_ramp,
-                PREVIEW_SIZE,
-            );
-            (Arc::new(stamp.data().to_vec()), key)
+            // Bake EACH layer's premultiplied stamp on its own, then composite them bottom→top under their
+            // per-layer blend modes (`apply_blend`) — so the thumbnail shows the blends, matching the
+            // on-canvas recomposite (the all-layers `render_color_stamp_mask` only does Normal-over).
+            let per_layer: Vec<_> = (0..masks.len())
+                .map(|i| {
+                    render_color_stamp_mask(
+                        &brush,
+                        std::slice::from_ref(&masks[i]),
+                        std::slice::from_ref(&colors[i]),
+                        std::slice::from_ref(&layer_rgb[i]),
+                        std::slice::from_ref(&opac[i]),
+                        grain.as_ref(),
+                        grain_ramp,
+                        PREVIEW_SIZE,
+                    )
+                })
+                .collect();
+            (
+                Arc::new(composite_preview_blended(&per_layer, &blends, PREVIEW_SIZE)),
+                key,
+            )
         });
         true
     }

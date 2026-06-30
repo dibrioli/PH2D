@@ -324,3 +324,57 @@ fn stroke_apply_buttons_forward_their_click() {
         );
     }
 }
+
+// ── Per-Layer Color row seam (the "B" blend dropdown + opacity box, Enio 2026-06-29) ──────────────
+// One assertion per control SHAPE, proving the real WidgetEvent forwards the EXACT PanelEvent the tool's
+// `route_shape_layer_event` arm consumes. These factory-id widgets are paint-time registered, so a
+// forgotten event.rs arm would leave them painted, clickable and silently dead.
+
+/// Dropdown shape: clicking blend option (layer 0, Multiply = wire 1) forwards
+/// `SelectOption(shape_layer_blend_id(0), "1")` (consumed by `set_brush_shape_layer_blend`).
+#[test]
+fn shape_layer_blend_option_forwards_selectoption() {
+    let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
+    let mut st = PainterLayersPanelState;
+    let opt = core_ids::painter_shape_layer_blend_option_id(0, 1);
+    let outcome = host.apply_panel_event::<PainterLayersPanel>(&mut st, WidgetEvent::Click(opt));
+    assert_eq!(
+        outcome,
+        EventOutcome::Consumed,
+        "Shape-layer blend option click ignored — the event.rs shape_layer_picker::blend_option arm is missing"
+    );
+    let actions = host.drained_actions();
+    assert!(
+        actions.iter().any(|a| matches!(
+            a,
+            EditorAction::ToolPanelEvent(PanelEvent::SelectOption(i, v))
+                if *i == core_ids::painter_shape_layer_blend_id(0) && v == "1"
+        )),
+        "blend pick never forwarded as SelectOption(shape_layer_blend_id(0), \"1\") — seam dead. \
+         drained = {actions:?}"
+    );
+}
+
+/// NumberInput shape: an opacity scrub forwards `SetValue(opacity_id(0), _)` (consumed by the tool's
+/// `set_brush_shape_layer_opacity` arm, which edits the source document layer's opacity).
+#[test]
+fn shape_layer_opacity_forwards_setvalue() {
+    let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
+    let mut st = PainterLayersPanelState;
+    let id = core_ids::painter_shape_layer_opacity_id(0);
+    let outcome =
+        host.apply_panel_event::<PainterLayersPanel>(&mut st, WidgetEvent::ValueChanged(id));
+    assert_eq!(
+        outcome,
+        EventOutcome::Consumed,
+        "opacity ValueChanged ignored — the event.rs shape_layer_picker::opacity_index arm is missing"
+    );
+    let actions = host.drained_actions();
+    assert!(
+        actions.iter().any(|a| matches!(
+            a,
+            EditorAction::ToolPanelEvent(PanelEvent::SetValue(i, _)) if *i == id
+        )),
+        "opacity scrub never forwarded as SetValue(opacity_id(0)) — seam dead. drained = {actions:?}"
+    );
+}

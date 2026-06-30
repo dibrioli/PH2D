@@ -477,6 +477,7 @@ fn try_apply_brush_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> O
         // toggles it) or its colour swatch (toggle the picker, seeded with that layer's colour).
         WidgetEvent::Click(id) if shape_layer_picker::classify(id).is_some() => {
             match shape_layer_picker::classify(id) {
+                // The "Layer N Color" checkbox forwards a plain Click; the tool toggles the custom colour.
                 Some(shape_layer_picker::LayerWidget::Check) => {
                     host.bus_mut()
                         .push(EditorAction::ToolPanelEvent(PanelEvent::Click(id)));
@@ -486,6 +487,11 @@ fn try_apply_brush_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> O
                 }
                 None => {}
             }
+            Some(true)
+        }
+        // A Shape-layer "B" blend option was picked → close that chip + forward (per-layer factory ids).
+        WidgetEvent::Click(id) if shape_layer_picker::blend_option(id).is_some() => {
+            shape_layer_picker::on_blend_option(host, id);
             Some(true)
         }
         // A dropdown popover option was picked → close the chip + apply (table-driven, see `option_route`).
@@ -526,6 +532,11 @@ fn try_apply_brush_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> O
             let v = host.store().number_value(id).unwrap_or(0.0);
             host.bus_mut()
                 .push(EditorAction::ToolPanelEvent(PanelEvent::SetValue(id, v)));
+            Some(true)
+        }
+        // Per-layer-colour opacity box (`0..100`) → forward the scrubbed value (a brush-only scale).
+        WidgetEvent::ValueChanged(id) if shape_layer_picker::opacity_index(id).is_some() => {
+            shape_layer_picker::forward_opacity(host, id);
             Some(true)
         }
         // Brush + Stroke-section slider drag → forward the dispatched `0..1` track; the tool maps it.

@@ -195,6 +195,29 @@ pub fn paint_slider_with_chip_layout(
     }
 }
 
+/// Whether [`paint_slider_with_chip_layout_adaptive`] will STACK (demote the label to its own row) at
+/// `content_w` for the given `label_w` / `chip_w` — the same threshold the painter uses. Lets a container
+/// that must size a background BEFORE painting the adaptive rows (e.g. the Jitter card) agree exactly.
+#[must_use]
+pub fn slider_with_chip_is_stacked(content_w: f32, label_w: f32, chip_w: f32) -> bool {
+    let needed = label_w + chip_w + Spacing::Sm.px() * 2.0 + SLIDER_CHIP_MIN_SLIDER_W;
+    content_w < needed
+}
+
+/// The vertical extent [`paint_slider_with_chip`] will use at `content_w` — `row_h` on one row, else the
+/// stacked (label-demoted) height. Uses the default label/chip widths (the `paint_slider_with_chip` form).
+#[must_use]
+pub fn slider_with_chip_height(row_h: f32, content_w: f32) -> f32 {
+    if slider_with_chip_is_stacked(content_w, DEFAULT_LABEL_W, DEFAULT_CHIP_W) {
+        row_h + crate::widget::panel_chrome::SECTION_LABEL_TO_CONTROL_PX + row_h
+    } else {
+        row_h
+    }
+}
+
+/// Minimum slider track width before the label demotes — the chrome floor (tiny but still draggable).
+const SLIDER_CHIP_MIN_SLIDER_W: f32 = 60.0; // LITERAL-PX-OK: slider chrome floor (mirror of the painter)
+
 /// Adaptive variant of [`paint_slider_with_chip_layout`] — when the
 /// label + slider + chip won't fit horizontally inside `rect.w`, the
 /// label demotes to its own row ABOVE the slider+chip row (the
@@ -227,13 +250,9 @@ pub fn paint_slider_with_chip_layout_adaptive(
     text_system: &mut TextSystem,
     theme: Theme,
 ) -> f32 {
-    let gap = Spacing::Sm.px();
-    // Minimum slider track width before we'd rather demote the label.
-    // ~60 px is the chrome floor: tiny but still draggable; below this
-    // the slider becomes nearly useless.
-    let min_slider_w: f32 = 60.0; // LITERAL-PX-OK: slider chrome floor
-    let needed = label_w + chip_w + gap * 2.0 + min_slider_w;
-    if rect.w >= needed {
+    // Demote the label when the row would crush the slider below its chrome floor — shared with
+    // `slider_with_chip_height` so a container pre-sizing a background agrees exactly.
+    if !slider_with_chip_is_stacked(rect.w, label_w, chip_w) {
         paint_slider_with_chip_layout(
             rect,
             label,

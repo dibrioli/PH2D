@@ -141,6 +141,10 @@ pub struct PainterTool {
     /// to the active source — paint, opacity, visibility, structure, undo/redo — bumps one of those, so a
     /// per-frame compare detects the change and re-captures (covering edits that aren't paint strokes).
     shape_source_revision: u64,
+    /// `true` when the STASHED Shape source sprite needs its live-preview composite re-rendered (it was
+    /// just stashed, or a brush opacity/blend remote-control edited its layers) — so the bridge re-uploads
+    /// its preview slot. Lets a non-selected shape-source sprite reflect brush edits in real time.
+    shape_source_preview_dirty: bool,
 }
 
 impl Default for PainterTool {
@@ -173,6 +177,7 @@ impl Default for PainterTool {
             doc_cache: BTreeMap::new(),
             shape_source_doc: None,
             shape_source_revision: 0,
+            shape_source_preview_dirty: false,
         }
     }
 }

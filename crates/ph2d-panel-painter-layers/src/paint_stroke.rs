@@ -299,13 +299,14 @@ fn paint_jitter_card(
     let sm = Spacing::Sm.px();
     let font = TypeToken::Sm.px();
     let title_h = ROW_H_PX;
-    // Rotation jitter spins the whole dab stamp (Shape silhouette + Grain). It's ALWAYS shown in the Jitter
-    // card (Enio 2026-06-28) — the artist sets it up before assigning a Shape/texture; a bare round falloff
-    // is just isotropic, so it reads as a no-op there (like every paint app's rotation jitter).
-    // Pre-compute the card height (each row includes its own trailing spacing): Position + Scale + Spacing +
-    // Rotation are param rows (ROW_H + Xs); Unit is a dropdown row (ROW_H + Sm). Trailing `+ xs` = breathing.
-    let rows_h =
-        (ROW_H_PX + xs) + (ROW_H_PX + sm) + (ROW_H_PX + xs) + (ROW_H_PX + xs) + (ROW_H_PX + xs);
+    let inner_w = (content_w - pad * 2.0).max(0.0);
+    // Pre-compute the card height. The 4 slider rows (Position / Scale / Spacing / Rotation) use the
+    // ADAPTIVE slider-with-chip, which DEMOTES the label to its own row when the card's inner width is
+    // narrow — so each slider row is taller then. `slider_with_chip_height` reports that exact height, so
+    // the card background grows to contain them (the bug: a fixed `ROW_H` per row overflowed the card and
+    // the next section overlapped — Enio 2026-06-29). Unit is a (non-adaptive) dropdown row (ROW_H + Sm).
+    let slider_row_h = ph2d_editor_core::widget::slider_with_chip_height(ROW_H_PX, inner_w) + xs;
+    let rows_h = slider_row_h * 4.0 + (ROW_H_PX + sm); // LITERAL-PX-OK: 4 slider rows (Position/Scale/Spacing/Rotation)
     let card_h = pad + title_h + rows_h + xs;
     let card = Rect::new(x, y, content_w, card_h);
     fill_rounded_rect(
@@ -322,7 +323,6 @@ fn paint_jitter_card(
         resolve(ColorToken::Border, theme),
     );
     let inner_x = x + pad;
-    let inner_w = (content_w - pad * 2.0).max(0.0);
     paint_text(
         ctx.text_system,
         ctx.scene,

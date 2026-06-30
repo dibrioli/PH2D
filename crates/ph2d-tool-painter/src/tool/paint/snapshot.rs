@@ -56,6 +56,8 @@ impl PainterTool {
                 f32::from(s.id),
             ];
         }
+        // Per-layer blend + the brush-only per-layer opacity arrays (the "B" chip + the opacity box).
+        let (shape_layer_blend, shape_layer_opacity) = self.paint.shape_layers.panel_blend_arrays();
         BrushSettings {
             size_px: b.radius_px,
             size_norm: size_px_to_norm(b.radius_px),
@@ -122,6 +124,8 @@ impl PainterTool {
             shape_per_layer_color: self.paint.shape_layers.per_layer_color(),
             shape_layer_color_on: self.paint.shape_layers.snapshot().1,
             shape_layer_color: self.paint.shape_layers.snapshot().2,
+            shape_layer_blend,
+            shape_layer_opacity,
             dab_flatten: b.dab_flatten,
             dab_angle_deg: b.dab_angle_deg,
             texture_ramp_enabled: self.paint.texture_ramp_enabled,

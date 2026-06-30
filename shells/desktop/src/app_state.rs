@@ -454,6 +454,11 @@ pub(crate) struct App {
     /// sprite in-place (no Vello overlay duplicating the image). `None`
     /// when the preview cache is `None`.
     pub(crate) painter_preview_gpu: Option<PainterPreviewGpu>,
+    /// GPU slot backing the live preview of a sprite used as the brush **Shape** while it is NOT the
+    /// selected sprite — so brush opacity/blend remote-control edits show on it in real time. A SECOND,
+    /// independent slot/override from [`Self::painter_preview_gpu`] (the active sprite): the painter bridge
+    /// composites the stashed Shape-source document into it. `None` when no non-selected Shape source.
+    pub(crate) painter_shape_source_preview_gpu: Option<PainterPreviewGpu>,
     /// GPU live-preview session for the Painter (ADR-0045 Phase 3 step 2):
     /// holds the `LayerCompositor` + straight→premul blit. Lazily built on the
     /// first GPU-representable frame and reused for the tool session; drives the

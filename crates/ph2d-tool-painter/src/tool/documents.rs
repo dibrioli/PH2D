@@ -51,6 +51,11 @@ impl PainterTool {
         {
             let stashed = self.stash_current_doc();
             self.doc_cache.insert(old, stashed);
+            // If the outgoing doc IS the Shape source, it now needs a live preview rendered (it's no
+            // longer the active sprite, so the bridge must drive its composite into a preview slot).
+            if Some(old) == self.shape_source_doc {
+                self.shape_source_preview_dirty = true;
+            }
         }
         self.bound_doc = Some(entity);
         match self.doc_cache.remove(&entity) {
@@ -93,6 +98,86 @@ impl PainterTool {
         self.preview_upload_bbox = None;
         self.edited_since_bind = false;
         self.layers_revision = self.layers_revision.wrapping_add(1);
+    }
+
+    /// Set layer `id`'s **opacity** in the SHAPE SOURCE document `src` — the brush's per-layer opacity box
+    /// is a remote control of that layer. If `src` is the bound (live) doc, edit it directly + re-composite
+    /// the visible sprite; else (the source sprite is stashed because the artist switched away to paint a
+    /// DIFFERENT sprite with this shape) edit its STASHED stack, so the change persists and shows when the
+    /// artist re-selects that sprite. Never touches the painted document's layers (the bug). No-op if `src`
+    /// isn't loaded.
+    pub(crate) fn set_shape_source_layer_opacity(
+        &mut self,
+        src: Option<u64>,
+        id: RtLayerId,
+        v: f32,
+    ) {
+        if src == self.bound_doc {
+            self.set_layer_opacity(id, v);
+        } else if let Some(d) = src
+            && let Some(stashed) = self.doc_cache.get_mut(&d)
+        {
+            stashed.layers.set_opacity(id, v);
+            self.shape_source_preview_dirty = true; // re-render its live preview (it's not selected)
+        }
+    }
+
+    /// Set layer `id`'s **blend mode** in the SHAPE SOURCE document `src` — the blend dropdown's remote
+    /// control. Same live-vs-stashed routing as [`Self::set_shape_source_layer_opacity`].
+    pub(crate) fn set_shape_source_layer_blend(
+        &mut self,
+        src: Option<u64>,
+        id: RtLayerId,
+        mode: BlendMode,
+    ) {
+        if src == self.bound_doc {
+            self.set_layer_blend_mode(id, mode);
+        } else if let Some(d) = src
+            && let Some(stashed) = self.doc_cache.get_mut(&d)
+        {
+            stashed.layers.set_blend_mode(id, mode);
+            self.shape_source_preview_dirty = true; // re-render its live preview (it's not selected)
+        }
+    }
+
+    /// The STASHED Shape source sprite id whose live preview the bridge should drive — `Some` only when a
+    /// multi-layer Shape is captured from a sprite that is NOT the one currently being painted (so it sits
+    /// in `doc_cache`). `None` when the source IS the active doc (the normal active preview covers it) or
+    /// there is no captured Shape. The bridge suppresses this sprite + samples its composited preview.
+    pub fn shape_source_preview_sprite(&self) -> Option<u64> {
+        let src = self.shape_source_doc?;
+        if Some(src) == self.bound_doc || self.brush_shape_layers().0 == 0 {
+            return None;
+        }
+        self.doc_cache.contains_key(&src).then_some(src)
+    }
+
+    /// Composite the STASHED Shape source document into premultiplied-ish RGBA `(bytes, w, h)` — but ONLY
+    /// when its preview is dirty (it was just stashed, or a brush opacity/blend remote-control edited it).
+    /// Clears the dirty flag. `None` when not dirty / no stashed source / it has zero size. The bridge
+    /// uploads the result into a per-sprite preview slot so the non-selected sprite reflects the edit live.
+    pub fn take_shape_source_preview(&mut self) -> Option<(Vec<u8>, u32, u32)> {
+        if !self.shape_source_preview_dirty {
+            return None;
+        }
+        let src = self.shape_source_preview_sprite()?;
+        let stashed = self.doc_cache.get(&src)?;
+        let (w, h) = stashed.source_size;
+        if w == 0 || h == 0 {
+            return None;
+        }
+        self.shape_source_preview_dirty = false;
+        let active = stashed.layers.active().unwrap_or(RtLayerId(0));
+        let src_px = ToolPixelSource {
+            active_id: active,
+            active_rgba: stashed.canvas_rgba.as_slice(),
+            images: &stashed.images,
+        };
+        Some((
+            crate::compositor::composite(&stashed.layers, &src_px, w, h),
+            w,
+            h,
+        ))
     }
 }
 

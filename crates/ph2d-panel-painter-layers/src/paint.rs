@@ -65,9 +65,7 @@ pub(crate) fn paint(_state: &mut PainterLayersPanelState, ctx: &mut PaintCtx) {
 
     let rect: Rect = ctx.layout.painter_layers;
     let theme = ctx.host.theme();
-    state::set_pending_blend_dd(None);
-    state::set_pending_adj_menu(None);
-    state::set_pending_brush_blend_dd(None);
+    state::reset_frame_popovers();
 
     ctx.host
         .store_mut()

@@ -2,7 +2,7 @@
 
 use super::*;
 use crate::spec::BrushSpec;
-use crate::texture::{ImageMask, TextureKind};
+use crate::texture::{ImageMask, ImageRgb, TextureKind};
 
 /// A BrushSpec whose Shape is an Image (so each layer's silhouette REPLACES the falloff), no Grain.
 fn shape_image_spec() -> BrushSpec {
@@ -33,7 +33,7 @@ fn center_rgba(stamp: &ColorStampMask) -> ([f32; 3], f32) {
 fn single_full_layer_paints_its_colour_everywhere() {
     let spec = shape_image_spec();
     let l = layer([true, true, true, true]);
-    let stamp = render_color_stamp_mask(&spec, &[mask(&l)], &[[1.0, 0.0, 0.0]], None, None, 16);
+    let stamp = render_color_stamp_mask(&spec, &[mask(&l)], &[[1.0, 0.0, 0.0]], &[], &[], None, None, 16);
     let (rgb, a) = center_rgba(&stamp);
     assert!(a > 0.95, "full layer ⇒ opaque: {a}");
     assert!(
@@ -52,6 +52,8 @@ fn higher_layer_paints_above_the_lower_one() {
         &spec,
         &[mask(&bottom), mask(&top)],
         &[[1.0, 0.0, 0.0], [0.0, 1.0, 0.0]],
+        &[],
+        &[],
         None,
         None,
         16,
@@ -74,6 +76,8 @@ fn a_transparent_top_lets_the_lower_layer_show_through() {
         &spec,
         &[mask(&bottom), mask(&top)],
         &[[1.0, 0.0, 0.0], [0.0, 1.0, 0.0]],
+        &[],
+        &[],
         None,
         None,
         16,
@@ -88,7 +92,7 @@ fn a_transparent_top_lets_the_lower_layer_show_through() {
 #[test]
 fn no_layers_is_fully_transparent() {
     let spec = shape_image_spec();
-    let stamp = render_color_stamp_mask(&spec, &[], &[], None, None, 8);
+    let stamp = render_color_stamp_mask(&spec, &[], &[], &[], &[], None, None, 8);
     let (_, a) = center_rgba(&stamp);
     assert_eq!(a, 0.0, "no layers ⇒ nothing painted");
 }
@@ -98,7 +102,7 @@ fn blit_composites_the_stamp_colour_onto_the_canvas() {
     // A 1-layer blue stamp blitted opaquely onto a black canvas turns the centre blue.
     let spec = shape_image_spec();
     let l = layer([true, true, true, true]);
-    let stamp = render_color_stamp_mask(&spec, &[mask(&l)], &[[0.0, 0.0, 1.0]], None, None, 32);
+    let stamp = render_color_stamp_mask(&spec, &[mask(&l)], &[[0.0, 0.0, 1.0]], &[], &[], None, None, 32);
     let (w, h) = (16u32, 16u32);
     let mut buf = vec![0u8; (w * h * 4) as usize];
     let rect = blit_color_stamp(&mut buf, w, h, [8.0, 8.0], 6.0, &stamp, &spec, 1.0, false);
@@ -115,8 +119,8 @@ fn blit_composites_the_stamp_colour_onto_the_canvas() {
 fn deterministic_render() {
     let spec = shape_image_spec();
     let l = layer([true, false, true, true]);
-    let a = render_color_stamp_mask(&spec, &[mask(&l)], &[[0.3, 0.6, 0.9]], None, None, 24);
-    let b = render_color_stamp_mask(&spec, &[mask(&l)], &[[0.3, 0.6, 0.9]], None, None, 24);
+    let a = render_color_stamp_mask(&spec, &[mask(&l)], &[[0.3, 0.6, 0.9]], &[], &[], None, None, 24);
+    let b = render_color_stamp_mask(&spec, &[mask(&l)], &[[0.3, 0.6, 0.9]], &[], &[], None, None, 24);
     assert_eq!(a.data, b.data, "same inputs ⇒ byte-identical stamp (HR-5)");
 }
 
@@ -132,6 +136,8 @@ fn grain_colour_ramp_tints_the_composite() {
         &spec,
         &[mask(&l)],
         &[[1.0, 1.0, 1.0]],
+        &[],
+        &[],
         None,
         Some(&ramp),
         16,
@@ -141,6 +147,36 @@ fn grain_colour_ramp_tints_the_composite() {
     assert!(
         rgb[1] > 0.9 && rgb[0] < 0.1 && rgb[2] < 0.1,
         "the Grain ramp tints the white tip green: {rgb:?}"
+    );
+}
+
+#[test]
+fn texture_color_layer_paints_its_own_rgb_not_the_flat_tint() {
+    // A full-cover layer whose flat tint is RED but whose captured RGB image is BLUE. With Texture
+    // Color (the `layer_rgb` slot present) the stamp must read the layer's OWN blue, not the red tint.
+    let spec = shape_image_spec();
+    let l = layer([true, true, true, true]);
+    let blue_rgb: Vec<u8> = [0u8, 0, 255].repeat(4); // 2×2 texels, all blue
+    let rgb = ImageRgb {
+        rgb: &blue_rgb,
+        width: 2,
+        height: 2,
+    };
+    let stamp = render_color_stamp_mask(
+        &spec,
+        &[mask(&l)],
+        &[[1.0, 0.0, 0.0]], // flat tint = red (must be ignored)
+        &[Some(rgb)],
+        &[],
+        None,
+        None,
+        16,
+    );
+    let (c, a) = center_rgba(&stamp);
+    assert!(a > 0.95, "covered: {a}");
+    assert!(
+        c[2] > 0.95 && c[0] < 0.05 && c[1] < 0.05,
+        "Texture Color samples the layer's own blue RGB, not the red flat tint: {c:?}"
     );
 }
 
@@ -166,7 +202,7 @@ fn fused_per_layer_accumulate_is_bit_identical_to_sequential() {
     let stamps: Vec<ColorStampMask> = [&l0, &l1, &l2, &l3]
         .iter()
         .zip(cols.iter())
-        .map(|(l, c)| render_color_stamp_mask(&spec, &[mask(l)], &[*c], None, None, 24))
+        .map(|(l, c)| render_color_stamp_mask(&spec, &[mask(l)], &[*c], &[], &[], None, None, 24))
         .collect();
     let n = stamps.len();
 

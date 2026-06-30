@@ -20,8 +20,8 @@ use ph2d_tool_painter::BrushSettings;
 use crate::paint_brush_top::{paint_checkbox_row, paint_collapsible_section};
 
 /// Radial segment-count UI range (mirrors `ph2d_painter_brush::SYMMETRY_{MIN,MAX}_SEGMENTS`).
-const SEG_MIN: f32 = 3.0;
-const SEG_MAX: f32 = 12.0;
+const SEG_MIN: f32 = 3.0; // LITERAL-PX-OK: radial-symmetry segment count, not a design value
+const SEG_MAX: f32 = 12.0; // LITERAL-PX-OK: radial-symmetry segment count, not a design value
 
 /// Paint the collapsible **Symmetry** section. Collapsed → just the header. Expanded → the "Use
 /// Symmetry" master checkbox, then (only while enabled) the "Circular" checkbox and the mode-specific
@@ -160,7 +160,7 @@ fn paint_segments_row(
     y: f32,
     segments: u32,
 ) -> f32 {
-    let seg = (segments as f32).clamp(SEG_MIN, SEG_MAX);
+    let seg = (segments as f32).clamp(SEG_MIN, SEG_MAX); // CLAMP-OK: segment count, literal non-NaN const bounds
     let track = (seg - SEG_MIN) / (SEG_MAX - SEG_MIN);
     let display = format!("{}", seg as u32);
     let scene = &mut *ctx.scene;

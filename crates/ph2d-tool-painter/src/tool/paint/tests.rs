@@ -1545,6 +1545,163 @@ fn changing_source_layer_opacity_re_captures_the_shape() {
 }
 
 #[test]
+fn shape_layer_opacity_edits_its_source_document_layer_two_way() {
+    // The per-layer opacity box is TWO-WAY with the Shape SOURCE layer's opacity slider: editing the box
+    // edits exactly that source layer's opacity (Enio 2026-06-29). Uses `white_canvas` → `set_source`, so
+    // the painter is NOT document-bound (`bound_doc == None`) — the real case where the box wasn't updating
+    // the sprite layer; the guard is `bound_doc == shape_source_doc`, which holds for the unbound doc too.
+    let mut t = white_canvas(64, 6.0);
+    t.layers.add_raster("L2", 64, 64).expect("add layer");
+    t.capture_layers_as_brush_shape(); // shape source == the (unbound) painted document
+    t.toggle_brush_shape_per_layer_color();
+    t.set_brush_shape_layer_opacity(0, 0.5);
+    let s = t.brush_settings();
+    assert!(
+        (s.shape_layer_opacity[0] - 0.5).abs() < 1e-3,
+        "the box value mirrors into the brush snapshot: {}",
+        s.shape_layer_opacity[0]
+    );
+    let changed = t
+        .layers
+        .root()
+        .iter()
+        .filter(|&&id| {
+            t.layers
+                .get(id)
+                .is_some_and(|l| (l.opacity - 0.5).abs() < 1e-3)
+        })
+        .count();
+    assert_eq!(
+        changed, 1,
+        "exactly the ONE source document layer's opacity changed (two-way), not the others"
+    );
+}
+
+#[test]
+#[allow(non_snake_case)]
+fn shape_opacity_and_blend_remote_control_the_STASHED_source_sprite() {
+    use ph2d_painter_effects::BlendMode;
+    // The shape source sprite is used to paint OTHER sprites. After capturing sprite 1 as the Shape and
+    // switching to paint sprite 2, sprite 1 is STASHED — yet editing opacity/blend in the brush must still
+    // update sprite 1's layer (Enio 2026-06-29: "a sprite usada como shape, que agora não está mais
+    // selecionada, deve ser atualizada"), never sprite 2's. Verified by switching back to sprite 1.
+    let mut t = PainterTool::default();
+    t.bind_document(1, vec![255u8; 64 * 64 * 4], 64, 64);
+    t.layers.add_raster("L2", 64, 64).expect("add"); // multi-layer ⇒ sprite 1 gets stashed on switch
+    t.capture_layers_as_brush_shape(); // shape source = sprite 1
+    t.toggle_brush_shape_per_layer_color();
+    t.bind_document(2, vec![0u8; 32 * 32 * 4], 32, 32); // paint sprite 2 — sprite 1 is now stashed
+    let two_layers = t.brush_settings().shape_layer_count >= 2;
+    t.set_brush_shape_layer_opacity(0, 0.4);
+    if two_layers {
+        t.set_brush_shape_layer_blend(1, BlendMode::Multiply.to_u8());
+    }
+    // Sprite 2's layers must be UNTOUCHED (we edited the stashed sprite 1, not the painted sprite 2).
+    assert!(
+        t.layers.root().iter().all(|&id| t
+            .layers
+            .get(id)
+            .is_some_and(|l| (l.opacity - 0.4).abs() > 1e-3)),
+        "the painted sprite 2 must NOT have its opacity changed"
+    );
+    // Switch BACK to sprite 1 — its stashed stack (restored) must carry the brush edits.
+    t.bind_document(1, vec![0u8; 4], 1, 1);
+    let op_changed = t
+        .layers
+        .root()
+        .iter()
+        .filter(|&&id| {
+            t.layers
+                .get(id)
+                .is_some_and(|l| (l.opacity - 0.4).abs() < 1e-3)
+        })
+        .count();
+    assert_eq!(
+        op_changed, 1,
+        "the stashed shape-source sprite's layer opacity was remote-controlled"
+    );
+    if two_layers {
+        let blend_changed = t
+            .layers
+            .root()
+            .iter()
+            .filter(|&&id| {
+                t.layers
+                    .get(id)
+                    .is_some_and(|l| l.blend_mode == BlendMode::Multiply)
+            })
+            .count();
+        assert_eq!(
+            blend_changed, 1,
+            "the stashed shape-source sprite's layer blend was remote-controlled"
+        );
+    }
+}
+
+#[test]
+fn shape_layer_blend_edits_its_source_document_layer_two_way() {
+    use ph2d_painter_effects::BlendMode;
+    // The blend dropdown is a REMOTE CONTROL of the source layer's blend mode (Enio 2026-06-29). Editing it
+    // edits that source layer's `blend_mode` (and the Layers panel shows it). Layer index 1 is a non-base
+    // layer (the base, index 0, has no blend).
+    let mut t = white_canvas(64, 6.0);
+    t.layers.add_raster("L2", 64, 64).expect("add layer");
+    t.capture_layers_as_brush_shape();
+    t.toggle_brush_shape_per_layer_color();
+    let s = t.brush_settings();
+    if s.shape_layer_count < 2 {
+        return; // capture grabbed a single layer — the 2-layer blend path isn't exercised here
+    }
+    t.set_brush_shape_layer_blend(1, BlendMode::Multiply.to_u8());
+    let changed = t
+        .layers
+        .root()
+        .iter()
+        .filter(|&&id| {
+            t.layers
+                .get(id)
+                .is_some_and(|l| l.blend_mode == BlendMode::Multiply)
+        })
+        .count();
+    assert_eq!(
+        changed, 1,
+        "exactly the ONE source layer's blend mode changed (remote control), not the others"
+    );
+    assert_eq!(
+        t.brush_settings().shape_layer_blend[1],
+        BlendMode::Multiply.to_u8(),
+        "the brush snapshot mirrors the picked blend"
+    );
+}
+
+#[test]
+fn manual_blend_and_opacity_reflect_in_the_snapshot_and_paint() {
+    use ph2d_painter_brush::StrokeMethod;
+    // The "B" blend pick + the per-layer opacity box land in the snapshot the panel reads, and the
+    // stroke paints. (Texture Color is the default — `color_on` off — so a custom colour is opt-in.)
+    let mut t = white_canvas(64, 6.0);
+    t.set_brush_shape_layers(vec![(vec![255u8; 64], 8, 8), (vec![255u8; 64], 8, 8)]);
+    t.toggle_brush_shape_per_layer_color();
+    t.set_brush_shape_layer_blend(1, 1); // Multiply on the top layer
+    t.set_brush_shape_layer_opacity(0, 0.4); // brush-only opacity on the bottom layer
+    let s = t.brush_settings();
+    assert_eq!(
+        s.shape_layer_blend[1], 1,
+        "manual blend reflects in the snapshot"
+    );
+    assert!(
+        (s.shape_layer_opacity[0] - 0.4).abs() < 1e-3,
+        "per-layer opacity reflects in the snapshot: {}",
+        s.shape_layer_opacity[0]
+    );
+    // The stroke still lands (no dead no-op).
+    t.paint.brush.stroke_method = StrokeMethod::Space;
+    t.on_canvas_pointer(cp([32.0, 32.0], PointerPhase::Down));
+    let c = px(&t, 64, 32, 32);
+    assert!(c[3] > 0, "a per-layer-colour dab paints something: {c:?}");
+}
+
+#[test]
 fn shape_ramp_swatch_select_option_sets_the_stop_colour() {
     use ph2d_editor_core::ids as core_ids;
     use ph2d_editor_core::tool::PanelEvent;

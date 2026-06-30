@@ -8,7 +8,7 @@
 use super::{ColorStampMask, grain_modulation, sample_color_mask};
 use crate::dab::{DirtyRect, encode};
 use crate::spec::BrushSpec;
-use crate::texture::ImageMask;
+use crate::texture::{ImageMask, ImageRgb, sample_shape_rgb_unit};
 
 /// Over-accumulate a layer's per-dab **coverage** (the `stamp`'s alpha × `coverage`) into the per-stroke
 /// `cov` map (`width×height`, `u8` `[0,255]`), at `center`/`radius`. The COLOUR is ignored — only the
@@ -169,9 +169,12 @@ pub fn accumulate_color_stamps_fused(
 /// (Rake / Random rotation) and the Grain. This is the DYNAMIC per-layer-colour path: unlike the cached
 /// [`accumulate_color_stamp_coverage`] (constant orientation, one colour per layer, baked once), it
 /// resamples the silhouette per pixel so each dab can rotate (Random / Rake) and carry its own colour
-/// (Randomize Color rides on `color`). The layers stay separate maps so they still recomposite in z-order
-/// (the higher above the lower across the whole stroke). `coverage` = the dab's Flow × Strength × pressure
-/// coverage. `over` accumulation (`s + prev·(1−s)`). Returns the touched rect. Deterministic (HR-5).
+/// (Randomize Color rides on `color`). When `rgb` is `Some` (the layer's "Texture Color" mode), the per-
+/// pixel colour is sampled from the layer's OWN captured RGB at the same coord as the silhouette instead
+/// of the flat `color` — so the tip paints with the texture's real colours. The layers stay separate maps
+/// so they still recomposite in z-order (the higher above the lower across the whole stroke). `coverage` =
+/// the dab's Flow × Strength × pressure coverage. `over` accumulation (`s + prev·(1−s)`). Returns the
+/// touched rect. Deterministic (HR-5).
 #[allow(clippy::too_many_arguments)]
 #[must_use]
 pub fn accumulate_shape_layer_rgba(
@@ -186,6 +189,7 @@ pub fn accumulate_shape_layer_rgba(
     grain: Option<(&crate::texture::TexDabBasis, Option<&ImageMask>)>,
     grain_ramp: Option<&[[f32; 4]]>,
     color: [f32; 3],
+    rgb: Option<&ImageRgb>,
     coverage: f32,
 ) -> Option<DirtyRect> {
     let coverage = coverage.clamp(0.0, 1.0);
@@ -218,9 +222,15 @@ pub fn accumulate_shape_layer_rgba(
             if a <= 0.0 {
                 continue;
             }
+            // The per-pixel colour: the layer's OWN captured RGB (Texture Color mode) sampled at the same
+            // coord as the silhouette, else the flat resolved `color`.
+            let base = match rgb {
+                Some(img) => sample_shape_rgb_unit(&spec.shape, shape_basis, u, v, img),
+                None => color,
+            };
             // The Grain modulates per channel: a scalar (value) without a ramp, or `ramp[g]` (a colour
             // that tints this layer's colour) with one — the alpha channel scales coverage either way.
-            let mut tint = color;
+            let mut tint = base;
             if let Some((gb, gi)) = grain {
                 // Canvas-fixed Grain (Tiled / Stencil) MUST sample at the absolute canvas pixel so the
                 // Stencil rect mask applies; the dab-local `sample_unit` has no rect → colour leaked
@@ -231,7 +241,7 @@ pub fn accumulate_shape_layer_rgba(
                     crate::texture::sample_unit(&spec.texture, gb, u, v, gi)
                 };
                 let m = grain_modulation(g, depth, grain_ramp);
-                tint = [color[0] * m[0], color[1] * m[1], color[2] * m[2]];
+                tint = [base[0] * m[0], base[1] * m[1], base[2] * m[2]];
                 a *= m[3];
                 // Stencil: no paint outside the rect even when a ramp recolours `g = 0` (Enio 2026-06-28).
                 a *= crate::texture::stencil_gate(&spec.texture, gb, px, py);

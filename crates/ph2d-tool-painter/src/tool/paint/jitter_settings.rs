@@ -166,7 +166,18 @@ impl PainterTool {
                         self.set_symmetry_segments((3.0 + v * 9.0).round() as u32);
                         true
                     }
-                    _ => false,
+                    // Per-layer-colour opacity box (`0..100`) → the source document layer's opacity.
+                    x => {
+                        let mut hit = false;
+                        for i in 0..super::shape_layers::MAX_SHAPE_LAYERS as u8 {
+                            if x == core_ids::painter_shape_layer_opacity_id(i) {
+                                self.set_brush_shape_layer_opacity(i as usize, v / 100.0);
+                                hit = true;
+                                break;
+                            }
+                        }
+                        hit
+                    }
                 }
             }
             // ── Shape **source** picker (None / Image) — sibling of the Shape Click/SetValue routes
@@ -293,6 +304,12 @@ impl PainterTool {
                         {
                             let n = |c: i32| (c as f32 / 255.0).clamp(0.0, 1.0);
                             self.set_brush_shape_layer_color(i as usize, [n(r), n(g), n(b)]);
+                        }
+                        return true;
+                    }
+                    if *id == core_ids::painter_shape_layer_blend_id(i) {
+                        if let Ok(mode) = value.parse::<u8>() {
+                            self.set_brush_shape_layer_blend(i as usize, mode);
                         }
                         return true;
                     }

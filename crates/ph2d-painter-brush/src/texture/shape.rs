@@ -8,6 +8,20 @@ use super::{
     TextureMapping, TextureSettings,
 };
 
+/// A borrowed **straight RGB** image (3 bytes per texel, row-major), aligned with a sibling [`ImageMask`]
+/// (same `width`/`height`). Supplied to the per-layer-colour real-colour path so a captured Shape layer
+/// can paint with its OWN per-pixel colour instead of a flat tint. Sampled with the SAME centre-coord
+/// clamped bilinear as the silhouette, so colour + coverage line up texel-for-texel.
+#[derive(Clone, Copy, Debug)]
+pub struct ImageRgb<'a> {
+    /// Straight RGB bytes, row-major, at least `width * height * 3` long.
+    pub rgb: &'a [u8],
+    /// Image width in texels.
+    pub width: u32,
+    /// Image height in texels.
+    pub height: u32,
+}
+
 /// The Shape **silhouette composition** rule, shared by the engine ([`crate::BrushSpec::compose_shape_silhouette`])
 /// and the panel's live preview ([`render_shape_preview`]): an `Image` kind IS the sampled tip (it
 /// REPLACES the falloff, staying crisp); any procedural kind is `falloff × sample` (MASKED by the
@@ -208,6 +222,63 @@ fn shape_value(
 /// coords already bounded to `[-1, 1]` by the caller. The Shape reads as ONE finite tip; outside the
 /// image the caller returns `0`, and inside we clamp the bilinear taps to the border. Centre-coord
 /// bilinear; a malformed buffer reads `0.0` (an inert silhouette, so the dab paints nothing).
+/// The **straight-RGB** sibling of [`sample_shape_unit`]: at the dab-relative unit coord `(u, v)`, map
+/// through the SAME footprint / Size / rotation / Offset frame as the silhouette, then read the layer's
+/// own per-pixel colour from `rgb`. Outside the `[-1, 1]²` tip → `[0, 0, 0]` (the caller weights it by
+/// the silhouette alpha, which is also `0` there). Only meaningful for an `Image` Shape (a captured
+/// layer); a procedural Shape has no per-pixel colour, so it returns the fallback `[0, 0, 0]`.
+/// Deterministic (HR-5: `+ − × ÷` + the shared bilinear).
+#[must_use]
+pub fn sample_shape_rgb_unit(
+    s: &TextureSettings,
+    b: &TexDabBasis,
+    u: f32,
+    v: f32,
+    rgb: &ImageRgb,
+) -> [f32; 3] {
+    if s.kind != TextureKind::Image {
+        return [0.0; 3];
+    }
+    let sx = s.size[0].clamp(TEX_SIZE_MIN, TEX_SIZE_MAX);
+    let sy = s.size[1].clamp(TEX_SIZE_MIN, TEX_SIZE_MAX);
+    let f = b.footprint.apply([u, v]);
+    let rel = [f[0] * sx, f[1] * sy];
+    let tex = [
+        rel[0] * b.u[0] + rel[1] * b.u[1] + s.offset[0],
+        rel[0] * b.v[0] + rel[1] * b.v[1] + s.offset[1],
+    ];
+    if tex[0].abs() > 1.0 || tex[1].abs() > 1.0 {
+        return [0.0; 3];
+    }
+    sample_image_clamped_rgb(rgb, tex[0], tex[1])
+}
+
+/// Bilinear sample of `img`'s straight RGB, **clamped** to the image edges (centre-coord), for footprint
+/// coords already bounded to `[-1, 1]`. The colour twin of [`sample_image_clamped`]; a malformed buffer
+/// reads `[0, 0, 0]`.
+fn sample_image_clamped_rgb(img: &ImageRgb, u: f32, v: f32) -> [f32; 3] {
+    let (w, h) = (img.width.max(1), img.height.max(1));
+    if img.rgb.len() < (w as usize) * (h as usize) * 3 {
+        return [0.0; 3];
+    }
+    let x = (u * 0.5 + 0.5) * w as f32 - 0.5;
+    let y = (v * 0.5 + 0.5) * h as f32 - 0.5;
+    let (x0, y0) = (x.floor(), y.floor());
+    let (tx, ty) = (x - x0, y - y0);
+    let clamp = |i: i32, n: u32| i.clamp(0, n as i32 - 1) as usize;
+    let (xi0, xi1) = (clamp(x0 as i32, w), clamp(x0 as i32 + 1, w));
+    let (yi0, yi1) = (clamp(y0 as i32, h), clamp(y0 as i32 + 1, h));
+    let at =
+        |xi: usize, yi: usize, k: usize| f32::from(img.rgb[(yi * w as usize + xi) * 3 + k]) / 255.0;
+    let lerp = |a: f32, b: f32, t: f32| a + (b - a) * t;
+    let ch = |k: usize| {
+        let top = lerp(at(xi0, yi0, k), at(xi1, yi0, k), tx);
+        let bot = lerp(at(xi0, yi1, k), at(xi1, yi1, k), tx);
+        lerp(top, bot, ty)
+    };
+    [ch(0), ch(1), ch(2)]
+}
+
 fn sample_image_clamped(img: &ImageMask, u: f32, v: f32) -> f32 {
     let (w, h) = (img.width.max(1), img.height.max(1));
     if img.lum.len() < (w as usize) * (h as usize) {

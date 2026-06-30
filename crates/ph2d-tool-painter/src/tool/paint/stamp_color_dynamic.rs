@@ -7,8 +7,10 @@
 use super::{Region, union_region};
 use crate::tool::PainterTool;
 use ph2d_painter_brush::{
-    BrushSpec, Dab, StrokeMethod, accumulate_shape_layer_rgba, blend_over, shift_colors_like,
+    BrushSpec, Dab, ImageRgb, StrokeMethod, accumulate_shape_layer_rgba, blend_over,
+    shift_colors_like,
 };
+use ph2d_painter_effects::{BlendMode, apply_blend};
 use std::sync::Arc;
 
 impl PainterTool {
@@ -61,6 +63,11 @@ impl PainterTool {
             // The layers' resolved base colours (custom pick, else the brush base) — fixed across the
             // batch; Randomize Color then re-applies each dab's HSV shift to ALL of them below.
             let base_colors = self.paint.shape_layers.resolved_colors(brush.color);
+            // Texture-Color layers sample their OWN per-pixel RGB (instead of the flat colour); `None`
+            // for a tint layer. Fixed across the batch.
+            let layer_rgb: Vec<Option<ImageRgb>> = (0..masks.len())
+                .map(|i| self.paint.shape_layers.rgb_image(i))
+                .collect();
             for d in dabs {
                 let spec = BrushSpec {
                     radius_px: d.radius_px,
@@ -110,6 +117,7 @@ impl PainterTool {
                         grain,
                         grain_ramp,
                         colors[i],
+                        layer_rgb.get(i).and_then(|o| o.as_ref()),
                         cov,
                     ) {
                         let rect = Region {
@@ -128,6 +136,13 @@ impl PainterTool {
         let Some(bb) = bbox else {
             return;
         };
+        // Each layer's blend mode (the "B" dropdown) + opacity (a brush-only scale on its tip
+        // contribution). `any_blend` gates per-layer blending — all Normal keeps the premultiplied over.
+        let blends: Vec<u8> = (0..n)
+            .map(|i| self.paint.shape_layers.effective_blend(i))
+            .collect();
+        let opac = self.paint.shape_layers.opacities();
+        let any_blend = blends.iter().any(|&b| b != 0);
         let blend = brush.blend;
         {
             let buf = Arc::make_mut(&mut self.canvas_rgba);
@@ -141,18 +156,49 @@ impl PainterTool {
                     if !pls.cov.iter().take(n).any(|m| m[p4 + 3] != 0) {
                         continue;
                     }
-                    // (1) Composite the per-layer premultiplied maps over each other (z-order) → stroke.
-                    let mut s = [0.0f32; 4];
-                    for map in pls.cov.iter().take(n) {
-                        let la = f32::from(map[p4 + 3]) / 255.0;
-                        if la > 0.0 {
-                            let inv = 1.0 - la;
-                            s[0] = f32::from(map[p4]) / 255.0 + s[0] * inv;
-                            s[1] = f32::from(map[p4 + 1]) / 255.0 + s[1] * inv;
-                            s[2] = f32::from(map[p4 + 2]) / 255.0 + s[2] * inv;
-                            s[3] = la + s[3] * inv;
+                    // (1) Composite the per-layer premultiplied maps (z-order) into one STRAIGHT stroke.
+                    // Default (all Normal): premultiplied source-over then un-premultiply — byte-identical
+                    // to the prior path. With a per-layer blend pick: un-premultiply each layer and compose
+                    // it onto the accumulated lower layers under its own mode (the layer-system formulas).
+                    let stroke = if any_blend {
+                        let mut s = [0.0f32; 4]; // straight rgba
+                        for (i, map) in pls.cov.iter().take(n).enumerate() {
+                            let la = f32::from(map[p4 + 3]) / 255.0;
+                            if la > 0.0 {
+                                let inv = 1.0 / la;
+                                // Un-premultiply to straight, then scale the layer's alpha by its opacity.
+                                let c = [
+                                    f32::from(map[p4]) / 255.0 * inv,
+                                    f32::from(map[p4 + 1]) / 255.0 * inv,
+                                    f32::from(map[p4 + 2]) / 255.0 * inv,
+                                    la * opac[i],
+                                ];
+                                s = apply_blend(BlendMode::from_u8(blends[i]), s, c);
+                            }
                         }
-                    }
+                        s
+                    } else {
+                        let mut s = [0.0f32; 4]; // premultiplied rgba
+                        for (i, map) in pls.cov.iter().take(n).enumerate() {
+                            // Scale the premultiplied colour AND its alpha by the layer's opacity (linear
+                            // in premul space) — a brush-only opacity on that layer's tip contribution.
+                            let o = opac[i];
+                            let la = f32::from(map[p4 + 3]) / 255.0 * o;
+                            if la > 0.0 {
+                                let inv = 1.0 - la;
+                                s[0] = f32::from(map[p4]) / 255.0 * o + s[0] * inv;
+                                s[1] = f32::from(map[p4 + 1]) / 255.0 * o + s[1] * inv;
+                                s[2] = f32::from(map[p4 + 2]) / 255.0 * o + s[2] * inv;
+                                s[3] = la + s[3] * inv;
+                            }
+                        }
+                        if s[3] > 0.0 {
+                            let inv = 1.0 / s[3];
+                            [s[0] * inv, s[1] * inv, s[2] * inv, s[3]]
+                        } else {
+                            [0.0; 4]
+                        }
+                    };
                     // Base: the snapshot (incremental) or the canvas itself (fills — already restored to
                     // the pre-shape this move). Copy 4 bytes so the read ends before the write.
                     let pre = {
@@ -160,11 +206,10 @@ impl PainterTool {
                         [base[p4], base[p4 + 1], base[p4 + 2], base[p4 + 3]]
                     };
                     let mut acc = pre.map(|b| f32::from(b) / 255.0);
-                    // (2) Blend the stroke onto the base once (un-premultiply for `blend_over`).
-                    if s[3] > 0.0 {
+                    // (2) Blend the stroke onto the base once via the Brush blend mode.
+                    if stroke[3] > 0.0 {
                         let pre_alpha = acc[3];
-                        let inv = 1.0 / s[3];
-                        acc = blend_over(blend, acc, [s[0] * inv, s[1] * inv, s[2] * inv], s[3]);
+                        acc = blend_over(blend, acc, [stroke[0], stroke[1], stroke[2]], stroke[3]);
                         if alpha_locked {
                             acc[3] = pre_alpha;
                         }

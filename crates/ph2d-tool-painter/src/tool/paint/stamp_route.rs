@@ -67,6 +67,9 @@ impl PainterTool {
                 || brush.has_colour_jitter_amount()
                 || brush.has_per_dab_rotation()
                 || (brush.texture.is_active() && brush.texture.mapping.is_canvas_fixed())
+                // Texture colour (the default) samples each layer's per-pixel RGB — only the per-pixel
+                // dynamic path can (the cached stamp carries one flat colour per layer).
+                || self.paint.shape_layers.any_texture_color()
             {
                 self.stamp_dabs_per_layer_dynamic(dabs, &brush, alpha_locked, w, h);
             } else {

@@ -259,11 +259,12 @@ pub(super) fn run(
     // reused — HR-3).
     sort_scratch: &mut SortScratch,
     sort_inputs: &mut Vec<SortInput>,
-    // Tool live-preview override: when `Some`, the entity's
-    // `RenderInstance` is emitted with `texture_id` + `premultiplied`
-    // replaced. `None` = emit every sprite from its own `Sprite`
-    // source.
-    preview_override: Option<PreviewOverride>,
+    // Tool live-preview overrides: for each sprite with a matching entry,
+    // its `RenderInstance` is emitted with `texture_id` + `premultiplied`
+    // replaced. Empty = emit every sprite from its own `Sprite` source. A
+    // slice (not one `Option`) so SEVERAL sprites can preview at once — the
+    // ACTIVE painted sprite AND a non-selected sprite used as the brush Shape.
+    preview_overrides: &[PreviewOverride],
     // Project pixels-per-meter — converts a sprite's intrinsic-px
     // `offset` into the LOCAL meters `resolve_anchor` works in.
     pixels_per_meter: f32,
@@ -336,8 +337,10 @@ pub(super) fn run(
                 let culled = sim
                     .get::<VisibilityLayer>(sim_entity)
                     .is_some_and(|vl| !vl.visible_to(cull_mask));
-                let override_for_entity =
-                    preview_override.filter(|o| o.entity_bits == sim_entity.to_bits());
+                let override_for_entity = preview_overrides
+                    .iter()
+                    .copied()
+                    .find(|o| o.entity_bits == sim_entity.to_bits());
                 // W2.T4: CookedTexture sprites are now LIVE. The
                 // `cooked_texture_bridge` loader pass (run just before this
                 // extract) resolved each `logical_id` for the device tier and

@@ -13,6 +13,8 @@ use ph2d_painter_brush::{
     StrokeMethod, StrokePoint,
 };
 
+/// The imported brush-texture image type (`BrushTextureImage`), split from `brush_settings` (LOC cap).
+mod brush_image;
 /// Brush + Stroke-section parameter snapshot & setters (shares `PaintState`'s private brush access).
 mod brush_settings;
 /// The Curve stroke method's on-canvas point editor (submodule, as `brush_settings`).

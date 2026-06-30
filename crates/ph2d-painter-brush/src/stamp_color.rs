@@ -74,10 +74,13 @@ fn grain_modulation(g: f32, depth: f32, ramp: Option<&[[f32; 4]]>) -> [f32; 4] {
 /// (Grain-Depth-blended toward neutral white) — so the Grain ramp tints the multi-colour tip instead of
 /// only darkening it. Deterministic (HR-5).
 #[must_use]
+#[allow(clippy::too_many_arguments)]
 pub fn render_color_stamp_mask(
     spec: &BrushSpec,
     layers: &[ImageMask],
     layer_colors: &[[f32; 3]],
+    layer_rgb: &[Option<crate::texture::ImageRgb>],
+    layer_opacity: &[f32],
     grain_image: Option<&ImageMask>,
     grain_ramp: Option<&[[f32; 4]]>,
     size: u32,
@@ -119,11 +122,17 @@ pub fn render_color_stamp_mask(
                     u,
                     v,
                     Some(layer),
-                );
+                ) * layer_opacity.get(li).copied().unwrap_or(1.0);
                 if a <= 0.0 {
                     continue;
                 }
-                let c = layer_colors.get(li).copied().unwrap_or([0.0, 0.0, 0.0]);
+                // Texture Color: the layer paints its OWN per-pixel RGB (sampled at the same coord as the
+                // silhouette); else the flat resolved colour. Layers still composite "over" (z-order) —
+                // the per-layer blend modes apply at the on-canvas recomposite, not in this preview bake.
+                let c = match layer_rgb.get(li).and_then(|o| o.as_ref()) {
+                    Some(img) => crate::texture::sample_shape_rgb_unit(&spec.shape, &shape_basis, u, v, img),
+                    None => layer_colors.get(li).copied().unwrap_or([0.0, 0.0, 0.0]),
+                };
                 let inv_a = 1.0 - a;
                 acc[0] = c[0] * a + acc[0] * inv_a;
                 acc[1] = c[1] * a + acc[1] * inv_a;

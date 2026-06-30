@@ -91,8 +91,9 @@ fn mirror_value(store: &mut WidgetStore, id: NodeId, value: f32, decimals: usize
 /// One number box filling `rect` (the Inspector widget): mirror the live value, register its
 /// `[min, max]` range + `step` (so the drag-scrub is range-proportional + clamped and the stepper uses
 /// `step` — see `WidgetStore::set_number_range`), then paint with steppers + the edit buffer + caret.
+/// `pub(crate)` so the per-layer-colour opacity box (factory-id) reuses the exact app-standard widget.
 #[allow(clippy::too_many_arguments)]
-fn chip(
+pub(crate) fn chip(
     ctx: &mut PaintCtx,
     theme: ph2d_tokens::Theme,
     rect: Rect,

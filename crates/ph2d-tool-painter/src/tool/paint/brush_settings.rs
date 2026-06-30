@@ -8,37 +8,14 @@ use super::{
 };
 use crate::tool::PainterTool;
 use ph2d_painter_brush::{
-    BrushBlend, Falloff, FalloffPoint, HandleType, ImageMask, JitterUnit, MAX_FALLOFF_POINTS,
-    StrokeMethod, TEX_ANGLE_MAX_DEG, TEX_OFFSET_MAX, TEX_OFFSET_MIN, TEX_SIZE_MAX, TEX_SIZE_MIN,
-    TextureKind, TextureMapping,
+    BrushBlend, Falloff, FalloffPoint, HandleType, JitterUnit, MAX_FALLOFF_POINTS, StrokeMethod,
+    TEX_ANGLE_MAX_DEG, TEX_OFFSET_MAX, TEX_OFFSET_MIN, TEX_SIZE_MAX, TEX_SIZE_MIN, TextureKind,
+    TextureMapping,
 };
 
-/// An imported brush-texture image: owned grayscale luminance + dims, held in [`super::PaintState`]
-/// (heavy pixels can't live in the `Copy` `BrushSpec`); [`stamp_dabs`] borrows it as an [`ImageMask`].
-pub(super) struct BrushTextureImage {
-    lum: Vec<u8>,
-    width: u32,
-    height: u32,
-}
-
-impl BrushTextureImage {
-    /// Construct from owned luminance + dims (fields are private; `shape_settings` builds via this).
-    pub(super) fn new(lum: Vec<u8>, width: u32, height: u32) -> Self {
-        Self { lum, width, height }
-    }
-    /// Borrow as `(luminance, w, h)` for the panel previews.
-    pub(super) fn parts(&self) -> (&[u8], u32, u32) {
-        (self.lum.as_slice(), self.width, self.height)
-    }
-    /// Borrow as the engine's [`ImageMask`].
-    pub(super) fn as_mask(&self) -> ImageMask<'_> {
-        ImageMask {
-            lum: &self.lum,
-            width: self.width,
-            height: self.height,
-        }
-    }
-}
+// `BrushTextureImage` lives in the sibling `brush_image` module (LOC cap); re-exported so the existing
+// `super::brush_settings::BrushTextureImage` import paths stay stable.
+pub(super) use super::brush_image::BrushTextureImage;
 
 /// Snap `cursor` to the nearest 45° ray from `anchor` (Blender Line Alt-constrain), projecting onto it.
 /// Transcendental-free (abs/signum/mul + the `tan(22.5°)`/`tan(67.5°)`/`√½` constants) for HR-5.
@@ -185,8 +162,14 @@ pub struct BrushSettings {
     pub shape_per_layer_color: bool,
     /// Per-layer "use a custom colour" toggle (entries `0..shape_layer_count` valid).
     pub shape_layer_color_on: [bool; MAX_SHAPE_LAYERS],
-    /// Per-layer custom colour (straight RGB), used when [`Self::shape_layer_color_on`]`[i]`.
+    /// Per-layer custom colour (straight RGB), used when [`Self::shape_layer_color_on`]`[i]`. With the
+    /// checkbox OFF (default) the layer paints its own captured texture colour instead.
     pub shape_layer_color: [[f32; 3]; MAX_SHAPE_LAYERS],
+    /// Per-layer blend mode ([`ph2d_painter_effects::BlendMode`] discriminant; the "B" chip).
+    pub shape_layer_blend: [u8; MAX_SHAPE_LAYERS],
+    /// Per-layer **opacity** `0..1` — a BRUSH-only scale on that layer's tip contribution (the numeric
+    /// box), seeded from the captured document layer's opacity. Does NOT edit the painted document.
+    pub shape_layer_opacity: [f32; MAX_SHAPE_LAYERS],
     /// **Dab Flatten** (`0..1`; `0` = round) — the Shape gizmo squishes the dab footprint into an ellipse.
     pub dab_flatten: f32,
     /// **Dab rotation** of the flatten/rotate gizmo, whole degrees (`0..=360`).

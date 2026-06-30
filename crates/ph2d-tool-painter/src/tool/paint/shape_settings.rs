@@ -141,6 +141,13 @@ impl PainterTool {
         // Top-level ids are top-to-bottom; the engine composites bottom-to-top, so reverse.
         let ids: Vec<crate::layers::LayerId> = self.layers.root().iter().copied().rev().collect();
         let mut layers: Vec<(Vec<u8>, u32, u32)> = Vec::new();
+        // Per-layer captured metadata, aligned 1:1 with `layers`: the straight RGB (the default texture
+        // colour), the document layer's current opacity (mirrored into the box), and its document layer id
+        // (so the opacity box edits that layer's slider — two-way).
+        let mut rgb_layers: Vec<Vec<u8>> = Vec::new();
+        let mut opacity: Vec<f32> = Vec::new();
+        let mut blend: Vec<u8> = Vec::new();
+        let mut doc_ids: Vec<u64> = Vec::new();
         for id in ids {
             let Some(layer) = self.layers.get(id) else {
                 continue;
@@ -158,24 +165,35 @@ impl PainterTool {
             if rgba.len() < n * 4 {
                 continue;
             }
-            // The layer's silhouette = its alpha channel (where the layer has content) scaled by the
-            // layer's **opacity** — a 50%-opacity layer contributes a half-strength silhouette, so the
-            // layers below show through it (and the preview, which shares these masks, matches).
-            let op = layer.opacity.clamp(0.0, 1.0);
-            let lum: Vec<u8> = (0..n)
-                .map(|i| (f32::from(rgba[i * 4 + 3]) * op + 0.5) as u8)
-                .collect();
+            // The silhouette = the layer's RAW alpha channel (no opacity folded in — the per-layer opacity
+            // is applied at recomposite from `opacity[i]`, which mirrors the source layer's opacity).
+            let lum: Vec<u8> = (0..n).map(|i| rgba[i * 4 + 3]).collect();
+            // The straight per-pixel RGB — the default paint colour for the layer (Texture Color).
+            let mut rgb = Vec::with_capacity(n * 3);
+            for i in 0..n {
+                rgb.push(rgba[i * 4]);
+                rgb.push(rgba[i * 4 + 1]);
+                rgb.push(rgba[i * 4 + 2]);
+            }
             layers.push((lum, w, h));
+            rgb_layers.push(rgb);
+            opacity.push(layer.opacity.clamp(0.0, 1.0));
+            blend.push(layer.blend_mode.to_u8());
+            doc_ids.push(id.0);
         }
         if !layers.is_empty() {
-            // Re-capturing the SAME source sprite keeps the per-layer colours (the user already assigned
-            // them — editing the sprite shouldn't wipe them); a fresh capture from a different sprite
-            // starts un-coloured. `set_brush_shape_layers` resets the colours, so snapshot/restore around it.
+            // Re-capturing the SAME source sprite keeps the per-layer artist assignments (colours + the
+            // manual blend picks — editing the sprite shouldn't wipe them); a fresh capture from a different
+            // sprite starts neutral. `set_brush_shape_layers` resets them, so snapshot/restore around it.
+            // `rgb` / `opacity` / `doc_ids` are always re-read fresh (opacity mirrors the live source layer).
             let same_source = self.bound_doc.is_some() && self.bound_doc == self.shape_source_doc;
-            let colors = same_source.then(|| self.paint.shape_layers.colors_snapshot());
+            let assignments = same_source.then(|| self.paint.shape_layers.assignments_snapshot());
             self.set_brush_shape_layers(layers);
-            if let Some((on, color)) = colors {
-                self.paint.shape_layers.restore_colors(&on, &color);
+            self.paint
+                .shape_layers
+                .set_layers_meta(rgb_layers, opacity, blend, doc_ids);
+            if let Some((on, color)) = assignments {
+                self.paint.shape_layers.restore_assignments(&on, &color);
             }
             self.shape_source_doc = self.bound_doc;
             self.shape_source_revision = self.shape_source_content_revision();
@@ -197,8 +215,9 @@ impl PainterTool {
     /// **opacity**, visibility, **undo/redo**, …) updates the brush Shape without a manual re-capture.
     /// Skipped mid-stroke (waits for pointer-up) so a drag re-captures once, not per dab.
     pub fn refresh_shape_source_if_changed(&mut self) {
-        if self.shape_source_doc.is_none()
-            || self.shape_source_doc != self.bound_doc
+        // Run while the captured Shape source IS the current document (equality holds even when both are
+        // the unbound `None` doc — so the box ⇄ Layers-panel sync still works without a document binding).
+        if self.shape_source_doc != self.bound_doc
             || self.paint.shape_layers.is_empty()
             || self.paint.stroke.is_some()
         {
@@ -256,6 +275,42 @@ impl PainterTool {
     /// Set Shape layer `i`'s custom colour (straight RGB); turns its checkbox on.
     pub fn set_brush_shape_layer_color(&mut self, i: usize, rgb: [f32; 3]) {
         self.paint.shape_layers.set_layer_color(i, rgb);
+    }
+
+    /// Set Shape layer `i`'s blend mode (the "Blend" dropdown). Updates the brush side immediately AND —
+    /// when the captured Shape source IS the document being painted — edits that SOURCE layer's blend mode
+    /// (so the dropdown is two-way with its Layers-panel blend chip, like the opacity box). Guarded to the
+    /// captured source so it never edits a coincidentally-id-matching layer in a different document.
+    pub fn set_brush_shape_layer_blend(&mut self, i: usize, mode: u8) {
+        self.paint.shape_layers.set_manual_blend(i, mode);
+        // Remote-control the SHAPE SOURCE layer's blend mode wherever it lives (see the opacity setter).
+        if let Some(doc) = self.paint.shape_layers.doc_id(i) {
+            let src = self.shape_source_doc;
+            self.set_shape_source_layer_blend(
+                src,
+                crate::layers::LayerId(doc),
+                ph2d_painter_effects::BlendMode::from_u8(mode),
+            );
+        }
+    }
+
+    /// Set Shape layer `i`'s **opacity** (`0..1`). Updates the brush side immediately (the tip scale) AND
+    /// — when the captured Shape source IS the document being painted — edits that SOURCE layer's opacity,
+    /// so the box is two-way with its Layers-panel slider. The guard `shape_source_doc == bound_doc` is the
+    /// bug fix: it never edits a coincidentally-id-matching layer in a DIFFERENT document being painted.
+    pub fn set_brush_shape_layer_opacity(&mut self, i: usize, op01: f32) {
+        self.paint.shape_layers.set_opacity(i, op01);
+        // Remote-control the SHAPE SOURCE layer's opacity wherever it lives (the live bound doc, or — when
+        // the artist switched away to paint a different sprite with this shape — its stashed stack). Never
+        // the painted document's layer.
+        if let Some(doc) = self.paint.shape_layers.doc_id(i) {
+            let src = self.shape_source_doc;
+            self.set_shape_source_layer_opacity(
+                src,
+                crate::layers::LayerId(doc),
+                op01.clamp(0.0, 1.0),
+            );
+        }
     }
 
     /// `(layer count, per-layer-colour mode on)` for the panel — the checkbox only shows for `> 1` layer.

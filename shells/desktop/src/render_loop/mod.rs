@@ -350,11 +350,10 @@ impl crate::App {
                 // Byte-space premul upload + Apply uses the same flag.
                 premultiplied: true,
             });
-        // W3 Painter sprite-suppression: same single `preview_override` slot.
+        // W3 Painter sprite-suppression: the active sprite's `preview_override`.
         // The base layer composite REPLACES the source sprite in-place (no
         // overlay duplication) so its opacity/representation affects the whole
-        // image. Painter and BgRemoval are never active simultaneously (one
-        // active tool), so `.or()` picks whichever is live.
+        // image.
         let painter_preview_override: Option<sim_extract::PreviewOverride> = self
             .painter_preview_gpu
             .map(|gpu| sim_extract::PreviewOverride {
@@ -362,7 +361,26 @@ impl crate::App {
                 texture_id: gpu.texture_id,
                 premultiplied: true,
             });
-        let preview_override = painter_preview_override.or(bgremoval_preview_override);
+        // A sprite used as the brush Shape but NOT currently selected previews its OWN composite too, so
+        // brush opacity/blend remote-control edits show on it in real time (its `IndividualTextureStore`
+        // slot, driven by the painter bridge). Distinct entity from the active sprite ⇒ a SEPARATE override.
+        let painter_shape_source_override: Option<sim_extract::PreviewOverride> = self
+            .painter_shape_source_preview_gpu
+            .map(|gpu| sim_extract::PreviewOverride {
+                entity_bits: gpu.entity_bits,
+                texture_id: gpu.texture_id,
+                premultiplied: true,
+            });
+        // Several sprites can preview at once now (active + shape-source); `sim_extract` matches each
+        // sprite to its own entry. Painter and BgRemoval are never active simultaneously (one active tool).
+        let preview_overrides: Vec<sim_extract::PreviewOverride> = [
+            painter_preview_override,
+            bgremoval_preview_override,
+            painter_shape_source_override,
+        ]
+        .into_iter()
+        .flatten()
+        .collect();
         // W2.T3 visual smoke (PH2D_MOTION_SMOKE=1): the Motion vertical owns the
         // canvas this frame — cook grid→transform→clone and publish its
         // RenderInstances instead of the M5 demo sim. Debug-only; off by default.
@@ -402,7 +420,7 @@ impl crate::App {
                 worklist,
                 sort_scratch,
                 sort_inputs,
-                preview_override,
+                &preview_overrides,
                 ppm,
                 camera.cull_mask,
                 default_filter,
@@ -1175,6 +1193,14 @@ impl crate::App {
                 &mut self.painter_commit_requested,
                 &mut self.painter_undo_requested,
                 &mut self.painter_redo_requested,
+                toasts,
+            );
+            // Live-preview a non-selected sprite used as the brush Shape (so its opacity/blend remote-
+            // control edits show in real time), into a SECOND preview slot/override.
+            painter_bridge::drive_shape_source_preview(
+                tools,
+                renderer,
+                &mut self.painter_shape_source_preview_gpu,
                 toasts,
             );
             // Always measure (one Instant/frame) so the HUD's "paint ms" gauge is live, not gated on

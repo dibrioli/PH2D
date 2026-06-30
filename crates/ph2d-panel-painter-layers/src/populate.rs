@@ -358,23 +358,23 @@ fn register_brush_slider_chips(store: &mut WidgetStore) {
         core_ids::PAINTER_BRUSH_SYMMETRY_SEGMENTS_CHIP,
         InteractiveState::NumberInput {
             state: TextInputState::Normal,
-            value: 6.0,
+            value: 6.0, // LITERAL-PX-OK: default symmetry segment count
             buffer: String::new(),
             caret: 0,
-            last_committed: 6.0,
+            last_committed: 6.0, // LITERAL-PX-OK: default symmetry segment count
             selection_anchor: None,
         },
     );
     store.link_slider_number_mapped_integer(
         core_ids::PAINTER_BRUSH_SYMMETRY_SEGMENTS,
         core_ids::PAINTER_BRUSH_SYMMETRY_SEGMENTS_CHIP,
-        9.0, // scale: 0..1 track → a span of 9 (3 → 12)
-        3.0, // offset: the track's 0 maps to 3 segments
+        9.0, // LITERAL-PX-OK: scale — 0..1 track → a span of 9 segments (3 → 12)
+        3.0, // LITERAL-PX-OK: offset — the track's 0 maps to 3 segments
     );
     store.set_number_range(
         core_ids::PAINTER_BRUSH_SYMMETRY_SEGMENTS_CHIP,
-        3.0,
-        12.0,
+        3.0,  // LITERAL-PX-OK: min symmetry segment count
+        12.0, // LITERAL-PX-OK: max symmetry segment count
         1.0,
     );
 }

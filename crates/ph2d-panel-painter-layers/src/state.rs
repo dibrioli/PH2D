@@ -72,6 +72,11 @@ thread_local! {
     /// [`PENDING_BLEND_DD`] but for the single fixed brush chip.
     static PENDING_BRUSH_BLEND_DD: Cell<Option<(Rect, u8)>> = const { Cell::new(None) };
 
+    /// The open per-layer-colour **Shape layer blend** dropdown (the "B" chip): `(layer_index,
+    /// chip_rect, current_mode_u8)`. One-open-at-a-time like [`PENDING_BLEND_DD`]; set during the
+    /// Per-Layer Color rows paint, drained in the Brush-section deferred popover pass.
+    static PENDING_SHAPE_BLEND_DD: Cell<Option<(u8, Rect, u8)>> = const { Cell::new(None) };
+
     /// The open brush Falloff dropdown popover: `(chip_rect, current_preset_u8)`.
     /// Mirror of [`PENDING_BRUSH_BLEND_DD`] for the Falloff section chip.
     static PENDING_BRUSH_FALLOFF_DD: Cell<Option<(Rect, u8)>> = const { Cell::new(None) };
@@ -478,6 +483,30 @@ pub(crate) fn set_pending_brush_blend_dd(v: Option<(Rect, u8)>) {
 /// Take (and clear) the pending brush blend dropdown for the deferred popover paint.
 pub(crate) fn take_pending_brush_blend_dd() -> Option<(Rect, u8)> {
     PENDING_BRUSH_BLEND_DD.with(|c| c.take())
+}
+
+/// Stash the open per-layer-colour Shape-layer blend dropdown (`(layer_index, chip_rect, mode)`).
+pub(crate) fn set_pending_shape_blend_dd(v: Option<(u8, Rect, u8)>) {
+    PENDING_SHAPE_BLEND_DD.with(|c| c.set(v));
+}
+
+/// Clear every per-frame deferred overlay (layer-blend / adjustment menu / brush-blend / shape-blend) at
+/// the top of `paint`, so an overlay that isn't re-armed this frame can't linger from the previous one.
+pub(crate) fn reset_frame_popovers() {
+    set_pending_blend_dd(None);
+    set_pending_adj_menu(None);
+    set_pending_brush_blend_dd(None);
+    set_pending_shape_blend_dd(None);
+}
+
+/// Peek the open Shape-layer blend dropdown (one-open-at-a-time enforcement, non-consuming).
+pub(crate) fn pending_shape_blend_dd() -> Option<(u8, Rect, u8)> {
+    PENDING_SHAPE_BLEND_DD.with(|c| c.get())
+}
+
+/// Take (and clear) the pending Shape-layer blend dropdown for the deferred popover paint.
+pub(crate) fn take_pending_shape_blend_dd() -> Option<(u8, Rect, u8)> {
+    PENDING_SHAPE_BLEND_DD.with(|c| c.take())
 }
 
 /// Stash the open brush Falloff dropdown for the deferred popover pass.

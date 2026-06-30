@@ -132,6 +132,8 @@ pub(crate) const FALLBACK_BRUSH: BrushSettings = BrushSettings {
     shape_per_layer_color: false,
     shape_layer_color_on: [false; ph2d_tool_painter::MAX_SHAPE_LAYERS],
     shape_layer_color: [[0.0; 3]; ph2d_tool_painter::MAX_SHAPE_LAYERS],
+    shape_layer_blend: [0; ph2d_tool_painter::MAX_SHAPE_LAYERS],
+    shape_layer_opacity: [1.0; ph2d_tool_painter::MAX_SHAPE_LAYERS],
     texture_ramp_enabled: false,
     texture_ramp_bw: false,
     texture_ramp_mode: 0,
@@ -315,6 +317,10 @@ pub(crate) fn paint_brush_popovers(ctx: &mut PaintCtx, theme: ph2d_tokens::Theme
             chip_rect,
             cur,
         );
+    }
+    // Per-layer-colour Shape-layer blend ("B" chip) dropdown.
+    if let Some((i, chip_rect, cur)) = state::take_pending_shape_blend_dd() {
+        crate::paint_shape_layers::paint_shape_blend_popover(ctx, theme, i, chip_rect, cur);
     }
     // Stroke-section dropdowns (Method + Jitter Unit) — drained last so they sit
     // on top of every body row, same as the Blend/Falloff chips above.

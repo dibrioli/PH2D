@@ -78,7 +78,7 @@ pub use stroke_method::{JitterUnit, StrokeMethod};
 pub use symmetry::{MirrorAxis, SYMMETRY_MAX_SEGMENTS, SYMMETRY_MIN_SEGMENTS, SymmetrySettings};
 pub use texture::patterns::{render_texture_layer, render_texture_preview};
 pub use texture::{
-    DEG_STEP, ImageMask, MAX_TEX_PARAMS, ParamSpec, TEX_ANGLE_MAX_DEG, TEX_OFFSET_MAX,
+    DEG_STEP, ImageMask, ImageRgb, MAX_TEX_PARAMS, ParamSpec, TEX_ANGLE_MAX_DEG, TEX_OFFSET_MAX,
     TEX_OFFSET_MIN, TEX_SIZE_MAX, TEX_SIZE_MIN, TEX_TILE_BASE_PX, TexDabBasis, TextureKind,
     TextureMapping, TextureSettings, compose_shape_silhouette_kind, param_specs,
     render_shape_preview, render_stencil_preview, stencil_frame,

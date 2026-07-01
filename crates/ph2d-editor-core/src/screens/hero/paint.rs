@@ -197,20 +197,6 @@ pub fn paint_hero_screen(
         &hero.store,
         hero.image_edit.mode_on,
     );
-    // Painter mode = the Image-Tools TopBar is on AND the active image-edit
-    // tool is the Painter (mirrored shell-side into `active_tool_id`). In that
-    // mode the rail swaps its transform block for the paint tools.
-    let painter_active =
-        hero.image_edit.mode_on && hero.image_edit.active_tool_id == Some("painter");
-    paint_left_rail(
-        &layout,
-        scene,
-        text_system,
-        hero.theme,
-        &mut hero.hit_index,
-        &hero.store,
-        painter_active,
-    );
     // Publish Inspector + Hierarchy panel rects so wheel-event
     // dispatch can route to them. Both are static (no drag offset).
     // When a panel is hidden via its left-rail toggle we DROP the
@@ -330,6 +316,26 @@ pub fn paint_hero_screen(
     // hero/scene/text_system unborrowed for the
     // rest of paint_hero_screen (bottom HUD, picker overlay, tooltip,
     // context menu, drop overlay).
+    //
+    // Left rail painted AFTER the docked panels so its buttons — and the
+    // Painter Shapes flyout, which extends over the Inspector/Hierarchy area —
+    // sit ABOVE them, both visually and for hit-testing (HitIndex walks
+    // back-to-front, so the rail chips registered here win any overlapping
+    // click). Still below the bottom HUD / color picker / context menu, which
+    // paint after this (unchanged). Painter mode = Image-Tools on AND the
+    // active tool is the Painter (mirrored shell-side into `active_tool_id`),
+    // which swaps the transform block for the paint tools.
+    let painter_active =
+        hero.image_edit.mode_on && hero.image_edit.active_tool_id == Some("painter");
+    paint_left_rail(
+        &layout,
+        scene,
+        text_system,
+        hero.theme,
+        &mut hero.hit_index,
+        &hero.store,
+        painter_active,
+    );
     if hero.view.stats_visible {
         paint_bottom_hud(&layout, scene, text_system, hero.theme, hero.stats);
     }

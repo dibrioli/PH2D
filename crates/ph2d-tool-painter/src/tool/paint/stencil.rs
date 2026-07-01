@@ -326,7 +326,15 @@ impl PainterTool {
     /// drives it (moved here off `brush_settings.rs` for the workspace LOC cap).
     pub fn set_paint_tool_mode(&mut self, mode: &str) {
         match mode {
-            "smear" => self.paint.paint_mode = super::PaintMode::Smear,
+            "smear" => {
+                // Entering Smear defaults Spacing to 5% (Krita recommends ≤0.05 for a smooth
+                // round-brush smear) — only on the transition INTO Smear, so a later manual tweak
+                // sticks and re-selecting Smear doesn't clobber it.
+                if !matches!(self.paint.paint_mode, super::PaintMode::Smear) {
+                    self.paint.brush.spacing = 0.05;
+                }
+                self.paint.paint_mode = super::PaintMode::Smear;
+            }
             "eraser" => {
                 self.paint.paint_mode = super::PaintMode::Paint;
                 self.paint.eraser = true;

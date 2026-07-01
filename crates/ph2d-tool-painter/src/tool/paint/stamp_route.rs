@@ -62,10 +62,13 @@ impl PainterTool {
         // Use the full dab mask when a Shape / Grain / flatten shapes the dab AND it's cacheable
         // (static View); else the plain round falloff. flatten/rotate is always baked into the mask,
         // so a flattened plain brush routes through the mask too.
-        let want_mask = (base.shape_silhouette_active(has_shape_image)
+        let textured = base.shape_silhouette_active(has_shape_image)
             || base.texture.is_active()
-            || base.dab_flatten > 0.0)
-            && base.dab_mask_cacheable(has_shape_image);
+            || base.dab_flatten > 0.0;
+        // View-static → the fast cached StampMask; a canvas-fixed Grain Mapping (Tiled/Stencil) or a
+        // per-dab-rotating Shape isn't scale-invariant → the per-pixel Grain path; neither → round falloff.
+        let want_mask = textured && base.dab_mask_cacheable(has_shape_image);
+        let want_grain = textured && !want_mask;
         let tiling = self.paint.tiling;
         let tiled = tiling[0] || tiling[1];
         let source_size = self.source_size;
@@ -98,7 +101,9 @@ impl PainterTool {
             return;
         }
 
-        // Phase 2: build the mask (if wanted), then apply each op to the canvas.
+        // Phase 2: gather the weight source (the cached mask for View, or the Grain/Shape images for
+        // the per-pixel canvas-fixed Grain), then apply each op. The Shape tone LUT is cloned — it
+        // borrows `self`, which the `canvas_rgba` write below can't co-hold.
         if want_mask {
             let max_r = ops.iter().map(|o| o.2).fold(0.0_f32, f32::max);
             self.ensure_stamp_cache(&base, super::stamp_cache::mask_size_for(max_r));
@@ -108,11 +113,26 @@ impl PainterTool {
         } else {
             None
         };
+        let grain_img = if want_grain {
+            self.paint.texture_image.as_ref().map(|i| i.as_mask())
+        } else {
+            None
+        };
+        let shape_img = if want_grain {
+            self.paint.shape_image.as_ref().map(|i| i.as_mask())
+        } else {
+            None
+        };
+        let shape_lut: Option<Vec<f32>> = if want_grain {
+            self.shape_tone_lut_slice().map(|s| s.to_vec())
+        } else {
+            None
+        };
         let buf = Arc::make_mut(&mut self.canvas_rgba);
         let mut touched: Option<Region> = None;
         for (f, t, radius, coverage) in ops {
-            let dirty = match mask {
-                Some(m) => ph2d_painter_brush::smear_blit_stamp(
+            let dirty = if let Some(m) = mask {
+                ph2d_painter_brush::smear_blit_stamp(
                     buf,
                     w,
                     h,
@@ -122,8 +142,24 @@ impl PainterTool {
                     m,
                     strength * coverage,
                     tiling,
-                ),
-                None => ph2d_painter_brush::smear_dab(
+                )
+            } else if want_grain {
+                ph2d_painter_brush::smear_blit_grain(
+                    buf,
+                    w,
+                    h,
+                    f,
+                    t,
+                    radius,
+                    &base,
+                    grain_img.as_ref(),
+                    shape_img.as_ref(),
+                    shape_lut.as_deref(),
+                    strength * coverage,
+                    tiling,
+                )
+            } else {
+                ph2d_painter_brush::smear_dab(
                     buf,
                     w,
                     h,
@@ -135,7 +171,7 @@ impl PainterTool {
                     },
                     strength * coverage,
                     tiling,
-                ),
+                )
             };
             if let Some(r) = dirty {
                 let rect = Region {

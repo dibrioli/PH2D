@@ -494,8 +494,7 @@ impl Tool for PainterTool {
         Some(self)
     }
 
-    /// The painter consumes canvas pointer samples to paint dabs into the active
-    /// raster layer (ADR-0040 Amendment 3). See [`crate::tool::paint`].
+    /// The painter consumes canvas pointer samples to paint dabs (ADR-0040 Amendment 3; [`crate::tool::paint`]).
     fn as_canvas_paint_mut(&mut self) -> Option<&mut dyn CanvasPaintTool> {
         Some(self)
     }
@@ -533,27 +532,28 @@ impl RasterEditTool for PainterTool {
         self.undo.clear();
     }
 
-    /// Borrow the current composite iff it changed since the last call (drains `preview_dirty`); trivial
-    /// stack → `canvas_rgba` byte-for-byte, non-trivial → the composited stack.
+    /// Borrow the current composite iff it changed (drains `preview_dirty`); trivial → `canvas_rgba`.
     fn current_preview(&mut self) -> Option<(&[u8], u32, u32)> {
         if !std::mem::take(&mut self.preview_dirty) || self.canvas_rgba.is_empty() {
             return None;
         }
         let (w, h) = self.source_size;
-        if self.is_trivial_stack() {
+        if self.is_trivial_stack() && !self.mask_scratch_active() {
             return Some((&self.canvas_rgba, w, h));
         }
+        // Mask brush: the active layer is composited MASKED by the transient scratch (non-destructive).
+        let masked = self.mask_scratch_display();
         let mut composited = {
             let active = self.layers.active().unwrap_or(RtLayerId(0));
+            let active_rgba = masked.as_deref().unwrap_or(&self.canvas_rgba);
             let src = ToolPixelSource {
                 active_id: active,
-                active_rgba: &self.canvas_rgba,
+                active_rgba,
                 images: &self.images,
             };
             composite(&self.layers, &src, w, h)
         };
-        // Mask overlay: tint the composite by an active mask's coverage (the quick-mask film); else no-op.
-        self.apply_mask_overlay(&mut composited);
+        self.apply_mask_overlay(&mut composited); // tint the concealed region (no-op without a scratch)
         self.composited = Some(Arc::new(composited));
         Some((
             self.composited

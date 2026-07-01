@@ -109,6 +109,9 @@ pub const PAINTER_MASK_OP: [NodeId; 6] = [
     hash_node_id("painter_brush.mask_op_4"),
     hash_node_id("painter_brush.mask_op_5"),
 ];
+/// **Apply** (Mask section) — bakes the transient scratch mask into the current layer's alpha and clears
+/// it. `Click` → `apply_mask_scratch`.
+pub const PAINTER_MASK_APPLY: NodeId = hash_node_id("painter_brush.mask_apply");
 /// Mask overlay-tint colour swatches — `0` neutral gray + `1..=4` fluorescent-marker hues. `Click` →
 /// `set_mask_overlay_color(idx)`. Width-adaptive flow row of square swatches.
 pub const PAINTER_MASK_COLOR: [NodeId; 5] = [

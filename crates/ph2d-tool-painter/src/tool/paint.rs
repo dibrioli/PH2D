@@ -111,15 +111,12 @@ struct DragPreview {
     pixels: Vec<u8>,
 }
 
-/// Which operation the canvas pointer performs — selected from the left rail's Painter tools and
-/// routed in via `PanelEvent::SelectOption(PAINTER_PAINT_MODE, …)`. `Paint` is the normal dab-stamp
-/// path (brush colour, Shape, Grain, ramps); `Smear` drags the canvas content along the stroke
-/// ([`ph2d_painter_brush::smear_dab`], the Blender/Krita "Smearing" algorithm); `Blur` softens the
-/// canvas under each dab ([`ph2d_painter_brush::blur_dab`], the Blender Soften algorithm); `Clone`
-/// copies canvas pixels from a sampled source at a fixed offset ([`ph2d_painter_brush::clone_dab`], the
-/// clone stamp); `Mask` paints a GRAYSCALE coverage value (the brush colour desaturated to Rec.601
-/// luma) — for a layer mask (white reveals / black conceals), reusing the full brush pipeline. Eraser
-/// stays a separate blend override layered on top of `Paint`.
+/// Which operation the canvas pointer performs — selected from the left rail's Painter tools and routed
+/// in via `PanelEvent::SelectOption(PAINTER_PAINT_MODE, …)`. `Paint` = the normal dab-stamp (colour,
+/// Shape, Grain, ramps); `Smear` drags canvas content along the stroke; `Blur` softens under each dab;
+/// `Clone` copies from a sampled source at a fixed offset; `Mask` paints a TEMPORARY tool-side scratch
+/// mask that hides/reveals the current layer live (no layer created — see [`mask`]). Eraser is a blend
+/// override on top of `Paint`.
 #[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
 pub(crate) enum PaintMode {
     #[default]
@@ -155,6 +152,9 @@ pub(crate) struct PaintState {
     mask_overlay_color: u8,
     /// **Eyedropper** armed: the next canvas Down samples the composited pixel into the brush colour, then disarms. [`eyedropper`].
     eyedropper_armed: bool,
+    /// **Mask** brush transient scratch (tool-side mask for `mask_scratch_target`, white=reveal; NOT a stack layer). [`mask`].
+    mask_scratch_rgba: Arc<Vec<u8>>,
+    mask_scratch_target: Option<crate::layers::LayerId>,
     /// **Composite Brush**: run Brush + Smear + Blur together (a Brush-tool upgrade, panel checkbox). See [`composite`].
     composite_enabled: bool,
     /// The composite layer stack in display order (index 0 = layer 1 = top; run bottom→top per dab). [`composite`].
@@ -278,10 +278,10 @@ impl PainterTool {
     /// Begin a stroke at `ev` and stamp the first dab. Snapshots the model for undo
     /// **before** painting so the whole stroke restores to the pre-stroke pixels.
     fn paint_begin(&mut self, ev: CanvasPointer) {
-        // Mask tool: retarget the stroke onto a mask (switch to / auto-create the active layer's mask)
-        // BEFORE the stroke's undo snapshot, so the mask create/switch is its own undo step.
+        // Mask tool: ensure the TRANSIENT scratch mask exists for the current layer (tool-side, no layer
+        // created) before the stroke paints into it.
         if matches!(self.paint.paint_mode, PaintMode::Mask) {
-            self.ensure_mask_edit_target();
+            self.ensure_mask_scratch();
         }
         let before = self.snapshot_model();
         self.paint.stroke_undo = Some(before);

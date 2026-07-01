@@ -154,6 +154,7 @@ pub fn populate(store: &mut WidgetStore) {
         .iter()
         .chain(ph2d_editor_core::ids::PAINTER_MASK_OP.iter())
         .chain(ph2d_editor_core::ids::PAINTER_MASK_COLOR.iter())
+        .chain(std::iter::once(&ph2d_editor_core::ids::PAINTER_MASK_APPLY))
         .copied()
     {
         store.register(

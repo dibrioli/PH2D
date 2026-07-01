@@ -190,7 +190,7 @@ impl PainterTool {
         // zero-copy fast path. Any non-trivial stack (≥2 layers, or a layer with
         // opacity<1 / non-Normal blend / hidden / an adjustment) MUST be
         // composited here so per-layer opacity / blend / adjustments are visible.
-        if self.is_trivial_stack() {
+        if self.is_trivial_stack() && !self.mask_scratch_active() {
             // Carry the accumulated dirty bbox into the bridge so a stroke uploads
             // only the touched sub-rect (B.1 partial lane), NOT the whole canvas
             // each frame. `None` here forced a full clone + premul + full texture
@@ -209,10 +209,10 @@ impl PainterTool {
         // cache — O(N×bbox) vs O(N×W×H). Otherwise do a full recompose.
         let dirty = self.dirty_rect.take();
         let stroke_dirtied = dirty.is_some();
-        // While a mask is the active edit target its coverage tints the WHOLE composite (the on-canvas
-        // overlay). A partial-region blit can't re-tint the untouched frame, so force the full recompose
-        // path — a 2-layer mask+parent recompose is cheap (not the 100k-sprite hot path).
-        let force_full = self.active_is_mask();
+        // While the Mask brush's scratch is live it masks the WHOLE active layer + tints the composite; a
+        // partial-region blit can't re-mask/re-tint the untouched frame, so force the full recompose path
+        // (a single-layer recompose is cheap — not the 100k-sprite hot path).
+        let force_full = self.mask_scratch_active();
         match (self.composited.is_some() && !force_full, dirty) {
             (true, Some(bbox)) => {
                 let region = {
@@ -230,9 +230,11 @@ impl PainterTool {
                 self.preview_upload_bbox = Some(bbox);
             }
             _ => {
+                // Mask brush: composite the active layer MASKED by the transient scratch (non-destructive).
+                let masked = self.mask_scratch_display();
                 let src = ToolPixelSource {
                     active_id: active,
-                    active_rgba: &self.canvas_rgba,
+                    active_rgba: masked.as_deref().unwrap_or(&self.canvas_rgba),
                     images: &self.images,
                 };
                 let mut composed =

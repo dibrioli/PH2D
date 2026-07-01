@@ -447,10 +447,11 @@ fn try_apply_brush_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> O
                 || core_ids::PAINTER_BRUSH_COMPOSITE_BUTTONS.contains(&id)
                 || id == core_ids::PAINTER_BRUSH_CLONE_SET_SOURCE
                 || id == core_ids::PAINTER_BRUSH_CLONE_ALIGNED
-                // Mask section: sub-brush segments, whole-canvas op buttons, overlay-colour swatches.
+                // Mask section: sub-brush segments, whole-canvas op buttons, overlay-colour swatches, Apply.
                 || core_ids::PAINTER_MASK_BRUSH.contains(&id)
                 || core_ids::PAINTER_MASK_OP.contains(&id)
-                || core_ids::PAINTER_MASK_COLOR.contains(&id) =>
+                || core_ids::PAINTER_MASK_COLOR.contains(&id)
+                || id == core_ids::PAINTER_MASK_APPLY =>
         {
             host.bus_mut()
                 .push(EditorAction::ToolPanelEvent(PanelEvent::Click(id)));

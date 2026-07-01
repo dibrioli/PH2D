@@ -17,8 +17,8 @@ use ph2d_editor_core::paint::{
 };
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::widget::{
-    ButtonState, ColorSwatch, SectionHeader, SwatchSize, SwatchState, flat_button_surface,
-    paint_color_swatch, paint_section_header,
+    Button, ButtonState, ColorSwatch, SectionHeader, SwatchSize, SwatchState, flat_button_surface,
+    paint_button, paint_color_swatch, paint_section_header,
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ColorToken, ROW_H_PX, Radius, Spacing, StrokeToken, TypeToken};
@@ -110,7 +110,19 @@ pub(crate) fn paint_mask_section(
         y,
         brush.mask_overlay_color as usize,
     );
-    y
+
+    // ── Apply — bake the transient scratch mask into the current layer's alpha + clear it. ──
+    let apply_id = core_ids::PAINTER_MASK_APPLY;
+    let apply_rect = Rect::new(x, y, content_w, ROW_H_PX);
+    let apply_st = ctx
+        .host
+        .store()
+        .button_state(apply_id)
+        .unwrap_or(ButtonState::Normal);
+    let apply_btn = Button::new(apply_id, "Apply Mask").accent().state(apply_st);
+    paint_button(&apply_btn, apply_rect, ctx.scene, ctx.text_system, theme);
+    ctx.host.hit_index_mut().register(apply_id, apply_rect);
+    y + ROW_H_PX + Spacing::Sm.px()
 }
 
 /// Draw a titled card box (Bg1 fill + Border + an ALL-CAPS `title`) and return `(inner_x, inner_w,

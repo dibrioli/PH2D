@@ -472,81 +472,139 @@ fn clone_mode_copies_from_the_sampled_source() {
 }
 
 #[test]
-fn mask_mode_auto_targets_and_paints_the_mask() {
-    // The Mask tool auto-creates/targets the active layer's mask and paints a GRAYSCALE value into it.
-    // The default sub-brush is Paint = CONCEAL (black), so a stroke on the fresh white mask is
-    // immediately visible (conceals) — end-to-end through the frozen channel.
+fn mask_brush_creates_no_layer_and_conceals_live_nondestructively() {
+    // The Mask BRUSH paints a TEMPORARY scratch mask — it must NOT create a stack layer, keep the current
+    // layer active, and leave the layer's pixels untouched (non-destructive). The composite hides the
+    // concealed dab live; a revealed corner keeps the image.
     use ph2d_editor_core::ids as core_ids;
     use ph2d_editor_core::tool::{PanelEvent, Tool};
-    let mut t = white_canvas(32, 6.0); // one raster, white canvas, black brush
+    let mut t = white_canvas(24, 6.0);
     let raster = t.layers.active().expect("a raster is active");
+    let n_before = t.layers.all_ids().count();
     t.handle_panel_event(PanelEvent::SelectOption(
         core_ids::PAINTER_PAINT_MODE,
         "mask".to_string(),
     ));
     assert!(t.is_mask_mode());
     assert_eq!(t.mask_brush(), 0, "default sub-brush is Paint (conceal)");
-    // Paint a dab → auto-create + target the mask, then conceal (black) into it.
-    t.on_canvas_pointer(cp([16.0, 16.0], PointerPhase::Down));
-    t.on_canvas_pointer(cp([16.0, 16.0], PointerPhase::Up));
-    let active = t.layers.active().expect("active after paint");
-    assert!(
-        matches!(
-            t.layers.get(active).map(|l| &l.kind),
-            Some(crate::layers::LayerKind::Mask(_))
-        ),
-        "Mask tool auto-created + targeted a mask edit target"
-    );
+    t.on_canvas_pointer(cp([12.0, 12.0], PointerPhase::Down)); // conceal at centre (into the scratch)
+    t.on_canvas_pointer(cp([12.0, 12.0], PointerPhase::Up));
+    // No layer created; still on the raster; no Mask layer anywhere.
     assert_eq!(
-        t.layers.get(raster).and_then(|l| l.mask),
-        Some(active),
-        "the mask is attached to the original raster"
+        t.layers.all_ids().count(),
+        n_before,
+        "the mask brush creates NO layer"
     );
-    // The mask buffer (now `canvas_rgba`) was concealed at the dab (black on the white mask), grayscale.
-    let p = px(&t, 32, 16, 16);
-    assert!(p[0] < 255, "mask painted (concealed) at the dab: {p:?}");
-    assert!(
-        p[0] == p[1] && p[1] == p[2],
-        "mask value is grayscale: {p:?}"
-    );
-    // Returning to the Brush restores the ORIGINAL raster as the edit target — not stuck on the mask
-    // (the "can't paint after masking" bug).
-    t.handle_panel_event(PanelEvent::SelectOption(
-        core_ids::PAINTER_PAINT_MODE,
-        "brush".to_string(),
-    ));
+    assert_eq!(t.layers.active(), Some(raster), "still on the raster");
+    assert!(t.mask_scratch_active(), "a transient scratch is live");
+    // Non-destructive: the layer's own pixels (canvas_rgba) are untouched (still white).
     assert_eq!(
-        t.layers.active(),
-        Some(raster),
-        "leaving Mask returns the edit target to the masked layer"
+        px(&t, 24, 12, 12),
+        [255, 255, 255, 255],
+        "the layer pixels are untouched (non-destructive)"
     );
+    // The composite hides the concealed dab (dark + tinted) while a revealed corner stays full white.
+    let (buf, w, _h) = t.take_preview_arc().expect("a composite preview");
+    let c = ((12 * w + 12) * 4) as usize;
+    let corner = ((2 * w + 2) * 4) as usize;
+    assert!(
+        buf[c] < 128,
+        "concealed centre is masked/dark, got {}",
+        buf[c]
+    );
+    assert_eq!(buf[corner], 255, "revealed corner keeps the image");
 }
 
 #[test]
-fn mask_canvas_op_clear_then_invert() {
-    // The whole-canvas mask ops auto-create/target a mask, then filter its WHOLE buffer. Clear fills
-    // fully-revealed white; Invert flips it to concealed black — both opaque grayscale, e2e via Click.
+fn mask_apply_bakes_the_scratch_into_the_layer_alpha() {
+    // Apply bakes the transient scratch into the current layer's alpha (destructive) and clears it.
     use ph2d_editor_core::ids as core_ids;
     use ph2d_editor_core::tool::{PanelEvent, Tool};
-    let mut t = white_canvas(16, 4.0);
+    let mut t = white_canvas(16, 5.0);
     t.handle_panel_event(PanelEvent::SelectOption(
         core_ids::PAINTER_PAINT_MODE,
         "mask".to_string(),
     ));
-    // Clear (op index 5) → auto-create a white mask + fill it white (fully revealed).
-    t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_MASK_OP[5]));
-    let active = t.layers.active().expect("mask active after a canvas op");
-    assert!(
-        matches!(
-            t.layers.get(active).map(|l| &l.kind),
-            Some(crate::layers::LayerKind::Mask(_))
-        ),
-        "a canvas op auto-targets a mask"
+    t.on_canvas_pointer(cp([8.0, 8.0], PointerPhase::Down)); // conceal centre (scratch only)
+    t.on_canvas_pointer(cp([8.0, 8.0], PointerPhase::Up));
+    assert_eq!(
+        px(&t, 16, 8, 8),
+        [255, 255, 255, 255],
+        "layer untouched pre-Apply"
     );
-    assert_eq!(px(&t, 16, 8, 8)[0], 255, "Clear → revealed white");
-    // Invert (op index 4) → concealed black, opaque grayscale.
-    t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_MASK_OP[4]));
-    assert_eq!(px(&t, 16, 8, 8), [0, 0, 0, 255], "Invert → opaque black");
+    t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_MASK_APPLY));
+    assert!(!t.mask_scratch_active(), "Apply cleared the scratch");
+    assert!(
+        px(&t, 16, 8, 8)[3] < 128,
+        "Apply baked the mask into the layer alpha, got a = {}",
+        px(&t, 16, 8, 8)[3]
+    );
+}
+
+#[test]
+fn mask_scratch_is_discarded_on_leaving_without_apply() {
+    // The scratch is TEMPORARY: leaving the Mask tool without Apply discards it — the layer returns fully
+    // visible (to keep a mask you must Apply first).
+    use ph2d_editor_core::ids as core_ids;
+    use ph2d_editor_core::tool::{PanelEvent, Tool};
+    let mut t = white_canvas(16, 5.0);
+    t.handle_panel_event(PanelEvent::SelectOption(
+        core_ids::PAINTER_PAINT_MODE,
+        "mask".to_string(),
+    ));
+    t.on_canvas_pointer(cp([8.0, 8.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([8.0, 8.0], PointerPhase::Up));
+    assert!(t.mask_scratch_active());
+    t.handle_panel_event(PanelEvent::SelectOption(
+        core_ids::PAINTER_PAINT_MODE,
+        "brush".to_string(),
+    ));
+    assert!(
+        !t.mask_scratch_active(),
+        "leaving Mask discards the scratch"
+    );
+    let (buf, w, _h) = t.take_preview_arc().expect("a composite preview");
+    let i = ((8 * w + 8) * 4) as usize;
+    assert_eq!(buf[i + 3], 255, "no Apply → mask gone, layer fully visible");
+}
+
+#[test]
+fn mask_canvas_op_clear_then_invert() {
+    // The whole-canvas Modifiers edit the transient SCRATCH (no layer). Clear → fully revealed (composite
+    // shows the full layer); Invert → fully concealed (composite hides the layer). Verified via composite.
+    use ph2d_editor_core::ids as core_ids;
+    use ph2d_editor_core::tool::PanelEvent;
+    let mut t = white_canvas(16, 4.0);
+    let n_before = t.layers.all_ids().count();
+    t.handle_panel_event(PanelEvent::SelectOption(
+        core_ids::PAINTER_PAINT_MODE,
+        "mask".to_string(),
+    ));
+    t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_MASK_OP[5])); // Clear → scratch white
+    assert_eq!(
+        t.layers.all_ids().count(),
+        n_before,
+        "canvas ops create NO layer"
+    );
+    assert!(
+        t.mask_scratch_active(),
+        "a scratch is live after a Modifier"
+    );
+    let (buf, w, _h) = t.take_preview_arc().expect("a composite preview");
+    let i = ((8 * w + 8) * 4) as usize;
+    assert_eq!(
+        [buf[i], buf[i + 1], buf[i + 2], buf[i + 3]],
+        [255, 255, 255, 255],
+        "Clear → fully revealed"
+    );
+    t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_MASK_OP[4])); // Invert → scratch black
+    let (buf, w, _h) = t.take_preview_arc().expect("a composite preview");
+    let i = ((8 * w + 8) * 4) as usize;
+    assert!(
+        buf[i] < 128,
+        "Invert → concealed, composite dark, got {}",
+        buf[i]
+    );
 }
 
 #[test]
@@ -579,62 +637,6 @@ fn mask_overlay_tints_the_concealed_composite() {
     assert!(
         b < r && b < g,
         "yellow overlay tints the concealed area, pulling blue below red/green: ({r}, {g}, {b})"
-    );
-}
-
-#[test]
-fn mask_paint_conceals_and_reads_in_the_composite_while_editing() {
-    // The user's actual flow: in Mask mode, paint (Paint = conceal) and the composite HIDES the layer at
-    // the dab WHILE still editing (no tool switch) — the concealed area reads as the dark overlay, a
-    // revealed corner keeps the full image. This is the "did the mask visibly mask?" check.
-    use ph2d_editor_core::ids as core_ids;
-    use ph2d_editor_core::tool::{PanelEvent, Tool};
-    let mut t = white_canvas(24, 6.0);
-    t.handle_panel_event(PanelEvent::SelectOption(
-        core_ids::PAINTER_PAINT_MODE,
-        "mask".to_string(),
-    ));
-    t.on_canvas_pointer(cp([12.0, 12.0], PointerPhase::Down)); // Paint = conceal at centre
-    t.on_canvas_pointer(cp([12.0, 12.0], PointerPhase::Up));
-    // Still in Mask mode (the mask is the active target) — the composite already shows the effect.
-    let (buf, w, _h) = t.take_preview_arc().expect("a composite preview");
-    let c = ((12 * w + 12) * 4) as usize;
-    let corner = ((2 * w + 2) * 4) as usize;
-    assert!(
-        buf[c] < 200,
-        "concealed centre reads as the dark mask overlay (not full white), got {}",
-        buf[c]
-    );
-    assert_eq!(
-        buf[corner], 255,
-        "a revealed corner keeps the full image visible"
-    );
-}
-
-#[test]
-fn mask_conceals_the_parent_in_the_composite_after_leaving_mask() {
-    // Full flow: paint a mask (conceal centre), leave Mask → the parent is active again, and the
-    // composite must HIDE the concealed centre (alpha ≈ 0). The "did the mask actually mask?" check,
-    // independent of the overlay (which only tints WHILE the mask is the active target).
-    use ph2d_editor_core::ids as core_ids;
-    use ph2d_editor_core::tool::{PanelEvent, Tool};
-    let mut t = white_canvas(16, 5.0);
-    t.handle_panel_event(PanelEvent::SelectOption(
-        core_ids::PAINTER_PAINT_MODE,
-        "mask".to_string(),
-    ));
-    t.on_canvas_pointer(cp([8.0, 8.0], PointerPhase::Down)); // Paint = conceal (black)
-    t.on_canvas_pointer(cp([8.0, 8.0], PointerPhase::Up));
-    t.handle_panel_event(PanelEvent::SelectOption(
-        core_ids::PAINTER_PAINT_MODE,
-        "brush".to_string(),
-    ));
-    let (buf, w, _h) = t.take_preview_arc().expect("a composite preview");
-    let i = ((8 * w + 8) * 4) as usize;
-    assert!(
-        buf[i + 3] < 128,
-        "the mask must conceal the centre in the composite (alpha low), got a = {}",
-        buf[i + 3]
     );
 }
 

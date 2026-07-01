@@ -21,8 +21,9 @@ use ph2d_a11y::NodeId;
 /// `PanelEvent` channel: Smear → the smear drag, Blur → the soften, Eraser → paint with Erase-Alpha,
 /// everything else → normal Brush paint. The shell drains `ToolPanelEvent` into `handle_panel_event`,
 /// so this reaches `PainterTool::set_paint_tool_mode` without any dependency on the concrete painter
-/// crate. The not-yet-wired tools (Mask / Inpaint / Shapes / Eyedropper) map to "brush" for now, so
-/// selecting one always leaves normal painting rather than a stuck Smear/Blur/Clone.
+/// crate. The not-yet-wired tools (Mask / Inpaint / Shapes) map to "brush" for now, so selecting one
+/// always leaves normal painting rather than a stuck Smear/Blur/Clone. Eyedropper also maps to "brush"
+/// but additionally opens the rich colour picker (see the `apply` handler).
 fn push_paint_mode(hero: &mut HeroScreen, tool_id: NodeId) {
     let mode = if tool_id == ids::PAINTER_RAIL_SMEAR {
         "smear"
@@ -40,6 +41,24 @@ fn push_paint_mode(hero: &mut HeroScreen, tool_id: NodeId) {
             ids::PAINTER_PAINT_MODE,
             mode.to_string(),
         )));
+}
+
+/// Toggle the shared Blender colour picker targeting the brush colour swatch — the rail **Eyedropper**
+/// IS the rich colour picker (with a built-in eyedropper). Seeds it with the brush colour, which the
+/// panel keeps in `widget_color(PAINTER_COLOR_THUMB)` while the picker is closed; the panel's per-frame
+/// read-back forwards the picked colour back to the brush. Same store ops the Color swatch uses.
+fn toggle_color_picker(hero: &mut HeroScreen) {
+    let thumb = ids::PAINTER_COLOR_THUMB;
+    if hero.store.picker_target() == Some(thumb) {
+        hero.store.set_picker_target(None);
+    } else {
+        let rgba = hero.store.widget_color(thumb).unwrap_or([0, 0, 0, 255]);
+        hero.store.set_blender_value(
+            ids::INSP_BLENDER_PICKER,
+            ph2d_tokens::ColorValue::from_rgba8(rgba[0], rgba[1], rgba[2], rgba[3]),
+        );
+        hero.store.set_picker_target(Some(thumb));
+    }
 }
 
 /// Set `target` `Pressed` and every other id in `group` `Normal` (an exclusive
@@ -84,6 +103,11 @@ pub fn apply(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
         }
         // Forward the operating mode to the active Painter (Smear / Eraser / Brush).
         push_paint_mode(hero, id);
+        // The Eyedropper additionally opens the rich colour picker (it paints as Brush; the picker
+        // floats so you sample/choose a colour then paint).
+        if id == ids::PAINTER_RAIL_EYEDROPPER {
+            toggle_color_picker(hero);
+        }
         return true;
     }
     false
@@ -155,6 +179,31 @@ mod tests {
         apply(&mut hero, WidgetEvent::Click(ids::PAINTER_RAIL_BRUSH));
         assert!(!hero.store.painter_shapes_flyout_open());
         assert!(pressed(&hero, ids::PAINTER_RAIL_BRUSH));
+    }
+
+    #[test]
+    fn eyedropper_toggles_the_colour_picker() {
+        let mut hero = HeroScreen::new(NodeId(1));
+        super::super::super::left_rail::populate(&mut hero.store);
+        assert!(hero.store.picker_target().is_none());
+        assert!(apply(
+            &mut hero,
+            WidgetEvent::Click(ids::PAINTER_RAIL_EYEDROPPER)
+        ));
+        assert_eq!(
+            hero.store.picker_target(),
+            Some(ids::PAINTER_COLOR_THUMB),
+            "Eyedropper opens the colour picker (targeting the brush swatch)"
+        );
+        // Click again → toggles it closed.
+        assert!(apply(
+            &mut hero,
+            WidgetEvent::Click(ids::PAINTER_RAIL_EYEDROPPER)
+        ));
+        assert!(
+            hero.store.picker_target().is_none(),
+            "Eyedropper toggles it closed"
+        );
     }
 
     #[test]

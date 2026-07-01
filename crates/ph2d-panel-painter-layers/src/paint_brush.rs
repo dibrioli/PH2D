@@ -178,6 +178,15 @@ pub(crate) fn paint_brush_body(
     let brush = state::current_brush().unwrap_or(FALLBACK_BRUSH);
     // If the shared picker is editing our swatch, forward its live colour.
     brush_color_readback(ctx, brush);
+    // Keep the store's swatch colour synced to the brush colour while the picker is CLOSED, so the
+    // left-rail Eyedropper (the rich colour picker) can seed the picker with it on open — the swatch
+    // itself isn't painted in every mode. While the picker owns the swatch, IT drives the value.
+    if ctx.host.store().picker_target() != Some(core_ids::PAINTER_COLOR_THUMB) {
+        let [r, g, b] = encode_rgb(brush.color);
+        ctx.host
+            .store_mut()
+            .set_widget_color(core_ids::PAINTER_COLOR_THUMB, [r, g, b, 255]);
+    }
 
     let mut y = top_y;
     use crate::paint_brush_top::{

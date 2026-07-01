@@ -473,8 +473,9 @@ fn clone_mode_copies_from_the_sampled_source() {
 
 #[test]
 fn mask_mode_auto_targets_and_paints_the_mask() {
-    // The Mask tool auto-creates/targets the active layer's mask and paints a GRAYSCALE value into it
-    // (default black brush → conceal on the fresh white mask). End-to-end through the frozen channel.
+    // The Mask tool auto-creates/targets the active layer's mask and paints a GRAYSCALE value into it.
+    // The default sub-brush is Paint (reveal / white); to CONCEAL on the fresh white mask, select the
+    // Erase sub-brush (black) — end-to-end through the frozen channel (both PaintMode + the mask Click).
     use ph2d_editor_core::ids as core_ids;
     use ph2d_editor_core::tool::{PanelEvent, Tool};
     let mut t = white_canvas(32, 6.0); // one raster, white canvas, black brush
@@ -484,6 +485,9 @@ fn mask_mode_auto_targets_and_paints_the_mask() {
         "mask".to_string(),
     ));
     assert!(t.is_mask_mode());
+    // Erase sub-brush → conceal (black) so the dab is visible on the white mask.
+    t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_MASK_BRUSH[1]));
+    assert_eq!(t.mask_brush(), 1, "Erase sub-brush selected");
     // Paint a dab → auto-create + target the mask, then paint into it.
     t.on_canvas_pointer(cp([16.0, 16.0], PointerPhase::Down));
     t.on_canvas_pointer(cp([16.0, 16.0], PointerPhase::Up));
@@ -517,6 +521,57 @@ fn mask_mode_auto_targets_and_paints_the_mask() {
         t.layers.active(),
         Some(raster),
         "leaving Mask returns the edit target to the masked layer"
+    );
+}
+
+#[test]
+fn mask_canvas_op_clear_then_invert() {
+    // The whole-canvas mask ops auto-create/target a mask, then filter its WHOLE buffer. Clear fills
+    // fully-revealed white; Invert flips it to concealed black — both opaque grayscale, e2e via Click.
+    use ph2d_editor_core::ids as core_ids;
+    use ph2d_editor_core::tool::{PanelEvent, Tool};
+    let mut t = white_canvas(16, 4.0);
+    t.handle_panel_event(PanelEvent::SelectOption(
+        core_ids::PAINTER_PAINT_MODE,
+        "mask".to_string(),
+    ));
+    // Clear (op index 5) → auto-create a white mask + fill it white (fully revealed).
+    t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_MASK_OP[5]));
+    let active = t.layers.active().expect("mask active after a canvas op");
+    assert!(
+        matches!(
+            t.layers.get(active).map(|l| &l.kind),
+            Some(crate::layers::LayerKind::Mask(_))
+        ),
+        "a canvas op auto-targets a mask"
+    );
+    assert_eq!(px(&t, 16, 8, 8)[0], 255, "Clear → revealed white");
+    // Invert (op index 4) → concealed black, opaque grayscale.
+    t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_MASK_OP[4]));
+    assert_eq!(px(&t, 16, 8, 8), [0, 0, 0, 255], "Invert → opaque black");
+}
+
+#[test]
+fn mask_overlay_tints_the_revealed_composite() {
+    // While a mask is the active target, the composite is tinted by the coverage in the selected overlay
+    // colour. A fully-revealed (white) mask + the fluorescent-yellow overlay pulls the composite's blue
+    // down (yellow = low blue), proving the on-canvas film renders.
+    use ph2d_editor_core::ids as core_ids;
+    use ph2d_editor_core::tool::PanelEvent;
+    let mut t = white_canvas(16, 4.0);
+    t.handle_panel_event(PanelEvent::SelectOption(
+        core_ids::PAINTER_PAINT_MODE,
+        "mask".to_string(),
+    ));
+    t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_MASK_COLOR[1])); // fluorescent yellow
+    assert_eq!(t.mask_overlay_color(), 1);
+    t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_MASK_OP[5])); // Clear → white (revealed)
+    let (buf, w, _h) = t.take_preview_arc().expect("a composite preview");
+    let i = ((8 * w + 8) * 4) as usize;
+    let (r, g, b) = (buf[i], buf[i + 1], buf[i + 2]);
+    assert!(
+        b < r && b < g,
+        "yellow overlay pulls blue below red/green: ({r}, {g}, {b})"
     );
 }
 

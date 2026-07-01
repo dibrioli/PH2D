@@ -404,6 +404,11 @@ impl PainterTool {
         if self.route_clone_event(event) {
             return true;
         }
+        // Mask-section events (sub-brush / canvas ops / overlay colour) — delegated here for the same
+        // route-chain-LOC reason as the Clone card above.
+        if self.route_mask_event(event) {
+            return true;
+        }
         // Left-rail paint-tool selection → the brush operation (Brush / Eraser / Smear). Routed here
         // (a brush-operation router) so `trait_impls::handle_panel_event` stays at its LOC cap.
         if let PanelEvent::SelectOption(id, value) = event

@@ -126,9 +126,29 @@ impl PainterTool {
     /// / Polygon / Free Hand) + Symmetry all apply as in Paint. The panel hides Colour / Randomize /
     /// Composite and locks the ramps to B&W. Colour saved/restored around the dab batch.
     pub(super) fn stamp_dabs_mask(&mut self, dabs: &[Dab]) {
+        // Mask sub-brush: Blur/Smear reuse the pixel-processing routes verbatim — while masking, the
+        // mask IS the active layer (`canvas_rgba`), so they soften / drag the mask coverage directly.
+        match self.mask_brush() {
+            2 => {
+                let (w, h) = self.source_size;
+                self.stamp_dabs_blur(dabs, w, h);
+                return;
+            }
+            3 => {
+                let (w, h) = self.source_size;
+                self.stamp_dabs_smear(dabs, w, h);
+                return;
+            }
+            _ => {}
+        }
+        // Paint (reveal) stamps white, Erase (conceal) stamps black; the B&W-locked ramp / falloff still
+        // shapes the coverage edge. Colour saved/restored around the dab batch.
         let saved = self.paint.brush.color;
-        let l = (0.299 * saved[0] + 0.587 * saved[1] + 0.114 * saved[2]).clamp(0.0, 1.0);
-        self.paint.brush.color = [l, l, l];
+        self.paint.brush.color = if self.mask_brush() == 1 {
+            [0.0, 0.0, 0.0]
+        } else {
+            [1.0, 1.0, 1.0]
+        };
         if self.paint.tiling[0] || self.paint.tiling[1] {
             let wrapped = super::tiling::tiled_dabs(dabs, self.source_size, self.paint.tiling);
             self.stamp_dabs_inner(&wrapped);

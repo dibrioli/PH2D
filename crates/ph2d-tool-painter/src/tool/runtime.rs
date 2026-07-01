@@ -209,7 +209,11 @@ impl PainterTool {
         // cache — O(N×bbox) vs O(N×W×H). Otherwise do a full recompose.
         let dirty = self.dirty_rect.take();
         let stroke_dirtied = dirty.is_some();
-        match (self.composited.is_some(), dirty) {
+        // While a mask is the active edit target its coverage tints the WHOLE composite (the on-canvas
+        // overlay). A partial-region blit can't re-tint the untouched frame, so force the full recompose
+        // path — a 2-layer mask+parent recompose is cheap (not the 100k-sprite hot path).
+        let force_full = self.active_is_mask();
+        match (self.composited.is_some() && !force_full, dirty) {
             (true, Some(bbox)) => {
                 let region = {
                     let src = ToolPixelSource {
@@ -231,7 +235,7 @@ impl PainterTool {
                     active_rgba: &self.canvas_rgba,
                     images: &self.images,
                 };
-                let composed =
+                let mut composed =
                     if std::mem::take(&mut self.adjustment_cache_pending) && !stroke_dirtied {
                         // Adjustment slider-drag: restart from the cut-point cache —
                         // bit-identical to a full `composite` (gate
@@ -241,6 +245,8 @@ impl PainterTool {
                         self.compositor_cache.invalidate_from(active, &self.layers);
                         composite(&self.layers, &src, w, h)
                     };
+                // Mask overlay: tint the composite by the active mask's coverage (no-op otherwise).
+                self.apply_mask_overlay(&mut composed);
                 self.composited = Some(Arc::new(composed));
                 self.preview_upload_bbox = None;
             }

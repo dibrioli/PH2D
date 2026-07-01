@@ -38,6 +38,7 @@ pub mod falloff_curve;
 pub mod footprint;
 pub mod heading;
 pub(crate) mod jitter;
+pub mod mask_ops;
 pub mod ramp_alpha;
 pub mod sampler;
 pub mod smear;
@@ -69,6 +70,7 @@ pub use falloff_curve::{
 };
 pub use footprint::{DAB_FLATTEN_MAX, FootprintDeform};
 pub use jitter::shift_colors_like;
+pub use mask_ops::{MaskCanvasOp, apply_mask_op};
 pub use ramp_alpha::RampAlphaMode;
 pub use sampler::MAX_INPUT_SAMPLES;
 pub use smear::{smear_blit_stamp, smear_dab};

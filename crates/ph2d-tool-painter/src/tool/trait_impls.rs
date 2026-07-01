@@ -514,15 +514,13 @@ impl RasterEditTool for PainterTool {
             (width as usize) * (height as usize) * 4,
             "set_source rgba length must equal width*height*4"
         );
-        // A new working canvas invalidates any open shape session (its restore record points at the
-        // OLD buffer); drop it without restoring.
+        // A new working canvas invalidates any open shape session (restore record → OLD buffer); drop it.
         self.discard_open_shape();
         self.canvas_rgba = Arc::new(rgba);
         self.source_size = (width, height);
         self.preview_dirty = true;
         self.edited_since_bind = false; // fresh bind = no unbaked edits (canvas mirrors the sprite)
-        // A fresh source = a fresh single-raster stack whose lone layer's pixels ARE `canvas_rgba`
-        // (trivial → fast preview path); multi-layer state only appears once the panel adds layers.
+        // A fresh source = a fresh single-raster stack whose lone layer's pixels ARE `canvas_rgba` (trivial).
         self.layers = LayerStack::new();
         self.layers.add_raster("Layer 1", width, height);
         self.images.clear();
@@ -535,8 +533,8 @@ impl RasterEditTool for PainterTool {
         self.undo.clear();
     }
 
-    /// Borrow the current composite iff it changed since the last call (drains `preview_dirty`).
-    /// Trivial stack → `canvas_rgba` byte-for-byte (fast path); non-trivial → the composited stack.
+    /// Borrow the current composite iff it changed since the last call (drains `preview_dirty`); trivial
+    /// stack → `canvas_rgba` byte-for-byte, non-trivial → the composited stack.
     fn current_preview(&mut self) -> Option<(&[u8], u32, u32)> {
         if !std::mem::take(&mut self.preview_dirty) || self.canvas_rgba.is_empty() {
             return None;
@@ -545,7 +543,7 @@ impl RasterEditTool for PainterTool {
         if self.is_trivial_stack() {
             return Some((&self.canvas_rgba, w, h));
         }
-        let composited = {
+        let mut composited = {
             let active = self.layers.active().unwrap_or(RtLayerId(0));
             let src = ToolPixelSource {
                 active_id: active,
@@ -554,6 +552,8 @@ impl RasterEditTool for PainterTool {
             };
             composite(&self.layers, &src, w, h)
         };
+        // Mask overlay: tint the composite by an active mask's coverage (the quick-mask film); else no-op.
+        self.apply_mask_overlay(&mut composited);
         self.composited = Some(Arc::new(composited));
         Some((
             self.composited

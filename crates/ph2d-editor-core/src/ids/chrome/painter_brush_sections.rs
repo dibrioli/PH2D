@@ -85,6 +85,40 @@ pub const PAINTER_BRUSH_COMPOSITE_DOWN: [NodeId; 3] = [
     hash_node_id("painter_brush.composite_down_1"),
     hash_node_id("painter_brush.composite_down_2"),
 ];
+// ── Mask section (collapsible, TOP of the Brush panel in Mask mode) ───────────────────────────────
+// A dedicated Mask-editing header hosting three width-adaptive button groups: the mask sub-brush
+// (Paint/Erase/Blur/Smear), the whole-canvas ops (Expand/Contract/Blur/Sharpen/Invert/Clear), and the
+// on-canvas overlay-tint colour (neutral gray + 4 fluorescent). All are registered in `crate::populate`.
+/// Collapsible "Mask" section header (top of the Brush panel in Mask mode). `mark_collapsible_section`.
+pub const PAINTER_MASK_SECTION: NodeId = hash_node_id("painter_brush.mask_section");
+/// Mask **sub-brush** toggle-group segments — `0` Paint · `1` Erase · `2` Blur · `3` Smear. `Click` →
+/// `set_mask_brush(idx)`. A width-adaptive segmented control (reflows when the panel is narrow).
+pub const PAINTER_MASK_BRUSH: [NodeId; 4] = [
+    hash_node_id("painter_brush.mask_brush_0"),
+    hash_node_id("painter_brush.mask_brush_1"),
+    hash_node_id("painter_brush.mask_brush_2"),
+    hash_node_id("painter_brush.mask_brush_3"),
+];
+/// Whole-canvas mask-op one-click buttons — `0` Expand · `1` Contract · `2` Blur · `3` Sharpen · `4`
+/// Invert · `5` Clear. `Click` → `mask_canvas_op(idx)`. Width-adaptive flow row.
+pub const PAINTER_MASK_OP: [NodeId; 6] = [
+    hash_node_id("painter_brush.mask_op_0"),
+    hash_node_id("painter_brush.mask_op_1"),
+    hash_node_id("painter_brush.mask_op_2"),
+    hash_node_id("painter_brush.mask_op_3"),
+    hash_node_id("painter_brush.mask_op_4"),
+    hash_node_id("painter_brush.mask_op_5"),
+];
+/// Mask overlay-tint colour swatches — `0` neutral gray + `1..=4` fluorescent-marker hues. `Click` →
+/// `set_mask_overlay_color(idx)`. Width-adaptive flow row of square swatches.
+pub const PAINTER_MASK_COLOR: [NodeId; 5] = [
+    hash_node_id("painter_brush.mask_color_0"),
+    hash_node_id("painter_brush.mask_color_1"),
+    hash_node_id("painter_brush.mask_color_2"),
+    hash_node_id("painter_brush.mask_color_3"),
+    hash_node_id("painter_brush.mask_color_4"),
+];
+
 // ── Clone card (shown in Clone mode) ────────────────────────────────────────────────────────────
 /// "Set Source" — arms the on-canvas pick mode; the next canvas Down samples the clone source anchor.
 /// `Click` → `arm_clone_sample`.

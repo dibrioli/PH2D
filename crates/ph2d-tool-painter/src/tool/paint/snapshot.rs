@@ -85,6 +85,8 @@ impl PainterTool {
             is_blur: self.is_blur_mode(),
             is_clone: self.is_clone_mode(),
             is_mask: self.is_mask_mode(),
+            mask_brush: self.mask_brush(),
+            mask_overlay_color: self.mask_overlay_color(),
             clone_has_source: self.clone_has_source(),
             clone_aligned: self.clone_aligned(),
             clone_sample_armed: self.clone_sample_armed(),

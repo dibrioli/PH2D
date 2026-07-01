@@ -67,6 +67,9 @@ pub struct BrushSettings {
     pub is_blur: bool,
     pub is_clone: bool,
     pub is_mask: bool,
+    /// Mask sub-brush (`0` Paint/`1` Erase/`2` Blur/`3` Smear) + overlay-tint colour index (`0` gray + 4 fluorescent).
+    pub mask_brush: u8,
+    pub mask_overlay_color: u8,
     /// Clone flags: source sampled? · **Aligned** (offset persists across strokes)? · "Set Source" armed?
     pub clone_has_source: bool,
     pub clone_aligned: bool,
@@ -277,8 +280,7 @@ impl PainterTool {
             .add_point_at(distance, strength)
     }
 
-    /// Set the handle type of `Custom` falloff control point `id` (`0` = Auto,
-    /// `1` = Vector). Drives the right-click handle menu.
+    /// Set the handle type of `Custom` falloff control point `id` (`0` = Auto, `1` = Vector; right-click menu).
     pub fn set_brush_falloff_point_handle(&mut self, id: u8, handle: u8) {
         self.paint
             .brush
@@ -286,8 +288,7 @@ impl PainterTool {
             .set_handle(id, HandleType::from_u8(handle));
     }
 
-    /// Remove `Custom` falloff control point `id` (no-op when only the two
-    /// endpoints remain). Drives the panel's "−" button + the Delete key.
+    /// Remove `Custom` falloff control point `id` (no-op when only the two endpoints remain; "−" / Delete).
     pub fn remove_brush_falloff_point(&mut self, id: u8) {
         self.paint.brush.custom_falloff.remove_point(id);
     }
@@ -302,8 +303,7 @@ impl PainterTool {
         self.paint.eraser = !self.paint.eraser;
     }
 
-    // The paint-mode setters (`set_paint_tool_mode` / `is_smear_mode`) live in `stencil.rs`, beside the
-    // `route_brush_dab_event` that drives them (workspace LOC cap on this file).
+    // The paint-mode setters (`set_paint_tool_mode` / `is_smear_mode`) live in `stencil.rs` (LOC cap).
 
     /// Set the brush radius in pixels, clamped to the interactive size range.
     pub fn set_brush_size_px(&mut self, px: f32) {

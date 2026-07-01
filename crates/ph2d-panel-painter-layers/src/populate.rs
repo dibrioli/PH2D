@@ -147,6 +147,23 @@ pub fn populate(store: &mut WidgetStore) {
             },
         );
     }
+    // Mask section: the sub-brush segments + the whole-canvas op buttons + the overlay-colour swatches
+    // are all Buttons (Click channel). Registered here (not in `paint_mask`) so panel-wiring-parity + the
+    // dispatch see them. The header is a plain collapsible section (no colour dot).
+    for id in ph2d_editor_core::ids::PAINTER_MASK_BRUSH
+        .iter()
+        .chain(ph2d_editor_core::ids::PAINTER_MASK_OP.iter())
+        .chain(ph2d_editor_core::ids::PAINTER_MASK_COLOR.iter())
+        .copied()
+    {
+        store.register(
+            id,
+            InteractiveState::Button {
+                state: ButtonState::Normal,
+            },
+        );
+    }
+    store.mark_collapsible_section(ph2d_editor_core::ids::PAINTER_MASK_SECTION);
     register_collapsible_sections(store);
     // Colour swatch + Eraser toggle + the Stroke-section "Adjust Strength" toggle —
     // Buttons. MUST be registered here or the dispatcher drops the click (the

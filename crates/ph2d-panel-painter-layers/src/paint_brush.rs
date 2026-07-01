@@ -80,6 +80,8 @@ pub(crate) const FALLBACK_BRUSH: BrushSettings = BrushSettings {
     is_blur: false,
     is_clone: false,
     is_mask: false,
+    mask_brush: 0,
+    mask_overlay_color: 0,
     clone_has_source: false,
     clone_aligned: true,
     clone_sample_armed: false,
@@ -194,6 +196,12 @@ pub(crate) fn paint_brush_body(
         paint_checkbox_row, paint_randomize_section, paint_slider_chip_row,
     };
 
+    // Mask section (Mask tool only): collapsible block at the TOP — sub-brush, canvas ops, overlay colour.
+    if brush.is_mask {
+        y = crate::paint_mask::paint_mask_section(ctx, theme, x, content_w, y, brush);
+        y = paint_section_separator(ctx.scene, theme, x, content_w, y);
+    }
+
     // ── TOP basics (no section), reordered (Enio 2026-06-24):
     //    Blend · Color · Size · Strength · Accumulate · Falloff ──
 
@@ -289,11 +297,9 @@ pub(crate) fn paint_brush_body(
     y = sep(ctx.scene, theme, x, content_w, y);
     y = crate::paint_shape::paint_shape_section(ctx, theme, x, content_w, y, brush);
 
-    // ── Section 7b: Shape Tone — the Shape's B&W value ramp (tonal remap of the silhouette), directly
-    //    below the Shape section (Enio 2026-06-25). HIDDEN while Per-Layer Color is on — that mode owns
-    //    the colour per layer, so the ramp is nullified (Enio 2026-06-26). ──
-    // Shown in ALL modes: in Smear/Blur/Clone it's forced to a B&W coverage tone (checked + locked)
-    // that remaps the silhouette. Still hidden while Per-Layer Color owns the colour per layer.
+    // ── Section 7b: Shape Tone — the Shape's B&W value ramp (tonal remap of the silhouette), below the
+    //    Shape section. Shown in ALL modes (Smear/Blur/Clone force it to a B&W coverage tone); HIDDEN
+    //    only while Per-Layer Color owns the colour per layer (the ramp is nullified). ──
     if !brush.shape_per_layer_color {
         y = sep(ctx.scene, theme, x, content_w, y);
         y = crate::paint_shape_ramp::paint_shape_ramp_section(ctx, theme, x, content_w, y, brush);

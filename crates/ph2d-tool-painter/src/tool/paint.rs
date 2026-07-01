@@ -60,6 +60,9 @@ mod composite;
 pub(crate) use composite::{CompositeLayer, CompositeOp};
 /// The **Clone** (clone-stamp) route — copy canvas pixels from a sampled source at a fixed offset.
 mod clone;
+/// The **Mask** tool's extras — the mask sub-brush (Paint/Erase/Blur/Smear), the whole-canvas mask ops
+/// (Expand/Contract/Blur/Sharpen/Invert/Clear), and the on-canvas overlay tint. Split for the LOC cap.
+mod mask;
 mod ramp;
 mod ramp_lut; // ramp LUT baking (colour owner + colour/tone LUTs); split from `stamp_cache` (LOC cap)
 /// Pixel-region save/restore helpers for the drag preview (`dab_bbox`/`save_region`/`restore_region`).
@@ -145,6 +148,12 @@ pub(crate) struct PaintState {
     eraser: bool,
     /// Which operation the pointer performs (Brush=Paint / Smear); driven by the left-rail tool selection.
     paint_mode: PaintMode,
+    /// **Mask** sub-brush (only read in [`PaintMode::Mask`]): `0` Paint (reveal / white) · `1` Erase
+    /// (conceal / black) · `2` Blur (soften the mask under the dab) · `3` Smear (drag the mask). See [`mask`].
+    mask_brush: u8,
+    /// **Mask** on-canvas overlay tint colour index (`0` neutral gray + 4 fluorescent-marker hues) —
+    /// while a mask is the active edit target, the composite is tinted by this so the coverage reads. [`mask`].
+    mask_overlay_color: u8,
     /// **Composite Brush**: run Brush + Smear + Blur together (a Brush-tool upgrade, panel checkbox). See [`composite`].
     composite_enabled: bool,
     /// The composite layer stack in display order (index 0 = layer 1 = top; run bottom→top per dab). [`composite`].

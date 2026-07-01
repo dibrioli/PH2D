@@ -113,7 +113,9 @@ struct DragPreview {
 /// ([`ph2d_painter_brush::smear_dab`], the Blender/Krita "Smearing" algorithm); `Blur` softens the
 /// canvas under each dab ([`ph2d_painter_brush::blur_dab`], the Blender Soften algorithm); `Clone`
 /// copies canvas pixels from a sampled source at a fixed offset ([`ph2d_painter_brush::clone_dab`], the
-/// clone stamp). Eraser stays a separate blend override layered on top of `Paint`.
+/// clone stamp); `Mask` paints a GRAYSCALE coverage value (the brush colour desaturated to Rec.601
+/// luma) — for a layer mask (white reveals / black conceals), reusing the full brush pipeline. Eraser
+/// stays a separate blend override layered on top of `Paint`.
 #[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
 pub(crate) enum PaintMode {
     #[default]
@@ -121,6 +123,7 @@ pub(crate) enum PaintMode {
     Smear,
     Blur,
     Clone,
+    Mask,
 }
 
 pub(crate) struct PaintState {
@@ -268,6 +271,11 @@ impl PainterTool {
     /// Begin a stroke at `ev` and stamp the first dab. Snapshots the model for undo
     /// **before** painting so the whole stroke restores to the pre-stroke pixels.
     fn paint_begin(&mut self, ev: CanvasPointer) {
+        // Mask tool: retarget the stroke onto a mask (switch to / auto-create the active layer's mask)
+        // BEFORE the stroke's undo snapshot, so the mask create/switch is its own undo step.
+        if matches!(self.paint.paint_mode, PaintMode::Mask) {
+            self.ensure_mask_edit_target();
+        }
         let before = self.snapshot_model();
         self.paint.stroke_undo = Some(before);
         self.paint.drag_preview = None;

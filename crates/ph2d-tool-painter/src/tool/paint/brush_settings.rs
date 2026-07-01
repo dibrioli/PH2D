@@ -61,12 +61,12 @@ pub struct BrushSettings {
     pub blend: u8,
     /// Eraser mode — paints with Erase Alpha regardless of [`Self::blend`].
     pub eraser: bool,
-    /// Active pixel-processing operation (left-rail tools that paint NO brush colour): **Smear** drags,
-    /// **Blur** softens, **Clone** copies from a sampled source. Each hides the colour-family controls +
-    /// restricts the Stroke Method to the incremental methods — see [`Self::paints_no_color`].
+    /// Active-op flags: **Smear**/**Blur**/**Clone** process pixels (no colour → hide colour controls +
+    /// incremental-only methods; [`Self::paints_no_color`]); **Mask** paints a grayscale value (keeps all methods).
     pub is_smear: bool,
     pub is_blur: bool,
     pub is_clone: bool,
+    pub is_mask: bool,
     /// Clone flags: source sampled? · **Aligned** (offset persists across strokes)? · "Set Source" armed?
     pub clone_has_source: bool,
     pub clone_aligned: bool,

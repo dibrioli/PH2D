@@ -351,6 +351,10 @@ impl PainterTool {
                 }
                 self.paint.paint_mode = super::PaintMode::Clone;
             }
+            "mask" => {
+                self.paint.paint_mode = super::PaintMode::Mask;
+                self.paint.eraser = false;
+            }
             "eraser" => {
                 self.paint.paint_mode = super::PaintMode::Paint;
                 self.paint.eraser = true;
@@ -374,6 +378,13 @@ impl PainterTool {
     #[must_use]
     pub fn is_blur_mode(&self) -> bool {
         matches!(self.paint.paint_mode, super::PaintMode::Blur)
+    }
+
+    /// Whether the active paint operation is **Mask** — paints a grayscale mask value. The panel keeps
+    /// the full brush but hides Colour / Randomize / Composite and locks the ramps to B&W.
+    #[must_use]
+    pub fn is_mask_mode(&self) -> bool {
+        matches!(self.paint.paint_mode, super::PaintMode::Mask)
     }
 
     /// Route the brush **dab/stroke** chrome events: the flatten/rotate gizmo `SetValue`s (Shape panel),

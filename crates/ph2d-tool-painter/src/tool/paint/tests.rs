@@ -472,6 +472,44 @@ fn clone_mode_copies_from_the_sampled_source() {
 }
 
 #[test]
+fn mask_mode_auto_targets_and_paints_the_mask() {
+    // The Mask tool auto-creates/targets the active layer's mask and paints a GRAYSCALE value into it
+    // (default black brush → conceal on the fresh white mask). End-to-end through the frozen channel.
+    use ph2d_editor_core::ids as core_ids;
+    use ph2d_editor_core::tool::{PanelEvent, Tool};
+    let mut t = white_canvas(32, 6.0); // one raster, white canvas, black brush
+    let raster = t.layers.active().expect("a raster is active");
+    t.handle_panel_event(PanelEvent::SelectOption(
+        core_ids::PAINTER_PAINT_MODE,
+        "mask".to_string(),
+    ));
+    assert!(t.is_mask_mode());
+    // Paint a dab → auto-create + target the mask, then paint into it.
+    t.on_canvas_pointer(cp([16.0, 16.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([16.0, 16.0], PointerPhase::Up));
+    let active = t.layers.active().expect("active after paint");
+    assert!(
+        matches!(
+            t.layers.get(active).map(|l| &l.kind),
+            Some(crate::layers::LayerKind::Mask(_))
+        ),
+        "Mask tool auto-created + targeted a mask edit target"
+    );
+    assert_eq!(
+        t.layers.get(raster).and_then(|l| l.mask),
+        Some(active),
+        "the mask is attached to the original raster"
+    );
+    // The mask buffer (now `canvas_rgba`) was concealed at the dab (black on the white mask), grayscale.
+    let p = px(&t, 32, 16, 16);
+    assert!(p[0] < 255, "mask painted (concealed) at the dab: {p:?}");
+    assert!(
+        p[0] == p[1] && p[1] == p[2],
+        "mask value is grayscale: {p:?}"
+    );
+}
+
+#[test]
 fn move_without_down_is_ignored() {
     let mut t = white_canvas(32, 4.0);
     assert!(

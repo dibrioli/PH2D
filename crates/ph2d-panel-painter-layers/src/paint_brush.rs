@@ -79,6 +79,7 @@ pub(crate) const FALLBACK_BRUSH: BrushSettings = BrushSettings {
     is_smear: false,
     is_blur: false,
     is_clone: false,
+    is_mask: false,
     clone_has_source: false,
     clone_aligned: true,
     clone_sample_armed: false,
@@ -196,8 +197,9 @@ pub(crate) fn paint_brush_body(
     // ── TOP basics (no section), reordered (Enio 2026-06-24):
     //    Blend · Color · Size · Strength · Accumulate · Falloff ──
 
-    // 1. Blend · 2. Color — hidden in Smear/Blur (they process pixels: no colour, fixed interpolate blend).
-    if !brush.paints_no_color() {
+    // 1. Blend · 2. Color — hidden in Smear/Blur/Clone (process pixels) AND Mask (paints a grayscale
+    //    value from the ramp/luma, no colour).
+    if !brush.paints_no_color() && !brush.is_mask {
         let (ny, blend_open) = paint_dropdown_row(
             ctx,
             theme,
@@ -250,9 +252,9 @@ pub(crate) fn paint_brush_body(
     }
 
     // 4c. Composite Brush card (checkbox + the 3-layer Brush/Smear/Blur stack when on) — the plain Brush
-    //     tool only (Smear/Blur/Clone are single-op rail tools; Eraser bypasses composite too — it's the
-    //     Erase-Alpha override, `composite_active()` requires `!eraser`).
-    if !brush.is_smear && !brush.is_blur && !brush.is_clone && !brush.eraser {
+    //     tool only (Smear/Blur/Clone/Mask are single-op rail tools; Eraser bypasses composite too — it's
+    //     the Erase-Alpha override; `composite_active()` requires the plain Brush + `!eraser`).
+    if !brush.is_smear && !brush.is_blur && !brush.is_clone && !brush.eraser && !brush.is_mask {
         y = crate::paint_composite::paint_composite_card(ctx, theme, x, content_w, y, brush);
     }
 
@@ -274,9 +276,9 @@ pub(crate) fn paint_brush_body(
     // Sections below are separated by the Inspector's discreet divider line (Enio 2026-06-25).
     let sep = paint_section_separator;
 
-    // ── Section 6: Randomize Color (collapsible; activates on amount > 0). Hidden in Smear/Blur/Clone
-    //    AND Eraser (all colourless — nothing to randomize). ──
-    if !brush.paints_no_color() && !brush.eraser {
+    // ── Section 6: Randomize Color (collapsible; activates on amount > 0). Hidden in Smear/Blur/Clone,
+    //    Eraser AND Mask (all colourless — nothing to randomize). ──
+    if !brush.paints_no_color() && !brush.eraser && !brush.is_mask {
         y = sep(ctx.scene, theme, x, content_w, y);
         y = paint_randomize_section(ctx, theme, x, content_w, y, brush);
     }

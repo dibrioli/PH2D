@@ -54,7 +54,7 @@ pub(crate) fn paint_shape_ramp_section(
     let count =
         (brush.shape_color_ramp_stop_count as usize).min(brush.shape_color_ramp_stops.len());
     // Smear/Blur/Clone/Eraser paint no colour → the ramp is a B&W coverage tone; force B&W checked + locked.
-    let bw_locked = brush.paints_no_color() || brush.eraser;
+    let bw_locked = brush.paints_no_color() || brush.eraser || brush.is_mask;
     let view = RampView {
         enabled: brush.shape_color_ramp_enabled,
         bw: brush.shape_color_ramp_bw || bw_locked,

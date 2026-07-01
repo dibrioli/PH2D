@@ -21,8 +21,8 @@ use ph2d_a11y::NodeId;
 /// `PanelEvent` channel: Smear → the smear drag, Blur → the soften, Eraser → paint with Erase-Alpha,
 /// everything else → normal Brush paint. The shell drains `ToolPanelEvent` into `handle_panel_event`,
 /// so this reaches `PainterTool::set_paint_tool_mode` without any dependency on the concrete painter
-/// crate. The not-yet-wired tools (Mask / Inpaint / Shapes) map to "brush" for now, so selecting one
-/// always leaves normal painting rather than a stuck Smear/Blur/Clone. Eyedropper also maps to "brush"
+/// crate. The not-yet-wired tools (Inpaint / Shapes) map to "brush" for now, so selecting one always
+/// leaves normal painting rather than a stuck Smear/Blur/Clone/Mask. Eyedropper also maps to "brush"
 /// but additionally opens the rich colour picker (see the `apply` handler).
 fn push_paint_mode(hero: &mut HeroScreen, tool_id: NodeId) {
     let mode = if tool_id == ids::PAINTER_RAIL_SMEAR {
@@ -31,6 +31,8 @@ fn push_paint_mode(hero: &mut HeroScreen, tool_id: NodeId) {
         "blur"
     } else if tool_id == ids::PAINTER_RAIL_CLONE {
         "clone"
+    } else if tool_id == ids::PAINTER_RAIL_MASK {
+        "mask"
     } else if tool_id == ids::PAINTER_RAIL_ERASER {
         "eraser"
     } else {

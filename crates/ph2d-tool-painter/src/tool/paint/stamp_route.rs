@@ -5,6 +5,7 @@
 
 use super::ramp_lut::RampLutOwner;
 use super::{PaintMode, Region, union_region};
+use crate::layers::LayerKind;
 use crate::tool::PainterTool;
 use ph2d_painter_brush::{BrushSpec, Dab};
 use std::sync::Arc;
@@ -53,12 +54,64 @@ impl PainterTool {
             self.stamp_dabs_clone(dabs, w, h);
             return;
         }
+        // Mask paints a GRAYSCALE value (a layer mask) — desaturate then use the normal brush path.
+        if matches!(self.paint.paint_mode, PaintMode::Mask) {
+            self.stamp_dabs_mask(dabs);
+            return;
+        }
         if self.paint.tiling[0] || self.paint.tiling[1] {
             let wrapped = super::tiling::tiled_dabs(dabs, self.source_size, self.paint.tiling);
             self.stamp_dabs_inner(&wrapped);
         } else {
             self.stamp_dabs_inner(dabs);
         }
+    }
+
+    /// Ensure the edit target is a **mask** before a Mask-mode stroke, so the tool "just works" without
+    /// hand-managing masks: if the active layer is a Raster/Texture, switch to its attached mask (or
+    /// create one — a fresh white mask via `add_mask_to_active`). No-op when the active layer is already
+    /// a Mask, or is a Group/Adjustment (which can't hold a mask). Reuses the tested layer-edit helpers
+    /// (their own structural-undo entry), so the mask create/switch undoes separately from the stroke.
+    pub(super) fn ensure_mask_edit_target(&mut self) {
+        let Some(active) = self.layers.active() else {
+            return;
+        };
+        let Some(layer) = self.layers.get(active) else {
+            return;
+        };
+        if matches!(layer.kind, LayerKind::Mask(_)) {
+            return; // already editing a mask
+        }
+        let can_mask = matches!(layer.kind, LayerKind::Raster(_) | LayerKind::Texture(_));
+        let existing = layer.mask;
+        if !can_mask {
+            return; // group / adjustment — no mask
+        }
+        match existing {
+            Some(mask_id) => self.select_single(mask_id),
+            None => {
+                self.add_mask_to_active();
+            }
+        }
+    }
+
+    /// **Mask** route: paint a GRAYSCALE coverage value (for a layer mask — white reveals, black
+    /// conceals). The brush colour is desaturated to Rec.601 luma so the mask buffer stays clean
+    /// grayscale (the compositor takes luma regardless); everything else is the normal brush path —
+    /// ramps / Shape / Grain / falloff / blend / Tiling and every Stroke Method (Line / Curve / Circle
+    /// / Polygon / Free Hand) + Symmetry all apply as in Paint. The panel hides Colour / Randomize /
+    /// Composite and locks the ramps to B&W. Colour saved/restored around the dab batch.
+    pub(super) fn stamp_dabs_mask(&mut self, dabs: &[Dab]) {
+        let saved = self.paint.brush.color;
+        let l = (0.299 * saved[0] + 0.587 * saved[1] + 0.114 * saved[2]).clamp(0.0, 1.0);
+        self.paint.brush.color = [l, l, l];
+        if self.paint.tiling[0] || self.paint.tiling[1] {
+            let wrapped = super::tiling::tiled_dabs(dabs, self.source_size, self.paint.tiling);
+            self.stamp_dabs_inner(&wrapped);
+        } else {
+            self.stamp_dabs_inner(dabs);
+        }
+        self.paint.brush.color = saved;
     }
 
     /// **Smear** route: drag the canvas content from each dab centre to the next (Blender 2D

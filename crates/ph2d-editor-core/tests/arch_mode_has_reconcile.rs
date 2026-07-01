@@ -32,14 +32,6 @@ const BENIGN_SET_MODE: &[(&str, &str)] = &[
         "TopBar icon view mode — purely visual, no dependent caches",
     ),
     (
-        "set_paint_tool_mode",
-        "Painter Brush/Smear/Blur/Eraser op select: writes paint_mode + the eraser \
-         flag (+ a one-time Spacing default on transition). All three are read FRESH \
-         each stamp (the stamp-route dispatch + stroke engine); no cache or derived \
-         param is keyed on the paint operation, and the panel snapshot recomputes \
-         is_smear/is_blur/composite every frame — nothing to reconcile.",
-    ),
-    (
         "set_blender_channel_mode",
         "BlenderPicker RGB↔HSV display only; channel values are derived per-paint",
     ),

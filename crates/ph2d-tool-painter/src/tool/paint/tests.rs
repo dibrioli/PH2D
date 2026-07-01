@@ -507,6 +507,17 @@ fn mask_mode_auto_targets_and_paints_the_mask() {
         p[0] == p[1] && p[1] == p[2],
         "mask value is grayscale: {p:?}"
     );
+    // Returning to the Brush restores the ORIGINAL raster as the edit target — not stuck on the mask
+    // (the "can't paint after masking" bug).
+    t.handle_panel_event(PanelEvent::SelectOption(
+        core_ids::PAINTER_PAINT_MODE,
+        "brush".to_string(),
+    ));
+    assert_eq!(
+        t.layers.active(),
+        Some(raster),
+        "leaving Mask returns the edit target to the masked layer"
+    );
 }
 
 #[test]

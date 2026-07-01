@@ -95,6 +95,30 @@ impl PainterTool {
         }
     }
 
+    /// Reconcile the edit target when LEAVING Mask mode: the Mask tool retargets painting onto a mask
+    /// (see [`Self::ensure_mask_edit_target`]), so on switching back to Brush/Smear/… the active target
+    /// must return to the layer that mask belongs to — else the next brush stroke would keep painting the
+    /// mask ("can't paint the image" — Enio). No-op unless the active layer is a mask with a parent.
+    pub(super) fn reconcile_mask_target(&mut self) {
+        let Some(active) = self.layers.active() else {
+            return;
+        };
+        if !matches!(
+            self.layers.get(active).map(|l| &l.kind),
+            Some(LayerKind::Mask(_))
+        ) {
+            return;
+        }
+        let Some(parent) = self
+            .layers
+            .all_ids()
+            .find(|&p| self.layers.get(p).and_then(|l| l.mask) == Some(active))
+        else {
+            return;
+        };
+        self.select_single(parent);
+    }
+
     /// **Mask** route: paint a GRAYSCALE coverage value (for a layer mask — white reveals, black
     /// conceals). The brush colour is desaturated to Rec.601 luma so the mask buffer stays clean
     /// grayscale (the compositor takes luma regardless); everything else is the normal brush path —

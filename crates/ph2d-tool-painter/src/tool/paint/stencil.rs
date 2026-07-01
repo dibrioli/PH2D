@@ -325,6 +325,10 @@ impl PainterTool {
     /// tools never leaves a stuck state (e.g. Brush after Smear returns to normal painting). Beside
     /// `route_brush_dab_event`, which drives it (moved here off `brush_settings.rs` for the LOC cap).
     pub fn set_paint_tool_mode(&mut self, mode: &str) {
+        // Leaving Mask returns the edit target to the masked layer (the Mask tool retargeted onto a
+        // mask); reconciled AFTER the mode is set so the next stroke paints the image, not the mask.
+        let leaving_mask =
+            matches!(self.paint.paint_mode, super::PaintMode::Mask) && mode != "mask";
         match mode {
             "smear" => {
                 // Entering Smear defaults Spacing to 5% (Krita recommends ≤0.05 for a smooth
@@ -363,6 +367,9 @@ impl PainterTool {
                 self.paint.paint_mode = super::PaintMode::Paint;
                 self.paint.eraser = false;
             }
+        }
+        if leaving_mask {
+            self.reconcile_mask_target();
         }
     }
 

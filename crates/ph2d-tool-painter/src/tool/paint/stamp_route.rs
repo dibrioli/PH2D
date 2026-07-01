@@ -32,6 +32,14 @@ impl PainterTool {
             self.stamp_dabs_smear(dabs, w, h);
             return;
         }
+        // Blur softens the canvas under each dab (Blender Soften). Like Smear it ignores the brush
+        // colour / blend / ramp routing and applies Shape/Grain/flatten via the mask + Tiling itself,
+        // so it short-circuits here into its own route ([`super::blur_route`]).
+        if matches!(self.paint.paint_mode, PaintMode::Blur) {
+            let (w, h) = self.source_size;
+            self.stamp_dabs_blur(dabs, w, h);
+            return;
+        }
         if self.paint.tiling[0] || self.paint.tiling[1] {
             let wrapped = super::tiling::tiled_dabs(dabs, self.source_size, self.paint.tiling);
             self.stamp_dabs_inner(&wrapped);

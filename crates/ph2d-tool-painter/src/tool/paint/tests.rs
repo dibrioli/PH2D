@@ -217,6 +217,66 @@ fn smear_mode_drags_pixels_along_the_stroke() {
 }
 
 #[test]
+fn blur_mode_softens_a_hard_edge_along_the_stroke() {
+    // DoD seam test: select Blur via the frozen PanelEvent channel (exactly what the left-rail
+    // dispatch pushes), then stroke along a hard black|white edge and assert the seam softens — the
+    // Blender Soften behaviour end-to-end through the tool. Blur is stationary per dab, so the stroke
+    // runs ALONG the boundary (each dab's footprint straddles both sides).
+    use ph2d_editor_core::ids as core_ids;
+    use ph2d_editor_core::tool::{PanelEvent, Tool};
+    let size = 48u32;
+    let mut t = PainterTool::default();
+    // Left half black, right half white (both opaque).
+    let mut src = vec![255u8; (size * size * 4) as usize];
+    for y in 0..size {
+        for x in 0..size / 2 {
+            let i = ((y * size + x) * 4) as usize;
+            src[i..i + 4].copy_from_slice(&[0, 0, 0, 255]);
+        }
+    }
+    t.set_source(src, size, size);
+    t.paint.brush = BrushSpec {
+        radius_px: 8.0,
+        hardness: 1.0,
+        falloff: Falloff::Constant,
+        strength: 1.0,
+        space_attenuation: false,
+        ..Default::default()
+    };
+    t.handle_panel_event(PanelEvent::SelectOption(
+        core_ids::PAINTER_PAINT_MODE,
+        "blur".to_string(),
+    ));
+    assert!(matches!(t.paint.paint_mode, PaintMode::Blur));
+    let boundary = size / 2; // x = 24, first white column
+    let far_white = boundary + 15; // x = 39, outside the radius-8 footprint at x=24
+    assert_eq!(px(&t, size, boundary, size / 2), [255, 255, 255, 255], "seam starts white");
+    // Stroke vertically ALONG the seam (x = boundary), top to bottom.
+    let bx = boundary as f32;
+    t.on_canvas_pointer(cp([bx, 6.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([bx, (size / 2) as f32], PointerPhase::Move));
+    t.on_canvas_pointer(cp([bx, (size - 6) as f32], PointerPhase::Move));
+    t.on_canvas_pointer(cp([bx, (size - 6) as f32], PointerPhase::Up));
+    let seam = px(&t, size, boundary, size / 2);
+    assert!(
+        seam[0] < 255 && seam[0] > 0,
+        "the seam softened toward grey (black averaged into the white edge): {seam:?}"
+    );
+    assert_eq!(seam[3], 255, "opaque canvas stays opaque");
+    assert_eq!(
+        px(&t, size, far_white, size / 2),
+        [255, 255, 255, 255],
+        "a pixel outside the footprint is untouched"
+    );
+    // Selecting Brush again exits Blur (no stuck mode).
+    t.handle_panel_event(PanelEvent::SelectOption(
+        core_ids::PAINTER_PAINT_MODE,
+        "brush".to_string(),
+    ));
+    assert!(matches!(t.paint.paint_mode, PaintMode::Paint));
+}
+
+#[test]
 fn move_without_down_is_ignored() {
     let mut t = white_canvas(32, 4.0);
     assert!(

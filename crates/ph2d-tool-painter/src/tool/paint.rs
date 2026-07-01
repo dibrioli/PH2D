@@ -53,6 +53,8 @@ pub use polygon::PolygonOverlay;
 /// The Stencil texture mapping's on-canvas handle editor (move/resize the image-space rect).
 mod stencil;
 pub use stencil::{StencilOverlay, StencilPreview};
+/// The **Blur** (soften) route — a stationary neighbourhood blur per dab; sibling of `stamp_dabs_smear`.
+mod blur_route;
 mod ramp;
 mod ramp_lut; // ramp LUT baking (colour owner + colour/tone LUTs); split from `stamp_cache` (LOC cap)
 mod shape_ramp;
@@ -101,13 +103,15 @@ struct DragPreview {
 /// Which operation the canvas pointer performs — selected from the left rail's Painter tools and
 /// routed in via `PanelEvent::SelectOption(PAINTER_PAINT_MODE, …)`. `Paint` is the normal dab-stamp
 /// path (brush colour, Shape, Grain, ramps); `Smear` drags the canvas content along the stroke
-/// ([`ph2d_painter_brush::smear_dab`], the Blender/Krita "Smearing" algorithm). Eraser stays a
-/// separate blend override layered on top of `Paint`.
+/// ([`ph2d_painter_brush::smear_dab`], the Blender/Krita "Smearing" algorithm); `Blur` softens the
+/// canvas under each dab ([`ph2d_painter_brush::blur_dab`], the Blender Soften algorithm). Eraser stays
+/// a separate blend override layered on top of `Paint`.
 #[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
 pub(crate) enum PaintMode {
     #[default]
     Paint,
     Smear,
+    Blur,
 }
 
 pub(crate) struct PaintState {

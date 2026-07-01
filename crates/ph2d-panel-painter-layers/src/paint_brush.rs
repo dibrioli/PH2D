@@ -77,6 +77,7 @@ pub(crate) const FALLBACK_BRUSH: BrushSettings = BrushSettings {
     blend: 0,
     eraser: false,
     is_smear: false,
+    is_blur: false,
     tiling: [false, false],
     repeat_image: false,
     // Symmetry section — disabled by default (mirror X, 6 segments), no pick mode armed.
@@ -179,8 +180,8 @@ pub(crate) fn paint_brush_body(
     // ── TOP basics (no section), reordered (Enio 2026-06-24):
     //    Blend · Color · Size · Strength · Accumulate · Falloff ──
 
-    // 1. Blend · 2. Color — hidden in Smear (it drags pixels: no colour, fixed interpolate blend).
-    if !brush.is_smear {
+    // 1. Blend · 2. Color — hidden in Smear/Blur (they process pixels: no colour, fixed interpolate blend).
+    if !brush.paints_no_color() {
         let (ny, blend_open) = paint_dropdown_row(
             ctx,
             theme,
@@ -223,8 +224,9 @@ pub(crate) fn paint_brush_body(
         brush.strength,
     );
 
-    // 5. Accumulate (checkbox — caps the stroke at Strength when off). Hidden in Smear (no build-up).
-    if !brush.is_smear {
+    // 5. Accumulate (checkbox — caps the stroke at Strength when off). Hidden in Smear/Blur
+    //    (neither uses the paint-side Strength cap).
+    if !brush.paints_no_color() {
         y = paint_checkbox_row(
             ctx,
             theme,
@@ -240,8 +242,8 @@ pub(crate) fn paint_brush_body(
     // Sections below are separated by the Inspector's discreet divider line (Enio 2026-06-25).
     let sep = paint_section_separator;
 
-    // ── Section 6: Randomize Color (collapsible; activates on amount > 0). Hidden in Smear (colour). ──
-    if !brush.is_smear {
+    // ── Section 6: Randomize Color (collapsible; activates on amount > 0). Hidden in Smear/Blur (colour). ──
+    if !brush.paints_no_color() {
         y = sep(ctx.scene, theme, x, content_w, y);
         y = paint_randomize_section(ctx, theme, x, content_w, y, brush);
     }
@@ -255,8 +257,8 @@ pub(crate) fn paint_brush_body(
     // ── Section 7b: Shape Tone — the Shape's B&W value ramp (tonal remap of the silhouette), directly
     //    below the Shape section (Enio 2026-06-25). HIDDEN while Per-Layer Color is on — that mode owns
     //    the colour per layer, so the ramp is nullified (Enio 2026-06-26). ──
-    // Also hidden in Smear (the ramp colourises the silhouette; Smear paints no colour).
-    if !brush.shape_per_layer_color && !brush.is_smear {
+    // Also hidden in Smear/Blur (the ramp colourises the silhouette; they paint no colour).
+    if !brush.shape_per_layer_color && !brush.paints_no_color() {
         y = sep(ctx.scene, theme, x, content_w, y);
         y = crate::paint_shape_ramp::paint_shape_ramp_section(ctx, theme, x, content_w, y, brush);
     }
@@ -273,8 +275,8 @@ pub(crate) fn paint_brush_body(
     y = sep(ctx.scene, theme, x, content_w, y);
     y = crate::paint_stroke::paint_tiling_section(ctx, theme, x, content_w, y, brush);
 
-    // ── Eraser checkbox (standalone, very bottom) — hidden in Smear (Smear isn't erase) ──
-    if !brush.is_smear {
+    // ── Eraser checkbox (standalone, very bottom) — hidden in Smear/Blur (neither erases) ──
+    if !brush.paints_no_color() {
         y = sep(ctx.scene, theme, x, content_w, y);
         y = crate::paint_brush_top::paint_checkbox_row(
             ctx,

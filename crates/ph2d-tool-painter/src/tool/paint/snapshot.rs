@@ -6,6 +6,18 @@ use super::brush_settings::{BrushSettings, PANEL_RAMP_STOPS, size_px_to_norm};
 use crate::tool::PainterTool;
 use ph2d_painter_brush::{Falloff, FalloffPoint, MAX_FALLOFF_POINTS, eval_falloff_curve};
 
+impl BrushSettings {
+    /// `true` when the active paint operation processes existing pixels instead of painting the brush
+    /// colour — **Smear** or **Blur**. The panel hides the colour / blend / Colour-Ramp /
+    /// Randomize-Color / Accumulate / Eraser controls and restricts the Stroke Method to the
+    /// incremental methods for either. (Defined here, beside the snapshot builder, so `brush_settings.rs`
+    /// stays under the workspace file-LOC cap.)
+    #[must_use]
+    pub fn paints_no_color(&self) -> bool {
+        self.is_smear || self.is_blur
+    }
+}
+
 /// Strength of the brush's active falloff at normalized distance `t` (`0` = centre, `1` = rim), for
 /// the panel's live curve preview — the editable points for `Custom`, else the [`Falloff`] formula.
 /// Lives beside the snapshot it reads (moved from `brush_settings` for the file-LOC cap).
@@ -69,6 +81,7 @@ impl PainterTool {
             blend: b.blend.to_u8(),
             eraser: self.paint.eraser,
             is_smear: self.is_smear_mode(),
+            is_blur: self.is_blur_mode(),
             tiling: self.paint.tiling,
             repeat_image: self.paint.repeat_image,
             symmetry_enabled: b.symmetry.enabled,

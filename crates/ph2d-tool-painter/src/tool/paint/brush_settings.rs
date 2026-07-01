@@ -63,8 +63,11 @@ pub struct BrushSettings {
     pub eraser: bool,
     /// `true` when the active paint operation is **Smear** (left-rail tool). The panel hides the
     /// colour / blend / ramp / Randomize-Color / Eraser controls and restricts the Stroke Method to
-    /// the incremental methods, since Smear drags pixels (it paints no colour).
+    /// the incremental methods, since Smear drags pixels (it paints no colour). See [`Self::paints_no_color`].
     pub is_smear: bool,
+    /// `true` when the active paint operation is **Blur** (left-rail tool). Hides the same
+    /// colour-family controls as [`Self::is_smear`] — Blur softens pixels, painting no colour.
+    pub is_blur: bool,
     /// Seamless **Tiling** (wrap-around painting) flags `[x, y]`.
     pub tiling: [bool; 2],
     /// **Repeat Image** tile-preview toggle (the on-canvas 3×3 grid).

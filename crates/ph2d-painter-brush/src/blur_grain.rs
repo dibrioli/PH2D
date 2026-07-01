@@ -1,0 +1,176 @@
+//! Canvas-fixed **Grain** blur — the Tiled / Stencil Grain Mapping path (and per-dab rotation).
+//!
+//! Split from [`crate::blur`] for the workspace LOC cap. The scale-invariant [`crate::StampMask`]
+//! (used by [`crate::blur_blit_stamp`]) only covers the View Grain Mapping and a constant orientation;
+//! a canvas-fixed Grain (Tiled / Stencil) depends on the canvas position, and Rake / Random / Jitter
+//! Rotate change the frame per dab — so the weight is sampled per pixel here, the blur sibling of
+//! [`crate::smear_blit_grain`] / [`crate::blit_canvas_cached`].
+
+use crate::blur::{blend_blurred, blur_region, footprint_bbox, kernel_radius};
+use crate::dab::DirtyRect;
+use crate::footprint::FootprintDeform;
+use crate::spec::BrushSpec;
+use crate::texture::{ImageMask, TexDabBasis};
+
+/// Blur one dab whose **Grain Mapping is canvas-fixed** (Tiled / Stencil) or whose Shape/Grain rotates
+/// per dab (Rake / Random / Jitter Rotate) — cases the scale-invariant [`crate::StampMask`] can't bake.
+/// Computes the per-pixel weight `silhouette × Grain × strength` (matching [`crate::blit_canvas_cached`],
+/// the paint path for these mappings) and blends the blurred neighbourhood back with it, so the Grain
+/// Mapping and per-dab rotation shape the blur like they shape a painted dab. The silhouette is the
+/// Shape image (when active) or the falloff. The caller supplies the per-dab `footprint` (Jitter-Rotate)
+/// and the Grain / Shape `TexDabBasis` (Rake heading + Random draw). `grain_basis` `None` ⇒ no Grain
+/// modulation; `shape_basis` `None` ⇒ the falloff is the silhouette. Grain sampled per pixel (no canvas
+/// cache — a perf follow-up). Toroidal neighbourhood read on `wrap` axes, like [`crate::blur_dab`].
+#[allow(clippy::too_many_arguments)]
+#[must_use]
+pub fn blur_blit_grain(
+    buf: &mut [u8],
+    width: u32,
+    height: u32,
+    center: [f32; 2],
+    radius: f32,
+    spec: &BrushSpec,
+    footprint: FootprintDeform,
+    grain_basis: Option<&TexDabBasis>,
+    shape_basis: Option<&TexDabBasis>,
+    grain_image: Option<&ImageMask>,
+    shape_image: Option<&ImageMask>,
+    shape_ramp_lut: Option<&[f32]>,
+    strength: f32,
+    wrap: [bool; 2],
+) -> Option<DirtyRect> {
+    let strength = strength.clamp(0.0, 1.0);
+    if strength <= 0.0 || radius <= 0.0 {
+        return None;
+    }
+    let (fw, fh) = (width as i64, height as i64);
+    let (min_x, min_y, bw, bh) = footprint_bbox(center, radius, fw, fh, 1)?;
+    let k = kernel_radius(radius);
+    let blurred = blur_region(buf, fw, fh, min_x, min_y, bw, bh, k, wrap);
+
+    let depth = spec.grain_depth();
+    let (cx, cy) = (center[0], center[1]);
+    let inv_r = 1.0 / radius;
+    blend_blurred(buf, fw, min_x, min_y, bw, bh, &blurred, |i, j| {
+        let px = min_x + i as i64;
+        let py = min_y + j as i64;
+        let dx = (px as f32 + 0.5) - cx;
+        let dy = (py as f32 + 0.5) - cy;
+        // Silhouette: Shape image (dab-relative) or the falloff, with the dab footprint.
+        let mut w = match shape_basis {
+            Some(sb) => {
+                let raw = crate::texture::sample_shape_silhouette(
+                    &spec.shape,
+                    sb,
+                    px,
+                    py,
+                    [cx, cy],
+                    radius,
+                    shape_image,
+                );
+                let sv = crate::texture::remap_shape_value(raw, shape_ramp_lut);
+                let t = footprint.falloff_t(dx * inv_r, dy * inv_r);
+                spec.compose_shape_silhouette(sv, spec.falloff_weight(t))
+            }
+            None => {
+                let t = footprint.falloff_t(dx * inv_r, dy * inv_r);
+                spec.falloff_weight(t)
+            }
+        };
+        if w <= 0.0 {
+            return 0.0;
+        }
+        if let Some(gb) = grain_basis {
+            let g =
+                crate::texture::sample(&spec.texture, gb, px, py, [cx, cy], radius, grain_image);
+            w *= if depth >= 1.0 {
+                g
+            } else {
+                1.0 + (g - 1.0) * depth
+            };
+        }
+        w * strength
+    });
+    Some(DirtyRect {
+        x: min_x as u32,
+        y: min_y as u32,
+        w: bw as u32,
+        h: bh as u32,
+    })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::texture::{TextureKind, TextureMapping};
+
+    #[test]
+    fn canvas_fixed_grain_changes_the_blur() {
+        // A Tiled (canvas-fixed) Checker Grain must shape the blur — proven by comparing against the
+        // plain round blur on the same input: the Grain path yields a DIFFERENT result (it isn't
+        // ignored). Hard black|white edge, blur at the boundary.
+        let (w, h) = (40u32, 12u32);
+        let mut base = vec![255u8; (w * h * 4) as usize];
+        for y in 0..h {
+            for x in 0..20 {
+                let i = ((y * w + x) * 4) as usize;
+                base[i..i + 3].copy_from_slice(&[0, 0, 0]);
+            }
+        }
+        let mut spec = BrushSpec {
+            radius_px: 8.0,
+            hardness: 1.0,
+            ..Default::default()
+        };
+        spec.texture.kind = TextureKind::Checker;
+        spec.texture.mapping = TextureMapping::Tiled;
+        assert!(spec.texture.is_active(), "Checker Grain is active");
+
+        let fp = spec.footprint_deform();
+        let gb = crate::texture::dab_basis(
+            &spec.texture,
+            [0.0, 0.0],
+            &mut 0u64,
+            [w as f32, h as f32],
+            [1.0, 0.0],
+            crate::footprint::FootprintDeform::identity(),
+        );
+        let mut with_grain = base.clone();
+        let dirty = blur_blit_grain(
+            &mut with_grain,
+            w,
+            h,
+            [20.0, 6.0],
+            8.0,
+            &spec,
+            fp,
+            Some(&gb),
+            None,
+            None,
+            None,
+            None,
+            1.0,
+            [false, false],
+        );
+        assert!(dirty.is_some(), "grain blur paints");
+
+        let mut plain = base.clone();
+        let _ = crate::blur_dab(
+            &mut plain,
+            w,
+            h,
+            [20.0, 6.0],
+            &BrushSpec {
+                radius_px: 8.0,
+                hardness: 1.0,
+                ..Default::default()
+            },
+            1.0,
+            [false, false],
+        );
+        assert!(
+            with_grain != plain,
+            "the canvas-fixed Grain shapes the blur"
+        );
+    }
+}

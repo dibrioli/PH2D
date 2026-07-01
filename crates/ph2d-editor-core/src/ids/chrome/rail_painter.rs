@@ -50,9 +50,9 @@ pub const PAINTER_RAIL_SHAPE_CIRCLE: NodeId = hash_node_id("painter_rail.shape_c
 pub const PAINTER_RAIL_SHAPE_POLYGON: NodeId = hash_node_id("painter_rail.shape_polygon");
 
 /// Routing id (not a painted widget): the rail forwards the selected paint tool's mode to the active
-/// Painter via `PanelEvent::SelectOption(PAINTER_PAINT_MODE, "brush" | "eraser" | "smear")`, drained
-/// by the shell into `PainterTool::handle_panel_event` → `set_paint_tool_mode`. Dependency-legal
-/// (a frozen-channel message, no dep on the concrete painter crate).
+/// Painter via `PanelEvent::SelectOption(PAINTER_PAINT_MODE, "brush" | "eraser" | "smear" | "blur")`,
+/// drained by the shell into `PainterTool::handle_panel_event` → `set_paint_tool_mode`.
+/// Dependency-legal (a frozen-channel message, no dep on the concrete painter crate).
 pub const PAINTER_PAINT_MODE: NodeId = hash_node_id("painter_rail.paint_mode");
 
 /// The Painter-mode tool radio group, in rail (paint) order. Exclusive

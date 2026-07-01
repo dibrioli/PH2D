@@ -80,9 +80,10 @@ impl PainterTool {
         self.invalidate_composite();
     }
 
-    /// Blend the mask overlay film over the composited RGBA `buf` (straight sRGB8): where the active
-    /// mask reveals, tint by the selected colour at [`OVERLAY_STRENGTH`]. No-op unless a mask is the
-    /// active target. Called at both composite production points AFTER the full compose.
+    /// Blend the mask overlay film over the composited RGBA `buf` (straight sRGB8): where the active mask
+    /// CONCEALS, tint by the selected colour at [`OVERLAY_STRENGTH`] — a quick-mask film so the painted
+    /// (hidden) regions glow in the marker colour, while a fully-revealed mask shows nothing (no flood).
+    /// No-op unless a mask is the active target. Called at both composite points AFTER the full compose.
     pub(crate) fn apply_mask_overlay(&self, buf: &mut [u8]) {
         if !self.active_is_mask() {
             return;
@@ -101,20 +102,33 @@ impl PainterTool {
                 _ => None,
             })
             .unwrap_or(false);
-        let [cr, cg, cb] = mask_overlay_rgb(self.paint.mask_overlay_color);
+        let film = mask_overlay_rgb(self.paint.mask_overlay_color);
         let mask = &self.canvas_rgba;
         for i in 0..n {
             let v = crate::compositor::mask_value(mask, i);
             let cov = if inverted { 1.0 - v } else { v };
-            let a = cov * OVERLAY_STRENGTH;
-            if a <= 0.0 {
+            // Tint the CONCEALED area (1 − coverage): a fresh white/revealed mask (cov = 1) shows nothing,
+            // painted-black regions (cov = 0) glow — the quick-mask film, not a full-canvas flood.
+            let sa = (1.0 - cov) * OVERLAY_STRENGTH;
+            if sa <= 0.0 {
                 continue;
             }
+            // Straight-alpha src-over of the film onto the composite pixel — RAISES alpha too, so the film
+            // is visible even where the mask made the layer fully transparent (concealed → composite α 0).
             let b = i * 4;
-            buf[b] = lerp8(buf[b], cr, a);
-            buf[b + 1] = lerp8(buf[b + 1], cg, a);
-            buf[b + 2] = lerp8(buf[b + 2], cb, a);
-            // alpha untouched — the film only tints colour
+            let da = f32::from(buf[b + 3]) / 255.0;
+            let oa = sa + da * (1.0 - sa);
+            if oa <= 0.0 {
+                continue;
+            }
+            for c in 0..3 {
+                let s = f32::from(film[c]);
+                let d = f32::from(buf[b + c]);
+                buf[b + c] = ((s * sa + d * da * (1.0 - sa)) / oa)
+                    .round()
+                    .clamp(0.0, 255.0) as u8;
+            }
+            buf[b + 3] = (oa * 255.0).round().clamp(0.0, 255.0) as u8;
         }
     }
 
@@ -164,12 +178,4 @@ fn mask_overlay_rgb(idx: u8) -> [u8; 3] {
         4 => [255, 120, 0],   // fluorescent orange
         _ => [128, 128, 128], // neutral gray (default)
     }
-}
-
-/// `round(dst + (src − dst)·t)` per channel, clamped to a byte.
-#[inline]
-fn lerp8(dst: u8, src: u8, t: f32) -> u8 {
-    (f32::from(dst) + (f32::from(src) - f32::from(dst)) * t)
-        .round()
-        .clamp(0.0, 255.0) as u8
 }

@@ -1,10 +1,11 @@
 //! The collapsible **Mask** section — pinned at the TOP of the Brush panel while the Mask tool is
-//! active. Three width-adaptive button groups (they reflow when the panel narrows):
+//! active. Three titled CARDS (each a width-adaptive grid that reflows when the panel narrows), named so
+//! the repeated Blur/Smear labels can't be confused between the paint brushes and the whole-canvas ops:
 //!
-//! 1. the mask **sub-brush** (Paint / Erase / Blur / Smear) — a segmented toggle group;
-//! 2. the whole-canvas **ops** (Expand / Contract / Blur / Sharpen / Invert / Clear) — one-click
-//!    buttons with the shared hover/press surface;
-//! 3. the on-canvas **overlay-tint colour** (neutral gray + 4 fluorescent-marker hues) — square swatches.
+//! - **Brushes** — the mask sub-brush (Paint / Erase / Blur / Smear): a toggle group (one selected).
+//! - **Modifiers** — the whole-canvas ops (Expand / Contract / Blur / Sharpen / Invert / Clear):
+//!   one-click buttons with the shared hover/press surface.
+//! - **Overlay Color** — the on-canvas quick-mask tint (neutral gray + 4 fluorescent-marker hues).
 //!
 //! Every widget is a FIXED-id registered in [`crate::populate`]; clicks forward over the frozen
 //! `PanelEvent` Click channel (whitelisted in `event.rs`) to the tool's `route_mask_event`.
@@ -12,10 +13,9 @@
 use crate::paint::register_button;
 use ph2d_editor_core::ids as core_ids;
 use ph2d_editor_core::paint::{
-    fill_rounded_rect, paint_text_centered, resolve, stroke_rounded_rect,
+    fill_rounded_rect, paint_text, paint_text_centered, resolve, stroke_rounded_rect,
 };
 use ph2d_editor_core::panel::PaintCtx;
-use ph2d_editor_core::widget::panel_chrome::paint_segmented_group_adaptive;
 use ph2d_editor_core::widget::{
     ButtonState, ColorSwatch, SectionHeader, SwatchSize, SwatchState, flat_button_surface,
     paint_color_swatch, paint_section_header,
@@ -26,8 +26,8 @@ use ph2d_tool_painter::BrushSettings;
 
 /// Square edge (px) of the overlay-colour swatches — the small palette size, laid out in a wrap grid.
 const SWATCH_PX: f32 = 26.0; // LITERAL-PX-OK: overlay-colour swatch square
-/// Minimum op-button width (px) before the flow grid drops to fewer columns (adaptive reflow floor).
-const OP_MIN_W: f32 = 74.0; // LITERAL-PX-OK: op-button min column width
+/// Minimum op/brush-button width (px) before the flow grid drops to fewer columns (adaptive reflow floor).
+const BTN_MIN_W: f32 = 64.0; // LITERAL-PX-OK: mask button min column width
 
 /// The 5 overlay-tint colours (straight RGBA8): neutral gray + fluorescent yellow / pink / green /
 /// orange — must mirror `ph2d-tool-painter`'s `mask_overlay_rgb`. Data colours, not chrome tokens.
@@ -49,8 +49,6 @@ pub(crate) fn paint_mask_section(
     y: f32,
     brush: BrushSettings,
 ) -> f32 {
-    let gap = Spacing::Xs.px();
-
     // ── Collapsible header ──
     let header_h = TypeToken::Md.px() + Spacing::Md.px();
     let collapsed = ctx
@@ -72,98 +70,181 @@ pub(crate) fn paint_mask_section(
         return y;
     }
 
-    // ── 1. Mask sub-brush toggle group (adaptive; reflows when narrow) ──
+    // ── Card 1: Brushes — the mask sub-brush toggle group (one selected). ──
     let brush_labels = ["Paint", "Erase", "Blur", "Smear"];
-    let segs: Vec<(&str, bool, ph2d_a11y::NodeId)> = brush_labels
-        .iter()
-        .enumerate()
-        .map(|(i, l)| {
-            (
-                *l,
-                brush.mask_brush == i as u8,
-                core_ids::PAINTER_MASK_BRUSH[i],
-            )
-        })
-        .collect();
-    let used = {
-        let scene = &mut *ctx.scene;
-        let text_system = &mut *ctx.text_system;
-        let hit = ctx.host.hit_index_mut();
-        paint_segmented_group_adaptive(
-            Rect::new(x, y, content_w, ROW_H_PX),
-            &segs,
-            scene,
-            text_system,
-            theme,
-            hit,
-        )
-    };
-    // The segmented segments dispatch a Click only if registered as Buttons — done in `populate`.
-    y += used + gap;
-
-    // ── 2. Whole-canvas op buttons (flow grid; reflow to fewer columns when narrow) ──
-    let op_labels = ["Expand", "Contract", "Blur", "Sharpen", "Invert", "Clear"];
-    let (op_rects, op_h) = flow_fill(x, y, content_w, op_labels.len(), OP_MIN_W, ROW_H_PX, gap);
-    for (i, label) in op_labels.iter().enumerate() {
-        paint_action_button(ctx, theme, op_rects[i], label, core_ids::PAINTER_MASK_OP[i]);
-    }
-    y += op_h + gap;
-
-    // ── 3. Overlay-tint colour swatches (fixed-size wrap grid) ──
-    let (col_rects, col_h) = flow_fixed(
+    y = button_card(
+        ctx,
+        theme,
         x,
-        y,
         content_w,
-        OVERLAY_COLORS.len(),
-        SWATCH_PX,
-        SWATCH_PX,
+        y,
+        "Brushes",
+        &brush_labels,
+        &core_ids::PAINTER_MASK_BRUSH,
+        Some(brush.mask_brush as usize),
+    );
+
+    // ── Card 2: Modifiers — whole-canvas ops (one-click). ──
+    let op_labels = ["Expand", "Contract", "Blur", "Sharpen", "Invert", "Clear"];
+    y = button_card(
+        ctx,
+        theme,
+        x,
+        content_w,
+        y,
+        "Modifiers",
+        &op_labels,
+        &core_ids::PAINTER_MASK_OP,
+        None,
+    );
+
+    // ── Card 3: Overlay Color — the quick-mask tint swatches. ──
+    y = colors_card(
+        ctx,
+        theme,
+        x,
+        content_w,
+        y,
+        brush.mask_overlay_color as usize,
+    );
+    y
+}
+
+/// Draw a titled card box (Bg1 fill + Border + an ALL-CAPS `title`) and return `(inner_x, inner_w,
+/// body_top, next_y)`. `body_h` is the pre-measured height of the card's content grid.
+fn card_frame(
+    ctx: &mut PaintCtx,
+    theme: ph2d_tokens::Theme,
+    x: f32,
+    content_w: f32,
+    y: f32,
+    title: &str,
+    body_h: f32,
+) -> (f32, f32, f32, f32) {
+    let pad = Spacing::Sm.px();
+    let title_h = TypeToken::Sm.px() + Spacing::Xs.px();
+    let card_h = pad + title_h + body_h + pad;
+    let card = Rect::new(x, y, content_w, card_h);
+    let radius = Radius::Md.px();
+    fill_rounded_rect(ctx.scene, card, radius, resolve(ColorToken::Bg1, theme));
+    stroke_rounded_rect(
+        ctx.scene,
+        card,
+        radius,
+        StrokeToken::Default.px(),
+        resolve(ColorToken::Border, theme),
+    );
+    paint_text(
+        ctx.text_system,
+        ctx.scene,
+        title,
+        x + pad,
+        y + pad,
+        TypeToken::Sm.px(),
+        content_w - 2.0 * pad,
+        resolve(ColorToken::Text2, theme),
+    );
+    let inner_x = x + pad;
+    let inner_w = (content_w - 2.0 * pad).max(0.0);
+    let body_top = y + pad + title_h;
+    (inner_x, inner_w, body_top, y + card_h + Spacing::Sm.px())
+}
+
+/// A card of labelled buttons in a reflowing grid. `selected` = `Some(i)` renders a toggle group (the
+/// selected button is Accent-filled); `None` renders one-click action buttons. Returns the next `y`.
+#[allow(clippy::too_many_arguments)]
+fn button_card(
+    ctx: &mut PaintCtx,
+    theme: ph2d_tokens::Theme,
+    x: f32,
+    content_w: f32,
+    y: f32,
+    title: &str,
+    labels: &[&str],
+    ids: &[ph2d_a11y::NodeId],
+    selected: Option<usize>,
+) -> f32 {
+    let gap = Spacing::Xs.px();
+    let pad = Spacing::Sm.px();
+    let inner_w = (content_w - 2.0 * pad).max(0.0);
+    let (_, body_h) = flow_fill(0.0, 0.0, inner_w, labels.len(), BTN_MIN_W, ROW_H_PX, gap);
+    let (inner_x, inner_w, body_top, next_y) =
+        card_frame(ctx, theme, x, content_w, y, title, body_h);
+    let (rects, _) = flow_fill(
+        inner_x,
+        body_top,
+        inner_w,
+        labels.len(),
+        BTN_MIN_W,
+        ROW_H_PX,
         gap,
     );
+    for (i, label) in labels.iter().enumerate() {
+        paint_button_cell(ctx, theme, rects[i], label, ids[i], selected == Some(i));
+    }
+    next_y
+}
+
+/// A card of overlay-colour swatches (fixed-size wrap grid). The selected colour gets an accent ring.
+fn colors_card(
+    ctx: &mut PaintCtx,
+    theme: ph2d_tokens::Theme,
+    x: f32,
+    content_w: f32,
+    y: f32,
+    selected: usize,
+) -> f32 {
+    let gap = Spacing::Xs.px();
+    let pad = Spacing::Sm.px();
+    let inner_w = (content_w - 2.0 * pad).max(0.0);
+    let n = OVERLAY_COLORS.len();
+    let (_, body_h) = flow_fixed(0.0, 0.0, inner_w, n, SWATCH_PX, SWATCH_PX, gap);
+    let (inner_x, inner_w, body_top, next_y) =
+        card_frame(ctx, theme, x, content_w, y, "Overlay Color", body_h);
+    let (rects, _) = flow_fixed(inner_x, body_top, inner_w, n, SWATCH_PX, SWATCH_PX, gap);
     for (i, rgba) in OVERLAY_COLORS.iter().enumerate() {
         let id = core_ids::PAINTER_MASK_COLOR[i];
         let state = swatch_state(ctx, id);
         let swatch = ColorSwatch::new(id, "", *rgba)
             .size(SwatchSize::Sm)
             .state(state);
-        paint_color_swatch(&swatch, col_rects[i], ctx.scene, theme);
-        // Selected colour → an accent ring over the swatch's own border.
-        if brush.mask_overlay_color == i as u8 {
+        paint_color_swatch(&swatch, rects[i], ctx.scene, theme);
+        if selected == i {
             stroke_rounded_rect(
                 ctx.scene,
-                col_rects[i],
+                rects[i],
                 Radius::Sm.px(),
                 StrokeToken::Thick.px(),
                 resolve(ColorToken::Accent, theme),
             );
         }
         register_button(ctx.host.store_mut(), id);
-        ctx.host.hit_index_mut().register(id, col_rects[i]);
+        ctx.host.hit_index_mut().register(id, rects[i]);
     }
-    y += col_h + Spacing::Sm.px();
-    y
+    next_y
 }
 
-/// A one-click op button with the shared resting surface + hover/press feedback (`flat_button_surface`),
-/// a border, and a centred label. Registers its Button slot + hit rect. Mirror of the Stroke card's icon
-/// button, so every mask op reads as a peer of the rest of the panel's flat buttons.
-fn paint_action_button(
+/// One labelled mask button: `selected` → Accent-filled toggle; otherwise the shared flat surface with
+/// hover/press feedback. Registers its Button slot + hit rect.
+fn paint_button_cell(
     ctx: &mut PaintCtx,
     theme: ph2d_tokens::Theme,
     rect: Rect,
     label: &str,
     id: ph2d_a11y::NodeId,
+    selected: bool,
 ) {
-    let state = ctx
-        .host
-        .store()
-        .button_state(id)
-        .unwrap_or(ButtonState::Normal);
-    fill_rounded_rect(
-        ctx.scene,
-        rect,
-        Radius::Sm.px(),
-        resolve(flat_button_surface(state), theme),
-    );
+    let (bg, fg) = if selected {
+        (ColorToken::Accent, ColorToken::Bg0)
+    } else {
+        let state = ctx
+            .host
+            .store()
+            .button_state(id)
+            .unwrap_or(ButtonState::Normal);
+        (flat_button_surface(state), ColorToken::Text1)
+    };
+    fill_rounded_rect(ctx.scene, rect, Radius::Sm.px(), resolve(bg, theme));
     stroke_rounded_rect(
         ctx.scene,
         rect,
@@ -177,7 +258,7 @@ fn paint_action_button(
         label,
         rect,
         TypeToken::Sm.px(),
-        resolve(ColorToken::Text1, theme),
+        resolve(fg, theme),
     );
     register_button(ctx.host.store_mut(), id);
     ctx.host.hit_index_mut().register(id, rect);

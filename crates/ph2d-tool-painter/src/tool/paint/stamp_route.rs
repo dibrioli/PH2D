@@ -141,13 +141,14 @@ impl PainterTool {
             }
             _ => {}
         }
-        // Paint (reveal) stamps white, Erase (conceal) stamps black; the B&W-locked ramp / falloff still
-        // shapes the coverage edge. Colour saved/restored around the dab batch.
+        // Paint (0) = CONCEAL (black) — the primary action, since a fresh mask is WHITE (fully revealed),
+        // so painting must carve out hidden regions (immediately visible). Erase (1) = REVEAL (white) to
+        // restore. The B&W-locked ramp / falloff still shapes the coverage edge. Colour saved/restored.
         let saved = self.paint.brush.color;
         self.paint.brush.color = if self.mask_brush() == 1 {
-            [0.0, 0.0, 0.0]
+            [1.0, 1.0, 1.0] // Erase → reveal
         } else {
-            [1.0, 1.0, 1.0]
+            [0.0, 0.0, 0.0] // Paint → conceal
         };
         if self.paint.tiling[0] || self.paint.tiling[1] {
             let wrapped = super::tiling::tiled_dabs(dabs, self.source_size, self.paint.tiling);

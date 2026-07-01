@@ -474,8 +474,8 @@ fn clone_mode_copies_from_the_sampled_source() {
 #[test]
 fn mask_mode_auto_targets_and_paints_the_mask() {
     // The Mask tool auto-creates/targets the active layer's mask and paints a GRAYSCALE value into it.
-    // The default sub-brush is Paint (reveal / white); to CONCEAL on the fresh white mask, select the
-    // Erase sub-brush (black) — end-to-end through the frozen channel (both PaintMode + the mask Click).
+    // The default sub-brush is Paint = CONCEAL (black), so a stroke on the fresh white mask is
+    // immediately visible (conceals) — end-to-end through the frozen channel.
     use ph2d_editor_core::ids as core_ids;
     use ph2d_editor_core::tool::{PanelEvent, Tool};
     let mut t = white_canvas(32, 6.0); // one raster, white canvas, black brush
@@ -485,10 +485,8 @@ fn mask_mode_auto_targets_and_paints_the_mask() {
         "mask".to_string(),
     ));
     assert!(t.is_mask_mode());
-    // Erase sub-brush → conceal (black) so the dab is visible on the white mask.
-    t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_MASK_BRUSH[1]));
-    assert_eq!(t.mask_brush(), 1, "Erase sub-brush selected");
-    // Paint a dab → auto-create + target the mask, then paint into it.
+    assert_eq!(t.mask_brush(), 0, "default sub-brush is Paint (conceal)");
+    // Paint a dab → auto-create + target the mask, then conceal (black) into it.
     t.on_canvas_pointer(cp([16.0, 16.0], PointerPhase::Down));
     t.on_canvas_pointer(cp([16.0, 16.0], PointerPhase::Up));
     let active = t.layers.active().expect("active after paint");
@@ -552,10 +550,10 @@ fn mask_canvas_op_clear_then_invert() {
 }
 
 #[test]
-fn mask_overlay_tints_the_revealed_composite() {
-    // While a mask is the active target, the composite is tinted by the coverage in the selected overlay
-    // colour. A fully-revealed (white) mask + the fluorescent-yellow overlay pulls the composite's blue
-    // down (yellow = low blue), proving the on-canvas film renders.
+fn mask_overlay_tints_the_concealed_composite() {
+    // The overlay is a quick-mask film over the CONCEALED region: a fully-revealed (white) mask shows
+    // nothing, so Clear→Invert (fully concealed / black) + the fluorescent-yellow overlay pulls the
+    // composite's blue down (yellow = low blue), proving the film renders on the hidden area.
     use ph2d_editor_core::ids as core_ids;
     use ph2d_editor_core::tool::PanelEvent;
     let mut t = white_canvas(16, 4.0);
@@ -566,12 +564,21 @@ fn mask_overlay_tints_the_revealed_composite() {
     t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_MASK_COLOR[1])); // fluorescent yellow
     assert_eq!(t.mask_overlay_color(), 1);
     t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_MASK_OP[5])); // Clear → white (revealed)
+    // A fully-revealed mask must NOT tint (no flood).
+    let (buf, w, _h) = t.take_preview_arc().expect("a composite preview");
+    let i = ((8 * w + 8) * 4) as usize;
+    assert_eq!(
+        [buf[i], buf[i + 1], buf[i + 2]],
+        [255, 255, 255],
+        "a fully-revealed mask shows NO overlay flood"
+    );
+    t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_MASK_OP[4])); // Invert → black (concealed)
     let (buf, w, _h) = t.take_preview_arc().expect("a composite preview");
     let i = ((8 * w + 8) * 4) as usize;
     let (r, g, b) = (buf[i], buf[i + 1], buf[i + 2]);
     assert!(
         b < r && b < g,
-        "yellow overlay pulls blue below red/green: ({r}, {g}, {b})"
+        "yellow overlay tints the concealed area, pulling blue below red/green: ({r}, {g}, {b})"
     );
 }
 

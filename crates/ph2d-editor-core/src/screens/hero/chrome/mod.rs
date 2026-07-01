@@ -62,9 +62,6 @@ mod palette_rename;
 mod point_type;
 mod radius;
 mod rail_painter_tools;
-/// Snap the painter tool-rail radio back to Brush (the shell calls this when the Eyedropper's on-canvas
-/// pick completes, so the momentary tool returns to Brush automatically).
-pub use rail_painter_tools::reset_to_brush as reset_painter_rail_to_brush;
 mod rail_panels;
 mod rail_size;
 mod rail_tools;
@@ -84,6 +81,10 @@ mod vector_select_toggle;
 mod vector_shape_toggle;
 mod view_toggles;
 // <ph2d-chrome-sync:end>
+
+/// Snap the painter tool-rail radio back to Brush (the shell calls this when the Eyedropper's on-canvas
+/// pick completes, so the momentary tool returns to Brush automatically).
+pub use rail_painter_tools::reset_to_brush as reset_painter_rail_to_brush;
 
 /// Walk every chrome handler in `||` order; stop at the first that
 /// consumes the event.

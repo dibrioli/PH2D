@@ -31,6 +31,47 @@ impl PainterTool {
             .is_some_and(|l| matches!(l.kind, LayerKind::Mask(_)))
     }
 
+    /// The layer-system mask whose GRAYSCALE the canvas is showing (its row's view eye is open), as a raw
+    /// id — published so the panel opens/closes that eye. `None` = every mask shows its effect (default).
+    #[must_use]
+    pub fn mask_view_grayscale(&self) -> Option<u64> {
+        self.mask_view_grayscale.map(|id| id.0)
+    }
+
+    /// The mask's grayscale as an opaque RGBA frame for the preview, when a mask-view eye is open (and the
+    /// mask still exists). `None` otherwise → normal compositing. Shows the RAW painted mask (no invert).
+    #[must_use]
+    pub(crate) fn mask_grayscale_view_pixels(&self) -> Option<Vec<u8>> {
+        let mv = self.mask_view_grayscale?;
+        if !matches!(
+            self.layers.get(mv).map(|l| &l.kind),
+            Some(LayerKind::Mask(_))
+        ) {
+            return None;
+        }
+        let (w, h) = self.source_size;
+        let n = (w as usize) * (h as usize);
+        let src: &[u8] = if self.layers.active() == Some(mv) {
+            &self.canvas_rgba
+        } else {
+            self.images.get(&mv).map(|i| i.rgba8.as_slice())?
+        };
+        if src.len() < n * 4 {
+            return None;
+        }
+        let mut out = vec![0u8; n * 4];
+        for i in 0..n {
+            let g = (crate::compositor::mask_value(src, i) * 255.0)
+                .round()
+                .clamp(0.0, 255.0) as u8;
+            out[i * 4] = g;
+            out[i * 4 + 1] = g;
+            out[i * 4 + 2] = g;
+            out[i * 4 + 3] = 255;
+        }
+        Some(out)
+    }
+
     /// `true` when the active layer has its alpha locked — paint is then
     /// restricted to the layer's existing alpha (§2.10).
     #[must_use]

@@ -142,9 +142,7 @@ impl Tool for PainterTool {
             PanelEvent::Click(id) => {
                 if let Some((layer, kind)) = self.decode_layer_widget(id) {
                     match kind {
-                        // Multi-select: the panel stashed the Cmd/Shift state for
-                        // this row click. Shift = range, Cmd/Ctrl = toggle additive,
-                        // plain = single.
+                        // Multi-select (panel stashed Cmd/Shift): Shift = range, Cmd/Ctrl = additive, plain = single.
                         PainterLayerWidget::Row => {
                             let (cmd, shift) = take_pending_select_mods(id);
                             if shift {
@@ -165,6 +163,7 @@ impl Tool for PainterTool {
                         PainterLayerWidget::MaskApply => {
                             self.apply_mask(layer);
                         }
+                        PainterLayerWidget::MaskView => self.toggle_mask_view_grayscale(layer),
                         PainterLayerWidget::AdjToggle0 => self.flip_adjustment_toggle(layer, 0),
                         PainterLayerWidget::AdjToggle1 => self.flip_adjustment_toggle(layer, 1),
                         PainterLayerWidget::AdjSegment0 => self.set_adjustment_segment(layer, 0),
@@ -479,9 +478,8 @@ impl Tool for PainterTool {
         self.refill_if_appearance_changed(appearance_before);
     }
 
-    /// Per-frame heartbeat (ADR-0040-amendment-2): drives the airbrush timer (deposit dabs at the
-    /// brush Rate while held) and the stabilizer catch-up (converge the lagged path to a parked
-    /// cursor). `dt_ms` is the real wall time since the last frame (shell `frame_ms_now`).
+    /// Per-frame heartbeat (ADR-0040-amendment-2): the airbrush timer + the stabilizer catch-up. `dt_ms`
+    /// is the real wall time since the last frame.
     fn on_tick(&mut self, dt_ms: f32) {
         self.paint_tick(dt_ms * 1e-3);
     }
@@ -538,31 +536,33 @@ impl RasterEditTool for PainterTool {
             return None;
         }
         let (w, h) = self.source_size;
-        if self.is_trivial_stack() && !self.mask_scratch_active() {
+        // A mask row's grayscale-VIEW eye open shows that mask's grayscale; else the trivial fast path.
+        let gray = self.mask_grayscale_view_pixels();
+        if gray.is_none() && self.is_trivial_stack() && !self.mask_scratch_active() {
             return Some((&self.canvas_rgba, w, h));
         }
-        // Mask brush: the active layer is composited MASKED by the transient scratch (non-destructive).
-        let masked = self.mask_scratch_display();
-        let mut composited = {
+        let composited = if let Some(g) = gray {
+            g
+        } else {
+            // Mask brush: the active layer is composited MASKED by the transient scratch (non-destructive).
+            let masked = self.mask_scratch_display();
             let active = self.layers.active().unwrap_or(RtLayerId(0));
-            let active_rgba = masked.as_deref().unwrap_or(&self.canvas_rgba);
             let src = ToolPixelSource {
                 active_id: active,
-                active_rgba,
+                active_rgba: masked.as_deref().unwrap_or(&self.canvas_rgba),
                 images: &self.images,
             };
-            composite(&self.layers, &src, w, h)
+            let mut c = composite(&self.layers, &src, w, h);
+            self.apply_mask_overlay(&mut c); // tint the concealed region (no-op without a scratch)
+            c
         };
-        self.apply_mask_overlay(&mut composited); // tint the concealed region (no-op without a scratch)
         self.composited = Some(Arc::new(composited));
-        Some((
-            self.composited
-                .as_ref()
-                .map(|a| a.as_slice())
-                .unwrap_or(&[]),
-            w,
-            h,
-        ))
+        let px = self
+            .composited
+            .as_ref()
+            .map(|a| a.as_slice())
+            .unwrap_or(&[]);
+        Some((px, w, h))
     }
 
     fn take_pending_commit(&mut self) -> bool {

@@ -145,6 +145,9 @@ pub struct PainterTool {
     /// just stashed, or a brush opacity/blend remote-control edited its layers) — so the bridge re-uploads
     /// its preview slot. Lets a non-selected shape-source sprite reflect brush edits in real time.
     shape_source_preview_dirty: bool,
+    /// The layer-system mask whose GRAYSCALE the canvas shows (its row's "view" eye is open); `None` (the
+    /// default) shows the masked effect. View-only, transient (not saved). See `layers::mask_view`.
+    mask_view_grayscale: Option<RtLayerId>,
 }
 
 impl Default for PainterTool {
@@ -178,6 +181,7 @@ impl Default for PainterTool {
             shape_source_doc: None,
             shape_source_revision: 0,
             shape_source_preview_dirty: false,
+            mask_view_grayscale: None,
         }
     }
 }

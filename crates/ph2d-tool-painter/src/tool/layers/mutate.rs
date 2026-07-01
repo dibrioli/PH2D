@@ -285,6 +285,24 @@ impl PainterTool {
         Some(mask)
     }
 
+    /// Toggle the mask's grayscale-VIEW eye: show that mask's grayscale on canvas (eye open) ↔ the masked
+    /// effect (eye closed, default). View-only + transient — flips `mask_view_grayscale` (one at a time)
+    /// and invalidates the composite. No-op if `mask_id` isn't a mask.
+    pub fn toggle_mask_view_grayscale(&mut self, mask_id: RtLayerId) {
+        if !matches!(
+            self.layers.get(mask_id).map(|l| &l.kind),
+            Some(LayerKind::Mask(_))
+        ) {
+            return;
+        }
+        self.mask_view_grayscale = if self.mask_view_grayscale == Some(mask_id) {
+            None
+        } else {
+            Some(mask_id)
+        };
+        self.invalidate_composite();
+    }
+
     /// Toggle a mask's `Invert` flag (§2.7). The live compositor already honors
     /// it (`1 - value`), so this just flips the flag + invalidates the
     /// composite. No-op mid-stroke or if `mask_id` is not a mask.

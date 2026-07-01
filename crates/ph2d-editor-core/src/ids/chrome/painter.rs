@@ -291,12 +291,10 @@ pub enum PainterLayerWidget {
     /// (Mask rows only) the Apply button — destructively bakes the mask into
     /// the parent layer's alpha and removes the mask (§2.7).
     MaskApply,
-    /// (Adjustment rows only) generic slider for the adjustment's Nth slider
-    /// param (W4 T4.3+). The kind decides what each slot means
-    /// (`ph2d_painter_brush::adjustments::adjustment_slider_params`); 6 slots
-    /// cover the slider-heavy kinds (bespoke controls — Curves etc. — are
-    /// separate). Indexed instead of per-param-named so adding a kind needs no
-    /// new widget id.
+    /// (Mask rows only) the grayscale-VIEW eye — flips the canvas between the mask's grayscale (open) and the effect (closed, default).
+    MaskView,
+    /// (Adjustment rows only) generic slider for the adjustment's Nth slider param (W4 T4.3+); the kind
+    /// decides each slot (`adjustments::adjustment_slider_params`). Indexed, so a new kind needs no new id.
     AdjParam0,
     AdjParam1,
     AdjParam2,
@@ -339,6 +337,7 @@ impl PainterLayerWidget {
             Self::MoveDown => "move_down",
             Self::MaskInvert => "mask_invert",
             Self::MaskApply => "mask_apply",
+            Self::MaskView => "mask_view",
             Self::AdjParam0 => "adj_param0",
             Self::AdjParam1 => "adj_param1",
             Self::AdjParam2 => "adj_param2",
@@ -356,7 +355,7 @@ impl PainterLayerWidget {
     }
 
     /// All kinds, in a fixed order — the decoder iterates this.
-    pub const ALL: [PainterLayerWidget; 22] = [
+    pub const ALL: [PainterLayerWidget; 23] = [
         Self::Row,
         Self::Visibility,
         Self::Opacity,
@@ -366,6 +365,7 @@ impl PainterLayerWidget {
         Self::MoveDown,
         Self::MaskInvert,
         Self::MaskApply,
+        Self::MaskView,
         Self::AdjParam0,
         Self::AdjParam1,
         Self::AdjParam2,

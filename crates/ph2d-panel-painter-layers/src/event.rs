@@ -63,10 +63,8 @@ fn apply_event_impl(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
                 .push(EditorAction::ToolPanelEvent(PanelEvent::Click(id)));
             true
         }
-        // "+ Adjustment" kind-picker option (W4 T4.15): close the dropdown + forward the chosen kind
-        // index. The `+ Adj` chip itself is a Dropdown — its open/close is the generic dispatch (no
-        // Click forwarded here). The kind index is the position in `AdjustmentKind::ALL`; the tool
-        // maps it back via `add_adjustment_layer`.
+        // "+ Adjustment" kind-picker option (W4 T4.15): close the dropdown + forward the chosen kind index
+        // (position in `AdjustmentKind::ALL`; the tool maps it via `add_adjustment_layer`).
         WidgetEvent::Click(id) if decode_adjustment_kind_option(id).is_some() => {
             let idx = decode_adjustment_kind_option(id).unwrap();
             if let Some(InteractiveState::Dropdown { open, .. }) = host
@@ -86,8 +84,7 @@ fn apply_event_impl(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
             let Some(stack) = state::current_layers() else {
                 return false;
             };
-            // W4 §3 — Curves editor chrome: channel tabs (panel-local) + the +/− point buttons
-            // (forwarded on the ACTIVE channel; remove targets the last-dragged point).
+            // W4 §3 — Curves editor: channel tabs (panel-local) + the +/− point buttons (on the active channel).
             for layer in stack.all_ids() {
                 let lid = layer.0;
                 if (0u8..4).any(|ch| painter_curve_tab_id(lid, ch) == id) {
@@ -97,8 +94,7 @@ fn apply_event_impl(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
                     state::set_active_curve_channel(lid, ch);
                     return true;
                 }
-                // Channel Mixer output-channel tab (W4 BATCH-1): panel-local view
-                // state, never forwarded (the weight edit carries the channel).
+                // Channel Mixer output-channel tab (W4 BATCH-1): panel-local view state (weight carries it).
                 if (0u8..3).any(|ch| painter_mixer_tab_id(lid, ch) == id) {
                     let ch = (0u8..3)
                         .find(|&ch| painter_mixer_tab_id(lid, ch) == id)
@@ -106,8 +102,7 @@ fn apply_event_impl(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
                     state::set_active_mixer_channel(lid, ch);
                     return true;
                 }
-                // Selective Color group tab (W4 BATCH-2): panel-local view state,
-                // never forwarded (the CMYK edit carries the bucket).
+                // Selective Color group tab (W4 BATCH-2): panel-local view state (the CMYK edit carries it).
                 if (0u8..9).any(|bk| painter_selcolor_bucket_id(lid, bk) == id) {
                     let bk = (0u8..9)
                         .find(|&bk| painter_selcolor_bucket_id(lid, bk) == id)
@@ -175,9 +170,8 @@ fn apply_event_impl(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
                     )));
                 return true;
             }
-            // Per-row row-select / visibility eye / reorder ↑↓ → forward as
-            // Click. (The blend chip click is the dropdown open/close — handled
-            // by the generic Dropdown dispatch, not forwarded.)
+            // Per-row row-select / visibility eye / reorder ↑↓ → forward as Click (the blend chip's click
+            // is the generic Dropdown open/close, not forwarded).
             match decode(&stack, id) {
                 Some((_, PainterLayerWidget::Row)) => {
                     // Multi-select: the frozen PanelEvent can't carry Cmd/Shift, so stash it in the
@@ -198,6 +192,7 @@ fn apply_event_impl(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
                     | PainterLayerWidget::MoveDown
                     | PainterLayerWidget::MaskInvert
                     | PainterLayerWidget::MaskApply
+                    | PainterLayerWidget::MaskView
                     // Adjustment toggle rack (W4 BATCH-1) — bare click, the tool
                     // flips the boolean param slot (source of truth = params).
                     | PainterLayerWidget::AdjToggle0

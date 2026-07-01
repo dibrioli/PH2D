@@ -40,10 +40,8 @@ thread_local! {
     /// default). `Copy`, então o clone é trivial.
     static CURRENT_BRUSH: Cell<Option<BrushSettings>> = const { Cell::new(None) };
 
-    /// The brush's Image texture as `(luminance bytes, w, h)` — published by the host (gated on the
-    /// tool's texture-image version, so the heavy `Vec` is cloned only when it changes). The Texture
-    /// preview reads it to render the actual image for the `Image` kind (the pixels can't live in the
-    /// `Copy` `BrushSettings` snapshot). `None` → the Image preview stays black.
+    /// The brush's Image texture `(luminance, w, h)` — published gated on the tool's version. The Texture
+    /// preview renders it for the `Image` kind (pixels can't live in the `Copy` snapshot); `None` → black.
     static CURRENT_BRUSH_TEXTURE_IMAGE: RefCell<Option<TextureImageSnapshot>> =
         const { RefCell::new(None) };
 
@@ -53,23 +51,17 @@ thread_local! {
     static CURRENT_BRUSH_SHAPE_IMAGE: RefCell<Option<TextureImageSnapshot>> =
         const { RefCell::new(None) };
 
-    /// The brush's multi-layer **coloured Shape preview** as `(premultiplied RGBA, w, h)` — published by
-    /// the host each frame when Per-Layer Color is on (the per-layer composite). `None` otherwise; the
-    /// Shape preview then falls back to the grayscale silhouette. The colours need the per-layer pixels,
-    /// which only the tool has, so it renders + publishes the composite.
+    /// The multi-layer **coloured Shape preview** `(premul RGBA, w, h)` — published when Per-Layer Color
+    /// is on (the per-layer composite; only the tool has the pixels). `None` → grayscale silhouette.
     static CURRENT_BRUSH_SHAPE_COLOR_PREVIEW: RefCell<Option<TextureImageSnapshot>> =
         const { RefCell::new(None) };
 
-    /// Dock-view mode published per-frame: `true` = Layers/Effects body, `false`
-    /// = Brush-properties body. The header toggle flips the tool's
-    /// `dock_shows_layers`; the bridge publishes it here and `paint` branches.
-    /// Defaults to Layers so a fresh frame (pre-publish) shows the main view.
+    /// Dock-view mode published per-frame: `true` = Layers/Effects, `false` = Brush props. Defaults to
+    /// Layers (a fresh pre-publish frame shows the main view); the bridge publishes, `paint` branches.
     static CURRENT_DOCK_SHOWS_LAYERS: Cell<bool> = const { Cell::new(true) };
 
-    /// The open brush blend-mode dropdown to render as a deferred popover on top
-    /// of the body (after the clip pops): `(chip_rect, current_mode_u8)`. Set
-    /// during the Brush section paint, drained at the end of `paint`. Mirror of
-    /// [`PENDING_BLEND_DD`] but for the single fixed brush chip.
+    /// The open brush blend-mode dropdown for the deferred popover: `(chip_rect, mode_u8)`. Set during
+    /// the Brush-section paint, drained at the end of `paint`. Mirror of [`PENDING_BLEND_DD`].
     static PENDING_BRUSH_BLEND_DD: Cell<Option<(Rect, u8)>> = const { Cell::new(None) };
 
     /// The open per-layer-colour **Shape layer blend** dropdown (the "B" chip): `(layer_index,
@@ -129,6 +121,9 @@ thread_local! {
     /// the active row, so no extra "also-selected" wash is drawn for it.
     static CURRENT_SELECTION: RefCell<BTreeSet<LayerId>> =
         const { RefCell::new(BTreeSet::new()) };
+
+    /// The layer-system mask whose grayscale-VIEW eye is open (raw id), published by the shell. `set`/read.
+    static CURRENT_MASK_GRAYSCALE_VIEW: Cell<Option<u64>> = const { Cell::new(None) };
 
     /// Última altura de conteúdo scrollable medida (set por paint, lido
     /// pelo orchestrator content_h publish). Paridade com o sidebar.
@@ -578,6 +573,14 @@ pub fn set_current_selection(sel: BTreeSet<LayerId>) {
 /// Lê o set de multi-seleção publicado neste frame — as rows a destacar.
 pub(crate) fn current_selection() -> BTreeSet<LayerId> {
     CURRENT_SELECTION.with(|c| c.borrow().clone())
+}
+
+/// Publish (shell) / read (mask row) the mask whose grayscale-view eye is open, or `None` = all effect.
+pub fn set_current_mask_grayscale_view(id: Option<u64>) {
+    CURRENT_MASK_GRAYSCALE_VIEW.with(|c| c.set(id));
+}
+pub(crate) fn current_mask_grayscale_view() -> Option<u64> {
+    CURRENT_MASK_GRAYSCALE_VIEW.with(Cell::get)
 }
 
 pub fn last_content_h() -> f32 {

@@ -279,6 +279,10 @@ pub(super) fn dispatch(
             // edit, so a revision gate would miss it. The panel reads this for
             // the multi-row highlight (active = strong outline, others = wash).
             ph2d_panel_painter_layers::set_current_selection(painter.selection());
+            // (Mask view) Publish which mask's grayscale-view eye is open so its row draws it open.
+            ph2d_panel_painter_layers::set_current_mask_grayscale_view(
+                painter.mask_view_grayscale(),
+            );
             // (Brush UI) Publish the active brush snapshot every frame — a tiny
             // Copy struct (size/colour/blend). The panel's Brush section reads it
             // to position the Size/RGB sliders + the blend chip. Not revision-

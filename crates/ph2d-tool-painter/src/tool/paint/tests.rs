@@ -608,6 +608,40 @@ fn mask_canvas_op_clear_then_invert() {
 }
 
 #[test]
+fn layer_mask_paintable_by_brush_and_grayscale_view_eye() {
+    // A LAYER-SYSTEM mask (Layers "Mask" button) is paintable by the NORMAL brush (any tool), and its
+    // grayscale-view eye toggles the canvas between the masked effect (closed) and the mask channel (open).
+    let mut t = white_canvas(16, 4.0);
+    let mask = t.add_mask_to_active().expect("layer mask created + active");
+    // Normal Paint stroke (black default) on the active mask → conceal centre.
+    t.on_canvas_pointer(cp([8.0, 8.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([8.0, 8.0], PointerPhase::Up));
+    assert!(
+        px(&t, 16, 8, 8)[0] < 128,
+        "the brush painted the layer mask"
+    );
+    // Eye closed (default): composite shows the EFFECT — concealed centre hidden (low alpha).
+    assert_eq!(t.mask_view_grayscale(), None);
+    let (buf, w, _h) = t.take_preview_arc().expect("a composite preview");
+    let i = ((8 * w + 8) * 4) as usize;
+    assert!(
+        buf[i + 3] < 128,
+        "effect view hides the concealed centre, got a = {}",
+        buf[i + 3]
+    );
+    // Eye open: composite shows the mask GRAYSCALE — concealed centre opaque black.
+    t.toggle_mask_view_grayscale(mask);
+    assert_eq!(t.mask_view_grayscale(), Some(mask.0));
+    let (buf, w, _h) = t.take_preview_arc().expect("a composite preview");
+    let i = ((8 * w + 8) * 4) as usize;
+    assert_eq!(
+        [buf[i], buf[i + 3]],
+        [0, 255],
+        "grayscale view shows the mask channel (opaque black centre)"
+    );
+}
+
+#[test]
 fn mask_overlay_tints_the_concealed_composite() {
     // The overlay is a quick-mask film over the CONCEALED region: a fully-revealed (white) mask shows
     // nothing, so Clear→Invert (fully concealed / black) + the fluorescent-yellow overlay pulls the

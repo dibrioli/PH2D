@@ -186,6 +186,16 @@ impl PainterTool {
             return None;
         }
         let (w, h) = self.source_size;
+        // A mask row's grayscale-VIEW eye is open → show that mask's grayscale instead of the composite.
+        if let Some(gray) = self.mask_grayscale_view_pixels() {
+            self.composited = Some(Arc::new(gray));
+            self.preview_upload_bbox = None;
+            return Some((
+                Arc::clone(self.composited.as_ref().expect("just set")),
+                w,
+                h,
+            ));
+        }
         // The trivial stack (single visible opaque Normal raster) stays the
         // zero-copy fast path. Any non-trivial stack (≥2 layers, or a layer with
         // opacity<1 / non-Normal blend / hidden / an adjustment) MUST be

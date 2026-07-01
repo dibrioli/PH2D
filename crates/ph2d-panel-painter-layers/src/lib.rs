@@ -38,6 +38,7 @@ mod paint_clone;
 mod paint_composite;
 mod paint_falloff;
 mod paint_mask;
+mod paint_mask_row;
 mod paint_ramp_widget;
 mod paint_rows;
 mod paint_shape;
@@ -58,7 +59,7 @@ pub use state::{
     last_visible_h, selected_falloff_point, set_current_brush,
     set_current_brush_shape_color_preview, set_current_brush_shape_image,
     set_current_brush_texture_image, set_current_dock_shows_layers, set_current_layers,
-    set_current_selection, set_selected_falloff_point,
+    set_current_mask_grayscale_view, set_current_selection, set_selected_falloff_point,
 };
 
 use ph2d_a11y::NodeId;

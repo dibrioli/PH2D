@@ -240,9 +240,10 @@ pub(crate) fn paint_brush_body(
         y = crate::paint_clone::paint_clone_card(ctx, theme, x, content_w, y, brush);
     }
 
-    // 4c. Composite Brush card (checkbox + the 3-layer Brush/Smear/Blur stack when on) — the Brush tool
-    //     only (Smear/Blur/Clone are single-op rail tools; composite is a Brush-tool upgrade).
-    if !brush.is_smear && !brush.is_blur && !brush.is_clone {
+    // 4c. Composite Brush card (checkbox + the 3-layer Brush/Smear/Blur stack when on) — the plain Brush
+    //     tool only (Smear/Blur/Clone are single-op rail tools; Eraser bypasses composite too — it's the
+    //     Erase-Alpha override, `composite_active()` requires `!eraser`).
+    if !brush.is_smear && !brush.is_blur && !brush.is_clone && !brush.eraser {
         y = crate::paint_composite::paint_composite_card(ctx, theme, x, content_w, y, brush);
     }
 

@@ -46,12 +46,14 @@ impl PainterTool {
     /// source across pointer batches within one stroke. Smear amount = brush Strength × per-dab
     /// coverage (pressure).
     ///
-    /// The per-pixel weight is the brush's full dab mask — **Shape** silhouette × **Grain** ×
-    /// **flatten/rotate** — via the shared cached [`ph2d_painter_brush::StampMask`] when any of those
-    /// shape the dab (and it is cacheable); else the plain round falloff. **Tiling** wraps each smear
-    /// across the enabled sprite edges (the same offset applied to lift + stamp, so a wrapped copy
-    /// keeps its drag). The engine snapshots each source region, so overlapping read/write never feeds
-    /// back.
+    /// The per-pixel weight is the brush's full dab coverage — **Shape** silhouette × **Grain** ×
+    /// **flatten/rotate** — routed like the paint path: the cached [`ph2d_painter_brush::StampMask`]
+    /// for a View-static dab; the per-pixel Grain path
+    /// ([`ph2d_painter_brush::smear_blit_grain`]) for a canvas-fixed Grain Mapping (Tiled/Stencil) or
+    /// per-dab rotation (Rake / Random / Jitter Rotate), resolving each dab's own frame; the plain
+    /// round falloff otherwise. **Tiling** wraps each smear across the enabled sprite edges (the same
+    /// offset on lift + stamp, so a wrapped copy keeps its drag). The engine snapshots each source
+    /// region, so overlapping read/write never feeds back.
     pub(super) fn stamp_dabs_smear(&mut self, dabs: &[Dab], w: u32, h: u32) {
         if dabs.is_empty() {
             return;
@@ -59,130 +61,153 @@ impl PainterTool {
         let base = self.paint.brush;
         let strength = base.strength.clamp(0.0, 1.0);
         let has_shape_image = self.paint.shape_image.is_some();
-        // Use the full dab mask when a Shape / Grain / flatten shapes the dab AND it's cacheable
-        // (static View); else the plain round falloff. flatten/rotate is always baked into the mask,
-        // so a flattened plain brush routes through the mask too.
         let textured = base.shape_silhouette_active(has_shape_image)
             || base.texture.is_active()
             || base.dab_flatten > 0.0;
-        // View-static → the fast cached StampMask; a canvas-fixed Grain Mapping (Tiled/Stencil) or a
-        // per-dab-rotating Shape isn't scale-invariant → the per-pixel Grain path; neither → round falloff.
-        let want_mask = textured && base.dab_mask_cacheable(has_shape_image);
+        // A per-dab-rotating Shape / Grain (Rake / Random) or Jitter Rotate isn't scale-invariant, so
+        // it can't ride the cached StampMask — route it (with any canvas-fixed Grain Mapping) through
+        // the per-pixel Grain path, which resolves each dab's own frame. View-static → the fast mask;
+        // untextured → the plain round falloff.
+        let per_dab_rotation =
+            base.has_per_dab_rotation() || base.shape_has_per_dab_rotation(has_shape_image);
+        let want_mask = textured && base.dab_mask_cacheable(has_shape_image) && !per_dab_rotation;
         let want_grain = textured && !want_mask;
+        let grain_active = base.texture.is_active();
+        let shape_active = base.shape_silhouette_active(has_shape_image);
         let tiling = self.paint.tiling;
         let tiled = tiling[0] || tiling[1];
         let source_size = self.source_size;
 
-        // Phase 1 (reads self): build the smear ops (from, to, radius, coverage), applying Tiling wrap
-        // offsets to BOTH endpoints, and advance the source chain.
-        let mut from = self.paint.last_smear_pos;
-        let mut ops: Vec<([f32; 2], [f32; 2], f32, f32)> = Vec::with_capacity(dabs.len());
-        for d in dabs {
-            if let Some(prev) = from {
-                if tiled {
-                    for off in
-                        super::tiling::tiled_offsets(d.center, d.radius_px, source_size, tiling)
-                    {
-                        ops.push((
-                            [prev[0] + off[0], prev[1] + off[1]],
-                            [d.center[0] + off[0], d.center[1] + off[1]],
-                            d.radius_px,
-                            d.coverage,
-                        ));
-                    }
-                } else {
-                    ops.push((prev, d.center, d.radius_px, d.coverage));
-                }
-            }
-            from = Some(d.center);
-        }
-        self.paint.last_smear_pos = from;
-        if ops.is_empty() {
-            return;
-        }
-
-        // Phase 2: gather the weight source (the cached mask for View, or the Grain/Shape images for
-        // the per-pixel canvas-fixed Grain), then apply each op. The Shape tone LUT is cloned — it
-        // borrows `self`, which the `canvas_rgba` write below can't co-hold.
+        // Gather the weight source BEFORE the buffer borrow: the cached mask (View), or the Grain/Shape
+        // images for the per-pixel path. The Shape tone LUT is cloned — it borrows `self`, which the
+        // `canvas_rgba` write can't co-hold.
         if want_mask {
-            let max_r = ops.iter().map(|o| o.2).fold(0.0_f32, f32::max);
+            let max_r = dabs.iter().map(|d| d.radius_px).fold(0.0_f32, f32::max);
             self.ensure_stamp_cache(&base, super::stamp_cache::mask_size_for(max_r));
         }
-        let mask = if want_mask {
-            self.paint.stamp_cache.as_ref().map(|(m, _)| m)
-        } else {
-            None
-        };
-        let grain_img = if want_grain {
-            self.paint.texture_image.as_ref().map(|i| i.as_mask())
-        } else {
-            None
-        };
-        let shape_img = if want_grain {
-            self.paint.shape_image.as_ref().map(|i| i.as_mask())
-        } else {
-            None
-        };
+        let mask = want_mask
+            .then(|| self.paint.stamp_cache.as_ref().map(|(m, _)| m))
+            .flatten();
+        let grain_img = want_grain
+            .then(|| self.paint.texture_image.as_ref().map(|i| i.as_mask()))
+            .flatten();
+        let shape_img = want_grain
+            .then(|| self.paint.shape_image.as_ref().map(|i| i.as_mask()))
+            .flatten();
         let shape_lut: Option<Vec<f32>> = if want_grain {
             self.shape_tone_lut_slice().map(|s| s.to_vec())
         } else {
             None
         };
+
+        let mut from = self.paint.last_smear_pos;
+        let mut tex_rng = self.paint.tex_rng;
         let buf = Arc::make_mut(&mut self.canvas_rgba);
         let mut touched: Option<Region> = None;
-        for (f, t, radius, coverage) in ops {
-            let dirty = if let Some(m) = mask {
-                ph2d_painter_brush::smear_blit_stamp(
-                    buf,
-                    w,
-                    h,
-                    f,
-                    t,
-                    radius,
-                    m,
-                    strength * coverage,
-                    tiling,
-                )
-            } else if want_grain {
-                ph2d_painter_brush::smear_blit_grain(
-                    buf,
-                    w,
-                    h,
-                    f,
-                    t,
-                    radius,
-                    &base,
-                    grain_img.as_ref(),
-                    shape_img.as_ref(),
-                    shape_lut.as_deref(),
-                    strength * coverage,
-                    tiling,
-                )
-            } else {
-                ph2d_painter_brush::smear_dab(
-                    buf,
-                    w,
-                    h,
-                    f,
-                    t,
-                    &BrushSpec {
-                        radius_px: radius,
-                        ..base
-                    },
-                    strength * coverage,
-                    tiling,
-                )
-            };
-            if let Some(r) = dirty {
-                let rect = Region {
-                    x: r.x,
-                    y: r.y,
-                    w: r.w,
-                    h: r.h,
+        for d in dabs {
+            if let Some(prev) = from {
+                let amount = strength * d.coverage;
+                // Per-dab frame for the Grain path: the Jitter-Rotate footprint + the Rake heading
+                // (`d.dir`) + the Random draw (`tex_rng`) — mirror of the per-pixel paint path, so
+                // Rake / Random / Jitter Rotate rotate the smear per dab. Computed ONCE per dab, so the
+                // wrapped Tiling copies share the same random frame.
+                let fp = base.footprint_deform().rotated_by(d.rotation);
+                let sbasis = (want_grain && shape_active).then(|| {
+                    ph2d_painter_brush::texture::dab_basis(
+                        &base.shape,
+                        d.dir,
+                        &mut tex_rng,
+                        [w as f32, h as f32],
+                        [1.0, 0.0],
+                        fp,
+                    )
+                });
+                let gbasis = (want_grain && grain_active).then(|| {
+                    ph2d_painter_brush::texture::dab_basis(
+                        &base.texture,
+                        d.dir,
+                        &mut tex_rng,
+                        [w as f32, h as f32],
+                        [1.0, 0.0],
+                        fp,
+                    )
+                });
+                // Tiling wrap offsets (same on lift + stamp); stack buffer, no alloc.
+                let mut offs = [[0.0f32; 2]; 9];
+                let n = if tiled {
+                    super::tiling::tiled_offsets_into(
+                        d.center,
+                        d.radius_px,
+                        source_size,
+                        tiling,
+                        &mut offs,
+                    )
+                } else {
+                    1
                 };
-                touched = Some(touched.map_or(rect, |acc| union_region(acc, rect)));
+                for &off in &offs[..n] {
+                    let f = [prev[0] + off[0], prev[1] + off[1]];
+                    let t = [d.center[0] + off[0], d.center[1] + off[1]];
+                    let dirty = if let Some(m) = mask {
+                        ph2d_painter_brush::smear_blit_stamp(
+                            buf,
+                            w,
+                            h,
+                            f,
+                            t,
+                            d.radius_px,
+                            m,
+                            amount,
+                            tiling,
+                        )
+                    } else if want_grain {
+                        ph2d_painter_brush::smear_blit_grain(
+                            buf,
+                            w,
+                            h,
+                            f,
+                            t,
+                            d.radius_px,
+                            &base,
+                            fp,
+                            gbasis.as_ref(),
+                            sbasis.as_ref(),
+                            grain_img.as_ref(),
+                            shape_img.as_ref(),
+                            shape_lut.as_deref(),
+                            amount,
+                            tiling,
+                        )
+                    } else {
+                        ph2d_painter_brush::smear_dab(
+                            buf,
+                            w,
+                            h,
+                            f,
+                            t,
+                            &BrushSpec {
+                                radius_px: d.radius_px,
+                                ..base
+                            },
+                            amount,
+                            tiling,
+                        )
+                    };
+                    if let Some(r) = dirty {
+                        let rect = Region {
+                            x: r.x,
+                            y: r.y,
+                            w: r.w,
+                            h: r.h,
+                        };
+                        touched = Some(touched.map_or(rect, |acc| union_region(acc, rect)));
+                    }
+                }
             }
+            from = Some(d.center);
         }
+        self.paint.last_smear_pos = from;
+        self.paint.tex_rng = tex_rng;
         if let Some(rect) = touched {
             self.mark_dirty(rect);
         }

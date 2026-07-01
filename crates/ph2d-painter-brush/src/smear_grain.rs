@@ -6,16 +6,19 @@
 //! sibling of [`crate::blit_canvas_cached`].
 
 use crate::dab::DirtyRect;
+use crate::footprint::FootprintDeform;
 use crate::spec::BrushSpec;
-use crate::texture::ImageMask;
+use crate::texture::{ImageMask, TexDabBasis};
 
 /// Smear one dab whose **Grain Mapping is canvas-fixed** (Tiled / Stencil) — its value depends on the
 /// canvas position, so it can't be baked into the scale-invariant [`crate::StampMask`] that
 /// [`crate::smear_blit_stamp`] uses. Computes the per-pixel weight `silhouette × Grain` (matching
 /// [`crate::blit_canvas_cached`], the paint path for these mappings) and drags with it, so the Grain
 /// Mapping shapes the smear like it shapes a painted dab. The silhouette is the Shape image (when
-/// active) or the falloff; both are dab-relative (View-static here — per-dab Rake/Random uses the
-/// static frame, an accepted approximation). Grain sampled per pixel (no canvas cache — a perf
+/// active) or the falloff. The caller supplies the per-dab `footprint` (Jitter-Rotate) and the Grain /
+/// Shape `TexDabBasis` (Rake heading + Random draw) — so Rake / Random / Jitter Rotate rotate the smear
+/// per dab, exactly like the paint path. `grain_basis` `None` ⇒ no Grain modulation; `shape_basis`
+/// `None` ⇒ the falloff is the silhouette. Grain sampled per pixel (no canvas cache — a perf
 /// follow-up). Toroidal lift on `wrap` axes, like [`crate::smear_dab`].
 #[allow(clippy::too_many_arguments)]
 #[must_use]
@@ -27,6 +30,9 @@ pub fn smear_blit_grain(
     to: [f32; 2],
     radius: f32,
     spec: &BrushSpec,
+    footprint: FootprintDeform,
+    grain_basis: Option<&TexDabBasis>,
+    shape_basis: Option<&TexDabBasis>,
     grain_image: Option<&ImageMask>,
     shape_image: Option<&ImageMask>,
     shape_ramp_lut: Option<&[f32]>,
@@ -55,31 +61,7 @@ pub fn smear_blit_grain(
     let bw = (max_x - min_x) as usize;
     let bh = (max_y - min_y) as usize;
 
-    let footprint = spec.footprint_deform();
-    let grain_active = spec.texture.is_active();
     let depth = spec.grain_depth();
-    // Canvas-fixed Grain frame (identity footprint — a canvas-locked texture isn't deformed by the dab
-    // flatten); the Shape frame is dab-relative. Static bases (rng unused for the cached family).
-    let basis = crate::texture::dab_basis(
-        &spec.texture,
-        [0.0, 0.0],
-        &mut 0u64,
-        [width as f32, height as f32],
-        [1.0, 0.0],
-        crate::footprint::FootprintDeform::identity(),
-    );
-    let shape_basis = spec
-        .shape_silhouette_active(shape_image.is_some())
-        .then(|| {
-            crate::texture::dab_basis(
-                &spec.shape,
-                [0.0, 0.0],
-                &mut 0u64,
-                [1.0, 1.0],
-                [1.0, 0.0],
-                footprint,
-            )
-        });
 
     // Lift snapshot (toroidal on wrap axes — see [`crate::smear_dab`]).
     let mut lifted = vec![[0u8; 4]; bw * bh];
@@ -114,7 +96,7 @@ pub fn smear_blit_grain(
             let px = min_x + i as i64;
             let dx = (px as f32 + 0.5) - cx;
             // Silhouette: Shape image (dab-relative) or the falloff, with the dab footprint.
-            let mut w = match &shape_basis {
+            let mut w = match shape_basis {
                 Some(sb) => {
                     let raw = crate::texture::sample_shape_silhouette(
                         &spec.shape,
@@ -137,10 +119,10 @@ pub fn smear_blit_grain(
             if w <= 0.0 {
                 continue;
             }
-            if grain_active {
+            if let Some(gb) = grain_basis {
                 let g = crate::texture::sample(
                     &spec.texture,
-                    &basis,
+                    gb,
                     px,
                     py,
                     [cx, cy],
@@ -201,6 +183,16 @@ mod tests {
         spec.texture.mapping = TextureMapping::Tiled;
         assert!(spec.texture.is_active(), "Checker Grain is active");
 
+        // The caller builds the per-dab frame; here a static canvas-fixed Grain basis (Tiled).
+        let fp = spec.footprint_deform();
+        let gb = crate::texture::dab_basis(
+            &spec.texture,
+            [0.0, 0.0],
+            &mut 0u64,
+            [w as f32, h as f32],
+            [1.0, 0.0],
+            crate::footprint::FootprintDeform::identity(),
+        );
         let mut with_grain = base.clone();
         let dirty = smear_blit_grain(
             &mut with_grain,
@@ -210,6 +202,9 @@ mod tests {
             [22.0, 6.0],
             8.0,
             &spec,
+            fp,
+            Some(&gb),
+            None,
             None,
             None,
             None,

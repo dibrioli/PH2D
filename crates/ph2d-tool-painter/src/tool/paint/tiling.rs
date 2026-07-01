@@ -30,29 +30,31 @@ pub(super) fn tiled_dabs(dabs: &[Dab], source_size: (u32, u32), tiling: [bool; 2
     out
 }
 
-/// The wrap offsets (`[dx, dy]`, always including `[0, 0]`) for a dab at `center`/`radius` under the
-/// enabled `tiling` axes — the same edge-crossing logic as [`tiled_dabs`], but returned as offsets so
-/// the **Smear** route can apply one offset to BOTH its lift (`from`) and stamp (`to`) positions (a
-/// wrapped smear copy keeps the same displacement). Up to 4 (a corner-crossing dab).
-#[must_use]
-pub(super) fn tiled_offsets(
+/// Fill `out` with the wrap offsets (`[dx, dy]`, always including `[0, 0]`) for a dab at
+/// `center`/`radius` under the enabled `tiling` axes — the same edge-crossing logic as [`tiled_dabs`],
+/// written into a stack buffer (no alloc) so the **Smear** route can apply one offset to BOTH its lift
+/// (`from`) and stamp (`to`) positions (a wrapped copy keeps the same displacement). Returns the count
+/// (`1` when interior; up to `nx·ny ≤ 9` for a dab wider than the sprite that crosses both edges).
+pub(super) fn tiled_offsets_into(
     center: [f32; 2],
     radius: f32,
     source_size: (u32, u32),
     tiling: [bool; 2],
-) -> Vec<[f32; 2]> {
+    out: &mut [[f32; 2]; 9],
+) -> usize {
     let (fw, fh) = (source_size.0 as f32, source_size.1 as f32);
     let mut xs = [0.0f32; 3];
     let nx = axis_offsets(center[0], radius, fw, tiling[0], &mut xs);
     let mut ys = [0.0f32; 3];
     let ny = axis_offsets(center[1], radius, fh, tiling[1], &mut ys);
-    let mut out = Vec::with_capacity(nx * ny);
+    let mut n = 0;
     for &dx in &xs[..nx] {
         for &dy in &ys[..ny] {
-            out.push([dx, dy]);
+            out[n] = [dx, dy];
+            n += 1;
         }
     }
-    out
+    n
 }
 
 /// Wrap offsets for one axis of a tiled dab: always `0`, plus `∓span` when the dab's footprint

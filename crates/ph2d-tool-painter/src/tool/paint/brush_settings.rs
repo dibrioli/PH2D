@@ -4,7 +4,7 @@
 use super::shape_layers::MAX_SHAPE_LAYERS;
 use super::{
     BRUSH_AIRBRUSH_RATE_MAX_S, BRUSH_AIRBRUSH_RATE_MIN_S, BRUSH_COUNT_SLIDER_MAX,
-    BRUSH_JITTER_ABS_MAX_PX, BRUSH_SIZE_MAX_PX, BRUSH_SIZE_MIN_PX, BRUSH_SPACING_MAX, PaintMode,
+    BRUSH_JITTER_ABS_MAX_PX, BRUSH_SIZE_MAX_PX, BRUSH_SIZE_MIN_PX, BRUSH_SPACING_MAX,
 };
 use crate::tool::PainterTool;
 use ph2d_painter_brush::{
@@ -61,6 +61,10 @@ pub struct BrushSettings {
     pub blend: u8,
     /// Eraser mode — paints with Erase Alpha regardless of [`Self::blend`].
     pub eraser: bool,
+    /// `true` when the active paint operation is **Smear** (left-rail tool). The panel hides the
+    /// colour / blend / ramp / Randomize-Color / Eraser controls and restricts the Stroke Method to
+    /// the incremental methods, since Smear drags pixels (it paints no colour).
+    pub is_smear: bool,
     /// Seamless **Tiling** (wrap-around painting) flags `[x, y]`.
     pub tiling: [bool; 2],
     /// **Repeat Image** tile-preview toggle (the on-canvas 3×3 grid).
@@ -286,23 +290,8 @@ impl PainterTool {
         self.paint.eraser = !self.paint.eraser;
     }
 
-    /// Set the active paint operation from the left-rail tool selection: `"smear"` → the Smear drag,
-    /// `"eraser"` → normal paint with the Erase-Alpha override, anything else → normal Brush paint.
-    /// Keeps `paint_mode` and the eraser override in sync so switching rail tools never leaves a
-    /// stuck state (e.g. selecting Brush after Smear returns to normal painting).
-    pub fn set_paint_tool_mode(&mut self, mode: &str) {
-        match mode {
-            "smear" => self.paint.paint_mode = PaintMode::Smear,
-            "eraser" => {
-                self.paint.paint_mode = PaintMode::Paint;
-                self.paint.eraser = true;
-            }
-            _ => {
-                self.paint.paint_mode = PaintMode::Paint;
-                self.paint.eraser = false;
-            }
-        }
-    }
+    // The paint-mode setters (`set_paint_tool_mode` / `is_smear_mode`) live in `stencil.rs`, beside the
+    // `route_brush_dab_event` that drives them (workspace LOC cap on this file).
 
     /// Set the brush radius in pixels, clamped to the interactive size range.
     pub fn set_brush_size_px(&mut self, px: f32) {

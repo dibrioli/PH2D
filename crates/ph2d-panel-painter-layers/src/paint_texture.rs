@@ -225,7 +225,11 @@ pub(crate) fn paint_texture_section(
         .collect();
     y = crate::number_field::paint_num_params(ctx, theme, x, content_w, y, &pp);
 
-    // ── Color Ramp sub-editor (maps the texture's scalar to a colour) ──
+    // ── Color Ramp sub-editor (maps the texture's scalar to a colour) — hidden in Smear (no colour;
+    //    the Grain still shapes the smear via its coverage). ──
+    if brush.is_smear {
+        return y;
+    }
     crate::paint_texture_ramp::paint_texture_ramp_section(
         ctx,
         theme,

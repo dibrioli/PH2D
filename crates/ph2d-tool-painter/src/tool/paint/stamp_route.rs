@@ -23,10 +23,10 @@ impl PainterTool {
     /// dirty rect. With **Tiling** on, each dab is first replicated across the wrapped sprite edges
     /// (`tiling::tiled_dabs`) so a stroke near a border is seamless when the sprite repeats as a tile.
     pub(super) fn stamp_dabs(&mut self, dabs: &[Dab]) {
-        // Smear drags the canvas content between consecutive dab centres — it ignores the brush
-        // colour / Shape / Grain / ramp routing (and tiling), so short-circuit before all of it. It
-        // needs the UNtiled dab chain (a single `last_smear_pos` source), so it runs here, not in
-        // `stamp_dabs_inner` (which receives already-tiled dabs).
+        // Smear drags canvas content between consecutive dab centres — it ignores the brush colour /
+        // blend / ramp routing, so short-circuit before all of it. It needs the UNtiled dab chain (a
+        // single `last_smear_pos` source) + applies Shape/Grain/flatten via the mask and Tiling via
+        // per-endpoint offsets itself, so it runs here, not in `stamp_dabs_inner`.
         if matches!(self.paint.paint_mode, PaintMode::Smear) {
             let (w, h) = self.source_size;
             self.stamp_dabs_smear(dabs, w, h);
@@ -43,46 +43,108 @@ impl PainterTool {
     /// **Smear** route: drag the canvas content from each dab centre to the next (Blender 2D
     /// `paint_2d_lift_smear` + INTERPOLATE ≡ Krita Color-Smudge "Smearing"). Consecutive dab centres
     /// give the lift→stamp displacement; [`PaintState::last_smear_pos`](super::PaintState) chains the
-    /// source across pointer batches within one stroke, so a Move that emits several dabs (or the next
-    /// Move's batch) keeps dragging from where the last dab landed. Smear amount = brush Strength ×
-    /// per-dab coverage (pressure). The engine snapshots each source region, so overlapping read/write
-    /// never feeds back.
+    /// source across pointer batches within one stroke. Smear amount = brush Strength × per-dab
+    /// coverage (pressure).
+    ///
+    /// The per-pixel weight is the brush's full dab mask — **Shape** silhouette × **Grain** ×
+    /// **flatten/rotate** — via the shared cached [`ph2d_painter_brush::StampMask`] when any of those
+    /// shape the dab (and it is cacheable); else the plain round falloff. **Tiling** wraps each smear
+    /// across the enabled sprite edges (the same offset applied to lift + stamp, so a wrapped copy
+    /// keeps its drag). The engine snapshots each source region, so overlapping read/write never feeds
+    /// back.
     pub(super) fn stamp_dabs_smear(&mut self, dabs: &[Dab], w: u32, h: u32) {
         if dabs.is_empty() {
             return;
         }
         let base = self.paint.brush;
         let strength = base.strength.clamp(0.0, 1.0);
+        let has_shape_image = self.paint.shape_image.is_some();
+        // Use the full dab mask when a Shape / Grain / flatten shapes the dab AND it's cacheable
+        // (static View); else the plain round falloff. flatten/rotate is always baked into the mask,
+        // so a flattened plain brush routes through the mask too.
+        let want_mask = (base.shape_silhouette_active(has_shape_image)
+            || base.texture.is_active()
+            || base.dab_flatten > 0.0)
+            && base.dab_mask_cacheable(has_shape_image);
+        let tiling = self.paint.tiling;
+        let tiled = tiling[0] || tiling[1];
+        let source_size = self.source_size;
+
+        // Phase 1 (reads self): build the smear ops (from, to, radius, coverage), applying Tiling wrap
+        // offsets to BOTH endpoints, and advance the source chain.
         let mut from = self.paint.last_smear_pos;
-        let buf = Arc::make_mut(&mut self.canvas_rgba);
-        let mut touched: Option<Region> = None;
+        let mut ops: Vec<([f32; 2], [f32; 2], f32, f32)> = Vec::with_capacity(dabs.len());
         for d in dabs {
             if let Some(prev) = from {
-                let spec = BrushSpec {
-                    radius_px: d.radius_px,
-                    ..base
-                };
-                if let Some(r) = ph2d_painter_brush::smear_dab(
-                    buf,
-                    w,
-                    h,
-                    prev,
-                    d.center,
-                    &spec,
-                    strength * d.coverage,
-                ) {
-                    let rect = Region {
-                        x: r.x,
-                        y: r.y,
-                        w: r.w,
-                        h: r.h,
-                    };
-                    touched = Some(touched.map_or(rect, |acc| union_region(acc, rect)));
+                if tiled {
+                    for off in
+                        super::tiling::tiled_offsets(d.center, d.radius_px, source_size, tiling)
+                    {
+                        ops.push((
+                            [prev[0] + off[0], prev[1] + off[1]],
+                            [d.center[0] + off[0], d.center[1] + off[1]],
+                            d.radius_px,
+                            d.coverage,
+                        ));
+                    }
+                } else {
+                    ops.push((prev, d.center, d.radius_px, d.coverage));
                 }
             }
             from = Some(d.center);
         }
         self.paint.last_smear_pos = from;
+        if ops.is_empty() {
+            return;
+        }
+
+        // Phase 2: build the mask (if wanted), then apply each op to the canvas.
+        if want_mask {
+            let max_r = ops.iter().map(|o| o.2).fold(0.0_f32, f32::max);
+            self.ensure_stamp_cache(&base, super::stamp_cache::mask_size_for(max_r));
+        }
+        let mask = if want_mask {
+            self.paint.stamp_cache.as_ref().map(|(m, _)| m)
+        } else {
+            None
+        };
+        let buf = Arc::make_mut(&mut self.canvas_rgba);
+        let mut touched: Option<Region> = None;
+        for (f, t, radius, coverage) in ops {
+            let dirty = match mask {
+                Some(m) => ph2d_painter_brush::smear_blit_stamp(
+                    buf,
+                    w,
+                    h,
+                    f,
+                    t,
+                    radius,
+                    m,
+                    strength * coverage,
+                ),
+                None => ph2d_painter_brush::smear_dab(
+                    buf,
+                    w,
+                    h,
+                    f,
+                    t,
+                    &BrushSpec {
+                        radius_px: radius,
+                        ..base
+                    },
+                    strength * coverage,
+                ),
+            };
+            if let Some(r) = dirty {
+                let rect = Region {
+                    x: r.x,
+                    y: r.y,
+                    w: r.w,
+                    h: r.h,
+                };
+                touched = Some(touched.map_or(rect, |acc| union_region(acc, rect)));
+            }
+        }
         if let Some(rect) = touched {
             self.mark_dirty(rect);
         }

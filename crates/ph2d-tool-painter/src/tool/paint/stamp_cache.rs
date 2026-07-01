@@ -495,7 +495,7 @@ impl PainterTool {
     }
 
     /// Re-render the cached stamp mask when the appearance / mask size changed; a no-op on a hit.
-    fn ensure_stamp_cache(&mut self, brush: &BrushSpec, size: u32) {
+    pub(super) fn ensure_stamp_cache(&mut self, brush: &BrushSpec, size: u32) {
         self.ensure_shape_ramp_lut();
         let key = StampKey {
             falloff: brush.falloff,

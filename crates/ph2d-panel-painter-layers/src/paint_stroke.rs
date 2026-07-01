@@ -518,9 +518,17 @@ fn jitter_unit_name(u: u8) -> &'static str {
 /// The stroke methods as dropdown options, in Blender's menu order (Dots, Drag Dot, Space, Airbrush,
 /// Anchored, Line, Curve), then the PH2D Circle + Polygon + Free Hand shape extensions last.
 fn stroke_method_options() -> Vec<DropdownOption<u8>> {
-    [0u8, 4, 3, 1, 2, 5, 6, 7, 8, 9]
-        .into_iter()
-        .map(|m| {
+    // Smear only supports the incremental methods (Dots / Airbrush / Space): the fill / editable-curve
+    // methods don't produce the per-move dab chain Smear drags along, so they're dropped from the menu.
+    let is_smear = crate::state::current_brush().is_some_and(|b| b.is_smear);
+    let methods: &[u8] = if is_smear {
+        &[0, 1, 3]
+    } else {
+        &[0, 4, 3, 1, 2, 5, 6, 7, 8, 9]
+    };
+    methods
+        .iter()
+        .map(|&m| {
             DropdownOption::new(
                 painter_brush_stroke_method_option_id(m),
                 m,

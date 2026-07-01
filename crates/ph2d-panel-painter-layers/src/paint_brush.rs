@@ -76,6 +76,7 @@ pub(crate) const FALLBACK_BRUSH: BrushSettings = BrushSettings {
     color: [0.0, 0.0, 0.0],
     blend: 0,
     eraser: false,
+    is_smear: false,
     tiling: [false, false],
     repeat_image: false,
     // Symmetry section — disabled by default (mirror X, 6 segments), no pick mode armed.
@@ -178,25 +179,25 @@ pub(crate) fn paint_brush_body(
     // ── TOP basics (no section), reordered (Enio 2026-06-24):
     //    Blend · Color · Size · Strength · Accumulate · Falloff ──
 
-    // 1. Blend
-    let (ny, blend_open) = paint_dropdown_row(
-        ctx,
-        theme,
-        x,
-        content_w,
-        y,
-        "Blend",
-        core_ids::PAINTER_BRUSH_BLEND,
-        brush.blend,
-        BrushBlend::from_u8(brush.blend).name(),
-    );
-    y = ny;
-    if let Some(r) = blend_open {
-        state::set_pending_brush_blend_dd(Some((r, brush.blend)));
+    // 1. Blend · 2. Color — hidden in Smear (it drags pixels: no colour, fixed interpolate blend).
+    if !brush.is_smear {
+        let (ny, blend_open) = paint_dropdown_row(
+            ctx,
+            theme,
+            x,
+            content_w,
+            y,
+            "Blend",
+            core_ids::PAINTER_BRUSH_BLEND,
+            brush.blend,
+            BrushBlend::from_u8(brush.blend).name(),
+        );
+        y = ny;
+        if let Some(r) = blend_open {
+            state::set_pending_brush_blend_dd(Some((r, brush.blend)));
+        }
+        y = paint_color_swatch_row(ctx, theme, x, content_w, y, brush);
     }
-
-    // 2. Color
-    y = paint_color_swatch_row(ctx, theme, x, content_w, y, brush);
 
     // 3. Size + 4. Strength — canonical slider + editable numeric chip (Widget-Gallery look).
     y = paint_slider_chip_row(
@@ -222,24 +223,28 @@ pub(crate) fn paint_brush_body(
         brush.strength,
     );
 
-    // 5. Accumulate (checkbox — caps the stroke at Strength when off).
-    y = paint_checkbox_row(
-        ctx,
-        theme,
-        x,
-        content_w,
-        y,
-        core_ids::PAINTER_BRUSH_ACCUMULATE,
-        "Accumulate",
-        brush.accumulate,
-    );
+    // 5. Accumulate (checkbox — caps the stroke at Strength when off). Hidden in Smear (no build-up).
+    if !brush.is_smear {
+        y = paint_checkbox_row(
+            ctx,
+            theme,
+            x,
+            content_w,
+            y,
+            core_ids::PAINTER_BRUSH_ACCUMULATE,
+            "Accumulate",
+            brush.accumulate,
+        );
+    }
 
     // Sections below are separated by the Inspector's discreet divider line (Enio 2026-06-25).
     let sep = paint_section_separator;
 
-    // ── Section 6: Randomize Color (collapsible, collapsed by default; activates on amount > 0) ──
-    y = sep(ctx.scene, theme, x, content_w, y);
-    y = paint_randomize_section(ctx, theme, x, content_w, y, brush);
+    // ── Section 6: Randomize Color (collapsible; activates on amount > 0). Hidden in Smear (colour). ──
+    if !brush.is_smear {
+        y = sep(ctx.scene, theme, x, content_w, y);
+        y = paint_randomize_section(ctx, theme, x, content_w, y, brush);
+    }
 
     // ── Section 7: Shape — the dab silhouette. Hosts the Falloff (the procedural default tip) + its
     //    curve preview + a source picker; once a Shape image is assigned the Falloff goes inactive
@@ -250,7 +255,8 @@ pub(crate) fn paint_brush_body(
     // ── Section 7b: Shape Tone — the Shape's B&W value ramp (tonal remap of the silhouette), directly
     //    below the Shape section (Enio 2026-06-25). HIDDEN while Per-Layer Color is on — that mode owns
     //    the colour per layer, so the ramp is nullified (Enio 2026-06-26). ──
-    if !brush.shape_per_layer_color {
+    // Also hidden in Smear (the ramp colourises the silhouette; Smear paints no colour).
+    if !brush.shape_per_layer_color && !brush.is_smear {
         y = sep(ctx.scene, theme, x, content_w, y);
         y = crate::paint_shape_ramp::paint_shape_ramp_section(ctx, theme, x, content_w, y, brush);
     }
@@ -267,18 +273,20 @@ pub(crate) fn paint_brush_body(
     y = sep(ctx.scene, theme, x, content_w, y);
     y = crate::paint_stroke::paint_tiling_section(ctx, theme, x, content_w, y, brush);
 
-    // ── Eraser checkbox (standalone, very bottom) ──
-    y = sep(ctx.scene, theme, x, content_w, y);
-    y = crate::paint_brush_top::paint_checkbox_row(
-        ctx,
-        theme,
-        x,
-        content_w,
-        y,
-        core_ids::PAINTER_BRUSH_ERASER,
-        "Eraser",
-        brush.eraser,
-    );
+    // ── Eraser checkbox (standalone, very bottom) — hidden in Smear (Smear isn't erase) ──
+    if !brush.is_smear {
+        y = sep(ctx.scene, theme, x, content_w, y);
+        y = crate::paint_brush_top::paint_checkbox_row(
+            ctx,
+            theme,
+            x,
+            content_w,
+            y,
+            core_ids::PAINTER_BRUSH_ERASER,
+            "Eraser",
+            brush.eraser,
+        );
+    }
     y
 }
 

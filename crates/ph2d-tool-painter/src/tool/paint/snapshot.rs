@@ -68,6 +68,7 @@ impl PainterTool {
             color: b.color,
             blend: b.blend.to_u8(),
             eraser: self.paint.eraser,
+            is_smear: self.is_smear_mode(),
             tiling: self.paint.tiling,
             repeat_image: self.paint.repeat_image,
             symmetry_enabled: b.symmetry.enabled,

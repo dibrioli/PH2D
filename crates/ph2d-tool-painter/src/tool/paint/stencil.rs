@@ -319,6 +319,32 @@ impl PainterTool {
         }
     }
 
+    /// Set the active paint operation from the left-rail tool selection: `"smear"` → the Smear drag,
+    /// `"eraser"` → normal paint with the Erase-Alpha override, anything else → normal Brush paint.
+    /// Keeps `paint_mode` + the eraser override in sync so switching rail tools never leaves a stuck
+    /// state (e.g. Brush after Smear returns to normal painting). Beside `route_brush_dab_event`, which
+    /// drives it (moved here off `brush_settings.rs` for the workspace LOC cap).
+    pub fn set_paint_tool_mode(&mut self, mode: &str) {
+        match mode {
+            "smear" => self.paint.paint_mode = super::PaintMode::Smear,
+            "eraser" => {
+                self.paint.paint_mode = super::PaintMode::Paint;
+                self.paint.eraser = true;
+            }
+            _ => {
+                self.paint.paint_mode = super::PaintMode::Paint;
+                self.paint.eraser = false;
+            }
+        }
+    }
+
+    /// Whether the active paint operation is **Smear** — the panel snapshot mirrors this so the
+    /// incompatible brush controls (colour / blend / ramps / eraser) hide.
+    #[must_use]
+    pub fn is_smear_mode(&self) -> bool {
+        matches!(self.paint.paint_mode, super::PaintMode::Smear)
+    }
+
     /// Route the brush **dab/stroke** chrome events: the flatten/rotate gizmo `SetValue`s (Shape panel),
     /// plus the **Apply** / **Apply & Keep** stroke buttons (`Click` → bake the pending shape-editor stroke,
     /// discarding or keeping the editable curve). Returns `true` iff the event was consumed.

@@ -559,10 +559,10 @@ pub(crate) fn paint_drag_ghost(
     );
 }
 
-/// Paint one reorder button. When `enabled`, it draws at full contrast and is
-/// registered plus hit-mapped (so the click dispatches). When disabled (list
-/// edge / base layer) it draws dim and is NOT registered, so it no-ops.
-fn paint_reorder_btn(
+/// Paint one reorder button. When `enabled`, it draws full-contrast + registered/hit-mapped (the click
+/// dispatches); disabled (list edge / base) it draws dim and is NOT registered, so it no-ops. Shared
+/// with the Composite Brush card ([`crate::paint_composite`]).
+pub(crate) fn paint_reorder_btn(
     ctx: &mut PaintCtx,
     theme: ph2d_tokens::Theme,
     id: ph2d_a11y::NodeId,

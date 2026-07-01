@@ -66,17 +66,12 @@ pub const PAINTER_BRUSH_JITTER_SPACING_CHIP: NodeId =
 // position's layer Strength (routed in the tool's `route_composite_event`).
 /// The "Composite Brush" enable checkbox — forwards a plain `Click` → `toggle_composite`.
 pub const PAINTER_BRUSH_COMPOSITE_ENABLE: NodeId = hash_node_id("painter_brush.composite_enable");
-/// Per-position layer **Strength** sliders (`0..1`), position 0 = layer 1 (top) … 2 = layer 3 (bottom).
+/// Per-position layer **Strength** sliders (`0..1`, bare — a plain readout, no chip; the Layers-row
+/// pattern), position 0 = layer 1 (top) … 2 = layer 3 (bottom).
 pub const PAINTER_BRUSH_COMPOSITE_STRENGTH: [NodeId; 3] = [
     hash_node_id("painter_brush.composite_strength_0"),
     hash_node_id("painter_brush.composite_strength_1"),
     hash_node_id("painter_brush.composite_strength_2"),
-];
-/// Editable numeric chips paired 1:1 with [`PAINTER_BRUSH_COMPOSITE_STRENGTH`] (slider-with-chip).
-pub const PAINTER_BRUSH_COMPOSITE_STRENGTH_CHIP: [NodeId; 3] = [
-    hash_node_id("painter_brush.composite_strength_chip_0"),
-    hash_node_id("painter_brush.composite_strength_chip_1"),
-    hash_node_id("painter_brush.composite_strength_chip_2"),
 ];
 /// Per-position "move layer up" buttons (toward layer 1 / top) — `Click` → `move_composite_layer_up`.
 pub const PAINTER_BRUSH_COMPOSITE_UP: [NodeId; 3] = [

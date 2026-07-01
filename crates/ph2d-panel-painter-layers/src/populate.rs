@@ -533,19 +533,6 @@ mod tests {
                 ids::PAINTER_BRUSH_JITTER_SPACING,
                 ids::PAINTER_BRUSH_JITTER_SPACING_CHIP,
             ),
-            // Composite Brush per-layer Strength sliders (registered in `register_composite_widgets`).
-            (
-                ids::PAINTER_BRUSH_COMPOSITE_STRENGTH[0],
-                ids::PAINTER_BRUSH_COMPOSITE_STRENGTH_CHIP[0],
-            ),
-            (
-                ids::PAINTER_BRUSH_COMPOSITE_STRENGTH[1],
-                ids::PAINTER_BRUSH_COMPOSITE_STRENGTH_CHIP[1],
-            ),
-            (
-                ids::PAINTER_BRUSH_COMPOSITE_STRENGTH[2],
-                ids::PAINTER_BRUSH_COMPOSITE_STRENGTH_CHIP[2],
-            ),
         ] {
             assert!(
                 matches!(store.get(chip), Some(InteractiveState::NumberInput { .. })),

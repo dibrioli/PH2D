@@ -124,7 +124,29 @@ pub fn populate(store: &mut WidgetStore) {
         );
     }
     register_brush_slider_chips(store);
-    crate::paint_composite::register_composite_widgets(store);
+    // Composite Brush card: 3 bare per-layer Strength sliders + the enable checkbox + the 6 reorder
+    // buttons. Registered here (not in `paint_composite`) so the panel-wiring-parity gate sees the ids.
+    for sid in ph2d_editor_core::ids::PAINTER_BRUSH_COMPOSITE_STRENGTH {
+        store.register(
+            sid,
+            InteractiveState::Slider {
+                state: SliderState::Normal,
+                value: 0.0,
+                orientation: SliderOrientation::Horizontal,
+            },
+        );
+    }
+    for id in std::iter::once(ph2d_editor_core::ids::PAINTER_BRUSH_COMPOSITE_ENABLE)
+        .chain(ph2d_editor_core::ids::PAINTER_BRUSH_COMPOSITE_UP)
+        .chain(ph2d_editor_core::ids::PAINTER_BRUSH_COMPOSITE_DOWN)
+    {
+        store.register(
+            id,
+            InteractiveState::Button {
+                state: ButtonState::Normal,
+            },
+        );
+    }
     register_collapsible_sections(store);
     // Colour swatch + Eraser toggle + the Stroke-section "Adjust Strength" toggle —
     // Buttons. MUST be registered here or the dispatcher drops the click (the

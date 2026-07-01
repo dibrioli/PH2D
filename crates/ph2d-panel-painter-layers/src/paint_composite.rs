@@ -3,17 +3,15 @@
 //! Brush · Smear · Blur — as reorderable rows modelled on the Layers panel: `N Name` label, a **bare**
 //! Strength slider + plain readout (no numeric chip — the Layers-opacity pattern, which never stacks in
 //! a narrow panel), and dim-at-the-ends ↑/↓ reorder buttons. The position number `N` is FIXED 1/2/3;
-//! the tool at each position moves with the arrows. Split from `paint_brush` for the LOC cap;
-//! registration of its fixed-id widgets is [`register_composite_widgets`] (called from `crate::populate`).
+//! the tool at each position moves with the arrows. Split from `paint_brush` for the LOC cap; the
+//! fixed-id widgets are registered in `crate::populate` (so the panel-wiring-parity gate sees them).
 
 use ph2d_editor_core::IconId;
 use ph2d_editor_core::ids as core_ids;
-use ph2d_editor_core::interaction::{InteractiveState, WidgetStore};
 use ph2d_editor_core::paint::{fill_rounded_rect, paint_text, resolve, stroke_rounded_rect};
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::widget::{
-    ButtonState, Checkbox, CheckboxValue, Slider, SliderOrientation, SliderState, paint_checkbox,
-    paint_slider,
+    Checkbox, CheckboxValue, Slider, SliderState, paint_checkbox, paint_slider,
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ColorToken, ROW_H_PX, Radius, Spacing, StrokeToken, TypeToken};
@@ -25,6 +23,10 @@ const LABEL_W: f32 = 54.0; // LITERAL-PX-OK: layer label column ("N ToolName")
 const READOUT_W: f32 = 34.0; // LITERAL-PX-OK: strength readout column
 /// Reorder ↑/↓ button column width (mirrors the Layers panel's `REORDER_W`).
 const ARROW_W: f32 = 16.0; // LITERAL-PX-OK: reorder button column (matches paint_rows)
+/// Minimum bare-slider track width (chrome floor for a very narrow panel).
+const MIN_SLIDER_W: f32 = 24.0; // LITERAL-PX-OK: slider track floor
+/// The 3 fixed composite layer positions.
+const N_LAYERS: f32 = 3.0; // LITERAL-PX-OK: the 3 fixed composite layers (count, not a design value)
 
 /// The name shown in each layer row for a composite op wire discriminant (`0` Brush · `1` Smear · `2` Blur).
 fn op_name(op: u8) -> &'static str {
@@ -52,7 +54,7 @@ pub(crate) fn paint_composite_card(
     // Single-line rows (bare slider never stacks), so the height is exact: padding + the checkbox row +
     // (when on) a gap and the 3 layer rows (each ROW_H + gap).
     let layers_h = if checked {
-        gap + 3.0 * (ROW_H_PX + gap)
+        gap + N_LAYERS * (ROW_H_PX + gap)
     } else {
         0.0
     };
@@ -114,7 +116,7 @@ fn paint_layer_row(
     let up_x = down_x - gap - ARROW_W;
     let readout_x = up_x - gap - READOUT_W;
     let slider_x = x + LABEL_W + gap;
-    let slider_w = (readout_x - gap - slider_x).max(24.0);
+    let slider_w = (readout_x - gap - slider_x).max(MIN_SLIDER_W);
 
     // "N Name" label.
     let label = format!("{} {}", pos + 1, op_name(brush.composite_ops[pos]));
@@ -173,28 +175,4 @@ fn paint_layer_row(
     );
 
     y + ROW_H_PX + gap
-}
-
-/// Register the Composite-card fixed-id widgets in the `WidgetStore` (from `crate::populate`): the 3
-/// per-position bare Strength sliders + the enable checkbox and the 6 reorder buttons — all forwarded
-/// over the existing Click / ValueChanged channels to the tool's `route_composite_event`.
-pub(crate) fn register_composite_widgets(store: &mut WidgetStore) {
-    for sid in core_ids::PAINTER_BRUSH_COMPOSITE_STRENGTH {
-        store.register(
-            sid,
-            InteractiveState::Slider {
-                state: SliderState::Normal,
-                value: 0.0,
-                orientation: SliderOrientation::Horizontal,
-            },
-        );
-    }
-    for id in core_ids::PAINTER_BRUSH_COMPOSITE_BUTTONS {
-        store.register(
-            id,
-            InteractiveState::Button {
-                state: ButtonState::Normal,
-            },
-        );
-    }
 }

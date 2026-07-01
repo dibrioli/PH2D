@@ -124,6 +124,14 @@ impl LayerImage {
 /// `Arc<Vec<u8>>` canvas) without cloning. `None` for unknown/group layers.
 pub trait LayerPixelSource {
     fn layer_rgba(&self, id: LayerId) -> Option<&[u8]>;
+
+    /// The layer currently being EDITED, if any. When it is a mask, the compositor skips that mask's
+    /// multiply so the masked layer stays fully visible WHILE you paint the mask (a non-destructive
+    /// quick-mask preview — the on-canvas colour film shows the coverage instead). `None` (the default)
+    /// = normal compositing (every mask applied). Only the live tool overrides this.
+    fn active_layer(&self) -> Option<LayerId> {
+        None
+    }
 }
 
 /// Trivial [`LayerPixelSource`] over a `BTreeMap` — tests + simple hosts.

@@ -12,13 +12,17 @@ use crate::blur::{blur_region, kernel_radius};
 /// (harden the transition). `1.0` doubles the local contrast against the blurred base.
 const SHARPEN_AMOUNT: f32 = 1.0;
 
+/// Hard cap on the Expand/Contract disc radius (px) — a click grows/shrinks a controllable, repeatable
+/// amount rather than one huge jump (which mangled the mask — Enio).
+const MORPH_MAX: usize = 16;
+
 /// A one-click whole-canvas mask operation. The tool maps each button to one of these; `radius` (the
 /// brush Size, px) sets the morphology / blur extent so the user controls the amount with the Size slider.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum MaskCanvasOp {
-    /// Grow the revealed (white) region — a max filter (dilate).
+    /// Grow the painted (CONCEALED) region — a min filter over a disc (dilate the mask outward).
     Expand,
-    /// Shrink the revealed (white) region — a min filter (erode).
+    /// Shrink the painted (CONCEALED) region — a max filter over a disc (erode the mask inward).
     Contract,
     /// Soften the mask — a binomial blur (feather the edges).
     Blur,
@@ -30,21 +34,30 @@ pub enum MaskCanvasOp {
     Clear,
 }
 
-/// Apply `op` to the whole grayscale mask `buf` (`w·h·4` RGBA8). `radius` is the brush Size in px; the
-/// morphology / blur extent scales with it via [`kernel_radius`]. No-op on a degenerate / short buffer.
+/// Apply `op` to the whole grayscale mask `buf` (`w·h·4` RGBA8). `radius` is the brush Size in px. No-op
+/// on a degenerate / short buffer. Expand/Contract grow/shrink the PAINTED (concealed) region — since a
+/// mask is white/revealed by default, the mask the artist builds is the black area (Enio: they were
+/// inverted before). Blur/Sharpen scale with [`kernel_radius`]; Expand/Contract with [`morph_radius`].
 pub fn apply_mask_op(buf: &mut [u8], w: u32, h: u32, op: MaskCanvasOp, radius: f32) {
     let (wu, hu) = (w as usize, h as usize);
     if wu == 0 || hu == 0 || buf.len() < wu * hu * 4 {
         return;
     }
     match op {
-        MaskCanvasOp::Expand => morph(buf, wu, hu, kernel_radius(radius), true),
-        MaskCanvasOp::Contract => morph(buf, wu, hu, kernel_radius(radius), false),
+        MaskCanvasOp::Expand => morph(buf, wu, hu, morph_radius(radius), true),
+        MaskCanvasOp::Contract => morph(buf, wu, hu, morph_radius(radius), false),
         MaskCanvasOp::Blur => blur_whole(buf, w, h, kernel_radius(radius)),
         MaskCanvasOp::Sharpen => sharpen_whole(buf, w, h, kernel_radius(radius)),
         MaskCanvasOp::Invert => invert_whole(buf, wu * hu),
         MaskCanvasOp::Clear => fill_whole(buf, wu * hu, 255),
     }
+}
+
+/// The Expand/Contract disc radius (px): a modest fraction of the brush Size, capped at [`MORPH_MAX`],
+/// so each click nudges the mask edge a little (repeat to go further) instead of one mask-mangling jump.
+#[must_use]
+fn morph_radius(radius: f32) -> usize {
+    ((radius * 0.15).round() as i64).clamp(1, MORPH_MAX as i64) as usize
 }
 
 /// Rec.601 luma (`0..=255`) of one RGBA8 texel at byte offset `b`. Grayscale masks have `R=G=B` so this
@@ -64,45 +77,43 @@ fn put_gray(buf: &mut [u8], i: usize, v: u8) {
     buf[b + 3] = 255;
 }
 
-/// Separable **morphology**: `dilate` = max over the `(2k+1)²` neighbourhood (grow white), else min
-/// (erode, shrink white). Clamp-to-edge apron. Two O(w·h·k) passes — fine for a one-click op.
-fn morph(buf: &mut [u8], w: usize, h: usize, k: usize, dilate: bool) {
+/// Circular **morphology** over a disc of radius `k`. `grow_concealed` = min filter (spreads the DARK /
+/// concealed region → Expand grows the painted mask); else max filter (spreads white → Contract erodes
+/// it). A round structuring element (Euclidean disc, `dx² + dy² ≤ k²`) keeps growth/shrink SMOOTH — the
+/// old separable-square element left boxy, jagged edges (Enio). Clamp-to-edge; snapshots the source so
+/// overlapping reads never feed back. O(w·h·πk²), and `k` is capped modestly by [`morph_radius`].
+fn morph(buf: &mut [u8], w: usize, h: usize, k: usize, grow_concealed: bool) {
     if k == 0 {
         return;
     }
-    // Extract the coverage luma plane once.
-    let mut src: Vec<u8> = (0..w * h).map(|i| luma(buf, i * 4).round() as u8).collect();
-    let mut tmp = vec![0u8; w * h];
-    let pick = |a: u8, b: u8| if dilate { a.max(b) } else { a.min(b) };
-    // Horizontal pass: src → tmp.
-    for y in 0..h {
-        let row = y * w;
-        for x in 0..w {
-            let mut acc = src[row + x];
-            for d in 1..=k {
-                let xl = x.saturating_sub(d);
-                let xr = (x + d).min(w - 1);
-                acc = pick(acc, src[row + xl]);
-                acc = pick(acc, src[row + xr]);
+    // The disc offsets, computed once (a round SE, not a square box).
+    let ki = k as i32;
+    let kk = ki * ki;
+    let mut offs: Vec<(i32, i32)> = Vec::new();
+    for dy in -ki..=ki {
+        for dx in -ki..=ki {
+            if dx * dx + dy * dy <= kk {
+                offs.push((dx, dy));
             }
-            tmp[row + x] = acc;
         }
     }
-    // Vertical pass: tmp → src.
+    let src: Vec<u8> = (0..w * h).map(|i| luma(buf, i * 4).round() as u8).collect();
+    let (wi, hi) = (w as i32, h as i32);
     for y in 0..h {
         for x in 0..w {
-            let mut acc = tmp[y * w + x];
-            for d in 1..=k {
-                let yt = y.saturating_sub(d);
-                let yb = (y + d).min(h - 1);
-                acc = pick(acc, tmp[yt * w + x]);
-                acc = pick(acc, tmp[yb * w + x]);
+            let mut acc = src[y * w + x];
+            for &(dx, dy) in &offs {
+                let sx = (x as i32 + dx).clamp(0, wi - 1) as usize;
+                let sy = (y as i32 + dy).clamp(0, hi - 1) as usize;
+                let v = src[sy * w + sx];
+                acc = if grow_concealed {
+                    acc.min(v)
+                } else {
+                    acc.max(v)
+                };
             }
-            src[y * w + x] = acc;
+            put_gray(buf, y * w + x, acc);
         }
-    }
-    for (i, &v) in src.iter().enumerate() {
-        put_gray(buf, i, v);
     }
 }
 
@@ -202,30 +213,35 @@ mod tests {
     }
 
     #[test]
-    fn expand_grows_a_white_dot() {
-        // Single white texel at (1,1) on black; dilate must spread it to neighbours.
-        let (mut buf, w, h) = flat(0);
+    fn expand_grows_the_painted_concealed_region() {
+        // A black (concealed) dot at (1,1) on a white/revealed mask; Expand spreads the black to a
+        // neighbour — the painted mask grows outward (radius 5 → disc k=1, so growth is one texel).
+        let (mut buf, w, h) = flat(255);
         let center = idx4(1, 1);
-        for c in 0..4 {
-            buf[center + c] = 255;
+        for c in 0..3 {
+            buf[center + c] = 0;
         }
-        apply_mask_op(&mut buf, w, h, MaskCanvasOp::Expand, 10.0);
-        // A neighbour of the dot is now white (grew outward).
-        let neighbour = idx4(2, 1);
-        assert_eq!(buf[neighbour], 255);
+        apply_mask_op(&mut buf, w, h, MaskCanvasOp::Expand, 5.0);
+        assert_eq!(
+            buf[idx4(2, 1)],
+            0,
+            "Expand grew the concealed (black) region"
+        );
     }
 
     #[test]
-    fn contract_shrinks_a_black_hole() {
-        // Mostly white with a single black hole; erode spreads the black (shrinks white).
+    fn contract_shrinks_the_painted_concealed_region() {
+        // A lone black (concealed) dot at (2,2) on white; Contract erodes it back to revealed (white).
         let (mut buf, w, h) = flat(255);
-        let hole = idx4(2, 2);
+        let dot = idx4(2, 2);
         for c in 0..3 {
-            buf[hole + c] = 0;
+            buf[dot + c] = 0;
         }
-        apply_mask_op(&mut buf, w, h, MaskCanvasOp::Contract, 10.0);
-        let neighbour = idx4(1, 2);
-        assert_eq!(buf[neighbour], 0);
+        apply_mask_op(&mut buf, w, h, MaskCanvasOp::Contract, 5.0);
+        assert_eq!(
+            buf[dot], 255,
+            "Contract eroded the lone concealed dot back to revealed"
+        );
     }
 
     #[test]

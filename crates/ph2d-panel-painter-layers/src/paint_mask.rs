@@ -70,7 +70,8 @@ pub(crate) fn paint_mask_section(
         return y;
     }
 
-    // ── Card 1: Brushes — the mask sub-brush toggle group (one selected). ──
+    // ── Card 1: Brushes — the mask sub-brush toggle group (one selected). Paint sits SOLO on the top
+    //    row (the primary brush), Erase/Blur/Smear reflow below (Enio). ──
     let brush_labels = ["Paint", "Erase", "Blur", "Smear"];
     y = button_card(
         ctx,
@@ -82,6 +83,7 @@ pub(crate) fn paint_mask_section(
         &brush_labels,
         &core_ids::PAINTER_MASK_BRUSH,
         Some(brush.mask_brush as usize),
+        true, // Paint solo on the top row
     );
 
     // ── Card 2: Modifiers — whole-canvas ops (one-click). ──
@@ -96,6 +98,7 @@ pub(crate) fn paint_mask_section(
         &op_labels,
         &core_ids::PAINTER_MASK_OP,
         None,
+        false,
     );
 
     // ── Card 3: Overlay Color — the quick-mask tint swatches. ──
@@ -151,7 +154,8 @@ fn card_frame(
 }
 
 /// A card of labelled buttons in a reflowing grid. `selected` = `Some(i)` renders a toggle group (the
-/// selected button is Accent-filled); `None` renders one-click action buttons. Returns the next `y`.
+/// selected button is Accent-filled); `None` renders one-click action buttons. `first_solo` puts
+/// `labels[0]` alone on a full-width top row (the primary brush), the rest reflowing below. Returns `y`.
 #[allow(clippy::too_many_arguments)]
 fn button_card(
     ctx: &mut PaintCtx,
@@ -163,24 +167,66 @@ fn button_card(
     labels: &[&str],
     ids: &[ph2d_a11y::NodeId],
     selected: Option<usize>,
+    first_solo: bool,
 ) -> f32 {
     let gap = Spacing::Xs.px();
     let pad = Spacing::Sm.px();
     let inner_w = (content_w - 2.0 * pad).max(0.0);
-    let (_, body_h) = flow_fill(0.0, 0.0, inner_w, labels.len(), BTN_MIN_W, ROW_H_PX, gap);
+    let solo = first_solo && labels.len() > 1;
+    // Body height: solo top row + the reflow of the rest, or a single reflow of everything.
+    let body_h = if solo {
+        let (_, rest_h) = flow_fill(
+            0.0,
+            0.0,
+            inner_w,
+            labels.len() - 1,
+            BTN_MIN_W,
+            ROW_H_PX,
+            gap,
+        );
+        ROW_H_PX + gap + rest_h
+    } else {
+        flow_fill(0.0, 0.0, inner_w, labels.len(), BTN_MIN_W, ROW_H_PX, gap).1
+    };
     let (inner_x, inner_w, body_top, next_y) =
         card_frame(ctx, theme, x, content_w, y, title, body_h);
-    let (rects, _) = flow_fill(
-        inner_x,
-        body_top,
-        inner_w,
-        labels.len(),
-        BTN_MIN_W,
-        ROW_H_PX,
-        gap,
-    );
-    for (i, label) in labels.iter().enumerate() {
-        paint_button_cell(ctx, theme, rects[i], label, ids[i], selected == Some(i));
+    if solo {
+        // `labels[0]` full-width on top; the remainder reflows on the row(s) below.
+        let top = Rect::new(inner_x, body_top, inner_w, ROW_H_PX);
+        paint_button_cell(ctx, theme, top, labels[0], ids[0], selected == Some(0));
+        let rest_top = body_top + ROW_H_PX + gap;
+        let (rects, _) = flow_fill(
+            inner_x,
+            rest_top,
+            inner_w,
+            labels.len() - 1,
+            BTN_MIN_W,
+            ROW_H_PX,
+            gap,
+        );
+        for (j, label) in labels[1..].iter().enumerate() {
+            paint_button_cell(
+                ctx,
+                theme,
+                rects[j],
+                label,
+                ids[j + 1],
+                selected == Some(j + 1),
+            );
+        }
+    } else {
+        let (rects, _) = flow_fill(
+            inner_x,
+            body_top,
+            inner_w,
+            labels.len(),
+            BTN_MIN_W,
+            ROW_H_PX,
+            gap,
+        );
+        for (i, label) in labels.iter().enumerate() {
+            paint_button_cell(ctx, theme, rects[i], label, ids[i], selected == Some(i));
+        }
     }
     next_y
 }

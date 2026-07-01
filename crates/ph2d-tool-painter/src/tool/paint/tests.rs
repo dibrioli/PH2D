@@ -583,6 +583,33 @@ fn mask_overlay_tints_the_concealed_composite() {
 }
 
 #[test]
+fn mask_conceals_the_parent_in_the_composite_after_leaving_mask() {
+    // Full flow: paint a mask (conceal centre), leave Mask → the parent is active again, and the
+    // composite must HIDE the concealed centre (alpha ≈ 0). The "did the mask actually mask?" check,
+    // independent of the overlay (which only tints WHILE the mask is the active target).
+    use ph2d_editor_core::ids as core_ids;
+    use ph2d_editor_core::tool::{PanelEvent, Tool};
+    let mut t = white_canvas(16, 5.0);
+    t.handle_panel_event(PanelEvent::SelectOption(
+        core_ids::PAINTER_PAINT_MODE,
+        "mask".to_string(),
+    ));
+    t.on_canvas_pointer(cp([8.0, 8.0], PointerPhase::Down)); // Paint = conceal (black)
+    t.on_canvas_pointer(cp([8.0, 8.0], PointerPhase::Up));
+    t.handle_panel_event(PanelEvent::SelectOption(
+        core_ids::PAINTER_PAINT_MODE,
+        "brush".to_string(),
+    ));
+    let (buf, w, _h) = t.take_preview_arc().expect("a composite preview");
+    let i = ((8 * w + 8) * 4) as usize;
+    assert!(
+        buf[i + 3] < 128,
+        "the mask must conceal the centre in the composite (alpha low), got a = {}",
+        buf[i + 3]
+    );
+}
+
+#[test]
 fn eyedropper_samples_the_pixel_into_the_brush_colour() {
     // The rail arms the on-canvas Eyedropper (mode "eyedropper"); the next canvas Down samples the pixel
     // under the cursor into the brush colour, consumes the click (no paint / no sprite move), and disarms

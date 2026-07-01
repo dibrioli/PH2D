@@ -86,6 +86,7 @@ impl PainterTool {
             is_clone: self.is_clone_mode(),
             clone_has_source: self.clone_has_source(),
             clone_aligned: self.clone_aligned(),
+            clone_sample_armed: self.clone_sample_armed(),
             composite_enabled: self.composite_enabled(),
             composite_ops: self.composite_ops_u8(),
             composite_strength: self.composite_strengths(),

@@ -8,7 +8,7 @@ use crate::paint_brush_top::paint_checkbox_row;
 use ph2d_editor_core::ids as core_ids;
 use ph2d_editor_core::paint::{paint_text, resolve};
 use ph2d_editor_core::panel::PaintCtx;
-use ph2d_editor_core::widget::{Button, paint_button};
+use ph2d_editor_core::widget::{Button, ButtonKind, ButtonState, paint_button};
 use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ColorToken, ROW_H_PX, Spacing, TypeToken};
 use ph2d_tool_painter::BrushSettings;
@@ -22,14 +22,28 @@ pub(crate) fn paint_clone_card(
     y: f32,
     brush: BrushSettings,
 ) -> f32 {
-    // "Set Source" button — arms the pick mode; the next canvas click samples the source anchor.
+    // "Set Source" button — arms the pick mode; the next canvas click samples the source anchor. Reads
+    // its store state so hover / mouse-down feedback shows, and paints Accent while armed (stays
+    // "checked" until the canvas click samples the source) — mirror of the Symmetry pick buttons.
     let id = core_ids::PAINTER_BRUSH_CLONE_SET_SOURCE;
-    let label = if brush.clone_has_source {
+    let label = if brush.clone_sample_armed {
+        "Click canvas to sample"
+    } else if brush.clone_has_source {
         "Set Source (resample)"
     } else {
         "Set Source"
     };
-    let btn = Button::new(id, label);
+    let state = ctx
+        .host
+        .store()
+        .button_state(id)
+        .unwrap_or(ButtonState::Normal);
+    let kind = if brush.clone_sample_armed {
+        ButtonKind::Accent
+    } else {
+        ButtonKind::Default
+    };
+    let btn = Button::new(id, label).kind(kind).state(state);
     let rect = Rect::new(x, y, content_w, ROW_H_PX);
     paint_button(&btn, rect, ctx.scene, ctx.text_system, theme);
     register_button(ctx.host.store_mut(), id);

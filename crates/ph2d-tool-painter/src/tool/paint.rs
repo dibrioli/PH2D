@@ -284,7 +284,14 @@ impl PainterTool {
         // Pin the symmetry centre to the current canvas centre for the auto-centre modes before the
         // stroke captures the spec (the engine mirrors/rotates about `brush.symmetry.center`).
         self.resolve_symmetry_geometry();
-        let mut stroke = Stroke::new(self.paint.brush, self.paint.dynamics, self.paint.seed);
+        // Clone ignores Symmetry (its panel section is hidden): mirrored dabs would clone from mirrored
+        // source positions, which is nonsensical — strip it from the captured spec so a leftover-enabled
+        // flag can't silently mirror. Other modes keep Symmetry.
+        let mut spec = self.paint.brush;
+        if matches!(self.paint.paint_mode, PaintMode::Clone) {
+            spec.symmetry.enabled = false;
+        }
+        let mut stroke = Stroke::new(spec, self.paint.dynamics, self.paint.seed);
         // Seed the texture RNG from this stroke's seed, decorrelated from the jitter stream so the
         // two don't lock-step (HR-5: deterministic per stroke).
         self.paint.tex_rng = self.paint.seed ^ 0x7465_7874_7572_6573;

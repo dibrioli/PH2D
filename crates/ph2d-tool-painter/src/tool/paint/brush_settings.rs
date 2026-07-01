@@ -67,10 +67,10 @@ pub struct BrushSettings {
     pub is_smear: bool,
     pub is_blur: bool,
     pub is_clone: bool,
-    /// Clone: whether a source has been sampled (panel shows "Set Source" vs "Source set").
+    /// Clone flags: source sampled? · **Aligned** (offset persists across strokes)? · "Set Source" armed?
     pub clone_has_source: bool,
-    /// Clone: **Aligned** mode (offset persists across strokes).
     pub clone_aligned: bool,
+    pub clone_sample_armed: bool,
     /// **Composite Brush** on: the Strength slider hides + the 3-layer stack card shows (panel).
     pub composite_enabled: bool,
     /// Composite stack op per position `[layer1, layer2, layer3]` (`CompositeOp::to_u8`: 0 Brush/1 Smear/2 Blur).

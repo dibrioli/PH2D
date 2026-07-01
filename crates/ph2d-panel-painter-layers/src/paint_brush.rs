@@ -81,6 +81,7 @@ pub(crate) const FALLBACK_BRUSH: BrushSettings = BrushSettings {
     is_clone: false,
     clone_has_source: false,
     clone_aligned: true,
+    clone_sample_armed: false,
     composite_enabled: false,
     composite_ops: [0, 1, 2], // Brush / Smear / Blur (mirrors PaintState::default)
     composite_strength: [1.0, 0.5, 0.5],
@@ -291,8 +292,11 @@ pub(crate) fn paint_brush_body(
     // ── Section 9: Stroke · Section 9b: Symmetry · Section 10: Tiling (last two collapsed by default) ──
     y = sep(ctx.scene, theme, x, content_w, y);
     y = crate::paint_stroke::paint_stroke_section(ctx, theme, x, content_w, y, brush);
-    y = sep(ctx.scene, theme, x, content_w, y);
-    y = crate::paint_symmetry::paint_symmetry_section(ctx, theme, x, content_w, y, brush);
+    // Symmetry — hidden in Clone: mirrored dabs would clone from mirrored source positions (nonsensical).
+    if !brush.is_clone {
+        y = sep(ctx.scene, theme, x, content_w, y);
+        y = crate::paint_symmetry::paint_symmetry_section(ctx, theme, x, content_w, y, brush);
+    }
     y = sep(ctx.scene, theme, x, content_w, y);
     y = crate::paint_stroke::paint_tiling_section(ctx, theme, x, content_w, y, brush);
 

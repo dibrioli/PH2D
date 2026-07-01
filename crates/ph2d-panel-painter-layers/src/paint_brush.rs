@@ -78,6 +78,9 @@ pub(crate) const FALLBACK_BRUSH: BrushSettings = BrushSettings {
     eraser: false,
     is_smear: false,
     is_blur: false,
+    composite_enabled: false,
+    composite_ops: [0, 1, 2], // Brush / Smear / Blur (mirrors PaintState::default)
+    composite_strength: [1.0, 0.5, 0.5],
     tiling: [false, false],
     repeat_image: false,
     // Symmetry section — disabled by default (mirror X, 6 segments), no pick mode armed.
@@ -212,17 +215,25 @@ pub(crate) fn paint_brush_body(
         core_ids::PAINTER_BRUSH_SIZE_CHIP,
         brush.size_norm,
     );
-    y = paint_slider_chip_row(
-        ctx,
-        theme,
-        x,
-        content_w,
-        y,
-        "Strength",
-        core_ids::PAINTER_BRUSH_STRENGTH_SLIDER,
-        core_ids::PAINTER_BRUSH_STRENGTH_CHIP,
-        brush.strength,
-    );
+    // Strength — the single opacity slider. Hidden when the Composite Brush is on: its per-layer
+    // Strength sliders (in the card below) replace it.
+    if !brush.composite_enabled {
+        y = paint_slider_chip_row(
+            ctx,
+            theme,
+            x,
+            content_w,
+            y,
+            "Strength",
+            core_ids::PAINTER_BRUSH_STRENGTH_SLIDER,
+            core_ids::PAINTER_BRUSH_STRENGTH_CHIP,
+            brush.strength,
+        );
+    }
+
+    // 4b. Composite Brush card (checkbox + the 3-layer Brush/Smear/Blur stack when on) — sits below
+    //     Strength, above Accumulate.
+    y = crate::paint_composite::paint_composite_card(ctx, theme, x, content_w, y, brush);
 
     // 5. Accumulate (checkbox — caps the stroke at Strength when off). Hidden in Smear/Blur
     //    (neither uses the paint-side Strength cap).

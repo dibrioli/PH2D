@@ -58,6 +58,39 @@ pub const PAINTER_BRUSH_JITTER_ROTATE_CHIP: NodeId =
 pub const PAINTER_BRUSH_JITTER_SPACING_CHIP: NodeId =
     hash_node_id("painter_brush.jitter_spacing_chip");
 
+// ── Composite Brush card (below Strength, above Accumulate) ─────────────────────────────────────
+// A checkbox that turns the Brush into a stack of 3 reorderable operation layers (Brush / Smear /
+// Blur), each with its own Strength. The stroke runs the layers bottom→top per dab, so each op
+// processes the canvas as modified by the one below it. The position numbers (1/2/3) are FIXED; the
+// tool sitting at each position moves via the up/down buttons. The per-position slider drives that
+// position's layer Strength (routed in the tool's `route_composite_event`).
+/// The "Composite Brush" enable checkbox — forwards a plain `Click` → `toggle_composite`.
+pub const PAINTER_BRUSH_COMPOSITE_ENABLE: NodeId = hash_node_id("painter_brush.composite_enable");
+/// Per-position layer **Strength** sliders (`0..1`), position 0 = layer 1 (top) … 2 = layer 3 (bottom).
+pub const PAINTER_BRUSH_COMPOSITE_STRENGTH: [NodeId; 3] = [
+    hash_node_id("painter_brush.composite_strength_0"),
+    hash_node_id("painter_brush.composite_strength_1"),
+    hash_node_id("painter_brush.composite_strength_2"),
+];
+/// Editable numeric chips paired 1:1 with [`PAINTER_BRUSH_COMPOSITE_STRENGTH`] (slider-with-chip).
+pub const PAINTER_BRUSH_COMPOSITE_STRENGTH_CHIP: [NodeId; 3] = [
+    hash_node_id("painter_brush.composite_strength_chip_0"),
+    hash_node_id("painter_brush.composite_strength_chip_1"),
+    hash_node_id("painter_brush.composite_strength_chip_2"),
+];
+/// Per-position "move layer up" buttons (toward layer 1 / top) — `Click` → `move_composite_layer_up`.
+pub const PAINTER_BRUSH_COMPOSITE_UP: [NodeId; 3] = [
+    hash_node_id("painter_brush.composite_up_0"),
+    hash_node_id("painter_brush.composite_up_1"),
+    hash_node_id("painter_brush.composite_up_2"),
+];
+/// Per-position "move layer down" buttons (toward layer 3 / bottom) — `Click` → `move_composite_layer_down`.
+pub const PAINTER_BRUSH_COMPOSITE_DOWN: [NodeId; 3] = [
+    hash_node_id("painter_brush.composite_down_0"),
+    hash_node_id("painter_brush.composite_down_1"),
+    hash_node_id("painter_brush.composite_down_2"),
+];
+
 /// Collapsible "Randomize Color" section header (Inspector pattern: ALL-CAPS label +
 /// collapse chevron + assignable color dot). Click toggles collapse; right-click opens
 /// the section-outline color menu.

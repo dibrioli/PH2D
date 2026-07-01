@@ -8,13 +8,14 @@ use ph2d_painter_brush::{Falloff, FalloffPoint, MAX_FALLOFF_POINTS, eval_falloff
 
 impl BrushSettings {
     /// `true` when the active paint operation processes existing pixels instead of painting the brush
-    /// colour — **Smear** or **Blur**. The panel hides the colour / blend / Colour-Ramp /
-    /// Randomize-Color / Accumulate / Eraser controls and restricts the Stroke Method to the
-    /// incremental methods for either. (Defined here, beside the snapshot builder, so `brush_settings.rs`
-    /// stays under the workspace file-LOC cap.)
+    /// colour — a pure **Smear** or **Blur** rail tool. The panel hides the colour / blend / Colour-Ramp
+    /// / Randomize-Color / Accumulate / Eraser controls and restricts the Stroke Method to the
+    /// incremental methods for either. **Composite Brush** is excluded: it contains a Brush layer that
+    /// paints colour, so every control stays visible (the colour ones just drive the Brush layer).
+    /// (Defined here, beside the snapshot builder, so `brush_settings.rs` stays under the file-LOC cap.)
     #[must_use]
     pub fn paints_no_color(&self) -> bool {
-        self.is_smear || self.is_blur
+        (self.is_smear || self.is_blur) && !self.composite_enabled
     }
 }
 
@@ -82,6 +83,9 @@ impl PainterTool {
             eraser: self.paint.eraser,
             is_smear: self.is_smear_mode(),
             is_blur: self.is_blur_mode(),
+            composite_enabled: self.composite_enabled(),
+            composite_ops: self.composite_ops_u8(),
+            composite_strength: self.composite_strengths(),
             tiling: self.paint.tiling,
             repeat_image: self.paint.repeat_image,
             symmetry_enabled: b.symmetry.enabled,

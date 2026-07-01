@@ -55,6 +55,9 @@ mod stencil;
 pub use stencil::{StencilOverlay, StencilPreview};
 /// The **Blur** (soften) route — a stationary neighbourhood blur per dab; sibling of `stamp_dabs_smear`.
 mod blur_route;
+/// The **Composite Brush** — Brush + Smear + Blur as a reorderable 3-layer stack run per dab.
+mod composite;
+pub(crate) use composite::{CompositeLayer, CompositeOp};
 mod ramp;
 mod ramp_lut; // ramp LUT baking (colour owner + colour/tone LUTs); split from `stamp_cache` (LOC cap)
 mod shape_ramp;
@@ -133,6 +136,10 @@ pub(crate) struct PaintState {
     eraser: bool,
     /// Which operation the pointer performs (Brush=Paint / Smear); driven by the left-rail tool selection.
     paint_mode: PaintMode,
+    /// **Composite Brush**: run Brush + Smear + Blur together (a Brush-tool upgrade, panel checkbox). See [`composite`].
+    composite_enabled: bool,
+    /// The composite layer stack in display order (index 0 = layer 1 = top; run bottom→top per dab). [`composite`].
+    composite: [CompositeLayer; 3],
     /// Previous dab centre during a **Smear** stroke — the source position each dab lifts from; `None`
     /// at stroke start (the first dab has nothing to smear from). Chained across pointer batches. See [`stamp_route`].
     last_smear_pos: Option<[f32; 2]>,

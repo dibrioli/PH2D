@@ -68,6 +68,12 @@ pub struct BrushSettings {
     /// `true` when the active paint operation is **Blur** (left-rail tool). Hides the same
     /// colour-family controls as [`Self::is_smear`] — Blur softens pixels, painting no colour.
     pub is_blur: bool,
+    /// **Composite Brush** on: the Strength slider hides + the 3-layer stack card shows (panel).
+    pub composite_enabled: bool,
+    /// Composite stack op per position `[layer1, layer2, layer3]` (`CompositeOp::to_u8`: 0 Brush/1 Smear/2 Blur).
+    pub composite_ops: [u8; 3],
+    /// Composite stack Strength per position `[layer1, layer2, layer3]` (`0..1`).
+    pub composite_strength: [f32; 3],
     /// Seamless **Tiling** (wrap-around painting) flags `[x, y]`.
     pub tiling: [bool; 2],
     /// **Repeat Image** tile-preview toggle (the on-canvas 3×3 grid).

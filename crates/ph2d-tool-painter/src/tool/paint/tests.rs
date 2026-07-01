@@ -250,7 +250,11 @@ fn blur_mode_softens_a_hard_edge_along_the_stroke() {
     assert!(matches!(t.paint.paint_mode, PaintMode::Blur));
     let boundary = size / 2; // x = 24, first white column
     let far_white = boundary + 15; // x = 39, outside the radius-8 footprint at x=24
-    assert_eq!(px(&t, size, boundary, size / 2), [255, 255, 255, 255], "seam starts white");
+    assert_eq!(
+        px(&t, size, boundary, size / 2),
+        [255, 255, 255, 255],
+        "seam starts white"
+    );
     // Stroke vertically ALONG the seam (x = boundary), top to bottom.
     let bx = boundary as f32;
     t.on_canvas_pointer(cp([bx, 6.0], PointerPhase::Down));
@@ -274,6 +278,74 @@ fn blur_mode_softens_a_hard_edge_along_the_stroke() {
         "brush".to_string(),
     ));
     assert!(matches!(t.paint.paint_mode, PaintMode::Paint));
+}
+
+#[test]
+fn composite_brush_runs_an_isolated_layer_and_reorders() {
+    // Composite is a Brush-tool upgrade wired over the frozen PanelEvent channel. Prove: (1) the enable
+    // checkbox toggles it, (2) a layer isolated by Strength actually runs inside the stack (Blur softens
+    // a hard edge; the Brush/Smear layers are zeroed so no colour is painted), (3) the reorder buttons
+    // move the tool between the fixed positions.
+    use ph2d_editor_core::ids as core_ids;
+    use ph2d_editor_core::tool::{PanelEvent, Tool};
+    let size = 48u32;
+    let mut t = PainterTool::default();
+    let mut src = vec![255u8; (size * size * 4) as usize]; // right half white
+    for y in 0..size {
+        for x in 0..size / 2 {
+            let i = ((y * size + x) * 4) as usize;
+            src[i..i + 4].copy_from_slice(&[0, 0, 0, 255]); // left half black
+        }
+    }
+    t.set_source(src, size, size);
+    t.paint.brush = BrushSpec {
+        radius_px: 8.0,
+        hardness: 1.0,
+        falloff: Falloff::Constant,
+        strength: 1.0,
+        color: [1.0, 0.0, 0.0], // red — would show if the Brush layer painted
+        space_attenuation: false,
+        ..Default::default()
+    };
+    // Enable the Composite Brush.
+    t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_BRUSH_COMPOSITE_ENABLE));
+    assert!(t.composite_enabled(), "checkbox enabled composite");
+    // Isolate the Blur layer (default positions: 0 Brush · 1 Smear · 2 Blur) by zeroing Brush + Smear.
+    t.handle_panel_event(PanelEvent::SetValue(
+        core_ids::PAINTER_BRUSH_COMPOSITE_STRENGTH[0],
+        0.0,
+    ));
+    t.handle_panel_event(PanelEvent::SetValue(
+        core_ids::PAINTER_BRUSH_COMPOSITE_STRENGTH[1],
+        0.0,
+    ));
+    t.handle_panel_event(PanelEvent::SetValue(
+        core_ids::PAINTER_BRUSH_COMPOSITE_STRENGTH[2],
+        1.0,
+    ));
+    let boundary = size / 2; // x = 24, first white column
+    let bx = boundary as f32;
+    t.on_canvas_pointer(cp([bx, 6.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([bx, (size / 2) as f32], PointerPhase::Move));
+    t.on_canvas_pointer(cp([bx, (size - 6) as f32], PointerPhase::Move));
+    t.on_canvas_pointer(cp([bx, (size - 6) as f32], PointerPhase::Up));
+    let seam = px(&t, size, boundary, size / 2);
+    assert!(
+        seam[0] > 0 && seam[0] < 255,
+        "the Blur layer softened the seam inside the composite: {seam:?}"
+    );
+    assert!(
+        seam[0] == seam[1] && seam[1] == seam[2],
+        "grey (no colour) — the zeroed Brush layer painted nothing: {seam:?}"
+    );
+    // Reorder: move the Blur layer (position 2) up to position 0.
+    t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_BRUSH_COMPOSITE_UP[2]));
+    t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_BRUSH_COMPOSITE_UP[1]));
+    assert_eq!(
+        t.paint.composite[0].op,
+        crate::tool::paint::CompositeOp::Blur,
+        "reorder moved Blur to the top position"
+    );
 }
 
 #[test]

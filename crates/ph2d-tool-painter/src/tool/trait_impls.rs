@@ -1,6 +1,5 @@
-//! `impl Tool` + `impl RasterEditTool` for `PainterTool` (the layers + effects
-//! host). `handle_panel_event` routes the layers-panel events; `RasterEditTool`
-//! is the shell's source-push / composite-preview / Apply-bake interface.
+//! `impl Tool` + `impl RasterEditTool` for `PainterTool` (layers + effects host): `handle_panel_event`
+//! routes the panel events; `RasterEditTool` is the shell push / composite-preview / Apply-bake interface.
 
 use super::*;
 
@@ -51,6 +50,7 @@ impl Tool for PainterTool {
         if self.route_texture_layer_event(&event)
             || self.route_brush_jitter_event(&event)
             || self.route_brush_stencil_event(&event)
+            || self.route_composite_event(&event)
             || self.route_brush_dab_event(&event)
         {
             self.refill_if_appearance_changed(appearance_before);

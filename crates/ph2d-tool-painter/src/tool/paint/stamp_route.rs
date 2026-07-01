@@ -27,6 +27,12 @@ impl PainterTool {
         // blend / ramp routing, so short-circuit before all of it. It needs the UNtiled dab chain (a
         // single `last_smear_pos` source) + applies Shape/Grain/flatten via the mask and Tiling via
         // per-endpoint offsets itself, so it runs here, not in `stamp_dabs_inner`.
+        // Composite Brush (a Brush-tool upgrade): run Brush + Smear + Blur together, bottom→top. Takes
+        // precedence over the single-op routing when it's active (checkbox on + the plain Brush tool).
+        if self.composite_active() {
+            self.stamp_dabs_composite(dabs);
+            return;
+        }
         if matches!(self.paint.paint_mode, PaintMode::Smear) {
             let (w, h) = self.source_size;
             self.stamp_dabs_smear(dabs, w, h);

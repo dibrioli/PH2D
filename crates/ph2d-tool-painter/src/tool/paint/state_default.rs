@@ -20,6 +20,23 @@ impl Default for PaintState {
             stroke_undo: None,
             eraser: false,
             paint_mode: PaintMode::default(),
+            // Composite off by default; the default stack is the natural read of the card (top→bottom):
+            // Brush(1) over Smear(2) over Blur(3). Run bottom→top, that blurs → smears → paints on top.
+            composite_enabled: false,
+            composite: [
+                CompositeLayer {
+                    op: CompositeOp::Brush,
+                    strength: 1.0,
+                },
+                CompositeLayer {
+                    op: CompositeOp::Smear,
+                    strength: 0.5,
+                },
+                CompositeLayer {
+                    op: CompositeOp::Blur,
+                    strength: 0.5,
+                },
+            ],
             last_smear_pos: None,
             tiling: [false, false],
             repeat_image: false,

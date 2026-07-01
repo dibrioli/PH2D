@@ -90,6 +90,17 @@ pub const PAINTER_BRUSH_COMPOSITE_DOWN: [NodeId; 3] = [
     hash_node_id("painter_brush.composite_down_1"),
     hash_node_id("painter_brush.composite_down_2"),
 ];
+/// Every Composite-card **Click** target (enable + the 6 reorder buttons) — one membership check for
+/// the panel's brush-click forward whitelist.
+pub const PAINTER_BRUSH_COMPOSITE_BUTTONS: [NodeId; 7] = [
+    PAINTER_BRUSH_COMPOSITE_ENABLE,
+    PAINTER_BRUSH_COMPOSITE_UP[0],
+    PAINTER_BRUSH_COMPOSITE_UP[1],
+    PAINTER_BRUSH_COMPOSITE_UP[2],
+    PAINTER_BRUSH_COMPOSITE_DOWN[0],
+    PAINTER_BRUSH_COMPOSITE_DOWN[1],
+    PAINTER_BRUSH_COMPOSITE_DOWN[2],
+];
 
 /// Collapsible "Randomize Color" section header (Inspector pattern: ALL-CAPS label +
 /// collapse chevron + assignable color dot). Click toggles collapse; right-click opens

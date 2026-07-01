@@ -467,32 +467,40 @@ impl PainterTool {
     /// Stamp an interactive preview batch (Drag Dot / Anchored = 1 dab, Line = N): restore the
     /// previous footprint's saved pixels, then save the pristine pixels under the new dabs' UNION
     /// bbox and stamp there — so the moving preview leaves no trail. Pen-up: `commit_drag_preview`.
+    ///
+    /// The stamp goes through the full [`Self::stamp_dabs`] dispatcher (NOT the bare brush route), so a
+    /// **Composite Brush** runs all three layers here too. `stamp_dabs` tiles internally (so it takes
+    /// the UNtiled dabs); the save-region bbox is measured over the tiled set so it still covers the
+    /// wrapped copies (else the wrapped paint falls outside the restore region — a trail).
     fn stamp_drag_preview(&mut self, dabs: &[Dab]) {
-        // Tiling: replicate across the wrapped edges up front so the saved bbox AND the stamp cover the
-        // wrapped copies — else the wrapped paint would fall outside the restore region (a trail).
-        let tiled;
-        let dabs = if self.paint.tiling[0] || self.paint.tiling[1] {
-            tiled = tiling::tiled_dabs(dabs, self.source_size, self.paint.tiling);
-            &tiled[..]
-        } else {
-            dabs
-        };
         if let Some(prev) = self.paint.drag_preview.take() {
             self.restore_region(&prev.rect, &prev.pixels);
         }
-        let bbox = dabs.iter().fold(None, |acc, d| {
+        // Coverage bbox over the wrapped Tiling copies (the stamp re-tiles them itself).
+        let coverage_storage;
+        let coverage: &[Dab] = if self.paint.tiling[0] || self.paint.tiling[1] {
+            coverage_storage = tiling::tiled_dabs(dabs, self.source_size, self.paint.tiling);
+            &coverage_storage
+        } else {
+            dabs
+        };
+        let bbox = coverage.iter().fold(None, |acc, d| {
             match (acc, self.dab_bbox(d.center, d.radius_px)) {
                 (Some(a), Some(r)) => Some(union_region(a, r)),
                 (a, r) => a.or(r),
             }
         });
+        // Each preview frame re-stamps the WHOLE current batch onto the restored (pristine) canvas, so
+        // a Composite Brush's Smear layer must chain fresh within THIS batch — clear the cross-batch
+        // source (a Line's dabs then smear from the anchor; a single Drag-Dot dab simply has no source).
+        self.paint.last_smear_pos = None;
         match bbox {
             Some(rect) => {
                 let pixels = self.save_region(&rect);
-                self.stamp_dabs_inner(dabs);
+                self.stamp_dabs(dabs);
                 self.paint.drag_preview = Some(DragPreview { rect, pixels });
             }
-            None => self.stamp_dabs_inner(dabs),
+            None => self.stamp_dabs(dabs),
         }
     }
 

@@ -445,7 +445,8 @@ fn try_apply_brush_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> O
                 // Symmetry: Use / Circular checkboxes, X/Y/Custom axis segments, the Draw-Line /
                 // Pick-Center mode buttons, and the section reset (all plain Click forwards).
                 || core_ids::PAINTER_BRUSH_SYMMETRY_CLICKABLE.contains(&id)
-                || core_ids::PAINTER_BRUSH_SECTION_RESETS.contains(&id) =>
+                || core_ids::PAINTER_BRUSH_SECTION_RESETS.contains(&id)
+                || core_ids::PAINTER_BRUSH_COMPOSITE_BUTTONS.contains(&id) =>
         {
             host.bus_mut()
                 .push(EditorAction::ToolPanelEvent(PanelEvent::Click(id)));
@@ -552,7 +553,8 @@ fn try_apply_brush_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> O
                 || id == core_ids::PAINTER_BRUSH_STABILIZE
                 || id == core_ids::PAINTER_BRUSH_RATE
                 || id == core_ids::PAINTER_BRUSH_SYMMETRY_SEGMENTS
-                || core_ids::PAINTER_BRUSH_RANDOMIZE_SLIDERS.contains(&id) =>
+                || core_ids::PAINTER_BRUSH_RANDOMIZE_SLIDERS.contains(&id)
+                || core_ids::PAINTER_BRUSH_COMPOSITE_STRENGTH.contains(&id) =>
         {
             let v = host.store().slider(id).map(|(_, v)| v).unwrap_or(0.0);
             host.bus_mut()

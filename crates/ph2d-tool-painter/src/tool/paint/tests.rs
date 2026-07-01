@@ -349,6 +349,63 @@ fn composite_brush_runs_an_isolated_layer_and_reorders() {
 }
 
 #[test]
+fn composite_runs_layers_under_the_interactive_preview_methods() {
+    // The interactive-preview methods (Drag Dot / Anchored / Line) restore + re-stamp each frame; they
+    // must run the WHOLE composite stack, not just the Brush layer. Prove it with a Drag Dot + a
+    // Blur-only composite: a single click must soften the hard edge under the dab (the Blur layer ran
+    // through the preview path), with no colour painted (Brush + Smear layers zeroed).
+    use ph2d_editor_core::ids as core_ids;
+    use ph2d_editor_core::tool::{PanelEvent, Tool};
+    let size = 48u32;
+    let mut t = PainterTool::default();
+    let mut src = vec![255u8; (size * size * 4) as usize];
+    for y in 0..size {
+        for x in 0..size / 2 {
+            let i = ((y * size + x) * 4) as usize;
+            src[i..i + 4].copy_from_slice(&[0, 0, 0, 255]);
+        }
+    }
+    t.set_source(src, size, size);
+    t.paint.brush = BrushSpec {
+        radius_px: 8.0,
+        hardness: 1.0,
+        falloff: Falloff::Constant,
+        strength: 1.0,
+        color: [1.0, 0.0, 0.0], // red — must NOT appear (Brush layer zeroed)
+        stroke_method: ph2d_painter_brush::StrokeMethod::DragDot,
+        space_attenuation: false,
+        ..Default::default()
+    };
+    t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_BRUSH_COMPOSITE_ENABLE));
+    // Blur-only: Brush(0) + Smear(1) off, Blur(2) on.
+    t.handle_panel_event(PanelEvent::SetValue(
+        core_ids::PAINTER_BRUSH_COMPOSITE_STRENGTH[0],
+        0.0,
+    ));
+    t.handle_panel_event(PanelEvent::SetValue(
+        core_ids::PAINTER_BRUSH_COMPOSITE_STRENGTH[1],
+        0.0,
+    ));
+    t.handle_panel_event(PanelEvent::SetValue(
+        core_ids::PAINTER_BRUSH_COMPOSITE_STRENGTH[2],
+        1.0,
+    ));
+    let boundary = size / 2; // x = 24
+    // A single Drag-Dot click centred on the seam.
+    t.on_canvas_pointer(cp([boundary as f32, (size / 2) as f32], PointerPhase::Down));
+    t.on_canvas_pointer(cp([boundary as f32, (size / 2) as f32], PointerPhase::Up));
+    let seam = px(&t, size, boundary, size / 2);
+    assert!(
+        seam[0] > 0 && seam[0] < 255,
+        "the Blur layer softened the seam via the Drag-Dot preview path: {seam:?}"
+    );
+    assert!(
+        seam[0] == seam[1] && seam[1] == seam[2],
+        "grey (no colour) — the zeroed Brush layer painted nothing in the preview: {seam:?}"
+    );
+}
+
+#[test]
 fn move_without_down_is_ignored() {
     let mut t = white_canvas(32, 4.0);
     assert!(

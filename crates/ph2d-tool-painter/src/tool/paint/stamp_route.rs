@@ -121,6 +121,7 @@ impl PainterTool {
                     radius,
                     m,
                     strength * coverage,
+                    tiling,
                 ),
                 None => ph2d_painter_brush::smear_dab(
                     buf,
@@ -133,6 +134,7 @@ impl PainterTool {
                         ..base
                     },
                     strength * coverage,
+                    tiling,
                 ),
             };
             if let Some(r) = dirty {

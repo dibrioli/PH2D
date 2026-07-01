@@ -29,6 +29,12 @@ use crate::stamp::{StampMask, sample_mask};
 /// pixels are **lifted into a snapshot first**; writes never feed back into later reads within a dab.
 /// Channels are interpolated straight (per Blender/Krita Smearing); on a mostly-opaque canvas this is
 /// exact, and it drags alpha too.
+///
+/// `wrap` (Tiling) makes the LIFT toroidal per axis: a source pixel past a wrapped edge reads from the
+/// opposite edge (the image is one seamless tile) instead of transparent — without it, smearing across
+/// a tiled seam drags the edge toward alpha (a visible transparent rim). The wrapped WRITE is the
+/// caller's job (it stamps the dab at the wrapped positions).
+#[allow(clippy::too_many_arguments)]
 #[must_use]
 pub fn smear_dab(
     buf: &mut [u8],
@@ -38,6 +44,7 @@ pub fn smear_dab(
     to: [f32; 2],
     spec: &BrushSpec,
     strength: f32,
+    wrap: [bool; 2],
 ) -> Option<DirtyRect> {
     let radius = spec.clamped_radius();
     let strength = strength.clamp(0.0, 1.0);
@@ -64,21 +71,28 @@ pub fn smear_dab(
     let bw = (max_x - min_x) as usize;
     let bh = (max_y - min_y) as usize;
 
-    // Lift: snapshot the source pixel (canvas at `dest - step`) for every dest cell; cells whose
-    // source is off-canvas stay transparent-zero and never contribute (weight applied below still
-    // lerps toward zero there, matching Blender's zeroed out-of-image regions — but those are at the
-    // dab rim where the falloff is ~0, so the visible effect is nil).
+    // Lift: snapshot the source pixel (canvas at `dest - step`) for every dest cell. A `wrap` axis
+    // reads toroidally (`rem_euclid` → opposite edge) so a tiled seam is seamless; a non-wrap axis
+    // whose source is off-canvas stays transparent-zero (dab rim, falloff ~0 — nil effect).
     let mut lifted = vec![[0u8; 4]; bw * bh];
     for j in 0..bh {
         let sy = min_y + j as i64 - step_y;
-        if sy < 0 || sy >= fh {
+        let sy = if wrap[1] {
+            sy.rem_euclid(fh)
+        } else if sy < 0 || sy >= fh {
             continue;
-        }
+        } else {
+            sy
+        };
         for i in 0..bw {
             let sx = min_x + i as i64 - step_x;
-            if sx < 0 || sx >= fw {
+            let sx = if wrap[0] {
+                sx.rem_euclid(fw)
+            } else if sx < 0 || sx >= fw {
                 continue;
-            }
+            } else {
+                sx
+            };
             let si = ((sy * fw + sx) * 4) as usize;
             lifted[j * bw + i] = [buf[si], buf[si + 1], buf[si + 2], buf[si + 3]];
         }
@@ -135,6 +149,7 @@ pub fn smear_blit_stamp(
     radius: f32,
     mask: &StampMask,
     strength: f32,
+    wrap: [bool; 2],
 ) -> Option<DirtyRect> {
     let strength = strength.clamp(0.0, 1.0);
     if strength <= 0.0 || radius <= 0.0 {
@@ -156,17 +171,26 @@ pub fn smear_blit_stamp(
     }
     let bw = (max_x - min_x) as usize;
     let bh = (max_y - min_y) as usize;
+    // Toroidal lift on `wrap` axes (Tiling) — see [`smear_dab`].
     let mut lifted = vec![[0u8; 4]; bw * bh];
     for j in 0..bh {
         let sy = min_y + j as i64 - step_y;
-        if sy < 0 || sy >= fh {
+        let sy = if wrap[1] {
+            sy.rem_euclid(fh)
+        } else if sy < 0 || sy >= fh {
             continue;
-        }
+        } else {
+            sy
+        };
         for i in 0..bw {
             let sx = min_x + i as i64 - step_x;
-            if sx < 0 || sx >= fw {
+            let sx = if wrap[0] {
+                sx.rem_euclid(fw)
+            } else if sx < 0 || sx >= fw {
                 continue;
-            }
+            } else {
+                sx
+            };
             let si = ((sy * fw + sx) * 4) as usize;
             lifted[j * bw + i] = [buf[si], buf[si + 1], buf[si + 2], buf[si + 3]];
         }
@@ -224,7 +248,19 @@ mod tests {
             radius_px: 4.0,
             ..Default::default()
         };
-        assert!(smear_dab(&mut buf, w, h, [8.0, 8.0], [8.0, 8.0], &spec, 1.0).is_none());
+        assert!(
+            smear_dab(
+                &mut buf,
+                w,
+                h,
+                [8.0, 8.0],
+                [8.0, 8.0],
+                &spec,
+                1.0,
+                [false, false]
+            )
+            .is_none()
+        );
         assert_eq!(px(&buf, w, 8, 8), [255, 0, 0, 255], "buffer untouched");
     }
 
@@ -245,8 +281,17 @@ mod tests {
             ..Default::default()
         };
         // Step +3px to the right, footprint centred at the boundary.
-        let dirty = smear_dab(&mut buf, w, h, [8.0, 8.0], [11.0, 8.0], &spec, 1.0)
-            .expect("in-bounds moving smear paints");
+        let dirty = smear_dab(
+            &mut buf,
+            w,
+            h,
+            [8.0, 8.0],
+            [11.0, 8.0],
+            &spec,
+            1.0,
+            [false, false],
+        )
+        .expect("in-bounds moving smear paints");
         // A pixel just right of the old boundary gained white (was transparent).
         let p = px(&buf, w, 9, 8);
         assert!(p[3] > 0 && p[0] > 0, "white dragged rightward: {p:?}");
@@ -272,9 +317,27 @@ mod tests {
             ..Default::default()
         };
         let (w, h, mut lo) = make();
-        let _ = smear_dab(&mut lo, w, h, [8.0, 8.0], [11.0, 8.0], &spec, 0.25);
+        let _ = smear_dab(
+            &mut lo,
+            w,
+            h,
+            [8.0, 8.0],
+            [11.0, 8.0],
+            &spec,
+            0.25,
+            [false, false],
+        );
         let (_, _, mut hi) = make();
-        let _ = smear_dab(&mut hi, w, h, [8.0, 8.0], [11.0, 8.0], &spec, 1.0);
+        let _ = smear_dab(
+            &mut hi,
+            w,
+            h,
+            [8.0, 8.0],
+            [11.0, 8.0],
+            &spec,
+            1.0,
+            [false, false],
+        );
         assert!(
             px(&hi, w, 9, 8)[3] > px(&lo, w, 9, 8)[3],
             "higher strength drags more alpha"
@@ -289,7 +352,19 @@ mod tests {
             radius_px: 3.0,
             ..Default::default()
         };
-        assert!(smear_dab(&mut buf, w, h, [-50.0, -50.0], [-47.0, -50.0], &spec, 1.0).is_none());
+        assert!(
+            smear_dab(
+                &mut buf,
+                w,
+                h,
+                [-50.0, -50.0],
+                [-47.0, -50.0],
+                &spec,
+                1.0,
+                [false, false]
+            )
+            .is_none()
+        );
     }
 
     #[test]
@@ -309,8 +384,18 @@ mod tests {
             ..Default::default()
         };
         let mask = crate::render_stamp_mask(&spec, None, None, None, 64);
-        let dirty = smear_blit_stamp(&mut buf, w, h, [8.0, 8.0], [11.0, 8.0], 6.0, &mask, 1.0)
-            .expect("in-bounds moving masked smear paints");
+        let dirty = smear_blit_stamp(
+            &mut buf,
+            w,
+            h,
+            [8.0, 8.0],
+            [11.0, 8.0],
+            6.0,
+            &mask,
+            1.0,
+            [false, false],
+        )
+        .expect("in-bounds moving masked smear paints");
         let p = px(&buf, w, 9, 8);
         assert!(
             p[3] > 0 && p[0] > 0,
@@ -319,7 +404,65 @@ mod tests {
         assert!(dirty.w > 0 && dirty.h > 0);
         // No movement ⇒ no-op, like the round path.
         assert!(
-            smear_blit_stamp(&mut buf, w, h, [8.0, 8.0], [8.0, 8.0], 6.0, &mask, 1.0).is_none()
+            smear_blit_stamp(
+                &mut buf,
+                w,
+                h,
+                [8.0, 8.0],
+                [8.0, 8.0],
+                6.0,
+                &mask,
+                1.0,
+                [false, false]
+            )
+            .is_none()
+        );
+    }
+
+    #[test]
+    fn wrapping_smear_reads_across_the_seam_not_transparent() {
+        // Tiling bug fix: a source pixel past a wrapped edge must read from the OPPOSITE edge, not
+        // transparent — else smearing across a seam drags it toward alpha (the reported artifact).
+        // Fully-opaque canvas; a dab at the left edge moving right lifts source from x<0, which wraps
+        // to the right edge. With wrap the seam stays opaque; without it, alpha would drop.
+        let (w, h) = (16u32, 8u32);
+        let mut buf = vec![255u8; (w * h * 4) as usize];
+        let spec = BrushSpec {
+            radius_px: 3.0,
+            hardness: 1.0,
+            ..Default::default()
+        };
+        // With wrap: the left seam stays fully opaque.
+        let mut wrapped = buf.clone();
+        let _ = smear_dab(
+            &mut wrapped,
+            w,
+            h,
+            [-1.0, 4.0],
+            [1.0, 4.0],
+            &spec,
+            1.0,
+            [true, false],
+        );
+        assert_eq!(
+            px(&wrapped, w, 0, 4)[3],
+            255,
+            "wrapped smear keeps the seam opaque"
+        );
+        // Without wrap: the same stroke drags the seam toward transparent (the bug).
+        let _ = smear_dab(
+            &mut buf,
+            w,
+            h,
+            [-1.0, 4.0],
+            [1.0, 4.0],
+            &spec,
+            1.0,
+            [false, false],
+        );
+        assert!(
+            px(&buf, w, 0, 4)[3] < 255,
+            "un-wrapped smear alpha-holes the seam"
         );
     }
 }

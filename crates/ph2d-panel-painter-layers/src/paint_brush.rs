@@ -300,21 +300,9 @@ pub(crate) fn paint_brush_body(
     }
     y = sep(ctx.scene, theme, x, content_w, y);
     y = crate::paint_stroke::paint_tiling_section(ctx, theme, x, content_w, y, brush);
-
-    // ── Eraser checkbox (standalone, very bottom) — hidden in Smear/Blur (neither erases) ──
-    if !brush.paints_no_color() {
-        y = sep(ctx.scene, theme, x, content_w, y);
-        y = crate::paint_brush_top::paint_checkbox_row(
-            ctx,
-            theme,
-            x,
-            content_w,
-            y,
-            core_ids::PAINTER_BRUSH_ERASER,
-            "Eraser",
-            brush.eraser,
-        );
-    }
+    // Eraser is the left-rail Eraser tool (a mode), not a panel checkbox — its former standalone
+    // checkbox was removed (Enio). In Eraser mode the panel is the normal Brush panel; only the ramp
+    // B&W buttons lock checked (erasing has no colour) — handled in the ramp section builders.
     y
 }
 

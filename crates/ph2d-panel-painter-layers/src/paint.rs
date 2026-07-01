@@ -90,9 +90,10 @@ pub(crate) fn paint(_state: &mut PainterLayersPanelState, ctx: &mut PaintCtx) {
 
     // Dock view-mode (published by the bridge): Layers/Effects vs Brush props.
     let shows_layers = state::current_dock_shows_layers();
+    // Header title: "Layers" (layer view) or the ACTIVE TOOL name in the Brush view (Enio 2026-07-01).
     let title_size = paint_panel_title(
         rect,
-        if shows_layers { "Layers" } else { "Brush" },
+        crate::paint_brush_top::header_title(shows_layers, state::current_brush()),
         PANEL_HEADER_CLOSE_RESERVE,
         ctx.scene,
         ctx.text_system,

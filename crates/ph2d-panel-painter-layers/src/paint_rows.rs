@@ -14,8 +14,8 @@ use ph2d_editor_core::paint::{
 };
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::widget::{
-    Button, ButtonKind, ButtonState, Slider, SliderOrientation, SliderState, paint_button,
-    paint_slider,
+    Button, ButtonKind, ButtonState, Slider, SliderOrientation, SliderState, flat_button_surface,
+    paint_button, paint_slider,
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ColorToken, ROW_H_PX, Radius, Spacing, StrokeToken, TypeToken};
@@ -578,6 +578,28 @@ pub(crate) fn paint_reorder_btn(
         },
         theme,
     );
+    // Hover / press feedback: an enabled arrow lights up a soft surface behind the glyph while the
+    // pointer is over it (BgElev) or pressing it (AccentSoft) — the same `flat_button_surface` every
+    // flat button uses, so these one-click reorder arrows now match the rest of the app. Idle stays
+    // transparent (bare arrow), so the row doesn't grow a permanent box.
+    let state = ctx
+        .host
+        .store()
+        .button_state(id)
+        .unwrap_or(ButtonState::Normal);
+    if enabled
+        && matches!(
+            state,
+            ButtonState::Hovered | ButtonState::Pressed | ButtonState::Focused
+        )
+    {
+        fill_rounded_rect(
+            ctx.scene,
+            rect,
+            Radius::Sm.px(),
+            resolve(flat_button_surface(state), theme),
+        );
+    }
     paint_icon(ctx.scene, icon, rect, color, StrokeToken::Default.px());
     if enabled {
         register_button(ctx.host.store_mut(), id);

@@ -15,6 +15,23 @@ use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ROW_H_PX, Spacing, TypeToken};
 use ph2d_tool_painter::BrushSettings;
 
+/// The dock header title: `"Layers"` in the layer view, else the ACTIVE TOOL name in the Brush view
+/// (Brush / Eraser / Blur / Smear / Clone / Mask), so switching the left-rail tool retitles the panel.
+/// The modes are mutually exclusive; Eraser is a flag on Paint; the Composite Brush is still "Brush".
+pub(crate) fn header_title(shows_layers: bool, brush: Option<BrushSettings>) -> &'static str {
+    if shows_layers {
+        return "Layers";
+    }
+    match brush {
+        Some(b) if b.is_mask => "Mask",
+        Some(b) if b.is_clone => "Clone",
+        Some(b) if b.is_blur => "Blur",
+        Some(b) if b.is_smear => "Smear",
+        Some(b) if b.eraser => "Eraser",
+        _ => "Brush",
+    }
+}
+
 /// One canonical "label · slider · editable chip" row (the Widget-Gallery / Inspector look). The chip
 /// is `link_slider_number`-linked to the slider in `populate`, so typing in it forwards as the
 /// slider's `ValueChanged` over the existing brush-slider channel. Returns the next `y`.

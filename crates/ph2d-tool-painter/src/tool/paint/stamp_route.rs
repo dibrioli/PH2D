@@ -46,6 +46,13 @@ impl PainterTool {
             self.stamp_dabs_blur(dabs, w, h);
             return;
         }
+        // Clone copies canvas pixels from the sampled source at a fixed offset. Like Smear/Blur it
+        // ignores the brush colour/blend and applies Shape/Grain/flatten + Tiling itself → own route.
+        if matches!(self.paint.paint_mode, PaintMode::Clone) {
+            let (w, h) = self.source_size;
+            self.stamp_dabs_clone(dabs, w, h);
+            return;
+        }
         if self.paint.tiling[0] || self.paint.tiling[1] {
             let wrapped = super::tiling::tiled_dabs(dabs, self.source_size, self.paint.tiling);
             self.stamp_dabs_inner(&wrapped);

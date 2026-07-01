@@ -58,8 +58,12 @@ mod blur_route;
 /// The **Composite Brush** — Brush + Smear + Blur as a reorderable 3-layer stack run per dab.
 mod composite;
 pub(crate) use composite::{CompositeLayer, CompositeOp};
+/// The **Clone** (clone-stamp) route — copy canvas pixels from a sampled source at a fixed offset.
+mod clone;
 mod ramp;
 mod ramp_lut; // ramp LUT baking (colour owner + colour/tone LUTs); split from `stamp_cache` (LOC cap)
+/// Pixel-region save/restore helpers for the drag preview (`dab_bbox`/`save_region`/`restore_region`).
+mod region;
 mod shape_ramp;
 mod snapshot;
 /// The Blender-style cached brush stamp (render falloff×texture once, scale-blit per dab).
@@ -107,14 +111,16 @@ struct DragPreview {
 /// routed in via `PanelEvent::SelectOption(PAINTER_PAINT_MODE, …)`. `Paint` is the normal dab-stamp
 /// path (brush colour, Shape, Grain, ramps); `Smear` drags the canvas content along the stroke
 /// ([`ph2d_painter_brush::smear_dab`], the Blender/Krita "Smearing" algorithm); `Blur` softens the
-/// canvas under each dab ([`ph2d_painter_brush::blur_dab`], the Blender Soften algorithm). Eraser stays
-/// a separate blend override layered on top of `Paint`.
+/// canvas under each dab ([`ph2d_painter_brush::blur_dab`], the Blender Soften algorithm); `Clone`
+/// copies canvas pixels from a sampled source at a fixed offset ([`ph2d_painter_brush::clone_dab`], the
+/// clone stamp). Eraser stays a separate blend override layered on top of `Paint`.
 #[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
 pub(crate) enum PaintMode {
     #[default]
     Paint,
     Smear,
     Blur,
+    Clone,
 }
 
 pub(crate) struct PaintState {
@@ -140,6 +146,14 @@ pub(crate) struct PaintState {
     composite_enabled: bool,
     /// The composite layer stack in display order (index 0 = layer 1 = top; run bottom→top per dab). [`composite`].
     composite: [CompositeLayer; 3],
+    /// **Clone** sampled source anchor (image px), set by the "Set Source" pick mode; `None` until sampled. [`clone`].
+    clone_source: Option<[f32; 2]>,
+    /// **Clone** established source→dest offset (px) = `clone_source − stroke_start`; `None` until a stroke begins. [`clone`].
+    clone_offset: Option<[f32; 2]>,
+    /// **Clone** Aligned mode: keep the offset fixed across strokes (on); re-anchor to the source each stroke (off).
+    clone_aligned: bool,
+    /// **Clone** "Set Source" pick mode armed — the next canvas Down sets [`Self::clone_source`] instead of painting.
+    clone_sample_armed: bool,
     /// Previous dab centre during a **Smear** stroke — the source position each dab lifts from; `None`
     /// at stroke start (the first dab has nothing to smear from). Chained across pointer batches. See [`stamp_route`].
     last_smear_pos: Option<[f32; 2]>,
@@ -264,6 +278,9 @@ impl PainterTool {
         self.paint.per_layer_stroke.reset();
         // Smear chains its source from the previous dab; a fresh stroke has none yet.
         self.paint.last_smear_pos = None;
+        // Clone: establish the source→dest offset for this stroke (aligned keeps it across strokes,
+        // non-aligned re-anchors to the sampled source each stroke). No-op unless a source is sampled.
+        self.clone_begin_offset(ev.pos);
         // Pin the symmetry centre to the current canvas centre for the auto-centre modes before the
         // stroke captures the spec (the engine mirrors/rotates about `brush.symmetry.center`).
         self.resolve_symmetry_geometry();
@@ -416,54 +433,6 @@ impl PainterTool {
         self.bump_layer_pixels(active);
     }
 
-    /// Pixel bbox a dab of `radius` at `center` can touch — the drag-preview **save/restore + dirty-upload** region;
-    /// MUST superset the blit/accumulate write bounds (`floor(c−r) .. ceil(c+r)+1`). A `round(c)±(ceil(r)+1)` box
-    /// misses the high edge 1px for `frac(c) < 0.5` → stale un-restored edge row (thin horizontal trails). Enio 2026-06-27.
-    fn dab_bbox(&self, center: [f32; 2], radius: f32) -> Option<Region> {
-        let (w, h) = self.source_size;
-        if w == 0 || h == 0 {
-            return None;
-        }
-        let x0 = (center[0] - radius).floor().max(0.0) as i64;
-        let y0 = (center[1] - radius).floor().max(0.0) as i64;
-        let x1 = ((center[0] + radius).ceil() as i64 + 1).min(w as i64);
-        let y1 = ((center[1] + radius).ceil() as i64 + 1).min(h as i64);
-        if x1 <= x0 || y1 <= y0 {
-            return None;
-        }
-        Some(Region {
-            x: x0 as u32,
-            y: y0 as u32,
-            w: (x1 - x0) as u32,
-            h: (y1 - y0) as u32,
-        })
-    }
-
-    /// Copy the RGBA8 pixels of `rect` out of `canvas_rgba` (row-major over the region).
-    fn save_region(&self, rect: &Region) -> Vec<u8> {
-        let stride = self.source_size.0 as usize * 4;
-        let rw = rect.w as usize * 4;
-        let mut out = Vec::with_capacity(rw * rect.h as usize);
-        for row in 0..rect.h {
-            let start = (rect.y + row) as usize * stride + rect.x as usize * 4;
-            out.extend_from_slice(&self.canvas_rgba[start..start + rw]);
-        }
-        out
-    }
-
-    /// Write `pixels` (from [`Self::save_region`]) back into `rect` and flag it dirty.
-    fn restore_region(&mut self, rect: &Region, pixels: &[u8]) {
-        let stride = self.source_size.0 as usize * 4;
-        let rw = rect.w as usize * 4;
-        let buf = Arc::make_mut(&mut self.canvas_rgba);
-        for row in 0..rect.h {
-            let dst = (rect.y + row) as usize * stride + rect.x as usize * 4;
-            let src = row as usize * rw;
-            buf[dst..dst + rw].copy_from_slice(&pixels[src..src + rw]);
-        }
-        self.mark_dirty(*rect);
-    }
-
     /// Stamp an interactive preview batch (Drag Dot / Anchored = 1 dab, Line = N): restore the
     /// previous footprint's saved pixels, then save the pristine pixels under the new dabs' UNION
     /// bbox and stamp there — so the moving preview leaves no trail. Pen-up: `commit_drag_preview`.
@@ -552,6 +521,11 @@ impl CanvasPaintTool for PainterTool {
         // of painting (works on any layer, so it precedes the paintable-target gate).
         if self.symmetry_pick_active() {
             return self.symmetry_pick_pointer(ev);
+        }
+        // Clone "Set Source" pick mode: the next canvas Down samples the source anchor (consumes the
+        // click, no paint), like the Symmetry picks. Works on any layer (it records a coordinate).
+        if self.clone_sample_armed() {
+            return self.clone_sample_pointer(ev);
         }
         if !self.paint_target_ready() {
             // Active layer isn't paintable (mask/group/adjustment) or no canvas:

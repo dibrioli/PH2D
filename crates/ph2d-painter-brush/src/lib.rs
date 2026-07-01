@@ -28,6 +28,8 @@
 pub mod blend;
 pub mod blur;
 pub mod blur_grain;
+pub mod clone;
+pub mod clone_grain;
 pub mod curve_fit;
 pub mod dab;
 pub mod dynamics;
@@ -52,6 +54,8 @@ pub mod texture;
 pub use blend::{BrushBlend, MAX_BRUSH_BLEND_MODES, blend_over};
 pub use blur::{blur_blit_stamp, blur_dab};
 pub use blur_grain::blur_blit_grain;
+pub use clone::{clone_blit_stamp, clone_dab};
+pub use clone_grain::clone_blit_grain;
 pub use curve_fit::{CurveFit, auto_handles, fit_curve, flatten_bezier};
 pub use dab::{
     DirtyRect, ShapeInput, stamp_dab, stamp_dab_ramped, stamp_dab_textured,

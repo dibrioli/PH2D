@@ -78,6 +78,9 @@ pub(crate) const FALLBACK_BRUSH: BrushSettings = BrushSettings {
     eraser: false,
     is_smear: false,
     is_blur: false,
+    is_clone: false,
+    clone_has_source: false,
+    clone_aligned: true,
     composite_enabled: false,
     composite_ops: [0, 1, 2], // Brush / Smear / Blur (mirrors PaintState::default)
     composite_strength: [1.0, 0.5, 0.5],
@@ -231,9 +234,16 @@ pub(crate) fn paint_brush_body(
         );
     }
 
-    // 4b. Composite Brush card (checkbox + the 3-layer Brush/Smear/Blur stack when on) — sits below
-    //     Strength, above Accumulate.
-    y = crate::paint_composite::paint_composite_card(ctx, theme, x, content_w, y, brush);
+    // 4b. Clone card (Set Source + Aligned) — Clone mode only.
+    if brush.is_clone {
+        y = crate::paint_clone::paint_clone_card(ctx, theme, x, content_w, y, brush);
+    }
+
+    // 4c. Composite Brush card (checkbox + the 3-layer Brush/Smear/Blur stack when on) — the Brush tool
+    //     only (Smear/Blur/Clone are single-op rail tools; composite is a Brush-tool upgrade).
+    if !brush.is_smear && !brush.is_blur && !brush.is_clone {
+        y = crate::paint_composite::paint_composite_card(ctx, theme, x, content_w, y, brush);
+    }
 
     // 5. Accumulate (checkbox — caps the stroke at Strength when off). Hidden in Smear/Blur
     //    (neither uses the paint-side Strength cap).

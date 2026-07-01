@@ -37,6 +37,10 @@ impl Default for PaintState {
                     strength: 0.5,
                 },
             ],
+            clone_source: None,
+            clone_offset: None,
+            clone_aligned: true, // Aligned by default (standard clone-stamp)
+            clone_sample_armed: false,
             last_smear_pos: None,
             tiling: [false, false],
             repeat_image: false,

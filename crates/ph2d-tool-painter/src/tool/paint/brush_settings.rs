@@ -61,13 +61,16 @@ pub struct BrushSettings {
     pub blend: u8,
     /// Eraser mode — paints with Erase Alpha regardless of [`Self::blend`].
     pub eraser: bool,
-    /// `true` when the active paint operation is **Smear** (left-rail tool). The panel hides the
-    /// colour / blend / ramp / Randomize-Color / Eraser controls and restricts the Stroke Method to
-    /// the incremental methods, since Smear drags pixels (it paints no colour). See [`Self::paints_no_color`].
+    /// Active pixel-processing operation (left-rail tools that paint NO brush colour): **Smear** drags,
+    /// **Blur** softens, **Clone** copies from a sampled source. Each hides the colour-family controls +
+    /// restricts the Stroke Method to the incremental methods — see [`Self::paints_no_color`].
     pub is_smear: bool,
-    /// `true` when the active paint operation is **Blur** (left-rail tool). Hides the same
-    /// colour-family controls as [`Self::is_smear`] — Blur softens pixels, painting no colour.
     pub is_blur: bool,
+    pub is_clone: bool,
+    /// Clone: whether a source has been sampled (panel shows "Set Source" vs "Source set").
+    pub clone_has_source: bool,
+    /// Clone: **Aligned** mode (offset persists across strokes).
+    pub clone_aligned: bool,
     /// **Composite Brush** on: the Strength slider hides + the 3-layer stack card shows (panel).
     pub composite_enabled: bool,
     /// Composite stack op per position `[layer1, layer2, layer3]` (`CompositeOp::to_u8`: 0 Brush/1 Smear/2 Blur).

@@ -34,6 +34,7 @@ mod paint;
 mod paint_adjust;
 mod paint_brush;
 mod paint_brush_top;
+mod paint_clone;
 mod paint_composite;
 mod paint_falloff;
 mod paint_ramp_widget;

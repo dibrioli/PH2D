@@ -7,7 +7,7 @@
 //! ([`left_rail::paint_left_rail`](super::super::left_rail)), so this handler
 //! never fires in object mode. Selecting a tool sets the rail's radio
 //! selection + flyout state AND forwards the operating mode (Brush / Eraser /
-//! Smear / Blur wired; Clone / Mask / Inpaint behaviour is a later step).
+//! Smear / Blur / Clone wired; Mask / Inpaint behaviour is a later step).
 
 use crate::action_bus::EditorAction;
 use crate::ids;
@@ -21,13 +21,15 @@ use ph2d_a11y::NodeId;
 /// `PanelEvent` channel: Smear → the smear drag, Blur → the soften, Eraser → paint with Erase-Alpha,
 /// everything else → normal Brush paint. The shell drains `ToolPanelEvent` into `handle_panel_event`,
 /// so this reaches `PainterTool::set_paint_tool_mode` without any dependency on the concrete painter
-/// crate. The not-yet-wired tools (Clone / Mask / Inpaint / Shapes / Eyedropper) map to "brush" for
-/// now, so selecting one always leaves normal painting rather than a stuck Smear/Blur.
+/// crate. The not-yet-wired tools (Mask / Inpaint / Shapes / Eyedropper) map to "brush" for now, so
+/// selecting one always leaves normal painting rather than a stuck Smear/Blur/Clone.
 fn push_paint_mode(hero: &mut HeroScreen, tool_id: NodeId) {
     let mode = if tool_id == ids::PAINTER_RAIL_SMEAR {
         "smear"
     } else if tool_id == ids::PAINTER_RAIL_BLUR {
         "blur"
+    } else if tool_id == ids::PAINTER_RAIL_CLONE {
+        "clone"
     } else if tool_id == ids::PAINTER_RAIL_ERASER {
         "eraser"
     } else {

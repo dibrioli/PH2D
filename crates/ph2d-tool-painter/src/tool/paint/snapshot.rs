@@ -15,7 +15,7 @@ impl BrushSettings {
     /// (Defined here, beside the snapshot builder, so `brush_settings.rs` stays under the file-LOC cap.)
     #[must_use]
     pub fn paints_no_color(&self) -> bool {
-        (self.is_smear || self.is_blur) && !self.composite_enabled
+        (self.is_smear || self.is_blur || self.is_clone) && !self.composite_enabled
     }
 }
 
@@ -83,6 +83,9 @@ impl PainterTool {
             eraser: self.paint.eraser,
             is_smear: self.is_smear_mode(),
             is_blur: self.is_blur_mode(),
+            is_clone: self.is_clone_mode(),
+            clone_has_source: self.clone_has_source(),
+            clone_aligned: self.clone_aligned(),
             composite_enabled: self.composite_enabled(),
             composite_ops: self.composite_ops_u8(),
             composite_strength: self.composite_strengths(),

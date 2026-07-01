@@ -343,6 +343,14 @@ impl PainterTool {
                 }
                 self.paint.paint_mode = super::PaintMode::Blur;
             }
+            "clone" => {
+                // A continuous clone wants dense dabs (a sparse chain leaves gaps in the copied region);
+                // default Spacing to 5% only on the transition INTO Clone.
+                if !matches!(self.paint.paint_mode, super::PaintMode::Clone) {
+                    self.paint.brush.spacing = 0.05;
+                }
+                self.paint.paint_mode = super::PaintMode::Clone;
+            }
             "eraser" => {
                 self.paint.paint_mode = super::PaintMode::Paint;
                 self.paint.eraser = true;
@@ -373,6 +381,11 @@ impl PainterTool {
     /// discarding or keeping the editable curve). Returns `true` iff the event was consumed.
     pub(crate) fn route_brush_dab_event(&mut self, event: &PanelEvent) -> bool {
         use ph2d_editor_core::ids as core_ids;
+        // Clone-card events (Set Source / Aligned) — delegated here so `handle_panel_event`'s route
+        // chain stays at its line cap (this router is already in that chain).
+        if self.route_clone_event(event) {
+            return true;
+        }
         // Left-rail paint-tool selection → the brush operation (Brush / Eraser / Smear). Routed here
         // (a brush-operation router) so `trait_impls::handle_panel_event` stays at its LOC cap.
         if let PanelEvent::SelectOption(id, value) = event

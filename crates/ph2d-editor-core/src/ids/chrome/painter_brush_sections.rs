@@ -85,6 +85,13 @@ pub const PAINTER_BRUSH_COMPOSITE_DOWN: [NodeId; 3] = [
     hash_node_id("painter_brush.composite_down_1"),
     hash_node_id("painter_brush.composite_down_2"),
 ];
+// ── Clone card (shown in Clone mode) ────────────────────────────────────────────────────────────
+/// "Set Source" — arms the on-canvas pick mode; the next canvas Down samples the clone source anchor.
+/// `Click` → `arm_clone_sample`.
+pub const PAINTER_BRUSH_CLONE_SET_SOURCE: NodeId = hash_node_id("painter_brush.clone_set_source");
+/// "Aligned" checkbox — keep the source→dest offset fixed across strokes. `Click` → `toggle_clone_aligned`.
+pub const PAINTER_BRUSH_CLONE_ALIGNED: NodeId = hash_node_id("painter_brush.clone_aligned");
+
 /// Every Composite-card **Click** target (enable + the 6 reorder buttons) — one membership check for
 /// the panel's brush-click forward whitelist.
 pub const PAINTER_BRUSH_COMPOSITE_BUTTONS: [NodeId; 7] = [

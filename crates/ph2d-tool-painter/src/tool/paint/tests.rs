@@ -406,6 +406,72 @@ fn composite_runs_layers_under_the_interactive_preview_methods() {
 }
 
 #[test]
+fn clone_mode_copies_from_the_sampled_source() {
+    // DoD seam test: select Clone via the frozen PanelEvent channel, sample a source with the "Set
+    // Source" pick mode (a canvas click that must NOT paint), then paint elsewhere and assert the
+    // source pixels are cloned in at the fixed offset — the clone stamp end-to-end through the tool.
+    use ph2d_editor_core::ids as core_ids;
+    use ph2d_editor_core::tool::{PanelEvent, Tool};
+    let size = 48u32;
+    let mut t = PainterTool::default();
+    // Left half red, right half blue (opaque).
+    let mut src = vec![0u8; (size * size * 4) as usize];
+    for y in 0..size {
+        for x in 0..size {
+            let i = ((y * size + x) * 4) as usize;
+            let c = if x < size / 2 {
+                [255, 0, 0, 255]
+            } else {
+                [0, 0, 255, 255]
+            };
+            src[i..i + 4].copy_from_slice(&c);
+        }
+    }
+    t.set_source(src, size, size);
+    t.paint.brush = BrushSpec {
+        radius_px: 6.0,
+        hardness: 1.0,
+        falloff: Falloff::Constant,
+        strength: 1.0,
+        space_attenuation: false,
+        ..Default::default()
+    };
+    t.handle_panel_event(PanelEvent::SelectOption(
+        core_ids::PAINTER_PAINT_MODE,
+        "clone".to_string(),
+    ));
+    assert!(t.is_clone_mode());
+    let mid = (size / 2) as f32;
+    // Arm the pick, then click a RED source point (x=8). The click samples the source, not paints.
+    t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_BRUSH_CLONE_SET_SOURCE));
+    assert!(t.clone_sample_armed());
+    t.on_canvas_pointer(cp([8.0, mid], PointerPhase::Down));
+    t.on_canvas_pointer(cp([8.0, mid], PointerPhase::Up));
+    assert_eq!(t.paint.clone_source, Some([8.0, mid]), "source sampled");
+    assert!(!t.clone_sample_armed(), "pick disarmed after sampling");
+    // Paint at a BLUE point (x=30): offset = 8 − 30 = −22 → the dab clones from x≈8 (red).
+    let probe = 30;
+    assert_eq!(
+        px(&t, size, probe, size / 2),
+        [0, 0, 255, 255],
+        "probe starts blue"
+    );
+    t.on_canvas_pointer(cp([probe as f32, mid], PointerPhase::Down));
+    t.on_canvas_pointer(cp([probe as f32, mid], PointerPhase::Up));
+    let p = px(&t, size, probe, size / 2);
+    assert!(
+        p[0] > 0 && p[2] < 255,
+        "red cloned from the source into the blue half: {p:?}"
+    );
+    // Exit Clone → back to normal paint.
+    t.handle_panel_event(PanelEvent::SelectOption(
+        core_ids::PAINTER_PAINT_MODE,
+        "brush".to_string(),
+    ));
+    assert!(matches!(t.paint.paint_mode, PaintMode::Paint));
+}
+
+#[test]
 fn move_without_down_is_ignored() {
     let mut t = white_canvas(32, 4.0);
     assert!(

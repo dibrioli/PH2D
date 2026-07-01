@@ -45,8 +45,7 @@ fn apply_event_impl(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
             host.bus_mut().push(EditorAction::CancelActiveTool);
             true
         }
-        // Fixed chrome buttons: "+ Layer" + dock toggle + Apply CTA → forward
-        // as Click (the tool maps each to its action).
+        // Fixed chrome buttons ("+ Layer" / dock toggle / Apply CTA / …) → forward as Click.
         WidgetEvent::Click(id)
             if id == core_ids::PAINTER_LAYERS_ADD
                 || id == core_ids::PAINTER_LAYERS_TOGGLE_DOCK
@@ -64,11 +63,10 @@ fn apply_event_impl(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
                 .push(EditorAction::ToolPanelEvent(PanelEvent::Click(id)));
             true
         }
-        // "+ Adjustment" kind-picker option (W4 T4.15): close the dropdown +
-        // forward the chosen kind index. The `+ Adj` chip itself is a Dropdown —
-        // its open/close is the generic dispatch (no Click forwarded here). The
-        // kind index is the position in `AdjustmentKind::ALL`; the tool maps it
-        // back via `add_adjustment_layer`.
+        // "+ Adjustment" kind-picker option (W4 T4.15): close the dropdown + forward the chosen kind
+        // index. The `+ Adj` chip itself is a Dropdown — its open/close is the generic dispatch (no
+        // Click forwarded here). The kind index is the position in `AdjustmentKind::ALL`; the tool
+        // maps it back via `add_adjustment_layer`.
         WidgetEvent::Click(id) if decode_adjustment_kind_option(id).is_some() => {
             let idx = decode_adjustment_kind_option(id).unwrap();
             if let Some(InteractiveState::Dropdown { open, .. }) = host
@@ -446,7 +444,9 @@ fn try_apply_brush_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> O
                 // Pick-Center mode buttons, and the section reset (all plain Click forwards).
                 || core_ids::PAINTER_BRUSH_SYMMETRY_CLICKABLE.contains(&id)
                 || core_ids::PAINTER_BRUSH_SECTION_RESETS.contains(&id)
-                || core_ids::PAINTER_BRUSH_COMPOSITE_BUTTONS.contains(&id) =>
+                || core_ids::PAINTER_BRUSH_COMPOSITE_BUTTONS.contains(&id)
+                || id == core_ids::PAINTER_BRUSH_CLONE_SET_SOURCE
+                || id == core_ids::PAINTER_BRUSH_CLONE_ALIGNED =>
         {
             host.bus_mut()
                 .push(EditorAction::ToolPanelEvent(PanelEvent::Click(id)));

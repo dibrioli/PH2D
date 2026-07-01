@@ -285,6 +285,20 @@ pub(super) fn dispatch(
             // gated: brush edits don't bump `layers_revision`, and the cost is a
             // few floats.
             ph2d_panel_painter_layers::set_current_brush(Some(painter.brush_settings()));
+            // (Eyedropper) When the on-canvas colour pick completes (armed → not armed), snap the tool
+            // rail radio back to Brush — the pick is a MOMENTARY tool, so its button stops looking
+            // selected once a colour is sampled. Edge-detected via a static so arming the pick (which
+            // sets armed=true) never triggers an immediate reset (only the true→false pick does).
+            {
+                use std::sync::atomic::{AtomicBool, Ordering};
+                static PREV_EYEDROPPER_ARMED: AtomicBool = AtomicBool::new(false);
+                let armed = painter.eyedropper_armed();
+                if PREV_EYEDROPPER_ARMED.swap(armed, Ordering::Relaxed) && !armed {
+                    ph2d_editor::screens::hero::chrome::reset_painter_rail_to_brush(
+                        &mut hero.store,
+                    );
+                }
+            }
             // (Brush UI) Publish the dock view-mode so the panel renders either
             // the Layers/Effects body or the Brush-properties body (header toggle).
             ph2d_panel_painter_layers::set_current_dock_shows_layers(painter.dock_shows_layers());

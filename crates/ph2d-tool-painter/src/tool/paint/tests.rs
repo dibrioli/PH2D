@@ -583,6 +583,32 @@ fn mask_overlay_tints_the_concealed_composite() {
 }
 
 #[test]
+fn eyedropper_samples_the_pixel_into_the_brush_colour() {
+    // The rail arms the on-canvas Eyedropper (mode "eyedropper"); the next canvas Down samples the pixel
+    // under the cursor into the brush colour, consumes the click (no paint / no sprite move), and disarms
+    // back to Brush. Sampling a WHITE canvas pixel flips the black default brush to white.
+    use ph2d_editor_core::ids as core_ids;
+    use ph2d_editor_core::tool::{PanelEvent, Tool};
+    let mut t = white_canvas(16, 3.0); // brush colour is black [0,0,0]
+    t.handle_panel_event(PanelEvent::SelectOption(
+        core_ids::PAINTER_PAINT_MODE,
+        "eyedropper".to_string(),
+    ));
+    assert!(t.eyedropper_armed(), "the pick is armed");
+    let consumed = t.on_canvas_pointer(cp([2.0, 2.0], PointerPhase::Down));
+    assert!(
+        consumed,
+        "the Eyedropper consumes the click (no fall-through to move)"
+    );
+    assert!(!t.eyedropper_armed(), "one-shot — disarms after sampling");
+    assert_eq!(
+        t.brush_settings().color,
+        [1.0, 1.0, 1.0],
+        "sampled the white canvas pixel into the brush colour"
+    );
+}
+
+#[test]
 fn move_without_down_is_ignored() {
     let mut t = white_canvas(32, 4.0);
     assert!(

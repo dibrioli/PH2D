@@ -329,6 +329,8 @@ impl PainterTool {
         // mask); reconciled AFTER the mode is set so the next stroke paints the image, not the mask.
         let leaving_mask =
             matches!(self.paint.paint_mode, super::PaintMode::Mask) && mode != "mask";
+        // Any tool switch disarms a pending Eyedropper pick; only "eyedropper" re-arms it below.
+        self.paint.eyedropper_armed = false;
         match mode {
             "smear" => {
                 // Entering Smear defaults Spacing to 5% (Krita recommends ≤0.05 for a smooth
@@ -358,6 +360,12 @@ impl PainterTool {
             "mask" => {
                 self.paint.paint_mode = super::PaintMode::Mask;
                 self.paint.eraser = false;
+            }
+            "eyedropper" => {
+                // Not a persistent mode: arm the on-canvas colour pick, painting as Brush afterwards.
+                self.paint.paint_mode = super::PaintMode::Paint;
+                self.paint.eraser = false;
+                self.paint.eyedropper_armed = true;
             }
             "eraser" => {
                 self.paint.paint_mode = super::PaintMode::Paint;

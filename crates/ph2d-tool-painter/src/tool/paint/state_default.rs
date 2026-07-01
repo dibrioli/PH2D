@@ -20,8 +20,9 @@ impl Default for PaintState {
             stroke_undo: None,
             eraser: false,
             paint_mode: PaintMode::default(),
-            mask_brush: 0,         // Paint (reveal) — the default mask sub-brush
+            mask_brush: 0,         // Paint (conceal) — the default mask sub-brush
             mask_overlay_color: 0, // neutral gray overlay by default
+            eyedropper_armed: false,
 
             // Composite off by default; the default stack is the natural read of the card (top→bottom):
             // Brush(1) over Smear(2) over Blur(3). Run bottom→top, that blurs → smears → paints on top.

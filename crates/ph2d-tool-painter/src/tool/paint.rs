@@ -60,8 +60,9 @@ mod composite;
 pub(crate) use composite::{CompositeLayer, CompositeOp};
 /// The **Clone** (clone-stamp) route — copy canvas pixels from a sampled source at a fixed offset.
 mod clone;
-/// The **Mask** tool's extras — the mask sub-brush (Paint/Erase/Blur/Smear), the whole-canvas mask ops
-/// (Expand/Contract/Blur/Sharpen/Invert/Clear), and the on-canvas overlay tint. Split for the LOC cap.
+/// The **Eyedropper** on-canvas colour pick (sample the composited pixel into the brush colour).
+mod eyedropper;
+/// The **Mask** tool's extras — sub-brush (Paint/Erase/Blur/Smear), whole-canvas ops, overlay tint. [LOC split].
 mod mask;
 mod ramp;
 mod ramp_lut; // ramp LUT baking (colour owner + colour/tone LUTs); split from `stamp_cache` (LOC cap)
@@ -148,12 +149,12 @@ pub(crate) struct PaintState {
     eraser: bool,
     /// Which operation the pointer performs (Brush=Paint / Smear); driven by the left-rail tool selection.
     paint_mode: PaintMode,
-    /// **Mask** sub-brush (only read in [`PaintMode::Mask`]): `0` Paint (reveal / white) · `1` Erase
-    /// (conceal / black) · `2` Blur (soften the mask under the dab) · `3` Smear (drag the mask). See [`mask`].
+    /// **Mask** sub-brush (Mask mode): `0` Paint (conceal/black) · `1` Erase (reveal/white) · `2` Blur · `3` Smear. [`mask`].
     mask_brush: u8,
-    /// **Mask** on-canvas overlay tint colour index (`0` neutral gray + 4 fluorescent-marker hues) —
-    /// while a mask is the active edit target, the composite is tinted by this so the coverage reads. [`mask`].
+    /// **Mask** overlay tint index (`0` gray + 4 fluorescent) — tints the composite where a mask conceals. [`mask`].
     mask_overlay_color: u8,
+    /// **Eyedropper** armed: the next canvas Down samples the composited pixel into the brush colour, then disarms. [`eyedropper`].
+    eyedropper_armed: bool,
     /// **Composite Brush**: run Brush + Smear + Blur together (a Brush-tool upgrade, panel checkbox). See [`composite`].
     composite_enabled: bool,
     /// The composite layer stack in display order (index 0 = layer 1 = top; run bottom→top per dab). [`composite`].
@@ -166,8 +167,7 @@ pub(crate) struct PaintState {
     clone_aligned: bool,
     /// **Clone** "Set Source" pick mode armed — the next canvas Down sets [`Self::clone_source`] instead of painting.
     clone_sample_armed: bool,
-    /// Previous dab centre during a **Smear** stroke — the source position each dab lifts from; `None`
-    /// at stroke start (the first dab has nothing to smear from). Chained across pointer batches. See [`stamp_route`].
+    /// Previous dab centre during a **Smear** stroke (the source each dab lifts from); `None` at stroke start. [`stamp_route`].
     last_smear_pos: Option<[f32; 2]>,
     /// **Tiling** `[x, y]`: seamless wrap-around painting — a dab near an edge also stamps the wrapped part on the opposite edge. Off by default.
     tiling: [bool; 2],
@@ -199,8 +199,7 @@ pub(crate) struct PaintState {
     shape_grab_tol_px: f32,
     /// **Offset** slider track (`0..1`, `0.5` = none) — perpendicular path offset for the shape editors.
     shape_offset_norm: f32,
-    /// **Accumulated** offset (px) from prior Apply & Keep presses; the EFFECTIVE offset is
-    /// `shape_offset_base_px + slider` — always a single offset of the pristine base, so it never compounds.
+    /// **Accumulated** offset (px) from prior Apply & Keep; EFFECTIVE = base + slider (a single offset of the pristine base).
     shape_offset_base_px: f32,
     /// **Trim** (Offset card): cut the offset spine's self-intersections — drawing-only (see [`curve_offset`]).
     offset_trim: bool,
@@ -214,8 +213,7 @@ pub(crate) struct PaintState {
     texture_image_pending: bool,
     /// Bumped whenever [`texture_image`] changes, so the stamp cache re-renders the Image mask.
     texture_image_version: u64,
-    /// Imported brush-**Shape** luminance (the silhouette tip; heavy → not in the `Copy` spec), borrowed as
-    /// an `ImageMask`. `None` ⇒ silhouette = falloff. Set by the shell ("Use as Brush Shape"); reset clears it.
+    /// Imported brush-**Shape** luminance (silhouette tip; borrowed as `ImageMask`). `None` ⇒ silhouette = falloff.
     shape_image: Option<brush_settings::BrushTextureImage>,
     /// Set when the user picks the Image source in the Shape dropdown; the shell polls it to open a picker.
     shape_image_pending: bool,
@@ -550,6 +548,10 @@ impl CanvasPaintTool for PainterTool {
         // click, no paint), like the Symmetry picks. Works on any layer (it records a coordinate).
         if self.clone_sample_armed() {
             return self.clone_sample_pointer(ev);
+        }
+        // Eyedropper pick: the next Down samples the composited pixel colour into the brush (then → Brush).
+        if self.eyedropper_armed() {
+            return self.eyedropper_pointer(ev);
         }
         if !self.paint_target_ready() {
             // Active layer isn't paintable (mask/group/adjustment) or no canvas:

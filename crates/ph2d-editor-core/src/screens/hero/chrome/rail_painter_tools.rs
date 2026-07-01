@@ -22,8 +22,8 @@ use ph2d_a11y::NodeId;
 /// everything else → normal Brush paint. The shell drains `ToolPanelEvent` into `handle_panel_event`,
 /// so this reaches `PainterTool::set_paint_tool_mode` without any dependency on the concrete painter
 /// crate. The not-yet-wired tools (Inpaint / Shapes) map to "brush" for now, so selecting one always
-/// leaves normal painting rather than a stuck Smear/Blur/Clone/Mask. Eyedropper also maps to "brush"
-/// but additionally opens the rich colour picker (see the `apply` handler).
+/// leaves normal painting rather than a stuck Smear/Blur/Clone/Mask. Eyedropper maps to "eyedropper" —
+/// the tool arms an on-canvas colour pick that samples the composite, then reverts to Brush.
 fn push_paint_mode(hero: &mut HeroScreen, tool_id: NodeId) {
     let mode = if tool_id == ids::PAINTER_RAIL_SMEAR {
         "smear"
@@ -35,6 +35,8 @@ fn push_paint_mode(hero: &mut HeroScreen, tool_id: NodeId) {
         "mask"
     } else if tool_id == ids::PAINTER_RAIL_ERASER {
         "eraser"
+    } else if tool_id == ids::PAINTER_RAIL_EYEDROPPER {
+        "eyedropper"
     } else {
         "brush"
     };
@@ -45,30 +47,27 @@ fn push_paint_mode(hero: &mut HeroScreen, tool_id: NodeId) {
         )));
 }
 
-/// Toggle the shared Blender colour picker targeting the brush colour swatch — the rail **Eyedropper**
-/// IS the rich colour picker (with a built-in eyedropper). Seeds it with the brush colour, which the
-/// panel keeps in `widget_color(PAINTER_COLOR_THUMB)` while the picker is closed; the panel's per-frame
-/// read-back forwards the picked colour back to the brush. Same store ops the Color swatch uses.
-fn toggle_color_picker(hero: &mut HeroScreen) {
-    let thumb = ids::PAINTER_COLOR_THUMB;
-    if hero.store.picker_target() == Some(thumb) {
-        hero.store.set_picker_target(None);
-    } else {
-        let rgba = hero.store.widget_color(thumb).unwrap_or([0, 0, 0, 255]);
-        hero.store.set_blender_value(
-            ids::INSP_BLENDER_PICKER,
-            ph2d_tokens::ColorValue::from_rgba8(rgba[0], rgba[1], rgba[2], rgba[3]),
-        );
-        hero.store.set_picker_target(Some(thumb));
-    }
-}
-
 /// Set `target` `Pressed` and every other id in `group` `Normal` (an exclusive
 /// radio group, like the transform tools in `rail_tools.rs`).
 fn set_radio(hero: &mut HeroScreen, group: &[NodeId], target: NodeId) {
     for id in group {
         if let Some(InteractiveState::Button { state }) = hero.store.get_mut(*id) {
             *state = if *id == target {
+                ButtonState::Pressed
+            } else {
+                ButtonState::Normal
+            };
+        }
+    }
+}
+
+/// Snap the painter tool-rail radio back to **Brush**. The shell calls this when a MOMENTARY tool
+/// completes — the Eyedropper, whose on-canvas colour pick auto-returns to Brush after sampling — so the
+/// rail button stops looking "checked" once the pick is done (matching the tool's actual mode).
+pub fn reset_to_brush(store: &mut crate::interaction::WidgetStore) {
+    for id in ids::PAINTER_RAIL_TOOL_IDS {
+        if let Some(InteractiveState::Button { state }) = store.get_mut(id) {
+            *state = if id == ids::PAINTER_RAIL_BRUSH {
                 ButtonState::Pressed
             } else {
                 ButtonState::Normal
@@ -103,13 +102,11 @@ pub fn apply(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
             // Selecting any other tool closes a lingering flyout.
             hero.store.set_painter_shapes_flyout_open(false);
         }
-        // Forward the operating mode to the active Painter (Smear / Eraser / Brush).
+        // Forward the operating mode to the active Painter (Smear / Eraser / Brush / Eyedropper). The
+        // Eyedropper arms an ON-CANVAS colour pick (mode "eyedropper") — no wheel; the button stays
+        // checked until the next canvas click samples a colour, then the shell snaps the rail back to
+        // Brush (see `reset_to_brush`). Same forward path as every other tool.
         push_paint_mode(hero, id);
-        // The Eyedropper additionally opens the rich colour picker (it paints as Brush; the picker
-        // floats so you sample/choose a colour then paint).
-        if id == ids::PAINTER_RAIL_EYEDROPPER {
-            toggle_color_picker(hero);
-        }
         return true;
     }
     false
@@ -184,7 +181,7 @@ mod tests {
     }
 
     #[test]
-    fn eyedropper_toggles_the_colour_picker() {
+    fn eyedropper_arms_the_pick_without_opening_the_wheel() {
         let mut hero = HeroScreen::new(NodeId(1));
         super::super::super::left_rail::populate(&mut hero.store);
         assert!(hero.store.picker_target().is_none());
@@ -192,20 +189,27 @@ mod tests {
             &mut hero,
             WidgetEvent::Click(ids::PAINTER_RAIL_EYEDROPPER)
         ));
-        assert_eq!(
-            hero.store.picker_target(),
-            Some(ids::PAINTER_COLOR_THUMB),
-            "Eyedropper opens the colour picker (targeting the brush swatch)"
-        );
-        // Click again → toggles it closed.
-        assert!(apply(
-            &mut hero,
-            WidgetEvent::Click(ids::PAINTER_RAIL_EYEDROPPER)
-        ));
+        // The rail Eyedropper now arms an ON-CANVAS pick — it must NOT open the colour wheel.
         assert!(
             hero.store.picker_target().is_none(),
-            "Eyedropper toggles it closed"
+            "Eyedropper does not open the colour wheel — it arms an on-canvas pick"
         );
+        assert!(
+            pressed(&hero, ids::PAINTER_RAIL_EYEDROPPER),
+            "Eyedropper is checked while the pick is armed"
+        );
+    }
+
+    #[test]
+    fn reset_to_brush_snaps_the_rail_radio() {
+        let mut hero = HeroScreen::new(NodeId(1));
+        super::super::super::left_rail::populate(&mut hero.store);
+        apply(&mut hero, WidgetEvent::Click(ids::PAINTER_RAIL_EYEDROPPER));
+        assert!(pressed(&hero, ids::PAINTER_RAIL_EYEDROPPER));
+        // The shell calls this when the on-canvas pick completes → back to Brush.
+        super::reset_to_brush(&mut hero.store);
+        assert!(pressed(&hero, ids::PAINTER_RAIL_BRUSH));
+        assert!(!pressed(&hero, ids::PAINTER_RAIL_EYEDROPPER));
     }
 
     #[test]

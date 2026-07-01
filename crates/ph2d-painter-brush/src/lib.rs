@@ -36,6 +36,7 @@ pub mod heading;
 pub(crate) mod jitter;
 pub mod ramp_alpha;
 pub mod sampler;
+pub mod smear;
 pub mod spec;
 pub mod stamp;
 pub mod stamp_color;
@@ -61,6 +62,7 @@ pub use footprint::{DAB_FLATTEN_MAX, FootprintDeform};
 pub use jitter::shift_colors_like;
 pub use ramp_alpha::RampAlphaMode;
 pub use sampler::MAX_INPUT_SAMPLES;
+pub use smear::smear_dab;
 pub use spec::{AIRBRUSH_RATE_MAX_S, AIRBRUSH_RATE_MIN_S, BrushSpec};
 pub use stamp::{StampMask, blit_canvas_cached, blit_stamp, render_stamp_mask};
 pub use stamp_color::{

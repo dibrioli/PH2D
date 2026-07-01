@@ -98,6 +98,18 @@ struct DragPreview {
     pixels: Vec<u8>,
 }
 
+/// Which operation the canvas pointer performs — selected from the left rail's Painter tools and
+/// routed in via `PanelEvent::SelectOption(PAINTER_PAINT_MODE, …)`. `Paint` is the normal dab-stamp
+/// path (brush colour, Shape, Grain, ramps); `Smear` drags the canvas content along the stroke
+/// ([`ph2d_painter_brush::smear_dab`], the Blender/Krita "Smearing" algorithm). Eraser stays a
+/// separate blend override layered on top of `Paint`.
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
+pub(crate) enum PaintMode {
+    #[default]
+    Paint,
+    Smear,
+}
+
 pub(crate) struct PaintState {
     /// The active brush.
     brush: BrushSpec,
@@ -115,6 +127,11 @@ pub(crate) struct PaintState {
     stroke_undo: Option<crate::undo::ModelSnapshot>,
     /// Eraser mode: overrides the brush blend with Erase Alpha at stamp time (`brush.blend` preserved for when it's off).
     eraser: bool,
+    /// Which operation the pointer performs (Brush=Paint / Smear); driven by the left-rail tool selection.
+    paint_mode: PaintMode,
+    /// Previous dab centre during a **Smear** stroke — the source position each dab lifts from; `None`
+    /// at stroke start (the first dab has nothing to smear from). Chained across pointer batches. See [`stamp_route`].
+    last_smear_pos: Option<[f32; 2]>,
     /// **Tiling** `[x, y]`: seamless wrap-around painting — a dab near an edge also stamps the wrapped part on the opposite edge. Off by default.
     tiling: [bool; 2],
     /// **Repeat Image**: the shell draws the sprite in the 8 neighbour directions (3×3); with Tiling on, those tiles are paintable (the shell wraps the pointer back).
@@ -234,6 +251,8 @@ impl PainterTool {
         // accumulation (so the recomposite snapshots THIS stroke's pre-pixels) — both per stroke.
         self.paint.stroke_mask.clear();
         self.paint.per_layer_stroke.reset();
+        // Smear chains its source from the previous dab; a fresh stroke has none yet.
+        self.paint.last_smear_pos = None;
         // Pin the symmetry centre to the current canvas centre for the auto-centre modes before the
         // stroke captures the spec (the engine mirrors/rotates about `brush.symmetry.center`).
         self.resolve_symmetry_geometry();
@@ -337,6 +356,7 @@ impl PainterTool {
     fn close_stroke(&mut self) {
         self.paint.stroke = None;
         self.paint.line_anchor = None;
+        self.paint.last_smear_pos = None;
         if let Some(before) = self.paint.stroke_undo.take() {
             self.commit_structural_edit(before);
         }

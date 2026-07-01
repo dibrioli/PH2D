@@ -324,6 +324,14 @@ impl PainterTool {
     /// discarding or keeping the editable curve). Returns `true` iff the event was consumed.
     pub(crate) fn route_brush_dab_event(&mut self, event: &PanelEvent) -> bool {
         use ph2d_editor_core::ids as core_ids;
+        // Left-rail paint-tool selection → the brush operation (Brush / Eraser / Smear). Routed here
+        // (a brush-operation router) so `trait_impls::handle_panel_event` stays at its LOC cap.
+        if let PanelEvent::SelectOption(id, value) = event
+            && *id == core_ids::PAINTER_PAINT_MODE
+        {
+            self.set_paint_tool_mode(value);
+            return true;
+        }
         if let PanelEvent::Click(id) = event {
             if *id == core_ids::PAINTER_BRUSH_STROKE_APPLY {
                 self.commit_open_shape();

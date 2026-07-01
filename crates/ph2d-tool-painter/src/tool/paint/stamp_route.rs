@@ -4,8 +4,10 @@
 //! `stamp_cache`.
 
 use super::ramp_lut::RampLutOwner;
+use super::{PaintMode, Region, union_region};
 use crate::tool::PainterTool;
-use ph2d_painter_brush::Dab;
+use ph2d_painter_brush::{BrushSpec, Dab};
+use std::sync::Arc;
 
 impl PainterTool {
     /// Whether the active stroke method lets the shell coalesce a burst of raw pointer Moves into ONE
@@ -21,11 +23,68 @@ impl PainterTool {
     /// dirty rect. With **Tiling** on, each dab is first replicated across the wrapped sprite edges
     /// (`tiling::tiled_dabs`) so a stroke near a border is seamless when the sprite repeats as a tile.
     pub(super) fn stamp_dabs(&mut self, dabs: &[Dab]) {
+        // Smear drags the canvas content between consecutive dab centres — it ignores the brush
+        // colour / Shape / Grain / ramp routing (and tiling), so short-circuit before all of it. It
+        // needs the UNtiled dab chain (a single `last_smear_pos` source), so it runs here, not in
+        // `stamp_dabs_inner` (which receives already-tiled dabs).
+        if matches!(self.paint.paint_mode, PaintMode::Smear) {
+            let (w, h) = self.source_size;
+            self.stamp_dabs_smear(dabs, w, h);
+            return;
+        }
         if self.paint.tiling[0] || self.paint.tiling[1] {
             let wrapped = super::tiling::tiled_dabs(dabs, self.source_size, self.paint.tiling);
             self.stamp_dabs_inner(&wrapped);
         } else {
             self.stamp_dabs_inner(dabs);
+        }
+    }
+
+    /// **Smear** route: drag the canvas content from each dab centre to the next (Blender 2D
+    /// `paint_2d_lift_smear` + INTERPOLATE ≡ Krita Color-Smudge "Smearing"). Consecutive dab centres
+    /// give the lift→stamp displacement; [`PaintState::last_smear_pos`](super::PaintState) chains the
+    /// source across pointer batches within one stroke, so a Move that emits several dabs (or the next
+    /// Move's batch) keeps dragging from where the last dab landed. Smear amount = brush Strength ×
+    /// per-dab coverage (pressure). The engine snapshots each source region, so overlapping read/write
+    /// never feeds back.
+    pub(super) fn stamp_dabs_smear(&mut self, dabs: &[Dab], w: u32, h: u32) {
+        if dabs.is_empty() {
+            return;
+        }
+        let base = self.paint.brush;
+        let strength = base.strength.clamp(0.0, 1.0);
+        let mut from = self.paint.last_smear_pos;
+        let buf = Arc::make_mut(&mut self.canvas_rgba);
+        let mut touched: Option<Region> = None;
+        for d in dabs {
+            if let Some(prev) = from {
+                let spec = BrushSpec {
+                    radius_px: d.radius_px,
+                    ..base
+                };
+                if let Some(r) = ph2d_painter_brush::smear_dab(
+                    buf,
+                    w,
+                    h,
+                    prev,
+                    d.center,
+                    &spec,
+                    strength * d.coverage,
+                ) {
+                    let rect = Region {
+                        x: r.x,
+                        y: r.y,
+                        w: r.w,
+                        h: r.h,
+                    };
+                    touched = Some(touched.map_or(rect, |acc| union_region(acc, rect)));
+                }
+            }
+            from = Some(d.center);
+        }
+        self.paint.last_smear_pos = from;
+        if let Some(rect) = touched {
+            self.mark_dirty(rect);
         }
     }
 

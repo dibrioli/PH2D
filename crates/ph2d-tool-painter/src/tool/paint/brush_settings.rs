@@ -4,7 +4,7 @@
 use super::shape_layers::MAX_SHAPE_LAYERS;
 use super::{
     BRUSH_AIRBRUSH_RATE_MAX_S, BRUSH_AIRBRUSH_RATE_MIN_S, BRUSH_COUNT_SLIDER_MAX,
-    BRUSH_JITTER_ABS_MAX_PX, BRUSH_SIZE_MAX_PX, BRUSH_SIZE_MIN_PX, BRUSH_SPACING_MAX,
+    BRUSH_JITTER_ABS_MAX_PX, BRUSH_SIZE_MAX_PX, BRUSH_SIZE_MIN_PX, BRUSH_SPACING_MAX, PaintMode,
 };
 use crate::tool::PainterTool;
 use ph2d_painter_brush::{
@@ -284,6 +284,24 @@ impl PainterTool {
     /// Toggle eraser mode (overrides the blend with Erase Alpha while on).
     pub fn toggle_brush_eraser(&mut self) {
         self.paint.eraser = !self.paint.eraser;
+    }
+
+    /// Set the active paint operation from the left-rail tool selection: `"smear"` → the Smear drag,
+    /// `"eraser"` → normal paint with the Erase-Alpha override, anything else → normal Brush paint.
+    /// Keeps `paint_mode` and the eraser override in sync so switching rail tools never leaves a
+    /// stuck state (e.g. selecting Brush after Smear returns to normal painting).
+    pub fn set_paint_tool_mode(&mut self, mode: &str) {
+        match mode {
+            "smear" => self.paint.paint_mode = PaintMode::Smear,
+            "eraser" => {
+                self.paint.paint_mode = PaintMode::Paint;
+                self.paint.eraser = true;
+            }
+            _ => {
+                self.paint.paint_mode = PaintMode::Paint;
+                self.paint.eraser = false;
+            }
+        }
     }
 
     /// Set the brush radius in pixels, clamped to the interactive size range.

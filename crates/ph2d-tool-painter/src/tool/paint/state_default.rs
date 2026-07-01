@@ -19,6 +19,8 @@ impl Default for PaintState {
             tex_rng: 0,
             stroke_undo: None,
             eraser: false,
+            paint_mode: PaintMode::default(),
+            last_smear_pos: None,
             tiling: [false, false],
             repeat_image: false,
             symmetry_pick: None,

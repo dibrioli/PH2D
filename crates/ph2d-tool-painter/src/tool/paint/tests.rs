@@ -162,6 +162,61 @@ fn stroke_down_move_up_paints_a_line() {
 }
 
 #[test]
+fn smear_mode_drags_pixels_along_the_stroke() {
+    // DoD seam test: select Smear via the frozen PanelEvent channel (exactly what the left-rail
+    // dispatch pushes), then drive a real stroke and assert the canvas content is dragged — the
+    // Blender/Krita "Smearing" behaviour end-to-end through the tool.
+    use ph2d_editor_core::ids as core_ids;
+    use ph2d_editor_core::tool::{PanelEvent, Tool};
+    let size = 48u32;
+    let mut t = PainterTool::default();
+    // Left half black, right half white (both opaque).
+    let mut src = vec![255u8; (size * size * 4) as usize];
+    for y in 0..size {
+        for x in 0..size / 2 {
+            let i = ((y * size + x) * 4) as usize;
+            src[i..i + 4].copy_from_slice(&[0, 0, 0, 255]);
+        }
+    }
+    t.set_source(src, size, size);
+    t.paint.brush = BrushSpec {
+        radius_px: 8.0,
+        hardness: 1.0,
+        falloff: Falloff::Constant,
+        space_attenuation: false,
+        ..Default::default()
+    };
+    // Rail selects Smear → `SelectOption(PAINTER_PAINT_MODE, "smear")` reaches handle_panel_event.
+    t.handle_panel_event(PanelEvent::SelectOption(
+        core_ids::PAINTER_PAINT_MODE,
+        "smear".to_string(),
+    ));
+    let boundary = size / 2; // x = 24
+    let probe_x = boundary + 4; // x = 28, starts white
+    let mid = (size / 2) as f32;
+    assert_eq!(
+        px(&t, size, probe_x, size / 2),
+        [255, 255, 255, 255],
+        "probe starts white"
+    );
+    // Stroke rightward starting inside the black region, crossing the boundary.
+    t.on_canvas_pointer(cp([(boundary - 6) as f32, mid], PointerPhase::Down));
+    t.on_canvas_pointer(cp([(boundary + 8) as f32, mid], PointerPhase::Move));
+    t.on_canvas_pointer(cp([(boundary + 8) as f32, mid], PointerPhase::Up));
+    let after = px(&t, size, probe_x, size / 2);
+    assert!(
+        after[0] < 255,
+        "smear dragged darker (black) pixels rightward into the white area: {after:?}"
+    );
+    // Selecting Brush again exits Smear (no stuck mode).
+    t.handle_panel_event(PanelEvent::SelectOption(
+        core_ids::PAINTER_PAINT_MODE,
+        "brush".to_string(),
+    ));
+    assert!(matches!(t.paint.paint_mode, PaintMode::Paint));
+}
+
+#[test]
 fn move_without_down_is_ignored() {
     let mut t = white_canvas(32, 4.0);
     assert!(

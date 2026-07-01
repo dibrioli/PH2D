@@ -274,8 +274,9 @@ pub(crate) fn paint_brush_body(
     // Sections below are separated by the Inspector's discreet divider line (Enio 2026-06-25).
     let sep = paint_section_separator;
 
-    // ── Section 6: Randomize Color (collapsible; activates on amount > 0). Hidden in Smear/Blur (colour). ──
-    if !brush.paints_no_color() {
+    // ── Section 6: Randomize Color (collapsible; activates on amount > 0). Hidden in Smear/Blur/Clone
+    //    AND Eraser (all colourless — nothing to randomize). ──
+    if !brush.paints_no_color() && !brush.eraser {
         y = sep(ctx.scene, theme, x, content_w, y);
         y = paint_randomize_section(ctx, theme, x, content_w, y, brush);
     }

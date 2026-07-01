@@ -73,6 +73,9 @@ pub(crate) struct RampIds {
 pub(crate) struct RampView<'a> {
     pub enabled: bool,
     pub bw: bool,
+    /// B&W is forced-on and **locked** (Smear/Blur/Clone: the ramp is a B&W coverage tone, not a colour).
+    /// The B&W toggle paints accent/checked and is inert (no hit registration).
+    pub bw_locked: bool,
     pub mode: u8,
     pub interp: u8,
     pub alpha_mode: u8,
@@ -173,16 +176,20 @@ fn paint_controls(
             label,
             id,
             false,
+            false,
         );
         cx += ROW_H_PX + gap;
     }
+    // B&W: accent/checked when on OR locked; when locked it's inert (no hit) — the 3 pixel-processing
+    // modes force it (a B&W coverage tone), so it can't be unchecked there.
     icon_button(
         ctx,
         theme,
         Rect::new(cx, y, BW_W, ROW_H_PX),
         "B&W",
         ids.bw,
-        view.bw,
+        view.bw || view.bw_locked,
+        view.bw_locked,
     );
     cx += BW_W + gap;
     let buttons_right = cx;
@@ -220,7 +227,9 @@ fn paint_controls(
     y + rows * ROW_H_PX + (rows - 1.0) * gap + gap
 }
 
-/// One control button (`+` / `−` / `I` / `B&W`); `active` fills it accent (a toggle's on-state).
+/// One control button (`+` / `−` / `I` / `B&W`); `active` fills it accent (a toggle's on-state). When
+/// `locked`, it paints active but is NOT hit-registered — an inert, forced-on toggle (the B&W lock in
+/// the pixel-processing modes).
 fn icon_button(
     ctx: &mut PaintCtx,
     theme: ph2d_tokens::Theme,
@@ -228,6 +237,7 @@ fn icon_button(
     label: &str,
     id: NodeId,
     active: bool,
+    locked: bool,
 ) {
     // Active toggles stay accent; otherwise the fill follows the button's ButtonState (hover/press) via
     // the central `flat_button_surface`, so every control button shows mouse feedback.
@@ -249,8 +259,11 @@ fn icon_button(
         TypeToken::Base.px(),
         resolve(fg, theme),
     );
-    register_button(ctx.host.store_mut(), id);
-    ctx.host.hit_index_mut().register(id, r);
+    // Locked = forced-on + inert: skip the hit registration so a click can't toggle it.
+    if !locked {
+        register_button(ctx.host.store_mut(), id);
+        ctx.host.hit_index_mut().register(id, r);
+    }
 }
 
 /// The gradient preview + a colour-filled circular handle per stop (selected one ringed accent). The

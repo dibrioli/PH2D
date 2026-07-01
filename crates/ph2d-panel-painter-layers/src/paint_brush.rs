@@ -279,8 +279,9 @@ pub(crate) fn paint_brush_body(
     // ── Section 7b: Shape Tone — the Shape's B&W value ramp (tonal remap of the silhouette), directly
     //    below the Shape section (Enio 2026-06-25). HIDDEN while Per-Layer Color is on — that mode owns
     //    the colour per layer, so the ramp is nullified (Enio 2026-06-26). ──
-    // Also hidden in Smear/Blur (the ramp colourises the silhouette; they paint no colour).
-    if !brush.shape_per_layer_color && !brush.paints_no_color() {
+    // Shown in ALL modes: in Smear/Blur/Clone it's forced to a B&W coverage tone (checked + locked)
+    // that remaps the silhouette. Still hidden while Per-Layer Color owns the colour per layer.
+    if !brush.shape_per_layer_color {
         y = sep(ctx.scene, theme, x, content_w, y);
         y = crate::paint_shape_ramp::paint_shape_ramp_section(ctx, theme, x, content_w, y, brush);
     }

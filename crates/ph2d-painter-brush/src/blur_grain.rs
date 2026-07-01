@@ -36,6 +36,7 @@ pub fn blur_blit_grain(
     grain_image: Option<&ImageMask>,
     shape_image: Option<&ImageMask>,
     shape_ramp_lut: Option<&[f32]>,
+    grain_ramp_lut: Option<&[f32]>,
     strength: f32,
     wrap: [bool; 2],
 ) -> Option<DirtyRect> {
@@ -81,8 +82,10 @@ pub fn blur_blit_grain(
             return 0.0;
         }
         if let Some(gb) = grain_basis {
-            let g =
+            let raw =
                 crate::texture::sample(&spec.texture, gb, px, py, [cx, cy], radius, grain_image);
+            // A B&W Grain ramp (Smear/Blur/Clone) remaps the grain into a coverage tone.
+            let g = crate::texture::remap_shape_value(raw, grain_ramp_lut);
             w *= if depth >= 1.0 {
                 g
             } else {
@@ -145,6 +148,7 @@ mod tests {
             &spec,
             fp,
             Some(&gb),
+            None,
             None,
             None,
             None,

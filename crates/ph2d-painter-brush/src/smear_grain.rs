@@ -36,6 +36,7 @@ pub fn smear_blit_grain(
     grain_image: Option<&ImageMask>,
     shape_image: Option<&ImageMask>,
     shape_ramp_lut: Option<&[f32]>,
+    grain_ramp_lut: Option<&[f32]>,
     strength: f32,
     wrap: [bool; 2],
 ) -> Option<DirtyRect> {
@@ -120,7 +121,7 @@ pub fn smear_blit_grain(
                 continue;
             }
             if let Some(gb) = grain_basis {
-                let g = crate::texture::sample(
+                let raw = crate::texture::sample(
                     &spec.texture,
                     gb,
                     px,
@@ -129,6 +130,8 @@ pub fn smear_blit_grain(
                     radius,
                     grain_image,
                 );
+                // A B&W Grain ramp (Smear/Blur/Clone) remaps the grain into a coverage tone.
+                let g = crate::texture::remap_shape_value(raw, grain_ramp_lut);
                 w *= if depth >= 1.0 {
                     g
                 } else {
@@ -208,6 +211,7 @@ mod tests {
             None,
             None,
             None,
+            None,
             1.0,
             [false, false],
         );
@@ -234,6 +238,79 @@ mod tests {
         assert!(
             with_grain != plain,
             "the canvas-fixed Grain shapes the smear"
+        );
+    }
+
+    #[test]
+    fn grain_ramp_lut_remaps_the_grain_coverage() {
+        // The Grain tone LUT (Smear/Blur/Clone B&W ramp) remaps the sampled grain into coverage. A
+        // zero LUT kills the grain contribution, so the drag differs from the un-ramped grain.
+        let (w, h) = (40u32, 12u32);
+        let mut base = vec![255u8; (w * h * 4) as usize];
+        for y in 0..h {
+            for x in 20..w {
+                let i = ((y * w + x) * 4) as usize;
+                base[i..i + 4].copy_from_slice(&[0, 0, 0, 0]);
+            }
+        }
+        let mut spec = BrushSpec {
+            radius_px: 8.0,
+            hardness: 1.0,
+            ..Default::default()
+        };
+        spec.texture.kind = TextureKind::Checker;
+        spec.texture.mapping = TextureMapping::Tiled;
+        let fp = spec.footprint_deform();
+        let gb = crate::texture::dab_basis(
+            &spec.texture,
+            [0.0, 0.0],
+            &mut 0u64,
+            [w as f32, h as f32],
+            [1.0, 0.0],
+            crate::footprint::FootprintDeform::identity(),
+        );
+        let zero_lut = vec![0.0f32; 256];
+        let mut with_ramp = base.clone();
+        let _ = smear_blit_grain(
+            &mut with_ramp,
+            w,
+            h,
+            [18.0, 6.0],
+            [22.0, 6.0],
+            8.0,
+            &spec,
+            fp,
+            Some(&gb),
+            None,
+            None,
+            None,
+            None,
+            Some(&zero_lut),
+            1.0,
+            [false, false],
+        );
+        let mut no_ramp = base.clone();
+        let _ = smear_blit_grain(
+            &mut no_ramp,
+            w,
+            h,
+            [18.0, 6.0],
+            [22.0, 6.0],
+            8.0,
+            &spec,
+            fp,
+            Some(&gb),
+            None,
+            None,
+            None,
+            None,
+            None,
+            1.0,
+            [false, false],
+        );
+        assert_ne!(
+            with_ramp, no_ramp,
+            "the grain ramp tone remaps the coverage"
         );
     }
 }

@@ -518,11 +518,14 @@ fn jitter_unit_name(u: u8) -> &'static str {
 /// The stroke methods as dropdown options, in Blender's menu order (Dots, Drag Dot, Space, Airbrush,
 /// Anchored, Line, Curve), then the PH2D Circle + Polygon + Free Hand shape extensions last.
 fn stroke_method_options() -> Vec<DropdownOption<u8>> {
-    // Smear/Blur only support the incremental methods (Dots / Airbrush / Space): the fill /
+    // Smear/Blur/Clone only support the incremental methods (Dots / Airbrush / Space): the fill /
     // editable-curve methods don't produce the per-move dab chain they process along, so they're
-    // dropped from the menu.
-    let incremental_only = crate::state::current_brush().is_some_and(|b| b.paints_no_color());
-    let methods: &[u8] = if incremental_only {
+    // dropped from the menu. Clone ALSO gets Anchored (a stationary growing stamp — it clones fine
+    // without motion, unlike Smear); it re-stamps through the same clone dispatch via the preview path.
+    let brush = crate::state::current_brush();
+    let methods: &[u8] = if brush.is_some_and(|b| b.is_clone) {
+        &[0, 1, 3, 4]
+    } else if brush.is_some_and(|b| b.paints_no_color()) {
         &[0, 1, 3]
     } else {
         &[0, 4, 3, 1, 2, 5, 6, 7, 8, 9]

@@ -114,7 +114,15 @@ impl PainterTool {
             || base.dab_flatten > 0.0;
         let per_dab_rotation =
             base.has_per_dab_rotation() || base.shape_has_per_dab_rotation(has_shape_image);
-        let want_mask = textured && base.dab_mask_cacheable(has_shape_image) && !per_dab_rotation;
+        // Shape / Grain Colour Ramps act as B&W coverage TONES here (no colour painted); the cached mask
+        // can't carry them, so an active ramp tone forces the per-pixel Grain path.
+        self.ensure_shape_ramp_lut();
+        let grain_tone = self.grain_tone_lut();
+        let ramp_tone_active = self.shape_tone_lut_slice().is_some() || grain_tone.is_some();
+        let want_mask = textured
+            && base.dab_mask_cacheable(has_shape_image)
+            && !per_dab_rotation
+            && !ramp_tone_active;
         let want_grain = textured && !want_mask;
         let grain_active = base.texture.is_active();
         let shape_active = base.shape_silhouette_active(has_shape_image);
@@ -208,6 +216,7 @@ impl PainterTool {
                         grain_img.as_ref(),
                         shape_img.as_ref(),
                         shape_lut.as_deref(),
+                        grain_tone.as_deref(),
                         amount,
                         tiling,
                     )

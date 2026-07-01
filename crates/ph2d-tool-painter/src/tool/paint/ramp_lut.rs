@@ -99,10 +99,39 @@ impl PainterTool {
         self.paint.shape_ramp_dirty = false;
     }
 
-    /// The Shape **tone** LUT slice when the Shape ramp is in B&W (tone) mode — then it remaps the
-    /// silhouette coverage (the Grain, if any, owns colour). Caller `ensure_shape_ramp_lut`s first.
+    /// The Shape **tone** LUT slice when the Shape ramp acts as a coverage tone: B&W on, OR a no-colour
+    /// mode (Smear/Blur/Clone force B&W). Then it remaps the silhouette coverage. Caller `ensure_shape_ramp_lut`s first.
     pub(super) fn shape_tone_lut_slice(&self) -> Option<&[f32]> {
-        (self.paint.shape_color_ramp_enabled && self.paint.shape_color_ramp_bw)
-            .then_some(self.paint.shape_ramp_lut.as_slice())
+        (self.paint.shape_color_ramp_enabled
+            && (self.paint.shape_color_ramp_bw || self.no_color_mode()))
+        .then_some(self.paint.shape_ramp_lut.as_slice())
+    }
+
+    /// Whether the active operation paints NO colour (Smear / Blur / Clone). In these modes the Shape &
+    /// Grain Colour Ramps are forced to their B&W **tone** role — grayscale coverage curves — since there
+    /// is no colour to lay down (the panel shows the ramps with B&W checked + locked).
+    pub(super) fn no_color_mode(&self) -> bool {
+        self.is_smear_mode() || self.is_blur_mode() || self.is_clone_mode()
+    }
+
+    /// The **Grain** tone LUT (256 grayscale) when the Grain ramp acts as a coverage tone — enabled + a
+    /// Grain texture active + (B&W on OR a no-colour mode). Baked fresh from the Grain ramp's Rec.709
+    /// luminance (like [`Self::ensure_shape_ramp_lut`]); cheap per stamp batch, so no cached state. `None`
+    /// when it doesn't apply. The Smear/Blur/Clone grain paths remap the sampled grain through this.
+    pub(super) fn grain_tone_lut(&self) -> Option<Vec<f32>> {
+        let grain_active = self.paint.brush.texture.is_active();
+        if !(self.paint.texture_ramp_enabled
+            && grain_active
+            && (self.paint.texture_ramp_bw || self.no_color_mode()))
+        {
+            return None;
+        }
+        let mut clut = [[0.0f32; 4]; 256];
+        self.paint.texture_ramp.bake_into(&mut clut);
+        Some(
+            clut.iter()
+                .map(|c| (0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]).clamp(0.0, 1.0))
+                .collect(),
+        )
     }
 }

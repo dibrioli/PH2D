@@ -326,6 +326,11 @@ pub struct WidgetStore {
     /// Camera-framing mode for the TOOL_HOME rail button.
     /// Cycle: 0 = Selected, 1 = Camera, 2 = All. Bumped on click.
     pub(super) tool_view_mode: u8,
+    /// `true` while the Painter rail's **Shapes** flyout is revealed (the
+    /// column of shape chips painted to the right of the Shapes button).
+    /// Opened on press of the Shapes button, closed on shape pick / press
+    /// elsewhere. Transient UI state, like the dropdown popover flags.
+    pub(super) painter_shapes_flyout_open: bool,
     /// Per-panel Z order — last element paints LAST (= topmost).
     /// Mutated by `bump_panel_z` whenever the user clicks inside a
     /// panel, drags it, or it newly opens (color picker). Painters

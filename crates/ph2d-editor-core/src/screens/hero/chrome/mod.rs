@@ -61,6 +61,7 @@ mod new_image;
 mod palette_rename;
 mod point_type;
 mod radius;
+mod rail_painter_tools;
 mod rail_panels;
 mod rail_size;
 mod rail_tools;
@@ -89,6 +90,7 @@ pub fn dispatch_all(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
         || rail_size::apply(hero, event)
         || view_toggles::apply(hero, event)
         || rail_tools::apply(hero, event)
+        || rail_painter_tools::apply(hero, event)
         || rail_panels::apply(hero, event)
         || io_menu::apply(hero, event)
         || settings_ppm::apply(hero, event)

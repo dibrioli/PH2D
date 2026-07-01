@@ -28,6 +28,7 @@ mod painter_symmetry;
 mod painter_texture;
 mod painter_tiling;
 mod rail;
+mod rail_painter;
 mod topbar;
 mod vector;
 
@@ -43,5 +44,6 @@ pub use painter_symmetry::*;
 pub use painter_texture::*;
 pub use painter_tiling::*;
 pub use rail::*;
+pub use rail_painter::*;
 pub use topbar::*;
 pub use vector::*;

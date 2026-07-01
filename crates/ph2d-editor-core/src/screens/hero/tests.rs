@@ -1424,7 +1424,39 @@ fn paint_left_rail_smoke() {
         Theme::Forge,
         &mut hits,
         &store,
+        false,
     );
+}
+
+#[test]
+fn paint_left_rail_painter_mode_smoke() {
+    // Painter mode + the Shapes flyout open: exercises the paint-tool entries
+    // and the flyout column (different geometry path than object mode).
+    let layout = HeroLayout::for_viewport(ipad12_viewport());
+    let mut scene = VectorScene::new();
+    let mut text = TextSystem::without_system_fonts();
+    let mut hits = HitIndex::new();
+    let mut store = WidgetStore::with_capacity(32);
+    super::left_rail::populate(&mut store);
+    store.set_painter_shapes_flyout_open(true);
+    paint_left_rail(
+        &layout,
+        &mut scene,
+        &mut text,
+        Theme::Forge,
+        &mut hits,
+        &store,
+        true,
+    );
+    // The flyout's shape chips are hit-registered while open.
+    assert!(
+        hits.rect_for(crate::ids::PAINTER_RAIL_SHAPE_CIRCLE)
+            .is_some()
+    );
+    // The painter Brush tool chip is hit-registered in painter mode.
+    assert!(hits.rect_for(crate::ids::PAINTER_RAIL_BRUSH).is_some());
+    // The object-mode transform tools are NOT painted in painter mode.
+    assert!(hits.rect_for(crate::ids::TOOL_ROTATE).is_none());
 }
 
 // ADR-0029 Phase C.1: disabled — migrate to crates/ph2d-panel-inspector/tests/inspector_regression.rs.

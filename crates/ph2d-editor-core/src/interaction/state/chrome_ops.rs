@@ -59,6 +59,17 @@ impl WidgetStore {
         self.tool_view_mode = mode % 3;
     }
 
+    /// `true` while the Painter rail's **Shapes** flyout is open (the
+    /// column of shape chips to the right of the Shapes button).
+    pub fn painter_shapes_flyout_open(&self) -> bool {
+        self.painter_shapes_flyout_open
+    }
+
+    /// Open / close the Painter rail's Shapes flyout.
+    pub fn set_painter_shapes_flyout_open(&mut self, open: bool) {
+        self.painter_shapes_flyout_open = open;
+    }
+
     /// Register a tooltip string for `id`. Called by `populate`
     /// passes or directly inside painters; read by the hover-tooltip
     /// pass via [`Self::tooltip_for`]. Empty strings are treated as

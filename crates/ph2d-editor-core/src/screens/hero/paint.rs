@@ -197,6 +197,11 @@ pub fn paint_hero_screen(
         &hero.store,
         hero.image_edit.mode_on,
     );
+    // Painter mode = the Image-Tools TopBar is on AND the active image-edit
+    // tool is the Painter (mirrored shell-side into `active_tool_id`). In that
+    // mode the rail swaps its transform block for the paint tools.
+    let painter_active =
+        hero.image_edit.mode_on && hero.image_edit.active_tool_id == Some("painter");
     paint_left_rail(
         &layout,
         scene,
@@ -204,6 +209,7 @@ pub fn paint_hero_screen(
         hero.theme,
         &mut hero.hit_index,
         &hero.store,
+        painter_active,
     );
     // Publish Inspector + Hierarchy panel rects so wheel-event
     // dispatch can route to them. Both are static (no drag offset).

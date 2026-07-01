@@ -43,6 +43,16 @@ pub struct ImageEditState {
     /// UI dim the `TOOL_UNDO` chip when no undo is available. Shell
     /// writes this each frame after its drain pass.
     pub has_undoable: bool,
+    /// Canonical id string of the active image-edit tool (`"painter"`,
+    /// `"bgremoval"`, …), or `None` when no stateful image-edit tool is
+    /// active. The active tool itself lives shell-side in the
+    /// `ToolRegistry` (ADR-0040: editor-core must not depend on concrete
+    /// tool crates); the shell mirrors the active tool's `id()` here each
+    /// frame after its `ActivateTool`/deactivate drain. Editor-core chrome
+    /// reads it as an opaque string (e.g. the left rail swaps to its
+    /// painter section when this `== Some("painter")`) — a dependency-legal
+    /// mode signal, not a tool handle.
+    pub active_tool_id: Option<&'static str>,
 }
 
 /// View-state flags — mirror toggle + overlay visibility flags

@@ -1016,6 +1016,22 @@ impl crate::App {
                     self.title_dirty = true;
                 }
             }
+            // Mirror the active image-edit tool's canonical id into the hero
+            // state so editor-core chrome (the left rail's Painter face) can
+            // react without a dependency on the concrete tool crates (ADR-0040).
+            // Runs AFTER the mode-off reconciliation above, so it reflects the
+            // frame's final active tool. `ToolId` holds a runtime `String`; the
+            // rail only needs to recognise the Painter, so intern to the
+            // `&'static str` literal the `ActivateTool { tool_id: "painter" }`
+            // action already uses. Gated on `mode_on` (no image tool is
+            // reachable with Image Tools off).
+            hero.image_edit.active_tool_id = tools
+                .active()
+                .filter(|_| hero.image_edit.mode_on)
+                .and_then(|t| match t.id().0.as_str() {
+                    "painter" => Some("painter"),
+                    _ => None,
+                });
             // Reconcile Image Tools pill ButtonState ↔ active tool. Each pill
             // whose manifest id matches `tools.active()` is forced to Pressed;
             // pills holding a stale Pressed (tool no longer active) drop back

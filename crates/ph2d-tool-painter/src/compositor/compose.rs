@@ -198,19 +198,13 @@ fn composite_into(
                 // (white = visible, black = hidden; `1 - value` when inverted).
                 // Mask pixels are canvas-sized RGBA8 in the same source; a
                 // missing/short mask buffer is treated as "no mask" (no panic).
-                // Skip THIS layer's mask multiply while that mask is the active edit target — the layer
-                // stays fully visible so the artist masks against the image (non-destructive quick-mask;
-                // the on-canvas colour film shows the coverage). Normal compositing applies it otherwise.
-                let mask = layer
-                    .mask
-                    .filter(|&mid| src.active_layer() != Some(mid))
-                    .and_then(|mid| match &stack.get(mid)?.kind {
-                        LayerKind::Mask(m) => {
-                            let mrgba = src.layer_rgba(mid)?;
-                            (mrgba.len() >= (max_idx + 1) * 4).then_some((mrgba, m.inverted))
-                        }
-                        _ => None,
-                    });
+                let mask = layer.mask.and_then(|mid| match &stack.get(mid)?.kind {
+                    LayerKind::Mask(m) => {
+                        let mrgba = src.layer_rgba(mid)?;
+                        (mrgba.len() >= (max_idx + 1) * 4).then_some((mrgba, m.inverted))
+                    }
+                    _ => None,
+                });
                 // T3.6: a clipping layer paints only where its clip base is
                 // opaque — multiply its alpha by the base's straight alpha.
                 let clip = if layer.clipping { clip_base } else { None };

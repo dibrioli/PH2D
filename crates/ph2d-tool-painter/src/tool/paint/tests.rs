@@ -583,6 +583,35 @@ fn mask_overlay_tints_the_concealed_composite() {
 }
 
 #[test]
+fn mask_paint_conceals_and_reads_in_the_composite_while_editing() {
+    // The user's actual flow: in Mask mode, paint (Paint = conceal) and the composite HIDES the layer at
+    // the dab WHILE still editing (no tool switch) — the concealed area reads as the dark overlay, a
+    // revealed corner keeps the full image. This is the "did the mask visibly mask?" check.
+    use ph2d_editor_core::ids as core_ids;
+    use ph2d_editor_core::tool::{PanelEvent, Tool};
+    let mut t = white_canvas(24, 6.0);
+    t.handle_panel_event(PanelEvent::SelectOption(
+        core_ids::PAINTER_PAINT_MODE,
+        "mask".to_string(),
+    ));
+    t.on_canvas_pointer(cp([12.0, 12.0], PointerPhase::Down)); // Paint = conceal at centre
+    t.on_canvas_pointer(cp([12.0, 12.0], PointerPhase::Up));
+    // Still in Mask mode (the mask is the active target) — the composite already shows the effect.
+    let (buf, w, _h) = t.take_preview_arc().expect("a composite preview");
+    let c = ((12 * w + 12) * 4) as usize;
+    let corner = ((2 * w + 2) * 4) as usize;
+    assert!(
+        buf[c] < 200,
+        "concealed centre reads as the dark mask overlay (not full white), got {}",
+        buf[c]
+    );
+    assert_eq!(
+        buf[corner], 255,
+        "a revealed corner keeps the full image visible"
+    );
+}
+
+#[test]
 fn mask_conceals_the_parent_in_the_composite_after_leaving_mask() {
     // Full flow: paint a mask (conceal centre), leave Mask → the parent is active again, and the
     // composite must HIDE the concealed centre (alpha ≈ 0). The "did the mask actually mask?" check,

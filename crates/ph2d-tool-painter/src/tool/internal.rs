@@ -33,8 +33,4 @@ impl LayerPixelSource for ToolPixelSource<'_> {
             self.images.get(&id).map(|img| img.rgba8.as_slice())
         }
     }
-
-    fn active_layer(&self) -> Option<RtLayerId> {
-        Some(self.active_id)
-    }
 }

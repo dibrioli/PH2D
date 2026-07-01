@@ -29,14 +29,14 @@ const SWATCH_PX: f32 = 26.0; // LITERAL-PX-OK: overlay-colour swatch square
 /// Minimum op/brush-button width (px) before the flow grid drops to fewer columns (adaptive reflow floor).
 const BTN_MIN_W: f32 = 64.0; // LITERAL-PX-OK: mask button min column width
 
-/// The 5 overlay-tint colours (straight RGBA8): neutral gray + fluorescent yellow / pink / green /
-/// orange — must mirror `ph2d-tool-painter`'s `mask_overlay_rgb`. Data colours, not chrome tokens.
+/// The 5 overlay-tint colours (straight RGBA8): DARK gray (default) + fluorescent yellow / pink / green
+/// / orange — must mirror `ph2d-tool-painter`'s `mask_overlay_rgb`. Data colours, not chrome tokens.
 const OVERLAY_COLORS: [[u8; 4]; 5] = [
-    [128, 128, 128, 255], // LITERAL-COLOR-OK: neutral gray (default)
-    [220, 255, 0, 255],   // LITERAL-COLOR-OK: fluorescent yellow
-    [255, 42, 160, 255],  // LITERAL-COLOR-OK: fluorescent pink
-    [80, 255, 60, 255],   // LITERAL-COLOR-OK: fluorescent green
-    [255, 120, 0, 255],   // LITERAL-COLOR-OK: fluorescent orange
+    [51, 51, 51, 255],   // LITERAL-COLOR-OK: dark gray (default)
+    [220, 255, 0, 255],  // LITERAL-COLOR-OK: fluorescent yellow
+    [255, 42, 160, 255], // LITERAL-COLOR-OK: fluorescent pink
+    [80, 255, 60, 255],  // LITERAL-COLOR-OK: fluorescent green
+    [255, 120, 0, 255],  // LITERAL-COLOR-OK: fluorescent orange
 ];
 
 /// Paint the Mask section from `y`; returns the next `y`. Collapsed → just the header. Only called by

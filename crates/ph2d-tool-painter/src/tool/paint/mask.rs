@@ -12,9 +12,9 @@ use ph2d_editor_core::tool::PanelEvent;
 use ph2d_painter_brush::MaskCanvasOp;
 use std::sync::Arc;
 
-/// Overlay film opacity — how strongly the mask coverage tints the composite while editing. Semi-
-/// transparent so the underlying image still reads through the quick-mask.
-const OVERLAY_STRENGTH: f32 = 0.5;
+/// Overlay film opacity — how strongly the CONCEALED region reads in the mask colour while editing.
+/// High so the masked-out area is clearly "removed" (a solid-ish colour), not a faint tint.
+const OVERLAY_STRENGTH: f32 = 0.8;
 
 impl PainterTool {
     /// Set the Mask sub-brush: `0` Paint (reveal) · `1` Erase (conceal) · `2` Blur · `3` Smear. Entering
@@ -168,14 +168,14 @@ fn mask_op_from_u8(op: u8) -> Option<MaskCanvasOp> {
     })
 }
 
-/// The overlay tint palette (straight sRGB `0..=255`): index `0` a neutral gray, `1..=4` fluorescent
-/// highlighter hues (yellow / pink / green / orange). Out-of-range falls back to gray.
+/// The overlay tint palette (straight sRGB `0..=255`): index `0` a DARK gray (default), `1..=4`
+/// fluorescent highlighter hues (yellow / pink / green / orange). Out-of-range falls back to dark gray.
 fn mask_overlay_rgb(idx: u8) -> [u8; 3] {
     match idx {
-        1 => [220, 255, 0],   // fluorescent yellow
-        2 => [255, 42, 160],  // fluorescent pink
-        3 => [80, 255, 60],   // fluorescent green
-        4 => [255, 120, 0],   // fluorescent orange
-        _ => [128, 128, 128], // neutral gray (default)
+        1 => [220, 255, 0],  // fluorescent yellow
+        2 => [255, 42, 160], // fluorescent pink
+        3 => [80, 255, 60],  // fluorescent green
+        4 => [255, 120, 0],  // fluorescent orange
+        _ => [51, 51, 51],   // dark gray (default)
     }
 }

@@ -459,6 +459,89 @@ fn inpaint_param_sliders_route_into_the_heal() {
     assert_eq!(t.paint.inpaint_search_norm, 0.5);
 }
 
+/// A white canvas with a red square at `[12,20)×[12,20)`, in Fill mode with a green brush.
+fn fill_fixture(size: u32) -> PainterTool {
+    use ph2d_editor_core::ids as core_ids;
+    use ph2d_editor_core::tool::{PanelEvent, Tool};
+    let mut src = vec![255u8; (size * size * 4) as usize];
+    for y in 12..20 {
+        for x in 12..20 {
+            let i = ((y * size + x) * 4) as usize;
+            src[i..i + 4].copy_from_slice(&[220, 20, 20, 255]);
+        }
+    }
+    let mut t = PainterTool::default();
+    t.set_source(src, size, size);
+    t.handle_panel_event(PanelEvent::SelectOption(
+        core_ids::PAINTER_PAINT_MODE,
+        "fill".to_string(),
+    ));
+    assert!(matches!(t.paint.paint_mode, PaintMode::Fill));
+    t.paint.brush.color = [0.0, 1.0, 0.0]; // green
+    t
+}
+
+#[test]
+fn fill_colordrop_fills_the_connected_region_and_undoes_in_one_step() {
+    let size = 32u32;
+    let mut t = fill_fixture(size);
+    t.paint.fill_threshold = 0.05; // tight — only the red square
+    // Drag the colour onto the red square and release (the ColorDrop).
+    t.on_canvas_pointer(cp([16.0, 16.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([16.0, 16.0], PointerPhase::Up));
+    // The whole connected red square is now green; the white surround is untouched.
+    assert_eq!(
+        px(&t, size, 16, 16),
+        [0, 255, 0, 255],
+        "drop filled the square"
+    );
+    assert_eq!(
+        px(&t, size, 13, 18),
+        [0, 255, 0, 255],
+        "connected red all filled"
+    );
+    assert_eq!(
+        px(&t, size, 2, 2),
+        [255, 255, 255, 255],
+        "surround untouched"
+    );
+    // Leaving Fill commits the drop; one undo restores the original red.
+    t.set_paint_tool_mode("brush");
+    assert!(t.undo_last(), "the fill is one undo step");
+    assert_eq!(
+        px(&t, size, 16, 16),
+        [220, 20, 20, 255],
+        "undo restored the defect"
+    );
+}
+
+#[test]
+fn fill_adjust_drag_raises_threshold_right_up_lowers_left_down() {
+    let size = 32u32;
+    let mut t = fill_fixture(size);
+    t.paint.fill_threshold = 0.5; // mid, so the adjust has room both ways
+    // Drop, then the adjust phase is armed.
+    t.on_canvas_pointer(cp([16.0, 16.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([16.0, 16.0], PointerPhase::Up));
+    // Start the adjust drag at (16,16); base threshold = 0.5.
+    t.on_canvas_pointer(cp([16.0, 16.0], PointerPhase::Down));
+    let base = t.paint.fill_base_threshold;
+    assert!((base - 0.5).abs() < 1e-6);
+    // Each Move is measured from the adjust start — right & up RAISE, left & down LOWER.
+    t.on_canvas_pointer(cp([50.0, 16.0], PointerPhase::Move));
+    assert!(t.paint.fill_threshold > base, "right raises the threshold");
+    t.on_canvas_pointer(cp([16.0, 4.0], PointerPhase::Move));
+    assert!(t.paint.fill_threshold > base, "up raises the threshold");
+    t.on_canvas_pointer(cp([0.0, 16.0], PointerPhase::Move));
+    assert!(t.paint.fill_threshold < base, "left lowers the threshold");
+    t.on_canvas_pointer(cp([16.0, 30.0], PointerPhase::Move));
+    assert!(t.paint.fill_threshold < base, "down lowers the threshold");
+    // Releasing the adjust commits + exits the ColorDrop.
+    t.on_canvas_pointer(cp([16.0, 30.0], PointerPhase::Up));
+    assert!(!t.paint.fill_adjusting);
+    assert!(t.paint.fill_seed.is_none());
+}
+
 #[test]
 fn composite_brush_runs_an_isolated_layer_and_reorders() {
     // Composite is a Brush-tool upgrade wired over the frozen PanelEvent channel. Prove: (1) the enable

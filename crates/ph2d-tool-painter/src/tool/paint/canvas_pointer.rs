@@ -34,6 +34,11 @@ impl CanvasPaintTool for PainterTool {
             self.close_stroke();
             return false;
         }
+        // Fill (Bucket) — the ColorDrop gesture (flood fill on drop + live threshold adjust). It is not a
+        // stroke and ignores the stroke method, so it precedes the shape-editor routing below.
+        if matches!(self.paint.paint_mode, super::PaintMode::Fill) {
+            return self.fill_pointer(ev);
+        }
         // Curve and Ellipse are persistent on-canvas shape editors (draw → edit → commit), not a
         // single press→release stroke — route every canvas event through them instead of the generic
         // path.

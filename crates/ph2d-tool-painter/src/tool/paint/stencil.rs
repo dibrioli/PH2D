@@ -326,6 +326,9 @@ impl PainterTool {
     /// tools never leaves a stuck state (e.g. Brush after Smear returns to normal painting). Beside
     /// `route_brush_dab_event`, which drives it (moved here off `brush_settings.rs` for the LOC cap).
     pub fn set_paint_tool_mode(&mut self, mode: &str) {
+        // Leaving Fill with a live ColorDrop → commit it (push its undo) so switching tools never loses
+        // the fill or its undo step. No-op unless a fill is in progress.
+        self.fill_commit();
         // The transient Mask scratch is NOT discarded on a tool switch: it persists while its target
         // layer stays active (`mask_scratch_active()` self-gates on target == active), so you can leave
         // Mask, retouch the concealed area with the Brush, and return. Apply promotes it to a layer mask;
@@ -366,6 +369,11 @@ impl PainterTool {
             "inpaint" => {
                 // Content-aware heal: brush marks the defect (live tint); pen-up reconstructs it.
                 self.paint.paint_mode = super::PaintMode::Inpaint;
+                self.paint.eraser = false;
+            }
+            "fill" => {
+                // Fill (Bucket): Procreate ColorDrop — drag the colour onto the canvas to flood-fill.
+                self.paint.paint_mode = super::PaintMode::Fill;
                 self.paint.eraser = false;
             }
             "eyedropper" => {

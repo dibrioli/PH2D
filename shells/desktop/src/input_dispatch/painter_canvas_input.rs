@@ -373,7 +373,10 @@ impl App {
     /// the sprite footprint, and deliver one [`CanvasPointer`]. Returns the tool's
     /// `consumed` result, or `false` when the sample was not delivered (not the
     /// painter / no selection / Down outside the footprint).
-    fn deliver_canvas_pointer(
+    ///
+    /// `pub(crate)` so the Fill (Bucket) ColorDrop drag (`input_dispatch::fill_drag`) can deliver its
+    /// button-initiated drop through the same screen→image conversion + `on_canvas_pointer` path.
+    pub(crate) fn deliver_canvas_pointer(
         &mut self,
         px: f32,
         py: f32,

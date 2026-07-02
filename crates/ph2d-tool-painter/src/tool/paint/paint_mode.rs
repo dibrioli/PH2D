@@ -19,4 +19,7 @@ pub(crate) enum PaintMode {
     Clone,
     Mask,
     Inpaint,
+    /// **Fill** (Bucket) — Procreate ColorDrop: drag the colour onto the canvas to flood-fill the
+    /// connected same-colour region, then drag to adjust the threshold live (see [`super::fill`]).
+    Fill,
 }

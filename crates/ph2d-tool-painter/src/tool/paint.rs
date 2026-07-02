@@ -77,6 +77,7 @@ mod composite;
 pub(crate) use composite::{CompositeLayer, CompositeOp};
 mod clone;
 mod eyedropper;
+mod fill; // Fill (Bucket) — Procreate ColorDrop flood fill + live threshold adjust; split for LOC cap
 mod inpaint; // content-aware heal brush (mark defect + reconstruct on pen-up); split for LOC cap
 /// The **Mask** tool's extras — sub-brush (Paint/Erase/Blur/Smear), whole-canvas ops, overlay tint. [LOC split].
 mod mask;
@@ -268,6 +269,20 @@ pub(crate) struct PaintState {
     /// **Inpaint** defect mask (1 byte/px, `>= 128` ⇒ heal). Accumulated as the user brushes in Inpaint
     /// mode; on pen-up [`super::inpaint`] reconstructs the marked region and clears it. Sized `w*h`.
     inpaint_mask: Vec<u8>,
+
+    // ── Fill (Bucket) — Procreate ColorDrop state ([`super::fill`]). ──
+    /// ColorDrop threshold (`0..1`) → per-channel colour tolerance; adjusted live by the post-drop drag.
+    fill_threshold: f32,
+    /// Image-space seed of the current drop (`None` when idle).
+    fill_seed: Option<[f32; 2]>,
+    /// Pre-fill layer pixels, so every threshold change re-fills from the ORIGINAL region (not the
+    /// already-filled result).
+    fill_snapshot: Vec<u8>,
+    /// True between the drop's release and the adjust drag's release — the live threshold-adjust phase.
+    fill_adjusting: bool,
+    /// Where the adjust drag started + the threshold at that moment (right/up raises it, left/down lowers).
+    fill_adjust_start: Option<[f32; 2]>,
+    fill_base_threshold: f32,
     /// **Inpaint** Patch Size (`0..1` track → patch radius `2..=6`); the reconstruction's patch footprint.
     inpaint_patch_norm: f32,
     /// **Inpaint** Quality (`0..1` track → EM iterations `3..=12`); more iterations = better fit, slower.

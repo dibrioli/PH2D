@@ -47,6 +47,7 @@ use crate::forwarding::{
 // `impl App` is split across sibling modules (see the eyedropper /
 // keyboard handlers) to keep this file under the HR-18 LOC cap.
 mod eyedropper;
+mod fill_drag;
 mod gizmo_drag;
 mod keyboard;
 mod painter_canvas_input;
@@ -213,6 +214,11 @@ impl App {
         // motion feeds another `CanvasPointer` to the active PainterTool. Early-
         // return so it doesn't also drive a gizmo drag / pan / slider.
         if self.painter_canvas_move(self.last_pointer.0, self.last_pointer.1) {
+            return;
+        }
+        // Fill (Bucket) ColorDrop drag (SHELL-only): while a colour is being dragged from the Fill rail
+        // button onto the canvas, deliver it to the painter's Fill. Early-return so it doesn't pan.
+        if self.fill_drag_move(self.last_pointer.0, self.last_pointer.1) {
             return;
         }
         // Vector Pen handle drag (W2): while the Primary button is held after
@@ -425,6 +431,14 @@ impl App {
         // the gizmo path (like a sprite) — so the Select tool's marquee/consume arms
         // yield it. Only empty canvas begins a marquee.
         let on_vector_shape = self.cursor_on_vector_shape(evt.x, evt.y);
+        // Fill (Bucket) ColorDrop: a Primary Down on the Fill rail button arms the drag-to-canvas gesture
+        // + activates Fill. Self-gates on the hit id; the normal Up-click still selects the tool when the
+        // press is released ON the button, and is suppressed when it drags off (release outside the rect).
+        if matches!(mapped_button, ph2d_host::PointerButton::Primary)
+            && matches!(kind, PointerKind::Down)
+        {
+            self.arm_fill_drag_if_on_button(evt.x, evt.y);
+        }
         match (mapped_button, kind) {
             (ph2d_host::PointerButton::Secondary, PointerKind::Down)
                 if self.try_eyedropper_delete(evt.x, evt.y) =>
@@ -603,6 +617,9 @@ impl App {
                 self.painter_falloff_release();
                 // Close an open painter brush stroke (no-op when not painting).
                 self.painter_canvas_up();
+                // Finish a Fill ColorDrop drag (fill on the canvas, or open the picker for a plain click
+                // on the Fill button). No-op when no fill drag is armed.
+                self.fill_drag_up();
                 // Close a Pen click-drag handle window (logs the pulled
                 // tangent). No-op when the Pen isn't mid-click-drag.
                 self.try_vector_pen_pointer_up();

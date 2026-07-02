@@ -359,6 +359,52 @@ fn dirty_rect_matches_full_recompose() {
 }
 
 #[test]
+fn dirty_rect_matches_full_with_a_mask() {
+    // Audit: the flat + group parity tests don't exercise a MASK, yet the Photoshop-mask workflow paints
+    // an active mask through the dirty-rect fast lane. A masked top layer must crop bit-for-bit too — a
+    // varying grayscale mask (partial-visibility gradient) recomposited in a sub-rect equals the full crop.
+    let (w, h) = (4, 4);
+    let mut s = LayerStack::new();
+    let bottom = s.add_raster("bottom", w, h).unwrap();
+    let top = s.add_raster("top", w, h).unwrap();
+    let mask = s.add_mask(top).unwrap();
+    let mut src = MapPixelSource::default();
+    let mut b = LayerImage::transparent(w, h);
+    let mut t = LayerImage::transparent(w, h);
+    let mut m = LayerImage::transparent(w, h);
+    for i in 0..(w * h) as usize {
+        b.rgba8[i * 4..i * 4 + 4].copy_from_slice(&[(i * 11 % 256) as u8, 40, 40, 255]);
+        t.rgba8[i * 4..i * 4 + 4].copy_from_slice(&[200, (i * 7 % 256) as u8, 0, 255]);
+        let g = (i * 37 % 256) as u8; // a varying grayscale mask
+        m.rgba8[i * 4..i * 4 + 4].copy_from_slice(&[g, g, g, 255]);
+    }
+    src.insert(bottom, b);
+    src.insert(top, t);
+    src.insert(mask, m);
+    let full = composite(&s, &src, w, h);
+    let region = Region {
+        x: 1,
+        y: 1,
+        w: 2,
+        h: 2,
+    };
+    let part = composite_region(&s, &src, w, h, region);
+    for ly in 0..region.h {
+        for lx in 0..region.w {
+            let gx = region.x + lx;
+            let gy = region.y + ly;
+            let fi = ((gy * w + gx) * 4) as usize;
+            let pi = ((ly * region.w + lx) * 4) as usize;
+            assert_eq!(
+                &full[fi..fi + 4],
+                &part[pi..pi + 4],
+                "masked dirty-rect pixel ({gx},{gy}) diverged from full recompose"
+            );
+        }
+    }
+}
+
+#[test]
 fn dirty_rect_matches_full_with_group_and_blend() {
     // audit W3 F2: exercise the GROUP sub-window recursion in the dirty-rect
     // path (the flat-raster test above doesn't). A nested group with a

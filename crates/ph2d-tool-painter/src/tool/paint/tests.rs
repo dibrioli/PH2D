@@ -603,6 +603,129 @@ fn clear_then_repaint_makes_a_fresh_protection() {
     );
 }
 
+// ── Audit: layer-system mask via Apply (Photoshop-style visibility mask) ──────────────────────────
+
+#[test]
+fn apply_mask_is_one_undo_step_and_redoable() {
+    // Apply is a single structural undo step: undo removes the created Mask layer + restores the parent's
+    // full visibility (snapshot_model captures both layers AND images); redo re-creates it with its pixels.
+    use ph2d_editor_core::ids as core_ids;
+    use ph2d_editor_core::tool::{PanelEvent, Tool};
+    let mut t = white_canvas(16, 5.0);
+    let target = t.layers.active().unwrap();
+    let n_before = t.layers.all_ids().count();
+    t.handle_panel_event(PanelEvent::SelectOption(
+        core_ids::PAINTER_PAINT_MODE,
+        "mask".to_string(),
+    ));
+    t.on_canvas_pointer(cp([8.0, 8.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([8.0, 8.0], PointerPhase::Up));
+    t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_MASK_APPLY));
+    assert!(t.layers.get(target).and_then(|l| l.mask).is_some());
+    assert_eq!(t.layers.all_ids().count(), n_before + 1);
+    // Undo → the mask layer is gone and the parent is unmasked again.
+    assert!(t.can_undo());
+    assert!(t.undo_last());
+    assert!(
+        t.layers.get(target).and_then(|l| l.mask).is_none(),
+        "undo removed the layer mask"
+    );
+    assert_eq!(
+        t.layers.all_ids().count(),
+        n_before,
+        "the Mask layer is gone after undo"
+    );
+    // Redo → the mask is back and conceals the centre again.
+    assert!(t.redo_last());
+    assert!(
+        t.layers.get(target).and_then(|l| l.mask).is_some(),
+        "redo restored the layer mask"
+    );
+    let (buf, w, _h) = t.take_preview_arc().expect("a composite preview");
+    let i = ((8 * w + 8) * 4) as usize;
+    assert!(
+        buf[i + 3] < 128,
+        "redo restored the mask concealment, got a = {}",
+        buf[i + 3]
+    );
+}
+
+#[test]
+fn apply_copies_the_scratch_into_the_mask_faithfully() {
+    // Apply must copy the scratch coverage 1:1 into the layer mask — the mask pixel at a point equals the
+    // scratch coverage there (no re-threshold / re-colour). Verified at a protected centre + a clear corner.
+    use ph2d_editor_core::ids as core_ids;
+    use ph2d_editor_core::tool::{PanelEvent, Tool};
+    let mut t = white_canvas(16, 5.0);
+    let target = t.layers.active().unwrap();
+    t.handle_panel_event(PanelEvent::SelectOption(
+        core_ids::PAINTER_PAINT_MODE,
+        "mask".to_string(),
+    ));
+    t.on_canvas_pointer(cp([8.0, 8.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([8.0, 8.0], PointerPhase::Up));
+    let idx_c = (8 * 16 + 8) as usize;
+    let idx_corner = (16 + 1) as usize; // (1,1)
+    let sc_c = crate::compositor::mask_value(&t.paint.mask_scratch_rgba[..], idx_c);
+    let sc_corner = crate::compositor::mask_value(&t.paint.mask_scratch_rgba[..], idx_corner);
+    t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_MASK_APPLY));
+    let mask = t.layers.get(target).and_then(|l| l.mask).unwrap();
+    let img = t.images.get(&mask).expect("the mask pixels live in images");
+    assert!(
+        (crate::compositor::mask_value(&img.rgba8, idx_c) - sc_c).abs() < 0.004,
+        "mask centre coverage matches the scratch (faithful copy)"
+    );
+    assert!(
+        (crate::compositor::mask_value(&img.rgba8, idx_corner) - sc_corner).abs() < 0.004,
+        "mask corner coverage matches the scratch (faithful copy)"
+    );
+}
+
+#[test]
+fn apply_twice_merges_into_the_existing_mask() {
+    // The merge branch: once a layer has a mask, painting a NEW protection + Apply again multiplies the
+    // scratch INTO the existing mask (NO second Mask layer; the same mask id refines its coverage).
+    use ph2d_editor_core::ids as core_ids;
+    use ph2d_editor_core::tool::{PanelEvent, Tool};
+    let mut t = white_canvas(24, 5.0);
+    let target = t.layers.active().unwrap();
+    let n0 = t.layers.all_ids().count();
+    t.handle_panel_event(PanelEvent::SelectOption(
+        core_ids::PAINTER_PAINT_MODE,
+        "mask".to_string(),
+    ));
+    // First Apply: protect + apply at spot A.
+    t.on_canvas_pointer(cp([6.0, 6.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([6.0, 6.0], PointerPhase::Up));
+    t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_MASK_APPLY));
+    let mask = t.layers.get(target).and_then(|l| l.mask).unwrap();
+    assert_eq!(t.layers.all_ids().count(), n0 + 1);
+    // Second protection at spot B + Apply again → merge in place (no new layer, same mask id).
+    t.on_canvas_pointer(cp([18.0, 18.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([18.0, 18.0], PointerPhase::Up));
+    t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_MASK_APPLY));
+    assert_eq!(
+        t.layers.all_ids().count(),
+        n0 + 1,
+        "merge: no second Mask layer created"
+    );
+    assert_eq!(
+        t.layers.get(target).and_then(|l| l.mask),
+        Some(mask),
+        "the same mask id refined in place"
+    );
+    // Both spots A and B are hidden (black) in the merged mask.
+    let img = t.images.get(&mask).unwrap();
+    assert!(
+        crate::compositor::mask_value(&img.rgba8, (6 * 24 + 6) as usize) < 0.5,
+        "spot A stays hidden after the merge"
+    );
+    assert!(
+        crate::compositor::mask_value(&img.rgba8, (18 * 24 + 18) as usize) < 0.5,
+        "spot B is hidden after the merge"
+    );
+}
+
 #[test]
 fn erase_mask_sub_brush_removes_protection() {
     // Bug: the Erase sub-brush was broken (the stamp reads each dab's OWN colour, baked from the user's

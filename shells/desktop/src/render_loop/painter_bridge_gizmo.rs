@@ -5,6 +5,7 @@
 //! 2026-06-28). Pure draw; resolves the active theme's tokens (like `vector_selection_bridge`).
 
 use ph2d_tokens::{ColorToken, Theme};
+use ph2d_tool_painter::TransformGizmo;
 use ph2d_vector::{Affine, BezPath, Brush, Circle, Color, Fill, Point, RoundedRect, Scene, Stroke};
 
 /// How much darker than the Sprite gizmo the painter gizmos read (per-channel RGB scale; `1.0` = same).
@@ -87,6 +88,49 @@ pub(super) fn square_handle(scene: &mut Scene, p: Point, pal: &GizmoPalette) {
         None,
         &r,
     );
+}
+
+/// Draw a whole-shape **transform gizmo** (the Sprite-gizmo box + 9 handles) for a shape editor — shared
+/// by the Curve and Line overlays so they read IDENTICALLY. `affine` maps image px → screen; `cursor` is
+/// the screen cursor, used for the rotate-ring hover cue (corners flip to circles when hovering the band
+/// just outside them, matching the tool's hit-test). Drawn UNDER the shape's spine + dots by the caller.
+pub(super) fn draw_transform_gizmo(
+    scene: &mut Scene,
+    gz: &TransformGizmo,
+    affine: Affine,
+    theme: Theme,
+    cursor: (f32, f32),
+) {
+    let map = |p: [f32; 2]| affine * Point::new(f64::from(p[0]), f64::from(p[1]));
+    let pal = palette(theme);
+    let [mn, mx] = gz.bbox;
+    let box_pts = [map(mn), map([mx[0], mn[1]]), map(mx), map([mn[0], mx[1]])];
+    stroke_box(scene, &box_pts, &pal);
+    // Corners flip to circles on mouse-OVER the rotate ring (not only mid-drag) — the cue must match the
+    // tool's hit-test: the band just OUTSIDE a corner (farther from the centre than it). Image-px tol →
+    // screen via the affine's per-pixel scale.
+    let scale = {
+        let c = affine.as_coeffs();
+        (c[0] * c[0] + c[1] * c[1]).sqrt()
+    };
+    let cur = Point::new(f64::from(cursor.0), f64::from(cursor.1));
+    let center_sp = map(gz.handles[8]);
+    let inner = f64::from(gz.scale_tol_px) * scale;
+    let outer = f64::from(gz.rotate_tol_px) * scale;
+    let over_rotate = gz.handles[..4].iter().any(|&h| {
+        let sp = map(h);
+        let d = sp.distance(cur);
+        d > inner && d <= outer && cur.distance(center_sp) > sp.distance(center_sp)
+    });
+    let circle_corners = gz.rotating || over_rotate;
+    for (i, &h) in gz.handles.iter().enumerate() {
+        let p = map(h);
+        if circle_corners && i < 4 {
+            circle_handle(scene, p, &pal);
+        } else {
+            square_handle(scene, p, &pal);
+        }
+    }
 }
 
 /// A rotate-cue handle — a circle (Accent fill + BorderEmph 1 px outline), same radius as the square.

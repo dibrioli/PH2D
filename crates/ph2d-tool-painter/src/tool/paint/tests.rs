@@ -6083,3 +6083,49 @@ fn line_finish_points_ends_creation_as_one_undo_step() {
         "undo re-entered the drawing phase"
     );
 }
+
+#[test]
+fn line_transform_gizmo_absent_while_drawing_present_when_editing() {
+    // The whole-line transform gizmo is editing-phase chrome only (drawing is still placing points).
+    let mut t = line_tool();
+    click(&mut t, 16.0, 16.0);
+    click(&mut t, 48.0, 16.0);
+    assert!(
+        t.line_overlay().unwrap().transform_gizmo.is_none(),
+        "no gizmo while drawing"
+    );
+    assert!(t.line_finish_points());
+    assert!(
+        t.line_overlay().unwrap().transform_gizmo.is_some(),
+        "the gizmo appears once creation ends"
+    );
+}
+
+#[test]
+fn line_transform_gizmo_moves_the_whole_line() {
+    // Grabbing the gizmo CENTRE handle (the inflated bbox centre) translates every corner as one. For the
+    // horizontal line (16,16)→(48,16) with tol 8 the centre handle sits at (32,16). Drag it by (+10,+10).
+    let mut t = line_tool();
+    click(&mut t, 16.0, 16.0);
+    click(&mut t, 48.0, 16.0);
+    assert!(t.line_finish_points(), "end creation → editing");
+    t.on_canvas_pointer(cp([32.0, 16.0], PointerPhase::Down)); // centre handle (not a corner point)
+    t.on_canvas_pointer(cp([42.0, 26.0], PointerPhase::Move));
+    t.on_canvas_pointer(cp([42.0, 26.0], PointerPhase::Up));
+    let ov = t.line_overlay().unwrap();
+    assert_eq!(
+        ov.points[0],
+        [26.0, 26.0],
+        "corner 0 translated with the line"
+    );
+    assert_eq!(
+        ov.points[1],
+        [58.0, 26.0],
+        "corner 1 translated with the line"
+    );
+    // One undo step reverts the whole-line transform.
+    assert!(t.undo_last());
+    let ov = t.line_overlay().unwrap();
+    assert_eq!(ov.points[0], [16.0, 16.0], "undo reverted the transform");
+    assert_eq!(ov.points[1], [48.0, 16.0]);
+}

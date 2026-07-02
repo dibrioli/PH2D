@@ -41,7 +41,15 @@ pub(super) fn draw_overlays(
         cursor,
     );
     draw_ellipse_overlay(painter, hero, sim, camera, window_size, vector_scene);
-    draw_line_overlay(painter, hero, sim, camera, window_size, vector_scene);
+    draw_line_overlay(
+        painter,
+        hero,
+        sim,
+        camera,
+        window_size,
+        vector_scene,
+        cursor,
+    );
     draw_polygon_overlay(painter, hero, sim, camera, window_size, vector_scene);
     draw_stencil_overlay(
         painter,
@@ -381,8 +389,10 @@ fn draw_ellipse_overlay(
 }
 
 /// The **Line** polyline editor overlay: the segments through the committed corner points (closing the
-/// loop when closed) + a white dot at each corner, the SELECTED corner emphasised. (Per-corner
-/// Fillet/Chamfer gizmos + the finish transform gizmo are layered on in later increments.)
+/// loop when closed) + a white dot at each corner, the SELECTED corner emphasised, and — once creation has
+/// ended (editing phase) — the whole-line **transform gizmo** (identical to the Curve gizmo). (Per-corner
+/// Fillet/Chamfer gizmos are layered on in the next increment.)
+#[allow(clippy::too_many_arguments)]
 fn draw_line_overlay(
     painter: &PainterTool,
     hero: &HeroScreen,
@@ -390,6 +400,7 @@ fn draw_line_overlay(
     camera: &Camera2d,
     window_size: WindowSize,
     vector_scene: &mut VectorScene,
+    cursor: (f32, f32),
 ) {
     if let Some(bits) = hero.gizmo.selection
         && let Some(overlay) = painter.line_overlay()
@@ -414,6 +425,13 @@ fn draw_line_overlay(
             use ph2d_vector::{Affine, BezPath, Brush, Circle, Color, Fill, Point, Stroke};
             let map = |p: [f32; 2]| affine * Point::new(f64::from(p[0]), f64::from(p[1]));
             let scene = vector_scene.inner_mut();
+            // Transform gizmo (editing phase) — drawn FIRST (under the segments + dots) so the editing
+            // geometry stays visually dominant. Identical to the Curve gizmo (shared helper).
+            if let Some(gz) = overlay.transform_gizmo.as_ref() {
+                super::painter_bridge_gizmo::draw_transform_gizmo(
+                    scene, gz, affine, hero.theme, cursor,
+                );
+            }
             let guide = Color::new([0.55, 0.72, 1.0, 0.85]); // LITERAL-COLOR-OK: line guide
             // Segments through the committed corner points.
             let pts = &overlay.points;

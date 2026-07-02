@@ -3,8 +3,8 @@
 //! NO handles. A submodule of [`super`] (`paint`), sharing `PaintState`'s private access + the canvas
 //! save/restore/stamp helpers, like [`super::ellipse`].
 //!
-//! ## Interaction (point creation + editing; the finish transform gizmo + per-corner Fillet/Chamfer are
-//! layered on next)
+//! ## Interaction (point creation + editing + the whole-line transform gizmo; per-corner Fillet/Chamfer
+//! are layered on next)
 //!
 //! Every gesture is ONE pointer press. There is no rubber-band between clicks: the shell only feeds Move
 //! events while the button is held, so a point is *placed on Down* and the *same held drag* nudges it.
@@ -15,13 +15,15 @@
 //! 2. **Move** — press ON an existing point and drag it past a small slop. A press that does NOT drag is a
 //!    TAP: on the FIRST point (≥3) it CLOSES the loop, on the LAST it ENDS creation, on an interior one it
 //!    just selects.
-//! 3. **Edit** — the session persists after creation ends: corner points stay draggable.
+//! 3. **Edit** — the session persists after creation ends: corner points stay draggable, and a whole-line
+//!    transform gizmo (bbox move / scale / rotate, identical to the Curve gizmo) frames the polyline.
 //! 4. **Commit / cancel** — Enter/Apply bakes the polyline (one undo step); Apply & Keep bakes + keeps the
 //!    editor open; Esc discards. Same flow as the other shapes.
 //!
 //! Transcendental-free (HR-5): only straight-segment fills + squared-distance hit-tests + the 15° snap's
 //! precomputed unit-direction table.
 
+use super::curve_gizmo::{self, TransformGizmo};
 use super::*;
 use ph2d_painter_brush::Stroke;
 
@@ -46,6 +48,10 @@ pub(super) struct LineEditor {
     grab_moved: bool,
     /// The pointer position at grab-down — the origin the slop is measured from.
     grab_origin: [f32; 2],
+    /// The **whole-line transform** drag (bbox gizmo: move / scale / rotate), live only in the editing
+    /// phase, Down→Up. Beats a point grab is N/A — a point grab wins the hit-test first; this is for a press
+    /// on a gizmo handle in empty space. Reuses the Curve editor's gizmo (identical appearance + maths).
+    gizmo: Option<curve_gizmo::GizmoGrab>,
     /// The highlighted point (last clicked/dragged), shown selected in the overlay; transient (not undone).
     selected: Option<usize>,
     seed: u64,
@@ -62,6 +68,9 @@ pub struct LineOverlay {
     pub editing: bool,
     /// The highlighted (selected) corner index — the shell draws it emphasised. `None` = no selection.
     pub selected: Option<usize>,
+    /// The whole-line **transform gizmo** (bbox move / scale / rotate) once creation has ended — `None`
+    /// while still drawing, or when the line is too small to frame. Drawn like the Curve gizmo (identical).
+    pub transform_gizmo: Option<TransformGizmo>,
 }
 
 impl PainterTool {
@@ -117,6 +126,7 @@ impl PainterTool {
                 grab_created: true,
                 grab_moved: false,
                 grab_origin: pos,
+                gizmo: None,
                 selected: Some(0),
                 seed,
             });
@@ -140,7 +150,20 @@ impl PainterTool {
             return true;
         }
         if editing {
-            return true; // editing phase: empty space adds nothing (points are done)
+            // Editing phase, off every point: a transform-gizmo handle grabs the whole line (move / scale /
+            // rotate); anywhere else does nothing (points are done — none are created here).
+            let grab = self
+                .paint
+                .line
+                .as_ref()
+                .and_then(|ed| curve_gizmo::grab(&ed.points, &[], pos, tol));
+            if let Some(g) = grab {
+                self.begin_shape_txn();
+                if let Some(ed) = self.paint.line.as_mut() {
+                    ed.gizmo = Some(g);
+                }
+            }
+            return true;
         }
         // Empty space while drawing → create a new point AND grab it (drag adjusts it). Shift snaps the new
         // segment to 15° at creation AND during the drag; `grab_origin` stays the RAW cursor for the slop.
@@ -170,6 +193,21 @@ impl PainterTool {
     /// pixel (so you can set the angle live); an existing point only starts moving past the slop, so a
     /// jittery tap doesn't nudge it. Shift snaps the new segment to 15°.
     fn line_move(&mut self, pos: [f32; 2]) -> bool {
+        // Whole-line transform gizmo takes priority (editing phase): re-map the grab snapshot every move.
+        if self
+            .paint
+            .line
+            .as_ref()
+            .is_some_and(|ed| ed.gizmo.is_some())
+        {
+            if let Some(ed) = self.paint.line.as_mut() {
+                let (p, _handles) =
+                    curve_gizmo::apply(ed.gizmo.as_ref().expect("gizmo present"), pos);
+                ed.points = p;
+            }
+            self.line_refill();
+            return true;
+        }
         let (grabbed, created, origin) = match self.paint.line.as_ref() {
             Some(ed) => (ed.grabbed, ed.grab_created, ed.grab_origin),
             None => return false,
@@ -200,6 +238,19 @@ impl PainterTool {
     /// first point (≥3) → CLOSE; on the last → END creation; on an interior point → just select (no undo
     /// step). In the editing phase a tap is a plain select.
     fn line_up(&mut self) -> bool {
+        // Release a whole-line transform gizmo drag → record it (self-drops if the geometry is unchanged).
+        if self
+            .paint
+            .line
+            .as_ref()
+            .is_some_and(|ed| ed.gizmo.is_some())
+        {
+            if let Some(ed) = self.paint.line.as_mut() {
+                ed.gizmo = None;
+            }
+            self.commit_shape_txn();
+            return true;
+        }
         let (grabbed, created, moved, editing, n) = match self.paint.line.as_ref() {
             Some(ed) => (
                 ed.grabbed,
@@ -341,11 +392,23 @@ impl PainterTool {
     #[must_use]
     pub fn line_overlay(&self) -> Option<LineOverlay> {
         let ed = self.paint.line.as_ref()?;
+        // The whole-line transform gizmo is editing-phase chrome (the drawing phase is still placing
+        // points). `grabbed` / `rotating` come from the live drag so the shell can highlight + re-style.
+        let transform_gizmo = if ed.editing {
+            let (grabbed, rotating) = match &ed.gizmo {
+                Some(g) => (Some(g.handle), curve_gizmo::is_rotate(g)),
+                None => (None, false),
+            };
+            curve_gizmo::overlay(&ed.points, self.paint.shape_grab_tol_px, grabbed, rotating)
+        } else {
+            None
+        };
         Some(LineOverlay {
             points: ed.points.clone(),
             closed: ed.closed,
             editing: ed.editing,
             selected: ed.selected,
+            transform_gizmo,
         })
     }
 
@@ -417,6 +480,7 @@ impl LineEditor {
             grab_created: false,
             grab_moved: false,
             grab_origin: [0.0, 0.0],
+            gizmo: None,
             selected: None,
             seed: s.seed,
         }

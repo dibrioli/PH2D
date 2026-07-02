@@ -64,6 +64,46 @@ pub(super) fn draw_overlays(
     super::painter_bridge_fill_overlay::draw_fill_cursor(hero, vector_scene, cursor);
 }
 
+/// Sync the painter's shape-editor grab tolerance to the LIVE camera, once per frame BEFORE the overlays
+/// are generated. `shape_grab_tol_px` is otherwise refreshed only on a painter Down/Move/Up (never on a
+/// zoom or a plain hover), so after zooming a finished shape the overlay draws its on-canvas handles
+/// (Line Fillet/Chamfer, Curve, Stencil…) at the stale scale and the first grab snaps them to the new
+/// one. Keeping it current every frame removes that snap. No-op without a selected sprite; the value
+/// matches what the pointer path computes, so it never fights the on-Down refresh.
+pub(super) fn refresh_shape_grab_tol(
+    painter: &mut PainterTool,
+    hero: &HeroScreen,
+    sim: &SimWorld,
+    camera: &Camera2d,
+    window_size: WindowSize,
+) {
+    let Some(bits) = hero.gizmo.selection else {
+        return;
+    };
+    let (iw, ih) = painter.canvas_size();
+    if iw == 0 || ih == 0 {
+        return;
+    }
+    let entity = ph2d_ecs::Entity::from_bits(bits);
+    let (Some(tr), Some(sprite)) = (
+        sim.world().get::<crate::Transform>(entity),
+        sim.world().get::<ph2d_render::Sprite>(entity),
+    ) else {
+        return;
+    };
+    let affine = super::bgremoval_preview::sprite_image_to_screen_affine(
+        iw,
+        ih,
+        tr,
+        sprite,
+        camera,
+        window_size,
+    );
+    painter.set_shape_grab_tol_px(
+        crate::input_dispatch::painter_canvas_input::shape_grab_tol_from_affine(&affine),
+    );
+}
+
 /// Discrete **symmetry** guides: a dashed mirror line (X / Y / custom) or N dashed radial spokes from
 /// the centre, so the artist sees where strokes will be replicated. No-op unless symmetry is enabled
 /// and a sprite is selected. Pure draw, like the rest of this module; mirrors the brush-ring affine so

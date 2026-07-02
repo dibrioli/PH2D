@@ -7,8 +7,11 @@
 
 /// How far along its edge (× the grab tolerance) each handle sits from the vertex — clamped to a fraction
 /// of the edge so a short segment keeps its handle on-line. Both handles ride ON the polyline now (the
-/// Fillet before the vertex, the Chamfer after it).
-const HANDLE_DIST: f32 = 2.6;
+/// Fillet before the vertex, the Chamfer after it). `1.5` ⇒ ~15 screen px from the quina: hugging the
+/// corner (Enio 2026-07-02) yet still clear of the vertex's own grab zone (`1·tol`), so the point stays
+/// grabbable. The grab tolerance is kept in sync with the live camera each frame (shell
+/// `refresh_shape_grab_tol`), so this drawn distance never snaps on the first grab after a zoom.
+const HANDLE_DIST: f32 = 1.5;
 /// Cap on how far from the vertex a handle may sit, as a fraction of that adjacent edge.
 const HANDLE_EDGE_FRAC: f32 = 0.4;
 /// Drag → amount sensitivity: `amount += (dx − dy)·SENS`, so a right/up drag grows the mod, left/down

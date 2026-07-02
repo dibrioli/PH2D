@@ -365,6 +365,16 @@ pub(super) fn dispatch(
             }
         }
 
+        // Keep the shape-editor grab tolerance in sync with the live camera every frame (not just on a
+        // painter Down/Move/Up), so the on-canvas handles are drawn where they'll be grabbed — no snap
+        // when the first grab after a zoom refreshes the tol.
+        super::painter_bridge_overlays::refresh_shape_grab_tol(
+            painter,
+            hero,
+            sim,
+            camera,
+            window_size,
+        );
         super::painter_bridge_overlays::draw_overlays(
             painter,
             hero,

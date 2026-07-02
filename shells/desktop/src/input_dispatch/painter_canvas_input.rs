@@ -25,7 +25,20 @@ use crate::Transform;
 /// Shape-editor (Curve/Circle) control-handle grab radius in SCREEN px — scaled to image px by the
 /// sprite footprint before it's forwarded to the tool, so the hit target stays a constant on-screen
 /// size at any zoom.
-const SHAPE_GRAB_TOL_SCREEN_PX: f32 = 10.0;
+pub(crate) const SHAPE_GRAB_TOL_SCREEN_PX: f32 = 10.0;
+
+/// The shape-editor grab tolerance in IMAGE px for a given image→screen `affine`: the constant screen
+/// tolerance ÷ the affine's per-image-pixel screen scale (`|linear column 0|`), so the hit target — and
+/// the on-canvas handles drawn at a multiple of it — stay a constant on-screen size at any zoom/rotation.
+pub(crate) fn shape_grab_tol_from_affine(affine: &ph2d_vector::Affine) -> f32 {
+    let c = affine.as_coeffs();
+    let pixel_scale = ((c[0] * c[0] + c[1] * c[1]) as f32).sqrt();
+    if pixel_scale > 0.0 {
+        SHAPE_GRAB_TOL_SCREEN_PX / pixel_scale
+    } else {
+        SHAPE_GRAB_TOL_SCREEN_PX
+    }
+}
 
 thread_local! {
     /// `true` between a consumed painter Down and the matching Up — so CursorMoved
@@ -223,13 +236,7 @@ impl App {
             window_size,
         );
         let img = affine.inverse() * ph2d_vector::Point::new(f64::from(px), f64::from(py));
-        let c = affine.as_coeffs();
-        let pixel_scale = (c[0] * c[0] + c[1] * c[1]).sqrt() as f32;
-        let tol = if pixel_scale > 0.0 {
-            SHAPE_GRAB_TOL_SCREEN_PX / pixel_scale
-        } else {
-            SHAPE_GRAB_TOL_SCREEN_PX
-        };
+        let tol = shape_grab_tol_from_affine(&affine);
         if !painter.curve_select_point_at([img.x as f32, img.y as f32], tol) {
             return false; // off a control point — fall through (pan / other secondary-click handlers)
         }
@@ -467,17 +474,11 @@ impl App {
             tilt: [0.0, 0.0],
             phase,
         };
-        // Control-handle grab radius for the shape editors + Stencil handles: screen tolerance ÷ the
-        // affine's per-image-pixel screen scale (|linear column 0|), so it stays a constant on-screen
-        // size at any zoom / rotation. Out-of-band, like `set_line_constrain`.
-        let c = affine.as_coeffs();
-        let pixel_scale = (c[0] * c[0] + c[1] * c[1]).sqrt() as f32;
-        let grab_tol_img = if pixel_scale > 0.0 {
-            SHAPE_GRAB_TOL_SCREEN_PX / pixel_scale
-        } else {
-            SHAPE_GRAB_TOL_SCREEN_PX
-        };
-        painter.set_shape_grab_tol_px(grab_tol_img);
+        // Control-handle grab radius for the shape editors + Stencil handles, a constant on-screen size at
+        // any zoom/rotation. Out-of-band, like `set_line_constrain`. (Also refreshed once per frame in
+        // `render_loop::painter_bridge_overlays::refresh_shape_grab_tol`, so a zoom with no pointer event
+        // doesn't leave the drawn handles stale.)
+        painter.set_shape_grab_tol_px(shape_grab_tol_from_affine(&affine));
         painter.set_line_constrain(alt);
         painter.set_uniform_scale(self.modifiers.shift_key()); // Shift = uniform Stencil scale (Sprite gizmo)
         painter.set_line_snap(self.modifiers.shift_key()); // Shift = 15° direction snap in the Line polyline editor
@@ -546,5 +547,33 @@ impl App {
             return false;
         };
         painter.curve_delete_selected()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{SHAPE_GRAB_TOL_SCREEN_PX, shape_grab_tol_from_affine};
+    use ph2d_vector::Affine;
+
+    #[test]
+    fn grab_tol_scales_inversely_with_zoom() {
+        // The image-space grab tolerance = a constant SCREEN radius ÷ the image→screen scale, so it holds
+        // a constant on-screen size. This is what keeps the on-canvas handles (drawn at HANDLE_DIST·tol)
+        // at a fixed screen distance — and refreshing it every frame is what removes the first-grab snap.
+        let tol = |s: f64| shape_grab_tol_from_affine(&Affine::scale(s));
+        assert!(
+            (tol(1.0) - SHAPE_GRAB_TOL_SCREEN_PX).abs() < 1e-4,
+            "1× → screen radius in image px"
+        );
+        assert!(
+            (tol(2.0) - SHAPE_GRAB_TOL_SCREEN_PX / 2.0).abs() < 1e-4,
+            "zoom 2× → half the image px"
+        );
+        assert!(
+            (tol(0.5) - SHAPE_GRAB_TOL_SCREEN_PX * 2.0).abs() < 1e-4,
+            "zoom 0.5× → twice the image px"
+        );
+        // A degenerate (zero) scale falls back to the screen constant — never NaN / infinity.
+        assert_eq!(tol(0.0), SHAPE_GRAB_TOL_SCREEN_PX);
     }
 }

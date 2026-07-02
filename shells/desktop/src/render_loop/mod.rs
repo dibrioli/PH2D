@@ -36,9 +36,15 @@ pub(crate) mod painter_bridge_assets;
 pub(crate) mod painter_bridge_curve_overlay;
 /// Shared Sprite-style gizmo painting for the Curve + Stencil transform gizmos (theme tokens, darker).
 pub(crate) mod painter_bridge_gizmo;
+/// The Line polyline editor overlay (segments + corner dots + transform gizmo + Fillet/Chamfer handles),
+/// split from `painter_bridge_overlays` for the HR-18 file-LOC cap.
+pub(crate) mod painter_bridge_line_overlay;
 /// On-canvas editing chrome (brush ring + Curve/Circle/Polygon/Stencil overlays), split from
 /// `painter_bridge` for the HR-18 file-LOC cap.
 pub(crate) mod painter_bridge_overlays;
+/// Live GPU preview of a brush Shape-source sprite (when not selected), split from `painter_bridge` for
+/// the HR-18 file-LOC cap.
+pub(crate) mod painter_bridge_shape_preview;
 // `pub(crate)`: `apply_layer_reparent` is called from `input_dispatch` (outside
 // render_loop) to route the W3.T3.8 layer drag-reparent through the allowlisted
 // bridge-queries module instead of downcasting in central dispatch.
@@ -1216,7 +1222,7 @@ impl crate::App {
             );
             // Live-preview a non-selected sprite used as the brush Shape (so its opacity/blend remote-
             // control edits show in real time), into a SECOND preview slot/override.
-            painter_bridge::drive_shape_source_preview(
+            painter_bridge_shape_preview::drive_shape_source_preview(
                 tools,
                 renderer,
                 &mut self.painter_shape_source_preview_gpu,

@@ -37,7 +37,7 @@ impl PainterTool {
 
     /// Apply a stroke-method command from the frozen `PAINTER_BRUSH_STROKE_METHOD` channel: the sentinel
     /// `"brush"` (rail Brush button / any non-Shapes tool) restores the last non-shape method; otherwise
-    /// the value is a wire discriminant (the Method dropdown or a rail shape pick). Unparseable → ignored.
+    /// the value is a wire discriminant (the Method dropdown or a rail shape pick). Unparsable → ignored.
     pub fn apply_stroke_method_command(&mut self, value: &str) {
         if value == "brush" {
             self.restore_non_shape_stroke_method();

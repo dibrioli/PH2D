@@ -55,6 +55,8 @@ mod line_corner;
 pub use line_corner::LineCornerGizmo;
 /// Line editor commit / cancel / finish paths (split from `line` for the LOC cap).
 mod line_commit;
+/// Perpendicular Offset (parallel-polyline) geometry for the Line editor (split from `line` for the cap).
+mod line_offset;
 /// The Polygon stroke method's on-canvas regular-N-gon editor (same submodule rationale).
 mod polygon;
 pub use polygon::PolygonOverlay;

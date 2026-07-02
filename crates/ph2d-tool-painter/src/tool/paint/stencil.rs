@@ -302,12 +302,13 @@ impl PainterTool {
         }
     }
 
-    /// Re-fill the open shape editor's painted preview (Curve / Free Hand / Ellipse / Polygon) with the
-    /// current brush — each refill no-ops unless its editor is open + editing, so at most one runs.
+    /// Re-fill the open shape editor's painted preview (Curve / Free Hand / Ellipse / Polygon / Line) with
+    /// the current brush — each refill no-ops unless its editor is open + editing, so at most one runs.
     pub(crate) fn refill_open_shape(&mut self) {
         self.curve_refill();
         self.ellipse_refill();
         self.polygon_refill();
+        self.line_refill();
     }
 
     /// Re-fill the open shape editor IFF its appearance changed since `before` — so a size / spacing /

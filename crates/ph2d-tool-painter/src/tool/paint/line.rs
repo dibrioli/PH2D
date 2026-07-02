@@ -25,6 +25,7 @@
 
 use super::curve_gizmo::{self, TransformGizmo};
 use super::line_corner::{self, CornerMod, LineCornerGizmo};
+use super::line_offset;
 use super::*;
 use ph2d_painter_brush::Stroke;
 
@@ -413,7 +414,9 @@ impl PainterTool {
     /// identical params). `< 2` path points paints nothing (a lone first point) — the on-canvas overlay
     /// still shows its dot.
     pub(super) fn line_refill(&mut self) {
-        let (path, seed) = {
+        let off = self.shape_offset_px();
+        let trim = self.paint.offset_trim;
+        let (mut path, closed, seed) = {
             let Some(ed) = self.paint.line.as_ref() else {
                 return;
             };
@@ -424,8 +427,18 @@ impl PainterTool {
                 &ed.corner_mods,
                 self.paint.shape_grab_tol_px,
             );
-            (path, ed.seed)
+            (path, ed.closed, ed.seed)
         };
+        // Perpendicular Offset (parallel polyline), then optionally Trim its self-intersections — same
+        // Offset-card affordance + Trim checkbox the other shapes use (real-time via `refill_open_shape`).
+        path = line_offset::offset_polyline(&path, closed, off);
+        if trim && off != 0.0 {
+            path = if closed {
+                super::curve_trim::trim_self_intersections_closed(&path)
+            } else {
+                super::curve_trim::trim_self_intersections(&path)
+            };
+        }
         if path.len() < 2 {
             return;
         }

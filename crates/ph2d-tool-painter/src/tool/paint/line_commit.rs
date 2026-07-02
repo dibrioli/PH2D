@@ -53,6 +53,9 @@ impl PainterTool {
         self.line_enter_edit_phase();
         self.flush_shape_txn();
         let before = self.capture_shape_model();
+        // Apply & Keep folds the live Offset slider into the accumulator + re-centres it (geometry untouched,
+        // like the other shapes) so the baked line stays put but the slider can keep offsetting.
+        self.accumulate_offset();
         self.commit_drag_preview();
         let after = self.capture_shape_model();
         self.undo.record_structural(before, after);

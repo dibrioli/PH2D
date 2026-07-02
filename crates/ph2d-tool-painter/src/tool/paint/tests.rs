@@ -6187,3 +6187,41 @@ fn line_fillet_persists_through_undo_redo_snapshot() {
         "redo reinstated the fillet from the snapshot"
     );
 }
+
+#[test]
+fn line_offset_slider_shifts_the_open_line_in_real_time() {
+    use ph2d_editor_core::ids as core_ids;
+    use ph2d_editor_core::tool::{PanelEvent, Tool};
+    use ph2d_painter_brush::StrokeMethod;
+    // The Offset slider shifts the whole Line perpendicular (parallel polyline); changing it must re-fill
+    // the open Line live (via refill_open_shape / appearance_sig). Draw a horizontal line along y=32, then
+    // nudge Offset to 0.6 (+20px, perpendicular = up) and assert the stroke LEFT y=32 and now paints ~y=12.
+    let mut t = white_canvas(64, 2.0);
+    t.paint.brush.stroke_method = StrokeMethod::Line;
+    t.set_shape_grab_tol_px(8.0);
+    t.on_canvas_pointer(cp([8.0, 32.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([8.0, 32.0], PointerPhase::Up));
+    t.on_canvas_pointer(cp([56.0, 32.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([56.0, 32.0], PointerPhase::Up)); // a horizontal line along y=32
+    assert!(
+        px(&t, 64, 32, 32)[0] < 200,
+        "the line painted on y=32 at zero offset"
+    );
+    assert_eq!(
+        px(&t, 64, 32, 12),
+        [255, 255, 255, 255],
+        "y=12 is white before offset"
+    );
+    t.handle_panel_event(PanelEvent::SetValue(core_ids::PAINTER_BRUSH_OFFSET, 0.6));
+    assert_eq!(
+        px(&t, 64, 32, 32),
+        [255, 255, 255, 255],
+        "the stroke left the original y=32 line (restored white): {:?}",
+        px(&t, 64, 32, 32)
+    );
+    assert!(
+        px(&t, 64, 32, 12)[0] < 200,
+        "the offset line now paints ~20px up at y=12: {:?}",
+        px(&t, 64, 32, 12)
+    );
+}

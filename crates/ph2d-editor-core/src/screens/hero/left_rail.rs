@@ -86,8 +86,8 @@ const PAINTER_SHAPES: [(NodeId, &str, IconId, &str); 5] = [
 ];
 
 /// Register every LeftRail widget (both faces) into the [`WidgetStore`].
-/// Translate is the default-pressed object tool; Brush + Free Hand are the
-/// default-pressed painter selections. The painter ids are always registered
+/// Translate is the default-pressed object tool; Brush is the default-pressed
+/// painter tool (the Shapes sub-radio starts with none pressed). The painter ids are always registered
 /// (even in object mode) so the wiring-parity gate + the radio dispatch find
 /// them; they are only painted/hit while the Painter tool is active.
 pub fn populate(store: &mut WidgetStore) {

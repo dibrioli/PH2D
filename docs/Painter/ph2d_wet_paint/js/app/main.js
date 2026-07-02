@@ -20,6 +20,8 @@ import { createView } from './view.js';
 import { buildLeftPanel, setTool, setSlider, refreshLayers } from './ui-left.js';
 import { buildTuningPanel } from './ui-tuning.js';
 import { applyStatic } from './i18n.js';
+import { CHROME_DOCS } from './chromedocs.js';
+import { attachRichTooltip } from './tooltip.js';
 
 const app = {
   engine: createEngine(),
@@ -145,6 +147,21 @@ document.getElementById('btn-lang').addEventListener('click', () => {
   if (app.redrawTilt) app.redrawTilt();
   document.getElementById('btn-lang').textContent = app.lang === 'en' ? 'EN/PT' : 'PT/EN';
 });
+
+// Rich PT-BR tooltips for every bottom-bar action (spec section 16,
+// "chrome documentation"), through the same floating system as the knobs.
+const BAR_TIPS = [
+  ['btn-undo', 'undo'], ['btn-redo', 'redo'],
+  ['btn-wet-canvas', 'wetCanvas'], ['btn-dry-canvas', 'dryCanvas'],
+  ['btn-fast-dry', 'fastDry'], ['btn-show-wet', 'showWet'],
+  ['btn-clear', 'clear'], ['btn-save', 'savePng'],
+  ['btn-toggle-tuning', 'toggleTuning'], ['btn-lang', 'lang'],
+];
+for (const [id, docKey] of BAR_TIPS) {
+  attachRichTooltip(document.getElementById(id), CHROME_DOCS[docKey]);
+}
+// The "paper" export checkbox: attach to its wrapping label.
+attachRichTooltip(document.getElementById('chk-paper').parentElement, CHROME_DOCS.withPaper);
 
 // ---------------------------------------------------------------------------
 // Export PNG (spec section 15): on-screen composite (with paper) or

@@ -47,13 +47,19 @@ function makeEl(id) {
         fn({ preventDefault: () => {}, stopPropagation: () => {}, target: el, pointerId: 1, ...ev });
       }
     },
-    appendChild(c) { el.children.push(c); return c; },
-    append(...cs) { el.children.push(...cs); },
+    appendChild(c) { el.children.push(c); c._parent = el; return c; },
+    append(...cs) { for (const c of cs) { el.children.push(c); c._parent = el; } },
     setPointerCapture: () => {},
     releasePointerCapture: () => {},
+    removeAttribute: () => {},
+    setAttribute: () => {},
     matches: () => false,
+    offsetWidth: 200, offsetHeight: 100,
     click() { el.dispatch('click', { button: 0 }); },
   };
+  Object.defineProperty(el, 'parentElement', {
+    get() { return el._parent ?? (el._parent = makeEl(`${id}-parent`)); },
+  });
   return el;
 }
 
@@ -110,6 +116,12 @@ try {
   for (const id of ['btn-wet-canvas', 'btn-fast-dry', 'btn-show-wet', 'btn-dry-canvas',
     'btn-undo', 'btn-redo', 'btn-clear', 'btn-toggle-tuning', 'btn-lang']) {
     doc.getElementById(id).dispatch('click', { button: 0 });
+  }
+  // Rich tooltips: hover a few wired controls (renders + positions the tip).
+  for (const id of ['btn-undo', 'btn-save', 'tilt-dial', 'color-wheel', 'layer-add']) {
+    const el = doc.getElementById(id);
+    el.dispatch('mouseenter', {});
+    el.dispatch('mouseleave', {});
   }
   for (let f = 0; f < 10 && rafQueue.length; f++) {
     const fn = rafQueue.shift();

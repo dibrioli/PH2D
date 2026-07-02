@@ -75,11 +75,13 @@ js/app/                    the only DOM-aware code
   ui-tuning.js             tuning panel (sliders + free numeric inputs + resets + tooltips),
                            experimental panel, panel resize
   i18n.js                  EN/PT chrome strings
+  tooltip.js               shared floating rich-tooltip system (viewport-flipping placement)
   knobdocs.js              PT-BR knob tooltips with subsystem correlation letters
+  chromedocs.js            PT-BR rich tooltips for every chrome control (left panel + bottom bar)
 test/
   smoke.mjs                spec §18 acceptance tests (1-12) + perf sanity (exit code 0 = green)
   shell-boot-check.mjs     auxiliary DOM-shim boot of the full shell
-  texture-calib.mjs        calibration probe (§7 deposit integral, §18.11 budget, §18.12 rim)
+  texture-calib.mjs        calibration reporter (§7 integral + uniformity, §18.11/12 at both radii)
   texture-sweep.mjs        seed/param search harness used to calibrate the bristle tile
 ```
 

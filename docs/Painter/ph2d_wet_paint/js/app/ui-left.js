@@ -4,6 +4,8 @@
 import { hsvToRgb, rgbToHsv } from '../engine/colorops.js';
 import { NAMED_PIGMENTS, TOOLS, addLayer, removeLayer, selectLayer, setPaper, markDirtyFull } from '../engine/painter.js';
 import { t } from './i18n.js';
+import { CHROME_DOCS } from './chromedocs.js';
+import { attachRichTooltip } from './tooltip.js';
 
 export function buildLeftPanel(app) {
   buildColorWheel(app);
@@ -96,14 +98,16 @@ function buildColorWheel(app) {
   for (const p of NAMED_PIGMENTS) {
     const el = document.createElement('div');
     el.className = 'pal-swatch';
-    el.title = p.name;
     el.style.background = `rgb(${p.rgb.join(',')})`;
     el.addEventListener('click', () => {
       [hue, sat, val] = rgbToHsv(...p.rgb); // palette picks move the wheel
       commit();
     });
+    attachRichTooltip(el, () => ({ ...CHROME_DOCS.palette, title: `${CHROME_DOCS.palette.title} — ${p.name}` }));
     pal.appendChild(el);
   }
+  attachRichTooltip(wheel, CHROME_DOCS.colorWheel);
+  attachRichTooltip(bar, CHROME_DOCS.brightBar);
   commit();
 }
 
@@ -127,16 +131,16 @@ function dragify(el, handler) {
 // ---------------------------------------------------------------------------
 
 const SLIDERS = [
-  ['size', 'brushSize', 0, 1],
-  ['pressure', 'pressure', 0, 1],
-  ['water', 'water', 0, 1],
-  ['erase', 'eraseStrength', 0, 1],
+  ['size', 'brushSize', 'sliderSize'],
+  ['pressure', 'pressure', 'sliderPressure'],
+  ['water', 'water', 'sliderWater'],
+  ['erase', 'eraseStrength', 'sliderErase'],
 ];
 
 function buildSliders(app) {
   const box = document.getElementById('slider-block');
   app.sliderEls = {};
-  for (const [key, label] of SLIDERS) {
+  for (const [key, label, docKey] of SLIDERS) {
     const row = document.createElement('div');
     row.className = 'ctl-slider';
     const lab = document.createElement('label');
@@ -155,6 +159,7 @@ function buildSliders(app) {
       valEl.textContent = Number(input.value).toFixed(2);
     });
     row.append(lab, input);
+    attachRichTooltip(row, CHROME_DOCS[docKey]); // the 4 sliders carry corr letters
     box.appendChild(row);
     app.sliderEls[key] = { input, valEl };
   }
@@ -170,6 +175,8 @@ export function setSlider(app, key, v) {
 // Shapes + wet/dry brush presets
 // ---------------------------------------------------------------------------
 
+const SHAPE_DOCS = { round: 'shapeRound', flat: 'shapeFlat', fan: 'shapeFan' };
+
 function buildShapes(app) {
   const row = document.getElementById('shape-row');
   const shapes = [['round', 'round'], ['flat', 'flat'], ['fan', 'fan']];
@@ -183,6 +190,7 @@ function buildShapes(app) {
       for (const c of row.children) c.classList.remove('on');
       b.classList.add('on');
     });
+    attachRichTooltip(b, CHROME_DOCS[SHAPE_DOCS[shape]]);
     row.appendChild(b);
   }
   const presets = document.getElementById('preset-row');
@@ -190,10 +198,12 @@ function buildShapes(app) {
   wet.dataset.i18n = 'wetBrush';
   wet.textContent = t(app.lang, 'wetBrush');
   wet.addEventListener('click', () => { setSlider(app, 'pressure', 0.35); setSlider(app, 'water', 0.85); });
+  attachRichTooltip(wet, CHROME_DOCS.presetWet);
   const dry = document.createElement('button');
   dry.dataset.i18n = 'dryBrush';
   dry.textContent = t(app.lang, 'dryBrush');
   dry.addEventListener('click', () => { setSlider(app, 'pressure', 0.85); setSlider(app, 'water', 0.2); });
+  attachRichTooltip(dry, CHROME_DOCS.presetDry);
   presets.append(wet, dry);
 }
 
@@ -210,6 +220,8 @@ function buildTools(app) {
     b.textContent = t(app.lang, tool);
     if (tool === app.engine.tool) b.classList.add('on');
     b.addEventListener('click', () => setTool(app, tool));
+    const docKey = 'tool' + tool[0].toUpperCase() + tool.slice(1);
+    attachRichTooltip(b, CHROME_DOCS[docKey]);
     row.appendChild(b);
     app.toolButtons[tool] = b;
   }
@@ -293,6 +305,8 @@ function buildTiltDial(app) {
     engine.sim.tiltOn = !engine.sim.tiltOn;
     draw();
   });
+  attachRichTooltip(toggle, CHROME_DOCS.tiltToggle);
+  attachRichTooltip(dial, CHROME_DOCS.tiltDial);
   syncSim();
   draw();
 }
@@ -301,11 +315,11 @@ function buildTiltDial(app) {
 // Paper presets (double-click on the canvas cycles the 4 sheet indices)
 // ---------------------------------------------------------------------------
 
-const PAPERS = [['cold', 'coldPress'], ['rough', 'rough'], ['hot', 'hotPress']];
+const PAPERS = [['cold', 'coldPress', 'paperCold'], ['rough', 'rough', 'paperRough'], ['hot', 'hotPress', 'paperHot']];
 
 function buildPaper(app) {
   const row = document.getElementById('paper-row');
-  for (const [preset, label] of PAPERS) {
+  for (const [preset, label, docKey] of PAPERS) {
     const b = document.createElement('button');
     b.dataset.i18n = label;
     b.textContent = t(app.lang, label);
@@ -315,6 +329,7 @@ function buildPaper(app) {
       for (const c of row.children) c.classList.remove('on');
       b.classList.add('on');
     });
+    attachRichTooltip(b, CHROME_DOCS[docKey]);
     row.appendChild(b);
   }
 }
@@ -325,12 +340,16 @@ function buildPaper(app) {
 
 function buildLayers(app) {
   const { engine } = app;
-  document.getElementById('layer-add').addEventListener('click', () => {
+  const add = document.getElementById('layer-add');
+  const remove = document.getElementById('layer-remove');
+  add.addEventListener('click', () => {
     if (addLayer(engine)) refreshLayers(app);
   });
-  document.getElementById('layer-remove').addEventListener('click', () => {
+  remove.addEventListener('click', () => {
     if (removeLayer(engine, engine.activeLayer)) refreshLayers(app);
   });
+  attachRichTooltip(add, CHROME_DOCS.layerAdd);
+  attachRichTooltip(remove, CHROME_DOCS.layerRemove);
   refreshLayers(app);
 }
 

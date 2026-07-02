@@ -6,8 +6,9 @@
 
 import { KNOB_GROUPS } from '../engine/tuning.js';
 import { rebakePaper, markDirtyFull } from '../engine/painter.js';
-import { KNOB_DOCS, CORR_LABELS } from './knobdocs.js';
+import { KNOB_DOCS } from './knobdocs.js';
 import { GROUP_LABELS, t } from './i18n.js';
+import { attachRichTooltip } from './tooltip.js';
 
 export function buildTuningPanel(app) {
   const { engine } = app;
@@ -33,8 +34,7 @@ export function buildTuningPanel(app) {
       const slider = document.createElement('input');
       slider.type = 'range';
       slider.min = '0'; slider.max = '1.5'; slider.step = '0.01';
-      slider.style.width = '70px';
-      slider.value = String(engine.tuning.get('paperVisibility'));
+      slider.value = String(engine.tuning.get('paperVisibility')); // width via CSS (shrinkable)
       let lastVisible = engine.tuning.get('paperVisibility') || 1;
       const syncEye = () => {
         const v = engine.tuning.get('paperVisibility');
@@ -60,7 +60,8 @@ export function buildTuningPanel(app) {
 
     const reset = document.createElement('button');
     reset.className = 'mini-btn';
-    reset.textContent = t(app.lang, 'resetGroup');
+    reset.textContent = '↺'; // icon: keeps the header inside the 180px panel minimum
+    reset.title = t(app.lang, 'resetGroup');
     reset.addEventListener('click', (ev) => {
       ev.stopPropagation();
       engine.tuning.resetGroup(group);
@@ -94,7 +95,11 @@ function buildKnobRow(app, def) {
   const name = document.createElement('span');
   const valueEcho = document.createElement('span');
   label.append(name, valueEcho);
-  attachTooltip(app, label, def);
+  attachRichTooltip(label, () => {
+    const doc = KNOB_DOCS[def.key];
+    if (!doc) return null;
+    return { title: `${def.pt} · ${def.en}`, doc: doc.doc, tip: doc.recipe, corr: doc.corr };
+  });
 
   const slider = document.createElement('input');
   slider.type = 'range';
@@ -149,43 +154,6 @@ function formatKnob(v) {
 
 function finishPaperRebuild(app, group) {
   if (group === 'paper' && app.engine.paperDirty) rebakePaper(app.engine);
-}
-
-// ---------------------------------------------------------------------------
-// Rich PT-BR tooltip with correlation letters
-// ---------------------------------------------------------------------------
-
-function attachTooltip(app, anchor, def) {
-  const tip = document.getElementById('knob-tooltip');
-  anchor.addEventListener('mouseenter', (ev) => {
-    const doc = KNOB_DOCS[def.key];
-    if (!doc) return;
-    tip.textContent = '';
-    const title = document.createElement('div');
-    title.className = 'tt-title';
-    title.textContent = `${def.pt} · ${def.en}`;
-    const body = document.createElement('div');
-    body.textContent = doc.doc;
-    const recipe = document.createElement('div');
-    recipe.className = 'tt-recipe';
-    recipe.textContent = doc.recipe;
-    const corr = document.createElement('div');
-    corr.className = 'tt-corr';
-    for (const [letter, strength] of doc.corr) {
-      const el = document.createElement('span');
-      el.className = `corr-letter corr-${letter}`;
-      el.textContent = letter;
-      el.style.opacity = String(0.4 + strength * 0.2);
-      el.title = `${CORR_LABELS[letter]} (força ${strength}/3)`;
-      corr.appendChild(el);
-    }
-    tip.append(title, body, recipe, corr);
-    tip.hidden = false;
-    const r = anchor.getBoundingClientRect();
-    tip.style.left = `${Math.max(8, r.left - 330)}px`;
-    tip.style.top = `${Math.min(window.innerHeight - 160, r.top)}px`;
-  });
-  anchor.addEventListener('mouseleave', () => { tip.hidden = true; });
 }
 
 // ---------------------------------------------------------------------------

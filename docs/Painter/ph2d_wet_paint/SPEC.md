@@ -643,6 +643,19 @@ plus colored correlation letters tagging which of four subsystems it touches (pa
 water / flow physics / render) at what strength. Author this content fresh from this spec's
 semantics.
 
+**Chrome documentation (left panel + bottom bar) — same treatment:** every user-facing control
+outside the tuning panel ALSO gets a rich PT-BR hover tooltip through the same floating-tooltip
+system: the color wheel + brightness bar, the pigment palette, each of the four brush sliders
+(size / pressure / water / erase), the shape buttons and wet/dry presets, each tool button, the
+tilt toggle and tilt dial, the paper preset buttons, the layer add/remove buttons, and every
+bottom-bar action (undo/redo, wet/dry canvas, fast dry, show wet, clear, save + paper checkbox,
+panel toggles, EN/PT). Each tooltip: emoji + title + a short physical explanation of what the
+control does in the simulation + a concrete usage tip where meaningful (e.g. water slider: "wet
+watercolor that flows: slider at max; dry gouache look: 0.2–0.4 — with the porous deposit,
+scrub to soak the sheet"). The four brush sliders additionally carry the colored
+subsystem-correlation letters, exactly like tuning rows. Author all content fresh from this
+spec's semantics.
+
 **Named pigments** (color-only presets; 8 swatches):
 Hansa Yellow (250,205,40) · Pyrrole Red (220,45,40) · Quinacridone Rose (220,55,120) ·
 Phthalo Blue (10,70,150) · Ultramarine (45,70,165) · Viridian (20,120,100) ·

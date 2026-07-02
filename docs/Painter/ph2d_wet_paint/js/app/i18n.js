@@ -8,7 +8,8 @@ export const STRINGS = {
     clear: 'Clear', savePng: 'Save PNG', withPaper: 'paper',
     tuning: 'Tuning', experimental: 'Experimental',
     tilt: 'Tilt', paper: 'Paper', layers: 'Layers',
-    brushSize: 'Brush', pressure: 'Pressure', water: 'Water', eraseStrength: 'Erase',
+    colorHead: 'Color', brushHead: 'Brush', shapeHead: 'Shape', toolsHead: 'Tools',
+    brushSize: 'Size', pressure: 'Pressure', water: 'Water', eraseStrength: 'Erase',
     round: 'Round', flat: 'Flat', fan: 'Fan',
     wetBrush: 'Wet brush', dryBrush: 'Dry brush',
     paint: 'Paint', erase: 'Erase', smear: 'Smear', blend: 'Blend',
@@ -27,7 +28,8 @@ export const STRINGS = {
     clear: 'Limpar', savePng: 'Salvar PNG', withPaper: 'papel',
     tuning: 'Ajustes', experimental: 'Experimental',
     tilt: 'Inclinação', paper: 'Papel', layers: 'Camadas',
-    brushSize: 'Pincel', pressure: 'Pressão', water: 'Água', eraseStrength: 'Borracha',
+    colorHead: 'Cor', brushHead: 'Pincel', shapeHead: 'Forma', toolsHead: 'Ferramentas',
+    brushSize: 'Tamanho', pressure: 'Pressão', water: 'Água', eraseStrength: 'Borracha',
     round: 'Redondo', flat: 'Chato', fan: 'Leque',
     wetBrush: 'Pincel molhado', dryBrush: 'Pincel seco',
     paint: 'Pintar', erase: 'Apagar', smear: 'Esfregar', blend: 'Misturar',
@@ -51,9 +53,14 @@ export function t(lang, key) {
   return STRINGS[lang][key] ?? STRINGS.en[key] ?? key;
 }
 
-/** Apply data-i18n text swaps across the static DOM. */
+/** Apply data-i18n text swaps across the static DOM. Buttons also mirror
+ *  the label into `title` so an ellipsized label stays readable on hover -
+ *  except elements carrying a rich tooltip (data-rich-tip), which would
+ *  otherwise show both the native and the floating tooltip. */
 export function applyStatic(lang) {
   for (const el of document.querySelectorAll('[data-i18n]')) {
-    el.textContent = t(lang, el.dataset.i18n);
+    const text = t(lang, el.dataset.i18n);
+    el.textContent = text;
+    if (el.tagName === 'BUTTON' && !el.dataset.richTip) el.title = text;
   }
 }

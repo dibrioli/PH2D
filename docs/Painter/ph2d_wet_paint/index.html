@@ -12,6 +12,7 @@
       <h1 id="app-title">PH2D Wet Paint</h1>
 
       <section class="panel-block" id="color-block">
+        <div class="block-head"><span class="block-label" data-i18n="colorHead">Color</span></div>
         <canvas id="color-wheel" width="164" height="164"></canvas>
         <canvas id="bright-bar" width="164" height="16"></canvas>
         <div id="swatch-row">
@@ -20,14 +21,18 @@
         </div>
       </section>
 
-      <section class="panel-block" id="slider-block"></section>
+      <section class="panel-block" id="slider-block">
+        <div class="block-head"><span class="block-label" data-i18n="brushHead">Brush</span></div>
+      </section>
 
       <section class="panel-block" id="shape-block">
-        <div class="btn-row" id="shape-row"></div>
-        <div class="btn-row" id="preset-row"></div>
+        <div class="block-head"><span class="block-label" data-i18n="shapeHead">Shape</span></div>
+        <div id="shape-row"></div>
+        <div id="preset-row"></div>
       </section>
 
       <section class="panel-block" id="tool-block">
+        <div class="block-head"><span class="block-label" data-i18n="toolsHead">Tools</span></div>
         <div class="btn-grid" id="tool-row"></div>
       </section>
 

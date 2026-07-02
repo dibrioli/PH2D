@@ -11,6 +11,10 @@
   --accent-2: #6aa5e8;
   --warn: #d96a5a;
   --radius: 8px;
+  --gap-s: 4px;   /* inside a control group */
+  --gap-m: 8px;   /* between rows inside a section */
+  --gap-l: 10px;  /* between sections */
+  --ctl-h: 26px;  /* uniform control height inside grouped grids */
   font-size: 13px;
 }
 
@@ -31,15 +35,20 @@ body {
 
 #left-panel {
   width: 208px;
-  min-width: 208px;
+  min-width: 180px;
   background: var(--panel);
   border-right: 1px solid var(--line);
   overflow-y: auto;
+  overflow-x: hidden; /* nothing may ever scroll or poke out sideways */
   padding: 10px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: var(--gap-l);
 }
+/* Every child of the panel (and of each section) may shrink below its
+   content width - this is what lets grid/flex tracks actually clamp
+   long-label buttons instead of being pushed apart by them. */
+#left-panel > *, .panel-block, .panel-block > * { min-width: 0; }
 
 #app-title {
   font-size: 13px;
@@ -97,8 +106,20 @@ body {
 }
 .ctl-slider input[type=range] { width: 100%; accent-color: var(--accent); height: 18px; }
 
-.btn-row { display: flex; gap: 4px; flex-wrap: wrap; }
-.btn-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
+/* Control groups read as tidy grids: minmax(0, 1fr) tracks (a track can
+   clamp its button; 1fr alone cannot - the item's min-width:auto would win
+   and push the grid past the panel edge, which was the overflow bug). */
+.btn-row { display: flex; gap: var(--gap-s); flex-wrap: wrap; }
+.btn-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--gap-s); }
+#shape-row { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--gap-s); }
+#preset-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--gap-s); margin-top: var(--gap-s); }
+#paper-row { display: grid; grid-template-columns: 1fr; gap: var(--gap-s); } /* PT names are long: one full-width button per row */
+/* An odd trailing button spans the full grid width instead of dangling. */
+#tool-row button:last-child:nth-child(odd) { grid-column: 1 / -1; }
+#shape-row button, #preset-row button, #paper-row button, .btn-grid button {
+  height: var(--ctl-h);
+  padding: 0 8px;
+}
 
 button {
   background: #2a2e36;
@@ -109,6 +130,13 @@ button {
   font-size: 12px;
   cursor: pointer;
   font-family: inherit;
+  /* Long PT labels ellipsize inside their cell; they never widen it.
+     applyStatic() mirrors each label into title, so the full name is
+     always hoverable. */
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 button:hover { background: #333842; }
 button:disabled { opacity: 0.4; cursor: default; }
@@ -117,12 +145,17 @@ button.on { background: var(--accent); border-color: var(--accent-2); color: #ff
 .mini-toggle { padding: 2px 10px; font-size: 11px; }
 .mini-toggle.on { background: var(--accent); color: #fff; }
 
+/* Range inputs have a large intrinsic min-content width; without this a
+   grid/flex track could never shrink them and would overflow instead. */
+input[type=range] { min-width: 0; }
+
 #tilt-dial { display: block; margin: 0 auto; cursor: pointer; }
 
 /* layers */
-#layer-list { display: flex; flex-direction: column; gap: 4px; }
+#layer-list { display: flex; flex-direction: column; gap: var(--gap-s); }
 .layer-item {
   display: flex; align-items: center; gap: 6px;
+  min-width: 0;
   padding: 4px 6px;
   border: 1px solid var(--line);
   border-radius: 6px;
@@ -130,10 +163,13 @@ button.on { background: var(--accent); border-color: var(--accent-2); color: #ff
   background: #262a31;
 }
 .layer-item.active { border-color: var(--accent); background: #2b3340; }
-.layer-item .eye { cursor: pointer; width: 18px; text-align: center; opacity: 0.9; }
+.layer-item .eye { flex: none; cursor: pointer; width: 18px; text-align: center; opacity: 0.9; }
 .layer-item .eye.off { opacity: 0.25; }
-.layer-item .lname { flex: 1; font-size: 12px; }
-.layer-item input[type=range] { width: 56px; accent-color: var(--accent); }
+.layer-item .lname {
+  flex: 1; font-size: 12px;
+  min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.layer-item input[type=range] { flex: none; width: 56px; accent-color: var(--accent); }
 
 /* ---------- center ---------- */
 
@@ -174,8 +210,9 @@ button.on { background: var(--accent); border-color: var(--accent-2); color: #ff
   border-top: 1px solid var(--line);
   flex-wrap: wrap;
 }
-.bar-group { display: flex; gap: 4px; align-items: center; }
+.bar-group { display: flex; gap: var(--gap-s); align-items: center; min-width: 0; }
 .bar-group + .bar-group { padding-left: 14px; border-left: 1px solid var(--line); }
+#bottom-bar button { flex: none; }
 .chk { display: flex; gap: 4px; align-items: center; font-size: 12px; color: var(--text-dim); }
 .chk input { accent-color: var(--accent); }
 
@@ -188,9 +225,11 @@ button.on { background: var(--accent); border-color: var(--accent-2); color: #ff
   background: var(--panel);
   border-left: 1px solid var(--line);
   overflow-y: auto;
+  overflow-x: hidden;
   position: relative;
   padding: 10px 10px 24px;
 }
+#right-panel > *, .tune-group, .tune-body, .tune-body > * { min-width: 0; }
 #right-panel.collapsed { display: none; }
 #right-resize {
   position: absolute;
@@ -204,6 +243,8 @@ button.on { background: var(--accent); border-color: var(--accent-2); color: #ff
 .tune-group { margin-bottom: 10px; border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
 .tune-head {
   display: flex; justify-content: space-between; align-items: center;
+  gap: 6px;
+  min-width: 0;
   background: var(--panel-2);
   padding: 5px 8px;
   font-size: 11px;
@@ -212,17 +253,32 @@ button.on { background: var(--accent); border-color: var(--accent-2); color: #ff
   color: var(--text-dim);
   cursor: pointer;
 }
-.tune-head .grp-actions { display: flex; gap: 6px; align-items: center; }
+.tune-head > span:first-child {
+  min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.tune-head .grp-actions { display: flex; gap: 6px; align-items: center; min-width: 0; flex: none; }
+/* The paper-visibility master slider in the group header shrinks first so
+   the header always fits the panel's 180 px minimum. */
+.grp-actions input[type=range] { width: 56px; flex: 0 1 32px; }
 .tune-body { padding: 6px 8px; display: flex; flex-direction: column; gap: 5px; }
 .tune-group.closed .tune-body { display: none; }
 
-.knob-row { display: grid; grid-template-columns: 1fr 64px 20px; gap: 5px; align-items: center; }
+/* label spans the row; below it: slider (shrinkable) | numeric | reset.
+   minmax(0, 1fr) lets the slider track collapse at the 180 px panel minimum
+   (a plain 1fr would bottom out at the range input's intrinsic width and
+   overflow instead). */
+.knob-row { display: grid; grid-template-columns: minmax(0, 1fr) 56px 20px; gap: 5px; align-items: center; }
 .knob-row .kl {
   grid-column: 1 / 4;
   font-size: 11px; color: var(--text-dim);
-  display: flex; justify-content: space-between;
+  display: flex; justify-content: space-between; gap: 6px;
+  min-width: 0;
   cursor: help;
 }
+.knob-row .kl span:first-child {
+  min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.knob-row .kl span:last-child { flex: none; }
 .knob-row input[type=range] { width: 100%; accent-color: var(--accent); height: 14px; }
 .knob-row input[type=number] {
   width: 100%;

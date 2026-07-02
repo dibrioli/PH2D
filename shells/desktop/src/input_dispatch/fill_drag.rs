@@ -17,7 +17,7 @@ use crate::App;
 
 /// Hold-still time (ms) over the target before the dwell fires the in-place fill and the drag flips to
 /// live threshold adjust (the modal-free second gesture).
-const FILL_DWELL_MS: f32 = 2000.0;
+const FILL_DWELL_MS: f32 = 1000.0;
 /// Pointer travel (px) that resets the dwell clock — jitter below this still counts as "held still".
 const FILL_DWELL_EPS: f32 = 3.0;
 /// Live-adjust gain: threshold units (`0..1`) per screen pixel from the dwell anchor. ~300 px spans full.

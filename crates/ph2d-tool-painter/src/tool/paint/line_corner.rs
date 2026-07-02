@@ -5,10 +5,15 @@
 //! recursive midpoint bisection (normalize the summed unit vectors — add + `sqrt`, never `sin`/`cos`),
 //! and every angle test is a dot / cross of unit vectors.
 
-/// How far out along the corner's OUTWARD bisector (× the grab tolerance) the two handles sit.
-const HANDLE_GAP: f32 = 2.4;
-/// Perpendicular straddle (× tol) so the circle (Fillet) + square (Chamfer) handles don't overlap.
-const HANDLE_PERP: f32 = 1.3;
+/// How far along its edge (× the grab tolerance) each handle sits from the vertex — clamped to a fraction
+/// of the edge so a short segment keeps its handle on-line. Both handles ride ON the polyline now (the
+/// Fillet before the vertex, the Chamfer after it).
+const HANDLE_DIST: f32 = 2.6;
+/// Cap on how far from the vertex a handle may sit, as a fraction of that adjacent edge.
+const HANDLE_EDGE_FRAC: f32 = 0.4;
+/// Drag → amount sensitivity: `amount += (dx − dy)·SENS`, so a right/up drag grows the mod, left/down
+/// shrinks it (Enio 2026-07-02). `0.5` ⇒ a 2 px drag changes the amount by ~1 px.
+pub(super) const CORNER_DRAG_SENS: f32 = 0.5;
 /// Max fillet tangent / chamfer distance as a fraction of the SHORTER adjacent edge (so adjacent corners
 /// on a shared edge can't overrun each other too badly).
 const MAX_FRAC: f32 = 0.45;
@@ -87,28 +92,24 @@ fn corner_frame(points: &[[f32; 2]], closed: bool, i: usize) -> Option<CornerFra
     Some((v, a, b, n_out))
 }
 
-/// The two handle positions (fillet-circle, chamfer-square) for corner `i`, or `None` when it is not a
-/// real corner. Straddle the outward bisector so they sit side by side just outside the vertex.
+/// The two handle positions for corner `i`, or `None` when it is not a real corner. Both sit ON the
+/// polyline: the **Fillet** (circle) BEFORE the vertex on the incoming edge (toward the previous point),
+/// the **Chamfer** (square) AFTER it on the outgoing edge (toward the next). Each at [`HANDLE_DIST`]·tol
+/// from the vertex, clamped to [`HANDLE_EDGE_FRAC`] of that edge so a short segment keeps it on-line.
 pub(super) fn handle_positions(
     points: &[[f32; 2]],
     closed: bool,
     i: usize,
     tol: f32,
 ) -> Option<([f32; 2], [f32; 2])> {
-    let (v, _a, _b, n_out) = corner_frame(points, closed, i)?;
-    let perp = [-n_out[1], n_out[0]];
-    let base = [
-        v[0] + n_out[0] * tol * HANDLE_GAP,
-        v[1] + n_out[1] * tol * HANDLE_GAP,
-    ];
-    let fillet = [
-        base[0] + perp[0] * tol * HANDLE_PERP,
-        base[1] + perp[1] * tol * HANDLE_PERP,
-    ];
-    let chamfer = [
-        base[0] - perp[0] * tol * HANDLE_PERP,
-        base[1] - perp[1] * tol * HANDLE_PERP,
-    ];
+    let (v, a, b, _n_out) = corner_frame(points, closed, i)?;
+    let n = points.len();
+    let pi = if closed { (i + n - 1) % n } else { i - 1 };
+    let ni = if closed { (i + 1) % n } else { i + 1 };
+    let din = (tol * HANDLE_DIST).min(HANDLE_EDGE_FRAC * len(sub(points[pi], v)));
+    let dout = (tol * HANDLE_DIST).min(HANDLE_EDGE_FRAC * len(sub(points[ni], v)));
+    let fillet = [v[0] + a[0] * din, v[1] + a[1] * din];
+    let chamfer = [v[0] + b[0] * dout, v[1] + b[1] * dout];
     Some((fillet, chamfer))
 }
 
@@ -136,7 +137,7 @@ pub(super) fn hit_handle(
 }
 
 /// The max fillet-tangent / chamfer distance for corner `i`: [`MAX_FRAC`] of the shorter adjacent edge.
-fn max_amount(points: &[[f32; 2]], closed: bool, i: usize) -> f32 {
+pub(super) fn max_amount(points: &[[f32; 2]], closed: bool, i: usize) -> f32 {
     let n = points.len();
     if corner_frame(points, closed, i).is_none() {
         return 0.0;
@@ -147,22 +148,6 @@ fn max_amount(points: &[[f32; 2]], closed: bool, i: usize) -> f32 {
     let lp = len(sub(points[pi], v));
     let ln = len(sub(points[ni], v));
     MAX_FRAC * lp.min(ln)
-}
-
-/// The amount (tangent / chamfer distance) implied by dragging a corner `i` handle to `cursor`: the
-/// outward-bisector projection of `cursor − vertex`, minus the handle gap, clamped to `[0, max]`.
-pub(super) fn amount_from_cursor(
-    points: &[[f32; 2]],
-    closed: bool,
-    i: usize,
-    cursor: [f32; 2],
-    tol: f32,
-) -> f32 {
-    let Some((v, _a, _b, n_out)) = corner_frame(points, closed, i) else {
-        return 0.0;
-    };
-    let proj = dot(sub(cursor, v), n_out) - tol * HANDLE_GAP;
-    proj.clamp(0.0, max_amount(points, closed, i))
 }
 
 /// Build the shell overlay gizmos (handle positions + active mod) for every real corner — empty while the
@@ -339,13 +324,26 @@ mod tests {
     }
 
     #[test]
-    fn amount_clamps_to_the_shorter_edge() {
-        // Corner 1 between a 10 px and a 30 px edge → max = 0.45 * 10 = 4.5, whatever the cursor.
+    fn max_amount_is_045_of_the_shorter_edge() {
+        // Corner 1 between a 10 px and a 30 px edge → max = 0.45 * 10 = 4.5.
         let pts = [[0.0, 0.0], [10.0, 0.0], [10.0, 30.0]];
-        let far = amount_from_cursor(&pts, false, 1, [100.0, -100.0], 8.0);
+        let m = max_amount(&pts, false, 1);
+        assert!((m - 4.5).abs() < 1e-3, "0.45*min(10,30)=4.5, got {m}");
+    }
+
+    #[test]
+    fn handles_sit_on_the_two_edges_before_and_after_the_vertex() {
+        // Corner 1 at (10,0): incoming edge from (0,0) (dir −x), outgoing to (10,30) (dir +y). The Fillet
+        // handle is on the incoming edge (x<10, y≈0), the Chamfer on the outgoing (x≈10, y>0).
+        let pts = [[0.0, 0.0], [10.0, 0.0], [10.0, 30.0]];
+        let (fillet, chamfer) = handle_positions(&pts, false, 1, 2.0).expect("real corner");
         assert!(
-            (far - 4.5).abs() < 1e-3,
-            "clamped to 0.45*min edge, got {far}"
+            fillet[0] < 10.0 && fillet[1].abs() < 1e-3,
+            "fillet on the incoming edge: {fillet:?}"
+        );
+        assert!(
+            (chamfer[0] - 10.0).abs() < 1e-3 && chamfer[1] > 0.0,
+            "chamfer on the outgoing edge: {chamfer:?}"
         );
     }
 }

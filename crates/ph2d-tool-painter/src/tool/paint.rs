@@ -57,6 +57,8 @@ pub use line_corner::LineCornerGizmo;
 mod line_commit;
 /// Perpendicular Offset (parallel-polyline) geometry for the Line editor (split from `line` for the cap).
 mod line_offset;
+/// Drag-time snapping for the Line editor (Shift 15° + auto point-to-point align); split from `line` (cap).
+mod line_snap;
 /// The Polygon stroke method's on-canvas regular-N-gon editor (same submodule rationale).
 mod polygon;
 pub use polygon::PolygonOverlay;

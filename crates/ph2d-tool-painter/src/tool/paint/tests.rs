@@ -6142,12 +6142,12 @@ fn line_dragging_the_fillet_handle_rounds_the_corner() {
     let ov = t.line_overlay().unwrap();
     assert_eq!(ov.corner_gizmos.len(), 1, "one interior corner has gizmos");
     assert_eq!(ov.corner_gizmos[0].active, 0, "corner starts sharp");
-    let v = [48.0, 16.0]; // the corner vertex
     let fh = ov.corner_gizmos[0].fillet_handle; // grab target from the overlay
-    let outward = [v[0] + (fh[0] - v[0]) * 3.0, v[1] + (fh[1] - v[1]) * 3.0];
+    // Drag RIGHT to grow the fillet (right/up increases, left/down shrinks).
+    let target = [fh[0] + 30.0, fh[1]];
     t.on_canvas_pointer(cp(fh, PointerPhase::Down));
-    t.on_canvas_pointer(cp(outward, PointerPhase::Move));
-    t.on_canvas_pointer(cp(outward, PointerPhase::Up));
+    t.on_canvas_pointer(cp(target, PointerPhase::Move));
+    t.on_canvas_pointer(cp(target, PointerPhase::Up));
     assert_eq!(
         t.line_overlay().unwrap().corner_gizmos[0].active,
         1,
@@ -6170,12 +6170,11 @@ fn line_fillet_persists_through_undo_redo_snapshot() {
     click(&mut t, 48.0, 16.0);
     click(&mut t, 48.0, 48.0);
     assert!(t.line_finish_points());
-    let v = [48.0, 16.0];
     let fh = t.line_overlay().unwrap().corner_gizmos[0].fillet_handle;
-    let outward = [v[0] + (fh[0] - v[0]) * 3.0, v[1] + (fh[1] - v[1]) * 3.0];
+    let target = [fh[0] + 30.0, fh[1]]; // drag right → grow the fillet
     t.on_canvas_pointer(cp(fh, PointerPhase::Down));
-    t.on_canvas_pointer(cp(outward, PointerPhase::Move));
-    t.on_canvas_pointer(cp(outward, PointerPhase::Up));
+    t.on_canvas_pointer(cp(target, PointerPhase::Move));
+    t.on_canvas_pointer(cp(target, PointerPhase::Up));
     assert_eq!(t.line_overlay().unwrap().corner_gizmos[0].active, 1);
     // Undo the fillet, then redo it — the snapshot must round-trip the corner mod.
     assert!(t.undo_last());
@@ -6185,6 +6184,71 @@ fn line_fillet_persists_through_undo_redo_snapshot() {
         t.line_overlay().unwrap().corner_gizmos[0].active,
         1,
         "redo reinstated the fillet from the snapshot"
+    );
+}
+
+#[test]
+fn line_corner_drag_grows_right_shrinks_left() {
+    // The chamfer handle: a rightward drag GROWS the chamfer, a leftward drag (picking up the current
+    // amount) shrinks it back to sharp — the directional mapping (right/up +, left/down −).
+    let mut t = line_tool();
+    click(&mut t, 16.0, 16.0);
+    click(&mut t, 48.0, 16.0);
+    click(&mut t, 48.0, 48.0);
+    assert!(t.line_finish_points());
+    let ch = t.line_overlay().unwrap().corner_gizmos[0].chamfer_handle;
+    t.on_canvas_pointer(cp(ch, PointerPhase::Down));
+    t.on_canvas_pointer(cp([ch[0] + 30.0, ch[1]], PointerPhase::Move));
+    t.on_canvas_pointer(cp([ch[0] + 30.0, ch[1]], PointerPhase::Up));
+    assert_eq!(
+        t.line_overlay().unwrap().corner_gizmos[0].active,
+        2,
+        "a rightward drag grew the chamfer"
+    );
+    let ch2 = t.line_overlay().unwrap().corner_gizmos[0].chamfer_handle;
+    t.on_canvas_pointer(cp(ch2, PointerPhase::Down));
+    t.on_canvas_pointer(cp([ch2[0] - 80.0, ch2[1]], PointerPhase::Move));
+    t.on_canvas_pointer(cp([ch2[0] - 80.0, ch2[1]], PointerPhase::Up));
+    assert_eq!(
+        t.line_overlay().unwrap().corner_gizmos[0].active,
+        0,
+        "a leftward drag shrank it back to sharp"
+    );
+}
+
+#[test]
+fn line_dragging_a_point_snaps_to_another_points_column() {
+    // Auto-snap (Shift off): dragging a point near another point's X aligns it to that column exactly; a
+    // far Y is untouched. tol 8 → snap threshold 4.8 px.
+    let mut t = line_tool();
+    click(&mut t, 20.0, 20.0); // point 0
+    click(&mut t, 50.0, 50.0); // point 1
+    t.on_canvas_pointer(cp([50.0, 50.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([22.0, 62.0], PointerPhase::Move)); // x≈point0.x (Δ2), y far
+    t.on_canvas_pointer(cp([22.0, 62.0], PointerPhase::Up));
+    let ov = t.line_overlay().unwrap();
+    assert_eq!(ov.points[1][0], 20.0, "x snapped to point 0's column");
+    assert!(
+        (ov.points[1][1] - 62.0).abs() < 1e-3,
+        "y unchanged (no nearby row): {:?}",
+        ov.points[1]
+    );
+}
+
+#[test]
+fn line_dragging_a_point_onto_another_snaps_right_on_top() {
+    // Both axes within the threshold → the dragged point lands exactly on the other (the "drag one point
+    // onto another" case).
+    let mut t = line_tool();
+    click(&mut t, 20.0, 20.0);
+    click(&mut t, 50.0, 50.0);
+    t.on_canvas_pointer(cp([50.0, 50.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([23.0, 17.0], PointerPhase::Move)); // near (20,20) on both axes
+    t.on_canvas_pointer(cp([23.0, 17.0], PointerPhase::Up));
+    assert_eq!(
+        t.line_overlay().unwrap().points[1],
+        [20.0, 20.0],
+        "landed on point 0"
     );
 }
 

@@ -33,6 +33,16 @@ use ph2d_painter_brush::Stroke;
 /// tolerance — the slop that separates a *tap* (close / end / select) from a *drag* (move the point).
 const DRAG_SLOP_FRAC: f32 = 0.4;
 
+/// A live per-corner Fillet/Chamfer handle drag: which corner + handle, the pointer position at grab, and
+/// the corner's amount at grab-start. The amount then follows the signed drag delta (right/up grows).
+#[derive(Clone, Copy)]
+struct CornerGrab {
+    index: usize,
+    is_fillet: bool,
+    origin: [f32; 2],
+    start_amount: f32,
+}
+
 /// In-progress Line session: the polyline `points` + draw-vs-edit phase. Held in [`PaintState::line`];
 /// `None` when idle.
 pub(super) struct LineEditor {
@@ -57,9 +67,8 @@ pub(super) struct LineEditor {
     /// Per-corner Fillet / Chamfer, parallel to `points` (index-aligned). All `None` while drawing; edited
     /// in the editing phase via the corner gizmos. Persisted through undo.
     corner_mods: Vec<CornerMod>,
-    /// The corner-gizmo handle being dragged: `(corner_index, is_fillet)`. `Some` Down→Up in the editing
-    /// phase; `is_fillet` picks the circle (Fillet) vs the square (Chamfer) handle.
-    corner_grab: Option<(usize, bool)>,
+    /// The live per-corner Fillet/Chamfer handle drag (editing phase, Down→Up); `None` idle.
+    corner_grab: Option<CornerGrab>,
     /// The highlighted point (last clicked/dragged), shown selected in the overlay; transient (not undone).
     selected: Option<usize>,
     seed: u64,
@@ -101,18 +110,6 @@ impl PainterTool {
     /// previous point). Out-of-band, like [`PainterTool::set_line_constrain`].
     pub fn set_line_snap(&mut self, on: bool) {
         self.paint.line_snap = on;
-    }
-
-    /// Apply the 15° snap to a grabbed point at index `g`: when armed (Shift) and a previous point anchors
-    /// the segment, quantise the direction from `points[g-1]` to the nearest 15°; otherwise `pos` unchanged.
-    fn line_snapped_grab(&self, g: usize, pos: [f32; 2]) -> [f32; 2] {
-        if !self.paint.line_snap || g == 0 {
-            return pos;
-        }
-        match self.paint.line.as_ref().and_then(|ed| ed.points.get(g - 1)) {
-            Some(&anchor) => snap_to_15(anchor, pos),
-            None => pos,
-        }
     }
 
     /// Pointer-down: on an EXISTING point → grab it (drag to move, or tap-close/end/select on Up); on EMPTY
@@ -173,7 +170,19 @@ impl PainterTool {
             if let Some((i, is_fillet)) = corner {
                 self.begin_shape_txn();
                 if let Some(ed) = self.paint.line.as_mut() {
-                    ed.corner_grab = Some((i, is_fillet));
+                    // The drag adjusts FROM the corner's current amount (only if this handle's kind is the
+                    // active one; grabbing the other handle starts a fresh mod at 0).
+                    let start_amount = match ed.corner_mods.get(i).copied() {
+                        Some(CornerMod::Fillet(t)) if is_fillet => t,
+                        Some(CornerMod::Chamfer(d)) if !is_fillet => d,
+                        _ => 0.0,
+                    };
+                    ed.corner_grab = Some(CornerGrab {
+                        index: i,
+                        is_fillet,
+                        origin: pos,
+                        start_amount,
+                    });
                 }
                 return true;
             }
@@ -196,7 +205,7 @@ impl PainterTool {
             self.paint.line_snap,
             self.paint.line.as_ref().and_then(|ed| ed.points.last()),
         ) {
-            (true, Some(&anchor)) => snap_to_15(anchor, pos),
+            (true, Some(&anchor)) => super::line_snap::snap_to_15(anchor, pos),
             _ => pos,
         };
         self.begin_shape_txn();
@@ -219,19 +228,22 @@ impl PainterTool {
     /// pixel (so you can set the angle live); an existing point only starts moving past the slop, so a
     /// jittery tap doesn't nudge it. Shift snaps the new segment to 15°.
     fn line_move(&mut self, pos: [f32; 2]) -> bool {
-        // A per-corner Fillet/Chamfer drag takes priority: the drag distance sets that corner's amount.
-        if let Some((i, is_fillet)) = self.paint.line.as_ref().and_then(|ed| ed.corner_grab) {
-            let tol = self.paint.shape_grab_tol_px;
-            let amt = {
+        // A per-corner Fillet/Chamfer drag takes priority: a right/up drag GROWS the mod, left/down shrinks
+        // it, from the amount at grab-start (`amount += (dx − dy)·SENS`), clamped to the corner's max.
+        if let Some(g) = self.paint.line.as_ref().and_then(|ed| ed.corner_grab) {
+            let max = {
                 let ed = self.paint.line.as_ref().expect("line present");
-                line_corner::amount_from_cursor(&ed.points, ed.closed, i, pos, tol)
+                line_corner::max_amount(&ed.points, ed.closed, g.index)
             };
+            let dx = pos[0] - g.origin[0];
+            let dy = pos[1] - g.origin[1];
+            let amt = (g.start_amount + (dx - dy) * line_corner::CORNER_DRAG_SENS).clamp(0.0, max);
             if let Some(ed) = self.paint.line.as_mut()
-                && i < ed.corner_mods.len()
+                && g.index < ed.corner_mods.len()
             {
-                ed.corner_mods[i] = if amt < line_corner::MIN_AMOUNT {
+                ed.corner_mods[g.index] = if amt < line_corner::MIN_AMOUNT {
                     CornerMod::None
-                } else if is_fillet {
+                } else if g.is_fillet {
                     CornerMod::Fillet(amt)
                 } else {
                     CornerMod::Chamfer(amt)
@@ -267,7 +279,13 @@ impl PainterTool {
         if !created && !moved_far {
             return true; // an existing-point press that hasn't left the slop yet stays a TAP
         }
-        let target = self.line_snapped_grab(g, pos);
+        // Shift armed → 15° angle snap (a new segment's direction). Otherwise auto-snap the dragged point
+        // to another point's row / column when it lands close (both together = right on top of it).
+        let target = if self.paint.line_snap {
+            self.line_snapped_grab(g, pos)
+        } else {
+            self.line_point_snap(g, pos)
+        };
         if let Some(ed) = self.paint.line.as_mut()
             && g < ed.points.len()
         {
@@ -468,6 +486,11 @@ impl LineEditor {
         self.points.len()
     }
 
+    /// The committed corner points — read accessor for [`super::line_snap`] (snapping reads the neighbours).
+    pub(super) fn points(&self) -> &[[f32; 2]] {
+        &self.points
+    }
+
     /// Capture the polyline for the unified undo timeline (transient grab/selection reset on restore).
     pub(super) fn to_state(&self) -> crate::undo::LineState {
         crate::undo::LineState {
@@ -500,43 +523,6 @@ impl LineEditor {
             seed: s.seed,
         }
     }
-}
-
-/// `1/√2` = cos/sin of 45° — the named constant (clippy `approx_constant` rejects the 0.7071 literal).
-const D45: f32 = std::f32::consts::FRAC_1_SQRT_2;
-
-/// The 24 unit directions at 15° increments (`cos`, `sin` of `k·15°`, `k = 0..24`) — compile-time
-/// constants so the snap is transcendental-free at runtime (HR-5). Used by [`snap_to_15`].
-#[rustfmt::skip]
-const DIRS_15: [[f32; 2]; 24] = [
-    [1.0, 0.0],            [0.965_925_8, 0.258_819_04],   [0.866_025_4, 0.5],
-    [D45, D45],            [0.5, 0.866_025_4],            [0.258_819_04, 0.965_925_8],
-    [0.0, 1.0],           [-0.258_819_04, 0.965_925_8],  [-0.5, 0.866_025_4],
-    [-D45, D45],          [-0.866_025_4, 0.5],           [-0.965_925_8, 0.258_819_04],
-    [-1.0, 0.0],          [-0.965_925_8, -0.258_819_04], [-0.866_025_4, -0.5],
-    [-D45, -D45],         [-0.5, -0.866_025_4],          [-0.258_819_04, -0.965_925_8],
-    [0.0, -1.0],           [0.258_819_04, -0.965_925_8],  [0.5, -0.866_025_4],
-    [D45, -D45],           [0.866_025_4, -0.5],           [0.965_925_8, -0.258_819_04],
-];
-
-/// Snap `cursor` onto the 15°-graduated ray from `anchor`: keep the distance, quantise the direction to
-/// the nearest of the 24 [`DIRS_15`] by maximum dot product (no `atan2` — HR-5). A ~zero move is unchanged.
-fn snap_to_15(anchor: [f32; 2], cursor: [f32; 2]) -> [f32; 2] {
-    let v = [cursor[0] - anchor[0], cursor[1] - anchor[1]];
-    let len = (v[0] * v[0] + v[1] * v[1]).sqrt();
-    if len < 1e-4 {
-        return cursor;
-    }
-    let mut best = DIRS_15[0];
-    let mut best_dot = f32::MIN;
-    for d in DIRS_15 {
-        let dot = v[0] * d[0] + v[1] * d[1];
-        if dot > best_dot {
-            best_dot = dot;
-            best = d;
-        }
-    }
-    [anchor[0] + best[0] * len, anchor[1] + best[1] * len]
 }
 
 /// Index of the polyline point within `tol` px of `pos` (nearest wins), or `None`.

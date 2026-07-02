@@ -93,9 +93,10 @@ pub(super) fn draw_line_overlay(
             let handle = Color::new([0.80, 0.84, 0.92, 0.92]); // LITERAL-COLOR-OK: corner handle
             let hot = Color::new([1.0, 0.62, 0.20, 1.0]); // LITERAL-COLOR-OK: active corner mod
             let edge = Color::new([0.12, 0.13, 0.16, 0.9]); // LITERAL-COLOR-OK: handle outline
+            // Same visual size as the transform gizmo's square handles (half-extent 6 px → 12 px).
             for g in &overlay.corner_gizmos {
                 let fc = if g.active == 1 { hot } else { handle };
-                let fillet = Circle::new(map(g.fillet_handle), 4.5);
+                let fillet = Circle::new(map(g.fillet_handle), 6.0);
                 scene.fill(
                     Fill::NonZero,
                     Affine::IDENTITY,
@@ -112,7 +113,7 @@ pub(super) fn draw_line_overlay(
                 );
                 let s = map(g.chamfer_handle);
                 let cc = if g.active == 2 { hot } else { handle };
-                let sq = RoundedRect::new(s.x - 4.0, s.y - 4.0, s.x + 4.0, s.y + 4.0, 1.0);
+                let sq = RoundedRect::new(s.x - 6.0, s.y - 6.0, s.x + 6.0, s.y + 6.0, 2.0);
                 scene.fill(
                     Fill::NonZero,
                     Affine::IDENTITY,

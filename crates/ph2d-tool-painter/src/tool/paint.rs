@@ -29,6 +29,8 @@ mod curve_tangent; // Bézier tangent-handle hit-test, aligned mirror, overlay s
 mod curve_trim; // self-intersection trim of the offset spine (open + closed); split from `curve_offset`
 /// Per-dab randomize setters (Jitter Scale / Rotate / Randomize Color); split from `brush_settings`.
 mod jitter_settings;
+/// The canvas pointer's operation mode (Paint / Smear / Blur / Clone / Mask); split from `paint.rs` (cap).
+mod paint_mode;
 /// Multi-layer Shape (z-ordered layers + per-layer-colour state); split from `paint.rs` (LOC cap).
 mod shape_layers;
 /// Imported-image slots (Grain + Shape) + Shape geometry + Grain Depth setters; split from `brush_settings`.
@@ -36,6 +38,7 @@ mod shape_settings;
 mod shape_snapshot; // unified shape+paint undo: each create/edit/bake = one ModelSnapshot on the timeline
 mod stamp_color_cache; // the cached multi-layer coloured stamp (bake the composite once, blit per dab)
 mod stamp_color_dynamic;
+pub(crate) use paint_mode::PaintMode;
 /// Drawing symmetry (mirror / radial) — engine glue, canvas-centre resolution + on-canvas pick modes.
 mod symmetry;
 pub(crate) use symmetry::SymmetryPick;
@@ -119,22 +122,6 @@ pub use snapshot::brush_falloff_weight_at;
 struct DragPreview {
     rect: Region,
     pixels: Vec<u8>,
-}
-
-/// Which operation the canvas pointer performs — selected from the left rail's Painter tools and routed
-/// in via `PanelEvent::SelectOption(PAINTER_PAINT_MODE, …)`. `Paint` = the normal dab-stamp (colour,
-/// Shape, Grain, ramps); `Smear` drags canvas content along the stroke; `Blur` softens under each dab;
-/// `Clone` copies from a sampled source at a fixed offset; `Mask` paints a TEMPORARY tool-side scratch
-/// mask that hides/reveals the current layer live (no layer created — see [`mask`]). Eraser is a blend
-/// override on top of `Paint`.
-#[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
-pub(crate) enum PaintMode {
-    #[default]
-    Paint,
-    Smear,
-    Blur,
-    Clone,
-    Mask,
 }
 
 pub(crate) struct PaintState {

@@ -94,6 +94,9 @@ pub(super) fn draw_line_overlay(
             let handle = Color::new([0.80, 0.84, 0.92, 0.92]); // LITERAL-COLOR-OK: corner handle
             let hot = Color::new([1.0, 0.62, 0.20, 1.0]); // LITERAL-COLOR-OK: active corner mod
             let edge = Color::new([0.12, 0.13, 0.16, 0.9]); // LITERAL-COLOR-OK: handle outline
+            let value_col = Color::new([0.62, 0.78, 1.0, 0.92]); // LITERAL-COLOR-OK: overlay value text (line hue)
+            // Fillet / Chamfer amount labels (px), collected here + painted after the last `scene` use.
+            let mut corner_labels: Vec<(String, Point)> = Vec::new();
             // Same visual size as the transform gizmo's square handles (half-extent 6 px → 12 px).
             for g in &overlay.corner_gizmos {
                 let fc = if g.active == 1 { hot } else { handle };
@@ -129,6 +132,28 @@ pub(super) fn draw_line_overlay(
                     None,
                     &sq,
                 );
+                // Fillet / Chamfer amount (px) beside the ACTIVE handle, placed just beyond it along the
+                // edge from the vertex — same value language as the Line dimensions.
+                if g.active != 0 {
+                    let handle_img = if g.active == 1 {
+                        g.fillet_handle
+                    } else {
+                        g.chamfer_handle
+                    };
+                    let vtx = map(g.vertex);
+                    let hnd = map(handle_img);
+                    let (ex, ey) = (hnd.x - vtx.x, hnd.y - vtx.y);
+                    let l = (ex * ex + ey * ey).sqrt();
+                    let (ux, uy) = if l > 1e-6 {
+                        (ex / l, ey / l)
+                    } else {
+                        (0.0, -1.0)
+                    };
+                    corner_labels.push((
+                        format!("{:.0}", g.amount),
+                        Point::new(hnd.x + ux * 13.0, hnd.y + uy * 13.0),
+                    ));
+                }
             }
             // Live **dimensions** (drawing phase, "Dimensions" on): thin translucent CAD guides — the
             // dx/dy legs to the previous point + the px / corner-angle numbers, in the line-guide hue.
@@ -164,6 +189,24 @@ pub(super) fn draw_line_overlay(
                         dim,
                     );
                 }
+            }
+            // Fillet / Chamfer amount labels (editing phase) — after the last `scene` use, so the
+            // VectorScene is free for text. `corner_labels` is empty while drawing (no gizmos then).
+            for (text, center) in &corner_labels {
+                let r = ph2d_editor::zones::Rect::new(
+                    center.x as f32 - 40.0,
+                    center.y as f32 - 8.0,
+                    80.0,
+                    16.0,
+                );
+                ph2d_editor::paint::paint_text_centered(
+                    text_system,
+                    vector_scene,
+                    text,
+                    r,
+                    11.0,
+                    value_col,
+                );
             }
         }
     }

@@ -57,12 +57,17 @@ impl CornerMod {
 /// One corner's on-canvas gizmo for the shell overlay: the two handle positions (image px) + which mod is
 /// active (`0` none, `1` fillet, `2` chamfer) so the shell can accent it.
 pub struct LineCornerGizmo {
+    /// The corner vertex (image px) — the shell anchors the value label along the edge from here.
+    pub vertex: [f32; 2],
     /// The CIRCLE (Fillet) handle position.
     pub fillet_handle: [f32; 2],
     /// The SQUARE (Chamfer) handle position.
     pub chamfer_handle: [f32; 2],
     /// The active mod: `0` sharp, `1` fillet, `2` chamfer (drives the accent).
     pub active: u8,
+    /// The active mod's amount (image px): fillet tangent distance / chamfer cut distance. `0` when sharp.
+    /// The shell labels it beside the active handle, like the Line dimension numbers.
+    pub amount: f32,
 }
 
 /// A corner's local frame: `(vertex, dir_to_prev, dir_to_next, outward_bisector)`, all unit vectors bar
@@ -166,15 +171,17 @@ pub(super) fn gizmos(
         let Some((fillet, chamfer)) = handle_positions(points, closed, i, tol) else {
             continue;
         };
-        let active = match mods.get(i).copied().unwrap_or(CornerMod::None) {
-            CornerMod::Fillet(t) if t > MIN_AMOUNT => 1,
-            CornerMod::Chamfer(d) if d > MIN_AMOUNT => 2,
-            _ => 0,
+        let (active, amount) = match mods.get(i).copied().unwrap_or(CornerMod::None) {
+            CornerMod::Fillet(t) if t > MIN_AMOUNT => (1, t),
+            CornerMod::Chamfer(d) if d > MIN_AMOUNT => (2, d),
+            _ => (0, 0.0),
         };
         out.push(LineCornerGizmo {
+            vertex: points[i],
             fillet_handle: fillet,
             chamfer_handle: chamfer,
             active,
+            amount,
         });
     }
     out

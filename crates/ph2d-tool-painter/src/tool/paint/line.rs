@@ -58,9 +58,9 @@ impl PainterTool {
     /// first point) / finish (click on the last point) / else drop a new point; while editing, grab a point.
     fn line_down(&mut self, pos: [f32; 2]) -> bool {
         let tol = self.paint.shape_grab_tol_px;
-        self.flush_shape_txn();
         if self.paint.line.is_none() {
-            self.paint.stroke_undo = Some(self.snapshot_model());
+            // Start a new polyline — the FIRST point is its own undo step (point-by-point undo/redo).
+            self.begin_shape_txn(); // before = no shape
             self.paint.drag_preview = None;
             self.reseed_preview_base();
             self.paint.shape_offset_base_px = 0.0;
@@ -75,6 +75,8 @@ impl PainterTool {
                 grabbed: None,
                 seed,
             });
+            self.line_refill();
+            self.commit_shape_txn(); // record: no shape → first point
             return true;
         }
         let drawing = !self.paint.line.as_ref().expect("line present").editing;
@@ -87,6 +89,8 @@ impl PainterTool {
                 let on_last = n >= 2 && dist(ed.points[n - 1], pos) <= tol;
                 (on_first, on_last && !on_first)
             };
+            // Each click — add a point, or finish/close — is ONE undo step (point-by-point undo/redo).
+            self.begin_shape_txn();
             {
                 let ed = self.paint.line.as_mut().expect("line present");
                 if close {
@@ -101,9 +105,7 @@ impl PainterTool {
                 }
             }
             self.line_refill();
-            if close || finish {
-                self.commit_shape_txn();
-            }
+            self.commit_shape_txn();
             return true;
         }
         // Editing: bracket a reshape gesture; grab the point under the cursor.

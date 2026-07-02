@@ -5897,3 +5897,45 @@ fn line_edit_phase_drags_a_corner_point() {
     assert_eq!(ov.points[0], [20.0, 30.0], "the grabbed corner moved");
     assert_eq!(ov.points[1], [48.0, 16.0], "the other corner stayed put");
 }
+
+#[test]
+fn line_undo_redo_is_point_by_point_during_creation() {
+    // Each click is its own undo step: undo peels one point at a time (not the whole polyline at once).
+    let mut t = line_tool();
+    click(&mut t, 16.0, 16.0); // point 1
+    click(&mut t, 40.0, 16.0); // point 2
+    click(&mut t, 40.0, 40.0); // point 3
+    assert_eq!(t.line_overlay().unwrap().points.len(), 3);
+    // Undo removes the last point, one at a time.
+    assert!(t.undo_last());
+    assert_eq!(
+        t.line_overlay().unwrap().points.len(),
+        2,
+        "undo peeled ONE point"
+    );
+    assert!(t.undo_last());
+    assert_eq!(
+        t.line_overlay().unwrap().points.len(),
+        1,
+        "undo peeled another point"
+    );
+    // Undoing the first point removes the editor entirely (back to no shape).
+    assert!(t.undo_last());
+    assert!(
+        t.line_overlay().is_none(),
+        "undoing the first point closed the editor"
+    );
+    // Redo re-adds points one at a time.
+    assert!(t.redo_last());
+    assert_eq!(
+        t.line_overlay().unwrap().points.len(),
+        1,
+        "redo re-added the first point"
+    );
+    assert!(t.redo_last());
+    assert_eq!(
+        t.line_overlay().unwrap().points.len(),
+        2,
+        "redo re-added the second point"
+    );
+}

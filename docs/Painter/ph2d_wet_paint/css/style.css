@@ -15,6 +15,7 @@
   --gap-m: 8px;   /* between rows inside a section */
   --gap-l: 10px;  /* between sections */
   --ctl-h: 26px;  /* uniform control height inside grouped grids */
+  --left-w: 208px; /* left-panel width; the resize grip drags this (JS clamps 180-420) */
   font-size: 13px;
 }
 
@@ -29,13 +30,17 @@ body {
   -webkit-user-select: none;
 }
 
-#app { display: flex; height: 100vh; }
+/* position:relative makes #app the containing block for #left-resize, so the
+   grip is anchored to the panel's right edge and does NOT scroll with the
+   panel's content or get clipped by its overflow. */
+#app { display: flex; height: 100vh; position: relative; }
 
 /* ---------- left panel ---------- */
 
 #left-panel {
-  width: 208px;
+  width: var(--left-w);   /* the resize grip drags this via --left-w */
   min-width: 180px;
+  flex: none;             /* never let flex stretch/shrink the chosen width */
   background: var(--panel);
   border-right: 1px solid var(--line);
   overflow-y: auto;
@@ -45,6 +50,20 @@ body {
   flex-direction: column;
   gap: var(--gap-l);
 }
+
+/* Resize grip on the left panel's right edge - mirrors #right-resize.
+   Sits on the panel/center seam (not over the panel's scrollbar), spans the
+   full viewport height, and stays put while the panel scrolls. */
+#left-resize {
+  position: absolute;
+  top: 0; bottom: 0;
+  left: var(--left-w);
+  margin-left: -2px;
+  width: 5px;
+  cursor: ew-resize;
+  z-index: 6;
+}
+#left-resize:hover { background: var(--accent); opacity: 0.5; }
 /* Every child of the panel (and of each section) may shrink below its
    content width - this is what lets grid/flex tracks actually clamp
    long-label buttons instead of being pushed apart by them. */

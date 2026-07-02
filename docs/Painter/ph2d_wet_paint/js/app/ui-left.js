@@ -15,6 +15,64 @@ export function buildLeftPanel(app) {
   buildTiltDial(app);
   buildPaper(app);
   buildLayers(app);
+  buildLeftResizer(app);
+}
+
+// ---------------------------------------------------------------------------
+// Left-panel resize grip (mirrors the right/tuning panel's resizer). The
+// panel width lives in the CSS custom property --left-w on #app; both the
+// panel (width: var(--left-w)) and the grip (left: var(--left-w)) read it, so
+// one write repositions both. Width is clamped to [180, 420] and never past
+// half the window (the center column is flex:1/min-width:0 and reflows). The
+// chosen width persists across sessions via localStorage when available,
+// otherwise it is at least stable within the session (the var holds it).
+// ---------------------------------------------------------------------------
+
+const LEFT_W_MIN = 180;
+const LEFT_W_MAX = 420;
+const LEFT_W_KEY = 'ph2d-wet-paint.left-w';
+
+function clampLeftWidth(w) {
+  let max = LEFT_W_MAX;
+  const winW = globalThis.window?.innerWidth;
+  if (winW) max = Math.min(max, Math.round(winW * 0.5)); // never eat the canvas
+  if (max < LEFT_W_MIN) max = LEFT_W_MIN;
+  return Math.max(LEFT_W_MIN, Math.min(max, w));
+}
+
+function setLeftWidth(app, w) {
+  const width = clampLeftWidth(w);
+  document.getElementById('app').style.setProperty('--left-w', `${width}px`);
+  app.leftWidth = width;
+  return width;
+}
+
+function buildLeftResizer(app) {
+  const grip = document.getElementById('left-resize');
+  const panel = document.getElementById('left-panel');
+  // Restore a persisted width (guarded: localStorage is absent in the Node
+  // shell-boot shim and may throw under privacy settings).
+  let stored = null;
+  try { stored = globalThis.localStorage?.getItem(LEFT_W_KEY); } catch { /* ignore */ }
+  if (stored != null) {
+    const v = parseFloat(stored);
+    if (Number.isFinite(v)) setLeftWidth(app, v);
+  }
+  if (!grip) return;
+  grip.addEventListener('pointerdown', (ev) => {
+    ev.preventDefault();
+    grip.setPointerCapture(ev.pointerId);
+    const startX = ev.clientX;
+    const startW = panel.getBoundingClientRect().width;
+    const move = (e2) => setLeftWidth(app, startW + (e2.clientX - startX)); // right edge: grow with +x
+    const up = () => {
+      grip.removeEventListener('pointermove', move);
+      grip.removeEventListener('pointerup', up);
+      try { globalThis.localStorage?.setItem(LEFT_W_KEY, String(app.leftWidth)); } catch { /* ignore */ }
+    };
+    grip.addEventListener('pointermove', move);
+    grip.addEventListener('pointerup', up);
+  });
 }
 
 // ---------------------------------------------------------------------------

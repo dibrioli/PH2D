@@ -575,8 +575,10 @@ an 8-swatch named-pigment palette; brush/pressure/water/erase sliders; shape but
 fan + "wet brush"/"dry brush" preset buttons (pressure/water = 0.35/0.85 and 0.85/0.2); tool
 buttons; tilt toggle + a **tilt dial** — a round pad with a polar grid (8 rings × 12 spokes),
 dragging the knob sets the gravity direction+magnitude snapped to the grid, and implicitly turns
-tilt on; paper preset buttons; layer add/remove + list with per-layer visibility/opacity).
-**Center:** the canvas, wheel-zoom (0.25×–8×, zoom toward cursor), middle-drag pan, a reset pill
+tilt on; paper preset buttons; layer add/remove + list with per-layer visibility/opacity). The
+left panel is **resizable** — a drag handle on its right edge sets its width (mirroring the right
+panel's resizer: pointer-capture drag, clamped to a sensible min/max, the center reflows), and its
+width persists across the session. **Center:** the canvas, wheel-zoom (0.25×–8×, zoom toward cursor), middle-drag pan, a reset pill
 showing the current %. **Bottom bar:** undo/redo · wet canvas/dry canvas/fast dry/show wet ·
 clear/save png (+"paper" checkbox) · panel toggles + EN/PT. **Right:** a collapsible, resizable
 **tuning panel**, open by default.

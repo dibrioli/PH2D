@@ -21,7 +21,7 @@ function makeEl(id) {
   const el = {
     id,
     children: [],
-    style: {},
+    style: { setProperty() {}, removeProperty() {}, getPropertyValue: () => '' },
     dataset: {},
     width: 900, height: 450,
     disabled: false, hidden: false, checked: false, value: '0', textContent: '',
@@ -123,6 +123,12 @@ try {
     el.dispatch('mouseenter', {});
     el.dispatch('mouseleave', {});
   }
+  // Left-panel resize: full pointer-capture drag cycle.
+  const grip = doc.getElementById('left-resize');
+  grip.dispatch('pointerdown', { button: 0, clientX: 208 });
+  grip.dispatch('pointermove', { clientX: 300 });
+  grip.dispatch('pointermove', { clientX: 160 });
+  grip.dispatch('pointerup', { clientX: 160 });
   for (let f = 0; f < 10 && rafQueue.length; f++) {
     const fn = rafQueue.shift();
     now += 25;

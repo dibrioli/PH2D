@@ -252,11 +252,10 @@ extend-exclude = [
     # - Strings em pt-BR + nomes de tokens + identifiers de design system
     # Não é nosso source — design system handoff de terceiro.
     "docs/design/**",
-    # docs/Painter/ standalone research prototypes (rebecca watercolor clean-room,
-    # aquarela_sim, watercolor_mvp) — HTML/JS experiment apps with pt-BR comments +
-    # deliberate short vars (`fo` = falloff, `CLEA` = a state tag). Not production
-    # source; same pt-BR/mockup exception as docs/design (the .md are already
-    # covered by `docs/**/*.md`).
+    # docs/Painter/ standalone research prototype (PH2D Wet Paint) — an HTML/JS
+    # experiment app with pt-BR comments + deliberate short vars (`fo` = falloff,
+    # `CLEA` = a state tag). Not production source; same pt-BR/mockup exception as
+    # docs/design (the .md are already covered by `docs/**/*.md`).
     "docs/Painter/**/*.js",
     "docs/Painter/**/*.html",
     # Slot 2 (bgremoval) — mantida durante a migração TG-B; conteúdo agora

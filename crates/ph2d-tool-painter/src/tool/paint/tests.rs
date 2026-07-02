@@ -6861,3 +6861,34 @@ fn sync_checkbox_click_routes_to_the_link_toggle() {
     t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_BRUSH_SYNC));
     assert!(!t.link_shared_settings(), "clicking again toggled it off");
 }
+
+#[test]
+fn rebinding_a_sprite_abandons_a_pending_fill_and_disarms_the_eyedropper() {
+    // The Enio 2026-07-02 lifecycle bug: deleting a sprite (Painter active) then selecting another used
+    // to carry a pending Fill ColorDrop + an armed Eyedropper onto the new sprite — the Fill flooded it
+    // BLACK and the pick swallowed the next Down ("can't paint"). Binding a new document must clear both.
+    let mut t = white_canvas(16, 4.0); // black brush, white canvas
+    t.set_paint_tool_mode("fill");
+    t.on_canvas_pointer(cp([8.0, 8.0], PointerPhase::Down)); // arm a ColorDrop (fill_begin_drop)
+    assert!(
+        t.has_active_fill(),
+        "a ColorDrop is pending on the old sprite"
+    );
+    t.paint.eyedropper_armed = true; // also arm the Eyedropper
+    // Model delete-then-select-another by binding a fresh mid-grey document.
+    <PainterTool as RasterEditTool>::set_source(&mut t, vec![128u8; 16 * 16 * 4], 16, 16);
+    assert!(
+        !t.has_active_fill(),
+        "the stale ColorDrop was abandoned on rebind"
+    );
+    assert!(
+        !t.paint.eyedropper_armed,
+        "the Eyedropper was disarmed on rebind"
+    );
+    // A stray Fill modal slider drag can no longer flood the newly-bound sprite (fill_seed is gone).
+    t.set_fill_threshold(0.9);
+    assert!(
+        t.canvas_rgba.iter().all(|&b| b == 128),
+        "the new sprite is intact — not flooded black by the leaked fill"
+    );
+}

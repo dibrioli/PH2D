@@ -261,6 +261,17 @@ impl PainterTool {
         self.paint.fill_snapshot = Vec::new();
         self.paint.fill_last_rect = None;
     }
+
+    /// Drop a pending Fill ColorDrop WITHOUT touching pixels or dirtying — for a document rebind, where
+    /// the canvas is being replaced anyway (so `fill_cancel`'s snapshot-restore would just write into a
+    /// buffer about to be discarded, and could stamp the OLD sprite's pixels onto the new one). See
+    /// [`PainterTool::reset_transient_edit_state`].
+    pub(super) fn abandon_pending_fill(&mut self) {
+        self.paint.fill_seed = None;
+        self.paint.fill_snapshot = Vec::new();
+        self.paint.fill_last_rect = None;
+        self.paint.stroke_undo = None;
+    }
 }
 
 #[cfg(test)]

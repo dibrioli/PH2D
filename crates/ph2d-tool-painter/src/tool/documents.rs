@@ -81,7 +81,9 @@ impl PainterTool {
     /// Restore a stashed document into the live fields + reset the transient composite caches/flags so the
     /// next preview recomposes the restored stack.
     fn restore_doc(&mut self, doc: StashedDoc) {
-        self.discard_open_shape();
+        // Restoring a stashed sprite is a rebind too — abandon any in-progress edit tied to the outgoing
+        // canvas (open shape, pending Fill, Mask scratch, …) before swapping. See `paint::lifecycle`.
+        self.reset_transient_edit_state();
         self.canvas_rgba = doc.canvas_rgba;
         self.layers = doc.layers;
         self.images = doc.images;

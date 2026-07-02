@@ -39,6 +39,7 @@ mod shape_snapshot; // unified shape+paint undo: each create/edit/bake = one Mod
 mod stamp_color_cache; // the cached multi-layer coloured stamp (bake the composite once, blit per dab)
 mod stamp_color_dynamic;
 pub(crate) use paint_mode::{PAINT_MODE_COUNT, PaintMode};
+mod lifecycle; // transient-edit reset run at each document (re)bind — abandons pending Fill/stroke/etc.
 /// Drawing symmetry (mirror / radial) — engine glue, canvas-centre resolution + on-canvas pick modes.
 mod symmetry;
 mod tool_link; // "Sync with other tools": per-mode brush-settings swap + the link toggle; LOC-cap split

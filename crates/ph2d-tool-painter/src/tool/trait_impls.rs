@@ -29,9 +29,9 @@ impl Tool for PainterTool {
 
     fn on_deactivate(&mut self) {
         self.params.takeover_active = false;
-        // Drop any in-progress shape session (Curve/Ellipse) before the canvas is torn down (no
-        // restore — the working buffer is cleared next).
-        self.discard_open_shape();
+        // Abandon every in-progress edit (open shape, pending Fill, armed Eyedropper, Mask scratch, …)
+        // before the canvas is torn down, so nothing rides into the next activation. See `paint::lifecycle`.
+        self.reset_transient_edit_state();
         // Persistence (Enio 2026-06-24): with unbaked edits, KEEP the canvas + flag a deferred bake so
         // the shell persists it into the sprite before teardown; otherwise tear down now.
         if self.has_unbaked_edits() {
@@ -511,8 +511,10 @@ impl RasterEditTool for PainterTool {
             (width as usize) * (height as usize) * 4,
             "set_source rgba length must equal width*height*4"
         );
-        // A new working canvas invalidates any open shape session (restore record → OLD buffer); drop it.
-        self.discard_open_shape();
+        // A new working canvas invalidates every in-progress edit whose state points at the OLD buffer
+        // (open shape, pending Fill ColorDrop, Mask scratch, Drag-Dot restore, armed Eyedropper); abandon
+        // them so nothing floods / corrupts the freshly-bound sprite. See `paint::lifecycle`.
+        self.reset_transient_edit_state();
         self.canvas_rgba = Arc::new(rgba);
         self.source_size = (width, height);
         self.preview_dirty = true;

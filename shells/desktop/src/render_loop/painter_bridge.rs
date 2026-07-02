@@ -152,6 +152,9 @@ pub(super) fn dispatch(
         if straight.width != 0 && straight.height != 0 {
             painter.bind_document(bits, straight.pixels, straight.width, straight.height);
             *last_painter_pushed_entity = Some(bits);
+            // The bind abandons any pending Fill (tool side); close its now-orphaned adjust modal too, so
+            // switching sprites never leaves a stale Fill modal floating over the new one.
+            hero.store.close_fill_modal();
         }
     }
 

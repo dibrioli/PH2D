@@ -4873,6 +4873,11 @@ dependencies = [
 [[package]]
 name = "ph2d-inpaint"
 version = "0.0.0"
+dependencies = [
+ "bytemuck",
+ "ph2d-gpu",
+ "wgpu",
+]
 
 [[package]]
 name = "ph2d-input"

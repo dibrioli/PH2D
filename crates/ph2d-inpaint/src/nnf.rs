@@ -14,9 +14,9 @@
 //! compares squared distances (no `sqrt`) and the radius halves by integer
 //! shift (no `pow`).
 
+use crate::hash::{rand_range, rand_u32, seed32};
 use crate::mask::Regions;
 use crate::plane::{Plane, clampi};
-use crate::rng::SplitMix64;
 
 /// The 8 propagation directions (unit); scaled by the jump-flood step.
 const DIRS: [(i32, i32); 8] = [
@@ -37,6 +37,9 @@ pub struct Nnf {
     pub h: usize,
     pub off: Vec<[i32; 2]>,
     pub cost: Vec<f32>,
+    /// The global seed — every per-pixel RNG stream is hashed from it (+ index +
+    /// pass), so the field is reproducible and GPU-matchable.
+    pub seed: u64,
 }
 
 /// Sum of squared RGB differences between the target patch (read from the
@@ -63,34 +66,43 @@ fn xy(idx: u32, w: usize) -> [i32; 2] {
     [(idx as usize % w) as i32, (idx as usize / w) as i32]
 }
 
+/// Salt bases keeping the init draw and each pass's random-search draw on
+/// distinct per-pixel counter streams (see [`crate::hash`]).
+pub(crate) const SALT_INIT: u32 = 0x1117;
+pub(crate) const SALT_SEARCH: u32 = 0x5EED_0000;
+
 impl Nnf {
     /// Random NNF init: each target centre points at a uniformly-chosen source
-    /// centre, cost evaluated against the current content. Seeded — reproducible.
-    pub fn init(content: &Plane, src: &Plane, reg: &Regions, r: i32, rng: &mut SplitMix64) -> Nnf {
+    /// centre (drawn from its own per-pixel stream), cost evaluated against the
+    /// current content. Deterministic for a given `seed`; GPU-matchable.
+    pub fn init(content: &Plane, src: &Plane, reg: &Regions, r: i32, seed: u64) -> Nnf {
         let (w, h) = (reg.w, reg.h);
+        let s32 = seed32(seed);
         let mut off = vec![[0i32; 2]; w * h];
         let mut cost = vec![f32::INFINITY; w * h];
         let ns = reg.sources.len() as u32;
         for &ti in &reg.targets {
             let t = xy(ti, w);
-            let si = reg.sources[rng.next_u32(ns) as usize];
+            let pick = rand_u32(s32, ti, SALT_INIT, 0) % ns;
+            let si = reg.sources[pick as usize];
             let s = xy(si, w);
             off[ti as usize] = [s[0] - t[0], s[1] - t[1]];
             cost[ti as usize] = patch_ssd(content, src, t, s, r);
         }
-        Nnf { w, h, off, cost }
+        Nnf {
+            w,
+            h,
+            off,
+            cost,
+            seed,
+        }
     }
 
     /// One E-step: refresh costs against the (possibly updated) `content`, run
-    /// jump-flood propagation passes, then a random-search pass.
-    pub fn e_step(
-        &mut self,
-        content: &Plane,
-        src: &Plane,
-        reg: &Regions,
-        r: i32,
-        rng: &mut SplitMix64,
-    ) {
+    /// jump-flood propagation passes, then a random-search pass. `pass` is the EM
+    /// iteration index — it salts the per-pixel search streams so successive
+    /// iterations explore fresh candidates.
+    pub fn e_step(&mut self, content: &Plane, src: &Plane, reg: &Regions, r: i32, pass: u64) {
         // Costs are stale after an M-step changed the content — refresh them.
         for &ti in &reg.targets {
             let t = xy(ti, self.w);
@@ -106,7 +118,7 @@ impl Nnf {
             }
             step /= 2;
         }
-        self.random_search(content, src, reg, r, rng);
+        self.random_search(content, src, reg, r, pass);
     }
 
     /// One double-buffered jump-flood pass at `step`: for every target centre,
@@ -143,14 +155,11 @@ impl Nnf {
 
     /// Random-search pass: around each target's current source, sample at an
     /// exponentially shrinking radius (`R, R/2, … 1`), keeping any improvement.
-    fn random_search(
-        &mut self,
-        content: &Plane,
-        src: &Plane,
-        reg: &Regions,
-        r: i32,
-        rng: &mut SplitMix64,
-    ) {
+    /// Each target draws from its own per-pixel stream (salted by `pass`), so the
+    /// pass is order-independent and GPU-matchable.
+    fn random_search(&mut self, content: &Plane, src: &Plane, reg: &Regions, r: i32, pass: u64) {
+        let s32 = seed32(self.seed);
+        let salt = SALT_SEARCH.wrapping_add(pass as u32);
         let max_r = self.w.max(self.h) as i32;
         for &ti in &reg.targets {
             let idx = ti as usize;
@@ -158,9 +167,12 @@ impl Nnf {
             let mut best_off = self.off[idx];
             let mut best = self.cost[idx];
             let mut radius = max_r;
+            let mut k = 0u32;
             while radius >= 1 {
-                let cx = t[0] + best_off[0] + rng.range_i32(-radius, radius);
-                let cy = t[1] + best_off[1] + rng.range_i32(-radius, radius);
+                let jx = rand_range(s32, ti, salt, 2 * k, -radius, radius);
+                let jy = rand_range(s32, ti, salt, 2 * k + 1, -radius, radius);
+                let cx = t[0] + best_off[0] + jx;
+                let cy = t[1] + best_off[1] + jy;
                 let sx = clampi(cx, self.w) as i32;
                 let sy = clampi(cy, self.h) as i32;
                 if reg.is_source[sy as usize * self.w + sx as usize] {
@@ -171,6 +183,7 @@ impl Nnf {
                     }
                 }
                 radius /= 2;
+                k += 1;
             }
             self.off[idx] = best_off;
             self.cost[idx] = best;
@@ -214,10 +227,9 @@ mod tests {
         }
         let mask = Mask::from_bytes(w, h, &bytes);
         let reg = Regions::build(&mask, 3);
-        let mut rng = SplitMix64::new(1);
-        let mut nnf = Nnf::init(&img, &img, &reg, 3, &mut rng);
-        for _ in 0..6 {
-            nnf.e_step(&img, &img, &reg, 3, &mut rng);
+        let mut nnf = Nnf::init(&img, &img, &reg, 3, 1);
+        for it in 0..6 {
+            nnf.e_step(&img, &img, &reg, 3, it);
         }
         // A hole centre should match a source at the same stripe phase ⇒ near-zero cost.
         let ti = 16 * w + 16;

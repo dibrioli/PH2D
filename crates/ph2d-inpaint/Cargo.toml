@@ -32,7 +32,17 @@ authors.workspace = true
 # reconciled against the CPU reference by a parity test. Off by default so the
 # CPU-only build stays light — the shell flips it on when it has a GpuContext.
 default = []
+gpu = ["dep:ph2d-gpu", "dep:wgpu", "dep:bytemuck"]
 
 [dependencies]
+
+# ── W2 GPU compute stack (optional, gated by `gpu`) ───────────────
+# Shared GpuContext (Device + Queue) — the same one the shell owns, so the
+# CPU-fallback and GPU paths round-trip through one device/queue.
+ph2d-gpu = { path = "../ph2d-gpu", optional = true }
+# Pinned to the workspace wgpu (28) to avoid ABI drift.
+wgpu = { version = "28", optional = true }
+# `Pod`/`Zeroable` for the uniform struct and `&[u8]` ↔ typed storage casts.
+bytemuck = { version = "1", features = ["derive"], optional = true }
 
 [dev-dependencies]

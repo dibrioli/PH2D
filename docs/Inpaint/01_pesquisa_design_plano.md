@@ -55,9 +55,13 @@ somas f32).
 
 ## 4. Ondas
 
-- [x] **W1 — núcleo referência CPU** (`ph2d-inpaint`): SSD, jump-flood NNF, EM-voting, pirâmide + 20
+- [x] **W1 — núcleo referência CPU** (`ph2d-inpaint`): SSD, jump-flood NNF, EM-voting, pirâmide + 24
   known-answer tests (stripes reconstruídas, flat continua flat, gradiente suave, byte-reproduzível).
-- [ ] **W2 — compute GPU**: WGSL jump-flood + voting em wgpu/Metal, reconciliado dentro de ε contra W1;
-  runtime GPU→CPU.
+- [x] **W2 — compute GPU** (`feature = "gpu"`): 5 kernels WGSL (init/cost/propagate/random-search/vote)
+  espelhando a CPU op-a-op — mesmo counter-hash **32-bit** (WGSL não tem `u64`), mesma ordem de passes,
+  gather-vote (sem atomics). Driver per-nível (`gpu/mod.rs`) com uniform-por-dispatch. Runtime GPU→CPU
+  (`inpaint(Option<&GpuContext>, …)`). 3 testes headless-Metal verdes: **reconcilia com a CPU dentro de
+  ε** (mean ≤ 2/255) + stripes/flat standalone. As 3 máscaras empacotadas em 1 buffer `flags` (bit0
+  source/bit1 target/bit2 hole) p/ caber no piso de 8 storage-buffers/stage.
 - [ ] **W3 — tool + UI**: máscara, invoke, bake, ícone, painel, undo.
 - [ ] **W4 — polish**: pistas de estrutura/borda, progresso, tuning.

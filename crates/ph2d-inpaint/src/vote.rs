@@ -6,10 +6,16 @@
 //! pinned to the real image). The weight is `1/(1+cost)` so sharper matches
 //! count more; it is division-only (transcendental-free), so the GPU voting
 //! kernel reproduces it within ε.
+//!
+//! Covered pixels that fall outside the image are **skipped** (not clamped): the
+//! source read still clamps, but a target patch never scatters onto a clamped
+//! border pixel. This makes the scatter here identical to the equivalent GPU
+//! *gather* (for each hole pixel `p`, sum over target centres `c ∈ [p-r, p+r]²`),
+//! which has no out-of-bounds coverage to clamp — so CPU and GPU voting agree.
 
 use crate::mask::{Mask, Regions};
 use crate::nnf::Nnf;
-use crate::plane::{Plane, clampi};
+use crate::plane::Plane;
 
 /// Vote hole pixels of `content` in place. `src` is the fixed level image, `nnf`
 /// the just-searched field, `r` the patch radius.
@@ -28,13 +34,14 @@ pub fn vote(content: &mut Plane, src: &Plane, mask: &Mask, reg: &Regions, nnf: &
             for dx in -r..=r {
                 let px = tx + dx;
                 let py = ty + dy;
-                let cx = clampi(px, w);
-                let cy = clampi(py, h);
-                if !mask.hole[cy * w + cx] {
+                if px < 0 || px >= w as i32 || py < 0 || py >= h as i32 {
+                    continue; // covered pixel off-image ⇒ skip (matches GPU gather)
+                }
+                let vi = py as usize * w + px as usize;
+                if !mask.hole[vi] {
                     continue; // never overwrite a known pixel
                 }
                 let col = src.get(tx + o[0] + dx, ty + o[1] + dy);
-                let vi = cy * w + cx;
                 sum[vi][0] += weight * col[0];
                 sum[vi][1] += weight * col[1];
                 sum[vi][2] += weight * col[2];
@@ -57,7 +64,6 @@ pub fn vote(content: &mut Plane, src: &Plane, mask: &Mask, reg: &Regions, nnf: &
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::rng::SplitMix64;
 
     #[test]
     fn voting_a_constant_image_reproduces_the_constant() {
@@ -83,8 +89,7 @@ mod tests {
                 content.set(x, y, [0.0, 0.0, 0.0]);
             }
         }
-        let mut rng = SplitMix64::new(3);
-        let nnf = Nnf::init(&content, &img, &reg, 3, &mut rng);
+        let nnf = Nnf::init(&content, &img, &reg, 3, 3);
         vote(&mut content, &img, &mask, &reg, &nnf, 3);
         // Any source patch is the constant colour, so the hole fills to it.
         for y in 10..14 {

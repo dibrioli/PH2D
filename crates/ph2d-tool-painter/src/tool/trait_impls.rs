@@ -544,16 +544,16 @@ impl RasterEditTool for PainterTool {
         let composited = if let Some(g) = gray {
             g
         } else {
-            // Mask brush: the active layer is composited MASKED by the transient scratch (non-destructive).
-            let masked = self.mask_scratch_display();
+            // Mask brush: the active layer composites NORMALLY (fully visible) — the protection scratch
+            // never hides it; the overlay below only tints the frozen region.
             let active = self.layers.active().unwrap_or(RtLayerId(0));
             let src = ToolPixelSource {
                 active_id: active,
-                active_rgba: masked.as_deref().unwrap_or(&self.canvas_rgba),
+                active_rgba: &self.canvas_rgba,
                 images: &self.images,
             };
             let mut c = composite(&self.layers, &src, w, h);
-            self.apply_mask_overlay(&mut c); // tint the concealed region (no-op without a scratch)
+            self.apply_mask_overlay(&mut c); // tint the protected region (no-op without a scratch)
             c
         };
         self.composited = Some(Arc::new(composited));

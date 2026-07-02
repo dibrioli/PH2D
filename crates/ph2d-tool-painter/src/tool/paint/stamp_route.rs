@@ -19,10 +19,28 @@ impl PainterTool {
         self.paint.brush.stroke_method.coalesces_canvas_motion()
     }
 
-    /// Stamp a batch of dabs into `canvas_rgba` (with the brush Shape + Grain, if any) + accumulate the
-    /// dirty rect. With **Tiling** on, each dab is first replicated across the wrapped sprite edges
-    /// (`tiling::tiled_dabs`) so a stroke near a border is seamless when the sprite repeats as a tile.
+    /// Stamp a batch of dabs into `canvas_rgba`, gated by the Sculpt-style **protection** mask. While a
+    /// mask scratch is live on the active layer (and we're NOT in Mask mode — that edits the scratch), the
+    /// painted region is FROZEN against EVERY paint tool: snapshot the dab footprint, stamp normally, then
+    /// restore the protected texels ([`Self::restore_protected_region`]). Nothing is made invisible — only
+    /// the paint is gated. Engine-agnostic: it wraps ALL the routes in [`Self::stamp_dabs_routed`].
     pub(super) fn stamp_dabs(&mut self, dabs: &[Dab]) {
+        if self.mask_protection_active()
+            && let Some(region) = self.dab_batch_region(dabs)
+        {
+            let before = self.snapshot_region(region);
+            self.stamp_dabs_routed(dabs);
+            self.restore_protected_region(region, &before);
+            return;
+        }
+        self.stamp_dabs_routed(dabs);
+    }
+
+    /// Route a batch of dabs to one of the stamp paths (Smear / Blur / Clone / Mask / composite / cached /
+    /// per-pixel / …) by mode + Shape/Grain slots. With **Tiling** on, each dab is first replicated across
+    /// the wrapped sprite edges (`tiling::tiled_dabs`) for a seamless tile. [`Self::stamp_dabs`] wraps this
+    /// with the protection gate.
+    pub(super) fn stamp_dabs_routed(&mut self, dabs: &[Dab]) {
         // Smear drags canvas content between consecutive dab centres — it ignores the brush colour /
         // blend / ramp routing, so short-circuit before all of it. It needs the UNtiled dab chain (a
         // single `last_smear_pos` source) + applies Shape/Grain/flatten via the mask and Tiling via

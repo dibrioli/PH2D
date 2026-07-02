@@ -219,9 +219,9 @@ impl PainterTool {
         // cache — O(N×bbox) vs O(N×W×H). Otherwise do a full recompose.
         let dirty = self.dirty_rect.take();
         let stroke_dirtied = dirty.is_some();
-        // While the Mask brush's scratch is live it masks the WHOLE active layer + tints the composite; a
-        // partial-region blit can't re-mask/re-tint the untouched frame, so force the full recompose path
-        // (a single-layer recompose is cheap — not the 100k-sprite hot path).
+        // While the Mask brush's scratch is live the composite carries the protection-overlay TINT over the
+        // whole frame; a partial-region blit can't re-tint the untouched area, so force the full recompose
+        // path (a single-layer recompose is cheap — not the 100k-sprite hot path).
         let force_full = self.mask_scratch_active();
         match (self.composited.is_some() && !force_full, dirty) {
             (true, Some(bbox)) => {
@@ -240,11 +240,11 @@ impl PainterTool {
                 self.preview_upload_bbox = Some(bbox);
             }
             _ => {
-                // Mask brush: composite the active layer MASKED by the transient scratch (non-destructive).
-                let masked = self.mask_scratch_display();
+                // Mask brush: the active layer composites NORMALLY (fully visible) — the protection scratch
+                // never hides it; only `apply_mask_overlay` below tints the frozen region.
                 let src = ToolPixelSource {
                     active_id: active,
-                    active_rgba: masked.as_deref().unwrap_or(&self.canvas_rgba),
+                    active_rgba: &self.canvas_rgba,
                     images: &self.images,
                 };
                 let mut composed =

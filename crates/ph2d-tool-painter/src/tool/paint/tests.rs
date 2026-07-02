@@ -472,10 +472,11 @@ fn clone_mode_copies_from_the_sampled_source() {
 }
 
 #[test]
-fn mask_brush_creates_no_layer_and_conceals_live_nondestructively() {
-    // The Mask BRUSH paints a TEMPORARY scratch mask — it must NOT create a stack layer, keep the current
-    // layer active, and leave the layer's pixels untouched (non-destructive). The composite hides the
-    // concealed dab live; a revealed corner keeps the image.
+fn mask_brush_protects_and_keeps_the_layer_fully_visible() {
+    // The Mask BRUSH paints a TEMPORARY PROTECTION scratch (Blender Sculpt-mask style). It must NOT create
+    // a stack layer, keep the current layer active, leave the layer's pixels untouched (non-destructive),
+    // and — critically — NEVER make anything invisible: the layer stays fully opaque; the overlay only
+    // TINTS the protected region so you can see it.
     use ph2d_editor_core::ids as core_ids;
     use ph2d_editor_core::tool::{PanelEvent, Tool};
     let mut t = white_canvas(24, 6.0);
@@ -486,10 +487,10 @@ fn mask_brush_creates_no_layer_and_conceals_live_nondestructively() {
         "mask".to_string(),
     ));
     assert!(t.is_mask_mode());
-    assert_eq!(t.mask_brush(), 0, "default sub-brush is Paint (conceal)");
-    t.on_canvas_pointer(cp([12.0, 12.0], PointerPhase::Down)); // conceal at centre (into the scratch)
+    assert_eq!(t.mask_brush(), 0, "default sub-brush is Paint (protect)");
+    t.on_canvas_pointer(cp([12.0, 12.0], PointerPhase::Down)); // protect the centre (into the scratch)
     t.on_canvas_pointer(cp([12.0, 12.0], PointerPhase::Up));
-    // No layer created; still on the raster; no Mask layer anywhere.
+    // No layer created; still on the raster; a transient scratch is live.
     assert_eq!(
         t.layers.all_ids().count(),
         n_before,
@@ -503,16 +504,64 @@ fn mask_brush_creates_no_layer_and_conceals_live_nondestructively() {
         [255, 255, 255, 255],
         "the layer pixels are untouched (non-destructive)"
     );
-    // The composite hides the concealed dab (dark + tinted) while a revealed corner stays full white.
+    // NOTHING is invisible: the protected centre stays FULLY OPAQUE (a = 255) — the opposite of a
+    // visibility mask. The overlay only tints the RGB so you can see it; an unprotected corner is pristine.
     let (buf, w, _h) = t.take_preview_arc().expect("a composite preview");
     let c = ((12 * w + 12) * 4) as usize;
     let corner = ((2 * w + 2) * 4) as usize;
+    assert_eq!(
+        buf[c + 3],
+        255,
+        "the protected pixel is NOT hidden — still fully opaque"
+    );
     assert!(
-        buf[c] < 128,
-        "concealed centre is masked/dark, got {}",
+        buf[c] < 255,
+        "the overlay tints the protected region, got {}",
         buf[c]
     );
-    assert_eq!(buf[corner], 255, "revealed corner keeps the image");
+    assert_eq!(
+        [buf[corner], buf[corner + 3]],
+        [255, 255],
+        "an unprotected corner keeps the pristine image"
+    );
+}
+
+#[test]
+fn mask_brush_freezes_pixels_against_the_paint_brush() {
+    // The CORE of the protection mask: a scratch-protected region is FROZEN — the paint Brush (and every
+    // other paint tool) cannot alter it. Protect the centre, switch to the Brush, then paint over both the
+    // protected centre and an unprotected corner: the centre keeps its pixel, the corner paints normally.
+    use ph2d_editor_core::ids as core_ids;
+    use ph2d_editor_core::tool::{PanelEvent, Tool};
+    let mut t = white_canvas(32, 4.0); // black brush on white
+    // Protect the centre.
+    t.handle_panel_event(PanelEvent::SelectOption(
+        core_ids::PAINTER_PAINT_MODE,
+        "mask".to_string(),
+    ));
+    t.on_canvas_pointer(cp([16.0, 16.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([16.0, 16.0], PointerPhase::Up));
+    assert!(t.mask_scratch_active());
+    // Switch to the normal Brush (protection persists) and stroke the protected centre — it must not move.
+    t.handle_panel_event(PanelEvent::SelectOption(
+        core_ids::PAINTER_PAINT_MODE,
+        "brush".to_string(),
+    ));
+    t.on_canvas_pointer(cp([16.0, 16.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([16.0, 16.0], PointerPhase::Up));
+    assert_eq!(
+        px(&t, 32, 16, 16),
+        [255, 255, 255, 255],
+        "the protected centre is FROZEN — the brush could not paint it"
+    );
+    // An unprotected corner paints normally (black).
+    t.on_canvas_pointer(cp([28.0, 28.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([28.0, 28.0], PointerPhase::Up));
+    assert_eq!(
+        px(&t, 32, 28, 28),
+        [0, 0, 0, 255],
+        "an unprotected pixel paints normally"
+    );
 }
 
 #[test]
@@ -583,8 +632,8 @@ fn mask_apply_creates_a_layer_mask_from_the_scratch() {
 fn mask_scratch_persists_across_a_tool_switch() {
     // The scratch is PERSISTENT (correção #1): switching the rail tool does NOT discard it. After painting
     // the scratch and switching to the Brush, it stays live (its target layer is still active) and keeps
-    // masking the layer — so you can retouch the concealed area with the Brush. (Apply is the only way to
-    // bake it; switching LAYERS is the only thing that makes it go dormant.)
+    // PROTECTING the region — so you can paint freely around the frozen area with the Brush. (Switching
+    // LAYERS is the only thing that makes it go dormant.)
     use ph2d_editor_core::ids as core_ids;
     use ph2d_editor_core::tool::{PanelEvent, Tool};
     let mut t = white_canvas(16, 5.0);
@@ -592,7 +641,7 @@ fn mask_scratch_persists_across_a_tool_switch() {
         core_ids::PAINTER_PAINT_MODE,
         "mask".to_string(),
     ));
-    t.on_canvas_pointer(cp([8.0, 8.0], PointerPhase::Down)); // conceal centre (scratch only)
+    t.on_canvas_pointer(cp([8.0, 8.0], PointerPhase::Down)); // protect centre (scratch only)
     t.on_canvas_pointer(cp([8.0, 8.0], PointerPhase::Up));
     assert!(t.mask_scratch_active());
     // Switch to the Brush — the scratch must NOT be discarded.
@@ -604,22 +653,22 @@ fn mask_scratch_persists_across_a_tool_switch() {
         t.mask_scratch_active(),
         "switching tools keeps the scratch alive (its target layer is still active)"
     );
-    // The composite still conceals the masked centre while a revealed corner keeps the image.
+    // The composite still TINTS the protected centre while an unprotected corner keeps the pristine image.
     let (buf, w, _h) = t.take_preview_arc().expect("a composite preview");
     let c = ((8 * w + 8) * 4) as usize;
     let corner = ((w + 1) * 4) as usize;
     assert!(
         buf[c] < 128,
-        "the scratch still masks the centre after the tool switch, got {}",
+        "the scratch still marks the protected centre after the tool switch, got {}",
         buf[c]
     );
-    assert_eq!(buf[corner], 255, "the revealed corner keeps the image");
+    assert_eq!(buf[corner], 255, "the unprotected corner keeps the image");
 }
 
 #[test]
 fn mask_canvas_op_clear_then_invert() {
-    // The whole-canvas Modifiers edit the transient SCRATCH (no layer). Clear → fully revealed (composite
-    // shows the full layer); Invert → fully concealed (composite hides the layer). Verified via composite.
+    // The whole-canvas Modifiers edit the transient SCRATCH (no layer). Clear → nothing protected (no
+    // overlay tint → pristine layer); Invert → everything protected (fully tinted). Verified via composite.
     use ph2d_editor_core::ids as core_ids;
     use ph2d_editor_core::tool::PanelEvent;
     let mut t = white_canvas(16, 4.0);
@@ -643,14 +692,14 @@ fn mask_canvas_op_clear_then_invert() {
     assert_eq!(
         [buf[i], buf[i + 1], buf[i + 2], buf[i + 3]],
         [255, 255, 255, 255],
-        "Clear → fully revealed"
+        "Clear → nothing protected → pristine (no overlay tint)"
     );
     t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_MASK_OP[4])); // Invert → scratch black
     let (buf, w, _h) = t.take_preview_arc().expect("a composite preview");
     let i = ((8 * w + 8) * 4) as usize;
     assert!(
         buf[i] < 128,
-        "Invert → concealed, composite dark, got {}",
+        "Invert → all protected, composite tinted dark, got {}",
         buf[i]
     );
 }
@@ -690,10 +739,10 @@ fn layer_mask_paintable_by_brush_and_grayscale_view_eye() {
 }
 
 #[test]
-fn mask_overlay_tints_the_concealed_composite() {
-    // The overlay is a quick-mask film over the CONCEALED region: a fully-revealed (white) mask shows
-    // nothing, so Clear→Invert (fully concealed / black) + the fluorescent-yellow overlay pulls the
-    // composite's blue down (yellow = low blue), proving the film renders on the hidden area.
+fn mask_overlay_tints_the_protected_composite() {
+    // The overlay is a quick-mask film over the PROTECTED region: an all-unprotected (white) mask shows
+    // nothing, so Clear→Invert (all protected / black) + the fluorescent-yellow overlay pulls the
+    // composite's blue down (yellow = low blue), proving the film renders on the frozen area.
     use ph2d_editor_core::ids as core_ids;
     use ph2d_editor_core::tool::PanelEvent;
     let mut t = white_canvas(16, 4.0);
@@ -703,22 +752,22 @@ fn mask_overlay_tints_the_concealed_composite() {
     ));
     t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_MASK_COLOR[1])); // fluorescent yellow
     assert_eq!(t.mask_overlay_color(), 1);
-    t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_MASK_OP[5])); // Clear → white (revealed)
-    // A fully-revealed mask must NOT tint (no flood).
+    t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_MASK_OP[5])); // Clear → white (unprotected)
+    // An all-unprotected mask must NOT tint (no flood).
     let (buf, w, _h) = t.take_preview_arc().expect("a composite preview");
     let i = ((8 * w + 8) * 4) as usize;
     assert_eq!(
         [buf[i], buf[i + 1], buf[i + 2]],
         [255, 255, 255],
-        "a fully-revealed mask shows NO overlay flood"
+        "an all-unprotected mask shows NO overlay flood"
     );
-    t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_MASK_OP[4])); // Invert → black (concealed)
+    t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_MASK_OP[4])); // Invert → black (protected)
     let (buf, w, _h) = t.take_preview_arc().expect("a composite preview");
     let i = ((8 * w + 8) * 4) as usize;
     let (r, g, b) = (buf[i], buf[i + 1], buf[i + 2]);
     assert!(
         b < r && b < g,
-        "yellow overlay tints the concealed area, pulling blue below red/green: ({r}, {g}, {b})"
+        "yellow overlay tints the protected area, pulling blue below red/green: ({r}, {g}, {b})"
     );
 }
 

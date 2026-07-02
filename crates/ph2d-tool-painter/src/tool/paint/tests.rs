@@ -899,6 +899,74 @@ fn mask_brush_protects_and_keeps_the_layer_fully_visible() {
 }
 
 #[test]
+fn mask_stroke_undoes_and_redoes_with_the_global_timeline() {
+    // A mask stroke mutates only the transient scratch (the layer's own pixels stay put), so the undo
+    // model must capture that scratch — else the stroke produces a no-op undo entry and can't be rolled
+    // back. The reported bug. Paint a mask dab, then undo/redo and check the scratch flips
+    // concealed↔cleared in lock-step with the global painter timeline.
+    use ph2d_editor_core::ids as core_ids;
+    use ph2d_editor_core::tool::{PanelEvent, Tool};
+    let size = 24u32;
+    let mut t = white_canvas(size, 6.0);
+    t.handle_panel_event(PanelEvent::SelectOption(
+        core_ids::PAINTER_PAINT_MODE,
+        "mask".to_string(),
+    ));
+    let center = ((12 * size + 12) * 4) as usize; // R channel of the scratch centre
+    // Paint a mask dab → the scratch is created + the centre concealed (R drops from white).
+    t.on_canvas_pointer(cp([12.0, 12.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([12.0, 12.0], PointerPhase::Up));
+    let painted = t.paint.mask_scratch_rgba[center];
+    assert!(
+        painted < 200,
+        "the mask dab concealed the centre (R={painted})"
+    );
+    // Undo → the scratch rolls back to white (the stroke IS undoable with the global timeline).
+    assert!(t.undo_last(), "the mask stroke is an undo step");
+    assert_eq!(
+        t.paint.mask_scratch_rgba[center], 255,
+        "undo cleared the scratch back to white"
+    );
+    // Redo → the conceal comes back, identically.
+    assert!(t.redo_last(), "redo re-applies the mask stroke");
+    assert_eq!(
+        t.paint.mask_scratch_rgba[center], painted,
+        "redo restored the concealed scratch"
+    );
+}
+
+#[test]
+fn mask_canvas_op_is_undoable() {
+    // A whole-canvas mask Modifier (Clear / Invert / …) mutates the scratch and must be undoable too.
+    use ph2d_editor_core::ids as core_ids;
+    use ph2d_editor_core::tool::{PanelEvent, Tool};
+    let size = 24u32;
+    let mut t = white_canvas(size, 6.0);
+    t.handle_panel_event(PanelEvent::SelectOption(
+        core_ids::PAINTER_PAINT_MODE,
+        "mask".to_string(),
+    ));
+    let center = ((12 * size + 12) * 4) as usize;
+    // A mask dab conceals the centre.
+    t.on_canvas_pointer(cp([12.0, 12.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([12.0, 12.0], PointerPhase::Up));
+    let concealed = t.paint.mask_scratch_rgba[center];
+    assert!(concealed < 200, "the dab concealed the centre");
+    // Clear (op 5) whitens the whole scratch.
+    t.mask_canvas_op(5);
+    assert_eq!(
+        t.paint.mask_scratch_rgba[center], 255,
+        "Clear whitened the scratch"
+    );
+    // Undo rolls the Clear back to the concealed dab (the canvas op is its own undo step).
+    assert!(t.undo_last(), "the canvas op is an undo step");
+    assert_eq!(
+        t.paint.mask_scratch_rgba[center], concealed,
+        "undo restored the concealed dab"
+    );
+}
+
+#[test]
 fn mask_brush_freezes_pixels_against_the_paint_brush() {
     // The CORE of the protection mask: a scratch-protected region is FROZEN — the paint Brush (and every
     // other paint tool) cannot alter it. Protect the centre, switch to the Brush, then paint over both the

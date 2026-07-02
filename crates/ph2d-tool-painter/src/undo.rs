@@ -52,6 +52,13 @@ pub struct ModelSnapshot {
     /// The in-progress drag-preview's saved pixels, if a shape preview was live — so a restore can peel the
     /// preview back to the pristine baseline before re-stamping the editor's geometry (no double paint).
     pub preview_patch: Option<PreviewPatch>,
+    /// The **Mask** brush's transient scratch buffer + its target layer at capture time. A mask stroke
+    /// mutates only this scratch (it swaps in/out of `canvas_rgba`, which stays unchanged), so without
+    /// capturing it here a mask stroke produced a no-op undo entry and could not be rolled back. Restoring
+    /// it alongside the layers keeps the live mask-in-progress in lock-step with the global undo/redo.
+    /// Empty `Arc` + `None` = no scratch.
+    pub mask_scratch: Arc<Vec<u8>>,
+    pub mask_scratch_target: Option<crate::layers::LayerId>,
 }
 
 /// Plain-data snapshot of an open on-canvas shape editor, stored in a [`ModelSnapshot`] so a structural
@@ -287,6 +294,8 @@ mod tests {
             offset_norm: 0.5,
             offset_base_px: 0.0,
             preview_patch: None,
+            mask_scratch: Arc::new(Vec::new()),
+            mask_scratch_target: None,
         }
     }
 

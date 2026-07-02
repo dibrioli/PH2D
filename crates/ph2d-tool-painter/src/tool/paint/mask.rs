@@ -91,6 +91,29 @@ impl PainterTool {
         self.invalidate_composite();
     }
 
+    /// Snapshot the Mask scratch buffer + target for the undo model — the scratch lives in `PaintState`
+    /// (private to this module), so the general `snapshot_model` (in `tool::layers::undo`) reaches it
+    /// through here. `Arc`-shared, so the clone is cheap.
+    pub(crate) fn mask_scratch_for_snapshot(
+        &self,
+    ) -> (Arc<Vec<u8>>, Option<crate::layers::LayerId>) {
+        (
+            Arc::clone(&self.paint.mask_scratch_rgba),
+            self.paint.mask_scratch_target,
+        )
+    }
+
+    /// Reinstate the Mask scratch buffer + target from an undo model (structural undo/redo), keeping the
+    /// live mask-in-progress in sync with the restored layers/pixels.
+    pub(crate) fn restore_mask_scratch(
+        &mut self,
+        rgba: Arc<Vec<u8>>,
+        target: Option<crate::layers::LayerId>,
+    ) {
+        self.paint.mask_scratch_rgba = rgba;
+        self.paint.mask_scratch_target = target;
+    }
+
     /// **Apply** — promote the transient scratch to a real **layer-system mask** on the current layer
     /// (it appears in the Layers panel with eye / Invert and is editable by any tool), then clear the
     /// scratch. The parent raster stays the active edit layer (you were painting the image, not the
@@ -270,12 +293,16 @@ impl PainterTool {
         if w == 0 || h == 0 {
             return;
         }
+        // One structural undo step (pre-op scratch → post-op), so a canvas Modifier rolls back like a
+        // mask stroke does.
+        let before = self.snapshot_model();
         let radius = self.paint.brush.radius_px;
         {
             let buf = Arc::make_mut(&mut self.paint.mask_scratch_rgba);
             ph2d_painter_brush::apply_mask_op(buf, w, h, mop, radius);
         }
         self.invalidate_composite();
+        self.commit_structural_edit(before);
     }
 
     /// Blend the mask overlay film over the composited RGBA `buf`: where the scratch PROTECTS, tint by the

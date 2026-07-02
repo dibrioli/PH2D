@@ -84,5 +84,11 @@ somas f32).
   0.5..3.0×). Sliders `0..1` no tool (`inpaint_*_norm`), mapeados em `heal_inpaint`; defaults reproduzem
   o comportamento atual. Label do modo "Inpaint". Testes: sliders roteiam pro heal; card só aparece em
   modo Inpaint. (Brush Size continua sendo o tamanho do pincel de marcação.)
-- [ ] **W4 — polish**: GPU no heal (`inpaint(Some(gpu),…)`), pistas de estrutura/borda, feedback de
-  progresso, tuning.
+- [x] **W3.2 — GPU no heal ATIVO**: o heal roda o caminho GPU do `ph2d-inpaint` de fato — feature `gpu`
+  no `ph2d-tool-painter` (ligada pelo shell), `GpuContext` headless process-wide (OnceLock, mirror do
+  color-equalization), `run_inpaint` escolhe **GPU quando há adapter E o crop ≥ 128²** (abaixo disso o
+  overhead de upload/readback perde pro CPU) senão **CPU** — o contrato "GPU com fallback CPU".
+  Verificado FUNCIONAL: teste headless-Metal `inpaint_heal_runs_on_the_gpu_and_reconstructs` confirma
+  `gpu_heal_available()` + reconstrução válida via GPU (não CPU-fallback). CPU-only build inalterado.
+- [ ] **W4 — polish**: cachear o `GpuInpainter` (hoje reconstrói pipelines por-heal), device compartilhado
+  com o shell (hoje é um 2º device headless), pistas de estrutura/borda, feedback de progresso, tuning.

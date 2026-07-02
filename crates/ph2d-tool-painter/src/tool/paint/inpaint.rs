@@ -180,17 +180,21 @@ impl PainterTool {
                 }
             }
         }
-        let result = inpaint_cpu(&InpaintRequest {
-            width: cw as u32,
-            height: ch as u32,
-            rgba: &crop_rgba,
-            mask: &crop_mask,
-            params: InpaintParams {
-                patch_radius,
-                em_iters,
-                ..InpaintParams::default()
+        let result = run_inpaint(
+            cw,
+            ch,
+            &InpaintRequest {
+                width: cw as u32,
+                height: ch as u32,
+                rgba: &crop_rgba,
+                mask: &crop_mask,
+                params: InpaintParams {
+                    patch_radius,
+                    em_iters,
+                    ..InpaintParams::default()
+                },
             },
-        });
+        );
         // Write only the reconstructed (marked) pixels back into the layer.
         {
             let dst = Arc::make_mut(&mut self.canvas_rgba);
@@ -214,4 +218,46 @@ impl PainterTool {
         });
         self.paint.inpaint_mask.iter_mut().for_each(|m| *m = 0);
     }
+}
+
+/// Reconstruct the cropped `req` — GPU when the `gpu` feature is on, an adapter is available, and the
+/// crop is large enough to amortise the upload/readback (below the threshold the CPU wins), otherwise
+/// the CPU reference. This is the ADR-0102 "GPU with CPU fallback" contract at the call site.
+#[cfg(feature = "gpu")]
+fn run_inpaint(cw: usize, ch: usize, req: &InpaintRequest<'_>) -> ph2d_inpaint::InpaintResult {
+    // GPU pays for its device round-trip only above ~128² pixels; small heals stay on the CPU.
+    const GPU_MIN_PIXELS: usize = 128 * 128;
+    if cw * ch >= GPU_MIN_PIXELS
+        && let Some(gpu) = try_gpu()
+    {
+        ph2d_inpaint::inpaint(Some(gpu), req)
+    } else {
+        inpaint_cpu(req)
+    }
+}
+
+/// CPU-only build: the heal always uses the reference path.
+#[cfg(not(feature = "gpu"))]
+fn run_inpaint(_cw: usize, _ch: usize, req: &InpaintRequest<'_>) -> ph2d_inpaint::InpaintResult {
+    inpaint_cpu(req)
+}
+
+/// A process-wide headless [`GpuContext`](ph2d_gpu::GpuContext), created lazily on the first heal that
+/// wants it (`None` when no adapter — the heal then falls back to CPU). Mirror of
+/// `ph2d-tool-color-equalization`'s `try_headless_gpu`.
+#[cfg(feature = "gpu")]
+fn try_gpu() -> Option<&'static ph2d_gpu::GpuContext> {
+    use std::sync::OnceLock;
+    static GPU: OnceLock<Option<ph2d_gpu::GpuContext>> = OnceLock::new();
+    GPU.get_or_init(|| {
+        ph2d_gpu::GpuContext::new(ph2d_gpu::GpuContext::default_instance(), None).ok()
+    })
+    .as_ref()
+}
+
+/// Whether the GPU heal path can run on this machine (an adapter was acquired). Used by the parity test
+/// to confirm the heal is exercising the GPU, not silently falling back to CPU.
+#[cfg(all(test, feature = "gpu"))]
+pub(crate) fn gpu_heal_available() -> bool {
+    try_gpu().is_some()
 }

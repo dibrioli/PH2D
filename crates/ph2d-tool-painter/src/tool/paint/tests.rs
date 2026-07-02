@@ -327,6 +327,69 @@ fn inpaint_mode_heals_a_marked_defect_on_pen_up() {
     assert!(t.paint.inpaint_mask.iter().all(|&m| m < 128));
 }
 
+#[cfg(feature = "gpu")]
+#[test]
+#[ignore = "needs a GPU adapter; run with --features gpu -- --ignored"]
+fn inpaint_heal_runs_on_the_gpu_and_reconstructs() {
+    use ph2d_editor_core::ids as core_ids;
+    use ph2d_editor_core::tool::{PanelEvent, Tool};
+    // Confirm the heal actually reaches the GPU on this machine (else the test would silently prove
+    // only the CPU fallback — the "unit-green ≠ works" trap this whole check guards against).
+    if !super::inpaint::gpu_heal_available() {
+        eprintln!("no GPU adapter — skipping GPU heal check");
+        return;
+    }
+    // A 256² canvas with a large red defect, brushed with a big radius → the crop (defect + margin)
+    // exceeds the 128² GPU threshold, so `run_inpaint` takes the GPU branch.
+    let size = 256u32;
+    let mut src = vec![255u8; (size * size * 4) as usize];
+    for y in 96..160 {
+        for x in 96..160 {
+            let i = ((y * size + x) * 4) as usize;
+            src[i..i + 4].copy_from_slice(&[220, 20, 20, 255]);
+        }
+    }
+    let mut t = PainterTool::default();
+    t.set_source(src, size, size);
+    t.paint.brush = BrushSpec {
+        radius_px: 40.0,
+        hardness: 1.0,
+        falloff: Falloff::Constant,
+        strength: 1.0,
+        space_attenuation: false,
+        ..Default::default()
+    };
+    t.handle_panel_event(PanelEvent::SelectOption(
+        core_ids::PAINTER_PAINT_MODE,
+        "inpaint".to_string(),
+    ));
+    // Cover the whole defect with a few dabs, then release → GPU heal.
+    for c in [
+        [128.0, 128.0],
+        [112.0, 112.0],
+        [144.0, 144.0],
+        [112.0, 144.0],
+        [144.0, 112.0],
+    ] {
+        t.on_canvas_pointer(cp(c, PointerPhase::Down));
+    }
+    t.on_canvas_pointer(cp([128.0, 128.0], PointerPhase::Up));
+    // Every masked pixel is rebuilt to ~white (from the surrounding white) — the GPU compute produced a
+    // valid reconstruction, not the red defect.
+    for y in 96..160 {
+        for x in 96..160 {
+            if t.paint.inpaint_mask[(y * size + x) as usize] < 128 {
+                continue;
+            }
+            let p = px(&t, size, x, y);
+            assert!(
+                p[0] > 210 && p[1] > 210 && p[2] > 210,
+                "GPU heal left a defect at ({x},{y}): {p:?}"
+            );
+        }
+    }
+}
+
 #[test]
 fn inpaint_stroke_is_one_undo_step_back_to_the_defect() {
     use ph2d_editor_core::ids as core_ids;

@@ -69,7 +69,9 @@ ph2d-tool-runtime = { path = "../../crates/ph2d-tool-runtime" }
 ph2d-tool-bgremoval = { path = "../../crates/ph2d-tool-bgremoval" }
 # Painter — the layers + effects host. Shell downcasts to PainterTool for the
 # layer-composite GPU preview + Apply bake (painter_bridge.rs / painter_gpu_*).
-ph2d-tool-painter = { path = "../../crates/ph2d-tool-painter" }
+ph2d-tool-painter = { path = "../../crates/ph2d-tool-painter", features = [
+    "gpu",
+] }
 # Layer blend modes + adjustment effects — `painter_gpu_flatten.rs` reads
 # BlendMode + adjustment LUTs to drive the GPU LayerCompositor.
 ph2d-painter-effects = { path = "../../crates/ph2d-painter-effects" }

@@ -67,6 +67,14 @@ pub struct BrushSettings {
     pub is_blur: bool,
     pub is_clone: bool,
     pub is_mask: bool,
+    /// **Inpaint** heal mode — shows the Inpaint card (Patch Size / Quality / Search) + hides colour/Strength.
+    pub is_inpaint: bool,
+    /// Inpaint **Patch Size** slider track (`0..1`; chip shows the mapped `2..6` patch radius).
+    pub inpaint_patch: f32,
+    /// Inpaint **Quality** slider track (`0..1`; chip shows the mapped `3..12` EM iterations).
+    pub inpaint_quality: f32,
+    /// Inpaint **Search** slider track (`0..1`; chip shows the mapped `50..300` % context margin).
+    pub inpaint_search: f32,
     /// Mask sub-brush (`0` Paint/`1` Erase/`2` Blur/`3` Smear) + overlay-tint colour index (`0` gray + 4 fluorescent).
     pub mask_brush: u8,
     pub mask_overlay_color: u8,
@@ -347,6 +355,9 @@ impl PainterTool {
     pub fn set_brush_spacing(&mut self, frac: f32) {
         self.paint.brush.spacing = frac.clamp(0.01, BRUSH_SPACING_MAX);
     }
+
+    // The Inpaint heal-reconstruction setters (`set_inpaint_patch`/`_quality`/`_search`) + their SetValue
+    // router live beside the heal itself in `paint::inpaint` (this file is at the workspace LOC cap).
 
     /// Toggle "Adjust Strength for Spacing".
     pub fn toggle_brush_space_attenuation(&mut self) {

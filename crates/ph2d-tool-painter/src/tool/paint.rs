@@ -71,6 +71,8 @@ mod stencil;
 mod stroke_ctl;
 pub use stencil::{StencilOverlay, StencilPreview};
 mod blur_route;
+/// The `impl CanvasPaintTool` pointer entry (`on_canvas_pointer`); split from `paint.rs` (LOC cap).
+mod canvas_pointer;
 mod composite;
 pub(crate) use composite::{CompositeLayer, CompositeOp};
 mod clone;
@@ -266,6 +268,13 @@ pub(crate) struct PaintState {
     /// **Inpaint** defect mask (1 byte/px, `>= 128` ⇒ heal). Accumulated as the user brushes in Inpaint
     /// mode; on pen-up [`super::inpaint`] reconstructs the marked region and clears it. Sized `w*h`.
     inpaint_mask: Vec<u8>,
+    /// **Inpaint** Patch Size (`0..1` track → patch radius `2..=6`); the reconstruction's patch footprint.
+    inpaint_patch_norm: f32,
+    /// **Inpaint** Quality (`0..1` track → EM iterations `3..=12`); more iterations = better fit, slower.
+    inpaint_quality_norm: f32,
+    /// **Inpaint** Search (`0..1` track → context-margin multiplier `0.5..3.0`); how much surrounding
+    /// context PatchMatch samples from around the hole.
+    inpaint_search_norm: f32,
     /// Per-stroke per-layer-colour accumulation (recomposite); see [`stamp_color_cache`].
     per_layer_stroke: stamp_color_cache::PerLayerStroke,
     /// Cached coloured Shape **preview** (premul RGBA), re-baked only on appearance change; [`stamp_color_cache`].
@@ -541,71 +550,8 @@ fn union_region(a: Region, b: Region) -> Region {
     }
 }
 
-/// Brush-settings accessors — the Brush section of the layers panel and the
-/// `[` / `]` keyboard nudge drive these; the brush is plain state (changing it
-/// touches no pixels, so there is no undo entry or preview invalidation here).
-impl CanvasPaintTool for PainterTool {
-    fn on_canvas_pointer(&mut self, ev: CanvasPointer) -> bool {
-        if ev.phase == PointerPhase::Hover {
-            return false; // hover is cursor/preview only
-        }
-        // While a Symmetry pick mode is armed, the canvas sets the mirror line / radial centre instead
-        // of painting (works on any layer, so it precedes the paintable-target gate).
-        if self.symmetry_pick_active() {
-            return self.symmetry_pick_pointer(ev);
-        }
-        // Clone "Set Source" pick mode: the next canvas Down samples the source anchor (consumes the
-        // click, no paint), like the Symmetry picks. Works on any layer (it records a coordinate).
-        if self.clone_sample_armed() {
-            return self.clone_sample_pointer(ev);
-        }
-        // Eyedropper pick: the next Down samples the composited pixel colour into the brush (then → Brush).
-        if self.eyedropper_armed() {
-            return self.eyedropper_pointer(ev);
-        }
-        if !self.paint_target_ready() {
-            // Active layer isn't paintable (mask/group/adjustment) or no canvas:
-            // finalize any half-open stroke (records its undo) before bailing. Drop any open
-            // shape session too (its restore would read a stale buffer once the layer changed).
-            self.discard_open_shape();
-            self.close_stroke();
-            return false;
-        }
-        // Curve and Ellipse are persistent on-canvas shape editors (draw → edit → commit), not a
-        // single press→release stroke — route every canvas event through them instead of the generic
-        // path.
-        match self.paint.brush.stroke_method {
-            // Free Hand shares the Curve editor (its draw phase captures a freehand path, then it's an
-            // ordinary editable curve), so it routes through `curve_pointer` too.
-            StrokeMethod::Curve | StrokeMethod::FreeHand => return self.curve_pointer(ev),
-            StrokeMethod::Ellipse => return self.ellipse_pointer(ev),
-            StrokeMethod::Polygon => return self.polygon_pointer(ev),
-            StrokeMethod::Line => return self.line_pointer(ev),
-            _ => {}
-        }
-        // Stencil texture: grabbing an overlay handle (corner = resize, centre = move) edits the
-        // rect and consumes the event; a Down away from every handle (or any move without a grab)
-        // falls through to normal painting — the handles disambiguate, so no modifier is needed.
-        if self.stencil_edit_active()
-            && (ev.phase == PointerPhase::Down || self.paint.stencil_grab.is_some())
-            && self.stencil_pointer(ev)
-        {
-            return true;
-        }
-        match ev.phase {
-            PointerPhase::Down => {
-                self.paint_begin(ev);
-                true
-            }
-            PointerPhase::Move => self.paint_extend(ev),
-            PointerPhase::Up => {
-                self.paint_end(ev);
-                true
-            }
-            PointerPhase::Hover => false,
-        }
-    }
-}
+// The `impl CanvasPaintTool` pointer entry point (`on_canvas_pointer`) lives in the sibling
+// `canvas_pointer` module (workspace file-LOC cap); it drives the private stroke-lifecycle methods above.
 
 #[cfg(test)]
 mod tests;

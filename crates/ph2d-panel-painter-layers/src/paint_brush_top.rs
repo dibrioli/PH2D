@@ -24,6 +24,7 @@ pub(crate) fn header_title(shows_layers: bool, brush: Option<BrushSettings>) -> 
     }
     match brush {
         Some(b) if b.is_mask => "Mask",
+        Some(b) if b.is_inpaint => "Inpaint",
         Some(b) if b.is_clone => "Clone",
         Some(b) if b.is_blur => "Blur",
         Some(b) if b.is_smear => "Smear",

@@ -99,6 +99,9 @@ impl Default for PaintState {
             ramp_lut_owner: ramp_lut::RampLutOwner::None,
             stroke_mask: Vec::new(),
             inpaint_mask: Vec::new(),
+            inpaint_patch_norm: 0.25, // patch radius 3 (today's InpaintParams::default)
+            inpaint_quality_norm: 0.3333, // 6 EM iterations (today's default)
+            inpaint_search_norm: 0.2, // margin ≈ hole/2 (mult 1.0)
             per_layer_stroke: stamp_color_cache::PerLayerStroke::default(),
             shape_color_preview: stamp_color_cache::ShapeColorPreview::default(),
         }

@@ -366,6 +366,37 @@ fn inpaint_stroke_is_one_undo_step_back_to_the_defect() {
 }
 
 #[test]
+fn inpaint_param_sliders_route_into_the_heal() {
+    use ph2d_editor_core::ids as core_ids;
+    use ph2d_editor_core::tool::{PanelEvent, Tool};
+    let mut t = PainterTool::default();
+    t.handle_panel_event(PanelEvent::SelectOption(
+        core_ids::PAINTER_PAINT_MODE,
+        "inpaint".to_string(),
+    ));
+    // Defaults reproduce today's behaviour (patch 3 / iters 6 / margin ≈ hole/2).
+    assert_eq!(t.paint.inpaint_patch_norm, 0.25);
+    assert_eq!(t.paint.inpaint_quality_norm, 0.3333);
+    assert_eq!(t.paint.inpaint_search_norm, 0.2);
+    // Each slider's `SetValue` lands on the matching norm (clamped `0..1`).
+    t.handle_panel_event(PanelEvent::SetValue(
+        core_ids::PAINTER_INPAINT_PATCH_SLIDER,
+        1.0,
+    ));
+    t.handle_panel_event(PanelEvent::SetValue(
+        core_ids::PAINTER_INPAINT_QUALITY_SLIDER,
+        0.75,
+    ));
+    t.handle_panel_event(PanelEvent::SetValue(
+        core_ids::PAINTER_INPAINT_SEARCH_SLIDER,
+        0.5,
+    ));
+    assert_eq!(t.paint.inpaint_patch_norm, 1.0);
+    assert_eq!(t.paint.inpaint_quality_norm, 0.75);
+    assert_eq!(t.paint.inpaint_search_norm, 0.5);
+}
+
+#[test]
 fn composite_brush_runs_an_isolated_layer_and_reorders() {
     // Composite is a Brush-tool upgrade wired over the frozen PanelEvent channel. Prove: (1) the enable
     // checkbox toggles it, (2) a layer isolated by Strength actually runs inside the stack (Blur softens

@@ -541,20 +541,9 @@ fn try_apply_brush_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> O
             Some(true)
         }
         // Brush + Stroke-section slider drag → forward the dispatched `0..1` track; the tool maps it.
+        // The whitelist predicate lives in the sibling `event_brush_forward` module (file-LOC cap).
         WidgetEvent::ValueChanged(id)
-            if id == core_ids::PAINTER_BRUSH_SIZE_SLIDER
-                || id == core_ids::PAINTER_BRUSH_STRENGTH_SLIDER
-                || id == core_ids::PAINTER_BRUSH_SPACING
-                || id == core_ids::PAINTER_BRUSH_OFFSET
-                || id == core_ids::PAINTER_BRUSH_JITTER
-                || id == core_ids::PAINTER_BRUSH_DASH_RATIO
-                || id == core_ids::PAINTER_BRUSH_DASH_LENGTH
-                || id == core_ids::PAINTER_BRUSH_INPUT_SAMPLES
-                || id == core_ids::PAINTER_BRUSH_STABILIZE
-                || id == core_ids::PAINTER_BRUSH_RATE
-                || id == core_ids::PAINTER_BRUSH_SYMMETRY_SEGMENTS
-                || core_ids::PAINTER_BRUSH_RANDOMIZE_SLIDERS.contains(&id)
-                || core_ids::PAINTER_BRUSH_COMPOSITE_STRENGTH.contains(&id) =>
+            if crate::event_brush_forward::is_forwardable_brush_slider(id) =>
         {
             let v = host.store().slider(id).map(|(_, v)| v).unwrap_or(0.0);
             host.bus_mut()

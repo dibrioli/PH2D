@@ -78,5 +78,11 @@ somas f32).
   Enio** (pintar sobre um defeito com caneta/mouse → soltar → cura; headless não roda input winit).
   > **Nota de rumo:** a 1ª tentativa foi uma tool standalone `ph2d-tool-inpaint` nos Image Tools —
   > revertida (o Enio esclareceu que é modo do Painter). Engine `ph2d-inpaint` (W1/W2) mantido.
-- [ ] **W4 — polish**: gating de painel (esconder cor como Smear/Blur em modo Inpaint), GPU no heal
-  (`inpaint(Some(gpu),…)`), pistas de estrutura/borda, feedback de progresso, tuning.
+- [x] **W3.1 — inspector do Brush (painel direito)**: em modo Inpaint o painel esconde cor/blend/strength/
+  composite e mostra o card **Inpaint** com 3 sliders que modificam a reconstrução — **Patch Size**
+  (`patch_radius` 2..6), **Quality** (EM iters 3..12), **Search** (multiplicador da margem de contexto
+  0.5..3.0×). Sliders `0..1` no tool (`inpaint_*_norm`), mapeados em `heal_inpaint`; defaults reproduzem
+  o comportamento atual. Label do modo "Inpaint". Testes: sliders roteiam pro heal; card só aparece em
+  modo Inpaint. (Brush Size continua sendo o tamanho do pincel de marcação.)
+- [ ] **W4 — polish**: GPU no heal (`inpaint(Some(gpu),…)`), pistas de estrutura/borda, feedback de
+  progresso, tuning.

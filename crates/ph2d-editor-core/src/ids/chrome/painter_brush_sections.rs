@@ -186,3 +186,17 @@ pub const PAINTER_BRUSH_SECTION_RESETS: [NodeId; 5] = [
     PAINTER_BRUSH_STROKE_RESET,
     PAINTER_BRUSH_TILING_RESET,
 ];
+
+// ── Inpaint card (shown in Inpaint mode) ──────────────────────────────────────────────────────────
+// Three canonical slider-with-chip rows tuning the heal reconstruction; each `0..1` track maps onto a
+// mapped-integer chip in `crate::populate` (Patch 2..6 · Quality 3..12 · Search 50..300%). `SetValue`
+// on the slider → the tool's `set_inpaint_*`.
+/// **Patch Size** slider + chip (`0..1` track → `2..6` patch radius).
+pub const PAINTER_INPAINT_PATCH_SLIDER: NodeId = hash_node_id("painter_brush.inpaint_patch");
+pub const PAINTER_INPAINT_PATCH_CHIP: NodeId = hash_node_id("painter_brush.inpaint_patch_chip");
+/// **Quality** slider + chip (`0..1` track → `3..12` EM iterations).
+pub const PAINTER_INPAINT_QUALITY_SLIDER: NodeId = hash_node_id("painter_brush.inpaint_quality");
+pub const PAINTER_INPAINT_QUALITY_CHIP: NodeId = hash_node_id("painter_brush.inpaint_quality_chip");
+/// **Search** slider + chip (`0..1` track → `50..300` % context margin multiplier).
+pub const PAINTER_INPAINT_SEARCH_SLIDER: NodeId = hash_node_id("painter_brush.inpaint_search");
+pub const PAINTER_INPAINT_SEARCH_CHIP: NodeId = hash_node_id("painter_brush.inpaint_search_chip");

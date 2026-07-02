@@ -15,7 +15,8 @@ impl BrushSettings {
     /// (Defined here, beside the snapshot builder, so `brush_settings.rs` stays under the file-LOC cap.)
     #[must_use]
     pub fn paints_no_color(&self) -> bool {
-        (self.is_smear || self.is_blur || self.is_clone) && !self.composite_enabled
+        (self.is_smear || self.is_blur || self.is_clone || self.is_inpaint)
+            && !self.composite_enabled
     }
 }
 
@@ -85,6 +86,10 @@ impl PainterTool {
             is_blur: self.is_blur_mode(),
             is_clone: self.is_clone_mode(),
             is_mask: self.is_mask_mode(),
+            is_inpaint: self.is_inpaint_mode(),
+            inpaint_patch: self.paint.inpaint_patch_norm,
+            inpaint_quality: self.paint.inpaint_quality_norm,
+            inpaint_search: self.paint.inpaint_search_norm,
             mask_brush: self.mask_brush(),
             mask_overlay_color: self.mask_overlay_color(),
             clone_has_source: self.clone_has_source(),

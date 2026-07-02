@@ -12,6 +12,7 @@
 
 use super::Region;
 use crate::tool::PainterTool;
+use ph2d_editor_core::tool::PanelEvent;
 use ph2d_inpaint::{InpaintParams, InpaintRequest, inpaint_cpu};
 use ph2d_painter_brush::Dab;
 use std::sync::Arc;
@@ -21,6 +22,43 @@ use std::sync::Arc;
 const TINT: [f32; 3] = [235.0, 60.0, 60.0];
 
 impl PainterTool {
+    /// Route the Inpaint card's three reconstruction sliders (`SetValue` on the `0..1` track). Returns
+    /// `true` when handled — mirrors the other `route_*_event` early-dispatch helpers in
+    /// [`crate::tool::PainterTool::handle_panel_event`]. The setters below store the raw track (mapped to
+    /// engine values in [`Self::heal_inpaint`]).
+    pub(crate) fn route_inpaint_event(&mut self, event: &PanelEvent) -> bool {
+        use ph2d_editor_core::ids as core_ids;
+        let PanelEvent::SetValue(id, v) = event else {
+            return false;
+        };
+        let (id, v) = (*id, *v as f32);
+        if id == core_ids::PAINTER_INPAINT_PATCH_SLIDER {
+            self.set_inpaint_patch(v);
+        } else if id == core_ids::PAINTER_INPAINT_QUALITY_SLIDER {
+            self.set_inpaint_quality(v);
+        } else if id == core_ids::PAINTER_INPAINT_SEARCH_SLIDER {
+            self.set_inpaint_search(v);
+        } else {
+            return false;
+        }
+        true
+    }
+
+    /// Set the Inpaint **Patch Size** slider track (`0..1` → patch radius `2..=6`).
+    pub fn set_inpaint_patch(&mut self, t: f32) {
+        self.paint.inpaint_patch_norm = t.clamp(0.0, 1.0);
+    }
+
+    /// Set the Inpaint **Quality** slider track (`0..1` → EM iterations `3..=12`).
+    pub fn set_inpaint_quality(&mut self, t: f32) {
+        self.paint.inpaint_quality_norm = t.clamp(0.0, 1.0);
+    }
+
+    /// Set the Inpaint **Search** slider track (`0..1` → context-margin multiplier `0.5..3.0`).
+    pub fn set_inpaint_search(&mut self, t: f32) {
+        self.paint.inpaint_search_norm = t.clamp(0.0, 1.0);
+    }
+
     /// Mark each dab's hard disc into the heal mask + tint the canvas under it.
     pub(super) fn stamp_dabs_inpaint(&mut self, dabs: &[Dab]) {
         let (w, h) = self.source_size;
@@ -104,10 +142,19 @@ impl PainterTool {
             self.paint.inpaint_mask.iter_mut().for_each(|m| *m = 0);
             return;
         }
+        // Reconstruction knobs from the Inpaint panel (`0..1` tracks → engine values). Patch Size + Quality
+        // feed `InpaintParams`; Search scales the crop margin (how much context PatchMatch samples).
+        let patch_radius = (2.0 + self.paint.inpaint_patch_norm * 4.0)
+            .round()
+            .clamp(2.0, 6.0) as u32;
+        let em_iters = (3.0 + self.paint.inpaint_quality_norm * 9.0)
+            .round()
+            .clamp(3.0, 12.0) as u32;
+        let mult = 0.5 + self.paint.inpaint_search_norm * 2.5;
         // Crop to the defect + a margin so PatchMatch has enough source context WITHOUT paying for the
-        // whole layer (interactive on a big canvas). Margin scales with the hole, clamped.
+        // whole layer (interactive on a big canvas). Margin scales with the hole × the Search multiplier.
         let hole = (maxx - minx + 1).max(maxy - miny + 1);
-        let margin = (hole / 2).clamp(24, 128);
+        let margin = ((hole / 2) as f32 * mult).round().clamp(24.0, 400.0) as usize;
         let x0 = minx.saturating_sub(margin);
         let y0 = miny.saturating_sub(margin);
         let x1 = (maxx + margin + 1).min(fw);
@@ -138,7 +185,11 @@ impl PainterTool {
             height: ch as u32,
             rgba: &crop_rgba,
             mask: &crop_mask,
-            params: InpaintParams::default(),
+            params: InpaintParams {
+                patch_radius,
+                em_iters,
+                ..InpaintParams::default()
+            },
         });
         // Write only the reconstructed (marked) pixels back into the layer.
         {

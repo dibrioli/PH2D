@@ -565,6 +565,123 @@ fn mask_brush_freezes_pixels_against_the_paint_brush() {
 }
 
 #[test]
+fn clear_then_repaint_makes_a_fresh_protection() {
+    // Bug: after Clear the app could no longer create new temporary masks (the mask leaked the user's
+    // brush colour, so a light colour painted an invisible/weak mask). Clear must leave the scratch able
+    // to take a NEW full-strength protection regardless of the brush colour.
+    use ph2d_editor_core::ids as core_ids;
+    use ph2d_editor_core::tool::{PanelEvent, Tool};
+    let mut t = white_canvas(24, 5.0);
+    t.paint.brush.color = [0.9, 0.9, 0.9]; // a light brush colour must not weaken the fresh mask
+    t.handle_panel_event(PanelEvent::SelectOption(
+        core_ids::PAINTER_PAINT_MODE,
+        "mask".to_string(),
+    ));
+    t.on_canvas_pointer(cp([12.0, 12.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([12.0, 12.0], PointerPhase::Up));
+    assert!(t.mask_scratch_active());
+    // Clear the mask.
+    t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_MASK_OP[5]));
+    // Paint a NEW protection.
+    t.on_canvas_pointer(cp([12.0, 12.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([12.0, 12.0], PointerPhase::Up));
+    assert!(
+        t.mask_scratch_active(),
+        "a scratch is live after Clear + repaint"
+    );
+    // The fresh protection must freeze the brush at the centre.
+    t.handle_panel_event(PanelEvent::SelectOption(
+        core_ids::PAINTER_PAINT_MODE,
+        "brush".to_string(),
+    ));
+    t.on_canvas_pointer(cp([12.0, 12.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([12.0, 12.0], PointerPhase::Up));
+    assert_eq!(
+        px(&t, 24, 12, 12),
+        [255, 255, 255, 255],
+        "the freshly-painted protection freezes the brush after Clear"
+    );
+}
+
+#[test]
+fn erase_mask_sub_brush_removes_protection() {
+    // Bug: the Erase sub-brush was broken (the stamp reads each dab's OWN colour, baked from the user's
+    // brush colour, so the white override was a no-op → Erase painted the wrong coverage). Erase (white)
+    // over a protected area must UNPROTECT it, so the paint brush can then modify those pixels again.
+    use ph2d_editor_core::ids as core_ids;
+    use ph2d_editor_core::tool::{PanelEvent, Tool};
+    let mut t = white_canvas(24, 6.0);
+    let idx = (12 * 24 + 12) as usize;
+    t.handle_panel_event(PanelEvent::SelectOption(
+        core_ids::PAINTER_PAINT_MODE,
+        "mask".to_string(),
+    ));
+    // Paint (protect) the centre → scratch fully black there.
+    t.on_canvas_pointer(cp([12.0, 12.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([12.0, 12.0], PointerPhase::Up));
+    assert!(
+        crate::compositor::mask_value(&t.paint.mask_scratch_rgba[..], idx) < 0.01,
+        "Paint protected the centre (scratch black)"
+    );
+    // Erase sub-brush over the same spot → scratch back to white (unprotected).
+    t.set_mask_brush(1);
+    t.on_canvas_pointer(cp([12.0, 12.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([12.0, 12.0], PointerPhase::Up));
+    assert!(
+        crate::compositor::mask_value(&t.paint.mask_scratch_rgba[..], idx) > 0.99,
+        "Erase unprotected the centre (scratch white again)"
+    );
+    // End-to-end: the centre is now unprotected → the paint brush CAN modify it.
+    t.handle_panel_event(PanelEvent::SelectOption(
+        core_ids::PAINTER_PAINT_MODE,
+        "brush".to_string(),
+    ));
+    t.on_canvas_pointer(cp([12.0, 12.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([12.0, 12.0], PointerPhase::Up));
+    assert_eq!(
+        px(&t, 24, 12, 12),
+        [0, 0, 0, 255],
+        "Erase removed the protection → the brush paints the centre again"
+    );
+}
+
+#[test]
+fn mask_paint_ignores_the_brush_colour() {
+    // Root cause of the "mask is much lighter than normal" + Clear/Erase bugs: the mask must paint a PURE
+    // coverage (black = protect), ignoring the user's brush colour. A light/coloured brush used to leak
+    // its luma into the scratch → partial protection → a faint overlay. Paint with a light colour and a
+    // Screen blend and assert FULL protection (scratch black, brush frozen).
+    use ph2d_editor_core::ids as core_ids;
+    use ph2d_editor_core::tool::{PanelEvent, Tool};
+    let mut t = white_canvas(24, 6.0);
+    t.paint.brush.color = [1.0, 0.85, 0.2]; // a light yellow — must NOT weaken the mask
+    t.paint.brush.blend = ph2d_painter_brush::BrushBlend::Screen; // a non-Mix blend must not break it
+    t.handle_panel_event(PanelEvent::SelectOption(
+        core_ids::PAINTER_PAINT_MODE,
+        "mask".to_string(),
+    ));
+    t.on_canvas_pointer(cp([12.0, 12.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([12.0, 12.0], PointerPhase::Up));
+    let idx = (12 * 24 + 12) as usize;
+    assert!(
+        crate::compositor::mask_value(&t.paint.mask_scratch_rgba[..], idx) < 0.01,
+        "the mask painted FULL black protection regardless of the light brush colour + blend"
+    );
+    // And it freezes the brush at the centre (full protection, not partial).
+    t.handle_panel_event(PanelEvent::SelectOption(
+        core_ids::PAINTER_PAINT_MODE,
+        "brush".to_string(),
+    ));
+    t.on_canvas_pointer(cp([12.0, 12.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([12.0, 12.0], PointerPhase::Up));
+    assert_eq!(
+        px(&t, 24, 12, 12),
+        [255, 255, 255, 255],
+        "full protection freezes the brush"
+    );
+}
+
+#[test]
 fn mask_apply_creates_a_layer_mask_from_the_scratch() {
     // Apply promotes the transient scratch to a REAL layer-system mask attached to the current layer:
     // a Mask layer appears (count up), `target.mask` points at it, the scratch clears, the parent's OWN

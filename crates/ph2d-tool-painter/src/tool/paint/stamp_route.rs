@@ -6,7 +6,7 @@
 use super::ramp_lut::RampLutOwner;
 use super::{PaintMode, Region, union_region};
 use crate::tool::PainterTool;
-use ph2d_painter_brush::{BrushSpec, Dab};
+use ph2d_painter_brush::{BrushBlend, BrushSpec, Dab};
 use std::sync::Arc;
 
 impl PainterTool {
@@ -105,20 +105,30 @@ impl PainterTool {
                 self.stamp_dabs_smear(dabs, w, h);
             }
             _ => {
-                let saved = self.paint.brush.color;
-                self.paint.brush.color = if self.mask_brush() == 1 {
-                    [1.0, 1.0, 1.0] // Erase → reveal
+                // The mask is a pure COVERAGE buffer: force every dab to the mask colour with a plain Mix
+                // blend. Black = protect (Paint), white = unprotect (Erase). NB the stamp reads each dab's
+                // OWN `color` (baked from the user's brush colour at stroke start), so overriding only
+                // `brush.color` was a NO-OP — that's why Erase, and any non-black brush colour, painted the
+                // wrong coverage. Recolour the dabs AND set the spec colour/blend so every route agrees.
+                let color = if self.mask_brush() == 1 {
+                    [1.0, 1.0, 1.0] // Erase → unprotect (white)
                 } else {
-                    [0.0, 0.0, 0.0] // Paint → conceal
+                    [0.0, 0.0, 0.0] // Paint → protect (black)
                 };
+                let recolored: Vec<Dab> = dabs.iter().map(|d| Dab { color, ..*d }).collect();
+                let saved_color = self.paint.brush.color;
+                let saved_blend = self.paint.brush.blend;
+                self.paint.brush.color = color;
+                self.paint.brush.blend = BrushBlend::Mix;
                 if self.paint.tiling[0] || self.paint.tiling[1] {
                     let wrapped =
-                        super::tiling::tiled_dabs(dabs, self.source_size, self.paint.tiling);
+                        super::tiling::tiled_dabs(&recolored, self.source_size, self.paint.tiling);
                     self.stamp_dabs_inner(&wrapped);
                 } else {
-                    self.stamp_dabs_inner(dabs);
+                    self.stamp_dabs_inner(&recolored);
                 }
-                self.paint.brush.color = saved;
+                self.paint.brush.color = saved_color;
+                self.paint.brush.blend = saved_blend;
             }
         }
         std::mem::swap(&mut self.canvas_rgba, &mut self.paint.mask_scratch_rgba);

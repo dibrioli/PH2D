@@ -543,6 +543,56 @@ fn fill_adjust_drag_raises_threshold_right_up_lowers_left_down() {
 }
 
 #[test]
+fn fill_shrinking_repaints_the_vacated_overflow() {
+    use ph2d_editor_core::ids as core_ids;
+    use ph2d_editor_core::tool::{PanelEvent, Tool};
+    // A horizontal grey gradient (step 4/col): a high threshold bridges the whole row (overflow); a low
+    // one only a few left columns — so shrinking must repaint (dirty + restore) the vacated right side.
+    // Regression guard for "reducing the threshold didn't erase the overflow".
+    let size = 32u32;
+    let mut src = vec![255u8; (size * size * 4) as usize];
+    for y in 0..size {
+        for x in 0..size {
+            let v = (100 + x * 4) as u8;
+            let o = ((y * size + x) * 4) as usize;
+            src[o..o + 4].copy_from_slice(&[v, v, v, 255]);
+        }
+    }
+    let mut t = PainterTool::default();
+    t.set_source(src, size, size);
+    t.handle_panel_event(PanelEvent::SelectOption(
+        core_ids::PAINTER_PAINT_MODE,
+        "fill".to_string(),
+    ));
+    t.paint.brush.color = [1.0, 0.0, 0.0]; // red fill
+    // Drop at the left column with a high threshold → the whole row fills (overflow).
+    t.paint.fill_threshold = 0.9;
+    t.on_canvas_pointer(cp([0.0, 16.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([0.0, 16.0], PointerPhase::Up));
+    let overflow = t.dirty_rect.expect("the drop dirtied a region");
+    assert!(overflow.w >= size - 2, "the drop overflowed across the row");
+    // Start the adjust and drag far LEFT (threshold → 0) → the fill shrinks to the left columns.
+    t.dirty_rect = None;
+    t.on_canvas_pointer(cp([16.0, 16.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([-400.0, 16.0], PointerPhase::Move));
+    let after = t.dirty_rect.expect("the shrink dirtied a region");
+    // The vacated right side must be marked dirty (else it ghosts on the GPU) — the dirty rect still
+    // spans the original overflow width, not just the small new fill.
+    assert!(
+        after.x + after.w >= overflow.x + overflow.w,
+        "shrink must dirty the vacated overflow: {after:?} must cover {overflow:?}"
+    );
+    // And the buffer itself is restored there — a far-right column is back to its gradient grey, not red.
+    let rx = size - 2;
+    let v = (100 + rx * 4) as u8;
+    assert_eq!(
+        px(&t, size, rx, 16),
+        [v, v, v, 255],
+        "the vacated pixel is restored to the original gradient"
+    );
+}
+
+#[test]
 fn composite_brush_runs_an_isolated_layer_and_reorders() {
     // Composite is a Brush-tool upgrade wired over the frozen PanelEvent channel. Prove: (1) the enable
     // checkbox toggles it, (2) a layer isolated by Strength actually runs inside the stack (Blur softens

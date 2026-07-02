@@ -140,16 +140,17 @@ impl PainterTool {
             buf.copy_from_slice(&self.paint.fill_snapshot);
         }
         let filled = flood_fill(buf, w, h, (sx, sy), color, tol);
-        // Dirty the union of the pre-restore and new fill so a shrinking fill also repaints the vacated
-        // pixels. Restoring the whole snapshot already covers it; mark the new rect (or the whole layer
-        // if the fill vanished so the restore shows).
-        let rect = filled.unwrap_or(Region {
-            x: 0,
-            y: 0,
-            w: w as u32,
-            h: h as u32,
-        });
-        self.mark_dirty(rect);
+        // The buffer now holds the snapshot everywhere EXCEPT the new fill. Dirty the UNION of the
+        // previous fill and the new one so a SHRINKING fill re-uploads the pixels it vacated (restored to
+        // the snapshot) — marking only the new, smaller rect would leave the old overflow on screen.
+        let dirty = match (self.paint.fill_last_rect, filled) {
+            (Some(prev), Some(new)) => super::union_region(prev, new),
+            (Some(prev), None) => prev,
+            (None, Some(new)) => new,
+            (None, None) => return,
+        };
+        self.paint.fill_last_rect = filled;
+        self.mark_dirty(dirty);
     }
 
     /// Route a Fill-mode canvas pointer — the Procreate ColorDrop gesture:
@@ -212,6 +213,7 @@ impl PainterTool {
         self.paint.fill_seed = Some(pos);
         self.paint.fill_adjusting = false;
         self.paint.fill_adjust_start = None;
+        self.paint.fill_last_rect = None;
     }
 
     /// Finalize the current fill: push the undo entry and drop the transient ColorDrop state.
@@ -224,6 +226,7 @@ impl PainterTool {
         self.paint.fill_snapshot = Vec::new();
         self.paint.fill_adjusting = false;
         self.paint.fill_adjust_start = None;
+        self.paint.fill_last_rect = None;
     }
 }
 

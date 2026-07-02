@@ -283,6 +283,9 @@ pub(crate) struct PaintState {
     /// Where the adjust drag started + the threshold at that moment (right/up raises it, left/down lowers).
     fill_adjust_start: Option<[f32; 2]>,
     fill_base_threshold: f32,
+    /// The previous refill's filled bbox — so a SHRINKING fill dirties the vacated pixels too (the
+    /// union of the old + new rects), not just the smaller new region (else the overflow ghosts).
+    fill_last_rect: Option<Region>,
     /// **Inpaint** Patch Size (`0..1` track → patch radius `2..=6`); the reconstruction's patch footprint.
     inpaint_patch_norm: f32,
     /// **Inpaint** Quality (`0..1` track → EM iterations `3..=12`); more iterations = better fit, slower.

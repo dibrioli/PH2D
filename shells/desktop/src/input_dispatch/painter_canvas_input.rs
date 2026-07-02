@@ -477,6 +477,7 @@ impl App {
         painter.set_shape_grab_tol_px(grab_tol_img);
         painter.set_line_constrain(alt);
         painter.set_uniform_scale(self.modifiers.shift_key()); // Shift = uniform Stencil scale (Sprite gizmo)
+        painter.set_line_snap(self.modifiers.shift_key()); // Shift = 15° direction snap in the Line polyline editor
         painter.on_canvas_pointer(ev)
     }
 

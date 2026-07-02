@@ -5939,3 +5939,23 @@ fn line_undo_redo_is_point_by_point_during_creation() {
         "redo re-added the second point"
     );
 }
+
+#[test]
+fn line_shift_snaps_the_new_segment_to_15_degrees() {
+    // With Shift armed, a near-horizontal click snaps to EXACTLY horizontal (0°) from the anchor, keeping
+    // the drag distance — the 15°-graduated direction snap (transcendental-free).
+    let mut t = line_tool();
+    click(&mut t, 20.0, 20.0); // anchor point
+    t.set_line_snap(true);
+    click(&mut t, 60.0, 24.0); // dx=40, dy=4 → ~5.7° → snaps to 0°
+    let p = t.line_overlay().unwrap().points[1];
+    let len = (40.0_f32 * 40.0 + 4.0 * 4.0).sqrt();
+    assert!(
+        (p[1] - 20.0).abs() < 0.01,
+        "snapped onto the anchor's row (horizontal), got {p:?}"
+    );
+    assert!(
+        (p[0] - (20.0 + len)).abs() < 0.05,
+        "distance preserved along the snapped ray, got {p:?}"
+    );
+}

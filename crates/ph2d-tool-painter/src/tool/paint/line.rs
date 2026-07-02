@@ -54,6 +54,25 @@ impl PainterTool {
         }
     }
 
+    /// Forward the live Shift state before each Line pointer event: Shift enables the **15° direction
+    /// snap** while drawing (each new segment is guided to a 15°-graduated ray from the previous point).
+    /// Out-of-band, like [`PainterTool::set_line_constrain`] / [`PainterTool::set_uniform_scale`].
+    pub fn set_line_snap(&mut self, on: bool) {
+        self.paint.line_snap = on;
+    }
+
+    /// Apply the 15° snap to `pos` when it is armed (Shift) and a previous point anchors the segment —
+    /// otherwise `pos` unchanged. The anchor is the last committed corner.
+    fn line_snapped(&self, pos: [f32; 2]) -> [f32; 2] {
+        if !self.paint.line_snap {
+            return pos;
+        }
+        match self.paint.line.as_ref().and_then(|ed| ed.points.last()) {
+            Some(&anchor) => snap_to_15(anchor, pos),
+            None => pos,
+        }
+    }
+
     /// Pointer-down: start a session (drop the first point) when idle; while drawing, close (click on the
     /// first point) / finish (click on the last point) / else drop a new point; while editing, grab a point.
     fn line_down(&mut self, pos: [f32; 2]) -> bool {
@@ -90,6 +109,7 @@ impl PainterTool {
                 (on_first, on_last && !on_first)
             };
             // Each click — add a point, or finish/close — is ONE undo step (point-by-point undo/redo).
+            let add_pos = self.line_snapped(pos); // 15° snap (Shift) applies to the NEW point
             self.begin_shape_txn();
             {
                 let ed = self.paint.line.as_mut().expect("line present");
@@ -101,7 +121,7 @@ impl PainterTool {
                     ed.editing = true;
                     ed.draft = None;
                 } else {
-                    ed.points.push(pos);
+                    ed.points.push(add_pos);
                 }
             }
             self.line_refill();
@@ -122,7 +142,8 @@ impl PainterTool {
             None => return false,
         };
         if !editing {
-            self.paint.line.as_mut().expect("line present").draft = Some(pos);
+            let snapped = self.line_snapped(pos);
+            self.paint.line.as_mut().expect("line present").draft = Some(snapped);
             self.line_refill();
             return true;
         }
@@ -293,6 +314,40 @@ impl LineEditor {
             seed: s.seed,
         }
     }
+}
+
+/// The 24 unit directions at 15° increments (`cos`, `sin` of `k·15°`, `k = 0..24`) — compile-time
+/// constants so the snap is transcendental-free at runtime (HR-5). Used by [`snap_to_15`].
+#[rustfmt::skip]
+const DIRS_15: [[f32; 2]; 24] = [
+    [1.0, 0.0],                  [0.965_925_8, 0.258_819_04],   [0.866_025_4, 0.5],
+    [0.707_106_8, 0.707_106_8],  [0.5, 0.866_025_4],            [0.258_819_04, 0.965_925_8],
+    [0.0, 1.0],                  [-0.258_819_04, 0.965_925_8],  [-0.5, 0.866_025_4],
+    [-0.707_106_8, 0.707_106_8], [-0.866_025_4, 0.5],           [-0.965_925_8, 0.258_819_04],
+    [-1.0, 0.0],                 [-0.965_925_8, -0.258_819_04], [-0.866_025_4, -0.5],
+    [-0.707_106_8, -0.707_106_8],[-0.5, -0.866_025_4],          [-0.258_819_04, -0.965_925_8],
+    [0.0, -1.0],                 [0.258_819_04, -0.965_925_8],  [0.5, -0.866_025_4],
+    [0.707_106_8, -0.707_106_8], [0.866_025_4, -0.5],           [0.965_925_8, -0.258_819_04],
+];
+
+/// Snap `cursor` onto the 15°-graduated ray from `anchor`: keep the distance, quantise the direction to
+/// the nearest of the 24 [`DIRS_15`] by maximum dot product (no `atan2` — HR-5). A ~zero move is unchanged.
+fn snap_to_15(anchor: [f32; 2], cursor: [f32; 2]) -> [f32; 2] {
+    let v = [cursor[0] - anchor[0], cursor[1] - anchor[1]];
+    let len = (v[0] * v[0] + v[1] * v[1]).sqrt();
+    if len < 1e-4 {
+        return cursor;
+    }
+    let mut best = DIRS_15[0];
+    let mut best_dot = f32::MIN;
+    for d in DIRS_15 {
+        let dot = v[0] * d[0] + v[1] * d[1];
+        if dot > best_dot {
+            best_dot = dot;
+            best = d;
+        }
+    }
+    [anchor[0] + best[0] * len, anchor[1] + best[1] * len]
 }
 
 /// Index of the polyline point within `tol` px of `pos` (nearest wins), or `None`.

@@ -190,6 +190,8 @@ pub(crate) struct PaintState {
     line_constrain: bool,
     /// Shift held this event — a Stencil corner scale becomes UNIFORM (aspect-locked, like the Sprite gizmo); set by the shell each pointer event.
     scale_uniform: bool,
+    /// Shift held this event — the polyline **Line** editor snaps each new segment to 15° increments from the previous point; set by the shell each pointer event. See [`line`].
+    line_snap: bool,
     /// Last NON-shape method — the rail's Brush button restores it. See [`PainterTool::restore_non_shape_stroke_method`].
     last_non_shape_method: StrokeMethod,
     /// In-progress Curve session (the on-canvas point editor); `None` when idle. [`curve`].

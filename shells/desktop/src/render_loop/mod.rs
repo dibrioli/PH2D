@@ -318,6 +318,9 @@ impl crate::App {
         // a no-op default for every other tool, so this costs nothing elsewhere.
         if let Some(t) = tools.active_mut() {
             t.on_tick(frame_ms_now);
+            // Fill dwell gesture: a held-still ColorDrop fires the fill + enters live threshold-adjust
+            // (see `input_dispatch::fill_drag`). `last_pointer` is disjoint from `self.gfx.tools`.
+            crate::input_dispatch::fill_drag::fill_drag_tick(t, self.last_pointer, frame_ms_now);
         }
         let report = self.fixed_step.advance(wall_dt);
         if report.dropped_secs > 0.0 {

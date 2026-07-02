@@ -230,8 +230,9 @@ impl PainterTool {
         self.refill_from_snapshot();
     }
 
-    /// Finalize the current fill (modal **Done**): push the undo entry, drop the transient state.
-    pub(crate) fn fill_commit(&mut self) {
+    /// Finalize the current fill (modal **Done**, or the dwell live-adjust release): push the undo entry,
+    /// drop the transient state. `pub` so the shell's dwell gesture can commit without the modal.
+    pub fn fill_commit(&mut self) {
         if self.paint.fill_seed.is_none() {
             return;
         }

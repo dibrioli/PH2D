@@ -23,3 +23,23 @@ pub(crate) enum PaintMode {
     /// connected same-colour region, then drag to adjust the threshold live (see [`super::fill`]).
     Fill,
 }
+
+/// Number of [`PaintMode`] variants — the length of the per-mode brush-settings array (see
+/// [`PaintMode::slot`]). Keep in lock-step with the enum.
+pub(crate) const PAINT_MODE_COUNT: usize = 7;
+
+impl PaintMode {
+    /// This mode's index into the per-mode brush-settings array (`0..PAINT_MODE_COUNT`). Each tool keeps
+    /// its own [`ph2d_painter_brush::BrushSpec`] here when settings are NOT linked across tools.
+    pub(crate) fn slot(self) -> usize {
+        match self {
+            PaintMode::Paint => 0,
+            PaintMode::Smear => 1,
+            PaintMode::Blur => 2,
+            PaintMode::Clone => 3,
+            PaintMode::Mask => 4,
+            PaintMode::Inpaint => 5,
+            PaintMode::Fill => 6,
+        }
+    }
+}

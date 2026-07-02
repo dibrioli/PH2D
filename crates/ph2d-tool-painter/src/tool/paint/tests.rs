@@ -28,6 +28,13 @@ fn white_canvas(size: u32, radius: f32) -> PainterTool {
         space_attenuation: false,
         ..Default::default()
     };
+    // Seed every per-mode slot with this hard-disk fixture brush so a mode switch (e.g. into Mask) keeps
+    // it instead of loading that tool's independent default (the "Sync with other tools" model). Tests
+    // that exercise the independent/linked behaviour itself set their slots explicitly.
+    let seed = t.paint.brush;
+    for slot in &mut t.paint.brush_by_mode {
+        *slot = seed;
+    }
     t
 }
 
@@ -6772,4 +6779,85 @@ fn line_offset_slider_shifts_the_open_line_in_real_time() {
         "the offset line now paints ~20px up at y=12: {:?}",
         px(&t, 64, 32, 12)
     );
+}
+
+#[test]
+fn tools_keep_independent_brush_settings_by_default() {
+    // Default model: each paint tool has its OWN BrushSpec; a mode switch swaps slots, so editing one
+    // tool never bleeds into another. (`white_canvas` seeds every slot to the fixture 6.0, so the split
+    // below is created by the test's own edits, not the fixture.)
+    let mut t = white_canvas(32, 6.0);
+    assert!(
+        !t.link_shared_settings(),
+        "independent (unlinked) by default"
+    );
+    t.paint.brush.radius_px = 20.0; // Brush (Paint) size
+    t.set_paint_tool_mode("mask");
+    assert_eq!(
+        t.paint.brush.radius_px, 6.0,
+        "Mask uses its own size (fixture 6), not the Brush's 20"
+    );
+    t.paint.brush.radius_px = 3.0; // edit Mask only
+    t.set_paint_tool_mode("brush");
+    assert_eq!(
+        t.paint.brush.radius_px, 20.0,
+        "the Brush size survived the Mask detour"
+    );
+    t.set_paint_tool_mode("mask");
+    assert_eq!(
+        t.paint.brush.radius_px, 3.0,
+        "Mask kept its own edited size"
+    );
+}
+
+#[test]
+fn syncing_shares_settings_and_seeds_from_the_checked_panel() {
+    let mut t = white_canvas(32, 6.0);
+    // Give Brush and Mask independent sizes.
+    t.paint.brush.radius_px = 20.0; // Brush
+    t.set_paint_tool_mode("mask");
+    t.paint.brush.radius_px = 3.0; // Mask
+    t.set_paint_tool_mode("brush");
+    assert_eq!(t.paint.brush.radius_px, 20.0);
+    // Check "Sync with other tools" on the Brush panel → it configures the others.
+    t.toggle_link_shared_settings();
+    assert!(t.link_shared_settings());
+    t.set_paint_tool_mode("mask");
+    assert_eq!(
+        t.paint.brush.radius_px, 20.0,
+        "linked: Mask now shows the checked (Brush) panel's size, not its old 3"
+    );
+    // While linked, editing any tool changes the shared value seen by all.
+    t.paint.brush.radius_px = 12.0;
+    t.set_paint_tool_mode("brush");
+    assert_eq!(
+        t.paint.brush.radius_px, 12.0,
+        "linked: editing Mask also changed the Brush"
+    );
+    // Uncheck → every tool keeps the current shared value, then diverges.
+    t.toggle_link_shared_settings();
+    assert!(!t.link_shared_settings());
+    t.paint.brush.radius_px = 7.0; // edit Brush only
+    t.set_paint_tool_mode("mask");
+    assert_eq!(
+        t.paint.brush.radius_px, 12.0,
+        "unlinked: Mask kept the last shared value (12), not the Brush's new 7"
+    );
+}
+
+#[test]
+fn sync_checkbox_click_routes_to_the_link_toggle() {
+    // Guards the panel→tool wiring: a Click on PAINTER_BRUSH_SYNC reaches toggle_link_shared_settings
+    // through route_brush_dab_event.
+    use ph2d_editor_core::ids as core_ids;
+    use ph2d_editor_core::tool::{PanelEvent, Tool};
+    let mut t = white_canvas(16, 4.0);
+    assert!(!t.link_shared_settings());
+    t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_BRUSH_SYNC));
+    assert!(
+        t.link_shared_settings(),
+        "the Sync checkbox click toggled the link on"
+    );
+    t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_BRUSH_SYNC));
+    assert!(!t.link_shared_settings(), "clicking again toggled it off");
 }

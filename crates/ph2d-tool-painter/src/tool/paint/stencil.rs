@@ -336,60 +336,33 @@ impl PainterTool {
         // it writes only simple mode fields, with no derived cache to settle.)
         // Any tool switch disarms a pending Eyedropper pick; only "eyedropper" re-arms it below.
         self.paint.eyedropper_armed = false;
+        use super::PaintMode;
+        let new_mode = match mode {
+            "smear" => PaintMode::Smear,
+            "blur" => PaintMode::Blur,
+            "clone" => PaintMode::Clone,
+            "mask" => PaintMode::Mask,
+            "inpaint" => PaintMode::Inpaint,
+            "fill" => PaintMode::Fill,
+            // "brush" / "eraser" / "eyedropper" / anything else → normal Paint.
+            _ => PaintMode::Paint,
+        };
+        // Independent-tools model: load the target mode's OWN brush settings (Smear/Blur/Clone slots seed
+        // Spacing 5% for dense dabs — see `state_default`). No-op when settings are linked. Must run while
+        // `paint_mode` still holds the OLD mode, so the current tool's edits save to the right slot.
+        self.switch_brush_slot(new_mode);
+        self.paint.paint_mode = new_mode;
+        // Per-mode flags. Smear/Blur/Clone leave the eraser override as-is (unchanged behaviour); the
+        // colour-painting modes clear it; Eyedropper additionally arms the pick.
         match mode {
-            "smear" => {
-                // Entering Smear defaults Spacing to 5% (Krita recommends ≤0.05 for a smooth
-                // round-brush smear) — only on the transition INTO Smear, so a later manual tweak
-                // sticks and re-selecting Smear doesn't clobber it.
-                if !matches!(self.paint.paint_mode, super::PaintMode::Smear) {
-                    self.paint.brush.spacing = 0.05;
-                }
-                self.paint.paint_mode = super::PaintMode::Smear;
-            }
-            "blur" => {
-                // Like Smear, a continuous blur wants dense dabs (a sparse chain leaves un-blurred gaps
-                // between the disks); default Spacing to 5% only on the transition INTO Blur.
-                if !matches!(self.paint.paint_mode, super::PaintMode::Blur) {
-                    self.paint.brush.spacing = 0.05;
-                }
-                self.paint.paint_mode = super::PaintMode::Blur;
-            }
-            "clone" => {
-                // A continuous clone wants dense dabs (a sparse chain leaves gaps in the copied region);
-                // default Spacing to 5% only on the transition INTO Clone.
-                if !matches!(self.paint.paint_mode, super::PaintMode::Clone) {
-                    self.paint.brush.spacing = 0.05;
-                }
-                self.paint.paint_mode = super::PaintMode::Clone;
-            }
-            "mask" => {
-                self.paint.paint_mode = super::PaintMode::Mask;
-                self.paint.eraser = false;
-            }
-            "inpaint" => {
-                // Content-aware heal: brush marks the defect (live tint); pen-up reconstructs it.
-                self.paint.paint_mode = super::PaintMode::Inpaint;
-                self.paint.eraser = false;
-            }
-            "fill" => {
-                // Fill (Bucket): Procreate ColorDrop — drag the colour onto the canvas to flood-fill.
-                self.paint.paint_mode = super::PaintMode::Fill;
-                self.paint.eraser = false;
-            }
+            "smear" | "blur" | "clone" => {}
             "eyedropper" => {
-                // Not a persistent mode: arm the on-canvas colour pick, painting as Brush afterwards.
-                self.paint.paint_mode = super::PaintMode::Paint;
                 self.paint.eraser = false;
                 self.paint.eyedropper_armed = true;
             }
-            "eraser" => {
-                self.paint.paint_mode = super::PaintMode::Paint;
-                self.paint.eraser = true;
-            }
-            _ => {
-                self.paint.paint_mode = super::PaintMode::Paint;
-                self.paint.eraser = false;
-            }
+            "eraser" => self.paint.eraser = true,
+            // mask / inpaint / fill / brush / default.
+            _ => self.paint.eraser = false,
         }
     }
 
@@ -467,6 +440,10 @@ impl PainterTool {
             }
             if *id == core_ids::PAINTER_BRUSH_OFFSET_TRIM {
                 self.toggle_offset_trim();
+                return true;
+            }
+            if *id == core_ids::PAINTER_BRUSH_SYNC {
+                self.toggle_link_shared_settings(); // "Sync with other tools" (see `tool_link`)
                 return true;
             }
         }

@@ -119,6 +119,9 @@ pub struct BrushSettings {
     pub space_attenuation: bool,
     /// **Accumulate** on/off: off (default) caps a stroke at Strength.
     pub accumulate: bool,
+    /// "Sync with other tools" on/off: on = every paint tool shares these settings; off (default) = each
+    /// tool independent. Drives the checkbox at the top of the brush panel.
+    pub link_shared: bool,
     /// Relative jitter (`0..1`, fraction of diameter) — the Jitter slider under the Brush unit.
     pub jitter: f32,
     /// Absolute jitter in pixels — the Jitter slider under the View unit.

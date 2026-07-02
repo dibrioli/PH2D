@@ -184,6 +184,8 @@ pub fn populate(store: &mut WidgetStore) {
         ph2d_editor_core::ids::PAINTER_BRUSH_REPEAT_IMAGE,
         ph2d_editor_core::ids::PAINTER_BRUSH_SPACE_ATTEN,
         ph2d_editor_core::ids::PAINTER_BRUSH_ACCUMULATE,
+        // "Sync with other tools" checkbox at the top of the brush panel (independent settings by default).
+        ph2d_editor_core::ids::PAINTER_BRUSH_SYNC,
         ph2d_editor_core::ids::PAINTER_BRUSH_EDGE_TO_EDGE,
         // Clone card: "Set Source" (arms the sample pick) + "Aligned" toggle.
         ph2d_editor_core::ids::PAINTER_BRUSH_CLONE_SET_SOURCE,

@@ -177,6 +177,9 @@ pub const PAINTER_BRUSH_SPACING: NodeId = hash_node_id("painter_brush.spacing");
 pub const PAINTER_BRUSH_SPACE_ATTEN: NodeId = hash_node_id("painter_brush.space_atten");
 /// "Accumulate" toggle (Blender `BRUSH_ACCUMULATE`): off caps a stroke at Strength. `Click` → toggle.
 pub const PAINTER_BRUSH_ACCUMULATE: NodeId = hash_node_id("painter_brush.accumulate");
+/// "Sync with other tools" checkbox at the top of the brush panel: off (default) = each paint tool keeps
+/// its own settings; on = all tools share these. `Click` → `toggle_link_shared_settings`.
+pub const PAINTER_BRUSH_SYNC: NodeId = hash_node_id("painter_brush.sync");
 /// Brush "Jitter" slider (`0..1`; relative-to-diameter under Brush unit, px under View). `SetValue` → `set_brush_jitter_norm`.
 pub const PAINTER_BRUSH_JITTER: NodeId = hash_node_id("painter_brush.jitter");
 /// Brush "Jitter Unit" dropdown chip (Brush = relative / View = absolute px). `SelectOption` → `set_brush_jitter_unit`.

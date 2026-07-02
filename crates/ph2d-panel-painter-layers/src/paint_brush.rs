@@ -64,6 +64,19 @@ pub(crate) fn paint_brush_body(
         paint_checkbox_row, paint_randomize_section, paint_slider_chip_row,
     };
 
+    // "Sync with other tools" — at the very TOP of every tool's panel. Off (default) = this tool keeps its
+    // own settings; on = all paint tools share them (the panel where it's checked seeds the others).
+    y = paint_checkbox_row(
+        ctx,
+        theme,
+        x,
+        content_w,
+        y,
+        core_ids::PAINTER_BRUSH_SYNC,
+        "Sync with other tools",
+        brush.link_shared,
+    );
+
     // Mask section (Mask tool only): collapsible block at the TOP — sub-brush, canvas ops, overlay colour.
     if brush.is_mask {
         y = crate::paint_mask::paint_mask_section(ctx, theme, x, content_w, y, brush);

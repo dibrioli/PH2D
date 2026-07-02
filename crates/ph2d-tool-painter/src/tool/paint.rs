@@ -38,9 +38,10 @@ mod shape_settings;
 mod shape_snapshot; // unified shape+paint undo: each create/edit/bake = one ModelSnapshot on the timeline
 mod stamp_color_cache; // the cached multi-layer coloured stamp (bake the composite once, blit per dab)
 mod stamp_color_dynamic;
-pub(crate) use paint_mode::PaintMode;
+pub(crate) use paint_mode::{PAINT_MODE_COUNT, PaintMode};
 /// Drawing symmetry (mirror / radial) — engine glue, canvas-centre resolution + on-canvas pick modes.
 mod symmetry;
+mod tool_link; // "Sync with other tools": per-mode brush-settings swap + the link toggle; LOC-cap split
 pub(crate) use symmetry::SymmetryPick;
 /// Seamless Tiling (wrap-around painting) — dab replication across sprite edges + the toggles.
 mod tiling;
@@ -147,6 +148,15 @@ pub(crate) struct PaintState {
     eraser: bool,
     /// Which operation the pointer performs (Brush=Paint / Smear); driven by the left-rail tool selection.
     paint_mode: PaintMode,
+    /// Per-mode saved brush settings — the "independent tools" model (the default). Each [`PaintMode`]
+    /// keeps its OWN [`BrushSpec`], swapped into `brush` on a mode change so editing one tool's panel
+    /// never bleeds into another. Indexed by [`PaintMode::slot`]. Ignored while `link_shared_settings` is
+    /// on (all modes then share the live `brush`). The active mode's slot is stale while active (edits go
+    /// to `brush`); it's written back on the next mode switch. See [`tool_link`].
+    brush_by_mode: [BrushSpec; PAINT_MODE_COUNT],
+    /// "Sync with other tools": when `true`, every paint tool SHARES the live `brush` (a mode change no
+    /// longer swaps slots), so a change in one panel shows in all. Default `false` = each tool independent.
+    link_shared_settings: bool,
     /// **Mask** sub-brush (Mask mode): `0` Paint (conceal/black) · `1` Erase (reveal/white) · `2` Blur · `3` Smear. [`mask`].
     mask_brush: u8,
     /// **Mask** overlay tint index (`0` gray + 4 fluorescent) — tints the composite where a mask conceals. [`mask`].

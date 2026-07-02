@@ -6,12 +6,26 @@ use super::*;
 
 impl Default for PaintState {
     fn default() -> Self {
+        // Moderate black brush (10 px); the brush-settings UI drives size/colour later.
+        let base = BrushSpec {
+            radius_px: 10.0,
+            ..BrushSpec::default()
+        };
+        // Per-mode independent brush slots (default model): each mode starts from `base`, except the
+        // continuous-processing tools (Smear/Blur/Clone), which want dense dabs — Spacing 5% (Krita's
+        // smooth-smear guidance). A sparse chain leaves un-processed gaps between the disks.
+        let dense = BrushSpec {
+            spacing: 0.05,
+            ..base
+        };
+        let mut brush_by_mode = [base; PAINT_MODE_COUNT];
+        brush_by_mode[PaintMode::Smear.slot()] = dense;
+        brush_by_mode[PaintMode::Blur.slot()] = dense;
+        brush_by_mode[PaintMode::Clone.slot()] = dense;
         Self {
-            // Moderate black brush (10 px); the brush-settings UI drives size/colour later.
-            brush: BrushSpec {
-                radius_px: 10.0,
-                ..BrushSpec::default()
-            },
+            brush: base,
+            brush_by_mode,
+            link_shared_settings: false,
             dynamics: Dynamics::default(),
             stroke: None,
             dabs: Vec::new(),

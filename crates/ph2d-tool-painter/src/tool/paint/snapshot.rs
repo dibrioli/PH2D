@@ -120,6 +120,7 @@ impl PainterTool {
             has_drawn_curve: self.paint.curve.as_ref().is_some_and(|ed| ed.editing),
             space_attenuation: b.space_attenuation,
             accumulate: b.accumulate,
+            link_shared: self.paint.link_shared_settings,
             jitter: b.jitter,
             jitter_absolute_px: b.jitter_absolute_px,
             jitter_unit: b.jitter_unit.to_u8(),

@@ -76,6 +76,8 @@ pub(super) fn dispatch(
     camera: &Camera2d,
     window_size: WindowSize,
     vector_scene: &mut VectorScene,
+    // Text system for on-canvas labels (the Line dimension overlay's px / angle numbers).
+    text_system: &mut ph2d_text::TextSystem,
     // Last cursor position in screen pixels (for the brush cursor ring).
     cursor: (f32, f32),
     last_painter_pushed_entity: &mut Option<u64>,
@@ -382,6 +384,7 @@ pub(super) fn dispatch(
             camera,
             window_size,
             vector_scene,
+            text_system,
             cursor,
         );
         // Repeat Image: the 3×3 tile preview (the composite drawn at the 8 neighbour positions).

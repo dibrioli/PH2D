@@ -121,6 +121,7 @@ impl PainterTool {
             space_attenuation: b.space_attenuation,
             accumulate: b.accumulate,
             link_shared: self.paint.link_shared_settings,
+            line_show_dimensions: self.paint.line_show_dimensions,
             jitter: b.jitter,
             jitter_absolute_px: b.jitter_absolute_px,
             jitter_unit: b.jitter_unit.to_u8(),

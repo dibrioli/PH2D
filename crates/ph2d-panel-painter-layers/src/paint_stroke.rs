@@ -61,6 +61,20 @@ pub(crate) fn paint_stroke_section(
     // ── Method dropdown (always) + the Save-As-Object button beside it (split out for the fn LOC cap) ──
     y = paint_method_row(ctx, theme, x, content_w, y, brush);
 
+    // ── Dimensions — Line only: the live dx/dy distances + corner angles drawn while placing points. ──
+    if matches!(method, StrokeMethod::Line) {
+        y = paint_checkbox_row(
+            ctx,
+            theme,
+            x,
+            content_w,
+            y,
+            core_ids::PAINTER_BRUSH_LINE_DIMENSIONS,
+            "Dimensions",
+            brush.line_show_dimensions,
+        );
+    }
+
     // ── Apply / Apply & Keep — only the methods with a persistent on-canvas shape editor (Curve /
     //    Free Hand / Ellipse / Polygon). Apply bakes the open shape and drops the editor; Apply & Keep
     //    bakes but keeps the handles for re-apply/reshape. Two buttons share one row, stacking to a

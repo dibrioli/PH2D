@@ -122,6 +122,9 @@ pub struct BrushSettings {
     /// "Sync with other tools" on/off: on = every paint tool shares these settings; off (default) = each
     /// tool independent. Drives the checkbox at the top of the brush panel.
     pub link_shared: bool,
+    /// Line "Dimensions" on/off: show the live dx/dy + corner angles while drawing a Line. Drives the
+    /// checkbox below the Stroke Method dropdown (Line method only).
+    pub line_show_dimensions: bool,
     /// Relative jitter (`0..1`, fraction of diameter) — the Jitter slider under the Brush unit.
     pub jitter: f32,
     /// Absolute jitter in pixels — the Jitter slider under the View unit.

@@ -20,6 +20,7 @@ pub(super) fn draw_overlays(
     camera: &Camera2d,
     window_size: WindowSize,
     vector_scene: &mut VectorScene,
+    text_system: &mut ph2d_text::TextSystem,
     cursor: (f32, f32),
 ) {
     draw_brush_ring(
@@ -48,6 +49,7 @@ pub(super) fn draw_overlays(
         camera,
         window_size,
         vector_scene,
+        text_system,
         cursor,
     );
     draw_polygon_overlay(painter, hero, sim, camera, window_size, vector_scene);

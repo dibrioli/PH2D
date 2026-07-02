@@ -91,6 +91,9 @@ pub struct LineOverlay {
     /// Per-corner **Fillet (circle) / Chamfer (square)** gizmos, one per real corner — the shell draws the
     /// two handles + accents the active mod. Empty while drawing (editing-phase chrome only).
     pub corner_gizmos: Vec<LineCornerGizmo>,
+    /// Live **dimensions** for the active (last) segment while DRAWING — dx/dy + the corner angle. `None`
+    /// in the editing phase or when the "Dimensions" toggle is off. Drawn as thin translucent CAD guides.
+    pub dimensions: Option<LineDimensions>,
 }
 
 impl PainterTool {
@@ -416,6 +419,13 @@ impl PainterTool {
         } else {
             Vec::new()
         };
+        // Live dimensions: only while DRAWING (the editing phase is done placing points) and only when the
+        // "Dimensions" toggle is on. Annotates the active (last) segment.
+        let dimensions = if !ed.editing && self.paint.line_show_dimensions {
+            line_dim::compute(&ed.points)
+        } else {
+            None
+        };
         Some(LineOverlay {
             points: ed.points.clone(),
             closed: ed.closed,
@@ -423,7 +433,20 @@ impl PainterTool {
             selected: ed.selected,
             transform_gizmo,
             corner_gizmos,
+            dimensions,
         })
+    }
+
+    /// Whether the Line CAD dimension overlay (dx/dy + corner angles) is enabled — the "Dimensions"
+    /// checkbox shown for the Line stroke method.
+    #[must_use]
+    pub fn line_show_dimensions(&self) -> bool {
+        self.paint.line_show_dimensions
+    }
+
+    /// Toggle the Line CAD dimension overlay.
+    pub fn toggle_line_show_dimensions(&mut self) {
+        self.paint.line_show_dimensions = !self.paint.line_show_dimensions;
     }
 
     // ── internals ────────────────────────────────────────────────────────────────────

@@ -57,6 +57,9 @@ pub use line::LineOverlay;
 /// Per-corner Fillet / Chamfer geometry + gizmos for the Line editor (split from `line` for the LOC cap).
 mod line_corner;
 pub use line_corner::LineCornerGizmo;
+/// Live dx/dy + corner-angle dimensions for the active Line segment (split from `line` for the LOC cap).
+mod line_dim;
+pub use line_dim::LineDimensions;
 /// Line editor commit / cancel / finish paths (split from `line` for the LOC cap).
 mod line_commit;
 /// Perpendicular Offset (parallel-polyline) geometry for the Line editor (split from `line` for the cap).
@@ -157,6 +160,9 @@ pub(crate) struct PaintState {
     /// "Sync with other tools": when `true`, every paint tool SHARES the live `brush` (a mode change no
     /// longer swaps slots), so a change in one panel shows in all. Default `false` = each tool independent.
     link_shared_settings: bool,
+    /// **Line** stroke method: show the live dx/dy distances + corner angles while drawing (the CAD
+    /// dimension overlay). Default `true`. A per-Line display pref, toggled by the "Dimensions" checkbox.
+    line_show_dimensions: bool,
     /// **Mask** sub-brush (Mask mode): `0` Paint (conceal/black) · `1` Erase (reveal/white) · `2` Blur · `3` Smear. [`mask`].
     mask_brush: u8,
     /// **Mask** overlay tint index (`0` gray + 4 fluorescent) — tints the composite where a mask conceals. [`mask`].

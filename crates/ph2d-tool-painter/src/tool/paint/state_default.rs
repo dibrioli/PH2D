@@ -26,6 +26,7 @@ impl Default for PaintState {
             brush: base,
             brush_by_mode,
             link_shared_settings: false,
+            line_show_dimensions: true, // Line CAD dimensions on by default
             dynamics: Dynamics::default(),
             stroke: None,
             dabs: Vec::new(),

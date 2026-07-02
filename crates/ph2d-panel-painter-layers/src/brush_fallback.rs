@@ -83,6 +83,7 @@ pub(crate) const FALLBACK_BRUSH: BrushSettings = BrushSettings {
     space_attenuation: false, // Adjust Strength off by default (Enio 2026-06-24; mirrors BrushSpec::default)
     accumulate: false,
     link_shared: false, // "Sync with other tools" off = independent tools (the default)
+    line_show_dimensions: true, // Line CAD dimensions shown by default
     jitter: 0.0,
     jitter_absolute_px: 0.0,
     jitter_unit: 0, // Brush

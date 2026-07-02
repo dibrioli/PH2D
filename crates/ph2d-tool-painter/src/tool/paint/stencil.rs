@@ -446,6 +446,10 @@ impl PainterTool {
                 self.toggle_link_shared_settings(); // "Sync with other tools" (see `tool_link`)
                 return true;
             }
+            if *id == core_ids::PAINTER_BRUSH_LINE_DIMENSIONS {
+                self.toggle_line_show_dimensions(); // Line CAD dimensions overlay (see `line_dim`)
+                return true;
+            }
         }
         let PanelEvent::SetValue(id, v) = event else {
             return false;

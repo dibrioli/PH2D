@@ -1,0 +1,38 @@
+[package]
+name = "ph2d-inpaint"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# Exemplar-based image inpainting — the "defect correction" engine behind the
+# Inpaint tool (ADR-0102). Fill a masked hole by copying real pixels from the
+# rest of the image: multi-scale PatchMatch (Barnes et al. 2009) with a
+# jump-flooding nearest-neighbour field (NNF) + EM voting reconstruction. This
+# is the classical, non-ML formulation Photoshop's Content-Aware Fill uses; it
+# beats AI inpainting on high-res / repetitive textures because it copies
+# instead of hallucinating.
+#
+# The CPU path here (`inpaint_cpu`) is the DETERMINISTIC gold reference the GPU
+# compute path reconciles against within ε (W2, behind `feature = "gpu"`), the
+# proven "GPU reconciles against apply_*" pattern (Bloom/S-H, color-equalization).
+# The jump-flood NNF is used on BOTH CPU and GPU so the two do the same passes.
+#
+# Foundational-but-single-consumer today (the tool, W3): kept standalone rather
+# than inlined (cf. color-equalization) because the algorithm is heavy and owns
+# a large parity/known-answer test surface that benefits from an isolated
+# `cargo check -p ph2d-inpaint` loop. No frozen contract — just an algorithm lib.
+
+[features]
+# `gpu` enables the W2 wgpu compute path (jump-flood NNF + voting in WGSL),
+# reconciled against the CPU reference by a parity test. Off by default so the
+# CPU-only build stays light — the shell flips it on when it has a GpuContext.
+default = []
+
+[dependencies]
+
+[dev-dependencies]

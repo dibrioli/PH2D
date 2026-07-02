@@ -73,8 +73,11 @@ pub(crate) fn paint_stroke_section(
         }
         // Ellipse / Polygon also get an "Edit" (E) button to convert to an editable curve.
         y = paint_apply_row(ctx, theme, x, content_w, y, method.is_convertible_shape());
-        // Offset card — the perpendicular-offset slider + the Simple / Precise algorithm toggle.
-        y = paint_offset_card(ctx, theme, x, content_w, y, brush);
+        // Offset card — the perpendicular-offset slider + the Simple / Precise toggle. NOT for Line: the
+        // polyline editor has no perpendicular offset yet, so the card would be a dead control (DIRETIVA §2).
+        if method != StrokeMethod::Line {
+            y = paint_offset_card(ctx, theme, x, content_w, y, brush);
+        }
     }
 
     // ── Edge to Edge — only Anchored (the drag-sized stamp spans anchor→cursor) ──

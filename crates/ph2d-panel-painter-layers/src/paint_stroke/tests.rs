@@ -387,8 +387,8 @@ fn offset_slider_shows_only_for_the_shape_editor_methods() {
 }
 
 /// Apply / Apply & Keep: the two bake buttons register hit rects ONLY for the methods with a
-/// persistent on-canvas shape editor (Curve/Free Hand/Ellipse/Polygon) — so a real click can reach
-/// them — and stay hidden for the finalise-on-up methods (Line/Space). A regression guard for the
+/// persistent on-canvas shape editor (Curve/Free Hand/Ellipse/Polygon/Line) — so a real click can reach
+/// them — and stay hidden for the finalise-on-up methods (Space). A regression guard for the
 /// "Apply does nothing" report: no hit rect ⇒ no Click ⇒ dead button (the populate-register gotcha).
 #[test]
 fn apply_buttons_register_hit_rects_for_the_editor_methods_only() {
@@ -397,6 +397,7 @@ fn apply_buttons_register_hit_rects_for_the_editor_methods_only() {
         StrokeMethod::FreeHand,
         StrokeMethod::Ellipse,
         StrokeMethod::Polygon,
+        StrokeMethod::Line,
     ] {
         let ids = painted_hit_ids(m);
         for b in [
@@ -410,13 +411,12 @@ fn apply_buttons_register_hit_rects_for_the_editor_methods_only() {
             );
         }
     }
-    for m in [StrokeMethod::Line, StrokeMethod::Space] {
-        let ids = painted_hit_ids(m);
-        assert!(
-            !ids.contains(&core_ids::PAINTER_BRUSH_STROKE_APPLY),
-            "{m:?} finalises on pen-up — no Apply button. painted = {ids:?}"
-        );
-    }
+    // Space finalises on pen-up — no Apply row (Line now has the polyline editor, so it DOES get one).
+    let ids = painted_hit_ids(StrokeMethod::Space);
+    assert!(
+        !ids.contains(&core_ids::PAINTER_BRUSH_STROKE_APPLY),
+        "Space finalises on pen-up — no Apply button. painted = {ids:?}"
+    );
 }
 
 /// The Edit (E) button — convert to an editable curve — paints a hit rect ONLY for the convertible

@@ -41,10 +41,34 @@ impl PainterTool {
         true
     }
 
+    /// Commit whichever on-canvas shape editor (Curve / Ellipse / Polygon / Line) is open — the verb
+    /// behind Enter / Apply and the first undo. Returns `true` when one committed. At most one is open.
+    pub fn commit_open_shape(&mut self) -> bool {
+        self.curve_commit() || self.ellipse_commit() || self.polygon_commit() || self.line_commit()
+    }
+
+    /// Cancel whichever shape editor is open (revert its preview) — the verb behind Esc and leaving the
+    /// shape's method. Returns `true` when one was cancelled.
+    pub fn cancel_open_shape(&mut self) -> bool {
+        self.curve_cancel() || self.ellipse_cancel() || self.polygon_cancel() || self.line_cancel()
+    }
+
+    /// Drop any open shape editor without touching pixels — for teardown where the canvas is replaced or
+    /// cleared (fresh source / deactivate / non-paintable layer).
+    pub(crate) fn discard_open_shape(&mut self) {
+        self.curve_discard();
+        self.ellipse_discard();
+        self.polygon_discard();
+        self.line_discard();
+    }
+
     /// Commit whichever on-canvas shape editor is open but KEEP it editable (the **Apply & Keep** button)
     /// — the keep-mode aggregator paired with [`PainterTool::commit_open_shape`]. At most one is open.
     pub fn commit_open_shape_keep(&mut self) -> bool {
-        self.curve_commit_keep() || self.ellipse_commit_keep() || self.polygon_commit_keep()
+        self.curve_commit_keep()
+            || self.ellipse_commit_keep()
+            || self.polygon_commit_keep()
+            || self.line_commit_keep()
     }
 
     /// **Simplify** the editable curve (the Simplify button): re-fit it to a clean minimal control polygon

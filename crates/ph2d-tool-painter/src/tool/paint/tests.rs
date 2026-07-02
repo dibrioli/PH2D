@@ -3277,35 +3277,16 @@ fn snap_to_45_projects_onto_the_eight_rays() {
 }
 
 #[test]
-fn line_alt_constrain_snaps_to_45_degrees() {
-    // Alt-drag constrains the Line to 45° increments around the anchor: a near-horizontal drag
-    // (small vertical drift) snaps flat onto the anchor's row.
-    let mut t = white_canvas(64, 3.0);
-    t.paint.brush.stroke_method = StrokeMethod::Line;
-    t.paint.brush.hardness = 1.0;
-    t.paint.brush.falloff = Falloff::Constant;
-    t.paint.brush.space_attenuation = false;
-    t.set_line_constrain(true);
-
+fn line_polyline_editor_replaces_the_old_single_segment() {
+    // The old single-segment Line (Alt/45° drag on the generic paint path) is replaced by the polyline
+    // editor: setting the Line method routes canvas events to the editor (a click drops a corner point),
+    // NOT the one-shot drag. (The 15° Shift snap is a later increment.)
+    let mut t = line_tool();
     t.on_canvas_pointer(cp([8.0, 30.0], PointerPhase::Down));
-    // Drag to (56, 36): 48 across, 6 down → ~7° → snaps to horizontal at y=30, projected to x=56.
-    t.on_canvas_pointer(cp([56.0, 36.0], PointerPhase::Move));
-    t.on_canvas_pointer(cp([56.0, 36.0], PointerPhase::Up));
-
-    assert_eq!(
-        px(&t, 64, 32, 30),
-        [0, 0, 0, 255],
-        "the snapped line is horizontal at the anchor row"
-    );
-    assert_eq!(
-        px(&t, 64, 56, 30),
-        [0, 0, 0, 255],
-        "snapped endpoint painted at (56,30)"
-    );
-    assert_eq!(
-        px(&t, 64, 56, 36),
-        [255, 255, 255, 255],
-        "the un-snapped endpoint (56,36) is NOT on the constrained line"
+    t.on_canvas_pointer(cp([8.0, 30.0], PointerPhase::Up));
+    assert!(
+        t.line_overlay().is_some_and(|o| o.points.len() == 1),
+        "a Line click opens the polyline editor with one corner point"
     );
 }
 
@@ -5810,4 +5791,109 @@ fn brush_sentinel_restores_space_when_no_non_shape_was_chosen() {
         "brush".to_string(),
     ));
     assert_eq!(t.paint.brush.stroke_method, StrokeMethod::Space);
+}
+
+// ── Line polyline editor (core: multi-click points, end/close, drag, commit/cancel/undo) ──────────
+
+/// A `PainterTool` on a 64² white canvas set to the Line method, with a known grab tolerance.
+fn line_tool() -> PainterTool {
+    let mut t = white_canvas(64, 5.0);
+    t.paint.brush.stroke_method = StrokeMethod::Line;
+    t.set_shape_grab_tol_px(8.0);
+    t
+}
+
+fn click(t: &mut PainterTool, x: f32, y: f32) {
+    t.on_canvas_pointer(cp([x, y], PointerPhase::Down));
+    t.on_canvas_pointer(cp([x, y], PointerPhase::Up));
+}
+
+#[test]
+fn line_multi_click_builds_a_polyline_then_finishes_on_the_last_point() {
+    // Each click drops a corner point; clicking the LAST point ends creation → the editing phase.
+    let mut t = line_tool();
+    click(&mut t, 16.0, 16.0);
+    click(&mut t, 48.0, 16.0);
+    click(&mut t, 48.0, 48.0);
+    let ov = t.line_overlay().expect("a line session is live");
+    assert_eq!(ov.points.len(), 3, "three corner points dropped");
+    assert!(!ov.editing, "still in the drawing phase");
+    // Click the last point again → end point-creation.
+    click(&mut t, 48.0, 48.0);
+    let ov = t.line_overlay().expect("session persists into editing");
+    assert!(ov.editing, "clicking the last point ended creation");
+    assert!(!ov.closed, "an open polyline");
+    assert_eq!(
+        ov.points.len(),
+        3,
+        "no extra point added by the finishing click"
+    );
+}
+
+#[test]
+fn line_closes_when_the_last_click_lands_on_the_first_point() {
+    let mut t = line_tool();
+    click(&mut t, 16.0, 16.0);
+    click(&mut t, 48.0, 16.0);
+    click(&mut t, 48.0, 48.0);
+    click(&mut t, 16.0, 16.0); // on the first point → close + finish
+    let ov = t.line_overlay().expect("session persists");
+    assert!(ov.closed, "clicking the first point closed the loop");
+    assert!(ov.editing, "and ended creation");
+}
+
+#[test]
+fn line_commit_paints_the_polyline_and_is_one_undo_step() {
+    // Enter/Apply (commit_open_shape aggregator) bakes the line, closes the session, one undo step.
+    let mut t = line_tool();
+    click(&mut t, 16.0, 16.0);
+    click(&mut t, 48.0, 16.0);
+    click(&mut t, 48.0, 16.0); // finish on the last point
+    assert!(t.commit_open_shape(), "commit baked the open line");
+    assert!(t.line_overlay().is_none(), "the session closed on commit");
+    // A dab lands at the first vertex → that pixel is painted (black brush).
+    assert!(
+        px(&t, 64, 16, 16)[0] < 128,
+        "the polyline painted the canvas, got {}",
+        px(&t, 64, 16, 16)[0]
+    );
+    // Undo is one step: it reinstates the open editor (the line shows again as a live preview — a further
+    // undo would remove the creation), per the unified shape+paint timeline.
+    assert!(t.can_undo());
+    assert!(t.undo_last());
+    assert!(
+        t.line_overlay().is_some(),
+        "undo reinstated the open line editor"
+    );
+}
+
+#[test]
+fn line_cancel_reverts_the_preview() {
+    let mut t = line_tool();
+    click(&mut t, 16.0, 16.0);
+    click(&mut t, 48.0, 16.0);
+    click(&mut t, 48.0, 16.0); // finish
+    assert!(t.cancel_open_shape(), "cancel closed the session");
+    assert!(t.line_overlay().is_none());
+    assert_eq!(
+        px(&t, 64, 16, 16),
+        [255, 255, 255, 255],
+        "cancel reverted the preview to pristine"
+    );
+}
+
+#[test]
+fn line_edit_phase_drags_a_corner_point() {
+    let mut t = line_tool();
+    click(&mut t, 16.0, 16.0);
+    click(&mut t, 48.0, 16.0);
+    click(&mut t, 48.0, 16.0); // finish → editing
+    assert!(t.line_overlay().unwrap().editing);
+    // Grab the first point and drag it.
+    t.on_canvas_pointer(cp([16.0, 16.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([20.0, 30.0], PointerPhase::Move));
+    t.on_canvas_pointer(cp([20.0, 30.0], PointerPhase::Up));
+    let ov = t.line_overlay().expect("still editing");
+    assert_eq!(ov.points[0], [20.0, 30.0], "the grabbed corner moved");
+    assert_eq!(ov.points[1], [48.0, 16.0], "the other corner stayed put");
 }

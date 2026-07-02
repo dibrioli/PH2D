@@ -47,6 +47,9 @@ pub use curve_tangent::TangentHandles;
 /// The Ellipse stroke method's on-canvas ellipse editor (same submodule rationale as `curve`).
 mod ellipse;
 pub use ellipse::EllipseOverlay;
+/// The Line stroke method's on-canvas polyline editor (plain corner points, no Bézier handles).
+mod line;
+pub use line::LineOverlay;
 /// The Polygon stroke method's on-canvas regular-N-gon editor (same submodule rationale).
 mod polygon;
 pub use polygon::PolygonOverlay;
@@ -193,6 +196,8 @@ pub(crate) struct PaintState {
     curve: Option<curve::CurveEditor>,
     /// In-progress Ellipse session (the on-canvas ellipse editor); `None` when idle. [`circle`].
     ellipse: Option<ellipse::EllipseEditor>,
+    /// In-progress Line session (the on-canvas polyline editor); `None` when idle. [`line`].
+    line: Option<line::LineEditor>,
     /// In-progress Polygon session (the on-canvas regular-N-gon editor); `None` when idle. [`polygon`].
     polygon: Option<polygon::PolygonEditor>,
     /// Control-handle grab radius (image px) for the shape editors — shell forwards a footprint-scaled value.
@@ -426,25 +431,7 @@ impl PainterTool {
         self.paint.shape_grab_tol_px = px.max(1.0);
     }
 
-    /// Commit whichever on-canvas shape editor (Curve / Ellipse / Polygon) is open — the verb behind
-    /// Enter and the first undo. Returns `true` when one was committed. At most one is ever open.
-    pub fn commit_open_shape(&mut self) -> bool {
-        self.curve_commit() || self.ellipse_commit() || self.polygon_commit()
-    }
-
-    /// Cancel whichever shape editor is open (revert its preview) — the verb behind Esc and leaving
-    /// the shape's method. Returns `true` when one was cancelled.
-    pub fn cancel_open_shape(&mut self) -> bool {
-        self.curve_cancel() || self.ellipse_cancel() || self.polygon_cancel()
-    }
-
-    /// Drop any open shape editor without touching pixels — for teardown where the canvas is replaced
-    /// or cleared (fresh source / deactivate / non-paintable layer).
-    pub(crate) fn discard_open_shape(&mut self) {
-        self.curve_discard();
-        self.ellipse_discard();
-        self.polygon_discard();
-    }
+    // The open-shape aggregators (commit / cancel / discard / commit-keep) live in `curve_commit`.
 
     /// Flag `rect` dirty for the next GPU preview upload + bump the active layer's pixel epoch.
     fn mark_dirty(&mut self, rect: Region) {
@@ -570,6 +557,7 @@ impl CanvasPaintTool for PainterTool {
             StrokeMethod::Curve | StrokeMethod::FreeHand => return self.curve_pointer(ev),
             StrokeMethod::Ellipse => return self.ellipse_pointer(ev),
             StrokeMethod::Polygon => return self.polygon_pointer(ev),
+            StrokeMethod::Line => return self.line_pointer(ev),
             _ => {}
         }
         // Stencil texture: grabbing an overlay handle (corner = resize, centre = move) edits the

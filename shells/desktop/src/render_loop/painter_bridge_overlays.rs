@@ -41,6 +41,7 @@ pub(super) fn draw_overlays(
         cursor,
     );
     draw_ellipse_overlay(painter, hero, sim, camera, window_size, vector_scene);
+    draw_line_overlay(painter, hero, sim, camera, window_size, vector_scene);
     draw_polygon_overlay(painter, hero, sim, camera, window_size, vector_scene);
     draw_stencil_overlay(
         painter,
@@ -373,6 +374,89 @@ fn draw_ellipse_overlay(
                     &Brush::Solid(c),
                     None,
                     &Circle::new(map(h), r),
+                );
+            }
+        }
+    }
+}
+
+/// The **Line** polyline editor overlay: the segments through the committed corner points (+ the live
+/// rubber-band to the draft while drawing, closing the loop when closed), a white dot at each corner, and
+/// a fainter ghost dot at the draft point. (Per-corner Fillet/Chamfer gizmos + the finish transform gizmo
+/// are layered on in later increments.)
+fn draw_line_overlay(
+    painter: &PainterTool,
+    hero: &HeroScreen,
+    sim: &SimWorld,
+    camera: &Camera2d,
+    window_size: WindowSize,
+    vector_scene: &mut VectorScene,
+) {
+    if let Some(bits) = hero.gizmo.selection
+        && let Some(overlay) = painter.line_overlay()
+    {
+        let (iw, ih) = painter.canvas_size();
+        let entity = ph2d_ecs::Entity::from_bits(bits);
+        if iw > 0
+            && ih > 0
+            && let (Some(tr), Some(sprite)) = (
+                sim.world().get::<crate::Transform>(entity),
+                sim.world().get::<ph2d_render::Sprite>(entity),
+            )
+        {
+            let affine = super::bgremoval_preview::sprite_image_to_screen_affine(
+                iw,
+                ih,
+                tr,
+                sprite,
+                camera,
+                window_size,
+            );
+            use ph2d_vector::{Affine, BezPath, Brush, Circle, Color, Fill, Point, Stroke};
+            let map = |p: [f32; 2]| affine * Point::new(f64::from(p[0]), f64::from(p[1]));
+            let scene = vector_scene.inner_mut();
+            let guide = Color::new([0.55, 0.72, 1.0, 0.85]); // LITERAL-COLOR-OK: line guide
+            // Segments through the committed points + the rubber-band to the draft while drawing.
+            let mut pts = overlay.points.clone();
+            if let Some(d) = overlay.draft {
+                pts.push(d);
+            }
+            if pts.len() >= 2 {
+                let mut path = BezPath::new();
+                path.move_to(map(pts[0]));
+                for &p in &pts[1..] {
+                    path.line_to(map(p));
+                }
+                if overlay.closed && overlay.points.len() >= 3 {
+                    path.close_path();
+                }
+                scene.stroke(
+                    &Stroke::new(1.5),
+                    Affine::IDENTITY,
+                    &Brush::Solid(guide),
+                    None,
+                    &path,
+                );
+            }
+            // A white dot at each committed corner; a fainter ghost at the live draft point.
+            let dot = Color::new([0.95, 0.95, 0.97, 0.95]); // LITERAL-COLOR-OK: corner dot
+            for &p in &overlay.points {
+                scene.fill(
+                    Fill::NonZero,
+                    Affine::IDENTITY,
+                    &Brush::Solid(dot),
+                    None,
+                    &Circle::new(map(p), 4.0),
+                );
+            }
+            if let Some(d) = overlay.draft {
+                let ghost = Color::new([0.95, 0.95, 0.97, 0.5]); // LITERAL-COLOR-OK: draft ghost dot
+                scene.fill(
+                    Fill::NonZero,
+                    Affine::IDENTITY,
+                    &Brush::Solid(ghost),
+                    None,
+                    &Circle::new(map(d), 3.0),
                 );
             }
         }

@@ -63,6 +63,7 @@ pub enum ShapeEditState {
     Curve(CurveState),
     Ellipse(EllipseState),
     Polygon(PolygonState),
+    Line(LineState),
 }
 
 /// Editable Curve / Free Hand state (see `tool::paint::curve::CurveEditor`).
@@ -100,6 +101,15 @@ pub struct PolygonState {
     pub rx: f32,
     pub ry: f32,
     pub sides: u32,
+    pub editing: bool,
+    pub seed: u64,
+}
+
+/// Editable Line (polyline) state (see `tool::paint::line::LineEditor`). Plain corner points, no handles.
+#[derive(Clone, Debug, PartialEq)]
+pub struct LineState {
+    pub points: Vec<[f32; 2]>,
+    pub closed: bool,
     pub editing: bool,
     pub seed: u64,
 }

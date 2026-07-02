@@ -742,75 +742,43 @@ fn anchored_edge_to_edge_spans_anchor_to_cursor() {
 }
 
 #[test]
-fn line_fills_a_straight_segment_with_spaced_dabs() {
-    // Line: a straight line from the anchor (press point) to the cursor, filled with spaced dabs.
-    // radius 10 → diameter 20, spacing 0.5 → 10 px step; a 0→100 drag lays ~11 dabs on the x axis.
-    let spec = BrushSpec {
-        stroke_method: StrokeMethod::Line,
-        ..straight_spec(10.0, 0.5)
-    };
+fn fill_polyline_preview_lays_spaced_dabs_along_a_bent_path() {
+    // The Line method fills a multi-segment POLYLINE (the tool drives `fill_polyline_preview`): dabs are
+    // laid at the brush spacing continuously across the corner; the first dab is at the start, and the
+    // path reaches each vertex. radius 10 / spacing 0.5 → 10px step.
+    let spec = straight_spec(10.0, 0.5);
     let mut s = Stroke::new(spec, no_dynamics(), 1);
     let mut out = Vec::new();
-    s.begin(pt(0.0, 0.0, 1.0), &mut out);
-    assert!(out.is_empty(), "Line does not stamp on begin (interactive)");
-
-    s.extend(pt(100.0, 0.0, 1.0), &mut out);
+    // An L-shaped path: (0,0) → (100,0) → (100,100).
+    s.fill_polyline_preview(&[[0.0, 0.0], [100.0, 0.0], [100.0, 100.0]], &mut out);
     assert!(
-        out.len() >= 10,
-        "filled the line with spaced dabs, got {}",
+        out.len() >= 18,
+        "both legs filled with spaced dabs, got {}",
         out.len()
     );
-    for d in &out {
-        assert!(
-            d.center[1].abs() < 1e-3,
-            "dab on the line (x axis): {:?}",
-            d.center
-        );
-    }
-    assert!(out[0].center[0].abs() < 1e-3, "first dab at the anchor");
+    assert_eq!(out[0].center, [0.0, 0.0], "first dab at the start");
     assert!(
-        (out.last().unwrap().center[0] - 100.0).abs() < 1e-2,
-        "reaches the cursor"
+        out.iter()
+            .any(|d| (d.center[0] - 100.0).abs() < 1.0 && (d.center[1] - 100.0).abs() < 2.0),
+        "the fill reaches the last vertex"
     );
 }
 
 #[test]
-fn line_preview_is_deterministic_across_moves() {
-    // The live preview re-stamps each move, so the SAME anchor→cursor must yield IDENTICAL dabs
-    // (the dash + jitter + spacing state is snapshot/restored each fill) — no shimmer as it grows.
+fn fill_polyline_preview_is_deterministic() {
+    // Fresh-per-fill: identical params + seed ⇒ identical dabs (the tool builds a fresh `Stroke` each
+    // re-fill, so the growing/edited polyline never shimmers). Jitter ON to exercise the RNG.
     let spec = BrushSpec {
-        stroke_method: StrokeMethod::Line,
-        jitter: 0.5, // jitter ON, to prove the RNG is restored between fills
+        jitter: 0.5,
         ..straight_spec(10.0, 0.5)
     };
-    let mut s = Stroke::new(spec, no_dynamics(), 7);
-    s.begin(pt(0.0, 0.0, 1.0), &mut Vec::new());
-    let mut a = Vec::new();
-    let mut b = Vec::new();
-    s.extend(pt(80.0, 20.0, 1.0), &mut a);
-    s.extend(pt(80.0, 20.0, 1.0), &mut b);
-    assert!(!a.is_empty());
-    assert_eq!(
-        a, b,
-        "re-stamping the same line is identical (deterministic preview)"
-    );
-}
-
-#[test]
-fn line_pivots_on_the_anchor() {
-    // Every fill starts at the anchor (press point) — the line pivots on it as the cursor moves.
-    let spec = BrushSpec {
-        stroke_method: StrokeMethod::Line,
-        jitter: 0.0,
-        ..straight_spec(10.0, 0.5)
+    let fill = || {
+        let mut s = Stroke::new(spec, no_dynamics(), 7);
+        let mut o = Vec::new();
+        s.fill_polyline_preview(&[[0.0, 0.0], [80.0, 20.0], [120.0, 0.0]], &mut o);
+        o
     };
-    let mut s = Stroke::new(spec, no_dynamics(), 1);
-    let mut out = Vec::new();
-    s.begin(pt(50.0, 50.0, 1.0), &mut out);
-    s.extend(pt(50.0, 90.0, 1.0), &mut out); // drag down
-    assert_eq!(out[0].center, [50.0, 50.0], "first dab at the anchor");
-    s.extend(pt(90.0, 50.0, 1.0), &mut out); // drag right — still from the anchor
-    assert_eq!(out[0].center, [50.0, 50.0], "anchor unchanged across moves");
+    assert_eq!(fill(), fill(), "identical params → identical polyline fill");
 }
 
 #[test]

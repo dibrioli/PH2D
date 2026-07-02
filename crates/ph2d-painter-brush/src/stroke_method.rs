@@ -199,14 +199,14 @@ impl StrokeMethod {
 
     /// True when the method drives a persistent on-canvas **shape editor** that the panel's Apply /
     /// Apply & Keep buttons (and Enter/Esc) act on: `Curve`/`FreeHand` (the point editor — Free Hand
-    /// captures then edits the same curve), `Ellipse` (the ellipse editor) and `Polygon` (the N-gon
-    /// editor). Line/Drag Dot/Anchored finalise on pen-up with no editing session, so they get no Apply
-    /// row (DIRETIVA §2: no dead control).
+    /// captures then edits the same curve), `Ellipse` (the ellipse editor), `Polygon` (the N-gon editor)
+    /// and `Line` (the polyline editor — multi-click points, then editable). Drag Dot/Anchored finalise on
+    /// pen-up with no editing session, so they get no Apply row (DIRETIVA §2: no dead control).
     #[must_use]
     pub fn has_open_shape(self) -> bool {
         matches!(
             self,
-            Self::Curve | Self::FreeHand | Self::Ellipse | Self::Polygon
+            Self::Curve | Self::FreeHand | Self::Ellipse | Self::Polygon | Self::Line
         )
     }
 
@@ -333,6 +333,7 @@ mod tests {
             StrokeMethod::FreeHand,
             StrokeMethod::Ellipse,
             StrokeMethod::Polygon,
+            StrokeMethod::Line,
         ] {
             assert!(m.has_open_shape(), "{m:?} should have an open-shape editor");
         }
@@ -342,7 +343,6 @@ mod tests {
             StrokeMethod::DragDot,
             StrokeMethod::Airbrush,
             StrokeMethod::Anchored,
-            StrokeMethod::Line,
         ] {
             assert!(
                 !m.has_open_shape(),

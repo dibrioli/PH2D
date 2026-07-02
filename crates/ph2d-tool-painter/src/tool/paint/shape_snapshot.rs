@@ -16,21 +16,23 @@ impl PainterTool {
         self.paint.curve.as_ref().is_some_and(|ed| ed.editing)
             || self.paint.ellipse.is_some()
             || self.paint.polygon.is_some()
+            || self.paint.line.is_some()
     }
 
     /// Capture the open shape editor as plain undo data, or `None` when none is open.
     pub(crate) fn capture_shape(&self) -> Option<Box<crate::undo::ShapeEditState>> {
+        use crate::undo::ShapeEditState as S;
         if let Some(ed) = self.paint.curve.as_ref() {
-            Some(Box::new(crate::undo::ShapeEditState::Curve(ed.to_state())))
+            Some(Box::new(S::Curve(ed.to_state())))
         } else if let Some(ed) = self.paint.ellipse.as_ref() {
-            Some(Box::new(crate::undo::ShapeEditState::Ellipse(
-                ed.to_state(),
-            )))
+            Some(Box::new(S::Ellipse(ed.to_state())))
+        } else if let Some(ed) = self.paint.polygon.as_ref() {
+            Some(Box::new(S::Polygon(ed.to_state())))
         } else {
             self.paint
-                .polygon
+                .line
                 .as_ref()
-                .map(|ed| Box::new(crate::undo::ShapeEditState::Polygon(ed.to_state())))
+                .map(|ed| Box::new(S::Line(ed.to_state())))
         }
     }
 
@@ -77,6 +79,7 @@ impl PainterTool {
         self.paint.curve = None;
         self.paint.ellipse = None;
         self.paint.polygon = None;
+        self.paint.line = None;
         match shape.map(|b| *b) {
             Some(crate::undo::ShapeEditState::Curve(s)) => {
                 self.paint.curve = Some(curve::CurveEditor::from_state(s));
@@ -97,6 +100,13 @@ impl PainterTool {
                 self.paint.brush.stroke_method = StrokeMethod::Polygon;
                 if had_preview {
                     self.polygon_refill();
+                }
+            }
+            Some(crate::undo::ShapeEditState::Line(s)) => {
+                self.paint.line = Some(line::LineEditor::from_state(s));
+                self.paint.brush.stroke_method = StrokeMethod::Line;
+                if had_preview {
+                    self.line_refill();
                 }
             }
             None => {}

@@ -244,17 +244,11 @@ impl Stroke {
                 let dab = self.anchored_dab(center, radius, dir);
                 crate::symmetry::push_symmetric(out, dab, &self.spec.symmetry);
             }
-            // Line: a straight line from the anchor (down point, `last_pos`, never advanced) to the
-            // cursor, filled with spaced dabs. We live-preview it (consistent with Anchored/Drag Dot)
-            // rather than Blender's release-only fill: a deterministic fill (the walk state is
-            // snapshot/restored, so re-stamping each move yields the identical line) routed by the
-            // tool through the restore+re-stamp preview. Pen-up just keeps the last fill.
-            StrokeMethod::Line => {
-                self.fill_line_preview(self.last_pos, avg.pos, out);
-            }
-            // Curve / Ellipse / Polygon / Free Hand are tool/shell-driven shape editors (`docs/Painter/`),
-            // filled via `Stroke::fill_*_preview`; a bare `extend` (no editor) only tracks the anchor.
-            StrokeMethod::Curve
+            // Line / Curve / Ellipse / Polygon / Free Hand are tool/shell-driven shape editors
+            // (`docs/Painter/`), filled via `Stroke::fill_*_preview` (Line = `fill_polyline_preview`); a
+            // bare `extend` (no editor) only tracks the anchor.
+            StrokeMethod::Line
+            | StrokeMethod::Curve
             | StrokeMethod::Ellipse
             | StrokeMethod::Polygon
             | StrokeMethod::FreeHand => {
@@ -262,32 +256,6 @@ impl Stroke {
             }
         }
         self.warmup_gate(out);
-    }
-
-    /// Deterministic straight-line fill for the Line method's live preview: fill `anchor → cursor` with
-    /// spaced dabs (full pressure, like Blender), then RESTORE every bit of mutated walk state (spacing
-    /// residual + jitter multiplier, dash counter, jitter RNG, anchor) so the next move re-stamps the
-    /// identical line. The tool re-stamps over the restored footprint, so the growing line leaves no trail.
-    fn fill_line_preview(&mut self, anchor: [f32; 2], cursor: [f32; 2], out: &mut Vec<Dab>) {
-        let saved = (
-            self.accum,
-            self.spacing_mult,
-            self.tot_samples,
-            self.rng,
-            self.last_pos,
-            self.last_pressure,
-            self.heading,
-        );
-        self.fill_segment(anchor, cursor, 1.0, out);
-        (
-            self.accum,
-            self.spacing_mult,
-            self.tot_samples,
-            self.rng,
-            self.last_pos,
-            self.last_pressure,
-            self.heading,
-        ) = saved;
     }
 
     /// Fill the straight segment `a → b` with spaced dabs (Blender LINE / CURVE-segment finalise).

@@ -380,10 +380,9 @@ fn draw_ellipse_overlay(
     }
 }
 
-/// The **Line** polyline editor overlay: the segments through the committed corner points (+ the live
-/// rubber-band to the draft while drawing, closing the loop when closed), a white dot at each corner, and
-/// a fainter ghost dot at the draft point. (Per-corner Fillet/Chamfer gizmos + the finish transform gizmo
-/// are layered on in later increments.)
+/// The **Line** polyline editor overlay: the segments through the committed corner points (closing the
+/// loop when closed) + a white dot at each corner, the SELECTED corner emphasised. (Per-corner
+/// Fillet/Chamfer gizmos + the finish transform gizmo are layered on in later increments.)
 fn draw_line_overlay(
     painter: &PainterTool,
     hero: &HeroScreen,
@@ -416,11 +415,8 @@ fn draw_line_overlay(
             let map = |p: [f32; 2]| affine * Point::new(f64::from(p[0]), f64::from(p[1]));
             let scene = vector_scene.inner_mut();
             let guide = Color::new([0.55, 0.72, 1.0, 0.85]); // LITERAL-COLOR-OK: line guide
-            // Segments through the committed points + the rubber-band to the draft while drawing.
-            let mut pts = overlay.points.clone();
-            if let Some(d) = overlay.draft {
-                pts.push(d);
-            }
+            // Segments through the committed corner points.
+            let pts = &overlay.points;
             if pts.len() >= 2 {
                 let mut path = BezPath::new();
                 path.move_to(map(pts[0]));
@@ -438,8 +434,7 @@ fn draw_line_overlay(
                     &path,
                 );
             }
-            // A white dot at each committed corner; the SELECTED corner emphasised (purple, larger); a
-            // fainter ghost at the live draft point.
+            // A white dot at each committed corner; the SELECTED corner emphasised (purple, larger).
             let dot = Color::new([0.95, 0.95, 0.97, 0.95]); // LITERAL-COLOR-OK: corner dot
             let sel = Color::new([0.72, 0.45, 0.95, 1.0]); // LITERAL-COLOR-OK: selected corner
             for (i, &p) in overlay.points.iter().enumerate() {
@@ -451,16 +446,6 @@ fn draw_line_overlay(
                     &Brush::Solid(c),
                     None,
                     &Circle::new(map(p), r),
-                );
-            }
-            if let Some(d) = overlay.draft {
-                let ghost = Color::new([0.95, 0.95, 0.97, 0.5]); // LITERAL-COLOR-OK: draft ghost dot
-                scene.fill(
-                    Fill::NonZero,
-                    Affine::IDENTITY,
-                    &Brush::Solid(ghost),
-                    None,
-                    &Circle::new(map(d), 3.0),
                 );
             }
         }

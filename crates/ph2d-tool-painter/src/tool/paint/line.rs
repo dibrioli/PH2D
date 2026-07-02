@@ -3,45 +3,59 @@
 //! NO handles. A submodule of [`super`] (`paint`), sharing `PaintState`'s private access + the canvas
 //! save/restore/stamp helpers, like [`super::ellipse`].
 //!
-//! ## Interaction (this stage: point creation + editing; Fillet/Chamfer + 15° snap + the finish
-//! transform gizmo are layered on next)
+//! ## Interaction (point creation + editing; the finish transform gizmo + per-corner Fillet/Chamfer are
+//! layered on next)
 //!
-//! 1. **Draw** — each click drops a corner point; every segment continues from the previous point. A
-//!    rubber-band segment previews the next point live. End point-creation by Esc / right-click / clicking
-//!    the LAST point; CLOSE by clicking the FIRST point.
-//! 2. **Edit** — the session persists: corner points are draggable.
-//! 3. **Commit / cancel** — Enter/Apply bakes the polyline (one undo step); Apply & Keep bakes + keeps the
+//! Every gesture is ONE pointer press. There is no rubber-band between clicks: the shell only feeds Move
+//! events while the button is held, so a point is *placed on Down* and the *same held drag* nudges it.
+//!
+//! 1. **Create** — press on EMPTY space drops a corner point AND grabs it, so dragging (before release)
+//!    adjusts it live; Shift snaps the new segment's direction to 15°. A plain tap just places it. Points
+//!    are only ever created in empty space — never on top of an existing point.
+//! 2. **Move** — press ON an existing point and drag it past a small slop. A press that does NOT drag is a
+//!    TAP: on the FIRST point (≥3) it CLOSES the loop, on the LAST it ENDS creation, on an interior one it
+//!    just selects.
+//! 3. **Edit** — the session persists after creation ends: corner points stay draggable.
+//! 4. **Commit / cancel** — Enter/Apply bakes the polyline (one undo step); Apply & Keep bakes + keeps the
 //!    editor open; Esc discards. Same flow as the other shapes.
 //!
-//! Transcendental-free (HR-5): only straight-segment fills + squared-distance hit-tests.
+//! Transcendental-free (HR-5): only straight-segment fills + squared-distance hit-tests + the 15° snap's
+//! precomputed unit-direction table.
 
 use super::*;
 use ph2d_painter_brush::Stroke;
 
+/// A press is a TAP (not a drag) until the cursor leaves the grab point by this fraction of the grab
+/// tolerance — the slop that separates a *tap* (close / end / select) from a *drag* (move the point).
+const DRAG_SLOP_FRAC: f32 = 0.4;
+
 /// In-progress Line session: the polyline `points` + draw-vs-edit phase. Held in [`PaintState::line`];
-/// `None` when idle. `draft` is the live rubber-band cursor while drawing (not a committed point).
+/// `None` when idle.
 pub(super) struct LineEditor {
     points: Vec<[f32; 2]>,
-    draft: Option<[f32; 2]>,
     closed: bool,
     editing: bool,
-    /// The point being dragged (grabbed on Down over an existing point), in either phase; `None` idle.
+    /// The point being dragged (grabbed on Down over an existing point, or the point just created), in
+    /// either phase; `None` idle.
     grabbed: Option<usize>,
-    /// Whether the current grab actually moved — distinguishes a DRAG (reshape) from a TAP (which, while
-    /// drawing, closes on the first point / ends on the last / selects an interior one).
+    /// The grabbed point was CREATED on this same Down (an empty-space press) — its commit is a new-point
+    /// undo step regardless of whether it was dragged (vs an existing-point grab, where a tap resolves).
+    grab_created: bool,
+    /// Whether the current grab moved past the slop — distinguishes a DRAG (reshape) from a TAP (which,
+    /// while drawing, closes on the first point / ends on the last / selects an interior one).
     grab_moved: bool,
+    /// The pointer position at grab-down — the origin the slop is measured from.
+    grab_origin: [f32; 2],
     /// The highlighted point (last clicked/dragged), shown selected in the overlay; transient (not undone).
     selected: Option<usize>,
     seed: u64,
 }
 
-/// A read-only snapshot of the Line editor for the shell's on-canvas overlay: the polyline vertices, the
-/// live draft point (while drawing), and whether it is closed / in the editing phase.
+/// A read-only snapshot of the Line editor for the shell's on-canvas overlay: the polyline vertices,
+/// whether it is closed / in the editing phase, and the selected corner.
 pub struct LineOverlay {
     /// Committed corner points (image-space px).
     pub points: Vec<[f32; 2]>,
-    /// The live rubber-band cursor while drawing (`None` once editing / before the first move).
-    pub draft: Option<[f32; 2]>,
     /// `true` once the loop is closed (last point clicked on the first).
     pub closed: bool,
     /// `true` in the editing phase (point-creation ended) — the shell then draws draggable corner dots.
@@ -63,31 +77,31 @@ impl PainterTool {
     }
 
     /// Forward the live Shift state before each Line pointer event: Shift enables the **15° direction
-    /// snap** while drawing (each new segment is guided to a 15°-graduated ray from the previous point).
-    /// Out-of-band, like [`PainterTool::set_line_constrain`] / [`PainterTool::set_uniform_scale`].
+    /// snap** while dragging a new point (its incoming segment is guided to a 15°-graduated ray from the
+    /// previous point). Out-of-band, like [`PainterTool::set_line_constrain`].
     pub fn set_line_snap(&mut self, on: bool) {
         self.paint.line_snap = on;
     }
 
-    /// Apply the 15° snap to `pos` when it is armed (Shift) and a previous point anchors the segment —
-    /// otherwise `pos` unchanged. The anchor is the last committed corner.
-    fn line_snapped(&self, pos: [f32; 2]) -> [f32; 2] {
-        if !self.paint.line_snap {
+    /// Apply the 15° snap to a grabbed point at index `g`: when armed (Shift) and a previous point anchors
+    /// the segment, quantise the direction from `points[g-1]` to the nearest 15°; otherwise `pos` unchanged.
+    fn line_snapped_grab(&self, g: usize, pos: [f32; 2]) -> [f32; 2] {
+        if !self.paint.line_snap || g == 0 {
             return pos;
         }
-        match self.paint.line.as_ref().and_then(|ed| ed.points.last()) {
+        match self.paint.line.as_ref().and_then(|ed| ed.points.get(g - 1)) {
             Some(&anchor) => snap_to_15(anchor, pos),
             None => pos,
         }
     }
 
-    /// Pointer-down: start a session (first point) when idle; over an EXISTING point → grab it (to move,
-    /// or tap-close/end/select on Up); on EMPTY space while drawing → drop a new point. Points are only
-    /// CREATED in empty space, never on top of another point.
+    /// Pointer-down: on an EXISTING point → grab it (drag to move, or tap-close/end/select on Up); on EMPTY
+    /// space → create a new point AND grab it, so the same held drag nudges it. Starts the session when
+    /// idle. Points are only ever CREATED in empty space, never on top of another point.
     fn line_down(&mut self, pos: [f32; 2]) -> bool {
         let tol = self.paint.shape_grab_tol_px;
         if self.paint.line.is_none() {
-            // Start a new polyline — the FIRST point is its own undo step (point-by-point undo/redo).
+            // Start a new polyline — the first point is grabbed so the same press can drag it into place.
             self.begin_shape_txn(); // before = no shape
             self.paint.drag_preview = None;
             self.reseed_preview_base();
@@ -97,17 +111,17 @@ impl PainterTool {
             self.paint.seed = self.paint.seed.wrapping_add(1);
             self.paint.line = Some(LineEditor {
                 points: vec![pos],
-                draft: None,
                 closed: false,
                 editing: false,
-                grabbed: None,
+                grabbed: Some(0),
+                grab_created: true,
                 grab_moved: false,
+                grab_origin: pos,
                 selected: Some(0),
                 seed,
             });
             self.line_refill();
-            self.commit_shape_txn(); // record: no shape → first point
-            return true;
+            return true; // committed on Up (one undo step for the new point)
         }
         let (hit, editing) = {
             let ed = self.paint.line.as_ref().expect("line present");
@@ -119,77 +133,110 @@ impl PainterTool {
             self.begin_shape_txn();
             let ed = self.paint.line.as_mut().expect("line present");
             ed.grabbed = Some(i);
+            ed.grab_created = false;
             ed.grab_moved = false;
+            ed.grab_origin = pos;
             ed.selected = Some(i);
             return true;
         }
         if editing {
             return true; // editing phase: empty space adds nothing (points are done)
         }
-        // Empty space while drawing → drop a new point (one undo step). 15° snap (Shift) applies.
-        let add_pos = self.line_snapped(pos);
+        // Empty space while drawing → create a new point AND grab it (drag adjusts it). Shift snaps the new
+        // segment to 15° at creation AND during the drag; `grab_origin` stays the RAW cursor for the slop.
+        let placed = match (
+            self.paint.line_snap,
+            self.paint.line.as_ref().and_then(|ed| ed.points.last()),
+        ) {
+            (true, Some(&anchor)) => snap_to_15(anchor, pos),
+            _ => pos,
+        };
         self.begin_shape_txn();
         {
             let ed = self.paint.line.as_mut().expect("line present");
-            ed.points.push(add_pos);
-            ed.selected = Some(ed.points.len() - 1);
-            ed.draft = None;
+            ed.points.push(placed);
+            let last = ed.points.len() - 1;
+            ed.grabbed = Some(last);
+            ed.grab_created = true;
+            ed.grab_moved = false;
+            ed.grab_origin = pos;
+            ed.selected = Some(last);
         }
         self.line_refill();
-        self.commit_shape_txn();
-        true
+        true // committed on Up
     }
 
-    /// Pointer-move: drag the grabbed point (either phase); otherwise, while drawing, rubber-band the next
-    /// point (the draft).
+    /// Pointer-move: drag the grabbed point. A freshly-created point follows the cursor from the first
+    /// pixel (so you can set the angle live); an existing point only starts moving past the slop, so a
+    /// jittery tap doesn't nudge it. Shift snaps the new segment to 15°.
     fn line_move(&mut self, pos: [f32; 2]) -> bool {
-        let (editing, grabbed) = match self.paint.line.as_ref() {
-            Some(ed) => (ed.editing, ed.grabbed),
+        let (grabbed, created, origin) = match self.paint.line.as_ref() {
+            Some(ed) => (ed.grabbed, ed.grab_created, ed.grab_origin),
             None => return false,
         };
-        if let Some(g) = grabbed {
-            if let Some(ed) = self.paint.line.as_mut()
-                && g < ed.points.len()
-            {
-                ed.points[g] = pos; // dragging a point is un-snapped (15° snap is for NEW segments)
+        let Some(g) = grabbed else {
+            return true; // no grab (shouldn't happen: Down always grabs) — swallow the move
+        };
+        let slop = self.paint.shape_grab_tol_px * DRAG_SLOP_FRAC;
+        let moved_far = dist2(pos, origin) > slop * slop;
+        if !created && !moved_far {
+            return true; // an existing-point press that hasn't left the slop yet stays a TAP
+        }
+        let target = self.line_snapped_grab(g, pos);
+        if let Some(ed) = self.paint.line.as_mut()
+            && g < ed.points.len()
+        {
+            ed.points[g] = target;
+            if moved_far {
                 ed.grab_moved = true;
             }
-            self.line_refill();
-            return true;
         }
-        if !editing {
-            let snapped = self.line_snapped(pos);
-            self.paint.line.as_mut().expect("line present").draft = Some(snapped);
-            self.line_refill();
-        }
+        self.line_refill();
         true
     }
 
-    /// Pointer-up: resolve a grab. A DRAG (moved) records the reshape. A TAP (no move) while drawing:
-    /// on the first point (≥3) → CLOSE; on the last → END creation; on an interior point → just select
-    /// (no undo step). In the editing phase a tap is a plain select.
+    /// Pointer-up: resolve the grab. A freshly-created point commits (one undo step) whether or not it was
+    /// dragged. An existing-point DRAG records the reshape. An existing-point TAP while drawing: on the
+    /// first point (≥3) → CLOSE; on the last → END creation; on an interior point → just select (no undo
+    /// step). In the editing phase a tap is a plain select.
     fn line_up(&mut self) -> bool {
-        let (grabbed, moved, editing, n) = match self.paint.line.as_ref() {
-            Some(ed) => (ed.grabbed, ed.grab_moved, ed.editing, ed.points.len()),
+        let (grabbed, created, moved, editing, n) = match self.paint.line.as_ref() {
+            Some(ed) => (
+                ed.grabbed,
+                ed.grab_created,
+                ed.grab_moved,
+                ed.editing,
+                ed.points.len(),
+            ),
             None => return false,
         };
         let Some(i) = grabbed else {
-            return true; // no grab (a point was just added on Down) — nothing to resolve
+            return true; // nothing grabbed — nothing to resolve
         };
+        if created {
+            // A new point was placed (and maybe dragged) → one undo step.
+            if let Some(ed) = self.paint.line.as_mut() {
+                ed.grabbed = None;
+                ed.grab_created = false;
+                ed.grab_moved = false;
+            }
+            self.commit_shape_txn();
+            return true;
+        }
         if moved {
+            // Dragging an existing point reshaped the polyline → one undo step.
             if let Some(ed) = self.paint.line.as_mut() {
                 ed.grabbed = None;
                 ed.grab_moved = false;
             }
-            self.commit_shape_txn(); // the drag reshaped the polyline → one undo step
+            self.commit_shape_txn();
             return true;
         }
-        // A tap (no drag).
+        // A tap on an existing point (no drag).
         if !editing && i == 0 && n >= 3 {
             if let Some(ed) = self.paint.line.as_mut() {
                 ed.closed = true;
                 ed.editing = true;
-                ed.draft = None;
                 ed.grabbed = None;
             }
             self.line_refill();
@@ -199,7 +246,6 @@ impl PainterTool {
         if !editing && i == n - 1 && n >= 2 {
             if let Some(ed) = self.paint.line.as_mut() {
                 ed.editing = true;
-                ed.draft = None;
                 ed.grabbed = None;
             }
             self.line_refill();
@@ -215,13 +261,34 @@ impl PainterTool {
         true
     }
 
-    /// Commit the polyline (**Enter / Apply**): drop the rubber-band draft, bake the painted line, close
-    /// the session, one undo step. Works whether still drawing (≥2 points) or editing. No-op otherwise.
+    /// End point-creation without baking (right-click / Esc-to-edit): enter the editing phase as its own
+    /// undo step. No-op if idle, already editing, or too short (< 2 points) to be a line.
+    pub fn line_finish_points(&mut self) -> bool {
+        let can = self
+            .paint
+            .line
+            .as_ref()
+            .is_some_and(|ed| !ed.editing && ed.points.len() >= 2);
+        if !can {
+            return false;
+        }
+        self.begin_shape_txn();
+        if let Some(ed) = self.paint.line.as_mut() {
+            ed.editing = true;
+            ed.grabbed = None;
+        }
+        self.line_refill();
+        self.commit_shape_txn();
+        true
+    }
+
+    /// Commit the polyline (**Enter / Apply**): end creation, bake the painted line, close the session,
+    /// one undo step. Works whether still drawing (≥2 points) or editing. No-op otherwise.
     pub fn line_commit(&mut self) -> bool {
         if !self.line_paintable() {
             return false;
         }
-        self.line_finish_draft();
+        self.line_enter_edit_phase();
         self.flush_shape_txn();
         let before = self.capture_shape_model();
         self.paint.line = None;
@@ -239,7 +306,7 @@ impl PainterTool {
         if !self.line_paintable() {
             return false;
         }
-        self.line_finish_draft();
+        self.line_enter_edit_phase();
         self.flush_shape_txn();
         let before = self.capture_shape_model();
         self.commit_drag_preview();
@@ -276,7 +343,6 @@ impl PainterTool {
         let ed = self.paint.line.as_ref()?;
         Some(LineOverlay {
             points: ed.points.clone(),
-            draft: if ed.editing { None } else { ed.draft },
             closed: ed.closed,
             editing: ed.editing,
             selected: ed.selected,
@@ -293,33 +359,27 @@ impl PainterTool {
             .is_some_and(|ed| ed.points.len() >= 2)
     }
 
-    /// Enter/Apply on a still-drawing line ends point-creation: drop the rubber-band draft, enter the
-    /// editing phase, and re-fill so the baked preview is the committed points only (no draft segment).
-    fn line_finish_draft(&mut self) {
+    /// Move a still-drawing line into the editing phase (used by the commit paths, which then bake and
+    /// close). No undo step of its own — the caller records the bake.
+    fn line_enter_edit_phase(&mut self) {
         if let Some(ed) = self.paint.line.as_mut()
             && !ed.editing
         {
             ed.editing = true;
-            ed.draft = None;
+            ed.grabbed = None;
         }
         self.line_refill();
     }
 
-    /// Re-fill the painted preview from the editor's polyline (committed points + the draft while drawing).
-    /// A fresh `Stroke` per fill (deterministic for identical params). `< 2` path points paints nothing
-    /// (a lone first point) — the on-canvas overlay still shows its dot.
+    /// Re-fill the painted preview from the editor's polyline. A fresh `Stroke` per fill (deterministic for
+    /// identical params). `< 2` path points paints nothing (a lone first point) — the on-canvas overlay
+    /// still shows its dot.
     pub(super) fn line_refill(&mut self) {
         let (mut path, closed, seed) = {
             let Some(ed) = self.paint.line.as_ref() else {
                 return;
             };
-            let mut path = ed.points.clone();
-            if !ed.editing
-                && let Some(d) = ed.draft
-            {
-                path.push(d);
-            }
-            (path, ed.closed, ed.seed)
+            (ed.points.clone(), ed.closed, ed.seed)
         };
         // Close the loop by re-appending the first point — a plain extra segment for the polyline fill.
         if closed && path.len() >= 3 {
@@ -337,7 +397,7 @@ impl PainterTool {
 }
 
 impl LineEditor {
-    /// Capture the polyline for the unified undo timeline (transient `grabbed`/`draft` reset on restore).
+    /// Capture the polyline for the unified undo timeline (transient grab/selection reset on restore).
     pub(super) fn to_state(&self) -> crate::undo::LineState {
         crate::undo::LineState {
             points: self.points.clone(),
@@ -347,15 +407,16 @@ impl LineEditor {
         }
     }
 
-    /// Rebuild the editor from a restored snapshot (grab idle, no draft) — inverse of [`Self::to_state`].
+    /// Rebuild the editor from a restored snapshot (grab idle, no selection) — inverse of [`Self::to_state`].
     pub(super) fn from_state(s: crate::undo::LineState) -> Self {
         LineEditor {
             points: s.points,
-            draft: None,
             closed: s.closed,
             editing: s.editing,
             grabbed: None,
+            grab_created: false,
             grab_moved: false,
+            grab_origin: [0.0, 0.0],
             selected: None,
             seed: s.seed,
         }

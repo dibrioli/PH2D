@@ -2315,9 +2315,12 @@ fn line_per_layer_color_moving_endpoint_leaves_no_trail() {
     t.toggle_brush_shape_per_layer_color();
     t.set_brush_shape_layer_color(0, [1.0, 0.0, 0.0]);
     let a = [10.0, 31.0];
+    // Polyline model: click corner A, then press corner B and sweep it around (the line pivots on A),
+    // settling near A. Each move re-stamps the whole line via the drag-preview restore.
     t.on_canvas_pointer(cp(a, PointerPhase::Down));
-    // Sweep the endpoint to several positions (the line pivots around A), then settle near A.
-    for b in [[52.0, 12.0], [52.0, 50.0], [52.0, 31.0], [16.0, 31.0]] {
+    t.on_canvas_pointer(cp(a, PointerPhase::Up)); // corner A
+    t.on_canvas_pointer(cp([52.0, 12.0], PointerPhase::Down)); // create corner B
+    for b in [[52.0, 50.0], [52.0, 31.0], [16.0, 31.0]] {
         t.on_canvas_pointer(cp(b, PointerPhase::Move));
     }
     t.on_canvas_pointer(cp([16.0, 31.0], PointerPhase::Up));
@@ -3213,28 +3216,32 @@ fn anchored_stamps_a_drag_sized_disc_centred_on_the_press_point() {
 
 #[test]
 fn line_paints_a_straight_committed_line_with_no_trail() {
-    // Line end-to-end (tool layer): press anchors (no paint), each move previews the straight
-    // anchor→cursor line (restore + re-stamp — no trail), pen-up commits the last. A wrong
-    // intermediate drag must leave no trace.
+    // Line end-to-end (tool layer), polyline model: click the first corner (a lone point paints nothing),
+    // then PRESS the second corner and drag it to a WRONG spot then the final spot (each move previews the
+    // straight line, restore + re-stamp → no trail), release, Enter bakes. The wrong drag leaves no trace.
     let mut t = white_canvas(64, 3.0);
     t.paint.brush.stroke_method = StrokeMethod::Line;
     t.paint.brush.hardness = 1.0; // hard disk → deterministic full coverage
     t.paint.brush.falloff = Falloff::Constant;
     t.paint.brush.space_attenuation = false;
 
+    // First corner: a lone point paints nothing (< 2 points).
     t.on_canvas_pointer(cp([8.0, 8.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([8.0, 8.0], PointerPhase::Up));
     assert_eq!(
         px(&t, 64, 8, 8),
         [255, 255, 255, 255],
-        "the press alone paints nothing"
+        "one corner paints nothing"
     );
 
-    // Drag to a WRONG spot (a vertical line), then to the final spot (a horizontal line), release.
-    t.on_canvas_pointer(cp([8.0, 56.0], PointerPhase::Move)); // wrong: vertical
-    t.on_canvas_pointer(cp([56.0, 8.0], PointerPhase::Move)); // final: horizontal
-    t.on_canvas_pointer(cp([56.0, 8.0], PointerPhase::Up)); // commit
+    // Second corner: press in empty space (creates it), drag to a WRONG spot (vertical) then the final
+    // spot (horizontal), release. Enter bakes the line.
+    t.on_canvas_pointer(cp([8.0, 56.0], PointerPhase::Down)); // create corner 1 (wrong: vertical)
+    t.on_canvas_pointer(cp([56.0, 8.0], PointerPhase::Move)); // drag to final (horizontal)
+    t.on_canvas_pointer(cp([56.0, 8.0], PointerPhase::Up));
+    assert!(t.commit_open_shape(), "Enter baked the open line");
 
-    // The committed line is horizontal at y=8 from the anchor (8,8) to the release (56,8).
+    // The committed line is horizontal at y=8 from (8,8) to (56,8).
     assert_eq!(px(&t, 64, 8, 8), [0, 0, 0, 255], "anchor end painted");
     assert_eq!(
         px(&t, 64, 32, 8),
@@ -5995,4 +6002,64 @@ fn line_click_on_an_existing_point_never_adds_a_duplicate() {
     assert_eq!(ov.points.len(), 2, "no duplicate point created");
     assert_eq!(ov.selected, Some(0), "the clicked point is selected");
     assert!(!ov.editing, "a select does not end creation");
+}
+
+#[test]
+fn line_press_drag_on_empty_creates_the_point_and_drags_it() {
+    // A press in EMPTY space creates a corner AND grabs it, so the same held drag positions it live (this
+    // is how you set the angle with Shift). Release settles it — no separate rubber-band, no duplicate.
+    let mut t = line_tool();
+    click(&mut t, 16.0, 16.0); // corner 0
+    t.on_canvas_pointer(cp([40.0, 16.0], PointerPhase::Down)); // create corner 1 in empty space
+    t.on_canvas_pointer(cp([40.0, 40.0], PointerPhase::Move)); // drag it (same press)
+    t.on_canvas_pointer(cp([40.0, 40.0], PointerPhase::Up));
+    let ov = t.line_overlay().unwrap();
+    assert_eq!(ov.points.len(), 2, "one corner created, none duplicated");
+    assert_eq!(
+        ov.points[1],
+        [40.0, 40.0],
+        "the created corner followed the drag"
+    );
+}
+
+#[test]
+fn line_dragging_the_last_point_moves_it_not_creates_a_new_one() {
+    // The reported bug: trying to drag the last point used to drop a NEW point instead of moving it.
+    // A press ON the last point grabs it; the drag moves it (no new point, creation not ended).
+    let mut t = line_tool();
+    click(&mut t, 16.0, 16.0);
+    click(&mut t, 48.0, 16.0); // last = corner 1
+    t.on_canvas_pointer(cp([48.0, 16.0], PointerPhase::Down)); // grab the last point
+    t.on_canvas_pointer(cp([50.0, 40.0], PointerPhase::Move)); // drag it
+    t.on_canvas_pointer(cp([50.0, 40.0], PointerPhase::Up));
+    let ov = t.line_overlay().unwrap();
+    assert_eq!(
+        ov.points.len(),
+        2,
+        "dragging the last point added NO new point"
+    );
+    assert_eq!(ov.points[1], [50.0, 40.0], "the last point moved");
+    assert!(!ov.editing, "a drag does not end creation");
+}
+
+#[test]
+fn line_tap_within_slop_on_last_point_ends_creation_not_moves() {
+    // Tap-vs-drag: a press that stays within the slop (jitter) is a TAP, not a drag — on the last point
+    // that ENDS creation and leaves the point exactly where it was (no accidental nudge). tol 8 → slop 3.2.
+    let mut t = line_tool();
+    click(&mut t, 16.0, 16.0);
+    click(&mut t, 48.0, 16.0);
+    t.on_canvas_pointer(cp([48.0, 16.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([49.0, 17.0], PointerPhase::Move)); // within slop → still a tap
+    t.on_canvas_pointer(cp([49.0, 17.0], PointerPhase::Up));
+    let ov = t.line_overlay().unwrap();
+    assert!(
+        ov.editing,
+        "a within-slop tap on the last point ended creation"
+    );
+    assert_eq!(
+        ov.points[1],
+        [48.0, 16.0],
+        "the point did not move (a tap, not a drag)"
+    );
 }

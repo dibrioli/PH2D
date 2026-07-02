@@ -170,34 +170,42 @@ pub(crate) fn paint_brush_body(
         y = paint_randomize_section(ctx, theme, x, content_w, y, brush);
     }
 
-    // ── Section 7: Shape — the dab silhouette. Hosts the Falloff (the procedural default tip) + its
-    //    curve preview + a source picker; once a Shape image is assigned the Falloff goes inactive
-    //    (replaced by the image + its preview). Sits ABOVE Grain (Enio 2026-06-25). ──
-    y = sep(ctx.scene, theme, x, content_w, y);
-    y = crate::paint_shape::paint_shape_section(ctx, theme, x, content_w, y, brush);
-
-    // ── Section 7b: Shape Tone — the Shape's B&W value ramp (tonal remap of the silhouette), below the
-    //    Shape section. Shown in ALL modes (Smear/Blur/Clone force it to a B&W coverage tone); HIDDEN
-    //    only while Per-Layer Color owns the colour per layer (the ramp is nullified). ──
-    if !brush.shape_per_layer_color {
+    // ── Sections 7–10: Shape · Shape Tone · Grain · Stroke · Symmetry · Tiling — the dab-appearance +
+    //    stroke sections. ALL HIDDEN in Inpaint mode: the heal marks a hard-disc defect mask (it ignores
+    //    the Shape silhouette / Falloff / Grain / ramps / stroke dynamics / symmetry / tiling entirely),
+    //    so the only relevant controls are Size (above) + the Inpaint card. ──
+    if !brush.is_inpaint {
+        // ── Section 7: Shape — the dab silhouette. Hosts the Falloff (the procedural default tip) + its
+        //    curve preview + a source picker; once a Shape image is assigned the Falloff goes inactive
+        //    (replaced by the image + its preview). Sits ABOVE Grain (Enio 2026-06-25). ──
         y = sep(ctx.scene, theme, x, content_w, y);
-        y = crate::paint_shape_ramp::paint_shape_ramp_section(ctx, theme, x, content_w, y, brush);
-    }
+        y = crate::paint_shape::paint_shape_section(ctx, theme, x, content_w, y, brush);
 
-    // ── Section 8: Grain — the texture inside the silhouette (was "Texture", Enio 2026-06-25) ──
-    y = sep(ctx.scene, theme, x, content_w, y);
-    y = crate::paint_texture::paint_texture_section(ctx, theme, x, content_w, y, brush, false);
+        // ── Section 7b: Shape Tone — the Shape's B&W value ramp (tonal remap of the silhouette), below
+        //    the Shape section. Shown in ALL modes (Smear/Blur/Clone force it to a B&W coverage tone);
+        //    HIDDEN only while Per-Layer Color owns the colour per layer (the ramp is nullified). ──
+        if !brush.shape_per_layer_color {
+            y = sep(ctx.scene, theme, x, content_w, y);
+            y = crate::paint_shape_ramp::paint_shape_ramp_section(
+                ctx, theme, x, content_w, y, brush,
+            );
+        }
 
-    // ── Section 9: Stroke · Section 9b: Symmetry · Section 10: Tiling (last two collapsed by default) ──
-    y = sep(ctx.scene, theme, x, content_w, y);
-    y = crate::paint_stroke::paint_stroke_section(ctx, theme, x, content_w, y, brush);
-    // Symmetry — hidden in Clone: mirrored dabs would clone from mirrored source positions (nonsensical).
-    if !brush.is_clone {
+        // ── Section 8: Grain — the texture inside the silhouette (was "Texture", Enio 2026-06-25) ──
         y = sep(ctx.scene, theme, x, content_w, y);
-        y = crate::paint_symmetry::paint_symmetry_section(ctx, theme, x, content_w, y, brush);
+        y = crate::paint_texture::paint_texture_section(ctx, theme, x, content_w, y, brush, false);
+
+        // ── Section 9: Stroke · 9b: Symmetry · 10: Tiling (last two collapsed by default) ──
+        y = sep(ctx.scene, theme, x, content_w, y);
+        y = crate::paint_stroke::paint_stroke_section(ctx, theme, x, content_w, y, brush);
+        // Symmetry — hidden in Clone: mirrored dabs would clone from mirrored source positions.
+        if !brush.is_clone {
+            y = sep(ctx.scene, theme, x, content_w, y);
+            y = crate::paint_symmetry::paint_symmetry_section(ctx, theme, x, content_w, y, brush);
+        }
+        y = sep(ctx.scene, theme, x, content_w, y);
+        y = crate::paint_stroke::paint_tiling_section(ctx, theme, x, content_w, y, brush);
     }
-    y = sep(ctx.scene, theme, x, content_w, y);
-    y = crate::paint_stroke::paint_tiling_section(ctx, theme, x, content_w, y, brush);
     // Eraser is the left-rail Eraser tool (a mode), not a panel checkbox — its former standalone
     // checkbox was removed (Enio). In Eraser mode the panel is the normal Brush panel; only the ramp
     // B&W buttons lock checked (erasing has no colour) — handled in the ramp section builders.

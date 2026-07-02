@@ -139,4 +139,34 @@ mod tests {
             );
         }
     }
+
+    #[test]
+    fn inpaint_mode_hides_every_unused_brush_section() {
+        let inpaint = body_hit_ids(ph2d_tool_painter::BrushSettings {
+            is_inpaint: true,
+            ..crate::paint_brush::FALLBACK_BRUSH
+        });
+        let plain = body_hit_ids(crate::paint_brush::FALLBACK_BRUSH);
+        // Representative widgets from the sections Inpaint does not use (Strength, and the Stroke
+        // section's Spacing). Each shows for a plain brush but must vanish in Inpaint mode — the heal
+        // marks a hard-disc mask, so only Size + the Inpaint card remain.
+        for id in [
+            core_ids::PAINTER_BRUSH_STRENGTH_SLIDER,
+            core_ids::PAINTER_BRUSH_SPACING,
+        ] {
+            assert!(
+                plain.contains(&id),
+                "{id:?} should show for a plain brush (test premise)"
+            );
+            assert!(
+                !inpaint.contains(&id),
+                "{id:?} must be hidden in Inpaint mode"
+            );
+        }
+        // Size stays — it is the mask-brush footprint.
+        assert!(
+            inpaint.contains(&core_ids::PAINTER_BRUSH_SIZE_SLIDER),
+            "Size must stay visible in Inpaint mode"
+        );
+    }
 }

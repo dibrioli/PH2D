@@ -516,30 +516,43 @@ fn fill_colordrop_fills_the_connected_region_and_undoes_in_one_step() {
 }
 
 #[test]
-fn fill_adjust_drag_raises_threshold_right_up_lowers_left_down() {
+fn fill_modal_threshold_slider_refills_live_and_cancel_reverts() {
     let size = 32u32;
     let mut t = fill_fixture(size);
-    t.paint.fill_threshold = 0.5; // mid, so the adjust has room both ways
-    // Drop, then the adjust phase is armed.
+    // Drop tight (only the red square). The drop leaves a pending fill for the modal to tune.
+    t.set_fill_threshold(0.05);
     t.on_canvas_pointer(cp([16.0, 16.0], PointerPhase::Down));
     t.on_canvas_pointer(cp([16.0, 16.0], PointerPhase::Up));
-    // Start the adjust drag at (16,16); base threshold = 0.5.
-    t.on_canvas_pointer(cp([16.0, 16.0], PointerPhase::Down));
-    let base = t.paint.fill_base_threshold;
-    assert!((base - 0.5).abs() < 1e-6);
-    // Each Move is measured from the adjust start — right & up RAISE, left & down LOWER.
-    t.on_canvas_pointer(cp([50.0, 16.0], PointerPhase::Move));
-    assert!(t.paint.fill_threshold > base, "right raises the threshold");
-    t.on_canvas_pointer(cp([16.0, 4.0], PointerPhase::Move));
-    assert!(t.paint.fill_threshold > base, "up raises the threshold");
-    t.on_canvas_pointer(cp([0.0, 16.0], PointerPhase::Move));
-    assert!(t.paint.fill_threshold < base, "left lowers the threshold");
-    t.on_canvas_pointer(cp([16.0, 30.0], PointerPhase::Move));
-    assert!(t.paint.fill_threshold < base, "down lowers the threshold");
-    // Releasing the adjust commits + exits the ColorDrop.
-    t.on_canvas_pointer(cp([16.0, 30.0], PointerPhase::Up));
-    assert!(!t.paint.fill_adjusting);
-    assert!(t.paint.fill_seed.is_none());
+    assert!(
+        t.has_active_fill(),
+        "the drop leaves a pending fill for the modal"
+    );
+    assert_eq!(
+        px(&t, size, 16, 16),
+        [0, 255, 0, 255],
+        "the drop filled the square"
+    );
+    // The modal slider drives set_fill_threshold live — a large threshold overflows into the surround.
+    t.set_fill_threshold(1.0);
+    assert_eq!(
+        px(&t, size, 2, 2),
+        [0, 255, 0, 255],
+        "slider up overflows into the surround"
+    );
+    // Cancel reverts the layer to exactly before the drop — no undo entry.
+    t.fill_cancel();
+    assert!(!t.has_active_fill());
+    assert_eq!(
+        px(&t, size, 16, 16),
+        [220, 20, 20, 255],
+        "cancel restored the red square"
+    );
+    assert_eq!(
+        px(&t, size, 2, 2),
+        [255, 255, 255, 255],
+        "cancel restored the surround"
+    );
+    assert!(!t.undo_last(), "cancel leaves NO undo step");
 }
 
 #[test]
@@ -571,10 +584,9 @@ fn fill_shrinking_repaints_the_vacated_overflow() {
     t.on_canvas_pointer(cp([0.0, 16.0], PointerPhase::Up));
     let overflow = t.dirty_rect.expect("the drop dirtied a region");
     assert!(overflow.w >= size - 2, "the drop overflowed across the row");
-    // Start the adjust and drag far LEFT (threshold → 0) → the fill shrinks to the left columns.
+    // Lower the threshold via the modal slider → the fill shrinks to the left columns.
     t.dirty_rect = None;
-    t.on_canvas_pointer(cp([16.0, 16.0], PointerPhase::Down));
-    t.on_canvas_pointer(cp([-400.0, 16.0], PointerPhase::Move));
+    t.set_fill_threshold(0.0);
     let after = t.dirty_rect.expect("the shrink dirtied a region");
     // The vacated right side must be marked dirty (else it ghosts on the GPU) — the dirty rect still
     // spans the original overflow width, not just the small new fill.

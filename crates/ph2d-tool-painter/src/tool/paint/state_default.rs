@@ -105,9 +105,6 @@ impl Default for PaintState {
             fill_threshold: 0.1,      // a small default ColorDrop tolerance
             fill_seed: None,
             fill_snapshot: Vec::new(),
-            fill_adjusting: false,
-            fill_adjust_start: None,
-            fill_base_threshold: 0.1,
             fill_last_rect: None,
             per_layer_stroke: stamp_color_cache::PerLayerStroke::default(),
             shape_color_preview: stamp_color_cache::ShapeColorPreview::default(),

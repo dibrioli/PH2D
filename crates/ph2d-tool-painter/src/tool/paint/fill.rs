@@ -11,9 +11,6 @@ use crate::tool::PainterTool;
 use ph2d_editor_core::tool::{CanvasPointer, PointerPhase};
 use std::sync::Arc;
 
-/// ColorDrop threshold change per pixel of the adjust drag (≈ full `0..1` over ~330 px).
-const FILL_ADJUST_SENS: f32 = 0.003;
-
 /// Max per-channel (RGBA) difference from the seed colour for a pixel to be filled, at a given tolerance.
 #[inline]
 fn color_match(px: &[u8], i: usize, seed: [u8; 4], tol: u8) -> bool {
@@ -153,50 +150,27 @@ impl PainterTool {
         self.mark_dirty(dirty);
     }
 
-    /// Route a Fill-mode canvas pointer — the Procreate ColorDrop gesture:
-    /// 1. **Drop** (Down → drag → Up): the release point seeds a flood fill at the current threshold.
-    /// 2. **Adjust** (the next drag): right/up raises the threshold (bigger fill), left/down lowers it,
-    ///    re-filling live from the pre-fill snapshot. Its release commits the fill (one undo step).
+    /// Route a Fill-mode canvas pointer — the ColorDrop drop gesture: drag the colour onto the canvas
+    /// (Down begins + snapshots, Move tracks the cursor) and release (Up) to flood-fill at the drop
+    /// point. The threshold is then tuned in the floating Fill modal (the shell drives
+    /// [`Self::set_fill_threshold`] / [`Self::fill_commit`] / [`Self::fill_cancel`]).
     pub(super) fn fill_pointer(&mut self, ev: CanvasPointer) -> bool {
         match ev.phase {
             PointerPhase::Down => {
-                if self.paint.fill_adjusting {
-                    // Begin the adjust drag (anchor + the threshold at this moment).
-                    self.paint.fill_adjust_start = Some(ev.pos);
-                    self.paint.fill_base_threshold = self.paint.fill_threshold;
-                } else {
-                    self.fill_begin_drop(ev.pos);
-                }
+                self.fill_begin_drop(ev.pos);
                 true
             }
             PointerPhase::Move => {
-                if self.paint.fill_adjusting {
-                    if let Some(start) = self.paint.fill_adjust_start {
-                        let dx = ev.pos[0] - start[0];
-                        let dy = ev.pos[1] - start[1]; // image-space +Y is DOWN
-                        // Right (dx > 0) and up (dy < 0) both INCREASE the threshold (bigger fill).
-                        let t = self.paint.fill_base_threshold + (dx - dy) * FILL_ADJUST_SENS;
-                        self.paint.fill_threshold = t.clamp(0.0, 1.0);
-                        self.refill_from_snapshot();
-                    }
-                } else if self.paint.fill_seed.is_some() {
-                    // Dropping — the fill lands where the drag RELEASES, so just track the cursor here
-                    // (no per-move flood fill; the fill runs on Up).
+                // The fill lands where the drag RELEASES — track the cursor here (fill runs on Up).
+                if self.paint.fill_seed.is_some() {
                     self.paint.fill_seed = Some(ev.pos);
                 }
                 true
             }
             PointerPhase::Up => {
-                if self.paint.fill_adjusting {
-                    // The adjust drag (or a confirming tap) ended → commit the fill.
-                    self.paint.fill_adjust_start = None;
-                    self.fill_commit();
-                } else if self.paint.fill_seed.is_some() {
-                    // Drop released → fill at the release point, then arm the live threshold adjust.
+                if self.paint.fill_seed.is_some() {
                     self.paint.fill_seed = Some(ev.pos);
                     self.refill_from_snapshot();
-                    self.paint.fill_adjusting = true;
-                    self.paint.fill_base_threshold = self.paint.fill_threshold;
                 }
                 true
             }
@@ -207,25 +181,59 @@ impl PainterTool {
     /// Start a ColorDrop: snapshot the layer (for undo + live re-fill) and record the seed. The fill
     /// itself runs on release ([`Self::fill_pointer`]).
     fn fill_begin_drop(&mut self, pos: [f32; 2]) {
-        // One structural-undo entry for the whole drop+adjust (pre-fill → committed fill).
+        // One structural-undo entry for the whole drop + modal adjust (pre-fill → committed fill).
         self.paint.stroke_undo = Some(self.snapshot_model());
         self.paint.fill_snapshot = (*self.canvas_rgba).clone();
         self.paint.fill_seed = Some(pos);
-        self.paint.fill_adjusting = false;
-        self.paint.fill_adjust_start = None;
         self.paint.fill_last_rect = None;
     }
 
-    /// Finalize the current fill: push the undo entry and drop the transient ColorDrop state.
+    /// Whether a ColorDrop is pending its modal adjust (a drop happened, not yet committed/cancelled).
+    #[must_use]
+    pub fn has_active_fill(&self) -> bool {
+        self.paint.fill_seed.is_some()
+    }
+
+    /// The current Fill threshold (`0..1`) — the Fill modal's slider is seeded from this.
+    #[must_use]
+    pub fn fill_threshold(&self) -> f32 {
+        self.paint.fill_threshold
+    }
+
+    /// Set the Fill threshold from the modal slider (`0..1`) and re-fill live from the snapshot.
+    pub fn set_fill_threshold(&mut self, t: f32) {
+        self.paint.fill_threshold = t.clamp(0.0, 1.0);
+        self.refill_from_snapshot();
+    }
+
+    /// Finalize the current fill (modal **Done**): push the undo entry, drop the transient state.
     pub(crate) fn fill_commit(&mut self) {
-        if self.paint.fill_seed.is_none() && !self.paint.fill_adjusting {
+        if self.paint.fill_seed.is_none() {
             return;
         }
         self.close_stroke(); // pushes the pre-fill → filled structural-undo entry
         self.paint.fill_seed = None;
         self.paint.fill_snapshot = Vec::new();
-        self.paint.fill_adjusting = false;
-        self.paint.fill_adjust_start = None;
+        self.paint.fill_last_rect = None;
+    }
+
+    /// Discard the current fill (modal **Cancel**): restore the pre-fill pixels and drop the pending
+    /// undo entry, so the layer is exactly as it was before the drop.
+    pub fn fill_cancel(&mut self) {
+        if self.paint.fill_seed.is_none() {
+            return;
+        }
+        let n = self.paint.fill_snapshot.len();
+        if n > 0 && self.canvas_rgba.len() == n {
+            let buf = Arc::make_mut(&mut self.canvas_rgba);
+            buf.copy_from_slice(&self.paint.fill_snapshot);
+        }
+        if let Some(rect) = self.paint.fill_last_rect {
+            self.mark_dirty(rect); // repaint what the fill had painted
+        }
+        self.paint.stroke_undo = None; // no committed change → no undo entry
+        self.paint.fill_seed = None;
+        self.paint.fill_snapshot = Vec::new();
         self.paint.fill_last_rect = None;
     }
 }

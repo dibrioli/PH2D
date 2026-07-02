@@ -278,11 +278,6 @@ pub(crate) struct PaintState {
     /// Pre-fill layer pixels, so every threshold change re-fills from the ORIGINAL region (not the
     /// already-filled result).
     fill_snapshot: Vec<u8>,
-    /// True between the drop's release and the adjust drag's release — the live threshold-adjust phase.
-    fill_adjusting: bool,
-    /// Where the adjust drag started + the threshold at that moment (right/up raises it, left/down lowers).
-    fill_adjust_start: Option<[f32; 2]>,
-    fill_base_threshold: f32,
     /// The previous refill's filled bbox — so a SHRINKING fill dirties the vacated pixels too (the
     /// union of the old + new rects), not just the smaller new region (else the overflow ghosts).
     fill_last_rect: Option<Region>,

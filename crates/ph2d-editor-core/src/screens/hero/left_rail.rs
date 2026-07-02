@@ -129,12 +129,10 @@ pub fn populate(store: &mut WidgetStore) {
     }
     store.register(ids::RAIL_BACKDROP, InteractiveState::Plain);
     // Default-pressed selections (each radio group is independent — only one
-    // group is painted at a time, so co-pressing is fine).
-    for id in [
-        ids::TOOL_TRANSLATE,
-        ids::PAINTER_RAIL_BRUSH,
-        ids::PAINTER_RAIL_SHAPE_FREEHAND,
-    ] {
+    // group is painted at a time, so co-pressing is fine). The Shapes sub-radio
+    // starts with NONE pressed — a shape button looks unchecked until the artist
+    // picks one (Enio); the Shapes rail button then adopts that shape's icon.
+    for id in [ids::TOOL_TRANSLATE, ids::PAINTER_RAIL_BRUSH] {
         if let Some(InteractiveState::Button { state }) = store.get_mut(id) {
             *state = ButtonState::Pressed;
         }
@@ -198,6 +196,16 @@ fn tool_entry(
     e
 }
 
+/// The Shapes-flyout entry (`label`, `icon`, `sub`) whose sub-radio is Pressed — so the Shapes rail
+/// button can adopt the ACTIVE shape's icon in place of the generic Shapes icon. `None` until a shape
+/// is picked (the button then keeps the last-picked shape's icon, like a Photoshop tool group).
+fn active_shape(store: &WidgetStore) -> Option<(&'static str, IconId, &'static str)> {
+    PAINTER_SHAPES.iter().find_map(|(id, label, icon, sub)| {
+        matches!(store.button_state(*id), Some(ButtonState::Pressed))
+            .then_some((*label, *icon, *sub))
+    })
+}
+
 pub fn paint_left_rail(
     layout: &HeroLayout,
     scene: &mut VectorScene,
@@ -236,6 +244,15 @@ pub fn paint_left_rail(
     // Middle section: paint tools in Painter mode, else transform tools.
     if painter_active {
         for tool in PAINTER_TOOLS {
+            // The Shapes button adopts the ACTIVE shape's icon/label (like a Photoshop tool group)
+            // once a shape is picked — the generic Shapes icon only shows until then.
+            let tool = if tool.0 == ids::PAINTER_RAIL_SHAPES
+                && let Some((label, icon, sub)) = active_shape(store)
+            {
+                (tool.0, label, icon, sub)
+            } else {
+                tool
+            };
             rail_entries.push(tool_entry(store, tool));
         }
     } else {

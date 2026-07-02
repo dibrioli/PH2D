@@ -71,6 +71,15 @@ const BENIGN_SET_MODE: &[(&str, &str)] = &[
          `set_texture_ramp_alpha_mode` — a single `shape_color_ramp_alpha_mode` field write, \
          read fresh each dab at stamp time, not baked into any LUT. No derived cache keyed on it.",
     ),
+    (
+        "set_paint_tool_mode",
+        "Painter rail tool-mode setter (smear/blur/clone/mask/eyedropper/eraser/brush): writes only \
+         simple mode fields (`paint_mode`/`eraser`/`eyedropper_armed` + a one-shot Spacing default). \
+         It no longer discards the transient Mask scratch — the scratch is INTENTIONALLY kept alive \
+         across tool switches (self-gated by `mask_scratch_active()` on target == active), so a \
+         tool-mode change has no derived cache to settle. Apply (a separate action) promotes the \
+         scratch to a layer mask.",
+    ),
 ];
 
 /// Setters that reconcile via implementation-specific verbs (rather

@@ -516,8 +516,75 @@ fn mask_brush_creates_no_layer_and_conceals_live_nondestructively() {
 }
 
 #[test]
-fn mask_apply_bakes_the_scratch_into_the_layer_alpha() {
-    // Apply bakes the transient scratch into the current layer's alpha (destructive) and clears it.
+fn mask_apply_creates_a_layer_mask_from_the_scratch() {
+    // Apply promotes the transient scratch to a REAL layer-system mask attached to the current layer:
+    // a Mask layer appears (count up), `target.mask` points at it, the scratch clears, the parent's OWN
+    // pixels are UNTOUCHED (non-destructive — the mask lives in the stack, not baked into the alpha), and
+    // the composite still conceals through the new mask.
+    use ph2d_editor_core::ids as core_ids;
+    use ph2d_editor_core::tool::{PanelEvent, Tool};
+    let mut t = white_canvas(16, 5.0);
+    let target = t.layers.active().expect("a raster is active");
+    let n_before = t.layers.all_ids().count();
+    assert!(
+        t.layers.get(target).and_then(|l| l.mask).is_none(),
+        "the raster starts with no layer mask"
+    );
+    t.handle_panel_event(PanelEvent::SelectOption(
+        core_ids::PAINTER_PAINT_MODE,
+        "mask".to_string(),
+    ));
+    t.on_canvas_pointer(cp([8.0, 8.0], PointerPhase::Down)); // conceal centre (scratch only)
+    t.on_canvas_pointer(cp([8.0, 8.0], PointerPhase::Up));
+    assert!(t.mask_scratch_active());
+    // Apply → a real layer mask is created from the scratch.
+    t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_MASK_APPLY));
+    assert!(!t.mask_scratch_active(), "Apply cleared the scratch");
+    assert_eq!(
+        t.layers.all_ids().count(),
+        n_before + 1,
+        "Apply added exactly one Mask layer"
+    );
+    let mask = t
+        .layers
+        .get(target)
+        .and_then(|l| l.mask)
+        .expect("the target now owns a layer mask");
+    assert!(
+        matches!(
+            t.layers.get(mask).map(|l| &l.kind),
+            Some(LayerKind::Mask(_))
+        ),
+        "the attached layer is a Mask"
+    );
+    assert_eq!(
+        t.layers.active(),
+        Some(target),
+        "the parent raster stays the active edit layer (not the mask)"
+    );
+    // Non-destructive: the parent's OWN pixels are untouched (still opaque white — the mask is separate).
+    assert_eq!(
+        px(&t, 16, 8, 8),
+        [255, 255, 255, 255],
+        "Apply did NOT bake into the layer alpha (the mask is a separate stack layer)"
+    );
+    // The composite still conceals the masked centre through the new layer mask (scratch cleared → no
+    // overlay film now, so the alpha drops to ~0).
+    let (buf, w, _h) = t.take_preview_arc().expect("a composite preview");
+    let i = ((8 * w + 8) * 4) as usize;
+    assert!(
+        buf[i + 3] < 128,
+        "the layer mask conceals the centre, got a = {}",
+        buf[i + 3]
+    );
+}
+
+#[test]
+fn mask_scratch_persists_across_a_tool_switch() {
+    // The scratch is PERSISTENT (correção #1): switching the rail tool does NOT discard it. After painting
+    // the scratch and switching to the Brush, it stays live (its target layer is still active) and keeps
+    // masking the layer — so you can retouch the concealed area with the Brush. (Apply is the only way to
+    // bake it; switching LAYERS is the only thing that makes it go dormant.)
     use ph2d_editor_core::ids as core_ids;
     use ph2d_editor_core::tool::{PanelEvent, Tool};
     let mut t = white_canvas(16, 5.0);
@@ -527,45 +594,26 @@ fn mask_apply_bakes_the_scratch_into_the_layer_alpha() {
     ));
     t.on_canvas_pointer(cp([8.0, 8.0], PointerPhase::Down)); // conceal centre (scratch only)
     t.on_canvas_pointer(cp([8.0, 8.0], PointerPhase::Up));
-    assert_eq!(
-        px(&t, 16, 8, 8),
-        [255, 255, 255, 255],
-        "layer untouched pre-Apply"
-    );
-    t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_MASK_APPLY));
-    assert!(!t.mask_scratch_active(), "Apply cleared the scratch");
-    assert!(
-        px(&t, 16, 8, 8)[3] < 128,
-        "Apply baked the mask into the layer alpha, got a = {}",
-        px(&t, 16, 8, 8)[3]
-    );
-}
-
-#[test]
-fn mask_scratch_is_discarded_on_leaving_without_apply() {
-    // The scratch is TEMPORARY: leaving the Mask tool without Apply discards it — the layer returns fully
-    // visible (to keep a mask you must Apply first).
-    use ph2d_editor_core::ids as core_ids;
-    use ph2d_editor_core::tool::{PanelEvent, Tool};
-    let mut t = white_canvas(16, 5.0);
-    t.handle_panel_event(PanelEvent::SelectOption(
-        core_ids::PAINTER_PAINT_MODE,
-        "mask".to_string(),
-    ));
-    t.on_canvas_pointer(cp([8.0, 8.0], PointerPhase::Down));
-    t.on_canvas_pointer(cp([8.0, 8.0], PointerPhase::Up));
     assert!(t.mask_scratch_active());
+    // Switch to the Brush — the scratch must NOT be discarded.
     t.handle_panel_event(PanelEvent::SelectOption(
         core_ids::PAINTER_PAINT_MODE,
         "brush".to_string(),
     ));
     assert!(
-        !t.mask_scratch_active(),
-        "leaving Mask discards the scratch"
+        t.mask_scratch_active(),
+        "switching tools keeps the scratch alive (its target layer is still active)"
     );
+    // The composite still conceals the masked centre while a revealed corner keeps the image.
     let (buf, w, _h) = t.take_preview_arc().expect("a composite preview");
-    let i = ((8 * w + 8) * 4) as usize;
-    assert_eq!(buf[i + 3], 255, "no Apply → mask gone, layer fully visible");
+    let c = ((8 * w + 8) * 4) as usize;
+    let corner = ((w + 1) * 4) as usize;
+    assert!(
+        buf[c] < 128,
+        "the scratch still masks the centre after the tool switch, got {}",
+        buf[c]
+    );
+    assert_eq!(buf[corner], 255, "the revealed corner keeps the image");
 }
 
 #[test]

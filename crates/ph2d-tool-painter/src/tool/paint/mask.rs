@@ -7,8 +7,10 @@
 //! - is edited by the whole-canvas **Modifiers** (Expand / Contract / Blur / Sharpen / Invert / Clear);
 //! - hides/reveals the target layer LIVE and non-destructively — the preview composites the layer's
 //!   pixels MASKED by the scratch ([`Self::mask_scratch_display`]); the colour film shows the coverage;
-//! - is TEMPORARY: it clears when you leave the Mask tool or switch layers, and **Apply** bakes it into
-//!   the layer's alpha ([`Self::apply_mask_scratch`]). Nothing touches the layer system.
+//! - PERSISTS across tool switches (it stays live while its target layer is active, so you can leave
+//!   Mask, retouch with the Brush, and come back); it goes dormant when you switch layers. **Apply**
+//!   ([`Self::apply_mask_scratch`]) promotes the scratch to a real layer-system mask (Layers panel row,
+//!   eye / Invert, editable by any tool); the scratch itself never edits the layer stack.
 
 use super::PainterTool;
 use ph2d_editor_core::tool::PanelEvent;
@@ -84,17 +86,12 @@ impl PainterTool {
         self.invalidate_composite();
     }
 
-    /// Discard the transient scratch (the target layer returns to unmasked). Named `reset_` so the
-    /// mode-reconcile gate recognises it; called when leaving the Mask tool.
-    pub(super) fn reset_mask_scratch(&mut self) {
-        if self.paint.mask_scratch_target.take().is_some() {
-            self.paint.mask_scratch_rgba = Arc::new(Vec::new());
-            self.invalidate_composite();
-        }
-    }
-
-    /// **Apply** — bake the transient scratch into the current layer's alpha (destructive: `α *= mask`),
-    /// then clear the scratch. The Mask section's Apply button; one undo step. No-op without a live scratch.
+    /// **Apply** — promote the transient scratch to a real **layer-system mask** on the current layer
+    /// (it appears in the Layers panel with eye / Invert and is editable by any tool), then clear the
+    /// scratch. The parent raster stays the active edit layer (you were painting the image, not the
+    /// mask) and its pixels are untouched. If the layer already has a mask, the scratch is multiplied
+    /// INTO it (coverage refine, `α_new = α_old × scratch`). One structural undo step. No-op without a
+    /// live scratch, or at the layer hard-cap (the scratch is then left intact). The Apply button.
     pub fn apply_mask_scratch(&mut self) {
         if !self.mask_scratch_active() {
             return;
@@ -104,22 +101,51 @@ impl PainterTool {
         };
         let (w, h) = self.source_size;
         let n = (w as usize) * (h as usize);
-        if self.paint.mask_scratch_rgba.len() < n * 4 || self.canvas_rgba.len() < n * 4 {
+        if self.paint.mask_scratch_rgba.len() < n * 4 {
             return;
         }
         let before = self.snapshot_model();
-        let scratch = self.paint.mask_scratch_rgba.clone();
-        {
-            let buf = Arc::make_mut(&mut self.canvas_rgba);
-            for i in 0..n {
-                let v = crate::compositor::mask_value(&scratch, i);
-                let a = f32::from(buf[i * 4 + 3]);
-                buf[i * 4 + 3] = (a * v).round().clamp(0.0, 255.0) as u8;
+        let scratch = self.paint.mask_scratch_rgba.as_ref().clone();
+        // Store the scratch as the mask's pixels. The mask is owner-attached (NOT the active layer), so
+        // its pixels live in `images[mask_id]` — exactly where the compositor reads a mask from
+        // (`ToolPixelSource::layer_rgba`). The target raster stays active and its pixels are untouched.
+        let touched = match self.layers.add_mask_for(target, w, h) {
+            Some(mask_id) => {
+                self.images.insert(
+                    mask_id,
+                    crate::compositor::LayerImage {
+                        width: w,
+                        height: h,
+                        rgba8: scratch,
+                    },
+                );
+                Some(mask_id)
             }
-        }
+            // `add_mask_for` rejected the add: either the layer already HAS a mask (merge the scratch
+            // into it by multiplying coverage) or the hard-cap is hit (leave the scratch alone and bail).
+            None => {
+                let existing = self.layers.get(target).and_then(|l| l.mask);
+                if let Some(mask_id) = existing
+                    && let Some(img) = self.images.get_mut(&mask_id)
+                    && img.rgba8.len() >= n * 4
+                {
+                    for i in 0..n {
+                        let m = crate::compositor::mask_value(&scratch, i);
+                        for c in 0..3 {
+                            let base = f32::from(img.rgba8[i * 4 + c]);
+                            img.rgba8[i * 4 + c] = (base * m).round().clamp(0.0, 255.0) as u8;
+                        }
+                    }
+                }
+                existing
+            }
+        };
+        let Some(touched) = touched else {
+            return; // hard-cap: no mask created/found — keep the live scratch, record no undo step.
+        };
         self.paint.mask_scratch_target = None;
         self.paint.mask_scratch_rgba = Arc::new(Vec::new());
-        self.bump_layer_pixels(Some(target));
+        self.bump_layer_pixels(Some(touched));
         self.commit_structural_edit(before);
         self.invalidate_composite();
     }

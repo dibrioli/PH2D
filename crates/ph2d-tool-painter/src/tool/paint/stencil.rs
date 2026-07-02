@@ -325,10 +325,11 @@ impl PainterTool {
     /// tools never leaves a stuck state (e.g. Brush after Smear returns to normal painting). Beside
     /// `route_brush_dab_event`, which drives it (moved here off `brush_settings.rs` for the LOC cap).
     pub fn set_paint_tool_mode(&mut self, mode: &str) {
-        // Leaving Mask discards the transient scratch (the layer returns to unmasked); reset AFTER the
-        // mode is set. The scratch is temporary — Apply bakes it before you leave if you want to keep it.
-        let leaving_mask =
-            matches!(self.paint.paint_mode, super::PaintMode::Mask) && mode != "mask";
+        // The transient Mask scratch is NOT discarded on a tool switch: it persists while its target
+        // layer stays active (`mask_scratch_active()` self-gates on target == active), so you can leave
+        // Mask, retouch the concealed area with the Brush, and return. Apply promotes it to a layer mask;
+        // switching layers lets it go dormant. (This setter is on `arch_mode_has_reconcile`'s BENIGN list:
+        // it writes only simple mode fields, with no derived cache to settle.)
         // Any tool switch disarms a pending Eyedropper pick; only "eyedropper" re-arms it below.
         self.paint.eyedropper_armed = false;
         match mode {
@@ -375,9 +376,6 @@ impl PainterTool {
                 self.paint.paint_mode = super::PaintMode::Paint;
                 self.paint.eraser = false;
             }
-        }
-        if leaving_mask {
-            self.reset_mask_scratch();
         }
     }
 

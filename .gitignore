@@ -24,6 +24,19 @@ docs/_api-claude.md
 .vscode/launch.json
 .vscode/tasks.json
 
+# Watercolor study QUARANTINE — material derived from studying a commercial web
+# demo (Escape Motions' Rebelle experiment). Study-only: never commit, never port
+# into PH2D. The clean product is docs/Painter/ph2d_wet_paint/ (clean-room from
+# its SPEC.md; see its PROVENANCE.md).
+docs/Painter/rebecca/
+docs/Painter/rebecca_1.1/
+docs/Painter/rebecca_1.2/
+docs/Painter/rebecca_1.3/
+docs/Painter/rebecca_1.4/
+docs/Painter/ESTUDO_rebelle_aquarela.md
+docs/Painter/ANALISE_rebelle_wet_sim.md
+docs/Painter/PLANO_aquarela_sim_html.md
+
 # Node / web shell
 node_modules/
 dist/

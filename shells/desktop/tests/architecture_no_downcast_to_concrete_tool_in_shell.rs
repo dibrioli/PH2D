@@ -67,6 +67,10 @@ const DOWNCAST_ALLOWLIST: &[&str] = &[
     // reparent` split out of painter_bridge.rs (HR-18 LOC cap); same downcast
     // exception class as painter_bridge.rs.
     "src/render_loop/painter_bridge_queries.rs",
+    // Painter shape-source preview: `drive_shape_source_preview` split out of
+    // painter_bridge.rs (HR-18 LOC cap); same downcast exception class as
+    // painter_bridge.rs. (Coord ship-fix, 2026-07-02.)
+    "src/render_loop/painter_bridge_shape_preview.rs",
     // image_edit drain: per-tool bake dispatch. Some downcasts retire
     // in later Etapas as OneShotImageOp routes via Registry kind.
     "src/render_loop/image_edit.rs",

@@ -25,7 +25,13 @@ pub(super) struct LineEditor {
     draft: Option<[f32; 2]>,
     closed: bool,
     editing: bool,
+    /// The point being dragged (grabbed on Down over an existing point), in either phase; `None` idle.
     grabbed: Option<usize>,
+    /// Whether the current grab actually moved — distinguishes a DRAG (reshape) from a TAP (which, while
+    /// drawing, closes on the first point / ends on the last / selects an interior one).
+    grab_moved: bool,
+    /// The highlighted point (last clicked/dragged), shown selected in the overlay; transient (not undone).
+    selected: Option<usize>,
     seed: u64,
 }
 
@@ -40,6 +46,8 @@ pub struct LineOverlay {
     pub closed: bool,
     /// `true` in the editing phase (point-creation ended) — the shell then draws draggable corner dots.
     pub editing: bool,
+    /// The highlighted (selected) corner index — the shell draws it emphasised. `None` = no selection.
+    pub selected: Option<usize>,
 }
 
 impl PainterTool {
@@ -73,8 +81,9 @@ impl PainterTool {
         }
     }
 
-    /// Pointer-down: start a session (drop the first point) when idle; while drawing, close (click on the
-    /// first point) / finish (click on the last point) / else drop a new point; while editing, grab a point.
+    /// Pointer-down: start a session (first point) when idle; over an EXISTING point → grab it (to move,
+    /// or tap-close/end/select on Up); on EMPTY space while drawing → drop a new point. Points are only
+    /// CREATED in empty space, never on top of another point.
     fn line_down(&mut self, pos: [f32; 2]) -> bool {
         let tol = self.paint.shape_grab_tol_px;
         if self.paint.line.is_none() {
@@ -92,83 +101,117 @@ impl PainterTool {
                 closed: false,
                 editing: false,
                 grabbed: None,
+                grab_moved: false,
+                selected: Some(0),
                 seed,
             });
             self.line_refill();
             self.commit_shape_txn(); // record: no shape → first point
             return true;
         }
-        let drawing = !self.paint.line.as_ref().expect("line present").editing;
-        if drawing {
-            // Decide the action with a short borrow, then mutate + refill outside it.
-            let (close, finish) = {
-                let ed = self.paint.line.as_ref().expect("line present");
-                let n = ed.points.len();
-                let on_first = n >= 3 && dist(ed.points[0], pos) <= tol;
-                let on_last = n >= 2 && dist(ed.points[n - 1], pos) <= tol;
-                (on_first, on_last && !on_first)
-            };
-            // Each click — add a point, or finish/close — is ONE undo step (point-by-point undo/redo).
-            let add_pos = self.line_snapped(pos); // 15° snap (Shift) applies to the NEW point
+        let (hit, editing) = {
+            let ed = self.paint.line.as_ref().expect("line present");
+            (nearest_point(&ed.points, pos, tol), ed.editing)
+        };
+        if let Some(i) = hit {
+            // On an existing point → grab it (drag to move; a tap resolves on Up). Bracket the potential
+            // reshape; select the point. NEVER adds — creation is empty-space only.
             self.begin_shape_txn();
-            {
-                let ed = self.paint.line.as_mut().expect("line present");
-                if close {
-                    ed.closed = true;
-                    ed.editing = true;
-                    ed.draft = None;
-                } else if finish {
-                    ed.editing = true;
-                    ed.draft = None;
-                } else {
-                    ed.points.push(add_pos);
-                }
-            }
-            self.line_refill();
-            self.commit_shape_txn();
+            let ed = self.paint.line.as_mut().expect("line present");
+            ed.grabbed = Some(i);
+            ed.grab_moved = false;
+            ed.selected = Some(i);
             return true;
         }
-        // Editing: bracket a reshape gesture; grab the point under the cursor.
+        if editing {
+            return true; // editing phase: empty space adds nothing (points are done)
+        }
+        // Empty space while drawing → drop a new point (one undo step). 15° snap (Shift) applies.
+        let add_pos = self.line_snapped(pos);
         self.begin_shape_txn();
-        let ed = self.paint.line.as_mut().expect("line present");
-        ed.grabbed = nearest_point(&ed.points, pos, tol);
+        {
+            let ed = self.paint.line.as_mut().expect("line present");
+            ed.points.push(add_pos);
+            ed.selected = Some(ed.points.len() - 1);
+            ed.draft = None;
+        }
+        self.line_refill();
+        self.commit_shape_txn();
         true
     }
 
-    /// Pointer-move: rubber-band the next point (draw) or drag the grabbed point (edit).
+    /// Pointer-move: drag the grabbed point (either phase); otherwise, while drawing, rubber-band the next
+    /// point (the draft).
     fn line_move(&mut self, pos: [f32; 2]) -> bool {
-        let editing = match self.paint.line.as_ref() {
-            Some(ed) => ed.editing,
+        let (editing, grabbed) = match self.paint.line.as_ref() {
+            Some(ed) => (ed.editing, ed.grabbed),
             None => return false,
         };
+        if let Some(g) = grabbed {
+            if let Some(ed) = self.paint.line.as_mut()
+                && g < ed.points.len()
+            {
+                ed.points[g] = pos; // dragging a point is un-snapped (15° snap is for NEW segments)
+                ed.grab_moved = true;
+            }
+            self.line_refill();
+            return true;
+        }
         if !editing {
             let snapped = self.line_snapped(pos);
             self.paint.line.as_mut().expect("line present").draft = Some(snapped);
             self.line_refill();
-            return true;
-        }
-        let g = self.paint.line.as_ref().and_then(|ed| ed.grabbed);
-        if let Some(g) = g {
-            if let Some(ed) = self.paint.line.as_mut()
-                && g < ed.points.len()
-            {
-                ed.points[g] = pos;
-            }
-            self.line_refill();
         }
         true
     }
 
-    /// Pointer-up: release an edit grab (record the reshape). Drawing adds points on Down, so Up is inert.
+    /// Pointer-up: resolve a grab. A DRAG (moved) records the reshape. A TAP (no move) while drawing:
+    /// on the first point (≥3) → CLOSE; on the last → END creation; on an interior point → just select
+    /// (no undo step). In the editing phase a tap is a plain select.
     fn line_up(&mut self) -> bool {
-        let released = match self.paint.line.as_mut() {
-            Some(ed) if ed.editing => ed.grabbed.take().is_some(),
-            Some(_) => return true,
+        let (grabbed, moved, editing, n) = match self.paint.line.as_ref() {
+            Some(ed) => (ed.grabbed, ed.grab_moved, ed.editing, ed.points.len()),
             None => return false,
         };
-        if released {
-            self.commit_shape_txn();
+        let Some(i) = grabbed else {
+            return true; // no grab (a point was just added on Down) — nothing to resolve
+        };
+        if moved {
+            if let Some(ed) = self.paint.line.as_mut() {
+                ed.grabbed = None;
+                ed.grab_moved = false;
+            }
+            self.commit_shape_txn(); // the drag reshaped the polyline → one undo step
+            return true;
         }
+        // A tap (no drag).
+        if !editing && i == 0 && n >= 3 {
+            if let Some(ed) = self.paint.line.as_mut() {
+                ed.closed = true;
+                ed.editing = true;
+                ed.draft = None;
+                ed.grabbed = None;
+            }
+            self.line_refill();
+            self.commit_shape_txn(); // close → one undo step
+            return true;
+        }
+        if !editing && i == n - 1 && n >= 2 {
+            if let Some(ed) = self.paint.line.as_mut() {
+                ed.editing = true;
+                ed.draft = None;
+                ed.grabbed = None;
+            }
+            self.line_refill();
+            self.commit_shape_txn(); // end creation → one undo step
+            return true;
+        }
+        // Interior / editing tap → selection only (no geometry change): drop the speculative txn.
+        if let Some(ed) = self.paint.line.as_mut() {
+            ed.grabbed = None;
+            ed.grab_moved = false;
+        }
+        self.paint.stroke_undo = None;
         true
     }
 
@@ -236,6 +279,7 @@ impl PainterTool {
             draft: if ed.editing { None } else { ed.draft },
             closed: ed.closed,
             editing: ed.editing,
+            selected: ed.selected,
         })
     }
 
@@ -311,6 +355,8 @@ impl LineEditor {
             closed: s.closed,
             editing: s.editing,
             grabbed: None,
+            grab_moved: false,
+            selected: None,
             seed: s.seed,
         }
     }
@@ -373,9 +419,4 @@ fn dist2(a: [f32; 2], b: [f32; 2]) -> f32 {
     let dx = a[0] - b[0];
     let dy = a[1] - b[1];
     dx * dx + dy * dy
-}
-
-/// Euclidean distance between two points.
-fn dist(a: [f32; 2], b: [f32; 2]) -> f32 {
-    dist2(a, b).sqrt()
 }

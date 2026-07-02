@@ -5959,3 +5959,40 @@ fn line_shift_snaps_the_new_segment_to_15_degrees() {
         "distance preserved along the snapped ray, got {p:?}"
     );
 }
+
+#[test]
+fn line_dragging_a_point_mid_draw_moves_it_without_adding_a_new_one() {
+    // Mid-drawing, grabbing an existing point moves it (no new point); creation then continues in empty.
+    let mut t = line_tool();
+    click(&mut t, 16.0, 16.0); // point 0
+    click(&mut t, 48.0, 16.0); // point 1
+    assert!(!t.line_overlay().unwrap().editing, "still drawing");
+    // Grab point 0 and drag it.
+    t.on_canvas_pointer(cp([16.0, 16.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([10.0, 40.0], PointerPhase::Move));
+    t.on_canvas_pointer(cp([10.0, 40.0], PointerPhase::Up));
+    let ov = t.line_overlay().unwrap();
+    assert_eq!(ov.points.len(), 2, "dragging created NO new point");
+    assert_eq!(ov.points[0], [10.0, 40.0], "point 0 moved");
+    assert!(!ov.editing, "still drawing after a mid-draw move");
+    // A click in EMPTY space continues creation from the last point.
+    click(&mut t, 60.0, 60.0);
+    assert_eq!(
+        t.line_overlay().unwrap().points.len(),
+        3,
+        "creation continues in empty space"
+    );
+}
+
+#[test]
+fn line_click_on_an_existing_point_never_adds_a_duplicate() {
+    // Points are created only in empty space: a click ON a point selects it (no duplicate, no end).
+    let mut t = line_tool();
+    click(&mut t, 16.0, 16.0);
+    click(&mut t, 48.0, 16.0);
+    click(&mut t, 16.0, 16.0); // tap point 0 (n=2 → not close; not last → not end): select only
+    let ov = t.line_overlay().unwrap();
+    assert_eq!(ov.points.len(), 2, "no duplicate point created");
+    assert_eq!(ov.selected, Some(0), "the clicked point is selected");
+    assert!(!ov.editing, "a select does not end creation");
+}

@@ -438,15 +438,19 @@ fn draw_line_overlay(
                     &path,
                 );
             }
-            // A white dot at each committed corner; a fainter ghost at the live draft point.
+            // A white dot at each committed corner; the SELECTED corner emphasised (purple, larger); a
+            // fainter ghost at the live draft point.
             let dot = Color::new([0.95, 0.95, 0.97, 0.95]); // LITERAL-COLOR-OK: corner dot
-            for &p in &overlay.points {
+            let sel = Color::new([0.72, 0.45, 0.95, 1.0]); // LITERAL-COLOR-OK: selected corner
+            for (i, &p) in overlay.points.iter().enumerate() {
+                let selected = overlay.selected == Some(i);
+                let (c, r) = if selected { (sel, 5.5) } else { (dot, 4.0) };
                 scene.fill(
                     Fill::NonZero,
                     Affine::IDENTITY,
-                    &Brush::Solid(dot),
+                    &Brush::Solid(c),
                     None,
-                    &Circle::new(map(p), 4.0),
+                    &Circle::new(map(p), r),
                 );
             }
             if let Some(d) = overlay.draft {

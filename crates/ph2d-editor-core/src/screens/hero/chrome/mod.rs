@@ -54,6 +54,7 @@ pub(super) fn cascade_anchor(hero: &HeroScreen, row_id: NodeId) -> (f32, f32) {
 // <ph2d-chrome-sync:begin>
 mod curve_point_handle;
 mod falloff_handle;
+mod fill_modal;
 mod image_actions;
 mod image_tools_toggle;
 mod io_menu;
@@ -91,6 +92,10 @@ pub use rail_painter_tools::reset_to_brush as reset_painter_rail_to_brush;
 /// method change so the Brush panel's Method dropdown keeps the rail's active button in sync.
 pub use rail_painter_tools::sync_rail_to_stroke_method as sync_painter_rail_to_stroke_method;
 
+/// Paint the Fill (Bucket) "Fill adjust" floating modal (gated on `store.fill_modal_pos()`). Re-exported
+/// so the hero paint pass can render it above the canvas alongside the other floating dialogs.
+pub use fill_modal::paint_fill_adjust_modal;
+
 /// Walk every chrome handler in `||` order; stop at the first that
 /// consumes the event.
 pub fn dispatch_all(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
@@ -111,6 +116,7 @@ pub fn dispatch_all(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
         || vector_prompt::apply(hero, event)
         || palette_rename::apply(hero, event)
         || new_image::apply(hero, event)
+        || fill_modal::apply(hero, event)
         || scene_picker::apply(hero, event)
         || image_tools_toggle::apply(hero, event)
         || image_actions::apply(hero, event)

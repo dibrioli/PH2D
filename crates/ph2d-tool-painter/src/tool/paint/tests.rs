@@ -556,6 +556,54 @@ fn fill_modal_threshold_slider_refills_live_and_cancel_reverts() {
 }
 
 #[test]
+fn route_fill_event_drives_the_modal_slider_done_and_cancel() {
+    use ph2d_editor_core::ids as core_ids;
+    use ph2d_editor_core::tool::{PanelEvent, Tool};
+    let size = 32u32;
+
+    // ── SetValue on the modal slider routes to set_fill_threshold + re-fills live. ──
+    let mut t = fill_fixture(size);
+    t.set_fill_threshold(0.05);
+    t.on_canvas_pointer(cp([16.0, 16.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([16.0, 16.0], PointerPhase::Up));
+    assert!(t.has_active_fill());
+    t.handle_panel_event(PanelEvent::SetValue(
+        core_ids::PAINTER_FILL_MODAL_SLIDER,
+        1.0,
+    ));
+    assert_eq!(
+        t.fill_threshold(),
+        1.0,
+        "SetValue routed to set_fill_threshold"
+    );
+    assert_eq!(
+        px(&t, size, 2, 2),
+        [0, 255, 0, 255],
+        "the slider overflowed the fill into the surround"
+    );
+
+    // ── Click(DONE) commits: clears the pending fill + keeps it as one undo step. ──
+    t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_FILL_MODAL_DONE));
+    assert!(!t.has_active_fill(), "Done cleared the pending fill");
+    assert!(t.undo_last(), "Done kept the fill as one undo step");
+
+    // ── Click(CANCEL) reverts: clears the pending fill + leaves NO undo step. ──
+    let mut t2 = fill_fixture(size);
+    t2.set_fill_threshold(0.05);
+    t2.on_canvas_pointer(cp([16.0, 16.0], PointerPhase::Down));
+    t2.on_canvas_pointer(cp([16.0, 16.0], PointerPhase::Up));
+    assert!(t2.has_active_fill());
+    t2.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_FILL_MODAL_CANCEL));
+    assert!(!t2.has_active_fill(), "Cancel cleared the pending fill");
+    assert_eq!(
+        px(&t2, size, 16, 16),
+        [220, 20, 20, 255],
+        "Cancel restored the red square"
+    );
+    assert!(!t2.undo_last(), "Cancel leaves NO undo step");
+}
+
+#[test]
 fn fill_shrinking_repaints_the_vacated_overflow() {
     use ph2d_editor_core::ids as core_ids;
     use ph2d_editor_core::tool::{PanelEvent, Tool};

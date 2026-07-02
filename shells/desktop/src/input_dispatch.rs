@@ -47,7 +47,7 @@ use crate::forwarding::{
 // `impl App` is split across sibling modules (see the eyedropper /
 // keyboard handlers) to keep this file under the HR-18 LOC cap.
 mod eyedropper;
-mod fill_drag;
+pub(crate) mod fill_drag;
 mod gizmo_drag;
 mod keyboard;
 mod painter_canvas_input;
@@ -221,6 +221,11 @@ impl App {
         if self.fill_drag_move(self.last_pointer.0, self.last_pointer.1) {
             return;
         }
+        // Fill "Fill adjust" modal title-band drag (SHELL-only): while the card is grabbed, motion moves
+        // it. Early-return so it doesn't pan / drive a gizmo. No-ops unless a modal drag is armed.
+        if self.fill_modal_drag_move(self.last_pointer.0, self.last_pointer.1) {
+            return;
+        }
         // Vector Pen handle drag (W2): while the Primary button is held after
         // placing an anchor, motion pulls its Bézier handles. Early-return so
         // it doesn't pan / drive a gizmo. No-ops unless a Pen click-drag is live.
@@ -383,17 +388,20 @@ impl App {
             timestamp_ns: Self::timestamp_ns(),
         };
         self.handler.on_pointer(evt);
-        // Was a right-click context menu open when this click arrived? If so the
-        // click belongs to the menu (selecting an item or dismissing it) — chrome
-        // dispatch in `forward_to_hero` consumes it and CLOSES the menu, so by the
-        // time the consume arms below run the menu reads as closed. Capture it now
-        // so the Painter Falloff click-to-add does NOT also fire on a menu click
-        // (which spawned an unwanted point under the menu).
+        // Was a right-click context menu (or the Fill "Fill adjust" modal) open when this click
+        // arrived? If so the click belongs to that overlay (its slider/buttons/items) — chrome dispatch
+        // in `forward_to_hero` handles it, so the canvas-consume arms below (paint / gizmo / select /
+        // pan) must NOT also fire on a click LANDING on the overlay (which sits over the canvas). The
+        // Fill modal counts as a modal exactly like the new-image dialog — without this, clicking its
+        // threshold slider started a fresh flood-fill on the canvas underneath (mirror of the
+        // new-image-modal "leaked a dab" fix). Captured now because `forward_to_hero` may close it.
         let menu_open_before = self
             .gfx
             .as_ref()
             .and_then(|g| g.hero_screen.as_ref())
-            .is_some_and(|h| h.store.context_menu().is_some());
+            .is_some_and(|h| {
+                h.store.context_menu().is_some() || h.store.fill_modal_pos().is_some()
+            });
         // Colour-picker eyedropper armed when this click arrived? `forward_to_hero` services the pick
         // (sampling the pixel) AND clears the pending flag, so by the time the consume arms below run
         // it reads as disarmed. Capture it now so the Painter brush does NOT also paint where the user
@@ -438,6 +446,11 @@ impl App {
             && matches!(kind, PointerKind::Down)
         {
             self.arm_fill_drag_if_on_button(evt.x, evt.y);
+            // A Primary Down on the Fill modal's title band starts a modal-move (the card follows the
+            // cursor via CursorMoved) — consume it so it doesn't click through / start anything else.
+            if self.arm_fill_modal_drag_if_on_handle(evt.x, evt.y) {
+                return;
+            }
         }
         match (mapped_button, kind) {
             (ph2d_host::PointerButton::Secondary, PointerKind::Down)
@@ -620,6 +633,8 @@ impl App {
                 // Finish a Fill ColorDrop drag (fill on the canvas, or open the picker for a plain click
                 // on the Fill button). No-op when no fill drag is armed.
                 self.fill_drag_up();
+                // End a Fill "Fill adjust" modal title-band drag. No-op when not dragging the modal.
+                self.fill_modal_drag_up();
                 // Close a Pen click-drag handle window (logs the pulled
                 // tangent). No-op when the Pen isn't mid-click-drag.
                 self.try_vector_pen_pointer_up();

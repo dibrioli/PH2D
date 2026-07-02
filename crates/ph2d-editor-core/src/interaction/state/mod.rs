@@ -396,6 +396,10 @@ pub struct WidgetStore {
     /// Set by the modal's Create button — `Some((size_px, bg))` the shell polls + clears to spawn a
     /// blank canvas. Decouples the editor-core modal from the shell's `spawn_blank_canvas` (no I/O here).
     pub(super) new_image_request: Option<(u32, u8)>,
+    /// Fill (Bucket) "Fill adjust" floating modal: `Some((x, y))` = the card's top-left in screen px
+    /// (open); `None` = closed. Opened at the ColorDrop release point by the shell; dragging the title
+    /// band offsets it. Its threshold slider's value lives in the `PAINTER_FILL_MODAL_SLIDER` widget.
+    pub(super) fill_modal: Option<(f32, f32)>,
     /// Section-header id → highlighter color index (0..4 for the 5
     /// canonical colors; missing entry == "no outline"). Painted by
     /// the inspector as a colored stroke around the section block.

@@ -34,6 +34,9 @@ pub(crate) mod painter_bridge_assets;
 /// The Curve / Free Hand editor overlay (spine + control dots + tangent handles), split from
 /// `painter_bridge_overlays` for the HR-18 file-LOC cap.
 pub(crate) mod painter_bridge_curve_overlay;
+/// The Fill (Bucket) ColorDrop cursor swatch overlay, split from `painter_bridge_overlays` for the
+/// HR-18 file-LOC cap.
+pub(crate) mod painter_bridge_fill_overlay;
 /// Shared Sprite-style gizmo painting for the Curve + Stencil transform gizmos (theme tokens, darker).
 pub(crate) mod painter_bridge_gizmo;
 /// The Line polyline editor overlay (segments + corner dots + transform gizmo + Fillet/Chamfer handles),

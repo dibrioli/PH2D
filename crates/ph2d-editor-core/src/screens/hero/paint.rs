@@ -373,6 +373,16 @@ pub fn paint_hero_screen(
         &hero.project,
         viewport,
     );
+    // Fill (Bucket) "Fill adjust" modal — a floating, draggable card at the ColorDrop release point
+    // (no-op when closed). Painted after the context menu so its hit rects sit above the canvas.
+    chrome::paint_fill_adjust_modal(
+        scene,
+        text_system,
+        hero.theme,
+        &mut hero.hit_index,
+        &hero.store,
+        viewport,
+    );
     // M14.4e: file-drop overlay sits above EVERY layer (chrome,
     // tooltips, context menus) so the user always sees the "Drop to
     // import" hint while the OS drag is active.

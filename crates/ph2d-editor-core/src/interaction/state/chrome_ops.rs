@@ -9,7 +9,9 @@
 //! pattern.
 
 use super::WidgetStore;
+use crate::interaction::InteractiveState;
 use crate::interaction::types::{ContextMenuRequest, NoteData};
+use crate::widget::{ButtonState, SliderOrientation, SliderState};
 use ph2d_a11y::NodeId;
 
 impl WidgetStore {
@@ -158,6 +160,63 @@ impl WidgetStore {
     /// spawns a blank canvas of that size + background.
     pub fn take_new_image_request(&mut self) -> Option<(u32, u8)> {
         self.new_image_request.take()
+    }
+
+    /// Open the Fill (Bucket) "Fill adjust" floating modal with its top-left at `(x, y)` (screen px),
+    /// seeding the threshold slider to `threshold` (`0..1`). Registers the slider + Done/Cancel/handle
+    /// widgets so the generic pointer dispatch can drive them (idempotent — the slider VALUE is refreshed
+    /// on every open so it mirrors the tool's current threshold). The shell calls this on the ColorDrop
+    /// release; the painter then re-fills live as the slider moves.
+    pub fn open_fill_modal(&mut self, x: f32, y: f32, threshold: f32) {
+        self.fill_modal = Some((x, y));
+        self.register(
+            crate::ids::PAINTER_FILL_MODAL_SLIDER,
+            InteractiveState::Slider {
+                state: SliderState::Normal,
+                value: threshold.clamp(0.0, 1.0),
+                orientation: SliderOrientation::Horizontal,
+            },
+        );
+        // Re-seed the value even if the slider was already registered (`register` overwrites).
+        if let Some(InteractiveState::Slider { value, .. }) =
+            self.get_mut(crate::ids::PAINTER_FILL_MODAL_SLIDER)
+        {
+            *value = threshold.clamp(0.0, 1.0);
+        }
+        for id in [
+            crate::ids::PAINTER_FILL_MODAL_DONE,
+            crate::ids::PAINTER_FILL_MODAL_CANCEL,
+            crate::ids::PAINTER_FILL_MODAL_HANDLE,
+        ] {
+            self.register(
+                id,
+                InteractiveState::Button {
+                    state: ButtonState::Normal,
+                },
+            );
+        }
+    }
+
+    /// Close the Fill (Bucket) "Fill adjust" modal (Done / Cancel / a canvas dismissal).
+    pub fn close_fill_modal(&mut self) {
+        self.fill_modal = None;
+    }
+
+    /// The Fill modal's top-left `(x, y)` in screen px, or `None` when the modal is closed. The painter
+    /// gates the modal's render + hit registration on this being `Some`.
+    #[must_use]
+    pub fn fill_modal_pos(&self) -> Option<(f32, f32)> {
+        self.fill_modal
+    }
+
+    /// Offset the Fill modal's position by `(dx, dy)` screen px (the title-band drag). No-op when the
+    /// modal is closed. Not clamped here — the painter clamps the position to the viewport when it draws
+    /// (so the accumulated delta always equals `cursor − grab_offset` and the drag never dead-zones).
+    pub fn move_fill_modal(&mut self, dx: f32, dy: f32) {
+        if let Some((x, y)) = self.fill_modal.as_mut() {
+            *x += dx;
+            *y += dy;
+        }
     }
 
     /// Close any currently-open context menu. Snapshots the request

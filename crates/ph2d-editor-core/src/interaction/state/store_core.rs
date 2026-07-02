@@ -52,6 +52,7 @@ impl WidgetStore {
             new_image_size: 512, // default square size highlighted when the modal opens
             new_image_bg: 0,     // default background = transparent
             new_image_request: None,
+            fill_modal: None,
             section_outline_color: BTreeMap::new(),
             notes_per_panel: BTreeMap::new(),
             last_context_menu: None,

@@ -61,6 +61,7 @@ pub(super) fn draw_overlays(
         cursor,
     );
     draw_symmetry_overlay(painter, hero, sim, camera, window_size, vector_scene);
+    super::painter_bridge_fill_overlay::draw_fill_cursor(hero, vector_scene, cursor);
 }
 
 /// Discrete **symmetry** guides: a dashed mirror line (X / Y / custom) or N dashed radial spokes from

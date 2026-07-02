@@ -53,6 +53,7 @@ impl Tool for PainterTool {
             || self.route_composite_event(&event)
             || self.route_brush_dab_event(&event)
             || self.route_inpaint_event(&event)
+            || self.route_fill_event(&event)
         {
             self.refill_if_appearance_changed(appearance_before);
             return;
@@ -478,8 +479,7 @@ impl Tool for PainterTool {
         self.refill_if_appearance_changed(appearance_before);
     }
 
-    /// Per-frame heartbeat (ADR-0040-amendment-2): the airbrush timer + the stabilizer catch-up. `dt_ms`
-    /// is the real wall time since the last frame.
+    /// Per-frame heartbeat (ADR-0040-amendment-2): airbrush timer + stabilizer catch-up; `dt_ms` = real wall ms since last frame.
     fn on_tick(&mut self, dt_ms: f32) {
         self.paint_tick(dt_ms * 1e-3);
     }

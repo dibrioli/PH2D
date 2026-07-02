@@ -104,6 +104,30 @@ pub(super) fn flood_fill(
 }
 
 impl PainterTool {
+    /// Route the Fill "Fill adjust" modal's controls (the threshold slider + Done/Cancel). Returns
+    /// `true` when handled — mirrors the other `route_*_event` early-dispatch helpers in
+    /// [`crate::tool::PainterTool::handle_panel_event`]. The slider re-fills live from the pre-fill
+    /// snapshot; Done keeps the fill (one undo entry), Cancel reverts it.
+    pub(crate) fn route_fill_event(&mut self, event: &ph2d_editor_core::tool::PanelEvent) -> bool {
+        use ph2d_editor_core::ids as core_ids;
+        use ph2d_editor_core::tool::PanelEvent;
+        match event {
+            PanelEvent::SetValue(id, v) if *id == core_ids::PAINTER_FILL_MODAL_SLIDER => {
+                self.set_fill_threshold(*v as f32);
+                true
+            }
+            PanelEvent::Click(id) if *id == core_ids::PAINTER_FILL_MODAL_DONE => {
+                self.fill_commit();
+                true
+            }
+            PanelEvent::Click(id) if *id == core_ids::PAINTER_FILL_MODAL_CANCEL => {
+                self.fill_cancel();
+                true
+            }
+            _ => false,
+        }
+    }
+
     /// Map the Fill threshold track (`0..1`) to a per-channel colour tolerance (`0..255`).
     fn fill_tolerance(&self) -> u8 {
         (self.paint.fill_threshold.clamp(0.0, 1.0) * 255.0).round() as u8

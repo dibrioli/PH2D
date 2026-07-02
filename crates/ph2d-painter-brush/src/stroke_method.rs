@@ -216,6 +216,18 @@ impl StrokeMethod {
     pub fn is_convertible_shape(self) -> bool {
         matches!(self, Self::Ellipse | Self::Polygon)
     }
+
+    /// True for the five interactive **shape** methods the tool rail's Shapes flyout selects
+    /// (Line / Curve / Ellipse / Polygon / Free Hand), as opposed to the freehand/dab methods
+    /// (Space / Dots / Airbrush / Anchored / Drag Dot). The rail's Brush button restores the last
+    /// non-shape method; picking a shape in the flyout switches to one of these.
+    #[must_use]
+    pub fn is_shape(self) -> bool {
+        matches!(
+            self,
+            Self::Line | Self::Curve | Self::Ellipse | Self::Polygon | Self::FreeHand
+        )
+    }
 }
 
 /// The unit the per-dab position jitter is measured in — Blender's `BRUSH_ABSOLUTE_JITTER` flag.

@@ -5757,3 +5757,57 @@ fn coalesces_canvas_motion_is_true_only_for_restore_based_fill_methods() {
         );
     }
 }
+
+// ── Rail Shapes ⟷ Stroke:Method wiring (the tool half of the seam) ────────────────────────────────
+
+#[test]
+fn stroke_method_channel_sets_shapes_and_the_brush_sentinel_restores_the_last_non_shape() {
+    // The tool rail drives the SAME PAINTER_BRUSH_STROKE_METHOD channel as the Method dropdown: a shape's
+    // wire u8 selects it; the sentinel "brush" (the rail Brush button) restores the last NON-shape method.
+    use ph2d_editor_core::ids as core_ids;
+    use ph2d_editor_core::tool::{PanelEvent, Tool};
+    let mut t = white_canvas(16, 5.0);
+    let sm = |t: &PainterTool| t.paint.brush.stroke_method;
+    let set = |t: &mut PainterTool, v: &str| {
+        t.handle_panel_event(PanelEvent::SelectOption(
+            core_ids::PAINTER_BRUSH_STROKE_METHOD,
+            v.to_string(),
+        ));
+    };
+    // Choose a non-shape method (Dots = 0) — becomes the remembered "resting" method.
+    set(&mut t, "0");
+    assert_eq!(sm(&t), StrokeMethod::Dots);
+    // Pick a shape (Ellipse = 7) — the method switches, but the non-shape memory is untouched.
+    set(&mut t, "7");
+    assert_eq!(sm(&t), StrokeMethod::Ellipse);
+    // The Brush button (sentinel "brush") restores the last non-shape method (Dots), NOT the default.
+    set(&mut t, "brush");
+    assert_eq!(
+        sm(&t),
+        StrokeMethod::Dots,
+        "Brush restored the last non-shape method"
+    );
+    // Another shape, then Brush again → still Dots (the memory persists across shape excursions).
+    set(&mut t, "9"); // FreeHand
+    assert_eq!(sm(&t), StrokeMethod::FreeHand);
+    set(&mut t, "brush");
+    assert_eq!(sm(&t), StrokeMethod::Dots);
+}
+
+#[test]
+fn brush_sentinel_restores_space_when_no_non_shape_was_chosen() {
+    // Fresh tool → a shape → Brush restores the default resting method (Space), never a shape.
+    use ph2d_editor_core::ids as core_ids;
+    use ph2d_editor_core::tool::{PanelEvent, Tool};
+    let mut t = white_canvas(16, 5.0);
+    t.handle_panel_event(PanelEvent::SelectOption(
+        core_ids::PAINTER_BRUSH_STROKE_METHOD,
+        "8".to_string(), // Polygon
+    ));
+    assert_eq!(t.paint.brush.stroke_method, StrokeMethod::Polygon);
+    t.handle_panel_event(PanelEvent::SelectOption(
+        core_ids::PAINTER_BRUSH_STROKE_METHOD,
+        "brush".to_string(),
+    ));
+    assert_eq!(t.paint.brush.stroke_method, StrokeMethod::Space);
+}

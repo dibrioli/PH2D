@@ -288,7 +288,9 @@ pub(super) fn dispatch(
             // to position the Size/RGB sliders + the blend chip. Not revision-
             // gated: brush edits don't bump `layers_revision`, and the cost is a
             // few floats.
-            ph2d_panel_painter_layers::set_current_brush(Some(painter.brush_settings()));
+            let brush_snapshot = painter.brush_settings();
+            let stroke_method_u8 = brush_snapshot.stroke_method;
+            ph2d_panel_painter_layers::set_current_brush(Some(brush_snapshot));
             // (Eyedropper) When the on-canvas colour pick completes (armed → not armed), snap the tool
             // rail radio back to Brush — the pick is a MOMENTARY tool, so its button stops looking
             // selected once a colour is sampled. Edge-detected via a static so arming the pick (which
@@ -300,6 +302,21 @@ pub(super) fn dispatch(
                 if PREV_EYEDROPPER_ARMED.swap(armed, Ordering::Relaxed) && !armed {
                     ph2d_editor::screens::hero::chrome::reset_painter_rail_to_brush(
                         &mut hero.store,
+                    );
+                }
+            }
+            // (Shapes rail) Keep the tool-rail's active button in sync with the stroke method: choosing a
+            // shape in the Brush panel's Method dropdown moves the rail to the matching Shapes button
+            // (a non-shape method leaves the radio alone — returning to Brush is the Brush button's job).
+            // Edge-detected so it fires only on a real method change, not every frame.
+            {
+                use std::sync::atomic::{AtomicU8, Ordering};
+                static PREV_STROKE_METHOD: AtomicU8 = AtomicU8::new(u8::MAX);
+                if PREV_STROKE_METHOD.swap(stroke_method_u8, Ordering::Relaxed) != stroke_method_u8
+                {
+                    ph2d_editor::screens::hero::chrome::sync_painter_rail_to_stroke_method(
+                        &mut hero.store,
+                        stroke_method_u8,
                     );
                 }
             }

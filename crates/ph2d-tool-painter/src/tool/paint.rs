@@ -52,15 +52,13 @@ mod polygon;
 pub use polygon::PolygonOverlay;
 /// The Stencil texture mapping's on-canvas handle editor (move/resize the image-space rect).
 mod stencil;
+/// Stroke-method control (set / non-shape memory / restore) — the Brush-panel + rail Shapes seam.
+mod stroke_ctl;
 pub use stencil::{StencilOverlay, StencilPreview};
-/// The **Blur** (soften) route — a stationary neighbourhood blur per dab; sibling of `stamp_dabs_smear`.
 mod blur_route;
-/// The **Composite Brush** — Brush + Smear + Blur as a reorderable 3-layer stack run per dab.
 mod composite;
 pub(crate) use composite::{CompositeLayer, CompositeOp};
-/// The **Clone** (clone-stamp) route — copy canvas pixels from a sampled source at a fixed offset.
 mod clone;
-/// The **Eyedropper** on-canvas colour pick (sample the composited pixel into the brush colour).
 mod eyedropper;
 /// The **Mask** tool's extras — sub-brush (Paint/Erase/Blur/Smear), whole-canvas ops, overlay tint. [LOC split].
 mod mask;
@@ -189,6 +187,8 @@ pub(crate) struct PaintState {
     line_constrain: bool,
     /// Shift held this event — a Stencil corner scale becomes UNIFORM (aspect-locked, like the Sprite gizmo); set by the shell each pointer event.
     scale_uniform: bool,
+    /// Last NON-shape method — the rail's Brush button restores it. See [`PainterTool::restore_non_shape_stroke_method`].
+    last_non_shape_method: StrokeMethod,
     /// In-progress Curve session (the on-canvas point editor); `None` when idle. [`curve`].
     curve: Option<curve::CurveEditor>,
     /// In-progress Ellipse session (the on-canvas ellipse editor); `None` when idle. [`circle`].

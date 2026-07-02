@@ -86,6 +86,11 @@ mod view_toggles;
 /// pick completes, so the momentary tool returns to Brush automatically).
 pub use rail_painter_tools::reset_to_brush as reset_painter_rail_to_brush;
 
+/// Reflect the painter tool's current stroke method on the rail: a shape method selects the Shapes
+/// button + its shape sub-radio (a non-shape leaves the radio alone). The shell calls this on a stroke-
+/// method change so the Brush panel's Method dropdown keeps the rail's active button in sync.
+pub use rail_painter_tools::sync_rail_to_stroke_method as sync_painter_rail_to_stroke_method;
+
 /// Walk every chrome handler in `||` order; stop at the first that
 /// consumes the event.
 pub fn dispatch_all(hero: &mut HeroScreen, event: WidgetEvent) -> bool {

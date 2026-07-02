@@ -59,6 +59,7 @@ impl Default for PaintState {
             line_constrain: false,
             scale_uniform: false,
             curve: None,
+            last_non_shape_method: StrokeMethod::Space, // matches the default brush stroke method
             ellipse: None,
             polygon: None,
             shape_grab_tol_px: DEFAULT_SHAPE_GRAB_TOL_PX,

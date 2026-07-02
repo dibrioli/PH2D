@@ -264,11 +264,10 @@ impl Tool for PainterTool {
                     self.set_brush_falloff(preset);
                 }
             }
-            // ── Stroke section dropdowns: method + jitter unit (value = wire u8). ─
+            // Stroke Method: the wire u8 (dropdown / rail shape pick) or the "brush" sentinel (rail Brush
+            // button → restore the last non-shape method). See `paint::stroke_ctl`.
             PanelEvent::SelectOption(id, value) if id == core_ids::PAINTER_BRUSH_STROKE_METHOD => {
-                if let Ok(m) = value.parse::<u8>() {
-                    self.set_brush_stroke_method(m);
-                }
+                self.apply_stroke_method_command(&value);
             }
             PanelEvent::SelectOption(id, value) if id == core_ids::PAINTER_BRUSH_JITTER_UNIT => {
                 if let Ok(u) = value.parse::<u8>() {

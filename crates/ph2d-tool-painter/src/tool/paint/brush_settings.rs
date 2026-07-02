@@ -8,7 +8,7 @@ use super::{
 };
 use crate::tool::PainterTool;
 use ph2d_painter_brush::{
-    BrushBlend, Falloff, FalloffPoint, HandleType, JitterUnit, MAX_FALLOFF_POINTS, StrokeMethod,
+    BrushBlend, Falloff, FalloffPoint, HandleType, JitterUnit, MAX_FALLOFF_POINTS,
     TEX_ANGLE_MAX_DEG, TEX_OFFSET_MAX, TEX_OFFSET_MIN, TEX_SIZE_MAX, TEX_SIZE_MIN, TextureKind,
     TextureMapping,
 };
@@ -342,23 +342,6 @@ impl PainterTool {
     }
 
     // ── Stroke section setters (the single clamp source; the panel forwards raw UI values) ──
-
-    /// Set the stroke method from a wire discriminant (out-of-range → Space). Leaving a shape method
-    /// (Curve/Ellipse) with an un-committed session discards it (revert the preview) — the artist
-    /// switched away deliberately. Switching INTO the same shape keeps its session.
-    pub fn set_brush_stroke_method(&mut self, m: u8) {
-        let method = StrokeMethod::from_u8(m);
-        if method != StrokeMethod::Curve {
-            self.curve_cancel();
-        }
-        if method != StrokeMethod::Ellipse {
-            self.ellipse_cancel();
-        }
-        if method != StrokeMethod::Polygon {
-            self.polygon_cancel();
-        }
-        self.paint.brush.stroke_method = method;
-    }
 
     /// Set spacing as a fraction of diameter (slider track), clamped to the interactive range.
     pub fn set_brush_spacing(&mut self, frac: f32) {

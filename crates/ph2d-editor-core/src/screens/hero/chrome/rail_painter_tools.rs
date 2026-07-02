@@ -49,9 +49,9 @@ fn push_paint_mode(hero: &mut HeroScreen, tool_id: NodeId) {
 
 /// Set `target` `Pressed` and every other id in `group` `Normal` (an exclusive
 /// radio group, like the transform tools in `rail_tools.rs`).
-fn set_radio(hero: &mut HeroScreen, group: &[NodeId], target: NodeId) {
+fn set_radio(store: &mut crate::interaction::WidgetStore, group: &[NodeId], target: NodeId) {
     for id in group {
-        if let Some(InteractiveState::Button { state }) = hero.store.get_mut(*id) {
+        if let Some(InteractiveState::Button { state }) = store.get_mut(*id) {
             *state = if *id == target {
                 ButtonState::Pressed
             } else {
@@ -59,6 +59,38 @@ fn set_radio(hero: &mut HeroScreen, group: &[NodeId], target: NodeId) {
             };
         }
     }
+}
+
+/// The wire `StrokeMethod` discriminant (as a string for the frozen `SelectOption` channel) for a rail
+/// Shapes-flyout id — Free Hand 9 / Line 5 / Curve 6 / Ellipse 7 / Polygon 8 (mirrors
+/// `ph2d_painter_brush::StrokeMethod::to_u8`; editor-core must not depend on the brush crate, so the
+/// values are inlined against that frozen wire contract). `None` for a non-shape id.
+fn shape_method_wire(id: NodeId) -> Option<&'static str> {
+    if id == ids::PAINTER_RAIL_SHAPE_FREEHAND {
+        Some("9")
+    } else if id == ids::PAINTER_RAIL_SHAPE_LINE {
+        Some("5")
+    } else if id == ids::PAINTER_RAIL_SHAPE_CURVE {
+        Some("6")
+    } else if id == ids::PAINTER_RAIL_SHAPE_ELLIPSE {
+        Some("7")
+    } else if id == ids::PAINTER_RAIL_SHAPE_POLYGON {
+        Some("8")
+    } else {
+        None
+    }
+}
+
+/// Forward a stroke-method command to the active Painter over the frozen `PanelEvent` channel (the SAME
+/// id the Brush panel's Method dropdown uses, so no new channel): a shape's wire u8 to select it, or the
+/// sentinel `"brush"` to restore the last non-shape method (the tool owns that memory). Drained by the
+/// shell into `PainterTool::handle_panel_event`.
+fn push_stroke_method(hero: &mut HeroScreen, value: &str) {
+    hero.bus
+        .push(EditorAction::ToolPanelEvent(PanelEvent::SelectOption(
+            ids::PAINTER_BRUSH_STROKE_METHOD,
+            value.to_string(),
+        )));
 }
 
 /// Snap the painter tool-rail radio back to **Brush**. The shell calls this when a MOMENTARY tool
@@ -76,31 +108,62 @@ pub fn reset_to_brush(store: &mut crate::interaction::WidgetStore) {
     }
 }
 
+/// Reflect the painter tool's current `StrokeMethod` (wire discriminant) on the rail. A **shape** method
+/// (Line 5 / Curve 6 / Ellipse 7 / Polygon 8 / Free Hand 9) selects the Shapes tool + its matching
+/// shape sub-radio; a **non-shape** method leaves the tool radio untouched (returning to Brush is the
+/// Brush button's job, not this sync — so this never stomps Eraser/Smear/… which also run a non-shape
+/// method). The shell calls this when the tool's stroke method changes, so choosing a shape in the Brush
+/// panel's Method dropdown moves the rail to the matching Shapes button automatically.
+pub fn sync_rail_to_stroke_method(store: &mut crate::interaction::WidgetStore, method_u8: u8) {
+    let shape_id = match method_u8 {
+        5 => ids::PAINTER_RAIL_SHAPE_LINE,
+        6 => ids::PAINTER_RAIL_SHAPE_CURVE,
+        7 => ids::PAINTER_RAIL_SHAPE_ELLIPSE,
+        8 => ids::PAINTER_RAIL_SHAPE_POLYGON,
+        9 => ids::PAINTER_RAIL_SHAPE_FREEHAND,
+        _ => return, // non-shape → leave the tool radio (the Brush button restores it)
+    };
+    set_radio(store, &ids::PAINTER_RAIL_SHAPE_IDS, shape_id);
+    set_radio(store, &ids::PAINTER_RAIL_TOOL_IDS, ids::PAINTER_RAIL_SHAPES);
+}
+
 pub fn apply(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
     let WidgetEvent::Click(id) = event else {
         return false;
     };
-    // A shape option picked in the flyout: set the shape sub-radio, make Shapes
-    // the active tool, and close the flyout.
+    // A shape option picked in the flyout: set the shape sub-radio, make Shapes the active tool, close
+    // the flyout, and set the painter's Stroke:Method TO that shape (nothing else in the Brush panel
+    // changes).
     if ids::PAINTER_RAIL_SHAPE_IDS.contains(&id) {
-        set_radio(hero, &ids::PAINTER_RAIL_SHAPE_IDS, id);
-        set_radio(hero, &ids::PAINTER_RAIL_TOOL_IDS, ids::PAINTER_RAIL_SHAPES);
+        set_radio(&mut hero.store, &ids::PAINTER_RAIL_SHAPE_IDS, id);
+        set_radio(
+            &mut hero.store,
+            &ids::PAINTER_RAIL_TOOL_IDS,
+            ids::PAINTER_RAIL_SHAPES,
+        );
         hero.store.set_painter_shapes_flyout_open(false);
-        // Shapes is a normal (paint) tool — exit any Smear/eraser mode. (Wiring the shape's
-        // stroke method into the painter is a later step.)
+        // Shapes draws with the normal Brush paint mode (exit any Smear/eraser)...
         push_paint_mode(hero, ids::PAINTER_RAIL_SHAPES);
+        // ...and the picked shape becomes the Stroke:Method.
+        if let Some(m) = shape_method_wire(id) {
+            push_stroke_method(hero, m);
+        }
         return true;
     }
     // A paint tool (including Shapes): exclusive selection.
     if ids::PAINTER_RAIL_TOOL_IDS.contains(&id) {
-        set_radio(hero, &ids::PAINTER_RAIL_TOOL_IDS, id);
+        set_radio(&mut hero.store, &ids::PAINTER_RAIL_TOOL_IDS, id);
         if id == ids::PAINTER_RAIL_SHAPES {
-            // Shapes owns the flyout — toggle its reveal.
+            // Shapes owns the flyout — toggle its reveal. The flyout PICK sets the method; opening it
+            // leaves the current shape sub-radio + method as-is.
             let open = hero.store.painter_shapes_flyout_open();
             hero.store.set_painter_shapes_flyout_open(!open);
         } else {
-            // Selecting any other tool closes a lingering flyout.
+            // Any other tool closes a lingering flyout AND returns Stroke:Method to the last non-shape
+            // method — so leaving a shape via Brush/Eraser/… reverts to normal painting (and the reverse
+            // sync, which only forces Shapes for a shape method, never bounces this selection back).
             hero.store.set_painter_shapes_flyout_open(false);
+            push_stroke_method(hero, "brush");
         }
         // Forward the operating mode to the active Painter (Smear / Eraser / Brush / Eyedropper). The
         // Eyedropper arms an ON-CANVAS colour pick (mode "eyedropper") — no wheel; the button stays
@@ -217,5 +280,74 @@ mod tests {
         let mut hero = HeroScreen::new(NodeId(1));
         super::super::super::left_rail::populate(&mut hero.store);
         assert!(!apply(&mut hero, WidgetEvent::Click(ids::TOOL_ROTATE)));
+    }
+
+    /// The value of the last `PAINTER_BRUSH_STROKE_METHOD` command pushed on the bus (drains it).
+    fn drained_stroke_method(hero: &mut HeroScreen) -> Option<String> {
+        hero.bus.drain().find_map(|a| match a {
+            EditorAction::ToolPanelEvent(PanelEvent::SelectOption(id, v))
+                if id == ids::PAINTER_BRUSH_STROKE_METHOD =>
+            {
+                Some(v)
+            }
+            _ => None,
+        })
+    }
+
+    #[test]
+    fn picking_a_shape_emits_its_stroke_method_over_the_frozen_channel() {
+        // Forward seam: a flyout shape pick sends the shape's wire u8 on PAINTER_BRUSH_STROKE_METHOD
+        // (Ellipse = 7), and selects the Shapes tool + the Ellipse sub-radio.
+        let mut hero = HeroScreen::new(NodeId(1));
+        super::super::super::left_rail::populate(&mut hero.store);
+        apply(&mut hero, WidgetEvent::Click(ids::PAINTER_RAIL_SHAPES));
+        assert!(apply(
+            &mut hero,
+            WidgetEvent::Click(ids::PAINTER_RAIL_SHAPE_ELLIPSE)
+        ));
+        assert!(pressed(&hero, ids::PAINTER_RAIL_SHAPES));
+        assert!(pressed(&hero, ids::PAINTER_RAIL_SHAPE_ELLIPSE));
+        assert_eq!(
+            drained_stroke_method(&mut hero).as_deref(),
+            Some("7"),
+            "the Ellipse pick forwarded StrokeMethod::Ellipse (wire 7)"
+        );
+    }
+
+    #[test]
+    fn clicking_brush_emits_the_restore_sentinel() {
+        // Forward seam: the Brush button sends the "brush" sentinel → the tool restores the last
+        // non-shape method (the rail can't know that value; the tool owns the memory).
+        let mut hero = HeroScreen::new(NodeId(1));
+        super::super::super::left_rail::populate(&mut hero.store);
+        assert!(apply(
+            &mut hero,
+            WidgetEvent::Click(ids::PAINTER_RAIL_BRUSH)
+        ));
+        assert_eq!(
+            drained_stroke_method(&mut hero).as_deref(),
+            Some("brush"),
+            "the Brush button forwarded the restore sentinel"
+        );
+    }
+
+    #[test]
+    fn sync_reflects_a_shape_method_and_leaves_a_non_shape_alone() {
+        // Reverse seam: a shape method (from the Method dropdown) moves the rail to Shapes + its sub-radio;
+        // a non-shape method must NOT stomp a non-Brush tool selection (e.g. Eraser).
+        let mut hero = HeroScreen::new(NodeId(1));
+        super::super::super::left_rail::populate(&mut hero.store);
+        // Ellipse (7) → Shapes + Ellipse sub-radio active.
+        super::sync_rail_to_stroke_method(&mut hero.store, 7);
+        assert!(pressed(&hero, ids::PAINTER_RAIL_SHAPES));
+        assert!(pressed(&hero, ids::PAINTER_RAIL_SHAPE_ELLIPSE));
+        // Now select Eraser, then a non-shape method (Space = 3) must leave Eraser alone (no bounce).
+        apply(&mut hero, WidgetEvent::Click(ids::PAINTER_RAIL_ERASER));
+        super::sync_rail_to_stroke_method(&mut hero.store, 3);
+        assert!(
+            pressed(&hero, ids::PAINTER_RAIL_ERASER),
+            "a non-shape method must not force the rail off Eraser"
+        );
+        assert!(!pressed(&hero, ids::PAINTER_RAIL_SHAPES));
     }
 }

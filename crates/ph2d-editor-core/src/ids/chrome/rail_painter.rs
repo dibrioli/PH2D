@@ -17,6 +17,10 @@ use super::{NodeId, hash_node_id};
 //    Blur · Mask · Inpaint · Shapes) ─────────────────────────────────────────
 /// Brush — the current paint mode (default-selected paint tool).
 pub const PAINTER_RAIL_BRUSH: NodeId = hash_node_id("painter_rail.brush");
+/// Fill (Bucket) — the flood-fill tool. Its rail chip is a COLOUR SWATCH (shows the current paint
+/// colour) rather than an icon, so it doubles as the panel's colour selector. Sits below Brush, above
+/// Eyedropper. Behaviour (fill + colour picker) wired in a follow-up.
+pub const PAINTER_RAIL_FILL: NodeId = hash_node_id("painter_rail.fill");
 /// Eyedropper — sample colour from the canvas (rich colour picker built in).
 pub const PAINTER_RAIL_EYEDROPPER: NodeId = hash_node_id("painter_rail.eyedropper");
 /// Eraser — erase to transparency (Erase-Alpha brush).
@@ -58,8 +62,9 @@ pub const PAINTER_PAINT_MODE: NodeId = hash_node_id("painter_rail.paint_mode");
 /// The Painter-mode tool radio group, in rail (paint) order. Exclusive
 /// `ButtonState::Pressed` selection, like the transform tools. The Shapes
 /// button is the last member (it also owns the shape flyout).
-pub const PAINTER_RAIL_TOOL_IDS: [NodeId; 9] = [
+pub const PAINTER_RAIL_TOOL_IDS: [NodeId; 10] = [
     PAINTER_RAIL_BRUSH,
+    PAINTER_RAIL_FILL,
     PAINTER_RAIL_EYEDROPPER,
     PAINTER_RAIL_ERASER,
     PAINTER_RAIL_CLONE,

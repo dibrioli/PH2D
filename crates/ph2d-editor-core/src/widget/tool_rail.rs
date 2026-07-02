@@ -95,6 +95,16 @@ pub enum ToolRailEntry {
         face: String,
         sub: String,
     },
+    /// A colour-swatch chip: the chip is filled with `color` (a live colour box) instead of an icon,
+    /// with the same state border + vertical sub-label as [`Self::Icon`]. Used by the painter rail's Fill
+    /// button, which doubles as the colour selector.
+    Swatch {
+        id: NodeId,
+        label: String,
+        color: [u8; 4],
+        active: bool,
+        sub: String,
+    },
     Divider,
 }
 
@@ -109,13 +119,25 @@ impl ToolRailEntry {
         }
     }
 
-    /// Builder shortcut for the Icon variant — sets the vertical
+    /// A colour-swatch chip entry (the Fill button): the chip is the colour box.
+    pub fn swatch(id: NodeId, label: impl Into<String>, color: [u8; 4]) -> Self {
+        Self::Swatch {
+            id,
+            label: label.into(),
+            color,
+            active: false,
+            sub: String::new(),
+        }
+    }
+
+    /// Builder shortcut for the Icon/Swatch variants — sets the vertical
     /// sub-label tag (short uppercase, e.g. "MOVE", "ROT", "UNDO").
     /// (Named `with_sub` rather than `sub` to avoid colliding with
     /// `std::ops::Sub::sub`.)
     pub fn with_sub(mut self, sub: impl Into<String>) -> Self {
-        if let Self::Icon { sub: s, .. } = &mut self {
-            *s = sub.into();
+        match &mut self {
+            Self::Icon { sub: s, .. } | Self::Swatch { sub: s, .. } => *s = sub.into(),
+            _ => {}
         }
         self
     }
@@ -134,10 +156,11 @@ impl ToolRailEntry {
         }
     }
 
-    /// Builder shortcut for the Icon variant — flips `active` true.
+    /// Builder shortcut for the Icon/Swatch variants — flips `active` true.
     pub fn active(mut self) -> Self {
-        if let Self::Icon { active, .. } = &mut self {
-            *active = true;
+        match &mut self {
+            Self::Icon { active, .. } | Self::Swatch { active, .. } => *active = true,
+            _ => {}
         }
         self
     }
@@ -149,6 +172,7 @@ impl ToolRailEntry {
         match self {
             Self::Icon { .. } => size.chip_px(),
             Self::Compound { .. } => size.chip_px(),
+            Self::Swatch { .. } => size.chip_px(),
             Self::Divider => 1.0 + DIVIDER_GAP_PX * 2.0,
         }
     }
@@ -184,7 +208,9 @@ impl ToolRail {
 
     pub fn build_a11y(&self, x: f64, y: f64, w: f64, h: f64) -> Node {
         let kids = self.entries.iter().filter_map(|e| match e {
-            ToolRailEntry::Icon { id, .. } | ToolRailEntry::Compound { id, .. } => Some(*id),
+            ToolRailEntry::Icon { id, .. }
+            | ToolRailEntry::Compound { id, .. }
+            | ToolRailEntry::Swatch { id, .. } => Some(*id),
             ToolRailEntry::Divider => None,
         });
         NodeBuilder::new(Role::Toolbar)
@@ -204,7 +230,8 @@ impl ToolRail {
                     .action(Action::Click)
                     .build(),
             ),
-            ToolRailEntry::Compound { id: _, label, .. } => Some(
+            ToolRailEntry::Compound { id: _, label, .. }
+            | ToolRailEntry::Swatch { id: _, label, .. } => Some(
                 NodeBuilder::new(Role::Button)
                     .label(label)
                     .bounds(x, y, w, h)
@@ -348,6 +375,41 @@ pub fn paint_tool_rail(
                 );
                 y += chip_px;
             }
+            ToolRailEntry::Swatch {
+                id,
+                color,
+                active,
+                sub,
+                ..
+            } => {
+                let chip_rect = Rect::new(chip_x, y, chip_px, chip_px);
+                let radius = Radius::Sm.px();
+                let state = store.button_state(*id).unwrap_or(ButtonState::Normal);
+                let is_active = *active || state == ButtonState::Pressed;
+                // The chip IS the colour box — fill it with the live paint colour (this button doubles as
+                // the colour selector).
+                let [cr, cg, cb, ca] = *color;
+                let fill = ph2d_vector::Color::from_rgba8(cr, cg, cb, ca); // LITERAL-COLOR-OK: user paint colour
+                fill_rounded_rect(scene, chip_rect, radius, fill);
+                // State border — Accent when active/pressed/hovered, same as the icon chips.
+                let (border, border_w) = match state {
+                    ButtonState::Hovered | ButtonState::Focused => (ColorToken::BorderEmph, 1.0),
+                    ButtonState::Pressed => (ColorToken::Accent, StrokeToken::Default.px()),
+                    _ if is_active => (ColorToken::Accent, StrokeToken::Default.px()),
+                    _ => (ColorToken::Border, 1.0),
+                };
+                stroke_rounded_rect(scene, chip_rect, radius, border_w, resolve(border, theme));
+                paint_sub_label_vertical(
+                    text_system,
+                    scene,
+                    sub,
+                    sub_font,
+                    rect.x,
+                    chip_rect,
+                    resolve(ColorToken::Text2, theme),
+                );
+                y += chip_px;
+            }
             ToolRailEntry::Divider => {
                 y += DIVIDER_GAP_PX;
                 let line = Rect::new(
@@ -409,92 +471,4 @@ fn paint_sub_label_vertical(
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    fn fixture() -> ToolRail {
-        ToolRail::new(
-            NodeId(1),
-            "Editor tools",
-            vec![
-                ToolRailEntry::icon(NodeId(2), "Translate", IconId::Transform).active(),
-                ToolRailEntry::icon(NodeId(3), "Rotate", IconId::Rotate),
-                ToolRailEntry::icon(NodeId(4), "Scale", IconId::Scale),
-                ToolRailEntry::icon(NodeId(5), "Pivot", IconId::Pivot),
-                ToolRailEntry::Divider,
-                ToolRailEntry::compound(NodeId(6), "Coordinate space", "Global", "SPACE"),
-                ToolRailEntry::compound(NodeId(7), "Camera projection", "Persp", "PROJ"),
-                ToolRailEntry::compound(NodeId(8), "Frame to home", "Home", "VIEW"),
-                ToolRailEntry::Divider,
-                ToolRailEntry::icon(NodeId(9), "Undo", IconId::Undo),
-                ToolRailEntry::icon(NodeId(10), "Redo", IconId::Redo),
-            ],
-        )
-    }
-
-    #[test]
-    fn preferred_height_sums_entries() {
-        let size = RailButtonSize::default();
-        let h = fixture().preferred_height(size);
-        assert!(h > size.chip_px() * 5.0);
-    }
-
-    #[test]
-    fn icon_active_setter_flips_active() {
-        let entry = ToolRailEntry::icon(NodeId(1), "x", IconId::Add).active();
-        match entry {
-            ToolRailEntry::Icon { active, .. } => assert!(active),
-            _ => panic!("expected Icon"),
-        }
-    }
-
-    #[test]
-    fn a11y_parent_is_toolbar() {
-        let node = fixture().build_a11y(0.0, 0.0, 56.0, 600.0);
-        assert_eq!(node.role(), Role::Toolbar);
-    }
-
-    #[test]
-    fn a11y_entry_button_role() {
-        let node = fixture().build_entry_a11y(0, 0.0, 0.0, 44.0, 44.0).unwrap();
-        assert_eq!(node.role(), Role::Button);
-    }
-
-    #[test]
-    fn a11y_divider_returns_none() {
-        let rail = fixture();
-        assert!(rail.build_entry_a11y(4, 0.0, 0.0, 44.0, 1.0).is_none());
-    }
-
-    #[test]
-    fn paint_smoke_full_rail() {
-        let mut scene = VectorScene::new();
-        let mut text = TextSystem::without_system_fonts();
-        let rail = fixture();
-        let size = RailButtonSize::default();
-        let host = Rect::new(0.0, 0.0, TOOL_RAIL_WIDTH_PX, rail.preferred_height(size));
-        let store = crate::interaction::WidgetStore::with_capacity(0);
-        paint_tool_rail(&rail, host, &mut scene, &mut text, Theme::Forge, &store);
-    }
-
-    #[test]
-    fn paint_smoke_minimal_rail() {
-        let rail = ToolRail::new(
-            NodeId(1),
-            "Tiny",
-            vec![ToolRailEntry::icon(NodeId(2), "x", IconId::Add)],
-        );
-        let mut scene = VectorScene::new();
-        let mut text = TextSystem::without_system_fonts();
-        let store = crate::interaction::WidgetStore::with_capacity(0);
-        let size = RailButtonSize::default();
-        paint_tool_rail(
-            &rail,
-            Rect::new(0.0, 0.0, TOOL_RAIL_WIDTH_PX, rail.preferred_height(size)),
-            &mut scene,
-            &mut text,
-            Theme::Sunstone,
-            &store,
-        );
-    }
-}
+mod tests;

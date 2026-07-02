@@ -24,6 +24,9 @@ use std::path::{Path, PathBuf};
 /// Files that legitimately don't need a11y wiring of their own.
 /// Each entry: (relative path under `src/widget/`, justification).
 const A11Y_OPT_OUT: &[(&str, &str)] = &[
+    // Unit tests for `tool_rail` (split out for the widget LOC cap) — no user-facing widget; the
+    // parent `tool_rail.rs` owns the a11y wiring (build_a11y / build_entry_a11y).
+    ("tool_rail/tests.rs", "test module; parent owns a11y"),
     // BlenderColorPicker sub-components: the parent `mod.rs` owns
     // the a11y tree for the whole picker. These four files are paint
     // helpers and state structs with no standalone user-facing

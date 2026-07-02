@@ -119,6 +119,14 @@ pub fn populate(store: &mut WidgetStore) {
             },
         );
     }
+    // Fill (colour-swatch chip) is a painter-tool radio member but not an icon tuple in PAINTER_TOOLS,
+    // so register it on its own.
+    store.register(
+        ids::PAINTER_RAIL_FILL,
+        InteractiveState::Button {
+            state: ButtonState::Normal,
+        },
+    );
     for (id, ..) in PAINTER_SHAPES {
         store.register(
             id,
@@ -167,6 +175,7 @@ fn left_rail_chip_name(id: NodeId) -> Option<&'static str> {
         return Some(label);
     }
     Some(match id {
+        x if x == ids::PAINTER_RAIL_FILL => "Fill",
         x if x == ids::RAIL_SHOW_INSPECTOR => "Show Inspector",
         x if x == ids::RAIL_SHOW_HIERARCHY => "Show Hierarchy",
         x if x == ids::TOOL_TRANSLATE => "Translate",
@@ -191,6 +200,22 @@ fn tool_entry(
 ) -> ToolRailEntry {
     let mut e = ToolRailEntry::icon(id, label, icon).with_sub(sub);
     if matches!(store.button_state(id), Some(ButtonState::Pressed)) {
+        e = e.active();
+    }
+    e
+}
+
+/// Build the **Fill** rail entry — a colour-swatch chip showing the current paint colour (read from the
+/// shared `PAINTER_COLOR_THUMB` slot). Its vertical label is "FILL"; `active` when Pressed.
+fn fill_swatch_entry(store: &WidgetStore) -> ToolRailEntry {
+    let color = store
+        .widget_color(ids::PAINTER_COLOR_THUMB)
+        .unwrap_or([0x88, 0x88, 0x88, 0xFF]); // LITERAL-COLOR-OK: neutral default before a colour is set
+    let mut e = ToolRailEntry::swatch(ids::PAINTER_RAIL_FILL, "Fill", color).with_sub("FILL");
+    if matches!(
+        store.button_state(ids::PAINTER_RAIL_FILL),
+        Some(ButtonState::Pressed)
+    ) {
         e = e.active();
     }
     e
@@ -254,6 +279,10 @@ pub fn paint_left_rail(
                 tool
             };
             rail_entries.push(tool_entry(store, tool));
+            // Fill (colour-swatch chip) sits directly below Brush, above Eyedropper (the Pick tool).
+            if tool.0 == ids::PAINTER_RAIL_BRUSH {
+                rail_entries.push(fill_swatch_entry(store));
+            }
         }
     } else {
         let entries = [
@@ -342,7 +371,7 @@ pub fn paint_left_rail(
                 }
                 y += chip_px;
             }
-            ToolRailEntry::Compound { id, .. } => {
+            ToolRailEntry::Compound { id, .. } | ToolRailEntry::Swatch { id, .. } => {
                 let chip = Rect::new(chip_x, y, chip_px, chip_px);
                 hit_index.register(*id, chip);
                 y += chip_px;

@@ -35,6 +35,10 @@ fn push_paint_mode(hero: &mut HeroScreen, tool_id: NodeId) {
         "mask"
     } else if tool_id == ids::PAINTER_RAIL_INPAINT {
         "inpaint"
+    } else if tool_id == ids::PAINTER_RAIL_FILL {
+        // Placeholder: the Fill (Bucket) behaviour + colour-picker wiring lands in a follow-up; for now
+        // selecting it just marks the rail radio (the painter defaults an unknown mode to Brush paint).
+        "fill"
     } else if tool_id == ids::PAINTER_RAIL_ERASER {
         "eraser"
     } else if tool_id == ids::PAINTER_RAIL_EYEDROPPER {
@@ -343,6 +347,24 @@ mod tests {
             }
             _ => None,
         })
+    }
+
+    #[test]
+    fn selecting_fill_is_an_exclusive_radio_and_forwards_fill() {
+        // The Fill (Bucket) rail button — a colour-swatch chip below Brush — is a radio member: selecting
+        // it checks Fill, clears Brush, and forwards the "fill" operating mode (placeholder until the
+        // Fill behaviour + colour picker land).
+        let mut hero = HeroScreen::new(NodeId(1));
+        super::super::super::left_rail::populate(&mut hero.store);
+        assert!(pressed(&hero, ids::PAINTER_RAIL_BRUSH));
+        assert!(apply(&mut hero, WidgetEvent::Click(ids::PAINTER_RAIL_FILL)));
+        assert!(pressed(&hero, ids::PAINTER_RAIL_FILL));
+        assert!(!pressed(&hero, ids::PAINTER_RAIL_BRUSH));
+        assert_eq!(
+            drained_paint_mode(&mut hero).as_deref(),
+            Some("fill"),
+            "the Fill button forwarded the fill mode"
+        );
     }
 
     #[test]

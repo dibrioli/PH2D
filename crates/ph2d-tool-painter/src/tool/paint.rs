@@ -201,6 +201,11 @@ pub(crate) struct PaintState {
     scale_uniform: bool,
     /// Shift held this event — the polyline **Line** editor snaps each new segment to 15° increments from the previous point; set by the shell each pointer event. See [`line`].
     line_snap: bool,
+    /// The editor GRID-snapped image position for the current pointer, forwarded by the shell each event
+    /// (world→grid via `GridSnapState::snap_world`, mapped back to image px) — `None` when grid snap is off.
+    /// Drawing-tool point placement/drag uses it as the base position; gizmo / corner-handle drags ignore
+    /// it (so grid snap can't corrupt a parameter drag). See [`line_snap`].
+    grid_snap_pos: Option<[f32; 2]>,
     /// Last NON-shape method — the rail's Brush button restores it. See [`PainterTool::restore_non_shape_stroke_method`].
     last_non_shape_method: StrokeMethod,
     /// In-progress Curve session (the on-canvas point editor); `None` when idle. [`curve`].

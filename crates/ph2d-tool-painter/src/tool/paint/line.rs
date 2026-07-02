@@ -112,6 +112,13 @@ impl PainterTool {
         self.paint.line_snap = on;
     }
 
+    /// Forward the editor GRID-snapped image position for the current pointer (the shell resolves it via
+    /// `GridSnapState::snap_world` in world space, then maps back to image px) — `None` when grid snap is
+    /// off. Out-of-band, like [`PainterTool::set_line_snap`]; drawing-tool point placement uses it.
+    pub fn set_grid_snap(&mut self, pos: Option<[f32; 2]>) {
+        self.paint.grid_snap_pos = pos;
+    }
+
     /// Pointer-down: on an EXISTING point → grab it (drag to move, or tap-close/end/select on Up); on EMPTY
     /// space → create a new point AND grab it, so the same held drag nudges it. Starts the session when
     /// idle. Points are only ever CREATED in empty space, never on top of another point.
@@ -119,6 +126,8 @@ impl PainterTool {
         let tol = self.paint.shape_grab_tol_px;
         if self.paint.line.is_none() {
             // Start a new polyline — the first point is grabbed so the same press can drag it into place.
+            // Grid snap applies to the first point (no anchor yet, so no angle/point snap).
+            let first = self.line_drag_target(0, pos);
             self.begin_shape_txn(); // before = no shape
             self.paint.drag_preview = None;
             self.reseed_preview_base();
@@ -127,7 +136,7 @@ impl PainterTool {
             let seed = self.paint.seed;
             self.paint.seed = self.paint.seed.wrapping_add(1);
             self.paint.line = Some(LineEditor {
-                points: vec![pos],
+                points: vec![first],
                 closed: false,
                 editing: false,
                 grabbed: Some(0),
@@ -199,15 +208,11 @@ impl PainterTool {
             }
             return true;
         }
-        // Empty space while drawing → create a new point AND grab it (drag adjusts it). Shift snaps the new
-        // segment to 15° at creation AND during the drag; `grab_origin` stays the RAW cursor for the slop.
-        let placed = match (
-            self.paint.line_snap,
-            self.paint.line.as_ref().and_then(|ed| ed.points.last()),
-        ) {
-            (true, Some(&anchor)) => super::line_snap::snap_to_15(anchor, pos),
-            _ => pos,
-        };
+        // Empty space while drawing → create a new point AND grab it (drag adjusts it). All snaps compose
+        // at creation too (grid / 15° / point-align); `grab_origin` stays the RAW cursor for the slop. The
+        // new point's index is the current length (it anchors off the current last point).
+        let new_index = self.paint.line.as_ref().map_or(0, |ed| ed.points.len());
+        let placed = self.line_drag_target(new_index, pos);
         self.begin_shape_txn();
         {
             let ed = self.paint.line.as_mut().expect("line present");
@@ -279,13 +284,8 @@ impl PainterTool {
         if !created && !moved_far {
             return true; // an existing-point press that hasn't left the slop yet stays a TAP
         }
-        // Shift armed → 15° angle snap (a new segment's direction). Otherwise auto-snap the dragged point
-        // to another point's row / column when it lands close (both together = right on top of it).
-        let target = if self.paint.line_snap {
-            self.line_snapped_grab(g, pos)
-        } else {
-            self.line_point_snap(g, pos)
-        };
+        // All active snaps compose (grid → angle → point); none inhibits another.
+        let target = self.line_drag_target(g, pos);
         if let Some(ed) = self.paint.line.as_mut()
             && g < ed.points.len()
         {

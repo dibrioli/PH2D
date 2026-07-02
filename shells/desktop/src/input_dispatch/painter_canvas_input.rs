@@ -478,6 +478,30 @@ impl App {
         painter.set_line_constrain(alt);
         painter.set_uniform_scale(self.modifiers.shift_key()); // Shift = uniform Stencil scale (Sprite gizmo)
         painter.set_line_snap(self.modifiers.shift_key()); // Shift = 15° direction snap in the Line polyline editor
+        // Grid snap for drawing-tool points: resolve the pointer to the nearest editor-grid node in WORLD
+        // space (reuses `GridSnapState::snap_world` — all grid kinds + magnetism), map it back to image px,
+        // and forward it. Only when the snap grid is ON; brush painting is unaffected (the tool consumes
+        // this only in shape point-placement paths, never in gizmo / corner-handle drags).
+        let grid_snap = if gfx
+            .hero_screen
+            .as_ref()
+            .is_some_and(|h| h.grid.snap_state.snap_enabled)
+        {
+            let world = gfx.camera.screen_to_world((px, py), window_size);
+            let snapped = gfx
+                .hero_screen
+                .as_mut()
+                .expect("hero present")
+                .grid
+                .snap_state
+                .snap_world(world, [0.0, 0.0]);
+            let (sx, sy) = gfx.camera.world_to_screen(snapped, window_size);
+            let gimg = affine.inverse() * ph2d_vector::Point::new(f64::from(sx), f64::from(sy));
+            Some([gimg.x as f32, gimg.y as f32])
+        } else {
+            None
+        };
+        painter.set_grid_snap(grid_snap);
         painter.on_canvas_pointer(ev)
     }
 

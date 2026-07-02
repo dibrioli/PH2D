@@ -133,7 +133,7 @@ pub fn paint_hero_screen(
         if !state_for_paint.grid_in_front {
             state_for_paint.opacity *= 0.4; // LITERAL-PX-OK: grid behind-canvas dim ratio (visual effect)
         }
-        crate::grid_snap::render::paint(scene, &view, &state_for_paint);
+        crate::grid_snap::render::paint(scene, &view, &state_for_paint, hero.theme);
     }
     // M14.4c: the legacy mockup selection marquee draws a fixed-size
     // dashed rect at the CANVAS center in screen pixels — it has no

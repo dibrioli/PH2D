@@ -63,6 +63,7 @@ impl Default for PaintState {
             ellipse: None,
             line: None,
             line_snap: false,
+            grid_snap_pos: None,
             polygon: None,
             shape_grab_tol_px: DEFAULT_SHAPE_GRAB_TOL_PX,
             shape_offset_norm: 0.5, // centred → 0px offset (default byte-identical)

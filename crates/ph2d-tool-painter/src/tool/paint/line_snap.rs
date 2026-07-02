@@ -10,6 +10,20 @@ use super::*;
 const POINT_SNAP_FRAC: f32 = 0.6;
 
 impl PainterTool {
+    /// The snapped target for placing / dragging a Line point at index `g` — ALL active snaps compose
+    /// (Enio 2026-07-02, "os dois devem atuar juntos"):
+    ///   1. **Grid** — start from the shell's grid-snapped position when forwarded (base quantisation).
+    ///   2. **Angle** — with Shift, constrain the incoming segment's direction to 15° from `points[g-1]`.
+    ///   3. **Point** — align to another point's row / column (or land on it) when within the threshold.
+    ///
+    /// Point wins last (an exact join beats the grid / angle), then angle, then grid — so none inhibits
+    /// another. `g` may be `points.len()` for a not-yet-pushed new point (its anchor is the current last).
+    pub(super) fn line_drag_target(&self, g: usize, pos: [f32; 2]) -> [f32; 2] {
+        let base = self.paint.grid_snap_pos.unwrap_or(pos);
+        let angled = self.line_snapped_grab(g, base); // self-gates on Shift
+        self.line_point_snap(g, angled)
+    }
+
     /// Apply the 15° snap to a grabbed point at index `g`: when armed (Shift) and a previous point anchors
     /// the segment, quantise the direction from `points[g-1]` to the nearest 15°; otherwise `pos` unchanged.
     pub(super) fn line_snapped_grab(&self, g: usize, pos: [f32; 2]) -> [f32; 2] {

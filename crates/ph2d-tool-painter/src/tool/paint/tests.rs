@@ -6253,6 +6253,50 @@ fn line_dragging_a_point_onto_another_snaps_right_on_top() {
 }
 
 #[test]
+fn line_shift_angle_snap_does_not_inhibit_point_snap() {
+    // Bug fix (Enio): angle snap (Shift) must NOT disable point snap — both act together. With Shift ON,
+    // dragging a point onto another still point-snaps it right on top (the join wins after the 15° snap).
+    let mut t = line_tool();
+    click(&mut t, 20.0, 20.0); // point 0
+    click(&mut t, 60.0, 60.0); // point 1
+    t.set_line_snap(true); // Shift armed — 15° angle snap active
+    t.on_canvas_pointer(cp([60.0, 60.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([22.0, 18.0], PointerPhase::Move)); // near point 0 on both axes
+    t.on_canvas_pointer(cp([22.0, 18.0], PointerPhase::Up));
+    assert_eq!(
+        t.line_overlay().unwrap().points[1],
+        [20.0, 20.0],
+        "point-snapped onto point 0 despite Shift (both snaps act)"
+    );
+}
+
+#[test]
+fn line_grid_snap_places_points_on_the_forwarded_grid_position() {
+    // The shell forwards the grid-snapped image position via `set_grid_snap`; a placed/dragged point uses
+    // it as the base (drawing-tool grid snap). Here the shell says "grid node (40,40)" for the pointer.
+    let mut t = line_tool();
+    click(&mut t, 8.0, 8.0); // point 0 (no grid forwarded → raw)
+    // The shell resolves the pointer at (47,43) to grid node (40,40) and forwards it.
+    t.set_grid_snap(Some([40.0, 40.0]));
+    t.on_canvas_pointer(cp([47.0, 43.0], PointerPhase::Down)); // creates point 1 at the grid node
+    t.on_canvas_pointer(cp([47.0, 43.0], PointerPhase::Up));
+    assert_eq!(
+        t.line_overlay().unwrap().points[1],
+        [40.0, 40.0],
+        "point 1 snapped to the forwarded grid node"
+    );
+    // Grid off (None) → the next point is placed raw (chosen far from other points so point-snap is inert).
+    t.set_grid_snap(None);
+    t.on_canvas_pointer(cp([20.0, 58.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([20.0, 58.0], PointerPhase::Up));
+    assert_eq!(
+        t.line_overlay().unwrap().points[2],
+        [20.0, 58.0],
+        "grid off → raw placement"
+    );
+}
+
+#[test]
 fn line_offset_slider_shifts_the_open_line_in_real_time() {
     use ph2d_editor_core::ids as core_ids;
     use ph2d_editor_core::tool::{PanelEvent, Tool};

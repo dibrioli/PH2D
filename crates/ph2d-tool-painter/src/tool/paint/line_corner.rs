@@ -106,10 +106,10 @@ pub(super) fn handle_positions(
     let n = points.len();
     let pi = if closed { (i + n - 1) % n } else { i - 1 };
     let ni = if closed { (i + 1) % n } else { i + 1 };
-    let din = (tol * HANDLE_DIST).min(HANDLE_EDGE_FRAC * len(sub(points[pi], v)));
-    let dout = (tol * HANDLE_DIST).min(HANDLE_EDGE_FRAC * len(sub(points[ni], v)));
-    let fillet = [v[0] + a[0] * din, v[1] + a[1] * din];
-    let chamfer = [v[0] + b[0] * dout, v[1] + b[1] * dout];
+    let dist_in = (tol * HANDLE_DIST).min(HANDLE_EDGE_FRAC * len(sub(points[pi], v)));
+    let dist_out = (tol * HANDLE_DIST).min(HANDLE_EDGE_FRAC * len(sub(points[ni], v)));
+    let fillet = [v[0] + a[0] * dist_in, v[1] + a[1] * dist_in];
+    let chamfer = [v[0] + b[0] * dist_out, v[1] + b[1] * dist_out];
     Some((fillet, chamfer))
 }
 

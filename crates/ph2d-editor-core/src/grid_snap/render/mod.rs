@@ -68,7 +68,7 @@ fn grid_line_color(theme: Theme, base_alpha: u8, opacity: f32) -> Color {
 fn grid_rgb(bg: [u8; 3]) -> [u8; 3] {
     let (r, g, b) = (f32::from(bg[0]), f32::from(bg[1]), f32::from(bg[2]));
     let luma = 0.299 * r + 0.587 * g + 0.114 * b;
-    let target = if luma < 128.0 { 255.0 } else { 0.0 }; // dark bg → lighter grid; light bg → darker
+    let target = if luma < 128.0 { 255.0 } else { 0.0 }; // dark bg -> lighter grid; light bg -> darker
     let mix = |c: f32| (c + (target - c) * GRID_SHIFT).round().clamp(0.0, 255.0) as u8;
     [mix(r), mix(g), mix(b)]
 }
@@ -85,12 +85,12 @@ mod color_tests {
         let dark = grid_rgb([20, 22, 26]);
         assert!(
             dark[0] > 20 && dark[1] > 22 && dark[2] > 26,
-            "dark bg → lighter grid: {dark:?}"
+            "dark bg -> lighter grid: {dark:?}"
         );
         let light = grid_rgb([230, 232, 235]);
         assert!(
             light[0] < 230 && light[1] < 232 && light[2] < 235,
-            "light bg → darker grid: {light:?}"
+            "light bg -> darker grid: {light:?}"
         );
         // A neutral gray backdrop stays neutral gray (r == g == b) — "cinza com cinza".
         let neutral = grid_rgb([30, 30, 30]);

@@ -121,6 +121,18 @@ ignore = [
     # unused by any PH2D code. Accepted until winit's Wayland CSD chain migrates.
     # (Coord 2026-06-30 — advisory landed post last green push; ship-blocking.)
     "RUSTSEC-2026-0192",
+    # `quick-xml` DoS advisories (RUSTSEC-2026-0194 quadratic duplicate-attribute
+    # scan; RUSTSEC-2026-0195 unbounded namespace-declaration allocation in
+    # `NsReader`). Pulled transitively ONLY on Linux/Wayland, at BUILD TIME:
+    # quick-xml ← wayland-scanner (proc-macro) ← smithay-client-toolkit ← winit.
+    # It parses the TRUSTED, in-repo Wayland protocol XML during codegen — never
+    # untrusted runtime input — so the memory-exhaustion / quadratic paths are
+    # unreachable. Not compiled on macOS/Windows. wayland-scanner pins 0.39.x
+    # (no fixed release reachable without bumping the winit/Wayland chain).
+    # Accepted until that chain migrates. (Coord 2026-07-02 — advisories landed
+    # post last green push; ship-blocking, same class as RUSTSEC-2026-0192.)
+    "RUSTSEC-2026-0194",
+    "RUSTSEC-2026-0195",
 ]
 
 # ----------------------------------------------------------------------------

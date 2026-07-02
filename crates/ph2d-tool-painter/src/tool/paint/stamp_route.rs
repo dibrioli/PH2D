@@ -76,6 +76,12 @@ impl PainterTool {
             self.stamp_dabs_mask(dabs);
             return;
         }
+        // Inpaint marks the defect region into the heal mask + tints the canvas for live feedback; the
+        // reconstruction runs on pen-up ([`super::inpaint`]), so no colour is painted here.
+        if matches!(self.paint.paint_mode, PaintMode::Inpaint) {
+            self.stamp_dabs_inpaint(dabs);
+            return;
+        }
         if self.paint.tiling[0] || self.paint.tiling[1] {
             let wrapped = super::tiling::tiled_dabs(dabs, self.source_size, self.paint.tiling);
             self.stamp_dabs_inner(&wrapped);

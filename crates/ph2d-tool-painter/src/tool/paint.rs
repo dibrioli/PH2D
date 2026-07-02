@@ -75,6 +75,7 @@ mod composite;
 pub(crate) use composite::{CompositeLayer, CompositeOp};
 mod clone;
 mod eyedropper;
+mod inpaint; // content-aware heal brush (mark defect + reconstruct on pen-up); split for LOC cap
 /// The **Mask** tool's extras — sub-brush (Paint/Erase/Blur/Smear), whole-canvas ops, overlay tint. [LOC split].
 mod mask;
 mod ramp;
@@ -262,6 +263,9 @@ pub(crate) struct PaintState {
     ramp_lut_owner: ramp_lut::RampLutOwner,
     /// **Accumulate OFF** per-stroke coverage mask (1 byte/px), cleared on down; caps a stroke at Strength.
     stroke_mask: Vec<u8>,
+    /// **Inpaint** defect mask (1 byte/px, `>= 128` ⇒ heal). Accumulated as the user brushes in Inpaint
+    /// mode; on pen-up [`super::inpaint`] reconstructs the marked region and clears it. Sized `w*h`.
+    inpaint_mask: Vec<u8>,
     /// Per-stroke per-layer-colour accumulation (recomposite); see [`stamp_color_cache`].
     per_layer_stroke: stamp_color_cache::PerLayerStroke,
     /// Cached coloured Shape **preview** (premul RGBA), re-baked only on appearance change; [`stamp_color_cache`].
@@ -290,6 +294,17 @@ impl PainterTool {
         // created) before the stroke paints into it.
         if matches!(self.paint.paint_mode, PaintMode::Mask) {
             self.ensure_mask_scratch();
+        }
+        // Inpaint heal brush: start a fresh defect mask for this stroke (the previous stroke's mark was
+        // consumed + cleared on its pen-up).
+        if matches!(self.paint.paint_mode, PaintMode::Inpaint) {
+            let (w, h) = self.source_size;
+            let n = (w as usize) * (h as usize);
+            if self.paint.inpaint_mask.len() == n {
+                self.paint.inpaint_mask.iter_mut().for_each(|m| *m = 0);
+            } else {
+                self.paint.inpaint_mask = vec![0u8; n];
+            }
         }
         let before = self.snapshot_model();
         self.paint.stroke_undo = Some(before);
@@ -405,6 +420,11 @@ impl PainterTool {
         }
         // Drag Dot: the dab at the release point is the commit — keep it (drop the restore record).
         self.commit_drag_preview();
+        // Inpaint heal brush: reconstruct the marked defect BEFORE close_stroke, so the structural-undo
+        // entry captures pre-stroke → healed as a single Cmd+Z step.
+        if matches!(self.paint.paint_mode, PaintMode::Inpaint) {
+            self.heal_inpaint();
+        }
         self.close_stroke();
     }
 

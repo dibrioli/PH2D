@@ -35,6 +35,9 @@ ph2d-painter-effects = { path = "../ph2d-painter-effects" }
 # Pure clean-room Blender brush engine (BrushSpec / Stroke / stamp_dab). Driven
 # from `tool/paint.rs` to write dabs into the active layer's `canvas_rgba`.
 ph2d-painter-brush = { path = "../ph2d-painter-brush" }
+# Content-aware heal (Inpaint paint-mode): multi-scale PatchMatch reconstruction
+# of the brushed defect region on pen-up (ADR-0102). CPU reference path.
+ph2d-inpaint = { path = "../ph2d-inpaint" }
 # Canonical sRGB↔linear byte transfer for the CPU compositor's gamma boundary.
 ph2d-color = { path = "../ph2d-color" }
 # serde for PainterParams + the layer model serialization.

@@ -7,7 +7,7 @@
 //! ([`left_rail::paint_left_rail`](super::super::left_rail)), so this handler
 //! never fires in object mode. Selecting a tool sets the rail's radio
 //! selection + flyout state AND forwards the operating mode (Brush / Eraser /
-//! Smear / Blur / Clone wired; Mask / Inpaint behaviour is a later step).
+//! Smear / Blur / Clone / Mask / Inpaint wired; Shapes is a later step).
 
 use crate::action_bus::EditorAction;
 use crate::ids;
@@ -21,9 +21,9 @@ use ph2d_a11y::NodeId;
 /// `PanelEvent` channel: Smear → the smear drag, Blur → the soften, Eraser → paint with Erase-Alpha,
 /// everything else → normal Brush paint. The shell drains `ToolPanelEvent` into `handle_panel_event`,
 /// so this reaches `PainterTool::set_paint_tool_mode` without any dependency on the concrete painter
-/// crate. The not-yet-wired tools (Inpaint / Shapes) map to "brush" for now, so selecting one always
-/// leaves normal painting rather than a stuck Smear/Blur/Clone/Mask. Eyedropper maps to "eyedropper" —
-/// the tool arms an on-canvas colour pick that samples the composite, then reverts to Brush.
+/// crate. Inpaint → the content-aware heal brush (mark a defect → reconstruct on pen-up); the still
+/// not-yet-wired Shapes maps to "brush". Eyedropper maps to "eyedropper" — the tool arms an on-canvas
+/// colour pick that samples the composite, then reverts to Brush.
 fn push_paint_mode(hero: &mut HeroScreen, tool_id: NodeId) {
     let mode = if tool_id == ids::PAINTER_RAIL_SMEAR {
         "smear"
@@ -33,6 +33,8 @@ fn push_paint_mode(hero: &mut HeroScreen, tool_id: NodeId) {
         "clone"
     } else if tool_id == ids::PAINTER_RAIL_MASK {
         "mask"
+    } else if tool_id == ids::PAINTER_RAIL_INPAINT {
+        "inpaint"
     } else if tool_id == ids::PAINTER_RAIL_ERASER {
         "eraser"
     } else if tool_id == ids::PAINTER_RAIL_EYEDROPPER {
@@ -328,6 +330,36 @@ mod tests {
             drained_stroke_method(&mut hero).as_deref(),
             Some("brush"),
             "the Brush button forwarded the restore sentinel"
+        );
+    }
+
+    /// The value of the last `PAINTER_PAINT_MODE` command pushed on the bus (drains it).
+    fn drained_paint_mode(hero: &mut HeroScreen) -> Option<String> {
+        hero.bus.drain().find_map(|a| match a {
+            EditorAction::ToolPanelEvent(PanelEvent::SelectOption(id, v))
+                if id == ids::PAINTER_PAINT_MODE =>
+            {
+                Some(v)
+            }
+            _ => None,
+        })
+    }
+
+    #[test]
+    fn selecting_inpaint_forwards_the_inpaint_heal_mode() {
+        // Forward seam: the Inpaint rail button forwards the "inpaint" operating mode over the frozen
+        // PAINTER_PAINT_MODE channel → the tool's content-aware heal brush (ADR-0102).
+        let mut hero = HeroScreen::new(NodeId(1));
+        super::super::super::left_rail::populate(&mut hero.store);
+        assert!(apply(
+            &mut hero,
+            WidgetEvent::Click(ids::PAINTER_RAIL_INPAINT)
+        ));
+        assert!(pressed(&hero, ids::PAINTER_RAIL_INPAINT));
+        assert_eq!(
+            drained_paint_mode(&mut hero).as_deref(),
+            Some("inpaint"),
+            "the Inpaint button forwarded the heal mode, not the brush fallback"
         );
     }
 

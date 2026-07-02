@@ -363,6 +363,11 @@ impl PainterTool {
                 self.paint.paint_mode = super::PaintMode::Mask;
                 self.paint.eraser = false;
             }
+            "inpaint" => {
+                // Content-aware heal: brush marks the defect (live tint); pen-up reconstructs it.
+                self.paint.paint_mode = super::PaintMode::Inpaint;
+                self.paint.eraser = false;
+            }
             "eyedropper" => {
                 // Not a persistent mode: arm the on-canvas colour pick, painting as Brush afterwards.
                 self.paint.paint_mode = super::PaintMode::Paint;
@@ -399,6 +404,13 @@ impl PainterTool {
     #[must_use]
     pub fn is_mask_mode(&self) -> bool {
         matches!(self.paint.paint_mode, super::PaintMode::Mask)
+    }
+
+    /// Whether the active paint operation is **Inpaint** — the content-aware heal brush. Like Smear/Blur
+    /// it paints no colour (it marks a defect region), so the panel hides the same colour-family controls.
+    #[must_use]
+    pub fn is_inpaint_mode(&self) -> bool {
+        matches!(self.paint.paint_mode, super::PaintMode::Inpaint)
     }
 
     /// Route the brush **dab/stroke** chrome events: the flatten/rotate gizmo `SetValue`s (Shape panel),

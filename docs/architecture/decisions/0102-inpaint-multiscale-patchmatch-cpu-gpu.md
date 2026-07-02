@@ -1,12 +1,21 @@
 # ADR-0102 — Inpaint: PatchMatch multi-escala (referência CPU + compute GPU reconciliado)
 
-**Status:** Accepted (pesquisa 2026-07-02; decisão aprovada pelo Enio; implementação W1 iniciada).
+**Status:** Accepted (pesquisa 2026-07-02; decisão aprovada pelo Enio). Implementado: **engine**
+`ph2d-inpaint` (W1 referência CPU + W2 compute GPU reconciliado ε, headless-Metal verde) + **integração
+como MODO do Painter** — o Inpaint é um **pincel de heal** (content-aware fill), NÃO uma tool
+standalone. **Aguarda smoke manual do Enio** (pintar sobre um defeito → soltar → cura) para fechar como
+Done. Polish (gating de painel + GPU no heal) aberto.
 **Contexto/decisor:** Enio, 2026-07-02 — "ferramenta de correções de defeitos de imagens … algoritmo
 naturalmente pesado então busque logo uma versão que pode ser traduzida tanto em GPU como em CPU e já
 implemente ambas: GPU com fallback para CPU … pesquise o melhor algoritmo atual e implemente o melhor."
-**Relaciona:** ADR-0040 (tool = drop-crate isolada) para a crate de ferramenta; padrão "GPU reconcilia
-bit-aprox contra o `apply_*` da CPU" já usado em Bloom/S-H ([project-painter-w4-spatial-gpu-bloom-sh])
-e no compositor. Efeitos/adjustments em `ph2d-painter-effects`.
++ (2026-07-02, correção de rumo): **"o Inpaint é ferramenta do Painter"** — o botão já existe no rail
+esquerdo do Painter (`PAINTER_RAIL_INPAINT`); ligar esse botão, NÃO criar uma tool nos Image Tools.
+**Relaciona:** ADR-0040 amendment-3 (`CanvasPaintTool` do Painter — o heal roda dentro do pipeline de
+stroke do Painter). O engine `ph2d-inpaint` segue o padrão "GPU reconcilia bit-aprox contra o CPU"
+(Bloom/S-H, [project-painter-w4-spatial-gpu-bloom-sh]).
+**NOTA:** uma primeira tentativa criou uma tool standalone `ph2d-tool-inpaint` nos Image Tools — **rumo
+errado, revertido** (o Enio esclareceu que é modo do Painter). O engine `ph2d-inpaint` (W1/W2) foi
+mantido; a integração virou um `PaintMode::Inpaint`.
 **Docs de detalhe:** [`docs/Inpaint/01_pesquisa_design_plano.md`](../../Inpaint/01_pesquisa_design_plano.md).
 
 ## Contexto
@@ -35,20 +44,25 @@ o Enio exige **uma** formulação que rode **tanto em CPU quanto em GPU**, com *
    shader WGSL, e **perdem** para o PatchMatch justamente nos defeitos texturados/repetitivos que
    dominam este caso de uso. (Fica como possível follow-up opcional, fora deste ADR.)
 
-### Arquitetura (2 crates, espelha o precedente Painter)
+### Arquitetura (engine reusável + MODO do Painter)
 
 5. **`ph2d-inpaint`** (nova, foundational, `forbid(unsafe)` no caminho CPU): **o algoritmo**.
-   - **Referência CPU** = pura Rust, **determinística** (RNG seeded, splitmix64), **HR-5**
-     transcendental-free onde praticável — é o **padrão-ouro** contra o qual a GPU reconcilia.
-   - **Compute GPU** atrás de `feature = "gpu"`: shaders WGSL (jump-flood NNF + voting) sobre wgpu/Metal.
-   - **Runtime = GPU com fallback CPU** (`Inpainter::run` escolhe GPU se disponível, senão CPU).
-   - Reconciliação GPU↔CPU dentro de ε via **dev-dependency** (padrão Bloom/S-H), gate no fechamento.
-6. **`ph2d-tool-inpaint`** (nova, drop-crate ADR-0040): **a ferramenta**.
-   - Pinta a **máscara** do defeito (reusa a infra de brush/máscara), botão **Inpaint** → roda o
-     algoritmo → **baka** no layer (via `RasterEditTool`), ícone no rail (novo `IconId`, ordem
-     alfabética — [feedback-new-tool-icon-needs-iconid]), painel (patch size / qualidade-iterações /
-     toggle GPU), **undo** estrutural.
-   - Registro via **tool-sync codegen** (fan-out drop-in) — [project-tool-isolation-freeze-2026-05-22].
+   - **Referência CPU** = pura Rust, **determinística** (RNG contador 32-bit hash — WGSL não tem `u64`;
+     mesmas draws por-pixel em CPU e GPU), **HR-5** transcendental-free — é o **padrão-ouro** contra o
+     qual a GPU reconcilia.
+   - **Compute GPU** atrás de `feature = "gpu"`: shaders WGSL (jump-flood NNF + gather-voting) sobre
+     wgpu/Metal, 8 storage-buffers (máscaras empacotadas em bits pro teto do device).
+   - **Runtime = GPU com fallback CPU** (`inpaint(Option<&GpuContext>, req)` — GPU se presente, senão CPU).
+   - Reconciliação GPU↔CPU dentro de ε (parity-test headless-Metal `#[ignore]`).
+6. **`PaintMode::Inpaint` no `ph2d-tool-painter`** (NÃO uma crate/tool nova): **pincel de heal**.
+   - O botão **Inpaint** já existe no rail esquerdo do Painter (`PAINTER_RAIL_INPAINT`); o rail forwarda
+     `SelectOption(PAINTER_PAINT_MODE, "inpaint")` → `set_paint_tool_mode` → `PaintMode::Inpaint`.
+   - Pincelar **marca** o defeito (disco duro no `inpaint_mask` + tint vermelho ao vivo no canvas); no
+     **pen-up** o `heal_inpaint` **recorta** a bbox da máscara + margem (interativo em layer grande —
+     PatchMatch roda na vizinhança do defeito, não no canvas inteiro), roda `inpaint_cpu`, escreve os
+     pixels reconstruídos de volta na camada e limpa a máscara — **antes** do `close_stroke`, então o
+     undo estrutural do Painter captura pré-stroke → curado em UM passo (Cmd+Z).
+   - Reusa TODO o pipeline de stroke do Painter (dabs, tamanho de pincel, undo). Zero fiação de shell.
 
 ### Ondas
 
@@ -56,8 +70,10 @@ o Enio exige **uma** formulação que rode **tanto em CPU quanto em GPU**, com *
   pirâmide. Testes known-answer (buraco em textura periódica → reconstrói; gradiente → permanece suave).
 - **W2 — compute GPU**: WGSL jump-flood + voting em wgpu/Metal, reconciliado dentro de ε contra W1;
   runtime GPU→CPU.
-- **W3 — tool + UI**: máscara, invoke, bake, ícone, painel, undo.
-- **W4 — polish**: pistas de estrutura/borda, progresso, tuning.
+- **W3 — modo do Painter**: `PaintMode::Inpaint` (heal-on-release recortado) + wire do botão do rail +
+  testes (heal de um defeito → branco; 1 passo de undo; rail forwarda "inpaint"). **FEITO.**
+- **W4 — polish**: gating do painel (esconder cor como Smear/Blur em modo Inpaint), GPU no heal, pistas
+  de estrutura/borda, feedback de progresso, tuning.
 
 ## Alternativas rejeitadas
 
@@ -66,11 +82,16 @@ o Enio exige **uma** formulação que rode **tanto em CPU quanto em GPU**, com *
 - **ML (LaMa, diffusion, stable-diffusion inpaint):** melhor em estruturas semânticas grandes, mas
   precisa de pesos/inferência, não vira shader WGSL, e o Enio pediu explicitamente uma formulação
   **CPU+GPU** unificada. Perde em texturas repetitivas de alta-res.
-- **Painter como host (modo de pintura em vez de tool própria):** Inpaint não é pintura (é correção
-  algorítmica com máscara + bake); tool isolada (ADR-0040) mantém o isolamento multi-agente.
+- **Tool standalone nos Image Tools (`ph2d-tool-inpaint`, drop-crate ADR-0040):** foi a **primeira
+  tentativa** — máscara + botão Apply + bake via `RasterEditTool` + fiação de shell própria. **Revertida**
+  pelo Enio: "o Inpaint é ferramenta do Painter", com o botão já no rail. Vira `PaintMode::Inpaint`, que
+  reusa o pipeline de stroke/undo do Painter (heal-brush estilo Photoshop) — zero fiação de shell, e o
+  usuário pinta o defeito como qualquer pincel. (O engine `ph2d-inpaint` é agnóstico e sobreviveu à
+  reversão intacto.)
 - **Só-CPU agora, GPU depois:** contraria o pedido explícito ("já implemente ambas"). A pirâmide +
   jump-flood foram escolhidos justamente para a GPU sair do mesmo desenho — implementar as duas juntas
-  é o caminho de menor retrabalho.
+  é o caminho de menor retrabalho. (O heal do Painter hoje chama o caminho CPU; ligar o GPU no heal é
+  W4 — o engine já expõe `inpaint(Some(gpu), …)`.)
 
 ## Referências (pesquisa)
 

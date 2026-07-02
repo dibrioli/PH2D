@@ -42,16 +42,19 @@ Multi-escala **coarse-to-fine** (pirâmide) + laço **EM** por nível:
 byte-idêntica em toda plataforma. A GPU (W2) reconcilia dentro de ε (só difere nos últimos bits das
 somas f32).
 
-## 3. Arquitetura (2 crates)
+## 3. Arquitetura (engine + MODO do Painter)
 
-- **`ph2d-inpaint`** (algoritmo, foundational-mas-1-consumidor; standalone porque o algoritmo é pesado e
-  tem grande superfície de teste). CPU = referência-ouro (`inpaint_cpu`); GPU atrás de `feature = "gpu"`
-  (W2), reconciliado por parity-test. Runtime = GPU→CPU fallback.
+- **`ph2d-inpaint`** (algoritmo, foundational). CPU = referência-ouro (`inpaint_cpu`); GPU atrás de
+  `feature = "gpu"` (W2), reconciliado por parity-test. Runtime = `inpaint(Option<&GpuContext>, …)`
+  (GPU→CPU fallback).
   - `plane.rs` (imagem RGB-f32 + pirâmide), `mask.rs` (buraco + `Regions` source/target), `nnf.rs`
-    (jump-flood + random-search + SSD), `vote.rs` (M-step), `rng.rs` (splitmix64), `lib.rs`
-    (API + orquestração), `tests.rs` (known-answer).
-- **`ph2d-tool-inpaint`** (drop-crate ADR-0040, W3): pinta a máscara, botão **Inpaint** → roda → baka no
-  layer (RasterEditTool), ícone no rail (IconId), painel (patch size / iterações / toggle GPU), undo.
+    (jump-flood + random-search + SSD), `vote.rs` (M-step), `hash.rs` (counter-hash 32-bit p/ paridade
+    GPU), `rng.rs`, `gpu/` (WGSL), `lib.rs` (API + orquestração), `tests.rs` (known-answer).
+- **`PaintMode::Inpaint` no `ph2d-tool-painter`** (NÃO uma tool nova): pincel de **heal**. O botão já
+  existe no rail do Painter; o rail forwarda `"inpaint"` → `PaintMode::Inpaint`. Pincelar marca o defeito
+  (`inpaint_mask` + tint vermelho); no pen-up `heal_inpaint` recorta a bbox + margem, roda `inpaint_cpu`,
+  escreve de volta na camada, limpa a máscara — antes do `close_stroke` (1 passo de undo). Reusa dabs /
+  tamanho de pincel / undo do Painter; zero fiação de shell. `paint/inpaint.rs`.
 
 ## 4. Ondas
 
@@ -63,5 +66,17 @@ somas f32).
   (`inpaint(Option<&GpuContext>, …)`). 3 testes headless-Metal verdes: **reconcilia com a CPU dentro de
   ε** (mean ≤ 2/255) + stripes/flat standalone. As 3 máscaras empacotadas em 1 buffer `flags` (bit0
   source/bit1 target/bit2 hole) p/ caber no piso de 8 storage-buffers/stage.
-- [ ] **W3 — tool + UI**: máscara, invoke, bake, ícone, painel, undo.
-- [ ] **W4 — polish**: pistas de estrutura/borda, progresso, tuning.
+- [x] **W3 — modo do Painter** (`PaintMode::Inpaint`): o Inpaint é um **pincel de heal do Painter**, não
+  uma tool standalone. O botão `PAINTER_RAIL_INPAINT` (que já existia no rail esquerdo) foi ligado —
+  `rail_painter_tools.rs` forwarda `SelectOption(PAINTER_PAINT_MODE, "inpaint")` → `set_paint_tool_mode`
+  → `PaintMode::Inpaint`. Pincelar acumula `inpaint_mask` (disco duro) + tinta o canvas de vermelho ao
+  vivo (`stamp_dabs_inpaint`); no pen-up `heal_inpaint` recorta a bbox da máscara + margem
+  (`hole/2`, clamp 24–128 px → interativo em layer grande), roda `inpaint_cpu`, escreve os pixels
+  reconstruídos de volta na camada, limpa a máscara — **antes** do `close_stroke` (undo de 1 passo).
+  Testes: heal de um defeito vermelho → branco; 1 undo restaura o defeito; rail forwarda "inpaint".
+  Suite do Painter 300 verde, editor-core rail verde, clippy/fmt limpos. **Falta só o smoke manual do
+  Enio** (pintar sobre um defeito com caneta/mouse → soltar → cura; headless não roda input winit).
+  > **Nota de rumo:** a 1ª tentativa foi uma tool standalone `ph2d-tool-inpaint` nos Image Tools —
+  > revertida (o Enio esclareceu que é modo do Painter). Engine `ph2d-inpaint` (W1/W2) mantido.
+- [ ] **W4 — polish**: gating de painel (esconder cor como Smear/Blur em modo Inpaint), GPU no heal
+  (`inpaint(Some(gpu),…)`), pistas de estrutura/borda, feedback de progresso, tuning.

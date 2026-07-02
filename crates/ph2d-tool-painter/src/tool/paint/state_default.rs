@@ -98,6 +98,7 @@ impl Default for PaintState {
             shape_ramp_version: 0,
             ramp_lut_owner: ramp_lut::RampLutOwner::None,
             stroke_mask: Vec::new(),
+            inpaint_mask: Vec::new(),
             per_layer_stroke: stamp_color_cache::PerLayerStroke::default(),
             shape_color_preview: stamp_color_cache::ShapeColorPreview::default(),
         }

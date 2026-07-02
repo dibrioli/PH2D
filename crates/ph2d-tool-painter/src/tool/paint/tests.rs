@@ -281,6 +281,91 @@ fn blur_mode_softens_a_hard_edge_along_the_stroke() {
 }
 
 #[test]
+fn inpaint_mode_heals_a_marked_defect_on_pen_up() {
+    use ph2d_editor_core::ids as core_ids;
+    use ph2d_editor_core::tool::{PanelEvent, Tool};
+    // Mostly-white canvas with a small red "defect" square near the centre.
+    let size = 48u32;
+    let mut src = vec![255u8; (size * size * 4) as usize];
+    for y in 21..27 {
+        for x in 21..27 {
+            let i = ((y * size + x) * 4) as usize;
+            src[i..i + 4].copy_from_slice(&[220, 20, 20, 255]);
+        }
+    }
+    let mut t = PainterTool::default();
+    t.set_source(src, size, size);
+    t.paint.brush = BrushSpec {
+        radius_px: 9.0,
+        hardness: 1.0,
+        falloff: Falloff::Constant,
+        strength: 1.0,
+        space_attenuation: false,
+        ..Default::default()
+    };
+    // Select the Inpaint heal mode exactly as the left-rail button forwards it.
+    t.handle_panel_event(PanelEvent::SelectOption(
+        core_ids::PAINTER_PAINT_MODE,
+        "inpaint".to_string(),
+    ));
+    assert!(matches!(t.paint.paint_mode, PaintMode::Inpaint));
+    // Paint over the defect and release → the marked region is reconstructed.
+    assert!(t.on_canvas_pointer(cp([24.0, 24.0], PointerPhase::Down)));
+    t.on_canvas_pointer(cp([24.0, 24.0], PointerPhase::Up));
+    // Every defect pixel now reads ~white (rebuilt from the surrounding white), not red;
+    // and no red tint survives the heal.
+    for y in 21..27 {
+        for x in 21..27 {
+            let p = px(&t, size, x, y);
+            assert!(
+                p[0] > 225 && p[1] > 225 && p[2] > 225,
+                "defect not healed at ({x},{y}): {p:?}"
+            );
+        }
+    }
+    // The heal mask is cleared for the next stroke.
+    assert!(t.paint.inpaint_mask.iter().all(|&m| m < 128));
+}
+
+#[test]
+fn inpaint_stroke_is_one_undo_step_back_to_the_defect() {
+    use ph2d_editor_core::ids as core_ids;
+    use ph2d_editor_core::tool::{PanelEvent, Tool};
+    let size = 48u32;
+    let mut src = vec![255u8; (size * size * 4) as usize];
+    for y in 21..27 {
+        for x in 21..27 {
+            let i = ((y * size + x) * 4) as usize;
+            src[i..i + 4].copy_from_slice(&[220, 20, 20, 255]);
+        }
+    }
+    let mut t = PainterTool::default();
+    t.set_source(src, size, size);
+    t.paint.brush = BrushSpec {
+        radius_px: 9.0,
+        hardness: 1.0,
+        falloff: Falloff::Constant,
+        strength: 1.0,
+        space_attenuation: false,
+        ..Default::default()
+    };
+    t.handle_panel_event(PanelEvent::SelectOption(
+        core_ids::PAINTER_PAINT_MODE,
+        "inpaint".to_string(),
+    ));
+    t.on_canvas_pointer(cp([24.0, 24.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([24.0, 24.0], PointerPhase::Up));
+    assert!(px(&t, size, 24, 24)[0] > 225, "defect healed");
+    // One undo restores the original defect (heal ran before close_stroke).
+    assert!(t.undo_last(), "there is an undo step to pop");
+    assert_eq!(
+        px(&t, size, 24, 24),
+        [220, 20, 20, 255],
+        "a single undo brings the defect back"
+    );
+}
+
+#[test]
 fn composite_brush_runs_an_isolated_layer_and_reorders() {
     // Composite is a Brush-tool upgrade wired over the frozen PanelEvent channel. Prove: (1) the enable
     // checkbox toggles it, (2) a layer isolated by Strength actually runs inside the stack (Blur softens

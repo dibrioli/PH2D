@@ -105,12 +105,14 @@ pub struct PolygonState {
     pub seed: u64,
 }
 
-/// Editable Line (polyline) state (see `tool::paint::line::LineEditor`). Plain corner points, no handles.
+/// Editable Line (polyline) state (see `tool::paint::line::LineEditor`). Plain corner points, no handles;
+/// per-corner Fillet/Chamfer carried as `(tag, amount)` wire pairs (`0` sharp / `1` fillet / `2` chamfer).
 #[derive(Clone, Debug, PartialEq)]
 pub struct LineState {
     pub points: Vec<[f32; 2]>,
     pub closed: bool,
     pub editing: bool,
+    pub corner_mods: Vec<(u8, f32)>,
     pub seed: u64,
 }
 

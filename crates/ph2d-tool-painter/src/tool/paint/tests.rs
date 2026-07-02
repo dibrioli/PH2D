@@ -6129,3 +6129,61 @@ fn line_transform_gizmo_moves_the_whole_line() {
     assert_eq!(ov.points[0], [16.0, 16.0], "undo reverted the transform");
     assert_eq!(ov.points[1], [48.0, 16.0]);
 }
+
+#[test]
+fn line_dragging_the_fillet_handle_rounds_the_corner() {
+    // Full pointer path: an interior corner exposes a Fillet (circle) handle in the editing phase; dragging
+    // it out marks that corner filleted (the rendered path then rounds it), and one undo restores it sharp.
+    let mut t = line_tool();
+    click(&mut t, 16.0, 16.0);
+    click(&mut t, 48.0, 16.0); // corner 1 — the only interior corner of the open 3-point line
+    click(&mut t, 48.0, 48.0);
+    assert!(t.line_finish_points(), "end creation → editing");
+    let ov = t.line_overlay().unwrap();
+    assert_eq!(ov.corner_gizmos.len(), 1, "one interior corner has gizmos");
+    assert_eq!(ov.corner_gizmos[0].active, 0, "corner starts sharp");
+    let v = [48.0, 16.0]; // the corner vertex
+    let fh = ov.corner_gizmos[0].fillet_handle; // grab target from the overlay
+    let outward = [v[0] + (fh[0] - v[0]) * 3.0, v[1] + (fh[1] - v[1]) * 3.0];
+    t.on_canvas_pointer(cp(fh, PointerPhase::Down));
+    t.on_canvas_pointer(cp(outward, PointerPhase::Move));
+    t.on_canvas_pointer(cp(outward, PointerPhase::Up));
+    assert_eq!(
+        t.line_overlay().unwrap().corner_gizmos[0].active,
+        1,
+        "the corner is now filleted"
+    );
+    assert!(t.undo_last());
+    assert_eq!(
+        t.line_overlay().unwrap().corner_gizmos[0].active,
+        0,
+        "undo restored the sharp corner"
+    );
+}
+
+#[test]
+fn line_fillet_persists_through_undo_redo_snapshot() {
+    // The per-corner mod rides the unified undo snapshot (LineState.corner_mods): after filleting, an
+    // unrelated edit + undo/redo must preserve the fillet.
+    let mut t = line_tool();
+    click(&mut t, 16.0, 16.0);
+    click(&mut t, 48.0, 16.0);
+    click(&mut t, 48.0, 48.0);
+    assert!(t.line_finish_points());
+    let v = [48.0, 16.0];
+    let fh = t.line_overlay().unwrap().corner_gizmos[0].fillet_handle;
+    let outward = [v[0] + (fh[0] - v[0]) * 3.0, v[1] + (fh[1] - v[1]) * 3.0];
+    t.on_canvas_pointer(cp(fh, PointerPhase::Down));
+    t.on_canvas_pointer(cp(outward, PointerPhase::Move));
+    t.on_canvas_pointer(cp(outward, PointerPhase::Up));
+    assert_eq!(t.line_overlay().unwrap().corner_gizmos[0].active, 1);
+    // Undo the fillet, then redo it — the snapshot must round-trip the corner mod.
+    assert!(t.undo_last());
+    assert_eq!(t.line_overlay().unwrap().corner_gizmos[0].active, 0);
+    assert!(t.redo_last());
+    assert_eq!(
+        t.line_overlay().unwrap().corner_gizmos[0].active,
+        1,
+        "redo reinstated the fillet from the snapshot"
+    );
+}

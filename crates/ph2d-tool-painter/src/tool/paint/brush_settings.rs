@@ -344,15 +344,15 @@ impl PainterTool {
     // ── Stroke section setters (the single clamp source; the panel forwards raw UI values) ──
 
     /// Set the stroke method from a wire discriminant (out-of-range → Space). Leaving a shape method
-    /// (Curve/Circle) with an un-committed session discards it (revert the preview) — the artist
+    /// (Curve/Ellipse) with an un-committed session discards it (revert the preview) — the artist
     /// switched away deliberately. Switching INTO the same shape keeps its session.
     pub fn set_brush_stroke_method(&mut self, m: u8) {
         let method = StrokeMethod::from_u8(m);
         if method != StrokeMethod::Curve {
             self.curve_cancel();
         }
-        if method != StrokeMethod::Circle {
-            self.circle_cancel();
+        if method != StrokeMethod::Ellipse {
+            self.ellipse_cancel();
         }
         if method != StrokeMethod::Polygon {
             self.polygon_cancel();

@@ -37,7 +37,7 @@ pub enum StrokeMethod {
     /// **PH2D extension (beyond Blender's `eBrushStrokeType`):** an editable ellipse — drawn
     /// centre-out, then adjusted with 4 axis handles + a rotation handle, its perimeter filled with
     /// spaced dabs on finalise. Wire discriminant `7`.
-    Circle,
+    Ellipse,
     /// **PH2D extension:** an editable regular polygon inscribed in an ellipse — 4 axis handles +
     /// rotation + a handle to change the side count (3..12) + a centre handle. Wire discriminant `8`.
     Polygon,
@@ -59,7 +59,7 @@ impl StrokeMethod {
             Self::DragDot => 4,
             Self::Line => 5,
             Self::Curve => 6,
-            Self::Circle => 7,
+            Self::Ellipse => 7,
             Self::Polygon => 8,
             Self::FreeHand => 9,
         }
@@ -76,7 +76,7 @@ impl StrokeMethod {
             4 => Self::DragDot,
             5 => Self::Line,
             6 => Self::Curve,
-            7 => Self::Circle,
+            7 => Self::Ellipse,
             8 => Self::Polygon,
             9 => Self::FreeHand,
             _ => Self::Space,
@@ -93,7 +93,7 @@ impl StrokeMethod {
     /// Whether this method only ever shows the **latest** pointer position, so a host may coalesce a burst
     /// of raw pointer Moves into ONE delivery per frame with zero visible change.
     ///
-    /// True for the restore + whole-shape re-stamp **fill** methods (Curve / Circle / Polygon / Line /
+    /// True for the restore + whole-shape re-stamp **fill** methods (Curve / Ellipse / Polygon / Line /
     /// Anchored / Drag Dot): each Move restores the previous footprint and re-stamps from scratch, so an
     /// intermediate Move's pixels are reverted by the next Move anyway — only the last one per frame
     /// survives to the preview drain. Coalescing them is byte-identical AND removes the per-event re-stamp
@@ -107,7 +107,7 @@ impl StrokeMethod {
         matches!(
             self,
             Self::Curve
-                | Self::Circle
+                | Self::Ellipse
                 | Self::Polygon
                 | Self::Line
                 | Self::Anchored
@@ -124,7 +124,7 @@ impl StrokeMethod {
     pub fn uses_spacing(self) -> bool {
         matches!(
             self,
-            Self::Space | Self::Line | Self::Curve | Self::Circle | Self::Polygon | Self::FreeHand
+            Self::Space | Self::Line | Self::Curve | Self::Ellipse | Self::Polygon | Self::FreeHand
         )
     }
 
@@ -134,7 +134,7 @@ impl StrokeMethod {
     pub fn uses_dash(self) -> bool {
         matches!(
             self,
-            Self::Space | Self::Line | Self::Curve | Self::Circle | Self::Polygon | Self::FreeHand
+            Self::Space | Self::Line | Self::Curve | Self::Ellipse | Self::Polygon | Self::FreeHand
         )
     }
 
@@ -199,22 +199,22 @@ impl StrokeMethod {
 
     /// True when the method drives a persistent on-canvas **shape editor** that the panel's Apply /
     /// Apply & Keep buttons (and Enter/Esc) act on: `Curve`/`FreeHand` (the point editor — Free Hand
-    /// captures then edits the same curve), `Circle` (the ellipse editor) and `Polygon` (the N-gon
+    /// captures then edits the same curve), `Ellipse` (the ellipse editor) and `Polygon` (the N-gon
     /// editor). Line/Drag Dot/Anchored finalise on pen-up with no editing session, so they get no Apply
     /// row (DIRETIVA §2: no dead control).
     #[must_use]
     pub fn has_open_shape(self) -> bool {
         matches!(
             self,
-            Self::Curve | Self::FreeHand | Self::Circle | Self::Polygon
+            Self::Curve | Self::FreeHand | Self::Ellipse | Self::Polygon
         )
     }
 
     /// True for the parametric shapes that the panel's **Edit** (E) button can convert into an editable
-    /// Bézier curve — `Circle` and `Polygon`. (Curve / Free Hand are already curves, so they get no E.)
+    /// Bézier curve — `Ellipse` and `Polygon`. (Curve / Free Hand are already curves, so they get no E.)
     #[must_use]
     pub fn is_convertible_shape(self) -> bool {
-        matches!(self, Self::Circle | Self::Polygon)
+        matches!(self, Self::Ellipse | Self::Polygon)
     }
 }
 
@@ -262,15 +262,15 @@ mod tests {
             StrokeMethod::DragDot,
             StrokeMethod::Line,
             StrokeMethod::Curve,
-            StrokeMethod::Circle,
+            StrokeMethod::Ellipse,
             StrokeMethod::Polygon,
             StrokeMethod::FreeHand,
         ] {
             assert_eq!(StrokeMethod::from_u8(m.to_u8()), m);
         }
-        // Blender enum values are the wire contract; Circle/Polygon/FreeHand are PH2D extensions (7/8/9).
+        // Blender enum values are the wire contract; Ellipse/Polygon/FreeHand are PH2D extensions (7/8/9).
         assert_eq!(StrokeMethod::Space.to_u8(), 3);
-        assert_eq!(StrokeMethod::Circle.to_u8(), 7);
+        assert_eq!(StrokeMethod::Ellipse.to_u8(), 7);
         assert_eq!(StrokeMethod::Polygon.to_u8(), 8);
         assert_eq!(StrokeMethod::FreeHand.to_u8(), 9);
         assert_eq!(StrokeMethod::default(), StrokeMethod::Space);
@@ -281,7 +281,7 @@ mod tests {
     #[test]
     fn stroke_panel_visibility_matches_blender() {
         use StrokeMethod::{
-            Airbrush, Anchored, Circle, Curve, Dots, DragDot, Line, Polygon, Space,
+            Airbrush, Anchored, Curve, Dots, DragDot, Ellipse, Line, Polygon, Space,
         };
         // The Blender "Stroke" panel row matrix (Spacing/Dash, Jitter) per method. Input
         // Samples is always shown, so it is not in the table. This locks the per-method gate
@@ -296,7 +296,7 @@ mod tests {
             (DragDot, false, false, false, false, false, false),
             (Line, true, true, true, false, false, false),
             (Curve, true, true, true, false, false, false),
-            (Circle, true, true, true, false, false, false),
+            (Ellipse, true, true, true, false, false, false),
             (Polygon, true, true, true, false, false, false),
         ];
         for (m, spacing, dash, jitter, stabilizer, rate, edge) in rows {
@@ -319,7 +319,7 @@ mod tests {
         for m in [
             StrokeMethod::Curve,
             StrokeMethod::FreeHand,
-            StrokeMethod::Circle,
+            StrokeMethod::Ellipse,
             StrokeMethod::Polygon,
         ] {
             assert!(m.has_open_shape(), "{m:?} should have an open-shape editor");
@@ -341,7 +341,7 @@ mod tests {
 
     #[test]
     fn is_convertible_shape_is_circle_and_polygon_only() {
-        assert!(StrokeMethod::Circle.is_convertible_shape());
+        assert!(StrokeMethod::Ellipse.is_convertible_shape());
         assert!(StrokeMethod::Polygon.is_convertible_shape());
         for m in [
             StrokeMethod::Curve,

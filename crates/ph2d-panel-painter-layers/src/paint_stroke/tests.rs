@@ -73,10 +73,10 @@ fn painted_hit_rects(method: StrokeMethod, content_w: f32) -> Vec<(NodeId, Rect)
 /// Regression (Enio 2026-06-27): in the wide one-row layout the Apply & Keep button was painted at the
 /// SAME x as the trailing E/✕ icon cluster, so its fill covered them and stole their clicks ("the X
 /// disappeared and we still don't have the E button"). The bake buttons and the icon cluster must occupy
-/// DISJOINT hit rects. Checked for Circle (E + ✕ present) at a wide content width that forces one row.
+/// DISJOINT hit rects. Checked for Ellipse (E + ✕ present) at a wide content width that forces one row.
 #[test]
 fn apply_keep_does_not_overlap_the_edit_and_delete_icons() {
-    let rects = painted_hit_rects(StrokeMethod::Circle, 320.0);
+    let rects = painted_hit_rects(StrokeMethod::Ellipse, 320.0);
     let find = |id: NodeId| {
         rects
             .iter()
@@ -296,12 +296,12 @@ fn curve_shows_spacing_dash_jitter_samples_hides_stabilize_rate_edge() {
     }
 }
 
-/// Circle: the PH2D ellipse shape — spacing-driven like Line/Curve (Spacing + Adjust-Strength +
+/// Ellipse: the PH2D ellipse shape — spacing-driven like Line/Curve (Spacing + Adjust-Strength +
 /// Dash + Jitter + Samples), NOT freehand, so the Stabilizer stays hidden. Same visible set as
 /// Line/Curve.
 #[test]
 fn circle_shows_spacing_dash_jitter_samples_hides_stabilize_rate_edge() {
-    let ids = painted_hit_ids(StrokeMethod::Circle);
+    let ids = painted_hit_ids(StrokeMethod::Ellipse);
     for shown in [
         core_ids::PAINTER_BRUSH_STROKE_METHOD,
         core_ids::PAINTER_BRUSH_SPACING,
@@ -314,7 +314,7 @@ fn circle_shows_spacing_dash_jitter_samples_hides_stabilize_rate_edge() {
     ] {
         assert!(
             ids.contains(&shown),
-            "Circle dropped a spacing-driven row it should show ({shown:?}). painted = {ids:?}"
+            "Ellipse dropped a spacing-driven row it should show ({shown:?}). painted = {ids:?}"
         );
     }
     for hidden in [
@@ -324,14 +324,14 @@ fn circle_shows_spacing_dash_jitter_samples_hides_stabilize_rate_edge() {
     ] {
         assert!(
             !ids.contains(&hidden),
-            "Circle painted a hit rect for {hidden:?} — not a Circle control (shape, no freehand \
+            "Ellipse painted a hit rect for {hidden:?} — not a Ellipse control (shape, no freehand \
              to stabilize). painted = {ids:?}"
         );
     }
 }
 
-/// Polygon: the PH2D regular-N-gon shape — spacing-driven like Circle (Spacing + Adjust + Dash +
-/// Jitter + Samples), NOT freehand, so the Stabilizer stays hidden. Same visible set as Circle.
+/// Polygon: the PH2D regular-N-gon shape — spacing-driven like Ellipse (Spacing + Adjust + Dash +
+/// Jitter + Samples), NOT freehand, so the Stabilizer stays hidden. Same visible set as Ellipse.
 #[test]
 fn polygon_shows_spacing_dash_jitter_samples_hides_stabilize_rate_edge() {
     let ids = painted_hit_ids(StrokeMethod::Polygon);
@@ -363,14 +363,14 @@ fn polygon_shows_spacing_dash_jitter_samples_hides_stabilize_rate_edge() {
     }
 }
 
-/// Offset slider: the perpendicular path offset applies to the shape editors (Curve / Free Hand / Circle
+/// Offset slider: the perpendicular path offset applies to the shape editors (Curve / Free Hand / Ellipse
 /// / Polygon), so its hit rect registers for those and stays hidden for the finalise-on-up methods.
 #[test]
 fn offset_slider_shows_only_for_the_shape_editor_methods() {
     for m in [
         StrokeMethod::Curve,
         StrokeMethod::FreeHand,
-        StrokeMethod::Circle,
+        StrokeMethod::Ellipse,
         StrokeMethod::Polygon,
     ] {
         assert!(
@@ -387,7 +387,7 @@ fn offset_slider_shows_only_for_the_shape_editor_methods() {
 }
 
 /// Apply / Apply & Keep: the two bake buttons register hit rects ONLY for the methods with a
-/// persistent on-canvas shape editor (Curve/Free Hand/Circle/Polygon) — so a real click can reach
+/// persistent on-canvas shape editor (Curve/Free Hand/Ellipse/Polygon) — so a real click can reach
 /// them — and stay hidden for the finalise-on-up methods (Line/Space). A regression guard for the
 /// "Apply does nothing" report: no hit rect ⇒ no Click ⇒ dead button (the populate-register gotcha).
 #[test]
@@ -395,7 +395,7 @@ fn apply_buttons_register_hit_rects_for_the_editor_methods_only() {
     for m in [
         StrokeMethod::Curve,
         StrokeMethod::FreeHand,
-        StrokeMethod::Circle,
+        StrokeMethod::Ellipse,
         StrokeMethod::Polygon,
     ] {
         let ids = painted_hit_ids(m);
@@ -420,10 +420,10 @@ fn apply_buttons_register_hit_rects_for_the_editor_methods_only() {
 }
 
 /// The Edit (E) button — convert to an editable curve — paints a hit rect ONLY for the convertible
-/// parametric shapes (Circle / Polygon), not for Curve / Free Hand (already curves) or Line.
+/// parametric shapes (Ellipse / Polygon), not for Curve / Free Hand (already curves) or Line.
 #[test]
 fn edit_button_registers_only_for_circle_and_polygon() {
-    for m in [StrokeMethod::Circle, StrokeMethod::Polygon] {
+    for m in [StrokeMethod::Ellipse, StrokeMethod::Polygon] {
         assert!(
             painted_hit_ids(m).contains(&core_ids::PAINTER_BRUSH_STROKE_EDIT),
             "{m:?} must paint the Edit (E) button"

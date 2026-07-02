@@ -375,7 +375,7 @@ impl PainterTool {
         // the COVERAGE (the Shape silhouette, OR the bare falloff when there's no Shape image) indexes the
         // ramp, and the StampMask already caches that coverage → blit the cached mask applying
         // `ramp[coverage]` (as cheap as a plain cached stamp, NOT a per-pixel coverage recompute per dab —
-        // critical for the Line/Curve/Circle/Polygon fills, which re-stamp the WHOLE shape every move).
+        // critical for the Line/Curve/Ellipse/Polygon fills, which re-stamp the WHOLE shape every move).
         // Per-pixel otherwise: a Grain to index, per-dab rotation, or the Accumulate cap (Enio 2026-06-26).
         let grain_active = brush.texture.is_active();
         let owner = self.color_ramp_owner(grain_active);

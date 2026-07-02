@@ -42,7 +42,7 @@ pub(super) struct CurveEditor {
     gizmo: Option<curve_gizmo::GizmoGrab>,
     /// `false` while drawing the initial straight line (Down→Up), `true` once editing the points.
     pub(super) editing: bool,
-    /// `true` for a **closed loop** (converted Circle / Polygon): spine / fill / offset wrap last → first.
+    /// `true` for a **closed loop** (converted Ellipse / Polygon): spine / fill / offset wrap last → first.
     pub(super) closed: bool,
     /// **Free Hand** mode: the draw phase captures the path + simplifies on release. `false` for plain Curve.
     freehand: bool,
@@ -135,7 +135,7 @@ impl PainterTool {
             false
         } else if ed.points.len() < MAX_CURVE_POINTS {
             // Subdivide the curve at the NEAREST point on it (incl. the closing seam for a converted
-            // Circle / Polygon) via a de Casteljau split — the new anchor lands on the curve and the shape
+            // Ellipse / Polygon) via a de Casteljau split — the new anchor lands on the curve and the shape
             // is unchanged. Parallel handles ⇒ update the segment's neighbour handles + splice the new one;
             // a degenerate (handle-less) draw-phase curve just takes the projected point.
             let ins = curve_geom::curve_insert(&ed.points, &ed.handles, ed.closed, pos);
@@ -325,18 +325,18 @@ impl PainterTool {
         true
     }
 
-    /// Convert an open **Circle / Polygon** into an editable Bézier **Curve** (the panel's **Edit** / E
+    /// Convert an open **Ellipse / Polygon** into an editable Bézier **Curve** (the panel's **Edit** / E
     /// button): take its faithful anchors, drop the shape editor, switch the method to Curve. `false` if none.
     pub(crate) fn convert_open_shape_to_curve(&mut self) -> bool {
         self.flush_shape_txn(); // close any coalesced Offset drag first
-        let before = self.capture_shape_model(); // the open Circle / Polygon (for undo of the conversion)
+        let before = self.capture_shape_model(); // the open Ellipse / Polygon (for undo of the conversion)
         // Bake any live Offset into the shape's radii FIRST (resets the slider) so the conversion reads the
         // displayed shape, not a doubly-offset one. At most one editor is open; each bake no-ops otherwise.
-        self.bake_circle_offset();
+        self.bake_ellipse_offset();
         self.bake_polygon_offset();
-        // Circle arcs are smooth (Aligned); polygon corners sharp (Free). Both keep explicit (manual) handles.
+        // Ellipse arcs are smooth (Aligned); polygon corners sharp (Free). Both keep explicit (manual) handles.
         let Some((points, handles, kind)) = self
-            .circle_to_curve()
+            .ellipse_to_curve()
             .map(|(p, h)| (p, h, HandleKind::Aligned))
             .or_else(|| {
                 self.polygon_to_curve()
@@ -349,7 +349,7 @@ impl PainterTool {
         let kinds = vec![kind; points.len()];
         let seed = self.paint.seed;
         self.paint.seed = self.paint.seed.wrapping_add(1);
-        self.paint.circle = None;
+        self.paint.ellipse = None;
         self.paint.polygon = None;
         self.paint.brush.stroke_method = StrokeMethod::Curve; // route future pointers to the curve editor
         self.paint.curve = Some(CurveEditor {
@@ -361,7 +361,7 @@ impl PainterTool {
             grabbed_handle: None,
             gizmo: None,
             editing: true,
-            closed: true,   // a converted Circle / Polygon is a closed loop
+            closed: true,   // a converted Ellipse / Polygon is a closed loop
             freehand: true, // keep the explicit handles (drag translates them), like the Free Hand fit
             stabilized: anchor,
             anchor,
@@ -370,7 +370,7 @@ impl PainterTool {
         });
         self.curve_refill();
         let after = self.capture_shape_model(); // the new Curve overlay
-        self.undo.record_structural(before, after); // Edit (Circle/Polygon → Curve) is one undo step
+        self.undo.record_structural(before, after); // Edit (Ellipse/Polygon → Curve) is one undo step
         true
     }
 
@@ -472,7 +472,7 @@ impl PainterTool {
         }
         ed.kinds[sel] = kind;
         // Switching a sharp (collapsed) point to a manual kind: seed a visible tangent to drag. Closed-aware,
-        // so a converted Polygon / Circle seam anchor gets BOTH arms (not the one-armed open-curve seed).
+        // so a converted Polygon / Ellipse seam anchor gets BOTH arms (not the one-armed open-curve seed).
         if kind.is_manual() && curve_handle::is_collapsed(ed.handles.get(sel), ed.points[sel]) {
             let auto = curve_handle::auto_handles(&ed.points, ed.closed);
             if let (Some(h), Some(a)) = (ed.handles.get_mut(sel), auto.get(sel)) {

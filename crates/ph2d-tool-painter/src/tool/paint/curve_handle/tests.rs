@@ -54,7 +54,7 @@ fn vector_endpoint_sides_collapse_onto_the_anchor() {
 
 #[test]
 fn closed_loop_seam_anchors_keep_both_arms() {
-    // Regression (Enio 2026-06-28): a converted Polygon / Circle is a CLOSED loop, so the seam (first / last)
+    // Regression (Enio 2026-06-28): a converted Polygon / Ellipse is a CLOSED loop, so the seam (first / last)
     // anchor must get BOTH tangent arms — the open-curve build collapses one side → a one-armed handle that
     // can't be made symmetric. Vector + Auto both wrap their neighbours when `closed`.
     let pts = [[0.0, 0.0], [30.0, 0.0], [60.0, 0.0]];

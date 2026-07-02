@@ -147,7 +147,7 @@ pub(super) struct CurveInsert {
 }
 
 /// Find where to insert a new anchor for a click at `pos`: the NEAREST point on the actual curve over
-/// EVERY segment — including the closing seam when `closed` (the converted Circle / Polygon bug: the old
+/// EVERY segment — including the closing seam when `closed` (the converted Ellipse / Polygon bug: the old
 /// straight-control-polygon scan ignored the seam + landed off the bulge) — then split that cubic there.
 pub(super) fn curve_insert(
     points: &[[f32; 2]],

@@ -1,4 +1,4 @@
-//! **Unified shape+paint undo** — the glue that folds on-canvas shape authoring (Curve / Circle /
+//! **Unified shape+paint undo** — the glue that folds on-canvas shape authoring (Curve / Ellipse /
 //! Polygon: create, point-edit, reshape, Offset drag) into the SAME undo timeline as the pixel bakes
 //! (Apply / Apply & Keep), so Ctrl+Z walks every step in reverse chronological order regardless of kind
 //! (Enio 2026-06-28). Each shape gesture brackets its mutation with [`PainterTool::begin_shape_txn`] /
@@ -10,11 +10,11 @@
 use super::*;
 
 impl PainterTool {
-    /// `true` while any on-canvas shape (Curve / Free Hand / Circle / Polygon) is being authored — used to
+    /// `true` while any on-canvas shape (Curve / Free Hand / Ellipse / Polygon) is being authored — used to
     /// route pointer events + gate Enter/Esc (NOT to choose an undo stack; undo is one unified timeline).
     pub(crate) fn is_editing_shape(&self) -> bool {
         self.paint.curve.as_ref().is_some_and(|ed| ed.editing)
-            || self.paint.circle.is_some()
+            || self.paint.ellipse.is_some()
             || self.paint.polygon.is_some()
     }
 
@@ -22,8 +22,10 @@ impl PainterTool {
     pub(crate) fn capture_shape(&self) -> Option<Box<crate::undo::ShapeEditState>> {
         if let Some(ed) = self.paint.curve.as_ref() {
             Some(Box::new(crate::undo::ShapeEditState::Curve(ed.to_state())))
-        } else if let Some(ed) = self.paint.circle.as_ref() {
-            Some(Box::new(crate::undo::ShapeEditState::Circle(ed.to_state())))
+        } else if let Some(ed) = self.paint.ellipse.as_ref() {
+            Some(Box::new(crate::undo::ShapeEditState::Ellipse(
+                ed.to_state(),
+            )))
         } else {
             self.paint
                 .polygon
@@ -73,7 +75,7 @@ impl PainterTool {
         }
         self.paint.drag_preview = None;
         self.paint.curve = None;
-        self.paint.circle = None;
+        self.paint.ellipse = None;
         self.paint.polygon = None;
         match shape.map(|b| *b) {
             Some(crate::undo::ShapeEditState::Curve(s)) => {
@@ -83,11 +85,11 @@ impl PainterTool {
                     self.curve_refill();
                 }
             }
-            Some(crate::undo::ShapeEditState::Circle(s)) => {
-                self.paint.circle = Some(circle::CircleEditor::from_state(s));
-                self.paint.brush.stroke_method = StrokeMethod::Circle;
+            Some(crate::undo::ShapeEditState::Ellipse(s)) => {
+                self.paint.ellipse = Some(ellipse::EllipseEditor::from_state(s));
+                self.paint.brush.stroke_method = StrokeMethod::Ellipse;
                 if had_preview {
-                    self.circle_refill();
+                    self.ellipse_refill();
                 }
             }
             Some(crate::undo::ShapeEditState::Polygon(s)) => {

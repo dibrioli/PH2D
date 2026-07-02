@@ -1,5 +1,5 @@
 //! Regression tests for the Brush-section dropdown-option decoders. The Stroke Method decoder once
-//! used `0..7`, which silently dropped the PH2D shape extensions (Circle = 7, then Polygon = 8) —
+//! used `0..7`, which silently dropped the PH2D shape extensions (Ellipse = 7, then Polygon = 8) —
 //! clicking them in the dropdown did nothing. These lock the full 9-method round-trip + distinctness.
 
 use super::decode::{
@@ -15,13 +15,13 @@ use ph2d_tool_painter::{RampAlphaMode, TextureKind, TextureMapping};
 
 #[test]
 fn every_stroke_method_option_id_round_trips() {
-    // All 9 methods (Dots..Curve = 0..=6, Circle = 7, Polygon = 8) must decode back to themselves.
+    // All 9 methods (Dots..Curve = 0..=6, Ellipse = 7, Polygon = 8) must decode back to themselves.
     for m in 0u8..9 {
         let id = painter_brush_stroke_method_option_id(m);
         assert_eq!(
             decode_stroke_method_option(id),
             Some(m),
-            "option id for method {m} did not decode back (Circle = 7 / Polygon = 8 regression)"
+            "option id for method {m} did not decode back (Ellipse = 7 / Polygon = 8 regression)"
         );
     }
     // A foreign id decodes to None (not a false match).

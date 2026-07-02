@@ -216,7 +216,7 @@ pub fn populate(store: &mut WidgetStore) {
         ph2d_editor_core::ids::PAINTER_BRUSH_TEXTURE_RESET,
         ph2d_editor_core::ids::PAINTER_BRUSH_COLOR_RAMP_RESET,
         ph2d_editor_core::ids::PAINTER_BRUSH_STROKE_RESET,
-        // Apply / Apply & Keep — bake the open on-canvas shape (Curve/Free Hand/Circle/Polygon); Keep
+        // Apply / Apply & Keep — bake the open on-canvas shape (Curve/Free Hand/Ellipse/Polygon); Keep
         // retains the editor for re-apply. Routed in the tool's `route_brush_dab_event`.
         ph2d_editor_core::ids::PAINTER_BRUSH_STROKE_APPLY,
         ph2d_editor_core::ids::PAINTER_BRUSH_STROKE_APPLY_KEEP,

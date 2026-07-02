@@ -39,7 +39,7 @@ pub struct ModelSnapshot {
     pub images: BTreeMap<RtLayerId, LayerImage>,
     pub canvas_rgba: Arc<Vec<u8>>,
     pub selection: BTreeSet<RtLayerId>,
-    /// The open on-canvas shape editor (Curve / Circle / Polygon), captured so a structural undo/redo
+    /// The open on-canvas shape editor (Curve / Ellipse / Polygon), captured so a structural undo/redo
     /// restores the live overlay TOGETHER with the pixels — the two can never desync. `None` = no shape
     /// open (a layer op, or a committed/cancelled shape).
     pub shape: Option<Box<ShapeEditState>>,
@@ -61,7 +61,7 @@ pub struct ModelSnapshot {
 #[derive(Clone, Debug, PartialEq)]
 pub enum ShapeEditState {
     Curve(CurveState),
-    Circle(CircleState),
+    Ellipse(EllipseState),
     Polygon(PolygonState),
 }
 
@@ -81,9 +81,9 @@ pub struct CurveState {
     pub stabilized: [f32; 2],
 }
 
-/// Editable Circle (ellipse) state (see `tool::paint::circle::CircleEditor`).
+/// Editable Ellipse state (see `tool::paint::ellipse::EllipseEditor`).
 #[derive(Clone, Debug, PartialEq)]
-pub struct CircleState {
+pub struct EllipseState {
     pub center: [f32; 2],
     pub u: [f32; 2],
     pub rx: f32,

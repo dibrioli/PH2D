@@ -168,7 +168,7 @@ pub fn render_color_stamp_mask(
 /// else the falloff) is the coverage, and — when `strength_alpha` ([`crate::RampAlphaMode::Strength`]) —
 /// the ramp's alpha scales coverage. Scale-invariant (View Grain + a static silhouette), so the whole
 /// grain×ramp colour bakes ONCE and scale-blits, instead of resampling the Grain + ramp per pixel per dab
-/// (the slow path for the Line/Curve/Circle/Polygon fills). `shape_tone_lut` remaps the silhouette tone
+/// (the slow path for the Line/Curve/Ellipse/Polygon fills). `shape_tone_lut` remaps the silhouette tone
 /// (Shape ramp B&W on). Premultiplied RGBA. Deterministic (HR-5).
 #[must_use]
 pub fn render_ramp_color_stamp(

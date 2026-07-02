@@ -2068,17 +2068,17 @@ fn edit_button_converts_circle_into_an_editable_curve() {
     use ph2d_editor_core::ids as core_ids;
     use ph2d_editor_core::tool::{PanelEvent, Tool};
     use ph2d_painter_brush::StrokeMethod;
-    // The Edit (E) button turns an open Circle into an editable Bézier curve: the circle editor closes, a
+    // The Edit (E) button turns an open Ellipse into an editable Bézier curve: the circle editor closes, a
     // curve editor opens (with the closing anchor so it reads closed), and the method switches to Curve so
     // pointers route to the curve editor (Enio 2026-06-27).
     let mut t = white_canvas(64, 3.0);
-    t.paint.brush.stroke_method = StrokeMethod::Circle;
+    t.paint.brush.stroke_method = StrokeMethod::Ellipse;
     t.on_canvas_pointer(cp([32.0, 32.0], PointerPhase::Down));
     t.on_canvas_pointer(cp([52.0, 32.0], PointerPhase::Move)); // radius 20
     t.on_canvas_pointer(cp([52.0, 32.0], PointerPhase::Up));
-    assert!(t.circle_overlay().is_some(), "a circle editor is open");
+    assert!(t.ellipse_overlay().is_some(), "a circle editor is open");
     t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_BRUSH_STROKE_EDIT));
-    assert!(t.circle_overlay().is_none(), "the circle editor closed");
+    assert!(t.ellipse_overlay().is_none(), "the circle editor closed");
     let ov = t.curve_overlay().expect("a curve editor opened");
     assert_eq!(
         t.brush_settings().stroke_method,
@@ -2112,7 +2112,7 @@ fn edit_after_offset_bakes_first_so_the_converted_circle_is_not_deformed() {
     // the offset on top (double offset → deformed curve). Now convert bakes the offset first: the slider
     // resets to 0.5 and the converted anchors sit at the OFFSET (effective) radius, evenly around the centre.
     let mut t = white_canvas(96, 3.0);
-    t.paint.brush.stroke_method = StrokeMethod::Circle;
+    t.paint.brush.stroke_method = StrokeMethod::Ellipse;
     t.on_canvas_pointer(cp([48.0, 48.0], PointerPhase::Down));
     t.on_canvas_pointer(cp([68.0, 48.0], PointerPhase::Move)); // radius 20
     t.on_canvas_pointer(cp([68.0, 48.0], PointerPhase::Up));
@@ -2243,7 +2243,7 @@ fn free_hand_paints_and_leaves_an_editable_curve() {
 #[test]
 fn per_layer_color_fill_method_uses_canvas_base_and_self_clears() {
     use ph2d_painter_brush::{Dab, StrokeMethod};
-    // Fill methods (Line/Curve/Circle/Polygon) take the no-snapshot / self-clearing per-layer path: the
+    // Fill methods (Line/Curve/Ellipse/Polygon) take the no-snapshot / self-clearing per-layer path: the
     // canvas is the recomposite base (the drag preview restores it to the pre-shape each move) and the
     // maps self-clear, so there's no per-move full-canvas clone + N-map re-allocation (the FPS fix). Two
     // full layers (red bottom, green top) → green on top; re-stamping the identical fill onto the same
@@ -3547,11 +3547,11 @@ fn curve_undo_walks_edits_then_undoes_the_creation() {
     );
 }
 
-/// A `PainterTool` set to the Circle method on a 128² white canvas, with a known grab tolerance so
+/// A `PainterTool` set to the Ellipse method on a 128² white canvas, with a known grab tolerance so
 /// the handle positions are predictable.
 fn circle_tool() -> PainterTool {
     let mut t = white_canvas(128, 3.0);
-    t.paint.brush.stroke_method = StrokeMethod::Circle;
+    t.paint.brush.stroke_method = StrokeMethod::Ellipse;
     t.set_shape_grab_tol_px(6.0); // gap = 6 * 3 = 18 px below the rotate handle
     t
 }
@@ -3570,7 +3570,7 @@ fn interleaved_shape_edits_and_bakes_undo_in_reverse_order() {
     // the ellipse's rx (right-handle distance from centre) — deterministic, no pixel flakiness.
     let mut t = circle_tool();
     let rx = |t: &PainterTool| -> f32 {
-        let o = t.circle_overlay().expect("ring open");
+        let o = t.ellipse_overlay().expect("ring open");
         (o.handles[0][0] - o.handles[5][0]).abs()
     };
     draw_circle(&mut t, 64.0, 64.0, 20.0); // entry 1: creation, rx = 20
@@ -3580,13 +3580,13 @@ fn interleaved_shape_edits_and_bakes_undo_in_reverse_order() {
     t.on_canvas_pointer(cp([94.0, 64.0], PointerPhase::Move));
     t.on_canvas_pointer(cp([94.0, 64.0], PointerPhase::Up)); // entry 2: edit rx 20 → 30
     assert!((rx(&t) - 30.0).abs() < 0.5, "edit A grew rx to 30");
-    assert!(t.circle_commit_keep()); // entry 3: bake (editor kept open)
+    assert!(t.ellipse_commit_keep()); // entry 3: bake (editor kept open)
     // Edit B: drag the right handle 94 → 104 (rx 30 → 40).
     t.on_canvas_pointer(cp([94.0, 64.0], PointerPhase::Down));
     t.on_canvas_pointer(cp([104.0, 64.0], PointerPhase::Move));
     t.on_canvas_pointer(cp([104.0, 64.0], PointerPhase::Up)); // entry 4: edit rx 30 → 40
     assert!((rx(&t) - 40.0).abs() < 0.5, "edit B grew rx to 40");
-    assert!(t.circle_commit_keep()); // entry 5: bake
+    assert!(t.ellipse_commit_keep()); // entry 5: bake
 
     assert!(t.undo_last()); // un-bake 5 — editor stays at rx=40
     assert!((rx(&t) - 40.0).abs() < 0.5, "un-bake keeps rx=40");
@@ -3598,7 +3598,7 @@ fn interleaved_shape_edits_and_bakes_undo_in_reverse_order() {
     assert!((rx(&t) - 20.0).abs() < 0.5, "edit A undone → rx=20");
     assert!(t.undo_last()); // undo creation
     assert!(
-        t.circle_overlay().is_none(),
+        t.ellipse_overlay().is_none(),
         "creation undone last → no ring"
     );
 }
@@ -3607,11 +3607,11 @@ fn interleaved_shape_edits_and_bakes_undo_in_reverse_order() {
 fn circle_draw_creates_an_editable_ellipse_outline() {
     let mut t = circle_tool();
     t.on_canvas_pointer(cp([64.0, 64.0], PointerPhase::Down));
-    assert!(t.circle_overlay().is_none(), "no handles while drawing");
+    assert!(t.ellipse_overlay().is_none(), "no handles while drawing");
     t.on_canvas_pointer(cp([84.0, 64.0], PointerPhase::Move)); // radius 20
     t.on_canvas_pointer(cp([84.0, 64.0], PointerPhase::Up));
 
-    let ov = t.circle_overlay().expect("editing after release");
+    let ov = t.ellipse_overlay().expect("editing after release");
     assert!(ov.perimeter.len() >= 16, "perimeter is a dense polyline");
     // right handle at (84,64), centre at (64,64).
     assert!(
@@ -3637,7 +3637,7 @@ fn circle_axis_handle_resizes_one_axis_into_an_ellipse() {
     t.on_canvas_pointer(cp([84.0, 64.0], PointerPhase::Down));
     t.on_canvas_pointer(cp([94.0, 64.0], PointerPhase::Move));
     t.on_canvas_pointer(cp([94.0, 64.0], PointerPhase::Up));
-    let ov = t.circle_overlay().unwrap();
+    let ov = t.ellipse_overlay().unwrap();
     assert!(
         (ov.handles[0][0] - 94.0).abs() < 0.5,
         "rx grew: {:?}",
@@ -3655,7 +3655,7 @@ fn circle_axis_handle_resizes_one_axis_into_an_ellipse() {
 fn circle_rotate_handle_spins_the_ellipse() {
     let mut t = circle_tool();
     draw_circle(&mut t, 64.0, 64.0, 20.0);
-    let rot = t.circle_overlay().unwrap().handles[4];
+    let rot = t.ellipse_overlay().unwrap().handles[4];
     // rotate handle sits gap (18) above the top (64, 64+20) → (64, 102).
     assert!(
         (rot[0] - 64.0).abs() < 0.5 && (rot[1] - 102.0).abs() < 0.5,
@@ -3666,7 +3666,7 @@ fn circle_rotate_handle_spins_the_ellipse() {
     t.on_canvas_pointer(cp([rot[0], rot[1]], PointerPhase::Down));
     t.on_canvas_pointer(cp([94.0, 64.0], PointerPhase::Move));
     t.on_canvas_pointer(cp([94.0, 64.0], PointerPhase::Up));
-    let ov = t.circle_overlay().unwrap();
+    let ov = t.ellipse_overlay().unwrap();
     assert!(
         (ov.handles[0][0] - 64.0).abs() < 1.0 && (ov.handles[0][1] - 44.0).abs() < 1.0,
         "the ellipse rotated 90°: right handle now below centre: {:?}",
@@ -3683,18 +3683,18 @@ fn circle_centre_handle_moves_the_ellipse() {
     t.on_canvas_pointer(cp([70.0, 72.0], PointerPhase::Move));
     t.on_canvas_pointer(cp([70.0, 72.0], PointerPhase::Up));
     assert_eq!(
-        t.circle_overlay().unwrap().handles[5],
+        t.ellipse_overlay().unwrap().handles[5],
         [70.0, 72.0],
         "centre moved"
     );
 }
 
 #[test]
-fn circle_commit_unbakes_then_undo_removes_the_ring() {
+fn ellipse_commit_unbakes_then_undo_removes_the_ring() {
     let mut t = circle_tool();
     draw_circle(&mut t, 64.0, 64.0, 20.0);
-    assert!(t.circle_commit());
-    assert!(t.circle_overlay().is_none(), "committed → no session");
+    assert!(t.ellipse_commit());
+    assert!(t.ellipse_overlay().is_none(), "committed → no session");
     assert_eq!(
         px(&t, 128, 84, 64),
         [0, 0, 0, 255],
@@ -3703,7 +3703,7 @@ fn circle_commit_unbakes_then_undo_removes_the_ring() {
     // Unified timeline: undo of Apply reopens the ring (un-bake); a further undo removes its creation.
     assert!(t.undo_last());
     assert!(
-        t.circle_overlay().is_some(),
+        t.ellipse_overlay().is_some(),
         "undo of Apply reopens the ring (un-bake)"
     );
     while t.undo_last() {}
@@ -3712,16 +3712,16 @@ fn circle_commit_unbakes_then_undo_removes_the_ring() {
         [255, 255, 255, 255],
         "undoing every step reaches the pristine canvas"
     );
-    assert!(t.circle_overlay().is_none(), "fully undone → no session");
+    assert!(t.ellipse_overlay().is_none(), "fully undone → no session");
 }
 
 #[test]
-fn circle_cancel_reverts_all_pixels() {
+fn ellipse_cancel_reverts_all_pixels() {
     let mut t = circle_tool();
     draw_circle(&mut t, 64.0, 64.0, 20.0);
     assert_eq!(px(&t, 128, 84, 64), [0, 0, 0, 255], "ring painted");
     assert!(t.cancel_open_shape(), "a shape was open");
-    assert!(t.circle_overlay().is_none());
+    assert!(t.ellipse_overlay().is_none());
     assert_eq!(
         px(&t, 128, 84, 64),
         [255, 255, 255, 255],
@@ -3733,13 +3733,13 @@ fn circle_cancel_reverts_all_pixels() {
 fn circle_undo_removes_the_creation_not_applies_it() {
     let mut t = circle_tool();
     draw_circle(&mut t, 64.0, 64.0, 20.0);
-    assert!(t.circle_overlay().is_some(), "handles visible");
+    assert!(t.ellipse_overlay().is_some(), "handles visible");
     assert_eq!(px(&t, 128, 84, 64), [0, 0, 0, 255], "ring painted");
     // Undo must NOT apply the circle (Enio 2026-06-28): it undoes the CREATION — the ring is gone, the
     // canvas reverts, the handles close. Folds into the same undo sequence as the paint flow.
     assert!(t.undo_last(), "undo removes the just-created circle");
     assert!(
-        t.circle_overlay().is_none(),
+        t.ellipse_overlay().is_none(),
         "the circle is gone (creation undone)"
     );
     assert_eq!(
@@ -3750,14 +3750,14 @@ fn circle_undo_removes_the_creation_not_applies_it() {
 }
 
 #[test]
-fn circle_discarded_when_switching_method_away() {
+fn ellipse_discarded_when_switching_method_away() {
     let mut t = circle_tool();
     draw_circle(&mut t, 64.0, 64.0, 20.0);
-    assert!(t.circle_overlay().is_some());
+    assert!(t.ellipse_overlay().is_some());
     t.set_brush_stroke_method(StrokeMethod::Space.to_u8());
     assert!(
-        t.circle_overlay().is_none(),
-        "leaving Circle discarded the session"
+        t.ellipse_overlay().is_none(),
+        "leaving Ellipse discarded the session"
     );
     assert_eq!(
         px(&t, 128, 84, 64),
@@ -5489,17 +5489,17 @@ fn curve_apply_and_keep_keeps_the_exact_curve_and_recentres_the_slider() {
 
 #[test]
 fn apply_and_keep_folds_offset_into_accumulator_and_continues_outward() {
-    // The accumulator in action on the Circle (offset = radii): Apply & Keep keeps the displayed ring put,
+    // The accumulator in action on the Ellipse (offset = radii): Apply & Keep keeps the displayed ring put,
     // re-centres the slider, and a further offset CONTINUES from the kept position (not the base radius).
     let mut t = circle_tool();
     draw_circle(&mut t, 64.0, 64.0, 20.0); // base radius 20
     let disp_r = |t: &PainterTool| -> f32 {
-        let o = t.circle_overlay().expect("ring open");
+        let o = t.ellipse_overlay().expect("ring open");
         (o.handles[0][0] - o.handles[5][0]).abs()
     };
     t.set_brush_offset(0.55); // +10px → displayed radius 30
     assert!((disp_r(&t) - 30.0).abs() < 0.5, "offset shows radius 30");
-    assert!(t.circle_commit_keep());
+    assert!(t.ellipse_commit_keep());
     assert!(
         (disp_r(&t) - 30.0).abs() < 0.5,
         "Apply & Keep did NOT move the shape (still 30)"
@@ -5561,10 +5561,10 @@ fn undo_sequence_open_shape_before_paint_history() {
     assert_eq!(px(&t, 128, 84, 64), [0, 0, 0, 255], "first ring on canvas");
     // A second circle, still authoring.
     draw_circle(&mut t, 64.0, 64.0, 10.0);
-    assert!(t.circle_overlay().is_some(), "second circle open");
+    assert!(t.ellipse_overlay().is_some(), "second circle open");
     // Undo #1 removes the OPEN second circle (creation); the committed first ring is untouched.
     assert!(t.undo_last(), "undo the open second circle");
-    assert!(t.circle_overlay().is_none(), "second circle gone");
+    assert!(t.ellipse_overlay().is_none(), "second circle gone");
     assert_eq!(
         px(&t, 128, 84, 64),
         [0, 0, 0, 255],
@@ -5573,14 +5573,14 @@ fn undo_sequence_open_shape_before_paint_history() {
     // Now the first ring's own steps unwind in order: its Apply un-bakes (reopens the ring), then its
     // creation reverts to pristine — AFTER the open shape, one unified sequence.
     assert!(t.undo_last(), "un-bake the first ring (its Apply)");
-    assert!(t.circle_overlay().is_some(), "first ring reopened");
+    assert!(t.ellipse_overlay().is_some(), "first ring reopened");
     assert!(t.undo_last(), "undo the first ring's creation");
     assert_eq!(
         px(&t, 128, 84, 64),
         [255, 255, 255, 255],
         "first ring undone last"
     );
-    assert!(t.circle_overlay().is_none(), "first ring fully gone");
+    assert!(t.ellipse_overlay().is_none(), "first ring fully gone");
 }
 
 // ============================================================================
@@ -5738,7 +5738,7 @@ fn coalesces_canvas_motion_is_true_only_for_restore_based_fill_methods() {
     let mut t = white_canvas(8, 2.0);
     let cases = [
         (StrokeMethod::Curve, true),
-        (StrokeMethod::Circle, true),
+        (StrokeMethod::Ellipse, true),
         (StrokeMethod::Polygon, true),
         (StrokeMethod::Line, true),
         (StrokeMethod::Anchored, true),

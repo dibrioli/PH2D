@@ -302,11 +302,11 @@ impl PainterTool {
         }
     }
 
-    /// Re-fill the open shape editor's painted preview (Curve / Free Hand / Circle / Polygon) with the
+    /// Re-fill the open shape editor's painted preview (Curve / Free Hand / Ellipse / Polygon) with the
     /// current brush — each refill no-ops unless its editor is open + editing, so at most one runs.
     pub(crate) fn refill_open_shape(&mut self) {
         self.curve_refill();
-        self.circle_refill();
+        self.ellipse_refill();
         self.polygon_refill();
     }
 
@@ -437,7 +437,7 @@ impl PainterTool {
                 return true;
             }
             if *id == core_ids::PAINTER_BRUSH_STROKE_EDIT {
-                self.convert_open_shape_to_curve(); // Circle/Polygon → editable Bézier curve
+                self.convert_open_shape_to_curve(); // Ellipse/Polygon → editable Bézier curve
                 return true;
             }
             if *id == core_ids::PAINTER_BRUSH_STROKE_SIMPLIFY {

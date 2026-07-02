@@ -1,4 +1,4 @@
-//! The Stroke-Method chrome shown for the open-shape methods (Curve / Free Hand / Circle / Polygon): the
+//! The Stroke-Method chrome shown for the open-shape methods (Curve / Free Hand / Ellipse / Polygon): the
 //! **Simplify** button, the **Apply / Apply & Keep / Edit / Delete** row, and the **Offset** card (the
 //! offset slider + a **Trim** self-intersection checkbox). Split from `paint_stroke` for the workspace
 //! LOC cap. Each control forwards a `Click` / `SetValue` the tool routes in `route_brush_dab_event`;
@@ -18,7 +18,7 @@ use ph2d_tokens::{ColorToken, ROW_H_PX, Radius, Spacing, StrokeToken, TypeToken}
 use ph2d_tool_painter::BrushSettings;
 
 /// Paint the Apply / Apply & Keep + trailing square-icon cluster (optional **E**dit, then **✕** Delete)
-/// row, returning the next `y`. `with_edit` adds the E button (Circle/Polygon → editable curve), left of
+/// row, returning the next `y`. `with_edit` adds the E button (Ellipse/Polygon → editable curve), left of
 /// ✕. The two text buttons share the row; when the panel is too narrow for two readable text buttons,
 /// "Apply & Keep" wraps below and "Apply" keeps the icon cluster beside it so Edit/Delete stay reachable.
 pub(super) fn paint_apply_row(

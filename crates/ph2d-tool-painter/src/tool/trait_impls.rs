@@ -29,7 +29,7 @@ impl Tool for PainterTool {
 
     fn on_deactivate(&mut self) {
         self.params.takeover_active = false;
-        // Drop any in-progress shape session (Curve/Circle) before the canvas is torn down (no
+        // Drop any in-progress shape session (Curve/Ellipse) before the canvas is torn down (no
         // restore — the working buffer is cleared next).
         self.discard_open_shape();
         // Persistence (Enio 2026-06-24): with unbaked edits, KEEP the canvas + flag a deferred bake so

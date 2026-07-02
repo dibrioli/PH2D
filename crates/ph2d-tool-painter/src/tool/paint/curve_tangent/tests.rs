@@ -143,7 +143,7 @@ fn build_tangents_drops_the_unused_endpoint_side() {
 #[test]
 fn closed_loop_uses_both_sides_of_the_endpoint_anchors() {
     // On a CLOSED curve the first anchor's in-handle and the last anchor's out-handle wrap around the
-    // loop, so they ARE usable — both must show + hit (the converted Circle/Polygon seam bug).
+    // loop, so they ARE usable — both must show + hit (the converted Ellipse/Polygon seam bug).
     let p = vec![[0.0, 0.0], [100.0, 0.0], [200.0, 0.0]];
     let handles = vec![
         [[0.0, 30.0], [40.0, 0.0]], // anchor 0 (first): in pulled → used when closed

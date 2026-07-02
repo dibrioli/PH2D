@@ -149,7 +149,7 @@ impl PainterTool {
         }
         // Incremental freehand methods (Space/Dots/Airbrush) paint straight onto the canvas, accumulating
         // across batches → snapshot the canvas ONCE per stroke as the recomposite base, and keep the maps.
-        // The fill methods (Line/Curve/Circle/Polygon) restore the canvas to the pre-shape each move (so the
+        // The fill methods (Line/Curve/Ellipse/Polygon) restore the canvas to the pre-shape each move (so the
         // canvas IS the base — no snapshot) and re-stamp the WHOLE shape; the maps are reused + self-cleared
         // in the recomposite, NOT reset+cloned+re-allocated per move — that per-move full-canvas clone + N
         // allocations + full-bbox recomposite was the fill FPS drop (Enio 2026-06-27).

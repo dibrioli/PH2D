@@ -1,7 +1,7 @@
-//! The **Circle** stroke method's geometry: a transcendental-free ellipse perimeter generator and
+//! The **Ellipse** stroke method's geometry: a transcendental-free ellipse perimeter generator and
 //! the spaced-dab fill along it. A child module of [`super`] (`stroke`) so it keeps private access
 //! to `Stroke`'s walk internals; split out for the workspace LOC cap. See
-//! `stroke_method::StrokeMethod::Circle` — a PH2D shape extension (editable ellipse: 4 axis handles
+//! `stroke_method::StrokeMethod::Ellipse` — a PH2D shape extension (editable ellipse: 4 axis handles
 //! + rotation).
 //!
 //! ## Why no `sin`/`cos`

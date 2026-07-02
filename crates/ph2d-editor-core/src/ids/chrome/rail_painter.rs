@@ -36,7 +36,7 @@ pub const PAINTER_RAIL_INPAINT: NodeId = hash_node_id("painter_rail.inpaint");
 /// activating it puts the rail in "draw a shape" mode using the current shape.
 pub const PAINTER_RAIL_SHAPES: NodeId = hash_node_id("painter_rail.shapes");
 
-// ── Shape options (the Shapes flyout: Freehand · Line · Curve · Circle ·
+// ── Shape options (the Shapes flyout: Freehand · Line · Curve · Ellipse ·
 //    Polygon) — a sub-radio; the Pressed one is the current shape ───────────
 /// Free Hand stroke shape.
 pub const PAINTER_RAIL_SHAPE_FREEHAND: NodeId = hash_node_id("painter_rail.shape_freehand");
@@ -44,8 +44,8 @@ pub const PAINTER_RAIL_SHAPE_FREEHAND: NodeId = hash_node_id("painter_rail.shape
 pub const PAINTER_RAIL_SHAPE_LINE: NodeId = hash_node_id("painter_rail.shape_line");
 /// Bézier Curve stroke shape.
 pub const PAINTER_RAIL_SHAPE_CURVE: NodeId = hash_node_id("painter_rail.shape_curve");
-/// Circle / ellipse stroke shape.
-pub const PAINTER_RAIL_SHAPE_CIRCLE: NodeId = hash_node_id("painter_rail.shape_circle");
+/// Ellipse stroke shape.
+pub const PAINTER_RAIL_SHAPE_ELLIPSE: NodeId = hash_node_id("painter_rail.shape_ellipse");
 /// Polygon stroke shape.
 pub const PAINTER_RAIL_SHAPE_POLYGON: NodeId = hash_node_id("painter_rail.shape_polygon");
 
@@ -76,6 +76,6 @@ pub const PAINTER_RAIL_SHAPE_IDS: [NodeId; 5] = [
     PAINTER_RAIL_SHAPE_FREEHAND,
     PAINTER_RAIL_SHAPE_LINE,
     PAINTER_RAIL_SHAPE_CURVE,
-    PAINTER_RAIL_SHAPE_CIRCLE,
+    PAINTER_RAIL_SHAPE_ELLIPSE,
     PAINTER_RAIL_SHAPE_POLYGON,
 ];

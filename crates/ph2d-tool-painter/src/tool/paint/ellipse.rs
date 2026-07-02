@@ -1,4 +1,4 @@
-//! The **Circle** stroke method — an editable ellipse on the canvas (PH2D shape extension;
+//! The **Ellipse** stroke method — an editable ellipse on the canvas (PH2D shape extension;
 //! `docs/Painter/`). A submodule of [`super`] (`paint`) so it shares `PaintState`'s private access
 //! and the canvas helpers (save/restore/stamp); split out for the same LOC-cap reason as
 //! [`super::curve`] and [`super::brush_settings`].
@@ -35,10 +35,10 @@ const H_BOTTOM: u8 = 3;
 const H_ROTATE: u8 = 4;
 const H_CENTER: u8 = 5;
 
-/// In-progress Circle session: the ellipse `(center, u, rx, ry)` plus the current grab + the
+/// In-progress Ellipse session: the ellipse `(center, u, rx, ry)` plus the current grab + the
 /// draw-vs-edit phase. Held in [`PaintState::circle`]; `None` when idle. `u` is the local x-axis
 /// unit vector (orientation); the y-axis is its left perpendicular.
-pub(super) struct CircleEditor {
+pub(super) struct EllipseEditor {
     center: [f32; 2],
     u: [f32; 2],
     rx: f32,
@@ -48,9 +48,9 @@ pub(super) struct CircleEditor {
     seed: u64,
 }
 
-/// A read-only snapshot of the Circle editor for the shell's on-canvas overlay (the outline + the
+/// A read-only snapshot of the Ellipse editor for the shell's on-canvas overlay (the outline + the
 /// six handles). `None` until the radius drag is released (the handles appear with the ellipse).
-pub struct CircleOverlay {
+pub struct EllipseOverlay {
     /// The ellipse outline (image-space px) — drawn as the guide; matches the painted dabs.
     pub perimeter: Vec<[f32; 2]>,
     /// Handle positions (image-space px): `[right, top, left, bottom, rotate, center]`.
@@ -60,24 +60,24 @@ pub struct CircleOverlay {
 }
 
 impl PainterTool {
-    /// Route a canvas pointer event through the Circle editor (the painter calls this instead of the
-    /// generic paint path while the method is [`StrokeMethod::Circle`]). Returns `true` when consumed.
-    pub(super) fn circle_pointer(&mut self, ev: CanvasPointer) -> bool {
+    /// Route a canvas pointer event through the Ellipse editor (the painter calls this instead of the
+    /// generic paint path while the method is [`StrokeMethod::Ellipse`]). Returns `true` when consumed.
+    pub(super) fn ellipse_pointer(&mut self, ev: CanvasPointer) -> bool {
         match ev.phase {
-            PointerPhase::Down => self.circle_down(ev.pos),
-            PointerPhase::Move => self.circle_move(ev.pos),
-            PointerPhase::Up => self.circle_up(ev.pos),
+            PointerPhase::Down => self.ellipse_down(ev.pos),
+            PointerPhase::Move => self.ellipse_move(ev.pos),
+            PointerPhase::Up => self.ellipse_up(ev.pos),
             PointerPhase::Hover => false,
         }
     }
 
     /// Pointer-down: start a session (begin the centre-out radius drag) when idle; otherwise grab the
     /// handle under the cursor.
-    fn circle_down(&mut self, pos: [f32; 2]) -> bool {
+    fn ellipse_down(&mut self, pos: [f32; 2]) -> bool {
         let tol = self.paint.shape_grab_tol_px;
         self.flush_shape_txn(); // close any coalesced Offset drag as its own undo entry first
-        self.bake_circle_offset(); // an edit gesture locks in any live Offset (hit-test = displayed handles)
-        if self.paint.circle.is_none() {
+        self.bake_ellipse_offset(); // an edit gesture locks in any live Offset (hit-test = displayed handles)
+        if self.paint.ellipse.is_none() {
             // No session → open the creation txn (`before` = no shape) + begin the centre-out radius drag.
             self.paint.stroke_undo = Some(self.snapshot_model());
             self.paint.drag_preview = None;
@@ -86,7 +86,7 @@ impl PainterTool {
             self.paint.shape_offset_norm = 0.5;
             let seed = self.paint.seed;
             self.paint.seed = self.paint.seed.wrapping_add(1);
-            self.paint.circle = Some(CircleEditor {
+            self.paint.ellipse = Some(EllipseEditor {
                 center: pos,
                 u: [1.0, 0.0],
                 rx: 0.0,
@@ -97,19 +97,19 @@ impl PainterTool {
             });
             return true;
         }
-        if !self.paint.circle.as_ref().is_some_and(|ed| ed.editing) {
+        if !self.paint.ellipse.as_ref().is_some_and(|ed| ed.editing) {
             return true; // mid radius-drag — ignore extra Downs
         }
-        self.begin_shape_txn(); // bracket this reshape gesture; circle_up drops it if nothing changed
-        let ed = self.paint.circle.as_mut().expect("circle present");
-        let handles = circle_handles(ed.center, ed.u, ed.rx, ed.ry, tol * ROTATE_GAP_FACTOR);
-        ed.grabbed = circle_hit(&handles, pos, tol);
+        self.begin_shape_txn(); // bracket this reshape gesture; ellipse_up drops it if nothing changed
+        let ed = self.paint.ellipse.as_mut().expect("circle present");
+        let handles = ellipse_handles(ed.center, ed.u, ed.rx, ed.ry, tol * ROTATE_GAP_FACTOR);
+        ed.grabbed = ellipse_hit(&handles, pos, tol);
         true
     }
 
     /// Pointer-move: drag the grabbed handle (edit) or stretch the radius (draw).
-    fn circle_move(&mut self, pos: [f32; 2]) -> bool {
-        let Some(ed) = self.paint.circle.as_mut() else {
+    fn ellipse_move(&mut self, pos: [f32; 2]) -> bool {
+        let Some(ed) = self.paint.ellipse.as_mut() else {
             return false;
         };
         if !ed.editing {
@@ -117,20 +117,20 @@ impl PainterTool {
             let r = dist(ed.center, pos).max(MIN_AXIS_PX);
             ed.rx = r;
             ed.ry = r;
-            self.circle_refill();
+            self.ellipse_refill();
             return true;
         }
         let Some(g) = ed.grabbed else {
             return true; // editing but nothing grabbed — ignore stray moves
         };
         apply_handle_drag(ed, g, pos);
-        self.circle_refill();
+        self.ellipse_refill();
         true
     }
 
     /// Pointer-up: release a grab (edit), or finalize the radius drag into the editable ellipse.
-    fn circle_up(&mut self, pos: [f32; 2]) -> bool {
-        let Some(ed) = self.paint.circle.as_mut() else {
+    fn ellipse_up(&mut self, pos: [f32; 2]) -> bool {
+        let Some(ed) = self.paint.ellipse.as_mut() else {
             return false;
         };
         if ed.editing {
@@ -142,20 +142,20 @@ impl PainterTool {
         ed.rx = r;
         ed.ry = r;
         ed.editing = true;
-        self.circle_refill();
+        self.ellipse_refill();
         self.commit_shape_txn(); // the radius drag is the ellipse's CREATION → one undo entry
         true
     }
 
     /// Commit the ellipse (Enter): keep the painted outline + push one undo entry. Returns `true`
     /// when a committable session was open (the shell consumes Enter only then).
-    pub fn circle_commit(&mut self) -> bool {
-        if !self.paint.circle.as_ref().is_some_and(|ed| ed.editing) {
+    pub fn ellipse_commit(&mut self) -> bool {
+        if !self.paint.ellipse.as_ref().is_some_and(|ed| ed.editing) {
             return false; // none open / mid radius-drag — nothing to bake yet
         }
         self.flush_shape_txn(); // close any coalesced Offset drag as its own entry first
         let before = self.capture_shape_model(); // the open ellipse (for undo of the Apply)
-        self.paint.circle = None;
+        self.paint.ellipse = None;
         self.commit_drag_preview(); // drop the restore record → the painted ellipse stays baked
         self.paint.shape_offset_base_px = 0.0; // the offset baked into the painted dabs → reset the Offset
         self.paint.shape_offset_norm = 0.5;
@@ -168,8 +168,8 @@ impl PainterTool {
     /// "Apply & Keep" button). The bake is ONE undo entry whose `after` keeps the editor open over the baked
     /// pixels — so it interleaves with the surrounding shape edits on the unified timeline. See
     /// [`PainterTool::curve_commit_keep`].
-    pub fn circle_commit_keep(&mut self) -> bool {
-        if !self.paint.circle.as_ref().is_some_and(|ed| ed.editing) {
+    pub fn ellipse_commit_keep(&mut self) -> bool {
+        if !self.paint.ellipse.as_ref().is_some_and(|ed| ed.editing) {
             return false;
         }
         self.flush_shape_txn();
@@ -184,11 +184,11 @@ impl PainterTool {
 
     /// Cancel the ellipse (Esc): revert the painted preview to the pristine pixels and discard the
     /// session without an undo entry. Returns `true` when a session was open.
-    pub fn circle_cancel(&mut self) -> bool {
-        if self.paint.circle.is_none() {
+    pub fn ellipse_cancel(&mut self) -> bool {
+        if self.paint.ellipse.is_none() {
             return false;
         }
-        self.paint.circle = None;
+        self.paint.ellipse = None;
         if let Some(prev) = self.paint.drag_preview.take() {
             self.restore_region(&prev.rect, &prev.pixels);
         }
@@ -198,10 +198,10 @@ impl PainterTool {
         true
     }
 
-    /// Drop the Circle session without touching pixels — for teardown where the canvas is replaced
+    /// Drop the Ellipse session without touching pixels — for teardown where the canvas is replaced
     /// or cleared anyway (fresh source / tool deactivate), so a restore would read a stale buffer.
-    pub(crate) fn circle_discard(&mut self) {
-        self.paint.circle = None;
+    pub(crate) fn ellipse_discard(&mut self) {
+        self.paint.ellipse = None;
     }
 
     /// Convert the editing ellipse to an editable **closed** Bézier curve (anchors + `[in, out]` handles):
@@ -210,8 +210,8 @@ impl PainterTool {
     /// artist can then drag the points/handles. `None` unless editing. Drives the panel's **Edit** (E) button
     /// via [`PainterTool::convert_open_shape_to_curve`].
     #[allow(clippy::type_complexity)]
-    pub(super) fn circle_to_curve(&self) -> Option<(Vec<[f32; 2]>, Vec<[[f32; 2]; 2]>)> {
-        let ed = self.paint.circle.as_ref()?;
+    pub(super) fn ellipse_to_curve(&self) -> Option<(Vec<[f32; 2]>, Vec<[[f32; 2]; 2]>)> {
+        let ed = self.paint.ellipse.as_ref()?;
         if !ed.editing {
             return None;
         }
@@ -240,22 +240,22 @@ impl PainterTool {
         Some((points, handles))
     }
 
-    /// Snapshot the Circle editor for the shell overlay — `None` until editing (the handles appear
+    /// Snapshot the Ellipse editor for the shell overlay — `None` until editing (the handles appear
     /// once the radius drag is released).
     #[must_use]
-    pub fn circle_overlay(&self) -> Option<CircleOverlay> {
-        let ed = self.paint.circle.as_ref()?;
+    pub fn ellipse_overlay(&self) -> Option<EllipseOverlay> {
+        let ed = self.paint.ellipse.as_ref()?;
         if !ed.editing {
             return None;
         }
         // Display the OFFSET (grown/shrunk) radii, so the outline + handles + paint move together.
-        let (erx, ery) = self.circle_offset_radii(ed.rx, ed.ry);
+        let (erx, ery) = self.ellipse_offset_radii(ed.rx, ed.ry);
         let mut perimeter = Vec::new();
         ellipse_perimeter(ed.center, ed.u, erx, ery, &mut perimeter);
         let gap = self.paint.shape_grab_tol_px * ROTATE_GAP_FACTOR;
-        Some(CircleOverlay {
+        Some(EllipseOverlay {
             perimeter,
-            handles: circle_handles(ed.center, ed.u, erx, ery, gap),
+            handles: ellipse_handles(ed.center, ed.u, erx, ery, gap),
             grabbed: ed.grabbed,
         })
     }
@@ -264,17 +264,17 @@ impl PainterTool {
 
     /// The Offset slider applied to the ellipse radii: `(rx, ry) + offset_px`, clamped to a paintable
     /// minimum. The single source for the fill, the overlay, and the bake.
-    fn circle_offset_radii(&self, rx: f32, ry: f32) -> (f32, f32) {
+    fn ellipse_offset_radii(&self, rx: f32, ry: f32) -> (f32, f32) {
         let off = self.shape_offset_px();
         ((rx + off).max(0.5), (ry + off).max(0.5))
     }
 
     /// **Materialise** the EFFECTIVE offset into the ellipse radii + zero the offset — see
     /// [`Self::bake_curve_offset`]. Called before an edit gesture; Apply & Keep accumulates instead.
-    pub(super) fn bake_circle_offset(&mut self) {
+    pub(super) fn bake_ellipse_offset(&mut self) {
         let off = self.shape_offset_px();
         if off != 0.0
-            && let Some(ed) = self.paint.circle.as_mut()
+            && let Some(ed) = self.paint.ellipse.as_mut()
             && ed.editing
         {
             ed.rx = (ed.rx + off).max(0.5);
@@ -286,12 +286,12 @@ impl PainterTool {
 
     /// Re-fill the painted preview from the editor's current ellipse (a fresh `Stroke` per fill, so
     /// the preview always reflects the live brush spec and is deterministic for identical params).
-    pub(super) fn circle_refill(&mut self) {
-        let Some(ed) = self.paint.circle.as_ref() else {
+    pub(super) fn ellipse_refill(&mut self) {
+        let Some(ed) = self.paint.ellipse.as_ref() else {
             return;
         };
         let (center, u, rx, ry, seed) = (ed.center, ed.u, ed.rx, ed.ry, ed.seed);
-        let (erx, ery) = self.circle_offset_radii(rx, ry);
+        let (erx, ery) = self.ellipse_offset_radii(rx, ry);
         let mut stroke = Stroke::new(self.paint.brush, self.paint.dynamics, seed);
         let mut dabs = std::mem::take(&mut self.paint.dabs);
         stroke.fill_ellipse_preview(center, u, erx, ery, &mut dabs);
@@ -300,10 +300,10 @@ impl PainterTool {
     }
 }
 
-impl CircleEditor {
+impl EllipseEditor {
     /// Capture the ellipse for the unified undo timeline; the transient `grabbed` is not stored.
-    pub(super) fn to_state(&self) -> crate::undo::CircleState {
-        crate::undo::CircleState {
+    pub(super) fn to_state(&self) -> crate::undo::EllipseState {
+        crate::undo::EllipseState {
             center: self.center,
             u: self.u,
             rx: self.rx,
@@ -314,8 +314,8 @@ impl CircleEditor {
     }
 
     /// Rebuild the editor from a restored snapshot (grab idle) — the inverse of [`Self::to_state`].
-    pub(super) fn from_state(s: crate::undo::CircleState) -> Self {
-        CircleEditor {
+    pub(super) fn from_state(s: crate::undo::EllipseState) -> Self {
+        EllipseEditor {
             center: s.center,
             u: s.u,
             rx: s.rx,
@@ -330,7 +330,7 @@ impl CircleEditor {
 /// Apply a handle drag to the ellipse: the axis handles resize their axis (projection onto it,
 /// symmetric about the centre), the rotation handle re-orients (orientation = direction to the
 /// cursor), the centre handle moves it. Transcendental-free (dot / `unit_or`).
-fn apply_handle_drag(ed: &mut CircleEditor, handle: u8, pos: [f32; 2]) {
+fn apply_handle_drag(ed: &mut EllipseEditor, handle: u8, pos: [f32; 2]) {
     let v = [-ed.u[1], ed.u[0]]; // local y-axis (left perpendicular of u)
     let rel = [pos[0] - ed.center[0], pos[1] - ed.center[1]];
     match handle {
@@ -350,7 +350,7 @@ fn apply_handle_drag(ed: &mut CircleEditor, handle: u8, pos: [f32; 2]) {
 
 /// Handle positions for the ellipse `ed`, `[right, top, left, bottom, rotate, center]`. `gap` is how
 /// far (image px) the rotation handle sits beyond the top.
-fn circle_handles(c: [f32; 2], u: [f32; 2], rx: f32, ry: f32, gap: f32) -> [[f32; 2]; 6] {
+fn ellipse_handles(c: [f32; 2], u: [f32; 2], rx: f32, ry: f32, gap: f32) -> [[f32; 2]; 6] {
     let v = [-u[1], u[0]];
     [
         [c[0] + u[0] * rx, c[1] + u[1] * rx],                 // right
@@ -364,7 +364,7 @@ fn circle_handles(c: [f32; 2], u: [f32; 2], rx: f32, ry: f32, gap: f32) -> [[f32
 
 /// Index of the handle within `tol` px of `pos`. Axis + rotate handles (0..=4) are tested first so a
 /// nearby axis handle wins over the centre on a small ellipse; the centre (5) is the fallback.
-fn circle_hit(handles: &[[f32; 2]; 6], pos: [f32; 2], tol: f32) -> Option<u8> {
+fn ellipse_hit(handles: &[[f32; 2]; 6], pos: [f32; 2], tol: f32) -> Option<u8> {
     let tol2 = tol * tol;
     let mut best = None;
     let mut bestd = tol2;

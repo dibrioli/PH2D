@@ -100,7 +100,7 @@ pub(super) fn rebuild(
 /// Auto (chordal-smooth) tangent handles for every anchor. An OPEN curve defers to the brush crate's
 /// no-overshoot chordal fit (single-armed endpoints); a CLOSED loop uses the cardinal-spline tangent with
 /// WRAPPING neighbours, so the seam anchors get BOTH arms (the open fit would collapse the first in / last
-/// out → the one-armed seam handle Enio hit on a converted Polygon / Circle). Transcendental-free.
+/// out → the one-armed seam handle Enio hit on a converted Polygon / Ellipse). Transcendental-free.
 pub(super) fn auto_handles(points: &[[f32; 2]], closed: bool) -> Vec<[[f32; 2]; 2]> {
     if !closed {
         return ph2d_painter_brush::auto_handles(points);

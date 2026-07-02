@@ -1450,7 +1450,7 @@ fn paint_left_rail_painter_mode_smoke() {
     );
     // The flyout's shape chips are hit-registered while open.
     assert!(
-        hits.rect_for(crate::ids::PAINTER_RAIL_SHAPE_CIRCLE)
+        hits.rect_for(crate::ids::PAINTER_RAIL_SHAPE_ELLIPSE)
             .is_some()
     );
     // The painter Brush tool chip is hit-registered in painter mode.

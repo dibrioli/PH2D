@@ -67,7 +67,7 @@ pub(super) fn mask_size_for(radius: f32) -> u32 {
 }
 
 /// Size the per-stroke coverage mask for the Accumulate-OFF (Strength < 1) cap. The FILL methods
-/// (Line/Curve/Circle/Polygon/Free Hand) re-stamp the WHOLE stroke each call (drag-preview restore), so
+/// (Line/Curve/Ellipse/Polygon/Free Hand) re-stamp the WHOLE stroke each call (drag-preview restore), so
 /// the cap must start FRESH each time — else the mask is already AT the cap from the prior re-stamp and
 /// the new one adds nothing, so a Strength change (which re-fills) ERASES the stroke. The incremental
 /// methods (Space/Dots/Airbrush) accumulate across batches (resize only zero-fills the new tail). A free

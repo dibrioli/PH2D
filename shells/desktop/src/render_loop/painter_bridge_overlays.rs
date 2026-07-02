@@ -40,7 +40,7 @@ pub(super) fn draw_overlays(
         vector_scene,
         cursor,
     );
-    draw_circle_overlay(painter, hero, sim, camera, window_size, vector_scene);
+    draw_ellipse_overlay(painter, hero, sim, camera, window_size, vector_scene);
     draw_polygon_overlay(painter, hero, sim, camera, window_size, vector_scene);
     draw_stencil_overlay(
         painter,
@@ -290,7 +290,7 @@ fn draw_brush_ring(
 }
 
 #[allow(clippy::too_many_arguments)]
-fn draw_circle_overlay(
+fn draw_ellipse_overlay(
     painter: &PainterTool,
     hero: &HeroScreen,
     sim: &SimWorld,
@@ -299,10 +299,10 @@ fn draw_circle_overlay(
     vector_scene: &mut VectorScene,
 ) {
     // ── Circle editor overlay (ellipse outline + 4 axis handles + rotate + centre) ──
-    // Same footprint mapping as the curve overlay; the handle indices match `CircleOverlay`:
+    // Same footprint mapping as the curve overlay; the handle indices match `EllipseOverlay`:
     // 0 right, 1 top, 2 left, 3 bottom, 4 rotate, 5 centre.
     if let Some(bits) = hero.gizmo.selection
-        && let Some(overlay) = painter.circle_overlay()
+        && let Some(overlay) = painter.ellipse_overlay()
     {
         let (iw, ih) = painter.canvas_size();
         let entity = ph2d_ecs::Entity::from_bits(bits);

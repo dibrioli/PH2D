@@ -44,9 +44,9 @@ mod tiling;
 pub use curve::CurveOverlay;
 pub use curve_gizmo::TransformGizmo;
 pub use curve_tangent::TangentHandles;
-/// The Circle stroke method's on-canvas ellipse editor (same submodule rationale as `curve`).
-mod circle;
-pub use circle::CircleOverlay;
+/// The Ellipse stroke method's on-canvas ellipse editor (same submodule rationale as `curve`).
+mod ellipse;
+pub use ellipse::EllipseOverlay;
 /// The Polygon stroke method's on-canvas regular-N-gon editor (same submodule rationale).
 mod polygon;
 pub use polygon::PolygonOverlay;
@@ -77,7 +77,7 @@ mod stamp_route;
 /// `PaintState::default` body — split out for the workspace file-LOC cap (struct stays in `paint.rs`).
 mod state_default;
 
-/// Default control-handle grab radius in image px (the Curve and Circle editors share one tolerance),
+/// Default control-handle grab radius in image px (the Curve and Ellipse editors share one tolerance),
 /// until the shell forwards a screen-scaled value via [`PainterTool::set_shape_grab_tol_px`].
 const DEFAULT_SHAPE_GRAB_TOL_PX: f32 = 8.0;
 
@@ -191,8 +191,8 @@ pub(crate) struct PaintState {
     scale_uniform: bool,
     /// In-progress Curve session (the on-canvas point editor); `None` when idle. [`curve`].
     curve: Option<curve::CurveEditor>,
-    /// In-progress Circle session (the on-canvas ellipse editor); `None` when idle. [`circle`].
-    circle: Option<circle::CircleEditor>,
+    /// In-progress Ellipse session (the on-canvas ellipse editor); `None` when idle. [`circle`].
+    ellipse: Option<ellipse::EllipseEditor>,
     /// In-progress Polygon session (the on-canvas regular-N-gon editor); `None` when idle. [`polygon`].
     polygon: Option<polygon::PolygonEditor>,
     /// Control-handle grab radius (image px) for the shape editors — shell forwards a footprint-scaled value.
@@ -421,28 +421,28 @@ impl PainterTool {
 
     /// Set the shape editors' control-handle grab radius in image px (the shell forwards a
     /// screen-constant value scaled by the sprite footprint, so the hit targets stay the same size at
-    /// any zoom). Shared by Curve and Circle.
+    /// any zoom). Shared by Curve and Ellipse.
     pub fn set_shape_grab_tol_px(&mut self, px: f32) {
         self.paint.shape_grab_tol_px = px.max(1.0);
     }
 
-    /// Commit whichever on-canvas shape editor (Curve / Circle / Polygon) is open — the verb behind
+    /// Commit whichever on-canvas shape editor (Curve / Ellipse / Polygon) is open — the verb behind
     /// Enter and the first undo. Returns `true` when one was committed. At most one is ever open.
     pub fn commit_open_shape(&mut self) -> bool {
-        self.curve_commit() || self.circle_commit() || self.polygon_commit()
+        self.curve_commit() || self.ellipse_commit() || self.polygon_commit()
     }
 
     /// Cancel whichever shape editor is open (revert its preview) — the verb behind Esc and leaving
     /// the shape's method. Returns `true` when one was cancelled.
     pub fn cancel_open_shape(&mut self) -> bool {
-        self.curve_cancel() || self.circle_cancel() || self.polygon_cancel()
+        self.curve_cancel() || self.ellipse_cancel() || self.polygon_cancel()
     }
 
     /// Drop any open shape editor without touching pixels — for teardown where the canvas is replaced
     /// or cleared (fresh source / deactivate / non-paintable layer).
     pub(crate) fn discard_open_shape(&mut self) {
         self.curve_discard();
-        self.circle_discard();
+        self.ellipse_discard();
         self.polygon_discard();
     }
 
@@ -561,14 +561,14 @@ impl CanvasPaintTool for PainterTool {
             self.close_stroke();
             return false;
         }
-        // Curve and Circle are persistent on-canvas shape editors (draw → edit → commit), not a
+        // Curve and Ellipse are persistent on-canvas shape editors (draw → edit → commit), not a
         // single press→release stroke — route every canvas event through them instead of the generic
         // path.
         match self.paint.brush.stroke_method {
             // Free Hand shares the Curve editor (its draw phase captures a freehand path, then it's an
             // ordinary editable curve), so it routes through `curve_pointer` too.
             StrokeMethod::Curve | StrokeMethod::FreeHand => return self.curve_pointer(ev),
-            StrokeMethod::Circle => return self.circle_pointer(ev),
+            StrokeMethod::Ellipse => return self.ellipse_pointer(ev),
             StrokeMethod::Polygon => return self.polygon_pointer(ev),
             _ => {}
         }

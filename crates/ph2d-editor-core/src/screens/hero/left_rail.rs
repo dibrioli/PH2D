@@ -72,10 +72,10 @@ const PAINTER_SHAPES: [(NodeId, &str, IconId, &str); 5] = [
         "CURVE",
     ),
     (
-        ids::PAINTER_RAIL_SHAPE_CIRCLE,
-        "Circle",
+        ids::PAINTER_RAIL_SHAPE_ELLIPSE,
+        "Ellipse",
         IconId::Circle,
-        "CIRC",
+        "ELLI",
     ),
     (
         ids::PAINTER_RAIL_SHAPE_POLYGON,

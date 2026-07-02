@@ -44,7 +44,7 @@ impl PainterTool {
     /// Commit whichever on-canvas shape editor is open but KEEP it editable (the **Apply & Keep** button)
     /// — the keep-mode aggregator paired with [`PainterTool::commit_open_shape`]. At most one is open.
     pub fn commit_open_shape_keep(&mut self) -> bool {
-        self.curve_commit_keep() || self.circle_commit_keep() || self.polygon_commit_keep()
+        self.curve_commit_keep() || self.ellipse_commit_keep() || self.polygon_commit_keep()
     }
 
     /// **Simplify** the editable curve (the Simplify button): re-fit it to a clean minimal control polygon

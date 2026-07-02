@@ -1,7 +1,7 @@
 //! Brush-section dropdown **option-id decoders**: map a clicked popover option's [`NodeId`] back to
 //! its wire `u8`. Split from `event.rs` to keep that file under the workspace LOC cap. Each iterates
 //! its option factory over the full discriminant range — the range MUST include the last value
-//! (`0..=N`), or the final option's click is silently dropped (the historic Circle = 7 bug). The
+//! (`0..=N`), or the final option's click is silently dropped (the historic Ellipse = 7 bug). The
 //! round-trip is locked by `event/tests.rs`.
 
 use ph2d_a11y::NodeId;
@@ -22,7 +22,7 @@ pub(super) fn decode_brush_falloff_option(id: NodeId) -> Option<u8> {
 }
 
 /// Decode a Stroke-Method popover option id → its `StrokeMethod` wire `u8` (the 10 methods: the 7
-/// Blender ones `0..=6` + the PH2D `Circle` (7) + `Polygon` (8) + `FreeHand` (9) extensions).
+/// Blender ones `0..=6` + the PH2D `Ellipse` (7) + `Polygon` (8) + `FreeHand` (9) extensions).
 pub(super) fn decode_stroke_method_option(id: NodeId) -> Option<u8> {
     (0..10).find(|&m| core_ids::painter_brush_stroke_method_option_id(m) == id)
 }

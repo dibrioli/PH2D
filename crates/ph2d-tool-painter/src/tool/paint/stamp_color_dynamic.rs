@@ -20,7 +20,7 @@ impl PainterTool {
     /// dirty region recomposites in z-order (higher above ALL lower across the stroke) and the whole tip
     /// blends onto the canvas ONCE via `brush.blend` — same z-order + blend + opacity as the cached path.
     ///
-    /// Like the cached path, the **fill** methods (Line/Curve/Circle/Polygon) use the canvas itself as the
+    /// Like the cached path, the **fill** methods (Line/Curve/Ellipse/Polygon) use the canvas itself as the
     /// recomposite base (no per-move snapshot) + self-clear the maps in the recomposite, so they don't pay
     /// a full-canvas clone + N-map re-allocation every pointer move (the fill FPS drop, Enio 2026-06-27).
     pub(super) fn stamp_dabs_per_layer_dynamic(

@@ -28,7 +28,7 @@ impl PainterTool {
     }
 
     /// Force the NEXT preview drain to FULLY recompose + FULLY upload (drop the dirty-rect fast lane), so
-    /// a new SHAPE session (Curve / Free Hand / Circle / Polygon "no session yet" creation block) starts
+    /// a new SHAPE session (Curve / Free Hand / Ellipse / Polygon "no session yet" creation block) starts
     /// from a byte-correct preview base instead of patching a possibly-stale `composited` cache — the rare
     /// early-session artifact where a sliver of the shape appears then vanishes, only on the first few uses
     /// (`HANDOFF_per_layer_color_perf_artifacts` §1.R FOLLOW-UP). Unlike [`Self::invalidate_composite`] it

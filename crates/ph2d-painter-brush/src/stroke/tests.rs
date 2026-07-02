@@ -943,7 +943,7 @@ fn ellipse_perimeter_respects_axes_and_orientation() {
 #[test]
 fn circle_fills_spaced_dabs_around_the_perimeter() {
     let spec = BrushSpec {
-        stroke_method: StrokeMethod::Circle,
+        stroke_method: StrokeMethod::Ellipse,
         ..straight_spec(6.0, 0.5)
     };
     let mut s = Stroke::new(spec, no_dynamics(), 1);
@@ -977,7 +977,7 @@ fn circle_fills_spaced_dabs_around_the_perimeter() {
 #[test]
 fn circle_preview_is_deterministic_per_fill() {
     let spec = BrushSpec {
-        stroke_method: StrokeMethod::Circle,
+        stroke_method: StrokeMethod::Ellipse,
         jitter: 0.5,
         ..straight_spec(6.0, 0.5)
     };
@@ -1004,7 +1004,7 @@ fn circle_preview_is_deterministic_per_fill() {
 #[test]
 fn circle_degenerate_axis_fills_nothing() {
     let spec = BrushSpec {
-        stroke_method: StrokeMethod::Circle,
+        stroke_method: StrokeMethod::Ellipse,
         ..straight_spec(6.0, 0.5)
     };
     let mut s = Stroke::new(spec, no_dynamics(), 1);

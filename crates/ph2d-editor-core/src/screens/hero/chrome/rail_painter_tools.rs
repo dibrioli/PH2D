@@ -161,9 +161,9 @@ mod tests {
         apply(&mut hero, WidgetEvent::Click(ids::PAINTER_RAIL_SHAPES));
         assert!(apply(
             &mut hero,
-            WidgetEvent::Click(ids::PAINTER_RAIL_SHAPE_CIRCLE)
+            WidgetEvent::Click(ids::PAINTER_RAIL_SHAPE_ELLIPSE)
         ));
-        assert!(pressed(&hero, ids::PAINTER_RAIL_SHAPE_CIRCLE));
+        assert!(pressed(&hero, ids::PAINTER_RAIL_SHAPE_ELLIPSE));
         assert!(!pressed(&hero, ids::PAINTER_RAIL_SHAPE_FREEHAND));
         assert!(pressed(&hero, ids::PAINTER_RAIL_SHAPES));
         assert!(!hero.store.painter_shapes_flyout_open());

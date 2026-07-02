@@ -17,9 +17,11 @@ const HANDLE_EDGE_FRAC: f32 = 0.4;
 /// Drag → amount sensitivity: `amount += (dx − dy)·SENS`, so a right/up drag grows the mod, left/down
 /// shrinks it (Enio 2026-07-02). `0.5` ⇒ a 2 px drag changes the amount by ~1 px.
 pub(super) const CORNER_DRAG_SENS: f32 = 0.5;
-/// Max fillet tangent / chamfer distance as a fraction of the SHORTER adjacent edge (so adjacent corners
-/// on a shared edge can't overrun each other too badly).
-const MAX_FRAC: f32 = 0.45;
+/// Max fillet tangent / chamfer distance as a fraction of the SHORTER adjacent edge. `1.0` = the CAD
+/// limit (Enio 2026-07-02): grow until the tangent / cut point reaches the nearest adjacent VERTEX, not
+/// an arbitrary earlier cap. (Two modded corners on a short shared edge can then overrun — a CAD-style
+/// user responsibility, as in real CAD apps.)
+const MAX_FRAC: f32 = 1.0;
 /// Fillet arc subdivision depth — `2^depth` segments (`3` → 8 segments / 9 points), plenty for a corner.
 const ARC_DEPTH: u32 = 3;
 /// Amounts below this (px) collapse the corner back to sharp (`None`).
@@ -144,7 +146,9 @@ pub(super) fn hit_handle(
     None
 }
 
-/// The max fillet-tangent / chamfer distance for corner `i`: [`MAX_FRAC`] of the shorter adjacent edge.
+/// The max fillet-tangent / chamfer distance for corner `i`: the distance to the NEAREST adjacent vertex
+/// ([`MAX_FRAC`] = 1.0 × the shorter adjacent edge) — the CAD limit, so the mod can grow until its
+/// tangent / cut point meets the nearest point.
 pub(super) fn max_amount(points: &[[f32; 2]], closed: bool, i: usize) -> f32 {
     let n = points.len();
     if corner_frame(points, closed, i).is_none() {
@@ -334,11 +338,34 @@ mod tests {
     }
 
     #[test]
-    fn max_amount_is_045_of_the_shorter_edge() {
-        // Corner 1 between a 10 px and a 30 px edge → max = 0.45 * 10 = 4.5.
+    fn max_amount_reaches_the_nearest_adjacent_vertex() {
+        // CAD limit: corner 1 between a 10 px and a 30 px edge → max = the shorter edge = 10 (the
+        // tangent / cut point may grow until it meets the nearest adjacent vertex).
         let pts = [[0.0, 0.0], [10.0, 0.0], [10.0, 30.0]];
         let m = max_amount(&pts, false, 1);
-        assert!((m - 4.5).abs() < 1e-3, "0.45*min(10,30)=4.5, got {m}");
+        assert!((m - 10.0).abs() < 1e-3, "min(10,30)=10, got {m}");
+    }
+
+    #[test]
+    fn a_fillet_at_the_full_limit_stays_tangent_and_finite() {
+        // At the max amount (tangent point reaching the neighbour) the arc must stay on its circle — no
+        // NaN / blow-up at the boundary.
+        let v = [10.0, 0.0];
+        let a = [-1.0, 0.0]; // toward (0,0), 10 px away
+        let b = [0.0, 1.0]; // toward (10,10)+
+        let arc = fillet_points(v, a, b, 10.0); // t = the full shorter edge
+        assert!(arc.len() >= 5, "arc subdivided");
+        assert_eq!(
+            arc[0],
+            [0.0, 0.0],
+            "P0 tangent = the neighbour vertex at the limit"
+        );
+        for p in &arc {
+            assert!(
+                p[0].is_finite() && p[1].is_finite(),
+                "finite arc point {p:?}"
+            );
+        }
     }
 
     #[test]

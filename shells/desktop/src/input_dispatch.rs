@@ -460,6 +460,14 @@ impl App {
             {
                 return;
             }
+            // On-canvas Line polyline: right-click ENDS point-creation (Blender/CAD
+            // convention). No-op when no Line is being drawn (falls through to the
+            // context menu).
+            (ph2d_host::PointerButton::Secondary, PointerKind::Down)
+                if self.painter_line_finish_points() =>
+            {
+                return;
+            }
             (ph2d_host::PointerButton::Secondary, PointerKind::Up) => {
                 // End any erase drag (no-op when not erasing).
                 self.end_protect_paint();

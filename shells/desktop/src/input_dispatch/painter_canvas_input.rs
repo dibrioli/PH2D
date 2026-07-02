@@ -491,6 +491,17 @@ impl App {
         painter.commit_open_shape()
     }
 
+    /// Secondary (right-click) Down while a Line polyline is still being drawn: END point-creation and
+    /// enter the editing phase (Blender/CAD convention — right-click finishes the chain). Returns `true`
+    /// (consuming, so no context menu opens) iff it ended an in-progress Line. No-op otherwise, so a
+    /// right-click falls through to the context menu when there's no open Line.
+    pub(crate) fn painter_line_finish_points(&mut self) -> bool {
+        let Some(painter) = self.painter_tool_mut() else {
+            return false;
+        };
+        painter.line_finish_points()
+    }
+
     /// Esc: discard the in-progress shape (revert the preview). Returns `true` (consuming) iff a
     /// session was open.
     pub(crate) fn painter_shape_cancel(&mut self) -> bool {

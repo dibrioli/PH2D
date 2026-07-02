@@ -6063,3 +6063,23 @@ fn line_tap_within_slop_on_last_point_ends_creation_not_moves() {
         "the point did not move (a tap, not a drag)"
     );
 }
+
+#[test]
+fn line_finish_points_ends_creation_as_one_undo_step() {
+    // Right-click (shell) → `line_finish_points`: end point-creation, enter editing, one undo step.
+    let mut t = line_tool();
+    click(&mut t, 16.0, 16.0);
+    click(&mut t, 48.0, 16.0);
+    assert!(!t.line_overlay().unwrap().editing, "still drawing");
+    assert!(t.line_finish_points(), "right-click ended point-creation");
+    assert!(
+        t.line_overlay().unwrap().editing,
+        "now in the editing phase"
+    );
+    assert!(!t.line_finish_points(), "no-op once already editing");
+    assert!(t.undo_last());
+    assert!(
+        !t.line_overlay().unwrap().editing,
+        "undo re-entered the drawing phase"
+    );
+}

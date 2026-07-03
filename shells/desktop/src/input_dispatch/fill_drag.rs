@@ -299,18 +299,27 @@ impl App {
         FILL_MODAL_DRAG.with(|c| c.set(None));
     }
 
-    /// Open the rich Blender colour picker, seeded with + targeting the paint colour.
+    /// Open the rich Blender colour picker, seeded with + targeting the paint colour. The seed is read
+    /// DIRECTLY from the active Painter's brush colour (the source of truth) — NOT the widget thumb, which is
+    /// only synced while the brush panel paints with the picker closed and so goes stale (grey / black / old)
+    /// in Selection mode or when that panel isn't drawn. Brush = Fill = picker are always the same colour.
     fn open_paint_color_picker(&mut self) {
         let Some(gfx) = self.gfx.as_mut() else {
             return;
         };
+        let seed = gfx
+            .tools
+            .active_mut()
+            .and_then(|t| t.as_any_mut().downcast_mut::<PainterTool>())
+            .map(|p| {
+                let [r, g, b] = p.brush_color_srgb8();
+                [r, g, b, 0xFF]
+            })
+            .unwrap_or([0x88, 0x88, 0x88, 0xFF]); // LITERAL-COLOR-OK: neutral default when the Painter is absent
         let Some(hero) = gfx.hero_screen.as_mut() else {
             return;
         };
         let store = &mut hero.store;
-        let seed = store
-            .widget_color(ids::PAINTER_COLOR_THUMB)
-            .unwrap_or([0x88, 0x88, 0x88, 0xFF]); // LITERAL-COLOR-OK: neutral default before a colour is set
         store.set_widget_color(ids::PAINTER_COLOR_THUMB, seed);
         store.set_picker_target(Some(ids::PAINTER_COLOR_THUMB));
         store.set_blender_value(

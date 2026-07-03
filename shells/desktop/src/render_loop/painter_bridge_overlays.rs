@@ -73,7 +73,7 @@ pub(super) fn draw_overlays(
         cursor,
     );
     draw_symmetry_overlay(painter, hero, sim, camera, window_size, vector_scene);
-    super::painter_bridge_fill_overlay::draw_fill_cursor(hero, vector_scene, cursor);
+    super::painter_bridge_fill_overlay::draw_fill_cursor(painter, vector_scene, cursor);
 }
 
 /// Sync the painter's shape-editor grab tolerance to the LIVE camera, once per frame BEFORE the overlays

@@ -363,6 +363,19 @@ impl PainterTool {
         }
     }
 
+    /// The brush paint colour as straight sRGB bytes (`[r, g, b]`). The single source of truth for the paint
+    /// colour — used to seed the C&F colour picker + Fill cursor directly, so the picker never falls back to a
+    /// stale widget-thumb value (grey / black). Brush = Fill = picker are always this colour (Enio 2026-07-03).
+    #[must_use]
+    pub fn brush_color_srgb8(&self) -> [u8; 3] {
+        let c = self.paint.brush.color;
+        [
+            (c[0].clamp(0.0, 1.0) * 255.0 + 0.5) as u8,
+            (c[1].clamp(0.0, 1.0) * 255.0 + 0.5) as u8,
+            (c[2].clamp(0.0, 1.0) * 255.0 + 0.5) as u8,
+        ]
+    }
+
     /// Set the brush blend mode from a wire discriminant (out-of-range → Mix).
     pub fn set_brush_blend(&mut self, mode: u8) {
         self.paint.brush.blend = BrushBlend::from_u8(mode);

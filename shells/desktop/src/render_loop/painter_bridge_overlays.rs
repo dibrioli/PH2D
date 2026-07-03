@@ -358,10 +358,10 @@ fn draw_polygon_overlay(
             }
             for (i, &h) in overlay.handles.iter().enumerate() {
                 let p = map(h);
-                if i == 4 || i == 5 {
-                    super::painter_bridge_gizmo::circle_handle(scene, p, &pal);
-                } else {
-                    super::painter_bridge_gizmo::square_handle(scene, p, &pal);
+                match i {
+                    4 => super::painter_bridge_gizmo::circle_handle(scene, p, &pal), // rotate
+                    5 => super::painter_bridge_gizmo::diamond_handle(scene, p, &pal), // sides (distinct)
+                    _ => super::painter_bridge_gizmo::square_handle(scene, p, &pal),
                 }
             }
         }

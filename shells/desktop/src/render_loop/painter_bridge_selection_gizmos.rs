@@ -62,5 +62,8 @@ pub(super) fn draw_selection_gizmos(
         for &h in &g.circle_handles {
             super::painter_bridge_gizmo::circle_handle(scene, map(h), &pal);
         }
+        for &h in &g.diamond_handles {
+            super::painter_bridge_gizmo::diamond_handle(scene, map(h), &pal);
+        }
     }
 }

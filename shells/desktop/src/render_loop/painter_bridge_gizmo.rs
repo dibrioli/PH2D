@@ -153,6 +153,31 @@ pub(super) fn draw_transform_gizmo(
     }
 }
 
+/// A **sides** handle — a diamond (rotated square: Accent fill + BorderEmph 1 px outline), so the polygon's
+/// side-count handle reads distinctly from the round rotate handle.
+pub(super) fn diamond_handle(scene: &mut Scene, p: Point, pal: &GizmoPalette) {
+    let mut path = BezPath::new();
+    path.move_to(Point::new(p.x, p.y - HANDLE_HALF)); // top
+    path.line_to(Point::new(p.x + HANDLE_HALF, p.y)); // right
+    path.line_to(Point::new(p.x, p.y + HANDLE_HALF)); // bottom
+    path.line_to(Point::new(p.x - HANDLE_HALF, p.y)); // left
+    path.close_path();
+    scene.fill(
+        Fill::NonZero,
+        Affine::IDENTITY,
+        &Brush::Solid(pal.fill),
+        None,
+        &path,
+    );
+    scene.stroke(
+        &Stroke::new(HANDLE_STROKE),
+        Affine::IDENTITY,
+        &Brush::Solid(pal.stroke),
+        None,
+        &path,
+    );
+}
+
 /// A rotate-cue handle — a circle (Accent fill + BorderEmph 1 px outline), same radius as the square.
 pub(super) fn circle_handle(scene: &mut Scene, p: Point, pal: &GizmoPalette) {
     let c = Circle::new(p, HANDLE_HALF);

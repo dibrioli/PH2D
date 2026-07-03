@@ -7238,8 +7238,13 @@ fn selection_rect_uses_the_polygon_gizmo() {
     let g = &t.selection_gizmos()[0];
     assert_eq!(
         g.circle_handles.len(),
-        2,
-        "the polygon gizmo exposes rotate + sides handles"
+        1,
+        "the polygon gizmo has a round rotate handle"
+    );
+    assert_eq!(
+        g.diamond_handles.len(),
+        1,
+        "the polygon gizmo's SIDES handle is a distinct diamond"
     );
 }
 

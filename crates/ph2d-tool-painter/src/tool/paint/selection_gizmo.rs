@@ -32,13 +32,14 @@ const H_CENTER_ELLIPSE: u8 = 5;
 const H_CENTER_POLYGON: u8 = 6;
 
 /// A drawable selection gizmo for one shape (image-space px). The shell strokes `outline` as the boundary,
-/// draws `square_handles` as themed rounded squares (resize / anchor points) and `circle_handles` as themed
-/// circles (rotate / sides cues).
+/// draws `square_handles` as themed rounded squares (resize / anchor points), `circle_handles` as circles
+/// (rotate cue) and `diamond_handles` as diamonds (the polygon **sides** handle — distinct from rotate).
 pub struct SelectionGizmoView {
     pub outline: Vec<[f32; 2]>,
     pub closed: bool,
     pub square_handles: Vec<[f32; 2]>,
     pub circle_handles: Vec<[f32; 2]>,
+    pub diamond_handles: Vec<[f32; 2]>,
 }
 
 impl PainterTool {
@@ -68,6 +69,7 @@ impl PainterTool {
                         closed: true,
                         square_handles: vec![h[0], h[1], h[2], h[3], h[5]],
                         circle_handles: vec![h[4]],
+                        diamond_handles: Vec::new(),
                     });
                 }
                 SelectionShape::Polygon {
@@ -83,7 +85,8 @@ impl PainterTool {
                         outline: perim,
                         closed: true,
                         square_handles: vec![h[0], h[1], h[2], h[3], h[6]],
-                        circle_handles: vec![h[4], h[5]],
+                        circle_handles: vec![h[4]],  // rotate
+                        diamond_handles: vec![h[5]], // sides (distinct from rotate)
                     });
                 }
                 SelectionShape::Freehand {
@@ -95,6 +98,7 @@ impl PainterTool {
                         closed: true,
                         square_handles: points.clone(),
                         circle_handles: Vec::new(),
+                        diamond_handles: Vec::new(),
                     });
                 }
                 SelectionShape::Raster { .. } => {}

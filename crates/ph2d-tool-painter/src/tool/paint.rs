@@ -17,6 +17,7 @@ use ph2d_painter_brush::{
 mod brush_image;
 /// Brush + Stroke-section parameter snapshot & setters (shares `PaintState`'s private brush access).
 mod brush_settings;
+mod brush_texture_settings; // Grain-texture / Stencil / Dab setters; split from `brush_settings` (LOC cap)
 /// The Curve stroke method's on-canvas point editor (submodule, as `brush_settings`).
 mod curve;
 mod curve_commit; // Apply / Apply & Keep commit verbs for the Curve editor; split from `curve`
@@ -88,6 +89,18 @@ mod inpaint; // content-aware heal brush (mark defect + reconstruct on pen-up); 
 mod mask;
 /// The **Selection** tool (ADR-0103) — the document-wide selection mask, undo integration + paint gate. [LOC split].
 mod selection;
+/// Selection creation input: mode/op/threshold setters + on-canvas pointer gestures (marquee/lasso/flood). [LOC split].
+mod selection_input;
+/// Selection rasterization: shape → coverage buffers, boolean combine, Feather (box-blur). [LOC split].
+mod selection_raster;
+/// Selection on-canvas overlay (marching ants + hatching) + panel event routing. [LOC split].
+mod selection_overlay;
+/// Selection **Edit** mode (ADR-0103 Am.2): per-shape NATIVE gizmos + Convert-to-Curve. [LOC split].
+mod selection_edit;
+/// Selection **shape list** model (ADR-0103 Am.2): the `Vec<SelectionShape>` source of truth + compositing. [LOC split].
+mod selection_shapes;
+/// Selection **actions** (Wave 5): Select layer contents / Color Fill / Copy-Paste / Save-Load slots. [LOC split].
+mod selection_actions;
 /// Selection **Edit** mode contour tracing (mask → editable boundary polyline); split for the LOC cap.
 mod selection_trace;
 mod ramp;
@@ -100,6 +113,7 @@ mod snapshot;
 mod stamp_cache;
 /// The stamp route dispatcher (Shape + Grain → which of the 4 stamp paths); split for the LOC cap.
 mod stamp_route;
+mod stamp_preview; // interactive drag-preview stamping (restore+re-stamp, dirty-rect); split for the LOC cap
 /// `PaintState::default` body — split out for the workspace file-LOC cap (struct stays in `paint.rs`).
 mod state_default;
 
@@ -192,7 +206,7 @@ pub(crate) struct PaintState {
     selection_threshold: f32,
     /// The in-progress selection gesture (marquee rubber-band / lasso path / Automatic seed); `None` when
     /// idle. The overlay (Wave 4) draws from this; the mask is rasterized on pen-up. [`selection`].
-    selection_drag: Option<selection::SelectionDrag>,
+    selection_drag: Option<selection_input::SelectionDrag>,
     /// The selection mask at the START of the current gesture — Add/Remove combine against this base. [`selection`].
     selection_base: Arc<Vec<u8>>,
     /// The CRISP selection mask (pre-Feather), the accumulator the Feather slider re-derives from — so
@@ -211,6 +225,17 @@ pub(crate) struct PaintState {
     /// editor + sets `stroke_method = Curve`), restored on exit so leaving edit-mode never leaves the
     /// Brush drawing curves. `None` when not in edit-mode. [`selection`].
     selection_edit_saved_method: Option<StrokeMethod>,
+    /// **Selection shape list** (ADR-0103 Am.2) — the parametric source of truth (Ellipse / Rect / Freehand /
+    /// Raster + a boolean op each). The `selection_mask` is a DERIVED cache: rasterize + composite this list.
+    /// Editing a native gizmo rewrites one entry and recomposites. Empty = no parametric history (raw mask
+    /// only, e.g. after a legacy op). [`selection_shapes`].
+    selection_shapes: Vec<selection_shapes::SelectionEntry>,
+    /// The list index of the shape currently being edited by a native gizmo in Edit mode; `None` when not
+    /// editing a specific entry (a traced-fallback curve, or idle). [`selection_edit`].
+    selection_edit_idx: Option<usize>,
+    /// In-memory **Copy** buffer of selected pixels (source bbox + coverage-premultiplied RGBA), consumed by
+    /// **Paste**. `None` until a Copy. [`selection_actions`].
+    selection_clipboard: Option<selection_actions::SelectionClip>,
     /// **Composite Brush**: run Brush + Smear + Blur together (a Brush-tool upgrade, panel checkbox). See [`composite`].
     composite_enabled: bool,
     /// The composite layer stack in display order (index 0 = layer 1 = top; run bottom→top per dab). [`composite`].
@@ -532,84 +557,8 @@ impl PainterTool {
     }
 
     // The open-shape aggregators (commit / cancel / discard / commit-keep) live in `curve_commit`.
-
-    /// Flag `rect` dirty for the next GPU preview upload + bump the active layer's pixel epoch.
-    fn mark_dirty(&mut self, rect: Region) {
-        self.dirty_rect = Some(self.dirty_rect.map_or(rect, |acc| union_region(acc, rect)));
-        self.preview_dirty = true;
-        self.edited_since_bind = true; // unbaked work — the shell auto-persists on leave/deactivate
-        let active = self.layers.active();
-        self.bump_layer_pixels(active);
-    }
-
-    /// Stamp an interactive preview batch (Drag Dot / Anchored = 1 dab, Line = N): restore the
-    /// previous footprint's saved pixels, then save the pristine pixels under the new dabs' UNION
-    /// bbox and stamp there — so the moving preview leaves no trail. Pen-up: `commit_drag_preview`.
-    ///
-    /// The stamp goes through the full [`Self::stamp_dabs`] dispatcher (NOT the bare brush route), so a
-    /// **Composite Brush** runs all three layers here too. `stamp_dabs` tiles internally (so it takes
-    /// the UNtiled dabs); the save-region bbox is measured over the tiled set so it still covers the
-    /// wrapped copies (else the wrapped paint falls outside the restore region — a trail).
-    fn stamp_drag_preview(&mut self, dabs: &[Dab]) {
-        // In Selection **Edit** mode the Curve editor drives the SELECTION mask, not pixels — peel any
-        // leftover preview and paint nothing (ADR-0103 Am.1). The mask refill runs off the pointer path.
-        if self.paint.selection_edit_mode {
-            if let Some(prev) = self.paint.drag_preview.take() {
-                self.restore_region(&prev.rect, &prev.pixels);
-            }
-            return;
-        }
-        if let Some(prev) = self.paint.drag_preview.take() {
-            self.restore_region(&prev.rect, &prev.pixels);
-        }
-        // Coverage bbox over the wrapped Tiling copies (the stamp re-tiles them itself).
-        let coverage_storage;
-        let coverage: &[Dab] = if self.paint.tiling[0] || self.paint.tiling[1] {
-            coverage_storage = tiling::tiled_dabs(dabs, self.source_size, self.paint.tiling);
-            &coverage_storage
-        } else {
-            dabs
-        };
-        let bbox = coverage.iter().fold(None, |acc, d| {
-            match (acc, self.dab_bbox(d.center, d.radius_px)) {
-                (Some(a), Some(r)) => Some(union_region(a, r)),
-                (a, r) => a.or(r),
-            }
-        });
-        // Each preview frame re-stamps the WHOLE current batch onto the restored (pristine) canvas, so
-        // a Composite Brush's Smear layer must chain fresh within THIS batch — clear the cross-batch
-        // source (a Line's dabs then smear from the anchor; a single Drag-Dot dab simply has no source).
-        self.paint.last_smear_pos = None;
-        match bbox {
-            Some(rect) => {
-                let pixels = self.save_region(&rect);
-                self.stamp_dabs(dabs);
-                self.paint.drag_preview = Some(DragPreview { rect, pixels });
-            }
-            None => self.stamp_dabs(dabs),
-        }
-    }
-
-    /// Commit the interactive preview: drop the restore record so the last batch stays painted.
-    /// Safe to call for any method (a no-op unless a preview is live).
-    fn commit_drag_preview(&mut self) {
-        self.paint.drag_preview = None;
-    }
-
-    /// Stamp the dabs a `begin`/`extend` produced. Drag Dot, Anchored AND Line are interactive
-    /// preview methods: route their batch through the restore+re-stamp path so the moving/resizing/
-    /// growing preview leaves no trail and `commit_drag_preview` keeps the last on pen-up. Every other
-    /// method uses the cumulative stamp.
-    fn stamp_stroke_dabs(&mut self, dabs: &[Dab]) {
-        if matches!(
-            self.paint.brush.stroke_method,
-            StrokeMethod::DragDot | StrokeMethod::Anchored | StrokeMethod::Line
-        ) {
-            self.stamp_drag_preview(dabs);
-        } else {
-            self.stamp_dabs(dabs);
-        }
-    }
+    // The drag-preview stamping (mark_dirty / stamp_drag_preview / commit / stamp_stroke_dabs) lives in
+    // the sibling `stamp_preview` module (workspace file-LOC cap).
 }
 
 /// Smallest region covering both `a` and `b`.

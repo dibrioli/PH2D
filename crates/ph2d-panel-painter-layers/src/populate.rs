@@ -177,6 +177,7 @@ pub fn populate(store: &mut WidgetStore) {
         ph2d_editor_core::ids::PAINTER_SEL_FEATHER_SLIDER,
         ph2d_editor_core::ids::PAINTER_SEL_THRESHOLD_SLIDER,
         ph2d_editor_core::ids::PAINTER_SEL_OPACITY_SLIDER,
+        ph2d_editor_core::ids::PAINTER_SEL_OFFSET_SLIDER,
     ] {
         store.register(
             id,
@@ -200,6 +201,10 @@ pub fn populate(store: &mut WidgetStore) {
             ph2d_editor_core::ids::PAINTER_SEL_OPACITY_SLIDER,
             ph2d_editor_core::ids::PAINTER_SEL_OPACITY_CHIP,
         ),
+        (
+            ph2d_editor_core::ids::PAINTER_SEL_OFFSET_SLIDER,
+            ph2d_editor_core::ids::PAINTER_SEL_OFFSET_CHIP,
+        ),
     ] {
         store.register(
             chip,
@@ -219,7 +224,9 @@ pub fn populate(store: &mut WidgetStore) {
         .iter()
         .chain(ph2d_editor_core::ids::PAINTER_SEL_OP_IDS.iter())
         .chain(ph2d_editor_core::ids::PAINTER_SEL_ACTION_IDS.iter())
+        .chain(ph2d_editor_core::ids::PAINTER_SEL_WAVE5_IDS.iter())
         .chain(std::iter::once(&ph2d_editor_core::ids::PAINTER_SEL_EDIT))
+        .chain(std::iter::once(&ph2d_editor_core::ids::PAINTER_SEL_CONVERT))
         .copied()
     {
         store.register(

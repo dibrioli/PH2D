@@ -201,3 +201,4 @@ pub use paint::{
 };
 mod runtime;
 mod trait_impls;
+mod trait_impls_raster; // `impl RasterEditTool` split from `trait_impls` (workspace file-LOC cap)

@@ -91,7 +91,7 @@ pub(crate) fn paint_selection_section(
 
     y = paint_section_separator(ctx.scene, theme, x, content_w, y);
 
-    // Edit Selection — enter the editable-Shape boundary (handles / gizmos / offset — Wave EDIT).
+    // Edit Selection — enter the editable-Shape boundary (native gizmos per shape — ADR-0103 Am.2).
     y = paint_checkbox_row(
         ctx,
         theme,
@@ -102,6 +102,32 @@ pub(crate) fn paint_selection_section(
         "Edit Selection (handles)",
         brush.selection_edit,
     );
+
+    // Edit-mode extras: the Offset (grow/shrink) slider + Convert-to-Curve — only while editing a boundary.
+    if brush.selection_edit {
+        y = paint_slider_chip_row(
+            ctx,
+            theme,
+            x,
+            content_w,
+            y,
+            "Offset",
+            core_ids::PAINTER_SEL_OFFSET_SLIDER,
+            core_ids::PAINTER_SEL_OFFSET_CHIP,
+            brush.selection_offset,
+        );
+        y = seg_group(
+            ctx,
+            theme,
+            x,
+            content_w,
+            y,
+            NodeId(0),
+            "Convert selection to curve",
+            &[(core_ids::PAINTER_SEL_CONVERT, "Convert to Curve")],
+            usize::MAX,
+        );
+    }
 
     // Actions — momentary Invert / Clear (a button group; no persistent selection).
     y = seg_group(
@@ -117,6 +143,24 @@ pub(crate) fn paint_selection_section(
             (core_ids::PAINTER_SEL_CLEAR, "Clear"),
         ],
         usize::MAX, // none selected — these are actions, not a radio
+    );
+
+    // Wave-5 actions — Select layer contents / Color Fill / Copy / Paste.
+    y = seg_group(
+        ctx,
+        theme,
+        x,
+        content_w,
+        y,
+        NodeId(0),
+        "Selection content actions",
+        &[
+            (core_ids::PAINTER_SEL_LAYER_CONTENTS, "Layer"),
+            (core_ids::PAINTER_SEL_FILL, "Fill"),
+            (core_ids::PAINTER_SEL_COPY, "Copy"),
+            (core_ids::PAINTER_SEL_PASTE, "Paste"),
+        ],
+        usize::MAX,
     );
 
     y

@@ -7157,3 +7157,177 @@ fn selection_edit_mode_installs_curve_and_round_trips_the_mask() {
     assert!(t.curve_overlay().is_none(), "the curve overlay is discarded on exit");
     assert!(t.selection_active(), "the selection persists after leaving edit mode");
 }
+
+/// Count fully-selected texels (coverage ≥ 128) across a `size×size` selection — a robust area metric.
+fn selected_area(t: &PainterTool, size: u32) -> usize {
+    let mut n = 0;
+    for y in 0..size {
+        for x in 0..size {
+            if t.selection_coverage_at(x, y) >= 128 {
+                n += 1;
+            }
+        }
+    }
+    n
+}
+
+/// ADR-0103 Am.2: an **Ellipse** selection installs its OWN native gizmo in Edit mode (not a traced curve).
+#[test]
+fn selection_ellipse_edit_installs_the_native_ellipse_gizmo() {
+    let mut t = white_canvas(64, 4.0);
+    t.set_paint_tool_mode("selection");
+    t.set_selection_mode(3); // Ellipse
+    t.on_canvas_pointer(cp([8.0, 8.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([56.0, 56.0], PointerPhase::Up));
+    assert!(t.selection_active(), "an ellipse selection exists");
+    t.toggle_selection_edit();
+    assert!(t.selection_edit_mode(), "edit mode is on");
+    assert!(
+        t.ellipse_overlay().is_some(),
+        "the NATIVE ellipse gizmo is installed for an ellipse selection"
+    );
+    assert!(
+        t.curve_overlay().is_none(),
+        "no traced curve — the ellipse keeps its own parametric gizmo"
+    );
+    assert_eq!(t.selection_coverage_at(32, 32), 255, "centre still selected in edit mode");
+    assert_eq!(t.selection_coverage_at(2, 2), 0, "the bbox corner stays out");
+    t.toggle_selection_edit();
+    assert!(t.ellipse_overlay().is_none(), "the gizmo is discarded on exit");
+}
+
+/// ADR-0103 Am.2: editing ONE shape's gizmo recomposites the WHOLE list — the other added shape survives.
+#[test]
+fn selection_edit_preserves_the_other_added_shape() {
+    let mut t = white_canvas(64, 4.0);
+    t.set_paint_tool_mode("selection");
+    t.set_selection_mode(2); // Rectangle (New) top-left
+    t.on_canvas_pointer(cp([0.0, 0.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([16.0, 16.0], PointerPhase::Up));
+    t.set_selection_bool_op(1); // Add
+    t.set_selection_mode(3); // Ellipse bottom-right
+    t.on_canvas_pointer(cp([40.0, 40.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([56.0, 56.0], PointerPhase::Up));
+    assert_eq!(t.selection_coverage_at(8, 8), 255, "rect region selected");
+    assert_eq!(t.selection_coverage_at(48, 48), 255, "ellipse region selected");
+    // Enter edit → the LAST editable shape (the ellipse) gets the gizmo; a recompose keeps BOTH shapes.
+    t.toggle_selection_edit();
+    assert!(t.ellipse_overlay().is_some(), "the ellipse is the active gizmo");
+    t.set_selection_offset(0.5); // a no-op offset forces a recompose of the list
+    assert_eq!(
+        t.selection_coverage_at(8, 8),
+        255,
+        "the OTHER (rect) shape survives while editing the ellipse"
+    );
+    assert_eq!(t.selection_coverage_at(48, 48), 255, "the edited ellipse stays selected");
+}
+
+/// ADR-0103 Am.2: a **Freehand** selection becomes a CLOSED editable Bézier curve in Edit mode.
+#[test]
+fn selection_freehand_edit_installs_a_closed_curve() {
+    let mut t = white_canvas(64, 4.0);
+    t.set_paint_tool_mode("selection");
+    t.set_selection_mode(1); // Freehand
+    t.on_canvas_pointer(cp([10.0, 10.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([50.0, 12.0], PointerPhase::Move));
+    t.on_canvas_pointer(cp([30.0, 50.0], PointerPhase::Move));
+    t.on_canvas_pointer(cp([10.0, 10.0], PointerPhase::Up));
+    assert!(t.selection_active(), "a freehand selection exists");
+    t.toggle_selection_edit();
+    assert!(
+        t.curve_overlay().is_some(),
+        "freehand → a closed editable curve gizmo"
+    );
+    assert!(t.ellipse_overlay().is_none(), "freehand is not an ellipse gizmo");
+}
+
+/// ADR-0103 Am.2 §3: **Convert to Curve** flattens the active gizmo into ONE editable Bézier curve, keeping
+/// the region + Edit mode.
+#[test]
+fn selection_convert_to_curve_installs_one_editable_curve() {
+    let mut t = white_canvas(64, 4.0);
+    t.set_paint_tool_mode("selection");
+    t.set_selection_mode(3); // Ellipse
+    t.on_canvas_pointer(cp([8.0, 8.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([56.0, 56.0], PointerPhase::Up));
+    t.toggle_selection_edit();
+    assert!(t.ellipse_overlay().is_some(), "editing the ellipse gizmo");
+    t.selection_convert_to_curve();
+    assert!(
+        t.curve_overlay().is_some(),
+        "convert flattens the ellipse into a Bézier curve"
+    );
+    assert!(t.ellipse_overlay().is_none(), "the ellipse gizmo is gone after convert");
+    assert!(t.selection_edit_mode(), "still editing the resulting curve");
+    assert_eq!(t.selection_coverage_at(32, 32), 255, "the region survives the conversion");
+}
+
+/// ADR-0103 Am.2: the **Offset** slider grows the edited boundary (more texels selected).
+#[test]
+fn selection_offset_grows_the_edited_boundary() {
+    let mut t = white_canvas(64, 4.0);
+    t.set_paint_tool_mode("selection");
+    t.set_selection_mode(3); // Ellipse
+    t.on_canvas_pointer(cp([16.0, 16.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([48.0, 48.0], PointerPhase::Up)); // centre (32,32), r≈16
+    let before = selected_area(&t, 64);
+    t.toggle_selection_edit();
+    t.set_selection_offset(1.0); // grow to the max
+    let after = selected_area(&t, 64);
+    assert!(
+        after > before,
+        "growing the Offset enlarges the selected area ({before} → {after})"
+    );
+}
+
+/// ADR-0103 Wave 5: **Color Fill** paints the brush colour only inside the selection.
+#[test]
+fn selection_color_fill_paints_only_inside() {
+    let mut t = white_canvas(32, 4.0); // white canvas, black brush
+    t.set_rect_selection(0, 0, 16, 32); // left half
+    t.selection_color_fill();
+    assert_eq!(px(&t, 32, 4, 16), [0, 0, 0, 255], "inside the selection is filled black");
+    assert_eq!(
+        px(&t, 32, 24, 16),
+        [255, 255, 255, 255],
+        "outside the selection is untouched"
+    );
+}
+
+/// ADR-0103 Wave 5: **Copy** then **Paste** re-applies the captured pixels at their source location.
+#[test]
+fn selection_copy_then_paste_reapplies_the_pixels() {
+    let mut t = white_canvas(32, 4.0);
+    t.set_rect_selection(0, 0, 16, 32);
+    t.selection_color_fill(); // left half → black
+    assert_eq!(px(&t, 32, 4, 16), [0, 0, 0, 255]);
+    t.selection_copy(); // capture the black left half
+    // Wipe the left half back to white by filling with a white brush.
+    t.paint.brush.color = [1.0, 1.0, 1.0];
+    t.selection_color_fill();
+    assert_eq!(px(&t, 32, 4, 16), [255, 255, 255, 255], "left half wiped to white");
+    t.selection_paste(); // re-apply the copied black pixels
+    assert_eq!(px(&t, 32, 4, 16), [0, 0, 0, 255], "paste restored the copied region");
+    assert_eq!(px(&t, 32, 24, 16), [255, 255, 255, 255], "outside the paste rect is untouched");
+}
+
+/// ADR-0103 Wave 5: **Select layer contents** sets the mask from the layer's opaque texels.
+#[test]
+fn selection_from_layer_contents_selects_opaque_texels() {
+    let size = 16u32;
+    let mut src = vec![0u8; (size * size * 4) as usize];
+    for y in 0..size {
+        for x in 0..size {
+            if x < 8 {
+                let o = ((y * size + x) * 4) as usize;
+                src[o..o + 4].copy_from_slice(&[10, 20, 30, 255]); // opaque left half
+            }
+        }
+    }
+    let mut t = PainterTool::default();
+    t.set_source(src, size, size);
+    t.set_paint_tool_mode("selection");
+    t.selection_from_layer_contents();
+    assert_eq!(t.selection_coverage_at(3, 3), 255, "opaque texel selected");
+    assert_eq!(t.selection_coverage_at(12, 3), 0, "transparent texel not selected");
+}

@@ -36,25 +36,28 @@ impl PainterTool {
         (self.paint.selection_offset_norm - 0.5) * 2.0 * SEL_OFFSET_MAX_PX
     }
 
-    /// The signed distance level (px from the base boundary) of the LIVE offset line while sweeping a ring —
-    /// `None` outside ring mode / when the slider is centred. The overlay draws this as an explicit contour so
-    /// a *protected* (deselected) band, which adds no selected pixels, still shows "a nova linha" being swept.
+    /// The signed-distance levels (px from the base boundary) of EVERY offset line the overlay must draw
+    /// explicitly while in ring mode: each frozen ring boundary PLUS the live line being swept. Empty in
+    /// plain mode (there the offset IS the mask edge, already shown as marching ants). Drawing every frozen
+    /// boundary keeps each selection line permanently visible — a protected band adds no selected pixels, so
+    /// without this its edges vanish in the transition area once Apply & Keep re-centres the slider.
     #[must_use]
-    pub(super) fn selection_offset_live_level(&self) -> Option<f32> {
+    pub(super) fn selection_offset_contour_levels(&self) -> Vec<f32> {
         if !self.paint.selection_offset_active {
-            return None; // plain mode: the offset IS the mask edge, already drawn as marching ants
+            return Vec::new();
         }
+        let mut levels = self.paint.selection_offset_rings.clone();
         let live = self.selection_slider_offset_px();
-        if live == 0.0 {
-            return None;
+        if live != 0.0 {
+            let last = self
+                .paint
+                .selection_offset_rings
+                .last()
+                .copied()
+                .unwrap_or(0.0);
+            levels.push(last + live);
         }
-        let last = self
-            .paint
-            .selection_offset_rings
-            .last()
-            .copied()
-            .unwrap_or(0.0);
-        Some(last + live)
+        levels
     }
 
     /// Read access to the cached SDF (may be empty when the offset is neutral). The overlay uses it to trace

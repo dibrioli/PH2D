@@ -7271,6 +7271,12 @@ fn selection_offset_apply_keep_alternates_protected_and_paint_rings() {
     );
     // Freeze it, then sweep outward again → the next band is PAINT: a concentric selected ring appears.
     t.selection_offset_apply_keep();
+    // With the slider re-centred after Apply & Keep, the frozen ring line must STAY drawn (a contour level
+    // persists) so the selection line never vanishes in the transition area (Enio 2026-07-03 smoke).
+    assert!(
+        !t.selection_offset_contour_levels().is_empty(),
+        "the frozen offset line stays visible after Apply & Keep re-centres the slider"
+    );
     t.set_selection_offset(0.55); // +20px past the frozen boundary
     assert!(
         selected_area(&t, 160) > base,

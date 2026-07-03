@@ -161,5 +161,12 @@ All 3 selection gizmos (Ellipse / Polygon / Freehand) unified to the **Sprite tr
      to the shape tool that was active.
    Investigate the pointer dispatch order (widget hit vs canvas `on_canvas_pointer`) — the C&F hit must
    swallow the event and the tool must remember/restore the prior shape tool after the picker/fill completes.
-4. **Stroke multi-shape** — multiple simultaneous editable stroke shapes (large architectural round,
+4. **Convert / Simplify Curve — missing point handles** (Enio 2026-07-03) — **BUG.** After **Convert to
+   Curve** or **Simplify Curve**, the resulting selection curve should show editable **anchor points + Bézier
+   handles** with the SAME look/capability as the stroke Shape-system curves, but they no longer appear. The
+   curve rasterizes/edits, yet the on-canvas handles/points are not drawn (regression from the isolated
+   selection-gizmo rewrite — the Freehand selection shows the transform box gizmo, not per-anchor handles).
+   Wire the selection Freehand curve to the same anchor/handle overlay + hit-testing the stroke Curve editor
+   uses, so Convert/Simplify yields a point-editable curve.
+5. **Stroke multi-shape** — multiple simultaneous editable stroke shapes (large architectural round,
    ≈ the selection multi-gizmo redesign; its own build + smoke).

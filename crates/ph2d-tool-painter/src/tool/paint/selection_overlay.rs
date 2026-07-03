@@ -55,21 +55,29 @@ impl PainterTool {
                 }
             }
         }
-        // Live offset contour: while sweeping a ring band (esp. a PROTECTED one that adds no selected pixels)
-        // draw the offset line explicitly so the user sees "a nova linha" advance. A cyan dashed contour of
-        // the `{ sdf <= level }` region, distinct from the black/white base ants.
-        if let Some(level) = self.selection_offset_live_level() {
+        // Offset contours: in ring mode draw EVERY frozen ring boundary + the live line as cyan dashed
+        // contours of `{ sdf <= level }`, distinct from the black/white base ants. A PROTECTED band adds no
+        // selected pixels, so without this its edges vanish in the transition area once Apply & Keep
+        // re-centres the slider — this keeps every selection line permanently visible.
+        let levels = self.selection_offset_contour_levels();
+        if !levels.is_empty() {
             let sdf = self.selection_offset_sdf();
             if sdf.len() == wu * hu {
                 for y in 0..hu {
                     for x in 0..wu {
                         let idx = y * wu + x;
-                        let inside = sdf[idx] <= level;
-                        let edge = (x + 1 < wu && (sdf[idx + 1] <= level) != inside)
-                            || (y + 1 < hu && (sdf[idx + wu] <= level) != inside);
-                        if edge && (x + y + ant) % DASH < DASH / 2 {
-                            let o = idx * 4;
-                            out[o..o + 4].copy_from_slice(&[0u8, 220, 255, 255]);
+                        if (x + y + ant) % DASH >= DASH / 2 {
+                            continue; // dash gap
+                        }
+                        for &level in &levels {
+                            let inside = sdf[idx] <= level;
+                            let edge = (x + 1 < wu && (sdf[idx + 1] <= level) != inside)
+                                || (y + 1 < hu && (sdf[idx + wu] <= level) != inside);
+                            if edge {
+                                let o = idx * 4;
+                                out[o..o + 4].copy_from_slice(&[0u8, 220, 255, 255]);
+                                break;
+                            }
                         }
                     }
                 }

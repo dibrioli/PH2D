@@ -62,6 +62,10 @@ impl PainterTool {
         self.paint.selection_active = active;
         self.paint.selection_crisp = crisp;
         self.paint.selection_feather = feather;
+        // Undo/redo restores the mask but not the transient Offset ring state (rings / source / SDF live
+        // outside the snapshot), so drop it — a subsequent offset re-captures off the restored mask. Keeps
+        // ring mode from operating on a stale base after undoing an Apply / Apply & Keep.
+        self.reset_selection_offset();
         // The on-canvas overlay (marching ants / hatching) is derived from this, so refresh.
         self.invalidate_composite();
     }

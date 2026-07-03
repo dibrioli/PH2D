@@ -47,6 +47,11 @@ pub(crate) fn paint_brush_body(
     let x = rect.x + PANEL_HEAD_PAD;
     let content_w = rect.w - PANEL_HEAD_PAD * 2.0;
     let brush = state::current_brush().unwrap_or(FALLBACK_BRUSH);
+    // Selection mode owns the whole panel body (mode-exclusive, ADR-0103): paint ONLY the Selection
+    // section — no shared brush control leaks in (the Inpaint precedent).
+    if brush.is_selection {
+        return crate::paint_selection::paint_selection_section(ctx, theme, x, content_w, top_y, brush);
+    }
     // If the shared picker is editing our swatch, forward its live colour.
     brush_color_readback(ctx, brush);
     // Keep the store's swatch colour synced to the brush colour while the picker is CLOSED, so the

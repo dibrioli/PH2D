@@ -448,7 +448,12 @@ fn try_apply_brush_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> O
                 || core_ids::PAINTER_MASK_BRUSH.contains(&id)
                 || core_ids::PAINTER_MASK_OP.contains(&id)
                 || core_ids::PAINTER_MASK_COLOR.contains(&id)
-                || id == core_ids::PAINTER_MASK_APPLY =>
+                || id == core_ids::PAINTER_MASK_APPLY
+                // Selection section (ADR-0103): mode / boolean-op / action segments + the Edit toggle.
+                || core_ids::PAINTER_SEL_MODE_IDS.contains(&id)
+                || core_ids::PAINTER_SEL_OP_IDS.contains(&id)
+                || core_ids::PAINTER_SEL_ACTION_IDS.contains(&id)
+                || id == core_ids::PAINTER_SEL_EDIT =>
         {
             host.bus_mut()
                 .push(EditorAction::ToolPanelEvent(PanelEvent::Click(id)));

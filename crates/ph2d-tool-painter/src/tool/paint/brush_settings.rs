@@ -69,6 +69,15 @@ pub struct BrushSettings {
     pub is_mask: bool,
     /// **Inpaint** heal mode — shows the Inpaint card (Patch Size / Quality / Search) + hides colour/Strength.
     pub is_inpaint: bool,
+    /// **Selection** mode — the panel shows ONLY the selection section (ADR-0103): mode (`0` Automatic /
+    /// `1` Freehand / `2` Rectangle / `3` Ellipse) · boolean op (`0` New / `1` Add / `2` Remove) · Automatic
+    /// threshold · Feather amount (all `0..1`) · Edit-Selection toggle.
+    pub is_selection: bool,
+    pub selection_mode: u8,
+    pub selection_op: u8,
+    pub selection_threshold: f32,
+    pub selection_feather: f32,
+    pub selection_edit: bool,
     /// Inpaint **Patch Size** slider track (`0..1`; chip shows the mapped `2..6` patch radius).
     pub inpaint_patch: f32,
     /// Inpaint **Quality** slider track (`0..1`; chip shows the mapped `3..12` EM iterations).

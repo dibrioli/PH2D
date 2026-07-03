@@ -54,6 +54,7 @@ impl Tool for PainterTool {
             || self.route_brush_dab_event(&event)
             || self.route_inpaint_event(&event)
             || self.route_fill_event(&event)
+            || self.route_selection_event(&event)
         {
             self.refill_if_appearance_changed(appearance_before);
             return;

@@ -395,6 +395,13 @@ impl PainterTool {
         matches!(self.paint.paint_mode, super::PaintMode::Inpaint)
     }
 
+    /// Whether the active operation is **Selection** — the panel shows ONLY the selection controls
+    /// (mode-exclusive, like Inpaint), nothing shared with the other tools.
+    #[must_use]
+    pub fn is_selection_mode(&self) -> bool {
+        matches!(self.paint.paint_mode, super::PaintMode::Selection)
+    }
+
     /// Route the brush **dab/stroke** chrome events: the flatten/rotate gizmo `SetValue`s (Shape panel),
     /// plus the **Apply** / **Apply & Keep** stroke buttons (`Click` → bake the pending shape-editor stroke,
     /// discarding or keeping the editable curve). Returns `true` iff the event was consumed.

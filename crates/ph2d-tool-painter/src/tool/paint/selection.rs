@@ -553,6 +553,54 @@ impl PainterTool {
         }
         Some((out, w, h))
     }
+
+    /// Route a Selection-panel event to the tool — the mode / boolean-op segments (Click), the Feather /
+    /// Automatic-threshold sliders (SetValue), the Edit-Selection toggle, and the Invert / Clear actions.
+    /// Mirrors the other `route_*_event` early-dispatch helpers in `handle_panel_event`. `true` when handled.
+    pub(crate) fn route_selection_event(&mut self, event: &ph2d_editor_core::tool::PanelEvent) -> bool {
+        use ph2d_editor_core::ids as core_ids;
+        use ph2d_editor_core::tool::PanelEvent;
+        match event {
+            PanelEvent::Click(id) if core_ids::PAINTER_SEL_MODE_IDS.contains(id) => {
+                let idx = core_ids::PAINTER_SEL_MODE_IDS
+                    .iter()
+                    .position(|x| x == id)
+                    .unwrap_or(0) as u8;
+                self.set_selection_mode(idx);
+                true
+            }
+            PanelEvent::Click(id) if core_ids::PAINTER_SEL_OP_IDS.contains(id) => {
+                let idx = core_ids::PAINTER_SEL_OP_IDS
+                    .iter()
+                    .position(|x| x == id)
+                    .unwrap_or(0) as u8;
+                self.set_selection_bool_op(idx);
+                true
+            }
+            PanelEvent::Click(id) if *id == core_ids::PAINTER_SEL_EDIT => {
+                let on = self.selection_edit_mode();
+                self.set_selection_edit_mode(!on);
+                true
+            }
+            PanelEvent::Click(id) if *id == core_ids::PAINTER_SEL_INVERT => {
+                self.invert_selection();
+                true
+            }
+            PanelEvent::Click(id) if *id == core_ids::PAINTER_SEL_CLEAR => {
+                self.clear_selection();
+                true
+            }
+            PanelEvent::SetValue(id, v) if *id == core_ids::PAINTER_SEL_FEATHER_SLIDER => {
+                self.set_selection_feather(*v as f32);
+                true
+            }
+            PanelEvent::SetValue(id, v) if *id == core_ids::PAINTER_SEL_THRESHOLD_SLIDER => {
+                self.set_selection_threshold(*v as f32);
+                true
+            }
+            _ => false,
+        }
+    }
 }
 
 /// Separable box blur of a single-channel `w*h` coverage buffer (Feather). Two 1-D averaging passes (H

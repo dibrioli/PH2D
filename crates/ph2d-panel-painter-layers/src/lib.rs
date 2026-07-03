@@ -44,6 +44,7 @@ mod paint_mask;
 mod paint_mask_row;
 mod paint_ramp_widget;
 mod paint_rows;
+mod paint_selection;
 mod paint_shape;
 mod paint_shape_dab;
 mod paint_shape_layers;

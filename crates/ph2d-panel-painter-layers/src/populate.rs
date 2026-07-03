@@ -170,6 +170,60 @@ pub fn populate(store: &mut WidgetStore) {
     }
     store.mark_collapsible_section(ph2d_editor_core::ids::PAINTER_MASK_SECTION);
     register_collapsible_sections(store);
+    // Selection section (ADR-0103): the Feather + Automatic-threshold sliders (with linked editable chips)
+    // and the mode / boolean-op / action segments + the Edit-Selection toggle (all Buttons). Registered
+    // here (not in `paint_selection`) so panel-wiring-parity + the dispatch see them.
+    for id in [
+        ph2d_editor_core::ids::PAINTER_SEL_FEATHER_SLIDER,
+        ph2d_editor_core::ids::PAINTER_SEL_THRESHOLD_SLIDER,
+    ] {
+        store.register(
+            id,
+            InteractiveState::Slider {
+                state: SliderState::Normal,
+                value: 0.0,
+                orientation: SliderOrientation::Horizontal,
+            },
+        );
+    }
+    for (slider, chip) in [
+        (
+            ph2d_editor_core::ids::PAINTER_SEL_FEATHER_SLIDER,
+            ph2d_editor_core::ids::PAINTER_SEL_FEATHER_CHIP,
+        ),
+        (
+            ph2d_editor_core::ids::PAINTER_SEL_THRESHOLD_SLIDER,
+            ph2d_editor_core::ids::PAINTER_SEL_THRESHOLD_CHIP,
+        ),
+    ] {
+        store.register(
+            chip,
+            InteractiveState::NumberInput {
+                state: TextInputState::Normal,
+                value: 0.0,
+                buffer: String::new(),
+                caret: 0,
+                last_committed: 0.0,
+                selection_anchor: None,
+            },
+        );
+        store.link_slider_number(slider, chip);
+        store.set_number_range(chip, 0.0, 1.0, 0.01); // LITERAL-PX-OK: chip 0..1 track step (behaviour value)
+    }
+    for id in ph2d_editor_core::ids::PAINTER_SEL_MODE_IDS
+        .iter()
+        .chain(ph2d_editor_core::ids::PAINTER_SEL_OP_IDS.iter())
+        .chain(ph2d_editor_core::ids::PAINTER_SEL_ACTION_IDS.iter())
+        .chain(std::iter::once(&ph2d_editor_core::ids::PAINTER_SEL_EDIT))
+        .copied()
+    {
+        store.register(
+            id,
+            InteractiveState::Button {
+                state: ButtonState::Normal,
+            },
+        );
+    }
     // Colour swatch + Eraser toggle + the Stroke-section "Adjust Strength" toggle —
     // Buttons. MUST be registered here or the dispatcher drops the click (the
     // populate-register gotcha).

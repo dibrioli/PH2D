@@ -28,8 +28,11 @@ pub(crate) enum SelectionDrag {
         cur: [f32; 2],
         ellipse: bool,
     },
-    /// Freehand lasso: the captured path (closed on release).
-    Lasso { points: Vec<[f32; 2]> },
+    /// Freehand lasso: the captured (brush-stabilized) path + the running stabilizer point.
+    Lasso {
+        points: Vec<[f32; 2]>,
+        stab: [f32; 2],
+    },
     /// Automatic flood-select: the seed + the threshold at gesture start (horizontal drag adjusts it live,
     /// Procreate-style). The mask is written on every change.
     Auto { seed: [f32; 2], thresh0: f32 },
@@ -254,7 +257,10 @@ impl PainterTool {
                 self.auto_reflood(pos);
             }
             1 => {
-                self.paint.selection_drag = Some(SelectionDrag::Lasso { points: vec![pos] });
+                self.paint.selection_drag = Some(SelectionDrag::Lasso {
+                    points: vec![pos],
+                    stab: pos,
+                });
             }
             3 => {
                 self.paint.selection_drag = Some(SelectionDrag::Marquee {
@@ -304,12 +310,16 @@ impl PainterTool {
                 self.invalidate_composite();
             }
             Move::Lasso => {
-                if let Some(SelectionDrag::Lasso { points }) = &mut self.paint.selection_drag {
-                    points.push(pos);
+                // Fold the raw sample through the brush **stabilizer** (same `lazy_mouse_step` the FreeHand
+                // stroke uses) before capturing it, so the lasso is smoothed like a Free Hand stroke.
+                let stabilizer = self.paint.brush.stabilizer;
+                if let Some(SelectionDrag::Lasso { points, stab }) = &mut self.paint.selection_drag {
+                    *stab = ph2d_painter_brush::lazy_mouse_step(*stab, pos, stabilizer);
+                    points.push(*stab);
                 }
                 // Live preview: rasterize the in-progress path (auto-closed) each move.
                 let pts = match &self.paint.selection_drag {
-                    Some(SelectionDrag::Lasso { points }) => points.clone(),
+                    Some(SelectionDrag::Lasso { points, .. }) => points.clone(),
                     _ => Vec::new(),
                 };
                 let region = self.raster_lasso(&pts);
@@ -335,7 +345,7 @@ impl PainterTool {
             Some(SelectionDrag::Marquee { anchor, ellipse, .. }) => {
                 self.raster_marquee(anchor, pos, ellipse)
             }
-            Some(SelectionDrag::Lasso { mut points }) => {
+            Some(SelectionDrag::Lasso { mut points, .. }) => {
                 points.push(pos);
                 self.raster_lasso(&points)
             }

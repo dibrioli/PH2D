@@ -52,6 +52,9 @@ pub(crate) mod painter_bridge_shape_preview;
 // render_loop) to route the W3.T3.8 layer drag-reparent through the allowlisted
 // bridge-queries module instead of downcasting in central dispatch.
 pub(crate) mod painter_bridge_queries;
+/// The Selection overlay (marching ants + deselected-area hatching), split from `painter_bridge_overlays`
+/// for the HR-18 file-LOC cap.
+pub(crate) mod painter_bridge_selection_overlay;
 pub(crate) mod painter_gpu_flatten;
 pub(crate) mod painter_gpu_preview;
 mod present;

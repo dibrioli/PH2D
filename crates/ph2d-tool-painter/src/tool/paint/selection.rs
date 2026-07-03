@@ -504,6 +504,55 @@ impl PainterTool {
     pub fn selection_edit_mode(&self) -> bool {
         self.paint.selection_edit_mode
     }
+
+    /// Build the on-canvas selection **overlay** (Procreate-style): semi-transparent diagonal **hatching**
+    /// over the DESELECTED area + animated **marching ants** on the boundary. Canvas-sized straight RGBA
+    /// the shell blits image→screen. `phase` (a shell frame counter) animates the ants (fast) and the
+    /// hatch drift (slow). `None` when no selection is live. Interior (selected, non-edge) stays clear.
+    #[must_use]
+    pub fn selection_overlay_rgba(&self, phase: u32) -> Option<(Vec<u8>, u32, u32)> {
+        if !self.paint.selection_active {
+            return None;
+        }
+        let (w, h) = self.source_size;
+        let (wu, hu) = (w as usize, h as usize);
+        let mask = &self.paint.selection_mask;
+        if wu == 0 || hu == 0 || mask.len() != wu * hu {
+            return None;
+        }
+        const STRIPE: usize = 7; // hatch stripe width (image px)
+        const DASH: usize = 8; // marching-ants dash period (image px)
+        let hatch_shift = (phase / 2) as usize; // hatch drifts at half the ant speed
+        let ant = phase as usize;
+        let mut out = vec![0u8; wu * hu * 4];
+        for y in 0..hu {
+            for x in 0..wu {
+                let idx = y * wu + x;
+                let inside = mask[idx] >= 128;
+                // Boundary = the 128 threshold flips across the right or down neighbour.
+                let edge = (x + 1 < wu && (mask[idx + 1] >= 128) != inside)
+                    || (y + 1 < hu && (mask[idx + wu] >= 128) != inside);
+                let o = idx * 4;
+                if edge {
+                    // Alternating white / black dashes marching along x+y with the phase.
+                    let on = (x + y + ant) % DASH < DASH / 2;
+                    let c = if on {
+                        [255u8, 255, 255, 255]
+                    } else {
+                        [0u8, 0, 0, 255]
+                    };
+                    out[o..o + 4].copy_from_slice(&c);
+                } else if !inside {
+                    // Diagonal hatch over the deselected region, semi-transparent, drifting.
+                    if ((x + y + hatch_shift) / STRIPE) % 2 == 0 {
+                        out[o..o + 4].copy_from_slice(&[30u8, 30, 30, 110]);
+                    }
+                }
+                // Interior (selected, non-edge) → transparent (already zeroed).
+            }
+        }
+        Some((out, w, h))
+    }
 }
 
 /// Separable box blur of a single-channel `w*h` coverage buffer (Feather). Two 1-D averaging passes (H

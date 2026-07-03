@@ -7048,3 +7048,32 @@ fn selection_feather_softens_the_border_not_the_interior() {
         "feather 0 re-derives the crisp (hard) border"
     );
 }
+
+/// Wave 4: the on-canvas overlay marks the boundary with opaque marching ants, hatches the deselected
+/// area semi-transparently, leaves the interior clear, and is absent with no selection.
+#[test]
+fn selection_overlay_ants_hatch_and_clear_interior() {
+    let mut t = white_canvas(32, 4.0);
+    t.set_paint_tool_mode("selection");
+    t.set_selection_mode(2); // Rectangle
+    t.on_canvas_pointer(cp([0.0, 0.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([16.0, 32.0], PointerPhase::Up)); // left half (x < 16) selected
+    let (rgba, w, h) = t.selection_overlay_rgba(0).expect("overlay while active");
+    assert_eq!((w, h), (32, 32));
+    let a = |x: usize, y: usize| rgba[4 * (y * 32 + x) + 3];
+    // Deep interior (selected, non-edge) is fully transparent.
+    assert_eq!(a(4, 16), 0, "interior stays clear");
+    // Marching ants: opaque texels along the vertical border (x = 15 is the inside edge).
+    assert!(
+        (0..32).any(|y| a(15, y) == 255),
+        "opaque marching ants on the boundary"
+    );
+    // Hatch: some semi-transparent coverage in the deselected area (right of the border).
+    assert!(
+        (0..32).any(|y| (20..32).any(|x| { let av = a(x, y); av > 0 && av < 255 })),
+        "semi-transparent hatch over the deselected area"
+    );
+    // No selection → no overlay.
+    t.clear_selection();
+    assert!(t.selection_overlay_rgba(0).is_none(), "no overlay without a selection");
+}

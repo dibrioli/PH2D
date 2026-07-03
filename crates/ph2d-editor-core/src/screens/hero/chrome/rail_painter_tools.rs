@@ -148,6 +148,13 @@ pub fn apply(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
     let WidgetEvent::Click(id) = event else {
         return false;
     };
+    // The **C&F** (Colour & Fill) rail button is a COLOUR WELL, not a paint-mode radio: a plain click only
+    // opens the colour picker (the picked colour is shared with the Brush — handled in the shell's
+    // `fill_drag`), and the ColorDrop DRAG onto the canvas is what activates Fill. So the rail click itself
+    // changes neither the operating mode nor the radio selection (Enio 2026-07-02). Consume it.
+    if id == ids::PAINTER_RAIL_FILL {
+        return true;
+    }
     // A Mask-group sub-tool picked in the flyout (Mask / Selection): set the sub-radio, make the Mask
     // group the active tool, close the flyout, and forward that sub's paint mode. Sub-tools paint with
     // the normal (non-shape) stroke method, so restore it like the "other tool" branch below.
@@ -388,20 +395,21 @@ mod tests {
     }
 
     #[test]
-    fn selecting_fill_is_an_exclusive_radio_and_forwards_fill() {
-        // The Fill (Bucket) rail button — a colour-swatch chip below Brush — is a radio member: selecting
-        // it checks Fill, clears Brush, and forwards the "fill" operating mode (placeholder until the
-        // Fill behaviour + colour picker land).
+    fn clicking_c_and_f_is_a_colour_well_not_a_fill_mode_radio() {
+        // The **C&F** (Colour & Fill) rail button is a colour WELL: a plain click neither activates Fill nor
+        // moves the tool radio (it only opens the picker, in the shell). Fill activates via the ColorDrop
+        // DRAG onto the canvas, not this click (Enio 2026-07-02).
         let mut hero = HeroScreen::new(NodeId(1));
         super::super::super::left_rail::populate(&mut hero.store);
         assert!(pressed(&hero, ids::PAINTER_RAIL_BRUSH));
         assert!(apply(&mut hero, WidgetEvent::Click(ids::PAINTER_RAIL_FILL)));
-        assert!(pressed(&hero, ids::PAINTER_RAIL_FILL));
-        assert!(!pressed(&hero, ids::PAINTER_RAIL_BRUSH));
+        // The click is consumed but changes nothing: Brush stays selected, Fill never presses, no mode fires.
+        assert!(!pressed(&hero, ids::PAINTER_RAIL_FILL));
+        assert!(pressed(&hero, ids::PAINTER_RAIL_BRUSH));
         assert_eq!(
             drained_paint_mode(&mut hero).as_deref(),
-            Some("fill"),
-            "the Fill button forwarded the fill mode"
+            None,
+            "a C&F click forwards NO operating mode (drag-to-canvas activates Fill)"
         );
     }
 

@@ -202,7 +202,7 @@ fn left_rail_chip_name(id: NodeId) -> Option<&'static str> {
     }
     Some(match id {
         x if x == ids::PAINTER_RAIL_MASK_GROUP => "Mask",
-        x if x == ids::PAINTER_RAIL_FILL => "Fill",
+        x if x == ids::PAINTER_RAIL_FILL => "C&F", // Colour & Fill well (opens the picker; drag = ColorDrop)
         x if x == ids::RAIL_SHOW_INSPECTOR => "Show Inspector",
         x if x == ids::RAIL_SHOW_HIERARCHY => "Show Hierarchy",
         x if x == ids::TOOL_TRANSLATE => "Translate",
@@ -232,13 +232,15 @@ fn tool_entry(
     e
 }
 
-/// Build the **Fill** rail entry — a colour-swatch chip showing the current paint colour (read from the
-/// shared `PAINTER_COLOR_THUMB` slot). Its vertical label is "FILL"; `active` when Pressed.
+/// Build the **C&F** (Colour & Fill) rail entry — a colour-swatch chip showing the current paint colour
+/// (read from the shared `PAINTER_COLOR_THUMB` slot). A click opens the colour picker (shared with the
+/// Brush); dragging the colour onto the canvas is the ColorDrop fill. Its vertical label is "C&F"; `active`
+/// when Pressed. (Renamed from "Fill" to disambiguate the well-vs-flood roles — Enio 2026-07-02.)
 fn fill_swatch_entry(store: &WidgetStore) -> ToolRailEntry {
     let color = store
         .widget_color(ids::PAINTER_COLOR_THUMB)
         .unwrap_or([0x88, 0x88, 0x88, 0xFF]); // LITERAL-COLOR-OK: neutral default before a colour is set
-    let mut e = ToolRailEntry::swatch(ids::PAINTER_RAIL_FILL, "Fill", color).with_sub("FILL");
+    let mut e = ToolRailEntry::swatch(ids::PAINTER_RAIL_FILL, "C&F", color).with_sub("C&F");
     if matches!(
         store.button_state(ids::PAINTER_RAIL_FILL),
         Some(ButtonState::Pressed)

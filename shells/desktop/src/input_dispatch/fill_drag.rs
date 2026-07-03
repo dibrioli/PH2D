@@ -97,8 +97,10 @@ pub(crate) fn fill_drag_tick(tool: &mut dyn Tool, last_pointer: (f32, f32), dt_m
 }
 
 impl App {
-    /// A Primary Down over the Fill rail button arms the ColorDrop drag + activates Fill. Call on every
-    /// Primary Down (it self-gates on the hit id); no-op otherwise.
+    /// A Primary Down over the **C&F** (Colour & Fill) rail button arms the ColorDrop drag. It does NOT
+    /// activate Fill — a plain click must only open the colour picker (Enio 2026-07-02); Fill activates the
+    /// moment the drag first reaches the canvas (see [`Self::fill_drag_move`]). Call on every Primary Down
+    /// (it self-gates on the hit id); no-op otherwise.
     pub(crate) fn arm_fill_drag_if_on_button(&mut self, px: f32, py: f32) {
         let on_button = self
             .gfx
@@ -108,14 +110,6 @@ impl App {
             == Some(ids::PAINTER_RAIL_FILL);
         if !on_button {
             return;
-        }
-        // Activate Fill directly — the rail bus drains once per frame, so the first canvas sample of a
-        // fast drag could arrive before a bus-routed mode switch lands.
-        if let Some(tool) = self.gfx.as_mut().and_then(|g| g.tools.active_mut()) {
-            tool.handle_panel_event(PanelEvent::SelectOption(
-                ids::PAINTER_PAINT_MODE,
-                "fill".to_string(),
-            ));
         }
         FILL_DRAG.with(|c| {
             c.set(Some(FillDrag {
@@ -149,6 +143,15 @@ impl App {
         let phase = if st.on_canvas {
             PointerPhase::Move
         } else {
+            // Dragging the colour onto the canvas is what ACTIVATES Fill (a plain click never does — it
+            // only opens the picker). Switch the mode DIRECTLY (not via the once-per-frame rail bus) right
+            // before the first Down so `on_canvas_pointer` sees Fill mode and floods on this very sample.
+            if let Some(tool) = self.gfx.as_mut().and_then(|g| g.tools.active_mut()) {
+                tool.handle_panel_event(PanelEvent::SelectOption(
+                    ids::PAINTER_PAINT_MODE,
+                    "fill".to_string(),
+                ));
+            }
             PointerPhase::Down
         };
         let delivered = self.deliver_canvas_pointer(px, py, 1.0, phase);

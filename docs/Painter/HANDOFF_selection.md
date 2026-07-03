@@ -78,3 +78,43 @@ a seleção precisa **fill** da região fechada (reusar `curve_geom` flatten + s
 
 ## Kill-criterion
 Ants+flood @4K > 16 ms/frame após 2ª tentativa → PARA, prova o modelo; fallback hachura-só + ants low-res.
+
+---
+
+## Wave EDIT v2 — LANDED (2026-07-03, ADR-0103 Amendment 2)
+
+**Modelo de lista (fonte de verdade):** `selection_shapes: Vec<SelectionEntry>` (Ellipse / Rect /
+Freehand / Raster + boolean op). A máscara é cache derivado (`recompose_selection_mask` =
+rasteriza + compõe a lista). Cada gesto de criação empurra uma entrada (New limpa, Add/Remove
+empilham). `tool/paint/selection_shapes.rs`.
+
+**Gizmos nativos por-forma (Edit mode):** `enter_selection_edit` instala o editor NATIVO da última
+forma editável — Ellipse → o gizmo de elipse; Rect → curva fechada de 4 cantos (Vector/sharp);
+Freehand → curva Bézier FECHADA ajustada (mesmo `fit_curve` do stroke Free Hand + estabilização);
+sem forma paramétrica → traça o contorno (fallback). Editar UM gizmo recompõe a lista inteira (as
+outras formas sobrevivem). Bake de volta na saída/`Apply`. `tool/paint/selection_edit.rs`.
+
+**Convert to Curve:** achata a lista numa única curva Bézier editável (elipse única → 4-arcos;
+várias → traça a máscara composta). Botão `PAINTER_SEL_CONVERT`.
+
+**Offset (grow/shrink):** slider `PAINTER_SEL_OFFSET_SLIDER` (só em Edit mode) via o acumulador de
+Offset do Stroke; recompõe ao vivo pelo gizmo ativo.
+
+**Wave 5 actions (`tool/paint/selection_actions.rs`):** Select layer contents (alpha>0), Color Fill
+(cor do brush × cobertura), Copy/Paste (clipboard in-memory `selection_clipboard`). Ids
+`PAINTER_SEL_WAVE5_IDS` + `PAINTER_SEL_FILL`/`_COPY`/`_PASTE`/`_LAYER_CONTENTS`.
+
+**Split LOC:** `selection.rs` (845→221) quebrado em `selection_input`/`_raster`/`_overlay`/`_edit`/
+`_shapes`/`_actions`. Overflows latentes desta sessão também resolvidos por split:
+`stamp_preview` (ex-`paint.rs`), `brush_texture_settings` (ex-`brush_settings.rs`),
+`trait_impls_raster` (ex-`trait_impls.rs`), `painter_gradient` ids (ex-`painter.rs`).
+
+**Testes:** 20 testes de seleção (headless) — install de gizmo nativo por tipo, preservação
+multi-forma, convert, offset cresce, color-fill dentro-só, copy/paste round-trip, layer-contents.
+
+### DEFERIDO (precisa de smoke visual) — único gap aberto
+Renderização SIMULTÂNEA de vários gizmos na tela ao mesmo tempo. Hoje: a SELEÇÃO multi-forma é
+correta (a lista + a máscara compõem todas as formas) e o gizmo da forma ATIVA (última editável) é
+editável com aparência idêntica ao stroke. Desenhar TODOS os gizmos de uma vez + dispatch de ponteiro
+entre eles é um loop de overlay no shell (`painter_bridge_*_overlay`) que é puramente visual e exige
+smoke para acertar — próximo passo pós-smoke.

@@ -120,7 +120,9 @@ impl PainterTool {
                     rgba[d + c] = self.canvas_rgba[s + c];
                 }
                 // Premultiply the source alpha by coverage so Paste blends the selected shape only.
-                rgba[d + 3] = (f32::from(self.canvas_rgba[s + 3]) * cov).round().clamp(0.0, 255.0) as u8;
+                rgba[d + 3] = (f32::from(self.canvas_rgba[s + 3]) * cov)
+                    .round()
+                    .clamp(0.0, 255.0) as u8;
             }
         }
         self.paint.selection_clipboard = Some(SelectionClip {

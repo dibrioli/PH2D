@@ -61,7 +61,10 @@ impl PainterTool {
     /// Route a Selection-panel event to the tool — mode / boolean-op segments (Click), the Feather /
     /// Threshold / Offset / Overlay sliders (SetValue), the Edit toggle, Convert-to-Curve, and the action
     /// buttons (Invert / Clear / Select layer contents / Color Fill / Copy / Paste). `true` when handled.
-    pub(crate) fn route_selection_event(&mut self, event: &ph2d_editor_core::tool::PanelEvent) -> bool {
+    pub(crate) fn route_selection_event(
+        &mut self,
+        event: &ph2d_editor_core::tool::PanelEvent,
+    ) -> bool {
         use ph2d_editor_core::ids as core_ids;
         use ph2d_editor_core::tool::PanelEvent;
         match event {

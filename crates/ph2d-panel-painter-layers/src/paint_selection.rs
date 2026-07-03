@@ -7,12 +7,14 @@
 //! **Edit Selection** toggle · **Actions** group (Invert / Clear). Every interactive id is registered in
 //! `populate` and forwarded by `event.rs` over the frozen `PanelEvent` channel to `route_selection_event`.
 
+use ph2d_a11y::NodeId;
 use ph2d_editor_core::ids as core_ids;
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::widget::showcase::paint_section_separator;
-use ph2d_editor_core::widget::{Card, SegmentedAdaptive, SegmentedOption, paint_card, paint_segmented_adaptive};
+use ph2d_editor_core::widget::{
+    Card, SegmentedAdaptive, SegmentedOption, paint_card, paint_segmented_adaptive,
+};
 use ph2d_editor_core::zones::Rect;
-use ph2d_a11y::NodeId;
 use ph2d_tokens::{ROW_H_PX, Spacing};
 use ph2d_tool_painter::BrushSettings;
 
@@ -292,7 +294,13 @@ mod tests {
             .iter()
             .chain(core_ids::PAINTER_SEL_OP_IDS.iter())
             .chain(core_ids::PAINTER_SEL_ACTION_IDS.iter())
-            .chain([core_ids::PAINTER_SEL_FEATHER_SLIDER, core_ids::PAINTER_SEL_EDIT].iter())
+            .chain(
+                [
+                    core_ids::PAINTER_SEL_FEATHER_SLIDER,
+                    core_ids::PAINTER_SEL_EDIT,
+                ]
+                .iter(),
+            )
         {
             assert!(
                 ids.contains(sid),

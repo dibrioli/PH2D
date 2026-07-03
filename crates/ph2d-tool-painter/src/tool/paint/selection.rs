@@ -214,7 +214,9 @@ impl PainterTool {
             for c in 0..4 {
                 let painted = f32::from(buf[b + c]);
                 let o = f32::from(orig[b + c]);
-                buf[b + c] = (painted * keep + o * (1.0 - keep)).round().clamp(0.0, 255.0) as u8;
+                buf[b + c] = (painted * keep + o * (1.0 - keep))
+                    .round()
+                    .clamp(0.0, 255.0) as u8;
             }
         }
     }

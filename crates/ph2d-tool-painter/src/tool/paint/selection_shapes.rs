@@ -60,7 +60,9 @@ impl PainterTool {
         if op == 0 {
             self.paint.selection_shapes.clear();
         }
-        self.paint.selection_shapes.push(SelectionEntry { shape, op });
+        self.paint
+            .selection_shapes
+            .push(SelectionEntry { shape, op });
     }
 
     /// Rasterize one selection shape into a fresh canvas-sized coverage buffer (`0`/`255`). Ellipse uses the
@@ -155,7 +157,15 @@ pub(super) fn rect_corners(a: [f32; 2], b: [f32; 2]) -> Vec<[f32; 2]> {
 
 /// Fill `cov` (0/255) inside the rotated ellipse (`center`, unit axis `u`, semi-axes `rx`/`ry`) via the
 /// exact `(du/rx)² + (dv/ry)² ≤ 1` test — no transcendentals (HR-5-clean, though selection is view-side).
-fn rasterize_ellipse(center: [f32; 2], u: [f32; 2], rx: f32, ry: f32, w: usize, h: usize, cov: &mut [u8]) {
+fn rasterize_ellipse(
+    center: [f32; 2],
+    u: [f32; 2],
+    rx: f32,
+    ry: f32,
+    w: usize,
+    h: usize,
+    cov: &mut [u8],
+) {
     let rx = rx.max(0.5);
     let ry = ry.max(0.5);
     let v = [-u[1], u[0]]; // perpendicular axis

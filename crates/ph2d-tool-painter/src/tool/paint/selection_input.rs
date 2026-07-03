@@ -4,8 +4,8 @@
 //! [`super::selection_shapes::SelectionShape`] to the shape list, so Edit mode can reinstate the native
 //! gizmo. Split from `selection` for the LOC cap.
 
-use super::selection_shapes::SelectionShape;
 use super::PainterTool;
+use super::selection_shapes::SelectionShape;
 use ph2d_editor_core::tool::{CanvasPointer, PointerPhase};
 use std::sync::Arc;
 
@@ -171,7 +171,8 @@ impl PainterTool {
                 // Fold the raw sample through the brush **stabilizer** (same `lazy_mouse_step` the FreeHand
                 // stroke uses) before capturing it, so the lasso is smoothed like a Free Hand stroke.
                 let stabilizer = self.paint.brush.stabilizer;
-                if let Some(SelectionDrag::Lasso { points, stab }) = &mut self.paint.selection_drag {
+                if let Some(SelectionDrag::Lasso { points, stab }) = &mut self.paint.selection_drag
+                {
                     *stab = ph2d_painter_brush::lazy_mouse_step(*stab, pos, stabilizer);
                     points.push(*stab);
                 }

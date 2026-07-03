@@ -5,8 +5,8 @@
 //! list into one editable Bézier curve. Falls back to tracing the raw mask when no parametric shape exists
 //! (e.g. after Invert / Automatic). Split from `selection` for the LOC cap.
 
-use super::selection_shapes::{SelectionEntry, SelectionShape};
 use super::PainterTool;
+use super::selection_shapes::{SelectionEntry, SelectionShape};
 use crate::undo::{CurveState, EllipseState, ShapeEditState};
 use ph2d_editor_core::tool::CanvasPointer;
 use std::sync::Arc;
@@ -132,14 +132,18 @@ impl PainterTool {
 
     /// Fit a raw lasso path into a CLOSED Bézier curve using the SAME Schneider fit + point cap the Free Hand
     /// stroke uses (ADR-0103 Am.2 §2), returning `(anchors, handles, kinds)`; degenerates to the raw polygon.
-    fn fit_closed_freehand(&self, points: &[[f32; 2]]) -> (Vec<[f32; 2]>, Vec<[[f32; 2]; 2]>, Vec<u8>) {
+    fn fit_closed_freehand(
+        &self,
+        points: &[[f32; 2]],
+    ) -> (Vec<[f32; 2]>, Vec<[[f32; 2]; 2]>, Vec<u8>) {
         if points.len() >= 3 {
             let fit = ph2d_painter_brush::fit_curve(points, super::curve::FREEHAND_FIT_ERROR);
             if !fit.anchors.is_empty() && fit.anchors.len() <= super::curve::MAX_CURVE_POINTS {
                 let kinds = vec![1u8; fit.anchors.len()]; // Aligned — the artist's smooth handles
                 return (fit.anchors, fit.handles, kinds);
             }
-            let pts = super::curve_geom::cap_curve_points(fit.anchors, super::curve::MAX_CURVE_POINTS);
+            let pts =
+                super::curve_geom::cap_curve_points(fit.anchors, super::curve::MAX_CURVE_POINTS);
             let kinds = vec![2u8; pts.len()];
             return (pts, Vec::new(), kinds);
         }
@@ -219,8 +223,9 @@ impl PainterTool {
             },
             ShapeEditState::Curve(s) => {
                 if off != 0.0 {
-                    let (pts, handles, _) =
-                        super::curve_offset::offset_curve_refined(&s.points, &s.handles, off, s.closed);
+                    let (pts, handles, _) = super::curve_offset::offset_curve_refined(
+                        &s.points, &s.handles, off, s.closed,
+                    );
                     let kinds = vec![1u8; pts.len()];
                     SelectionShape::Freehand {
                         points: pts,
@@ -286,9 +291,15 @@ impl PainterTool {
             .collect();
         let (points, handles) = if editable.len() == 1 {
             match &editable[0] {
-                SelectionShape::Ellipse { center, u, rx, ry } => ellipse_to_closed_curve(*center, *u, *rx, *ry),
-                SelectionShape::Rect { a, b } => (super::selection_shapes::rect_corners(*a, *b), Vec::new()),
-                SelectionShape::Freehand { points, handles, .. } => (points.clone(), handles.clone()),
+                SelectionShape::Ellipse { center, u, rx, ry } => {
+                    ellipse_to_closed_curve(*center, *u, *rx, *ry)
+                }
+                SelectionShape::Rect { a, b } => {
+                    (super::selection_shapes::rect_corners(*a, *b), Vec::new())
+                }
+                SelectionShape::Freehand {
+                    points, handles, ..
+                } => (points.clone(), handles.clone()),
                 SelectionShape::Raster { .. } => (self.traced_curve_points(), Vec::new()),
             }
         } else {

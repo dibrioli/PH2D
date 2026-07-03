@@ -80,6 +80,13 @@ const BENIGN_SET_MODE: &[(&str, &str)] = &[
          tool-mode change has no derived cache to settle. Apply (a separate action) promotes the \
          scratch to a layer mask.",
     ),
+    (
+        "set_selection_mode",
+        "Painter Selection sub-mode setter (Automatic/Freehand/Rectangle/Ellipse — ADR-0103): a single \
+         `selection_mode` field write. The on-canvas router reads it FRESH at each gesture Down (which \
+         engine to arm); no derived cache or mask is keyed on it — the mask only changes when a gesture \
+         actually runs. Same single-field pattern as the unflagged `set_selection_bool_op`.",
+    ),
 ];
 
 /// Setters that reconcile via implementation-specific verbs (rather

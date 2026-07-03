@@ -249,7 +249,6 @@ pub(super) fn draw_repeat_image(
     }
 }
 
-
 #[allow(clippy::too_many_arguments)]
 fn draw_ellipse_overlay(
     painter: &PainterTool,

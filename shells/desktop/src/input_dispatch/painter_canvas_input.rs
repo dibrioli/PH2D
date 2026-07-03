@@ -563,15 +563,15 @@ mod tests {
         let tol = |s: f64| shape_grab_tol_from_affine(&Affine::scale(s));
         assert!(
             (tol(1.0) - SHAPE_GRAB_TOL_SCREEN_PX).abs() < 1e-4,
-            "1× → screen radius in image px"
+            "1x -> screen radius in image px"
         );
         assert!(
             (tol(2.0) - SHAPE_GRAB_TOL_SCREEN_PX / 2.0).abs() < 1e-4,
-            "zoom 2× → half the image px"
+            "zoom 2x -> half the image px"
         );
         assert!(
             (tol(0.5) - SHAPE_GRAB_TOL_SCREEN_PX * 2.0).abs() < 1e-4,
-            "zoom 0.5× → twice the image px"
+            "zoom 0.5x -> twice the image px"
         );
         // A degenerate (zero) scale falls back to the screen constant — never NaN / infinity.
         assert_eq!(tol(0.0), SHAPE_GRAB_TOL_SCREEN_PX);

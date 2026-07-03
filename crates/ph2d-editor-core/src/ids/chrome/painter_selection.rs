@@ -25,8 +25,11 @@ pub const PAINTER_SEL_OP_NEW: NodeId = hash_node_id("painter_sel.op_new");
 pub const PAINTER_SEL_OP_ADD: NodeId = hash_node_id("painter_sel.op_add");
 pub const PAINTER_SEL_OP_REMOVE: NodeId = hash_node_id("painter_sel.op_remove");
 /// Op segments in `selection_bool_op` discriminant order (`0` New / `1` Add / `2` Remove).
-pub const PAINTER_SEL_OP_IDS: [NodeId; 3] =
-    [PAINTER_SEL_OP_NEW, PAINTER_SEL_OP_ADD, PAINTER_SEL_OP_REMOVE];
+pub const PAINTER_SEL_OP_IDS: [NodeId; 3] = [
+    PAINTER_SEL_OP_NEW,
+    PAINTER_SEL_OP_ADD,
+    PAINTER_SEL_OP_REMOVE,
+];
 
 // ── Sliders (0..1 track; the tool maps to its range) ─────────────────────────────────────────────────
 pub const PAINTER_SEL_FEATHER_SLIDER: NodeId = hash_node_id("painter_sel.feather_slider");

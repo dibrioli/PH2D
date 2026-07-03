@@ -50,7 +50,9 @@ pub(crate) fn paint_brush_body(
     // Selection mode owns the whole panel body (mode-exclusive, ADR-0103): paint ONLY the Selection
     // section — no shared brush control leaks in (the Inpaint precedent).
     if brush.is_selection {
-        return crate::paint_selection::paint_selection_section(ctx, theme, x, content_w, top_y, brush);
+        return crate::paint_selection::paint_selection_section(
+            ctx, theme, x, content_w, top_y, brush,
+        );
     }
     // If the shared picker is editing our swatch, forward its live colour.
     brush_color_readback(ctx, brush);

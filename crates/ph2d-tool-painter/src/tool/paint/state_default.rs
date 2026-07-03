@@ -42,9 +42,9 @@ impl Default for PaintState {
             mask_scratch_target: None,
             selection_mask: Arc::new(Vec::new()),
             selection_active: false,
-            selection_mode: 0,        // Automatic (Procreate default)
-            selection_bool_op: 0,     // New (replace)
-            selection_threshold: 0.5, // mid tolerance for Automatic
+            selection_mode: 0,              // Automatic (Procreate default)
+            selection_bool_op: 0,           // New (replace)
+            selection_threshold: 0.5,       // mid tolerance for Automatic
             selection_overlay_opacity: 0.2, // subtle hatch by default (Enio 2026-07-02)
             selection_edit_saved_method: None,
             selection_drag: None,

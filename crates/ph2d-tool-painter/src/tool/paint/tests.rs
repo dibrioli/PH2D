@@ -6966,7 +6966,11 @@ fn selection_ellipse_marquee_excludes_the_corners() {
     t.set_selection_mode(3); // Ellipse
     t.on_canvas_pointer(cp([0.0, 0.0], PointerPhase::Down));
     t.on_canvas_pointer(cp([40.0, 40.0], PointerPhase::Up));
-    assert_eq!(t.selection_coverage_at(20, 20), 255, "the ellipse centre is in");
+    assert_eq!(
+        t.selection_coverage_at(20, 20),
+        255,
+        "the ellipse centre is in"
+    );
     assert_eq!(t.selection_coverage_at(1, 1), 0, "the bbox corner is out");
 }
 
@@ -6983,9 +6987,17 @@ fn selection_add_operator_unions_two_rectangles() {
     t.set_selection_bool_op(1); // Add
     t.on_canvas_pointer(cp([40.0, 40.0], PointerPhase::Down));
     t.on_canvas_pointer(cp([56.0, 56.0], PointerPhase::Up));
-    assert_eq!(t.selection_coverage_at(8, 8), 255, "first rect still selected");
+    assert_eq!(
+        t.selection_coverage_at(8, 8),
+        255,
+        "first rect still selected"
+    );
     assert_eq!(t.selection_coverage_at(48, 48), 255, "second rect added");
-    assert_eq!(t.selection_coverage_at(30, 30), 0, "the gap between is unselected");
+    assert_eq!(
+        t.selection_coverage_at(30, 30),
+        0,
+        "the gap between is unselected"
+    );
 }
 
 /// Wave 2: Automatic flood-selects the connected same-colour region up to the threshold, joining the undo
@@ -7014,10 +7026,17 @@ fn selection_automatic_floods_the_connected_region() {
     t.on_canvas_pointer(cp([2.0, 2.0], PointerPhase::Down));
     t.on_canvas_pointer(cp([2.0, 2.0], PointerPhase::Up));
     assert_eq!(t.selection_coverage_at(3, 3), 255, "red region selected");
-    assert_eq!(t.selection_coverage_at(12, 8), 0, "blue region not selected");
+    assert_eq!(
+        t.selection_coverage_at(12, 8),
+        0,
+        "blue region not selected"
+    );
     // Undo removes the whole flood-select as ONE queue entry.
     t.undo_last();
-    assert!(!t.selection_active(), "undo cleared the Automatic selection");
+    assert!(
+        !t.selection_active(),
+        "undo cleared the Automatic selection"
+    );
 }
 
 /// Wave 3 backend: Feather softens the selection border (derived from the crisp accumulator) while the
@@ -7029,7 +7048,11 @@ fn selection_feather_softens_the_border_not_the_interior() {
     t.set_selection_mode(2); // Rectangle
     t.on_canvas_pointer(cp([0.0, 0.0], PointerPhase::Down));
     t.on_canvas_pointer(cp([32.0, 64.0], PointerPhase::Up)); // left-half rect (x < 32)
-    assert_eq!(t.selection_coverage_at(32, 32), 0, "crisp: just outside the border is unselected");
+    assert_eq!(
+        t.selection_coverage_at(32, 32),
+        0,
+        "crisp: just outside the border is unselected"
+    );
     t.set_selection_feather(0.3);
     let edge = t.selection_coverage_at(32, 32);
     assert!(
@@ -7070,12 +7093,18 @@ fn selection_overlay_ants_hatch_and_clear_interior() {
     );
     // Hatch: some semi-transparent coverage in the deselected area (right of the border).
     assert!(
-        (0..32).any(|y| (20..32).any(|x| { let av = a(x, y); av > 0 && av < 255 })),
+        (0..32).any(|y| (20..32).any(|x| {
+            let av = a(x, y);
+            av > 0 && av < 255
+        })),
         "semi-transparent hatch over the deselected area"
     );
     // No selection → no overlay.
     t.clear_selection();
-    assert!(t.selection_overlay_rgba(0).is_none(), "no overlay without a selection");
+    assert!(
+        t.selection_overlay_rgba(0).is_none(),
+        "no overlay without a selection"
+    );
 }
 
 /// Smoke#2 fix A: the marquee previews LIVE during the drag (mask updated on Move, not only pen-up).
@@ -7148,14 +7177,28 @@ fn selection_edit_mode_installs_curve_and_round_trips_the_mask() {
 
     // Re-deriving the mask from the curve reproduces the region (inside kept, outside clear).
     t.selection_refill_from_curve();
-    assert_eq!(t.selection_coverage_at(25, 25), 255, "curve refill keeps the interior");
-    assert_eq!(t.selection_coverage_at(2, 2), 0, "curve refill leaves the outside clear");
+    assert_eq!(
+        t.selection_coverage_at(25, 25),
+        255,
+        "curve refill keeps the interior"
+    );
+    assert_eq!(
+        t.selection_coverage_at(2, 2),
+        0,
+        "curve refill leaves the outside clear"
+    );
 
     // Exit → the overlay is discarded, the selection persists.
     t.toggle_selection_edit();
     assert!(!t.selection_edit_mode(), "edit mode is off");
-    assert!(t.curve_overlay().is_none(), "the curve overlay is discarded on exit");
-    assert!(t.selection_active(), "the selection persists after leaving edit mode");
+    assert!(
+        t.curve_overlay().is_none(),
+        "the curve overlay is discarded on exit"
+    );
+    assert!(
+        t.selection_active(),
+        "the selection persists after leaving edit mode"
+    );
 }
 
 /// Count fully-selected texels (coverage ≥ 128) across a `size×size` selection — a robust area metric.
@@ -7190,10 +7233,21 @@ fn selection_ellipse_edit_installs_the_native_ellipse_gizmo() {
         t.curve_overlay().is_none(),
         "no traced curve — the ellipse keeps its own parametric gizmo"
     );
-    assert_eq!(t.selection_coverage_at(32, 32), 255, "centre still selected in edit mode");
-    assert_eq!(t.selection_coverage_at(2, 2), 0, "the bbox corner stays out");
+    assert_eq!(
+        t.selection_coverage_at(32, 32),
+        255,
+        "centre still selected in edit mode"
+    );
+    assert_eq!(
+        t.selection_coverage_at(2, 2),
+        0,
+        "the bbox corner stays out"
+    );
     t.toggle_selection_edit();
-    assert!(t.ellipse_overlay().is_none(), "the gizmo is discarded on exit");
+    assert!(
+        t.ellipse_overlay().is_none(),
+        "the gizmo is discarded on exit"
+    );
 }
 
 /// ADR-0103 Am.2: editing ONE shape's gizmo recomposites the WHOLE list — the other added shape survives.
@@ -7209,17 +7263,28 @@ fn selection_edit_preserves_the_other_added_shape() {
     t.on_canvas_pointer(cp([40.0, 40.0], PointerPhase::Down));
     t.on_canvas_pointer(cp([56.0, 56.0], PointerPhase::Up));
     assert_eq!(t.selection_coverage_at(8, 8), 255, "rect region selected");
-    assert_eq!(t.selection_coverage_at(48, 48), 255, "ellipse region selected");
+    assert_eq!(
+        t.selection_coverage_at(48, 48),
+        255,
+        "ellipse region selected"
+    );
     // Enter edit → the LAST editable shape (the ellipse) gets the gizmo; a recompose keeps BOTH shapes.
     t.toggle_selection_edit();
-    assert!(t.ellipse_overlay().is_some(), "the ellipse is the active gizmo");
+    assert!(
+        t.ellipse_overlay().is_some(),
+        "the ellipse is the active gizmo"
+    );
     t.set_selection_offset(0.5); // a no-op offset forces a recompose of the list
     assert_eq!(
         t.selection_coverage_at(8, 8),
         255,
         "the OTHER (rect) shape survives while editing the ellipse"
     );
-    assert_eq!(t.selection_coverage_at(48, 48), 255, "the edited ellipse stays selected");
+    assert_eq!(
+        t.selection_coverage_at(48, 48),
+        255,
+        "the edited ellipse stays selected"
+    );
 }
 
 /// ADR-0103 Am.2: a **Freehand** selection becomes a CLOSED editable Bézier curve in Edit mode.
@@ -7238,7 +7303,10 @@ fn selection_freehand_edit_installs_a_closed_curve() {
         t.curve_overlay().is_some(),
         "freehand → a closed editable curve gizmo"
     );
-    assert!(t.ellipse_overlay().is_none(), "freehand is not an ellipse gizmo");
+    assert!(
+        t.ellipse_overlay().is_none(),
+        "freehand is not an ellipse gizmo"
+    );
 }
 
 /// ADR-0103 Am.2 §3: **Convert to Curve** flattens the active gizmo into ONE editable Bézier curve, keeping
@@ -7257,9 +7325,16 @@ fn selection_convert_to_curve_installs_one_editable_curve() {
         t.curve_overlay().is_some(),
         "convert flattens the ellipse into a Bézier curve"
     );
-    assert!(t.ellipse_overlay().is_none(), "the ellipse gizmo is gone after convert");
+    assert!(
+        t.ellipse_overlay().is_none(),
+        "the ellipse gizmo is gone after convert"
+    );
     assert!(t.selection_edit_mode(), "still editing the resulting curve");
-    assert_eq!(t.selection_coverage_at(32, 32), 255, "the region survives the conversion");
+    assert_eq!(
+        t.selection_coverage_at(32, 32),
+        255,
+        "the region survives the conversion"
+    );
 }
 
 /// ADR-0103 Am.2: the **Offset** slider grows the edited boundary (more texels selected).
@@ -7286,7 +7361,11 @@ fn selection_color_fill_paints_only_inside() {
     let mut t = white_canvas(32, 4.0); // white canvas, black brush
     t.set_rect_selection(0, 0, 16, 32); // left half
     t.selection_color_fill();
-    assert_eq!(px(&t, 32, 4, 16), [0, 0, 0, 255], "inside the selection is filled black");
+    assert_eq!(
+        px(&t, 32, 4, 16),
+        [0, 0, 0, 255],
+        "inside the selection is filled black"
+    );
     assert_eq!(
         px(&t, 32, 24, 16),
         [255, 255, 255, 255],
@@ -7305,10 +7384,22 @@ fn selection_copy_then_paste_reapplies_the_pixels() {
     // Wipe the left half back to white by filling with a white brush.
     t.paint.brush.color = [1.0, 1.0, 1.0];
     t.selection_color_fill();
-    assert_eq!(px(&t, 32, 4, 16), [255, 255, 255, 255], "left half wiped to white");
+    assert_eq!(
+        px(&t, 32, 4, 16),
+        [255, 255, 255, 255],
+        "left half wiped to white"
+    );
     t.selection_paste(); // re-apply the copied black pixels
-    assert_eq!(px(&t, 32, 4, 16), [0, 0, 0, 255], "paste restored the copied region");
-    assert_eq!(px(&t, 32, 24, 16), [255, 255, 255, 255], "outside the paste rect is untouched");
+    assert_eq!(
+        px(&t, 32, 4, 16),
+        [0, 0, 0, 255],
+        "paste restored the copied region"
+    );
+    assert_eq!(
+        px(&t, 32, 24, 16),
+        [255, 255, 255, 255],
+        "outside the paste rect is untouched"
+    );
 }
 
 /// ADR-0103 Wave 5: **Select layer contents** sets the mask from the layer's opaque texels.
@@ -7329,5 +7420,9 @@ fn selection_from_layer_contents_selects_opaque_texels() {
     t.set_paint_tool_mode("selection");
     t.selection_from_layer_contents();
     assert_eq!(t.selection_coverage_at(3, 3), 255, "opaque texel selected");
-    assert_eq!(t.selection_coverage_at(12, 3), 0, "transparent texel not selected");
+    assert_eq!(
+        t.selection_coverage_at(12, 3),
+        0,
+        "transparent texel not selected"
+    );
 }

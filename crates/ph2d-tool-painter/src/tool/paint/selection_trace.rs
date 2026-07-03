@@ -6,7 +6,11 @@
 /// A texel is INSIDE the selection when its coverage is ≥ the half contour.
 #[inline]
 fn inside(mask: &[u8], w: usize, h: usize, x: i32, y: i32) -> bool {
-    x >= 0 && y >= 0 && (x as usize) < w && (y as usize) < h && mask[(y as usize) * w + x as usize] >= 128
+    x >= 0
+        && y >= 0
+        && (x as usize) < w
+        && (y as usize) < h
+        && mask[(y as usize) * w + x as usize] >= 128
 }
 
 /// Moore-neighbour offsets in CLOCKWISE order starting at West (index 0): W · NW · N · NE · E · SE · S · SW.
@@ -204,6 +208,9 @@ mod tests {
             miny = miny.min(*y);
             maxy = maxy.max(*y);
         }
-        assert!(minx < 9.0 && maxx > 16.0 && miny < 9.0 && maxy > 16.0, "contour spans the square");
+        assert!(
+            minx < 9.0 && maxx > 16.0 && miny < 9.0 && maxy > 16.0,
+            "contour spans the square"
+        );
     }
 }

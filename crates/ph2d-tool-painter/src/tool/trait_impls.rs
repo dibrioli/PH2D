@@ -502,4 +502,3 @@ impl Tool for PainterTool {
         false
     }
 }
-

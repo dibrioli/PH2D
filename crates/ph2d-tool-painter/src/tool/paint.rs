@@ -87,33 +87,33 @@ mod fill; // Fill (Bucket) — Procreate ColorDrop flood fill + live threshold a
 mod inpaint; // content-aware heal brush (mark defect + reconstruct on pen-up); split for LOC cap
 /// The **Mask** tool's extras — sub-brush (Paint/Erase/Blur/Smear), whole-canvas ops, overlay tint. [LOC split].
 mod mask;
-/// The **Selection** tool (ADR-0103) — the document-wide selection mask, undo integration + paint gate. [LOC split].
-mod selection;
-/// Selection creation input: mode/op/threshold setters + on-canvas pointer gestures (marquee/lasso/flood). [LOC split].
-mod selection_input;
-/// Selection rasterization: shape → coverage buffers, boolean combine, Feather (box-blur). [LOC split].
-mod selection_raster;
-/// Selection on-canvas overlay (marching ants + hatching) + panel event routing. [LOC split].
-mod selection_overlay;
-/// Selection **Edit** mode (ADR-0103 Am.2): per-shape NATIVE gizmos + Convert-to-Curve. [LOC split].
-mod selection_edit;
-/// Selection **shape list** model (ADR-0103 Am.2): the `Vec<SelectionShape>` source of truth + compositing. [LOC split].
-mod selection_shapes;
-/// Selection **actions** (Wave 5): Select layer contents / Color Fill / Copy-Paste / Save-Load slots. [LOC split].
-mod selection_actions;
-/// Selection **Edit** mode contour tracing (mask → editable boundary polyline); split for the LOC cap.
-mod selection_trace;
 mod ramp;
 mod ramp_lut; // ramp LUT baking (colour owner + colour/tone LUTs); split from `stamp_cache` (LOC cap)
 /// Pixel-region save/restore helpers for the drag preview (`dab_bbox`/`save_region`/`restore_region`).
 mod region;
+/// The **Selection** tool (ADR-0103) — the document-wide selection mask, undo integration + paint gate. [LOC split].
+mod selection;
+/// Selection **actions** (Wave 5): Select layer contents / Color Fill / Copy-Paste / Save-Load slots. [LOC split].
+mod selection_actions;
+/// Selection **Edit** mode (ADR-0103 Am.2): per-shape NATIVE gizmos + Convert-to-Curve. [LOC split].
+mod selection_edit;
+/// Selection creation input: mode/op/threshold setters + on-canvas pointer gestures (marquee/lasso/flood). [LOC split].
+mod selection_input;
+/// Selection on-canvas overlay (marching ants + hatching) + panel event routing. [LOC split].
+mod selection_overlay;
+/// Selection rasterization: shape → coverage buffers, boolean combine, Feather (box-blur). [LOC split].
+mod selection_raster;
+/// Selection **shape list** model (ADR-0103 Am.2): the `Vec<SelectionShape>` source of truth + compositing. [LOC split].
+mod selection_shapes;
+/// Selection **Edit** mode contour tracing (mask → editable boundary polyline); split for the LOC cap.
+mod selection_trace;
 mod shape_ramp;
 mod snapshot;
 /// The Blender-style cached brush stamp (render falloff×texture once, scale-blit per dab).
 mod stamp_cache;
+mod stamp_preview; // interactive drag-preview stamping (restore+re-stamp, dirty-rect); split for the LOC cap
 /// The stamp route dispatcher (Shape + Grain → which of the 4 stamp paths); split for the LOC cap.
 mod stamp_route;
-mod stamp_preview; // interactive drag-preview stamping (restore+re-stamp, dirty-rect); split for the LOC cap
 /// `PaintState::default` body — split out for the workspace file-LOC cap (struct stays in `paint.rs`).
 mod state_default;
 

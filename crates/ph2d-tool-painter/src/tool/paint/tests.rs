@@ -6942,3 +6942,80 @@ fn selection_restricts_paint_and_undoes_interleaved_on_one_queue() {
         "redo re-applied the stroke inside the selection"
     );
 }
+
+/// Wave 2: the Rectangle marquee covers the dragged region (Down → Move → Up), and an out-of-rect texel
+/// stays unselected.
+#[test]
+fn selection_rectangle_marquee_covers_the_dragged_region() {
+    let mut t = white_canvas(64, 4.0);
+    t.set_paint_tool_mode("selection");
+    t.set_selection_mode(2); // Rectangle
+    t.on_canvas_pointer(cp([10.0, 10.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([30.0, 40.0], PointerPhase::Move));
+    t.on_canvas_pointer(cp([30.0, 40.0], PointerPhase::Up));
+    assert!(t.selection_active(), "a rectangle selection is live");
+    assert_eq!(t.selection_coverage_at(20, 25), 255, "inside the rectangle");
+    assert_eq!(t.selection_coverage_at(50, 50), 0, "outside the rectangle");
+}
+
+/// Wave 2: the Ellipse marquee selects inside the ellipse but not the bbox corners.
+#[test]
+fn selection_ellipse_marquee_excludes_the_corners() {
+    let mut t = white_canvas(64, 4.0);
+    t.set_paint_tool_mode("selection");
+    t.set_selection_mode(3); // Ellipse
+    t.on_canvas_pointer(cp([0.0, 0.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([40.0, 40.0], PointerPhase::Up));
+    assert_eq!(t.selection_coverage_at(20, 20), 255, "the ellipse centre is in");
+    assert_eq!(t.selection_coverage_at(1, 1), 0, "the bbox corner is out");
+}
+
+/// Wave 2: Add unions a second rectangle into the selection; the operator is the boolean seam.
+#[test]
+fn selection_add_operator_unions_two_rectangles() {
+    let mut t = white_canvas(64, 4.0);
+    t.set_paint_tool_mode("selection");
+    t.set_selection_mode(2);
+    // First rect (New) top-left.
+    t.on_canvas_pointer(cp([0.0, 0.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([16.0, 16.0], PointerPhase::Up));
+    // Second rect with Add, bottom-right — both regions end up selected, the gap stays out.
+    t.set_selection_bool_op(1); // Add
+    t.on_canvas_pointer(cp([40.0, 40.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([56.0, 56.0], PointerPhase::Up));
+    assert_eq!(t.selection_coverage_at(8, 8), 255, "first rect still selected");
+    assert_eq!(t.selection_coverage_at(48, 48), 255, "second rect added");
+    assert_eq!(t.selection_coverage_at(30, 30), 0, "the gap between is unselected");
+}
+
+/// Wave 2: Automatic flood-selects the connected same-colour region up to the threshold, joining the undo
+/// queue on pen-up.
+#[test]
+fn selection_automatic_floods_the_connected_region() {
+    // Left half red, right half blue; Automatic from the red side selects only the red half.
+    let (size, half) = (16u32, 8u32);
+    let mut src = vec![0u8; (size * size * 4) as usize];
+    for y in 0..size {
+        for x in 0..size {
+            let o = ((y * size + x) * 4) as usize;
+            let c = if x < half {
+                [200, 0, 0, 255]
+            } else {
+                [0, 0, 200, 255]
+            };
+            src[o..o + 4].copy_from_slice(&c);
+        }
+    }
+    let mut t = PainterTool::default();
+    t.set_source(src, size, size);
+    t.set_paint_tool_mode("selection");
+    t.set_selection_mode(0); // Automatic
+    t.set_selection_threshold(0.1); // tight — never bridges into blue
+    t.on_canvas_pointer(cp([2.0, 2.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([2.0, 2.0], PointerPhase::Up));
+    assert_eq!(t.selection_coverage_at(3, 3), 255, "red region selected");
+    assert_eq!(t.selection_coverage_at(12, 8), 0, "blue region not selected");
+    // Undo removes the whole flood-select as ONE queue entry.
+    t.undo_last();
+    assert!(!t.selection_active(), "undo cleared the Automatic selection");
+}

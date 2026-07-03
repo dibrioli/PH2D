@@ -11,13 +11,47 @@
 //! (Automatic / Freehand / Rectangle / Ellipse) and boolean operators build on this in Wave 2.
 
 use super::{PainterTool, Region};
+use ph2d_editor_core::tool::{CanvasPointer, PointerPhase};
 use std::sync::Arc;
+
+/// The in-progress selection gesture — the overlay draws its rubber-band; the mask is rasterized on Up
+/// (Automatic writes it live). Held in [`super::PaintState`].
+#[derive(Clone, Debug)]
+pub(crate) enum SelectionDrag {
+    /// Rectangle / Ellipse marquee: a rubber-band from `anchor` to the current point. `ellipse` picks the
+    /// shape.
+    Marquee {
+        anchor: [f32; 2],
+        cur: [f32; 2],
+        ellipse: bool,
+    },
+    /// Freehand lasso: the captured path (closed on release).
+    Lasso { points: Vec<[f32; 2]> },
+    /// Automatic flood-select: the seed + the threshold at gesture start (horizontal drag adjusts it live,
+    /// Procreate-style). The mask is written on every change.
+    Auto { seed: [f32; 2], thresh0: f32 },
+}
 
 impl PainterTool {
     /// `true` while a selection is live (even an empty one, which paints nothing).
     #[must_use]
     pub fn selection_active(&self) -> bool {
         self.paint.selection_active
+    }
+
+    /// Selection coverage (`0..=255`) at image texel `(x, y)`; `0` when out of bounds / no selection. Read
+    /// by the overlay (marching ants / hatching) and tests.
+    #[must_use]
+    pub fn selection_coverage_at(&self, x: u32, y: u32) -> u8 {
+        let w = self.source_size.0;
+        if w == 0 {
+            return 0;
+        }
+        self.paint
+            .selection_mask
+            .get((y * w + x) as usize)
+            .copied()
+            .unwrap_or(0)
     }
 
     /// Snapshot the selection mask + active flag for the undo model — the mask lives in `PaintState`
@@ -124,5 +158,343 @@ impl PainterTool {
         self.paint.selection_mask = Arc::new(Vec::new());
         self.invalidate_composite();
         self.commit_structural_edit(before);
+    }
+}
+
+// ── Wave 2: on-canvas creation modes (Automatic / Freehand / Rectangle / Ellipse) + boolean ops ──────────
+impl PainterTool {
+    /// Set the Selection sub-mode (`0` Automatic · `1` Freehand · `2` Rectangle · `3` Ellipse).
+    pub fn set_selection_mode(&mut self, m: u8) {
+        self.paint.selection_mode = m.min(3);
+    }
+    /// The active Selection sub-mode discriminant.
+    #[must_use]
+    pub fn selection_mode(&self) -> u8 {
+        self.paint.selection_mode
+    }
+    /// Set the boolean operator for the next gesture (`0` New · `1` Add · `2` Remove).
+    pub fn set_selection_bool_op(&mut self, op: u8) {
+        self.paint.selection_bool_op = op.min(2);
+    }
+    /// The active boolean operator discriminant.
+    #[must_use]
+    pub fn selection_bool_op(&self) -> u8 {
+        self.paint.selection_bool_op
+    }
+    /// Set the Automatic-mode threshold (`0..1`); re-floods live if an Automatic gesture is open.
+    pub fn set_selection_threshold(&mut self, t: f32) {
+        self.paint.selection_threshold = t.clamp(0.0, 1.0);
+        let auto_seed = match &self.paint.selection_drag {
+            Some(SelectionDrag::Auto { seed, .. }) => Some(*seed),
+            _ => None,
+        };
+        if let Some(seed) = auto_seed {
+            self.auto_reflood(seed);
+        }
+    }
+    /// The Automatic threshold (`0..1`).
+    #[must_use]
+    pub fn selection_threshold(&self) -> f32 {
+        self.paint.selection_threshold
+    }
+
+    /// **Invert** the whole selection (`255 − coverage`), sizing the mask to the canvas first. One undo entry.
+    pub fn invert_selection(&mut self) {
+        let (w, h) = self.source_size;
+        if w == 0 || h == 0 {
+            return;
+        }
+        let before = self.snapshot_model();
+        self.ensure_selection_mask();
+        let mask = Arc::make_mut(&mut self.paint.selection_mask);
+        for v in mask.iter_mut() {
+            *v = 255 - *v;
+        }
+        self.paint.selection_active = mask.iter().any(|&v| v > 0);
+        self.invalidate_composite();
+        self.commit_structural_edit(before);
+    }
+
+    /// Route a Selection-mode canvas pointer to the active sub-mode (called from `on_canvas_pointer`).
+    pub(super) fn selection_pointer(&mut self, ev: CanvasPointer) -> bool {
+        match ev.phase {
+            PointerPhase::Down => self.selection_down(ev.pos),
+            PointerPhase::Move => self.selection_move(ev.pos),
+            PointerPhase::Up => self.selection_up(ev.pos),
+            PointerPhase::Hover => false,
+        }
+    }
+
+    /// Begin a selection gesture: snapshot for undo, capture the base selection this gesture combines
+    /// against, and start the sub-mode's drag. Automatic floods immediately.
+    fn selection_down(&mut self, pos: [f32; 2]) -> bool {
+        self.paint.stroke_undo = Some(self.snapshot_model());
+        self.ensure_selection_mask();
+        self.paint.selection_base = Arc::clone(&self.paint.selection_mask);
+        match self.paint.selection_mode {
+            0 => {
+                let thresh0 = self.paint.selection_threshold;
+                self.paint.selection_drag = Some(SelectionDrag::Auto { seed: pos, thresh0 });
+                self.auto_reflood(pos);
+            }
+            1 => {
+                self.paint.selection_drag = Some(SelectionDrag::Lasso { points: vec![pos] });
+            }
+            3 => {
+                self.paint.selection_drag = Some(SelectionDrag::Marquee {
+                    anchor: pos,
+                    cur: pos,
+                    ellipse: true,
+                });
+            }
+            _ => {
+                self.paint.selection_drag = Some(SelectionDrag::Marquee {
+                    anchor: pos,
+                    cur: pos,
+                    ellipse: false,
+                });
+            }
+        }
+        true
+    }
+
+    /// Extend the gesture: marquee tracks the corner, lasso appends a point, Automatic drags the threshold
+    /// (horizontal delta from the seed, Procreate-style). Only geometry is updated per Move (cheap); the
+    /// marquee/lasso mask is rasterized once on Up.
+    fn selection_move(&mut self, pos: [f32; 2]) -> bool {
+        // Extract the Copy data (and drop the borrow) before touching other `self` fields / methods.
+        enum Move {
+            Marquee,
+            Lasso,
+            Auto([f32; 2], f32),
+        }
+        let kind = match &self.paint.selection_drag {
+            Some(SelectionDrag::Marquee { .. }) => Move::Marquee,
+            Some(SelectionDrag::Lasso { .. }) => Move::Lasso,
+            Some(SelectionDrag::Auto { seed, thresh0 }) => Move::Auto(*seed, *thresh0),
+            None => return false,
+        };
+        match kind {
+            Move::Marquee => {
+                if let Some(SelectionDrag::Marquee { cur, .. }) = &mut self.paint.selection_drag {
+                    *cur = pos;
+                }
+                self.invalidate_composite();
+            }
+            Move::Lasso => {
+                if let Some(SelectionDrag::Lasso { points }) = &mut self.paint.selection_drag {
+                    points.push(pos);
+                }
+                self.invalidate_composite();
+            }
+            Move::Auto(seed, thresh0) => {
+                let w = self.source_size.0;
+                if w > 0 {
+                    let delta = (pos[0] - seed[0]) / w as f32;
+                    self.paint.selection_threshold = (thresh0 + delta).clamp(0.0, 1.0);
+                }
+                self.auto_reflood(seed);
+            }
+        }
+        true
+    }
+
+    /// Finish the gesture: rasterize the region, combine into the mask, and commit ONE structural undo
+    /// entry so the selection joins the single interleaved queue.
+    fn selection_up(&mut self, pos: [f32; 2]) -> bool {
+        let region = match self.paint.selection_drag.take() {
+            Some(SelectionDrag::Marquee { anchor, ellipse, .. }) => {
+                self.raster_marquee(anchor, pos, ellipse)
+            }
+            Some(SelectionDrag::Lasso { mut points }) => {
+                points.push(pos);
+                self.raster_lasso(&points)
+            }
+            Some(SelectionDrag::Auto { seed, .. }) => self.raster_flood(seed),
+            None => return false,
+        };
+        self.apply_selection_region(&region);
+        if let Some(before) = self.paint.stroke_undo.take() {
+            self.commit_structural_edit(before);
+        }
+        self.paint.selection_base = Arc::new(Vec::new());
+        self.invalidate_composite();
+        true
+    }
+
+    /// Re-flood the Automatic selection from `seed` at the current threshold, writing the combined mask live.
+    fn auto_reflood(&mut self, seed: [f32; 2]) {
+        let region = self.raster_flood(seed);
+        self.apply_selection_region(&region);
+        self.invalidate_composite();
+    }
+
+    /// Rasterize a rectangle / ellipse marquee (image px) into a canvas-sized coverage buffer (0 / 255).
+    fn raster_marquee(&self, a: [f32; 2], b: [f32; 2], ellipse: bool) -> Vec<u8> {
+        let (w, h) = (self.source_size.0 as usize, self.source_size.1 as usize);
+        let mut cov = vec![0u8; w * h];
+        if w == 0 || h == 0 {
+            return cov;
+        }
+        let x0 = a[0].min(b[0]).floor().clamp(0.0, w as f32) as usize;
+        let x1 = a[0].max(b[0]).ceil().clamp(0.0, w as f32) as usize;
+        let y0 = a[1].min(b[1]).floor().clamp(0.0, h as f32) as usize;
+        let y1 = a[1].max(b[1]).ceil().clamp(0.0, h as f32) as usize;
+        if ellipse {
+            let cx = (x0 as f32 + x1 as f32) * 0.5;
+            let cy = (y0 as f32 + y1 as f32) * 0.5;
+            let rx = ((x1.saturating_sub(x0)) as f32 * 0.5).max(0.5);
+            let ry = ((y1.saturating_sub(y0)) as f32 * 0.5).max(0.5);
+            for yy in y0..y1 {
+                for xx in x0..x1 {
+                    let dx = (xx as f32 + 0.5 - cx) / rx;
+                    let dy = (yy as f32 + 0.5 - cy) / ry;
+                    if dx * dx + dy * dy <= 1.0 {
+                        cov[yy * w + xx] = 255;
+                    }
+                }
+            }
+        } else {
+            for yy in y0..y1 {
+                for xx in x0..x1 {
+                    cov[yy * w + xx] = 255;
+                }
+            }
+        }
+        cov
+    }
+
+    /// Rasterize a closed lasso polygon (image px) into a canvas-sized coverage buffer via an even-odd
+    /// scanline fill. Needs ≥3 points.
+    fn raster_lasso(&self, pts: &[[f32; 2]]) -> Vec<u8> {
+        let (w, h) = (self.source_size.0 as usize, self.source_size.1 as usize);
+        let mut cov = vec![0u8; w * h];
+        if w == 0 || h == 0 || pts.len() < 3 {
+            return cov;
+        }
+        for yy in 0..h {
+            let yc = yy as f32 + 0.5;
+            let mut xs: Vec<f32> = Vec::new();
+            for i in 0..pts.len() {
+                let p = pts[i];
+                let q = pts[(i + 1) % pts.len()];
+                let (py, qy) = (p[1], q[1]);
+                if (py <= yc && yc < qy) || (qy <= yc && yc < py) {
+                    let t = (yc - py) / (qy - py);
+                    xs.push(p[0] + t * (q[0] - p[0]));
+                }
+            }
+            xs.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+            let mut i = 0;
+            while i + 1 < xs.len() {
+                let xa = xs[i].max(0.0).round() as usize;
+                let xb = (xs[i + 1].min(w as f32).round() as usize).min(w);
+                for xx in xa..xb {
+                    cov[yy * w + xx] = 255;
+                }
+                i += 2;
+            }
+        }
+        cov
+    }
+
+    /// Rasterize an Automatic flood-select from `seed` at the current threshold into a coverage buffer.
+    fn raster_flood(&self, seed: [f32; 2]) -> Vec<u8> {
+        let (w, h) = (self.source_size.0 as usize, self.source_size.1 as usize);
+        let mut cov = vec![0u8; w * h];
+        if w == 0 || h == 0 || self.canvas_rgba.len() != w * h * 4 {
+            return cov;
+        }
+        let sx = (seed[0].floor() as i32).clamp(0, w as i32 - 1) as usize;
+        let sy = (seed[1].floor() as i32).clamp(0, h as i32 - 1) as usize;
+        let tol = (self.paint.selection_threshold.clamp(0.0, 1.0) * 255.0).round() as u8;
+        flood_coverage(&self.canvas_rgba, w, h, (sx, sy), tol, &mut cov);
+        cov
+    }
+
+    /// Combine `region` (canvas-sized coverage) into the selection mask using the current boolean op,
+    /// against the gesture's base selection. Updates `selection_active`.
+    fn apply_selection_region(&mut self, region: &[u8]) {
+        let n = (self.source_size.0 as usize) * (self.source_size.1 as usize);
+        if n == 0 || region.len() != n {
+            return;
+        }
+        let base = if self.paint.selection_base.len() == n {
+            Arc::clone(&self.paint.selection_base)
+        } else {
+            Arc::new(vec![0u8; n])
+        };
+        let mut out = vec![0u8; n];
+        match self.paint.selection_bool_op {
+            // Add: union (max).
+            1 => {
+                for i in 0..n {
+                    out[i] = base[i].max(region[i]);
+                }
+            }
+            // Remove: base ∧ ¬region.
+            2 => {
+                for i in 0..n {
+                    out[i] = ((u16::from(base[i]) * u16::from(255 - region[i])) / 255) as u8;
+                }
+            }
+            // New: replace.
+            _ => out.copy_from_slice(region),
+        }
+        self.paint.selection_active = out.iter().any(|&v| v > 0);
+        self.paint.selection_mask = Arc::new(out);
+    }
+}
+
+/// Scanline flood — like [`super::fill::flood_fill`] but WRITES a coverage buffer (255 in-region) instead
+/// of painting, reading `px` (RGBA8) read-only. Matches the 4-connected region within `tol` of the seed.
+fn flood_coverage(px: &[u8], w: usize, h: usize, seed: (usize, usize), tol: u8, cov: &mut [u8]) {
+    if w == 0 || h == 0 || px.len() != w * h * 4 || cov.len() != w * h {
+        return;
+    }
+    let (sx, sy) = seed;
+    if sx >= w || sy >= h {
+        return;
+    }
+    let si = (sy * w + sx) * 4;
+    let seed_c = [px[si], px[si + 1], px[si + 2], px[si + 3]];
+    let matches = |idx: usize| -> bool {
+        let o = idx * 4;
+        px[o]
+            .abs_diff(seed_c[0])
+            .max(px[o + 1].abs_diff(seed_c[1]))
+            .max(px[o + 2].abs_diff(seed_c[2]))
+            .max(px[o + 3].abs_diff(seed_c[3]))
+            <= tol
+    };
+    let mut visited = vec![false; w * h];
+    let mut stack: Vec<(usize, usize)> = vec![seed];
+    while let Some((x, y)) = stack.pop() {
+        if visited[y * w + x] {
+            continue;
+        }
+        let mut lx = x;
+        while lx > 0 && !visited[y * w + lx - 1] && matches(y * w + lx - 1) {
+            lx -= 1;
+        }
+        let mut rx = x;
+        while rx + 1 < w && !visited[y * w + rx + 1] && matches(y * w + rx + 1) {
+            rx += 1;
+        }
+        for xx in lx..=rx {
+            let idx = y * w + xx;
+            visited[idx] = true;
+            cov[idx] = 255;
+        }
+        for ny in [y.checked_sub(1), (y + 1 < h).then_some(y + 1)]
+            .into_iter()
+            .flatten()
+        {
+            for xx in lx..=rx {
+                if !visited[ny * w + xx] && matches(ny * w + xx) {
+                    stack.push((xx, ny));
+                }
+            }
+        }
     }
 }

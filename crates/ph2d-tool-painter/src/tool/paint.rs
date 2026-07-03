@@ -179,9 +179,20 @@ pub(crate) struct PaintState {
     /// `0` = outside / `255` = inside; Feather softens the edge). Gates every paint op to the selected
     /// region ([`selection`]) and is undo-integrated via the `ModelSnapshot` exactly like `mask_scratch`.
     selection_mask: Arc<Vec<u8>>,
-    /// `true` while a selection is live — even an EMPTY one (which paints nothing). `false` = no selection,
-    /// painting unrestricted. Distinct from the buffer being empty (an active all-zero selection).
+    /// `true` while a selection is live (has coverage). `false` = no selection, painting unrestricted.
     selection_active: bool,
+    /// **Selection** sub-mode: `0` Automatic · `1` Freehand · `2` Rectangle · `3` Ellipse. Driven by the
+    /// Selection panel (Wave 3); consumed by the on-canvas router ([`selection`]).
+    selection_mode: u8,
+    /// **Selection** boolean operator for the next gesture: `0` New (replace) · `1` Add · `2` Remove.
+    selection_bool_op: u8,
+    /// **Selection** Automatic threshold (`0..1`) — colour tolerance for the flood-select mode.
+    selection_threshold: f32,
+    /// The in-progress selection gesture (marquee rubber-band / lasso path / Automatic seed); `None` when
+    /// idle. The overlay (Wave 4) draws from this; the mask is rasterized on pen-up. [`selection`].
+    selection_drag: Option<selection::SelectionDrag>,
+    /// The selection mask at the START of the current gesture — Add/Remove combine against this base. [`selection`].
+    selection_base: Arc<Vec<u8>>,
     /// **Composite Brush**: run Brush + Smear + Blur together (a Brush-tool upgrade, panel checkbox). See [`composite`].
     composite_enabled: bool,
     /// The composite layer stack in display order (index 0 = layer 1 = top; run bottom→top per dab). [`composite`].

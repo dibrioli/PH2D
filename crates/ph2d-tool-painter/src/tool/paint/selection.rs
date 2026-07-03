@@ -634,8 +634,7 @@ impl PainterTool {
                 true
             }
             PanelEvent::Click(id) if *id == core_ids::PAINTER_SEL_EDIT => {
-                let on = self.selection_edit_mode();
-                self.set_selection_edit_mode(!on);
+                self.toggle_selection_edit();
                 true
             }
             PanelEvent::Click(id) if *id == core_ids::PAINTER_SEL_INVERT => {
@@ -660,6 +659,89 @@ impl PainterTool {
             }
             _ => false,
         }
+    }
+
+    // ── Edit mode (ADR-0103 Am.1): the boundary becomes an editable Curve, reusing the Shape editors ──
+
+    /// Enter Selection **Edit** mode: trace the mask contour into an editable closed Curve (Vector anchors,
+    /// so it hugs the traced polygon) and install it as the active Curve editor — its handles / gizmos /
+    /// Offset now reshape the selection. No-op without a live, traceable selection.
+    pub(super) fn enter_selection_edit(&mut self) {
+        if !self.paint.selection_active {
+            return;
+        }
+        let (w, h) = (self.source_size.0 as usize, self.source_size.1 as usize);
+        let pts = super::selection_trace::trace_selection_contour(&self.paint.selection_mask, w, h);
+        if pts.len() < 3 {
+            return;
+        }
+        self.paint.selection_edit_saved_method = Some(self.paint.brush.stroke_method);
+        let anchor = pts[0];
+        let handles: Vec<[[f32; 2]; 2]> = pts.iter().map(|p| [*p, *p]).collect();
+        let kinds = vec![2u8; pts.len()]; // 2 = Vector → straight segments between anchors
+        let seed = self.paint.seed;
+        self.paint.seed = self.paint.seed.wrapping_add(1);
+        let state = crate::undo::ShapeEditState::Curve(crate::undo::CurveState {
+            points: pts,
+            handles,
+            kinds,
+            selected: None,
+            added_point: false,
+            closed: true,
+            editing: true,
+            freehand: true,
+            seed,
+            anchor,
+            stabilized: anchor,
+        });
+        self.restore_shape_overlay(Some(Box::new(state)), None);
+        self.paint.selection_edit_mode = true;
+        self.invalidate_composite();
+    }
+
+    /// Leave Selection Edit mode: discard the Curve overlay (no pixel bake — the mask already holds the
+    /// edited region) and restore the pre-edit stroke method.
+    pub(super) fn exit_selection_edit(&mut self) {
+        if !self.paint.selection_edit_mode {
+            return;
+        }
+        self.paint.selection_edit_mode = false;
+        self.discard_open_shape();
+        if let Some(m) = self.paint.selection_edit_saved_method.take() {
+            self.paint.brush.stroke_method = m;
+        }
+        self.invalidate_composite();
+    }
+
+    /// Toggle Edit mode (the panel's **Edit Selection** button).
+    pub fn toggle_selection_edit(&mut self) {
+        if self.paint.selection_edit_mode {
+            self.exit_selection_edit();
+        } else {
+            self.enter_selection_edit();
+        }
+    }
+
+    /// Re-derive the selection mask from the live Curve editor — called after every edit in Edit mode:
+    /// apply the Offset (grow/shrink), flatten the closed curve to a polyline, fill it, and install it as
+    /// the selection. The Shape-editor undo txn snapshots the whole model (incl. the mask), so boundary
+    /// edits ride the single interleaved queue.
+    pub(super) fn selection_refill_from_curve(&mut self) {
+        let Some(ed) = self.paint.curve.as_ref() else {
+            return;
+        };
+        let pts = ed.points.clone();
+        let handles = ed.handles.clone();
+        let closed = ed.closed;
+        let (pts, handles, _) =
+            super::curve_offset::offset_curve_refined(&pts, &handles, self.shape_offset_px(), closed);
+        let mut spine = Vec::new();
+        super::curve_geom::flatten_spine(&pts, &handles, closed, &mut spine);
+        if spine.len() < 3 {
+            return;
+        }
+        let cov = self.raster_lasso(&spine);
+        self.set_selection_from_crisp(cov);
     }
 }
 

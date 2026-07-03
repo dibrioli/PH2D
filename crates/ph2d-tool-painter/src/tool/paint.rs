@@ -205,8 +205,12 @@ pub(crate) struct PaintState {
     /// Offset — Wave EDIT). Until then the selection is Procreate-identical. A transient UI mode. [`selection`].
     selection_edit_mode: bool,
     /// **Selection overlay opacity** (`0..1`) — how strongly the deselected-area hatching reads. A view
-    /// preference (not undoable); scales the hatch alpha in [`selection`]. Default `0.5` (Enio 2026-07-02).
+    /// preference (not undoable); scales the hatch alpha in [`selection`]. Default `0.2` (Enio 2026-07-02).
     selection_overlay_opacity: f32,
+    /// The brush stroke-method saved when entering Selection **Edit** mode (which installs the Curve
+    /// editor + sets `stroke_method = Curve`), restored on exit so leaving edit-mode never leaves the
+    /// Brush drawing curves. `None` when not in edit-mode. [`selection`].
+    selection_edit_saved_method: Option<StrokeMethod>,
     /// **Composite Brush**: run Brush + Smear + Blur together (a Brush-tool upgrade, panel checkbox). See [`composite`].
     composite_enabled: bool,
     /// The composite layer stack in display order (index 0 = layer 1 = top; run bottom→top per dab). [`composite`].
@@ -547,6 +551,14 @@ impl PainterTool {
     /// the UNtiled dabs); the save-region bbox is measured over the tiled set so it still covers the
     /// wrapped copies (else the wrapped paint falls outside the restore region — a trail).
     fn stamp_drag_preview(&mut self, dabs: &[Dab]) {
+        // In Selection **Edit** mode the Curve editor drives the SELECTION mask, not pixels — peel any
+        // leftover preview and paint nothing (ADR-0103 Am.1). The mask refill runs off the pointer path.
+        if self.paint.selection_edit_mode {
+            if let Some(prev) = self.paint.drag_preview.take() {
+                self.restore_region(&prev.rect, &prev.pixels);
+            }
+            return;
+        }
         if let Some(prev) = self.paint.drag_preview.take() {
             self.restore_region(&prev.rect, &prev.pixels);
         }

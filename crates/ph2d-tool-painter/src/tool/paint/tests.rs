@@ -7121,3 +7121,39 @@ fn fill_is_clipped_to_the_active_selection() {
         "fill is clipped outside the selection"
     );
 }
+
+/// Wave EDIT: toggling Edit Selection traces the mask contour into an editable Curve (handles), preserves
+/// the mask on entry, round-trips it through the curve refill, and discards the overlay on exit.
+#[test]
+fn selection_edit_mode_installs_curve_and_round_trips_the_mask() {
+    let mut t = white_canvas(64, 4.0);
+    t.set_paint_tool_mode("selection");
+    t.set_selection_mode(2); // Rectangle
+    t.on_canvas_pointer(cp([10.0, 10.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([40.0, 40.0], PointerPhase::Up));
+    assert!(t.selection_active(), "a rectangle selection exists");
+
+    // Enter Edit mode → an editable Curve overlay is installed; the mask is untouched by entry.
+    t.toggle_selection_edit();
+    assert!(t.selection_edit_mode(), "edit mode is on");
+    assert!(
+        t.curve_overlay().is_some(),
+        "the boundary Curve editor (handles/gizmos) is installed"
+    );
+    assert_eq!(
+        t.selection_coverage_at(25, 25),
+        255,
+        "the interior is still selected after entering edit mode"
+    );
+
+    // Re-deriving the mask from the curve reproduces the region (inside kept, outside clear).
+    t.selection_refill_from_curve();
+    assert_eq!(t.selection_coverage_at(25, 25), 255, "curve refill keeps the interior");
+    assert_eq!(t.selection_coverage_at(2, 2), 0, "curve refill leaves the outside clear");
+
+    // Exit → the overlay is discarded, the selection persists.
+    t.toggle_selection_edit();
+    assert!(!t.selection_edit_mode(), "edit mode is off");
+    assert!(t.curve_overlay().is_none(), "the curve overlay is discarded on exit");
+    assert!(t.selection_active(), "the selection persists after leaving edit mode");
+}

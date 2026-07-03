@@ -30,6 +30,13 @@ impl CanvasPaintTool for PainterTool {
         // precedes the paintable-target gate. Routes to the mode engine (Automatic / Freehand / Rectangle /
         // Ellipse + Add/Remove operators); the mask joins the single undo queue on pen-up.
         if matches!(self.paint.paint_mode, super::PaintMode::Selection) {
+            // Edit mode: the boundary is an editable Curve — route pointers to the Curve editor (handles /
+            // gizmos / Offset), then re-derive the mask from the edited curve.
+            if self.paint.selection_edit_mode {
+                let consumed = self.curve_pointer(ev);
+                self.selection_refill_from_curve();
+                return consumed;
+            }
             return self.selection_pointer(ev);
         }
         if !self.paint_target_ready() {

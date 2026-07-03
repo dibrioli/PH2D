@@ -193,6 +193,15 @@ pub(crate) struct PaintState {
     selection_drag: Option<selection::SelectionDrag>,
     /// The selection mask at the START of the current gesture — Add/Remove combine against this base. [`selection`].
     selection_base: Arc<Vec<u8>>,
+    /// The CRISP selection mask (pre-Feather), the accumulator the Feather slider re-derives from — so
+    /// dragging Feather never compounds a blur-of-a-blur (mirrors the Shape Offset accumulator). [`selection`].
+    selection_crisp: Arc<Vec<u8>>,
+    /// **Feather** amount (`0..1` → edge-softening radius); the effective `selection_mask` is a blur of
+    /// `selection_crisp` at this radius. [`selection`].
+    selection_feather: f32,
+    /// **Edit Selection** mode: when `true`, the boundary is shown as an editable Shape (handles / gizmos /
+    /// Offset — Wave EDIT). Until then the selection is Procreate-identical. A transient UI mode. [`selection`].
+    selection_edit_mode: bool,
     /// **Composite Brush**: run Brush + Smear + Blur together (a Brush-tool upgrade, panel checkbox). See [`composite`].
     composite_enabled: bool,
     /// The composite layer stack in display order (index 0 = layer 1 = top; run bottom→top per dab). [`composite`].

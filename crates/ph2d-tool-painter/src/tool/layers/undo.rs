@@ -13,7 +13,8 @@ impl PainterTool {
     /// `images` deep-copies the non-active layers (a rare, user-paced cost).
     pub(crate) fn snapshot_model(&self) -> crate::undo::ModelSnapshot {
         let (mask_scratch, mask_scratch_target) = self.mask_scratch_for_snapshot();
-        let (selection_mask, selection_active) = self.selection_for_snapshot();
+        let (selection_mask, selection_active, selection_crisp, selection_feather) =
+            self.selection_for_snapshot();
         crate::undo::ModelSnapshot {
             layers: self.layers.clone(),
             images: self.images.clone(),
@@ -29,6 +30,8 @@ impl PainterTool {
             mask_scratch_target,
             selection_mask,
             selection_active,
+            selection_crisp,
+            selection_feather,
         }
     }
 
@@ -46,7 +49,12 @@ impl PainterTool {
         self.restore_mask_scratch(m.mask_scratch, m.mask_scratch_target);
         // Reinstate the Selection mask + active flag so an undo/redo across a selection edit restores the
         // selected region in lock-step with the pixels (ADR-0103).
-        self.restore_selection(m.selection_mask, m.selection_active);
+        self.restore_selection(
+            m.selection_mask,
+            m.selection_active,
+            m.selection_crisp,
+            m.selection_feather,
+        );
         self.set_shape_offset_norm(m.offset_norm);
         self.set_shape_offset_base_px(m.offset_base_px);
         // Reinstate (or clear) the open shape overlay: peel the snapshot canvas back to its pristine

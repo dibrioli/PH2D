@@ -65,6 +65,10 @@ pub struct ModelSnapshot {
     /// keeps the selection and the layers on the ONE interleaved timeline. Empty `Arc` + `false` = none.
     pub selection_mask: Arc<Vec<u8>>,
     pub selection_active: bool,
+    /// The CRISP (pre-Feather) selection accumulator + the Feather amount, captured so undo/redo restores
+    /// the exact effective mask AND keeps the Feather slider re-derivable from the right base.
+    pub selection_crisp: Arc<Vec<u8>>,
+    pub selection_feather: f32,
 }
 
 /// Plain-data snapshot of an open on-canvas shape editor, stored in a [`ModelSnapshot`] so a structural
@@ -304,6 +308,8 @@ mod tests {
             mask_scratch_target: None,
             selection_mask: Arc::new(Vec::new()),
             selection_active: false,
+            selection_crisp: Arc::new(Vec::new()),
+            selection_feather: 0.0,
         }
     }
 

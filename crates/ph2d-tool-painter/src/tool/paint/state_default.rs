@@ -47,6 +47,9 @@ impl Default for PaintState {
             selection_threshold: 0.5, // mid tolerance for Automatic
             selection_drag: None,
             selection_base: Arc::new(Vec::new()),
+            selection_crisp: Arc::new(Vec::new()),
+            selection_feather: 0.0,
+            selection_edit_mode: false,
 
             // Composite off by default; the default stack is the natural read of the card (top→bottom):
             // Brush(1) over Smear(2) over Blur(3). Run bottom→top, that blurs → smears → paints on top.

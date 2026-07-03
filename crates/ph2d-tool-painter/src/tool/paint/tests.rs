@@ -7019,3 +7019,32 @@ fn selection_automatic_floods_the_connected_region() {
     t.undo_last();
     assert!(!t.selection_active(), "undo cleared the Automatic selection");
 }
+
+/// Wave 3 backend: Feather softens the selection border (derived from the crisp accumulator) while the
+/// deep interior stays fully selected.
+#[test]
+fn selection_feather_softens_the_border_not_the_interior() {
+    let mut t = white_canvas(64, 4.0);
+    t.set_paint_tool_mode("selection");
+    t.set_selection_mode(2); // Rectangle
+    t.on_canvas_pointer(cp([0.0, 0.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([32.0, 64.0], PointerPhase::Up)); // left-half rect (x < 32)
+    assert_eq!(t.selection_coverage_at(32, 32), 0, "crisp: just outside the border is unselected");
+    t.set_selection_feather(0.3);
+    let edge = t.selection_coverage_at(32, 32);
+    assert!(
+        edge > 0 && edge < 255,
+        "feather softens the border to a partial value: got {edge}"
+    );
+    assert!(
+        t.selection_coverage_at(5, 32) > 200,
+        "the deep interior stays selected after feather"
+    );
+    // Feather is undoable via the crisp accumulator: dialing it back to 0 restores the crisp edge.
+    t.set_selection_feather(0.0);
+    assert_eq!(
+        t.selection_coverage_at(32, 32),
+        0,
+        "feather 0 re-derives the crisp (hard) border"
+    );
+}

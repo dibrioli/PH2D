@@ -14,6 +14,9 @@ use super::{PainterTool, Region};
 use ph2d_editor_core::tool::{CanvasPointer, PointerPhase};
 use std::sync::Arc;
 
+/// Largest Feather radius (image px) the `0..1` Feather slider maps to.
+const FEATHER_MAX_PX: usize = 64;
+
 /// The in-progress selection gesture — the overlay draws its rubber-band; the mask is rasterized on Up
 /// (Automatic writes it live). Held in [`super::PaintState`].
 #[derive(Clone, Debug)]
@@ -54,18 +57,30 @@ impl PainterTool {
             .unwrap_or(0)
     }
 
-    /// Snapshot the selection mask + active flag for the undo model — the mask lives in `PaintState`
-    /// (private to `tool::paint`), so the general `snapshot_model` reaches it through here. `Arc`-shared,
-    /// so the clone is cheap.
-    pub(crate) fn selection_for_snapshot(&self) -> (Arc<Vec<u8>>, bool) {
-        (Arc::clone(&self.paint.selection_mask), self.paint.selection_active)
+    /// Snapshot the selection state for the undo model — the buffers live in `PaintState` (private to
+    /// `tool::paint`), so the general `snapshot_model` reaches them through here. `Arc`-shared, cheap clone.
+    pub(crate) fn selection_for_snapshot(&self) -> (Arc<Vec<u8>>, bool, Arc<Vec<u8>>, f32) {
+        (
+            Arc::clone(&self.paint.selection_mask),
+            self.paint.selection_active,
+            Arc::clone(&self.paint.selection_crisp),
+            self.paint.selection_feather,
+        )
     }
 
-    /// Reinstate the selection mask + active flag from an undo model (structural undo/redo), keeping the
-    /// selected region in sync with the restored layers/pixels.
-    pub(crate) fn restore_selection(&mut self, mask: Arc<Vec<u8>>, active: bool) {
+    /// Reinstate the selection state from an undo model (structural undo/redo), keeping the selected region
+    /// (effective + crisp accumulator + Feather amount) in sync with the restored layers/pixels.
+    pub(crate) fn restore_selection(
+        &mut self,
+        mask: Arc<Vec<u8>>,
+        active: bool,
+        crisp: Arc<Vec<u8>>,
+        feather: f32,
+    ) {
         self.paint.selection_mask = mask;
         self.paint.selection_active = active;
+        self.paint.selection_crisp = crisp;
+        self.paint.selection_feather = feather;
         // The on-canvas overlay (marching ants / hatching, Wave 4) is derived from this, so refresh.
         self.invalidate_composite();
     }
@@ -130,20 +145,15 @@ impl PainterTool {
             return;
         }
         let before = self.snapshot_model();
-        self.ensure_selection_mask();
-        let mask = Arc::make_mut(&mut self.paint.selection_mask);
-        for v in mask.iter_mut() {
-            *v = 0;
-        }
+        let mut crisp = vec![0u8; (w as usize) * (h as usize)];
         let x1 = (x + rw).min(w);
         let y1 = (y + rh).min(h);
         for yy in y.min(h)..y1 {
             for xx in x.min(w)..x1 {
-                mask[(yy * w + xx) as usize] = 255;
+                crisp[(yy * w + xx) as usize] = 255;
             }
         }
-        self.paint.selection_active = true;
-        self.invalidate_composite();
+        self.set_selection_from_crisp(crisp);
         self.commit_structural_edit(before);
     }
 
@@ -156,6 +166,7 @@ impl PainterTool {
         let before = self.snapshot_model();
         self.paint.selection_active = false;
         self.paint.selection_mask = Arc::new(Vec::new());
+        self.paint.selection_crisp = Arc::new(Vec::new());
         self.invalidate_composite();
         self.commit_structural_edit(before);
     }
@@ -204,14 +215,17 @@ impl PainterTool {
         if w == 0 || h == 0 {
             return;
         }
+        let n = (w as usize) * (h as usize);
         let before = self.snapshot_model();
-        self.ensure_selection_mask();
-        let mask = Arc::make_mut(&mut self.paint.selection_mask);
-        for v in mask.iter_mut() {
+        let mut crisp = if self.paint.selection_crisp.len() == n {
+            (*self.paint.selection_crisp).clone()
+        } else {
+            vec![0u8; n]
+        };
+        for v in crisp.iter_mut() {
             *v = 255 - *v;
         }
-        self.paint.selection_active = mask.iter().any(|&v| v > 0);
-        self.invalidate_composite();
+        self.set_selection_from_crisp(crisp);
         self.commit_structural_edit(before);
     }
 
@@ -230,7 +244,9 @@ impl PainterTool {
     fn selection_down(&mut self, pos: [f32; 2]) -> bool {
         self.paint.stroke_undo = Some(self.snapshot_model());
         self.ensure_selection_mask();
-        self.paint.selection_base = Arc::clone(&self.paint.selection_mask);
+        // Add/Remove combine against the CRISP base (not the Feathered mask), so feathered edges never
+        // re-seed the accumulator.
+        self.paint.selection_base = Arc::clone(&self.paint.selection_crisp);
         match self.paint.selection_mode {
             0 => {
                 let thresh0 = self.paint.selection_threshold;
@@ -441,9 +457,88 @@ impl PainterTool {
             // New: replace.
             _ => out.copy_from_slice(region),
         }
-        self.paint.selection_active = out.iter().any(|&v| v > 0);
-        self.paint.selection_mask = Arc::new(out);
+        self.set_selection_from_crisp(out);
     }
+
+    /// Install a CRISP selection accumulator and derive the effective (Feathered) `selection_mask` from it.
+    /// The single funnel for every op that changes WHICH texels are selected (marquee / lasso / flood /
+    /// rect seed / invert) — so Feather always re-derives from the crisp base, never compounding.
+    fn set_selection_from_crisp(&mut self, crisp: Vec<u8>) {
+        self.paint.selection_active = crisp.iter().any(|&v| v > 0);
+        self.paint.selection_crisp = Arc::new(crisp);
+        self.derive_effective();
+    }
+
+    /// Recompute `selection_mask` = Feather(`selection_crisp`). Feather is a separable box blur (HR-5
+    /// transcendental-free) whose radius scales with the Feather amount; `0` copies the crisp mask.
+    fn derive_effective(&mut self) {
+        let crisp = Arc::clone(&self.paint.selection_crisp);
+        let (w, h) = (self.source_size.0 as usize, self.source_size.1 as usize);
+        let radius = (self.paint.selection_feather.clamp(0.0, 1.0) * FEATHER_MAX_PX as f32).round() as usize;
+        if radius == 0 || w == 0 || h == 0 || crisp.len() != w * h {
+            self.paint.selection_mask = crisp;
+        } else {
+            self.paint.selection_mask = Arc::new(box_blur(&crisp, w, h, radius));
+        }
+        self.invalidate_composite();
+    }
+
+    /// Set the **Feather** amount (`0..1`) and re-derive the effective mask from the crisp accumulator.
+    pub fn set_selection_feather(&mut self, f: f32) {
+        self.paint.selection_feather = f.clamp(0.0, 1.0);
+        self.derive_effective();
+    }
+    /// The Feather amount (`0..1`).
+    #[must_use]
+    pub fn selection_feather(&self) -> f32 {
+        self.paint.selection_feather
+    }
+
+    /// Enter / leave **Edit Selection** mode (the boundary shown as an editable Shape — Wave EDIT).
+    pub fn set_selection_edit_mode(&mut self, on: bool) {
+        self.paint.selection_edit_mode = on;
+        self.invalidate_composite();
+    }
+    /// `true` while the selection boundary is in editable-Shape mode.
+    #[must_use]
+    pub fn selection_edit_mode(&self) -> bool {
+        self.paint.selection_edit_mode
+    }
+}
+
+/// Separable box blur of a single-channel `w*h` coverage buffer (Feather). Two 1-D averaging passes (H
+/// then V) with a `(2r+1)` window, clamping samples to the border — transcendental-free (HR-5).
+fn box_blur(src: &[u8], w: usize, h: usize, r: usize) -> Vec<u8> {
+    if r == 0 || w == 0 || h == 0 || src.len() != w * h {
+        return src.to_vec();
+    }
+    let win = (2 * r + 1) as u32;
+    // Horizontal pass into `tmp`.
+    let mut tmp = vec![0u8; w * h];
+    for y in 0..h {
+        let row = y * w;
+        for x in 0..w {
+            let mut acc = 0u32;
+            for k in 0..(2 * r + 1) {
+                let xx = (x + k).saturating_sub(r).min(w - 1);
+                acc += u32::from(src[row + xx]);
+            }
+            tmp[row + x] = (acc / win) as u8;
+        }
+    }
+    // Vertical pass into `out`.
+    let mut out = vec![0u8; w * h];
+    for x in 0..w {
+        for y in 0..h {
+            let mut acc = 0u32;
+            for k in 0..(2 * r + 1) {
+                let yy = (y + k).saturating_sub(r).min(h - 1);
+                acc += u32::from(tmp[yy * w + x]);
+            }
+            out[y * w + x] = (acc / win) as u8;
+        }
+    }
+    out
 }
 
 /// Scanline flood — like [`super::fill::flood_fill`] but WRITES a coverage buffer (255 in-region) instead

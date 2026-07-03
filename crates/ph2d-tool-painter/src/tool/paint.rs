@@ -88,6 +88,8 @@ mod inpaint; // content-aware heal brush (mark defect + reconstruct on pen-up); 
 mod mask;
 /// The **Selection** tool (ADR-0103) — the document-wide selection mask, undo integration + paint gate. [LOC split].
 mod selection;
+/// Selection **Edit** mode contour tracing (mask → editable boundary polyline); split for the LOC cap.
+mod selection_trace;
 mod ramp;
 mod ramp_lut; // ramp LUT baking (colour owner + colour/tone LUTs); split from `stamp_cache` (LOC cap)
 /// Pixel-region save/restore helpers for the drag preview (`dab_bbox`/`save_region`/`restore_region`).

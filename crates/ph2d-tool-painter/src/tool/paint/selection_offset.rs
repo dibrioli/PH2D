@@ -137,11 +137,15 @@ impl PainterTool {
         self.paint.selection_offset_sdf = Arc::new(Vec::new());
     }
 
-    /// `true` while an offset is engaged (source captured) — the panel shows the Apply / Apply & Keep buttons
-    /// as active and the offset is live.
+    /// `true` while an offset is actively in progress — ring mode (post-Apply & Keep) OR the slider is off
+    /// its centred `0.5` rest. The source crisp is always populated after a recompose, so it can't signal
+    /// this; the live offset is what Enter = Apply commits (Enter falls through to the stroke editor when the
+    /// offset is at rest).
     #[must_use]
     pub fn selection_offset_engaged(&self) -> bool {
-        !self.paint.selection_offset_source.is_empty()
+        self.paint.selection_active
+            && (self.paint.selection_offset_active
+                || (self.paint.selection_offset_norm - 0.5).abs() > 1e-4)
     }
 
     /// Refresh the pre-offset source (called by `recompose_selection_mask` after rebuilding the shapes' crisp)

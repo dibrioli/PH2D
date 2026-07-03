@@ -155,12 +155,23 @@ All 3 selection gizmos (Ellipse / Polygon / Freehand) unified to the **Sprite tr
    (creating a Line/Curve), clicking the on-canvas **C&F** control (Color & Fill) ALSO drops shape points on
    the canvas behind the widget — the pointer event activates BOTH tools at once. The C&F control must
    **capture the pointer** (no pass-through to the canvas shape tool). Correct behaviour:
-   - **Click (no drag):** apply the current shape action + open the **colour selector**; after picking a
-     colour, RETURN to the shape tool that was active (do not stay in the picker).
-   - **Click + drag:** apply the current shape action + activate **Fill**; when the fill gesture ends, RETURN
-     to the shape tool that was active.
+   - **Click (no drag):** apply the current shape action + open the **colour selector** ONLY (a plain click
+     NEVER activates Fill — Enio clarification 2026-07-03); after picking a colour, RETURN to the shape tool
+     that was active.
+   - **Click + drag:** apply the current shape action + activate **Fill** (drag is the ONLY trigger for Fill);
+     when the fill gesture ends, RETURN to the shape tool that was active.
    Investigate the pointer dispatch order (widget hit vs canvas `on_canvas_pointer`) — the C&F hit must
    swallow the event and the tool must remember/restore the prior shape tool after the picker/fill completes.
+4. **Mask-panel buttons — no hover/press decoration** (Enio 2026-07-03) — **BUG.** The Mask section buttons
+   (Brushes / Modifiers / Overlay Color / Apply Mask, `paint_mask.rs`) show no mouse-over / mouse-down visual
+   feedback. Investigation (2026-07-03): the paint path IS correct — `paint_button_cell` reads
+   `store.button_state(id)` → `flat_button_surface` (Bg2/BgElev/AccentSoft, distinct), the ids ARE registered
+   in `populate` as `InteractiveState::Button`, and Move events reach `forward_to_hero → handle_pointer →
+   update_hover` on the SAME hero store + hit_index that clicks use (so hover *should* fire generically). No
+   static root cause found — needs a RUNTIME repro (pixel/layout): likely a hit-index z-order overlap from the
+   pinned-at-top Mask section (a later-registered rect shadowing the buttons — `HitIndex::hit` is last-wins) OR
+   the token deltas being imperceptible. Repro: hover a Modifiers button with the Mask tool active; instrument
+   `hit_index.hit(cursor)` to see which id resolves under the button.
 4. **Convert / Simplify Curve — missing point handles** (Enio 2026-07-03) — **BUG.** After **Convert to
    Curve** or **Simplify Curve**, the resulting selection curve should show editable **anchor points + Bézier
    handles** with the SAME look/capability as the stroke Shape-system curves, but they no longer appear. The

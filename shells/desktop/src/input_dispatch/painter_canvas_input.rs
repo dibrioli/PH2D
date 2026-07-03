@@ -516,6 +516,12 @@ impl App {
         let Some(painter) = self.painter_tool_mut() else {
             return false;
         };
+        // A live Selection Offset (grow/shrink or Apply & Keep rings) takes Enter as its **Apply** — bake the
+        // current (possibly ringed) selection + leave offset mode, mirroring the stroke editor's Enter = Apply.
+        if painter.selection_offset_engaged() {
+            painter.selection_offset_apply();
+            return true;
+        }
         painter.commit_open_shape()
     }
 

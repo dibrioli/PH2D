@@ -7284,6 +7284,33 @@ fn selection_offset_apply_keep_alternates_protected_and_paint_rings() {
     );
 }
 
+/// The offset is "engaged" once the slider is touched (so Enter can route to Apply), and Apply bakes the
+/// result + disengages while keeping the selection live (the shell's Enter = Apply binding relies on this).
+#[test]
+fn selection_offset_apply_bakes_and_disengages() {
+    let mut t = white_canvas(96, 4.0);
+    t.set_paint_tool_mode("selection");
+    t.set_rect_selection(32, 32, 32, 32);
+    assert!(
+        !t.selection_offset_engaged(),
+        "no offset engaged before touch"
+    );
+    t.set_selection_offset(0.6); // grow
+    assert!(
+        t.selection_offset_engaged(),
+        "touching the slider engages the offset (Enter → Apply now applies)"
+    );
+    let grown = selected_area(&t, 96);
+    t.selection_offset_apply(); // the Enter = Apply verb
+    assert!(!t.selection_offset_engaged(), "Apply leaves offset mode");
+    assert!(t.selection_active(), "the baked selection stays live");
+    assert_eq!(
+        selected_area(&t, 96),
+        grown,
+        "Apply bakes the grown selection (area preserved)"
+    );
+}
+
 /// A Rect selection carries the Polygon gizmo (the sides DIAMOND is present; ellipse/freehand have none)
 /// and fills a rectangle (its CORNERS are selected — an ellipse's would not be).
 #[test]

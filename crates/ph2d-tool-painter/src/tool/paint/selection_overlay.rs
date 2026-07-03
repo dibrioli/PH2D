@@ -45,7 +45,7 @@ impl PainterTool {
                         [0u8, 0, 0, 255]
                     };
                     out[o..o + 4].copy_from_slice(&c);
-                } else if ((x + y + hatch_shift) / STRIPE) % 2 == 0 {
+                } else if ((x + y + hatch_shift) / STRIPE).is_multiple_of(2) {
                     // Diagonal hatch whose opacity FADES with the selection coverage — a realistic gradient
                     // across a feathered edge (full outside, half at the 50% contour, clear inside).
                     let a = (HATCH_MAX_ALPHA * opacity * (1.0 - cov)).round() as u8;

@@ -176,7 +176,7 @@ mod tests {
 
     #[test]
     fn empty_mask_traces_nothing() {
-        assert!(trace_selection_contour(&vec![0u8; 64], 8, 8).is_empty());
+        assert!(trace_selection_contour(&[0u8; 64], 8, 8).is_empty());
     }
 
     #[test]

@@ -132,6 +132,7 @@ impl PainterTool {
 
     /// Fit a raw lasso path into a CLOSED Bézier curve using the SAME Schneider fit + point cap the Free Hand
     /// stroke uses (ADR-0103 Am.2 §2), returning `(anchors, handles, kinds)`; degenerates to the raw polygon.
+    #[allow(clippy::type_complexity)]
     fn fit_closed_freehand(
         &self,
         points: &[[f32; 2]],
@@ -170,10 +171,10 @@ impl PainterTool {
     /// Rasterize the LIVE active editor (Offset applied) into a coverage buffer — the source for the active
     /// entry during editing, so the mask tracks the gizmo before it's baked back into the list.
     pub(super) fn rasterize_active_editor(&self) -> Option<Vec<u8>> {
-        if let Some(ov) = self.ellipse_overlay() {
-            if ov.perimeter.len() >= 3 {
-                return Some(self.raster_lasso(&ov.perimeter));
-            }
+        if let Some(ov) = self.ellipse_overlay()
+            && ov.perimeter.len() >= 3
+        {
+            return Some(self.raster_lasso(&ov.perimeter));
         }
         if let Some(ed) = self.paint.curve.as_ref() {
             let (pts, handles, _) = super::curve_offset::offset_curve_refined(

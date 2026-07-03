@@ -26,9 +26,9 @@ impl PainterTool {
         }
         let before = self.snapshot_model();
         let mut crisp = vec![0u8; w * h];
-        for i in 0..w * h {
+        for (i, c) in crisp.iter_mut().enumerate() {
             if self.canvas_rgba[i * 4 + 3] > 0 {
-                crisp[i] = 255;
+                *c = 255;
             }
         }
         self.paint.selection_shapes = vec![SelectionEntry {
@@ -112,7 +112,7 @@ impl PainterTool {
         let mut rgba = vec![0u8; cw * ch * 4];
         for y in 0..ch {
             for x in 0..cw {
-                let src = ((y0 + y) * w + (x0 + x)) as usize;
+                let src = (y0 + y) * w + (x0 + x);
                 let cov = f32::from(mask[src]) / 255.0;
                 let s = src * 4;
                 let d = (y * cw + x) * 4;

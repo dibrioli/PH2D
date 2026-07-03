@@ -488,6 +488,54 @@ fn fill_fixture(size: u32) -> PainterTool {
     t
 }
 
+/// A momentary ColorDrop (the shell's C&F drag) enters Fill remembering the prior tool, then RETURNS to it
+/// when the fill finalizes (modal Done / dwell release) — so a drag-fill doesn't strand the user in Fill.
+#[test]
+fn colordrop_fill_returns_to_the_prior_shape_tool() {
+    let size = 32u32;
+    let mut src = vec![255u8; (size * size * 4) as usize];
+    for y in 12..20 {
+        for x in 12..20 {
+            let i = ((y * size + x) * 4) as usize;
+            src[i..i + 4].copy_from_slice(&[220, 20, 20, 255]);
+        }
+    }
+    let mut t = PainterTool::default();
+    t.set_source(src, size, size);
+    t.set_paint_tool_mode("brush");
+    assert_eq!(t.active_paint_mode_id(), "brush");
+    t.begin_colordrop_fill("brush"); // the drag reached the canvas → momentary Fill
+    assert_eq!(
+        t.active_paint_mode_id(),
+        "fill",
+        "the ColorDrop drag activates Fill"
+    );
+    t.paint.fill_threshold = 0.05;
+    t.on_canvas_pointer(cp([16.0, 16.0], PointerPhase::Down)); // flood
+    assert!(t.has_active_fill());
+    t.fill_commit(); // modal Done / dwell release finalizes the fill
+    assert_eq!(
+        t.active_paint_mode_id(),
+        "brush",
+        "the finalized ColorDrop returns to the shape/brush tool"
+    );
+}
+
+/// A C&F drag that entered Fill but never reached the canvas (released off-sprite → the picker path) still
+/// restores the prior tool, so it isn't stranded in Fill.
+#[test]
+fn colordrop_missed_canvas_restores_the_prior_tool() {
+    let mut t = white_canvas(32, 4.0);
+    t.set_paint_tool_mode("brush");
+    t.begin_colordrop_fill("brush");
+    assert_eq!(t.active_paint_mode_id(), "fill");
+    t.restore_after_colordrop(); // the shell's picker-path restore for a missed drag
+    assert_eq!(t.active_paint_mode_id(), "brush");
+    // Idempotent: a plain click (no return recorded) is a no-op.
+    t.restore_after_colordrop();
+    assert_eq!(t.active_paint_mode_id(), "brush");
+}
+
 #[test]
 fn fill_colordrop_fills_the_connected_region_and_undoes_in_one_step() {
     let size = 32u32;

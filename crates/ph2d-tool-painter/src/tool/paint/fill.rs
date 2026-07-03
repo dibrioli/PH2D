@@ -251,6 +251,14 @@ impl PainterTool {
         self.refill_from_snapshot();
     }
 
+    /// Enter **Fill** for a momentary ColorDrop (the shell's C&F drag) and remember the mode to RESTORE when
+    /// the fill finalizes, so the drag returns to the shape/brush the user was using (Enio 2026-07-03). A
+    /// deliberate Fill-tool selection uses `set_paint_tool_mode("fill")` instead (no return).
+    pub fn begin_colordrop_fill(&mut self, return_mode: &str) {
+        self.set_paint_tool_mode("fill");
+        self.paint.fill_return_mode = Some(return_mode.to_string());
+    }
+
     /// Finalize the current fill (modal **Done**, or the dwell live-adjust release): push the undo entry,
     /// drop the transient state. `pub` so the shell's dwell gesture can commit without the modal.
     pub fn fill_commit(&mut self) {
@@ -261,6 +269,18 @@ impl PainterTool {
         self.paint.fill_seed = None;
         self.paint.fill_snapshot = Vec::new();
         self.paint.fill_last_rect = None;
+        self.restore_after_colordrop();
+    }
+
+    /// Restore the pre-ColorDrop mode after a momentary C&F fill finalizes (Done / Cancel / dwell release),
+    /// or when a C&F drag never reached the canvas (released off-sprite → the picker path). No-op for a
+    /// deliberate Fill / a plain click (no return recorded). `fill_seed` is already cleared, so the
+    /// `set_paint_tool_mode` re-entrant `fill_commit` is a no-op (no recursion) and `fill_return_mode` is
+    /// taken (drives it exactly once). `pub` so the shell's picker path can end a missed drag.
+    pub fn restore_after_colordrop(&mut self) {
+        if let Some(ret) = self.paint.fill_return_mode.take() {
+            self.set_paint_tool_mode(&ret);
+        }
     }
 
     /// Discard the current fill (modal **Cancel**): restore the pre-fill pixels and drop the pending
@@ -281,6 +301,7 @@ impl PainterTool {
         self.paint.fill_seed = None;
         self.paint.fill_snapshot = Vec::new();
         self.paint.fill_last_rect = None;
+        self.restore_after_colordrop();
     }
 
     /// Drop a pending Fill ColorDrop WITHOUT touching pixels or dirtying — for a document rebind, where
@@ -292,6 +313,7 @@ impl PainterTool {
         self.paint.fill_snapshot = Vec::new();
         self.paint.fill_last_rect = None;
         self.paint.stroke_undo = None;
+        self.paint.fill_return_mode = None; // drop the momentary-fill return (the doc is being replaced)
     }
 }
 

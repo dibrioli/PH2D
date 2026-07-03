@@ -151,17 +151,13 @@ All 3 selection gizmos (Ellipse / Polygon / Freehand) unified to the **Sprite tr
    `selection_stabilizer` knob (independent of the brush), shown only in Freehand mode.
 2. ~~**Selection offset system**~~ — **LANDED** (commit 0f8c675b): signed-distance grow/shrink + concentric
    alternating protected/paint rings via Apply / Apply & Keep (`selection_offset.rs`, ADR-0103 Am.3).
-3. **C&F vs shape-tool click-through fix** (Enio 2026-07-03) — **BUG.** While a shape stroke tool is active
-   (creating a Line/Curve), clicking the on-canvas **C&F** control (Color & Fill) ALSO drops shape points on
-   the canvas behind the widget — the pointer event activates BOTH tools at once. The C&F control must
-   **capture the pointer** (no pass-through to the canvas shape tool). Correct behaviour:
-   - **Click (no drag):** apply the current shape action + open the **colour selector** ONLY (a plain click
-     NEVER activates Fill — Enio clarification 2026-07-03); after picking a colour, RETURN to the shape tool
-     that was active.
-   - **Click + drag:** apply the current shape action + activate **Fill** (drag is the ONLY trigger for Fill);
-     when the fill gesture ends, RETURN to the shape tool that was active.
-   Investigate the pointer dispatch order (widget hit vs canvas `on_canvas_pointer`) — the C&F hit must
-   swallow the event and the tool must remember/restore the prior shape tool after the picker/fill completes.
+3. ~~**C&F vs shape-tool click-through fix**~~ — **LANDED** (Enio 2026-07-03). The C&F (`PAINTER_RAIL_FILL`)
+   Down now CONSUMES the event (`arm_fill_drag_if_on_button` returns armed → the dispatch `return`s), so it no
+   longer falls through to `painter_canvas_down` and the shape tool no longer drops a stray point behind the
+   button. Click = colour picker only (Fill never activates on a plain click — already the case); click+drag =
+   momentary Fill via `PainterTool::begin_colordrop_fill(prev_mode)`, which records the mode active at press
+   and RESTORES it when the fill finalizes (`fill_commit` / `fill_cancel` / the picker path for a missed drag)
+   — so a ColorDrop returns to the shape/brush the user was using. `active_paint_mode_id()` is the capture.
 4. **Mask-panel buttons — no hover/press decoration** (Enio 2026-07-03) — **BUG.** The Mask section buttons
    (Brushes / Modifiers / Overlay Color / Apply Mask, `paint_mask.rs`) show no mouse-over / mouse-down visual
    feedback. Investigation (2026-07-03): the paint path IS correct — `paint_button_cell` reads

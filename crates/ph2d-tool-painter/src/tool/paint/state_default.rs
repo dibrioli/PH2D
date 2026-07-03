@@ -141,6 +141,7 @@ impl Default for PaintState {
             fill_seed: None,
             fill_snapshot: Vec::new(),
             fill_last_rect: None,
+            fill_return_mode: None,
             per_layer_stroke: stamp_color_cache::PerLayerStroke::default(),
             shape_color_preview: stamp_color_cache::ShapeColorPreview::default(),
         }

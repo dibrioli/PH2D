@@ -372,6 +372,24 @@ impl PainterTool {
         }
     }
 
+    /// The active paint mode as the `set_paint_tool_mode` string id — its inverse, used by the shell to
+    /// CAPTURE the current tool before a momentary Fill drag and RESTORE it after (Enio 2026-07-03).
+    #[must_use]
+    pub fn active_paint_mode_id(&self) -> &'static str {
+        use super::PaintMode;
+        match self.paint.paint_mode {
+            PaintMode::Smear => "smear",
+            PaintMode::Blur => "blur",
+            PaintMode::Clone => "clone",
+            PaintMode::Mask => "mask",
+            PaintMode::Inpaint => "inpaint",
+            PaintMode::Fill => "fill",
+            PaintMode::Selection => "selection",
+            PaintMode::Paint if self.paint.eraser => "eraser",
+            PaintMode::Paint => "brush",
+        }
+    }
+
     /// Whether the active paint operation is **Smear** — the panel snapshot mirrors this so the
     /// incompatible brush controls (colour / blend / ramps / eraser) hide.
     #[must_use]

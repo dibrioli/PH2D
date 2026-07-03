@@ -10,7 +10,7 @@
 use std::cell::Cell;
 
 use ph2d_editor::ids;
-use ph2d_editor::tool::{PanelEvent, PointerPhase, Tool};
+use ph2d_editor::tool::{PointerPhase, Tool};
 use ph2d_tool_painter::PainterTool;
 
 use crate::App;
@@ -39,6 +39,9 @@ struct FillDrag {
     /// Pointer position + threshold captured at the moment of firing — the origin of the live delta.
     anchor: (f32, f32),
     anchor_threshold: f32,
+    /// The paint mode active when the C&F button was pressed — RESTORED after the ColorDrop finalizes so a
+    /// drag-fill returns to the shape/brush the user was using (Enio 2026-07-03).
+    prev_mode: &'static str,
 }
 
 thread_local! {
@@ -99,9 +102,11 @@ pub(crate) fn fill_drag_tick(tool: &mut dyn Tool, last_pointer: (f32, f32), dt_m
 impl App {
     /// A Primary Down over the **C&F** (Colour & Fill) rail button arms the ColorDrop drag. It does NOT
     /// activate Fill — a plain click must only open the colour picker (Enio 2026-07-02); Fill activates the
-    /// moment the drag first reaches the canvas (see [`Self::fill_drag_move`]). Call on every Primary Down
-    /// (it self-gates on the hit id); no-op otherwise.
-    pub(crate) fn arm_fill_drag_if_on_button(&mut self, px: f32, py: f32) {
+    /// moment the drag first reaches the canvas (see [`Self::fill_drag_move`]). Returns `true` when it armed
+    /// (the press was on the C&F button) so the caller CONSUMES the Down — otherwise it fell through to the
+    /// canvas and the active shape tool dropped a stray point behind the button (Enio 2026-07-03). Self-gates
+    /// on the hit id; no-op + `false` otherwise.
+    pub(crate) fn arm_fill_drag_if_on_button(&mut self, px: f32, py: f32) -> bool {
         let on_button = self
             .gfx
             .as_ref()
@@ -109,8 +114,15 @@ impl App {
             .and_then(|h| h.hit_index.hit(px, py))
             == Some(ids::PAINTER_RAIL_FILL);
         if !on_button {
-            return;
+            return false;
         }
+        // Remember the tool active NOW so the ColorDrop can return to it (a drag-fill is momentary).
+        let prev_mode = self
+            .gfx
+            .as_mut()
+            .and_then(|g| g.tools.active_mut())
+            .and_then(|t| t.as_any_mut().downcast_mut::<PainterTool>())
+            .map_or("brush", |p| p.active_paint_mode_id());
         FILL_DRAG.with(|c| {
             c.set(Some(FillDrag {
                 on_canvas: false,
@@ -119,8 +131,10 @@ impl App {
                 live: false,
                 anchor: (0.0, 0.0),
                 anchor_threshold: 0.0,
+                prev_mode,
             }))
         });
+        true
     }
 
     /// CursorMoved while a Fill-button drag is armed. Two regimes:
@@ -144,13 +158,16 @@ impl App {
             PointerPhase::Move
         } else {
             // Dragging the colour onto the canvas is what ACTIVATES Fill (a plain click never does — it
-            // only opens the picker). Switch the mode DIRECTLY (not via the once-per-frame rail bus) right
-            // before the first Down so `on_canvas_pointer` sees Fill mode and floods on this very sample.
-            if let Some(tool) = self.gfx.as_mut().and_then(|g| g.tools.active_mut()) {
-                tool.handle_panel_event(PanelEvent::SelectOption(
-                    ids::PAINTER_PAINT_MODE,
-                    "fill".to_string(),
-                ));
+            // only opens the picker). Enter Fill as a MOMENTARY ColorDrop (remembering `prev_mode`) right
+            // before the first Down so `on_canvas_pointer` sees Fill mode and floods on this very sample —
+            // and the fill's finalize returns to the shape/brush the user was using.
+            if let Some(painter) = self
+                .gfx
+                .as_mut()
+                .and_then(|g| g.tools.active_mut())
+                .and_then(|t| t.as_any_mut().downcast_mut::<PainterTool>())
+            {
+                painter.begin_colordrop_fill(st.prev_mode);
             }
             PointerPhase::Down
         };
@@ -191,6 +208,17 @@ impl App {
                 hero.store.open_fill_modal(px, py, threshold);
             }
         } else {
+            // Plain click → open the paint-colour picker. If a drag had entered momentary Fill but never
+            // reached the canvas (released off-sprite), restore the pre-ColorDrop mode so it isn't stuck in
+            // Fill (no-op for a true plain click — no return was recorded).
+            if let Some(painter) = self
+                .gfx
+                .as_mut()
+                .and_then(|g| g.tools.active_mut())
+                .and_then(|t| t.as_any_mut().downcast_mut::<PainterTool>())
+            {
+                painter.restore_after_colordrop();
+            }
             self.open_paint_color_picker();
         }
     }

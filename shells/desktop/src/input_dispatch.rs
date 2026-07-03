@@ -445,7 +445,14 @@ impl App {
         if matches!(mapped_button, ph2d_host::PointerButton::Primary)
             && matches!(kind, PointerKind::Down)
         {
-            self.arm_fill_drag_if_on_button(evt.x, evt.y);
+            // A Down on the C&F button arms the ColorDrop drag AND consumes the event — otherwise it fell
+            // through to `painter_canvas_down` below and the active shape tool dropped a stray point on the
+            // canvas behind the button (Enio 2026-07-03). The rail button's own press/click already ran in
+            // `forward_to_hero` above; the picker opens on release, Fill activates only if the drag reaches
+            // the canvas.
+            if self.arm_fill_drag_if_on_button(evt.x, evt.y) {
+                return;
+            }
             // A Primary Down on the Fill modal's title band starts a modal-move (the card follows the
             // cursor via CursorMoved) — consume it so it doesn't click through / start anything else.
             if self.arm_fill_modal_drag_if_on_handle(evt.x, evt.y) {

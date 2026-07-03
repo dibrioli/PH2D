@@ -375,6 +375,10 @@ pub(crate) struct PaintState {
     /// The previous refill's filled bbox — so a SHRINKING fill dirties the vacated pixels too (the
     /// union of the old + new rects), not just the smaller new region (else the overflow ghosts).
     fill_last_rect: Option<Region>,
+    /// The mode id to RESTORE after a momentary **ColorDrop** (C&F drag) finalizes — so a drag-fill returns
+    /// to the shape/brush the user was using (`None` = a deliberate Fill, stay put). Set by the shell's C&F
+    /// drag, consumed by `fill_commit` / `fill_cancel` (Enio 2026-07-03).
+    fill_return_mode: Option<String>,
     /// **Inpaint** Patch Size (`0..1` track → patch radius `2..=6`); the reconstruction's patch footprint.
     inpaint_patch_norm: f32,
     /// **Inpaint** Quality (`0..1` track → EM iterations `3..=12`); more iterations = better fit, slower.

@@ -131,3 +131,25 @@ smoke para acertar — próximo passo pós-smoke.
 
 ### DEFERRED (next dedicated round) — Stroke multi-shape
 "Assim como em Mask/Seleção, o Stroke deve criar várias shapes simultâneas editáveis." This is a LARGE architectural change to the stroke shape editors (currently single-slot `self.paint.{curve,ellipse,polygon,line}`) — comparable in size to the whole selection multi-gizmo redesign. It needs its own build + smoke; NOT landed in this polish round.
+
+---
+
+## Gizmo standardization (2026-07-03) — LANDED
+
+All 3 selection gizmos (Ellipse / Polygon / Freehand) unified to the **Sprite transform gizmo**
+(`selection_gizmo.rs` rewritten around an oriented `Frame` = center/u/hx/hy):
+- **8 scale squares** (4 corners + 4 edge mids) — corners scale both axes, edges scale one.
+- **Rotate** by grabbing the ring just OUTSIDE a square (the square reads as a **circle** on that
+  hover — `scale_tol`/`rotate_tol` drive the cue in `painter_bridge_selection_gizmos`).
+- **Centre-move square** + (Polygon only) the **sides diamond**.
+- Ellipse/Polygon boxes ride the shape orientation `u`; Freehand uses the anchors' AABB (transform
+  applied to every point). Drift-free (grab carries the pristine shape). Rotate is transcendental-free.
+- Distinct fluorescent accent per gizmo stays.
+
+## QUEUE (next, in order) — Enio 2026-07-03
+1. **Stabilization slider for Free selection** (the freehand lasso — reuse the brush stabilizer knob in
+   the Selection panel; the lasso already folds through `lazy_mouse_step`).
+2. **Selection offset system** (grow/shrink; re-integrate for the multi-shape isolated model — likely a
+   mask dilate/erode or per-shape offset).
+3. **Stroke multi-shape** — multiple simultaneous editable stroke shapes (large architectural round,
+   ≈ the selection multi-gizmo redesign; its own build + smoke).

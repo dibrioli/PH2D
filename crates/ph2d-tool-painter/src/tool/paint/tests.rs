@@ -7209,19 +7209,19 @@ fn selection_ellipse_gizmo_handle_drag_grows_the_selection() {
     t.on_canvas_pointer(cp([48.0, 48.0], PointerPhase::Up)); // centre (32,32), r=16
     t.toggle_selection_edit();
     let before = selected_area(&t, 64);
-    // The ellipse's RIGHT axis handle sits at centre + rx = (48,32); drag it out to grow rx.
-    let rh = t.selection_gizmos()[0].square_handles[0];
+    // The unified gizmo's scale_handles[4] is the RIGHT edge square (centre + rx); drag it out to grow rx.
+    let rh = t.selection_gizmos()[0].scale_handles[4];
     t.on_canvas_pointer(cp(rh, PointerPhase::Down));
     t.on_canvas_pointer(cp([rh[0] + 12.0, rh[1]], PointerPhase::Move));
     t.on_canvas_pointer(cp([rh[0] + 12.0, rh[1]], PointerPhase::Up));
     assert!(
         selected_area(&t, 64) > before,
-        "dragging the axis handle enlarges the selection"
+        "dragging the scale handle enlarges the selection"
     );
 }
 
-/// A Rect selection carries the Polygon gizmo (rotate + sides circle handles) and fills a rectangle
-/// (its CORNERS are selected — an ellipse's would not be).
+/// A Rect selection carries the Polygon gizmo (the sides DIAMOND is present; ellipse/freehand have none)
+/// and fills a rectangle (its CORNERS are selected — an ellipse's would not be).
 #[test]
 fn selection_rect_uses_the_polygon_gizmo() {
     let mut t = white_canvas(64, 4.0);
@@ -7237,13 +7237,12 @@ fn selection_rect_uses_the_polygon_gizmo() {
     t.toggle_selection_edit();
     let g = &t.selection_gizmos()[0];
     assert_eq!(
-        g.circle_handles.len(),
-        1,
-        "the polygon gizmo has a round rotate handle"
+        g.scale_handles.len(),
+        8,
+        "the sprite gizmo has 8 scale squares"
     );
-    assert_eq!(
-        g.diamond_handles.len(),
-        1,
+    assert!(
+        g.diamond.is_some(),
         "the polygon gizmo's SIDES handle is a distinct diamond"
     );
 }
@@ -7273,15 +7272,21 @@ fn selection_convert_then_simplify_curve() {
         "region survives convert"
     );
     assert_eq!(t.selection_gizmos().len(), 1, "one merged curve gizmo");
+    let ellipse_diamond = t.selection_gizmos()[0].diamond;
+    assert!(
+        ellipse_diamond.is_none(),
+        "a freehand curve has no sides diamond"
+    );
     t.selection_simplify_curve();
     assert_eq!(
         t.selection_coverage_at(48, 48),
         255,
         "region survives simplify"
     );
-    assert!(
-        t.selection_gizmos()[0].square_handles.len() >= 3,
-        "simplify keeps a valid closed curve"
+    assert_eq!(
+        t.selection_gizmos().len(),
+        1,
+        "simplify keeps one valid curve gizmo"
     );
 }
 
@@ -7406,8 +7411,8 @@ fn selection_freehand_transform_move_shifts_the_selection() {
     assert!(t.selection_active(), "a freehand selection exists");
     let before = selection_centroid(&t, 128);
     t.toggle_selection_edit();
-    // The freehand gizmo's LAST square handle is the centre (move) handle at the bbox centre.
-    let center = *t.selection_gizmos()[0].square_handles.last().unwrap();
+    // The unified gizmo's centre square is the move handle at the bbox centre.
+    let center = t.selection_gizmos()[0].center;
     t.on_canvas_pointer(cp(center, PointerPhase::Down));
     t.on_canvas_pointer(cp([center[0] + 30.0, center[1]], PointerPhase::Move));
     t.on_canvas_pointer(cp([center[0] + 30.0, center[1]], PointerPhase::Up));

@@ -61,6 +61,7 @@ pub(super) fn draw_overlays(
         camera,
         window_size,
         vector_scene,
+        cursor,
     );
     draw_stencil_overlay(
         painter,

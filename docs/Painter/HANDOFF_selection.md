@@ -7,12 +7,33 @@
 
 | Wave | Escopo | Estado |
 |---|---|---|
-| **0** | Botão compartilhado Mask↔Selection (flyout idêntico ao Shapes) + `PaintMode::Selection` (no-draw stub) | ✅ **FECHADA** (commit `2638302d`, 15 seam tests verdes) |
-| **1** | `selection_mask` state + integração snapshot/undo + gate de pintura | ⏳ em andamento |
-| **2** | Motores on-canvas: Rectangle / Ellipse / Freehand / Automatic + Add/Remove/Invert | pendente |
-| **3** | Painel de Seleção mode-exclusive (SegmentedAdaptive + Feather + Actions) | pendente |
+| **0** | Botão compartilhado Mask↔Selection (flyout idêntico ao Shapes) + `PaintMode::Selection` (no-draw stub) | ✅ **FECHADA** (`2638302d`, 15 seam tests) |
+| **1** | `selection_mask` state + integração snapshot/undo + gate de pintura | ✅ **FECHADA** (`d38ae362`, DoD test) |
+| **2 core** | Motores on-canvas Procreate-default: Rectangle / Ellipse / Freehand / Automatic + Add/Remove/New | ✅ **FECHADA** (`7e321e13`, 4 tests) |
+| **3** | Painel mode-exclusive (modos em Toggle + Feather + **Offset** + **botão Edit Selection** + Actions), responsivo | pendente |
+| **EDIT** | **Selection Edit Mode** — reuso do sistema de Shapes (ver abaixo) | pendente |
 | **4** | Overlays: marching ants + hachura diagonal (needs SMOKE) | pendente |
 | **5** | Ações & Save/Load in-memory (Copy&Paste, Color Fill, Clear, Select layer contents) | pendente |
+
+## Wave EDIT — Selection Edit Mode (reuso do sistema de Shapes) — requisitos do Enio
+
+Até apertar o botão **"Edit Selection"** no painel, a seleção é **idêntica ao Procreate** (marquee/lasso/auto,
+sem handles). Ao entrar no edit-mode, o **contorno da seleção vira uma Shape editável** reusando o sistema
+de Stroke Method do Painter:
+
+1. **Handles / alças / gizmos:** Freehand/Rect/Ellipse reaproveitam os editores de Shape (`curve.rs`/
+   `ellipse.rs`/`polygon.rs`/`line.rs`, `ShapeEditState`, `TransformGizmo`, `TangentHandles`). Mapeamento:
+   Ellipse→`EllipseState`; Rect→polyline fechada (Line, 4 cantos); Freehand→`CurveState` (como o FreeHand
+   stroke). A cada edição, o contorno **rasteriza (fill da região fechada)** de volta no `selection_mask`.
+2. **Offset do Stroke:** o sistema de Offset das shapes (`curve_offset.rs`/`line_offset.rs` + slider Offset,
+   acumulador `shape_offset_base_px`) vale para seleção = **grow/shrink** do contorno (expand/contract CAD).
+3. **Estabilização do Brush no Freehand:** o path do lasso passa pelo filtro de estabilização do brush
+   (suavização do traço) antes de virar Curve.
+4. **Undo:** edições do contorno entram na timeline única via `shape_snapshot.rs` (`begin/commit_shape_txn`,
+   `capture_shape_model`/`restore_shape_overlay`) — intercaladas com o resto.
+
+Design detalhado após mapa do sistema de Shapes; obstáculo conhecido: os editores hoje **stroke** um path,
+a seleção precisa **fill** da região fechada (reusar `curve_geom` flatten + scanline even-odd de `raster_lasso`).
 
 ## Referência de paridade (Procreate)
 

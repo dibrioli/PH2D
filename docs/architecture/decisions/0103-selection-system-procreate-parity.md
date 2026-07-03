@@ -71,6 +71,26 @@ Two hard constraints from Enio:
 - If marching-ants + flood at 4K exceed **16 ms/frame** after the 2nd attempt, stop and prove the model
   before a 3rd rewrite; fall back to hatching-only + low-res ants.
 
+## Amendment 1 (Enio, 2026-07-02) — Selection Edit Mode reuses the Shape system
+
+The selection is **two-phase**. Until the panel's **"Edit Selection"** button is pressed the behaviour is
+Procreate-identical (marquee / lasso / auto → mask, no handles). Pressing it enters an **edit mode** where
+the selection boundary becomes an **editable Shape**, reusing the Painter's Stroke-Method shape editors:
+
+1. **Handles / gizmos:** Freehand / Rectangle / Ellipse reuse `ShapeEditState` + the `curve`/`ellipse`/
+   `polygon`/`line` on-canvas editors and their handles/tangents/`TransformGizmo`. Boundary→shape mapping:
+   Ellipse→`EllipseState`, Rectangle→closed polyline (`LineState`, 4 corners), Freehand→`CurveState`. Each
+   edit re-rasterizes the **filled closed region** into `selection_mask` (reuse `curve_geom` flatten + the
+   even-odd scanline fill).
+2. **Stroke Offset** (`curve_offset`/`line_offset` + the Offset slider accumulator) applies to a selection
+   as **grow/shrink** (expand/contract) of the boundary.
+3. **Freehand brush stabilization** smooths the lasso path (through the brush stabilizer) before it becomes
+   a Curve.
+4. **Undo:** boundary edits join the ONE timeline via `shape_snapshot` (`begin/commit_shape_txn`).
+
+Obstacle noted: the shape editors currently STROKE a path; selection needs the FILLED closed region — the
+fill path (flatten → even-odd scanline) is the bridge.
+
 ## Alternatives rejected
 
 - **Separate `ph2d-panel-selection` crate** — fragments the tool↔panel snapshot channel, duplicates the

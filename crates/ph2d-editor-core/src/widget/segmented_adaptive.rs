@@ -9,7 +9,7 @@
 //! Inspector's narrow column width. Owns the option list + a11y; the
 //! paint helper registers per-segment hits as it lays them out.
 
-use super::panel_chrome::paint_segmented_group_adaptive;
+use super::panel_chrome::{measure_segmented_group_adaptive, paint_segmented_group_adaptive};
 use crate::interaction::HitIndex;
 use crate::zones::Rect;
 use ph2d_a11y::{Node, NodeBuilder, NodeId, Role};
@@ -88,6 +88,19 @@ pub fn paint_segmented_adaptive(
     paint_segmented_group_adaptive(rect, &segments, scene, text_system, theme, hit_index)
 }
 
+/// The height [`paint_segmented_adaptive`] will use at width `rect_w` and row height `row_h` — measure it
+/// before sizing a container (e.g. a Card) so the container adapts to the reflow on a narrow panel.
+#[must_use]
+pub fn measure_segmented_adaptive(
+    widget: &SegmentedAdaptive,
+    rect_w: f32,
+    row_h: f32,
+    text_system: &mut TextSystem,
+) -> f32 {
+    let labels: Vec<&str> = widget.options.iter().map(|o| o.label.as_str()).collect();
+    measure_segmented_group_adaptive(rect_w, row_h, &labels, text_system)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -132,6 +145,29 @@ mod tests {
             &mut hit,
         );
         assert!(h >= 28.0);
+    }
+
+    #[test]
+    fn measure_matches_the_painted_reflow_height() {
+        // The card sizing relies on `measure_segmented_adaptive` predicting EXACTLY what
+        // `paint_segmented_adaptive` will use — at a narrow width that forces reflow.
+        let mut scene = VectorScene::new();
+        let mut text = TextSystem::without_system_fonts();
+        let mut hit = HitIndex::default();
+        let w = 60.0;
+        let painted = paint_segmented_adaptive(
+            &fixture(),
+            Rect::new(0.0, 0.0, w, 28.0),
+            &mut scene,
+            &mut text,
+            Theme::Forge,
+            &mut hit,
+        );
+        let measured = measure_segmented_adaptive(&fixture(), w, 28.0, &mut text);
+        assert!(
+            (painted - measured).abs() < 0.01,
+            "measure ({measured}) must equal the painted reflow height ({painted})"
+        );
     }
 
     #[test]

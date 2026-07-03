@@ -113,7 +113,9 @@ pub use scrollbar::{
     thumb_rect as scrollbar_thumb_rect, track_rect as scrollbar_track_rect,
 };
 pub use section_header::{SectionHeader, color_circle_hit_rect, paint_section_header};
-pub use segmented_adaptive::{SegmentedAdaptive, SegmentedOption, paint_segmented_adaptive};
+pub use segmented_adaptive::{
+    SegmentedAdaptive, SegmentedOption, measure_segmented_adaptive, paint_segmented_adaptive,
+};
 pub use slider::{Slider, SliderOrientation, SliderState, paint_slider, paint_slider_track};
 pub use slider_with_chip::{
     DEFAULT_CHIP_W, DEFAULT_LABEL_W, paint_number_chip, paint_slider_with_chip,

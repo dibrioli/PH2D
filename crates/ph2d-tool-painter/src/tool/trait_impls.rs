@@ -29,8 +29,11 @@ impl Tool for PainterTool {
 
     fn on_deactivate(&mut self) {
         self.params.takeover_active = false;
-        // Abandon every in-progress edit (open shape, pending Fill, armed Eyedropper, Mask scratch, …)
-        // before the canvas is torn down, so nothing rides into the next activation. See `paint::lifecycle`.
+        // BAKE any open shape editor first (Apply) — switching to another tool must never ERASE a drawn
+        // shape; it's applied into the canvas so the deferred-bake below persists it (Enio 2026-07-03).
+        self.commit_open_shape();
+        // Abandon every REMAINING in-progress edit (pending Fill, armed Eyedropper, Mask scratch, …) before
+        // the canvas is torn down, so nothing rides into the next activation. See `paint::lifecycle`.
         self.reset_transient_edit_state();
         // Persistence (Enio 2026-06-24): with unbaked edits, KEEP the canvas + flag a deferred bake so
         // the shell persists it into the sprite before teardown; otherwise tear down now.

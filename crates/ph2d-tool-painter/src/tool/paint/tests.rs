@@ -3924,9 +3924,10 @@ fn curve_add_delete_and_commit() {
     assert!(t.curve_overlay().is_none(), "fully undone → no session");
 }
 
-/// Switching the stroke method away from Curve mid-session discards it (reverts the preview).
+/// Switching the stroke method away from Curve mid-session BAKES it (applies the shape), never erases it
+/// (Enio 2026-07-03): the session closes but the painted preview stays on the canvas.
 #[test]
-fn curve_discarded_when_switching_method_away() {
+fn curve_baked_when_switching_method_away() {
     let mut t = white_canvas(64, 3.0);
     t.paint.brush.stroke_method = StrokeMethod::Curve;
     t.paint.brush.hardness = 1.0;
@@ -3936,15 +3937,17 @@ fn curve_discarded_when_switching_method_away() {
     t.on_canvas_pointer(cp([8.0, 20.0], PointerPhase::Down));
     t.on_canvas_pointer(cp([56.0, 20.0], PointerPhase::Up));
     assert!(t.curve_overlay().is_some());
+    let baked = px(&t, 64, 32, 20); // the live preview pixel on the curve
+    assert_ne!(baked, [255, 255, 255, 255], "the curve painted a preview");
     t.set_brush_stroke_method(StrokeMethod::Space.to_u8());
     assert!(
         t.curve_overlay().is_none(),
-        "leaving Curve discarded the session"
+        "leaving Curve closed the session (baked, not still open)"
     );
     assert_eq!(
         px(&t, 64, 32, 20),
-        [255, 255, 255, 255],
-        "the preview was reverted"
+        baked,
+        "the shape was APPLIED (baked), not erased"
     );
 }
 
@@ -4233,19 +4236,24 @@ fn circle_undo_removes_the_creation_not_applies_it() {
 }
 
 #[test]
-fn ellipse_discarded_when_switching_method_away() {
+fn ellipse_baked_when_switching_method_away() {
     let mut t = circle_tool();
     draw_circle(&mut t, 64.0, 64.0, 20.0);
     assert!(t.ellipse_overlay().is_some());
+    assert_eq!(
+        px(&t, 128, 84, 64),
+        [0, 0, 0, 255],
+        "the ring painted a preview"
+    );
     t.set_brush_stroke_method(StrokeMethod::Space.to_u8());
     assert!(
         t.ellipse_overlay().is_none(),
-        "leaving Ellipse discarded the session"
+        "leaving Ellipse closed the session (baked, not still open)"
     );
     assert_eq!(
         px(&t, 128, 84, 64),
-        [255, 255, 255, 255],
-        "the preview was reverted"
+        [0, 0, 0, 255],
+        "the shape was APPLIED (baked), not erased"
     );
 }
 
@@ -4419,20 +4427,49 @@ fn polygon_commit_cancel_and_undo() {
     );
 }
 
+/// Switching to a DIFFERENT tool (deactivating the Painter) also BAKES an open shape instead of erasing
+/// it — the drawn shape is always applied (Enio 2026-07-03).
 #[test]
-fn polygon_discarded_when_switching_method_away() {
+fn switching_tools_bakes_the_open_shape() {
+    use ph2d_editor_core::tool::Tool;
+    let mut t = circle_tool();
+    draw_circle(&mut t, 64.0, 64.0, 20.0);
+    assert_eq!(
+        px(&t, 128, 84, 64),
+        [0, 0, 0, 255],
+        "the ring painted a preview"
+    );
+    Tool::on_deactivate(&mut t);
+    assert!(
+        t.ellipse_overlay().is_none(),
+        "deactivating closed the shape session (baked)"
+    );
+    assert_eq!(
+        px(&t, 128, 84, 64),
+        [0, 0, 0, 255],
+        "switching tools APPLIED the shape, not erased it"
+    );
+}
+
+#[test]
+fn polygon_baked_when_switching_method_away() {
     let mut t = polygon_tool();
     draw_polygon(&mut t, 64.0, 64.0, 20.0);
     assert!(t.polygon_overlay().is_some());
+    assert_eq!(
+        px(&t, 128, 64, 84),
+        [0, 0, 0, 255],
+        "the outline painted a preview"
+    );
     t.set_brush_stroke_method(StrokeMethod::Space.to_u8());
     assert!(
         t.polygon_overlay().is_none(),
-        "leaving Polygon discarded it"
+        "leaving Polygon closed the session (baked, not still open)"
     );
     assert_eq!(
         px(&t, 128, 64, 84),
-        [255, 255, 255, 255],
-        "the preview was reverted"
+        [0, 0, 0, 255],
+        "the shape was APPLIED (baked), not erased"
     );
 }
 

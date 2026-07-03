@@ -8,19 +8,16 @@ use ph2d_painter_brush::StrokeMethod;
 
 impl PainterTool {
     /// Set the stroke method from a wire discriminant (out-of-range → Space). Leaving a shape method
-    /// (Curve/Ellipse/Polygon) with an un-committed session discards it (revert the preview) — the artist
-    /// switched away deliberately; switching INTO the same shape keeps its session. A NON-shape method is
-    /// remembered as the resting method the rail's Brush button restores.
+    /// (Curve/Ellipse/Polygon/Line) with an OPEN session **BAKES** it (Apply) — a drawn shape is ALWAYS
+    /// applied on a method/tool switch, never erased (Enio 2026-07-03). Re-selecting the SAME method keeps
+    /// its session editable. A NON-shape method is remembered as the resting method the rail's Brush button
+    /// restores.
     pub fn set_brush_stroke_method(&mut self, m: u8) {
         let method = StrokeMethod::from_u8(m);
-        if method != StrokeMethod::Curve {
-            self.curve_cancel();
-        }
-        if method != StrokeMethod::Ellipse {
-            self.ellipse_cancel();
-        }
-        if method != StrokeMethod::Polygon {
-            self.polygon_cancel();
+        // Switching to a DIFFERENT method commits whichever shape editor is open (no-op when none is);
+        // re-selecting the current method leaves its session untouched so the artist keeps editing it.
+        if method != self.paint.brush.stroke_method {
+            self.commit_open_shape();
         }
         self.paint.brush.stroke_method = method;
         if !method.is_shape() {

@@ -45,6 +45,26 @@ pub(super) fn palette(theme: Theme) -> GizmoPalette {
     }
 }
 
+/// Distinct **fluorescent** gizmo accent colours (mirrors the Mask overlay palette) — so multiple
+/// simultaneous gizmos each read a unique colour. Cycle by index.
+pub(super) const GIZMO_ACCENTS: [[u8; 3]; 4] = [
+    [220, 255, 0],  // fluorescent yellow
+    [255, 42, 160], // fluorescent pink
+    [80, 255, 60],  // fluorescent green
+    [255, 120, 0],  // fluorescent orange
+];
+
+/// A gizmo palette whose box outline + handle fill are a specific fluorescent `accent` (the handle outline
+/// stays the themed `BorderEmph` for contrast) — for distinctly-coloured simultaneous gizmos.
+pub(super) fn palette_accent(theme: Theme, accent: [u8; 3]) -> GizmoPalette {
+    let c = Color::from_rgba8(accent[0], accent[1], accent[2], 255);
+    GizmoPalette {
+        frame: c,
+        fill: c,
+        stroke: darkened(ColorToken::BorderEmph, theme),
+    }
+}
+
 /// Stroke the gizmo box outline through `pts` as a closed polygon — the Sprite gizmo's bbox style.
 pub(super) fn stroke_box(scene: &mut Scene, pts: &[Point], pal: &GizmoPalette) {
     let Some((&first, rest)) = pts.split_first() else {
@@ -118,14 +138,13 @@ pub(super) fn draw_transform_gizmo(
     scene: &mut Scene,
     gz: &TransformGizmo,
     affine: Affine,
-    theme: Theme,
+    pal: &GizmoPalette,
     cursor: (f32, f32),
 ) {
     let map = |p: [f32; 2]| affine * Point::new(f64::from(p[0]), f64::from(p[1]));
-    let pal = palette(theme);
     let [mn, mx] = gz.bbox;
     let box_pts = [map(mn), map([mx[0], mn[1]]), map(mx), map([mn[0], mx[1]])];
-    stroke_box(scene, &box_pts, &pal);
+    stroke_box(scene, &box_pts, pal);
     // Corners flip to circles on mouse-OVER the rotate ring (not only mid-drag) — the cue must match the
     // tool's hit-test: the band just OUTSIDE a corner (farther from the centre than it). Image-px tol →
     // screen via the affine's per-pixel scale.
@@ -146,9 +165,9 @@ pub(super) fn draw_transform_gizmo(
     for (i, &h) in gz.handles.iter().enumerate() {
         let p = map(h);
         if circle_corners && i < 4 {
-            circle_handle(scene, p, &pal);
+            circle_handle(scene, p, pal);
         } else {
-            square_handle(scene, p, &pal);
+            square_handle(scene, p, pal);
         }
     }
 }

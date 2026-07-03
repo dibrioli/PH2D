@@ -46,15 +46,17 @@ pub(super) fn draw_line_overlay(
                 Affine, BezPath, Brush, Circle, Color, Fill, Point, RoundedRect, Stroke,
             };
             let map = |p: [f32; 2]| affine * Point::new(f64::from(p[0]), f64::from(p[1]));
+            // Line stroke gizmo = fluorescent ORANGE (each stroke shape type gets a distinct accent).
+            let pal = super::painter_bridge_gizmo::palette_accent(
+                hero.theme,
+                super::painter_bridge_gizmo::GIZMO_ACCENTS[3],
+            );
             let scene = vector_scene.inner_mut();
             // Transform gizmo (editing phase) — drawn FIRST (under the segments + dots) so the editing
             // geometry stays visually dominant. Identical to the Curve gizmo (shared helper).
             if let Some(gz) = overlay.transform_gizmo.as_ref() {
-                super::painter_bridge_gizmo::draw_transform_gizmo(
-                    scene, gz, affine, hero.theme, cursor,
-                );
+                super::painter_bridge_gizmo::draw_transform_gizmo(scene, gz, affine, &pal, cursor);
             }
-            let pal = super::painter_bridge_gizmo::palette(hero.theme);
             // Segments through the committed corner points (themed frame colour, open or closed).
             let pts = &overlay.points;
             if pts.len() >= 2 {

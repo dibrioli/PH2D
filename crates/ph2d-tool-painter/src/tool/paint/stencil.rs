@@ -353,6 +353,11 @@ impl PainterTool {
         // `paint_mode` still holds the OLD mode, so the current tool's edits save to the right slot.
         self.switch_brush_slot(new_mode);
         self.paint.paint_mode = new_mode;
+        // Leaving the Selection tool auto-hides its gizmos (the "Show Selection Gizmos" checkbox unchecks) —
+        // the gizmos belong to Select and would otherwise linger over another tool (Enio 2026-07-03).
+        if new_mode != PaintMode::Selection && self.paint.selection_edit_mode {
+            self.exit_selection_edit();
+        }
         // Per-mode flags. Smear/Blur/Clone leave the eraser override as-is (unchanged behaviour); the
         // colour-painting modes clear it; Eyedropper additionally arms the pick.
         match mode {

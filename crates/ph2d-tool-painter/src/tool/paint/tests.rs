@@ -7356,3 +7356,68 @@ fn selection_from_layer_contents_selects_opaque_texels() {
         "transparent texel not selected"
     );
 }
+
+/// Leaving the Select tool auto-hides the selection gizmos (Enio 2026-07-03).
+#[test]
+fn switching_away_from_select_hides_the_gizmos() {
+    let mut t = white_canvas(64, 4.0);
+    t.set_paint_tool_mode("selection");
+    t.set_rect_selection(8, 8, 32, 32);
+    t.toggle_selection_edit();
+    assert!(t.selection_edit_mode(), "gizmos shown while on Select");
+    t.set_paint_tool_mode("brush");
+    assert!(
+        !t.selection_edit_mode(),
+        "switching to another tool auto-unchecked Show Selection Gizmos"
+    );
+}
+
+/// The centroid (mean position) of the selected texels — a shape-agnostic way to test a whole-shape move.
+fn selection_centroid(t: &PainterTool, size: u32) -> (f32, f32) {
+    let (mut sx, mut sy, mut n) = (0.0f32, 0.0f32, 0.0f32);
+    for y in 0..size {
+        for x in 0..size {
+            if t.selection_coverage_at(x, y) >= 128 {
+                sx += x as f32;
+                sy += y as f32;
+                n += 1.0;
+            }
+        }
+    }
+    if n == 0.0 {
+        (0.0, 0.0)
+    } else {
+        (sx / n, sy / n)
+    }
+}
+
+/// A **Freehand** selection edits via a whole-shape TRANSFORM gizmo (move), NOT editable points: dragging
+/// the centre handle translates the whole selection (the centroid shifts by the drag delta).
+#[test]
+fn selection_freehand_transform_move_shifts_the_selection() {
+    let mut t = white_canvas(128, 4.0);
+    t.set_paint_tool_mode("selection");
+    t.set_selection_mode(1); // Freehand
+    t.on_canvas_pointer(cp([20.0, 20.0], PointerPhase::Down));
+    for p in [[40.0, 20.0], [45.0, 35.0], [30.0, 45.0], [18.0, 35.0]] {
+        t.on_canvas_pointer(cp(p, PointerPhase::Move));
+    }
+    t.on_canvas_pointer(cp([20.0, 20.0], PointerPhase::Up));
+    assert!(t.selection_active(), "a freehand selection exists");
+    let before = selection_centroid(&t, 128);
+    t.toggle_selection_edit();
+    // The freehand gizmo's LAST square handle is the centre (move) handle at the bbox centre.
+    let center = *t.selection_gizmos()[0].square_handles.last().unwrap();
+    t.on_canvas_pointer(cp(center, PointerPhase::Down));
+    t.on_canvas_pointer(cp([center[0] + 30.0, center[1]], PointerPhase::Move));
+    t.on_canvas_pointer(cp([center[0] + 30.0, center[1]], PointerPhase::Up));
+    let after = selection_centroid(&t, 128);
+    assert!(
+        (after.0 - before.0 - 30.0).abs() < 3.0,
+        "moving the centre handle +30px shifts the whole selection ~+30 in x ({before:?} -> {after:?})"
+    );
+    assert!(
+        (after.1 - before.1).abs() < 3.0,
+        "the y position is unchanged by a horizontal move ({before:?} -> {after:?})"
+    );
+}

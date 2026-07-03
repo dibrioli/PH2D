@@ -3,8 +3,9 @@
 //! `stroke_method` — so the Brush's Shape system can never be contaminated by selection editing (the bug).
 //!
 //! When "Show Selection Gizmos" is on, EVERY editable shape in `selection_shapes` shows its own gizmo at
-//! once and each is independently manipulable: the **Ellipse** gizmo (resize/rotate), the **Polygon** gizmo
-//! (resize/rotate/sides — the rect starts as a 4-gon), and the **Freehand** point curve (drag anchors).
+//! once, each independently manipulable: the **Ellipse** gizmo (resize/rotate), the **Polygon** gizmo
+//! (resize/rotate/sides), and the **Freehand** shape's **transform gizmo** (a bounding box that moves /
+//! scales / rotates the whole curve — the individual anchor points only appear AFTER Convert to Curve).
 //! Each edit mutates the shape's params IN PLACE and recomposites the mask. Pure, self-contained geometry.
 
 use super::PainterTool;
@@ -21,7 +22,7 @@ const SIDES_STEP: f32 = 1.5;
 const MIN_SIDES: u32 = 3;
 const MAX_SIDES: u32 = 12;
 
-// Handle ids for the ellipse/polygon gizmos (freehand uses the raw point index).
+// Handle ids for the ellipse/polygon gizmos.
 const H_RIGHT: u8 = 0;
 const H_TOP: u8 = 1;
 const H_LEFT: u8 = 2;
@@ -31,15 +32,31 @@ const H_SIDES: u8 = 5; // polygon only
 const H_CENTER_ELLIPSE: u8 = 5;
 const H_CENTER_POLYGON: u8 = 6;
 
+// Handle ids for the FREEHAND transform gizmo: 4 corners (scale) + rotate + centre (move).
+const T_ROTATE: u8 = 4;
+const T_CENTER: u8 = 5;
+
+/// The active gizmo grab — carries the shape's state + pointer position at grab, so a whole-shape transform
+/// (freehand move/scale/rotate) is computed drift-free from the pristine geometry.
+#[derive(Clone, Debug)]
+pub(crate) struct SelectionGrab {
+    pub shape: usize,
+    pub handle: u8,
+    pub start: [f32; 2],
+    pub initial: SelectionShape,
+}
+
 /// A drawable selection gizmo for one shape (image-space px). The shell strokes `outline` as the boundary,
-/// draws `square_handles` as themed rounded squares (resize / anchor points), `circle_handles` as circles
-/// (rotate cue) and `diamond_handles` as diamonds (the polygon **sides** handle — distinct from rotate).
+/// strokes `frame_box` (if any) as the transform bounding box, draws `square_handles` as themed rounded
+/// squares (resize / corners / centre-move), `circle_handles` as circles (rotate) and `diamond_handles` as
+/// diamonds (the polygon **sides** handle). `accent` is the distinct fluorescent index (no two gizmos share).
 pub struct SelectionGizmoView {
     pub outline: Vec<[f32; 2]>,
-    pub closed: bool,
+    pub frame_box: Vec<[f32; 2]>,
     pub square_handles: Vec<[f32; 2]>,
     pub circle_handles: Vec<[f32; 2]>,
     pub diamond_handles: Vec<[f32; 2]>,
+    pub accent: usize,
 }
 
 impl PainterTool {
@@ -49,8 +66,8 @@ impl PainterTool {
         self.paint.selection_edit_mode
     }
 
-    /// Build one gizmo view per editable selection shape (for the shell overlay). Empty when the gizmos are
-    /// hidden or nothing is selected.
+    /// Build one gizmo view per editable selection shape (for the shell overlay), each with a distinct
+    /// fluorescent `accent`. Empty when the gizmos are hidden or nothing is selected.
     #[must_use]
     pub fn selection_gizmos(&self) -> Vec<SelectionGizmoView> {
         if !self.paint.selection_edit_mode {
@@ -58,7 +75,7 @@ impl PainterTool {
         }
         let tol = self.paint.shape_grab_tol_px;
         let mut out = Vec::new();
-        for e in &self.paint.selection_shapes {
+        for (accent, e) in self.paint.selection_shapes.iter().enumerate() {
             match &e.shape {
                 SelectionShape::Ellipse { center, u, rx, ry } => {
                     let mut perim = Vec::new();
@@ -66,10 +83,11 @@ impl PainterTool {
                     let h = ellipse_handles(*center, *u, *rx, *ry, tol * ROTATE_GAP);
                     out.push(SelectionGizmoView {
                         outline: perim,
-                        closed: true,
+                        frame_box: Vec::new(),
                         square_handles: vec![h[0], h[1], h[2], h[3], h[5]],
                         circle_handles: vec![h[4]],
                         diamond_handles: Vec::new(),
+                        accent,
                     });
                 }
                 SelectionShape::Polygon {
@@ -83,22 +101,27 @@ impl PainterTool {
                     let h = polygon_handles(*center, *u, *rx, *ry, *sides, tol);
                     out.push(SelectionGizmoView {
                         outline: perim,
-                        closed: true,
+                        frame_box: Vec::new(),
                         square_handles: vec![h[0], h[1], h[2], h[3], h[6]],
                         circle_handles: vec![h[4]],  // rotate
-                        diamond_handles: vec![h[5]], // sides (distinct from rotate)
+                        diamond_handles: vec![h[5]], // sides
+                        accent,
                     });
                 }
-                SelectionShape::Freehand {
-                    points, handles, ..
-                } => {
+                SelectionShape::Freehand { points, handles } => {
+                    // The freehand shows its shape (spine) + a whole-shape TRANSFORM gizmo (bbox + corner
+                    // scale squares + centre-move square + rotate). The anchor points are NOT editable here
+                    // (only after Convert to Curve).
                     let spine = self.freehand_spine(points, handles);
+                    let th = freehand_transform_handles(points, tol);
+                    let corners = vec![th[0], th[1], th[2], th[3], th[0]]; // closed box polyline
                     out.push(SelectionGizmoView {
                         outline: spine,
-                        closed: true,
-                        square_handles: points.clone(),
-                        circle_handles: Vec::new(),
+                        frame_box: corners,
+                        square_handles: vec![th[0], th[1], th[2], th[3], th[5]], // corners + centre
+                        circle_handles: vec![th[4]],                             // rotate
                         diamond_handles: Vec::new(),
+                        accent,
                     });
                 }
                 SelectionShape::Raster { .. } => {}
@@ -123,27 +146,46 @@ impl PainterTool {
         // Topmost shape first (last drawn wins).
         let mut grab = None;
         for i in (0..self.paint.selection_shapes.len()).rev() {
-            if let Some(h) = hit_shape(&self.paint.selection_shapes[i].shape, pos, tol) {
-                grab = Some((i, h));
+            let shape = &self.paint.selection_shapes[i].shape;
+            if let Some(h) = hit_shape(shape, pos, tol) {
+                grab = Some(SelectionGrab {
+                    shape: i,
+                    handle: h,
+                    start: pos,
+                    initial: shape.clone(),
+                });
                 break;
             }
         }
+        let has = grab.is_some();
         self.paint.selection_grab = grab;
-        if grab.is_some() {
+        if has {
             self.paint.stroke_undo = Some(self.snapshot_model());
         }
         true
     }
 
     fn selection_gizmo_move(&mut self, pos: [f32; 2]) -> bool {
-        let Some((i, h)) = self.paint.selection_grab else {
+        let Some(grab) = self.paint.selection_grab.clone() else {
             return false;
         };
-        if i >= self.paint.selection_shapes.len() {
+        if grab.shape >= self.paint.selection_shapes.len() {
             return false;
         }
         let tol = self.paint.shape_grab_tol_px;
-        drag_shape(&mut self.paint.selection_shapes[i].shape, h, pos, tol);
+        // Freehand = a whole-shape transform from the pristine geometry (drift-free); ellipse/polygon map the
+        // pointer to a param directly (absolute, no drift).
+        if matches!(grab.initial, SelectionShape::Freehand { .. }) {
+            self.paint.selection_shapes[grab.shape].shape =
+                apply_freehand_transform(&grab.initial, grab.handle, grab.start, pos);
+        } else {
+            drag_shape(
+                &mut self.paint.selection_shapes[grab.shape].shape,
+                grab.handle,
+                pos,
+                tol,
+            );
+        }
         self.recompose_selection_mask();
         true
     }
@@ -157,7 +199,7 @@ impl PainterTool {
     }
 }
 
-/// Hit-test one shape's handles; returns the grabbed handle id (or freehand point index) within `tol`.
+/// Hit-test one shape's handles; returns the grabbed handle id within `tol`.
 fn hit_shape(shape: &SelectionShape, pos: [f32; 2], tol: f32) -> Option<u8> {
     match shape {
         SelectionShape::Ellipse { center, u, rx, ry } => {
@@ -175,23 +217,14 @@ fn hit_shape(shape: &SelectionShape, pos: [f32; 2], tol: f32) -> Option<u8> {
             hit_handles(&h, pos, tol)
         }
         SelectionShape::Freehand { points, .. } => {
-            let tol2 = tol * tol;
-            let mut best = None;
-            let mut bestd = tol2;
-            for (idx, p) in points.iter().enumerate().take(200) {
-                let d = dist2(*p, pos);
-                if d <= bestd {
-                    bestd = d;
-                    best = Some(idx as u8);
-                }
-            }
-            best
+            let h = freehand_transform_handles(points, tol);
+            hit_handles(&h, pos, tol)
         }
         SelectionShape::Raster { .. } => None,
     }
 }
 
-/// Apply a handle drag to one shape's params in place.
+/// Apply a handle drag to an ellipse/polygon shape's params in place (absolute pointer mapping).
 fn drag_shape(shape: &mut SelectionShape, handle: u8, pos: [f32; 2], tol: f32) {
     match shape {
         SelectionShape::Ellipse { center, u, rx, ry } => {
@@ -216,26 +249,61 @@ fn drag_shape(shape: &mut SelectionShape, handle: u8, pos: [f32; 2], tol: f32) {
                 drag_axis_frame(center, u, rx, ry, handle, pos, H_CENTER_POLYGON);
             }
         }
-        SelectionShape::Freehand { points, handles } => {
-            let idx = handle as usize;
-            if idx < points.len() {
-                // Carry the anchor's Bézier handles by the same delta so the local tangent shape is kept.
-                let d = [pos[0] - points[idx][0], pos[1] - points[idx][1]];
-                if idx < handles.len() {
-                    for hp in &mut handles[idx] {
-                        hp[0] += d[0];
-                        hp[1] += d[1];
-                    }
-                }
-                points[idx] = pos;
-            }
-        }
-        SelectionShape::Raster { .. } => {}
+        _ => {}
     }
 }
 
-/// Shared axis-frame drag for the ellipse + polygon gizmos (right/left → rx, top/bottom → ry, rotate spins
-/// the frame, `center_id` → translate). Mirrors the stroke editors' `apply_handle_drag`.
+/// Whole-shape transform of a freehand curve from its PRISTINE geometry: corner → uniform scale about the
+/// bbox centre, `T_ROTATE` → rotate about the centre, `T_CENTER` → translate. Transcendental-free (rotate
+/// uses the two grab vectors' dot/cross for cos/sin).
+fn apply_freehand_transform(
+    initial: &SelectionShape,
+    handle: u8,
+    start: [f32; 2],
+    pos: [f32; 2],
+) -> SelectionShape {
+    let SelectionShape::Freehand { points, handles } = initial else {
+        return initial.clone();
+    };
+    let (mn, mx) = bbox(points);
+    let center = [(mn[0] + mx[0]) * 0.5, (mn[1] + mx[1]) * 0.5];
+    // A transform mapping a point `p` (translate / scale / rotate about `center`).
+    let xf: Box<dyn Fn([f32; 2]) -> [f32; 2]> = if handle == T_CENTER {
+        let d = [pos[0] - start[0], pos[1] - start[1]];
+        Box::new(move |p: [f32; 2]| [p[0] + d[0], p[1] + d[1]])
+    } else if handle == T_ROTATE {
+        let v0 = unit_or([start[0] - center[0], start[1] - center[1]], [1.0, 0.0]);
+        let v1 = unit_or([pos[0] - center[0], pos[1] - center[1]], [1.0, 0.0]);
+        let cos = dot(v0, v1);
+        let sin = v0[0] * v1[1] - v0[1] * v1[0]; // cross → sin
+        Box::new(move |p: [f32; 2]| {
+            let r = [p[0] - center[0], p[1] - center[1]];
+            [
+                center[0] + r[0] * cos - r[1] * sin,
+                center[1] + r[0] * sin + r[1] * cos,
+            ]
+        })
+    } else {
+        // Corner → uniform scale about the centre by the radial-distance ratio.
+        let d0 = dist(start, center).max(1.0);
+        let d1 = dist(pos, center);
+        let s = (d1 / d0).clamp(0.05, 20.0);
+        Box::new(move |p: [f32; 2]| {
+            [
+                center[0] + (p[0] - center[0]) * s,
+                center[1] + (p[1] - center[1]) * s,
+            ]
+        })
+    };
+    let new_points: Vec<[f32; 2]> = points.iter().map(|&p| xf(p)).collect();
+    let new_handles: Vec<[[f32; 2]; 2]> = handles.iter().map(|h| [xf(h[0]), xf(h[1])]).collect();
+    SelectionShape::Freehand {
+        points: new_points,
+        handles: new_handles,
+    }
+}
+
+/// Shared axis-frame drag for the ellipse + polygon gizmos.
 fn drag_axis_frame(
     center: &mut [f32; 2],
     u: &mut [f32; 2],
@@ -296,7 +364,37 @@ fn polygon_handles(
     ]
 }
 
-/// Nearest axis/rotate/sides handle within `tol` (indices `0..len-1`), else the centre (last) as fallback.
+/// The 6 freehand transform handles `[TL, TR, BR, BL, rotate, center]` from the anchor bbox.
+fn freehand_transform_handles(points: &[[f32; 2]], tol: f32) -> [[f32; 2]; 6] {
+    let (mn, mx) = bbox(points);
+    let cx = (mn[0] + mx[0]) * 0.5;
+    [
+        [mn[0], mn[1]],                 // TL
+        [mx[0], mn[1]],                 // TR
+        [mx[0], mx[1]],                 // BR
+        [mn[0], mx[1]],                 // BL
+        [cx, mn[1] - tol * ROTATE_GAP], // rotate (above top-centre)
+        [cx, (mn[1] + mx[1]) * 0.5],    // centre (move)
+    ]
+}
+
+/// Axis-aligned bounding box `(min, max)` of `points` (a single point when empty).
+fn bbox(points: &[[f32; 2]]) -> ([f32; 2], [f32; 2]) {
+    let mut mn = [f32::INFINITY, f32::INFINITY];
+    let mut mx = [f32::NEG_INFINITY, f32::NEG_INFINITY];
+    for p in points {
+        mn[0] = mn[0].min(p[0]);
+        mn[1] = mn[1].min(p[1]);
+        mx[0] = mx[0].max(p[0]);
+        mx[1] = mx[1].max(p[1]);
+    }
+    if !mn[0].is_finite() {
+        return ([0.0, 0.0], [0.0, 0.0]);
+    }
+    (mn, mx)
+}
+
+/// Nearest non-centre handle within `tol` (indices `0..len-1`), else the centre (last) as fallback.
 fn hit_handles(handles: &[[f32; 2]], pos: [f32; 2], tol: f32) -> Option<u8> {
     let tol2 = tol * tol;
     let mut best = None;
@@ -325,6 +423,9 @@ fn dist2(a: [f32; 2], b: [f32; 2]) -> f32 {
     let dx = a[0] - b[0];
     let dy = a[1] - b[1];
     dx * dx + dy * dy
+}
+fn dist(a: [f32; 2], b: [f32; 2]) -> f32 {
+    dist2(a, b).sqrt()
 }
 /// Unit vector of `a`, or `fallback` when `a` is ~zero-length.
 fn unit_or(a: [f32; 2], fallback: [f32; 2]) -> [f32; 2] {

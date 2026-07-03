@@ -48,15 +48,17 @@ pub(super) fn draw_curve_overlay(
             );
             use ph2d_vector::{Affine, BezPath, Brush, Circle, Color, Fill, Point, Stroke};
             let map = |p: [f32; 2]| affine * Point::new(f64::from(p[0]), f64::from(p[1]));
-            let pal = super::painter_bridge_gizmo::palette(hero.theme);
+            // Curve stroke gizmo = fluorescent GREEN (each stroke shape type gets a distinct accent).
+            let pal = super::painter_bridge_gizmo::palette_accent(
+                hero.theme,
+                super::painter_bridge_gizmo::GIZMO_ACCENTS[2],
+            );
             let scene = vector_scene.inner_mut();
             // Transform gizmo — the Sprite-gizmo box + handles (theme tokens, a touch darker). Drawn FIRST
             // (under the spine + dots) so the editing geometry stays visually dominant. Corners (0..4) flip
             // to circles while rotating; edges (4..8) + the centre move handle (8) stay rounded squares.
             if let Some(gz) = overlay.transform_gizmo.as_ref() {
-                super::painter_bridge_gizmo::draw_transform_gizmo(
-                    scene, gz, affine, hero.theme, cursor,
-                );
+                super::painter_bridge_gizmo::draw_transform_gizmo(scene, gz, affine, &pal, cursor);
             }
             // Spine guide — the auto-smoothed curve through the control points (themed frame colour).
             if overlay.spine.len() >= 2 {

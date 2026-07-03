@@ -118,3 +118,16 @@ correta (a lista + a máscara compõem todas as formas) e o gizmo da forma ATIVA
 editável com aparência idêntica ao stroke. Desenhar TODOS os gizmos de uma vez + dispatch de ponteiro
 entre eles é um loop de overlay no shell (`painter_bridge_*_overlay`) que é puramente visual e exige
 smoke para acertar — próximo passo pós-smoke.
+
+---
+
+## Gizmo polish round (2026-07-03) — LANDED
+
+- **Auto-hide gizmos on tool switch:** leaving Select unchecks "Show Selection Gizmos" (`set_paint_tool_mode` → `exit_selection_edit` when `new_mode != Selection`).
+- **Freehand = whole-shape TRANSFORM gizmo** (move/scale/rotate about the bbox centre; rotate is transcendental-free via the grab vectors' dot/cross). The anchor **points are NOT editable** in gizmos-phase — only after Convert to Curve. `SelectionGrab` now carries the pristine geometry so transforms are drift-free.
+- **Distinct fluorescent colours** (Mask palette: yellow/pink/green/orange) per gizmo — selection gizmos cycle by index; stroke shape types get a fixed distinct accent (ellipse=yellow, polygon=pink, curve=green, line=orange). `painter_bridge_gizmo::{GIZMO_ACCENTS, palette_accent}`; `draw_transform_gizmo` now takes a `&GizmoPalette`.
+- **Sprite-gizmo bbox look:** freehand draws a `frame_box` (corner squares + connecting lines + centre-move square). Polygon **sides** handle is a diamond (distinct from the round rotate).
+- **Stroke "E" → "Convert to Curve"** full-width button (own row above Apply; the cramped square is gone). Same `PAINTER_BRUSH_STROKE_EDIT` id → `convert_open_shape_to_curve`.
+
+### DEFERRED (next dedicated round) — Stroke multi-shape
+"Assim como em Mask/Seleção, o Stroke deve criar várias shapes simultâneas editáveis." This is a LARGE architectural change to the stroke shape editors (currently single-slot `self.paint.{curve,ellipse,polygon,line}`) — comparable in size to the whole selection multi-gizmo redesign. It needs its own build + smoke; NOT landed in this polish round.

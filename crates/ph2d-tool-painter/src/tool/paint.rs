@@ -229,9 +229,9 @@ pub(crate) struct PaintState {
     /// Freehand / Raster + a boolean op each). The `selection_mask` is a DERIVED cache: rasterize + composite
     /// this list. A gizmo drag mutates one entry's params in place and recomposites. [`selection_shapes`].
     selection_shapes: Vec<selection_shapes::SelectionEntry>,
-    /// The isolated gizmo grab: `(shape index, handle id)` currently dragged; `None` when idle. Freehand uses
-    /// the raw point index as the handle id. [`selection_gizmo`].
-    selection_grab: Option<(usize, u8)>,
+    /// The isolated gizmo grab currently dragged (shape idx + handle + pristine geometry for drift-free
+    /// whole-shape transforms); `None` when idle. [`selection_gizmo`].
+    selection_grab: Option<selection_gizmo::SelectionGrab>,
     /// In-memory **Copy** buffer of selected pixels (source bbox + coverage-premultiplied RGBA), consumed by
     /// **Paste**. `None` until a Copy. [`selection_actions`].
     selection_clipboard: Option<selection_actions::SelectionClip>,

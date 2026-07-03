@@ -293,7 +293,11 @@ fn draw_ellipse_overlay(
             );
             use ph2d_vector::Point;
             let map = |p: [f32; 2]| affine * Point::new(f64::from(p[0]), f64::from(p[1]));
-            let pal = super::painter_bridge_gizmo::palette(hero.theme);
+            // Ellipse stroke gizmo = fluorescent YELLOW (distinct stroke-shape accent).
+            let pal = super::painter_bridge_gizmo::palette_accent(
+                hero.theme,
+                super::painter_bridge_gizmo::GIZMO_ACCENTS[0],
+            );
             let scene = vector_scene.inner_mut();
             // Outline + handles in the Sprite-gizmo style (theme tokens, a touch darker): the axis + centre
             // handles are rounded squares, the rotate handle is a circle. Matches the selection gizmos.
@@ -348,7 +352,11 @@ fn draw_polygon_overlay(
             );
             use ph2d_vector::Point;
             let map = |p: [f32; 2]| affine * Point::new(f64::from(p[0]), f64::from(p[1]));
-            let pal = super::painter_bridge_gizmo::palette(hero.theme);
+            // Polygon stroke gizmo = fluorescent PINK (distinct stroke-shape accent).
+            let pal = super::painter_bridge_gizmo::palette_accent(
+                hero.theme,
+                super::painter_bridge_gizmo::GIZMO_ACCENTS[1],
+            );
             let scene = vector_scene.inner_mut();
             // Sprite-gizmo style (theme tokens, a touch darker): outline box + axis/centre squares + the
             // rotate & sides handles as circles. Matches the selection gizmos.

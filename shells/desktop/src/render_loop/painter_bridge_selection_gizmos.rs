@@ -49,12 +49,22 @@ pub(super) fn draw_selection_gizmos(
         window_size,
     );
     let map = |p: [f32; 2]| affine * Point::new(f64::from(p[0]), f64::from(p[1]));
-    let pal = super::painter_bridge_gizmo::palette(hero.theme);
     let scene = vector_scene.inner_mut();
+    let accents = super::painter_bridge_gizmo::GIZMO_ACCENTS;
     for g in &gizmos {
+        // Each gizmo gets a DISTINCT fluorescent accent (Mask-style) so overlapping gizmos never read the
+        // same colour.
+        let pal = super::painter_bridge_gizmo::palette_accent(
+            hero.theme,
+            accents[g.accent % accents.len()],
+        );
         if g.outline.len() >= 2 {
             let pts: Vec<Point> = g.outline.iter().map(|&p| map(p)).collect();
-            super::painter_bridge_gizmo::stroke_box(scene, &pts, &pal);
+            super::painter_bridge_gizmo::stroke_open(scene, &pts, &pal);
+        }
+        if g.frame_box.len() >= 2 {
+            let pts: Vec<Point> = g.frame_box.iter().map(|&p| map(p)).collect();
+            super::painter_bridge_gizmo::stroke_open(scene, &pts, &pal);
         }
         for &h in &g.square_handles {
             super::painter_bridge_gizmo::square_handle(scene, map(h), &pal);

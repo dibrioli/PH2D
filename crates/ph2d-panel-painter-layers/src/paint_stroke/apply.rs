@@ -31,8 +31,21 @@ pub(super) fn paint_apply_row(
 ) -> f32 {
     let gap = Spacing::Xs.px();
     let sq = ROW_H_PX; // square icon-button side
-    // Width of the trailing cluster: ✕ alone, or E + ✕ (with a gap) when convertible.
-    let icons = if with_edit { sq * 2.0 + gap } else { sq };
+    // Convertible shapes (Ellipse / Polygon) get a full-width **Convert to Curve** button on its own row
+    // (renamed from the cramped square "E" — Enio 2026-07-03), then the Apply / Apply & Keep / ✕ row.
+    let mut y = y;
+    if with_edit {
+        button(
+            ctx,
+            theme,
+            Rect::new(x, y, content_w, ROW_H_PX),
+            Some("Convert to Curve"),
+            core_ids::PAINTER_BRUSH_STROKE_EDIT,
+        );
+        y += ROW_H_PX + gap;
+    }
+    // Trailing cluster is now just ✕ Delete.
+    let icons = sq;
     let min_text_btn_w = 84.0; // LITERAL-PX-OK: layout breakpoint — min readable text-button width before wrap
     let one_row = content_w >= min_text_btn_w * 2.0 + icons + gap * 2.0;
     let apply = core_ids::PAINTER_BRUSH_STROKE_APPLY;
@@ -57,7 +70,7 @@ pub(super) fn paint_apply_row(
             Some("Apply & Keep"),
             keep,
         );
-        paint_icon_cluster(ctx, theme, keep_x + w + gap, y, sq, gap, with_edit);
+        paint_icon_cluster(ctx, theme, keep_x + w + gap, y, sq);
         y + ROW_H_PX + Spacing::Xs.px()
     } else {
         // Narrow: Apply (+ icons) on row 1; Apply & Keep full-width on row 2.
@@ -69,7 +82,7 @@ pub(super) fn paint_apply_row(
             Some("Apply"),
             apply,
         );
-        paint_icon_cluster(ctx, theme, x + text_w + gap, y, sq, gap, with_edit);
+        paint_icon_cluster(ctx, theme, x + text_w + gap, y, sq);
         let keep_y = y + ROW_H_PX + gap;
         button(
             ctx,
@@ -172,24 +185,11 @@ pub(super) fn paint_offset_card(
     y + card_h + Spacing::Sm.px()
 }
 
-/// Paint the trailing square-icon cluster at `ix`: the optional **E**dit button then the **✕** Delete.
-fn paint_icon_cluster(
-    ctx: &mut PaintCtx,
-    theme: ph2d_tokens::Theme,
-    ix: f32,
-    iy: f32,
-    sq: f32,
-    gap: f32,
-    with_edit: bool,
-) {
-    let mut cx = ix;
-    if with_edit {
-        let edit = core_ids::PAINTER_BRUSH_STROKE_EDIT;
-        button(ctx, theme, Rect::new(cx, iy, sq, ROW_H_PX), Some("E"), edit);
-        cx += sq + gap;
-    }
+/// Paint the trailing **✕** Delete square-icon at `ix` (the Convert-to-Curve button moved to its own
+/// full-width row above — Enio 2026-07-03).
+fn paint_icon_cluster(ctx: &mut PaintCtx, theme: ph2d_tokens::Theme, ix: f32, iy: f32, sq: f32) {
     let delete = core_ids::PAINTER_BRUSH_STROKE_DELETE;
-    button(ctx, theme, Rect::new(cx, iy, sq, ROW_H_PX), None, delete);
+    button(ctx, theme, Rect::new(ix, iy, sq, ROW_H_PX), None, delete);
 }
 
 /// One stroke shape-editor TEXT button (Apply / Apply & Keep / E). Shares the flat-button chrome (fill /

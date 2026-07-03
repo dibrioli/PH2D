@@ -33,6 +33,8 @@ fn push_paint_mode(hero: &mut HeroScreen, tool_id: NodeId) {
         "clone"
     } else if tool_id == ids::PAINTER_RAIL_MASK {
         "mask"
+    } else if tool_id == ids::PAINTER_RAIL_SELECTION {
+        "selection"
     } else if tool_id == ids::PAINTER_RAIL_INPAINT {
         "inpaint"
     } else if tool_id == ids::PAINTER_RAIL_FILL {
@@ -133,10 +135,35 @@ pub fn sync_rail_to_stroke_method(store: &mut crate::interaction::WidgetStore, m
     set_radio(store, &ids::PAINTER_RAIL_TOOL_IDS, ids::PAINTER_RAIL_SHAPES);
 }
 
+/// The active Mask-group sub-tool id (the Pressed one in the sub-radio), defaulting to Mask when none is
+/// pressed. Drives the mode the Mask group button forwards when clicked.
+fn active_mask_sub_id(store: &crate::interaction::WidgetStore) -> NodeId {
+    ids::PAINTER_RAIL_MASK_SUB_IDS
+        .into_iter()
+        .find(|id| matches!(store.button_state(*id), Some(ButtonState::Pressed)))
+        .unwrap_or(ids::PAINTER_RAIL_MASK)
+}
+
 pub fn apply(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
     let WidgetEvent::Click(id) = event else {
         return false;
     };
+    // A Mask-group sub-tool picked in the flyout (Mask / Selection): set the sub-radio, make the Mask
+    // group the active tool, close the flyout, and forward that sub's paint mode. Sub-tools paint with
+    // the normal (non-shape) stroke method, so restore it like the "other tool" branch below.
+    if ids::PAINTER_RAIL_MASK_SUB_IDS.contains(&id) {
+        set_radio(&mut hero.store, &ids::PAINTER_RAIL_MASK_SUB_IDS, id);
+        set_radio(
+            &mut hero.store,
+            &ids::PAINTER_RAIL_TOOL_IDS,
+            ids::PAINTER_RAIL_MASK_GROUP,
+        );
+        hero.store.set_painter_mask_flyout_open(false);
+        hero.store.set_painter_shapes_flyout_open(false);
+        push_stroke_method(hero, "brush");
+        push_paint_mode(hero, id);
+        return true;
+    }
     // A shape option picked in the flyout: set the shape sub-radio, make Shapes the active tool, close
     // the flyout, and set the painter's Stroke:Method TO that shape (nothing else in the Brush panel
     // changes).
@@ -162,13 +189,24 @@ pub fn apply(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
         if id == ids::PAINTER_RAIL_SHAPES {
             // Shapes owns the flyout — toggle its reveal. The flyout PICK sets the method; opening it
             // leaves the current shape sub-radio + method as-is.
+            hero.store.set_painter_mask_flyout_open(false);
             let open = hero.store.painter_shapes_flyout_open();
             hero.store.set_painter_shapes_flyout_open(!open);
+        } else if id == ids::PAINTER_RAIL_MASK_GROUP {
+            // Mask group owns the Mask flyout — toggle its reveal and forward the ACTIVE sub-tool's mode
+            // (Mask by default) so clicking the group activates the shown sub-tool, Photoshop-style.
+            hero.store.set_painter_shapes_flyout_open(false);
+            let open = hero.store.painter_mask_flyout_open();
+            hero.store.set_painter_mask_flyout_open(!open);
+            push_stroke_method(hero, "brush");
+            push_paint_mode(hero, active_mask_sub_id(&hero.store));
+            return true;
         } else {
             // Any other tool closes a lingering flyout AND returns Stroke:Method to the last non-shape
             // method — so leaving a shape via Brush/Eraser/… reverts to normal painting (and the reverse
             // sync, which only forces Shapes for a shape method, never bounces this selection back).
             hero.store.set_painter_shapes_flyout_open(false);
+            hero.store.set_painter_mask_flyout_open(false);
             push_stroke_method(hero, "brush");
         }
         // Forward the operating mode to the active Painter (Smear / Eraser / Brush / Eyedropper). The
@@ -382,6 +420,72 @@ mod tests {
             drained_paint_mode(&mut hero).as_deref(),
             Some("inpaint"),
             "the Inpaint button forwarded the heal mode, not the brush fallback"
+        );
+    }
+
+    #[test]
+    fn mask_group_button_toggles_its_flyout_and_forwards_the_active_sub() {
+        // The Mask group button (shared with Selection) toggles the Mask flyout on click and forwards
+        // the active sub-tool's mode — Mask by default (populate presses the Mask sub).
+        let mut hero = HeroScreen::new(NodeId(1));
+        super::super::super::left_rail::populate(&mut hero.store);
+        assert!(!hero.store.painter_mask_flyout_open());
+        assert!(apply(
+            &mut hero,
+            WidgetEvent::Click(ids::PAINTER_RAIL_MASK_GROUP)
+        ));
+        assert!(hero.store.painter_mask_flyout_open());
+        assert!(pressed(&hero, ids::PAINTER_RAIL_MASK_GROUP));
+        assert_eq!(
+            drained_paint_mode(&mut hero).as_deref(),
+            Some("mask"),
+            "the Mask group forwards its default sub-tool (Mask) mode"
+        );
+        // Click again closes it.
+        assert!(apply(
+            &mut hero,
+            WidgetEvent::Click(ids::PAINTER_RAIL_MASK_GROUP)
+        ));
+        assert!(!hero.store.painter_mask_flyout_open());
+    }
+
+    #[test]
+    fn picking_selection_activates_the_mask_group_and_forwards_selection() {
+        // Forward seam: picking Selection in the Mask flyout sets the sub-radio, makes the Mask group the
+        // active tool, closes the flyout, and forwards the "selection" paint mode over PAINTER_PAINT_MODE.
+        let mut hero = HeroScreen::new(NodeId(1));
+        super::super::super::left_rail::populate(&mut hero.store);
+        // Flyout already open (the group was pressed); pick Selection from it. Pick directly so the bus
+        // holds only the pick's forwarded mode (clicking the group first would enqueue a stale "mask").
+        hero.store.set_painter_mask_flyout_open(true);
+        assert!(apply(
+            &mut hero,
+            WidgetEvent::Click(ids::PAINTER_RAIL_SELECTION)
+        ));
+        assert!(pressed(&hero, ids::PAINTER_RAIL_SELECTION));
+        assert!(!pressed(&hero, ids::PAINTER_RAIL_MASK));
+        assert!(pressed(&hero, ids::PAINTER_RAIL_MASK_GROUP));
+        assert!(!hero.store.painter_mask_flyout_open());
+        assert_eq!(
+            drained_paint_mode(&mut hero).as_deref(),
+            Some("selection"),
+            "the Selection pick forwarded the selection mode"
+        );
+    }
+
+    #[test]
+    fn mask_and_shapes_flyouts_are_mutually_exclusive() {
+        // Opening one group flyout closes the other — they anchor to different chips and must never both
+        // be open.
+        let mut hero = HeroScreen::new(NodeId(1));
+        super::super::super::left_rail::populate(&mut hero.store);
+        apply(&mut hero, WidgetEvent::Click(ids::PAINTER_RAIL_SHAPES));
+        assert!(hero.store.painter_shapes_flyout_open());
+        apply(&mut hero, WidgetEvent::Click(ids::PAINTER_RAIL_MASK_GROUP));
+        assert!(hero.store.painter_mask_flyout_open());
+        assert!(
+            !hero.store.painter_shapes_flyout_open(),
+            "opening the Mask flyout closes the Shapes flyout"
         );
     }
 

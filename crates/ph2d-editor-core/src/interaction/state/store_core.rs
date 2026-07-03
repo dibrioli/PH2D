@@ -38,6 +38,7 @@ impl WidgetStore {
             tool_space_local: false,
             tool_view_mode: 0,
             painter_shapes_flyout_open: false,
+            painter_mask_flyout_open: false,
             panel_z_order: Vec::new(),
             eyedropper_pending: None,
             palette_io_pending: None,

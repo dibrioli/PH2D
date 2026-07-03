@@ -331,6 +331,11 @@ pub struct WidgetStore {
     /// Opened on press of the Shapes button, closed on shape pick / press
     /// elsewhere. Transient UI state, like the dropdown popover flags.
     pub(super) painter_shapes_flyout_open: bool,
+    /// `true` while the Painter rail's **Mask** group flyout is revealed (the
+    /// column of Mask + Selection chips to the right of the Mask button).
+    /// Same lifecycle as [`Self::painter_shapes_flyout_open`]; the two are
+    /// mutually exclusive (opening one closes the other in dispatch).
+    pub(super) painter_mask_flyout_open: bool,
     /// Per-panel Z order — last element paints LAST (= topmost).
     /// Mutated by `bump_panel_z` whenever the user clicks inside a
     /// panel, drags it, or it newly opens (color picker). Painters

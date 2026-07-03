@@ -344,6 +344,7 @@ impl PainterTool {
             "mask" => PaintMode::Mask,
             "inpaint" => PaintMode::Inpaint,
             "fill" => PaintMode::Fill,
+            "selection" => PaintMode::Selection,
             // "brush" / "eraser" / "eyedropper" / anything else → normal Paint.
             _ => PaintMode::Paint,
         };

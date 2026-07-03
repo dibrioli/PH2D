@@ -39,7 +39,7 @@ const PAINTER_TOOLS: [(NodeId, &str, IconId, &str); 9] = [
     (ids::PAINTER_RAIL_CLONE, "Clone", IconId::Clone, "CLONE"),
     (ids::PAINTER_RAIL_SMEAR, "Smear", IconId::Smear, "SMEAR"),
     (ids::PAINTER_RAIL_BLUR, "Blur", IconId::Blur, "BLUR"),
-    (ids::PAINTER_RAIL_MASK, "Mask", IconId::Mask, "MASK"),
+    (ids::PAINTER_RAIL_MASK_GROUP, "Mask", IconId::Mask, "MASK"),
     (
         ids::PAINTER_RAIL_INPAINT,
         "Inpaint",
@@ -57,6 +57,14 @@ const PAINTER_TOOLS: [(NodeId, &str, IconId, &str); 9] = [
 /// The Shapes flyout options, in flyout order: `(id, a11y label, icon, sub)`.
 /// Same chip appearance as the rail tools (icon + short vertical sub-label, same
 /// background) — only the icon differs. Revealed right of the Shapes button.
+/// The Mask-group flyout options, in flyout order: `(id, a11y label, icon, sub)`. Same chip appearance
+/// as the rail tools. Revealed right of the Mask button. Mask is the default sub-tool (its icon is the
+/// group's default face); Selection is the Procreate-style marquee.
+const PAINTER_MASK_SUBS: [(NodeId, &str, IconId, &str); 2] = [
+    (ids::PAINTER_RAIL_MASK, "Mask", IconId::Mask, "MASK"),
+    (ids::PAINTER_RAIL_SELECTION, "Select", IconId::Select, "SEL"),
+];
+
 const PAINTER_SHAPES: [(NodeId, &str, IconId, &str); 5] = [
     (
         ids::PAINTER_RAIL_SHAPE_FREEHAND,
@@ -135,12 +143,27 @@ pub fn populate(store: &mut WidgetStore) {
             },
         );
     }
+    for (id, ..) in PAINTER_MASK_SUBS {
+        store.register(
+            id,
+            InteractiveState::Button {
+                state: ButtonState::Normal,
+            },
+        );
+    }
     store.register(ids::RAIL_BACKDROP, InteractiveState::Plain);
     // Default-pressed selections (each radio group is independent — only one
     // group is painted at a time, so co-pressing is fine). The Shapes sub-radio
     // starts with NONE pressed — a shape button looks unchecked until the artist
     // picks one (Enio); the Shapes rail button then adopts that shape's icon.
-    for id in [ids::TOOL_TRANSLATE, ids::PAINTER_RAIL_BRUSH] {
+    // Mask is the Mask-group's default sub (so its button shows the Mask icon until Selection is
+    // picked) — a sub-radio independent of the main tool radio, exactly like the Shapes sub-radio
+    // (which starts with none pressed; Mask has a natural default, so it starts on Mask).
+    for id in [
+        ids::TOOL_TRANSLATE,
+        ids::PAINTER_RAIL_BRUSH,
+        ids::PAINTER_RAIL_MASK,
+    ] {
         if let Some(InteractiveState::Button { state }) = store.get_mut(id) {
             *state = ButtonState::Pressed;
         }
@@ -174,7 +197,11 @@ fn left_rail_chip_name(id: NodeId) -> Option<&'static str> {
     if let Some((_, label, ..)) = PAINTER_SHAPES.iter().find(|(sid, ..)| *sid == id) {
         return Some(label);
     }
+    if let Some((_, label, ..)) = PAINTER_MASK_SUBS.iter().find(|(sid, ..)| *sid == id) {
+        return Some(label);
+    }
     Some(match id {
+        x if x == ids::PAINTER_RAIL_MASK_GROUP => "Mask",
         x if x == ids::PAINTER_RAIL_FILL => "Fill",
         x if x == ids::RAIL_SHOW_INSPECTOR => "Show Inspector",
         x if x == ids::RAIL_SHOW_HIERARCHY => "Show Hierarchy",
@@ -231,6 +258,15 @@ fn active_shape(store: &WidgetStore) -> Option<(&'static str, IconId, &'static s
     })
 }
 
+/// The Mask-group sub-tool (`label`, `icon`, `sub`) whose sub-radio is Pressed — so the Mask rail button
+/// adopts the ACTIVE sub-tool's icon (Mask by default, Select once picked), like the Shapes group.
+fn active_mask_sub(store: &WidgetStore) -> Option<(&'static str, IconId, &'static str)> {
+    PAINTER_MASK_SUBS.iter().find_map(|(id, label, icon, sub)| {
+        matches!(store.button_state(*id), Some(ButtonState::Pressed))
+            .then_some((*label, *icon, *sub))
+    })
+}
+
 pub fn paint_left_rail(
     layout: &HeroLayout,
     scene: &mut VectorScene,
@@ -269,10 +305,15 @@ pub fn paint_left_rail(
     // Middle section: paint tools in Painter mode, else transform tools.
     if painter_active {
         for tool in PAINTER_TOOLS {
-            // The Shapes button adopts the ACTIVE shape's icon/label (like a Photoshop tool group)
-            // once a shape is picked — the generic Shapes icon only shows until then.
+            // Group buttons adopt their ACTIVE sub-tool's icon/label (Photoshop tool-group style):
+            // Shapes → the current stroke shape (generic icon until one is picked); Mask → Mask or
+            // Select (defaults to Mask).
             let tool = if tool.0 == ids::PAINTER_RAIL_SHAPES
                 && let Some((label, icon, sub)) = active_shape(store)
+            {
+                (tool.0, label, icon, sub)
+            } else if tool.0 == ids::PAINTER_RAIL_MASK_GROUP
+                && let Some((label, icon, sub)) = active_mask_sub(store)
             {
                 (tool.0, label, icon, sub)
             } else {
@@ -358,6 +399,7 @@ pub fn paint_left_rail(
     let gap = Spacing::Xs.px();
     let chip_x = rail_rect.x + CHIP_X_OFFSET_PX;
     let mut shapes_chip: Option<Rect> = None;
+    let mut mask_group_chip: Option<Rect> = None;
     for (i, entry) in rail.entries.iter().enumerate() {
         if i > 0 {
             y += gap;
@@ -368,6 +410,8 @@ pub fn paint_left_rail(
                 hit_index.register(*id, chip);
                 if *id == ids::PAINTER_RAIL_SHAPES {
                     shapes_chip = Some(chip);
+                } else if *id == ids::PAINTER_RAIL_MASK_GROUP {
+                    mask_group_chip = Some(chip);
                 }
                 y += chip_px;
             }
@@ -382,13 +426,14 @@ pub fn paint_left_rail(
         }
     }
 
-    // Shapes flyout — a mini-rail of shape chips painted to the RIGHT of the
-    // Shapes button while open (Painter mode only). Same chip appearance.
+    // Flyouts — a mini-rail of sub-tool chips painted to the RIGHT of the group button while open
+    // (Painter mode only). Same chip appearance. Only one is ever open at a time (dispatch closes the
+    // other), but the anchors are independent so we test each.
     if painter_active
         && store.painter_shapes_flyout_open()
         && let Some(anchor) = shapes_chip
     {
-        paint_shapes_flyout(
+        paint_rail_flyout(
             anchor,
             rail_rect,
             scene,
@@ -396,14 +441,35 @@ pub fn paint_left_rail(
             theme,
             hit_index,
             store,
+            &PAINTER_SHAPES,
+            NodeId(201),
+            "Shape options",
+        );
+    }
+    if painter_active
+        && store.painter_mask_flyout_open()
+        && let Some(anchor) = mask_group_chip
+    {
+        paint_rail_flyout(
+            anchor,
+            rail_rect,
+            scene,
+            text_system,
+            theme,
+            hit_index,
+            store,
+            &PAINTER_MASK_SUBS,
+            NodeId(202),
+            "Mask options",
         );
     }
 }
 
-/// Paint the Shapes flyout column to the right of the Shapes chip and
-/// hit-register its 5 shape chips. Mirrors the main rail's chip geometry.
+/// Paint a group button's flyout column to the right of its chip and hit-register its sub-tool chips.
+/// Mirrors the main rail's chip geometry. Shared by the Shapes and Mask groups (`subs` is the sub-tool
+/// table, `rail_id`/`a11y` name the flyout rail).
 #[allow(clippy::too_many_arguments)]
-fn paint_shapes_flyout(
+fn paint_rail_flyout(
     anchor: Rect,
     rail_rect: Rect,
     scene: &mut VectorScene,
@@ -411,12 +477,12 @@ fn paint_shapes_flyout(
     theme: Theme,
     hit_index: &mut HitIndex,
     store: &WidgetStore,
+    subs: &[(NodeId, &str, IconId, &str)],
+    rail_id: NodeId,
+    a11y: &str,
 ) {
-    let entries: Vec<ToolRailEntry> = PAINTER_SHAPES
-        .iter()
-        .map(|t| tool_entry(store, *t))
-        .collect();
-    let rail = ToolRail::new(NodeId(201), "Shape options", entries);
+    let entries: Vec<ToolRailEntry> = subs.iter().map(|t| tool_entry(store, *t)).collect();
+    let rail = ToolRail::new(rail_id, a11y, entries);
     let size = store.rail_button_size();
     let flyout_rect = Rect::new(
         rail_rect.x + rail_rect.w + Spacing::Xs.px(),

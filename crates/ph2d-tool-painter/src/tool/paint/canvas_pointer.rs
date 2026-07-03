@@ -26,6 +26,13 @@ impl CanvasPaintTool for PainterTool {
         if self.eyedropper_armed() {
             return self.eyedropper_pointer(ev);
         }
+        // Selection mode builds a canvas-wide selection mask (Procreate-style), NOT a layer paint — so it
+        // precedes the paintable-target gate. The selection engine (marching-ants mask + Add/Remove/
+        // Invert/Feather, on the painter undo queue) lands in a follow-up; today the mode is a no-draw
+        // stub so canvas input never paints a stray dab.
+        if matches!(self.paint.paint_mode, super::PaintMode::Selection) {
+            return false;
+        }
         if !self.paint_target_ready() {
             // Active layer isn't paintable (mask/group/adjustment) or no canvas:
             // finalize any half-open stroke (records its undo) before bailing. Drop any open

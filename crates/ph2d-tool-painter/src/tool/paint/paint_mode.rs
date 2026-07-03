@@ -22,11 +22,16 @@ pub(crate) enum PaintMode {
     /// **Fill** (Bucket) — Procreate ColorDrop: drag the colour onto the canvas to flood-fill the
     /// connected same-colour region, then drag to adjust the threshold live (see [`super::fill`]).
     Fill,
+    /// **Selection** — Procreate-style selection (Automatic / Freehand / Rectangle / Ellipse) that builds
+    /// a canvas-wide selection mask gating every other operation. The engine (marching-ants mask +
+    /// Add/Remove/Invert/Feather, integrated into the painter undo queue) lands in a follow-up; for now
+    /// the mode exists but paints nothing on canvas.
+    Selection,
 }
 
 /// Number of [`PaintMode`] variants — the length of the per-mode brush-settings array (see
 /// [`PaintMode::slot`]). Keep in lock-step with the enum.
-pub(crate) const PAINT_MODE_COUNT: usize = 7;
+pub(crate) const PAINT_MODE_COUNT: usize = 8;
 
 impl PaintMode {
     /// This mode's index into the per-mode brush-settings array (`0..PAINT_MODE_COUNT`). Each tool keeps
@@ -40,6 +45,7 @@ impl PaintMode {
             PaintMode::Mask => 4,
             PaintMode::Inpaint => 5,
             PaintMode::Fill => 6,
+            PaintMode::Selection => 7,
         }
     }
 }

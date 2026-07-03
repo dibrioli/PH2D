@@ -72,6 +72,17 @@ impl WidgetStore {
         self.painter_shapes_flyout_open = open;
     }
 
+    /// `true` while the Painter rail's **Mask** group flyout is open (the column
+    /// of Mask + Selection chips to the right of the Mask button).
+    pub fn painter_mask_flyout_open(&self) -> bool {
+        self.painter_mask_flyout_open
+    }
+
+    /// Open / close the Painter rail's Mask group flyout.
+    pub fn set_painter_mask_flyout_open(&mut self, open: bool) {
+        self.painter_mask_flyout_open = open;
+    }
+
     /// Register a tooltip string for `id`. Called by `populate`
     /// passes or directly inside painters; read by the hover-tooltip
     /// pass via [`Self::tooltip_for`]. Empty strings are treated as

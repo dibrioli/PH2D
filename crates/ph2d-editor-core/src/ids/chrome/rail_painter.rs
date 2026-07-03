@@ -6,8 +6,9 @@
 //! (Translate / Rotate / Scale / Pivot) for these paint tools. They form an
 //! exclusive radio group (`ButtonState::Pressed`), mirroring the transform
 //! tools' dispatch in `chrome/rail_tools.rs` — clicking one activates it and
-//! clears the rest. The **Shapes** button is part of the radio group but also
-//! reveals a flyout of shape options to its right (press-and-hold).
+//! clears the rest. The **Shapes** and **Mask** buttons are radio members that
+//! also own a flyout of sub-tools to their right (Shapes → the 5 stroke shapes;
+//! Mask → Mask + Selection), adopting the active sub-tool's icon.
 //!
 //! Selecting an image-edit tool BEHAVIOUR (wiring each tool to the Painter
 //! engine) is a later step; this layer is the rail UI + selection state only.
@@ -31,8 +32,18 @@ pub const PAINTER_RAIL_CLONE: NodeId = hash_node_id("painter_rail.clone");
 pub const PAINTER_RAIL_SMEAR: NodeId = hash_node_id("painter_rail.smear");
 /// Blur — soften pixels under the brush.
 pub const PAINTER_RAIL_BLUR: NodeId = hash_node_id("painter_rail.blur");
-/// Mask — paint a selection / layer mask.
+/// **Mask group** — the shared rail button (mirrors [`PAINTER_RAIL_SHAPES`]): pressing it reveals a
+/// flyout of its two sub-tools ([`PAINTER_RAIL_MASK_SUB_IDS`]) — **Mask** (paint a layer mask) and
+/// **Selection** (Procreate-style marquee) — to its right. A member of the tool radio group; the button
+/// adopts the ACTIVE sub-tool's icon (Photoshop tool-group style).
+pub const PAINTER_RAIL_MASK_GROUP: NodeId = hash_node_id("painter_rail.mask_group");
+/// Mask — paint a layer mask. A Mask-group sub-tool (shown in the group's flyout, not directly on the
+/// rail). Forwards paint mode `"mask"`.
 pub const PAINTER_RAIL_MASK: NodeId = hash_node_id("painter_rail.mask");
+/// Selection — Procreate-style selection (Automatic / Freehand / Rectangle / Ellipse). A Mask-group
+/// sub-tool; forwards paint mode `"selection"`. The selection engine (marching-ants mask + Add/Remove/
+/// Invert/Feather) is wired in a follow-up — for now selecting it just enters the mode.
+pub const PAINTER_RAIL_SELECTION: NodeId = hash_node_id("painter_rail.selection");
 /// Inpaint — content-aware fill / heal.
 pub const PAINTER_RAIL_INPAINT: NodeId = hash_node_id("painter_rail.inpaint");
 /// Shapes — multi-shape button; press-and-hold reveals the shape flyout
@@ -70,7 +81,7 @@ pub const PAINTER_RAIL_TOOL_IDS: [NodeId; 10] = [
     PAINTER_RAIL_CLONE,
     PAINTER_RAIL_SMEAR,
     PAINTER_RAIL_BLUR,
-    PAINTER_RAIL_MASK,
+    PAINTER_RAIL_MASK_GROUP,
     PAINTER_RAIL_INPAINT,
     PAINTER_RAIL_SHAPES,
 ];
@@ -84,3 +95,7 @@ pub const PAINTER_RAIL_SHAPE_IDS: [NodeId; 5] = [
     PAINTER_RAIL_SHAPE_ELLIPSE,
     PAINTER_RAIL_SHAPE_POLYGON,
 ];
+
+/// The Mask-group flyout sub-radio, in flyout order. The Pressed one is the active sub-tool (Mask by
+/// default); its icon is adopted by the [`PAINTER_RAIL_MASK_GROUP`] rail button.
+pub const PAINTER_RAIL_MASK_SUB_IDS: [NodeId; 2] = [PAINTER_RAIL_MASK, PAINTER_RAIL_SELECTION];

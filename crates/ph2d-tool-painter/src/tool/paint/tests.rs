@@ -6892,3 +6892,53 @@ fn rebinding_a_sprite_abandons_a_pending_fill_and_disarms_the_eyedropper() {
         "the new sprite is intact — not flooded black by the leaked fill"
     );
 }
+
+/// Wave 1 DoD (ADR-0103): a committed selection restricts painting to its region, AND the selection edit
+/// + the paint stroke live on the ONE interleaved undo queue (undo/redo round-trips both, in order).
+#[test]
+fn selection_restricts_paint_and_undoes_interleaved_on_one_queue() {
+    let mut t = white_canvas(64, 8.0);
+    // Select the LEFT half (x < 32). One structural undo entry.
+    t.set_rect_selection(0, 0, 32, 64);
+    assert!(t.selection_active(), "a selection is now live");
+    // Paint one hard black dab straddling the selection border at x=32 (radius 8 → covers x 24..40).
+    t.on_canvas_pointer(cp([32.0, 32.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([32.0, 32.0], PointerPhase::Up));
+    // Inside the selection + under the dab → painted black.
+    assert_eq!(
+        px(&t, 64, 26, 32),
+        [0, 0, 0, 255],
+        "inside the selection is painted"
+    );
+    // Outside the selection + under the dab → CLIPPED back to white (the selection gate).
+    assert_eq!(
+        px(&t, 64, 38, 32),
+        [255, 255, 255, 255],
+        "the dab is clipped at the selection border"
+    );
+    // ONE queue: undo the stroke first (selection stays), then undo the selection (it clears).
+    t.undo_last();
+    assert_eq!(
+        px(&t, 64, 26, 32),
+        [255, 255, 255, 255],
+        "undo removed the stroke"
+    );
+    assert!(
+        t.selection_active(),
+        "undoing only the stroke leaves the selection standing"
+    );
+    t.undo_last();
+    assert!(
+        !t.selection_active(),
+        "undoing again rolled back the selection edit itself"
+    );
+    // Redo re-applies both, in order.
+    t.redo_last();
+    assert!(t.selection_active(), "redo re-created the selection");
+    t.redo_last();
+    assert_eq!(
+        px(&t, 64, 26, 32),
+        [0, 0, 0, 255],
+        "redo re-applied the stroke inside the selection"
+    );
+}

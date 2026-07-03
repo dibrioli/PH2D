@@ -40,6 +40,8 @@ impl Default for PaintState {
             eyedropper_armed: false,
             mask_scratch_rgba: Arc::new(Vec::new()),
             mask_scratch_target: None,
+            selection_mask: Arc::new(Vec::new()),
+            selection_active: false,
 
             // Composite off by default; the default stack is the natural read of the card (top→bottom):
             // Brush(1) over Smear(2) over Blur(3). Run bottom→top, that blurs → smears → paints on top.

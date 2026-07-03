@@ -86,6 +86,8 @@ mod fill; // Fill (Bucket) — Procreate ColorDrop flood fill + live threshold a
 mod inpaint; // content-aware heal brush (mark defect + reconstruct on pen-up); split for LOC cap
 /// The **Mask** tool's extras — sub-brush (Paint/Erase/Blur/Smear), whole-canvas ops, overlay tint. [LOC split].
 mod mask;
+/// The **Selection** tool (ADR-0103) — the document-wide selection mask, undo integration + paint gate. [LOC split].
+mod selection;
 mod ramp;
 mod ramp_lut; // ramp LUT baking (colour owner + colour/tone LUTs); split from `stamp_cache` (LOC cap)
 /// Pixel-region save/restore helpers for the drag preview (`dab_bbox`/`save_region`/`restore_region`).
@@ -173,6 +175,13 @@ pub(crate) struct PaintState {
     /// **Mask** brush transient scratch (tool-side mask for `mask_scratch_target`, white=reveal; NOT a stack layer). [`mask`].
     mask_scratch_rgba: Arc<Vec<u8>>,
     mask_scratch_target: Option<crate::layers::LayerId>,
+    /// **Selection** mask (ADR-0103): a document-wide single-channel coverage buffer (`w*h` bytes,
+    /// `0` = outside / `255` = inside; Feather softens the edge). Gates every paint op to the selected
+    /// region ([`selection`]) and is undo-integrated via the `ModelSnapshot` exactly like `mask_scratch`.
+    selection_mask: Arc<Vec<u8>>,
+    /// `true` while a selection is live — even an EMPTY one (which paints nothing). `false` = no selection,
+    /// painting unrestricted. Distinct from the buffer being empty (an active all-zero selection).
+    selection_active: bool,
     /// **Composite Brush**: run Brush + Smear + Blur together (a Brush-tool upgrade, panel checkbox). See [`composite`].
     composite_enabled: bool,
     /// The composite layer stack in display order (index 0 = layer 1 = top; run bottom→top per dab). [`composite`].

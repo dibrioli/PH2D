@@ -25,12 +25,22 @@ impl PainterTool {
     /// restore the protected texels ([`Self::restore_protected_region`]). Nothing is made invisible — only
     /// the paint is gated. Engine-agnostic: it wraps ALL the routes in [`Self::stamp_dabs_routed`].
     pub(super) fn stamp_dabs(&mut self, dabs: &[Dab]) {
-        if self.mask_protection_active()
+        // Two footprint gates share one snapshot: the Sculpt-style protection mask (freeze painted texels)
+        // and the Selection mask (restrict paint to the selected region, ADR-0103). Snapshot the footprint
+        // once, stamp, then revert whatever each active gate protects.
+        let mask_gate = self.mask_protection_active();
+        let sel_gate = self.selection_restricts_paint();
+        if (mask_gate || sel_gate)
             && let Some(region) = self.dab_batch_region(dabs)
         {
             let before = self.snapshot_region(region);
             self.stamp_dabs_routed(dabs);
-            self.restore_protected_region(region, &before);
+            if mask_gate {
+                self.restore_protected_region(region, &before);
+            }
+            if sel_gate {
+                self.restore_deselected_region(region, &before);
+            }
             return;
         }
         self.stamp_dabs_routed(dabs);

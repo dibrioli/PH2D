@@ -59,6 +59,12 @@ pub struct ModelSnapshot {
     /// Empty `Arc` + `None` = no scratch.
     pub mask_scratch: Arc<Vec<u8>>,
     pub mask_scratch_target: Option<crate::layers::LayerId>,
+    /// The **Selection** mask + its active flag at capture time (ADR-0103). A selection edit mutates only
+    /// this document-wide coverage buffer (not `canvas_rgba`), so — exactly like `mask_scratch` — it must
+    /// be captured here or the edit would be a no-op undo entry. Restoring it in lock-step with the pixels
+    /// keeps the selection and the layers on the ONE interleaved timeline. Empty `Arc` + `false` = none.
+    pub selection_mask: Arc<Vec<u8>>,
+    pub selection_active: bool,
 }
 
 /// Plain-data snapshot of an open on-canvas shape editor, stored in a [`ModelSnapshot`] so a structural
@@ -296,6 +302,8 @@ mod tests {
             preview_patch: None,
             mask_scratch: Arc::new(Vec::new()),
             mask_scratch_target: None,
+            selection_mask: Arc::new(Vec::new()),
+            selection_active: false,
         }
     }
 

@@ -31,6 +31,8 @@ pub(crate) mod painter_bridge;
 /// Brush-image import helpers (Grain/Shape file pickers), split from
 /// `painter_bridge` for the HR-18 file-LOC cap.
 pub(crate) mod painter_bridge_assets;
+/// The brush-cursor ring, split from `painter_bridge_overlays` for the HR-18 file-LOC cap.
+pub(crate) mod painter_bridge_brush_ring;
 /// The Curve / Free Hand editor overlay (spine + control dots + tangent handles), split from
 /// `painter_bridge_overlays` for the HR-18 file-LOC cap.
 pub(crate) mod painter_bridge_curve_overlay;

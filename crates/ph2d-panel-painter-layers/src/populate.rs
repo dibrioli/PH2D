@@ -176,6 +176,7 @@ pub fn populate(store: &mut WidgetStore) {
     for id in [
         ph2d_editor_core::ids::PAINTER_SEL_FEATHER_SLIDER,
         ph2d_editor_core::ids::PAINTER_SEL_THRESHOLD_SLIDER,
+        ph2d_editor_core::ids::PAINTER_SEL_OPACITY_SLIDER,
     ] {
         store.register(
             id,
@@ -194,6 +195,10 @@ pub fn populate(store: &mut WidgetStore) {
         (
             ph2d_editor_core::ids::PAINTER_SEL_THRESHOLD_SLIDER,
             ph2d_editor_core::ids::PAINTER_SEL_THRESHOLD_CHIP,
+        ),
+        (
+            ph2d_editor_core::ids::PAINTER_SEL_OPACITY_SLIDER,
+            ph2d_editor_core::ids::PAINTER_SEL_OPACITY_CHIP,
         ),
     ] {
         store.register(

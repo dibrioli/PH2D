@@ -109,6 +109,11 @@ impl PainterTool {
         if self.paint.mask_scratch_target.is_none() {
             return; // no scratch to paint (ensured at `paint_begin`)
         }
+        // A pre-stamp copy of the scratch, so an active selection can revert mask strokes that landed
+        // outside it (the scratch swap hides the edit from the canvas-side stamp gate, ADR-0103).
+        let scratch_before = self
+            .selection_restricts_paint()
+            .then(|| (*self.paint.mask_scratch_rgba).clone());
         // Swap the scratch into `canvas_rgba` so the stamp pipeline edits the SCRATCH, then swap back.
         std::mem::swap(&mut self.canvas_rgba, &mut self.paint.mask_scratch_rgba);
         match self.mask_brush() {
@@ -146,6 +151,10 @@ impl PainterTool {
                 self.paint.brush.color = saved_color;
                 self.paint.brush.blend = saved_blend;
             }
+        }
+        // Clip the mask stroke to the selection while the scratch still lives in `canvas_rgba`.
+        if let Some(orig) = scratch_before.as_ref() {
+            self.clip_canvas_to_selection(orig);
         }
         std::mem::swap(&mut self.canvas_rgba, &mut self.paint.mask_scratch_rgba);
     }

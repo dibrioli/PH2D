@@ -7077,3 +7077,47 @@ fn selection_overlay_ants_hatch_and_clear_interior() {
     t.clear_selection();
     assert!(t.selection_overlay_rgba(0).is_none(), "no overlay without a selection");
 }
+
+/// Smoke#2 fix A: the marquee previews LIVE during the drag (mask updated on Move, not only pen-up).
+#[test]
+fn selection_marquee_previews_live_during_the_drag() {
+    let mut t = white_canvas(64, 4.0);
+    t.set_paint_tool_mode("selection");
+    t.set_selection_mode(2); // Rectangle
+    t.on_canvas_pointer(cp([10.0, 10.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([40.0, 40.0], PointerPhase::Move)); // still dragging — NO pen-up yet
+    assert!(t.selection_active(), "the selection previews mid-drag");
+    assert_eq!(
+        t.selection_coverage_at(25, 25),
+        255,
+        "inside the dragged rect is selected before pen-up"
+    );
+    assert_eq!(
+        t.selection_coverage_at(55, 55),
+        0,
+        "outside the dragged rect is not selected mid-drag"
+    );
+}
+
+/// Smoke#2 fix E: Fill (flood) respects the active selection — it fills only inside, clipping the rest
+/// back to the pre-fill pixels.
+#[test]
+fn fill_is_clipped_to_the_active_selection() {
+    let mut t = white_canvas(64, 4.0);
+    t.set_rect_selection(0, 0, 32, 64); // select the left half (x < 32)
+    t.set_paint_tool_mode("fill");
+    t.paint.brush.color = [0.0, 0.0, 0.0]; // fill with black
+    t.on_canvas_pointer(cp([10.0, 32.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([10.0, 32.0], PointerPhase::Up));
+    t.set_fill_threshold(1.0); // flood the whole (uniform white) canvas — then clip to the selection
+    assert_eq!(
+        px(&t, 64, 10, 32),
+        [0, 0, 0, 255],
+        "fill lands inside the selection"
+    );
+    assert_eq!(
+        px(&t, 64, 50, 32),
+        [255, 255, 255, 255],
+        "fill is clipped outside the selection"
+    );
+}

@@ -93,6 +93,7 @@ impl PainterTool {
             selection_threshold: self.selection_threshold(),
             selection_feather: self.selection_feather(),
             selection_edit: self.selection_edit_mode(),
+            selection_overlay_opacity: self.selection_overlay_opacity(),
             inpaint_patch: self.paint.inpaint_patch_norm,
             inpaint_quality: self.paint.inpaint_quality_norm,
             inpaint_search: self.paint.inpaint_search_norm,

@@ -161,6 +161,25 @@ impl PainterTool {
             buf.copy_from_slice(&self.paint.fill_snapshot);
         }
         let filled = flood_fill(buf, w, h, (sx, sy), color, tol);
+        // Clip the fill to the active selection — the flood writes `canvas_rgba` directly, bypassing the
+        // per-dab stamp gate, so revert texels outside the selection back to the pre-fill snapshot (ADR-0103).
+        if self.paint.selection_active && self.paint.selection_mask.len() == w * h {
+            let mask = &self.paint.selection_mask;
+            let snap = &self.paint.fill_snapshot;
+            let n = (w * h).min(snap.len() / 4);
+            for i in 0..n {
+                let keep = f32::from(mask[i]) / 255.0;
+                if keep >= 1.0 {
+                    continue;
+                }
+                let b = i * 4;
+                for c in 0..4 {
+                    let painted = f32::from(buf[b + c]);
+                    let orig = f32::from(snap[b + c]);
+                    buf[b + c] = (painted * keep + orig * (1.0 - keep)).round().clamp(0.0, 255.0) as u8;
+                }
+            }
+        }
         // The buffer now holds the snapshot everywhere EXCEPT the new fill. Dirty the UNION of the
         // previous fill and the new one so a SHRINKING fill re-uploads the pixels it vacated (restored to
         // the snapshot) — marking only the new, smaller rect would leave the old overflow on screen.

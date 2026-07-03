@@ -78,6 +78,7 @@ pub struct BrushSettings {
     pub selection_threshold: f32,
     pub selection_feather: f32,
     pub selection_edit: bool,
+    pub selection_overlay_opacity: f32,
     /// Inpaint **Patch Size** slider track (`0..1`; chip shows the mapped `2..6` patch radius).
     pub inpaint_patch: f32,
     /// Inpaint **Quality** slider track (`0..1`; chip shows the mapped `3..12` EM iterations).

@@ -280,27 +280,40 @@ impl PainterTool {
     fn selection_move(&mut self, pos: [f32; 2]) -> bool {
         // Extract the Copy data (and drop the borrow) before touching other `self` fields / methods.
         enum Move {
-            Marquee,
+            Marquee([f32; 2], bool),
             Lasso,
             Auto([f32; 2], f32),
         }
         let kind = match &self.paint.selection_drag {
-            Some(SelectionDrag::Marquee { .. }) => Move::Marquee,
+            Some(SelectionDrag::Marquee {
+                anchor, ellipse, ..
+            }) => Move::Marquee(*anchor, *ellipse),
             Some(SelectionDrag::Lasso { .. }) => Move::Lasso,
             Some(SelectionDrag::Auto { seed, thresh0 }) => Move::Auto(*seed, *thresh0),
             None => return false,
         };
         match kind {
-            Move::Marquee => {
+            Move::Marquee(anchor, ellipse) => {
                 if let Some(SelectionDrag::Marquee { cur, .. }) = &mut self.paint.selection_drag {
                     *cur = pos;
                 }
+                // Live preview: rasterize + combine the pending marquee against the gesture base so the
+                // overlay tracks the drag in real time (committed to undo only on pen-up).
+                let region = self.raster_marquee(anchor, pos, ellipse);
+                self.apply_selection_region(&region);
                 self.invalidate_composite();
             }
             Move::Lasso => {
                 if let Some(SelectionDrag::Lasso { points }) = &mut self.paint.selection_drag {
                     points.push(pos);
                 }
+                // Live preview: rasterize the in-progress path (auto-closed) each move.
+                let pts = match &self.paint.selection_drag {
+                    Some(SelectionDrag::Lasso { points }) => points.clone(),
+                    _ => Vec::new(),
+                };
+                let region = self.raster_lasso(&pts);
+                self.apply_selection_region(&region);
                 self.invalidate_composite();
             }
             Move::Auto(seed, thresh0) => {
@@ -478,7 +491,12 @@ impl PainterTool {
         if radius == 0 || w == 0 || h == 0 || crisp.len() != w * h {
             self.paint.selection_mask = crisp;
         } else {
-            self.paint.selection_mask = Arc::new(box_blur(&crisp, w, h, radius));
+            // Three box-blur passes ≈ a Gaussian (central-limit): a smooth, regular feather ramp instead
+            // of the boxy single-pass profile.
+            let mut m = box_blur(&crisp, w, h, radius);
+            m = box_blur(&m, w, h, radius);
+            m = box_blur(&m, w, h, radius);
+            self.paint.selection_mask = Arc::new(m);
         }
         self.invalidate_composite();
     }
@@ -505,6 +523,41 @@ impl PainterTool {
         self.paint.selection_edit_mode
     }
 
+    /// Set the selection-overlay hatch opacity (`0..1`, a view preference).
+    pub fn set_selection_overlay_opacity(&mut self, o: f32) {
+        self.paint.selection_overlay_opacity = o.clamp(0.0, 1.0);
+        self.invalidate_composite();
+    }
+    /// The selection-overlay hatch opacity (`0..1`).
+    #[must_use]
+    pub fn selection_overlay_opacity(&self) -> f32 {
+        self.paint.selection_overlay_opacity
+    }
+
+    /// Clip `canvas_rgba` to the active selection: revert each texel toward `orig` by `1 - coverage`, so an
+    /// edit that wrote outside the selection is undone (feathered edges blend). No-op without a selection.
+    /// Used by paths that bypass the per-dab stamp gate — the Fill flood and (via the scratch) the Mask.
+    pub(super) fn clip_canvas_to_selection(&mut self, orig: &[u8]) {
+        if !self.selection_restricts_paint() {
+            return;
+        }
+        let mask = Arc::clone(&self.paint.selection_mask);
+        let buf = Arc::make_mut(&mut self.canvas_rgba);
+        let n = mask.len().min(buf.len() / 4).min(orig.len() / 4);
+        for i in 0..n {
+            let keep = f32::from(mask[i]) / 255.0;
+            if keep >= 1.0 {
+                continue;
+            }
+            let b = i * 4;
+            for c in 0..4 {
+                let painted = f32::from(buf[b + c]);
+                let o = f32::from(orig[b + c]);
+                buf[b + c] = (painted * keep + o * (1.0 - keep)).round().clamp(0.0, 255.0) as u8;
+            }
+        }
+    }
+
     /// Build the on-canvas selection **overlay** (Procreate-style): semi-transparent diagonal **hatching**
     /// over the DESELECTED area + animated **marching ants** on the boundary. Canvas-sized straight RGBA
     /// the shell blits image→screen. `phase` (a shell frame counter) animates the ants (fast) and the
@@ -522,33 +575,36 @@ impl PainterTool {
         }
         const STRIPE: usize = 7; // hatch stripe width (image px)
         const DASH: usize = 8; // marching-ants dash period (image px)
+        const HATCH_MAX_ALPHA: f32 = 110.0; // full-strength hatch alpha (scaled by the opacity setting)
         let hatch_shift = (phase / 2) as usize; // hatch drifts at half the ant speed
         let ant = phase as usize;
+        let opacity = self.paint.selection_overlay_opacity.clamp(0.0, 1.0);
         let mut out = vec![0u8; wu * hu * 4];
         for y in 0..hu {
             for x in 0..wu {
                 let idx = y * wu + x;
+                let cov = f32::from(mask[idx]) / 255.0; // 1 = fully selected, 0 = fully outside
                 let inside = mask[idx] >= 128;
-                // Boundary = the 128 threshold flips across the right or down neighbour.
+                // Boundary = the 128 (half-coverage) contour flips across the right or down neighbour.
                 let edge = (x + 1 < wu && (mask[idx + 1] >= 128) != inside)
                     || (y + 1 < hu && (mask[idx + wu] >= 128) != inside);
                 let o = idx * 4;
                 if edge {
                     // Alternating white / black dashes marching along x+y with the phase.
-                    let on = (x + y + ant) % DASH < DASH / 2;
-                    let c = if on {
+                    let c = if (x + y + ant) % DASH < DASH / 2 {
                         [255u8, 255, 255, 255]
                     } else {
                         [0u8, 0, 0, 255]
                     };
                     out[o..o + 4].copy_from_slice(&c);
-                } else if !inside {
-                    // Diagonal hatch over the deselected region, semi-transparent, drifting.
-                    if ((x + y + hatch_shift) / STRIPE) % 2 == 0 {
-                        out[o..o + 4].copy_from_slice(&[30u8, 30, 30, 110]);
+                } else if ((x + y + hatch_shift) / STRIPE) % 2 == 0 {
+                    // Diagonal hatch whose opacity FADES with the selection coverage — a realistic gradient
+                    // across a feathered edge (full outside, half at the 50% contour, clear inside).
+                    let a = (HATCH_MAX_ALPHA * opacity * (1.0 - cov)).round() as u8;
+                    if a > 0 {
+                        out[o..o + 4].copy_from_slice(&[30u8, 30, 30, a]);
                     }
                 }
-                // Interior (selected, non-edge) → transparent (already zeroed).
             }
         }
         Some((out, w, h))
@@ -596,6 +652,10 @@ impl PainterTool {
             }
             PanelEvent::SetValue(id, v) if *id == core_ids::PAINTER_SEL_THRESHOLD_SLIDER => {
                 self.set_selection_threshold(*v as f32);
+                true
+            }
+            PanelEvent::SetValue(id, v) if *id == core_ids::PAINTER_SEL_OPACITY_SLIDER => {
+                self.set_selection_overlay_opacity(*v as f32);
                 true
             }
             _ => false,

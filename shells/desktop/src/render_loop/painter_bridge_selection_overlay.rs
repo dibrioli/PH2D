@@ -20,6 +20,7 @@ static SELECTION_ANIM_PHASE: AtomicU32 = AtomicU32::new(0);
 
 /// Draw the active selection's overlay (marching ants + deselected-area hatching) into `vector_scene`.
 /// No-op without a selected sprite or a live selection.
+#[allow(clippy::too_many_arguments)]
 pub(super) fn draw_selection_overlay(
     painter: &PainterTool,
     hero: &HeroScreen,
@@ -27,10 +28,19 @@ pub(super) fn draw_selection_overlay(
     camera: &Camera2d,
     window_size: WindowSize,
     vector_scene: &mut VectorScene,
+    cursor: (f32, f32),
 ) {
     let Some(bits) = hero.gizmo.selection else {
         return;
     };
+    // Crosshair cursor while the Selection tool is active (over the canvas, not a panel) — coherent with
+    // selecting rather than the brush ring.
+    if painter.is_selection_mode() {
+        let (cx, cy) = cursor;
+        if hero.store.panel_at(cx, cy).is_none() {
+            draw_crosshair(vector_scene, cx, cy);
+        }
+    }
     if !painter.selection_active() {
         return;
     }
@@ -60,4 +70,30 @@ pub(super) fn draw_selection_overlay(
         window_size,
     );
     vector_scene.draw_image_rgba_transformed(&rgba, w, h, affine, ph2d_vector::ImageQuality::Low);
+}
+
+/// A small screen-space crosshair (target `+` with a centre gap) at the cursor — the Selection tool's
+/// cursor, in place of the brush ring.
+fn draw_crosshair(vector_scene: &mut VectorScene, cx: f32, cy: f32) {
+    use ph2d_vector::{Affine, BezPath, Brush, Color, Point, Stroke};
+    const ARM: f64 = 9.0; // arm length (px)
+    const GAP: f64 = 3.0; // centre gap (px)
+    let (cx, cy) = (f64::from(cx), f64::from(cy));
+    let color = Color::new([0.12, 0.12, 0.12, 0.9]); // LITERAL-COLOR-OK: overlay cursor crosshair
+    let mut path = BezPath::new();
+    path.move_to(Point::new(cx - ARM, cy));
+    path.line_to(Point::new(cx - GAP, cy));
+    path.move_to(Point::new(cx + GAP, cy));
+    path.line_to(Point::new(cx + ARM, cy));
+    path.move_to(Point::new(cx, cy - ARM));
+    path.line_to(Point::new(cx, cy - GAP));
+    path.move_to(Point::new(cx, cy + GAP));
+    path.line_to(Point::new(cx, cy + ARM));
+    vector_scene.inner_mut().stroke(
+        &Stroke::new(1.25),
+        Affine::IDENTITY,
+        &Brush::Solid(color),
+        None,
+        &path,
+    );
 }

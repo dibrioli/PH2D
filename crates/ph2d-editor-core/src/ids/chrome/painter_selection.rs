@@ -33,6 +33,11 @@ pub const PAINTER_SEL_FEATHER_SLIDER: NodeId = hash_node_id("painter_sel.feather
 pub const PAINTER_SEL_FEATHER_CHIP: NodeId = hash_node_id("painter_sel.feather_chip");
 pub const PAINTER_SEL_THRESHOLD_SLIDER: NodeId = hash_node_id("painter_sel.threshold_slider");
 pub const PAINTER_SEL_THRESHOLD_CHIP: NodeId = hash_node_id("painter_sel.threshold_chip");
+/// **Overlay opacity** — how strongly the deselected-area hatching reads (a view preference).
+pub const PAINTER_SEL_OPACITY_SLIDER: NodeId = hash_node_id("painter_sel.opacity_slider");
+pub const PAINTER_SEL_OPACITY_CHIP: NodeId = hash_node_id("painter_sel.opacity_chip");
+/// The Operation card's a11y group id (not hit-indexed; the card is a visual surface).
+pub const PAINTER_SEL_OP_CARD: NodeId = hash_node_id("painter_sel.op_card");
 
 // ── Toggle + action buttons ──────────────────────────────────────────────────────────────────────────
 /// **Edit Selection** — enter/leave the editable-Shape boundary mode (Wave EDIT). A toggle checkbox.

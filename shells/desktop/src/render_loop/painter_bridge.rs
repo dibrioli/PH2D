@@ -380,7 +380,8 @@ pub(super) fn dispatch(
             camera,
             window_size,
         );
-        // Selection overlay FIRST (under the editor handles + brush ring): marching ants + hatching.
+        // Selection overlay FIRST (under the editor handles + brush ring): marching ants + hatching + the
+        // crosshair cursor.
         super::painter_bridge_selection_overlay::draw_selection_overlay(
             painter,
             hero,
@@ -388,6 +389,7 @@ pub(super) fn dispatch(
             camera,
             window_size,
             vector_scene,
+            cursor,
         );
         super::painter_bridge_overlays::draw_overlays(
             painter,

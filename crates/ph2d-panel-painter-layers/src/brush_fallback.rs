@@ -59,6 +59,7 @@ pub(crate) const FALLBACK_BRUSH: BrushSettings = BrushSettings {
     selection_threshold: 0.5, // LITERAL-PX-OK: brush default (mirrors PaintState::default selection_threshold)
     selection_feather: 0.0,
     selection_edit: false,
+    selection_overlay_opacity: 0.5, // LITERAL-PX-OK: brush default (mirrors PaintState::default)
     inpaint_patch: 0.25, // LITERAL-PX-OK: brush default (mirrors PaintState::default inpaint_patch_norm)
     inpaint_quality: 0.3333, // LITERAL-PX-OK: brush default (mirrors PaintState::default inpaint_quality_norm)
     inpaint_search: 0.2, // LITERAL-PX-OK: brush default (mirrors PaintState::default inpaint_search_norm)

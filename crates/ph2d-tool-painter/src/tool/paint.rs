@@ -202,6 +202,9 @@ pub(crate) struct PaintState {
     /// **Edit Selection** mode: when `true`, the boundary is shown as an editable Shape (handles / gizmos /
     /// Offset — Wave EDIT). Until then the selection is Procreate-identical. A transient UI mode. [`selection`].
     selection_edit_mode: bool,
+    /// **Selection overlay opacity** (`0..1`) — how strongly the deselected-area hatching reads. A view
+    /// preference (not undoable); scales the hatch alpha in [`selection`]. Default `0.5` (Enio 2026-07-02).
+    selection_overlay_opacity: f32,
     /// **Composite Brush**: run Brush + Smear + Blur together (a Brush-tool upgrade, panel checkbox). See [`composite`].
     composite_enabled: bool,
     /// The composite layer stack in display order (index 0 = layer 1 = top; run bottom→top per dab). [`composite`].

@@ -10,12 +10,10 @@
 use ph2d_editor_core::ids as core_ids;
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::widget::showcase::paint_section_separator;
-use ph2d_editor_core::widget::{
-    SectionHeader, SegmentedAdaptive, SegmentedOption, paint_section_header, paint_segmented_adaptive,
-};
+use ph2d_editor_core::widget::{Card, SegmentedAdaptive, SegmentedOption, paint_card, paint_segmented_adaptive};
 use ph2d_editor_core::zones::Rect;
 use ph2d_a11y::NodeId;
-use ph2d_tokens::{ROW_H_PX, Spacing, TypeToken};
+use ph2d_tokens::{ROW_H_PX, Spacing};
 use ph2d_tool_painter::BrushSettings;
 
 use crate::paint_brush_top::{paint_checkbox_row, paint_slider_chip_row};
@@ -29,7 +27,8 @@ pub(crate) fn paint_selection_section(
     y: f32,
     brush: BrushSettings,
 ) -> f32 {
-    let mut y = title(ctx, theme, x, content_w, y, "SELECTION");
+    // Operation — New / Add / Remove, in a card at the TOP of the section (above the other controls).
+    let mut y = operation_card(ctx, theme, x, content_w, y, brush.selection_op as usize);
 
     // Mode picker — a segmented Toggle group; the selected segment mirrors `selection_mode`.
     y = seg_group(
@@ -47,23 +46,6 @@ pub(crate) fn paint_selection_section(
             (core_ids::PAINTER_SEL_MODE_ELLIPSE, "Ellipse"),
         ],
         brush.selection_mode as usize,
-    );
-
-    // Boolean operator — New / Add / Remove.
-    y = seg_group(
-        ctx,
-        theme,
-        x,
-        content_w,
-        y,
-        core_ids::PAINTER_SEL_OP,
-        "Boolean operation",
-        &[
-            (core_ids::PAINTER_SEL_OP_NEW, "New"),
-            (core_ids::PAINTER_SEL_OP_ADD, "Add"),
-            (core_ids::PAINTER_SEL_OP_REMOVE, "Remove"),
-        ],
-        brush.selection_op as usize,
     );
 
     // Automatic threshold (only meaningful in Automatic mode).
@@ -92,6 +74,19 @@ pub(crate) fn paint_selection_section(
         core_ids::PAINTER_SEL_FEATHER_SLIDER,
         core_ids::PAINTER_SEL_FEATHER_CHIP,
         brush.selection_feather,
+    );
+
+    // Overlay opacity — how strongly the deselected-area hatching reads (a view preference).
+    y = paint_slider_chip_row(
+        ctx,
+        theme,
+        x,
+        content_w,
+        y,
+        "Overlay",
+        core_ids::PAINTER_SEL_OPACITY_SLIDER,
+        core_ids::PAINTER_SEL_OPACITY_CHIP,
+        brush.selection_overlay_opacity,
     );
 
     y = paint_section_separator(ctx.scene, theme, x, content_w, y);
@@ -127,15 +122,44 @@ pub(crate) fn paint_selection_section(
     y
 }
 
-/// A non-interactive ALL-CAPS section title (visual only; not hit-indexed).
-fn title(ctx: &mut PaintCtx, theme: ph2d_tokens::Theme, x: f32, content_w: f32, y: f32, label: &str) -> f32 {
-    let header_h = TypeToken::Md.px() + Spacing::Md.px();
-    let header = SectionHeader::new(core_ids::PAINTER_SEL_MODE, label).collapsible(false);
-    let rect = Rect::new(x, y, content_w, header_h);
-    let scene = &mut *ctx.scene;
-    let text_system = &mut *ctx.text_system;
-    paint_section_header(&header, rect, scene, text_system, theme);
-    y + header_h + Spacing::Xs.px()
+/// Paint the **Operation** card (New / Add / Remove) — a framed surface with a title, at the top of the
+/// section. Returns the next `y`. The segmented group inside reflows on narrow panels.
+fn operation_card(
+    ctx: &mut PaintCtx,
+    theme: ph2d_tokens::Theme,
+    x: f32,
+    content_w: f32,
+    y: f32,
+    selected: usize,
+) -> f32 {
+    // Card height: title header + top/bottom body padding + one segmented row.
+    let header_h = Spacing::Xl3.px();
+    let pad = Spacing::Lg.px();
+    let card_h = header_h + pad * 2.0 + ROW_H_PX;
+    let card = Card::new(core_ids::PAINTER_SEL_OP_CARD).title("OPERATION");
+    let card_rect = Rect::new(x, y, content_w, card_h);
+    {
+        let scene = &mut *ctx.scene;
+        let text_system = &mut *ctx.text_system;
+        paint_card(&card, card_rect, scene, text_system, theme);
+    }
+    let body = card.body_rect(card_rect);
+    let _ = seg_group(
+        ctx,
+        theme,
+        body.x,
+        body.w,
+        body.y,
+        core_ids::PAINTER_SEL_OP,
+        "Boolean operation",
+        &[
+            (core_ids::PAINTER_SEL_OP_NEW, "New"),
+            (core_ids::PAINTER_SEL_OP_ADD, "Add"),
+            (core_ids::PAINTER_SEL_OP_REMOVE, "Remove"),
+        ],
+        selected,
+    );
+    y + card_h + Spacing::Sm.px()
 }
 
 /// Build + paint one adaptive segmented Toggle group and register its per-segment hits; returns next `y`.

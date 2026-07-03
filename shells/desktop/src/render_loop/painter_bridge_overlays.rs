@@ -8,7 +8,7 @@ use ph2d_ecs::SimWorld;
 use ph2d_editor::HeroScreen;
 use ph2d_host::WindowSize;
 use ph2d_render::Camera2d;
-use ph2d_tool_painter::{DAB_FLATTEN_MAX, PainterTool};
+use ph2d_tool_painter::PainterTool;
 use ph2d_vector::VectorScene;
 
 /// Draw every Painter editing overlay for the active tool into `vector_scene`.
@@ -23,7 +23,7 @@ pub(super) fn draw_overlays(
     text_system: &mut ph2d_text::TextSystem,
     cursor: (f32, f32),
 ) {
-    draw_brush_ring(
+    super::painter_bridge_brush_ring::draw_brush_ring(
         painter,
         hero,
         sim,
@@ -249,97 +249,6 @@ pub(super) fn draw_repeat_image(
     }
 }
 
-/// Segments in the brush-cursor ellipse outline — enough that a flattened ellipse reads smooth.
-const BRUSH_RING_SEGS: u32 = 64;
-
-#[allow(clippy::too_many_arguments)]
-fn draw_brush_ring(
-    painter: &PainterTool,
-    hero: &HeroScreen,
-    sim: &SimWorld,
-    camera: &Camera2d,
-    window_size: WindowSize,
-    vector_scene: &mut VectorScene,
-    cursor: (f32, f32),
-) {
-    // ── Brush cursor ring (UI hint) ──────────────────────────────────
-    // The brush radius (image px) scaled to screen at the cursor, while a
-    // sprite is selected and the cursor is over the canvas (not a panel).
-    // Uses the same sprite affine as the paint delivery, so the ring matches
-    // where dabs land. Drawn into the overlay scene (composited over the
-    // canvas this frame, like the rubber-band / bgremoval ring).
-    if let Some(bits) = hero.gizmo.selection {
-        let (cx, cy) = cursor;
-        if hero.store.panel_at(cx, cy).is_none() {
-            let bs = painter.brush_settings();
-            let (iw, ih) = painter.canvas_size();
-            let entity = ph2d_ecs::Entity::from_bits(bits);
-            if iw > 0
-                && let (Some(tr), Some(sprite)) = (
-                    sim.world().get::<crate::Transform>(entity),
-                    sim.world().get::<ph2d_render::Sprite>(entity),
-                )
-            {
-                // FULL sprite affine, so the ring tracks resize / AR / rotation. The dab is a
-                // flatten+rotate ELLIPSE in image space (`BrushSpec::dab_flatten` / `dab_angle_deg` —
-                // the same footprint the engine paints); we sweep that ellipse's boundary in image px
-                // and push each point through the affine's LINEAR part (the ring is cursor-anchored,
-                // so no translation), so the ring matches exactly where the dabs land.
-                let affine = super::bgremoval_preview::sprite_image_to_screen_affine(
-                    iw,
-                    ih,
-                    tr,
-                    sprite,
-                    camera,
-                    window_size,
-                );
-                let c = affine.as_coeffs();
-                let scale = (c[0] * c[0] + c[1] * c[1]).sqrt();
-                // Image-space major radius, floored so the ring stays visible at tiny zoom (the old
-                // screen-space `.max(1px)`).
-                let r = if scale > 0.0 && f64::from(bs.size_px) * scale < 1.0 {
-                    1.0 / scale
-                } else {
-                    f64::from(bs.size_px)
-                };
-                // Minor axis = (1 − flatten) of the major; rotated by the dab angle (engine
-                // convention — `rotate_by_degrees` builds `[cos(deg), sin(deg)]`).
-                let m = 1.0 - f64::from(bs.dab_flatten.clamp(0.0, DAB_FLATTEN_MAX));
-                let (sin_a, cos_a) = f64::from(bs.dab_angle_deg).to_radians().sin_cos();
-                use ph2d_vector::{Affine, BezPath, Brush, Color, Point, Stroke};
-                use std::f64::consts::TAU;
-                let mut path = BezPath::new();
-                for i in 0..BRUSH_RING_SEGS {
-                    let (s, co) = (f64::from(i) * TAU / f64::from(BRUSH_RING_SEGS)).sin_cos();
-                    // Ellipse boundary `(cosθ, m·sinθ)` rotated by +angle, scaled to image px …
-                    let ix = (co * cos_a - m * s * sin_a) * r;
-                    let iy = (co * sin_a + m * s * cos_a) * r;
-                    // … then the affine's linear 2×2 (cols `[c0,c1]`,`[c2,c3]`) maps image→screen.
-                    let p = Point::new(
-                        f64::from(cx) + c[0] * ix + c[2] * iy,
-                        f64::from(cy) + c[1] * ix + c[3] * iy,
-                    );
-                    if i == 0 {
-                        path.move_to(p);
-                    } else {
-                        path.line_to(p);
-                    }
-                }
-                path.close_path();
-                // Light-grey ring (baked inline, like the rubber-band overlay's
-                // colour — a follow-up can swap to a theme token / 2-tone).
-                let color = Color::new([0.78, 0.78, 0.78, 0.85]); // LITERAL-COLOR-OK: overlay cursor
-                vector_scene.inner_mut().stroke(
-                    &Stroke::new(1.5),
-                    Affine::IDENTITY,
-                    &Brush::Solid(color),
-                    None,
-                    &path,
-                );
-            }
-        }
-    }
-}
 
 #[allow(clippy::too_many_arguments)]
 fn draw_ellipse_overlay(

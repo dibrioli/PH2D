@@ -45,6 +45,7 @@ impl Default for PaintState {
             selection_mode: 0,        // Automatic (Procreate default)
             selection_bool_op: 0,     // New (replace)
             selection_threshold: 0.5, // mid tolerance for Automatic
+            selection_overlay_opacity: 0.5, // half-strength hatch by default (Enio 2026-07-02)
             selection_drag: None,
             selection_base: Arc::new(Vec::new()),
             selection_crisp: Arc::new(Vec::new()),

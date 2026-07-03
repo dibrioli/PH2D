@@ -7469,3 +7469,39 @@ fn selection_freehand_gizmo_box_rotates_with_the_selection() {
         "after rotating, the box tilts WITH the selection (TL.y != TR.y): {after:?}"
     );
 }
+
+/// The Free-selection **Stabilization** slider drives the lasso smoothing: the same gesture yields a
+/// different selection at a high stabilizer (the path lags) than at zero.
+#[test]
+fn free_selection_stabilizer_smooths_the_lasso() {
+    let gesture = [
+        [10.0, 10.0],
+        [50.0, 12.0],
+        [52.0, 50.0],
+        [12.0, 48.0],
+        [10.0, 10.0],
+    ];
+    let run = |stab: f32| {
+        let mut t = white_canvas(64, 4.0);
+        t.set_paint_tool_mode("selection");
+        t.set_selection_mode(1); // Freehand
+        t.set_selection_stabilizer(stab);
+        assert!(
+            (t.selection_stabilizer() - stab).abs() < 1e-6,
+            "stabilizer round-trips"
+        );
+        t.on_canvas_pointer(cp(gesture[0], PointerPhase::Down));
+        for p in &gesture[1..gesture.len() - 1] {
+            t.on_canvas_pointer(cp(*p, PointerPhase::Move));
+        }
+        t.on_canvas_pointer(cp(gesture[gesture.len() - 1], PointerPhase::Up));
+        selected_area(&t, 64)
+    };
+    let low = run(0.0);
+    let high = run(0.95);
+    assert!(low > 0, "the un-stabilized lasso selects a region");
+    assert!(
+        low != high,
+        "the Stabilization slider changes the lasso result (0.0 -> {low}, 0.95 -> {high})"
+    );
+}

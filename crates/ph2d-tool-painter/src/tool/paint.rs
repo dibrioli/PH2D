@@ -215,6 +215,9 @@ pub(crate) struct PaintState {
     /// The CRISP selection mask (pre-Feather), the accumulator the Feather slider re-derives from — so
     /// dragging Feather never compounds a blur-of-a-blur (mirrors the Shape Offset accumulator). [`selection`].
     selection_crisp: Arc<Vec<u8>>,
+    /// **Free-selection stabilizer** (`0..1`) — the lazy-mouse smoothing applied to the Freehand lasso path
+    /// (its own knob, independent of the brush stabilizer). [`selection_input`].
+    selection_stabilizer: f32,
     /// **Feather** amount (`0..1` → edge-softening radius); the effective `selection_mask` is a blur of
     /// `selection_crisp` at this radius. [`selection`].
     selection_feather: f32,

@@ -66,6 +66,21 @@ pub(crate) fn paint_selection_section(
         );
     }
 
+    // Stabilization — the lasso path smoothing (only meaningful in Freehand mode).
+    if brush.selection_mode == 1 {
+        y = paint_slider_chip_row(
+            ctx,
+            theme,
+            x,
+            content_w,
+            y,
+            "Stabilization",
+            core_ids::PAINTER_SEL_STABILIZE_SLIDER,
+            core_ids::PAINTER_SEL_STABILIZE_CHIP,
+            brush.selection_stabilizer,
+        );
+    }
+
     // Feather — softens the selection edge.
     y = paint_slider_chip_row(
         ctx,
@@ -339,6 +354,22 @@ mod tests {
         assert!(
             !body_hit_ids(rect_mode).contains(&core_ids::PAINTER_SEL_THRESHOLD_SLIDER),
             "Threshold is hidden outside Automatic"
+        );
+    }
+
+    #[test]
+    fn stabilization_shows_in_freehand_only() {
+        let free = ph2d_tool_painter::BrushSettings {
+            selection_mode: 1, // Freehand
+            ..selection_brush()
+        };
+        assert!(
+            body_hit_ids(free).contains(&core_ids::PAINTER_SEL_STABILIZE_SLIDER),
+            "Stabilization shows in Freehand mode"
+        );
+        assert!(
+            !body_hit_ids(selection_brush()).contains(&core_ids::PAINTER_SEL_STABILIZE_SLIDER),
+            "Stabilization is hidden outside Freehand (default mode 0 = Automatic)"
         );
     }
 }

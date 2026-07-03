@@ -36,6 +36,9 @@ pub const PAINTER_SEL_FEATHER_SLIDER: NodeId = hash_node_id("painter_sel.feather
 pub const PAINTER_SEL_FEATHER_CHIP: NodeId = hash_node_id("painter_sel.feather_chip");
 pub const PAINTER_SEL_THRESHOLD_SLIDER: NodeId = hash_node_id("painter_sel.threshold_slider");
 pub const PAINTER_SEL_THRESHOLD_CHIP: NodeId = hash_node_id("painter_sel.threshold_chip");
+/// **Stabilization** — the Free (lasso) path smoothing (Freehand mode only).
+pub const PAINTER_SEL_STABILIZE_SLIDER: NodeId = hash_node_id("painter_sel.stabilize_slider");
+pub const PAINTER_SEL_STABILIZE_CHIP: NodeId = hash_node_id("painter_sel.stabilize_chip");
 /// **Overlay opacity** — how strongly the deselected-area hatching reads (a view preference).
 pub const PAINTER_SEL_OPACITY_SLIDER: NodeId = hash_node_id("painter_sel.opacity_slider");
 pub const PAINTER_SEL_OPACITY_CHIP: NodeId = hash_node_id("painter_sel.opacity_chip");

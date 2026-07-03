@@ -91,6 +91,7 @@ impl PainterTool {
             selection_mode: self.selection_mode(),
             selection_op: self.selection_bool_op(),
             selection_threshold: self.selection_threshold(),
+            selection_stabilizer: self.selection_stabilizer(),
             selection_feather: self.selection_feather(),
             selection_edit: self.selection_edit_mode(),
             selection_overlay_opacity: self.selection_overlay_opacity(),

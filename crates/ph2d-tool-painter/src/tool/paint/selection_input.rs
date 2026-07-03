@@ -65,6 +65,15 @@ impl PainterTool {
     pub fn selection_threshold(&self) -> f32 {
         self.paint.selection_threshold
     }
+    /// Set the Free-selection **Stabilization** amount (`0..1`) — the lasso path smoothing.
+    pub fn set_selection_stabilizer(&mut self, s: f32) {
+        self.paint.selection_stabilizer = s.clamp(0.0, 1.0);
+    }
+    /// The Free-selection Stabilization amount (`0..1`).
+    #[must_use]
+    pub fn selection_stabilizer(&self) -> f32 {
+        self.paint.selection_stabilizer
+    }
 
     /// **Invert** the whole selection (`255 − coverage`), sizing the mask to the canvas first. One undo entry.
     /// The inverse is non-parametric, so the shape list collapses to a single `Raster` entry.
@@ -168,9 +177,9 @@ impl PainterTool {
                 self.invalidate_composite();
             }
             Move::Lasso => {
-                // Fold the raw sample through the brush **stabilizer** (same `lazy_mouse_step` the FreeHand
-                // stroke uses) before capturing it, so the lasso is smoothed like a Free Hand stroke.
-                let stabilizer = self.paint.brush.stabilizer;
+                // Fold the raw sample through the **selection** stabilizer (its own knob — the Free-selection
+                // Stabilization slider) via the same `lazy_mouse_step` the FreeHand stroke uses.
+                let stabilizer = self.paint.selection_stabilizer;
                 if let Some(SelectionDrag::Lasso { points, stab }) = &mut self.paint.selection_drag
                 {
                     *stab = ph2d_painter_brush::lazy_mouse_step(*stab, pos, stabilizer);

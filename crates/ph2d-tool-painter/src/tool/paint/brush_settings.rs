@@ -74,6 +74,8 @@ pub struct BrushSettings {
     pub selection_mode: u8,
     pub selection_op: u8,
     pub selection_threshold: f32,
+    /// Free (lasso) path **Stabilization** amount (`0..1`) — shown only in Freehand mode.
+    pub selection_stabilizer: f32,
     pub selection_feather: f32,
     pub selection_edit: bool,
     pub selection_overlay_opacity: f32,

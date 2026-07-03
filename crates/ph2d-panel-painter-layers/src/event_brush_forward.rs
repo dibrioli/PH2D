@@ -28,6 +28,7 @@ pub(crate) fn is_forwardable_brush_slider(id: NodeId) -> bool {
         // Selection section (ADR-0103): Feather + Automatic-threshold + overlay-opacity + Offset sliders.
         || id == core_ids::PAINTER_SEL_FEATHER_SLIDER
         || id == core_ids::PAINTER_SEL_THRESHOLD_SLIDER
+        || id == core_ids::PAINTER_SEL_STABILIZE_SLIDER
         || id == core_ids::PAINTER_SEL_OPACITY_SLIDER
         || id == core_ids::PAINTER_SEL_OFFSET_SLIDER
 }

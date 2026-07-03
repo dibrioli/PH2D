@@ -128,6 +128,10 @@ impl PainterTool {
                 self.set_selection_threshold(*v as f32);
                 true
             }
+            PanelEvent::SetValue(id, v) if *id == core_ids::PAINTER_SEL_STABILIZE_SLIDER => {
+                self.set_selection_stabilizer(*v as f32);
+                true
+            }
             PanelEvent::SetValue(id, v) if *id == core_ids::PAINTER_SEL_OPACITY_SLIDER => {
                 self.set_selection_overlay_opacity(*v as f32);
                 true

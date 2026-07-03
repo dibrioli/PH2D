@@ -147,9 +147,19 @@ All 3 selection gizmos (Ellipse / Polygon / Freehand) unified to the **Sprite tr
 - Distinct fluorescent accent per gizmo stays.
 
 ## QUEUE (next, in order) — Enio 2026-07-03
-1. **Stabilization slider for Free selection** (the freehand lasso — reuse the brush stabilizer knob in
-   the Selection panel; the lasso already folds through `lazy_mouse_step`).
-2. **Selection offset system** (grow/shrink; re-integrate for the multi-shape isolated model — likely a
-   mask dilate/erode or per-shape offset).
-3. **Stroke multi-shape** — multiple simultaneous editable stroke shapes (large architectural round,
+1. ~~**Stabilization slider for Free selection**~~ — **LANDED** (commit c4ff7d26): its own
+   `selection_stabilizer` knob (independent of the brush), shown only in Freehand mode.
+2. ~~**Selection offset system**~~ — **LANDED** (commit 0f8c675b): signed-distance grow/shrink + concentric
+   alternating protected/paint rings via Apply / Apply & Keep (`selection_offset.rs`, ADR-0103 Am.3).
+3. **C&F vs shape-tool click-through fix** (Enio 2026-07-03) — **BUG.** While a shape stroke tool is active
+   (creating a Line/Curve), clicking the on-canvas **C&F** control (Color & Fill) ALSO drops shape points on
+   the canvas behind the widget — the pointer event activates BOTH tools at once. The C&F control must
+   **capture the pointer** (no pass-through to the canvas shape tool). Correct behaviour:
+   - **Click (no drag):** apply the current shape action + open the **colour selector**; after picking a
+     colour, RETURN to the shape tool that was active (do not stay in the picker).
+   - **Click + drag:** apply the current shape action + activate **Fill**; when the fill gesture ends, RETURN
+     to the shape tool that was active.
+   Investigate the pointer dispatch order (widget hit vs canvas `on_canvas_pointer`) — the C&F hit must
+   swallow the event and the tool must remember/restore the prior shape tool after the picker/fill completes.
+4. **Stroke multi-shape** — multiple simultaneous editable stroke shapes (large architectural round,
    ≈ the selection multi-gizmo redesign; its own build + smoke).

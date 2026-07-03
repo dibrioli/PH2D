@@ -65,6 +65,26 @@ pub(super) fn stroke_box(scene: &mut Scene, pts: &[Point], pal: &GizmoPalette) {
     );
 }
 
+/// Stroke an OPEN polyline (a shape spine / segment guide) in the gizmo frame colour — the themed twin of a
+/// literal "guide" stroke, so the shape overlays' guide lines match the Sprite-gizmo box.
+pub(super) fn stroke_open(scene: &mut Scene, pts: &[Point], pal: &GizmoPalette) {
+    let Some((&first, rest)) = pts.split_first() else {
+        return;
+    };
+    let mut path = BezPath::new();
+    path.move_to(first);
+    for &p in rest {
+        path.line_to(p);
+    }
+    scene.stroke(
+        &Stroke::new(BOX_STROKE),
+        Affine::IDENTITY,
+        &Brush::Solid(pal.frame),
+        None,
+        &path,
+    );
+}
+
 /// A scale / move handle — a rounded square (Accent fill + BorderEmph 1 px outline).
 pub(super) fn square_handle(scene: &mut Scene, p: Point, pal: &GizmoPalette) {
     let r = RoundedRect::new(

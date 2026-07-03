@@ -50,6 +50,8 @@ pub const PAINTER_SEL_OP_CARD: NodeId = hash_node_id("painter_sel.op_card");
 pub const PAINTER_SEL_EDIT: NodeId = hash_node_id("painter_sel.edit");
 /// **Convert to Curve** — flatten every gizmo/shape into ONE editable Bézier curve (ADR-0103 Am.2 §3).
 pub const PAINTER_SEL_CONVERT: NodeId = hash_node_id("painter_sel.convert");
+/// **Simplify Curve** — reduce the converted curve's point count with the Free-Hand fit (Enio 2026-07-03).
+pub const PAINTER_SEL_SIMPLIFY: NodeId = hash_node_id("painter_sel.simplify");
 /// **Invert** the selection (one undo entry).
 pub const PAINTER_SEL_INVERT: NodeId = hash_node_id("painter_sel.invert");
 /// **Clear** (deselect) the selection (one undo entry).

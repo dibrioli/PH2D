@@ -93,7 +93,8 @@ pub(crate) fn paint_selection_section(
 
     y = paint_section_separator(ctx.scene, theme, x, content_w, y);
 
-    // Edit Selection — enter the editable-Shape boundary (native gizmos per shape — ADR-0103 Am.2).
+    // Show Selection Gizmos — reveal EVERY shape's isolated gizmo at once, each manipulable (ADR-0103 Am.2
+    // v2). It does NOT bake a curve; that's Convert's job.
     y = paint_checkbox_row(
         ctx,
         theme,
@@ -101,23 +102,12 @@ pub(crate) fn paint_selection_section(
         content_w,
         y,
         core_ids::PAINTER_SEL_EDIT,
-        "Edit Selection (handles)",
+        "Show Selection Gizmos",
         brush.selection_edit,
     );
 
-    // Edit-mode extras: the Offset (grow/shrink) slider + Convert-to-Curve — only while editing a boundary.
+    // Gizmo-mode ops: Convert-to-Curve (merge all shapes → one editable curve) + Simplify (reduce its points).
     if brush.selection_edit {
-        y = paint_slider_chip_row(
-            ctx,
-            theme,
-            x,
-            content_w,
-            y,
-            "Offset",
-            core_ids::PAINTER_SEL_OFFSET_SLIDER,
-            core_ids::PAINTER_SEL_OFFSET_CHIP,
-            brush.selection_offset,
-        );
         y = seg_group(
             ctx,
             theme,
@@ -125,8 +115,11 @@ pub(crate) fn paint_selection_section(
             content_w,
             y,
             NodeId(0),
-            "Convert selection to curve",
-            &[(core_ids::PAINTER_SEL_CONVERT, "Convert to Curve")],
+            "Convert / simplify selection curve",
+            &[
+                (core_ids::PAINTER_SEL_CONVERT, "Convert to Curve"),
+                (core_ids::PAINTER_SEL_SIMPLIFY, "Simplify Curve"),
+            ],
             usize::MAX,
         );
     }

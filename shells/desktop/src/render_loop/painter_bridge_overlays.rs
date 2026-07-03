@@ -53,6 +53,15 @@ pub(super) fn draw_overlays(
         cursor,
     );
     draw_polygon_overlay(painter, hero, sim, camera, window_size, vector_scene);
+    // Isolated SELECTION gizmos (ADR-0103 Am.2 v2) — every editable selection shape's gizmo at once.
+    super::painter_bridge_selection_gizmos::draw_selection_gizmos(
+        painter,
+        hero,
+        sim,
+        camera,
+        window_size,
+        vector_scene,
+    );
     draw_stencil_overlay(
         painter,
         hero,
@@ -282,58 +291,23 @@ fn draw_ellipse_overlay(
                 camera,
                 window_size,
             );
-            use ph2d_vector::{Affine, BezPath, Brush, Circle, Color, Fill, Point, Stroke};
+            use ph2d_vector::Point;
             let map = |p: [f32; 2]| affine * Point::new(f64::from(p[0]), f64::from(p[1]));
+            let pal = super::painter_bridge_gizmo::palette(hero.theme);
             let scene = vector_scene.inner_mut();
-            let guide = Color::new([0.55, 0.72, 1.0, 0.85]); // LITERAL-COLOR-OK: ellipse guide
-            // Outline.
+            // Outline + handles in the Sprite-gizmo style (theme tokens, a touch darker): the axis + centre
+            // handles are rounded squares, the rotate handle is a circle. Matches the selection gizmos.
             if overlay.perimeter.len() >= 2 {
-                let mut path = BezPath::new();
-                path.move_to(map(overlay.perimeter[0]));
-                for &p in &overlay.perimeter[1..] {
-                    path.line_to(map(p));
-                }
-                path.close_path();
-                scene.stroke(
-                    &Stroke::new(1.5),
-                    Affine::IDENTITY,
-                    &Brush::Solid(guide),
-                    None,
-                    &path,
-                );
+                let pts: Vec<Point> = overlay.perimeter.iter().map(|&p| map(p)).collect();
+                super::painter_bridge_gizmo::stroke_box(scene, &pts, &pal);
             }
-            // Connector from the centre to the rotation handle.
-            let mut stem = BezPath::new();
-            stem.move_to(map(overlay.handles[5]));
-            stem.line_to(map(overlay.handles[4]));
-            scene.stroke(
-                &Stroke::new(1.0),
-                Affine::IDENTITY,
-                &Brush::Solid(guide),
-                None,
-                &stem,
-            );
-            // Handles: axis (white), rotate (green), centre (grey), grabbed (orange).
-            let axis = Color::new([0.95, 0.95, 0.97, 0.95]); // LITERAL-COLOR-OK: axis handle
-            let rotate = Color::new([0.45, 0.85, 0.50, 1.0]); // LITERAL-COLOR-OK: rotation handle
-            let center = Color::new([0.75, 0.78, 0.82, 0.95]); // LITERAL-COLOR-OK: centre handle
-            let grab = Color::new([1.0, 0.62, 0.20, 1.0]); // LITERAL-COLOR-OK: grabbed handle
             for (i, &h) in overlay.handles.iter().enumerate() {
-                let grabbed = overlay.grabbed == Some(i as u8);
-                let base = match i {
-                    4 => rotate,
-                    5 => center,
-                    _ => axis,
-                };
-                let c = if grabbed { grab } else { base };
-                let r = if grabbed { 6.0 } else { 4.0 };
-                scene.fill(
-                    Fill::NonZero,
-                    Affine::IDENTITY,
-                    &Brush::Solid(c),
-                    None,
-                    &Circle::new(map(h), r),
-                );
+                let p = map(h);
+                if i == 4 {
+                    super::painter_bridge_gizmo::circle_handle(scene, p, &pal);
+                } else {
+                    super::painter_bridge_gizmo::square_handle(scene, p, &pal);
+                }
             }
         }
     }
@@ -372,61 +346,23 @@ fn draw_polygon_overlay(
                 camera,
                 window_size,
             );
-            use ph2d_vector::{Affine, BezPath, Brush, Circle, Color, Fill, Point, Stroke};
+            use ph2d_vector::Point;
             let map = |p: [f32; 2]| affine * Point::new(f64::from(p[0]), f64::from(p[1]));
+            let pal = super::painter_bridge_gizmo::palette(hero.theme);
             let scene = vector_scene.inner_mut();
-            let guide = Color::new([0.55, 0.72, 1.0, 0.85]); // LITERAL-COLOR-OK: polygon guide
-            // Closed outline through the vertices.
+            // Sprite-gizmo style (theme tokens, a touch darker): outline box + axis/centre squares + the
+            // rotate & sides handles as circles. Matches the selection gizmos.
             if overlay.perimeter.len() >= 2 {
-                let mut path = BezPath::new();
-                path.move_to(map(overlay.perimeter[0]));
-                for &p in &overlay.perimeter[1..] {
-                    path.line_to(map(p));
-                }
-                path.close_path();
-                scene.stroke(
-                    &Stroke::new(1.5),
-                    Affine::IDENTITY,
-                    &Brush::Solid(guide),
-                    None,
-                    &path,
-                );
+                let pts: Vec<Point> = overlay.perimeter.iter().map(|&p| map(p)).collect();
+                super::painter_bridge_gizmo::stroke_box(scene, &pts, &pal);
             }
-            // Connectors from the centre to the rotation + sides handles.
-            for h in [overlay.handles[4], overlay.handles[5]] {
-                let mut stem = BezPath::new();
-                stem.move_to(map(overlay.handles[6]));
-                stem.line_to(map(h));
-                scene.stroke(
-                    &Stroke::new(1.0),
-                    Affine::IDENTITY,
-                    &Brush::Solid(guide),
-                    None,
-                    &stem,
-                );
-            }
-            let axis = Color::new([0.95, 0.95, 0.97, 0.95]); // LITERAL-COLOR-OK: axis handle
-            let rotate = Color::new([0.45, 0.85, 0.50, 1.0]); // LITERAL-COLOR-OK: rotation handle
-            let sides = Color::new([0.40, 0.78, 0.95, 1.0]); // LITERAL-COLOR-OK: sides handle
-            let center = Color::new([0.75, 0.78, 0.82, 0.95]); // LITERAL-COLOR-OK: centre handle
-            let grab = Color::new([1.0, 0.62, 0.20, 1.0]); // LITERAL-COLOR-OK: grabbed handle
             for (i, &h) in overlay.handles.iter().enumerate() {
-                let grabbed = overlay.grabbed == Some(i as u8);
-                let base = match i {
-                    4 => rotate,
-                    5 => sides,
-                    6 => center,
-                    _ => axis,
-                };
-                let c = if grabbed { grab } else { base };
-                let r = if grabbed { 6.0 } else { 4.0 };
-                scene.fill(
-                    Fill::NonZero,
-                    Affine::IDENTITY,
-                    &Brush::Solid(c),
-                    None,
-                    &Circle::new(map(h), r),
-                );
+                let p = map(h);
+                if i == 4 || i == 5 {
+                    super::painter_bridge_gizmo::circle_handle(scene, p, &pal);
+                } else {
+                    super::painter_bridge_gizmo::square_handle(scene, p, &pal);
+                }
             }
         }
     }

@@ -214,7 +214,16 @@ impl PainterTool {
                         ry: ((pos[1] - anchor[1]).abs() * 0.5).max(0.5),
                     }
                 } else {
-                    SelectionShape::Rect { a: anchor, b: pos }
+                    // Rect → a corner-phase 4-gon (Polygon gizmo, editable side count); rx/ry = half-extent
+                    // · √2 so the 4 vertices land on the drawn box corners.
+                    let center = [(anchor[0] + pos[0]) * 0.5, (anchor[1] + pos[1]) * 0.5];
+                    SelectionShape::Polygon {
+                        center,
+                        u: [1.0, 0.0],
+                        rx: ((pos[0] - anchor[0]).abs() * 0.5 * std::f32::consts::SQRT_2).max(0.5),
+                        ry: ((pos[1] - anchor[1]).abs() * 0.5 * std::f32::consts::SQRT_2).max(0.5),
+                        sides: 4,
+                    }
                 };
                 (region, Some(shape))
             }
@@ -224,7 +233,6 @@ impl PainterTool {
                 let shape = SelectionShape::Freehand {
                     points,
                     handles: Vec::new(),
-                    kinds: Vec::new(),
                 };
                 (region, Some(shape))
             }

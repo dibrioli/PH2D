@@ -54,39 +54,25 @@ pub(super) fn draw_line_overlay(
                     scene, gz, affine, hero.theme, cursor,
                 );
             }
-            let guide = Color::new([0.55, 0.72, 1.0, 0.85]); // LITERAL-COLOR-OK: line guide
-            // Segments through the committed corner points.
+            let pal = super::painter_bridge_gizmo::palette(hero.theme);
+            // Segments through the committed corner points (themed frame colour, open or closed).
             let pts = &overlay.points;
             if pts.len() >= 2 {
-                let mut path = BezPath::new();
-                path.move_to(map(pts[0]));
-                for &p in &pts[1..] {
-                    path.line_to(map(p));
+                let sp: Vec<Point> = pts.iter().map(|&p| map(p)).collect();
+                if overlay.closed && pts.len() >= 3 {
+                    super::painter_bridge_gizmo::stroke_box(scene, &sp, &pal);
+                } else {
+                    super::painter_bridge_gizmo::stroke_open(scene, &sp, &pal);
                 }
-                if overlay.closed && overlay.points.len() >= 3 {
-                    path.close_path();
-                }
-                scene.stroke(
-                    &Stroke::new(1.5),
-                    Affine::IDENTITY,
-                    &Brush::Solid(guide),
-                    None,
-                    &path,
-                );
             }
-            // A white dot at each committed corner; the SELECTED corner emphasised (purple, larger).
-            let dot = Color::new([0.95, 0.95, 0.97, 0.95]); // LITERAL-COLOR-OK: corner dot
-            let sel = Color::new([0.72, 0.45, 0.95, 1.0]); // LITERAL-COLOR-OK: selected corner
+            // A themed Sprite-gizmo handle at each committed corner; the SELECTED corner reads as a circle.
             for (i, &p) in overlay.points.iter().enumerate() {
-                let selected = overlay.selected == Some(i);
-                let (c, r) = if selected { (sel, 5.5) } else { (dot, 4.0) };
-                scene.fill(
-                    Fill::NonZero,
-                    Affine::IDENTITY,
-                    &Brush::Solid(c),
-                    None,
-                    &Circle::new(map(p), r),
-                );
+                let sp = map(p);
+                if overlay.selected == Some(i) {
+                    super::painter_bridge_gizmo::circle_handle(scene, sp, &pal);
+                } else {
+                    super::painter_bridge_gizmo::square_handle(scene, sp, &pal);
+                }
             }
             // Per-corner CAD gizmos: a CIRCLE (Fillet) + a SQUARE (Chamfer) handle at each real corner;
             // the active mod is accented (orange). Shapes carry the meaning — round = round the corner,

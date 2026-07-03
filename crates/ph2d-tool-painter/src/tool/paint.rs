@@ -95,8 +95,11 @@ mod region;
 mod selection;
 /// Selection **actions** (Wave 5): Select layer contents / Color Fill / Copy-Paste / Save-Load slots. [LOC split].
 mod selection_actions;
-/// Selection **Edit** mode (ADR-0103 Am.2): per-shape NATIVE gizmos + Convert-to-Curve. [LOC split].
+/// Selection **Edit** mode (ADR-0103 Am.2): Convert-to-Curve + Simplify (list ops). [LOC split].
 mod selection_edit;
+/// Selection **isolated gizmos** (ADR-0103 Am.2 v2): per-shape gizmos decoupled from the stroke editors.
+mod selection_gizmo;
+pub use selection_gizmo::SelectionGizmoView;
 /// Selection creation input: mode/op/threshold setters + on-canvas pointer gestures (marquee/lasso/flood). [LOC split].
 mod selection_input;
 /// Selection on-canvas overlay (marching ants + hatching) + panel event routing. [LOC split].
@@ -215,24 +218,20 @@ pub(crate) struct PaintState {
     /// **Feather** amount (`0..1` → edge-softening radius); the effective `selection_mask` is a blur of
     /// `selection_crisp` at this radius. [`selection`].
     selection_feather: f32,
-    /// **Edit Selection** mode: when `true`, the boundary is shown as an editable Shape (handles / gizmos /
-    /// Offset — Wave EDIT). Until then the selection is Procreate-identical. A transient UI mode. [`selection`].
+    /// **Show Selection Gizmos** mode: when `true`, EVERY editable selection shape shows its own isolated
+    /// gizmo at once (ellipse / polygon / freehand), each manipulable — WITHOUT touching the stroke shape
+    /// editors (ADR-0103 Am.2 v2). A transient UI mode. [`selection_gizmo`].
     selection_edit_mode: bool,
     /// **Selection overlay opacity** (`0..1`) — how strongly the deselected-area hatching reads. A view
     /// preference (not undoable); scales the hatch alpha in [`selection`]. Default `0.2` (Enio 2026-07-02).
     selection_overlay_opacity: f32,
-    /// The brush stroke-method saved when entering Selection **Edit** mode (which installs the Curve
-    /// editor + sets `stroke_method = Curve`), restored on exit so leaving edit-mode never leaves the
-    /// Brush drawing curves. `None` when not in edit-mode. [`selection`].
-    selection_edit_saved_method: Option<StrokeMethod>,
-    /// **Selection shape list** (ADR-0103 Am.2) — the parametric source of truth (Ellipse / Rect / Freehand /
-    /// Raster + a boolean op each). The `selection_mask` is a DERIVED cache: rasterize + composite this list.
-    /// Editing a native gizmo rewrites one entry and recomposites. Empty = no parametric history (raw mask
-    /// only, e.g. after a legacy op). [`selection_shapes`].
+    /// **Selection shape list** (ADR-0103 Am.2) — the parametric source of truth (Ellipse / Polygon /
+    /// Freehand / Raster + a boolean op each). The `selection_mask` is a DERIVED cache: rasterize + composite
+    /// this list. A gizmo drag mutates one entry's params in place and recomposites. [`selection_shapes`].
     selection_shapes: Vec<selection_shapes::SelectionEntry>,
-    /// The list index of the shape currently being edited by a native gizmo in Edit mode; `None` when not
-    /// editing a specific entry (a traced-fallback curve, or idle). [`selection_edit`].
-    selection_edit_idx: Option<usize>,
+    /// The isolated gizmo grab: `(shape index, handle id)` currently dragged; `None` when idle. Freehand uses
+    /// the raw point index as the handle id. [`selection_gizmo`].
+    selection_grab: Option<(usize, u8)>,
     /// In-memory **Copy** buffer of selected pixels (source bbox + coverage-premultiplied RGBA), consumed by
     /// **Paste**. `None` until a Copy. [`selection_actions`].
     selection_clipboard: Option<selection_actions::SelectionClip>,

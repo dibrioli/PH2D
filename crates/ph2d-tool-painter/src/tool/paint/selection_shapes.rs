@@ -20,17 +20,23 @@ pub(crate) enum SelectionShape {
         rx: f32,
         ry: f32,
     },
-    /// Axis-aligned rectangle between opposite corners `a`, `b` (image px) — the freshly-drawn marquee.
-    /// Editing it promotes the entry to `Freehand` (4 draggable corners), so this variant is only the
-    /// pristine rectangle.
-    Rect { a: [f32; 2], b: [f32; 2] },
-    /// Closed editable curve: anchors `points` with `[in, out]` Bézier `handles` and per-anchor `kinds`
-    /// (wire `u8`, matching [`crate::undo::CurveState`]). When `handles` is empty the anchors are filled as
-    /// a plain polygon. Native gizmo = the Curve editor (closed loop).
+    /// N-gon inscribed in the (`rx`,`ry`) ellipse about `center`, oriented by unit axis `u`. The vertex
+    /// phase is CORNER-seeded (45°), so `sides = 4` renders an axis-aligned **rectangle** (the freshly-drawn
+    /// rect marquee); the side count is editable (ADR-0103 Am.2, Enio 2026-07-03). Native gizmo = the
+    /// Polygon gizmo (resize / rotate / sides).
+    Polygon {
+        center: [f32; 2],
+        u: [f32; 2],
+        rx: f32,
+        ry: f32,
+        sides: u32,
+    },
+    /// Closed editable curve: anchors `points` with `[in, out]` Bézier `handles` (parallel; empty = fill the
+    /// anchors as a plain polygon). Native gizmo = draggable anchor points (dragging an anchor carries its
+    /// handles). Produced by Convert-to-Curve / the Free-Hand lasso.
     Freehand {
         points: Vec<[f32; 2]>,
         handles: Vec<[[f32; 2]; 2]>,
-        kinds: Vec<u8>,
     },
     /// Non-parametric coverage (Automatic flood) — no gizmo; rasterizes to its stored buffer verbatim.
     Raster { crisp: Arc<Vec<u8>> },
@@ -79,12 +85,14 @@ impl PainterTool {
                 rasterize_ellipse(*center, *u, *rx, *ry, w, h, &mut cov);
                 cov
             }
-            SelectionShape::Rect { a, b } => self.raster_lasso(&rect_corners(*a, *b)),
-            SelectionShape::Freehand {
-                points,
-                handles,
-                kinds: _,
-            } => {
+            SelectionShape::Polygon {
+                center,
+                u,
+                rx,
+                ry,
+                sides,
+            } => self.raster_lasso(&sel_polygon_vertices(*center, *u, *rx, *ry, *sides)),
+            SelectionShape::Freehand { points, handles } => {
                 let spine = self.freehand_spine(points, handles);
                 if spine.len() < 3 {
                     return cov;
@@ -125,19 +133,12 @@ impl PainterTool {
         if n == 0 {
             return;
         }
+        // Each gizmo edits its `SelectionShape` params IN PLACE (isolated from the stroke editors), so the
+        // mask is always a straight rasterize+composite of the stored list — no separate live-editor path.
         let entries = self.paint.selection_shapes.clone();
-        let edit_idx = self.paint.selection_edit_idx;
         let mut crisp = vec![0u8; n];
-        for (i, e) in entries.iter().enumerate() {
-            // The entry under an open native gizmo rasterizes from the LIVE editor (its in-progress edits +
-            // Offset), so the mask tracks the gizmo before it's baked back into the list; the rest use their
-            // stored parametric shape.
-            let region = if Some(i) == edit_idx {
-                self.rasterize_active_editor()
-                    .unwrap_or_else(|| self.rasterize_selection_shape(&e.shape))
-            } else {
-                self.rasterize_selection_shape(&e.shape)
-            };
+        for e in &entries {
+            let region = self.rasterize_selection_shape(&e.shape);
             if region.len() != n {
                 continue;
             }
@@ -147,12 +148,68 @@ impl PainterTool {
     }
 }
 
-/// The four corners of the axis-aligned rectangle `a..b`, CCW, as a closed polygon for the scanline fill.
+/// Per-side rotation step `(cos(2π/n), sin(2π/n))` for `n = 3..=12` (indexed by `n`), baked so the polygon
+/// vertex generator stays transcendental-free (matches the brush's `POLY_STEP`).
+const POLY_STEP: [[f32; 2]; 13] = [
+    [1.0, 0.0],                 // 0 (unused)
+    [1.0, 0.0],                 // 1 (unused)
+    [1.0, 0.0],                 // 2 (unused)
+    [-0.5, 0.866_025_4],        // 3  120°
+    [0.0, 1.0],                 // 4  90°
+    [0.309_017, 0.951_056_5],   // 5  72°
+    [0.5, 0.866_025_4],         // 6  60°
+    [0.623_489_8, 0.781_831_5], // 7
+    [
+        std::f32::consts::FRAC_1_SQRT_2,
+        std::f32::consts::FRAC_1_SQRT_2,
+    ], // 8  45°
+    [0.766_044_4, 0.642_787_6], // 9
+    [0.809_017, 0.587_785_25],  // 10 36°
+    [0.841_253_5, 0.540_640_8], // 11
+    [0.866_025_4, 0.5],         // 12 30°
+];
+
+/// Vertex-0 phase seed (45°, `cos = sin = √½`) — CORNER-seeded so `sides = 4` is an axis-aligned rectangle
+/// (vertices at the box corners), not a diamond like the pointy-top brush polygon.
+const CORNER_SEED: [f32; 2] = [
+    std::f32::consts::FRAC_1_SQRT_2,
+    std::f32::consts::FRAC_1_SQRT_2,
+];
+
+/// The vertices of a selection Polygon (`center`, unit axis `u`, semi-axes `rx`/`ry`, `sides`), CORNER-phase
+/// seeded, as a closed polygon for the scanline fill. Transcendental-free (baked step table).
 #[must_use]
-pub(super) fn rect_corners(a: [f32; 2], b: [f32; 2]) -> Vec<[f32; 2]> {
-    let (x0, x1) = (a[0].min(b[0]), a[0].max(b[0]));
-    let (y0, y1) = (a[1].min(b[1]), a[1].max(b[1]));
-    vec![[x0, y0], [x1, y0], [x1, y1], [x0, y1]]
+pub(super) fn sel_polygon_vertices(
+    center: [f32; 2],
+    u: [f32; 2],
+    rx: f32,
+    ry: f32,
+    sides: u32,
+) -> Vec<[f32; 2]> {
+    let n = sides.clamp(3, 12);
+    let ul = {
+        let m = (u[0] * u[0] + u[1] * u[1]).sqrt();
+        if m > 1e-6 {
+            [u[0] / m, u[1] / m]
+        } else {
+            [1.0, 0.0]
+        }
+    };
+    let v = [-ul[1], ul[0]];
+    let step = POLY_STEP[n as usize];
+    let (mut cx, mut cy) = (CORNER_SEED[0], CORNER_SEED[1]);
+    let mut out = Vec::with_capacity(n as usize);
+    for _ in 0..n {
+        out.push([
+            center[0] + rx * cx * ul[0] + ry * cy * v[0],
+            center[1] + rx * cx * ul[1] + ry * cy * v[1],
+        ]);
+        // Rotate (cx, cy) CCW by 2π/n via the baked step.
+        let (ncx, ncy) = (cx * step[0] - cy * step[1], cx * step[1] + cy * step[0]);
+        cx = ncx;
+        cy = ncy;
+    }
+    out
 }
 
 /// Fill `cov` (0/255) inside the rotated ellipse (`center`, unit axis `u`, semi-axes `rx`/`ry`) via the

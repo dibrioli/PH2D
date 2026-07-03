@@ -456,7 +456,8 @@ fn try_apply_brush_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> O
                 || core_ids::PAINTER_SEL_ACTION_IDS.contains(&id)
                 || core_ids::PAINTER_SEL_WAVE5_IDS.contains(&id)
                 || id == core_ids::PAINTER_SEL_EDIT
-                || id == core_ids::PAINTER_SEL_CONVERT =>
+                || id == core_ids::PAINTER_SEL_CONVERT
+                || id == core_ids::PAINTER_SEL_SIMPLIFY =>
         {
             host.bus_mut()
                 .push(EditorAction::ToolPanelEvent(PanelEvent::Click(id)));

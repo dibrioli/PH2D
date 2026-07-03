@@ -7151,54 +7151,39 @@ fn fill_is_clipped_to_the_active_selection() {
     );
 }
 
-/// Wave EDIT: toggling Edit Selection traces the mask contour into an editable Curve (handles), preserves
-/// the mask on entry, round-trips it through the curve refill, and discards the overlay on exit.
+/// ADR-0103 Am.2 v2: "Show Selection Gizmos" reveals EVERY editable shape's isolated gizmo at once and
+/// leaves the stroke shape editors UNTOUCHED (the contamination bug is fixed).
 #[test]
-fn selection_edit_mode_installs_curve_and_round_trips_the_mask() {
+fn selection_gizmos_show_all_shapes_without_touching_the_stroke_editors() {
     let mut t = white_canvas(64, 4.0);
     t.set_paint_tool_mode("selection");
-    t.set_selection_mode(2); // Rectangle
-    t.on_canvas_pointer(cp([10.0, 10.0], PointerPhase::Down));
-    t.on_canvas_pointer(cp([40.0, 40.0], PointerPhase::Up));
-    assert!(t.selection_active(), "a rectangle selection exists");
-
-    // Enter Edit mode → an editable Curve overlay is installed; the mask is untouched by entry.
+    t.set_selection_mode(2); // Rect (New)
+    t.on_canvas_pointer(cp([0.0, 0.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([16.0, 16.0], PointerPhase::Up));
+    t.set_selection_bool_op(1); // Add
+    t.set_selection_mode(3); // Ellipse
+    t.on_canvas_pointer(cp([40.0, 40.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([56.0, 56.0], PointerPhase::Up));
+    assert!(
+        t.selection_gizmos().is_empty(),
+        "no gizmos until the checkbox is on"
+    );
     t.toggle_selection_edit();
-    assert!(t.selection_edit_mode(), "edit mode is on");
+    assert!(t.selection_edit_mode(), "gizmos shown");
+    assert_eq!(
+        t.selection_gizmos().len(),
+        2,
+        "one gizmo per editable shape, simultaneously"
+    );
+    // Isolation: selection editing NEVER opens a stroke shape editor.
     assert!(
-        t.curve_overlay().is_some(),
-        "the boundary Curve editor (handles/gizmos) is installed"
+        t.curve_overlay().is_none()
+            && t.ellipse_overlay().is_none()
+            && t.polygon_overlay().is_none(),
+        "selection gizmos are isolated from the stroke editors"
     );
-    assert_eq!(
-        t.selection_coverage_at(25, 25),
-        255,
-        "the interior is still selected after entering edit mode"
-    );
-
-    // Re-deriving the mask from the curve reproduces the region (inside kept, outside clear).
-    t.selection_refill_from_curve();
-    assert_eq!(
-        t.selection_coverage_at(25, 25),
-        255,
-        "curve refill keeps the interior"
-    );
-    assert_eq!(
-        t.selection_coverage_at(2, 2),
-        0,
-        "curve refill leaves the outside clear"
-    );
-
-    // Exit → the overlay is discarded, the selection persists.
     t.toggle_selection_edit();
-    assert!(!t.selection_edit_mode(), "edit mode is off");
-    assert!(
-        t.curve_overlay().is_none(),
-        "the curve overlay is discarded on exit"
-    );
-    assert!(
-        t.selection_active(),
-        "the selection persists after leaving edit mode"
-    );
+    assert!(t.selection_gizmos().is_empty(), "gizmos hidden again");
 }
 
 /// Count fully-selected texels (coverage ≥ 128) across a `size×size` selection — a robust area metric.
@@ -7214,144 +7199,84 @@ fn selected_area(t: &PainterTool, size: u32) -> usize {
     n
 }
 
-/// ADR-0103 Am.2: an **Ellipse** selection installs its OWN native gizmo in Edit mode (not a traced curve).
+/// Dragging an ellipse gizmo handle edits the selection live (through the isolated gizmo pointer path).
 #[test]
-fn selection_ellipse_edit_installs_the_native_ellipse_gizmo() {
-    let mut t = white_canvas(64, 4.0);
-    t.set_paint_tool_mode("selection");
-    t.set_selection_mode(3); // Ellipse
-    t.on_canvas_pointer(cp([8.0, 8.0], PointerPhase::Down));
-    t.on_canvas_pointer(cp([56.0, 56.0], PointerPhase::Up));
-    assert!(t.selection_active(), "an ellipse selection exists");
-    t.toggle_selection_edit();
-    assert!(t.selection_edit_mode(), "edit mode is on");
-    assert!(
-        t.ellipse_overlay().is_some(),
-        "the NATIVE ellipse gizmo is installed for an ellipse selection"
-    );
-    assert!(
-        t.curve_overlay().is_none(),
-        "no traced curve — the ellipse keeps its own parametric gizmo"
-    );
-    assert_eq!(
-        t.selection_coverage_at(32, 32),
-        255,
-        "centre still selected in edit mode"
-    );
-    assert_eq!(
-        t.selection_coverage_at(2, 2),
-        0,
-        "the bbox corner stays out"
-    );
-    t.toggle_selection_edit();
-    assert!(
-        t.ellipse_overlay().is_none(),
-        "the gizmo is discarded on exit"
-    );
-}
-
-/// ADR-0103 Am.2: editing ONE shape's gizmo recomposites the WHOLE list — the other added shape survives.
-#[test]
-fn selection_edit_preserves_the_other_added_shape() {
-    let mut t = white_canvas(64, 4.0);
-    t.set_paint_tool_mode("selection");
-    t.set_selection_mode(2); // Rectangle (New) top-left
-    t.on_canvas_pointer(cp([0.0, 0.0], PointerPhase::Down));
-    t.on_canvas_pointer(cp([16.0, 16.0], PointerPhase::Up));
-    t.set_selection_bool_op(1); // Add
-    t.set_selection_mode(3); // Ellipse bottom-right
-    t.on_canvas_pointer(cp([40.0, 40.0], PointerPhase::Down));
-    t.on_canvas_pointer(cp([56.0, 56.0], PointerPhase::Up));
-    assert_eq!(t.selection_coverage_at(8, 8), 255, "rect region selected");
-    assert_eq!(
-        t.selection_coverage_at(48, 48),
-        255,
-        "ellipse region selected"
-    );
-    // Enter edit → the LAST editable shape (the ellipse) gets the gizmo; a recompose keeps BOTH shapes.
-    t.toggle_selection_edit();
-    assert!(
-        t.ellipse_overlay().is_some(),
-        "the ellipse is the active gizmo"
-    );
-    t.set_selection_offset(0.5); // a no-op offset forces a recompose of the list
-    assert_eq!(
-        t.selection_coverage_at(8, 8),
-        255,
-        "the OTHER (rect) shape survives while editing the ellipse"
-    );
-    assert_eq!(
-        t.selection_coverage_at(48, 48),
-        255,
-        "the edited ellipse stays selected"
-    );
-}
-
-/// ADR-0103 Am.2: a **Freehand** selection becomes a CLOSED editable Bézier curve in Edit mode.
-#[test]
-fn selection_freehand_edit_installs_a_closed_curve() {
-    let mut t = white_canvas(64, 4.0);
-    t.set_paint_tool_mode("selection");
-    t.set_selection_mode(1); // Freehand
-    t.on_canvas_pointer(cp([10.0, 10.0], PointerPhase::Down));
-    t.on_canvas_pointer(cp([50.0, 12.0], PointerPhase::Move));
-    t.on_canvas_pointer(cp([30.0, 50.0], PointerPhase::Move));
-    t.on_canvas_pointer(cp([10.0, 10.0], PointerPhase::Up));
-    assert!(t.selection_active(), "a freehand selection exists");
-    t.toggle_selection_edit();
-    assert!(
-        t.curve_overlay().is_some(),
-        "freehand → a closed editable curve gizmo"
-    );
-    assert!(
-        t.ellipse_overlay().is_none(),
-        "freehand is not an ellipse gizmo"
-    );
-}
-
-/// ADR-0103 Am.2 §3: **Convert to Curve** flattens the active gizmo into ONE editable Bézier curve, keeping
-/// the region + Edit mode.
-#[test]
-fn selection_convert_to_curve_installs_one_editable_curve() {
-    let mut t = white_canvas(64, 4.0);
-    t.set_paint_tool_mode("selection");
-    t.set_selection_mode(3); // Ellipse
-    t.on_canvas_pointer(cp([8.0, 8.0], PointerPhase::Down));
-    t.on_canvas_pointer(cp([56.0, 56.0], PointerPhase::Up));
-    t.toggle_selection_edit();
-    assert!(t.ellipse_overlay().is_some(), "editing the ellipse gizmo");
-    t.selection_convert_to_curve();
-    assert!(
-        t.curve_overlay().is_some(),
-        "convert flattens the ellipse into a Bézier curve"
-    );
-    assert!(
-        t.ellipse_overlay().is_none(),
-        "the ellipse gizmo is gone after convert"
-    );
-    assert!(t.selection_edit_mode(), "still editing the resulting curve");
-    assert_eq!(
-        t.selection_coverage_at(32, 32),
-        255,
-        "the region survives the conversion"
-    );
-}
-
-/// ADR-0103 Am.2: the **Offset** slider grows the edited boundary (more texels selected).
-#[test]
-fn selection_offset_grows_the_edited_boundary() {
+fn selection_ellipse_gizmo_handle_drag_grows_the_selection() {
     let mut t = white_canvas(64, 4.0);
     t.set_paint_tool_mode("selection");
     t.set_selection_mode(3); // Ellipse
     t.on_canvas_pointer(cp([16.0, 16.0], PointerPhase::Down));
-    t.on_canvas_pointer(cp([48.0, 48.0], PointerPhase::Up)); // centre (32,32), r≈16
-    let before = selected_area(&t, 64);
+    t.on_canvas_pointer(cp([48.0, 48.0], PointerPhase::Up)); // centre (32,32), r=16
     t.toggle_selection_edit();
-    t.set_selection_offset(1.0); // grow to the max
-    let after = selected_area(&t, 64);
+    let before = selected_area(&t, 64);
+    // The ellipse's RIGHT axis handle sits at centre + rx = (48,32); drag it out to grow rx.
+    let rh = t.selection_gizmos()[0].square_handles[0];
+    t.on_canvas_pointer(cp(rh, PointerPhase::Down));
+    t.on_canvas_pointer(cp([rh[0] + 12.0, rh[1]], PointerPhase::Move));
+    t.on_canvas_pointer(cp([rh[0] + 12.0, rh[1]], PointerPhase::Up));
     assert!(
-        after > before,
-        "growing the Offset enlarges the selected area ({before} → {after})"
+        selected_area(&t, 64) > before,
+        "dragging the axis handle enlarges the selection"
+    );
+}
+
+/// A Rect selection carries the Polygon gizmo (rotate + sides circle handles) and fills a rectangle
+/// (its CORNERS are selected — an ellipse's would not be).
+#[test]
+fn selection_rect_uses_the_polygon_gizmo() {
+    let mut t = white_canvas(64, 4.0);
+    t.set_paint_tool_mode("selection");
+    t.set_selection_mode(2); // Rectangle
+    t.on_canvas_pointer(cp([8.0, 8.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([56.0, 56.0], PointerPhase::Up));
+    assert_eq!(
+        t.selection_coverage_at(10, 10),
+        255,
+        "the rect corner is selected"
+    );
+    t.toggle_selection_edit();
+    let g = &t.selection_gizmos()[0];
+    assert_eq!(
+        g.circle_handles.len(),
+        2,
+        "the polygon gizmo exposes rotate + sides handles"
+    );
+}
+
+/// Convert-to-Curve → one editable Freehand; Simplify keeps a valid curve; neither touches the stroke
+/// editors and both preserve the selected region.
+#[test]
+fn selection_convert_then_simplify_curve() {
+    let mut t = white_canvas(96, 4.0);
+    t.set_paint_tool_mode("selection");
+    t.set_selection_mode(3); // Ellipse
+    t.on_canvas_pointer(cp([16.0, 16.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([80.0, 80.0], PointerPhase::Up));
+    t.toggle_selection_edit();
+    t.selection_convert_to_curve();
+    assert!(
+        t.selection_edit_mode(),
+        "still in gizmo mode on the new curve"
+    );
+    assert!(
+        t.curve_overlay().is_none(),
+        "convert never opens the stroke curve editor"
+    );
+    assert_eq!(
+        t.selection_coverage_at(48, 48),
+        255,
+        "region survives convert"
+    );
+    assert_eq!(t.selection_gizmos().len(), 1, "one merged curve gizmo");
+    t.selection_simplify_curve();
+    assert_eq!(
+        t.selection_coverage_at(48, 48),
+        255,
+        "region survives simplify"
+    );
+    assert!(
+        t.selection_gizmos()[0].square_handles.len() >= 3,
+        "simplify keeps a valid closed curve"
     );
 }
 

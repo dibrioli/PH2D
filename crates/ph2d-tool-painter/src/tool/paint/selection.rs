@@ -117,54 +117,56 @@ impl PainterTool {
         }
     }
 
-    /// Replace the selection with a filled rectangle in image px (fully inside = 255). Records ONE structural
-    /// undo entry so it joins the single interleaved queue. Seeds the shape list with one Rect entry.
+    /// Replace the selection with a filled rectangle in image px. Records ONE structural undo entry so it
+    /// joins the single interleaved queue. Seeds the shape list with one 4-sided [`SelectionShape::Polygon`]
+    /// (corner-phase → an axis-aligned rectangle) so the rect carries the editable polygon gizmo.
     pub fn set_rect_selection(&mut self, x: u32, y: u32, rw: u32, rh: u32) {
         let (w, h) = self.source_size;
         if w == 0 || h == 0 {
             return;
         }
         let before = self.snapshot_model();
-        let mut crisp = vec![0u8; (w as usize) * (h as usize)];
-        let x1 = (x + rw).min(w);
-        let y1 = (y + rh).min(h);
-        for yy in y.min(h)..y1 {
-            for xx in x.min(w)..x1 {
-                crisp[(yy * w + xx) as usize] = 255;
-            }
-        }
+        let cx = x as f32 + rw as f32 * 0.5;
+        let cy = y as f32 + rh as f32 * 0.5;
+        // rx/ry = half-extent · √2 so the corner-phase 4-gon's corners land exactly on the box corners.
+        let rx = (rw as f32 * 0.5) * std::f32::consts::SQRT_2;
+        let ry = (rh as f32 * 0.5) * std::f32::consts::SQRT_2;
         self.paint.selection_shapes = vec![super::selection_shapes::SelectionEntry {
-            shape: super::selection_shapes::SelectionShape::Rect {
-                a: [x as f32, y as f32],
-                b: [x1 as f32, y1 as f32],
+            shape: super::selection_shapes::SelectionShape::Polygon {
+                center: [cx, cy],
+                u: [1.0, 0.0],
+                rx,
+                ry,
+                sides: 4,
             },
             op: 0,
         }];
-        self.set_selection_from_crisp(crisp);
+        self.recompose_selection_mask();
         self.commit_structural_edit(before);
     }
 
     /// **Clear** (deselect) — no active selection, painting unrestricted again. Records one structural undo
-    /// entry (no-op when there is nothing selected). Also drops the shape list + any Edit session.
+    /// entry (no-op when there is nothing selected). Also drops the shape list + hides the gizmos.
     pub fn clear_selection(&mut self) {
         if !self.paint.selection_active {
             return;
         }
         let before = self.snapshot_model();
-        if self.paint.selection_edit_mode {
-            self.paint.selection_edit_mode = false;
-            self.discard_open_shape();
-            if let Some(m) = self.paint.selection_edit_saved_method.take() {
-                self.paint.brush.stroke_method = m;
-            }
-            self.paint.selection_edit_idx = None;
-        }
+        self.paint.selection_edit_mode = false;
+        self.paint.selection_grab = None;
         self.paint.selection_active = false;
         self.paint.selection_mask = Arc::new(Vec::new());
         self.paint.selection_crisp = Arc::new(Vec::new());
         self.paint.selection_shapes.clear();
         self.invalidate_composite();
         self.commit_structural_edit(before);
+    }
+
+    /// The selection **Offset** slider position (`0..1`) — retained for the panel snapshot; the grow/shrink
+    /// re-integration for the isolated multi-gizmo model is a follow-up.
+    #[must_use]
+    pub fn selection_offset(&self) -> f32 {
+        self.paint.shape_offset_norm
     }
 
     /// Set the **Feather** amount (`0..1`) and re-derive the effective mask from the crisp accumulator.

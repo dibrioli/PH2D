@@ -48,6 +48,7 @@ pub(super) fn draw_curve_overlay(
             );
             use ph2d_vector::{Affine, BezPath, Brush, Circle, Color, Fill, Point, Stroke};
             let map = |p: [f32; 2]| affine * Point::new(f64::from(p[0]), f64::from(p[1]));
+            let pal = super::painter_bridge_gizmo::palette(hero.theme);
             let scene = vector_scene.inner_mut();
             // Transform gizmo — the Sprite-gizmo box + handles (theme tokens, a touch darker). Drawn FIRST
             // (under the spine + dots) so the editing geometry stays visually dominant. Corners (0..4) flip
@@ -57,21 +58,10 @@ pub(super) fn draw_curve_overlay(
                     scene, gz, affine, hero.theme, cursor,
                 );
             }
-            // Spine guide — the auto-smoothed curve through the control points.
+            // Spine guide — the auto-smoothed curve through the control points (themed frame colour).
             if overlay.spine.len() >= 2 {
-                let mut path = BezPath::new();
-                path.move_to(map(overlay.spine[0]));
-                for &p in &overlay.spine[1..] {
-                    path.line_to(map(p));
-                }
-                let guide = Color::new([0.55, 0.72, 1.0, 0.85]); // LITERAL-COLOR-OK: curve guide
-                scene.stroke(
-                    &Stroke::new(1.5),
-                    Affine::IDENTITY,
-                    &Brush::Solid(guide),
-                    None,
-                    &path,
-                );
+                let pts: Vec<ph2d_vector::Point> = overlay.spine.iter().map(|&p| map(p)).collect();
+                super::painter_bridge_gizmo::stroke_open(scene, &pts, &pal);
             }
             // Tangent handles of the selected anchor — thin teal stems with grabbable dots (orange when
             // dragged). Drawn UNDER the control dots so the anchor stays the visually dominant grab.
@@ -104,20 +94,15 @@ pub(super) fn draw_curve_overlay(
                     );
                 }
             }
-            // Control dots — the selected one larger + accented.
-            let dot = Color::new([0.95, 0.95, 0.97, 0.95]); // LITERAL-COLOR-OK: curve point
-            let sel = Color::new([1.0, 0.62, 0.20, 1.0]); // LITERAL-COLOR-OK: selected curve point
+            // Control anchors — themed Sprite-gizmo handles; the SELECTED one reads as a circle, the rest as
+            // rounded squares (a themed selection cue that keeps the sprite-gizmo look).
             for (i, &p) in overlay.points.iter().enumerate() {
-                let is_sel = overlay.selected == Some(i);
-                let r = if is_sel { 6.0 } else { 4.0 };
-                let c = if is_sel { sel } else { dot };
-                scene.fill(
-                    Fill::NonZero,
-                    Affine::IDENTITY,
-                    &Brush::Solid(c),
-                    None,
-                    &Circle::new(map(p), r),
-                );
+                let sp = map(p);
+                if overlay.selected == Some(i) {
+                    super::painter_bridge_gizmo::circle_handle(scene, sp, &pal);
+                } else {
+                    super::painter_bridge_gizmo::square_handle(scene, sp, &pal);
+                }
             }
         }
     }

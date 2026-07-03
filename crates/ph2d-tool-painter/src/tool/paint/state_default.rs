@@ -46,14 +46,13 @@ impl Default for PaintState {
             selection_bool_op: 0,           // New (replace)
             selection_threshold: 0.5,       // mid tolerance for Automatic
             selection_overlay_opacity: 0.2, // subtle hatch by default (Enio 2026-07-02)
-            selection_edit_saved_method: None,
             selection_drag: None,
             selection_base: Arc::new(Vec::new()),
             selection_crisp: Arc::new(Vec::new()),
             selection_feather: 0.0,
             selection_edit_mode: false,
             selection_shapes: Vec::new(),
-            selection_edit_idx: None,
+            selection_grab: None,
             selection_clipboard: None,
 
             // Composite off by default; the default stack is the natural read of the card (top→bottom):

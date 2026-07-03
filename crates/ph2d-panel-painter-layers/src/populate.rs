@@ -227,6 +227,9 @@ pub fn populate(store: &mut WidgetStore) {
         .chain(ph2d_editor_core::ids::PAINTER_SEL_WAVE5_IDS.iter())
         .chain(std::iter::once(&ph2d_editor_core::ids::PAINTER_SEL_EDIT))
         .chain(std::iter::once(&ph2d_editor_core::ids::PAINTER_SEL_CONVERT))
+        .chain(std::iter::once(
+            &ph2d_editor_core::ids::PAINTER_SEL_SIMPLIFY,
+        ))
         .copied()
     {
         store.register(

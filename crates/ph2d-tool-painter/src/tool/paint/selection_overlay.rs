@@ -92,6 +92,10 @@ impl PainterTool {
                 self.selection_convert_to_curve();
                 true
             }
+            PanelEvent::Click(id) if *id == core_ids::PAINTER_SEL_SIMPLIFY => {
+                self.selection_simplify_curve();
+                true
+            }
             PanelEvent::Click(id) if *id == core_ids::PAINTER_SEL_INVERT => {
                 self.invert_selection();
                 true
@@ -122,10 +126,6 @@ impl PainterTool {
             }
             PanelEvent::SetValue(id, v) if *id == core_ids::PAINTER_SEL_THRESHOLD_SLIDER => {
                 self.set_selection_threshold(*v as f32);
-                true
-            }
-            PanelEvent::SetValue(id, v) if *id == core_ids::PAINTER_SEL_OFFSET_SLIDER => {
-                self.set_selection_offset(*v as f32);
                 true
             }
             PanelEvent::SetValue(id, v) if *id == core_ids::PAINTER_SEL_OPACITY_SLIDER => {

@@ -30,10 +30,10 @@ impl CanvasPaintTool for PainterTool {
         // precedes the paintable-target gate. Routes to the mode engine (Automatic / Freehand / Rectangle /
         // Ellipse + Add/Remove operators); the mask joins the single undo queue on pen-up.
         if matches!(self.paint.paint_mode, super::PaintMode::Selection) {
-            // Edit mode: the boundary is an editable NATIVE gizmo (Ellipse / closed Curve — ADR-0103 Am.2).
-            // Route pointers to the active editor, then recomposite the mask from the shape list.
+            // "Show Selection Gizmos" mode: EVERY shape's isolated gizmo is live (ADR-0103 Am.2 v2). Route
+            // pointers to the isolated gizmo system (never the stroke editors), which recomposites the mask.
             if self.paint.selection_edit_mode {
-                return self.selection_edit_pointer(ev);
+                return self.selection_gizmo_pointer(ev);
             }
             return self.selection_pointer(ev);
         }

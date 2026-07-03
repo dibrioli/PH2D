@@ -85,7 +85,11 @@ impl PainterTool {
             points.iter().map(|p| [*p, *p]).collect()
         };
         self.paint.selection_shapes = vec![SelectionEntry {
-            shape: SelectionShape::Freehand { points, handles },
+            shape: SelectionShape::Freehand {
+                points,
+                handles,
+                u: [1.0, 0.0],
+            },
             op: 0,
         }];
         self.paint.selection_edit_mode = true; // keep the gizmos shown on the new curve
@@ -105,13 +109,12 @@ impl PainterTool {
         if !one_freehand {
             return;
         }
-        // Flatten the current curve to a dense polyline, then re-fit it to a sparse Bézier.
-        let SelectionShape::Freehand {
-            points, handles, ..
-        } = &self.paint.selection_shapes[0].shape
+        // Flatten the current curve to a dense polyline, then re-fit it to a sparse Bézier (keeping `u`).
+        let SelectionShape::Freehand { points, handles, u } = &self.paint.selection_shapes[0].shape
         else {
             return;
         };
+        let u = *u;
         let spine = self.freehand_spine(points, handles);
         if spine.len() < 3 {
             return;
@@ -124,6 +127,7 @@ impl PainterTool {
         self.paint.selection_shapes[0].shape = SelectionShape::Freehand {
             points: fit.anchors,
             handles: fit.handles,
+            u,
         };
         self.recompose_selection_mask();
         self.commit_structural_edit(before);

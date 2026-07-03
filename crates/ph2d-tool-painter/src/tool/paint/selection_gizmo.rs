@@ -108,13 +108,38 @@ fn shape_frame(shape: &SelectionShape) -> Option<Frame> {
             hx: *rx,
             hy: *ry,
         }),
-        SelectionShape::Freehand { points, .. } => {
-            let (mn, mx) = bbox(points);
+        SelectionShape::Freehand { points, u, .. } => {
+            // ORIENTED bounding box in the stored `u`/`v` frame, so the box rotates WITH the selection.
+            let uu = unit_or(*u, [1.0, 0.0]);
+            let v = [-uu[1], uu[0]];
+            let (mut umin, mut umax, mut vmin, mut vmax) = (
+                f32::INFINITY,
+                f32::NEG_INFINITY,
+                f32::INFINITY,
+                f32::NEG_INFINITY,
+            );
+            for p in points {
+                let du = dot(*p, uu);
+                let dv = dot(*p, v);
+                umin = umin.min(du);
+                umax = umax.max(du);
+                vmin = vmin.min(dv);
+                vmax = vmax.max(dv);
+            }
+            if !umin.is_finite() {
+                return Some(Frame {
+                    center: [0.0, 0.0],
+                    u: uu,
+                    hx: 0.5,
+                    hy: 0.5,
+                });
+            }
+            let (uc, vc) = ((umin + umax) * 0.5, (vmin + vmax) * 0.5);
             Some(Frame {
-                center: [(mn[0] + mx[0]) * 0.5, (mn[1] + mx[1]) * 0.5],
-                u: [1.0, 0.0],
-                hx: ((mx[0] - mn[0]) * 0.5).max(0.5),
-                hy: ((mx[1] - mn[1]) * 0.5).max(0.5),
+                center: [uc * uu[0] + vc * v[0], uc * uu[1] + vc * v[1]],
+                u: uu,
+                hx: ((umax - umin) * 0.5).max(0.5),
+                hy: ((vmax - vmin) * 0.5).max(0.5),
             })
         }
         SelectionShape::Raster { .. } => None,
@@ -172,7 +197,9 @@ impl PainterTool {
                 ry,
                 sides,
             } => sel_polygon_vertices(*center, *u, *rx, *ry, *sides),
-            SelectionShape::Freehand { points, handles } => self.freehand_spine(points, handles),
+            SelectionShape::Freehand {
+                points, handles, ..
+            } => self.freehand_spine(points, handles),
             SelectionShape::Raster { .. } => Vec::new(),
         }
     }
@@ -375,9 +402,13 @@ fn transform_shape(
             ry: *ry,
             sides: *sides,
         },
-        SelectionShape::Freehand { points, handles } => SelectionShape::Freehand {
+        SelectionShape::Freehand {
+            points, handles, ..
+        } => SelectionShape::Freehand {
             points: points.iter().map(|&p| xf(p)).collect(),
             handles: handles.iter().map(|h| [xf(h[0]), xf(h[1])]).collect(),
+            // The box orientation follows the shape (identity for move; rotated for rotate).
+            u: new_u,
         },
         SelectionShape::Raster { .. } => shape.clone(),
     }
@@ -402,7 +433,9 @@ fn scale_shape(shape: &SelectionShape, f: &Frame, nhx: f32, nhy: f32) -> Selecti
             ry: nhy,
             sides: *sides,
         },
-        SelectionShape::Freehand { points, handles } => {
+        SelectionShape::Freehand {
+            points, handles, ..
+        } => {
             let (c, u, v) = (f.center, f.u, f.v());
             let sx = nhx / f.hx.max(0.001);
             let sy = nhy / f.hy.max(0.001);
@@ -415,6 +448,7 @@ fn scale_shape(shape: &SelectionShape, f: &Frame, nhx: f32, nhy: f32) -> Selecti
             SelectionShape::Freehand {
                 points: points.iter().map(|&p| scale(p)).collect(),
                 handles: handles.iter().map(|h| [scale(h[0]), scale(h[1])]).collect(),
+                u: f.u, // scaling keeps the box orientation
             }
         }
         SelectionShape::Raster { .. } => shape.clone(),
@@ -442,22 +476,6 @@ fn drag_sides(shape: &SelectionShape, f: &Frame, pos: [f32; 2], tol: f32) -> Sel
         ry: *ry,
         sides,
     }
-}
-
-/// Axis-aligned bounding box `(min, max)` of `points` (origin when empty).
-fn bbox(points: &[[f32; 2]]) -> ([f32; 2], [f32; 2]) {
-    let mut mn = [f32::INFINITY, f32::INFINITY];
-    let mut mx = [f32::NEG_INFINITY, f32::NEG_INFINITY];
-    for p in points {
-        mn[0] = mn[0].min(p[0]);
-        mn[1] = mn[1].min(p[1]);
-        mx[0] = mx[0].max(p[0]);
-        mx[1] = mx[1].max(p[1]);
-    }
-    if !mn[0].is_finite() {
-        return ([0.0, 0.0], [0.0, 0.0]);
-    }
-    (mn, mx)
 }
 
 fn dot(a: [f32; 2], b: [f32; 2]) -> f32 {

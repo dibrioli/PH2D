@@ -173,13 +173,15 @@ pub(super) fn draw_transform_gizmo(
 }
 
 /// A **sides** handle — a diamond (rotated square: Accent fill + BorderEmph 1 px outline), so the polygon's
-/// side-count handle reads distinctly from the round rotate handle.
+/// side-count handle reads distinctly from the round rotate handle. DOUBLE the square size so it stands out
+/// (Enio 2026-07-03).
 pub(super) fn diamond_handle(scene: &mut Scene, p: Point, pal: &GizmoPalette) {
+    const DIAMOND_HALF: f64 = HANDLE_HALF * 2.0;
     let mut path = BezPath::new();
-    path.move_to(Point::new(p.x, p.y - HANDLE_HALF)); // top
-    path.line_to(Point::new(p.x + HANDLE_HALF, p.y)); // right
-    path.line_to(Point::new(p.x, p.y + HANDLE_HALF)); // bottom
-    path.line_to(Point::new(p.x - HANDLE_HALF, p.y)); // left
+    path.move_to(Point::new(p.x, p.y - DIAMOND_HALF)); // top
+    path.line_to(Point::new(p.x + DIAMOND_HALF, p.y)); // right
+    path.line_to(Point::new(p.x, p.y + DIAMOND_HALF)); // bottom
+    path.line_to(Point::new(p.x - DIAMOND_HALF, p.y)); // left
     path.close_path();
     scene.fill(
         Fill::NonZero,

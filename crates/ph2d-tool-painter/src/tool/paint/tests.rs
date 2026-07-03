@@ -7426,3 +7426,46 @@ fn selection_freehand_transform_move_shifts_the_selection() {
         "the y position is unchanged by a horizontal move ({before:?} -> {after:?})"
     );
 }
+
+/// The Freehand gizmo BOX rotates WITH the selection (its stored `u` follows the rotate handle) — the box
+/// corners stop being axis-aligned after a rotation (Enio 2026-07-03 fix).
+#[test]
+fn selection_freehand_gizmo_box_rotates_with_the_selection() {
+    let mut t = white_canvas(160, 4.0);
+    t.set_paint_tool_mode("selection");
+    t.set_selection_mode(1); // Freehand
+    t.on_canvas_pointer(cp([40.0, 40.0], PointerPhase::Down));
+    for p in [[90.0, 42.0], [95.0, 70.0], [50.0, 78.0], [36.0, 66.0]] {
+        t.on_canvas_pointer(cp(p, PointerPhase::Move));
+    }
+    t.on_canvas_pointer(cp([40.0, 40.0], PointerPhase::Up));
+    t.toggle_selection_edit();
+    let g = t.selection_gizmos().remove(0);
+    let (center, corners) = (g.center, g.box_corners);
+    assert!(
+        (corners[0][1] - corners[1][1]).abs() < 0.5,
+        "the box starts axis-aligned (TL.y == TR.y)"
+    );
+    // Grab the rotate ring just BEYOND the TR corner (along centre→corner) and swing it ~35°.
+    let tr = corners[1];
+    let dir = {
+        let d = [tr[0] - center[0], tr[1] - center[1]];
+        let m = (d[0] * d[0] + d[1] * d[1]).sqrt().max(1e-3);
+        [d[0] / m, d[1] / m]
+    };
+    let ring = [tr[0] + dir[0] * 10.0, tr[1] + dir[1] * 10.0];
+    let (s, c) = 0.6f32.sin_cos(); // ~34°
+    let r = [ring[0] - center[0], ring[1] - center[1]];
+    let rotated = [
+        center[0] + r[0] * c - r[1] * s,
+        center[1] + r[0] * s + r[1] * c,
+    ];
+    t.on_canvas_pointer(cp(ring, PointerPhase::Down));
+    t.on_canvas_pointer(cp(rotated, PointerPhase::Move));
+    t.on_canvas_pointer(cp(rotated, PointerPhase::Up));
+    let after = t.selection_gizmos().remove(0).box_corners;
+    assert!(
+        (after[0][1] - after[1][1]).abs() > 3.0,
+        "after rotating, the box tilts WITH the selection (TL.y != TR.y): {after:?}"
+    );
+}

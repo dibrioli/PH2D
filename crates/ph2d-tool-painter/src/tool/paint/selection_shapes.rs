@@ -32,11 +32,12 @@ pub(crate) enum SelectionShape {
         sides: u32,
     },
     /// Closed editable curve: anchors `points` with `[in, out]` Bézier `handles` (parallel; empty = fill the
-    /// anchors as a plain polygon). Native gizmo = draggable anchor points (dragging an anchor carries its
-    /// handles). Produced by Convert-to-Curve / the Free-Hand lasso.
+    /// anchors as a plain polygon), plus the transform-gizmo orientation `u` (so the box rotates WITH the
+    /// selection — updated by the rotate handle). Produced by Convert-to-Curve / the Free-Hand lasso.
     Freehand {
         points: Vec<[f32; 2]>,
         handles: Vec<[[f32; 2]; 2]>,
+        u: [f32; 2],
     },
     /// Non-parametric coverage (Automatic flood) — no gizmo; rasterizes to its stored buffer verbatim.
     Raster { crisp: Arc<Vec<u8>> },
@@ -92,7 +93,9 @@ impl PainterTool {
                 ry,
                 sides,
             } => self.raster_lasso(&sel_polygon_vertices(*center, *u, *rx, *ry, *sides)),
-            SelectionShape::Freehand { points, handles } => {
+            SelectionShape::Freehand {
+                points, handles, ..
+            } => {
                 let spine = self.freehand_spine(points, handles);
                 if spine.len() < 3 {
                     return cov;

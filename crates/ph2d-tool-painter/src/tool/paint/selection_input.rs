@@ -233,6 +233,7 @@ impl PainterTool {
                 let shape = SelectionShape::Freehand {
                     points,
                     handles: Vec::new(),
+                    u: [1.0, 0.0],
                 };
                 (region, Some(shape))
             }

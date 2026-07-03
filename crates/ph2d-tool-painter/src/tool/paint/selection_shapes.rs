@@ -66,6 +66,7 @@ impl PainterTool {
     pub(super) fn push_selection_entry(&mut self, shape: SelectionShape, op: u8) {
         if op == 0 {
             self.paint.selection_shapes.clear();
+            self.reset_selection_offset(); // a New selection starts from a clean offset (no rings)
         }
         self.paint
             .selection_shapes
@@ -147,7 +148,10 @@ impl PainterTool {
             }
             combine_into(&mut crisp, &region, e.op);
         }
-        self.set_selection_from_crisp(crisp);
+        // The recomposed crisp is the pre-offset SOURCE; the Offset stage (grow/shrink + concentric rings)
+        // produces the effective mask installed via `set_selection_from_crisp`. Neutral offset ⇒ identity.
+        self.set_selection_offset_source(&crisp);
+        self.apply_selection_offset();
     }
 }
 

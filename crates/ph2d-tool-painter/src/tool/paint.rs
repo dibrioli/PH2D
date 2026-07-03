@@ -102,6 +102,9 @@ mod selection_gizmo;
 pub use selection_gizmo::SelectionGizmoView;
 /// Selection creation input: mode/op/threshold setters + on-canvas pointer gestures (marquee/lasso/flood). [LOC split].
 mod selection_input;
+/// Selection **Offset** (ADR-0103 Am.3): signed-distance grow/shrink + concentric alternating protected /
+/// paint bands driven by Apply & Keep. [LOC split].
+mod selection_offset;
 /// Selection on-canvas overlay (marching ants + hatching) + panel event routing. [LOC split].
 mod selection_overlay;
 /// Selection rasterization: shape → coverage buffers, boolean combine, Feather (box-blur). [LOC split].
@@ -238,6 +241,15 @@ pub(crate) struct PaintState {
     /// In-memory **Copy** buffer of selected pixels (source bbox + coverage-premultiplied RGBA), consumed by
     /// **Paste**. `None` until a Copy. [`selection_actions`].
     selection_clipboard: Option<selection_actions::SelectionClip>,
+    /// **Selection Offset** state (ADR-0103 Am.3) — grow/shrink + concentric protected/paint rings. See
+    /// [`selection_offset`]: `_norm` = slider (`0.5` = no offset); `_active` = ring mode (post-Apply & Keep);
+    /// `_rings` = frozen cumulative band offsets (px, PAINT iff even index); `_source` = the pre-offset crisp
+    /// the offset reads from; `_sdf` = its lazily-cached signed distance field (`<0` inside).
+    selection_offset_norm: f32,
+    selection_offset_active: bool,
+    selection_offset_rings: Vec<f32>,
+    selection_offset_source: Arc<Vec<u8>>,
+    selection_offset_sdf: Arc<Vec<f32>>,
     /// **Composite Brush**: run Brush + Smear + Blur together (a Brush-tool upgrade, panel checkbox). See [`composite`].
     composite_enabled: bool,
     /// The composite layer stack in display order (index 0 = layer 1 = top; run bottom→top per dab). [`composite`].

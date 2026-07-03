@@ -141,6 +141,7 @@ impl PainterTool {
             },
             op: 0,
         }];
+        self.reset_selection_offset(); // a fresh rect selection starts from a clean offset
         self.recompose_selection_mask();
         self.commit_structural_edit(before);
     }
@@ -158,15 +159,9 @@ impl PainterTool {
         self.paint.selection_mask = Arc::new(Vec::new());
         self.paint.selection_crisp = Arc::new(Vec::new());
         self.paint.selection_shapes.clear();
+        self.reset_selection_offset();
         self.invalidate_composite();
         self.commit_structural_edit(before);
-    }
-
-    /// The selection **Offset** slider position (`0..1`) — retained for the panel snapshot; the grow/shrink
-    /// re-integration for the isolated multi-gizmo model is a follow-up.
-    #[must_use]
-    pub fn selection_offset(&self) -> f32 {
-        self.paint.shape_offset_norm
     }
 
     /// Set the **Feather** amount (`0..1`) and re-derive the effective mask from the crisp accumulator.

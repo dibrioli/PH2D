@@ -104,6 +104,9 @@ impl PainterTool {
         } else {
             Arc::new(vec![0u8; n])
         };
+        if self.paint.selection_bool_op == 0 {
+            self.reset_selection_offset(); // a New gesture (marquee / flood) starts from a clean offset
+        }
         let mut out = vec![0u8; n];
         match self.paint.selection_bool_op {
             // Add: union (max).

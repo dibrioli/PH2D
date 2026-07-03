@@ -107,10 +107,14 @@ pub(crate) fn paint_selection_section(
         brush.selection_overlay_opacity,
     );
 
+    // Offset — grow/shrink the whole selection; after Apply & Keep it sweeps concentric alternating
+    // protected / paint bands (ADR-0103 Am.3). Slider + its two commit buttons, in a helper for the fn cap.
+    y = offset_controls(ctx, theme, x, content_w, y, brush.selection_offset);
+
     y = paint_section_separator(ctx.scene, theme, x, content_w, y);
 
-    // Show Selection Gizmos — reveal EVERY shape's isolated gizmo at once, each manipulable (ADR-0103 Am.2
-    // v2). It does NOT bake a curve; that's Convert's job.
+    // Edit Gizmos — reveal EVERY isolated shape gizmo at once, each manipulable (ADR-0103 Am.2 v2). It
+    // does NOT bake a curve; the Convert button does that.
     y = paint_checkbox_row(
         ctx,
         theme,
@@ -118,7 +122,7 @@ pub(crate) fn paint_selection_section(
         content_w,
         y,
         core_ids::PAINTER_SEL_EDIT,
-        "Show Selection Gizmos",
+        "Edit Gizmos",
         brush.selection_edit,
     );
 
@@ -140,8 +144,19 @@ pub(crate) fn paint_selection_section(
         );
     }
 
-    // Actions — momentary Invert / Clear (a button group; no persistent selection).
-    y = seg_group(
+    // Momentary action rows (Invert / Clear + Wave-5 content actions) — split out for the per-fn LOC cap.
+    action_rows(ctx, theme, x, content_w, y)
+}
+
+/// Paint the momentary action button rows (Invert / Clear, then Layer / Fill / Copy / Paste); returns `y`.
+fn action_rows(
+    ctx: &mut PaintCtx,
+    theme: ph2d_tokens::Theme,
+    x: f32,
+    content_w: f32,
+    y: f32,
+) -> f32 {
+    let y = seg_group(
         ctx,
         theme,
         x,
@@ -155,9 +170,7 @@ pub(crate) fn paint_selection_section(
         ],
         usize::MAX, // none selected — these are actions, not a radio
     );
-
-    // Wave-5 actions — Select layer contents / Color Fill / Copy / Paste.
-    y = seg_group(
+    seg_group(
         ctx,
         theme,
         x,
@@ -172,9 +185,7 @@ pub(crate) fn paint_selection_section(
             (core_ids::PAINTER_SEL_PASTE, "Paste"),
         ],
         usize::MAX,
-    );
-
-    y
+    )
 }
 
 /// Paint the **Operation** card (New / Add / Remove) — a framed surface with a title, at the top of the
@@ -227,6 +238,43 @@ fn operation_card(
         );
     }
     y + card_h + Spacing::Sm.px()
+}
+
+/// Paint the **Offset** row (slider + Apply / Apply & Keep buttons); returns next `y`. Split out of
+/// `paint_selection_section` for the per-fn LOC cap (ADR-0103 Am.3).
+fn offset_controls(
+    ctx: &mut PaintCtx,
+    theme: ph2d_tokens::Theme,
+    x: f32,
+    content_w: f32,
+    y: f32,
+    offset: f32,
+) -> f32 {
+    let y = paint_slider_chip_row(
+        ctx,
+        theme,
+        x,
+        content_w,
+        y,
+        "Offset",
+        core_ids::PAINTER_SEL_OFFSET_SLIDER,
+        core_ids::PAINTER_SEL_OFFSET_CHIP,
+        offset,
+    );
+    seg_group(
+        ctx,
+        theme,
+        x,
+        content_w,
+        y,
+        NodeId(0),
+        "Selection offset commit",
+        &[
+            (core_ids::PAINTER_SEL_OFFSET_APPLY, "Apply"),
+            (core_ids::PAINTER_SEL_OFFSET_APPLY_KEEP, "Apply & Keep"),
+        ],
+        usize::MAX,
+    )
 }
 
 /// Build + paint one adaptive segmented Toggle group and register its per-segment hits; returns next `y`.
@@ -355,6 +403,21 @@ mod tests {
             !body_hit_ids(rect_mode).contains(&core_ids::PAINTER_SEL_THRESHOLD_SLIDER),
             "Threshold is hidden outside Automatic"
         );
+    }
+
+    #[test]
+    fn offset_slider_and_commit_buttons_paint_in_selection_mode() {
+        let ids = body_hit_ids(selection_brush());
+        for oid in [
+            core_ids::PAINTER_SEL_OFFSET_SLIDER,
+            core_ids::PAINTER_SEL_OFFSET_APPLY,
+            core_ids::PAINTER_SEL_OFFSET_APPLY_KEEP,
+        ] {
+            assert!(
+                ids.contains(&oid),
+                "offset control {oid:?} not painted in Selection mode"
+            );
+        }
     }
 
     #[test]

@@ -7220,6 +7220,64 @@ fn selection_ellipse_gizmo_handle_drag_grows_the_selection() {
     );
 }
 
+/// Plain-mode Offset (before any Apply & Keep) grows the whole selection when swept outward and shrinks it
+/// when swept inward — the mask analogue of the stroke's parallel-curve Offset.
+#[test]
+fn selection_offset_plain_mode_grows_and_shrinks() {
+    let mut t = white_canvas(96, 4.0);
+    t.set_paint_tool_mode("selection");
+    t.set_rect_selection(32, 32, 32, 32); // centred 32×32
+    let base = selected_area(&t, 96);
+    t.set_selection_offset(0.55); // +20px outward
+    assert!(
+        selected_area(&t, 96) > base,
+        "sweeping the offset outward grows the selection"
+    );
+    t.set_selection_offset(0.47); // −12px inward
+    assert!(
+        selected_area(&t, 96) < base,
+        "sweeping the offset inward shrinks the selection"
+    );
+    t.set_selection_offset(0.5); // centred → byte-identical to the un-offset selection
+    assert_eq!(
+        selected_area(&t, 96),
+        base,
+        "a centred offset restores the original area exactly"
+    );
+}
+
+/// Apply & Keep switches the Offset into ring mode: the first swept band is PROTECTED (adds no selected
+/// area), and after freezing it the next band is PAINT (a new concentric selected ring appears) — the
+/// intercalated protected / paint rings the spec describes (ADR-0103 Am.3).
+#[test]
+fn selection_offset_apply_keep_alternates_protected_and_paint_rings() {
+    let mut t = white_canvas(160, 4.0);
+    t.set_paint_tool_mode("selection");
+    t.set_rect_selection(60, 60, 40, 40); // centred 40×40, wide margins
+    let base = selected_area(&t, 160);
+    // AK1 with the slider centred bakes the (unchanged) selection as the base + enters ring mode.
+    t.selection_offset_apply_keep();
+    assert_eq!(
+        selected_area(&t, 160),
+        base,
+        "Apply & Keep with a centred slider keeps the same area"
+    );
+    // Sweep outward → the first ring band is PROTECTED: it adds nothing to the selected area.
+    t.set_selection_offset(0.55); // +20px
+    assert_eq!(
+        selected_area(&t, 160),
+        base,
+        "the first outward band is protected — no new selected pixels"
+    );
+    // Freeze it, then sweep outward again → the next band is PAINT: a concentric selected ring appears.
+    t.selection_offset_apply_keep();
+    t.set_selection_offset(0.55); // +20px past the frozen boundary
+    assert!(
+        selected_area(&t, 160) > base,
+        "the next band is paint — a new concentric selected ring is added"
+    );
+}
+
 /// A Rect selection carries the Polygon gizmo (the sides DIAMOND is present; ellipse/freehand have none)
 /// and fills a rectangle (its CORNERS are selected — an ellipse's would not be).
 #[test]

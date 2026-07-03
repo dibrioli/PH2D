@@ -42,9 +42,18 @@ pub const PAINTER_SEL_STABILIZE_CHIP: NodeId = hash_node_id("painter_sel.stabili
 /// **Overlay opacity** — how strongly the deselected-area hatching reads (a view preference).
 pub const PAINTER_SEL_OPACITY_SLIDER: NodeId = hash_node_id("painter_sel.opacity_slider");
 pub const PAINTER_SEL_OPACITY_CHIP: NodeId = hash_node_id("painter_sel.opacity_chip");
-/// **Offset** (grow/shrink) — expands/contracts the edited boundary (`0.5` = no change). Edit-mode only.
+/// **Offset** (grow/shrink) — expands/contracts the selection boundary (`0.5` = no change). Before the
+/// first Apply & Keep it offsets the whole selection; after it, each Apply & Keep freezes a boundary and
+/// the slider sweeps out concentric **alternating** protected / paint bands (ADR-0103 Am.3, Enio 2026-07-03).
 pub const PAINTER_SEL_OFFSET_SLIDER: NodeId = hash_node_id("painter_sel.offset_slider");
 pub const PAINTER_SEL_OFFSET_CHIP: NodeId = hash_node_id("painter_sel.offset_chip");
+/// **Apply** the offset — bake the current (possibly ringed) selection + leave offset mode (`0.5` slider).
+pub const PAINTER_SEL_OFFSET_APPLY: NodeId = hash_node_id("painter_sel.offset_apply");
+/// **Apply & Keep** — freeze the current offset line as a ring boundary and keep sweeping the next band.
+pub const PAINTER_SEL_OFFSET_APPLY_KEEP: NodeId = hash_node_id("painter_sel.offset_apply_keep");
+/// The two offset-commit buttons (Apply / Apply & Keep) as a button group.
+pub const PAINTER_SEL_OFFSET_APPLY_IDS: [NodeId; 2] =
+    [PAINTER_SEL_OFFSET_APPLY, PAINTER_SEL_OFFSET_APPLY_KEEP];
 /// The Operation card's a11y group id (not hit-indexed; the card is a visual surface).
 pub const PAINTER_SEL_OP_CARD: NodeId = hash_node_id("painter_sel.op_card");
 

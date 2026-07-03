@@ -55,6 +55,26 @@ impl PainterTool {
                 }
             }
         }
+        // Live offset contour: while sweeping a ring band (esp. a PROTECTED one that adds no selected pixels)
+        // draw the offset line explicitly so the user sees "a nova linha" advance. A cyan dashed contour of
+        // the `{ sdf <= level }` region, distinct from the black/white base ants.
+        if let Some(level) = self.selection_offset_live_level() {
+            let sdf = self.selection_offset_sdf();
+            if sdf.len() == wu * hu {
+                for y in 0..hu {
+                    for x in 0..wu {
+                        let idx = y * wu + x;
+                        let inside = sdf[idx] <= level;
+                        let edge = (x + 1 < wu && (sdf[idx + 1] <= level) != inside)
+                            || (y + 1 < hu && (sdf[idx + wu] <= level) != inside);
+                        if edge && (x + y + ant) % DASH < DASH / 2 {
+                            let o = idx * 4;
+                            out[o..o + 4].copy_from_slice(&[0u8, 220, 255, 255]);
+                        }
+                    }
+                }
+            }
+        }
         Some((out, w, h))
     }
 
@@ -96,6 +116,14 @@ impl PainterTool {
                 self.selection_simplify_curve();
                 true
             }
+            PanelEvent::Click(id) if *id == core_ids::PAINTER_SEL_OFFSET_APPLY => {
+                self.selection_offset_apply();
+                true
+            }
+            PanelEvent::Click(id) if *id == core_ids::PAINTER_SEL_OFFSET_APPLY_KEEP => {
+                self.selection_offset_apply_keep();
+                true
+            }
             PanelEvent::Click(id) if *id == core_ids::PAINTER_SEL_INVERT => {
                 self.invert_selection();
                 true
@@ -134,6 +162,10 @@ impl PainterTool {
             }
             PanelEvent::SetValue(id, v) if *id == core_ids::PAINTER_SEL_OPACITY_SLIDER => {
                 self.set_selection_overlay_opacity(*v as f32);
+                true
+            }
+            PanelEvent::SetValue(id, v) if *id == core_ids::PAINTER_SEL_OFFSET_SLIDER => {
+                self.set_selection_offset(*v as f32);
                 true
             }
             _ => false,

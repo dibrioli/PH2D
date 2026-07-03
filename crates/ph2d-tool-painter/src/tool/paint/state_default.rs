@@ -55,6 +55,11 @@ impl Default for PaintState {
             selection_shapes: Vec::new(),
             selection_grab: None,
             selection_clipboard: None,
+            selection_offset_norm: 0.5, // centred → 0px offset (whole selection unchanged)
+            selection_offset_active: false,
+            selection_offset_rings: Vec::new(),
+            selection_offset_source: Arc::new(Vec::new()),
+            selection_offset_sdf: Arc::new(Vec::new()),
 
             // Composite off by default; the default stack is the natural read of the card (top→bottom):
             // Brush(1) over Smear(2) over Blur(3). Run bottom→top, that blurs → smears → paints on top.

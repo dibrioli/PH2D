@@ -67,13 +67,38 @@ pub(super) fn trace_all_contours(mask: &[u8], w: usize, h: usize) -> Vec<Vec<[f3
                 push(x, y - 1, &mut stack, &mut work);
             }
         }
-        let mut c = trace_contour_raw(&comp, w, h); // RAW dense boundary → smooth stroke (not polygonal)
-        if c.len() >= 3 {
-            c.push(c[0]); // CLOSE the loop so the stroke has no gap at the seam (Enio 2026-07-04)
+        let raw = trace_contour_raw(&comp, w, h); // RAW dense boundary (not the DP-simplified polygon)
+        if raw.len() >= 3 {
+            // Smooth the ±0.5px pixel staircase so the stroked contour reads as regular as a direct ellipse
+            // outline (Enio 2026-07-04: Add/Remove was "discretamente irregular"), then CLOSE the loop so the
+            // stroke has no gap at the seam.
+            let mut c = smooth_closed(&raw, 2);
+            c.push(c[0]);
             out.push(c);
         }
     }
     out
+}
+
+/// A gentle closed-polyline smoother (3-point moving average, wrap-around, `passes` times) — removes the
+/// 1px raster staircase of a traced contour while barely moving it, so a brush stroked along it is smooth.
+fn smooth_closed(pts: &[[f32; 2]], passes: usize) -> Vec<[f32; 2]> {
+    let n = pts.len();
+    if n < 3 {
+        return pts.to_vec();
+    }
+    let mut cur = pts.to_vec();
+    for _ in 0..passes {
+        let mut next = cur.clone();
+        for i in 0..n {
+            let a = cur[(i + n - 1) % n];
+            let b = cur[i];
+            let d = cur[(i + 1) % n];
+            next[i] = [(a[0] + b[0] + d[0]) / 3.0, (a[1] + b[1] + d[1]) / 3.0];
+        }
+        cur = next;
+    }
+    cur
 }
 
 /// Trace the outer contour of the selection mask (Moore-neighbour, clockwise), then simplify it. Returns a

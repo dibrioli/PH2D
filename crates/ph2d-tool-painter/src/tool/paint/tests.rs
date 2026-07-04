@@ -8473,3 +8473,68 @@ fn two_overlapping_closed_line_squares_union() {
         "the overlap centre is inside the union → the shared vertical edges vanished"
     );
 }
+
+/// Regression (Enio 2026-07-04): a brush stroke, UNDO everything, then a selection — the selection must
+/// still draw (the two systems must not interfere).
+#[test]
+fn selection_works_after_stroking_and_undoing_everything() {
+    let mut t = white_canvas(64, 3.0);
+    // A brush stroke.
+    t.on_canvas_pointer(cp([20.0, 20.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([40.0, 40.0], PointerPhase::Move));
+    t.on_canvas_pointer(cp([40.0, 40.0], PointerPhase::Up));
+    assert_ne!(px(&t, 64, 20, 20), [255, 255, 255, 255], "stroke painted");
+    // Undo until nothing is left.
+    let mut guard = 0;
+    while t.undo_last() && guard < 50 {
+        guard += 1;
+    }
+    // Now use the selection system (Rectangle).
+    t.set_paint_tool_mode("selection");
+    t.set_selection_mode(2);
+    t.on_canvas_pointer(cp([10.0, 10.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([30.0, 30.0], PointerPhase::Up));
+    // The SHELL draws the selection overlay only when `selection_active()` AND `selection_overlay_rgba` is
+    // Some — assert BOTH, not just the raw mask, so a stuck `selection_active` is caught.
+    assert!(
+        t.selection_active(),
+        "selection_active set after stroke+undo+select"
+    );
+    assert!(
+        t.selection_overlay_rgba(0).is_some(),
+        "the shell selection overlay has pixels to draw"
+    );
+    assert!(
+        t.selection_coverage_at(20, 20) > 0,
+        "the selection is applied after stroke+undo (systems must not interfere)"
+    );
+}
+
+/// Same regression but with a SHAPE stroke (ellipse via the multi-shape system) — draw, Apply, undo all,
+/// then a selection must still draw (drag_preview / parked-shape state must not leak into selection).
+#[test]
+fn selection_works_after_shape_stroke_and_undo() {
+    let mut t = white_canvas(64, 3.0);
+    t.paint.brush.stroke_method = StrokeMethod::Ellipse;
+    t.on_canvas_pointer(cp([20.0, 20.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([30.0, 20.0], PointerPhase::Move));
+    t.on_canvas_pointer(cp([30.0, 20.0], PointerPhase::Up));
+    t.commit_open_shape(); // Apply (bake)
+    let mut guard = 0;
+    while t.undo_last() && guard < 50 {
+        guard += 1;
+    }
+    t.set_paint_tool_mode("selection");
+    t.set_selection_mode(2);
+    t.on_canvas_pointer(cp([10.0, 40.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([30.0, 55.0], PointerPhase::Up));
+    assert!(
+        t.selection_coverage_at(20, 47) > 0,
+        "selection draws after a shape stroke + undo"
+    );
+    assert!(!t.has_parked_shapes(), "no parked shapes leaked past undo");
+    assert!(
+        t.paint.drag_preview.is_none(),
+        "no stale stroke preview leaked into selection"
+    );
+}

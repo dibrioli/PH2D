@@ -353,9 +353,11 @@ impl PainterTool {
         // Spacing 5% for dense dabs — see `state_default`). No-op when settings are linked. Must run while
         // `paint_mode` still holds the OLD mode, so the current tool's edits save to the right slot.
         self.switch_brush_slot(new_mode);
-        // Leaving Deform ends its session (drops the `pre`/displacement) so a later mode's edits aren't
-        // re-warped from a stale baseline; the deformed pixels are already committed per-stroke.
+        // Leaving Deform bakes any live Transform float (committing it as one undo entry) and ends the
+        // Reshape session (drops the `pre`/displacement) so a later mode's edits aren't re-warped from a
+        // stale baseline; the Reshape pixels are already committed per-stroke.
         if self.paint.paint_mode == PaintMode::Deform && new_mode != PaintMode::Deform {
+            self.end_transform(true);
             self.end_deform_session();
         }
         self.paint.paint_mode = new_mode;

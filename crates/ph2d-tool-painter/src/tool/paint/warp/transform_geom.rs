@@ -135,19 +135,6 @@ impl TransformFrame {
             mk(0.0, -1.0),  // 7 B
         ]
     }
-    /// Serialize as `[cx, cy, ux, uy, hx, hy]` for the undo snapshot.
-    pub(crate) fn to_array(self) -> [f32; 6] {
-        [self.center[0], self.center[1], self.u[0], self.u[1], self.hx, self.hy]
-    }
-    /// Deserialize from the undo snapshot.
-    pub(crate) fn from_array(a: [f32; 6]) -> TransformFrame {
-        TransformFrame {
-            center: [a[0], a[1]],
-            u: unit_or([a[2], a[3]], [1.0, 0.0]),
-            hx: a[4].max(MIN_AXIS_PX),
-            hy: a[5].max(MIN_AXIS_PX),
-        }
-    }
 }
 
 /// The affine that maps frame `f0`'s box onto frame `f1`'s box: `M = A1 ∘ A0⁻¹` (unit→world of `f1` after
@@ -411,19 +398,5 @@ mod tests {
         let f0 = frame(0.0, 0.0, 10.0, 10.0);
         let f1 = drag_frame(&f0, H_ROTATE, [10.0, 0.0], [0.0, 10.0], false);
         assert!(f1.u[0].abs() < 1e-2 && (f1.u[1] - 1.0).abs() < 1e-2, "u≈(0,1): {:?}", f1.u);
-    }
-
-    #[test]
-    fn frame_round_trips_through_array() {
-        let f = TransformFrame {
-            center: [12.0, -3.0],
-            u: unit_or([1.0, 1.0], [1.0, 0.0]),
-            hx: 7.0,
-            hy: 9.0,
-        };
-        let g = TransformFrame::from_array(f.to_array());
-        assert!((g.center[0] - f.center[0]).abs() < 1e-4);
-        assert!((g.u[0] - f.u[0]).abs() < 1e-4 && (g.u[1] - f.u[1]).abs() < 1e-4);
-        assert!((g.hx - f.hx).abs() < 1e-4 && (g.hy - f.hy).abs() < 1e-4);
     }
 }

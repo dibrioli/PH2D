@@ -13,6 +13,7 @@ mod apply;
 mod field;
 mod reconstruct;
 mod transform;
+mod transform_float;
 mod transform_geom;
 
 pub use transform::DeformGizmoView;
@@ -61,6 +62,17 @@ pub(crate) struct DeformState {
     pub(crate) xform: Option<transform::Xform>,
     /// The active gizmo handle grab (pristine frame + pointer at grab; transient, not snapshotted).
     pub(crate) xform_grab: Option<transform::TransformGrab>,
+    /// The **floating patch** lifted when Transform begins (Procreate model): the selected pixels are cut out
+    /// (marquee gone) into `patch`, the rest becomes `base` (a hole where the patch was), and the gizmo
+    /// moves/scales/rotates the patch freely over the base. `None` in Reshape / before a lift. Scanned once,
+    /// so each gizmo move only touches the patch's source + destination bbox — not the whole canvas.
+    pub(crate) xform_patch: Option<transform::FloatingPatch>,
+    /// The undo baseline captured at lift — the WHOLE transform commits as ONE structural edit when it ends
+    /// (Apply / temperament switch / tool change), like Procreate's single-step Transform.
+    pub(crate) xform_before: Option<crate::undo::ModelSnapshot>,
+    /// The bbox rendered by the previous composite — unioned into the next one's dirty rect so texels the
+    /// patch moved AWAY from are repainted back to `base` (dirty-rect correctness). Transient.
+    pub(crate) xform_last_bbox: Option<Region>,
 
     // ── Session (transient) ──
     /// Pristine pixels at the session start — Reconstruct fades back to this, Reset restores it wholesale.
@@ -96,6 +108,9 @@ impl Default for DeformState {
             transform_mode: 0,   // Uniform
             xform: None,
             xform_grab: None,
+            xform_patch: None,
+            xform_before: None,
+            xform_last_bbox: None,
             pre: Arc::new(Vec::new()),
             active: false,
             last_pos: None,
@@ -136,9 +151,13 @@ impl PainterTool {
 
     // ── Session verbs (Card D) ──
 
-    /// **Reset** — discard the whole session's deformation, restoring the pre-deform pixels. One structural
-    /// undo entry; no-op when no session is active.
+    /// **Reset** — discard the deformation. In Transform this snaps the floating patch back to its origin
+    /// (the transform stays live); in Reshape it restores the pre-deform pixels (one undo entry).
     pub fn deform_reset(&mut self) {
+        if self.paint.deform.transform_on && self.paint.deform.xform_patch.is_some() {
+            self.reset_transform();
+            return;
+        }
         if !self.paint.deform.active {
             return;
         }
@@ -148,25 +167,30 @@ impl PainterTool {
         self.mark_full_dirty();
         self.commit_structural_edit(before);
     }
-    /// **Apply** — finalize: keep the deformed pixels (already committed) and close the session, so the next
-    /// stroke captures a fresh pre-deform baseline. Undo still reaches earlier strokes via their snapshots.
+    /// **Apply** — finalize: bake the current pixels and close the session. In Transform this commits the
+    /// float (one undo entry) then re-lifts the baked layer so you can keep transforming; in Reshape it
+    /// closes the disp session so the next stroke captures a fresh baseline.
     pub fn deform_apply(&mut self) {
+        if self.paint.deform.transform_on && self.paint.deform.xform_patch.is_some() {
+            self.end_transform(true);
+            self.begin_transform();
+            return;
+        }
         self.end_deform_session();
     }
-    /// **Apply & Keep** — bank the current pixels as the new session baseline (Reconstruct now un-warps
-    /// toward *this* state) and keep deforming: rebase `pre` to the current canvas and zero the accumulated
-    /// displacement. No-op without an active session.
+    /// **Apply & Keep** — bank the current pixels as the new baseline and keep deforming. In Transform this
+    /// is the same as Apply (commit + re-lift); in Reshape it rebases `pre` to the current canvas and zeroes
+    /// the accumulated displacement.
     pub fn deform_apply_keep(&mut self) {
+        if self.paint.deform.transform_on && self.paint.deform.xform_patch.is_some() {
+            self.end_transform(true);
+            self.begin_transform();
+            return;
+        }
         if self.paint.deform.active {
             self.paint.deform.pre = Arc::clone(&self.canvas_rgba);
             for d in Arc::make_mut(&mut self.paint.deform.disp) {
                 *d = [0.0, 0.0];
-            }
-            // Rebase the gizmo frame to the newly-banked content (identity from the new baseline).
-            self.paint.deform.xform = None;
-            self.paint.deform.xform_grab = None;
-            if self.paint.deform.transform_on {
-                self.ensure_xform();
             }
         }
     }
@@ -378,9 +402,8 @@ impl PainterTool {
         self.paint.deform.disp = Arc::new(Vec::new());
         self.paint.deform.last_pos = None;
         self.paint.deform.momentum_vec = [0.0, 0.0];
-        // The Transform gizmo frame belongs to the session — drop it so a fresh session re-derives its box.
-        self.paint.deform.xform = None;
-        self.paint.deform.xform_grab = None;
+        // NB: the Transform float (`xform`/`xform_patch`/…) has its OWN lifecycle (`begin_transform` /
+        // `end_transform`); it is not part of the Reshape disp session, so it is left untouched here.
     }
 
     /// Mark the whole canvas dirty (used after a wholesale Reset).

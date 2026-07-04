@@ -87,10 +87,6 @@ pub struct ModelSnapshot {
     pub(crate) deform_disp: Arc<Vec<[f32; 2]>>,
     pub(crate) deform_pre: Arc<Vec<u8>>,
     pub(crate) deform_active: bool,
-    /// The **Transform** gizmo frame at capture (`[cx, cy, ux, uy, hx, hy]`), or `None` when the session has
-    /// no gizmo (Reshape-only). Captured next to `deform_disp` so an undo rolls the gizmo box back with the
-    /// pixels (Deform Wave 2); the pristine frame is re-derived from `deform_pre` on restore.
-    pub(crate) deform_xform: Option<[f32; 6]>,
 }
 
 /// Plain-data snapshot of an open on-canvas shape editor, stored in a [`ModelSnapshot`] so a structural
@@ -348,7 +344,6 @@ mod tests {
             deform_disp: Arc::new(Vec::new()),
             deform_pre: Arc::new(Vec::new()),
             deform_active: false,
-            deform_xform: None,
         }
     }
 

@@ -1,30 +1,23 @@
 //! **Transform** temperament (Deform Wave 2) — the gizmo-driven half of Deform. Where Reshape ([`super::field`])
-//! pushes pixels with a brush, Transform warps a whole region by a matrix `M` set from bounding-box handles:
-//! Uniform / Free (affine) here, Distort (homography) + Warp (mesh) in later steps. It feeds the SAME
-//! inverse-warp sink as Reshape — the session `disp` map — by writing `D(p) = p − M⁻¹·p`, so `apply.rs`'s
-//! single-resample render stays intact. The affine primitive + gizmo geometry live in [`super::transform_geom`]
-//! (pure math, HR-5 transcendental-free); this module is the tool-side wiring (session state, pointer,
-//! kernel, undo glue).
+//! pushes pixels with a brush, Transform LIFTS the selected pixels into a floating patch and moves/scales/
+//! rotates that patch freely over the layer (Procreate model — see [`super::transform_float`] for the lift +
+//! composite). This module holds the tool-side wiring: temperament state, the gizmo frame + pointer, and the
+//! affine built from the drag. The affine primitive + gizmo geometry live in [`super::transform_geom`] (pure
+//! math, HR-5 transcendental-free).
 //!
-//! **Model.** A session holds a PRISTINE frame `F0` (the selection bbox, or the content bbox when nothing is
-//! selected) and a CURRENT frame `F` (`F0` at first, then dragged). The warp is the affine that maps `F0`'s
-//! box onto `F`'s box (`affine_from_frames`) — so `F == F0` ⇒ `M = I` ⇒ `disp = 0` ⇒ **byte-identical**.
-//! Each gizmo drag rebuilds `F` from the PRISTINE-at-grab frame (drift-free, like the selection gizmo) and
-//! re-applies the whole affine from `pre` (absolute, not accumulated → no compound blur). The current frame
-//! is captured in the undo snapshot next to `disp`, so undo rolls the gizmo box back in lock-step with the
-//! pixels.
+//! **Model.** Turning Transform on lifts the patch and frames the gizmo on it (`F0`). Each gizmo drag rebuilds
+//! the CURRENT frame `F` from the pristine-at-grab frame (drift-free, like the selection gizmo) and
+//! re-composites the patch under the affine that maps `F0`'s box onto `F`'s (`affine_from_frames`). `F == F0`
+//! ⇒ `M = I` ⇒ patch sits on its origin ⇒ **byte-identical**. The whole transform is ONE undo entry,
+//! committed when it ends (temperament switch / mode change / Apply).
 
-use super::super::Region;
-use super::apply::bilinear_clamped;
 use super::transform_geom::{
-    Affine2, ROTATE_BAND, TransformFrame, affine_from_frames, drag_frame, hit_frame,
+    ROTATE_BAND, TransformFrame, affine_from_frames, drag_frame, hit_frame,
 };
 use crate::tool::PainterTool;
 use ph2d_editor_core::tool::{CanvasPointer, PointerPhase};
-use std::sync::Arc;
 
-/// Smallest half-extent used when boxing the content/selection (image px) — keeps the basis invertible.
-const MIN_AXIS_PX: f32 = 1.0;
+pub(crate) use super::transform_float::FloatingPatch;
 
 /// The active Transform gizmo grab — carries the PRISTINE current-frame at grab + the pointer position, so
 /// every drag is computed drift-free from the untouched frame (mirrors `SelectionGrab`).
@@ -35,7 +28,7 @@ pub(crate) struct TransformGrab {
     pub initial: TransformFrame,
 }
 
-/// The Transform session: the pristine frame (`M = I` reference) + the current (dragged) frame.
+/// The Transform session frame: the pristine frame (`M = I` reference) + the current (dragged) frame.
 #[derive(Copy, Clone, Debug)]
 pub(crate) struct Xform {
     pub pristine: TransformFrame,
@@ -56,14 +49,19 @@ impl PainterTool {
     // ── Temperament + sub-mode setters (single clamp source; routed from `route_deform_event`) ──
 
     /// Switch the Deform temperament: `false` = Reshape (brush), `true` = Transform (gizmo). Turning
-    /// Transform on starts a session (captures `pre`) and initializes the gizmo frame to the selection /
-    /// content bbox so the box is visible immediately.
+    /// Transform on LIFTS the floating patch (consuming the selection marquee); turning it off bakes the
+    /// patch + commits the whole transform as one undo entry.
     pub fn set_deform_transform_on(&mut self, on: bool) {
+        if self.paint.deform.transform_on == on {
+            return;
+        }
         self.paint.deform.transform_on = on;
-        self.paint.deform.xform_grab = None;
         if on {
-            self.ensure_deform_session();
-            self.ensure_xform();
+            // Reshape and Transform don't share a session — drop any Reshape disp so nothing re-warps.
+            self.end_deform_session();
+            self.begin_transform();
+        } else {
+            self.end_transform(true);
         }
     }
     /// Set the Transform sub-mode: `0` Uniform (aspect-locked corners), `1` Free (independent axes).
@@ -71,82 +69,14 @@ impl PainterTool {
         self.paint.deform.transform_mode = m.min(1);
     }
 
-    /// Ensure the gizmo frame exists, initializing `pristine == current` to the target bbox. No-op once
-    /// initialized.
-    pub(super) fn ensure_xform(&mut self) {
-        if self.paint.deform.xform.is_some() {
-            return;
-        }
-        let f = self.deform_content_frame();
-        self.paint.deform.xform = Some(Xform {
-            pristine: f,
-            current: f,
-        });
-    }
-
-    /// The axis-aligned frame the gizmo starts on: the **selection** bbox when a selection confines the warp,
-    /// else the session's opaque **content** bbox (from `pre`), else the whole canvas. Half-extents are
-    /// clamped `> 0` so the basis is invertible.
-    fn deform_content_frame(&self) -> TransformFrame {
-        let (w, h) = self.source_size;
-        let full = TransformFrame {
-            center: [w as f32 * 0.5, h as f32 * 0.5],
-            u: [1.0, 0.0],
-            hx: (w as f32 * 0.5).max(MIN_AXIS_PX),
-            hy: (h as f32 * 0.5).max(MIN_AXIS_PX),
-        };
-        let n = (w as usize) * (h as usize);
-        if n == 0 {
-            return full;
-        }
-        // A selection confines the transform → box the selection; otherwise box the opaque content.
-        let restrict = self.deform_restricts_to_selection();
-        let (mut x0, mut y0, mut x1, mut y1) = (u32::MAX, u32::MAX, 0u32, 0u32);
-        let mut any = false;
-        if restrict {
-            for y in 0..h {
-                for x in 0..w {
-                    if self.selection_coverage_at(x, y) > 0 {
-                        any = true;
-                        x0 = x0.min(x);
-                        y0 = y0.min(y);
-                        x1 = x1.max(x);
-                        y1 = y1.max(y);
-                    }
-                }
-            }
-        } else if self.paint.deform.pre.len() == n * 4 {
-            let px = &self.paint.deform.pre;
-            for y in 0..h {
-                for x in 0..w {
-                    if px[((y * w + x) as usize) * 4 + 3] > 0 {
-                        any = true;
-                        x0 = x0.min(x);
-                        y0 = y0.min(y);
-                        x1 = x1.max(x);
-                        y1 = y1.max(y);
-                    }
-                }
-            }
-        }
-        if !any {
-            return full;
-        }
-        // Inclusive bbox → +1 to span the far pixel edge.
-        let (fx0, fy0, fx1, fy1) = (x0 as f32, y0 as f32, x1 as f32 + 1.0, y1 as f32 + 1.0);
-        TransformFrame {
-            center: [(fx0 + fx1) * 0.5, (fy0 + fy1) * 0.5],
-            u: [1.0, 0.0],
-            hx: ((fx1 - fx0) * 0.5).max(MIN_AXIS_PX),
-            hy: ((fy1 - fy0) * 0.5).max(MIN_AXIS_PX),
-        }
-    }
-
-    /// Build the gizmo view for the shell overlay — `Some` only in Deform/Transform with a live session +
-    /// initialized frame. Empty otherwise (Reshape draws no box).
+    /// Build the gizmo view for the shell overlay — `Some` only in Deform/Transform with a live floating
+    /// patch + frame. Empty otherwise (Reshape draws no box).
     #[must_use]
     pub fn deform_gizmo(&self) -> Option<DeformGizmoView> {
-        if !self.is_deform_mode() || !self.paint.deform.transform_on || !self.paint.deform.active {
+        if !self.is_deform_mode()
+            || !self.paint.deform.transform_on
+            || self.paint.deform.xform_patch.is_none()
+        {
             return None;
         }
         let f = self.paint.deform.xform?.current;
@@ -163,8 +93,9 @@ impl PainterTool {
 
     // ── Gizmo pointer lifecycle (routed from `canvas_pointer.rs` when Transform is active) ──
 
-    /// Route a canvas pointer to the Transform gizmo. Down grabs a handle (+ opens one structural undo
-    /// entry), Move drags it (rebuilding the affine live), Up commits. Returns `true` iff handled.
+    /// Route a canvas pointer to the Transform gizmo. Down grabs a handle, Move drags it (re-compositing the
+    /// patch live), Up releases (no per-drag undo — the whole transform is one entry). Returns `true` iff
+    /// handled.
     pub(crate) fn deform_gizmo_pointer(&mut self, ev: CanvasPointer) -> bool {
         match ev.phase {
             PointerPhase::Down => self.deform_gizmo_down(ev.pos),
@@ -175,8 +106,10 @@ impl PainterTool {
     }
 
     fn deform_gizmo_down(&mut self, pos: [f32; 2]) -> bool {
-        self.ensure_deform_session();
-        self.ensure_xform();
+        // Lift on demand if the temperament was set without a patch yet (e.g. a selection made afterwards).
+        if self.paint.deform.xform_patch.is_none() {
+            self.begin_transform();
+        }
         let Some(x) = self.paint.deform.xform else {
             return false;
         };
@@ -185,8 +118,6 @@ impl PainterTool {
             // A Down away from every handle doesn't grab — but still consumes (Transform owns the canvas).
             return true;
         };
-        let before = self.snapshot_model();
-        self.paint.stroke_undo = Some(before);
         self.paint.deform.xform_grab = Some(TransformGrab {
             handle,
             start: pos,
@@ -201,90 +132,20 @@ impl PainterTool {
         };
         let uniform = self.paint.deform.transform_mode == 0;
         let new_current = drag_frame(&grab.initial, grab.handle, grab.start, pos, uniform);
-        let pristine = match self.paint.deform.xform {
-            Some(x) => x.pristine,
-            None => return false,
+        let Some(x) = self.paint.deform.xform else {
+            return false;
         };
         self.paint.deform.xform = Some(Xform {
-            pristine,
+            pristine: x.pristine,
             current: new_current,
         });
-        if let Some(m) = affine_from_frames(&pristine, &new_current) {
-            self.apply_affine_transform(m);
+        if let Some(m) = affine_from_frames(&x.pristine, &new_current) {
+            self.composite_transform(m);
         }
         true
     }
 
     fn deform_gizmo_up(&mut self) -> bool {
-        let had = self.paint.deform.xform_grab.take().is_some();
-        if had && let Some(before) = self.paint.stroke_undo.take() {
-            self.commit_structural_edit(before);
-        }
-        had
-    }
-
-    // ── Undo glue (the gizmo frame rides the snapshot next to `disp`) ──
-
-    /// The current gizmo frame for the undo snapshot (serialized), or `None` when no Transform frame exists.
-    pub(crate) fn deform_xform_for_snapshot(&self) -> Option<[f32; 6]> {
-        self.paint.deform.xform.map(|x| x.current.to_array())
-    }
-
-    /// Reinstate the gizmo frame from an undo snapshot. The pristine frame is re-derived from the selection /
-    /// `pre` (stable within a session); `current` is restored so the box + pixels roll back together.
-    pub(crate) fn restore_deform_xform(&mut self, current: Option<[f32; 6]>) {
-        self.paint.deform.xform_grab = None;
-        self.paint.deform.xform = current.map(|a| Xform {
-            pristine: self.deform_content_frame(),
-            current: TransformFrame::from_array(a),
-        });
-    }
-
-    /// Set the session displacement to the affine warp `D(p) = p − M⁻¹·p`, then render from `pre`. Unlike
-    /// Reshape (which ACCUMULATES dabs), a Transform is ABSOLUTE — the gizmo's current matrix defines the
-    /// whole displacement, so this REPLACES `disp` each gizmo update. Identity `M` ⇒ `disp = 0` ⇒
-    /// byte-identical. No-op before a session exists or when `M` is singular. **Selection-confined:** with an
-    /// active selection the warp only moves the selected texels (the rest stay pristine); with no selection
-    /// it transforms the whole sprite.
-    pub(super) fn apply_affine_transform(&mut self, m: Affine2) {
-        let (w, h) = self.source_size;
-        let n = (w as usize) * (h as usize);
-        if self.paint.deform.pre.len() != n * 4 || self.paint.deform.disp.len() != n {
-            return;
-        }
-        let Some(minv) = m.inverse() else {
-            return;
-        };
-        let restrict = self.deform_restricts_to_selection();
-        // Selection coverage snapshot (immutable borrow) before the mutable passes — the per-texel fraction
-        // of the warp that applies (`1` inside the selection, `0` outside; feather rides between).
-        let cover: Vec<f32> = if restrict {
-            let mut v = vec![0.0f32; n];
-            for (i, slot) in v.iter_mut().enumerate() {
-                let (x, y) = ((i as u32 % w), (i as u32 / w));
-                *slot = f32::from(self.selection_coverage_at(x, y)) / 255.0;
-            }
-            v
-        } else {
-            Vec::new()
-        };
-        let src = Arc::clone(&self.paint.deform.pre);
-        let disp = Arc::make_mut(&mut self.paint.deform.disp);
-        let buf = Arc::make_mut(&mut self.canvas_rgba);
-        for i in 0..n {
-            let (x, y) = ((i as u32 % w) as f32, (i as u32 / w) as f32);
-            let src_pt = minv.apply([x, y]);
-            let mut d = [x - src_pt[0], y - src_pt[1]];
-            if restrict {
-                let allow = cover[i];
-                d[0] *= allow;
-                d[1] *= allow;
-            }
-            disp[i] = d;
-            let px = bilinear_clamped(&src, w, h, x - d[0], y - d[1]);
-            let b = i * 4;
-            buf[b..b + 4].copy_from_slice(&px);
-        }
-        self.mark_dirty(Region { x: 0, y: 0, w, h });
+        self.paint.deform.xform_grab.take().is_some()
     }
 }

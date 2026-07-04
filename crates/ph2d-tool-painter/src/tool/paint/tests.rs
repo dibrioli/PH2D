@@ -6190,9 +6190,27 @@ fn deform_transform_is_confined_to_the_selection() {
 }
 
 #[test]
-fn deform_transform_undo_rolls_back_the_gizmo_move() {
-    // Undo restores the pixels AND the gizmo frame in lock-step (Wave 2 snapshot glue). One structural
-    // entry per gizmo drag.
+fn deform_transform_lifts_the_selection_and_leaves_a_hole() {
+    // Procreate model: selecting a region then Transform LIFTS it into a floating patch (the marquee is
+    // consumed) and moving it leaves a transparent hole where it was, the pixels reappearing at the new
+    // spot. Here an opaque block is fully selected, then moved +20 in x.
+    let mut t = deform_square_canvas(80, 20, 20, 40, 40); // opaque block [20,40)²
+    t.set_shape_grab_tol_px(8.0);
+    t.set_rect_selection(20, 20, 20, 20); // select exactly the block
+    t.set_deform_transform_on(true);
+    assert!(!t.selection_active(), "the selection marquee is consumed by the transform");
+    // Grab the block/selection centre (30,30) and drag +20 in x.
+    t.on_canvas_pointer(cp([30.0, 30.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([50.0, 30.0], PointerPhase::Move));
+    t.on_canvas_pointer(cp([50.0, 30.0], PointerPhase::Up));
+    assert_eq!(px(&t, 80, 30, 30)[3], 0, "the original spot is now a transparent hole");
+    assert_eq!(px(&t, 80, 50, 30), [0, 0, 0, 255], "the patch reappears at the moved spot");
+}
+
+#[test]
+fn deform_transform_undo_rolls_back_the_whole_transform() {
+    // The whole Transform commits as ONE undo entry when it ends (Procreate model). After ending it
+    // (temperament → Reshape), undo restores the pre-transform pixels.
     let mut t = deform_square_canvas(64, 20, 20, 44, 44);
     let before = t.canvas_rgba.clone();
     t.set_deform_transform_on(true);
@@ -6200,8 +6218,9 @@ fn deform_transform_undo_rolls_back_the_gizmo_move() {
     t.on_canvas_pointer(cp([44.0, 32.0], PointerPhase::Move));
     t.on_canvas_pointer(cp([44.0, 32.0], PointerPhase::Up));
     assert_ne!(*t.canvas_rgba, *before, "the transform changed pixels");
-    assert!(t.undo_last(), "undo the gizmo drag");
-    assert_eq!(*t.canvas_rgba, *before, "undo restores the pre-drag pixels");
+    t.set_deform_transform_on(false); // ends + commits the transform as one undo entry
+    assert!(t.undo_last(), "undo the whole transform");
+    assert_eq!(*t.canvas_rgba, *before, "undo restores the pre-transform pixels");
 }
 
 // ============================================================================

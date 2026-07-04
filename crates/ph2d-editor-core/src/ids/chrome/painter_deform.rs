@@ -25,11 +25,15 @@ pub const PAINTER_DEFORM_TRANSFORM_MODE_FREE: NodeId =
     hash_node_id("painter_deform.transform_mode_free");
 pub const PAINTER_DEFORM_TRANSFORM_MODE_DISTORT: NodeId =
     hash_node_id("painter_deform.transform_mode_distort");
-/// Transform sub-mode segments in `DeformState::transform_mode` order (`0` Uniform · `1` Free · `2` Distort).
-pub const PAINTER_DEFORM_TRANSFORM_MODE_IDS: [NodeId; 3] = [
+pub const PAINTER_DEFORM_TRANSFORM_MODE_WARP: NodeId =
+    hash_node_id("painter_deform.transform_mode_warp");
+/// Transform sub-mode segments in `DeformState::transform_mode` order (`0` Uniform · `1` Free · `2` Distort
+/// · `3` Warp).
+pub const PAINTER_DEFORM_TRANSFORM_MODE_IDS: [NodeId; 4] = [
     PAINTER_DEFORM_TRANSFORM_MODE_UNIFORM,
     PAINTER_DEFORM_TRANSFORM_MODE_FREE,
     PAINTER_DEFORM_TRANSFORM_MODE_DISTORT,
+    PAINTER_DEFORM_TRANSFORM_MODE_WARP,
 ];
 
 // ── Sub-mode picker (segmented): Push · Twist · Pinch · Wrinkle · Fold · Reconstruct ─────────────────

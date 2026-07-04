@@ -151,7 +151,8 @@ impl PainterTool {
         self.mark_dirty(dirty);
     }
 
-    /// Reset the live transform to identity (the patch snaps back to its source) without ending it.
+    /// Reset the live transform to identity (the patch snaps back to its source) without ending it. Drops
+    /// any free geometry (Distort corners / Warp mesh).
     pub(super) fn reset_transform(&mut self) {
         let Some(x) = self.paint.deform.xform else {
             return;
@@ -162,6 +163,7 @@ impl PainterTool {
             corners: None,
         });
         self.paint.deform.xform_grab = None;
+        self.paint.deform.xform_mesh = None;
         self.composite_transform(Mat3::from_affine(Affine2::IDENTITY));
     }
 
@@ -172,6 +174,7 @@ impl PainterTool {
         if self.paint.deform.xform_patch.take().is_none() {
             self.paint.deform.xform = None;
             self.paint.deform.xform_grab = None;
+            self.paint.deform.xform_mesh = None;
             self.paint.deform.xform_before = None;
             self.paint.deform.xform_last_bbox = None;
             return false;
@@ -179,6 +182,7 @@ impl PainterTool {
         let before = self.paint.deform.xform_before.take();
         self.paint.deform.xform = None;
         self.paint.deform.xform_grab = None;
+        self.paint.deform.xform_mesh = None;
         self.paint.deform.xform_last_bbox = None;
         if commit && let Some(b) = before {
             self.commit_structural_edit(b);
@@ -200,7 +204,7 @@ impl PainterTool {
 }
 
 /// Straight-alpha src-over: `src` over `dst`.
-fn over(src: [u8; 4], dst: [u8; 4]) -> [u8; 4] {
+pub(super) fn over(src: [u8; 4], dst: [u8; 4]) -> [u8; 4] {
     let sa = f32::from(src[3]) / 255.0;
     let da = f32::from(dst[3]) / 255.0;
     let oa = sa + da * (1.0 - sa);
@@ -260,7 +264,7 @@ fn transform_aabb(m: &Mat3, r: Region, w: u32, h: u32) -> Region {
 }
 
 /// The bounding union of two regions.
-fn region_union(a: Region, b: Region) -> Region {
+pub(super) fn region_union(a: Region, b: Region) -> Region {
     if a.w == 0 || a.h == 0 {
         return b;
     }
@@ -280,7 +284,7 @@ fn region_union(a: Region, b: Region) -> Region {
 }
 
 /// Clamp a region to the canvas bounds.
-fn region_clip(r: Region, w: u32, h: u32) -> Region {
+pub(super) fn region_clip(r: Region, w: u32, h: u32) -> Region {
     let x0 = r.x.min(w);
     let y0 = r.y.min(h);
     let x1 = (r.x + r.w).min(w);

@@ -6225,6 +6225,23 @@ fn deform_transform_distort_warps_a_free_corner() {
 }
 
 #[test]
+fn deform_transform_warp_mesh_moves_a_control_point() {
+    // Warp sub-mode: entering it is byte-identical (the mesh seeds on the box); dragging an interior
+    // control point warps the patch locally. Whole-layer float (no selection).
+    let mut t = deform_square_canvas(90, 15, 15, 75, 75); // opaque block [15,75)²
+    t.set_shape_grab_tol_px(12.0);
+    t.set_deform_transform_on(true);
+    let seeded = t.canvas_rgba.clone();
+    t.set_deform_transform_mode(3); // Warp
+    assert_eq!(*t.canvas_rgba, *seeded, "entering Warp is byte-identical");
+    // The 4×4 mesh over the content box [15,75) has an interior point near (35,35); drag it to (45,45).
+    t.on_canvas_pointer(cp([35.0, 35.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([45.0, 45.0], PointerPhase::Move));
+    t.on_canvas_pointer(cp([45.0, 45.0], PointerPhase::Up));
+    assert_ne!(*t.canvas_rgba, *seeded, "dragging a mesh point warps the patch");
+}
+
+#[test]
 fn deform_transform_undo_rolls_back_the_whole_transform() {
     // The whole Transform commits as ONE undo entry when it ends (Procreate model). After ending it
     // (temperament → Reshape), undo restores the pre-transform pixels.

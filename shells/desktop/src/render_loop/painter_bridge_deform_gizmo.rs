@@ -58,6 +58,25 @@ pub(super) fn draw_deform_gizmo(
     let accents = super::painter_bridge_gizmo::GIZMO_ACCENTS;
     let pal = super::painter_bridge_gizmo::palette_accent(hero.theme, accents[0]);
     let scene = vector_scene.inner_mut();
+    // Warp mesh: draw the grid lines connecting adjacent control points + a handle at each point.
+    if let Some((cols, rows, pts)) = &g.mesh {
+        let idx = |r: u32, c: u32| (r * (cols + 1) + c) as usize;
+        for r in 0..=*rows {
+            for c in 0..=*cols {
+                let p = map(pts[idx(r, c)]);
+                if c < *cols {
+                    super::painter_bridge_gizmo::stroke_open(scene, &[p, map(pts[idx(r, c + 1)])], &pal);
+                }
+                if r < *rows {
+                    super::painter_bridge_gizmo::stroke_open(scene, &[p, map(pts[idx(r + 1, c)])], &pal);
+                }
+            }
+        }
+        for &p in pts {
+            super::painter_bridge_gizmo::square_handle(scene, map(p), &pal);
+        }
+        return;
+    }
     // Oriented transform box / distort quad (closed).
     let box_pts: Vec<Point> = g.box_corners.iter().map(|&p| map(p)).collect();
     super::painter_bridge_gizmo::stroke_box(scene, &box_pts, &pal);

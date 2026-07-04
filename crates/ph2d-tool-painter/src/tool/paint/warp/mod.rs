@@ -15,6 +15,7 @@ mod reconstruct;
 mod transform;
 mod transform_float;
 mod transform_geom;
+mod transform_mesh;
 
 pub use transform::DeformGizmoView;
 
@@ -62,6 +63,9 @@ pub(crate) struct DeformState {
     pub(crate) xform: Option<transform::Xform>,
     /// The active gizmo handle grab (pristine frame + pointer at grab; transient, not snapshotted).
     pub(crate) xform_grab: Option<transform::TransformGrab>,
+    /// The **Warp mesh** grid of control points (Distort's big brother): a lattice over the patch whose
+    /// points drag independently, each cell warped by its own homography. `Some` only in the Warp sub-mode.
+    pub(crate) xform_mesh: Option<transform::Mesh>,
     /// The **floating patch** lifted when Transform begins (Procreate model): the selected pixels are cut out
     /// (marquee gone) into `patch`, the rest becomes `base` (a hole where the patch was), and the gizmo
     /// moves/scales/rotates the patch freely over the base. `None` in Reshape / before a lift. Scanned once,
@@ -108,6 +112,7 @@ impl Default for DeformState {
             transform_mode: 0,   // Uniform
             xform: None,
             xform_grab: None,
+            xform_mesh: None,
             xform_patch: None,
             xform_before: None,
             xform_last_bbox: None,

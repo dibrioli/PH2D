@@ -83,6 +83,7 @@ fn paint_transform_body(
             (core_ids::PAINTER_DEFORM_TRANSFORM_MODE_UNIFORM, "Uniform"),
             (core_ids::PAINTER_DEFORM_TRANSFORM_MODE_FREE, "Free"),
             (core_ids::PAINTER_DEFORM_TRANSFORM_MODE_DISTORT, "Distort"),
+            (core_ids::PAINTER_DEFORM_TRANSFORM_MODE_WARP, "Warp"),
         ],
         selected,
     )

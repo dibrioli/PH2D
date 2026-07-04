@@ -18,9 +18,15 @@ use crate::tool::PainterTool;
 use ph2d_editor_core::tool::{CanvasPointer, PointerPhase};
 
 pub(crate) use super::transform_float::FloatingPatch;
+pub(crate) use super::transform_mesh::Mesh;
 
-/// Transform sub-mode: Distort (free-corner homography); `0` Uniform / `1` Free are affine.
+/// Transform sub-modes: `0` Uniform / `1` Free (affine box) · `2` Distort (free-corner homography) ·
+/// `3` Warp (mesh of control points).
 const MODE_DISTORT: u8 = 2;
+const MODE_WARP: u8 = 3;
+/// The Warp mesh lattice size (cells): a 3×3 grid → 4×4 = 16 control points.
+const MESH_COLS: u32 = 3;
+const MESH_ROWS: u32 = 3;
 
 /// The active Transform gizmo grab — carries the PRISTINE state at grab + the pointer position, so every
 /// drag is computed drift-free. Affine drags carry the pristine frame; Distort drags carry the corner index
@@ -32,6 +38,8 @@ pub(crate) struct TransformGrab {
     pub initial: TransformFrame,
     /// `Some` for a Distort corner drag: the 4 corners at grab (the dragged one is `handle`, `0..4`).
     pub initial_corners: Option<[[f32; 2]; 4]>,
+    /// A Warp-mesh control-point drag: `handle` is the point index in `Mesh::current`.
+    pub is_mesh: bool,
 }
 
 /// The Transform session frame: the pristine box (`M = I` reference) + the current affine box, plus the free
@@ -54,6 +62,8 @@ pub struct DeformGizmoView {
     pub rotate_tol: f32,
     /// Distort mode: draw only the 4 `box_corners` as handles (no edges / rotate / centre).
     pub corner_only: bool,
+    /// Warp mode: `(cols, rows, control-points)` — the shell draws the grid lines + a handle per point.
+    pub mesh: Option<(u32, u32, Vec<[f32; 2]>)>,
 }
 
 /// The box's 4 corners `[TL, TR, BR, BL]` (the first four gizmo handles).
@@ -82,12 +92,12 @@ impl PainterTool {
         }
     }
 
-    /// Set the Transform sub-mode: `0` Uniform (aspect-locked corners) · `1` Free (independent axes) ·
-    /// `2` Distort (free-corner perspective). Entering Distort seeds the free quad from the current affine
-    /// box (continuous); leaving Distort resets the transform to identity (the quad can't map back to an
-    /// affine box); Uniform↔Free is a pure relabel. Bake with Apply first to keep a distortion.
+    /// Set the Transform sub-mode: `0` Uniform · `1` Free (affine box) · `2` Distort (free-corner
+    /// perspective) · `3` Warp (mesh). Entering Distort/Warp seeds its geometry from the current affine box
+    /// (continuous, byte-identical); leaving Distort/Warp resets to identity (a general quad/mesh can't map
+    /// back to an affine box). Uniform↔Free is a pure relabel. Bake with Apply first to keep a warp.
     pub fn set_deform_transform_mode(&mut self, m: u8) {
-        let m = m.min(MODE_DISTORT);
+        let m = m.min(MODE_WARP);
         let old = self.paint.deform.transform_mode;
         self.paint.deform.transform_mode = m;
         if m == old {
@@ -96,21 +106,28 @@ impl PainterTool {
         let Some(x) = self.paint.deform.xform else {
             return;
         };
-        if m == MODE_DISTORT {
-            // Seed the free quad from the current affine box → continuous.
-            self.paint.deform.xform = Some(Xform {
-                corners: Some(box4(&x.current)),
-                ..x
-            });
-        } else if old == MODE_DISTORT {
-            // Leaving Distort → reset to identity (no affine box represents a general quad).
+        // Leaving Distort / Warp → reset the affine box to identity (drop the free geometry).
+        if (old == MODE_DISTORT || old == MODE_WARP) && m != old {
             self.paint.deform.xform = Some(Xform {
                 current: x.pristine,
                 corners: None,
                 ..x
             });
+            self.paint.deform.xform_mesh = None;
             self.paint.deform.xform_grab = None;
             self.composite_transform(Mat3::from_affine(Affine2::IDENTITY));
+        }
+        // Enter the new free mode, seeding from the (now-current) affine box.
+        let cur = self.paint.deform.xform.map(|x| x.current).unwrap_or(x.current);
+        if m == MODE_DISTORT {
+            if let Some(xx) = self.paint.deform.xform {
+                self.paint.deform.xform = Some(Xform {
+                    corners: Some(box4(&cur)),
+                    ..xx
+                });
+            }
+        } else if m == MODE_WARP {
+            self.paint.deform.xform_mesh = Some(Mesh::seed(box4(&cur), MESH_COLS, MESH_ROWS));
         }
     }
 
@@ -126,6 +143,19 @@ impl PainterTool {
         }
         let x = self.paint.deform.xform?;
         let tol = self.paint.shape_grab_tol_px;
+        if self.paint.deform.transform_mode == MODE_WARP {
+            let mesh = self.paint.deform.xform_mesh.as_ref()?;
+            let h = x.current.handles();
+            return Some(DeformGizmoView {
+                box_corners: [h[0], h[1], h[2], h[3]],
+                scale_handles: h,
+                center: x.current.center,
+                scale_tol: tol,
+                rotate_tol: tol,
+                corner_only: false,
+                mesh: Some((mesh.cols, mesh.rows, mesh.current.clone())),
+            });
+        }
         if self.paint.deform.transform_mode == MODE_DISTORT {
             let q = x.corners.unwrap_or_else(|| box4(&x.current));
             let center = [
@@ -139,6 +169,7 @@ impl PainterTool {
                 scale_tol: tol,
                 rotate_tol: tol,
                 corner_only: true,
+                mesh: None,
             });
         }
         let h = x.current.handles();
@@ -149,6 +180,7 @@ impl PainterTool {
             scale_tol: tol,
             rotate_tol: tol * ROTATE_BAND,
             corner_only: false,
+            mesh: None,
         })
     }
 
@@ -173,6 +205,25 @@ impl PainterTool {
             return false;
         };
         let tol = self.paint.shape_grab_tol_px;
+        if self.paint.deform.transform_mode == MODE_WARP {
+            let Some(i) = self
+                .paint
+                .deform
+                .xform_mesh
+                .as_ref()
+                .and_then(|mesh| mesh.nearest_point(pos, tol))
+            else {
+                return true; // Down away from a control point still consumes.
+            };
+            self.paint.deform.xform_grab = Some(TransformGrab {
+                handle: i as u8,
+                start: pos,
+                initial: x.current,
+                initial_corners: None,
+                is_mesh: true,
+            });
+            return true;
+        }
         if self.paint.deform.transform_mode == MODE_DISTORT {
             let q = x.corners.unwrap_or_else(|| box4(&x.current));
             let Some(i) = nearest_corner(&q, pos, tol) else {
@@ -183,6 +234,7 @@ impl PainterTool {
                 start: pos,
                 initial: x.current,
                 initial_corners: Some(q),
+                is_mesh: false,
             });
             return true;
         }
@@ -194,6 +246,7 @@ impl PainterTool {
             start: pos,
             initial: x.current,
             initial_corners: None,
+            is_mesh: false,
         });
         true
     }
@@ -205,6 +258,16 @@ impl PainterTool {
         let Some(x) = self.paint.deform.xform else {
             return false;
         };
+        if grab.is_mesh {
+            // Warp: move the grabbed control point directly (absolute → drift-free) and re-composite.
+            if let Some(mesh) = self.paint.deform.xform_mesh.as_mut() {
+                if let Some(p) = mesh.current.get_mut(grab.handle as usize) {
+                    *p = pos;
+                }
+                self.composite_mesh();
+            }
+            return true;
+        }
         if let Some(init_q) = grab.initial_corners {
             // Distort: move the grabbed corner freely → homography from the pristine box corners.
             let mut q = init_q;

@@ -227,6 +227,11 @@ pub(crate) struct PaintState {
     /// Freehand / Raster + a boolean op each). The `selection_mask` is a DERIVED cache: rasterize + composite
     /// this list. A gizmo drag mutates one entry's params in place and recomposites. [`selection_shapes`].
     selection_shapes: Vec<selection_shapes::SelectionEntry>,
+    /// **Per-shape rasterization cache** (perf): `(shape, coverage)` parallel to `selection_shapes` at the
+    /// last recompose. On the next recompose a shape whose geometry is UNCHANGED reuses its cached coverage
+    /// (an `Arc` clone) instead of re-rasterizing — so a gizmo drag over N boolean shapes only re-rasterizes
+    /// the ONE that moved (O(A) vs O(N·A) per frame). Self-validating by value, so no manual invalidation.
+    selection_raster_cache: Vec<(selection_shapes::SelectionShape, Arc<Vec<u8>>)>,
     /// The isolated gizmo grab currently dragged (shape idx + handle + pristine geometry for drift-free
     /// whole-shape transforms); `None` when idle. [`selection_gizmo`].
     selection_grab: Option<selection_gizmo::SelectionGrab>,

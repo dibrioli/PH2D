@@ -152,7 +152,12 @@ impl PainterTool {
             m = box_blur(&m, w, h, radius);
             self.paint.selection_mask = Arc::new(m);
         }
-        self.invalidate_composite();
+        // NB: a selection-mask change does NOT touch the layer composite — the compositor is provably
+        // selection-independent (zero selection refs), the marquee/hatching is a per-frame shell OVERLAY, and
+        // painting reads the mask directly. So we DON'T `invalidate_composite()` here: doing so dropped the
+        // whole composite cache + forced a FULL-canvas GPU re-upload on EVERY gizmo move (the "serious FPS
+        // drop with N boolean shapes"). The one-shot create/clear/commit sites still invalidate where a
+        // genuine structural change warrants it (perf audit 2026-07-04, lens F2).
     }
 }
 

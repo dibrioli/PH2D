@@ -53,6 +53,7 @@ impl Default for PaintState {
             selection_feather: 0.0,
             selection_edit_mode: false,
             selection_shapes: Vec::new(),
+            selection_raster_cache: Vec::new(),
             selection_grab: None,
             selection_clipboard: None,
             selection_offset_norm: 0.5, // centred → 0px offset (whole selection unchanged)

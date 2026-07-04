@@ -155,19 +155,72 @@ impl PainterTool {
         }
         // Each gizmo edits its `SelectionShape` params IN PLACE (isolated from the stroke editors), so the
         // mask is always a straight rasterize+composite of the stored list — no separate live-editor path.
+        // PERF: reuse each shape's cached coverage when its geometry is unchanged since the last recompose
+        // (self-validating by value), so a gizmo drag over N boolean shapes only re-rasterizes the one that
+        // moved — O(A) instead of O(N·A) per frame.
         let entries = self.paint.selection_shapes.clone();
+        let old_cache = std::mem::take(&mut self.paint.selection_raster_cache);
         let mut crisp = vec![0u8; n];
-        for e in &entries {
-            let region = self.rasterize_selection_shape(&e.shape);
-            if region.len() != n {
-                continue;
+        let mut new_cache: Vec<(SelectionShape, Arc<Vec<u8>>)> = Vec::with_capacity(entries.len());
+        for (i, e) in entries.iter().enumerate() {
+            let raster = match old_cache.get(i) {
+                Some((s, r)) if r.len() == n && shape_coverage_eq(s, &e.shape) => Arc::clone(r),
+                _ => Arc::new(self.rasterize_selection_shape(&e.shape)),
+            };
+            if raster.len() == n {
+                combine_into(&mut crisp, &raster, e.op);
             }
-            combine_into(&mut crisp, &region, e.op);
+            new_cache.push((e.shape.clone(), raster));
         }
+        self.paint.selection_raster_cache = new_cache;
         // The recomposed crisp is the pre-offset SOURCE; the Offset stage (grow/shrink + concentric rings)
         // produces the effective mask installed via `set_selection_from_crisp`. Neutral offset ⇒ identity.
         self.set_selection_offset_source(&crisp);
         self.apply_selection_offset();
+    }
+}
+
+/// Whether two selection shapes rasterize to the SAME coverage (the raster cache's validity test). Compares
+/// geometry only (the fields the rasterizer reads); `Raster` compares its coverage `Arc` by pointer (O(1),
+/// never a byte-by-byte scan). `selected` is deliberately ignored — highlighting an anchor doesn't change
+/// coverage. Different variants never match.
+fn shape_coverage_eq(a: &SelectionShape, b: &SelectionShape) -> bool {
+    use SelectionShape::{Ellipse, Freehand, Polygon, Raster};
+    match (a, b) {
+        (
+            Ellipse { center, u, rx, ry },
+            Ellipse {
+                center: c2,
+                u: u2,
+                rx: rx2,
+                ry: ry2,
+            },
+        ) => center == c2 && u == u2 && rx == rx2 && ry == ry2,
+        (
+            Polygon {
+                center,
+                u,
+                rx,
+                ry,
+                sides,
+            },
+            Polygon {
+                center: c2,
+                u: u2,
+                rx: rx2,
+                ry: ry2,
+                sides: s2,
+            },
+        ) => center == c2 && u == u2 && rx == rx2 && ry == ry2 && sides == s2,
+        (Freehand { model: m1, u: u1 }, Freehand { model: m2, u: u2 }) => {
+            u1 == u2
+                && m1.closed == m2.closed
+                && m1.points == m2.points
+                && m1.handles == m2.handles
+                && m1.kinds == m2.kinds
+        }
+        (Raster { crisp: c1 }, Raster { crisp: c2 }) => Arc::ptr_eq(c1, c2),
+        _ => false,
     }
 }
 

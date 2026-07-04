@@ -10,7 +10,9 @@
 //! [`FloatingPatch`] composite via a [`Mat3`]. `M = I` ⇒ patch on its origin ⇒ **byte-identical**. The whole
 //! transform is ONE undo entry, committed when it ends.
 
-use super::super::{DEFORM_TEMPERAMENT_RESHAPE, DEFORM_TEMPERAMENT_TRANSFORM};
+use super::super::{
+    DEFORM_TEMPERAMENT_NONE, DEFORM_TEMPERAMENT_RESHAPE, DEFORM_TEMPERAMENT_TRANSFORM,
+};
 use super::transform_geom::{
     Affine2, Mat3, ROTATE_BAND, TransformFrame, affine_from_frames, drag_frame, hit_frame,
     homography_from_quads,
@@ -385,6 +387,9 @@ impl PainterTool {
         if let Some(before) = self.paint.deform.xform_before.take() {
             self.clear_transform_state();
             self.restore_model(before);
+            // The gizmo is gone → CLOSE the Transform options (temperament back to none) so the artist must
+            // re-pick a mode to bring the gizmo back (Enio 2026-07-04).
+            self.paint.deform.temperament = DEFORM_TEMPERAMENT_NONE;
             return true;
         }
         false

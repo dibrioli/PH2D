@@ -6376,6 +6376,17 @@ fn deform_transform_undo_steps_the_gizmo_back() {
         t.deform_gizmo().is_some(),
         "the Transform stays live after a local (gizmo) undo"
     );
+    // One more undo un-lifts entirely: the gizmo disappears AND the Transform options close (temperament
+    // back to none), so the artist must re-pick a mode to bring it back (Enio 2026-07-04).
+    assert!(t.undo_last(), "the final undo un-lifts the transform");
+    assert!(
+        t.deform_gizmo().is_none(),
+        "the gizmo is gone after the un-lift"
+    );
+    assert_eq!(
+        t.paint.deform.temperament, 0,
+        "un-lifting closes the Transform options (temperament → none)"
+    );
 }
 
 #[test]

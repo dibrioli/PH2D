@@ -394,3 +394,69 @@ fn flow_fixed(
         rows as f32 * cell_h + (rows.saturating_sub(1)) as f32 * gap,
     )
 }
+
+#[cfg(test)]
+mod tests {
+    use ph2d_a11y::NodeId;
+    use ph2d_editor_core::ids as core_ids;
+    use ph2d_editor_core::panel::{PaintCtx, PanelHostInternal};
+    use ph2d_editor_core::screens::HeroLayout;
+    use ph2d_editor_core::zones::Rect;
+    use ph2d_text::TextSystem;
+    use ph2d_tokens::Theme;
+    use ph2d_ui_testkit::MockPanelHost;
+    use ph2d_vector::VectorScene;
+
+    /// Paint the brush body in MASK mode and return every `(id, rect)` hit registration in paint order.
+    fn mask_hit_regs() -> Vec<(NodeId, Rect)> {
+        let brush = ph2d_tool_painter::BrushSettings {
+            is_mask: true,
+            ..crate::paint_brush::FALLBACK_BRUSH
+        };
+        crate::state::set_current_brush(Some(brush));
+        let mut host = MockPanelHost::with_panel::<crate::PainterLayersPanel>();
+        let mut scene = VectorScene::new();
+        let mut text = TextSystem::without_system_fonts();
+        let viewport = Rect::new(0.0, 0.0, 360.0, 8000.0);
+        let layout = HeroLayout::for_viewport(viewport);
+        let rect = Rect::new(0.0, 0.0, 320.0, 8000.0);
+        {
+            let mut ctx = PaintCtx {
+                host: &mut host,
+                layout: &layout,
+                viewport,
+                scene: &mut scene,
+                text_system: &mut text,
+            };
+            crate::paint_brush::paint_brush_body(&mut ctx, Theme::default(), rect, 0.0);
+        }
+        crate::state::set_current_brush(None);
+        host.hit_index_mut().iter_registrations().collect()
+    }
+
+    /// Every Mask **Modifiers** button must be the TOP-MOST hit at its own centre — nothing painted later (a
+    /// card background, the pinned section header) may shadow it, else the dispatcher's `update_hover` sets
+    /// the wrong id and the button never shows hover/press (Enio 2026-07-04 repro).
+    #[test]
+    fn mask_modifier_button_is_the_topmost_hit_at_its_centre() {
+        let regs = mask_hit_regs();
+        for &btn in &core_ids::PAINTER_MASK_OP {
+            let rect = regs
+                .iter()
+                .rev()
+                .find_map(|(id, r)| (*id == btn).then_some(*r))
+                .unwrap_or_else(|| panic!("Modifiers button {btn:?} painted no hit rect"));
+            let (cx, cy) = (rect.x + rect.w * 0.5, rect.y + rect.h * 0.5);
+            // Replicate `HitIndex::hit`: back-to-front, the first containing rect wins.
+            let top = regs
+                .iter()
+                .rev()
+                .find_map(|(id, r)| r.contains(cx, cy).then_some(*id));
+            assert_eq!(
+                top,
+                Some(btn),
+                "Modifiers button {btn:?} is shadowed at its centre by {top:?} -> no hover/press"
+            );
+        }
+    }
+}

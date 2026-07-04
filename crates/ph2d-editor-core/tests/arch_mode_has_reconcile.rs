@@ -144,6 +144,12 @@ const RECONCILES_VIA: &[(&str, &str, &str)] = &[
         "Painter Texture LAYER ramp alpha action: re-renders the pre-rendered layer, like \
          `set_texture_layer_ramp_mode`",
     ),
+    (
+        "set_stroke_op_mode",
+        "refill_open_shape",
+        "Painter multi-shape Operation mode (Overlay/Add/Remove): retags the active shape's op and \
+         calls `refill_open_shape` to recompose the derived pixels (a boolean/offset result may change)",
+    ),
 ];
 
 #[test]

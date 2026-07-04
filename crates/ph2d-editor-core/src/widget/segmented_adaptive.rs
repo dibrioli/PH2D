@@ -10,7 +10,7 @@
 //! paint helper registers per-segment hits as it lays them out.
 
 use super::panel_chrome::{paint_segmented_group_adaptive, segmented_gap};
-use crate::interaction::HitIndex;
+use crate::interaction::{HitIndex, WidgetStore};
 use crate::zones::Rect;
 use ph2d_a11y::{Node, NodeBuilder, NodeId, Role};
 use ph2d_text::TextSystem;
@@ -77,6 +77,7 @@ pub fn paint_segmented_adaptive(
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
     theme: Theme,
+    store: &WidgetStore,
     hit_index: &mut HitIndex,
 ) -> f32 {
     let segments: Vec<(&str, bool, NodeId)> = widget
@@ -85,7 +86,7 @@ pub fn paint_segmented_adaptive(
         .enumerate()
         .map(|(i, opt)| (opt.label.as_str(), i == widget.selected, opt.id))
         .collect();
-    paint_segmented_group_adaptive(rect, &segments, scene, text_system, theme, hit_index)
+    paint_segmented_group_adaptive(rect, &segments, scene, text_system, theme, store, hit_index)
 }
 
 /// The height [`paint_segmented_adaptive`] will use at width `rect_w` and row height `row_h` — measure it
@@ -168,6 +169,7 @@ mod tests {
         let mut scene = VectorScene::new();
         let mut text = TextSystem::without_system_fonts();
         let mut hit = HitIndex::default();
+        let store = WidgetStore::with_capacity(4);
         // Narrow width forces reflow → height should exceed a single row.
         let h = paint_segmented_adaptive(
             &fixture(),
@@ -175,6 +177,7 @@ mod tests {
             &mut scene,
             &mut text,
             Theme::Forge,
+            &store,
             &mut hit,
         );
         assert!(h >= 28.0);
@@ -187,6 +190,7 @@ mod tests {
         let mut scene = VectorScene::new();
         let mut text = TextSystem::without_system_fonts();
         let mut hit = HitIndex::default();
+        let store = WidgetStore::with_capacity(4);
         let w = 60.0;
         let painted = paint_segmented_adaptive(
             &fixture(),
@@ -194,6 +198,7 @@ mod tests {
             &mut scene,
             &mut text,
             Theme::Forge,
+            &store,
             &mut hit,
         );
         let measured = measure_segmented_adaptive(&fixture(), w, 28.0, &mut text);
@@ -203,17 +208,52 @@ mod tests {
         );
     }
 
+    /// A segment whose store `ButtonState` is Hovered/Pressed still paints + stays hit-registered — proves
+    /// the paint now READS the dispatcher-set hover/press state (Enio 2026-07-04; before, segmented buttons
+    /// ignored it and showed no hover/press feedback).
+    #[test]
+    fn segment_hover_state_is_read_from_the_store() {
+        use crate::interaction::InteractiveState;
+        use crate::widget::ButtonState;
+        let mut scene = VectorScene::new();
+        let mut text = TextSystem::without_system_fonts();
+        let mut hit = HitIndex::default();
+        let mut store = WidgetStore::with_capacity(4);
+        // What the dispatcher does when the cursor enters the second segment.
+        store.register(
+            NodeId(3),
+            InteractiveState::Button {
+                state: ButtonState::Hovered,
+            },
+        );
+        paint_segmented_adaptive(
+            &fixture(),
+            Rect::new(0.0, 0.0, 400.0, 28.0),
+            &mut scene,
+            &mut text,
+            Theme::Forge,
+            &store,
+            &mut hit,
+        );
+        assert!(
+            hit.iter_registrations().any(|(id, _)| id == NodeId(3)),
+            "the hovered segment is painted + hit-registered"
+        );
+    }
+
     #[test]
     fn paint_smoke_wide() {
         let mut scene = VectorScene::new();
         let mut text = TextSystem::without_system_fonts();
         let mut hit = HitIndex::default();
+        let store = WidgetStore::with_capacity(4);
         paint_segmented_adaptive(
             &fixture(),
             Rect::new(0.0, 0.0, 400.0, 28.0),
             &mut scene,
             &mut text,
             Theme::Blueprint,
+            &store,
             &mut hit,
         );
     }

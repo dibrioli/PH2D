@@ -44,6 +44,8 @@ pub(crate) mod painter_bridge_gizmo;
 /// The Line polyline editor overlay (segments + corner dots + transform gizmo + Fillet/Chamfer handles),
 /// split from `painter_bridge_overlays` for the HR-18 file-LOC cap.
 pub(crate) mod painter_bridge_line_overlay;
+/// Multi-shape op badges (`+`/`−`/`○` type-square glyph per shape + a frame for parked shapes).
+pub(crate) mod painter_bridge_op_badges;
 /// On-canvas editing chrome (brush ring + Curve/Circle/Polygon/Stencil overlays), split from
 /// `painter_bridge` for the HR-18 file-LOC cap.
 pub(crate) mod painter_bridge_overlays;
@@ -1423,7 +1425,10 @@ impl crate::App {
                         .downcast_mut::<ph2d_tool_painter::PainterTool>()
                 })
             {
-                painter.set_curve_handle_kind(kind);
+                // Either curve owner: the stroke Shape curve, else the selection Convert-to-Curve editor.
+                if !painter.set_curve_handle_kind(kind) {
+                    painter.set_selection_curve_handle_kind(kind);
+                }
             }
             // Onda 2C: clear the gizmo hit_map BEFORE paint_hero_screen
             // runs. `paint_hero_screen` now paints BOTH the primary gizmo

@@ -116,6 +116,7 @@ impl PainterTool {
             symmetry_pick_line: self.paint.symmetry_pick == Some(super::SymmetryPick::Line),
             symmetry_pick_center: self.paint.symmetry_pick == Some(super::SymmetryPick::Center),
             stroke_method: b.stroke_method.to_u8(),
+            stroke_op_mode: self.paint.stroke_op_mode.to_wire(),
             spacing: b.spacing,
             offset: self.paint.shape_offset_norm,
             offset_trim: self.paint.offset_trim,

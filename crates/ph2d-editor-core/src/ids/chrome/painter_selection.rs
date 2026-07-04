@@ -56,6 +56,9 @@ pub const PAINTER_SEL_OFFSET_APPLY_IDS: [NodeId; 2] =
     [PAINTER_SEL_OFFSET_APPLY, PAINTER_SEL_OFFSET_APPLY_KEEP];
 /// The Operation card's a11y group id (not hit-indexed; the card is a visual surface).
 pub const PAINTER_SEL_OP_CARD: NodeId = hash_node_id("painter_sel.op_card");
+/// The Offset card's a11y group id (wraps the Offset slider + Apply / Apply & Keep, like the Operation
+/// card; not hit-indexed — a visual surface).
+pub const PAINTER_SEL_OFFSET_CARD: NodeId = hash_node_id("painter_sel.offset_card");
 
 // ── Toggle + action buttons ──────────────────────────────────────────────────────────────────────────
 /// **Edit Selection** — enter/leave the editable-Shape boundary mode (Wave EDIT). A toggle checkbox.

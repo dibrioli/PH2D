@@ -84,9 +84,8 @@ impl PainterTool {
         self.bake_polygon_offset(); // an edit gesture locks in any live Offset (hit-test = displayed handles)
         if self.paint.polygon.is_none() {
             // No session → open the creation txn (`before` = no shape) + begin the centre-out radius drag.
-            self.paint.stroke_undo = Some(self.snapshot_model());
-            self.paint.drag_preview = None;
-            self.reseed_preview_base(); // fresh shape session → full recompose+upload (no stale-base sliver)
+            self.paint.stroke_undo = Some(self.capture_shape_model()); // creation txn (`before` = parked set, no active)
+            self.begin_shape_session_base(); // full recompose; keep the baseline when shapes are parked
             self.paint.shape_offset_base_px = 0.0; // a fresh polygon starts with no Offset
             self.paint.shape_offset_norm = 0.5;
             let seed = self.paint.seed;
@@ -111,6 +110,20 @@ impl PainterTool {
         let handles = polygon_handles(ed.center, ed.u, ed.rx, ed.ry, ed.sides, tol);
         ed.grabbed = polygon_hit(&handles, pos, tol);
         true
+    }
+
+    /// `true` when a Down at `pos` would EDIT the active polygon (grab a handle) — the multi-shape router
+    /// must not treat it as empty space. Mid-draw always counts as active. Same hit-test as `polygon_down`.
+    pub(super) fn polygon_hit_active(&self, pos: [f32; 2]) -> bool {
+        let tol = self.paint.shape_grab_tol_px;
+        let Some(ed) = self.paint.polygon.as_ref() else {
+            return false;
+        };
+        if !ed.editing {
+            return true;
+        }
+        let handles = polygon_handles(ed.center, ed.u, ed.rx, ed.ry, ed.sides, tol);
+        polygon_hit(&handles, pos, tol).is_some()
     }
 
     /// Pointer-move: drag the grabbed handle (edit) or stretch the radius (draw).
@@ -282,7 +295,7 @@ impl PainterTool {
         let mut stroke = Stroke::new(self.paint.brush, self.paint.dynamics, seed);
         let mut dabs = std::mem::take(&mut self.paint.dabs);
         stroke.fill_polygon_preview(center, u, erx, ery, sides, &mut dabs);
-        self.stamp_drag_preview(&dabs);
+        self.restamp_shapes_preview(&dabs); // active shape + every parked shape onto one baseline
         self.paint.dabs = dabs;
     }
 }

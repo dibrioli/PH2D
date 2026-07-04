@@ -239,9 +239,10 @@ impl PainterTool {
             Some(SelectionDrag::Lasso { mut points, .. }) => {
                 points.push(pos);
                 let region = self.raster_lasso(&points);
+                // A raw lasso = a closed polyline with no Bézier handles (⇒ transform box, not the point
+                // editor); it becomes point-editable only after Convert to Curve (Enio's two-mode ratify).
                 let shape = SelectionShape::Freehand {
-                    points,
-                    handles: Vec::new(),
+                    model: super::curve_model::CurveModel::raw_lasso(points, true),
                     u: [1.0, 0.0],
                 };
                 (region, Some(shape))

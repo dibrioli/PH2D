@@ -13,7 +13,7 @@ use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::widget::showcase::paint_section_separator;
 use ph2d_editor_core::widget::{
     Card, SegmentedAdaptive, SegmentedOption, measure_segmented_adaptive, paint_card,
-    paint_segmented_adaptive,
+    paint_segmented_adaptive, slider_with_chip_height,
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ROW_H_PX, Spacing};
@@ -108,8 +108,9 @@ pub(crate) fn paint_selection_section(
     );
 
     // Offset — grow/shrink the whole selection; after Apply & Keep it sweeps concentric alternating
-    // protected / paint bands (ADR-0103 Am.3). Slider + its two commit buttons, in a helper for the fn cap.
-    y = offset_controls(ctx, theme, x, content_w, y, brush.selection_offset);
+    // protected / paint bands (ADR-0103 Am.3). Slider + its two commit buttons, wrapped in a card like the
+    // Operation card (Enio 2026-07-04).
+    y = offset_card(ctx, theme, x, content_w, y, brush.selection_offset);
 
     y = paint_section_separator(ctx.scene, theme, x, content_w, y);
 
@@ -227,22 +228,24 @@ fn operation_card(
     {
         let scene = &mut *ctx.scene;
         let text_system = &mut *ctx.text_system;
-        let hit_index = ctx.host.hit_index_mut();
+        let (store, hit_index) = ctx.host.store_and_hit_index_mut();
         paint_segmented_adaptive(
             &seg,
             Rect::new(body.x, body.y, body.w, ROW_H_PX),
             scene,
             text_system,
             theme,
+            store,
             hit_index,
         );
     }
     y + card_h + Spacing::Sm.px()
 }
 
-/// Paint the **Offset** row (slider + Apply / Apply & Keep buttons); returns next `y`. Split out of
-/// `paint_selection_section` for the per-fn LOC cap (ADR-0103 Am.3).
-fn offset_controls(
+/// The **Offset** controls (slider + Apply / Apply & Keep), wrapped in a titled card like [`operation_card`]
+/// (Enio 2026-07-04). The card height is measured from BOTH the slider row (which stacks label-over-slider on
+/// a narrow panel) AND the reflowed button group — so nothing clips or overlaps when the panel narrows.
+fn offset_card(
     ctx: &mut PaintCtx,
     theme: ph2d_tokens::Theme,
     x: f32,
@@ -250,31 +253,61 @@ fn offset_controls(
     y: f32,
     offset: f32,
 ) -> f32 {
-    let y = paint_slider_chip_row(
+    let header_h = Spacing::Xl3.px();
+    let pad = Spacing::Lg.px();
+    let gap = Spacing::Xs.px(); // matches the slider row's trailing gap
+    let card = Card::new(core_ids::PAINTER_SEL_OFFSET_CARD).title("OFFSET");
+    // Momentary buttons — nothing selected (usize::MAX), like the old inline group.
+    let seg = SegmentedAdaptive::new(
+        NodeId(0),
+        "Selection offset commit",
+        vec![
+            SegmentedOption::new(core_ids::PAINTER_SEL_OFFSET_APPLY, "Apply"),
+            SegmentedOption::new(core_ids::PAINTER_SEL_OFFSET_APPLY_KEEP, "Apply & Keep"),
+        ],
+    )
+    .selected(usize::MAX);
+    // Body width is height-independent — probe it, then MEASURE both rows at that width: the slider row
+    // STACKS (label above, slider+chip below) on a narrow panel, and the button group reflows Apply & Keep
+    // onto extra rows. Sizing the card from the measured heights keeps everything inside the card border.
+    let probe_body = card.body_rect(Rect::new(x, y, content_w, header_h + pad * 2.0 + ROW_H_PX));
+    let slider_h = slider_with_chip_height(ROW_H_PX, probe_body.w);
+    let seg_h = measure_segmented_adaptive(&seg, probe_body.w, ROW_H_PX, ctx.text_system);
+    let card_h = header_h + pad * 2.0 + slider_h + gap + seg_h;
+    let card_rect = Rect::new(x, y, content_w, card_h);
+    {
+        let scene = &mut *ctx.scene;
+        let text_system = &mut *ctx.text_system;
+        paint_card(&card, card_rect, scene, text_system, theme);
+    }
+    let body = card.body_rect(card_rect);
+    // Offset slider + chip, then the two commit buttons below it.
+    let sy = paint_slider_chip_row(
         ctx,
         theme,
-        x,
-        content_w,
-        y,
+        body.x,
+        body.w,
+        body.y,
         "Offset",
         core_ids::PAINTER_SEL_OFFSET_SLIDER,
         core_ids::PAINTER_SEL_OFFSET_CHIP,
         offset,
     );
-    seg_group(
-        ctx,
-        theme,
-        x,
-        content_w,
-        y,
-        NodeId(0),
-        "Selection offset commit",
-        &[
-            (core_ids::PAINTER_SEL_OFFSET_APPLY, "Apply"),
-            (core_ids::PAINTER_SEL_OFFSET_APPLY_KEEP, "Apply & Keep"),
-        ],
-        usize::MAX,
-    )
+    {
+        let scene = &mut *ctx.scene;
+        let text_system = &mut *ctx.text_system;
+        let (store, hit_index) = ctx.host.store_and_hit_index_mut();
+        paint_segmented_adaptive(
+            &seg,
+            Rect::new(body.x, sy, body.w, ROW_H_PX),
+            scene,
+            text_system,
+            theme,
+            store,
+            hit_index,
+        );
+    }
+    y + card_h + Spacing::Sm.px()
 }
 
 /// Build + paint one adaptive segmented Toggle group and register its per-segment hits; returns next `y`.
@@ -298,13 +331,14 @@ fn seg_group(
     let seg = SegmentedAdaptive::new(group_id, a11y, opts).selected(selected);
     let scene = &mut *ctx.scene;
     let text_system = &mut *ctx.text_system;
-    let hit_index = ctx.host.hit_index_mut();
+    let (store, hit_index) = ctx.host.store_and_hit_index_mut();
     let used = paint_segmented_adaptive(
         &seg,
         Rect::new(x, y, content_w, ROW_H_PX),
         scene,
         text_system,
         theme,
+        store,
         hit_index,
     );
     y + used + Spacing::Xs.px()

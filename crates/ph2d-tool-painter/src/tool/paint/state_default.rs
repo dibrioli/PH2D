@@ -60,6 +60,7 @@ impl Default for PaintState {
             selection_offset_rings: Vec::new(),
             selection_offset_source: Arc::new(Vec::new()),
             selection_offset_sdf: Arc::new(Vec::new()),
+            selection_ring_stack: false,
 
             // Composite off by default; the default stack is the natural read of the card (top→bottom):
             // Brush(1) over Smear(2) over Blur(3). Run bottom→top, that blurs → smears → paints on top.
@@ -100,6 +101,10 @@ impl Default for PaintState {
             line_snap: false,
             grid_snap_pos: None,
             polygon: None,
+            parked_shapes: Vec::new(),
+            active_op: stroke_multi::StrokeOp::default(),
+            stroke_op_mode: stroke_multi::StrokeOp::default(),
+            op_tap: None,
             shape_grab_tol_px: DEFAULT_SHAPE_GRAB_TOL_PX,
             shape_offset_norm: 0.5, // centred → 0px offset (default byte-identical)
             shape_offset_base_px: 0.0,

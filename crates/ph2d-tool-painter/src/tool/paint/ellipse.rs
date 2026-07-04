@@ -79,9 +79,8 @@ impl PainterTool {
         self.bake_ellipse_offset(); // an edit gesture locks in any live Offset (hit-test = displayed handles)
         if self.paint.ellipse.is_none() {
             // No session → open the creation txn (`before` = no shape) + begin the centre-out radius drag.
-            self.paint.stroke_undo = Some(self.snapshot_model());
-            self.paint.drag_preview = None;
-            self.reseed_preview_base(); // fresh shape session → full recompose+upload (no stale-base sliver)
+            self.paint.stroke_undo = Some(self.capture_shape_model()); // creation txn (`before` = parked set, no active)
+            self.begin_shape_session_base(); // full recompose; keep the baseline when shapes are parked
             self.paint.shape_offset_base_px = 0.0; // a fresh ellipse starts with no Offset
             self.paint.shape_offset_norm = 0.5;
             let seed = self.paint.seed;
@@ -105,6 +104,22 @@ impl PainterTool {
         let handles = ellipse_handles(ed.center, ed.u, ed.rx, ed.ry, tol * ROTATE_GAP_FACTOR);
         ed.grabbed = ellipse_hit(&handles, pos, tol);
         true
+    }
+
+    /// `true` when a Down at `pos` would EDIT the active ellipse (grab one of its handles), so the
+    /// multi-shape router must NOT treat it as empty space. Mid-draw (no session settled) always counts as
+    /// active. Uses the SAME hit-test as [`Self::ellipse_down`], so it includes the rotate ring outside the
+    /// outline.
+    pub(super) fn ellipse_hit_active(&self, pos: [f32; 2]) -> bool {
+        let tol = self.paint.shape_grab_tol_px;
+        let Some(ed) = self.paint.ellipse.as_ref() else {
+            return false;
+        };
+        if !ed.editing {
+            return true;
+        }
+        let handles = ellipse_handles(ed.center, ed.u, ed.rx, ed.ry, tol * ROTATE_GAP_FACTOR);
+        ellipse_hit(&handles, pos, tol).is_some()
     }
 
     /// Pointer-move: drag the grabbed handle (edit) or stretch the radius (draw).
@@ -295,7 +310,7 @@ impl PainterTool {
         let mut stroke = Stroke::new(self.paint.brush, self.paint.dynamics, seed);
         let mut dabs = std::mem::take(&mut self.paint.dabs);
         stroke.fill_ellipse_preview(center, u, erx, ery, &mut dabs);
-        self.stamp_drag_preview(&dabs);
+        self.restamp_shapes_preview(&dabs); // active shape + every parked shape onto one baseline
         self.paint.dabs = dabs;
     }
 }

@@ -7,6 +7,9 @@
 //! - **Simplify Curve** — run the Free-Hand fit on the (single) converted curve to reduce its point count.
 
 use super::PainterTool;
+use super::curve::{FREEHAND_FIT_ERROR, MAX_CURVE_POINTS};
+use super::curve_handle::HandleKind;
+use super::curve_model::CurveModel;
 use super::selection_shapes::{SelectionEntry, SelectionShape, sel_polygon_vertices};
 
 impl PainterTool {
@@ -17,6 +20,24 @@ impl PainterTool {
             return;
         }
         self.paint.selection_edit_mode = true;
+        // If NOTHING in the selection is editable — only baked `Raster` coverage (after Offset Apply /
+        // Apply & Keep, or an Automatic flood) — turn it into editable curve(s) so Edit Gizmos always opens a
+        // boundary to edit (Enio 2026-07-03/04). An active OFFSET materialises EVERY ring boundary into its
+        // own editable curve (band-parity fill preserves the intercalated selection, and the curves persist
+        // until Clear); a plain baked/Automatic mask becomes a single traced curve.
+        let has_editable = self
+            .paint
+            .selection_shapes
+            .iter()
+            .any(|e| e.shape.is_editable());
+        if !has_editable {
+            if self.paint.selection_offset_active {
+                self.materialise_offset_rings_to_curves();
+            } else {
+                self.reset_selection_offset();
+                self.selection_convert_to_curve();
+            }
+        }
         self.invalidate_composite();
     }
 
@@ -45,7 +66,6 @@ impl PainterTool {
         if !self.paint.selection_active {
             return;
         }
-        let before = self.snapshot_model();
         let editable: Vec<SelectionShape> = self
             .paint
             .selection_shapes
@@ -53,10 +73,15 @@ impl PainterTool {
             .filter(|e| e.shape.is_editable())
             .map(|e| e.shape.clone())
             .collect();
-        let (points, handles) = if editable.len() == 1 {
+        // Every case yields a SPARSE editable curve: an Ellipse keeps its exact 4-arc, a Polygon keeps its
+        // sharp vertices, and everything else (a lasso Freehand, a Raster flood, several shapes) FITS its
+        // outline to a handful of anchors via the same Schneider fit a stroke Free Hand uses — the fix for
+        // "muitos pontos" (Enio 2026-07-03): Convert never copies the raw contour verbatim any more.
+        let Some(model) = (if editable.len() == 1 {
             match &editable[0] {
                 SelectionShape::Ellipse { center, u, rx, ry } => {
-                    ellipse_to_closed_curve(*center, *u, *rx, *ry)
+                    let (p, h) = ellipse_to_closed_curve(*center, *u, *rx, *ry);
+                    Some(CurveModel::from_curve(p, h, true, HandleKind::Aligned))
                 }
                 SelectionShape::Polygon {
                     center,
@@ -64,34 +89,35 @@ impl PainterTool {
                     rx,
                     ry,
                     sides,
-                } => (
-                    sel_polygon_vertices(*center, *u, *rx, *ry, *sides),
-                    Vec::new(),
-                ),
-                SelectionShape::Freehand {
-                    points, handles, ..
-                } => (points.clone(), handles.clone()),
-                SelectionShape::Raster { .. } => (self.traced_curve_points(), Vec::new()),
+                } => {
+                    let verts = sel_polygon_vertices(*center, *u, *rx, *ry, *sides);
+                    let handles = verts.iter().map(|p| [*p, *p]).collect(); // sharp corners
+                    Some(CurveModel::from_curve(
+                        verts,
+                        handles,
+                        true,
+                        HandleKind::Free,
+                    ))
+                }
+                SelectionShape::Freehand { model, .. } => {
+                    to_closed_curve(&model.points, &model.handles)
+                }
+                SelectionShape::Raster { .. } => to_closed_curve(&self.traced_curve_points(), &[]),
             }
         } else {
-            (self.traced_curve_points(), Vec::new())
+            to_closed_curve(&self.traced_curve_points(), &[])
+        }) else {
+            return; // fewer than 3 points → nothing to convert
         };
-        if points.len() < 3 {
-            return;
-        }
-        let handles = if handles.len() == points.len() {
-            handles
-        } else {
-            points.iter().map(|p| [*p, *p]).collect()
-        };
+        let before = self.snapshot_model();
         self.paint.selection_shapes = vec![SelectionEntry {
             shape: SelectionShape::Freehand {
-                points,
-                handles,
+                model,
                 u: [1.0, 0.0],
             },
             op: 0,
         }];
+        self.paint.selection_ring_stack = false; // one boolean curve, not a ring stack
         self.paint.selection_edit_mode = true; // keep the gizmos shown on the new curve
         self.recompose_selection_mask();
         self.commit_structural_edit(before);
@@ -101,34 +127,22 @@ impl PainterTool {
     /// Schneider fit the Free Hand stroke uses (some precision is traded for fewer anchors). No-op unless the
     /// selection is exactly one Freehand shape. One undo entry.
     pub fn selection_simplify_curve(&mut self) {
-        let one_freehand = self.paint.selection_shapes.len() == 1
-            && matches!(
-                self.paint.selection_shapes[0].shape,
-                SelectionShape::Freehand { .. }
-            );
-        if !one_freehand {
+        if self.paint.selection_shapes.len() != 1 {
             return;
         }
-        // Flatten the current curve to a dense polyline, then re-fit it to a sparse Bézier (keeping `u`).
-        let SelectionShape::Freehand { points, handles, u } = &self.paint.selection_shapes[0].shape
-        else {
+        // Re-fit the single Freehand to a sparse Bézier via the same Schneider fit (keeping `u`). No-op when
+        // it isn't a Freehand or the fit declines / would exceed the cap.
+        let Some((model, u)) = (match &self.paint.selection_shapes[0].shape {
+            SelectionShape::Freehand { model, u } => {
+                to_closed_curve(&model.points, &model.handles).map(|m| (m, *u))
+            }
+            _ => None,
+        }) else {
             return;
         };
-        let u = *u;
-        let spine = self.freehand_spine(points, handles);
-        if spine.len() < 3 {
-            return;
-        }
-        let fit = ph2d_painter_brush::fit_curve(&spine, super::curve::FREEHAND_FIT_ERROR);
-        if fit.anchors.len() < 3 || fit.anchors.len() > super::curve::MAX_CURVE_POINTS {
-            return;
-        }
         let before = self.snapshot_model();
-        self.paint.selection_shapes[0].shape = SelectionShape::Freehand {
-            points: fit.anchors,
-            handles: fit.handles,
-            u,
-        };
+        self.paint.selection_shapes[0].shape = SelectionShape::Freehand { model, u };
+        self.paint.selection_ring_stack = false; // one boolean curve, not a ring stack
         self.recompose_selection_mask();
         self.commit_structural_edit(before);
     }
@@ -138,6 +152,31 @@ impl PainterTool {
         let (w, h) = (self.source_size.0 as usize, self.source_size.1 as usize);
         super::selection_trace::trace_selection_contour(&self.paint.selection_mask, w, h)
     }
+}
+
+/// Fit a closed outline (`points` + optional parallel `handles`) to a SPARSE editable [`CurveModel`] via the
+/// Schneider fit the stroke Free Hand / Simplify uses, seeded to Aligned. A polygon-like outline (no handles)
+/// is closed via degenerate `[p, p]` handles so the flatten runs the closing seam before fitting. Falls back
+/// to the exact (dense) outline as an editable curve if the fit is degenerate; `None` only when < 3 points.
+pub(super) fn to_closed_curve(
+    points: &[[f32; 2]],
+    handles: &[[[f32; 2]; 2]],
+) -> Option<CurveModel> {
+    if points.len() < 3 {
+        return None;
+    }
+    let deg: Vec<[[f32; 2]; 2]> = points.iter().map(|p| [*p, *p]).collect();
+    let src: &[[[f32; 2]; 2]] = if handles.len() == points.len() && !handles.is_empty() {
+        handles
+    } else {
+        &deg
+    };
+    Some(
+        CurveModel::from_fit(points, src, true, FREEHAND_FIT_ERROR, MAX_CURVE_POINTS)
+            .unwrap_or_else(|| {
+                CurveModel::from_curve(points.to_vec(), src.to_vec(), true, HandleKind::Aligned)
+            }),
+    )
 }
 
 /// The four cardinal anchors + `k = 0.5523` Bézier handles that reproduce the ellipse exactly (mirrors

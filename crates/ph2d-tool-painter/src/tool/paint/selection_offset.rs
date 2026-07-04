@@ -110,6 +110,10 @@ impl PainterTool {
             self.paint.selection_offset_rings.push(base + live);
         }
         self.paint.selection_offset_norm = 0.5;
+        // Apply & Keep drops out of Edit Gizmos (Enio 2026-07-04): the frozen ring is shown by the offset
+        // overlay; re-checking Edit Gizmos materialises every ring boundary into an editable curve.
+        self.paint.selection_edit_mode = false;
+        self.paint.selection_grab = None;
         self.apply_selection_offset();
         self.commit_structural_edit(before);
     }
@@ -135,6 +139,79 @@ impl PainterTool {
         self.paint.selection_offset_rings.clear();
         self.paint.selection_offset_source = Arc::new(Vec::new());
         self.paint.selection_offset_sdf = Arc::new(Vec::new());
+        self.paint.selection_ring_stack = false;
+    }
+
+    /// **Materialise** the active offset rings into editable Freehand curves — one per band boundary (level 0
+    /// and each frozen ring) — so Edit Gizmos shows EVERY ring as an editable, gizmo-bearing curve that
+    /// persists until Clear (Enio 2026-07-04). The intercalated fill is preserved by BAND-PARITY (see
+    /// [`Self::recompose_ring_stack`]). Traces each level's contour off the cached SDF, fits it to a sparse
+    /// curve, then switches to ring-stack mode. No-op without a live SDF.
+    pub(super) fn materialise_offset_rings_to_curves(&mut self) {
+        self.ensure_selection_sdf();
+        let (w, h) = (self.source_size.0 as usize, self.source_size.1 as usize);
+        let n = w * h;
+        let sdf = Arc::clone(&self.paint.selection_offset_sdf);
+        if n == 0 || sdf.len() != n {
+            return;
+        }
+        let mut levels = vec![0.0f32];
+        levels.extend_from_slice(&self.paint.selection_offset_rings);
+        let mut entries = Vec::new();
+        for &level in &levels {
+            // Threshold the SDF at this boundary → binary mask → trace the outer contour → fit a sparse curve.
+            let mask: Vec<u8> = sdf
+                .iter()
+                .map(|&d| if d <= level { 255 } else { 0 })
+                .collect();
+            let outline = super::selection_trace::trace_selection_contour(&mask, w, h);
+            if let Some(model) = super::selection_edit::to_closed_curve(&outline, &[]) {
+                entries.push(SelectionEntry {
+                    shape: SelectionShape::Freehand {
+                        model,
+                        u: [1.0, 0.0],
+                    },
+                    op: 0,
+                });
+            }
+        }
+        if entries.is_empty() {
+            return;
+        }
+        self.paint.selection_shapes = entries;
+        self.reset_selection_offset(); // the ring curves ARE the truth now — drop the SDF offset state
+        self.paint.selection_ring_stack = true;
+        self.recompose_selection_mask(); // band-parity composite of the nested curves
+    }
+
+    /// Recompose the effective mask in **ring-stack** mode: BAND-PARITY over the nested Freehand ring curves.
+    /// A pixel is selected iff it is enclosed by `≡ n (mod 2)` of the `n` curves AND by at least one — so the
+    /// innermost band (inside all `n`) is paint, each band outward flips, and outside every curve is deselected.
+    /// This reproduces the SDF intercalation exactly while letting the user edit each ring curve's shape.
+    pub(super) fn recompose_ring_stack(&mut self, n_pixels: usize) {
+        let entries = self.paint.selection_shapes.clone();
+        let n_curves = entries.len();
+        let mut count = vec![0u16; n_pixels];
+        for e in &entries {
+            let region = self.rasterize_selection_shape(&e.shape);
+            if region.len() != n_pixels {
+                continue;
+            }
+            for (c, &r) in count.iter_mut().zip(region.iter()) {
+                if r >= 128 {
+                    *c += 1;
+                }
+            }
+        }
+        let mut crisp = vec![0u8; n_pixels];
+        for (out, &c) in crisp.iter_mut().zip(count.iter()) {
+            let c = c as usize;
+            if c > 0 && (n_curves - c).is_multiple_of(2) {
+                *out = 255;
+            }
+        }
+        self.set_selection_offset_source(&crisp);
+        self.apply_selection_offset(); // offset is neutral in ring-stack mode → installs `crisp` verbatim
     }
 
     /// `true` while an offset is actively in progress — ring mode (post-Apply & Keep) OR the slider is off

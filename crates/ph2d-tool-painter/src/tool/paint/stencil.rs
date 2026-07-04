@@ -449,24 +449,8 @@ impl PainterTool {
             return true;
         }
         if let PanelEvent::Click(id) = event {
-            if *id == core_ids::PAINTER_BRUSH_STROKE_APPLY {
-                self.commit_open_shape();
-                return true;
-            }
-            if *id == core_ids::PAINTER_BRUSH_STROKE_APPLY_KEEP {
-                self.commit_open_shape_keep();
-                return true;
-            }
-            if *id == core_ids::PAINTER_BRUSH_STROKE_DELETE {
-                self.cancel_open_shape(); // drop the open shape without baking
-                return true;
-            }
-            if *id == core_ids::PAINTER_BRUSH_STROKE_EDIT {
-                self.convert_open_shape_to_curve(); // Ellipse/Polygon → editable Bézier curve
-                return true;
-            }
-            if *id == core_ids::PAINTER_BRUSH_STROKE_SIMPLIFY {
-                self.curve_simplify(); // reduce the editable curve to a clean control polygon
+            // Shape buttons (Apply / Apply & Keep / Delete / Edit / Operation / Simplify) → their verbs.
+            if self.route_stroke_shape_button(id) {
                 return true;
             }
             if *id == core_ids::PAINTER_BRUSH_OFFSET_TRIM {

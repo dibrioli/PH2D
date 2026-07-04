@@ -84,6 +84,7 @@ pub(crate) const FALLBACK_BRUSH: BrushSettings = BrushSettings {
     symmetry_pick_center: false,
     // Stroke section (mirrors BrushSpec::default / Blender defaults).
     stroke_method: 3,         // Space
+    stroke_op_mode: 0,        // Overlay (multi-shape default = no boolean)
     spacing: 0.10,            // LITERAL-PX-OK: Blender brush default (mirrors BrushSpec::default)
     offset: 0.5,              // LITERAL-PX-OK: centred Offset track = no perpendicular offset
     offset_trim: false,       // self-intersection trim off by default

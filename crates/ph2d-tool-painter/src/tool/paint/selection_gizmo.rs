@@ -10,7 +10,8 @@
 //! fluorescent accent. Pure, self-contained geometry (rotate is transcendental-free via dot·cross).
 
 use super::PainterTool;
-use super::selection_curve_gizmo::{self, CurveGrab, SelectionCurveEdit};
+use super::curve_model::{CurveGrab, CurveModel};
+use super::selection_curve_gizmo::{self, SelectionCurveEdit};
 use super::selection_shapes::{SelectionShape, sel_polygon_vertices};
 use ph2d_editor_core::tool::{CanvasPointer, PointerPhase};
 
@@ -115,7 +116,7 @@ fn shape_frame(shape: &SelectionShape) -> Option<Frame> {
             hx: *rx,
             hy: *ry,
         }),
-        SelectionShape::Freehand { points, u, .. } => {
+        SelectionShape::Freehand { model, u } => {
             // ORIENTED bounding box in the stored `u`/`v` frame, so the box rotates WITH the selection.
             let uu = unit_or(*u, [1.0, 0.0]);
             let v = [-uu[1], uu[0]];
@@ -125,7 +126,7 @@ fn shape_frame(shape: &SelectionShape) -> Option<Frame> {
                 f32::INFINITY,
                 f32::NEG_INFINITY,
             );
-            for p in points {
+            for p in &model.points {
                 let du = dot(*p, uu);
                 let dv = dot(*p, v);
                 umin = umin.min(du);
@@ -174,6 +175,14 @@ impl PainterTool {
                 continue;
             };
             let h = f.handles();
+            // Which tangent handle (if any) of THIS shape is being dragged — for the overlay accent colour.
+            let grabbed = match &self.paint.selection_grab {
+                Some(g) if g.shape == accent => match g.curve {
+                    Some(CurveGrab::Tangent(a, is_out)) => Some((a, is_out)),
+                    _ => None,
+                },
+                _ => None,
+            };
             out.push(SelectionGizmoView {
                 outline: self.shape_outline(&e.shape),
                 box_corners: [h[0], h[1], h[2], h[3]],
@@ -184,7 +193,7 @@ impl PainterTool {
                 rotate_tol: tol * ROTATE_BAND,
                 accent,
                 // A converted curve edits per-anchor (points + Bézier handles), not via the transform box.
-                edit_curve: selection_curve_gizmo::curve_edit_view(&e.shape),
+                edit_curve: selection_curve_gizmo::curve_edit_view(&e.shape, grabbed, tol),
             });
         }
         out
@@ -206,9 +215,9 @@ impl PainterTool {
                 ry,
                 sides,
             } => sel_polygon_vertices(*center, *u, *rx, *ry, *sides),
-            SelectionShape::Freehand {
-                points, handles, ..
-            } => self.freehand_spine(points, handles),
+            SelectionShape::Freehand { model, .. } => {
+                self.freehand_spine(&model.points, &model.handles)
+            }
             SelectionShape::Raster { .. } => Vec::new(),
         }
     }
@@ -228,28 +237,73 @@ impl PainterTool {
         let tol = self.paint.shape_grab_tol_px;
         // Topmost shape first (last drawn wins).
         let mut grab = None;
+        let mut before: Option<crate::undo::ModelSnapshot> = None;
         for i in (0..self.paint.selection_shapes.len()).rev() {
-            let shape = &self.paint.selection_shapes[i].shape;
-            // A CONVERTED curve edits its anchors/handles (points), never the transform box.
-            if selection_curve_gizmo::is_converted_curve(shape) {
-                if let Some(cg) = selection_curve_gizmo::hit_curve(shape, pos, tol) {
+            // A CONVERTED curve is BOTH the per-anchor point editor AND carries the global transform box
+            // (move / rotate / scale the whole selection — Enio 2026-07-04). Order mirrors the stroke Curve:
+            // a point / tangent first (precise), then a transform-box handle, then insert-on-curve / nearest.
+            if selection_curve_gizmo::is_converted_curve(&self.paint.selection_shapes[i].shape) {
+                // Snapshot BEFORE editing so an insert is undoable together with the drag (mirrors the stroke).
+                before = Some(self.snapshot_model());
+                // 1) A control point / tangent handle.
+                let point = {
+                    let SelectionShape::Freehand { model, .. } =
+                        &mut self.paint.selection_shapes[i].shape
+                    else {
+                        unreachable!("is_converted_curve ⇒ Freehand")
+                    };
+                    model.hit_point(pos, tol)
+                };
+                if let Some(cg) = point {
+                    let initial = self.paint.selection_shapes[i].shape.clone();
                     grab = Some(SelectionGrab {
                         shape: i,
                         handle: H_MOVE,
                         start: pos,
-                        initial: shape.clone(),
+                        initial,
                         curve: Some(cg),
                     });
                     break;
                 }
-                continue; // no box fallback for a converted curve
+                // 2) A transform-box handle (scale corner / edge, rotate ring, centre move).
+                if let Some(h) = hit_shape(&self.paint.selection_shapes[i].shape, pos, tol) {
+                    grab = Some(SelectionGrab {
+                        shape: i,
+                        handle: h,
+                        start: pos,
+                        initial: self.paint.selection_shapes[i].shape.clone(),
+                        curve: None,
+                    });
+                    break;
+                }
+                // 3) Insert a new anchor on the curve (or select the nearest at the point cap).
+                let cg = {
+                    let SelectionShape::Freehand { model, .. } =
+                        &mut self.paint.selection_shapes[i].shape
+                    else {
+                        unreachable!()
+                    };
+                    selection_curve_gizmo::selection_curve_insert_or_nearest(model, pos)
+                };
+                if let Some(cg) = cg {
+                    let initial = self.paint.selection_shapes[i].shape.clone();
+                    grab = Some(SelectionGrab {
+                        shape: i,
+                        handle: H_MOVE,
+                        start: pos,
+                        initial,
+                        curve: Some(cg),
+                    });
+                }
+                break; // the converted curve consumes the click
             }
-            if let Some(h) = hit_shape(shape, pos, tol) {
+            if let Some(h) = hit_shape(&self.paint.selection_shapes[i].shape, pos, tol) {
+                before = Some(self.snapshot_model());
                 grab = Some(SelectionGrab {
                     shape: i,
                     handle: h,
                     start: pos,
-                    initial: shape.clone(),
+                    initial: self.paint.selection_shapes[i].shape.clone(),
                     curve: None,
                 });
                 break;
@@ -258,7 +312,7 @@ impl PainterTool {
         let has = grab.is_some();
         self.paint.selection_grab = grab;
         if has {
-            self.paint.stroke_undo = Some(self.snapshot_model());
+            self.paint.stroke_undo = before; // the pre-edit snapshot (kept only when a grab resulted)
         }
         true
     }
@@ -272,7 +326,14 @@ impl PainterTool {
         }
         let tol = self.paint.shape_grab_tol_px;
         self.paint.selection_shapes[grab.shape].shape = if let Some(cg) = grab.curve {
-            selection_curve_gizmo::apply_curve_drag(&grab.initial, cg, grab.start, pos)
+            // Drift-free: rebuild from the pristine post-grab shape, then apply the point/tangent drag via the
+            // SHARED model (Auto/Vector→Aligned, mirror opposite, carry manual handles, rebuild) — byte-for-
+            // gesture identical to the stroke Curve editor.
+            let mut shape = grab.initial.clone();
+            if let SelectionShape::Freehand { model, .. } = &mut shape {
+                model.drag(cg, pos);
+            }
+            shape
         } else {
             apply_gizmo_drag(&grab.initial, grab.handle, grab.start, pos, tol)
         };
@@ -429,11 +490,14 @@ fn transform_shape(
             ry: *ry,
             sides: *sides,
         },
-        SelectionShape::Freehand {
-            points, handles, ..
-        } => SelectionShape::Freehand {
-            points: points.iter().map(|&p| xf(p)).collect(),
-            handles: handles.iter().map(|h| [xf(h[0]), xf(h[1])]).collect(),
+        SelectionShape::Freehand { model, .. } => SelectionShape::Freehand {
+            model: CurveModel {
+                points: model.points.iter().map(|&p| xf(p)).collect(),
+                handles: model.handles.iter().map(|h| [xf(h[0]), xf(h[1])]).collect(),
+                kinds: model.kinds.clone(),
+                selected: model.selected,
+                closed: model.closed,
+            },
             // The box orientation follows the shape (identity for move; rotated for rotate).
             u: new_u,
         },
@@ -460,9 +524,7 @@ fn scale_shape(shape: &SelectionShape, f: &Frame, nhx: f32, nhy: f32) -> Selecti
             ry: nhy,
             sides: *sides,
         },
-        SelectionShape::Freehand {
-            points, handles, ..
-        } => {
+        SelectionShape::Freehand { model, .. } => {
             let (c, u, v) = (f.center, f.u, f.v());
             let sx = nhx / f.hx.max(0.001);
             let sy = nhy / f.hy.max(0.001);
@@ -473,8 +535,17 @@ fn scale_shape(shape: &SelectionShape, f: &Frame, nhx: f32, nhy: f32) -> Selecti
                 [c[0] + du * u[0] + dv * v[0], c[1] + du * u[1] + dv * v[1]]
             };
             SelectionShape::Freehand {
-                points: points.iter().map(|&p| scale(p)).collect(),
-                handles: handles.iter().map(|h| [scale(h[0]), scale(h[1])]).collect(),
+                model: CurveModel {
+                    points: model.points.iter().map(|&p| scale(p)).collect(),
+                    handles: model
+                        .handles
+                        .iter()
+                        .map(|h| [scale(h[0]), scale(h[1])])
+                        .collect(),
+                    kinds: model.kinds.clone(),
+                    selected: model.selected,
+                    closed: model.closed,
+                },
                 u: f.u, // scaling keeps the box orientation
             }
         }

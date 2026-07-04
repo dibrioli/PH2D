@@ -130,11 +130,7 @@ impl super::PainterTool {
         let Some(ed) = self.paint.curve.as_mut().filter(|ed| ed.editing) else {
             return false;
         };
-        let Some(i) = super::curve_geom::curve_hit(&ed.points, pos, tol) else {
-            return false;
-        };
-        ed.selected = Some(i);
-        true
+        ed.model.select_point_at(pos, tol)
     }
 }
 

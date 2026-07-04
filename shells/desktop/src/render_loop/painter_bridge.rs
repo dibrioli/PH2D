@@ -1,3 +1,5 @@
+// ph2d-loc-cap: mid-refactor — grew with the deactivate/commit + selection-gizmo bridge paths; decomposing
+// the bridge (source-push · preview-drain · commit) into sub-modules is a scoped follow-up.
 //! Painter (layers + effects) panel ⟷ tool bridge + on-canvas live preview.
 //!
 //! Modeled after `bgremoval_preview.rs`. What it does:
@@ -125,6 +127,33 @@ pub(super) fn dispatch(
                 hero.store
                     .bump_panel_z(ph2d_editor::ids::PAINTER_LAYERS_PANEL);
             }
+        }
+    }
+
+    // ── C&F colour picker → brush colour (single source of truth, all modes) ──
+    // The shared Blender picker mirrors its live value into `widget_color(PAINTER_COLOR_THUMB)` each frame,
+    // but the panel's widget→brush forward is SKIPPED in Selection mode and STOPS the instant the picker
+    // closes — so the final pick (the one that closed the picker) never reached the brush and the next Fill
+    // used the PREVIOUS colour (Enio 2026-07-03). Forward it here instead: every frame the painter is active
+    // (works in Selection mode too) while the picker targets the thumb, AND once on the open→close edge to
+    // catch that final pick. Reads the picker's OWN value (not `widget_color`, which the panel overwrites),
+    // so it's independent of paint order.
+    {
+        use std::sync::atomic::{AtomicBool, Ordering};
+        static PICKER_WAS_OPEN: AtomicBool = AtomicBool::new(false);
+        let open = hero.store.picker_target() == Some(ph2d_editor::ids::PAINTER_COLOR_THUMB);
+        let was_open = PICKER_WAS_OPEN.swap(open, Ordering::Relaxed);
+        if (open || was_open)
+            && let Some((value, _, _, _)) = hero
+                .store
+                .blender_picker(ph2d_editor::ids::INSP_BLENDER_PICKER)
+            && let Some(painter) = tools.active_mut().and_then(|t| {
+                t.as_any_mut()
+                    .downcast_mut::<ph2d_tool_painter::PainterTool>()
+            })
+        {
+            let [r, g, b, _] = value.rgba;
+            painter.set_brush_color_srgb8([r, g, b]);
         }
     }
 

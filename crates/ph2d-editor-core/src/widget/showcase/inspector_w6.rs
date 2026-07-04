@@ -196,6 +196,7 @@ pub(super) fn paint_inspector_w6_section(
         scene,
         text_system,
         theme,
+        store,
         hit_index,
     );
     y += seg_h + ROW_GAP;

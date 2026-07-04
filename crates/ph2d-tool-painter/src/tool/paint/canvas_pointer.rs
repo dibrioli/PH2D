@@ -53,14 +53,19 @@ impl CanvasPaintTool for PainterTool {
         // Curve and Ellipse are persistent on-canvas shape editors (draw → edit → commit), not a
         // single press→release stroke — route every canvas event through them instead of the generic
         // path.
-        match self.paint.brush.stroke_method {
-            // Free Hand shares the Curve editor (its draw phase captures a freehand path, then it's an
-            // ordinary editable curve), so it routes through `curve_pointer` too.
-            StrokeMethod::Curve | StrokeMethod::FreeHand => return self.curve_pointer(ev),
-            StrokeMethod::Ellipse => return self.ellipse_pointer(ev),
-            StrokeMethod::Polygon => return self.polygon_pointer(ev),
-            StrokeMethod::Line => return self.line_pointer(ev),
-            _ => {}
+        // Free Hand shares the Curve editor (its draw phase captures a freehand path, then it's an ordinary
+        // editable curve). All four route through `route_shape_pointer_multi`, which adds MULTI-SHAPE
+        // switching (Down on a parked shape re-activates it; Down in empty space parks the active one and
+        // starts a fresh shape) before dispatching to the active editor.
+        if matches!(
+            self.paint.brush.stroke_method,
+            StrokeMethod::Curve
+                | StrokeMethod::FreeHand
+                | StrokeMethod::Ellipse
+                | StrokeMethod::Polygon
+                | StrokeMethod::Line
+        ) {
+            return self.route_shape_pointer_multi(ev);
         }
         // Stencil texture: grabbing an overlay handle (corner = resize, centre = move) edits the
         // rect and consumes the event; a Down away from every handle (or any move without a grab)

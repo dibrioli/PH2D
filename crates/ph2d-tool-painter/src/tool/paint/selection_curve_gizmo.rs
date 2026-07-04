@@ -1,160 +1,170 @@
 //! **Converted-selection-curve point editor** (ADR-0103 Am.2 §3, Enio 2026-07-03). After **Convert to
-//! Curve** / **Simplify Curve** the selection is a single `Freehand` carrying explicit Bézier `handles`, and
-//! it must edit like the stroke Shape system's Curve — per-anchor **points** with in/out **Bézier handles** —
-//! NOT the whole-shape transform box a RAW lasso Freehand (empty handles) shows. This module owns that
-//! point-level view + hit-test + drag, staying inside the isolated selection gizmo system (it never touches
-//! the stroke editors). Transcendental-free (drift-free from the pristine grab).
+//! Curve** / **Simplify Curve** the selection is a single `Freehand` whose [`CurveModel`] carries explicit
+//! Bézier handles, and it must edit *identically* to the stroke Shape system's Curve — per-anchor points
+//! with in/out Bézier handles, the same 5 handle kinds, the same right-click menu, insert/delete/select —
+//! NOT the whole-shape transform box a RAW lasso Freehand (empty handles) shows.
+//!
+//! This module is a **thin adapter** over the SHARED [`super::curve_model::CurveModel`]: the editing ops
+//! (hit / insert / drag / delete / set-kind / select) live there and are the exact code paths the stroke
+//! editor runs, so the two can never drift. Isolation (ADR-0103 Am.2 v2) is preserved — the selection curve
+//! keeps its own `CurveModel` inside the `selection_shapes` list and never reads/writes the stroke slot
+//! `self.paint.curve`; only the pure model + free fns are shared.
 
+use super::PainterTool;
+use super::curve::MAX_CURVE_POINTS;
+use super::curve_model::{CurveGrab, CurveModel};
+use super::curve_tangent::{self, TangentHandles};
 use super::selection_shapes::SelectionShape;
 
-/// Handle-part discriminants of a curve grab: the anchor, or its IN / OUT Bézier handle.
-pub(super) const PART_ANCHOR: u8 = 0;
-pub(super) const PART_IN: u8 = 1;
-pub(super) const PART_OUT: u8 = 2;
-
-/// A grabbed converted-curve target: which `anchor` of the Freehand, and which `part` (anchor / in / out).
-#[derive(Clone, Copy, Debug)]
-pub(super) struct CurveGrab {
-    pub anchor: usize,
-    pub part: u8,
-}
-
-/// The drawable point-editor of a converted selection curve (image px): anchors + their in/out Bézier
-/// handles (parallel to `anchors`). The shell draws anchors as squares, handles as circles joined to their
-/// anchor by a thin line — the stroke Curve editor's look.
+/// The drawable point-editor view of a converted selection curve (image px) — mirrors the stroke curve
+/// overlay: the anchors, the selected index, and the SELECTED anchor's Bézier tangent handles (only the
+/// selected one shows handles, like the stroke). The spine itself is drawn from the gizmo `outline`.
 pub struct SelectionCurveEdit {
+    /// Control anchors (image px) — the selected one draws highlighted, the rest as squares.
     pub anchors: Vec<[f32; 2]>,
-    pub in_h: Vec<[f32; 2]>,
-    pub out_h: Vec<[f32; 2]>,
+    /// The selected anchor index (drawn highlighted), if any.
+    pub selected: Option<usize>,
+    /// The selected anchor's tangent handles (stems + grabbable dots), or `None` when none/collapsed.
+    pub tangents: Option<TangentHandles>,
+    /// The selected anchor's **handle-kind** wire `u8` (`0=Free 1=Aligned 2=Vector 3=Auto 4=Symmetric`), or
+    /// `None` — lets the shell mark the active right-click menu item (as the stroke curve overlay does).
+    pub selected_kind: Option<u8>,
 }
 
-/// `true` when `shape` is a CONVERTED curve (a `Freehand` carrying explicit Bézier handles, one `[in, out]`
-/// per anchor) — the Convert / Simplify output. A raw lasso `Freehand` has EMPTY handles ⇒ `false` (it shows
-/// the transform box instead). This is the switch between the two Freehand editing modes.
+/// `true` when `shape` is a CONVERTED curve (a `Freehand` whose model carries Bézier handles) — the Convert /
+/// Simplify output. A raw lasso `Freehand` has an empty-handle model ⇒ `false` (it shows the transform box).
+/// This is the switch between the two Freehand editing modes.
 #[must_use]
 pub(super) fn is_converted_curve(shape: &SelectionShape) -> bool {
-    matches!(
-        shape,
-        SelectionShape::Freehand { points, handles, .. }
-            if !points.is_empty() && handles.len() == points.len()
-    )
+    matches!(shape, SelectionShape::Freehand { model, .. } if model.is_curve())
 }
 
-/// Build the point-editor view of a converted curve (`None` for any other shape).
+/// Build the point-editor overlay of a converted curve (`None` for any other shape). `grabbed` is the tangent
+/// handle being dragged this gesture `(anchor, is_out)`, for the accent colour; `tol` is the grab tolerance.
 #[must_use]
-pub(super) fn curve_edit_view(shape: &SelectionShape) -> Option<SelectionCurveEdit> {
-    let SelectionShape::Freehand {
-        points, handles, ..
-    } = shape
-    else {
+pub(super) fn curve_edit_view(
+    shape: &SelectionShape,
+    grabbed: Option<(usize, bool)>,
+    tol: f32,
+) -> Option<SelectionCurveEdit> {
+    let SelectionShape::Freehand { model, .. } = shape else {
         return None;
     };
-    if points.is_empty() || handles.len() != points.len() {
+    if !model.is_curve() {
         return None;
     }
+    let tangents = model.selected.and_then(|s| {
+        curve_tangent::build_tangents(&model.points, &model.handles, s, grabbed, tol, model.closed)
+    });
     Some(SelectionCurveEdit {
-        anchors: points.clone(),
-        in_h: handles.iter().map(|h| h[0]).collect(),
-        out_h: handles.iter().map(|h| h[1]).collect(),
+        anchors: model.points.clone(),
+        selected: model.selected,
+        tangents,
+        selected_kind: model.selected_kind_wire(),
     })
 }
 
-/// Hit-test the converted curve's points + handles at `pos` within `tol` — handles win over anchors (they
-/// sit on top), nearest wins within each. `None` when nothing is grabbed / the shape isn't a converted curve.
+/// The point-editor's fall-through after a click misses every control point / tangent AND the transform box:
+/// insert a new anchor on the curve (and grab it), else select the nearest at the point cap. The caller
+/// (`selection_gizmo_down`) runs `model.hit_point` and the box hit-test FIRST, so this only fires on a real
+/// miss — mirroring the stroke `curve_down` order (point → gizmo → insert → nearest).
 #[must_use]
-pub(super) fn hit_curve(shape: &SelectionShape, pos: [f32; 2], tol: f32) -> Option<CurveGrab> {
-    let SelectionShape::Freehand {
-        points, handles, ..
-    } = shape
-    else {
-        return None;
-    };
-    if points.is_empty() || handles.len() != points.len() {
-        return None;
-    }
-    let tol2 = tol * tol;
-    // 1) Bézier handles (in / out) first — they overlay the anchors.
-    let mut best: Option<(CurveGrab, f32)> = None;
-    for (i, h) in handles.iter().enumerate() {
-        for (part, hp) in [(PART_IN, h[0]), (PART_OUT, h[1])] {
-            let d = dist2(hp, pos);
-            if d <= tol2 && best.is_none_or(|(_, bd)| d < bd) {
-                best = Some((CurveGrab { anchor: i, part }, d));
-            }
-        }
-    }
-    // 2) Anchors — only if no handle was grabbed (a handle atop its anchor stays grabbable).
-    if best.is_none() {
-        for (i, a) in points.iter().enumerate() {
-            let d = dist2(*a, pos);
-            if d <= tol2 && best.is_none_or(|(_, bd)| d < bd) {
-                best = Some((
-                    CurveGrab {
-                        anchor: i,
-                        part: PART_ANCHOR,
-                    },
-                    d,
-                ));
-            }
-        }
-    }
-    best.map(|(g, _)| g)
-}
-
-/// Apply a converted-curve drag to the PRISTINE `initial` shape (drift-free): moving an ANCHOR carries its
-/// two handles with it (the tangent rides along); moving an IN / OUT handle moves just that handle (a Free
-/// corner — independent tangents, like the stroke editor's Free kind). Returns the edited `Freehand`.
-#[must_use]
-pub(super) fn apply_curve_drag(
-    initial: &SelectionShape,
-    grab: CurveGrab,
-    start: [f32; 2],
+pub(super) fn selection_curve_insert_or_nearest(
+    model: &mut CurveModel,
     pos: [f32; 2],
-) -> SelectionShape {
-    let SelectionShape::Freehand { points, handles, u } = initial else {
-        return initial.clone();
-    };
-    if grab.anchor >= points.len() || handles.len() != points.len() {
-        return initial.clone();
+) -> Option<CurveGrab> {
+    if model.points.len() < MAX_CURVE_POINTS {
+        let i = model.insert(pos); // de Casteljau split — the SHAPE (and mask) is unchanged
+        model.selected = Some(i);
+        return Some(CurveGrab::Anchor(i));
     }
-    let d = [pos[0] - start[0], pos[1] - start[1]];
-    let mv = |p: [f32; 2]| [p[0] + d[0], p[1] + d[1]];
-    let mut points = points.clone();
-    let mut handles = handles.clone();
-    let i = grab.anchor;
-    match grab.part {
-        PART_ANCHOR => {
-            points[i] = mv(points[i]);
-            handles[i] = [mv(handles[i][0]), mv(handles[i][1])];
-        }
-        PART_IN => handles[i][0] = mv(handles[i][0]),
-        _ => handles[i][1] = mv(handles[i][1]),
-    }
-    SelectionShape::Freehand {
-        points,
-        handles,
-        u: *u,
-    }
+    model.select_nearest(pos);
+    None
 }
 
-fn dist2(a: [f32; 2], b: [f32; 2]) -> f32 {
-    let dx = a[0] - b[0];
-    let dy = a[1] - b[1];
-    dx * dx + dy * dy
+impl PainterTool {
+    /// The topmost converted-curve shape that currently has a SELECTED anchor — the target for the
+    /// right-click handle-kind menu + the Delete key.
+    fn selection_curve_active_index(&self) -> Option<usize> {
+        self.paint.selection_shapes.iter().rposition(|e| {
+            matches!(&e.shape, SelectionShape::Freehand { model, .. }
+                if model.is_curve() && model.selected.is_some())
+        })
+    }
+
+    /// Select the control point under `pos` (within `tol`) on the topmost converted curve, clearing any
+    /// selection on the others so exactly one anchor is active — the shell's secondary-click before opening
+    /// the handle-kind menu. `true` iff a point was hit. Mirrors the stroke `curve_select_point_at`.
+    pub fn selection_curve_select_point_at(&mut self, pos: [f32; 2], tol: f32) -> bool {
+        let mut hit = false;
+        for e in self.paint.selection_shapes.iter_mut().rev() {
+            if let SelectionShape::Freehand { model, .. } = &mut e.shape
+                && model.is_curve()
+            {
+                if !hit && model.select_point_at(pos, tol) {
+                    hit = true; // topmost-first (rev): the first hit wins
+                } else {
+                    model.selected = None;
+                }
+            }
+        }
+        hit
+    }
+
+    /// Set the selected converted-curve anchor's **handle kind** from the menu's wire `u8` (`0=Free 1=Aligned
+    /// 2=Vector 3=Auto 4=Symmetric`), recomposite, one undo entry. Mirrors the stroke `set_curve_handle_kind`.
+    pub fn set_selection_curve_handle_kind(&mut self, wire: u8) -> bool {
+        let Some(i) = self.selection_curve_active_index() else {
+            return false;
+        };
+        let before = self.snapshot_model();
+        let changed = match &mut self.paint.selection_shapes[i].shape {
+            SelectionShape::Freehand { model, .. } => model.set_kind(wire),
+            _ => false,
+        };
+        if changed {
+            self.recompose_selection_mask();
+            self.commit_structural_edit(before);
+        }
+        changed
+    }
+
+    /// Delete the selected anchor of the active converted curve (Delete key). Keeps `≥ 2` points, recomposite,
+    /// one undo entry. `true` when one was removed. Mirrors the stroke `curve_delete_selected`.
+    pub fn selection_curve_delete_selected_point(&mut self) -> bool {
+        let Some(i) = self.selection_curve_active_index() else {
+            return false;
+        };
+        let before = self.snapshot_model();
+        let removed = match &mut self.paint.selection_shapes[i].shape {
+            SelectionShape::Freehand { model, .. } => model.delete_selected(),
+            _ => false,
+        };
+        if removed {
+            self.recompose_selection_mask();
+            self.commit_structural_edit(before);
+        }
+        removed
+    }
 }
 
 #[cfg(test)]
 mod tests {
+    use super::super::curve_handle::HandleKind;
     use super::*;
 
     fn converted() -> SelectionShape {
         SelectionShape::Freehand {
-            points: vec![[0.0, 0.0], [10.0, 0.0], [10.0, 10.0]],
-            handles: vec![
-                [[-2.0, 0.0], [2.0, 0.0]],
-                [[8.0, 0.0], [12.0, 0.0]],
-                [[10.0, 8.0], [10.0, 12.0]],
-            ],
+            model: CurveModel::from_curve(
+                vec![[0.0, 0.0], [10.0, 0.0], [10.0, 10.0]],
+                vec![
+                    [[-2.0, 0.0], [2.0, 0.0]],
+                    [[8.0, 0.0], [12.0, 0.0]],
+                    [[10.0, 8.0], [10.0, 12.0]],
+                ],
+                true,
+                HandleKind::Aligned,
+            ),
             u: [1.0, 0.0],
         }
     }
@@ -163,8 +173,7 @@ mod tests {
     fn only_a_curve_with_handles_is_point_editable() {
         assert!(is_converted_curve(&converted()), "handles present ⇒ curve");
         let raw = SelectionShape::Freehand {
-            points: vec![[0.0, 0.0], [10.0, 0.0], [10.0, 10.0]],
-            handles: Vec::new(), // a raw lasso ⇒ transform box, not point editing
+            model: CurveModel::raw_lasso(vec![[0.0, 0.0], [10.0, 0.0], [10.0, 10.0]], true),
             u: [1.0, 0.0],
         };
         assert!(
@@ -174,44 +183,33 @@ mod tests {
     }
 
     #[test]
-    fn hits_the_out_handle_then_drags_only_it() {
-        let shape = converted();
-        // The out-handle of anchor 0 is at (2,0); grabbing there and dragging moves ONLY that handle.
-        let g = hit_curve(&shape, [2.0, 0.0], 2.0).expect("grabbed a handle");
-        assert_eq!((g.anchor, g.part), (0, PART_OUT));
-        let out = apply_curve_drag(&shape, g, [2.0, 0.0], [5.0, 3.0]);
-        let SelectionShape::Freehand {
-            points, handles, ..
-        } = out
-        else {
-            panic!("still a freehand")
+    fn press_grabs_the_out_handle_then_a_drag_moves_only_it() {
+        let SelectionShape::Freehand { mut model, .. } = converted() else {
+            unreachable!()
         };
-        assert_eq!(points[0], [0.0, 0.0], "the anchor did not move");
+        model.selected = Some(0); // tangent_hit only tests the SELECTED anchor's handles
+        // The out-handle of anchor 0 is at (2,0); a hit there grabs it (not the anchor).
+        let g = model.hit_point([2.0, 0.0], 1.0).expect("grabbed a handle");
+        assert_eq!(g, CurveGrab::Tangent(0, true));
+        model.drag(g, [5.0, 3.0]);
+        assert_eq!(model.points[0], [0.0, 0.0], "the anchor did not move");
         assert_eq!(
-            handles[0][1],
+            model.handles[0][1],
             [5.0, 3.0],
             "the out handle moved to the pointer"
         );
-        assert_eq!(handles[0][0], [-2.0, 0.0], "the in handle is untouched");
     }
 
     #[test]
-    fn dragging_an_anchor_carries_its_handles() {
-        let shape = converted();
-        let g = hit_curve(&shape, [0.0, 0.0], 1.5).expect("grabbed the anchor");
-        assert_eq!(g.part, PART_ANCHOR);
-        let out = apply_curve_drag(&shape, g, [0.0, 0.0], [4.0, 0.0]);
-        let SelectionShape::Freehand {
-            points, handles, ..
-        } = out
-        else {
-            panic!("freehand")
+    fn insert_or_nearest_adds_an_anchor_on_a_miss() {
+        let SelectionShape::Freehand { mut model, .. } = converted() else {
+            unreachable!()
         };
-        assert_eq!(points[0], [4.0, 0.0], "anchor moved by +4x");
-        assert_eq!(
-            handles[0],
-            [[2.0, 0.0], [6.0, 0.0]],
-            "both handles rode along"
-        );
+        let n = model.points.len();
+        // A click away from any point/handle inserts a new anchor on the curve and grabs it.
+        let g =
+            selection_curve_insert_or_nearest(&mut model, [5.0, 0.0]).expect("inserted + grabbed");
+        assert!(matches!(g, CurveGrab::Anchor(_)));
+        assert_eq!(model.points.len(), n + 1, "an anchor was inserted");
     }
 }

@@ -133,6 +133,34 @@ impl PainterTool {
         (self.paint.fill_threshold.clamp(0.0, 1.0) * 255.0).round() as u8
     }
 
+    /// The connected COMPONENT (4-connected, `≥128` inside) of the active selection mask that contains texel
+    /// `(sx, sy)` — `255` inside that one region, `0` elsewhere. Lets a ColorDrop fill only the selection
+    /// area the colour was dropped on, not every disjoint area (Enio 2026-07-04). All-`0` when the drop is
+    /// outside the selection.
+    fn selection_component_at(&self, sx: usize, sy: usize, w: usize, h: usize) -> Vec<u8> {
+        let mask = &self.paint.selection_mask;
+        let mut comp = vec![0u8; w * h];
+        if mask.len() != w * h || sx >= w || sy >= h || mask[sy * w + sx] < 128 {
+            return comp; // drop outside the selection → fills nothing
+        }
+        let mut stack = vec![(sx, sy)];
+        comp[sy * w + sx] = 255;
+        while let Some((x, y)) = stack.pop() {
+            for (dx, dy) in [(-1i32, 0), (1, 0), (0, -1), (0, 1)] {
+                let (nx, ny) = (x as i32 + dx, y as i32 + dy);
+                if nx < 0 || ny < 0 || nx >= w as i32 || ny >= h as i32 {
+                    continue;
+                }
+                let idx = ny as usize * w + nx as usize;
+                if comp[idx] == 0 && mask[idx] >= 128 {
+                    comp[idx] = 255;
+                    stack.push((nx as usize, ny as usize));
+                }
+            }
+        }
+        comp
+    }
+
     /// Run the flood fill from the ORIGINAL (pre-fill) pixels: restore the snapshot into the canvas, then
     /// fill from `fill_seed` at the current threshold with the current brush colour. Shared by the drop
     /// and every live threshold adjustment. No-op without a seed / snapshot.
@@ -152,6 +180,11 @@ impl PainterTool {
             (self.paint.brush.color[1].clamp(0.0, 1.0) * 255.0 + 0.5) as u8,
             (self.paint.brush.color[2].clamp(0.0, 1.0) * 255.0 + 0.5) as u8,
         ];
+        // The ColorDrop clips to the ONE selection region the colour was dropped on — the connected
+        // component of the selection mask under the seed — NOT every disjoint selection area (Enio
+        // 2026-07-04). Computed before the mutable canvas borrow. `None` when there's no live selection.
+        let clip = (self.paint.selection_active && self.paint.selection_mask.len() == w * h)
+            .then(|| self.selection_component_at(sx, sy, w, h));
         let buf = Arc::make_mut(&mut self.canvas_rgba);
         if buf.len() != w * h * 4 {
             return;
@@ -161,14 +194,20 @@ impl PainterTool {
             buf.copy_from_slice(&self.paint.fill_snapshot);
         }
         let filled = flood_fill(buf, w, h, (sx, sy), color, tol);
-        // Clip the fill to the active selection — the flood writes `canvas_rgba` directly, bypassing the
-        // per-dab stamp gate, so revert texels outside the selection back to the pre-fill snapshot (ADR-0103).
-        if self.paint.selection_active && self.paint.selection_mask.len() == w * h {
+        // Clip the fill to the drop's selection region — the flood writes `canvas_rgba` directly, bypassing
+        // the per-dab stamp gate, so revert texels outside that component (feathered coverage kept inside it,
+        // 0 outside) back to the pre-fill snapshot (ADR-0103).
+        if let Some(comp) = &clip {
             let mask = &self.paint.selection_mask;
             let snap = &self.paint.fill_snapshot;
             let n = (w * h).min(snap.len() / 4);
             for i in 0..n {
-                let keep = f32::from(mask[i]) / 255.0;
+                // Keep the feathered selection coverage ONLY inside the drop's component; 0 elsewhere.
+                let keep = if comp[i] >= 128 {
+                    f32::from(mask[i]) / 255.0
+                } else {
+                    0.0
+                };
                 if keep >= 1.0 {
                     continue;
                 }

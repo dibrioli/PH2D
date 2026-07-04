@@ -138,15 +138,31 @@ pub fn paint_segmented_button(
     rect: Rect,
     label: &str,
     selected: bool,
+    state: crate::widget::ButtonState,
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
     theme: Theme,
 ) {
+    use crate::widget::ButtonState;
     let radius = Radius::Sm.px();
+    // Hover/press feedback (Enio 2026-07-04): segmented buttons used to render ONLY selected-vs-not, so
+    // hovering / pressing showed nothing. Read the widget `state` the dispatcher sets and deepen the fill.
     let (bg, fg, border) = if selected {
-        (ColorToken::Bg2, ColorToken::Text1, ColorToken::Accent)
+        // Selected: accent-outlined; a press deepens the fill for feedback.
+        let bg = if state == ButtonState::Pressed {
+            ColorToken::AccentSoft
+        } else {
+            ColorToken::Bg2
+        };
+        (bg, ColorToken::Text1, ColorToken::Accent)
     } else {
-        (ColorToken::Bg3, ColorToken::Text2, ColorToken::Border)
+        // Unselected: flat surface — Normal → Bg3, Hovered → BgElev, Pressed → AccentSoft.
+        let bg = match state {
+            ButtonState::Pressed => ColorToken::AccentSoft,
+            ButtonState::Hovered | ButtonState::Focused => ColorToken::BgElev,
+            _ => ColorToken::Bg3,
+        };
+        (bg, ColorToken::Text2, ColorToken::Border)
     };
     fill_rounded_rect(scene, rect, radius, resolve(bg, theme));
     stroke_rounded_rect(
@@ -187,8 +203,10 @@ pub fn paint_segmented_group(
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
     theme: Theme,
+    store: &crate::interaction::WidgetStore,
     hit_index: &mut HitIndex,
 ) {
+    use crate::widget::ButtonState;
     let n = segments.len();
     if n == 0 {
         return;
@@ -197,7 +215,8 @@ pub fn paint_segmented_group(
     let seg_w = ((rect.w - gap * (n as f32 - 1.0)) / n as f32).max(0.0);
     for (i, (label, selected, id)) in segments.iter().enumerate() {
         let seg = Rect::new(rect.x + (seg_w + gap) * i as f32, rect.y, seg_w, rect.h);
-        paint_segmented_button(seg, label, *selected, scene, text_system, theme);
+        let state = store.button_state(*id).unwrap_or(ButtonState::Normal);
+        paint_segmented_button(seg, label, *selected, state, scene, text_system, theme);
         hit_index.register(*id, seg);
     }
 }
@@ -222,8 +241,11 @@ pub fn paint_segmented_group_adaptive(
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
     theme: Theme,
+    store: &crate::interaction::WidgetStore,
     hit_index: &mut HitIndex,
 ) -> f32 {
+    use crate::widget::ButtonState;
+    let seg_state = |id: NodeId| store.button_state(id).unwrap_or(ButtonState::Normal);
     let n = segments.len();
     if n == 0 {
         return 0.0;
@@ -265,7 +287,15 @@ pub fn paint_segmented_group_adaptive(
             top_seg_w,
             row_h,
         );
-        paint_segmented_button(seg, label, *selected, scene, text_system, theme);
+        paint_segmented_button(
+            seg,
+            label,
+            *selected,
+            seg_state(*id),
+            scene,
+            text_system,
+            theme,
+        );
         hit_index.register(*id, seg);
     }
 
@@ -274,7 +304,15 @@ pub fn paint_segmented_group_adaptive(
     for (label, selected, id) in &segments[top_n..] {
         y += row_gap;
         let seg = Rect::new(rect.x, y, rect.w, row_h);
-        paint_segmented_button(seg, label, *selected, scene, text_system, theme);
+        paint_segmented_button(
+            seg,
+            label,
+            *selected,
+            seg_state(*id),
+            scene,
+            text_system,
+            theme,
+        );
         hit_index.register(*id, seg);
         y += row_h;
     }

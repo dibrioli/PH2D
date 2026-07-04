@@ -25,9 +25,12 @@ mod curve_geom; // flatten (incl. closed seam) + point hit-test/nearest/insert; 
 mod curve_gizmo; // whole-curve transform gizmo (move/scale/rotate the entire curve); split from `curve`
 mod curve_handle; // per-anchor handle kinds (Free/Aligned/Vector/Auto) + derived geometry; split from `curve`
 mod curve_join; // corner joins for the offset: smooth-merge / convex-miter / concave-split; split from `curve_offset`
+mod curve_model; // shared editing core (points/handles/kinds/selected + ops) — stroke + selection both own one
 mod curve_offset; // perpendicular offset (parallel curve) + CAD-grade reconstruction; split from `curve_geom`
 mod curve_tangent; // Bézier tangent-handle hit-test, aligned mirror, overlay snapshot; split from `curve`
 mod curve_trim; // self-intersection trim of the offset spine (open + closed); split from `curve_offset`
+mod stroke_multi; // multi-shape: parked (inactive-but-editable) stroke shapes + their Operation; the pixels are a derived recompose
+pub use stroke_multi::StrokeOpBadge;
 /// Per-dab randomize setters (Jitter Scale / Rotate / Randomize Color); split from `brush_settings`.
 mod jitter_settings;
 /// The canvas pointer's operation mode (Paint / Smear / Blur / Clone / Mask); split from `paint.rs` (cap).
@@ -111,7 +114,7 @@ mod selection_overlay;
 /// Selection rasterization: shape → coverage buffers, boolean combine, Feather (box-blur). [LOC split].
 mod selection_raster;
 /// Selection **shape list** model (ADR-0103 Am.2): the `Vec<SelectionShape>` source of truth + compositing. [LOC split].
-mod selection_shapes;
+pub(super) mod selection_shapes; // SelectionEntry is re-exported at `crate::tool` for the undo snapshot
 /// Selection **Edit** mode contour tracing (mask → editable boundary polyline); split for the LOC cap.
 mod selection_trace;
 mod shape_ramp;
@@ -124,27 +127,8 @@ mod stamp_route;
 /// `PaintState::default` body — split out for the workspace file-LOC cap (struct stays in `paint.rs`).
 mod state_default;
 
-/// Default control-handle grab radius in image px (the Curve and Ellipse editors share one tolerance),
-/// until the shell forwards a screen-scaled value via [`PainterTool::set_shape_grab_tol_px`].
-const DEFAULT_SHAPE_GRAB_TOL_PX: f32 = 8.0;
-
-/// Smallest brush radius the size UI maps to (image px); the size slider + `[` / `]` nudge clamp here.
-pub const BRUSH_SIZE_MIN_PX: f32 = 1.0;
-/// Largest brush radius the size UI maps to (image px); the interactive range, not the engine's hard cap.
-pub const BRUSH_SIZE_MAX_PX: f32 = 512.0;
-
-// Interactive UI ranges for the Stroke section's non-`0..1` sliders: the `0..1` track maps onto `0..MAX`.
-/// Max spacing the slider reaches, as a fraction of diameter (`1.0` = one full diameter between dabs).
-pub const BRUSH_SPACING_MAX: f32 = 1.0;
-/// Max absolute jitter the slider reaches, in pixels (View unit).
-pub const BRUSH_JITTER_ABS_MAX_PX: f32 = 64.0;
-/// Max value for the Input Samples / Dash Length count sliders (the engine's input-sample window cap).
-pub const BRUSH_COUNT_SLIDER_MAX: u32 = MAX_INPUT_SAMPLES as u32;
-/// Airbrush **Rate** slider floor / ceiling (seconds) — the panel maps its `0..1` track linearly onto
-/// `[MIN, MAX]`. Re-exported from the engine's Blender soft range so the value↔track map shares one source.
-pub const BRUSH_AIRBRUSH_RATE_MIN_S: f32 = AIRBRUSH_RATE_MIN_S;
-/// See [`BRUSH_AIRBRUSH_RATE_MIN_S`].
-pub const BRUSH_AIRBRUSH_RATE_MAX_S: f32 = AIRBRUSH_RATE_MAX_S;
+mod brush_ranges; // Stroke-slider UI range consts (BRUSH_*_MAX / airbrush rate) + shape grab tol; split for the LOC cap
+pub use brush_ranges::*;
 
 // The panel-facing snapshot [`BrushSettings`] + the falloff preview helper `brush_falloff_weight_at`
 // live in the `brush_settings` submodule (their single clamp source); re-exported for the `paint::` path.
@@ -251,6 +235,11 @@ pub(crate) struct PaintState {
     selection_offset_rings: Vec<f32>,
     selection_offset_source: Arc<Vec<u8>>,
     selection_offset_sdf: Arc<Vec<f32>>,
+    /// **Ring stack**: `true` once the offset rings were materialised into the editable Freehand curves in
+    /// `selection_shapes` (Edit Gizmos on an offset selection, Enio 2026-07-04). While set, the mask is a
+    /// BAND-PARITY composite of those nested curves (paint iff enclosed by `≡ n (mod 2)` of them, `n>0`),
+    /// so editing any ring curve reshapes its intercalated band. Cleared by Clear / a new selection gesture.
+    selection_ring_stack: bool,
     /// **Composite Brush**: run Brush + Smear + Blur together (a Brush-tool upgrade, panel checkbox). See [`composite`].
     composite_enabled: bool,
     /// The composite layer stack in display order (index 0 = layer 1 = top; run bottom→top per dab). [`composite`].
@@ -302,6 +291,14 @@ pub(crate) struct PaintState {
     line: Option<line::LineEditor>,
     /// In-progress Polygon session (the on-canvas regular-N-gon editor); `None` when idle. [`polygon`].
     polygon: Option<polygon::PolygonEditor>,
+    /// **Multi-shape** PARKED stroke shapes (source of truth; pixels are a derived recompose) — every editable shape but the live editor. Empty = single-shape. [`stroke_multi`] (Enio 2026-07-04).
+    parked_shapes: Vec<stroke_multi::StrokeShape>,
+    /// Operation of the ACTIVE shape (its `+`/`−`/`o` gizmo glyph); a new shape adopts [`stroke_op_mode`]. [`stroke_multi`].
+    active_op: stroke_multi::StrokeOp,
+    /// Current panel Operation mode a NEW shape is created with (stroke analogue of `selection_bool_op`; "New"→Overlay).
+    stroke_op_mode: stroke_multi::StrokeOp,
+    /// Pending op-cycle **tap** (Down pos on the active shape's centre square): Up without a drag cycles the op; a drag past the slop clears it + moves the shape. [`stroke_multi`].
+    op_tap: Option<[f32; 2]>,
     /// Control-handle grab radius (image px) for the shape editors — shell forwards a footprint-scaled value.
     shape_grab_tol_px: f32,
     /// **Offset** slider track (`0..1`, `0.5` = none) — perpendicular path offset for the shape editors.

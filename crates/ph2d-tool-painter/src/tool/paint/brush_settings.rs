@@ -118,6 +118,9 @@ pub struct BrushSettings {
     // ── Stroke section (raw values; the panel maps to slider tracks via the BRUSH_*_MAX consts) ──
     /// Stroke-method wire discriminant ([`StrokeMethod::to_u8`]).
     pub stroke_method: u8,
+    /// Multi-shape **Operation** the next shape is created with (`0`=Overlay `1`=Add `2`=Remove) — the
+    /// selected segment of the Stroke OPERATION card. See `tool::paint::stroke_multi::StrokeOp`.
+    pub stroke_op_mode: u8,
     /// Spacing as a fraction of diameter (`0.10` = 10%); the slider track is this value.
     pub spacing: f32,
     /// **Offset** slider track (`0..1`, `0.5` = no offset) — perpendicular path offset for the shape editors.
@@ -360,6 +363,19 @@ impl PainterTool {
     pub fn set_brush_color_channel(&mut self, ch: usize, v: f32) {
         if ch < 3 {
             self.paint.brush.color[ch] = v.clamp(0.0, 1.0);
+            self.sync_brush_color_across_modes();
+        }
+    }
+
+    /// The paint **colour** is shared across EVERY paint mode (unlike the per-mode size / hardness / spacing):
+    /// broadcast the live brush colour into every `brush_by_mode` slot so it survives a mode switch. Without
+    /// this, a colour picked in one mode was lost when the ColorDrop Fill (or any tool switch) swapped in
+    /// another mode's slot — so Fill applied the previous / default (black) colour (Enio 2026-07-04). Mirrors
+    /// the Photoshop / Procreate "one foreground colour for all tools" model.
+    pub(super) fn sync_brush_color_across_modes(&mut self) {
+        let color = self.paint.brush.color;
+        for slot in &mut self.paint.brush_by_mode {
+            slot.color = color;
         }
     }
 
@@ -374,6 +390,17 @@ impl PainterTool {
             (c[1].clamp(0.0, 1.0) * 255.0 + 0.5) as u8,
             (c[2].clamp(0.0, 1.0) * 255.0 + 0.5) as u8,
         ]
+    }
+
+    /// Set the brush paint colour from straight sRGB bytes — the inverse of [`Self::brush_color_srgb8`].
+    /// The C&F picker forwards its live value here every frame (in EVERY mode, and once on the open→close
+    /// edge to catch the final pick that closes the picker), so brush = Fill = picker are always the one
+    /// colour and Fill never applies the previous colour (Enio 2026-07-03).
+    pub fn set_brush_color_srgb8(&mut self, rgb: [u8; 3]) {
+        for (ch, &v) in rgb.iter().enumerate() {
+            self.paint.brush.color[ch] = f32::from(v) / 255.0;
+        }
+        self.sync_brush_color_across_modes();
     }
 
     /// Set the brush blend mode from a wire discriminant (out-of-range → Mix).

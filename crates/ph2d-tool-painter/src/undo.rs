@@ -52,6 +52,10 @@ pub struct ModelSnapshot {
     /// The in-progress drag-preview's saved pixels, if a shape preview was live — so a restore can peel the
     /// preview back to the pristine baseline before re-stamping the editor's geometry (no double paint).
     pub preview_patch: Option<PreviewPatch>,
+    /// The PARKED stroke shapes (multi-shape) at capture time — every simultaneously-editable shape that
+    /// isn't the one live editor (`shape`). Captured so a structural undo/redo restores the whole editable
+    /// set in lock-step with the baked/preview pixels, not just the active one. Empty = single/no shape.
+    pub parked_shapes: Vec<ParkedShapeState>,
     /// The **Mask** brush's transient scratch buffer + its target layer at capture time. A mask stroke
     /// mutates only this scratch (it swaps in/out of `canvas_rgba`, which stays unchanged), so without
     /// capturing it here a mask stroke produced a no-op undo entry and could not be rolled back. Restoring
@@ -69,6 +73,12 @@ pub struct ModelSnapshot {
     /// the exact effective mask AND keeps the Feather slider re-derivable from the right base.
     pub selection_crisp: Arc<Vec<u8>>,
     pub selection_feather: f32,
+    /// The **parametric selection shape list** (ADR-0103 Am.2) at capture time — the source of truth the
+    /// mask is a derived cache of. Captured so a structural undo/redo restores the editable SHAPES (curve
+    /// anchors + handles, box params) in lock-step with the mask: without it, undo restored only the
+    /// rasterized mask and the next `recompose_selection_mask` regenerated the edited shape → the selection
+    /// curve point edit "came back" (Enio 2026-07-03). Empty = no parametric selection.
+    pub(crate) selection_shapes: Vec<crate::tool::SelectionEntry>,
 }
 
 /// Plain-data snapshot of an open on-canvas shape editor, stored in a [`ModelSnapshot`] so a structural
@@ -154,6 +164,17 @@ impl ShapeEditState {
             _ => self == other,
         }
     }
+}
+
+/// A PARKED (inactive but still-editable) stroke shape captured for undo: its geometry plus the wire `u8`
+/// of its Operation (`0`=Overlay `1`=Add `2`=Remove — see `tool::paint::stroke_multi::StrokeOp`). Stroke
+/// multi-shape keeps a list of these alongside the one live editor (`shape`); a structural undo/redo
+/// restores the whole list so every simultaneously-editable shape rolls back in lock-step with the pixels.
+/// Kept as a wire `u8` so this module stays free of the `paint` editor types (mirrors `CurveState.kinds`).
+#[derive(Clone, Debug, PartialEq)]
+pub struct ParkedShapeState {
+    pub state: ShapeEditState,
+    pub op: u8,
 }
 
 /// The in-progress drag-preview's saved pixels (a small bbox), carried in a [`ModelSnapshot`] so a restore
@@ -304,12 +325,14 @@ mod tests {
             offset_norm: 0.5,
             offset_base_px: 0.0,
             preview_patch: None,
+            parked_shapes: Vec::new(),
             mask_scratch: Arc::new(Vec::new()),
             mask_scratch_target: None,
             selection_mask: Arc::new(Vec::new()),
             selection_active: false,
             selection_crisp: Arc::new(Vec::new()),
             selection_feather: 0.0,
+            selection_shapes: Vec::new(),
         }
     }
 

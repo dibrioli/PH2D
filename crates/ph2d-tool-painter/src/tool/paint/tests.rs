@@ -3972,13 +3972,14 @@ fn curve_grab_tolerance_grabs_near_and_adds_far() {
         "near press grabbed, didn't add"
     );
 
-    // Down far from every point (> tol) → adds a 4th.
-    t.on_canvas_pointer(cp([20.0, 60.0], PointerPhase::Down));
-    t.on_canvas_pointer(cp([20.0, 60.0], PointerPhase::Up));
+    // Down beyond the grab tol but still within the curve's insert band → adds a 4th (subdivides). (A press
+    // FAR from the curve now starts a NEW shape instead — the multi-shape gesture, covered elsewhere.)
+    t.on_canvas_pointer(cp([20.0, 48.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([20.0, 48.0], PointerPhase::Up));
     assert_eq!(
         t.curve_overlay().unwrap().points.len(),
         4,
-        "far press added a point"
+        "press past the grab tol (but near the curve) added a point"
     );
 }
 
@@ -7489,20 +7490,387 @@ fn converted_selection_curve_is_point_editable() {
         .as_ref()
         .expect("the converted curve exposes an editable point gizmo");
     assert!(curve.anchors.len() >= 3, "anchors are visible for editing");
-    assert_eq!(
-        curve.in_h.len(),
-        curve.anchors.len(),
-        "every anchor carries its in/out Bézier handles"
+    assert!(
+        curve.selected.is_none(),
+        "convert leaves nothing selected (no tangents drawn yet), like the stroke curve"
     );
     // Grab an anchor and drag it — the selection curve follows (the anchor moves with the pointer).
     let anchor = curve.anchors[0];
     t.on_canvas_pointer(cp(anchor, PointerPhase::Down));
+    // Pressing an anchor SELECTS it (its tangent handles now show — the shared-model behaviour).
+    assert_eq!(
+        t.selection_gizmos()[0]
+            .edit_curve
+            .as_ref()
+            .unwrap()
+            .selected,
+        Some(0),
+        "pressing an anchor selects it"
+    );
     t.on_canvas_pointer(cp([anchor[0] + 12.0, anchor[1]], PointerPhase::Move));
     t.on_canvas_pointer(cp([anchor[0] + 12.0, anchor[1]], PointerPhase::Up));
     let moved = t.selection_gizmos()[0].edit_curve.as_ref().unwrap().anchors[0];
     assert!(
         (moved[0] - anchor[0]).abs() > 6.0,
         "dragging the anchor edited the curve point ({anchor:?} → {moved:?})"
+    );
+}
+
+/// Convert to Curve FITS a dense lasso outline to a SPARSE handful of anchors (the "muitos pontos" fix,
+/// Enio 2026-07-03) — the exact same Schneider fit a stroke Free Hand uses, via the shared `CurveModel`.
+#[test]
+fn selection_lasso_convert_fits_to_sparse_anchors() {
+    let mut t = white_canvas(96, 4.0);
+    t.set_paint_tool_mode("selection");
+    t.set_selection_mode(1); // Freehand lasso
+    t.set_selection_stabilizer(0.0);
+    // A DENSE square lasso (~60 captured points along the perimeter) — no transcendentals (HR-5-clean test).
+    let (lo, hi, step) = (18.0f32, 78.0f32, 4.0f32);
+    let mut gesture: Vec<[f32; 2]> = Vec::new();
+    let mut x = lo;
+    while x < hi {
+        gesture.push([x, lo]);
+        x += step;
+    }
+    let mut y = lo;
+    while y < hi {
+        gesture.push([hi, y]);
+        y += step;
+    }
+    let mut x = hi;
+    while x > lo {
+        gesture.push([x, hi]);
+        x -= step;
+    }
+    let mut y = hi;
+    while y > lo {
+        gesture.push([lo, y]);
+        y -= step;
+    }
+    assert!(
+        gesture.len() > 40,
+        "the raw lasso is dense: {}",
+        gesture.len()
+    );
+    t.on_canvas_pointer(cp(gesture[0], PointerPhase::Down));
+    for p in &gesture[1..] {
+        t.on_canvas_pointer(cp(*p, PointerPhase::Move));
+    }
+    t.on_canvas_pointer(cp(gesture[0], PointerPhase::Up));
+    t.toggle_selection_edit();
+    assert!(
+        t.selection_gizmos()[0].edit_curve.is_none(),
+        "a RAW lasso shows the transform box, not the point editor"
+    );
+    t.selection_convert_to_curve();
+    let giz = t.selection_gizmos();
+    let curve = giz[0]
+        .edit_curve
+        .as_ref()
+        .expect("converting exposes the point editor");
+    assert!(curve.anchors.len() >= 3, "at least a few anchors");
+    assert!(
+        curve.anchors.len() < 20,
+        "Convert FITS to SPARSE anchors ({} from {} raw lasso points), not a verbatim copy",
+        curve.anchors.len(),
+        gesture.len()
+    );
+}
+
+/// The selection curve's right-click **handle-kind menu** and **Delete** are wired through the same tool
+/// verbs the shell drives (`set_selection_curve_handle_kind` / `selection_curve_delete_selected_point`) —
+/// the seam test for the new capabilities (DIRETIVA §3: drive the real verb, assert the observable effect).
+#[test]
+fn selection_curve_handle_kind_and_delete_are_wired() {
+    let mut t = white_canvas(96, 4.0);
+    t.set_paint_tool_mode("selection");
+    t.set_selection_mode(3); // Ellipse
+    t.on_canvas_pointer(cp([16.0, 16.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([80.0, 80.0], PointerPhase::Up));
+    t.toggle_selection_edit();
+    t.selection_convert_to_curve();
+    let anchor = t.selection_gizmos()[0].edit_curve.as_ref().unwrap().anchors[0];
+    let n = t.selection_gizmos()[0]
+        .edit_curve
+        .as_ref()
+        .unwrap()
+        .anchors
+        .len();
+    // Press the anchor to SELECT it (release without moving = pure select), then set its kind via the menu verb.
+    t.on_canvas_pointer(cp(anchor, PointerPhase::Down));
+    t.on_canvas_pointer(cp(anchor, PointerPhase::Up));
+    assert!(
+        t.set_selection_curve_handle_kind(2), // 2 = Vector
+        "the handle-kind menu verb applies to the selected anchor"
+    );
+    assert_eq!(
+        t.selection_gizmos()[0]
+            .edit_curve
+            .as_ref()
+            .unwrap()
+            .selected_kind,
+        Some(2),
+        "the chosen kind stuck (observable in the overlay, like the stroke curve)"
+    );
+    // Delete the selected anchor — one fewer control point.
+    assert!(
+        t.selection_curve_delete_selected_point(),
+        "Delete removes the selected selection-curve anchor"
+    );
+    assert_eq!(
+        t.selection_gizmos()[0]
+            .edit_curve
+            .as_ref()
+            .unwrap()
+            .anchors
+            .len(),
+        n - 1,
+        "the anchor count dropped by one"
+    );
+}
+
+/// Clicking on (or near) the converted selection curve INSERTS a new anchor — the stroke Curve editor's
+/// click-to-add, delivered through `on_canvas_pointer` (the real gesture).
+#[test]
+fn selection_curve_click_inserts_an_anchor() {
+    let mut t = white_canvas(96, 4.0);
+    t.set_paint_tool_mode("selection");
+    t.set_selection_mode(3); // Ellipse
+    t.on_canvas_pointer(cp([16.0, 16.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([80.0, 80.0], PointerPhase::Up));
+    t.toggle_selection_edit();
+    t.selection_convert_to_curve();
+    let n = t.selection_gizmos()[0]
+        .edit_curve
+        .as_ref()
+        .unwrap()
+        .anchors
+        .len();
+    // A press off any anchor/tangent inserts a new anchor at the nearest point ON the curve (shape-preserving).
+    t.on_canvas_pointer(cp([30.0, 30.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([30.0, 30.0], PointerPhase::Up));
+    assert_eq!(
+        t.selection_gizmos()[0]
+            .edit_curve
+            .as_ref()
+            .unwrap()
+            .anchors
+            .len(),
+        n + 1,
+        "clicking the curve inserted an anchor"
+    );
+}
+
+/// The paint COLOUR is one shared foreground colour across every paint mode (Photoshop/Procreate model):
+/// a colour set in one mode survives a mode switch, so the C&F ColorDrop (which switches to Fill mode) and
+/// switching tools no longer revert it to the previous / default black (Enio 2026-07-04).
+#[test]
+fn paint_colour_is_shared_across_modes() {
+    let mut t = white_canvas(32, 4.0);
+    t.set_paint_tool_mode("brush");
+    t.set_brush_color_srgb8([200, 50, 20]);
+    assert_eq!(t.brush_color_srgb8(), [200, 50, 20]);
+    // Switching to Fill mode (what the ColorDrop does) must keep the colour, not swap in Fill's black slot.
+    t.set_paint_tool_mode("fill");
+    assert_eq!(
+        t.brush_color_srgb8(),
+        [200, 50, 20],
+        "the colour survives the switch to Fill mode (ColorDrop)"
+    );
+    // And through Selection + back to Brush.
+    t.set_paint_tool_mode("selection");
+    assert_eq!(t.brush_color_srgb8(), [200, 50, 20]);
+    t.set_paint_tool_mode("brush");
+    assert_eq!(
+        t.brush_color_srgb8(),
+        [200, 50, 20],
+        "colour is shared, not per-mode"
+    );
+}
+
+/// A converted selection curve carries the GLOBAL transform gizmo (move / rotate / scale) IN ADDITION to
+/// the per-anchor point editor — dragging a box scale handle transforms the whole curve (Enio 2026-07-04).
+#[test]
+fn converted_curve_carries_the_transform_gizmo() {
+    let mut t = white_canvas(96, 4.0);
+    t.set_paint_tool_mode("selection");
+    t.set_selection_mode(3); // Ellipse
+    t.on_canvas_pointer(cp([16.0, 16.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([80.0, 80.0], PointerPhase::Up));
+    t.toggle_selection_edit();
+    t.selection_convert_to_curve();
+    let (corner, before) = {
+        let giz = t.selection_gizmos();
+        let g = &giz[0];
+        assert!(g.edit_curve.is_some(), "the point editor is present");
+        let c0 = g.box_corners[0];
+        let c2 = g.box_corners[2];
+        assert!(
+            (c0[0] - c2[0]).abs() > 1.0 && (c0[1] - c2[1]).abs() > 1.0,
+            "the transform box has real extent on a converted curve"
+        );
+        (
+            g.scale_handles[0], // a corner scale handle (away from the on-curve anchors)
+            g.edit_curve.as_ref().unwrap().anchors.clone(),
+        )
+    };
+    // Down on the corner grabs the SCALE handle (not a point), and dragging it transforms the whole curve.
+    t.on_canvas_pointer(cp(corner, PointerPhase::Down));
+    t.on_canvas_pointer(cp([corner[0] - 18.0, corner[1] - 18.0], PointerPhase::Move));
+    t.on_canvas_pointer(cp([corner[0] - 18.0, corner[1] - 18.0], PointerPhase::Up));
+    let after = t.selection_gizmos()[0]
+        .edit_curve
+        .as_ref()
+        .unwrap()
+        .anchors
+        .clone();
+    assert!(
+        before
+            .iter()
+            .zip(&after)
+            .any(|(a, b)| (a[0] - b[0]).abs() > 1.0 || (a[1] - b[1]).abs() > 1.0),
+        "dragging a box handle transformed the whole converted curve"
+    );
+}
+
+/// Offset **Apply & Keep** auto-unchecks Edit Gizmos (#1); re-checking it materialises the frozen ring
+/// boundaries into editable curves (#2) — after one Apply & Keep that is the single base boundary
+/// (Enio 2026-07-04).
+#[test]
+fn edit_gizmos_after_offset_apply_keep_opens_an_editable_curve() {
+    let mut t = white_canvas(96, 4.0);
+    t.set_paint_tool_mode("selection");
+    t.set_selection_mode(3); // Ellipse
+    t.on_canvas_pointer(cp([16.0, 16.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([80.0, 80.0], PointerPhase::Up));
+    t.toggle_selection_edit(); // enter Edit Gizmos — the ellipse gizmo shows
+    // Grow the selection, then Apply & Keep → the offset bakes the base + auto-unchecks Edit Gizmos.
+    t.set_selection_offset(0.65);
+    t.selection_offset_apply_keep();
+    assert!(t.selection_active(), "the baked selection is still live");
+    assert!(
+        !t.selection_gizmos_visible(),
+        "Apply & Keep auto-unchecks Edit Gizmos (#1)"
+    );
+    // Re-check Edit Gizmos → materialise the ring boundary into an editable curve.
+    t.toggle_selection_edit(); // on
+    let giz = t.selection_gizmos();
+    assert_eq!(
+        giz.len(),
+        1,
+        "one ring boundary (the base) after one Apply & Keep"
+    );
+    assert!(
+        giz[0].edit_curve.is_some(),
+        "Edit Gizmos opens an editable curve on the baked-offset selection (not nothing)"
+    );
+}
+
+/// Two Apply & Keep sweeps freeze TWO nested ring boundaries; re-checking Edit Gizmos materialises BOTH as
+/// editable curves (not just the last), and they persist (#2, Enio 2026-07-04). The band-parity fill keeps
+/// the intercalated selection: the interior stays selected, the protected band deselected.
+#[test]
+fn offset_apply_keep_rings_materialise_all_as_editable_curves() {
+    let mut t = white_canvas(96, 4.0);
+    t.set_paint_tool_mode("selection");
+    t.set_selection_mode(3); // Ellipse
+    t.on_canvas_pointer(cp([24.0, 24.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([72.0, 72.0], PointerPhase::Up));
+    t.toggle_selection_edit();
+    // AK#1 bakes the base; AK#2 freezes an outward ring (a protected band between them).
+    t.set_selection_offset(0.6);
+    t.selection_offset_apply_keep();
+    t.set_selection_offset(0.65);
+    t.selection_offset_apply_keep();
+    // Re-check Edit Gizmos → BOTH boundaries materialise as editable curves.
+    t.toggle_selection_edit();
+    let giz = t.selection_gizmos();
+    assert_eq!(
+        giz.len(),
+        2,
+        "both ring boundaries appear (not just the last)"
+    );
+    assert!(
+        giz.iter().all(|g| g.edit_curve.is_some()),
+        "every ring boundary is an editable curve"
+    );
+    // Interior is still selected (band 0 = paint); the region just outside the base but inside the ring is
+    // the protected band (deselected).
+    assert_eq!(
+        t.selection_coverage_at(48, 48),
+        255,
+        "interior stays selected"
+    );
+}
+
+/// A selection-curve point drag is on the GLOBAL painter undo/redo timeline: undo restores the parametric
+/// anchor (not just the raster mask, which the next recompose would regenerate), redo re-applies it
+/// (Enio 2026-07-03 — `selection_shapes` now rides in the `ModelSnapshot`).
+#[test]
+fn selection_curve_point_edit_is_undoable_and_redoable() {
+    let mut t = white_canvas(96, 4.0);
+    t.set_paint_tool_mode("selection");
+    t.set_selection_mode(3); // Ellipse
+    t.on_canvas_pointer(cp([16.0, 16.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([80.0, 80.0], PointerPhase::Up));
+    t.toggle_selection_edit();
+    t.selection_convert_to_curve();
+    let anchor = t.selection_gizmos()[0].edit_curve.as_ref().unwrap().anchors[0];
+    // Drag anchor 0 by +12 px in x.
+    t.on_canvas_pointer(cp(anchor, PointerPhase::Down));
+    t.on_canvas_pointer(cp([anchor[0] + 12.0, anchor[1]], PointerPhase::Move));
+    t.on_canvas_pointer(cp([anchor[0] + 12.0, anchor[1]], PointerPhase::Up));
+    let moved = t.selection_gizmos()[0].edit_curve.as_ref().unwrap().anchors[0];
+    assert!(
+        (moved[0] - anchor[0]).abs() > 6.0,
+        "the drag moved the anchor"
+    );
+    // UNDO → the anchor returns to its original position (parametric shape restored).
+    assert!(t.undo_last(), "the point drag is one undo step");
+    let undone = t.selection_gizmos()[0].edit_curve.as_ref().unwrap().anchors[0];
+    assert!(
+        (undone[0] - anchor[0]).abs() < 1.0,
+        "undo restored the anchor to {anchor:?}, got {undone:?}"
+    );
+    // REDO → the anchor moves again.
+    assert!(t.redo_last(), "redo re-applies the point edit");
+    let redone = t.selection_gizmos()[0].edit_curve.as_ref().unwrap().anchors[0];
+    assert!(
+        (redone[0] - anchor[0]).abs() > 6.0,
+        "redo re-moved the anchor ({anchor:?} → {redone:?})"
+    );
+}
+
+/// A C&F ColorDrop over ONE of several disjoint selection areas fills ONLY that area (the region the colour
+/// was dropped on), not every selected region (Enio 2026-07-04).
+#[test]
+fn colordrop_fills_only_the_dropped_selection_region() {
+    let mut t = white_canvas(48, 4.0); // white canvas
+    t.set_paint_tool_mode("selection");
+    t.set_selection_mode(3); // Ellipse marquee
+    // Region A (left) — a New selection.
+    t.set_selection_bool_op(0);
+    t.on_canvas_pointer(cp([4.0, 18.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([16.0, 30.0], PointerPhase::Up));
+    // Region B (right, disjoint) — added.
+    t.set_selection_bool_op(1);
+    t.on_canvas_pointer(cp([32.0, 18.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([44.0, 30.0], PointerPhase::Up));
+    assert!(t.selection_active(), "two disjoint regions are selected");
+    // Drop RED onto region B (right).
+    t.set_brush_color_srgb8([255, 0, 0]);
+    t.set_paint_tool_mode("fill");
+    t.on_canvas_pointer(cp([38.0, 24.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([38.0, 24.0], PointerPhase::Up));
+    assert_eq!(
+        px(&t, 48, 38, 24),
+        [255, 0, 0, 255],
+        "the dropped region (B) is filled"
+    );
+    assert_eq!(
+        px(&t, 48, 10, 24),
+        [255, 255, 255, 255],
+        "the OTHER selected region (A) is untouched"
     );
 }
 
@@ -7719,5 +8087,194 @@ fn free_selection_stabilizer_smooths_the_lasso() {
     assert!(
         low != high,
         "the Stabilization slider changes the lasso result (0.0 -> {low}, 0.95 -> {high})"
+    );
+}
+
+/// Multi-shape SEAM (Enio 2026-07-04): the canvas pixels are a DERIVED recompose of the parked-shape set.
+/// A parked ellipse (geometry only, no live editor) still stamps its outline when `restamp_shapes_preview`
+/// runs — proving the parked shapes paint independently of the single active editor.
+#[test]
+fn recompose_stamps_parked_shapes_with_no_active_editor() {
+    let mut t = white_canvas(64, 3.0);
+    let before_black = (0..64 * 64).filter(|&i| t.canvas_rgba[i * 4] == 0).count();
+    assert_eq!(before_black, 0, "canvas starts white");
+    t.paint.parked_shapes.push(stroke_multi::StrokeShape {
+        state: crate::undo::ShapeEditState::Ellipse(crate::undo::EllipseState {
+            center: [20.0, 20.0],
+            u: [1.0, 0.0],
+            rx: 8.0,
+            ry: 8.0,
+            editing: true,
+            seed: 1,
+        }),
+        op: stroke_multi::StrokeOp::Overlay,
+    });
+    t.restamp_shapes_preview(&[]); // no active shape → recompose the parked-only set
+    let after_black = (0..64 * 64).filter(|&i| t.canvas_rgba[i * 4] == 0).count();
+    assert!(after_black > 0, "the parked ellipse outline is stamped");
+    // The paint sits around the ellipse (centred at 20,20 r=8), not in a far corner.
+    assert_eq!(
+        px(&t, 64, 0, 0),
+        [255, 255, 255, 255],
+        "far corner untouched"
+    );
+}
+
+/// The parked-shape set round-trips through a `ModelSnapshot` (undo capture → restore), incl. the wire op —
+/// so a structural undo/redo reinstates every simultaneously-editable shape, not just the active one.
+#[test]
+fn parked_shapes_round_trip_through_a_snapshot() {
+    let mut t = white_canvas(32, 3.0);
+    t.paint.parked_shapes.push(stroke_multi::StrokeShape {
+        state: crate::undo::ShapeEditState::Ellipse(crate::undo::EllipseState {
+            center: [10.0, 10.0],
+            u: [1.0, 0.0],
+            rx: 4.0,
+            ry: 4.0,
+            editing: true,
+            seed: 7,
+        }),
+        op: stroke_multi::StrokeOp::Remove,
+    });
+    let snap = t.capture_shape_model();
+    assert_eq!(snap.parked_shapes.len(), 1);
+    assert_eq!(snap.parked_shapes[0].op, 2, "Remove op captured as wire 2");
+    // Clear then restore.
+    t.paint.parked_shapes.clear();
+    t.restore_parked_shapes(snap.parked_shapes);
+    assert_eq!(t.paint.parked_shapes.len(), 1);
+    assert_eq!(
+        t.paint.parked_shapes[0].op,
+        stroke_multi::StrokeOp::Remove,
+        "op restored from the wire value"
+    );
+}
+
+/// Multi-shape GESTURE (Enio 2026-07-04): drawing a second ellipse via a Down in empty space PARKS the
+/// first (keeps it painted + editable) and starts a fresh one — both outlines are stamped simultaneously,
+/// and Apply bakes the whole set + clears it "todas de uma vez".
+#[test]
+fn empty_space_down_parks_the_active_shape_and_starts_a_new_one() {
+    let mut t = white_canvas(64, 2.0);
+    t.paint.brush.stroke_method = StrokeMethod::Ellipse;
+    // Ellipse 1 around (16,16), radius 8 → right-edge outline at (24,16).
+    t.on_canvas_pointer(cp([16.0, 16.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([24.0, 16.0], PointerPhase::Move));
+    t.on_canvas_pointer(cp([24.0, 16.0], PointerPhase::Up));
+    assert!(t.paint.ellipse.is_some(), "ellipse 1 active");
+    assert!(!t.has_parked_shapes(), "only one shape so far");
+    // A Down far from ellipse 1 (empty space) → park it + begin ellipse 2 around (44,44).
+    t.on_canvas_pointer(cp([44.0, 44.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([52.0, 44.0], PointerPhase::Move));
+    t.on_canvas_pointer(cp([52.0, 44.0], PointerPhase::Up));
+    assert_eq!(t.paint.parked_shapes.len(), 1, "ellipse 1 got parked");
+    assert!(t.paint.ellipse.is_some(), "ellipse 2 is the active editor");
+    // BOTH ellipses are stamped at once (their right-edge outline pixels are black).
+    fn near_black(t: &PainterTool, x: u32, y: u32) -> bool {
+        (x.saturating_sub(2)..=x + 2)
+            .flat_map(|xx| (y.saturating_sub(2)..=y + 2).map(move |yy| (xx, yy)))
+            .any(|(xx, yy)| px(t, 64, xx, yy) == [0, 0, 0, 255])
+    }
+    assert!(near_black(&t, 24, 16), "parked ellipse 1 still painted");
+    assert!(near_black(&t, 52, 44), "active ellipse 2 painted");
+    // Apply bakes the whole set + clears every shape "de uma vez".
+    assert!(t.commit_open_shape(), "Apply committed the set");
+    assert!(t.paint.ellipse.is_none(), "no active editor after Apply");
+    assert!(!t.has_parked_shapes(), "parked set cleared by Apply");
+    assert!(t.paint.drag_preview.is_none(), "preview baked");
+    assert!(
+        near_black(&t, 24, 16) && near_black(&t, 52, 44),
+        "both shapes stay baked"
+    );
+    // Undo the Apply → the whole editable set returns.
+    assert!(t.undo_last(), "undo the Apply");
+    assert!(t.paint.ellipse.is_some(), "active editor restored");
+    assert_eq!(t.paint.parked_shapes.len(), 1, "parked shape restored");
+}
+
+/// Clicking on a PARKED shape re-activates it (parking whatever was active) — the switch swaps which shape
+/// is the live editor without dropping either.
+#[test]
+fn clicking_a_parked_shape_reactivates_it() {
+    let mut t = white_canvas(64, 2.0);
+    t.paint.brush.stroke_method = StrokeMethod::Ellipse;
+    // Shape 1 around (16,16).
+    t.on_canvas_pointer(cp([16.0, 16.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([22.0, 16.0], PointerPhase::Move));
+    t.on_canvas_pointer(cp([22.0, 16.0], PointerPhase::Up));
+    // Shape 2 around (46,46) (empty space → parks shape 1).
+    t.on_canvas_pointer(cp([46.0, 46.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([52.0, 46.0], PointerPhase::Move));
+    t.on_canvas_pointer(cp([52.0, 46.0], PointerPhase::Up));
+    assert_eq!(t.paint.parked_shapes.len(), 1);
+    // Click back on shape 1's region → it re-activates (shape 2 parks).
+    t.on_canvas_pointer(cp([16.0, 16.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([16.0, 16.0], PointerPhase::Up));
+    assert_eq!(
+        t.paint.parked_shapes.len(),
+        1,
+        "still exactly two shapes total"
+    );
+    assert!(
+        t.paint.ellipse.is_some(),
+        "an ellipse is active after the switch"
+    );
+}
+
+/// The Stroke OPERATION mode (multi-shape) round-trips + a NEW shape adopts it as its op (Enio 2026-07-04).
+#[test]
+fn stroke_operation_mode_sets_the_new_shapes_op() {
+    use ph2d_editor_core::ids as core_ids;
+    use ph2d_editor_core::tool::{PanelEvent, Tool};
+    let mut t = white_canvas(64, 2.0);
+    t.paint.brush.stroke_method = StrokeMethod::Ellipse;
+    // Panel selects "Add" (wire 1).
+    t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_STROKE_OP_ADD));
+    assert_eq!(t.stroke_op_mode(), 1, "Operation mode set to Add");
+    // Draw a shape → it is created with the Add op.
+    t.on_canvas_pointer(cp([20.0, 20.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([28.0, 20.0], PointerPhase::Move));
+    t.on_canvas_pointer(cp([28.0, 20.0], PointerPhase::Up));
+    // Park it (empty-space click) and inspect its stored op.
+    t.on_canvas_pointer(cp([50.0, 50.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([50.0, 50.0], PointerPhase::Up));
+    assert_eq!(t.paint.parked_shapes.len(), 1);
+    assert_eq!(
+        t.paint.parked_shapes[0].op,
+        stroke_multi::StrokeOp::Add,
+        "the shape carried the Add op it was drawn with"
+    );
+}
+
+/// A quick TAP on the active shape's centre square cycles its Operation (+ → − → o); a drag from the centre
+/// does NOT cycle (it moves). Enio 2026-07-04.
+#[test]
+fn centre_square_tap_cycles_the_op_but_a_drag_does_not() {
+    let mut t = white_canvas(64, 2.0);
+    t.paint.brush.stroke_method = StrokeMethod::Ellipse;
+    t.on_canvas_pointer(cp([30.0, 30.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([38.0, 30.0], PointerPhase::Move));
+    t.on_canvas_pointer(cp([38.0, 30.0], PointerPhase::Up));
+    assert_eq!(
+        t.paint.active_op,
+        stroke_multi::StrokeOp::Overlay,
+        "starts Overlay"
+    );
+    // Tap the centre (no drag) → cycles Overlay → Add.
+    t.on_canvas_pointer(cp([30.0, 30.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([30.0, 30.0], PointerPhase::Up));
+    assert_eq!(
+        t.paint.active_op,
+        stroke_multi::StrokeOp::Add,
+        "centre tap cycled to Add"
+    );
+    // A drag from the centre must NOT cycle (moves instead).
+    t.on_canvas_pointer(cp([30.0, 30.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([44.0, 30.0], PointerPhase::Move));
+    t.on_canvas_pointer(cp([44.0, 30.0], PointerPhase::Up));
+    assert_eq!(
+        t.paint.active_op,
+        stroke_multi::StrokeOp::Add,
+        "a drag did not cycle the op"
     );
 }

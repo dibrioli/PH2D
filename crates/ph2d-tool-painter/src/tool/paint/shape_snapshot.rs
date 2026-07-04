@@ -41,6 +41,7 @@ impl PainterTool {
     pub(crate) fn capture_shape_model(&self) -> crate::undo::ModelSnapshot {
         let mut m = self.snapshot_model();
         m.shape = self.capture_shape();
+        m.parked_shapes = self.parked_shapes_snapshot();
         m.preview_patch = self
             .paint
             .drag_preview
@@ -64,6 +65,7 @@ impl PainterTool {
         &mut self,
         shape: Option<Box<crate::undo::ShapeEditState>>,
         patch: Option<crate::undo::PreviewPatch>,
+        parked: Vec<crate::undo::ParkedShapeState>,
     ) {
         let had_preview = patch.is_some();
         if let Some(p) = patch {
@@ -80,6 +82,9 @@ impl PainterTool {
         self.paint.ellipse = None;
         self.paint.polygon = None;
         self.paint.line = None;
+        // Reinstate the parked (multi-shape) set BEFORE rebuilding the active editor, so the `*_refill`
+        // below re-stamps every shape (active + parked) from the pristine baseline in lock-step.
+        self.restore_parked_shapes(parked);
         match shape.map(|b| *b) {
             Some(crate::undo::ShapeEditState::Curve(s)) => {
                 self.paint.curve = Some(curve::CurveEditor::from_state(s));
@@ -109,7 +114,12 @@ impl PainterTool {
                     self.line_refill();
                 }
             }
-            None => {}
+            None => {
+                // No active editor, but parked shapes may still need re-stamping onto the peeled baseline.
+                if had_preview && self.has_parked_shapes() {
+                    self.restamp_shapes_preview(&[]);
+                }
+            }
         }
     }
 
@@ -182,6 +192,10 @@ impl PainterTool {
 /// NOT a step.
 fn shape_model_changed(a: &crate::undo::ModelSnapshot, b: &crate::undo::ModelSnapshot) -> bool {
     if a.offset_norm != b.offset_norm {
+        return true;
+    }
+    // A park / unpack / re-activate (the multi-shape set changing) is itself an undoable step.
+    if a.parked_shapes != b.parked_shapes {
         return true;
     }
     match (&a.shape, &b.shape) {

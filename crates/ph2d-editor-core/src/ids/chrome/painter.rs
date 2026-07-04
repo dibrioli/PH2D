@@ -167,6 +167,7 @@ pub const PAINTER_BRUSH_STROKE_APPLY_KEEP: NodeId = hash_node_id("painter_brush.
 pub const PAINTER_BRUSH_STROKE_DELETE: NodeId = hash_node_id("painter_brush.stroke_delete");
 /// "Edit" (E): convert the open Circle/Polygon to an editable curve. `Click` → `convert_open_shape_to_curve`.
 pub const PAINTER_BRUSH_STROKE_EDIT: NodeId = hash_node_id("painter_brush.stroke_edit");
+// (Multi-shape Stroke **Operation** ids — `PAINTER_STROKE_OP*` — live in `painter_stroke_op.rs`.)
 /// Brush "Rate" slider — airbrush timer period (`0..1` → `[0.01,1.0]`s, Airbrush only). `SetValue`.
 pub const PAINTER_BRUSH_RATE: NodeId = hash_node_id("painter_brush.rate");
 /// "Edge to Edge" toggle (Blender `BRUSH_EDGE_TO_EDGE`) — Anchored only. `Click` → `set_brush_edge_to_edge`.

@@ -68,21 +68,9 @@ pub(super) fn draw_selection_gizmos(
             let pts: Vec<Point> = g.outline.iter().map(|&p| map(p)).collect();
             super::painter_bridge_gizmo::stroke_open(scene, &pts, &pal);
         }
-        // A CONVERTED curve edits per-anchor: draw its anchors (squares) + in/out Bézier handles (circles on
-        // thin connector lines), the stroke Curve editor's look — INSTEAD of the transform box.
-        if let Some(curve) = &g.edit_curve {
-            for i in 0..curve.anchors.len() {
-                let a = map(curve.anchors[i]);
-                for &hp in [curve.in_h[i], curve.out_h[i]].iter() {
-                    let h = map(hp);
-                    super::painter_bridge_gizmo::stroke_open(scene, &[a, h], &pal);
-                    super::painter_bridge_gizmo::circle_handle(scene, h, &pal);
-                }
-                super::painter_bridge_gizmo::square_handle(scene, a, &pal); // anchor on top
-            }
-            continue;
-        }
-        // Oriented bounding box (closed) through the four corners.
+        // Oriented transform box (closed) — drawn for EVERY editable shape, including a converted curve
+        // (Enio 2026-07-04: convert/simplify curves also carry the global move/rotate/scale gizmo). Drawn
+        // FIRST so a converted curve's control points sit ON TOP of the box.
         let box_pts: Vec<Point> = g.box_corners.iter().map(|&p| map(p)).collect();
         super::painter_bridge_gizmo::stroke_box(scene, &box_pts, &pal);
         // 8 scale squares — each reads as a CIRCLE when the cursor is in its rotate ring (band just outside).
@@ -104,6 +92,32 @@ pub(super) fn draw_selection_gizmos(
         super::painter_bridge_gizmo::square_handle(scene, center_sp, &pal);
         if let Some(d) = g.diamond {
             super::painter_bridge_gizmo::diamond_handle(scene, map(d), &pal);
+        }
+        // A CONVERTED curve ALSO edits per-anchor — draw the point editor ON TOP of the box, with the SAME
+        // visual language as the stroke Curve overlay: the SELECTED anchor's tangent handles (thin stems +
+        // grabbable dots), then the anchors with the selected one highlighted.
+        if let Some(curve) = &g.edit_curve {
+            if let Some(t) = &curve.tangents {
+                let a = map(t.anchor);
+                for (handle, is_out) in [(t.in_handle, false), (t.out_handle, true)] {
+                    let Some(h) = handle else { continue };
+                    let hp = map(h);
+                    super::painter_bridge_gizmo::stroke_open(scene, &[a, hp], &pal);
+                    if t.grabbed_out == Some(is_out) {
+                        super::painter_bridge_gizmo::square_handle(scene, hp, &pal);
+                    } else {
+                        super::painter_bridge_gizmo::circle_handle(scene, hp, &pal);
+                    }
+                }
+            }
+            for (i, &p) in curve.anchors.iter().enumerate() {
+                let sp = map(p);
+                if curve.selected == Some(i) {
+                    super::painter_bridge_gizmo::circle_handle(scene, sp, &pal);
+                } else {
+                    super::painter_bridge_gizmo::square_handle(scene, sp, &pal);
+                }
+            }
         }
     }
 }

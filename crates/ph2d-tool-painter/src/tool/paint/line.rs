@@ -131,9 +131,8 @@ impl PainterTool {
             // Start a new polyline — the first point is grabbed so the same press can drag it into place.
             // Grid snap applies to the first point (no anchor yet, so no angle/point snap).
             let first = self.line_drag_target(0, pos);
-            self.begin_shape_txn(); // before = no shape
-            self.paint.drag_preview = None;
-            self.reseed_preview_base();
+            self.begin_shape_txn(); // before = parked set, no active (capture_shape_model captures parked)
+            self.begin_shape_session_base(); // full recompose; keep the baseline when shapes are parked
             self.paint.shape_offset_base_px = 0.0;
             self.paint.shape_offset_norm = 0.5;
             let seed = self.paint.seed;
@@ -230,6 +229,29 @@ impl PainterTool {
         }
         self.line_refill();
         true // committed on Up
+    }
+
+    /// `true` when a Down at `pos` would EDIT the active polyline (grab a corner mod, the transform gizmo, a
+    /// point, or land on the path) — so the multi-shape router doesn't treat it as empty space. While still
+    /// placing points (`!editing`) it always counts as active (never interrupt authoring). Mirrors the
+    /// edit-phase grabs of `line_down`.
+    pub(super) fn line_hit_active(&self, pos: [f32; 2]) -> bool {
+        let tol = self.paint.shape_grab_tol_px;
+        let Some(ed) = self.paint.line.as_ref() else {
+            return false;
+        };
+        if !ed.is_editing() {
+            return true;
+        }
+        if line_corner::hit_handle(&ed.points, ed.closed, pos, tol).is_some()
+            || curve_gizmo::grab(&ed.points, &[], pos, tol).is_some()
+            || ed.points.iter().any(|p| dist2(pos, *p) <= tol * tol)
+        {
+            return true;
+        }
+        let path = line_corner::expand(&ed.points, ed.closed, &ed.corner_mods, tol);
+        let band = (tol * 3.0).max(super::stroke_multi::NEW_SHAPE_INSERT_BAND_PX);
+        super::stroke_multi::point_near_polyline(pos, &path, band)
     }
 
     /// Pointer-move: drag the grabbed point. A freshly-created point follows the cursor from the first
@@ -486,7 +508,7 @@ impl PainterTool {
         let mut stroke = Stroke::new(self.paint.brush, self.paint.dynamics, seed);
         let mut dabs = std::mem::take(&mut self.paint.dabs);
         stroke.fill_polyline_preview(&path, &mut dabs);
-        self.stamp_drag_preview(&dabs);
+        self.restamp_shapes_preview(&dabs); // active shape + every parked shape onto one baseline
         self.paint.dabs = dabs;
     }
 }

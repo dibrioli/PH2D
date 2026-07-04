@@ -53,6 +53,15 @@ pub(super) fn draw_overlays(
         cursor,
     );
     draw_polygon_overlay(painter, hero, sim, camera, window_size, vector_scene);
+    // Multi-shape op badges — the `+`/`−`/`○` type-square glyph per shape + a frame per parked shape.
+    super::painter_bridge_op_badges::draw_op_badges(
+        painter,
+        hero,
+        sim,
+        camera,
+        window_size,
+        vector_scene,
+    );
     // Isolated SELECTION gizmos (ADR-0103 Am.2 v2) — every editable selection shape's gizmo at once.
     super::painter_bridge_selection_gizmos::draw_selection_gizmos(
         painter,

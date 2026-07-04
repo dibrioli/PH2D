@@ -83,6 +83,7 @@ pub(crate) fn paint_material_blend_section(
         scene,
         text_system,
         theme,
+        store,
         hit_index,
     );
     yy += seg_h + row_gap;

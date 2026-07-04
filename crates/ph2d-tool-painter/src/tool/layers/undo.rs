@@ -26,12 +26,17 @@ impl PainterTool {
             offset_norm: self.shape_offset_norm(),
             offset_base_px: self.shape_offset_base_px(),
             preview_patch: None,
+            // Layer ops carry no parked stroke shapes; the shape paths override this via `capture_shape_model`.
+            parked_shapes: Vec::new(),
             mask_scratch,
             mask_scratch_target,
             selection_mask,
             selection_active,
             selection_crisp,
             selection_feather,
+            // The parametric shape list is the source of truth the mask derives from — capture it so undo
+            // restores the editable shapes (curve points/handles, box params), not just the raster mask.
+            selection_shapes: self.selection_shapes_snapshot(),
         }
     }
 
@@ -47,6 +52,10 @@ impl PainterTool {
         // Reinstate the Mask brush scratch + target so an undo/redo across a mask stroke restores the
         // live mask-in-progress in lock-step with the pixels (the composite rebuild below reads it).
         self.restore_mask_scratch(m.mask_scratch, m.mask_scratch_target);
+        // Reinstate the parametric selection SHAPES (the source of truth) BEFORE the mask, so the editable
+        // curve points/handles + box params roll back with the mask and the next recompose can't regenerate
+        // the undone edit (Enio 2026-07-03).
+        self.restore_selection_shapes(m.selection_shapes);
         // Reinstate the Selection mask + active flag so an undo/redo across a selection edit restores the
         // selected region in lock-step with the pixels (ADR-0103).
         self.restore_selection(
@@ -60,7 +69,7 @@ impl PainterTool {
         // Reinstate (or clear) the open shape overlay: peel the snapshot canvas back to its pristine
         // baseline (strip the preview patch) and re-stamp the editor's geometry, so dots + pixels stay in
         // sync. A `None` shape just clears the editors. See `tool::paint::shape_snapshot`.
-        self.restore_shape_overlay(m.shape, m.preview_patch);
+        self.restore_shape_overlay(m.shape, m.preview_patch, m.parked_shapes);
         // Every layer's pixels may have changed identity → bump all content
         // versions so the GPU compositor re-uploads each slice, and drop the CPU
         // composite cache + bump the panel `layers_revision`.

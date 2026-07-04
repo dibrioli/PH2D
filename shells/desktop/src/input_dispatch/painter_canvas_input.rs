@@ -237,7 +237,12 @@ impl App {
         );
         let img = affine.inverse() * ph2d_vector::Point::new(f64::from(px), f64::from(py));
         let tol = shape_grab_tol_from_affine(&affine);
-        if !painter.curve_select_point_at([img.x as f32, img.y as f32], tol) {
+        let img_pt = [img.x as f32, img.y as f32];
+        // Same menu for BOTH curve owners: the stroke Shape curve and the selection Convert-to-Curve editor
+        // (they're never both active). The pick drains to `set_curve_handle_kind` / `set_selection_curve_...`.
+        if !painter.curve_select_point_at(img_pt, tol)
+            && !painter.selection_curve_select_point_at(img_pt, tol)
+        {
             return false; // off a control point — fall through (pan / other secondary-click handlers)
         }
         if let Some(hero) = gfx.hero_screen.as_mut() {
@@ -552,7 +557,8 @@ impl App {
         let Some(painter) = self.painter_tool_mut() else {
             return false;
         };
-        painter.curve_delete_selected()
+        // Either curve owner: the stroke Shape curve or the selection Convert-to-Curve editor.
+        painter.curve_delete_selected() || painter.selection_curve_delete_selected_point()
     }
 }
 

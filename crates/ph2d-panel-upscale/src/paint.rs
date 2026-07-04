@@ -173,8 +173,15 @@ fn paint_body_sections(
         ),
     ];
     let seg_rect = Rect::new(inner_x, y, inner_w, row_h);
-    let alg_h =
-        paint_segmented_group_adaptive(seg_rect, &segs, scene, text_system, theme, hit_index);
+    let alg_h = paint_segmented_group_adaptive(
+        seg_rect,
+        &segs,
+        scene,
+        text_system,
+        theme,
+        store,
+        hit_index,
+    );
     y += alg_h + row_gap;
     y += row_gap;
 

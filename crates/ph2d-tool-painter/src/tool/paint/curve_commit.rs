@@ -41,25 +41,80 @@ impl PainterTool {
         true
     }
 
-    /// Commit whichever on-canvas shape editor (Curve / Ellipse / Polygon / Line) is open — the verb
-    /// behind Enter / Apply and the first undo. Returns `true` when one committed. At most one is open.
+    /// Commit the whole MULTI-SHAPE set (Enter / Apply): bake every shape's painted preview at once (the
+    /// active shape and every parked shape) as ONE undo entry, then drop them all — "as curvas desaparecem
+    /// todas de uma vez" (Enio 2026-07-04). No parked shapes ⇒ byte-identical to the former single-shape Apply.
+    /// Returns `true` when something committed (an editable active shape OR any parked shape).
     pub fn commit_open_shape(&mut self) -> bool {
-        self.curve_commit() || self.ellipse_commit() || self.polygon_commit() || self.line_commit()
+        if !self.is_editing_shape() && !self.has_parked_shapes() {
+            return false; // nothing open / mid initial-drag — nothing to bake yet
+        }
+        self.flush_shape_txn(); // close any coalesced Offset drag as its own entry first
+        let before = self.capture_shape_model(); // active + parked + live preview (for undo of the Apply)
+        // Drop every editor + the parked set; the painted pixels (all shapes) stay via `commit_drag_preview`.
+        self.paint.curve = None;
+        self.paint.ellipse = None;
+        self.paint.polygon = None;
+        self.paint.line = None;
+        self.clear_parked_shapes();
+        self.commit_drag_preview(); // drop the restore record → all shapes stay baked
+        self.paint.shape_offset_base_px = 0.0; // the offset baked into the pixels → reset the Offset
+        self.paint.shape_offset_norm = 0.5;
+        let after = self.capture_shape_model(); // nothing open, pixels baked
+        self.undo.record_structural(before, after); // Apply = one undo entry for the whole set
+        true
     }
 
-    /// Cancel whichever shape editor is open (revert its preview) — the verb behind Esc and leaving the
-    /// shape's method. Returns `true` when one was cancelled.
+    /// Cancel the whole MULTI-SHAPE set (Esc / leaving the method): revert every shape's preview to pristine
+    /// and drop them all. Returns `true` when a set was open.
     pub fn cancel_open_shape(&mut self) -> bool {
-        self.curve_cancel() || self.ellipse_cancel() || self.polygon_cancel() || self.line_cancel()
+        let cancelled = self.curve_cancel()
+            || self.ellipse_cancel()
+            || self.polygon_cancel()
+            || self.line_cancel();
+        if self.has_parked_shapes() {
+            // Peel any preview the parked shapes are still stamped into, then drop the whole set.
+            if let Some(prev) = self.paint.drag_preview.take() {
+                self.restore_region(&prev.rect, &prev.pixels);
+            }
+            self.clear_parked_shapes();
+            self.paint.stroke_undo = None;
+            return true;
+        }
+        cancelled
     }
 
-    /// Drop any open shape editor without touching pixels — for teardown where the canvas is replaced or
-    /// cleared (fresh source / deactivate / non-paintable layer).
+    /// Drop any open shape editor + the whole parked set without touching pixels — for teardown where the
+    /// canvas is replaced or cleared (fresh source / deactivate / non-paintable layer).
     pub(crate) fn discard_open_shape(&mut self) {
         self.curve_discard();
         self.ellipse_discard();
         self.polygon_discard();
         self.line_discard();
+        self.clear_parked_shapes();
+    }
+
+    /// Route a Stroke-panel **shape button** Click (Apply / Apply & Keep / Delete / Edit / Operation mode /
+    /// Simplify) to its verb. `true` when `id` matched one — the caller returns early. Split from the panel
+    /// dispatcher in [`super::stencil`] for that file's LOC cap; the shape verbs already live in this module.
+    pub(crate) fn route_stroke_shape_button(&mut self, id: &ph2d_a11y::NodeId) -> bool {
+        use ph2d_editor_core::ids as core_ids;
+        if *id == core_ids::PAINTER_BRUSH_STROKE_APPLY {
+            self.commit_open_shape(); // Enter / Apply — bake the whole multi-shape set, one undo entry
+        } else if *id == core_ids::PAINTER_BRUSH_STROKE_APPLY_KEEP {
+            self.commit_open_shape_keep(); // bake but keep every shape editable
+        } else if *id == core_ids::PAINTER_BRUSH_STROKE_DELETE {
+            self.cancel_open_shape(); // drop the open set without baking
+        } else if *id == core_ids::PAINTER_BRUSH_STROKE_EDIT {
+            self.convert_open_shape_to_curve(); // Ellipse/Polygon → editable Bézier curve
+        } else if let Some(i) = core_ids::PAINTER_STROKE_OP_IDS.iter().position(|x| x == id) {
+            self.set_stroke_op_mode(i as u8); // multi-shape Operation for the NEXT shape
+        } else if *id == core_ids::PAINTER_BRUSH_STROKE_SIMPLIFY {
+            self.curve_simplify(); // re-fit the editable curve to a clean control polygon
+        } else {
+            return false;
+        }
+        true
     }
 
     /// Commit whichever on-canvas shape editor is open but KEEP it editable (the **Apply & Keep** button)
@@ -83,9 +138,9 @@ impl PainterTool {
             return false;
         };
         let Some((p, h)) = super::curve_geom::simplify_curve(
-            &ed.points,
-            &ed.handles,
-            ed.closed,
+            &ed.model.points,
+            &ed.model.handles,
+            ed.model.closed,
             FREEHAND_FIT_ERROR,
             MAX_CURVE_POINTS,
         ) else {
@@ -93,9 +148,14 @@ impl PainterTool {
             return false;
         };
         let ed = self.paint.curve.as_mut().expect("curve present");
-        ed.kinds = vec![HandleKind::Aligned; p.len()];
-        (ed.points, ed.handles, ed.selected) = (p, h, None);
-        curve_handle::rebuild(&ed.points, &ed.kinds, &mut ed.handles, ed.closed);
+        ed.model.kinds = vec![HandleKind::Aligned; p.len()];
+        (ed.model.points, ed.model.handles, ed.model.selected) = (p, h, None);
+        curve_handle::rebuild(
+            &ed.model.points,
+            &ed.model.kinds,
+            &mut ed.model.handles,
+            ed.model.closed,
+        );
         self.curve_refill();
         self.commit_shape_txn();
         true

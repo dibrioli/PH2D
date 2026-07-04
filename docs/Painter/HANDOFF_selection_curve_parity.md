@@ -1,5 +1,20 @@
 # HANDOFF — Selection curve = IDENTICAL to the stroke Shape curve system
 
+> **STATUS 2026-07-03 — LANDED (local, pending Enio smoke).** Unified via the shared `CurveModel`
+> (`crates/ph2d-tool-painter/src/tool/paint/curve_model.rs`): the pure editing ops (hit / insert / drag /
+> delete / set-kind / select / from_fit) now live in ONE place, owned by BOTH the stroke `CurveEditor`
+> (`self.paint.curve`, which embeds `model: CurveModel` and delegates) AND `SelectionShape::Freehand { model, u }`.
+> Identical behaviour by construction. Delivered: Convert now **fits** to sparse anchors (all cases; Ellipse
+> keeps its 4-arc, Polygon keeps sharp vertices); all 5 handle kinds + aligned/symmetric mirroring; right-click
+> handle-kind menu (reuses `ContextMenuKind::CurvePointHandle`); click-to-insert; Delete; selected-anchor
+> highlight + selected-only tangents in the overlay (ad-hoc all-handle drawing retired); isolation preserved
+> (selection never touches `self.paint.curve`). Gates: **358 tool-painter lib tests green** (incl. 76 curve +
+> the 3 new selection e2e seam tests driving the real events), shell + tool clippy clean, fmt, all files < 600
+> LOC. NOT committed (main branch; awaiting Enio's manual smoke, then commit/ship). Original spec below.
+
+---
+
+
 > **Owner mandate (Enio, 2026-07-03):** "Por várias vezes eu disse que deveria ser como nas shapes do
 > stroke." The selection **Convert to Curve** editor must be an *equivalent, identical* version of the
 > stroke Shape **Curve** editor — same fit algorithm, same handle kinds, same right-click menu, same
@@ -178,6 +193,15 @@ the shared curve core.
    overlap from the pinned-at-top Mask section, or imperceptible token deltas.
 2. **Stroke multi-shape** — multiple simultaneous editable stroke shapes (large architectural round, its own
    build + smoke; `HANDOFF_selection.md` item 5).
+3. **Fill should be per-selection-region, not whole-selection** (Enio 2026-07-04). With SEVERAL disjoint
+   selection areas, the C&F ColorDrop / Color Fill floods EVERY region; it must fill ONLY the region the
+   colour was dragged onto. Cause: `selection_color_fill` (`selection_actions.rs`) and the ColorDrop
+   (`fill.rs`) blend/flood over the WHOLE `selection_mask` regardless of the drop point. Fix direction:
+   restrict to the connected COMPONENT of the selection mask containing the drop texel — flood-fill the
+   selection coverage from the drop (4-connected, `≥128` inside, like `selection_raster`/`selection_trace`)
+   to build a one-component mask, then fill against that. Needs the drop coordinate threaded into the fill
+   path (the ColorDrop already delivers a canvas Down at the drop; `selection_color_fill` currently takes no
+   point — add one). Watch the ring-stack + feathered-edge cases.
 
 ---
 

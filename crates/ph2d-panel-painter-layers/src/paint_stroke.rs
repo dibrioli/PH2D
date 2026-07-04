@@ -80,6 +80,9 @@ pub(crate) fn paint_stroke_section(
     //    bakes but keeps the handles for re-apply/reshape. Two buttons share one row, stacking to a
     //    column when the panel is too narrow (mirrors the ramp controls' responsive split). ──
     if method.has_open_shape() {
+        // Operation card (multi-shape) — Overlay / Add / Remove, the boolean mode the NEXT shape is drawn
+        // with (Enio 2026-07-04). Mirrors the Selection OPERATION card. Above the Apply / Offset controls.
+        y = op_card::operation_card(ctx, theme, x, content_w, y, brush.stroke_op_mode as usize);
         // Simplify — re-fit the editable curve to a clean minimal control polygon (directly below Method).
         // Shown only once it applies: Free Hand always, Curve / converted shapes after a point is added.
         if brush.can_simplify {
@@ -573,6 +576,7 @@ fn jitter_unit_options() -> Vec<DropdownOption<u8>> {
 
 /// The Apply / Apply & Keep / Delete button row (split out for the LOC cap).
 mod apply;
+mod op_card;
 use apply::{paint_apply_row, paint_offset_card, paint_simplify_row};
 
 #[cfg(test)]

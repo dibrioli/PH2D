@@ -6,6 +6,7 @@
 //! list. `Raster` carries a non-parametric coverage buffer (Automatic flood) that has no gizmo.
 
 use super::PainterTool;
+use super::curve_model::CurveModel;
 use std::sync::Arc;
 
 /// A parametric selection primitive. `Ellipse`/`Rect`/`Freehand` carry a native on-canvas gizmo in Edit
@@ -31,14 +32,12 @@ pub(crate) enum SelectionShape {
         ry: f32,
         sides: u32,
     },
-    /// Closed editable curve: anchors `points` with `[in, out]` Bézier `handles` (parallel; empty = fill the
-    /// anchors as a plain polygon), plus the transform-gizmo orientation `u` (so the box rotates WITH the
-    /// selection — updated by the rotate handle). Produced by Convert-to-Curve / the Free-Hand lasso.
-    Freehand {
-        points: Vec<[f32; 2]>,
-        handles: Vec<[[f32; 2]; 2]>,
-        u: [f32; 2],
-    },
+    /// Closed editable curve backed by the SHARED [`CurveModel`] (the exact same editing core the stroke
+    /// Curve editor owns — Enio's mandate: one system). A **raw lasso** carries a model with EMPTY handles
+    /// (`model.is_curve() == false` ⇒ the transform box); a **converted** curve carries full handles/kinds
+    /// (⇒ the per-anchor point editor). `u` is the transform-gizmo orientation (so the box rotates WITH the
+    /// selection). Produced by the Free-Hand lasso (raw) and Convert-to-Curve (fitted).
+    Freehand { model: CurveModel, u: [f32; 2] },
     /// Non-parametric coverage (Automatic flood) — no gizmo; rasterizes to its stored buffer verbatim.
     Raster { crisp: Arc<Vec<u8>> },
 }
@@ -60,6 +59,20 @@ impl SelectionShape {
 }
 
 impl PainterTool {
+    /// Clone the parametric selection shape list for a structural undo snapshot — the source of truth the
+    /// mask is a derived cache of, so undo/redo restores the editable SHAPES (curve anchors + handles, box
+    /// params) in lock-step with the mask (see [`crate::undo::ModelSnapshot::selection_shapes`]). Cheap: a
+    /// handful of small entries.
+    pub(crate) fn selection_shapes_snapshot(&self) -> Vec<SelectionEntry> {
+        self.paint.selection_shapes.clone()
+    }
+
+    /// Reinstate the parametric selection shape list from a structural snapshot (undo/redo), so the editable
+    /// shapes track the mask that `restore_selection` reinstates alongside them.
+    pub(crate) fn restore_selection_shapes(&mut self, shapes: Vec<SelectionEntry>) {
+        self.paint.selection_shapes = shapes;
+    }
+
     /// Append a parametric entry to the selection list, honouring the boolean op: **New** clears the list
     /// first (it replaces the whole selection), **Add**/**Remove** push onto the existing shapes. Does NOT
     /// recomposite — the caller drives the mask (creation already wrote a live preview).
@@ -94,10 +107,8 @@ impl PainterTool {
                 ry,
                 sides,
             } => self.raster_lasso(&sel_polygon_vertices(*center, *u, *rx, *ry, *sides)),
-            SelectionShape::Freehand {
-                points, handles, ..
-            } => {
-                let spine = self.freehand_spine(points, handles);
+            SelectionShape::Freehand { model, .. } => {
+                let spine = self.freehand_spine(&model.points, &model.handles);
                 if spine.len() < 3 {
                     return cov;
                 }
@@ -135,6 +146,11 @@ impl PainterTool {
     pub(super) fn recompose_selection_mask(&mut self) {
         let n = (self.source_size.0 as usize) * (self.source_size.1 as usize);
         if n == 0 {
+            return;
+        }
+        // Ring-stack mode: the shapes are nested ring curves → BAND-PARITY composite (not boolean ops).
+        if self.paint.selection_ring_stack {
+            self.recompose_ring_stack(n);
             return;
         }
         // Each gizmo edits its `SelectionShape` params IN PLACE (isolated from the stroke editors), so the

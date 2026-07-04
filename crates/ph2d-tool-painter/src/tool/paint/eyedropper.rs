@@ -45,6 +45,7 @@ impl PainterTool {
                 f32::from(buf[idx + 1]) / 255.0,
                 f32::from(buf[idx + 2]) / 255.0,
             ];
+            self.sync_brush_color_across_modes(); // the sampled colour is the shared paint colour (all modes)
         }
         self.paint.eyedropper_armed = false; // one-shot → back to Brush
         true

@@ -143,6 +143,7 @@ pub(crate) fn paint_render_source_section(
         scene,
         text_system,
         theme,
+        store,
         hit_index,
     );
     // Inter-row gap inside Render Source — matches Transform's row_gap
@@ -300,6 +301,7 @@ pub(crate) fn paint_render_source_section(
         scene,
         text_system,
         theme,
+        store,
         hit_index,
     );
     cur_y += fmt_h + ph2d_editor_core::widget::panel_chrome::SECTION_INNER_ROW_GAP_PX;

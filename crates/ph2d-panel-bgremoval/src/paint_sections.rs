@@ -445,6 +445,7 @@ pub(crate) fn paint_protect_brush(
             scene,
             text_system,
             theme,
+            store,
             hit_index,
         );
         y += falloff_h + row_gap;

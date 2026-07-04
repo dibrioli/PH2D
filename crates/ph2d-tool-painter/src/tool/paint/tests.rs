@@ -8373,3 +8373,32 @@ fn switching_between_shape_methods_parks_not_bakes() {
     );
     assert!(t.paint.drag_preview.is_none(), "preview committed");
 }
+
+/// Multi-curve selection editing (Enio 2026-07-04): with several converted curves, a click near curve 0's
+/// line targets CURVE 0 — it must NOT drop a point on the last-drawn curve. Regression for "só o gizmo da
+/// última seleção funciona; clicar nos outros cria pontos na última".
+#[test]
+fn multi_curve_click_targets_the_nearest_curve_not_the_last() {
+    let mut t = white_canvas(64, 4.0);
+    t.set_paint_tool_mode("selection");
+    t.set_selection_mode(2); // Rectangle
+    // Rect 0 top-left, Rect 1 (Add) bottom-right — two SEPARATE selections.
+    t.on_canvas_pointer(cp([0.0, 0.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([16.0, 16.0], PointerPhase::Up));
+    t.set_selection_bool_op(1);
+    t.on_canvas_pointer(cp([40.0, 40.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([56.0, 56.0], PointerPhase::Up));
+    t.selection_convert_to_curve(); // 2 editable curves + gizmos, edit mode on
+    assert_eq!(t.paint.selection_shapes.len(), 2);
+    // A Down on/near CURVE 0's outline (top-left) must grab/insert on curve 0 — never the last (curve 1).
+    t.on_canvas_pointer(cp([8.0, 0.0], PointerPhase::Down));
+    let grab = t
+        .paint
+        .selection_grab
+        .as_ref()
+        .expect("a grab resulted near curve 0");
+    assert_eq!(
+        grab.shape, 0,
+        "the click targeted the NEAREST curve (0), not the last-drawn (1)"
+    );
+}

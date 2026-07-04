@@ -239,17 +239,13 @@ impl PainterTool {
 
     fn selection_gizmo_down(&mut self, pos: [f32; 2]) -> bool {
         let tol = self.paint.shape_grab_tol_px;
-        // Topmost shape first (last drawn wins).
+        let n = self.paint.selection_shapes.len();
+        let before = self.snapshot_model(); // pre-mutation (hit_point sets `selected`; insert changes geometry)
         let mut grab = None;
-        let mut before: Option<crate::undo::ModelSnapshot> = None;
-        for i in (0..self.paint.selection_shapes.len()).rev() {
-            // A CONVERTED curve is BOTH the per-anchor point editor AND carries the global transform box
-            // (move / rotate / scale the whole selection — Enio 2026-07-04). Order mirrors the stroke Curve:
-            // a point / tangent first (precise), then a transform-box handle, then insert-on-curve / nearest.
+        // PASS 1 — HANDLES ONLY, topmost first, across EVERY shape (point/tangent or transform-box). No
+        // insert here, so clicking one curve's gizmo NEVER drops a point on a DIFFERENT curve (Enio 2026-07-04).
+        for i in (0..n).rev() {
             if selection_curve_gizmo::is_converted_curve(&self.paint.selection_shapes[i].shape) {
-                // Snapshot BEFORE editing so an insert is undoable together with the drag (mirrors the stroke).
-                before = Some(self.snapshot_model());
-                // 1) A control point / tangent handle.
                 let point = {
                     let SelectionShape::Freehand { model, .. } =
                         &mut self.paint.selection_shapes[i].shape
@@ -259,50 +255,17 @@ impl PainterTool {
                     model.hit_point(pos, tol)
                 };
                 if let Some(cg) = point {
-                    let initial = self.paint.selection_shapes[i].shape.clone();
                     grab = Some(SelectionGrab {
                         shape: i,
                         handle: H_MOVE,
-                        start: pos,
-                        initial,
-                        curve: Some(cg),
-                    });
-                    break;
-                }
-                // 2) A transform-box handle (scale corner / edge, rotate ring, centre move).
-                if let Some(h) = hit_shape(&self.paint.selection_shapes[i].shape, pos, tol) {
-                    grab = Some(SelectionGrab {
-                        shape: i,
-                        handle: h,
                         start: pos,
                         initial: self.paint.selection_shapes[i].shape.clone(),
-                        curve: None,
+                        curve: Some(cg),
                     });
                     break;
                 }
-                // 3) Insert a new anchor on the curve (or select the nearest at the point cap).
-                let cg = {
-                    let SelectionShape::Freehand { model, .. } =
-                        &mut self.paint.selection_shapes[i].shape
-                    else {
-                        unreachable!()
-                    };
-                    selection_curve_gizmo::selection_curve_insert_or_nearest(model, pos)
-                };
-                if let Some(cg) = cg {
-                    let initial = self.paint.selection_shapes[i].shape.clone();
-                    grab = Some(SelectionGrab {
-                        shape: i,
-                        handle: H_MOVE,
-                        start: pos,
-                        initial,
-                        curve: Some(cg),
-                    });
-                }
-                break; // the converted curve consumes the click
             }
             if let Some(h) = hit_shape(&self.paint.selection_shapes[i].shape, pos, tol) {
-                before = Some(self.snapshot_model());
                 grab = Some(SelectionGrab {
                     shape: i,
                     handle: h,
@@ -313,12 +276,50 @@ impl PainterTool {
                 break;
             }
         }
+        // PASS 2 — no handle hit: insert an anchor on the converted curve whose LINE is NEAREST + within the
+        // insert band (points add to ANY curve by proximity; a click far from every line adds nothing).
+        if grab.is_none() {
+            grab = self.insert_on_nearest_selection_curve(pos);
+        }
         let has = grab.is_some();
         self.paint.selection_grab = grab;
         if has {
-            self.paint.stroke_undo = before; // the pre-edit snapshot (kept only when a grab resulted)
+            self.paint.stroke_undo = Some(before);
         }
         true
+    }
+
+    /// Insert an anchor on the converted curve NEAREST to `pos` (within band) → its grab, or `None`.
+    fn insert_on_nearest_selection_curve(&mut self, pos: [f32; 2]) -> Option<SelectionGrab> {
+        let band =
+            (self.paint.shape_grab_tol_px * 3.0).max(super::stroke_multi::NEW_SHAPE_INSERT_BAND_PX);
+        let mut best: Option<(usize, f32)> = None;
+        for i in 0..self.paint.selection_shapes.len() {
+            let shape = &self.paint.selection_shapes[i].shape;
+            if !selection_curve_gizmo::is_converted_curve(shape) {
+                continue;
+            }
+            let outline = self.shape_outline(shape);
+            if let Some(d2) = super::stroke_multi::min_dist2_to_polyline(pos, &outline)
+                && d2 <= band * band
+                && best.is_none_or(|(_, bd)| d2 < bd)
+            {
+                best = Some((i, d2));
+            }
+        }
+        let (i, _) = best?;
+        let SelectionShape::Freehand { model, .. } = &mut self.paint.selection_shapes[i].shape
+        else {
+            unreachable!("is_converted_curve ⇒ Freehand")
+        };
+        let cg = selection_curve_gizmo::selection_curve_insert_or_nearest(model, pos)?;
+        Some(SelectionGrab {
+            shape: i,
+            handle: H_MOVE,
+            start: pos,
+            initial: self.paint.selection_shapes[i].shape.clone(),
+            curve: Some(cg),
+        })
     }
 
     fn selection_gizmo_move(&mut self, pos: [f32; 2]) -> bool {

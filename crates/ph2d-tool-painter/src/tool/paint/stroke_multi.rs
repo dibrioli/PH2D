@@ -493,16 +493,22 @@ pub(super) const NEW_SHAPE_INSERT_BAND_PX: f32 = 20.0;
 
 /// `true` when `pos` is within `band` px of the polyline `spine` (min distance to any segment).
 pub(super) fn point_near_polyline(pos: [f32; 2], spine: &[[f32; 2]], band: f32) -> bool {
+    min_dist2_to_polyline(pos, spine).is_some_and(|d2| d2 <= band * band)
+}
+
+/// The MIN squared distance from `pos` to the polyline `spine` (any segment), or `None` when empty. Used to
+/// pick which of several curves a click is nearest to (multi-curve point insertion).
+pub(super) fn min_dist2_to_polyline(pos: [f32; 2], spine: &[[f32; 2]]) -> Option<f32> {
     if spine.is_empty() {
-        return false;
+        return None;
     }
-    let band2 = band * band;
     if spine.len() == 1 {
-        return dist2(pos, spine[0]) <= band2;
+        return Some(dist2(pos, spine[0]));
     }
     spine
         .windows(2)
-        .any(|w| dist2_point_segment(pos, w[0], w[1]) <= band2)
+        .map(|w| dist2_point_segment(pos, w[0], w[1]))
+        .fold(None, |acc, d| Some(acc.map_or(d, |a: f32| a.min(d))))
 }
 
 fn dist2(a: [f32; 2], b: [f32; 2]) -> f32 {

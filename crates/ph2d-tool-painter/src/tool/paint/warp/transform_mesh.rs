@@ -42,11 +42,24 @@ impl Mesh {
         }
     }
 
-    /// The SMOOTH (Catmull-Rom subdivided) current grid for the on-canvas overlay: `(fine_cols, fine_rows,
-    /// points)`. Drawing lines through these fine points gives curved grid lines matching the warp.
-    pub(crate) fn fine_current(&self) -> (u32, u32, Vec<[f32; 2]>) {
-        let (pts, fc, fr) = subdivide_grid(&self.current, self.cols, self.rows);
-        (fc, fr, pts)
+    /// The overlay grid lines: only the COARSE control lines (one per control row + column), but each traced
+    /// smoothly through the Catmull-Rom fine points → a clean `(cols+1)×(rows+1)` set of CURVED lines (not a
+    /// dense fine grid). Purely visual — the deformation still uses the full fine subdivision.
+    pub(crate) fn smooth_lines(&self) -> Vec<Vec<[f32; 2]>> {
+        let (fine, fc, fr) = subdivide_grid(&self.current, self.cols, self.rows);
+        let stride = (fc + 1) as usize;
+        let mut lines = Vec::with_capacity((self.cols + self.rows + 2) as usize);
+        // One curved line per control COLUMN (traced down the fine rows).
+        for cc in 0..=self.cols {
+            let fcol = (cc * SUBDIV) as usize;
+            lines.push((0..=fr).map(|r| fine[r as usize * stride + fcol]).collect());
+        }
+        // One curved line per control ROW (traced across the fine columns).
+        for cr in 0..=self.rows {
+            let frow = (cr * SUBDIV) as usize;
+            lines.push((0..=fc).map(|c| fine[frow * stride + c as usize]).collect());
+        }
+        lines
     }
 
     /// The index of the control point within `tol` of `pos` (nearest), or `None`.

@@ -72,9 +72,9 @@ pub struct DeformGizmoView {
     pub rotate_tol: f32,
     /// Distort mode: draw only the 4 `box_corners` as handles (no edges / rotate / centre).
     pub corner_only: bool,
-    /// Warp mode: `(fine_cols, fine_rows, fine-points)` — the shell draws the SMOOTH (curved) grid lines
-    /// through these Catmull-Rom-subdivided points.
-    pub mesh: Option<(u32, u32, Vec<[f32; 2]>)>,
+    /// Warp mode: the coarse grid lines as SMOOTH (curved) polylines — one per control row + column (a clean
+    /// 4×4-line grid, not a dense fine mesh). The shell strokes each polyline.
+    pub mesh_lines: Option<Vec<Vec<[f32; 2]>>>,
     /// Warp mode: the COARSE control points — the only draggable handles (drawn as squares).
     pub mesh_handles: Option<Vec<[f32; 2]>>,
 }
@@ -177,7 +177,6 @@ impl PainterTool {
         let tol = self.paint.shape_grab_tol_px;
         if self.paint.deform.transform_mode == MODE_WARP {
             let mesh = self.paint.deform.xform_mesh.as_ref()?;
-            let (fcols, frows, fine) = mesh.fine_current();
             let h = x.current.handles();
             return Some(DeformGizmoView {
                 box_corners: [h[0], h[1], h[2], h[3]],
@@ -186,7 +185,7 @@ impl PainterTool {
                 scale_tol: tol,
                 rotate_tol: tol,
                 corner_only: false,
-                mesh: Some((fcols, frows, fine)), // smooth curved grid lines
+                mesh_lines: Some(mesh.smooth_lines()), // clean 4×4 curved lines
                 mesh_handles: Some(mesh.current.clone()), // draggable control points
             });
         }
@@ -203,7 +202,7 @@ impl PainterTool {
                 scale_tol: tol,
                 rotate_tol: tol,
                 corner_only: true,
-                mesh: None,
+                mesh_lines: None,
                 mesh_handles: None,
             });
         }
@@ -215,7 +214,7 @@ impl PainterTool {
             scale_tol: tol,
             rotate_tol: tol * ROTATE_BAND,
             corner_only: false,
-            mesh: None,
+            mesh_lines: None,
             mesh_handles: None,
         })
     }

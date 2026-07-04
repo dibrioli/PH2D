@@ -58,18 +58,12 @@ pub(super) fn draw_deform_gizmo(
     let accents = super::painter_bridge_gizmo::GIZMO_ACCENTS;
     let pal = super::painter_bridge_gizmo::palette_accent(hero.theme, accents[0]);
     let scene = vector_scene.inner_mut();
-    // Warp mesh: draw the SMOOTH (curved) grid lines through the fine subdivided points, then a draggable
-    // square handle at each COARSE control point (only those are grabbable).
-    if let Some((cols, rows, pts)) = &g.mesh {
-        let idx = |r: u32, c: u32| (r * (cols + 1) + c) as usize;
-        // Curved lines: one polyline per fine row and per fine column (so curvature reads continuously).
-        for r in 0..=*rows {
-            let row: Vec<Point> = (0..=*cols).map(|c| map(pts[idx(r, c)])).collect();
-            super::painter_bridge_gizmo::stroke_open(scene, &row, &pal);
-        }
-        for c in 0..=*cols {
-            let col: Vec<Point> = (0..=*rows).map(|r| map(pts[idx(r, c)])).collect();
-            super::painter_bridge_gizmo::stroke_open(scene, &col, &pal);
+    // Warp mesh: draw the clean 4×4 CURVED control lines, then a draggable square handle at each COARSE
+    // control point (only those are grabbable).
+    if let Some(lines) = &g.mesh_lines {
+        for line in lines {
+            let pts: Vec<Point> = line.iter().map(|&p| map(p)).collect();
+            super::painter_bridge_gizmo::stroke_open(scene, &pts, &pal);
         }
         if let Some(handles) = &g.mesh_handles {
             for &p in handles {

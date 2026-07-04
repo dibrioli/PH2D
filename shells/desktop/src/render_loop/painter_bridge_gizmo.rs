@@ -130,16 +130,89 @@ pub(super) fn square_handle(scene: &mut Scene, p: Point, pal: &GizmoPalette) {
     );
 }
 
+/// The centre-move handle carrying the multi-shape Operation glyph — the SAME move square, DOUBLED, with
+/// the `+`/`−`/`o` op glyph drawn inside it (Enio 2026-07-04: put the glyph in the EXISTING centre square,
+/// never a second one). Used in place of [`square_handle`] for the centre handle when a shape is active.
+pub(super) fn center_glyph_handle(scene: &mut Scene, p: Point, pal: &GizmoPalette, glyph: &str) {
+    const HALF: f64 = HANDLE_HALF * 2.0; // doubled centre square
+    let sq = RoundedRect::new(
+        p.x - HALF,
+        p.y - HALF,
+        p.x + HALF,
+        p.y + HALF,
+        HANDLE_RADIUS,
+    );
+    scene.fill(
+        Fill::NonZero,
+        Affine::IDENTITY,
+        &Brush::Solid(pal.fill),
+        None,
+        &sq,
+    );
+    scene.stroke(
+        &Stroke::new(HANDLE_STROKE),
+        Affine::IDENTITY,
+        &Brush::Solid(pal.stroke),
+        None,
+        &sq,
+    );
+    // Glyph in the darker stroke colour so it reads on the accent fill.
+    let g = HANDLE_HALF * 1.15;
+    let mut path = BezPath::new();
+    match glyph {
+        "+" => {
+            path.move_to(Point::new(p.x - g, p.y));
+            path.line_to(Point::new(p.x + g, p.y));
+            path.move_to(Point::new(p.x, p.y - g));
+            path.line_to(Point::new(p.x, p.y + g));
+        }
+        "-" => {
+            path.move_to(Point::new(p.x - g, p.y));
+            path.line_to(Point::new(p.x + g, p.y));
+        }
+        "n" => {
+            // "n" for the Selection "New" op — two stems + a top arch.
+            path.move_to(Point::new(p.x - g, p.y + g));
+            path.line_to(Point::new(p.x - g, p.y - g * 0.2));
+            path.curve_to(
+                Point::new(p.x - g, p.y - g),
+                Point::new(p.x + g, p.y - g),
+                Point::new(p.x + g, p.y - g * 0.2),
+            );
+            path.line_to(Point::new(p.x + g, p.y + g));
+        }
+        _ => {
+            scene.stroke(
+                &Stroke::new(1.6),
+                Affine::IDENTITY,
+                &Brush::Solid(pal.stroke),
+                None,
+                &Circle::new(p, g * 0.85),
+            );
+            return;
+        }
+    }
+    scene.stroke(
+        &Stroke::new(1.8),
+        Affine::IDENTITY,
+        &Brush::Solid(pal.stroke),
+        None,
+        &path,
+    );
+}
+
 /// Draw a whole-shape **transform gizmo** (the Sprite-gizmo box + 9 handles) for a shape editor — shared
 /// by the Curve and Line overlays so they read IDENTICALLY. `affine` maps image px → screen; `cursor` is
 /// the screen cursor, used for the rotate-ring hover cue (corners flip to circles when hovering the band
 /// just outside them, matching the tool's hit-test). Drawn UNDER the shape's spine + dots by the caller.
+/// `op_glyph` (multi-shape) puts the shape's Operation `+`/`−`/`o` in the DOUBLED centre-move square.
 pub(super) fn draw_transform_gizmo(
     scene: &mut Scene,
     gz: &TransformGizmo,
     affine: Affine,
     pal: &GizmoPalette,
     cursor: (f32, f32),
+    op_glyph: Option<&str>,
 ) {
     let map = |p: [f32; 2]| affine * Point::new(f64::from(p[0]), f64::from(p[1]));
     let [mn, mx] = gz.bbox;
@@ -166,6 +239,8 @@ pub(super) fn draw_transform_gizmo(
         let p = map(h);
         if circle_corners && i < 4 {
             circle_handle(scene, p, pal);
+        } else if i == 8 && op_glyph.is_some() {
+            center_glyph_handle(scene, p, pal, op_glyph.unwrap()); // doubled centre square + op glyph
         } else {
             square_handle(scene, p, pal);
         }

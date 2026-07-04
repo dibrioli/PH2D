@@ -55,7 +55,14 @@ pub(super) fn draw_line_overlay(
             // Transform gizmo (editing phase) — drawn FIRST (under the segments + dots) so the editing
             // geometry stays visually dominant. Identical to the Curve gizmo (shared helper).
             if let Some(gz) = overlay.transform_gizmo.as_ref() {
-                super::painter_bridge_gizmo::draw_transform_gizmo(scene, gz, affine, &pal, cursor);
+                super::painter_bridge_gizmo::draw_transform_gizmo(
+                    scene,
+                    gz,
+                    affine,
+                    &pal,
+                    cursor,
+                    painter.active_op_glyph(),
+                );
             }
             // Segments through the committed corner points (themed frame colour, open or closed).
             let pts = &overlay.points;

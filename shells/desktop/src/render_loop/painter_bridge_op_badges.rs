@@ -45,91 +45,34 @@ pub(super) fn draw_op_badges(
         camera,
         window_size,
     );
-    use ph2d_vector::{Affine, BezPath, Brush, Circle, Color, Fill, Point, RoundedRect, Stroke};
+    use ph2d_vector::{Affine, BezPath, Brush, Color, Point, Stroke};
     let map = |p: [f32; 2]| affine * Point::new(f64::from(p[0]), f64::from(p[1]));
-    // Fluorescent yellow accent for the type-square glyph (reads on any canvas); parked frames are dimmer.
-    let glyph_col = Color::new([1.0, 0.85, 0.15, 1.0]); // LITERAL-COLOR-OK: op-badge glyph
+    // Parked shapes have no live gizmo, so they get a faint AABB frame (so they read as still-selectable)
+    // + the SAME doubled centre square + op glyph the active gizmo draws (`center_glyph_handle`).
     let frame_col = Color::new([1.0, 0.85, 0.15, 0.35]); // LITERAL-COLOR-OK: parked-shape frame
-    let sq_fill = Color::new([0.10, 0.10, 0.12, 0.72]); // LITERAL-COLOR-OK: type-square backing
+    let pal = super::painter_bridge_gizmo::palette_accent(
+        hero.theme,
+        super::painter_bridge_gizmo::GIZMO_ACCENTS[0],
+    );
     let scene = vector_scene.inner_mut();
-    const R: f64 = 7.0; // glyph half-size (screen px)
-    const SQ: f64 = 12.0; // type-square HALF-size — doubled from the plain gizmo handle (Enio 2026-07-04)
     for b in &badges {
-        // Parked shapes get a faint AABB frame so they read as still-selectable.
-        if !b.active {
-            let p0 = map([b.bbox[0], b.bbox[1]]);
-            let p1 = map([b.bbox[2], b.bbox[1]]);
-            let p2 = map([b.bbox[2], b.bbox[3]]);
-            let p3 = map([b.bbox[0], b.bbox[3]]);
-            let mut frame = BezPath::new();
-            frame.move_to(p0);
-            frame.line_to(p1);
-            frame.line_to(p2);
-            frame.line_to(p3);
-            frame.close_path();
-            scene.stroke(
-                &Stroke::new(1.0),
-                Affine::IDENTITY,
-                &Brush::Solid(frame_col),
-                None,
-                &frame,
-            );
-        }
-        // The op glyph sits inside a doubled type-square (dark backing + accent outline), drawn as vector
-        // geometry (no text) at the gizmo centre.
-        let c = map(b.center);
-        let square = RoundedRect::new(c.x - SQ, c.y - SQ, c.x + SQ, c.y + SQ, 3.0);
-        scene.fill(
-            Fill::NonZero,
-            Affine::IDENTITY,
-            &Brush::Solid(sq_fill),
-            None,
-            &square,
-        );
+        let p0 = map([b.bbox[0], b.bbox[1]]);
+        let p1 = map([b.bbox[2], b.bbox[1]]);
+        let p2 = map([b.bbox[2], b.bbox[3]]);
+        let p3 = map([b.bbox[0], b.bbox[3]]);
+        let mut frame = BezPath::new();
+        frame.move_to(p0);
+        frame.line_to(p1);
+        frame.line_to(p2);
+        frame.line_to(p3);
+        frame.close_path();
         scene.stroke(
-            &Stroke::new(1.5),
+            &Stroke::new(1.0),
             Affine::IDENTITY,
-            &Brush::Solid(glyph_col),
+            &Brush::Solid(frame_col),
             None,
-            &square,
+            &frame,
         );
-        match b.glyph {
-            "+" => {
-                let mut path = BezPath::new();
-                path.move_to(Point::new(c.x - R, c.y));
-                path.line_to(Point::new(c.x + R, c.y));
-                path.move_to(Point::new(c.x, c.y - R));
-                path.line_to(Point::new(c.x, c.y + R));
-                scene.stroke(
-                    &Stroke::new(2.0),
-                    Affine::IDENTITY,
-                    &Brush::Solid(glyph_col),
-                    None,
-                    &path,
-                );
-            }
-            "-" => {
-                let mut path = BezPath::new();
-                path.move_to(Point::new(c.x - R, c.y));
-                path.line_to(Point::new(c.x + R, c.y));
-                scene.stroke(
-                    &Stroke::new(2.0),
-                    Affine::IDENTITY,
-                    &Brush::Solid(glyph_col),
-                    None,
-                    &path,
-                );
-            }
-            _ => {
-                // Overlay "o" → a small ring.
-                scene.stroke(
-                    &Stroke::new(2.0),
-                    Affine::IDENTITY,
-                    &Brush::Solid(glyph_col),
-                    None,
-                    &Circle::new(c, R * 0.8),
-                );
-            }
-        }
+        super::painter_bridge_gizmo::center_glyph_handle(scene, map(b.center), &pal, b.glyph);
     }
 }

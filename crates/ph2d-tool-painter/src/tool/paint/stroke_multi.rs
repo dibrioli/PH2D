@@ -356,18 +356,26 @@ impl PainterTool {
         self.refill_open_shape();
     }
 
-    /// The op badges the shell draws for the multi-shape gizmos: one per PARKED shape (frame + glyph so it
-    /// reads as an editable shape) plus one for the ACTIVE shape (glyph only — its full gizmo is drawn by the
-    /// per-type overlay). Empty in the classic single-shape / no-shape case with an Overlay op. Image px.
+    /// The `+`/`−`/`o` glyph for the ACTIVE shape's Operation — the shell draws it INSIDE the shape's gizmo
+    /// centre-move square (enlarged), so there is no separate badge square (Enio 2026-07-04). `None` when no
+    /// shape is being edited.
+    pub fn active_op_glyph(&self) -> Option<&'static str> {
+        self.is_editing_shape()
+            .then(|| self.paint.active_op.glyph())
+    }
+
+    /// The op badges the shell draws for the PARKED shapes only — each a faint AABB frame + its `+`/`−`/`o`
+    /// glyph so it reads as a still-editable shape. The ACTIVE shape's glyph is drawn INSIDE its gizmo
+    /// centre square instead (`active_op_glyph`), so there is never a second/duplicate square (Enio
+    /// 2026-07-04). Empty in the classic single-shape / no-parked case. Image px.
     pub fn stroke_op_badges(&self) -> Vec<StrokeOpBadge> {
-        let mut out = Vec::new();
-        // Parked shapes: frame + glyph.
         let parked: Vec<(crate::undo::ShapeEditState, StrokeOp)> = self
             .paint
             .parked_shapes
             .iter()
             .map(|s| (s.state.clone(), s.op))
             .collect();
+        let mut out = Vec::new();
         for (st, op) in &parked {
             if let Some(bb) = self.shape_state_bbox(st) {
                 out.push(StrokeOpBadge {
@@ -377,17 +385,6 @@ impl PainterTool {
                     active: false,
                 });
             }
-        }
-        // Active shape: glyph only (needs at least one shape editing).
-        if let Some(state) = self.capture_shape()
-            && let Some(bb) = self.shape_state_bbox(&state)
-        {
-            out.push(StrokeOpBadge {
-                center: [(bb[0] + bb[2]) * 0.5, (bb[1] + bb[3]) * 0.5],
-                bbox: bb,
-                glyph: self.paint.active_op.glyph(),
-                active: true,
-            });
         }
         out
     }

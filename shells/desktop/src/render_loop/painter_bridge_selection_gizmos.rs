@@ -88,8 +88,13 @@ pub(super) fn draw_selection_gizmos(
                 super::painter_bridge_gizmo::square_handle(scene, sp, &pal);
             }
         }
-        // Centre move square + polygon sides diamond.
-        super::painter_bridge_gizmo::square_handle(scene, center_sp, &pal);
+        // Centre move square — DOUBLED, carrying the Operation glyph (New `n` / Add `+` / Remove `−`).
+        let op_glyph = match g.op {
+            1 => "+",
+            2 => "-",
+            _ => "n",
+        };
+        super::painter_bridge_gizmo::center_glyph_handle(scene, center_sp, &pal, op_glyph);
         if let Some(d) = g.diamond {
             super::painter_bridge_gizmo::diamond_handle(scene, map(d), &pal);
         }

@@ -315,10 +315,19 @@ fn draw_ellipse_overlay(
                 let pts: Vec<Point> = overlay.perimeter.iter().map(|&p| map(p)).collect();
                 super::painter_bridge_gizmo::stroke_box(scene, &pts, &pal);
             }
+            let op_glyph = painter.active_op_glyph();
             for (i, &h) in overlay.handles.iter().enumerate() {
                 let p = map(h);
                 if i == 4 {
                     super::painter_bridge_gizmo::circle_handle(scene, p, &pal);
+                } else if i == 5 && op_glyph.is_some() {
+                    // Centre-move square (index 5) DOUBLED with the Operation glyph.
+                    super::painter_bridge_gizmo::center_glyph_handle(
+                        scene,
+                        p,
+                        &pal,
+                        op_glyph.unwrap(),
+                    );
                 } else {
                     super::painter_bridge_gizmo::square_handle(scene, p, &pal);
                 }
@@ -374,11 +383,21 @@ fn draw_polygon_overlay(
                 let pts: Vec<Point> = overlay.perimeter.iter().map(|&p| map(p)).collect();
                 super::painter_bridge_gizmo::stroke_box(scene, &pts, &pal);
             }
+            let op_glyph = painter.active_op_glyph();
             for (i, &h) in overlay.handles.iter().enumerate() {
                 let p = map(h);
                 match i {
                     4 => super::painter_bridge_gizmo::circle_handle(scene, p, &pal), // rotate
                     5 => super::painter_bridge_gizmo::diamond_handle(scene, p, &pal), // sides (distinct)
+                    6 if op_glyph.is_some() => {
+                        // Centre-move square (index 6) DOUBLED with the Operation glyph.
+                        super::painter_bridge_gizmo::center_glyph_handle(
+                            scene,
+                            p,
+                            &pal,
+                            op_glyph.unwrap(),
+                        );
+                    }
                     _ => super::painter_bridge_gizmo::square_handle(scene, p, &pal),
                 }
             }

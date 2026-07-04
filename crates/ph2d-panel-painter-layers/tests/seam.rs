@@ -303,6 +303,11 @@ fn stroke_apply_buttons_forward_their_click() {
         core_ids::PAINTER_BRUSH_STROKE_APPLY_KEEP,
         core_ids::PAINTER_BRUSH_STROKE_DELETE,
         core_ids::PAINTER_BRUSH_STROKE_EDIT,
+        // Multi-shape OPERATION segments (Enio 2026-07-04): these were NOT in the forward allowlist, so a
+        // real click never reached the tool and the segment never activated. Regression guard.
+        core_ids::PAINTER_STROKE_OP_OVERLAY,
+        core_ids::PAINTER_STROKE_OP_ADD,
+        core_ids::PAINTER_STROKE_OP_REMOVE,
     ] {
         let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
         let mut st = PainterLayersPanelState;

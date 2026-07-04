@@ -58,7 +58,14 @@ pub(super) fn draw_curve_overlay(
             // (under the spine + dots) so the editing geometry stays visually dominant. Corners (0..4) flip
             // to circles while rotating; edges (4..8) + the centre move handle (8) stay rounded squares.
             if let Some(gz) = overlay.transform_gizmo.as_ref() {
-                super::painter_bridge_gizmo::draw_transform_gizmo(scene, gz, affine, &pal, cursor);
+                super::painter_bridge_gizmo::draw_transform_gizmo(
+                    scene,
+                    gz,
+                    affine,
+                    &pal,
+                    cursor,
+                    painter.active_op_glyph(),
+                );
             }
             // Spine guide — the auto-smoothed curve through the control points (themed frame colour).
             if overlay.spine.len() >= 2 {

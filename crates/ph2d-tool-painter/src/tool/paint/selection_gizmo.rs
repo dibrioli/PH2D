@@ -58,6 +58,9 @@ pub struct SelectionGizmoView {
     pub scale_tol: f32,
     pub rotate_tol: f32,
     pub accent: usize,
+    /// The boolean Operation wire (`0`=New `1`=Add `2`=Remove) — the shell draws its `n`/`+`/`−` glyph in
+    /// the doubled centre-move square (Enio 2026-07-04).
+    pub op: u8,
     /// `Some` for a CONVERTED curve (Freehand with Bézier handles): the shell draws its editable anchors +
     /// in/out handles INSTEAD of the transform box (a raw lasso Freehand keeps `None` = the box).
     pub edit_curve: Option<SelectionCurveEdit>,
@@ -192,6 +195,7 @@ impl PainterTool {
                 scale_tol: tol,
                 rotate_tol: tol * ROTATE_BAND,
                 accent,
+                op: e.op,
                 // A converted curve edits per-anchor (points + Bézier handles), not via the transform box.
                 edit_curve: selection_curve_gizmo::curve_edit_view(&e.shape, grabbed, tol),
             });

@@ -434,23 +434,23 @@ fn try_apply_brush_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> O
                 || id == core_ids::PAINTER_BRUSH_STROKE_APPLY_KEEP
                 || id == core_ids::PAINTER_BRUSH_STROKE_DELETE
                 || id == core_ids::PAINTER_BRUSH_STROKE_EDIT
-                // Simplify + the Offset-card Trim checkbox.
+                // Simplify + the Offset-card Trim + the multi-shape OPERATION segments (Overlay/Add/Remove;
+                // MUST be forwarded here or the segment never activates — Enio 2026-07-04 smoke repro).
                 || id == core_ids::PAINTER_BRUSH_STROKE_SIMPLIFY
                 || id == core_ids::PAINTER_BRUSH_OFFSET_TRIM
-                // Symmetry: Use / Circular checkboxes, X/Y/Custom axis segments, the Draw-Line /
-                // Pick-Center mode buttons, and the section reset (all plain Click forwards).
+                || core_ids::PAINTER_STROKE_OP_IDS.contains(&id)
+                // Symmetry: Use/Circular checkboxes, X/Y/Custom axis segments, Draw-Line/Pick-Center, reset.
                 || core_ids::PAINTER_BRUSH_SYMMETRY_CLICKABLE.contains(&id)
                 || core_ids::PAINTER_BRUSH_SECTION_RESETS.contains(&id)
                 || core_ids::PAINTER_BRUSH_COMPOSITE_BUTTONS.contains(&id)
                 || id == core_ids::PAINTER_BRUSH_CLONE_SET_SOURCE
                 || id == core_ids::PAINTER_BRUSH_CLONE_ALIGNED
-                // Mask section: sub-brush segments, whole-canvas op buttons, overlay-colour swatches, Apply.
+                // Mask: sub-brush segments, canvas op buttons, overlay-colour swatches, Apply.
                 || core_ids::PAINTER_MASK_BRUSH.contains(&id)
                 || core_ids::PAINTER_MASK_OP.contains(&id)
                 || core_ids::PAINTER_MASK_COLOR.contains(&id)
                 || id == core_ids::PAINTER_MASK_APPLY
-                // Selection section (ADR-0103): mode / boolean-op / action segments + Edit / Convert +
-                // the Wave-5 content actions (Select layer contents / Color Fill / Copy / Paste).
+                // Selection (ADR-0103): mode/op/action segments + Edit/Convert + Wave-5 content actions.
                 || core_ids::PAINTER_SEL_MODE_IDS.contains(&id)
                 || core_ids::PAINTER_SEL_OP_IDS.contains(&id)
                 || core_ids::PAINTER_SEL_ACTION_IDS.contains(&id)

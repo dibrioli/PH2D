@@ -65,10 +65,18 @@ pub(super) fn draw_deform_gizmo(
             for c in 0..=*cols {
                 let p = map(pts[idx(r, c)]);
                 if c < *cols {
-                    super::painter_bridge_gizmo::stroke_open(scene, &[p, map(pts[idx(r, c + 1)])], &pal);
+                    super::painter_bridge_gizmo::stroke_open(
+                        scene,
+                        &[p, map(pts[idx(r, c + 1)])],
+                        &pal,
+                    );
                 }
                 if r < *rows {
-                    super::painter_bridge_gizmo::stroke_open(scene, &[p, map(pts[idx(r + 1, c)])], &pal);
+                    super::painter_bridge_gizmo::stroke_open(
+                        scene,
+                        &[p, map(pts[idx(r + 1, c)])],
+                        &pal,
+                    );
                 }
             }
         }

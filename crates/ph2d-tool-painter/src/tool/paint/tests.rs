@@ -6133,11 +6133,17 @@ fn deform_transform_identity_is_byte_identical() {
     let mut t = deform_square_canvas(64, 20, 20, 44, 44);
     let before = t.canvas_rgba.clone();
     t.set_deform_transform_on(true);
-    assert_eq!(*t.canvas_rgba, *before, "entering Transform alters no pixels");
+    assert_eq!(
+        *t.canvas_rgba, *before,
+        "entering Transform alters no pixels"
+    );
     let c = [32.0, 32.0]; // the square's centre (centre-move handle)
     t.on_canvas_pointer(cp(c, PointerPhase::Down));
     t.on_canvas_pointer(cp(c, PointerPhase::Up));
-    assert_eq!(*t.canvas_rgba, *before, "a no-op gizmo grab is byte-identical");
+    assert_eq!(
+        *t.canvas_rgba, *before,
+        "a no-op gizmo grab is byte-identical"
+    );
 }
 
 #[test]
@@ -6149,8 +6155,16 @@ fn deform_transform_move_translates_content() {
     t.on_canvas_pointer(cp([40.0, 40.0], PointerPhase::Down));
     t.on_canvas_pointer(cp([52.0, 40.0], PointerPhase::Move));
     t.on_canvas_pointer(cp([52.0, 40.0], PointerPhase::Up));
-    assert_eq!(px(&t, 80, 42, 40), [0, 0, 0, 255], "block shifted right by ~12");
-    assert_eq!(px(&t, 80, 31, 40)[3], 0, "the vacated left edge is transparent");
+    assert_eq!(
+        px(&t, 80, 42, 40),
+        [0, 0, 0, 255],
+        "block shifted right by ~12"
+    );
+    assert_eq!(
+        px(&t, 80, 31, 40)[3],
+        0,
+        "the vacated left edge is transparent"
+    );
 }
 
 #[test]
@@ -6164,7 +6178,10 @@ fn deform_transform_reset_restores_pixels() {
     t.on_canvas_pointer(cp([44.0, 32.0], PointerPhase::Up));
     assert_ne!(*t.canvas_rgba, *before, "the transform changed pixels");
     t.deform_reset();
-    assert_eq!(*t.canvas_rgba, *before, "Reset restores the pre-deform pixels");
+    assert_eq!(
+        *t.canvas_rgba, *before,
+        "Reset restores the pre-deform pixels"
+    );
 }
 
 #[test]
@@ -6181,7 +6198,11 @@ fn deform_transform_is_confined_to_the_selection() {
     t.on_canvas_pointer(cp([16.0, 32.0], PointerPhase::Down));
     t.on_canvas_pointer(cp([22.0, 32.0], PointerPhase::Move));
     t.on_canvas_pointer(cp([22.0, 32.0], PointerPhase::Up));
-    assert_ne!(px(&t, 64, 16, 32), [16, 128, 128, 255], "a selected texel is transformed");
+    assert_ne!(
+        px(&t, 64, 16, 32),
+        [16, 128, 128, 255],
+        "a selected texel is transformed"
+    );
     assert_eq!(
         px(&t, 64, 48, 32),
         right_before,
@@ -6198,13 +6219,24 @@ fn deform_transform_lifts_the_selection_and_leaves_a_hole() {
     t.set_shape_grab_tol_px(8.0);
     t.set_rect_selection(20, 20, 20, 20); // select exactly the block
     t.set_deform_transform_on(true);
-    assert!(!t.selection_active(), "the selection marquee is consumed by the transform");
+    assert!(
+        !t.selection_active(),
+        "the selection marquee is consumed by the transform"
+    );
     // Grab the block/selection centre (30,30) and drag +20 in x.
     t.on_canvas_pointer(cp([30.0, 30.0], PointerPhase::Down));
     t.on_canvas_pointer(cp([50.0, 30.0], PointerPhase::Move));
     t.on_canvas_pointer(cp([50.0, 30.0], PointerPhase::Up));
-    assert_eq!(px(&t, 80, 30, 30)[3], 0, "the original spot is now a transparent hole");
-    assert_eq!(px(&t, 80, 50, 30), [0, 0, 0, 255], "the patch reappears at the moved spot");
+    assert_eq!(
+        px(&t, 80, 30, 30)[3],
+        0,
+        "the original spot is now a transparent hole"
+    );
+    assert_eq!(
+        px(&t, 80, 50, 30),
+        [0, 0, 0, 255],
+        "the patch reappears at the moved spot"
+    );
 }
 
 #[test]
@@ -6216,12 +6248,18 @@ fn deform_transform_distort_warps_a_free_corner() {
     t.set_deform_transform_on(true);
     let seeded = t.canvas_rgba.clone();
     t.set_deform_transform_mode(2); // Distort
-    assert_eq!(*t.canvas_rgba, *seeded, "entering Distort is byte-identical");
+    assert_eq!(
+        *t.canvas_rgba, *seeded,
+        "entering Distort is byte-identical"
+    );
     // A corner of the content box sits at (20,20); drag it out to (8,8).
     t.on_canvas_pointer(cp([20.0, 20.0], PointerPhase::Down));
     t.on_canvas_pointer(cp([8.0, 8.0], PointerPhase::Move));
     t.on_canvas_pointer(cp([8.0, 8.0], PointerPhase::Up));
-    assert_ne!(*t.canvas_rgba, *seeded, "dragging a Distort corner warps the patch");
+    assert_ne!(
+        *t.canvas_rgba, *seeded,
+        "dragging a Distort corner warps the patch"
+    );
 }
 
 /// Perf harness (RELEASE only — dev/opt-0 lies about perf): time one Transform gizmo move on a moderate
@@ -6276,7 +6314,10 @@ fn deform_transform_warp_mesh_moves_a_control_point() {
     t.on_canvas_pointer(cp([35.0, 35.0], PointerPhase::Down));
     t.on_canvas_pointer(cp([45.0, 45.0], PointerPhase::Move));
     t.on_canvas_pointer(cp([45.0, 45.0], PointerPhase::Up));
-    assert_ne!(*t.canvas_rgba, *seeded, "dragging a mesh point warps the patch");
+    assert_ne!(
+        *t.canvas_rgba, *seeded,
+        "dragging a mesh point warps the patch"
+    );
 }
 
 #[test]
@@ -6292,7 +6333,10 @@ fn deform_transform_undo_rolls_back_the_whole_transform() {
     assert_ne!(*t.canvas_rgba, *before, "the transform changed pixels");
     t.set_deform_transform_on(false); // ends + commits the transform as one undo entry
     assert!(t.undo_last(), "undo the whole transform");
-    assert_eq!(*t.canvas_rgba, *before, "undo restores the pre-transform pixels");
+    assert_eq!(
+        *t.canvas_rgba, *before,
+        "undo restores the pre-transform pixels"
+    );
 }
 
 // ============================================================================

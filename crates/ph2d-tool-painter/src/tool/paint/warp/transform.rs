@@ -118,7 +118,12 @@ impl PainterTool {
             self.composite_transform(Mat3::from_affine(Affine2::IDENTITY));
         }
         // Enter the new free mode, seeding from the (now-current) affine box.
-        let cur = self.paint.deform.xform.map(|x| x.current).unwrap_or(x.current);
+        let cur = self
+            .paint
+            .deform
+            .xform
+            .map(|x| x.current)
+            .unwrap_or(x.current);
         if m == MODE_DISTORT {
             if let Some(xx) = self.paint.deform.xform {
                 self.paint.deform.xform = Some(Xform {

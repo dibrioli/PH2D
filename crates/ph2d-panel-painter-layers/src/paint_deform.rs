@@ -52,7 +52,14 @@ pub(crate) fn paint_deform_section(
     );
 
     y = if brush.deform_transform_on {
-        paint_transform_body(ctx, theme, x, content_w, y, brush.deform_transform_mode as usize)
+        paint_transform_body(
+            ctx,
+            theme,
+            x,
+            content_w,
+            y,
+            brush.deform_transform_mode as usize,
+        )
     } else {
         paint_reshape_body(ctx, theme, x, content_w, y, brush)
     };
@@ -394,7 +401,7 @@ mod tests {
         };
         for id in core_ids::PAINTER_DEFORM_TEMPERAMENT_IDS {
             assert!(
-                body_hit_ids(transform.clone()).contains(&id),
+                body_hit_ids(transform).contains(&id),
                 "temperament segment {id:?} not painted in Transform"
             );
         }
@@ -410,7 +417,10 @@ mod tests {
         };
         let ids = body_hit_ids(transform);
         for id in core_ids::PAINTER_DEFORM_TRANSFORM_MODE_IDS {
-            assert!(ids.contains(&id), "transform sub-mode {id:?} shown in Transform");
+            assert!(
+                ids.contains(&id),
+                "transform sub-mode {id:?} shown in Transform"
+            );
         }
         // The Reshape bodies are gone.
         assert!(
@@ -430,5 +440,4 @@ mod tests {
             "transform sub-mode hidden in Reshape"
         );
     }
-
 }

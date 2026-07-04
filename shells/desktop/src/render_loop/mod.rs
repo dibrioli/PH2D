@@ -55,9 +55,9 @@ pub(crate) mod painter_bridge_shape_preview;
 // `pub(crate)`: `apply_layer_reparent` is called from `input_dispatch` (outside
 // render_loop) to route the W3.T3.8 layer drag-reparent through the allowlisted
 // bridge-queries module instead of downcasting in central dispatch.
-pub(crate) mod painter_bridge_queries;
 /// The Deform Transform gizmo (whole-region bounding box), split from `painter_bridge_overlays` (Wave 2).
 pub(crate) mod painter_bridge_deform_gizmo;
+pub(crate) mod painter_bridge_queries;
 /// The isolated selection gizmos (ellipse / polygon / freehand), split from `painter_bridge_overlays`.
 pub(crate) mod painter_bridge_selection_gizmos;
 /// The Selection overlay (marching ants + deselected-area hatching), split from `painter_bridge_overlays`

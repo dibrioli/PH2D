@@ -200,8 +200,8 @@ pub use paint::{
     BRUSH_JITTER_ABS_MAX_PX, BRUSH_SIZE_MAX_PX, BRUSH_SIZE_MIN_PX, BRUSH_SPACING_MAX,
     BrushSettings, CurveOverlay, DeformGizmoView, EllipseOverlay, LineCornerGizmo, LineDimensions,
     LineOverlay, MAX_SHAPE_LAYERS, PANEL_RAMP_STOPS, PolygonOverlay, SelectionGizmoView,
-    StencilOverlay,
-    StencilPreview, StrokeOpBadge, TangentHandles, TransformGizmo, brush_falloff_weight_at,
+    StencilOverlay, StencilPreview, StrokeOpBadge, TangentHandles, TransformGizmo,
+    brush_falloff_weight_at,
 };
 mod runtime;
 mod trait_impls;

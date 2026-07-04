@@ -102,14 +102,14 @@ pub(crate) struct DeformState {
 impl Default for DeformState {
     fn default() -> Self {
         Self {
-            mode: 0,         // Push
-            size_norm: 0.5,  // mid brush
-            pressure: 0.8,   // firm by default (Procreate-ish)
+            mode: 0,             // Push
+            size_norm: 0.5,      // mid brush
+            pressure: 0.8,       // firm by default (Procreate-ish)
             distortion: 0.0, // OFF by default → clean Push (turbulence is opt-in; it's coherent, not grain)
             momentum: 0.0,   // no inertia by default
             strength: 0.5,   // centred → Pinch/Twist neutral (identity)
             transform_on: false, // Reshape (brush) by default
-            transform_mode: 0,   // Uniform
+            transform_mode: 0, // Uniform
             xform: None,
             xform_grab: None,
             xform_mesh: None,

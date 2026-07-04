@@ -29,6 +29,9 @@ impl Tool for PainterTool {
 
     fn on_deactivate(&mut self) {
         self.params.takeover_active = false;
+        // BAKE any live Deform Transform float (commit it as one undo entry) — switching tools must persist
+        // the transform AND keep it undoable, like the open-shape bake below. No-op outside Transform.
+        self.end_transform(true);
         // BAKE any open shape editor first (Apply) — switching to another tool must never ERASE a drawn
         // shape; it's applied into the canvas so the deferred-bake below persists it (Enio 2026-07-03).
         self.commit_open_shape();

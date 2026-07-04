@@ -295,8 +295,7 @@ impl Mat3 {
         let mut o = [0.0f32; 9];
         for r in 0..3 {
             for c in 0..3 {
-                o[r * 3 + c] =
-                    a[r * 3] * b[c] + a[r * 3 + 1] * b[3 + c] + a[r * 3 + 2] * b[6 + c];
+                o[r * 3 + c] = a[r * 3] * b[c] + a[r * 3 + 1] * b[3 + c] + a[r * 3 + 2] * b[6 + c];
             }
         }
         Mat3(o)
@@ -369,10 +368,7 @@ fn square_to_quad(q: &[[f32; 2]; 4]) -> Option<Mat3> {
 
 /// The homography mapping source quad `src` onto destination quad `dst` (both `[TL,TR,BR,BL]`). `None` when
 /// either quad is degenerate. Used by Distort: `src` = the pristine box corners, `dst` = the dragged corners.
-pub(super) fn homography_from_quads(
-    src: &[[f32; 2]; 4],
-    dst: &[[f32; 2]; 4],
-) -> Option<Mat3> {
+pub(super) fn homography_from_quads(src: &[[f32; 2]; 4], dst: &[[f32; 2]; 4]) -> Option<Mat3> {
     let s = square_to_quad(src)?;
     let d = square_to_quad(dst)?;
     Some(d.mul(&s.inverse()?))
@@ -484,7 +480,10 @@ mod tests {
         let f0 = frame(50.0, 40.0, 30.0, 20.0);
         let f1 = frame(50.0, 40.0, 60.0, 20.0);
         let m = affine_from_frames(&f0, &f1).unwrap();
-        assert!((m.apply([50.0, 40.0])[0] - 50.0).abs() < 1e-3, "center fixed");
+        assert!(
+            (m.apply([50.0, 40.0])[0] - 50.0).abs() < 1e-3,
+            "center fixed"
+        );
         let q = m.apply([80.0, 40.0]);
         assert!((q[0] - 110.0).abs() < 1e-3 && (q[1] - 40.0).abs() < 1e-3);
     }
@@ -516,7 +515,11 @@ mod tests {
         // Grab the R handle and swing it 90° CCW about center → u rotates to ~(0,1).
         let f0 = frame(0.0, 0.0, 10.0, 10.0);
         let f1 = drag_frame(&f0, H_ROTATE, [10.0, 0.0], [0.0, 10.0], false);
-        assert!(f1.u[0].abs() < 1e-2 && (f1.u[1] - 1.0).abs() < 1e-2, "u≈(0,1): {:?}", f1.u);
+        assert!(
+            f1.u[0].abs() < 1e-2 && (f1.u[1] - 1.0).abs() < 1e-2,
+            "u≈(0,1): {:?}",
+            f1.u
+        );
     }
 
     #[test]
@@ -573,7 +576,10 @@ mod tests {
         let m = homography_from_quads(&q, &q).expect("non-degenerate");
         for &p in &[[3.0, 4.0], [8.0, 9.0], [13.0, 14.0]] {
             let r = m.apply(p);
-            assert!((r[0] - p[0]).abs() < 1e-2 && (r[1] - p[1]).abs() < 1e-2, "r={r:?} p={p:?}");
+            assert!(
+                (r[0] - p[0]).abs() < 1e-2 && (r[1] - p[1]).abs() < 1e-2,
+                "r={r:?} p={p:?}"
+            );
         }
     }
 }

@@ -94,7 +94,10 @@ impl PainterTool {
         // The deformed mesh's overall bbox (union of every current control point).
         let affected = points_bbox(&mesh.current, w, h);
         let dirty = region_clip(
-            region_union(affected, self.paint.deform.xform_last_bbox.unwrap_or(affected)),
+            region_union(
+                affected,
+                self.paint.deform.xform_last_bbox.unwrap_or(affected),
+            ),
             w,
             h,
         );
@@ -155,7 +158,12 @@ fn points_bbox(pts: &[[f32; 2]], w: u32, h: u32) -> Region {
         maxy = maxy.max(p[1]);
     }
     if !minx.is_finite() {
-        return Region { x: 0, y: 0, w: 0, h: 0 };
+        return Region {
+            x: 0,
+            y: 0,
+            w: 0,
+            h: 0,
+        };
     }
     let x0 = (minx.floor().max(0.0) as u32).min(w);
     let y0 = (miny.floor().max(0.0) as u32).min(h);

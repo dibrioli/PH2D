@@ -62,7 +62,11 @@ pub(super) fn draw_brush_ring(
                 // Deform uses its OWN (round) brush footprint — the deform radius, no flatten/rotation — so
                 // the ring shows the deform size, not the paint brush's (Enio 2026-07-04).
                 let deform = painter.is_deform_mode();
-                let footprint_px = if deform { bs.deform_size_px } else { bs.size_px };
+                let footprint_px = if deform {
+                    bs.deform_size_px
+                } else {
+                    bs.size_px
+                };
                 // Image-space major radius, floored so the ring stays visible at tiny zoom (the old
                 // screen-space `.max(1px)`).
                 let r = if scale > 0.0 && f64::from(footprint_px) * scale < 1.0 {

@@ -125,7 +125,10 @@ impl PainterTool {
         let dest = transform_aabb(&m, fp.src, w, h);
         let affected = region_union(fp.src, dest);
         let dirty = region_clip(
-            region_union(affected, self.paint.deform.xform_last_bbox.unwrap_or(affected)),
+            region_union(
+                affected,
+                self.paint.deform.xform_last_bbox.unwrap_or(affected),
+            ),
             w,
             h,
         );
@@ -215,7 +218,9 @@ pub(super) fn over(src: [u8; 4], dst: [u8; 4]) -> [u8; 4] {
     for c in 0..3 {
         let s = f32::from(src[c]);
         let d = f32::from(dst[c]);
-        out[c] = ((s * sa + d * da * (1.0 - sa)) / oa).round().clamp(0.0, 255.0) as u8;
+        out[c] = ((s * sa + d * da * (1.0 - sa)) / oa)
+            .round()
+            .clamp(0.0, 255.0) as u8;
     }
     out[3] = (oa * 255.0).round().clamp(0.0, 255.0) as u8;
     out

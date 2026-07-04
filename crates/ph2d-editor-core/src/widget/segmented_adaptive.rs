@@ -9,12 +9,12 @@
 //! Inspector's narrow column width. Owns the option list + a11y; the
 //! paint helper registers per-segment hits as it lays them out.
 
-use super::panel_chrome::{measure_segmented_group_adaptive, paint_segmented_group_adaptive};
+use super::panel_chrome::{paint_segmented_group_adaptive, segmented_gap};
 use crate::interaction::HitIndex;
 use crate::zones::Rect;
 use ph2d_a11y::{Node, NodeBuilder, NodeId, Role};
 use ph2d_text::TextSystem;
-use ph2d_tokens::Theme;
+use ph2d_tokens::{Spacing, Theme, TypeToken};
 use ph2d_vector::VectorScene;
 
 #[derive(Clone, Debug)]
@@ -99,6 +99,39 @@ pub fn measure_segmented_adaptive(
 ) -> f32 {
     let labels: Vec<&str> = widget.options.iter().map(|o| o.label.as_str()).collect();
     measure_segmented_group_adaptive(rect_w, row_h, &labels, text_system)
+}
+
+/// The height [`paint_segmented_group_adaptive`] will use for `labels` at width `rect_w` / row height
+/// `row_h` — MEASURE before sizing a container so it adapts to the reflow on a narrow panel. Mirrors the
+/// paint fn's END-demotion rule (each demoted button gets its own full-width row). Lives here (not in
+/// `panel_chrome`) to keep that shared-chrome file under its LOC cap.
+fn measure_segmented_group_adaptive(
+    rect_w: f32,
+    row_h: f32,
+    labels: &[&str],
+    text_system: &mut TextSystem,
+) -> f32 {
+    let n = labels.len();
+    if n == 0 {
+        return 0.0;
+    }
+    let gap = segmented_gap();
+    let font_size = TypeToken::Sm.px();
+    let pad_inside = Spacing::Lg.px() * 2.0;
+    let widths: Vec<f32> = labels
+        .iter()
+        .map(|label| text_system.layout(label, font_size, f32::INFINITY).width() + pad_inside)
+        .collect();
+    let mut top_n = n;
+    while top_n > 1 {
+        let total: f32 = widths[..top_n].iter().sum::<f32>() + gap * (top_n as f32 - 1.0);
+        if total <= rect_w {
+            break;
+        }
+        top_n -= 1;
+    }
+    let row_gap = Spacing::Xs.px();
+    row_h + (n - top_n) as f32 * (row_gap + row_h)
 }
 
 #[cfg(test)]

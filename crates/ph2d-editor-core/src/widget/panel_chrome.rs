@@ -216,39 +216,6 @@ pub fn paint_segmented_group(
 ///
 /// Demotion order: last button first, then next-to-last, etc., so
 /// the visual "primary" buttons (left) stay on the top row.
-/// The height [`paint_segmented_group_adaptive`] will use for `labels` at width `rect_w` and row height
-/// `row_h` — MEASURE it before painting a container (e.g. a Card) so the container sizes to the reflow on a
-/// narrow panel. Mirrors the paint fn's END-demotion rule (each demoted button gets its own full-width row).
-#[must_use]
-pub fn measure_segmented_group_adaptive(
-    rect_w: f32,
-    row_h: f32,
-    labels: &[&str],
-    text_system: &mut TextSystem,
-) -> f32 {
-    let n = labels.len();
-    if n == 0 {
-        return 0.0;
-    }
-    let gap = segmented_gap();
-    let font_size = TypeToken::Sm.px();
-    let pad_inside = Spacing::Lg.px() * 2.0;
-    let widths: Vec<f32> = labels
-        .iter()
-        .map(|label| text_system.layout(label, font_size, f32::INFINITY).width() + pad_inside)
-        .collect();
-    let mut top_n = n;
-    while top_n > 1 {
-        let total: f32 = widths[..top_n].iter().sum::<f32>() + gap * (top_n as f32 - 1.0);
-        if total <= rect_w {
-            break;
-        }
-        top_n -= 1;
-    }
-    let row_gap = Spacing::Xs.px();
-    row_h + (n - top_n) as f32 * (row_gap + row_h)
-}
-
 pub fn paint_segmented_group_adaptive(
     rect: Rect,
     segments: &[(&str, bool, NodeId)],

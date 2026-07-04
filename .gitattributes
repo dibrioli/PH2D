@@ -1,0 +1,53 @@
+# Cross-platform line-ending normalization (Mac · Linux · Windows).
+# Without this, Windows checkouts convert to CRLF, making the whole tree
+# look modified and breaking determinism golden-hashes. All text is stored
+# LF in the repo; binaries are marked so git never touches them.
+#
+# One-time after adding this file (index free): `git add --renormalize .`
+
+* text=auto eol=lf
+
+# Explicit text types (defensive — code + config + docs stay LF everywhere).
+*.rs      text eol=lf
+*.toml    text eol=lf
+*.md      text eol=lf
+*.wgsl    text eol=lf
+*.glsl    text eol=lf
+*.sh      text eol=lf
+*.command text eol=lf
+*.json    text eol=lf
+*.ron     text eol=lf
+*.html    text eol=lf
+*.css     text eol=lf
+*.ts      text eol=lf
+*.js      text eol=lf
+*.lua     text eol=lf
+*.luau    text eol=lf
+*.yml     text eol=lf
+*.yaml    text eol=lf
+
+# Windows scripts keep CRLF (some shells require it).
+*.bat     text eol=crlf
+*.ps1     text eol=crlf
+
+# Binary assets — never normalize, never diff as text.
+*.png     binary
+*.jpg     binary
+*.jpeg    binary
+*.gif     binary
+*.webp    binary
+*.avif    binary
+*.ktx2    binary
+*.basis   binary
+*.ico     binary
+*.icns    binary
+*.ttf     binary
+*.otf     binary
+*.woff    binary
+*.woff2   binary
+*.wav     binary
+*.mp3     binary
+*.ogg     binary
+*.zip     binary
+*.pdf     binary
+*.ph2d-vector binary

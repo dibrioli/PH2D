@@ -237,7 +237,7 @@ pub(super) fn sel_polygon_vertices(
 
 /// Fill `cov` (0/255) inside the rotated ellipse (`center`, unit axis `u`, semi-axes `rx`/`ry`) via the
 /// exact `(du/rx)² + (dv/ry)² ≤ 1` test — no transcendentals (HR-5-clean, though selection is view-side).
-fn rasterize_ellipse(
+pub(super) fn rasterize_ellipse(
     center: [f32; 2],
     u: [f32; 2],
     rx: f32,

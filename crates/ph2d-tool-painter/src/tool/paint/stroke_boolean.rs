@@ -4,10 +4,17 @@
 //! multi-component contour trace, so a group of fillable Add/Remove shapes becomes the STROKED outline of
 //! the combined region (the inner arcs where they overlap vanish, as in a real boolean).
 
-use super::selection_shapes::{SelectionShape, combine_into};
+use super::selection_shapes::{
+    SelectionShape, combine_into, rasterize_ellipse, sel_polygon_vertices,
+};
 use super::stroke_multi::StrokeOp;
 use super::*;
 use crate::undo::ShapeEditState;
+
+/// SUPERSAMPLE factor for the boolean mask: rasterise + trace at `SS×` the canvas resolution, then scale the
+/// contour back down, so the stroked boolean outline reads as SMOOTH as a direct (analytic) ellipse outline —
+/// no visible raster staircase (Enio 2026-07-04 wants a "perfect" Add/Remove appearance). Transcendental-free.
+const SS: usize = 3;
 
 /// Whether a stroke shape is a CLOSED fillable region that can take part in the boolean composite (Ellipse,
 /// Polygon, closed Curve, closed Line). Open shapes (open Line / open Curve) always paint their own outline.
@@ -81,9 +88,10 @@ impl PainterTool {
         }
     }
 
-    /// Boolean-composite the Add/Remove fillable `shapes` into contour polylines (image px): rasterize each,
-    /// union (Add) / subtract (Remove) in DRAW ORDER, then trace EVERY connected component — so separate
-    /// regions come back as separate contours (individual) while overlapping ones merge into one.
+    /// Boolean-composite the Add/Remove fillable `shapes` into contour polylines (image px): rasterize each
+    /// at `SS×` resolution, union (Add) / subtract (Remove) in DRAW ORDER, trace EVERY connected component
+    /// (separate regions → separate contours; overlapping → merged), then scale the contours back to canvas
+    /// px. The supersample + the tracer's smoothing make the stroked outline as regular as a direct ellipse.
     pub(super) fn stroke_boolean_contours(
         &self,
         shapes: &[(ShapeEditState, StrokeOp)],
@@ -93,21 +101,99 @@ impl PainterTool {
         if w == 0 || h == 0 {
             return Vec::new();
         }
-        let mut crisp = vec![0u8; w * h];
+        let (sw, sh) = (w * SS, h * SS);
+        let mut crisp = vec![0u8; sw * sh];
         let mut any = false;
         for (st, op) in shapes {
             let Some(sel) = self.stroke_state_to_fill_shape(st, off) else {
                 continue;
             };
-            let region = self.rasterize_selection_shape(&sel);
-            if region.len() == w * h {
-                combine_into(&mut crisp, &region, op.to_wire());
-                any = true;
-            }
+            self.rasterize_fill_ss(&sel, sw, sh, &mut crisp, op.to_wire());
+            any = true;
         }
         if !any {
             return Vec::new();
         }
-        super::selection_trace::trace_all_contours(&crisp, w, h)
+        let s = SS as f32;
+        super::selection_trace::trace_all_contours(&crisp, sw, sh)
+            .into_iter()
+            .map(|c| c.iter().map(|p| [p[0] / s, p[1] / s]).collect())
+            .collect()
+    }
+
+    /// Rasterise one fill shape scaled by `SS` into the supersampled `crisp` via `op` (transcendental-free:
+    /// exact ellipse inside-test / baked-step polygon / flattened freehand → scanline fill).
+    fn rasterize_fill_ss(
+        &self,
+        sel: &SelectionShape,
+        sw: usize,
+        sh: usize,
+        crisp: &mut [u8],
+        op: u8,
+    ) {
+        let s = SS as f32;
+        let mut region = vec![0u8; sw * sh];
+        match sel {
+            SelectionShape::Ellipse { center, u, rx, ry } => {
+                rasterize_ellipse(
+                    [center[0] * s, center[1] * s],
+                    *u,
+                    rx * s,
+                    ry * s,
+                    sw,
+                    sh,
+                    &mut region,
+                );
+            }
+            SelectionShape::Polygon {
+                center,
+                u,
+                rx,
+                ry,
+                sides,
+            } => {
+                let verts: Vec<[f32; 2]> = sel_polygon_vertices(*center, *u, *rx, *ry, *sides)
+                    .iter()
+                    .map(|p| [p[0] * s, p[1] * s])
+                    .collect();
+                scanline_fill(&verts, sw, sh, &mut region);
+            }
+            SelectionShape::Freehand { model, .. } => {
+                let spine = self.freehand_spine(&model.points, &model.handles);
+                let verts: Vec<[f32; 2]> = spine.iter().map(|p| [p[0] * s, p[1] * s]).collect();
+                scanline_fill(&verts, sw, sh, &mut region);
+            }
+            SelectionShape::Raster { .. } => {}
+        }
+        combine_into(crisp, &region, op);
+    }
+}
+
+/// Even-odd scanline polygon fill of the closed polyline `pts` into `cov` (0/255) at `w`×`h`. Mirrors the
+/// selection `raster_lasso` but writes into a caller buffer at an arbitrary (supersampled) resolution.
+fn scanline_fill(pts: &[[f32; 2]], w: usize, h: usize, cov: &mut [u8]) {
+    if pts.len() < 3 {
+        return;
+    }
+    for yy in 0..h {
+        let yc = yy as f32 + 0.5;
+        let mut xs: Vec<f32> = Vec::new();
+        for i in 0..pts.len() {
+            let p = pts[i];
+            let q = pts[(i + 1) % pts.len()];
+            if (p[1] <= yc && yc < q[1]) || (q[1] <= yc && yc < p[1]) {
+                xs.push(p[0] + (yc - p[1]) / (q[1] - p[1]) * (q[0] - p[0]));
+            }
+        }
+        xs.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+        let mut i = 0;
+        while i + 1 < xs.len() {
+            let xa = xs[i].max(0.0).round() as usize;
+            let xb = (xs[i + 1].min(w as f32).round() as usize).min(w);
+            for xx in xa..xb {
+                cov[yy * w + xx] = 255;
+            }
+            i += 2;
+        }
     }
 }

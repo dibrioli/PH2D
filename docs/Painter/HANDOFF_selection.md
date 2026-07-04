@@ -168,12 +168,12 @@ All 3 selection gizmos (Ellipse / Polygon / Freehand) unified to the **Sprite tr
    pinned-at-top Mask section (a later-registered rect shadowing the buttons — `HitIndex::hit` is last-wins) OR
    the token deltas being imperceptible. Repro: hover a Modifiers button with the Mask tool active; instrument
    `hit_index.hit(cursor)` to see which id resolves under the button.
-4. **Convert / Simplify Curve — missing point handles** (Enio 2026-07-03) — **BUG.** After **Convert to
-   Curve** or **Simplify Curve**, the resulting selection curve should show editable **anchor points + Bézier
-   handles** with the SAME look/capability as the stroke Shape-system curves, but they no longer appear. The
-   curve rasterizes/edits, yet the on-canvas handles/points are not drawn (regression from the isolated
-   selection-gizmo rewrite — the Freehand selection shows the transform box gizmo, not per-anchor handles).
-   Wire the selection Freehand curve to the same anchor/handle overlay + hit-testing the stroke Curve editor
-   uses, so Convert/Simplify yields a point-editable curve.
+4. ~~**Convert / Simplify Curve — missing point handles**~~ — **LANDED** (Enio 2026-07-03). A CONVERTED
+   selection curve (Freehand carrying Bézier handles) now shows an editable **point gizmo** — anchors as
+   squares + in/out Bézier handles as circles on connector lines (the stroke Curve editor's look) — INSTEAD
+   of the transform box, which a RAW lasso Freehand (empty handles) keeps. New module `selection_curve_gizmo.rs`
+   owns the view + hit-test + drag (anchor carries its handles; in/out drag independently — Free-kind), inside
+   the isolated selection gizmo system. Switch = `is_converted_curve` (handles present). Follow-ups (not yet):
+   add/delete anchor by click, handle-kind menu (smooth/corner) — the current drag is Free/independent.
 5. **Stroke multi-shape** — multiple simultaneous editable stroke shapes (large architectural round,
    ≈ the selection multi-gizmo redesign; its own build + smoke).

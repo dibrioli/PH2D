@@ -10,6 +10,7 @@
 //! fluorescent accent. Pure, self-contained geometry (rotate is transcendental-free via dot·cross).
 
 use super::PainterTool;
+use super::selection_curve_gizmo::{self, CurveGrab, SelectionCurveEdit};
 use super::selection_shapes::{SelectionShape, sel_polygon_vertices};
 use ph2d_editor_core::tool::{CanvasPointer, PointerPhase};
 
@@ -37,6 +38,9 @@ pub(crate) struct SelectionGrab {
     pub handle: u8,
     pub start: [f32; 2],
     pub initial: SelectionShape,
+    /// `Some` when the grab is a CONVERTED-curve point/handle (anchor / in / out) rather than a box handle —
+    /// the drag edits the Bézier point instead of transforming the whole shape.
+    pub curve: Option<CurveGrab>,
 }
 
 /// A drawable, Sprite-style selection gizmo for one shape (image-space px). `outline` is the actual shape
@@ -53,6 +57,9 @@ pub struct SelectionGizmoView {
     pub scale_tol: f32,
     pub rotate_tol: f32,
     pub accent: usize,
+    /// `Some` for a CONVERTED curve (Freehand with Bézier handles): the shell draws its editable anchors +
+    /// in/out handles INSTEAD of the transform box (a raw lasso Freehand keeps `None` = the box).
+    pub edit_curve: Option<SelectionCurveEdit>,
 }
 
 /// The oriented editing frame of a shape: `center`, unit axis `u` (local +x), and half-extents `hx`/`hy`.
@@ -176,6 +183,8 @@ impl PainterTool {
                 scale_tol: tol,
                 rotate_tol: tol * ROTATE_BAND,
                 accent,
+                // A converted curve edits per-anchor (points + Bézier handles), not via the transform box.
+                edit_curve: selection_curve_gizmo::curve_edit_view(&e.shape),
             });
         }
         out
@@ -221,12 +230,27 @@ impl PainterTool {
         let mut grab = None;
         for i in (0..self.paint.selection_shapes.len()).rev() {
             let shape = &self.paint.selection_shapes[i].shape;
+            // A CONVERTED curve edits its anchors/handles (points), never the transform box.
+            if selection_curve_gizmo::is_converted_curve(shape) {
+                if let Some(cg) = selection_curve_gizmo::hit_curve(shape, pos, tol) {
+                    grab = Some(SelectionGrab {
+                        shape: i,
+                        handle: H_MOVE,
+                        start: pos,
+                        initial: shape.clone(),
+                        curve: Some(cg),
+                    });
+                    break;
+                }
+                continue; // no box fallback for a converted curve
+            }
             if let Some(h) = hit_shape(shape, pos, tol) {
                 grab = Some(SelectionGrab {
                     shape: i,
                     handle: h,
                     start: pos,
                     initial: shape.clone(),
+                    curve: None,
                 });
                 break;
             }
@@ -247,8 +271,11 @@ impl PainterTool {
             return false;
         }
         let tol = self.paint.shape_grab_tol_px;
-        self.paint.selection_shapes[grab.shape].shape =
-            apply_gizmo_drag(&grab.initial, grab.handle, grab.start, pos, tol);
+        self.paint.selection_shapes[grab.shape].shape = if let Some(cg) = grab.curve {
+            selection_curve_gizmo::apply_curve_drag(&grab.initial, cg, grab.start, pos)
+        } else {
+            apply_gizmo_drag(&grab.initial, grab.handle, grab.start, pos, tol)
+        };
         self.recompose_selection_mask();
         true
     }

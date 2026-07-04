@@ -7466,6 +7466,46 @@ fn selection_convert_then_simplify_curve() {
     );
 }
 
+/// After Convert to Curve the selection shows an editable POINT gizmo (anchors + in/out Bézier handles,
+/// like the stroke Curve editor), NOT the transform box — and dragging an anchor edits the selection curve
+/// (Enio 2026-07-03 regression fix). A RAW lasso Freehand keeps the transform box (no `edit_curve`).
+#[test]
+fn converted_selection_curve_is_point_editable() {
+    let mut t = white_canvas(96, 4.0);
+    t.set_paint_tool_mode("selection");
+    t.set_selection_mode(3); // Ellipse
+    t.on_canvas_pointer(cp([16.0, 16.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([80.0, 80.0], PointerPhase::Up));
+    t.toggle_selection_edit();
+    // Before Convert: the ellipse shows the transform BOX (no point editor).
+    assert!(
+        t.selection_gizmos()[0].edit_curve.is_none(),
+        "an un-converted shape uses the transform box"
+    );
+    t.selection_convert_to_curve();
+    let giz = t.selection_gizmos();
+    let curve = giz[0]
+        .edit_curve
+        .as_ref()
+        .expect("the converted curve exposes an editable point gizmo");
+    assert!(curve.anchors.len() >= 3, "anchors are visible for editing");
+    assert_eq!(
+        curve.in_h.len(),
+        curve.anchors.len(),
+        "every anchor carries its in/out Bézier handles"
+    );
+    // Grab an anchor and drag it — the selection curve follows (the anchor moves with the pointer).
+    let anchor = curve.anchors[0];
+    t.on_canvas_pointer(cp(anchor, PointerPhase::Down));
+    t.on_canvas_pointer(cp([anchor[0] + 12.0, anchor[1]], PointerPhase::Move));
+    t.on_canvas_pointer(cp([anchor[0] + 12.0, anchor[1]], PointerPhase::Up));
+    let moved = t.selection_gizmos()[0].edit_curve.as_ref().unwrap().anchors[0];
+    assert!(
+        (moved[0] - anchor[0]).abs() > 6.0,
+        "dragging the anchor edited the curve point ({anchor:?} → {moved:?})"
+    );
+}
+
 /// ADR-0103 Wave 5: **Color Fill** paints the brush colour only inside the selection.
 #[test]
 fn selection_color_fill_paints_only_inside() {

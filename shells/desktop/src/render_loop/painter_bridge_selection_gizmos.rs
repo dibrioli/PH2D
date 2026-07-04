@@ -63,10 +63,24 @@ pub(super) fn draw_selection_gizmos(
             hero.theme,
             accents[g.accent % accents.len()],
         );
-        // Thin shape outline (ellipse / polygon / freehand) inside the box.
+        // Thin shape outline (ellipse / polygon / freehand spine) — always drawn.
         if g.outline.len() >= 2 {
             let pts: Vec<Point> = g.outline.iter().map(|&p| map(p)).collect();
             super::painter_bridge_gizmo::stroke_open(scene, &pts, &pal);
+        }
+        // A CONVERTED curve edits per-anchor: draw its anchors (squares) + in/out Bézier handles (circles on
+        // thin connector lines), the stroke Curve editor's look — INSTEAD of the transform box.
+        if let Some(curve) = &g.edit_curve {
+            for i in 0..curve.anchors.len() {
+                let a = map(curve.anchors[i]);
+                for &hp in [curve.in_h[i], curve.out_h[i]].iter() {
+                    let h = map(hp);
+                    super::painter_bridge_gizmo::stroke_open(scene, &[a, h], &pal);
+                    super::painter_bridge_gizmo::circle_handle(scene, h, &pal);
+                }
+                super::painter_bridge_gizmo::square_handle(scene, a, &pal); // anchor on top
+            }
+            continue;
         }
         // Oriented bounding box (closed) through the four corners.
         let box_pts: Vec<Point> = g.box_corners.iter().map(|&p| map(p)).collect();

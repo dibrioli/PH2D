@@ -80,9 +80,7 @@ impl PainterTool {
         if self.paint.ellipse.is_none() {
             // No session → open the creation txn (`before` = no shape) + begin the centre-out radius drag.
             self.paint.stroke_undo = Some(self.capture_shape_model()); // creation txn (`before` = parked set, no active)
-            self.begin_shape_session_base(); // full recompose; keep the baseline when shapes are parked
-            self.paint.shape_offset_base_px = 0.0; // a fresh ellipse starts with no Offset
-            self.paint.shape_offset_norm = 0.5;
+            self.begin_shape_session_base(); // full recompose; keep baseline + GLOBAL Offset when shapes are parked
             let seed = self.paint.seed;
             self.paint.seed = self.paint.seed.wrapping_add(1);
             self.paint.ellipse = Some(EllipseEditor {
@@ -279,7 +277,7 @@ impl PainterTool {
 
     /// The Offset slider applied to the ellipse radii: `(rx, ry) + offset_px`, clamped to a paintable
     /// minimum. The single source for the fill, the overlay, and the bake.
-    fn ellipse_offset_radii(&self, rx: f32, ry: f32) -> (f32, f32) {
+    pub(super) fn ellipse_offset_radii(&self, rx: f32, ry: f32) -> (f32, f32) {
         let off = self.shape_offset_px();
         ((rx + off).max(0.5), (ry + off).max(0.5))
     }

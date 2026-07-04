@@ -85,9 +85,7 @@ impl PainterTool {
         if self.paint.polygon.is_none() {
             // No session → open the creation txn (`before` = no shape) + begin the centre-out radius drag.
             self.paint.stroke_undo = Some(self.capture_shape_model()); // creation txn (`before` = parked set, no active)
-            self.begin_shape_session_base(); // full recompose; keep the baseline when shapes are parked
-            self.paint.shape_offset_base_px = 0.0; // a fresh polygon starts with no Offset
-            self.paint.shape_offset_norm = 0.5;
+            self.begin_shape_session_base(); // full recompose; keep baseline + GLOBAL Offset when shapes are parked
             let seed = self.paint.seed;
             self.paint.seed = self.paint.seed.wrapping_add(1);
             self.paint.polygon = Some(PolygonEditor {

@@ -45,13 +45,15 @@ pub(super) fn draw_op_badges(
         camera,
         window_size,
     );
-    use ph2d_vector::{Affine, BezPath, Brush, Circle, Color, Point, Stroke};
+    use ph2d_vector::{Affine, BezPath, Brush, Circle, Color, Fill, Point, RoundedRect, Stroke};
     let map = |p: [f32; 2]| affine * Point::new(f64::from(p[0]), f64::from(p[1]));
     // Fluorescent yellow accent for the type-square glyph (reads on any canvas); parked frames are dimmer.
     let glyph_col = Color::new([1.0, 0.85, 0.15, 1.0]); // LITERAL-COLOR-OK: op-badge glyph
     let frame_col = Color::new([1.0, 0.85, 0.15, 0.35]); // LITERAL-COLOR-OK: parked-shape frame
+    let sq_fill = Color::new([0.10, 0.10, 0.12, 0.72]); // LITERAL-COLOR-OK: type-square backing
     let scene = vector_scene.inner_mut();
-    const R: f64 = 6.0; // glyph half-size (screen px)
+    const R: f64 = 7.0; // glyph half-size (screen px)
+    const SQ: f64 = 12.0; // type-square HALF-size — doubled from the plain gizmo handle (Enio 2026-07-04)
     for b in &badges {
         // Parked shapes get a faint AABB frame so they read as still-selectable.
         if !b.active {
@@ -73,8 +75,24 @@ pub(super) fn draw_op_badges(
                 &frame,
             );
         }
-        // The op glyph, drawn as vector geometry (no text) in the centre type-square.
+        // The op glyph sits inside a doubled type-square (dark backing + accent outline), drawn as vector
+        // geometry (no text) at the gizmo centre.
         let c = map(b.center);
+        let square = RoundedRect::new(c.x - SQ, c.y - SQ, c.x + SQ, c.y + SQ, 3.0);
+        scene.fill(
+            Fill::NonZero,
+            Affine::IDENTITY,
+            &Brush::Solid(sq_fill),
+            None,
+            &square,
+        );
+        scene.stroke(
+            &Stroke::new(1.5),
+            Affine::IDENTITY,
+            &Brush::Solid(glyph_col),
+            None,
+            &square,
+        );
         match b.glyph {
             "+" => {
                 let mut path = BezPath::new();

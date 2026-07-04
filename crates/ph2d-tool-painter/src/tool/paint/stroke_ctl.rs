@@ -7,17 +7,23 @@ use crate::tool::PainterTool;
 use ph2d_painter_brush::StrokeMethod;
 
 impl PainterTool {
-    /// Set the stroke method from a wire discriminant (out-of-range → Space). Leaving a shape method
-    /// (Curve/Ellipse/Polygon/Line) with an OPEN session **BAKES** it (Apply) — a drawn shape is ALWAYS
-    /// applied on a method/tool switch, never erased (Enio 2026-07-03). Re-selecting the SAME method keeps
-    /// its session editable. A NON-shape method is remembered as the resting method the rail's Brush button
-    /// restores.
+    /// Set the stroke method from a wire discriminant (out-of-range → Space). Switching between two DYNAMIC
+    /// shape methods (Curve/FreeHand/Ellipse/Polygon/Line) **PARKS** the open shape so shapes of mixed types
+    /// ACCUMULATE — Apply is NOT triggered (Enio 2026-07-04). Apply (bake the whole set) fires only when
+    /// leaving the shape system entirely: to a NON-shape method, or via the panel Apply / Enter / another
+    /// tool. Re-selecting the SAME method keeps its session editable. A NON-shape method is remembered as the
+    /// resting method the rail's Brush button restores.
     pub fn set_brush_stroke_method(&mut self, m: u8) {
         let method = StrokeMethod::from_u8(m);
-        // Switching to a DIFFERENT method commits whichever shape editor is open (no-op when none is);
-        // re-selecting the current method leaves its session untouched so the artist keeps editing it.
         if method != self.paint.brush.stroke_method {
-            self.commit_open_shape();
+            if method.is_shape() && self.paint.brush.stroke_method.is_shape() {
+                // Shape → shape: keep the open shape editable, just parked, so the next method's drawing
+                // accumulates alongside it (mixed-type multi-shape). Never bakes.
+                self.park_active_shape();
+            } else {
+                // Leaving the shape system (→ a non-shape method) bakes the whole set (Apply).
+                self.commit_open_shape();
+            }
         }
         self.paint.brush.stroke_method = method;
         if !method.is_shape() {

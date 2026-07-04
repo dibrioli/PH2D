@@ -111,10 +111,9 @@ impl PainterTool {
     /// then clear the live slots — WITHOUT baking pixels (the shape keeps painting via `recompose`). Bakes
     /// any live Offset into the geometry first so the parked copy is self-contained. No-op when idle.
     pub(crate) fn park_active_shape(&mut self) {
-        // Fold any live Offset into the geometry so the parked shape carries no separate slider state.
-        self.bake_curve_offset();
-        self.bake_ellipse_offset();
-        self.bake_polygon_offset();
+        // Do NOT bake the Offset and do NOT reset the slider: the one Offset slider is GLOBAL — every shape
+        // (active + parked) is offset by the live value in `parked_shape_dabs`, so parking keeps the raw
+        // geometry (the base) and leaves the slider where it is (Enio 2026-07-04: offset acts on all at once).
         let Some(state) = self.capture_shape() else {
             return;
         };
@@ -126,8 +125,6 @@ impl PainterTool {
         self.paint.ellipse = None;
         self.paint.polygon = None;
         self.paint.line = None;
-        self.paint.shape_offset_base_px = 0.0;
-        self.paint.shape_offset_norm = 0.5;
         // Re-stamp the parked shapes onto the pristine canvas so they stay visible with no active editor.
         self.restamp_shapes_preview(&[]);
     }
@@ -211,25 +208,35 @@ impl PainterTool {
         }
     }
 
-    /// Fill `out` with the dabs for one parked shape's frozen geometry (no live Offset — it was baked in at
-    /// park time). Mirrors each `*_refill`'s geometry→spine→`fill_*_preview` core, minus the stamp.
+    /// Fill `out` with the dabs for one parked shape, applying the LIVE Offset slider so the one global
+    /// Offset acts on EVERY shape simultaneously and in real time (Enio 2026-07-04), not just the active one.
+    /// Mirrors each `*_refill`'s geometry→(offset)→spine→`fill_*_preview` core, minus the stamp.
     fn parked_shape_dabs(&self, st: &crate::undo::ShapeEditState, out: &mut Vec<Dab>) {
         use crate::undo::ShapeEditState as S;
+        let off = self.shape_offset_px();
+        let trim = self.paint.offset_trim;
         let mut stroke;
         match st {
             S::Curve(c) => {
+                let (pts, handles, _) =
+                    curve_offset::offset_curve_refined(&c.points, &c.handles, off, c.closed);
                 let mut spine = Vec::new();
-                curve_geom::flatten_spine(&c.points, &c.handles, c.closed, &mut spine);
+                curve_geom::flatten_spine(&pts, &handles, c.closed, &mut spine);
+                if trim {
+                    spine = curve::trim_offset_spine(&spine, c.closed);
+                }
                 stroke = Stroke::new(self.paint.brush, self.paint.dynamics, c.seed);
                 stroke.fill_polyline_preview(&spine, out);
             }
             S::Ellipse(e) => {
+                let (erx, ery) = self.ellipse_offset_radii(e.rx, e.ry);
                 stroke = Stroke::new(self.paint.brush, self.paint.dynamics, e.seed);
-                stroke.fill_ellipse_preview(e.center, e.u, e.rx, e.ry, out);
+                stroke.fill_ellipse_preview(e.center, e.u, erx, ery, out);
             }
             S::Polygon(p) => {
+                let (erx, ery) = ((p.rx + off).max(0.5), (p.ry + off).max(0.5));
                 stroke = Stroke::new(self.paint.brush, self.paint.dynamics, p.seed);
-                stroke.fill_polygon_preview(p.center, p.u, p.rx, p.ry, p.sides, out);
+                stroke.fill_polygon_preview(p.center, p.u, erx, ery, p.sides, out);
             }
             S::Line(l) => {
                 let mods: Vec<line_corner::CornerMod> = l
@@ -238,8 +245,16 @@ impl PainterTool {
                     .copied()
                     .map(line_corner::CornerMod::from_wire)
                     .collect();
-                let path =
+                let mut path =
                     line_corner::expand(&l.points, l.closed, &mods, self.paint.shape_grab_tol_px);
+                path = line_offset::offset_polyline(&path, l.closed, off);
+                if trim && off != 0.0 {
+                    path = if l.closed {
+                        curve_trim::trim_self_intersections_closed(&path)
+                    } else {
+                        curve_trim::trim_self_intersections(&path)
+                    };
+                }
                 if path.len() >= 2 {
                     stroke = Stroke::new(self.paint.brush, self.paint.dynamics, l.seed);
                     stroke.fill_polyline_preview(&path, out);
@@ -458,7 +473,12 @@ impl PainterTool {
         // A freshly-created shape adopts the current panel Operation mode.
         self.paint.active_op = self.paint.stroke_op_mode;
         if !self.has_parked_shapes() {
+            // Truly fresh session: drop the baseline + re-centre the Offset. With shapes already parked the
+            // baseline persists AND the Offset slider stays put — it is GLOBAL across the whole set, so a new
+            // shape must not reset it (else the parked shapes would jump back to zero offset).
             self.paint.drag_preview = None;
+            self.paint.shape_offset_base_px = 0.0;
+            self.paint.shape_offset_norm = 0.5;
         }
         self.reseed_preview_base();
     }

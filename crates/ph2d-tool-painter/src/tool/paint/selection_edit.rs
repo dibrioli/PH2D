@@ -66,61 +66,74 @@ impl PainterTool {
         if !self.paint.selection_active {
             return;
         }
-        let editable: Vec<SelectionShape> = self
+        // Convert EVERY shape to its OWN editable Bézier curve, preserving the multi-shape list + each
+        // entry's boolean op — so multiple SEPARATE selections all survive (Enio 2026-07-04: the former
+        // single-composed-contour path lost every region but the first). An Ellipse keeps its exact 4-arc,
+        // a Polygon its sharp vertices, a Freehand fits its outline; a Raster traces the composed mask (its
+        // flood has no parametric outline). Non-editable entries that don't yield a curve are dropped.
+        let entries: Vec<(usize, u8)> = self
             .paint
             .selection_shapes
             .iter()
-            .filter(|e| e.shape.is_editable())
-            .map(|e| e.shape.clone())
+            .enumerate()
+            .map(|(i, e)| (i, e.op))
             .collect();
-        // Every case yields a SPARSE editable curve: an Ellipse keeps its exact 4-arc, a Polygon keeps its
-        // sharp vertices, and everything else (a lasso Freehand, a Raster flood, several shapes) FITS its
-        // outline to a handful of anchors via the same Schneider fit a stroke Free Hand uses — the fix for
-        // "muitos pontos" (Enio 2026-07-03): Convert never copies the raw contour verbatim any more.
-        let Some(model) = (if editable.len() == 1 {
-            match &editable[0] {
-                SelectionShape::Ellipse { center, u, rx, ry } => {
-                    let (p, h) = ellipse_to_closed_curve(*center, *u, *rx, *ry);
-                    Some(CurveModel::from_curve(p, h, true, HandleKind::Aligned))
-                }
-                SelectionShape::Polygon {
-                    center,
-                    u,
-                    rx,
-                    ry,
-                    sides,
-                } => {
-                    let verts = sel_polygon_vertices(*center, *u, *rx, *ry, *sides);
-                    let handles = verts.iter().map(|p| [*p, *p]).collect(); // sharp corners
-                    Some(CurveModel::from_curve(
-                        verts,
-                        handles,
-                        true,
-                        HandleKind::Free,
-                    ))
-                }
-                SelectionShape::Freehand { model, .. } => {
-                    to_closed_curve(&model.points, &model.handles)
-                }
-                SelectionShape::Raster { .. } => to_closed_curve(&self.traced_curve_points(), &[]),
+        let mut converted: Vec<SelectionEntry> = Vec::new();
+        for (i, op) in entries {
+            let shape = self.paint.selection_shapes[i].shape.clone();
+            if let Some(model) = self.shape_to_closed_curve(&shape) {
+                converted.push(SelectionEntry {
+                    shape: SelectionShape::Freehand {
+                        model,
+                        u: [1.0, 0.0],
+                    },
+                    op,
+                });
             }
-        } else {
-            to_closed_curve(&self.traced_curve_points(), &[])
-        }) else {
-            return; // fewer than 3 points → nothing to convert
-        };
+        }
+        if converted.is_empty() {
+            return; // nothing convertible (all < 3 points)
+        }
+        // The first surviving curve becomes the base op (New) so the recomposed mask isn't a no-op when the
+        // original base was consumed; the rest keep Add/Remove.
+        converted[0].op = 0;
         let before = self.snapshot_model();
-        self.paint.selection_shapes = vec![SelectionEntry {
-            shape: SelectionShape::Freehand {
-                model,
-                u: [1.0, 0.0],
-            },
-            op: 0,
-        }];
-        self.paint.selection_ring_stack = false; // one boolean curve, not a ring stack
-        self.paint.selection_edit_mode = true; // keep the gizmos shown on the new curve
+        self.paint.selection_shapes = converted;
+        self.paint.selection_ring_stack = false; // boolean curves, not a ring stack
+        self.paint.selection_edit_mode = true; // keep the gizmos shown on the new curves
         self.recompose_selection_mask();
         self.commit_structural_edit(before);
+    }
+
+    /// Convert one selection shape to a closed editable [`CurveModel`], or `None` when it has too few points
+    /// to fit. Shared by [`Self::selection_convert_to_curve`] for the per-shape conversion.
+    fn shape_to_closed_curve(&self, shape: &SelectionShape) -> Option<CurveModel> {
+        match shape {
+            SelectionShape::Ellipse { center, u, rx, ry } => {
+                let (p, h) = ellipse_to_closed_curve(*center, *u, *rx, *ry);
+                Some(CurveModel::from_curve(p, h, true, HandleKind::Aligned))
+            }
+            SelectionShape::Polygon {
+                center,
+                u,
+                rx,
+                ry,
+                sides,
+            } => {
+                let verts = sel_polygon_vertices(*center, *u, *rx, *ry, *sides);
+                let handles = verts.iter().map(|p| [*p, *p]).collect(); // sharp corners
+                Some(CurveModel::from_curve(
+                    verts,
+                    handles,
+                    true,
+                    HandleKind::Free,
+                ))
+            }
+            SelectionShape::Freehand { model, .. } => {
+                to_closed_curve(&model.points, &model.handles)
+            }
+            SelectionShape::Raster { .. } => to_closed_curve(&self.traced_curve_points(), &[]),
+        }
     }
 
     /// **Simplify Curve** — reduce the point count of the (single) converted Free-Hand curve with the same

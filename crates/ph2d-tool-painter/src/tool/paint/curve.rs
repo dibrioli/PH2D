@@ -88,9 +88,7 @@ impl PainterTool {
         self.bake_curve_offset(); // an edit gesture locks in any live Offset (so hit-test = displayed dots)
         if self.paint.curve.is_none() {
             self.paint.stroke_undo = Some(self.capture_shape_model()); // creation txn (`before` = parked set, no active)
-            self.begin_shape_session_base(); // full recompose; keep the baseline when shapes are parked
-            self.paint.shape_offset_base_px = 0.0; // a fresh curve starts with no Offset (not the last one's)
-            self.paint.shape_offset_norm = 0.5;
+            self.begin_shape_session_base(); // full recompose; keep baseline + GLOBAL Offset when shapes are parked
             let seed = self.paint.seed;
             self.paint.seed = self.paint.seed.wrapping_add(1);
             self.paint.curve = Some(CurveEditor {
@@ -528,7 +526,7 @@ impl PainterTool {
 /// Trim the offset spine's self-intersections for painting. A CLOSED curve keeps the larger region and
 /// drops the smaller "ear" loops an over-offset folds onto a concave side — so it never paints an unwanted
 /// crossed area; an OPEN curve drops the looped excess. The control points are never touched (drawing-only).
-fn trim_offset_spine(spine: &[[f32; 2]], closed: bool) -> Vec<[f32; 2]> {
+pub(super) fn trim_offset_spine(spine: &[[f32; 2]], closed: bool) -> Vec<[f32; 2]> {
     if closed {
         super::curve_trim::trim_self_intersections_closed(spine)
     } else {

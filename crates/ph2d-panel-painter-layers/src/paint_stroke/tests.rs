@@ -512,3 +512,28 @@ fn dragdot_shows_only_method_and_samples() {
         );
     }
 }
+
+/// Multi-shape (Enio 2026-07-04): each Stroke OPERATION segment (Overlay / Add / Remove) must register a
+/// hit rect AND be the TOP-MOST hit at its own centre — else a real click never reaches the dispatcher and
+/// the button "não é ativado". Repro for the smoke report that Add/Remove weren't activating.
+#[test]
+fn stroke_operation_segments_are_the_topmost_hit_at_their_centre() {
+    let rects = painted_hit_rects(StrokeMethod::Ellipse, 320.0);
+    for &seg in &core_ids::PAINTER_STROKE_OP_IDS {
+        let rect = rects
+            .iter()
+            .rev()
+            .find_map(|(id, r)| (*id == seg).then_some(*r))
+            .unwrap_or_else(|| panic!("Operation segment {seg:?} painted no hit rect"));
+        let (cx, cy) = (rect.x + rect.w * 0.5, rect.y + rect.h * 0.5);
+        let top = rects
+            .iter()
+            .rev()
+            .find_map(|(id, r)| r.contains(cx, cy).then_some(*id));
+        assert_eq!(
+            top,
+            Some(seg),
+            "Operation segment {seg:?} is shadowed at its centre by {top:?} -> click never lands"
+        );
+    }
+}

@@ -8278,3 +8278,98 @@ fn centre_square_tap_cycles_the_op_but_a_drag_does_not() {
         "a drag did not cycle the op"
     );
 }
+
+/// Multi-shape (Enio 2026-07-04): the ONE Offset slider acts on EVERY shape at once + in real time, not
+/// just the active one — moving it expands a PARKED shape's outline too.
+#[test]
+fn offset_slider_acts_on_all_shapes_including_parked() {
+    let mut t = white_canvas(64, 2.0);
+    t.paint.brush.stroke_method = StrokeMethod::Ellipse;
+    // Ellipse A around (16,16) r=6 → base outline near (22,16).
+    t.on_canvas_pointer(cp([16.0, 16.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([22.0, 16.0], PointerPhase::Move));
+    t.on_canvas_pointer(cp([22.0, 16.0], PointerPhase::Up));
+    // Ellipse B far away (empty-space Down parks A).
+    t.on_canvas_pointer(cp([48.0, 48.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([52.0, 48.0], PointerPhase::Move));
+    t.on_canvas_pointer(cp([52.0, 48.0], PointerPhase::Up));
+    assert_eq!(t.paint.parked_shapes.len(), 1, "A parked, B active");
+    let scan = |t: &PainterTool, x: u32, y: u32| {
+        (x.saturating_sub(2)..=x + 2)
+            .flat_map(|xx| (y.saturating_sub(2)..=y + 2).map(move |yy| (xx, yy)))
+            .any(|(xx, yy)| px(t, 64, xx, yy) == [0, 0, 0, 255])
+    };
+    assert!(
+        !scan(&t, 40, 16),
+        "A's expanded outline is NOT painted at offset 0"
+    );
+    // Push the global Offset slider out (~+20px) → A (parked) AND B expand together.
+    t.set_brush_offset(0.6);
+    t.refill_open_shape();
+    assert!(
+        scan(&t, 40, 16),
+        "the parked ellipse A grew with the global Offset slider"
+    );
+}
+
+/// Selection Convert-to-Curve (Enio 2026-07-04): multiple SEPARATE selections (created with Add) each
+/// become their own editable curve — none disappears (regression: the old composed-contour path kept only
+/// the first region).
+#[test]
+fn convert_to_curve_preserves_every_separate_selection() {
+    let mut t = white_canvas(64, 4.0);
+    t.set_paint_tool_mode("selection");
+    t.set_selection_mode(2); // Rectangle
+    // First rect (New), top-left.
+    t.on_canvas_pointer(cp([0.0, 0.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([16.0, 16.0], PointerPhase::Up));
+    // Second rect (Add), bottom-right — SEPARATE from the first.
+    t.set_selection_bool_op(1);
+    t.on_canvas_pointer(cp([40.0, 40.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([56.0, 56.0], PointerPhase::Up));
+    assert_eq!(t.paint.selection_shapes.len(), 2, "two separate selections");
+    // Convert → BOTH become editable curves; neither region vanishes.
+    t.selection_convert_to_curve();
+    assert_eq!(
+        t.paint.selection_shapes.len(),
+        2,
+        "both separate selections survive Convert (not collapsed to one)"
+    );
+    assert_eq!(t.selection_coverage_at(8, 8), 255, "first region kept");
+    assert_eq!(t.selection_coverage_at(48, 48), 255, "second region kept");
+}
+
+/// Multi-shape (Enio 2026-07-04): switching BETWEEN dynamic shape methods ACCUMULATES (parks the open
+/// shape) instead of baking — so a mixed-type composition builds up. Apply fires only on leaving the shape
+/// system (a non-shape method / the panel button / Enter / another tool).
+#[test]
+fn switching_between_shape_methods_parks_not_bakes() {
+    let mut t = white_canvas(64, 2.0);
+    t.paint.brush.stroke_method = StrokeMethod::Ellipse;
+    t.on_canvas_pointer(cp([16.0, 16.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([22.0, 16.0], PointerPhase::Move));
+    t.on_canvas_pointer(cp([22.0, 16.0], PointerPhase::Up));
+    assert!(t.paint.ellipse.is_some());
+    // Ellipse → FreeHand (both dynamic): the ellipse is PARKED, not baked.
+    t.set_brush_stroke_method(StrokeMethod::FreeHand.to_u8());
+    assert!(
+        t.paint.ellipse.is_none(),
+        "ellipse editor closed on the switch"
+    );
+    assert_eq!(
+        t.paint.parked_shapes.len(),
+        1,
+        "the ellipse accumulated (parked), not baked"
+    );
+    assert!(
+        t.paint.drag_preview.is_some(),
+        "still a live (un-baked) preview after the shape→shape switch"
+    );
+    // Leaving the shape system (→ Space, a non-shape method) BAKES the whole set.
+    t.set_brush_stroke_method(StrokeMethod::Space.to_u8());
+    assert!(
+        !t.has_parked_shapes(),
+        "non-shape switch baked + cleared the set"
+    );
+    assert!(t.paint.drag_preview.is_none(), "preview committed");
+}

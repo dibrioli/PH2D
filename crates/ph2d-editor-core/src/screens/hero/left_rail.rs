@@ -27,7 +27,7 @@ use ph2d_vector::VectorScene;
 /// sub-label)`. Replaces the object-mode transform block while the Painter tool
 /// is active. Exclusive radio selection (`chrome/rail_painter_tools.rs`); the
 /// last entry (Shapes) also owns the shape flyout ([`PAINTER_SHAPES`]).
-const PAINTER_TOOLS: [(NodeId, &str, IconId, &str); 9] = [
+const PAINTER_TOOLS: [(NodeId, &str, IconId, &str); 10] = [
     (ids::PAINTER_RAIL_BRUSH, "Brush", IconId::Painter, "BRUSH"),
     (
         ids::PAINTER_RAIL_EYEDROPPER,
@@ -39,6 +39,12 @@ const PAINTER_TOOLS: [(NodeId, &str, IconId, &str); 9] = [
     (ids::PAINTER_RAIL_CLONE, "Clone", IconId::Clone, "CLONE"),
     (ids::PAINTER_RAIL_SMEAR, "Smear", IconId::Smear, "SMEAR"),
     (ids::PAINTER_RAIL_BLUR, "Blur", IconId::Blur, "BLUR"),
+    (
+        ids::PAINTER_RAIL_DEFORM,
+        "Deform",
+        IconId::Transform,
+        "DFORM",
+    ),
     (ids::PAINTER_RAIL_MASK_GROUP, "Mask", IconId::Mask, "MASK"),
     (
         ids::PAINTER_RAIL_INPAINT,

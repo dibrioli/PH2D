@@ -59,17 +59,26 @@ pub(super) fn draw_brush_ring(
                 );
                 let c = affine.as_coeffs();
                 let scale = (c[0] * c[0] + c[1] * c[1]).sqrt();
+                // Deform uses its OWN (round) brush footprint — the deform radius, no flatten/rotation — so
+                // the ring shows the deform size, not the paint brush's (Enio 2026-07-04).
+                let deform = painter.is_deform_mode();
+                let footprint_px = if deform { bs.deform_size_px } else { bs.size_px };
                 // Image-space major radius, floored so the ring stays visible at tiny zoom (the old
                 // screen-space `.max(1px)`).
-                let r = if scale > 0.0 && f64::from(bs.size_px) * scale < 1.0 {
+                let r = if scale > 0.0 && f64::from(footprint_px) * scale < 1.0 {
                     1.0 / scale
                 } else {
-                    f64::from(bs.size_px)
+                    f64::from(footprint_px)
                 };
                 // Minor axis = (1 − flatten) of the major; rotated by the dab angle (engine
-                // convention — `rotate_by_degrees` builds `[cos(deg), sin(deg)]`).
-                let m = 1.0 - f64::from(bs.dab_flatten.clamp(0.0, DAB_FLATTEN_MAX));
-                let (sin_a, cos_a) = f64::from(bs.dab_angle_deg).to_radians().sin_cos();
+                // convention — `rotate_by_degrees` builds `[cos(deg), sin(deg)]`). Deform is a plain disc.
+                let m = if deform {
+                    1.0
+                } else {
+                    1.0 - f64::from(bs.dab_flatten.clamp(0.0, DAB_FLATTEN_MAX))
+                };
+                let angle_deg = if deform { 0 } else { bs.dab_angle_deg };
+                let (sin_a, cos_a) = f64::from(angle_deg).to_radians().sin_cos();
                 use ph2d_vector::{Affine, BezPath, Brush, Color, Point, Stroke};
                 use std::f64::consts::TAU;
                 let mut path = BezPath::new();

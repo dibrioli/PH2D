@@ -41,6 +41,14 @@ const FILE_OVERAGE_OK: &[(&str, usize, &str)] = &[
         829,
         "Painter W4 bespoke adjustment panels — per-adjustment split deferred (Painter impl follow-up)",
     ),
+    // Deform Wave 1: the monolithic Click-dispatch match gained ONE predicate call
+    // (`is_deform_click`) to forward the Deform panel's clicks. The file was already at the 600 cap;
+    // splitting the giant dispatch match is a separate refactor. Frozen at 601.
+    (
+        "ph2d-panel-painter-layers/src/event.rs",
+        601,
+        "Deform Wave 1 added one is_deform_click() call to the at-cap dispatch match; match split deferred",
+    ),
 ];
 
 /// Per-function overage allowance. Each entry:

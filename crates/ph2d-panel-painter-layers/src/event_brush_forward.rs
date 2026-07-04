@@ -31,4 +31,20 @@ pub(crate) fn is_forwardable_brush_slider(id: NodeId) -> bool {
         || id == core_ids::PAINTER_SEL_STABILIZE_SLIDER
         || id == core_ids::PAINTER_SEL_OPACITY_SLIDER
         || id == core_ids::PAINTER_SEL_OFFSET_SLIDER
+        // Deform section (Wave 1): Size / Pressure / Distortion / Momentum / Strength sliders.
+        || id == core_ids::PAINTER_DEFORM_SIZE_SLIDER
+        || id == core_ids::PAINTER_DEFORM_PRESSURE_SLIDER
+        || id == core_ids::PAINTER_DEFORM_DISTORTION_SLIDER
+        || id == core_ids::PAINTER_DEFORM_MOMENTUM_SLIDER
+        || id == core_ids::PAINTER_DEFORM_STRENGTH_SLIDER
+}
+
+/// `true` when `id` is a Deform-panel **Click** target the panel forwards to the tool as
+/// `PanelEvent::Click` (the mode segments, Freeze / Invert toggles, and Reset / Apply / Apply & Keep
+/// actions — Deform Wave 1). Split out of `event.rs`'s dispatch guard so that (at-cap) match stays put.
+pub(crate) fn is_deform_click(id: NodeId) -> bool {
+    core_ids::PAINTER_DEFORM_MODE_IDS.contains(&id)
+        || core_ids::PAINTER_DEFORM_ACTION_IDS.contains(&id)
+        || id == core_ids::PAINTER_DEFORM_FREEZE
+        || id == core_ids::PAINTER_DEFORM_FREEZE_INVERT
 }

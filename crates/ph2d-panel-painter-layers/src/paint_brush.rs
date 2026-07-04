@@ -47,6 +47,10 @@ pub(crate) fn paint_brush_body(
     let x = rect.x + PANEL_HEAD_PAD;
     let content_w = rect.w - PANEL_HEAD_PAD * 2.0;
     let brush = state::current_brush().unwrap_or(FALLBACK_BRUSH);
+    // Deform mode owns the whole panel body (mode-exclusive, like Selection): paint ONLY the Deform section.
+    if brush.is_deform {
+        return crate::paint_deform::paint_deform_section(ctx, theme, x, content_w, top_y, brush);
+    }
     // Selection mode owns the whole panel body (mode-exclusive, ADR-0103): paint ONLY the Selection
     // section — no shared brush control leaks in (the Inpaint precedent).
     if brush.is_selection {

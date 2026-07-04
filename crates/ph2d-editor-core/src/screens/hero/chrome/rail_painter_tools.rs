@@ -37,6 +37,8 @@ fn push_paint_mode(hero: &mut HeroScreen, tool_id: NodeId) {
         "selection"
     } else if tool_id == ids::PAINTER_RAIL_INPAINT {
         "inpaint"
+    } else if tool_id == ids::PAINTER_RAIL_DEFORM {
+        "deform"
     } else if tool_id == ids::PAINTER_RAIL_FILL {
         // Placeholder: the Fill (Bucket) behaviour + colour-picker wiring lands in a follow-up; for now
         // selecting it just marks the rail radio (the painter defaults an unknown mode to Brush paint).
@@ -428,6 +430,26 @@ mod tests {
             drained_paint_mode(&mut hero).as_deref(),
             Some("inpaint"),
             "the Inpaint button forwarded the heal mode, not the brush fallback"
+        );
+    }
+
+    #[test]
+    fn selecting_deform_forwards_the_deform_mode() {
+        // Forward seam: the Deform rail button forwards the "deform" operating mode over the frozen
+        // PAINTER_PAINT_MODE channel → the painter's reshape/liquify kernel (Deform Wave 1). It is a plain
+        // radio tool (no flyout), so the generic tool branch drives it.
+        let mut hero = HeroScreen::new(NodeId(1));
+        super::super::super::left_rail::populate(&mut hero.store);
+        assert!(apply(
+            &mut hero,
+            WidgetEvent::Click(ids::PAINTER_RAIL_DEFORM)
+        ));
+        assert!(pressed(&hero, ids::PAINTER_RAIL_DEFORM));
+        assert!(!pressed(&hero, ids::PAINTER_RAIL_BRUSH));
+        assert_eq!(
+            drained_paint_mode(&mut hero).as_deref(),
+            Some("deform"),
+            "the Deform button forwarded the reshape mode, not the brush fallback"
         );
     }
 

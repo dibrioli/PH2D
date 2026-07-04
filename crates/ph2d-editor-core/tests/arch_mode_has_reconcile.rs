@@ -87,6 +87,13 @@ const BENIGN_SET_MODE: &[(&str, &str)] = &[
          engine to arm); no derived cache or mask is keyed on it — the mask only changes when a gesture \
          actually runs. Same single-field pattern as the unflagged `set_selection_bool_op`.",
     ),
+    (
+        "set_deform_mode",
+        "Painter Deform sub-mode setter (Push/Twist/Pinch/Wrinkle/Fold/Reconstruct — Deform Wave 1): a \
+         single `deform.mode` field write. The warp kernel reads it FRESH per dab (`warp_dab_at` builds \
+         the DabField each stamp); no derived cache is keyed on it. Same single-field pattern as \
+         `set_selection_mode`.",
+    ),
 ];
 
 /// Setters that reconcile via implementation-specific verbs (rather

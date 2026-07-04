@@ -38,6 +38,7 @@ mod paint_brush;
 mod paint_brush_top;
 mod paint_clone;
 mod paint_composite;
+mod paint_deform;
 mod paint_falloff;
 mod paint_inpaint;
 mod paint_mask;
@@ -56,6 +57,7 @@ mod paint_texture;
 mod paint_texture_ramp;
 mod populate;
 mod populate_brush_chips;
+mod populate_deform;
 pub mod state;
 mod state_ramp;
 

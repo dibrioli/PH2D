@@ -8618,3 +8618,224 @@ fn polygon_boolean_matches_the_gizmo_phase_not_the_selection_corner_seed() {
         "the box CORNER is empty — not the selection's corner-seeded square (no 45° divergence)"
     );
 }
+
+// ─────────────────────────────────────────────────────────────────────────────────────────────────────
+// Deform (Liquify) — Wave 1 kernel + seam tests (DoD). The inverse-warp kernel writes the active raster;
+// each stroke = one structural undo entry; Freeze reuses the Selection mask; the panel seam drives the
+// real `PanelEvent` → observable deform state.
+// ─────────────────────────────────────────────────────────────────────────────────────────────────────
+
+/// A tool with a horizontal red ramp (`red = x`, so a horizontal displacement is detectable) and Deform
+/// mode active at a generous radius.
+fn deform_ramp(size: u32) -> PainterTool {
+    let mut src = vec![0u8; (size * size * 4) as usize];
+    for y in 0..size {
+        for x in 0..size {
+            let i = ((y * size + x) * 4) as usize;
+            src[i] = x as u8; // red ramps with x (0..size)
+            src[i + 1] = 128;
+            src[i + 2] = 128;
+            src[i + 3] = 255;
+        }
+    }
+    let mut t = PainterTool::default();
+    t.set_source(src, size, size);
+    t.set_paint_tool_mode("deform");
+    t.set_deform_size_norm(0.25); // ~33px radius: spans the sampled pixels, corner stays outside the dab
+    t
+}
+
+#[test]
+fn deform_identity_stroke_is_byte_identical() {
+    // Push with no motion ⇒ D = 0 everywhere ⇒ the inverse gather resolves each dst to itself. A press +
+    // release at the same point must leave the canvas byte-for-byte unchanged (kernel parity).
+    let mut t = deform_ramp(64);
+    let before = (*t.canvas_rgba).clone();
+    t.on_canvas_pointer(cp([32.0, 32.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([32.0, 32.0], PointerPhase::Up));
+    assert_eq!(*t.canvas_rgba, before, "a zero-motion Push is identity");
+}
+
+#[test]
+fn deform_push_moves_content_along_the_drag() {
+    // Pushing +x pulls lower-x (darker-red) content under the dab centre, so the sampled red DROPS.
+    let mut t = deform_ramp(64);
+    let target = px(&t, 64, 40, 32); // red ≈ 40 before
+    t.on_canvas_pointer(cp([32.0, 32.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([40.0, 32.0], PointerPhase::Move)); // drag +8px in x
+    t.on_canvas_pointer(cp([40.0, 32.0], PointerPhase::Up));
+    let after = px(&t, 64, 40, 32);
+    assert!(
+        after[0] < target[0],
+        "Push +x pulls darker (lower-x) content in: red {} → {}",
+        target[0],
+        after[0]
+    );
+    // A far corner outside the dab is untouched.
+    assert_eq!(px(&t, 64, 0, 0), [0, 128, 128, 255], "corner untouched");
+}
+
+#[test]
+fn deform_freeze_protects_the_selected_region() {
+    // Freeze on + a left-half selection: pushing across the boundary must leave selected (left) texels
+    // byte-identical while unselected (right) texels change.
+    let mut t = deform_ramp(64);
+    t.set_rect_selection(0, 0, 32, 64); // select the left half (x < 32)
+    t.set_deform_freeze(true);
+    let left_before = px(&t, 64, 16, 32);
+    let right_before = px(&t, 64, 48, 32);
+    t.on_canvas_pointer(cp([32.0, 32.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([40.0, 32.0], PointerPhase::Move));
+    t.on_canvas_pointer(cp([40.0, 32.0], PointerPhase::Up));
+    assert_eq!(
+        px(&t, 64, 16, 32),
+        left_before,
+        "a frozen (selected) texel is protected from the warp"
+    );
+    assert_ne!(
+        px(&t, 64, 48, 32),
+        right_before,
+        "an unselected texel is warped normally"
+    );
+}
+
+#[test]
+fn deform_stroke_is_one_undo_entry_and_restores_byte_identical() {
+    let mut t = deform_ramp(64);
+    let before = (*t.canvas_rgba).clone();
+    t.on_canvas_pointer(cp([32.0, 32.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([44.0, 34.0], PointerPhase::Move));
+    t.on_canvas_pointer(cp([44.0, 34.0], PointerPhase::Up));
+    assert_ne!(*t.canvas_rgba, before, "the deform stroke changed pixels");
+    assert!(t.undo_last(), "one deform stroke is one undo entry");
+    assert_eq!(
+        *t.canvas_rgba, before,
+        "undo restores the pre-stroke pixels byte-for-byte"
+    );
+}
+
+#[test]
+fn deform_reset_restores_the_session_pre_pixels() {
+    // A multi-stroke session, then Reset returns to the pristine session pixels.
+    let mut t = deform_ramp(64);
+    let before = (*t.canvas_rgba).clone();
+    for _ in 0..2 {
+        t.on_canvas_pointer(cp([30.0, 30.0], PointerPhase::Down));
+        t.on_canvas_pointer(cp([40.0, 36.0], PointerPhase::Move));
+        t.on_canvas_pointer(cp([40.0, 36.0], PointerPhase::Up));
+    }
+    assert_ne!(*t.canvas_rgba, before, "two strokes deformed the canvas");
+    t.deform_reset();
+    assert_eq!(
+        *t.canvas_rgba, before,
+        "Reset restores the session pre-deform pixels"
+    );
+}
+
+#[test]
+fn deform_panel_seam_mode_slider_and_freeze_drive_the_state() {
+    use ph2d_editor_core::ids as core_ids;
+    use ph2d_editor_core::tool::PanelEvent;
+    let mut t = deform_ramp(32);
+    // Segmented mode pick: Click on the Twist option id → mode 1.
+    assert!(t.route_deform_event(&PanelEvent::Click(core_ids::PAINTER_DEFORM_MODE_TWIST)));
+    assert_eq!(t.paint.deform.mode, 1, "the Twist segment set mode = Twist");
+    // Slider: SetValue on the Strength slider → clamped strength.
+    assert!(t.route_deform_event(&PanelEvent::SetValue(
+        core_ids::PAINTER_DEFORM_STRENGTH_SLIDER,
+        0.9
+    )));
+    assert!(
+        (t.paint.deform.strength - 0.9).abs() < 1e-6,
+        "Strength slider drove the value"
+    );
+    // Freeze toggle: Click flips the bool.
+    assert!(!t.paint.deform.freeze_on);
+    assert!(t.route_deform_event(&PanelEvent::Click(core_ids::PAINTER_DEFORM_FREEZE)));
+    assert!(
+        t.paint.deform.freeze_on,
+        "the Freeze toggle drove freeze_on = true"
+    );
+}
+
+#[test]
+fn deform_reconstruct_un_warps_toward_the_original() {
+    // Reconstruct must slide pixels BACK to their original positions (reduce the session displacement),
+    // not cross-fade the original over the deformed. After enough Reconstruct scrubbing the canvas is far
+    // closer to the pre-deform pixels than right after the Push.
+    let mut t = deform_ramp(64);
+    let before = (*t.canvas_rgba).clone();
+    // Deform with a Push drag.
+    t.on_canvas_pointer(cp([28.0, 32.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([44.0, 32.0], PointerPhase::Move));
+    t.on_canvas_pointer(cp([44.0, 32.0], PointerPhase::Up));
+    let l1 = |a: &[u8], b: &[u8]| -> u64 {
+        a.iter()
+            .zip(b)
+            .map(|(x, y)| (*x as i64 - *y as i64).unsigned_abs())
+            .sum()
+    };
+    let pushed = l1(&t.canvas_rgba, &before);
+    assert!(pushed > 0, "the push deformed the canvas");
+    // Reconstruct at full pressure, scrubbing the deformed band several times (same session → same disp).
+    t.set_deform_mode(5); // Reconstruct
+    t.set_deform_pressure(1.0);
+    for _ in 0..16 {
+        t.on_canvas_pointer(cp([24.0, 32.0], PointerPhase::Down));
+        t.on_canvas_pointer(cp([48.0, 32.0], PointerPhase::Move));
+        t.on_canvas_pointer(cp([48.0, 32.0], PointerPhase::Up));
+    }
+    let reconstructed = l1(&t.canvas_rgba, &before);
+    assert!(
+        reconstructed * 4 < pushed,
+        "Reconstruct un-warped most of the deform: pushed L1 {pushed}, after reconstruct {reconstructed}"
+    );
+}
+
+#[test]
+fn deform_undo_preserves_the_reconstruction_capability() {
+    // Regression (Enio 2026-07-04): undoing a deform stroke must roll the displacement back in lock-step
+    // with the pixels — NOT drop the session — so Reconstruct can still un-warp what remains.
+    let mut t = deform_ramp(64);
+    let before = (*t.canvas_rgba).clone();
+    let l1 = |a: &[u8], b: &[u8]| -> u64 {
+        a.iter()
+            .zip(b)
+            .map(|(x, y)| (*x as i64 - *y as i64).unsigned_abs())
+            .sum()
+    };
+    // Stroke 1, then stroke 2 (same session accumulates the displacement).
+    t.on_canvas_pointer(cp([26.0, 32.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([40.0, 32.0], PointerPhase::Move));
+    t.on_canvas_pointer(cp([40.0, 32.0], PointerPhase::Up));
+    let after1 = (*t.canvas_rgba).clone();
+    t.on_canvas_pointer(cp([40.0, 32.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([54.0, 32.0], PointerPhase::Move));
+    t.on_canvas_pointer(cp([54.0, 32.0], PointerPhase::Up));
+    assert_ne!(*t.canvas_rgba, after1, "stroke 2 deformed further");
+    // Undo stroke 2 → pixels roll back to after-stroke-1, and the session (displacement) is preserved.
+    assert!(t.undo_last(), "one undo step for stroke 2");
+    assert_eq!(*t.canvas_rgba, after1, "undo restored the stroke-1 pixels");
+    assert!(
+        t.paint.deform.active,
+        "the deform session survives the undo"
+    );
+    assert!(
+        !t.paint.deform.disp.is_empty(),
+        "the displacement survives the undo"
+    );
+    // And Reconstruct still un-warps toward the pristine session original.
+    let pushed = l1(&after1, &before);
+    t.set_deform_mode(5); // Reconstruct
+    t.set_deform_pressure(1.0);
+    for _ in 0..16 {
+        t.on_canvas_pointer(cp([22.0, 32.0], PointerPhase::Down));
+        t.on_canvas_pointer(cp([46.0, 32.0], PointerPhase::Move));
+        t.on_canvas_pointer(cp([46.0, 32.0], PointerPhase::Up));
+    }
+    let reconstructed = l1(&t.canvas_rgba, &before);
+    assert!(
+        reconstructed * 3 < pushed,
+        "Reconstruct still works after undo: pre-undo-warp L1 {pushed}, after reconstruct {reconstructed}"
+    );
+}

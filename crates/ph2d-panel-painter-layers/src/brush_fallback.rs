@@ -61,6 +61,17 @@ pub(crate) const FALLBACK_BRUSH: BrushSettings = BrushSettings {
     selection_feather: 0.0,
     selection_edit: false,
     selection_overlay_opacity: 0.2, // LITERAL-PX-OK: brush default (mirrors PaintState::default)
+    is_deform: false,
+    deform_mode: 0,
+    deform_size_norm: 0.5, // LITERAL-PX-OK: Deform defaults (mirror DeformState::default)
+    deform_size_px: 128.75, // LITERAL-PX-OK: 1 + 0.5² · (512−1) = the size_norm 0.5 default radius
+    deform_pressure: 0.8,  // LITERAL-PX-OK: Deform default
+    deform_distortion: 0.0, // LITERAL-PX-OK: Deform default (turbulence off → clean Push)
+    deform_momentum: 0.0,
+    deform_strength: 0.5, // LITERAL-PX-OK: centred bipolar Strength (neutral)
+    deform_freeze_on: false,
+    deform_freeze_invert: false,
+    deform_has_selection: false,
     selection_offset: 0.5, // LITERAL-PX-OK: centred Offset = no grow/shrink (mirrors shape_offset_norm)
     inpaint_patch: 0.25, // LITERAL-PX-OK: brush default (mirrors PaintState::default inpaint_patch_norm)
     inpaint_quality: 0.3333, // LITERAL-PX-OK: brush default (mirrors PaintState::default inpaint_quality_norm)

@@ -32,6 +32,10 @@ pub const PAINTER_RAIL_CLONE: NodeId = hash_node_id("painter_rail.clone");
 pub const PAINTER_RAIL_SMEAR: NodeId = hash_node_id("painter_rail.smear");
 /// Blur — soften pixels under the brush.
 pub const PAINTER_RAIL_BLUR: NodeId = hash_node_id("painter_rail.blur");
+/// Deform — brush-driven reshape (Liquify: Push / Twist / Pinch / Wrinkle / Fold / Reconstruct). Sits
+/// above the Mask group. Forwards paint mode `"deform"`; the reshape kernel + inspector UI live in the
+/// painter (Deform Wave 1). Reuses [`IconId::Transform`] (no new SVG).
+pub const PAINTER_RAIL_DEFORM: NodeId = hash_node_id("painter_rail.deform");
 /// **Mask group** — the shared rail button (mirrors [`PAINTER_RAIL_SHAPES`]): pressing it reveals a
 /// flyout of its two sub-tools ([`PAINTER_RAIL_MASK_SUB_IDS`]) — **Mask** (paint a layer mask) and
 /// **Selection** (Procreate-style marquee) — to its right. A member of the tool radio group; the button
@@ -73,7 +77,7 @@ pub const PAINTER_PAINT_MODE: NodeId = hash_node_id("painter_rail.paint_mode");
 /// The Painter-mode tool radio group, in rail (paint) order. Exclusive
 /// `ButtonState::Pressed` selection, like the transform tools. The Shapes
 /// button is the last member (it also owns the shape flyout).
-pub const PAINTER_RAIL_TOOL_IDS: [NodeId; 10] = [
+pub const PAINTER_RAIL_TOOL_IDS: [NodeId; 11] = [
     PAINTER_RAIL_BRUSH,
     PAINTER_RAIL_FILL,
     PAINTER_RAIL_EYEDROPPER,
@@ -81,6 +85,7 @@ pub const PAINTER_RAIL_TOOL_IDS: [NodeId; 10] = [
     PAINTER_RAIL_CLONE,
     PAINTER_RAIL_SMEAR,
     PAINTER_RAIL_BLUR,
+    PAINTER_RAIL_DEFORM,
     PAINTER_RAIL_MASK_GROUP,
     PAINTER_RAIL_INPAINT,
     PAINTER_RAIL_SHAPES,

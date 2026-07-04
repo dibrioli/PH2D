@@ -95,6 +95,22 @@ impl PainterTool {
             selection_feather: self.selection_feather(),
             selection_edit: self.selection_edit_mode(),
             selection_overlay_opacity: self.selection_overlay_opacity(),
+            is_deform: self.is_deform_mode(),
+            deform_mode: self.paint.deform.mode,
+            deform_size_norm: self.paint.deform.size_norm,
+            // Same squared-track mapping as `warp::deform_radius_px` (kept in sync; the cursor ring reads it).
+            deform_size_px: {
+                let t = self.paint.deform.size_norm.clamp(0.0, 1.0);
+                super::BRUSH_SIZE_MIN_PX
+                    + t * t * (super::BRUSH_SIZE_MAX_PX - super::BRUSH_SIZE_MIN_PX)
+            },
+            deform_pressure: self.paint.deform.pressure,
+            deform_distortion: self.paint.deform.distortion,
+            deform_momentum: self.paint.deform.momentum,
+            deform_strength: self.paint.deform.strength,
+            deform_freeze_on: self.paint.deform.freeze_on,
+            deform_freeze_invert: self.paint.deform.freeze_invert,
+            deform_has_selection: self.selection_active(),
             selection_offset: self.selection_offset(),
             inpaint_patch: self.paint.inpaint_patch_norm,
             inpaint_quality: self.paint.inpaint_quality_norm,

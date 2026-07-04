@@ -345,6 +345,7 @@ impl PainterTool {
             "inpaint" => PaintMode::Inpaint,
             "fill" => PaintMode::Fill,
             "selection" => PaintMode::Selection,
+            "deform" => PaintMode::Deform,
             // "brush" / "eraser" / "eyedropper" / anything else → normal Paint.
             _ => PaintMode::Paint,
         };
@@ -352,6 +353,11 @@ impl PainterTool {
         // Spacing 5% for dense dabs — see `state_default`). No-op when settings are linked. Must run while
         // `paint_mode` still holds the OLD mode, so the current tool's edits save to the right slot.
         self.switch_brush_slot(new_mode);
+        // Leaving Deform ends its session (drops the `pre`/displacement) so a later mode's edits aren't
+        // re-warped from a stale baseline; the deformed pixels are already committed per-stroke.
+        if self.paint.paint_mode == PaintMode::Deform && new_mode != PaintMode::Deform {
+            self.end_deform_session();
+        }
         self.paint.paint_mode = new_mode;
         // Leaving the Selection tool auto-hides its gizmos (the "Show Selection Gizmos" checkbox unchecks) —
         // the gizmos belong to Select and would otherwise linger over another tool (Enio 2026-07-03).
@@ -385,6 +391,7 @@ impl PainterTool {
             PaintMode::Inpaint => "inpaint",
             PaintMode::Fill => "fill",
             PaintMode::Selection => "selection",
+            PaintMode::Deform => "deform",
             PaintMode::Paint if self.paint.eraser => "eraser",
             PaintMode::Paint => "brush",
         }
@@ -423,6 +430,13 @@ impl PainterTool {
     #[must_use]
     pub fn is_selection_mode(&self) -> bool {
         matches!(self.paint.paint_mode, super::PaintMode::Selection)
+    }
+
+    /// Whether the active operation is **Deform** — the panel shows ONLY the deform controls (mode-exclusive,
+    /// like Selection): mode segmented · Size/Pressure/Distortion/Momentum/Strength · Freeze · actions.
+    #[must_use]
+    pub fn is_deform_mode(&self) -> bool {
+        matches!(self.paint.paint_mode, super::PaintMode::Deform)
     }
 
     /// Route the brush **dab/stroke** chrome events: the flatten/rotate gizmo `SetValue`s (Shape panel),

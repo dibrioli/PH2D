@@ -104,6 +104,8 @@ mod selection_curve_gizmo; // converted-curve point editor: Convert/Simplify →
 mod selection_edit;
 /// Selection **isolated gizmos** (ADR-0103 Am.2 v2): per-shape gizmos decoupled from the stroke editors.
 mod selection_gizmo;
+/// **Deform** (Liquify) — the single inverse-warp kernel + per-mode displacement fields + Reconstruct/Amount.
+mod warp;
 pub use selection_gizmo::SelectionGizmoView;
 /// Selection creation input: mode/op/threshold setters + on-canvas pointer gestures (marquee/lasso/flood). [LOC split].
 mod selection_input;
@@ -388,6 +390,9 @@ pub(crate) struct PaintState {
     per_layer_stroke: stamp_color_cache::PerLayerStroke,
     /// Cached coloured Shape **preview** (premul RGBA), re-baked only on appearance change; [`stamp_color_cache`].
     shape_color_preview: stamp_color_cache::ShapeColorPreview,
+    /// **Deform** (Liquify) settings + session state — sub-mode, brush knobs, Freeze, and the pre-deform
+    /// buffer Reconstruct/Amount read from. Mode-exclusive; see [`warp`] (Deform Wave 1).
+    deform: warp::DeformState,
 }
 
 impl PainterTool {

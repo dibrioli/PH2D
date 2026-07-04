@@ -79,6 +79,14 @@ pub struct ModelSnapshot {
     /// rasterized mask and the next `recompose_selection_mask` regenerated the edited shape → the selection
     /// curve point edit "came back" (Enio 2026-07-03). Empty = no parametric selection.
     pub(crate) selection_shapes: Vec<crate::tool::SelectionEntry>,
+    /// The **Deform** session at capture time — the cumulative displacement map + the pristine `pre` +
+    /// the active flag (Deform Wave 1). Captured so undo/redo rolls the WARP back in lock-step with the
+    /// pixels: without it, undoing a deform stroke restored the pixels but dropped the displacement, so
+    /// Reconstruct could no longer un-warp the remaining deform (Enio 2026-07-04). Empty `Arc`s + `false`
+    /// = no session. `Arc`-shared, so a non-deform snapshot carries an empty (0-byte) map for free.
+    pub(crate) deform_disp: Arc<Vec<[f32; 2]>>,
+    pub(crate) deform_pre: Arc<Vec<u8>>,
+    pub(crate) deform_active: bool,
 }
 
 /// Plain-data snapshot of an open on-canvas shape editor, stored in a [`ModelSnapshot`] so a structural
@@ -333,6 +341,9 @@ mod tests {
             selection_crisp: Arc::new(Vec::new()),
             selection_feather: 0.0,
             selection_shapes: Vec::new(),
+            deform_disp: Arc::new(Vec::new()),
+            deform_pre: Arc::new(Vec::new()),
+            deform_active: false,
         }
     }
 

@@ -50,6 +50,12 @@ impl CanvasPaintTool for PainterTool {
         if matches!(self.paint.paint_mode, super::PaintMode::Fill) {
             return self.fill_pointer(ev);
         }
+        // Deform (Liquify) — the brush-driven reshape kernel (Push/Twist/Pinch/…). Its own dab lifecycle
+        // (inverse-warp gather + structural undo), not a stroke of the brush engine, so it routes before the
+        // shape editors + generic stroke path.
+        if matches!(self.paint.paint_mode, super::PaintMode::Deform) {
+            return self.warp_pointer(ev);
+        }
         // Curve and Ellipse are persistent on-canvas shape editors (draw → edit → commit), not a
         // single press→release stroke — route every canvas event through them instead of the generic
         // path.

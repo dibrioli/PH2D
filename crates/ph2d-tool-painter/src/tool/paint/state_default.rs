@@ -149,6 +149,7 @@ impl Default for PaintState {
             fill_return_mode: None,
             per_layer_stroke: stamp_color_cache::PerLayerStroke::default(),
             shape_color_preview: stamp_color_cache::ShapeColorPreview::default(),
+            deform: warp::DeformState::default(),
         }
     }
 }

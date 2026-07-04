@@ -245,6 +245,8 @@ pub fn populate(store: &mut WidgetStore) {
             },
         );
     }
+    // Deform section (Wave 1) widgets — split into a sibling for the panel file-LOC cap.
+    crate::populate_deform::register_deform_widgets(store);
     // Colour swatch + Eraser toggle + the Stroke-section "Adjust Strength" toggle —
     // Buttons. MUST be registered here or the dispatcher drops the click (the
     // populate-register gotcha).

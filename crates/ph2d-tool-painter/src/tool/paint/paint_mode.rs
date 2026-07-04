@@ -27,11 +27,16 @@ pub(crate) enum PaintMode {
     /// Add/Remove/Invert/Feather, integrated into the painter undo queue) lands in a follow-up; for now
     /// the mode exists but paints nothing on canvas.
     Selection,
+    /// **Deform** — brush-driven reshape / Liquify (Push / Twist / Pinch / Wrinkle / Fold / Reconstruct)
+    /// over a single inverse-warp kernel (`out[dst] = sample(dst − D(dst))`, backward-gather). Only the
+    /// displacement field `D` changes between sub-modes. Writes the active raster (structural undo), reuses
+    /// the Selection mask for Freeze/Protect. See [`super::warp`] (Deform Wave 1).
+    Deform,
 }
 
 /// Number of [`PaintMode`] variants — the length of the per-mode brush-settings array (see
 /// [`PaintMode::slot`]). Keep in lock-step with the enum.
-pub(crate) const PAINT_MODE_COUNT: usize = 8;
+pub(crate) const PAINT_MODE_COUNT: usize = 9;
 
 impl PaintMode {
     /// This mode's index into the per-mode brush-settings array (`0..PAINT_MODE_COUNT`). Each tool keeps
@@ -46,6 +51,7 @@ impl PaintMode {
             PaintMode::Inpaint => 5,
             PaintMode::Fill => 6,
             PaintMode::Selection => 7,
+            PaintMode::Deform => 8,
         }
     }
 }

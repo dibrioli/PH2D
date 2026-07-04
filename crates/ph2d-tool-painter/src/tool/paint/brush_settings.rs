@@ -79,6 +79,23 @@ pub struct BrushSettings {
     pub selection_feather: f32,
     pub selection_edit: bool,
     pub selection_overlay_opacity: f32,
+    /// **Deform** (Liquify) mode — the panel shows ONLY the deform section (mode-exclusive, like Selection):
+    /// sub-mode segmented (`0` Push · `1` Twist · `2` Pinch · `3` Wrinkle · `4` Fold · `5` Reconstruct) ·
+    /// Size/Pressure/Distortion/Momentum/Strength (all `0..1`; Strength `0.5`-centred bipolar) · Freeze +
+    /// its Invert · whether a selection exists (gates Freeze). Distortion/Momentum are hidden in Reconstruct.
+    pub is_deform: bool,
+    pub deform_mode: u8,
+    pub deform_size_norm: f32,
+    /// Deform brush radius in image px (mapped from [`Self::deform_size_norm`]) — the cursor ring reads this
+    /// so the on-canvas ring shows the DEFORM footprint, not the paint brush's.
+    pub deform_size_px: f32,
+    pub deform_pressure: f32,
+    pub deform_distortion: f32,
+    pub deform_momentum: f32,
+    pub deform_strength: f32,
+    pub deform_freeze_on: bool,
+    pub deform_freeze_invert: bool,
+    pub deform_has_selection: bool,
     /// **Offset** (grow/shrink) slider position (`0..1`, `0.5` = no change) — expands/contracts the edited
     /// boundary; only meaningful (and shown) in Edit mode.
     pub selection_offset: f32,

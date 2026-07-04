@@ -462,6 +462,40 @@ Faltou → **bounce pro Implementador antes de mergear.** Não "vou abrir exceç
 
 ## 6. Codificação rápida
 
+### 6.0 Perfil de máquina — RODE ANTES DE LER O RESTO
+
+> PH2D é desenvolvido em máquinas de potência muito diferente (Mac fraco · Windows fraco ·
+> **desktop Linux 128 GB**). A estratégia de velocidade **NÃO é fixa** — é função do hardware.
+> **As regras de §6.6 abaixo são o baseline `constrained` (o Mac de 8 GiB).** Seu tier pode
+> sobrescrevê-las. Descubra o seu:
+>
+> ```bash
+> bash scripts/hw-profile.sh          # imprime tier + knobs (fonte da verdade)
+> ```
+
+| knob | `constrained` (Mac 8 GiB) | `standard` (Windows, a medir) | `workstation` (desktop 128 GB) |
+|---|---|---|---|
+| cargos paralelos (build) | ≤3 | ~cores/4 | ~cores/6 (ex.: 5) |
+| cargos paralelos (check) | ≤3 | ~cores/2 | ~cores/3 (ex.: 10) |
+| **rust-analyzer** | ❌ off (RAM-blocked) — `cargo-check-narrow` on-demand | on | **full (RA-as-oracle)** |
+| CoW slots (`slot-seed.sh`) | **obrigatório** | opcional | opcional (com 128 GB, dispensável) |
+| nextest jobs | ~4 | ~cores/2 | full (= cores) |
+| linker | `ld64.lld` (Mach-O) | `rust-lld` | **`mold`** (global, nunca no repo) |
+| target/ em tmpfs | não | não | **sim** (`scripts/target-on-tmpfs.sh`) |
+| sccache | não | pilotar | **sim** (global, transparente — não fere paridade-CI) |
+
+- **`constrained`** → siga §6.6 **ao pé da letra** (é o seu tier).
+- **`workstation`** → §6.6 fica **sobrescrita** nos pontos acima: use RA como oráculo (não leia saída
+  crua do cargo), rode muitos cargos, esqueça o teto de ≤3 e os slots. Setup da máquina em
+  [`docs/DevOps/MULTI_MACHINE_SETUP.md`](../DevOps/MULTI_MACHINE_SETUP.md) §3.2. Racional: [ADR-0104](../architecture/decisions/0104-hardware-tiered-speed-strategy.md).
+- **`standard`** (Windows) → knobs medidos, ainda **a pilotar** — Linux-benchmarks não transferem
+  direto (§6.6.B). Meça antes de virar mandato.
+- **`target-cpu=native` fica OFF mesmo no `workstation`**: diverge do cache do CI (fere a paridade
+  do `ship.sh`) e dá **zero** ganho no inner loop (`cargo check` não faz codegen). Opt-in só pra
+  builds de run isolados.
+
+---
+
 **Princípio:** não duplique o pre-commit hook durante editing burst. **Hook ≠ CI** em 2 pontos:
 
 1. **clippy `--all-targets`:** o tier **T2 workspace** roda `cargo clippy --workspace -- -D warnings` **SEM `--all-targets`** (cortado no perf audit 2026-05-19 por velocidade). CI roda completo: `cargo clippy --workspace --all-targets --features ph2d-spike/bevy_ecs -- -D warnings`.
@@ -533,7 +567,12 @@ Acidentalmente trigou T2 workspace numa pasta isolada? Provavelmente staged junt
 
 ### 6.6 Stack de velocidade multi-agente — "agents flying" (2026-05-29)
 
-Teto de 8 GiB RAM **aceito**; concorrência **≤3 agentes**. O gargalo NÃO é
+> **⚠️ Esta seção é o baseline do tier `constrained` (Mac 8 GiB).** Se `scripts/hw-profile.sh`
+> (§6.0) disser `workstation`, os tetos abaixo (≤3 cargos, RA-blocked, slots obrigatórios)
+> estão **sobrescritos** — leia a tabela de §6.0. O núcleo A (o loop, batching, "audit ≠ compilar")
+> vale em TODO tier; só os limites de RAM/concorrência mudam.
+
+Teto de 8 GiB RAM **aceito** (tier `constrained`); concorrência **≤3 agentes**. O gargalo NÃO é
 paralelismo — é (a) build/teste **redundante** e (b) tokens queimados em saída
 crua do compilador + adivinhação de tipos. Otimiza-se a **velocidade de iteração
 por-agente**. Norte: [ADR-0075](../architecture/decisions/0075-multiagent-parallelism-ecs-decoupling-not-runtime-plugins.md)

@@ -60,25 +60,66 @@ só Apple+wasm; o **host target nativo é auto-instalado pelo rustup**, então b
 em Linux/Windows sem editar o arquivo. (Opcional: adicionar `x86_64-unknown-linux-gnu` /
 `x86_64-pc-windows-msvc` se for cross-compilar.)
 
-### 3.2 Linux (dev rápido — 128 GB RAM)
+### 3.2 Linux (dev rápido — desktop 128 GB / 32 threads = tier `workstation`)
+
+Este é o tier **`workstation`** ([ADR-0104](../architecture/decisions/0104-hardware-tiered-speed-strategy.md)):
+a estratégia de velocidade dos 8 GiB do Mac fica **sobrescrita**. Confirme o tier:
 ```bash
-# Linker rápido: mold É compatível no Linux (ELF). Config GLOBAL do usuário, NÃO no repo:
-sudo apt install mold clang         # ou o gerenciador da distro
+bash scripts/hw-profile.sh          # deve imprimir: tier = workstation
+```
+
+**Deps de sistema** (exemplo Arch/CachyOS — `pacman`; em Debian/Ubuntu troque por `apt`):
+```bash
+sudo pacman -S --needed mold clang meson ninja nasm cmake pkgconf sccache
+#   mold  = linker ELF rápido      meson/ninja/nasm/cmake = build nativo do stack AVIF
+#   (dav1d/rav1e/libavif)          sccache = cache de compilação transparente
+```
+
+**Linker mold + sccache — GLOBAL no usuário, NUNCA no repo:**
+```bash
 mkdir -p ~/.cargo
 cat >> ~/.cargo/config.toml <<'EOF'
 [target.x86_64-unknown-linux-gnu]
 linker = "clang"
 rustflags = ["-C", "link-arg=-fuse-ld=mold"]
+
+[build]
+rustc-wrapper = "sccache"      # transparente, determinístico — NÃO fere paridade-CI do ship.sh
+
+[env]
+SCCACHE_CACHE_SIZE = "30G"
 EOF
 ```
-- ⚠️ **NÃO** ponha o mold no `.cargo/config.toml` DO REPO — a cerca de Chesterton lá (comentário)
-  registra que pinar path de linker no repo já **quebrou o CI do Mac**. Linker é per-usuário/global.
-- Com 128 GB RAM, **re-baseline a stack de velocidade** (DIRETRIZ §6.6): o teto de "≤3 cargos" e o
-  bloqueio de rust-analyzer/LSP eram por causa dos **8 GiB do Mac**. No Linux provavelmente caem —
-  rust-analyzer full + nextest paralelo + mais slots passam a valer. Meça e ajuste.
-- Slots CoW: `scripts/slot-seed.sh` usa clone APFS (macOS). No Linux, CoW depende do FS
-  (Btrfs/XFS reflink); se o FS não suportar, o script precisa de fallback (cópia normal) — revisar
-  antes de usar `slot-env.sh`. Com 128 GB, talvez nem precise de slots CoW.
+- ⚠️ **NUNCA** no `.cargo/config.toml` DO REPO — cerca de Chesterton: pinar linker/target-dir no repo
+  já **quebrou o CI do Mac**. Linker/wrapper são per-usuário/global.
+
+**`target/` em tmpfs (RAM-disk) — grande ganho de link/IO:**
+```bash
+bash scripts/target-on-tmpfs.sh     # move target/ -> /dev/shm, imprime a regra de reboot-safety
+# reboot-safety (uma vez, o script imprime o comando exato):
+echo 'd /dev/shm/ph2d-target 0755 <user> <user> -' | sudo tee /etc/tmpfiles.d/ph2d-ramtarget.conf
+sudo systemd-tmpfiles --create /etc/tmpfiles.d/ph2d-ramtarget.conf
+```
+- **Por quê a regra tmpfiles.d:** o `/dev/shm` esvazia no boot → o symlink `target/` fica pendurado →
+  `cargo` (`create_dir_all`) **NÃO** cura symlink pendurado (`mkdir -p` retorna EEXIST). A regra
+  recria o dir no boot. O sccache (cache em disco, sobrevive reboot) repovoa o target pós-reboot.
+
+**rust-analyzer como oráculo** (era RAM-blocked no Mac): instale a extensão + configure nas **User
+settings** do VS Code (não no `.vscode/` do repo, senão liga RA pesado no Mac de 8 GiB):
+```bash
+code --install-extension rust-lang.rust-analyzer
+```
+```jsonc
+// ~/.config/Code/User/settings.json
+"rust-analyzer.check.command": "clippy",
+"rust-analyzer.cargo.targetDir": true,     // target-dir próprio — não briga pelo lock com os cargos dos agentes
+"rust-analyzer.check.workspace": true
+```
+
+- **Slots CoW = opcionais aqui.** `slot-seed.sh` usa clone APFS (macOS); no Linux depende de reflink
+  (Btrfs/XFS — este FS é Btrfs, tem). Com 128 GB + `target/` em tmpfs, um `target/` único já basta;
+  slots só se rodar builds de fato paralelos que briguem pelo lock.
+- **`target-cpu=native` fica OFF** mesmo aqui (diverge do cache do CI; zero ganho no check) — ADR-0104.
 
 ### 3.3 Windows (build/teste target Windows)
 ```powershell

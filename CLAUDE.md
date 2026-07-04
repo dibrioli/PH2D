@@ -11,7 +11,7 @@
 2. **Isolamento:** edite **só a SUA pasta**. Precisou de algo fora (foundational/shell/contrato/outra crate)? **PARE e reporte ao Coordenador** — nunca renegocie direto com outro agente.
 3. **UI canônica:** zero hex, zero `f32` literal de UI, zero string hardcoded — tudo via tokens / i18n (HR-15).
 4. **Git anti-colisão:** `git add -- <seus paths>` (NUNCA `-A`/`-a`/`git add .`/`git stash`); `git commit --no-verify -m "msg" -- <paths>`; `git status` antes de stage; se houver `M`/`??` alheio, não comite — reporte.
-5. **Velocidade (§2):** inner loop = **SÓ `cargo check -p`** (no slot CoW); teste/clippy/auditoria **1× no fechamento do módulo**, nunca por task. **≤3 agentes** compilando por vez (RAM 8 GiB).
+5. **Velocidade (§2):** inner loop = **SÓ `cargo check -p`**; teste/clippy/auditoria **1× no fechamento do módulo**, nunca por task. Concorrência **é função do hardware** — `bash scripts/hw-profile.sh` (≤3 agentes só no tier `constrained`/Mac 8 GiB; `workstation` voa). Detalhe: §2 + DIRETRIZ §6.0.
 6. **Padrão-ouro sem custo:** a melhor opção técnica vence custo de build/cronograma ([feedback-perfection-no-deferrals](file:///Users/dibrioli/.claude/projects/-Volumes-MAC-EXTERNO-PROJETOS--PH2D-definitiva/memory/feedback_perfection_no_deferrals.md)); gaps in-scope fecham na sessão atual.
 7. **Você NÃO pusha.** Reporta commit local; o **Coordenador** faz ship + push + babysit CI (§3).
 
@@ -34,12 +34,13 @@
 
 ## §2 — Velocidade ("agents flying"), resumo (detalhe + configs: DIRETRIZ §6)
 
+- **PRIMEIRO: `bash scripts/hw-profile.sh`** — a estratégia é função do hardware, não fixa. Os bullets abaixo são o baseline `constrained` (Mac 8 GiB); tier `workstation` (desktop 128 GB) sobrescreve (RA full, muitos cargos, slots opcionais, tmpfs, sccache). Tabela: DIRETRIZ §6.0. Racional: [ADR-0104](docs/architecture/decisions/0104-hardware-tiered-speed-strategy.md).
 - **Inner loop = `cargo check -p <crate>`** (ou `scripts/cargo-check-narrow.sh <crate>` p/ cortar tokens de erro). Nada de test/clippy/auditor por task.
-- **Slot warm por CoW:** `bash scripts/slot-seed.sh <slot>` → prefixe cada cargo com o `CARGO_TARGET_DIR` impresso (o Bash-tool não persiste env). Nunca use o `target/` default.
-- **Diagnóstico via LSP (maior alavanca):** prefira o **LSP nativo do Claude Code** / `bacon-ls` a ler saída crua do cargo e adivinhar tipos. (Pilotar + medir RAM — vide DIRETRIZ §6.)
+- **Slot warm por CoW** (só `constrained`): `bash scripts/slot-seed.sh <slot>` → prefixe cada cargo com o `CARGO_TARGET_DIR` impresso. No `workstation` os slots são opcionais (`target/` único basta).
+- **Diagnóstico via LSP (maior alavanca):** `constrained` = `cargo-check-narrow.sh` on-demand (RA é RAM-blocked); `workstation` = **rust-analyzer full como oráculo**, não leia saída crua do cargo.
 - **Gate batched no fim do módulo:** `scripts/nextest-impacted.sh` + clippy `--all-targets` + auditoria ≥2 lentes, **1× sobre o diff acumulado**.
-- **≤3 cargos simultâneos** (RAM 8 GiB) — o Coordenador escalona via SESSION_ACTIVE.
-- **NÃO use:** Cranelift (ruim p/ check-loop + gaps macOS), `mold` (incompatível macOS — use lld/ld-prime).
+- **Cargos simultâneos:** `constrained` ≤3 (RAM 8 GiB); `workstation` ~cores/6 (build) / ~cores/3 (check) — vide hw-profile.
+- **NÃO use:** Cranelift (ruim p/ check-loop + gaps macOS). Linker = `mold` no Linux (**nunca no `.cargo/config.toml` do repo** — global), `lld/ld-prime` no macOS (mold é ELF-only).
 
 ## §3 — CI / ship (Coordenador absorve PRCI)
 

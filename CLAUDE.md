@@ -53,7 +53,7 @@
 
 ## §4 — Memória persistente
 
-[`MEMORY.md`](file:///Users/dibrioli/.claude/projects/-Volumes-MAC-EXTERNO-PROJETOS--PH2D-definitiva/memory/MEMORY.md) — feedback acumulado, perfil do Enio, estado, paths canônicos. **LLM nova lê o índice antes de agir.**
+A memória agora é **versionada no repo** em [`project-memory/`](project-memory/) (índice: [`project-memory/MEMORY.md`](project-memory/MEMORY.md)) — feedback acumulado, perfil do Enio, estado, paths canônicos. **LLM nova lê o índice antes de agir.** O Claude Code lê/escreve a memória via **symlink** de `~/.claude/projects/<key>/memory` → `project-memory/` (bootstrap por-máquina em [`docs/DevOps/MULTI_MACHINE_SETUP.md`](docs/DevOps/MULTI_MACHINE_SETUP.md) §4). **Multi-máquina (Mac testes · Linux dev · Windows build):** GitHub é a fonte única, clone local por máquina — runbook completo em [`docs/DevOps/MULTI_MACHINE_SETUP.md`](docs/DevOps/MULTI_MACHINE_SETUP.md).
 
 ## §5 — Planos operacionais ativos
 

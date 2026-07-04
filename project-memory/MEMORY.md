@@ -29,6 +29,7 @@
 - [Worktree agent stale base](feedback_worktree_agent_stale_base.md) — `Agent(worktree)` ramifica do HEAD de início; só p/ audit read-only
 
 ## Ship / CI / cadência
+- [Multi-máquina Mac/Linux/Windows](project_multi_machine_setup.md) — GitHub = fonte única, clone local por máquina; memória vendorizada em `project-memory/` via symlink; runbook `docs/DevOps/MULTI_MACHINE_SETUP.md`
 - [Fast mode / ship](feedback_fast_mode_ship.md) — dia: `git commit --no-verify` sem push; fim: `./scripts/ship.sh` + push + babysit
 - [CI direto + fmt-skew](feedback_ci_direct_lint_gates_and_fmt_skew.md) — lint gates local antes; `cargo fmt` plain = skew, use `rustup run <pin> cargo fmt`
 - [Ship committed vs WIP alheio](feedback_ship_committed_vs_worktree_wip.md) — valide/conserte o committed via `git worktree --detach HEAD`, sem tocar WIP

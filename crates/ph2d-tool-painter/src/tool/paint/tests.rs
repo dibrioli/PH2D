@@ -6168,6 +6168,28 @@ fn deform_transform_reset_restores_pixels() {
 }
 
 #[test]
+fn deform_transform_is_confined_to_the_selection() {
+    // With a left-half selection, a Transform move warps only the selected texels; an unselected texel on
+    // the right stays byte-identical. The gizmo frame also snaps to the selection bbox, so grabbing its
+    // centre grabs the selection's centre.
+    let mut t = deform_ramp(64);
+    t.set_shape_grab_tol_px(8.0);
+    t.set_rect_selection(0, 0, 32, 64); // select the left half (x < 32)
+    let right_before = px(&t, 64, 48, 32);
+    t.set_deform_transform_on(true);
+    // The selection bbox centre is (16, 32) — grab the centre-move handle there and drag +6 in x.
+    t.on_canvas_pointer(cp([16.0, 32.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([22.0, 32.0], PointerPhase::Move));
+    t.on_canvas_pointer(cp([22.0, 32.0], PointerPhase::Up));
+    assert_ne!(px(&t, 64, 16, 32), [16, 128, 128, 255], "a selected texel is transformed");
+    assert_eq!(
+        px(&t, 64, 48, 32),
+        right_before,
+        "an unselected texel is left untouched (Transform confined to the selection)"
+    );
+}
+
+#[test]
 fn deform_transform_undo_rolls_back_the_gizmo_move() {
     // Undo restores the pixels AND the gizmo frame in lock-step (Wave 2 snapshot glue). One structural
     // entry per gizmo drag.
@@ -8754,26 +8776,26 @@ fn deform_push_moves_content_along_the_drag() {
 }
 
 #[test]
-fn deform_freeze_protects_the_selected_region() {
-    // Freeze on + a left-half selection: pushing across the boundary must leave selected (left) texels
-    // byte-identical while unselected (right) texels change.
+fn deform_is_confined_to_the_selection() {
+    // A left-half selection: pushing a Reshape dab across the boundary moves only the SELECTED (left)
+    // texels; the unselected (right) texels stay byte-identical. Deform acts only on the selected area
+    // (whole sprite when nothing is selected) — the Freeze toggle is gone (Enio 2026-07-04).
     let mut t = deform_ramp(64);
     t.set_rect_selection(0, 0, 32, 64); // select the left half (x < 32)
-    t.set_deform_freeze(true);
     let left_before = px(&t, 64, 16, 32);
     let right_before = px(&t, 64, 48, 32);
     t.on_canvas_pointer(cp([32.0, 32.0], PointerPhase::Down));
     t.on_canvas_pointer(cp([40.0, 32.0], PointerPhase::Move));
     t.on_canvas_pointer(cp([40.0, 32.0], PointerPhase::Up));
-    assert_eq!(
+    assert_ne!(
         px(&t, 64, 16, 32),
         left_before,
-        "a frozen (selected) texel is protected from the warp"
+        "a selected texel is warped"
     );
-    assert_ne!(
+    assert_eq!(
         px(&t, 64, 48, 32),
         right_before,
-        "an unselected texel is warped normally"
+        "an unselected texel is left untouched (confined to the selection)"
     );
 }
 
@@ -8811,7 +8833,7 @@ fn deform_reset_restores_the_session_pre_pixels() {
 }
 
 #[test]
-fn deform_panel_seam_mode_slider_and_freeze_drive_the_state() {
+fn deform_panel_seam_mode_slider_and_temperament_drive_the_state() {
     use ph2d_editor_core::ids as core_ids;
     use ph2d_editor_core::tool::PanelEvent;
     let mut t = deform_ramp(32);
@@ -8827,12 +8849,21 @@ fn deform_panel_seam_mode_slider_and_freeze_drive_the_state() {
         (t.paint.deform.strength - 0.9).abs() < 1e-6,
         "Strength slider drove the value"
     );
-    // Freeze toggle: Click flips the bool.
-    assert!(!t.paint.deform.freeze_on);
-    assert!(t.route_deform_event(&PanelEvent::Click(core_ids::PAINTER_DEFORM_FREEZE)));
+    // Temperament toggle: Click Transform → transform_on = true (and Reshape flips it back).
+    assert!(!t.paint.deform.transform_on);
+    assert!(t.route_deform_event(&PanelEvent::Click(
+        core_ids::PAINTER_DEFORM_TEMPERAMENT_TRANSFORM
+    )));
     assert!(
-        t.paint.deform.freeze_on,
-        "the Freeze toggle drove freeze_on = true"
+        t.paint.deform.transform_on,
+        "the Transform segment set transform_on = true"
+    );
+    assert!(t.route_deform_event(&PanelEvent::Click(
+        core_ids::PAINTER_DEFORM_TEMPERAMENT_RESHAPE
+    )));
+    assert!(
+        !t.paint.deform.transform_on,
+        "the Reshape segment set transform_on = false"
     );
 }
 

@@ -25,24 +25,21 @@ impl PainterTool {
         if self.paint.deform.pre.len() != n * 4 || self.paint.deform.disp.len() != n {
             return; // session not set up (unsized canvas)
         }
-        let freeze = self.deform_freeze_effective();
-        let inverted = self.deform_freeze_inverted();
+        // Deform is confined to the SELECTED area (whole sprite when nothing is selected) — the brush only
+        // moves texels the selection covers, so it can't smear content outside the region the artist chose.
+        let restrict = self.deform_restricts_to_selection();
 
-        // Pass 1 (immutable self): compute each texel's displacement contribution, scaled down where the
-        // Freeze mask protects it (coverage → keep-original). Collected into a bbox-local buffer so the
-        // mutable accumulate/render passes don't fight the `selection_coverage_at` borrow.
+        // Pass 1 (immutable self): compute each texel's displacement contribution, scaled by the selection
+        // coverage (0 outside → no movement). Collected into a bbox-local buffer so the mutable
+        // accumulate/render passes don't fight the `selection_coverage_at` borrow.
         let mut adds: Vec<[f32; 2]> = Vec::with_capacity((bbox.w * bbox.h) as usize);
         for ry in 0..bbox.h {
             let dy = bbox.y + ry;
             for rx in 0..bbox.w {
                 let dx = bbox.x + rx;
                 let mut d = field.at([dx as f32, dy as f32]);
-                if freeze {
-                    let mut keep = f32::from(self.selection_coverage_at(dx, dy)) / 255.0;
-                    if inverted {
-                        keep = 1.0 - keep;
-                    }
-                    let allow = 1.0 - keep;
+                if restrict {
+                    let allow = f32::from(self.selection_coverage_at(dx, dy)) / 255.0;
                     d[0] *= allow;
                     d[1] *= allow;
                 }

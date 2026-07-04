@@ -61,11 +61,8 @@ pub const PAINTER_DEFORM_MOMENTUM_CHIP: NodeId = hash_node_id("painter_deform.mo
 pub const PAINTER_DEFORM_STRENGTH_SLIDER: NodeId = hash_node_id("painter_deform.strength_slider");
 pub const PAINTER_DEFORM_STRENGTH_CHIP: NodeId = hash_node_id("painter_deform.strength_chip");
 
-// ── Freeze (Card C) ──────────────────────────────────────────────────────────────────────────────────
-/// **Freeze selected area** — protect the selection from the warp (a toggle; disabled without a selection).
-pub const PAINTER_DEFORM_FREEZE: NodeId = hash_node_id("painter_deform.freeze");
-/// **Invert freeze** — protect the complement of the selection (a toggle action).
-pub const PAINTER_DEFORM_FREEZE_INVERT: NodeId = hash_node_id("painter_deform.freeze_invert");
+// (Freeze removed — Deform is confined to the active selection automatically, or the whole sprite when
+// nothing is selected; the old protect/invert toggles were redundant with that rule.)
 
 // ── Session actions (Card D) ─────────────────────────────────────────────────────────────────────────
 /// **Reset** — discard the whole session's deformation (restore the pre-deform pixels).

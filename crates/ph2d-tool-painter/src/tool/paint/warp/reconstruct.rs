@@ -23,12 +23,12 @@ impl PainterTool {
         }
         let r = radius.max(1.0);
         let inv_r2 = 1.0 / (r * r);
-        let freeze = self.deform_freeze_effective();
-        let inverted = self.deform_freeze_inverted();
         let pressure = pressure.clamp(0.0, 1.0);
+        // Confined to the SELECTED area (whole sprite when nothing is selected), like every Deform op.
+        let restrict = self.deform_restricts_to_selection();
 
         // Pass 1 (immutable self): the per-texel amount of displacement to remove this dab (falloff·pressure,
-        // held back where Freeze protects). Collected first so the mutable pass doesn't fight the coverage borrow.
+        // scaled by the selection coverage). Collected first so the mutable pass doesn't fight the coverage borrow.
         let mut factors: Vec<f32> = Vec::with_capacity((bbox.w * bbox.h) as usize);
         for ry in 0..bbox.h {
             let dy = bbox.y + ry;
@@ -37,12 +37,8 @@ impl PainterTool {
                 let relx = dx as f32 - center[0];
                 let rely = dy as f32 - center[1];
                 let mut amt = falloff((relx * relx + rely * rely) * inv_r2) * pressure;
-                if freeze {
-                    let mut keep = f32::from(self.selection_coverage_at(dx, dy)) / 255.0;
-                    if inverted {
-                        keep = 1.0 - keep;
-                    }
-                    amt *= 1.0 - keep;
+                if restrict {
+                    amt *= f32::from(self.selection_coverage_at(dx, dy)) / 255.0;
                 }
                 factors.push(amt);
             }

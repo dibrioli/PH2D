@@ -13,6 +13,7 @@ mod apply;
 mod field;
 mod reconstruct;
 mod transform;
+mod transform_geom;
 
 pub use transform::DeformGizmoView;
 
@@ -49,9 +50,6 @@ pub(crate) struct DeformState {
     pub(crate) momentum: f32,
     /// Strength (`0..1`, `0.5` = centre) — bipolar: Pinch `<0.5` sucks / `>0.5` bulges; Twist sign = CW/CCW.
     pub(crate) strength: f32,
-    /// **Freeze**: protect the selected region (or its complement when [`Self::freeze_invert`]) from the warp.
-    pub(crate) freeze_on: bool,
-    pub(crate) freeze_invert: bool,
 
     // ── Transform temperament (Wave 2) ──
     /// Temperament: `false` = Reshape (brush dabs), `true` = Transform (gizmo warps a whole region).
@@ -94,8 +92,6 @@ impl Default for DeformState {
             distortion: 0.0, // OFF by default → clean Push (turbulence is opt-in; it's coherent, not grain)
             momentum: 0.0,   // no inertia by default
             strength: 0.5,   // centred → Pinch/Twist neutral (identity)
-            freeze_on: false,
-            freeze_invert: false,
             transform_on: false, // Reshape (brush) by default
             transform_mode: 0,   // Uniform
             xform: None,
@@ -136,14 +132,6 @@ impl PainterTool {
     /// Set the bipolar Strength track `0..1` (`0.5` = neutral).
     pub fn set_deform_strength(&mut self, t: f32) {
         self.paint.deform.strength = t.clamp(0.0, 1.0);
-    }
-    /// Turn Freeze (protect the selection during the warp) on/off.
-    pub fn set_deform_freeze(&mut self, on: bool) {
-        self.paint.deform.freeze_on = on;
-    }
-    /// Invert the frozen region (protect the complement of the selection).
-    pub fn set_deform_freeze_invert(&mut self, on: bool) {
-        self.paint.deform.freeze_invert = on;
     }
 
     // ── Session verbs (Card D) ──
@@ -217,16 +205,6 @@ impl PainterTool {
                 self.set_deform_transform_mode(idx);
                 true
             }
-            PanelEvent::Click(id) if *id == core_ids::PAINTER_DEFORM_FREEZE => {
-                let on = !self.paint.deform.freeze_on;
-                self.set_deform_freeze(on);
-                true
-            }
-            PanelEvent::Click(id) if *id == core_ids::PAINTER_DEFORM_FREEZE_INVERT => {
-                let on = !self.paint.deform.freeze_invert;
-                self.set_deform_freeze_invert(on);
-                true
-            }
             PanelEvent::Click(id) if *id == core_ids::PAINTER_DEFORM_RESET => {
                 self.deform_reset();
                 true
@@ -263,13 +241,11 @@ impl PainterTool {
         }
     }
 
-    /// Whether Freeze should protect texels this dab — on AND an active selection restricts painting.
-    pub(super) fn deform_freeze_effective(&self) -> bool {
-        self.paint.deform.freeze_on && self.selection_restricts_paint()
-    }
-    /// Whether the frozen region is inverted (protect the selection complement).
-    pub(super) fn deform_freeze_inverted(&self) -> bool {
-        self.paint.deform.freeze_invert
+    /// Whether an active selection confines the warp to the selected texels (else Deform acts on the whole
+    /// sprite). Applies to BOTH temperaments — Reshape brush dabs and the Transform affine both only move
+    /// texels the selection covers.
+    pub(super) fn deform_restricts_to_selection(&self) -> bool {
+        self.selection_restricts_paint()
     }
 
     // ── Pointer lifecycle ──

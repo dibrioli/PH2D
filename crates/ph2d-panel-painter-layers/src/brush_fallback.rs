@@ -69,9 +69,6 @@ pub(crate) const FALLBACK_BRUSH: BrushSettings = BrushSettings {
     deform_distortion: 0.0, // LITERAL-PX-OK: Deform default (turbulence off → clean Push)
     deform_momentum: 0.0,
     deform_strength: 0.5, // LITERAL-PX-OK: centred bipolar Strength (neutral)
-    deform_freeze_on: false,
-    deform_freeze_invert: false,
-    deform_has_selection: false,
     deform_transform_on: false,
     deform_transform_mode: 0,
     selection_offset: 0.5, // LITERAL-PX-OK: centred Offset = no grow/shrink (mirrors shape_offset_norm)

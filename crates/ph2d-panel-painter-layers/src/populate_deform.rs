@@ -64,12 +64,6 @@ pub(crate) fn register_deform_widgets(store: &mut WidgetStore) {
         .chain(ph2d_editor_core::ids::PAINTER_DEFORM_TEMPERAMENT_IDS.iter())
         .chain(ph2d_editor_core::ids::PAINTER_DEFORM_TRANSFORM_MODE_IDS.iter())
         .chain(ph2d_editor_core::ids::PAINTER_DEFORM_ACTION_IDS.iter())
-        .chain(std::iter::once(
-            &ph2d_editor_core::ids::PAINTER_DEFORM_FREEZE,
-        ))
-        .chain(std::iter::once(
-            &ph2d_editor_core::ids::PAINTER_DEFORM_FREEZE_INVERT,
-        ))
         .copied()
     {
         store.register(

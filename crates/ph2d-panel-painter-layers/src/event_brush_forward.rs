@@ -47,6 +47,4 @@ pub(crate) fn is_deform_click(id: NodeId) -> bool {
         || core_ids::PAINTER_DEFORM_TEMPERAMENT_IDS.contains(&id)
         || core_ids::PAINTER_DEFORM_TRANSFORM_MODE_IDS.contains(&id)
         || core_ids::PAINTER_DEFORM_ACTION_IDS.contains(&id)
-        || id == core_ids::PAINTER_DEFORM_FREEZE
-        || id == core_ids::PAINTER_DEFORM_FREEZE_INVERT
 }

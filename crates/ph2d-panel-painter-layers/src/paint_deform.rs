@@ -20,7 +20,7 @@ use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ROW_H_PX, Spacing};
 use ph2d_tool_painter::BrushSettings;
 
-use crate::paint_brush_top::{paint_checkbox_row, paint_slider_chip_row};
+use crate::paint_brush_top::paint_slider_chip_row;
 
 /// The Reconstruct sub-mode index (Distortion + Momentum don't apply → hidden).
 const MODE_RECONSTRUCT: u8 = 5;
@@ -58,7 +58,7 @@ pub(crate) fn paint_deform_section(
     };
 
     y = paint_section_separator(ctx.scene, theme, x, content_w, y);
-    y = paint_freeze_and_actions(ctx, theme, x, content_w, y, brush);
+    y = paint_actions(ctx, theme, x, content_w, y);
     y
 }
 
@@ -164,48 +164,16 @@ fn paint_reshape_body(
     y
 }
 
-/// **Freeze** toggle (+ Invert) then the **Reset / Apply / Apply & Keep** session actions — shared by both
-/// temperaments (they act on the whole session, not a specific brush/gizmo mode). Returns next `y`.
-fn paint_freeze_and_actions(
+/// The **Reset / Apply / Apply & Keep** session actions — shared by both temperaments (they act on the
+/// whole session, not a specific brush/gizmo mode). Deform is confined to the active selection (or the whole
+/// sprite when nothing is selected) automatically, so there's no Freeze toggle. Returns next `y`.
+fn paint_actions(
     ctx: &mut PaintCtx,
     theme: ph2d_tokens::Theme,
     x: f32,
     content_w: f32,
     y: f32,
-    brush: BrushSettings,
 ) -> f32 {
-    // Freeze — protect the selection during the warp. Without a selection the toggle is inert, so its label
-    // says so (a visible disabled hint, not a silent no-op).
-    let freeze_label = if brush.deform_has_selection {
-        "Freeze selected area"
-    } else {
-        "Freeze — make a selection first"
-    };
-    let mut y = paint_checkbox_row(
-        ctx,
-        theme,
-        x,
-        content_w,
-        y,
-        core_ids::PAINTER_DEFORM_FREEZE,
-        freeze_label,
-        brush.deform_freeze_on,
-    );
-    if brush.deform_freeze_on {
-        y = paint_checkbox_row(
-            ctx,
-            theme,
-            x,
-            content_w,
-            y,
-            core_ids::PAINTER_DEFORM_FREEZE_INVERT,
-            "Invert freeze",
-            brush.deform_freeze_invert,
-        );
-    }
-
-    y = paint_section_separator(ctx.scene, theme, x, content_w, y);
-
     // Session actions — Reset / Apply / Apply & Keep (momentary buttons, none selected).
     seg_group(
         ctx,
@@ -370,7 +338,6 @@ mod tests {
                     core_ids::PAINTER_DEFORM_SIZE_SLIDER,
                     core_ids::PAINTER_DEFORM_PRESSURE_SLIDER,
                     core_ids::PAINTER_DEFORM_STRENGTH_SLIDER,
-                    core_ids::PAINTER_DEFORM_FREEZE,
                 ]
                 .iter(),
             )
@@ -452,8 +419,7 @@ mod tests {
             !ids.contains(&core_ids::PAINTER_DEFORM_SIZE_SLIDER),
             "Reshape brush sliders hidden in Transform"
         );
-        // But the shared Freeze + actions survive.
-        assert!(ids.contains(&core_ids::PAINTER_DEFORM_FREEZE));
+        // But the shared session actions survive.
         assert!(ids.contains(&core_ids::PAINTER_DEFORM_APPLY));
         // And Reshape keeps the transform sub-mode hidden.
         let reshape = body_hit_ids(deform_brush());
@@ -463,19 +429,4 @@ mod tests {
         );
     }
 
-    #[test]
-    fn invert_freeze_shows_only_when_freeze_is_on() {
-        assert!(
-            !body_hit_ids(deform_brush()).contains(&core_ids::PAINTER_DEFORM_FREEZE_INVERT),
-            "Invert hidden while Freeze is off"
-        );
-        let frozen = ph2d_tool_painter::BrushSettings {
-            deform_freeze_on: true,
-            ..deform_brush()
-        };
-        assert!(
-            body_hit_ids(frozen).contains(&core_ids::PAINTER_DEFORM_FREEZE_INVERT),
-            "Invert shows once Freeze is on"
-        );
-    }
 }

@@ -1448,16 +1448,28 @@ impl crate::App {
             // não move pontos/handles"). The gizmo belongs to object selection
             // (Select) + the arrow/Move tools. Suppress the painted view here; the
             // selection stays armed (hierarchy highlight) — just no box/handles.
-            let suppress_gizmo = tools
-                .active()
-                .map(|t| {
-                    let id = t.id();
-                    id == ph2d_editor::ToolId::new("vector_direct")
-                        || id == ph2d_editor::ToolId::new("vector_pen")
-                        || id == ph2d_editor::ToolId::new("vector_pencil")
-                        || id == ph2d_editor::ToolId::new("vector_shape")
+            // The Deform Transform temperament shows its OWN whole-region gizmo (drawn in the painter
+            // overlays). The object-transform gizmo would sit ON TOP (paint_hero_screen draws after those
+            // overlays) and fight it, so suppress it while Deform Transform is active — the deform box IS the
+            // transform gizmo there (Enio 2026-07-04).
+            let painter_deform_transform = tools
+                .active_mut()
+                .and_then(|t| {
+                    t.as_any_mut()
+                        .downcast_mut::<ph2d_tool_painter::PainterTool>()
                 })
-                .unwrap_or(false);
+                .is_some_and(|p| p.deform_gizmo().is_some());
+            let suppress_gizmo = painter_deform_transform
+                || tools
+                    .active()
+                    .map(|t| {
+                        let id = t.id();
+                        id == ph2d_editor::ToolId::new("vector_direct")
+                            || id == ph2d_editor::ToolId::new("vector_pen")
+                            || id == ph2d_editor::ToolId::new("vector_pencil")
+                            || id == ph2d_editor::ToolId::new("vector_shape")
+                    })
+                    .unwrap_or(false);
             if suppress_gizmo {
                 hero.gizmo.view = None;
                 hero.gizmo.extra_views.clear();

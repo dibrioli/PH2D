@@ -46,12 +46,15 @@ head -1 ~/.claude/projects/$KEY/memory/MEMORY.md   # deve imprimir o índice
 ```
 Depois disso, reinicie o Claude Code para ele carregar a memória sincronizada.
 
-## 4. Secrets (gitignored — NÃO vêm no clone) — PARE e peça ao Enio
-Estes arquivos **não** estão no git e o debug build precisa deles:
-- `docs/_api-claude.md` (chave da API Anthropic)
-- `.env` / `.env.local` (se usados)
-
-**Não invente valores.** PARE, peça ao Enio o conteúdo (canal seguro), crie os arquivos, siga.
+## 4. Secrets (gitignored — NÃO vêm no clone) — PARE e peça o zip ao Enio
+O único secret (`docs/_api-claude.md`, chave da API Anthropic lida em debug builds) vem num zip
+que o Enio te passa: **`ph2d-secrets.zip`**. PARE, peça esse arquivo, e extraia a partir da raiz
+do repo (ele já contém o caminho correto):
+```bash
+unzip -o /caminho/para/ph2d-secrets.zip     # recria docs/_api-claude.md no lugar
+test -f docs/_api-claude.md && echo "secret OK"
+```
+**Não invente valores.** Sem o zip, não prossiga para builds de debug que leem a chave.
 
 ## 5. Baseline compila
 ```bash

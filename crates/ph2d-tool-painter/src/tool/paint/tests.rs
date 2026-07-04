@@ -8402,3 +8402,74 @@ fn multi_curve_click_targets_the_nearest_curve_not_the_last() {
         "the click targeted the NEAREST curve (0), not the last-drawn (1)"
     );
 }
+
+/// Stroke boolean (Enio 2026-07-04): two OVERLAPPING Add ellipses union — the combined region's OUTER
+/// contour is stroked, and the inner arcs (where the two circles cross, now inside the union) VANISH. With
+/// Overlay both full outlines would paint; Add must remove the overlap arcs.
+#[test]
+fn two_overlapping_add_ellipses_union_their_outline() {
+    let mut t = white_canvas(64, 2.0);
+    let add_ellipse = |c: [f32; 2], r: f32| stroke_multi::StrokeShape {
+        state: crate::undo::ShapeEditState::Ellipse(crate::undo::EllipseState {
+            center: c,
+            u: [1.0, 0.0],
+            rx: r,
+            ry: r,
+            editing: true,
+            seed: 1,
+        }),
+        op: stroke_multi::StrokeOp::Add,
+    };
+    // Two OVERLAPPING Add ellipses (centres 20 apart, r=12 each → overlap around x=34).
+    t.paint.parked_shapes.push(add_ellipse([24.0, 32.0], 12.0));
+    t.paint.parked_shapes.push(add_ellipse([44.0, 32.0], 12.0));
+    t.restamp_shapes_preview(&[]); // recompose → boolean union → stroked contour
+    let scan = |t: &PainterTool, x: u32, y: u32| {
+        (x.saturating_sub(2)..=x + 2)
+            .flat_map(|xx| (y.saturating_sub(2)..=y + 2).map(move |yy| (xx, yy)))
+            .any(|(xx, yy)| px(t, 64, xx, yy) == [0, 0, 0, 255])
+    };
+    assert!(
+        scan(&t, 12, 32),
+        "the union's OUTER boundary (A's left edge) is stroked"
+    );
+    assert!(
+        !scan(&t, 34, 32),
+        "the overlap centre is INSIDE the union → the inner arcs vanished (boolean, not overlay)"
+    );
+}
+
+/// Stroke boolean also works for a CLOSED Line (Enio 2026-07-04: "add e remove devem funcionar para
+/// qualquer linha fechada"). Two overlapping closed-line squares with Add union their outline.
+#[test]
+fn two_overlapping_closed_line_squares_union() {
+    let mut t = white_canvas(64, 2.0);
+    let add_square = |c: [f32; 2], r: f32| stroke_multi::StrokeShape {
+        state: crate::undo::ShapeEditState::Line(crate::undo::LineState {
+            points: vec![
+                [c[0] - r, c[1] - r],
+                [c[0] + r, c[1] - r],
+                [c[0] + r, c[1] + r],
+                [c[0] - r, c[1] + r],
+            ],
+            closed: true,
+            editing: true,
+            corner_mods: vec![(0, 0.0); 4],
+            seed: 1,
+        }),
+        op: stroke_multi::StrokeOp::Add,
+    };
+    t.paint.parked_shapes.push(add_square([22.0, 32.0], 12.0)); // x 10..34
+    t.paint.parked_shapes.push(add_square([42.0, 32.0], 12.0)); // x 30..54 — overlaps 30..34
+    t.restamp_shapes_preview(&[]);
+    let scan = |t: &PainterTool, x: u32, y: u32| {
+        (x.saturating_sub(2)..=x + 2)
+            .flat_map(|xx| (y.saturating_sub(2)..=y + 2).map(move |yy| (xx, yy)))
+            .any(|(xx, yy)| px(t, 64, xx, yy) == [0, 0, 0, 255])
+    };
+    assert!(scan(&t, 10, 32), "the union's outer-left edge is stroked");
+    assert!(
+        !scan(&t, 32, 32),
+        "the overlap centre is inside the union → the shared vertical edges vanished"
+    );
+}

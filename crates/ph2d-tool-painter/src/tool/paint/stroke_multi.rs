@@ -179,33 +179,55 @@ impl PainterTool {
         }
     }
 
-    /// Stamp the ACTIVE shape's `own` dabs PLUS every parked shape's dabs as one drag-preview batch — the
-    /// single seam the four `*_refill` paths funnel through. With no parked shapes `all == own`, so the
-    /// behaviour is byte-identical to the former single-shape `stamp_drag_preview(own)`.
+    /// Stamp EVERY shape as one drag-preview batch — the single seam the four `*_refill` paths funnel
+    /// through. Overlay + open shapes paint their own outline; Add/Remove CLOSED shapes are BOOLEAN-composited
+    /// (union / subtract, separate regions stay individual) and the combined contour is stroked instead. The
+    /// ACTIVE shape keeps its exact `own` dabs when it paints an outline (no regression); with no parked
+    /// shapes and an Overlay active shape this is byte-identical to the former single-shape stamp.
     pub(super) fn restamp_shapes_preview(&mut self, own: &[Dab]) {
-        if self.paint.parked_shapes.is_empty() {
-            self.stamp_drag_preview(own);
-            return;
-        }
-        let mut all = own.to_vec();
-        self.append_parked_dabs(&mut all);
-        self.stamp_drag_preview(&all);
-    }
+        let off = self.shape_offset_px();
+        // The ACTIVE shape's state + op (captured), so it can join the boolean composite or keep its `own`.
+        let active = self.capture_shape().map(|s| (*s, self.paint.active_op));
+        let active_is_bool = active.as_ref().is_some_and(|(s, op)| {
+            *op != StrokeOp::Overlay && stroke_boolean::is_boolean_fillable(s)
+        });
 
-    /// Append the dabs of every parked shape (their frozen geometry) to `out`.
-    fn append_parked_dabs(&mut self, out: &mut Vec<Dab>) {
-        let states: Vec<crate::undo::ShapeEditState> = self
-            .paint
-            .parked_shapes
-            .iter()
-            .map(|s| s.state.clone())
-            .collect();
-        let mut scratch = Vec::new();
-        for st in &states {
-            scratch.clear();
-            self.parked_shape_dabs(st, &mut scratch);
-            out.extend_from_slice(&scratch);
+        // 1) Outlines: the active shape's own dabs (unless it joins the boolean), + parked Overlay / open.
+        let mut dabs = Vec::new();
+        if !active_is_bool {
+            dabs.extend_from_slice(own);
         }
+        let mut scratch = Vec::new();
+        let parked: Vec<StrokeShape> = self.paint.parked_shapes.clone();
+        for s in &parked {
+            if s.op == StrokeOp::Overlay || !stroke_boolean::is_boolean_fillable(&s.state) {
+                scratch.clear();
+                self.parked_shape_dabs(&s.state, &mut scratch);
+                dabs.extend_from_slice(&scratch);
+            }
+        }
+
+        // 2) Boolean composite over the Add/Remove CLOSED shapes (active + parked), stroked per contour.
+        let mut bool_shapes: Vec<(crate::undo::ShapeEditState, StrokeOp)> = parked
+            .iter()
+            .filter(|s| s.op != StrokeOp::Overlay && stroke_boolean::is_boolean_fillable(&s.state))
+            .map(|s| (s.state.clone(), s.op))
+            .collect();
+        if active_is_bool {
+            bool_shapes.push(active.unwrap());
+        }
+        if !bool_shapes.is_empty() {
+            for contour in self.stroke_boolean_contours(&bool_shapes, off) {
+                if contour.len() >= 2 {
+                    let mut stroke =
+                        Stroke::new(self.paint.brush, self.paint.dynamics, self.paint.seed);
+                    scratch.clear();
+                    stroke.fill_polyline_preview(&contour, &mut scratch);
+                    dabs.extend_from_slice(&scratch);
+                }
+            }
+        }
+        self.stamp_drag_preview(&dabs);
     }
 
     /// Fill `out` with the dabs for one parked shape, applying the LIVE Offset slider so the one global

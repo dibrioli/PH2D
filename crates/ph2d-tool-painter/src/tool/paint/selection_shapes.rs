@@ -263,7 +263,7 @@ fn rasterize_ellipse(
 }
 
 /// Fold `region` into the accumulating `crisp` by the boolean op (`0` replace · `1` union · `2` subtract).
-fn combine_into(crisp: &mut [u8], region: &[u8], op: u8) {
+pub(super) fn combine_into(crisp: &mut [u8], region: &[u8], op: u8) {
     let n = crisp.len().min(region.len());
     match op {
         1 => {

@@ -29,7 +29,8 @@ mod curve_model; // shared editing core (points/handles/kinds/selected + ops) �
 mod curve_offset; // perpendicular offset (parallel curve) + CAD-grade reconstruction; split from `curve_geom`
 mod curve_tangent; // Bézier tangent-handle hit-test, aligned mirror, overlay snapshot; split from `curve`
 mod curve_trim; // self-intersection trim of the offset spine (open + closed); split from `curve_offset`
-mod stroke_multi; // multi-shape: parked (inactive-but-editable) stroke shapes + their Operation; the pixels are a derived recompose
+mod stroke_boolean; // multi-shape Add/Remove boolean composite (rasterise → union/subtract → trace contours)
+mod stroke_multi; // multi-shape: parked (inactive-but-editable) stroke shapes + their Operation; pixels are a derived recompose
 pub use stroke_multi::StrokeOpBadge;
 /// Per-dab randomize setters (Jitter Scale / Rotate / Randomize Color); split from `brush_settings`.
 mod jitter_settings;

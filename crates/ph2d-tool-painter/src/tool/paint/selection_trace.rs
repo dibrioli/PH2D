@@ -25,10 +25,71 @@ const OFF: [(i32, i32); 8] = [
     (-1, 1),
 ];
 
+/// Trace the outer contour of EVERY connected component of `mask` (multi-blob) — used by the stroke boolean
+/// composite, where separate Add/Remove regions must each become their own stroked contour (Enio 2026-07-04).
+/// Each component is flood-filled out of a working copy, then its outer boundary is traced + simplified.
+pub(super) fn trace_all_contours(mask: &[u8], w: usize, h: usize) -> Vec<Vec<[f32; 2]>> {
+    if w == 0 || h == 0 || mask.len() != w * h {
+        return Vec::new();
+    }
+    let mut work: Vec<u8> = mask.to_vec();
+    let mut out = Vec::new();
+    let guard = w * h + 1; // at most one component per pixel
+    for _ in 0..guard {
+        // First inside texel in row-major order (also the trace start), or done.
+        let Some(start) = (0..w * h).find(|&i| work[i] >= 128) else {
+            break;
+        };
+        // Flood-fill this component into `comp` + clear it from `work` so the next pass finds the next blob.
+        let mut comp = vec![0u8; w * h];
+        let mut stack = vec![start];
+        work[start] = 0;
+        while let Some(i) = stack.pop() {
+            comp[i] = 255;
+            let (x, y) = (i % w, i / w);
+            let push = |xx: usize, yy: usize, st: &mut Vec<usize>, wk: &mut [u8]| {
+                let j = yy * w + xx;
+                if wk[j] >= 128 {
+                    wk[j] = 0;
+                    st.push(j);
+                }
+            };
+            if x + 1 < w {
+                push(x + 1, y, &mut stack, &mut work);
+            }
+            if x > 0 {
+                push(x - 1, y, &mut stack, &mut work);
+            }
+            if y + 1 < h {
+                push(x, y + 1, &mut stack, &mut work);
+            }
+            if y > 0 {
+                push(x, y - 1, &mut stack, &mut work);
+            }
+        }
+        let mut c = trace_contour_raw(&comp, w, h); // RAW dense boundary → smooth stroke (not polygonal)
+        if c.len() >= 3 {
+            c.push(c[0]); // CLOSE the loop so the stroke has no gap at the seam (Enio 2026-07-04)
+            out.push(c);
+        }
+    }
+    out
+}
+
 /// Trace the outer contour of the selection mask (Moore-neighbour, clockwise), then simplify it. Returns a
 /// closed polyline of image-px points (pixel centres), or empty if nothing is selected. Only the outer
 /// boundary of the first (row-major) component is traced — good enough to seed an editable boundary.
 pub(super) fn trace_selection_contour(mask: &[u8], w: usize, h: usize) -> Vec<[f32; 2]> {
+    // Simplify: a 1.5px tolerance turns the pixel staircase into clean anchors, capped so a huge blob can't
+    // seed thousands of curve points. (The stroke boolean uses the RAW dense contour instead — no polygonal
+    // straight segments — via `trace_contour_raw`.)
+    simplify_closed(&trace_contour_raw(mask, w, h), 1.5, 256)
+}
+
+/// The RAW pixel-centre outer boundary of the first (row-major) mask component (Moore-neighbour, clockwise),
+/// NOT simplified — dense, so a brush stroked along it reads SMOOTH (no visible straight segments). Empty
+/// when nothing is inside.
+fn trace_contour_raw(mask: &[u8], w: usize, h: usize) -> Vec<[f32; 2]> {
     if w == 0 || h == 0 || mask.len() != w * h {
         return Vec::new();
     }
@@ -76,13 +137,10 @@ pub(super) fn trace_selection_contour(mask: &[u8], w: usize, h: usize) -> Vec<[f
             break;
         }
     }
-    let pts: Vec<[f32; 2]> = boundary
+    boundary
         .into_iter()
         .map(|(x, y)| [x as f32 + 0.5, y as f32 + 0.5])
-        .collect();
-    // Simplify: a 1.5px tolerance turns the pixel staircase into clean anchors, capped so a huge blob can't
-    // seed thousands of curve points.
-    simplify_closed(&pts, 1.5, 256)
+        .collect()
 }
 
 /// Douglas–Peucker simplification of a CLOSED polyline: split at the two mutually-farthest points, simplify

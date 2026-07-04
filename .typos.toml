@@ -216,6 +216,11 @@ abd = "abd"
 extend-exclude = [
     "target/**",
     "Cargo.lock",
+    # `project-memory/` is the Claude Code persistent memory (feedback, project
+    # lessons, profile) vendored into the repo so it syncs identically across
+    # Mac/Linux/Windows (see docs/DevOps/MULTI_MACHINE_SETUP.md). It is pt-BR
+    # knowledge base prose, not project source — never lint it.
+    "project-memory/**",
     # `backups/` is a verbatim snapshot of crates+docs taken before the watercolor v2
     # super-simplification (commit `30ecc096`) — NOT active source. Its pt-BR ADR docs
     # (controle, conservativo, fiel, …) trip the en-US dictionary; never lint a backup.

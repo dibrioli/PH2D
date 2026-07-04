@@ -1,0 +1,22 @@
+---
+name: project_texture_layer_design
+description: "Texture Layer = raster-backed LayerKind::Texture; pixels pre-rendered into images[id], composes with all layer features for free"
+metadata: 
+  node_type: memory
+  type: project
+  originSessionId: b1620edb-2d55-49ca-957d-0ad6dc05d957
+---
+
+Texture Layer (Enio, 2026-06-23): novo layer kind que exibe uma textura procedural (as mesmas dos Brushes) cobrindo a sprite, colorizada pelo Color Ramp, tudo real-time + compatível com TODOS os features de layer.
+
+**Decisão arquitetural — raster-backed, NÃO procedural-no-compositor:** `LayerKind::Texture(TextureLayer)` cujos pixels são **pré-renderizados full-canvas em `images[id]`** (RGBA8 straight sRGB, alpha real). O compositor trata a arm `Texture` **igual a Raster** (lê `images[id]`, aplica mask/clip/blend/opacity). Assim compõe com mask/clip/group/blend/reorder/duplicate de graça, no CPU **e** GPU. ⚠️ **LIÇÃO: ao adicionar variante de enum, grepe o REPO INTEIRO (incl. `shells/`), não só `crates/`.** Achei "zero shell changes" mas o shell tem 1 match exaustivo: `shells/desktop/src/render_loop/painter_gpu_flatten.rs` (`flatten_for_gpu`) — quebrou o build do desktop. Fix: Texture na MESMA arm que Raster (emite `LayerOp::Layer{key}`; GPU faz upload do buffer pré-renderizado). Lock-step com `composite_into`. (imageio tem `LayerKind` próprio não-relacionado; painel usa só `if let LayerKind::Adjustment` não-exaustivo.)
+
+**PERF — drag de param em tempo real (FPS):** edição de param/ramp re-renderiza o canvas INTEIRO por frame (≠ adjustment, que não muda pixels → GPU reusa slices em cache). Em sprite grande o re-render serial procedural era o sink de FPS. Fix: `render_texture_layer` renderiza em ROW BANDS paralelas via `crate::dab::parallel_band_stamp` (std::thread::scope, sem dep nova, ≥128k px = `PARALLEL_MIN_AREA`; pixel = função pura de (u,v) → bit-idêntico a serial, HR-5). Mesmíssimo padrão que resolveu o drag do brush texturizado (commit 5bd47c99). Textura fica visível o drag todo (sem suprimir preview). Ver [[project_painter_texture_brush_stamp_cache]].
+
+**Por que não procedural no compositor:** exigiria nova arm em DOIS compositores (CPU + GPU/ph2d-render = fora da minha pasta) e quebraria "compatível com tudo". Custo do raster-backed: re-render full-canvas por edit (aceitável; GPU-resident é follow-up se perf exigir em 4K).
+
+**Reuso de UI sem refactor:** o editor da textura-layer reusa `paint_texture_section` (brush) inline sob a row da layer ATIVA (garante instância única dos widgets fixed-id tool-global). O painel monta um `BrushSettings` view sobrescrevendo os campos `texture_*` de `current_brush()` a partir do `TextureLayer`. Os eventos de textura (widgets fixed-id) já fluem como `PanelEvent` pro tool; **o roteamento brush-vs-layer mora em `handle_panel_event`** (guard no topo: se active layer é Texture → aplica na layer + re-render, senão cai no brush).
+
+**LIÇÃO 2 (auditoria multiagêntica, 16 achados): um layer kind raster-backed novo precisa entrar em TODOS os gates raster-only, não só no compositor.** A 1ª entrega passou em todos os testes/gates mas: (a) CRÍTICO — o botão "+ Texture" não estava em `populate.rs` (slot no WidgetStore) → dispatch dropa o click → feature INALCANÇÁVEL (a clássica dead-button [[feedback_panel_populate_register]]; agora tem teste de regressão); (b) `duplicate_layer`/`add_mask_to_active`/`first_paintable_descendant`/`add_mask` e o gate UI do modifier toolbar (`is_raster`) **todos** gateavam `Raster(_)` → Duplicate/Mask/Clip/entrar-no-grupo silenciosamente mortos no texture layer; (c) o guard `route_texture_layer_event` sequestrava as edições da seção Texture do BRUSH sempre que um texture layer estava ativo (faltava gate em `dock_shows_layers`); (d) o color-box do ramp seedava/corrompia o stop a partir do ramp do BRUSH (`current_brush()`) em vez do layer. **Antídoto:** ao adicionar layer kind, grepe `LayerKind::Raster(_)` em TODO o crate (mutate/model/stack/paint modifier toolbar/populate) + verifique roteamento brush-vs-layer por VIEW, não só por "active". `stack.rs` está FROZEN em 630 → métodos novos de `LayerStack` (add_mask_for) vão no `layers/texture.rs`.
+
+`TextureLayer` guarda campos serde-safe (kind u8/params/size/offset) + `ColorRamp` (tornei serde em ph2d-color) + ramp_enabled/alpha_mode. Render = `render_texture_layer` (novo em ph2d-painter-brush, irmão de `render_texture_preview` mas escreve alpha REAL, não sobre checker). Ver [[project_painting_removed_layers_effects_kept]].

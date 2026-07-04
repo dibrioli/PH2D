@@ -6300,6 +6300,42 @@ fn deform_transform_perf_move_is_under_frame_budget() {
     );
 }
 
+/// Perf harness (RELEASE only): time one Warp mesh drag — the Catmull-Rom subdivision + fine-cell raster is
+/// heavier than the affine composite, so confirm an interactive drag still fits a 60 Hz frame.
+///   cargo test -p ph2d-tool-painter --release deform_warp_perf -- --ignored --nocapture
+#[test]
+#[ignore]
+fn deform_warp_perf_drag_is_under_frame_budget() {
+    let size = 2048u32;
+    let mut src = vec![0u8; (size * size * 4) as usize];
+    for px in src.chunks_exact_mut(4) {
+        px.copy_from_slice(&[200, 120, 60, 255]);
+    }
+    let mut t = PainterTool::default();
+    t.set_source(src, size, size);
+    t.set_paint_tool_mode("deform");
+    t.set_shape_grab_tol_px(16.0);
+    t.set_rect_selection(760, 760, 512, 512);
+    t.set_deform_transform_on(true);
+    t.set_deform_transform_mode(3); // Warp
+    // An interior control point of the 3×3 mesh over the selection [760,1272] sits at ≈(931,931).
+    let (cx, cy) = (931.0, 931.0);
+    t.on_canvas_pointer(cp([cx, cy], PointerPhase::Down));
+    let iters = 60;
+    let start = std::time::Instant::now();
+    for i in 0..iters {
+        let d = ((i % 20) as f32) - 10.0;
+        t.on_canvas_pointer(cp([cx + d, cy + d], PointerPhase::Move));
+    }
+    let per = start.elapsed().as_secs_f64() * 1000.0 / f64::from(iters);
+    t.on_canvas_pointer(cp([cx, cy], PointerPhase::Up));
+    println!("deform Warp drag: {per:.3} ms/frame (512² selection on {size}² canvas)");
+    assert!(
+        per < 16.0,
+        "Warp drag {per:.2} ms exceeds the 16 ms frame budget"
+    );
+}
+
 #[test]
 fn deform_transform_warp_mesh_moves_a_control_point() {
     // Warp sub-mode: entering it is byte-identical (the mesh seeds on the box); dragging an interior

@@ -72,8 +72,11 @@ pub struct DeformGizmoView {
     pub rotate_tol: f32,
     /// Distort mode: draw only the 4 `box_corners` as handles (no edges / rotate / centre).
     pub corner_only: bool,
-    /// Warp mode: `(cols, rows, control-points)` — the shell draws the grid lines + a handle per point.
+    /// Warp mode: `(fine_cols, fine_rows, fine-points)` — the shell draws the SMOOTH (curved) grid lines
+    /// through these Catmull-Rom-subdivided points.
     pub mesh: Option<(u32, u32, Vec<[f32; 2]>)>,
+    /// Warp mode: the COARSE control points — the only draggable handles (drawn as squares).
+    pub mesh_handles: Option<Vec<[f32; 2]>>,
 }
 
 /// The box's 4 corners `[TL, TR, BR, BL]` (the first four gizmo handles).
@@ -174,6 +177,7 @@ impl PainterTool {
         let tol = self.paint.shape_grab_tol_px;
         if self.paint.deform.transform_mode == MODE_WARP {
             let mesh = self.paint.deform.xform_mesh.as_ref()?;
+            let (fcols, frows, fine) = mesh.fine_current();
             let h = x.current.handles();
             return Some(DeformGizmoView {
                 box_corners: [h[0], h[1], h[2], h[3]],
@@ -182,7 +186,8 @@ impl PainterTool {
                 scale_tol: tol,
                 rotate_tol: tol,
                 corner_only: false,
-                mesh: Some((mesh.cols, mesh.rows, mesh.current.clone())),
+                mesh: Some((fcols, frows, fine)), // smooth curved grid lines
+                mesh_handles: Some(mesh.current.clone()), // draggable control points
             });
         }
         if self.paint.deform.transform_mode == MODE_DISTORT {
@@ -199,6 +204,7 @@ impl PainterTool {
                 rotate_tol: tol,
                 corner_only: true,
                 mesh: None,
+                mesh_handles: None,
             });
         }
         let h = x.current.handles();
@@ -210,6 +216,7 @@ impl PainterTool {
             rotate_tol: tol * ROTATE_BAND,
             corner_only: false,
             mesh: None,
+            mesh_handles: None,
         })
     }
 
@@ -233,57 +240,49 @@ impl PainterTool {
         let Some(x) = self.paint.deform.xform else {
             return false;
         };
-        // Push the current pose onto the LOCAL undo stack so this gesture can be stepped back; a no-op
-        // down→up pops it again in `deform_gizmo_up`.
-        if let Some(pose) = self.current_pose() {
-            self.paint.deform.xform_undo.push(pose);
-        }
-        self.paint.deform.xform_moved = false;
         let tol = self.paint.shape_grab_tol_px;
-        if self.paint.deform.transform_mode == MODE_WARP {
-            let Some(i) = self
-                .paint
+        // Hit-test the active sub-mode's handles. Warp / Distort grab ONLY a control point/corner within
+        // `tol` — a click in open mesh area grabs nothing (it doesn't warp from anywhere).
+        let grab = if self.paint.deform.transform_mode == MODE_WARP {
+            self.paint
                 .deform
                 .xform_mesh
                 .as_ref()
                 .and_then(|mesh| mesh.nearest_point(pos, tol))
-            else {
-                return true; // Down away from a control point still consumes.
-            };
-            self.paint.deform.xform_grab = Some(TransformGrab {
-                handle: i as u8,
-                start: pos,
-                initial: x.current,
-                initial_corners: None,
-                is_mesh: true,
-            });
-            return true;
-        }
-        if self.paint.deform.transform_mode == MODE_DISTORT {
+                .map(|i| TransformGrab {
+                    handle: i as u8,
+                    start: pos,
+                    initial: x.current,
+                    initial_corners: None,
+                    is_mesh: true,
+                })
+        } else if self.paint.deform.transform_mode == MODE_DISTORT {
             let q = x.corners.unwrap_or_else(|| box4(&x.current));
-            let Some(i) = nearest_corner(&q, pos, tol) else {
-                return true; // Down away from a corner still consumes (Transform owns the canvas).
-            };
-            self.paint.deform.xform_grab = Some(TransformGrab {
+            nearest_corner(&q, pos, tol).map(|i| TransformGrab {
                 handle: i as u8,
                 start: pos,
                 initial: x.current,
                 initial_corners: Some(q),
                 is_mesh: false,
-            });
-            return true;
-        }
-        let Some(handle) = hit_frame(&x.current, pos, tol) else {
-            return true;
+            })
+        } else {
+            hit_frame(&x.current, pos, tol).map(|handle| TransformGrab {
+                handle,
+                start: pos,
+                initial: x.current,
+                initial_corners: None,
+                is_mesh: false,
+            })
         };
-        self.paint.deform.xform_grab = Some(TransformGrab {
-            handle,
-            start: pos,
-            initial: x.current,
-            initial_corners: None,
-            is_mesh: false,
-        });
-        true
+        // Only a real grab pushes a pose onto the LOCAL undo stack (so a click in empty space leaves no junk).
+        if let Some(g) = grab {
+            if let Some(pose) = self.current_pose() {
+                self.paint.deform.xform_undo.push(pose);
+            }
+            self.paint.deform.xform_moved = false;
+            self.paint.deform.xform_grab = Some(g);
+        }
+        true // consume the canvas whether or not a handle was grabbed (Transform owns it)
     }
 
     fn deform_gizmo_move(&mut self, pos: [f32; 2]) -> bool {

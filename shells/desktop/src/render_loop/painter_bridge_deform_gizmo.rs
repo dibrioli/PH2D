@@ -58,30 +58,23 @@ pub(super) fn draw_deform_gizmo(
     let accents = super::painter_bridge_gizmo::GIZMO_ACCENTS;
     let pal = super::painter_bridge_gizmo::palette_accent(hero.theme, accents[0]);
     let scene = vector_scene.inner_mut();
-    // Warp mesh: draw the grid lines connecting adjacent control points + a handle at each point.
+    // Warp mesh: draw the SMOOTH (curved) grid lines through the fine subdivided points, then a draggable
+    // square handle at each COARSE control point (only those are grabbable).
     if let Some((cols, rows, pts)) = &g.mesh {
         let idx = |r: u32, c: u32| (r * (cols + 1) + c) as usize;
+        // Curved lines: one polyline per fine row and per fine column (so curvature reads continuously).
         for r in 0..=*rows {
-            for c in 0..=*cols {
-                let p = map(pts[idx(r, c)]);
-                if c < *cols {
-                    super::painter_bridge_gizmo::stroke_open(
-                        scene,
-                        &[p, map(pts[idx(r, c + 1)])],
-                        &pal,
-                    );
-                }
-                if r < *rows {
-                    super::painter_bridge_gizmo::stroke_open(
-                        scene,
-                        &[p, map(pts[idx(r + 1, c)])],
-                        &pal,
-                    );
-                }
-            }
+            let row: Vec<Point> = (0..=*cols).map(|c| map(pts[idx(r, c)])).collect();
+            super::painter_bridge_gizmo::stroke_open(scene, &row, &pal);
         }
-        for &p in pts {
-            super::painter_bridge_gizmo::square_handle(scene, map(p), &pal);
+        for c in 0..=*cols {
+            let col: Vec<Point> = (0..=*rows).map(|r| map(pts[idx(r, c)])).collect();
+            super::painter_bridge_gizmo::stroke_open(scene, &col, &pal);
+        }
+        if let Some(handles) = &g.mesh_handles {
+            for &p in handles {
+                super::painter_bridge_gizmo::square_handle(scene, map(p), &pal);
+            }
         }
         return;
     }

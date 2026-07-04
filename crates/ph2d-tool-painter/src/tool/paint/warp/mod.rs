@@ -12,6 +12,7 @@
 mod apply;
 mod field;
 mod reconstruct;
+mod transform;
 
 use super::Region;
 use crate::tool::PainterTool;

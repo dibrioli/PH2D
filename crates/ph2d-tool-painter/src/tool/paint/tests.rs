@@ -6224,6 +6224,44 @@ fn deform_transform_distort_warps_a_free_corner() {
     assert_ne!(*t.canvas_rgba, *seeded, "dragging a Distort corner warps the patch");
 }
 
+/// Perf harness (RELEASE only — dev/opt-0 lies about perf): time one Transform gizmo move on a moderate
+/// selection over a large canvas. The dirty-rect composite touches only the patch's source + destination
+/// bbox, so an interactive drag should land well under one 60 Hz frame (16 ms). Ignored by default:
+///   cargo test -p ph2d-tool-painter --release deform_transform_perf -- --ignored --nocapture
+#[test]
+#[ignore]
+fn deform_transform_perf_move_is_under_frame_budget() {
+    let size = 2048u32;
+    let mut src = vec![0u8; (size * size * 4) as usize];
+    for px in src.chunks_exact_mut(4) {
+        px.copy_from_slice(&[200, 120, 60, 255]);
+    }
+    let mut t = PainterTool::default();
+    t.set_source(src, size, size);
+    t.set_paint_tool_mode("deform");
+    t.set_shape_grab_tol_px(12.0);
+    // A 512×512 selection near the centre — a typical "move this region" gesture.
+    t.set_rect_selection(760, 760, 512, 512);
+    t.set_deform_transform_on(true);
+    // Warm up, then time a sequence of drags (grab the selection centre, wiggle it).
+    let cx = 1016.0;
+    let cy = 1016.0;
+    t.on_canvas_pointer(cp([cx, cy], PointerPhase::Down));
+    let iters = 60;
+    let start = std::time::Instant::now();
+    for i in 0..iters {
+        let dx = ((i % 20) as f32) - 10.0;
+        t.on_canvas_pointer(cp([cx + dx, cy + dx], PointerPhase::Move));
+    }
+    let per = start.elapsed().as_secs_f64() * 1000.0 / f64::from(iters);
+    t.on_canvas_pointer(cp([cx, cy], PointerPhase::Up));
+    println!("deform Transform move: {per:.3} ms/frame (512² selection on {size}² canvas)");
+    assert!(
+        per < 16.0,
+        "Transform move {per:.2} ms exceeds the 16 ms frame budget"
+    );
+}
+
 #[test]
 fn deform_transform_warp_mesh_moves_a_control_point() {
     // Warp sub-mode: entering it is byte-identical (the mesh seeds on the box); dragging an interior

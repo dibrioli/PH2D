@@ -12,17 +12,28 @@
   Reconstruct + Freeze + painel mode-exclusivo. Kernel inverse-warp single-resample (`warp/apply.rs`),
   campos por-modo (`warp/field.rs`, HR-5 sem transcendentais), `disp` de sessão no `ModelSnapshot`.
   ADR-0105 subiu o cap de LOC de arquivo 600→700 no caminho.
-- **Wave 2A+2B (Transform gizmo Uniform/Free) — LANDOU (commit local, sem push).** Toggle
-  **Reshape/Transform** no topo do painel troca o corpo; Transform mostra picker **Uniform/Free** + um
-  gizmo de bounding-box (8 quadrados de escala + anel de rotação + mover-centro) no canvas. Kernel:
-  frame pristina `F0` + frame arrastada `F` → afim `M = A1∘A0⁻¹` (`warp/transform.rs`
-  `affine_from_frames`), escrita como `D(p)=p−M⁻¹·p` no mesmo `disp`; `F==F0 ⇒ M=I ⇒ byte-idêntico`.
-  Gizmo **tool-side** (`on_canvas_pointer`, espelha `selection_gizmo.rs`) — zero foundational, zero
-  contrato congelado. Frame no `ModelSnapshot` → undo rola caixa+pixels juntos. Overlay no shell:
-  `painter_bridge_deform_gizmo.rs`.
-- **PENDENTE — Wave 2C (Distort/homografia 3×3 dos 4 cantos) + Wave 2D (Warp mesh Coons).**
-- **PENDENTE — perf 4K:** cada Move do gizmo re-resampleia o canvas inteiro na CPU; medir vs. o
-  budget ≤16ms e migrar p/ GPU se estourar (kill-criterion do plano).
+- **Wave 2 (Transform completo) — LANDOU (commits locais, sem push).** Toggle **Reshape/Transform** no
+  topo do painel troca o corpo; Transform mostra os 4 sub-modos **Uniform / Free / Distort / Warp**.
+  - **Modelo Procreate (float lift):** ao entrar em Transform com uma **seleção**, os pixels selecionados
+    são **erguidos** num *floating patch* (a marquee some), deixando um **buraco**; o gizmo move/escala/
+    rotaciona/distorce o retalho livremente sobre a base. Sem seleção = a camada inteira é o patch.
+    `M=I ⇒ patch na origem ⇒ byte-idêntico`. Um undo por transform (commit ao encerrar). Arquivo:
+    `warp/transform_float.rs`.
+  - **Uniform/Free** = afim de bounding-box (8 handles). **Distort** = homografia dos 4 cantos livres
+    (`Mat3` + Heckbert `homography_from_quads`). **Warp** = grade 4×4 de pontos, cada célula com sua
+    homografia (`warp/transform_mesh.rs`). Math pura em `warp/transform_geom.rs` (afim + projetivo,
+    HR-5 transcendental-free).
+  - **Confinamento:** Deform (Reshape **e** Transform) atua **só na área selecionada** (sprite toda se
+    nada selecionado). **Freeze removido** (redundante). Gizmo do Deform **acima** do gizmo de objeto
+    (suprime o object-gizmo enquanto Transform ativo).
+  - Gizmo **tool-side** (`on_canvas_pointer`) — zero foundational, zero contrato congelado. Overlay no
+    shell: `painter_bridge_deform_gizmo.rs`.
+- **Perf (Fase D) — dentro do budget.** O composite é **dirty-rect** (só o bbox source∪dest do patch,
+  não o canvas inteiro): **~12 ms/frame** p/ uma seleção 512² num canvas 2048² (`< 16 ms`; harness
+  `deform_transform_perf_move_is_under_frame_budget`, RELEASE). Proporcional à área → seleção pequena é
+  bem mais rápida. **Caso pesado remanescente:** transform da **camada inteira** (sem seleção) num sprite
+  grande é ~O(área do conteúdo) na CPU — candidato a GPU no futuro (consistente com os demais itens de
+  perf do projeto).
 
 ---
 

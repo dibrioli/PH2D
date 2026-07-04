@@ -6336,6 +6336,53 @@ fn deform_warp_perf_drag_is_under_frame_budget() {
     );
 }
 
+/// Perf harness (RELEASE): recompose N boolean selection shapes while dragging ONE — the per-shape raster
+/// cache should reuse the N−1 unchanged shapes (only the dragged one re-rasterizes).
+///   cargo test -p ph2d-tool-painter --release perf_selection_boolean -- --ignored --nocapture
+#[test]
+#[ignore]
+fn perf_selection_boolean_recompose_cache_vs_full() {
+    use super::selection_shapes::{SelectionEntry, SelectionShape};
+    let size = 2048u32;
+    let mut t = PainterTool::default();
+    t.set_source(vec![255u8; (size * size * 4) as usize], size, size);
+    for i in 0..8u32 {
+        let cx = 300.0 + i as f32 * 200.0;
+        t.paint.selection_shapes.push(SelectionEntry {
+            shape: SelectionShape::Ellipse {
+                center: [cx, 1024.0],
+                u: [1.0, 0.0],
+                rx: 160.0,
+                ry: 160.0,
+            },
+            op: if i == 0 { 0 } else { 1 },
+        });
+    }
+    t.recompose_selection_mask(); // warm the per-shape cache
+    let bump = |t: &mut PainterTool, k: u32| {
+        if let SelectionShape::Ellipse { center, .. } = &mut t.paint.selection_shapes[3].shape {
+            center[0] = 900.0 + (k % 10) as f32;
+        }
+    };
+    let iters = 60u32;
+    let t0 = std::time::Instant::now();
+    for k in 0..iters {
+        bump(&mut t, k);
+        t.recompose_selection_mask();
+    }
+    let cached = t0.elapsed().as_secs_f64() * 1000.0 / f64::from(iters);
+    let t1 = std::time::Instant::now();
+    for k in 0..iters {
+        t.paint.selection_raster_cache.clear(); // simulate the OLD behaviour (re-rasterize all 8)
+        bump(&mut t, k);
+        t.recompose_selection_mask();
+    }
+    let full = t1.elapsed().as_secs_f64() * 1000.0 / f64::from(iters);
+    println!(
+        "selection recompose 8 boolean shapes, drag 1: cache {cached:.2} ms/move  vs  full {full:.2} ms/move"
+    );
+}
+
 #[test]
 fn deform_transform_warp_mesh_moves_a_control_point() {
     // Warp sub-mode: entering it is byte-identical (the mesh seeds on the box); dragging an interior

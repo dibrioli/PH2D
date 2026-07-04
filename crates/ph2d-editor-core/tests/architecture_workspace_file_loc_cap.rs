@@ -9,9 +9,13 @@
 //! (compositor 2396 LOC), `ph2d-painter-effects` (compute 1636), `editor-core`
 //! pointer dispatch (1261), every `ph2d-tool-*` — had **no** size discipline.
 //! This gate closes that gap: every production `crates/*/src/**` file is
-//! capped at 600 LOC. Existing offenders are FROZEN at their 2026-06-20
-//! baseline (the allowlist below) — they may shrink but never grow, and any
-//! NEW file is born under 600. Decomposing the frozen entries is Fase 3.
+//! capped at 700 LOC (raised from 600 by [ADR-0105] — the raw-line metric
+//! misfires on cohesive data-heavy files like a 60-field struct + its
+//! `Default`, where splitting the definition fragments one responsibility;
+//! 700 still flags the genuine god-files as split candidates). Existing
+//! offenders above 700 are FROZEN at their 2026-06-20 baseline (the allowlist
+//! below) — they may shrink but never grow, and any NEW file is born under 700.
+//! Decomposing the frozen entries is Fase 3.
 //!
 //! Function-level caps are deliberately NOT enforced here: the brace-walk
 //! parser the panel cap uses miscounts on apostrophes inside `//` comments
@@ -32,7 +36,7 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
-const FILE_LOC_CAP: usize = 600;
+const FILE_LOC_CAP: usize = 700;
 
 /// Per-file frozen ceiling — pre-existing >600 files at the 2026-06-20
 /// blindagem Fase 0.4 baseline. Each is exempt up to the recorded LOC (may
@@ -40,53 +44,30 @@ const FILE_LOC_CAP: usize = 600;
 /// A NEW entry, or raising a number, requires Coordenador sign-off + an ADR
 /// note. Keys are relative to `crates/`.
 const FILE_OVERAGE_OK: &[(&str, usize)] = &[
-    ("ph2d-ecs/src/sort_key.rs", 637),
     ("ph2d-ecs/src/transform.rs", 784),
-    ("ph2d-editor-core/src/action_bus.rs", 626), // +1: HierUseAsBrushShape action (Shape import, Enio 2026-06-25; Coord sign-off — central action enum grows by design)
-    ("ph2d-editor-core/src/gizmo/paint.rs", 672),
     ("ph2d-editor-core/src/grid_snap/state.rs", 796),
     ("ph2d-editor-core/src/paint.rs", 884),
-    (
-        "ph2d-editor-core/src/screens/hero/context_menu_overlay.rs",
-        609,
-    ),
     ("ph2d-editor-core/src/screens/hero/topbar/mod.rs", 701),
-    ("ph2d-grid/src/hex.rs", 694),
-    ("ph2d-grid/src/voronoi.rs", 626),
     ("ph2d-imageio-apng/src/lib.rs", 768),
-    ("ph2d-imageio-ph2d-native/src/lib.rs", 642),
     ("ph2d-imageio-ph2d-native/src/schema.rs", 746),
     ("ph2d-imageio-tiff/src/lib.rs", 905),
     ("ph2d-nodegraph/src/cook.rs", 864),
     ("ph2d-painter-effects/src/adjustments/mod.rs", 946),
     ("ph2d-painter-effects/src/adjustments/spatial.rs", 856),
-    ("ph2d-painter-effects/src/blend.rs", 689),
     ("ph2d-render/src/compressed_pipeline.rs", 993),
     ("ph2d-render/src/individual.rs", 969),
     ("ph2d-render/src/layer_compositor/mod.rs", 934),
-    ("ph2d-render/src/picking.rs", 631),
     ("ph2d-render/src/renderer.rs", 1000),
-    ("ph2d-text/src/system.rs", 638),
-    ("ph2d-tokens/src/color.rs", 618),
     ("ph2d-tool-bgremoval/src/algorithm/chroma/mod.rs", 704),
     ("ph2d-tool-bgremoval/src/algorithm/compose.rs", 931),
-    ("ph2d-tool-bgremoval/src/algorithm/guided_filter.rs", 683),
-    ("ph2d-tool-bgremoval/src/algorithm/silhouette.rs", 646),
     ("ph2d-tool-color-equalization/src/gpu/auto_wb.rs", 748),
-    ("ph2d-tool-color-equalization/src/gpu/chain.rs", 631),
     ("ph2d-tool-color-equalization/src/gpu/tonal_batch.rs", 744),
     ("ph2d-tool-color-equalization/src/params.rs", 888),
     ("ph2d-tool-equalize-sizes/src/algorithm.rs", 755),
-    ("ph2d-tool-painter/src/layers/stack.rs", 630),
     ("ph2d-tool-rasterize/src/algorithm.rs", 734),
-    ("ph2d-tool-upscale/src/algorithm.rs", 698),
     ("ph2d-tool-vector-direct/src/tool.rs", 862),
     ("ph2d-tool-vector-pen/src/tool.rs", 864),
     ("ph2d-tool-vector-pencil/src/tool.rs", 759),
-    ("ph2d-tool-vector-shape/src/tool.rs", 651),
-    ("ph2d-vector-doc/src/cubic_fit.rs", 636),
-    ("ph2d-vector-doc/src/edit_log.rs", 625),
-    ("ph2d-vector-fill/src/lib.rs", 690),
     ("ph2d-vector-fill/src/poisson_cpu.rs", 775),
     ("ph2d-vector/src/vector_network.rs", 780),
 ];

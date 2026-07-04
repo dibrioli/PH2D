@@ -54,8 +54,9 @@ pub(crate) struct DeformState {
     pub(crate) strength: f32,
 
     // ── Transform temperament (Wave 2) ──
-    /// Temperament: `false` = Reshape (brush dabs), `true` = Transform (gizmo warps a whole region).
-    pub(crate) transform_on: bool,
+    /// Temperament: `0` none picked · `1` Reshape (brush dabs) · `2` Transform (gizmo). Resets to `0` each
+    /// time the Deform panel is entered (the artist must pick). See `DEFORM_TEMPERAMENT_*`.
+    pub(crate) temperament: u8,
     /// Transform sub-mode: `0` Uniform (aspect-locked corners), `1` Free (independent axes).
     pub(crate) transform_mode: u8,
     /// The gizmo frame (pristine + current). `None` until Transform is first shown with a session; captured
@@ -63,6 +64,13 @@ pub(crate) struct DeformState {
     pub(crate) xform: Option<transform::Xform>,
     /// The active gizmo handle grab (pristine frame + pointer at grab; transient, not snapshotted).
     pub(crate) xform_grab: Option<transform::TransformGrab>,
+    /// `true` once the current gizmo gesture actually moved the geometry (so a no-op down→up doesn't push a
+    /// duplicate onto the local undo stack).
+    pub(crate) xform_moved: bool,
+    /// The **local** undo stack of gizmo poses (one per gesture) — undo while a Transform is live steps the
+    /// gizmo back through these WITHOUT touching the structural timeline (the whole transform is one entry,
+    /// committed when it ends). Pixels aren't stored (re-composited from the pose), so it's cheap.
+    pub(crate) xform_undo: Vec<transform::PoseSnap>,
     /// The **Warp mesh** grid of control points (Distort's big brother): a lattice over the patch whose
     /// points drag independently, each cell warped by its own homography. `Some` only in the Warp sub-mode.
     pub(crate) xform_mesh: Option<transform::Mesh>,
@@ -102,16 +110,18 @@ pub(crate) struct DeformState {
 impl Default for DeformState {
     fn default() -> Self {
         Self {
-            mode: 0,             // Push
-            size_norm: 0.5,      // mid brush
-            pressure: 0.8,       // firm by default (Procreate-ish)
+            mode: 0,                                     // Push
+            size_norm: 0.5,                              // mid brush
+            pressure: 0.8,                               // firm by default (Procreate-ish)
             distortion: 0.0, // OFF by default → clean Push (turbulence is opt-in; it's coherent, not grain)
             momentum: 0.0,   // no inertia by default
             strength: 0.5,   // centred → Pinch/Twist neutral (identity)
-            transform_on: false, // Reshape (brush) by default
+            temperament: super::DEFORM_TEMPERAMENT_NONE, // nothing picked until the artist chooses
             transform_mode: 0, // Uniform
             xform: None,
             xform_grab: None,
+            xform_moved: false,
+            xform_undo: Vec::new(),
             xform_mesh: None,
             xform_patch: None,
             xform_before: None,
@@ -159,7 +169,7 @@ impl PainterTool {
     /// **Reset** — discard the deformation. In Transform this snaps the floating patch back to its origin
     /// (the transform stays live); in Reshape it restores the pre-deform pixels (one undo entry).
     pub fn deform_reset(&mut self) {
-        if self.paint.deform.transform_on && self.paint.deform.xform_patch.is_some() {
+        if self.paint.deform.xform_patch.is_some() {
             self.reset_transform();
             return;
         }
@@ -176,7 +186,7 @@ impl PainterTool {
     /// float (one undo entry) then re-lifts the baked layer so you can keep transforming; in Reshape it
     /// closes the disp session so the next stroke captures a fresh baseline.
     pub fn deform_apply(&mut self) {
-        if self.paint.deform.transform_on && self.paint.deform.xform_patch.is_some() {
+        if self.paint.deform.xform_patch.is_some() {
             self.end_transform(true);
             self.begin_transform();
             return;
@@ -187,7 +197,7 @@ impl PainterTool {
     /// is the same as Apply (commit + re-lift); in Reshape it rebases `pre` to the current canvas and zeroes
     /// the accumulated displacement.
     pub fn deform_apply_keep(&mut self) {
-        if self.paint.deform.transform_on && self.paint.deform.xform_patch.is_some() {
+        if self.paint.deform.xform_patch.is_some() {
             self.end_transform(true);
             self.begin_transform();
             return;
@@ -223,7 +233,12 @@ impl PainterTool {
                     .iter()
                     .position(|x| x == id)
                     .unwrap_or(0);
-                self.set_deform_transform_on(idx == 1); // 0 Reshape · 1 Transform
+                // Segment 0 = Reshape · 1 = Transform.
+                self.set_deform_temperament(if idx == 1 {
+                    super::DEFORM_TEMPERAMENT_TRANSFORM
+                } else {
+                    super::DEFORM_TEMPERAMENT_RESHAPE
+                });
                 true
             }
             PanelEvent::Click(id) if core_ids::PAINTER_DEFORM_TRANSFORM_MODE_IDS.contains(id) => {

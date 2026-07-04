@@ -108,7 +108,7 @@ impl PainterTool {
             deform_distortion: self.paint.deform.distortion,
             deform_momentum: self.paint.deform.momentum,
             deform_strength: self.paint.deform.strength,
-            deform_transform_on: self.paint.deform.transform_on,
+            deform_temperament: self.paint.deform.temperament,
             deform_transform_mode: self.paint.deform.transform_mode,
             selection_offset: self.selection_offset(),
             inpaint_patch: self.paint.inpaint_patch_norm,

@@ -10,6 +10,7 @@
 //! [`FloatingPatch`] composite via a [`Mat3`]. `M = I` ⇒ patch on its origin ⇒ **byte-identical**. The whole
 //! transform is ONE undo entry, committed when it ends.
 
+use super::super::{DEFORM_TEMPERAMENT_RESHAPE, DEFORM_TEMPERAMENT_TRANSFORM};
 use super::transform_geom::{
     Affine2, Mat3, ROTATE_BAND, TransformFrame, affine_from_frames, drag_frame, hit_frame,
     homography_from_quads,
@@ -51,6 +52,15 @@ pub(crate) struct Xform {
     pub corners: Option<[[f32; 2]; 4]>,
 }
 
+/// A gizmo pose (one gesture's worth of geometry) for the Transform's LOCAL undo stack — pixels aren't
+/// stored (they re-composite from the pose), so it's cheap.
+#[derive(Clone, Debug)]
+pub(crate) struct PoseSnap {
+    pub current: TransformFrame,
+    pub corners: Option<[[f32; 2]; 4]>,
+    pub mesh: Option<Mesh>,
+}
+
 /// A drawable Transform gizmo (image-space px) for the shell overlay. Affine sub-modes show the oriented box
 /// with 8 scale squares (corners + edge mids, a square reads as a circle in its rotate ring) + a centre-move
 /// square. Distort shows ONLY the 4 corner squares (each drags freely). `corner_only` selects which.
@@ -78,18 +88,32 @@ impl PainterTool {
     /// Switch the Deform temperament: `false` = Reshape (brush), `true` = Transform (gizmo). Turning
     /// Transform on LIFTS the floating patch (consuming the selection marquee); turning it off bakes the
     /// patch + commits the whole transform as one undo entry.
-    pub fn set_deform_transform_on(&mut self, on: bool) {
-        if self.paint.deform.transform_on == on {
+    pub fn set_deform_temperament(&mut self, t: u8) {
+        let t = t.min(DEFORM_TEMPERAMENT_TRANSFORM);
+        let old = self.paint.deform.temperament;
+        if t == old {
             return;
         }
-        self.paint.deform.transform_on = on;
-        if on {
-            // Reshape and Transform don't share a session — drop any Reshape disp so nothing re-warps.
-            self.end_deform_session();
-            self.begin_transform();
-        } else {
+        // Leaving Transform bakes + commits the outgoing transform (one undo entry).
+        if old == DEFORM_TEMPERAMENT_TRANSFORM {
             self.end_transform(true);
         }
+        self.paint.deform.temperament = t;
+        if t == DEFORM_TEMPERAMENT_TRANSFORM {
+            // Reshape and Transform don't share a session — drop any Reshape disp so nothing re-warps, then
+            // LIFT the floating patch from the current selection (re-lifts fresh every time it's picked, so a
+            // new selection always gets a new gizmo).
+            self.end_deform_session();
+            self.begin_transform();
+        }
+    }
+    /// Back-compat toggle (Reshape ↔ Transform), used by tests + the legacy call sites.
+    pub fn set_deform_transform_on(&mut self, on: bool) {
+        self.set_deform_temperament(if on {
+            DEFORM_TEMPERAMENT_TRANSFORM
+        } else {
+            DEFORM_TEMPERAMENT_RESHAPE
+        });
     }
 
     /// Set the Transform sub-mode: `0` Uniform · `1` Free (affine box) · `2` Distort (free-corner
@@ -141,7 +165,7 @@ impl PainterTool {
     #[must_use]
     pub fn deform_gizmo(&self) -> Option<DeformGizmoView> {
         if !self.is_deform_mode()
-            || !self.paint.deform.transform_on
+            || self.paint.deform.temperament != DEFORM_TEMPERAMENT_TRANSFORM
             || self.paint.deform.xform_patch.is_none()
         {
             return None;
@@ -209,6 +233,12 @@ impl PainterTool {
         let Some(x) = self.paint.deform.xform else {
             return false;
         };
+        // Push the current pose onto the LOCAL undo stack so this gesture can be stepped back; a no-op
+        // down→up pops it again in `deform_gizmo_up`.
+        if let Some(pose) = self.current_pose() {
+            self.paint.deform.xform_undo.push(pose);
+        }
+        self.paint.deform.xform_moved = false;
         let tol = self.paint.shape_grab_tol_px;
         if self.paint.deform.transform_mode == MODE_WARP {
             let Some(i) = self
@@ -263,44 +293,120 @@ impl PainterTool {
         let Some(x) = self.paint.deform.xform else {
             return false;
         };
+        // Update the geometry for the grabbed handle, then re-composite.
         if grab.is_mesh {
-            // Warp: move the grabbed control point directly (absolute → drift-free) and re-composite.
-            if let Some(mesh) = self.paint.deform.xform_mesh.as_mut() {
-                if let Some(p) = mesh.current.get_mut(grab.handle as usize) {
-                    *p = pos;
-                }
-                self.composite_mesh();
+            // Warp: move the grabbed control point directly (absolute → drift-free).
+            if let Some(mesh) = self.paint.deform.xform_mesh.as_mut()
+                && let Some(p) = mesh.current.get_mut(grab.handle as usize)
+            {
+                *p = pos;
             }
-            return true;
-        }
-        if let Some(init_q) = grab.initial_corners {
-            // Distort: move the grabbed corner freely → homography from the pristine box corners.
+        } else if let Some(init_q) = grab.initial_corners {
+            // Distort: move the grabbed corner freely.
             let mut q = init_q;
             q[grab.handle as usize] = pos;
             self.paint.deform.xform = Some(Xform {
                 corners: Some(q),
                 ..x
             });
-            if let Some(m) = homography_from_quads(&box4(&x.pristine), &q) {
-                self.composite_transform(m);
-            }
-            return true;
+        } else {
+            // Affine (Uniform / Free): rebuild the frame drift-free.
+            let uniform = self.paint.deform.transform_mode == 0;
+            let new_current = drag_frame(&grab.initial, grab.handle, grab.start, pos, uniform);
+            self.paint.deform.xform = Some(Xform {
+                current: new_current,
+                ..x
+            });
         }
-        // Affine (Uniform / Free): rebuild the frame drift-free → affine box→box.
-        let uniform = self.paint.deform.transform_mode == 0;
-        let new_current = drag_frame(&grab.initial, grab.handle, grab.start, pos, uniform);
-        self.paint.deform.xform = Some(Xform {
-            current: new_current,
-            ..x
-        });
-        if let Some(a) = affine_from_frames(&x.pristine, &new_current) {
-            self.composite_transform(Mat3::from_affine(a));
-        }
+        self.recomposite_transform();
+        self.paint.deform.xform_moved = true;
         true
     }
 
     fn deform_gizmo_up(&mut self) -> bool {
-        self.paint.deform.xform_grab.take().is_some()
+        let had = self.paint.deform.xform_grab.take().is_some();
+        // A no-op gesture (down→up without a move) leaves nothing to undo — drop the pose pushed on Down.
+        if had && !self.paint.deform.xform_moved {
+            self.paint.deform.xform_undo.pop();
+        }
+        self.paint.deform.xform_moved = false;
+        had
+    }
+
+    /// The current gizmo pose (for the local undo stack).
+    fn current_pose(&self) -> Option<PoseSnap> {
+        let x = self.paint.deform.xform?;
+        Some(PoseSnap {
+            current: x.current,
+            corners: x.corners,
+            mesh: self.paint.deform.xform_mesh.clone(),
+        })
+    }
+
+    /// Re-composite the floating patch from the CURRENT pose, picking affine / homography / mesh by sub-mode.
+    /// Shared by live dragging and the local undo step.
+    pub(crate) fn recomposite_transform(&mut self) {
+        let Some(x) = self.paint.deform.xform else {
+            return;
+        };
+        if self.paint.deform.transform_mode == MODE_WARP {
+            self.composite_mesh();
+        } else if self.paint.deform.transform_mode == MODE_DISTORT {
+            let q = x.corners.unwrap_or_else(|| box4(&x.current));
+            if let Some(m) = homography_from_quads(&box4(&x.pristine), &q) {
+                self.composite_transform(m);
+            }
+        } else if let Some(a) = affine_from_frames(&x.pristine, &x.current) {
+            self.composite_transform(Mat3::from_affine(a));
+        }
+    }
+
+    /// Step ONE gizmo pose back on the Transform's LOCAL undo stack (a live-transform undo), or — when the
+    /// stack is empty — undo the lift itself (restore the pre-lift model: the selection marquee returns and
+    /// the float is dropped). Returns `true` iff it handled the undo (so the caller skips the structural
+    /// undo). No-op when no Transform is live.
+    pub(crate) fn transform_undo_step(&mut self) -> bool {
+        if self.paint.deform.xform_patch.is_none() {
+            return false;
+        }
+        if let Some(pose) = self.paint.deform.xform_undo.pop() {
+            if let Some(x) = self.paint.deform.xform {
+                self.paint.deform.xform = Some(Xform {
+                    current: pose.current,
+                    corners: pose.corners,
+                    ..x
+                });
+            }
+            self.paint.deform.xform_mesh = pose.mesh;
+            self.paint.deform.xform_grab = None;
+            self.paint.deform.xform_moved = false;
+            self.recomposite_transform();
+            return true;
+        }
+        // Empty stack → the gizmo is at its lift pose; the next undo un-lifts (restore the pre-lift model).
+        if let Some(before) = self.paint.deform.xform_before.take() {
+            self.clear_transform_state();
+            self.restore_model(before);
+            return true;
+        }
+        false
+    }
+
+    /// `true` while a Transform float is lifted (a live transform is in progress).
+    pub(crate) fn deform_transform_live(&self) -> bool {
+        self.paint.deform.xform_patch.is_some()
+    }
+
+    /// Drop all live Transform state (float + poses) WITHOUT committing — used when the lift is undone.
+    pub(crate) fn clear_transform_state(&mut self) {
+        self.paint.deform.xform_patch = None;
+        self.paint.deform.xform = None;
+        self.paint.deform.xform_grab = None;
+        self.paint.deform.xform_mesh = None;
+        self.paint.deform.xform_before = None;
+        self.paint.deform.xform_last_bbox = None;
+        self.paint.deform.xform_undo.clear();
+        self.paint.deform.xform_moved = false;
     }
 }
 

@@ -11,6 +11,12 @@ use ph2d_painter_brush::{
     BrushBlend, Falloff, FalloffPoint, HandleType, JitterUnit, MAX_FALLOFF_POINTS,
 };
 
+/// Deform **temperament** values for [`BrushSettings::deform_temperament`]. The panel opens with `NONE`
+/// (neither segment selected) so the artist must pick — `RESHAPE` (brush) or `TRANSFORM` (gizmo).
+pub const DEFORM_TEMPERAMENT_NONE: u8 = 0;
+pub const DEFORM_TEMPERAMENT_RESHAPE: u8 = 1;
+pub const DEFORM_TEMPERAMENT_TRANSFORM: u8 = 2;
+
 // `BrushTextureImage` lives in the sibling `brush_image` module (LOC cap); re-exported so the existing
 // `super::brush_settings::BrushTextureImage` import paths stay stable.
 pub(super) use super::brush_image::BrushTextureImage;
@@ -94,9 +100,10 @@ pub struct BrushSettings {
     pub deform_distortion: f32,
     pub deform_momentum: f32,
     pub deform_strength: f32,
-    /// **Transform** temperament (Wave 2): `false` = Reshape (brush), `true` = Transform (bounding-box
-    /// gizmo). Toggles which controls the mode-exclusive Deform section shows.
-    pub deform_transform_on: bool,
+    /// **Temperament** (Wave 2): `0` none picked · `1` Reshape (brush) · `2` Transform (gizmo) — see the
+    /// `DEFORM_TEMPERAMENT_*` consts. Opens at `NONE` each time the panel is entered so the artist must
+    /// choose; decides which body the mode-exclusive Deform section shows.
+    pub deform_temperament: u8,
     /// Transform sub-mode (`0` Uniform aspect-locked · `1` Free independent axes) — only shown in Transform.
     pub deform_transform_mode: u8,
     /// **Offset** (grow/shrink) slider position (`0..1`, `0.5` = no change) — expands/contracts the edited

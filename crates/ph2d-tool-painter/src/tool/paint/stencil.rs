@@ -360,6 +360,12 @@ impl PainterTool {
             self.end_transform(true);
             self.end_deform_session();
         }
+        // ENTERING Deform: the temperament opens UNSELECTED — the artist must pick Reshape or Transform
+        // each time the panel is entered, so re-picking Transform always re-lifts a fresh gizmo (Enio
+        // 2026-07-04). Any prior transform was already baked on the last leave.
+        if self.paint.paint_mode != PaintMode::Deform && new_mode == PaintMode::Deform {
+            self.paint.deform.temperament = super::DEFORM_TEMPERAMENT_NONE;
+        }
         self.paint.paint_mode = new_mode;
         // Leaving the Selection tool auto-hides its gizmos (the "Show Selection Gizmos" checkbox unchecks) —
         // the gizmos belong to Select and would otherwise linger over another tool (Enio 2026-07-03).

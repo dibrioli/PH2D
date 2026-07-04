@@ -69,7 +69,7 @@ pub(crate) const FALLBACK_BRUSH: BrushSettings = BrushSettings {
     deform_distortion: 0.0, // LITERAL-PX-OK: Deform default (turbulence off → clean Push)
     deform_momentum: 0.0,
     deform_strength: 0.5, // LITERAL-PX-OK: centred bipolar Strength (neutral)
-    deform_transform_on: false,
+    deform_temperament: 0,
     deform_transform_mode: 0,
     selection_offset: 0.5, // LITERAL-PX-OK: centred Offset = no grow/shrink (mirrors shape_offset_norm)
     inpaint_patch: 0.25, // LITERAL-PX-OK: brush default (mirrors PaintState::default inpaint_patch_norm)

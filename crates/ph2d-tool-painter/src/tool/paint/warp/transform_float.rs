@@ -97,6 +97,8 @@ impl PainterTool {
         });
         self.paint.deform.xform_before = Some(before);
         self.paint.deform.xform_last_bbox = None;
+        self.paint.deform.xform_undo.clear();
+        self.paint.deform.xform_moved = false;
         // Consume the selection: the marquee disappears (Procreate) — the region now lives in the patch. Done
         // WITHOUT its own undo (the transform's single `before` snapshot, captured above, still holds it).
         if restrict {
@@ -167,6 +169,8 @@ impl PainterTool {
         });
         self.paint.deform.xform_grab = None;
         self.paint.deform.xform_mesh = None;
+        self.paint.deform.xform_undo.clear();
+        self.paint.deform.xform_moved = false;
         self.composite_transform(Mat3::from_affine(Affine2::IDENTITY));
     }
 
@@ -180,6 +184,8 @@ impl PainterTool {
             self.paint.deform.xform_mesh = None;
             self.paint.deform.xform_before = None;
             self.paint.deform.xform_last_bbox = None;
+            self.paint.deform.xform_undo.clear();
+            self.paint.deform.xform_moved = false;
             return false;
         }
         let before = self.paint.deform.xform_before.take();
@@ -187,6 +193,8 @@ impl PainterTool {
         self.paint.deform.xform_grab = None;
         self.paint.deform.xform_mesh = None;
         self.paint.deform.xform_last_bbox = None;
+        self.paint.deform.xform_undo.clear();
+        self.paint.deform.xform_moved = false;
         if commit && let Some(b) = before {
             self.commit_structural_edit(b);
         }

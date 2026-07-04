@@ -44,6 +44,12 @@ impl PainterTool {
     /// Returns `true` if an edit was undone. Driven by the shell's undo gesture /
     /// shortcut.
     pub fn undo_last(&mut self) -> bool {
+        // A LIVE Deform Transform owns undo while it's up: step the gizmo back through its gestures (and
+        // finally un-lift), all WITHOUT touching the structural timeline — the whole transform is one
+        // structural entry, committed only when it ends (Enio 2026-07-04).
+        if self.transform_undo_step() {
+            return true;
+        }
         // ONE unified timeline: shape authoring (create / point-edit / reshape / Offset) and pixel bakes
         // (Apply / Apply & Keep) are all `ModelSnapshot` entries, so undo walks them in reverse chronological
         // order regardless of kind. Each entry carries the open-shape editor state, so a restore reinstates
@@ -60,6 +66,11 @@ impl PainterTool {
 
     /// Redo the most recently undone edit on the unified timeline. Returns `true` if an edit was redone.
     pub fn redo_last(&mut self) -> bool {
+        // While a Transform float is live, the structural timeline is frozen (the transform is one pending
+        // entry) — swallow redo so it can't reinstate a stale structural state under the lifted patch.
+        if self.deform_transform_live() {
+            return false;
+        }
         self.flush_shape_txn();
         if let Some(model) = self.undo.redo() {
             self.restore_model(*model);

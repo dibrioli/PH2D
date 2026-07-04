@@ -34,8 +34,14 @@ pub(crate) fn paint_deform_section(
     y: f32,
     brush: BrushSettings,
 ) -> f32 {
-    // Temperament — Reshape (brush dabs) vs Transform (bounding-box gizmo). Always at the top; it decides
-    // which body the mode-exclusive section shows (Wave 2).
+    // Temperament — Reshape (brush dabs) vs Transform (gizmo). Opens UNSELECTED each time the panel is
+    // entered: the artist must pick, and re-picking Transform re-lifts a fresh gizmo (Enio 2026-07-04). The
+    // body + session actions only appear once a mode is chosen.
+    let selected = match brush.deform_temperament {
+        ph2d_tool_painter::DEFORM_TEMPERAMENT_RESHAPE => 0,
+        ph2d_tool_painter::DEFORM_TEMPERAMENT_TRANSFORM => 1,
+        _ => usize::MAX, // none picked
+    };
     let mut y = seg_group(
         ctx,
         theme,
@@ -48,24 +54,29 @@ pub(crate) fn paint_deform_section(
             (core_ids::PAINTER_DEFORM_TEMPERAMENT_RESHAPE, "Reshape"),
             (core_ids::PAINTER_DEFORM_TEMPERAMENT_TRANSFORM, "Transform"),
         ],
-        usize::from(brush.deform_transform_on),
+        selected,
     );
 
-    y = if brush.deform_transform_on {
-        paint_transform_body(
-            ctx,
-            theme,
-            x,
-            content_w,
-            y,
-            brush.deform_transform_mode as usize,
-        )
-    } else {
-        paint_reshape_body(ctx, theme, x, content_w, y, brush)
-    };
-
-    y = paint_section_separator(ctx.scene, theme, x, content_w, y);
-    y = paint_actions(ctx, theme, x, content_w, y);
+    match brush.deform_temperament {
+        ph2d_tool_painter::DEFORM_TEMPERAMENT_RESHAPE => {
+            y = paint_reshape_body(ctx, theme, x, content_w, y, brush);
+            y = paint_section_separator(ctx.scene, theme, x, content_w, y);
+            y = paint_actions(ctx, theme, x, content_w, y);
+        }
+        ph2d_tool_painter::DEFORM_TEMPERAMENT_TRANSFORM => {
+            y = paint_transform_body(
+                ctx,
+                theme,
+                x,
+                content_w,
+                y,
+                brush.deform_transform_mode as usize,
+            );
+            y = paint_section_separator(ctx.scene, theme, x, content_w, y);
+            y = paint_actions(ctx, theme, x, content_w, y);
+        }
+        _ => {} // nothing picked yet — just the temperament toggle
+    }
     y
 }
 
@@ -329,9 +340,12 @@ mod tests {
             .collect()
     }
 
+    /// A Deform brush with the **Reshape** temperament picked (the panel opens on NONE; these body tests
+    /// assume a mode has been chosen).
     fn deform_brush() -> ph2d_tool_painter::BrushSettings {
         ph2d_tool_painter::BrushSettings {
             is_deform: true,
+            deform_temperament: ph2d_tool_painter::DEFORM_TEMPERAMENT_RESHAPE,
             ..crate::paint_brush::FALLBACK_BRUSH
         }
     }
@@ -396,7 +410,7 @@ mod tests {
             );
         }
         let transform = ph2d_tool_painter::BrushSettings {
-            deform_transform_on: true,
+            deform_temperament: ph2d_tool_painter::DEFORM_TEMPERAMENT_TRANSFORM,
             ..deform_brush()
         };
         for id in core_ids::PAINTER_DEFORM_TEMPERAMENT_IDS {
@@ -412,7 +426,7 @@ mod tests {
         // Transform temperament shows the Uniform/Free picker and HIDES the Reshape mode card + brush
         // sliders (mode-exclusive body swap — never both at once).
         let transform = ph2d_tool_painter::BrushSettings {
-            deform_transform_on: true,
+            deform_temperament: ph2d_tool_painter::DEFORM_TEMPERAMENT_TRANSFORM,
             ..deform_brush()
         };
         let ids = body_hit_ids(transform);

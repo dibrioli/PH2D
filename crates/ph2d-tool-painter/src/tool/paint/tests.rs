@@ -6321,6 +6321,59 @@ fn deform_transform_warp_mesh_moves_a_control_point() {
 }
 
 #[test]
+fn deform_transform_undo_steps_the_gizmo_back() {
+    // Undo while the Transform is LIVE steps the gizmo back one gesture (to the lift pose), and the
+    // transform stays live — it does NOT jump to the pre-transform history (Enio 2026-07-04 bug).
+    let mut t = deform_square_canvas(64, 20, 20, 44, 44);
+    t.set_deform_transform_on(true);
+    let lift_pose = t.canvas_rgba.clone(); // lifted, gizmo at origin (identity == original)
+    t.on_canvas_pointer(cp([32.0, 32.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([44.0, 32.0], PointerPhase::Move));
+    t.on_canvas_pointer(cp([44.0, 32.0], PointerPhase::Up));
+    assert_ne!(*t.canvas_rgba, *lift_pose, "the gizmo move changed pixels");
+    assert!(t.undo_last(), "undo steps the gizmo back");
+    assert_eq!(
+        *t.canvas_rgba, *lift_pose,
+        "the gizmo returns to its previous pose"
+    );
+    assert!(
+        t.deform_gizmo().is_some(),
+        "the Transform stays live after a local (gizmo) undo"
+    );
+}
+
+#[test]
+fn deform_transform_relifts_when_repicked_after_leaving_the_panel() {
+    // Leaving Deform bakes the transform; re-entering opens the temperament UNSELECTED, so re-picking
+    // Transform re-lifts a fresh gizmo (Enio 2026-07-04: the gizmo used to not reappear).
+    use ph2d_editor_core::ids as core_ids;
+    use ph2d_editor_core::tool::PanelEvent;
+    let mut t = deform_square_canvas(64, 20, 20, 44, 44);
+    t.set_deform_transform_on(true);
+    assert!(
+        t.deform_gizmo().is_some(),
+        "gizmo shown when Transform is picked"
+    );
+    t.set_paint_tool_mode("brush"); // leave Deform (bakes)
+    t.set_paint_tool_mode("deform"); // re-enter
+    assert_eq!(
+        t.paint.deform.temperament, 0,
+        "temperament reopens unselected"
+    );
+    assert!(
+        t.deform_gizmo().is_none(),
+        "no gizmo until a mode is picked"
+    );
+    assert!(t.route_deform_event(&PanelEvent::Click(
+        core_ids::PAINTER_DEFORM_TEMPERAMENT_TRANSFORM
+    )));
+    assert!(
+        t.deform_gizmo().is_some(),
+        "re-picking Transform re-lifts the gizmo"
+    );
+}
+
+#[test]
 fn deform_transform_undo_rolls_back_the_whole_transform() {
     // The whole Transform commits as ONE undo entry when it ends (Procreate model). After ending it
     // (temperament → Reshape), undo restores the pre-transform pixels.
@@ -8876,6 +8929,7 @@ fn deform_ramp(size: u32) -> PainterTool {
     let mut t = PainterTool::default();
     t.set_source(src, size, size);
     t.set_paint_tool_mode("deform");
+    t.set_deform_transform_on(false); // pick the Reshape temperament (the panel opens on NONE)
     t.set_deform_size_norm(0.25); // ~33px radius: spans the sampled pixels, corner stays outside the dab
     t
 }
@@ -8984,21 +9038,20 @@ fn deform_panel_seam_mode_slider_and_temperament_drive_the_state() {
         (t.paint.deform.strength - 0.9).abs() < 1e-6,
         "Strength slider drove the value"
     );
-    // Temperament toggle: Click Transform → transform_on = true (and Reshape flips it back).
-    assert!(!t.paint.deform.transform_on);
+    // Temperament segments drive the 3-state temperament (2 = Transform, 1 = Reshape).
     assert!(t.route_deform_event(&PanelEvent::Click(
         core_ids::PAINTER_DEFORM_TEMPERAMENT_TRANSFORM
     )));
-    assert!(
-        t.paint.deform.transform_on,
-        "the Transform segment set transform_on = true"
+    assert_eq!(
+        t.paint.deform.temperament, 2,
+        "the Transform segment set temperament = Transform"
     );
     assert!(t.route_deform_event(&PanelEvent::Click(
         core_ids::PAINTER_DEFORM_TEMPERAMENT_RESHAPE
     )));
-    assert!(
-        !t.paint.deform.transform_on,
-        "the Reshape segment set transform_on = false"
+    assert_eq!(
+        t.paint.deform.temperament, 1,
+        "the Reshape segment set temperament = Reshape"
     );
 }
 

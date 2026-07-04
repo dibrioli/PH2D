@@ -136,7 +136,10 @@ pub use brush_ranges::*;
 
 // The panel-facing snapshot [`BrushSettings`] + the falloff preview helper `brush_falloff_weight_at`
 // live in the `brush_settings` submodule (their single clamp source); re-exported for the `paint::` path.
-pub use brush_settings::{BrushSettings, PANEL_RAMP_STOPS};
+pub use brush_settings::{
+    BrushSettings, DEFORM_TEMPERAMENT_NONE, DEFORM_TEMPERAMENT_RESHAPE,
+    DEFORM_TEMPERAMENT_TRANSFORM, PANEL_RAMP_STOPS,
+};
 pub use shape_layers::MAX_SHAPE_LAYERS;
 pub use snapshot::brush_falloff_weight_at;
 

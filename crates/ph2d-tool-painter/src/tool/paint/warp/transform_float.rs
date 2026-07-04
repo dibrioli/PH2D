@@ -11,7 +11,7 @@
 
 use super::super::Region;
 use super::apply::bilinear_clamped;
-use super::transform_geom::{Affine2, TransformFrame};
+use super::transform_geom::{Affine2, Mat3, TransformFrame};
 use crate::tool::PainterTool;
 use std::sync::Arc;
 
@@ -93,6 +93,7 @@ impl PainterTool {
         self.paint.deform.xform = Some(super::transform::Xform {
             pristine: frame,
             current: frame,
+            corners: None,
         });
         self.paint.deform.xform_before = Some(before);
         self.paint.deform.xform_last_bbox = None;
@@ -105,10 +106,11 @@ impl PainterTool {
         true
     }
 
-    /// Re-composite the floating patch under affine `m`: `out = over(patch(M⁻¹·dst), base)` inside the
-    /// affected bbox, `base` in the region the patch vacated. Loops only the patch's source + destination
-    /// bbox (+ the previous frame's), never the whole canvas. No-op without a lifted patch or a singular `m`.
-    pub(super) fn composite_transform(&mut self, m: Affine2) {
+    /// Re-composite the floating patch under the projective map `m` (affine for Uniform/Free, a homography
+    /// for Distort): `out = over(patch(m⁻¹·dst), base)` inside the affected bbox, `base` where the patch
+    /// vacated. Loops only the patch's source + destination bbox (+ the previous frame's), never the whole
+    /// canvas. No-op without a lifted patch or a singular `m`.
+    pub(super) fn composite_transform(&mut self, m: Mat3) {
         let (w, h) = self.source_size;
         let n = (w as usize) * (h as usize);
         let Some(fp) = self.paint.deform.xform_patch.clone() else {
@@ -157,9 +159,10 @@ impl PainterTool {
         self.paint.deform.xform = Some(super::transform::Xform {
             pristine: x.pristine,
             current: x.pristine,
+            corners: None,
         });
         self.paint.deform.xform_grab = None;
-        self.composite_transform(Affine2::IDENTITY);
+        self.composite_transform(Mat3::from_affine(Affine2::IDENTITY));
     }
 
     /// End the Transform: bake the composited pixels (already in `canvas`) and drop the float. When `commit`,
@@ -224,8 +227,8 @@ fn frame_from_region(r: Region) -> TransformFrame {
     }
 }
 
-/// The AABB (clamped to the canvas) that region `r` maps to under affine `m`.
-fn transform_aabb(m: &Affine2, r: Region, w: u32, h: u32) -> Region {
+/// The AABB (clamped to the canvas) that region `r` maps to under the projective map `m`.
+fn transform_aabb(m: &Mat3, r: Region, w: u32, h: u32) -> Region {
     let (x0, y0) = (r.x as f32, r.y as f32);
     let (x1, y1) = ((r.x + r.w) as f32, (r.y + r.h) as f32);
     let corners = [

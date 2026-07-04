@@ -17,16 +17,19 @@ pub const PAINTER_DEFORM_TEMPERAMENT_IDS: [NodeId; 2] = [
     PAINTER_DEFORM_TEMPERAMENT_TRANSFORM,
 ];
 
-// ── Transform sub-mode (segmented): Uniform (aspect-locked) · Free (independent axes) — Wave 2 ────────
+// ── Transform sub-mode (segmented): Uniform · Free (affine) · Distort (perspective) — Wave 2 ──────────
 pub const PAINTER_DEFORM_TRANSFORM_MODE: NodeId = hash_node_id("painter_deform.transform_mode"); // group
 pub const PAINTER_DEFORM_TRANSFORM_MODE_UNIFORM: NodeId =
     hash_node_id("painter_deform.transform_mode_uniform");
 pub const PAINTER_DEFORM_TRANSFORM_MODE_FREE: NodeId =
     hash_node_id("painter_deform.transform_mode_free");
-/// Transform sub-mode segments in `DeformState::transform_mode` order (`0` Uniform · `1` Free).
-pub const PAINTER_DEFORM_TRANSFORM_MODE_IDS: [NodeId; 2] = [
+pub const PAINTER_DEFORM_TRANSFORM_MODE_DISTORT: NodeId =
+    hash_node_id("painter_deform.transform_mode_distort");
+/// Transform sub-mode segments in `DeformState::transform_mode` order (`0` Uniform · `1` Free · `2` Distort).
+pub const PAINTER_DEFORM_TRANSFORM_MODE_IDS: [NodeId; 3] = [
     PAINTER_DEFORM_TRANSFORM_MODE_UNIFORM,
     PAINTER_DEFORM_TRANSFORM_MODE_FREE,
+    PAINTER_DEFORM_TRANSFORM_MODE_DISTORT,
 ];
 
 // ── Sub-mode picker (segmented): Push · Twist · Pinch · Wrinkle · Fold · Reconstruct ─────────────────

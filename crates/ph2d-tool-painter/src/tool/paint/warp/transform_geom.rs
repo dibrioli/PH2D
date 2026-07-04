@@ -49,7 +49,9 @@ impl Affine2 {
         }
     }
 
-    /// Map a point.
+    /// Map a point. (Used by tests + as the reference for `Mat3::from_affine`; the live composite maps
+    /// through `Mat3`.)
+    #[allow(dead_code)]
     #[inline]
     pub(super) fn apply(&self, p: [f32; 2]) -> [f32; 2] {
         [
@@ -259,6 +261,123 @@ fn unit_or(a: [f32; 2], fallback: [f32; 2]) -> [f32; 2] {
     }
 }
 
+// ── Projective 3×3 (Distort homography) ──────────────────────────────────────────────────────────────
+
+/// A 3×3 projective matrix (row-major `[m00..m22]`) mapping `(x, y, 1) → (X, Y, W)` with a perspective
+/// divide. Generalizes [`Affine2`] to the free-corner Distort warp (a quadrilateral, not a parallelogram).
+/// Transcendental-free — built by linear solves only (HR-5).
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub(super) struct Mat3(pub [f32; 9]);
+
+impl Mat3 {
+    /// Embed an affine (Uniform / Free transform) as a projective matrix (bottom row `0 0 1`).
+    pub(super) fn from_affine(a: Affine2) -> Mat3 {
+        Mat3([a.a, a.c, a.e, a.b, a.d, a.f, 0.0, 0.0, 1.0])
+    }
+
+    /// Project a point through the matrix (perspective divide); the point at infinity maps to itself-ish
+    /// (guarded: a ~zero `w` returns the un-divided numerator so the caller's clamp still yields a finite px).
+    pub(super) fn apply(&self, p: [f32; 2]) -> [f32; 2] {
+        let m = &self.0;
+        let x = m[0] * p[0] + m[1] * p[1] + m[2];
+        let y = m[3] * p[0] + m[4] * p[1] + m[5];
+        let w = m[6] * p[0] + m[7] * p[1] + m[8];
+        if w.abs() < 1e-12 {
+            return [x, y];
+        }
+        [x / w, y / w]
+    }
+
+    /// Matrix product `self · rhs`.
+    fn mul(&self, rhs: &Mat3) -> Mat3 {
+        let a = &self.0;
+        let b = &rhs.0;
+        let mut o = [0.0f32; 9];
+        for r in 0..3 {
+            for c in 0..3 {
+                o[r * 3 + c] =
+                    a[r * 3] * b[c] + a[r * 3 + 1] * b[3 + c] + a[r * 3 + 2] * b[6 + c];
+            }
+        }
+        Mat3(o)
+    }
+
+    /// The inverse, or `None` when singular (degenerate quad).
+    pub(super) fn inverse(&self) -> Option<Mat3> {
+        let m = &self.0;
+        let c00 = m[4] * m[8] - m[5] * m[7];
+        let c01 = m[5] * m[6] - m[3] * m[8];
+        let c02 = m[3] * m[7] - m[4] * m[6];
+        let det = m[0] * c00 + m[1] * c01 + m[2] * c02;
+        if det.abs() < 1e-12 {
+            return None;
+        }
+        let inv = 1.0 / det;
+        // Adjugate (transpose of cofactors) × 1/det.
+        Some(Mat3([
+            c00 * inv,
+            (m[2] * m[7] - m[1] * m[8]) * inv,
+            (m[1] * m[5] - m[2] * m[4]) * inv,
+            c01 * inv,
+            (m[0] * m[8] - m[2] * m[6]) * inv,
+            (m[2] * m[3] - m[0] * m[5]) * inv,
+            c02 * inv,
+            (m[1] * m[6] - m[0] * m[7]) * inv,
+            (m[0] * m[4] - m[1] * m[3]) * inv,
+        ]))
+    }
+}
+
+/// The homography mapping the UNIT SQUARE corners `(0,0),(1,0),(1,1),(0,1)` onto quad `q` (`[TL,TR,BR,BL]`
+/// order) — Heckbert's closed form. `None` for a degenerate quad.
+fn square_to_quad(q: &[[f32; 2]; 4]) -> Option<Mat3> {
+    let (x0, y0) = (q[0][0], q[0][1]);
+    let (x1, y1) = (q[1][0], q[1][1]);
+    let (x2, y2) = (q[2][0], q[2][1]);
+    let (x3, y3) = (q[3][0], q[3][1]);
+    let dx1 = x1 - x2;
+    let dx2 = x3 - x2;
+    let dx3 = x0 - x1 + x2 - x3;
+    let dy1 = y1 - y2;
+    let dy2 = y3 - y2;
+    let dy3 = y0 - y1 + y2 - y3;
+    let (a, b, c, d, e, f, g, h);
+    if dx3.abs() < 1e-9 && dy3.abs() < 1e-9 {
+        // Affine (parallelogram).
+        a = x1 - x0;
+        b = x2 - x1;
+        d = y1 - y0;
+        e = y2 - y1;
+        g = 0.0;
+        h = 0.0;
+    } else {
+        let den = dx1 * dy2 - dx2 * dy1;
+        if den.abs() < 1e-12 {
+            return None;
+        }
+        g = (dx3 * dy2 - dx2 * dy3) / den;
+        h = (dx1 * dy3 - dx3 * dy1) / den;
+        a = x1 - x0 + g * x1;
+        b = x3 - x0 + h * x3;
+        d = y1 - y0 + g * y1;
+        e = y3 - y0 + h * y3;
+    }
+    c = x0;
+    f = y0;
+    Some(Mat3([a, b, c, d, e, f, g, h, 1.0]))
+}
+
+/// The homography mapping source quad `src` onto destination quad `dst` (both `[TL,TR,BR,BL]`). `None` when
+/// either quad is degenerate. Used by Distort: `src` = the pristine box corners, `dst` = the dragged corners.
+pub(super) fn homography_from_quads(
+    src: &[[f32; 2]; 4],
+    dst: &[[f32; 2]; 4],
+) -> Option<Mat3> {
+    let s = square_to_quad(src)?;
+    let d = square_to_quad(dst)?;
+    Some(d.mul(&s.inverse()?))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -398,5 +517,63 @@ mod tests {
         let f0 = frame(0.0, 0.0, 10.0, 10.0);
         let f1 = drag_frame(&f0, H_ROTATE, [10.0, 0.0], [0.0, 10.0], false);
         assert!(f1.u[0].abs() < 1e-2 && (f1.u[1] - 1.0).abs() < 1e-2, "u≈(0,1): {:?}", f1.u);
+    }
+
+    #[test]
+    fn mat3_from_affine_matches_affine_apply() {
+        let a = Affine2 {
+            a: 1.3,
+            b: 0.2,
+            c: -0.5,
+            d: 0.8,
+            e: 7.0,
+            f: -4.0,
+        };
+        let m = Mat3::from_affine(a);
+        for &p in &[[0.0, 0.0], [10.0, -3.0], [5.0, 12.0]] {
+            let x = m.apply(p);
+            let y = a.apply(p);
+            assert!((x[0] - y[0]).abs() < 1e-3 && (x[1] - y[1]).abs() < 1e-3);
+        }
+    }
+
+    #[test]
+    fn mat3_inverse_round_trips() {
+        // A genuine perspective matrix (non-zero bottom row).
+        let m = Mat3([1.2, 0.1, 3.0, -0.2, 0.9, -5.0, 0.001, 0.002, 1.0]);
+        let inv = m.inverse().expect("non-singular");
+        for &p in &[[4.0, 9.0], [-6.0, 2.0], [20.0, 20.0]] {
+            let round = inv.apply(m.apply(p));
+            assert!(
+                (round[0] - p[0]).abs() < 1e-2 && (round[1] - p[1]).abs() < 1e-2,
+                "round={round:?} p={p:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn homography_maps_src_quad_corners_onto_dst_quad() {
+        // A square [0,10]² distorted into a trapezoid: each source corner must land on its dst corner.
+        let src = [[0.0, 0.0], [10.0, 0.0], [10.0, 10.0], [0.0, 10.0]];
+        let dst = [[2.0, 1.0], [9.0, 0.0], [12.0, 11.0], [-1.0, 9.0]];
+        let m = homography_from_quads(&src, &dst).expect("non-degenerate");
+        for i in 0..4 {
+            let q = m.apply(src[i]);
+            assert!(
+                (q[0] - dst[i][0]).abs() < 1e-2 && (q[1] - dst[i][1]).abs() < 1e-2,
+                "corner {i}: got {q:?} want {:?}",
+                dst[i]
+            );
+        }
+    }
+
+    #[test]
+    fn homography_of_identical_quads_is_identity() {
+        let q = [[3.0, 4.0], [13.0, 4.0], [13.0, 14.0], [3.0, 14.0]];
+        let m = homography_from_quads(&q, &q).expect("non-degenerate");
+        for &p in &[[3.0, 4.0], [8.0, 9.0], [13.0, 14.0]] {
+            let r = m.apply(p);
+            assert!((r[0] - p[0]).abs() < 1e-2 && (r[1] - p[1]).abs() < 1e-2, "r={r:?} p={p:?}");
+        }
     }
 }

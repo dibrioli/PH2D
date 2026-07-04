@@ -6208,6 +6208,23 @@ fn deform_transform_lifts_the_selection_and_leaves_a_hole() {
 }
 
 #[test]
+fn deform_transform_distort_warps_a_free_corner() {
+    // Distort sub-mode: entering it is byte-identical (corners seed the current box), and dragging one
+    // corner freely warps the patch (perspective). Whole-layer float (no selection).
+    let mut t = deform_square_canvas(80, 20, 20, 60, 60); // opaque block [20,60)²
+    t.set_shape_grab_tol_px(10.0);
+    t.set_deform_transform_on(true);
+    let seeded = t.canvas_rgba.clone();
+    t.set_deform_transform_mode(2); // Distort
+    assert_eq!(*t.canvas_rgba, *seeded, "entering Distort is byte-identical");
+    // A corner of the content box sits at (20,20); drag it out to (8,8).
+    t.on_canvas_pointer(cp([20.0, 20.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([8.0, 8.0], PointerPhase::Move));
+    t.on_canvas_pointer(cp([8.0, 8.0], PointerPhase::Up));
+    assert_ne!(*t.canvas_rgba, *seeded, "dragging a Distort corner warps the patch");
+}
+
+#[test]
 fn deform_transform_undo_rolls_back_the_whole_transform() {
     // The whole Transform commits as ONE undo entry when it ends (Procreate model). After ending it
     // (temperament → Reshape), undo restores the pre-transform pixels.

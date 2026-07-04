@@ -58,9 +58,16 @@ pub(super) fn draw_deform_gizmo(
     let accents = super::painter_bridge_gizmo::GIZMO_ACCENTS;
     let pal = super::painter_bridge_gizmo::palette_accent(hero.theme, accents[0]);
     let scene = vector_scene.inner_mut();
-    // Oriented transform box (closed).
+    // Oriented transform box / distort quad (closed).
     let box_pts: Vec<Point> = g.box_corners.iter().map(|&p| map(p)).collect();
     super::painter_bridge_gizmo::stroke_box(scene, &box_pts, &pal);
+    if g.corner_only {
+        // Distort: only the 4 corners are draggable (perspective) — no edges / rotate / centre.
+        for &c in &g.box_corners {
+            super::painter_bridge_gizmo::square_handle(scene, map(c), &pal);
+        }
+        return;
+    }
     // 8 scale squares — each reads as a CIRCLE when the cursor is in its rotate ring (band just outside).
     let center_sp = map(g.center);
     let inner = f64::from(g.scale_tol) * scale;

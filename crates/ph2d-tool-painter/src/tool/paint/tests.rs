@@ -8584,3 +8584,37 @@ fn convert_to_curve_folds_the_boolean_result_into_one_curve() {
         "the folded curve strokes the union outer boundary"
     );
 }
+
+/// Polygon boolean uses the SAME perimeter as the gizmo (`polygon_perimeter`, first vertex at top) — a
+/// sides=4 Add polygon composites as a DIAMOND (top/left/bottom/right vertices), NOT a corner-seeded
+/// axis-aligned square. Regression for the gizmo-vs-drawing rotation divergence (Enio 2026-07-04).
+#[test]
+fn polygon_boolean_matches_the_gizmo_phase_not_the_selection_corner_seed() {
+    let mut t = white_canvas(64, 2.0);
+    t.paint.parked_shapes.push(stroke_multi::StrokeShape {
+        state: crate::undo::ShapeEditState::Polygon(crate::undo::PolygonState {
+            center: [32.0, 32.0],
+            u: [1.0, 0.0],
+            rx: 12.0,
+            ry: 12.0,
+            sides: 4,
+            editing: true,
+            seed: 1,
+        }),
+        op: stroke_multi::StrokeOp::Add,
+    });
+    t.restamp_shapes_preview(&[]);
+    let scan = |t: &PainterTool, x: u32, y: u32| {
+        (x.saturating_sub(2)..=x + 2)
+            .flat_map(|xx| (y.saturating_sub(2)..=y + 2).map(move |yy| (xx, yy)))
+            .any(|(xx, yy)| px(t, 64, xx, yy) == [0, 0, 0, 255])
+    };
+    assert!(
+        scan(&t, 32, 44),
+        "the diamond TOP vertex is stroked (gizmo phase)"
+    );
+    assert!(
+        !scan(&t, 44, 44),
+        "the box CORNER is empty — not the selection's corner-seeded square (no 45° divergence)"
+    );
+}

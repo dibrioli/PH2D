@@ -55,13 +55,34 @@ impl PainterTool {
                 rx: (e.rx + off).max(0.5),
                 ry: (e.ry + off).max(0.5),
             }),
-            ShapeEditState::Polygon(p) => Some(SelectionShape::Polygon {
-                center: p.center,
-                u: p.u,
-                rx: (p.rx + off).max(0.5),
-                ry: (p.ry + off).max(0.5),
-                sides: p.sides,
-            }),
+            ShapeEditState::Polygon(p) => {
+                // Use the SAME perimeter the gizmo + fill draw (`polygon_perimeter`, first vertex at the top)
+                // as a Freehand polygon — NOT `SelectionShape::Polygon`, whose CORNER-seeded vertices (45°
+                // phase) made the boolean outline diverge from the gizmo on rotation (Enio 2026-07-04).
+                let mut perim = Vec::new();
+                ph2d_painter_brush::polygon_perimeter(
+                    p.center,
+                    p.u,
+                    (p.rx + off).max(0.5),
+                    (p.ry + off).max(0.5),
+                    p.sides,
+                    &mut perim,
+                );
+                if perim.len() < 3 {
+                    return None;
+                }
+                let handles = perim.iter().map(|q| [*q, *q]).collect(); // sharp corners
+                let model = curve_model::CurveModel::from_curve(
+                    perim,
+                    handles,
+                    true,
+                    curve_handle::HandleKind::Free,
+                );
+                Some(SelectionShape::Freehand {
+                    model,
+                    u: [1.0, 0.0],
+                })
+            }
             ShapeEditState::Curve(c) if c.closed => {
                 let (pts, handles, _) =
                     curve_offset::offset_curve_refined(&c.points, &c.handles, off, true);

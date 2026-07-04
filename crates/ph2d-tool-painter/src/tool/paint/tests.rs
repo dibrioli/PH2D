@@ -8538,3 +8538,49 @@ fn selection_works_after_shape_stroke_and_undo() {
         "no stale stroke preview leaked into selection"
     );
 }
+
+/// Convert-to-Curve over interacting Add/Remove shapes folds the WHOLE boolean RESULT into ONE editable
+/// curve (Enio 2026-07-04), replacing the shapes — not just converting the active one.
+#[test]
+fn convert_to_curve_folds_the_boolean_result_into_one_curve() {
+    let mut t = white_canvas(64, 2.0);
+    t.paint.brush.stroke_method = StrokeMethod::Ellipse;
+    let add_ellipse = |c: [f32; 2], r: f32| stroke_multi::StrokeShape {
+        state: crate::undo::ShapeEditState::Ellipse(crate::undo::EllipseState {
+            center: c,
+            u: [1.0, 0.0],
+            rx: r,
+            ry: r,
+            editing: true,
+            seed: 1,
+        }),
+        op: stroke_multi::StrokeOp::Add,
+    };
+    // Two OVERLAPPING Add ellipses → one boolean region.
+    t.paint.parked_shapes.push(add_ellipse([24.0, 32.0], 12.0));
+    t.paint.parked_shapes.push(add_ellipse([40.0, 32.0], 12.0));
+    assert!(t.has_boolean_shapes());
+    assert!(
+        t.convert_open_shape_to_curve(),
+        "converted the boolean result"
+    );
+    assert!(
+        t.paint.curve.is_some(),
+        "the boolean result is now the live editable Curve"
+    );
+    assert_eq!(
+        t.paint.parked_shapes.len(),
+        0,
+        "the two ellipses were folded into the single curve (one region → one curve)"
+    );
+    // The curve traces the union boundary — its outer-left edge is painted, the overlap centre is not.
+    let scan = |t: &PainterTool, x: u32, y: u32| {
+        (x.saturating_sub(2)..=x + 2)
+            .flat_map(|xx| (y.saturating_sub(2)..=y + 2).map(move |yy| (xx, yy)))
+            .any(|(xx, yy)| px(t, 64, xx, yy) == [0, 0, 0, 255])
+    };
+    assert!(
+        scan(&t, 12, 32),
+        "the folded curve strokes the union outer boundary"
+    );
+}

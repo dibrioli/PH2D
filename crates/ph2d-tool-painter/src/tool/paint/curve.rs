@@ -316,6 +316,11 @@ impl PainterTool {
     /// button): take its faithful anchors, drop the shape editor, switch the method to Curve. `false` if none.
     pub(crate) fn convert_open_shape_to_curve(&mut self) -> bool {
         self.flush_shape_txn(); // close any coalesced Offset drag first
+        // Add/Remove shapes interacting → convert the WHOLE boolean RESULT into one editable curve (Enio
+        // 2026-07-04), not just the active shape.
+        if self.has_boolean_shapes() {
+            return self.convert_boolean_result_to_curve();
+        }
         let before = self.capture_shape_model(); // the open Ellipse / Polygon (for undo of the conversion)
         // Bake any live Offset into the shape's radii FIRST (resets the slider) so the conversion reads the
         // displayed shape, not a doubly-offset one. At most one editor is open; each bake no-ops otherwise.

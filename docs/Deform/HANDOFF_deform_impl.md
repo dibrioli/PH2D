@@ -1,8 +1,28 @@
 # HANDOFF — implementação do Deform (transform/deformação do Painter)
 
 > **Ponto de entrada único** para o agente que vai assumir a implementação numa **nova máquina
-> desktop Linux**. Escrito 2026-07-04. Estado: **desenho 100% fechado, ZERO código escrito.**
-> Tudo que você precisa está na pasta [`docs/Deform/`](.). Leia este arquivo inteiro primeiro.
+> desktop Linux**. Escrito 2026-07-04. Design 100% fechado em [`docs/Deform/`](.).
+> Leia este arquivo inteiro primeiro.
+
+---
+
+## STATUS (atualizado 2026-07-04)
+
+- **Wave 1 (Reshape brush) — LANDOU + validada no smoke do Enio.** Push/Twist/Pinch/Wrinkle/Fold/
+  Reconstruct + Freeze + painel mode-exclusivo. Kernel inverse-warp single-resample (`warp/apply.rs`),
+  campos por-modo (`warp/field.rs`, HR-5 sem transcendentais), `disp` de sessão no `ModelSnapshot`.
+  ADR-0105 subiu o cap de LOC de arquivo 600→700 no caminho.
+- **Wave 2A+2B (Transform gizmo Uniform/Free) — LANDOU (commit local, sem push).** Toggle
+  **Reshape/Transform** no topo do painel troca o corpo; Transform mostra picker **Uniform/Free** + um
+  gizmo de bounding-box (8 quadrados de escala + anel de rotação + mover-centro) no canvas. Kernel:
+  frame pristina `F0` + frame arrastada `F` → afim `M = A1∘A0⁻¹` (`warp/transform.rs`
+  `affine_from_frames`), escrita como `D(p)=p−M⁻¹·p` no mesmo `disp`; `F==F0 ⇒ M=I ⇒ byte-idêntico`.
+  Gizmo **tool-side** (`on_canvas_pointer`, espelha `selection_gizmo.rs`) — zero foundational, zero
+  contrato congelado. Frame no `ModelSnapshot` → undo rola caixa+pixels juntos. Overlay no shell:
+  `painter_bridge_deform_gizmo.rs`.
+- **PENDENTE — Wave 2C (Distort/homografia 3×3 dos 4 cantos) + Wave 2D (Warp mesh Coons).**
+- **PENDENTE — perf 4K:** cada Move do gizmo re-resampleia o canvas inteiro na CPU; medir vs. o
+  budget ≤16ms e migrar p/ GPU se estourar (kill-criterion do plano).
 
 ---
 

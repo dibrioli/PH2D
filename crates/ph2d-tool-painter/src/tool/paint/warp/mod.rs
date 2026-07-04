@@ -14,6 +14,8 @@ mod field;
 mod reconstruct;
 mod transform;
 
+pub use transform::DeformGizmoView;
+
 use super::Region;
 use crate::tool::PainterTool;
 use ph2d_editor_core::tool::{CanvasPointer, PointerPhase};
@@ -51,6 +53,17 @@ pub(crate) struct DeformState {
     pub(crate) freeze_on: bool,
     pub(crate) freeze_invert: bool,
 
+    // ── Transform temperament (Wave 2) ──
+    /// Temperament: `false` = Reshape (brush dabs), `true` = Transform (gizmo warps a whole region).
+    pub(crate) transform_on: bool,
+    /// Transform sub-mode: `0` Uniform (aspect-locked corners), `1` Free (independent axes).
+    pub(crate) transform_mode: u8,
+    /// The gizmo frame (pristine + current). `None` until Transform is first shown with a session; captured
+    /// in the undo snapshot next to `disp` so the box rolls back with the pixels.
+    pub(crate) xform: Option<transform::Xform>,
+    /// The active gizmo handle grab (pristine frame + pointer at grab; transient, not snapshotted).
+    pub(crate) xform_grab: Option<transform::TransformGrab>,
+
     // ── Session (transient) ──
     /// Pristine pixels at the session start — Reconstruct fades back to this, Reset restores it wholesale.
     pub(crate) pre: Arc<Vec<u8>>,
@@ -83,6 +96,10 @@ impl Default for DeformState {
             strength: 0.5,   // centred → Pinch/Twist neutral (identity)
             freeze_on: false,
             freeze_invert: false,
+            transform_on: false, // Reshape (brush) by default
+            transform_mode: 0,   // Uniform
+            xform: None,
+            xform_grab: None,
             pre: Arc::new(Vec::new()),
             active: false,
             last_pos: None,
@@ -157,6 +174,12 @@ impl PainterTool {
             for d in Arc::make_mut(&mut self.paint.deform.disp) {
                 *d = [0.0, 0.0];
             }
+            // Rebase the gizmo frame to the newly-banked content (identity from the new baseline).
+            self.paint.deform.xform = None;
+            self.paint.deform.xform_grab = None;
+            if self.paint.deform.transform_on {
+                self.ensure_xform();
+            }
         }
     }
 
@@ -176,6 +199,22 @@ impl PainterTool {
                     .position(|x| x == id)
                     .unwrap_or(0) as u8;
                 self.set_deform_mode(idx);
+                true
+            }
+            PanelEvent::Click(id) if core_ids::PAINTER_DEFORM_TEMPERAMENT_IDS.contains(id) => {
+                let idx = core_ids::PAINTER_DEFORM_TEMPERAMENT_IDS
+                    .iter()
+                    .position(|x| x == id)
+                    .unwrap_or(0);
+                self.set_deform_transform_on(idx == 1); // 0 Reshape · 1 Transform
+                true
+            }
+            PanelEvent::Click(id) if core_ids::PAINTER_DEFORM_TRANSFORM_MODE_IDS.contains(id) => {
+                let idx = core_ids::PAINTER_DEFORM_TRANSFORM_MODE_IDS
+                    .iter()
+                    .position(|x| x == id)
+                    .unwrap_or(0) as u8;
+                self.set_deform_transform_mode(idx);
                 true
             }
             PanelEvent::Click(id) if *id == core_ids::PAINTER_DEFORM_FREEZE => {
@@ -363,6 +402,9 @@ impl PainterTool {
         self.paint.deform.disp = Arc::new(Vec::new());
         self.paint.deform.last_pos = None;
         self.paint.deform.momentum_vec = [0.0, 0.0];
+        // The Transform gizmo frame belongs to the session — drop it so a fresh session re-derives its box.
+        self.paint.deform.xform = None;
+        self.paint.deform.xform_grab = None;
     }
 
     /// Mark the whole canvas dirty (used after a wholesale Reset).

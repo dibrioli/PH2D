@@ -94,6 +94,13 @@ const BENIGN_SET_MODE: &[(&str, &str)] = &[
          the DabField each stamp); no derived cache is keyed on it. Same single-field pattern as \
          `set_selection_mode`.",
     ),
+    (
+        "set_deform_transform_mode",
+        "Painter Deform Transform sub-mode setter (Uniform/Free — Deform Wave 2): a single \
+         `deform.transform_mode` field write. The gizmo reads it FRESH on each handle drag \
+         (`deform_gizmo_move` branches on it to lock/free the aspect); no derived cache is keyed on it. \
+         Same single-field pattern as `set_deform_mode`.",
+    ),
 ];
 
 /// Setters that reconcile via implementation-specific verbs (rather

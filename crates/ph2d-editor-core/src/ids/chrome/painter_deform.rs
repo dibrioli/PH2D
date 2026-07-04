@@ -5,6 +5,30 @@
 //! `populate` and forwarded to the tool over the frozen `PanelEvent` channel (`Click` / `SetValue`).
 use super::{NodeId, hash_node_id};
 
+// ── Temperament (segmented): Reshape (brush) · Transform (gizmo) — Deform Wave 2 ─────────────────────
+pub const PAINTER_DEFORM_TEMPERAMENT: NodeId = hash_node_id("painter_deform.temperament"); // group
+pub const PAINTER_DEFORM_TEMPERAMENT_RESHAPE: NodeId =
+    hash_node_id("painter_deform.temperament_reshape");
+pub const PAINTER_DEFORM_TEMPERAMENT_TRANSFORM: NodeId =
+    hash_node_id("painter_deform.temperament_transform");
+/// Temperament segments in order (`0` Reshape · `1` Transform).
+pub const PAINTER_DEFORM_TEMPERAMENT_IDS: [NodeId; 2] = [
+    PAINTER_DEFORM_TEMPERAMENT_RESHAPE,
+    PAINTER_DEFORM_TEMPERAMENT_TRANSFORM,
+];
+
+// ── Transform sub-mode (segmented): Uniform (aspect-locked) · Free (independent axes) — Wave 2 ────────
+pub const PAINTER_DEFORM_TRANSFORM_MODE: NodeId = hash_node_id("painter_deform.transform_mode"); // group
+pub const PAINTER_DEFORM_TRANSFORM_MODE_UNIFORM: NodeId =
+    hash_node_id("painter_deform.transform_mode_uniform");
+pub const PAINTER_DEFORM_TRANSFORM_MODE_FREE: NodeId =
+    hash_node_id("painter_deform.transform_mode_free");
+/// Transform sub-mode segments in `DeformState::transform_mode` order (`0` Uniform · `1` Free).
+pub const PAINTER_DEFORM_TRANSFORM_MODE_IDS: [NodeId; 2] = [
+    PAINTER_DEFORM_TRANSFORM_MODE_UNIFORM,
+    PAINTER_DEFORM_TRANSFORM_MODE_FREE,
+];
+
 // ── Sub-mode picker (segmented): Push · Twist · Pinch · Wrinkle · Fold · Reconstruct ─────────────────
 pub const PAINTER_DEFORM_MODE: NodeId = hash_node_id("painter_deform.mode"); // group (a11y RadioGroup)
 pub const PAINTER_DEFORM_MODE_PUSH: NodeId = hash_node_id("painter_deform.mode_push");

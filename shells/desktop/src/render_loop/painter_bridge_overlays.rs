@@ -72,6 +72,16 @@ pub(super) fn draw_overlays(
         vector_scene,
         cursor,
     );
+    // Deform Transform gizmo (Wave 2) — the whole-region bounding box, when Transform temperament is active.
+    super::painter_bridge_deform_gizmo::draw_deform_gizmo(
+        painter,
+        hero,
+        sim,
+        camera,
+        window_size,
+        vector_scene,
+        cursor,
+    );
     draw_stencil_overlay(
         painter,
         hero,

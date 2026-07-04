@@ -198,8 +198,9 @@ pub(crate) use paint::selection_shapes::SelectionEntry;
 pub use paint::{
     BRUSH_AIRBRUSH_RATE_MAX_S, BRUSH_AIRBRUSH_RATE_MIN_S, BRUSH_COUNT_SLIDER_MAX,
     BRUSH_JITTER_ABS_MAX_PX, BRUSH_SIZE_MAX_PX, BRUSH_SIZE_MIN_PX, BRUSH_SPACING_MAX,
-    BrushSettings, CurveOverlay, EllipseOverlay, LineCornerGizmo, LineDimensions, LineOverlay,
-    MAX_SHAPE_LAYERS, PANEL_RAMP_STOPS, PolygonOverlay, SelectionGizmoView, StencilOverlay,
+    BrushSettings, CurveOverlay, DeformGizmoView, EllipseOverlay, LineCornerGizmo, LineDimensions,
+    LineOverlay, MAX_SHAPE_LAYERS, PANEL_RAMP_STOPS, PolygonOverlay, SelectionGizmoView,
+    StencilOverlay,
     StencilPreview, StrokeOpBadge, TangentHandles, TransformGizmo, brush_falloff_weight_at,
 };
 mod runtime;

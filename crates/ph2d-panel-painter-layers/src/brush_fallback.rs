@@ -72,6 +72,8 @@ pub(crate) const FALLBACK_BRUSH: BrushSettings = BrushSettings {
     deform_freeze_on: false,
     deform_freeze_invert: false,
     deform_has_selection: false,
+    deform_transform_on: false,
+    deform_transform_mode: 0,
     selection_offset: 0.5, // LITERAL-PX-OK: centred Offset = no grow/shrink (mirrors shape_offset_norm)
     inpaint_patch: 0.25, // LITERAL-PX-OK: brush default (mirrors PaintState::default inpaint_patch_norm)
     inpaint_quality: 0.3333, // LITERAL-PX-OK: brush default (mirrors PaintState::default inpaint_quality_norm)

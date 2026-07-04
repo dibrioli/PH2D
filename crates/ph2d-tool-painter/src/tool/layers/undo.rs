@@ -41,6 +41,7 @@ impl PainterTool {
             deform_disp,
             deform_pre,
             deform_active,
+            deform_xform: self.deform_xform_for_snapshot(),
         }
     }
 
@@ -80,6 +81,8 @@ impl PainterTool {
         // Reinstate the Deform session (displacement + `pre` + active) in lock-step with the pixels, so
         // undoing a deform stroke rolls the warp back AND keeps Reconstruct able to un-warp what remains.
         self.restore_deform(m.deform_disp, m.deform_pre, m.deform_active);
+        // Roll the Transform gizmo box back with the pixels (Deform Wave 2).
+        self.restore_deform_xform(m.deform_xform);
         self.bump_all_layer_pixels();
         self.invalidate_composite();
         self.preview_dirty = true;

@@ -6105,6 +6105,84 @@ fn undo_sequence_open_shape_before_paint_history() {
 }
 
 // ============================================================================
+// Deform Wave 2 — Transform gizmo (temperament + Uniform/Free affine warp).
+// ============================================================================
+
+/// A `size`×`size` canvas: transparent everywhere except an opaque black square `[x0,x1)×[y0,y1)`. The
+/// opaque block gives the Transform gizmo a content bbox smaller than the canvas (so its centre-move handle
+/// sits at the block's centre, not the canvas centre).
+fn deform_square_canvas(size: u32, x0: u32, y0: u32, x1: u32, y1: u32) -> PainterTool {
+    let mut t = PainterTool::default();
+    let mut buf = vec![0u8; (size * size * 4) as usize];
+    for y in y0..y1 {
+        for x in x0..x1 {
+            let i = ((y * size + x) * 4) as usize;
+            buf[i..i + 4].copy_from_slice(&[0, 0, 0, 255]);
+        }
+    }
+    t.set_source(buf, size, size);
+    t.set_paint_tool_mode("deform");
+    t.set_shape_grab_tol_px(8.0);
+    t
+}
+
+#[test]
+fn deform_transform_identity_is_byte_identical() {
+    // The core guarantee: F == F0 ⇒ M = I ⇒ disp = 0 ⇒ pixels untouched. Entering Transform and a no-op
+    // grab (Down+Up with no drag) must leave the canvas byte-for-byte identical.
+    let mut t = deform_square_canvas(64, 20, 20, 44, 44);
+    let before = t.canvas_rgba.clone();
+    t.set_deform_transform_on(true);
+    assert_eq!(*t.canvas_rgba, *before, "entering Transform alters no pixels");
+    let c = [32.0, 32.0]; // the square's centre (centre-move handle)
+    t.on_canvas_pointer(cp(c, PointerPhase::Down));
+    t.on_canvas_pointer(cp(c, PointerPhase::Up));
+    assert_eq!(*t.canvas_rgba, *before, "a no-op gizmo grab is byte-identical");
+}
+
+#[test]
+fn deform_transform_move_translates_content() {
+    // Grab the centre-move handle and drag +12 px in x → the whole block shifts right by 12 (backward-gather
+    // samples `pre` at dst−12).
+    let mut t = deform_square_canvas(80, 30, 30, 50, 50); // 20×20 block, centre (40,40)
+    t.set_deform_transform_on(true);
+    t.on_canvas_pointer(cp([40.0, 40.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([52.0, 40.0], PointerPhase::Move));
+    t.on_canvas_pointer(cp([52.0, 40.0], PointerPhase::Up));
+    assert_eq!(px(&t, 80, 42, 40), [0, 0, 0, 255], "block shifted right by ~12");
+    assert_eq!(px(&t, 80, 31, 40)[3], 0, "the vacated left edge is transparent");
+}
+
+#[test]
+fn deform_transform_reset_restores_pixels() {
+    // After a Transform move, Reset restores the pristine pre-deform pixels (whole session discarded).
+    let mut t = deform_square_canvas(64, 20, 20, 44, 44);
+    let before = t.canvas_rgba.clone();
+    t.set_deform_transform_on(true);
+    t.on_canvas_pointer(cp([32.0, 32.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([44.0, 32.0], PointerPhase::Move));
+    t.on_canvas_pointer(cp([44.0, 32.0], PointerPhase::Up));
+    assert_ne!(*t.canvas_rgba, *before, "the transform changed pixels");
+    t.deform_reset();
+    assert_eq!(*t.canvas_rgba, *before, "Reset restores the pre-deform pixels");
+}
+
+#[test]
+fn deform_transform_undo_rolls_back_the_gizmo_move() {
+    // Undo restores the pixels AND the gizmo frame in lock-step (Wave 2 snapshot glue). One structural
+    // entry per gizmo drag.
+    let mut t = deform_square_canvas(64, 20, 20, 44, 44);
+    let before = t.canvas_rgba.clone();
+    t.set_deform_transform_on(true);
+    t.on_canvas_pointer(cp([32.0, 32.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([44.0, 32.0], PointerPhase::Move));
+    t.on_canvas_pointer(cp([44.0, 32.0], PointerPhase::Up));
+    assert_ne!(*t.canvas_rgba, *before, "the transform changed pixels");
+    assert!(t.undo_last(), "undo the gizmo drag");
+    assert_eq!(*t.canvas_rgba, *before, "undo restores the pre-drag pixels");
+}
+
+// ============================================================================
 // FASE A — Per-Layer Color perf-measurement harness.
 // Tracker: docs/HANDOFF_per_layer_color_perf_artifacts.md §1 (owed numbers).
 // Ignored by default. Run in RELEASE — dev (opt-0) lies about perf

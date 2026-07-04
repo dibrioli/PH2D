@@ -111,6 +111,8 @@ impl PainterTool {
             deform_freeze_on: self.paint.deform.freeze_on,
             deform_freeze_invert: self.paint.deform.freeze_invert,
             deform_has_selection: self.selection_active(),
+            deform_transform_on: self.paint.deform.transform_on,
+            deform_transform_mode: self.paint.deform.transform_mode,
             selection_offset: self.selection_offset(),
             inpaint_patch: self.paint.inpaint_patch_norm,
             inpaint_quality: self.paint.inpaint_quality_norm,

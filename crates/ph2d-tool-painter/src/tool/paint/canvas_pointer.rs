@@ -54,6 +54,11 @@ impl CanvasPaintTool for PainterTool {
         // (inverse-warp gather + structural undo), not a stroke of the brush engine, so it routes before the
         // shape editors + generic stroke path.
         if matches!(self.paint.paint_mode, super::PaintMode::Deform) {
+            // Transform temperament routes to the bounding-box gizmo (whole-region affine warp); Reshape
+            // routes to the brush-driven dab kernel. Both write the same session `disp` map.
+            if self.paint.deform.transform_on {
+                return self.deform_gizmo_pointer(ev);
+            }
             return self.warp_pointer(ev);
         }
         // Curve and Ellipse are persistent on-canvas shape editors (draw → edit → commit), not a

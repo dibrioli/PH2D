@@ -44,6 +44,8 @@ pub(crate) fn is_forwardable_brush_slider(id: NodeId) -> bool {
 /// actions — Deform Wave 1). Split out of `event.rs`'s dispatch guard so that (at-cap) match stays put.
 pub(crate) fn is_deform_click(id: NodeId) -> bool {
     core_ids::PAINTER_DEFORM_MODE_IDS.contains(&id)
+        || core_ids::PAINTER_DEFORM_TEMPERAMENT_IDS.contains(&id)
+        || core_ids::PAINTER_DEFORM_TRANSFORM_MODE_IDS.contains(&id)
         || core_ids::PAINTER_DEFORM_ACTION_IDS.contains(&id)
         || id == core_ids::PAINTER_DEFORM_FREEZE
         || id == core_ids::PAINTER_DEFORM_FREEZE_INVERT

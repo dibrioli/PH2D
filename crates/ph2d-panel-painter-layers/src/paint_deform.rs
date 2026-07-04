@@ -34,6 +34,68 @@ pub(crate) fn paint_deform_section(
     y: f32,
     brush: BrushSettings,
 ) -> f32 {
+    // Temperament — Reshape (brush dabs) vs Transform (bounding-box gizmo). Always at the top; it decides
+    // which body the mode-exclusive section shows (Wave 2).
+    let mut y = seg_group(
+        ctx,
+        theme,
+        x,
+        content_w,
+        y,
+        core_ids::PAINTER_DEFORM_TEMPERAMENT,
+        "Deform temperament",
+        &[
+            (core_ids::PAINTER_DEFORM_TEMPERAMENT_RESHAPE, "Reshape"),
+            (core_ids::PAINTER_DEFORM_TEMPERAMENT_TRANSFORM, "Transform"),
+        ],
+        usize::from(brush.deform_transform_on),
+    );
+
+    y = if brush.deform_transform_on {
+        paint_transform_body(ctx, theme, x, content_w, y, brush.deform_transform_mode as usize)
+    } else {
+        paint_reshape_body(ctx, theme, x, content_w, y, brush)
+    };
+
+    y = paint_section_separator(ctx.scene, theme, x, content_w, y);
+    y = paint_freeze_and_actions(ctx, theme, x, content_w, y, brush);
+    y
+}
+
+/// The **Transform** body: the Uniform / Free sub-mode picker (the box handles live on the canvas overlay).
+fn paint_transform_body(
+    ctx: &mut PaintCtx,
+    theme: ph2d_tokens::Theme,
+    x: f32,
+    content_w: f32,
+    y: f32,
+    selected: usize,
+) -> f32 {
+    seg_group(
+        ctx,
+        theme,
+        x,
+        content_w,
+        y,
+        core_ids::PAINTER_DEFORM_TRANSFORM_MODE,
+        "Transform mode",
+        &[
+            (core_ids::PAINTER_DEFORM_TRANSFORM_MODE_UNIFORM, "Uniform"),
+            (core_ids::PAINTER_DEFORM_TRANSFORM_MODE_FREE, "Free"),
+        ],
+        selected,
+    )
+}
+
+/// The **Reshape** body: the sub-mode card (Push … Reconstruct) + the brush sliders.
+fn paint_reshape_body(
+    ctx: &mut PaintCtx,
+    theme: ph2d_tokens::Theme,
+    x: f32,
+    content_w: f32,
+    y: f32,
+    brush: BrushSettings,
+) -> f32 {
     // Mode picker — a segmented group in a titled card at the top (reflows on a narrow panel).
     let mut y = mode_card(ctx, theme, x, content_w, y, brush.deform_mode as usize);
 
@@ -99,9 +161,19 @@ pub(crate) fn paint_deform_section(
             brush.deform_strength,
         );
     }
+    y
+}
 
-    y = paint_section_separator(ctx.scene, theme, x, content_w, y);
-
+/// **Freeze** toggle (+ Invert) then the **Reset / Apply / Apply & Keep** session actions — shared by both
+/// temperaments (they act on the whole session, not a specific brush/gizmo mode). Returns next `y`.
+fn paint_freeze_and_actions(
+    ctx: &mut PaintCtx,
+    theme: ph2d_tokens::Theme,
+    x: f32,
+    content_w: f32,
+    y: f32,
+    brush: BrushSettings,
+) -> f32 {
     // Freeze — protect the selection during the warp. Without a selection the toggle is inert, so its label
     // says so (a visible disabled hint, not a silent no-op).
     let freeze_label = if brush.deform_has_selection {
@@ -109,7 +181,7 @@ pub(crate) fn paint_deform_section(
     } else {
         "Freeze — make a selection first"
     };
-    y = paint_checkbox_row(
+    let mut y = paint_checkbox_row(
         ctx,
         theme,
         x,
@@ -335,6 +407,60 @@ mod tests {
         let ids = body_hit_ids(reconstruct);
         assert!(!ids.contains(&core_ids::PAINTER_DEFORM_DISTORTION_SLIDER));
         assert!(!ids.contains(&core_ids::PAINTER_DEFORM_MOMENTUM_SLIDER));
+    }
+
+    #[test]
+    fn temperament_toggle_is_always_painted() {
+        // Both temperament segments (Reshape / Transform) are hit-registered in either temperament, so the
+        // artist can always switch back.
+        for id in core_ids::PAINTER_DEFORM_TEMPERAMENT_IDS {
+            assert!(
+                body_hit_ids(deform_brush()).contains(&id),
+                "temperament segment {id:?} not painted in Reshape"
+            );
+        }
+        let transform = ph2d_tool_painter::BrushSettings {
+            deform_transform_on: true,
+            ..deform_brush()
+        };
+        for id in core_ids::PAINTER_DEFORM_TEMPERAMENT_IDS {
+            assert!(
+                body_hit_ids(transform.clone()).contains(&id),
+                "temperament segment {id:?} not painted in Transform"
+            );
+        }
+    }
+
+    #[test]
+    fn transform_body_replaces_reshape_body() {
+        // Transform temperament shows the Uniform/Free picker and HIDES the Reshape mode card + brush
+        // sliders (mode-exclusive body swap — never both at once).
+        let transform = ph2d_tool_painter::BrushSettings {
+            deform_transform_on: true,
+            ..deform_brush()
+        };
+        let ids = body_hit_ids(transform);
+        for id in core_ids::PAINTER_DEFORM_TRANSFORM_MODE_IDS {
+            assert!(ids.contains(&id), "transform sub-mode {id:?} shown in Transform");
+        }
+        // The Reshape bodies are gone.
+        assert!(
+            !ids.contains(&core_ids::PAINTER_DEFORM_MODE_PUSH),
+            "Reshape mode card hidden in Transform"
+        );
+        assert!(
+            !ids.contains(&core_ids::PAINTER_DEFORM_SIZE_SLIDER),
+            "Reshape brush sliders hidden in Transform"
+        );
+        // But the shared Freeze + actions survive.
+        assert!(ids.contains(&core_ids::PAINTER_DEFORM_FREEZE));
+        assert!(ids.contains(&core_ids::PAINTER_DEFORM_APPLY));
+        // And Reshape keeps the transform sub-mode hidden.
+        let reshape = body_hit_ids(deform_brush());
+        assert!(
+            !reshape.contains(&core_ids::PAINTER_DEFORM_TRANSFORM_MODE_UNIFORM),
+            "transform sub-mode hidden in Reshape"
+        );
     }
 
     #[test]

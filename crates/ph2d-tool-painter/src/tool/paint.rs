@@ -107,6 +107,7 @@ mod selection_gizmo;
 /// **Deform** (Liquify) — the single inverse-warp kernel + per-mode displacement fields + Reconstruct/Amount.
 mod warp;
 pub use selection_gizmo::SelectionGizmoView;
+pub use warp::DeformGizmoView;
 /// Selection creation input: mode/op/threshold setters + on-canvas pointer gestures (marquee/lasso/flood). [LOC split].
 mod selection_input;
 /// Selection **Offset** (ADR-0103 Am.3): signed-distance grow/shrink + concentric alternating protected /

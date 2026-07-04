@@ -96,6 +96,11 @@ pub struct BrushSettings {
     pub deform_freeze_on: bool,
     pub deform_freeze_invert: bool,
     pub deform_has_selection: bool,
+    /// **Transform** temperament (Wave 2): `false` = Reshape (brush), `true` = Transform (bounding-box
+    /// gizmo). Toggles which controls the mode-exclusive Deform section shows.
+    pub deform_transform_on: bool,
+    /// Transform sub-mode (`0` Uniform aspect-locked · `1` Free independent axes) — only shown in Transform.
+    pub deform_transform_mode: u8,
     /// **Offset** (grow/shrink) slider position (`0..1`, `0.5` = no change) — expands/contracts the edited
     /// boundary; only meaningful (and shown) in Edit mode.
     pub selection_offset: f32,

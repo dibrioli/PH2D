@@ -160,6 +160,29 @@ pub struct BrushSpec {
     /// copies about a centre. Default disabled, so a default brush paints byte-identically. The
     /// geometry (centre / custom-line direction) is in canvas pixels, resolved by the tool.
     pub symmetry: SymmetrySettings,
+
+    // ── Watercolor (wet-media look; no fluid sim — see `docs/Painter/08_plano_aquarela_edge_grain_pigment.md`) ──
+    /// Master switch for the **Watercolor** section. Default `false`, so a default brush is
+    /// byte-identical: the edge/granulation/pigment paths below are all skipped unless this is on.
+    pub watercolor: bool,
+    /// **Edge darkening** gain, `0..` (the watercolor "fringe"). At stroke end a blur-difference of
+    /// the stroke coverage pools pigment at the receding boundary (Curtis 1997 §4.3.3, image-space
+    /// form). `0` = no rim. Only read when [`Self::watercolor`] is on.
+    pub edge_gain: f32,
+    /// **Edge spread**: blur radius (canvas px) of the coverage used by the edge-darkening pass — a
+    /// wider spread makes a softer, thicker rim. Only read when [`Self::watercolor`] is on.
+    pub edge_spread: f32,
+    /// **Granulation**, `0..1`: how strongly the Grain sample gates deposition into the paper tooth's
+    /// valleys (a non-linear gate, vs the linear [`Self::grain_depth`] multiply). `0` = the historical
+    /// linear multiply (byte-identical). Pairs with a canvas-anchored Grain (`Tiled` + `Grain` kind).
+    pub granulation: f32,
+    /// **Pigment** build-up toggle: when on, dab colour composites subtractively (Kubelka–Munk) so
+    /// wet-on-wet layers mix like real paint (blue+yellow → green) instead of the plain `Mix` blend.
+    /// Default `false`. Only read when [`Self::watercolor`] is on.
+    pub pigment: bool,
+    /// **Pigment mix** amount, `0..1`: how much the subtractive path is applied vs the plain blend.
+    /// Only read when [`Self::watercolor`] and [`Self::pigment`] are on.
+    pub pigment_mix: f32,
 }
 
 impl Default for BrushSpec {
@@ -201,6 +224,12 @@ impl Default for BrushSpec {
             jitter_rotate: 0.0,
             jitter_spacing: 0.0,
             symmetry: SymmetrySettings::default(),
+            watercolor: false,
+            edge_gain: 0.0,
+            edge_spread: 7.0,
+            granulation: 0.0,
+            pigment: false,
+            pigment_mix: 0.0,
         }
     }
 }

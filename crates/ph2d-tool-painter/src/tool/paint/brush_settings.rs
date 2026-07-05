@@ -281,6 +281,20 @@ pub struct BrushSettings {
     pub jitter_scale: f32,
     pub jitter_rotate: f32,
     pub jitter_spacing: f32,
+
+    // ── Watercolor section (wet-media look; `docs/Painter/08_plano_aquarela_edge_grain_pigment.md`) ──
+    /// Master enable for the Watercolor section (edge darkening + granulation + pigment).
+    pub watercolor: bool,
+    /// **Edge** darkening gain (`0..`) — the wet-edge "fringe" pooled at stroke boundaries.
+    pub edge_gain: f32,
+    /// **Spread** (canvas px) — blur radius of the coverage feeding the edge-darkening pass.
+    pub edge_spread: f32,
+    /// **Granulation** (`0..1`) — non-linear gate of deposition into the paper-tooth valleys.
+    pub granulation: f32,
+    /// **Pigment** — subtractive (Kubelka–Munk) wet-on-wet colour mixing toggle.
+    pub pigment: bool,
+    /// **Mix** (`0..1`) — how much the subtractive pigment path is applied.
+    pub pigment_mix: f32,
 }
 
 /// Max ramp stops the panel snapshot carries (a ramp may hold up to `MAX_RAMP_STOPS = 32`; the editor

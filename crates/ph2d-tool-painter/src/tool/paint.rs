@@ -35,6 +35,8 @@ mod stroke_multi; // multi-shape: parked (inactive-but-editable) stroke shapes +
 pub use stroke_multi::StrokeOpBadge;
 /// Per-dab randomize setters (Jitter Scale / Rotate / Randomize Color); split from `brush_settings`.
 mod jitter_settings;
+/// Watercolor section setters + router (edge darkening / granulation / pigment); no fluid sim.
+mod watercolor_settings;
 /// The canvas pointer's operation mode (Paint / Smear / Blur / Clone / Mask); split from `paint.rs` (cap).
 mod paint_mode;
 /// Multi-layer Shape (z-ordered layers + per-layer-colour state); split from `paint.rs` (LOC cap).

@@ -55,6 +55,7 @@ impl Tool for PainterTool {
         let appearance_before = self.appearance_sig(); // re-fill an open shape live on any appearance change
         if self.route_texture_layer_event(&event)
             || self.route_brush_jitter_event(&event)
+            || self.route_brush_watercolor_event(&event)
             || self.route_brush_stencil_event(&event)
             || self.route_composite_event(&event)
             || self.route_brush_dab_event(&event)

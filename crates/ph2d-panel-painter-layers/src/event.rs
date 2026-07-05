@@ -436,6 +436,8 @@ fn try_apply_brush_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> O
                 // Symmetry: Use/Circular checkboxes, X/Y/Custom axis segments, Draw-Line/Pick-Center, reset.
                 || core_ids::PAINTER_BRUSH_SYMMETRY_CLICKABLE.contains(&id)
                 || core_ids::PAINTER_BRUSH_SECTION_RESETS.contains(&id)
+                // Watercolor section: Wet-edges + Pigment toggles + the section reset.
+                || core_ids::PAINTER_WATERCOLOR_CLICKS.contains(&id)
                 || core_ids::PAINTER_BRUSH_COMPOSITE_BUTTONS.contains(&id)
                 || id == core_ids::PAINTER_BRUSH_CLONE_SET_SOURCE
                 || id == core_ids::PAINTER_BRUSH_CLONE_ALIGNED

@@ -229,6 +229,11 @@ pub(crate) fn paint_brush_body(
         }
         y = sep(ctx.scene, theme, x, content_w, y);
         y = crate::paint_stroke::paint_tiling_section(ctx, theme, x, content_w, y, brush);
+
+        // ── Section 11: Watercolor — the wet-media look (edge darkening + granulation + pigment).
+        //    Off by default; a plain brush is byte-identical. `docs/Painter/08_…`. ──
+        y = sep(ctx.scene, theme, x, content_w, y);
+        y = crate::paint_watercolor::paint_watercolor_section(ctx, theme, x, content_w, y, brush);
     }
     // Eraser is the left-rail Eraser tool (a mode), not a panel checkbox — its former standalone
     // checkbox was removed (Enio). In Eraser mode the panel is the normal Brush panel; only the ramp

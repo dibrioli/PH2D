@@ -365,6 +365,63 @@ fn selection_curve_buttons_forward_their_click() {
     }
 }
 
+// ── Watercolor section seam (Wet-edges / Pigment toggles + Edge / Spread / Granulation / Mix) ──────
+// Same discipline as the Stroke/Symmetry sweeps: prove the real WidgetEvent forwards the EXACT
+// PanelEvent the tool's `route_brush_watercolor_event` arm consumes. A forgotten `event.rs` membership
+// (Click allowlist / `is_param_field`) leaves the new section painted, clickable and silently dead.
+
+/// The two Watercolor toggles + the section reset forward as `ToolPanelEvent(Click(id))` (the
+/// `PAINTER_WATERCOLOR_CLICKS` allowlist arm). Covers Wet-edges / Pigment / Reset in one sweep.
+#[test]
+fn watercolor_click_controls_forward_their_click() {
+    for clicked in core_ids::PAINTER_WATERCOLOR_CLICKS {
+        let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
+        let mut st = PainterLayersPanelState;
+        let outcome =
+            host.apply_panel_event::<PainterLayersPanel>(&mut st, WidgetEvent::Click(clicked));
+        assert_eq!(
+            outcome,
+            EventOutcome::Consumed,
+            "watercolor control {clicked:?} click ignored — the event.rs Click allowlist is missing the id"
+        );
+        let actions = host.drained_actions();
+        assert!(
+            actions.iter().any(|a| matches!(
+                a,
+                EditorAction::ToolPanelEvent(PanelEvent::Click(id)) if *id == clicked
+            )),
+            "watercolor control {clicked:?} never forwarded as ToolPanelEvent(Click) — seam dead. \
+             drained = {actions:?}"
+        );
+    }
+}
+
+/// Slider shape: each Watercolor number-field (Edge / Spread / Granulation / Mix) drag forwards
+/// `SetValue(id, _)` (consumed by the tool's `route_brush_watercolor_event` SetValue arm). Rides the
+/// `event.rs` `is_param_field` route — a forgotten membership leaves the slider painted and dead.
+#[test]
+fn watercolor_sliders_forward_setvalue() {
+    for id in core_ids::PAINTER_WATERCOLOR_FIELDS {
+        let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
+        let mut st = PainterLayersPanelState;
+        let outcome =
+            host.apply_panel_event::<PainterLayersPanel>(&mut st, WidgetEvent::ValueChanged(id));
+        assert_eq!(
+            outcome,
+            EventOutcome::Consumed,
+            "watercolor slider {id:?} drag ignored — the event.rs `is_param_field` arm is missing the id"
+        );
+        let actions = host.drained_actions();
+        assert!(
+            actions.iter().any(|a| matches!(
+                a,
+                EditorAction::ToolPanelEvent(PanelEvent::SetValue(i, _)) if *i == id
+            )),
+            "watercolor slider {id:?} never forwarded as SetValue — seam dead. drained = {actions:?}"
+        );
+    }
+}
+
 // ── Per-Layer Color row seam (the "B" blend dropdown + opacity box, Enio 2026-06-29) ──────────────
 // One assertion per control SHAPE, proving the real WidgetEvent forwards the EXACT PanelEvent the tool's
 // `route_shape_layer_event` arm consumes. These factory-id widgets are paint-time registered, so a

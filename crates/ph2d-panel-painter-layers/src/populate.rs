@@ -114,6 +114,7 @@ pub fn populate(store: &mut WidgetStore) {
     .chain(ph2d_editor_core::ids::PAINTER_BRUSH_STENCIL_FIELDS)
     .chain(ph2d_editor_core::ids::PAINTER_SHAPE_SLIDERS)
     .chain(ph2d_editor_core::ids::PAINTER_SHAPE_PARAMS)
+    .chain(ph2d_editor_core::ids::PAINTER_WATERCOLOR_FIELDS)
     {
         store.register(
             id,
@@ -321,6 +322,10 @@ pub fn populate(store: &mut WidgetStore) {
         // press feedback + a tooltip now, and lets the future route deliver the Click without a re-register.
         ph2d_editor_core::ids::PAINTER_BRUSH_STROKE_SAVE_OBJECT,
         ph2d_editor_core::ids::PAINTER_BRUSH_TILING_RESET,
+        // Watercolor section: Wet-edges + Pigment checkboxes + the section reset.
+        ph2d_editor_core::ids::PAINTER_WATERCOLOR_ENABLE,
+        ph2d_editor_core::ids::PAINTER_WATERCOLOR_PIGMENT,
+        ph2d_editor_core::ids::PAINTER_WATERCOLOR_RESET,
     ] {
         store.register(
             id,
@@ -413,6 +418,10 @@ fn register_collapsible_sections(store: &mut WidgetStore) {
         (
             core_ids::PAINTER_SHAPE_RAMP_SECTION,
             core_ids::PAINTER_SHAPE_RAMP_SECTION_COLOR,
+        ),
+        (
+            core_ids::PAINTER_WATERCOLOR_SECTION,
+            core_ids::PAINTER_WATERCOLOR_SECTION_COLOR,
         ),
     ] {
         store.mark_collapsible_section(section);

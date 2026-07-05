@@ -1,3 +1,4 @@
+// ph2d-chrome-sync:z=60 (dispatch priority, ADR-0107; lower = earlier)
 //! Painter-mode left-rail dispatch — the paint-tool radio group (Brush ·
 //! Eyedropper · Eraser · Clone · Smear · Blur · Mask · Inpaint · Shapes) plus
 //! the Shapes flyout (open/close + the shape sub-radio). Mirror of

@@ -1,3 +1,4 @@
+// ph2d-chrome-sync:z=100 (dispatch priority, ADR-0107; lower = earlier)
 //! Settings → Display unit cascade: open submenu + pick Meters/Pixels.
 
 use crate::ids;

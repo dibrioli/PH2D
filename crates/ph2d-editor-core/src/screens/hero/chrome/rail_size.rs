@@ -1,3 +1,4 @@
+// ph2d-chrome-sync:z=30 (dispatch priority, ADR-0107; lower = earlier)
 //! Rail-button size presets — Small / Medium / Large. Added
 //! 2026-05-24 so the user can pick between the new (Small, 36 px),
 //! pre-2026-05-24 (Large, 44 px), and halfway (Medium, 40 px) chip

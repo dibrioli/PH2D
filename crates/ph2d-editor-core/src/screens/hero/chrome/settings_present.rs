@@ -1,3 +1,4 @@
+// ph2d-chrome-sync:z=120 (dispatch priority, ADR-0107; lower = earlier)
 //! Settings → Display cascade: open submenu + pick VSync / Immediate.
 //! Mirrors `settings_filter.rs` 1:1.
 //!

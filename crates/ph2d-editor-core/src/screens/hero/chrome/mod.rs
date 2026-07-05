@@ -96,9 +96,15 @@ pub use rail_painter_tools::sync_rail_to_stroke_method as sync_painter_rail_to_s
 /// so the hero paint pass can render it above the canvas alongside the other floating dialogs.
 pub use fill_modal::paint_fill_adjust_modal;
 
-/// Walk every chrome handler in `||` order; stop at the first that
-/// consumes the event.
+/// Walk every chrome handler in z-order; stop at the first that consumes the
+/// event. Order comes from each handler's `// ph2d-chrome-sync:z=NN` marker
+/// (lower wins on id overlap). The chain body below is **generated** — run
+/// `cargo run -p ph2d-chrome-sync` after adding/removing a handler; the
+/// staleness gate (`architecture_chrome_dispatch_in_sync`) catches drift.
+/// Because the order is a pure function of the handler set, two parallel
+/// lines each adding a handler never collide here (ADR-0107, Camada 0).
 pub fn dispatch_all(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
+    // <ph2d-chrome-sync:dispatch-begin>
     theme::apply(hero, event)
         || radius::apply(hero, event)
         || rail_size::apply(hero, event)
@@ -128,4 +134,5 @@ pub fn dispatch_all(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
         || vector_shape_toggle::apply(hero, event)
         || vector_select_toggle::apply(hero, event)
         || vector_direct_toggle::apply(hero, event)
+    // <ph2d-chrome-sync:dispatch-end>
 }

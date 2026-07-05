@@ -1,3 +1,4 @@
+// ph2d-chrome-sync:z=70 (dispatch priority, ADR-0107; lower = earlier)
 //! Left rail panel-visibility toggles (Inspector / Hierarchy).
 
 use crate::ids;

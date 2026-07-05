@@ -1,3 +1,4 @@
+// ph2d-chrome-sync:z=210 (dispatch priority, ADR-0107; lower = earlier)
 //! Image-edit actions on the bus — Trim, Make Square, Real Size,
 //! Bg Removal, Padding, Undo. Wave 2.5 PR 11.8b migration from
 //! `pending_X` fields; ADR-0040 TG-A made the dispatch generic

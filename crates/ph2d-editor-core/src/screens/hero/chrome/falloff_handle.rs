@@ -1,3 +1,4 @@
+// ph2d-chrome-sync:z=240 (dispatch priority, ADR-0107; lower = earlier)
 //! Painter brush Falloff-curve point handle menu — 2 handle types (Vector /
 //! Auto), opened by a secondary-click on a control point (the shell raises
 //! `ContextMenuKind::FalloffPointHandle`).

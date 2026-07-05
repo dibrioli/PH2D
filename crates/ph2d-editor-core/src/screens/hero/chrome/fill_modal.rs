@@ -1,3 +1,4 @@
+// ph2d-chrome-sync:z=180 (dispatch priority, ADR-0107; lower = earlier)
 //! Fill (Bucket) "Fill adjust" floating modal — the compact draggable card that appears at the
 //! ColorDrop release point so the artist can tune the flood-fill threshold LIVE and confirm/cancel
 //! (Procreate ColorDrop-Threshold). Two halves, colocated:

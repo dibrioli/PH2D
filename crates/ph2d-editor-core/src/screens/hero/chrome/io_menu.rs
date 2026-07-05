@@ -1,3 +1,4 @@
+// ph2d-chrome-sync:z=80 (dispatch priority, ADR-0107; lower = earlier)
 //! File menu items — Import (raises a flag for the host to open the
 //! native picker) + Save / Save As / Open Project placeholders until
 //! the pilot project wires real I/O.

@@ -1,3 +1,4 @@
+// ph2d-chrome-sync:z=270 (dispatch priority, ADR-0107; lower = earlier)
 //! TopBar Vector Shape pill — **toggle** (mirror of `vector_pencil_toggle.rs`).
 //! Clicking activates the Shape tool when inactive; clicking again
 //! deactivates. The shell drain in `render_loop::mod` performs the actual

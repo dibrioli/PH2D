@@ -1,3 +1,4 @@
+// ph2d-chrome-sync:z=20 (dispatch priority, ADR-0107; lower = earlier)
 //! Radius scale presets — Sharp / Default / Round.
 
 use crate::ids;

@@ -1,3 +1,4 @@
+// ph2d-chrome-sync:z=230 (dispatch priority, ADR-0107; lower = earlier)
 //! On-canvas **Curve / Free Hand** editor point-handle menu — the five vector-app continuity kinds
 //! (Free / Aligned / Symmetric / Vector / Auto), opened by a secondary-click on a control point (the
 //! shell raises `ContextMenuKind::CurvePointHandle`).

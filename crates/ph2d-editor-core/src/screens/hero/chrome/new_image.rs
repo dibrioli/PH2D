@@ -1,3 +1,4 @@
+// ph2d-chrome-sync:z=170 (dispatch priority, ADR-0107; lower = earlier)
 //! New-image modal (Cmd/Ctrl+N): the Size / Background radio clicks update the store's remembered
 //! selection; Create raises the `(size, bg)` request + closes the modal. The shell polls
 //! `take_new_image_request` and spawns a blank canvas of that size + background.

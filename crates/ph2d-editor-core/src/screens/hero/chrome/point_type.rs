@@ -1,3 +1,4 @@
+// ph2d-chrome-sync:z=220 (dispatch priority, ADR-0107; lower = earlier)
 //! Vector Direct-Select point-type menu — 4 vertex continuity kinds
 //! (Corner / Smooth / Asymmetric / Auto), opened by a secondary-click on a
 //! vertex (the shell raises `ContextMenuKind::VectorPointType`).

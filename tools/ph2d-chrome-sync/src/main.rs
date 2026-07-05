@@ -1,15 +1,22 @@
 #![forbid(unsafe_code)]
-//! `ph2d-chrome-sync` — regenerate the chrome `mod` declaration block
-//! from a scan of `crates/ph2d-editor-core/src/screens/hero/chrome/*.rs`.
+//! `ph2d-chrome-sync` — regenerate BOTH generated blocks in
+//! `crates/ph2d-editor-core/src/screens/hero/chrome/mod.rs` from a scan of
+//! the sibling `chrome/*.rs` handler files:
+//!   1. the `mod <name>;` declaration block, and
+//!   2. the `dispatch_all` `||` chain body — ordered by each handler's
+//!      `// ph2d-chrome-sync:z=NN` marker, then name (ADR-0107, Camada 0).
 //!
 //! ```text
 //! cargo run -p ph2d-chrome-sync
 //! ```
 //!
-//! Only the `mod <name>;` declarations are regenerated. The
-//! `dispatch_all` chain stays hand-written (z-order is load-bearing).
+//! Both blocks are pure functions of the handler set → concurrent handler
+//! additions from parallel lines never collide on the shared file.
 
-use ph2d_chrome_sync::{MOD_BEGIN, MOD_END, render_mod_lines, scan_chrome_handlers, splice_lines};
+use ph2d_chrome_sync::{
+    DISPATCH_BEGIN, DISPATCH_END, MOD_BEGIN, MOD_END, render_dispatch_lines, render_mod_lines,
+    scan_chrome_handlers, sorted_dispatch_handlers, splice_lines,
+};
 use std::path::Path;
 
 fn main() {
@@ -19,14 +26,22 @@ fn main() {
         .expect("chrome dir resolves");
 
     let handlers = scan_chrome_handlers(&chrome_dir);
+    let sorted = sorted_dispatch_handlers(&chrome_dir);
     let mod_file = chrome_dir.join("mod.rs");
 
     let content = std::fs::read_to_string(&mod_file).expect("chrome/mod.rs readable");
-    let updated = splice_lines(&content, MOD_BEGIN, MOD_END, &render_mod_lines(&handlers));
-    std::fs::write(&mod_file, updated).expect("chrome/mod.rs writable");
+    // Splice the mod block, then the dispatch block, on the same content.
+    let content = splice_lines(&content, MOD_BEGIN, MOD_END, &render_mod_lines(&handlers));
+    let content = splice_lines(
+        &content,
+        DISPATCH_BEGIN,
+        DISPATCH_END,
+        &render_dispatch_lines(&sorted),
+    );
+    std::fs::write(&mod_file, content).expect("chrome/mod.rs writable");
 
     println!(
-        "ph2d-chrome-sync: {} chrome handler(s) synced (mod declarations only).",
+        "ph2d-chrome-sync: {} handler(s) synced (mod block + dispatch_all chain).",
         handlers.len(),
     );
 }

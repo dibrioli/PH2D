@@ -1,3 +1,4 @@
+// ph2d-chrome-sync:z=150 (dispatch priority, ADR-0107; lower = earlier)
 //! LLM vector prompt dialog (P4, ADR-0061): the Generate button reads the prompt
 //! field and hands it to the shell, which runs the LLM generation off-thread.
 //! Mirrors `settings_api_key.rs` (read the in-menu `TextInput` on a button click).

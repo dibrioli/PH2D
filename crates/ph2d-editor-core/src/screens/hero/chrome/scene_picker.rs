@@ -1,3 +1,4 @@
+// ph2d-chrome-sync:z=190 (dispatch priority, ADR-0107; lower = earlier)
 //! Scene picker popover — row click sets the current scene name.
 
 use crate::ids;

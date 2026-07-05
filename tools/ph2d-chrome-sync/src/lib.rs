@@ -8,24 +8,45 @@
 //!
 //! ## Scope
 //!
-//! Only the `mod foo;` declaration block is regenerated. The
-//! `dispatch_all` chain stays hand-written because **z-order is
-//! load-bearing** (per `chrome/mod.rs` doc-comment: "earlier modules
-//! in the `||` chain win when ids overlap"). Codegening it would
-//! force alphabetical order — silently breaking dispatch.
+//! TWO blocks are regenerated from a scan of `chrome/*.rs`:
+//!   1. the `mod foo;` declaration block, and
+//!   2. the `dispatch_all` `||` chain body (ADR-0107, Camada 0).
+//!
+//! The chain used to be hand-written because **z-order is load-bearing**
+//! (per `chrome/mod.rs`: "earlier modules win when ids overlap") — and a
+//! naive codegen would force alphabetical order, silently breaking it. We
+//! keep z-order WITHOUT the hand-edit by having each handler declare its
+//! own priority in a `// ph2d-chrome-sync:z=NN` marker; the chain is
+//! emitted sorted by `(z, name)`. That order is a **pure function of the
+//! handler set**, so two parallel lines each adding a handler never
+//! collide on the shared chain (the whole point of Camada 0).
 //!
 //! Adding a chrome handler:
-//!   1. Drop `chrome/<slug>.rs` with `pub fn apply(hero, event) -> bool`.
-//!   2. `cargo run -p ph2d-chrome-sync` regenerates the `mod` block.
-//!   3. Edit `dispatch_all` BY HAND to insert the new handler at the
-//!      right z-order position (the function the gate enforces was
-//!      `apply_chain_includes_every_mod`, vide staleness gate).
+//!   1. Drop `chrome/<slug>.rs` with `pub fn apply(hero, event) -> bool`
+//!      and a `// ph2d-chrome-sync:z=NN` marker (omit → sorts last, at
+//!      [`DEFAULT_Z`], alphabetically among other unmarked handlers).
+//!   2. `cargo run -p ph2d-chrome-sync` regenerates BOTH blocks.
+//!
+//! That's it — no hand-edit of any shared file.
 
 use std::path::Path;
 
 /// Markers delimiting the generated `mod foo;` declaration block.
 pub const MOD_BEGIN: &str = "// <ph2d-chrome-sync:begin>";
 pub const MOD_END: &str = "// <ph2d-chrome-sync:end>";
+
+/// Markers delimiting the generated `dispatch_all` `||` chain body (ADR-0107,
+/// Camada 0). The body between them is a pure function of the handler set,
+/// so parallel lines adding handlers never collide on it.
+pub const DISPATCH_BEGIN: &str = "// <ph2d-chrome-sync:dispatch-begin>";
+pub const DISPATCH_END: &str = "// <ph2d-chrome-sync:dispatch-end>";
+
+/// A handler with no `// ph2d-chrome-sync:z=NN` marker sorts here — after
+/// every explicitly-prioritized handler, alphabetically among the unmarked.
+/// Keeps "just drop a file" working: a new handler with no opinion on z-order
+/// lands at the end of the chain, which is the safe default when its ids
+/// don't overlap anyone else's.
+pub const DEFAULT_Z: u32 = 1000;
 
 /// Scan the chrome dir for `*.rs` handler files (excluding `mod.rs`).
 /// Returns kebab-snake names (just the file stem; chrome handlers use
@@ -121,6 +142,56 @@ pub fn dispatch_all_referenced_handlers(content: &str) -> Vec<String> {
     out
 }
 
+/// Read a handler's dispatch priority from its `// ph2d-chrome-sync:z=NN`
+/// marker. Lower z = earlier in the chain = wins when two handlers claim
+/// the same widget id (the "z-order is load-bearing" invariant). Absent
+/// marker → [`DEFAULT_Z`].
+pub fn handler_z(chrome_dir: &Path, name: &str) -> u32 {
+    let path = chrome_dir.join(format!("{name}.rs"));
+    let content = std::fs::read_to_string(path).unwrap_or_default();
+    parse_z_marker(&content).unwrap_or(DEFAULT_Z)
+}
+
+/// Extract `NN` from the first `ph2d-chrome-sync:z=NN` occurrence.
+fn parse_z_marker(content: &str) -> Option<u32> {
+    const KEY: &str = "ph2d-chrome-sync:z=";
+    let idx = content.find(KEY)?;
+    content[idx + KEY.len()..]
+        .chars()
+        .take_while(|c| c.is_ascii_digit())
+        .collect::<String>()
+        .parse()
+        .ok()
+}
+
+/// Handler names ordered for `dispatch_all`: by `(z-marker, name)`. Stable
+/// and deterministic, so the rendered chain is a pure function of the
+/// handler set — the property that makes concurrent handler additions
+/// collision-free (ADR-0107, Camada 0).
+pub fn sorted_dispatch_handlers(chrome_dir: &Path) -> Vec<String> {
+    let mut names = scan_chrome_handlers(chrome_dir); // already alphabetical
+    names.sort_by_key(|n| (handler_z(chrome_dir, n), n.clone()));
+    names
+}
+
+/// Render the `dispatch_all` body: `<name>::apply(hero, event)` for the
+/// first handler, then `|| <name>::apply(hero, event)` for the rest.
+/// Indentation (4 / 8 spaces) matches the hand-written original so the
+/// migration diff is order-only, not whitespace churn.
+pub fn render_dispatch_lines(sorted: &[String]) -> Vec<String> {
+    sorted
+        .iter()
+        .enumerate()
+        .map(|(i, n)| {
+            if i == 0 {
+                format!("    {n}::apply(hero, event)")
+            } else {
+                format!("        || {n}::apply(hero, event)")
+            }
+        })
+        .collect()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -160,5 +231,52 @@ pub fn dispatch_all(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
                 "view_toggles".to_string()
             ]
         );
+    }
+
+    #[test]
+    fn parse_z_marker_reads_number() {
+        assert_eq!(parse_z_marker("// ph2d-chrome-sync:z=30\nmod x;"), Some(30));
+        assert_eq!(
+            parse_z_marker("//! doc\n// ph2d-chrome-sync:z=290"),
+            Some(290)
+        );
+        assert_eq!(parse_z_marker("no marker here"), None);
+    }
+
+    #[test]
+    fn render_dispatch_first_bare_rest_prefixed() {
+        let lines = render_dispatch_lines(&[
+            "theme".to_string(),
+            "radius".to_string(),
+            "io_menu".to_string(),
+        ]);
+        assert_eq!(
+            lines,
+            vec![
+                "    theme::apply(hero, event)".to_string(),
+                "        || radius::apply(hero, event)".to_string(),
+                "        || io_menu::apply(hero, event)".to_string(),
+            ]
+        );
+    }
+
+    #[test]
+    fn sorted_dispatch_orders_by_z_then_name() {
+        // Two handlers share z=1000 (unmarked) → alphabetical tiebreak;
+        // an explicit z=10 handler sorts ahead of both. Uses a temp dir so
+        // the test is hermetic (no dependency on the real chrome/ tree).
+        let dir = std::env::temp_dir().join("ph2d_chrome_sync_sort_test");
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(dir.join("zebra.rs"), "pub fn apply() {}").unwrap();
+        std::fs::write(dir.join("alpha.rs"), "pub fn apply() {}").unwrap();
+        std::fs::write(
+            dir.join("first.rs"),
+            "// ph2d-chrome-sync:z=10\npub fn apply() {}",
+        )
+        .unwrap();
+        let sorted = sorted_dispatch_handlers(&dir);
+        assert_eq!(sorted, vec!["first", "alpha", "zebra"]);
+        let _ = std::fs::remove_dir_all(&dir);
     }
 }

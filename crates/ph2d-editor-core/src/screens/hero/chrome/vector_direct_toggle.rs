@@ -1,3 +1,4 @@
+// ph2d-chrome-sync:z=290 (dispatch priority, ADR-0107; lower = earlier)
 //! TopBar Vector Direct Select pill — **toggle** (mirror of `vector_select_toggle.rs`).
 //!
 //! ## ⚠ Central wiring required (Coord) — see `docs/HANDOFF_vector_w2_t23_select_coord.md`

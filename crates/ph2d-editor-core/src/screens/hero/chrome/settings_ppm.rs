@@ -1,3 +1,4 @@
+// ph2d-chrome-sync:z=90 (dispatch priority, ADR-0107; lower = earlier)
 //! Settings → Pixels per meter cascade: open submenu + write preset.
 
 use crate::ids;

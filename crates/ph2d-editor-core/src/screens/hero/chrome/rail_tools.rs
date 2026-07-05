@@ -1,3 +1,4 @@
+// ph2d-chrome-sync:z=50 (dispatch priority, ADR-0107; lower = earlier)
 //! Left rail tool compounds — SPACE flip, VIEW (TOOL_HOME) cycle,
 //! and the exclusive Transform tool radio group.
 

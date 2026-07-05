@@ -1,3 +1,4 @@
+// ph2d-chrome-sync:z=140 (dispatch priority, ADR-0107; lower = earlier)
 //! Settings → Anthropic API key cascade (P4, ADR-0061): open the submenu, then
 //! commit the field's buffer to the shell on Save. Mirrors `settings_filter.rs`
 //! (open-on-row-click) + `scene_picker.rs` (read the in-menu `TextInput`).

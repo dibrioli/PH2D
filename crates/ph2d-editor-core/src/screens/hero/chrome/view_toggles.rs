@@ -1,3 +1,4 @@
+// ph2d-chrome-sync:z=40 (dispatch priority, ADR-0107; lower = earlier)
 //! View overlay toggles — mirror UI / stats HUD / grid overlay.
 
 use crate::ids;

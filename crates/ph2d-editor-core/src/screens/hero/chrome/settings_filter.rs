@@ -1,3 +1,4 @@
+// ph2d-chrome-sync:z=110 (dispatch priority, ADR-0107; lower = earlier)
 //! Settings → Image filter cascade: open submenu + pick Pixel Art /
 //! Smooth. Mirrors `settings_unit.rs` 1:1.
 //!

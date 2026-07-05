@@ -1,3 +1,4 @@
+// ph2d-chrome-sync:z=260 (dispatch priority, ADR-0107; lower = earlier)
 //! TopBar Vector Pencil pill — **toggle**: clicking activates the Pencil
 //! tool when inactive; clicking again deactivates (back to the default
 //! tool). The shell drain in `render_loop::mod` performs the actual

@@ -1,3 +1,4 @@
+// ph2d-chrome-sync:z=130 (dispatch priority, ADR-0107; lower = earlier)
 //! Settings → Text rendering cascade: toggle entre Default e
 //! Crisp Heavy. Mirrors `settings_present.rs` 1:1.
 //!

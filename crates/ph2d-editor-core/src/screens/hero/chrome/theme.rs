@@ -1,3 +1,4 @@
+// ph2d-chrome-sync:z=10 (dispatch priority, ADR-0107; lower = earlier)
 //! Theme menu — 4 theme picks (Forge / Workshop / Sunstone / Blueprint).
 
 use crate::ids;

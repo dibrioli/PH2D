@@ -1,3 +1,4 @@
+// ph2d-chrome-sync:z=200 (dispatch priority, ADR-0107; lower = earlier)
 //! TopBar Image Tools mode toggle — flips `image_edit.mode_on`.
 //!
 //! Intercepted at Hero level (not the topbar stub) because

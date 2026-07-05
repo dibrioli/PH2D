@@ -528,6 +528,9 @@ impl crate::App {
                 diag_input_events,
                 diag_paint_stamps,
                 self.paint_ms_ewma,
+                // Deform Transform live ⇒ the sprite gizmo is suppressed for the frame (its corner
+                // handles share the deform gizmo's screen corners on a whole-image transform).
+                painter_bridge_queries::deform_transform_gizmo_active(tools),
             );
             // ─────────────────────────────────────────────────────────
             // Wave 2.5 PR 11.8 closeout — consolidated bus drain.

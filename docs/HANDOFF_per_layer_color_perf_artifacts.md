@@ -1,5 +1,16 @@
 # HANDOFF — Per-Layer Color (layers-as-brush): slowness + rectangular stripe artifacts
 
+> **UPDATE 2026-07-04 (2ª rodada) — a causa LIVE era o caminho DINÂMICO (Texture Color, o default) +
+> o preview composite; ambos fechados em CPU.** O smoke do Enio reprovou a 1ª rodada ("FPS 60→10 com
+> Line/Arc/Ellipse/Polygon/Freehand") porque o harness anterior setava cores custom → media o caminho
+> CACHED; camadas capturadas sem pick são **Texture Color** e roteiam o kernel dinâmico SERIAL:
+> **354 ms/move (N3) · 1,87 s/move (N16)** @2048²·r100 (`per_layer_perf_live`). Fixes: (1)
+> `composite_region_linear`+`encode` em bandas (o `take_preview_arc` de stack não-trivial caiu 31→5 ms;
+> stacks com adjustment ESPACIAL ficam seriais — seam de banda); (2) kernel dinâmico batched + banded +
+> layer-fused (`accumulate_shape_layers_rgba_batch`); (3) **rota `stamp_dabs_cached_color_rgba`**:
+> Texture Color sem per-dab dynamics assa stamps premul-RGBA por camada e blita fused/banded →
+> **13,1 ms/move N3 (27×) · 54,8 ms N16 (34×)**. O caso N16×r100 continua sendo o alvo GPU (§4.2).
+
 > **UPDATE 2026-07-04 (noite) — CPU chegou ao teto NOVO: o kernel foi paralelizado por bandas; pior caso
 > 105 ms → ~8 ms/move.** Medido em `--release` no Ryzen 9950X (32 threads): baseline pós-fused
 > `per_layer_perf_worst` = **95,4 ms/move** (vs 105,5 no Mac — igual nas duas máquinas porque o kernel era

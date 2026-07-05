@@ -6685,6 +6685,89 @@ fn deform_transform_undo_rolls_back_the_whole_transform() {
 // layers) isolates the x N loops from the N-independent memcpy.
 // ============================================================================
 #[cfg(test)]
+/// P4 harness: the per-FRAME cost of the selection machinery at 2048² with 8 boolean shapes — the
+/// marching-ants overlay rebuild (animated `phase` ⇒ runs every frame, even idle) and one gizmo-drag
+/// Move (recompose). Run:
+///   cargo test -p ph2d-tool-painter --release perf_selection_overlay_frame -- --ignored --nocapture
+#[test]
+#[ignore = "perf measurement — run explicitly in --release"]
+fn perf_selection_overlay_frame() {
+    use super::selection_shapes::{SelectionEntry, SelectionShape};
+    let size = 2048u32;
+    let mut t = PainterTool::default();
+    t.set_source(vec![255u8; (size * size * 4) as usize], size, size);
+    for i in 0..8u32 {
+        let cx = 300.0 + i as f32 * 200.0;
+        t.paint.selection_shapes.push(SelectionEntry {
+            shape: SelectionShape::Ellipse {
+                center: [cx, 1024.0],
+                u: [1.0, 0.0],
+                rx: 160.0,
+                ry: 160.0,
+            },
+            op: if i == 0 { 0 } else { 1 },
+        });
+    }
+    t.recompose_selection_mask();
+    t.paint.selection_active = true;
+    let iters = 30u32;
+    let t0 = std::time::Instant::now();
+    for k in 0..iters {
+        let _ = t.selection_overlay_rgba(k);
+    }
+    let overlay = t0.elapsed().as_secs_f64() * 1000.0 / f64::from(iters);
+    println!("selection overlay rebuild (2048², 8 shapes): {overlay:.2} ms/frame");
+}
+
+#[test]
+fn per_layer_texture_color_paints_each_layers_own_rgb() {
+    // The capture DEFAULT: a layer without a custom pick paints its OWN captured RGB (Texture Color).
+    // With a constant orientation this routes through the cached RGBA path (baked premul stamps) — the
+    // per-dab dynamic path only runs for Rake/Random/Jitter/Randomize/canvas-fixed Grain. Two layers:
+    // bottom all-RED full mask, top all-GREEN on the LEFT half only → the painted tip is green on the
+    // left (top over bottom) and red on the right (bottom alone).
+    use ph2d_painter_brush::StrokeMethod;
+    let mut t = white_canvas(64, 10.0);
+    t.paint.brush.stroke_method = StrokeMethod::Space;
+    t.paint.brush.hardness = 1.0;
+    t.paint.brush.falloff = Falloff::Constant;
+    t.paint.brush.space_attenuation = false;
+    let s = 16u32;
+    let full = vec![255u8; (s * s) as usize];
+    let mut left = vec![0u8; (s * s) as usize];
+    for y in 0..s {
+        for x in 0..s / 2 {
+            left[(y * s + x) as usize] = 255;
+        }
+    }
+    t.set_brush_shape_layers(vec![(full, s, s), (left, s, s)]);
+    let red = vec![[255u8, 0, 0]; (s * s) as usize]
+        .into_iter()
+        .flatten()
+        .collect::<Vec<u8>>();
+    let green = vec![[0u8, 255, 0]; (s * s) as usize]
+        .into_iter()
+        .flatten()
+        .collect::<Vec<u8>>();
+    t.paint
+        .shape_layers
+        .set_layers_meta(vec![red, green], vec![1.0; 2], vec![0; 2], vec![1, 2]);
+    t.toggle_brush_shape_per_layer_color();
+    assert!(t.paint.shape_layers.is_color_mode());
+    t.on_canvas_pointer(cp([32.0, 32.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([32.0, 32.0], PointerPhase::Up));
+    let l = px(&t, 64, 27, 32); // left of centre — the GREEN top layer covers here
+    let r = px(&t, 64, 37, 32); // right of centre — only the RED bottom layer covers
+    assert!(
+        l[1] > 180 && l[0] < 80,
+        "left half paints the TOP layer's green rgb: {l:?}"
+    );
+    assert!(
+        r[0] > 180 && r[1] < 80,
+        "right half paints the BOTTOM layer's red rgb: {r:?}"
+    );
+}
+
 mod per_layer_perf {
     use super::*;
     use ph2d_painter_brush::{Falloff, StrokeMethod};
@@ -6791,6 +6874,114 @@ mod per_layer_perf {
             "D/H = diagonal/horizontal at EQUAL dab count: >>1 => bbox-bound; ~1 => D.S.N-bound."
         );
         println!("time ~prop N => the xN per-layer loops dominate.\n");
+    }
+
+    /// The LIVE config (Enio 2026-07-04: "FPS 60→10 com Line/Arc/Ellipse/Polygon/Freehand"): captured
+    /// layers WITHOUT a custom colour pick default to **Texture Color** → the route takes the per-pixel
+    /// DYNAMIC path (`stamp_dabs_per_layer_dynamic`), not the cached one the batch kernel accelerated.
+    /// Times the EDIT phase (drag the Arc's mid control point — a whole-shape re-stamp per move) at
+    /// 2048², dynamic (texture-colour default) vs cached (all colours picked), N 3/16:
+    ///   cargo test -p ph2d-tool-painter --release per_layer_perf_live -- --ignored --nocapture
+    #[test]
+    #[ignore = "perf measurement — run explicitly in --release"]
+    fn per_layer_perf_live() {
+        let size = 2048u32;
+        let radius = 100.0f32;
+        for &n in &[3usize, 16] {
+            for &custom_colors in &[false, true] {
+                let mut t = white_canvas(size, radius);
+                t.paint.brush.stroke_method = StrokeMethod::Arc;
+                t.paint.brush.hardness = 1.0;
+                t.paint.brush.falloff = Falloff::Constant;
+                t.paint.brush.space_attenuation = false;
+                // 128² soft-disc layer masks (a real captured-layer silhouette, not a flat square).
+                let layers: Vec<(Vec<u8>, u32, u32)> = (0..n)
+                    .map(|_| {
+                        let s = 128u32;
+                        let mut m = vec![0u8; (s * s) as usize];
+                        for y in 0..s {
+                            for x in 0..s {
+                                let dx = x as f32 - 64.0;
+                                let dy = y as f32 - 64.0;
+                                let d = (dx * dx + dy * dy).sqrt() / 64.0;
+                                m[(y * s + x) as usize] = ((1.0 - d).clamp(0.0, 1.0) * 255.0) as u8;
+                            }
+                        }
+                        (m, s, s)
+                    })
+                    .collect();
+                t.set_brush_shape_layers(layers);
+                // Real captured layers carry per-pixel RGB (`w·h·3`) — WITHOUT it `any_texture_color()`
+                // is false and the route silently falls back to the cached path, hiding the dynamic
+                // kernel (the live default) from the measurement.
+                let rgb: Vec<Vec<u8>> = (0..n)
+                    .map(|i| {
+                        let s = 128usize;
+                        let mut v = vec![0u8; s * s * 3];
+                        for p in 0..s * s {
+                            v[p * 3] = ((p * 7 + i * 31) % 256) as u8;
+                            v[p * 3 + 1] = ((p * 13 + i * 17) % 256) as u8;
+                            v[p * 3 + 2] = ((p * 3 + i * 53) % 256) as u8;
+                        }
+                        v
+                    })
+                    .collect();
+                t.paint.shape_layers.set_layers_meta(
+                    rgb,
+                    vec![1.0; n],
+                    vec![0; n],
+                    (0..n as u64).collect(),
+                );
+                t.toggle_brush_shape_per_layer_color();
+                if custom_colors {
+                    for i in 0..n {
+                        let f = i as f32;
+                        t.set_brush_shape_layer_color(
+                            i,
+                            [(f * 0.13) % 1.0, (f * 0.27) % 1.0, (f * 0.41) % 1.0],
+                        );
+                    }
+                }
+                assert!(t.paint.shape_layers.is_color_mode());
+                t.add_raster_layer("doc"); // non-trivial doc stack → real preview lane
+                // Create the Arc: a long horizontal drag (chord 1800 px → mid bows to y≈754).
+                t.on_canvas_pointer(cp([124.0, 1024.0], PointerPhase::Down));
+                t.on_canvas_pointer(cp([1924.0, 1024.0], PointerPhase::Move));
+                t.on_canvas_pointer(cp([1924.0, 1024.0], PointerPhase::Up));
+                let _ = t.take_preview_arc();
+                // EDIT phase: grab the (bowed) mid anchor and wiggle it — one whole-shape re-stamp per move.
+                let mid = t.curve_overlay().expect("arc open").points[1];
+                t.on_canvas_pointer(cp(mid, PointerPhase::Down));
+                let moves = 10u32;
+                let mut held = None;
+                let mut move_ns = 0u128;
+                let mut prev_ns = 0u128;
+                for k in 0..moves {
+                    let d = ((k % 5) as f32) - 2.0;
+                    let a = std::time::Instant::now();
+                    let _ = t.on_canvas_pointer(cp([mid[0] + d, mid[1] + d], PointerPhase::Move));
+                    move_ns += a.elapsed().as_nanos();
+                    let b = std::time::Instant::now();
+                    if let Some(p) = t.take_preview_arc() {
+                        held = Some(p); // bridge retainer
+                    }
+                    prev_ns += b.elapsed().as_nanos();
+                }
+                let _ = held;
+                t.on_canvas_pointer(cp(mid, PointerPhase::Up));
+                let kf = f64::from(moves);
+                eprintln!(
+                    "  live 2048² r100 N{n:<2} {}  move {:>9.1} us   prev {:>9.1} us",
+                    if custom_colors {
+                        "cached (colours picked)"
+                    } else {
+                        "texture-colour (default)"
+                    },
+                    move_ns as f64 / kf / 1000.0,
+                    prev_ns as f64 / kf / 1000.0,
+                );
+            }
+        }
     }
 
     /// Worst observed config (1024 r100 N16, diagonal) in isolation so `PH2D_PAINT_PROF=1` prints a

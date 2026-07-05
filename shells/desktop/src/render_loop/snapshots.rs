@@ -88,6 +88,7 @@ pub(super) fn publish(
     input_events: u32,
     paint_stamps: u32,
     paint_ms: f32,
+    suppress_sprite_gizmo: bool,
 ) {
     // M14.4a: if live-bridge enabled, rebuild HierarchySnapshot
     // from SimWorld + push into HeroScreen BEFORE paint. The
@@ -485,6 +486,17 @@ pub(super) fn publish(
     } else {
         None
     };
+    // While the Painter's Deform **Transform** gizmo is live (Uniform / Free / Distort / Warp), the
+    // SPRITE gizmo is fully suppressed — view, extras and the global union. On a whole-image transform
+    // both gizmos put their corner squares on the SAME screen corners, and a near-corner Down grabbed
+    // the sprite's scale handle instead of the deform's (Enio 2026-07-04: "inative o gizmo da sprite
+    // para as quatro ferramentas de Transform"). No view ⇒ nothing painted ⇒ no handle registered in
+    // the hit index ⇒ every corner click reaches the deform gizmo.
+    if suppress_sprite_gizmo {
+        hero.gizmo.view = None;
+        hero.gizmo.extra_views.clear();
+        hero.gizmo.global_view = None;
+    }
     // M14.5 inspector phase (6.4/§9): publish a per-frame
     // snapshot of the selected sprite so `paint_inspector` can
     // surface the Render Source section + Reimport button

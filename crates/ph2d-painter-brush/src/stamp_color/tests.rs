@@ -373,3 +373,132 @@ fn batched_fused_accumulate_is_bit_identical_to_sequential() {
         }
     }
 }
+
+/// GATE (`accumulate_shape_layers_rgba_batch`): the batched row-banded + layer-fused DYNAMIC accumulate
+/// must produce BYTE-IDENTICAL premul-RGBA maps + the same union rect as the per-dab serial kernel
+/// (`accumulate_shape_layer_rgba`, the reference). Runs a batch LARGE enough to cross the parallel
+/// threshold, so the banded threads (and the per-pixel Grain/stencil hoist) are what's verified.
+#[test]
+fn batched_dynamic_accumulate_is_bit_identical_to_sequential() {
+    use crate::texture::{TextureMapping, dab_basis};
+    let mut spec = shape_image_spec();
+    // An active View-mapped Grain so the hoisted per-pixel Grain modulation is exercised too.
+    spec.texture.kind = TextureKind::Noise;
+    spec.texture.mapping = TextureMapping::ViewPlane;
+    let l0 = layer([true, true, true, true]);
+    let l1 = layer([false, true, true, false]);
+    let l2 = layer([true, false, false, true]);
+    let masks = [mask(&l0), mask(&l1), mask(&l2)];
+    // Layer 1 paints its own RGB (texture colour); the others flat colours.
+    let rgb1: Vec<u8> = vec![200, 40, 90, 10, 250, 30, 120, 120, 120, 5, 5, 250];
+    let layer_rgb: Vec<Option<ImageRgb>> = vec![
+        None,
+        Some(ImageRgb {
+            rgb: &rgb1,
+            width: 2,
+            height: 2,
+        }),
+        None,
+    ];
+    let n = masks.len();
+    let (w, h) = (640u32, 640u32);
+    let len = (w as usize) * (h as usize) * 4;
+    // Big overlapping dabs (Σ boxes > PARALLEL_MIN_AREA → the banded path runs).
+    let raw: [([f32; 2], f32, f32); 4] = [
+        ([180.0, 200.0], 90.0, 0.8),
+        ([260.0, 240.0], 75.0, 1.0),
+        ([150.0, 300.0], 110.0, 0.5),
+        ([24.0, 39.0], 80.0, 0.9), // clipped against the canvas origin
+    ];
+    let colors = [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]];
+    let build = |rng: &mut u64, center: [f32; 2], radius: f32, coverage: f32| {
+        let s = BrushSpec {
+            radius_px: radius,
+            ..spec
+        };
+        let fp = s.footprint_deform();
+        let dims = [w as f32, h as f32];
+        let shape_basis = dab_basis(&s.shape, [1.0, 0.0], rng, dims, [1.0, 0.0], fp);
+        let grain_basis = dab_basis(&s.texture, [1.0, 0.0], rng, dims, [1.0, 0.0], fp);
+        (s, shape_basis, grain_basis, center, radius, coverage)
+    };
+    // Reference: the per-dab serial kernel, RNG stream in dab order.
+    let mut seq: Vec<Vec<u8>> = (0..n).map(|_| vec![0u8; len]).collect();
+    let mut rng_a = 7u64;
+    let mut seq_rect: Option<crate::dab::DirtyRect> = None;
+    for &(center, radius, cov) in &raw {
+        let (s, sb, gb, ..) = build(&mut rng_a, center, radius, cov);
+        for i in 0..n {
+            if let Some(r) = accumulate_shape_layer_rgba(
+                &mut seq[i],
+                w,
+                h,
+                center,
+                radius,
+                &s,
+                &sb,
+                &masks[i],
+                Some((&gb, None)),
+                None,
+                colors[i],
+                layer_rgb[i].as_ref(),
+                cov,
+            ) {
+                seq_rect = Some(match seq_rect {
+                    None => r,
+                    Some(a) => {
+                        let x0 = a.x.min(r.x);
+                        let y0 = a.y.min(r.y);
+                        let x1 = (a.x + a.w).max(r.x + r.w);
+                        let y1 = (a.y + a.h).max(r.y + r.h);
+                        crate::dab::DirtyRect {
+                            x: x0,
+                            y: y0,
+                            w: x1 - x0,
+                            h: y1 - y0,
+                        }
+                    }
+                });
+            }
+        }
+    }
+    // Batch: same RNG seed → identical bases, banded threads.
+    let mut rng_b = 7u64;
+    let dyn_dabs: Vec<DynDab> = raw
+        .iter()
+        .map(|&(center, radius, cov)| {
+            let (s, sb, gb, ..) = build(&mut rng_b, center, radius, cov);
+            DynDab {
+                center,
+                radius,
+                spec: s,
+                shape_basis: sb,
+                grain_basis: Some(gb),
+                colors: colors.to_vec(),
+                coverage: cov,
+            }
+        })
+        .collect();
+    let mut batched: Vec<Vec<u8>> = (0..n).map(|_| vec![0u8; len]).collect();
+    let batch_rect = accumulate_shape_layers_rgba_batch(
+        &mut batched,
+        w,
+        h,
+        &dyn_dabs,
+        &masks,
+        &layer_rgb,
+        None,
+        None,
+    );
+    assert_eq!(
+        batch_rect.map(|r| (r.x, r.y, r.w, r.h)),
+        seq_rect.map(|r| (r.x, r.y, r.w, r.h)),
+        "batch union rect must equal the per-dab union"
+    );
+    for i in 0..n {
+        assert_eq!(
+            batched[i], seq[i],
+            "layer {i}: batched dynamic map must be byte-identical to the serial kernel"
+        );
+    }
+}

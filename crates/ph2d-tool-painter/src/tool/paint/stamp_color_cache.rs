@@ -376,7 +376,7 @@ impl PainterTool {
     /// Re-bake the per-layer coloured stamps (one per layer, bottom→top) when the appearance / mask size
     /// changed; a no-op on a hit. Each stamp is a single layer tinted by its colour (× Grain, × the Grain
     /// Colour Ramp if active — so the ramp tints the multi-colour tip).
-    fn ensure_color_stamp_cache(&mut self, brush: &BrushSpec, size: u32) {
+    pub(super) fn ensure_color_stamp_cache(&mut self, brush: &BrushSpec, size: u32) {
         let grain_ramp_active = self.ensure_per_layer_grain_ramp(brush);
         let key = ColorStampKey {
             shape: brush.shape,
@@ -402,17 +402,18 @@ impl PainterTool {
             let colors = self.paint.shape_layers.resolved_colors(brush.color);
             let grain_image = self.paint.texture_image.as_ref().map(|i| i.as_mask());
             let grain_ramp = grain_ramp_active.then_some(self.paint.texture_ramp_lut.as_slice());
-            masks
-                .iter()
-                .zip(colors.iter())
-                .map(|(m, c)| {
-                    // This cached path is tint-only (Texture Color routes to the dynamic path), so no
-                    // per-pixel RGB is sampled here; opacity is applied at recomposite (so `&[1.0]`).
+            (0..masks.len())
+                .map(|i| {
+                    // Each layer bakes with its own colour source: the captured per-pixel RGB when the
+                    // layer is in Texture Color (the default — served by the cached RGBA route), else
+                    // the flat resolved tint (alpha-only cached route ignores the baked RGB). Opacity
+                    // applies at recomposite (so `&[1.0]`).
+                    let rgb = self.paint.shape_layers.rgb_image(i);
                     render_color_stamp_mask(
                         brush,
-                        std::slice::from_ref(m),
-                        std::slice::from_ref(c),
-                        &[None],
+                        std::slice::from_ref(&masks[i]),
+                        std::slice::from_ref(&colors[i]),
+                        std::slice::from_ref(&rgb),
                         &[1.0],
                         grain_image.as_ref(),
                         grain_ramp,

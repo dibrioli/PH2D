@@ -389,8 +389,9 @@ fn sample_color_mask(stamp: &ColorStampMask, u: f32, v: f32) -> ([f32; 3], f32) 
 
 mod accumulate;
 pub use accumulate::{
-    FusedDab, accumulate_color_stamp_coverage, accumulate_color_stamps_fused,
-    accumulate_color_stamps_fused_batch, accumulate_shape_layer_rgba,
+    DynDab, FusedDab, accumulate_color_stamp_coverage, accumulate_color_stamps_fused,
+    accumulate_color_stamps_fused_batch, accumulate_color_stamps_rgba_batch,
+    accumulate_shape_layer_rgba, accumulate_shape_layers_rgba_batch,
 };
 
 #[cfg(test)]

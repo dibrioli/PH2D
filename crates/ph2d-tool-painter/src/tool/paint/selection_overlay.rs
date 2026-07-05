@@ -28,60 +28,80 @@ impl PainterTool {
         let ant = phase as usize;
         let opacity = self.paint.selection_overlay_opacity.clamp(0.0, 1.0);
         let mut out = vec![0u8; wu * hu * 4];
-        for y in 0..hu {
-            for x in 0..wu {
-                let idx = y * wu + x;
-                let cov = f32::from(mask[idx]) / 255.0; // 1 = fully selected, 0 = fully outside
-                let inside = mask[idx] >= 128;
-                // Boundary = the 128 (half-coverage) contour flips across the right or down neighbour.
-                let edge = (x + 1 < wu && (mask[idx + 1] >= 128) != inside)
-                    || (y + 1 < hu && (mask[idx + wu] >= 128) != inside);
-                let o = idx * 4;
-                if edge {
-                    // Alternating white / black dashes marching along x+y with the phase.
-                    let c = if (x + y + ant) % DASH < DASH / 2 {
-                        [255u8, 255, 255, 255]
-                    } else {
-                        [0u8, 0, 0, 255]
-                    };
-                    out[o..o + 4].copy_from_slice(&c);
-                } else if ((x + y + hatch_shift) / STRIPE).is_multiple_of(2) {
-                    // Diagonal hatch whose opacity FADES with the selection coverage — a realistic gradient
-                    // across a feathered edge (full outside, half at the 50% contour, clear inside).
-                    let a = (HATCH_MAX_ALPHA * opacity * (1.0 - cov)).round() as u8;
-                    if a > 0 {
-                        out[o..o + 4].copy_from_slice(&[30u8, 30, 30, a]);
-                    }
-                }
-            }
-        }
-        // Offset contours: in ring mode draw EVERY frozen ring boundary + the live line as cyan dashed
-        // contours of `{ sdf <= level }`, distinct from the black/white base ants. A PROTECTED band adds no
-        // selected pixels, so without this its edges vanish in the transition area once Apply & Keep
-        // re-centres the slider — this keeps every selection line permanently visible.
+        // The ants animate with `phase` ⇒ this rebuild runs EVERY frame while a selection exists (even
+        // idle) — 9.9 ms/frame serial @2048² was the boolean-selection FPS drop that survived the drag
+        // coalescing (Enio 2026-07-04, "P4 sem melhorias"). Pure per-pixel work (neighbour READS of the
+        // shared mask/sdf only) → split the rows into disjoint bands across the cores; bit-identical.
         let levels = self.selection_offset_contour_levels();
-        if !levels.is_empty() {
-            let sdf = self.selection_offset_sdf();
-            if sdf.len() == wu * hu {
-                for y in 0..hu {
-                    for x in 0..wu {
-                        let idx = y * wu + x;
-                        if (x + y + ant) % DASH >= DASH / 2 {
-                            continue; // dash gap
+        let sdf = self.selection_offset_sdf();
+        let sdf_ok = !levels.is_empty() && sdf.len() == wu * hu;
+        let overlay_rows = |band: &mut [u8], y0: usize| {
+            let rows = band.len() / (wu * 4);
+            for ry in 0..rows {
+                let y = y0 + ry;
+                for x in 0..wu {
+                    let idx = y * wu + x;
+                    let cov = f32::from(mask[idx]) / 255.0; // 1 = fully selected, 0 = fully outside
+                    let inside = mask[idx] >= 128;
+                    // Boundary = the 128 (half-coverage) contour flips across the right/down neighbour.
+                    let edge = (x + 1 < wu && (mask[idx + 1] >= 128) != inside)
+                        || (y + 1 < hu && (mask[idx + wu] >= 128) != inside);
+                    let o = (ry * wu + x) * 4;
+                    if edge {
+                        // Alternating white / black dashes marching along x+y with the phase.
+                        let c = if (x + y + ant) % DASH < DASH / 2 {
+                            [255u8, 255, 255, 255]
+                        } else {
+                            [0u8, 0, 0, 255]
+                        };
+                        band[o..o + 4].copy_from_slice(&c);
+                    } else if ((x + y + hatch_shift) / STRIPE).is_multiple_of(2) {
+                        // Diagonal hatch whose opacity FADES with the selection coverage — a realistic
+                        // gradient across a feathered edge (full outside → clear inside).
+                        let a = (HATCH_MAX_ALPHA * opacity * (1.0 - cov)).round() as u8;
+                        if a > 0 {
+                            band[o..o + 4].copy_from_slice(&[30u8, 30, 30, a]);
                         }
+                    }
+                    // Offset contours: in ring mode draw EVERY frozen ring boundary + the live line as
+                    // cyan dashed contours of `{ sdf <= level }`, distinct from the black/white ants. A
+                    // PROTECTED band adds no selected pixels, so without this its edges vanish once
+                    // Apply & Keep re-centres the slider.
+                    if sdf_ok && (x + y + ant) % DASH < DASH / 2 {
                         for &level in &levels {
                             let inside = sdf[idx] <= level;
                             let edge = (x + 1 < wu && (sdf[idx + 1] <= level) != inside)
                                 || (y + 1 < hu && (sdf[idx + wu] <= level) != inside);
                             if edge {
-                                let o = idx * 4;
-                                out[o..o + 4].copy_from_slice(&[0u8, 220, 255, 255]);
+                                band[o..o + 4].copy_from_slice(&[0u8, 220, 255, 255]);
                                 break;
                             }
                         }
                     }
                 }
             }
+        };
+        /// Below this canvas area the serial loop beats spawning scoped threads.
+        const PARALLEL_MIN_AREA: usize = 1 << 17;
+        let threads = std::thread::available_parallelism()
+            .map(std::num::NonZero::get)
+            .unwrap_or(1)
+            .clamp(1, hu.max(1));
+        if wu * hu < PARALLEL_MIN_AREA || threads <= 1 || hu <= 1 {
+            overlay_rows(&mut out, 0);
+        } else {
+            let rpb = hu.div_ceil(threads);
+            let overlay_rows = &overlay_rows;
+            std::thread::scope(|s| {
+                let handles: Vec<_> = out
+                    .chunks_mut(rpb * wu * 4)
+                    .enumerate()
+                    .map(|(bi, band)| s.spawn(move || overlay_rows(band, bi * rpb)))
+                    .collect();
+                for h in handles {
+                    h.join().expect("selection overlay band panicked");
+                }
+            });
         }
         Some((out, w, h))
     }

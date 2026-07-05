@@ -7,7 +7,7 @@ use super::*;
 #[must_use]
 pub fn composite(
     stack: &LayerStack,
-    src: &impl LayerPixelSource,
+    src: &(impl LayerPixelSource + Sync),
     width: u32,
     height: u32,
 ) -> Vec<u8> {
@@ -29,7 +29,7 @@ pub fn composite(
 #[must_use]
 pub fn composite_region(
     stack: &LayerStack,
-    src: &impl LayerPixelSource,
+    src: &(impl LayerPixelSource + Sync),
     width: u32,
     height: u32,
     region: Region,
@@ -98,14 +98,73 @@ fn encode(acc: &[[f32; 4]]) -> Vec<u8> {
     let thresh = &*SRGB_ENCODE_THRESH;
     let coarse = &*SRGB_ENCODE_COARSE;
     let mut out = vec![0u8; acc.len() * 4];
-    for (px, lin) in acc.iter().enumerate() {
-        out[px * 4] = encode_byte(thresh, coarse, lin[0]);
-        out[px * 4 + 1] = encode_byte(thresh, coarse, lin[1]);
-        out[px * 4 + 2] = encode_byte(thresh, coarse, lin[2]);
-        // Alpha is straight coverage — no transfer function (round, not LUT).
-        out[px * 4 + 3] = (lin[3].clamp(0.0, 1.0) * 255.0).round() as u8;
+    // Pure per-pixel map → split across the cores for large buffers (bit-identical: disjoint chunks,
+    // no cross-pixel state). Small buffers stay serial (thread spawn would cost more than it saves).
+    let threads = parallel_threads(acc.len(), acc.len());
+    let cpb = acc.len().div_ceil(threads);
+    let encode_chunk = |out_chunk: &mut [u8], lin_chunk: &[[f32; 4]]| {
+        for (px, lin) in lin_chunk.iter().enumerate() {
+            out_chunk[px * 4] = encode_byte(thresh, coarse, lin[0]);
+            out_chunk[px * 4 + 1] = encode_byte(thresh, coarse, lin[1]);
+            out_chunk[px * 4 + 2] = encode_byte(thresh, coarse, lin[2]);
+            // Alpha is straight coverage — no transfer function (round, not LUT).
+            out_chunk[px * 4 + 3] = (lin[3].clamp(0.0, 1.0) * 255.0).round() as u8;
+        }
+    };
+    if threads <= 1 {
+        encode_chunk(&mut out, acc);
+        return out;
     }
+    std::thread::scope(|s| {
+        let handles: Vec<_> = out
+            .chunks_mut(cpb * 4)
+            .zip(acc.chunks(cpb))
+            .map(|(oc, lc)| s.spawn(move || encode_chunk(oc, lc)))
+            .collect();
+        for h in handles {
+            h.join().expect("encode chunk panicked");
+        }
+    });
     out
+}
+
+/// How many worker threads a per-pixel pass of `area` px (with `rows` splittable units) should use:
+/// `1` (serial) below the minimum area, else the core count clamped to the unit count.
+fn parallel_threads(area: usize, rows: usize) -> usize {
+    /// Below this area the serial loop beats spawning scoped threads.
+    const PARALLEL_MIN_AREA: usize = 1 << 17;
+    if area < PARALLEL_MIN_AREA || rows <= 1 {
+        return 1;
+    }
+    std::thread::available_parallelism()
+        .map(std::num::NonZero::get)
+        .unwrap_or(1)
+        .clamp(1, rows)
+}
+
+/// `true` when any VISIBLE adjustment in `ids` (recursing into groups) is a SPATIAL kind — its result
+/// at a pixel depends on NEIGHBOURING pixels, so row-band compositing would seam at the band edges.
+/// Per-pixel kinds (Curves / HSB / Levels / Noise / …) are band-safe.
+fn has_spatial_adjustment(stack: &LayerStack, ids: &[LayerId]) -> bool {
+    use ph2d_painter_effects::adjustments::AdjustmentKind as K;
+    ids.iter()
+        .any(|&id| match stack.get(id).map(|l| (&l.kind, l.visible)) {
+            Some((LayerKind::Group(g), true)) => has_spatial_adjustment(stack, &g.children),
+            Some((LayerKind::Adjustment(a), true)) => {
+                a.visible
+                    && matches!(
+                        a.kind,
+                        K::GaussianBlur
+                            | K::Sharpen
+                            | K::MotionBlur
+                            | K::ChromaticAberration
+                            | K::Halftone
+                            | K::Bloom
+                            | K::ShadowsHighlights
+                    )
+            }
+            _ => false,
+        })
 }
 
 /// Composite `region` into a freshly-allocated linear accumulator
@@ -113,7 +172,7 @@ fn encode(acc: &[[f32; 4]]) -> Vec<u8> {
 /// canvas bounds.
 fn composite_region_linear(
     stack: &LayerStack,
-    src: &impl LayerPixelSource,
+    src: &(impl LayerPixelSource + Sync),
     width: u32,
     height: u32,
     region: Region,
@@ -123,19 +182,66 @@ fn composite_region_linear(
     let rw = region.w.min(width - rx);
     let rh = region.h.min(height - ry);
     let mut acc = vec![[0.0f32; 4]; (rw as usize) * (rh as usize)];
-    composite_into(
-        &mut acc,
-        stack.root(),
-        stack,
-        src,
-        width,
-        rx,
-        ry,
-        rw,
-        rh,
-        0,
-        None,
+    // Per-pixel compositing is spatially independent → split the region's rows into disjoint bands
+    // across the cores (bit-identical to the serial walk; each band runs the same bottom→top layer
+    // walk over its own rows). This was the painter's biggest per-frame cost on a non-trivial doc
+    // stack: `take_preview_arc` recomposites the shape methods' whole-shape dirty bbox EVERY move
+    // (~31 ms serial @2048², Enio's "FPS 60→10"). SPATIAL adjustments (blur/bloom/…) read
+    // neighbouring pixels — banding would seam at band edges — so those stacks stay serial (they are
+    // already clamp-to-edge approximate on a sub-window; the GPU pass-graph is their real-time path).
+    let threads = parallel_threads(
+        (rw as usize) * (rh as usize),
+        if has_spatial_adjustment(stack, stack.root()) {
+            1
+        } else {
+            rh as usize
+        },
     );
+    if threads <= 1 {
+        composite_into(
+            &mut acc,
+            stack.root(),
+            stack,
+            src,
+            width,
+            rx,
+            ry,
+            rw,
+            rh,
+            0,
+            None,
+        );
+        return acc;
+    }
+    let rpb = (rh as usize).div_ceil(threads);
+    std::thread::scope(|s| {
+        let handles: Vec<_> = acc
+            .chunks_mut(rpb * (rw as usize))
+            .enumerate()
+            .map(|(bi, band)| {
+                let band_ry = ry + (bi * rpb) as u32;
+                let band_rh = (band.len() / (rw as usize)) as u32;
+                s.spawn(move || {
+                    composite_into(
+                        band,
+                        stack.root(),
+                        stack,
+                        src,
+                        width,
+                        rx,
+                        band_ry,
+                        rw,
+                        band_rh,
+                        0,
+                        None,
+                    );
+                })
+            })
+            .collect();
+        for h in handles {
+            h.join().expect("composite band panicked");
+        }
+    });
     acc
 }
 

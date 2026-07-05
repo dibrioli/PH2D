@@ -9,7 +9,7 @@
 |---|---|---|---|---|
 | [1](#bug-1--offset-de-curva-as-quinas-não-ficavam-paralelas-nem-cruzavam) | Offset de curva — quinas (não-paralelas, depois não-cruzavam) | Stroke shape-editor (Curve/Circle/Polygon/Free Hand) | ✅ Resolvido | 2026-06-29 |
 | [2](#bug-2--per-layer-color-fps-despenca--artefatos-retangulares-retângulo-virtual) | Per-Layer Color — FPS despenca + artefatos retangulares ("retângulo virtual") | Stamp path (CPU) + GPU preview slot | ✅ Resolvido | 2026-06-29 |
-| [3](#bug-3--queda-de-fps-warp--shapes-booleanas--todo-arraste-interativo) | Queda de FPS (Warp · Shapes booleanas · todo arraste interativo) | Bridge preview + selection recompose + warp mesh | ✅ Resolvido (CPU) | 2026-07-04 |
+| [3](#bug-3--queda-de-fps-warp--shapes-booleanas--todo-arraste-interativo) | Queda de FPS (Warp · Shapes booleanas · todo arraste interativo) | Bridge preview + selection recompose + warp mesh | ✅ Resolvido em CPU (2 rodadas 2026-07-04: Transform smoke-OK; per-layer texture-color + overlay booleanas fechados na 2ª — pendente smoke) | 2026-07-04 |
 
 ---
 
@@ -39,6 +39,28 @@ operações booleanas**, e — latente — em qualquer arraste de pintura. Bench
   inteiro** por-move — apesar de a máscara de seleção **não** entrar no composite (compositor sem nenhuma
   referência a seleção; a marquee é overlay por-frame).
 - **Warp:** a grade **pristina** era re-subdividida (Catmull-Rom) todo move (constante durante o arraste).
+
+### Smoke Enio 2026-07-04 (noite) — o eixo TRANSFORM está fechado; per-layer/booleanas NÃO
+- **Transform whole-image (P1): ✅ RESOLVIDO, smoke OK** — as bandas paralelas do composite
+  (6,4–8,5 ms/move medidos) resolveram a lentidão em todos os 4 sub-modos.
+- **Per-Layer Color (P3): causa live achada e fechada em CPU (2ª rodada, mesma noite).** O harness
+  antigo setava cor custom em TODAS as camadas → media só o caminho CACHED. O uso real (camadas
+  capturadas SEM pick) é **Texture Color, o default** → roteava o kernel DINÂMICO serial
+  (`accumulate_shape_layer_rgba`): medido **354 ms/move (N3) e 1,87 s/move (N16)** @2048²·r100
+  (`per_layer_perf_live`) — o "FPS 60→10". Três fixes: (1) `take_preview_arc` recompunha o bbox da
+  shape inteira por-frame no stack não-trivial — `composite_region_linear` + `encode` agora em bandas
+  paralelas (31 → 5 ms); (2) kernel dinâmico batched+banded+layer-fused (354→39 N3 · 1874→181 N16);
+  (3) **rota nova `stamp_dabs_cached_color_rgba`**: Texture Color com orientação constante (sem
+  Rake/Random/Jitter/Randomize/grain canvas-fixed) assa cada camada num stamp premul-RGBA COM a cor
+  (o `render_color_stamp_mask` já sabia) e blita 4-canais fused/banded → **13,1 ms/move (N3, 27×) ·
+  54,8 ms (N16, 34×)**; recomposite RGBA compartilhado com o dinâmico, também em bandas. N16×r100
+  segue caso-GPU (documentado). Teste de comportamento novo:
+  `per_layer_texture_color_paints_each_layers_own_rgb`.
+- **Booleanas multi-shape (P4): causa live achada e fechada.** Não era o recompose (cacheado, 5 ms,
+  coalesced): era o **overlay de marching-ants** — `selection_overlay_rgba` reconstrói um RGBA do
+  canvas INTEIRO **todo frame** (o `phase` anima as ants ⇒ nunca cacheia; roda até parado) =
+  **9,9 ms/frame serial @2048²·8 shapes**. Agora em bandas paralelas (per-pixel puro, bit-idêntico):
+  **1,35 ms/frame** (7,3×). Harness: `perf_selection_overlay_frame`.
 
 ### Regressão 2026-07-04 ("booleanas multi-shape lentas DE NOVO") + fix definitivo
 O cache por-shape (`a914a772`) estava INTACTO (re-medido: 5,0 ms/move cache vs 34,0 full). A lentidão live

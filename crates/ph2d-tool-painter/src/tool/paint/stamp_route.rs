@@ -384,16 +384,18 @@ impl PainterTool {
             // rect entirely, so the colour leaked OUTSIDE it (worst with a big Anchored dab). The per-pixel
             // dynamic path samples the Grain at each canvas pixel through its canvas-fixed basis, so it
             // masks the rect correctly (Enio 2026-06-27).
-            if brush.shape_has_per_dab_rotation(has_shape_image)
+            let per_dab_dynamic = brush.shape_has_per_dab_rotation(has_shape_image)
                 || brush.grain_has_per_dab_rotation()
                 || brush.has_colour_jitter_amount()
                 || brush.has_per_dab_rotation()
-                || (brush.texture.is_active() && brush.texture.mapping.is_canvas_fixed())
-                // Texture colour (the default) samples each layer's per-pixel RGB — only the per-pixel
-                // dynamic path can (the cached stamp carries one flat colour per layer).
-                || self.paint.shape_layers.any_texture_color()
-            {
+                || (brush.texture.is_active() && brush.texture.mapping.is_canvas_fixed());
+            if per_dab_dynamic {
                 self.stamp_dabs_per_layer_dynamic(dabs, &brush, alpha_locked, w, h);
+            } else if self.paint.shape_layers.any_texture_color() {
+                // Texture colour (the capture default) with a CONSTANT orientation: the per-pixel RGB is
+                // pre-baked into each layer's premul-RGBA stamp → the batched 4-channel scale-blit path
+                // (was the dynamic per-pixel resample = the live "FPS 60→10" cliff).
+                self.stamp_dabs_cached_color_rgba(dabs, &brush, alpha_locked, w, h);
             } else {
                 self.stamp_dabs_cached_color(dabs, &brush, alpha_locked, w, h);
             }

@@ -97,11 +97,7 @@ pub fn render_stamp_mask(
             };
             if w > 0.0 && grain_active {
                 let g = crate::texture::sample_unit(&spec.texture, &grain_basis, u, v, grain_image);
-                w *= if depth >= 1.0 {
-                    g
-                } else {
-                    1.0 + (g - 1.0) * depth
-                };
+                w *= crate::texture::grain_coverage(g, depth, spec.effective_granulation());
             }
             data[row + i as usize] = encode(w);
         }
@@ -435,13 +431,9 @@ fn canvas_blit_band(
                 tex[mi] = encode(tv);
                 ready[mi] = 1;
             }
-            // GRAIN with Depth (depth = 1 default ⇒ bare multiply, byte-identical).
+            // GRAIN Depth + watercolor Granulation (the shared combine); byte-identical at Depth 1 / Gran 0.
             let g = f32::from(tex[mi]) / 255.0;
-            w *= if depth >= 1.0 {
-                g
-            } else {
-                1.0 + (g - 1.0) * depth
-            };
+            w *= crate::texture::grain_coverage(g, depth, ctx.spec.effective_granulation());
             if w <= 0.0 {
                 continue;
             }

@@ -42,23 +42,22 @@ impl ColorStampMask {
 /// (Grain-Depth-blended toward `1`) on all four channels. WITH the Grain Colour Ramp: `ramp[g]` (each
 /// channel Depth-blended toward neutral `1`) so the Grain colour tints the premultiplied composite; the
 /// alpha channel scales coverage either way. Deterministic (HR-5: float-only + the shared LUT sampler).
-fn grain_modulation(g: f32, depth: f32, ramp: Option<&[[f32; 4]]>) -> [f32; 4] {
+fn grain_modulation(g: f32, depth: f32, granulation: f32, ramp: Option<&[[f32; 4]]>) -> [f32; 4] {
+    // Watercolor valley gate — scales the whole premultiplied modulation (coverage + tint) so pigment
+    // is rejected in the paper's low areas. `1` when granulation is 0 → byte-identical.
+    let vg = crate::texture::granulation_gate(g, granulation);
     match ramp {
         Some(lut) => {
             let c = crate::dab::ramp_sample(lut, g);
             [
-                1.0 + (c[0] - 1.0) * depth,
-                1.0 + (c[1] - 1.0) * depth,
-                1.0 + (c[2] - 1.0) * depth,
-                1.0 + (c[3] - 1.0) * depth,
+                (1.0 + (c[0] - 1.0) * depth) * vg,
+                (1.0 + (c[1] - 1.0) * depth) * vg,
+                (1.0 + (c[2] - 1.0) * depth) * vg,
+                (1.0 + (c[3] - 1.0) * depth) * vg,
             ]
         }
         None => {
-            let m = if depth >= 1.0 {
-                g
-            } else {
-                1.0 + (g - 1.0) * depth
-            };
+            let m = crate::texture::grain_coverage(g, depth, granulation);
             [m, m, m, m]
         }
     }
@@ -146,7 +145,7 @@ pub fn render_color_stamp_mask(
             // that multiplies the premultiplied composite — tinting the tip by the Grain pattern.
             if acc[3] > 0.0 && grain_active {
                 let g = crate::texture::sample_unit(&spec.texture, &grain_basis, u, v, grain_image);
-                let m = grain_modulation(g, depth, grain_ramp);
+                let m = grain_modulation(g, depth, spec.effective_granulation(), grain_ramp);
                 acc[0] *= m[0];
                 acc[1] *= m[1];
                 acc[2] *= m[2];

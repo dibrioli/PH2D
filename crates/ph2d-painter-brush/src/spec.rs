@@ -287,6 +287,18 @@ impl BrushSpec {
         self.grain_depth.clamp(0.0, 1.0)
     }
 
+    /// Effective **Granulation** `[0, 1]` (the watercolor deposit gate on the Grain, [`crate::texture::grain_coverage`]).
+    /// Zero unless the Watercolor section is on, so a non-watercolor brush keeps the plain Grain multiply
+    /// (byte-identical). Pair with a canvas-anchored Grain (`Tiled` mapping + `Grain` kind) for paper granulation.
+    #[must_use]
+    pub fn effective_granulation(&self) -> f32 {
+        if self.watercolor {
+            self.granulation.clamp(0.0, 1.0)
+        } else {
+            0.0
+        }
+    }
+
     /// Compose the dab silhouette from a Shape sample `shape_val` and the round `falloff` envelope. The
     /// **Image** kind REPLACES the falloff (a crisp finite tip stays uneroded); any **procedural** kind is
     /// MASKED BY it (`falloff × pattern`, so the soft round envelope shapes the texture — Enio 2026-06-25).

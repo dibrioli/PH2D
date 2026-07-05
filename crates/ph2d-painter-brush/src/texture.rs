@@ -469,6 +469,40 @@ pub fn dab_basis(
     }
 }
 
+/// Combine a Grain `sample` (`[0, 1]`, the paper tooth) into a dab-coverage multiplier under the
+/// Grain **Depth** and the watercolor **Granulation** gate. The single source shared by every stamp
+/// path (per-pixel + the two constant-orientation / canvas-fixed caches) so they never diverge.
+///
+/// - **Depth** (`0..1`, Procreate): `base = 1 + (sample − 1)·depth` — how much the grain bites.
+/// - **Granulation** (`0..1`, watercolor): scale `base` by the valley gate
+///   [`granulation_gate`]`(sample) = 1 − (1 − sample)·granulation` — pigment settles on the tooth peaks
+///   and is rejected in the valleys (Curtis 1997 §4.5 / the PH2D Wet Paint spec §10), turning the soft
+///   multiply into a harder speckle. The multiplicative form composes with the coloured stamp's ramp.
+///
+/// `granulation == 0` returns `base` **exactly** (byte-identical), so a non-watercolor brush is
+/// unchanged. Deterministic (mul only) — HR-5 safe. Both factors lie in `[0, 1]` so no clamp is needed.
+#[must_use]
+pub fn grain_coverage(sample: f32, depth: f32, granulation: f32) -> f32 {
+    let base = if depth >= 1.0 {
+        sample
+    } else {
+        1.0 + (sample - 1.0) * depth
+    };
+    base * granulation_gate(sample, granulation)
+}
+
+/// The watercolor **valley gate** for a Grain `sample`: `1` at a tooth peak (`sample = 1`), down to
+/// `1 − granulation` in a valley (`sample = 0`). Rejects pigment in the paper's low areas → granulation
+/// speckle. `granulation == 0` ⇒ `1` (no effect). Result ∈ `[1 − granulation, 1] ⊂ [0, 1]`.
+#[must_use]
+pub fn granulation_gate(sample: f32, granulation: f32) -> f32 {
+    if granulation <= 0.0 {
+        1.0
+    } else {
+        1.0 - (1.0 - sample.clamp(0.0, 1.0)) * granulation
+    }
+}
+
 /// Sample the texture at canvas pixel `(px, py)` for a dab centred at `center` with `radius`. Returns the
 /// coverage multiplier in `[0, 1]`; `1.0` when no texture is assigned (so the dab is unchanged).
 #[must_use]

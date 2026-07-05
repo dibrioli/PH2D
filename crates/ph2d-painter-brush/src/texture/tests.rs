@@ -922,3 +922,41 @@ fn jitter_footprint_rotates_the_grain_deterministically_not_randomly() {
         "the Grain rotates WITH the footprint (jitter spins the whole stamp): {va} vs {v0}"
     );
 }
+
+// ── Watercolor Granulation gate (#2) — the Grain deposit response ──────────────────────────────────
+
+/// `granulation == 0` returns the plain Depth multiply **byte-for-byte** (a non-watercolor brush is
+/// unchanged), and the gate is identity at a tooth peak.
+#[test]
+fn grain_coverage_is_byte_identical_without_granulation() {
+    for &depth in &[0.0f32, 0.3, 1.0] {
+        for i in 0..=10 {
+            let s = i as f32 / 10.0;
+            let base = if depth >= 1.0 { s } else { 1.0 + (s - 1.0) * depth };
+            assert_eq!(
+                super::grain_coverage(s, depth, 0.0),
+                base,
+                "granulation 0 must equal the plain Depth multiply exactly"
+            );
+        }
+    }
+    // A tooth peak (sample 1) always keeps full coverage, at any granulation.
+    assert_eq!(super::granulation_gate(1.0, 1.0), 1.0);
+    assert_eq!(super::grain_coverage(1.0, 1.0, 1.0), 1.0);
+}
+
+/// Granulation rejects pigment in the valleys (monotonic in the amount) and leaves the peaks intact —
+/// the physical basis of the granulation speckle.
+#[test]
+fn granulation_rejects_valleys_keeps_peaks() {
+    // Valley (sample 0) at full granulation → fully rejected.
+    assert!((super::granulation_gate(0.0, 1.0) - 0.0).abs() < 1e-6);
+    // A mid valley is attenuated, and more granulation attenuates more (monotonic).
+    let g_lo = super::grain_coverage(0.3, 1.0, 0.4);
+    let g_hi = super::grain_coverage(0.3, 1.0, 0.9);
+    let g_none = super::grain_coverage(0.3, 1.0, 0.0);
+    assert!(g_hi < g_lo && g_lo < g_none, "more granulation rejects more valley deposit");
+    assert!(g_hi >= 0.0, "coverage stays non-negative");
+    // The peak is untouched regardless.
+    assert_eq!(super::grain_coverage(1.0, 1.0, 0.9), 1.0);
+}

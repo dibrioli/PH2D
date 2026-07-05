@@ -49,6 +49,9 @@ pub(super) struct StampKey {
     /// The Shape value ramp (B&W tonal remap) also changes the baked silhouette.
     shape_ramp_version: u64,
     grain_depth: f32,
+    /// The watercolor Granulation gate also rewrites the baked Grain coverage, so it keys the mask
+    /// (folds in the `watercolor` master via `effective_granulation`, so it is 0 = neutral when off).
+    granulation: f32,
     /// The dab flatten + rotate reshapes the cached mask into a rotated ellipse, so they key it.
     dab_flatten: f32,
     dab_angle_deg: u16,
@@ -507,6 +510,7 @@ impl PainterTool {
             shape_image_version: self.paint.shape_image_version,
             shape_ramp_version: self.paint.shape_ramp_version,
             grain_depth: brush.grain_depth,
+            granulation: brush.effective_granulation(),
             dab_flatten: brush.dab_flatten,
             dab_angle_deg: brush.dab_angle_deg,
             size,

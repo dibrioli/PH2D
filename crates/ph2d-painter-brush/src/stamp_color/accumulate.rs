@@ -240,7 +240,7 @@ pub fn accumulate_shape_layer_rgba(
                 } else {
                     crate::texture::sample_unit(&spec.texture, gb, u, v, gi)
                 };
-                let m = grain_modulation(g, depth, grain_ramp);
+                let m = grain_modulation(g, depth, spec.effective_granulation(), grain_ramp);
                 tint = [base[0] * m[0], base[1] * m[1], base[2] * m[2]];
                 a *= m[3];
                 // Stencil: no paint outside the rect even when a ramp recolours `g = 0` (Enio 2026-06-28).

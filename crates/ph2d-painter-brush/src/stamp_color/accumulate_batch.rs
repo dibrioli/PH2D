@@ -420,7 +420,12 @@ pub fn accumulate_shape_layers_rgba_batch(
                                                 )
                                             };
                                             (
-                                                grain_modulation(g, depth, grain_ramp),
+                                                grain_modulation(
+                                                    g,
+                                                    depth,
+                                                    d.spec.effective_granulation(),
+                                                    grain_ramp,
+                                                ),
                                                 crate::texture::stencil_gate(
                                                     &d.spec.texture,
                                                     gb,

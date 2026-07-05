@@ -10540,3 +10540,53 @@ fn watercolor_edge_darkens_the_rim_not_the_interior() {
         "with Edge off the dab is uniform (no rim darkening — the watercolor pass is gated off)"
     );
 }
+
+/// Watercolor granulation (#2): with a canvas-anchored Grain (`Tiled` + `Grain` kind), turning
+/// Granulation up REJECTS pigment in the paper's valleys — so the total deposited ink drops (but stays
+/// non-zero: the tooth peaks still take paint) — while a plain grain brush (Granulation 0) is unchanged.
+/// Drives the real stamp path (Edge off, so only the Grain gate moves the number). DIRETIVA §4.
+#[test]
+fn watercolor_granulation_rejects_valley_deposit() {
+    use ph2d_painter_brush::{TextureKind, TextureMapping, TextureSettings};
+    fn grain_brush(granulation: f32) -> BrushSpec {
+        BrushSpec {
+            radius_px: 24.0,
+            hardness: 1.0,
+            falloff: Falloff::Constant,
+            color: [0.0, 0.0, 0.0], // black on white → deposit reads as darkening
+            space_attenuation: false,
+            texture: TextureSettings {
+                kind: TextureKind::Grain, // the "paper tooth" procedural
+                mapping: TextureMapping::Tiled, // canvas-anchored = a paper height-field
+                ..Default::default()
+            },
+            watercolor: true,
+            edge_gain: 0.0, // isolate granulation from the edge-darkening pass
+            granulation,
+            ..Default::default()
+        }
+    }
+    fn total_ink(granulation: f32) -> u64 {
+        let size = 64u32;
+        let mut t = PainterTool::default();
+        t.set_source(vec![255u8; (size * size * 4) as usize], size, size);
+        t.paint.brush = grain_brush(granulation);
+        for slot in &mut t.paint.brush_by_mode {
+            *slot = t.paint.brush;
+        }
+        assert!(t.on_canvas_pointer(cp([32.0, 32.0], PointerPhase::Down)));
+        assert!(t.on_canvas_pointer(cp([32.0, 32.0], PointerPhase::Up)));
+        // Ink = how far each pixel darkened from white, summed over the canvas (R channel is enough).
+        (0..(size * size) as usize)
+            .map(|p| u64::from(255 - t.canvas_rgba[p * 4]))
+            .sum()
+    }
+    let plain = total_ink(0.0);
+    let granulated = total_ink(0.85);
+    assert!(plain > 0, "a grain brush deposits ink");
+    assert!(
+        granulated < plain,
+        "granulation must reject valley deposit: granulated {granulated} not < plain {plain}"
+    );
+    assert!(granulated > 0, "granulation still deposits on the tooth peaks (not a full wipe)");
+}

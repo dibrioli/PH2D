@@ -55,14 +55,7 @@ pub(super) fn draw_line_overlay(
             // Transform gizmo (editing phase) — drawn FIRST (under the segments + dots) so the editing
             // geometry stays visually dominant. Identical to the Curve gizmo (shared helper).
             if let Some(gz) = overlay.transform_gizmo.as_ref() {
-                super::painter_bridge_gizmo::draw_transform_gizmo(
-                    scene,
-                    gz,
-                    affine,
-                    &pal,
-                    cursor,
-                    painter.active_op_glyph(),
-                );
+                super::painter_bridge_gizmo::draw_transform_gizmo(scene, gz, affine, &pal, cursor);
             }
             // Segments through the committed corner points (themed frame colour, open or closed).
             let pts = &overlay.points;
@@ -149,6 +142,18 @@ pub(super) fn draw_line_overlay(
                         Point::new(hnd.x + ux * 13.0, hnd.y + uy * 13.0),
                     ));
                 }
+            }
+            // Centre MOVE handle LAST — above the segments, corner dots and per-corner CAD gizmos so the
+            // drag-the-whole-shape handle stays grabbable on top (Enio 2026-07-04: highest z-index for the
+            // centre rectangle). Editing-phase only (the translucent dimension guides below are drawing-phase).
+            if let Some(gz) = overlay.transform_gizmo.as_ref() {
+                super::painter_bridge_gizmo::draw_transform_center(
+                    scene,
+                    gz,
+                    affine,
+                    &pal,
+                    painter.active_op_glyph(),
+                );
             }
             // Live **dimensions** (drawing phase, "Dimensions" on): thin translucent CAD guides — the
             // dx/dy legs to the previous point + the px / corner-angle numbers, in the line-guide hue.

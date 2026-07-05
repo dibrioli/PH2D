@@ -205,14 +205,14 @@ pub(super) fn center_glyph_handle(scene: &mut Scene, p: Point, pal: &GizmoPalett
 /// by the Curve and Line overlays so they read IDENTICALLY. `affine` maps image px → screen; `cursor` is
 /// the screen cursor, used for the rotate-ring hover cue (corners flip to circles when hovering the band
 /// just outside them, matching the tool's hit-test). Drawn UNDER the shape's spine + dots by the caller.
-/// `op_glyph` (multi-shape) puts the shape's Operation `+`/`−`/`o` in the DOUBLED centre-move square.
+/// The centre-move handle (index 8) is NOT drawn here — the caller paints it LAST via
+/// [`draw_transform_center`] so it sits on top of the spine + control points.
 pub(super) fn draw_transform_gizmo(
     scene: &mut Scene,
     gz: &TransformGizmo,
     affine: Affine,
     pal: &GizmoPalette,
     cursor: (f32, f32),
-    op_glyph: Option<&str>,
 ) {
     let map = |p: [f32; 2]| affine * Point::new(f64::from(p[0]), f64::from(p[1]));
     let [mn, mx] = gz.bbox;
@@ -236,14 +236,35 @@ pub(super) fn draw_transform_gizmo(
     });
     let circle_corners = gz.rotating || over_rotate;
     for (i, &h) in gz.handles.iter().enumerate() {
+        // Index 8 (the centre MOVE handle) is deferred to `draw_transform_center`, which the caller invokes
+        // LAST — after the spine + control points — so the move handle always sits ON TOP and stays grabbable
+        // (Enio 2026-07-04: "os retângulos centrais … z index mais alto que as curvas e seus pontos").
+        if i == 8 {
+            continue;
+        }
         let p = map(h);
         if circle_corners && i < 4 {
             circle_handle(scene, p, pal);
-        } else if i == 8 && op_glyph.is_some() {
-            center_glyph_handle(scene, p, pal, op_glyph.unwrap()); // doubled centre square + op glyph
         } else {
             square_handle(scene, p, pal);
         }
+    }
+}
+
+/// Draw ONLY the centre move handle (index 8) of a transform gizmo — the doubled square (+ op glyph when a
+/// shape Operation is active). Split out of [`draw_transform_gizmo`] so the Curve / Line overlays can paint
+/// it LAST, above their spine + control points, keeping the move handle on top and grabbable.
+pub(super) fn draw_transform_center(
+    scene: &mut Scene,
+    gz: &TransformGizmo,
+    affine: Affine,
+    pal: &GizmoPalette,
+    op_glyph: Option<&str>,
+) {
+    let p = affine * Point::new(f64::from(gz.handles[8][0]), f64::from(gz.handles[8][1]));
+    match op_glyph {
+        Some(glyph) => center_glyph_handle(scene, p, pal, glyph), // doubled centre square + op glyph
+        None => square_handle(scene, p, pal),
     }
 }
 

@@ -58,14 +58,7 @@ pub(super) fn draw_curve_overlay(
             // (under the spine + dots) so the editing geometry stays visually dominant. Corners (0..4) flip
             // to circles while rotating; edges (4..8) + the centre move handle (8) stay rounded squares.
             if let Some(gz) = overlay.transform_gizmo.as_ref() {
-                super::painter_bridge_gizmo::draw_transform_gizmo(
-                    scene,
-                    gz,
-                    affine,
-                    &pal,
-                    cursor,
-                    painter.active_op_glyph(),
-                );
+                super::painter_bridge_gizmo::draw_transform_gizmo(scene, gz, affine, &pal, cursor);
             }
             // Spine guide — the auto-smoothed curve through the control points (themed frame colour).
             if overlay.spine.len() >= 2 {
@@ -112,6 +105,17 @@ pub(super) fn draw_curve_overlay(
                 } else {
                     super::painter_bridge_gizmo::square_handle(scene, sp, &pal);
                 }
+            }
+            // Centre MOVE handle LAST — on top of the spine + all control points so it stays grabbable
+            // (Enio 2026-07-04: the move rectangle must have the highest z-index).
+            if let Some(gz) = overlay.transform_gizmo.as_ref() {
+                super::painter_bridge_gizmo::draw_transform_center(
+                    scene,
+                    gz,
+                    affine,
+                    &pal,
+                    painter.active_op_glyph(),
+                );
             }
         }
     }

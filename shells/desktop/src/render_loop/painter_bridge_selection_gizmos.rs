@@ -88,13 +88,6 @@ pub(super) fn draw_selection_gizmos(
                 super::painter_bridge_gizmo::square_handle(scene, sp, &pal);
             }
         }
-        // Centre move square — DOUBLED, carrying the Operation glyph (New `n` / Add `+` / Remove `−`).
-        let op_glyph = match g.op {
-            1 => "+",
-            2 => "-",
-            _ => "n",
-        };
-        super::painter_bridge_gizmo::center_glyph_handle(scene, center_sp, &pal, op_glyph);
         if let Some(d) = g.diamond {
             super::painter_bridge_gizmo::diamond_handle(scene, map(d), &pal);
         }
@@ -124,5 +117,22 @@ pub(super) fn draw_selection_gizmos(
                 }
             }
         }
+    }
+    // FINAL PASS — centre move square (the drag-the-whole-gizmo handle), DOUBLED and carrying the Operation
+    // glyph (New `n` / Add `+` / Remove `−`). Drawn LAST, after EVERY gizmo's outline / box / scale handles /
+    // converted-curve anchors, so the move handle is always grabbable on top — both of its OWN curve's points
+    // and of any OTHER overlapping gizmo's geometry (the loop above paints later gizmos over earlier ones)
+    // (Enio 2026-07-04: "os retângulos centrais … devem ter o z index mais alto que as curvas e seus pontos").
+    for g in &gizmos {
+        let pal = super::painter_bridge_gizmo::palette_accent(
+            hero.theme,
+            accents[g.accent % accents.len()],
+        );
+        let op_glyph = match g.op {
+            1 => "+",
+            2 => "-",
+            _ => "n",
+        };
+        super::painter_bridge_gizmo::center_glyph_handle(scene, map(g.center), &pal, op_glyph);
     }
 }

@@ -1,5 +1,12 @@
 # 17 — Plano de implementação executável (tasks granulares + smokes)
 
+> ⛔ **SUPERSEDED / PARKEADO 2026-07-05 — HISTÓRICO.** A ambição de 20 waves deste plano foi **estacionada**
+> por decisão do Enio ([ADR-0108](../architecture/decisions/0108-vector-reposition-rive-referenced-native-editor-first.md)):
+> alvo "estratosfera" sem kill-criteria = a doença que custou as semanas do Painter. O plano **canônico agora** é
+> [18_plano_reposicionamento_rive_native.md](18_plano_reposicionamento_rive_native.md) — editor vetorial nativo
+> (ECS/kurbo/Vello), referenciado no runtime Rive (MIT), boolean edit-time, skinning por bones, animação futura.
+> Este doc fica como **registro histórico da pesquisa** — não é mais o roteiro.
+
 > **W0 RATIFICADA 2026-05-29 — 13 ADRs Accepted + amendments policy ativa. W1 ABERTA.**
 > Plano detalhado, à prova de falhas, com smokes visuais o mais cedo possível para o Enio aprovar/corrigir/melhorar antes de seguir. **20 waves × N tasks cada**. **Mandato §0 do HANDOFF_node_system + memory `feedback-perfection-no-deferrals`:** padrão-ouro absoluto, sem gambiarras, sem economias.
 

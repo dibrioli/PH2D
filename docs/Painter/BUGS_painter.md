@@ -41,11 +41,14 @@ operações booleanas**, e — latente — em qualquer arraste de pintura. Bench
 - **Warp:** a grade **pristina** era re-subdividida (Catmull-Rom) todo move (constante durante o arraste).
 
 ### Solução
-- **Bridge (`2c64ba80`):** `needs_upload` passa a vir do sinal `preview_dirty` (que o `take_preview_arc` já
-  usa) em vez do ponteiro do Arc; o clone do canvas é **solto após o upload** → entre frames o `canvas_rgba`
-  é único → `make_mut` muta **in-place** (zero cópia). Metadados do cache preservados p/ o frame idle manter
-  a textura; guardas p/ buffer vazio + retry em falha.
-- **Seleção (`a914a772`):** **cache por-shape** da cobertura (chaveado por valor da geometria, auto-validante;
+- **Bridge (`2c64ba80`) — ❌ REVERTIDO (`461dcafd`, 2026-07-04).** A ideia era: `needs_upload` do sinal
+  `preview_dirty` em vez do ponteiro do Arc + soltar o clone após o upload → `make_mut` in-place. **Smoke do
+  Enio mostrou o oposto: regrediu Warp E Per-Layer Color JUNTOS.** Dois tools não relacionados piorando em
+  sincronia = mudança no caminho de display compartilhado, e essa era a única edição local no
+  `painter_bridge.rs`. O ganho in-place nunca foi confirmado visualmente e na prática *piorou* — revertido
+  por inteiro. **Lição atualizada abaixo (nº 5).** O eixo Per-Layer Color vai pra **GPU** (não mais CPU) —
+  ver [`HANDOFF_per_layer_color_perf_artifacts`](../HANDOFF_per_layer_color_perf_artifacts.md) §4.2.
+- **Seleção (`a914a772`) — ✅ mantida.** **cache por-shape** da cobertura (chaveado por valor da geometria, auto-validante;
   `Raster` por `Arc::ptr_eq`) → um arraste re-rasteriza **só a shape que moveu** — **medido 34,3 → 5,1 ms/move
   (6,8×)** com 8 shapes em 2048². E **removido o `invalidate_composite()`** da derivação da máscara (o
   composite é comprovadamente independente da seleção) → sem drop de composite/upload por-move.
@@ -60,7 +63,14 @@ operações booleanas**, e — latente — em qualquer arraste de pintura. Bench
 3. **Invalidação estrutural (`invalidate_composite`) num edit que NÃO toca o composite** = full upload grátis
    por-frame. Antes de invalidar, prove que a saída depende do que mudou (`grep` no compositor fechou isso).
 4. **Multi-agente por lentes convergiu na mesma causa raiz** vista de 3 ângulos (Warp/Boolean/Alocação todos
-   apontaram o deep-copy) — a triangulação deu confiança pra mexer no caminho de display.
+   apontaram o deep-copy) — a triangulação deu confiança pra mexer no caminho de display. **MAS** (ver nº 5)
+   convergência de análise estática ≠ prova; o benefício era teórico.
+5. **★ Otimização de análise-estática sem smoke visual do caminho de display = aposta.** O bridge fix parecia
+   estritamente melhor no papel (mata uma cópia de 16 MB/move) e ainda assim regrediu 2 tools. **Regra:**
+   qualquer mudança no caminho de display **compartilhado** (`painter_bridge.rs`, upload GPU, lifecycle do
+   Arc de preview) exige smoke visual **por-tool** (Warp *e* pintura *e* seleção) ANTES de considerar
+   landada — o commit até se auto-marcou "NEEDS VISUAL SMOKE / revert is one commit", e foi exatamente isso.
+   Dois tools piorando em sincronia ⇒ suspeite PRIMEIRO do caminho compartilhado, não de cada tool.
 
 ---
 

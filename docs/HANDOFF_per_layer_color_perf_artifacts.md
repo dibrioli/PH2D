@@ -1,5 +1,17 @@
 # HANDOFF — Per-Layer Color (layers-as-brush): slowness + rectangular stripe artifacts
 
+> **UPDATE 2026-07-04 — GPU is now the PLAN OF RECORD; CPU bridge micro-opt reverted.**
+> The cross-tool bridge change `2c64ba80` ("kill the full-canvas Arc deep-copy per move") was **reverted**
+> (`461dcafd`): live smoke showed it **regressed BOTH Per-Layer Color AND Warp together** — the tell-tale
+> of a shared display-path change (it was the only local edit touching `painter_bridge.rs`). The
+> in-place-`make_mut` win was theoretical and never visually confirmed; empirically it backfired, so it's
+> out. **No more CPU micro-opt on this path** — per Enio, Per-Layer Color goes GPU. The implementation
+> target is **§4.2 (GPU-resident painting)** below; that migration deletes the whole CPU dirty-rect
+> machinery (`stamp_color_cache.rs`/`_dynamic.rs` accumulate + the per-move recomposite + the partial-upload
+> dance) and the perf cliff dissolves there. §1.R's numbers stand as the CPU baseline to beat; the extreme
+> `r100·N16` = 105 ms case was already flagged GPU-only. Do NOT reland a CPU Arc/upload optimization on the
+> shared bridge without a per-tool visual smoke of Warp *and* the paint path first.
+>
 > **Status:** **CLOSED ON CPU — moving to a full GPU painter migration (Enio 2026-06-28).** CPU work is
 > done; no further CPU mitigations (Enio explicitly declined spacing/brush/layer guidance). See §1.R for
 > the measured story and the FOLLOW-UP block below for the live-smoke results that closed it.

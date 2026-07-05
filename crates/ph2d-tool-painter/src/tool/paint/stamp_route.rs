@@ -35,10 +35,13 @@ impl PainterTool {
     /// restore the protected texels ([`Self::restore_protected_region`]). Nothing is made invisible — only
     /// the paint is gated. Engine-agnostic: it wraps ALL the routes in [`Self::stamp_dabs_routed`].
     pub(super) fn stamp_dabs(&mut self, dabs: &[Dab]) {
-        // Watercolor edge darkening: accumulate this batch's coverage (max-blended discs) for the
-        // pen-up "fringe" pass. Independent of the stamp route below; no-op unless the Edge is active.
-        if self.wet_edges_active() {
+        // Watercolor optical render-path: DON'T deposit dabs on the canvas — accumulate the coverage
+        // (max-blended discs) + the deposited colour (source-over), and let `apply_watercolor` reconstruct
+        // the whole wash over the frozen base ([`super::watercolor_render`]). Short-circuits every route.
+        if self.watercolor_render_active() {
             self.accumulate_wet_coverage(dabs);
+            self.accumulate_wet_color(dabs);
+            return;
         }
         // Two footprint gates share one snapshot: the Sculpt-style protection mask (freeze painted texels)
         // and the Selection mask (restrict paint to the selected region, ADR-0103). Snapshot the footprint

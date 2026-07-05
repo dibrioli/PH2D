@@ -38,7 +38,7 @@ mod jitter_settings;
 /// Watercolor section setters + router (edge darkening / granulation / pigment); no fluid sim.
 mod watercolor_settings;
 /// Watercolor edge darkening (#1): per-stroke coverage + the pen-up blur-difference "fringe" pass.
-mod wet_edges;
+mod watercolor_render;
 /// The canvas pointer's operation mode (Paint / Smear / Blur / Clone / Mask); split from `paint.rs` (cap).
 mod paint_mode;
 /// Multi-layer Shape (z-ordered layers + per-layer-colour state); split from `paint.rs` (LOC cap).
@@ -382,14 +382,20 @@ pub(crate) struct PaintState {
     ramp_lut_owner: ramp_lut::RampLutOwner,
     /// **Accumulate OFF** per-stroke coverage mask (1 byte/px), cleared on down; caps a stroke at Strength.
     stroke_mask: Vec<u8>,
-    /// **Watercolor edge darkening** per-stroke coverage (1 byte/px, `w*h`): the union footprint of the
-    /// stroke's dabs (max-blended discs), fed to the pen-up blur-difference pass ([`super::wet_edges`]).
-    /// Empty unless the Watercolor Edge is active; sized lazily by the first dab, cleared on down.
+    /// **Watercolor render-path** per-stroke coverage (1 byte/px, `w*h`): the union footprint of the
+    /// stroke's dabs (max-blended discs = wet_edges `stampCoverage`), the silhouette the optical composite
+    /// reconstructs the wash from ([`super::watercolor_render`]). Empty unless the Watercolor section is
+    /// active; sized lazily by the first dab, cleared on down.
     stroke_coverage: Vec<u8>,
-    /// The **live** edge overlay's saved pixels (region + its pre-darken RGBA): peeled back each frame
-    /// before the next dab so the fringe updates live without compounding ([`super::wet_edges`]). `None`
-    /// between strokes and after the pen-up bake.
-    wet_edge_saved: Option<(Region, Vec<u8>)>,
+    /// **Watercolor render-path** per-stroke deposited colour (RGBA, `w*h*4` = wet_edges `colC`): each
+    /// dab's colour splatted source-over (recent dab wins), so the composite pigment can vary along the
+    /// stroke (RYB pickup when Pigment is on). Empty / cleared with [`Self::stroke_coverage`].
+    stroke_color: Vec<u8>,
+    /// **Watercolor render-path** frozen base — the pre-stroke `canvas_rgba` (shared `Arc`, so holding it
+    /// is O(1); the first composite `make_mut` forks the live buffer, leaving this pristine). The optical
+    /// composite reads the "paper + prior paint" from here every frame instead of over-painting in place,
+    /// so the wash never accumulates per-dab structure. `Some` only for the duration of a watercolor stroke.
+    watercolor_base: Option<Arc<Vec<u8>>>,
     /// **Inpaint** defect mask (1 byte/px, `>= 128` ⇒ heal). Accumulated as the user brushes in Inpaint
     /// mode; on pen-up [`super::inpaint`] reconstructs the marked region and clears it. Sized `w*h`.
     inpaint_mask: Vec<u8>,
@@ -466,7 +472,13 @@ impl PainterTool {
         // accumulation (so the recomposite snapshots THIS stroke's pre-pixels) — both per stroke.
         self.paint.stroke_mask.clear();
         self.paint.stroke_coverage.clear();
-        self.paint.wet_edge_saved = None;
+        self.paint.stroke_color.clear();
+        // Watercolor render-path: freeze the pre-stroke canvas as the optical base (shared `Arc`, so O(1);
+        // the first composite `make_mut` forks the live buffer, leaving this pristine). The wash is
+        // reconstructed over this every frame instead of over-painting in place.
+        self.paint.watercolor_base = self
+            .watercolor_render_active()
+            .then(|| Arc::clone(&self.canvas_rgba));
         self.paint.per_layer_stroke.reset();
         // Smear chains its source from the previous dab; a fresh stroke has none yet.
         self.paint.last_smear_pos = None;
@@ -497,9 +509,10 @@ impl PainterTool {
             &mut dabs,
         );
         self.stamp_stroke_dabs(&dabs);
-        // Watercolor: darken the fringe LIVE from the first dab's coverage (peeled + rebuilt each frame).
-        if self.wet_edges_active() {
-            self.apply_wet_edges(false);
+        // Watercolor render-path: reconstruct the wash optically over the frozen base (live; grows with
+        // the stroke). Replaces the per-dab deposit that `stamp_dabs` skipped in watercolor mode.
+        if self.watercolor_render_active() {
+            self.apply_watercolor(false);
         }
         self.paint.dabs = dabs;
         self.paint.stroke = Some(stroke);
@@ -527,15 +540,11 @@ impl PainterTool {
             },
             &mut dabs,
         );
-        // Watercolor: peel last frame's live fringe off BEFORE the new dabs land (so they blend over the
-        // clean stroke, not the darkened rim), then re-darken over the grown coverage AFTER.
-        let wet = self.wet_edges_active();
-        if wet {
-            self.restore_wet_edge_overlay();
-        }
         self.stamp_stroke_dabs(&dabs);
-        if wet {
-            self.apply_wet_edges(false);
+        // Watercolor render-path: recomposite over the frozen base (no overlay peel — the base is
+        // untouched, so each frame recomposites cleanly from the grown coverage + colour).
+        if self.watercolor_render_active() {
+            self.apply_watercolor(false);
         }
         self.paint.dabs = dabs;
         self.paint.stroke = Some(stroke);
@@ -565,26 +574,18 @@ impl PainterTool {
         };
         let mut dabs = std::mem::take(&mut self.paint.dabs);
         stroke.tick(dt_s, &mut dabs);
-        // Watercolor: bracket the airbrush/settle stamps with the live-fringe peel/re-darken, exactly
-        // like paint_extend — but only when a dab actually lands (a held stroke ticks every frame).
-        let wet = self.wet_edges_active();
-        let tick_has = !dabs.is_empty();
-        if wet && tick_has {
-            self.restore_wet_edge_overlay();
-        }
+        // Watercolor render-path: accumulate the airbrush/settle dabs, then recomposite over the frozen
+        // base once — but only when a dab actually landed (a held stroke ticks every frame).
+        let wet = self.watercolor_render_active();
+        let mut stamped = !dabs.is_empty();
         self.stamp_dabs(&dabs);
-        let mut stamped = tick_has;
         if parked {
             stroke.settle(&mut dabs); // clears `dabs` first
-            let settle_has = !dabs.is_empty();
-            if wet && settle_has && !stamped {
-                self.restore_wet_edge_overlay();
-            }
+            stamped |= !dabs.is_empty();
             self.stamp_dabs(&dabs);
-            stamped |= settle_has;
         }
         if wet && stamped {
-            self.apply_wet_edges(false);
+            self.apply_watercolor(false);
         }
         self.paint.dabs = dabs;
         self.paint.stroke = Some(stroke);
@@ -594,12 +595,6 @@ impl PainterTool {
     /// the stroke reaches the release point, then close + record undo).
     fn paint_end(&mut self, ev: CanvasPointer) {
         self.paint_extend(ev);
-        // Watercolor: peel the live fringe off before the final flush stamp, so the pen-up bake below
-        // darkens the clean stroke once (not the already-darkened preview).
-        let wet = self.wet_edges_active();
-        if wet {
-            self.restore_wet_edge_overlay();
-        }
         if let Some(mut stroke) = self.paint.stroke.take() {
             let mut dabs = std::mem::take(&mut self.paint.dabs);
             stroke.finish(&mut dabs);
@@ -614,11 +609,10 @@ impl PainterTool {
         if matches!(self.paint.paint_mode, PaintMode::Inpaint) {
             self.heal_inpaint();
         }
-        // Watercolor edge darkening (#1): pool pigment at the stroke's receding boundary — the permanent
-        // pen-up bake (`commit`), over the clean stroke (the live overlay was peeled above). BEFORE
-        // close_stroke so pre-stroke → darkened-edge is one undo step (mirror of heal_inpaint).
-        if wet {
-            self.apply_wet_edges(true);
+        // Watercolor render-path: bake the final optical composite over the frozen base (`commit` drops
+        // the base). BEFORE close_stroke so pre-stroke → wash is one undo step (mirror of heal_inpaint).
+        if self.watercolor_render_active() {
+            self.apply_watercolor(true);
         }
         self.close_stroke();
     }
@@ -630,6 +624,7 @@ impl PainterTool {
         self.paint.stroke = None;
         self.paint.line_anchor = None;
         self.paint.last_smear_pos = None;
+        self.paint.watercolor_base = None; // defensive: the render-path drops it on commit already
         if let Some(before) = self.paint.stroke_undo.take() {
             self.commit_structural_edit(before);
         }

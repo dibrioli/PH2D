@@ -18,6 +18,9 @@ use ph2d_tool_painter::BrushSettings;
 const EDGE_MAX: f32 = 8.0; // LITERAL-PX-OK: watercolor Edge-gain range bound (parameter domain)
 const SPREAD_MIN: f32 = 1.0; // LITERAL-PX-OK: watercolor Spread blur-radius min (px)
 const SPREAD_MAX: f32 = 24.0; // LITERAL-PX-OK: watercolor Spread blur-radius max (px)
+const DEPTH_MIN: f32 = 0.1; // LITERAL-PX-OK: Beer–Lambert optical-depth min (parameter domain)
+const DEPTH_MAX: f32 = 8.0; // LITERAL-PX-OK: Beer–Lambert optical-depth max (parameter domain)
+const WARP_MAX: f32 = 24.0; // LITERAL-PX-OK: watercolor Warp displacement max (px)
 
 /// Paint the Watercolor section starting at `y`, returning the next `y`.
 pub(crate) fn paint_watercolor_section(
@@ -56,6 +59,36 @@ pub(crate) fn paint_watercolor_section(
     );
 
     if brush.watercolor {
+        // Wash body (render-path optics): Fill = interior density, Depth = Beer–Lambert scale. These two
+        // reconstruct the flat translucent glaze; Edge/Granulation/Warp add the wet character on top.
+        y = crate::number_field::paint_num_row(
+            ctx,
+            theme,
+            x,
+            content_w,
+            y,
+            "Fill",
+            core_ids::PAINTER_WATERCOLOR_FILL,
+            brush.fill,
+            0.0,
+            1.0,
+            crate::number_field::FINE_STEP,
+            2,
+        );
+        y = crate::number_field::paint_num_row(
+            ctx,
+            theme,
+            x,
+            content_w,
+            y,
+            "Depth",
+            core_ids::PAINTER_WATERCOLOR_DEPTH,
+            brush.depth,
+            DEPTH_MIN,
+            DEPTH_MAX,
+            crate::number_field::FINE_STEP,
+            2,
+        );
         // #1 Edge darkening (the "fringe") — gain + blur radius.
         y = crate::number_field::paint_num_row(
             ctx,
@@ -99,6 +132,21 @@ pub(crate) fn paint_watercolor_section(
             1.0,
             crate::number_field::FINE_STEP,
             2,
+        );
+        // Warp — organic (ragged) wash boundary via fractal displacement of the coverage sampling.
+        y = crate::number_field::paint_num_row(
+            ctx,
+            theme,
+            x,
+            content_w,
+            y,
+            "Warp",
+            core_ids::PAINTER_WATERCOLOR_WARP,
+            brush.warp,
+            0.0,
+            WARP_MAX,
+            crate::number_field::SIZE_STEP,
+            1,
         );
         // #3 Pigment — subtractive Kubelka–Munk wet-on-wet mixing + its amount.
         y = paint_checkbox_row(

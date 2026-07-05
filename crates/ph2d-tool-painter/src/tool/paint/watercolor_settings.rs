@@ -47,6 +47,18 @@ impl PainterTool {
                         self.set_brush_pigment_mix(v);
                         true
                     }
+                    x if x == core_ids::PAINTER_WATERCOLOR_FILL => {
+                        self.set_brush_fill(v);
+                        true
+                    }
+                    x if x == core_ids::PAINTER_WATERCOLOR_DEPTH => {
+                        self.set_brush_depth(v);
+                        true
+                    }
+                    x if x == core_ids::PAINTER_WATERCOLOR_WARP => {
+                        self.set_brush_warp(v);
+                        true
+                    }
                     _ => false,
                 }
             }
@@ -85,6 +97,22 @@ impl PainterTool {
         self.paint.brush.pigment_mix = v.clamp(0.0, 1.0);
     }
 
+    /// Set the render-path **Fill** (wash interior density), clamped to `0..=1`.
+    pub fn set_brush_fill(&mut self, v: f32) {
+        self.paint.brush.fill = v.clamp(0.0, 1.0);
+    }
+
+    /// Set the render-path **Depth** (Beer–Lambert optical-depth scale), clamped to `0.1..=8` (must be
+    /// `> 0` so `Tᵢ = pigmentᵢ^(D·depth)` is a real attenuation; the floor keeps a visible wash).
+    pub fn set_brush_depth(&mut self, v: f32) {
+        self.paint.brush.depth = v.clamp(0.1, 8.0);
+    }
+
+    /// Set the render-path **Warp** (organic-boundary displacement, canvas px), clamped to `0..=24`.
+    pub fn set_brush_warp(&mut self, v: f32) {
+        self.paint.brush.warp = v.clamp(0.0, 24.0);
+    }
+
     /// Reset the **Watercolor** section to defaults (section off; all params neutral). Plain paint
     /// state — no undo / pixel touch, like the other section resets.
     pub fn reset_brush_watercolor(&mut self) {
@@ -96,6 +124,9 @@ impl PainterTool {
         b.granulation = d.granulation;
         b.pigment = d.pigment;
         b.pigment_mix = d.pigment_mix;
+        b.fill = d.fill;
+        b.depth = d.depth;
+        b.warp = d.warp;
     }
 }
 
@@ -130,6 +161,14 @@ mod tests {
 
         t.handle_panel_event(PanelEvent::SetValue(core_ids::PAINTER_WATERCOLOR_MIX, 0.75));
         assert_eq!(t.brush_settings().pigment_mix, 0.75, "Mix set");
+
+        // Render-path optics: Fill / Depth / Warp drive the same seam.
+        t.handle_panel_event(PanelEvent::SetValue(core_ids::PAINTER_WATERCOLOR_FILL, 0.4));
+        assert_eq!(t.brush_settings().fill, 0.4, "Fill set");
+        t.handle_panel_event(PanelEvent::SetValue(core_ids::PAINTER_WATERCOLOR_DEPTH, 2.0));
+        assert_eq!(t.brush_settings().depth, 2.0, "Depth set");
+        t.handle_panel_event(PanelEvent::SetValue(core_ids::PAINTER_WATERCOLOR_WARP, 10.0));
+        assert_eq!(t.brush_settings().warp, 10.0, "Warp set");
 
         // Clamp: Edge caps at 8, Spread at 24.
         t.handle_panel_event(PanelEvent::SetValue(core_ids::PAINTER_WATERCOLOR_EDGE, 99.0));

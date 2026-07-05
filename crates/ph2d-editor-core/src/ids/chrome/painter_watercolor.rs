@@ -32,6 +32,13 @@ pub const PAINTER_WATERCOLOR_GRANULATION: NodeId =
 /// **Mix** — pigment amount (`0..1`). `SetValue` → `set_brush_pigment_mix`.
 pub const PAINTER_WATERCOLOR_MIX: NodeId = hash_node_id("painter_brush.watercolor_mix");
 
+/// **Fill** — wash interior density (`0..1`, render-path). `SetValue` → `set_brush_fill`.
+pub const PAINTER_WATERCOLOR_FILL: NodeId = hash_node_id("painter_brush.watercolor_fill");
+/// **Depth** — Beer–Lambert optical-depth scale (render-path). `SetValue` → `set_brush_depth`.
+pub const PAINTER_WATERCOLOR_DEPTH: NodeId = hash_node_id("painter_brush.watercolor_depth");
+/// **Warp** — organic-boundary displacement in canvas px (render-path). `SetValue` → `set_brush_warp`.
+pub const PAINTER_WATERCOLOR_WARP: NodeId = hash_node_id("painter_brush.watercolor_warp");
+
 /// The Watercolor **Click** widgets (master enable + Pigment toggle + section reset) — forwarded as a
 /// `PanelEvent::Click` by the panel's `event.rs` (a single membership check) and routed by
 /// `route_brush_watercolor_event`.
@@ -41,11 +48,15 @@ pub const PAINTER_WATERCOLOR_CLICKS: [NodeId; 3] = [
     PAINTER_WATERCOLOR_RESET,
 ];
 
-/// The Watercolor **SetValue** number-fields (Edge / Spread / Granulation / Mix) — one membership
-/// check for the panel's number-field forward (`is_param_field`) and register loop (`populate.rs`).
-pub const PAINTER_WATERCOLOR_FIELDS: [NodeId; 4] = [
+/// The Watercolor **SetValue** number-fields (Edge / Spread / Granulation / Mix + the render-path
+/// optics Fill / Depth / Warp) — one membership check for the panel's number-field forward
+/// (`is_param_field`) and register loop (`populate.rs`).
+pub const PAINTER_WATERCOLOR_FIELDS: [NodeId; 7] = [
     PAINTER_WATERCOLOR_EDGE,
     PAINTER_WATERCOLOR_SPREAD,
     PAINTER_WATERCOLOR_GRANULATION,
     PAINTER_WATERCOLOR_MIX,
+    PAINTER_WATERCOLOR_FILL,
+    PAINTER_WATERCOLOR_DEPTH,
+    PAINTER_WATERCOLOR_WARP,
 ];

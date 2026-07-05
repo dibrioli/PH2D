@@ -295,6 +295,12 @@ pub struct BrushSettings {
     pub pigment: bool,
     /// **Mix** (`0..1`) — how much the subtractive pigment path is applied.
     pub pigment_mix: f32,
+    /// **Fill** (`0..1`) — interior density of the optical wash (render-path `fillDensity`).
+    pub fill: f32,
+    /// **Depth** (`> 0`) — Beer–Lambert optical-depth scale (render-path `DEPTH`).
+    pub depth: f32,
+    /// **Warp** (canvas px) — organic-boundary displacement of the coverage sampling (render-path).
+    pub warp: f32,
 }
 
 /// Max ramp stops the panel snapshot carries (a ramp may hold up to `MAX_RAMP_STOPS = 32`; the editor

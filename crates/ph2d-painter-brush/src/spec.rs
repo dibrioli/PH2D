@@ -183,6 +183,20 @@ pub struct BrushSpec {
     /// **Pigment mix** amount, `0..1`: how much the subtractive path is applied vs the plain blend.
     /// Only read when [`Self::watercolor`] and [`Self::pigment`] are on.
     pub pigment_mix: f32,
+    /// **Fill** density of the wash, `0..1` (wet_edges `fillDensity`): the optical density contributed by
+    /// the flat interior of the stroke (before the edge term). Low = a translucent glaze, high = a
+    /// saturated pool. Only read by the watercolor render-path (`ph2d-tool-painter`), when
+    /// [`Self::watercolor`] is on. The whole appearance is reconstructed optically from this + the edge +
+    /// granulation, not deposited per dab — see `docs/Painter/10_aquarela_render_path_preset_papers.md`.
+    pub fill: f32,
+    /// **Depth**, the Beer–Lambert optical-depth scale `> 0` (wet_edges `DEPTH`): transmittance per
+    /// channel is `Tᵢ = pigmentᵢ^(D·depth)` in linear light, so a larger depth darkens the absorbed
+    /// channels faster (the hue shifts more with thickness). Only read by the render-path.
+    pub depth: f32,
+    /// **Warp** amplitude in canvas px (wet_edges `warpAmp`): a fractal value-noise field displaces the
+    /// coverage sampling so the wash boundary is organic (ragged), not a clean disc. `0` = a crisp edge.
+    /// Only read by the render-path.
+    pub warp: f32,
 }
 
 impl Default for BrushSpec {
@@ -233,6 +247,10 @@ impl Default for BrushSpec {
             granulation: 0.3,
             pigment: false,
             pigment_mix: 0.5,
+            // Render-path optics (wet_edges defaults); inert unless `watercolor` is on.
+            fill: 0.12,
+            depth: 1.2,
+            warp: 6.0,
         }
     }
 }

@@ -24,12 +24,8 @@ impl PainterTool {
     /// the UNtiled dabs); the save-region bbox is measured over the tiled set so it still covers the
     /// wrapped copies (else the wrapped paint falls outside the restore region — a trail).
     pub(super) fn stamp_drag_preview(&mut self, dabs: &[Dab]) {
-        // Watercolor: this frame re-stamps the WHOLE batch onto the restored (pristine) canvas, so the
-        // coverage must rebuild with it — clear it here and let the re-stamp's `stamp_dabs` re-accumulate
-        // (mirrors the pixel restore, so a moving Drag-Dot leaves no coverage trail).
-        if self.wet_edges_active() {
-            self.clear_wet_coverage();
-        }
+        // (Watercolor render-path never reaches here — `stamp_stroke_dabs` short-circuits it before the
+        // restore/save dance, since it deposits no pixels; see `super::watercolor_render`.)
         // In Selection **Edit** mode the native gizmo drives the SELECTION mask, not pixels — peel any
         // leftover preview and paint nothing (ADR-0103 Am.2). The mask refill runs off the pointer path.
         if self.paint.selection_edit_mode {
@@ -80,6 +76,21 @@ impl PainterTool {
     /// growing preview leaves no trail and `commit_drag_preview` keeps the last on pen-up. Every other
     /// method uses the cumulative stamp.
     pub(super) fn stamp_stroke_dabs(&mut self, dabs: &[Dab]) {
+        // Watercolor render-path: no pixel deposit, so the drag-preview restore/save dance is unnecessary
+        // (the composite reads the frozen base, giving a clean preview for free). Shape-preview methods
+        // (Drag Dot / Anchored / Line) show a MOVING shape → rebuild coverage + colour each frame; the
+        // cumulative methods accumulate along the path.
+        if self.watercolor_render_active() {
+            if matches!(
+                self.paint.brush.stroke_method,
+                StrokeMethod::DragDot | StrokeMethod::Anchored | StrokeMethod::Line
+            ) {
+                self.clear_wet_coverage();
+                self.clear_wet_color();
+            }
+            self.stamp_dabs(dabs);
+            return;
+        }
         if matches!(
             self.paint.brush.stroke_method,
             StrokeMethod::DragDot | StrokeMethod::Anchored | StrokeMethod::Line

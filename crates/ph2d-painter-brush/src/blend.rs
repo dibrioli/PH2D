@@ -240,8 +240,9 @@ fn ryb_to_rgb(r: f32, y: f32, b: f32) -> [f32; 3] {
 }
 
 /// Mix straight-RGB colours `a` and `b` by `t` through the RYB wheel (subtractive: blue + yellow →
-/// green). `t = 0` → `a`, `t = 1` → `b` (up to the RYB round-trip, a fraction of a code value).
-fn ryb_mix(a: [f32; 3], b: [f32; 3], t: f32) -> [f32; 3] {
+/// green). `t = 0` → `a`, `t = 1` → `b` (up to the RYB round-trip, a fraction of a code value). Exposed
+/// for the watercolor render-path's Pigment composite ([`crate::blend`] is the single RYB source).
+pub fn ryb_mix(a: [f32; 3], b: [f32; 3], t: f32) -> [f32; 3] {
     let ra = rgb_to_ryb(a[0], a[1], a[2]);
     let rb = rgb_to_ryb(b[0], b[1], b[2]);
     ryb_to_rgb(

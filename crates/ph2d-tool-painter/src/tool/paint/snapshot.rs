@@ -214,6 +214,9 @@ impl PainterTool {
             granulation: b.granulation,
             pigment: b.pigment,
             pigment_mix: b.pigment_mix,
+            fill: b.fill,
+            depth: b.depth,
+            warp: b.warp,
         }
     }
 

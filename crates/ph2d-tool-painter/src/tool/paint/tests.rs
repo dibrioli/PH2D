@@ -10489,22 +10489,25 @@ fn dbg_shrink2() {
     eprintln!("mask_at(-12) area = {cnt}");
 }
 
-/// Watercolor edge darkening (#1): a wet-on-dry dab pools pigment at its rim — the boundary band reads
-/// DARKER than the (undarkened) interior — while turning the Edge gain off leaves the dab uniform.
-/// Proves the pen-up blur-difference pass (coverage → blur → `edge = cov·(1−blur)·gain` darken)
-/// end-to-end through the real stamp + `paint_end` path (the "efeito perceptual" DIRETIVA §4 asserts).
+/// Watercolor render-path #1 — the **edge** term pools pigment at the receding boundary: a rim band
+/// (just inside the wash) reads DARKER than the deep interior when Edge is on, and NOT darker when Edge
+/// is off. Granulation + Warp are zeroed to isolate the edge term (the paper-noise + boundary-warp
+/// fields would otherwise perturb the sampled pixels). Drives the real optical composite end-to-end
+/// through `paint_end` (the "efeito perceptual" DIRETIVA §4 asserts). See `super::watercolor_render`.
 #[test]
 fn watercolor_edge_darkens_the_rim_not_the_interior() {
     fn wet_brush(radius: f32, edge_gain: f32) -> BrushSpec {
         BrushSpec {
             radius_px: radius,
             hardness: 1.0,
-            falloff: Falloff::Constant, // hard uniform disc → the rim change is purely the edge pass
-            color: [0.24, 0.39, 0.63],  // mid blue → darkening is measurable in every channel
+            falloff: Falloff::Constant,
+            color: [0.24, 0.39, 0.63], // mid blue → darkening is measurable in every channel
             space_attenuation: false,
             watercolor: true,
             edge_gain,
             edge_spread: 7.0,
+            granulation: 0.0, // isolate the edge term from the paper granulation
+            warp: 0.0,        // and from the organic-boundary displacement
             ..Default::default()
         }
     }
@@ -10522,83 +10525,87 @@ fn watercolor_edge_darkens_the_rim_not_the_interior() {
     let size = 96u32;
     let center = [48.0f32, 48.0];
     let lum = |p: [u8; 4]| u32::from(p[0]) + u32::from(p[1]) + u32::from(p[2]);
+    // The rim band sits a few px inside the 20 px disc boundary (where cover is high but blur(cover) has
+    // fallen — the edge term peaks); the interior is the disc centre (cover ≈ 1, blur ≈ 1 → edge ≈ 0).
+    let rim_y = 32; // 16 px above centre
 
-    // Edge ON: the rim band (18 px from centre, inside the 20 px disc) is darker than the interior.
+    // Edge ON: the rim band is darker than the interior (pigment pooled at the receding front).
     let t = paint_dab(wet_brush(20.0, 3.0), size, center);
     let interior = px(&t, size, 48, 48);
-    let rim = px(&t, size, 48, 30);
+    let rim = px(&t, size, 48, rim_y);
     assert!(
         lum(rim) < lum(interior),
         "edge darkening must pool pigment at the rim: rim {rim:?} not darker than interior {interior:?}"
     );
 
-    // Edge OFF (gain 0): the same dab is uniform — the blur-difference pass is skipped entirely.
+    // Edge OFF (gain 0): no rim pooling — the boundary only has LESS coverage, so it is never darker than
+    // the interior (density there is `cover·fill`, and `cover ≤ 1`).
     let t0 = paint_dab(wet_brush(20.0, 0.0), size, center);
-    assert_eq!(
-        px(&t0, size, 48, 48),
-        px(&t0, size, 48, 30),
-        "with Edge off the dab is uniform (no rim darkening — the watercolor pass is gated off)"
+    assert!(
+        lum(px(&t0, size, 48, rim_y)) >= lum(px(&t0, size, 48, 48)),
+        "with Edge off there is no rim pooling (the boundary is lighter, never darker, than the interior)"
     );
 }
 
-/// Watercolor granulation (#2): with a canvas-anchored Grain (`Tiled` + `Grain` kind), turning
-/// Granulation up REJECTS pigment in the paper's valleys — so the total deposited ink drops (but stays
-/// non-zero: the tooth peaks still take paint) — while a plain grain brush (Granulation 0) is unchanged.
-/// Drives the real stamp path (Edge off, so only the Grain gate moves the number). DIRETIVA §4.
+/// Watercolor render-path #2 — **granulation** textures the wash: the paper-tooth field modulates the
+/// optical density (`gran = 1 + (paperHeight − 0.5)·2·granAmt`), so turning Granulation up raises the
+/// spatial VARIANCE of the interior (mottled tooth) versus a flat wash at Granulation 0. Symmetric
+/// around the mean (wet_edges), so it redistributes pigment, not a net wipe. Real optical composite,
+/// Edge off. DIRETIVA §4.
 #[test]
-fn watercolor_granulation_rejects_valley_deposit() {
-    use ph2d_painter_brush::{TextureKind, TextureMapping, TextureSettings};
-    fn grain_brush(granulation: f32) -> BrushSpec {
-        BrushSpec {
-            radius_px: 24.0,
+fn watercolor_granulation_textures_the_wash() {
+    fn interior_variance(granulation: f32) -> f64 {
+        let size = 64u32;
+        let mut t = PainterTool::default();
+        t.set_source(vec![255u8; (size * size * 4) as usize], size, size);
+        t.paint.brush = BrushSpec {
+            radius_px: 26.0,
             hardness: 1.0,
             falloff: Falloff::Constant,
             color: [0.0, 0.0, 0.0], // black on white → deposit reads as darkening
             space_attenuation: false,
-            texture: TextureSettings {
-                kind: TextureKind::Grain, // the "paper tooth" procedural
-                mapping: TextureMapping::Tiled, // canvas-anchored = a paper height-field
-                ..Default::default()
-            },
             watercolor: true,
-            edge_gain: 0.0, // isolate granulation from the edge-darkening pass
+            edge_gain: 0.0, // isolate granulation from the edge term
+            warp: 0.0,      // sample the true tooth, un-displaced
+            fill: 0.6,      // a solid wash so the tooth variation is well above quantisation
             granulation,
             ..Default::default()
-        }
-    }
-    fn total_ink(granulation: f32) -> u64 {
-        let size = 64u32;
-        let mut t = PainterTool::default();
-        t.set_source(vec![255u8; (size * size * 4) as usize], size, size);
-        t.paint.brush = grain_brush(granulation);
+        };
         for slot in &mut t.paint.brush_by_mode {
             *slot = t.paint.brush;
         }
         assert!(t.on_canvas_pointer(cp([32.0, 32.0], PointerPhase::Down)));
         assert!(t.on_canvas_pointer(cp([32.0, 32.0], PointerPhase::Up)));
-        // Ink = how far each pixel darkened from white, summed over the canvas (R channel is enough).
-        (0..(size * size) as usize)
-            .map(|p| u64::from(255 - t.canvas_rgba[p * 4]))
-            .sum()
+        // Variance of the R channel over a deep-interior window (well inside the 26 px disc → cover ≈ 1,
+        // so only the tooth varies the value).
+        let vals: Vec<f64> = (24..40)
+            .flat_map(|y| (24..40).map(move |x| (x, y)))
+            .map(|(x, y)| f64::from(t.canvas_rgba[((y * size + x) * 4) as usize]))
+            .collect();
+        let mean = vals.iter().sum::<f64>() / vals.len() as f64;
+        vals.iter().map(|v| (v - mean).powi(2)).sum::<f64>() / vals.len() as f64
     }
-    let plain = total_ink(0.0);
-    let granulated = total_ink(0.85);
-    assert!(plain > 0, "a grain brush deposits ink");
+    let flat = interior_variance(0.0);
+    let granulated = interior_variance(0.8);
     assert!(
-        granulated < plain,
-        "granulation must reject valley deposit: granulated {granulated} not < plain {plain}"
+        flat < 1.0,
+        "Granulation 0 is a flat wash (near-zero interior variance): got {flat}"
     );
-    assert!(granulated > 0, "granulation still deposits on the tooth peaks (not a full wipe)");
+    assert!(
+        granulated > flat + 4.0,
+        "Granulation must texture the wash (raise interior variance): granulated {granulated} vs flat {flat}"
+    );
 }
 
-/// Watercolor pigment (#3): painting yellow over a wet blue wash with **Pigment** on mixes the two
-/// SUBTRACTIVELY — the overlap gains green — where the plain blend (Pigment off, = Krita's smudge) just
-/// averages toward a muddy blue-grey. Drives the real stamp path at partial coverage. DIRETIVA §4.
+/// Watercolor render-path #3 — **Pigment** mixes wet-on-wet subtractively: painting yellow over an
+/// opaque blue base with Pigment on lifts GREEN in the overlap (RYB: blue + yellow → green), where the
+/// plain optical composite (Pigment off) stays a muddy Beer–Lambert blend. A dense wash (high Fill/Depth)
+/// so the pigment film is opaque enough to mix. Real composite. DIRETIVA §4.
 #[test]
 fn watercolor_pigment_mixes_wet_on_wet_toward_green() {
     fn center_pixel(pigment_mix: f32) -> [u8; 4] {
         let size = 48u32;
-        // A solid wet blue wash already on the canvas (alpha 255 → pigment present to mix with).
+        // A solid opaque blue base already on the canvas (the "previous wash" to mix into).
         let mut src = vec![0u8; (size * size * 4) as usize];
         for p in src.chunks_exact_mut(4) {
             p.copy_from_slice(&[30, 55, 195, 255]);
@@ -10609,11 +10616,14 @@ fn watercolor_pigment_mixes_wet_on_wet_toward_green() {
             radius_px: 14.0,
             hardness: 1.0,
             falloff: Falloff::Constant,
-            strength: 0.5, // partial coverage → the blue underneath mixes with the yellow dab
             color: [0.90, 0.80, 0.10], // yellow
             space_attenuation: false,
             watercolor: true,
-            edge_gain: 0.0, // isolate pigment from the edge-darkening pass
+            edge_gain: 0.0, // isolate pigment from the edge term
+            granulation: 0.0,
+            warp: 0.0,
+            fill: 0.85, // dense wash → an opaque pigment film that mixes strongly
+            depth: 2.0,
             pigment: pigment_mix > 0.0,
             pigment_mix,
             ..Default::default()
@@ -10625,20 +10635,24 @@ fn watercolor_pigment_mixes_wet_on_wet_toward_green() {
         assert!(t.on_canvas_pointer(cp([24.0, 24.0], PointerPhase::Up)));
         px(&t, size, 24, 24)
     }
-    let off = center_pixel(0.0); // Pigment off → plain source-over average
-    let on = center_pixel(1.0); // Pigment on → subtractive RYB (blue + yellow → green)
+    let off = center_pixel(0.0); // Pigment off → plain Beer–Lambert blend (a muddy YELLOW-green: high red)
+    let on = center_pixel(1.0); // Pigment on → subtractive RYB → a true GREEN (green pulls ahead of red)
+    // "Toward green" = green dominates red more strongly with Pigment on. (The green *channel* alone is
+    // higher in the yellow-green off-state — yellow carries green too — so the signature is green−red.)
+    let green_lead = |p: [u8; 4]| i32::from(p[1]) - i32::from(p[0]);
     assert!(
-        u32::from(on[1]) > u32::from(off[1]),
-        "wet-on-wet pigment must lift green vs the plain average: on {on:?} vs off {off:?}"
+        green_lead(on) > green_lead(off),
+        "wet-on-wet pigment must swing toward green (green leading red) vs the plain blend: on {on:?} vs off {off:?}"
     );
 }
 
-/// Watercolor edge darkening is **LIVE** — the fringe darkens *during* the stroke (each frame, peeled +
-/// rebuilt from the growing coverage), not as a jump on release. Paint a horizontal band and, WITHOUT
-/// releasing, assert its rim is already darker than its centreline. (Fix for the "escurece no final"
-/// feedback; the pen-up bake result is covered by `watercolor_edge_darkens_the_rim_not_the_interior`.)
+/// Watercolor render-path is **LIVE** — the wash appears *during* the stroke (each frame recomposited
+/// from the growing coverage over the frozen base), not as a jump on release. Paint a horizontal band
+/// and, WITHOUT releasing, assert (a) the interior already differs from the white base and (b) the rim
+/// is already darker than the centreline. (Fix for the "não pinta em tempo real / escurece no final"
+/// feedback; the pen-up bake is covered by `watercolor_edge_darkens_the_rim_not_the_interior`.)
 #[test]
-fn watercolor_edge_is_live_before_pen_up() {
+fn watercolor_wash_is_live_before_pen_up() {
     let size = 96u32;
     let mut t = PainterTool::default();
     t.set_source(vec![255u8; (size * size * 4) as usize], size, size);
@@ -10646,12 +10660,13 @@ fn watercolor_edge_is_live_before_pen_up() {
         radius_px: 10.0,
         hardness: 1.0,
         falloff: Falloff::Constant,
-        strength: 0.6,
         color: [0.25, 0.40, 0.62],
         space_attenuation: false,
         watercolor: true,
         edge_gain: 2.0,
         edge_spread: 5.0,
+        granulation: 0.0,
+        warp: 0.0,
         ..Default::default()
     };
     for slot in &mut t.paint.brush_by_mode {
@@ -10663,11 +10678,44 @@ fn watercolor_edge_is_live_before_pen_up() {
     for x in [32.0, 40.0, 48.0, 56.0, 64.0] {
         t.on_canvas_pointer(cp([x, 48.0], PointerPhase::Move));
     }
-    // Pointer still down: the band's rim is ALREADY darker than its interior.
+    // Pointer still down: the wash is ALREADY on the canvas (interior differs from the white base) and
+    // its rim is ALREADY darker than the centreline.
     let interior = px(&t, size, 44, 48);
+    assert!(lum(interior) < 3 * 255, "the wash is live mid-stroke (interior no longer white)");
     let rim = px(&t, size, 44, 40); // 8 px above centre → top rim of the radius-10 band
     assert!(
         lum(rim) < lum(interior),
         "edge must be LIVE mid-stroke: rim {rim:?} not darker than interior {interior:?}"
+    );
+}
+
+/// Watercolor is **inert when off**: a `watercolor = false` stroke is byte-identical to a plain brush
+/// (the render-path skips deposit AND composite — the skip-deposit gate must not leak into a normal
+/// stroke). Paints the same dab with the flag off and confirms real pigment landed on the canvas.
+#[test]
+fn watercolor_off_is_a_plain_deposit() {
+    let size = 48u32;
+    let mut t = PainterTool::default();
+    t.set_source(vec![255u8; (size * size * 4) as usize], size, size);
+    t.paint.brush = BrushSpec {
+        radius_px: 12.0,
+        hardness: 1.0,
+        falloff: Falloff::Constant,
+        color: [0.10, 0.20, 0.80],
+        space_attenuation: false,
+        watercolor: false, // OFF → the plain deposit path, no optical composite
+        ..Default::default()
+    };
+    for slot in &mut t.paint.brush_by_mode {
+        *slot = t.paint.brush;
+    }
+    assert!(t.on_canvas_pointer(cp([24.0, 24.0], PointerPhase::Down)));
+    assert!(t.on_canvas_pointer(cp([24.0, 24.0], PointerPhase::Up)));
+    // The dab deposited the (opaque) brush colour straight — a plain Mix over white.
+    let c = px(&t, size, 24, 24);
+    assert_eq!(c[3], 255, "opaque deposit");
+    assert!(
+        c[2] > c[0] && c[2] > c[1],
+        "the plain blue brush colour landed (blue dominant): {c:?}"
     );
 }

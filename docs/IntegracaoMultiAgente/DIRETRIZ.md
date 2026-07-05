@@ -1,6 +1,6 @@
 # Diretriz de Implementação — PH2D
 
-**Versão:** 8.0 — 2026-07-05 (**o modo de operação virou função do hardware** — [ADR-0106](../architecture/decisions/0106-parallel-dev-lines-worktrees-workstation.md); `bash scripts/hw-profile.sh` decide: tier `workstation` (Linux 128 GB) = **Modo L**, linhas paralelas por `git worktree` sem Coordenador de plantão, §1.5; tier `constrained` (Mac mini 8 GiB, sessões de smoke/hotfix) = **Modo C**, o modelo v7.1 de 1 Coordenador único + N Implementadores em shared tree, §1.1–1.4 + §7. Baseline anterior: 7.1 — 2026-05-28, papéis consolidados).
+**Versão:** 8.1 — 2026-07-05 (**foundational deixou de ser serial no Modo L** — [ADR-0107](../architecture/decisions/0107-concurrent-foundational-lines-tested-gate-syntactic-merge.md): qualquer linha toca foundational sob 3 camadas — pontos de extensão append-only, Mergiraf (merge sintático) no resíduo textual, e o **gate da árvore combinada** `scripts/foundational-integrate.sh` no resíduo semântico; só contrato congelado (§4) e mesmo-símbolo de tipo-núcleo seguem seriais. v8.0 — 2026-07-05: **o modo de operação virou função do hardware** — [ADR-0106](../architecture/decisions/0106-parallel-dev-lines-worktrees-workstation.md); `bash scripts/hw-profile.sh` decide: tier `workstation` (Linux 128 GB) = **Modo L**, linhas paralelas por `git worktree` sem Coordenador de plantão, §1.5; tier `constrained` (Mac mini 8 GiB, sessões de smoke/hotfix) = **Modo C**, o modelo v7.1 de 1 Coordenador único + N Implementadores em shared tree, §1.1–1.4 + §7. Baseline anterior: 7.1 — 2026-05-28, papéis consolidados).
 **Audiência:** **toda LLM que entra no projeto.** Este doc é **referência** — **NÃO
 leia inteiro**; use o roteador leia-por-tarefa em [`CLAUDE.md §1`](../../CLAUDE.md) e
 leia só a(s) seção(ões) que sua tarefa exige. Obrigatório p/ todos: §0 (sanity), §1
@@ -102,9 +102,12 @@ Pra violar uma? **Pare e reporte.** Quase certo o Coord não fez scaffold direit
 > `main` vira só ponto de integração. O worktree elimina a colisão de **git** de raiz
 > (índice, HEAD, working tree e `target/` próprios por linha — a classe inteira de
 > incidentes que o §7 legisla vira impossibilidade física); a **pasta disjunta**, que já
-> era regra, elimina o conflito de **merge**. Juntos = integração fast-forward na prática,
-> **sem Coordenador de plantão**. As 3 obrigações do §1.4 valem intactas dentro de cada
-> linha; triagem §2, receitas §3, contratos §4, UI §5 e a DIRETIVA_IMPLEMENTACAO idem.
+> era regra, elimina o conflito de **merge** nos drop-crates. Juntos = integração fast-forward
+> na prática, **sem Coordenador de plantão**. As 3 obrigações do §1.4 valem dentro de cada linha,
+> **com uma emenda (ADR-0107): a obrigação 1 (ISOLAMENTO) NÃO proíbe mais foundational no Modo L**
+> — foundational é editável por qualquer linha sob o protocolo testado (1.5.2.1 + 1.5.3);
+> permanecem-fora-de-limite só os contratos congelados (§4) e mesmo-símbolo de tipo-núcleo.
+> Triagem §2, receitas §3, contratos §4, UI §5 e a DIRETIVA_IMPLEMENTACAO idem.
 > **Proibido no tier `constrained`** — N worktrees × `target/` não cabem em 8 GiB (vide 1.5.6).
 
 #### 1.5.1 Setup de linha (o PRÓPRIO agente faz, guiado pelo modelo)
@@ -132,9 +135,15 @@ cd Worktrees/line-<módulo>                                 # TODO o trabalho a 
 
 #### 1.5.2 Regras do agente-de-linha
 
-1. **Edite SÓ dentro da(s) pasta(s) do seu módulo** (§1.4). Precisou de foundational /
-   contrato congelado / outra crate? **PARE e reporte ao Enio** (no Modo L não há Coordenador
-   de plantão) — isso vai pra `line/foundational` (1.5.4), não pra sua linha.
+1. **Edite a(s) pasta(s) do seu módulo livremente; foundational, sob o protocolo testado
+   (ADR-0107).** Tocar `ph2d-core`/`ph2d-editor-core`/`ph2d-tokens`/`ph2d-host`/… a partir da
+   SUA linha **é permitido** — a integração (1.5.3) roda `scripts/foundational-integrate.sh`
+   (gate da árvore COMBINADA: `cargo check --workspace` + impacted tests sobre o tip rebaseado),
+   e o Mergiraf (1.5.5) funde o resíduo textual. **PARE e reporte ao Enio** só nos **dois casos
+   irredutíveis** (decisão de design com um dono, não merge): (a) **contrato congelado** (§4 —
+   caps + arch-gate; exige ADR) ou (b) o rebase (1.5.2.3) conflita em **código fora dos arquivos
+   do seu módulo** — colisão de *mesmo símbolo* com outra linha viva (1.5.5, última linha), que
+   você não resolve na mão. Fora esses dois, foundational não é mais uma fila única (1.5.4).
 2. Commits locais frequentes (`--no-verify` de dia, fast mode §8.1). **NUNCA push.**
    Merge só pelo protocolo 1.5.3.
 3. **`git rebase main` no início de CADA jornada e antes de integrar** (refs compartilhadas
@@ -146,40 +155,58 @@ cd Worktrees/line-<módulo>                                 # TODO o trabalho a 
 
 #### 1.5.3 Integração ao main (self-service, serializada por `--ff-only`)
 
-```bash
-# na SUA linha, com o gate batched do módulo verde:
-git rebase main
-cargo run -p ph2d-tool-sync && cargo run -p ph2d-node-sync    # se o rebase trouxe crate nova
-cargo test -p ph2d-tool-registry-init -p ph2d-node-registry-init   # staleness verde
-cargo test -p <suas crates>                                   # re-valida pós-rebase (warm, rápido)
+**Um comando faz tudo** (ADR-0107): da SUA linha, com o gate batched do módulo verde:
 
-# no checkout PRIMÁRIO (a raiz do repo — dois níveis acima da worktree):
-git -C ../.. merge --ff-only line/<módulo>
+```bash
+bash scripts/foundational-integrate.sh
 ```
 
+Ele executa, em ordem, e aborta com a orientação certa em qualquer falha:
+`git rebase main` → re-sync (tool/node) + commit da regen → staleness gate → **gate da árvore
+COMBINADA** (`cargo check --workspace` se a linha tocou foundational; senão `-p` nas crates
+mudadas) → `nextest-impacted` → `git -C <primário> merge --ff-only`.
+
+**Por que o `check --workspace` é obrigatório para foundational:** o `--ff-only` prova só que
+ninguém entrou entre seu rebase e seu merge; **não prova que a árvore combinada compila**.
+Duas linhas disjuntas (drop-crate) estão fisicamente isoladas — mas duas linhas em foundational
+podem quebrar juntas (A muda uma assinatura, B chama a antiga), e isso só o build da árvore
+rebaseada pega. Como `--ff-only` faz o tip da linha **virar** o main, testar o tip rebaseado ==
+testar o futuro main (ADR-0107, prova de correção).
+
 **O `--ff-only` É a serialização:** se falhar, outra linha integrou entre seu rebase e seu
-merge → volte ao passo 1 (rebase de novo, re-valida, re-tenta). Race auto-detectada, nunca
-produz merge sujo. Precondição dura: primário limpo e em main (sujo = violação do 1.5.1 —
-pare e reporte). Linha integrada segue viva pra próxima wave do módulo; morreu de vez →
-`git worktree remove ../PH2D-line-<x> && git branch -d line/<x>`.
+merge → **re-rode o script** (rebase de novo sobre a recém-integrada, re-testa, re-tenta) — você
+nunca funde uma combinação não-testada. Precondição dura: primário limpo e em main (sujo =
+violação do 1.5.1 — pare e reporte). Linha integrada segue viva pra próxima wave do módulo;
+morreu de vez → `git worktree remove Worktrees/line-<x> && git branch -d line/<x>`.
+
+*(Fluxo manual equivalente, se precisar depurar passo a passo: os mesmos comandos, na ordem
+acima. O script é a fonte única — não duplique a lista aqui.)*
 
 #### 1.5.4 Pra onde foi o Coordenador
 
 | Função (Modo C) | No Modo L |
 |---|---|
 | Arbitragem de posse / anti-colisão git (§7) | **Extinta** — worktree isola git; pasta disjunta isola merge; `--ff-only` serializa a integração |
-| Foundational / contratos congelados / scaffolds (B) | Continua serial **por natureza** (superfície única) → vira **`line/foundational`**: linha dedicada e curta, com **prioridade de integração** (merge cedo; as outras rebaseiam em seguida). Contrato congelado segue exigindo ADR (§4) |
+| Foundational (não-contrato) | **Não é mais serial** (ADR-0107): qualquer linha toca foundational e integra pelo gate testado (1.5.3). A não-colisão vem de 3 camadas — pontos de extensão append-only onde couber (Camada 0), Mergiraf no resíduo textual (1.5.5), gate da árvore combinada no resíduo semântico (1.5.3). A `line/foundational` dedicada vira **opcional** (útil só p/ um refactor foundational grande e coeso), não mais a única porta |
+| Contratos congelados / scaffolds (B) | Seguem **seriais por natureza** (decisão de design com um dono): contrato congelado exige ADR (§4); mesmo-símbolo de tipo-núcleo = reporte (1.5.2.1). Estes NÃO passam pela Camada 0/1 |
 | Ship + push + babysit CI (§8) | **1× por jornada, sobre o main integrado** — quem fecha a ÚLTIMA integração do dia roda `./scripts/ship.sh` + push + babysit ("o último apaga a luz"), ou o Enio abre uma sessão-ship dedicada. Não bloqueia ninguém durante o dia |
 
 #### 1.5.5 Conflitos de rebase/merge esperados (os ÚNICOS legítimos)
 
+> **Mergiraf resolve o resíduo textual (ADR-0107, Camada 1).** Com o driver registrado
+> (`scripts/mergiraf-setup.sh`, 1× por máquina), dois agentes que adicionam um variant/campo/token
+> em **partes diferentes** do mesmo `.rs`/`.toml`/`.json` fundem sozinhos via AST — o que era
+> conflito textual vira auto-merge. Ele **não** decide os dois casos abaixo (`Cargo.lock`/gerados
+> = regenere; mesmo-símbolo = reporte) nem pega quebra semântica (isso é o gate testado, 1.5.3).
+
 | Arquivo | Regra |
 |---|---|
-| `Cargo.lock` | NUNCA na mão: `git checkout main -- Cargo.lock` + `cargo check -p <sua-crate>` regenera suas entradas + `git add Cargo.lock` |
+| `Cargo.lock` | NUNCA na mão (fica no merge default do git, sem Mergiraf): `git checkout main -- Cargo.lock` + `cargo check -p <sua-crate>` regenera + `git add Cargo.lock` |
 | `ph2d-{tool,node}-registry-init/` (GERADO) | NUNCA na mão: aceite qualquer lado, re-rode o sync; o staleness gate confirma |
-| `ph2d-editor-core/src/icons.rs` (IconId — único touchpoint central de tool nova) | Mantenha AMBOS os variants em ordem alfabética; gate `enum_order_matches_svgs` confirma |
+| `chrome/mod.rs` blocos GERADOS (`mod` + `dispatch_all`, ADR-0107) | NUNCA na mão: `cargo run -p ph2d-chrome-sync` regenera dos `chrome/*.rs` (ordem = marcador `z=NN`); gate `architecture_chrome_dispatch_in_sync` confirma |
+| `ph2d-editor-core/src/icons.rs` (IconId) · `color_tokens!` list (ColorToken) | Mergiraf mantém AMBAS as entradas; se cair na mão, união trivial (dois lados); gates `enum_order_matches_svgs` / testes de `ph2d-tokens` confirmam |
 | SESSION_ACTIVE / `CLAUDE.md §5` / trackers | Só na integração, no primário, uma linha por vez; cada linha edita só o SEU `HANDOFF_*` |
-| Código fora da sua pasta | **Não deveria existir** — conflito aqui = violação de isolamento → reporte, não resolva |
+| **Mesmo símbolo** fora dos arquivos do seu módulo | Conflito aqui = duas linhas reescrevendo a mesma função/assinatura de núcleo (colisão de *design*, não de texto). Mergiraf não decide, você não resolve na mão → **reporte ao Enio** (1.5.2.1). É o núcleo irredutivelmente serial (ADR-0107) |
 
 #### 1.5.6 Proibições (Modo L)
 
@@ -243,7 +270,7 @@ TRIAGEM
 | **Widget primitive novo** | **(B) §3.B.2** | Coord adiciona em `widget/mod.rs` + showcase ANTES. |
 | **Chrome handler novo** | **(B) §3.B.3** | Coord adiciona em `chrome/mod.rs::dispatch_all` ANTES. |
 | **Avaliador novo (Wave-neck)** — Shader/Som/Gameplay | **(C)** durante neck → (A) depois | Trabalho "tipo W2" serial; abre fan-out só após o neck. Tracker em [`docs/HANDOFF_node_system.md`](../HANDOFF_node_system.md). |
-| **Mudar tokens / editor-core (não-contrato) / shells / arch tests** | **(C)** | Foundational, não paraleliza. |
+| **Mudar tokens / editor-core (não-contrato) / shells / arch tests** | **(C)** | Foundational. Modo C: não paraleliza (Coord). Modo L: sua linha + gate testado (ADR-0107, vide nota abaixo). |
 | **Mudar contrato de nós** (porta, EvalCtx, motor) | **(C) + ADR** | Bump cap em `architecture_contract_surface.rs` + ADR estendendo 0039. |
 | **Mudar contrato de tools** (método em `Tool`/`RasterEditTool`, variant em `PanelEvent`) | **(C) + ADR** | Bump cap em `architecture_tool_contract_surface.rs` + amendment de ADR-0040 §7. |
 
@@ -251,7 +278,11 @@ TRIAGEM
 
 **Na dúvida A vs B:** "exige editar QUALQUER arquivo fora de UMA pasta nova?" Sim → (B). Único arquivo fora = wiring **gerado** (`ph2d-{node,tool}-sync`) → ainda **(A)**.
 
-**Modo L:** a triagem é idêntica; muda o **executor** — (A)/(D) = a sua linha; (B)/(C) = `line/foundational` (§1.5.4): reporte ao Enio pra sequenciar, não execute na sua linha.
+**Modo L (ADR-0107):** a triagem é idêntica; muda o **executor**. (A)/(D)/(B) **e (C) quando é
+foundational NÃO-contrato** (tokens / editor-core / shells / arch tests) = **a sua linha** —
+integra pelo gate testado (§1.5.3). **Só (C) contrato congelado** (nós/tools, linhas 273-274) =
+reporte ao Enio pra sequenciar + ADR (§4); mesmo-símbolo de tipo-núcleo idem (§1.5.2.1). A
+`line/foundational` dedicada é opcional (refactor foundational grande e coeso), não a única porta.
 
 **Diff do sync é esperado** — não viola §1.4 ISOLAMENTO. O staleness gate em CI exige a regeneração.
 
@@ -409,9 +440,9 @@ Dois agentes adicionando duas features (mesma família ou não) **não tocam nen
 - [ ] Ícone: SVG em `docs/design/icons/` + IconId alfabético em `icons.rs`.
 - [ ] **Painel docado segue Widget Gallery (§5.2)**: `link_slider_number`, `mark_chip_no_stepper`, storage `0..1`, bridge `<slug>_bridge.rs` se altera pixels.
 
-### 3.B Scaffold central (caminho (B)) — Coordenador faz primeiro
+### 3.B Scaffold central (caminho (B)) — Coordenador (Modo C) / a própria linha (Modo L)
 
-Painel/widget/chrome ainda exigem edit central (não codegenado). O Coordenador cria pasta + plugues centrais + stubs verdes, entrega briefing pra Implementador preencher.
+Painel/widget exigem alguns plugues centrais; **chrome é totalmente codegenado** (`mod` + `dispatch_all` via `ph2d-chrome-sync`, ADR-0107 — vide §3.B.3). Cria-se pasta/arquivo + plugues/stubs verdes; no Modo C o Coordenador faz e entrega briefing, no Modo L (ADR-0107) a própria linha faz sob o gate testado.
 
 #### 3.B.1 Painel novo (`ph2d-panel-<slug>`)
 
@@ -437,28 +468,29 @@ Coord:
 
 Implementador: preenche paint usando **só tokens**, adiciona tests, ajusta showcase.
 
-#### 3.B.3 Chrome handler novo
+#### 3.B.3 Chrome handler novo (dispatch GERADO — ADR-0107)
 
-Coord:
-1. Cria `editor-core/src/screens/hero/chrome/<slug>.rs` com stub: `pub fn apply(_hero, _event) -> bool { false }`.
-2. Adiciona em `chrome/mod.rs`: `pub mod <slug>;` + `|| <slug>::apply(hero, event)` em `dispatch_all` (ordem alfabética = higiene, sem arch-gate).
+Modo C: Coord. **Modo L: a própria linha** (editor-core é editável sob o gate testado, ADR-0107).
+O bloco `mod` **e** a chain `dispatch_all` são GERADOS — zero edit central à mão:
+1. Cria `editor-core/src/screens/hero/chrome/<slug>.rs` com stub `pub fn apply(_hero, _event) -> bool { false }`
+   e o marcador de prioridade `// ph2d-chrome-sync:z=NN` na 1ª linha (menor = despacha antes, "vence" em id overlap; omita → vai pro fim, `DEFAULT_Z`).
+2. `cargo run -p ph2d-chrome-sync` regenera `mod` + `dispatch_all` (ordem = `z=NN`, depois nome). **NUNCA edite os blocos entre marcadores à mão** — gate `architecture_chrome_dispatch_in_sync` confirma.
 3. Se precisa NodeIds: `screens/hero/ids.rs` via `hash_node_id`.
 4. `cargo check -p ph2d-editor-core` verde.
 
-Implementador: preenche corpo do handler.
+Implementador (Modo C) / a própria linha (Modo L): preenche o corpo do handler.
 
-### 3.C Foundational + contratos congelados (caminho (C)) — Coordenador só
+### 3.C Foundational + contratos congelados (caminho (C))
 
 Foundational = `ph2d-core`, `ph2d-tokens`, `ph2d-editor-core` (exceto widget/chrome scaffold de B), `ph2d-a11y`, `ph2d-host`, `ph2d-vector`, `ph2d-text`, `ph2d-tool-registry`, `ph2d-{tool,node,panel}-registry-init`, `tools/ph2d-{node,tool}-sync`, `shells/*`, arch tests, **+ os 2 contratos congelados** (§4).
 
-**Não paralelizável. O Coordenador faz sozinho.** Não delega.
+**Modo C:** não paralelizável — o Coordenador faz sozinho. **Modo L (ADR-0107):** foundational NÃO-contrato é editável por **qualquer linha** sob o gate testado (§1.5.2.1 + §1.5.3); só **contrato congelado** e **mesmo-símbolo de tipo-núcleo** ficam seriais (reporte/ADR).
 
-Exemplo (adicionar `ColorToken::AccentTeal`):
-1. Edita `docs/design/tokens.json` em todos 4 temas.
-2. `cargo check -p ph2d-tokens` (build.rs regenera).
-3. Edita `crates/ph2d-tokens/src/color.rs` adicionando variant.
-4. `cargo test --workspace --exclude ph2d-asset` (paranoia).
-5. Commit: `feat(tokens): add ColorToken::AccentTeal`.
+Exemplo (adicionar o token semântico `accent-teal`):
+1. Edita `docs/design/tokens.json` em todos 4 temas (o valor OKLCH; Mergiraf une adições JSON disjuntas).
+2. Adiciona **uma linha** na lista `color_tokens!` de `crates/ph2d-tokens/src/color.rs`: `AccentTeal => "accent-teal",` (com doc opcional). O enum `ColorToken` **e** `key()` saem dessa lista — não há mais `match` separado a manter (ADR-0107).
+3. `cargo test -p ph2d-tokens` (build.rs regenera as tabelas; gates WCAG revalidam).
+4. Commit: `feat(tokens): add ColorToken::AccentTeal`.
 
 ### 3.D Modificar feature existente
 

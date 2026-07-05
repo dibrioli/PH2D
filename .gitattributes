@@ -30,6 +30,29 @@
 *.bat     text eol=crlf
 *.ps1     text eol=crlf
 
+# Syntax-aware merge (Mergiraf) — ADR-0107.
+# AST-level 3-way merge for the source/config surfaces that concurrent lines
+# edit in foundational (two agents adding a variant/field/token in DIFFERENT
+# parts of the same file → clean auto-merge instead of a textual conflict).
+# Line-merge is tried first; the AST path only runs on the regions that
+# actually conflicted. SAFE without the driver configured: git falls back to
+# its built-in 3-way merge when `merge=mergiraf` names an unregistered driver
+# (so Mac/Windows checkouts without Mergiraf are unaffected). Register the
+# driver once per machine with `scripts/mergiraf-setup.sh`.
+# NOT a substitute for the tested integration gate — Mergiraf can union code
+# that compiles-but-is-wrong; `scripts/foundational-integrate.sh` is what
+# proves the combined tree still builds+passes (ADR-0107 Camada 2).
+# Cargo.lock (no .toml extension → NOT matched below) and *-registry-init/ are
+# regenerated, never hand-merged, on conflict (DIRETRIZ §1.5.5). We deliberately
+# leave them on git's DEFAULT merge: it auto-merges disjoint dep/registry
+# additions cleanly, and the regen rule is the fallback only when it truly
+# conflicts. Forcing them off merge would manufacture conflicts, not prevent them.
+*.rs      merge=mergiraf
+*.toml    merge=mergiraf
+*.json    merge=mergiraf
+*.wgsl    merge=mergiraf
+*.ron     merge=mergiraf
+
 # Binary assets — never normalize, never diff as text.
 *.png     binary
 *.jpg     binary

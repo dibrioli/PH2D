@@ -55,11 +55,15 @@ FASE 1 — SETUP (execute já, sem pedir confirmação; reporte cada ✗):
 6. cargo check -p ph2d-core
       → warm-up do target/ próprio desta worktree; o 1º build é frio
         (minutos). NÃO otimize/investigue a demora — é esperada.
-7. Leia INTEIRAS (dentro da worktree):
+7. bash scripts/mergiraf-setup.sh    # merge sintático p/ foundational (ADR-0107)
+      → idempotente, 1× por máquina (config vai no .git comum). Falhou por
+        "mergiraf not found"? NÃO é bloqueio: git faz fallback pro merge
+        embutido. Reporte a linha do ✗ e siga (Enio instala depois).
+8. Leia INTEIRAS (dentro da worktree):
       docs/IntegracaoMultiAgente/DIRETRIZ.md            → §0, §1.5, §2, §6
       docs/IntegracaoMultiAgente/DIRETIVA_IMPLEMENTACAO.md  → tudo
         (e RELEIA a cada passo do trabalho, como ela manda)
-8. Reporte: "Linha do novo módulo pronta em Worktrees/line-$MODULO.
+9. Reporte: "Linha do novo módulo pronta em Worktrees/line-$MODULO.
    Aguardo a tarefa." — e PARE. A tarefa vem na próxima mensagem.
 
 REGRAS PERMANENTES DA SESSÃO (valem até o fim, sem exceção):
@@ -68,10 +72,13 @@ A. TODO read/edit/git/cargo acontece DENTRO da sua worktree
    compartilhado: o MESMO path relativo existe nas duas árvores —
    editar crates/... na raiz é editar a árvore ERRADA. Na dúvida,
    `pwd` antes de editar.
-B. Edite só a(s) pasta(s) do novo módulo (nomeadas na tarefa).
-   Precisou de QUALQUER coisa fora (foundational, contrato congelado,
-   shell, outra crate)? PARE e reporte ao Enio — vai pra
-   line/foundational (DIRETRIZ §1.5.4). Nunca negocie com outra linha.
+B. Edite a(s) pasta(s) do novo módulo à vontade. Foundational
+   (ph2d-core/editor-core/tokens/host/…) É PERMITIDO sob o protocolo
+   testado (ADR-0107): a integração roda scripts/foundational-integrate.sh
+   (gate da árvore combinada) e o Mergiraf funde o resíduo textual. PARE
+   e reporte ao Enio SÓ se: (a) for contrato congelado (§4, exige ADR),
+   ou (b) o rebase conflitar em código FORA dos seus arquivos (colisão de
+   mesmo-símbolo com outra linha). Nunca negocie com outra linha.
 C. Commits locais frequentes: git commit --no-verify (fast mode).
    NUNCA push. NUNCA --force. NUNCA git add -A.
 D. git rebase main no início de cada jornada e antes de integrar.
@@ -80,14 +87,14 @@ D. git rebase main no início de cada jornada e antes de integrar.
    fora da sua pasta = você violou a regra B.
 E. Fechamento do módulo = gate batched (DIRETRIZ §6.6.A.2: nextest-
    impacted + clippy --all-targets + audit ≥2 lentes + DIRETIVA §3-§5)
-   e SÓ ENTÃO a integração (DIRETRIZ §1.5.3):
-       git rebase main
-       cargo run -p ph2d-tool-sync && cargo run -p ph2d-node-sync
-       cargo test -p ph2d-tool-registry-init -p ph2d-node-registry-init
-       cargo test -p <suas crates>
-       git -C ../.. merge --ff-only line/$MODULO
-   --ff-only falhou = outra linha integrou antes de você → repita
-   desde o rebase. Módulo verde que não integrou NÃO fechou.
+   e SÓ ENTÃO a integração (DIRETRIZ §1.5.3) — UM comando:
+       bash scripts/foundational-integrate.sh
+   Ele faz: rebase main → re-sync (tool/node) → staleness → gate da
+   árvore COMBINADA (cargo check --workspace se a linha tocou
+   foundational; senão -p das crates mudadas) → nextest-impacted →
+   merge --ff-only no primário. Aborta com a orientação certa em cada
+   falha. --ff-only falhou = outra linha integrou antes → só RE-RODE o
+   script (rebase+retesta). Módulo verde que não integrou NÃO fechou.
 F. Ship (ship.sh + push + babysit CI) SÓ se o Enio disser que você
    fecha a ÚLTIMA integração da jornada (DIRETRIZ §1.5.4 + §8).
 G. UI canônica sempre: zero hex, zero f32 literal de UI, tudo por

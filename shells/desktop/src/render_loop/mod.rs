@@ -95,6 +95,10 @@ thread_local! {
     static FRAME_PROF_DISPATCH_US: std::cell::Cell<u64> = const { std::cell::Cell::new(0) };
 }
 
+/// Quiet frames after the last resize event before the present mode saved by the fluid-drag override is
+/// restored (~0.5s at 60Hz) — long enough that a paused-then-resumed drag doesn't thrash reconfigures.
+const RESIZE_SETTLE_FRAMES: u32 = 30;
+
 fn frame_prof_on() -> bool {
     FRAME_PROF_ON.with(|c| {
         if c.get() < 0 {
@@ -271,14 +275,41 @@ impl crate::App {
             eprintln!("M7 gc_step error: {e}");
         }
 
-        // Apply coalesced resize once per frame.
+        // ── Coalesced resize + FLUID-DRAG present mode (Enio 2026-07-05, take 2) ──
+        // The full re-fit (layout + RT reallocs + rebinds) runs once per frame with the latest size —
+        // everything stays exact-size, no stretching (a first "two-speed" attempt stretched between
+        // re-fits and read as "truncado, sem fluidez"). The REAL live-drag jank lever is the PRESENT
+        // MODE: under VSync (`Fifo`) every `surface.configure` discards the swapchain images and the
+        // next acquire BLOCKS up to a full refresh — a drag reconfigures every frame, so the app ran at
+        // a fraction of the refresh rate. While resize events stream we switch to the backend's best
+        // NON-BLOCKING mode (Immediate, else Mailbox) and restore the configured mode a few quiet
+        // frames after the drag settles.
+        let resize_streaming = self.pending_resize.is_some();
+        if resize_streaming {
+            if self.resize_saved_present_mode.is_none() {
+                let cur = surface.present_mode();
+                let fast = surface.best_nonblocking_mode();
+                if fast != cur {
+                    self.resize_saved_present_mode = Some(cur);
+                    surface.set_present_mode(fast);
+                }
+            }
+            self.resize_settle_frames = RESIZE_SETTLE_FRAMES;
+        } else if self.resize_settle_frames > 0 {
+            self.resize_settle_frames -= 1;
+            if self.resize_settle_frames == 0
+                && let Some(mode) = self.resize_saved_present_mode.take()
+            {
+                surface.set_present_mode(mode);
+            }
+        }
+        // Apply the coalesced resize once per frame.
         if let Some(size) = self.pending_resize.take() {
             surface.resize(size);
             // Layout + every offscreen RT in the pipeline must follow
             // surface size. M14.5: game_rt, tonemap output, vello
             // intermediate — all three; then the compositor's bind
             // group must be rebuilt against the new texture views.
-            *layout = EditorLayout::new(size.width as f32, size.height as f32);
             // Size every offscreen RT to the surface's CLAMPED size, not the
             // raw winit size. `surface.resize` clamps each dim to ≥1, and
             // `game_rt.ensure_size` REJECTS a 0 dim (keeps its old size). On a
@@ -289,6 +320,7 @@ impl crate::App {
             // wgpu validation panic. Using the clamped size keeps color +
             // stencil extents equal every frame (audit MEDIUM fix).
             let clamped = surface.size();
+            *layout = EditorLayout::new(clamped.width as f32, clamped.height as f32);
             let dim = (clamped.width, clamped.height);
             game_rt.ensure_size(surface.gpu(), dim);
             tonemap.ensure_size(surface.gpu(), dim);
@@ -308,7 +340,7 @@ impl crate::App {
                     .intermediate_texture()
                     .create_view(&wgpu::TextureViewDescriptor::default()),
             );
-            self.handler.on_resize(size, host.scale_factor());
+            self.handler.on_resize(clamped, host.scale_factor());
             self.title_dirty = true;
         }
 

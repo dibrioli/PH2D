@@ -295,6 +295,11 @@ pub(crate) struct App {
     pub(crate) fixed_step: FixedStep,
     pub(crate) last_frame: Instant,
     pub(crate) pending_resize: Option<WindowSize>,
+    /// FLUID-DRAG present-mode override: the configured mode saved while a live resize streams (the
+    /// drag runs in the backend's best non-blocking mode; restored after the stream settles).
+    pub(crate) resize_saved_present_mode: Option<wgpu::PresentMode>,
+    /// Quiet-frame countdown before the saved present mode is restored (see `RESIZE_SETTLE_FRAMES`).
+    pub(crate) resize_settle_frames: u32,
     pub(crate) modifiers: ModifiersState,
     pub(crate) last_pointer: (f32, f32),
     /// Set to `Some(node_id)` when the user pressed inside a draggable

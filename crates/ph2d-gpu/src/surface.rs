@@ -66,6 +66,9 @@ pub struct SurfaceContext {
     gpu: GpuContext,
     state: SurfaceState,
     transients: TransientPool,
+    /// The backend's supported present modes (from the boot-time capabilities) — consulted by
+    /// [`Self::best_nonblocking_mode`] for the live-resize fluid-drag override.
+    available_modes: Vec<wgpu::PresentMode>,
 }
 
 impl SurfaceContext {
@@ -117,6 +120,7 @@ impl SurfaceContext {
             gpu,
             state: SurfaceState::Healthy,
             transients: TransientPool::new(),
+            available_modes: surface_caps.present_modes.clone(),
         })
     }
 
@@ -147,6 +151,19 @@ impl SurfaceContext {
 
     /// The surface's active present mode.
     pub fn present_mode(&self) -> wgpu::PresentMode {
+        self.config.present_mode
+    }
+
+    /// The backend's best NON-BLOCKING present mode — `Immediate` when supported, else `Mailbox`, else the
+    /// current mode (nothing non-blocking available). Used by the shell's live-resize fluid-drag override:
+    /// under `Fifo` every per-frame `configure` of a drag makes the next acquire block up to a full refresh,
+    /// so the drag runs in a non-blocking mode and the configured mode is restored on settle.
+    pub fn best_nonblocking_mode(&self) -> wgpu::PresentMode {
+        for m in [wgpu::PresentMode::Immediate, wgpu::PresentMode::Mailbox] {
+            if self.available_modes.contains(&m) {
+                return m;
+            }
+        }
         self.config.present_mode
     }
 

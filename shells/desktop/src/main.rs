@@ -129,6 +129,8 @@ impl App {
             fixed_step: FixedStep::default(),
             last_frame: Instant::now(),
             pending_resize: None,
+            resize_saved_present_mode: None,
+            resize_settle_frames: 0,
             modifiers: ModifiersState::default(),
             last_pointer: (0.0, 0.0),
             dragging: None,

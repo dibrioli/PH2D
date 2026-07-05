@@ -136,9 +136,10 @@ pub(crate) fn paint_selection_section(
             content_w,
             y,
             NodeId(0),
-            "Convert / simplify selection curve",
+            "Convert / merge / simplify selection curve",
             &[
                 (core_ids::PAINTER_SEL_CONVERT, "Convert to Curve"),
+                (core_ids::PAINTER_SEL_MERGE, "Merge Curves"),
                 (core_ids::PAINTER_SEL_SIMPLIFY, "Simplify Curve"),
             ],
             usize::MAX,

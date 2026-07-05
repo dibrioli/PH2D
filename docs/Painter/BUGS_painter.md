@@ -10,6 +10,43 @@
 | [1](#bug-1--offset-de-curva-as-quinas-não-ficavam-paralelas-nem-cruzavam) | Offset de curva — quinas (não-paralelas, depois não-cruzavam) | Stroke shape-editor (Curve/Circle/Polygon/Free Hand) | ✅ Resolvido | 2026-06-29 |
 | [2](#bug-2--per-layer-color-fps-despenca--artefatos-retangulares-retângulo-virtual) | Per-Layer Color — FPS despenca + artefatos retangulares ("retângulo virtual") | Stamp path (CPU) + GPU preview slot | ✅ Resolvido | 2026-06-29 |
 | [3](#bug-3--queda-de-fps-warp--shapes-booleanas--todo-arraste-interativo) | Queda de FPS (Warp · Shapes booleanas · todo arraste interativo) | Bridge preview + selection recompose + warp mesh | ✅ Resolvido em CPU (2 rodadas 2026-07-04: Transform smoke-OK; per-layer texture-color + overlay booleanas fechados na 2ª — pendente smoke) | 2026-07-04 |
+| [4](#bug-4--simplify-curve-degenerava-o-schneider-fit-não-fecha-loops) | Simplify Curve degenerava (curva → 2 pontos idênticos / triângulo) | Selection curve simplify (`fit_curve` fechado) | ✅ Resolvido (DP fechado + Catmull-Rom corner-aware) | 2026-07-05 |
+
+---
+
+## Bug #4 — Simplify Curve degenerava: o Schneider fit NÃO fecha loops
+
+**Sintoma (Enio 2026-07-05):** ao pedir **Simplify Curve** numa seleção convertida (ex.: um retângulo →
+curva densa de 8 pontos), a curva **colapsava**: uma região virava 2 pontos idênticos (`[[58,58],[58,58]]`),
+outra virava um triângulo de 3 pontos. A cobertura da seleção sumia. O `Simplify` antigo só rodava com UMA
+curva (`selection_shapes.len() == 1`), então isso nunca fora exercido no caminho denso do P6.
+
+**Causa-raiz (o que enganava):** o *spine* achatado estava **perfeito** — 25 pontos formando um quadrado
+limpo, `spine[0] == spine[24]`. O problema é o **fitter**: `ph2d_painter_brush::fit_curve` (Schneider,
+Graphics Gems 1990) fita **polilinhas ABERTAS** — preserva os extremos e estima as tangentes das pontas por
+`p1−p0` / `p_{n-2}−p_{n-1}`. Num **loop fechado** onde `start == end` (ou start≈end, mesma aresta), as duas
+tangentes brigam no ponto de costura e o least-squares/reparam de Schneider **colapsa a curva inteira num
+único cubo degenerado**. É por isso que o Free Hand funciona (a captura da caneta é **aberta** e só depois é
+marcada `closed`) e o Offset/Apply-&-Keep "funcionava" (alimenta contornos **densos** traçados, muitos pontos
+→ o fit sobrevive exceto num segmento na costura). Uma curva já-fechada limpa e esparsa (saída do Convert)
+não tem pontos suficientes pra mascarar o colapso.
+
+**Tentativas que falharam:** (a) achatar **aberto** (sem duplicar a costura) e re-fechar → ainda degenera:
+start e end na mesma aresta a ~9px, o fitter aproxima o quadrado inteiro por 1 cubo. (b) densificar antes do
+fit → a degeneração é de **tangente na costura**, não de densidade; não resolve pro caso esparso.
+
+**Solução (`curve_geom::simplify_closed_smooth`):** trocar o fitter por um redutor **closed-loop-correto**:
+achatar pro spine denso → **Douglas–Peucker fechado** (`selection_trace::simplify_closed`, tolerância 3px →
+âncoras precisas + poucas) → atribuir a cada âncora sobrevivente uma tangente **Catmull-Rom** (⅓ da corda
+adjacente por lado), **colapsando pra quina dura** quando o giro local ≥ 60° (`dot(din,dout) ≤ 0.5`). Um
+retângulo volta a ser 4 quinas afiadas exatas; um laço orgânico fica tão suave quanto um Free Hand.
+Transcendental-free (dot + sqrt). O `Simplify` agora roda em **TODAS** as curvas Freehand da lista (antes ou
+depois do Merge), não só quando há exatamente uma.
+
+**Lição generalizável:** um fitter de curva "de alta qualidade" pode ser **estruturalmente incapaz** de fechar
+loops — o Schneider assume extremos distintos. Antes de reusar um fitter aberto em geometria fechada, cheque
+o caso `start==end`; a densidade do input pode **mascarar** o colapso (Offset passava; Convert-esparso pegava).
+Para curvas fechadas, DP-fechado + tangentes por vizinhança é robusto e preserva quinas por design.
 
 ---
 

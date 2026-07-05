@@ -330,6 +330,37 @@ fn stroke_apply_buttons_forward_their_click() {
     }
 }
 
+/// The selection curve buttons (Convert / **Merge** / Simplify) MUST forward as `ToolPanelEvent(Click(id))`.
+/// Merge was added 2026-07-05 and, like the stroke Apply buttons before it, is registered + painted but would
+/// be SILENTLY DEAD if the `try_apply_brush_event` allowlist arm is missing (the populate+forward gotcha).
+#[test]
+fn selection_curve_buttons_forward_their_click() {
+    for clicked in [
+        core_ids::PAINTER_SEL_CONVERT,
+        core_ids::PAINTER_SEL_MERGE,
+        core_ids::PAINTER_SEL_SIMPLIFY,
+    ] {
+        let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
+        let mut st = PainterLayersPanelState;
+        let outcome =
+            host.apply_panel_event::<PainterLayersPanel>(&mut st, WidgetEvent::Click(clicked));
+        assert_eq!(
+            outcome,
+            EventOutcome::Consumed,
+            "selection curve button {clicked:?} click ignored — try_apply_brush_event allowlist arm missing"
+        );
+        let actions = host.drained_actions();
+        assert!(
+            actions.iter().any(|a| matches!(
+                a,
+                EditorAction::ToolPanelEvent(PanelEvent::Click(id)) if *id == clicked
+            )),
+            "selection curve button {clicked:?} never forwarded as ToolPanelEvent(Click) — seam dead. \
+             drained = {actions:?}"
+        );
+    }
+}
+
 // ── Per-Layer Color row seam (the "B" blend dropdown + opacity box, Enio 2026-06-29) ──────────────
 // One assertion per control SHAPE, proving the real WidgetEvent forwards the EXACT PanelEvent the tool's
 // `route_shape_layer_event` arm consumes. These factory-id widgets are paint-time registered, so a

@@ -39,6 +39,10 @@ pub(super) const CONVERT_ANCHOR_SPACING_PX: f32 = 16.0;
 const ARC_BOW: f32 = 0.15;
 /// Free Hand: cubic-fit error tolerance (px) — max deviation of the fitted curve from the captured path.
 pub(super) const FREEHAND_FIT_ERROR: f32 = 4.0;
+/// Selection **Simplify**: closed Douglas–Peucker tolerance (px) — accurate corners, few anchors (the
+/// "precise but few points" target; Enio 2026-07-05). Larger than the Convert fit error (the whole point of
+/// Simplify is to shed points).
+pub(super) const SELECTION_SIMPLIFY_TOL_PX: f32 = 3.0;
 /// Free Hand: minimum squared spacing (px²) between captured path points — keeps the raw capture bounded.
 const MIN_CAPTURE_DIST_SQ: f32 = 4.0;
 /// Free Hand: hard cap on raw captured points during the drag (before the fit).

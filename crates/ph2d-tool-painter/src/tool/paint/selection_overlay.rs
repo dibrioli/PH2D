@@ -144,6 +144,10 @@ impl PainterTool {
                 self.selection_simplify_curve();
                 true
             }
+            PanelEvent::Click(id) if *id == core_ids::PAINTER_SEL_MERGE => {
+                self.selection_merge_curves();
+                true
+            }
             PanelEvent::Click(id) if *id == core_ids::PAINTER_SEL_OFFSET_APPLY => {
                 self.selection_offset_apply();
                 true

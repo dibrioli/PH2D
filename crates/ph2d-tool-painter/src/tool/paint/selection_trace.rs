@@ -170,8 +170,9 @@ fn trace_contour_raw(mask: &[u8], w: usize, h: usize) -> Vec<[f32; 2]> {
 
 /// Douglas–Peucker simplification of a CLOSED polyline: split at the two mutually-farthest points, simplify
 /// each half around the ring, and clamp to `max_pts` by raising the tolerance until it fits. `tol` is a
-/// perpendicular distance (px); comparisons are done on SQUARED distances (no `sqrt`, HR-5-safe).
-fn simplify_closed(pts: &[[f32; 2]], tol: f32, max_pts: usize) -> Vec<[f32; 2]> {
+/// perpendicular distance (px); comparisons are done on SQUARED distances (no `sqrt`, HR-5-safe). Shared with
+/// the selection-curve **Simplify** (a closed-loop-correct reducer the Schneider fit can't be — Enio 2026-07-05).
+pub(super) fn simplify_closed(pts: &[[f32; 2]], tol: f32, max_pts: usize) -> Vec<[f32; 2]> {
     if pts.len() < 4 {
         return pts.to_vec();
     }

@@ -106,6 +106,7 @@ impl Default for PaintState {
             active_op: stroke_multi::StrokeOp::default(),
             stroke_op_mode: stroke_multi::StrokeOp::default(),
             op_tap: None,
+            selection_op_tap: None,
             shape_grab_tol_px: DEFAULT_SHAPE_GRAB_TOL_PX,
             shape_offset_norm: 0.5, // centred → 0px offset (default byte-identical)
             shape_offset_base_px: 0.0,

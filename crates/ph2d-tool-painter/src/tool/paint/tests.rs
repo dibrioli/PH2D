@@ -7864,6 +7864,144 @@ fn selection_add_operator_unions_two_rectangles() {
     );
 }
 
+/// Bbox centre of a converted Freehand selection curve's anchors (test helper).
+#[cfg(test)]
+fn sel_freehand_center(shape: &super::selection_shapes::SelectionShape) -> [f32; 2] {
+    let super::selection_shapes::SelectionShape::Freehand { model, .. } = shape else {
+        panic!("expected a Freehand selection curve");
+    };
+    let (mut lo, mut hi) = ([f32::MAX; 2], [f32::MIN; 2]);
+    for p in &model.points {
+        lo = [lo[0].min(p[0]), lo[1].min(p[1])];
+        hi = [hi[0].max(p[0]), hi[1].max(p[1])];
+    }
+    [(lo[0] + hi[0]) * 0.5, (lo[1] + hi[1]) * 0.5]
+}
+
+/// **Merge Curves** (Enio 2026-07-05): two OVERLAPPING selection curves collapse to a SINGLE dense
+/// multipoint curve tracing their composed union, and the union coverage is preserved.
+#[test]
+fn selection_merge_collapses_overlapping_curves_into_one_dense_curve() {
+    use super::selection_shapes::SelectionShape;
+    let mut t = white_canvas(64, 4.0);
+    t.set_paint_tool_mode("selection");
+    t.set_selection_mode(2); // Rectangle
+    // Base rect (New), then an OVERLAPPING second rect (Add) → their union is one blob.
+    t.on_canvas_pointer(cp([8.0, 8.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([36.0, 36.0], PointerPhase::Up));
+    t.set_selection_bool_op(1); // Add
+    t.on_canvas_pointer(cp([24.0, 24.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([52.0, 52.0], PointerPhase::Up));
+    t.selection_convert_to_curve();
+    assert!(
+        t.paint.selection_shapes.len() >= 2,
+        "convert kept one curve per shape, got {}",
+        t.paint.selection_shapes.len()
+    );
+    t.selection_merge_curves();
+    assert_eq!(
+        t.paint.selection_shapes.len(),
+        1,
+        "overlapping curves merge into a SINGLE curve"
+    );
+    let SelectionShape::Freehand { model, .. } = &t.paint.selection_shapes[0].shape else {
+        panic!("merged entry is a Freehand curve");
+    };
+    assert!(
+        model.points.len() >= 6,
+        "the merged curve is high-precision multipoint, got {} points",
+        model.points.len()
+    );
+    assert_eq!(t.paint.selection_shapes[0].op, 0, "the sole curve is the base");
+    // Union coverage preserved: interior of each original rect stays selected, far outside does not.
+    assert_eq!(t.selection_coverage_at(14, 14), 255, "first rect interior kept");
+    assert_eq!(t.selection_coverage_at(46, 46), 255, "second rect interior kept");
+    assert_eq!(t.selection_coverage_at(60, 4), 0, "outside stays unselected");
+}
+
+/// **Simplify Curve** reworked (Enio 2026-07-05): re-fits EVERY converted curve (works on the multi-curve
+/// list, before OR after a merge) to far fewer anchors via the Free-Hand Schneider fit.
+#[test]
+fn selection_simplify_reduces_points_on_all_curves() {
+    use super::selection_shapes::SelectionShape;
+    let mut t = white_canvas(64, 4.0);
+    t.set_paint_tool_mode("selection");
+    t.set_selection_mode(2); // Rectangle
+    t.on_canvas_pointer(cp([6.0, 6.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([26.0, 26.0], PointerPhase::Up));
+    t.set_selection_bool_op(1); // Add (a SEPARATE second region — stays 2 curves)
+    t.on_canvas_pointer(cp([40.0, 40.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([58.0, 58.0], PointerPhase::Up));
+    t.selection_convert_to_curve(); // dense multipoint curves
+    let dense: usize = t
+        .paint
+        .selection_shapes
+        .iter()
+        .filter_map(|e| match &e.shape {
+            SelectionShape::Freehand { model, .. } => Some(model.points.len()),
+            _ => None,
+        })
+        .sum();
+    assert!(dense >= 8, "convert produced dense curves, got {dense} points");
+    t.selection_simplify_curve();
+    let sparse: usize = t
+        .paint
+        .selection_shapes
+        .iter()
+        .filter_map(|e| match &e.shape {
+            SelectionShape::Freehand { model, .. } => Some(model.points.len()),
+            _ => None,
+        })
+        .sum();
+    assert!(
+        sparse < dense,
+        "simplify cut the anchor count across all curves: {dense} → {sparse}"
+    );
+    // Both regions still selected after the re-fit.
+    assert_eq!(t.selection_coverage_at(14, 14), 255, "first region kept");
+    assert_eq!(t.selection_coverage_at(48, 48), 255, "second region kept");
+}
+
+/// **Centre-square tap** on a selection gizmo cycles that shape's op Add↔Remove (Enio 2026-07-05), mirroring
+/// the stroke gizmo. A tap = Down+Up with no drag; a drag past the slop stays a move (op unchanged).
+#[test]
+fn selection_centre_square_tap_cycles_add_remove() {
+    let mut t = white_canvas(64, 4.0);
+    t.set_paint_tool_mode("selection");
+    t.set_selection_mode(2); // Rectangle
+    // Base rect (New) big, then a clearly-separated second rect (Add) whose centre is well clear of anchors.
+    t.on_canvas_pointer(cp([4.0, 4.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([60.0, 60.0], PointerPhase::Up));
+    t.set_selection_bool_op(1); // Add
+    t.on_canvas_pointer(cp([30.0, 30.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([58.0, 58.0], PointerPhase::Up));
+    t.selection_convert_to_curve();
+    assert_eq!(t.paint.selection_shapes[1].op, 1, "second curve starts as Add");
+    let c = sel_freehand_center(&t.paint.selection_shapes[1].shape);
+    // TAP (no move) on the centre square → Add → Remove.
+    t.selection_gizmo_pointer(cp(c, PointerPhase::Down));
+    t.selection_gizmo_pointer(cp(c, PointerPhase::Up));
+    assert_eq!(
+        t.paint.selection_shapes[1].op, 2,
+        "a centre-square tap flipped Add → Remove"
+    );
+    // TAP again → Remove → Add (only the two states cycle).
+    t.selection_gizmo_pointer(cp(c, PointerPhase::Down));
+    t.selection_gizmo_pointer(cp(c, PointerPhase::Up));
+    assert_eq!(
+        t.paint.selection_shapes[1].op, 1,
+        "a second tap flipped Remove → Add"
+    );
+    // A DRAG (past the slop) on the centre square is a MOVE, not a tap — op stays put.
+    t.selection_gizmo_pointer(cp(c, PointerPhase::Down));
+    t.selection_gizmo_pointer(cp([c[0] + 20.0, c[1]], PointerPhase::Move));
+    t.selection_gizmo_pointer(cp([c[0] + 20.0, c[1]], PointerPhase::Up));
+    assert_eq!(
+        t.paint.selection_shapes[1].op, 1,
+        "dragging the centre square moves the shape, it does NOT cycle the op"
+    );
+}
+
 /// Wave 2: Automatic flood-selects the connected same-colour region up to the threshold, joining the undo
 /// queue on pen-up.
 #[test]

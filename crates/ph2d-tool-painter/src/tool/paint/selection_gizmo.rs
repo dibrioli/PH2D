@@ -304,12 +304,28 @@ impl PainterTool {
         if grab.is_none() {
             grab = self.insert_on_nearest_selection_curve(pos);
         }
+        // Arm an op-cycle tap iff the Down grabbed a bare CENTRE-move square (not a curve point / tangent):
+        // an Up without a drag past the slop cycles that shape's Add↔Remove op (mirrors the stroke gizmo).
+        self.paint.selection_op_tap = match &grab {
+            Some(g) if g.handle == H_MOVE && g.curve.is_none() => Some((g.shape, pos)),
+            _ => None,
+        };
         let has = grab.is_some();
         self.paint.selection_grab = grab;
         if has {
             self.paint.stroke_undo = Some(before);
         }
         true
+    }
+
+    /// Cycle a selection shape's boolean op on a centre-square TAP — **Add↔Remove only** (a New/replace base
+    /// becomes Add on the first tap; Enio 2026-07-05: selection has no third "Overlay" state like stroke).
+    /// Recomposites (the boolean result changes); the `+`/`−` gizmo glyph updates live.
+    fn cycle_selection_op(&mut self, shape: usize) {
+        if let Some(e) = self.paint.selection_shapes.get_mut(shape) {
+            e.op = if e.op == 1 { 2 } else { 1 };
+        }
+        self.recompose_selection_mask();
     }
 
     /// Insert an anchor on the converted curve NEAREST to `pos` — ONLY when the click is ON its line
@@ -354,6 +370,12 @@ impl PainterTool {
             return false;
         }
         let tol = self.paint.shape_grab_tol_px;
+        // A drag past the slop is a MOVE, not an op tap — disarm.
+        if let Some((_, start)) = self.paint.selection_op_tap
+            && dist2(pos, start) > tol * tol
+        {
+            self.paint.selection_op_tap = None;
+        }
         self.paint.selection_shapes[grab.shape].shape = if let Some(cg) = grab.curve {
             // Drift-free: rebuild from the pristine post-grab shape, then apply the point/tangent drag via the
             // SHARED model (Auto/Vector→Aligned, mirror opposite, carry manual handles, rebuild) — byte-for-
@@ -371,6 +393,11 @@ impl PainterTool {
     }
 
     fn selection_gizmo_up(&mut self) -> bool {
+        // Pen-up on an un-dragged centre-square tap → cycle that shape's Operation (Add ↔ Remove). The
+        // pending move produced only an identity translation, so the sole change committed is the op flip.
+        if let Some((shape, _)) = self.paint.selection_op_tap.take() {
+            self.cycle_selection_op(shape);
+        }
         let had = self.paint.selection_grab.take().is_some();
         if had && let Some(before) = self.paint.stroke_undo.take() {
             self.commit_structural_edit(before);

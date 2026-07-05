@@ -9,7 +9,7 @@
 use super::PainterTool;
 use super::curve::{
     CONVERT_ANCHOR_SPACING_PX, CONVERT_FIT_ERROR, FREEHAND_FIT_ERROR, MAX_CONVERT_POINTS,
-    MAX_CURVE_POINTS,
+    MAX_CURVE_POINTS, SELECTION_SIMPLIFY_TOL_PX,
 };
 use super::curve_handle::HandleKind;
 use super::curve_model::CurveModel;
@@ -148,26 +148,80 @@ impl PainterTool {
         }
     }
 
-    /// **Simplify Curve** — reduce the point count of the (single) converted Free-Hand curve with the same
-    /// Schneider fit the Free Hand stroke uses (some precision is traded for fewer anchors). No-op unless the
-    /// selection is exactly one Freehand shape. One undo entry.
-    pub fn selection_simplify_curve(&mut self) {
-        if self.paint.selection_shapes.len() != 1 {
+    /// **Merge Curves** — collapse the WHOLE selection (every shape / curve, folded by their boolean ops)
+    /// into a single high-precision multipoint closed curve by tracing the composed mask (Enio 2026-07-05).
+    /// Overlapping shapes become ONE curve; genuinely disjoint regions each keep their own dense curve (a
+    /// single closed curve can't span two blobs). Precise + many points — **Simplify Curve** reduces them
+    /// later. Leaves the gizmos shown. One undo entry. No-op without an active selection.
+    pub fn selection_merge_curves(&mut self) {
+        if !self.paint.selection_active {
             return;
         }
-        // Re-fit the single Freehand to a sparse Bézier via the same Schneider fit (keeping `u`). No-op when
-        // it isn't a Freehand or the fit declines / would exceed the cap.
-        let Some((model, u)) = (match &self.paint.selection_shapes[0].shape {
-            SelectionShape::Freehand { model, u } => {
-                to_closed_curve(&model.points, &model.handles).map(|m| (m, *u))
+        let (w, h) = (self.source_size.0 as usize, self.source_size.1 as usize);
+        // Trace EVERY connected component of the composed boolean mask (the union/subtract result the artist
+        // sees), then fit each to a DENSE precise closed curve. `trace_all_contours` closes each loop with a
+        // duplicated seam point — drop it so the fit sees no zero-length segment.
+        let contours = super::selection_trace::trace_all_contours(&self.paint.selection_mask, w, h);
+        let mut merged: Vec<SelectionEntry> = Vec::new();
+        for mut c in contours {
+            if c.len() >= 2 && c[0] == c[c.len() - 1] {
+                c.pop();
             }
-            _ => None,
-        }) else {
-            return;
-        };
+            if let Some(model) = to_closed_curve_precise(&c, &[]) {
+                merged.push(SelectionEntry {
+                    // First surviving contour is the base (New/replace); the rest union onto it (Add).
+                    op: u8::from(!merged.is_empty()),
+                    shape: SelectionShape::Freehand {
+                        model,
+                        u: [1.0, 0.0],
+                    },
+                });
+            }
+        }
+        if merged.is_empty() {
+            return; // nothing traced (empty / sub-3-point mask)
+        }
         let before = self.snapshot_model();
-        self.paint.selection_shapes[0].shape = SelectionShape::Freehand { model, u };
-        self.paint.selection_ring_stack = false; // one boolean curve, not a ring stack
+        self.paint.selection_shapes = merged;
+        self.paint.selection_ring_stack = false; // boolean curves, not a ring stack
+        self.paint.selection_edit_mode = true; // keep the gizmos shown on the merged curve
+        self.recompose_selection_mask();
+        self.commit_structural_edit(before);
+    }
+
+    /// **Simplify Curve** — re-fit EVERY converted Free-Hand curve in the selection (before OR after a Merge)
+    /// to a SPARSE Bézier via the same high-quality Schneider fit the Free Hand stroke uses: precise, but far
+    /// fewer anchors (Enio 2026-07-05). Non-Freehand entries pass through untouched. No-op if nothing was
+    /// simplifiable. One undo entry.
+    pub fn selection_simplify_curve(&mut self) {
+        if self.paint.selection_shapes.is_empty() {
+            return;
+        }
+        let before = self.snapshot_model();
+        let mut changed = false;
+        for e in &mut self.paint.selection_shapes {
+            if let SelectionShape::Freehand { model, u } = &e.shape {
+                let u = *u;
+                // Closed-loop-correct reducer (the Schneider fit degenerates on a start==end loop): dense
+                // flatten → closed Douglas–Peucker → corner-aware Catmull-Rom handles.
+                if let Some((p, h)) = super::curve_geom::simplify_closed_smooth(
+                    &model.points,
+                    &model.handles,
+                    SELECTION_SIMPLIFY_TOL_PX,
+                    MAX_CURVE_POINTS,
+                ) {
+                    e.shape = SelectionShape::Freehand {
+                        model: CurveModel::from_curve(p, h, true, HandleKind::Aligned),
+                        u,
+                    };
+                    changed = true;
+                }
+            }
+        }
+        if !changed {
+            return; // no Freehand curve reduced (all too short)
+        }
+        self.paint.selection_ring_stack = false; // boolean curves, not a ring stack
         self.recompose_selection_mask();
         self.commit_structural_edit(before);
     }

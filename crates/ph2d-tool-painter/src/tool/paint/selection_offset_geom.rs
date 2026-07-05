@@ -20,6 +20,9 @@
 //! transcendental-free (HR-5); free fns + one `PainterTool` composer.
 
 use super::PainterTool;
+use super::selection_shapes::{
+    SelectionShape, combine_into, rasterize_ellipse, sel_polygon_vertices,
+};
 use super::{curve_geom, curve_offset, curve_refit, curve_trim};
 
 /// Fit tolerance (px) for the traced source contours — same tightness as the Merge refit, so the
@@ -95,7 +98,35 @@ impl PainterTool {
         let (w, h) = (self.source_size.0 as usize, self.source_size.1 as usize);
         let n = w * h;
         let src = &self.paint.selection_offset_source;
-        if level == 0.0 || self.paint.selection_offset_curves.is_empty() {
+        if level == 0.0 {
+            return if src.len() == n {
+                (**src).clone()
+            } else {
+                vec![0u8; n]
+            };
+        }
+        // PARAMETRIC fast-path (stroke-exact precision, Enio 2026-07-05 "não ficou preciso como o do
+        // stroke"): when every entry still has exact geometry (marquee Polygon / Ellipse / converted
+        // curve), offset EACH SHAPE directly — ellipse radii `± level` stay a perfect ellipse, polygons
+        // and curves run the CAD offset on their pristine anchors — and compose by the boolean ops,
+        // exactly like the stroke's `stroke_state_to_fill_shape(st, off)`. The traced-contour path (a
+        // mask round-trip with ~1px staircase) is kept only for `Raster` entries and ring mode, where no
+        // parametric truth exists.
+        let entries = &self.paint.selection_shapes;
+        if !entries.is_empty() && entries.iter().all(|e| e.shape.is_editable()) {
+            let mut crisp = vec![0u8; n];
+            for e in entries {
+                // Grow the SELECTION by `level`: Add/New shapes grow; a Remove shape's region SHRINKS
+                // (and vice-versa on a negative sweep) — the compound-path rule.
+                let d = if e.op == 2 { -level } else { level };
+                let r = self.rasterize_selection_shape_offset(&e.shape, d, w, h);
+                if r.len() == n {
+                    combine_into(&mut crisp, &r, e.op);
+                }
+            }
+            return crisp;
+        }
+        if self.paint.selection_offset_curves.is_empty() {
             return if src.len() == n {
                 (**src).clone()
             } else {
@@ -130,6 +161,75 @@ impl PainterTool {
             .map(|c| if c >= 1 { 255 } else { 0 })
             .collect()
     }
+
+    /// Rasterize ONE parametric selection shape offset by `d` px — the stroke-exact per-shape path:
+    /// Ellipse = radii `+ d` (a perfect ellipse, the exact inside-test rasterizer); Polygon / Freehand =
+    /// the CAD parallel-curve offset of the pristine anchors + signed-winding fill. A fully-eroded shape
+    /// returns empty. `Raster` never reaches here (the caller's `is_editable` gate).
+    fn rasterize_selection_shape_offset(
+        &self,
+        shape: &SelectionShape,
+        d: f32,
+        w: usize,
+        h: usize,
+    ) -> Vec<u8> {
+        let n = w * h;
+        match shape {
+            SelectionShape::Ellipse { center, u, rx, ry } => {
+                let (erx, ery) = (rx + d, ry + d);
+                let mut cov = vec![0u8; n];
+                if erx > 0.0 && ery > 0.0 {
+                    rasterize_ellipse(*center, *u, erx, ery, w, h, &mut cov);
+                }
+                cov
+            }
+            SelectionShape::Polygon {
+                center,
+                u,
+                rx,
+                ry,
+                sides,
+            } => {
+                let verts = sel_polygon_vertices(*center, *u, *rx, *ry, *sides);
+                let handles: Vec<[[f32; 2]; 2]> = verts.iter().map(|p| [*p, *p]).collect();
+                offset_fill_closed(&verts, &handles, d, w, h)
+            }
+            SelectionShape::Freehand { model, .. } => {
+                if model.handles.len() == model.points.len() && model.points.len() >= 3 {
+                    offset_fill_closed(&model.points, &model.handles, d, w, h)
+                } else {
+                    // Raw lasso (no Bézier handles): sharp corners on the captured polygon.
+                    let handles: Vec<[[f32; 2]; 2]> =
+                        model.points.iter().map(|p| [*p, *p]).collect();
+                    offset_fill_closed(&model.points, &handles, d, w, h)
+                }
+            }
+            SelectionShape::Raster { .. } => vec![0u8; n], // unreachable behind the is_editable gate
+        }
+    }
+}
+
+/// CAD-offset a closed pristine geometry by `d` (grow-calibrated per shape — windings vary) and fill it
+/// with the signed-winding rule. Empty when the shape fully erodes.
+fn offset_fill_closed(
+    points: &[[f32; 2]],
+    handles: &[[[f32; 2]; 2]],
+    d: f32,
+    w: usize,
+    h: usize,
+) -> Vec<u8> {
+    if points.len() < 3 {
+        return vec![0u8; w * h];
+    }
+    let grow = measure_grow_sign(points, handles);
+    let (op, oh, _) = curve_offset::offset_curve_refined(points, handles, d * grow, true);
+    let mut spine = Vec::new();
+    curve_geom::flatten_spine(&op, &oh, true, &mut spine);
+    if spine.len() < 3 {
+        return vec![0u8; w * h];
+    }
+    let src_positive = curve_trim::loop_sign_positive(points);
+    fill_winding_signed(&spine, src_positive, w, h)
 }
 
 /// Scanline NONZERO-WINDING fill of a closed polyline keeping only the pixels whose winding SIGN matches

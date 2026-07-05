@@ -8341,6 +8341,61 @@ fn selection_offset_grows_a_rectangle_with_sharp_miter_corners() {
     );
 }
 
+/// **Selection offset is STROKE-EXACT on parametric shapes** (Enio 2026-07-05 "não ficou preciso como o
+/// do stroke"): a marquee rectangle offsets its EXACT geometry (no mask trace round-trip), so every edge
+/// of the grown/shrunk rect lands within a pixel of the analytic position; an ellipse marquee stays a
+/// perfect ellipse at `r + d`.
+#[test]
+fn selection_offset_is_parametric_exact_for_rect_and_ellipse() {
+    // Rectangle [32,64)² grown +10 → edges at 22/74 on every side, exact.
+    let mut t = white_canvas(96, 4.0);
+    t.set_paint_tool_mode("selection");
+    t.set_rect_selection(32, 32, 32, 32);
+    t.set_selection_offset(0.525); // +10px
+    for (inside, outside) in [((48u32, 23u32), (48u32, 21u32)), ((23, 48), (21, 48))] {
+        assert_eq!(
+            t.selection_coverage_at(inside.0, inside.1),
+            255,
+            "grown edge includes {inside:?} (exact analytic boundary)"
+        );
+        assert_eq!(
+            t.selection_coverage_at(outside.0, outside.1),
+            0,
+            "grown edge excludes {outside:?}"
+        );
+    }
+    // Ellipse marquee r=24 grown +8 → a PERFECT circle r≈32: on-axis inside at 31px, outside at 33px,
+    // and the diagonal matches too (an SDF/trace wobble would break one of them).
+    let mut t2 = white_canvas(96, 4.0);
+    t2.set_paint_tool_mode("selection");
+    t2.set_selection_mode(3); // Ellipse marquee (corner-dragged bounding box)
+    t2.on_canvas_pointer(cp([24.0, 24.0], PointerPhase::Down));
+    t2.on_canvas_pointer(cp([72.0, 72.0], PointerPhase::Move));
+    t2.on_canvas_pointer(cp([72.0, 72.0], PointerPhase::Up)); // centre (48,48), r = 24
+    t2.set_selection_offset(0.52); // +8px
+    assert_eq!(
+        t2.selection_coverage_at(48 + 30, 48),
+        255,
+        "on-axis inside r+8"
+    );
+    assert_eq!(
+        t2.selection_coverage_at(48 + 33, 48),
+        0,
+        "on-axis outside r+8"
+    );
+    // Diagonal at 45°: r·√½ ≈ 22.6 from centre each axis → inside at 22, outside at 24.
+    assert_eq!(
+        t2.selection_coverage_at(48 + 22, 48 + 22),
+        255,
+        "diagonal inside"
+    );
+    assert_eq!(
+        t2.selection_coverage_at(48 + 24, 48 + 24),
+        0,
+        "diagonal outside"
+    );
+}
+
 /// **Selection offset shrinks HOLES when growing** (the per-contour offset must see hole boundaries — the
 /// SDF did implicitly): a donut (rect minus inner rect) grown by 8px expands its outer boundary AND closes
 /// in on the hole, with the hole's corners staying sharp.

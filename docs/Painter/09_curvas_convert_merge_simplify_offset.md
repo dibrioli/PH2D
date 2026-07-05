@@ -108,9 +108,16 @@ pipeline do stroke ([`selection_offset_geom.rs`](../../crates/ph2d-tool-painter/
    máscaras (o EDT/SDF foi deletado). Fonte re-capturada no ENGAGE do slider (o crisp é pré-offset
    exatamente aí — fonte "stale" perdia um buraco recém-subtraído).
 
+6. **Fast-path PARAMÉTRICO (precisão stroke-exata):** quando toda entry tem geometria exata (marquee
+   Polygon/Ellipse, curvas convertidas), o offset roda POR SHAPE direto na geometria pristina — elipse
+   `r ± d` continua elipse perfeita; polígono/curva no CAD offset dos anchors — e compõe pelas ops
+   (Add/New crescem, Remove encolhe), espelhando o `stroke_state_to_fill_shape(st, off)` do stroke. O
+   trace-de-máscara fica só pra `Raster`/ring mode, onde não existe verdade paramétrica.
+
 Medido: quadrado +16px → quina do miter selecionada (o SDF a excluía — dist √2·13 ≈ 18.4 > 16); shrink
-−12 mantém quadrado exato; donut +8 cresce por fora e fecha o buraco sem engoli-lo. Nada do stroke mudou
-(`curve_trim` só ganhou o helper aditivo `loop_sign_positive`).
+−12 mantém quadrado exato; donut +8 cresce por fora e fecha o buraco sem engoli-lo; retângulo +10 com
+bordas ANALÍTICAS exatas nos 4 lados; elipse +8 = círculo perfeito (eixo E diagonal a ±1px). Nada do
+stroke mudou (`curve_trim` só ganhou o helper aditivo `loop_sign_positive`).
 
 ## 6. UI / fluxo (paridade Stroke ↔ Selection)
 

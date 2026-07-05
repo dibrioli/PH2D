@@ -11,7 +11,8 @@
 > feature entra por **um único seam de execução**, forçando o caminho per-pixel quando ativa (mesma
 > tática já usada por `accumulate_cap`) para não duplicar os caminhos cacheados.
 >
-> Status: **PLANO — não implementado.** Nada commitado.
+> Status: **IMPLEMENTADO (F1–F4) — linha `line/Painter`, aguardando smoke do Enio + integração.**
+> Ver §8 (tracker do que landou) no fim do doc.
 
 ---
 
@@ -209,3 +210,53 @@ reportar ao Coordenador**.
 
 **Sem crate nova. Sem novo `TextureKind`. Cada feature = 1 seam + gate para não duplicar os caches.**
 Fluido (Curtis / `ph2d_wet_paint/`) permanece fora de escopo.
+
+---
+
+## 8. Tracker — o que landou (line/Painter, Modo L / ADR-0107)
+
+Quatro fases, cada uma commitada localmente + gate batched no fim (clippy `--all-targets` limpo,
+suítes verdes, gates de arquitetura verdes). **Byte-idêntico com a seção OFF** em todas — a
+neutralidade é o gate `watercolor` (não zeros nos params), então ligar "Wet edges" mostra efeito na
+hora. Toda a matemática é **det-safe (HR-5)**: só somas/clamps/`sqrt`/`min`/`max` — nenhum
+`exp`/`ln`/`pow` (por isso NÃO revivemos `km.rs`, que usa `exp`/`ln`).
+
+| Fase | Feature | Seam(s) | Prova (asserção-vermelha) |
+|---|---|---|---|
+| **F1** | Seção **Watercolor** (plumbing) | `BrushSpec`+`BrushSettings`+`snapshot` · chrome ids `painter_watercolor.rs` · `paint_watercolor.rs` · router `watercolor_settings.rs` · wiring 7-pontas | `tests/seam.rs` (Click+SetValue forward) + `watercolor_settings::tests` (PanelEvent→campo) + gate `panel_wiring_parity` |
+| **F2** | **Edge-darkening** (#1) | coverage por-stroke (`stroke_coverage`, discos max-blend em `stamp_dabs`, clear em `stamp_drag_preview`) + blur-diff no pen-up `wet_edges.rs::apply_wet_edges` (antes de `close_stroke`, padrão `heal_inpaint`) | `watercolor_edge_darkens_the_rim_not_the_interior` (rim < interior; uniforme OFF) + `box_blur` units |
+| **F3** | **Granulação** (#2) | helper único `texture::grain_coverage`/`granulation_gate` (valley-gate multiplicativo) nos **5** sites de combine do Grain + `StampKey.granulation` (re-baka o cache) | `watercolor_granulation_rejects_valley_deposit` (Tiled Grain: gran↑ ⇒ tinta↓, mas >0) + units byte-idêntico |
+| **F4** | **Pigment build-up** (#3) | `blend::blend_over_pigment` (RYB Gossett & Chen 2004, subtrativo em sRGB) nos **3** sites de cor sólida (`dab`/`blit_stamp`/`canvas_blit_band`) | `pigment_mixes_blue_and_yellow_toward_green` + `watercolor_pigment_mixes_wet_on_wet_toward_green` (verde sobe vs plain) + byte-idêntico OFF |
+
+### Decisões de implementação (desvios do plano, com razão)
+
+1. **Pigment = RYB subtrativo em sRGB, NÃO K–M/`km.rs`.** O `km.rs` (residual Mixbox) usa `exp`/`ln`
+   → conflita com HR-5, e `ph2d-painter-brush` não linka `ph2d-color`/LUT sRGB. **RYB (Gossett & Chen
+   2004)** — o mesmo modo "realista" do `wet_edges_paint.html` — é algoritmo publicado, opera direto em
+   sRGB `[0,1]`, **det-safe** (min/max/mul), sem dep nova, e dá azul+amarelo→verde. É o caminho
+   license-clean e det-safe. K–M linear (via LUT) fica como upgrade futuro se quisermos fidelidade
+   espectral.
+2. **Granulação em TODOS os sites de combine (não "force per-pixel").** Com Grain `Tiled` (paper) o
+   roteador usa o cache canvas-fixo, não o per-pixel — então o gate entra via um helper único
+   (`grain_coverage`) chamado nos 5 sites, mantendo os caches (sem perda de perf) e consistência total.
+   Forma **multiplicativa** do valley-gate para compor com o path de Color-Ramp.
+3. **Defaults sensatos-quando-ligado** (`edge_gain 3`, `spread 7`, `granulation 0.3`, `mix 0.5`): a
+   neutralidade vem do gate `watercolor=false`, então ligar a seção mostra efeito imediato.
+
+### Escopo conhecido (honesto, não "silently dead")
+
+- **Pigment** aplica aos 3 caminhos de **cor sólida** (o pincel de aquarela típico: cor + Grain).
+  Os caminhos de **Color-Ramp / Per-Layer-Color** (`stamp_color.rs`/`stamp_ramped.rs`) seguem em
+  blend normal — misturar pigmento com um stamp de cor espacialmente variável é semântica distinta,
+  follow-up. O toggle Pigment funciona para o brush padrão (99% do uso).
+- **Granulação** precisa de um **Grain atribuído** (`Tiled` + kind `Grain` p/ paper); sem Grain, o
+  gate opera sobre sample constante 1.0 = sem efeito (esperado).
+- **Fluido / backruns / K–M espectral**: fora de escopo (tier caro; `ph2d_wet_paint/` é a referência
+  se um dia formos por aí).
+
+### Pendente para fechar (DoD DIRETIVA §5)
+
+- **Smoke visual do Enio** (efeito perceptual — DIRETIVA §4 exige OLHAR): pintar traços com "Wet
+  edges" on, testar Edge/Spread, um Grain `Tiled` + Granulation, e Pigment (azul→amarelo molhado).
+- **Integração** ao main via `bash scripts/foundational-integrate.sh` (toca foundational em
+  `ph2d-editor-core` → gate da árvore combinada `cargo check --workspace`). Só após o smoke.

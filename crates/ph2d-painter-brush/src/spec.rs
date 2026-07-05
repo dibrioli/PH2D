@@ -228,7 +228,7 @@ impl Default for BrushSpec {
             // brush — so the params carry sensible *when-enabled* values, not neutral zeros, and
             // toggling "Wet edges" on shows an effect immediately.
             watercolor: false,
-            edge_gain: 3.0,
+            edge_gain: 1.5,
             edge_spread: 7.0,
             granulation: 0.3,
             pigment: false,

@@ -145,6 +145,6 @@ mod tests {
             !b.watercolor && !b.pigment,
             "reset turned the Watercolor + Pigment gates off"
         );
-        assert_eq!(b.edge_gain, 3.0, "reset restored the default Edge gain");
+        assert_eq!(b.edge_gain, 1.5, "reset restored the default Edge gain");
     }
 }

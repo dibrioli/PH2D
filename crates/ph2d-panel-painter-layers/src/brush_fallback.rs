@@ -166,7 +166,7 @@ pub(crate) const FALLBACK_BRUSH: BrushSettings = BrushSettings {
     // Watercolor section — the `watercolor` gate (off) guarantees neutrality; the params carry the
     // when-enabled defaults (mirrors BrushSpec::default).
     watercolor: false,
-    edge_gain: 3.0,   // LITERAL-PX-OK: default edge-darkening gain (mirrors BrushSpec::default)
+    edge_gain: 1.5,   // LITERAL-PX-OK: default edge-darkening gain (mirrors BrushSpec::default)
     edge_spread: 7.0, // LITERAL-PX-OK: default edge-darkening blur radius (mirrors BrushSpec::default)
     granulation: 0.3, // LITERAL-PX-OK: default granulation gate (mirrors BrushSpec::default)
     pigment: false,

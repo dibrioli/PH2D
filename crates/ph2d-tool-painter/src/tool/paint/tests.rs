@@ -10632,3 +10632,42 @@ fn watercolor_pigment_mixes_wet_on_wet_toward_green() {
         "wet-on-wet pigment must lift green vs the plain average: on {on:?} vs off {off:?}"
     );
 }
+
+/// Watercolor edge darkening is **LIVE** — the fringe darkens *during* the stroke (each frame, peeled +
+/// rebuilt from the growing coverage), not as a jump on release. Paint a horizontal band and, WITHOUT
+/// releasing, assert its rim is already darker than its centreline. (Fix for the "escurece no final"
+/// feedback; the pen-up bake result is covered by `watercolor_edge_darkens_the_rim_not_the_interior`.)
+#[test]
+fn watercolor_edge_is_live_before_pen_up() {
+    let size = 96u32;
+    let mut t = PainterTool::default();
+    t.set_source(vec![255u8; (size * size * 4) as usize], size, size);
+    t.paint.brush = BrushSpec {
+        radius_px: 10.0,
+        hardness: 1.0,
+        falloff: Falloff::Constant,
+        strength: 0.6,
+        color: [0.25, 0.40, 0.62],
+        space_attenuation: false,
+        watercolor: true,
+        edge_gain: 2.0,
+        edge_spread: 5.0,
+        ..Default::default()
+    };
+    for slot in &mut t.paint.brush_by_mode {
+        *slot = t.paint.brush;
+    }
+    let lum = |p: [u8; 4]| u32::from(p[0]) + u32::from(p[1]) + u32::from(p[2]);
+    // Paint a horizontal band and STOP without releasing (no Up event).
+    assert!(t.on_canvas_pointer(cp([24.0, 48.0], PointerPhase::Down)));
+    for x in [32.0, 40.0, 48.0, 56.0, 64.0] {
+        t.on_canvas_pointer(cp([x, 48.0], PointerPhase::Move));
+    }
+    // Pointer still down: the band's rim is ALREADY darker than its interior.
+    let interior = px(&t, size, 44, 48);
+    let rim = px(&t, size, 44, 40); // 8 px above centre → top rim of the radius-10 band
+    assert!(
+        lum(rim) < lum(interior),
+        "edge must be LIVE mid-stroke: rim {rim:?} not darker than interior {interior:?}"
+    );
+}

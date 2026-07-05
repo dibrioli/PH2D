@@ -10488,3 +10488,55 @@ fn dbg_shrink2() {
     let cnt = m.iter().filter(|&&v| v >= 128).count();
     eprintln!("mask_at(-12) area = {cnt}");
 }
+
+/// Watercolor edge darkening (#1): a wet-on-dry dab pools pigment at its rim — the boundary band reads
+/// DARKER than the (undarkened) interior — while turning the Edge gain off leaves the dab uniform.
+/// Proves the pen-up blur-difference pass (coverage → blur → `edge = cov·(1−blur)·gain` darken)
+/// end-to-end through the real stamp + `paint_end` path (the "efeito perceptual" DIRETIVA §4 asserts).
+#[test]
+fn watercolor_edge_darkens_the_rim_not_the_interior() {
+    fn wet_brush(radius: f32, edge_gain: f32) -> BrushSpec {
+        BrushSpec {
+            radius_px: radius,
+            hardness: 1.0,
+            falloff: Falloff::Constant, // hard uniform disc → the rim change is purely the edge pass
+            color: [0.24, 0.39, 0.63],  // mid blue → darkening is measurable in every channel
+            space_attenuation: false,
+            watercolor: true,
+            edge_gain,
+            edge_spread: 7.0,
+            ..Default::default()
+        }
+    }
+    fn paint_dab(brush: BrushSpec, size: u32, center: [f32; 2]) -> PainterTool {
+        let mut t = PainterTool::default();
+        t.set_source(vec![255u8; (size * size * 4) as usize], size, size);
+        t.paint.brush = brush;
+        for slot in &mut t.paint.brush_by_mode {
+            *slot = brush;
+        }
+        assert!(t.on_canvas_pointer(cp(center, PointerPhase::Down)));
+        assert!(t.on_canvas_pointer(cp(center, PointerPhase::Up)));
+        t
+    }
+    let size = 96u32;
+    let center = [48.0f32, 48.0];
+    let lum = |p: [u8; 4]| u32::from(p[0]) + u32::from(p[1]) + u32::from(p[2]);
+
+    // Edge ON: the rim band (18 px from centre, inside the 20 px disc) is darker than the interior.
+    let t = paint_dab(wet_brush(20.0, 3.0), size, center);
+    let interior = px(&t, size, 48, 48);
+    let rim = px(&t, size, 48, 30);
+    assert!(
+        lum(rim) < lum(interior),
+        "edge darkening must pool pigment at the rim: rim {rim:?} not darker than interior {interior:?}"
+    );
+
+    // Edge OFF (gain 0): the same dab is uniform — the blur-difference pass is skipped entirely.
+    let t0 = paint_dab(wet_brush(20.0, 0.0), size, center);
+    assert_eq!(
+        px(&t0, size, 48, 48),
+        px(&t0, size, 48, 30),
+        "with Edge off the dab is uniform (no rim darkening — the watercolor pass is gated off)"
+    );
+}

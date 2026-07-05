@@ -141,6 +141,7 @@ impl Default for PaintState {
             shape_ramp_version: 0,
             ramp_lut_owner: ramp_lut::RampLutOwner::None,
             stroke_mask: Vec::new(),
+            stroke_coverage: Vec::new(),
             inpaint_mask: Vec::new(),
             inpaint_patch_norm: 0.25, // patch radius 3 (today's InpaintParams::default)
             inpaint_quality_norm: 0.3333, // 6 EM iterations (today's default)

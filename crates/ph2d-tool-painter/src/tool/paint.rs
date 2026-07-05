@@ -37,6 +37,8 @@ pub use stroke_multi::StrokeOpBadge;
 mod jitter_settings;
 /// Watercolor section setters + router (edge darkening / granulation / pigment); no fluid sim.
 mod watercolor_settings;
+/// Watercolor edge darkening (#1): per-stroke coverage + the pen-up blur-difference "fringe" pass.
+mod wet_edges;
 /// The canvas pointer's operation mode (Paint / Smear / Blur / Clone / Mask); split from `paint.rs` (cap).
 mod paint_mode;
 /// Multi-layer Shape (z-ordered layers + per-layer-colour state); split from `paint.rs` (LOC cap).
@@ -380,6 +382,10 @@ pub(crate) struct PaintState {
     ramp_lut_owner: ramp_lut::RampLutOwner,
     /// **Accumulate OFF** per-stroke coverage mask (1 byte/px), cleared on down; caps a stroke at Strength.
     stroke_mask: Vec<u8>,
+    /// **Watercolor edge darkening** per-stroke coverage (1 byte/px, `w*h`): the union footprint of the
+    /// stroke's dabs (max-blended discs), fed to the pen-up blur-difference pass ([`super::wet_edges`]).
+    /// Empty unless the Watercolor Edge is active; sized lazily by the first dab, cleared on down.
+    stroke_coverage: Vec<u8>,
     /// **Inpaint** defect mask (1 byte/px, `>= 128` ⇒ heal). Accumulated as the user brushes in Inpaint
     /// mode; on pen-up [`super::inpaint`] reconstructs the marked region and clears it. Sized `w*h`.
     inpaint_mask: Vec<u8>,
@@ -455,6 +461,7 @@ impl PainterTool {
         // Reset the Accumulate-OFF cap mask (re-grown by the first dab) + the per-layer-colour
         // accumulation (so the recomposite snapshots THIS stroke's pre-pixels) — both per stroke.
         self.paint.stroke_mask.clear();
+        self.paint.stroke_coverage.clear();
         self.paint.per_layer_stroke.reset();
         // Smear chains its source from the previous dab; a fresh stroke has none yet.
         self.paint.last_smear_pos = None;
@@ -566,6 +573,11 @@ impl PainterTool {
         // entry captures pre-stroke → healed as a single Cmd+Z step.
         if matches!(self.paint.paint_mode, PaintMode::Inpaint) {
             self.heal_inpaint();
+        }
+        // Watercolor edge darkening (#1): pool pigment at the stroke's receding boundary. BEFORE
+        // close_stroke so the pre-stroke → darkened-edge result is one undo step (mirror of heal_inpaint).
+        if self.wet_edges_active() {
+            self.apply_wet_edges();
         }
         self.close_stroke();
     }

@@ -224,12 +224,15 @@ impl Default for BrushSpec {
             jitter_rotate: 0.0,
             jitter_spacing: 0.0,
             symmetry: SymmetrySettings::default(),
+            // Watercolor: the `watercolor` gate (OFF) is what guarantees a byte-identical default
+            // brush — so the params carry sensible *when-enabled* values, not neutral zeros, and
+            // toggling "Wet edges" on shows an effect immediately.
             watercolor: false,
-            edge_gain: 0.0,
+            edge_gain: 3.0,
             edge_spread: 7.0,
-            granulation: 0.0,
+            granulation: 0.3,
             pigment: false,
-            pigment_mix: 0.0,
+            pigment_mix: 0.5,
         }
     }
 }

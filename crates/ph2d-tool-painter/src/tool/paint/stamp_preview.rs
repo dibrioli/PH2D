@@ -24,6 +24,12 @@ impl PainterTool {
     /// the UNtiled dabs); the save-region bbox is measured over the tiled set so it still covers the
     /// wrapped copies (else the wrapped paint falls outside the restore region — a trail).
     pub(super) fn stamp_drag_preview(&mut self, dabs: &[Dab]) {
+        // Watercolor: this frame re-stamps the WHOLE batch onto the restored (pristine) canvas, so the
+        // coverage must rebuild with it — clear it here and let the re-stamp's `stamp_dabs` re-accumulate
+        // (mirrors the pixel restore, so a moving Drag-Dot leaves no coverage trail).
+        if self.wet_edges_active() {
+            self.clear_wet_coverage();
+        }
         // In Selection **Edit** mode the native gizmo drives the SELECTION mask, not pixels — peel any
         // leftover preview and paint nothing (ADR-0103 Am.2). The mask refill runs off the pointer path.
         if self.paint.selection_edit_mode {

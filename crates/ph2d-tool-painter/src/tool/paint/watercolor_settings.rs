@@ -137,12 +137,14 @@ mod tests {
         t.handle_panel_event(PanelEvent::SetValue(core_ids::PAINTER_WATERCOLOR_SPREAD, 99.0));
         assert_eq!(t.brush_settings().edge_spread, 24.0, "Spread clamped to 24");
 
-        // Reset returns the whole section to defaults (neutral again).
+        // Reset returns the whole section to defaults — the `watercolor`/`pigment` gates OFF (which is
+        // what makes a brush neutral); the params go back to their sensible when-enabled defaults.
         t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_WATERCOLOR_RESET));
         let b = t.brush_settings();
         assert!(
-            !b.watercolor && !b.pigment && b.edge_gain == 0.0 && b.granulation == 0.0,
-            "reset restored the Watercolor section to defaults"
+            !b.watercolor && !b.pigment,
+            "reset turned the Watercolor + Pigment gates off"
         );
+        assert_eq!(b.edge_gain, 3.0, "reset restored the default Edge gain");
     }
 }

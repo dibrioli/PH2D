@@ -8300,6 +8300,78 @@ fn selection_offset_plain_mode_grows_and_shrinks() {
     );
 }
 
+/// **Selection offset keeps CORNERS SHARP** (Enio 2026-07-05, stroke parity): the former SDF dilation
+/// rounded a grown rectangle's corners into radius-`d` arcs (Minkowski with a disc); the corner-true
+/// contour offset miters them. Grow a centred square by 16px: the true miter corner region — beyond the
+/// SDF's rounding arc — must be selected; shrink stays an exact smaller square.
+#[test]
+fn selection_offset_grows_a_rectangle_with_sharp_miter_corners() {
+    let mut t = white_canvas(96, 4.0);
+    t.set_paint_tool_mode("selection");
+    t.set_rect_selection(32, 32, 32, 32); // square [32,64)²
+    t.set_selection_offset(0.54); // +16px outward
+    // The grown square's sharp corner sits at (16,16). The SDF version excluded the corner-diagonal zone
+    // (distance to the old corner = √2·13 ≈ 18.4 > 16 at pixel (19,19)); the miter version includes it.
+    assert_eq!(
+        t.selection_coverage_at(19, 19),
+        255,
+        "the grown corner is a sharp miter, not a rounded arc"
+    );
+    assert_eq!(
+        t.selection_coverage_at(48, 17),
+        255,
+        "the grown top edge is included (sanity)"
+    );
+    assert_eq!(
+        t.selection_coverage_at(13, 13),
+        0,
+        "beyond the miter corner stays unselected"
+    );
+    // Shrink: corners stay square (the miter of the inward offset).
+    t.set_selection_offset(0.47); // −12px inward → square [44,52)²
+    assert_eq!(
+        t.selection_coverage_at(45, 45),
+        255,
+        "the shrunk corner is sharp (inside the smaller square)"
+    );
+    assert_eq!(
+        t.selection_coverage_at(42, 42),
+        0,
+        "outside the shrunk square is unselected"
+    );
+}
+
+/// **Selection offset shrinks HOLES when growing** (the per-contour offset must see hole boundaries — the
+/// SDF did implicitly): a donut (rect minus inner rect) grown by 8px expands its outer boundary AND closes
+/// in on the hole, with the hole's corners staying sharp.
+#[test]
+fn selection_offset_grows_a_donut_shrinking_its_hole() {
+    let mut t = white_canvas(96, 4.0);
+    t.set_paint_tool_mode("selection");
+    t.set_rect_selection(16, 16, 64, 64); // outer [16,80)²
+    t.set_selection_bool_op(2); // Remove
+    t.on_canvas_pointer(cp([36.0, 36.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([60.0, 60.0], PointerPhase::Up)); // hole [36,60)²
+    assert_eq!(t.selection_coverage_at(48, 48), 0, "hole centre unselected");
+    assert_eq!(t.selection_coverage_at(20, 20), 255, "ring selected");
+    t.set_selection_offset(0.52); // +8px outward
+    assert_eq!(
+        t.selection_coverage_at(10, 48),
+        255,
+        "the outer boundary grew outward"
+    );
+    assert_eq!(
+        t.selection_coverage_at(40, 40),
+        255,
+        "the hole SHRANK — its old interior edge is now selected"
+    );
+    assert_eq!(
+        t.selection_coverage_at(48, 48),
+        0,
+        "the hole centre survives (not swallowed)"
+    );
+}
+
 /// Apply & Keep switches the Offset into ring mode: the first swept band is PROTECTED (adds no selected
 /// area), and after freezing it the next band is PAINT (a new concentric selected ring appears) — the
 /// intercalated protected / paint rings the spec describes (ADR-0103 Am.3).
@@ -10335,4 +10407,29 @@ fn selection_op_tap_run_is_one_undoable_step() {
         t.paint.selection_shapes[1].op, 1,
         "one undo restores the pre-run op"
     );
+}
+
+#[test]
+fn dbg_shrink2() {
+    let mut t = white_canvas(96, 4.0);
+    t.set_paint_tool_mode("selection");
+    t.set_rect_selection(32, 32, 32, 32);
+    t.set_selection_offset(0.47); // -12
+    for y in [40u32, 44, 45, 48, 51, 52] {
+        eprint!("y={y}: ");
+        for x in [40u32, 44, 45, 48, 51, 52] {
+            eprint!(
+                "{} ",
+                if t.selection_coverage_at(x, y) > 0 {
+                    "X"
+                } else {
+                    "."
+                }
+            );
+        }
+        eprintln!();
+    }
+    let m = t.selection_offset_mask_at(-12.0);
+    let cnt = m.iter().filter(|&&v| v >= 128).count();
+    eprintln!("mask_at(-12) area = {cnt}");
 }

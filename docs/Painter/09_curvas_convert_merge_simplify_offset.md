@@ -89,6 +89,29 @@ geometria ideal, não reproduzir fielmente o dado degradado.
 - Quinas no offset: `curve_join` — convexa = **miter exato** (`(n1+n2)/(1+n1·n2)`, clamp 4×), côncava
   **divide em 2 âncoras** → spine cruza → Trim corta a orelha (offset-then-trim CAD).
 
+## 5b. Offset da SELEÇÃO — quinas afiadas (2026-07-05, paridade com o stroke)
+
+O grow/shrink da Seleção era um SDF euclidiano — que **arredonda quinas por construção** (dilatação =
+Minkowski com um disco: quadrado crescido por d ganha arcos de raio d nas quinas). Substituído pelo
+pipeline do stroke ([`selection_offset_geom.rs`](../../crates/ph2d-tool-painter/src/tool/paint/selection_offset_geom.rs)):
+
+1. Traça o crisp-fonte em contornos fechados — **externos E buracos** (`trace_all_contours_with_holes`;
+   o SDF via buracos implicitamente, o offset por contorno precisa ver cada boundary).
+2. **Refit** de cada contorno (o mesmo `refit_closed_spine` — quinas re-ancoradas na interseção de bordas).
+3. Direção de crescimento **calibrada numericamente** por contorno (probe +2px, compara |área|).
+4. Por nível: CAD offset (`offset_curve_refined` — miter/split) — externos `+d`, buracos `−d` (o buraco
+   ENCOLHE quando a seleção cresce) — e **fill por winding assinado**: a região principal gira COM a
+   orientação da fonte; orelhas dobradas giram CONTRA → `sign(winding) == sign(fonte)` preenche exato,
+   **sem trim nenhum** (lição: nenhum peeling iterativo de trim é confiável quando as orelhas superam a
+   área do miolo — um composto main+orelhas engana qualquer ranking; o winding é exato por definição).
+5. Máscaras por nível cacheadas (anéis pinados + nível vivo); anéis/`materialise`/overlay usam as mesmas
+   máscaras (o EDT/SDF foi deletado). Fonte re-capturada no ENGAGE do slider (o crisp é pré-offset
+   exatamente aí — fonte "stale" perdia um buraco recém-subtraído).
+
+Medido: quadrado +16px → quina do miter selecionada (o SDF a excluía — dist √2·13 ≈ 18.4 > 16); shrink
+−12 mantém quadrado exato; donut +8 cresce por fora e fecha o buraco sem engoli-lo. Nada do stroke mudou
+(`curve_trim` só ganhou o helper aditivo `loop_sign_positive`).
+
 ## 6. UI / fluxo (paridade Stroke ↔ Selection)
 
 | Botão | Stroke | Selection |

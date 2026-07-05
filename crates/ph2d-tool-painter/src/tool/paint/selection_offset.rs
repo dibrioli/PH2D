@@ -9,12 +9,13 @@
 //!   the opposite way (inward) mirrors it (first band protected, then paint, …).
 //! * **Apply** bakes the current (possibly ringed) selection as a plain `Raster` shape and leaves offset mode.
 //!
-//! The geometry is a **signed-distance offset** of the pre-offset crisp mask (`selection_offset_source`): a
-//! band boundary at distance `d` px is `{ sdf <= d }` (dilate for `d>0`, erode for `d<0`). This is the mask
-//! analogue of the stroke's parallel-curve offset and works for EVERY selection kind (ellipse / polygon /
-//! freehand / composite / Automatic raster), not just a single curve. The SDF is an exact Euclidean distance
-//! transform (Felzenszwalb–Huttenlocher, `sqrt`-only — HR-5-lean) cached off the source and thresholded per
-//! frame. `norm == 0.5` in plain mode is byte-identical to the un-offset mask (`{sdf<=0}` == the inside set).
+//! The geometry is the STROKE's parallel-curve offset applied to the mask boundary (Enio 2026-07-05 —
+//! the former Euclidean-SDF grow/shrink ROUNDED every corner by construction; "como você resolveu o offset
+//! das quinas para o Stroke, faça o mesmo para Selection"): the pre-offset crisp
+//! (`selection_offset_source`) is traced into corner-true closed curves (outer boundaries + holes, refit
+//! with razor cusps) and each offset level runs the CAD miter/split offset + Trim, composed by signed
+//! coverage — see [`super::selection_offset_geom`]. Works for EVERY selection kind (the trace sees only
+//! the mask). Per-level masks are cached; `norm == 0.5` in plain mode is byte-identical to the source.
 
 use super::PainterTool;
 use super::selection_shapes::{SelectionEntry, SelectionShape};
@@ -60,25 +61,39 @@ impl PainterTool {
         levels
     }
 
-    /// Read access to the cached SDF (may be empty when the offset is neutral). The overlay uses it to trace
-    /// the live offset contour.
-    pub(super) fn selection_offset_sdf(&self) -> &[f32] {
-        &self.paint.selection_offset_sdf
+    /// The cached effective mask at `level` (a frozen ring boundary or the live line), if this offset
+    /// session computed it — the overlay draws the ring contours off these (read-only;
+    /// [`Self::apply_selection_offset`] fills the cache for every level it composes).
+    pub(super) fn selection_offset_level_mask(&self, level: f32) -> Option<&Arc<Vec<u8>>> {
+        self.paint
+            .selection_offset_level_cache
+            .iter()
+            .find(|(l, _)| *l == level)
+            .map(|(_, m)| m)
     }
 
     /// Set the Offset slider (`0..1`) and re-derive the effective selection. A live preview — no undo entry
     /// (the whole drag folds into the single structural step committed by Apply / Apply & Keep, mirroring the
     /// stroke Offset). No-op without a live selection to offset.
     pub fn set_selection_offset(&mut self, norm: f32) {
-        if self.paint.selection_offset_source.is_empty() {
-            // Capture the current crisp as the offset source the first time the slider is touched (so a
-            // freshly-drawn selection, whose mask came from a gesture rather than a recompose, can offset).
+        // (Re)capture the pre-offset source on ENGAGE (neutral → dragged): the crisp is pre-offset exactly
+        // then, and a marquee gesture composes the crisp WITHOUT a recompose — a source captured earlier
+        // (or only-when-empty) could be STALE, e.g. missing a freshly-subtracted hole (Enio 2026-07-05).
+        // Mid-drag ticks and ring mode never refresh (their crisp is the OFFSET result — feedback).
+        let neutral = !self.paint.selection_offset_active
+            && (self.paint.selection_offset_norm - 0.5).abs() <= 1e-4;
+        if neutral {
             let src = Arc::clone(&self.paint.selection_crisp);
             if src.is_empty() {
                 return;
             }
-            self.paint.selection_offset_source = src;
-            self.paint.selection_offset_sdf = Arc::new(Vec::new());
+            if *src != *self.paint.selection_offset_source {
+                self.paint.selection_offset_source = src;
+                self.paint.selection_offset_curves.clear();
+                self.paint.selection_offset_level_cache.clear();
+            }
+        } else if self.paint.selection_offset_source.is_empty() {
+            return;
         }
         self.paint.selection_offset_norm = norm.clamp(0.0, 1.0);
         self.apply_selection_offset();
@@ -138,7 +153,8 @@ impl PainterTool {
         self.paint.selection_offset_active = false;
         self.paint.selection_offset_rings.clear();
         self.paint.selection_offset_source = Arc::new(Vec::new());
-        self.paint.selection_offset_sdf = Arc::new(Vec::new());
+        self.paint.selection_offset_curves.clear();
+        self.paint.selection_offset_level_cache.clear();
         self.paint.selection_ring_stack = false;
     }
 
@@ -148,22 +164,18 @@ impl PainterTool {
     /// [`Self::recompose_ring_stack`]). Traces each level's contour off the cached SDF, fits it to a sparse
     /// curve, then switches to ring-stack mode. No-op without a live SDF.
     pub(super) fn materialise_offset_rings_to_curves(&mut self) {
-        self.ensure_selection_sdf();
+        self.ensure_selection_offset_curves();
         let (w, h) = (self.source_size.0 as usize, self.source_size.1 as usize);
         let n = w * h;
-        let sdf = Arc::clone(&self.paint.selection_offset_sdf);
-        if n == 0 || sdf.len() != n {
+        if n == 0 || self.paint.selection_offset_source.len() != n {
             return;
         }
         let mut levels = vec![0.0f32];
-        levels.extend_from_slice(&self.paint.selection_offset_rings);
+        levels.extend_from_slice(&self.paint.selection_offset_rings.clone());
         let mut entries = Vec::new();
         for &level in &levels {
-            // Threshold the SDF at this boundary → binary mask → trace the outer contour → fit a sparse curve.
-            let mask: Vec<u8> = sdf
-                .iter()
-                .map(|&d| if d <= level { 255 } else { 0 })
-                .collect();
+            // The corner-true composite at this boundary → trace the outer contour → fit a sparse curve.
+            let mask = self.offset_level_mask_cached(level);
             let outline = super::selection_trace::trace_selection_contour(&mask, w, h);
             if let Some(model) = super::selection_edit::to_closed_curve(&outline, &[]) {
                 entries.push(SelectionEntry {
@@ -230,7 +242,8 @@ impl PainterTool {
     /// crisp IS the correct offset source.
     pub(super) fn set_selection_offset_source(&mut self, crisp: &[u8]) {
         self.paint.selection_offset_source = Arc::new(crisp.to_vec());
-        self.paint.selection_offset_sdf = Arc::new(Vec::new());
+        self.paint.selection_offset_curves.clear();
+        self.paint.selection_offset_level_cache.clear();
     }
 
     /// Bake the current effective selection (whatever the offset currently shows) as a single `Raster` entry,
@@ -245,7 +258,8 @@ impl PainterTool {
             op: 0,
         }];
         self.paint.selection_offset_source = crisp;
-        self.paint.selection_offset_sdf = Arc::new(Vec::new());
+        self.paint.selection_offset_curves.clear();
+        self.paint.selection_offset_level_cache.clear();
     }
 
     /// Recompute the effective selection crisp from the source SDF + the ring stack + the live slider, then
@@ -263,53 +277,42 @@ impl PainterTool {
             self.set_selection_from_crisp(src);
             return;
         }
-        self.ensure_selection_sdf();
-        let sdf = Arc::clone(&self.paint.selection_offset_sdf);
-        if sdf.len() != n {
-            return;
-        }
-        let mut eff = vec![0u8; n];
+        self.ensure_selection_offset_curves();
+        let mut eff: Vec<u8>;
         if !self.paint.selection_offset_active {
-            // Plain grow/shrink: the whole selection is `{ sdf <= live }`.
-            for i in 0..n {
-                if sdf[i] <= live {
-                    eff[i] = 255;
-                }
-            }
+            // Plain grow/shrink: the corner-true composite at the live level (miter corners; holes shrink).
+            eff = (*self.offset_level_mask_cached(live)).clone();
         } else {
             // Ring mode: levels = [0, ring1, ring2, …]; band `k` (level[k-1]→level[k]) is PAINT iff `k` even
-            // (band 0 = the interior, paint). Plus the LIVE band being swept at index `rings.len()+1`.
+            // (band 0 = the interior, paint). Plus the LIVE band being swept at index `rings.len()+1`. Same
+            // band-parity semantics as the former SDF, on nested corner-true level masks.
             let rings = self.paint.selection_offset_rings.clone();
             let mut levels = vec![0.0f32];
             levels.extend_from_slice(&rings);
             // Band 0 — the interior up to the first level: paint.
-            for i in 0..n {
-                if sdf[i] <= levels[0] {
-                    eff[i] = 255;
-                }
-            }
+            eff = (*self.offset_level_mask_cached(levels[0])).clone();
             for k in 1..levels.len() {
                 let paint = k.is_multiple_of(2);
-                paint_band(&mut eff, &sdf, levels[k - 1], levels[k], paint);
+                let (lo, hi) = ordered(levels[k - 1], levels[k]);
+                let m_lo = self.offset_level_mask_cached(lo);
+                let m_hi = self.offset_level_mask_cached(hi);
+                paint_band_masks(&mut eff, &m_lo, &m_hi, paint);
             }
             // Live band: swept from the outermost frozen boundary by the current slider.
             let last = levels[levels.len() - 1];
             let live_idx = rings.len() + 1;
-            paint_band(
-                &mut eff,
-                &sdf,
-                last,
-                last + live,
-                live_idx.is_multiple_of(2),
-            );
+            let (lo, hi) = ordered(last, last + live);
+            let m_lo = self.offset_level_mask_cached(lo);
+            let m_hi = self.offset_level_mask_cached(hi);
+            paint_band_masks(&mut eff, &m_lo, &m_hi, live_idx.is_multiple_of(2));
         }
         self.set_selection_from_crisp(eff);
     }
 
-    /// Fill the lazy SDF cache from the source crisp if empty — an exact Euclidean distance transform,
-    /// signed (`<0` inside the source, `>0` outside).
-    fn ensure_selection_sdf(&mut self) {
-        if !self.paint.selection_offset_sdf.is_empty() {
+    /// Build the corner-true offset contours off the source crisp if empty — trace (+holes) → refit →
+    /// grow-calibrate; see [`super::selection_offset_geom`]. The sharp analogue of the former SDF cache.
+    fn ensure_selection_offset_curves(&mut self) {
+        if !self.paint.selection_offset_curves.is_empty() {
             return;
         }
         let (w, h) = (self.source_size.0 as usize, self.source_size.1 as usize);
@@ -317,106 +320,57 @@ impl PainterTool {
         if w == 0 || h == 0 || src.len() != w * h {
             return;
         }
-        self.paint.selection_offset_sdf = Arc::new(signed_distance(&src, w, h));
+        self.paint.selection_offset_curves =
+            super::selection_offset_geom::build_offset_contours(&src, w, h);
+    }
+
+    /// The effective mask at `level`, cached per exact level: ring boundaries hit every recompose and the
+    /// live level repeats while the slider rests. Pinned levels (0 + the frozen rings) never evict; the
+    /// transient live levels keep only the most recent few. Dropped with the source.
+    fn offset_level_mask_cached(&mut self, level: f32) -> Arc<Vec<u8>> {
+        if let Some(m) = self.selection_offset_level_mask(level) {
+            return Arc::clone(m);
+        }
+        let m = Arc::new(self.selection_offset_mask_at(level));
+        self.paint
+            .selection_offset_level_cache
+            .push((level, Arc::clone(&m)));
+        let rings = self.paint.selection_offset_rings.clone();
+        let pinned = |l: f32| l == 0.0 || rings.contains(&l);
+        let transient = self
+            .paint
+            .selection_offset_level_cache
+            .iter()
+            .filter(|(l, _)| !pinned(*l))
+            .count();
+        if transient > 3
+            && let Some(pos) = self
+                .paint
+                .selection_offset_level_cache
+                .iter()
+                .position(|(l, _)| !pinned(*l))
+        {
+            self.paint.selection_offset_level_cache.remove(pos);
+        }
+        m
     }
 }
 
-/// Set the shell between offset levels `lo` and `hi` (whichever order) to selected (`paint`) or deselected.
-/// The shell is `{ sdf in (min(lo,hi), max(lo,hi)] }` — the ring the two boundaries enclose.
-fn paint_band(eff: &mut [u8], sdf: &[f32], lo: f32, hi: f32, paint: bool) {
-    let (a, b) = (lo.min(hi), lo.max(hi));
+/// `(min, max)` of two levels — the band the two boundaries enclose, whichever direction the sweep goes.
+fn ordered(a: f32, b: f32) -> (f32, f32) {
+    (a.min(b), a.max(b))
+}
+
+/// Set the shell between two NESTED level masks (`lo` ⊆ `hi`, both `0`/`255` coverage) to selected
+/// (`paint`) or deselected — a pixel is in the band iff the hi-level mask covers it and the lo one doesn't.
+fn paint_band_masks(eff: &mut [u8], lo: &[u8], hi: &[u8], paint: bool) {
     let v = if paint { 255 } else { 0 };
-    for i in 0..eff.len().min(sdf.len()) {
-        if sdf[i] > a && sdf[i] <= b {
+    let n = eff.len().min(lo.len()).min(hi.len());
+    for i in 0..n {
+        if hi[i] >= 128 && lo[i] < 128 {
             eff[i] = v;
         }
     }
-}
-
-/// Signed Euclidean distance (image px) of a binary coverage mask (`>=128` = inside): `<0` inside, `>0`
-/// outside, magnitude = distance to the boundary. Two exact distance transforms differenced. The minimum
-/// magnitude is `1`, so `{ sdf <= 0 }` is exactly the inside set (offset `0` is a no-op).
-fn signed_distance(cov: &[u8], w: usize, h: usize) -> Vec<f32> {
-    let inside: Vec<bool> = cov.iter().map(|&c| c >= 128).collect();
-    // Distance to the nearest INSIDE pixel (0 on inside) and to the nearest OUTSIDE pixel (0 on outside).
-    let d_in = edt(&inside, w, h);
-    let outside: Vec<bool> = inside.iter().map(|&b| !b).collect();
-    let d_out = edt(&outside, w, h);
-    (0..w * h).map(|i| d_in[i] - d_out[i]).collect()
-}
-
-/// Exact Euclidean distance transform: distance from every pixel to the nearest `feature` pixel (`0` at a
-/// feature). Felzenszwalb–Huttenlocher (2012): the 1-D lower-envelope pass down columns then across rows on
-/// squared distances, `sqrt` at the end. `O(w·h)`, transcendental-free bar the final `sqrt` (HR-5-lean).
-fn edt(feature: &[bool], w: usize, h: usize) -> Vec<f32> {
-    const INF: f32 = 1e20;
-    // Column pass: squared distance within each column.
-    let mut g = vec![0.0f32; w * h];
-    let mut col = vec![0.0f32; h];
-    for x in 0..w {
-        for y in 0..h {
-            col[y] = if feature[y * w + x] { 0.0 } else { INF };
-        }
-        let d = edt_1d(&col);
-        for y in 0..h {
-            g[y * w + x] = d[y];
-        }
-    }
-    // Row pass: fold the column distances across each row.
-    let mut out = vec![0.0f32; w * h];
-    let mut row = vec![0.0f32; w];
-    for y in 0..h {
-        row.copy_from_slice(&g[y * w..y * w + w]);
-        let d = edt_1d(&row);
-        for x in 0..w {
-            out[y * w + x] = d[x].max(0.0).sqrt();
-        }
-    }
-    out
-}
-
-/// 1-D squared-distance transform of a cost sample `f` (Felzenszwalb–Huttenlocher lower-envelope of the
-/// parabolas `(q - x)² + f[q]`). Returns the squared distance at each index.
-fn edt_1d(f: &[f32]) -> Vec<f32> {
-    let n = f.len();
-    let mut d = vec![0.0f32; n];
-    if n == 0 {
-        return d;
-    }
-    let mut v = vec![0usize; n]; // parabola vertices in the lower envelope
-    let mut z = vec![0.0f32; n + 1]; // envelope breakpoints
-    let mut k = 0usize;
-    v[0] = 0;
-    z[0] = f32::NEG_INFINITY;
-    z[1] = f32::INFINITY;
-    for q in 1..n {
-        // Intersection of the parabola at q with the current top parabola v[k].
-        let mut s = intersect(f, q, v[k]);
-        while s <= z[k] {
-            k -= 1;
-            s = intersect(f, q, v[k]);
-        }
-        k += 1;
-        v[k] = q;
-        z[k] = s;
-        z[k + 1] = f32::INFINITY;
-    }
-    k = 0;
-    for (q, out) in d.iter_mut().enumerate() {
-        while z[k + 1] < q as f32 {
-            k += 1;
-        }
-        let dq = q as f32 - v[k] as f32;
-        *out = dq * dq + f[v[k]];
-    }
-    d
-}
-
-/// The x where the parabolas rooted at `q` and `r` (heights `f[q]`, `f[r]`) intersect — the envelope
-/// breakpoint. `r < q`, so the denominator is positive.
-fn intersect(f: &[f32], q: usize, r: usize) -> f32 {
-    let (qf, rf) = (q as f32, r as f32);
-    ((f[q] + qf * qf) - (f[r] + rf * rf)) / (2.0 * qf - 2.0 * rf)
 }
 
 #[cfg(test)]
@@ -424,44 +378,15 @@ mod tests {
     use super::*;
 
     #[test]
-    fn signed_distance_is_negative_inside_and_zero_offset_is_the_inside_set() {
-        // 7×7 with a 3×3 filled centre. Inside pixels get sdf<0, outside >0, and {sdf<=0} == the inside set.
-        let (w, h) = (7, 7);
-        let mut cov = vec![0u8; w * h];
-        for y in 2..5 {
-            for x in 2..5 {
-                cov[y * w + x] = 255;
-            }
-        }
-        let sdf = signed_distance(&cov, w, h);
-        for i in 0..w * h {
-            let inside = cov[i] >= 128;
-            assert_eq!(
-                sdf[i] <= 0.0,
-                inside,
-                "pixel {i}: sdf {} vs inside {inside}",
-                sdf[i]
-            );
-        }
-    }
-
-    #[test]
-    fn dilation_grows_and_erosion_shrinks_the_area() {
-        let (w, h) = (21, 21);
-        let mut cov = vec![0u8; w * h];
-        for y in 8..13 {
-            for x in 8..13 {
-                cov[y * w + x] = 255;
-            }
-        }
-        let sdf = signed_distance(&cov, w, h);
-        let base = cov.iter().filter(|&&c| c >= 128).count();
-        let grown = sdf.iter().filter(|&&d| d <= 3.0).count();
-        let shrunk = sdf.iter().filter(|&&d| d <= -1.5).count();
-        assert!(grown > base, "dilate grows: {grown} > {base}");
-        assert!(
-            shrunk < base && shrunk > 0,
-            "erode shrinks: {shrunk} < {base}"
-        );
+    fn band_between_nested_masks_paints_and_unpaints_the_shell_only() {
+        // lo ⊂ hi: the band is exactly hi \ lo; painting sets it, unpainting clears it, and pixels
+        // outside the band are never touched.
+        let lo = [0u8, 255, 0, 0];
+        let hi = [0u8, 255, 255, 0];
+        let mut eff = [9u8, 9, 9, 9];
+        paint_band_masks(&mut eff, &lo, &hi, true);
+        assert_eq!(eff, [9, 9, 255, 9], "only the shell pixel painted");
+        paint_band_masks(&mut eff, &lo, &hi, false);
+        assert_eq!(eff, [9, 9, 0, 9], "only the shell pixel cleared");
     }
 }

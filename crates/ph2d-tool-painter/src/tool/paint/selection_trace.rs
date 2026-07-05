@@ -80,6 +80,118 @@ pub(super) fn trace_all_contours(mask: &[u8], w: usize, h: usize) -> Vec<Vec<[f3
     out
 }
 
+/// Trace the mask's contours WITH holes: every connected component contributes its OUTER boundary
+/// (`is_hole == false`) plus one contour per internal HOLE (`is_hole == true`). An island inside a hole is
+/// its own component (outer again), so arbitrary nesting alternates naturally. Each contour is closed
+/// (first point re-appended) and smoothed like [`trace_all_contours`]. The sharp-corner Selection offset
+/// needs holes: an SDF handled them implicitly, a per-contour curve offset must see each boundary
+/// (Enio 2026-07-05).
+pub(super) fn trace_all_contours_with_holes(
+    mask: &[u8],
+    w: usize,
+    h: usize,
+) -> Vec<(Vec<[f32; 2]>, bool)> {
+    if w == 0 || h == 0 || mask.len() != w * h {
+        return Vec::new();
+    }
+    let mut work: Vec<u8> = mask.to_vec();
+    let mut out = Vec::new();
+    let guard = w * h + 1;
+    for _ in 0..guard {
+        let Some(start) = (0..w * h).find(|&i| work[i] >= 128) else {
+            break;
+        };
+        // Flood this component out of `work` into `comp` (4-connected, like `trace_all_contours`).
+        let mut comp = vec![0u8; w * h];
+        let mut stack = vec![start];
+        work[start] = 0;
+        while let Some(i) = stack.pop() {
+            comp[i] = 255;
+            let (x, y) = (i % w, i / w);
+            let push = |xx: usize, yy: usize, st: &mut Vec<usize>, wk: &mut [u8]| {
+                let j = yy * w + xx;
+                if wk[j] >= 128 {
+                    wk[j] = 0;
+                    st.push(j);
+                }
+            };
+            if x + 1 < w {
+                push(x + 1, y, &mut stack, &mut work);
+            }
+            if x > 0 {
+                push(x - 1, y, &mut stack, &mut work);
+            }
+            if y + 1 < h {
+                push(x, y + 1, &mut stack, &mut work);
+            }
+            if y > 0 {
+                push(x, y - 1, &mut stack, &mut work);
+            }
+        }
+        let raw = trace_contour_raw(&comp, w, h);
+        if raw.len() >= 3 {
+            let mut c = smooth_closed(&raw, 2);
+            c.push(c[0]);
+            out.push((c, false));
+        }
+        // HOLES of this component: the parts of `!comp` NOT reachable from the image border. Flood the
+        // inverse from every border pixel; what stays unreached is enclosed by `comp` (holes — possibly
+        // containing islands, which are separate components of the ORIGINAL mask and get their own outer).
+        let mut outside = vec![false; w * h];
+        let mut stack: Vec<usize> = Vec::new();
+        let seed = |i: usize, outside: &mut Vec<bool>, stack: &mut Vec<usize>| {
+            if comp[i] < 128 && !outside[i] {
+                outside[i] = true;
+                stack.push(i);
+            }
+        };
+        for x in 0..w {
+            seed(x, &mut outside, &mut stack);
+            seed((h - 1) * w + x, &mut outside, &mut stack);
+        }
+        for y in 0..h {
+            seed(y * w, &mut outside, &mut stack);
+            seed(y * w + (w - 1), &mut outside, &mut stack);
+        }
+        while let Some(i) = stack.pop() {
+            let (x, y) = (i % w, i / w);
+            let push = |xx: usize, yy: usize, st: &mut Vec<usize>, o: &mut Vec<bool>| {
+                let j = yy * w + xx;
+                if comp[j] < 128 && !o[j] {
+                    o[j] = true;
+                    st.push(j);
+                }
+            };
+            if x + 1 < w {
+                push(x + 1, y, &mut stack, &mut outside);
+            }
+            if x > 0 {
+                push(x - 1, y, &mut stack, &mut outside);
+            }
+            if y + 1 < h {
+                push(x, y + 1, &mut stack, &mut outside);
+            }
+            if y > 0 {
+                push(x, y - 1, &mut stack, &mut outside);
+            }
+        }
+        let mut holes_mask = vec![0u8; w * h];
+        let mut any_hole = false;
+        for i in 0..w * h {
+            if comp[i] < 128 && !outside[i] {
+                holes_mask[i] = 255;
+                any_hole = true;
+            }
+        }
+        if any_hole {
+            for c in trace_all_contours(&holes_mask, w, h) {
+                out.push((c, true));
+            }
+        }
+    }
+    out
+}
+
 /// A gentle closed-polyline smoother (3-point moving average, wrap-around, `passes` times) — removes the
 /// 1px raster staircase of a traced contour while barely moving it, so a brush stroked along it is smooth.
 fn smooth_closed(pts: &[[f32; 2]], passes: usize) -> Vec<[f32; 2]> {

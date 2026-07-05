@@ -114,6 +114,7 @@ mod selection_input;
 /// Selection **Offset** (ADR-0103 Am.3): signed-distance grow/shrink + concentric alternating protected /
 /// paint bands driven by Apply & Keep. [LOC split].
 mod selection_offset;
+mod selection_offset_geom; // sharp-corner offset: trace(+holes) → refit → CAD offset per level (no SDF rounding)
 /// Selection on-canvas overlay (marching ants + hatching) + panel event routing. [LOC split].
 mod selection_overlay;
 /// Selection rasterization: shape → coverage buffers, boolean combine, Feather (box-blur). [LOC split].
@@ -247,7 +248,11 @@ pub(crate) struct PaintState {
     selection_offset_active: bool,
     selection_offset_rings: Vec<f32>,
     selection_offset_source: Arc<Vec<u8>>,
-    selection_offset_sdf: Arc<Vec<f32>>,
+    /// Corner-true contours of the offset source (outer + holes, refit + grow-calibrated) — the sharp
+    /// offset's derived cache; rebuilt lazily off `selection_offset_source`. [`selection_offset_geom`].
+    selection_offset_curves: Vec<selection_offset_geom::OffsetContour>,
+    /// Per-level effective masks (ring boundaries + the live level) — derived cache keyed by exact level.
+    selection_offset_level_cache: Vec<(f32, Arc<Vec<u8>>)>,
     /// **Ring stack**: `true` once the offset rings were materialised into the editable Freehand curves in
     /// `selection_shapes` (Edit Gizmos on an offset selection, Enio 2026-07-04). While set, the mask is a
     /// BAND-PARITY composite of those nested curves (paint iff enclosed by `≡ n (mod 2)` of them, `n>0`),

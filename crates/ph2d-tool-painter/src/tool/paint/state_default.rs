@@ -60,7 +60,8 @@ impl Default for PaintState {
             selection_offset_active: false,
             selection_offset_rings: Vec::new(),
             selection_offset_source: Arc::new(Vec::new()),
-            selection_offset_sdf: Arc::new(Vec::new()),
+            selection_offset_curves: Vec::new(),
+            selection_offset_level_cache: Vec::new(),
             selection_ring_stack: false,
 
             // Composite off by default; the default stack is the natural read of the card (top→bottom):

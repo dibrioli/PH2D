@@ -33,8 +33,13 @@ impl PainterTool {
         // coalescing (Enio 2026-07-04, "P4 sem melhorias"). Pure per-pixel work (neighbour READS of the
         // shared mask/sdf only) → split the rows into disjoint bands across the cores; bit-identical.
         let levels = self.selection_offset_contour_levels();
-        let sdf = self.selection_offset_sdf();
-        let sdf_ok = !levels.is_empty() && sdf.len() == wu * hu;
+        // Per-level corner-true masks (the sharp offset replaced the SDF): `apply_selection_offset` caches
+        // one per composed level, so ring mode always has them; a missing level is simply skipped.
+        let level_masks: Vec<std::sync::Arc<Vec<u8>>> = levels
+            .iter()
+            .filter_map(|&l| self.selection_offset_level_mask(l).cloned())
+            .collect();
+        let masks_ok = !level_masks.is_empty() && level_masks.iter().all(|m| m.len() == wu * hu);
         let overlay_rows = |band: &mut [u8], y0: usize| {
             let rows = band.len() / (wu * 4);
             for ry in 0..rows {
@@ -64,14 +69,14 @@ impl PainterTool {
                         }
                     }
                     // Offset contours: in ring mode draw EVERY frozen ring boundary + the live line as
-                    // cyan dashed contours of `{ sdf <= level }`, distinct from the black/white ants. A
-                    // PROTECTED band adds no selected pixels, so without this its edges vanish once
-                    // Apply & Keep re-centres the slider.
-                    if sdf_ok && (x + y + ant) % DASH < DASH / 2 {
-                        for &level in &levels {
-                            let inside = sdf[idx] <= level;
-                            let edge = (x + 1 < wu && (sdf[idx + 1] <= level) != inside)
-                                || (y + 1 < hu && (sdf[idx + wu] <= level) != inside);
+                    // cyan dashed contours of the per-level corner-true masks, distinct from the black/
+                    // white ants. A PROTECTED band adds no selected pixels, so without this its edges
+                    // vanish once Apply & Keep re-centres the slider.
+                    if masks_ok && (x + y + ant) % DASH < DASH / 2 {
+                        for m in &level_masks {
+                            let inside = m[idx] >= 128;
+                            let edge = (x + 1 < wu && (m[idx + 1] >= 128) != inside)
+                                || (y + 1 < hu && (m[idx + wu] >= 128) != inside);
                             if edge {
                                 band[o..o + 4].copy_from_slice(&[0u8, 220, 255, 255]);
                                 break;

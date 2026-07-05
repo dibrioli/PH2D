@@ -24,6 +24,13 @@ pub(super) fn trim_self_intersections(poly: &[[f32; 2]]) -> Vec<[f32; 2]> {
 /// (by shoelace area), so keep the larger and drop the ear at every crossing — robust to which crossing is
 /// found first + multiple ears (naive "drop `i+1..=j`" picked an arbitrary area; an orientation test fails as
 /// a spike-ear can wind like the body — Enio 2026-06-28). No-op when nothing crosses.
+/// Whether a closed loop's shoelace signed area is non-negative — the winding fingerprint the oriented
+/// trim matches against (compute it on the PRISTINE control points, never on the offset spine: a deep
+/// offset's ears can dominate the raw spine's total area and flip its sign).
+pub(super) fn loop_sign_positive(points: &[[f32; 2]]) -> bool {
+    signed_area(points) >= 0.0
+}
+
 pub(super) fn trim_self_intersections_closed(poly: &[[f32; 2]]) -> Vec<[f32; 2]> {
     let mut pts = poly.to_vec();
     // An explicit closing vertex lets the scan cover the last→first edge (where an ear often crosses).

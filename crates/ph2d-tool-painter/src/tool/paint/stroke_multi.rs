@@ -240,13 +240,8 @@ impl PainterTool {
         let mut stroke;
         match st {
             S::Curve(c) => {
-                let (pts, handles, _) =
-                    curve_offset::offset_curve_refined(&c.points, &c.handles, off, c.closed);
-                let mut spine = Vec::new();
-                curve_geom::flatten_spine(&pts, &handles, c.closed, &mut spine);
-                if trim {
-                    spine = curve::trim_offset_spine(&spine, c.closed);
-                }
+                // DRAWING-ONLY offset (Enio 2026-07-05): the PERFECT CAD offset spine, control points pristine.
+                let spine = self.offset_curve_spine(&c.points, &c.handles, c.closed, off);
                 stroke = Stroke::new(self.paint.brush, self.paint.dynamics, c.seed);
                 stroke.fill_polyline_preview(&spine, out);
             }
@@ -368,14 +363,35 @@ impl PainterTool {
     }
 
     /// Cycle the ACTIVE shape's Operation (+ → − → o), keep the panel mode in sync, and recompose (a boolean
-    /// result may change). The `+`/`−`/`o` glyph in its gizmo updates live.
+    /// result may change). The `+`/`−`/`o` glyph in its gizmo updates live. One COALESCED undo entry — a run
+    /// of consecutive taps rolls back to the pre-run op in one Ctrl+Z (Enio 2026-07-05; the tap previously
+    /// recorded NO undo at all — `active_op` wasn't captured in the snapshot).
     pub(crate) fn cycle_active_op(&mut self) {
         if !self.is_editing_shape() {
             return;
         }
+        self.flush_shape_txn();
+        let before = self.capture_shape_model();
         self.paint.active_op = self.paint.active_op.cycle();
         self.paint.stroke_op_mode = self.paint.active_op;
         self.refill_open_shape();
+        let after = self.capture_shape_model();
+        self.undo.record_structural_coalesced(
+            crate::undo::CoalesceKind::OpCycleStroke,
+            before,
+            after,
+        );
+    }
+
+    /// The ACTIVE shape's Operation as its wire `u8` — the undo-snapshot accessor (the field is private to
+    /// the `paint` module).
+    pub(crate) fn active_op_wire(&self) -> u8 {
+        self.paint.active_op.to_wire()
+    }
+
+    /// Reinstate the ACTIVE shape's Operation from a snapshot's wire value (undo/redo restore).
+    pub(crate) fn set_active_op_wire(&mut self, wire: u8) {
+        self.paint.active_op = StrokeOp::from_wire(wire);
     }
 
     /// The `+`/`−`/`o` glyph for the ACTIVE shape's Operation — the shell draws it INSIDE the shape's gizmo

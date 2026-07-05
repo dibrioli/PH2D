@@ -128,6 +128,82 @@ impl PainterTool {
         }
     }
 
+    /// Convert one stroke shape STATE to its own editable **dense** [`CurveState`](crate::undo::CurveState) —
+    /// the PRISTINE geometry (the live Offset is NOT baked in; it persists as a drawing transform, so every
+    /// anchor stays exactly on the shape and no offset self-cross can land in the control points — Enio
+    /// 2026-07-05). Ellipse → its exact 4-arc, Polygon/closed-Line → sharp corners, existing Curve → itself.
+    /// `None` for an OPEN Line. The per-shape analogue of the Selection `shape_to_closed_curve`; every result
+    /// densifies to the Convert anchor spacing.
+    pub(super) fn stroke_state_to_curve_state(
+        &mut self,
+        st: &ShapeEditState,
+    ) -> Option<crate::undo::CurveState> {
+        use super::curve::{CONVERT_ANCHOR_SPACING_PX, MAX_CONVERT_POINTS};
+        let seed = self.paint.seed;
+        self.paint.seed = self.paint.seed.wrapping_add(1);
+        let densify = |p: Vec<[f32; 2]>, h: Vec<[[f32; 2]; 2]>| {
+            curve_geom::densify_closed_curve(&p, &h, CONVERT_ANCHOR_SPACING_PX, MAX_CONVERT_POINTS)
+        };
+        let model = match st {
+            ShapeEditState::Ellipse(e) => {
+                let (p, h) =
+                    super::selection_edit::ellipse_to_closed_curve(e.center, e.u, e.rx, e.ry);
+                let (p, h) = densify(p, h);
+                curve_model::CurveModel::from_curve(p, h, true, curve_handle::HandleKind::Aligned)
+            }
+            ShapeEditState::Polygon(pg) => {
+                let mut perim = Vec::new();
+                ph2d_painter_brush::polygon_perimeter(
+                    pg.center, pg.u, pg.rx, pg.ry, pg.sides, &mut perim,
+                );
+                if perim.len() < 3 {
+                    return None;
+                }
+                let handles = perim.iter().map(|q| [*q, *q]).collect();
+                let (p, h) = densify(perim, handles);
+                curve_model::CurveModel::from_curve(p, h, true, curve_handle::HandleKind::Free)
+            }
+            ShapeEditState::Curve(c) => {
+                // Keep the pristine curve verbatim (its own anchors + handles + kinds) — no offset bake.
+                let kinds: Vec<curve_handle::HandleKind> = c
+                    .kinds
+                    .iter()
+                    .map(|k| {
+                        curve_handle::HandleKind::from_wire(*k)
+                            .unwrap_or(curve_handle::HandleKind::Aligned)
+                    })
+                    .collect();
+                curve_model::CurveModel {
+                    points: c.points.clone(),
+                    handles: c.handles.clone(),
+                    kinds,
+                    selected: None,
+                    closed: c.closed,
+                }
+            }
+            ShapeEditState::Line(l) if l.closed => {
+                let mods: Vec<line_corner::CornerMod> = l
+                    .corner_mods
+                    .iter()
+                    .copied()
+                    .map(line_corner::CornerMod::from_wire)
+                    .collect();
+                let expanded =
+                    line_corner::expand(&l.points, true, &mods, self.paint.shape_grab_tol_px);
+                // Pristine expanded polyline (offset stays a drawing transform).
+                let path = line_offset::offset_polyline(&expanded, true, 0.0);
+                if path.len() < 3 {
+                    return None;
+                }
+                let handles = path.iter().map(|p| [*p, *p]).collect();
+                let (p, h) = densify(path, handles);
+                curve_model::CurveModel::from_curve(p, h, true, curve_handle::HandleKind::Free)
+            }
+            ShapeEditState::Line(_) => return None, // an OPEN line is not a closed curve — keep as-is
+        };
+        Some(curve_state_from_model(model, seed))
+    }
+
     /// Boolean-composite the Add/Remove fillable `shapes` into contour polylines (image px): rasterize each
     /// at `SS×` resolution, union (Add) / subtract (Remove) in DRAW ORDER, trace EVERY connected component
     /// (separate regions → separate contours; overlapping → merged), then scale the contours back to canvas
@@ -161,45 +237,45 @@ impl PainterTool {
             .collect()
     }
 
-    /// `true` when the multi-shape set has any Add/Remove CLOSED shape (active or parked) — a live boolean
-    /// composite. Convert-to-Curve then folds the WHOLE boolean RESULT into one editable curve.
-    pub(crate) fn has_boolean_shapes(&self) -> bool {
-        let active = self
-            .capture_shape()
-            .is_some_and(|s| self.paint.active_op != StrokeOp::Overlay && is_boolean_fillable(&s));
-        active
-            || self
-                .paint
-                .parked_shapes
-                .iter()
-                .any(|s| s.op != StrokeOp::Overlay && is_boolean_fillable(&s.state))
-    }
-
-    /// Convert the Add/Remove BOOLEAN RESULT into editable curve(s): fit each combined-region contour to a
-    /// sparse Bézier, DROP every boolean shape, and install the result as the live Curve (extra regions →
-    /// parked Overlay curves). Overlay / open shapes are untouched. One undo step (Enio 2026-07-04).
-    pub(crate) fn convert_boolean_result_to_curve(&mut self) -> bool {
+    /// **Merge Curves** (the panel's Merge button): fold EVERY fillable shape the artist sees — active +
+    /// parked, **Overlay counted as Add** (union) so the whole visible fill collapses, exactly like the
+    /// Selection Merge — into one/few high-precision dense curves by tracing the composed mask. Add/Remove
+    /// still union/subtract; separate regions each become their own dense curve. NON-fillable shapes (open
+    /// Line / open Curve) are preserved untouched. One undo step. `false` when nothing fillable (Enio
+    /// 2026-07-05). Supersedes the former boolean-only auto-merge inside Convert.
+    pub(crate) fn merge_open_shapes_to_curves(&mut self) -> bool {
         let off = self.shape_offset_px();
-        let mut bool_shapes: Vec<(ShapeEditState, StrokeOp)> = self
+        // Overlay → Add for the union (a plain-overlay shape still contributes its region to the merged fill).
+        let as_union = |op: StrokeOp| {
+            if op == StrokeOp::Overlay {
+                StrokeOp::Add
+            } else {
+                op
+            }
+        };
+        let mut shapes: Vec<(ShapeEditState, StrokeOp)> = self
             .paint
             .parked_shapes
             .iter()
-            .filter(|s| s.op != StrokeOp::Overlay && is_boolean_fillable(&s.state))
-            .map(|s| (s.state.clone(), s.op))
+            .filter(|s| is_boolean_fillable(&s.state))
+            .map(|s| (s.state.clone(), as_union(s.op)))
             .collect();
-        if let Some(active) = self.capture_shape()
-            && self.paint.active_op != StrokeOp::Overlay
-            && is_boolean_fillable(&active)
-        {
-            bool_shapes.push((*active, self.paint.active_op));
+        // A non-fillable ACTIVE shape (open Line/Curve) must survive the merge — re-park it afterwards.
+        let mut keep_active: Option<ShapeEditState> = None;
+        if let Some(active) = self.capture_shape() {
+            if is_boolean_fillable(&active) {
+                shapes.push((*active, as_union(self.paint.active_op)));
+            } else {
+                keep_active = Some(*active);
+            }
         }
-        if bool_shapes.is_empty() {
-            return false;
+        if shapes.is_empty() {
+            return false; // nothing fillable to merge
         }
-        let contours = self.stroke_boolean_contours(&bool_shapes, off);
+        let contours = self.stroke_boolean_contours(&shapes, off);
         let mut states: Vec<ShapeEditState> = Vec::new();
         for c in &contours {
-            if let Some(m) = super::selection_edit::to_closed_curve_precise(c, &[]) {
+            if let Some(m) = super::selection_edit::to_closed_curve_smooth(c) {
                 let seed = self.paint.seed;
                 self.paint.seed = self.paint.seed.wrapping_add(1);
                 states.push(ShapeEditState::Curve(curve_state_from_model(m, seed)));
@@ -209,17 +285,26 @@ impl PainterTool {
             return false;
         }
         let before = self.capture_shape_model();
-        // Drop every boolean shape; keep Overlay / open ones parked. Clear the (boolean) active editor.
+        // Drop every fillable shape (they are now the merged curve); keep only NON-fillable parked ones.
         self.paint
             .parked_shapes
-            .retain(|s| s.op == StrokeOp::Overlay || !is_boolean_fillable(&s.state));
+            .retain(|s| !is_boolean_fillable(&s.state));
         self.paint.curve = None;
         self.paint.ellipse = None;
         self.paint.polygon = None;
         self.paint.line = None;
         self.paint.shape_offset_base_px = 0.0;
         self.paint.shape_offset_norm = 0.5;
-        self.paint.active_op = StrokeOp::Overlay; // converted curve is plain overlay
+        self.paint.active_op = StrokeOp::Overlay; // the merged curve is a plain overlay
+        // Re-park a preserved non-fillable active shape as its own Overlay entry (no shape is ever lost).
+        if let Some(state) = keep_active {
+            self.paint
+                .parked_shapes
+                .push(super::stroke_multi::StrokeShape {
+                    state,
+                    op: StrokeOp::Overlay,
+                });
+        }
         let first = states.remove(0);
         for s in states {
             self.paint
@@ -230,7 +315,7 @@ impl PainterTool {
                 });
         }
         self.install_shape_editor(first);
-        self.curve_refill();
+        self.refill_open_shape();
         let after = self.capture_shape_model();
         self.undo.record_structural(before, after);
         true

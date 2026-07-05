@@ -39,6 +39,18 @@ pub const PAINTER_BRUSH_OFFSET: NodeId = hash_node_id("painter_brush.offset");
 pub const PAINTER_BRUSH_OFFSET_CHIP: NodeId = hash_node_id("painter_brush.offset_chip");
 /// "Simplify": re-fit the editable curve to a clean minimal control polygon. `Click` → `curve_simplify`.
 pub const PAINTER_BRUSH_STROKE_SIMPLIFY: NodeId = hash_node_id("painter_brush.stroke_simplify");
+/// "Merge Curves": fold every fillable shape into one/few dense curves. `Click` → `merge_open_shapes_to_curves`.
+pub const PAINTER_BRUSH_STROKE_MERGE: NodeId = hash_node_id("painter_brush.stroke_merge");
+/// The open-shape editor's momentary **button** ids (Apply / Apply & Keep / Delete / Edit=Convert / Simplify /
+/// Merge) — one list so the panel forward-allowlist stays a single `.contains()` (Enio 2026-07-05).
+pub const PAINTER_BRUSH_STROKE_BUTTONS: [NodeId; 6] = [
+    super::PAINTER_BRUSH_STROKE_APPLY,
+    super::PAINTER_BRUSH_STROKE_APPLY_KEEP,
+    super::PAINTER_BRUSH_STROKE_DELETE,
+    super::PAINTER_BRUSH_STROKE_EDIT,
+    PAINTER_BRUSH_STROKE_SIMPLIFY,
+    PAINTER_BRUSH_STROKE_MERGE,
+];
 /// "Save As Object" (floppy icon) beside the Stroke Method dropdown — shown only while a curve with points
 /// is drawn on the canvas. FUTURE (not wired yet): persist the drawn curve + the current Brush/Layer panel
 /// settings as a dynamic object that can be reloaded and even animated later.

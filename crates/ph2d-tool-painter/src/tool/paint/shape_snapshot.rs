@@ -143,6 +143,18 @@ impl PainterTool {
         }
     }
 
+    /// Close a per-gesture transaction as a COALESCIBLE entry (see [`crate::undo::CoalesceKind`]): a run of
+    /// repeated same-kind gestures (progressive Simplify presses) collapses into ONE undo step.
+    pub(crate) fn commit_shape_txn_coalesced(&mut self, kind: crate::undo::CoalesceKind) {
+        let Some(before) = self.paint.stroke_undo.take() else {
+            return;
+        };
+        let after = self.capture_shape_model();
+        if shape_model_changed(&before, &after) {
+            self.undo.record_structural_coalesced(kind, before, after);
+        }
+    }
+
     /// Open a COALESCED transaction for an Offset-slider drag: a contiguous run of slider values from the
     /// same baseline collapses into one undo entry (snapshot only when none is open); the next gesture /
     /// bake / undo flushes it.
@@ -191,7 +203,7 @@ impl PainterTool {
 /// (selection-agnostic), or a create/apply (the shape appearing or vanishing). A pure point-selection is
 /// NOT a step.
 fn shape_model_changed(a: &crate::undo::ModelSnapshot, b: &crate::undo::ModelSnapshot) -> bool {
-    if a.offset_norm != b.offset_norm {
+    if a.offset_norm != b.offset_norm || a.active_op != b.active_op {
         return true;
     }
     // A park / unpack / re-activate (the multi-shape set changing) is itself an undoable step.

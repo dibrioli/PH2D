@@ -11,6 +11,118 @@
 | [2](#bug-2--per-layer-color-fps-despenca--artefatos-retangulares-retângulo-virtual) | Per-Layer Color — FPS despenca + artefatos retangulares ("retângulo virtual") | Stamp path (CPU) + GPU preview slot | ✅ Resolvido | 2026-06-29 |
 | [3](#bug-3--queda-de-fps-warp--shapes-booleanas--todo-arraste-interativo) | Queda de FPS (Warp · Shapes booleanas · todo arraste interativo) | Bridge preview + selection recompose + warp mesh | ✅ Resolvido em CPU (2 rodadas 2026-07-04: Transform smoke-OK; per-layer texture-color + overlay booleanas fechados na 2ª — pendente smoke) | 2026-07-04 |
 | [4](#bug-4--simplify-curve-degenerava-o-schneider-fit-não-fecha-loops) | Simplify Curve degenerava (curva → 2 pontos idênticos / triângulo) | Selection curve simplify (`fit_curve` fechado) | ✅ Resolvido (DP fechado + Catmull-Rom corner-aware) | 2026-07-05 |
+| [5](#bug-5--offset-de-curva-densa-amontoava-os-pontos-após-convert) | Offset amontoava os pontos de uma curva densa após Convert (perda de perfeição) | Stroke offset (movia os pontos de controle) | ✅ Resolvido (offset DRAWING-ONLY, modelo da Seleção) | 2026-07-05 |
+| [6](#bug-6--simplify-quase-bom--offset-arredondava-as-quinas--refit--vértice-reconstruído) | Simplify "quase bom" + offset arredondava as quinas | Simplify/Merge (`curve_refit`) | ✅ Resolvido (refit Schneider corner-split + vértice por interseção de bordas) | 2026-07-05 |
+
+---
+
+## Bug #5 — Offset de curva densa amontoava os pontos após Convert
+
+**Sintoma (Enio 2026-07-05):** depois do **Convert to Curve** (que passou a gerar curvas densas de múltiplos
+pontos, ~16px de espaçamento, no P6), aplicar **Offset para dentro** amontoava as âncoras (uma elipse de 24
+âncoras encolhida pra raio ~10 ficava com âncoras a **2.5px** umas das outras) → pontos sobrepostos + artefatos
++ "perda da perfeição da curva". Regressão introduzida pela densificação do Convert (antes o Convert dava
+poucos pontos, que não amontoavam).
+
+**Causa-raiz:** o offset do stroke **movia os pontos de controle** — `offset_curve_refined` reconstruía a
+curva inteira (densify adaptativo + join CAD) e o overlay/fill exibiam a curva OFFSETADA. Num offset pra
+dentro de uma curva densa, as âncoras encolhem proporcionalmente ao raio e se amontoam; o offset em si é fiel
+(o spine bate no raio certo), mas os pontos de controle exibidos ficam sobrepostos.
+
+**Tentativa que falhou (e a lição):** re-fluir a curva offsetada pra densidade uniforme quando *bunched*.
+Corrige o amontoado, mas (a) a 16px de espaçamento os handles Catmull-Rom sub-estimam um círculo pequeno e
+encolhem 26%; a 8px fica OK — mas (b) fundamentalmente é **remendo do sintoma**: os pontos ainda se movem e a
+curva editável é reconstruída a cada frame. Enio apontou o caminho certo: **"veja como é feito em Seleção —
+offset sem mover os pontos, movendo apenas o desenho."**
+
+**Tentativa #2 que falhou (importante):** offsetar o **spine** como polilinha via `line_offset::offset_polyline`
+(miter). Mantém os pontos pristinos, mas a curva de desenho fica **imperfeita** — o offset por miter numa
+polilinha não é a curva paralela verdadeira (Tiller–Hanson é exato só pra reta+círculo). Enio: *"o resultado
+ficou pior, o offset produz curvas imperfeitas. temos documentado como conseguir a curva perfeita."* A **curva
+perfeita** já existia: `offset_curve_refined` (reconstrução CAD adaptativa sub-pixel, Levien 2022) — o header
+do `curve_offset.rs` a documenta.
+
+**Solução final (drawing-only puro, modelo da Seleção):** o EDITOR inteiro fica na curva **PRISTINA** — âncoras
++ handles + gizmo + a **linha-guia** (`curve_overlay.spine` = flatten da curva pristina, SEM offset) — e **só
+o desenho pintado** (os dabs pretos, `curve_fill`/re-stamp de parked) sofre o offset. O desenho usa a curva
+paralela PERFEITA: `offset_curve_spine` roda `offset_curve_refined` (CAD adaptativo) e guarda só o spine
+achatado. `bake_curve_offset` virou **no-op** (o offset nunca materializa nos pontos; Apply-&-Keep só acumula
+o valor). Resultado: nada no editor se move ou amontoa (ponto e linha parados na fonte da verdade) + a pintura
+= a parametrização paralela exata. Como a linha-guia é pristina, o "bico"/artefato que aparecia no guia
+offsetado **some** (o amontoado e o cruzamento só existiam nas âncoras/guia offsetados, nunca na fonte).
+
+**Lição generalizável (a saga inteira):** três tentativas, uma pista decisiva. (1) re-flow das âncoras
+offsetadas = remendo do sintoma. (2) offset por miter da polilinha = rebaixou a curva perfeita. (3) certo:
+**a fonte da verdade (âncoras + linha) fica pristina; só o resultado renderizado sofre o offset** — exatamente
+como a Seleção offseta a máscara e não a curva. A pista do Enio ("offset movendo apenas o desenho, ponto e
+linha parados") era literal: o problema nunca foi o ALGORITMO de offset (o CAD já era perfeito no spine
+pintado), foi **exibir/editar sobre a geometria reconstruída**. Quando um offset "move os pontos" gera
+artefatos, não troque o offset — pare de mover a fonte.
+
+**Coda — o "bico nos pontos convertidos" (2026-07-05, agentes):** mesmo com o offset drawing-only, o Convert
+ainda **assava o offset na geometria** — `stroke_state_to_curve_state` (multi-shape, ramo Curve) rodava
+`offset_curve_refined_kinds` e gravava o resultado direto nos pontos de controle; num canto côncavo/over-offset
+o join CAD **divide o vértice em dois pontos que se cruzam** (de propósito — o Trim corta a "orelha" no
+DESENHO), mas gravado como âncora vira um V auto-cruzado editável. `bake_ellipse_offset` no Convert single
+também assava (limpo, mas assava). Enio: *"por que a Seleção faz a mesma coisa e sai perfeita?"* — porque a
+Seleção **nunca assa offset nas âncoras** (o offset dela é na máscara). Prova: converter elipse (mesmo
+excêntrica rx=120/ry=20), círculo e polígono é **byte-perfeito** (0 cruzamentos, desvio < 0.0004) — o bico só
+vinha do assado. **Fix:** o Convert agora produz a geometria **PRISTINA** e o offset **persiste** como
+transform de desenho (nada assado, slider não reseta) — `offset_curve_refined_kinds` deletada. Toda âncora
+fica exatamente na forma. (Método: 2 agentes — um comparou Stroke vs Seleção linha-a-linha e isolou o ramo
+Curve; a densify/split_cubic/ellipse-math provou-se idêntica e correta nos dois. Nota operacional: o agente de
+worktree vazou tests `dbg_` no arquivo principal — limpos manualmente.) Bônus: botão **Simplify** estava
+escondido em curva convertida (gate só `FreeHand || added_point`); agora aparece em qualquer curva fechada
+editável.
+
+**Coda 2 — o "bico" no MERGE (2026-07-05):** o Convert já pristino, mas o **Merge** ainda cuspia bicos nas
+cinturas côncavas (peanut). Causa: o Merge (`merge_open_shapes_to_curves` / `selection_merge_curves`) fitava o
+contorno traçado com `to_closed_curve_precise` (Schneider tight erro 1.0 + densify 16px) → **muitos** pontos
+que, numa cintura pinçada, viravam uma agulha auto-cruzada (turn ~1.94 = quase 180°). O próprio Enio achou o
+fix: *"Simplify resolve; reduzir os pontos gerados melhora."* Novo helper `to_closed_curve_smooth` roda o
+mesmo redutor robusto do Simplify (`simplify_closed_smooth` — DP + Catmull-Rom corner-aware): âncoras a menos
+(62→32 no pinch), zero auto-cruzamento, cintura limpa. Ambos os Merges (stroke + seleção) usam. Lição:
+tracing-de-máscara + fit-tight amplifica o staircase do contorno em bicos; o redutor DP-fechado é a saída.
+Merge usa tolerância própria `MERGE_SIMPLIFY_TOL_PX=1.0` (mais densa que Simplify).
+
+---
+
+## Bug #6 — Simplify "quase bom" + offset arredondava as quinas → REFIT + vértice reconstruído
+
+> Desenho final consolidado (algoritmos, constantes, testes-âncora):
+> [`09_curvas_convert_merge_simplify_offset.md`](09_curvas_convert_merge_simplify_offset.md).
+
+**Sintoma (Enio 2026-07-05):** "não ficou bom o simplify… faça pesquisa de como gerar curvas simplificadas
+perfeitas, com números de pontos bem reduzidos. Descubra os tipos de handles adequados." E depois do fix do
+Simplify: "os vertex das quinas fazem um offset ruim (arredonda as quinas no offset)."
+
+**Simplify FINAL — refit por mínimos quadrados (pós-pesquisa):** duas iterações anteriores
+(decimação DP + handles Catmull-Rom; depois Visvalingam-20% + kinds Symmetric/Vector derivados) produziam
+curvas "quase" — porque decimar pontos e derivar handles genéricos **não é fit**. A pesquisa (Schneider 1990,
+o pipeline do Inkscape/paper.js `simplify()`; Levien 2023) manda: (1) **detectar quinas** (cusps) no spine
+denso (janela de ±3px de arco, giro ≥ ~70°, supressão não-máxima > 2×janela — senão UMA quina vira duas);
+(2) **fit cúbico por mínimos quadrados** (Schneider, `fit_curve`) em cada trecho ABERTO entre quinas (aberto
+= zero risco do colapso do Bug #4); (3) **kinds do fit**: junção suave = **Aligned** (braços colineares de
+comprimentos independentes — o fit carrega a forma nos comprimentos; Symmetric os igualaria e distorceria),
+quina = **Free** (braços fitados independentes; Vector os apontaria pros vizinhos e mataria a curvatura de
+aproximação). Anel sem 3 cusps ganha seams artificiais nos terços (re-suavizados pra Aligned). Progressivo:
+cada aperto escala a tolerância (0.5px ×1.7…) até ~20% das âncoras caírem. Módulo novo `curve_refit.rs` — o
+funil único de Simplify E Merge. Resultado medido: círculo denso 16 âncoras → **3 Aligned** (spine a <1.5px
+do círculo real); pentágono 15 → **5 Free exatas**. Lições: (a) simplificar curva = REFIT, nunca decimação;
+(b) o raio de supressão do detector de quinas tem de exceder o span de resposta (2×janela); (c) anel fechado
+precisa ≥3 seams — um cúbico engole meio-anel dentro da tolerância e o assembly degenera.
+
+**Quinas × offset (2026-07-05, follow-up):** com o Merge refitado, o offset **arredondava as quinas**. Causa:
+o trace da máscara é SUAVIZADO (média móvel), então a ponta da quina chega ~2px arredondada; o fit ancorava a
+quina EM CIMA da ponta arredondada com tangentes estimadas nos primeiros samples (borrados) — e **o offset
+amplifica o arredondamento por |d|** (ponta raio 2px offsetada 20px = arco visível de raio 22px). No merge
+denso antigo, vários pontos na região reproduziam a quina apertada — por isso "estava bom antes". **Fix
+(`CORNER_TRIM_PX`/`corner_vertex` no `curve_refit`):** apara ~3px de arco de cada lado da quina REAL (a ponta
+suavizada) e re-ancora os runs do fit na **interseção das duas retas de borda** (medidas num baseline limpo de
+3-9px) — vértice-navalha na curva, miter exato no offset. Medido: quadrado com pontas arredondadas → quinas
+reconstruídas a <1.2px do vértice verdadeiro; offset de 12px alcança o ápice do miter a <1.5px (arredondado
+ficaria ~5px aquém). Lição: quando um consumidor AMPLIFICA erro (offset × curvatura de ponta), a fonte tem de
+reconstruir a geometria ideal, não reproduzir fielmente o dado degradado (o trace suavizado).
 
 ---
 
@@ -38,7 +150,7 @@ fit → a degeneração é de **tangente na costura**, não de densidade; não r
 **Solução (`curve_geom::simplify_closed_smooth`):** trocar o fitter por um redutor **closed-loop-correto**:
 achatar pro spine denso → **Douglas–Peucker fechado** (`selection_trace::simplify_closed`, tolerância 3px →
 âncoras precisas + poucas) → atribuir a cada âncora sobrevivente uma tangente **Catmull-Rom** (⅓ da corda
-adjacente por lado), **colapsando pra quina dura** quando o giro local ≥ 60° (`dot(din,dout) ≤ 0.5`). Um
+adjacente por lado), **colapsando pra quina dura** quando o giro local ≥ 60° (`dot(dir_in, dir_out) ≤ 0.5`). Um
 retângulo volta a ser 4 quinas afiadas exatas; um laço orgânico fica tão suave quanto um Free Hand.
 Transcendental-free (dot + sqrt). O `Simplify` agora roda em **TODAS** as curvas Freehand da lista (antes ou
 depois do Merge), não só quando há exatamente uma.

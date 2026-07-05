@@ -9,7 +9,7 @@
 use super::PainterTool;
 use super::curve::{
     CONVERT_ANCHOR_SPACING_PX, CONVERT_FIT_ERROR, FREEHAND_FIT_ERROR, MAX_CONVERT_POINTS,
-    MAX_CURVE_POINTS, SELECTION_SIMPLIFY_TOL_PX,
+    MAX_CURVE_POINTS, MERGE_SIMPLIFY_TOL_PX, SIMPLIFY_KEEP_FRACTION, SIMPLIFY_MIN_POINTS,
 };
 use super::curve_handle::HandleKind;
 use super::curve_model::CurveModel;
@@ -167,7 +167,7 @@ impl PainterTool {
             if c.len() >= 2 && c[0] == c[c.len() - 1] {
                 c.pop();
             }
-            if let Some(model) = to_closed_curve_precise(&c, &[]) {
+            if let Some(model) = to_closed_curve_smooth(&c) {
                 merged.push(SelectionEntry {
                     // First surviving contour is the base (New/replace); the rest union onto it (Add).
                     op: u8::from(!merged.is_empty()),
@@ -202,16 +202,22 @@ impl PainterTool {
         for e in &mut self.paint.selection_shapes {
             if let SelectionShape::Freehand { model, u } = &e.shape {
                 let u = *u;
-                // Closed-loop-correct reducer (the Schneider fit degenerates on a start==end loop): dense
-                // flatten → closed Douglas–Peucker → corner-aware Catmull-Rom handles.
-                if let Some((p, h)) = super::curve_geom::simplify_closed_smooth(
+                // PROGRESSIVE refit (Enio 2026-07-05): corner-split + piecewise Schneider least-squares fit,
+                // escalating the tolerance until ~20% of the anchors shed — Aligned smooth joins, Free corners.
+                if let Some(r) = super::curve_refit::refit_progressive(
                     &model.points,
                     &model.handles,
-                    SELECTION_SIMPLIFY_TOL_PX,
-                    MAX_CURVE_POINTS,
+                    SIMPLIFY_KEEP_FRACTION,
+                    SIMPLIFY_MIN_POINTS,
                 ) {
                     e.shape = SelectionShape::Freehand {
-                        model: CurveModel::from_curve(p, h, true, HandleKind::Aligned),
+                        model: CurveModel {
+                            points: r.points,
+                            handles: r.handles,
+                            kinds: r.kinds,
+                            selected: None,
+                            closed: true,
+                        },
                         u,
                     };
                     changed = true;
@@ -223,7 +229,8 @@ impl PainterTool {
         }
         self.paint.selection_ring_stack = false; // boolean curves, not a ring stack
         self.recompose_selection_mask();
-        self.commit_structural_edit(before);
+        // COALESCED: a run of progressive Simplify presses = ONE undo step back to the pre-run curves.
+        self.commit_structural_edit_coalesced(crate::undo::CoalesceKind::Simplify, before);
     }
 
     /// The composed mask traced into a closed anchor polygon (for Convert with 0 / multiple parametric shapes).
@@ -252,6 +259,22 @@ pub(super) fn to_closed_curve_precise(
     handles: &[[[f32; 2]; 2]],
 ) -> Option<CurveModel> {
     to_closed_curve_with(points, handles, CONVERT_FIT_ERROR, MAX_CONVERT_POINTS, true)
+}
+
+/// A traced closed CONTOUR → a CLEAN editable curve via the REFIT funnel (`curve_refit::refit_closed_spine`
+/// — corner-split + piecewise Schneider least-squares fit within [`MERGE_SIMPLIFY_TOL_PX`] px): few anchors
+/// that hug the outline, Aligned smooth joins, Free corners, no dense-fit spikes at concave waists. The Merge
+/// paths use this instead of [`to_closed_curve_precise`] so a merged outline reads perfect without a manual
+/// Simplify (Enio 2026-07-05). `None` when the contour is degenerate.
+pub(super) fn to_closed_curve_smooth(points: &[[f32; 2]]) -> Option<CurveModel> {
+    let r = super::curve_refit::refit_closed_spine(points, MERGE_SIMPLIFY_TOL_PX)?;
+    Some(CurveModel {
+        points: r.points,
+        handles: r.handles,
+        kinds: r.kinds,
+        selected: None,
+        closed: true,
+    })
 }
 
 fn to_closed_curve_with(
@@ -287,8 +310,9 @@ fn to_closed_curve_with(
 }
 
 /// The four cardinal anchors + `k = 0.5523` Bézier handles that reproduce the ellipse exactly (mirrors
-/// `ellipse::ellipse_to_curve`, but from stored params — no editor need be open).
-fn ellipse_to_closed_curve(
+/// `ellipse::ellipse_to_curve`, but from stored params — no editor need be open). Shared with the stroke
+/// per-shape Convert (a parked Ellipse state → its editable curve; Enio 2026-07-05).
+pub(super) fn ellipse_to_closed_curve(
     c: [f32; 2],
     u: [f32; 2],
     rx: f32,

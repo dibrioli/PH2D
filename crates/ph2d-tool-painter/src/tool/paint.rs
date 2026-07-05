@@ -27,6 +27,7 @@ mod curve_handle; // per-anchor handle kinds (Free/Aligned/Vector/Auto) + derive
 mod curve_join; // corner joins for the offset: smooth-merge / convex-miter / concave-split; split from `curve_offset`
 mod curve_model; // shared editing core (points/handles/kinds/selected + ops) — stroke + selection both own one
 mod curve_offset; // perpendicular offset (parallel curve) + CAD-grade reconstruction; split from `curve_geom`
+mod curve_refit; // Simplify/Merge quality funnel: corner-split + piecewise Schneider least-squares refit
 mod curve_tangent; // Bézier tangent-handle hit-test, aligned mirror, overlay snapshot; split from `curve`
 mod curve_trim; // self-intersection trim of the offset spine (open + closed); split from `curve_offset`
 mod stroke_boolean; // multi-shape Add/Remove boolean composite (rasterise → union/subtract → trace contours)

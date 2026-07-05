@@ -135,10 +135,14 @@ impl PainterTool {
             spacing: b.spacing,
             offset: self.paint.shape_offset_norm,
             offset_trim: self.paint.offset_trim,
+            // Simplify shows for Free Hand, after a point is added, OR on any CLOSED editable curve — a
+            // converted Ellipse/Polygon / merged curve is closed + dense and is exactly what Simplify reduces
+            // (Enio 2026-07-05: the button was hidden on a converted curve until you added a point).
             can_simplify: self.paint.curve.as_ref().is_some_and(|ed| {
                 ed.editing
                     && (b.stroke_method == ph2d_painter_brush::StrokeMethod::FreeHand
-                        || ed.added_point)
+                        || ed.added_point
+                        || (ed.model.closed && ed.model.is_curve()))
             }),
             // A curve with points exists whenever the point editor is editing (Curve / Free Hand, or a
             // Ellipse/Polygon converted via Edit) — gates the Save-As-Object button.

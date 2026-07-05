@@ -6,7 +6,6 @@
 //! `sqrt`-normalised — HR-5). Free fns, called as `curve_offset::*`.
 
 use super::curve_geom::{cubic_at, dist2, split_cubic};
-use super::curve_handle::HandleKind;
 
 /// Adaptive-subdivision tolerance: max px the densified offset may stray before a segment is split (sub-pixel).
 const OFFSET_TOL_PX: f32 = 0.3;
@@ -15,14 +14,6 @@ const MAX_OFFSET_SUBDIV: u32 = 6;
 
 /// Offset `(points, handles)` + per output anchor its ORIGINAL index (`None` = inserted). Aliased for clippy.
 type RefinedOffset = (Vec<[f32; 2]>, Vec<[[f32; 2]; 2]>, Vec<Option<usize>>);
-/// [`offset_curve_refined_kinds`] output: dense `(points, handles)` + carried kinds + remapped selection.
-type RefinedKinds = (
-    Vec<[f32; 2]>,
-    Vec<[[f32; 2]; 2]>,
-    Vec<HandleKind>,
-    Option<usize>,
-);
-
 /// [`super::curve_join::offset_curve`] preceded by [`densify_for_offset`]: the offset hugs the true parallel curve even through
 /// tight, varying-curvature bends (Tiller–Hanson alone is exact only for lines + circles; subdivision is the
 /// fix), staying an editable anchor/handle curve. The `Vec<Option<usize>>` maps each output anchor to its
@@ -42,29 +33,6 @@ pub(super) fn offset_curve_refined(
         .map(|&i| origin.get(i).copied().flatten())
         .collect();
     (op, oh, origin)
-}
-
-/// [`offset_curve_refined`] that also carries the handle KINDS + the SELECTION across the reconstruction:
-/// each output anchor takes its ORIGINAL anchor's kind (inserted anchors → `Free`), and `selected` remaps to
-/// its dense index. For materialising the densified offset into the editable curve (the bake).
-pub(super) fn offset_curve_refined_kinds(
-    points: &[[f32; 2]],
-    handles: &[[[f32; 2]; 2]],
-    kinds: &[HandleKind],
-    selected: Option<usize>,
-    d: f32,
-    closed: bool,
-) -> RefinedKinds {
-    let (p, h, origin) = offset_curve_refined(points, handles, d, closed);
-    let k = origin
-        .iter()
-        .map(|o| {
-            o.and_then(|i| kinds.get(i).copied())
-                .unwrap_or(HandleKind::Free)
-        })
-        .collect();
-    let sel = selected.and_then(|s| origin.iter().position(|o| *o == Some(s)));
-    (p, h, k, sel)
 }
 
 /// Reconstruct the curve with extra anchors wherever the control-polygon offset would stray from the true

@@ -88,6 +88,9 @@ pub(crate) fn paint_stroke_section(
         if brush.can_simplify {
             y = paint_simplify_row(ctx, theme, x, content_w, y);
         }
+        // Merge Curves — fold every open/parked shape into one/few dense curves (analogue of Selection Merge);
+        // a no-op when nothing is fillable. Shown whenever a shape editor is open (Enio 2026-07-05).
+        y = paint_merge_row(ctx, theme, x, content_w, y);
         // Ellipse / Polygon also get an "Edit" (E) button to convert to an editable curve.
         y = paint_apply_row(ctx, theme, x, content_w, y, method.is_convertible_shape());
         // Offset card — the perpendicular-offset slider + the Trim toggle. Line uses it too (its polyline
@@ -577,7 +580,7 @@ fn jitter_unit_options() -> Vec<DropdownOption<u8>> {
 /// The Apply / Apply & Keep / Delete button row (split out for the LOC cap).
 mod apply;
 mod op_card;
-use apply::{paint_apply_row, paint_offset_card, paint_simplify_row};
+use apply::{paint_apply_row, paint_merge_row, paint_offset_card, paint_simplify_row};
 
 #[cfg(test)]
 mod tests;

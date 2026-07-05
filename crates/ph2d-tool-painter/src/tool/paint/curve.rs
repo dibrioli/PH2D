@@ -39,10 +39,16 @@ pub(super) const CONVERT_ANCHOR_SPACING_PX: f32 = 16.0;
 const ARC_BOW: f32 = 0.15;
 /// Free Hand: cubic-fit error tolerance (px) — max deviation of the fitted curve from the captured path.
 pub(super) const FREEHAND_FIT_ERROR: f32 = 4.0;
-/// Selection **Simplify**: closed Douglas–Peucker tolerance (px) — accurate corners, few anchors (the
-/// "precise but few points" target; Enio 2026-07-05). Larger than the Convert fit error (the whole point of
-/// Simplify is to shed points).
-pub(super) const SELECTION_SIMPLIFY_TOL_PX: f32 = 3.0;
+/// **Merge**: the traced-contour reducer tolerance (px). FINER than Simplify — Merge wants a denser, more
+/// faithful curve (still spike-free) that the artist can Simplify further if they want (Enio 2026-07-05:
+/// "aumentar um pouco a densidade da curva do merge"). ~1px stays within a pixel of the true outline.
+pub(super) const MERGE_SIMPLIFY_TOL_PX: f32 = 1.0;
+/// **Simplify** is PROGRESSIVE (Enio 2026-07-05): each press targets this fraction of the CURRENT anchor
+/// count — a repeated ~20% drop, so the artist taps it until the curve is as light as they want.
+pub(super) const SIMPLIFY_KEEP_FRACTION: f32 = 0.8;
+/// Simplify never drops below this many anchors (a closed curve needs a real ring). The floor a repeated
+/// Simplify converges to.
+pub(super) const SIMPLIFY_MIN_POINTS: usize = 5;
 /// Free Hand: minimum squared spacing (px²) between captured path points — keeps the raw capture bounded.
 const MIN_CAPTURE_DIST_SQ: f32 = 4.0;
 /// Free Hand: hard cap on raw captured points during the drag (before the fit).
@@ -351,20 +357,24 @@ impl PainterTool {
         true
     }
 
-    /// Convert an open **Ellipse / Polygon** into an editable Bézier **Curve** (the panel's **Edit** / E
-    /// button): take its faithful anchors, drop the shape editor, switch the method to Curve. `false` if none.
+    /// **Convert to Curve** (the panel's Convert button): turn every open shape into its OWN editable Bézier
+    /// curve — NO merge (Merge Curves is a separate button now, mirroring Selection; Enio 2026-07-05). A lone
+    /// shape takes the faithful single-shape path (byte-identical to before); a multi-shape set converts each
+    /// shape independently, preserving its Operation. `false` when nothing converted.
     pub(crate) fn convert_open_shape_to_curve(&mut self) -> bool {
         self.flush_shape_txn(); // close any coalesced Offset drag first
-        // Add/Remove shapes interacting → convert the WHOLE boolean RESULT into one editable curve (Enio
-        // 2026-07-04), not just the active shape.
-        if self.has_boolean_shapes() {
-            return self.convert_boolean_result_to_curve();
+        if self.has_parked_shapes() {
+            return self.convert_each_shape_to_curve(); // multi-shape: per-shape, no merge
         }
+        self.convert_single_shape_to_curve()
+    }
+
+    /// Convert the lone active **Ellipse / Polygon** to an editable Bézier **Curve** (the classic single-shape
+    /// path), densifying to the Convert spacing. The curve is the PRISTINE shape (the live Offset is NOT baked
+    /// in — under drawing-only it persists as a drawing transform on the new curve, so nothing is doubly-offset
+    /// and no offset artifact can ever land in the control points; Enio 2026-07-05). One undo step.
+    fn convert_single_shape_to_curve(&mut self) -> bool {
         let before = self.capture_shape_model(); // the open Ellipse / Polygon (for undo of the conversion)
-        // Bake any live Offset into the shape's radii FIRST (resets the slider) so the conversion reads the
-        // displayed shape, not a doubly-offset one. At most one editor is open; each bake no-ops otherwise.
-        self.bake_ellipse_offset();
-        self.bake_polygon_offset();
         // Ellipse arcs are smooth (Aligned); polygon corners sharp (Free). Both keep explicit (manual) handles.
         let Some((points, handles, kind)) = self
             .ellipse_to_curve()
@@ -407,6 +417,61 @@ impl PainterTool {
         true
     }
 
+    /// Convert EVERY open shape (active + parked) to its own dense editable curve, preserving each shape's
+    /// Operation — the multi-shape per-shape Convert (mirrors `selection_convert_to_curve`; Enio 2026-07-05).
+    /// Ellipse/Polygon/closed-Line become PRISTINE curves (the live Offset is NOT baked in — it persists as a
+    /// drawing transform, so no offset self-cross can land in the control points); an OPEN Line is kept as-is.
+    /// The first result is installed as the active editor, the rest parked. One undo step. NEVER merges —
+    /// overlapping shapes stay separate editable curves.
+    fn convert_each_shape_to_curve(&mut self) -> bool {
+        use crate::undo::ShapeEditState;
+        let before = self.capture_shape_model();
+        // Parked-then-active order (matches the Merge collection), each as owned `(state, op)`.
+        let mut inputs: Vec<(ShapeEditState, super::stroke_multi::StrokeOp)> = self
+            .paint
+            .parked_shapes
+            .iter()
+            .map(|s| (s.state.clone(), s.op))
+            .collect();
+        if let Some(active) = self.capture_shape() {
+            inputs.push((*active, self.paint.active_op));
+        }
+        let mut outputs: Vec<(ShapeEditState, super::stroke_multi::StrokeOp)> =
+            Vec::with_capacity(inputs.len());
+        for (state, op) in inputs {
+            // PRISTINE conversion (no offset baked — it stays a drawing transform, keeping every anchor exactly
+            // on the shape). An open Line / non-convertible shape stays itself.
+            let out = match self.stroke_state_to_curve_state(&state) {
+                Some(cs) => ShapeEditState::Curve(cs),
+                None => state,
+            };
+            outputs.push((out, op));
+        }
+        if outputs.is_empty() {
+            self.paint.stroke_undo = None;
+            return false;
+        }
+        // Drop the live editors + parked set. The Offset is NOT reset — it persists as the drawing transform
+        // for the converted curves (drawing-only).
+        self.paint.curve = None;
+        self.paint.ellipse = None;
+        self.paint.polygon = None;
+        self.paint.line = None;
+        self.clear_parked_shapes();
+        let (first_state, first_op) = outputs.remove(0);
+        for (state, op) in outputs {
+            self.paint
+                .parked_shapes
+                .push(super::stroke_multi::StrokeShape { state, op });
+        }
+        self.paint.active_op = first_op;
+        self.install_shape_editor(first_state); // sets stroke_method = Arc for a Curve
+        self.refill_open_shape();
+        let after = self.capture_shape_model();
+        self.undo.record_structural(before, after);
+        true
+    }
+
     /// Cancel the curve (Esc): revert the painted preview to pristine + discard the session. `true` if open.
     pub fn curve_cancel(&mut self) -> bool {
         if self.paint.curve.is_none() {
@@ -440,27 +505,16 @@ impl PainterTool {
         if !ed.editing {
             return None;
         }
-        let d = self.shape_offset_px();
-        // Offset via the CAD reconstruction (inserts as many anchors + handles as the true parallel curve
-        // needs): the displayed offset is a faithful NEW curve and the user SEES the multiple points — no
-        // auto-simplification (Enio 2026-06-29). `origin` remaps the selection onto the dense anchors.
-        let (points, handles, origin) = curve_offset::offset_curve_refined(
-            &ed.model.points,
-            &ed.model.handles,
-            d,
-            ed.model.closed,
-        );
-        let osel = ed
-            .model
-            .selected
-            .and_then(|s| origin.iter().position(|o| *o == Some(s)));
+        // DRAWING-ONLY offset (Enio 2026-07-05, the Selection model): the whole EDITOR — control anchors,
+        // handles, gizmo AND the guide **line** (spine) — stays on the PRISTINE curve; ONLY the painted
+        // drawing (the black dabs, filled in `curve_fill`) is offset. So the artist edits the real curve and
+        // sees the offset result, with nothing in the editor moving or bunching (Enio 2026-07-05: "ponto e
+        // linha ficassem parados e apenas o desenho sofresse o offset").
+        let points = ed.model.points.clone();
+        let handles = ed.model.handles.clone();
+        let osel = ed.model.selected;
         let mut spine = Vec::new();
         curve_geom::flatten_spine(&points, &handles, ed.model.closed, &mut spine);
-        // Trim only the DRAWING (the painted spine + guide), NOT the control points — so the curve keeps its
-        // fidelity and the anchors may cross; the crossed loop just isn't painted (Enio 2026-06-28).
-        if self.paint.offset_trim {
-            spine = trim_offset_spine(&spine, ed.model.closed);
-        }
         // Which tangent handle (if any) is being dragged — for the overlay accent colour.
         let grabbed_handle = match ed.grab {
             Some(CurveGrab::Tangent(i, is_out)) => Some((i, is_out)),
@@ -529,18 +583,11 @@ impl PainterTool {
         self.curve_fill(&pts, &handles, closed, seed);
     }
 
-    /// Build a fresh [`Stroke`], flatten the (offset) curve, fill spaced dabs along the spine + route through
-    /// restore/re-stamp (no trail). Fresh-per-fill ⇒ deterministic for equal input.
+    /// Build a fresh [`Stroke`], compute the PERFECT offset spine (drawing-only), fill spaced dabs along it +
+    /// route through restore/re-stamp (no trail). Fresh-per-fill ⇒ deterministic for equal input; the painted
+    /// spine matches the overlay guide exactly.
     fn curve_fill(&mut self, pts: &[[f32; 2]], handles: &[[[f32; 2]; 2]], closed: bool, seed: u64) {
-        // Offset (densify) the control geometry → flatten to the dab spine (matches the overlay guide).
-        let (pts, handles, _) =
-            curve_offset::offset_curve_refined(pts, handles, self.shape_offset_px(), closed);
-        let mut spine = Vec::new();
-        curve_geom::flatten_spine(&pts, &handles, closed, &mut spine);
-        // Trim only the painted spine (matches the guide) — the control points keep crossing, full fidelity.
-        if self.paint.offset_trim {
-            spine = trim_offset_spine(&spine, closed);
-        }
+        let spine = self.offset_curve_spine(pts, handles, closed, self.shape_offset_px());
         let mut stroke = Stroke::new(self.paint.brush, self.paint.dynamics, seed);
         let mut dabs = std::mem::take(&mut self.paint.dabs);
         stroke.fill_polyline_preview(&spine, &mut dabs);
@@ -548,31 +595,33 @@ impl PainterTool {
         self.paint.dabs = dabs;
     }
 
-    /// **Materialise** the effective offset into the control geometry via the DENSIFIED reconstruction (the
-    /// editable curve GAINS the inserted anchors — keeps the displayed points; Enio 2026-06-29). Pre-edit only.
-    pub(super) fn bake_curve_offset(&mut self) {
-        let off = self.shape_offset_px();
-        if off != 0.0
-            && let Some(ed) = self.paint.curve.as_mut().filter(|ed| ed.editing)
-        {
-            let (p, h, k, sel) = curve_offset::offset_curve_refined_kinds(
-                &ed.model.points,
-                &ed.model.handles,
-                &ed.model.kinds,
-                ed.model.selected,
-                off,
-                ed.model.closed,
-            );
-            (
-                ed.model.points,
-                ed.model.handles,
-                ed.model.kinds,
-                ed.model.selected,
-            ) = (p, h, k, sel);
-            self.paint.shape_offset_base_px = 0.0;
-            self.paint.shape_offset_norm = 0.5;
+    /// The **drawing** spine of a curve at Offset `d` — the PERFECT CAD parallel curve, flattened for painting.
+    /// `offset_curve_refined` reconstructs the true offset with adaptive sub-pixel anchors (Levien 2022); we
+    /// keep ONLY its flattened spine (the drawing), never displaying its anchors — so the editable control
+    /// points stay pristine (no bunching) while the painted result is the exact parallel curve (Enio
+    /// 2026-07-05: "a curva perfeita"). Trim cuts the over-offset self-intersections when the toggle is on.
+    /// `d == 0` ⇒ the pristine spine. Shared by the active curve (overlay + fill) and the parked re-stamp.
+    pub(super) fn offset_curve_spine(
+        &self,
+        points: &[[f32; 2]],
+        handles: &[[[f32; 2]; 2]],
+        closed: bool,
+        d: f32,
+    ) -> Vec<[f32; 2]> {
+        let (op, oh, _) = curve_offset::offset_curve_refined(points, handles, d, closed);
+        let mut spine = Vec::new();
+        curve_geom::flatten_spine(&op, &oh, closed, &mut spine);
+        if self.paint.offset_trim {
+            spine = trim_offset_spine(&spine, closed);
         }
+        spine
     }
+
+    /// No-op under the DRAWING-ONLY offset (Enio 2026-07-05): the Offset never moves the control points, so
+    /// there is nothing to "bake" before an edit — the displayed dots already sit on the pristine anchors, so
+    /// hit-test matches without materialising anything (the former reconstruction bunched a dense curve). Kept
+    /// as a named seam so the edit-gesture / convert call sites stay explicit about the offset lifecycle.
+    pub(super) fn bake_curve_offset(&mut self) {}
 }
 
 /// Trim the offset spine's self-intersections for painting. A CLOSED curve keeps the larger region and

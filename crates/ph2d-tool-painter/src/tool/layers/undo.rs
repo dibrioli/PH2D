@@ -29,6 +29,8 @@ impl PainterTool {
             preview_patch: None,
             // Layer ops carry no parked stroke shapes; the shape paths override this via `capture_shape_model`.
             parked_shapes: Vec::new(),
+            // The ACTIVE shape's boolean op (captured always — cheap; makes the op-cycle tap undoable).
+            active_op: self.active_op_wire(),
             mask_scratch,
             mask_scratch_target,
             selection_mask,
@@ -70,6 +72,8 @@ impl PainterTool {
         );
         self.set_shape_offset_norm(m.offset_norm);
         self.set_shape_offset_base_px(m.offset_base_px);
+        // Reinstate the ACTIVE shape's boolean op so undoing a centre-square op-cycle tap rolls it back.
+        self.set_active_op_wire(m.active_op);
         // Reinstate (or clear) the open shape overlay: peel the snapshot canvas back to its pristine
         // baseline (strip the preview patch) and re-stamp the editor's geometry, so dots + pixels stay in
         // sync. A `None` shape just clears the editors. See `tool::paint::shape_snapshot`.
@@ -92,5 +96,16 @@ impl PainterTool {
     pub(crate) fn commit_structural_edit(&mut self, before: crate::undo::ModelSnapshot) {
         let after = self.snapshot_model();
         self.undo.record_structural(before, after);
+    }
+
+    /// [`Self::commit_structural_edit`] for a COALESCIBLE action (see [`crate::undo::CoalesceKind`]): a run
+    /// of repeated same-kind actions collapses into one undo entry spanning first-before → latest-after.
+    pub(crate) fn commit_structural_edit_coalesced(
+        &mut self,
+        kind: crate::undo::CoalesceKind,
+        before: crate::undo::ModelSnapshot,
+    ) {
+        let after = self.snapshot_model();
+        self.undo.record_structural_coalesced(kind, before, after);
     }
 }

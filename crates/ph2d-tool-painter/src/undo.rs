@@ -56,6 +56,10 @@ pub struct ModelSnapshot {
     /// isn't the one live editor (`shape`). Captured so a structural undo/redo restores the whole editable
     /// set in lock-step with the baked/preview pixels, not just the active one. Empty = single/no shape.
     pub parked_shapes: Vec<ParkedShapeState>,
+    /// The ACTIVE stroke shape's boolean Operation (wire `0`=Overlay `1`=Add `2`=Remove) at capture time —
+    /// the parked shapes carry theirs inline ([`ParkedShapeState::op`]) but the active one lives outside the
+    /// editor state, so without this a centre-square op-cycle tap was NOT undoable (Enio 2026-07-05).
+    pub active_op: u8,
     /// The **Mask** brush's transient scratch buffer + its target layer at capture time. A mask stroke
     /// mutates only this scratch (it swaps in/out of `canvas_rgba`, which stays unchanged), so without
     /// capturing it here a mask stroke produced a no-op undo entry and could not be rolled back. Restoring
@@ -202,6 +206,22 @@ pub struct PreviewPatch {
 /// (that depth becomes non-undoable, like a ring history).
 pub const DEFAULT_MAX_DEPTH: usize = 300;
 
+/// Marker for entries that may COALESCE with an immediately-preceding entry of the same kind: a run of
+/// repeated same-kind actions (N progressive-Simplify presses, N boolean-op taps on the same shape)
+/// collapses into ONE undo step whose `before` is the state before the FIRST action and whose `after`
+/// tracks the latest (Enio 2026-07-05: the curve workflow's undo was too granular — "cada mínima ação
+/// entra na sequência"). Any other action (a normal entry) breaks the run.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum CoalesceKind {
+    /// A **Simplify** press (stroke curve or selection curves) — progressive presses are one logical
+    /// "simplify to taste" action; one undo restores the pre-Simplify curve.
+    Simplify,
+    /// A centre-square boolean-op cycle tap on the ACTIVE stroke shape.
+    OpCycleStroke,
+    /// A centre-square Add↔Remove tap on selection shape `i` — taps on DIFFERENT shapes don't coalesce.
+    OpCycleSelection(usize),
+}
+
 /// One retained history entry: a structural edit stored as BOTH endpoints (the
 /// model `before` and `after` the edit). Carrying both means the entry needs no
 /// live state to swap directions; structural edits are user-paced (rare) so two
@@ -210,6 +230,9 @@ pub const DEFAULT_MAX_DEPTH: usize = 300;
 struct UndoEntry {
     before: Box<ModelSnapshot>,
     after: Box<ModelSnapshot>,
+    /// `Some` for a coalescible action — see [`CoalesceKind`]. Plain entries carry `None` and thereby
+    /// BREAK any run in progress.
+    kind: Option<CoalesceKind>,
 }
 
 /// Snapshot-based undo/redo for the editable layer model.
@@ -252,6 +275,33 @@ impl UndoController {
         self.undo.push(UndoEntry {
             before: Box::new(before),
             after: Box::new(after),
+            kind: None,
+        });
+        self.redo.clear();
+        self.cap();
+    }
+
+    /// Record a COALESCIBLE structural transition: when the newest undo entry carries the SAME
+    /// [`CoalesceKind`] (and no redo branch intervenes), the run extends — the top entry keeps its
+    /// original `before` and adopts this `after` — so N repeated same-kind actions undo as ONE step.
+    /// Otherwise it pushes a fresh entry (which starts a new run).
+    pub fn record_structural_coalesced(
+        &mut self,
+        kind: CoalesceKind,
+        before: ModelSnapshot,
+        after: ModelSnapshot,
+    ) {
+        if self.redo.is_empty()
+            && let Some(top) = self.undo.last_mut()
+            && top.kind == Some(kind)
+        {
+            *top.after = after;
+            return;
+        }
+        self.undo.push(UndoEntry {
+            before: Box::new(before),
+            after: Box::new(after),
+            kind: Some(kind),
         });
         self.redo.clear();
         self.cap();
@@ -334,6 +384,7 @@ mod tests {
             offset_base_px: 0.0,
             preview_patch: None,
             parked_shapes: Vec::new(),
+            active_op: 0,
             mask_scratch: Arc::new(Vec::new()),
             mask_scratch_target: None,
             selection_mask: Arc::new(Vec::new()),
@@ -378,6 +429,60 @@ mod tests {
         assert!(c.can_redo());
         c.record_structural(model(1), model(3));
         assert!(!c.can_redo(), "a new edit must invalidate the redo branch");
+    }
+
+    /// A run of same-kind coalescible entries collapses to ONE undo step spanning first-before →
+    /// latest-after; a plain entry breaks the run; an undo/redo boundary never merges across.
+    #[test]
+    fn coalesced_runs_merge_and_break_correctly() {
+        let mut c = UndoController::new(DEFAULT_MAX_DEPTH);
+        c.record_structural_coalesced(CoalesceKind::Simplify, model(0), model(1));
+        c.record_structural_coalesced(CoalesceKind::Simplify, model(1), model(2));
+        c.record_structural_coalesced(CoalesceKind::Simplify, model(2), model(3));
+        assert_eq!(c.undo_depth(), 1, "three Simplify presses = one entry");
+        let restored = c.undo().expect("entry");
+        assert_eq!(
+            restored.canvas_rgba.as_slice(),
+            &[0; 16],
+            "one undo restores the state before the FIRST press"
+        );
+        let fwd = c.redo().expect("entry");
+        assert_eq!(
+            fwd.canvas_rgba.as_slice(),
+            &[3; 16],
+            "redo lands on the LATEST press"
+        );
+        // A different kind never merges.
+        c.record_structural_coalesced(CoalesceKind::OpCycleSelection(0), model(3), model(4));
+        c.record_structural_coalesced(CoalesceKind::OpCycleSelection(1), model(4), model(5));
+        assert_eq!(
+            c.undo_depth(),
+            3,
+            "different shapes' taps stay separate entries"
+        );
+        // A plain entry breaks the run: the next same-kind action starts a NEW entry.
+        c.record_structural_coalesced(CoalesceKind::Simplify, model(5), model(6));
+        c.record_structural(model(6), model(7));
+        c.record_structural_coalesced(CoalesceKind::Simplify, model(7), model(8));
+        assert_eq!(
+            c.undo_depth(),
+            6,
+            "a plain entry between runs prevents merging"
+        );
+    }
+
+    /// After an undo, a new same-kind action must NOT merge into the undone entry (the redo branch is
+    /// discarded and a fresh run starts) — merging across the boundary would corrupt the timeline.
+    #[test]
+    fn coalescing_never_merges_across_an_undo_boundary() {
+        let mut c = UndoController::new(DEFAULT_MAX_DEPTH);
+        c.record_structural_coalesced(CoalesceKind::Simplify, model(0), model(1));
+        c.undo();
+        c.record_structural_coalesced(CoalesceKind::Simplify, model(0), model(9));
+        assert_eq!(c.undo_depth(), 1);
+        assert!(!c.can_redo(), "the redo branch was discarded");
+        let restored = c.undo().expect("entry");
+        assert_eq!(restored.canvas_rgba.as_slice(), &[0; 16]);
     }
 
     #[test]

@@ -115,6 +115,26 @@ pub(super) fn paint_simplify_row(
     y + ROW_H_PX + Spacing::Xs.px()
 }
 
+/// Paint the **Merge Curves** button row (full width) under Simplify — folds every open/parked shape into
+/// one/few high-precision dense curves (the tool's `merge_open_shapes_to_curves`, the analogue of the
+/// Selection Merge). Shown for the open-shape methods; a no-op when there is nothing fillable. Returns `y`.
+pub(super) fn paint_merge_row(
+    ctx: &mut PaintCtx,
+    theme: ph2d_tokens::Theme,
+    x: f32,
+    content_w: f32,
+    y: f32,
+) -> f32 {
+    button(
+        ctx,
+        theme,
+        Rect::new(x, y, content_w, ROW_H_PX),
+        Some("Merge Curves"),
+        core_ids::PAINTER_BRUSH_STROKE_MERGE,
+    );
+    y + ROW_H_PX + Spacing::Xs.px()
+}
+
 /// Paint the **Offset** card (modeled on the Jitter card): the perpendicular-offset slider, then a **Trim**
 /// checkbox (cut the offset's self-intersections — insert a point at the crossing, drop the looped excess).
 /// Shown for the open-shape methods. Returns the next `y`.

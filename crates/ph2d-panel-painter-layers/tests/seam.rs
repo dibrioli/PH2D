@@ -303,6 +303,10 @@ fn stroke_apply_buttons_forward_their_click() {
         core_ids::PAINTER_BRUSH_STROKE_APPLY_KEEP,
         core_ids::PAINTER_BRUSH_STROKE_DELETE,
         core_ids::PAINTER_BRUSH_STROKE_EDIT,
+        // Simplify + Merge (Enio 2026-07-05): both are momentary curve verbs; the forward allowlist collapsed
+        // to `PAINTER_BRUSH_STROKE_BUTTONS.contains()`, so this guards that the array carries them.
+        core_ids::PAINTER_BRUSH_STROKE_SIMPLIFY,
+        core_ids::PAINTER_BRUSH_STROKE_MERGE,
         // Multi-shape OPERATION segments (Enio 2026-07-04): these were NOT in the forward allowlist, so a
         // real click never reached the tool and the segment never activated. Regression guard.
         core_ids::PAINTER_STROKE_OP_OVERLAY,

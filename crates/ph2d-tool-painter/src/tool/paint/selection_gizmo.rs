@@ -395,12 +395,21 @@ impl PainterTool {
     fn selection_gizmo_up(&mut self) -> bool {
         // Pen-up on an un-dragged centre-square tap → cycle that shape's Operation (Add ↔ Remove). The
         // pending move produced only an identity translation, so the sole change committed is the op flip.
-        if let Some((shape, _)) = self.paint.selection_op_tap.take() {
+        let tapped = self.paint.selection_op_tap.take();
+        if let Some((shape, _)) = tapped {
             self.cycle_selection_op(shape);
         }
         let had = self.paint.selection_grab.take().is_some();
         if had && let Some(before) = self.paint.stroke_undo.take() {
-            self.commit_structural_edit(before);
+            if let Some((shape, _)) = tapped {
+                // COALESCED per shape: N consecutive taps on the same centre square = ONE undo step.
+                self.commit_structural_edit_coalesced(
+                    crate::undo::CoalesceKind::OpCycleSelection(shape),
+                    before,
+                );
+            } else {
+                self.commit_structural_edit(before);
+            }
         }
         had
     }

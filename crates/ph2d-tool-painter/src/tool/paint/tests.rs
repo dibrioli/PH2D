@@ -2504,33 +2504,45 @@ fn offset_slider_shifts_the_open_curve_in_real_time() {
 }
 
 #[test]
-fn offset_bakes_into_the_geometry_on_apply_keep_and_resets_the_slider() {
+fn offset_apply_keep_absorbs_the_offset_keeping_the_drawing_put() {
     use ph2d_editor_core::ids as core_ids;
     use ph2d_editor_core::tool::{PanelEvent, Tool};
     use ph2d_painter_brush::StrokeMethod;
-    // Apply & Keep bakes the live Offset into the kept curve (its position is now offset 0) and resets the
-    // slider to centre (0.5). Draw a curve, offset it, Apply & Keep, then assert the slider snapped back to
-    // 0.5 AND the kept overlay sits at the offset position (so it does not jump when the offset clears).
+    // Under DRAWING-ONLY offset (Enio 2026-07-05): the guide LINE stays on the pristine curve (y=32) while the
+    // painted DRAWING is offset up (apex ~y=5). Apply & Keep folds the slider into the accumulator (slider →
+    // 0.5) WITHOUT moving the geometry — so the painted drawing stays up and the guide stays pristine (no jump).
     let mut t = white_canvas(64, 2.0);
     t.paint.brush.stroke_method = StrokeMethod::Arc;
     t.on_canvas_pointer(cp([8.0, 32.0], PointerPhase::Down));
     t.on_canvas_pointer(cp([56.0, 32.0], PointerPhase::Move));
     t.on_canvas_pointer(cp([56.0, 32.0], PointerPhase::Up));
     t.handle_panel_event(PanelEvent::SetValue(core_ids::PAINTER_BRUSH_OFFSET, 0.6)); // +20px up
-    let off_spine_y = t.curve_overlay().unwrap().spine[0][1];
+    // The guide LINE stays on the pristine curve at y≈32; only the DRAWING moved up.
+    let guide_y = t.curve_overlay().unwrap().spine[0][1];
     assert!(
-        off_spine_y < 25.0,
-        "the offset overlay sits up near y=12: {off_spine_y}"
+        (guide_y - 32.0).abs() < 2.0,
+        "the guide line stays on the pristine curve: {guide_y}"
+    );
+    assert!(
+        px(&t, 64, 32, 5)[0] < 200,
+        "the painted drawing is offset up (apex ~y=5): {:?}",
+        px(&t, 64, 32, 5)
     );
     t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_BRUSH_STROKE_APPLY_KEEP));
     assert!(
         (t.brush_settings().offset - 0.5).abs() < 1e-4,
         "the Offset slider reset to centre"
     );
-    let kept_spine_y = t.curve_overlay().expect("kept open").spine[0][1];
+    // The guide is still pristine and the drawing is still up — Apply & Keep absorbed the offset, no jump.
+    let kept_guide_y = t.curve_overlay().expect("kept open").spine[0][1];
     assert!(
-        (kept_spine_y - off_spine_y).abs() < 1.0,
-        "the kept curve stayed at the offset position (no jump): {kept_spine_y} vs {off_spine_y}"
+        (kept_guide_y - 32.0).abs() < 2.0,
+        "the guide stayed pristine after Apply & Keep: {kept_guide_y}"
+    );
+    assert!(
+        px(&t, 64, 32, 5)[0] < 200,
+        "the painted drawing stayed up after Apply & Keep: {:?}",
+        px(&t, 64, 32, 5)
     );
 }
 
@@ -2608,36 +2620,38 @@ fn edit_button_converts_circle_into_an_editable_curve() {
 }
 
 #[test]
-fn edit_after_offset_bakes_first_so_the_converted_circle_is_not_deformed() {
+fn edit_with_a_live_offset_converts_the_pristine_circle_keeping_the_offset() {
     use ph2d_editor_core::ids as core_ids;
     use ph2d_editor_core::tool::{PanelEvent, Tool};
     use ph2d_painter_brush::StrokeMethod;
-    // Regression (Enio 2026-06-28): E (Edit) with a live Offset converted the BASE circle and then re-applied
-    // the offset on top (double offset → deformed curve). Now convert bakes the offset first: the slider
-    // resets to 0.5 and the converted anchors sit at the OFFSET (effective) radius, evenly around the centre.
+    // Drawing-only (Enio 2026-07-05): Edit (convert) with a live Offset produces the PRISTINE circle as a
+    // curve (anchors at radius 20, NOT the offset radius) and the offset PERSISTS as a drawing transform (the
+    // slider is NOT reset). So no offset artifact can land in the control points, and there is no double
+    // offset (supersedes the old bake-the-offset behavior).
     let mut t = white_canvas(96, 3.0);
     t.paint.brush.stroke_method = StrokeMethod::Ellipse;
     t.on_canvas_pointer(cp([48.0, 48.0], PointerPhase::Down));
     t.on_canvas_pointer(cp([68.0, 48.0], PointerPhase::Move)); // radius 20
     t.on_canvas_pointer(cp([68.0, 48.0], PointerPhase::Up));
-    t.handle_panel_event(PanelEvent::SetValue(core_ids::PAINTER_BRUSH_OFFSET, 0.6)); // +20px → radius ~40
+    t.handle_panel_event(PanelEvent::SetValue(core_ids::PAINTER_BRUSH_OFFSET, 0.6)); // +20px
     t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_BRUSH_STROKE_EDIT));
     assert!(
-        (t.brush_settings().offset - 0.5).abs() < 1e-4,
-        "Edit baked the offset → slider reset to 0.5"
+        (t.brush_settings().offset - 0.6).abs() < 1e-4,
+        "the offset PERSISTS through convert (drawing-only) — slider not reset: {}",
+        t.brush_settings().offset
     );
     let ov = t.curve_overlay().expect("a curve opened");
     assert!(
         ov.points.len() >= 8,
-        "dense convert: many anchors ({})",
+        "dense convert: {} anchors",
         ov.points.len()
     );
-    // Every anchor is ~40px from the centre (the effective radius), so the circle is NOT deformed.
+    // Every anchor sits at the PRISTINE radius ~20 (the offset was NOT baked in) — exactly on the circle.
     for p in &ov.points {
         let r = ((p[0] - 48.0).powi(2) + (p[1] - 48.0).powi(2)).sqrt();
         assert!(
-            (r - 40.0).abs() < 2.0,
-            "anchor sits at the offset radius ~40: r={r}"
+            (r - 20.0).abs() < 2.0,
+            "anchor sits at the pristine radius ~20, not the offset radius: r={r}"
         );
     }
 }
@@ -6036,6 +6050,23 @@ fn simplify_is_hidden_until_a_point_is_added_on_a_plain_curve() {
     );
 }
 
+/// A CONVERTED curve (Ellipse/Polygon → dense closed Bézier) exposes **Simplify** immediately — it is closed
+/// and dense, exactly what Simplify reduces; the button used to stay hidden until a point was added (Enio
+/// 2026-07-05: "onde está o botão simplify curve?").
+#[test]
+fn simplify_is_available_on_a_converted_curve() {
+    let mut t = white_canvas(96, 3.0);
+    t.paint.brush.stroke_method = StrokeMethod::Ellipse;
+    t.on_canvas_pointer(cp([48.0, 48.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([80.0, 48.0], PointerPhase::Move));
+    t.on_canvas_pointer(cp([80.0, 48.0], PointerPhase::Up));
+    assert!(t.convert_open_shape_to_curve(), "converted to a curve");
+    assert!(
+        t.brush_settings().can_simplify,
+        "Simplify is available on a converted (closed dense) curve, no point-add needed"
+    );
+}
+
 #[test]
 fn curve_apply_and_keep_keeps_the_exact_curve_and_recentres_the_slider() {
     // Apply & Keep must NOT move or alter the curve (Enio 2026-06-28): the live offset is folded into the
@@ -7912,11 +7943,26 @@ fn selection_merge_collapses_overlapping_curves_into_one_dense_curve() {
         "the merged curve is high-precision multipoint, got {} points",
         model.points.len()
     );
-    assert_eq!(t.paint.selection_shapes[0].op, 0, "the sole curve is the base");
+    assert_eq!(
+        t.paint.selection_shapes[0].op, 0,
+        "the sole curve is the base"
+    );
     // Union coverage preserved: interior of each original rect stays selected, far outside does not.
-    assert_eq!(t.selection_coverage_at(14, 14), 255, "first rect interior kept");
-    assert_eq!(t.selection_coverage_at(46, 46), 255, "second rect interior kept");
-    assert_eq!(t.selection_coverage_at(60, 4), 0, "outside stays unselected");
+    assert_eq!(
+        t.selection_coverage_at(14, 14),
+        255,
+        "first rect interior kept"
+    );
+    assert_eq!(
+        t.selection_coverage_at(46, 46),
+        255,
+        "second rect interior kept"
+    );
+    assert_eq!(
+        t.selection_coverage_at(60, 4),
+        0,
+        "outside stays unselected"
+    );
 }
 
 /// **Simplify Curve** reworked (Enio 2026-07-05): re-fits EVERY converted curve (works on the multi-curve
@@ -7942,7 +7988,10 @@ fn selection_simplify_reduces_points_on_all_curves() {
             _ => None,
         })
         .sum();
-    assert!(dense >= 8, "convert produced dense curves, got {dense} points");
+    assert!(
+        dense >= 8,
+        "convert produced dense curves, got {dense} points"
+    );
     t.selection_simplify_curve();
     let sparse: usize = t
         .paint
@@ -7976,7 +8025,10 @@ fn selection_centre_square_tap_cycles_add_remove() {
     t.on_canvas_pointer(cp([30.0, 30.0], PointerPhase::Down));
     t.on_canvas_pointer(cp([58.0, 58.0], PointerPhase::Up));
     t.selection_convert_to_curve();
-    assert_eq!(t.paint.selection_shapes[1].op, 1, "second curve starts as Add");
+    assert_eq!(
+        t.paint.selection_shapes[1].op, 1,
+        "second curve starts as Add"
+    );
     let c = sel_freehand_center(&t.paint.selection_shapes[1].shape);
     // TAP (no move) on the centre square → Add → Remove.
     t.selection_gizmo_pointer(cp(c, PointerPhase::Down));
@@ -9494,13 +9546,217 @@ fn selection_works_after_shape_stroke_and_undo() {
     );
 }
 
-/// Convert-to-Curve over interacting Add/Remove shapes folds the WHOLE boolean RESULT into ONE editable
-/// curve (Enio 2026-07-04), replacing the shapes — not just converting the active one.
+/// **Stroke Simplify** on a CLOSED curve uses the robust reducer (Enio 2026-07-05): the old Schneider
+/// `simplify_curve` degenerated a converted circle to 2 identical points; `simplify_closed_smooth` keeps it
+/// closed with far fewer, non-degenerate anchors.
 #[test]
-fn convert_to_curve_folds_the_boolean_result_into_one_curve() {
+fn stroke_simplify_reduces_a_dense_closed_curve_without_degenerating() {
     let mut t = white_canvas(64, 2.0);
+    // Draw a Polygon (square), then Convert → a DENSE closed curve: the straight edges densify to many
+    // COLLINEAR anchors, which Simplify removes (the corners stay). A circle would already sit at its
+    // fidelity minimum (no reduction) — the polygon proves the reducer actually sheds points.
+    t.paint.brush.stroke_method = StrokeMethod::Polygon;
+    t.on_canvas_pointer(cp([32.0, 32.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([56.0, 32.0], PointerPhase::Move));
+    t.on_canvas_pointer(cp([56.0, 32.0], PointerPhase::Up));
+    assert!(t.paint.polygon.is_some(), "polygon drawn");
+    assert!(
+        t.convert_open_shape_to_curve(),
+        "converted to a dense curve"
+    );
+    let dense = t
+        .paint
+        .curve
+        .as_ref()
+        .expect("curve open after convert")
+        .model
+        .points
+        .len();
+    assert!(dense >= 8, "the converted curve is dense: {dense}");
+    // Simplify the CLOSED curve — must reduce, stay closed, and NOT degenerate (the old Schneider fit
+    // collapsed a start==end loop to 2 identical points).
+    assert!(t.curve_simplify(), "simplify applied");
+    let ed = t.paint.curve.as_ref().expect("curve still open");
+    assert!(ed.model.closed, "the curve stays closed");
+    assert!(
+        ed.model.points.len() > 2,
+        "NOT degenerate, got {} points",
+        ed.model.points.len()
+    );
+    assert!(
+        ed.model.points.len() < dense,
+        "reduced from the dense {dense} anchors to {}",
+        ed.model.points.len()
+    );
+}
+
+/// **Simplify = least-squares REFIT** (Enio 2026-07-05, the Inkscape/paper.js pipeline): a dense converted
+/// circle collapses to VERY FEW anchors whose fitted curve still hugs the true circle to sub-pixel; smooth
+/// joins are **Aligned**, corners **Free** — the two kinds a least-squares fit produces. Pressing again
+/// keeps reducing (never increases) down to a floor.
+#[test]
+fn simplify_refits_a_circle_to_few_faithful_anchors() {
+    use super::curve_handle::HandleKind;
+    let mut t = white_canvas(96, 3.0);
     t.paint.brush.stroke_method = StrokeMethod::Ellipse;
-    let add_ellipse = |c: [f32; 2], r: f32| stroke_multi::StrokeShape {
+    t.on_canvas_pointer(cp([48.0, 48.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([88.0, 48.0], PointerPhase::Move)); // radius 40 → dense convert
+    t.on_canvas_pointer(cp([88.0, 48.0], PointerPhase::Up));
+    assert!(t.convert_open_shape_to_curve());
+    let dense = t.paint.curve.as_ref().unwrap().model.points.len();
+    assert!(dense >= 12, "dense start: {dense}");
+    assert!(t.curve_simplify(), "first press applied");
+    let ed = t.paint.curve.as_ref().unwrap();
+    let n1 = ed.model.points.len();
+    // A circle is smooth → NO corners: every anchor is a fitted smooth join (Aligned), and the fit needs
+    // only a handful of anchors ("números de pontos bem reduzidos").
+    assert!(
+        n1 <= dense / 2,
+        "big reduction on the first press: {dense} → {n1}"
+    );
+    for k in &ed.model.kinds {
+        assert!(
+            matches!(k, HandleKind::Aligned),
+            "a smooth circle has only Aligned fitted joins, got {k:?}"
+        );
+    }
+    // FIDELITY: the fitted curve still hugs the true circle (centre 48,48 r=40) to ~1px.
+    let mut spine = Vec::new();
+    super::curve_geom::flatten_spine(&ed.model.points, &ed.model.handles, true, &mut spine);
+    for p in &spine {
+        let r = ((p[0] - 48.0).powi(2) + (p[1] - 48.0).powi(2)).sqrt();
+        assert!(
+            (r - 40.0).abs() < 1.5,
+            "fitted curve stays on the circle: r={r:.2}"
+        );
+    }
+    // Repeated presses never increase the count and respect the floor.
+    let mut prev = n1;
+    for _ in 0..4 {
+        if !t.curve_simplify() {
+            break; // nothing left to shed — a valid stop
+        }
+        let n = t.paint.curve.as_ref().unwrap().model.points.len();
+        assert!(n < prev, "each accepted press reduces: {prev} → {n}");
+        assert!(n >= 4, "never collapses below a real ring: {n}");
+        prev = n;
+    }
+}
+
+/// **Simplify preserves CORNERS as Free anchors** (Enio 2026-07-05): a converted regular polygon refits to
+/// exactly its vertices — tagged `Free` (independent fitted arms), never smoothed away.
+#[test]
+fn simplify_refits_a_polygon_to_exactly_its_free_corners() {
+    use super::curve_handle::HandleKind;
+    let mut t = white_canvas(96, 3.0);
+    t.paint.brush.stroke_method = StrokeMethod::Polygon;
+    t.on_canvas_pointer(cp([48.0, 48.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([80.0, 48.0], PointerPhase::Move)); // radius 32
+    t.on_canvas_pointer(cp([80.0, 48.0], PointerPhase::Up));
+    let sides = t
+        .paint
+        .polygon
+        .as_ref()
+        .expect("polygon open")
+        .to_state()
+        .sides as usize;
+    assert!(t.convert_open_shape_to_curve());
+    let dense = t.paint.curve.as_ref().unwrap().model.points.len();
+    assert!(dense >= 8, "dense start: {dense}");
+    assert!(t.curve_simplify(), "simplify applied");
+    let ed = t.paint.curve.as_ref().unwrap();
+    let corners = ed
+        .model
+        .kinds
+        .iter()
+        .filter(|k| matches!(k, HandleKind::Free))
+        .count();
+    assert_eq!(
+        corners, sides,
+        "every polygon vertex survives as a Free corner anchor"
+    );
+    for k in &ed.model.kinds {
+        assert!(
+            matches!(k, HandleKind::Free | HandleKind::Aligned),
+            "only Free corners + Aligned smooth joins, got {k:?}"
+        );
+    }
+    assert!(
+        ed.model.points.len() <= sides * 2,
+        "a straight-edged polygon needs little beyond its corners: {}",
+        ed.model.points.len()
+    );
+}
+
+/// **Drawing-only Offset** (Enio 2026-07-05, the Selection model): offsetting a CONVERTED curve leaves the
+/// whole EDITOR — control anchors AND the guide line (spine) — on the PRISTINE curve; ONLY the painted
+/// drawing (pixels) shifts. Nothing in the editor moves or bunches ("ponto e linha ficassem parados e apenas
+/// o desenho sofresse o offset").
+#[test]
+fn offset_moves_only_the_painted_drawing_not_the_editor() {
+    use ph2d_editor_core::ids as core_ids;
+    use ph2d_editor_core::tool::{PanelEvent, Tool};
+    let mut t = white_canvas(128, 2.0);
+    t.paint.brush.stroke_method = StrokeMethod::Ellipse;
+    t.on_canvas_pointer(cp([64.0, 64.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([104.0, 64.0], PointerPhase::Move)); // radius 40
+    t.on_canvas_pointer(cp([104.0, 64.0], PointerPhase::Up));
+    assert!(
+        t.convert_open_shape_to_curve(),
+        "converted to a dense curve"
+    );
+    let ov0 = t.curve_overlay().expect("curve open");
+    let pristine = ov0.points.clone();
+    let pristine_spine = ov0.spine.clone();
+    let max_r = |ps: &[[f32; 2]]| {
+        ps.iter()
+            .map(|p| ((p[0] - 64.0).powi(2) + (p[1] - 64.0).powi(2)).sqrt())
+            .fold(0.0f32, f32::max)
+    };
+    // Topmost painted (black) row — the extent of the DRAWING.
+    let top_black = |t: &PainterTool| -> u32 {
+        for y in 0..128 {
+            for x in 0..128 {
+                if px(t, 128, x, y) == [0, 0, 0, 255] {
+                    return y;
+                }
+            }
+        }
+        128
+    };
+    let base_top = top_black(&t);
+    // Big inward offset — via the panel event, so the preview re-fills like the real app.
+    t.handle_panel_event(PanelEvent::SetValue(core_ids::PAINTER_BRUSH_OFFSET, 0.35)); // −30px
+    let ov = t.curve_overlay().expect("curve still open");
+    // The EDITOR is untouched: control points AND the guide line both stay on the pristine curve.
+    assert_eq!(
+        ov.points.len(),
+        pristine.len(),
+        "no control points added/removed"
+    );
+    for (a, b) in ov.points.iter().zip(&pristine) {
+        assert!(
+            (a[0] - b[0]).abs() < 1e-3 && (a[1] - b[1]).abs() < 1e-3,
+            "control point stayed pristine: {a:?} vs {b:?}"
+        );
+    }
+    assert!(
+        (max_r(&ov.spine) - max_r(&pristine_spine)).abs() < 1.0,
+        "the guide LINE stayed on the pristine curve (radius {:.1} vs {:.1})",
+        max_r(&ov.spine),
+        max_r(&pristine_spine)
+    );
+    // But the DRAWING (painted pixels) moved inward — its topmost black row dropped by ~the offset.
+    let off_top = top_black(&t);
+    assert!(
+        off_top > base_top + 15,
+        "the painted drawing shifted inward: top black row {base_top} → {off_top}"
+    );
+}
+
+/// A parked Add ellipse `StrokeShape` fixture for the Convert/Merge tests.
+fn add_ellipse_shape(c: [f32; 2], r: f32) -> stroke_multi::StrokeShape {
+    stroke_multi::StrokeShape {
         state: crate::undo::ShapeEditState::Ellipse(crate::undo::EllipseState {
             center: c,
             u: [1.0, 0.0],
@@ -9510,23 +9766,73 @@ fn convert_to_curve_folds_the_boolean_result_into_one_curve() {
             seed: 1,
         }),
         op: stroke_multi::StrokeOp::Add,
-    };
-    // Two OVERLAPPING Add ellipses → one boolean region.
-    t.paint.parked_shapes.push(add_ellipse([24.0, 32.0], 12.0));
-    t.paint.parked_shapes.push(add_ellipse([40.0, 32.0], 12.0));
-    assert!(t.has_boolean_shapes());
-    assert!(
-        t.convert_open_shape_to_curve(),
-        "converted the boolean result"
-    );
+    }
+}
+
+/// **Convert to Curve** is now PER-SHAPE (Enio 2026-07-05): each shape becomes its OWN editable dense curve,
+/// preserving its Operation — it NEVER merges (that is the separate Merge button). Two Add ellipses → two
+/// curves (one active + one parked), both still Add.
+#[test]
+fn convert_to_curve_is_per_shape_not_merged() {
+    let mut t = white_canvas(64, 2.0);
+    t.paint.brush.stroke_method = StrokeMethod::Ellipse;
+    t.paint
+        .parked_shapes
+        .push(add_ellipse_shape([24.0, 32.0], 12.0));
+    t.paint
+        .parked_shapes
+        .push(add_ellipse_shape([44.0, 32.0], 12.0));
+    assert!(t.convert_open_shape_to_curve(), "converted per-shape");
     assert!(
         t.paint.curve.is_some(),
-        "the boolean result is now the live editable Curve"
+        "the first shape is now the live editable Curve"
+    );
+    assert_eq!(
+        t.paint.parked_shapes.len(),
+        1,
+        "the OTHER ellipse became its OWN parked curve — NOT merged"
+    );
+    assert!(
+        matches!(
+            t.paint.parked_shapes[0].state,
+            crate::undo::ShapeEditState::Curve(_)
+        ),
+        "the parked shape is now a Curve, not still an Ellipse"
+    );
+    assert_eq!(
+        t.paint.active_op,
+        stroke_multi::StrokeOp::Add,
+        "the active curve keeps its Add op"
+    );
+    assert_eq!(
+        t.paint.parked_shapes[0].op,
+        stroke_multi::StrokeOp::Add,
+        "the parked curve keeps its Add op"
+    );
+}
+
+/// **Merge Curves** folds interacting Add shapes into ONE editable curve tracing the union — the behavior
+/// Convert used to auto-do, now its own button (Enio 2026-07-05).
+#[test]
+fn merge_curves_folds_the_boolean_result_into_one_curve() {
+    let mut t = white_canvas(64, 2.0);
+    t.paint.brush.stroke_method = StrokeMethod::Ellipse;
+    // Two OVERLAPPING Add ellipses → one boolean region.
+    t.paint
+        .parked_shapes
+        .push(add_ellipse_shape([24.0, 32.0], 12.0));
+    t.paint
+        .parked_shapes
+        .push(add_ellipse_shape([40.0, 32.0], 12.0));
+    assert!(t.merge_open_shapes_to_curves(), "merged the fill composite");
+    assert!(
+        t.paint.curve.is_some(),
+        "the merged result is the live editable Curve"
     );
     assert_eq!(
         t.paint.parked_shapes.len(),
         0,
-        "the two ellipses were folded into the single curve (one region → one curve)"
+        "the two ellipses folded into the single curve (one region → one curve)"
     );
     // The curve traces the union boundary — its outer-left edge is painted, the overlap centre is not.
     let scan = |t: &PainterTool, x: u32, y: u32| {
@@ -9536,7 +9842,140 @@ fn convert_to_curve_folds_the_boolean_result_into_one_curve() {
     };
     assert!(
         scan(&t, 12, 32),
-        "the folded curve strokes the union outer boundary"
+        "the merged curve strokes the union outer boundary"
+    );
+}
+
+/// **Corner offset stays SHARP** (Enio 2026-07-05: "arredonda as quinas no offset"): a refit corner must be
+/// re-anchored on the TRUE edge-line intersection past the trace-smoothing's rounded tip — because an offset
+/// AMPLIFIES tip rounding by |d|. A smoothing-rounded square ring refits to razor corners at the exact square
+/// vertices, and its outward offset reaches each true miter apex instead of rounding it off.
+#[test]
+fn refit_corner_offset_reaches_the_sharp_miter_apex() {
+    use super::curve_handle::HandleKind;
+    // A 100×100 square ring sampled at ~0.8px, then smoothed like the mask trace (2× 3-point moving
+    // average) — the corners arrive ROUNDED (~2px tip), exactly what a merged contour looks like.
+    let (lo, hi) = (50.0f32, 150.0f32);
+    let mut ring: Vec<[f32; 2]> = Vec::new();
+    let steps = 125; // 0.8px per side sample
+    for i in 0..steps {
+        let t = lo + (hi - lo) * (i as f32 / steps as f32);
+        ring.push([t, lo]);
+    }
+    for i in 0..steps {
+        let t = lo + (hi - lo) * (i as f32 / steps as f32);
+        ring.push([hi, t]);
+    }
+    for i in 0..steps {
+        let t = hi - (hi - lo) * (i as f32 / steps as f32);
+        ring.push([t, hi]);
+    }
+    for i in 0..steps {
+        let t = hi - (hi - lo) * (i as f32 / steps as f32);
+        ring.push([lo, t]);
+    }
+    let n = ring.len();
+    for _ in 0..2 {
+        let prev = ring.clone();
+        for i in 0..n {
+            let a = prev[(i + n - 1) % n];
+            let b = prev[i];
+            let c = prev[(i + 1) % n];
+            ring[i] = [(a[0] + b[0] + c[0]) / 3.0, (a[1] + b[1] + c[1]) / 3.0];
+        }
+    }
+    let r = super::curve_refit::refit_closed_spine(&ring, 1.0).expect("refit succeeds");
+    // 4 Free corners, each re-anchored within ~1px of the TRUE square vertex (the smoothing pulled the
+    // traced tip ~1px inward; the edge-line intersection restores it).
+    let true_corners = [[lo, lo], [hi, lo], [hi, hi], [lo, hi]];
+    let mut found = 0;
+    for (p, k) in r.points.iter().zip(&r.kinds) {
+        if matches!(k, HandleKind::Free) {
+            let d = true_corners
+                .iter()
+                .map(|c| ((p[0] - c[0]).powi(2) + (p[1] - c[1]).powi(2)).sqrt())
+                .fold(f32::INFINITY, f32::min);
+            assert!(
+                d < 1.2,
+                "corner anchor sits on the true vertex: off by {d:.2}px"
+            );
+            found += 1;
+        }
+    }
+    assert_eq!(found, 4, "all four square corners survive as Free anchors");
+    // OFFSET: expand by 12px. The outward offset of a square corner miters to the apex (corner ± 12 on both
+    // axes). A rounded corner would fall ~12·(√2−1) ≈ 5px short of the apex — assert we get within 1.5px.
+    for d in [12.0f32, -12.0] {
+        let (op, oh, _) = super::curve_offset::offset_curve_refined(&r.points, &r.handles, d, true);
+        let mut spine = Vec::new();
+        super::curve_geom::flatten_spine(&op, &oh, true, &mut spine);
+        let grew = spine.iter().any(|p| p[0] < lo - 6.0);
+        if !grew {
+            continue; // this sign offsets inward — the apex test is for the outward one
+        }
+        for c in &true_corners {
+            let apex = [
+                c[0] + 12.0 * (c[0] - 100.0).signum(),
+                c[1] + 12.0 * (c[1] - 100.0).signum(),
+            ];
+            let best = spine
+                .iter()
+                .map(|p| ((p[0] - apex[0]).powi(2) + (p[1] - apex[1]).powi(2)).sqrt())
+                .fold(f32::INFINITY, f32::min);
+            assert!(
+                best < 1.5,
+                "the offset reaches the sharp miter apex {apex:?}: nearest {best:.2}px"
+            );
+        }
+        return; // outward direction found + asserted
+    }
+    panic!("neither offset direction grew the square outward");
+}
+
+/// **Merge produces a CLEAN, reduced-point curve** (Enio 2026-07-05): a sharp-waist peanut (two barely-
+/// overlapping Add ellipses) used to fold into a DENSE curve whose concave waist spiked into a self-crossing
+/// needle. Merge now runs the robust `simplify_closed_smooth` reducer — fewer anchors, no self-crossing.
+#[test]
+fn merge_produces_a_clean_low_point_curve_at_a_sharp_waist() {
+    let mut t = white_canvas(200, 3.0);
+    t.paint.brush.stroke_method = StrokeMethod::Ellipse;
+    // Barely-overlapping ellipses → a pinched waist (the concave region that spiked).
+    t.paint
+        .parked_shapes
+        .push(add_ellipse_shape([80.0, 100.0], 45.0));
+    t.paint
+        .parked_shapes
+        .push(add_ellipse_shape([140.0, 100.0], 45.0));
+    assert!(t.merge_open_shapes_to_curves(), "merged");
+    let ov = t.curve_overlay().expect("merged curve open");
+    let pts = &ov.points;
+    let n = pts.len();
+    assert!(n >= 6, "still a real multipoint curve: {n}");
+    assert!(
+        n <= 64,
+        "REDUCED point count (not the dense-fit hundreds): {n}"
+    );
+    // No self-crossing of the control polygon — the concave waist is a clean corner, not a needle spike.
+    let cross = |a: [f32; 2], b: [f32; 2], c: [f32; 2], d: [f32; 2]| {
+        let o = |p: [f32; 2], q: [f32; 2], r: [f32; 2]| {
+            (q[0] - p[0]) * (r[1] - p[1]) - (q[1] - p[1]) * (r[0] - p[0])
+        };
+        (o(a, b, c) > 0.0) != (o(a, b, d) > 0.0) && (o(c, d, a) > 0.0) != (o(c, d, b) > 0.0)
+    };
+    let mut crossings = 0;
+    for i in 0..n {
+        for j in i + 2..n {
+            if i == 0 && j == n - 1 {
+                continue;
+            }
+            if cross(pts[i], pts[(i + 1) % n], pts[j], pts[(j + 1) % n]) {
+                crossings += 1;
+            }
+        }
+    }
+    assert_eq!(
+        crossings, 0,
+        "the merged control polygon does not self-cross"
     );
 }
 
@@ -9801,5 +10240,99 @@ fn deform_undo_preserves_the_reconstruction_capability() {
     assert!(
         reconstructed * 3 < pushed,
         "Reconstruct still works after undo: pre-undo-warp L1 {pushed}, after reconstruct {reconstructed}"
+    );
+}
+
+/// **Coalesced Simplify undo** (Enio 2026-07-05: "cada mínima ação entra na sequência undo/redo"): a run of
+/// progressive Simplify presses records ONE undo entry, and a single Ctrl+Z restores the pre-run curve.
+#[test]
+fn simplify_run_is_one_undo_step_back_to_the_dense_curve() {
+    let mut t = white_canvas(96, 3.0);
+    t.paint.brush.stroke_method = StrokeMethod::Polygon;
+    t.on_canvas_pointer(cp([48.0, 48.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([80.0, 48.0], PointerPhase::Move));
+    t.on_canvas_pointer(cp([80.0, 48.0], PointerPhase::Up));
+    assert!(t.convert_open_shape_to_curve());
+    let dense = t.paint.curve.as_ref().unwrap().model.points.len();
+    let depth_before = t.undo.undo_depth();
+    // Three progressive presses…
+    let mut presses = 0;
+    for _ in 0..3 {
+        if t.curve_simplify() {
+            presses += 1;
+        }
+    }
+    assert!(presses >= 1, "at least one press reduced");
+    assert_eq!(
+        t.undo.undo_depth(),
+        depth_before + 1,
+        "{presses} Simplify presses coalesced into ONE undo entry"
+    );
+    // …and ONE undo restores the pre-run dense curve.
+    assert!(t.undo_last());
+    assert_eq!(
+        t.paint.curve.as_ref().unwrap().model.points.len(),
+        dense,
+        "one Ctrl+Z returns to the curve before the FIRST press"
+    );
+}
+
+/// **Op-cycle taps are undoable and coalesced**: the stroke centre-square tap previously recorded NO undo
+/// (`active_op` wasn't captured); now a run of taps is ONE entry and undo restores the pre-run Operation.
+#[test]
+fn stroke_op_tap_run_is_one_undoable_step() {
+    use super::stroke_multi::StrokeOp;
+    let mut t = white_canvas(64, 2.0);
+    t.paint.brush.stroke_method = StrokeMethod::Ellipse;
+    t.on_canvas_pointer(cp([32.0, 32.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([48.0, 32.0], PointerPhase::Move));
+    t.on_canvas_pointer(cp([48.0, 32.0], PointerPhase::Up));
+    assert_eq!(t.paint.active_op, StrokeOp::Overlay);
+    let depth_before = t.undo.undo_depth();
+    t.cycle_active_op(); // Overlay → Add
+    t.cycle_active_op(); // Add → Remove
+    assert_eq!(t.paint.active_op, StrokeOp::Remove);
+    assert_eq!(
+        t.undo.undo_depth(),
+        depth_before + 1,
+        "two taps coalesced into one entry"
+    );
+    assert!(t.undo_last());
+    assert_eq!(
+        t.paint.active_op,
+        StrokeOp::Overlay,
+        "one undo restores the pre-run Operation"
+    );
+}
+
+/// Selection centre-square taps coalesce per shape and roll back with one undo.
+#[test]
+fn selection_op_tap_run_is_one_undoable_step() {
+    let mut t = white_canvas(64, 2.0);
+    t.set_paint_tool_mode("selection");
+    t.set_selection_mode(2); // Rectangle
+    t.on_canvas_pointer(cp([4.0, 4.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([60.0, 60.0], PointerPhase::Up));
+    t.set_selection_bool_op(1); // Add
+    t.on_canvas_pointer(cp([30.0, 30.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([58.0, 58.0], PointerPhase::Up));
+    t.selection_convert_to_curve();
+    assert_eq!(t.paint.selection_shapes[1].op, 1, "starts as Add");
+    let c = sel_freehand_center(&t.paint.selection_shapes[1].shape);
+    let depth_before = t.undo.undo_depth();
+    for _ in 0..3 {
+        t.selection_gizmo_pointer(cp(c, PointerPhase::Down));
+        t.selection_gizmo_pointer(cp(c, PointerPhase::Up));
+    }
+    assert_eq!(t.paint.selection_shapes[1].op, 2, "3 taps: 1→2→1→2");
+    assert_eq!(
+        t.undo.undo_depth(),
+        depth_before + 1,
+        "three taps coalesced into one entry"
+    );
+    assert!(t.undo_last());
+    assert_eq!(
+        t.paint.selection_shapes[1].op, 1,
+        "one undo restores the pre-run op"
     );
 }

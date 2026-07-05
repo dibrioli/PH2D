@@ -428,15 +428,9 @@ fn try_apply_brush_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> O
                 || core_ids::PAINTER_BRUSH_TEXTURE_RAMP_BUTTONS.contains(&id)
                 || core_ids::PAINTER_SHAPE_RAMP_BUTTONS.contains(&id)
                 || id == core_ids::PAINTER_BRUSH_FALLOFF_ADD // Custom-falloff "+" point button
-                // Stroke shape-editor buttons: Apply / Apply & Keep / Delete (the tool commits/keeps/
-                // cancels the open Curve/Ellipse/Polygon). MUST be forwarded here or the Click is dropped.
-                || id == core_ids::PAINTER_BRUSH_STROKE_APPLY
-                || id == core_ids::PAINTER_BRUSH_STROKE_APPLY_KEEP
-                || id == core_ids::PAINTER_BRUSH_STROKE_DELETE
-                || id == core_ids::PAINTER_BRUSH_STROKE_EDIT
-                // Simplify + the Offset-card Trim + the multi-shape OPERATION segments (Overlay/Add/Remove;
-                // MUST be forwarded here or the segment never activates — Enio 2026-07-04 smoke repro).
-                || id == core_ids::PAINTER_BRUSH_STROKE_SIMPLIFY
+                // Stroke shape-editor buttons (Apply/Apply&Keep/Delete/Convert/Simplify/Merge) — MUST be
+                // forwarded or the Click is dropped. Plus the Offset-card Trim + the Operation segments.
+                || core_ids::PAINTER_BRUSH_STROKE_BUTTONS.contains(&id)
                 || id == core_ids::PAINTER_BRUSH_OFFSET_TRIM
                 || core_ids::PAINTER_STROKE_OP_IDS.contains(&id)
                 // Symmetry: Use/Circular checkboxes, X/Y/Custom axis segments, Draw-Line/Pick-Center, reset.

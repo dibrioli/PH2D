@@ -308,8 +308,9 @@ pub fn populate(store: &mut WidgetStore) {
         ph2d_editor_core::ids::PAINTER_BRUSH_STROKE_APPLY_KEEP,
         ph2d_editor_core::ids::PAINTER_BRUSH_STROKE_DELETE,
         ph2d_editor_core::ids::PAINTER_BRUSH_STROKE_EDIT,
-        // Simplify (re-fit the curve) + the Offset-card Trim checkbox.
+        // Simplify (re-fit the curve) + Merge (fold every shape into one/few curves) + Offset-card Trim.
         ph2d_editor_core::ids::PAINTER_BRUSH_STROKE_SIMPLIFY,
+        ph2d_editor_core::ids::PAINTER_BRUSH_STROKE_MERGE,
         ph2d_editor_core::ids::PAINTER_BRUSH_OFFSET_TRIM,
         // Multi-shape OPERATION segments (Overlay / Add / Remove) — the boolean mode the next shape uses.
         ph2d_editor_core::ids::PAINTER_STROKE_OP_OVERLAY,

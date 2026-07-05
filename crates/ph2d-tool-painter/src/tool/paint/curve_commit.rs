@@ -111,6 +111,8 @@ impl PainterTool {
             self.set_stroke_op_mode(i as u8); // multi-shape Operation for the NEXT shape
         } else if *id == core_ids::PAINTER_BRUSH_STROKE_SIMPLIFY {
             self.curve_simplify(); // re-fit the editable curve to a clean control polygon
+        } else if *id == core_ids::PAINTER_BRUSH_STROKE_MERGE {
+            self.merge_open_shapes_to_curves(); // fold all fillable shapes into one/few dense curves
         } else {
             return false;
         }
@@ -126,21 +128,50 @@ impl PainterTool {
             || self.line_commit_keep()
     }
 
-    /// **Simplify** the editable curve (the Simplify button): re-fit it to a clean minimal control polygon
-    /// via the Free Hand fit, then re-fill. One undo step. `true` when a curve was open and the fit applied.
-    /// (Split from [`super::curve`] for the workspace LOC cap; the consts/helpers live there.)
+    /// **Simplify** the editable curve (the Simplify button): re-fit it to as FEW anchors as the shape allows,
+    /// then re-fill. One undo step. `true` when a curve was open and the fit applied. A **closed** curve uses
+    /// the [`super::curve_refit`] quality funnel (corner-split + piecewise Schneider least-squares fit — the
+    /// Inkscape/paper.js simplify pipeline; Enio 2026-07-05 "curvas simplificadas perfeitas"): smooth joins are
+    /// **Aligned**, corners **Free**, and each press escalates the fit tolerance until ~20% more anchors shed
+    /// (progressive). An **open** curve keeps the Free Hand Schneider fit (its capture fits fine open).
     pub fn curve_simplify(&mut self) -> bool {
-        use super::curve::{FREEHAND_FIT_ERROR, MAX_CURVE_POINTS};
+        use super::curve::{
+            FREEHAND_FIT_ERROR, MAX_CURVE_POINTS, SIMPLIFY_KEEP_FRACTION, SIMPLIFY_MIN_POINTS,
+        };
         use super::curve_handle::{self, HandleKind};
         self.begin_shape_txn(); // re-fitting the curve is one undo step (dropped below if it no-ops)
         let Some(ed) = self.paint.curve.as_ref().filter(|e| e.editing) else {
             self.paint.stroke_undo = None; // nothing open → discard the speculative txn
             return false;
         };
+        let closed = ed.model.closed;
+        if closed {
+            let Some(r) = super::curve_refit::refit_progressive(
+                &ed.model.points,
+                &ed.model.handles,
+                SIMPLIFY_KEEP_FRACTION,
+                SIMPLIFY_MIN_POINTS,
+            ) else {
+                self.paint.stroke_undo = None; // nothing left to shed (e.g. already at the corner anchors)
+                return false;
+            };
+            let ed = self.paint.curve.as_mut().expect("curve present");
+            ed.model = super::curve_model::CurveModel {
+                points: r.points,
+                handles: r.handles,
+                kinds: r.kinds,
+                selected: None,
+                closed: true,
+            };
+            self.curve_refill();
+            // COALESCED: a run of progressive Simplify presses = ONE undo step back to the pre-run curve.
+            self.commit_shape_txn_coalesced(crate::undo::CoalesceKind::Simplify);
+            return true;
+        }
         let Some((p, h)) = super::curve_geom::simplify_curve(
             &ed.model.points,
             &ed.model.handles,
-            ed.model.closed,
+            false,
             FREEHAND_FIT_ERROR,
             MAX_CURVE_POINTS,
         ) else {
@@ -157,7 +188,8 @@ impl PainterTool {
             ed.model.closed,
         );
         self.curve_refill();
-        self.commit_shape_txn();
+        // COALESCED: repeated open-curve Simplify presses also collapse to one undo step.
+        self.commit_shape_txn_coalesced(crate::undo::CoalesceKind::Simplify);
         true
     }
 }

@@ -4506,6 +4506,11 @@ dependencies = [
 [[package]]
 name = "ph2d-audio"
 version = "0.0.0"
+dependencies = [
+ "crossbeam-queue",
+ "ph2d-core",
+ "thiserror 2.0.18",
+]
 
 [[package]]
 name = "ph2d-bindgen"

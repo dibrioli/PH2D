@@ -8,3 +8,14 @@ license.workspace = true
 authors.workspace = true
 
 [lib]
+
+# The real-time audio subsystem (SKILL §11.6). Platform-agnostic core (HR-1):
+# it mixes voices and produces stereo blocks; the shell owns cpal and calls
+# `AudioRenderer::render` in its device callback. `crossbeam-queue` gives the
+# lock-free, bounded, zero-alloc rings for the control↔audio boundary (HR-3),
+# so the whole crate stays `#![forbid(unsafe_code)]`. It is already in the tree
+# (transitive via wgpu/vello) — no new supply-chain surface.
+[dependencies]
+crossbeam-queue = "0.3"
+ph2d-core = { path = "../ph2d-core" }
+thiserror = "2"

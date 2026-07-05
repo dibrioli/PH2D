@@ -1,6 +1,6 @@
 # Diretriz de Implementação — PH2D
 
-**Versão:** 8.0 — 2026-07-05 (**o modo de operação virou função do hardware** — `bash scripts/hw-profile.sh` decide: tier `workstation` (Linux 128 GB) = **Modo L**, linhas paralelas por `git worktree` sem Coordenador de plantão, §1.5; tier `constrained` (Mac mini 8 GiB, sessões de smoke/hotfix) = **Modo C**, o modelo v7.1 de 1 Coordenador único + N Implementadores em shared tree, §1.1–1.4 + §7. Baseline anterior: 7.1 — 2026-05-28, papéis consolidados).
+**Versão:** 8.0 — 2026-07-05 (**o modo de operação virou função do hardware** — [ADR-0106](../architecture/decisions/0106-parallel-dev-lines-worktrees-workstation.md); `bash scripts/hw-profile.sh` decide: tier `workstation` (Linux 128 GB) = **Modo L**, linhas paralelas por `git worktree` sem Coordenador de plantão, §1.5; tier `constrained` (Mac mini 8 GiB, sessões de smoke/hotfix) = **Modo C**, o modelo v7.1 de 1 Coordenador único + N Implementadores em shared tree, §1.1–1.4 + §7. Baseline anterior: 7.1 — 2026-05-28, papéis consolidados).
 **Audiência:** **toda LLM que entra no projeto.** Este doc é **referência** — **NÃO
 leia inteiro**; use o roteador leia-por-tarefa em [`CLAUDE.md §1`](../../CLAUDE.md) e
 leia só a(s) seção(ões) que sua tarefa exige. Obrigatório p/ todos: §0 (sanity), §1

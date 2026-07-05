@@ -9,6 +9,58 @@
 |---|---|---|---|---|
 | [1](#bug-1--offset-de-curva-as-quinas-não-ficavam-paralelas-nem-cruzavam) | Offset de curva — quinas (não-paralelas, depois não-cruzavam) | Stroke shape-editor (Curve/Circle/Polygon/Free Hand) | ✅ Resolvido | 2026-06-29 |
 | [2](#bug-2--per-layer-color-fps-despenca--artefatos-retangulares-retângulo-virtual) | Per-Layer Color — FPS despenca + artefatos retangulares ("retângulo virtual") | Stamp path (CPU) + GPU preview slot | ✅ Resolvido | 2026-06-29 |
+| [3](#bug-3--queda-de-fps-warp--shapes-booleanas--todo-arraste-interativo) | Queda de FPS (Warp · Shapes booleanas · todo arraste interativo) | Bridge preview + selection recompose + warp mesh | ✅ Resolvido (CPU) | 2026-07-04 |
+
+---
+
+## Bug #3 — Queda de FPS: Warp, Shapes booleanas, e TODO arraste interativo
+
+**Crates/arquivos:** [`shells/desktop/src/render_loop/painter_bridge.rs`](../../shells/desktop/src/render_loop/painter_bridge.rs),
+[`tool/paint/selection_shapes.rs`](../../crates/ph2d-tool-painter/src/tool/paint/selection_shapes.rs) +
+[`selection_raster.rs`](../../crates/ph2d-tool-painter/src/tool/paint/selection_raster.rs),
+[`tool/paint/warp/transform_mesh.rs`](../../crates/ph2d-tool-painter/src/tool/paint/warp/transform_mesh.rs).
+**Método:** auditoria de performance **multi-agente, 4 lentes** (Warp · Shapes booleanas · Composite/GPU ·
+Alocação), medida em `--release`, correções cruzadas verificadas.
+
+### Sintoma
+Queda séria de FPS ao (a) arrastar o gizmo do **Warp**, (b) editar **múltiplas shapes de seleção com
+operações booleanas**, e — latente — em qualquer arraste de pintura. Bench-verde escondia tudo.
+
+### Causa-raiz (as 4 lentes convergiram)
+
+- **★ Transversal (afeta Warp, pintura, seleção): deep-copy do canvas inteiro por-move.** O bridge do desktop
+  segurava um `Arc::clone(canvas_rgba)` **entre frames** e a detecção de upload GPU era chaveada no
+  **ponteiro do Arc** → o `Arc::make_mut(canvas_rgba)` do tool via `strong_count == 2` e **copiava o canvas
+  inteiro** (16,8 MB @ 2048², **escala com o CANVAS**, não com a região editada) TODO move. Invisível aos
+  benches (que não seguram o Arc entre moves) — o clássico bench-vs-live gap. Também penalizava o Per-Layer
+  Color (Bug #2), num eixo que o harness §1.R nunca exercitou.
+- **Shapes booleanas:** cada Move do gizmo **re-rasterizava TODAS as N shapes** no canvas inteiro (O(N·A),
+  só uma mudou) **e** chamava `invalidate_composite()` → **derrubava o composite + upload GPU do canvas
+  inteiro** por-move — apesar de a máscara de seleção **não** entrar no composite (compositor sem nenhuma
+  referência a seleção; a marquee é overlay por-frame).
+- **Warp:** a grade **pristina** era re-subdividida (Catmull-Rom) todo move (constante durante o arraste).
+
+### Solução
+- **Bridge (`2c64ba80`):** `needs_upload` passa a vir do sinal `preview_dirty` (que o `take_preview_arc` já
+  usa) em vez do ponteiro do Arc; o clone do canvas é **solto após o upload** → entre frames o `canvas_rgba`
+  é único → `make_mut` muta **in-place** (zero cópia). Metadados do cache preservados p/ o frame idle manter
+  a textura; guardas p/ buffer vazio + retry em falha.
+- **Seleção (`a914a772`):** **cache por-shape** da cobertura (chaveado por valor da geometria, auto-validante;
+  `Raster` por `Arc::ptr_eq`) → um arraste re-rasteriza **só a shape que moveu** — **medido 34,3 → 5,1 ms/move
+  (6,8×)** com 8 shapes em 2048². E **removido o `invalidate_composite()`** da derivação da máscara (o
+  composite é comprovadamente independente da seleção) → sem drop de composite/upload por-move.
+
+### Lições
+1. **Bench-verde ≠ live-green (o bench-vs-live gap é literal aqui):** o custo dominante (deep-copy do canvas)
+   só aparece quando um clone do Arc é retido **entre frames** — exatamente o que o bridge faz e o harness
+   não. Sempre modele o retentor real (ver o bench `perf_anchored_drag_per_move_cost` com `hold_preview`).
+2. **Detecção de mudança por ponteiro é frágil + load-bearing:** chavear upload no `Arc::as_ptr` fazia o
+   `make_mut` (que troca a alocação) parecer "mudou" — o desperdício estava sustentando a correção. Use o
+   sinal semântico explícito (`preview_dirty`), não a identidade do Arc.
+3. **Invalidação estrutural (`invalidate_composite`) num edit que NÃO toca o composite** = full upload grátis
+   por-frame. Antes de invalidar, prove que a saída depende do que mudou (`grep` no compositor fechou isso).
+4. **Multi-agente por lentes convergiu na mesma causa raiz** vista de 3 ângulos (Warp/Boolean/Alocação todos
+   apontaram o deep-copy) — a triangulação deu confiança pra mexer no caminho de display.
 
 ---
 

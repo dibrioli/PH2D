@@ -18,7 +18,7 @@ leia só a(s) seção(ões) que sua tarefa exige. Obrigatório p/ todos: §0 (sa
 - **Três caminhos** (descobertos via Triagem §2):
   - **(A) Drop-crate (fan-out, §3.A)** — node ou tool nova. Implementador sozinho. Zero edit central. Paraleliza com outros (A).
   - **(B) Scaffold central (§3.B)** — painel/widget/chrome. O Coordenador faz scaffold + delega.
-  - **(C) Coord-only (§3.C)** — foundational ou contrato congelado. Não paraleliza. ADR se for contrato.
+  - **(C) foundational ou contrato congelado (§3.C)** — Modo C: Coord-only, não paraleliza. Modo L: foundational **não-contrato** paraleliza pela sua linha (gate testado, §1.5/ADR-0107); só contrato congelado + mesmo-símbolo de tipo-núcleo ficam seriais (ADR / reporte ao Enio).
 - **Dois contratos congelados (§4)** com arch-gate ativo: nodes (ADR-0039) e tools (ADR-0040+0041). Mexer = (C).
 - **Enio é relay mecânico**, não decisor.
 - **Norte:** engine cresce por **duas famílias-irmãs** simétricas — `crates/ph2d-node-*` (declarativo, FBP) e `crates/ph2d-tool-*` (imperativo, manipulação direta). Ambas wireadas por codegen (`ph2d-{node,tool}-sync`). Adicionar conteúdo = drop-crate.
@@ -42,15 +42,16 @@ Algo divergente (HEAD inesperado, working dirty, build quebrado) → **pare e re
 **Leitura mínima:**
 - [`SKILL_Stack_PH2D_Definitiva.md`](../../SKILL_Stack_PH2D_Definitiva.md) §HR-1..HR-18 (Hard Rules) e §1 (arquitetura).
 - [`CLAUDE.md`](../../CLAUDE.md) (CI, push, batching).
-- Memória persistente: `~/.claude/projects/-Volumes-MAC-EXTERNO-PROJETOS--PH2D-definitiva/memory/MEMORY.md`.
+- Memória persistente (versionada no repo): [`project-memory/MEMORY.md`](../../project-memory/MEMORY.md) (symlink de `~/.claude/projects/<key>/memory`).
 
 ---
 
 ## 1. Papéis + infra multi-agente
 
-> **§1.1–1.4 descrevem o Modo C** (tier `constrained` — Mac mini 8 GiB). No tier
-> `workstation` vale o **Modo L (§1.5)**, que substitui a infra anti-colisão (slots CoW,
-> arbitragem de posse, índice compartilhado) por isolamento físico de `git worktree`.
+> **Todo o §1 (papéis abaixo) + §1.1–1.4 descrevem o Modo C** (tier `constrained` — Mac mini
+> 8 GiB): o "Coordenador (único)" só existe no Modo C. No tier `workstation` vale o **Modo L
+> (§1.5)** — SEM Coordenador de plantão; a infra anti-colisão (slots CoW, arbitragem de posse,
+> índice compartilhado) é substituída por isolamento físico de `git worktree`.
 
 **Coordenador (único).** Um só por jornada. Absorve o que antes eram Coord-A (foundational) e Coord-B (baldes). Autoridade **exclusiva** sobre: contratos congelados, arch-gates, foundational crates (`ph2d-render`, `ph2d-editor-core`, `ph2d-host`, `ph2d-tokens`, …), codegen tools, `shells/*` plumbing compartilhado, scaffolds de painel/widget/chrome, ADRs, `CLAUDE.md`/DIRETRIZ, `.github/workflows/`. É o **único** que toca arquivo foundational/compartilhado — isso serializa a superfície de colisão (causa-raiz dos incidentes que motivaram o modelo). Mexe nos 2 contratos congelados (§4) só via amendment ADR, nunca cap-bust ad-hoc. Responsabilidades do modelo multi-implementador:
 - (a) escrever um **sub-handoff focado por implementador** (estado + pasta exclusiva + task + anti-colisão);
@@ -239,6 +240,8 @@ aqui**. Fluxo em 2 fases: (1) o agente cria a própria worktree em
 ESPERA; (2) a tarefa vem na mensagem seguinte (pasta exclusiva + o que construir).
 Tracker/docs do módulo nascem depois, **dentro da própria worktree**.
 
+**Operador (Enio):** o passo a passo do SEU lado (planejar linhas → abrir cada uma → intervir só nos 2 casos irredutíveis → o último faz o ship) está em [`GUIA_JORNADA_MODO_L.md`](GUIA_JORNADA_MODO_L.md).
+
 Você é `workstation`, sem bloco colado, e `git branch --show-current` devolve `main`?
 Você é uma sessão do **primário** (setup/integração/ship) — **não code em `main` no
 Modo L**; pergunte ao Enio qual é a sua linha.
@@ -253,7 +256,7 @@ Quando o Enio descreve uma tarefa, **antes de codar** responda exatamente neste 
 TRIAGEM
 - Tarefa: <1 linha do que o Enio pediu>
 - Caminho: (A) drop-crate | (B) scaffold | (C) Coord-only
-- Toca contrato congelado (nodegraph/expr OU Tool/RasterEditTool/PanelEvent)?
+- Toca contrato congelado (nodegraph/expr OU Tool/RasterEditTool/CanvasPaintTool/PanelEvent)?
     <Não | Sim — exige ADR + bump de cap>
 - Razão: <1-2 linhas>
 - Se grande/ambíguo: <peças isoláveis vs. compartilhadas>
@@ -267,8 +270,8 @@ TRIAGEM
 | **Tool nova** (any shape) | **(A) §3.A** | Drop-crate `crates/ph2d-tool-<slug>/` + `cargo run -p ph2d-tool-sync`. Sem variant novo em `EditorAction`. |
 | **Modificar** nó/tool existente | **(A) §3.D** | A pasta já existe — edite dentro dela. |
 | **Painel novo** (`ph2d-panel-<slug>`) | **(B) §3.B.1** | Coord plumba feature flag + `register_all_panels` ANTES. |
-| **Widget primitive novo** | **(B) §3.B.2** | Coord adiciona em `widget/mod.rs` + showcase ANTES. |
-| **Chrome handler novo** | **(B) §3.B.3** | Coord adiciona em `chrome/mod.rs::dispatch_all` ANTES. |
+| **Widget primitive novo** | **(B) §3.B.2** | Cria o arquivo + `cargo run -p ph2d-widget-sync` (bloco `mod` GERADO); `pub use` + showcase à mão. |
+| **Chrome handler novo** | **(B) §3.B.3** | Cria stub `chrome/<slug>.rs` + marcador `z=NN` + `cargo run -p ph2d-chrome-sync` (`mod` + `dispatch_all` GERADOS). |
 | **Avaliador novo (Wave-neck)** — Shader/Som/Gameplay | **(C)** durante neck → (A) depois | Trabalho "tipo W2" serial; abre fan-out só após o neck. Tracker em [`docs/HANDOFF_node_system.md`](../HANDOFF_node_system.md). |
 | **Mudar tokens / editor-core (não-contrato) / shells / arch tests** | **(C)** | Foundational. Modo C: não paraleliza (Coord). Modo L: sua linha + gate testado (ADR-0107, vide nota abaixo). |
 | **Mudar contrato de nós** (porta, EvalCtx, motor) | **(C) + ADR** | Bump cap em `architecture_contract_surface.rs` + ADR estendendo 0039. |
@@ -303,7 +306,7 @@ Receita simétrica única. Drop a crate, roda o sync, gates fecham. **Sem coorde
 | Wiring gerado | `register_all_nodes` + deps (1 superfície) | `register_all` + `register_all_tools` + deps + 2 testes (5 superfícies) |
 | Gate wiring | `cargo test -p ph2d-node-registry-init` | `cargo test -p ph2d-tool-registry-init` |
 | Contrato | `NodeOp` + `NodeManifest` (`ph2d-nodegraph`) | `Tool` + opcional `RasterEditTool` + `ToolManifest` (`ph2d-editor-core` + `ph2d-tool-registry`) |
-| 🔒 Cap arch-gate | `NodeOp=2` / `OpResolver=1` / `NodeManifest=8` (ADR-0039) | `Tool=11` / `RasterEditTool=5` / `PanelEvent=4` (ADR-0040+0041; cap real em `architecture_tool_contract_surface.rs`) |
+| 🔒 Cap arch-gate | `NodeOp=2` / `OpResolver=1` / `NodeManifest=8` (ADR-0039) | `Tool=12` / `RasterEditTool=5` / `CanvasPaintTool=1` / `PanelEvent=4` (ADR-0040+0041+amendments; cap real em `architecture_tool_contract_surface.rs`) |
 | Entry points | `pub fn register(reg: &mut NodeRegistry) -> Result<…>` | `pub fn register(reg: &mut Registry)` (manifest) E/OU `pub fn make() -> Box<dyn Tool>` (behavior); 3 sabores §3.A.3 |
 | Vocab de canal | portas tipadas + effect + clock + params | `EditorAction::{ActivateTool, OneShotImageOp, ToolPanelEvent(PanelEvent), CancelActiveTool}` (4 genéricos — sem variant per-tool) |
 | Templates | `ph2d-node-debug-const/` (Pure trivial) · `-debug-wave/` (Temporal + ph2d-expr + golden) · `-motion-{grid,clone,transform}/` (vertical Stateful-free) | `-make-square/` (sabor 1) · `-move/` (sabor 2, `is_default=true`) · `-padding/` (sabor 3 leve) · `-bgremoval/` (sabor 3 completo) |
@@ -360,7 +363,7 @@ O QUE VOCÊ FAZ (só dentro da sua pasta):
 
 O QUE VOCÊ NÃO TOCA:
 - Qualquer arquivo fora da sua pasta.
-- 🔒 Contrato congelado (vide §4). Mudança = Coord-only + ADR.
+- 🔒 Contrato congelado (vide §4). Mudança = serial + ADR (Modo C: Coord-only; Modo L: reporte ao Enio, §1.5.2.1).
   [node]  ph2d-nodegraph, ph2d-expr, ph2d-node-registry,
           ph2d-node-registry-init/ (GERADO).
   [tool]  editor-core/src/tool.rs (Tool/RasterEditTool/PanelEvent),
@@ -462,11 +465,11 @@ Implementador: preenche `paint`, `apply_event`, `populate`, `State`.
 
 Coord:
 1. Cria `crates/ph2d-editor-core/src/widget/<slug>.rs` (template: [`button.rs`](../../crates/ph2d-editor-core/src/widget/button.rs)).
-2. Em `widget/mod.rs` (ordem alfabética): `mod <slug>; pub use <slug>::{...};`.
+2. `cargo run -p ph2d-widget-sync` regenera o bloco `mod` de `widget/mod.rs` (entre os marcadores `ph2d-widget-sync` — NÃO edite à mão); adicione só o `pub use <slug>::{...};` (re-export, à mão, ordem alfabética).
 3. Cria seção no showcase em `widget/showcase/` (copia layout de `switches.rs`). Arch test `architecture_widget_showcase_coverage` enforça.
 4. `cargo check -p ph2d-editor-core` + 4 arch-tests de widget verdes: `architecture_widget_loc_cap` (≤500 LOC), `architecture_widget_showcase_coverage`, `no_literal_color`, `hr12_widgets_a11y`.
 
-Implementador: preenche paint usando **só tokens**, adiciona tests, ajusta showcase.
+Implementador (Modo C) / a própria linha (Modo L, sem handoff): preenche paint usando **só tokens**, adiciona tests, ajusta showcase.
 
 #### 3.B.3 Chrome handler novo (dispatch GERADO — ADR-0107)
 
@@ -521,7 +524,7 @@ Pasta canônica por feature:
 
 ### 3.E Cross-cutting (perf audit, refactor cross-crate, sweep de lint)
 
-Algumas tarefas não cabem em §3.A-D porque tocam múltiplos crates por natureza. **O Coordenador autoriza explicitamente a exceção ao ISOLAMENTO** no briefing:
+Algumas tarefas não cabem em §3.A-D porque tocam múltiplos crates por natureza. **Modo C: o Coordenador autoriza explicitamente a exceção ao ISOLAMENTO** no briefing. **Modo L: a sweep cross-crate é a sua própria linha** — a emenda do §1.5.2.1 já permite tocar foundational; colisão de mesmo-símbolo com outra linha viva → reporte ao Enio (§1.5.5). Briefing (Modo C):
 
 > "Você toca tests em vários crates conforme os achados. Exceção autorizada à regra de uma pasta isolada (DIRETRIZ §1.4). Cada commit ainda fica T1 single-crate sempre que possível."
 
@@ -534,12 +537,12 @@ Algumas tarefas não cabem em §3.A-D porque tocam múltiplos crates por naturez
 
 ## 4. Contratos congelados — caps + arch-gates
 
-**Dois contratos paralelos, mesma disciplina.** Mexer é Coordenador only + ADR.
+**Dois contratos paralelos, mesma disciplina.** Mexer = serial + ADR (Modo C: Coordenador-only; **Modo L: PARE e reporte ao Enio**, §1.5.2.1 — não há Coordenador de plantão).
 
 | Contrato | Arquivos | Arch-gate (cap) | ADR | Mudar exige |
 |---|---|---|---|---|
 | **Sistema de nós** (W2.T4, 2026-05-22) | `crates/ph2d-nodegraph/src/{lib,node,port,effect,attr,cook,graph}.rs` + `crates/ph2d-expr/src/lib.rs` | [`architecture_contract_surface`](../../crates/ph2d-nodegraph/tests/architecture_contract_surface.rs) — `NodeOp ≤ 2` métodos, `OpResolver ≤ 1` método, `NodeManifest ≤ 8` campos | [ADR-0039](../architecture/decisions/0039-nodegraph-contract-freeze-w2t4.md) | Bump cap + ADR estendendo 0039 + (se `ph2d-expr`) re-provar paridade CPU↔WGSL |
-| **Sistema de tools** (TG-E + ADR-0041, 2026-05-22) | `crates/ph2d-editor-core/src/tool.rs` (`Tool`, `RasterEditTool`, `PanelEvent`) + canal genérico em `crates/ph2d-editor-core/src/action_bus.rs` (`EditorAction::{ActivateTool, OneShotImageOp, ToolPanelEvent, CancelActiveTool}`) | [`architecture_tool_contract_surface`](../../crates/ph2d-editor-core/tests/architecture_tool_contract_surface.rs) — `Tool ≤ 11` métodos, `RasterEditTool ≤ 5` métodos, `PanelEvent ≤ 4` variants | [ADR-0040](../architecture/decisions/0040-tool-as-isolated-feature-crate.md) + [ADR-0041](../architecture/decisions/0041-rasteredit-rename-and-deactivate.md) | Bump cap + amendment de ADR-0040 §7 |
+| **Sistema de tools** (TG-E + ADR-0041, 2026-05-22) | `crates/ph2d-editor-core/src/tool.rs` (`Tool`, `RasterEditTool`, `CanvasPaintTool`, `PanelEvent`) + canal genérico em `crates/ph2d-editor-core/src/action_bus.rs` (`EditorAction::{ActivateTool, OneShotImageOp, ToolPanelEvent, CancelActiveTool}`) | [`architecture_tool_contract_surface`](../../crates/ph2d-editor-core/tests/architecture_tool_contract_surface.rs) — `Tool ≤ 12` métodos, `RasterEditTool ≤ 5` métodos, `CanvasPaintTool ≤ 1` método, `PanelEvent ≤ 4` variants | [ADR-0040](../architecture/decisions/0040-tool-as-isolated-feature-crate.md) + [ADR-0041](../architecture/decisions/0041-rasteredit-rename-and-deactivate.md) | Bump cap + amendment de ADR-0040 §7 |
 
 **O que NÃO mexe nesses contratos** (vide §3.A, sem Coord):
 
@@ -952,17 +955,19 @@ Ciclo fechado. Disponível para próxima ordem.
 
 ## 9. Quando algo dá errado
 
+> As linhas com **Coord/Implementador** abaixo são **Modo C** (shared tree). No **Modo L** cada linha isola por worktree — não há Coordenador; vide §1.5.2/§1.5.5.
+
 | Sintoma | Resposta |
 |---|---|
 | Não sabe o que fazer | Releia §0 + §1 + pergunte ao Enio |
-| Arquivo que não tocou em `git status` | §7.3 (colisão) |
+| Arquivo que não tocou em `git status` | §7.3 (colisão) — **Modo C only** (Modo L isola por worktree) |
 | Hook falha em fmt/clippy/test | Fix root cause; nunca `--no-verify` |
 | Hook trigga T2 quando esperava T1 | `git status --cached` — vazamento |
-| Smoke quebrou em `./play.command` | Implementador diagnostica + fix local |
-| CI failure cíclico (3× mesmo job) | Coord escalona pro Enio |
-| Implementador descobre bug fora da pasta | Reporta ao Enio com diagnose; Coord faz |
-| Coord quer editar shared mas Impl está working | Anuncie via Enio, espere Impl chegar a estado estável, edite |
-| Coord tem dúvida arquitetural | Opções pro Enio com recomendação + tradeoff |
+| Smoke quebrou em `./play.command` | Implementador (Modo C) / a linha (Modo L) diagnostica + fix local |
+| CI failure cíclico (3× mesmo job) | Escala pro Enio (Modo C: Coord; Modo L: quem shippa) |
+| Descobre bug fora da pasta | **Modo C:** reporta ao Enio, Coord faz. **Modo L:** a linha corrige (foundational não-contrato, gate testado) OU reporta se contrato-congelado/mesmo-símbolo (§1.5.2.1) |
+| Editar shared enquanto outra linha trabalha | **Modo C:** anuncie via Enio, espere estado estável. **Modo L:** N/A — worktrees isolam; só o merge serializa (§1.5.3) |
+| Dúvida arquitetural | Opções pro Enio com recomendação + tradeoff |
 | Memória diz X mas código diz Y | Confie no código. Atualize memória depois |
 
 ---
@@ -1055,8 +1060,12 @@ gh run watch <id> --exit-status
 - 🔒 [ADR-0040 Tool as isolated feature crate](../architecture/decisions/0040-tool-as-isolated-feature-crate.md)
 - 🔒 [ADR-0041 RasterEdit rename + deactivate](../architecture/decisions/0041-rasteredit-rename-and-deactivate.md)
 - [ADR-0042 Wave 10 closure](../architecture/decisions/0042-wave-10-closure.md)
+- [ADR-0104 Estratégia de velocidade por hardware](../architecture/decisions/0104-hardware-tiered-speed-strategy.md)
+- 🔒 [ADR-0106 Linhas paralelas por `git worktree` (Modo L)](../architecture/decisions/0106-parallel-dev-lines-worktrees-workstation.md)
+- 🔒 [ADR-0107 Foundational concorrente — gate testado + Mergiraf](../architecture/decisions/0107-concurrent-foundational-lines-tested-gate-syntactic-merge.md)
+- [GUIA_JORNADA_MODO_L (companheiro do operador ao §1.5)](GUIA_JORNADA_MODO_L.md)
 
-**Memória LLM (auto-loaded):** `~/.claude/projects/-Volumes-MAC-EXTERNO-PROJETOS--PH2D-definitiva/memory/MEMORY.md`
+**Memória LLM (versionada no repo):** [`project-memory/MEMORY.md`](../../project-memory/MEMORY.md) (auto-loaded via symlink `~/.claude/projects/<key>/memory` → `project-memory/`)
 
 **Histórico anterior** (v6.0..v6.10): `git log docs/IntegracaoMultiAgente/DIRETRIZ.md`. Arquivados pre-v6.0: `docs/archive/multi-agente-pre-v6.0/`.
 

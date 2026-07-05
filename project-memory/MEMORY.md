@@ -1,4 +1,4 @@
-# Memory index — PH2D project (Mac)
+# Memory index — PH2D project (versionada em `project-memory/`, multi-máquina)
 
 > Estado por-módulo (waves/tasks) vive em **CLAUDE.md §5**; contratos congelados em **§6**;
 > histórico em **git** + `docs/HANDOFF_*`/`docs/AUDIT_*`. Aqui só LIÇÕES duráveis,
@@ -20,6 +20,7 @@
 - [Convenção vs inércia](feedback_convention_vs_inertia.md) — checar se "convenção" tem gate ou é inércia; default refactor = mais isolamento
 
 ## Git & colisão multi-agente
+> **Escopo: Modo C** (shared tree / Mac). No **Modo L** (workstation) cada linha tem worktree+índice próprios → colisão de git extinta; valem só os conflitos de merge (DIRETRIZ §1.5.5). Vide [Modelo = função do HW](project_multiagent_modo_l_2026_07_05.md).
 - [Commit collision paralelo](feedback_parallel_agent_collision.md) — `git status` antes de stage; não agarrar staged alheio
 - [Scoped commit índice compartilhado](feedback_scoped_commit_shared_index.md) — `git commit -m msg -- <só meus paths>`; `git add` específico p/ untracked
 - [Git destrutivo fora da pasta](feedback_destructive_git_outside_pasta.md) — nunca reset/checkout/restore em paths alheios sem coordenar
@@ -72,6 +73,7 @@
 - [Pixel center vs edge](feedback_pixel_center_vs_edge_coord.md) — bilinear espera center-coord; `(local/size+0.5)*W` é edge → subtrair 0.5
 - [Exact-pin substring gate](feedback_exact_pin_needs_substring_gate.md) — `=version` pin precisa arch-gate substring senão rebasing "limpa"
 - [ISPC cross-process](feedback_ispc_cross_process_concurrency.md) — asset-cooker ISPC crasha com cargo CONCORRENTE; um cargo de cada vez
+- [Zero-alloc gate = capacidade, não contador global](feedback_zero_alloc_gate_capacity_not_global_counter.md) — dhat `total_blocks` é global do processo → gate flaky; asserte estabilidade de CAPACIDADE dos buffers (determinístico)
 - [Visual bug debug](feedback_visual_bug_debug.md) — aritmética de pixels CEDO + simular visual + instrumentação >> leitura estática
 - [Claimed-green ≠ seu-OS-green](project_painter_t19_latent_red_macos_2026_05_28.md) — "W1 green" pode ser CI/linux; build o commit claimed-green ANTES de caçar regressão
 - [Painter "low-res" = canvas 64px](project_painter_canvas_res_64_not_sim_scale.md) — render macio borra pelo canvas pequeno, não pela escala do sim; cheque a res do source ANTES do shader
@@ -84,7 +86,8 @@
 - [Texture Layer = raster-backed](project_texture_layer_design.md) — `LayerKind::Texture` pré-renderizado em `images[id]`; compõe de graça; roteamento via `route_texture_layer_event`
 - [Brush audit 2026-06-18](project_brush_audit_2026_06_18.md) — (HISTÓRICO, brush deletado) claims de paridade CPU↔GPU MENTEM (latentes); meça antes de confiar
 - [Norte node-centric](project_node_centric_decision_2026_05_21.md) — engine = sistema de nós multi-domínio; `ph2d-nodegraph`+`ph2d-expr`; FBP isolation = unidade multi-agente
-- [Modelo multi-agente DIRETRIZ v6.8](project_diretriz_v68_2026_05_22.md) — 2 papéis (Coord absorve PRCI) + fluxo invertido + 3 obrigações
+- [Modelo multi-agente = função do HW (Modo L/C)](project_multiagent_modo_l_2026_07_05.md) — workstation=**Modo L** (linhas por worktree, SEM coordenador, foundational concorrente via gate testado + Mergiraf); constrained=Modo C (v7.1). ADR-0106/0107 + [guia](../docs/IntegracaoMultiAgente/GUIA_JORNADA_MODO_L.md)
+- [HISTÓRICO: reescrita DIRETRIZ v6.8](project_diretriz_v68_2026_05_22.md) — v6.7→v6.8 (ADR-0040); o "2 papéis/Coord absorve PRCI" é **Modo-C-only** agora (superseded acima)
 - [Tool isolation ADR-0040 frozen](project_tool_isolation_freeze_2026_05_22.md) — tools = drop-crates + tool-sync codegen + canal genérico; tool nova = fan-out drop-in
 - [Vector node carrier opaco](project_vector_node_opaque_carrier.md) — nós vetoriais emitem VectorNetwork via `CookValue::Opaque(Arc<dyn Any>)`; construa contra o substrato real
 - [Brush bridge = satélite, não node](project_brush_along_path_satellite_not_node.md) — cross-module p/ 1 consumidor → crate satélite que só LÊ contratos; defira foundational até ≥2 consumidores

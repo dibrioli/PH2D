@@ -1,6 +1,6 @@
 ---
 name: project-diretriz-v68-2026-05-22
-description: DIRETRIZ.md v6.8 (pós-ADR-0030..0040) — Tool↔Nó simétricos via §3.8 unificado; §3.9 deletada; §3.1 redirect; trip de auditores adversariais pegou 4 críticos no stub de painel novo (§3.2 não compilava)
+description: "[HISTÓRICO — o modelo de 2 papéis/Coordenador foi SUPERSEDED no tier workstation por [[project-multiagent-modo-l-2026-07-05]] (ADR-0106 Modo L + ADR-0107); vale só no Modo C/Mac.] Registra a reescrita da DIRETRIZ.md v6.7→v6.8 (pós-ADR-0030..0040) — Tool↔Nó simétricos via §3.8 unificado; auditores adversariais pegaram 4 críticos no stub de painel novo."
 metadata: 
   node_type: memory
   type: project

@@ -212,12 +212,6 @@ pub(super) fn dispatch(
     // upload below (frame-local — same function scope, so no `PreviewCache`
     // field change needed). `Some` = upload only this sub-rect; `None` = full.
     let mut painter_dirty_bbox: Option<(u32, u32, u32, u32)> = None;
-    // Whether the CPU preview drained fresh pixels this frame (i.e. the tool set `preview_dirty`). This —
-    // NOT the preview Arc's pointer — is what gates the GPU upload, so the CPU `canvas_rgba` clone can be
-    // released after upload without the change-detector going blind. Fixes the full-canvas `Arc::make_mut`
-    // deep-copy that fired every interactive move because the bridge retained the Arc across frames (perf
-    // audit 2026-07-04, all four lenses).
-    let mut painter_preview_drained = false;
     // True when the GPU producer owns the preview slot this frame (representable
     // stack) — gates the CPU lifecycle block off so the two never fight the slot.
     let mut gpu_owns_preview = false;
@@ -276,7 +270,6 @@ pub(super) fn dispatch(
         {
             // B.1: the bbox the drain recomposed (Some = partial fast lane).
             painter_dirty_bbox = painter.take_preview_upload_bbox();
-            painter_preview_drained = true;
             *painter_preview = Some(ph2d_tool_runtime::PreviewCache {
                 entity_bits: sel,
                 rgba,
@@ -488,21 +481,15 @@ pub(super) fn dispatch(
     match cpu_preview {
         Some(preview) => {
             let cache_token = Arc::as_ptr(&preview.rgba) as usize;
-            // Upload iff the tool produced fresh pixels this frame (`painter_preview_drained`) or the GPU
-            // texture is missing / for a different entity or size. NOT keyed on the Arc pointer any more —
-            // that was only "different" because `Arc::make_mut` minted a new allocation each move (the
-            // deep-copy we're eliminating). An idle frame keeps its clone released (empty `rgba`), so guard
-            // against uploading an emptied buffer.
-            let needs_upload = !preview.rgba.is_empty()
-                && (painter_preview_drained
-                    || match *painter_preview_gpu {
-                        None => true,
-                        Some(gpu) => {
-                            gpu.entity_bits != preview.entity_bits
-                                || gpu.width != preview.width
-                                || gpu.height != preview.height
-                        }
-                    });
+            let needs_upload = match *painter_preview_gpu {
+                None => true,
+                Some(gpu) => {
+                    gpu.arc_token != cache_token
+                        || gpu.entity_bits != preview.entity_bits
+                        || gpu.width != preview.width
+                        || gpu.height != preview.height
+                }
+            };
             if needs_upload {
                 // B.1: partial sub-rect upload when the drain reported a tracked
                 // dirty bbox AND a matching GPU texture already holds the prior
@@ -594,17 +581,6 @@ pub(super) fn dispatch(
                 release_preview_texture(renderer, painter_preview_gpu);
             }
         }
-    }
-    // Release this frame's CPU canvas clone (the pixels are now on the GPU) so the tool's NEXT interactive
-    // `Arc::make_mut(canvas_rgba)` finds a uniquely-owned buffer and mutates IN PLACE — no full-canvas
-    // deep-copy per move. Keep the cache metadata (entity/dims) so an idle frame keeps its GPU texture and
-    // doesn't fall into the `None` release arm above. Only when we actually drained + uploaded this frame.
-    if !gpu_owns_preview
-        && painter_preview_drained
-        && painter_preview_gpu.is_some() // upload succeeded (a failure keeps the clone so it retries)
-        && let Some(pc) = painter_preview.as_mut()
-    {
-        pc.rgba = Arc::new(Vec::new());
     }
     !apply_selection.is_empty()
 }

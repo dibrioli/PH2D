@@ -245,148 +245,120 @@ impl ColorValue {
     };
 }
 
-/// Semantic color slot — every widget references one of these by name;
-/// literal `from_hex`/`from_oklch` outside this crate is a code smell.
-///
-/// Variants map 1:1 to `color.*` keys in `docs/design/tokens.json`.
-/// Adding a new slot: edit tokens.json + add a variant here + add a
-/// branch in `resolve` for each of the 4 themes.
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub enum ColorToken {
+/// Declarative source of truth for the semantic color palette (ADR-0107,
+/// Camada 0). ONE list drives both the `ColorToken` enum and its `key()`
+/// map — no separate `match` to hand-maintain, so adding a token is a single
+/// new line here (Mergiraf unions disjoint additions; no second site to
+/// conflict on). Values live in `docs/design/tokens.json`, resolved below.
+macro_rules! color_tokens {
+    ($( $(#[$vmeta:meta])* $variant:ident => $key:literal ),* $(,)?) => {
+        /// Semantic color slot — every widget references one of these by name;
+        /// literal `from_hex`/`from_oklch` outside this crate is a code smell.
+        ///
+        /// Variants map 1:1 to `color.*` keys in `docs/design/tokens.json`.
+        /// Adding a new slot: add ONE line to the `color_tokens!` list below +
+        /// the value to `docs/design/tokens.json` (all themes).
+        #[derive(Copy, Clone, Debug, PartialEq, Eq)]
+        pub enum ColorToken { $( $(#[$vmeta])* $variant ),* }
+
+        impl ColorToken {
+            /// Stable kebab-case key for this token, matching the entry in
+            /// `docs/design/tokens.json`. Generated from the `color_tokens!`
+            /// list — never hand-edited.
+            pub const fn key(self) -> &'static str {
+                match self { $( Self::$variant => $key ),* }
+            }
+        }
+    };
+}
+
+color_tokens! {
     // ── Background scale (4 levels + elevated + scrim) ─────────────
     /// `bg-0` — base canvas backdrop.
-    Bg0,
+    Bg0 => "bg-0",
     /// `bg-1` — first elevation (panels, sidebar).
-    Bg1,
+    Bg1 => "bg-1",
     /// `bg-2` — second elevation (cards inside panels).
-    Bg2,
+    Bg2 => "bg-2",
     /// `bg-3` — third elevation (input rows, list items).
-    Bg3,
+    Bg3 => "bg-3",
     /// `bg-elev` — popovers/tooltips/floating panels (slight alpha).
-    BgElev,
+    BgElev => "bg-elev",
     /// `bg-scrim` — modal backdrop (heavy alpha).
-    BgScrim,
+    BgScrim => "bg-scrim",
     /// `rail-bg` — semi-transparent "frosted glass" backing for chrome
     /// strips that sit directly on the canvas (LeftRail labels). Lower
     /// alpha than `BgScrim` so canvas content stays partially visible
     /// underneath; dark in dark themes, light in light themes to keep
     /// the existing chrome text colors readable on top.
-    RailBg,
+    RailBg => "rail-bg",
     /// `panel-bg` — surface fill for floating side panels (Inspector,
     /// Hierarchy). Same hue as `BgElev` but slightly translucent (~8 %
     /// alpha bleed) so panels feel "floated over canvas" instead of
     /// pure overlay. Lower transparency than `RailBg` — content
     /// readability stays priority on panel bodies.
-    PanelBg,
+    PanelBg => "panel-bg",
 
     // ── Borders (3 levels) ─────────────────────────────────────────
     /// `border` — low-contrast separators.
-    Border,
+    Border => "border",
     /// `border-strong` — visible dividers.
-    BorderStrong,
+    BorderStrong => "border-strong",
     /// `border-emph` — focus rings, active selection borders.
-    BorderEmph,
+    BorderEmph => "border-emph",
 
     // ── Text scale (3 levels + disabled) ───────────────────────────
     /// `text-1` — primary copy. ≥ 4.5:1 vs Bg1 (AA).
-    Text1,
+    Text1 => "text-1",
     /// `text-2` — labels, captions. ≥ 4.5:1 vs Bg1 (AA).
-    Text2,
+    Text2 => "text-2",
     /// `text-3` — tertiary/hints.
-    Text3,
+    Text3 => "text-3",
     /// `text-disabled` — explicit non-interactive (3:1 OK per WCAG).
-    TextDisabled,
+    TextDisabled => "text-disabled",
 
     // ── Accent stack ───────────────────────────────────────────────
     /// `accent` — primary call-to-action / active state.
-    Accent,
+    Accent => "accent",
     /// `accent-hover` — hover state.
-    AccentHover,
+    AccentHover => "accent-hover",
     /// `accent-press` — pressed state.
-    AccentPress,
+    AccentPress => "accent-press",
     /// `accent-soft` — accent at low alpha (selection tints).
-    AccentSoft,
+    AccentSoft => "accent-soft",
     /// `accent-fg` — foreground on accent (contrast guaranteed).
-    AccentFg,
+    AccentFg => "accent-fg",
 
     // ── Semantic states ────────────────────────────────────────────
-    Danger,
-    DangerSoft,
-    Success,
-    SuccessSoft,
-    Warn,
-    WarnSoft,
-    Info,
-    InfoSoft,
+    Danger => "danger",
+    DangerSoft => "danger-soft",
+    Success => "success",
+    SuccessSoft => "success-soft",
+    Warn => "warn",
+    WarnSoft => "warn-soft",
+    Info => "info",
+    InfoSoft => "info-soft",
 
     // ── Editor-specific ────────────────────────────────────────────
     /// `selection` — selected entity highlight.
-    Selection,
+    Selection => "selection",
     /// `focus-ring` — keyboard focus indicator.
-    FocusRing,
+    FocusRing => "focus-ring",
     /// `grid-line` — minor grid stroke on canvas.
-    GridLine,
+    GridLine => "grid-line",
     /// `grid-axis` — major axis line on canvas.
-    GridAxis,
+    GridAxis => "grid-axis",
     /// `curve-r` — red channel tint for the Curves editor (R tab curve + handle ring).
-    CurveR,
+    CurveR => "curve-r",
     /// `curve-g` — green channel tint for the Curves editor.
-    CurveG,
+    CurveG => "curve-g",
     /// `curve-b` — blue channel tint for the Curves editor.
-    CurveB,
+    CurveB => "curve-b",
     /// `canvas` — viewport background (scene render target backdrop).
-    Canvas,
+    Canvas => "canvas",
 }
 
 impl ColorToken {
-    /// Stable string key for this token, matching the corresponding
-    /// entry in `docs/design/tokens.json`. Used by `resolve` to look up
-    /// the OKLCH value in the codegen'd per-theme table.
-    ///
-    /// Adding a new ColorToken variant: add an arm here mapping to the
-    /// kebab-case key that lives in tokens.json. The runtime panic in
-    /// `lookup` catches missing keys at first use.
-    pub const fn key(self) -> &'static str {
-        match self {
-            Self::Bg0 => "bg-0",
-            Self::Bg1 => "bg-1",
-            Self::Bg2 => "bg-2",
-            Self::Bg3 => "bg-3",
-            Self::BgElev => "bg-elev",
-            Self::BgScrim => "bg-scrim",
-            Self::RailBg => "rail-bg",
-            Self::PanelBg => "panel-bg",
-            Self::Border => "border",
-            Self::BorderStrong => "border-strong",
-            Self::BorderEmph => "border-emph",
-            Self::Text1 => "text-1",
-            Self::Text2 => "text-2",
-            Self::Text3 => "text-3",
-            Self::TextDisabled => "text-disabled",
-            Self::Accent => "accent",
-            Self::AccentHover => "accent-hover",
-            Self::AccentPress => "accent-press",
-            Self::AccentSoft => "accent-soft",
-            Self::AccentFg => "accent-fg",
-            Self::Danger => "danger",
-            Self::DangerSoft => "danger-soft",
-            Self::Success => "success",
-            Self::SuccessSoft => "success-soft",
-            Self::Warn => "warn",
-            Self::WarnSoft => "warn-soft",
-            Self::Info => "info",
-            Self::InfoSoft => "info-soft",
-            Self::Selection => "selection",
-            Self::FocusRing => "focus-ring",
-            Self::GridLine => "grid-line",
-            Self::GridAxis => "grid-axis",
-            Self::CurveR => "curve-r",
-            Self::CurveG => "curve-g",
-            Self::CurveB => "curve-b",
-            Self::Canvas => "canvas",
-        }
-    }
-
     /// Resolve token → concrete Color for the given Theme via lookup in
     /// the codegen'd `COLORS_<THEME>` table from
     /// `docs/design/tokens.json`. Wave 2 PR 11.1: values flow from

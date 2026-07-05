@@ -57,8 +57,8 @@ thread_local! {
         const { RefCell::new(None) };
 
     /// Dock-view mode published per-frame: `true` = Layers/Effects, `false` = Brush props. Defaults to
-    /// Layers (a fresh pre-publish frame shows the main view); the bridge publishes, `paint` branches.
-    static CURRENT_DOCK_SHOWS_LAYERS: Cell<bool> = const { Cell::new(true) };
+    /// Brush (a fresh pre-publish frame shows the Brush view — Enio 2026-07-04); the bridge publishes, `paint` branches.
+    static CURRENT_DOCK_SHOWS_LAYERS: Cell<bool> = const { Cell::new(false) };
 
     /// The open brush blend-mode dropdown for the deferred popover: `(chip_rect, mode_u8)`. Set during
     /// the Brush-section paint, drained at the end of `paint`. Mirror of [`PENDING_BLEND_DD`].

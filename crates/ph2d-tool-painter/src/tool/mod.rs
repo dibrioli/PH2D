@@ -172,9 +172,9 @@ impl Default for PainterTool {
             selection: BTreeSet::new(),
             compositor_cache: CompositorCache::new(),
             adjustment_cache_pending: false,
-            // Dock opens on the Layers/Effects view; the header toggle flips to
-            // the Brush-properties view (`dock_shows_layers == false`).
-            dock_shows_layers: true,
+            // Dock opens on the BRUSH-properties view (Enio 2026-07-04); the header toggle flips to the
+            // Layers/Effects view (`dock_shows_layers == true`).
+            dock_shows_layers: false,
             paint: paint::PaintState::default(),
             bound_doc: None,
             doc_cache: BTreeMap::new(),

@@ -71,6 +71,11 @@ pub(crate) struct DeformState {
     /// gizmo back through these WITHOUT touching the structural timeline (the whole transform is one entry,
     /// committed when it ends). Pixels aren't stored (re-composited from the pose), so it's cheap.
     pub(crate) xform_undo: Vec<transform::PoseSnap>,
+    /// The mirror **redo** stack — poses undone while the transform is still live, re-applied by redo. Cleared
+    /// when a new gesture happens (a fresh edit invalidates redo).
+    pub(crate) xform_redo: Vec<transform::PoseSnap>,
+    /// Saved when undo UN-LIFTS the transform (gizmo gone) — redo re-lifts the float + gizmo from this.
+    pub(crate) xform_relift: Option<transform::Relift>,
     /// The **Warp mesh** grid of control points (Distort's big brother): a lattice over the patch whose
     /// points drag independently, each cell warped by its own homography. `Some` only in the Warp sub-mode.
     pub(crate) xform_mesh: Option<transform::Mesh>,
@@ -122,6 +127,8 @@ impl Default for DeformState {
             xform_grab: None,
             xform_moved: false,
             xform_undo: Vec::new(),
+            xform_redo: Vec::new(),
+            xform_relift: None,
             xform_mesh: None,
             xform_patch: None,
             xform_before: None,

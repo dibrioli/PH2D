@@ -66,8 +66,13 @@ impl PainterTool {
 
     /// Redo the most recently undone edit on the unified timeline. Returns `true` if an edit was redone.
     pub fn redo_last(&mut self) -> bool {
-        // While a Transform float is live, the structural timeline is frozen (the transform is one pending
-        // entry) — swallow redo so it can't reinstate a stale structural state under the lifted patch.
+        // A live / just-un-lifted Transform owns redo: re-lift the gizmo (recreate it) or step a gizmo pose
+        // FORWARD — mirroring transform_undo_step, WITHOUT touching the structural timeline (Enio 2026-07-04).
+        if self.transform_redo_step() {
+            return true;
+        }
+        // While a Transform float is live with nothing left to redo, the structural timeline is frozen (the
+        // transform is one pending entry) — swallow redo so it can't reinstate a stale structural state.
         if self.deform_transform_live() {
             return false;
         }

@@ -98,6 +98,6 @@ impl RasterEditTool for PainterTool {
         self.pending_commit = false;
         self.edited_since_bind = false;
         self.deferred_bake = false;
-        self.dock_shows_layers = true; // re-activating starts on the Layers view
+        self.dock_shows_layers = false; // re-activating starts on the Brush view (Enio 2026-07-04)
     }
 }

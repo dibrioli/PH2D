@@ -3407,19 +3407,19 @@ fn eraser_removes_alpha_from_opaque_pixels() {
 }
 
 #[test]
-fn dock_defaults_to_layers_then_toggles() {
+fn dock_defaults_to_brush_then_toggles() {
     let mut t = PainterTool::default();
     assert!(
-        t.dock_shows_layers(),
-        "dock opens on the Layers/Effects view"
+        !t.dock_shows_layers(),
+        "dock opens on the Brush-properties view (Enio 2026-07-04)"
     );
     t.toggle_dock();
     assert!(
-        !t.dock_shows_layers(),
-        "header toggle flips to the Brush view"
+        t.dock_shows_layers(),
+        "header toggle flips to the Layers/Effects view"
     );
     t.toggle_dock();
-    assert!(t.dock_shows_layers(), "toggling back returns to Layers");
+    assert!(!t.dock_shows_layers(), "toggling back returns to Brush");
 }
 
 #[test]
@@ -5488,6 +5488,7 @@ fn texture_layer_renders_composites_and_edits_live_via_panel_events() {
 
     let mut t = PainterTool::default();
     t.set_source(vec![255u8; 32 * 32 * 4], 32, 32); // opaque white base
+    t.toggle_dock(); // texture-layer editing lives in the Layers view (dock now opens on Brush)
 
     // Add a Texture layer: it becomes active, with its rendered pixels in `canvas_rgba`.
     let id = t.add_texture_layer().expect("texture layer added");
@@ -5574,6 +5575,7 @@ fn texture_layer_size_and_offset_panel_events_are_real_valued_and_clamp() {
 
     let mut t = PainterTool::default();
     t.set_source(vec![255u8; 32 * 32 * 4], 32, 32);
+    t.toggle_dock(); // texture-layer editing lives in the Layers view (dock now opens on Brush)
     let id = t.add_texture_layer().expect("texture layer added");
     let size = |t: &PainterTool, axis: usize| match t.layers().get(id).map(|l| &l.kind) {
         Some(LayerKind::Texture(tex)) => tex.size[axis],
@@ -5668,9 +5670,8 @@ fn brush_texture_section_not_hijacked_when_dock_shows_brush() {
     use ph2d_painter_brush::TextureKind;
     let mut t = PainterTool::default();
     t.set_source(vec![255u8; 16 * 16 * 4], 16, 16);
-    let id = t.add_texture_layer().expect("texture layer added"); // active, dock shows Layers
-    // Switch the dock to the Brush view; the texture layer stays active.
-    t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_LAYERS_TOGGLE_DOCK));
+    let id = t.add_texture_layer().expect("texture layer added"); // active; dock now opens on Brush
+    // The dock already shows the Brush view (default) with the texture layer active.
     // A Kind change in the Brush view must hit the BRUSH, not the active texture layer.
     let layer_kind_before = match t.layers().get(id).map(|l| &l.kind) {
         Some(LayerKind::Texture(tex)) => tex.kind,
@@ -6434,6 +6435,35 @@ fn deform_transform_undo_steps_the_gizmo_back() {
         t.paint.deform.temperament, 0,
         "un-lifting closes the Transform options (temperament → none)"
     );
+}
+
+#[test]
+fn deform_transform_redo_recreates_the_gizmo() {
+    // Redo mirrors the live-transform undo: after undoing a move (gizmo back) then un-lifting (gizmo gone),
+    // redo re-lifts the gizmo (temperament → Transform) and steps the pose forward again (Enio 2026-07-04).
+    let mut t = deform_square_canvas(64, 20, 20, 44, 44);
+    t.set_deform_transform_on(true);
+    let lifted = t.canvas_rgba.clone();
+    t.on_canvas_pointer(cp([32.0, 32.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([44.0, 32.0], PointerPhase::Move));
+    t.on_canvas_pointer(cp([44.0, 32.0], PointerPhase::Up));
+    let moved = t.canvas_rgba.clone();
+    assert!(t.undo_last(), "undo the move");
+    assert!(t.deform_gizmo().is_some(), "still live at the lift pose");
+    assert!(t.undo_last(), "undo the lift (un-lift)");
+    assert!(t.deform_gizmo().is_none(), "gizmo gone");
+    assert_eq!(t.paint.deform.temperament, 0, "options closed");
+    // Redo #1 → re-lift the gizmo.
+    assert!(t.redo_last(), "redo re-lifts");
+    assert!(t.deform_gizmo().is_some(), "redo recreates the gizmo");
+    assert_eq!(
+        t.paint.deform.temperament, 2,
+        "redo restores the Transform temperament"
+    );
+    assert_eq!(*t.canvas_rgba, *lifted, "redo restores the lift pose");
+    // Redo #2 → re-apply the move.
+    assert!(t.redo_last(), "redo re-applies the move");
+    assert_eq!(*t.canvas_rgba, *moved, "the gizmo move is back");
 }
 
 #[test]

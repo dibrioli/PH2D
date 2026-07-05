@@ -63,6 +63,17 @@ pub(crate) struct PoseSnap {
     pub mesh: Option<Mesh>,
 }
 
+/// The full live-transform state saved when undo UN-LIFTS it, so redo can re-lift the float + gizmo exactly.
+pub(crate) struct Relift {
+    pub patch: FloatingPatch,
+    pub xform: Xform,
+    pub mesh: Option<Mesh>,
+    pub before: crate::undo::ModelSnapshot,
+    pub mode: u8,
+    pub undo: Vec<PoseSnap>,
+    pub redo: Vec<PoseSnap>,
+}
+
 /// A drawable Transform gizmo (image-space px) for the shell overlay. Affine sub-modes show the oriented box
 /// with 8 scale squares (corners + edge mids, a square reads as a circle in its rotate ring) + a centre-move
 /// square. Distort shows ONLY the 4 corner squares (each drags freely). `corner_only` selects which.
@@ -277,6 +288,7 @@ impl PainterTool {
         };
         // Only a real grab pushes a pose onto the LOCAL undo stack (so a click in empty space leaves no junk).
         if let Some(g) = grab {
+            self.clear_transform_redo(); // a new edit invalidates any pending redo
             if let Some(pose) = self.current_pose() {
                 self.paint.deform.xform_undo.push(pose);
             }
@@ -370,6 +382,10 @@ impl PainterTool {
             return false;
         }
         if let Some(pose) = self.paint.deform.xform_undo.pop() {
+            // Save the pose we're LEAVING so redo can re-apply it.
+            if let Some(cur) = self.current_pose() {
+                self.paint.deform.xform_redo.push(cur);
+            }
             if let Some(x) = self.paint.deform.xform {
                 self.paint.deform.xform = Some(Xform {
                     current: pose.current,
@@ -385,6 +401,21 @@ impl PainterTool {
         }
         // Empty stack → the gizmo is at its lift pose; the next undo un-lifts (restore the pre-lift model).
         if let Some(before) = self.paint.deform.xform_before.take() {
+            // Save the whole float so REDO can re-lift the gizmo exactly (Enio 2026-07-04).
+            if let (Some(patch), Some(xform)) = (
+                self.paint.deform.xform_patch.clone(),
+                self.paint.deform.xform,
+            ) {
+                self.paint.deform.xform_relift = Some(Relift {
+                    patch,
+                    xform,
+                    mesh: self.paint.deform.xform_mesh.clone(),
+                    before: before.clone(),
+                    mode: self.paint.deform.transform_mode,
+                    undo: std::mem::take(&mut self.paint.deform.xform_undo),
+                    redo: std::mem::take(&mut self.paint.deform.xform_redo),
+                });
+            }
             self.clear_transform_state();
             self.restore_model(before);
             // The gizmo is gone → CLOSE the Transform options (temperament back to none) so the artist must
@@ -395,12 +426,54 @@ impl PainterTool {
         false
     }
 
+    /// The redo counterpart of [`Self::transform_undo_step`]: re-lift the un-lifted transform (recreate the
+    /// gizmo), or step a gizmo pose FORWARD on the live redo stack. Returns `true` iff it handled the redo.
+    pub(crate) fn transform_redo_step(&mut self) -> bool {
+        // Not live but a lift was undone → re-lift the whole transform (gizmo comes back).
+        if self.paint.deform.xform_patch.is_none() {
+            let Some(r) = self.paint.deform.xform_relift.take() else {
+                return false;
+            };
+            self.paint.deform.xform_patch = Some(r.patch);
+            self.paint.deform.xform = Some(r.xform);
+            self.paint.deform.xform_mesh = r.mesh;
+            self.paint.deform.xform_before = Some(r.before);
+            self.paint.deform.transform_mode = r.mode;
+            self.paint.deform.xform_undo = r.undo;
+            self.paint.deform.xform_redo = r.redo;
+            self.paint.deform.xform_grab = None;
+            self.paint.deform.xform_moved = false;
+            self.paint.deform.temperament = DEFORM_TEMPERAMENT_TRANSFORM;
+            self.recomposite_transform();
+            return true;
+        }
+        // Live → re-apply the next undone pose.
+        if let Some(pose) = self.paint.deform.xform_redo.pop() {
+            if let Some(cur) = self.current_pose() {
+                self.paint.deform.xform_undo.push(cur);
+            }
+            if let Some(x) = self.paint.deform.xform {
+                self.paint.deform.xform = Some(Xform {
+                    current: pose.current,
+                    corners: pose.corners,
+                    ..x
+                });
+            }
+            self.paint.deform.xform_mesh = pose.mesh;
+            self.paint.deform.xform_grab = None;
+            self.recomposite_transform();
+            return true;
+        }
+        false
+    }
+
     /// `true` while a Transform float is lifted (a live transform is in progress).
     pub(crate) fn deform_transform_live(&self) -> bool {
         self.paint.deform.xform_patch.is_some()
     }
 
-    /// Drop all live Transform state (float + poses) WITHOUT committing — used when the lift is undone.
+    /// Drop all live Transform state (float + poses) WITHOUT committing — used when the lift is undone. Does
+    /// NOT touch `xform_relift` (the un-lift saves it there for redo just before calling this).
     pub(crate) fn clear_transform_state(&mut self) {
         self.paint.deform.xform_patch = None;
         self.paint.deform.xform = None;
@@ -409,7 +482,14 @@ impl PainterTool {
         self.paint.deform.xform_before = None;
         self.paint.deform.xform_last_bbox = None;
         self.paint.deform.xform_undo.clear();
+        self.paint.deform.xform_redo.clear();
         self.paint.deform.xform_moved = false;
+    }
+
+    /// Invalidate the local redo stacks — any NEW gesture / lift / bake makes the undone poses unreachable.
+    fn clear_transform_redo(&mut self) {
+        self.paint.deform.xform_redo.clear();
+        self.paint.deform.xform_relift = None;
     }
 }
 

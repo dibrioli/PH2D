@@ -816,7 +816,7 @@ fn flatten_catmull_rom_bends_off_a_moved_midpoint() {
 fn curve_fills_spaced_dabs_along_the_spline() {
     // Curve: author 3 points → the engine auto-smooths + lays spaced dabs along the whole spline.
     let spec = BrushSpec {
-        stroke_method: StrokeMethod::Curve,
+        stroke_method: StrokeMethod::Arc,
         ..straight_spec(10.0, 0.5)
     };
     let mut s = Stroke::new(spec, no_dynamics(), 1);
@@ -848,7 +848,7 @@ fn curve_preview_is_deterministic_per_fill() {
     // A fresh Stroke per re-fill with the SAME points + seed yields IDENTICAL dabs (no shimmer as the
     // curve is reshaped), even with jitter on — the engine fill is a pure function of (points, spec).
     let spec = BrushSpec {
-        stroke_method: StrokeMethod::Curve,
+        stroke_method: StrokeMethod::Arc,
         jitter: 0.5,
         ..straight_spec(10.0, 0.5)
     };
@@ -1089,7 +1089,7 @@ fn polygon_preview_is_deterministic_per_fill() {
 #[test]
 fn curve_fill_needs_two_points() {
     let spec = BrushSpec {
-        stroke_method: StrokeMethod::Curve,
+        stroke_method: StrokeMethod::Arc,
         ..straight_spec(10.0, 0.5)
     };
     let mut s = Stroke::new(spec, no_dynamics(), 1);

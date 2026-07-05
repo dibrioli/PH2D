@@ -14,9 +14,9 @@ use super::stamp_cache::mask_size_for;
 use super::{Region, union_region};
 use crate::tool::PainterTool;
 use ph2d_painter_brush::{
-    BrushSpec, ColorStampMask, Dab, Falloff, FalloffCurve, ImageRgb, RampAlphaMode, StrokeMethod,
-    TextureSettings, accumulate_color_stamps_fused, blend_over, blit_color_stamp,
-    render_color_stamp_mask, render_ramp_color_stamp,
+    BrushSpec, ColorStampMask, Dab, Falloff, FalloffCurve, FusedDab, ImageRgb, RampAlphaMode,
+    StrokeMethod, TextureSettings, accumulate_color_stamps_fused_batch, blend_over,
+    blit_color_stamp, render_color_stamp_mask, render_ramp_color_stamp,
 };
 use ph2d_painter_effects::{BlendMode, apply_blend};
 use std::sync::Arc;
@@ -171,30 +171,32 @@ impl PainterTool {
         let Some((stamps, key)) = self.paint.color_stamp_cache.take() else {
             return;
         };
-        let mut bbox: Option<Region> = None;
-        for d in dabs {
-            let cov = (d.coverage * brush.flow * brush.strength).clamp(0.0, 1.0);
-            // One fused pass over the dab footprint accumulates ALL layers (shared bilinear coords,
-            // alpha-only) — byte-identical to a per-layer loop but the painter's per-Move bottleneck, so
-            // the redundant per-layer coordinate math is hoisted out (`HANDOFF_per_layer_color_perf` §1.R).
-            if let Some(r) = accumulate_color_stamps_fused(
-                &mut self.paint.per_layer_stroke.cov,
-                w,
-                h,
-                d.center,
-                d.radius_px,
-                &stamps,
-                cov,
-            ) {
-                let rect = Region {
-                    x: r.x,
-                    y: r.y,
-                    w: r.w,
-                    h: r.h,
-                };
-                bbox = Some(bbox.map_or(rect, |acc| union_region(acc, rect)));
-            }
-        }
+        // One fused BATCH pass accumulates all dabs × all layers (shared bilinear coords, alpha-only),
+        // row-banded across the cores — byte-identical to the per-dab loop (each pixel keeps its serial
+        // dab order; gate `batched_fused_accumulate_is_bit_identical_to_sequential`). This was the
+        // painter's per-Move bottleneck: 96.5% of the move and SERIAL, which is why the Mac mini and the
+        // 32-core desktop stalled identically (`HANDOFF_per_layer_color_perf` §1.R).
+        let fused: Vec<FusedDab> = dabs
+            .iter()
+            .map(|d| FusedDab {
+                center: d.center,
+                radius: d.radius_px,
+                coverage: (d.coverage * brush.flow * brush.strength).clamp(0.0, 1.0),
+            })
+            .collect();
+        let bbox = accumulate_color_stamps_fused_batch(
+            &mut self.paint.per_layer_stroke.cov,
+            w,
+            h,
+            &fused,
+            &stamps,
+        )
+        .map(|r| Region {
+            x: r.x,
+            y: r.y,
+            w: r.w,
+            h: r.h,
+        });
         self.paint.color_stamp_cache = Some((stamps, key));
         let Some(bb) = bbox else {
             return;
@@ -217,80 +219,155 @@ impl PainterTool {
         let blend = brush.blend;
         {
             let buf = Arc::make_mut(&mut self.canvas_rgba);
-            let pls = &mut self.paint.per_layer_stroke;
+            let PerLayerStroke { pre, cov } = &mut self.paint.per_layer_stroke;
             let enc = |x: f32| (x.clamp(0.0, 1.0) * 255.0 + 0.5) as u8;
-            for py in bb.y..bb.y + bb.h {
-                for px in bb.x..bb.x + bb.w {
-                    let p4 = ((py * w + px) * 4) as usize;
-                    let idx = (py * w + px) as usize;
-                    // Skip pixels no layer covers: a fill's dirty bbox is mostly empty (a diagonal line's
-                    // bbox ≈ the whole canvas) and those pixels already hold the base. The big win on fills.
-                    if !pls.cov.iter().take(n).any(|m| m[idx] != 0) {
-                        continue;
-                    }
-                    // (1) Composite the Shape layers among themselves (z-order) into one STRAIGHT stroke
-                    // colour+alpha. Default (all Normal): premultiplied source-over, then un-premultiply —
-                    // byte-identical to the prior path. With a per-layer blend pick: each layer composites
-                    // onto the accumulated lower layers under its own mode (the layer-system blend formulas).
-                    let stroke = if any_blend {
-                        let mut s = [0.0f32; 4]; // straight rgba
-                        for (i, c) in colors.iter().enumerate() {
-                            let a = f32::from(pls.cov[i][idx]) / 255.0 * opac[i];
-                            if a > 0.0 {
-                                s = apply_blend(
-                                    BlendMode::from_u8(blends[i]),
-                                    s,
-                                    [c[0], c[1], c[2], a],
-                                );
-                            }
+            let wus = w as usize;
+            // The per-pixel recomposite for one row band: `bufband`/`covband` hold the band's rows
+            // (first row `band_y0`); `pre` is the full canvas (absolute index). Every pixel is
+            // independent (reads its own coverage, writes its own texel + self-clear), so disjoint row
+            // bands are bit-identical to the serial sweep.
+            let recomposite_band = |bufband: &mut [u8], covband: &mut [&mut [u8]], band_y0: u32| {
+                let rows = (bufband.len() / (wus * 4)) as u32;
+                for py in band_y0..band_y0 + rows {
+                    for px in bb.x..bb.x + bb.w {
+                        let lrow = ((py - band_y0) as usize) * wus + px as usize;
+                        let p4 = lrow * 4;
+                        // Skip pixels no layer covers: a fill's dirty bbox is mostly empty (a diagonal
+                        // line's bbox ≈ the whole canvas) and those already hold the base.
+                        if !covband.iter().take(n).any(|m| m[lrow] != 0) {
+                            continue;
                         }
-                        s
-                    } else {
-                        let mut s = [0.0f32; 4]; // premultiplied rgba
-                        for (i, c) in colors.iter().enumerate() {
-                            let a = f32::from(pls.cov[i][idx]) / 255.0 * opac[i];
-                            if a > 0.0 {
-                                let inv = 1.0 - a;
-                                s[0] = c[0] * a + s[0] * inv;
-                                s[1] = c[1] * a + s[1] * inv;
-                                s[2] = c[2] * a + s[2] * inv;
-                                s[3] = a + s[3] * inv;
+                        // (1) Composite the Shape layers among themselves (z-order) into one STRAIGHT
+                        // stroke colour+alpha. Default (all Normal): premultiplied source-over, then
+                        // un-premultiply — byte-identical to the prior path. With a per-layer blend
+                        // pick: each layer composites onto the accumulated lower layers under its own
+                        // mode (the layer-system blend formulas).
+                        let stroke = if any_blend {
+                            let mut s = [0.0f32; 4]; // straight rgba
+                            for (i, c) in colors.iter().enumerate() {
+                                let a = f32::from(covband[i][lrow]) / 255.0 * opac[i];
+                                if a > 0.0 {
+                                    s = apply_blend(
+                                        BlendMode::from_u8(blends[i]),
+                                        s,
+                                        [c[0], c[1], c[2], a],
+                                    );
+                                }
                             }
-                        }
-                        if s[3] > 0.0 {
-                            let inv = 1.0 / s[3];
-                            [s[0] * inv, s[1] * inv, s[2] * inv, s[3]]
+                            s
                         } else {
-                            [0.0; 4]
+                            let mut s = [0.0f32; 4]; // premultiplied rgba
+                            for (i, c) in colors.iter().enumerate() {
+                                let a = f32::from(covband[i][lrow]) / 255.0 * opac[i];
+                                if a > 0.0 {
+                                    let inv = 1.0 - a;
+                                    s[0] = c[0] * a + s[0] * inv;
+                                    s[1] = c[1] * a + s[1] * inv;
+                                    s[2] = c[2] * a + s[2] * inv;
+                                    s[3] = a + s[3] * inv;
+                                }
+                            }
+                            if s[3] > 0.0 {
+                                let inv = 1.0 / s[3];
+                                [s[0] * inv, s[1] * inv, s[2] * inv, s[3]]
+                            } else {
+                                [0.0; 4]
+                            }
+                        };
+                        // Base: the pre-stroke snapshot (incremental; absolute index) or the canvas
+                        // itself (fills — already restored to the pre-shape this move). Copy 4 bytes
+                        // so the read ends before the write.
+                        let a4 = ((py as usize) * wus + px as usize) * 4;
+                        let base4 = if incremental {
+                            [pre[a4], pre[a4 + 1], pre[a4 + 2], pre[a4 + 3]]
+                        } else {
+                            [
+                                bufband[p4],
+                                bufband[p4 + 1],
+                                bufband[p4 + 2],
+                                bufband[p4 + 3],
+                            ]
+                        };
+                        let mut acc = base4.map(|b| f32::from(b) / 255.0);
+                        // (2) Blend the stroke onto the base once via the Brush blend mode.
+                        if stroke[3] > 0.0 {
+                            let pre_alpha = acc[3];
+                            acc = blend_over(
+                                blend,
+                                acc,
+                                [stroke[0], stroke[1], stroke[2]],
+                                stroke[3],
+                            );
+                            if alpha_locked {
+                                acc[3] = pre_alpha; // alpha-lock: colour only, not the layer's alpha
+                            }
                         }
-                    };
-                    // Base: the pre-stroke snapshot (incremental) or the canvas itself (fills — already
-                    // restored to the pre-shape this move). Copy 4 bytes so the read ends before the write.
-                    let pre = {
-                        let base: &[u8] = if incremental { &pls.pre } else { &*buf };
-                        [base[p4], base[p4 + 1], base[p4 + 2], base[p4 + 3]]
-                    };
-                    let mut acc = pre.map(|b| f32::from(b) / 255.0);
-                    // (2) Blend the stroke onto the base once via the Brush blend mode.
-                    if stroke[3] > 0.0 {
-                        let pre_alpha = acc[3];
-                        acc = blend_over(blend, acc, [stroke[0], stroke[1], stroke[2]], stroke[3]);
-                        if alpha_locked {
-                            acc[3] = pre_alpha; // alpha-lock: paint modifies colour, not the layer's alpha
-                        }
-                    }
-                    buf[p4] = enc(acc[0]);
-                    buf[p4 + 1] = enc(acc[1]);
-                    buf[p4 + 2] = enc(acc[2]);
-                    buf[p4 + 3] = enc(acc[3]);
-                    // Fills: clear this pixel's maps so they're clean for the next move (each fill move is a
-                    // fresh full shape) — avoids any per-move full clear / re-allocation.
-                    if !incremental {
-                        for m in pls.cov.iter_mut().take(n) {
-                            m[idx] = 0;
+                        bufband[p4] = enc(acc[0]);
+                        bufband[p4 + 1] = enc(acc[1]);
+                        bufband[p4 + 2] = enc(acc[2]);
+                        bufband[p4 + 3] = enc(acc[3]);
+                        // Fills: clear this pixel's maps so they're clean for the next move (each fill
+                        // move is a fresh full shape) — no per-move full clear / re-allocation.
+                        if !incremental {
+                            for m in covband.iter_mut().take(n) {
+                                m[lrow] = 0;
+                            }
                         }
                     }
                 }
+            };
+            let rows = bb.h as usize;
+            /// Below this bbox area (px) the serial sweep beats spawning scoped threads.
+            const PARALLEL_MIN_AREA: usize = 1 << 17;
+            let threads = std::thread::available_parallelism()
+                .map(std::num::NonZero::get)
+                .unwrap_or(1)
+                .clamp(1, rows.max(1));
+            let (by0, by1) = (bb.y as usize, (bb.y + bb.h) as usize);
+            if (rows * bb.w as usize) < PARALLEL_MIN_AREA || threads == 1 || rows <= 1 {
+                let mut covfull: Vec<&mut [u8]> = cov
+                    .iter_mut()
+                    .map(|m| &mut m[by0 * wus..by1 * wus])
+                    .collect();
+                recomposite_band(&mut buf[by0 * wus * 4..by1 * wus * 4], &mut covfull, bb.y);
+            } else {
+                // Split the canvas AND every layer map into the same disjoint row bands.
+                let rpb = rows.div_ceil(threads);
+                let nbands = rows.div_ceil(rpb);
+                let mut bufbands: Vec<&mut [u8]> = Vec::with_capacity(nbands);
+                let mut rest = &mut buf[by0 * wus * 4..by1 * wus * 4];
+                for _ in 0..nbands {
+                    let take = (rpb * wus * 4).min(rest.len());
+                    let (head, tail) = rest.split_at_mut(take);
+                    bufbands.push(head);
+                    rest = tail;
+                }
+                let mut covbands: Vec<Vec<&mut [u8]>> =
+                    (0..nbands).map(|_| Vec::with_capacity(n)).collect();
+                for m in cov.iter_mut() {
+                    let mut rest = &mut m[by0 * wus..by1 * wus];
+                    for band in covbands.iter_mut() {
+                        let take = (rpb * wus).min(rest.len());
+                        let (head, tail) = rest.split_at_mut(take);
+                        band.push(head);
+                        rest = tail;
+                    }
+                }
+                let recomposite_band = &recomposite_band;
+                std::thread::scope(|s| {
+                    let handles: Vec<_> = bufbands
+                        .into_iter()
+                        .zip(covbands)
+                        .enumerate()
+                        .map(|(bi, (bband, mut cband))| {
+                            let band_y0 = bb.y + (bi * rpb) as u32;
+                            s.spawn(move || recomposite_band(bband, &mut cband, band_y0))
+                        })
+                        .collect();
+                    for h in handles {
+                        h.join().expect("per-layer recomposite band panicked");
+                    }
+                });
             }
         }
         self.mark_dirty(bb);

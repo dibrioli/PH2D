@@ -75,7 +75,7 @@ pub(crate) fn paint_stroke_section(
         );
     }
 
-    // ── Apply / Apply & Keep — only the methods with a persistent on-canvas shape editor (Curve /
+    // ── Apply / Apply & Keep — only the methods with a persistent on-canvas shape editor (Arc /
     //    Free Hand / Ellipse / Polygon). Apply bakes the open shape and drops the editor; Apply & Keep
     //    bakes but keeps the handles for re-apply/reshape. Two buttons share one row, stacking to a
     //    column when the panel is too narrow (mirrors the ramp controls' responsive split). ──
@@ -84,7 +84,7 @@ pub(crate) fn paint_stroke_section(
         // with (Enio 2026-07-04). Mirrors the Selection OPERATION card. Above the Apply / Offset controls.
         y = op_card::operation_card(ctx, theme, x, content_w, y, brush.stroke_op_mode as usize);
         // Simplify — re-fit the editable curve to a clean minimal control polygon (directly below Method).
-        // Shown only once it applies: Free Hand always, Curve / converted shapes after a point is added.
+        // Shown only once it applies: Free Hand always, Arc / converted shapes after a point is added.
         if brush.can_simplify {
             y = paint_simplify_row(ctx, theme, x, content_w, y);
         }
@@ -518,7 +518,7 @@ fn stroke_method_name(m: u8) -> &'static str {
         StrokeMethod::Space => "Space",
         StrokeMethod::DragDot => "Drag Dot",
         StrokeMethod::Line => "Line",
-        StrokeMethod::Curve => "Curve",
+        StrokeMethod::Arc => "Arc",
         StrokeMethod::Ellipse => "Ellipse",
         StrokeMethod::Polygon => "Polygon",
         StrokeMethod::FreeHand => "Free Hand",
@@ -534,7 +534,7 @@ fn jitter_unit_name(u: u8) -> &'static str {
 }
 
 /// The stroke methods as dropdown options, in Blender's menu order (Dots, Drag Dot, Space, Airbrush,
-/// Anchored, Line, Curve), then the PH2D Ellipse + Polygon + Free Hand shape extensions last.
+/// Anchored, Line, Arc), then the PH2D Ellipse + Polygon + Free Hand shape extensions last.
 fn stroke_method_options() -> Vec<DropdownOption<u8>> {
     // Smear/Blur/Clone only support the incremental methods (Dots / Airbrush / Space): the fill /
     // editable-curve methods don't produce the per-move dab chain they process along, so they're

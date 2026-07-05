@@ -4,7 +4,7 @@
 //! pipeline is **input-samples box-average** ([`crate::sampler`]) → **stabilize spring** → per-
 //! [`StrokeMethod`] emission → per-dab **dash gate** + **jitter** + pressure **dynamics** + **space-
 //! attenuation**. `Space` resamples the path at `spacing × diameter`; the per-event methods (`Dots`/
-//! `DragDot`/`Airbrush`) emit one dab per sample. The *interactive* methods (`Anchored`/`Line`/`Curve`)
+//! `DragDot`/`Airbrush`) emit one dab per sample. The *interactive* methods (`Anchored`/`Line`/`Arc`)
 //! are tool/shell-owned; the engine exposes [`Stroke::fill_segment`] + [`Stroke::tick`] as primitives.
 
 use crate::dynamics::Dynamics;
@@ -147,7 +147,7 @@ impl Stroke {
     }
 
     /// Begin the stroke at `p`. For the continuous methods this emits the first dab at the down
-    /// point; the interactive methods (Anchored/Line/Curve) only record the anchor (they paint on
+    /// point; the interactive methods (Anchored/Line/Arc) only record the anchor (they paint on
     /// finalise via [`Stroke::fill_segment`]).
     pub fn begin(&mut self, p: StrokePoint, out: &mut Vec<Dab>) {
         out.clear();
@@ -244,11 +244,11 @@ impl Stroke {
                 let dab = self.anchored_dab(center, radius, dir);
                 crate::symmetry::push_symmetric(out, dab, &self.spec.symmetry);
             }
-            // Line / Curve / Ellipse / Polygon / Free Hand are tool/shell-driven shape editors
+            // Line / Arc / Ellipse / Polygon / Free Hand are tool/shell-driven shape editors
             // (`docs/Painter/`), filled via `Stroke::fill_*_preview` (Line = `fill_polyline_preview`); a
             // bare `extend` (no editor) only tracks the anchor.
             StrokeMethod::Line
-            | StrokeMethod::Curve
+            | StrokeMethod::Arc
             | StrokeMethod::Ellipse
             | StrokeMethod::Polygon
             | StrokeMethod::FreeHand => {
@@ -465,12 +465,12 @@ impl Stroke {
     }
 
     /// Space-attenuation multiplier for the current method — applied to the spaced fills
-    /// (Space/Line/Curve), `1.0` for the per-event methods.
+    /// (Space/Line/Arc), `1.0` for the per-event methods.
     fn method_overlap(&self) -> f32 {
         match self.spec.stroke_method {
             StrokeMethod::Space
             | StrokeMethod::Line
-            | StrokeMethod::Curve
+            | StrokeMethod::Arc
             | StrokeMethod::Ellipse
             | StrokeMethod::Polygon => self.overlap,
             _ => 1.0,
@@ -550,7 +550,7 @@ fn hermite(p0: [f32; 2], m0: [f32; 2], p1: [f32; 2], m1: [f32; 2], t: f32) -> [f
     ]
 }
 
-/// The Curve stroke method's fill + the shared Catmull-Rom flattener (child module, as the others below).
+/// The Arc stroke method’s fill + the shared Catmull-Rom flattener (child module, as the others below).
 mod curve;
 pub use curve::flatten_catmull_rom;
 /// The Ellipse stroke method's perimeter generator + ellipse fill (same child-module rationale).

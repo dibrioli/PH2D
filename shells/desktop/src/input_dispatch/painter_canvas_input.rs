@@ -44,13 +44,6 @@ thread_local! {
     /// `true` between a consumed painter Down and the matching Up — so CursorMoved
     /// keeps feeding the open stroke and the Up arm knows to close it.
     static STROKE_ACTIVE: Cell<bool> = const { Cell::new(false) };
-
-    /// The Falloff control point being dragged by a shell-owned gesture (the stable
-    /// id), `None` when idle. Set when a left-click on the EMPTY graph adds a point
-    /// (so the same press immediately drags it off the line — a corner needs a
-    /// non-collinear point); CursorMoved drags it; Primary Up clears it. Existing
-    /// handles keep using the panel's `CurvePoint` drag.
-    static FALLOFF_DRAG: Cell<Option<u8>> = const { Cell::new(None) };
 }
 
 impl App {
@@ -89,101 +82,15 @@ impl App {
     }
 
     /// Borrow the active tool as the concrete [`PainterTool`] (the ADR-0040 §3
-    /// downcast exception, allowlisted to this painter-input module). `None` when
-    /// the Painter is not the active tool.
-    fn painter_tool_mut(&mut self) -> Option<&mut PainterTool> {
+    /// downcast exception, allowlisted to the painter-input modules — this file +
+    /// `painter_falloff_input`). `None` when the Painter is not the active tool.
+    pub(crate) fn painter_tool_mut(&mut self) -> Option<&mut PainterTool> {
         self.gfx
             .as_mut()?
             .tools
             .active_mut()?
             .as_any_mut()
             .downcast_mut::<PainterTool>()
-    }
-
-    /// Primary Down on the Falloff curve graph's empty canvas (Custom preset):
-    /// add a control point where clicked, select it, and GRAB it so the same
-    /// gesture drags it (a corner needs a point off the line — adding on the line
-    /// is collinear). Returns `true` (consuming) only when a point was added — a
-    /// press on an existing handle (`FalloffHit::Point`) returns `false` so the
-    /// panel's drag dispatch grabs it, and an off-canvas press also falls through.
-    pub(crate) fn painter_falloff_canvas_add(&mut self, px: f32, py: f32) -> bool {
-        let ph2d_panel_painter_layers::FalloffHit::Canvas(nx, ny) =
-            ph2d_panel_painter_layers::falloff_hit_test(px, py)
-        else {
-            return false;
-        };
-        // While a floating overlay is open (the colour picker, or a right-click
-        // context menu), a click belongs to it — not to the graph underneath.
-        // Without this guard, clicking inside the floating picker dropped stray
-        // points onto the curve. (Earlier the gate used `hit_index.hit`, but the
-        // panel chrome registers hit rects over the graph area, so that blocked
-        // ALL adds — this open-overlay gate is precise.)
-        let overlay_open = self
-            .gfx
-            .as_ref()
-            .and_then(|g| g.hero_screen.as_ref())
-            .is_some_and(|h| h.store.picker_target().is_some() || h.store.context_menu().is_some());
-        if overlay_open {
-            return false;
-        }
-        let Some(painter) = self.painter_tool_mut() else {
-            return false;
-        };
-        if let Some(id) = painter.add_brush_falloff_point_at(nx, ny) {
-            ph2d_panel_painter_layers::set_selected_falloff_point(Some(id));
-            FALLOFF_DRAG.with(|c| c.set(Some(id)));
-            return true;
-        }
-        false
-    }
-
-    /// CursorMoved while a shell-owned Falloff add-drag is live: move the grabbed
-    /// point to the cursor (clamped into the graph). Returns `true` (consuming the
-    /// move) while dragging, so it doesn't also pan / drive a gizmo.
-    pub(crate) fn painter_falloff_drag(&mut self, px: f32, py: f32) -> bool {
-        let Some(id) = FALLOFF_DRAG.with(Cell::get) else {
-            return false;
-        };
-        if let Some((nx, ny)) = ph2d_panel_painter_layers::falloff_canvas_norm(px, py)
-            && let Some(painter) = self.painter_tool_mut()
-        {
-            painter.set_brush_falloff_point(id, nx, ny);
-        }
-        true
-    }
-
-    /// Primary Up: end any shell-owned Falloff add-drag. No-op when not dragging.
-    pub(crate) fn painter_falloff_release(&mut self) {
-        FALLOFF_DRAG.with(|c| c.set(None));
-    }
-
-    /// Secondary Down on a Falloff curve control point (Custom preset): select it
-    /// and open the handle-type menu (Vector / Auto) at the cursor. The chrome
-    /// handler parks the choice in `HeroScreen.pending_falloff_point_handle`;
-    /// [`Self::painter_apply_pending_falloff_handle`] drains it. Returns `true`
-    /// (consuming) iff a point was hit.
-    pub(crate) fn painter_falloff_open_point_menu(&mut self, px: f32, py: f32) -> bool {
-        let ph2d_panel_painter_layers::FalloffHit::Point(id) =
-            ph2d_panel_painter_layers::falloff_hit_test(px, py)
-        else {
-            return false;
-        };
-        // Only meaningful while the Painter owns the active tool.
-        if self.painter_tool_mut().is_none() {
-            return false;
-        }
-        ph2d_panel_painter_layers::set_selected_falloff_point(Some(id));
-        if let Some(gfx) = self.gfx.as_mut()
-            && let Some(hero) = gfx.hero_screen.as_mut()
-        {
-            hero.store
-                .open_context_menu(ph2d_editor::interaction::ContextMenuRequest {
-                    x: px,
-                    y: py,
-                    kind: ph2d_editor::interaction::ContextMenuKind::FalloffPointHandle,
-                });
-        }
-        true
     }
 
     /// Secondary Down on an on-canvas **Curve / Free Hand** editor control point: select it and open the
@@ -253,21 +160,6 @@ impl App {
                     kind: ph2d_editor::interaction::ContextMenuKind::CurvePointHandle,
                 });
         }
-        true
-    }
-
-    /// Delete/Backspace: remove the selected Falloff control point. Returns `true`
-    /// (consuming) iff a point was selected and dropped, so the key falls through
-    /// otherwise (it must not eat Delete for other tools).
-    pub(crate) fn painter_delete_selected_falloff_point(&mut self) -> bool {
-        let Some(id) = ph2d_panel_painter_layers::selected_falloff_point() else {
-            return false;
-        };
-        let Some(painter) = self.painter_tool_mut() else {
-            return false;
-        };
-        painter.remove_brush_falloff_point(id);
-        ph2d_panel_painter_layers::set_selected_falloff_point(None);
         true
     }
 
@@ -458,18 +350,20 @@ impl App {
         // region to the 3×3 grid on each tiled axis. The coordinate is passed UN-wrapped so a stroke
         // crossing a tile boundary stays continuous; the painter's Tiling dab-wrap maps those off-
         // canvas dabs back onto the canvas, and the preview re-tiles the painted result.
+        // **Deform Transform live**: the gizmo's corner squares sit EXACTLY on the footprint edge in a
+        // whole-image transform, so most of each square's clickable disc lies OUTSIDE `[0,1]` uv — the
+        // tool grants a grab margin so those Downs reach the DEFORM gizmo instead of falling through to
+        // the sprite gizmo (whose scale handles occupy the same screen corners).
+        let tol = shape_grab_tol_from_affine(&affine);
+        painter.set_shape_grab_tol_px(tol);
+        let margin_uv = {
+            let m = painter.deform_gizmo_grab_margin_px();
+            [m / iw as f32, m / ih as f32]
+        };
         let repeat = painter.repeat_image();
         let tiling = painter.brush_tiling();
-        let in_x = if repeat && tiling[0] {
-            (-1.0..2.0).contains(&u)
-        } else {
-            (0.0..=1.0).contains(&u)
-        };
-        let in_y = if repeat && tiling[1] {
-            (-1.0..2.0).contains(&v)
-        } else {
-            (0.0..=1.0).contains(&v)
-        };
+        let in_x = canvas_down_accepts(u, repeat && tiling[0], margin_uv[0]);
+        let in_y = canvas_down_accepts(v, repeat && tiling[1], margin_uv[1]);
         if phase == PointerPhase::Down && !(in_x && in_y) {
             return false;
         }
@@ -479,11 +373,10 @@ impl App {
             tilt: [0.0, 0.0],
             phase,
         };
-        // Control-handle grab radius for the shape editors + Stencil handles, a constant on-screen size at
-        // any zoom/rotation. Out-of-band, like `set_line_constrain`. (Also refreshed once per frame in
+        // The shape-editor grab radius (`tol`) was already pushed above (before the footprint gate, so the
+        // deform-gizmo margin reads the fresh value). Also refreshed once per frame in
         // `render_loop::painter_bridge_overlays::refresh_shape_grab_tol`, so a zoom with no pointer event
-        // doesn't leave the drawn handles stale.)
-        painter.set_shape_grab_tol_px(shape_grab_tol_from_affine(&affine));
+        // doesn't leave the drawn handles stale.
         painter.set_line_constrain(alt);
         painter.set_uniform_scale(self.modifiers.shift_key()); // Shift = uniform Stencil scale (Sprite gizmo)
         painter.set_line_snap(self.modifiers.shift_key()); // Shift = 15° direction snap in the Line polyline editor
@@ -562,10 +455,40 @@ impl App {
     }
 }
 
+/// Whether a canvas Down at image fraction `t` (u or v) is inside the acceptance region on that axis:
+/// the footprint `[0,1]`, extended to the 3×3 neighbour tiles when Repeat-Image tiling is on for the
+/// axis, and by `margin` (uv units) on both sides while a Deform Transform gizmo is live — its corner
+/// handles sit exactly ON the footprint edge, so half their clickable disc lies outside `[0,1]`.
+fn canvas_down_accepts(t: f32, repeat_tiled: bool, margin: f32) -> bool {
+    if repeat_tiled {
+        (-1.0..2.0).contains(&t)
+    } else {
+        (-margin..=1.0 + margin).contains(&t)
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use super::{SHAPE_GRAB_TOL_SCREEN_PX, shape_grab_tol_from_affine};
+    use super::{SHAPE_GRAB_TOL_SCREEN_PX, canvas_down_accepts, shape_grab_tol_from_affine};
     use ph2d_vector::Affine;
+
+    #[test]
+    fn transform_corner_margin_extends_the_down_gate() {
+        // P2 (Enio 2026-07-04): a whole-image Transform puts the gizmo's corner squares exactly on the
+        // footprint edge — a Down 4 image-px OUTSIDE (u slightly < 0 or > 1) must still reach the painter
+        // (the deform gizmo) instead of falling through to the sprite gizmo on the same screen corner.
+        let margin = 12.0 / 2048.0; // a 12 image-px grab tol on a 2048 canvas
+        assert!(canvas_down_accepts(-4.0 / 2048.0, false, margin));
+        assert!(canvas_down_accepts(1.0 + 4.0 / 2048.0, false, margin));
+        // Beyond the margin still falls through (pan / sprite selection keep working).
+        assert!(!canvas_down_accepts(-2.0 * margin, false, margin));
+        assert!(!canvas_down_accepts(1.0 + 2.0 * margin, false, margin));
+        // No live transform (margin 0) → the plain footprint gate, boundary inclusive.
+        assert!(canvas_down_accepts(0.0, false, 0.0) && canvas_down_accepts(1.0, false, 0.0));
+        assert!(!canvas_down_accepts(-0.001, false, 0.0));
+        // Repeat-Image tiling keeps its 3×3 region regardless of the margin.
+        assert!(canvas_down_accepts(-0.9, true, 0.0) && !canvas_down_accepts(-1.1, true, 0.0));
+    }
 
     #[test]
     fn grab_tol_scales_inversely_with_zoom() {

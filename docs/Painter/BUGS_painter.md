@@ -40,6 +40,26 @@ operações booleanas**, e — latente — em qualquer arraste de pintura. Bench
   referência a seleção; a marquee é overlay por-frame).
 - **Warp:** a grade **pristina** era re-subdividida (Catmull-Rom) todo move (constante durante o arraste).
 
+### Regressão 2026-07-04 ("booleanas multi-shape lentas DE NOVO") + fix definitivo
+O cache por-shape (`a914a772`) estava INTACTO (re-medido: 5,0 ms/move cache vs 34,0 full). A lentidão live
+era **entrega por-evento bruto**: o modo Selection nunca entrou no coalescing por-frame
+(`coalesces_canvas_motion` só olhava o stroke method), então um mouse de alta Hz pagava o recompose de
+~5 ms VÁRIAS vezes por frame — a mesma tempestade do Bug #2, no eixo da seleção. **Fix:** Selection
+coalesce por-frame (gizmo/Rectangle/Ellipse/Automatic agem só na última posição; **Freehand lasso fica de
+fora** — captura o path e precisa de todo evento). Guard estendido em
+`coalesces_canvas_motion_is_true_only_for_restore_based_fill_methods`.
+
+**No mesmo dia, o eixo Transform/Warp (que o revert do Fix A devolveu ao estado lento) foi fechado por
+outro caminho:** medição com o Arc retido (`perf_transform_whole_image_table`) mostrou whole-image 2048² =
+**188–218 ms/move** com o loop de gather = ~99% e o deep-copy do Arc = só ~1,3 ms — ou seja, o Fix A mirava
+1% do problema (por isso "estritamente melhor" no papel e irrelevante na prática). Fix real: bandas de
+linhas paralelas + fast-paths exatos no `over` + strips fora do `affected` viram memcpy + cache da
+subdivisão pristina do Warp → **6,4–8,5 ms/move** (29×), byte-idêntico (bandas disjuntas), SEM tocar o
+bridge. Mesma alavanca aplicada ao kernel per-layer (95 → 7,9 ms/move; ver
+`HANDOFF_per_layer_color_perf_artifacts`). Lição nova: **um custo por-move IGUAL em máquinas muito
+diferentes (M2 8GB vs 9950X 128GB) = trabalho serial O(canvas)** — paralelize antes de teorizar sobre
+caches/uploads.
+
 ### Solução
 - **Bridge (`2c64ba80`) — ❌ REVERTIDO (`461dcafd`, 2026-07-04).** A ideia era: `needs_upload` do sinal
   `preview_dirty` em vez do ponteiro do Arc + soltar o clone após o upload → `make_mut` in-place. **Smoke do

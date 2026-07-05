@@ -2173,7 +2173,7 @@ fn apply_buttons_route_through_panel_click() {
     // The panel's Apply / Apply & Keep buttons forward as PanelEvent::Click — this exercises the FULL
     // wiring (handle_panel_event → route_brush_dab_event → commit), not just the verbs (Enio 2026-06-27).
     let mut t = white_canvas(64, 6.0);
-    t.paint.brush.stroke_method = StrokeMethod::Curve;
+    t.paint.brush.stroke_method = StrokeMethod::Arc;
     t.on_canvas_pointer(cp([12.0, 32.0], PointerPhase::Down));
     t.on_canvas_pointer(cp([52.0, 32.0], PointerPhase::Move));
     t.on_canvas_pointer(cp([52.0, 32.0], PointerPhase::Up));
@@ -2184,8 +2184,8 @@ fn apply_buttons_route_through_panel_click() {
         "Apply & Keep via Click bakes but keeps the curve"
     );
     assert!(
-        px(&t, 64, 32, 32)[0] < 200,
-        "the stroke was baked by the Click"
+        px(&t, 64, 32, 26)[0] < 200,
+        "the stroke was baked by the Click (probe on the arc's apex — the Arc bows up)"
     );
     t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_BRUSH_STROKE_APPLY));
     assert!(
@@ -2204,15 +2204,15 @@ fn brush_param_change_refills_open_curve_in_real_time() {
     // curve, then grow the brush via the panel Size slider and assert a pixel ABOVE the thin line (white
     // before) is now painted by the wider stroke.
     let mut t = white_canvas(64, 2.0);
-    t.paint.brush.stroke_method = StrokeMethod::Curve;
+    t.paint.brush.stroke_method = StrokeMethod::Arc;
     t.on_canvas_pointer(cp([8.0, 32.0], PointerPhase::Down));
     t.on_canvas_pointer(cp([56.0, 32.0], PointerPhase::Move));
     t.on_canvas_pointer(cp([56.0, 32.0], PointerPhase::Up)); // 3-point curve along y=32
     assert!(t.curve_overlay().is_some(), "a curve editor is open");
     assert_eq!(
-        px(&t, 64, 32, 25),
+        px(&t, 64, 32, 17),
         [255, 255, 255, 255],
-        "9px above the thin line is white before growing the brush"
+        "~8px above the arc's apex (y=24.8) is white before growing the brush"
     );
     // Grow the brush — routed in the match arm, which re-fills the open shape.
     t.handle_panel_event(PanelEvent::SetValue(
@@ -2220,7 +2220,7 @@ fn brush_param_change_refills_open_curve_in_real_time() {
         0.6,
     ));
     assert_ne!(
-        px(&t, 64, 32, 25),
+        px(&t, 64, 32, 17),
         [255, 255, 255, 255],
         "the wider brush re-filled the curve in real time (no gizmo nudge needed)"
     );
@@ -2237,13 +2237,13 @@ fn reducing_strength_with_an_open_curve_does_not_erase_it() {
     // (which re-fills) erased the stroke. Drag the Strength slider down a few times with a curve open and
     // assert it stays painted.
     let mut t = white_canvas(64, 4.0);
-    t.paint.brush.stroke_method = StrokeMethod::Curve;
+    t.paint.brush.stroke_method = StrokeMethod::Arc;
     t.on_canvas_pointer(cp([8.0, 32.0], PointerPhase::Down));
     t.on_canvas_pointer(cp([56.0, 32.0], PointerPhase::Move));
     t.on_canvas_pointer(cp([56.0, 32.0], PointerPhase::Up)); // curve along y=32, full strength
     assert!(
-        px(&t, 64, 32, 32)[0] < 200,
-        "the curve painted at full strength"
+        px(&t, 64, 32, 25)[0] < 200,
+        "the curve painted at full strength (probe on the arc's apex)"
     );
     // Drag the slider down (each event re-fills). At 0.7 a fresh fill is clearly dark (~130); the stale-
     // mask bug instead left it white (~255, "erased"). Assert it stays clearly painted.
@@ -2254,9 +2254,9 @@ fn reducing_strength_with_an_open_curve_does_not_erase_it() {
         ));
     }
     assert!(
-        px(&t, 64, 32, 32)[0] < 180,
+        px(&t, 64, 32, 25)[0] < 180,
         "reducing Strength must keep the curve painted (not erase to white): {:?}",
-        px(&t, 64, 32, 32)
+        px(&t, 64, 32, 25)
     );
 }
 
@@ -2267,7 +2267,7 @@ fn dragging_a_tangent_handle_reshapes_the_curve_and_mirrors_the_opposite() {
     // OUT handle (off the point) and pulling it must move that handle (not the anchor) and swing the IN
     // handle to stay aligned (collinear through the anchor) — the standard smooth-handle behaviour.
     let mut t = white_canvas(64, 2.0);
-    t.paint.brush.stroke_method = StrokeMethod::Curve;
+    t.paint.brush.stroke_method = StrokeMethod::Arc;
     t.set_shape_grab_tol_px(4.0);
     t.on_canvas_pointer(cp([8.0, 32.0], PointerPhase::Down));
     t.on_canvas_pointer(cp([56.0, 32.0], PointerPhase::Move));
@@ -2279,7 +2279,10 @@ fn dragging_a_tangent_handle_reshapes_the_curve_and_mirrors_the_opposite() {
         .expect("the selected interior anchor exposes tangents");
     let out = tan.out_handle.expect("out handle present");
     let anchor = tan.anchor;
-    assert!((anchor[1] - 32.0).abs() < 1e-3, "midpoint sits on y=32");
+    assert!(
+        (anchor[1] - 24.8).abs() < 0.05,
+        "midpoint bows up to y=24.8 (the Arc's initial curvature)"
+    );
     // Grab the out handle and pull it straight up.
     t.on_canvas_pointer(cp(out, PointerPhase::Down));
     let target = [out[0], out[1] - 12.0];
@@ -2315,7 +2318,7 @@ fn a_hand_edited_tangent_is_pinned_through_a_later_anchor_move() {
     // rigid-translates the handles instead of recomputing flat chordal tangents — the artist's sculpted
     // curvature survives. Pull a tangent up, then nudge the anchor, and assert the vertical pull persists.
     let mut t = white_canvas(64, 2.0);
-    t.paint.brush.stroke_method = StrokeMethod::Curve;
+    t.paint.brush.stroke_method = StrokeMethod::Arc;
     t.set_shape_grab_tol_px(4.0);
     t.on_canvas_pointer(cp([8.0, 32.0], PointerPhase::Down));
     t.on_canvas_pointer(cp([56.0, 32.0], PointerPhase::Move));
@@ -2351,7 +2354,7 @@ fn a_hand_edited_tangent_is_pinned_through_a_later_anchor_move() {
 fn open_curve_midpoint_selected() -> PainterTool {
     use ph2d_painter_brush::StrokeMethod;
     let mut t = white_canvas(64, 2.0);
-    t.paint.brush.stroke_method = StrokeMethod::Curve;
+    t.paint.brush.stroke_method = StrokeMethod::Arc;
     t.set_shape_grab_tol_px(4.0);
     t.on_canvas_pointer(cp([8.0, 32.0], PointerPhase::Down));
     t.on_canvas_pointer(cp([56.0, 32.0], PointerPhase::Move));
@@ -2442,7 +2445,7 @@ fn vector_handles_point_at_the_neighbours_after_a_move() {
     // Move the midpoint off-axis, then make it Vector: its tangents must point 1/3 toward the two
     // neighbour anchors (a polyline-like joint), regardless of the prior smooth handles.
     let mut t = open_curve_midpoint_selected();
-    t.on_canvas_pointer(cp([32.0, 32.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([32.0, 24.8], PointerPhase::Down)); // the bowed midpoint (Arc)
     t.on_canvas_pointer(cp([32.0, 12.0], PointerPhase::Move));
     t.on_canvas_pointer(cp([32.0, 12.0], PointerPhase::Up));
     assert!(t.set_curve_handle_kind(2)); // Vector
@@ -2473,30 +2476,30 @@ fn offset_slider_shifts_the_open_curve_in_real_time() {
     // the open shape live (folded into appearance_sig). Draw a horizontal curve along y=32, then nudge
     // Offset to 0.6 (+20px, perpendicular = up) and assert the stroke LEFT y=32 and now paints at y≈12.
     let mut t = white_canvas(64, 2.0);
-    t.paint.brush.stroke_method = StrokeMethod::Curve;
+    t.paint.brush.stroke_method = StrokeMethod::Arc;
     t.on_canvas_pointer(cp([8.0, 32.0], PointerPhase::Down));
     t.on_canvas_pointer(cp([56.0, 32.0], PointerPhase::Move));
     t.on_canvas_pointer(cp([56.0, 32.0], PointerPhase::Up)); // curve along y=32
     assert!(
-        px(&t, 64, 32, 32)[0] < 200,
-        "the curve painted on y=32 at zero offset"
+        px(&t, 64, 32, 25)[0] < 200,
+        "the arc painted through its apex (32,24.8) at zero offset"
     );
     assert_eq!(
-        px(&t, 64, 32, 12),
+        px(&t, 64, 32, 5),
         [255, 255, 255, 255],
-        "y=12 is white before offset"
+        "y=5 is white before offset"
     );
     t.handle_panel_event(PanelEvent::SetValue(core_ids::PAINTER_BRUSH_OFFSET, 0.6)); // +20px perpendicular
     assert_eq!(
-        px(&t, 64, 32, 32),
+        px(&t, 64, 32, 25),
         [255, 255, 255, 255],
-        "the stroke left the original y=32 line (restored white): {:?}",
-        px(&t, 64, 32, 32)
+        "the stroke left the original apex (restored white): {:?}",
+        px(&t, 64, 32, 25)
     );
     assert!(
-        px(&t, 64, 32, 12)[0] < 200,
-        "the offset stroke now paints ~20px up at y=12: {:?}",
-        px(&t, 64, 32, 12)
+        px(&t, 64, 32, 5)[0] < 200,
+        "the offset stroke now paints ~20px up at the apex (32,5): {:?}",
+        px(&t, 64, 32, 5)
     );
 }
 
@@ -2509,7 +2512,7 @@ fn offset_bakes_into_the_geometry_on_apply_keep_and_resets_the_slider() {
     // slider to centre (0.5). Draw a curve, offset it, Apply & Keep, then assert the slider snapped back to
     // 0.5 AND the kept overlay sits at the offset position (so it does not jump when the offset clears).
     let mut t = white_canvas(64, 2.0);
-    t.paint.brush.stroke_method = StrokeMethod::Curve;
+    t.paint.brush.stroke_method = StrokeMethod::Arc;
     t.on_canvas_pointer(cp([8.0, 32.0], PointerPhase::Down));
     t.on_canvas_pointer(cp([56.0, 32.0], PointerPhase::Move));
     t.on_canvas_pointer(cp([56.0, 32.0], PointerPhase::Up));
@@ -2577,7 +2580,7 @@ fn edit_button_converts_circle_into_an_editable_curve() {
     let ov = t.curve_overlay().expect("a curve editor opened");
     assert_eq!(
         t.brush_settings().stroke_method,
-        StrokeMethod::Curve.to_u8(),
+        StrokeMethod::Arc.to_u8(),
         "method is now Curve"
     );
     assert_eq!(
@@ -2663,7 +2666,7 @@ fn delete_button_drops_the_open_shape_without_baking() {
     use ph2d_painter_brush::StrokeMethod;
     // The trash button cancels the open shape editor WITHOUT baking it — the canvas stays pristine.
     let mut t = white_canvas(64, 6.0);
-    t.paint.brush.stroke_method = StrokeMethod::Curve;
+    t.paint.brush.stroke_method = StrokeMethod::Arc;
     t.on_canvas_pointer(cp([12.0, 32.0], PointerPhase::Down));
     t.on_canvas_pointer(cp([52.0, 32.0], PointerPhase::Move));
     t.on_canvas_pointer(cp([52.0, 32.0], PointerPhase::Up));
@@ -2683,7 +2686,7 @@ fn apply_keep_bakes_but_keeps_the_editable_curve() {
     // "Apply & Keep" bakes the pending stroke yet keeps the editable curve (for re-apply / reshape);
     // plain "Apply" bakes and discards it.
     let mut t = white_canvas(64, 6.0);
-    t.paint.brush.stroke_method = StrokeMethod::Curve;
+    t.paint.brush.stroke_method = StrokeMethod::Arc;
     t.on_canvas_pointer(cp([12.0, 32.0], PointerPhase::Down));
     t.on_canvas_pointer(cp([52.0, 32.0], PointerPhase::Move));
     t.on_canvas_pointer(cp([52.0, 32.0], PointerPhase::Up)); // released → edit mode, control points
@@ -2693,7 +2696,7 @@ fn apply_keep_bakes_but_keeps_the_editable_curve() {
         t.curve_overlay().is_some(),
         "the editable curve persists after Apply & Keep"
     );
-    assert!(px(&t, 64, 32, 32)[0] < 200, "the stroke was baked");
+    assert!(px(&t, 64, 32, 26)[0] < 200, "the stroke was baked");
     assert!(t.commit_open_shape(), "Apply ran");
     assert!(
         t.curve_overlay().is_none(),
@@ -3797,7 +3800,7 @@ fn line_polyline_editor_replaces_the_old_single_segment() {
 #[test]
 fn curve_draw_creates_three_points_and_paints_the_line() {
     let mut t = white_canvas(64, 3.0);
-    t.paint.brush.stroke_method = StrokeMethod::Curve;
+    t.paint.brush.stroke_method = StrokeMethod::Arc;
     t.paint.brush.hardness = 1.0;
     t.paint.brush.falloff = Falloff::Constant;
     t.paint.brush.space_attenuation = false;
@@ -3817,16 +3820,28 @@ fn curve_draw_creates_three_points_and_paints_the_line() {
     assert_eq!(ov.points.len(), 3, "start + midpoint + end");
     assert_eq!(ov.points[0], [8.0, 32.0]);
     assert_eq!(ov.points[2], [56.0, 32.0]);
+    // The Arc's initial bow: the midpoint sits ABOVE the chord by ARC_BOW × chord (48·0.15 = 7.2), so a
+    // fresh Arc reads as an arc, not a straight line (Enio 2026-07-04).
+    assert!(
+        (ov.points[1][0] - 32.0).abs() < 1e-3 && (ov.points[1][1] - 24.8).abs() < 0.05,
+        "midpoint bows perpendicular to the chord: {:?}",
+        ov.points[1]
+    );
     assert_eq!(
         ov.selected,
         Some(1),
         "midpoint pre-selected (ready to bend)"
     );
-    // The straight line is painted along y=32 (preview is live, not committed).
+    // The arc paints through its bowed apex; the chord midpoint (32,32) stays white.
+    assert_eq!(
+        px(&t, 64, 32, 25),
+        [0, 0, 0, 255],
+        "the arc paints through the bowed midpoint"
+    );
     assert_eq!(
         px(&t, 64, 32, 32),
-        [0, 0, 0, 255],
-        "the line paints through the midpoint"
+        [255, 255, 255, 255],
+        "the chord midpoint is NOT painted — the shape is an arc, not a line"
     );
 }
 
@@ -3835,7 +3850,7 @@ fn curve_draw_creates_three_points_and_paints_the_line() {
 #[test]
 fn curve_bend_then_cancel_reverts_all_pixels() {
     let mut t = white_canvas(64, 3.0);
-    t.paint.brush.stroke_method = StrokeMethod::Curve;
+    t.paint.brush.stroke_method = StrokeMethod::Arc;
     t.paint.brush.hardness = 1.0;
     t.paint.brush.falloff = Falloff::Constant;
     t.paint.brush.space_attenuation = false;
@@ -3870,21 +3885,26 @@ fn curve_bend_then_cancel_reverts_all_pixels() {
 #[test]
 fn curve_add_delete_and_commit() {
     let mut t = white_canvas(64, 3.0);
-    t.paint.brush.stroke_method = StrokeMethod::Curve;
+    t.paint.brush.stroke_method = StrokeMethod::Arc;
     t.paint.brush.hardness = 1.0;
     t.paint.brush.falloff = Falloff::Constant;
     t.paint.brush.space_attenuation = false;
 
     t.on_canvas_pointer(cp([8.0, 32.0], PointerPhase::Down));
     t.on_canvas_pointer(cp([56.0, 32.0], PointerPhase::Up)); // 3 points now
-    // Click a 4th point in open space (added + grabbed + selected).
-    t.on_canvas_pointer(cp([40.0, 50.0], PointerPhase::Down));
-    t.on_canvas_pointer(cp([40.0, 50.0], PointerPhase::Up));
+    // Click a 4th point ON the curve (empty space never adds a point — Enio 2026-07-04): take a spine
+    // sample away from every anchor and click it.
+    let spine_click = {
+        let ov = t.curve_overlay().unwrap();
+        ov.spine[ov.spine.len() * 3 / 4]
+    };
+    t.on_canvas_pointer(cp(spine_click, PointerPhase::Down));
+    t.on_canvas_pointer(cp(spine_click, PointerPhase::Up));
     let ov = t.curve_overlay().unwrap();
     assert_eq!(
         ov.points.len(),
         4,
-        "a point was added on the empty-space click"
+        "a point was added by the on-curve click"
     );
     let sel = ov.selected.unwrap();
 
@@ -3901,8 +3921,8 @@ fn curve_add_delete_and_commit() {
 
     // Enter commits: the painted curve stays + the session closes + it is one undo step.
     assert!(
-        px(&t, 64, 32, 32) != [255, 255, 255, 255],
-        "something is painted pre-commit"
+        px(&t, 64, 8, 32) != [255, 255, 255, 255],
+        "something is painted pre-commit (the endpoint anchor stays put)"
     );
     assert!(t.curve_commit());
     assert!(t.curve_overlay().is_none(), "committed → no session");
@@ -3929,7 +3949,7 @@ fn curve_add_delete_and_commit() {
 #[test]
 fn curve_baked_when_switching_method_away() {
     let mut t = white_canvas(64, 3.0);
-    t.paint.brush.stroke_method = StrokeMethod::Curve;
+    t.paint.brush.stroke_method = StrokeMethod::Arc;
     t.paint.brush.hardness = 1.0;
     t.paint.brush.falloff = Falloff::Constant;
     t.paint.brush.space_attenuation = false;
@@ -3937,7 +3957,7 @@ fn curve_baked_when_switching_method_away() {
     t.on_canvas_pointer(cp([8.0, 20.0], PointerPhase::Down));
     t.on_canvas_pointer(cp([56.0, 20.0], PointerPhase::Up));
     assert!(t.curve_overlay().is_some());
-    let baked = px(&t, 64, 32, 20); // the live preview pixel on the curve
+    let baked = px(&t, 64, 32, 13); // the live preview pixel on the arc's apex (bow: 20−7.2)
     assert_ne!(baked, [255, 255, 255, 255], "the curve painted a preview");
     t.set_brush_stroke_method(StrokeMethod::Space.to_u8());
     assert!(
@@ -3945,42 +3965,55 @@ fn curve_baked_when_switching_method_away() {
         "leaving Curve closed the session (baked, not still open)"
     );
     assert_eq!(
-        px(&t, 64, 32, 20),
+        px(&t, 64, 32, 13),
         baked,
         "the shape was APPLIED (baked), not erased"
     );
 }
 
-/// The grab tolerance is honoured: a Down within the forwarded radius grabs the nearest point; a
-/// Down well outside it adds a new point instead.
+/// The grab tolerance is honoured: a Down within the forwarded radius grabs the nearest point; a Down
+/// ON the curve (away from anchors) inserts; a Down in EMPTY SPACE never creates a point — it parks the
+/// curve and starts a new shape (Enio 2026-07-04).
 #[test]
-fn curve_grab_tolerance_grabs_near_and_adds_far() {
+fn curve_grab_tolerance_grabs_near_inserts_on_curve_never_in_space() {
     let mut t = white_canvas(64, 3.0);
-    t.paint.brush.stroke_method = StrokeMethod::Curve;
+    t.paint.brush.stroke_method = StrokeMethod::Arc;
     t.set_shape_grab_tol_px(5.0);
 
     t.on_canvas_pointer(cp([8.0, 32.0], PointerPhase::Down));
-    t.on_canvas_pointer(cp([56.0, 32.0], PointerPhase::Up)); // points: 8 / 32 / 56 at y=32
+    t.on_canvas_pointer(cp([56.0, 32.0], PointerPhase::Up)); // anchors: (8,32) / (32,24.8) / (56,32)
     assert_eq!(t.curve_overlay().unwrap().points.len(), 3);
 
-    // Down 3 px from the midpoint (within tol 5) → grabs it, no new point.
-    t.on_canvas_pointer(cp([32.0, 35.0], PointerPhase::Down));
-    t.on_canvas_pointer(cp([32.0, 35.0], PointerPhase::Up));
+    // Down 3 px from the (bowed) midpoint (within tol 5) → grabs it, no new point.
+    t.on_canvas_pointer(cp([32.0, 27.8], PointerPhase::Down));
+    t.on_canvas_pointer(cp([32.0, 27.8], PointerPhase::Up));
     assert_eq!(
         t.curve_overlay().unwrap().points.len(),
         3,
         "near press grabbed, didn't add"
     );
 
-    // Down beyond the grab tol but still within the curve's insert band → adds a 4th (subdivides). (A press
-    // FAR from the curve now starts a NEW shape instead — the multi-shape gesture, covered elsewhere.)
-    t.on_canvas_pointer(cp([20.0, 48.0], PointerPhase::Down));
-    t.on_canvas_pointer(cp([20.0, 48.0], PointerPhase::Up));
+    // Down ON the spine, away from every anchor → inserts a 4th (subdivides on the curve).
+    let spine_click = {
+        let ov = t.curve_overlay().unwrap();
+        ov.spine[ov.spine.len() * 3 / 4]
+    };
+    t.on_canvas_pointer(cp(spine_click, PointerPhase::Down));
+    t.on_canvas_pointer(cp(spine_click, PointerPhase::Up));
     assert_eq!(
         t.curve_overlay().unwrap().points.len(),
         4,
-        "press past the grab tol (but near the curve) added a point"
+        "an on-curve press added a point"
     );
+
+    // Down in EMPTY space (far from the spine) → NO point is created; the multi-shape router parks this
+    // curve and begins a fresh draw (no overlay until its release).
+    t.on_canvas_pointer(cp([20.0, 52.0], PointerPhase::Down));
+    assert!(
+        t.curve_overlay().is_none(),
+        "empty-space press starts a NEW shape draw (nothing added to the parked curve)"
+    );
+    t.on_canvas_pointer(cp([20.0, 52.0], PointerPhase::Up));
 }
 
 /// Undo while the curve is being authored (points visible) COMMITS it first (applies the curve,
@@ -3991,7 +4024,7 @@ fn curve_undo_walks_edits_then_undoes_the_creation() {
     // Undo must NOT Apply an open curve (Enio 2026-06-27): while authoring it walks the per-session edit
     // history, and once that's exhausted the next undo removes the curve (undoes the creation) — never bakes.
     let mut t = white_canvas(64, 3.0);
-    t.paint.brush.stroke_method = StrokeMethod::Curve;
+    t.paint.brush.stroke_method = StrokeMethod::Arc;
     t.paint.brush.hardness = 1.0;
     t.paint.brush.falloff = Falloff::Constant;
     t.paint.brush.space_attenuation = false;
@@ -4949,7 +4982,7 @@ fn jitter_rotate_reaches_curve_fill() {
     let run = |seed: u64| {
         let mut t = white_canvas(64, 8.0);
         t.set_brush_shape_image(bar.clone(), 8, 8);
-        t.paint.brush.stroke_method = StrokeMethod::Curve;
+        t.paint.brush.stroke_method = StrokeMethod::Arc;
         t.set_brush_jitter_rotate(1.0);
         t.paint.seed = seed;
         t.on_canvas_pointer(cp([10.0, 32.0], PointerPhase::Down));
@@ -5976,8 +6009,12 @@ fn simplify_is_hidden_until_a_point_is_added_on_a_plain_curve() {
     t.on_canvas_pointer(cp([8.0, 32.0], PointerPhase::Down));
     t.on_canvas_pointer(cp([8.0, 32.0], PointerPhase::Up));
     let n0 = t.curve_overlay().unwrap().points.len();
-    t.on_canvas_pointer(cp([44.0, 32.0], PointerPhase::Down)); // click on the curve, away from any anchor
-    t.on_canvas_pointer(cp([44.0, 32.0], PointerPhase::Up));
+    let spine_click = {
+        let ov = t.curve_overlay().unwrap();
+        ov.spine[ov.spine.len() * 3 / 4] // ON the curve, away from any anchor
+    };
+    t.on_canvas_pointer(cp(spine_click, PointerPhase::Down));
+    t.on_canvas_pointer(cp(spine_click, PointerPhase::Up));
     assert_eq!(
         t.curve_overlay().unwrap().points.len(),
         n0 + 1,
@@ -6384,6 +6421,121 @@ fn perf_selection_boolean_recompose_cache_vs_full() {
     );
 }
 
+/// P1 measurement harness (RELEASE only): the ms/move TABLE for the Transform gizmo — whole-image vs a
+/// 512² selection, each with and without the bridge retaining the preview Arc between moves (`hold`).
+/// The retained Arc makes the tool's next `Arc::make_mut(canvas_rgba)` deep-copy the whole 16.8 MB
+/// canvas EVERY move — invisible to a bench that doesn't hold the Arc (BUGS_painter.md Bug #3, the
+/// bench-vs-live gap). The (whole+hold − whole) column split isolates the copy from the gather loop.
+///   cargo test -p ph2d-tool-painter --release perf_transform_whole_image_table -- --ignored --nocapture
+#[test]
+#[ignore]
+fn perf_transform_whole_image_table() {
+    use std::time::Instant;
+    let size = 2048u32;
+    let run = |mode: u8, whole: bool, hold: bool, grab: [f32; 2]| -> f64 {
+        let mut src = vec![0u8; (size * size * 4) as usize];
+        for px in src.chunks_exact_mut(4) {
+            px.copy_from_slice(&[200, 120, 60, 255]);
+        }
+        let mut t = PainterTool::default();
+        t.set_source(src, size, size);
+        t.set_paint_tool_mode("deform");
+        t.set_shape_grab_tol_px(12.0);
+        if !whole {
+            t.set_rect_selection(760, 760, 512, 512);
+        }
+        t.set_deform_transform_on(true);
+        t.set_deform_transform_mode(mode);
+        let _ = t.take_preview_arc(); // drain the lift frame like the bridge would
+        t.on_canvas_pointer(cp(grab, PointerPhase::Down));
+        let moves = 20u32;
+        let mut held = None;
+        let t0 = Instant::now();
+        for k in 0..moves {
+            let d = ((k % 10) as f32) - 5.0;
+            let _ = t.on_canvas_pointer(cp([grab[0] + d, grab[1] + d], PointerPhase::Move));
+            if hold && let Some(p) = t.take_preview_arc() {
+                held = Some(p); // retain across the next move (bridge behaviour)
+            }
+        }
+        let ms = t0.elapsed().as_secs_f64() * 1000.0 / f64::from(moves);
+        let _ = held;
+        t.on_canvas_pointer(cp(grab, PointerPhase::Up));
+        ms
+    };
+    // Grab points: whole-image frame = the full canvas → centre-move (1024,1024), Distort corner (0,0),
+    // Warp interior control point ≈(683,683). Selection [760,1272)² → centre (1016,1016), corner
+    // (760,760), Warp interior ≈(931,931).
+    let cases: [(&str, u8, [f32; 2], [f32; 2]); 4] = [
+        (
+            "Uniform (centre-move)",
+            0,
+            [1024.0, 1024.0],
+            [1016.0, 1016.0],
+        ),
+        (
+            "Free    (centre-move)",
+            1,
+            [1024.0, 1024.0],
+            [1016.0, 1016.0],
+        ),
+        ("Distort (corner)", 2, [0.0, 0.0], [760.0, 760.0]),
+        ("Warp    (interior pt)", 3, [682.7, 682.7], [930.7, 930.7]),
+    ];
+    eprintln!("Transform gizmo, {size}² canvas, ms/move (20 moves each, --release):");
+    eprintln!(
+        "  {:<24} {:>12} {:>12} {:>12} {:>12}",
+        "sub-mode", "whole", "whole+hold", "sel512", "sel512+hold"
+    );
+    for (label, mode, gw, gs) in cases {
+        let w = run(mode, true, false, gw);
+        let wh = run(mode, true, true, gw);
+        let s = run(mode, false, false, gs);
+        let sh = run(mode, false, true, gs);
+        eprintln!("  {label:<24} {w:>9.2} ms {wh:>9.2} ms {s:>9.2} ms {sh:>9.2} ms");
+    }
+}
+
+#[test]
+fn deform_transform_whole_image_corner_grabs_from_slightly_outside() {
+    // P2 (Enio 2026-07-04): a whole-image transform puts the corner squares exactly ON the canvas
+    // corner, so most of each square's clickable disc lies OUTSIDE the canvas. The tool grants a grab
+    // margin to the shell (`deform_gizmo_grab_margin_px`) and must resolve a Down slightly outside the
+    // corner to the DEFORM corner handle — scaling the patch, not silently no-oping.
+    let mut t = white_canvas(64, 6.0);
+    t.set_paint_tool_mode("deform");
+    t.set_shape_grab_tol_px(8.0);
+    assert_eq!(
+        t.deform_gizmo_grab_margin_px(),
+        0.0,
+        "no margin before the gizmo is live"
+    );
+    t.set_deform_transform_on(true);
+    assert!(
+        t.deform_gizmo_grab_margin_px() >= 8.0,
+        "margin granted while the gizmo is live"
+    );
+    let before = t.canvas_rgba.clone();
+    // The whole-image frame == the full canvas (opaque content bbox) → a corner handle at (0,0).
+    // Down 4 px OUTSIDE the canvas, within the grab tol, then drag inward to shrink.
+    t.on_canvas_pointer(cp([-4.0, -4.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([10.0, 10.0], PointerPhase::Move));
+    t.on_canvas_pointer(cp([10.0, 10.0], PointerPhase::Up));
+    assert_ne!(
+        *t.canvas_rgba, *before,
+        "the outside-corner Down grabbed the deform corner and scaled the patch"
+    );
+    // Shrinking a whole-image opaque layer VACATES the border to transparent (a patch sample outside
+    // the canvas is transparent, not an edge-clamp smear) while the interior stays opaque white.
+    assert_eq!(px(&t, 64, 0, 0)[3], 0, "vacated corner is transparent");
+    assert_eq!(
+        px(&t, 64, 32, 32),
+        [255, 255, 255, 255],
+        "interior still opaque white"
+    );
+    assert!(t.deform_gizmo().is_some(), "the transform stays live");
+}
+
 #[test]
 fn deform_transform_warp_mesh_moves_a_control_point() {
     // Warp sub-mode: entering it is byte-identical (the mesh seeds on the box); dragging an interior
@@ -6543,7 +6695,7 @@ mod per_layer_perf {
     /// document stack non-trivial (exercises `take_preview_arc`'s `composite_region` lane).
     fn setup(size: u32, n_shape: usize, doc_extra: usize, radius: f32) -> PainterTool {
         let mut t = white_canvas(size, radius);
-        t.paint.brush.stroke_method = StrokeMethod::Curve;
+        t.paint.brush.stroke_method = StrokeMethod::Arc;
         t.paint.brush.hardness = 1.0;
         t.paint.brush.falloff = Falloff::Constant;
         t.paint.brush.space_attenuation = false;
@@ -6670,7 +6822,7 @@ fn coalesces_canvas_motion_is_true_only_for_restore_based_fill_methods() {
     use ph2d_painter_brush::StrokeMethod;
     let mut t = white_canvas(8, 2.0);
     let cases = [
-        (StrokeMethod::Curve, true),
+        (StrokeMethod::Arc, true),
         (StrokeMethod::Ellipse, true),
         (StrokeMethod::Polygon, true),
         (StrokeMethod::Line, true),
@@ -6687,6 +6839,19 @@ fn coalesces_canvas_motion_is_true_only_for_restore_based_fill_methods() {
             t.coalesces_canvas_motion(),
             want,
             "{method:?} coalesce bucket"
+        );
+    }
+    // Selection mode: gizmo drags / Rectangle / Ellipse / Automatic act on the latest position only →
+    // coalesce (each raw Move paid a full boolean recompose — the P4 storm, Enio 2026-07-04). The
+    // Freehand lasso (mode 1) CAPTURES the path → every event, regardless of the brush method.
+    t.paint.brush.stroke_method = StrokeMethod::Space; // would NOT coalesce as a stroke
+    t.set_paint_tool_mode("selection");
+    for (mode, want) in [(0u8, true), (1, false), (2, true), (3, true)] {
+        t.set_selection_mode(mode);
+        assert_eq!(
+            t.coalesces_canvas_motion(),
+            want,
+            "selection mode {mode} coalesce bucket"
         );
     }
 }

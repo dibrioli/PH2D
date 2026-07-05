@@ -72,7 +72,7 @@ impl CanvasPaintTool for PainterTool {
         // starts a fresh shape) before dispatching to the active editor.
         if matches!(
             self.paint.brush.stroke_method,
-            StrokeMethod::Curve
+            StrokeMethod::Arc
                 | StrokeMethod::FreeHand
                 | StrokeMethod::Ellipse
                 | StrokeMethod::Polygon

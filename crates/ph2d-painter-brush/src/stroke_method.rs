@@ -4,14 +4,14 @@
 //! `editors/sculpt_paint/paint_stroke.cc` (the `eBrushStrokeType` dispatch in `PaintStroke::modal`)
 //! and `makesdna/DNA_brush_enums.h` (the enum and the `BRUSH_ABSOLUTE_JITTER` flag). The wire
 //! discriminants returned by [`StrokeMethod::to_u8`] mirror Blender's `eBrushStrokeType` numeric
-//! values (Dots=0 … Curve=6) so the cross-crate encoding is a documented, stable anchor.
+//! values (Dots=0 … Arc=6) so the cross-crate encoding is a documented, stable anchor.
 
 /// How a pointer path is turned into dab positions — Blender's `eBrushStrokeType`.
 ///
 /// Only [`StrokeMethod::Space`] resamples the path at fixed arc-length intervals; the per-event
 /// methods ([`Dots`](Self::Dots)/[`Airbrush`](Self::Airbrush)/[`DragDot`](Self::DragDot)) emit one
 /// dab per processed sample. [`Anchored`](Self::Anchored)/[`Line`](Self::Line)/
-/// [`Curve`](Self::Curve) are *interactive* (finalise on release / Bézier authoring) and the
+/// [`Arc`](Self::Arc) are *interactive* (finalise on release / Bézier authoring) and the
 /// engine only fills their geometry — the interaction lives in the tool/shell.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
 pub enum StrokeMethod {
@@ -32,8 +32,9 @@ pub enum StrokeMethod {
     DragDot,
     /// A straight line filled with spaced dabs, finalised on release. `BRUSH_STROKE_LINE` (5).
     Line,
-    /// A Bézier paint-curve filled with spaced dabs, stamped on finalise. `BRUSH_STROKE_CURVE` (6).
-    Curve,
+    /// **Arc** — a Bézier paint-curve filled with spaced dabs, stamped on finalise; created with a
+    /// subtle initial bow (an arc, not a straight line). Blender's `BRUSH_STROKE_CURVE` (6).
+    Arc,
     /// **PH2D extension (beyond Blender's `eBrushStrokeType`):** an editable ellipse — drawn
     /// centre-out, then adjusted with 4 axis handles + a rotation handle, its perimeter filled with
     /// spaced dabs on finalise. Wire discriminant `7`.
@@ -42,7 +43,7 @@ pub enum StrokeMethod {
     /// rotation + a handle to change the side count (3..12) + a centre handle. Wire discriminant `8`.
     Polygon,
     /// **PH2D extension:** **Free Hand** — paint a freehand path; on release the captured path is
-    /// simplified into the same editable control-point curve as [`Self::Curve`] (handles for later
+    /// simplified into the same editable control-point curve as [`Self::Arc`] (handles for later
     /// manipulation / re-apply), its spine filled with spaced dabs on finalise. Wire discriminant `9`.
     FreeHand,
 }
@@ -58,7 +59,7 @@ impl StrokeMethod {
             Self::Space => 3,
             Self::DragDot => 4,
             Self::Line => 5,
-            Self::Curve => 6,
+            Self::Arc => 6,
             Self::Ellipse => 7,
             Self::Polygon => 8,
             Self::FreeHand => 9,
@@ -75,7 +76,7 @@ impl StrokeMethod {
             2 => Self::Anchored,
             4 => Self::DragDot,
             5 => Self::Line,
-            6 => Self::Curve,
+            6 => Self::Arc,
             7 => Self::Ellipse,
             8 => Self::Polygon,
             9 => Self::FreeHand,
@@ -83,7 +84,7 @@ impl StrokeMethod {
         }
     }
 
-    /// True when this method resamples the path at the brush spacing (only `Space`; `Line`/`Curve`
+    /// True when this method resamples the path at the brush spacing (only `Space`; `Line`/`Arc`
     /// also fill by spacing but on finalise, not interactively).
     #[must_use]
     pub fn is_spaced(self) -> bool {
@@ -93,7 +94,7 @@ impl StrokeMethod {
     /// Whether this method only ever shows the **latest** pointer position, so a host may coalesce a burst
     /// of raw pointer Moves into ONE delivery per frame with zero visible change.
     ///
-    /// True for the restore + whole-shape re-stamp **fill** methods (Curve / Ellipse / Polygon / Line /
+    /// True for the restore + whole-shape re-stamp **fill** methods (Arc / Ellipse / Polygon / Line /
     /// Anchored / Drag Dot): each Move restores the previous footprint and re-stamps from scratch, so an
     /// intermediate Move's pixels are reverted by the next Move anyway — only the last one per frame
     /// survives to the preview drain. Coalescing them is byte-identical AND removes the per-event re-stamp
@@ -106,12 +107,7 @@ impl StrokeMethod {
     pub fn coalesces_canvas_motion(self) -> bool {
         matches!(
             self,
-            Self::Curve
-                | Self::Ellipse
-                | Self::Polygon
-                | Self::Line
-                | Self::Anchored
-                | Self::DragDot
+            Self::Arc | Self::Ellipse | Self::Polygon | Self::Line | Self::Anchored | Self::DragDot
         )
     }
 
@@ -124,7 +120,7 @@ impl StrokeMethod {
     pub fn uses_spacing(self) -> bool {
         matches!(
             self,
-            Self::Space | Self::Line | Self::Curve | Self::Ellipse | Self::Polygon | Self::FreeHand
+            Self::Space | Self::Line | Self::Arc | Self::Ellipse | Self::Polygon | Self::FreeHand
         )
     }
 
@@ -134,7 +130,7 @@ impl StrokeMethod {
     pub fn uses_dash(self) -> bool {
         matches!(
             self,
-            Self::Space | Self::Line | Self::Curve | Self::Ellipse | Self::Polygon | Self::FreeHand
+            Self::Space | Self::Line | Self::Arc | Self::Ellipse | Self::Polygon | Self::FreeHand
         )
     }
 
@@ -154,8 +150,8 @@ impl StrokeMethod {
 
     /// True when the stroke **stabilizer** (the "how regular" knob) applies — the methods that build a
     /// path from raw freehand input: `Space`/`Dots`/`Airbrush` and **Free Hand** (whose capture lazy-mouse
-    /// filters the cursor before the points are fitted into the curve). NOT Line/Curve: PH2D's Line is an
-    /// explicit anchor→cursor segment and Curve is a point-editor (author control points, auto-smooth
+    /// filters the cursor before the points are fitted into the curve). NOT Line/Arc: PH2D's Line is an
+    /// explicit anchor→cursor segment and Arc is a point-editor (author control points, auto-smooth
     /// between them) — no shaky path to filter, so the stabilizer would be a no-op and the panel hides it
     /// (DIRETIVA §2: no silent no-op). Drag Dot/Anchored also place dabs at the exact cursor.
     #[must_use]
@@ -173,7 +169,7 @@ impl StrokeMethod {
     }
 
     /// True when the engine emits a dab at the down point on stroke begin (the continuous methods).
-    /// The interactive methods (Anchored/Line/Curve) paint on finalise, so begin only anchors.
+    /// The interactive methods (Anchored/Line/Arc) paint on finalise, so begin only anchors.
     #[must_use]
     pub fn emits_on_begin(self) -> bool {
         matches!(
@@ -198,7 +194,7 @@ impl StrokeMethod {
     }
 
     /// True when the method drives a persistent on-canvas **shape editor** that the panel's Apply /
-    /// Apply & Keep buttons (and Enter/Esc) act on: `Curve`/`FreeHand` (the point editor — Free Hand
+    /// Apply & Keep buttons (and Enter/Esc) act on: `Arc`/`FreeHand` (the point editor — Free Hand
     /// captures then edits the same curve), `Ellipse` (the ellipse editor), `Polygon` (the N-gon editor)
     /// and `Line` (the polyline editor — multi-click points, then editable). Drag Dot/Anchored finalise on
     /// pen-up with no editing session, so they get no Apply row (DIRETIVA §2: no dead control).
@@ -206,26 +202,26 @@ impl StrokeMethod {
     pub fn has_open_shape(self) -> bool {
         matches!(
             self,
-            Self::Curve | Self::FreeHand | Self::Ellipse | Self::Polygon | Self::Line
+            Self::Arc | Self::FreeHand | Self::Ellipse | Self::Polygon | Self::Line
         )
     }
 
     /// True for the parametric shapes that the panel's **Edit** (E) button can convert into an editable
-    /// Bézier curve — `Ellipse` and `Polygon`. (Curve / Free Hand are already curves, so they get no E.)
+    /// Bézier curve — `Ellipse` and `Polygon`. (Arc / Free Hand are already curves, so they get no E.)
     #[must_use]
     pub fn is_convertible_shape(self) -> bool {
         matches!(self, Self::Ellipse | Self::Polygon)
     }
 
     /// True for the five interactive **shape** methods the tool rail's Shapes flyout selects
-    /// (Line / Curve / Ellipse / Polygon / Free Hand), as opposed to the freehand/dab methods
+    /// (Line / Arc / Ellipse / Polygon / Free Hand), as opposed to the freehand/dab methods
     /// (Space / Dots / Airbrush / Anchored / Drag Dot). The rail's Brush button restores the last
     /// non-shape method; picking a shape in the flyout switches to one of these.
     #[must_use]
     pub fn is_shape(self) -> bool {
         matches!(
             self,
-            Self::Line | Self::Curve | Self::Ellipse | Self::Polygon | Self::FreeHand
+            Self::Line | Self::Arc | Self::Ellipse | Self::Polygon | Self::FreeHand
         )
     }
 }
@@ -273,7 +269,7 @@ mod tests {
             StrokeMethod::Space,
             StrokeMethod::DragDot,
             StrokeMethod::Line,
-            StrokeMethod::Curve,
+            StrokeMethod::Arc,
             StrokeMethod::Ellipse,
             StrokeMethod::Polygon,
             StrokeMethod::FreeHand,
@@ -292,9 +288,7 @@ mod tests {
 
     #[test]
     fn stroke_panel_visibility_matches_blender() {
-        use StrokeMethod::{
-            Airbrush, Anchored, Curve, Dots, DragDot, Ellipse, Line, Polygon, Space,
-        };
+        use StrokeMethod::{Airbrush, Anchored, Arc, Dots, DragDot, Ellipse, Line, Polygon, Space};
         // The Blender "Stroke" panel row matrix (Spacing/Dash, Jitter) per method. Input
         // Samples is always shown, so it is not in the table. This locks the per-method gate
         // the layers panel paints against — a predicate edit that breaks parity goes red here,
@@ -307,7 +301,7 @@ mod tests {
             (Space, true, true, true, true, false, false),
             (DragDot, false, false, false, false, false, false),
             (Line, true, true, true, false, false, false),
-            (Curve, true, true, true, false, false, false),
+            (Arc, true, true, true, false, false, false),
             (Ellipse, true, true, true, false, false, false),
             (Polygon, true, true, true, false, false, false),
         ];
@@ -329,7 +323,7 @@ mod tests {
     fn has_open_shape_is_exactly_the_editor_methods() {
         // The Apply / Apply & Keep row shows for the persistent on-canvas shape editors only.
         for m in [
-            StrokeMethod::Curve,
+            StrokeMethod::Arc,
             StrokeMethod::FreeHand,
             StrokeMethod::Ellipse,
             StrokeMethod::Polygon,
@@ -356,7 +350,7 @@ mod tests {
         assert!(StrokeMethod::Ellipse.is_convertible_shape());
         assert!(StrokeMethod::Polygon.is_convertible_shape());
         for m in [
-            StrokeMethod::Curve,
+            StrokeMethod::Arc,
             StrokeMethod::FreeHand,
             StrokeMethod::Line,
             StrokeMethod::Space,

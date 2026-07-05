@@ -1,5 +1,19 @@
 # HANDOFF — Per-Layer Color (layers-as-brush): slowness + rectangular stripe artifacts
 
+> **UPDATE 2026-07-04 (noite) — CPU chegou ao teto NOVO: o kernel foi paralelizado por bandas; pior caso
+> 105 ms → ~8 ms/move.** Medido em `--release` no Ryzen 9950X (32 threads): baseline pós-fused
+> `per_layer_perf_worst` = **95,4 ms/move** (vs 105,5 no Mac — igual nas duas máquinas porque o kernel era
+> SERIAL, a dica do Enio); depois de `accumulate_color_stamps_fused_batch` (uma chamada por Move, dabs ×
+> layers em BANDAS de linhas disjuntas — bit-idêntico por construção, gate
+> `batched_fused_accumulate_is_bit_identical_to_sequential`) + o recomposite band-paralelo no tool =
+> **7,9 ms/move**; o sweep inteiro (256²/1024² × r8..100 × N2/16) fica ≤ **8,8 ms/move**. No Mac (8 cores)
+> a projeção é ~15–25 ms no extremo — bem melhor, mas o **plano GPU (§4.2) continua o endgame para 4K**.
+> §4.1-I (re-stamp só do span editado) foi **avaliado e NÃO implementado**: exige clip de kernel + diff de
+> topologia (regra two-strikes) e não melhora o pior caso (linha de 2 pontos re-stampa tudo); a
+> paralelização por bandas cobre TODOS os casos, inclusive esse, com risco menor. Próximo gargalo CPU
+> visível no sweep: `take_preview_arc` em stack não-trivial (composite_region, 4–12 ms) — só aparece com
+> doc-layers extras; fica para a migração GPU do preview.
+
 > **UPDATE 2026-07-04 — GPU is now the PLAN OF RECORD; CPU bridge micro-opt reverted.**
 > The cross-tool bridge change `2c64ba80` ("kill the full-canvas Arc deep-copy per move") was **reverted**
 > (`461dcafd`): live smoke showed it **regressed BOTH Per-Layer Color AND Warp together** — the tell-tale

@@ -267,7 +267,7 @@ fn line_shows_spacing_dash_jitter_samples_hides_stabilize_rate_edge() {
 /// no shaky path to filter, so the Stabilizer stays hidden (same visible set as Line).
 #[test]
 fn curve_shows_spacing_dash_jitter_samples_hides_stabilize_rate_edge() {
-    let ids = painted_hit_ids(StrokeMethod::Curve);
+    let ids = painted_hit_ids(StrokeMethod::Arc);
     for shown in [
         core_ids::PAINTER_BRUSH_STROKE_METHOD,
         core_ids::PAINTER_BRUSH_SPACING,
@@ -369,7 +369,7 @@ fn polygon_shows_spacing_dash_jitter_samples_hides_stabilize_rate_edge() {
 #[test]
 fn offset_slider_shows_only_for_the_shape_editor_methods() {
     for m in [
-        StrokeMethod::Curve,
+        StrokeMethod::Arc,
         StrokeMethod::FreeHand,
         StrokeMethod::Ellipse,
         StrokeMethod::Polygon,
@@ -393,7 +393,7 @@ fn offset_slider_shows_only_for_the_shape_editor_methods() {
 #[test]
 fn apply_buttons_register_hit_rects_for_the_editor_methods_only() {
     for m in [
-        StrokeMethod::Curve,
+        StrokeMethod::Arc,
         StrokeMethod::FreeHand,
         StrokeMethod::Ellipse,
         StrokeMethod::Polygon,
@@ -430,7 +430,7 @@ fn edit_button_registers_only_for_circle_and_polygon() {
         );
     }
     for m in [
-        StrokeMethod::Curve,
+        StrokeMethod::Arc,
         StrokeMethod::FreeHand,
         StrokeMethod::Line,
     ] {
@@ -453,7 +453,7 @@ fn save_as_object_button_shows_only_when_a_curve_is_drawn() {
         let viewport = Rect::new(0.0, 0.0, 360.0, 4000.0);
         let layout = HeroLayout::for_viewport(viewport);
         let brush = BrushSettings {
-            stroke_method: StrokeMethod::Curve.to_u8(),
+            stroke_method: StrokeMethod::Arc.to_u8(),
             has_drawn_curve,
             ..crate::paint_brush::FALLBACK_BRUSH
         };

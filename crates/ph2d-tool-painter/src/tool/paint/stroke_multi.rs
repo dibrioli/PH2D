@@ -162,7 +162,7 @@ impl PainterTool {
         match state {
             S::Curve(s) => {
                 self.paint.curve = Some(curve::CurveEditor::from_state(s));
-                self.paint.brush.stroke_method = StrokeMethod::Curve;
+                self.paint.brush.stroke_method = StrokeMethod::Arc;
             }
             S::Ellipse(s) => {
                 self.paint.ellipse = Some(ellipse::EllipseEditor::from_state(s));
@@ -338,7 +338,7 @@ impl PainterTool {
             _ => {}
         }
         let consumed = match self.paint.brush.stroke_method {
-            StrokeMethod::Curve | StrokeMethod::FreeHand => self.curve_pointer(ev),
+            StrokeMethod::Arc | StrokeMethod::FreeHand => self.curve_pointer(ev),
             StrokeMethod::Ellipse => self.ellipse_pointer(ev),
             StrokeMethod::Polygon => self.polygon_pointer(ev),
             StrokeMethod::Line => self.line_pointer(ev),

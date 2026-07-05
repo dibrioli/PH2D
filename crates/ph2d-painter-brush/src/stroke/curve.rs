@@ -1,13 +1,13 @@
-//! The **Curve** stroke method's geometry: the shared Catmull-Rom flattener and the spaced-dab fill
+//! The **Arc** stroke method's geometry: the shared Catmull-Rom flattener and the spaced-dab fill
 //! along it. A child module of [`super`] (`stroke`) so it keeps private access to `Stroke`'s walk
 //! internals (`walk_space`/`dab_at`/`method_*`) and the `dist`/`hermite` free fns; split out to keep
-//! `stroke.rs` under the workspace LOC cap. See `stroke_method::StrokeMethod::Curve` for the model:
+//! `stroke.rs` under the workspace LOC cap. See `stroke_method::StrokeMethod::Arc` for the model:
 //! the artist authors control points and the engine auto-smooths between them.
 
 use super::*;
 
 impl Stroke {
-    /// Fill an authored Curve through the control points `pts` with spaced dabs for the live preview:
+    /// Fill an authored Arc through the control points `pts` with spaced dabs for the live preview:
     /// auto-smooth the polygon with a Catmull-Rom spline ([`flatten_catmull_rom`]) and lay dabs at the
     /// brush spacing along it (constant full pressure — the curve is a geometric path, no per-point
     /// pen pressure), gated by dash, with jitter. Spacing carries continuously across the whole spine
@@ -24,7 +24,7 @@ impl Stroke {
     }
 
     /// Lay spaced dabs along an already-flattened dense polyline `spine` (the Free Hand path flattens its
-    /// fitted Béziers via [`crate::flatten_bezier`], the authored Curve via [`flatten_catmull_rom`]; both
+    /// fitted Béziers via [`crate::flatten_bezier`], the authored Arc via [`flatten_catmull_rom`]; both
     /// then call here). Same walk as [`Self::fill_curve_preview`] — continuous spacing/dash/jitter, full
     /// pressure, fresh-per-fill — so the painted dabs match whatever guide the tool drew. `< 2` points
     /// fills nothing. (The Offset slider shifts the tool's control geometry before flattening, so the fill
@@ -60,7 +60,7 @@ impl Stroke {
     }
 }
 
-/// Flatten a **Catmull-Rom spline** through `pts` (the authored Curve control points, clamped
+/// Flatten a **Catmull-Rom spline** through `pts` (the authored Arc control points, clamped
 /// endpoints) into a dense polyline, written to `out` (cleared first; starts at `pts[0]`). Each
 /// segment `pts[i] → pts[i+1]` is the Hermite with uniform Catmull-Rom tangents `(next − prev)/2`
 /// (the trailing/leading neighbour clamped to the endpoint), subdivided finer than the dab spacing

@@ -295,3 +295,81 @@ fn fused_per_layer_accumulate_is_bit_identical_to_sequential() {
         );
     }
 }
+
+/// GATE (perf, `accumulate_color_stamps_fused_batch`): the batched row-banded accumulate must produce
+/// BYTE-IDENTICAL coverage maps + the same union rect as the per-dab fused loop (itself gated against
+/// the sequential oracle above). Runs the batch at BOTH sizes: small (serial fallback) and large enough
+/// to cross `PARALLEL_MIN_AREA` (the banded threads) — so the parallel path itself is what's verified.
+/// If this goes RED, the banding broke the per-pixel dab order (HR-5).
+#[test]
+fn batched_fused_accumulate_is_bit_identical_to_sequential() {
+    let spec = shape_image_spec();
+    let l0 = layer([true, true, true, true]);
+    let l1 = layer([false, true, true, false]);
+    let l2 = layer([true, false, false, true]);
+    let cols = [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]];
+    let stamps: Vec<ColorStampMask> = [&l0, &l1, &l2]
+        .iter()
+        .zip(cols.iter())
+        .map(|(l, c)| render_color_stamp_mask(&spec, &[mask(l)], &[*c], &[], &[], None, None, 24))
+        .collect();
+    let n = stamps.len();
+    // (label, canvas side, dab radius scale): small stays under PARALLEL_MIN_AREA (serial fallback);
+    // large crosses it (Σ dab boxes ≈ 4·(2·90)² ≈ 130k+ px → the banded threads run).
+    for (label, side, rs) in [("serial", 40u32, 1.0f32), ("banded", 640u32, 10.0)] {
+        let (w, h) = (side, side);
+        let len = (w as usize) * (h as usize);
+        let k = side as f32 / 40.0;
+        let dabs: [([f32; 2], f32, f32); 5] = [
+            ([18.3 * k, 19.7 * k], 9.0 * rs, 0.8),
+            ([22.6 * k, 21.1 * k], 7.5 * rs, 1.0),
+            ([15.0 * k, 24.4 * k], 11.2 * rs, 0.5),
+            ([20.0 * k, 20.0 * k], 6.0 * rs, 0.35),
+            ([2.4, 3.9], 8.0 * rs, 0.9), // clipped against the canvas origin
+        ];
+        let mut per_dab: Vec<Vec<u8>> = (0..n).map(|_| vec![0u8; len]).collect();
+        let mut ref_rect: Option<crate::dab::DirtyRect> = None;
+        for &(center, radius, cov) in &dabs {
+            if let Some(r) =
+                accumulate_color_stamps_fused(&mut per_dab, w, h, center, radius, &stamps, cov)
+            {
+                ref_rect = Some(match ref_rect {
+                    None => r,
+                    Some(a) => {
+                        let x0 = a.x.min(r.x);
+                        let y0 = a.y.min(r.y);
+                        let x1 = (a.x + a.w).max(r.x + r.w);
+                        let y1 = (a.y + a.h).max(r.y + r.h);
+                        crate::dab::DirtyRect {
+                            x: x0,
+                            y: y0,
+                            w: x1 - x0,
+                            h: y1 - y0,
+                        }
+                    }
+                });
+            }
+        }
+        let mut batched: Vec<Vec<u8>> = (0..n).map(|_| vec![0u8; len]).collect();
+        let fd: Vec<FusedDab> = dabs
+            .iter()
+            .map(|&(center, radius, coverage)| FusedDab {
+                center,
+                radius,
+                coverage,
+            })
+            .collect();
+        let batch_rect = accumulate_color_stamps_fused_batch(&mut batched, w, h, &fd, &stamps);
+        assert_eq!(
+            batch_rect.map(|r| (r.x, r.y, r.w, r.h)),
+            ref_rect.map(|r| (r.x, r.y, r.w, r.h)),
+            "{label}: batch union rect must equal the per-dab union"
+        );
+        for i in 0..n {
+            assert_eq!(
+                batched[i], per_dab[i],
+                "{label}: layer {i} batched map must be byte-identical to the per-dab fused loop"
+            );
+        }
+    }
+}

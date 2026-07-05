@@ -14,8 +14,18 @@ impl PainterTool {
     /// delivery per frame (the restore + whole-shape re-stamp fill methods only show the latest position,
     /// so it is byte-identical). Delegates to [`ph2d_painter_brush::StrokeMethod::coalesces_canvas_motion`].
     /// The FPS-drop / "Raw rises" fix (`HANDOFF_per_layer_color_perf_artifacts` §1.R).
+    ///
+    /// **Selection mode** coalesces too — EXCEPT the Freehand lasso (`selection_mode == 1`), which
+    /// CAPTURES the pointer path and needs every raw event. The others (shape-gizmo drags, Rectangle /
+    /// Ellipse rubber bands, Automatic) only ever act on the latest position, and each Move pays a full
+    /// boolean-mask recompose (~5 ms with 8 shapes @2048²) — delivered per RAW event, a high-Hz mouse
+    /// re-ran it several times per frame: the Bug #2 re-stamp storm on the selection axis (Enio
+    /// 2026-07-04, "booleanas multi-shape lentas de novo").
     #[must_use]
     pub fn coalesces_canvas_motion(&self) -> bool {
+        if matches!(self.paint.paint_mode, PaintMode::Selection) {
+            return self.paint.selection_mode != 1; // 1 = Freehand (path capture)
+        }
         self.paint.brush.stroke_method.coalesces_canvas_motion()
     }
 

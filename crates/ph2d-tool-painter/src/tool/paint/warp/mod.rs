@@ -79,6 +79,9 @@ pub(crate) struct DeformState {
     /// The **Warp mesh** grid of control points (Distort's big brother): a lattice over the patch whose
     /// points drag independently, each cell warped by its own homography. `Some` only in the Warp sub-mode.
     pub(crate) xform_mesh: Option<transform::Mesh>,
+    /// Cached Catmull-Rom subdivision of the PRISTINE Warp grid (constant during a drag; self-validating
+    /// against the live control points, so undo/redo/reseed just re-fill it). Transient.
+    pub(crate) xform_mesh_fine: Option<transform_mesh::MeshFineCache>,
     /// The **floating patch** lifted when Transform begins (Procreate model): the selected pixels are cut out
     /// (marquee gone) into `patch`, the rest becomes `base` (a hole where the patch was), and the gizmo
     /// moves/scales/rotates the patch freely over the base. `None` in Reshape / before a lift. Scanned once,
@@ -130,6 +133,7 @@ impl Default for DeformState {
             xform_redo: Vec::new(),
             xform_relift: None,
             xform_mesh: None,
+            xform_mesh_fine: None,
             xform_patch: None,
             xform_before: None,
             xform_last_bbox: None,

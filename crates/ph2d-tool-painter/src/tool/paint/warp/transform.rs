@@ -472,6 +472,24 @@ impl PainterTool {
         self.paint.deform.xform_patch.is_some()
     }
 
+    /// The extra canvas-pointer acceptance margin (IMAGE px) the shell should allow AROUND the sprite
+    /// footprint while a Transform gizmo is live — `0` otherwise. A whole-image transform puts the gizmo's
+    /// corner squares EXACTLY on the footprint edge, so ~¾ of each square's clickable disc lies OUTSIDE
+    /// the shell's `[0,1]` uv gate; without this margin those Downs fell through to the SPRITE gizmo
+    /// (whose scale handles sit on the very same screen corners) and scaled the sprite instead of grabbing
+    /// the patch. Covers the scale squares plus the rotate ring (`ROTATE_BAND` grab-radii beyond them).
+    #[must_use]
+    pub fn deform_gizmo_grab_margin_px(&self) -> f32 {
+        let live = self.is_deform_mode()
+            && self.paint.deform.temperament == DEFORM_TEMPERAMENT_TRANSFORM
+            && self.paint.deform.xform_patch.is_some();
+        if live {
+            self.paint.shape_grab_tol_px * ROTATE_BAND
+        } else {
+            0.0
+        }
+    }
+
     /// Drop all live Transform state (float + poses) WITHOUT committing — used when the lift is undone. Does
     /// NOT touch `xform_relift` (the un-lift saves it there for redo just before calling this).
     pub(crate) fn clear_transform_state(&mut self) {

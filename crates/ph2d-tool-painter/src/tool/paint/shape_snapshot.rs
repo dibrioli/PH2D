@@ -88,7 +88,7 @@ impl PainterTool {
         match shape.map(|b| *b) {
             Some(crate::undo::ShapeEditState::Curve(s)) => {
                 self.paint.curve = Some(curve::CurveEditor::from_state(s));
-                self.paint.brush.stroke_method = StrokeMethod::Curve;
+                self.paint.brush.stroke_method = StrokeMethod::Arc;
                 if had_preview {
                     self.curve_refill();
                 }

@@ -1,11 +1,13 @@
-//! The **Curve** stroke method — a simplified on-canvas Bézier-ish path editor (PH2D's divergence from
-//! Blender's curve-OBJECT workflow; `docs/Painter/`). A submodule of [`super`] (`paint`) so it shares
-//! `PaintState`'s private access + the canvas helpers; split out to keep `paint.rs` under the LOC cap.
+//! The **Arc** stroke method (né Curve) — a simplified on-canvas Bézier-ish path editor (PH2D's
+//! divergence from Blender's curve-OBJECT workflow; `docs/Painter/`). A submodule of [`super`] (`paint`)
+//! so it shares `PaintState`'s private access + the canvas helpers; split to keep `paint.rs` under the
+//! LOC cap.
 //!
-//! **Draw** a straight line (press-drag-release) → 3 control points. **Edit**: drag a point to move, drag
-//! its tangent handles to sculpt, click near the curve to ADD a point; handle kinds ([`curve_handle`]) drive
-//! smoothing. **Delete** the selected; **Commit** (Enter) bakes one undo entry, **cancel** (Esc) discards.
-//! Keyboard + overlay live in the shell; this module exposes the verbs they drive.
+//! **Draw** (press-drag-release) → 3 control points with a subtle perpendicular bow ([`ARC_BOW`]) — a
+//! fresh Arc, not a straight line. **Edit**: drag a point to move, drag its tangent handles to sculpt,
+//! click ON the curve to ADD a point (never in empty space); handle kinds ([`curve_handle`]) drive
+//! smoothing. **Delete** the selected; **Commit** (Enter) bakes one undo entry, **cancel** (Esc)
+//! discards. Keyboard + overlay live in the shell; this module exposes the verbs they drive.
 //!
 //! The editable state + the pure editing ops live in the shared [`curve_model::CurveModel`] (owned here in
 //! `self.paint.curve` AND by the selection Convert-to-Curve editor) — so the two behave identically; this
@@ -23,6 +25,10 @@ use ph2d_painter_brush::{Stroke, lazy_mouse_step};
 
 /// Most control points a Curve session may hold — bounds the per-frame re-fill + hit-test.
 pub(super) const MAX_CURVE_POINTS: usize = 64;
+/// The **Arc** method's initial bow: the middle anchor's perpendicular offset as a fraction of the
+/// drag chord. Subtle by design — the fresh shape reads as an arc, and the pre-selected mid point
+/// bends it further either way.
+const ARC_BOW: f32 = 0.15;
 /// Free Hand: cubic-fit error tolerance (px) — max deviation of the fitted curve from the captured path.
 pub(super) const FREEHAND_FIT_ERROR: f32 = 4.0;
 /// Free Hand: minimum squared spacing (px²) between captured path points — keeps the raw capture bounded.
@@ -117,7 +123,19 @@ impl PainterTool {
         } else if let Some(g) = curve_gizmo::grab(&ed.model.points, &ed.model.handles, pos, tol) {
             ed.gizmo = Some(g); // a transform-gizmo handle (box corner / edge / centre / rotate ring)
             false
-        } else if ed.model.points.len() < MAX_CURVE_POINTS {
+        } else if ed.model.points.len() < MAX_CURVE_POINTS && {
+            // Insert ONLY when the click is ON the spine (within the grab radius `tol`) — a click in
+            // empty space must never create a point (Enio 2026-07-04). The multi-shape router already
+            // band-gates its routing; this re-check keeps every other entry path honest.
+            let mut spine = Vec::new();
+            curve_geom::flatten_spine(
+                &ed.model.points,
+                &ed.model.handles,
+                ed.model.closed,
+                &mut spine,
+            );
+            stroke_multi::point_near_polyline(pos, &spine, tol)
+        } {
             // Subdivide the curve at the NEAREST point on it (incl. the closing seam for a converted
             // Ellipse / Polygon) via a de Casteljau split — the new anchor lands on the curve and the shape
             // is unchanged.
@@ -228,9 +246,17 @@ impl PainterTool {
             ed.model.kinds = vec![HandleKind::Aligned; ed.model.points.len()];
             ed.model.selected = None;
         } else {
-            // Curve line released → start / midpoint / end (mid pre-selected to bend); Auto kind until the menu.
+            // Arc released → start / bowed midpoint / end (mid pre-selected to bend further). The middle
+            // anchor is offset perpendicular to the chord by a SUBTLE fraction so the new shape reads as
+            // an ARC, not a straight line (Enio 2026-07-04). `[dy, -dx]` carries the chord's length, so
+            // the bow scales with the drag (and bows UP for a left→right drag); the Auto kinds bend the
+            // spine smoothly through it. Transcendental-free (HR-5).
             let a = ed.anchor;
-            let mid = [(a[0] + pos[0]) * 0.5, (a[1] + pos[1]) * 0.5];
+            let (dx, dy) = (pos[0] - a[0], pos[1] - a[1]);
+            let mid = [
+                (a[0] + pos[0]) * 0.5 + dy * ARC_BOW,
+                (a[1] + pos[1]) * 0.5 - dx * ARC_BOW,
+            ];
             ed.model.points = vec![a, mid, pos];
             ed.model.kinds = vec![HandleKind::Auto; 3];
             ed.model.selected = Some(1);
@@ -278,7 +304,9 @@ impl PainterTool {
         {
             return true;
         }
-        // Within the insert band of the spine → a click subdivides the curve (an edit), not a new shape.
+        // ON the spine (within the grab radius — the same `tol` as a point) → a click subdivides the
+        // curve (an edit). Anything farther is empty space: no point is ever created off the curve
+        // (Enio 2026-07-04); the multi-shape router parks this curve and begins a fresh one.
         let mut spine = Vec::new();
         curve_geom::flatten_spine(
             &ed.model.points,
@@ -286,8 +314,7 @@ impl PainterTool {
             ed.model.closed,
             &mut spine,
         );
-        let band = (tol * 3.0).max(stroke_multi::NEW_SHAPE_INSERT_BAND_PX);
-        stroke_multi::point_near_polyline(pos, &spine, band)
+        stroke_multi::point_near_polyline(pos, &spine, tol)
     }
 
     /// Delete the selected control point (Delete key). Keeps `≥ 2` points; `true` when one was removed.
@@ -342,7 +369,7 @@ impl PainterTool {
         self.paint.seed = self.paint.seed.wrapping_add(1);
         self.paint.ellipse = None;
         self.paint.polygon = None;
-        self.paint.brush.stroke_method = StrokeMethod::Curve; // route future pointers to the curve editor
+        self.paint.brush.stroke_method = StrokeMethod::Arc; // route future pointers to the curve editor
         self.paint.curve = Some(CurveEditor {
             model: CurveModel::from_curve(points, handles, /*closed=*/ true, kind),
             grab: None,

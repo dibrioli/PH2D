@@ -10,10 +10,67 @@
 //! transform (committed when it ends), like Procreate's single-step Transform.
 
 use super::super::Region;
-use super::apply::bilinear_clamped;
 use super::transform_geom::{Affine2, Mat3, TransformFrame};
 use crate::tool::PainterTool;
 use std::sync::Arc;
+
+/// Bilinear sample of the patch with a TRANSPARENT border — a source coordinate outside the canvas
+/// contributes zero, so a patch pulled/shrunk away from the edge vacates to transparent instead of
+/// smearing the edge texels (which is what clamping did on a whole-image transform of an opaque
+/// layer: `bilinear_clamped` duplicated the border colour over everything the patch left behind).
+/// In-bounds samples are byte-identical to the clamped variant (identical corners and weights).
+pub(super) fn bilinear_patch(canvas: &[u8], w: u32, h: u32, x: f32, y: f32) -> [u8; 4] {
+    if w == 0 || h == 0 {
+        return [0, 0, 0, 0];
+    }
+    let x0f = x.floor();
+    let y0f = y.floor();
+    let fx = x - x0f;
+    let fy = y - y0f;
+    let (wi, hi) = (w as i64, h as i64);
+    let (x0, y0) = (x0f as i64, y0f as i64);
+    let stride = w as usize * 4;
+    // A corner as PREMULTIPLIED `[r·a, g·a, b·a, a]` (rgb on the `0..=255` scale, `a` raw); outside
+    // the canvas it is fully transparent.
+    let corner = |xi: i64, yi: i64| -> [f32; 4] {
+        if xi < 0 || xi >= wi || yi < 0 || yi >= hi {
+            return [0.0, 0.0, 0.0, 0.0];
+        }
+        let b = yi as usize * stride + xi as usize * 4;
+        let a = f32::from(canvas[b + 3]);
+        let s = a / 255.0;
+        [
+            f32::from(canvas[b]) * s,
+            f32::from(canvas[b + 1]) * s,
+            f32::from(canvas[b + 2]) * s,
+            a,
+        ]
+    };
+    let lerp = |p: [f32; 4], q: [f32; 4], t: f32| {
+        [
+            p[0] + (q[0] - p[0]) * t,
+            p[1] + (q[1] - p[1]) * t,
+            p[2] + (q[2] - p[2]) * t,
+            p[3] + (q[3] - p[3]) * t,
+        ]
+    };
+    // Identical arithmetic to `bilinear_clamped` from here down, so in-bounds samples stay
+    // byte-for-byte equal.
+    let top = lerp(corner(x0, y0), corner(x0 + 1, y0), fx);
+    let bot = lerp(corner(x0, y0 + 1), corner(x0 + 1, y0 + 1), fx);
+    let m = lerp(top, bot, fy); // [premR, premG, premB, A]
+    let a = m[3];
+    if a <= 0.0 {
+        return [0, 0, 0, 0];
+    }
+    let inv = 255.0 / a; // un-premultiply
+    [
+        (m[0] * inv).round().clamp(0.0, 255.0) as u8,
+        (m[1] * inv).round().clamp(0.0, 255.0) as u8,
+        (m[2] * inv).round().clamp(0.0, 255.0) as u8,
+        a.round().clamp(0.0, 255.0) as u8,
+    ]
+}
 
 /// The lifted selection (or whole layer) being transformed, plus the remainder it floats over.
 #[derive(Clone)]
@@ -139,21 +196,44 @@ impl PainterTool {
         let patch = &fp.patch;
         let base = &fp.base;
         let buf = Arc::make_mut(&mut self.canvas_rgba);
-        for y in dirty.y..dirty.y + dirty.h {
-            for x in dirty.x..dirty.x + dirty.w {
-                let i = ((y * w + x) as usize) * 4;
-                let out = if region_contains(affected, x, y) {
-                    let sp = minv.apply([x as f32, y as f32]);
-                    let p = bilinear_clamped(patch, w, h, sp[0], sp[1]);
-                    let b = [base[i], base[i + 1], base[i + 2], base[i + 3]];
-                    over(p, b)
+        let stride = (w as usize) * 4;
+        // Whole-image transforms make `dirty` the entire canvas (~4.2M px @ 2048²) — a serial per-texel
+        // gather was ~190 ms/move (measured, `perf_transform_whole_image_table`). Split the rows into
+        // disjoint bands across the cores (bit-identical to serial), turn the strips OUTSIDE the affected
+        // bbox into straight row copies of `base`, and only run the generic `over` on antialiased edges.
+        for_dirty_rows_parallel(buf, dirty, w, |band, band_y0| {
+            let rows = band.len() / stride;
+            let (d0, d1) = ((dirty.x as usize) * 4, ((dirty.x + dirty.w) as usize) * 4);
+            for ry in 0..rows {
+                let y = band_y0 + ry as u32;
+                let row = &mut band[ry * stride..(ry + 1) * stride];
+                let brow = (y as usize) * stride;
+                // The affected x-span on this row (empty when the row is outside the affected bbox).
+                let (ax0, ax1) = if y >= affected.y && y < affected.y + affected.h {
+                    let x0 = affected.x.max(dirty.x);
+                    let x1 = (affected.x + affected.w).min(dirty.x + dirty.w);
+                    (x0, x1.max(x0))
                 } else {
-                    // The patch left this texel → show the base (the hole).
-                    [base[i], base[i + 1], base[i + 2], base[i + 3]]
+                    (dirty.x, dirty.x)
                 };
-                buf[i..i + 4].copy_from_slice(&out);
+                let (a0, a1) = ((ax0 as usize) * 4, (ax1 as usize) * 4);
+                // The patch left these texels → show the base (the hole): straight copies.
+                row[d0..a0].copy_from_slice(&base[brow + d0..brow + a0]);
+                row[a1..d1].copy_from_slice(&base[brow + a1..brow + d1]);
+                for x in ax0..ax1 {
+                    let o = (x as usize) * 4;
+                    let sp = minv.apply([x as f32, y as f32]);
+                    let p = bilinear_patch(patch, w, h, sp[0], sp[1]);
+                    let b = [
+                        base[brow + o],
+                        base[brow + o + 1],
+                        base[brow + o + 2],
+                        base[brow + o + 3],
+                    ];
+                    row[o..o + 4].copy_from_slice(&over_fast(p, b));
+                }
             }
-        }
+        });
         self.paint.deform.xform_last_bbox = Some(affected);
         self.mark_dirty(dirty);
     }
@@ -220,6 +300,63 @@ impl PainterTool {
         self.reset_selection_offset();
         self.invalidate_composite();
     }
+}
+
+/// [`over`] with the three exact fast paths — transparent src (keep dst), opaque src / transparent dst
+/// (take src). The generic blend then only runs on antialiased patch edges. Each path returns exactly
+/// what `over` computes for it (the float round-trip `(v·a)/a` is within ~2 ulp of the integer `v`, far
+/// from any `.round()` boundary), so the composite stays byte-identical to the plain-`over` loop.
+#[inline]
+pub(super) fn over_fast(src: [u8; 4], dst: [u8; 4]) -> [u8; 4] {
+    if src[3] == 0 {
+        return dst;
+    }
+    if src[3] == 255 || dst[3] == 0 {
+        return src;
+    }
+    over(src, dst)
+}
+
+/// Run `f` over the dirty rect's rows in disjoint full-width row bands — in parallel across the cores
+/// for large rects (mirrors `parallel_band_stamp` in `ph2d-painter-brush`). `f(band, band_y0)` receives
+/// the band's FULL-width row slice whose first row is `band_y0`. Disjoint bands ⇒ bit-identical to the
+/// serial loop regardless of band count (HR-5); small rects (a typical selection drag) stay serial so
+/// the thread spawn never costs more than it saves.
+pub(super) fn for_dirty_rows_parallel<F>(buf: &mut [u8], dirty: Region, w: u32, f: F)
+where
+    F: Fn(&mut [u8], u32) + Sync,
+{
+    if dirty.w == 0 || dirty.h == 0 {
+        return;
+    }
+    let stride = (w as usize) * 4;
+    let region = &mut buf[(dirty.y as usize) * stride..((dirty.y + dirty.h) as usize) * stride];
+    let rows = dirty.h as usize;
+    /// Below this dirty-rect area (px) the serial loop wins over spawning scoped threads.
+    const PARALLEL_MIN_AREA: usize = 1 << 17;
+    if (rows * dirty.w as usize) < PARALLEL_MIN_AREA || rows <= 1 {
+        f(region, dirty.y);
+        return;
+    }
+    let threads = std::thread::available_parallelism()
+        .map(std::num::NonZero::get)
+        .unwrap_or(1)
+        .clamp(1, rows);
+    let rpb = rows.div_ceil(threads);
+    let f = &f;
+    std::thread::scope(|s| {
+        let handles: Vec<_> = region
+            .chunks_mut(rpb * stride)
+            .enumerate()
+            .map(|(bi, chunk)| {
+                let band_y0 = dirty.y + (bi * rpb) as u32;
+                s.spawn(move || f(chunk, band_y0))
+            })
+            .collect();
+        for h in handles {
+            h.join().expect("transform composite band panicked");
+        }
+    });
 }
 
 /// Straight-alpha src-over: `src` over `dst`.
@@ -316,9 +453,4 @@ pub(super) fn region_clip(r: Region, w: u32, h: u32) -> Region {
         w: x1.saturating_sub(x0),
         h: y1.saturating_sub(y0),
     }
-}
-
-/// Whether `(x, y)` is inside region `r`.
-fn region_contains(r: Region, x: u32, y: u32) -> bool {
-    x >= r.x && x < r.x + r.w && y >= r.y && y < r.y + r.h
 }

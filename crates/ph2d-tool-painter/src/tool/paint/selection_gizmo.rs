@@ -289,10 +289,11 @@ impl PainterTool {
         true
     }
 
-    /// Insert an anchor on the converted curve NEAREST to `pos` (within band) → its grab, or `None`.
+    /// Insert an anchor on the converted curve NEAREST to `pos` — ONLY when the click is ON its line
+    /// (within the grab radius `tol`, the same as a point; a click in empty space must never create a
+    /// point — Enio 2026-07-04) → its grab, or `None`.
     fn insert_on_nearest_selection_curve(&mut self, pos: [f32; 2]) -> Option<SelectionGrab> {
-        let band =
-            (self.paint.shape_grab_tol_px * 3.0).max(super::stroke_multi::NEW_SHAPE_INSERT_BAND_PX);
+        let band = self.paint.shape_grab_tol_px;
         let mut best: Option<(usize, f32)> = None;
         for i in 0..self.paint.selection_shapes.len() {
             let shape = &self.paint.selection_shapes[i].shape;

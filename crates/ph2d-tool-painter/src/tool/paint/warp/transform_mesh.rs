@@ -5,11 +5,22 @@
 //! the cell quad). Transcendental-free (HR-5).
 
 use super::super::Region;
-use super::apply::bilinear_clamped;
-use super::transform_float::{over, region_clip, region_union};
-use super::transform_geom::homography_from_quads;
+use super::transform_float::{
+    bilinear_patch, for_dirty_rows_parallel, over_fast, region_clip, region_union,
+};
+use super::transform_geom::{Mat3, homography_from_quads};
 use crate::tool::PainterTool;
 use std::sync::Arc;
+
+/// The cached Catmull-Rom subdivision of the PRISTINE Warp grid — constant during a whole drag, but it
+/// was re-subdivided every move. Self-validating: `pristine` is compared against the live mesh's control
+/// points, so a reseed / undo / redo simply re-fills it (no lifecycle to forget).
+pub(crate) struct MeshFineCache {
+    pristine: Vec<[f32; 2]>,
+    pts: Vec<[f32; 2]>,
+    fc: u32,
+    fr: u32,
+}
 
 /// A `cols × rows` cell lattice (so `(cols+1) × (rows+1)` control points, row-major). `pristine` is the
 /// undeformed grid (the `M = I` reference); `current` is the dragged grid.
@@ -100,11 +111,35 @@ impl PainterTool {
             return;
         }
         // Subdivide both grids to the SAME fine resolution (smooth Catmull-Rom surface through the points).
-        let (fine_src, fc, fr) = subdivide_grid(&mesh.pristine, mesh.cols, mesh.rows);
+        // The PRISTINE grid is constant during the whole drag → cached; only `current` re-subdivides.
+        if self
+            .paint
+            .deform
+            .xform_mesh_fine
+            .as_ref()
+            .is_none_or(|c| c.pristine != mesh.pristine)
+        {
+            let (pts, fc, fr) = subdivide_grid(&mesh.pristine, mesh.cols, mesh.rows);
+            self.paint.deform.xform_mesh_fine = Some(MeshFineCache {
+                pristine: mesh.pristine.clone(),
+                pts,
+                fc,
+                fr,
+            });
+        }
+        let (fine_src, fc, fr) = {
+            let c = self
+                .paint
+                .deform
+                .xform_mesh_fine
+                .as_ref()
+                .expect("just filled");
+            (c.pts.clone(), c.fc, c.fr)
+        };
         let (fine_dst, _, _) = subdivide_grid(&mesh.current, mesh.cols, mesh.rows);
-        let stride = (fc + 1) as usize;
+        let pstride = (fc + 1) as usize;
         let fine_cell = |grid: &[[f32; 2]], r: u32, c: u32| -> [[f32; 2]; 4] {
-            let i = |rr: u32, cc: u32| grid[(rr as usize) * stride + cc as usize];
+            let i = |rr: u32, cc: u32| grid[(rr as usize) * pstride + cc as usize];
             [i(r, c), i(r, c + 1), i(r + 1, c + 1), i(r + 1, c)]
         };
 
@@ -117,17 +152,13 @@ impl PainterTool {
             w,
             h,
         );
-        let patch = &fp.patch;
-        let base = &fp.base;
-        let buf = Arc::make_mut(&mut self.canvas_rgba);
-        // 1) Clear the dirty rect to the base (the hole the patch floats over).
-        for y in dirty.y..dirty.y + dirty.h {
-            for x in dirty.x..dirty.x + dirty.w {
-                let i = ((y * w + x) as usize) * 4;
-                buf[i..i + 4].copy_from_slice(&[base[i], base[i + 1], base[i + 2], base[i + 3]]);
-            }
+        // Precompute each fine cell ONCE per move (inverse homography + dst quad + clipped bbox).
+        struct Cell {
+            hinv: Mat3,
+            dst: [[f32; 2]; 4],
+            bbox: Region,
         }
-        // 2) Overlay each FINE deformed cell (backward-gather through its inverse homography, clipped).
+        let mut cells = Vec::with_capacity((fr * fc) as usize);
         for r in 0..fr {
             for c in 0..fc {
                 let src = fine_cell(&fine_src, r, c);
@@ -135,22 +166,58 @@ impl PainterTool {
                 let Some(hinv) = homography_from_quads(&src, &dst).and_then(|m| m.inverse()) else {
                     continue;
                 };
-                let cell_bbox = region_clip(points_bbox(&dst, w, h), w, h);
-                for y in cell_bbox.y..cell_bbox.y + cell_bbox.h {
-                    for x in cell_bbox.x..cell_bbox.x + cell_bbox.w {
+                let bbox = region_clip(points_bbox(&dst, w, h), w, h);
+                if bbox.w == 0 || bbox.h == 0 {
+                    continue;
+                }
+                cells.push(Cell { hinv, dst, bbox });
+            }
+        }
+        let patch = &fp.patch;
+        let base = &fp.base;
+        let buf = Arc::make_mut(&mut self.canvas_rgba);
+        let stride = (w as usize) * 4;
+        // Whole-image Warp makes `dirty` the entire canvas — split the rows into disjoint bands across
+        // the cores (each band overlays the cells in the same (r,c) order, so the result is bit-identical
+        // to the serial loop).
+        for_dirty_rows_parallel(buf, dirty, w, |band, band_y0| {
+            let rows = (band.len() / stride) as u32;
+            let band_y1 = band_y0 + rows;
+            let (d0, d1) = ((dirty.x as usize) * 4, ((dirty.x + dirty.w) as usize) * 4);
+            // 1) Clear the band's dirty span to the base (the hole the patch floats over).
+            for ry in 0..rows {
+                let brow = ((band_y0 + ry) as usize) * stride;
+                let row = &mut band[(ry as usize) * stride..(ry as usize + 1) * stride];
+                row[d0..d1].copy_from_slice(&base[brow + d0..brow + d1]);
+            }
+            // 2) Overlay each FINE deformed cell clipped to this band (backward-gather through its
+            //    inverse homography, clipped to the cell quad).
+            for cell in &cells {
+                let y0 = cell.bbox.y.max(band_y0);
+                let y1 = (cell.bbox.y + cell.bbox.h).min(band_y1);
+                for y in y0..y1 {
+                    let ry = (y - band_y0) as usize;
+                    let row = &mut band[ry * stride..(ry + 1) * stride];
+                    let brow = (y as usize) * stride;
+                    for x in cell.bbox.x..cell.bbox.x + cell.bbox.w {
                         let p = [x as f32 + 0.5, y as f32 + 0.5];
-                        if !point_in_quad(&dst, p) {
+                        if !point_in_quad(&cell.dst, p) {
                             continue;
                         }
-                        let sp = hinv.apply([x as f32, y as f32]);
-                        let px = bilinear_clamped(patch, w, h, sp[0], sp[1]);
-                        let i = ((y * w + x) as usize) * 4;
-                        let b = [base[i], base[i + 1], base[i + 2], base[i + 3]];
-                        buf[i..i + 4].copy_from_slice(&over(px, b));
+                        let sp = cell.hinv.apply([x as f32, y as f32]);
+                        let px = bilinear_patch(patch, w, h, sp[0], sp[1]);
+                        let o = (x as usize) * 4;
+                        let b = [
+                            base[brow + o],
+                            base[brow + o + 1],
+                            base[brow + o + 2],
+                            base[brow + o + 3],
+                        ];
+                        row[o..o + 4].copy_from_slice(&over_fast(px, b));
                     }
                 }
             }
-        }
+        });
         self.paint.deform.xform_last_bbox = Some(affected);
         self.mark_dirty(dirty);
     }

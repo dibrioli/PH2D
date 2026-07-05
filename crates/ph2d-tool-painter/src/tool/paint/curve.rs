@@ -23,8 +23,16 @@ use super::curve_gizmo;
 use super::curve_offset;
 use ph2d_painter_brush::{Stroke, lazy_mouse_step};
 
-/// Most control points a Curve session may hold — bounds the per-frame re-fill + hit-test.
+/// Most control points the Free Hand fit / Simplify aims for — the SPARSE direction.
 pub(super) const MAX_CURVE_POINTS: usize = 64;
+/// Convert-to-Curve is the DENSE direction (Enio 2026-07-05): extreme precision + many manipulation
+/// points at conversion; the artist reduces later with Simplify. Fit tolerance for traced outlines —
+/// tight, but above the ~0.5 px marching-squares stair amplitude so mask traces don't zigzag.
+pub(super) const CONVERT_FIT_ERROR: f32 = 1.0;
+/// Hard cap on a converted curve's anchors (bounds the per-frame re-fill / hit-test / overlay).
+pub(super) const MAX_CONVERT_POINTS: usize = 512;
+/// Target anchor spacing (image px of arc length) the conversion densifies to — "múltiplos pontos".
+pub(super) const CONVERT_ANCHOR_SPACING_PX: f32 = 16.0;
 /// The **Arc** method's initial bow: the middle anchor's perpendicular offset as a fraction of the
 /// drag chord. Subtle by design — the fresh shape reads as an arc, and the pre-selected mid point
 /// bends it further either way.
@@ -123,7 +131,7 @@ impl PainterTool {
         } else if let Some(g) = curve_gizmo::grab(&ed.model.points, &ed.model.handles, pos, tol) {
             ed.gizmo = Some(g); // a transform-gizmo handle (box corner / edge / centre / rotate ring)
             false
-        } else if ed.model.points.len() < MAX_CURVE_POINTS && {
+        } else if ed.model.points.len() < MAX_CONVERT_POINTS && {
             // Insert ONLY when the click is ON the spine (within the grab radius `tol`) — a click in
             // empty space must never create a point (Enio 2026-07-04). The multi-shape router already
             // band-gates its routing; this re-check keeps every other entry path honest.
@@ -364,6 +372,14 @@ impl PainterTool {
         else {
             return false; // nothing was editing → no conversion, nothing to record
         };
+        // Densify to the convert spacing — the shape is reproduced EXACTLY (de Casteljau splits), it
+        // just gains many manipulation anchors (Enio 2026-07-05); Simplify is the way back down.
+        let (points, handles) = curve_geom::densify_closed_curve(
+            &points,
+            &handles,
+            CONVERT_ANCHOR_SPACING_PX,
+            MAX_CONVERT_POINTS,
+        );
         let anchor = points[0];
         let seed = self.paint.seed;
         self.paint.seed = self.paint.seed.wrapping_add(1);

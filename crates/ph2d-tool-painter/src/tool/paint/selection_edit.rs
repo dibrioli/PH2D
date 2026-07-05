@@ -7,7 +7,10 @@
 //! - **Simplify Curve** — run the Free-Hand fit on the (single) converted curve to reduce its point count.
 
 use super::PainterTool;
-use super::curve::{FREEHAND_FIT_ERROR, MAX_CURVE_POINTS};
+use super::curve::{
+    CONVERT_ANCHOR_SPACING_PX, CONVERT_FIT_ERROR, FREEHAND_FIT_ERROR, MAX_CONVERT_POINTS,
+    MAX_CURVE_POINTS,
+};
 use super::curve_handle::HandleKind;
 use super::curve_model::CurveModel;
 use super::selection_shapes::{SelectionEntry, SelectionShape, sel_polygon_vertices};
@@ -108,9 +111,20 @@ impl PainterTool {
     /// Convert one selection shape to a closed editable [`CurveModel`], or `None` when it has too few points
     /// to fit. Shared by [`Self::selection_convert_to_curve`] for the per-shape conversion.
     fn shape_to_closed_curve(&self, shape: &SelectionShape) -> Option<CurveModel> {
+        // Convert-to-Curve is the DENSE direction (Enio 2026-07-05): parametric shapes densify their
+        // EXACT curve to many manipulation anchors; outlines fit tight. Simplify Curve goes back down.
+        let densify = |p: Vec<[f32; 2]>, h: Vec<[[f32; 2]; 2]>| {
+            super::curve_geom::densify_closed_curve(
+                &p,
+                &h,
+                CONVERT_ANCHOR_SPACING_PX,
+                MAX_CONVERT_POINTS,
+            )
+        };
         match shape {
             SelectionShape::Ellipse { center, u, rx, ry } => {
                 let (p, h) = ellipse_to_closed_curve(*center, *u, *rx, *ry);
+                let (p, h) = densify(p, h);
                 Some(CurveModel::from_curve(p, h, true, HandleKind::Aligned))
             }
             SelectionShape::Polygon {
@@ -122,17 +136,15 @@ impl PainterTool {
             } => {
                 let verts = sel_polygon_vertices(*center, *u, *rx, *ry, *sides);
                 let handles = verts.iter().map(|p| [*p, *p]).collect(); // sharp corners
-                Some(CurveModel::from_curve(
-                    verts,
-                    handles,
-                    true,
-                    HandleKind::Free,
-                ))
+                let (p, h) = densify(verts, handles);
+                Some(CurveModel::from_curve(p, h, true, HandleKind::Free))
             }
             SelectionShape::Freehand { model, .. } => {
-                to_closed_curve(&model.points, &model.handles)
+                to_closed_curve_precise(&model.points, &model.handles)
             }
-            SelectionShape::Raster { .. } => to_closed_curve(&self.traced_curve_points(), &[]),
+            SelectionShape::Raster { .. } => {
+                to_closed_curve_precise(&self.traced_curve_points(), &[])
+            }
         }
     }
 
@@ -175,6 +187,26 @@ pub(super) fn to_closed_curve(
     points: &[[f32; 2]],
     handles: &[[[f32; 2]; 2]],
 ) -> Option<CurveModel> {
+    to_closed_curve_with(points, handles, FREEHAND_FIT_ERROR, MAX_CURVE_POINTS, false)
+}
+
+/// The CONVERT variant of [`to_closed_curve`]: tight fit + densified to the convert anchor spacing —
+/// extreme precision, many manipulation points (Enio 2026-07-05). [`to_closed_curve`] (the sparse
+/// Free-Hand fit) stays the **Simplify** direction.
+pub(super) fn to_closed_curve_precise(
+    points: &[[f32; 2]],
+    handles: &[[[f32; 2]; 2]],
+) -> Option<CurveModel> {
+    to_closed_curve_with(points, handles, CONVERT_FIT_ERROR, MAX_CONVERT_POINTS, true)
+}
+
+fn to_closed_curve_with(
+    points: &[[f32; 2]],
+    handles: &[[[f32; 2]; 2]],
+    max_error: f32,
+    max_points: usize,
+    densify: bool,
+) -> Option<CurveModel> {
     if points.len() < 3 {
         return None;
     }
@@ -184,12 +216,20 @@ pub(super) fn to_closed_curve(
     } else {
         &deg
     };
-    Some(
-        CurveModel::from_fit(points, src, true, FREEHAND_FIT_ERROR, MAX_CURVE_POINTS)
-            .unwrap_or_else(|| {
-                CurveModel::from_curve(points.to_vec(), src.to_vec(), true, HandleKind::Aligned)
-            }),
-    )
+    let mut model =
+        CurveModel::from_fit(points, src, true, max_error, max_points).unwrap_or_else(|| {
+            CurveModel::from_curve(points.to_vec(), src.to_vec(), true, HandleKind::Aligned)
+        });
+    if densify {
+        let (p, h) = super::curve_geom::densify_closed_curve(
+            &model.points,
+            &model.handles,
+            CONVERT_ANCHOR_SPACING_PX,
+            max_points,
+        );
+        model = CurveModel::from_curve(p, h, true, HandleKind::Aligned);
+    }
+    Some(model)
 }
 
 /// The four cardinal anchors + `k = 0.5523` Bézier handles that reproduce the ellipse exactly (mirrors

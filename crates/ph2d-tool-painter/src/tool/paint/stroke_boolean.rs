@@ -199,7 +199,7 @@ impl PainterTool {
         let contours = self.stroke_boolean_contours(&bool_shapes, off);
         let mut states: Vec<ShapeEditState> = Vec::new();
         for c in &contours {
-            if let Some(m) = super::selection_edit::to_closed_curve(c, &[]) {
+            if let Some(m) = super::selection_edit::to_closed_curve_precise(c, &[]) {
                 let seed = self.paint.seed;
                 self.paint.seed = self.paint.seed.wrapping_add(1);
                 states.push(ShapeEditState::Curve(curve_state_from_model(m, seed)));

@@ -250,6 +250,92 @@ pub(super) fn split_cubic(b: &[[f32; 2]; 4], t: f32) -> [[f32; 2]; 5] {
     [q0, r0, s, r1, q2]
 }
 
+/// Subdivide a CLOSED Bézier curve's segments (repeated [`split_cubic`] — the shape is reproduced
+/// EXACTLY, only more anchors appear) until every anchor span is ≤ `target_px` of estimated arc length,
+/// capped at `max_points` anchors total. Convert-to-Curve wants extreme precision + MANY manipulation
+/// points (Enio 2026-07-05) — the opposite direction of Simplify, which re-fits sparse. Handles stay
+/// faithful: each split re-derives the exact sub-segment tangents, so straight (degenerate-handle) edges
+/// densify into collinear anchors and arcs stay arcs.
+pub(super) fn densify_closed_curve(
+    points: &[[f32; 2]],
+    handles: &[[[f32; 2]; 2]],
+    target_px: f32,
+    max_points: usize,
+) -> (Vec<[f32; 2]>, Vec<[[f32; 2]; 2]>) {
+    let n = points.len();
+    if n < 2 || handles.len() != n || target_px <= 0.0 {
+        return (points.to_vec(), handles.to_vec());
+    }
+    // Per-segment split count from the standard length estimate `(chord + control polygon) / 2`.
+    let seg = |i: usize| -> [[f32; 2]; 4] {
+        let j = (i + 1) % n;
+        [points[i], handles[i][1], handles[j][0], points[j]]
+    };
+    let dist = |a: [f32; 2], b: [f32; 2]| ((a[0] - b[0]).powi(2) + (a[1] - b[1]).powi(2)).sqrt();
+    let mut counts: Vec<usize> = (0..n)
+        .map(|i| {
+            let b = seg(i);
+            let chord = dist(b[0], b[3]);
+            let poly = dist(b[0], b[1]) + dist(b[1], b[2]) + dist(b[2], b[3]);
+            let len = (chord + poly) * 0.5;
+            ((len / target_px).ceil() as usize).max(1)
+        })
+        .collect();
+    // Cap the total anchor count: scale the EXTRA anchors (Σ(k−1)) down proportionally.
+    let extra: usize = counts.iter().map(|k| k - 1).sum();
+    let budget = max_points.saturating_sub(n);
+    if extra > budget && extra > 0 {
+        for k in counts.iter_mut() {
+            *k = 1 + (*k - 1) * budget / extra;
+        }
+    }
+    // Split every segment into its `k` pieces (each split takes an equal-parameter slice off the front),
+    // collecting the adjusted endpoint tangents + the interior anchors.
+    struct SegOut {
+        p0_out: [f32; 2],
+        interior: Vec<([f32; 2], [f32; 2], [f32; 2])>, // (in, anchor, out)
+        p3_in: [f32; 2],
+    }
+    let segs: Vec<SegOut> = (0..n)
+        .map(|i| {
+            let mut b = seg(i);
+            let k = counts[i];
+            let mut out = SegOut {
+                p0_out: b[1],
+                interior: Vec::with_capacity(k.saturating_sub(1)),
+                p3_in: b[2],
+            };
+            for s in 0..k.saturating_sub(1) {
+                let t = 1.0 / ((k - s) as f32);
+                let [q0, r0, m, r1, q2] = split_cubic(&b, t);
+                // The split shortens the CURRENT left endpoint's out-handle (exactly).
+                if s == 0 {
+                    out.p0_out = q0;
+                } else if let Some(last) = out.interior.last_mut() {
+                    last.2 = q0;
+                }
+                out.interior.push((r0, m, r1));
+                b = [m, r1, q2, b[3]];
+            }
+            out.p3_in = b[2];
+            out
+        })
+        .collect();
+    let total = n + segs.iter().map(|s| s.interior.len()).sum::<usize>();
+    let mut new_pts = Vec::with_capacity(total);
+    let mut new_handles = Vec::with_capacity(total);
+    for i in 0..n {
+        let prev = (i + n - 1) % n;
+        new_pts.push(points[i]);
+        new_handles.push([segs[prev].p3_in, segs[i].p0_out]);
+        for &(hin, m, hout) in &segs[i].interior {
+            new_pts.push(m);
+            new_handles.push([hin, hout]);
+        }
+    }
+    (new_pts, new_handles)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -292,5 +378,30 @@ mod tests {
             (radius - r).abs() < 0.5,
             "split anchor stays on the arc: r={radius}"
         );
+    }
+
+    #[test]
+    fn densify_closed_curve_adds_anchors_without_deforming() {
+        // An exact 4-arc Bézier circle densified to ~16 px spacing: many more anchors, EVERY one still
+        // on the circle (de Casteljau splits reproduce the curve exactly), and the cap is honoured.
+        const K: f32 = 0.552_285;
+        let r = 40.0f32;
+        let pts = vec![[r, 0.0], [0.0, r], [-r, 0.0], [0.0, -r]];
+        let handles = vec![
+            [[r, -K * r], [r, K * r]],
+            [[K * r, r], [-K * r, r]],
+            [[-r, K * r], [-r, -K * r]],
+            [[-K * r, -r], [K * r, -r]],
+        ];
+        let (p, h) = densify_closed_curve(&pts, &handles, 16.0, 512);
+        assert!(p.len() >= 12, "densified to many anchors: {}", p.len());
+        assert_eq!(p.len(), h.len(), "handles stay parallel");
+        for a in &p {
+            let d = (a[0] * a[0] + a[1] * a[1]).sqrt();
+            assert!((d - r).abs() < 0.05, "anchor stays ON the circle: {d}");
+        }
+        // The cap clamps the anchor count.
+        let (pc, _) = densify_closed_curve(&pts, &handles, 0.5, 24);
+        assert!(pc.len() <= 24, "cap honoured: {}", pc.len());
     }
 }

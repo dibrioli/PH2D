@@ -157,6 +157,29 @@ fn shape_frame(shape: &SelectionShape) -> Option<Frame> {
     }
 }
 
+/// Extra half-extent (× the grab tolerance) the FREEHAND box is inflated beyond the tight point bounds —
+/// a converted rectangle puts its anchors EXACTLY on the box corners, so the gizmo squares buried the
+/// curve points (Enio 2026-07-05: "os pontos do gizmo se sobrepõem aos pontos da curva"). Mirrors the
+/// stroke curve gizmo's `GIZMO_MARGIN`. Ellipse / Polygon keep the tight frame — their handles ARE the
+/// parametric radii.
+const FREEHAND_BOX_MARGIN: f32 = 1.8;
+
+/// [`shape_frame`] inflated by the Freehand box margin (identity for the parametric shapes). The VIEW,
+/// the HIT-TEST and the drag maths must all read this same frame — a mismatch makes handles that draw
+/// where they can't be grabbed.
+fn gizmo_frame(shape: &SelectionShape, tol: f32) -> Option<Frame> {
+    let f = shape_frame(shape)?;
+    if matches!(shape, SelectionShape::Freehand { .. }) {
+        let m = tol * FREEHAND_BOX_MARGIN;
+        return Some(Frame {
+            hx: f.hx + m,
+            hy: f.hy + m,
+            ..f
+        });
+    }
+    Some(f)
+}
+
 impl PainterTool {
     /// `true` while the selection gizmos are shown (the panel's **Show Selection Gizmos** checkbox).
     #[must_use]
@@ -174,7 +197,7 @@ impl PainterTool {
         let tol = self.paint.shape_grab_tol_px;
         let mut out = Vec::new();
         for (accent, e) in self.paint.selection_shapes.iter().enumerate() {
-            let Some(f) = shape_frame(&e.shape) else {
+            let Some(f) = gizmo_frame(&e.shape, tol) else {
                 continue;
             };
             let h = f.handles();
@@ -376,7 +399,7 @@ fn polygon_sides_handle(shape: &SelectionShape, tol: f32) -> Option<[f32; 2]> {
 
 /// Hit-test one shape's unified gizmo; returns the grabbed handle id within tolerance.
 fn hit_shape(shape: &SelectionShape, pos: [f32; 2], tol: f32) -> Option<u8> {
-    let f = shape_frame(shape)?;
+    let f = gizmo_frame(shape, tol)?;
     let handles = f.handles();
     let tol2 = tol * tol;
     // 1) ON a scale square → scale.
@@ -451,12 +474,19 @@ fn apply_gizmo_drag(
             nu,
         );
     }
-    // Scale (handles 0..8): map the pointer onto the frame axes → new half-extents.
+    // Scale (handles 0..8): map the pointer onto the frame axes → new half-extents. The FREEHAND box is
+    // drawn inflated (`gizmo_frame`), so subtract the margin from the pointer distance — the drag then
+    // measures the TRUE extents and the inflated corner tracks the cursor exactly.
     if handle < H_SCALE_END {
+        let m = if matches!(initial, SelectionShape::Freehand { .. }) {
+            tol * FREEHAND_BOX_MARGIN
+        } else {
+            0.0
+        };
         let v = f.v();
         let rel = [pos[0] - f.center[0], pos[1] - f.center[1]];
-        let du = dot(rel, f.u).abs().max(MIN_AXIS_PX);
-        let dv = dot(rel, v).abs().max(MIN_AXIS_PX);
+        let du = (dot(rel, f.u).abs() - m).max(MIN_AXIS_PX);
+        let dv = (dot(rel, v).abs() - m).max(MIN_AXIS_PX);
         // Corners (0..3) scale both axes; edge R/L (4/6) scale hx; edge T/B (5/7) scale hy.
         let (nhx, nhy) = match handle {
             0..=3 => (du, dv),

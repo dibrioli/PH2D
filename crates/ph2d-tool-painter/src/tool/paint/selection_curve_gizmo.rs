@@ -11,7 +11,7 @@
 //! `self.paint.curve`; only the pure model + free fns are shared.
 
 use super::PainterTool;
-use super::curve::MAX_CURVE_POINTS;
+use super::curve::MAX_CONVERT_POINTS;
 use super::curve_model::{CurveGrab, CurveModel};
 use super::curve_tangent::{self, TangentHandles};
 use super::selection_shapes::SelectionShape;
@@ -73,7 +73,7 @@ pub(super) fn selection_curve_insert_or_nearest(
     model: &mut CurveModel,
     pos: [f32; 2],
 ) -> Option<CurveGrab> {
-    if model.points.len() < MAX_CURVE_POINTS {
+    if model.points.len() < MAX_CONVERT_POINTS {
         let i = model.insert(pos); // de Casteljau split — the SHAPE (and mask) is unchanged
         model.selected = Some(i);
         return Some(CurveGrab::Anchor(i));

@@ -2583,11 +2583,17 @@ fn edit_button_converts_circle_into_an_editable_curve() {
         StrokeMethod::Arc.to_u8(),
         "method is now Curve"
     );
-    assert_eq!(
-        ov.points.len(),
-        4,
-        "circle → the 4 cardinal anchors (no duplicate seam)"
+    // Convert-to-Curve is the DENSE direction (Enio 2026-07-05): the exact circle densifies to many
+    // manipulation anchors (~perimeter / 16 px), every one still ON the circle.
+    assert!(
+        ov.points.len() >= 8,
+        "circle converts to MANY anchors (multipoint): {}",
+        ov.points.len()
     );
+    for p in &ov.points {
+        let r = ((p[0] - 32.0).powi(2) + (p[1] - 32.0).powi(2)).sqrt();
+        assert!((r - 20.0).abs() < 0.5, "anchor stays ON the circle: r={r}");
+    }
     assert_ne!(
         *ov.points.first().unwrap(),
         *ov.points.last().unwrap(),
@@ -2621,7 +2627,11 @@ fn edit_after_offset_bakes_first_so_the_converted_circle_is_not_deformed() {
         "Edit baked the offset → slider reset to 0.5"
     );
     let ov = t.curve_overlay().expect("a curve opened");
-    assert_eq!(ov.points.len(), 4, "4 cardinal anchors");
+    assert!(
+        ov.points.len() >= 8,
+        "dense convert: many anchors ({})",
+        ov.points.len()
+    );
     // Every anchor is ~40px from the centre (the effective radius), so the circle is NOT deformed.
     for p in &ov.points {
         let r = ((p[0] - 48.0).powi(2) + (p[1] - 48.0).powi(2)).sqrt();
@@ -8397,6 +8407,37 @@ fn selection_curve_handle_kind_and_delete_are_wired() {
     );
 }
 
+/// The converted curve's transform box is inflated beyond the anchors (Enio 2026-07-05): a RECTANGLE
+/// converts to anchors exactly at its corners, and the tight box buried them under the gizmo squares.
+/// Every box scale-handle must sit clear of every curve anchor by at least the grab tolerance.
+#[test]
+fn converted_selection_curve_box_clears_the_anchors() {
+    let mut t = white_canvas(96, 4.0);
+    t.set_paint_tool_mode("selection");
+    t.set_selection_mode(2); // Rectangle — the reported case
+    t.on_canvas_pointer(cp([20.0, 20.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([76.0, 76.0], PointerPhase::Up));
+    t.toggle_selection_edit();
+    t.selection_convert_to_curve();
+    let tol = t.paint.shape_grab_tol_px;
+    let g = &t.selection_gizmos()[0];
+    let anchors = &g.edit_curve.as_ref().expect("converted curve").anchors;
+    assert!(
+        anchors.len() >= 8,
+        "dense convert: the rectangle has many anchors ({})",
+        anchors.len()
+    );
+    for h in &g.scale_handles {
+        for a in anchors {
+            let d = ((h[0] - a[0]).powi(2) + (h[1] - a[1]).powi(2)).sqrt();
+            assert!(
+                d >= tol,
+                "box handle {h:?} sits clear of anchor {a:?} (d={d}, tol={tol})"
+            );
+        }
+    }
+}
+
 /// Clicking on (or near) the converted selection curve INSERTS a new anchor — the stroke Curve editor's
 /// click-to-add, delivered through `on_canvas_pointer` (the real gesture).
 #[test]
@@ -8408,15 +8449,23 @@ fn selection_curve_click_inserts_an_anchor() {
     t.on_canvas_pointer(cp([80.0, 80.0], PointerPhase::Up));
     t.toggle_selection_edit();
     t.selection_convert_to_curve();
-    let n = t.selection_gizmos()[0]
-        .edit_curve
-        .as_ref()
-        .unwrap()
-        .anchors
-        .len();
+    // The dense convert packs anchors ~16 px apart — shrink the grab tol so a click BETWEEN two
+    // adjacent anchors is an insert, not a grab, and aim at the arc midpoint (ON the curve).
+    t.set_shape_grab_tol_px(3.0);
+    let (n, click) = {
+        let g = &t.selection_gizmos()[0];
+        let anchors = &g.edit_curve.as_ref().unwrap().anchors;
+        let (a, b) = (anchors[0], anchors[1]);
+        let c = [48.0f32, 48.0f32]; // the ellipse centre
+        let mid = [(a[0] + b[0]) * 0.5 - c[0], (a[1] + b[1]) * 0.5 - c[1]];
+        let ra = ((a[0] - c[0]).powi(2) + (a[1] - c[1]).powi(2)).sqrt();
+        let ml = (mid[0] * mid[0] + mid[1] * mid[1]).sqrt().max(1e-3);
+        let click = [c[0] + mid[0] / ml * ra, c[1] + mid[1] / ml * ra];
+        (anchors.len(), click)
+    };
     // A press off any anchor/tangent inserts a new anchor at the nearest point ON the curve (shape-preserving).
-    t.on_canvas_pointer(cp([30.0, 30.0], PointerPhase::Down));
-    t.on_canvas_pointer(cp([30.0, 30.0], PointerPhase::Up));
+    t.on_canvas_pointer(cp(click, PointerPhase::Down));
+    t.on_canvas_pointer(cp(click, PointerPhase::Up));
     assert_eq!(
         t.selection_gizmos()[0]
             .edit_curve

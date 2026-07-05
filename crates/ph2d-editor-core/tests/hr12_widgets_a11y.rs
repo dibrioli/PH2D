@@ -272,6 +272,14 @@ const PANEL_A11Y_DELEGATE_OK: &[(&str, &str)] = &[
         "ph2d-panel-painter-layers/src/paint_shape_dab.rs",
         "gizmo handles are CurvePoints dispatched in editor-core; rest is a decorative template render",
     ),
+    // Watercolor section — its Wet-edges / Pigment checkboxes delegate to `paint_checkbox_row`
+    // (the a11y-wired Checkbox) and the Edge / Spread / Granulation / Mix sliders to `number_field`
+    // (the a11y-wired NumberInput); the collapsible header + labels are decorative chrome. Same
+    // delegation as `paint_stencil.rs` (its helpers just don't happen to name a canonical primitive).
+    (
+        "ph2d-panel-painter-layers/src/paint_watercolor.rs",
+        "checkboxes delegate to paint_checkbox_row (Checkbox); sliders to number_field (NumberInput); rest is chrome",
+    ),
 ];
 
 fn walk(root: &Path, dir: &Path, cb: &mut dyn FnMut(&Path, &Path)) {

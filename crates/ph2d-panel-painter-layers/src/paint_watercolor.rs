@@ -13,6 +13,12 @@ use ph2d_editor_core::ids as core_ids;
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_tool_painter::BrushSettings;
 
+/// Slider range bounds — the parameter domains (matching the tool's `set_brush_*` clamps), not design
+/// tokens. The `0..1` params (Granulation / Mix) use the allowlisted `0.0`/`1.0` inline.
+const EDGE_MAX: f32 = 8.0; // LITERAL-PX-OK: watercolor Edge-gain range bound (parameter domain)
+const SPREAD_MIN: f32 = 1.0; // LITERAL-PX-OK: watercolor Spread blur-radius min (px)
+const SPREAD_MAX: f32 = 24.0; // LITERAL-PX-OK: watercolor Spread blur-radius max (px)
+
 /// Paint the Watercolor section starting at `y`, returning the next `y`.
 pub(crate) fn paint_watercolor_section(
     ctx: &mut PaintCtx,
@@ -59,9 +65,9 @@ pub(crate) fn paint_watercolor_section(
             y,
             "Edge",
             core_ids::PAINTER_WATERCOLOR_EDGE,
-            brush.edge_gain.clamp(0.0, 8.0),
+            brush.edge_gain,
             0.0,
-            8.0,
+            EDGE_MAX,
             crate::number_field::FINE_STEP,
             2,
         );
@@ -73,9 +79,9 @@ pub(crate) fn paint_watercolor_section(
             y,
             "Spread",
             core_ids::PAINTER_WATERCOLOR_SPREAD,
-            brush.edge_spread.clamp(1.0, 24.0),
-            1.0,
-            24.0,
+            brush.edge_spread,
+            SPREAD_MIN,
+            SPREAD_MAX,
             crate::number_field::SIZE_STEP,
             1,
         );
@@ -88,7 +94,7 @@ pub(crate) fn paint_watercolor_section(
             y,
             "Granulation",
             core_ids::PAINTER_WATERCOLOR_GRANULATION,
-            brush.granulation.clamp(0.0, 1.0),
+            brush.granulation,
             0.0,
             1.0,
             crate::number_field::FINE_STEP,
@@ -114,7 +120,7 @@ pub(crate) fn paint_watercolor_section(
                 y,
                 "Mix",
                 core_ids::PAINTER_WATERCOLOR_MIX,
-                brush.pigment_mix.clamp(0.0, 1.0),
+                brush.pigment_mix,
                 0.0,
                 1.0,
                 crate::number_field::FINE_STEP,

@@ -8,12 +8,12 @@
 ## §0 — Inegociáveis (memorize os 7)
 
 1. **Norte arquitetural ([ADR-0075](docs/architecture/decisions/0075-multiagent-parallelism-ecs-decoupling-not-runtime-plugins.md)):** monorepo Rust único; desacoplar por **ECS** (components + events/resources, systems não se chamam), **NÃO** por plugin em runtime nem WASM. Feature nova = **drop-crate** (A). Plugin runtime foi pesquisado e **rejeitado** (sem ABI estável; nem resolve o coupling de schema).
-2. **Isolamento:** edite **só a SUA pasta**. Precisou de algo fora (foundational/shell/contrato/outra crate)? **PARE e reporte ao Coordenador** — nunca renegocie direto com outro agente.
+2. **Isolamento:** edite **só a SUA pasta** (Modo L: a pasta do seu módulo, dentro do SEU worktree). Precisou de algo fora (foundational/shell/contrato/outra crate)? **PARE e reporte** — ao Coordenador (Modo C) ou ao Enio (Modo L; vira `line/foundational`) — nunca renegocie direto com outro agente.
 3. **UI canônica:** zero hex, zero `f32` literal de UI, zero string hardcoded — tudo via tokens / i18n (HR-15).
-4. **Git anti-colisão:** `git add -- <seus paths>` (NUNCA `-A`/`-a`/`git add .`/`git stash`); `git commit --no-verify -m "msg" -- <paths>`; `git status` antes de stage; se houver `M`/`??` alheio, não comite — reporte.
-5. **Velocidade (§2):** inner loop = **SÓ `cargo check -p`**; teste/clippy/auditoria **1× no fechamento do módulo**, nunca por task. Concorrência **é função do hardware** — `bash scripts/hw-profile.sh` (≤3 agentes só no tier `constrained`/Mac 8 GiB; `workstation` voa). Detalhe: §2 + DIRETRIZ §6.0.
+4. **Git anti-colisão (Modo C — shared tree):** `git add -- <seus paths>` (NUNCA `-A`/`-a`/`git add .`/`git stash`); `git commit --no-verify -m "msg" -- <paths>`; `git status` antes de stage; se houver `M`/`??` alheio, não comite — reporte. **Modo L:** cada linha tem worktree+índice próprios — colisão de commit não existe; valem só os conflitos de merge + proibições da DIRETRIZ §1.5.5–1.5.6.
+5. **Velocidade (§2):** inner loop = **SÓ `cargo check -p`**; teste/clippy/auditoria **1× no fechamento do módulo**, nunca por task. Concorrência **é função do hardware** — `bash scripts/hw-profile.sh` (≤3 agentes só no tier `constrained`/Mac 8 GiB; `workstation` voa). O tier também define o **MODO de operação**: `workstation` = **Modo L** (linhas paralelas por worktree, DIRETRIZ §1.5) · `constrained` = **Modo C** (shared tree + Coordenador). Detalhe: §2 + DIRETRIZ §6.0.
 6. **Padrão-ouro sem custo:** a melhor opção técnica vence custo de build/cronograma ([feedback-perfection-no-deferrals](file:///Users/dibrioli/.claude/projects/-Volumes-MAC-EXTERNO-PROJETOS--PH2D-definitiva/memory/feedback_perfection_no_deferrals.md)); gaps in-scope fecham na sessão atual.
-7. **Você NÃO pusha.** Reporta commit local; o **Coordenador** faz ship + push + babysit CI (§3).
+7. **Push é 1× por jornada — e por default não é seu.** Modo C: você NÃO pusha — reporta commit local; o **Coordenador** faz ship + push + babysit CI (§3). Modo L: linhas integram ao main via `--ff-only` (DIRETRIZ §1.5.3); **quem fecha a ÚLTIMA integração da jornada** roda ship + push + babysit (DIRETRIZ §1.5.4).
 
 ## §1 — Roteador leia-por-tarefa (leia SÓ o que sua tarefa exige)
 
@@ -26,7 +26,8 @@
 | **Tool ou node nova** | DIRETRIZ §2 (triagem) + §3.A + [examples-fan-out.md](docs/IntegracaoMultiAgente/examples-fan-out.md) |
 | **Painel / widget / chrome** | DIRETRIZ §3.B |
 | **Modificar feature existente** | DIRETRIZ §3.D |
-| **Foundational / contrato congelado** | DIRETRIZ §3.C + §4 (**Coord-only + ADR**) |
+| **Foundational / contrato congelado** | DIRETRIZ §3.C + §4 (**Coord-only + ADR**; Modo L = `line/foundational`) |
+| **Trabalhar em linha paralela (Modo L / workstation)** | DIRETRIZ §1.5 (worktrees, integração `--ff-only`, briefing §1.5.8) |
 | **Build lento / quero voar** | DIRETRIZ §6 (stack de velocidade) — §2 abaixo é o resumo |
 | **Dúvida de stack / Hard Rule** | SKILL_Stack §HR-1..18 (cite por ID) |
 | **Quem é o Enio / estado do projeto** | [MEMORY.md](file:///Users/dibrioli/.claude/projects/-Volumes-MAC-EXTERNO-PROJETOS--PH2D-definitiva/memory/MEMORY.md) |
@@ -42,7 +43,7 @@
 - **Cargos simultâneos:** `constrained` ≤3 (RAM 8 GiB); `workstation` ~cores/6 (build) / ~cores/3 (check) — vide hw-profile.
 - **NÃO use:** Cranelift (ruim p/ check-loop + gaps macOS). Linker = `mold` no Linux (**nunca no `.cargo/config.toml` do repo** — global), `lld/ld-prime` no macOS (mold é ELF-only).
 
-## §3 — CI / ship (Coordenador absorve PRCI)
+## §3 — CI / ship (Modo C: Coordenador absorve PRCI · Modo L: quem fecha a última integração da jornada — DIRETRIZ §1.5.4)
 
 **Implementador:** não faz `git push`, não monitora CI — reporta commit local pronto.
 **Coordenador:** push **1× por jornada** (run de CI ~30min: matrix linux+macOS+windows + replay-hash + bench). Protocolo [DIRETRIZ §8](docs/IntegracaoMultiAgente/DIRETRIZ.md):

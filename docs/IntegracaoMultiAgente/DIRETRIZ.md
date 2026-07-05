@@ -1,6 +1,6 @@
 # Diretriz de Implementação — PH2D
 
-**Versão:** 7.1 — 2026-05-28 (modelo de papéis consolidado: **1 Coordenador único + N Implementadores** — absorve os antigos Coord-A/Coord-B, após colisões git entre coordenadores/implementadores paralelos).
+**Versão:** 8.0 — 2026-07-05 (**o modo de operação virou função do hardware** — `bash scripts/hw-profile.sh` decide: tier `workstation` (Linux 128 GB) = **Modo L**, linhas paralelas por `git worktree` sem Coordenador de plantão, §1.5; tier `constrained` (Mac mini 8 GiB, sessões de smoke/hotfix) = **Modo C**, o modelo v7.1 de 1 Coordenador único + N Implementadores em shared tree, §1.1–1.4 + §7. Baseline anterior: 7.1 — 2026-05-28, papéis consolidados).
 **Audiência:** **toda LLM que entra no projeto.** Este doc é **referência** — **NÃO
 leia inteiro**; use o roteador leia-por-tarefa em [`CLAUDE.md §1`](../../CLAUDE.md) e
 leia só a(s) seção(ões) que sua tarefa exige. Obrigatório p/ todos: §0 (sanity), §1
@@ -13,7 +13,8 @@ leia só a(s) seção(ões) que sua tarefa exige. Obrigatório p/ todos: §0 (sa
 
 ## TL;DR
 
-- **Dois papéis:** **um Coordenador único** (absorve foundational + scaffolds + ship + arbitragem de posse) + **N Implementadores** (sempre vários, cada um numa pasta/módulo físicamente disjunto).
+- **Modo por hardware (v8):** rode `bash scripts/hw-profile.sh` PRIMEIRO. `workstation` (Linux 128 GB) = **Modo L (§1.5)** — N linhas paralelas por `git worktree`, integração self-service via `--ff-only`, sem Coordenador de plantão. `constrained` (Mac mini 8 GiB — smoke/hotfix) = **Modo C** — o modelo abaixo. Triagem (§2), receitas (§3), contratos (§4), UI (§5) e a DIRETIVA valem NOS DOIS modos; o que muda é git + concorrência + quem integra/pusha.
+- **Dois papéis (Modo C):** **um Coordenador único** (absorve foundational + scaffolds + ship + arbitragem de posse) + **N Implementadores** (sempre vários, cada um numa pasta/módulo físicamente disjunto).
 - **Três caminhos** (descobertos via Triagem §2):
   - **(A) Drop-crate (fan-out, §3.A)** — node ou tool nova. Implementador sozinho. Zero edit central. Paraleliza com outros (A).
   - **(B) Scaffold central (§3.B)** — painel/widget/chrome. O Coordenador faz scaffold + delega.
@@ -29,7 +30,9 @@ leia só a(s) seção(ões) que sua tarefa exige. Obrigatório p/ todos: §0 (sa
 Independente do papel, **rode primeiro**:
 
 ```bash
+bash scripts/hw-profile.sh       # seu tier → seu MODO (L ou C — vide TL;DR)
 git log --oneline -5             # confirma HEAD
+git branch --show-current        # Modo C: main · Modo L: line/<seu-módulo> (NUNCA main)
 git status -sb                   # working tree limpo?
 cargo check --workspace 2>&1 | tail -5    # baseline compila?
 ```
@@ -44,6 +47,10 @@ Algo divergente (HEAD inesperado, working dirty, build quebrado) → **pare e re
 ---
 
 ## 1. Papéis + infra multi-agente
+
+> **§1.1–1.4 descrevem o Modo C** (tier `constrained` — Mac mini 8 GiB). No tier
+> `workstation` vale o **Modo L (§1.5)**, que substitui a infra anti-colisão (slots CoW,
+> arbitragem de posse, índice compartilhado) por isolamento físico de `git worktree`.
 
 **Coordenador (único).** Um só por jornada. Absorve o que antes eram Coord-A (foundational) e Coord-B (baldes). Autoridade **exclusiva** sobre: contratos congelados, arch-gates, foundational crates (`ph2d-render`, `ph2d-editor-core`, `ph2d-host`, `ph2d-tokens`, …), codegen tools, `shells/*` plumbing compartilhado, scaffolds de painel/widget/chrome, ADRs, `CLAUDE.md`/DIRETRIZ, `.github/workflows/`. É o **único** que toca arquivo foundational/compartilhado — isso serializa a superfície de colisão (causa-raiz dos incidentes que motivaram o modelo). Mexe nos 2 contratos congelados (§4) só via amendment ADR, nunca cap-bust ad-hoc. Responsabilidades do modelo multi-implementador:
 - (a) escrever um **sub-handoff focado por implementador** (estado + pasta exclusiva + task + anti-colisão);
@@ -74,6 +81,8 @@ Cada sessão roda `source scripts/slot-env.sh <slot-id>` no início para isolar 
 
 **RAM 8 GiB → máximo realista = 2-3 slots cargo-ativos simultâneos.** Com N implementadores, isso NÃO autoriza N cargos simultâneos: o Coordenador **escalona quem compila quando** (lê SESSION_ACTIVE). 4º cargo ativo causa swap thrashing.
 
+*(Modo L: slots dispensáveis — cada worktree já tem `target/` próprio; vide §1.5.1.)*
+
 ### 1.3 Anti-colisão git — `scripts/git-stage-guard.sh`
 
 Pre-commit roda o guard que **rejeita stage fora da pasta declarada** (env `PH2D_SLOT_FOLDER`). Coords legítimos exportam `COORD_OVERRIDE=1` na sessão pra bypass. Padroniza a disciplina §7 sem depender de memória humana.
@@ -85,6 +94,136 @@ Pre-commit roda o guard que **rejeita stage fora da pasta declarada** (env `PH2D
 3. **Codificação rápida.** `cargo check -p <crate>` no editing burst. Sem `--workspace` em loop (§6).
 
 Pra violar uma? **Pare e reporte.** Quase certo o Coord não fez scaffold direito.
+
+### 1.5 Modo L — linhas paralelas por `git worktree` (tier `workstation`)
+
+> Ativa quando `scripts/hw-profile.sh` = `workstation`. **N linhas de desenvolvimento = N
+> worktrees + N branches** (`line/<módulo>`), cada uma numa sessão Claude Code própria;
+> `main` vira só ponto de integração. O worktree elimina a colisão de **git** de raiz
+> (índice, HEAD, working tree e `target/` próprios por linha — a classe inteira de
+> incidentes que o §7 legisla vira impossibilidade física); a **pasta disjunta**, que já
+> era regra, elimina o conflito de **merge**. Juntos = integração fast-forward na prática,
+> **sem Coordenador de plantão**. As 3 obrigações do §1.4 valem intactas dentro de cada
+> linha; triagem §2, receitas §3, contratos §4, UI §5 e a DIRETIVA_IMPLEMENTACAO idem.
+> **Proibido no tier `constrained`** — N worktrees × `target/` não cabem em 8 GiB (vide 1.5.6).
+
+#### 1.5.1 Setup de jornada (1ª sessão do dia, no checkout primário)
+
+```bash
+cd <repo>                            # checkout primário: SEMPRE main, SEMPRE limpo
+git status -sb                       # sujo? resolva ANTES de abrir linhas
+git pull --ff-only origin main       # traz hotfixes feitos no Mac desde o último ship
+git worktree add -b line/painter ../PH2D-line-painter main
+git worktree add -b line/vector  ../PH2D-line-vector  main
+# ...uma linha por módulo; cada sessão Claude Code abre NA pasta do worktree e não sai dela
+```
+
+- `target/` é por-worktree automaticamente → **slots CoW (§1.2) dispensáveis**. sccache
+  global + mold (§6.0) amortizam o primeiro build de cada worktree.
+- Hooks vivem no `.git` comum → pre-commit tiered roda normal em cada worktree. Exporte
+  `PH2D_SLOT_FOLDER` na sua linha — o stage-guard (§1.3) vira cinto-de-segurança de
+  **escopo** (previne conflito de merge; colisão de commit já não existe).
+- Registro de posse = `git worktree list` + tabela de linhas do dia em
+  [`SESSION_ACTIVE.md`](../SESSION_ACTIVE.md), escrita 1× no setup, no primário, ANTES de
+  abrir as linhas.
+
+#### 1.5.2 Regras do agente-de-linha
+
+1. **Edite SÓ dentro da(s) pasta(s) do seu módulo** (§1.4). Precisou de foundational /
+   contrato congelado / outra crate? **PARE e reporte ao Enio** (no Modo L não há Coordenador
+   de plantão) — isso vai pra `line/foundational` (1.5.4), não pra sua linha.
+2. Commits locais frequentes (`--no-verify` de dia, fast mode §8.1). **NUNCA push.**
+   Merge só pelo protocolo 1.5.3.
+3. **`git rebase main` no início de CADA jornada e antes de integrar** (refs compartilhadas
+   entre worktrees — sem fetch). Conflito em arquivo GERADO ou `Cargo.lock` → NUNCA resolva
+   na mão (tabela 1.5.5). Conflito em código fora da sua pasta → você violou o item 1.
+4. Inner loop normal (`cargo check -p`, §6); **gate batched no fechamento do módulo**
+   (§6.6.A.2) ANTES de pedir integração — verde-de-compilação vale zero, como sempre.
+5. Linha longa é anti-padrão: integre a cada 1–2 jornadas. Base velha = rebase caro.
+
+#### 1.5.3 Integração ao main (self-service, serializada por `--ff-only`)
+
+```bash
+# na SUA linha, com o gate batched do módulo verde:
+git rebase main
+cargo run -p ph2d-tool-sync && cargo run -p ph2d-node-sync    # se o rebase trouxe crate nova
+cargo test -p ph2d-tool-registry-init -p ph2d-node-registry-init   # staleness verde
+cargo test -p <suas crates>                                   # re-valida pós-rebase (warm, rápido)
+
+# no checkout PRIMÁRIO (main, limpo):
+git -C <repo-primário> merge --ff-only line/<módulo>
+```
+
+**O `--ff-only` É a serialização:** se falhar, outra linha integrou entre seu rebase e seu
+merge → volte ao passo 1 (rebase de novo, re-valida, re-tenta). Race auto-detectada, nunca
+produz merge sujo. Precondição dura: primário limpo e em main (sujo = violação do 1.5.1 —
+pare e reporte). Linha integrada segue viva pra próxima wave do módulo; morreu de vez →
+`git worktree remove ../PH2D-line-<x> && git branch -d line/<x>`.
+
+#### 1.5.4 Pra onde foi o Coordenador
+
+| Função (Modo C) | No Modo L |
+|---|---|
+| Arbitragem de posse / anti-colisão git (§7) | **Extinta** — worktree isola git; pasta disjunta isola merge; `--ff-only` serializa a integração |
+| Foundational / contratos congelados / scaffolds (B) | Continua serial **por natureza** (superfície única) → vira **`line/foundational`**: linha dedicada e curta, com **prioridade de integração** (merge cedo; as outras rebaseiam em seguida). Contrato congelado segue exigindo ADR (§4) |
+| Ship + push + babysit CI (§8) | **1× por jornada, sobre o main integrado** — quem fecha a ÚLTIMA integração do dia roda `./scripts/ship.sh` + push + babysit ("o último apaga a luz"), ou o Enio abre uma sessão-ship dedicada. Não bloqueia ninguém durante o dia |
+
+#### 1.5.5 Conflitos de rebase/merge esperados (os ÚNICOS legítimos)
+
+| Arquivo | Regra |
+|---|---|
+| `Cargo.lock` | NUNCA na mão: `git checkout main -- Cargo.lock` + `cargo check -p <sua-crate>` regenera suas entradas + `git add Cargo.lock` |
+| `ph2d-{tool,node}-registry-init/` (GERADO) | NUNCA na mão: aceite qualquer lado, re-rode o sync; o staleness gate confirma |
+| `ph2d-editor-core/src/icons.rs` (IconId — único touchpoint central de tool nova) | Mantenha AMBOS os variants em ordem alfabética; gate `enum_order_matches_svgs` confirma |
+| SESSION_ACTIVE / `CLAUDE.md §5` / trackers | Só na integração, no primário, uma linha por vez; cada linha edita só o SEU `HANDOFF_*` |
+| Código fora da sua pasta | **Não deveria existir** — conflito aqui = violação de isolamento → reporte, não resolva |
+
+#### 1.5.6 Proibições (Modo L)
+
+- Nunca `push` fora do ship de jornada; nunca `--force` em main; nunca `git worktree add`
+  dentro de outro worktree.
+- Nunca duas linhas na mesma pasta/crate (a triagem de jornada garante).
+- **Nunca abrir Modo L no tier `constrained`** — worktrees múltiplos × `target/` próprios
+  estouram RAM/disco no Mac 8 GiB; lá o modo é C, sempre.
+
+#### 1.5.7 Interação com o Mac (Modo C itinerante)
+
+Fluxo multi-máquina (GitHub = fonte única; runbook em
+[`docs/DevOps/MULTI_MACHINE_SETUP.md`](../DevOps/MULTI_MACHINE_SETUP.md)):
+
+1. Ship no Linux (1.5.4) → push → CI verde.
+2. Mac faz `git pull` em main e roda o smoke (`./play.command`).
+3. Erro achado no Mac = **hotfix em Modo C, direto em main** (sessão solo ou Coordenador +
+   Implementadores; §1.1–1.4 + §6.6 baseline + §7 valem INTEIROS lá) → ship + push do Mac.
+4. De volta ao Linux: primário faz `git pull --ff-only origin main`; linhas abertas fazem
+   `git rebase main` (1.5.2.3) e seguem.
+
+**Branches `line/*` não viajam pro Mac** — trabalho no Mac é sempre sobre main.
+
+#### 1.5.8 Briefing de abertura de linha (Enio cola na 1ª mensagem da sessão)
+
+```
+═══════════════════════════════════════════════════════════════════
+LINHA PARALELA — Modo L
+═══════════════════════════════════════════════════════════════════
+Linha:     line/<módulo>
+Worktree:  ../PH2D-line-<módulo>   (você JÁ está nele)
+Pasta(s) exclusiva(s): crates/ph2d-<...>/  [+ crates/ph2d-panel-<...>/]
+Tracker:   docs/HANDOFF_<módulo>*.md
+Tarefa:    <1-3 linhas>
+
+Protocolo: DIRETRIZ §1.5 (regras 1.5.2; integração 1.5.3 SÓ com o gate
+batched do módulo verde) + DIRETIVA_IMPLEMENTACAO.md a CADA passo.
+Sanity antes de codar (§0): git branch --show-current == line/<módulo>;
+git rebase main; cargo check -p <sua-crate> baseline.
+Fora da sua pasta = PARE e reporte ao Enio (vai pra line/foundational).
+NUNCA push; ship só se você fechar a ÚLTIMA integração da jornada (1.5.4).
+═══════════════════════════════════════════════════════════════════
+```
+
+Sem briefing colado e `git branch --show-current` devolvendo `main` no tier `workstation`?
+Você provavelmente é a **1ª sessão do dia no primário** → faça o setup 1.5.1 ou pergunte
+ao Enio qual é a sua linha. **Não code em `main` no Modo L.**
 
 ---
 
@@ -120,6 +259,8 @@ TRIAGEM
 **Heurística de 1 frase:** conteúdo (nó) OU peça que manipula bitmap (tool) = **(A) drop-crate**. Chrome que renderiza tools/nós (painel/widget/chrome) = **(B) Coord scaffold**. Mudar regra do jogo (contrato congelado, foundational) = **(C) Coord-only + ADR**.
 
 **Na dúvida A vs B:** "exige editar QUALQUER arquivo fora de UMA pasta nova?" Sim → (B). Único arquivo fora = wiring **gerado** (`ph2d-{node,tool}-sync`) → ainda **(A)**.
+
+**Modo L:** a triagem é idêntica; muda o **executor** — (A)/(D) = a sua linha; (B)/(C) = `line/foundational` (§1.5.4): reporte ao Enio pra sequenciar, não execute na sua linha.
 
 **Diff do sync é esperado** — não viola §1.4 ISOLAMENTO. O staleness gate em CI exige a regeneração.
 
@@ -490,6 +631,8 @@ Faltou → **bounce pro Implementador antes de mergear.** Não "vou abrir exceç
   [`docs/DevOps/MULTI_MACHINE_SETUP.md`](../DevOps/MULTI_MACHINE_SETUP.md) §3.2. Racional: [ADR-0104](../architecture/decisions/0104-hardware-tiered-speed-strategy.md).
 - **`standard`** (Windows) → knobs medidos, ainda **a pilotar** — Linux-benchmarks não transferem
   direto (§6.6.B). Meça antes de virar mandato.
+- **O tier também define o MODO de operação** (git + papéis): `workstation` = Modo L (§1.5),
+  `constrained` = Modo C (§1.1–1.4 + §7). Vide TL;DR.
 - **`target-cpu=native` fica OFF mesmo no `workstation`**: diverge do cache do CI (fere a paridade
   do `ship.sh`) e dá **zero** ganho no inner loop (`cargo check` não faz codegen). Opt-in só pra
   builds de run isolados.
@@ -652,7 +795,11 @@ fechado**, não por micro-task (vide §6.6.A.2).
 
 ---
 
-## 7. Anti-colisão git
+## 7. Anti-colisão git (Modo C — shared tree)
+
+> **Modo L:** esta seção inteira descreve o problema que o worktree elimina — cada linha tem
+> índice/HEAD/tree próprios. No Modo L valem só as tabelas 1.5.5 (conflitos de merge) e
+> 1.5.6 (proibições). No Mac (Modo C), esta seção vale INTEIRA.
 
 `git commit` é serializado pelo índice global do git. Duas sessões com arquivos staged ao mesmo tempo: uma roda commit e agarra os arquivos da outra junto.
 
@@ -702,7 +849,7 @@ Stage→commit é **operação contínua**. Não pause entre os dois passos.
 
 ---
 
-## 8. Ship + Push + CI (Coordenador absorve PRCI)
+## 8. Ship + Push + CI (Modo C: Coordenador absorve PRCI · Modo L: quem fecha a última integração da jornada — §1.5.4)
 
 ### 8.1 Fast mode (dia) vs Ship (fim do dia)
 

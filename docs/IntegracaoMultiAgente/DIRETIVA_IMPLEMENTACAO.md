@@ -6,6 +6,10 @@
 > Não é opcional. Verde-de-compilação é sinal de VELOCIDADE; no fechamento/audit vale **ZERO**.
 
 ## 1 — Antes de codar
+- [ ] **Sabe seu MODO?** `bash scripts/hw-profile.sh` — `workstation` (Linux 128 GB) = **Modo L**:
+      você trabalha DENTRO do worktree da sua linha (`line/<módulo>`), `git rebase main` antes de
+      começar a jornada (DIRETRIZ §1.5). `constrained` (Mac 8 GiB) = **Modo C**: shared tree,
+      disciplina git da DIRETRIZ §7 vale INTEIRA. Esta diretiva vale igual nos dois modos.
 - [ ] Leia o **tracker único** do módulo (1 por módulo; o resto é histórico arquivado).
 - [ ] Sua mudança cruza foundational / shell / outra crate? **O consumidor faz parte DESTE work item.**
       Proibido armar flag/evento órfão e "fiar depois" — é a causa nº 1 de feature morta (eyedropper, pills).
@@ -87,3 +91,6 @@ Um controle interativo atravessa o **seam painel↔tool**, no mínimo **7 sites*
       conjunto de aceitação **concreto/congelado** + **kill-criterion ANTES do build**
       ("se perf > X ms @4K após a tentativa 2, a feature não existe nesta forma").
       Bateu na **2ª reconstrução de topologia** → **PARE e prove o modelo** antes da 3ª (regra two-strikes).
+- [ ] **Modo L:** "fechado" INCLUI a integração ao main pelo protocolo DIRETRIZ §1.5.3
+      (rebase → sync → gates → `merge --ff-only` no primário). Módulo verde que não integrou
+      não fechou.

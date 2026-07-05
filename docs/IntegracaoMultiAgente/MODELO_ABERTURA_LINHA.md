@@ -7,9 +7,10 @@
 
 1. Abra uma **janela nova** do VSCode/Claude **na pasta do repo** (`~/Documentos/Projetos/PH2D`
    — sempre a mesma; uma janela por agente).
-2. Copie o bloco abaixo inteiro e troque **só** `<módulo>` (1 palavra, kebab-case curto —
-   ex.: `grayscale`, `painter`, `vector`, `foundational`). Aparece em 3 lugares; buscar-e-
-   substituir resolve.
+2. Copie o bloco abaixo inteiro e escreva o nome do módulo **UMA vez só**, na 1ª linha
+   (`Sua linha: line/…` — 1 palavra, kebab-case curto: ex. `grayscale`, `painter`,
+   `vector`, `foundational`). O resto do bloco se refere a ele como **"o novo módulo"**
+   (`$MODULO` nos comandos) — não precisa trocar mais nada.
 3. Cole como **1ª mensagem** da sessão. O agente faz o setup sozinho e responde
    **"Linha pronta. Aguardo a tarefa."**
 4. Mande a tarefa na mensagem seguinte (o que construir + em qual pasta `crates/...`).
@@ -21,14 +22,19 @@ a integração).
 
 ---
 
-## O BLOCO (copie daqui pra baixo, troque `<módulo>`)
+## O BLOCO (copie daqui pra baixo; escreva o módulo SÓ na 1ª linha)
 
 ```
 ═══════════════════════════════════════════════════════════════════
 ABERTURA DE LINHA PARALELA — Modo L        (PH2D · DIRETRIZ §1.5)
 ═══════════════════════════════════════════════════════════════════
 Você é um agente-de-linha. Sua linha: line/<módulo>
-Sua worktree (você vai criá-la agora): Worktrees/line-<módulo>/
+
+O nome após "line/" acima é o NOVO MÓDULO. Todo o resto deste briefing
+deriva dele — nos comandos ele aparece como $MODULO: substitua pelo
+nome literal ao executar (env não persiste entre chamadas de shell).
+Sua branch:    line/$MODULO
+Sua worktree:  Worktrees/line-$MODULO/   (você vai criá-la agora)
 
 FASE 1 — SETUP (execute já, sem pedir confirmação; reporte cada ✗):
 1. bash scripts/hw-profile.sh
@@ -40,12 +46,12 @@ FASE 1 — SETUP (execute já, sem pedir confirmação; reporte cada ✗):
 3. git pull --ff-only origin main
       → falhou (rede/divergência)? Siga com o main local e reporte.
 4. mkdir -p Worktrees
-   git worktree add -b line/<módulo> Worktrees/line-<módulo> main
-      → branch já existe (linha reaberta)? Então:
-        git worktree add Worktrees/line-<módulo> line/<módulo>
+   git worktree add -b line/$MODULO Worktrees/line-$MODULO main
+      → a branch do novo módulo já existe (linha reaberta)? Então:
+        git worktree add Worktrees/line-$MODULO line/$MODULO
         e em seguida, DENTRO dela: git rebase main
-5. cd Worktrees/line-<módulo>
-   git branch --show-current        # DEVE imprimir: line/<módulo>
+5. cd Worktrees/line-$MODULO
+   git branch --show-current        # DEVE imprimir a sua branch
 6. cargo check -p ph2d-core
       → warm-up do target/ próprio desta worktree; o 1º build é frio
         (minutos). NÃO otimize/investigue a demora — é esperada.
@@ -53,16 +59,16 @@ FASE 1 — SETUP (execute já, sem pedir confirmação; reporte cada ✗):
       docs/IntegracaoMultiAgente/DIRETRIZ.md            → §0, §1.5, §2, §6
       docs/IntegracaoMultiAgente/DIRETIVA_IMPLEMENTACAO.md  → tudo
         (e RELEIA a cada passo do trabalho, como ela manda)
-8. Reporte: "Linha line/<módulo> pronta em Worktrees/line-<módulo>.
+8. Reporte: "Linha do novo módulo pronta em Worktrees/line-$MODULO.
    Aguardo a tarefa." — e PARE. A tarefa vem na próxima mensagem.
 
 REGRAS PERMANENTES DA SESSÃO (valem até o fim, sem exceção):
-A. TODO read/edit/git/cargo acontece DENTRO de
-   Worktrees/line-<módulo>/. A raiz do repo é o checkout primário
+A. TODO read/edit/git/cargo acontece DENTRO da sua worktree
+   (Worktrees/line-$MODULO/). A raiz do repo é o checkout primário
    compartilhado: o MESMO path relativo existe nas duas árvores —
    editar crates/... na raiz é editar a árvore ERRADA. Na dúvida,
    `pwd` antes de editar.
-B. Edite só a(s) pasta(s) do seu módulo (nomeadas na tarefa).
+B. Edite só a(s) pasta(s) do novo módulo (nomeadas na tarefa).
    Precisou de QUALQUER coisa fora (foundational, contrato congelado,
    shell, outra crate)? PARE e reporte ao Enio — vai pra
    line/foundational (DIRETRIZ §1.5.4). Nunca negocie com outra linha.
@@ -79,7 +85,7 @@ E. Fechamento do módulo = gate batched (DIRETRIZ §6.6.A.2: nextest-
        cargo run -p ph2d-tool-sync && cargo run -p ph2d-node-sync
        cargo test -p ph2d-tool-registry-init -p ph2d-node-registry-init
        cargo test -p <suas crates>
-       git -C ../.. merge --ff-only line/<módulo>
+       git -C ../.. merge --ff-only line/$MODULO
    --ff-only falhou = outra linha integrou antes de você → repita
    desde o rebase. Módulo verde que não integrou NÃO fechou.
 F. Ship (ship.sh + push + babysit CI) SÓ se o Enio disser que você

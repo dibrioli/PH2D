@@ -107,25 +107,28 @@ Pra violar uma? **Pare e reporte.** Quase certo o Coord não fez scaffold direit
 > linha; triagem §2, receitas §3, contratos §4, UI §5 e a DIRETIVA_IMPLEMENTACAO idem.
 > **Proibido no tier `constrained`** — N worktrees × `target/` não cabem em 8 GiB (vide 1.5.6).
 
-#### 1.5.1 Setup de jornada (1ª sessão do dia, no checkout primário)
+#### 1.5.1 Setup de linha (o PRÓPRIO agente faz, guiado pelo modelo)
+
+**Local canônico das worktrees: `Worktrees/line-<módulo>/` DENTRO do repo** (gitignorada
+via `/Worktrees/`). Toda janela VSCode/Claude abre **na raiz do repo primário** (sempre a
+mesma pasta, uma janela por agente); o agente-de-linha **cria a própria worktree** na 1ª
+mensagem, guiado pelo bloco de [`MODELO_ABERTURA_LINHA.md`](MODELO_ABERTURA_LINHA.md)
+que o Enio cola. Essência:
 
 ```bash
-cd <repo>                            # checkout primário: SEMPRE main, SEMPRE limpo
-git status -sb                       # sujo? resolva ANTES de abrir linhas
-git pull --ff-only origin main       # traz hotfixes feitos no Mac desde o último ship
-git worktree add -b line/painter ../PH2D-line-painter main
-git worktree add -b line/vector  ../PH2D-line-vector  main
-# ...uma linha por módulo; cada sessão Claude Code abre NA pasta do worktree e não sai dela
+git pull --ff-only origin main                             # hotfixes do Mac
+mkdir -p Worktrees
+git worktree add -b line/<módulo> Worktrees/line-<módulo> main
+cd Worktrees/line-<módulo>                                 # TODO o trabalho a partir daqui
 ```
 
-- `target/` é por-worktree automaticamente → **slots CoW (§1.2) dispensáveis**. sccache
-  global + mold (§6.0) amortizam o primeiro build de cada worktree.
-- Hooks vivem no `.git` comum → pre-commit tiered roda normal em cada worktree. Exporte
-  `PH2D_SLOT_FOLDER` na sua linha — o stage-guard (§1.3) vira cinto-de-segurança de
-  **escopo** (previne conflito de merge; colisão de commit já não existe).
-- Registro de posse = `git worktree list` + tabela de linhas do dia em
-  [`SESSION_ACTIVE.md`](../SESSION_ACTIVE.md), escrita 1× no setup, no primário, ANTES de
-  abrir as linhas.
+- **Depois do setup, NENHUM path da raiz é seu:** o mesmo path relativo existe nas duas
+  árvores — editar `crates/...` na raiz = editar o checkout primário compartilhado (árvore
+  ERRADA). Todo read/edit/git/cargo acontece dentro de `Worktrees/line-<módulo>/`.
+- `target/` é por-worktree automaticamente → **slots CoW (§1.2) dispensáveis**; 1º build é
+  frio (minutos, esperado). sccache global + mold (§6.0) amortizam.
+- Hooks vivem no `.git` comum → pre-commit tiered roda normal em cada worktree.
+- Registro de posse = `git worktree list`. **Uma linha por módulo, nunca duas.**
 
 #### 1.5.2 Regras do agente-de-linha
 
@@ -150,8 +153,8 @@ cargo run -p ph2d-tool-sync && cargo run -p ph2d-node-sync    # se o rebase trou
 cargo test -p ph2d-tool-registry-init -p ph2d-node-registry-init   # staleness verde
 cargo test -p <suas crates>                                   # re-valida pós-rebase (warm, rápido)
 
-# no checkout PRIMÁRIO (main, limpo):
-git -C <repo-primário> merge --ff-only line/<módulo>
+# no checkout PRIMÁRIO (a raiz do repo — dois níveis acima da worktree):
+git -C ../.. merge --ff-only line/<módulo>
 ```
 
 **O `--ff-only` É a serialização:** se falhar, outra linha integrou entre seu rebase e seu
@@ -200,30 +203,18 @@ Fluxo multi-máquina (GitHub = fonte única; runbook em
 
 **Branches `line/*` não viajam pro Mac** — trabalho no Mac é sempre sobre main.
 
-#### 1.5.8 Briefing de abertura de linha (Enio cola na 1ª mensagem da sessão)
+#### 1.5.8 Abertura de linha — modelo pronto (fonte única)
 
-```
-═══════════════════════════════════════════════════════════════════
-LINHA PARALELA — Modo L
-═══════════════════════════════════════════════════════════════════
-Linha:     line/<módulo>
-Worktree:  ../PH2D-line-<módulo>   (você JÁ está nele)
-Pasta(s) exclusiva(s): crates/ph2d-<...>/  [+ crates/ph2d-panel-<...>/]
-Tracker:   docs/HANDOFF_<módulo>*.md
-Tarefa:    <1-3 linhas>
+O bloco que o Enio cola na 1ª mensagem de cada sessão-de-linha vive em
+[`MODELO_ABERTURA_LINHA.md`](MODELO_ABERTURA_LINHA.md) — **fonte única, não duplique
+aqui**. Fluxo em 2 fases: (1) o agente cria a própria worktree em
+`Worktrees/line-<módulo>/`, valida, lê §1.5 + DIRETIVA, reporta **"linha pronta"** e
+ESPERA; (2) a tarefa vem na mensagem seguinte (pasta exclusiva + o que construir).
+Tracker/docs do módulo nascem depois, **dentro da própria worktree**.
 
-Protocolo: DIRETRIZ §1.5 (regras 1.5.2; integração 1.5.3 SÓ com o gate
-batched do módulo verde) + DIRETIVA_IMPLEMENTACAO.md a CADA passo.
-Sanity antes de codar (§0): git branch --show-current == line/<módulo>;
-git rebase main; cargo check -p <sua-crate> baseline.
-Fora da sua pasta = PARE e reporte ao Enio (vai pra line/foundational).
-NUNCA push; ship só se você fechar a ÚLTIMA integração da jornada (1.5.4).
-═══════════════════════════════════════════════════════════════════
-```
-
-Sem briefing colado e `git branch --show-current` devolvendo `main` no tier `workstation`?
-Você provavelmente é a **1ª sessão do dia no primário** → faça o setup 1.5.1 ou pergunte
-ao Enio qual é a sua linha. **Não code em `main` no Modo L.**
+Você é `workstation`, sem bloco colado, e `git branch --show-current` devolve `main`?
+Você é uma sessão do **primário** (setup/integração/ship) — **não code em `main` no
+Modo L**; pergunte ao Enio qual é a sua linha.
 
 ---
 

@@ -67,6 +67,11 @@ reference/
 # Wave 10 / slot-env.sh — per-session cargo target dirs (never committed)
 target-slots/
 
+# Modo L (DIRETRIZ §1.5) — per-line git worktrees live INSIDE the repo so
+# every Claude Code window can open at the repo root. Never tracked by the
+# primary checkout; each worktree is its own full checkout of line/<módulo>.
+/Worktrees/
+
 # Vector Pen scratch — defense-in-depth only. Auto-save was REMOVED in
 # 3617672 (W1 is in-memory only); these patterns guard against an
 # accidental reintroduction or a future W2 scratch dir.

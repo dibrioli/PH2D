@@ -299,6 +299,19 @@ impl BrushSpec {
         }
     }
 
+    /// Effective **Pigment mix** `[0, 1]` (how much the dab composites subtractively — RYB, Gossett &
+    /// Chen 2004 — vs the plain blend; [`crate::blend::blend_over_pigment`]). Zero unless BOTH the
+    /// Watercolor section and the Pigment toggle are on, so a normal brush blends exactly as before
+    /// (byte-identical). Non-zero ⇒ wet-on-wet mixes like real paint (blue + yellow → green).
+    #[must_use]
+    pub fn effective_pigment_mix(&self) -> f32 {
+        if self.watercolor && self.pigment {
+            self.pigment_mix.clamp(0.0, 1.0)
+        } else {
+            0.0
+        }
+    }
+
     /// Compose the dab silhouette from a Shape sample `shape_val` and the round `falloff` envelope. The
     /// **Image** kind REPLACES the falloff (a crisp finite tip stays uneroded); any **procedural** kind is
     /// MASKED BY it (`falloff × pattern`, so the soft round envelope shapes the texture — Enio 2026-06-25).

@@ -10590,3 +10590,45 @@ fn watercolor_granulation_rejects_valley_deposit() {
     );
     assert!(granulated > 0, "granulation still deposits on the tooth peaks (not a full wipe)");
 }
+
+/// Watercolor pigment (#3): painting yellow over a wet blue wash with **Pigment** on mixes the two
+/// SUBTRACTIVELY — the overlap gains green — where the plain blend (Pigment off, = Krita's smudge) just
+/// averages toward a muddy blue-grey. Drives the real stamp path at partial coverage. DIRETIVA §4.
+#[test]
+fn watercolor_pigment_mixes_wet_on_wet_toward_green() {
+    fn center_pixel(pigment_mix: f32) -> [u8; 4] {
+        let size = 48u32;
+        // A solid wet blue wash already on the canvas (alpha 255 → pigment present to mix with).
+        let mut src = vec![0u8; (size * size * 4) as usize];
+        for p in src.chunks_exact_mut(4) {
+            p.copy_from_slice(&[30, 55, 195, 255]);
+        }
+        let mut t = PainterTool::default();
+        t.set_source(src, size, size);
+        t.paint.brush = BrushSpec {
+            radius_px: 14.0,
+            hardness: 1.0,
+            falloff: Falloff::Constant,
+            strength: 0.5, // partial coverage → the blue underneath mixes with the yellow dab
+            color: [0.90, 0.80, 0.10], // yellow
+            space_attenuation: false,
+            watercolor: true,
+            edge_gain: 0.0, // isolate pigment from the edge-darkening pass
+            pigment: pigment_mix > 0.0,
+            pigment_mix,
+            ..Default::default()
+        };
+        for slot in &mut t.paint.brush_by_mode {
+            *slot = t.paint.brush;
+        }
+        assert!(t.on_canvas_pointer(cp([24.0, 24.0], PointerPhase::Down)));
+        assert!(t.on_canvas_pointer(cp([24.0, 24.0], PointerPhase::Up)));
+        px(&t, size, 24, 24)
+    }
+    let off = center_pixel(0.0); // Pigment off → plain source-over average
+    let on = center_pixel(1.0); // Pigment on → subtractive RYB (blue + yellow → green)
+    assert!(
+        u32::from(on[1]) > u32::from(off[1]),
+        "wet-on-wet pigment must lift green vs the plain average: on {on:?} vs off {off:?}"
+    );
+}

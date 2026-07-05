@@ -165,6 +165,92 @@ pub fn blend_over(mode: BrushBlend, dst: [f32; 4], color: [f32; 3], a: f32) -> [
     }
 }
 
+/// Like [`blend_over`], but composites the pigment **subtractively** by `mix` wherever the canvas
+/// already holds paint — so wet-on-wet layers mix like real watercolor (blue + yellow → green) instead
+/// of the plain source-over average (what Krita's smudge does). The subtractive path is the RYB
+/// artistic wheel (Gossett & Chen 2004, the same as `docs/Painter/wet_edges_paint.html`).
+///
+/// `mix == 0` returns [`blend_over`] **exactly** (byte-identical), so a non-pigment brush is unchanged;
+/// the mix is additionally scaled by the destination coverage `dst[3]` so a dab on bare paper just
+/// lands (there is no pigment there to mix with). Deterministic (RYB is min/max/mul only) — HR-5 safe.
+#[must_use]
+pub fn blend_over_pigment(
+    mode: BrushBlend,
+    dst: [f32; 4],
+    color: [f32; 3],
+    a: f32,
+    mix: f32,
+) -> [f32; 4] {
+    let plain = blend_over(mode, dst, color, a);
+    let m = mix.clamp(0.0, 1.0) * dst[3].clamp(0.0, 1.0);
+    if m <= 0.0 {
+        return plain; // byte-identical to `blend_over` when Pigment is off or the canvas is bare
+    }
+    // Subtractive target: the canvas pigment and the dab pigment mixed through RYB by coverage `a`
+    // (a = 0 → canvas, a = 1 → dab). Crossfade from the plain result toward it by `m`.
+    let sub = ryb_mix([dst[0], dst[1], dst[2]], color, a.clamp(0.0, 1.0));
+    [
+        lerp(plain[0], sub[0], m),
+        lerp(plain[1], sub[1], m),
+        lerp(plain[2], sub[2], m),
+        plain[3],
+    ]
+}
+
+/// Convert straight-RGB `[0, 1]` to the artistic **RYB** (red / yellow / blue) subtractive primaries —
+/// the "paint" wheel where blue + yellow → green. Clean-room port of the Gossett & Chen (2004)-style
+/// decomposition (the same used by the PH2D Wet Paint study app). Deterministic: min/max/mul only.
+fn rgb_to_ryb(r: f32, g: f32, b: f32) -> [f32; 3] {
+    let w = r.min(g).min(b);
+    let (mut r, mut g, mut b) = (r - w, g - w, b - w);
+    let mg = r.max(g).max(b);
+    let y = r.min(g);
+    r -= y;
+    g -= y;
+    let mut y = y;
+    if b > 0.0 && g > 0.0 {
+        b *= 0.5;
+        g *= 0.5;
+    }
+    y += g;
+    b += g;
+    let my = r.max(y).max(b);
+    let n = if my > 0.0 { mg / my } else { 0.0 };
+    [r * n + w, y * n + w, b * n + w]
+}
+
+/// Inverse of [`rgb_to_ryb`]: artistic RYB back to straight-RGB `[0, 1]`.
+fn ryb_to_rgb(r: f32, y: f32, b: f32) -> [f32; 3] {
+    let w = r.min(y).min(b);
+    let (mut r, mut y, mut b) = (r - w, y - w, b - w);
+    let my = r.max(y).max(b);
+    let g = y.min(b);
+    y -= g;
+    b -= g;
+    let mut g = g;
+    if b > 0.0 && g > 0.0 {
+        b *= 2.0;
+        g *= 2.0;
+    }
+    r += y;
+    g += y;
+    let mg = r.max(g).max(b);
+    let n = if mg > 0.0 { my / mg } else { 0.0 };
+    [r * n + w, g * n + w, b * n + w]
+}
+
+/// Mix straight-RGB colours `a` and `b` by `t` through the RYB wheel (subtractive: blue + yellow →
+/// green). `t = 0` → `a`, `t = 1` → `b` (up to the RYB round-trip, a fraction of a code value).
+fn ryb_mix(a: [f32; 3], b: [f32; 3], t: f32) -> [f32; 3] {
+    let ra = rgb_to_ryb(a[0], a[1], a[2]);
+    let rb = rgb_to_ryb(b[0], b[1], b[2]);
+    ryb_to_rgb(
+        ra[0] + (rb[0] - ra[0]) * t,
+        ra[1] + (rb[1] - ra[1]) * t,
+        ra[2] + (rb[2] - ra[2]) * t,
+    )
+}
+
 #[inline]
 fn lerp(b: f32, s: f32, t: f32) -> f32 {
     b + (s - b) * t
@@ -444,5 +530,61 @@ mod tests {
         let n = names.len();
         names.dedup();
         assert_eq!(names.len(), n, "duplicate brush blend display name");
+    }
+
+    /// Pigment mix `0` (or a bare-paper destination) is `blend_over` **byte-for-byte** — a non-pigment
+    /// brush is unchanged.
+    #[test]
+    fn pigment_mix_zero_is_byte_identical() {
+        let dst = [0.30, 0.50, 0.80, 0.90];
+        for &(color, a) in &[
+            ([0.9, 0.1, 0.2], 0.4f32),
+            ([0.0, 0.0, 0.0], 1.0),
+            ([1.0, 1.0, 1.0], 0.7),
+        ] {
+            assert_eq!(
+                blend_over_pigment(BrushBlend::Mix, dst, color, a, 0.0),
+                blend_over(BrushBlend::Mix, dst, color, a),
+                "pigment mix 0 must equal blend_over exactly"
+            );
+        }
+        // Bare paper (dst alpha 0): the dab just lands, even at full mix.
+        let bare = [0.0, 0.0, 0.0, 0.0];
+        assert_eq!(
+            blend_over_pigment(BrushBlend::Mix, bare, [0.9, 0.8, 0.1], 0.5, 1.0),
+            blend_over(BrushBlend::Mix, bare, [0.9, 0.8, 0.1], 0.5),
+            "no pigment to mix with on bare paper → plain deposit"
+        );
+    }
+
+    /// The pigment path mixes a blue canvas + a yellow dab **toward green** — the subtractive hallmark
+    /// the plain source-over (Krita's smudge) cannot produce.
+    #[test]
+    fn pigment_mixes_blue_and_yellow_toward_green() {
+        let blue = [0.10, 0.20, 0.75, 1.0]; // already-laid wet blue (dst alpha 1)
+        let yellow = [0.90, 0.80, 0.10];
+        let plain = blend_over(BrushBlend::Mix, blue, yellow, 0.5);
+        let pig = blend_over_pigment(BrushBlend::Mix, blue, yellow, 0.5, 1.0);
+        assert!(
+            pig[1] > plain[1],
+            "pigment must lift green above the flat average: pig {pig:?} vs plain {plain:?}"
+        );
+        assert!(
+            pig[1] > pig[0] && pig[1] > pig[2],
+            "green is the dominant channel of blue + yellow: {pig:?}"
+        );
+    }
+
+    /// RYB round-trip keeps a colour close to itself (the mix at `t = 0`/`1` is nearly the endpoint).
+    #[test]
+    fn ryb_mix_endpoints_are_near_identity() {
+        for c in [[0.9, 0.8, 0.1], [0.1, 0.2, 0.75], [0.5, 0.5, 0.5], [0.2, 0.7, 0.3]] {
+            let a = ryb_mix(c, [0.0, 0.0, 0.0], 0.0); // t=0 → c
+            let b = ryb_mix([0.0, 0.0, 0.0], c, 1.0); // t=1 → c
+            for k in 0..3 {
+                assert!((a[k] - c[k]).abs() < 0.02, "ryb t=0 drifted: {a:?} vs {c:?}");
+                assert!((b[k] - c[k]).abs() < 0.02, "ryb t=1 drifted: {b:?} vs {c:?}");
+            }
+        }
     }
 }

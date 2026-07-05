@@ -545,7 +545,13 @@ fn stamp_band(ctx: &DabCtx, dst: &mut [u8], mut mask: Option<&mut [u8]>, band_y0
                 if a <= 0.0 {
                     continue;
                 }
-                crate::blend::blend_over(blend, prev, color, a)
+                crate::blend::blend_over_pigment(
+                    blend,
+                    prev,
+                    color,
+                    a,
+                    ctx.spec.effective_pigment_mix(),
+                )
             };
             dst[i] = encode(out[0]);
             dst[i + 1] = encode(out[1]);

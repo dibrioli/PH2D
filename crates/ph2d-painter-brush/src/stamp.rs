@@ -110,6 +110,8 @@ struct BlitCtx<'a> {
     mask: &'a StampMask,
     color: [f32; 3],
     blend: BrushBlend,
+    /// Watercolor Pigment mix (`0` = plain blend, byte-identical) — the subtractive RYB amount.
+    pigment_mix: f32,
     cx: f32,
     cy: f32,
     inv_radius: f32,
@@ -159,6 +161,7 @@ pub fn blit_stamp(
         mask,
         color: spec.color,
         blend: spec.blend,
+        pigment_mix: spec.effective_pigment_mix(),
         cx,
         cy,
         inv_radius: 1.0 / radius,
@@ -210,7 +213,7 @@ fn blit_band(ctx: &BlitCtx, dst: &mut [u8], band_y0: i64) -> bool {
             if a <= 0.0 {
                 continue;
             }
-            let out = crate::blend::blend_over(ctx.blend, prev, ctx.color, a);
+            let out = crate::blend::blend_over_pigment(ctx.blend, prev, ctx.color, a, ctx.pigment_mix);
             dst[i] = encode(out[0]);
             dst[i + 1] = encode(out[1]);
             dst[i + 2] = encode(out[2]);
@@ -452,7 +455,13 @@ fn canvas_blit_band(
             if a <= 0.0 {
                 continue;
             }
-            let out = crate::blend::blend_over(ctx.spec.blend, prev, ctx.spec.color, a);
+            let out = crate::blend::blend_over_pigment(
+                ctx.spec.blend,
+                prev,
+                ctx.spec.color,
+                a,
+                ctx.spec.effective_pigment_mix(),
+            );
             canvas[i] = encode(out[0]);
             canvas[i + 1] = encode(out[1]);
             canvas[i + 2] = encode(out[2]);

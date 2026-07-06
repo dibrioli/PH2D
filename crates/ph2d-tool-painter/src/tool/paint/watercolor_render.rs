@@ -333,10 +333,6 @@ impl PainterTool {
     /// each frame recomposites cleanly from the pristine pre-stroke pixels (no overlay peel). `commit`
     /// drops the base (pen-up bake, inside the undo transaction); the live passes keep it for the next frame.
     pub(super) fn apply_watercolor(&mut self, commit: bool) {
-        // Paper Colors ramp → the substrate tint LUT (linear RGBA), indexed by the paper tooth. `None`
-        // when off → the fixed warm-white paper. Fetched first (it borrows `&mut self`); cloned to own it.
-        let paper_ramp_lut: Option<Vec<[f32; 4]>> =
-            self.ensure_paper_ramp_lut().map(|l| l.to_vec());
         let (fw, fh) = self.source_size;
         let (fw, fh) = (fw as usize, fh as usize);
         let n = fw * fh;
@@ -522,21 +518,13 @@ impl PainterTool {
                     fallback
                 };
 
-                // The virtual paper colour (linear): the Paper Colors ramp indexed by the tooth (coloured
-                // papers), or the fixed warm-white. Where the layer is transparent, the wash sits on this.
-                let paper_col = if let Some(ref rlut) = paper_ramp_lut {
-                    let c = rlut[(paper_h.clamp(0.0, 1.0) * 255.0) as usize];
-                    [c[0], c[1], c[2]]
-                } else {
-                    paper_lin
-                };
                 // Effective base in linear light: the layer's own pixels composited over the virtual paper
                 // (so a transparent layer still has a paper to attenuate; an opaque base uses only itself).
                 let ab = f32::from(base[gi + 3]) / 255.0;
                 let sb = [
-                    lut.s2l[base[gi] as usize] * ab + paper_col[0] * (1.0 - ab),
-                    lut.s2l[base[gi + 1] as usize] * ab + paper_col[1] * (1.0 - ab),
-                    lut.s2l[base[gi + 2] as usize] * ab + paper_col[2] * (1.0 - ab),
+                    lut.s2l[base[gi] as usize] * ab + paper_lin[0] * (1.0 - ab),
+                    lut.s2l[base[gi + 1] as usize] * ab + paper_lin[1] * (1.0 - ab),
+                    lut.s2l[base[gi + 2] as usize] * ab + paper_lin[2] * (1.0 - ab),
                 ];
                 let mut rgb = [0u8; 3];
                 let mut t_lum = 0.0f32;

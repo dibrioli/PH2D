@@ -298,14 +298,6 @@ pub fn populate(store: &mut WidgetStore) {
         ph2d_editor_core::ids::PAINTER_SHAPE_RAMP_BW,
         ph2d_editor_core::ids::PAINTER_SHAPE_RAMP_SWATCH,
         ph2d_editor_core::ids::PAINTER_SHAPE_RAMP_RESET,
-        // Paper Colors ramp: enable + add / remove / invert / B&W + colour-box + section reset.
-        ph2d_editor_core::ids::PAINTER_PAPER_RAMP_ENABLE,
-        ph2d_editor_core::ids::PAINTER_PAPER_RAMP_ADD,
-        ph2d_editor_core::ids::PAINTER_PAPER_RAMP_REMOVE,
-        ph2d_editor_core::ids::PAINTER_PAPER_RAMP_INVERT,
-        ph2d_editor_core::ids::PAINTER_PAPER_RAMP_BW,
-        ph2d_editor_core::ids::PAINTER_PAPER_RAMP_SWATCH,
-        ph2d_editor_core::ids::PAINTER_PAPER_RAMP_RESET,
         // Per-section reset icon buttons (Inspector-Transform pattern).
         ph2d_editor_core::ids::PAINTER_BRUSH_RANDOMIZE_RESET,
         ph2d_editor_core::ids::PAINTER_BRUSH_TEXTURE_RESET,
@@ -440,10 +432,6 @@ fn register_collapsible_sections(store: &mut WidgetStore) {
             core_ids::PAINTER_WATERCOLOR_PAPER_SECTION,
             core_ids::PAINTER_WATERCOLOR_PAPER_SECTION_COLOR,
         ),
-        (
-            core_ids::PAINTER_PAPER_RAMP_SECTION,
-            core_ids::PAINTER_PAPER_RAMP_SECTION_COLOR,
-        ),
     ] {
         store.mark_collapsible_section(section);
         store.register_picker_swatch(color);
@@ -454,7 +442,6 @@ fn register_collapsible_sections(store: &mut WidgetStore) {
         core_ids::PAINTER_BRUSH_TILING_SECTION,
         core_ids::PAINTER_BRUSH_SYMMETRY_SECTION,
         core_ids::PAINTER_SHAPE_RAMP_SECTION,
-        core_ids::PAINTER_PAPER_RAMP_SECTION,
     ] {
         store.set_collapsed(collapsed, true);
     }

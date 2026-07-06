@@ -97,64 +97,6 @@ pub fn painter_paper_mapping_option_id(m: u8) -> NodeId {
     fnv_node_id_runtime(&format!("painter_brush.papermapopt.{m}"))
 }
 
-// ── Paper Colors ramp (tints the substrate; mirrors the Shape ramp id set) ──────────────────────────
-pub const PAINTER_PAPER_RAMP_SECTION: NodeId = hash_node_id("painter_brush.paper_ramp_section");
-pub const PAINTER_PAPER_RAMP_SECTION_COLOR: NodeId =
-    hash_node_id("painter_brush.paper_ramp_section_color");
-pub const PAINTER_PAPER_RAMP_RESET: NodeId = hash_node_id("painter_brush.paper_ramp_reset");
-pub const PAINTER_PAPER_RAMP_ENABLE: NodeId = hash_node_id("painter_brush.paper_ramp_enable");
-pub const PAINTER_PAPER_RAMP_MODE: NodeId = hash_node_id("painter_brush.paper_ramp_mode");
-pub const PAINTER_PAPER_RAMP_INTERP: NodeId = hash_node_id("painter_brush.paper_ramp_interp");
-pub const PAINTER_PAPER_RAMP_BW: NodeId = hash_node_id("painter_brush.paper_ramp_bw");
-pub const PAINTER_PAPER_RAMP_ALPHA_MODE: NodeId =
-    hash_node_id("painter_brush.paper_ramp_alpha_mode");
-pub const PAINTER_PAPER_RAMP_EDIT: NodeId = hash_node_id("painter_brush.paper_ramp_edit");
-pub const PAINTER_PAPER_RAMP_ADD: NodeId = hash_node_id("painter_brush.paper_ramp_add");
-pub const PAINTER_PAPER_RAMP_REMOVE: NodeId = hash_node_id("painter_brush.paper_ramp_remove");
-pub const PAINTER_PAPER_RAMP_INVERT: NodeId = hash_node_id("painter_brush.paper_ramp_invert");
-pub const PAINTER_PAPER_RAMP_SWATCH: NodeId = hash_node_id("painter_brush.paper_ramp_swatch");
-pub const PAINTER_PAPER_RAMP_STOP_INDEX: NodeId =
-    hash_node_id("painter_brush.paper_ramp_stop_index");
-pub const PAINTER_PAPER_RAMP_STOP_POS: NodeId = hash_node_id("painter_brush.paper_ramp_stop_pos");
-
-/// The Paper ramp **Click** buttons (enable / add / remove / invert / B&W / reset).
-pub const PAINTER_PAPER_RAMP_BUTTONS: [NodeId; 6] = [
-    PAINTER_PAPER_RAMP_ENABLE,
-    PAINTER_PAPER_RAMP_ADD,
-    PAINTER_PAPER_RAMP_REMOVE,
-    PAINTER_PAPER_RAMP_INVERT,
-    PAINTER_PAPER_RAMP_BW,
-    PAINTER_PAPER_RAMP_RESET,
-];
-
-/// The Paper ramp **value** widgets (edit swatch + selected-stop index/pos).
-pub const PAINTER_PAPER_RAMP_VALUE_IDS: [NodeId; 3] = [
-    PAINTER_PAPER_RAMP_EDIT,
-    PAINTER_PAPER_RAMP_STOP_INDEX,
-    PAINTER_PAPER_RAMP_STOP_POS,
-];
-
-/// Per-stop drag handle id on the Paper ramp bar.
-#[must_use]
-pub fn painter_paper_ramp_handle_id(i: u8) -> NodeId {
-    fnv_node_id_runtime(&format!("painter_brush.paper_ramp_handle.{i}"))
-}
-/// Paper ramp colour-Mode dropdown option id.
-#[must_use]
-pub fn painter_paper_ramp_mode_option_id(m: u8) -> NodeId {
-    fnv_node_id_runtime(&format!("painter_brush.paper_ramp_modeopt.{m}"))
-}
-/// Paper ramp Interpolation dropdown option id.
-#[must_use]
-pub fn painter_paper_ramp_interp_option_id(i: u8) -> NodeId {
-    fnv_node_id_runtime(&format!("painter_brush.paper_ramp_interpopt.{i}"))
-}
-/// Paper ramp Alpha-action dropdown option id.
-#[must_use]
-pub fn painter_paper_ramp_alpha_option_id(m: u8) -> NodeId {
-    fnv_node_id_runtime(&format!("painter_brush.paper_ramp_alphaopt.{m}"))
-}
-
 /// **Granulation** "Same as Paper" toggle — shown in the **Grain** section in watercolor mode (the Grain
 /// slot IS the granulation map). `Click` → `toggle_granulation_use_paper`.
 pub const PAINTER_WATERCOLOR_GRAN_SAME: NodeId = hash_node_id("painter_brush.watercolor_gran_same");

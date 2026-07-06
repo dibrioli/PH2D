@@ -184,11 +184,4 @@ pub(crate) const FALLBACK_BRUSH: BrushSettings = BrushSettings {
     paper_depth: 1.0,       // LITERAL-PX-OK: default paper tooth depth
     paper_params: [0.5; 6], // LITERAL-PX-OK: neutral texture params
     granulation_use_paper: true,
-    paper_color_ramp_enabled: false,
-    paper_color_ramp_bw: false,
-    paper_color_ramp_mode: 0,
-    paper_color_ramp_interp: 0,
-    paper_color_ramp_stops: [[0.0; 6]; ph2d_tool_painter::PANEL_RAMP_STOPS],
-    paper_color_ramp_stop_count: 0,
-    paper_color_ramp_alpha_mode: 0,
 };

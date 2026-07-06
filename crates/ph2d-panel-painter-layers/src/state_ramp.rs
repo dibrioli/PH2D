@@ -26,34 +26,6 @@ pub(crate) fn selected_shape_ramp_stop() -> u8 {
     crate::state::SELECTED_SHAPE_RAMP_STOP.with(|c| c.get())
 }
 
-/// Set / read the selected **Paper Colors** ramp stop (stable id).
-pub(crate) fn set_selected_paper_ramp_stop(i: u8) {
-    crate::state::SELECTED_PAPER_RAMP_STOP.with(|c| c.set(i));
-}
-pub(crate) fn selected_paper_ramp_stop() -> u8 {
-    crate::state::SELECTED_PAPER_RAMP_STOP.with(|c| c.get())
-}
-
-/// The **Paper Colors** ramp deferred Mode / Interpolation / Alpha dropdown stashes.
-pub(crate) fn set_pending_paper_ramp_mode_dd(v: Option<(Rect, u8)>) {
-    crate::state::PENDING_PAPER_RAMP_MODE_DD.with(|c| c.set(v));
-}
-pub(crate) fn take_pending_paper_ramp_mode_dd() -> Option<(Rect, u8)> {
-    crate::state::PENDING_PAPER_RAMP_MODE_DD.with(|c| c.take())
-}
-pub(crate) fn set_pending_paper_ramp_interp_dd(v: Option<(Rect, u8)>) {
-    crate::state::PENDING_PAPER_RAMP_INTERP_DD.with(|c| c.set(v));
-}
-pub(crate) fn take_pending_paper_ramp_interp_dd() -> Option<(Rect, u8)> {
-    crate::state::PENDING_PAPER_RAMP_INTERP_DD.with(|c| c.take())
-}
-pub(crate) fn set_pending_paper_ramp_alpha_dd(v: Option<(Rect, u8)>) {
-    crate::state::PENDING_PAPER_RAMP_ALPHA_DD.with(|c| c.set(v));
-}
-pub(crate) fn take_pending_paper_ramp_alpha_dd() -> Option<(Rect, u8)> {
-    crate::state::PENDING_PAPER_RAMP_ALPHA_DD.with(|c| c.take())
-}
-
 // ── Grain ramp deferred dropdown popovers ────────────────────────────────────────────────────────
 /// Stash the open Grain Color Ramp Mode dropdown for the deferred popover pass.
 pub(crate) fn set_pending_ramp_mode_dd(v: Option<(Rect, u8)>) {

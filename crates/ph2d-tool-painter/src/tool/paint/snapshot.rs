@@ -70,20 +70,6 @@ impl PainterTool {
                 f32::from(s.id),
             ];
         }
-        // Snapshot the Paper Colors ramp's stops (LINEAR → display sRGB; the 6th slot is the stable id).
-        let pramp = self.paper_color_ramp();
-        let mut paper_color_ramp_stops = [[0.0f32; 6]; PANEL_RAMP_STOPS];
-        let pramp_count = pramp.stops().len().min(PANEL_RAMP_STOPS);
-        for (slot, s) in paper_color_ramp_stops.iter_mut().zip(pramp.stops()) {
-            *slot = [
-                s.pos,
-                srgb(s.color[0]),
-                srgb(s.color[1]),
-                srgb(s.color[2]),
-                s.color[3],
-                f32::from(s.id),
-            ];
-        }
         // Per-layer blend + the brush-only per-layer opacity arrays (the "B" chip + the opacity box).
         let (shape_layer_blend, shape_layer_opacity) = self.paint.shape_layers.panel_blend_arrays();
         BrushSettings {
@@ -241,13 +227,6 @@ impl PainterTool {
             paper_depth: b.paper_depth,
             paper_params: b.paper.params,
             granulation_use_paper: b.granulation_use_paper,
-            paper_color_ramp_enabled: self.paint.paper_color_ramp_enabled,
-            paper_color_ramp_bw: self.paint.paper_color_ramp_bw,
-            paper_color_ramp_mode: pramp.color_mode.to_u8(),
-            paper_color_ramp_interp: pramp.interp.to_u8(),
-            paper_color_ramp_stops,
-            paper_color_ramp_stop_count: pramp_count as u8,
-            paper_color_ramp_alpha_mode: self.paint.paper_color_ramp_alpha_mode.to_u8(),
         }
     }
 

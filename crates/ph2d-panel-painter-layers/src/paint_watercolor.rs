@@ -358,9 +358,7 @@ pub(crate) fn paint_paper_section(
             )
         })
         .collect();
-    y = number_field::paint_num_params(ctx, theme, x, content_w, y, &pp);
-    // ── Paper Colors ramp (tints the substrate → cream / tan / grey papers) ──
-    crate::paint_paper_ramp::paint_paper_ramp_section(ctx, theme, x, content_w, y, brush)
+    number_field::paint_num_params(ctx, theme, x, content_w, y, &pp)
 }
 
 /// The **Grain**-section watercolor extras — shown at the top of the Grain section in watercolor mode,

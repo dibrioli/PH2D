@@ -322,15 +322,6 @@ pub struct BrushSettings {
     /// **Granulation "Same as Paper"** — when true the granulation settles into the paper's own tooth
     /// (the Grain slot texture is ignored). Shown in the Grain section in watercolor mode.
     pub granulation_use_paper: bool,
-    // ── Paper Colors ramp (tints the substrate; mirrors the Shape/Grain ramp snapshot) ──
-    pub paper_color_ramp_enabled: bool,
-    pub paper_color_ramp_bw: bool,
-    pub paper_color_ramp_mode: u8,
-    pub paper_color_ramp_interp: u8,
-    /// Ramp stops `(pos, r, g, b, a, id)` display sRGB, first [`Self::paper_color_ramp_stop_count`] valid.
-    pub paper_color_ramp_stops: [[f32; 6]; PANEL_RAMP_STOPS],
-    pub paper_color_ramp_stop_count: u8,
-    pub paper_color_ramp_alpha_mode: u8,
 }
 
 /// Max ramp stops the panel snapshot carries (a ramp may hold up to `MAX_RAMP_STOPS = 32`; the editor

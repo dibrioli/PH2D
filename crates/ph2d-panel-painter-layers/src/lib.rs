@@ -43,7 +43,6 @@ mod paint_falloff;
 mod paint_inpaint;
 mod paint_mask;
 mod paint_mask_row;
-mod paint_paper_ramp;
 mod paint_ramp_widget;
 mod paint_rows;
 mod paint_selection;

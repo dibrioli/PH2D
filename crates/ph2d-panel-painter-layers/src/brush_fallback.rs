@@ -177,8 +177,5 @@ pub(crate) const FALLBACK_BRUSH: BrushSettings = BrushSettings {
     paper_kind: 0,    // None (TextureKind wire 0)
     paper_size: [1.0, 1.0], // LITERAL-PX-OK: default paper Size (one tile)
     paper_angle: 0,
-    granulation_kind: 0,
-    granulation_size: [1.0, 1.0], // LITERAL-PX-OK: default granulation Size
-    granulation_angle: 0,
     granulation_use_paper: true,
 };

@@ -139,8 +139,6 @@ pub(crate) fn paint_watercolor_section(
             crate::number_field::SIZE_STEP,
             1,
         );
-        // Paper (substrate tooth) + Granulation (mineral settling) — two canvas-anchored slots.
-        y = paint_paper_granulation(ctx, theme, x, content_w, y, brush);
         // #3 Pigment — subtractive Kubelka–Munk wet-on-wet mixing + its amount.
         y = paint_checkbox_row(
             ctx,
@@ -175,15 +173,32 @@ pub(crate) fn paint_watercolor_section(
 /// Paint the **Paper** + **Granulation** canvas-anchored slots (substrate tooth + mineral settling).
 /// Paper: a kind picker + Size/Angle. Granulation: the amount, a "Same as Paper" checkbox, and — when
 /// off — its own kind + Size/Angle. Returns the next `y`.
-fn paint_paper_granulation(
+/// Paint the **Paper** section (the substrate the wash sits on) — a collapsible section ABOVE the Grain
+/// section, shown only in watercolor mode. Kind picker + (when assigned) preview + Size X/Y + Angle. The
+/// full texture parity (Mapping/Rake/Offset/Depth/Contrast + Color Ramp) is a follow-up; the Grain
+/// section already offers the same via a tagged layer. Returns the next `y`.
+pub(crate) fn paint_paper_section(
     ctx: &mut PaintCtx,
     theme: ph2d_tokens::Theme,
     x: f32,
     content_w: f32,
-    mut y: f32,
+    y: f32,
     brush: BrushSettings,
 ) -> f32 {
-    // ── Paper (substrate) ──
+    let (mut y, collapsed) = crate::paint_brush_top::paint_collapsible_section(
+        ctx,
+        theme,
+        x,
+        content_w,
+        y,
+        "Paper",
+        core_ids::PAINTER_WATERCOLOR_PAPER_SECTION,
+        core_ids::PAINTER_WATERCOLOR_PAPER_SECTION_COLOR,
+        core_ids::PAINTER_WATERCOLOR_PAPER_RESET,
+    );
+    if collapsed {
+        return y;
+    }
     let (ny, open) = paint_dropdown_row(
         ctx,
         theme,
@@ -200,35 +215,51 @@ fn paint_paper_granulation(
         state::set_pending_paper_kind_dd(Some((r, brush.paper_kind)));
     }
     if brush.paper_kind != 0 {
-        y = paint_slot_size_angle(
+        y = number_field::paint_num_xy(
             ctx,
             theme,
             x,
             content_w,
             y,
-            brush.paper_size,
+            "Size",
             core_ids::PAINTER_WATERCOLOR_PAPER_SIZE_X,
+            brush.paper_size[0],
             core_ids::PAINTER_WATERCOLOR_PAPER_SIZE_Y,
-            brush.paper_angle,
+            brush.paper_size[1],
+            TEX_SIZE_MIN,
+            TEX_SIZE_MAX,
+            number_field::SIZE_STEP,
+            2,
+        );
+        y = number_field::paint_num_row(
+            ctx,
+            theme,
+            x,
+            content_w,
+            y,
+            "Angle",
             core_ids::PAINTER_WATERCOLOR_PAPER_ANGLE,
+            f32::from(brush.paper_angle),
+            0.0,
+            ANGLE_MAX,
+            number_field::SIZE_STEP,
+            0,
         );
     }
+    y
+}
 
-    // ── Granulation (mineral settling) ──
-    y = number_field::paint_num_row(
-        ctx,
-        theme,
-        x,
-        content_w,
-        y,
-        "Granulation",
-        core_ids::PAINTER_WATERCOLOR_GRANULATION,
-        brush.granulation,
-        0.0,
-        1.0,
-        number_field::FINE_STEP,
-        2,
-    );
+/// The **Grain**-section watercolor extras — shown at the top of the Grain section in watercolor mode,
+/// since in that mode the Grain slot IS the granulation map: the "Same as Paper" toggle (settle into the
+/// paper's own tooth instead) + the granulation **Amount**. Returns the next `y`.
+pub(crate) fn paint_grain_watercolor_extras(
+    ctx: &mut PaintCtx,
+    theme: ph2d_tokens::Theme,
+    x: f32,
+    content_w: f32,
+    mut y: f32,
+    brush: BrushSettings,
+) -> f32 {
     y = paint_checkbox_row(
         ctx,
         theme,
@@ -239,113 +270,40 @@ fn paint_paper_granulation(
         "Same as Paper",
         brush.granulation_use_paper,
     );
-    if !brush.granulation_use_paper {
-        let (ny, open) = paint_dropdown_row(
-            ctx,
-            theme,
-            x,
-            content_w,
-            y,
-            "Grain",
-            core_ids::PAINTER_WATERCOLOR_GRAN_KIND,
-            brush.granulation_kind,
-            TextureKind::from_u8(brush.granulation_kind).name(),
-        );
-        y = ny;
-        if let Some(r) = open {
-            state::set_pending_gran_kind_dd(Some((r, brush.granulation_kind)));
-        }
-        if brush.granulation_kind != 0 {
-            y = paint_slot_size_angle(
-                ctx,
-                theme,
-                x,
-                content_w,
-                y,
-                brush.granulation_size,
-                core_ids::PAINTER_WATERCOLOR_GRAN_SIZE_X,
-                core_ids::PAINTER_WATERCOLOR_GRAN_SIZE_Y,
-                brush.granulation_angle,
-                core_ids::PAINTER_WATERCOLOR_GRAN_ANGLE,
-            );
-        }
-    }
-    y
-}
-
-/// Paint a canvas-anchored slot's **Size X/Y** + **Angle** rows (shared by Paper + Granulation).
-#[allow(clippy::too_many_arguments)]
-fn paint_slot_size_angle(
-    ctx: &mut PaintCtx,
-    theme: ph2d_tokens::Theme,
-    x: f32,
-    content_w: f32,
-    mut y: f32,
-    size: [f32; 2],
-    size_x_id: ph2d_a11y::NodeId,
-    size_y_id: ph2d_a11y::NodeId,
-    angle: u16,
-    angle_id: ph2d_a11y::NodeId,
-) -> f32 {
-    y = number_field::paint_num_xy(
-        ctx,
-        theme,
-        x,
-        content_w,
-        y,
-        "Size",
-        size_x_id,
-        size[0],
-        size_y_id,
-        size[1],
-        TEX_SIZE_MIN,
-        TEX_SIZE_MAX,
-        number_field::SIZE_STEP,
-        2,
-    );
     number_field::paint_num_row(
         ctx,
         theme,
         x,
         content_w,
         y,
-        "Angle",
-        angle_id,
-        f32::from(angle),
+        "Amount",
+        core_ids::PAINTER_WATERCOLOR_GRANULATION,
+        brush.granulation,
         0.0,
-        ANGLE_MAX,
-        number_field::SIZE_STEP,
-        0,
+        1.0,
+        number_field::FINE_STEP,
+        2,
     )
 }
 
-/// The `TextureKind` options for the Paper / Granulation kind dropdowns, each in its own id namespace
-/// (so a click never collides with the Grain picker). Drained by [`paint_watercolor_popovers`].
-fn kind_options(option_id: fn(u8) -> ph2d_a11y::NodeId) -> Vec<DropdownOption<u8>> {
-    (0..TextureKind::COUNT)
-        .map(|k| DropdownOption::new(option_id(k), k, TextureKind::from_u8(k).name()))
-        .collect()
-}
-
-/// Drain the Watercolor Paper / Granulation kind dropdown popovers (called from `paint_brush_popovers`,
-/// after the body clip is popped, so the open list is never clipped).
+/// Drain the Watercolor **Paper** kind dropdown popover (called from `paint_brush_popovers`, after the
+/// body clip is popped, so the open list is never clipped).
 pub(crate) fn paint_watercolor_popovers(ctx: &mut PaintCtx, theme: ph2d_tokens::Theme) {
     if let Some((chip_rect, cur)) = state::take_pending_paper_kind_dd() {
+        let options: Vec<DropdownOption<u8>> = (0..TextureKind::COUNT)
+            .map(|k| {
+                DropdownOption::new(
+                    core_ids::painter_paper_kind_option_id(k),
+                    k,
+                    TextureKind::from_u8(k).name(),
+                )
+            })
+            .collect();
         crate::paint_brush::paint_dropdown_popover(
             ctx,
             theme,
             core_ids::PAINTER_WATERCOLOR_PAPER_KIND,
-            kind_options(core_ids::painter_paper_kind_option_id),
-            chip_rect,
-            cur,
-        );
-    }
-    if let Some((chip_rect, cur)) = state::take_pending_gran_kind_dd() {
-        crate::paint_brush::paint_dropdown_popover(
-            ctx,
-            theme,
-            core_ids::PAINTER_WATERCOLOR_GRAN_KIND,
-            kind_options(core_ids::painter_granulation_kind_option_id),
+            options,
             chip_rect,
             cur,
         );

@@ -80,9 +80,6 @@ thread_local! {
     /// The open Watercolor **Paper** kind dropdown popover: `(chip_rect, current_kind_u8)`.
     pub(crate) static PENDING_PAPER_KIND_DD: Cell<Option<(Rect, u8)>> = const { Cell::new(None) };
 
-    /// The open Watercolor **Granulation** kind dropdown popover: `(chip_rect, current_kind_u8)`.
-    pub(crate) static PENDING_GRAN_KIND_DD: Cell<Option<(Rect, u8)>> = const { Cell::new(None) };
-
     /// The open Stroke-section Method dropdown popover: `(chip_rect, current_method_u8)`.
     pub(crate) static PENDING_BRUSH_STROKE_METHOD_DD: Cell<Option<(Rect, u8)>> = const { Cell::new(None) };
 

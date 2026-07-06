@@ -322,10 +322,13 @@ pub fn populate(store: &mut WidgetStore) {
         // press feedback + a tooltip now, and lets the future route deliver the Click without a re-register.
         ph2d_editor_core::ids::PAINTER_BRUSH_STROKE_SAVE_OBJECT,
         ph2d_editor_core::ids::PAINTER_BRUSH_TILING_RESET,
-        // Watercolor section: Wet-edges + Pigment checkboxes + the section reset.
+        // Watercolor section: Wet-edges + Pigment checkboxes + the section reset + the Grain-section
+        // "Same as Paper" toggle + the Paper section reset.
         ph2d_editor_core::ids::PAINTER_WATERCOLOR_ENABLE,
         ph2d_editor_core::ids::PAINTER_WATERCOLOR_PIGMENT,
         ph2d_editor_core::ids::PAINTER_WATERCOLOR_RESET,
+        ph2d_editor_core::ids::PAINTER_WATERCOLOR_GRAN_SAME,
+        ph2d_editor_core::ids::PAINTER_WATERCOLOR_PAPER_RESET,
     ] {
         store.register(
             id,
@@ -422,6 +425,10 @@ fn register_collapsible_sections(store: &mut WidgetStore) {
         (
             core_ids::PAINTER_WATERCOLOR_SECTION,
             core_ids::PAINTER_WATERCOLOR_SECTION_COLOR,
+        ),
+        (
+            core_ids::PAINTER_WATERCOLOR_PAPER_SECTION,
+            core_ids::PAINTER_WATERCOLOR_PAPER_SECTION_COLOR,
         ),
     ] {
         store.mark_collapsible_section(section);

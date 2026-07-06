@@ -423,9 +423,11 @@ impl PainterTool {
         let paper_img = self.paint.paper_image.as_ref().map(|i| i.as_mask());
         // Precompute each slot's Angle rotation basis ONCE (the per-degree walk is not per-pixel-cheap).
         let paper_rot = ph2d_painter_brush::texture::angle_basis(paper_tex.angle_deg);
-        let gran_tex = brush.granulation_tex;
+        // The Granulation map is the **Grain** slot (`brush.texture`) — used only when "Same as Paper" is
+        // off; otherwise the granulation settles into the paper's own tooth.
+        let gran_tex = brush.texture;
         let gran_own_map = !brush.granulation_use_paper && gran_tex.is_active();
-        let gran_img = self.paint.granulation_image.as_ref().map(|i| i.as_mask());
+        let gran_img = self.paint.texture_image.as_ref().map(|i| i.as_mask());
         let gran_rot = ph2d_painter_brush::texture::angle_basis(gran_tex.angle_deg);
         // Fallback pigment when the colour buffer is faint (straight brush colour → sRGB bytes).
         let fallback = [

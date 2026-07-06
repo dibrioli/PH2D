@@ -39,7 +39,16 @@ pub const PAINTER_WATERCOLOR_DEPTH: NodeId = hash_node_id("painter_brush.waterco
 /// **Warp** — organic-boundary displacement in canvas px (render-path). `SetValue` → `set_brush_warp`.
 pub const PAINTER_WATERCOLOR_WARP: NodeId = hash_node_id("painter_brush.watercolor_warp");
 
-// ── Paper + Granulation slots (canvas-anchored substrate maps; `docs/Painter/10…` §5) ──────────────
+// ── Paper section (canvas-anchored substrate; its own section above Grain; `docs/Painter/10…` §5) ──
+/// Collapsible **Paper** section header (ALL-CAPS + chevron + colour dot).
+pub const PAINTER_WATERCOLOR_PAPER_SECTION: NodeId =
+    hash_node_id("painter_brush.watercolor_paper_section");
+/// The Paper header's colour dot (assignable swatch).
+pub const PAINTER_WATERCOLOR_PAPER_SECTION_COLOR: NodeId =
+    hash_node_id("painter_brush.watercolor_paper_section_color");
+/// Paper section **reset** icon button.
+pub const PAINTER_WATERCOLOR_PAPER_RESET: NodeId =
+    hash_node_id("painter_brush.watercolor_paper_reset");
 /// **Paper** slot kind dropdown chip (None / Cold-Rough-Hot Press / other procedural / Image). `SelectOption`
 /// → `set_brush_paper_kind`. Options via [`painter_paper_kind_option_id`].
 pub const PAINTER_WATERCOLOR_PAPER_KIND: NodeId = hash_node_id("painter_brush.watercolor_paper_kind");
@@ -53,20 +62,9 @@ pub const PAINTER_WATERCOLOR_PAPER_SIZE_Y: NodeId =
 pub const PAINTER_WATERCOLOR_PAPER_ANGLE: NodeId =
     hash_node_id("painter_brush.watercolor_paper_angle");
 
-/// **Granulation** "Same as Paper" toggle. `Click` → `toggle_granulation_use_paper`.
+/// **Granulation** "Same as Paper" toggle — shown in the **Grain** section in watercolor mode (the Grain
+/// slot IS the granulation map). `Click` → `toggle_granulation_use_paper`.
 pub const PAINTER_WATERCOLOR_GRAN_SAME: NodeId = hash_node_id("painter_brush.watercolor_gran_same");
-/// **Granulation** slot kind dropdown chip (shown only when "Same as Paper" is off). `SelectOption`
-/// → `set_brush_granulation_kind`. Options via [`painter_granulation_kind_option_id`].
-pub const PAINTER_WATERCOLOR_GRAN_KIND: NodeId = hash_node_id("painter_brush.watercolor_gran_kind");
-/// **Granulation** Size X. `SetValue` → `set_brush_granulation_size`(0).
-pub const PAINTER_WATERCOLOR_GRAN_SIZE_X: NodeId =
-    hash_node_id("painter_brush.watercolor_gran_size_x");
-/// **Granulation** Size Y. `SetValue` → `set_brush_granulation_size`(1).
-pub const PAINTER_WATERCOLOR_GRAN_SIZE_Y: NodeId =
-    hash_node_id("painter_brush.watercolor_gran_size_y");
-/// **Granulation** Angle. `SetValue` → `set_brush_granulation_angle`.
-pub const PAINTER_WATERCOLOR_GRAN_ANGLE: NodeId =
-    hash_node_id("painter_brush.watercolor_gran_angle");
 
 /// Derive the stable [`NodeId`] for **Paper** kind option `k` in the open Paper dropdown popover
 /// (its own id namespace so it never collides with the Grain kind picker). Mirror of
@@ -76,26 +74,21 @@ pub fn painter_paper_kind_option_id(k: u8) -> NodeId {
     fnv_node_id_runtime(&format!("painter_brush.paperkindopt.{k}"))
 }
 
-/// Derive the stable [`NodeId`] for **Granulation** kind option `k` in the open Granulation dropdown popover.
-#[must_use]
-pub fn painter_granulation_kind_option_id(k: u8) -> NodeId {
-    fnv_node_id_runtime(&format!("painter_brush.grankindopt.{k}"))
-}
-
 /// The Watercolor **Click** widgets (master enable + Pigment toggle + section reset + Granulation
 /// "Same as Paper") — forwarded as a `PanelEvent::Click` by the panel's `event.rs` (a single membership
 /// check) and routed by `route_brush_watercolor_event`.
-pub const PAINTER_WATERCOLOR_CLICKS: [NodeId; 4] = [
+pub const PAINTER_WATERCOLOR_CLICKS: [NodeId; 5] = [
     PAINTER_WATERCOLOR_ENABLE,
     PAINTER_WATERCOLOR_PIGMENT,
     PAINTER_WATERCOLOR_RESET,
     PAINTER_WATERCOLOR_GRAN_SAME,
+    PAINTER_WATERCOLOR_PAPER_RESET,
 ];
 
 /// The Watercolor **SetValue** number-fields (Edge / Spread / Granulation / Mix + the render-path
-/// optics Fill / Depth / Warp + the Paper / Granulation slot Size + Angle) — one membership check for
-/// the panel's number-field forward (`is_param_field`) and register loop (`populate.rs`).
-pub const PAINTER_WATERCOLOR_FIELDS: [NodeId; 13] = [
+/// optics Fill / Depth / Warp + the Paper slot Size + Angle) — one membership check for the panel's
+/// number-field forward (`is_param_field`) and register loop (`populate.rs`).
+pub const PAINTER_WATERCOLOR_FIELDS: [NodeId; 10] = [
     PAINTER_WATERCOLOR_EDGE,
     PAINTER_WATERCOLOR_SPREAD,
     PAINTER_WATERCOLOR_GRANULATION,
@@ -106,7 +99,4 @@ pub const PAINTER_WATERCOLOR_FIELDS: [NodeId; 13] = [
     PAINTER_WATERCOLOR_PAPER_SIZE_X,
     PAINTER_WATERCOLOR_PAPER_SIZE_Y,
     PAINTER_WATERCOLOR_PAPER_ANGLE,
-    PAINTER_WATERCOLOR_GRAN_SIZE_X,
-    PAINTER_WATERCOLOR_GRAN_SIZE_Y,
-    PAINTER_WATERCOLOR_GRAN_ANGLE,
 ];

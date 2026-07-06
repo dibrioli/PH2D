@@ -301,19 +301,14 @@ pub struct BrushSettings {
     pub depth: f32,
     /// **Warp** (canvas px) — organic-boundary displacement of the coverage sampling (render-path).
     pub warp: f32,
-    /// **Paper** slot kind (`TextureKind` wire u8) — the substrate tooth.
+    /// **Paper** slot kind (`TextureKind` wire u8) — the substrate tooth (its own full section).
     pub paper_kind: u8,
     /// **Paper** slot Size (x, y), each `0.1..100`.
     pub paper_size: [f32; 2],
     /// **Paper** slot Angle in whole degrees (fibre orientation).
     pub paper_angle: u16,
-    /// **Granulation** slot kind (`TextureKind` wire u8) — the mineral-settling map (when not Same as Paper).
-    pub granulation_kind: u8,
-    /// **Granulation** slot Size (x, y).
-    pub granulation_size: [f32; 2],
-    /// **Granulation** slot Angle in whole degrees.
-    pub granulation_angle: u16,
-    /// **Granulation "Same as Paper"** — when true the granulation settles into the paper's own tooth.
+    /// **Granulation "Same as Paper"** — when true the granulation settles into the paper's own tooth
+    /// (the Grain slot texture is ignored). Shown in the Grain section in watercolor mode.
     pub granulation_use_paper: bool,
 }
 

@@ -22,11 +22,6 @@ pub(super) fn decode_paper_kind_option(id: NodeId) -> Option<u8> {
     (0..TextureKind::COUNT).find(|&k| core_ids::painter_paper_kind_option_id(k) == id)
 }
 
-/// Decode a Watercolor **Granulation** kind popover option id → its `TextureKind` wire u8.
-pub(super) fn decode_granulation_kind_option(id: NodeId) -> Option<u8> {
-    (0..TextureKind::COUNT).find(|&k| core_ids::painter_granulation_kind_option_id(k) == id)
-}
-
 /// Decode a brush blend-mode popover option id → its mode `u8` (fixed; iterate the 24 stable ids).
 pub(super) fn decode_brush_blend_option(id: NodeId) -> Option<u8> {
     (0..MAX_BRUSH_BLEND_MODES).find(|&m| core_ids::painter_brush_blend_option_id(m) == id)

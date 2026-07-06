@@ -62,6 +62,11 @@ pub(crate) fn paint_texture_section(
     if collapsed {
         return y;
     }
+    // Watercolor mode: the Grain slot IS the granulation map — show the "Same as Paper" toggle + the
+    // granulation Amount at the top (the Paper substrate has its own section above). Brush only.
+    if brush.watercolor && !compact {
+        y = crate::paint_watercolor::paint_grain_watercolor_extras(ctx, theme, x, content_w, y, brush);
+    }
     let kind = TextureKind::from_u8(brush.texture_kind);
     let mapping = TextureMapping::from_u8(brush.texture_mapping);
     // Under the Stencil mapping the rect placement (Size / Offset / Rotation) lives in its OWN card

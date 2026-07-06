@@ -27,16 +27,6 @@ pub(crate) fn take_pending_paper_kind_dd() -> Option<(Rect, u8)> {
     state::PENDING_PAPER_KIND_DD.with(|c| c.take())
 }
 
-/// Stash the open Watercolor Granulation kind dropdown for the deferred popover pass.
-pub(crate) fn set_pending_gran_kind_dd(v: Option<(Rect, u8)>) {
-    state::PENDING_GRAN_KIND_DD.with(|c| c.set(v));
-}
-
-/// Take (and clear) the pending Watercolor Granulation kind dropdown.
-pub(crate) fn take_pending_gran_kind_dd() -> Option<(Rect, u8)> {
-    state::PENDING_GRAN_KIND_DD.with(|c| c.take())
-}
-
 /// Stash the open brush blend dropdown for the deferred popover pass.
 pub(crate) fn set_pending_brush_blend_dd(v: Option<(Rect, u8)>) {
     state::PENDING_BRUSH_BLEND_DD.with(|c| c.set(v));

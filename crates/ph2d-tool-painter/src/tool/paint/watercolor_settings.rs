@@ -35,6 +35,10 @@ impl PainterTool {
                 self.toggle_granulation_use_paper();
                 true
             }
+            PanelEvent::Click(id) if *id == core_ids::PAINTER_WATERCOLOR_PAPER_RESET => {
+                self.reset_brush_paper();
+                true
+            }
             PanelEvent::SetValue(id, v) => {
                 let v = *v as f32;
                 match *id {
@@ -76,18 +80,6 @@ impl PainterTool {
                     }
                     x if x == core_ids::PAINTER_WATERCOLOR_PAPER_ANGLE => {
                         self.set_brush_paper_angle(v);
-                        true
-                    }
-                    x if x == core_ids::PAINTER_WATERCOLOR_GRAN_SIZE_X => {
-                        self.set_brush_granulation_size(0, v);
-                        true
-                    }
-                    x if x == core_ids::PAINTER_WATERCOLOR_GRAN_SIZE_Y => {
-                        self.set_brush_granulation_size(1, v);
-                        true
-                    }
-                    x if x == core_ids::PAINTER_WATERCOLOR_GRAN_ANGLE => {
-                        self.set_brush_granulation_angle(v);
                         true
                     }
                     _ => false,
@@ -144,6 +136,13 @@ impl PainterTool {
         self.paint.brush.warp = v.clamp(0.0, 24.0);
     }
 
+    /// Reset the **Paper** slot to empty (kind `None` → the render-path falls back to the built-in paper
+    /// noise), dropping any tagged-layer image. Plain state edit (no undo / pixel touch).
+    pub fn reset_brush_paper(&mut self) {
+        self.paint.brush.paper = TextureSettings::default();
+        self.paint.paper_image = None;
+    }
+
     /// Set the **Paper** slot kind (`TextureKind` wire u8) + force canvas-anchored mapping.
     pub fn set_brush_paper_kind(&mut self, k: u8) {
         self.paint.brush.paper.kind = TextureKind::from_u8(k);
@@ -163,27 +162,9 @@ impl PainterTool {
     }
 
     /// Toggle **Granulation "Same as Paper"** — on = the granulation settles into the paper's own tooth
-    /// (the [`Self::set_brush_granulation_kind`] slot is ignored); off = its own map.
+    /// (the Grain slot texture is ignored); off = the **Grain** slot IS the granulation map.
     pub fn toggle_granulation_use_paper(&mut self) {
         self.paint.brush.granulation_use_paper = !self.paint.brush.granulation_use_paper;
-    }
-
-    /// Set the **Granulation** slot kind + force canvas-anchored mapping.
-    pub fn set_brush_granulation_kind(&mut self, k: u8) {
-        self.paint.brush.granulation_tex.kind = TextureKind::from_u8(k);
-        self.paint.brush.granulation_tex.mapping = TextureMapping::Tiled;
-    }
-
-    /// Set the **Granulation** slot Size on `axis`, clamped to `[0.1, 100]`.
-    pub fn set_brush_granulation_size(&mut self, axis: usize, v: f32) {
-        if axis < 2 {
-            self.paint.brush.granulation_tex.size[axis] = v.clamp(TEX_SIZE_MIN, TEX_SIZE_MAX);
-        }
-    }
-
-    /// Set the **Granulation** slot Angle (whole degrees, wrapped).
-    pub fn set_brush_granulation_angle(&mut self, deg: f32) {
-        self.paint.brush.granulation_tex.angle_deg = deg.rem_euclid(360.0) as u16;
     }
 
     /// Reset the **Watercolor** section to defaults (section off; all params neutral). Plain paint
@@ -212,13 +193,12 @@ impl PainterTool {
         self.paint.brush.watercolor = true;
     }
 
-    /// Install a tagged layer/group into the watercolor **Granulation** slot: the mineral-settling map,
+    /// Install a tagged layer/group into the **Granulation** map — the **Grain** slot (`brush.texture`),
     /// DISTINCT from the paper (Fase D — "Use as Granulation"). Turns off "Same as Paper" so this map is
     /// used, and gives a pronounced granulation amount so the pigment pools in the layer's valleys.
     pub fn use_layers_as_granulation(&mut self, lum: Vec<u8>, width: u32, height: u32) {
-        self.paint.granulation_image = Some(BrushTextureImage::new(lum, width, height));
-        self.paint.brush.granulation_tex.kind = TextureKind::Image;
-        self.paint.brush.granulation_tex.mapping = TextureMapping::Tiled;
+        self.set_brush_texture_image(lum, width, height); // → the Grain slot (kind = Image)
+        self.paint.brush.texture.mapping = TextureMapping::Tiled;
         self.paint.brush.granulation_use_paper = false;
         self.paint.brush.watercolor = true;
         self.paint.brush.granulation = 0.65; // LITERAL-OK: pronounced mineral-settling granulation
@@ -403,8 +383,9 @@ mod tests {
         let mut t2 = PainterTool::default();
         t2.use_layers_as_granulation(lum, 8, 8);
         let b2 = &t2.paint.brush;
-        assert_eq!(b2.granulation_tex.kind, TextureKind::Image, "granulation → Granulation slot Image");
-        assert!(!b2.granulation_use_paper, "granulation uses its OWN map, not the paper");
+        // Granulation = the GRAIN slot (its own section); "Same as Paper" turned off so the map is used.
+        assert_eq!(b2.texture.kind, TextureKind::Image, "granulation → Grain slot Image");
+        assert!(!b2.granulation_use_paper, "granulation uses the Grain map, not the paper");
         assert!((b2.granulation - 0.65).abs() < 1e-6, "pronounced mineral-settling amount");
         assert_eq!(b2.paper.kind, TextureKind::None, "the Paper slot is not touched by the granulation tag");
     }

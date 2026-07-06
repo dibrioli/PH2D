@@ -219,7 +219,15 @@ pub(crate) fn paint_brush_body(
             );
         }
 
-        // ── Section 8: Grain — the texture inside the silhouette (was "Texture", Enio 2026-06-25) ──
+        // ── Watercolor **Paper** section (the substrate) — ABOVE Grain, watercolor mode only. In
+        //    watercolor the Grain slot IS the granulation map (`docs/Painter/10…` §5). ──
+        if brush.watercolor {
+            y = sep(ctx.scene, theme, x, content_w, y);
+            y = crate::paint_watercolor::paint_paper_section(ctx, theme, x, content_w, y, brush);
+        }
+
+        // ── Section 8: Grain — the texture inside the silhouette (was "Texture", Enio 2026-06-25);
+        //    IS the granulation map in watercolor mode ("Same as Paper" + Amount at its top). ──
         y = sep(ctx.scene, theme, x, content_w, y);
         y = crate::paint_texture::paint_texture_section(ctx, theme, x, content_w, y, brush, false);
 

@@ -1,6 +1,6 @@
 // ph2d-chrome-sync:z=160 (dispatch priority, ADR-0107; lower = earlier)
 //! Color-picker palette rename modal: commit the centered dialog's field to the active palette.
-//! Mirrors [`super::settings_api_key`] — read the in-dialog `TextInput` on the Rename button click.
+//! Reads the in-dialog `TextInput` on the Rename button click (mirrors the scene-picker pattern).
 //! The field is the shared `BLENDER_PALETTE_NAME` (so Enter routes through the picker's existing
 //! rename handler in `dispatch::key`); this handler covers the button path.
 

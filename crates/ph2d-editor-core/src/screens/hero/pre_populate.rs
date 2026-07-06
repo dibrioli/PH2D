@@ -383,11 +383,6 @@ fn populate_global_context_menu(store: &mut WidgetStore) {
         ids::CTX_MENU_TEXT_DEFAULT,
         ids::CTX_MENU_TEXT_CRISP_HEAVY,
         ids::CTX_MENU_TEXT_CRISP_HEAVY_PLUS,
-        // P4 (ADR-0061): API-key submenu open + Save rows — populate-register gotcha (see falloff rows below).
-        ids::CTX_MENU_SETTINGS_API_KEY,
-        ids::CTX_MENU_API_KEY_SAVE,
-        // P4 (ADR-0061): the LLM prompt-dialog Generate button.
-        ids::CTX_MENU_VECTOR_PROMPT_GENERATE,
         // Color-picker palette rename modal: its Rename button (same populate-register gotcha — a
         // menu button needs a Button state to be `is_focusable` → get `active` on Down → emit Click).
         ids::CTX_MENU_PALETTE_RENAME,
@@ -413,10 +408,6 @@ fn populate_global_context_menu(store: &mut WidgetStore) {
         ids::CTX_MENU_NEW_IMAGE_SIZE_512,
         ids::CTX_MENU_NEW_IMAGE_SIZE_1024,
         ids::CTX_MENU_NEW_IMAGE_SIZE_2048,
-        ids::CTX_MENU_POINT_TYPE_CORNER,
-        ids::CTX_MENU_POINT_TYPE_SMOOTH,
-        ids::CTX_MENU_POINT_TYPE_ASYMMETRIC,
-        ids::CTX_MENU_POINT_TYPE_AUTO,
         ids::CTX_MENU_FALLOFF_HANDLE_VECTOR,
         ids::CTX_MENU_FALLOFF_HANDLE_AUTO,
         ids::CTX_MENU_CURVE_HANDLE_FREE,
@@ -435,28 +426,6 @@ fn populate_global_context_menu(store: &mut WidgetStore) {
     ] {
         store.register(id, InteractiveState::Plain);
     }
-    // The API-key submenu's input field (P4, ADR-0061) needs persistent
-    // TextInput state so it can be focused + typed/pasted — same as
-    // CTX_SCENE_SEARCH (registered in topbar::populate).
-    store.register(
-        ids::CTX_MENU_API_KEY_INPUT,
-        InteractiveState::TextInput {
-            state: TextInputState::Normal,
-            text: String::new(),
-            caret: 0,
-            selection_anchor: None,
-        },
-    );
-    // The LLM prompt-dialog input (P4, ADR-0061) — same persistent TextInput.
-    store.register(
-        ids::CTX_MENU_VECTOR_PROMPT_INPUT,
-        InteractiveState::TextInput {
-            state: TextInputState::Normal,
-            text: String::new(),
-            caret: 0,
-            selection_anchor: None,
-        },
-    );
 }
 
 fn populate_scrollbars(store: &mut WidgetStore) {

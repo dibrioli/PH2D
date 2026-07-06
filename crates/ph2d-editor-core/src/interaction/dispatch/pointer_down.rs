@@ -55,25 +55,6 @@ pub(super) fn dispatch_down<'frame>(
             Some(id) if id == crate::ids::CTX_SCENE_SEARCH
                 || crate::ids::CTX_SCENE_ROWS.contains(&id)
         );
-        // Same rule for the API-key popover (P4): clicking its TextInput
-        // (to focus + type/paste) or its Save row must NOT close the menu.
-        let inside_api_key = matches!(
-            store.context_menu().map(|r| r.kind),
-            Some(ContextMenuKind::SettingsApiKeySubmenu)
-        ) && matches!(
-            hit_id,
-            Some(id) if id == crate::ids::CTX_MENU_API_KEY_INPUT
-                || id == crate::ids::CTX_MENU_API_KEY_SAVE
-        );
-        // And the LLM vector-prompt dialog (P4): its input + Generate button.
-        let inside_prompt = matches!(
-            store.context_menu().map(|r| r.kind),
-            Some(ContextMenuKind::VectorPromptDialog)
-        ) && matches!(
-            hit_id,
-            Some(id) if id == crate::ids::CTX_MENU_VECTOR_PROMPT_INPUT
-                || id == crate::ids::CTX_MENU_VECTOR_PROMPT_GENERATE
-        );
         // And the palette-rename modal: its shared name field + Rename button.
         let inside_palette_rename = matches!(
             store.context_menu().map(|r| r.kind),
@@ -97,12 +78,7 @@ pub(super) fn dispatch_down<'frame>(
                     .iter()
                     .any(|(_, b)| *b == id)
         });
-        if !inside_scene_list
-            && !inside_api_key
-            && !inside_prompt
-            && !inside_palette_rename
-            && !inside_new_image
-        {
+        if !inside_scene_list && !inside_palette_rename && !inside_new_image {
             store.close_context_menu();
         }
     }

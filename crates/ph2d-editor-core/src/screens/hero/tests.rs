@@ -463,43 +463,6 @@ fn settings_unit_submenu_options_flip_project_display_unit() {
 }
 
 #[test]
-fn point_type_menu_routes_each_kind_to_pending_index() {
-    crate::test_support::ensure_panel_registry();
-    // Each entry in the VectorPointType menu parks its 0..=3 index in
-    // `pending_vector_point_type` (Corner/Smooth/Asymmetric/Auto) and closes the
-    // menu; the shell drains it via `take_pending_vector_point_type` and maps the
-    // index to `VertexKind`.
-    let cases = [
-        (ids::CTX_MENU_POINT_TYPE_CORNER, 0u8),
-        (ids::CTX_MENU_POINT_TYPE_SMOOTH, 1),
-        (ids::CTX_MENU_POINT_TYPE_ASYMMETRIC, 2),
-        (ids::CTX_MENU_POINT_TYPE_AUTO, 3),
-    ];
-    for (entry_id, expected) in cases {
-        let mut hero = HeroScreen::new(NodeId(1));
-        hero.store
-            .open_context_menu(crate::interaction::ContextMenuRequest {
-                x: 0.0,
-                y: 0.0,
-                kind: crate::interaction::ContextMenuKind::VectorPointType,
-            });
-        let consumed = hero.apply_event(WidgetEvent::Click(entry_id));
-        assert!(consumed, "point-type entry click should be consumed");
-        assert_eq!(
-            hero.take_pending_vector_point_type(),
-            Some(expected),
-            "entry must park its VertexKind index"
-        );
-        // Drained exactly once.
-        assert_eq!(hero.take_pending_vector_point_type(), None);
-        assert!(
-            hero.store.context_menu().is_none(),
-            "menu must close after pick"
-        );
-    }
-}
-
-#[test]
 fn curve_point_handle_menu_routes_each_kind_to_pending_wire() {
     crate::test_support::ensure_panel_registry();
     // Each entry in the CurvePointHandle menu parks its wire u8 in `pending_curve_point_handle`
@@ -561,11 +524,6 @@ fn simple_row_context_menu_items_are_populate_registered() {
         ids::CTX_MENU_CURVE_HANDLE_SYMMETRIC,
         ids::CTX_MENU_CURVE_HANDLE_VECTOR,
         ids::CTX_MENU_CURVE_HANDLE_AUTO,
-        // VectorPointType — the working sibling that proves the pattern.
-        ids::CTX_MENU_POINT_TYPE_CORNER,
-        ids::CTX_MENU_POINT_TYPE_SMOOTH,
-        ids::CTX_MENU_POINT_TYPE_ASYMMETRIC,
-        ids::CTX_MENU_POINT_TYPE_AUTO,
         // HierarchyRow items — every entry of the per-row menu (`context_menu_overlay`,
         // `ContextMenuKind::HierarchyRow`). "Use as Brush Shape" shipped dead because it was
         // hit-painted but OMITTED here (the Grain twin was registered) — Enio 2026-06-25.

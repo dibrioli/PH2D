@@ -240,11 +240,6 @@ pub fn paint_context_menu_overlay(
             (ids::CTX_MENU_SETTINGS_FILTER, "Image filter", None),
             (ids::CTX_MENU_SETTINGS_DISPLAY, "Display", None),
             (ids::CTX_MENU_SETTINGS_TEXT, "Text rendering", None),
-            (
-                ids::CTX_MENU_SETTINGS_API_KEY,
-                "Anthropic API Key\u{2026}",
-                None,
-            ),
         ],
         // Pixels-per-meter submenu — 5 presets (retro 16 · Unity 32 · Godot 100 · HD 256 · 4K 1024).
         ContextMenuKind::SettingsPpmSubmenu => &[
@@ -286,10 +281,6 @@ pub fn paint_context_menu_overlay(
         // below — `items` stays empty so the simple-row loop is
         // skipped.
         ContextMenuKind::SceneList => &[],
-        // Likewise the API-key submenu + the vector-prompt dialog paint a
-        // TextInput + button in their own branches (P4, ADR-0061).
-        ContextMenuKind::SettingsApiKeySubmenu => &[],
-        ContextMenuKind::VectorPromptDialog => &[],
         // The palette-rename modal paints a TextInput + Rename button in its own branch below.
         ContextMenuKind::RenamePaletteDialog => &[],
         // The New-image modal paints its size/bg radios + Create in its own branch below.
@@ -327,14 +318,6 @@ pub fn paint_context_menu_overlay(
             (ids::CTX_MENU_HIER_RESET_TRANSFORM, "Reset Transform", None),
             (ids::CTX_MENU_HIER_DELETE, "Delete", None),
         ],
-        // Vector Direct-Select vertex continuity (Illustrator/Affinity order;
-        // no swatch — the Direct overlay glyph IS the affordance, not a menu icon).
-        ContextMenuKind::VectorPointType => &[
-            (ids::CTX_MENU_POINT_TYPE_CORNER, "Corner", None),
-            (ids::CTX_MENU_POINT_TYPE_SMOOTH, "Smooth", None),
-            (ids::CTX_MENU_POINT_TYPE_ASYMMETRIC, "Asymmetric", None),
-            (ids::CTX_MENU_POINT_TYPE_AUTO, "Auto", None),
-        ],
         // Painter Falloff curve point handle (Blender per-point handle types).
         ContextMenuKind::FalloffPointHandle => &[
             (ids::CTX_MENU_FALLOFF_HANDLE_VECTOR, "Vector", None),
@@ -357,12 +340,6 @@ pub fn paint_context_menu_overlay(
     // Centered single-panel dialogs all share one painter signature — dispatch by kind.
     type DialogFn = fn(&mut VectorScene, &mut TextSystem, Theme, &mut HitIndex, &WidgetStore, Rect);
     let dialog: Option<DialogFn> = match req.kind {
-        ContextMenuKind::SettingsApiKeySubmenu => {
-            Some(super::context_menu_dialogs::paint_api_key_submenu)
-        }
-        ContextMenuKind::VectorPromptDialog => {
-            Some(super::context_menu_dialogs::paint_vector_prompt_dialog)
-        }
         ContextMenuKind::RenamePaletteDialog => {
             Some(super::context_menu_dialogs::paint_palette_rename_dialog)
         }

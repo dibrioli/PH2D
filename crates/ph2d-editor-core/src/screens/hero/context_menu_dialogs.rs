@@ -1,9 +1,9 @@
 //! Centered, dialog-style context-menu popovers (split from [`super::context_menu_overlay`] for the
 //! file-LOC cap): a title + hint + single `TextInput` + one accent CTA, centered in the viewport.
-//! Shared by the Settings → API-key popover, the LLM vector-prompt dialog, and the color-picker
-//! palette-rename modal. Centered (not anchored) because their openers sit at the far-right edge;
-//! focus + keyboard + paste use the standard widget dispatch, and `dispatch::pointer`'s menu-close
-//! guard keeps the popover open while the user types into the field.
+//! Used by the color-picker palette-rename modal (and the New-image modal below). Centered (not
+//! anchored) because their openers sit at the far-right edge; focus + keyboard + paste use the
+//! standard widget dispatch, and `dispatch::pointer`'s menu-close guard keeps the popover open while
+//! the user types into the field.
 
 use super::context_menu_overlay::{PAD_Y, ROW_H};
 use super::ids;
@@ -15,60 +15,6 @@ use ph2d_a11y::NodeId;
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, Radius, Spacing, Theme, TypeToken};
 use ph2d_vector::VectorScene;
-
-/// Paint the Settings → Anthropic API-key popover (P4, ADR-0061).
-pub(super) fn paint_api_key_submenu(
-    scene: &mut VectorScene,
-    text_system: &mut TextSystem,
-    theme: Theme,
-    hit_index: &mut HitIndex,
-    store: &WidgetStore,
-    viewport: Rect,
-) {
-    paint_centered_input_dialog(
-        CenteredInputDialog {
-            title: "Anthropic API Key",
-            hint: "Paste your key (sk-ant-\u{2026}), then Save.",
-            input_id: ids::CTX_MENU_API_KEY_INPUT,
-            placeholder: "sk-ant-\u{2026}",
-            button_id: ids::CTX_MENU_API_KEY_SAVE,
-            button_label: "Save",
-        },
-        scene,
-        text_system,
-        theme,
-        hit_index,
-        store,
-        viewport,
-    );
-}
-
-/// Paint the LLM vector prompt dialog (P4, ADR-0061).
-pub(super) fn paint_vector_prompt_dialog(
-    scene: &mut VectorScene,
-    text_system: &mut TextSystem,
-    theme: Theme,
-    hit_index: &mut HitIndex,
-    store: &WidgetStore,
-    viewport: Rect,
-) {
-    paint_centered_input_dialog(
-        CenteredInputDialog {
-            title: "Generate Vector Shape",
-            hint: "Describe a shape, then Generate (e.g. a six-pointed star).",
-            input_id: ids::CTX_MENU_VECTOR_PROMPT_INPUT,
-            placeholder: "a six-pointed star\u{2026}",
-            button_id: ids::CTX_MENU_VECTOR_PROMPT_GENERATE,
-            button_label: "Generate",
-        },
-        scene,
-        text_system,
-        theme,
-        hit_index,
-        store,
-        viewport,
-    );
-}
 
 /// Paint the color-picker palette rename modal — the shared `BLENDER_PALETTE_NAME` field doubles
 /// as the dialog input (so Enter routes through the existing rename handler).

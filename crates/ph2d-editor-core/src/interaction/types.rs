@@ -185,15 +185,6 @@ pub enum ContextMenuKind {
     /// writes `HeroScreen.text_rendering`; the next frame's
     /// `set_text_rendering` publishes the choice to `paint_text*`.
     SettingsTextSubmenu,
-    /// Settings → Anthropic API key (P4, ADR-0061). A dedicated popover with a
-    /// `TextInput` (`CTX_MENU_API_KEY_INPUT`) + a Save row
-    /// (`CTX_MENU_API_KEY_SAVE`); painted by its own branch, like [`Self::SceneList`].
-    SettingsApiKeySubmenu,
-    /// LLM vector authoring (P4, ADR-0061): a centered prompt dialog with a
-    /// `TextInput` (`CTX_MENU_VECTOR_PROMPT_INPUT`) + a Generate button
-    /// (`CTX_MENU_VECTOR_PROMPT_GENERATE`). Opened by the shell (Cmd/Ctrl+Shift+G);
-    /// Generate raises `EditorAction::GenerateVectorFromPrompt`.
-    VectorPromptDialog,
     /// Color-picker palette rename: a centered modal with the shared name `TextInput`
     /// (`BLENDER_PALETTE_NAME`) + a Rename button (`CTX_MENU_PALETTE_RENAME`). Opened by the
     /// picker's "R" button; Rename / Enter commit `blender_rename_active_palette`, outside-click
@@ -216,15 +207,6 @@ pub enum ContextMenuKind {
     /// (`CTX_MENU_NEW_IMAGE_CREATE`). Create raises a `(size, bg)` request the shell services via
     /// `spawn_blank_canvas`; outside-click cancels. The selected size/bg live on the `WidgetStore`.
     NewImageDialog,
-    /// Right-clicked on a Direct-Select vertex (vector tool). Menu offers the
-    /// 4 frozen vertex continuity kinds — Corner / Smooth / Asymmetric / Auto
-    /// (`ph2d_vector_doc::VertexKind` Free/Mirror/Aligned/Auto). No payload: it
-    /// applies to the live `VectorSelection`, which the secondary-click selected.
-    /// The chrome handler routes the click into `HeroScreen.pending_vector_point_type`
-    /// as a 0..=3 index; the shell drains it and calls
-    /// `VectorDirectTool::set_selected_vertex_kind` (editor-core can't depend on
-    /// the vector-doc crate, so the kind crosses the boundary as an index).
-    VectorPointType,
     /// Right-clicked on a Painter brush Falloff curve control point. Menu offers
     /// the two handle types — Vector (sharp corner) / Auto (smooth). No payload:
     /// the secondary-click already selected the point; the chrome handler routes

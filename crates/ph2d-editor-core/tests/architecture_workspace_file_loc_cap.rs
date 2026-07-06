@@ -64,10 +64,6 @@ const FILE_OVERAGE_OK: &[(&str, usize)] = &[
     ("ph2d-tool-color-equalization/src/params.rs", 888),
     ("ph2d-tool-equalize-sizes/src/algorithm.rs", 755),
     ("ph2d-tool-rasterize/src/algorithm.rs", 734),
-    ("ph2d-tool-vector-direct/src/tool.rs", 862),
-    ("ph2d-tool-vector-pen/src/tool.rs", 864),
-    ("ph2d-tool-vector-pencil/src/tool.rs", 759),
-    ("ph2d-vector-fill/src/poisson_cpu.rs", 775),
     ("ph2d-vector/src/vector_network.rs", 780),
 ];
 

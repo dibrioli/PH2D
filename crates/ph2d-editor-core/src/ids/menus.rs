@@ -93,21 +93,6 @@ pub const CTX_MENU_TEXT_DEFAULT: NodeId = hash_node_id("ctx_menu_text_default");
 pub const CTX_MENU_TEXT_CRISP_HEAVY: NodeId = hash_node_id("ctx_menu_text_crisp_heavy");
 pub const CTX_MENU_TEXT_CRISP_HEAVY_PLUS: NodeId = hash_node_id("ctx_menu_text_crisp_heavy_plus");
 
-/// Top-level Settings entry that opens the Anthropic API-key submenu (P4,
-/// ADR-0061) — a `TextInput` + a Save row so the user can paste/enter the key
-/// the LLM-vector authoring feature needs. The key is persisted by the shell to
-/// the user config dir (never to the project).
-pub const CTX_MENU_SETTINGS_API_KEY: NodeId = hash_node_id("ctx_menu_settings_api_key");
-/// The API-key `TextInput` field inside the submenu (its buffer is the key).
-pub const CTX_MENU_API_KEY_INPUT: NodeId = hash_node_id("ctx_menu_api_key_input");
-/// The "Save" row inside the submenu — commits the field's buffer.
-pub const CTX_MENU_API_KEY_SAVE: NodeId = hash_node_id("ctx_menu_api_key_save");
-
-/// LLM vector authoring (P4, ADR-0061): the prompt-dialog `TextInput` (the
-/// natural-language shape description) + its Generate button.
-pub const CTX_MENU_VECTOR_PROMPT_INPUT: NodeId = hash_node_id("ctx_menu_vector_prompt_input");
-pub const CTX_MENU_VECTOR_PROMPT_GENERATE: NodeId = hash_node_id("ctx_menu_vector_prompt_generate");
-
 /// Color-picker palette rename modal: the "Rename" button that commits the shared
 /// `BLENDER_PALETTE_NAME` field to the active palette (the field doubles as the dialog input).
 pub const CTX_MENU_PALETTE_RENAME: NodeId = hash_node_id("ctx_menu_palette_rename");
@@ -185,13 +170,6 @@ pub const CTX_MENU_HIER_RENAME: NodeId = hash_node_id("ctx_menu_hier_rename");
 /// toast when fewer than 2 sprites are selected (silent no-op
 /// otherwise feels broken).
 pub const CTX_MENU_HIER_MERGE_SPRITES: NodeId = hash_node_id("ctx_menu_hier_merge_sprites");
-// Vector Direct-Select point-type menu (secondary-click on a vertex). The 4
-// FROZEN VertexKind continuity options; the chrome handler maps a click to a
-// 0..=3 index in `HeroScreen.pending_vector_point_type` for the shell to apply.
-pub const CTX_MENU_POINT_TYPE_CORNER: NodeId = hash_node_id("ctx_menu_point_type_corner");
-pub const CTX_MENU_POINT_TYPE_SMOOTH: NodeId = hash_node_id("ctx_menu_point_type_smooth");
-pub const CTX_MENU_POINT_TYPE_ASYMMETRIC: NodeId = hash_node_id("ctx_menu_point_type_asymmetric");
-pub const CTX_MENU_POINT_TYPE_AUTO: NodeId = hash_node_id("ctx_menu_point_type_auto");
 // Painter brush Falloff curve point handle menu (secondary-click on a control
 // point). Two HandleType options (Vector / Auto); the chrome handler maps a
 // click to the HandleType wire u8 in `HeroScreen.pending_falloff_point_handle`.

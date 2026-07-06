@@ -60,14 +60,12 @@ mod image_tools_toggle;
 mod io_menu;
 mod new_image;
 mod palette_rename;
-mod point_type;
 mod radius;
 mod rail_painter_tools;
 mod rail_panels;
 mod rail_size;
 mod rail_tools;
 mod scene_picker;
-mod settings_api_key;
 mod settings_filter;
 mod settings_ppm;
 mod settings_present;
@@ -113,14 +111,12 @@ pub fn dispatch_all(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
         || settings_filter::apply(hero, event)
         || settings_present::apply(hero, event)
         || settings_text::apply(hero, event)
-        || settings_api_key::apply(hero, event)
         || palette_rename::apply(hero, event)
         || new_image::apply(hero, event)
         || fill_modal::apply(hero, event)
         || scene_picker::apply(hero, event)
         || image_tools_toggle::apply(hero, event)
         || image_actions::apply(hero, event)
-        || point_type::apply(hero, event)
         || curve_point_handle::apply(hero, event)
         || falloff_handle::apply(hero, event)
         || vector_toggle::apply(hero, event)

@@ -41,7 +41,7 @@ impl App {
         // booleana das 2 últimas regiões fechadas; Delete/Backspace apaga o path
         // selecionado. Modo de teste dedicado (a pill/menu real entra no cutover,
         // Fase R). Só sem modificadores, pra não colidir com atalhos.
-        if self.vec_pen_enabled
+        if self.vector_tool_active()
             && state == ElementState::Pressed
             && !repeat
             && self.modifiers.is_empty()
@@ -64,7 +64,7 @@ impl App {
 
         // ADR-0108 Fase 2: undo/redo + save/load com Ctrl/Cmd. Ctrl+Z desfaz,
         // Ctrl+Shift+Z / Ctrl+Y refaz, Ctrl+S salva, Ctrl+O carrega.
-        if self.vec_pen_enabled
+        if self.vector_tool_active()
             && state == ElementState::Pressed
             && !repeat
             && (self.modifiers.control_key() || self.modifiers.super_key())
@@ -98,51 +98,16 @@ impl App {
             }
         }
 
-        // Vector Pen: Escape cancels the in-progress path, or clears the
-        // committed scene when none is in progress. Consumed only when
-        // the Pen tool is active with something to cancel/clear —
-        // otherwise it falls through to the hero pipeline (widget blur).
+        // Vector: Escape ends an in-progress path (it stays in the scene, open).
+        // Consumed only while the Vector tool is active and the Pen is drawing,
+        // so Escape otherwise falls through to widget blur.
         if state == ElementState::Pressed
             && !repeat
             && matches!(physical_key, PhysicalKey::Code(KeyCode::Escape))
-            && self.try_vector_pen_escape()
+            && self.vector_tool_active()
+            && self.vec_pen.is_drawing()
         {
-            return;
-        }
-        // Vector Pencil: Escape cancels the in-progress freehand stroke, or
-        // clears the committed scene when none is open. Mirror of the Pen.
-        if state == ElementState::Pressed
-            && !repeat
-            && matches!(physical_key, PhysicalKey::Code(KeyCode::Escape))
-            && self.try_vector_pencil_escape()
-        {
-            return;
-        }
-        // Vector Shape: Escape cancels the in-progress shape drag, or clears
-        // the committed scene when none is open. Mirror of the Pen/Pencil.
-        if state == ElementState::Pressed
-            && !repeat
-            && matches!(physical_key, PhysicalKey::Code(KeyCode::Escape))
-            && self.try_vector_shape_escape()
-        {
-            return;
-        }
-        // Vector Select: Escape cancels an in-progress marquee + clears the
-        // selection (Select EDITS the selection, it never appends to the scene).
-        if state == ElementState::Pressed
-            && !repeat
-            && matches!(physical_key, PhysicalKey::Code(KeyCode::Escape))
-            && self.try_vector_select_escape()
-        {
-            return;
-        }
-        // Vector Direct-Select: Escape cancels an in-progress grab + clears the
-        // selection.
-        if state == ElementState::Pressed
-            && !repeat
-            && matches!(physical_key, PhysicalKey::Code(KeyCode::Escape))
-            && self.try_vector_direct_escape()
-        {
+            self.vec_pen.finish();
             return;
         }
         // Painter shapes (Curve/Circle): Escape discards the in-progress shape (reverts the preview);
@@ -163,19 +128,6 @@ impl App {
             )
             && self.painter_shape_commit()
         {
-            return;
-        }
-
-        // LLM vector authoring (P4, ADR-0061): Cmd/Ctrl+Shift+G opens the prompt
-        // dialog — the user types a shape description and clicks Generate. Needs
-        // an Anthropic API key (Settings → Anthropic API Key…, or ANTHROPIC_API_KEY).
-        if state == ElementState::Pressed
-            && !repeat
-            && (self.modifiers.super_key() || self.modifiers.control_key())
-            && self.modifiers.shift_key()
-            && matches!(physical_key, PhysicalKey::Code(KeyCode::KeyG))
-        {
-            self.open_vector_prompt_dialog();
             return;
         }
 
@@ -229,91 +181,6 @@ impl App {
             && self.painter_delete_selected_falloff_point()
         {
             return;
-        }
-
-        // Vector Shape: number keys 1-5 pick the sub-mode (Rect / Ellipse /
-        // Polygon / Star / Spiral) while Shape is active — the functional
-        // selector until the on-screen picker lands in the end-of-impl chrome
-        // pass. Consumed only when Shape is active, so digits otherwise fall
-        // through to the hero pipeline / demo controls below.
-        let shape_kind_index = match physical_key {
-            PhysicalKey::Code(KeyCode::Digit1) => Some(0),
-            PhysicalKey::Code(KeyCode::Digit2) => Some(1),
-            PhysicalKey::Code(KeyCode::Digit3) => Some(2),
-            PhysicalKey::Code(KeyCode::Digit4) => Some(3),
-            PhysicalKey::Code(KeyCode::Digit5) => Some(4),
-            _ => None,
-        };
-        if state == ElementState::Pressed
-            && !repeat
-            && let Some(index) = shape_kind_index
-            && self.try_vector_shape_set_kind(index)
-        {
-            return;
-        }
-
-        // Vector Direct-Select: number keys 1-4 set the SELECTED vertex's point
-        // type (1 Corner / 2 Smooth / 3 Asymmetric / 4 Auto) — the Alt-free path
-        // to tangent-continuity intent (the Mac Alt/Cmd-shared key can't reach
-        // the Alt break; the proper UI is the right-click menu, Coord chrome).
-        // No-op unless Direct is active with a vertex selected.
-        let direct_point_kind = match physical_key {
-            PhysicalKey::Code(KeyCode::Digit1) => Some(0),
-            PhysicalKey::Code(KeyCode::Digit2) => Some(1),
-            PhysicalKey::Code(KeyCode::Digit3) => Some(2),
-            PhysicalKey::Code(KeyCode::Digit4) => Some(3),
-            _ => None,
-        };
-        if state == ElementState::Pressed
-            && !repeat
-            && let Some(index) = direct_point_kind
-            && self.try_vector_direct_set_point_kind(index)
-        {
-            return;
-        }
-
-        // Vector undo/redo is a DOCUMENT-global op (works under ANY active tool —
-        // the natural flow is: draw a shape → switch to Move to gizmo-position it
-        // → Ctrl+Z to undo the draw). Consume the key ONLY when something was
-        // actually undone/redone, so painter / image-edit undo still receives
-        // Ctrl+Z on an empty vector stack (vector_undo/redo are silent + return
-        // false when empty).
-        if state == ElementState::Pressed
-            && !repeat
-            && (self.modifiers.super_key() || self.modifiers.control_key())
-        {
-            let did = match physical_key {
-                PhysicalKey::Code(KeyCode::KeyZ) if self.modifiers.shift_key() => {
-                    self.vector_redo()
-                }
-                PhysicalKey::Code(KeyCode::KeyZ) => self.vector_undo(),
-                PhysicalKey::Code(KeyCode::KeyY) => self.vector_redo(),
-                _ => false,
-            };
-            if did {
-                return;
-            }
-        }
-
-        // Vector scene export/import (W2): Cmd/Ctrl+S saves the committed vector
-        // scene to a `.ph2dvec` file, Cmd/Ctrl+O loads one — gated on a vector
-        // tool being active so they don't shadow a future global save/open.
-        if state == ElementState::Pressed
-            && !repeat
-            && (self.modifiers.super_key() || self.modifiers.control_key())
-            && self.any_vector_tool_active()
-        {
-            match physical_key {
-                PhysicalKey::Code(KeyCode::KeyS) => {
-                    self.save_vector_scene();
-                    return;
-                }
-                PhysicalKey::Code(KeyCode::KeyO) => {
-                    self.load_vector_scene();
-                    return;
-                }
-                _ => {}
-            }
         }
 
         // Hero pipeline (ADR-0024): translate winit's physical KeyCode

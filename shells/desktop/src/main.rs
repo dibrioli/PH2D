@@ -47,7 +47,6 @@ mod input_log;
 mod integration;
 mod keymap;
 mod ktx2_smoke;
-mod llm_vector;
 mod name_unique;
 mod palette_persist;
 mod render_loop;
@@ -188,20 +187,10 @@ impl App {
             painter_commit_requested: false,
             painter_undo_requested: false,
             painter_redo_requested: false,
-            committed_vector_pen_paths: Vec::new(),
-            // ADR-0108 Fase 1.1: Pen novo + flag PH2D_VEC_PEN (modo de teste).
+            // ADR-0108 cutover: the Vector drawing tool's shell-held Pen +
+            // undo history over `AppGfx.vec_scene`.
             vec_pen: ph2d_vec_edit::PenTool::new(),
-            vec_pen_enabled: std::env::var("PH2D_VEC_PEN")
-                .is_ok_and(|v| v == "1" || v.eq_ignore_ascii_case("true")),
             vec_history: ph2d_vec_edit::History::new(),
-            llm_vector: crate::llm_vector::LlmVectorEngine::new(),
-            vector_scene_entities: Vec::new(),
-            last_synced_gizmo_set: Vec::new(),
-            last_synced_vec_networks: Vec::new(),
-            vector_selection: ph2d_vector_doc::VectorSelection::default(),
-            vector_fill_color: [0x88, 0x88, 0x88, 0xFF],
-            vector_undo_stack: Vec::new(),
-            vector_redo_stack: Vec::new(),
             frame_ms_ewma: 16.7, // ~60 Hz baseline so the first
                                  // frame's status bar doesn't display
                                  // a wild value while the EWMA seeds.

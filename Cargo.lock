@@ -4811,8 +4811,6 @@ dependencies = [
  "ph2d-node-motion-transform",
  "ph2d-node-registry",
  "ph2d-node-registry-init",
- "ph2d-node-vector-boolean",
- "ph2d-node-vector-source",
  "ph2d-nodegraph",
  "ph2d-painter-effects",
  "ph2d-panel-audio-mixer",
@@ -4825,8 +4823,6 @@ dependencies = [
  "ph2d-panel-painter-layers",
  "ph2d-panel-registry-init",
  "ph2d-panel-upscale",
- "ph2d-panel-vector-graph",
- "ph2d-panel-vector-inspector",
  "ph2d-render",
  "ph2d-script",
  "ph2d-text",
@@ -4844,21 +4840,12 @@ dependencies = [
  "ph2d-tool-runtime",
  "ph2d-tool-trim-transparency",
  "ph2d-tool-upscale",
- "ph2d-tool-vector-direct",
- "ph2d-tool-vector-pen",
- "ph2d-tool-vector-pencil",
- "ph2d-tool-vector-select",
- "ph2d-tool-vector-shape",
+ "ph2d-tool-vector",
  "ph2d-vec-boolean",
  "ph2d-vec-edit",
  "ph2d-vec-render",
  "ph2d-vec-scene",
  "ph2d-vector",
- "ph2d-vector-doc",
- "ph2d-vector-fill",
- "ph2d-vector-llm",
- "ph2d-vector-llm-client",
- "ph2d-vector-sdf",
  "postcard",
  "rfd",
  "serde",
@@ -5067,8 +5054,6 @@ version = "0.0.0"
 dependencies = [
  "blake3",
  "insta",
- "ph2d-vector-doc",
- "ph2d-vector-llm",
  "serde",
  "serde_json",
 ]
@@ -5140,206 +5125,11 @@ dependencies = [
  "ph2d-node-motion-transform",
  "ph2d-node-registry",
  "ph2d-node-sync",
- "ph2d-node-vector-bend-path",
- "ph2d-node-vector-boolean",
- "ph2d-node-vector-corner-round",
- "ph2d-node-vector-hatch",
- "ph2d-node-vector-llm-shape",
- "ph2d-node-vector-mirror",
- "ph2d-node-vector-offset",
- "ph2d-node-vector-outline-stroke",
- "ph2d-node-vector-pattern-along-path",
- "ph2d-node-vector-recolor",
- "ph2d-node-vector-roughen",
- "ph2d-node-vector-scatter",
- "ph2d-node-vector-source",
- "ph2d-node-vector-twist",
- "ph2d-node-vector-warp",
- "ph2d-node-vector-width-profile",
 ]
 
 [[package]]
 name = "ph2d-node-sync"
 version = "0.0.0"
-
-[[package]]
-name = "ph2d-node-vector-bend-path"
-version = "0.0.0"
-dependencies = [
- "glam 0.30.10",
- "ph2d-node-registry",
- "ph2d-nodegraph",
- "ph2d-vector-doc",
- "ph2d-vector-graph",
-]
-
-[[package]]
-name = "ph2d-node-vector-boolean"
-version = "0.0.0"
-dependencies = [
- "glam 0.30.10",
- "ph2d-node-registry",
- "ph2d-nodegraph",
- "ph2d-vector-doc",
- "ph2d-vector-graph",
- "ph2d-vector-kurbo",
-]
-
-[[package]]
-name = "ph2d-node-vector-corner-round"
-version = "0.0.0"
-dependencies = [
- "glam 0.30.10",
- "ph2d-node-registry",
- "ph2d-nodegraph",
- "ph2d-vector-doc",
- "ph2d-vector-graph",
-]
-
-[[package]]
-name = "ph2d-node-vector-hatch"
-version = "0.0.0"
-dependencies = [
- "glam 0.30.10",
- "ph2d-node-registry",
- "ph2d-nodegraph",
- "ph2d-vector-doc",
- "ph2d-vector-graph",
-]
-
-[[package]]
-name = "ph2d-node-vector-llm-shape"
-version = "0.0.0"
-dependencies = [
- "ph2d-node-registry",
- "ph2d-nodegraph",
- "ph2d-vector-doc",
- "ph2d-vector-graph",
- "ph2d-vector-llm",
-]
-
-[[package]]
-name = "ph2d-node-vector-mirror"
-version = "0.0.0"
-dependencies = [
- "glam 0.30.10",
- "ph2d-node-registry",
- "ph2d-nodegraph",
- "ph2d-vector-doc",
- "ph2d-vector-graph",
-]
-
-[[package]]
-name = "ph2d-node-vector-offset"
-version = "0.0.0"
-dependencies = [
- "glam 0.30.10",
- "ph2d-node-registry",
- "ph2d-nodegraph",
- "ph2d-vector-doc",
- "ph2d-vector-graph",
- "ph2d-vector-kurbo",
-]
-
-[[package]]
-name = "ph2d-node-vector-outline-stroke"
-version = "0.0.0"
-dependencies = [
- "glam 0.30.10",
- "ph2d-node-registry",
- "ph2d-nodegraph",
- "ph2d-vector-doc",
- "ph2d-vector-graph",
- "ph2d-vector-kurbo",
-]
-
-[[package]]
-name = "ph2d-node-vector-pattern-along-path"
-version = "0.0.0"
-dependencies = [
- "glam 0.30.10",
- "ph2d-node-registry",
- "ph2d-nodegraph",
- "ph2d-vector-doc",
- "ph2d-vector-graph",
-]
-
-[[package]]
-name = "ph2d-node-vector-recolor"
-version = "0.0.0"
-dependencies = [
- "glam 0.30.10",
- "ph2d-node-registry",
- "ph2d-nodegraph",
- "ph2d-vector-doc",
- "ph2d-vector-graph",
-]
-
-[[package]]
-name = "ph2d-node-vector-roughen"
-version = "0.0.0"
-dependencies = [
- "glam 0.30.10",
- "ph2d-node-registry",
- "ph2d-nodegraph",
- "ph2d-vector-doc",
- "ph2d-vector-graph",
-]
-
-[[package]]
-name = "ph2d-node-vector-scatter"
-version = "0.0.0"
-dependencies = [
- "glam 0.30.10",
- "ph2d-node-registry",
- "ph2d-nodegraph",
- "ph2d-vector-doc",
- "ph2d-vector-graph",
-]
-
-[[package]]
-name = "ph2d-node-vector-source"
-version = "0.0.0"
-dependencies = [
- "glam 0.30.10",
- "ph2d-node-registry",
- "ph2d-nodegraph",
- "ph2d-vector-doc",
- "ph2d-vector-graph",
-]
-
-[[package]]
-name = "ph2d-node-vector-twist"
-version = "0.0.0"
-dependencies = [
- "glam 0.30.10",
- "ph2d-node-registry",
- "ph2d-nodegraph",
- "ph2d-vector-doc",
- "ph2d-vector-graph",
-]
-
-[[package]]
-name = "ph2d-node-vector-warp"
-version = "0.0.0"
-dependencies = [
- "glam 0.30.10",
- "ph2d-node-registry",
- "ph2d-nodegraph",
- "ph2d-vector-doc",
- "ph2d-vector-graph",
-]
-
-[[package]]
-name = "ph2d-node-vector-width-profile"
-version = "0.0.0"
-dependencies = [
- "glam 0.30.10",
- "ph2d-node-registry",
- "ph2d-nodegraph",
- "ph2d-vector-doc",
- "ph2d-vector-graph",
-]
 
 [[package]]
 name = "ph2d-nodegraph"
@@ -5500,8 +5290,6 @@ dependencies = [
  "ph2d-panel-painter-layers",
  "ph2d-panel-sync",
  "ph2d-panel-upscale",
- "ph2d-panel-vector-graph",
- "ph2d-panel-vector-inspector",
  "ph2d-panel-widget-gallery",
 ]
 
@@ -5518,28 +5306,6 @@ dependencies = [
  "ph2d-tokens",
  "ph2d-tool-registry",
  "ph2d-tool-upscale",
- "ph2d-ui-testkit",
-]
-
-[[package]]
-name = "ph2d-panel-vector-graph"
-version = "0.0.0"
-dependencies = [
- "ph2d-a11y",
- "ph2d-editor-core",
- "ph2d-host",
- "ph2d-tokens",
- "ph2d-ui-testkit",
-]
-
-[[package]]
-name = "ph2d-panel-vector-inspector"
-version = "0.0.0"
-dependencies = [
- "ph2d-a11y",
- "ph2d-editor-core",
- "ph2d-host",
- "ph2d-tokens",
  "ph2d-ui-testkit",
 ]
 
@@ -5809,11 +5575,7 @@ dependencies = [
  "ph2d-tool-sync",
  "ph2d-tool-trim-transparency",
  "ph2d-tool-upscale",
- "ph2d-tool-vector-direct",
- "ph2d-tool-vector-pen",
- "ph2d-tool-vector-pencil",
- "ph2d-tool-vector-select",
- "ph2d-tool-vector-shape",
+ "ph2d-tool-vector",
  "toml 0.9.12+spec-1.1.0",
 ]
 
@@ -5854,72 +5616,14 @@ dependencies = [
 ]
 
 [[package]]
-name = "ph2d-tool-vector-direct"
+name = "ph2d-tool-vector"
 version = "0.0.0"
 dependencies = [
- "glam 0.30.10",
  "ph2d-a11y",
  "ph2d-core",
  "ph2d-editor-core",
  "ph2d-tool-registry",
  "ph2d-vector",
- "ph2d-vector-doc",
-]
-
-[[package]]
-name = "ph2d-tool-vector-pen"
-version = "0.0.0"
-dependencies = [
- "glam 0.30.10",
- "ph2d-a11y",
- "ph2d-color",
- "ph2d-core",
- "ph2d-editor-core",
- "ph2d-tool-registry",
- "ph2d-vector",
- "ph2d-vector-doc",
- "smallvec",
-]
-
-[[package]]
-name = "ph2d-tool-vector-pencil"
-version = "0.0.0"
-dependencies = [
- "glam 0.30.10",
- "ph2d-a11y",
- "ph2d-color",
- "ph2d-core",
- "ph2d-editor-core",
- "ph2d-tool-registry",
- "ph2d-vector",
- "ph2d-vector-doc",
-]
-
-[[package]]
-name = "ph2d-tool-vector-select"
-version = "0.0.0"
-dependencies = [
- "glam 0.30.10",
- "ph2d-a11y",
- "ph2d-core",
- "ph2d-editor-core",
- "ph2d-tool-registry",
- "ph2d-vector",
- "ph2d-vector-doc",
-]
-
-[[package]]
-name = "ph2d-tool-vector-shape"
-version = "0.0.0"
-dependencies = [
- "glam 0.30.10",
- "ph2d-a11y",
- "ph2d-color",
- "ph2d-core",
- "ph2d-editor-core",
- "ph2d-tool-registry",
- "ph2d-vector",
- "ph2d-vector-doc",
 ]
 
 [[package]]
@@ -5988,31 +5692,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "ph2d-vector-fanout-audit"
-version = "0.0.0"
-dependencies = [
- "ph2d-node-registry",
- "ph2d-node-registry-init",
- "ph2d-nodegraph",
- "ph2d-vector-doc",
-]
-
-[[package]]
-name = "ph2d-vector-fill"
-version = "0.0.0"
-dependencies = [
- "blake3",
- "bytemuck",
- "glam 0.30.10",
- "naga",
- "ph2d-color",
- "ph2d-expr",
- "ph2d-gpu",
- "smallvec",
- "wgpu",
-]
-
-[[package]]
 name = "ph2d-vector-font"
 version = "0.0.0"
 dependencies = [
@@ -6021,57 +5700,6 @@ dependencies = [
  "ph2d-vector-traits",
  "skrifa 0.40.0",
  "smallvec",
-]
-
-[[package]]
-name = "ph2d-vector-graph"
-version = "0.0.0"
-dependencies = [
- "glam 0.30.10",
- "ph2d-nodegraph",
- "ph2d-vector-doc",
-]
-
-[[package]]
-name = "ph2d-vector-kurbo"
-version = "0.0.0"
-dependencies = [
- "glam 0.30.10",
- "kurbo 0.13.0",
- "linesweeper",
- "ph2d-vector-doc",
-]
-
-[[package]]
-name = "ph2d-vector-llm"
-version = "0.0.0"
-dependencies = [
- "blake3",
- "glam 0.30.10",
- "ph2d-vector-doc",
- "serde",
- "serde_json",
-]
-
-[[package]]
-name = "ph2d-vector-llm-client"
-version = "0.0.0"
-dependencies = [
- "ph2d-vector-doc",
- "ph2d-vector-llm",
- "serde_json",
- "ureq",
-]
-
-[[package]]
-name = "ph2d-vector-sdf"
-version = "0.0.0"
-dependencies = [
- "bytemuck",
- "glam 0.30.10",
- "ph2d-gpu",
- "ph2d-vector-doc",
- "wgpu",
 ]
 
 [[package]]
@@ -6714,20 +6342,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "ring"
-version = "0.17.14"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a4689e6c2294d81e88dc6261c768b63bc4fcdb852be6d1352498b114f61383b7"
-dependencies = [
- "cc",
- "cfg-if",
- "getrandom 0.2.17",
- "libc",
- "untrusted",
- "windows-sys 0.52.0",
-]
-
-[[package]]
 name = "robust"
 version = "1.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6790,41 +6404,6 @@ dependencies = [
  "libc",
  "linux-raw-sys 0.12.1",
  "windows-sys 0.61.2",
-]
-
-[[package]]
-name = "rustls"
-version = "0.23.40"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ef86cd5876211988985292b91c96a8f2d298df24e75989a43a3c73f2d4d8168b"
-dependencies = [
- "log",
- "once_cell",
- "ring",
- "rustls-pki-types",
- "rustls-webpki",
- "subtle",
- "zeroize",
-]
-
-[[package]]
-name = "rustls-pki-types"
-version = "1.14.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "30a7197ae7eb376e574fe940d068c30fe0462554a3ddbe4eca7838e049c937a9"
-dependencies = [
- "zeroize",
-]
-
-[[package]]
-name = "rustls-webpki"
-version = "0.103.13"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "61c429a8649f110dddef65e2a5ad240f747e85f7758a6bccc7e5777bd33f756e"
-dependencies = [
- "ring",
- "rustls-pki-types",
- "untrusted",
 ]
 
 [[package]]
@@ -7229,12 +6808,6 @@ name = "strsim"
 version = "0.11.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7da8b5736845d9f2fcb837ea5d9e2628564b3b043a70948a3f0b778838c5fb4f"
-
-[[package]]
-name = "subtle"
-version = "2.6.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "13c2bddecc57b384dee18652358fb23172facb8a2c51ccc10d74c157bdea3292"
 
 [[package]]
 name = "svg_fmt"
@@ -7780,28 +7353,6 @@ name = "unicode-xid"
 version = "0.2.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ebc1c04c71510c7f702b52b7c350734c9ff1295c464a03335b00bb84fc54f853"
-
-[[package]]
-name = "untrusted"
-version = "0.9.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8ecb6da28b8a351d773b68d5825ac39017e680750f980f3a1a85cd8dd28a47c1"
-
-[[package]]
-name = "ureq"
-version = "2.12.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "02d1a66277ed75f640d608235660df48c8e3c19f3b4edb6a263315626cc3c01d"
-dependencies = [
- "base64",
- "flate2",
- "log",
- "once_cell",
- "rustls",
- "rustls-pki-types",
- "url",
- "webpki-roots 0.26.11",
-]
 
 [[package]]
 name = "url"
@@ -8563,24 +8114,6 @@ checksum = "5a6580f308b1fad9207618087a65c04e7a10bc77e02c8e84e9b00dd4b12fa0bb"
 dependencies = [
  "js-sys",
  "wasm-bindgen",
-]
-
-[[package]]
-name = "webpki-roots"
-version = "0.26.11"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "521bc38abb08001b01866da9f51eb7c5d647a19260e00054a8c7fd5f9e57f7a9"
-dependencies = [
- "webpki-roots 1.0.7",
-]
-
-[[package]]
-name = "webpki-roots"
-version = "1.0.7"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "52f5ee44c96cf55f1b349600768e3ece3a8f26010c05265ab73f945bb1a2eb9d"
-dependencies = [
- "rustls-pki-types",
 ]
 
 [[package]]
@@ -9653,12 +9186,6 @@ dependencies = [
  "syn",
  "synstructure",
 ]
-
-[[package]]
-name = "zeroize"
-version = "1.8.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b97154e67e32c85465826e8bcc1c59429aaaf107c1e4a9e53c8d8ccd5eff88d0"
 
 [[package]]
 name = "zerotrie"

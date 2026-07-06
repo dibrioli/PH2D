@@ -69,13 +69,9 @@ mod present;
 mod sim_extract;
 mod snapshots;
 mod upscale_bridge;
-mod vector_graph_bridge;
-mod vector_inspector_bridge;
-mod vector_pen_bridge;
-mod vector_pencil_bridge;
-pub(crate) mod vector_scene;
-mod vector_selection_bridge;
-mod vector_shape_bridge;
+// ADR-0108 cutover: the single Vector-tool bridge (style sync + recolour).
+// Rendering of `AppGfx.vec_scene` stays inline below (ph2d_vec_render).
+mod vector_bridge;
 
 use crate::*;
 
@@ -166,11 +162,6 @@ impl crate::App {
         // input snapshot → sim → extract → render.
         self.pump_gamepad();
         self.push_input_to_script();
-
-        // P4 (ADR-0061): drain any finished background LLM-vector generation and
-        // commit it to the live document. Cheap non-blocking try_recv; runs here
-        // in the clean-borrow region before the `gfx` split below.
-        self.poll_llm_vector();
 
         // M14.7 polish (7.3 fix): drain `pending_drops` atomically
         // BEFORE the render walks PresentWorld. Each path imports
@@ -721,34 +712,12 @@ impl crate::App {
                     // tool-internal (no shell-cached preview), so no
                     // padding-specific cleanup is needed here.
                     EditorAction::CancelActiveTool => {
-                        // Audit H7 — destructive-deactivate warn (mirror of the
-                        // Painter unflushed-strokes warn below). Toggling the Pen
-                        // pill off while a path is mid-author runs
-                        // `on_deactivate → reset_path`, silently discarding the
-                        // in-progress vertices. Surface the loss via toast BEFORE
-                        // set_active fires the deactivate path. Downcast lives in
-                        // the allowlisted bridge; this dispatch stays downcast-free.
-                        if vector_pen_bridge::pen_has_in_progress_path(tools) {
-                            toasts.push(Toast::warning(
-                                "Vector Pen: in-progress path discarded. Close \
-                                 the path or press Esc to cancel deliberately."
-                                    .to_string(),
-                            ));
-                        }
-                        if vector_pencil_bridge::pencil_has_in_progress_stroke(tools) {
-                            toasts.push(Toast::warning(
-                                "Vector Pencil: in-progress stroke discarded. \
-                                 Finish the stroke or press Esc to cancel deliberately."
-                                    .to_string(),
-                            ));
-                        }
-                        if vector_shape_bridge::shape_has_in_progress_shape(tools) {
-                            toasts.push(Toast::warning(
-                                "Vector Shape: in-progress shape discarded. \
-                                 Finish the drag or press Esc to cancel deliberately."
-                                    .to_string(),
-                            ));
-                        }
+                        // ADR-0108: end any in-progress Vector draw cleanly when
+                        // the tool is toggled off. The Pen lives on the shell, so
+                        // the partial path PERSISTS in `vec_scene` (open) — no
+                        // discard, no warning; `finish` just leaves drawing mode
+                        // (a cheap no-op for any other tool being cancelled).
+                        self.vec_pen.finish();
                         if let Some(default_id) = tools.default_tool_id()
                             && tools.set_active(&default_id)
                         {
@@ -972,41 +941,6 @@ impl crate::App {
                         } else {
                             wgpu::PresentMode::Immediate
                         });
-                    }
-                    EditorAction::SetApiKey(key) => {
-                        // P4 (ADR-0061): persist the Anthropic key to the user
-                        // config dir; the LLM-vector feature resolves it lazily
-                        // on the next generation. Empty input clears it.
-                        let cleared = key.trim().is_empty();
-                        match crate::llm_vector::save_api_key(&key) {
-                            Ok(()) => {
-                                toasts.push(Toast::info(
-                                    if cleared {
-                                        "Anthropic API key cleared."
-                                    } else {
-                                        "Anthropic API key saved."
-                                    }
-                                    .to_string(),
-                                ));
-                            }
-                            Err(e) => {
-                                toasts.push(Toast::warning(format!("Failed to save API key: {e}")));
-                            }
-                        }
-                    }
-                    EditorAction::GenerateVectorFromPrompt(prompt) => {
-                        // P4 (ADR-0061): run the LLM generation off-thread; the
-                        // per-frame poll_llm_vector commits the result. `llm_vector`
-                        // is a disjoint App field (not gfx) so it's reachable here.
-                        let started = self.llm_vector.submit(prompt);
-                        toasts.push(Toast::info(
-                            if started {
-                                "Generating a vector shape…"
-                            } else {
-                                "A vector generation is already in progress."
-                            }
-                            .to_string(),
-                        ));
                     }
                     // (Bgremoval bake leftover handled inside the
                     // `OneShotImageOp` arm above — defers to the
@@ -1333,177 +1267,28 @@ impl crate::App {
             if frame_prof_on() {
                 FRAME_PROF_DISPATCH_US.with(|c| c.set(self.last_dispatch_us));
             }
-            // Vector Pen tool ⟷ shell bridge. Per-frame world-space
-            // render of committed scene paths + in-progress overlay. The
-            // network IS the asset (ADR-0056 §1.1); world coords come from
-            // `camera.screen_to_world` in `vector_pen_input.rs`.
-            // ADR-0076 (Rank 10): per-asset placement affines (the `Transform`
-            // overlay) so a gizmo-moved vector renders at its new position.
-            // Identity for un-moved assets ⇒ bit-identical to the old path.
-            let vector_placements = vector_scene::placements(sim, &self.vector_scene_entities);
-            vector_pen_bridge::dispatch(
-                tools,
-                camera,
-                window_size,
-                self.last_pointer,
-                &mut self.committed_vector_pen_paths,
-                &vector_placements,
-                vector_scene,
-            );
-            // Vector Pencil ⟷ shell bridge — drains the committed freehand
-            // stroke into the shared scene + paints the in-progress sample
-            // overlay. Committed paths render (fill + stroke) via the pen
-            // bridge's `draw_vector_network`; the pencil bridge owns the live
-            // overlay + the drain only.
-            vector_pencil_bridge::dispatch(
-                tools,
-                camera,
-                window_size,
-                &mut self.committed_vector_pen_paths,
-                vector_scene,
-            );
-            // Vector Shape ⟷ shell bridge — drains the committed shape + paints
-            // the in-progress preview. Committed paths (closed fills + spiral
-            // strokes) render via the pen bridge's canonical `draw_vector_network`.
-            vector_shape_bridge::dispatch(
-                tools,
-                camera,
-                window_size,
-                &mut self.committed_vector_pen_paths,
-                vector_scene,
-            );
-            // ADR-0076: if a vector's scene entity was deleted externally (Delete /
-            // hierarchy row), drop its asset too — otherwise the shape renders but
-            // is gone from the ECS (no gizmo, no pick = orphaned + unselectable).
-            // Runs BEFORE reconcile (which would no-op on matching lengths).
-            // Snapshot the pre-delete scene first (once, only on a real delete
-            // frame) so Ctrl+Z restores the deleted shape.
-            if vector_scene::will_prune(
-                sim,
-                &self.committed_vector_pen_paths,
-                &self.vector_scene_entities,
-            ) {
-                crate::input_dispatch::vector_undo::checkpoint(
-                    &mut self.vector_undo_stack,
-                    &mut self.vector_redo_stack,
-                    &self.committed_vector_pen_paths,
-                );
-            }
-            vector_scene::prune_deleted(
-                sim,
-                &mut self.committed_vector_pen_paths,
-                &mut self.vector_scene_entities,
-            );
-            // ADR-0076: re-sync the per-asset scene entities AFTER every commit
-            // bridge (pen/pencil/shape append; Esc-clear truncates). Spawns
-            // Transform+Name+VectorSceneRef for new assets (→ hierarchy + gizmo),
-            // despawns removed. O(delta); usually a no-op.
-            vector_scene::reconcile(
-                sim,
-                &mut self.vector_scene_entities,
-                &self.committed_vector_pen_paths,
-            );
-            // ADR-0076: bridge the gizmo/hierarchy selection ⟷ the vector tools'
-            // network selection, so a shape selected anywhere is selected
-            // everywhere (gizmo box + fill/color + hierarchy highlight). Runs
-            // BEFORE the selection-overlay + inspector bridges so they paint /
-            // apply against the unified selection this same frame.
-            vector_scene::sync_object_selection(
-                &mut hero.gizmo.selection,
-                &mut hero.gizmo.extra_selection,
-                &mut self.vector_selection,
-                &self.vector_scene_entities,
-                &mut self.last_synced_gizmo_set,
-                &mut self.last_synced_vec_networks,
-            );
-            // Vector Select / Direct-Select ⟷ shell overlay (T2.3). Pure
-            // feedback (never mutates the scene): selected-network outlines +
-            // vertex dots + the live marquee rect, read from the shared
-            // `vector_selection` + the active Select tool's marquee.
-            vector_selection_bridge::dispatch(
-                tools,
-                hero.theme,
-                camera,
-                window_size,
-                &self.committed_vector_pen_paths,
-                &vector_placements,
-                &self.vector_selection,
-                vector_scene,
-            );
-            // Vector Geometry-Graph smoke (W3 T3.1): show the param-slider panel
-            // under PH2D_VECTOR_GRAPH=1, then cook `vector.source` from those
-            // sliders and draw the network into the shared scene — the node-graph
-            // PRODUCER path the W2 tool-direct render doesn't cover. Off → no-op
-            // (normal app untouched, mirror of `motion_smoke`).
-            let vgraph_visible = vector_graph_bridge::enabled();
-            hero.panel_visibility.insert("vector_graph", vgraph_visible);
-            // `surface.gpu()` (&GpuContext, disjoint from `vector_scene`) feeds the
-            // ADR-0065 GPU SDF draft during a slider drag.
-            vector_graph_bridge::dispatch(
-                vgraph_visible,
-                camera,
-                window_size,
-                vector_scene,
-                surface.gpu(),
-            );
-            // Vector Inspector (W2.T2.4): panel visibility + fill-swatch picker
-            // read-back + publish (`hero`/`tools` still in scope from above).
-            vector_inspector_bridge::dispatch(
-                hero,
-                tools,
-                &mut self.vector_fill_color,
-                &mut self.committed_vector_pen_paths,
-                &self.vector_selection,
-                &mut self.vector_undo_stack,
-                &mut self.vector_redo_stack,
-            );
-            // ADR-0108 Fase 0: desenha a cena vetorial NOVA (`ph2d-vec-scene`) na
-            // MESMA cena Vello compartilhada, sob o world→screen da câmera — o
-            // seam ponta-a-ponta da pipeline nova (não crate órfã, DIRETIVA §2).
-            // Dispatch INCONDICIONAL, sem branch por-tool (gate
-            // `architecture_no_per_tool_branch_in_render_loop`): a cena-demo
-            // aparece no canvas até as ferramentas de desenho da Fase 1 dirigirem
-            // `vec_scene`.
+            // ADR-0108 cutover: the Vector drawing tool. `AppGfx.vec_scene` is
+            // document artwork — render it into the shared Vello scene EVERY
+            // frame (not gated on the active tool; no per-tool branch). The
+            // `vector_bridge` reflects the active tool's Style into the shell
+            // Pen + recolours the selection; the edit gizmos draw ONLY while the
+            // Vector tool is active (mirror of how the pen input is gated).
+            let vector_active = tools
+                .active()
+                .is_some_and(|t| t.id() == ph2d_editor::ToolId::new("vector"));
+            vector_bridge::dispatch(tools, vec_scene, &mut self.vec_pen, &mut self.vec_history);
             ph2d_vec_render::dispatch(
                 vec_scene,
                 camera.world_to_screen_affine(window_size),
                 vector_scene,
             );
-            // ADR-0108 Fase 1: gizmos de edição (âncoras + handles do path
-            // selecionado) por cima, só no modo vetorial (flag).
-            if self.vec_pen_enabled {
+            if vector_active {
                 ph2d_vec_render::draw_overlays(
                     vec_scene,
                     self.vec_pen.selected(),
                     camera.world_to_screen_affine(window_size),
                     vector_scene,
                 );
-            }
-            // Drain the right-click point-type menu choice (chrome parked a 0..=3
-            // index in `pending_vector_point_type`) → apply EAGER to the selected
-            // vertices via the Direct tool (re-derives tangents on the spot).
-            if let Some(pt_idx) = hero.take_pending_vector_point_type() {
-                let kind = match pt_idx {
-                    0 => ph2d_vector_doc::VertexKind::Free,
-                    1 => ph2d_vector_doc::VertexKind::Mirror,
-                    2 => ph2d_vector_doc::VertexKind::Aligned,
-                    _ => ph2d_vector_doc::VertexKind::Auto,
-                };
-                if let Some(direct) = tools.active_mut().and_then(|t| {
-                    t.as_any_mut()
-                        .downcast_mut::<ph2d_tool_vector_direct::VectorDirectTool>()
-                }) {
-                    crate::input_dispatch::vector_undo::checkpoint(
-                        &mut self.vector_undo_stack,
-                        &mut self.vector_redo_stack,
-                        &self.committed_vector_pen_paths,
-                    );
-                    direct.set_selected_vertex_kind(
-                        &mut self.committed_vector_pen_paths,
-                        &self.vector_selection,
-                        kind,
-                    );
-                }
             }
             // Drain the Painter Falloff right-click handle menu choice (chrome
             // parked the HandleType wire u8 in `pending_falloff_point_handle`) →

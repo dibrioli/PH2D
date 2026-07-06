@@ -1,0 +1,28 @@
+# Vector — the single first-class tool of the repositioned Vector Module
+# (ADR-0108 cutover). A unified pen + point-edit tool over the `ph2d-vec-*`
+# engine, replacing the retired Pen/Pencil/Shape/Select/Direct family.
+#
+# Cluster `vector_tools` (sole member post-cutover). The panel hosts the Style
+# controls (Width + Stroke/Fill palettes). Shell rendering + pointer routing is
+# the `vector_bridge` + the shell's Pen hooks over `AppGfx.vec_scene`.
+#
+# Canonical source for `crates/ph2d-tool-vector/src/lib.rs`.
+
+[tool]
+id          = "vector"
+cluster     = "vector_tools"
+zone        = "top_right"
+order       = 10
+a11y_role   = "Button"
+icon_slug   = "vector"
+touches_sim = false
+
+[label]
+pt_br_inline = "Vetor"
+en_us_inline = "Vector"
+fluent_key   = "tool.vector.label"
+
+[memory_budget]
+vram_mb        = 0
+ram_mb         = 1
+heap_script_mb = 0

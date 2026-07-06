@@ -38,15 +38,7 @@ ph2d-eval-motion = { path = "../../crates/ph2d-eval-motion" }
 ph2d-node-motion-grid = { path = "../../crates/ph2d-node-motion-grid" }
 ph2d-node-motion-transform = { path = "../../crates/ph2d-node-motion-transform" }
 ph2d-node-motion-clone = { path = "../../crates/ph2d-node-motion-clone" }
-# Vector geometry-graph smoke (W3 T3.1): the `vector.source` op cooked by
-# `render_loop::vector_graph_bridge`.
-ph2d-node-vector-source = { path = "../../crates/ph2d-node-vector-source" }
-# W3 T3.3 boolean smoke: the `vector_graph_bridge` cooks source(a)+source(b)+
-# boolean(op) when `PH2D_VECTOR_GRAPH=1`, proving source→boolean→render live.
-ph2d-node-vector-boolean = { path = "../../crates/ph2d-node-vector-boolean" }
-# W4 transform-node smoke: the bridge cooks source→vector.<slug>→render under
-# PH2D_VECTOR_NODE=<slug>; register_all_nodes gives every node by type-id without
-# a per-node dep (the 11 W4 geometry nodes + future ones).
+# register_all_nodes gives every node by type-id without a per-node dep.
 ph2d-node-registry-init = { path = "../../crates/ph2d-node-registry-init" }
 # Tool registry — convention-by-discovery infrastructure (PR 8 of
 # the migration plan: `docs/Migracao/2026-05-convention-by-discovery.md`).
@@ -75,27 +67,11 @@ ph2d-tool-painter = { path = "../../crates/ph2d-tool-painter", features = [
 # Layer blend modes + adjustment effects — `painter_gpu_flatten.rs` reads
 # BlendMode + adjustment LUTs to drive the GPU LayerCompositor.
 ph2d-painter-effects = { path = "../../crates/ph2d-painter-effects" }
-# Vector Pen — Vector Module W1.T1.5 ship. Shell downcasts to
-# VectorPenTool for pointer-driven path authoring (vector_pen_input.rs
-# + vector_pen_bridge.rs). Bridge also drains `take_committed_asset()`
-# on close-path + saves `.ph2d-vector` to disk via
-# `ph2d_vector_doc::save_vector_asset` (re-exported from ph2d-vector).
-ph2d-tool-vector-pen = { path = "../../crates/ph2d-tool-vector-pen" }
-# Vector Pencil — freehand stroke fitted to cubics via Hobby's algorithm
-# (W2 T2.1). Drag-authored; renders as a styled open path.
-ph2d-tool-vector-pencil = { path = "../../crates/ph2d-tool-vector-pencil" }
-# Vector Shape — 5 primitives (rect/ellipse/polygon/star/spiral) via a panel
-# RadioGroup sub-mode picker (W2 T2.2). Drag-authored.
-ph2d-tool-vector-shape = { path = "../../crates/ph2d-tool-vector-shape" }
-# Vector Select + Direct-Select (W2 T2.3) — edit the committed scene + the
-# shared `VectorSelection`, not append. Downcast in vector_select_input.rs /
-# vector_direct_input.rs; overlay in vector_selection_bridge.rs.
-ph2d-tool-vector-select = { path = "../../crates/ph2d-tool-vector-select" }
-ph2d-tool-vector-direct = { path = "../../crates/ph2d-tool-vector-direct" }
-# VectorSelection (W2 T2.3) — the shared document selection held on `App` over
-# `committed_vector_pen_paths`. Most vector-doc types reach the shell via the
-# `ph2d-vector` umbrella re-export, but `VectorSelection` is not re-exported.
-ph2d-vector-doc = { path = "../../crates/ph2d-vector-doc" }
+# Vector — the single first-class Vector drawing tool (ADR-0108 cutover).
+# Shell downcasts to VectorTool for its Style config (stroke/fill/width) and
+# routes the pointer to the shell-held Pen over `AppGfx.vec_scene`
+# (vector_bridge.rs). Replaces the retired Pen/Pencil/Shape/Select/Direct tools.
+ph2d-tool-vector = { path = "../../crates/ph2d-tool-vector" }
 # Make Square one-shot — the shell drain calls
 # `ph2d_tool_make_square::make_square` on the selected sprite's source
 # RGBA and swaps the texture (ADR-0040 T1.5: was reached via the
@@ -175,13 +151,6 @@ ph2d-panel-padding = { path = "../../crates/ph2d-panel-padding", optional = true
 # Gated por feature `panel-painter-layers`. Shell publica o snapshot via
 # `ph2d_panel_painter_layers::set_current_layers` (painter_bridge.rs).
 ph2d-panel-painter-layers = { path = "../../crates/ph2d-panel-painter-layers", optional = true }
-# Vector inspector (W2.T2.4) — right-docked when a vector selection tool is
-# active. Gated by `panel-vector-inspector`. Shell publishes the current fill
-# color via `ph2d_panel_vector_inspector::set_current_fill` (vector_inspector_bridge.rs).
-ph2d-panel-vector-inspector = { path = "../../crates/ph2d-panel-vector-inspector", optional = true }
-# Vector Geometry-Graph panel (W3 T3.1): 8 param sliders publishing to the
-# `current_graph_params` bus that `vector_graph_bridge` cooks + renders.
-ph2d-panel-vector-graph = { path = "../../crates/ph2d-panel-vector-graph", optional = true }
 # ADR-0029 Phase C.2: direct dep on the panel-hierarchy crate so the
 # host can call `sync_from_hierarchy` / `clear_live_hierarchy` /
 # `set_live_component_count` and read the panel-owned live entries
@@ -203,18 +172,6 @@ ph2d-vec-render = { path = "../../crates/ph2d-vec-render" }
 ph2d-vec-edit = { path = "../../crates/ph2d-vec-edit" }
 # ADR-0108 Fase 1: booleanas edit-time (union/intersect/subtract via linesweeper).
 ph2d-vec-boolean = { path = "../../crates/ph2d-vec-boolean" }
-# ADR-0065 Phase 3: the geometry-graph smoke bridge draws the SDF *draft*
-# (silhouette contour) during a slider drag, before the exact reconcile.
-ph2d-vector-sdf = { path = "../../crates/ph2d-vector-sdf" }
-# ADR-0056-amendment-3 / W7: the geometry-graph smoke can fill the cooked region
-# with a diffusion-curve mesh gradient (PH2D_VECTOR_FILL_SMOKE=1) — solved here +
-# rendered via the procedural-fill image path. `glam::Vec2` authors the curves.
-ph2d-vector-fill = { path = "../../crates/ph2d-vector-fill" }
-# P4 (ADR-0061): LLM-driven vector authoring. The pure sanitizer + the network
-# I/O client (15 s timeout + cache fallback) the editor drives on a worker
-# thread; `build_network_from_json` is the security boundary.
-ph2d-vector-llm = { path = "../../crates/ph2d-vector-llm" }
-ph2d-vector-llm-client = { path = "../../crates/ph2d-vector-llm-client" }
 glam = "0.30"
 ph2d-text = { path = "../../crates/ph2d-text" }
 # bevy_ecs is required as a direct dep so `#[derive(Component)]` can
@@ -289,8 +246,6 @@ default = [
     "panel-equalize-sizes",
     "panel-upscale",
     "panel-painter-layers",
-    "panel-vector-inspector",
-    "panel-vector-graph",
     "panel-audio-mixer",
 ]
 # `lite` = explicit "no panels" — host boots with chrome only
@@ -307,8 +262,6 @@ panel-color-equalization = ["ph2d-panel-registry-init/panel-color-equalization",
 panel-equalize-sizes = ["ph2d-panel-registry-init/panel-equalize-sizes", "dep:ph2d-panel-equalize-sizes"]
 panel-upscale        = ["ph2d-panel-registry-init/panel-upscale", "dep:ph2d-panel-upscale"]
 panel-painter-layers = ["ph2d-panel-registry-init/panel-painter-layers", "dep:ph2d-panel-painter-layers"]
-panel-vector-inspector = ["ph2d-panel-registry-init/panel-vector-inspector", "dep:ph2d-panel-vector-inspector"]
-panel-vector-graph = ["ph2d-panel-registry-init/panel-vector-graph", "dep:ph2d-panel-vector-graph"]
 panel-grid-snap      = ["ph2d-panel-registry-init/panel-grid-snap"]
 # Direct dep too: the render_loop bridge publishes live levels via
 # `set_snapshot` + reads `master_muted` to drive the engine's master gain.

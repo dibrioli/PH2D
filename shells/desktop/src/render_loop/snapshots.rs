@@ -250,40 +250,6 @@ pub(super) fn publish(
     let build_view =
         |bits: u64, sim: &SimWorld, present: &mut PresentWorld| -> Option<ph2d_editor::GizmoView> {
             let sim_entity = ph2d_ecs::Entity::from_bits(bits);
-            // ADR-0076 (Rank 10): a vector scene object has NO Sprite — size the
-            // gizmo box from its rest-pose AABB + its composed WORLD transform
-            // (`parent_world ∘ local`), so the box tracks the vector at any
-            // placement AND follows a hierarchy parent (§2.7).
-            if sim.world().get::<Sprite>(sim_entity).is_none() {
-                let t = crate::render_loop::vector_scene::world_transform(sim, sim_entity)?;
-                let v = sim
-                    .world()
-                    .get::<crate::render_loop::vector_scene::VectorSceneRef>(sim_entity)?;
-                let (center, half, rotation) = crate::render_loop::vector_scene::gizmo_box(
-                    [t.translation.x, t.translation.y],
-                    t.rotation,
-                    [t.scale.x, t.scale.y],
-                    v,
-                );
-                return Some(ph2d_editor::GizmoView {
-                    bbox_min_world: [center[0] - half[0], center[1] - half[1]],
-                    bbox_max_world: [center[0] + half[0], center[1] + half[1]],
-                    rotation,
-                    camera_center: camera.center,
-                    camera_height_world: camera.height_world,
-                    window_w: window_size.width as f32,
-                    window_h: window_size.height as f32,
-                    canvas: ph2d_editor::zones::Rect::new(
-                        0.0,
-                        0.0,
-                        window_size.width as f32,
-                        window_size.height as f32,
-                    ),
-                    cursor_screen: Some(last_pointer),
-                    pivot_world: center,
-                    pivot_tool_active,
-                });
-            }
             let sprite = sim.world().get::<Sprite>(sim_entity)?;
             let mut q = present
                 .world_mut()

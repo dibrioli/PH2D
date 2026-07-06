@@ -497,70 +497,13 @@ pub(crate) struct App {
     /// downcast in the keyboard handler.
     pub(crate) painter_undo_requested: bool,
     pub(crate) painter_redo_requested: bool,
-    /// Accumulator of committed Vector Pen `.ph2d-vector` assets. Each
-    /// close-path emits one; the bridge stashes them here and renders ALL
-    /// committed paths per frame, so finished triangles persist on canvas
-    /// — including across tool switches; they are scene state, NOT Pen-tool
-    /// state (see the `vector_pen_bridge` module doc). Cleared in-memory
-    /// only, via Esc when no path is in progress (`try_vector_pen_escape`).
-    /// W1 has no disk persistence; W2 migrates to a real scene-graph AssetDb
-    /// (load-on-open + save-as), per AUDIT_vector_module_W1_results.md §6
-    /// option (1).
-    pub(crate) committed_vector_pen_paths: Vec<ph2d_vector::Ph2dVectorAsset>,
-
-    /// ADR-0108 Fase 1.1: Pen da pipeline vetorial NOVA (opera sobre
-    /// `AppGfx.vec_scene`). Ativo só sob a flag `PH2D_VEC_PEN` (modo de teste; a
-    /// pill real do topbar entra no cutover, Fase R). Sem relação com
-    /// `committed_vector_pen_paths` (sistema antigo).
+    /// ADR-0108 cutover: the Pen of the Vector drawing tool. Operates on the
+    /// document scene `AppGfx.vec_scene` (document ≠ tool); driven by the shell
+    /// input hooks while the `vector` tool is active, and styled each frame from
+    /// the tool's palette via `render_loop::vector_bridge`.
     pub(crate) vec_pen: ph2d_vec_edit::PenTool,
-    /// `PH2D_VEC_PEN` ligado no boot (lido 1× no construtor).
-    pub(crate) vec_pen_enabled: bool,
-    /// ADR-0108 Fase 2: undo/redo por snapshot da `vec_scene` (Ctrl+Z / Ctrl+Shift+Z).
+    /// ADR-0108: undo/redo by snapshot of `vec_scene` (Ctrl+Z / Ctrl+Shift+Z).
     pub(crate) vec_history: ph2d_vec_edit::History,
-
-    /// P4 (ADR-0061) LLM-vector authoring subsystem: at most one in-flight
-    /// background generation + the persistent fallback cache + the API key.
-    /// Results are drained each frame by [`App::poll_llm_vector`] and committed
-    /// to `committed_vector_pen_paths` as new editable assets.
-    pub(crate) llm_vector: crate::llm_vector::LlmVectorEngine,
-
-    /// ADR-0076 (Rank 10) — one SimWorld entity per committed vector asset,
-    /// positional with `committed_vector_pen_paths` (`entities[i]` ↔ asset `i`).
-    /// Gives each vector a `Transform` (gizmo-movable) + `Name` (hierarchy) without
-    /// thawing the frozen `Ph2dVectorAsset` schema. Re-synced every frame by
-    /// `render_loop::vector_scene::reconcile`. NOT persisted (rebuilt from the
-    /// asset vec each session).
-    pub(crate) vector_scene_entities: Vec<ph2d_ecs::Entity>,
-    /// ADR-0076 selection bridge (`vector_scene::sync_object_selection`):
-    /// previous-frame snapshot of the two object selections (the gizmo selection
-    /// SET — primary + multi-select extras — and the vector network indices), so
-    /// the sync detects which side changed this frame and propagates to the other
-    /// (edge-triggered, no fighting).
-    pub(crate) last_synced_gizmo_set: Vec<u64>,
-    pub(crate) last_synced_vec_networks: Vec<usize>,
-    /// W2.T2.3 — shared vector selection (network + vertex picks) over
-    /// `committed_vector_pen_paths`. Document state, NOT tool state: Select and
-    /// Direct-Select are two separate `Tool` instances in the registry, so the
-    /// selection can't live in either (the inactive one drops from dispatch). The
-    /// input handlers + the `vector_selection_bridge` overlay borrow it by-ref.
-    pub(crate) vector_selection: ph2d_vector_doc::VectorSelection,
-    /// W2.T2.4 — the current vector fill color (sRGB8) the Inspector swatch
-    /// drives. The `vector_inspector_bridge` updates it from the Blender picker
-    /// read-back + publishes it to the panel; the impl's apply-fill reads it to
-    /// fill the selected regions. Default mid-grey.
-    pub(crate) vector_fill_color: [u8; 4],
-    /// W2.T2.5 — vector scene undo/redo: snapshots of
-    /// `committed_vector_pen_paths`. Snapshot-based (not per-op
-    /// `revert_last_op`) so ONE Ctrl+Z reverts a whole user action — a
-    /// committed shape, a Direct vertex/tangent edit, a recolor, or an
-    /// Esc-clear. On restore the ECS mirror is REBUILT (all vector entities
-    /// despawned → reconcile respawns from the restored assets): reconcile
-    /// re-pairs by COUNT, so a same-length-different-content snapshot can't be
-    /// trusted to re-align by identity. Gizmo MOVES (entity `Transform`) are a
-    /// separate scene-undo domain, not captured here. Bounded depth (oldest
-    /// dropped) — see `input_dispatch::vector_undo`.
-    pub(crate) vector_undo_stack: Vec<Vec<ph2d_vector::Ph2dVectorAsset>>,
-    pub(crate) vector_redo_stack: Vec<Vec<ph2d_vector::Ph2dVectorAsset>>,
     /// TOOL_PIVOT: world-space center of the selected sprite's CONTENT
     /// bbox (non-transparent pixels), computed once (lazily, on the
     /// first CTRL-held move) per MovePivot drag and reused as a snap

@@ -17,14 +17,6 @@ path = "src/bin/server.rs"
 serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1"
 blake3 = "1.8.5"
-# ADR-0061 P4 (vector.* tools): the MCP server is the trust boundary for an
-# external agent's LLM4SVG output — it runs every blob through the pure
-# sanitizer (`build_network_from_json`, bounds-before-alloc) and only a
-# validated `VectorNetwork` reaches the scene host. Read-only on both crates'
-# frozen contracts. Only ph2d-bindgen (a dev tool) depends on ph2d-mcp, so this
-# does not pull the vector stack into any engine/shell build path.
-ph2d-vector-llm = { path = "../ph2d-vector-llm" }
-ph2d-vector-doc = { path = "../ph2d-vector-doc" }
 
 [dev-dependencies]
 insta = { version = "1.47.2", features = ["yaml"] }

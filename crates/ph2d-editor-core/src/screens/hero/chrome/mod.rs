@@ -74,12 +74,7 @@ mod settings_present;
 mod settings_text;
 mod settings_unit;
 mod theme;
-mod vector_direct_toggle;
-mod vector_pen_toggle;
-mod vector_pencil_toggle;
-mod vector_prompt;
-mod vector_select_toggle;
-mod vector_shape_toggle;
+mod vector_toggle;
 mod view_toggles;
 // <ph2d-chrome-sync:end>
 
@@ -119,7 +114,6 @@ pub fn dispatch_all(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
         || settings_present::apply(hero, event)
         || settings_text::apply(hero, event)
         || settings_api_key::apply(hero, event)
-        || vector_prompt::apply(hero, event)
         || palette_rename::apply(hero, event)
         || new_image::apply(hero, event)
         || fill_modal::apply(hero, event)
@@ -129,10 +123,6 @@ pub fn dispatch_all(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
         || point_type::apply(hero, event)
         || curve_point_handle::apply(hero, event)
         || falloff_handle::apply(hero, event)
-        || vector_pen_toggle::apply(hero, event)
-        || vector_pencil_toggle::apply(hero, event)
-        || vector_shape_toggle::apply(hero, event)
-        || vector_select_toggle::apply(hero, event)
-        || vector_direct_toggle::apply(hero, event)
+        || vector_toggle::apply(hero, event)
     // <ph2d-chrome-sync:dispatch-end>
 }

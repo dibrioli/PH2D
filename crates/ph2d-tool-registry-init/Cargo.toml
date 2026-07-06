@@ -57,11 +57,7 @@ ph2d-tool-rasterize = { path = "../ph2d-tool-rasterize" }
 ph2d-tool-real-size = { path = "../ph2d-tool-real-size" }
 ph2d-tool-trim-transparency = { path = "../ph2d-tool-trim-transparency" }
 ph2d-tool-upscale = { path = "../ph2d-tool-upscale" }
-ph2d-tool-vector-direct = { path = "../ph2d-tool-vector-direct" }
-ph2d-tool-vector-pen = { path = "../ph2d-tool-vector-pen" }
-ph2d-tool-vector-pencil = { path = "../ph2d-tool-vector-pencil" }
-ph2d-tool-vector-select = { path = "../ph2d-tool-vector-select" }
-ph2d-tool-vector-shape = { path = "../ph2d-tool-vector-shape" }
+ph2d-tool-vector = { path = "../ph2d-tool-vector" }
 # <ph2d-tool-sync:end>
 
 [dev-dependencies]

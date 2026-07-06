@@ -34,30 +34,15 @@ pub const TOPBAR_IMAGE_TOOLS: NodeId = hash_node_id("topbar_image_tools");
 /// Widget Gallery / Grid Settings panel-toggle pattern). Handled by
 /// `ph2d_panel_audio_mixer::AudioMixerPanel::apply_event`.
 pub const TOPBAR_AUDIO_MIXER: NodeId = hash_node_id("topbar_audio_mixer");
-/// Vector Pen tool cluster — TopBar single-pill that activates the
-/// Vector Module Pen tool (W1.T1.7). Click pushes
-/// `EditorAction::ActivateTool { tool_id: "vector_pen" }`; shell
-/// drain in `render_loop::mod` calls
-/// `tools.set_active(&ToolId::new("vector_pen"))`. MVP placement
-/// alongside the other right-side single pills; W2+ may move into a
-/// dedicated "vector_tools" mode toggle (parallel to Image Tools).
+/// Vector tool pill — TopBar single-pill that activates the Vector drawing
+/// tool (ADR-0108 cutover; sole `vector_tools` member). Click pushes
+/// `EditorAction::ActivateTool { tool_id: "vector" }`; the shell drain in
+/// `render_loop::mod` calls `tools.set_active(&ToolId::new("vector"))`.
 ///
-/// **Hash key = `hash_node_id("vector_pen")`** (NOT
-/// `"topbar_vector_pen"`) to match the **image-action pill
-/// convention** (`IMAGE_ACTION_BGREMOVAL = hash_node_id("bgremoval")`,
-/// etc.). This lets the Pressed-highlight reconcile loop in
-/// `shells/desktop/src/render_loop/mod.rs` discover the pill via
-/// `hash_node_id(manifest.id)` lookup — same code path bgremoval uses.
-pub const TOPBAR_VECTOR_PEN: NodeId = hash_node_id("vector_pen");
-/// Vector Pencil pill (W2 T2.1) — same `hash_node_id(manifest.id)`
-/// convention as the Pen, so the `vector_tools` reconcile loop highlights it.
-pub const TOPBAR_VECTOR_PENCIL: NodeId = hash_node_id("vector_pencil");
-/// Vector Shape pill (W2 T2.2) — same `hash_node_id(manifest.id)` convention.
-pub const TOPBAR_VECTOR_SHAPE: NodeId = hash_node_id("vector_shape");
-/// Vector Select pill (W2 T2.3) — same `hash_node_id(manifest.id)` convention.
-pub const TOPBAR_VECTOR_SELECT: NodeId = hash_node_id("vector_select");
-/// Vector Direct-Select pill (W2 T2.3) — same `hash_node_id(manifest.id)` convention.
-pub const TOPBAR_VECTOR_DIRECT: NodeId = hash_node_id("vector_direct");
+/// **Hash key = `hash_node_id("vector")`** (the manifest id, NOT
+/// `"topbar_vector"`) so the Pressed-highlight reconcile loop discovers the
+/// pill via `hash_node_id(manifest.id)` — same path bgremoval/image pills use.
+pub const TOPBAR_VECTOR: NodeId = hash_node_id("vector");
 /// Widget Gallery cluster — toggles the floating reference panel
 /// that showcases every canonical widget (Inputs / Slider /
 /// Switches / Lists / Vector / Status / Color / Actions / Identity /

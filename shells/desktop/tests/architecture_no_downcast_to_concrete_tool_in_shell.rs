@@ -74,17 +74,14 @@ const DOWNCAST_ALLOWLIST: &[&str] = &[
     // image_edit drain: per-tool bake dispatch. Some downcasts retire
     // in later Etapas as OneShotImageOp routes via Registry kind.
     "src/render_loop/image_edit.rs",
-    // Vector inspector bridge: VectorShape/Pen/Pencil/Direct tools expose
-    // shape-kind / point-type affordances the docked inspector drives, which
-    // need concrete-type access — same exception class as painter_bridge.
-    // (Coord ship-fix, 2026-06-04.)
-    "src/render_loop/vector_inspector_bridge.rs",
-    // render_loop/mod.rs: ONE VectorDirectTool downcast (set-vertex-kind from
-    // the pending-point-type pill, ~L1149). It belongs in a vector bridge
-    // (mirror painter_bridge::apply_layer_reparent); allowlisted as a Coord
-    // ship-fix because the file carries live Vector WIP right now (can't edit
-    // without collision). FOLLOW-UP (Vector impl): move it to a bridge and
-    // drop this entry — the central dispatch must stay downcast-free.
+    // Vector bridge (ADR-0108 cutover): downcasts the single `VectorTool` to
+    // read its Style (stroke/fill/width) into the shell Pen + recolour the
+    // selected path. Same documented-bridge exception class as painter_bridge;
+    // keeps the central render loop downcast-free.
+    "src/render_loop/vector_bridge.rs",
+    // render_loop/mod.rs: PainterTool downcasts for the right-click handle-kind
+    // drains (falloff / curve point handle). Same exception class as
+    // painter_bridge; the central dispatch stays free of *vector* downcasts.
     "src/render_loop/mod.rs",
     // Pointer forwarder: the colour-picker eyedropper samples the active PainterTool's layer COMPOSITE
     // (`sample_composite_at_uv`) + reads `repeat_image()` to walk the Repeat-Image neighbour tiles —

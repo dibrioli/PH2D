@@ -173,11 +173,7 @@ fn expected_icon_slug(manifest_id: &str) -> Option<&'static str> {
         "real_size" => "real-size",
         "trim_transparency" => "trim-transparency",
         "upscale" => "upscale",
-        "vector_direct" => "vector-direct",
-        "vector_pen" => "vector-pen",
-        "vector_pencil" => "vector-pencil",
-        "vector_select" => "vector-select",
-        "vector_shape" => "vector-shape",
+        "vector" => "vector",
         // <ph2d-tool-sync:icon-slugs:end>
         _ => return None,
     })

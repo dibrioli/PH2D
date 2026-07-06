@@ -26,17 +26,11 @@ pub fn populate(store: &mut WidgetStore) {
         ids::TOPBAR_OPEN,
         ids::TOPBAR_IMAGE_TOOLS,
         ids::TOPBAR_AUDIO_MIXER,
-        ids::TOPBAR_VECTOR_PEN,
-        // The other four vector pills MUST be registered too: a pill that
-        // is only painted + hit-indexed (cluster_painter.rs) but absent
-        // here has no `InteractiveState`, so `is_focusable` returns false,
-        // pointer-Down never sets it active, pointer-Up never emits
-        // `Click`, and its chrome toggle never fires `ActivateTool` — the
-        // tool is dead on click. (Audit 2026-06-02 killer.)
-        ids::TOPBAR_VECTOR_PENCIL,
-        ids::TOPBAR_VECTOR_SHAPE,
-        ids::TOPBAR_VECTOR_SELECT,
-        ids::TOPBAR_VECTOR_DIRECT,
+        // Vector pill MUST be registered here (not only painted/hit-indexed in
+        // cluster_painter.rs): a pill absent here has no `InteractiveState`, so
+        // pointer-Up never emits `Click` and the tool is dead on click.
+        // (Audit 2026-06-02 killer.)
+        ids::TOPBAR_VECTOR,
         ids::TOPBAR_WIDGET_GALLERY,
         ids::TOPBAR_GRID_SETTINGS,
         ids::TOPBAR_SETTINGS,

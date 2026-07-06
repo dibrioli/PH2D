@@ -55,31 +55,12 @@ pub fn topbar_clusters() -> Vec<(ph2d_a11y::NodeId, TopBarCluster)> {
             ids::TOPBAR_AUDIO_MIXER,
             TopBarCluster::single("MIX", IconId::Audio),
         ),
-        // W1.T1.7 MVP: Vector Pen tool always-visible single pill.
-        // Click activates the Pen tool (via chrome handler
-        // `vector_pen_toggle::apply` → `EditorAction::ActivateTool`).
-        // W2+ may consolidate under a "VECTOR" mode toggle (parallel
-        // to IMG) when more Vector tools (Pencil / Shape / Select)
-        // ship.
+        // Vector drawing tool — the single `vector_tools` pill (ADR-0108
+        // cutover). Click activates it via `vector_toggle::apply` →
+        // `EditorAction::ActivateTool { tool_id: "vector" }`.
         (
-            ids::TOPBAR_VECTOR_PEN,
-            TopBarCluster::single("PEN", IconId::VectorPen),
-        ),
-        (
-            ids::TOPBAR_VECTOR_PENCIL,
-            TopBarCluster::single("PENCIL", IconId::VectorPencil),
-        ),
-        (
-            ids::TOPBAR_VECTOR_SHAPE,
-            TopBarCluster::single("SHAPE", IconId::VectorShape),
-        ),
-        (
-            ids::TOPBAR_VECTOR_SELECT,
-            TopBarCluster::single("SELECT", IconId::VectorSelect),
-        ),
-        (
-            ids::TOPBAR_VECTOR_DIRECT,
-            TopBarCluster::single("DIRECT", IconId::VectorDirect),
+            ids::TOPBAR_VECTOR,
+            TopBarCluster::single("VECTOR", IconId::Vector),
         ),
         (ids::TOPBAR_PLAY_BUTTON, TopBarCluster::play()),
         (ids::TOPBAR_RIGHT_LAYERS, TopBarCluster::right()),

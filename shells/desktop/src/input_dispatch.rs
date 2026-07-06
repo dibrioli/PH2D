@@ -53,13 +53,6 @@ mod keyboard;
 pub(crate) mod painter_canvas_input;
 pub(crate) mod painter_falloff_input;
 pub(crate) mod protect_brush;
-mod vector_direct_input;
-mod vector_pen_input;
-mod vector_pencil_input;
-mod vector_persist;
-mod vector_select_input;
-mod vector_shape_input;
-pub(crate) mod vector_undo;
 
 impl App {
     pub(crate) fn on_close_request(&mut self, event_loop: &ActiveEventLoop) {
@@ -304,11 +297,21 @@ impl App {
             .unwrap_or_else(|_| "ph2d_vec_scene.postcard".to_string())
     }
 
-    /// ADR-0108 Fase 1.2: enquanto o Pen novo arrasta um handle, projeta o cursor
-    /// pra world e puxa os handles Bézier do último vértice. No-op barato quando
-    /// não há arrasto — chamado a cada CursorMoved.
+    /// ADR-0108 cutover: is the Vector drawing tool the active tool? Gates the
+    /// Pen input hooks (replaces the retired `PH2D_VEC_PEN` test flag).
+    pub(crate) fn vector_tool_active(&self) -> bool {
+        self.gfx.as_ref().is_some_and(|g| {
+            g.tools
+                .active()
+                .is_some_and(|t| t.id() == ph2d_editor::ToolId::new("vector"))
+        })
+    }
+
+    /// ADR-0108: enquanto o Pen arrasta um handle, projeta o cursor pra world e
+    /// puxa os handles Bézier do último vértice. No-op barato quando não há
+    /// arrasto — chamado a cada CursorMoved.
     fn vec_pen_drag_move(&mut self, x: f32, y: f32) -> bool {
-        if !self.vec_pen_enabled || !self.vec_pen.is_dragging() {
+        if !self.vector_tool_active() || !self.vec_pen.is_dragging() {
             return false;
         }
         let Some(gfx) = self.gfx.as_mut() else {
@@ -374,35 +377,6 @@ impl App {
         // ADR-0108 Fase 1.2: Pen NOVO — arrastar após a âncora puxa os handles
         // Bézier (simétricos). Early-return: não pan/gizmo. No-op sem drag ativo.
         if self.vec_pen_drag_move(self.last_pointer.0, self.last_pointer.1) {
-            return;
-        }
-        // Vector Pen handle drag (W2): while the Primary button is held after
-        // placing an anchor, motion pulls its Bézier handles. Early-return so
-        // it doesn't pan / drive a gizmo. No-ops unless a Pen click-drag is live.
-        if self.try_vector_pen_pointer_drag(self.last_pointer.0, self.last_pointer.1) {
-            return;
-        }
-        // Vector Pencil stroke drag (T2.1): while a freehand stroke is open,
-        // every motion records another sample. Early-return so it doesn't
-        // pan / drive a gizmo / extend a rubber-band. No-ops (returns false)
-        // when no pencil stroke is active.
-        if self.try_vector_pencil_pointer_drag(self.last_pointer.0, self.last_pointer.1) {
-            return;
-        }
-        // Vector Shape drag (T2.2): while a shape is being rubber-banded out,
-        // every motion resizes the live preview. Early-return so it doesn't
-        // pan / drive a gizmo. No-ops when no shape drag is active.
-        if self.try_vector_shape_pointer_drag(self.last_pointer.0, self.last_pointer.1) {
-            return;
-        }
-        // Vector Select marquee (T2.3): grow the rubber-band while dragging.
-        // No-ops unless a marquee is open.
-        if self.try_vector_select_pointer_drag(self.last_pointer.0, self.last_pointer.1) {
-            return;
-        }
-        // Vector Direct-Select drag (T2.3): move the grabbed vertex / tangent
-        // (Alt breaks it). No-ops unless a grab is live.
-        if self.try_vector_direct_pointer_drag(self.last_pointer.0, self.last_pointer.1) {
             return;
         }
         // M14.4b.bis: middle-drag camera pan. Applied BEFORE pointer
@@ -474,48 +448,6 @@ impl App {
         }
     }
 
-    /// `true` if `(x, y)` lands on a transform-gizmo handle (corner / edge /
-    /// rotate / interior, or a keyed extra / global handle). ADR-0076: lets a
-    /// gizmo-handle click fall THROUGH the vector tools' canvas-consume arms so
-    /// the gizmo transforms a selected vector even while a vector Select / Direct
-    /// / Shape tool is active (otherwise the tool eats the drag and the gizmo
-    /// never engages).
-    fn cursor_on_gizmo_handle(&self, x: f32, y: f32) -> bool {
-        self.gfx
-            .as_ref()
-            .and_then(|g| g.hero_screen.as_ref())
-            .and_then(|h| {
-                h.hit_index.hit(x, y).map(|id| {
-                    ph2d_editor::gizmo_kind_for_id(id).is_some()
-                        || h.gizmo.gizmo_hit_map.contains_key(&id)
-                })
-            })
-            .unwrap_or(false)
-    }
-
-    /// `true` if `(x, y)` lands on a committed vector shape (placement-aware).
-    /// ADR-0076: lets the vector Select tool's marquee/consume arms YIELD a
-    /// shape-body click to the gizmo canvas-pick path, which selects it + opens a
-    /// translate drag in the SAME gesture (click-to-drag, like a sprite). Only an
-    /// EMPTY canvas click then begins a rubber-band marquee.
-    fn cursor_on_vector_shape(&self, x: f32, y: f32) -> bool {
-        self.gfx
-            .as_ref()
-            .map(|g| {
-                let world = g.camera.screen_to_world((x, y), g.surface.size());
-                let scale =
-                    (g.surface.size().height as f32) / g.camera.height_world.max(f32::EPSILON);
-                crate::render_loop::vector_scene::pick_index(
-                    &g.sim,
-                    &self.vector_scene_entities,
-                    &self.committed_vector_pen_paths,
-                    world,
-                    crate::render_loop::vector_scene::STROKE_PICK_TOLERANCE_PX / scale,
-                )
-                .is_some()
-            })
-            .unwrap_or(false)
-    }
 
     pub(crate) fn on_mouse_input(&mut self, state: ElementState, button: MouseButton) {
         let kind = match state {
@@ -562,13 +494,12 @@ impl App {
             .and_then(|g| g.hero_screen.as_ref())
             .is_some_and(|h| h.store.eyedropper_pending().is_some());
 
-        // ADR-0108 Fase 1.1/1.2: Pen vetorial NOVO (flag PH2D_VEC_PEN) — só no
-        // CANVAS (não sobre um painel). Primary Down coloca uma âncora (arrastar
-        // puxa os handles Bézier — 1.2); Primary Up encerra o arrasto; Secondary
-        // finaliza o traço. Consome o clique (early return). A pill do topbar
-        // entra no cutover (Fase R); modo de teste dedicado por ora.
+        // ADR-0108 cutover: the Vector tool's Pen — canvas only (not over a
+        // panel). Primary Down places an anchor (drag pulls the Bézier handles);
+        // Primary Up ends the drag; Secondary finishes the path. Consumes the
+        // click. Gated on the Vector tool being the active tool.
         let over_panel = crate::forwarding::cursor_over_hero_panel(self.gfx.as_ref(), evt.x, evt.y);
-        if self.vec_pen_enabled && !menu_open_before {
+        if self.vector_tool_active() && !menu_open_before {
             match (mapped_button, kind) {
                 (ph2d_host::PointerButton::Primary, PointerKind::Down) if !over_panel => {
                     if let Some(gfx) = self.gfx.as_mut() {
@@ -627,14 +558,6 @@ impl App {
         // extra-colour swatch deletes it; a Primary Down/drag over the
         // sprite samples colours. Both consume the event so the normal
         // canvas/gizmo/context-menu logic below does not run.
-        // ADR-0076: a gizmo-handle click must reach the transform-gizmo path
-        // (below the consume block) even while a vector tool is active — so it
-        // bypasses the vector tools' unconditional canvas-consume arms.
-        let on_gizmo_handle = self.cursor_on_gizmo_handle(evt.x, evt.y);
-        // ADR-0076: a click on a vector shape body should select + click-to-drag via
-        // the gizmo path (like a sprite) — so the Select tool's marquee/consume arms
-        // yield it. Only empty canvas begins a marquee.
-        let on_vector_shape = self.cursor_on_vector_shape(evt.x, evt.y);
         // Fill (Bucket) ColorDrop: a Primary Down on the Fill rail button arms the drag-to-canvas gesture
         // + activates Fill. Self-gates on the hit id; the normal Up-click still selects the tool when the
         // press is released ON the button, and is suppressed when it drags off (release outside the rect).
@@ -666,13 +589,6 @@ impl App {
             // CursorMoved). Consumes so it doesn't open a context menu.
             (ph2d_host::PointerButton::Secondary, PointerKind::Down)
                 if self.try_protect_erase(evt.x, evt.y) =>
-            {
-                return;
-            }
-            // Vector Direct-Select: right-click a vertex → open the point-type
-            // context menu (Corner/Smooth/Asymmetric/Auto). No-op off a vertex.
-            (ph2d_host::PointerButton::Secondary, PointerKind::Down)
-                if self.try_vector_direct_open_point_menu(evt.x, evt.y) =>
             {
                 return;
             }
@@ -752,80 +668,6 @@ impl App {
             {
                 return;
             }
-            // W1.T1.7: Vector Pen — Primary Down on canvas inside
-            // sprite footprint adds a vertex / extends / close-paths
-            // the in-progress network via `VectorPenTool::on_canvas_click`.
-            // Must be tried BEFORE the painter rule below so Pen
-            // sessions don't fall through to selection / gizmo logic.
-            (ph2d_host::PointerButton::Primary, PointerKind::Down)
-                if !menu_open_before && self.try_vector_pen_click(evt.x, evt.y) =>
-            {
-                return;
-            }
-            // Pen active but click landed OFF-canvas → silent consume
-            // (same UX rule as painter: a canvas-authoring tool owns
-            // the canvas region; misses don't open rubber-band or
-            // change selection).
-            (ph2d_host::PointerButton::Primary, PointerKind::Down)
-                if !on_gizmo_handle && self.vector_pen_active_consume_canvas_click() =>
-            {
-                return;
-            }
-            // Vector Pencil — Primary Down inside the sprite footprint STARTS
-            // a freehand stroke (drag-authored, unlike the Pen's click); the
-            // CursorMoved drag + the Up arm below extend and commit it. Only
-            // one vector tool is ever active, so this coexists with the Pen.
-            (ph2d_host::PointerButton::Primary, PointerKind::Down)
-                if self.try_vector_pencil_pointer_down(evt.x, evt.y) =>
-            {
-                return;
-            }
-            // Pencil active but Down landed OFF-canvas → silent consume.
-            (ph2d_host::PointerButton::Primary, PointerKind::Down)
-                if !on_gizmo_handle && self.vector_pencil_active_consume_canvas_click() =>
-            {
-                return;
-            }
-            // Vector Shape — Primary Down inside the footprint starts a shape
-            // drag (drag-authored, like the Pencil); Move resizes the preview,
-            // Up commits. Off-canvas Down is silently consumed.
-            (ph2d_host::PointerButton::Primary, PointerKind::Down)
-                if self.try_vector_shape_pointer_down(evt.x, evt.y) =>
-            {
-                return;
-            }
-            (ph2d_host::PointerButton::Primary, PointerKind::Down)
-                if !on_gizmo_handle && self.vector_shape_active_consume_canvas_click() =>
-            {
-                return;
-            }
-            // Vector Select — Primary Down anchors a marquee; the CursorMoved
-            // drag grows it and the Up arm resolves click-vs-marquee. Off-canvas
-            // Down is silently consumed (Select owns the canvas click).
-            (ph2d_host::PointerButton::Primary, PointerKind::Down)
-                if !on_vector_shape && self.try_vector_select_pointer_down(evt.x, evt.y) =>
-            {
-                return;
-            }
-            (ph2d_host::PointerButton::Primary, PointerKind::Down)
-                if !on_gizmo_handle
-                    && !on_vector_shape
-                    && self.vector_select_active_consume_canvas_click() =>
-            {
-                return;
-            }
-            // Vector Direct-Select — Primary Down grabs the nearest vertex /
-            // tangent; Move drags it, Up ends. Off-canvas Down is consumed.
-            (ph2d_host::PointerButton::Primary, PointerKind::Down)
-                if self.try_vector_direct_pointer_down(evt.x, evt.y) =>
-            {
-                return;
-            }
-            (ph2d_host::PointerButton::Primary, PointerKind::Down)
-                if !on_gizmo_handle && self.vector_direct_active_consume_canvas_click() =>
-            {
-                return;
-            }
             (ph2d_host::PointerButton::Primary, PointerKind::Up) => {
                 self.eyedropper_dragging = false;
                 self.end_protect_paint();
@@ -838,21 +680,6 @@ impl App {
                 self.fill_drag_up();
                 // End a Fill "Fill adjust" modal title-band drag. No-op when not dragging the modal.
                 self.fill_modal_drag_up();
-                // Close a Pen click-drag handle window (logs the pulled
-                // tangent). No-op when the Pen isn't mid-click-drag.
-                self.try_vector_pen_pointer_up();
-                // Commit the freehand stroke (fit → Hobby → push committed
-                // asset). No-ops when no pencil stroke is open.
-                self.try_vector_pencil_pointer_up();
-                // Commit the shape (generate primitive → push). No-op when no
-                // shape drag is open.
-                self.try_vector_shape_pointer_up();
-                // Resolve a Select gesture (click vs marquee). No-op when no
-                // marquee is open.
-                self.try_vector_select_pointer_up();
-                // End a Direct-Select grab (the Move op stays logged for undo).
-                // No-op when no grab is live.
-                self.try_vector_direct_pointer_up();
             }
             _ => {}
         }
@@ -1047,19 +874,6 @@ impl App {
                                 .world()
                                 .get::<ph2d_render::Sprite>(entity)
                                 .map(|s| [s.size[0] * 0.5, s.size[1] * 0.5])
-                                // ADR-0076: a vector has no Sprite — feed its
-                                // rest-pose AABB half so the gizmo's scale pivot has
-                                // a real extent (a zero half makes the scale factor
-                                // divide by ~0 and the pivot land at the origin →
-                                // the shape drifts while scaling).
-                                .or_else(|| {
-                                    gfx.sim
-                                        .world()
-                                        .get::<crate::render_loop::vector_scene::VectorSceneRef>(
-                                            entity,
-                                        )
-                                        .map(|v| v.half())
-                                })
                                 .unwrap_or([0.0, 0.0]);
                             // Onda 2C: pivot world depends on target.
                             // PrimaryIndividual / ExtraIndividual use the
@@ -1182,21 +996,9 @@ impl App {
                             }
                         }
                         let picked = if hits.is_empty() {
-                            // ADR-0076 (Rank 10): no sprite under the cursor — fall
-                            // back to the vector scene objects. The result is a sim
-                            // entity bits value, identical in kind to a sprite pick,
-                            // so it flows through the same replace/toggle/gizmo path
-                            // below (and the gizmo's Transform write) with no special
-                            // casing.
-                            crate::render_loop::vector_scene::pick(
-                                &gfx.sim,
-                                &self.vector_scene_entities,
-                                &self.committed_vector_pen_paths,
-                                world_pos,
-                                crate::render_loop::vector_scene::STROKE_PICK_TOLERANCE_PX
-                                    / ((gfx.surface.size().height as f32)
-                                        / gfx.camera.height_world.max(f32::EPSILON)),
-                            )
+                            // No sprite under the cursor. (The old vector-scene
+                            // object pick fell back here; retired with ADR-0108.)
+                            None
                         } else {
                             hits.get(self.cycle_pick_idx).copied()
                         };

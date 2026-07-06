@@ -13,10 +13,12 @@
 #![forbid(unsafe_code)]
 
 mod event;
+mod fader;
 mod paint;
 mod populate;
 pub mod state;
 
+pub use fader::{FADER_UNITY_POS, fader_db, fader_gain};
 pub use state::AudioMixerState;
 
 use ph2d_a11y::NodeId;
@@ -42,23 +44,36 @@ pub const AMIX_PAN: NodeId = hash_node_id("audio_mixer_pan");
 /// order** (Music, SFX). The panel is UI-only (no `ph2d-audio` dep); the shell's
 /// bridge maps strip index `i` → `BusId::SUB_BUSES[i]`, so this count and order
 /// must match the core. A compile-time assert in the shell guards the count.
-pub const SUB_BUS_COUNT: usize = 2;
+pub const SUB_BUS_COUNT: usize = 4;
 /// Strip labels, index-aligned with [`SUB_BUS_COUNT`].
-pub const SUB_BUS_LABELS: [&str; SUB_BUS_COUNT] = ["Music", "SFX"];
+pub const SUB_BUS_LABELS: [&str; SUB_BUS_COUNT] = ["Music", "SFX", "UI", "Voice"];
 /// Per-sub-bus vertical fader ids (drag → that bus's gain).
 pub const SUB_FADER: [NodeId; SUB_BUS_COUNT] = [
     hash_node_id("audio_mixer_music_fader"),
     hash_node_id("audio_mixer_sfx_fader"),
+    hash_node_id("audio_mixer_ui_fader"),
+    hash_node_id("audio_mixer_voice_fader"),
 ];
 /// Per-sub-bus mute toggle ids.
 pub const SUB_MUTE: [NodeId; SUB_BUS_COUNT] = [
     hash_node_id("audio_mixer_music_mute"),
     hash_node_id("audio_mixer_sfx_mute"),
+    hash_node_id("audio_mixer_ui_mute"),
+    hash_node_id("audio_mixer_voice_mute"),
+];
+/// Per-sub-bus solo toggle ids (solo mutes the other sub-buses).
+pub const SUB_SOLO: [NodeId; SUB_BUS_COUNT] = [
+    hash_node_id("audio_mixer_music_solo"),
+    hash_node_id("audio_mixer_sfx_solo"),
+    hash_node_id("audio_mixer_ui_solo"),
+    hash_node_id("audio_mixer_voice_solo"),
 ];
 /// Per-sub-bus stereo-balance slider ids (drag → that bus's pan).
 pub const SUB_PAN: [NodeId; SUB_BUS_COUNT] = [
     hash_node_id("audio_mixer_music_pan"),
     hash_node_id("audio_mixer_sfx_pan"),
+    hash_node_id("audio_mixer_ui_pan"),
+    hash_node_id("audio_mixer_voice_pan"),
 ];
 
 /// Zero-size marker implementing the typed Audio Mixer panel contract.
@@ -105,6 +120,7 @@ mod snapshot {
         static SUB_LEVELS: Cell<[[f32; 2]; SUB_BUS_COUNT]> = const { Cell::new([[0.0, 0.0]; SUB_BUS_COUNT]) };
         static SUB_GAIN: Cell<[f32; SUB_BUS_COUNT]> = const { Cell::new([1.0; SUB_BUS_COUNT]) };
         static SUB_MUTED: Cell<[bool; SUB_BUS_COUNT]> = const { Cell::new([false; SUB_BUS_COUNT]) };
+        static SUB_SOLOED: Cell<[bool; SUB_BUS_COUNT]> = const { Cell::new([false; SUB_BUS_COUNT]) };
         static SUB_PAN: Cell<[f32; SUB_BUS_COUNT]> = const { Cell::new([0.0; SUB_BUS_COUNT]) };
     }
 
@@ -209,6 +225,22 @@ mod snapshot {
             c.set(v);
         });
     }
+
+    /// Panel → shell: each sub-bus solo flag. When *any* is set, the shell mutes
+    /// every non-soloed sub-bus (so you hear only the soloed ones).
+    pub fn sub_soloed() -> [bool; SUB_BUS_COUNT] {
+        SUB_SOLOED.with(Cell::get)
+    }
+
+    pub(crate) fn toggle_sub_soloed(i: usize) {
+        SUB_SOLOED.with(|c| {
+            let mut v = c.get();
+            if let Some(slot) = v.get_mut(i) {
+                *slot = !*slot;
+            }
+            c.set(v);
+        });
+    }
 }
 
 /// Panel → shell: the master low-pass cutoff (Hz) the Cutoff slider drives.
@@ -228,5 +260,7 @@ pub use snapshot::set_sub_levels;
 pub use snapshot::sub_gain as sub_gain_target;
 /// Panel → shell: each sub-bus mute flag (bridge zeroes that bus's gain).
 pub use snapshot::sub_muted;
+/// Panel → shell: each sub-bus solo flag (bridge mutes non-soloed buses when any set).
+pub use snapshot::sub_soloed;
 /// Panel → shell: each sub-bus stereo balance (index-aligned with `BusId::SUB_BUSES`).
 pub use snapshot::sub_pan as sub_pan_target;

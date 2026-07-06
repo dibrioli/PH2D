@@ -9,10 +9,11 @@
 //! canonical `Slider` widget (single source of truth for the slider look), so
 //! the panel is built from gallery widgets, not bespoke chrome.
 
+use crate::fader::{FADER_UNITY_POS, fader_db};
 use crate::state::AudioMixerState;
 use crate::{
     AMIX_CLOSE, AMIX_CUTOFF, AMIX_FADER, AMIX_MASTER_MUTE, AMIX_PAN, AMIX_PANEL, AudioMixerPanel,
-    SUB_BUS_COUNT, SUB_BUS_LABELS, SUB_FADER, SUB_MUTE, SUB_PAN, snapshot,
+    SUB_BUS_COUNT, SUB_BUS_LABELS, SUB_FADER, SUB_MUTE, SUB_PAN, SUB_SOLO, snapshot,
 };
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::ids as core_ids;
@@ -44,11 +45,16 @@ struct Strip {
     fader_id: NodeId,
     pan_id: NodeId,
     mute_id: NodeId,
-    gain: f32,
+    /// Solo id, or `None` for the Master strip (solo applies to sub-buses only).
+    solo_id: Option<NodeId>,
+    /// Fader slider position in 0..1 — the dB taper (`fader.rs`) maps it to gain
+    /// (in `event.rs`) and to the dB readout (here).
+    gain_pos: f32,
     /// Pan slider value in 0..1 (0.5 = center) — display only; the pan→shell
     /// remap to -1..1 happens in `event.rs`.
     pan: f32,
     muted: bool,
+    soloed: bool,
     levels: [f32; 2],
 }
 
@@ -106,13 +112,22 @@ pub(crate) fn paint(_state: &mut AudioMixerState, ctx: &mut PaintCtx) {
     let master_muted = snapshot::muted();
     let sub_levels = snapshot::sub_levels();
     let sub_muted = snapshot::sub_muted();
+    let sub_soloed = snapshot::sub_soloed();
 
     let (store, hit_index) = ctx.host.store_and_hit_index_mut();
-    let master_gain = store.slider(AMIX_FADER).map(|(_, v)| v).unwrap_or(1.0);
+    // Fader values are slider *positions* (0..1); the dB taper maps them to gain.
+    let master_gain = store
+        .slider(AMIX_FADER)
+        .map(|(_, v)| v)
+        .unwrap_or(FADER_UNITY_POS);
     let master_pan = store.slider(AMIX_PAN).map(|(_, v)| v).unwrap_or(0.5);
     let cutoff = store.slider(AMIX_CUTOFF).map(|(_, v)| v).unwrap_or(1.0);
-    let sub_gain: [f32; SUB_BUS_COUNT] =
-        std::array::from_fn(|i| store.slider(SUB_FADER[i]).map(|(_, v)| v).unwrap_or(1.0));
+    let sub_gain: [f32; SUB_BUS_COUNT] = std::array::from_fn(|i| {
+        store
+            .slider(SUB_FADER[i])
+            .map(|(_, v)| v)
+            .unwrap_or(FADER_UNITY_POS)
+    });
     let sub_pan: [f32; SUB_BUS_COUNT] =
         std::array::from_fn(|i| store.slider(SUB_PAN[i]).map(|(_, v)| v).unwrap_or(0.5));
 
@@ -123,9 +138,11 @@ pub(crate) fn paint(_state: &mut AudioMixerState, ctx: &mut PaintCtx) {
         fader_id: AMIX_FADER,
         pan_id: AMIX_PAN,
         mute_id: AMIX_MASTER_MUTE,
-        gain: master_gain,
+        solo_id: None, // solo applies to sub-buses only
+        gain_pos: master_gain,
         pan: master_pan,
         muted: master_muted,
+        soloed: false,
         levels: master_levels,
     });
     for i in 0..SUB_BUS_COUNT {
@@ -134,9 +151,11 @@ pub(crate) fn paint(_state: &mut AudioMixerState, ctx: &mut PaintCtx) {
             fader_id: SUB_FADER[i],
             pan_id: SUB_PAN[i],
             mute_id: SUB_MUTE[i],
-            gain: sub_gain[i],
+            solo_id: Some(SUB_SOLO[i]),
+            gain_pos: sub_gain[i],
             pan: sub_pan[i],
             muted: sub_muted[i],
+            soloed: sub_soloed[i],
             levels: sub_levels[i],
         });
     }
@@ -166,13 +185,15 @@ pub(crate) fn paint(_state: &mut AudioMixerState, ctx: &mut PaintCtx) {
 
     // Master low-pass cutoff — full-width standard horizontal Slider below the
     // strips (drag → filter sweep). Labelled, so its role reads at a glance.
-    // The strip stack is: label · pan · fader/meter · mute (see `paint_strip`).
+    // Strip stack: label · pan · fader/meter · dB readout · M/S (see `paint_strip`).
     let strips_bottom = strip_top
         + TypeToken::Sm.px()
         + Spacing::Sm.px()
         + Spacing::Md.px()
         + Spacing::Sm.px()
         + STRIP_H
+        + Spacing::Sm.px()
+        + TypeToken::Xs.px()
         + Spacing::Sm.px()
         + MUTE_H;
     let mut y = strips_bottom + Spacing::Lg.px();
@@ -194,8 +215,9 @@ pub(crate) fn paint(_state: &mut AudioMixerState, ctx: &mut PaintCtx) {
     hit_index.register(AMIX_CUTOFF, cutoff_rect);
 }
 
-/// Paint one channel strip in its column: label · fader (standard `Slider`) +
-/// meter · mute button. Registers the fader + mute hit rects.
+/// Paint one channel strip in its column: label · pan · fader (standard
+/// `Slider`, unity tick) + meter · dB readout · mute (+ solo on sub-buses).
+/// Registers the pan/fader/mute/solo hit rects.
 #[allow(clippy::too_many_arguments)]
 fn paint_strip(
     strip: &Strip,
@@ -227,14 +249,16 @@ fn paint_strip(
     hit_index.register(strip.pan_id, pan_rect);
     y += Spacing::Md.px() + Spacing::Sm.px();
 
-    // Fader + meter cluster, centered in the column.
+    // Fader + meter cluster, centered in the column. The fader carries a tick at
+    // the unity (0 dB) position so the dB taper reads at a glance.
     let cluster_w = FADER_W + Spacing::Sm.px() + METER_W;
     let cluster_x = col_x + ((col_w - cluster_w) * 0.5).max(0.0);
 
     let fader_rect = Rect::new(cluster_x, y, FADER_W, STRIP_H);
     let mut fader =
         Slider::new(strip.fader_id, strip.label).orientation(SliderOrientation::Vertical);
-    fader.set_value(strip.gain.clamp(0.0, 1.0));
+    fader.set_value(strip.gain_pos.clamp(0.0, 1.0));
+    fader.ticks = vec![FADER_UNITY_POS];
     paint_slider(&fader, fader_rect, scene, theme);
     hit_index.register(strip.fader_id, fader_rect);
 
@@ -243,21 +267,95 @@ fn paint_strip(
     paint_level_meter(&m, meter_rect, scene, theme);
     y += STRIP_H + Spacing::Sm.px();
 
-    // Mute button — Danger tint when engaged.
-    let mute_rect = Rect::new(col_x, y, col_w, MUTE_H);
-    let (bg, fg) = if strip.muted {
-        (ColorToken::Danger, ColorToken::AccentFg)
+    // dB readout — the current fader gain in dB (or "-inf" at the bottom).
+    let readout = if strip.gain_pos <= 0.0 {
+        "-inf".to_string()
     } else {
-        (ColorToken::Bg3, ColorToken::Text1)
+        format!("{:.0} dB", fader_db(strip.gain_pos))
     };
-    fill_rounded_rect(scene, mute_rect, Radius::Sm.px(), resolve(bg, theme));
+    let readout_rect = Rect::new(col_x, y, col_w, TypeToken::Xs.px());
     paint_text_centered(
         text_system,
         scene,
-        "Mute",
-        mute_rect,
+        &readout,
+        readout_rect,
+        TypeToken::Xs.px(),
+        resolve(ColorToken::Text2, theme),
+    );
+    y += TypeToken::Xs.px() + Spacing::Sm.px();
+
+    // Mute (+ solo on sub-buses) button row. Master gets a full-width Mute; a
+    // sub-bus splits the row into M | S (the mixer-console convention).
+    match strip.solo_id {
+        None => {
+            paint_toggle(
+                Rect::new(col_x, y, col_w, MUTE_H),
+                "Mute",
+                strip.muted,
+                ColorToken::Danger,
+                strip.mute_id,
+                scene,
+                text_system,
+                theme,
+                hit_index,
+            );
+        }
+        Some(solo_id) => {
+            let gap = Spacing::Sm.px();
+            let half = ((col_w - gap) * 0.5).max(1.0);
+            paint_toggle(
+                Rect::new(col_x, y, half, MUTE_H),
+                "M",
+                strip.muted,
+                ColorToken::Danger,
+                strip.mute_id,
+                scene,
+                text_system,
+                theme,
+                hit_index,
+            );
+            paint_toggle(
+                Rect::new(col_x + half + gap, y, half, MUTE_H),
+                "S",
+                strip.soloed,
+                ColorToken::Warn,
+                solo_id,
+                scene,
+                text_system,
+                theme,
+                hit_index,
+            );
+        }
+    }
+}
+
+/// Paint one toggle button (mute / solo): `active_bg` tint + `AccentFg` text
+/// when engaged, else `Bg3` + `Text1`. Registers `id` as the hit rect.
+#[allow(clippy::too_many_arguments)]
+fn paint_toggle(
+    rect: Rect,
+    label: &str,
+    active: bool,
+    active_bg: ColorToken,
+    id: NodeId,
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+) {
+    let (bg, fg) = if active {
+        (active_bg, ColorToken::AccentFg)
+    } else {
+        (ColorToken::Bg3, ColorToken::Text1)
+    };
+    fill_rounded_rect(scene, rect, Radius::Sm.px(), resolve(bg, theme));
+    paint_text_centered(
+        text_system,
+        scene,
+        label,
+        rect,
         TypeToken::Sm.px(),
         resolve(fg, theme),
     );
-    hit_index.register(strip.mute_id, mute_rect);
+    hit_index.register(id, rect);
 }

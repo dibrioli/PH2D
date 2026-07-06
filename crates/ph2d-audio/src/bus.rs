@@ -22,17 +22,22 @@ pub enum BusId {
     Music,
     /// Sound-effects sub-bus.
     Sfx,
+    /// UI-sound sub-bus (clicks, notifications).
+    Ui,
+    /// Voice / dialogue sub-bus.
+    Voice,
 }
 
 /// Number of sub-buses (everything except [`BusId::Master`]). The mixer's bus
 /// strips, the meter's per-bus peaks, and the UI's strip count all size off this.
-pub const SUB_BUS_COUNT: usize = 2;
+pub const SUB_BUS_COUNT: usize = 4;
 
 impl BusId {
     /// The sub-buses in canonical order — the index each maps to in the mixer's
     /// strip array, the meter's per-bus peaks, and the UI's strips. The shell's
     /// mixer bridge iterates this so the panel's per-bus channels stay aligned.
-    pub const SUB_BUSES: [BusId; SUB_BUS_COUNT] = [BusId::Music, BusId::Sfx];
+    pub const SUB_BUSES: [BusId; SUB_BUS_COUNT] =
+        [BusId::Music, BusId::Sfx, BusId::Ui, BusId::Voice];
 
     /// This bus's index into the sub-bus arrays, or `None` for [`BusId::Master`]
     /// (which has no sub-bus strip — it *is* the master mix).
@@ -41,6 +46,8 @@ impl BusId {
             BusId::Master => None,
             BusId::Music => Some(0),
             BusId::Sfx => Some(1),
+            BusId::Ui => Some(2),
+            BusId::Voice => Some(3),
         }
     }
 
@@ -51,6 +58,8 @@ impl BusId {
             BusId::Master => "Master",
             BusId::Music => "Music",
             BusId::Sfx => "SFX",
+            BusId::Ui => "UI",
+            BusId::Voice => "Voice",
         }
     }
 }

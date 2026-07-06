@@ -132,10 +132,19 @@ impl crate::App {
                 // panel's strip index i maps to sub-bus i; count guarded below).
                 ph2d_panel_audio_mixer::set_sub_levels(audio.bus_levels());
                 let sub_muted = ph2d_panel_audio_mixer::sub_muted();
+                let sub_soloed = ph2d_panel_audio_mixer::sub_soloed();
                 let sub_gain = ph2d_panel_audio_mixer::sub_gain_target();
                 let sub_pan = ph2d_panel_audio_mixer::sub_pan_target();
+                // Solo overrides mute: when any bus is soloed, only soloed buses
+                // sound; otherwise a bus sounds unless it's muted.
+                let any_solo = sub_soloed.iter().any(|&s| s);
                 for i in 0..ph2d_audio::SUB_BUS_COUNT {
-                    audio.set_bus_gain(i, if sub_muted[i] { 0.0 } else { sub_gain[i] });
+                    let sounds = if any_solo {
+                        sub_soloed[i]
+                    } else {
+                        !sub_muted[i]
+                    };
+                    audio.set_bus_gain(i, if sounds { sub_gain[i] } else { 0.0 });
                     audio.set_bus_pan(i, sub_pan[i]);
                 }
             }

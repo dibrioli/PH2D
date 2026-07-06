@@ -1,18 +1,19 @@
 //! Audio Mixer panel event routing.
 
+use crate::fader::fader_gain;
 use crate::state::AudioMixerState;
 use crate::{
     AMIX_CLOSE, AMIX_CUTOFF, AMIX_FADER, AMIX_MASTER_MUTE, AMIX_PAN, AudioMixerPanel, SUB_FADER,
-    SUB_MUTE, SUB_PAN, snapshot,
+    SUB_MUTE, SUB_PAN, SUB_SOLO, snapshot,
 };
+use ph2d_editor_core::ids;
+use ph2d_editor_core::interaction::WidgetEvent;
+use ph2d_editor_core::panel::{EventOutcome, Panel, PanelHostInternal};
 
 /// Remap a 0..1 slider value to a `-1.0`..`1.0` pan (0.5 → center 0.0).
 fn slider_to_pan(v: f32) -> f32 {
     v.clamp(0.0, 1.0) * 2.0 - 1.0
 }
-use ph2d_editor_core::ids;
-use ph2d_editor_core::interaction::WidgetEvent;
-use ph2d_editor_core::panel::{EventOutcome, Panel, PanelHostInternal};
 
 pub(crate) fn apply_event(
     _state: &mut AudioMixerState,
@@ -41,16 +42,21 @@ pub(crate) fn apply_event(
                 snapshot::toggle_sub_muted(i);
                 return EventOutcome::Consumed;
             }
+            // Per-sub-bus solo toggles.
+            if let Some(i) = SUB_SOLO.iter().position(|&s| s == id) {
+                snapshot::toggle_sub_soloed(i);
+                return EventOutcome::Consumed;
+            }
         }
-        // Master fader dragged — the shared slider dispatch already wrote the
-        // new value into the store; publish it as the master gain for the shell.
+        // Master fader dragged — the shared slider dispatch wrote the new 0..1
+        // position into the store; publish its dB-tapered gain for the shell.
         WidgetEvent::ValueChanged(id) if id == AMIX_FADER => {
-            let gain = host
+            let pos = host
                 .store()
                 .slider(AMIX_FADER)
                 .map(|(_, v)| v)
                 .unwrap_or(1.0);
-            snapshot::set_master_gain(gain);
+            snapshot::set_master_gain(fader_gain(pos));
             return EventOutcome::Consumed;
         }
         // Master cutoff dragged — log-map the 0..1 slider to 20 Hz..20 kHz.
@@ -73,8 +79,8 @@ pub(crate) fn apply_event(
         // A sub-bus fader or pan dragged — publish that bus's gain / pan.
         WidgetEvent::ValueChanged(id) => {
             if let Some(i) = SUB_FADER.iter().position(|&f| f == id) {
-                let gain = host.store().slider(id).map(|(_, v)| v).unwrap_or(1.0);
-                snapshot::set_sub_gain(i, gain);
+                let pos = host.store().slider(id).map(|(_, v)| v).unwrap_or(1.0);
+                snapshot::set_sub_gain(i, fader_gain(pos));
                 return EventOutcome::Consumed;
             }
             if let Some(i) = SUB_PAN.iter().position(|&p| p == id) {

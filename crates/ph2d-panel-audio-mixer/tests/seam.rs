@@ -9,9 +9,9 @@ use ph2d_editor_core::interaction::WidgetEvent;
 use ph2d_editor_core::panel::{EventOutcome, Panel, PanelHostInternal};
 use ph2d_panel_audio_mixer::state::AudioMixerState;
 use ph2d_panel_audio_mixer::{
-    AMIX_CUTOFF, AMIX_FADER, AMIX_MASTER_MUTE, AMIX_PAN, AudioMixerPanel, SUB_FADER, SUB_MUTE,
-    SUB_PAN, master_cutoff_target, master_gain_target, master_muted, master_pan_target,
-    sub_gain_target, sub_muted, sub_pan_target,
+    AMIX_CUTOFF, AMIX_FADER, AMIX_MASTER_MUTE, AMIX_PAN, AudioMixerPanel, FADER_UNITY_POS, SUB_FADER,
+    SUB_MUTE, SUB_PAN, SUB_SOLO, fader_gain, master_cutoff_target, master_gain_target, master_muted,
+    master_pan_target, sub_gain_target, sub_muted, sub_pan_target, sub_soloed,
 };
 use ph2d_ui_testkit::MockPanelHost;
 
@@ -76,14 +76,14 @@ fn mute_click_toggles_master_muted() {
 }
 
 /// Dragging the Master fader (the shared vertical-slider dispatch writes the new
-/// value into the store, then emits `ValueChanged(AMIX_FADER)`) must publish
-/// that value as the master gain the shell reads to drive the engine.
+/// 0..1 position into the store, then emits `ValueChanged(AMIX_FADER)`) must
+/// publish the **dB-tapered** gain — not the raw position — as the master gain.
 #[test]
-fn fader_drag_publishes_master_gain() {
+fn fader_drag_publishes_tapered_master_gain() {
     let mut host = MockPanelHost::with_panel::<AudioMixerPanel>();
     let mut state = AudioMixerState;
 
-    // What a drag to 30% writes into the store before the ValueChanged fires.
+    // A drag to 30% of the travel → the taper's gain for that position.
     host.set_slider_value(AMIX_FADER, 0.3);
     let outcome = host
         .apply_panel_event::<AudioMixerPanel>(&mut state, WidgetEvent::ValueChanged(AMIX_FADER));
@@ -94,8 +94,19 @@ fn fader_drag_publishes_master_gain() {
         "panel ignored the fader ValueChanged — the AMIX_FADER arm is missing"
     );
     assert!(
-        (master_gain_target() - 0.3).abs() < 1e-5,
-        "fader drag was consumed but the published master gain never updated"
+        (master_gain_target() - fader_gain(0.3)).abs() < 1e-5,
+        "fader must publish the tapered gain fader_gain(0.3)={}, got {}",
+        fader_gain(0.3),
+        master_gain_target()
+    );
+
+    // At the unity position the taper is exactly 0 dB → gain 1.0.
+    host.set_slider_value(AMIX_FADER, FADER_UNITY_POS);
+    host.apply_panel_event::<AudioMixerPanel>(&mut state, WidgetEvent::ValueChanged(AMIX_FADER));
+    assert!(
+        (master_gain_target() - 1.0).abs() < 1e-4,
+        "unity fader position must publish unity gain, got {}",
+        master_gain_target()
     );
 }
 
@@ -138,15 +149,37 @@ fn sub_bus_fader_drag_publishes_that_bus_gain() {
     );
     let gains = sub_gain_target();
     assert!(
-        (gains[0] - 0.4).abs() < 1e-5,
-        "sub-bus 0 gain must update to 0.4, got {}",
+        (gains[0] - fader_gain(0.4)).abs() < 1e-5,
+        "sub-bus 0 gain must be the tapered fader_gain(0.4)={}, got {}",
+        fader_gain(0.4),
         gains[0]
     );
     assert!(
         (gains[1] - 1.0).abs() < 1e-5,
-        "the other sub-bus must stay at unity, got {}",
+        "the other sub-bus must stay at unity gain, got {}",
         gains[1]
     );
+}
+
+/// Clicking a sub-bus solo button flips only that bus's solo flag (the shell
+/// reads it back to mute the non-soloed buses).
+#[test]
+fn sub_bus_solo_click_toggles_only_that_bus() {
+    let mut host = MockPanelHost::with_panel::<AudioMixerPanel>();
+    let mut state = AudioMixerState;
+
+    let before = sub_soloed();
+    let outcome =
+        host.apply_panel_event::<AudioMixerPanel>(&mut state, WidgetEvent::Click(SUB_SOLO[0]));
+
+    assert_eq!(
+        outcome,
+        EventOutcome::Consumed,
+        "panel ignored the solo click — the SUB_SOLO arm is missing"
+    );
+    let after = sub_soloed();
+    assert_ne!(after[0], before[0], "sub-bus 0 solo must flip");
+    assert_eq!(after[1], before[1], "sub-bus 1 solo must be untouched");
 }
 
 /// Dragging a pan slider remaps the 0..1 value to a `-1..1` balance: the

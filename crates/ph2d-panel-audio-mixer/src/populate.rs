@@ -1,16 +1,19 @@
 //! Audio Mixer panel widget registration.
 
+use crate::fader::FADER_UNITY_POS;
 use crate::{
     AMIX_CLOSE, AMIX_CUTOFF, AMIX_FADER, AMIX_MASTER_MUTE, AMIX_PAN, SUB_FADER, SUB_MUTE, SUB_PAN,
+    SUB_SOLO,
 };
 use ph2d_editor_core::interaction::{InteractiveState, WidgetStore};
 use ph2d_editor_core::widget::{ButtonState, SliderOrientation, SliderState};
 
 pub(crate) fn populate(store: &mut WidgetStore) {
-    // Header close (X) + every mute (Master + one per sub-bus) — plain Buttons
-    // so the panel's apply_event branch fires on Click. Show/hide is also the
-    // TopBar `TOPBAR_AUDIO_MIXER` pill. The dock drag/resize reuse the shared
-    // `INSP_*` handles (registered by the Inspector), so they need none here.
+    // Header close (X) + every mute (Master + one per sub-bus) + every sub-bus
+    // solo — plain Buttons so the panel's apply_event branch fires on Click.
+    // Show/hide is also the TopBar `TOPBAR_AUDIO_MIXER` pill. The dock
+    // drag/resize reuse the shared `INSP_*` handles (registered by the
+    // Inspector), so they need none here.
     let button = || InteractiveState::Button {
         state: ButtonState::Normal,
     };
@@ -19,13 +22,17 @@ pub(crate) fn populate(store: &mut WidgetStore) {
     for id in SUB_MUTE {
         store.register(id, button());
     }
+    for id in SUB_SOLO {
+        store.register(id, button());
+    }
 
-    // Every fader — a vertical Slider starting at unity. The shared dispatch
-    // maps a drag over its rect to `1.0 - (y - rect.y)/rect.h` and emits
-    // `ValueChanged(id)`, which apply_event turns into that strip's gain.
+    // Every fader — a vertical Slider starting at the unity position (0 dB, per
+    // the dB taper). The shared dispatch maps a drag over its rect to
+    // `1.0 - (y - rect.y)/rect.h` and emits `ValueChanged(id)`, which
+    // apply_event turns into that strip's gain through the taper.
     let vfader = || InteractiveState::Slider {
         state: SliderState::Normal,
-        value: 1.0,
+        value: FADER_UNITY_POS,
         orientation: SliderOrientation::Vertical,
     };
     store.register(AMIX_FADER, vfader());

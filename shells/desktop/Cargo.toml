@@ -161,6 +161,9 @@ ph2d-editor = { path = "../../crates/ph2d-editor" }
 # writes. Gated by the `panel-inspector` feature alongside the
 # registry-init's mirror feature.
 ph2d-panel-inspector = { path = "../../crates/ph2d-panel-inspector", optional = true }
+# Audio Mixer panel (Phase 2.3c) — the render_loop bridge publishes live
+# levels via `set_snapshot` + reads `master_muted` to drive the master gain.
+ph2d-panel-audio-mixer = { path = "../../crates/ph2d-panel-audio-mixer", optional = true }
 ph2d-panel-bgremoval = { path = "../../crates/ph2d-panel-bgremoval", optional = true }
 ph2d-panel-color-equalization = { path = "../../crates/ph2d-panel-color-equalization", optional = true }
 ph2d-panel-equalize-sizes = { path = "../../crates/ph2d-panel-equalize-sizes", optional = true }
@@ -307,6 +310,6 @@ panel-painter-layers = ["ph2d-panel-registry-init/panel-painter-layers", "dep:ph
 panel-vector-inspector = ["ph2d-panel-registry-init/panel-vector-inspector", "dep:ph2d-panel-vector-inspector"]
 panel-vector-graph = ["ph2d-panel-registry-init/panel-vector-graph", "dep:ph2d-panel-vector-graph"]
 panel-grid-snap      = ["ph2d-panel-registry-init/panel-grid-snap"]
-# Registered via the registry-init proxy; the shell gains a direct dep +
-# live-meter bridge in the follow-up (mute/gain control loop).
-panel-audio-mixer    = ["ph2d-panel-registry-init/panel-audio-mixer"]
+# Direct dep too: the render_loop bridge publishes live levels via
+# `set_snapshot` + reads `master_muted` to drive the engine's master gain.
+panel-audio-mixer    = ["ph2d-panel-registry-init/panel-audio-mixer", "dep:ph2d-panel-audio-mixer"]

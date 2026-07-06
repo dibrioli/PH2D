@@ -15,6 +15,9 @@ use ph2d_audio::{AudioEngine, AudioFormat, AudioRenderer, PlayParams, SampleData
 pub(crate) struct AudioSystem {
     engine: AudioEngine,
     format: AudioFormat,
+    /// Last master gain pushed to the engine — so the per-frame bridge only
+    /// sends a command when it actually changes (else it floods the ring).
+    last_master_gain: std::cell::Cell<f32>,
     // Kept alive for the app's lifetime; the callback (which owns the renderer)
     // runs on cpal's thread until this drops. `cpal::Stream` is `!Send` on ALSA,
     // which is fine — `App` never leaves the main thread.
@@ -78,8 +81,23 @@ impl AudioSystem {
         Some(AudioSystem {
             engine,
             format,
+            last_master_gain: std::cell::Cell::new(1.0),
             _stream: stream,
         })
+    }
+
+    /// Current output peak levels `[L, R]` for the mixer meter.
+    pub(crate) fn levels(&self) -> [f32; 2] {
+        self.engine.levels()
+    }
+
+    /// Set the engine's master gain, but only enqueue a command when it changed
+    /// (called every frame by the mixer bridge — avoid flooding the ring).
+    pub(crate) fn set_master_gain(&self, gain: f32) {
+        if (gain - self.last_master_gain.get()).abs() > f32::EPSILON {
+            let _ = self.engine.set_master_gain(gain);
+            self.last_master_gain.set(gain);
+        }
     }
 
     /// Per-frame housekeeping: drop finished-sample `Arc`s on the main thread

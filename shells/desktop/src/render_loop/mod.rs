@@ -113,8 +113,15 @@ fn frame_prof_on() -> bool {
 impl crate::App {
     pub(super) fn run_render_frame(&mut self) {
         // Phase 2.1: drop finished-sample Arcs on the main thread (HR-3).
+        // Phase 2.3c: feed the mixer panel live levels + apply its Master mute.
         if let Some(audio) = self.audio.as_ref() {
             audio.poll();
+            #[cfg(feature = "panel-audio-mixer")]
+            {
+                ph2d_panel_audio_mixer::set_snapshot(audio.levels(), 1.0);
+                let muted = ph2d_panel_audio_mixer::master_muted();
+                audio.set_master_gain(if muted { 0.0 } else { 1.0 });
+            }
         }
         // Coalesced painter Move: stamp the LATEST buffered canvas position ONCE this frame, replacing
         // the per-raw-CursorMoved whole-shape re-stamp storm that ran between frames (the FPS-drop /

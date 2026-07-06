@@ -4815,6 +4815,7 @@ dependencies = [
  "ph2d-node-vector-source",
  "ph2d-nodegraph",
  "ph2d-painter-effects",
+ "ph2d-panel-audio-mixer",
  "ph2d-panel-bgremoval",
  "ph2d-panel-color-equalization",
  "ph2d-panel-equalize-sizes",

@@ -14,6 +14,7 @@
 - [Decida, não pergunte](feedback_decide_dont_ask_gold_standard.md) — decida no padrão-ouro e execute, reporte a decisão
 - [Estilo](feedback_communication_style.md) — pt-BR direto, opções concretas, recomendação primeiro
 - [Simplicidade](feedback_communication_simplicity.md) — direto; sem AskUserQuestion-spam; não antecipe decisões
+- [Comando de rodar inclui o `cd`](feedback_run_command_include_cd.md) — smoke/`cargo run` sempre com `cd <worktree> &&` junto, copiável de uma vez
 - [Perfeição sem adiamentos](feedback_perfection_no_deferrals.md) — gaps in-scope fecham na sessão; padrão-ouro vence cronograma
 - [Painter: 4 causas + DIRETIVA por-etapa](feedback_painter_inefficiency_4_causes.md) — costura não-testada/audit=compilar/isolamento órfão/alvo irrefutável; antídoto `DIRETIVA_IMPLEMENTACAO.md`
 - [Cerca de Chesterton](feedback_documented_decision_chesterton_fence.md) — comentário "intentionally NOT X" = decisão ratificada; não sobrescrever por 1º-princípios
@@ -112,3 +113,4 @@
 - [8GB RAM = full-gate ~10min](project_solo_coord_backlog_ship_2026_05_29.md) — use `clippy --keep-going`; nextest-impacted tinha false-green determinism (corrigido)
 - [Wash GPU-resident reimpl](project_wash_gpu_resident_reimpl.md) — reimplementar wash GPU-first/tempo-real, portar física B1-B9 do backup, zero fallback CPU
 - [Wash → Curtis g/d](project_wash_curtis_gd_migration_2026_06_15.md) — 3 versões divergiram por NÃO implementar Curtis (falta g/d+TransferPigment); ADR-0095 + plano shallow-water
+- [Aquarela: Paper Colors ramp](project_aquarela_paper_ramp_broken.md) — REVERTIDA 2026-07-06 a pedido do Enio (papel volta ao grayscale; seção Paper fica); não reconstruir sem pedir

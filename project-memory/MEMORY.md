@@ -87,6 +87,7 @@
 - [Texture Layer = raster-backed](project_texture_layer_design.md) — `LayerKind::Texture` pré-renderizado em `images[id]`; compõe de graça; roteamento via `route_texture_layer_event`
 - [Brush audit 2026-06-18](project_brush_audit_2026_06_18.md) — (HISTÓRICO, brush deletado) claims de paridade CPU↔GPU MENTEM (latentes); meça antes de confiar
 - [Norte node-centric](project_node_centric_decision_2026_05_21.md) — engine = sistema de nós multi-domínio; `ph2d-nodegraph`+`ph2d-expr`; FBP isolation = unidade multi-agente
+- [Vector cutover ADR-0108](project_vector_cutover_adr0108.md) — módulo REPOSICIONADO (Rive-referenced, GPU/editor-first); motor novo `ph2d-vec-*` + tool `ph2d-tool-vector`; 30 crates antigas retiradas; gotchas: icon-sort=slug, gate-doc FICA, Painter reusa IconId::Vector*, teardown compiler-guided
 - [Modelo multi-agente = função do HW (Modo L/C)](project_multiagent_modo_l_2026_07_05.md) — workstation=**Modo L** (linhas por worktree, SEM coordenador, foundational concorrente via gate testado + Mergiraf); constrained=Modo C (v7.1). ADR-0106/0107 + [guia](../docs/IntegracaoMultiAgente/GUIA_JORNADA_MODO_L.md)
 - [HISTÓRICO: reescrita DIRETRIZ v6.8](project_diretriz_v68_2026_05_22.md) — v6.7→v6.8 (ADR-0040); o "2 papéis/Coord absorve PRCI" é **Modo-C-only** agora (superseded acima)
 - [Tool isolation ADR-0040 frozen](project_tool_isolation_freeze_2026_05_22.md) — tools = drop-crates + tool-sync codegen + canal genérico; tool nova = fan-out drop-in

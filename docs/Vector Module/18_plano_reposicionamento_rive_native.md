@@ -82,7 +82,17 @@ sujo → Vello (GPU) rasteriza.
 - **State machine** (lógica portada do runtime Rive, MIT) + **constraints** (IK/translation/rotation) para reação a
   input em tempo real.
 
-### Fase R — Cutover: aposentar o sistema de edição antigo (ATÔMICA, só APÓS paridade)
+### Fase R — Cutover: aposentar o sistema de edição antigo (ATÔMICA, só APÓS paridade) — **FECHADA 2026-07-06**
+**Landou:** graduação à tool real `ph2d-tool-vector` (pill `vector_tools`, `IconId::Vector`, painel Style Width+paletas;
+documento em `AppGfx.vec_scene`, pen/history shell-side, `render_loop::vector_bridge` sincroniza estilo + recolore
+seleção via downcast allowlistado) + **retirada das 30 crates** (5 tools + 2 panels + 16 nodes + 7 libs) + wiring
+shell/editor-core/mcp + backend MCP `vector.*` (LLM4SVG) + integração ECS vector-scene + chrome morto
+(LLM-prompt/API-key/point-type). Registries auto-curados (tool/node/panel/chrome-sync). **Gate:** clippy
+`--all-targets -D warnings` verde · nextest workspace 3903 pass · machete limpo. **Correção ao plano abaixo:** o gate
+`architecture_vector_contract_surface` **NÃO foi retirado** — vive em `ph2d-vector-doc` (fundacional), escaneia só
+doc+traits e **não quebra** ao remover nodes/tools; **fica**. Rig+skinning seguem deferidos pro fim.
+
+Registro histórico do plano original (executado com as correções acima):
 Executada **quando a Fase 1 alcança paridade** com o desenho antigo — nunca antes (senão vira zona morta: app sem
 vetor). É uma operação grande e com tentáculos (mapa em `docs/HANDOFF_*`); faz-se de uma vez:
 - **Barato (codegen):** apagar os dirs dos 16 nodes + 5 tools + 2 panels + rodar `ph2d-{node,tool,panel,chrome}-sync`

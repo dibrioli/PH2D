@@ -234,6 +234,11 @@ serde = "1"
 wgpu = "28"
 winit = "0.30"
 gilrs = "0.11"
+# Phase 2.1 audio wiring. `cpal` owns the OS output device (HR-1: the platform
+# backend lives in the shell, never in `ph2d-audio`); the core `AudioRenderer`
+# fills the callback buffer. cpal on Linux uses ALSA (`alsa-lib`).
+ph2d-audio = { path = "../../crates/ph2d-audio" }
+cpal = "0.15"
 # arboard: system clipboard read/write for the Cmd+C/V/X handlers in
 # ph2d-editor's dispatch. Constructed once at startup; pasted text is
 # fed back to the store via `apply_clipboard_paste`.

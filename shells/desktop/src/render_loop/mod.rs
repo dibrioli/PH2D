@@ -112,6 +112,10 @@ fn frame_prof_on() -> bool {
 
 impl crate::App {
     pub(super) fn run_render_frame(&mut self) {
+        // Phase 2.1: drop finished-sample Arcs on the main thread (HR-3).
+        if let Some(audio) = self.audio.as_ref() {
+            audio.poll();
+        }
         // Coalesced painter Move: stamp the LATEST buffered canvas position ONCE this frame, replacing
         // the per-raw-CursorMoved whole-shape re-stamp storm that ran between frames (the FPS-drop /
         // "Raw rises" path — `HANDOFF_per_layer_color_perf_artifacts` §1.R). Done before `cpu_start` so

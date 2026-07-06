@@ -34,6 +34,7 @@
 
 mod app_state;
 mod atlas_loader;
+mod audio;
 mod cursor_pos;
 mod forwarding;
 mod hero_bridge;
@@ -121,6 +122,14 @@ impl App {
                 None
             }
         };
+        // Phase 2.1: open the audio device (None = run silent). The
+        // `PH2D_AUDIO_SMOKE` env plays a 440 Hz beep at launch to prove the path.
+        let mut audio = crate::audio::AudioSystem::new();
+        if std::env::var_os("PH2D_AUDIO_SMOKE").is_some()
+            && let Some(a) = audio.as_mut()
+        {
+            a.play_test_tone();
+        }
         Self {
             window: None,
             host: None,
@@ -136,6 +145,7 @@ impl App {
             dragging: None,
             title_dirty: true,
             gilrs,
+            audio,
             input: InputState::new(),
             pan_anchor: None,
             eyedropper_dragging: false,

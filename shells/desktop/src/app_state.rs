@@ -317,6 +317,10 @@ pub(crate) struct App {
     /// /dev/input read perms in CI sandboxes — we degrade gracefully
     /// instead of crashing the renderer).
     pub(crate) gilrs: Option<gilrs::Gilrs>,
+    /// Audio subsystem (Phase 2.1). `None` if no output device / unsupported
+    /// format — the editor runs silent (degrade-gracefully, like `gilrs`).
+    /// Holds the control-side `AudioEngine` + the live cpal output stream.
+    pub(crate) audio: Option<crate::audio::AudioSystem>,
     /// Input snapshot pumped by the gilrs adapter each frame.
     pub(crate) input: InputState,
     /// M14.4b.bis: middle-button camera pan state.

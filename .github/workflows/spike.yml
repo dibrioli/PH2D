@@ -53,8 +53,8 @@ jobs:
         with:
           shared-key: lint
 
-      - name: Install libudev-dev (gilrs → libudev-sys, Linux only)
-        run: sudo apt-get update && sudo apt-get install -y libudev-dev
+      - name: Install libudev-dev + libasound2-dev (gilrs → libudev-sys, cpal → alsa-sys; Linux only)
+        run: sudo apt-get update && sudo apt-get install -y libudev-dev libasound2-dev
 
       # ph2d-imageio-avif (W3.T4) builds dav1d + rav1e from vendored
       # source: meson+ninja build dav1d, nasm assembles the x86 SIMD.
@@ -139,8 +139,8 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           shared-key: msrv
-      - name: Install libudev-dev (gilrs → libudev-sys, Linux only)
-        run: sudo apt-get update && sudo apt-get install -y libudev-dev
+      - name: Install libudev-dev + libasound2-dev (gilrs → libudev-sys, cpal → alsa-sys; Linux only)
+        run: sudo apt-get update && sudo apt-get install -y libudev-dev libasound2-dev
       # ph2d-imageio-avif vendored dav1d+rav1e build deps (ADR-0054 §5.18).
       - name: Install AVIF build tools (meson + ninja + nasm)
         run: sudo apt-get install -y meson ninja-build nasm

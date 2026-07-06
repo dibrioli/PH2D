@@ -6,10 +6,13 @@
 //! the engine on the game thread and ships the renderer to the shell's cpal
 //! callback, which calls [`AudioRenderer::render`] each block.
 
+use std::sync::Arc;
+
 use crate::AudioError;
 use crate::buffer::{MixScratch, SampleData};
 use crate::command::{AudioCommand, AudioReturn, Consumer, PlayParams, Producer, ring};
 use crate::format::{AudioFormat, ChannelLayout, Sample};
+use crate::meter::AudioMeter;
 use crate::mixer::Mixer;
 use crate::voice::VoiceId;
 use crate::{CMD_CAPACITY, MAX_VOICES, RETURN_CAPACITY};
@@ -20,6 +23,7 @@ use crate::{CMD_CAPACITY, MAX_VOICES, RETURN_CAPACITY};
 pub struct AudioEngine {
     commands: Producer<AudioCommand>,
     returns: Consumer<AudioReturn>,
+    meter: Arc<AudioMeter>,
     next_id: u64,
     format: AudioFormat,
 }
@@ -29,14 +33,22 @@ impl AudioEngine {
     pub fn new(format: AudioFormat) -> (AudioEngine, AudioRenderer) {
         let (cmd_tx, cmd_rx) = ring::<AudioCommand>(CMD_CAPACITY);
         let (ret_tx, ret_rx) = ring::<AudioReturn>(RETURN_CAPACITY);
+        let meter = Arc::new(AudioMeter::default());
         let engine = AudioEngine {
             commands: cmd_tx,
             returns: ret_rx,
+            meter: Arc::clone(&meter),
             next_id: 0,
             format,
         };
-        let renderer = AudioRenderer::new(format, MAX_VOICES, cmd_rx, ret_tx);
+        let renderer = AudioRenderer::new(format, MAX_VOICES, cmd_rx, ret_tx, meter);
         (engine, renderer)
+    }
+
+    /// The most recent output block's peak level as `[left, right]` (0.0 =
+    /// silence; > 1.0 = clipping). For metering UIs — read once per frame.
+    pub fn levels(&self) -> [f32; 2] {
+        self.meter.peaks()
     }
 
     /// The output format the renderer was built for.
@@ -110,6 +122,7 @@ pub struct AudioRenderer {
     mixer: Mixer,
     commands: Consumer<AudioCommand>,
     returns: Producer<AudioReturn>,
+    meter: Arc<AudioMeter>,
     scratch: MixScratch,
     format: AudioFormat,
 }
@@ -120,11 +133,13 @@ impl AudioRenderer {
         max_voices: usize,
         commands: Consumer<AudioCommand>,
         returns: Producer<AudioReturn>,
+        meter: Arc<AudioMeter>,
     ) -> Self {
         Self {
             mixer: Mixer::new(format, max_voices),
             commands,
             returns,
+            meter,
             scratch: MixScratch::new(),
             format,
         }
@@ -139,6 +154,7 @@ impl AudioRenderer {
             mixer,
             commands,
             returns,
+            meter,
             scratch,
             format,
         } = self;
@@ -161,7 +177,16 @@ impl AudioRenderer {
         // 3. Mix active voices + master gain.
         mixer.render(master, frames, &mut on_finished);
 
-        // 4. Write to the device buffer in the output layout, clamped to [-1, 1].
+        // 4. Publish this block's peak level (pre-clamp, so clipping reads > 1).
+        let mut peak_l = 0.0f32;
+        let mut peak_r = 0.0f32;
+        for f in 0..frames {
+            peak_l = peak_l.max(master[2 * f].abs());
+            peak_r = peak_r.max(master[2 * f + 1].abs());
+        }
+        meter.store(peak_l, peak_r);
+
+        // 5. Write to the device buffer in the output layout, clamped to [-1, 1].
         write_out(out, master, frames, *format);
     }
 

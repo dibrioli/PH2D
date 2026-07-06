@@ -36,6 +36,7 @@ mod buffer;
 mod command;
 mod engine;
 mod format;
+mod meter;
 mod mixer;
 mod pool;
 mod voice;
@@ -46,6 +47,7 @@ pub use buffer::SampleData;
 pub use command::PlayParams;
 pub use engine::{AudioEngine, AudioRenderer};
 pub use format::{AudioFormat, ChannelLayout, Sample};
+pub use meter::AudioMeter;
 pub use voice::VoiceId;
 
 use ph2d_core::MemoryBudget;

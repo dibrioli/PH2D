@@ -288,6 +288,7 @@ default = [
     "panel-painter-layers",
     "panel-vector-inspector",
     "panel-vector-graph",
+    "panel-audio-mixer",
 ]
 # `lite` = explicit "no panels" — host boots with chrome only
 # (TopBar + LeftRail + BottomHUD + canvas). Useful for distribution
@@ -306,3 +307,6 @@ panel-painter-layers = ["ph2d-panel-registry-init/panel-painter-layers", "dep:ph
 panel-vector-inspector = ["ph2d-panel-registry-init/panel-vector-inspector", "dep:ph2d-panel-vector-inspector"]
 panel-vector-graph = ["ph2d-panel-registry-init/panel-vector-graph", "dep:ph2d-panel-vector-graph"]
 panel-grid-snap      = ["ph2d-panel-registry-init/panel-grid-snap"]
+# Registered via the registry-init proxy; the shell gains a direct dep +
+# live-meter bridge in the follow-up (mute/gain control loop).
+panel-audio-mixer    = ["ph2d-panel-registry-init/panel-audio-mixer"]

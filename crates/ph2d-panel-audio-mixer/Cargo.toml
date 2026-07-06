@@ -1,0 +1,22 @@
+[package]
+name = "ph2d-panel-audio-mixer"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# The Audio Mixer panel (Phase 2.3c). Vertical channel strips — for now the
+# Master strip: name + vertical fader (visual) + live LevelMeter + mute. The
+# shell publishes the live snapshot (levels + master gain) via `set_snapshot`
+# each frame and reads `master_muted()` back to drive the engine.
+[dependencies]
+ph2d-editor-core = { path = "../ph2d-editor-core" }
+ph2d-a11y = { path = "../ph2d-a11y" }
+ph2d-vector = { path = "../ph2d-vector" }
+ph2d-text = { path = "../ph2d-text" }
+ph2d-tokens = { path = "../ph2d-tokens" }
+ph2d-tool-registry = { path = "../ph2d-tool-registry" }

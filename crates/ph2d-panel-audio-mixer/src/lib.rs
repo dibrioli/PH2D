@@ -1,0 +1,105 @@
+//! `ph2d-panel-audio-mixer` — the Audio Mixer panel (Phase 2.3c).
+//!
+//! Vertical channel strips (the mixer convention the UI research settled on).
+//! This scaffold renders the **Master** strip: name + vertical fader (visual) +
+//! live [`ph2d_editor_core::widget::LevelMeter`] + mute toggle. The shell's
+//! mixer bridge publishes the live snapshot ([`set_snapshot`]) each frame and
+//! reads [`master_muted`] back to drive the engine's master gain.
+//!
+//! The interactive vertical fader (drag → master gain) needs orientation-aware
+//! slider dispatch and lands in a follow-up commit; here the fader is a visual
+//! readout of the published master gain.
+
+#![forbid(unsafe_code)]
+
+mod event;
+mod paint;
+mod populate;
+pub mod state;
+
+pub use paint::default_rect;
+pub use state::AudioMixerState;
+
+use ph2d_a11y::NodeId;
+use ph2d_editor_core::interaction::{WidgetEvent, WidgetStore};
+use ph2d_editor_core::panel::{EventOutcome, PaintCtx, Panel, PanelHostInternal};
+use ph2d_tool_registry::hash_node_id;
+
+/// Outer panel rect id.
+pub const AMIX_PANEL: NodeId = hash_node_id("audio_mixer_panel");
+/// Close (X) button.
+pub const AMIX_CLOSE: NodeId = hash_node_id("audio_mixer_close");
+/// Master-strip mute toggle.
+pub const AMIX_MASTER_MUTE: NodeId = hash_node_id("audio_mixer_master_mute");
+
+/// Zero-size marker implementing the typed Audio Mixer panel contract.
+pub struct AudioMixerPanel;
+
+impl Panel for AudioMixerPanel {
+    type State = AudioMixerState;
+
+    const ID: &'static str = "audio_mixer";
+    const NODE_ID: NodeId = AMIX_PANEL;
+    const DEFAULT_VISIBLE: bool = true;
+
+    fn paint(state: &mut AudioMixerState, ctx: &mut PaintCtx) {
+        paint::paint(state, ctx);
+    }
+
+    fn apply_event(
+        state: &mut AudioMixerState,
+        host: &mut dyn PanelHostInternal,
+        ev: WidgetEvent,
+    ) -> EventOutcome {
+        event::apply_event(state, host, ev)
+    }
+
+    fn populate(store: &mut WidgetStore) {
+        populate::populate(store);
+    }
+}
+
+/// Live snapshot published by the shell's mixer bridge each frame, read by the
+/// panel painter. Thread-local (UI + shell run on the main thread) mirrors the
+/// other panels' publish channels (e.g. `panel-painter-layers`).
+mod snapshot {
+    use std::cell::Cell;
+
+    thread_local! {
+        static LEVELS: Cell<[f32; 2]> = const { Cell::new([0.0, 0.0]) };
+        static MASTER_GAIN: Cell<f32> = const { Cell::new(1.0) };
+        static MUTED: Cell<bool> = const { Cell::new(false) };
+    }
+
+    pub fn set(levels: [f32; 2], master_gain: f32) {
+        LEVELS.with(|c| c.set(levels));
+        MASTER_GAIN.with(|c| c.set(master_gain));
+    }
+
+    pub fn muted() -> bool {
+        MUTED.with(Cell::get)
+    }
+
+    pub(crate) fn toggle_muted() -> bool {
+        MUTED.with(|c| {
+            let next = !c.get();
+            c.set(next);
+            next
+        })
+    }
+
+    pub(crate) fn levels() -> [f32; 2] {
+        LEVELS.with(Cell::get)
+    }
+
+    pub(crate) fn master_gain() -> f32 {
+        MASTER_GAIN.with(Cell::get)
+    }
+}
+
+/// Publish the live mixer snapshot (peak levels + master gain) for this frame.
+/// Called by the shell's mixer bridge.
+pub use snapshot::set as set_snapshot;
+/// Whether the Master strip's mute is engaged — read by the shell to zero the
+/// engine's master gain.
+pub use snapshot::muted as master_muted;

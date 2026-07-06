@@ -5358,6 +5358,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-panel-audio-mixer"
+version = "0.0.0"
+dependencies = [
+ "ph2d-a11y",
+ "ph2d-editor-core",
+ "ph2d-text",
+ "ph2d-tokens",
+ "ph2d-tool-registry",
+ "ph2d-vector",
+]
+
+[[package]]
 name = "ph2d-panel-bgremoval"
 version = "0.0.0"
 dependencies = [
@@ -5475,6 +5487,7 @@ name = "ph2d-panel-registry-init"
 version = "0.0.0"
 dependencies = [
  "ph2d-editor-core",
+ "ph2d-panel-audio-mixer",
  "ph2d-panel-bgremoval",
  "ph2d-panel-color-equalization",
  "ph2d-panel-equalize-sizes",

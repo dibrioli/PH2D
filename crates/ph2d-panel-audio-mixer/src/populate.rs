@@ -1,6 +1,6 @@
 //! Audio Mixer panel widget registration.
 
-use crate::{AMIX_CLOSE, AMIX_FADER, AMIX_MASTER_MUTE};
+use crate::{AMIX_CLOSE, AMIX_CUTOFF, AMIX_FADER, AMIX_MASTER_MUTE};
 use ph2d_editor_core::interaction::{InteractiveState, WidgetStore};
 use ph2d_editor_core::widget::{ButtonState, SliderOrientation, SliderState};
 
@@ -26,6 +26,15 @@ pub(crate) fn populate(store: &mut WidgetStore) {
             state: SliderState::Normal,
             value: 1.0,
             orientation: SliderOrientation::Vertical,
+        },
+    );
+    // Master low-pass cutoff — a horizontal Slider (start open at 1.0).
+    store.register(
+        AMIX_CUTOFF,
+        InteractiveState::Slider {
+            state: SliderState::Normal,
+            value: 1.0,
+            orientation: SliderOrientation::Horizontal,
         },
     );
 }

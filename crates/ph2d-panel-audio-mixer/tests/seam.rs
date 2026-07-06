@@ -9,7 +9,8 @@ use ph2d_editor_core::interaction::WidgetEvent;
 use ph2d_editor_core::panel::{EventOutcome, Panel, PanelHostInternal};
 use ph2d_panel_audio_mixer::state::AudioMixerState;
 use ph2d_panel_audio_mixer::{
-    AMIX_FADER, AMIX_MASTER_MUTE, AudioMixerPanel, master_gain_target, master_muted,
+    AMIX_CUTOFF, AMIX_FADER, AMIX_MASTER_MUTE, AudioMixerPanel, master_cutoff_target,
+    master_gain_target, master_muted,
 };
 use ph2d_ui_testkit::MockPanelHost;
 
@@ -94,5 +95,25 @@ fn fader_drag_publishes_master_gain() {
     assert!(
         (master_gain_target() - 0.3).abs() < 1e-5,
         "fader drag was consumed but the published master gain never updated"
+    );
+}
+
+/// Dragging the Cutoff slider to the bottom publishes the lowest cutoff
+/// (~20 Hz) — the log map 0..1 → 20 Hz..20 kHz, read by the shell to drive the
+/// master low-pass filter.
+#[test]
+fn cutoff_drag_publishes_hz() {
+    let mut host = MockPanelHost::with_panel::<AudioMixerPanel>();
+    let mut state = AudioMixerState;
+
+    host.set_slider_value(AMIX_CUTOFF, 0.0);
+    let outcome = host
+        .apply_panel_event::<AudioMixerPanel>(&mut state, WidgetEvent::ValueChanged(AMIX_CUTOFF));
+
+    assert_eq!(outcome, EventOutcome::Consumed);
+    assert!(
+        (master_cutoff_target() - 20.0).abs() < 0.5,
+        "cutoff slider at 0 must map to ~20 Hz, got {}",
+        master_cutoff_target()
     );
 }

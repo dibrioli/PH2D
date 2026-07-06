@@ -4,7 +4,9 @@
 //! shared `INSP_*` drag/resize handles so it moves/resizes with the dock slot.
 
 use crate::state::AudioMixerState;
-use crate::{AMIX_CLOSE, AMIX_FADER, AMIX_MASTER_MUTE, AMIX_PANEL, AudioMixerPanel, snapshot};
+use crate::{
+    AMIX_CLOSE, AMIX_CUTOFF, AMIX_FADER, AMIX_MASTER_MUTE, AMIX_PANEL, AudioMixerPanel, snapshot,
+};
 use ph2d_editor_core::ids as core_ids;
 use ph2d_editor_core::paint::{fill_rounded_rect, paint_text, paint_text_centered, resolve};
 use ph2d_editor_core::panel::{PaintCtx, Panel};
@@ -79,10 +81,12 @@ pub(crate) fn paint(_state: &mut AudioMixerState, ctx: &mut PaintCtx) {
     // The fader's live value is the source of truth (the shared slider dispatch
     // writes it on drag); the shell reads the published gain to drive the engine.
     let fader_gain = store.slider(AMIX_FADER).map(|(_, v)| v).unwrap_or(1.0);
+    let cutoff = store.slider(AMIX_CUTOFF).map(|(_, v)| v).unwrap_or(1.0);
     paint_master_strip(
         rect,
         header_bottom,
         fader_gain,
+        cutoff,
         ctx.scene,
         ctx.text_system,
         theme,
@@ -91,10 +95,12 @@ pub(crate) fn paint(_state: &mut AudioMixerState, ctx: &mut PaintCtx) {
 }
 
 /// Paint the Master channel strip below the header.
+#[allow(clippy::too_many_arguments)]
 fn paint_master_strip(
     panel: Rect,
     top: f32,
     gain: f32,
+    cutoff: f32,
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
     theme: Theme,
@@ -157,4 +163,27 @@ fn paint_master_strip(
         resolve(fg, theme),
     );
     hit_index.register(AMIX_MASTER_MUTE, mute_rect);
+    y += MUTE_H + Spacing::Lg.px();
+
+    // Master low-pass cutoff — label + horizontal slider (drag → filter sweep).
+    paint_text(
+        text_system,
+        scene,
+        "Cutoff",
+        content_x,
+        y,
+        TypeToken::Base.px(),
+        content_w,
+        resolve(ColorToken::Text2, theme),
+    );
+    y += TypeToken::Base.px() + Spacing::Sm.px();
+    let cutoff_rect = Rect::new(content_x, y, content_w, Spacing::Lg.px());
+    paint_slider_track(
+        cutoff_rect,
+        cutoff.clamp(0.0, 1.0),
+        SliderOrientation::Horizontal,
+        scene,
+        theme,
+    );
+    hit_index.register(AMIX_CUTOFF, cutoff_rect);
 }

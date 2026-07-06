@@ -6,13 +6,16 @@
 
 use crate::buffer::SampleData;
 use crate::command::AudioCommand;
-use crate::dsp::SmoothGain;
+use crate::dsp::{Biquad, SmoothGain};
 use crate::format::{AudioFormat, Sample};
 use crate::pool::VoicePool;
 
 pub(crate) struct Mixer {
     pool: VoicePool,
     master_gain: SmoothGain,
+    /// Master low-pass filter (per channel). Identity coeffs by default = bypass.
+    filter_l: Biquad,
+    filter_r: Biquad,
 }
 
 impl Mixer {
@@ -20,6 +23,8 @@ impl Mixer {
         Self {
             pool: VoicePool::new(max_voices, format),
             master_gain: SmoothGain::immediate(1.0),
+            filter_l: Biquad::default(),
+            filter_r: Biquad::default(),
         }
     }
 
@@ -37,6 +42,10 @@ impl Mixer {
             AudioCommand::SetVoiceGain { voice, gain } => self.pool.set_gain(voice, gain),
             AudioCommand::SetVoicePan { voice, pan } => self.pool.set_pan(voice, pan),
             AudioCommand::SetMasterGain { gain } => self.master_gain.set_target(gain),
+            AudioCommand::SetMasterFilter { coeffs } => {
+                self.filter_l.set_coeffs(coeffs);
+                self.filter_r.set_coeffs(coeffs);
+            }
         }
     }
 
@@ -51,8 +60,9 @@ impl Mixer {
         self.pool.render_into(master, frames, on_finished);
         for f in 0..frames {
             let g = self.master_gain.tick();
-            master[2 * f] *= g;
-            master[2 * f + 1] *= g;
+            // Master gain, then the master low-pass filter (identity = bypass).
+            master[2 * f] = self.filter_l.process(master[2 * f] * g);
+            master[2 * f + 1] = self.filter_r.process(master[2 * f + 1] * g);
         }
     }
 

@@ -12,7 +12,7 @@ use std::sync::Arc;
 use crossbeam_queue::ArrayQueue;
 
 use crate::buffer::SampleData;
-use crate::dsp::AdsrParams;
+use crate::dsp::{AdsrParams, BiquadCoeffs};
 use crate::voice::VoiceId;
 
 /// How a voice should play, passed to [`crate::AudioEngine::play`].
@@ -65,6 +65,11 @@ pub(crate) enum AudioCommand {
     },
     SetMasterGain {
         gain: f32,
+    },
+    /// Master low-pass filter coefficients (computed control-side so no
+    /// transcendentals run on the audio thread).
+    SetMasterFilter {
+        coeffs: BiquadCoeffs,
     },
 }
 

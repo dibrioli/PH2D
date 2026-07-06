@@ -31,6 +31,8 @@ pub const AMIX_PANEL: NodeId = ph2d_editor_core::ids::AUDIO_MIXER_PANEL;
 pub const AMIX_CLOSE: NodeId = hash_node_id("audio_mixer_close");
 /// Master vertical fader (a `Slider` — drag → master gain).
 pub const AMIX_FADER: NodeId = hash_node_id("audio_mixer_fader");
+/// Master low-pass cutoff (a horizontal `Slider` — drag → filter cutoff).
+pub const AMIX_CUTOFF: NodeId = hash_node_id("audio_mixer_cutoff");
 /// Master-strip mute toggle.
 pub const AMIX_MASTER_MUTE: NodeId = hash_node_id("audio_mixer_master_mute");
 
@@ -70,6 +72,7 @@ mod snapshot {
     thread_local! {
         static LEVELS: Cell<[f32; 2]> = const { Cell::new([0.0, 0.0]) };
         static MASTER_GAIN: Cell<f32> = const { Cell::new(1.0) };
+        static CUTOFF_HZ: Cell<f32> = const { Cell::new(20_000.0) }; // LITERAL-PX-OK: default cutoff 20 kHz (audio frequency, not a UI metric)
         static MUTED: Cell<bool> = const { Cell::new(false) };
     }
 
@@ -91,6 +94,15 @@ mod snapshot {
         MASTER_GAIN.with(Cell::get)
     }
 
+    /// Panel → shell: the master low-pass cutoff in Hz (from the Cutoff slider).
+    pub(crate) fn set_cutoff(hz: f32) {
+        CUTOFF_HZ.with(|c| c.set(hz));
+    }
+
+    pub fn cutoff() -> f32 {
+        CUTOFF_HZ.with(Cell::get)
+    }
+
     pub fn muted() -> bool {
         MUTED.with(Cell::get)
     }
@@ -109,5 +121,7 @@ pub use snapshot::set_levels;
 /// Panel → shell: the master gain the fader drives — read by the bridge to set
 /// the engine's master gain.
 pub use snapshot::master_gain as master_gain_target;
+/// Panel → shell: the master low-pass cutoff (Hz) the Cutoff slider drives.
+pub use snapshot::cutoff as master_cutoff_target;
 /// Panel → shell: whether the Master mute is engaged (bridge zeroes the gain).
 pub use snapshot::muted as master_muted;

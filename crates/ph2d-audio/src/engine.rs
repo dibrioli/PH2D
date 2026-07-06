@@ -11,6 +11,7 @@ use std::sync::Arc;
 use crate::AudioError;
 use crate::buffer::{MixScratch, SampleData};
 use crate::command::{AudioCommand, AudioReturn, Consumer, PlayParams, Producer, ring};
+use crate::dsp::BiquadCoeffs;
 use crate::format::{AudioFormat, ChannelLayout, Sample};
 use crate::meter::AudioMeter;
 use crate::mixer::Mixer;
@@ -100,6 +101,19 @@ impl AudioEngine {
     /// Set the master output gain (smoothed).
     pub fn set_master_gain(&self, gain: f32) -> Result<(), AudioError> {
         self.send(AudioCommand::SetMasterGain { gain })
+    }
+
+    /// Set the master low-pass filter cutoff in Hz. At/near Nyquist the filter
+    /// is effectively open, sent as identity (true bypass). Coefficients are
+    /// computed here on the control thread — no transcendentals on the RT thread.
+    pub fn set_master_cutoff(&self, cutoff_hz: f32) -> Result<(), AudioError> {
+        let sr = self.format.sample_rate as f32;
+        let coeffs = if cutoff_hz >= sr * 0.5 * 0.9 {
+            BiquadCoeffs::identity()
+        } else {
+            BiquadCoeffs::lowpass(sr, cutoff_hz.max(20.0), std::f32::consts::FRAC_1_SQRT_2)
+        };
+        self.send(AudioCommand::SetMasterFilter { coeffs })
     }
 
     /// Drain and drop finished samples returned by the audio thread. Call once

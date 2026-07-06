@@ -18,6 +18,8 @@ pub(crate) struct AudioSystem {
     /// Last master gain pushed to the engine — so the per-frame bridge only
     /// sends a command when it actually changes (else it floods the ring).
     last_master_gain: std::cell::Cell<f32>,
+    /// Same change-gate for the master filter cutoff.
+    last_cutoff: std::cell::Cell<f32>,
     // Kept alive for the app's lifetime; the callback (which owns the renderer)
     // runs on cpal's thread until this drops. `cpal::Stream` is `!Send` on ALSA,
     // which is fine — `App` never leaves the main thread.
@@ -82,6 +84,7 @@ impl AudioSystem {
             engine,
             format,
             last_master_gain: std::cell::Cell::new(1.0),
+            last_cutoff: std::cell::Cell::new(20_000.0),
             _stream: stream,
         })
     }
@@ -97,6 +100,14 @@ impl AudioSystem {
         if (gain - self.last_master_gain.get()).abs() > f32::EPSILON {
             let _ = self.engine.set_master_gain(gain);
             self.last_master_gain.set(gain);
+        }
+    }
+
+    /// Set the master low-pass cutoff (Hz), change-gated like the gain.
+    pub(crate) fn set_master_cutoff(&self, hz: f32) {
+        if (hz - self.last_cutoff.get()).abs() > f32::EPSILON {
+            let _ = self.engine.set_master_cutoff(hz);
+            self.last_cutoff.set(hz);
         }
     }
 

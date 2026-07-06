@@ -14,7 +14,9 @@ use crate::{number_field, state};
 use ph2d_editor_core::ids as core_ids;
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::widget::DropdownOption;
-use ph2d_tool_painter::{BrushSettings, TextureKind};
+use ph2d_tool_painter::{
+    BrushSettings, TEX_OFFSET_MAX, TEX_OFFSET_MIN, TextureKind, TextureMapping, param_specs,
+};
 
 /// Slider range bounds — the parameter domains (matching the tool's `set_brush_*` clamps), not design
 /// tokens. The `0..1` params (Granulation / Mix) use the allowlisted `0.0`/`1.0` inline.
@@ -174,9 +176,9 @@ pub(crate) fn paint_watercolor_section(
 /// Paper: a kind picker + Size/Angle. Granulation: the amount, a "Same as Paper" checkbox, and — when
 /// off — its own kind + Size/Angle. Returns the next `y`.
 /// Paint the **Paper** section (the substrate the wash sits on) — a collapsible section ABOVE the Grain
-/// section, shown only in watercolor mode. Kind picker + (when assigned) preview + Size X/Y + Angle. The
-/// full texture parity (Mapping/Rake/Offset/Depth/Contrast + Color Ramp) is a follow-up; the Grain
-/// section already offers the same via a tagged layer. Returns the next `y`.
+/// section, shown only in watercolor mode. Full parity with the Grain section's controls: Kind picker +
+/// Mapping + Rake + Random Angle + Angle + Offset + Size + Depth + per-pattern params. (The live preview
+/// + the Color Ramp are a follow-up; the substrate is a grayscale height-field so a ramp is niche.)
 pub(crate) fn paint_paper_section(
     ctx: &mut PaintCtx,
     theme: ph2d_tokens::Theme,
@@ -199,6 +201,8 @@ pub(crate) fn paint_paper_section(
     if collapsed {
         return y;
     }
+    let kind = TextureKind::from_u8(brush.paper_kind);
+    // ── Kind picker ──
     let (ny, open) = paint_dropdown_row(
         ctx,
         theme,
@@ -208,45 +212,129 @@ pub(crate) fn paint_paper_section(
         "Paper",
         core_ids::PAINTER_WATERCOLOR_PAPER_KIND,
         brush.paper_kind,
-        TextureKind::from_u8(brush.paper_kind).name(),
+        kind.name(),
     );
     y = ny;
     if let Some(r) = open {
         state::set_pending_paper_kind_dd(Some((r, brush.paper_kind)));
     }
-    if brush.paper_kind != 0 {
-        y = number_field::paint_num_xy(
+    if kind == TextureKind::None {
+        return y;
+    }
+    // ── Mapping + Rake + Random Angle (per-dab rotation mappings only) ──
+    let mapping = TextureMapping::from_u8(brush.paper_mapping);
+    let (ny, open) = paint_dropdown_row(
+        ctx,
+        theme,
+        x,
+        content_w,
+        y,
+        "Mapping",
+        core_ids::PAINTER_WATERCOLOR_PAPER_MAPPING,
+        brush.paper_mapping,
+        mapping.name(),
+    );
+    y = ny;
+    if let Some(r) = open {
+        state::set_pending_paper_mapping_dd(Some((r, brush.paper_mapping)));
+    }
+    if mapping.uses_dab_rotation() {
+        y = paint_checkbox_row(
             ctx,
             theme,
             x,
             content_w,
             y,
-            "Size",
-            core_ids::PAINTER_WATERCOLOR_PAPER_SIZE_X,
-            brush.paper_size[0],
-            core_ids::PAINTER_WATERCOLOR_PAPER_SIZE_Y,
-            brush.paper_size[1],
-            TEX_SIZE_MIN,
-            TEX_SIZE_MAX,
-            number_field::SIZE_STEP,
-            2,
+            core_ids::PAINTER_WATERCOLOR_PAPER_RAKE,
+            "Rake",
+            brush.paper_rake,
         );
-        y = number_field::paint_num_row(
+        y = paint_checkbox_row(
             ctx,
             theme,
             x,
             content_w,
             y,
-            "Angle",
-            core_ids::PAINTER_WATERCOLOR_PAPER_ANGLE,
-            f32::from(brush.paper_angle),
-            0.0,
-            ANGLE_MAX,
-            number_field::SIZE_STEP,
-            0,
+            core_ids::PAINTER_WATERCOLOR_PAPER_RANDOM,
+            "Random Angle",
+            brush.paper_random,
         );
     }
-    y
+    y = number_field::paint_num_row(
+        ctx,
+        theme,
+        x,
+        content_w,
+        y,
+        "Angle",
+        core_ids::PAINTER_WATERCOLOR_PAPER_ANGLE,
+        f32::from(brush.paper_angle),
+        0.0,
+        ANGLE_MAX,
+        number_field::ANGLE_STEP,
+        0,
+    );
+    // ── Offset + Size ──
+    y = number_field::paint_num_xy(
+        ctx,
+        theme,
+        x,
+        content_w,
+        y,
+        "Offset",
+        core_ids::PAINTER_WATERCOLOR_PAPER_OFFSET_X,
+        brush.paper_offset[0],
+        core_ids::PAINTER_WATERCOLOR_PAPER_OFFSET_Y,
+        brush.paper_offset[1],
+        TEX_OFFSET_MIN,
+        TEX_OFFSET_MAX,
+        number_field::FINE_STEP,
+        2,
+    );
+    y = number_field::paint_num_xy(
+        ctx,
+        theme,
+        x,
+        content_w,
+        y,
+        "Size",
+        core_ids::PAINTER_WATERCOLOR_PAPER_SIZE_X,
+        brush.paper_size[0],
+        core_ids::PAINTER_WATERCOLOR_PAPER_SIZE_Y,
+        brush.paper_size[1],
+        TEX_SIZE_MIN,
+        TEX_SIZE_MAX,
+        number_field::SIZE_STEP,
+        2,
+    );
+    // ── Depth (paper tooth strength) ──
+    y = number_field::paint_num_row(
+        ctx,
+        theme,
+        x,
+        content_w,
+        y,
+        "Depth",
+        core_ids::PAINTER_WATERCOLOR_PAPER_DEPTH,
+        brush.paper_depth.clamp(0.0, 1.0),
+        0.0,
+        1.0,
+        number_field::FINE_STEP,
+        2,
+    );
+    // ── Per-pattern params (Contrast / Brightness / kind knobs) ──
+    let pp: Vec<(&str, ph2d_a11y::NodeId, f32)> = param_specs(kind)
+        .iter()
+        .enumerate()
+        .map(|(i, s)| {
+            (
+                s.label,
+                core_ids::PAINTER_WATERCOLOR_PAPER_PARAMS[i],
+                brush.paper_params[i],
+            )
+        })
+        .collect();
+    number_field::paint_num_params(ctx, theme, x, content_w, y, &pp)
 }
 
 /// The **Grain**-section watercolor extras — shown at the top of the Grain section in watercolor mode,
@@ -286,8 +374,8 @@ pub(crate) fn paint_grain_watercolor_extras(
     )
 }
 
-/// Drain the Watercolor **Paper** kind dropdown popover (called from `paint_brush_popovers`, after the
-/// body clip is popped, so the open list is never clipped).
+/// Drain the Watercolor **Paper** kind + mapping dropdown popovers (called from `paint_brush_popovers`,
+/// after the body clip is popped, so the open list is never clipped).
 pub(crate) fn paint_watercolor_popovers(ctx: &mut PaintCtx, theme: ph2d_tokens::Theme) {
     if let Some((chip_rect, cur)) = state::take_pending_paper_kind_dd() {
         let options: Vec<DropdownOption<u8>> = (0..TextureKind::COUNT)
@@ -303,6 +391,25 @@ pub(crate) fn paint_watercolor_popovers(ctx: &mut PaintCtx, theme: ph2d_tokens::
             ctx,
             theme,
             core_ids::PAINTER_WATERCOLOR_PAPER_KIND,
+            options,
+            chip_rect,
+            cur,
+        );
+    }
+    if let Some((chip_rect, cur)) = state::take_pending_paper_mapping_dd() {
+        let options: Vec<DropdownOption<u8>> = (0..TextureMapping::COUNT)
+            .map(|m| {
+                DropdownOption::new(
+                    core_ids::painter_paper_mapping_option_id(m),
+                    m,
+                    TextureMapping::from_u8(m).name(),
+                )
+            })
+            .collect();
+        crate::paint_brush::paint_dropdown_popover(
+            ctx,
+            theme,
+            core_ids::PAINTER_WATERCOLOR_PAPER_MAPPING,
             options,
             chip_rect,
             cur,

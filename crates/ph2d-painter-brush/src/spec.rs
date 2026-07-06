@@ -209,6 +209,9 @@ pub struct BrushSpec {
     /// ignored and only the [`Self::granulation`] amount applies. False → the Grain slot IS the granulation
     /// map. (Shown in the Grain section only in watercolor mode.)
     pub granulation_use_paper: bool,
+    /// **Paper Depth**, `0..1`: how strongly the [`Self::paper`] tooth textures the wash (the paper's
+    /// substrate bite, independent of the granulation amount). `0` = a flat wash; `1` = full tooth.
+    pub paper_depth: f32,
 }
 
 impl Default for BrushSpec {
@@ -267,6 +270,7 @@ impl Default for BrushSpec {
             // granulation follows the paper's tooth until the artist points it at the Grain slot map.
             paper: TextureSettings::default(),
             granulation_use_paper: true,
+            paper_depth: 1.0,
         }
     }
 }

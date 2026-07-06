@@ -329,6 +329,8 @@ pub fn populate(store: &mut WidgetStore) {
         ph2d_editor_core::ids::PAINTER_WATERCOLOR_RESET,
         ph2d_editor_core::ids::PAINTER_WATERCOLOR_GRAN_SAME,
         ph2d_editor_core::ids::PAINTER_WATERCOLOR_PAPER_RESET,
+        ph2d_editor_core::ids::PAINTER_WATERCOLOR_PAPER_RAKE,
+        ph2d_editor_core::ids::PAINTER_WATERCOLOR_PAPER_RANDOM,
     ] {
         store.register(
             id,

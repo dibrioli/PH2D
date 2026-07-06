@@ -297,10 +297,17 @@ impl Tool for PainterTool {
                     self.set_brush_texture_kind(k);
                 }
             }
-            // ── Watercolor Paper slot kind picker (value = TextureKind wire u8). ─
+            // ── Watercolor Paper slot kind + mapping pickers (value = wire u8). ─
             PanelEvent::SelectOption(id, value) if id == core_ids::PAINTER_WATERCOLOR_PAPER_KIND => {
                 if let Ok(k) = value.parse::<u8>() {
                     self.set_brush_paper_kind(k);
+                }
+            }
+            PanelEvent::SelectOption(id, value)
+                if id == core_ids::PAINTER_WATERCOLOR_PAPER_MAPPING =>
+            {
+                if let Ok(m) = value.parse::<u8>() {
+                    self.set_brush_paper_mapping(m);
                 }
             }
             PanelEvent::SelectOption(id, value)

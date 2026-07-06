@@ -303,10 +303,22 @@ pub struct BrushSettings {
     pub warp: f32,
     /// **Paper** slot kind (`TextureKind` wire u8) — the substrate tooth (its own full section).
     pub paper_kind: u8,
-    /// **Paper** slot Size (x, y), each `0.1..100`.
-    pub paper_size: [f32; 2],
+    /// **Paper** slot Mapping (`TextureMapping` wire u8).
+    pub paper_mapping: u8,
+    /// **Paper** slot Rake (rotation follows the stroke).
+    pub paper_rake: bool,
+    /// **Paper** slot Random-Angle (per-dab random rotation).
+    pub paper_random: bool,
     /// **Paper** slot Angle in whole degrees (fibre orientation).
     pub paper_angle: u16,
+    /// **Paper** slot Offset (x, y).
+    pub paper_offset: [f32; 2],
+    /// **Paper** slot Size (x, y), each `0.1..100`.
+    pub paper_size: [f32; 2],
+    /// **Paper Depth** (`0..1`) — how strongly the paper tooth textures the wash.
+    pub paper_depth: f32,
+    /// **Paper** per-pattern params (Contrast / Brightness / kind knobs).
+    pub paper_params: [f32; 6],
     /// **Granulation "Same as Paper"** — when true the granulation settles into the paper's own tooth
     /// (the Grain slot texture is ignored). Shown in the Grain section in watercolor mode.
     pub granulation_use_paper: bool,

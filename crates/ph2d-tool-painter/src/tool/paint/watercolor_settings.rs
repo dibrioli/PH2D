@@ -8,7 +8,8 @@ use super::brush_settings::BrushTextureImage;
 use crate::tool::PainterTool;
 use ph2d_editor_core::tool::PanelEvent;
 use ph2d_painter_brush::{
-    BrushSpec, TEX_SIZE_MAX, TEX_SIZE_MIN, TextureKind, TextureMapping, TextureSettings,
+    BrushSpec, TEX_OFFSET_MAX, TEX_OFFSET_MIN, TEX_SIZE_MAX, TEX_SIZE_MIN, TextureKind,
+    TextureMapping, TextureSettings,
 };
 
 impl PainterTool {
@@ -37,6 +38,14 @@ impl PainterTool {
             }
             PanelEvent::Click(id) if *id == core_ids::PAINTER_WATERCOLOR_PAPER_RESET => {
                 self.reset_brush_paper();
+                true
+            }
+            PanelEvent::Click(id) if *id == core_ids::PAINTER_WATERCOLOR_PAPER_RAKE => {
+                self.toggle_brush_paper_rake();
+                true
+            }
+            PanelEvent::Click(id) if *id == core_ids::PAINTER_WATERCOLOR_PAPER_RANDOM => {
+                self.toggle_brush_paper_random();
                 true
             }
             PanelEvent::SetValue(id, v) => {
@@ -80,6 +89,26 @@ impl PainterTool {
                     }
                     x if x == core_ids::PAINTER_WATERCOLOR_PAPER_ANGLE => {
                         self.set_brush_paper_angle(v);
+                        true
+                    }
+                    x if x == core_ids::PAINTER_WATERCOLOR_PAPER_OFFSET_X => {
+                        self.set_brush_paper_offset(0, v);
+                        true
+                    }
+                    x if x == core_ids::PAINTER_WATERCOLOR_PAPER_OFFSET_Y => {
+                        self.set_brush_paper_offset(1, v);
+                        true
+                    }
+                    x if x == core_ids::PAINTER_WATERCOLOR_PAPER_DEPTH => {
+                        self.set_brush_paper_depth(v);
+                        true
+                    }
+                    x if core_ids::PAINTER_WATERCOLOR_PAPER_PARAMS.contains(&x) => {
+                        let slot = core_ids::PAINTER_WATERCOLOR_PAPER_PARAMS
+                            .iter()
+                            .position(|&p| p == x)
+                            .unwrap_or(0);
+                        self.set_brush_paper_param(slot, v);
                         true
                     }
                     _ => false,
@@ -159,6 +188,40 @@ impl PainterTool {
     /// Set the **Paper** slot Angle (whole degrees, wrapped to `0..360`).
     pub fn set_brush_paper_angle(&mut self, deg: f32) {
         self.paint.brush.paper.angle_deg = deg.rem_euclid(360.0) as u16;
+    }
+
+    /// Set the **Paper** slot Mapping (`TextureMapping` wire u8).
+    pub fn set_brush_paper_mapping(&mut self, m: u8) {
+        self.paint.brush.paper.mapping = TextureMapping::from_u8(m);
+    }
+
+    /// Toggle the **Paper** slot Rake (rotation follows the stroke).
+    pub fn toggle_brush_paper_rake(&mut self) {
+        self.paint.brush.paper.rake = !self.paint.brush.paper.rake;
+    }
+
+    /// Toggle the **Paper** slot Random-Angle (per-dab random rotation).
+    pub fn toggle_brush_paper_random(&mut self) {
+        self.paint.brush.paper.random_angle = !self.paint.brush.paper.random_angle;
+    }
+
+    /// Set the **Paper** slot Offset on `axis` (0 = x, 1 = y), clamped to `[-1, 1]`.
+    pub fn set_brush_paper_offset(&mut self, axis: usize, v: f32) {
+        if axis < 2 {
+            self.paint.brush.paper.offset[axis] = v.clamp(TEX_OFFSET_MIN, TEX_OFFSET_MAX);
+        }
+    }
+
+    /// Set the **Paper Depth** (how strongly the paper tooth textures the wash), clamped to `[0, 1]`.
+    pub fn set_brush_paper_depth(&mut self, v: f32) {
+        self.paint.brush.paper_depth = v.clamp(0.0, 1.0);
+    }
+
+    /// Set the **Paper** per-pattern param on `slot` (`0..6`; slots 0/1 = Contrast/Brightness), `[0, 1]`.
+    pub fn set_brush_paper_param(&mut self, slot: usize, v: f32) {
+        if slot < self.paint.brush.paper.params.len() {
+            self.paint.brush.paper.params[slot] = v.clamp(0.0, 1.0);
+        }
     }
 
     /// Toggle **Granulation "Same as Paper"** — on = the granulation settles into the paper's own tooth
@@ -315,6 +378,26 @@ mod tests {
         assert!(t.brush_settings().granulation_use_paper, "Same as Paper default on");
         t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_WATERCOLOR_GRAN_SAME));
         assert!(!t.brush_settings().granulation_use_paper, "Same as Paper toggled off");
+
+        // Full Paper slot: Mapping / Rake / Random / Offset / Depth / param.
+        t.handle_panel_event(PanelEvent::SelectOption(
+            core_ids::PAINTER_WATERCOLOR_PAPER_MAPPING,
+            (TextureMapping::Random.to_u8()).to_string(),
+        ));
+        assert_eq!(t.paint.brush.paper.mapping, TextureMapping::Random, "Paper mapping picked");
+        t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_WATERCOLOR_PAPER_RAKE));
+        assert!(t.paint.brush.paper.rake, "Paper Rake toggled");
+        t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_WATERCOLOR_PAPER_RANDOM));
+        assert!(t.paint.brush.paper.random_angle, "Paper Random toggled");
+        t.handle_panel_event(PanelEvent::SetValue(core_ids::PAINTER_WATERCOLOR_PAPER_OFFSET_X, 0.3));
+        assert!((t.paint.brush.paper.offset[0] - 0.3).abs() < 1e-6, "Paper Offset X set");
+        t.handle_panel_event(PanelEvent::SetValue(core_ids::PAINTER_WATERCOLOR_PAPER_DEPTH, 0.7));
+        assert!((t.paint.brush.paper_depth - 0.7).abs() < 1e-6, "Paper Depth set");
+        t.handle_panel_event(PanelEvent::SetValue(core_ids::PAINTER_WATERCOLOR_PAPER_PARAMS[2], 0.8));
+        assert!((t.paint.brush.paper.params[2] - 0.8).abs() < 1e-6, "Paper param slot 2 set");
+        // Reset clears the Paper slot back to None.
+        t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_WATERCOLOR_PAPER_RESET));
+        assert_eq!(t.paint.brush.paper.kind, TextureKind::None, "Paper reset to empty");
 
         // Clamp: Edge caps at 8, Spread at 24.
         t.handle_panel_event(PanelEvent::SetValue(core_ids::PAINTER_WATERCOLOR_EDGE, 99.0));

@@ -263,6 +263,12 @@ impl Tool for PainterTool {
                     self.add_adjustment_layer(kind);
                 }
             }
+            // ── Preset pick (top of panel): value = preset idx (0 = Digital, 1 = Watercolor). ──
+            PanelEvent::SelectOption(id, value) if id == core_ids::PAINTER_BRUSH_PRESET => {
+                if let Ok(idx) = value.parse::<u8>() {
+                    self.apply_brush_preset(idx);
+                }
+            }
             // ── Brush section blend pick: value = `BrushBlend` wire u8. ──────
             PanelEvent::SelectOption(id, value) if id == core_ids::PAINTER_BRUSH_BLEND => {
                 if let Ok(mode) = value.parse::<u8>() {

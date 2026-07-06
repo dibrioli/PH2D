@@ -73,6 +73,9 @@ thread_local! {
     /// Mirror of [`PENDING_BRUSH_BLEND_DD`] for the Falloff section chip.
     static PENDING_BRUSH_FALLOFF_DD: Cell<Option<(Rect, u8)>> = const { Cell::new(None) };
 
+    /// The open top-of-panel **Preset** dropdown popover: `(chip_rect, current_preset_idx)`.
+    static PENDING_BRUSH_PRESET_DD: Cell<Option<(Rect, u8)>> = const { Cell::new(None) };
+
     /// The open Stroke-section Method dropdown popover: `(chip_rect, current_method_u8)`.
     static PENDING_BRUSH_STROKE_METHOD_DD: Cell<Option<(Rect, u8)>> = const { Cell::new(None) };
 
@@ -512,6 +515,16 @@ pub(crate) fn set_pending_brush_falloff_dd(v: Option<(Rect, u8)>) {
 /// Take (and clear) the pending brush Falloff dropdown for the deferred popover.
 pub(crate) fn take_pending_brush_falloff_dd() -> Option<(Rect, u8)> {
     PENDING_BRUSH_FALLOFF_DD.with(|c| c.take())
+}
+
+/// Stash the open top-of-panel Preset dropdown for the deferred popover pass.
+pub(crate) fn set_pending_brush_preset_dd(v: Option<(Rect, u8)>) {
+    PENDING_BRUSH_PRESET_DD.with(|c| c.set(v));
+}
+
+/// Take (and clear) the pending Preset dropdown for the deferred popover.
+pub(crate) fn take_pending_brush_preset_dd() -> Option<(Rect, u8)> {
+    PENDING_BRUSH_PRESET_DD.with(|c| c.take())
 }
 
 /// Stash the open Stroke-section Method dropdown for the deferred popover pass.

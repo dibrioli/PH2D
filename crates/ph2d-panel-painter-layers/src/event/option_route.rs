@@ -4,10 +4,10 @@
 //! clicked id wins (the id spaces are disjoint, so order is irrelevant). Add a dropdown ⇒ add one row.
 
 use super::decode::{
-    decode_brush_blend_option, decode_brush_falloff_option, decode_jitter_unit_option,
-    decode_shape_kind_option, decode_shape_ramp_alpha_option, decode_shape_ramp_interp_option,
-    decode_shape_ramp_mode_option, decode_stroke_method_option, decode_texture_kind_option,
-    decode_texture_mapping_option, decode_texture_ramp_alpha_option,
+    decode_brush_blend_option, decode_brush_falloff_option, decode_brush_preset_option,
+    decode_jitter_unit_option, decode_shape_kind_option, decode_shape_ramp_alpha_option,
+    decode_shape_ramp_interp_option, decode_shape_ramp_mode_option, decode_stroke_method_option,
+    decode_texture_kind_option, decode_texture_mapping_option, decode_texture_ramp_alpha_option,
     decode_texture_ramp_interp_option, decode_texture_ramp_mode_option,
 };
 use ph2d_editor_core::action_bus::EditorAction;
@@ -25,7 +25,8 @@ pub(super) fn route_brush_dropdown_option(
     host: &mut dyn PanelHostInternal,
     id: ph2d_a11y::NodeId,
 ) -> Option<bool> {
-    let routes: [OptionRoute; 13] = [
+    let routes: [OptionRoute; 14] = [
+        (decode_brush_preset_option, core_ids::PAINTER_BRUSH_PRESET),
         (decode_brush_blend_option, core_ids::PAINTER_BRUSH_BLEND),
         (decode_brush_falloff_option, core_ids::PAINTER_BRUSH_FALLOFF),
         (

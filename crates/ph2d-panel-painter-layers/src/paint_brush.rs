@@ -15,6 +15,7 @@ use ph2d_editor_core::IconId;
 use ph2d_editor_core::action_bus::EditorAction;
 use ph2d_editor_core::ids::{
     self as core_ids, painter_brush_blend_option_id, painter_brush_falloff_option_id,
+    painter_brush_preset_option_id,
 };
 use ph2d_editor_core::interaction::InteractiveState;
 use ph2d_editor_core::paint::{
@@ -74,6 +75,26 @@ pub(crate) fn paint_brush_body(
     use crate::paint_brush_top::{
         paint_checkbox_row, paint_randomize_section, paint_slider_chip_row,
     };
+
+    // **Preset** dropdown at the very TOP — one-click media presets (Digital Basic / Watercolor Basic).
+    // The "current" preset is inferred from the master watercolor flag (there's no stored preset id — a
+    // preset just seeds the whole `BrushSpec`). Selecting one forwards `SelectOption` → `apply_brush_preset`.
+    let preset_idx = u8::from(brush.watercolor); // 0 = Digital, 1 = Watercolor
+    let (ny, preset_open) = paint_dropdown_row(
+        ctx,
+        theme,
+        x,
+        content_w,
+        y,
+        "Preset",
+        core_ids::PAINTER_BRUSH_PRESET,
+        preset_idx,
+        preset_name(preset_idx),
+    );
+    y = ny;
+    if let Some(r) = preset_open {
+        state::set_pending_brush_preset_dd(Some((r, preset_idx)));
+    }
 
     // "Sync with other tools" — at the very TOP of every tool's panel. Off (default) = this tool keeps its
     // own settings; on = all paint tools share them (the panel where it's checked seeds the others).
@@ -246,6 +267,16 @@ pub(crate) fn paint_brush_body(
 /// dropdown is never clipped to the scrolling viewport. The chip rects were stashed during
 /// [`paint_brush_body`] (already at their scrolled positions).
 pub(crate) fn paint_brush_popovers(ctx: &mut PaintCtx, theme: ph2d_tokens::Theme) {
+    if let Some((chip_rect, cur)) = state::take_pending_brush_preset_dd() {
+        paint_dropdown_popover(
+            ctx,
+            theme,
+            core_ids::PAINTER_BRUSH_PRESET,
+            preset_options(),
+            chip_rect,
+            cur,
+        );
+    }
     if let Some((chip_rect, cur)) = state::take_pending_brush_blend_dd() {
         paint_dropdown_popover(
             ctx,
@@ -476,6 +507,21 @@ pub(crate) fn paint_dropdown_chip(
 
     ctx.host.hit_index_mut().register(id, rect);
     open
+}
+
+/// Display name for a brush-preset index (`0` = Digital, `1` = Watercolor). English UI (HR-15).
+fn preset_name(idx: u8) -> &'static str {
+    match idx {
+        1 => "Watercolor Basic",
+        _ => "Digital Basic",
+    }
+}
+
+/// The brush presets as `Dropdown` options (value = preset idx, label = display name).
+fn preset_options() -> Vec<DropdownOption<u8>> {
+    (0..core_ids::PAINTER_BRUSH_PRESET_COUNT)
+        .map(|i| DropdownOption::new(painter_brush_preset_option_id(i), i, preset_name(i)))
+        .collect()
 }
 
 /// The 24 brush blend modes as `Dropdown` options (value = wire discriminant,

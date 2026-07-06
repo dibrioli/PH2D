@@ -235,6 +235,32 @@ fn stroke_method_option_forwards_selectoption() {
     );
 }
 
+/// The top-of-panel **Preset** dropdown option forwards `SelectOption(PAINTER_BRUSH_PRESET, idx)` —
+/// the seam that reaches `PainterTool::apply_brush_preset`. A missing `decode_brush_preset_option` /
+/// option-route row leaves the dropdown painted, clickable and silently dead.
+#[test]
+fn preset_option_forwards_selectoption() {
+    let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
+    let mut st = PainterLayersPanelState;
+    let opt = core_ids::painter_brush_preset_option_id(1); // Watercolor Basic
+    let outcome = host.apply_panel_event::<PainterLayersPanel>(&mut st, WidgetEvent::Click(opt));
+    assert_eq!(
+        outcome,
+        EventOutcome::Consumed,
+        "Preset option click ignored — decode_brush_preset_option / option-route row is missing"
+    );
+    let actions = host.drained_actions();
+    assert!(
+        actions.iter().any(|a| matches!(
+            a,
+            EditorAction::ToolPanelEvent(PanelEvent::SelectOption(i, v))
+                if *i == core_ids::PAINTER_BRUSH_PRESET && v == "1"
+        )),
+        "Preset pick never forwarded as SelectOption(PAINTER_BRUSH_PRESET, \"1\") — seam dead. \
+         drained = {actions:?}"
+    );
+}
+
 // ── Symmetry section seam (Use / Circular / X-Y-Custom axis / Segments / pick buttons / reset) ──
 // Same discipline as the Stroke section above: one assertion per control SHAPE, proving the real
 // WidgetEvent forwards the EXACT PanelEvent the tool's `route_brush_jitter_event` arm consumes. A

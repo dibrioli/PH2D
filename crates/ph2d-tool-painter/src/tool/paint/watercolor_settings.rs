@@ -128,6 +128,40 @@ impl PainterTool {
         b.depth = d.depth;
         b.warp = d.warp;
     }
+
+    /// Apply a one-click **brush preset** (the top-of-panel dropdown): `0` = **Digital Basic** (the plain
+    /// brush), `1` = **Watercolor Basic** (the optical wash configured to reproduce
+    /// `docs/Painter/wet_edges_paint.html`). Both PRESERVE the current colour + radius (a preset is a
+    /// look, not a reset of what/where you paint); everything else is set from scratch so switching is
+    /// deterministic. Plain state edit (no undo / pixel touch), like the section resets.
+    pub fn apply_brush_preset(&mut self, idx: u8) {
+        let cur = self.paint.brush;
+        self.paint.brush = match idx {
+            // Watercolor Basic — wet_edges defaults: soft round dab (`Falloff::Smooth`, `hardness 0`),
+            // Mix blend, dense spacing, the optical render-path on (Fill/Depth/Edge/Spread/Warp/Granulation
+            // set to the wet_edges constants). Pigment stays off (wet_edges default `realistic = false`).
+            1 => BrushSpec {
+                radius_px: cur.radius_px,
+                color: cur.color,
+                spacing: 0.05, // LITERAL-OK: dense wash dabs (wet_edges segments ≈ r·0.22)
+                watercolor: true,
+                fill: 0.12,        // LITERAL-OK: wet_edges fillDensity
+                depth: 1.2,        // LITERAL-OK: wet_edges DEPTH
+                edge_gain: 3.0,    // LITERAL-OK: wet_edges edgeGain
+                edge_spread: 7.0,  // LITERAL-OK: wet_edges spread
+                warp: 6.0,         // LITERAL-OK: wet_edges warpAmp
+                granulation: 0.30, // LITERAL-OK: wet_edges granAmt
+                pigment: false,
+                ..BrushSpec::default()
+            },
+            // Digital Basic (0 or any unknown) — the plain default brush, keeping the user's colour + size.
+            _ => BrushSpec {
+                radius_px: cur.radius_px,
+                color: cur.color,
+                ..BrushSpec::default()
+            },
+        };
+    }
 }
 
 #[cfg(test)]
@@ -185,5 +219,33 @@ mod tests {
             "reset turned the Watercolor + Pigment gates off"
         );
         assert_eq!(b.edge_gain, 1.5, "reset restored the default Edge gain");
+    }
+
+    /// The Preset dropdown seam: `SelectOption(PAINTER_BRUSH_PRESET, idx)` reconfigures the whole brush.
+    /// Watercolor Basic turns the render-path on with the wet_edges knobs; Digital Basic turns it back
+    /// off — both PRESERVING the user's colour + radius (a preset is a look, not a what/where reset).
+    #[test]
+    fn preset_dropdown_reconfigures_the_brush() {
+        let mut t = PainterTool::default();
+        // Give the brush a distinctive colour + size the preset must preserve.
+        t.paint.brush.color = [0.2, 0.6, 0.9];
+        t.paint.brush.radius_px = 40.0;
+
+        // Watercolor Basic (idx 1): render-path on + wet_edges optics.
+        t.handle_panel_event(PanelEvent::SelectOption(core_ids::PAINTER_BRUSH_PRESET, "1".into()));
+        let b = t.brush_settings();
+        assert!(b.watercolor, "Watercolor Basic turns the render-path on");
+        assert_eq!(b.edge_gain, 3.0, "wet_edges edge gain");
+        assert_eq!(b.fill, 0.12, "wet_edges fill");
+        assert_eq!(b.depth, 1.2, "wet_edges depth");
+        assert_eq!(b.color, [0.2, 0.6, 0.9], "colour preserved across the preset");
+        assert_eq!(t.paint.brush.radius_px, 40.0, "radius preserved across the preset");
+
+        // Digital Basic (idx 0): back to the plain brush, colour + size still preserved.
+        t.handle_panel_event(PanelEvent::SelectOption(core_ids::PAINTER_BRUSH_PRESET, "0".into()));
+        let b = t.brush_settings();
+        assert!(!b.watercolor, "Digital Basic turns the render-path off");
+        assert_eq!(b.color, [0.2, 0.6, 0.9], "colour still preserved");
+        assert_eq!(t.paint.brush.radius_px, 40.0, "radius still preserved");
     }
 }

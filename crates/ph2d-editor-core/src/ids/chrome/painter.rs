@@ -147,6 +147,22 @@ pub fn painter_brush_blend_option_id(mode: u8) -> NodeId {
     fnv_node_id_runtime(&format!("painter_brush.blendopt.{mode}"))
 }
 
+/// Brush **Preset** dropdown chip at the very top of the Painter panel: one-click
+/// media presets (`0` = Digital Basic = the plain brush, `1` = Watercolor Basic =
+/// the optical wash configured to `docs/Painter/wet_edges_paint.html`). `SelectOption`
+/// → `PainterTool::apply_brush_preset`. See `docs/Painter/10_aquarela_render_path_preset_papers.md` §3.
+pub const PAINTER_BRUSH_PRESET: NodeId = hash_node_id("painter_brush.preset");
+
+/// Number of brush presets in the [`PAINTER_BRUSH_PRESET`] dropdown (Digital / Watercolor).
+pub const PAINTER_BRUSH_PRESET_COUNT: u8 = 2;
+
+/// Derive the stable [`NodeId`] for brush-preset option `idx` (`0..PAINTER_BRUSH_PRESET_COUNT`) in the
+/// open Preset dropdown popover. Mirror of [`painter_brush_blend_option_id`].
+#[must_use]
+pub fn painter_brush_preset_option_id(idx: u8) -> NodeId {
+    fnv_node_id_runtime(&format!("painter_brush.presetopt.{idx}"))
+}
+
 /// Derive the stable [`NodeId`] for falloff preset option `preset` in the open
 /// brush Falloff dropdown popover. Mirror of [`painter_brush_blend_option_id`].
 #[must_use]

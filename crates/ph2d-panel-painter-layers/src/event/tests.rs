@@ -3,15 +3,33 @@
 //! clicking them in the dropdown did nothing. These lock the full 9-method round-trip + distinctness.
 
 use super::decode::{
-    decode_stroke_method_option, decode_texture_kind_option, decode_texture_mapping_option,
-    decode_texture_ramp_alpha_option,
+    decode_brush_preset_option, decode_stroke_method_option, decode_texture_kind_option,
+    decode_texture_mapping_option, decode_texture_ramp_alpha_option,
 };
 use super::*;
 use ph2d_editor_core::ids::{
-    painter_brush_stroke_method_option_id, painter_brush_texture_kind_option_id,
-    painter_brush_texture_mapping_option_id, painter_brush_texture_ramp_alpha_option_id,
+    painter_brush_preset_option_id, painter_brush_stroke_method_option_id,
+    painter_brush_texture_kind_option_id, painter_brush_texture_mapping_option_id,
+    painter_brush_texture_ramp_alpha_option_id,
 };
 use ph2d_tool_painter::{RampAlphaMode, TextureKind, TextureMapping};
+
+#[test]
+fn every_preset_option_id_round_trips() {
+    // Both presets (Digital = 0, Watercolor = 1) must decode back to themselves.
+    for i in 0u8..core_ids::PAINTER_BRUSH_PRESET_COUNT {
+        assert_eq!(
+            decode_brush_preset_option(painter_brush_preset_option_id(i)),
+            Some(i),
+            "preset option id {i} did not decode back"
+        );
+    }
+    assert_eq!(
+        decode_brush_preset_option(core_ids::PAINTER_BRUSH_PRESET),
+        None,
+        "the chip id is not an option id"
+    );
+}
 
 #[test]
 fn every_stroke_method_option_id_round_trips() {

@@ -11,6 +11,12 @@ use ph2d_tool_painter::{
     TextureMapping,
 };
 
+/// Decode a top-of-panel **Preset** popover option id → its preset idx (`0` = Digital, `1` = Watercolor).
+pub(super) fn decode_brush_preset_option(id: NodeId) -> Option<u8> {
+    (0..core_ids::PAINTER_BRUSH_PRESET_COUNT)
+        .find(|&i| core_ids::painter_brush_preset_option_id(i) == id)
+}
+
 /// Decode a brush blend-mode popover option id → its mode `u8` (fixed; iterate the 24 stable ids).
 pub(super) fn decode_brush_blend_option(id: NodeId) -> Option<u8> {
     (0..MAX_BRUSH_BLEND_MODES).find(|&m| core_ids::painter_brush_blend_option_id(m) == id)

@@ -336,7 +336,7 @@ pub fn cursor_over_hero_panel(gfx: Option<&AppGfx>, x: f32, y: f32) -> bool {
     };
     use ph2d_editor::screens::hero::ids::{
         BGR_PANEL, CEQ_PANEL, EQS_PANEL, GAL_PANEL, HIER_PANEL, INSP_PANEL, PAD_PANEL,
-        PAINTER_LAYERS_PANEL, UPS_PANEL,
+        PAINTER_LAYERS_PANEL, UPS_PANEL, VECTOR_PANEL,
     };
     let inside = |panel_id| {
         hero.store
@@ -364,6 +364,9 @@ pub fn cursor_over_hero_panel(gfx: Option<&AppGfx>, x: f32, y: f32) -> bool {
         // (the sprite footprint extends UNDER the docked panel), so the click
         // would interact with the sprite "through" the panel chrome.
         || inside(PAINTER_LAYERS_PANEL)
+        // Vector Style panel (right-dock takeover, ADR-0108). Same reason as
+        // painter-layers: the canvas extends under the docked panel.
+        || inside(VECTOR_PANEL)
 }
 
 /// ADR-0029 Phase C.2: resolve canvas-picked entity bits to a live

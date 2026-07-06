@@ -493,14 +493,25 @@ impl App {
             .and_then(|g| g.hero_screen.as_ref())
             .is_some_and(|h| h.store.eyedropper_pending().is_some());
 
-        // ADR-0108 cutover: the Vector tool's Pen — canvas only (not over a
-        // panel). Primary Down places an anchor (drag pulls the Bézier handles);
-        // Primary Up ends the drag; Secondary finishes the path. Consumes the
-        // click. Gated on the Vector tool being the active tool.
-        let over_panel = crate::forwarding::cursor_over_hero_panel(self.gfx.as_ref(), evt.x, evt.y);
+        // ADR-0108 cutover: the Vector tool's Pen draws ONLY on empty canvas.
+        // A press over ANY UI — a docked panel body, a topbar pill, an open
+        // menu, or this tool's own Style panel controls — MUST fall through to
+        // the chrome dispatch below, never the pen; otherwise the whole UI is
+        // unclickable while drawing (can't even deactivate the tool). Guard
+        // mirrors the sprite-pick path: no panel under the cursor AND no
+        // interactive widget hit (`hit_index` covers pills / menus / panel
+        // controls; `panel_at` covers panel bodies incl. the vector panel).
+        let on_canvas = self
+            .gfx
+            .as_ref()
+            .and_then(|g| g.hero_screen.as_ref())
+            .map(|h| {
+                h.store.panel_at(evt.x, evt.y).is_none() && h.hit_index.hit(evt.x, evt.y).is_none()
+            })
+            .unwrap_or(false);
         if self.vector_tool_active() && !menu_open_before {
             match (mapped_button, kind) {
-                (ph2d_host::PointerButton::Primary, PointerKind::Down) if !over_panel => {
+                (ph2d_host::PointerButton::Primary, PointerKind::Down) if on_canvas => {
                     if let Some(gfx) = self.gfx.as_mut() {
                         let win = gfx.surface.size();
                         let w = gfx.camera.screen_to_world(self.last_pointer, win);
@@ -529,7 +540,7 @@ impl App {
                         return;
                     }
                 }
-                (ph2d_host::PointerButton::Secondary, PointerKind::Down) if !over_panel => {
+                (ph2d_host::PointerButton::Secondary, PointerKind::Down) if on_canvas => {
                     self.vec_pen.finish();
                     return;
                 }

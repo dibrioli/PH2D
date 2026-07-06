@@ -1,0 +1,21 @@
+[package]
+name = "ph2d-imageio-tga"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# `ph2d-imageio-tga` — Truevision TGA (`.tga`) decode + encode
+# (`line/imageio`). Pure-Rust via `image` 0.25 `tga` feature. Classic
+# game-art interchange (uncompressed/RLE, 8-bit RGBA). No header magic →
+# extension + optional v2 footer recognition; decode/encode API uniform
+# with PNG/JPEG/HDR.
+
+[dependencies]
+ph2d-imageio = { path = "../ph2d-imageio" }
+ph2d-color   = { path = "../ph2d-color" }
+image = { version = "0.25", default-features = false, features = ["tga"] }

@@ -1,0 +1,21 @@
+[package]
+name = "ph2d-imageio-qoi"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# `ph2d-imageio-qoi` — QOI (Quite OK Image, `.qoi`) decode + encode
+# (`line/imageio`). Pure-Rust via `image` 0.25 `qoi` feature. Lossless
+# RGB/RGBA with a tiny single-pass codec — fast decode, so a good import
+# format and cook target. `qoif` magic (Strong); API uniform with
+# PNG/JPEG/HDR.
+
+[dependencies]
+ph2d-imageio = { path = "../ph2d-imageio" }
+ph2d-color   = { path = "../ph2d-color" }
+image = { version = "0.25", default-features = false, features = ["qoi"] }

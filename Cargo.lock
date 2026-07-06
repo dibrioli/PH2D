@@ -2966,6 +2966,7 @@ dependencies = [
  "moxcms",
  "num-traits",
  "png",
+ "qoi",
  "tiff",
  "zune-core",
  "zune-jpeg",
@@ -4971,6 +4972,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-imageio-qoi"
+version = "0.0.0"
+dependencies = [
+ "image",
+ "ph2d-color",
+ "ph2d-imageio",
+]
+
+[[package]]
 name = "ph2d-imageio-registry-init"
 version = "0.0.0"
 dependencies = [
@@ -4986,8 +4996,10 @@ dependencies = [
  "ph2d-imageio-ph2d-native",
  "ph2d-imageio-png",
  "ph2d-imageio-psd",
+ "ph2d-imageio-qoi",
  "ph2d-imageio-svg",
  "ph2d-imageio-sync",
+ "ph2d-imageio-tga",
  "ph2d-imageio-tiff",
  "ph2d-imageio-webp",
 ]
@@ -5003,6 +5015,15 @@ dependencies = [
 [[package]]
 name = "ph2d-imageio-sync"
 version = "0.0.0"
+
+[[package]]
+name = "ph2d-imageio-tga"
+version = "0.0.0"
+dependencies = [
+ "image",
+ "ph2d-color",
+ "ph2d-imageio",
+]
 
 [[package]]
 name = "ph2d-imageio-tiff"
@@ -6005,6 +6026,15 @@ name = "pxfm"
 version = "0.1.29"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e0c5ccf5294c6ccd63a74f1565028353830a9c2f5eb0c682c355c471726a6e3f"
+
+[[package]]
+name = "qoi"
+version = "0.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7f6d64c71eb498fe9eae14ce4ec935c555749aef511cca85b5568910d6e48001"
+dependencies = [
+ "bytemuck",
+]
 
 [[package]]
 name = "quick-error"

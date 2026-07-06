@@ -387,26 +387,26 @@ struct PaperCfg {
     contrast: f32,
 }
 
-/// **Cold Press** — a medium random tooth with a mild laid-line fibre (the classic "NOT" surface).
+/// **Cold Press** — a medium random tooth with a subtle laid-line fibre (the classic "NOT" surface).
 const PAPER_COLD: PaperCfg = PaperCfg {
     base_scale: 5.0,
-    aniso: 0.4,
-    ridge_mix: 0.15,
+    aniso: 0.12,
+    ridge_mix: 0.12,
     cell_mix: 0.0,
     contrast: 0.9,
 };
-/// **Rough** — a deep, pronounced tooth with strong fibre creases (heavy pooling).
+/// **Rough** — a deep, pronounced tooth with fibre creases (heavy pooling).
 const PAPER_ROUGH: PaperCfg = PaperCfg {
     base_scale: 3.5,
-    aniso: 0.6,
-    ridge_mix: 0.5,
+    aniso: 0.22,
+    ridge_mix: 0.4,
     cell_mix: 0.0,
     contrast: 1.2,
 };
 /// **Hot Press** — a fine, smooth grain with a soft felt mottle (minimal tooth).
 const PAPER_HOT: PaperCfg = PaperCfg {
     base_scale: 8.0,
-    aniso: 0.15,
+    aniso: 0.06,
     ridge_mix: 0.0,
     cell_mix: 0.35,
     contrast: 0.6,
@@ -415,19 +415,17 @@ const PAPER_HOT: PaperCfg = PaperCfg {
 /// A watercolor **Paper** tooth height-field (valleys dark, peaks bright), shared by the three presets.
 /// A two-scale high-pass of anisotropic fBm gives a crisp tooth (not a soft blob); the preset adds
 /// ridged fibre creases (rough) or a Worley felt mottle (hot-press). Transcendental-free (HR-5): only
-/// [`fbm_g`] / [`value_noise`] / [`felt_cells`] + sums. User knobs (`&params[2..]`): Tooth / Fibre / Scale.
-fn paper_grain(u: f32, v: f32, k: &[f32], cfg: PaperCfg) -> f32 {
-    let tooth = knob(k, 0); // grain contrast (0.5 neutral)
-    let fibre = knob(k, 1); // fibre anisotropy amount
-    let scale = 0.6 + knob(k, 2) * 1.4; // feature-size mult (0.5 → ~1.3)
-    let f = cfg.base_scale * scale;
-    // Anisotropic laid-line coords: stretch across the fibres so the noise streaks along u.
-    let ax = 1.0 + cfg.aniso * fibre * 3.0;
+/// [`fbm_g`] / [`value_noise`] / [`felt_cells`] + sums. The preset IS the character; Contrast tunes the
+/// tooth depth (via [`apply_tone`]), Size x/y the scale + anisotropy, Angle the orientation.
+fn paper_grain(u: f32, v: f32, _k: &[f32], cfg: PaperCfg) -> f32 {
+    let f = cfg.base_scale;
+    // The preset's subtle inherent fibre streak (the artist controls anisotropy with Size x/y on top).
+    let ax = 1.0 + cfg.aniso;
     let (su, sv) = (u * f, v * f * ax);
     // Two-scale high-pass → a crisp tooth (peaks + valleys), not a soft billow.
     let n_fine = fbm_g(su, sv, 4, 0.5);
     let n_coarse = fbm_g(su * 0.4, sv * 0.4, 2, 0.5);
-    let c = cfg.contrast * (0.7 + tooth * 1.8);
+    let c = cfg.contrast * 1.6; // fixed base tooth depth; the UI Contrast fine-tunes it via `apply_tone`
     let mut h = (0.5 + (n_fine - n_coarse) * c).clamp(0.0, 1.0);
     // Ridged fibres (laid lines): sharp creases running along the fibre axis.
     if cfg.ridge_mix > 0.0 {

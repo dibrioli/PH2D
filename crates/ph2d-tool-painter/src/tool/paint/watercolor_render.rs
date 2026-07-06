@@ -418,6 +418,8 @@ impl PainterTool {
         // A tagged layer (Fase D "Use as Paper/Granulation") lands in the Grain slot as a Tiled Image; the
         // pixels live here, so hand them to the sampler (procedural papers ignore it).
         let grain_img = self.paint.texture_image.as_ref().map(|i| i.as_mask());
+        // Precompute the paper's Angle rotation basis ONCE (the per-degree walk is not per-pixel-cheap).
+        let grain_rot = ph2d_painter_brush::texture::angle_basis(grain_tex.angle_deg);
         // Fallback pigment when the colour buffer is faint (straight brush colour → sRGB bytes).
         let fallback = [
             (brush.color[0].clamp(0.0, 1.0) * 255.0 + 0.5) as u8,
@@ -461,11 +463,12 @@ impl PainterTool {
                 let edge = (cw * (1.0 - inner) * edge_gain).clamp(0.0, 1.0);
                 // Paper tooth: the selected Grain paper (canvas-anchored) or the built-in noise fallback.
                 let paper_h = if grain_paper {
-                    ph2d_painter_brush::texture::sample_tiled(
+                    ph2d_painter_brush::texture::sample_tiled_rot(
                         &grain_tex,
                         gx as i64,
                         gy as i64,
                         grain_img.as_ref(),
+                        grain_rot,
                     )
                 } else {
                     paper_height(gx as f32, gy as f32)

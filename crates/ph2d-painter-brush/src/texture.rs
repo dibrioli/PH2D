@@ -580,15 +580,38 @@ pub fn sample(
 /// without it that kind is inert. Returns the coverage in `[0, 1]`; `1.0` when the slot is inactive.
 #[must_use]
 pub fn sample_tiled(s: &TextureSettings, px: i64, py: i64, image: Option<&ImageMask>) -> f32 {
+    sample_tiled_rot(s, px, py, image, angle_basis(s.angle_deg))
+}
+
+/// The rotation basis `[cos, sin]` for a whole-degree angle (transcendental-free, HR-5) — precompute it
+/// once, then feed it to [`sample_tiled_rot`] per pixel so the per-call cost is a few mults, not trig.
+#[must_use]
+pub fn angle_basis(deg: u16) -> [f32; 2] {
+    rotate_by_degrees(deg)
+}
+
+/// [`sample_tiled`] with a caller-precomputed rotation basis `rot` (from [`angle_basis`]) — the hot-loop
+/// form: the tile coords are rotated by `rot` before the pattern is sampled, so the paper honours its
+/// **Angle** (fibre orientation). `rot = [1, 0]` is no rotation.
+#[must_use]
+pub fn sample_tiled_rot(
+    s: &TextureSettings,
+    px: i64,
+    py: i64,
+    image: Option<&ImageMask>,
+    rot: [f32; 2],
+) -> f32 {
     if !s.is_active() {
         return 1.0;
     }
     let sx = s.size[0].clamp(TEX_SIZE_MIN, TEX_SIZE_MAX);
     let sy = s.size[1].clamp(TEX_SIZE_MIN, TEX_SIZE_MAX);
     let p = [px as f32 + 0.5, py as f32 + 0.5];
+    let rel = [p[0] * sx / TEX_TILE_BASE_PX, p[1] * sy / TEX_TILE_BASE_PX];
+    // Rotate the tile coordinates by the Angle basis, then apply the Offset.
     let tex = [
-        p[0] * sx / TEX_TILE_BASE_PX + s.offset[0],
-        p[1] * sy / TEX_TILE_BASE_PX + s.offset[1],
+        rel[0] * rot[0] - rel[1] * rot[1] + s.offset[0],
+        rel[0] * rot[1] + rel[1] * rot[0] + s.offset[1],
     ];
     patterns::sample_kind(s.kind, tex, s.params, image).clamp(0.0, 1.0)
 }

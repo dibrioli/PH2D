@@ -4,6 +4,36 @@
 use super::*;
 use crate::footprint::FootprintDeform;
 
+/// The canvas-anchored [`sample_tiled`] honours the texture **Angle**: a directional pattern (Stripes)
+/// samples DIFFERENTLY at 0° vs 90° over the same canvas span — the fix for "Angle não funciona" on a
+/// Tiled paper (the render-path reads the Grain paper through this). Also pins `sample_tiled_rot`.
+#[test]
+fn sample_tiled_honours_angle() {
+    let mut s = TextureSettings {
+        kind: TextureKind::Stripes,
+        mapping: TextureMapping::Tiled,
+        ..TextureSettings::default()
+    };
+    let across = |st: &TextureSettings| -> Vec<f32> {
+        (0..40)
+            .map(|i| sample_tiled(st, i * 8, 64, None))
+            .collect()
+    };
+    s.angle_deg = 0;
+    let a = across(&s);
+    s.angle_deg = 90;
+    let b = across(&s);
+    assert!(
+        a.iter().zip(&b).any(|(x, y)| (x - y).abs() > 0.05),
+        "Angle must rotate the tiled pattern (0° vs 90° differ)"
+    );
+    // The precomputed-basis form agrees with the internal one.
+    let rot = angle_basis(90);
+    for i in 0..40 {
+        assert!((sample_tiled_rot(&s, i * 8, 64, None, rot) - b[i as usize]).abs() < 1e-6);
+    }
+}
+
 /// A hard Checker's params (Softness `0`). The engine's `TextureSettings::default()` is neutral `0.5`
 /// in every slot, which for Checker means a *soft* edge that never saturates to an exact `0`/`1`; the
 /// value-pinning tests below want the crisp pattern.

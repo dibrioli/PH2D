@@ -44,6 +44,8 @@ pub const AMIX_PAN: NodeId = hash_node_id("audio_mixer_pan");
 pub const AMIX_PLAY: NodeId = hash_node_id("audio_mixer_play_test");
 /// Master meter — clicking it clears the latched clip indicator.
 pub const AMIX_MASTER_METER: NodeId = hash_node_id("audio_mixer_master_meter");
+/// Master soft-clip limiter toggle (master output stage, below Cutoff).
+pub const AMIX_LIMITER: NodeId = hash_node_id("audio_mixer_limiter");
 
 /// Sub-buses shown as their own strips, **in `ph2d_audio::BusId::SUB_BUSES`
 /// order** (Music, SFX). The panel is UI-only (no `ph2d-audio` dep); the shell's
@@ -139,6 +141,7 @@ mod snapshot {
         static MUTED: Cell<bool> = const { Cell::new(false) };
         static MASTER_PAN: Cell<f32> = const { Cell::new(0.0) };
         static PLAY_TEST: Cell<bool> = const { Cell::new(false) };
+        static LIMITER: Cell<bool> = const { Cell::new(false) };
         // Per-sub-bus channels, index-aligned with `BusId::SUB_BUSES`.
         static SUB_LEVELS_PEAK: Cell<[[f32; 2]; SUB_BUS_COUNT]> = const { Cell::new([[0.0, 0.0]; SUB_BUS_COUNT]) };
         static SUB_LEVELS_RMS: Cell<[[f32; 2]; SUB_BUS_COUNT]> = const { Cell::new([[0.0, 0.0]; SUB_BUS_COUNT]) };
@@ -244,6 +247,19 @@ mod snapshot {
 
     pub(crate) fn toggle_play_test() -> bool {
         PLAY_TEST.with(|c| {
+            let next = !c.get();
+            c.set(next);
+            next
+        })
+    }
+
+    /// Panel → shell: whether the master soft-clip limiter is engaged.
+    pub fn limiter() -> bool {
+        LIMITER.with(Cell::get)
+    }
+
+    pub(crate) fn toggle_limiter() -> bool {
+        LIMITER.with(|c| {
             let next = !c.get();
             c.set(next);
             next
@@ -370,6 +386,8 @@ pub use snapshot::master_pan as master_pan_target;
 pub use snapshot::muted as master_muted;
 /// Panel → shell: whether the built-in test signal should be playing.
 pub use snapshot::play_test;
+/// Panel → shell: whether the master soft-clip limiter is engaged.
+pub use snapshot::limiter;
 /// Observable master clip latch (set when the peak exceeds full scale, cleared
 /// by clicking the meter).
 pub use snapshot::master_clipped;

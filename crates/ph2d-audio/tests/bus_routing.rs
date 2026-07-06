@@ -128,6 +128,38 @@ fn rms_is_positive_and_never_exceeds_peak() {
 }
 
 #[test]
+fn master_limiter_tames_a_boosted_over_unity_mix() {
+    let (mut engine, mut renderer) = AudioEngine::new(AudioFormat::stereo(48_000));
+    engine.play(steady(), on(BusId::Music)).unwrap();
+    // Boost the master well past full scale so the raw mix would clip.
+    engine.set_master_gain(2.5).unwrap();
+
+    // Read the engine's *pre-clamp* peak meter (the device buffer is clamped, so
+    // it can't show over-unity); render enough for the gain ramp to settle.
+    let mut out = vec![0.0f32; 512 * 2];
+    for _ in 0..200 {
+        renderer.render(&mut out, 512);
+    }
+    let clipping = engine.levels();
+    assert!(
+        clipping[0] > 1.0,
+        "precondition: the boosted mix must exceed full scale, got {clipping:?}"
+    );
+
+    // Engage the limiter → the master peak is pulled below the clip ceiling.
+    engine.set_master_limiter(true).unwrap();
+    for _ in 0..200 {
+        renderer.render(&mut out, 512);
+    }
+    let limited = engine.levels();
+    assert!(
+        limited[0] <= 1.0,
+        "the limiter must keep the master under full scale, got {limited:?}"
+    );
+    assert!(limited[0] > 0.5, "…without gutting the signal, got {limited:?}");
+}
+
+#[test]
 fn master_direct_voice_ignores_sub_bus_faders() {
     let (mut engine, mut renderer) = AudioEngine::new(AudioFormat::stereo(48_000));
     // A voice on Master (default) is unaffected by a muted sub-bus.

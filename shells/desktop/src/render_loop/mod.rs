@@ -130,6 +130,7 @@ impl crate::App {
                 audio.set_master_gain(if muted { 0.0 } else { gain });
                 audio.set_master_cutoff(ph2d_panel_audio_mixer::master_cutoff_target());
                 audio.set_master_pan(ph2d_panel_audio_mixer::master_pan_target());
+                audio.set_master_limiter(ph2d_panel_audio_mixer::limiter());
                 // Sub-bus strips — index-aligned with `BusId::SUB_BUSES` (the
                 // panel's strip index i maps to sub-bus i; count guarded below).
                 ph2d_panel_audio_mixer::set_sub_levels(audio.bus_levels(), audio.bus_rms());

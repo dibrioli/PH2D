@@ -21,6 +21,23 @@ fn balance_gains(pan: f32) -> [f32; 2] {
     [(1.0 - p).min(1.0), (1.0 + p).min(1.0)]
 }
 
+/// Soft-knee limiter: below `THRESHOLD` the signal is untouched; above it, the
+/// excess is smoothly saturated so the output asymptotes to `CEILING` (< 1.0,
+/// so it never hard-clips). C1-continuous at the knee (slope 1), so no audible
+/// kink; transcendental-free (HR-5) — a single divide per sample.
+fn soft_clip(x: f32) -> f32 {
+    const THRESHOLD: f32 = 0.8; // knee start (~ -2 dBFS)
+    const CEILING: f32 = 0.98; // asymptotic output ceiling (< full scale)
+    let a = x.abs();
+    if a <= THRESHOLD {
+        return x;
+    }
+    let over = a - THRESHOLD;
+    let range = CEILING - THRESHOLD;
+    let compressed = THRESHOLD + range * (over / (over + range));
+    x.signum() * compressed
+}
+
 pub(crate) struct Mixer {
     pool: VoicePool,
     master_gain: SmoothGain,
@@ -33,6 +50,8 @@ pub(crate) struct Mixer {
     bus_gain: [SmoothGain; SUB_BUS_COUNT],
     /// Per-sub-bus stereo balance gains `[L, R]`.
     bus_pan: [[f32; 2]; SUB_BUS_COUNT],
+    /// Master soft-clip limiter engaged?
+    limiter: bool,
 }
 
 impl Mixer {
@@ -45,6 +64,7 @@ impl Mixer {
             filter_r: Biquad::default(),
             bus_gain: std::array::from_fn(|_| SmoothGain::immediate(1.0)),
             bus_pan: [balance_gains(0.0); SUB_BUS_COUNT],
+            limiter: false,
         }
     }
 
@@ -75,6 +95,7 @@ impl Mixer {
                 Some(i) => self.bus_pan[i] = balance_gains(pan),
                 None => self.master_pan = balance_gains(pan),
             },
+            AudioCommand::SetMasterLimiter { on } => self.limiter = on,
         }
     }
 
@@ -127,13 +148,20 @@ impl Mixer {
         self.pool
             .render_bus(BusId::Master, master, frames, on_finished);
 
-        // Master gain, the master low-pass filter (identity = bypass), then the
-        // master stereo balance.
+        // Master gain, the master low-pass filter (identity = bypass), the master
+        // stereo balance, then the soft-clip limiter (bypassed when disengaged).
         let [mpan_l, mpan_r] = self.master_pan;
+        let limiter = self.limiter;
         for f in 0..frames {
             let g = self.master_gain.tick();
-            master[2 * f] = self.filter_l.process(master[2 * f] * g) * mpan_l;
-            master[2 * f + 1] = self.filter_r.process(master[2 * f + 1] * g) * mpan_r;
+            let mut l = self.filter_l.process(master[2 * f] * g) * mpan_l;
+            let mut r = self.filter_r.process(master[2 * f + 1] * g) * mpan_r;
+            if limiter {
+                l = soft_clip(l);
+                r = soft_clip(r);
+            }
+            master[2 * f] = l;
+            master[2 * f + 1] = r;
         }
     }
 
@@ -143,5 +171,24 @@ impl Mixer {
 
     pub(crate) fn voice_capacity(&self) -> usize {
         self.pool.capacity()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::soft_clip;
+
+    #[test]
+    fn soft_clip_passes_small_signals_and_caps_loud_ones() {
+        // Below the knee: identity.
+        assert_eq!(soft_clip(0.5), 0.5);
+        assert_eq!(soft_clip(-0.3), -0.3);
+        // Way over full scale: pulled below the ceiling (never hard-clips).
+        assert!(soft_clip(4.0) < 0.99, "loud input must stay under ceiling");
+        assert!(soft_clip(4.0) > 0.8, "…but above the knee");
+        // Symmetric.
+        assert!((soft_clip(4.0) + soft_clip(-4.0)).abs() < 1e-6);
+        // Monotonic across the knee.
+        assert!(soft_clip(0.9) < soft_clip(1.5));
     }
 }

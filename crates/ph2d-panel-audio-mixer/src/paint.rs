@@ -12,9 +12,9 @@
 use crate::fader::{FADER_UNITY_POS, fader_db};
 use crate::state::AudioMixerState;
 use crate::{
-    AMIX_CLOSE, AMIX_CUTOFF, AMIX_FADER, AMIX_MASTER_METER, AMIX_MASTER_MUTE, AMIX_PAN, AMIX_PANEL,
-    AMIX_PLAY, AudioMixerPanel, SUB_BUS_COUNT, SUB_BUS_LABELS, SUB_FADER, SUB_METER, SUB_MUTE,
-    SUB_PAN, SUB_SOLO, snapshot,
+    AMIX_CLOSE, AMIX_CUTOFF, AMIX_FADER, AMIX_LIMITER, AMIX_MASTER_METER, AMIX_MASTER_MUTE, AMIX_PAN,
+    AMIX_PANEL, AMIX_PLAY, AudioMixerPanel, SUB_BUS_COUNT, SUB_BUS_LABELS, SUB_FADER, SUB_METER,
+    SUB_MUTE, SUB_PAN, SUB_SOLO, snapshot,
 };
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::ids as core_ids;
@@ -230,7 +230,22 @@ pub(crate) fn paint(_state: &mut AudioMixerState, ctx: &mut PaintCtx) {
     cutoff_slider.set_value(cutoff.clamp(0.0, 1.0));
     paint_slider(&cutoff_slider, cutoff_rect, ctx.scene, theme);
     hit_index.register(AMIX_CUTOFF, cutoff_rect);
-    y += Spacing::Lg.px() + Spacing::Lg.px();
+    y += Spacing::Lg.px() + Spacing::Md.px();
+
+    // Master output limiter (Accent when engaged) — tames peaks below the clip
+    // ceiling instead of hard-clipping.
+    paint_toggle(
+        Rect::new(content_x, y, content_w, MUTE_H),
+        "Limiter",
+        snapshot::limiter(),
+        ColorToken::Accent,
+        AMIX_LIMITER,
+        ctx.scene,
+        ctx.text_system,
+        theme,
+        hit_index,
+    );
+    y += MUTE_H + Spacing::Md.px();
 
     // Footer: built-in test oscillator toggle (Accent when playing) so the mixer
     // can be exercised without an external file. The shell owns the signal.

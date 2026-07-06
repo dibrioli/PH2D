@@ -9,8 +9,8 @@ use ph2d_editor_core::interaction::WidgetEvent;
 use ph2d_editor_core::panel::{EventOutcome, Panel, PanelHostInternal};
 use ph2d_panel_audio_mixer::state::AudioMixerState;
 use ph2d_panel_audio_mixer::{
-    AMIX_CUTOFF, AMIX_FADER, AMIX_MASTER_METER, AMIX_MASTER_MUTE, AMIX_PAN, AMIX_PLAY,
-    AudioMixerPanel, FADER_UNITY_POS, SUB_FADER, SUB_MUTE, SUB_PAN, SUB_SOLO, fader_gain,
+    AMIX_CUTOFF, AMIX_FADER, AMIX_LIMITER, AMIX_MASTER_METER, AMIX_MASTER_MUTE, AMIX_PAN, AMIX_PLAY,
+    AudioMixerPanel, FADER_UNITY_POS, SUB_FADER, SUB_MUTE, SUB_PAN, SUB_SOLO, fader_gain, limiter,
     master_clipped, master_cutoff_target, master_gain_target, master_muted, master_pan_target,
     play_test, set_levels, sub_gain_target, sub_muted, sub_pan_target, sub_soloed,
 };
@@ -191,6 +191,24 @@ fn clip_latches_on_over_unity_peak_and_meter_click_clears_it() {
         "panel ignored the meter click — the AMIX_MASTER_METER arm is missing"
     );
     assert_eq!(master_clipped(), [false, false], "meter click must clear the clip latch");
+}
+
+/// Clicking the Limiter button toggles the limiter flag the shell reads to
+/// engage/disengage the master soft-clip limiter.
+#[test]
+fn limiter_click_toggles_flag() {
+    let mut host = MockPanelHost::with_panel::<AudioMixerPanel>();
+    let mut state = AudioMixerState;
+
+    let before = limiter();
+    let outcome =
+        host.apply_panel_event::<AudioMixerPanel>(&mut state, WidgetEvent::Click(AMIX_LIMITER));
+    assert_eq!(
+        outcome,
+        EventOutcome::Consumed,
+        "panel ignored the Limiter click — the AMIX_LIMITER arm is missing"
+    );
+    assert_ne!(limiter(), before, "Limiter click must flip the limiter flag");
 }
 
 /// Clicking the footer Play Test button toggles the play flag the shell reads

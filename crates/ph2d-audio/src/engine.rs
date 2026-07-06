@@ -146,6 +146,11 @@ impl AudioEngine {
         self.send(AudioCommand::SetBusPan { bus, pan })
     }
 
+    /// Engage/disengage the master soft-clip limiter.
+    pub fn set_master_limiter(&self, on: bool) -> Result<(), AudioError> {
+        self.send(AudioCommand::SetMasterLimiter { on })
+    }
+
     /// Drain and drop finished samples returned by the audio thread. Call once
     /// per game frame so their `Arc`s free on the control thread, not the RT one.
     pub fn collect_returns(&self) {

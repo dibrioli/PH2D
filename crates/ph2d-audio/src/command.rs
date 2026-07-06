@@ -87,6 +87,11 @@ pub(crate) enum AudioCommand {
         bus: BusId,
         pan: f32,
     },
+    /// Engage/disengage the master soft-clip limiter (tames peaks below the
+    /// clip ceiling instead of hard-clipping).
+    SetMasterLimiter {
+        on: bool,
+    },
 }
 
 /// A message from the audio thread back to the control thread.

@@ -24,6 +24,8 @@ pub(crate) struct AudioSystem {
     last_cutoff: std::cell::Cell<f32>,
     /// Change-gate for the master balance.
     last_master_pan: std::cell::Cell<f32>,
+    /// Change-gate for the master limiter toggle.
+    last_limiter: std::cell::Cell<bool>,
     /// Same change-gate, per sub-bus fader (index-aligned with `BusId::SUB_BUSES`).
     last_bus_gain: [std::cell::Cell<f32>; SUB_BUS_COUNT],
     /// Same change-gate, per sub-bus balance.
@@ -97,6 +99,7 @@ impl AudioSystem {
             last_master_gain: std::cell::Cell::new(1.0),
             last_cutoff: std::cell::Cell::new(20_000.0),
             last_master_pan: std::cell::Cell::new(0.0),
+            last_limiter: std::cell::Cell::new(false),
             last_bus_gain: std::array::from_fn(|_| std::cell::Cell::new(1.0)),
             last_bus_pan: std::array::from_fn(|_| std::cell::Cell::new(0.0)),
             test_voices: Vec::new(),
@@ -167,6 +170,14 @@ impl AudioSystem {
         if (hz - self.last_cutoff.get()).abs() > f32::EPSILON {
             let _ = self.engine.set_master_cutoff(hz);
             self.last_cutoff.set(hz);
+        }
+    }
+
+    /// Engage/disengage the master limiter, change-gated (send only on change).
+    pub(crate) fn set_master_limiter(&self, on: bool) {
+        if on != self.last_limiter.get() {
+            let _ = self.engine.set_master_limiter(on);
+            self.last_limiter.set(on);
         }
     }
 

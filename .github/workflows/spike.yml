@@ -278,9 +278,9 @@ jobs:
         with:
           shared-key: ${{ matrix.os }}
 
-      - name: Install libudev-dev (gilrs → libudev-sys, Linux only)
+      - name: Install libudev-dev + libasound2-dev (gilrs → libudev-sys, cpal → alsa-sys; Linux only)
         if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y libudev-dev
+        run: sudo apt-get update && sudo apt-get install -y libudev-dev libasound2-dev
 
       # ph2d-imageio-avif (W3.T4, ADR-0054 §5.18) builds dav1d + rav1e
       # from vendored source: meson+ninja compile dav1d, nasm assembles

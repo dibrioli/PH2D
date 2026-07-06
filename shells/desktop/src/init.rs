@@ -361,6 +361,8 @@ pub(crate) fn build_initial_state(
         compositor,
         vello_pass,
         vector_scene,
+        // ADR-0108 Fase 0: cena-demo prova o seam da pipeline vetorial nova.
+        vec_scene: ph2d_vec_scene::VecScene::demo(),
         text_system,
         hero_screen,
         hero_arena: Bump::with_capacity(4096),

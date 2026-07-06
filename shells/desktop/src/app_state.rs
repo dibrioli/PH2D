@@ -103,6 +103,11 @@ pub(crate) struct AppGfx {
     /// Reused [`VectorScene`] — encoded fresh each frame; allocations
     /// pool inside Vello so this is cheap.
     pub(crate) vector_scene: VectorScene,
+    /// ADR-0108 Fase 0: cena vetorial NOVA (modelo editor-first). Renderizada
+    /// pela pipeline `ph2d-vec-render` no canvas, sob a mesma `vector_scene`
+    /// Vello compartilhada. Fase 0 = cena-demo (prova o seam ponta-a-ponta);
+    /// Fase 1 = dirigida pelas ferramentas de desenho.
+    pub(crate) vec_scene: ph2d_vec_scene::VecScene,
     /// parley font + layout context (heavy state). Threaded through
     /// `PaintCtx` so future text passes don't re-load fonts.
     pub(crate) text_system: TextSystem,

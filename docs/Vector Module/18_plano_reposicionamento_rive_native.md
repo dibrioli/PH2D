@@ -23,11 +23,15 @@ OOP nem o formato `.riv`.
 6. **Norte ECS (ADR-0075):** components + events/resources; tools/nós = drop-crates; UI canônica (tokens/i18n, HR-15).
 7. **Kill-criteria antes do build** (DIRETIVA §5); medir a escala **antes** de prometer.
 
-## Aproveitamento vs descarte (das 34 crates atuais)
+## Aproveitamento vs descarte (correção 2026-07-05 — as 34 crates NÃO são homogêneas)
 
-| Descartar (arquitetura antiga) | Salvar como building-block provado (lift verbatim) |
-|---|---|
-| `VectorNetwork` AoS/SmallVec, grafo por env-flag, SDF-hybrid, diffusion-fill, LLM/font/CRDT/dormant, 34-crate fan-out | Cubic-fit de Levien · Hobby spline · wrapper boolean sobre linesweeper (`boolean_paths`) · schema versionado depth-bounded (`postcard_schema`) |
+Auditoria de superfície achou **3 camadas**, não um bloco:
+
+| Camada | Crates | Destino |
+|---|---|---|
+| **FUNDACIONAL — FICA** | `ph2d-vector` (o wrapper Vello `VectorScene` por onde **o editor inteiro pinta**), `ph2d-vector-doc` (modelo, soldado no render+font), `ph2d-vector-traits`, `ph2d-vector-font` | **Mantidas** — o app não compila sem elas; a pipeline nova **constrói em cima** (não substitui). Extração de `-doc` do render é cirurgia deferida, não Fase 0. |
+| **EDIÇÃO — aposenta no cutover** | 16 nodes + 5 tools + 2 panels + `-fill/-sdf/-llm/-llm-client/-kurbo/-graph/-fanout-audit` (~30 crates) | Removidas na **Fase R** (atômica, pós-paridade). ~23 saem por codegen (tool/node/panel/chrome-sync); o resto exige edição manual de shell + editor-core + `ph2d-mcp` + 4 parity-gates acoplados. |
+| **SALVAR (lift verbatim)** | — | Cubic-fit de Levien · Hobby spline · wrapper boolean sobre linesweeper (`boolean_paths`) · schema versionado depth-bounded (`postcard_schema`). Não é herdar arquitetura; é não re-derivar math. |
 
 ## Arquitetura (split inicial — refinar na Fase 0)
 
@@ -44,14 +48,15 @@ sujo → Vello (GPU) rasteriza.
 
 ## Fases
 
-### Fase 0 — Fundação + spike de medição (fecha a escala ANTES de prometer)
-- Scaffold `ph2d-vec-scene` + `ph2d-vec-render`: desenhar um `BezPath` estático da cena via Vello no canvas real
-  (prova o seam ponta-a-ponta).
-- Aposentar as crates antigas + retirar o gate `architecture_vector_contract_surface` (ADR-0108 §4).
+### Fase 0 — Fundação aditiva + spike de medição (ZERO destruição; fecha a escala ANTES de prometer)
+- Scaffold `ph2d-vec-scene` (modelo puro editor-first) + `ph2d-vec-render` (sobre o `VectorScene` fundacional de
+  `ph2d-vector`, via re-exports): desenhar um `BezPath` da cena via Vello no **canvas real**, wirado no render loop
+  (prova o seam ponta-a-ponta — não crate órfã, DIRETIVA §2).
 - **Spike de escala:** medir quantos objetos riggados animando sustentam 60 FPS @ resolução-alvo — **naive
   re-encode vs dirty-tracked** — e **fixar N** (kill-criterion). Registrar o número (memória: medir a escala do
   sintoma antes da causa).
-- **DoD:** path aparece no canvas pela pipeline nova + N fixado + gate antigo retirado com workspace verde.
+- **NÃO retira nada** (correção: a aposentadoria é a Fase R, atômica e pós-paridade — ver abaixo).
+- **DoD:** path aparece no canvas pela pipeline nova (smoke do Enio) + N fixado, com as crates novas verdes.
 
 ### Fase 1 — MVP: editor + skinning + boolean (o coração)
 - **Desenhar/editar:** pen (criar), edit (mover âncora/handle), shape (retângulo/elipse/polígono), select. Seam
@@ -72,6 +77,18 @@ sujo → Vello (GPU) rasteriza.
 ### Fase 3 — Interatividade (futuro)
 - **State machine** (lógica portada do runtime Rive, MIT) + **constraints** (IK/translation/rotation) para reação a
   input em tempo real.
+
+### Fase R — Cutover: aposentar o sistema de edição antigo (ATÔMICA, só APÓS paridade)
+Executada **quando a Fase 1 alcança paridade** com o desenho antigo — nunca antes (senão vira zona morta: app sem
+vetor). É uma operação grande e com tentáculos (mapa em `docs/HANDOFF_*`); faz-se de uma vez:
+- **Barato (codegen):** apagar os dirs dos 16 nodes + 5 tools + 2 panels + rodar `ph2d-{node,tool,panel,chrome}-sync`
+  (limpa registries + Cargo.toml gerados; membership é glob).
+- **Manual (contido, gates acoplados):** shell (`shells/desktop`: ~15 arquivos `vector_*` + call-sites em
+  `render_loop/mod.rs`/`input_dispatch.rs`/`app_state.rs`), editor-core (icons/ids/chrome/pills — sincronizar
+  `enum_order_matches_svgs`, `architecture_topbar_registration_parity`, staleness dos design-TOMLs), `ph2d-mcp`
+  (6 tools MCP `vector.*`), const `EXPECTED_TYPED` do panel-registry-init, 5 SVGs, 5 design-TOMLs.
+- **NÃO tocar:** as 4 fundacionais (`ph2d-vector`/`-doc`/`-traits`/`-font`) — ficam como substrato de render/fonte.
+- Só então retirar o gate `architecture_vector_contract_surface` (ADR-0108 §4) e re-congelar a superfície nova.
 
 ## Kill-criteria + gates
 

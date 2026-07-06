@@ -1,0 +1,18 @@
+[package]
+name = "ph2d-vec-scene"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+[dependencies]
+# Modelo puro de documento (Fase 0, ADR-0108): sem vello/kurbo/ph2d-color —
+# geometria em [f64;2] cru; a conversão p/ kurbo::BezPath vive no render
+# (`ph2d-vec-render`), que alcança a stack Linebender pelas re-exports de
+# `ph2d-vector` (gate-proof + skew-proof). serde: undo por snapshot + save
+# futuros (mesma disciplina dos SimComponents de ph2d-ecs).
+serde = { version = "1", features = ["derive"] }

@@ -178,6 +178,7 @@ impl crate::App {
             compositor,
             vello_pass,
             vector_scene,
+            vec_scene,
             text_system,
             hero_screen,
             hero_arena,
@@ -1415,6 +1416,18 @@ impl crate::App {
                 &self.vector_selection,
                 &mut self.vector_undo_stack,
                 &mut self.vector_redo_stack,
+            );
+            // ADR-0108 Fase 0: desenha a cena vetorial NOVA (`ph2d-vec-scene`) na
+            // MESMA cena Vello compartilhada, sob o world→screen da câmera — o
+            // seam ponta-a-ponta da pipeline nova (não crate órfã, DIRETIVA §2).
+            // Dispatch INCONDICIONAL, sem branch por-tool (gate
+            // `architecture_no_per_tool_branch_in_render_loop`): a cena-demo
+            // aparece no canvas até as ferramentas de desenho da Fase 1 dirigirem
+            // `vec_scene`.
+            ph2d_vec_render::dispatch(
+                vec_scene,
+                camera.world_to_screen_affine(window_size),
+                vector_scene,
             );
             // Drain the right-click point-type menu choice (chrome parked a 0..=3
             // index in `pending_vector_point_type`) → apply EAGER to the selected

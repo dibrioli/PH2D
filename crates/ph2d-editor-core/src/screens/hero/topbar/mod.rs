@@ -25,6 +25,7 @@ pub fn populate(store: &mut WidgetStore) {
         ids::TOPBAR_SAVE_AS,
         ids::TOPBAR_OPEN,
         ids::TOPBAR_IMAGE_TOOLS,
+        ids::TOPBAR_AUDIO_MIXER,
         ids::TOPBAR_VECTOR_PEN,
         // The other four vector pills MUST be registered too: a pill that
         // is only painted + hit-indexed (cluster_painter.rs) but absent
@@ -100,6 +101,7 @@ pub fn populate(store: &mut WidgetStore) {
         (ids::TOPBAR_SAVE_AS, "Save As\u{2026} \u{00b7} Cmd+Shift+S"),
         (ids::TOPBAR_OPEN, "Open \u{00b7} Cmd+O"),
         (ids::TOPBAR_IMAGE_TOOLS, "Image Tools"),
+        (ids::TOPBAR_AUDIO_MIXER, "Audio Mixer"),
         (
             ids::TOPBAR_WIDGET_GALLERY,
             "Widget Gallery \u{00b7} reference",
@@ -187,6 +189,7 @@ fn topbar_chip_name(id: NodeId) -> Option<&'static str> {
         x if x == ids::TOPBAR_SAVE_AS => "Save As",
         x if x == ids::TOPBAR_OPEN => "Open",
         x if x == ids::TOPBAR_IMAGE_TOOLS => "Image Tools",
+        x if x == ids::TOPBAR_AUDIO_MIXER => "Audio Mixer",
         x if x == ids::TOPBAR_PLAY_BUTTON => "Play",
         x if x == ids::TOPBAR_PAUSE => "Pause",
         x if x == ids::TOPBAR_RESET => "Reset",
@@ -282,9 +285,10 @@ pub fn paint_top_bar(
     let row_h = layout.top_bar.h;
     let mut x = layout.top_bar.x;
     let gap = Spacing::Md.px();
-    // Left half now holds 5 clusters: Theme, Project (Level), Save,
-    // Open, Image Tools (Project moved here 2026-05-24).
-    let split = 5.min(clusters.len());
+    // Left half now holds 6 clusters: Theme, Project (Level), Save,
+    // Open, Image Tools, Audio Mixer (Project moved here 2026-05-24;
+    // Audio Mixer added 2026-07-05).
+    let split = 6.min(clusters.len());
     // Single agrupador backdrop spanning ALL left clusters (Enio
     // 2026-05-24: "Os componentes da esquerda devem ter apenas 1
     // fundo"). RailBg + radius Lg, top edge glued to viewport.y so

@@ -27,8 +27,6 @@ use ph2d_tool_registry::hash_node_id;
 
 /// Outer panel rect id.
 pub const AMIX_PANEL: NodeId = hash_node_id("audio_mixer_panel");
-/// Close (X) button.
-pub const AMIX_CLOSE: NodeId = hash_node_id("audio_mixer_close");
 /// Master-strip mute toggle.
 pub const AMIX_MASTER_MUTE: NodeId = hash_node_id("audio_mixer_master_mute");
 
@@ -40,7 +38,7 @@ impl Panel for AudioMixerPanel {
 
     const ID: &'static str = "audio_mixer";
     const NODE_ID: NodeId = AMIX_PANEL;
-    const DEFAULT_VISIBLE: bool = true;
+    const DEFAULT_VISIBLE: bool = false;
 
     fn paint(state: &mut AudioMixerState, ctx: &mut PaintCtx) {
         paint::paint(state, ctx);

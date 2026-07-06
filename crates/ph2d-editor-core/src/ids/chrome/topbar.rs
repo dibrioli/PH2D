@@ -29,6 +29,11 @@ pub const TOPBAR_IMAGE_TOOLS_BACKDROP: NodeId = hash_node_id("topbar_image_tools
 /// ImageTools mode; the state lives on
 /// [`crate::screens::HeroScreen::image_tools_mode`].
 pub const TOPBAR_IMAGE_TOOLS: NodeId = hash_node_id("topbar_image_tools");
+/// Audio Mixer cluster — TopBar single-pill (left group, next to Image
+/// Tools) that toggles the floating Audio Mixer panel (mirrors the
+/// Widget Gallery / Grid Settings panel-toggle pattern). Handled by
+/// `ph2d_panel_audio_mixer::AudioMixerPanel::apply_event`.
+pub const TOPBAR_AUDIO_MIXER: NodeId = hash_node_id("topbar_audio_mixer");
 /// Vector Pen tool cluster — TopBar single-pill that activates the
 /// Vector Module Pen tool (W1.T1.7). Click pushes
 /// `EditorAction::ActivateTool { tool_id: "vector_pen" }`; shell

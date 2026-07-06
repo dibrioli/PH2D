@@ -49,6 +49,12 @@ pub fn topbar_clusters() -> Vec<(ph2d_a11y::NodeId, TopBarCluster)> {
             ids::TOPBAR_IMAGE_TOOLS,
             TopBarCluster::single("IMG", IconId::Image),
         ),
+        // Audio Mixer — toggles the floating mixer panel (Master strip:
+        // fader + live meter + mute). Left group, next to Image Tools.
+        (
+            ids::TOPBAR_AUDIO_MIXER,
+            TopBarCluster::single("MIX", IconId::Audio),
+        ),
         // W1.T1.7 MVP: Vector Pen tool always-visible single pill.
         // Click activates the Pen tool (via chrome handler
         // `vector_pen_toggle::apply` → `EditorAction::ActivateTool`).

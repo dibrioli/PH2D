@@ -33,10 +33,15 @@ fn warm_render_does_not_reallocate() {
     // Warm: the one and only scratch realloc happens on the first block.
     renderer.render(&mut out, FRAMES);
     let warm_scratch = renderer.scratch_capacity();
+    let warm_bus_scratch = renderer.bus_scratch_capacity();
     let voice_cap = renderer.voice_capacity();
     assert!(
         warm_scratch >= FRAMES * 2,
         "warm-up under-sized the scratch"
+    );
+    assert!(
+        warm_bus_scratch >= FRAMES * 2,
+        "warm-up under-sized the per-bus scratch"
     );
 
     // 200 warm blocks must reuse scratch + pool with zero reallocation.
@@ -47,6 +52,11 @@ fn warm_render_does_not_reallocate() {
         renderer.scratch_capacity(),
         warm_scratch,
         "HR-3 violation: the mix scratch reallocated in the hot path"
+    );
+    assert_eq!(
+        renderer.bus_scratch_capacity(),
+        warm_bus_scratch,
+        "HR-3 violation: the per-bus scratch reallocated in the hot path"
     );
     assert_eq!(
         renderer.voice_capacity(),

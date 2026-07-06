@@ -110,6 +110,13 @@ fn frame_prof_on() -> bool {
     })
 }
 
+// The mixer panel is UI-only (no `ph2d-audio` dep); its sub-bus strips are
+// index-aligned with `BusId::SUB_BUSES` by convention. This asserts the two
+// counts agree at compile time, so adding a core bus without a panel strip (or
+// vice-versa) is a build error, not a silent misroute.
+#[cfg(feature = "panel-audio-mixer")]
+const _: () = assert!(ph2d_audio::SUB_BUS_COUNT == ph2d_panel_audio_mixer::SUB_BUS_COUNT);
+
 impl crate::App {
     pub(super) fn run_render_frame(&mut self) {
         // Phase 2.1: drop finished-sample Arcs on the main thread (HR-3).
@@ -118,11 +125,20 @@ impl crate::App {
             audio.poll();
             #[cfg(feature = "panel-audio-mixer")]
             {
+                // Master strip.
                 ph2d_panel_audio_mixer::set_levels(audio.levels());
                 let muted = ph2d_panel_audio_mixer::master_muted();
                 let gain = ph2d_panel_audio_mixer::master_gain_target();
                 audio.set_master_gain(if muted { 0.0 } else { gain });
                 audio.set_master_cutoff(ph2d_panel_audio_mixer::master_cutoff_target());
+                // Sub-bus strips — index-aligned with `BusId::SUB_BUSES` (the
+                // panel's strip index i maps to sub-bus i; count guarded below).
+                ph2d_panel_audio_mixer::set_sub_levels(audio.bus_levels());
+                let sub_muted = ph2d_panel_audio_mixer::sub_muted();
+                let sub_gain = ph2d_panel_audio_mixer::sub_gain_target();
+                for i in 0..ph2d_audio::SUB_BUS_COUNT {
+                    audio.set_bus_gain(i, if sub_muted[i] { 0.0 } else { sub_gain[i] });
+                }
             }
         }
         // Coalesced painter Move: stamp the LATEST buffered canvas position ONCE this frame, replacing

@@ -181,41 +181,6 @@ pub fn apply_event(_store: &mut WidgetStore, event: WidgetEvent) -> bool {
     false
 }
 
-fn topbar_chip_name(id: NodeId) -> Option<&'static str> {
-    Some(match id {
-        x if x == ids::TOPBAR_THEME => "Theme (PH2D)",
-        x if x == ids::TOPBAR_PROJECT => "Project",
-        x if x == ids::TOPBAR_SAVE => "Save",
-        x if x == ids::TOPBAR_SAVE_AS => "Save As",
-        x if x == ids::TOPBAR_OPEN => "Open",
-        x if x == ids::TOPBAR_IMAGE_TOOLS => "Image Tools",
-        x if x == ids::TOPBAR_AUDIO_MIXER => "Audio Mixer",
-        x if x == ids::TOPBAR_PLAY_BUTTON => "Play",
-        x if x == ids::TOPBAR_PAUSE => "Pause",
-        x if x == ids::TOPBAR_RESET => "Reset",
-        x if x == ids::TOPBAR_RIGHT_LAYERS => "Layers",
-        x if x == ids::TOPBAR_RIGHT_ASSETS => "Assets",
-        x if x == ids::TOPBAR_RIGHT_SCRIPT => "Script",
-        x if x == ids::TOPBAR_WIDGET_GALLERY => "Widget Gallery",
-        x if x == ids::TOPBAR_GRID_SETTINGS => "Grid Settings",
-        x if x == ids::TOPBAR_SETTINGS => "Settings",
-        x if x == ids::IMAGE_ACTION_TRIM => "Trim Transparency",
-        x if x == ids::IMAGE_ACTION_MAKE_SQUARE => "Make Square",
-        x if x == ids::IMAGE_ACTION_BGREMOVAL => "BG Removal",
-        x if x == ids::IMAGE_ACTION_REAL_SIZE => "Real Size",
-        x if x == ids::IMAGE_ACTION_PADDING => "Padding",
-        x if x == ids::IMAGE_ACTION_COLOR_EQUALIZATION => "Color Equalization",
-        x if x == ids::IMAGE_ACTION_EQUALIZE_SIZES => "Equalize Sizes",
-        x if x == ids::IMAGE_ACTION_RASTERIZE => "Rasterize",
-        x if x == ids::IMAGE_ACTION_UPSCALE => "Upscale",
-        x if x == ids::IMAGE_ACTION_PAINTER => "Painter",
-        x if x == ids::TOPBAR_LEFT_BACKDROP => "Left Backdrop",
-        x if x == ids::TOPBAR_RIGHT_BACKDROP => "Right Backdrop",
-        x if x == ids::TOPBAR_IMAGE_TOOLS_BACKDROP => "Image Tools Backdrop",
-        _ => return None,
-    })
-}
-
 /// Paint a Tooltip floating just above the currently hovered widget.
 /// Called by the hero orchestrator after every chrome painter has
 /// run so the tooltip lands on top. Tooltip text is read from the
@@ -643,7 +608,10 @@ pub fn image_action_a11y_nodes(
 /// file in Wave 2 PR 11.7c so this `mod.rs` stays under the HR-18
 /// 600-LOC cap. Same private surface as before; both functions
 /// remain `pub(super)`-callable from `paint_top_bar`.
+mod chip_name;
 mod cluster_painter;
+
+use chip_name::topbar_chip_name;
 use cluster_painter::{
     TOPBAR_INTER_CHIP_GAP, TOPBAR_RAIL_CHIP_W, cluster_width, paint_top_bar_cluster,
     paint_topbar_rail_chip,

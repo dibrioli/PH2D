@@ -1,7 +1,10 @@
 //! Audio Mixer panel event routing.
 
 use crate::state::AudioMixerState;
-use crate::{AMIX_CLOSE, AMIX_CUTOFF, AMIX_FADER, AMIX_MASTER_MUTE, AudioMixerPanel, snapshot};
+use crate::{
+    AMIX_CLOSE, AMIX_CUTOFF, AMIX_FADER, AMIX_MASTER_MUTE, AudioMixerPanel, SUB_FADER, SUB_MUTE,
+    snapshot,
+};
 use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::WidgetEvent;
 use ph2d_editor_core::panel::{EventOutcome, Panel, PanelHostInternal};
@@ -28,6 +31,11 @@ pub(crate) fn apply_event(
                 snapshot::toggle_muted();
                 return EventOutcome::Consumed;
             }
+            // Per-sub-bus mute toggles.
+            if let Some(i) = SUB_MUTE.iter().position(|&m| m == id) {
+                snapshot::toggle_sub_muted(i);
+                return EventOutcome::Consumed;
+            }
         }
         // Master fader dragged — the shared slider dispatch already wrote the
         // new value into the store; publish it as the master gain for the shell.
@@ -42,6 +50,14 @@ pub(crate) fn apply_event(
             let hz = 20.0 * 1000.0_f32.powf(v.clamp(0.0, 1.0)); // LITERAL-PX-OK: cutoff log map (20 Hz..20 kHz)
             snapshot::set_cutoff(hz);
             return EventOutcome::Consumed;
+        }
+        // A sub-bus fader dragged — publish that bus's gain.
+        WidgetEvent::ValueChanged(id) => {
+            if let Some(i) = SUB_FADER.iter().position(|&f| f == id) {
+                let gain = host.store().slider(id).map(|(_, v)| v).unwrap_or(1.0);
+                snapshot::set_sub_gain(i, gain);
+                return EventOutcome::Consumed;
+            }
         }
         _ => {}
     }

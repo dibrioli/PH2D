@@ -10,6 +10,7 @@ use std::sync::Arc;
 
 use crate::AudioError;
 use crate::buffer::{MixScratch, SampleData};
+use crate::bus::{BusId, SUB_BUS_COUNT};
 use crate::command::{AudioCommand, AudioReturn, Consumer, PlayParams, Producer, ring};
 use crate::dsp::BiquadCoeffs;
 use crate::format::{AudioFormat, ChannelLayout, Sample};
@@ -50,6 +51,12 @@ impl AudioEngine {
     /// silence; > 1.0 = clipping). For metering UIs — read once per frame.
     pub fn levels(&self) -> [f32; 2] {
         self.meter.peaks()
+    }
+
+    /// The most recent post-fader peak per sub-bus, in [`BusId::SUB_BUSES`]
+    /// order — one `[L, R]` pair per mixer strip.
+    pub fn bus_levels(&self) -> [[f32; 2]; SUB_BUS_COUNT] {
+        self.meter.bus_peaks()
     }
 
     /// The output format the renderer was built for.
@@ -114,6 +121,13 @@ impl AudioEngine {
             BiquadCoeffs::lowpass(sr, cutoff_hz.max(20.0), std::f32::consts::FRAC_1_SQRT_2)
         };
         self.send(AudioCommand::SetMasterFilter { coeffs })
+    }
+
+    /// Set a sub-bus fader gain (smoothed). To mute a bus, send `0.0` (the
+    /// control-side fold, mirroring the master strip). A [`BusId::Master`]
+    /// target maps to the master gain.
+    pub fn set_bus_gain(&self, bus: BusId, gain: f32) -> Result<(), AudioError> {
+        self.send(AudioCommand::SetBusGain { bus, gain })
     }
 
     /// Drain and drop finished samples returned by the audio thread. Call once
@@ -186,12 +200,14 @@ impl AudioRenderer {
 
         // 2. Zero the stereo scratch for this block (reuses capacity when warm).
         scratch.reset(frames * 2);
-        let master = scratch.master_mut();
+        let (master, bus_scratch) = scratch.split_mut();
 
-        // 3. Mix active voices + master gain.
-        mixer.render(master, frames, &mut on_finished);
+        // 3. Mix active voices through their sub-buses + master gain, capturing
+        //    each sub-bus's post-fader peak for the strip meters.
+        let mut bus_peaks = [[0.0f32; 2]; SUB_BUS_COUNT];
+        mixer.render(master, bus_scratch, &mut bus_peaks, frames, &mut on_finished);
 
-        // 4. Publish this block's peak level (pre-clamp, so clipping reads > 1).
+        // 4. Publish this block's peak levels (pre-clamp, so clipping reads > 1).
         let mut peak_l = 0.0f32;
         let mut peak_r = 0.0f32;
         for f in 0..frames {
@@ -199,6 +215,9 @@ impl AudioRenderer {
             peak_r = peak_r.max(master[2 * f + 1].abs());
         }
         meter.store(peak_l, peak_r);
+        for (i, [l, r]) in bus_peaks.iter().enumerate() {
+            meter.store_bus(i, *l, *r);
+        }
 
         // 5. Write to the device buffer in the output layout, clamped to [-1, 1].
         write_out(out, master, frames, *format);
@@ -222,6 +241,11 @@ impl AudioRenderer {
     /// Mix-scratch capacity — the HR-3 no-alloc gate reads this across warm blocks.
     pub fn scratch_capacity(&self) -> usize {
         self.scratch.capacity()
+    }
+
+    /// Per-bus scratch capacity — the other half of the HR-3 no-alloc gate.
+    pub fn bus_scratch_capacity(&self) -> usize {
+        self.scratch.bus_capacity()
     }
 }
 

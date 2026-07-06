@@ -69,6 +69,7 @@ fn render_is_deterministic() {
                 pitch: 1.0,
                 looping: false,
                 envelope: None,
+                ..PlayParams::default()
             },
         )
         .unwrap();

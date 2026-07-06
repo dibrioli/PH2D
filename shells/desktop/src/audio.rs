@@ -8,7 +8,7 @@
 
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use cpal::{FromSample, SizedSample};
-use ph2d_audio::{AudioEngine, AudioFormat, AudioRenderer, PlayParams, SampleData};
+use ph2d_audio::{AudioEngine, AudioFormat, AudioRenderer, BusId, PlayParams, SampleData, SUB_BUS_COUNT};
 
 /// The desktop audio system: the control handle + the live output stream.
 /// Dropping it closes the stream and stops audio.
@@ -20,6 +20,8 @@ pub(crate) struct AudioSystem {
     last_master_gain: std::cell::Cell<f32>,
     /// Same change-gate for the master filter cutoff.
     last_cutoff: std::cell::Cell<f32>,
+    /// Same change-gate, per sub-bus fader (index-aligned with `BusId::SUB_BUSES`).
+    last_bus_gain: [std::cell::Cell<f32>; SUB_BUS_COUNT],
     // Kept alive for the app's lifetime; the callback (which owns the renderer)
     // runs on cpal's thread until this drops. `cpal::Stream` is `!Send` on ALSA,
     // which is fine — `App` never leaves the main thread.
@@ -85,13 +87,30 @@ impl AudioSystem {
             format,
             last_master_gain: std::cell::Cell::new(1.0),
             last_cutoff: std::cell::Cell::new(20_000.0),
+            last_bus_gain: std::array::from_fn(|_| std::cell::Cell::new(1.0)),
             _stream: stream,
         })
     }
 
-    /// Current output peak levels `[L, R]` for the mixer meter.
+    /// Current master output peak levels `[L, R]` for the mixer meter.
     pub(crate) fn levels(&self) -> [f32; 2] {
         self.engine.levels()
+    }
+
+    /// Current post-fader peak levels per sub-bus, for the strip meters.
+    pub(crate) fn bus_levels(&self) -> [[f32; 2]; SUB_BUS_COUNT] {
+        self.engine.bus_levels()
+    }
+
+    /// Set sub-bus `i`'s fader gain, change-gated per bus (mute is folded in by
+    /// the caller sending `0.0`, mirroring the master strip).
+    pub(crate) fn set_bus_gain(&self, i: usize, gain: f32) {
+        if let Some(cell) = self.last_bus_gain.get(i)
+            && (gain - cell.get()).abs() > f32::EPSILON
+        {
+            let _ = self.engine.set_bus_gain(BusId::SUB_BUSES[i], gain);
+            cell.set(gain);
+        }
     }
 
     /// Set the engine's master gain, but only enqueue a command when it changed
@@ -121,8 +140,12 @@ impl AudioSystem {
     /// the control → audio → device path end to end.
     pub(crate) fn play_test_tone(&mut self) {
         let tone = sine_tone(self.format, 440.0, 0.6, 0.4);
-        match self.engine.play(tone, PlayParams::default()) {
-            Ok(_) => println!("audio: playing 440 Hz test tone (PH2D_AUDIO_SMOKE)"),
+        let params = PlayParams {
+            bus: BusId::Sfx,
+            ..PlayParams::default()
+        };
+        match self.engine.play(tone, params) {
+            Ok(_) => println!("audio: playing 440 Hz test tone on the SFX bus (PH2D_AUDIO_SMOKE)"),
             Err(e) => eprintln!("audio: test tone dropped ({e})"),
         }
     }
@@ -148,11 +171,12 @@ impl AudioSystem {
         let secs = fmt.frames_to_secs(data.frame_count() as u64);
         let params = PlayParams {
             looping: true,
+            bus: BusId::Music,
             ..PlayParams::default()
         };
         match self.engine.play(data, params) {
             Ok(_) => println!(
-                "audio: looping {} ({secs:.1}s, {} Hz, {:?})",
+                "audio: looping {} on the Music bus ({secs:.1}s, {} Hz, {:?})",
                 path.display(),
                 fmt.sample_rate,
                 fmt.channels

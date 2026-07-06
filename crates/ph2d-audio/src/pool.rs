@@ -1,6 +1,7 @@
 //! [`VoicePool`] — a fixed set of voices with oldest-quietest stealing.
 
 use crate::buffer::SampleData;
+use crate::bus::BusId;
 use crate::command::PlayParams;
 use crate::format::AudioFormat;
 use crate::voice::{Voice, VoiceId};
@@ -110,19 +111,22 @@ impl VoicePool {
         }
     }
 
-    /// Mix every active voice into `master`; finished voices' samples go to
-    /// `on_finished`.
-    pub(crate) fn render_into(
+    /// Mix every active voice routed to `target` into `out`; finished voices'
+    /// samples go to `on_finished`. The mixer calls this once per sub-bus (into a
+    /// per-bus scratch) and once for [`BusId::Master`] (voices routed straight to
+    /// the master mix).
+    pub(crate) fn render_bus(
         &mut self,
-        master: &mut [crate::format::Sample],
+        target: BusId,
+        out: &mut [crate::format::Sample],
         frames: usize,
         on_finished: &mut dyn FnMut(SampleData),
     ) {
         for v in &mut self.voices {
-            if v.is_free() {
+            if v.is_free() || v.bus() != target {
                 continue;
             }
-            if let Some(done) = v.render_add(master, frames) {
+            if let Some(done) = v.render_add(out, frames) {
                 on_finished(done);
             }
         }

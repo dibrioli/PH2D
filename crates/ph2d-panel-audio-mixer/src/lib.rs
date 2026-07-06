@@ -36,6 +36,24 @@ pub const AMIX_CUTOFF: NodeId = hash_node_id("audio_mixer_cutoff");
 /// Master-strip mute toggle.
 pub const AMIX_MASTER_MUTE: NodeId = hash_node_id("audio_mixer_master_mute");
 
+/// Sub-buses shown as their own strips, **in `ph2d_audio::BusId::SUB_BUSES`
+/// order** (Music, SFX). The panel is UI-only (no `ph2d-audio` dep); the shell's
+/// bridge maps strip index `i` → `BusId::SUB_BUSES[i]`, so this count and order
+/// must match the core. A compile-time assert in the shell guards the count.
+pub const SUB_BUS_COUNT: usize = 2;
+/// Strip labels, index-aligned with [`SUB_BUS_COUNT`].
+pub const SUB_BUS_LABELS: [&str; SUB_BUS_COUNT] = ["Music", "SFX"];
+/// Per-sub-bus vertical fader ids (drag → that bus's gain).
+pub const SUB_FADER: [NodeId; SUB_BUS_COUNT] = [
+    hash_node_id("audio_mixer_music_fader"),
+    hash_node_id("audio_mixer_sfx_fader"),
+];
+/// Per-sub-bus mute toggle ids.
+pub const SUB_MUTE: [NodeId; SUB_BUS_COUNT] = [
+    hash_node_id("audio_mixer_music_mute"),
+    hash_node_id("audio_mixer_sfx_mute"),
+];
+
 /// Zero-size marker implementing the typed Audio Mixer panel contract.
 pub struct AudioMixerPanel;
 
@@ -67,6 +85,7 @@ impl Panel for AudioMixerPanel {
 /// panel painter. Thread-local (UI + shell run on the main thread) mirrors the
 /// other panels' publish channels (e.g. `panel-painter-layers`).
 mod snapshot {
+    use crate::SUB_BUS_COUNT;
     use std::cell::Cell;
 
     thread_local! {
@@ -74,9 +93,13 @@ mod snapshot {
         static MASTER_GAIN: Cell<f32> = const { Cell::new(1.0) };
         static CUTOFF_HZ: Cell<f32> = const { Cell::new(20_000.0) }; // LITERAL-PX-OK: default cutoff 20 kHz (audio frequency, not a UI metric)
         static MUTED: Cell<bool> = const { Cell::new(false) };
+        // Per-sub-bus channels, index-aligned with `BusId::SUB_BUSES`.
+        static SUB_LEVELS: Cell<[[f32; 2]; SUB_BUS_COUNT]> = const { Cell::new([[0.0, 0.0]; SUB_BUS_COUNT]) };
+        static SUB_GAIN: Cell<[f32; SUB_BUS_COUNT]> = const { Cell::new([1.0; SUB_BUS_COUNT]) };
+        static SUB_MUTED: Cell<[bool; SUB_BUS_COUNT]> = const { Cell::new([false; SUB_BUS_COUNT]) };
     }
 
-    /// Shell → panel: current output peak levels for the meter.
+    /// Shell → panel: current master output peak levels for the meter.
     pub fn set_levels(levels: [f32; 2]) {
         LEVELS.with(|c| c.set(levels));
     }
@@ -114,9 +137,48 @@ mod snapshot {
             next
         })
     }
+
+    /// Shell → panel: current post-fader peak levels per sub-bus.
+    pub fn set_sub_levels(levels: [[f32; 2]; SUB_BUS_COUNT]) {
+        SUB_LEVELS.with(|c| c.set(levels));
+    }
+
+    pub(crate) fn sub_levels() -> [[f32; 2]; SUB_BUS_COUNT] {
+        SUB_LEVELS.with(Cell::get)
+    }
+
+    /// Panel → shell: each sub-bus fader gain (0..1).
+    pub fn sub_gain() -> [f32; SUB_BUS_COUNT] {
+        SUB_GAIN.with(Cell::get)
+    }
+
+    pub(crate) fn set_sub_gain(i: usize, gain: f32) {
+        SUB_GAIN.with(|c| {
+            let mut v = c.get();
+            if let Some(slot) = v.get_mut(i) {
+                *slot = gain;
+            }
+            c.set(v);
+        });
+    }
+
+    /// Panel → shell: each sub-bus mute flag (bridge sends gain 0 when engaged).
+    pub fn sub_muted() -> [bool; SUB_BUS_COUNT] {
+        SUB_MUTED.with(Cell::get)
+    }
+
+    pub(crate) fn toggle_sub_muted(i: usize) {
+        SUB_MUTED.with(|c| {
+            let mut v = c.get();
+            if let Some(slot) = v.get_mut(i) {
+                *slot = !*slot;
+            }
+            c.set(v);
+        });
+    }
 }
 
-/// Shell → panel: publish this frame's output peak levels for the meter.
+/// Shell → panel: publish this frame's master output peak levels for the meter.
 pub use snapshot::set_levels;
 /// Panel → shell: the master gain the fader drives — read by the bridge to set
 /// the engine's master gain.
@@ -125,3 +187,9 @@ pub use snapshot::master_gain as master_gain_target;
 pub use snapshot::cutoff as master_cutoff_target;
 /// Panel → shell: whether the Master mute is engaged (bridge zeroes the gain).
 pub use snapshot::muted as master_muted;
+/// Shell → panel: publish each sub-bus's post-fader peak levels for its meter.
+pub use snapshot::set_sub_levels;
+/// Panel → shell: each sub-bus fader gain (index-aligned with `BusId::SUB_BUSES`).
+pub use snapshot::sub_gain as sub_gain_target;
+/// Panel → shell: each sub-bus mute flag (bridge zeroes that bus's gain).
+pub use snapshot::sub_muted;

@@ -12,6 +12,7 @@ use std::sync::Arc;
 use crossbeam_queue::ArrayQueue;
 
 use crate::buffer::SampleData;
+use crate::bus::BusId;
 use crate::dsp::{AdsrParams, BiquadCoeffs};
 use crate::voice::VoiceId;
 
@@ -28,6 +29,8 @@ pub struct PlayParams {
     pub looping: bool,
     /// Optional amplitude envelope; `None` plays at flat gain until the sample ends.
     pub envelope: Option<AdsrParams>,
+    /// Which mixer bus this voice sums into (default [`BusId::Master`]).
+    pub bus: BusId,
 }
 
 impl Default for PlayParams {
@@ -38,6 +41,7 @@ impl Default for PlayParams {
             pitch: 1.0,
             looping: false,
             envelope: None,
+            bus: BusId::Master,
         }
     }
 }
@@ -70,6 +74,12 @@ pub(crate) enum AudioCommand {
     /// transcendentals run on the audio thread).
     SetMasterFilter {
         coeffs: BiquadCoeffs,
+    },
+    /// Set a sub-bus's fader gain (smoothed). Mute is folded in control-side by
+    /// sending gain `0.0`, mirroring the master strip.
+    SetBusGain {
+        bus: BusId,
+        gain: f32,
     },
 }
 

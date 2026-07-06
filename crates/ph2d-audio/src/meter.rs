@@ -4,31 +4,67 @@
 //! thread reads it (e.g. once per UI frame). Lock-free and monitoring-only, so
 //! `Relaxed` ordering is enough — a level read one block stale is invisible.
 //! Peak-hold / decay ballistics live on the UI side (the meter widget), not here.
+//!
+//! Holds the **master** peak plus one peak pair per sub-bus (post-fader), so the
+//! mixer UI shows a level for every strip.
 
+use std::array::from_fn;
 use std::sync::atomic::{AtomicU32, Ordering};
+
+use crate::bus::SUB_BUS_COUNT;
 
 /// Shared, lock-free stereo peak levels. Shared via `Arc` between the renderer
 /// (writer) and the control-side [`crate::AudioEngine`] (reader).
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct AudioMeter {
     peak_l: AtomicU32,
     peak_r: AtomicU32,
+    /// Post-fader `[L, R]` peak per sub-bus, indexed by `BusId::sub_index`.
+    bus: [[AtomicU32; 2]; SUB_BUS_COUNT],
+}
+
+impl Default for AudioMeter {
+    fn default() -> Self {
+        Self {
+            peak_l: AtomicU32::new(0),
+            peak_r: AtomicU32::new(0),
+            bus: from_fn(|_| [AtomicU32::new(0), AtomicU32::new(0)]),
+        }
+    }
 }
 
 impl AudioMeter {
-    /// Store this block's peak magnitude (called by the renderer each block).
+    /// Store this block's master peak magnitude (called by the renderer each block).
     pub(crate) fn store(&self, left: f32, right: f32) {
         self.peak_l.store(left.to_bits(), Ordering::Relaxed);
         self.peak_r.store(right.to_bits(), Ordering::Relaxed);
     }
 
-    /// The most recent block's peak magnitude as `[left, right]`. `0.0` is
+    /// Store sub-bus `i`'s post-fader peak for this block.
+    pub(crate) fn store_bus(&self, i: usize, left: f32, right: f32) {
+        if let Some(b) = self.bus.get(i) {
+            b[0].store(left.to_bits(), Ordering::Relaxed);
+            b[1].store(right.to_bits(), Ordering::Relaxed);
+        }
+    }
+
+    /// The most recent block's master peak magnitude as `[left, right]`. `0.0` is
     /// silence; values above `1.0` mean the mix is clipping.
     pub fn peaks(&self) -> [f32; 2] {
         [
             f32::from_bits(self.peak_l.load(Ordering::Relaxed)),
             f32::from_bits(self.peak_r.load(Ordering::Relaxed)),
         ]
+    }
+
+    /// Every sub-bus's most recent `[L, R]` peak, in `BusId::SUB_BUSES` order.
+    pub fn bus_peaks(&self) -> [[f32; 2]; SUB_BUS_COUNT] {
+        from_fn(|i| {
+            [
+                f32::from_bits(self.bus[i][0].load(Ordering::Relaxed)),
+                f32::from_bits(self.bus[i][1].load(Ordering::Relaxed)),
+            ]
+        })
     }
 }
 
@@ -42,5 +78,17 @@ mod tests {
         assert_eq!(m.peaks(), [0.0, 0.0]);
         m.store(0.5, 1.25);
         assert_eq!(m.peaks(), [0.5, 1.25]);
+    }
+
+    #[test]
+    fn round_trips_per_bus_peaks() {
+        let m = AudioMeter::default();
+        assert_eq!(m.bus_peaks(), [[0.0, 0.0]; SUB_BUS_COUNT]);
+        m.store_bus(0, 0.7, 0.3);
+        let p = m.bus_peaks();
+        assert_eq!(p[0], [0.7, 0.3]);
+        assert_eq!(p[1], [0.0, 0.0], "other buses untouched");
+        // Out-of-range index is a harmless no-op (never panics on the RT thread).
+        m.store_bus(SUB_BUS_COUNT + 5, 1.0, 1.0);
     }
 }

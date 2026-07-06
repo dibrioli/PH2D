@@ -77,34 +77,51 @@ impl std::fmt::Debug for SampleData {
     }
 }
 
-/// Pre-allocated per-block accumulation buffer, interleaved stereo.
+/// Pre-allocated per-block accumulation buffers, interleaved stereo.
 ///
-/// HR-3: the mixer `reset`s (clear + zero-fill) and refills the same `Vec`
+/// Two reused `Vec`s: the `master` mix, and one `bus` scratch the mixer reuses
+/// for **each** sub-bus in turn (render → apply the bus fader → fold into
+/// master), so N sub-buses cost one extra buffer, not N.
+///
+/// HR-3: the mixer `reset`s (clear + zero-fill) and refills the same `Vec`s
 /// every block. Once warm (block size stable), `reset` reuses capacity and
 /// never reallocates — asserted by the `no_alloc_render` capacity gate.
 pub(crate) struct MixScratch {
     master: Vec<Sample>,
+    bus: Vec<Sample>,
 }
 
 impl MixScratch {
     pub(crate) fn new() -> Self {
-        Self { master: Vec::new() }
+        Self {
+            master: Vec::new(),
+            bus: Vec::new(),
+        }
     }
 
-    /// Zero the master buffer to hold `stereo_len` interleaved samples. Reallocs
-    /// only when the block grows past the warm capacity.
+    /// Zero both buffers to hold `stereo_len` interleaved samples. Reallocs only
+    /// when the block grows past the warm capacity.
     pub(crate) fn reset(&mut self, stereo_len: usize) {
         self.master.clear();
         self.master.resize(stereo_len, 0.0);
+        self.bus.clear();
+        self.bus.resize(stereo_len, 0.0);
     }
 
-    pub(crate) fn master_mut(&mut self) -> &mut [Sample] {
-        &mut self.master
+    /// The master mix and the per-bus scratch, both mutable — the mixer needs
+    /// them at once (fold each bus into master).
+    pub(crate) fn split_mut(&mut self) -> (&mut [Sample], &mut [Sample]) {
+        (&mut self.master, &mut self.bus)
     }
 
     /// Allocated capacity of the master buffer (for the HR-3 capacity gate).
     pub(crate) fn capacity(&self) -> usize {
         self.master.capacity()
+    }
+
+    /// Allocated capacity of the per-bus scratch (HR-3 capacity gate).
+    pub(crate) fn bus_capacity(&self) -> usize {
+        self.bus.capacity()
     }
 }
 
@@ -146,6 +163,8 @@ mod tests {
             s.reset(1024);
         }
         assert_eq!(s.capacity(), cap, "warm reset must not reallocate");
-        assert!(s.master_mut().iter().all(|&x| x.abs() < f32::EPSILON));
+        let (master, bus) = s.split_mut();
+        assert!(master.iter().all(|&x| x.abs() < f32::EPSILON));
+        assert!(bus.iter().all(|&x| x.abs() < f32::EPSILON));
     }
 }

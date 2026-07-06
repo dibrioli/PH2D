@@ -47,7 +47,6 @@ const FILE_OVERAGE_OK: &[(&str, usize)] = &[
     ("ph2d-ecs/src/transform.rs", 784),
     ("ph2d-editor-core/src/grid_snap/state.rs", 796),
     ("ph2d-editor-core/src/paint.rs", 884),
-    ("ph2d-editor-core/src/screens/hero/topbar/mod.rs", 701),
     ("ph2d-imageio-apng/src/lib.rs", 768),
     ("ph2d-imageio-ph2d-native/src/schema.rs", 746),
     ("ph2d-imageio-tiff/src/lib.rs", 905),

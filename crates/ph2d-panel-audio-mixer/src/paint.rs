@@ -2,12 +2,21 @@
 //! (mirror of the Sprite Inspector / Painter Layers dock pattern), NOT a
 //! floating panel. Reads `ctx.layout.inspector` for its rect and registers the
 //! shared `INSP_*` drag/resize handles so it moves/resizes with the dock slot.
+//!
+//! Vertical channel strips — one Master + one per sub-bus (Music, SFX) — each a
+//! label + a standard [`ph2d_editor_core::widget::Slider`] fader + a live
+//! [`ph2d_editor_core::widget::LevelMeter`] + a mute toggle. Every fader is the
+//! canonical `Slider` widget (single source of truth for the slider look), so
+//! the panel is built from gallery widgets, not bespoke chrome.
 
 use crate::state::AudioMixerState;
 use crate::{
-    AMIX_CLOSE, AMIX_CUTOFF, AMIX_FADER, AMIX_MASTER_MUTE, AMIX_PANEL, AudioMixerPanel, snapshot,
+    AMIX_CLOSE, AMIX_CUTOFF, AMIX_FADER, AMIX_MASTER_MUTE, AMIX_PANEL, AudioMixerPanel, SUB_BUS_COUNT,
+    SUB_BUS_LABELS, SUB_FADER, SUB_MUTE, snapshot,
 };
+use ph2d_a11y::NodeId;
 use ph2d_editor_core::ids as core_ids;
+use ph2d_editor_core::interaction::HitIndex;
 use ph2d_editor_core::paint::{fill_rounded_rect, paint_text, paint_text_centered, resolve};
 use ph2d_editor_core::panel::{PaintCtx, Panel};
 use ph2d_editor_core::widget::panel_chrome::{
@@ -17,17 +26,27 @@ use ph2d_editor_core::widget::panel_chrome::{
     panel_resize_handle_rect_bl,
 };
 use ph2d_editor_core::widget::{
-    LevelMeter, SliderOrientation, paint_level_meter, paint_slider_track,
+    LevelMeter, Slider, SliderOrientation, paint_level_meter, paint_slider,
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, Radius, Spacing, Theme, TypeToken};
 use ph2d_vector::VectorScene;
 
-const FADER_W: f32 = 24.0; // LITERAL-PX-OK: master fader width (chrome)
-const METER_W: f32 = 18.0; // LITERAL-PX-OK: master meter width (chrome)
-const STRIP_H: f32 = 160.0; // LITERAL-PX-OK: master fader/meter height (chrome)
-const MUTE_H: f32 = 28.0; // LITERAL-PX-OK: mute button height (chrome)
+const FADER_W: f32 = 22.0; // LITERAL-PX-OK: fader column width (chrome)
+const METER_W: f32 = 14.0; // LITERAL-PX-OK: meter column width (chrome)
+const STRIP_H: f32 = 150.0; // LITERAL-PX-OK: fader/meter height (chrome)
+const MUTE_H: f32 = 24.0; // LITERAL-PX-OK: mute button height (chrome)
+
+/// One channel strip's live data (Master or a sub-bus).
+struct Strip {
+    label: &'static str,
+    fader_id: NodeId,
+    mute_id: NodeId,
+    gain: f32,
+    muted: bool,
+    levels: [f32; 2],
+}
 
 pub(crate) fn paint(_state: &mut AudioMixerState, ctx: &mut PaintCtx) {
     if !ctx.host.panel_visible(AudioMixerPanel::ID) {
@@ -77,81 +96,136 @@ pub(crate) fn paint(_state: &mut AudioMixerState, ctx: &mut PaintCtx) {
     paint_panel_close_button(rect, AMIX_CLOSE, ctx.host.hit_index_mut(), ctx.scene, theme);
     let header_bottom = rect.y + PANEL_TITLE_BASELINE + title_size + Spacing::Md.px();
 
+    // Gather the live snapshot (shell → panel) + the fader values (the store is
+    // the source of truth — the shared slider dispatch writes them on drag).
+    let master_levels = snapshot::levels();
+    let master_muted = snapshot::muted();
+    let sub_levels = snapshot::sub_levels();
+    let sub_muted = snapshot::sub_muted();
+
     let (store, hit_index) = ctx.host.store_and_hit_index_mut();
-    // The fader's live value is the source of truth (the shared slider dispatch
-    // writes it on drag); the shell reads the published gain to drive the engine.
-    let fader_gain = store.slider(AMIX_FADER).map(|(_, v)| v).unwrap_or(1.0);
+    let master_gain = store.slider(AMIX_FADER).map(|(_, v)| v).unwrap_or(1.0);
     let cutoff = store.slider(AMIX_CUTOFF).map(|(_, v)| v).unwrap_or(1.0);
-    paint_master_strip(
-        rect,
-        header_bottom,
-        fader_gain,
-        cutoff,
-        ctx.scene,
+    let sub_gain: [f32; SUB_BUS_COUNT] =
+        std::array::from_fn(|i| store.slider(SUB_FADER[i]).map(|(_, v)| v).unwrap_or(1.0));
+
+    // Build the strips: Master first, then each sub-bus in canonical order.
+    let mut strips = Vec::with_capacity(1 + SUB_BUS_COUNT);
+    strips.push(Strip {
+        label: "Master",
+        fader_id: AMIX_FADER,
+        mute_id: AMIX_MASTER_MUTE,
+        gain: master_gain,
+        muted: master_muted,
+        levels: master_levels,
+    });
+    for i in 0..SUB_BUS_COUNT {
+        strips.push(Strip {
+            label: SUB_BUS_LABELS[i],
+            fader_id: SUB_FADER[i],
+            mute_id: SUB_MUTE[i],
+            gain: sub_gain[i],
+            muted: sub_muted[i],
+            levels: sub_levels[i],
+        });
+    }
+
+    // Responsive column layout: split the content width across the strips.
+    let pad = Spacing::Lg.px();
+    let content_x = rect.x + pad;
+    let content_w = (rect.w - pad * 2.0).max(1.0);
+    let gap = Spacing::Sm.px();
+    let cols = strips.len() as f32;
+    let col_w = ((content_w - gap * (cols - 1.0)) / cols).max(FADER_W);
+    let strip_top = header_bottom;
+
+    for (c, strip) in strips.iter().enumerate() {
+        let col_x = content_x + c as f32 * (col_w + gap);
+        paint_strip(
+            strip,
+            col_x,
+            strip_top,
+            col_w,
+            ctx.scene,
+            ctx.text_system,
+            theme,
+            hit_index,
+        );
+    }
+
+    // Master low-pass cutoff — full-width standard horizontal Slider below the
+    // strips (drag → filter sweep). Labelled, so its role reads at a glance.
+    let strips_bottom = strip_top
+        + TypeToken::Sm.px()
+        + Spacing::Sm.px()
+        + STRIP_H
+        + Spacing::Sm.px()
+        + MUTE_H;
+    let mut y = strips_bottom + Spacing::Lg.px();
+    paint_text(
         ctx.text_system,
-        theme,
-        hit_index,
+        ctx.scene,
+        "Cutoff",
+        content_x,
+        y,
+        TypeToken::Sm.px(),
+        content_w,
+        resolve(ColorToken::Text2, theme),
     );
+    y += TypeToken::Sm.px() + Spacing::Sm.px();
+    let cutoff_rect = Rect::new(content_x, y, content_w, Spacing::Lg.px());
+    let mut cutoff_slider = Slider::new(AMIX_CUTOFF, "Cutoff");
+    cutoff_slider.set_value(cutoff.clamp(0.0, 1.0));
+    paint_slider(&cutoff_slider, cutoff_rect, ctx.scene, theme);
+    hit_index.register(AMIX_CUTOFF, cutoff_rect);
 }
 
-/// Paint the Master channel strip below the header.
+/// Paint one channel strip in its column: label · fader (standard `Slider`) +
+/// meter · mute button. Registers the fader + mute hit rects.
 #[allow(clippy::too_many_arguments)]
-fn paint_master_strip(
-    panel: Rect,
+fn paint_strip(
+    strip: &Strip,
+    col_x: f32,
     top: f32,
-    gain: f32,
-    cutoff: f32,
+    col_w: f32,
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
     theme: Theme,
-    hit_index: &mut ph2d_editor_core::interaction::HitIndex,
+    hit_index: &mut HitIndex,
 ) {
-    let levels = snapshot::levels();
-    let muted = snapshot::muted();
-
-    let pad = Spacing::Lg.px();
-    let content_x = panel.x + pad;
-    let content_w = (panel.w - pad * 2.0).max(1.0);
-    let mut y = top;
-
-    paint_text(
+    // Column title.
+    let label_rect = Rect::new(col_x, top, col_w, TypeToken::Sm.px());
+    paint_text_centered(
         text_system,
         scene,
-        "Master",
-        content_x,
-        y,
-        TypeToken::Base.px(),
-        content_w,
+        strip.label,
+        label_rect,
+        TypeToken::Sm.px(),
         resolve(ColorToken::Text1, theme),
     );
-    y += TypeToken::Base.px() + Spacing::Sm.px();
+    let mut y = top + TypeToken::Sm.px() + Spacing::Sm.px();
 
-    // Vertical fader (visual readout of master gain) + stereo level meter.
-    let fader = Rect::new(content_x, y, FADER_W, STRIP_H);
-    paint_slider_track(
-        fader,
-        gain.clamp(0.0, 1.0),
-        SliderOrientation::Vertical,
-        scene,
-        theme,
-    );
-    hit_index.register(AMIX_FADER, fader);
-    let meter = Rect::new(content_x + FADER_W + Spacing::Sm.px(), y, METER_W, STRIP_H);
-    let m = LevelMeter::new(AMIX_PANEL, "Master").levels(levels[0], levels[1]);
-    paint_level_meter(&m, meter, scene, theme);
-    y += STRIP_H + Spacing::Lg.px();
+    // Fader + meter cluster, centered in the column.
+    let cluster_w = FADER_W + Spacing::Sm.px() + METER_W;
+    let cluster_x = col_x + ((col_w - cluster_w) * 0.5).max(0.0);
 
-    // Mute button — panel-owned state (Danger tint when engaged).
-    let mute_rect = Rect::new(content_x, y, content_w, MUTE_H);
-    let bg = if muted {
-        ColorToken::Danger
+    let fader_rect = Rect::new(cluster_x, y, FADER_W, STRIP_H);
+    let mut fader = Slider::new(strip.fader_id, strip.label).orientation(SliderOrientation::Vertical);
+    fader.set_value(strip.gain.clamp(0.0, 1.0));
+    paint_slider(&fader, fader_rect, scene, theme);
+    hit_index.register(strip.fader_id, fader_rect);
+
+    let meter_rect = Rect::new(cluster_x + FADER_W + Spacing::Sm.px(), y, METER_W, STRIP_H);
+    let m = LevelMeter::new(strip.fader_id, strip.label).levels(strip.levels[0], strip.levels[1]);
+    paint_level_meter(&m, meter_rect, scene, theme);
+    y += STRIP_H + Spacing::Sm.px();
+
+    // Mute button — Danger tint when engaged.
+    let mute_rect = Rect::new(col_x, y, col_w, MUTE_H);
+    let (bg, fg) = if strip.muted {
+        (ColorToken::Danger, ColorToken::AccentFg)
     } else {
-        ColorToken::Bg3
-    };
-    let fg = if muted {
-        ColorToken::AccentFg
-    } else {
-        ColorToken::Text1
+        (ColorToken::Bg3, ColorToken::Text1)
     };
     fill_rounded_rect(scene, mute_rect, Radius::Sm.px(), resolve(bg, theme));
     paint_text_centered(
@@ -159,31 +233,8 @@ fn paint_master_strip(
         scene,
         "Mute",
         mute_rect,
-        TypeToken::Base.px(),
+        TypeToken::Sm.px(),
         resolve(fg, theme),
     );
-    hit_index.register(AMIX_MASTER_MUTE, mute_rect);
-    y += MUTE_H + Spacing::Lg.px();
-
-    // Master low-pass cutoff — label + horizontal slider (drag → filter sweep).
-    paint_text(
-        text_system,
-        scene,
-        "Cutoff",
-        content_x,
-        y,
-        TypeToken::Base.px(),
-        content_w,
-        resolve(ColorToken::Text2, theme),
-    );
-    y += TypeToken::Base.px() + Spacing::Sm.px();
-    let cutoff_rect = Rect::new(content_x, y, content_w, Spacing::Lg.px());
-    paint_slider_track(
-        cutoff_rect,
-        cutoff.clamp(0.0, 1.0),
-        SliderOrientation::Horizontal,
-        scene,
-        theme,
-    );
-    hit_index.register(AMIX_CUTOFF, cutoff_rect);
+    hit_index.register(strip.mute_id, mute_rect);
 }

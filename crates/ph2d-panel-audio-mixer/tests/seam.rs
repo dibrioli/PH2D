@@ -9,8 +9,8 @@ use ph2d_editor_core::interaction::WidgetEvent;
 use ph2d_editor_core::panel::{EventOutcome, Panel, PanelHostInternal};
 use ph2d_panel_audio_mixer::state::AudioMixerState;
 use ph2d_panel_audio_mixer::{
-    AMIX_CUTOFF, AMIX_FADER, AMIX_MASTER_MUTE, AudioMixerPanel, master_cutoff_target,
-    master_gain_target, master_muted,
+    AMIX_CUTOFF, AMIX_FADER, AMIX_MASTER_MUTE, AudioMixerPanel, SUB_FADER, SUB_MUTE,
+    master_cutoff_target, master_gain_target, master_muted, sub_gain_target, sub_muted,
 };
 use ph2d_ui_testkit::MockPanelHost;
 
@@ -116,4 +116,53 @@ fn cutoff_drag_publishes_hz() {
         "cutoff slider at 0 must map to ~20 Hz, got {}",
         master_cutoff_target()
     );
+}
+
+/// Dragging a sub-bus fader publishes that bus's gain into its own slot (index
+/// 0 = the first sub-bus), leaving the other sub-buses untouched — proving the
+/// per-strip `SUB_FADER` arm routes to the right bus.
+#[test]
+fn sub_bus_fader_drag_publishes_that_bus_gain() {
+    let mut host = MockPanelHost::with_panel::<AudioMixerPanel>();
+    let mut state = AudioMixerState;
+
+    host.set_slider_value(SUB_FADER[0], 0.4);
+    let outcome = host.apply_panel_event::<AudioMixerPanel>(
+        &mut state,
+        WidgetEvent::ValueChanged(SUB_FADER[0]),
+    );
+
+    assert_eq!(
+        outcome,
+        EventOutcome::Consumed,
+        "panel ignored the sub-bus fader ValueChanged — the SUB_FADER arm is missing"
+    );
+    let gains = sub_gain_target();
+    assert!(
+        (gains[0] - 0.4).abs() < 1e-5,
+        "sub-bus 0 gain must update to 0.4, got {}",
+        gains[0]
+    );
+    assert!(
+        (gains[1] - 1.0).abs() < 1e-5,
+        "the other sub-bus must stay at unity, got {}",
+        gains[1]
+    );
+}
+
+/// Clicking a sub-bus mute button flips only that bus's mute flag (the shell
+/// reads it back to zero that bus's gain).
+#[test]
+fn sub_bus_mute_click_toggles_only_that_bus() {
+    let mut host = MockPanelHost::with_panel::<AudioMixerPanel>();
+    let mut state = AudioMixerState;
+
+    let before = sub_muted();
+    let outcome =
+        host.apply_panel_event::<AudioMixerPanel>(&mut state, WidgetEvent::Click(SUB_MUTE[0]));
+
+    assert_eq!(outcome, EventOutcome::Consumed);
+    let after = sub_muted();
+    assert_ne!(after[0], before[0], "sub-bus 0 mute must flip");
+    assert_eq!(after[1], before[1], "sub-bus 1 mute must be untouched");
 }

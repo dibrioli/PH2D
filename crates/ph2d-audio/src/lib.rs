@@ -33,6 +33,7 @@
 //! phase; they build on this core.
 
 mod buffer;
+mod bus;
 mod command;
 mod engine;
 mod format;
@@ -44,6 +45,7 @@ mod voice;
 pub mod dsp;
 
 pub use buffer::SampleData;
+pub use bus::{BusId, SUB_BUS_COUNT};
 pub use command::PlayParams;
 pub use engine::{AudioEngine, AudioRenderer};
 pub use format::{AudioFormat, ChannelLayout, Sample};

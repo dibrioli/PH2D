@@ -1,6 +1,7 @@
 //! [`Voice`] — one playing sample, and [`VoiceId`], its opaque handle.
 
 use crate::buffer::SampleData;
+use crate::bus::BusId;
 use crate::command::PlayParams;
 use crate::dsp::{Adsr, SmoothGain, equal_power_pan};
 use crate::format::Sample;
@@ -36,6 +37,8 @@ pub(crate) struct Voice {
     pan_gains: [f32; 2],
     envelope: Option<Adsr>,
     looping: bool,
+    /// Which mixer bus this voice sums into (set at `start`).
+    bus: BusId,
     /// Output frames rendered since `start` — the "oldest" axis for stealing.
     age: u64,
 }
@@ -52,6 +55,7 @@ impl Voice {
             pan_gains: [0.0, 0.0],
             envelope: None,
             looping: false,
+            bus: BusId::Master,
             age: 0,
         }
     }
@@ -78,11 +82,17 @@ impl Voice {
         self.gain = SmoothGain::immediate(params.gain);
         self.pan_gains = equal_power_pan(params.pan);
         self.looping = params.looping;
+        self.bus = params.bus;
         self.age = 0;
     }
 
     pub(crate) fn id(&self) -> VoiceId {
         self.id
+    }
+
+    /// The bus this voice sums into.
+    pub(crate) fn bus(&self) -> BusId {
+        self.bus
     }
 
     pub(crate) fn is_free(&self) -> bool {

@@ -29,6 +29,8 @@ use ph2d_tool_registry::hash_node_id;
 pub const AMIX_PANEL: NodeId = ph2d_editor_core::ids::AUDIO_MIXER_PANEL;
 /// Header close (X) button — hides the dock (also toggled by the TopBar pill).
 pub const AMIX_CLOSE: NodeId = hash_node_id("audio_mixer_close");
+/// Master vertical fader (a `Slider` — drag → master gain).
+pub const AMIX_FADER: NodeId = hash_node_id("audio_mixer_fader");
 /// Master-strip mute toggle.
 pub const AMIX_MASTER_MUTE: NodeId = hash_node_id("audio_mixer_master_mute");
 
@@ -71,9 +73,22 @@ mod snapshot {
         static MUTED: Cell<bool> = const { Cell::new(false) };
     }
 
-    pub fn set(levels: [f32; 2], master_gain: f32) {
+    /// Shell → panel: current output peak levels for the meter.
+    pub fn set_levels(levels: [f32; 2]) {
         LEVELS.with(|c| c.set(levels));
-        MASTER_GAIN.with(|c| c.set(master_gain));
+    }
+
+    pub(crate) fn levels() -> [f32; 2] {
+        LEVELS.with(Cell::get)
+    }
+
+    /// Panel → shell: the master gain the fader drives (0..1).
+    pub(crate) fn set_master_gain(gain: f32) {
+        MASTER_GAIN.with(|c| c.set(gain));
+    }
+
+    pub fn master_gain() -> f32 {
+        MASTER_GAIN.with(Cell::get)
     }
 
     pub fn muted() -> bool {
@@ -87,19 +102,12 @@ mod snapshot {
             next
         })
     }
-
-    pub(crate) fn levels() -> [f32; 2] {
-        LEVELS.with(Cell::get)
-    }
-
-    pub(crate) fn master_gain() -> f32 {
-        MASTER_GAIN.with(Cell::get)
-    }
 }
 
-/// Publish the live mixer snapshot (peak levels + master gain) for this frame.
-/// Called by the shell's mixer bridge.
-pub use snapshot::set as set_snapshot;
-/// Whether the Master strip's mute is engaged — read by the shell to zero the
-/// engine's master gain.
+/// Shell → panel: publish this frame's output peak levels for the meter.
+pub use snapshot::set_levels;
+/// Panel → shell: the master gain the fader drives — read by the bridge to set
+/// the engine's master gain.
+pub use snapshot::master_gain as master_gain_target;
+/// Panel → shell: whether the Master mute is engaged (bridge zeroes the gain).
 pub use snapshot::muted as master_muted;

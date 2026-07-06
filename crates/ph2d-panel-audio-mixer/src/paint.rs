@@ -4,7 +4,7 @@
 //! shared `INSP_*` drag/resize handles so it moves/resizes with the dock slot.
 
 use crate::state::AudioMixerState;
-use crate::{AMIX_CLOSE, AMIX_MASTER_MUTE, AMIX_PANEL, AudioMixerPanel, snapshot};
+use crate::{AMIX_CLOSE, AMIX_FADER, AMIX_MASTER_MUTE, AMIX_PANEL, AudioMixerPanel, snapshot};
 use ph2d_editor_core::ids as core_ids;
 use ph2d_editor_core::paint::{fill_rounded_rect, paint_text, paint_text_centered, resolve};
 use ph2d_editor_core::panel::{PaintCtx, Panel};
@@ -75,10 +75,14 @@ pub(crate) fn paint(_state: &mut AudioMixerState, ctx: &mut PaintCtx) {
     paint_panel_close_button(rect, AMIX_CLOSE, ctx.host.hit_index_mut(), ctx.scene, theme);
     let header_bottom = rect.y + PANEL_TITLE_BASELINE + title_size + Spacing::Md.px();
 
-    let (_store, hit_index) = ctx.host.store_and_hit_index_mut();
+    let (store, hit_index) = ctx.host.store_and_hit_index_mut();
+    // The fader's live value is the source of truth (the shared slider dispatch
+    // writes it on drag); the shell reads the published gain to drive the engine.
+    let fader_gain = store.slider(AMIX_FADER).map(|(_, v)| v).unwrap_or(1.0);
     paint_master_strip(
         rect,
         header_bottom,
+        fader_gain,
         ctx.scene,
         ctx.text_system,
         theme,
@@ -90,13 +94,13 @@ pub(crate) fn paint(_state: &mut AudioMixerState, ctx: &mut PaintCtx) {
 fn paint_master_strip(
     panel: Rect,
     top: f32,
+    gain: f32,
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
     theme: Theme,
     hit_index: &mut ph2d_editor_core::interaction::HitIndex,
 ) {
     let levels = snapshot::levels();
-    let gain = snapshot::master_gain();
     let muted = snapshot::muted();
 
     let pad = Spacing::Lg.px();
@@ -125,6 +129,7 @@ fn paint_master_strip(
         scene,
         theme,
     );
+    hit_index.register(AMIX_FADER, fader);
     let meter = Rect::new(content_x + FADER_W + Spacing::Sm.px(), y, METER_W, STRIP_H);
     let m = LevelMeter::new(AMIX_PANEL, "Master").levels(levels[0], levels[1]);
     paint_level_meter(&m, meter, scene, theme);

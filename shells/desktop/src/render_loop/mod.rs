@@ -118,9 +118,10 @@ impl crate::App {
             audio.poll();
             #[cfg(feature = "panel-audio-mixer")]
             {
-                ph2d_panel_audio_mixer::set_snapshot(audio.levels(), 1.0);
+                ph2d_panel_audio_mixer::set_levels(audio.levels());
                 let muted = ph2d_panel_audio_mixer::master_muted();
-                audio.set_master_gain(if muted { 0.0 } else { 1.0 });
+                let gain = ph2d_panel_audio_mixer::master_gain_target();
+                audio.set_master_gain(if muted { 0.0 } else { gain });
             }
         }
         // Coalesced painter Move: stamp the LATEST buffered canvas position ONCE this frame, replacing

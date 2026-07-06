@@ -81,6 +81,12 @@ pub(crate) enum AudioCommand {
         bus: BusId,
         gain: f32,
     },
+    /// Set a bus's stereo balance, `-1.0` (left) … `1.0` (right); `0.0` = center.
+    /// [`BusId::Master`] targets the master balance.
+    SetBusPan {
+        bus: BusId,
+        pan: f32,
+    },
 }
 
 /// A message from the audio thread back to the control thread.

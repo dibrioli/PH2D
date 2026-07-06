@@ -20,8 +20,12 @@ pub(crate) struct AudioSystem {
     last_master_gain: std::cell::Cell<f32>,
     /// Same change-gate for the master filter cutoff.
     last_cutoff: std::cell::Cell<f32>,
+    /// Change-gate for the master balance.
+    last_master_pan: std::cell::Cell<f32>,
     /// Same change-gate, per sub-bus fader (index-aligned with `BusId::SUB_BUSES`).
     last_bus_gain: [std::cell::Cell<f32>; SUB_BUS_COUNT],
+    /// Same change-gate, per sub-bus balance.
+    last_bus_pan: [std::cell::Cell<f32>; SUB_BUS_COUNT],
     // Kept alive for the app's lifetime; the callback (which owns the renderer)
     // runs on cpal's thread until this drops. `cpal::Stream` is `!Send` on ALSA,
     // which is fine — `App` never leaves the main thread.
@@ -87,7 +91,9 @@ impl AudioSystem {
             format,
             last_master_gain: std::cell::Cell::new(1.0),
             last_cutoff: std::cell::Cell::new(20_000.0),
+            last_master_pan: std::cell::Cell::new(0.0),
             last_bus_gain: std::array::from_fn(|_| std::cell::Cell::new(1.0)),
+            last_bus_pan: std::array::from_fn(|_| std::cell::Cell::new(0.0)),
             _stream: stream,
         })
     }
@@ -110,6 +116,24 @@ impl AudioSystem {
         {
             let _ = self.engine.set_bus_gain(BusId::SUB_BUSES[i], gain);
             cell.set(gain);
+        }
+    }
+
+    /// Set the master stereo balance, change-gated.
+    pub(crate) fn set_master_pan(&self, pan: f32) {
+        if (pan - self.last_master_pan.get()).abs() > f32::EPSILON {
+            let _ = self.engine.set_bus_pan(BusId::Master, pan);
+            self.last_master_pan.set(pan);
+        }
+    }
+
+    /// Set sub-bus `i`'s stereo balance, change-gated per bus.
+    pub(crate) fn set_bus_pan(&self, i: usize, pan: f32) {
+        if let Some(cell) = self.last_bus_pan.get(i)
+            && (pan - cell.get()).abs() > f32::EPSILON
+        {
+            let _ = self.engine.set_bus_pan(BusId::SUB_BUSES[i], pan);
+            cell.set(pan);
         }
     }
 

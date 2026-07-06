@@ -67,6 +67,38 @@ fn muting_one_bus_leaves_the_other_sounding() {
 }
 
 #[test]
+fn panning_a_sub_bus_hard_left_empties_the_right_channel() {
+    let (mut engine, mut renderer) = AudioEngine::new(AudioFormat::stereo(48_000));
+    engine.play(steady(), on(BusId::Music)).unwrap();
+
+    // Centered → both channels carry the bus.
+    let centered = steady_master_peak(&mut renderer);
+    assert!(
+        centered[0] > 0.1 && centered[1] > 0.1,
+        "centered bus should fill both channels: {centered:?}"
+    );
+
+    // Hard-left → the right channel goes silent, the left keeps its level.
+    engine.set_bus_pan(BusId::Music, -1.0).unwrap();
+    let left = steady_master_peak(&mut renderer);
+    assert!(
+        left[1] < 1e-3,
+        "hard-left pan must empty the right channel: {left:?}"
+    );
+    assert!(
+        (left[0] - centered[0]).abs() < 1e-3,
+        "hard-left pan must keep the left channel at its centered level ({centered:?} → {left:?})"
+    );
+
+    // The strip meter is pre-pan, so it must not drop when panned.
+    let music_meter = engine.bus_levels()[0];
+    assert!(
+        music_meter[0] > 0.1 && music_meter[1] > 0.1,
+        "the pre-pan bus meter must stay hot on both channels when panned: {music_meter:?}"
+    );
+}
+
+#[test]
 fn master_direct_voice_ignores_sub_bus_faders() {
     let (mut engine, mut renderer) = AudioEngine::new(AudioFormat::stereo(48_000));
     // A voice on Master (default) is unaffected by a muted sub-bus.

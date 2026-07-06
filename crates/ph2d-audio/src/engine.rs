@@ -130,6 +130,12 @@ impl AudioEngine {
         self.send(AudioCommand::SetBusGain { bus, gain })
     }
 
+    /// Set a bus's stereo balance, `-1.0` (left) … `1.0` (right); `0.0` = center.
+    /// A [`BusId::Master`] target sets the master balance.
+    pub fn set_bus_pan(&self, bus: BusId, pan: f32) -> Result<(), AudioError> {
+        self.send(AudioCommand::SetBusPan { bus, pan })
+    }
+
     /// Drain and drop finished samples returned by the audio thread. Call once
     /// per game frame so their `Arc`s free on the control thread, not the RT one.
     pub fn collect_returns(&self) {

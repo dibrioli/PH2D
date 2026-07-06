@@ -9,8 +9,9 @@ use ph2d_editor_core::interaction::WidgetEvent;
 use ph2d_editor_core::panel::{EventOutcome, Panel, PanelHostInternal};
 use ph2d_panel_audio_mixer::state::AudioMixerState;
 use ph2d_panel_audio_mixer::{
-    AMIX_CUTOFF, AMIX_FADER, AMIX_MASTER_MUTE, AudioMixerPanel, SUB_FADER, SUB_MUTE,
-    master_cutoff_target, master_gain_target, master_muted, sub_gain_target, sub_muted,
+    AMIX_CUTOFF, AMIX_FADER, AMIX_MASTER_MUTE, AMIX_PAN, AudioMixerPanel, SUB_FADER, SUB_MUTE,
+    SUB_PAN, master_cutoff_target, master_gain_target, master_muted, master_pan_target,
+    sub_gain_target, sub_muted, sub_pan_target,
 };
 use ph2d_ui_testkit::MockPanelHost;
 
@@ -147,6 +148,45 @@ fn sub_bus_fader_drag_publishes_that_bus_gain() {
         (gains[1] - 1.0).abs() < 1e-5,
         "the other sub-bus must stay at unity, got {}",
         gains[1]
+    );
+}
+
+/// Dragging a pan slider remaps the 0..1 value to a `-1..1` balance: the
+/// Master pan hard-left (0.0) publishes -1.0, and a sub-bus pan to the far
+/// right (1.0) publishes +1.0 into that bus's slot only.
+#[test]
+fn pan_sliders_publish_remapped_balance() {
+    let mut host = MockPanelHost::with_panel::<AudioMixerPanel>();
+    let mut state = AudioMixerState;
+
+    // Master pan hard-left.
+    host.set_slider_value(AMIX_PAN, 0.0);
+    let outcome =
+        host.apply_panel_event::<AudioMixerPanel>(&mut state, WidgetEvent::ValueChanged(AMIX_PAN));
+    assert_eq!(
+        outcome,
+        EventOutcome::Consumed,
+        "panel ignored the Master pan ValueChanged — the AMIX_PAN arm is missing"
+    );
+    assert!(
+        (master_pan_target() + 1.0).abs() < 1e-5,
+        "Master pan at 0.0 must map to -1.0 (hard left), got {}",
+        master_pan_target()
+    );
+
+    // Sub-bus 0 pan far-right → +1.0 in slot 0 only.
+    host.set_slider_value(SUB_PAN[0], 1.0);
+    host.apply_panel_event::<AudioMixerPanel>(&mut state, WidgetEvent::ValueChanged(SUB_PAN[0]));
+    let pans = sub_pan_target();
+    assert!(
+        (pans[0] - 1.0).abs() < 1e-5,
+        "sub-bus 0 pan at 1.0 must map to +1.0, got {}",
+        pans[0]
+    );
+    assert!(
+        pans[1].abs() < 1e-5,
+        "the other sub-bus pan must stay centered (0.0), got {}",
+        pans[1]
     );
 }
 

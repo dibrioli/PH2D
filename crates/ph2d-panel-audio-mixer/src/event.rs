@@ -2,9 +2,14 @@
 
 use crate::state::AudioMixerState;
 use crate::{
-    AMIX_CLOSE, AMIX_CUTOFF, AMIX_FADER, AMIX_MASTER_MUTE, AudioMixerPanel, SUB_FADER, SUB_MUTE,
-    snapshot,
+    AMIX_CLOSE, AMIX_CUTOFF, AMIX_FADER, AMIX_MASTER_MUTE, AMIX_PAN, AudioMixerPanel, SUB_FADER,
+    SUB_MUTE, SUB_PAN, snapshot,
 };
+
+/// Remap a 0..1 slider value to a `-1.0`..`1.0` pan (0.5 → center 0.0).
+fn slider_to_pan(v: f32) -> f32 {
+    v.clamp(0.0, 1.0) * 2.0 - 1.0
+}
 use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::WidgetEvent;
 use ph2d_editor_core::panel::{EventOutcome, Panel, PanelHostInternal};
@@ -51,11 +56,22 @@ pub(crate) fn apply_event(
             snapshot::set_cutoff(hz);
             return EventOutcome::Consumed;
         }
-        // A sub-bus fader dragged — publish that bus's gain.
+        // Master pan dragged — remap 0..1 → -1..1.
+        WidgetEvent::ValueChanged(id) if id == AMIX_PAN => {
+            let v = host.store().slider(AMIX_PAN).map(|(_, v)| v).unwrap_or(0.5);
+            snapshot::set_master_pan(slider_to_pan(v));
+            return EventOutcome::Consumed;
+        }
+        // A sub-bus fader or pan dragged — publish that bus's gain / pan.
         WidgetEvent::ValueChanged(id) => {
             if let Some(i) = SUB_FADER.iter().position(|&f| f == id) {
                 let gain = host.store().slider(id).map(|(_, v)| v).unwrap_or(1.0);
                 snapshot::set_sub_gain(i, gain);
+                return EventOutcome::Consumed;
+            }
+            if let Some(i) = SUB_PAN.iter().position(|&p| p == id) {
+                let v = host.store().slider(id).map(|(_, v)| v).unwrap_or(0.5);
+                snapshot::set_sub_pan(i, slider_to_pan(v));
                 return EventOutcome::Consumed;
             }
         }

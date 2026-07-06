@@ -13,14 +13,26 @@ use crate::dsp::{Biquad, SmoothGain};
 use crate::format::{AudioFormat, Sample};
 use crate::pool::VoicePool;
 
+/// Linear stereo balance gains `[left, right]` for `pan` in `-1.0..=1.0`:
+/// center = `[1, 1]` (unity, unlike an equal-power *mono* pan), full-left =
+/// `[1, 0]`, full-right = `[0, 1]`. Transcendental-free (HR-5).
+fn balance_gains(pan: f32) -> [f32; 2] {
+    let p = pan.clamp(-1.0, 1.0);
+    [(1.0 - p).min(1.0), (1.0 + p).min(1.0)]
+}
+
 pub(crate) struct Mixer {
     pool: VoicePool,
     master_gain: SmoothGain,
+    /// Master stereo balance gains `[L, R]`.
+    master_pan: [f32; 2],
     /// Master low-pass filter (per channel). Identity coeffs by default = bypass.
     filter_l: Biquad,
     filter_r: Biquad,
     /// Per-sub-bus fader, indexed by `BusId::sub_index`.
     bus_gain: [SmoothGain; SUB_BUS_COUNT],
+    /// Per-sub-bus stereo balance gains `[L, R]`.
+    bus_pan: [[f32; 2]; SUB_BUS_COUNT],
 }
 
 impl Mixer {
@@ -28,9 +40,11 @@ impl Mixer {
         Self {
             pool: VoicePool::new(max_voices, format),
             master_gain: SmoothGain::immediate(1.0),
+            master_pan: balance_gains(0.0),
             filter_l: Biquad::default(),
             filter_r: Biquad::default(),
             bus_gain: std::array::from_fn(|_| SmoothGain::immediate(1.0)),
+            bus_pan: [balance_gains(0.0); SUB_BUS_COUNT],
         }
     }
 
@@ -57,6 +71,10 @@ impl Mixer {
                 // A `Master`-targeted bus gain is just the master fader.
                 None => self.master_gain.set_target(gain),
             },
+            AudioCommand::SetBusPan { bus, pan } => match bus.sub_index() {
+                Some(i) => self.bus_pan[i] = balance_gains(pan),
+                None => self.master_pan = balance_gains(pan),
+            },
         }
     }
 
@@ -81,16 +99,19 @@ impl Mixer {
             }
             self.pool.render_bus(bus, bus_scratch, frames, on_finished);
             let gain = &mut self.bus_gain[i];
+            let [pan_l, pan_r] = self.bus_pan[i];
             let mut peak_l = 0.0f32;
             let mut peak_r = 0.0f32;
             for f in 0..frames {
                 let g = gain.tick();
+                // Post-fader level (pre-pan) is the strip meter reading, so
+                // panning a bus doesn't drop its meter.
                 let l = bus_scratch[2 * f] * g;
                 let r = bus_scratch[2 * f + 1] * g;
-                master[2 * f] += l;
-                master[2 * f + 1] += r;
                 peak_l = peak_l.max(l.abs());
                 peak_r = peak_r.max(r.abs());
+                master[2 * f] += l * pan_l;
+                master[2 * f + 1] += r * pan_r;
             }
             bus_peaks[i] = [peak_l, peak_r];
         }
@@ -99,11 +120,13 @@ impl Mixer {
         self.pool
             .render_bus(BusId::Master, master, frames, on_finished);
 
-        // Master gain, then the master low-pass filter (identity = bypass).
+        // Master gain, the master low-pass filter (identity = bypass), then the
+        // master stereo balance.
+        let [mpan_l, mpan_r] = self.master_pan;
         for f in 0..frames {
             let g = self.master_gain.tick();
-            master[2 * f] = self.filter_l.process(master[2 * f] * g);
-            master[2 * f + 1] = self.filter_r.process(master[2 * f + 1] * g);
+            master[2 * f] = self.filter_l.process(master[2 * f] * g) * mpan_l;
+            master[2 * f + 1] = self.filter_r.process(master[2 * f + 1] * g) * mpan_r;
         }
     }
 

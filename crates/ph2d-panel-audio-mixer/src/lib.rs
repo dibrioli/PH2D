@@ -35,6 +35,8 @@ pub const AMIX_FADER: NodeId = hash_node_id("audio_mixer_fader");
 pub const AMIX_CUTOFF: NodeId = hash_node_id("audio_mixer_cutoff");
 /// Master-strip mute toggle.
 pub const AMIX_MASTER_MUTE: NodeId = hash_node_id("audio_mixer_master_mute");
+/// Master stereo balance (a horizontal `Slider` — drag → master pan).
+pub const AMIX_PAN: NodeId = hash_node_id("audio_mixer_pan");
 
 /// Sub-buses shown as their own strips, **in `ph2d_audio::BusId::SUB_BUSES`
 /// order** (Music, SFX). The panel is UI-only (no `ph2d-audio` dep); the shell's
@@ -52,6 +54,11 @@ pub const SUB_FADER: [NodeId; SUB_BUS_COUNT] = [
 pub const SUB_MUTE: [NodeId; SUB_BUS_COUNT] = [
     hash_node_id("audio_mixer_music_mute"),
     hash_node_id("audio_mixer_sfx_mute"),
+];
+/// Per-sub-bus stereo-balance slider ids (drag → that bus's pan).
+pub const SUB_PAN: [NodeId; SUB_BUS_COUNT] = [
+    hash_node_id("audio_mixer_music_pan"),
+    hash_node_id("audio_mixer_sfx_pan"),
 ];
 
 /// Zero-size marker implementing the typed Audio Mixer panel contract.
@@ -93,10 +100,12 @@ mod snapshot {
         static MASTER_GAIN: Cell<f32> = const { Cell::new(1.0) };
         static CUTOFF_HZ: Cell<f32> = const { Cell::new(20_000.0) }; // LITERAL-PX-OK: default cutoff 20 kHz (audio frequency, not a UI metric)
         static MUTED: Cell<bool> = const { Cell::new(false) };
+        static MASTER_PAN: Cell<f32> = const { Cell::new(0.0) };
         // Per-sub-bus channels, index-aligned with `BusId::SUB_BUSES`.
         static SUB_LEVELS: Cell<[[f32; 2]; SUB_BUS_COUNT]> = const { Cell::new([[0.0, 0.0]; SUB_BUS_COUNT]) };
         static SUB_GAIN: Cell<[f32; SUB_BUS_COUNT]> = const { Cell::new([1.0; SUB_BUS_COUNT]) };
         static SUB_MUTED: Cell<[bool; SUB_BUS_COUNT]> = const { Cell::new([false; SUB_BUS_COUNT]) };
+        static SUB_PAN: Cell<[f32; SUB_BUS_COUNT]> = const { Cell::new([0.0; SUB_BUS_COUNT]) };
     }
 
     /// Shell → panel: current master output peak levels for the meter.
@@ -138,6 +147,15 @@ mod snapshot {
         })
     }
 
+    /// Panel → shell: the master stereo balance (`-1.0`..`1.0`, `0.0` = center).
+    pub(crate) fn set_master_pan(pan: f32) {
+        MASTER_PAN.with(|c| c.set(pan));
+    }
+
+    pub fn master_pan() -> f32 {
+        MASTER_PAN.with(Cell::get)
+    }
+
     /// Shell → panel: current post-fader peak levels per sub-bus.
     pub fn set_sub_levels(levels: [[f32; 2]; SUB_BUS_COUNT]) {
         SUB_LEVELS.with(|c| c.set(levels));
@@ -176,6 +194,21 @@ mod snapshot {
             c.set(v);
         });
     }
+
+    /// Panel → shell: each sub-bus stereo balance (`-1.0`..`1.0`).
+    pub fn sub_pan() -> [f32; SUB_BUS_COUNT] {
+        SUB_PAN.with(Cell::get)
+    }
+
+    pub(crate) fn set_sub_pan(i: usize, pan: f32) {
+        SUB_PAN.with(|c| {
+            let mut v = c.get();
+            if let Some(slot) = v.get_mut(i) {
+                *slot = pan;
+            }
+            c.set(v);
+        });
+    }
 }
 
 /// Shell → panel: publish this frame's master output peak levels for the meter.
@@ -187,9 +220,13 @@ pub use snapshot::master_gain as master_gain_target;
 pub use snapshot::cutoff as master_cutoff_target;
 /// Panel → shell: whether the Master mute is engaged (bridge zeroes the gain).
 pub use snapshot::muted as master_muted;
+/// Panel → shell: the master stereo balance the Master pan slider drives.
+pub use snapshot::master_pan as master_pan_target;
 /// Shell → panel: publish each sub-bus's post-fader peak levels for its meter.
 pub use snapshot::set_sub_levels;
 /// Panel → shell: each sub-bus fader gain (index-aligned with `BusId::SUB_BUSES`).
 pub use snapshot::sub_gain as sub_gain_target;
 /// Panel → shell: each sub-bus mute flag (bridge zeroes that bus's gain).
 pub use snapshot::sub_muted;
+/// Panel → shell: each sub-bus stereo balance (index-aligned with `BusId::SUB_BUSES`).
+pub use snapshot::sub_pan as sub_pan_target;

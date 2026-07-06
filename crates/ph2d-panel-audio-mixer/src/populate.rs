@@ -1,6 +1,8 @@
 //! Audio Mixer panel widget registration.
 
-use crate::{AMIX_CLOSE, AMIX_CUTOFF, AMIX_FADER, AMIX_MASTER_MUTE, SUB_FADER, SUB_MUTE};
+use crate::{
+    AMIX_CLOSE, AMIX_CUTOFF, AMIX_FADER, AMIX_MASTER_MUTE, AMIX_PAN, SUB_FADER, SUB_MUTE, SUB_PAN,
+};
 use ph2d_editor_core::interaction::{InteractiveState, WidgetStore};
 use ph2d_editor_core::widget::{ButtonState, SliderOrientation, SliderState};
 
@@ -29,6 +31,18 @@ pub(crate) fn populate(store: &mut WidgetStore) {
     store.register(AMIX_FADER, vfader());
     for id in SUB_FADER {
         store.register(id, vfader());
+    }
+
+    // Every pan — a horizontal Slider centered at 0.5 (→ pan 0.0). The shared
+    // dispatch maps a drag to the 0..1 value; apply_event remaps to -1..1.
+    let pan = || InteractiveState::Slider {
+        state: SliderState::Normal,
+        value: 0.5,
+        orientation: SliderOrientation::Horizontal,
+    };
+    store.register(AMIX_PAN, pan());
+    for id in SUB_PAN {
+        store.register(id, pan());
     }
 
     // Master low-pass cutoff — a horizontal Slider (start open at 1.0).

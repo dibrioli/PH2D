@@ -198,6 +198,8 @@ ph2d-vec-scene = { path = "../../crates/ph2d-vec-scene" }
 ph2d-vec-render = { path = "../../crates/ph2d-vec-render" }
 # ADR-0108 Fase 1.1: máquinas de edição interativa (Pen agora) sobre a cena nova.
 ph2d-vec-edit = { path = "../../crates/ph2d-vec-edit" }
+# ADR-0108 Fase 1: booleanas edit-time (union/intersect/subtract via linesweeper).
+ph2d-vec-boolean = { path = "../../crates/ph2d-vec-boolean" }
 # ADR-0065 Phase 3: the geometry-graph smoke bridge draws the SDF *draft*
 # (silhouette contour) during a slider drag, before the exact reconcile.
 ph2d-vector-sdf = { path = "../../crates/ph2d-vector-sdf" }

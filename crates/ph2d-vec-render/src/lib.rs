@@ -10,8 +10,8 @@
 //! Fase 0: draw estático da cena inteira. **Dirty-tracking** (só re-encodar a
 //! sub-árvore que mudou — a alavanca de escala do ADR-0108) é o próximo passo.
 
-use ph2d_vec_scene::{Rgba8, VecPath, VecScene};
-use ph2d_vector::{Affine, BezPath, Brush, Color, Point, Stroke, VectorScene};
+use ph2d_vec_scene::{Rgba8, VecPath, VecPathId, VecScene, VertexKind};
+use ph2d_vector::{Affine, BezPath, Brush, Circle, Color, Fill, Point, Rect, Stroke, VectorScene};
 
 /// Constrói o `BezPath` (world-space) de um path editável: `move_to` na 1ª âncora,
 /// depois uma cúbica por segmento usando `out_handle(i)` e `in_handle(i+1)`;
@@ -51,6 +51,59 @@ pub fn dispatch(scene: &VecScene, transform: Affine, target: &mut VectorScene) {
                 None,
                 &bp,
             );
+        }
+    }
+}
+
+/// Desenha os **gizmos de edição** por cima da cena (screen-space, tamanho
+/// constante em px): quadradinho em cada âncora; e — só no path `selected` — as
+/// linhas âncora→handle + bolinhas nos handles dos vértices suaves. Cores
+/// hardcoded de scaffold (Fase 1); migram p/ tokens no chrome do cutover (Fase R).
+pub fn draw_overlays(
+    scene: &VecScene,
+    selected: Option<VecPathId>,
+    transform: Affine,
+    target: &mut VectorScene,
+) {
+    for path in scene.paths() {
+        let is_sel = Some(path.id) == selected;
+        if is_sel {
+            for v in &path.verts {
+                if v.kind != VertexKind::Smooth {
+                    continue;
+                }
+                let a = transform * Point::new(v.anchor[0], v.anchor[1]);
+                for h in [v.in_handle, v.out_handle] {
+                    let hp = transform * Point::new(h[0], h[1]);
+                    let mut line = BezPath::new();
+                    line.move_to(a);
+                    line.line_to(hp);
+                    target.inner_mut().stroke(
+                        &Stroke::new(1.0),
+                        Affine::IDENTITY,
+                        &Brush::Solid(Color::from_rgba8(120, 190, 230, 200)),
+                        None,
+                        &line,
+                    );
+                    target.inner_mut().fill(
+                        Fill::NonZero,
+                        Affine::IDENTITY,
+                        &Brush::Solid(Color::from_rgba8(120, 190, 230, 255)),
+                        None,
+                        &Circle::new(hp, 3.5),
+                    );
+                }
+            }
+        }
+        for v in &path.verts {
+            let a = transform * Point::new(v.anchor[0], v.anchor[1]);
+            let s = 3.5;
+            let col = if is_sel {
+                Color::from_rgba8(250, 180, 90, 255) // laranja = selecionado
+            } else {
+                Color::from_rgba8(230, 230, 235, 220)
+            };
+            target.fill_rect(Rect::new(a.x - s, a.y - s, a.x + s, a.y + s), col);
         }
     }
 }

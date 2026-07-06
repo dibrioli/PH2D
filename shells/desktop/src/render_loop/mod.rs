@@ -1429,6 +1429,16 @@ impl crate::App {
                 camera.world_to_screen_affine(window_size),
                 vector_scene,
             );
+            // ADR-0108 Fase 1: gizmos de edição (âncoras + handles do path
+            // selecionado) por cima, só no modo vetorial (flag).
+            if self.vec_pen_enabled {
+                ph2d_vec_render::draw_overlays(
+                    vec_scene,
+                    self.vec_pen.selected(),
+                    camera.world_to_screen_affine(window_size),
+                    vector_scene,
+                );
+            }
             // Drain the right-click point-type menu choice (chrome parked a 0..=3
             // index in `pending_vector_point_type`) → apply EAGER to the selected
             // vertices via the Direct tool (re-derives tangents on the spot).

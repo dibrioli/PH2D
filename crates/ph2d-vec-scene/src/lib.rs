@@ -129,6 +129,17 @@ impl VecScene {
         self.paths.iter_mut().find(|p| p.id == id)
     }
 
+    /// Remove o path de id `id`; devolve `true` se existia (delete / consumo por
+    /// booleana).
+    pub fn remove_path(&mut self, id: VecPathId) -> bool {
+        if let Some(i) = self.paths.iter().position(|p| p.id == id) {
+            self.paths.remove(i);
+            true
+        } else {
+            false
+        }
+    }
+
     /// Cena de demonstração da Fase 0: um blob fechado **preenchido** + uma curva
     /// aberta **traçada** — prova fill + stroke + curvatura Bézier ponta-a-ponta
     /// pela pipeline nova. Sai de cena quando as ferramentas de desenho entrarem

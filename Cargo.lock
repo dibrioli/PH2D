@@ -4686,6 +4686,7 @@ dependencies = [
  "ph2d-tool-vector-pencil",
  "ph2d-tool-vector-select",
  "ph2d-tool-vector-shape",
+ "ph2d-vec-boolean",
  "ph2d-vec-edit",
  "ph2d-vec-render",
  "ph2d-vec-scene",
@@ -5751,6 +5752,15 @@ dependencies = [
  "ph2d-a11y",
  "ph2d-editor-core",
  "ph2d-tokens",
+]
+
+[[package]]
+name = "ph2d-vec-boolean"
+version = "0.0.0"
+dependencies = [
+ "kurbo 0.13.0",
+ "linesweeper",
+ "ph2d-vec-scene",
 ]
 
 [[package]]

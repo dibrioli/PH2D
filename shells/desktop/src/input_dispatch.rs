@@ -176,6 +176,60 @@ impl App {
         });
     }
 
+    /// ADR-0108 Fase 1: booleana das DUAS últimas regiões fechadas da cena nova
+    /// (destrutivo — consome os operandos, insere o resultado). Modo de teste.
+    fn vec_boolean(&mut self, op: ph2d_vec_boolean::BoolOp) {
+        let Some(gfx) = self.gfx.as_mut() else {
+            return;
+        };
+        let closed: Vec<u64> = gfx
+            .vec_scene
+            .paths()
+            .iter()
+            .filter(|p| p.closed)
+            .map(|p| p.id)
+            .collect();
+        if closed.len() < 2 {
+            eprintln!("[ph2d-vec] boolean: precisa de 2 regiões FECHADAS");
+            return;
+        }
+        let (ida, idb) = (closed[closed.len() - 2], closed[closed.len() - 1]);
+        let a = gfx.vec_scene.paths().iter().find(|p| p.id == ida).cloned();
+        let b = gfx.vec_scene.paths().iter().find(|p| p.id == idb).cloned();
+        if let (Some(a), Some(b)) = (a, b) {
+            let results = ph2d_vec_boolean::apply(&a, &b, op);
+            if results.is_empty() {
+                eprintln!("[ph2d-vec] boolean {op:?}: resultado vazio");
+                return;
+            }
+            gfx.vec_scene.remove_path(ida);
+            gfx.vec_scene.remove_path(idb);
+            let mut last = None;
+            for r in results {
+                last = Some(gfx.vec_scene.push_path(r));
+            }
+            self.vec_pen.select(last);
+            eprintln!("[ph2d-vec] boolean {op:?}: ok");
+        }
+    }
+
+    /// ADR-0108 Fase 1: apaga o path selecionado (Delete/Backspace no modo vetorial).
+    fn vec_delete_selected(&mut self) -> bool {
+        let Some(sel) = self.vec_pen.selected() else {
+            return false;
+        };
+        let Some(gfx) = self.gfx.as_mut() else {
+            return false;
+        };
+        if gfx.vec_scene.remove_path(sel) {
+            self.vec_pen.clear();
+            eprintln!("[ph2d-vec] path {sel} apagado");
+            true
+        } else {
+            false
+        }
+    }
+
     /// ADR-0108 Fase 1.2: enquanto o Pen novo arrasta um handle, projeta o cursor
     /// pra world e puxa os handles Bézier do último vértice. No-op barato quando
     /// não há arrasto — chamado a cada CursorMoved.

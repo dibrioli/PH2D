@@ -37,6 +37,31 @@ impl App {
             timestamp_ns: Self::timestamp_ns(),
         });
 
+        // ADR-0108 Fase 1: modo vetorial (flag PH2D_VEC_PEN) — U/I/D fazem a
+        // booleana das 2 últimas regiões fechadas; Delete/Backspace apaga o path
+        // selecionado. Modo de teste dedicado (a pill/menu real entra no cutover,
+        // Fase R). Só sem modificadores, pra não colidir com atalhos.
+        if self.vec_pen_enabled
+            && state == ElementState::Pressed
+            && !repeat
+            && self.modifiers.is_empty()
+            && let PhysicalKey::Code(code) = physical_key
+        {
+            let op = match code {
+                KeyCode::KeyU => Some(ph2d_vec_boolean::BoolOp::Union),
+                KeyCode::KeyI => Some(ph2d_vec_boolean::BoolOp::Intersect),
+                KeyCode::KeyD => Some(ph2d_vec_boolean::BoolOp::Subtract),
+                _ => None,
+            };
+            if let Some(op) = op {
+                self.vec_boolean(op);
+                return;
+            }
+            if matches!(code, KeyCode::Delete | KeyCode::Backspace) && self.vec_delete_selected() {
+                return;
+            }
+        }
+
         // Vector Pen: Escape cancels the in-progress path, or clears the
         // committed scene when none is in progress. Consumed only when
         // the Pen tool is active with something to cancel/clear —

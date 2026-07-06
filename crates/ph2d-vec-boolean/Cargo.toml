@@ -1,0 +1,19 @@
+[package]
+name = "ph2d-vec-boolean"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+[dependencies]
+# Booleanas edit-time (ADR-0108): converte `VecPath` ⇄ kurbo `BezPath` e roda o
+# linesweeper (motor exato, MIT/Apache). kurbo/linesweeper aqui são INTERNOS (não
+# cruzam pro render, que usa a kurbo do vello) → sem risco de skew. Mesmas versões
+# do wrapper provado `ph2d-vector-kurbo` (lift, não herança de arquitetura).
+ph2d-vec-scene = { path = "../ph2d-vec-scene" }
+kurbo = "0.13"
+linesweeper = "0.3"

@@ -216,11 +216,16 @@ pub(crate) fn paint_texture_section(
         );
     }
 
-    paint_texture_params_and_ramp(ctx, theme, x, content_w, y, brush, kind)
+    // In watercolor mode the BRUSH Grain slot IS the granulation map (a grayscale height-field), so its
+    // Color Ramp is meaningless — hide it (the Paper section carries the colour). A Texture LAYER
+    // (`compact`) keeps its ramp regardless. Params still show either way.
+    let show_ramp = !(brush.watercolor && !compact);
+    paint_texture_params_and_ramp(ctx, theme, x, content_w, y, brush, kind, show_ramp)
 }
 
-/// Paint the Grain section's tail — the per-pattern params + the Color Ramp sub-editor. Split out to keep
-/// [`paint_texture_section`] under the function LOC cap; reused by the inline Texture-layer editor.
+/// Paint the Grain section's tail — the per-pattern params + (when `show_ramp`) the Color Ramp sub-editor.
+/// Split out to keep [`paint_texture_section`] under the function LOC cap; reused by the layer editor.
+#[allow(clippy::too_many_arguments)]
 fn paint_texture_params_and_ramp(
     ctx: &mut PaintCtx,
     theme: ph2d_tokens::Theme,
@@ -229,6 +234,7 @@ fn paint_texture_params_and_ramp(
     mut y: f32,
     brush: BrushSettings,
     kind: TextureKind,
+    show_ramp: bool,
 ) -> f32 {
     // ── Per-pattern parameters — short labels pair two-per-line, long labels go solo. ──
     let pp: Vec<(&str, ph2d_a11y::NodeId, f32)> = param_specs(kind)
@@ -244,6 +250,9 @@ fn paint_texture_params_and_ramp(
         .collect();
     y = crate::number_field::paint_num_params(ctx, theme, x, content_w, y, &pp);
 
+    if !show_ramp {
+        return y;
+    }
     // ── Color Ramp sub-editor (maps the texture's scalar to a colour). Shown in ALL modes: in
     //    Smear/Blur/Clone it's forced to a B&W coverage tone (checked + locked) that shapes the grain. ──
     crate::paint_texture_ramp::paint_texture_ramp_section(
@@ -406,6 +415,7 @@ pub(crate) fn paint_texture_preview(
             brush.texture_params,
             brush.texture_size,
             brush.texture_offset,
+            brush.texture_angle_deg,
             image_mask.as_ref(),
             ramp,
             &mut sub,
@@ -424,6 +434,7 @@ pub(crate) fn paint_texture_preview(
             brush.texture_params,
             brush.texture_size,
             brush.texture_offset,
+            brush.texture_angle_deg,
             image_mask.as_ref(),
             ramp,
             &mut buf,

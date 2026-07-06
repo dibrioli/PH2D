@@ -74,11 +74,13 @@ pub(super) fn sample_kind(
 /// [`RampAlphaMode::None`] ignores it (opaque), the other two reveal the translucency. No-op if `out`
 /// is too small.
 #[allow(clippy::too_many_arguments)]
+#[allow(clippy::too_many_arguments)]
 pub fn render_texture_preview(
     kind: TextureKind,
     params: [f32; super::MAX_TEX_PARAMS],
     size: [f32; 2],
     offset: [f32; 2],
+    angle_deg: u16,
     image: Option<&ImageMask>,
     ramp: Option<(&[[f32; 4]], RampAlphaMode)>,
     out: &mut [u8],
@@ -94,19 +96,29 @@ pub fn render_texture_preview(
     // An imported image previews as ONE centred picture filling the strip (footprint `−1..1`, matching
     // the dab at size 1), not the procedural 3-tile field — else it reads repeated + offset.
     let is_image = matches!(kind, TextureKind::Image);
+    // The **Angle** rotates the sampled pattern about the strip centre (so the preview reflects the
+    // texture rotation, matching the on-canvas render). Centre = 1.5 tile units (procedural) / 0 (image).
+    let rot = super::rotate_by_degrees(angle_deg);
+    let (ca, sa) = (rot[0], rot[1]);
+    let centre = if is_image { 0.0 } else { 1.5 };
     let enc = |c: f32| (c.clamp(0.0, 1.0) * 255.0 + 0.5) as u8;
     for py in 0..h {
-        let v = if is_image {
-            ((py as f32 + 0.5) / h as f32 * 2.0 - 1.0) * sy + offset[1]
+        let bv0 = if is_image {
+            (py as f32 + 0.5) / h as f32 * 2.0 - 1.0
         } else {
-            (py as f32 + 0.5) * step * sy + offset[1]
-        };
+            (py as f32 + 0.5) * step
+        } - centre;
         for px in 0..w {
-            let u = if is_image {
-                ((px as f32 + 0.5) / w as f32 * 2.0 - 1.0) * sx + offset[0]
+            let bu0 = if is_image {
+                (px as f32 + 0.5) / w as f32 * 2.0 - 1.0
             } else {
-                (px as f32 + 0.5) * step * sx + offset[0]
-            };
+                (px as f32 + 0.5) * step
+            } - centre;
+            // Rotate the centred base coords, restore the centre, then apply Size + Offset.
+            let bu = bu0 * ca - bv0 * sa + centre;
+            let bv = bu0 * sa + bv0 * ca + centre;
+            let u = bu * sx + offset[0];
+            let v = bv * sy + offset[1];
             let s = sample_kind(kind, [u, v], params, image).clamp(0.0, 1.0);
             let [r, g, b] = match ramp {
                 Some((lut, mode)) if !lut.is_empty() => {

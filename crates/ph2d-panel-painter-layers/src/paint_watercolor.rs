@@ -184,6 +184,7 @@ fn paper_preview_view(brush: &BrushSettings) -> BrushSettings {
     v.texture_params = brush.paper_params;
     v.texture_size = brush.paper_size;
     v.texture_offset = brush.paper_offset;
+    v.texture_angle_deg = brush.paper_angle;
     v.texture_ramp_enabled = false;
     v
 }

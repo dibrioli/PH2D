@@ -12,8 +12,8 @@
 use crate::fader::{FADER_UNITY_POS, fader_db};
 use crate::state::AudioMixerState;
 use crate::{
-    AMIX_CLOSE, AMIX_CUTOFF, AMIX_FADER, AMIX_MASTER_MUTE, AMIX_PAN, AMIX_PANEL, AudioMixerPanel,
-    SUB_BUS_COUNT, SUB_BUS_LABELS, SUB_FADER, SUB_MUTE, SUB_PAN, SUB_SOLO, snapshot,
+    AMIX_CLOSE, AMIX_CUTOFF, AMIX_FADER, AMIX_MASTER_MUTE, AMIX_PAN, AMIX_PANEL, AMIX_PLAY,
+    AudioMixerPanel, SUB_BUS_COUNT, SUB_BUS_LABELS, SUB_FADER, SUB_MUTE, SUB_PAN, SUB_SOLO, snapshot,
 };
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::ids as core_ids;
@@ -219,6 +219,23 @@ pub(crate) fn paint(_state: &mut AudioMixerState, ctx: &mut PaintCtx) {
     cutoff_slider.set_value(cutoff.clamp(0.0, 1.0));
     paint_slider(&cutoff_slider, cutoff_rect, ctx.scene, theme);
     hit_index.register(AMIX_CUTOFF, cutoff_rect);
+    y += Spacing::Lg.px() + Spacing::Lg.px();
+
+    // Footer: built-in test oscillator toggle (Accent when playing) so the mixer
+    // can be exercised without an external file. The shell owns the signal.
+    let playing = snapshot::play_test();
+    let play_rect = Rect::new(content_x, y, content_w, MUTE_H);
+    paint_toggle(
+        play_rect,
+        if playing { "Stop" } else { "Play Test" },
+        playing,
+        ColorToken::Accent,
+        AMIX_PLAY,
+        ctx.scene,
+        ctx.text_system,
+        theme,
+        hit_index,
+    );
 }
 
 /// Paint one channel strip in its column: label · pan · fader (standard

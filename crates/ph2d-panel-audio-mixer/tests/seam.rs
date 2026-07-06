@@ -9,9 +9,10 @@ use ph2d_editor_core::interaction::WidgetEvent;
 use ph2d_editor_core::panel::{EventOutcome, Panel, PanelHostInternal};
 use ph2d_panel_audio_mixer::state::AudioMixerState;
 use ph2d_panel_audio_mixer::{
-    AMIX_CUTOFF, AMIX_FADER, AMIX_MASTER_MUTE, AMIX_PAN, AudioMixerPanel, FADER_UNITY_POS, SUB_FADER,
-    SUB_MUTE, SUB_PAN, SUB_SOLO, fader_gain, master_cutoff_target, master_gain_target, master_muted,
-    master_pan_target, sub_gain_target, sub_muted, sub_pan_target, sub_soloed,
+    AMIX_CUTOFF, AMIX_FADER, AMIX_MASTER_MUTE, AMIX_PAN, AMIX_PLAY, AudioMixerPanel, FADER_UNITY_POS,
+    SUB_FADER, SUB_MUTE, SUB_PAN, SUB_SOLO, fader_gain, master_cutoff_target, master_gain_target,
+    master_muted, master_pan_target, play_test, sub_gain_target, sub_muted, sub_pan_target,
+    sub_soloed,
 };
 use ph2d_ui_testkit::MockPanelHost;
 
@@ -159,6 +160,24 @@ fn sub_bus_fader_drag_publishes_that_bus_gain() {
         "the other sub-bus must stay at unity gain, got {}",
         gains[1]
     );
+}
+
+/// Clicking the footer Play Test button toggles the play flag the shell reads
+/// to start/stop the built-in test signal.
+#[test]
+fn play_test_click_toggles_flag() {
+    let mut host = MockPanelHost::with_panel::<AudioMixerPanel>();
+    let mut state = AudioMixerState;
+
+    let before = play_test();
+    let outcome =
+        host.apply_panel_event::<AudioMixerPanel>(&mut state, WidgetEvent::Click(AMIX_PLAY));
+    assert_eq!(
+        outcome,
+        EventOutcome::Consumed,
+        "panel ignored the Play Test click — the AMIX_PLAY arm is missing"
+    );
+    assert_ne!(play_test(), before, "Play Test click must flip the play flag");
 }
 
 /// Clicking a sub-bus solo button flips only that bus's solo flag (the shell

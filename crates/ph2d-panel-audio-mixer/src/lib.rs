@@ -39,6 +39,9 @@ pub const AMIX_CUTOFF: NodeId = hash_node_id("audio_mixer_cutoff");
 pub const AMIX_MASTER_MUTE: NodeId = hash_node_id("audio_mixer_master_mute");
 /// Master stereo balance (a horizontal `Slider` — drag → master pan).
 pub const AMIX_PAN: NodeId = hash_node_id("audio_mixer_pan");
+/// Footer "Play Test" toggle — the shell plays a built-in test signal (a pluck
+/// loop on Music + a steady tone on SFX) so the mixer is testable without files.
+pub const AMIX_PLAY: NodeId = hash_node_id("audio_mixer_play_test");
 
 /// Sub-buses shown as their own strips, **in `ph2d_audio::BusId::SUB_BUSES`
 /// order** (Music, SFX). The panel is UI-only (no `ph2d-audio` dep); the shell's
@@ -122,6 +125,7 @@ mod snapshot {
         static CUTOFF_HZ: Cell<f32> = const { Cell::new(20_000.0) }; // LITERAL-PX-OK: default cutoff 20 kHz (audio frequency, not a UI metric)
         static MUTED: Cell<bool> = const { Cell::new(false) };
         static MASTER_PAN: Cell<f32> = const { Cell::new(0.0) };
+        static PLAY_TEST: Cell<bool> = const { Cell::new(false) };
         // Per-sub-bus channels, index-aligned with `BusId::SUB_BUSES`.
         static SUB_LEVELS_PEAK: Cell<[[f32; 2]; SUB_BUS_COUNT]> = const { Cell::new([[0.0, 0.0]; SUB_BUS_COUNT]) };
         static SUB_LEVELS_RMS: Cell<[[f32; 2]; SUB_BUS_COUNT]> = const { Cell::new([[0.0, 0.0]; SUB_BUS_COUNT]) };
@@ -198,6 +202,19 @@ mod snapshot {
 
     pub fn master_pan() -> f32 {
         MASTER_PAN.with(Cell::get)
+    }
+
+    /// Panel → shell: whether the built-in test signal should be playing.
+    pub fn play_test() -> bool {
+        PLAY_TEST.with(Cell::get)
+    }
+
+    pub(crate) fn toggle_play_test() -> bool {
+        PLAY_TEST.with(|c| {
+            let next = !c.get();
+            c.set(next);
+            next
+        })
     }
 
     /// Shell → panel: current post-fader peak + RMS per sub-bus.
@@ -295,6 +312,8 @@ pub use snapshot::master_gain as master_gain_target;
 pub use snapshot::master_pan as master_pan_target;
 /// Panel → shell: whether the Master mute is engaged (bridge zeroes the gain).
 pub use snapshot::muted as master_muted;
+/// Panel → shell: whether the built-in test signal should be playing.
+pub use snapshot::play_test;
 /// Shell → panel: publish this frame's master output peak levels for the meter.
 pub use snapshot::set_levels;
 /// Shell → panel: publish each sub-bus's post-fader peak levels for its meter.

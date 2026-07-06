@@ -117,10 +117,12 @@ impl crate::App {
     pub(super) fn run_render_frame(&mut self) {
         // Phase 2.1: drop finished-sample Arcs on the main thread (HR-3).
         // Phase 2.3c: feed the mixer panel live levels + apply its Master mute.
-        if let Some(audio) = self.audio.as_ref() {
+        if let Some(audio) = self.audio.as_mut() {
             audio.poll();
             #[cfg(feature = "panel-audio-mixer")]
             {
+                // Built-in test oscillator (panel footer Play Test).
+                audio.set_test_playing(ph2d_panel_audio_mixer::play_test());
                 // Master strip.
                 ph2d_panel_audio_mixer::set_levels(audio.levels(), audio.rms());
                 let muted = ph2d_panel_audio_mixer::master_muted();

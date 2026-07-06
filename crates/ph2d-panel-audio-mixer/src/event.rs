@@ -3,8 +3,8 @@
 use crate::fader::fader_gain;
 use crate::state::AudioMixerState;
 use crate::{
-    AMIX_CLOSE, AMIX_CUTOFF, AMIX_FADER, AMIX_MASTER_MUTE, AMIX_PAN, AudioMixerPanel, SUB_FADER,
-    SUB_MUTE, SUB_PAN, SUB_SOLO, snapshot,
+    AMIX_CLOSE, AMIX_CUTOFF, AMIX_FADER, AMIX_MASTER_MUTE, AMIX_PAN, AMIX_PLAY, AudioMixerPanel,
+    SUB_FADER, SUB_MUTE, SUB_PAN, SUB_SOLO, snapshot,
 };
 use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::WidgetEvent;
@@ -35,6 +35,11 @@ pub(crate) fn apply_event(
             }
             if id == AMIX_MASTER_MUTE {
                 snapshot::toggle_muted();
+                return EventOutcome::Consumed;
+            }
+            // Footer Play Test toggle — the shell starts/stops the test signal.
+            if id == AMIX_PLAY {
+                snapshot::toggle_play_test();
                 return EventOutcome::Consumed;
             }
             // Per-sub-bus mute toggles.

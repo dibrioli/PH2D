@@ -9,7 +9,7 @@
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use cpal::{FromSample, SizedSample};
 use ph2d_audio::{
-    AudioEngine, AudioFormat, AudioRenderer, BusId, PlayParams, SUB_BUS_COUNT, SampleData,
+    AudioEngine, AudioFormat, AudioRenderer, BusId, PlayParams, SUB_BUS_COUNT, SampleData, VoiceId,
 };
 
 /// The desktop audio system: the control handle + the live output stream.
@@ -28,6 +28,9 @@ pub(crate) struct AudioSystem {
     last_bus_gain: [std::cell::Cell<f32>; SUB_BUS_COUNT],
     /// Same change-gate, per sub-bus balance.
     last_bus_pan: [std::cell::Cell<f32>; SUB_BUS_COUNT],
+    /// Voices of the built-in test signal while the panel's Play Test is on
+    /// (empty = stopped). Looping, so they sound until explicitly stopped.
+    test_voices: Vec<VoiceId>,
     // Kept alive for the app's lifetime; the callback (which owns the renderer)
     // runs on cpal's thread until this drops. `cpal::Stream` is `!Send` on ALSA,
     // which is fine — `App` never leaves the main thread.
@@ -96,6 +99,7 @@ impl AudioSystem {
             last_master_pan: std::cell::Cell::new(0.0),
             last_bus_gain: std::array::from_fn(|_| std::cell::Cell::new(1.0)),
             last_bus_pan: std::array::from_fn(|_| std::cell::Cell::new(0.0)),
+            test_voices: Vec::new(),
             _stream: stream,
         })
     }
@@ -163,6 +167,35 @@ impl AudioSystem {
         if (hz - self.last_cutoff.get()).abs() > f32::EPSILON {
             let _ = self.engine.set_master_cutoff(hz);
             self.last_cutoff.set(hz);
+        }
+    }
+
+    /// Start or stop the built-in test signal to match the panel's Play Test
+    /// toggle. Idempotent: only acts on the transition (empty ↔ playing). Plays a
+    /// repeating pluck on the Music bus (transients → the peak-hold marker jumps)
+    /// and a slow swell on the SFX bus, so every strip control is exercisable.
+    pub(crate) fn set_test_playing(&mut self, on: bool) {
+        let active = !self.test_voices.is_empty();
+        if on && !active {
+            let pluck = pluck_loop(self.format, 330.0, 0.6, 0.7);
+            let swell = swell_loop(self.format, 220.0, 0.9, 0.4);
+            for (data, bus) in [(pluck, BusId::Music), (swell, BusId::Sfx)] {
+                let params = PlayParams {
+                    looping: true,
+                    bus,
+                    ..PlayParams::default()
+                };
+                match self.engine.play(data, params) {
+                    Ok(id) => self.test_voices.push(id),
+                    Err(e) => eprintln!("audio: test signal dropped ({e})"),
+                }
+            }
+            println!("audio: test signal ON (pluck→Music, swell→SFX)");
+        } else if !on && active {
+            for id in self.test_voices.drain(..) {
+                let _ = self.engine.stop(id);
+            }
+            println!("audio: test signal OFF");
         }
     }
 
@@ -283,6 +316,44 @@ fn sine_tone(format: AudioFormat, freq_hz: f32, secs: f32, gain: f32) -> SampleD
             a *= (n - i) as f32 / fade as f32;
         }
         samples.push(a);
+    }
+    SampleData::from_interleaved(samples, AudioFormat::mono(format.sample_rate))
+}
+
+/// A looping plucked note: fast attack then decay to silence, so it loops as a
+/// repeating pluck (silence at the seam = no click). The decay gives transients
+/// that make the meter's peak-hold marker jump then fall.
+fn pluck_loop(format: AudioFormat, freq_hz: f32, secs: f32, gain: f32) -> SampleData {
+    let rate = format.sample_rate as f32;
+    let n = (secs * rate) as usize;
+    let attack = ((0.005 * rate) as usize).clamp(1, (n / 2).max(1));
+    let omega = std::f32::consts::TAU * freq_hz;
+    let mut samples = Vec::with_capacity(n);
+    for i in 0..n {
+        let t = i as f32 / rate;
+        let env = if i < attack {
+            i as f32 / attack as f32
+        } else {
+            let d = (i - attack) as f32 / (n - attack).max(1) as f32; // 0..1
+            (1.0 - d) * (1.0 - d) // decays to 0 at the loop seam
+        };
+        samples.push((omega * t).sin() * env * gain);
+    }
+    SampleData::from_interleaved(samples, AudioFormat::mono(format.sample_rate))
+}
+
+/// A looping tone under a slow amplitude swell (`sin(π·phase)` hump): silent at
+/// both ends so it loops seamlessly regardless of frequency, pulsing gently.
+fn swell_loop(format: AudioFormat, freq_hz: f32, secs: f32, gain: f32) -> SampleData {
+    let rate = format.sample_rate as f32;
+    let n = (secs * rate) as usize;
+    let omega = std::f32::consts::TAU * freq_hz;
+    let mut samples = Vec::with_capacity(n);
+    for i in 0..n {
+        let t = i as f32 / rate;
+        let phase = i as f32 / n.max(1) as f32;
+        let env = (std::f32::consts::PI * phase).sin(); // 0 → 1 → 0
+        samples.push((omega * t).sin() * env * gain);
     }
     SampleData::from_interleaved(samples, AudioFormat::mono(format.sample_rate))
 }

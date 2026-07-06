@@ -174,4 +174,11 @@ pub(crate) const FALLBACK_BRUSH: BrushSettings = BrushSettings {
     fill: 0.12,       // LITERAL-PX-OK: default wash fill density (mirrors BrushSpec::default)
     depth: 1.2,       // LITERAL-PX-OK: default Beer–Lambert depth (mirrors BrushSpec::default)
     warp: 6.0,        // LITERAL-PX-OK: default boundary warp px (mirrors BrushSpec::default)
+    paper_kind: 0,    // None (TextureKind wire 0)
+    paper_size: [1.0, 1.0], // LITERAL-PX-OK: default paper Size (one tile)
+    paper_angle: 0,
+    granulation_kind: 0,
+    granulation_size: [1.0, 1.0], // LITERAL-PX-OK: default granulation Size
+    granulation_angle: 0,
+    granulation_use_paper: true,
 };

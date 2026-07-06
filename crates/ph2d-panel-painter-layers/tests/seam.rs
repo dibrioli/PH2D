@@ -261,6 +261,26 @@ fn preset_option_forwards_selectoption() {
     );
 }
 
+/// The Watercolor **Paper** kind dropdown option forwards `SelectOption(PAINTER_WATERCOLOR_PAPER_KIND, k)`
+/// (its own id namespace, distinct from the Grain picker) — the seam that reaches `set_brush_paper_kind`.
+#[test]
+fn paper_kind_option_forwards_selectoption() {
+    let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
+    let mut st = PainterLayersPanelState;
+    let opt = core_ids::painter_paper_kind_option_id(26); // Paper Cold Press
+    let outcome = host.apply_panel_event::<PainterLayersPanel>(&mut st, WidgetEvent::Click(opt));
+    assert_eq!(outcome, EventOutcome::Consumed, "Paper kind option ignored — decoder/route missing");
+    let actions = host.drained_actions();
+    assert!(
+        actions.iter().any(|a| matches!(
+            a,
+            EditorAction::ToolPanelEvent(PanelEvent::SelectOption(i, v))
+                if *i == core_ids::PAINTER_WATERCOLOR_PAPER_KIND && v == "26"
+        )),
+        "Paper kind pick never forwarded — seam dead. drained = {actions:?}"
+    );
+}
+
 // ── Symmetry section seam (Use / Circular / X-Y-Custom axis / Segments / pick buttons / reset) ──
 // Same discipline as the Stroke section above: one assertion per control SHAPE, proving the real
 // WidgetEvent forwards the EXACT PanelEvent the tool's `route_brush_jitter_event` arm consumes. A

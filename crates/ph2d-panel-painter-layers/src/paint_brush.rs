@@ -302,6 +302,8 @@ pub(crate) fn paint_brush_popovers(ctx: &mut PaintCtx, theme: ph2d_tokens::Theme
     crate::paint_texture::paint_texture_popovers(ctx, theme);
     // Shape Tone ramp Interpolation dropdown.
     crate::paint_shape_ramp::paint_shape_ramp_popovers(ctx, theme);
+    // Watercolor Paper / Granulation kind dropdowns.
+    crate::paint_watercolor::paint_watercolor_popovers(ctx, theme);
 }
 
 /// When the shared Blender picker targets the brush swatch, the hero loop mirrors its live value into

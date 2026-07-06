@@ -217,6 +217,13 @@ impl PainterTool {
             fill: b.fill,
             depth: b.depth,
             warp: b.warp,
+            paper_kind: b.paper.kind.to_u8(),
+            paper_size: b.paper.size,
+            paper_angle: b.paper.angle_deg,
+            granulation_kind: b.granulation_tex.kind.to_u8(),
+            granulation_size: b.granulation_tex.size,
+            granulation_angle: b.granulation_tex.angle_deg,
+            granulation_use_paper: b.granulation_use_paper,
         }
     }
 

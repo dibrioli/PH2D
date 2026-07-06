@@ -7,7 +7,9 @@
 use super::brush_settings::BrushTextureImage;
 use crate::tool::PainterTool;
 use ph2d_editor_core::tool::PanelEvent;
-use ph2d_painter_brush::{BrushSpec, TextureKind, TextureMapping, TextureSettings};
+use ph2d_painter_brush::{
+    BrushSpec, TEX_SIZE_MAX, TEX_SIZE_MIN, TextureKind, TextureMapping, TextureSettings,
+};
 
 impl PainterTool {
     /// Route the Watercolor section controls (master enable + Pigment toggle + section reset, and the
@@ -27,6 +29,10 @@ impl PainterTool {
             }
             PanelEvent::Click(id) if *id == core_ids::PAINTER_WATERCOLOR_RESET => {
                 self.reset_brush_watercolor();
+                true
+            }
+            PanelEvent::Click(id) if *id == core_ids::PAINTER_WATERCOLOR_GRAN_SAME => {
+                self.toggle_granulation_use_paper();
                 true
             }
             PanelEvent::SetValue(id, v) => {
@@ -58,6 +64,30 @@ impl PainterTool {
                     }
                     x if x == core_ids::PAINTER_WATERCOLOR_WARP => {
                         self.set_brush_warp(v);
+                        true
+                    }
+                    x if x == core_ids::PAINTER_WATERCOLOR_PAPER_SIZE_X => {
+                        self.set_brush_paper_size(0, v);
+                        true
+                    }
+                    x if x == core_ids::PAINTER_WATERCOLOR_PAPER_SIZE_Y => {
+                        self.set_brush_paper_size(1, v);
+                        true
+                    }
+                    x if x == core_ids::PAINTER_WATERCOLOR_PAPER_ANGLE => {
+                        self.set_brush_paper_angle(v);
+                        true
+                    }
+                    x if x == core_ids::PAINTER_WATERCOLOR_GRAN_SIZE_X => {
+                        self.set_brush_granulation_size(0, v);
+                        true
+                    }
+                    x if x == core_ids::PAINTER_WATERCOLOR_GRAN_SIZE_Y => {
+                        self.set_brush_granulation_size(1, v);
+                        true
+                    }
+                    x if x == core_ids::PAINTER_WATERCOLOR_GRAN_ANGLE => {
+                        self.set_brush_granulation_angle(v);
                         true
                     }
                     _ => false,
@@ -112,6 +142,48 @@ impl PainterTool {
     /// Set the render-path **Warp** (organic-boundary displacement, canvas px), clamped to `0..=24`.
     pub fn set_brush_warp(&mut self, v: f32) {
         self.paint.brush.warp = v.clamp(0.0, 24.0);
+    }
+
+    /// Set the **Paper** slot kind (`TextureKind` wire u8) + force canvas-anchored mapping.
+    pub fn set_brush_paper_kind(&mut self, k: u8) {
+        self.paint.brush.paper.kind = TextureKind::from_u8(k);
+        self.paint.brush.paper.mapping = TextureMapping::Tiled;
+    }
+
+    /// Set the **Paper** slot Size on `axis` (0 = x, 1 = y), clamped to `[0.1, 100]`.
+    pub fn set_brush_paper_size(&mut self, axis: usize, v: f32) {
+        if axis < 2 {
+            self.paint.brush.paper.size[axis] = v.clamp(TEX_SIZE_MIN, TEX_SIZE_MAX);
+        }
+    }
+
+    /// Set the **Paper** slot Angle (whole degrees, wrapped to `0..360`).
+    pub fn set_brush_paper_angle(&mut self, deg: f32) {
+        self.paint.brush.paper.angle_deg = deg.rem_euclid(360.0) as u16;
+    }
+
+    /// Toggle **Granulation "Same as Paper"** — on = the granulation settles into the paper's own tooth
+    /// (the [`Self::set_brush_granulation_kind`] slot is ignored); off = its own map.
+    pub fn toggle_granulation_use_paper(&mut self) {
+        self.paint.brush.granulation_use_paper = !self.paint.brush.granulation_use_paper;
+    }
+
+    /// Set the **Granulation** slot kind + force canvas-anchored mapping.
+    pub fn set_brush_granulation_kind(&mut self, k: u8) {
+        self.paint.brush.granulation_tex.kind = TextureKind::from_u8(k);
+        self.paint.brush.granulation_tex.mapping = TextureMapping::Tiled;
+    }
+
+    /// Set the **Granulation** slot Size on `axis`, clamped to `[0.1, 100]`.
+    pub fn set_brush_granulation_size(&mut self, axis: usize, v: f32) {
+        if axis < 2 {
+            self.paint.brush.granulation_tex.size[axis] = v.clamp(TEX_SIZE_MIN, TEX_SIZE_MAX);
+        }
+    }
+
+    /// Set the **Granulation** slot Angle (whole degrees, wrapped).
+    pub fn set_brush_granulation_angle(&mut self, deg: f32) {
+        self.paint.brush.granulation_tex.angle_deg = deg.rem_euclid(360.0) as u16;
     }
 
     /// Reset the **Watercolor** section to defaults (section off; all params neutral). Plain paint
@@ -234,6 +306,35 @@ mod tests {
         assert_eq!(t.brush_settings().depth, 2.0, "Depth set");
         t.handle_panel_event(PanelEvent::SetValue(core_ids::PAINTER_WATERCOLOR_WARP, 10.0));
         assert_eq!(t.brush_settings().warp, 10.0, "Warp set");
+
+        // Paper + Granulation slots: kind picker, Size, Angle, and the "Same as Paper" toggle.
+        t.handle_panel_event(PanelEvent::SelectOption(
+            core_ids::PAINTER_WATERCOLOR_PAPER_KIND,
+            (TextureKind::PaperRough.to_u8()).to_string(),
+        ));
+        assert_eq!(
+            t.paint.brush.paper.kind,
+            TextureKind::PaperRough,
+            "Paper kind picked"
+        );
+        assert_eq!(
+            t.paint.brush.paper.mapping,
+            TextureMapping::Tiled,
+            "paper forced canvas-anchored"
+        );
+        t.handle_panel_event(PanelEvent::SetValue(
+            core_ids::PAINTER_WATERCOLOR_PAPER_SIZE_X,
+            50.0,
+        ));
+        assert_eq!(t.paint.brush.paper.size[0], 50.0, "Paper Size X set (0.1..100)");
+        t.handle_panel_event(PanelEvent::SetValue(
+            core_ids::PAINTER_WATERCOLOR_PAPER_ANGLE,
+            45.0,
+        ));
+        assert_eq!(t.paint.brush.paper.angle_deg, 45, "Paper Angle set");
+        assert!(t.brush_settings().granulation_use_paper, "Same as Paper default on");
+        t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_WATERCOLOR_GRAN_SAME));
+        assert!(!t.brush_settings().granulation_use_paper, "Same as Paper toggled off");
 
         // Clamp: Edge caps at 8, Spread at 24.
         t.handle_panel_event(PanelEvent::SetValue(core_ids::PAINTER_WATERCOLOR_EDGE, 99.0));

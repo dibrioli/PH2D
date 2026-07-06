@@ -88,9 +88,13 @@ pub struct VecPath {
     pub stroke: Option<(Rgba8, f64)>,
 }
 
-/// Cena vetorial — o documento editor-first. Fase 0 = container de paths com ids
-/// estáveis. Rig/bones + components ECS = Fase 1.
-#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+/// Versão do wire-format de save (postcard é posicional → bump a cada mudança de
+/// schema). Fase 2: v1. (Versionamento robusto/migração = cutover, Fase R.)
+pub const VEC_SCENE_SCHEMA_VERSION: u32 = 1;
+
+/// Cena vetorial — o documento editor-first. `PartialEq` para o undo detectar
+/// mudança real (só vira passo de histórico se a cena mudou de fato).
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct VecScene {
     paths: Vec<VecPath>,
     next_id: VecPathId,
@@ -138,6 +142,23 @@ impl VecScene {
         } else {
             false
         }
+    }
+
+    /// Serializa a cena (postcard), prefixada pela versão de schema.
+    pub fn to_bytes(&self) -> Result<Vec<u8>, String> {
+        postcard::to_allocvec(&(VEC_SCENE_SCHEMA_VERSION, self)).map_err(|e| e.to_string())
+    }
+
+    /// Desserializa uma cena salva por [`Self::to_bytes`]; rejeita schema alheio.
+    pub fn from_bytes(bytes: &[u8]) -> Result<Self, String> {
+        let (ver, scene): (u32, VecScene) =
+            postcard::from_bytes(bytes).map_err(|e| e.to_string())?;
+        if ver != VEC_SCENE_SCHEMA_VERSION {
+            return Err(format!(
+                "versão de schema {ver} != {VEC_SCENE_SCHEMA_VERSION}"
+            ));
+        }
+        Ok(scene)
     }
 
     /// Cena de demonstração da Fase 0: um blob fechado **preenchido** + uma curva
@@ -275,5 +296,18 @@ mod tests {
     fn demo_grid_count() {
         assert_eq!(VecScene::demo_grid(50).paths().len(), 50);
         assert!(VecScene::demo_grid(0).is_empty());
+    }
+
+    #[test]
+    fn postcard_roundtrip_is_identity() {
+        let scene = VecScene::demo();
+        let bytes = scene.to_bytes().unwrap();
+        let back = VecScene::from_bytes(&bytes).unwrap();
+        assert_eq!(scene, back);
+    }
+
+    #[test]
+    fn from_bytes_rejects_garbage() {
+        assert!(VecScene::from_bytes(&[0xFF, 0xFF, 0xFF]).is_err());
     }
 }

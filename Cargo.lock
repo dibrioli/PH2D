@@ -5782,6 +5782,7 @@ dependencies = [
 name = "ph2d-vec-scene"
 version = "0.0.0"
 dependencies = [
+ "postcard",
  "serde",
 ]
 

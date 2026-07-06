@@ -240,6 +240,73 @@ const PEN_STROKE: Rgba8 = Rgba8::new(240, 240, 245, 255);
 /// Preenchimento leve aplicado ao fechar o path.
 const PEN_FILL: Rgba8 = Rgba8::new(90, 150, 230, 120);
 
+/// Teto de passos de undo (memória limitada; snapshots são baratos p/ cenas de
+/// desenho, mas não infinitos).
+const HISTORY_CAP: usize = 256;
+
+/// Undo/redo por **snapshot** da `VecScene` inteira (ADR-0108 Fase 2). Barato: a
+/// cena é `Clone`. Uso: `begin` no início de uma interação (Down), `commit_if_changed`
+/// no fim (Up) → só vira passo se a cena mudou de fato; ou `push_undo(pre)` direto
+/// numa operação atômica (booleana/delete/load).
+#[derive(Default)]
+pub struct History {
+    undo: Vec<VecScene>,
+    redo: Vec<VecScene>,
+    pending: Option<VecScene>,
+}
+
+impl History {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Snapshot tentativo do estado ATUAL, antes de uma interação que pode mutar.
+    pub fn begin(&mut self, scene: &VecScene) {
+        self.pending = Some(scene.clone());
+    }
+
+    /// Fecha a interação: se a cena difere do snapshot de `begin`, vira um passo de
+    /// undo (e limpa o redo). Se nada mudou, descarta o snapshot (não polui o histórico).
+    pub fn commit_if_changed(&mut self, scene: &VecScene) {
+        if let Some(pre) = self.pending.take()
+            && &pre != scene
+        {
+            self.push_undo(pre);
+        }
+    }
+
+    /// Empurra um estado-pré direto pro undo (operação atômica que já sabe que mutou).
+    pub fn push_undo(&mut self, pre: VecScene) {
+        if self.undo.len() >= HISTORY_CAP {
+            self.undo.remove(0);
+        }
+        self.undo.push(pre);
+        self.redo.clear();
+    }
+
+    pub fn can_undo(&self) -> bool {
+        !self.undo.is_empty()
+    }
+
+    pub fn can_redo(&self) -> bool {
+        !self.redo.is_empty()
+    }
+
+    /// Desfaz: devolve o estado anterior; empurra o `current` pro redo.
+    pub fn undo(&mut self, current: &VecScene) -> Option<VecScene> {
+        let prev = self.undo.pop()?;
+        self.redo.push(current.clone());
+        Some(prev)
+    }
+
+    /// Refaz: devolve o próximo estado; empurra o `current` de volta pro undo.
+    pub fn redo(&mut self, current: &VecScene) -> Option<VecScene> {
+        let next = self.redo.pop()?;
+        self.undo.push(current.clone());
+        Some(next)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -320,5 +387,32 @@ mod tests {
         let v = scene.paths()[0].verts[0];
         assert_eq!(v.kind, VertexKind::Corner);
         assert_eq!(v.out_handle, v.anchor);
+    }
+
+    #[test]
+    fn history_undo_redo_cycle() {
+        let mut h = History::new();
+        let mut scene = VecScene::new();
+        h.begin(&scene);
+        scene = VecScene::demo(); // muta (vazio → 2 paths)
+        h.commit_if_changed(&scene);
+        assert!(h.can_undo());
+        let changed = scene.clone();
+
+        scene = h.undo(&scene).unwrap();
+        assert!(scene.is_empty());
+        assert!(h.can_redo());
+
+        scene = h.redo(&scene).unwrap();
+        assert_eq!(scene, changed);
+    }
+
+    #[test]
+    fn commit_without_change_is_noop() {
+        let mut h = History::new();
+        let scene = VecScene::new();
+        h.begin(&scene);
+        h.commit_if_changed(&scene); // nada mudou entre begin e commit
+        assert!(!h.can_undo());
     }
 }

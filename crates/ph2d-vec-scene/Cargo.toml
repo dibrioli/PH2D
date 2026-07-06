@@ -16,3 +16,6 @@ authors.workspace = true
 # `ph2d-vector` (gate-proof + skew-proof). serde: undo por snapshot + save
 # futuros (mesma disciplina dos SimComponents de ph2d-ecs).
 serde = { version = "1", features = ["derive"] }
+# Persistência (ADR-0108 Fase 2): save/load da cena via postcard (mesmo wire
+# format canônico do resto do repo). `alloc` p/ to_allocvec.
+postcard = { version = "1", features = ["alloc"] }

@@ -511,6 +511,8 @@ pub(crate) struct App {
     pub(crate) vec_pen: ph2d_vec_edit::PenTool,
     /// `PH2D_VEC_PEN` ligado no boot (lido 1× no construtor).
     pub(crate) vec_pen_enabled: bool,
+    /// ADR-0108 Fase 2: undo/redo por snapshot da `vec_scene` (Ctrl+Z / Ctrl+Shift+Z).
+    pub(crate) vec_history: ph2d_vec_edit::History,
 
     /// P4 (ADR-0061) LLM-vector authoring subsystem: at most one in-flight
     /// background generation + the persistent fallback cache + the API key.

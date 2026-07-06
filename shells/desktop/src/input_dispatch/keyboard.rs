@@ -62,6 +62,42 @@ impl App {
             }
         }
 
+        // ADR-0108 Fase 2: undo/redo + save/load com Ctrl/Cmd. Ctrl+Z desfaz,
+        // Ctrl+Shift+Z / Ctrl+Y refaz, Ctrl+S salva, Ctrl+O carrega.
+        if self.vec_pen_enabled
+            && state == ElementState::Pressed
+            && !repeat
+            && (self.modifiers.control_key() || self.modifiers.super_key())
+            && let PhysicalKey::Code(code) = physical_key
+        {
+            let handled = match code {
+                KeyCode::KeyZ if self.modifiers.shift_key() => {
+                    self.vec_redo();
+                    true
+                }
+                KeyCode::KeyZ => {
+                    self.vec_undo();
+                    true
+                }
+                KeyCode::KeyY => {
+                    self.vec_redo();
+                    true
+                }
+                KeyCode::KeyS => {
+                    self.vec_save();
+                    true
+                }
+                KeyCode::KeyO => {
+                    self.vec_load();
+                    true
+                }
+                _ => false,
+            };
+            if handled {
+                return;
+            }
+        }
+
         // Vector Pen: Escape cancels the in-progress path, or clears the
         // committed scene when none is in progress. Consumed only when
         // the Pen tool is active with something to cancel/clear —

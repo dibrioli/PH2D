@@ -202,12 +202,14 @@ impl App {
                 eprintln!("[ph2d-vec] boolean {op:?}: resultado vazio");
                 return;
             }
+            let pre = gfx.vec_scene.clone(); // Fase 2: undo da booleana
             gfx.vec_scene.remove_path(ida);
             gfx.vec_scene.remove_path(idb);
             let mut last = None;
             for r in results {
                 last = Some(gfx.vec_scene.push_path(r));
             }
+            self.vec_history.push_undo(pre);
             self.vec_pen.select(last);
             eprintln!("[ph2d-vec] boolean {op:?}: ok");
         }
@@ -221,13 +223,84 @@ impl App {
         let Some(gfx) = self.gfx.as_mut() else {
             return false;
         };
+        let pre = gfx.vec_scene.clone();
         if gfx.vec_scene.remove_path(sel) {
+            self.vec_history.push_undo(pre);
             self.vec_pen.clear();
             eprintln!("[ph2d-vec] path {sel} apagado");
             true
         } else {
             false
         }
+    }
+
+    /// ADR-0108 Fase 2: desfaz o último passo vetorial (Ctrl+Z).
+    fn vec_undo(&mut self) {
+        let Some(gfx) = self.gfx.as_mut() else {
+            return;
+        };
+        if let Some(prev) = self.vec_history.undo(&gfx.vec_scene) {
+            gfx.vec_scene = prev;
+            self.vec_pen.finish(); // limpa estado de desenho/arrasto pendente
+            eprintln!("[ph2d-vec] undo");
+        }
+    }
+
+    /// ADR-0108 Fase 2: refaz (Ctrl+Shift+Z / Ctrl+Y).
+    fn vec_redo(&mut self) {
+        let Some(gfx) = self.gfx.as_mut() else {
+            return;
+        };
+        if let Some(next) = self.vec_history.redo(&gfx.vec_scene) {
+            gfx.vec_scene = next;
+            self.vec_pen.finish();
+            eprintln!("[ph2d-vec] redo");
+        }
+    }
+
+    /// ADR-0108 Fase 2: salva a cena vetorial em `PH2D_VEC_SAVE_PATH` (default
+    /// `ph2d_vec_scene.postcard` no CWD). Ctrl+S no modo vetorial.
+    fn vec_save(&mut self) {
+        let Some(gfx) = self.gfx.as_ref() else {
+            return;
+        };
+        let path = Self::vec_save_path();
+        match gfx.vec_scene.to_bytes() {
+            Ok(bytes) => match std::fs::write(&path, &bytes) {
+                Ok(()) => eprintln!("[ph2d-vec] salvo: {path} ({} bytes)", bytes.len()),
+                Err(e) => eprintln!("[ph2d-vec] erro ao salvar {path}: {e}"),
+            },
+            Err(e) => eprintln!("[ph2d-vec] erro ao serializar: {e}"),
+        }
+    }
+
+    /// ADR-0108 Fase 2: carrega a cena de `PH2D_VEC_SAVE_PATH` (Ctrl+O). O load é
+    /// undoável (snapshot pré).
+    fn vec_load(&mut self) {
+        let path = Self::vec_save_path();
+        let bytes = match std::fs::read(&path) {
+            Ok(b) => b,
+            Err(e) => {
+                eprintln!("[ph2d-vec] sem arquivo {path}: {e}");
+                return;
+            }
+        };
+        match ph2d_vec_scene::VecScene::from_bytes(&bytes) {
+            Ok(scene) => {
+                let Some(gfx) = self.gfx.as_mut() else {
+                    return;
+                };
+                self.vec_history.push_undo(gfx.vec_scene.clone());
+                gfx.vec_scene = scene;
+                self.vec_pen.clear();
+                eprintln!("[ph2d-vec] carregado: {path}");
+            }
+            Err(e) => eprintln!("[ph2d-vec] erro ao carregar {path}: {e}"),
+        }
+    }
+
+    fn vec_save_path() -> String {
+        std::env::var("PH2D_VEC_SAVE_PATH").unwrap_or_else(|_| "ph2d_vec_scene.postcard".to_string())
     }
 
     /// ADR-0108 Fase 1.2: enquanto o Pen novo arrasta um handle, projeta o cursor
@@ -504,6 +577,9 @@ impl App {
                         let w1 = gfx.camera.screen_to_world((1.0, 0.0), win);
                         let px_to_world =
                             (((w1[0] - w0[0]).powi(2) + (w1[1] - w0[1]).powi(2)).sqrt()) as f64;
+                        // Fase 2: snapshot pré-interação (vira passo de undo no Up
+                        // só se a cena mudar de fato).
+                        self.vec_history.begin(&gfx.vec_scene);
                         self.vec_pen.on_press(
                             &mut gfx.vec_scene,
                             [w[0] as f64, w[1] as f64],
@@ -513,7 +589,11 @@ impl App {
                     }
                 }
                 (ph2d_host::PointerButton::Primary, PointerKind::Up) => {
-                    if self.vec_pen.on_release() {
+                    let consumed = self.vec_pen.on_release();
+                    if let Some(gfx) = self.gfx.as_mut() {
+                        self.vec_history.commit_if_changed(&gfx.vec_scene);
+                    }
+                    if consumed {
                         return;
                     }
                 }

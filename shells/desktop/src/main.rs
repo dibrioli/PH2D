@@ -179,6 +179,7 @@ impl App {
             vec_pen: ph2d_vec_edit::PenTool::new(),
             vec_pen_enabled: std::env::var("PH2D_VEC_PEN")
                 .is_ok_and(|v| v == "1" || v.eq_ignore_ascii_case("true")),
+            vec_history: ph2d_vec_edit::History::new(),
             llm_vector: crate::llm_vector::LlmVectorEngine::new(),
             vector_scene_entities: Vec::new(),
             last_synced_gizmo_set: Vec::new(),

@@ -27,6 +27,7 @@ mod divider;
 mod dropdown;
 mod icon_button;
 mod key_value_list;
+mod level_meter;
 mod list_item;
 mod modal;
 mod number_input;
@@ -85,6 +86,7 @@ pub use dropdown::{
 };
 pub use icon_button::{IconButtonStyle, IconGlyph, paint_icon_button};
 pub use key_value_list::{KeyValueEntry, KeyValueList, paint_key_value_list};
+pub use level_meter::{LevelMeter, paint_level_meter};
 pub use list_item::{ListItem, ListItemState, paint_list_item};
 pub use modal::{Modal, paint_modal, pop_modal_body_clip, push_modal_body_clip};
 pub use number_input::{

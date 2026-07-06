@@ -41,6 +41,13 @@ pub(super) fn paint_status_section(
     paint_progress_bar(&bar, bar_rect, scene, text_system, theme);
     y += Spacing::Lg.px() + ROW_GAP;
 
+    // LevelMeter — vertical stereo peak meter (Success/Warn/Danger zones).
+    let meter = LevelMeter::new(NodeId(0), "Level").levels(0.55, 0.85); // LITERAL-PX-OK: demo levels
+    let meter_w = 16.0_f32; // LITERAL-PX-OK: showcase meter width (chrome demo)
+    let meter_h = 60.0_f32; // LITERAL-PX-OK: showcase meter height (chrome demo)
+    paint_level_meter(&meter, Rect::new(x, y, meter_w, meter_h), scene, theme);
+    y += meter_h + ROW_GAP;
+
     // Spinner + caption.
     let spin_rect = Rect::new(x, y, Radius::Xl2.px(), Radius::Xl2.px());
     paint_spinner(&Spinner::new(NodeId(0), "Loading"), spin_rect, scene, theme);

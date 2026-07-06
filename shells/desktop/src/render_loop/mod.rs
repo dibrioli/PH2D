@@ -131,6 +131,11 @@ impl crate::App {
                 audio.set_master_cutoff(ph2d_panel_audio_mixer::master_cutoff_target());
                 audio.set_master_pan(ph2d_panel_audio_mixer::master_pan_target());
                 audio.set_master_limiter(ph2d_panel_audio_mixer::limiter());
+                audio.set_reverb(
+                    ph2d_panel_audio_mixer::reverb_on(),
+                    ph2d_panel_audio_mixer::reverb_size(),
+                    ph2d_panel_audio_mixer::reverb_mix(),
+                );
                 // Sub-bus strips — index-aligned with `BusId::SUB_BUSES` (the
                 // panel's strip index i maps to sub-bus i; count guarded below).
                 ph2d_panel_audio_mixer::set_sub_levels(audio.bus_levels(), audio.bus_rms());

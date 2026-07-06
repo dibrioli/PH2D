@@ -162,6 +162,11 @@ impl AudioEngine {
         self.send(AudioCommand::SetMasterLimiter { on })
     }
 
+    /// Set the master reverb: `on`, wet/dry `mix` (0..1), `room_size` (0..1).
+    pub fn set_reverb(&self, on: bool, mix: f32, room_size: f32) -> Result<(), AudioError> {
+        self.send(AudioCommand::SetReverb { on, mix, room_size })
+    }
+
     /// Drain and drop finished samples returned by the audio thread. Call once
     /// per game frame so their `Arc`s free on the control thread, not the RT one.
     pub fn collect_returns(&self) {

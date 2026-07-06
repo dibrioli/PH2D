@@ -26,6 +26,8 @@ pub(crate) struct AudioSystem {
     last_master_pan: std::cell::Cell<f32>,
     /// Change-gate for the master limiter toggle.
     last_limiter: std::cell::Cell<bool>,
+    /// Change-gate for the master reverb (on, size, mix) — send only on change.
+    last_reverb: std::cell::Cell<(bool, f32, f32)>,
     /// Same change-gate, per sub-bus fader (index-aligned with `BusId::SUB_BUSES`).
     last_bus_gain: [std::cell::Cell<f32>; SUB_BUS_COUNT],
     /// Same change-gate, per sub-bus balance.
@@ -102,6 +104,7 @@ impl AudioSystem {
             last_cutoff: std::cell::Cell::new(20_000.0),
             last_master_pan: std::cell::Cell::new(0.0),
             last_limiter: std::cell::Cell::new(false),
+            last_reverb: std::cell::Cell::new((false, 0.5, 0.3)),
             last_bus_gain: std::array::from_fn(|_| std::cell::Cell::new(1.0)),
             last_bus_pan: std::array::from_fn(|_| std::cell::Cell::new(0.0)),
             last_bus_cutoff: std::array::from_fn(|_| std::cell::Cell::new(20_000.0)),
@@ -191,6 +194,16 @@ impl AudioSystem {
         if on != self.last_limiter.get() {
             let _ = self.engine.set_master_limiter(on);
             self.last_limiter.set(on);
+        }
+    }
+
+    /// Set the master reverb (on, size, mix), change-gated on the whole triple.
+    pub(crate) fn set_reverb(&self, on: bool, size: f32, mix: f32) {
+        let next = (on, size, mix);
+        let (lon, lsize, lmix) = self.last_reverb.get();
+        if on != lon || (size - lsize).abs() > f32::EPSILON || (mix - lmix).abs() > f32::EPSILON {
+            let _ = self.engine.set_reverb(on, mix, size);
+            self.last_reverb.set(next);
         }
     }
 

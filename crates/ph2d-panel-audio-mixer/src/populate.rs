@@ -3,7 +3,8 @@
 use crate::fader::FADER_UNITY_POS;
 use crate::{
     AMIX_CLOSE, AMIX_CUTOFF, AMIX_FADER, AMIX_LIMITER, AMIX_MASTER_METER, AMIX_MASTER_MUTE, AMIX_PAN,
-    AMIX_PLAY, SUB_FADER, SUB_METER, SUB_MUTE, SUB_PAN, SUB_SOLO, SUB_TONE,
+    AMIX_PLAY, AMIX_REVERB, AMIX_REVERB_MIX, AMIX_REVERB_SIZE, SUB_FADER, SUB_METER, SUB_MUTE,
+    SUB_PAN, SUB_SOLO, SUB_TONE,
 };
 use ph2d_editor_core::interaction::{InteractiveState, WidgetStore};
 use ph2d_editor_core::widget::{ButtonState, SliderOrientation, SliderState};
@@ -21,6 +22,7 @@ pub(crate) fn populate(store: &mut WidgetStore) {
     store.register(AMIX_MASTER_MUTE, button());
     store.register(AMIX_PLAY, button());
     store.register(AMIX_LIMITER, button());
+    store.register(AMIX_REVERB, button());
     for id in SUB_MUTE {
         store.register(id, button());
     }
@@ -72,4 +74,22 @@ pub(crate) fn populate(store: &mut WidgetStore) {
     for id in SUB_TONE {
         store.register(id, tone());
     }
+
+    // Master reverb Size (decay) + Mix (wet/dry) — horizontal Sliders.
+    store.register(
+        AMIX_REVERB_SIZE,
+        InteractiveState::Slider {
+            state: SliderState::Normal,
+            value: 0.5,
+            orientation: SliderOrientation::Horizontal,
+        },
+    );
+    store.register(
+        AMIX_REVERB_MIX,
+        InteractiveState::Slider {
+            state: SliderState::Normal,
+            value: 0.3, // LITERAL-PX-OK: default reverb wet/dry mix (audio param)
+            orientation: SliderOrientation::Horizontal,
+        },
+    );
 }

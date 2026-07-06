@@ -13,8 +13,9 @@ use crate::fader::{FADER_UNITY_POS, fader_db};
 use crate::state::AudioMixerState;
 use crate::{
     AMIX_CLOSE, AMIX_CUTOFF, AMIX_FADER, AMIX_LIMITER, AMIX_MASTER_METER, AMIX_MASTER_MUTE, AMIX_PAN,
-    AMIX_PANEL, AMIX_PLAY, AudioMixerPanel, SUB_BUS_COUNT, SUB_BUS_LABELS, SUB_FADER, SUB_METER,
-    SUB_MUTE, SUB_PAN, SUB_SOLO, SUB_TONE, snapshot,
+    AMIX_PANEL, AMIX_PLAY, AMIX_REVERB, AMIX_REVERB_MIX, AMIX_REVERB_SIZE, AudioMixerPanel,
+    SUB_BUS_COUNT, SUB_BUS_LABELS, SUB_FADER, SUB_METER, SUB_MUTE, SUB_PAN, SUB_SOLO, SUB_TONE,
+    snapshot,
 };
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::ids as core_ids;
@@ -39,6 +40,7 @@ const FADER_W: f32 = 22.0; // LITERAL-PX-OK: fader column width (chrome)
 const METER_W: f32 = 14.0; // LITERAL-PX-OK: meter column width (chrome)
 const STRIP_H: f32 = 150.0; // LITERAL-PX-OK: fader/meter height (chrome)
 const MUTE_H: f32 = 24.0; // LITERAL-PX-OK: mute button height (chrome)
+const REVERB_LABEL_W: f32 = 32.0; // LITERAL-PX-OK: reverb Size/Mix label column width (chrome)
 
 /// One channel strip's live data (Master or a sub-bus).
 struct Strip {
@@ -225,8 +227,32 @@ pub(crate) fn paint(_state: &mut AudioMixerState, ctx: &mut PaintCtx) {
         + TypeToken::Xs.px()
         + Spacing::Sm.px()
         + MUTE_H;
-    let mut y = strips_bottom + Spacing::Lg.px();
+    let footer_y = strips_bottom + Spacing::Lg.px();
 
+    // Master section footer: limiter · reverb · Play Test.
+    paint_master_section(
+        footer_y,
+        content_x,
+        content_w,
+        ctx.scene,
+        ctx.text_system,
+        theme,
+        hit_index,
+    );
+}
+
+/// The master-section footer below the strips: Limiter toggle · Reverb (toggle +
+/// Size/Mix) · Play Test. Split out of `paint` to stay under the fn LOC cap.
+#[allow(clippy::too_many_arguments)]
+fn paint_master_section(
+    mut y: f32,
+    content_x: f32,
+    content_w: f32,
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+) {
     // Master output limiter (Accent when engaged) — tames peaks below the clip
     // ceiling instead of hard-clipping.
     paint_toggle(
@@ -235,25 +261,61 @@ pub(crate) fn paint(_state: &mut AudioMixerState, ctx: &mut PaintCtx) {
         snapshot::limiter(),
         ColorToken::Accent,
         AMIX_LIMITER,
-        ctx.scene,
-        ctx.text_system,
+        scene,
+        text_system,
         theme,
         hit_index,
     );
     y += MUTE_H + Spacing::Md.px();
 
-    // Footer: built-in test oscillator toggle (Accent when playing) so the mixer
-    // can be exercised without an external file. The shell owns the signal.
-    let playing = snapshot::play_test();
-    let play_rect = Rect::new(content_x, y, content_w, MUTE_H);
+    // Master reverb: enable toggle + Size (decay) + Mix (wet/dry) thin sliders.
     paint_toggle(
-        play_rect,
+        Rect::new(content_x, y, content_w, MUTE_H),
+        "Reverb",
+        snapshot::reverb_on(),
+        ColorToken::Accent,
+        AMIX_REVERB,
+        scene,
+        text_system,
+        theme,
+        hit_index,
+    );
+    y += MUTE_H + Spacing::Sm.px();
+    for (label, id, value) in [
+        ("Size", AMIX_REVERB_SIZE, snapshot::reverb_size()),
+        ("Mix", AMIX_REVERB_MIX, snapshot::reverb_mix()),
+    ] {
+        let label_rect = Rect::new(content_x, y, REVERB_LABEL_W, Spacing::Md.px());
+        paint_text_centered(
+            text_system,
+            scene,
+            label,
+            label_rect,
+            TypeToken::Xs.px(),
+            resolve(ColorToken::Text2, theme),
+        );
+        let slider_x = content_x + REVERB_LABEL_W + Spacing::Sm.px();
+        let slider_w = (content_w - REVERB_LABEL_W - Spacing::Sm.px()).max(1.0);
+        let slider_rect = Rect::new(slider_x, y, slider_w, Spacing::Md.px());
+        let mut slider = Slider::new(id, label).orientation(SliderOrientation::Horizontal);
+        slider.set_value(value.clamp(0.0, 1.0));
+        paint_slider(&slider, slider_rect, scene, theme);
+        hit_index.register(id, slider_rect);
+        y += Spacing::Md.px() + Spacing::Sm.px();
+    }
+    y += Spacing::Sm.px();
+
+    // Built-in test oscillator toggle (Accent when playing) so the mixer can be
+    // exercised without an external file. The shell owns the signal.
+    let playing = snapshot::play_test();
+    paint_toggle(
+        Rect::new(content_x, y, content_w, MUTE_H),
         if playing { "Stop" } else { "Play Test" },
         playing,
         ColorToken::Accent,
         AMIX_PLAY,
-        ctx.scene,
-        ctx.text_system,
+        scene,
+        text_system,
         theme,
         hit_index,
     );

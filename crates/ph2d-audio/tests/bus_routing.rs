@@ -208,6 +208,43 @@ fn sub_bus_lowpass_attenuates_high_frequency_content() {
 }
 
 #[test]
+fn master_reverb_leaves_a_decaying_tail_after_the_sound_ends() {
+    let (mut engine, mut renderer) = AudioEngine::new(AudioFormat::stereo(48_000));
+    engine.set_reverb(true, 0.9, 0.6).unwrap();
+    // A short one-shot burst (480 frames < one 512-frame block).
+    let burst = SampleData::from_interleaved(vec![0.6; 480], AudioFormat::mono(48_000));
+    engine.play(burst, PlayParams::default()).unwrap();
+
+    let mut out = vec![0.0f32; 512 * 2];
+    for _ in 0..30 {
+        renderer.render(&mut out, 512);
+    }
+    // The dry burst ended after the first block; only the wet tail remains.
+    let tail = engine.levels();
+    assert!(
+        tail[0] > 1e-4,
+        "reverb must leave a wet tail after the sound ends: {tail:?}"
+    );
+}
+
+#[test]
+fn without_reverb_output_is_silent_after_the_sound_ends() {
+    let (mut engine, mut renderer) = AudioEngine::new(AudioFormat::stereo(48_000));
+    let burst = SampleData::from_interleaved(vec![0.6; 480], AudioFormat::mono(48_000));
+    engine.play(burst, PlayParams::default()).unwrap();
+
+    let mut out = vec![0.0f32; 512 * 2];
+    for _ in 0..30 {
+        renderer.render(&mut out, 512);
+    }
+    let tail = engine.levels();
+    assert!(
+        tail[0] < 1e-5,
+        "without reverb, output must be silent after the sound ends: {tail:?}"
+    );
+}
+
+#[test]
 fn master_direct_voice_ignores_sub_bus_faders() {
     let (mut engine, mut renderer) = AudioEngine::new(AudioFormat::stereo(48_000));
     // A voice on Master (default) is unaffected by a muted sub-bus.

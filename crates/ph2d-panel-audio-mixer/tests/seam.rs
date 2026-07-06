@@ -10,10 +10,10 @@ use ph2d_editor_core::panel::{EventOutcome, Panel, PanelHostInternal};
 use ph2d_panel_audio_mixer::state::AudioMixerState;
 use ph2d_panel_audio_mixer::{
     AMIX_CUTOFF, AMIX_FADER, AMIX_LIMITER, AMIX_MASTER_METER, AMIX_MASTER_MUTE, AMIX_PAN, AMIX_PLAY,
-    AudioMixerPanel, FADER_UNITY_POS, SUB_FADER, SUB_MUTE, SUB_PAN, SUB_SOLO, SUB_TONE, fader_gain,
-    limiter, master_clipped, master_cutoff_target, master_gain_target, master_muted,
-    master_pan_target, play_test, set_levels, sub_gain_target, sub_muted, sub_pan_target,
-    sub_soloed, sub_tone_target,
+    AMIX_REVERB, AMIX_REVERB_SIZE, AudioMixerPanel, FADER_UNITY_POS, SUB_FADER, SUB_MUTE, SUB_PAN,
+    SUB_SOLO, SUB_TONE, fader_gain, limiter, master_clipped, master_cutoff_target,
+    master_gain_target, master_muted, master_pan_target, play_test, reverb_on, reverb_size,
+    set_levels, sub_gain_target, sub_muted, sub_pan_target, sub_soloed, sub_tone_target,
 };
 use ph2d_ui_testkit::MockPanelHost;
 
@@ -192,6 +192,35 @@ fn clip_latches_on_over_unity_peak_and_meter_click_clears_it() {
         "panel ignored the meter click — the AMIX_MASTER_METER arm is missing"
     );
     assert_eq!(master_clipped(), [false, false], "meter click must clear the clip latch");
+}
+
+/// The Reverb toggle flips the enable flag, and dragging Size publishes the raw
+/// 0..1 value — both read by the shell to drive the master reverb.
+#[test]
+fn reverb_toggle_and_size_publish() {
+    let mut host = MockPanelHost::with_panel::<AudioMixerPanel>();
+    let mut state = AudioMixerState;
+
+    let before = reverb_on();
+    let outcome =
+        host.apply_panel_event::<AudioMixerPanel>(&mut state, WidgetEvent::Click(AMIX_REVERB));
+    assert_eq!(
+        outcome,
+        EventOutcome::Consumed,
+        "panel ignored the Reverb click — the AMIX_REVERB arm is missing"
+    );
+    assert_ne!(reverb_on(), before, "Reverb click must flip the enable flag");
+
+    host.set_slider_value(AMIX_REVERB_SIZE, 0.8);
+    host.apply_panel_event::<AudioMixerPanel>(
+        &mut state,
+        WidgetEvent::ValueChanged(AMIX_REVERB_SIZE),
+    );
+    assert!(
+        (reverb_size() - 0.8).abs() < 1e-5,
+        "Size drag must publish the raw value, got {}",
+        reverb_size()
+    );
 }
 
 /// Clicking the Limiter button toggles the limiter flag the shell reads to

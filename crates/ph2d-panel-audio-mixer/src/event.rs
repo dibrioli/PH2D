@@ -4,8 +4,8 @@ use crate::fader::fader_gain;
 use crate::state::AudioMixerState;
 use crate::{
     AMIX_CLOSE, AMIX_CUTOFF, AMIX_FADER, AMIX_LIMITER, AMIX_MASTER_METER, AMIX_MASTER_MUTE,
-    AMIX_PAN, AMIX_PLAY, AudioMixerPanel, SUB_FADER, SUB_METER, SUB_MUTE, SUB_PAN, SUB_SOLO,
-    SUB_TONE, snapshot,
+    AMIX_PAN, AMIX_PLAY, AMIX_REVERB, AMIX_REVERB_MIX, AMIX_REVERB_SIZE, AudioMixerPanel, SUB_FADER,
+    SUB_METER, SUB_MUTE, SUB_PAN, SUB_SOLO, SUB_TONE, snapshot,
 };
 
 /// Log-map a 0..1 tone slider to a cutoff in Hz (20 Hz..20 kHz).
@@ -53,6 +53,11 @@ pub(crate) fn apply_event(
                 snapshot::toggle_limiter();
                 return EventOutcome::Consumed;
             }
+            // Master reverb enable toggle.
+            if id == AMIX_REVERB {
+                snapshot::toggle_reverb();
+                return EventOutcome::Consumed;
+            }
             // Per-sub-bus mute toggles.
             if let Some(i) = SUB_MUTE.iter().position(|&m| m == id) {
                 snapshot::toggle_sub_muted(i);
@@ -98,6 +103,25 @@ pub(crate) fn apply_event(
         WidgetEvent::ValueChanged(id) if id == AMIX_PAN => {
             let v = host.store().slider(AMIX_PAN).map(|(_, v)| v).unwrap_or(0.5);
             snapshot::set_master_pan(slider_to_pan(v));
+            return EventOutcome::Consumed;
+        }
+        // Reverb Size / Mix dragged — publish the raw 0..1 value.
+        WidgetEvent::ValueChanged(id) if id == AMIX_REVERB_SIZE => {
+            let v = host
+                .store()
+                .slider(AMIX_REVERB_SIZE)
+                .map(|(_, v)| v)
+                .unwrap_or(0.5);
+            snapshot::set_reverb_size(v.clamp(0.0, 1.0));
+            return EventOutcome::Consumed;
+        }
+        WidgetEvent::ValueChanged(id) if id == AMIX_REVERB_MIX => {
+            let v = host
+                .store()
+                .slider(AMIX_REVERB_MIX)
+                .map(|(_, v)| v)
+                .unwrap_or(0.3); // LITERAL-PX-OK: default reverb wet/dry mix (audio param)
+            snapshot::set_reverb_mix(v.clamp(0.0, 1.0));
             return EventOutcome::Consumed;
         }
         // A sub-bus fader or pan dragged — publish that bus's gain / pan.

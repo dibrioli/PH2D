@@ -9,7 +9,7 @@
 use crate::buffer::SampleData;
 use crate::bus::{BusId, SUB_BUS_COUNT};
 use crate::command::AudioCommand;
-use crate::dsp::{Biquad, SmoothGain};
+use crate::dsp::{Biquad, Reverb, SmoothGain};
 use crate::format::{AudioFormat, Sample};
 use crate::pool::VoicePool;
 
@@ -70,6 +70,10 @@ pub(crate) struct Mixer {
     /// Current limiter gain reduction (`1.0` = none) — a linked-stereo envelope
     /// carried across blocks so the release is continuous.
     limiter_gr: f32,
+    /// Master reverb (insert) + its enable + wet/dry mix.
+    reverb: Reverb,
+    reverb_on: bool,
+    reverb_mix: f32,
 }
 
 impl Mixer {
@@ -86,6 +90,9 @@ impl Mixer {
             bus_filter_r: std::array::from_fn(|_| Biquad::default()),
             limiter: false,
             limiter_gr: 1.0,
+            reverb: Reverb::new(format.sample_rate),
+            reverb_on: false,
+            reverb_mix: 0.3,
         }
     }
 
@@ -122,6 +129,12 @@ impl Mixer {
                     self.bus_filter_l[i].set_coeffs(coeffs);
                     self.bus_filter_r[i].set_coeffs(coeffs);
                 }
+            }
+            AudioCommand::SetReverb { on, mix, room_size } => {
+                self.reverb_on = on;
+                self.reverb_mix = mix.clamp(0.0, 1.0);
+                // Fixed, musical damping; Size drives the decay length.
+                self.reverb.set_params(room_size, 0.5);
             }
         }
     }
@@ -177,15 +190,25 @@ impl Mixer {
         self.pool
             .render_bus(BusId::Master, master, frames, on_finished);
 
-        // Master gain, the master low-pass filter (identity = bypass), the master
-        // stereo balance, then the limiter (bypassed when disengaged).
+        // Master gain, the master low-pass filter (identity = bypass), the reverb
+        // insert (bypassed when off), the master stereo balance, then the limiter
+        // (bypassed when disengaged).
         let [mpan_l, mpan_r] = self.master_pan;
         let limiter = self.limiter;
+        let reverb_on = self.reverb_on;
+        let reverb_mix = self.reverb_mix;
         let mut gr = self.limiter_gr;
         for f in 0..frames {
             let g = self.master_gain.tick();
-            let mut l = self.filter_l.process(master[2 * f] * g) * mpan_l;
-            let mut r = self.filter_r.process(master[2 * f + 1] * g) * mpan_r;
+            let mut l = self.filter_l.process(master[2 * f] * g);
+            let mut r = self.filter_r.process(master[2 * f + 1] * g);
+            if reverb_on {
+                let (wet_l, wet_r) = self.reverb.process(l, r);
+                l = l * (1.0 - reverb_mix) + wet_l * reverb_mix;
+                r = r * (1.0 - reverb_mix) + wet_r * reverb_mix;
+            }
+            l *= mpan_l;
+            r *= mpan_r;
             if limiter {
                 // Linked-stereo gain reduction: fast attack pulls the level down
                 // to the ceiling on loud peaks, slow release eases it back — the

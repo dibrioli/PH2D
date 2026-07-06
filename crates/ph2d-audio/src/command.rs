@@ -98,6 +98,12 @@ pub(crate) enum AudioCommand {
         bus: BusId,
         coeffs: BiquadCoeffs,
     },
+    /// Master reverb: enable + wet/dry `mix` (0..1) + `room_size` (0..1 decay).
+    SetReverb {
+        on: bool,
+        mix: f32,
+        room_size: f32,
+    },
 }
 
 /// A message from the audio thread back to the control thread.

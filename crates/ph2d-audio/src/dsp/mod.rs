@@ -8,8 +8,10 @@ mod biquad;
 mod envelope;
 mod gain;
 mod pan;
+mod reverb;
 
 pub use biquad::{Biquad, BiquadCoeffs};
 pub use envelope::{Adsr, AdsrParams, AdsrStage};
 pub use gain::SmoothGain;
 pub use pan::equal_power_pan;
+pub use reverb::Reverb;

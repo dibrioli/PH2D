@@ -46,6 +46,12 @@ pub const AMIX_PLAY: NodeId = hash_node_id("audio_mixer_play_test");
 pub const AMIX_MASTER_METER: NodeId = hash_node_id("audio_mixer_master_meter");
 /// Master soft-clip limiter toggle (master output stage, below Cutoff).
 pub const AMIX_LIMITER: NodeId = hash_node_id("audio_mixer_limiter");
+/// Master reverb enable toggle.
+pub const AMIX_REVERB: NodeId = hash_node_id("audio_mixer_reverb");
+/// Master reverb room-size slider (decay length).
+pub const AMIX_REVERB_SIZE: NodeId = hash_node_id("audio_mixer_reverb_size");
+/// Master reverb wet/dry mix slider.
+pub const AMIX_REVERB_MIX: NodeId = hash_node_id("audio_mixer_reverb_mix");
 
 /// Sub-buses shown as their own strips, **in `ph2d_audio::BusId::SUB_BUSES`
 /// order** (Music, SFX). The panel is UI-only (no `ph2d-audio` dep); the shell's
@@ -149,6 +155,9 @@ mod snapshot {
         static MASTER_PAN: Cell<f32> = const { Cell::new(0.0) };
         static PLAY_TEST: Cell<bool> = const { Cell::new(false) };
         static LIMITER: Cell<bool> = const { Cell::new(false) };
+        static REVERB_ON: Cell<bool> = const { Cell::new(false) };
+        static REVERB_SIZE: Cell<f32> = const { Cell::new(0.5) };
+        static REVERB_MIX: Cell<f32> = const { Cell::new(0.3) }; // LITERAL-PX-OK: default reverb wet/dry mix (audio param)
         // Per-sub-bus channels, index-aligned with `BusId::SUB_BUSES`.
         static SUB_LEVELS_PEAK: Cell<[[f32; 2]; SUB_BUS_COUNT]> = const { Cell::new([[0.0, 0.0]; SUB_BUS_COUNT]) };
         static SUB_LEVELS_RMS: Cell<[[f32; 2]; SUB_BUS_COUNT]> = const { Cell::new([[0.0, 0.0]; SUB_BUS_COUNT]) };
@@ -272,6 +281,35 @@ mod snapshot {
             c.set(next);
             next
         })
+    }
+
+    /// Panel → shell: master reverb enable + room size (0..1) + wet/dry mix (0..1).
+    pub fn reverb_on() -> bool {
+        REVERB_ON.with(Cell::get)
+    }
+
+    pub fn reverb_size() -> f32 {
+        REVERB_SIZE.with(Cell::get)
+    }
+
+    pub fn reverb_mix() -> f32 {
+        REVERB_MIX.with(Cell::get)
+    }
+
+    pub(crate) fn toggle_reverb() -> bool {
+        REVERB_ON.with(|c| {
+            let next = !c.get();
+            c.set(next);
+            next
+        })
+    }
+
+    pub(crate) fn set_reverb_size(v: f32) {
+        REVERB_SIZE.with(|c| c.set(v));
+    }
+
+    pub(crate) fn set_reverb_mix(v: f32) {
+        REVERB_MIX.with(|c| c.set(v));
     }
 
     /// Shell → panel: current post-fader peak + RMS per sub-bus. Latches each
@@ -411,6 +449,8 @@ pub use snapshot::muted as master_muted;
 pub use snapshot::play_test;
 /// Panel → shell: whether the master soft-clip limiter is engaged.
 pub use snapshot::limiter;
+/// Panel → shell: master reverb enable / room size / wet-dry mix.
+pub use snapshot::{reverb_mix, reverb_on, reverb_size};
 /// Observable master clip latch (set when the peak exceeds full scale, cleared
 /// by clicking the meter).
 pub use snapshot::master_clipped;

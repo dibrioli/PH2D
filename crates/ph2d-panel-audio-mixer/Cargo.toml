@@ -20,3 +20,8 @@ ph2d-vector = { path = "../ph2d-vector" }
 ph2d-text = { path = "../ph2d-text" }
 ph2d-tokens = { path = "../ph2d-tokens" }
 ph2d-tool-registry = { path = "../ph2d-tool-registry" }
+
+[dev-dependencies]
+# Behavioral seam test (DIRETIVA §5 DoD): drives the real Click events
+# through apply_event and asserts the observable visibility / mute effect.
+ph2d-ui-testkit = { path = "../ph2d-ui-testkit" }

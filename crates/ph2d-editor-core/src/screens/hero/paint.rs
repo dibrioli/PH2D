@@ -276,6 +276,7 @@ pub fn paint_hero_screen(
         ids::VECTOR_INSPECTOR_PANEL,
         ids::INSP_BLENDER_PICKER,
         ids::GAL_PANEL,
+        ids::AUDIO_MIXER_PANEL,
         crate::grid_snap::ids::GS_PANEL,
     ] {
         if !z_order.contains(&fallback) {

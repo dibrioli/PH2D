@@ -307,6 +307,11 @@ pub const GS_TITLE_COLOR: NodeId = hash_node_id("gs_title_color");
 /// style floating reference panel that hosts the canonical widget
 /// showcase. Toggle visibility via [`TOPBAR_WIDGET_GALLERY`].
 pub const GAL_PANEL: NodeId = hash_node_id("gal_panel");
+/// Audio Mixer floating panel — root id. Must match
+/// `ph2d_panel_audio_mixer::AMIX_PANEL` (same `hash_node_id` string) so the
+/// z-order paint walk in `screens::hero::paint` resolves + paints it. Toggle
+/// visibility via [`crate::ids::TOPBAR_AUDIO_MIXER`].
+pub const AUDIO_MIXER_PANEL: NodeId = hash_node_id("audio_mixer_panel");
 /// Drag handle pill at the top of the Widget Gallery panel.
 pub const GAL_DRAG_HANDLE: NodeId = hash_node_id("gal_drag_handle");
 /// Resize gripper at the Widget Gallery's bottom-right corner.

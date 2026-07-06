@@ -25,8 +25,9 @@ use ph2d_editor_core::interaction::{WidgetEvent, WidgetStore};
 use ph2d_editor_core::panel::{EventOutcome, PaintCtx, Panel, PanelHostInternal};
 use ph2d_tool_registry::hash_node_id;
 
-/// Outer panel rect id.
-pub const AMIX_PANEL: NodeId = hash_node_id("audio_mixer_panel");
+/// Outer panel rect id. Single source in editor-core so the hero z-order
+/// paint walk (`ids::AUDIO_MIXER_PANEL`) resolves this panel.
+pub const AMIX_PANEL: NodeId = ph2d_editor_core::ids::AUDIO_MIXER_PANEL;
 /// Master-strip mute toggle.
 pub const AMIX_MASTER_MUTE: NodeId = hash_node_id("audio_mixer_master_mute");
 

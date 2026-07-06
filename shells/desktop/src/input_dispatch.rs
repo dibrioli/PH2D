@@ -176,6 +176,21 @@ impl App {
         });
     }
 
+    /// ADR-0108 Fase 1.2: enquanto o Pen novo arrasta um handle, projeta o cursor
+    /// pra world e puxa os handles Bézier do último vértice. No-op barato quando
+    /// não há arrasto — chamado a cada CursorMoved.
+    fn vec_pen_drag_move(&mut self, x: f32, y: f32) -> bool {
+        if !self.vec_pen_enabled || !self.vec_pen.is_dragging() {
+            return false;
+        }
+        let Some(gfx) = self.gfx.as_mut() else {
+            return false;
+        };
+        let win = gfx.surface.size();
+        let w = gfx.camera.screen_to_world((x, y), win);
+        self.vec_pen.on_drag(&mut gfx.vec_scene, [w[0] as f64, w[1] as f64])
+    }
+
     pub(crate) fn on_cursor_moved(&mut self, position: PhysicalPosition<f64>) {
         // Diagnostics: count every raw winit move (input rate), paired with `paint_stamps_this_frame`
         // in the HUD so the coalescing is visible (high events → 1 stamp).
@@ -225,6 +240,11 @@ impl App {
         // Fill "Fill adjust" modal title-band drag (SHELL-only): while the card is grabbed, motion moves
         // it. Early-return so it doesn't pan / drive a gizmo. No-ops unless a modal drag is armed.
         if self.fill_modal_drag_move(self.last_pointer.0, self.last_pointer.1) {
+            return;
+        }
+        // ADR-0108 Fase 1.2: Pen NOVO — arrastar após a âncora puxa os handles
+        // Bézier (simétricos). Early-return: não pan/gizmo. No-op sem drag ativo.
+        if self.vec_pen_drag_move(self.last_pointer.0, self.last_pointer.1) {
             return;
         }
         // Vector Pen handle drag (W2): while the Primary button is held after
@@ -413,37 +433,42 @@ impl App {
             .and_then(|g| g.hero_screen.as_ref())
             .is_some_and(|h| h.store.eyedropper_pending().is_some());
 
-        // ADR-0108 Fase 1.1: Pen vetorial NOVO (flag PH2D_VEC_PEN) — só quando o
-        // clique cai no CANVAS (não sobre um painel). Primary Down anexa um vértice
-        // ao traço em `vec_scene` (fecha se perto do início); Secondary finaliza.
-        // Consome o clique (early return). A pill real do topbar entra no cutover
-        // (Fase R); este é um modo de teste dedicado.
+        // ADR-0108 Fase 1.1/1.2: Pen vetorial NOVO (flag PH2D_VEC_PEN) — só no
+        // CANVAS (não sobre um painel). Primary Down coloca uma âncora (arrastar
+        // puxa os handles Bézier — 1.2); Primary Up encerra o arrasto; Secondary
+        // finaliza o traço. Consome o clique (early return). A pill do topbar
+        // entra no cutover (Fase R); modo de teste dedicado por ora.
         let over_panel = crate::forwarding::cursor_over_hero_panel(self.gfx.as_ref(), evt.x, evt.y);
-        if self.vec_pen_enabled
-            && matches!(kind, PointerKind::Down)
-            && !menu_open_before
-            && !over_panel
-            && let Some(gfx) = self.gfx.as_mut()
-        {
-            let win = gfx.surface.size();
-            match mapped_button {
-                ph2d_host::PointerButton::Primary => {
-                    let w = gfx.camera.screen_to_world(self.last_pointer, win);
-                    // world-units por pixel (delta de 1px) → limiar/traço em px constantes.
-                    let w0 = gfx.camera.screen_to_world((0.0, 0.0), win);
-                    let w1 = gfx.camera.screen_to_world((1.0, 0.0), win);
-                    let px_to_world =
-                        (((w1[0] - w0[0]).powi(2) + (w1[1] - w0[1]).powi(2)).sqrt()) as f64;
-                    self.vec_pen.on_click(
-                        &mut gfx.vec_scene,
-                        [w[0] as f64, w[1] as f64],
-                        px_to_world,
-                    );
+        if self.vec_pen_enabled && !menu_open_before {
+            match (mapped_button, kind) {
+                (ph2d_host::PointerButton::Primary, PointerKind::Down) if !over_panel => {
+                    if let Some(gfx) = self.gfx.as_mut() {
+                        let win = gfx.surface.size();
+                        let w = gfx.camera.screen_to_world(self.last_pointer, win);
+                        // world-units por pixel (delta de 1px) → limiar/traço em px.
+                        let w0 = gfx.camera.screen_to_world((0.0, 0.0), win);
+                        let w1 = gfx.camera.screen_to_world((1.0, 0.0), win);
+                        let px_to_world =
+                            (((w1[0] - w0[0]).powi(2) + (w1[1] - w0[1]).powi(2)).sqrt()) as f64;
+                        self.vec_pen.on_press(
+                            &mut gfx.vec_scene,
+                            [w[0] as f64, w[1] as f64],
+                            px_to_world,
+                        );
+                        return;
+                    }
                 }
-                ph2d_host::PointerButton::Secondary => self.vec_pen.finish(),
+                (ph2d_host::PointerButton::Primary, PointerKind::Up) => {
+                    if self.vec_pen.on_release() {
+                        return;
+                    }
+                }
+                (ph2d_host::PointerButton::Secondary, PointerKind::Down) if !over_panel => {
+                    self.vec_pen.finish();
+                    return;
+                }
                 _ => {}
             }
-            return;
         }
 
         // Painter layers drag-reparent (W3 T3.8): the dispatch emits a

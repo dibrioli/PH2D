@@ -13,6 +13,13 @@ N Implementadores; os Implementadores **leem antes de cada burst** e não escrev
 
 ---
 
+## ⚠️ Integração pendente — LEIA antes de integrar (Modo L)
+
+**main saltou `cdfd91b7` → `ee416ccb` com o cutover Vector (ADR-0108): 30 crates deletadas + motor novo.**
+Linhas ainda não integradas (`line/Painter`, `line/audio`, `line/imageio`, novas) rebaseiam sobre isso.
+**Antes de `scripts/foundational-integrate.sh` + ship, leia** [`NOTAS_INTEGRACAO_vector_cutover_2026-07-06.md`](IntegracaoMultiAgente/NOTAS_INTEGRACAO_vector_cutover_2026-07-06.md)
+(arquivos foundational tocados · conflitos mecânicos · 3 gates que passam local e vermelham no CI · gotchas de máquina).
+
 ## Estado da orquestração
 
 **Sem sessão multi-agente ativa.** Nenhum slot de implementador aberto; sem posse

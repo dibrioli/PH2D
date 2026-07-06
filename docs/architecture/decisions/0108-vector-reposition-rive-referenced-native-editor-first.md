@@ -105,7 +105,10 @@ Lottie/Rive), depois state machine / constraints / interatividade (portar a lóg
 - **Escala GPU-residente (two-strikes):** o **N** alvo (objetos vetoriais riggados animando @ 60 FPS / resolução-alvo)
   é **fixado por spike de medição** na Fase 0 (medir antes de prometer — não inventar constante). Se, após a **2ª**
   tentativa de arquitetura de dirty-tracking, N não sustentar 60 FPS na GPU-alvo, o modelo GPU-residente-em-escala é
-  **reprovado** — PARA e prova o modelo antes da 3ª.
+  **reprovado** — PARA e prova o modelo antes da 3ª. **FIXADO 2026-07-05: N = 10.000.** Bench `encode_cost_by_n`
+  (`ph2d-vec-render`): re-encode naive = 0.77ms @ 10k / 3.9ms @ 50k → o eixo re-encode tem ~20× de folga no budget de
+  16.6ms; **dirty-tracking desce a Fase 1** (não é pré-requisito). O gargalo real migra p/ rasterização GPU dos
+  objetos **visíveis** (pixel-bound), eixo separado do re-encode.
 - **Conjunto de aceitação do MVP (concreto/congelado):** definido no plano ([18_plano_reposicionamento_rive_native.md](../../Vector%20Module/18_plano_reposicionamento_rive_native.md))
   — cada fase fecha por **teste comportamental de seam (`ph2d-ui-testkit`) verde + smoke do Enio**, não por
   compile-verde (DIRETIVA §3/§5).

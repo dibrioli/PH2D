@@ -133,6 +133,27 @@ impl VecScene {
         scene.push_path(demo_curve());
         scene
     }
+
+    /// Spike de escala (ADR-0108 §5): `n` blobs numa grade quadrada. Cada frame o
+    /// dispatch re-encoda TUDO (sem dirty-tracking ainda) → mede o custo de
+    /// re-encode **naive** e fixa o N do kill-criterion. Não é conteúdo real
+    /// (dirigido por `PH2D_VEC_DEMO_N` no shell).
+    pub fn demo_grid(n: usize) -> Self {
+        let mut scene = Self::new();
+        if n == 0 {
+            return scene;
+        }
+        let cols = (n as f64).sqrt().ceil() as usize;
+        let spacing = 3.0; // world-units entre centros (r ≈ 1.2 → sem overlap)
+        let half = (cols as f64 - 1.0) * spacing * 0.5;
+        let r = 120.0 * DEMO_SCALE;
+        for i in 0..n {
+            let cx = (i % cols) as f64 * spacing - half;
+            let cy = (i / cols) as f64 * spacing - half;
+            scene.push_path(blob([cx, cy], r, Rgba8::new(90, 150, 230, 255)));
+        }
+        scene
+    }
 }
 
 /// Escala da cena-demo em world-units. A câmera-default enquadra uma região
@@ -140,23 +161,33 @@ impl VecScene {
 /// canvas todo azul"). Um knob só, trivial de re-tunar.
 const DEMO_SCALE: f64 = 0.01;
 
-/// Círculo aproximado por 4 cúbicas (magic-number canônico de círculo-Bézier
-/// `k = r·0.55228…`, não constante inventada), fechado e preenchido.
-fn demo_blob() -> VecPath {
-    let r = 120.0 * DEMO_SCALE;
+/// Blob-círculo (4 cúbicas, magic-number canônico de círculo-Bézier
+/// `k = r·0.55228…`, não constante inventada) centrado em `c`, preenchido.
+fn blob(c: [f64; 2], r: f64, fill: Rgba8) -> VecPath {
     let k = r * 0.552_284_75;
+    let v = |ax: f64, ay: f64, ix: f64, iy: f64, ox: f64, oy: f64| {
+        VecVertex::smooth(
+            [c[0] + ax, c[1] + ay],
+            [c[0] + ix, c[1] + iy],
+            [c[0] + ox, c[1] + oy],
+        )
+    };
     VecPath {
         id: 0,
         verts: vec![
-            VecVertex::smooth([r, 0.0], [r, -k], [r, k]),
-            VecVertex::smooth([0.0, r], [k, r], [-k, r]),
-            VecVertex::smooth([-r, 0.0], [-r, k], [-r, -k]),
-            VecVertex::smooth([0.0, -r], [-k, -r], [k, -r]),
+            v(r, 0.0, r, -k, r, k),
+            v(0.0, r, k, r, -k, r),
+            v(-r, 0.0, -r, k, -r, -k),
+            v(0.0, -r, -k, -r, k, -r),
         ],
         closed: true,
-        fill: Some(Rgba8::new(90, 150, 230, 255)),
+        fill: Some(fill),
         stroke: None,
     }
+}
+
+fn demo_blob() -> VecPath {
+    blob([0.0, 0.0], 120.0 * DEMO_SCALE, Rgba8::new(90, 150, 230, 255))
 }
 
 /// Arco aberto (uma cúbica), traçado claro — prova o caminho de stroke. Largura
@@ -217,5 +248,11 @@ mod tests {
         });
         assert_eq!((a, b), (0, 1));
         assert_eq!(scene.paths()[0].id, 0);
+    }
+
+    #[test]
+    fn demo_grid_count() {
+        assert_eq!(VecScene::demo_grid(50).paths().len(), 50);
+        assert!(VecScene::demo_grid(0).is_empty());
     }
 }

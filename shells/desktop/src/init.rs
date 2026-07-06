@@ -361,8 +361,15 @@ pub(crate) fn build_initial_state(
         compositor,
         vello_pass,
         vector_scene,
-        // ADR-0108 Fase 0: cena-demo prova o seam da pipeline vetorial nova.
-        vec_scene: ph2d_vec_scene::VecScene::demo(),
+        // ADR-0108 Fase 0: cena-demo prova o seam; `PH2D_VEC_DEMO_N=<n>` troca
+        // para a grade de N blobs do spike de escala (kill-criterion §5).
+        vec_scene: match std::env::var("PH2D_VEC_DEMO_N")
+            .ok()
+            .and_then(|s| s.parse::<usize>().ok())
+        {
+            Some(n) if n > 0 => ph2d_vec_scene::VecScene::demo_grid(n),
+            _ => ph2d_vec_scene::VecScene::demo(),
+        },
         text_system,
         hero_screen,
         hero_arena: Bump::with_capacity(4096),

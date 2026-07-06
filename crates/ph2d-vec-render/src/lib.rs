@@ -88,4 +88,34 @@ mod tests {
             assert!(!build_bezpath(path).elements().is_empty());
         }
     }
+
+    /// Spike de escala (ADR-0108 §5) — custo de re-encode NAIVE por frame (CPU,
+    /// sem dirty-tracking), a fração dominante do custo em escala (achado Rive).
+    /// `cargo test -p ph2d-vec-render --release -- --ignored --nocapture`
+    #[test]
+    #[ignore = "spike manual de medição; rode em --release --nocapture"]
+    fn encode_cost_by_n() {
+        use std::time::Instant;
+        let affine = Affine::IDENTITY;
+        println!("\n=== re-encode NAIVE por frame (CPU, sem dirty-tracking) ===");
+        for &n in &[1_000usize, 5_000, 10_000, 20_000, 50_000] {
+            let scene = VecScene::demo_grid(n);
+            let mut target = VectorScene::new();
+            target.reset();
+            dispatch(&scene, affine, &mut target); // warm
+            let iters = 30;
+            let t = Instant::now();
+            for _ in 0..iters {
+                target.reset();
+                dispatch(&scene, affine, &mut target);
+            }
+            let ms = t.elapsed().as_secs_f64() * 1000.0 / iters as f64;
+            println!(
+                "N={:>6}  encode={:>7.3} ms/frame   (teto encode-bound: {:>6.0} fps)",
+                n,
+                ms,
+                1000.0 / ms
+            );
+        }
+    }
 }

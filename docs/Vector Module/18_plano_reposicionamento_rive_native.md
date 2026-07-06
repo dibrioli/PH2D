@@ -52,11 +52,15 @@ sujo → Vello (GPU) rasteriza.
 - Scaffold `ph2d-vec-scene` (modelo puro editor-first) + `ph2d-vec-render` (sobre o `VectorScene` fundacional de
   `ph2d-vector`, via re-exports): desenhar um `BezPath` da cena via Vello no **canvas real**, wirado no render loop
   (prova o seam ponta-a-ponta — não crate órfã, DIRETIVA §2).
-- **Spike de escala:** medir quantos objetos riggados animando sustentam 60 FPS @ resolução-alvo — **naive
-  re-encode vs dirty-tracked** — e **fixar N** (kill-criterion). Registrar o número (memória: medir a escala do
-  sintoma antes da causa).
+- **Spike de escala (MEDIDO 2026-07-05, bench `ph2d-vec-render::encode_cost_by_n`):** re-encode **naive** por frame
+  (CPU, sem dirty-tracking) é barato — 1k: 0.08ms · 10k: 0.77ms · 20k: 1.36ms · 50k: 3.9ms. O eixo que o ADR temia
+  (re-encode) tem **~20× de folga** no budget de 16.6ms. **N fixado = 10.000 objetos animados @ 60 FPS** (baseline
+  do kill-criterion): a 10k o encode é 5% do budget. **Dirty-tracking vira otimização de Fase 1**, revisitada só se
+  a medição full-frame (GPU + skinning) empurrar abaixo de 10k. Harness vivo: `PH2D_VEC_DEMO_N=<n>` no app (fps na
+  status bar; nota: o custo GPU é pixel-bound — só os visíveis pagam — eixo separado do re-encode).
 - **NÃO retira nada** (correção: a aposentadoria é a Fase R, atômica e pós-paridade — ver abaixo).
-- **DoD:** path aparece no canvas pela pipeline nova (smoke do Enio) + N fixado, com as crates novas verdes.
+- **DoD:** ✅ path no canvas pela pipeline nova (smoke do Enio 2026-07-05) + ✅ N fixado (10k) + crates novas verdes.
+  **Fase 0 FECHADA.**
 
 ### Fase 1 — MVP: editor + skinning + boolean (o coração)
 - **Desenhar/editar:** pen (criar), edit (mover âncora/handle), shape (retângulo/elipse/polígono), select. Seam

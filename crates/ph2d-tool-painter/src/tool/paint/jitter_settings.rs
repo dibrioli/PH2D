@@ -268,6 +268,74 @@ impl PainterTool {
                 }
                 true
             }
+            _ => self.route_brush_paper_ramp_event(event),
+        }
+    }
+
+    /// The watercolor **Paper Colors** ramp events (Click + SelectOption) — mirror of the Shape ramp,
+    /// tinting the paper substrate. Falls through to the per-layer-colour route.
+    fn route_brush_paper_ramp_event(&mut self, event: &PanelEvent) -> bool {
+        use ph2d_editor_core::ids as core_ids;
+        match event {
+            PanelEvent::Click(id) if *id == core_ids::PAINTER_PAPER_RAMP_ENABLE => {
+                self.toggle_paper_ramp_enabled();
+                true
+            }
+            PanelEvent::Click(id) if *id == core_ids::PAINTER_PAPER_RAMP_ADD => {
+                self.paper_ramp_add_stop();
+                true
+            }
+            PanelEvent::Click(id) if *id == core_ids::PAINTER_PAPER_RAMP_REMOVE => {
+                self.paper_ramp_remove_last_stop();
+                true
+            }
+            PanelEvent::Click(id) if *id == core_ids::PAINTER_PAPER_RAMP_INVERT => {
+                self.paper_ramp_invert();
+                true
+            }
+            PanelEvent::Click(id) if *id == core_ids::PAINTER_PAPER_RAMP_BW => {
+                self.toggle_paper_ramp_bw();
+                true
+            }
+            PanelEvent::Click(id) if *id == core_ids::PAINTER_PAPER_RAMP_RESET => {
+                self.reset_paper_ramp();
+                true
+            }
+            PanelEvent::SelectOption(id, value) if *id == core_ids::PAINTER_PAPER_RAMP_MODE => {
+                if let Ok(m) = value.parse::<u8>() {
+                    self.set_paper_ramp_mode(m);
+                }
+                true
+            }
+            PanelEvent::SelectOption(id, value) if *id == core_ids::PAINTER_PAPER_RAMP_INTERP => {
+                if let Ok(i) = value.parse::<u8>() {
+                    self.set_paper_ramp_interp(i);
+                }
+                true
+            }
+            PanelEvent::SelectOption(id, value)
+                if *id == core_ids::PAINTER_PAPER_RAMP_ALPHA_MODE =>
+            {
+                if let Ok(m) = value.parse::<u8>() {
+                    self.set_paper_ramp_alpha_mode(m);
+                }
+                true
+            }
+            PanelEvent::SelectOption(id, value) if *id == core_ids::PAINTER_PAPER_RAMP_SWATCH => {
+                let mut it = value.split(',').filter_map(|p| p.parse::<i32>().ok());
+                if let (Some(sid), Some(r), Some(g), Some(b), Some(a)) =
+                    (it.next(), it.next(), it.next(), it.next(), it.next())
+                {
+                    self.paper_ramp_set_stop_color(sid as u8, [r as u8, g as u8, b as u8, a as u8]);
+                }
+                true
+            }
+            PanelEvent::SelectOption(id, value) if *id == core_ids::PAINTER_PAPER_RAMP_EDIT => {
+                if let Some((sid, x)) = parse_id_f32(value) {
+                    self.paper_ramp_move_stop(sid, x);
+                }
+                true
+            }
             _ => self.route_shape_layer_event(event),
         }
     }

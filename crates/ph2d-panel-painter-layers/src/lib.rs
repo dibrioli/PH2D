@@ -49,6 +49,7 @@ mod paint_selection;
 mod paint_shape;
 mod paint_shape_dab;
 mod paint_shape_layers;
+mod paint_paper_ramp;
 mod paint_shape_ramp;
 mod paint_stencil;
 mod paint_stroke;

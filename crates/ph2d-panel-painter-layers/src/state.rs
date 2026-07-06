@@ -130,6 +130,15 @@ thread_local! {
     /// Grain ramp's selection).
     pub(crate) static SELECTED_SHAPE_RAMP_STOP: Cell<u8> = const { Cell::new(0) };
 
+    /// **Paper Colors** ramp deferred dropdowns + selected stop (mirror of the Shape ramp's).
+    pub(crate) static PENDING_PAPER_RAMP_INTERP_DD: Cell<Option<(Rect, u8)>> =
+        const { Cell::new(None) };
+    pub(crate) static PENDING_PAPER_RAMP_MODE_DD: Cell<Option<(Rect, u8)>> =
+        const { Cell::new(None) };
+    pub(crate) static PENDING_PAPER_RAMP_ALPHA_DD: Cell<Option<(Rect, u8)>> =
+        const { Cell::new(None) };
+    pub(crate) static SELECTED_PAPER_RAMP_STOP: Cell<u8> = const { Cell::new(0) };
+
     /// Multi-selection set published by the bridge each frame (W3 multi-select):
     /// the layer rows the panel highlights. Always includes the active layer
     /// (the tool folds it in via `selection()`); a single-element set means just

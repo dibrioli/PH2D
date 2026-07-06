@@ -24,6 +24,8 @@ mod decode;
 mod option_route;
 mod ramp_picker;
 mod shape_layer_picker;
+mod paper_ramp_picker;
+mod ramp_events;
 mod shape_ramp_picker;
 
 pub(crate) fn apply_event(
@@ -427,6 +429,7 @@ fn try_apply_brush_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> O
                 || id == core_ids::PAINTER_SHAPE_PER_LAYER_COLOR
                 || core_ids::PAINTER_BRUSH_TEXTURE_RAMP_BUTTONS.contains(&id)
                 || core_ids::PAINTER_SHAPE_RAMP_BUTTONS.contains(&id)
+                || core_ids::PAINTER_PAPER_RAMP_BUTTONS.contains(&id)
                 || id == core_ids::PAINTER_BRUSH_FALLOFF_ADD // Custom-falloff "+" point button
                 // Stroke shape-editor buttons (Apply/Apply&Keep/Delete/Convert/Simplify/Merge) — MUST be
                 // forwarded or the Click is dropped. Plus the Offset-card Trim + the Operation segments.
@@ -479,8 +482,8 @@ fn try_apply_brush_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> O
             ramp_picker::on_swatch_click(host);
             Some(true)
         }
-        WidgetEvent::Click(id) if id == core_ids::PAINTER_SHAPE_RAMP_SWATCH => {
-            shape_ramp_picker::on_swatch_click(host);
+        WidgetEvent::Click(id) if ramp_events::is_ramp_swatch(id) => {
+            ramp_events::on_ramp_swatch_click(host, id);
             Some(true)
         }
         // Per-layer-colour rows (multi-layer Shape): a layer's colour checkbox (forward Click → the tool
@@ -519,16 +522,9 @@ fn try_apply_brush_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> O
             }
             Some(true)
         }
-        // Grain Color Ramp: bar-stop drag + the editable index / position chips → ramp_picker.
-        WidgetEvent::ValueChanged(id)
-            if core_ids::PAINTER_BRUSH_TEXTURE_RAMP_VALUE_IDS.contains(&id) =>
-        {
-            ramp_picker::on_ramp_value_changed(host, id);
-            Some(true)
-        }
-        // Shape Color ramp: bar-stop drag + the editable index / position chips.
-        WidgetEvent::ValueChanged(id) if core_ids::PAINTER_SHAPE_RAMP_VALUE_IDS.contains(&id) => {
-            shape_ramp_picker::on_shape_ramp_value_changed(host, id);
+        // Grain / Shape / Paper Color ramps: bar-stop drag + the editable index / position chips.
+        WidgetEvent::ValueChanged(id) if ramp_events::is_ramp_value_id(id) => {
+            ramp_events::on_ramp_value_changed(host, id);
             Some(true)
         }
         // Flatten/rotate gizmo: a handle `CurvePoint` drag → decode flatten (radial) / angle.

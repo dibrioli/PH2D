@@ -127,6 +127,7 @@ mod selection_raster;
 pub(super) mod selection_shapes; // SelectionEntry is re-exported at `crate::tool` for the undo snapshot
 /// Selection **Edit** mode contour tracing (mask → editable boundary polyline); split for the LOC cap.
 mod selection_trace;
+mod paper_ramp;
 mod shape_ramp;
 mod snapshot;
 /// The Blender-style cached brush stamp (render falloff×texture once, scale-blit per dab).
@@ -386,6 +387,16 @@ pub(crate) struct PaintState {
     shape_ramp_dirty: bool,
     shape_ramp_version: u64,
     ramp_lut_owner: ramp_lut::RampLutOwner,
+    // Watercolor **Paper Colors** ramp — maps the paper tooth (`[0,1]`) to a colour, so the substrate the
+    // wash sits on can be tinted (cream / tan / grey papers). Consumed by the render-path base tint.
+    paper_color_ramp: ph2d_color::ColorRamp,
+    paper_color_ramp_enabled: bool,
+    paper_color_ramp_bw: bool,
+    paper_color_ramp_alpha_mode: ph2d_painter_brush::RampAlphaMode,
+    /// Baked 256-entry straight-sRGB RGBA LUT of [`Self::paper_color_ramp`], rebuilt on change; the
+    /// watercolor render-path indexes it by the paper tooth to tint the base. Empty until first built.
+    paper_ramp_lut: Vec<[f32; 4]>,
+    paper_ramp_dirty: bool,
     /// **Accumulate OFF** per-stroke coverage mask (1 byte/px), cleared on down; caps a stroke at Strength.
     stroke_mask: Vec<u8>,
     /// **Watercolor render-path** per-stroke coverage (1 byte/px, `w*h`): the union footprint of the

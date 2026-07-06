@@ -74,7 +74,6 @@ pub(super) fn sample_kind(
 /// [`RampAlphaMode::None`] ignores it (opaque), the other two reveal the translucency. No-op if `out`
 /// is too small.
 #[allow(clippy::too_many_arguments)]
-#[allow(clippy::too_many_arguments)]
 pub fn render_texture_preview(
     kind: TextureKind,
     params: [f32; super::MAX_TEX_PARAMS],

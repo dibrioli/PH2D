@@ -72,6 +72,12 @@ const BENIGN_SET_MODE: &[(&str, &str)] = &[
          read fresh each dab at stamp time, not baked into any LUT. No derived cache keyed on it.",
     ),
     (
+        "set_paper_ramp_alpha_mode",
+        "Watercolor PAPER Colors ramp alpha action: a single `paper_color_ramp_alpha_mode` field \
+         write. The paper is an opaque substrate base, so the render-path IGNORES the alpha entirely \
+         (stored for editor parity only) — no LUT re-bake, no derived cache keyed on it.",
+    ),
+    (
         "set_paint_tool_mode",
         "Painter rail tool-mode setter (smear/blur/clone/mask/eyedropper/eraser/brush): writes only \
          simple mode fields (`paint_mode`/`eraser`/`eyedropper_armed` + a one-shot Spacing default). \

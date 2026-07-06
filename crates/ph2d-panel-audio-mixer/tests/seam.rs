@@ -9,11 +9,12 @@ use ph2d_editor_core::interaction::WidgetEvent;
 use ph2d_editor_core::panel::{EventOutcome, Panel, PanelHostInternal};
 use ph2d_panel_audio_mixer::state::AudioMixerState;
 use ph2d_panel_audio_mixer::{
-    AMIX_CUTOFF, AMIX_FADER, AMIX_LIMITER, AMIX_MASTER_METER, AMIX_MASTER_MUTE, AMIX_PAN, AMIX_PLAY,
-    AMIX_REVERB, AMIX_REVERB_SIZE, AudioMixerPanel, FADER_UNITY_POS, SUB_FADER, SUB_MUTE, SUB_PAN,
-    SUB_SOLO, SUB_TONE, fader_gain, limiter, master_clipped, master_cutoff_target,
-    master_gain_target, master_muted, master_pan_target, play_test, reverb_on, reverb_size,
-    set_levels, sub_gain_target, sub_muted, sub_pan_target, sub_soloed, sub_tone_target,
+    AMIX_CUTOFF, AMIX_DUCK, AMIX_DUCK_DEPTH, AMIX_FADER, AMIX_LIMITER, AMIX_MASTER_METER,
+    AMIX_MASTER_MUTE, AMIX_PAN, AMIX_PLAY, AMIX_REVERB, AMIX_REVERB_SIZE, AudioMixerPanel,
+    FADER_UNITY_POS, SUB_FADER, SUB_MUTE, SUB_PAN, SUB_SOLO, SUB_TONE, duck_depth, ducking,
+    fader_gain, limiter, master_clipped, master_cutoff_target, master_gain_target, master_muted,
+    master_pan_target, play_test, reverb_on, reverb_size, set_levels, sub_gain_target, sub_muted,
+    sub_pan_target, sub_soloed, sub_tone_target,
 };
 use ph2d_ui_testkit::MockPanelHost;
 
@@ -192,6 +193,35 @@ fn clip_latches_on_over_unity_peak_and_meter_click_clears_it() {
         "panel ignored the meter click — the AMIX_MASTER_METER arm is missing"
     );
     assert_eq!(master_clipped(), [false, false], "meter click must clear the clip latch");
+}
+
+/// The Ducking toggle flips the enable flag, and dragging Depth publishes the
+/// raw 0..1 value — both read by the shell to duck Music/SFX under the Voice bus.
+#[test]
+fn ducking_toggle_and_depth_publish() {
+    let mut host = MockPanelHost::with_panel::<AudioMixerPanel>();
+    let mut state = AudioMixerState;
+
+    let before = ducking();
+    let outcome =
+        host.apply_panel_event::<AudioMixerPanel>(&mut state, WidgetEvent::Click(AMIX_DUCK));
+    assert_eq!(
+        outcome,
+        EventOutcome::Consumed,
+        "panel ignored the Ducking click — the AMIX_DUCK arm is missing"
+    );
+    assert_ne!(ducking(), before, "Ducking click must flip the enable flag");
+
+    host.set_slider_value(AMIX_DUCK_DEPTH, 0.9);
+    host.apply_panel_event::<AudioMixerPanel>(
+        &mut state,
+        WidgetEvent::ValueChanged(AMIX_DUCK_DEPTH),
+    );
+    assert!(
+        (duck_depth() - 0.9).abs() < 1e-5,
+        "Depth drag must publish the raw value, got {}",
+        duck_depth()
+    );
 }
 
 /// The Reverb toggle flips the enable flag, and dragging Size publishes the raw

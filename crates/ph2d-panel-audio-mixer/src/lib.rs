@@ -52,6 +52,10 @@ pub const AMIX_REVERB: NodeId = hash_node_id("audio_mixer_reverb");
 pub const AMIX_REVERB_SIZE: NodeId = hash_node_id("audio_mixer_reverb_size");
 /// Master reverb wet/dry mix slider.
 pub const AMIX_REVERB_MIX: NodeId = hash_node_id("audio_mixer_reverb_mix");
+/// Ducking enable toggle — Music/SFX duck under the Voice bus (dialogue priority).
+pub const AMIX_DUCK: NodeId = hash_node_id("audio_mixer_duck");
+/// Ducking depth slider (how much the ducked buses drop).
+pub const AMIX_DUCK_DEPTH: NodeId = hash_node_id("audio_mixer_duck_depth");
 
 /// Sub-buses shown as their own strips, **in `ph2d_audio::BusId::SUB_BUSES`
 /// order** (Music, SFX). The panel is UI-only (no `ph2d-audio` dep); the shell's
@@ -158,6 +162,8 @@ mod snapshot {
         static REVERB_ON: Cell<bool> = const { Cell::new(false) };
         static REVERB_SIZE: Cell<f32> = const { Cell::new(0.5) };
         static REVERB_MIX: Cell<f32> = const { Cell::new(0.3) }; // LITERAL-PX-OK: default reverb wet/dry mix (audio param)
+        static DUCKING: Cell<bool> = const { Cell::new(false) };
+        static DUCK_DEPTH: Cell<f32> = const { Cell::new(0.7) }; // LITERAL-PX-OK: default duck depth (audio param)
         // Per-sub-bus channels, index-aligned with `BusId::SUB_BUSES`.
         static SUB_LEVELS_PEAK: Cell<[[f32; 2]; SUB_BUS_COUNT]> = const { Cell::new([[0.0, 0.0]; SUB_BUS_COUNT]) };
         static SUB_LEVELS_RMS: Cell<[[f32; 2]; SUB_BUS_COUNT]> = const { Cell::new([[0.0, 0.0]; SUB_BUS_COUNT]) };
@@ -312,6 +318,27 @@ mod snapshot {
         REVERB_MIX.with(|c| c.set(v));
     }
 
+    /// Panel → shell: ducking enable + depth (Music/SFX duck under Voice).
+    pub fn ducking() -> bool {
+        DUCKING.with(Cell::get)
+    }
+
+    pub fn duck_depth() -> f32 {
+        DUCK_DEPTH.with(Cell::get)
+    }
+
+    pub(crate) fn toggle_ducking() -> bool {
+        DUCKING.with(|c| {
+            let next = !c.get();
+            c.set(next);
+            next
+        })
+    }
+
+    pub(crate) fn set_duck_depth(v: f32) {
+        DUCK_DEPTH.with(|c| c.set(v));
+    }
+
     /// Shell → panel: current post-fader peak + RMS per sub-bus. Latches each
     /// sub-bus's clip indicator when its peak exceeds full scale.
     pub fn set_sub_levels(peak: [[f32; 2]; SUB_BUS_COUNT], rms: [[f32; 2]; SUB_BUS_COUNT]) {
@@ -451,6 +478,8 @@ pub use snapshot::play_test;
 pub use snapshot::limiter;
 /// Panel → shell: master reverb enable / room size / wet-dry mix.
 pub use snapshot::{reverb_mix, reverb_on, reverb_size};
+/// Panel → shell: ducking enable + depth (Music/SFX duck under the Voice bus).
+pub use snapshot::{duck_depth, ducking};
 /// Observable master clip latch (set when the peak exceeds full scale, cleared
 /// by clicking the meter).
 pub use snapshot::master_clipped;

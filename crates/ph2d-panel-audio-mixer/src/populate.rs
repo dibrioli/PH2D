@@ -2,9 +2,9 @@
 
 use crate::fader::FADER_UNITY_POS;
 use crate::{
-    AMIX_CLOSE, AMIX_CUTOFF, AMIX_FADER, AMIX_LIMITER, AMIX_MASTER_METER, AMIX_MASTER_MUTE, AMIX_PAN,
-    AMIX_PLAY, AMIX_REVERB, AMIX_REVERB_MIX, AMIX_REVERB_SIZE, SUB_FADER, SUB_METER, SUB_MUTE,
-    SUB_PAN, SUB_SOLO, SUB_TONE,
+    AMIX_CLOSE, AMIX_CUTOFF, AMIX_DUCK, AMIX_DUCK_DEPTH, AMIX_FADER, AMIX_LIMITER, AMIX_MASTER_METER,
+    AMIX_MASTER_MUTE, AMIX_PAN, AMIX_PLAY, AMIX_REVERB, AMIX_REVERB_MIX, AMIX_REVERB_SIZE,
+    SUB_FADER, SUB_METER, SUB_MUTE, SUB_PAN, SUB_SOLO, SUB_TONE,
 };
 use ph2d_editor_core::interaction::{InteractiveState, WidgetStore};
 use ph2d_editor_core::widget::{ButtonState, SliderOrientation, SliderState};
@@ -23,6 +23,7 @@ pub(crate) fn populate(store: &mut WidgetStore) {
     store.register(AMIX_PLAY, button());
     store.register(AMIX_LIMITER, button());
     store.register(AMIX_REVERB, button());
+    store.register(AMIX_DUCK, button());
     for id in SUB_MUTE {
         store.register(id, button());
     }
@@ -89,6 +90,16 @@ pub(crate) fn populate(store: &mut WidgetStore) {
         InteractiveState::Slider {
             state: SliderState::Normal,
             value: 0.3, // LITERAL-PX-OK: default reverb wet/dry mix (audio param)
+            orientation: SliderOrientation::Horizontal,
+        },
+    );
+
+    // Ducking depth — how much Music/SFX drop under the Voice bus.
+    store.register(
+        AMIX_DUCK_DEPTH,
+        InteractiveState::Slider {
+            state: SliderState::Normal,
+            value: 0.7, // LITERAL-PX-OK: default duck depth (audio param)
             orientation: SliderOrientation::Horizontal,
         },
     );

@@ -37,6 +37,8 @@ pub(crate) struct AudioSystem {
     /// Voices of the built-in test signal while the panel's Play Test is on
     /// (empty = stopped). Looping, so they sound until explicitly stopped.
     test_voices: Vec<VoiceId>,
+    /// Ducking gain-reduction envelope (`1.0` = no duck), smoothed per frame.
+    duck_env: std::cell::Cell<f32>,
     // Kept alive for the app's lifetime; the callback (which owns the renderer)
     // runs on cpal's thread until this drops. `cpal::Stream` is `!Send` on ALSA,
     // which is fine — `App` never leaves the main thread.
@@ -109,6 +111,7 @@ impl AudioSystem {
             last_bus_pan: std::array::from_fn(|_| std::cell::Cell::new(0.0)),
             last_bus_cutoff: std::array::from_fn(|_| std::cell::Cell::new(20_000.0)),
             test_voices: Vec::new(),
+            duck_env: std::cell::Cell::new(1.0),
             _stream: stream,
         })
     }
@@ -172,6 +175,33 @@ impl AudioSystem {
         }
     }
 
+    /// Advance the ducking envelope from the Voice bus level (the sidechain key)
+    /// and return the current duck multiplier (`1.0` = none) for Music/SFX. Fast
+    /// attack (dip quickly when Voice speaks), slow release. Pure control-side —
+    /// the engine's per-bus smoothing turns the per-frame target into clean audio.
+    pub(crate) fn update_ducking(&self, on: bool, depth: f32) -> f32 {
+        const KEY_THRESHOLD: f32 = 0.03; // Voice RMS above which ducking engages
+        const ATTACK: f32 = 0.35; // per-frame toward a deeper duck
+        const RELEASE: f32 = 0.06; // per-frame back toward unity
+        // Voice bus is the key (its post-fader RMS).
+        let voice_idx = BusId::SUB_BUSES
+            .iter()
+            .position(|&b| b == BusId::Voice)
+            .unwrap_or(0);
+        let voice = self.engine.bus_rms()[voice_idx];
+        let key = voice[0].max(voice[1]);
+        let target = if on && key > KEY_THRESHOLD {
+            1.0 - depth.clamp(0.0, 1.0)
+        } else {
+            1.0
+        };
+        let env = self.duck_env.get();
+        let coeff = if target < env { ATTACK } else { RELEASE };
+        let next = env + (target - env) * coeff;
+        self.duck_env.set(next);
+        next
+    }
+
     /// Set the engine's master gain, but only enqueue a command when it changed
     /// (called every frame by the mixer bridge — avoid flooding the ring).
     pub(crate) fn set_master_gain(&self, gain: f32) {
@@ -216,7 +246,13 @@ impl AudioSystem {
         if on && !active {
             let pluck = pluck_loop(self.format, 330.0, 0.6, 0.7);
             let swell = swell_loop(self.format, 220.0, 0.9, 0.4);
-            for (data, bus) in [(pluck, BusId::Music), (swell, BusId::Sfx)] {
+            // A periodic "voice" blip on the Voice bus so Ducking is demoable.
+            let blip = blip_loop(self.format, 200.0, 0.3, 1.2, 0.6);
+            for (data, bus) in [
+                (pluck, BusId::Music),
+                (swell, BusId::Sfx),
+                (blip, BusId::Voice),
+            ] {
                 let params = PlayParams {
                     looping: true,
                     bus,
@@ -227,7 +263,7 @@ impl AudioSystem {
                     Err(e) => eprintln!("audio: test signal dropped ({e})"),
                 }
             }
-            println!("audio: test signal ON (pluck→Music, swell→SFX)");
+            println!("audio: test signal ON (pluck→Music, swell→SFX, blip→Voice)");
         } else if !on && active {
             for id in self.test_voices.drain(..) {
                 let _ = self.engine.stop(id);
@@ -375,6 +411,29 @@ fn pluck_loop(format: AudioFormat, freq_hz: f32, secs: f32, gain: f32) -> Sample
             (1.0 - d) * (1.0 - d) // decays to 0 at the loop seam
         };
         samples.push((omega * t).sin() * env * gain);
+    }
+    SampleData::from_interleaved(samples, AudioFormat::mono(format.sample_rate))
+}
+
+/// A looping "voice" blip: a short tone burst (with a `sin(π·phase)` window so it
+/// starts/ends silent) followed by silence, so the loop is a periodic blip —
+/// enough of a stand-in for dialogue to demo ducking.
+fn blip_loop(
+    format: AudioFormat,
+    freq_hz: f32,
+    burst_secs: f32,
+    period_secs: f32,
+    gain: f32,
+) -> SampleData {
+    let rate = format.sample_rate as f32;
+    let n = (period_secs * rate) as usize;
+    let burst = ((burst_secs * rate) as usize).min(n);
+    let omega = std::f32::consts::TAU * freq_hz;
+    let mut samples = vec![0.0f32; n];
+    for (i, s) in samples.iter_mut().enumerate().take(burst) {
+        let t = i as f32 / rate;
+        let window = (std::f32::consts::PI * (i as f32 / burst.max(1) as f32)).sin();
+        *s = (omega * t).sin() * window * gain;
     }
     SampleData::from_interleaved(samples, AudioFormat::mono(format.sample_rate))
 }

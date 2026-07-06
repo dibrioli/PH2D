@@ -144,6 +144,11 @@ impl crate::App {
                 let sub_gain = ph2d_panel_audio_mixer::sub_gain_target();
                 let sub_pan = ph2d_panel_audio_mixer::sub_pan_target();
                 let sub_tone = ph2d_panel_audio_mixer::sub_tone_target();
+                // Ducking: Music/SFX drop under the Voice bus (dialogue priority).
+                let duck = audio.update_ducking(
+                    ph2d_panel_audio_mixer::ducking(),
+                    ph2d_panel_audio_mixer::duck_depth(),
+                );
                 // Solo overrides mute: when any bus is soloed, only soloed buses
                 // sound; otherwise a bus sounds unless it's muted.
                 let any_solo = sub_soloed.iter().any(|&s| s);
@@ -153,7 +158,15 @@ impl crate::App {
                     } else {
                         !sub_muted[i]
                     };
-                    audio.set_bus_gain(i, if sounds { sub_gain[i] } else { 0.0 });
+                    let ducks = matches!(
+                        ph2d_audio::BusId::SUB_BUSES[i],
+                        ph2d_audio::BusId::Music | ph2d_audio::BusId::Sfx
+                    );
+                    let mut g = if sounds { sub_gain[i] } else { 0.0 };
+                    if ducks {
+                        g *= duck;
+                    }
+                    audio.set_bus_gain(i, g);
                     audio.set_bus_pan(i, sub_pan[i]);
                     audio.set_bus_cutoff(i, sub_tone[i]);
                 }

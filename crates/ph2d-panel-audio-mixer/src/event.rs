@@ -3,9 +3,10 @@
 use crate::fader::fader_gain;
 use crate::state::AudioMixerState;
 use crate::{
-    AMIX_CLOSE, AMIX_CUTOFF, AMIX_FADER, AMIX_LIMITER, AMIX_MASTER_METER, AMIX_MASTER_MUTE,
-    AMIX_PAN, AMIX_PLAY, AMIX_REVERB, AMIX_REVERB_MIX, AMIX_REVERB_SIZE, AudioMixerPanel, SUB_FADER,
-    SUB_METER, SUB_MUTE, SUB_PAN, SUB_SOLO, SUB_TONE, snapshot,
+    AMIX_CLOSE, AMIX_CUTOFF, AMIX_DUCK, AMIX_DUCK_DEPTH, AMIX_FADER, AMIX_LIMITER,
+    AMIX_MASTER_METER, AMIX_MASTER_MUTE, AMIX_PAN, AMIX_PLAY, AMIX_REVERB, AMIX_REVERB_MIX,
+    AMIX_REVERB_SIZE, AudioMixerPanel, SUB_FADER, SUB_METER, SUB_MUTE, SUB_PAN, SUB_SOLO, SUB_TONE,
+    snapshot,
 };
 
 /// Log-map a 0..1 tone slider to a cutoff in Hz (20 Hz..20 kHz).
@@ -56,6 +57,11 @@ pub(crate) fn apply_event(
             // Master reverb enable toggle.
             if id == AMIX_REVERB {
                 snapshot::toggle_reverb();
+                return EventOutcome::Consumed;
+            }
+            // Ducking enable toggle.
+            if id == AMIX_DUCK {
+                snapshot::toggle_ducking();
                 return EventOutcome::Consumed;
             }
             // Per-sub-bus mute toggles.
@@ -122,6 +128,15 @@ pub(crate) fn apply_event(
                 .map(|(_, v)| v)
                 .unwrap_or(0.3); // LITERAL-PX-OK: default reverb wet/dry mix (audio param)
             snapshot::set_reverb_mix(v.clamp(0.0, 1.0));
+            return EventOutcome::Consumed;
+        }
+        WidgetEvent::ValueChanged(id) if id == AMIX_DUCK_DEPTH => {
+            let v = host
+                .store()
+                .slider(AMIX_DUCK_DEPTH)
+                .map(|(_, v)| v)
+                .unwrap_or(0.7); // LITERAL-PX-OK: default duck depth (audio param)
+            snapshot::set_duck_depth(v.clamp(0.0, 1.0));
             return EventOutcome::Consumed;
         }
         // A sub-bus fader or pan dragged — publish that bus's gain / pan.

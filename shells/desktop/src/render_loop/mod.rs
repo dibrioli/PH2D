@@ -138,6 +138,7 @@ impl crate::App {
                 let sub_soloed = ph2d_panel_audio_mixer::sub_soloed();
                 let sub_gain = ph2d_panel_audio_mixer::sub_gain_target();
                 let sub_pan = ph2d_panel_audio_mixer::sub_pan_target();
+                let sub_tone = ph2d_panel_audio_mixer::sub_tone_target();
                 // Solo overrides mute: when any bus is soloed, only soloed buses
                 // sound; otherwise a bus sounds unless it's muted.
                 let any_solo = sub_soloed.iter().any(|&s| s);
@@ -149,6 +150,7 @@ impl crate::App {
                     };
                     audio.set_bus_gain(i, if sounds { sub_gain[i] } else { 0.0 });
                     audio.set_bus_pan(i, sub_pan[i]);
+                    audio.set_bus_cutoff(i, sub_tone[i]);
                 }
             }
         }

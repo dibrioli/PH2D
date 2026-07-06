@@ -30,6 +30,8 @@ pub(crate) struct AudioSystem {
     last_bus_gain: [std::cell::Cell<f32>; SUB_BUS_COUNT],
     /// Same change-gate, per sub-bus balance.
     last_bus_pan: [std::cell::Cell<f32>; SUB_BUS_COUNT],
+    /// Same change-gate, per sub-bus tone (low-pass cutoff Hz).
+    last_bus_cutoff: [std::cell::Cell<f32>; SUB_BUS_COUNT],
     /// Voices of the built-in test signal while the panel's Play Test is on
     /// (empty = stopped). Looping, so they sound until explicitly stopped.
     test_voices: Vec<VoiceId>,
@@ -102,6 +104,7 @@ impl AudioSystem {
             last_limiter: std::cell::Cell::new(false),
             last_bus_gain: std::array::from_fn(|_| std::cell::Cell::new(1.0)),
             last_bus_pan: std::array::from_fn(|_| std::cell::Cell::new(0.0)),
+            last_bus_cutoff: std::array::from_fn(|_| std::cell::Cell::new(20_000.0)),
             test_voices: Vec::new(),
             _stream: stream,
         })
@@ -153,6 +156,16 @@ impl AudioSystem {
         {
             let _ = self.engine.set_bus_pan(BusId::SUB_BUSES[i], pan);
             cell.set(pan);
+        }
+    }
+
+    /// Set sub-bus `i`'s low-pass cutoff (Hz), change-gated per bus.
+    pub(crate) fn set_bus_cutoff(&self, i: usize, hz: f32) {
+        if let Some(cell) = self.last_bus_cutoff.get(i)
+            && (hz - cell.get()).abs() > f32::EPSILON
+        {
+            let _ = self.engine.set_bus_cutoff(BusId::SUB_BUSES[i], hz);
+            cell.set(hz);
         }
     }
 

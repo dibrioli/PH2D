@@ -62,6 +62,9 @@ pub(crate) struct Mixer {
     bus_gain: [SmoothGain; SUB_BUS_COUNT],
     /// Per-sub-bus stereo balance gains `[L, R]`.
     bus_pan: [[f32; 2]; SUB_BUS_COUNT],
+    /// Per-sub-bus low-pass filter (per channel). Identity = open (bypass).
+    bus_filter_l: [Biquad; SUB_BUS_COUNT],
+    bus_filter_r: [Biquad; SUB_BUS_COUNT],
     /// Master limiter engaged?
     limiter: bool,
     /// Current limiter gain reduction (`1.0` = none) — a linked-stereo envelope
@@ -79,6 +82,8 @@ impl Mixer {
             filter_r: Biquad::default(),
             bus_gain: std::array::from_fn(|_| SmoothGain::immediate(1.0)),
             bus_pan: [balance_gains(0.0); SUB_BUS_COUNT],
+            bus_filter_l: std::array::from_fn(|_| Biquad::default()),
+            bus_filter_r: std::array::from_fn(|_| Biquad::default()),
             limiter: false,
             limiter_gr: 1.0,
         }
@@ -112,6 +117,12 @@ impl Mixer {
                 None => self.master_pan = balance_gains(pan),
             },
             AudioCommand::SetMasterLimiter { on } => self.limiter = on,
+            AudioCommand::SetBusFilter { bus, coeffs } => {
+                if let Some(i) = bus.sub_index() {
+                    self.bus_filter_l[i].set_coeffs(coeffs);
+                    self.bus_filter_r[i].set_coeffs(coeffs);
+                }
+            }
         }
     }
 
@@ -137,18 +148,20 @@ impl Mixer {
                 *s = 0.0;
             }
             self.pool.render_bus(bus, bus_scratch, frames, on_finished);
-            let gain = &mut self.bus_gain[i];
             let [pan_l, pan_r] = self.bus_pan[i];
+            let gain = &mut self.bus_gain[i];
+            let filter_l = &mut self.bus_filter_l[i];
+            let filter_r = &mut self.bus_filter_r[i];
             let mut peak_l = 0.0f32;
             let mut peak_r = 0.0f32;
             let mut sq_l = 0.0f32;
             let mut sq_r = 0.0f32;
             for f in 0..frames {
                 let g = gain.tick();
-                // Post-fader level (pre-pan) is the strip meter reading, so
-                // panning a bus doesn't drop its meter.
-                let l = bus_scratch[2 * f] * g;
-                let r = bus_scratch[2 * f + 1] * g;
+                // Fader, then the bus low-pass (identity = open). Post-filter,
+                // pre-pan is the strip meter reading, so panning doesn't drop it.
+                let l = filter_l.process(bus_scratch[2 * f] * g);
+                let r = filter_r.process(bus_scratch[2 * f + 1] * g);
                 peak_l = peak_l.max(l.abs());
                 peak_r = peak_r.max(r.abs());
                 sq_l += l * l;

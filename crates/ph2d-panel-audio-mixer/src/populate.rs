@@ -3,7 +3,7 @@
 use crate::fader::FADER_UNITY_POS;
 use crate::{
     AMIX_CLOSE, AMIX_CUTOFF, AMIX_FADER, AMIX_LIMITER, AMIX_MASTER_METER, AMIX_MASTER_MUTE, AMIX_PAN,
-    AMIX_PLAY, SUB_FADER, SUB_METER, SUB_MUTE, SUB_PAN, SUB_SOLO,
+    AMIX_PLAY, SUB_FADER, SUB_METER, SUB_MUTE, SUB_PAN, SUB_SOLO, SUB_TONE,
 };
 use ph2d_editor_core::interaction::{InteractiveState, WidgetStore};
 use ph2d_editor_core::widget::{ButtonState, SliderOrientation, SliderState};
@@ -60,13 +60,16 @@ pub(crate) fn populate(store: &mut WidgetStore) {
         store.register(id, pan());
     }
 
-    // Master low-pass cutoff — a horizontal Slider (start open at 1.0).
-    store.register(
-        AMIX_CUTOFF,
-        InteractiveState::Slider {
-            state: SliderState::Normal,
-            value: 1.0,
-            orientation: SliderOrientation::Horizontal,
-        },
-    );
+    // Every tone (low-pass cutoff) — a horizontal Slider, open at 1.0. Master's
+    // is `AMIX_CUTOFF`; each sub-bus has its own. apply_event log-maps 0..1 to
+    // 20 Hz..20 kHz.
+    let tone = || InteractiveState::Slider {
+        state: SliderState::Normal,
+        value: 1.0,
+        orientation: SliderOrientation::Horizontal,
+    };
+    store.register(AMIX_CUTOFF, tone());
+    for id in SUB_TONE {
+        store.register(id, tone());
+    }
 }

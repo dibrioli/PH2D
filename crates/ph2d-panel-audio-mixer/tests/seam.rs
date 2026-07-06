@@ -10,9 +10,10 @@ use ph2d_editor_core::panel::{EventOutcome, Panel, PanelHostInternal};
 use ph2d_panel_audio_mixer::state::AudioMixerState;
 use ph2d_panel_audio_mixer::{
     AMIX_CUTOFF, AMIX_FADER, AMIX_LIMITER, AMIX_MASTER_METER, AMIX_MASTER_MUTE, AMIX_PAN, AMIX_PLAY,
-    AudioMixerPanel, FADER_UNITY_POS, SUB_FADER, SUB_MUTE, SUB_PAN, SUB_SOLO, fader_gain, limiter,
-    master_clipped, master_cutoff_target, master_gain_target, master_muted, master_pan_target,
-    play_test, set_levels, sub_gain_target, sub_muted, sub_pan_target, sub_soloed,
+    AudioMixerPanel, FADER_UNITY_POS, SUB_FADER, SUB_MUTE, SUB_PAN, SUB_SOLO, SUB_TONE, fader_gain,
+    limiter, master_clipped, master_cutoff_target, master_gain_target, master_muted,
+    master_pan_target, play_test, set_levels, sub_gain_target, sub_muted, sub_pan_target,
+    sub_soloed, sub_tone_target,
 };
 use ph2d_ui_testkit::MockPanelHost;
 
@@ -227,6 +228,35 @@ fn play_test_click_toggles_flag() {
         "panel ignored the Play Test click — the AMIX_PLAY arm is missing"
     );
     assert_ne!(play_test(), before, "Play Test click must flip the play flag");
+}
+
+/// Dragging a sub-bus Tone slider down publishes a low cutoff in Hz (~20 Hz at
+/// the bottom) into that bus's slot only — the shell drives its low-pass filter.
+#[test]
+fn sub_bus_tone_drag_publishes_cutoff_hz() {
+    let mut host = MockPanelHost::with_panel::<AudioMixerPanel>();
+    let mut state = AudioMixerState;
+
+    host.set_slider_value(SUB_TONE[0], 0.0);
+    let outcome = host
+        .apply_panel_event::<AudioMixerPanel>(&mut state, WidgetEvent::ValueChanged(SUB_TONE[0]));
+
+    assert_eq!(
+        outcome,
+        EventOutcome::Consumed,
+        "panel ignored the sub-bus Tone ValueChanged — the SUB_TONE arm is missing"
+    );
+    let tones = sub_tone_target();
+    assert!(
+        (tones[0] - 20.0).abs() < 0.5,
+        "Tone at 0 must map to ~20 Hz, got {}",
+        tones[0]
+    );
+    assert!(
+        (tones[1] - 20_000.0).abs() < 1.0,
+        "the other sub-bus tone must stay open (~20 kHz), got {}",
+        tones[1]
+    );
 }
 
 /// Clicking a sub-bus solo button flips only that bus's solo flag (the shell

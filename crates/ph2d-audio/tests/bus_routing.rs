@@ -168,6 +168,46 @@ fn master_limiter_tames_a_boosted_over_unity_mix() {
 }
 
 #[test]
+fn sub_bus_lowpass_attenuates_high_frequency_content() {
+    // A near-Nyquist tone on the Music bus: a low cutoff must knock it down.
+    let sr = 48_000u32;
+    let fmt = AudioFormat::stereo(sr);
+    // Alternating ±0.8 = the highest representable frequency (Nyquist).
+    let hi: Vec<f32> = (0..960).map(|i| if i % 2 == 0 { 0.8 } else { -0.8 }).collect();
+    let nyquist = SampleData::from_interleaved(hi, AudioFormat::mono(sr));
+
+    let (mut engine, mut renderer) = AudioEngine::new(fmt);
+    engine
+        .play(
+            nyquist,
+            PlayParams {
+                looping: true,
+                bus: BusId::Music,
+                ..PlayParams::default()
+            },
+        )
+        .unwrap();
+
+    let mut out = vec![0.0f32; 512 * 2];
+    for _ in 0..20 {
+        renderer.render(&mut out, 512);
+    }
+    let open = engine.bus_levels()[0];
+    assert!(open[0] > 0.3, "precondition: the open bus passes the tone: {open:?}");
+
+    // Close the Music bus filter to 500 Hz → the Nyquist tone is heavily cut.
+    engine.set_bus_cutoff(BusId::Music, 500.0).unwrap();
+    for _ in 0..40 {
+        renderer.render(&mut out, 512);
+    }
+    let filtered = engine.bus_levels()[0];
+    assert!(
+        filtered[0] < open[0] * 0.5,
+        "the low-pass must attenuate the near-Nyquist tone (open {open:?} → filtered {filtered:?})"
+    );
+}
+
+#[test]
 fn master_direct_voice_ignores_sub_bus_faders() {
     let (mut engine, mut renderer) = AudioEngine::new(AudioFormat::stereo(48_000));
     // A voice on Master (default) is unaffected by a muted sub-bus.

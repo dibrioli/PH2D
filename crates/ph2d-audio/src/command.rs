@@ -92,6 +92,12 @@ pub(crate) enum AudioCommand {
     SetMasterLimiter {
         on: bool,
     },
+    /// Set a sub-bus's low-pass filter coefficients (computed control-side so no
+    /// transcendentals run on the audio thread). Identity = open (bypass).
+    SetBusFilter {
+        bus: BusId,
+        coeffs: BiquadCoeffs,
+    },
 }
 
 /// A message from the audio thread back to the control thread.

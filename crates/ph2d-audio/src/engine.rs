@@ -120,17 +120,28 @@ impl AudioEngine {
         self.send(AudioCommand::SetMasterGain { gain })
     }
 
-    /// Set the master low-pass filter cutoff in Hz. At/near Nyquist the filter
-    /// is effectively open, sent as identity (true bypass). Coefficients are
-    /// computed here on the control thread — no transcendentals on the RT thread.
-    pub fn set_master_cutoff(&self, cutoff_hz: f32) -> Result<(), AudioError> {
+    /// Low-pass coefficients for `cutoff_hz`, or identity (open) at/near Nyquist.
+    /// Computed on the control thread — no transcendentals on the RT thread.
+    fn lowpass_coeffs(&self, cutoff_hz: f32) -> BiquadCoeffs {
         let sr = self.format.sample_rate as f32;
-        let coeffs = if cutoff_hz >= sr * 0.5 * 0.9 {
+        if cutoff_hz >= sr * 0.5 * 0.9 {
             BiquadCoeffs::identity()
         } else {
             BiquadCoeffs::lowpass(sr, cutoff_hz.max(20.0), std::f32::consts::FRAC_1_SQRT_2)
-        };
+        }
+    }
+
+    /// Set the master low-pass filter cutoff in Hz. At/near Nyquist the filter
+    /// is effectively open (true bypass).
+    pub fn set_master_cutoff(&self, cutoff_hz: f32) -> Result<(), AudioError> {
+        let coeffs = self.lowpass_coeffs(cutoff_hz);
         self.send(AudioCommand::SetMasterFilter { coeffs })
+    }
+
+    /// Set a sub-bus's low-pass filter cutoff in Hz (open at/near Nyquist).
+    pub fn set_bus_cutoff(&self, bus: BusId, cutoff_hz: f32) -> Result<(), AudioError> {
+        let coeffs = self.lowpass_coeffs(cutoff_hz);
+        self.send(AudioCommand::SetBusFilter { bus, coeffs })
     }
 
     /// Set a sub-bus fader gain (smoothed). To mute a bus, send `0.0` (the

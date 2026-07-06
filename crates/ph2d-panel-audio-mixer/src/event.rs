@@ -5,8 +5,13 @@ use crate::state::AudioMixerState;
 use crate::{
     AMIX_CLOSE, AMIX_CUTOFF, AMIX_FADER, AMIX_LIMITER, AMIX_MASTER_METER, AMIX_MASTER_MUTE,
     AMIX_PAN, AMIX_PLAY, AudioMixerPanel, SUB_FADER, SUB_METER, SUB_MUTE, SUB_PAN, SUB_SOLO,
-    snapshot,
+    SUB_TONE, snapshot,
 };
+
+/// Log-map a 0..1 tone slider to a cutoff in Hz (20 Hz..20 kHz).
+fn slider_to_hz(v: f32) -> f32 {
+    20.0 * 1000.0_f32.powf(v.clamp(0.0, 1.0)) // LITERAL-PX-OK: cutoff log map (20 Hz..20 kHz)
+}
 use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::WidgetEvent;
 use ph2d_editor_core::panel::{EventOutcome, Panel, PanelHostInternal};
@@ -79,15 +84,14 @@ pub(crate) fn apply_event(
             snapshot::set_master_gain(fader_gain(pos));
             return EventOutcome::Consumed;
         }
-        // Master cutoff dragged — log-map the 0..1 slider to 20 Hz..20 kHz.
+        // Master tone (cutoff) dragged — log-map the 0..1 slider to 20 Hz..20 kHz.
         WidgetEvent::ValueChanged(id) if id == AMIX_CUTOFF => {
             let v = host
                 .store()
                 .slider(AMIX_CUTOFF)
                 .map(|(_, v)| v)
                 .unwrap_or(1.0);
-            let hz = 20.0 * 1000.0_f32.powf(v.clamp(0.0, 1.0)); // LITERAL-PX-OK: cutoff log map (20 Hz..20 kHz)
-            snapshot::set_cutoff(hz);
+            snapshot::set_cutoff(slider_to_hz(v));
             return EventOutcome::Consumed;
         }
         // Master pan dragged — remap 0..1 → -1..1.
@@ -106,6 +110,11 @@ pub(crate) fn apply_event(
             if let Some(i) = SUB_PAN.iter().position(|&p| p == id) {
                 let v = host.store().slider(id).map(|(_, v)| v).unwrap_or(0.5);
                 snapshot::set_sub_pan(i, slider_to_pan(v));
+                return EventOutcome::Consumed;
+            }
+            if let Some(i) = SUB_TONE.iter().position(|&t| t == id) {
+                let v = host.store().slider(id).map(|(_, v)| v).unwrap_or(1.0);
+                snapshot::set_sub_tone(i, slider_to_hz(v));
                 return EventOutcome::Consumed;
             }
         }

@@ -89,6 +89,13 @@ pub const SUB_METER: [NodeId; SUB_BUS_COUNT] = [
     hash_node_id("audio_mixer_ui_meter"),
     hash_node_id("audio_mixer_voice_meter"),
 ];
+/// Per-sub-bus tone (low-pass cutoff) slider ids (drag → that bus's filter).
+pub const SUB_TONE: [NodeId; SUB_BUS_COUNT] = [
+    hash_node_id("audio_mixer_music_tone"),
+    hash_node_id("audio_mixer_sfx_tone"),
+    hash_node_id("audio_mixer_ui_tone"),
+    hash_node_id("audio_mixer_voice_tone"),
+];
 
 /// Zero-size marker implementing the typed Audio Mixer panel contract.
 pub struct AudioMixerPanel;
@@ -150,6 +157,7 @@ mod snapshot {
         static SUB_MUTED: Cell<[bool; SUB_BUS_COUNT]> = const { Cell::new([false; SUB_BUS_COUNT]) };
         static SUB_SOLOED: Cell<[bool; SUB_BUS_COUNT]> = const { Cell::new([false; SUB_BUS_COUNT]) };
         static SUB_PAN: Cell<[f32; SUB_BUS_COUNT]> = const { Cell::new([0.0; SUB_BUS_COUNT]) };
+        static SUB_TONE_HZ: Cell<[f32; SUB_BUS_COUNT]> = const { Cell::new([20_000.0; SUB_BUS_COUNT]) }; // LITERAL-PX-OK: default tone cutoff 20 kHz (open)
     }
 
     /// Decay the held peak toward silence, snapping up to any new peak.
@@ -358,6 +366,21 @@ mod snapshot {
         });
     }
 
+    /// Panel → shell: each sub-bus low-pass cutoff in Hz (from its Tone slider).
+    pub fn sub_tone() -> [f32; SUB_BUS_COUNT] {
+        SUB_TONE_HZ.with(Cell::get)
+    }
+
+    pub(crate) fn set_sub_tone(i: usize, hz: f32) {
+        SUB_TONE_HZ.with(|c| {
+            let mut v = c.get();
+            if let Some(slot) = v.get_mut(i) {
+                *slot = hz;
+            }
+            c.set(v);
+        });
+    }
+
     /// Panel → shell: each sub-bus solo flag. When *any* is set, the shell mutes
     /// every non-soloed sub-bus (so you hear only the soloed ones).
     pub fn sub_soloed() -> [bool; SUB_BUS_COUNT] {
@@ -403,3 +426,5 @@ pub use snapshot::sub_muted;
 pub use snapshot::sub_soloed;
 /// Panel → shell: each sub-bus stereo balance (index-aligned with `BusId::SUB_BUSES`).
 pub use snapshot::sub_pan as sub_pan_target;
+/// Panel → shell: each sub-bus low-pass cutoff in Hz (from its Tone slider).
+pub use snapshot::sub_tone as sub_tone_target;

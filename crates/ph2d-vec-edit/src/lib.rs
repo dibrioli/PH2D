@@ -39,8 +39,32 @@ struct Grab {
     part: Part,
 }
 
-/// Ferramenta Pen + edição de ponto. Sem chrome (roda atrás de flag no shell na
-/// Fase 1; a pill do topbar entra no cutover, Fase R).
+/// Estilo aplicado a paths **recém-criados** pelo Pen. O shell sincroniza a partir
+/// da tool (`ph2d-tool-vector`): traço, largura em px, e o fill usado ao fechar.
+/// Default = as cores de scaffold da Fase 1.
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub struct PenStyle {
+    /// Cor do traço dos paths desenhados.
+    pub stroke: Rgba8,
+    /// Largura do traço em **pixels de tela** (o shell multiplica por `px_to_world`).
+    pub stroke_w_px: f64,
+    /// Preenchimento aplicado ao FECHAR um path.
+    pub fill: Rgba8,
+}
+
+impl Default for PenStyle {
+    fn default() -> Self {
+        Self {
+            stroke: PEN_STROKE,
+            stroke_w_px: 3.0,
+            fill: PEN_FILL,
+        }
+    }
+}
+
+/// Ferramenta Pen + edição de ponto. O estado de documento (`VecScene`) e a
+/// history moram no shell (document ≠ tool); esta struct é a máquina de estado
+/// de interação. Ativada pela tool real `ph2d-tool-vector` (cutover Fase R).
 #[derive(Default)]
 pub struct PenTool {
     /// Path em construção (None = a próxima pressão edita ou começa um novo).
@@ -51,6 +75,8 @@ pub struct PenTool {
     dragging: bool,
     /// Elemento agarrado para edição (entre press e release).
     grab: Option<Grab>,
+    /// Estilo dos paths recém-criados (sincronizado da tool pelo shell).
+    style: PenStyle,
 }
 
 impl PenTool {
@@ -78,16 +104,29 @@ impl PenTool {
         self.selected = id;
     }
 
-    /// Zera todo o estado (ex.: após apagar o path selecionado).
+    /// Zera todo o estado (ex.: após apagar o path selecionado), preservando o
+    /// estilo corrente (é config da tool, não estado de interação).
     pub fn clear(&mut self) {
+        let style = self.style;
         *self = Self::default();
+        self.style = style;
+    }
+
+    /// Estilo dos paths recém-criados.
+    pub fn style(&self) -> PenStyle {
+        self.style
+    }
+
+    /// Ajusta o estilo aplicado aos próximos paths (o shell sincroniza da tool).
+    pub fn set_style(&mut self, style: PenStyle) {
+        self.style = style;
     }
 
     /// Pressão primária em world-space `p`. `px_to_world` = world-units por pixel.
     pub fn on_press(&mut self, scene: &mut VecScene, p: [f64; 2], px_to_world: f64) -> PenClick {
         let close_dist = 12.0 * px_to_world;
         let hit_r = 10.0 * px_to_world;
-        let stroke_w = 3.0 * px_to_world;
+        let stroke_w = self.style.stroke_w_px * px_to_world;
 
         // Desenhando → continua o pen (adiciona/fecha).
         if let Some(id) = self.active {
@@ -102,7 +141,7 @@ impl PenTool {
                 let (dx, dy) = (p[0] - first.anchor[0], p[1] - first.anchor[1]);
                 if (dx * dx + dy * dy).sqrt() <= close_dist {
                     path.closed = true;
-                    path.fill = Some(PEN_FILL);
+                    path.fill = Some(self.style.fill);
                     self.active = None;
                     self.dragging = false;
                     return PenClick::Closed;
@@ -126,7 +165,7 @@ impl PenTool {
             verts: vec![VecVertex::corner(p)],
             closed: false,
             fill: None,
-            stroke: Some((PEN_STROKE, stroke_w)),
+            stroke: Some((self.style.stroke, stroke_w)),
         });
         self.active = Some(id);
         self.selected = Some(id);
@@ -426,5 +465,32 @@ mod tests {
         h.begin(&scene);
         h.commit_if_changed(&scene); // nada mudou entre begin e commit
         assert!(!h.can_undo());
+    }
+
+    #[test]
+    fn set_style_colors_new_paths_and_survives_clear() {
+        let mut scene = VecScene::new();
+        let mut pen = PenTool::new();
+        let style = PenStyle {
+            stroke: Rgba8::new(200, 40, 40, 255),
+            stroke_w_px: 5.0,
+            fill: Rgba8::new(40, 200, 40, 128),
+        };
+        pen.set_style(style);
+        pen.on_press(&mut scene, [0.0, 0.0], PTW);
+        let (stroke, w) = scene.paths()[0].stroke.expect("stroke");
+        assert_eq!(stroke, style.stroke);
+        assert_eq!(w, style.stroke_w_px * PTW);
+        // Fechar aplica o fill do estilo.
+        pen.on_release();
+        pen.on_press(&mut scene, [4.0, 0.0], PTW);
+        pen.on_release();
+        pen.on_press(&mut scene, [4.0, 4.0], PTW);
+        pen.on_release();
+        pen.on_press(&mut scene, [0.02, 0.0], PTW); // fecha
+        assert_eq!(scene.paths()[0].fill, Some(style.fill));
+        // O estilo é config da tool → sobrevive a `clear`.
+        pen.clear();
+        assert_eq!(pen.style(), style);
     }
 }

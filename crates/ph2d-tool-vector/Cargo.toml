@@ -1,0 +1,33 @@
+[package]
+name = "ph2d-tool-vector"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+publish.workspace = true
+
+# Vector drawing tool — the single first-class tool of the repositioned
+# Vector Module (ADR-0108). Graduates the `ph2d-vec-*` engine (scene / edit /
+# render / boolean) into a real `vector_tools`-cluster pill with a topbar
+# activation, replacing the five retired `ph2d-tool-vector-*` tools.
+#
+# Drop-crate per DIRETRIZ §3.A: the tool owns only STYLE config (stroke / fill
+# palette + width). The document (`VecScene`) + interaction (`PenTool`,
+# `History`) live in the shell (document ≠ tool); the shell bridges route the
+# pointer + render the scene by downcasting this tool for its style.
+
+[lib]
+
+[dependencies]
+# Tool contract + ToolManifest + chrome Registry + panel widgets.
+ph2d-tool-registry = { path = "../ph2d-tool-registry" }
+ph2d-editor-core = { path = "../ph2d-editor-core" }
+
+# A11y role + NodeId (panel control ids).
+ph2d-a11y = { path = "../ph2d-a11y" }
+# MemoryBudget canonical (HR-13 boot check).
+ph2d-core = { path = "../ph2d-core" }
+
+# Vello / kurbo via ph2d-vector for the icon BezPath.
+ph2d-vector = { path = "../ph2d-vector" }

@@ -47,6 +47,7 @@
 - [Full gate periodicamente](feedback_full_gate_periodically.md) — ship.sh/nextest na wave; cargo-check esconde gates; re-lock cook hash ao mudar serialização
 - [Ship-prep no-fail-fast](feedback_ship_prep_no_fail_fast.md) — `nextest --no-fail-fast` enumera TODAS as falhas; ship.sh é fail-fast
 - [CI cold-build = @stable rust-cache drift](project_ci_rustcache_stable_drift_pin.md) — `@stable` rotaciona rustc-hash → cache bust; fix timeout 45→90 + pin `@1.95`. Lockfile igual+rustc-hash mudou = drift
+- [ship.sh ≠ 100% paridade CI](feedback_ship_parity_gaps_ci_only.md) — bindgen --check FORA do ship; advisory-db local envelhece (RUSTSEC novo escapa); nextest-impacted quebra em cutover que deleta crates
 
 ## Auditoria
 - [Menu "não faz nada" = falta registro no populate](feedback_context_menu_closes_on_down_repaint.md) — grep o id no `populate_*` PRIMEIRO; repaint/close-on-Down = red herring; não mexer no dispatch global

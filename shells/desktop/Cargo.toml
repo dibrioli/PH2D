@@ -238,6 +238,8 @@ gilrs = "0.11"
 # backend lives in the shell, never in `ph2d-audio`); the core `AudioRenderer`
 # fills the callback buffer. cpal on Linux uses ALSA (`alsa-lib`).
 ph2d-audio = { path = "../../crates/ph2d-audio" }
+# Load-time decode of real audio files (PH2D_AUDIO_FILE smoke) → SampleData.
+ph2d-audio-decode = { path = "../../crates/ph2d-audio-decode" }
 cpal = "0.15"
 # arboard: system clipboard read/write for the Cmd+C/V/X handlers in
 # ph2d-editor's dispatch. Constructed once at startup; pasted text is

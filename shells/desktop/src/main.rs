@@ -122,13 +122,17 @@ impl App {
                 None
             }
         };
-        // Phase 2.1: open the audio device (None = run silent). The
-        // `PH2D_AUDIO_SMOKE` env plays a 440 Hz beep at launch to prove the path.
+        // Phase 2.1/2.2: open the audio device (None = run silent). Env smokes:
+        // `PH2D_AUDIO_SMOKE` plays a 440 Hz beep; `PH2D_AUDIO_FILE=<path>`
+        // decodes + loop-plays a real audio file.
         let mut audio = crate::audio::AudioSystem::new();
-        if std::env::var_os("PH2D_AUDIO_SMOKE").is_some()
-            && let Some(a) = audio.as_mut()
-        {
-            a.play_test_tone();
+        if let Some(a) = audio.as_mut() {
+            if std::env::var_os("PH2D_AUDIO_SMOKE").is_some() {
+                a.play_test_tone();
+            }
+            if let Some(path) = std::env::var_os("PH2D_AUDIO_FILE") {
+                a.play_file(std::path::Path::new(&path));
+            }
         }
         Self {
             window: None,

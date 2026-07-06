@@ -97,6 +97,40 @@ impl AudioSystem {
             Err(e) => eprintln!("audio: test tone dropped ({e})"),
         }
     }
+
+    /// Decode and loop-play an audio file (the `PH2D_AUDIO_FILE` smoke). The
+    /// clip's own sample rate is resampled to the device rate by the voice.
+    pub(crate) fn play_file(&mut self, path: &std::path::Path) {
+        let bytes = match std::fs::read(path) {
+            Ok(b) => b,
+            Err(e) => {
+                eprintln!("audio: cannot read {}: {e}", path.display());
+                return;
+            }
+        };
+        let data = match ph2d_audio_decode::decode(&bytes) {
+            Ok(d) => d,
+            Err(e) => {
+                eprintln!("audio: decode failed for {}: {e}", path.display());
+                return;
+            }
+        };
+        let fmt = data.format();
+        let secs = fmt.frames_to_secs(data.frame_count() as u64);
+        let params = PlayParams {
+            looping: true,
+            ..PlayParams::default()
+        };
+        match self.engine.play(data, params) {
+            Ok(_) => println!(
+                "audio: looping {} ({secs:.1}s, {} Hz, {:?})",
+                path.display(),
+                fmt.sample_rate,
+                fmt.channels
+            ),
+            Err(e) => eprintln!("audio: play failed ({e})"),
+        }
+    }
 }
 
 /// Build the output stream for device sample type `T`. The mixer renders into a

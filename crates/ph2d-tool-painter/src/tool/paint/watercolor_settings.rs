@@ -4,6 +4,7 @@
 //! shares `PainterTool`'s private `paint.brush` access. The stored values are consumed at stamp time
 //! (granulation / pigment, `ph2d_painter_brush::dab`) and at stroke end (edge darkening).
 
+use super::brush_settings::BrushTextureImage;
 use crate::tool::PainterTool;
 use ph2d_editor_core::tool::PanelEvent;
 use ph2d_painter_brush::{BrushSpec, TextureKind, TextureMapping, TextureSettings};
@@ -129,24 +130,24 @@ impl PainterTool {
         b.warp = d.warp;
     }
 
-    /// Install a tagged Hierarchy layer/group (its luminance `lum`, `width × height`) as the watercolor
-    /// **paper**: the Grain slot becomes that image, canvas-anchored (Tiled), and the Watercolor
-    /// render-path is turned on so the wash granulates against the layer's own tooth (Fase D — "Use as
-    /// Paper"). Moderate granulation (a paper *surface*). A Group tag passes the composited group pixels.
+    /// Install a tagged Hierarchy layer/group (its luminance `lum`, `width × height`) into the watercolor
+    /// **Paper** slot: the substrate tooth the wash sits on (Fase D — "Use as Paper"). Canvas-anchored; the
+    /// render-path is turned on. A Group tag passes the composited group pixels.
     pub fn use_layers_as_watercolor_paper(&mut self, lum: Vec<u8>, width: u32, height: u32) {
-        self.set_brush_texture_image(lum, width, height);
-        self.paint.brush.texture.mapping = TextureMapping::Tiled;
+        self.paint.paper_image = Some(BrushTextureImage::new(lum, width, height));
+        self.paint.brush.paper.kind = TextureKind::Image;
+        self.paint.brush.paper.mapping = TextureMapping::Tiled;
         self.paint.brush.watercolor = true;
-        if self.paint.brush.granulation <= 0.0 {
-            self.paint.brush.granulation = 0.30; // LITERAL-OK: default paper-surface granulation
-        }
     }
 
-    /// As [`Self::use_layers_as_watercolor_paper`] but as the **granulation** map (Fase D — "Use as
-    /// Granulation"): a stronger mineral-settling bite, so the pigment pools harder in the layer's valleys.
+    /// Install a tagged layer/group into the watercolor **Granulation** slot: the mineral-settling map,
+    /// DISTINCT from the paper (Fase D — "Use as Granulation"). Turns off "Same as Paper" so this map is
+    /// used, and gives a pronounced granulation amount so the pigment pools in the layer's valleys.
     pub fn use_layers_as_granulation(&mut self, lum: Vec<u8>, width: u32, height: u32) {
-        self.set_brush_texture_image(lum, width, height);
-        self.paint.brush.texture.mapping = TextureMapping::Tiled;
+        self.paint.granulation_image = Some(BrushTextureImage::new(lum, width, height));
+        self.paint.brush.granulation_tex.kind = TextureKind::Image;
+        self.paint.brush.granulation_tex.mapping = TextureMapping::Tiled;
+        self.paint.brush.granulation_use_paper = false;
         self.paint.brush.watercolor = true;
         self.paint.brush.granulation = 0.65; // LITERAL-OK: pronounced mineral-settling granulation
     }
@@ -174,9 +175,9 @@ impl PainterTool {
                 warp: 6.0,         // LITERAL-OK: wet_edges warpAmp
                 granulation: 0.30, // LITERAL-OK: wet_edges granAmt
                 pigment: false,
-                // Grain slot = a canvas-anchored cold-press Paper, so the wash granulates against a real
-                // paper tooth (the render-path reads the Tiled Grain — Fase C deep integration).
-                texture: TextureSettings {
+                // Paper slot = a canvas-anchored cold-press paper (the substrate the wash sits on);
+                // Granulation follows the paper's tooth (Same as Paper, the default).
+                paper: TextureSettings {
                     kind: TextureKind::PaperCold,
                     mapping: TextureMapping::Tiled,
                     ..TextureSettings::default()
@@ -270,9 +271,9 @@ mod tests {
         assert_eq!(b.depth, 1.2, "wet_edges depth");
         assert_eq!(b.color, [0.2, 0.6, 0.9], "colour preserved across the preset");
         assert_eq!(t.paint.brush.radius_px, 40.0, "radius preserved across the preset");
-        // Grain slot wired to a canvas-anchored cold-press Paper (Fase C deep integration).
-        assert_eq!(t.paint.brush.texture.kind, TextureKind::PaperCold, "Grain = cold-press paper");
-        assert_eq!(t.paint.brush.texture.mapping, TextureMapping::Tiled, "paper is canvas-anchored");
+        // Paper slot wired to a canvas-anchored cold-press paper (the substrate the wash sits on).
+        assert_eq!(t.paint.brush.paper.kind, TextureKind::PaperCold, "Paper = cold-press");
+        assert_eq!(t.paint.brush.paper.mapping, TextureMapping::Tiled, "paper is canvas-anchored");
 
         // Digital Basic (idx 0): back to the plain brush, colour + size still preserved.
         t.handle_panel_event(PanelEvent::SelectOption(core_ids::PAINTER_BRUSH_PRESET, "0".into()));
@@ -282,27 +283,28 @@ mod tests {
         assert_eq!(t.paint.brush.radius_px, 40.0, "radius still preserved");
     }
 
-    /// Fase D — a tagged layer installs as the watercolor paper: the Grain slot becomes a canvas-anchored
-    /// Image, the render-path turns on, and granulation is set (moderate for Paper, strong for Granulation).
+    /// A tagged layer installs into the RIGHT slot: "Use as Paper" → the Paper slot; "Use as Granulation"
+    /// → the Granulation slot (Same-as-Paper off, its own map). The two are distinct destinations, not the
+    /// same Grain slot (the bug Enio caught).
     #[test]
-    fn use_layers_as_paper_and_granulation_install_the_grain_image() {
+    fn use_layers_routes_paper_and_granulation_to_separate_slots() {
         let lum = vec![128u8; 8 * 8];
 
         let mut t = PainterTool::default();
         t.use_layers_as_watercolor_paper(lum.clone(), 8, 8);
         let b = &t.paint.brush;
-        assert_eq!(b.texture.kind, TextureKind::Image, "paper → Grain Image");
-        assert_eq!(b.texture.mapping, TextureMapping::Tiled, "canvas-anchored");
+        assert_eq!(b.paper.kind, TextureKind::Image, "paper → Paper slot Image");
+        assert_eq!(b.paper.mapping, TextureMapping::Tiled, "canvas-anchored");
         assert!(b.watercolor, "render-path on");
-        assert!((b.granulation - 0.30).abs() < 1e-6, "moderate paper granulation");
-        assert!(t.brush_texture_image().is_some(), "the layer pixels are stored");
+        // The Grain slot is untouched (Paper is its own slot now).
+        assert_eq!(b.texture.kind, TextureKind::None, "the per-dab Grain slot is not touched");
 
         let mut t2 = PainterTool::default();
         t2.use_layers_as_granulation(lum, 8, 8);
-        assert!(
-            (t2.paint.brush.granulation - 0.65).abs() < 1e-6,
-            "granulation is a stronger mineral-settling bite"
-        );
-        assert_eq!(t2.paint.brush.texture.mapping, TextureMapping::Tiled);
+        let b2 = &t2.paint.brush;
+        assert_eq!(b2.granulation_tex.kind, TextureKind::Image, "granulation → Granulation slot Image");
+        assert!(!b2.granulation_use_paper, "granulation uses its OWN map, not the paper");
+        assert!((b2.granulation - 0.65).abs() < 1e-6, "pronounced mineral-settling amount");
+        assert_eq!(b2.paper.kind, TextureKind::None, "the Paper slot is not touched by the granulation tag");
     }
 }

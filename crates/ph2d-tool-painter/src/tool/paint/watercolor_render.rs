@@ -37,6 +37,11 @@ const PAPER: [u8; 3] = [239, 233, 220];
 /// back to the live brush colour (wet_edges `COL_EPS`) — a faint rim carries the fresh pigment, not noise.
 const COL_EPS: u8 = 20;
 
+/// Fixed strength of the **Paper** substrate tooth in the density (how much an active Paper always
+/// textures the wash, before the separate Granulation amount): `±PAPER_TOOTH/2` around neutral. A paper
+/// property, not a slider — the artist controls its look via the Paper preset + Contrast + Size.
+const PAPER_TOOTH: f32 = 0.5; // LITERAL-OK: watercolor paper-substrate tooth strength
+
 // ── Coverage / colour feather (wet_edges `stampCoverage` radial-gradient stops) ─────────────────────
 /// The soft-disc weight at normalised radius `dn ∈ [0, 1]`: `1.0` at the centre, `0.92` at `0.62`,
 /// `0` at the rim (the two-segment linear gradient of `stampCoverage` / `stampColor`).
@@ -409,17 +414,19 @@ impl PainterTool {
         let edge_gain = brush.edge_gain.max(0.0);
         let granulation = brush.granulation.clamp(0.0, 1.0);
         let pigment_mix = brush.effective_pigment_mix();
-        // Deep integration (Fase C): when the Grain slot holds a canvas-anchored (Tiled) texture — e.g. a
-        // Paper — the wash granulates against THAT real paper height-field; otherwise a built-in paper noise.
-        let grain_tex = brush.texture;
-        let grain_paper = granulation > 0.0
-            && grain_tex.is_active()
-            && matches!(grain_tex.mapping, ph2d_painter_brush::TextureMapping::Tiled);
-        // A tagged layer (Fase D "Use as Paper/Granulation") lands in the Grain slot as a Tiled Image; the
-        // pixels live here, so hand them to the sampler (procedural papers ignore it).
-        let grain_img = self.paint.texture_image.as_ref().map(|i| i.as_mask());
-        // Precompute the paper's Angle rotation basis ONCE (the per-degree walk is not per-pixel-cheap).
-        let grain_rot = ph2d_painter_brush::texture::angle_basis(grain_tex.angle_deg);
+        // ── Paper (substrate tooth) + Granulation (mineral-settling mottle) — two canvas-anchored slots.
+        // The Paper always textures the wash subtly (a physical substrate); the Granulation adds the
+        // pronounced heavy-pigment settling by `granulation` amount, into its OWN map or (Same as Paper,
+        // the default) the paper's tooth. An inactive Paper falls back to the built-in noise.
+        let paper_tex = brush.paper;
+        let paper_active = paper_tex.is_active();
+        let paper_img = self.paint.paper_image.as_ref().map(|i| i.as_mask());
+        // Precompute each slot's Angle rotation basis ONCE (the per-degree walk is not per-pixel-cheap).
+        let paper_rot = ph2d_painter_brush::texture::angle_basis(paper_tex.angle_deg);
+        let gran_tex = brush.granulation_tex;
+        let gran_own_map = !brush.granulation_use_paper && gran_tex.is_active();
+        let gran_img = self.paint.granulation_image.as_ref().map(|i| i.as_mask());
+        let gran_rot = ph2d_painter_brush::texture::angle_basis(gran_tex.angle_deg);
         // Fallback pigment when the colour buffer is faint (straight brush colour → sRGB bytes).
         let fallback = [
             (brush.color[0].clamp(0.0, 1.0) * 255.0 + 0.5) as u8,
@@ -461,19 +468,39 @@ impl PainterTool {
                 }
                 let inner = sample_bilinear(&blur, bw, bh, sx, sy).min(1.0);
                 let edge = (cw * (1.0 - inner) * edge_gain).clamp(0.0, 1.0);
-                // Paper tooth: the selected Grain paper (canvas-anchored) or the built-in noise fallback.
-                let paper_h = if grain_paper {
+                // Paper tooth (substrate): the active Paper slot, or the built-in noise fallback.
+                let paper_h = if paper_active {
                     ph2d_painter_brush::texture::sample_tiled_rot(
-                        &grain_tex,
+                        &paper_tex,
                         gx as i64,
                         gy as i64,
-                        grain_img.as_ref(),
-                        grain_rot,
+                        paper_img.as_ref(),
+                        paper_rot,
                     )
                 } else {
                     paper_height(gx as f32, gy as f32)
                 };
-                let gran = 1.0 + (paper_h - 0.5) * 2.0 * granulation;
+                // Granulation field: its own map, or (Same as Paper) the paper's tooth.
+                let gran_h = if gran_own_map {
+                    ph2d_painter_brush::texture::sample_tiled_rot(
+                        &gran_tex,
+                        gx as i64,
+                        gy as i64,
+                        gran_img.as_ref(),
+                        gran_rot,
+                    )
+                } else {
+                    paper_h
+                };
+                // Additive: the paper always textures the wash subtly (only when a Paper is set); the
+                // granulation adds the pronounced mineral mottle by amount. `PAPER_TOOTH` is the fixed
+                // substrate strength (an inherent property of the paper, not a slider).
+                let paper_component = if paper_active {
+                    (paper_h - 0.5) * PAPER_TOOTH
+                } else {
+                    0.0
+                };
+                let gran = (1.0 + paper_component + (gran_h - 0.5) * 2.0 * granulation).max(0.0);
                 let density = ((cw * fill + edge) * gran).max(0.0);
                 let od = density * depth;
 

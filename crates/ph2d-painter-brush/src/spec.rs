@@ -197,6 +197,20 @@ pub struct BrushSpec {
     /// coverage sampling so the wash boundary is organic (ragged), not a clean disc. `0` = a crisp edge.
     /// Only read by the render-path.
     pub warp: f32,
+
+    // ── Watercolor Paper + Granulation (canvas-anchored substrate maps; render-path only) ──────────
+    /// The **Paper** slot: the substrate tooth (a procedural `Paper*`/other kind or an `Image` — a tagged
+    /// layer, `docs/Painter/10…` §5). Always canvas-anchored (Tiled), so it's a fixed height-field over the
+    /// image. Feeds the wash's paper texture. `None` (default) → the render-path's built-in paper noise.
+    pub paper: TextureSettings,
+    /// The **Granulation** slot: where heavy mineral pigment separates + settles (the mottle), a distinct
+    /// map from the paper. Used only when [`Self::granulation_use_paper`] is false. Its strength is the
+    /// existing [`Self::granulation`] amount. Also canvas-anchored.
+    pub granulation_tex: TextureSettings,
+    /// **Granulation "Same as Paper"**: when true (default), the granulation settles into the *paper's* own
+    /// tooth (the common case — heavy pigment pools in the paper valleys), so [`Self::granulation_tex`] is
+    /// ignored and only the [`Self::granulation`] amount applies. False → the granulation has its own map.
+    pub granulation_use_paper: bool,
 }
 
 impl Default for BrushSpec {
@@ -251,6 +265,11 @@ impl Default for BrushSpec {
             fill: 0.12,
             depth: 1.2,
             warp: 6.0,
+            // Paper / Granulation slots: inactive by default (the render-path falls back to its built-in
+            // paper noise); granulation follows the paper's tooth until the artist gives it its own map.
+            paper: TextureSettings::default(),
+            granulation_tex: TextureSettings::default(),
+            granulation_use_paper: true,
         }
     }
 }

@@ -115,6 +115,8 @@ impl Default for PaintState {
             stencil_grab: None,
             stencil_preview_s: 0.0,
             texture_image: None,
+            paper_image: None,
+            granulation_image: None,
             texture_image_pending: false,
             texture_image_version: 0,
             shape_image: None,

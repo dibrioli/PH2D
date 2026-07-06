@@ -337,6 +337,11 @@ pub(crate) struct PaintState {
     stencil_preview_s: f32,
     /// Imported brush-**Grain** luminance (heavy → not in the `Copy` spec); borrowed as an `ImageMask`.
     texture_image: Option<brush_settings::BrushTextureImage>,
+    /// Watercolor **Paper** slot luminance (a tagged layer used as the substrate; `paper.kind == Image`).
+    /// Heavy, so out of the `Copy` spec; borrowed as an `ImageMask` by the render-path ([`watercolor_render`]).
+    paper_image: Option<brush_settings::BrushTextureImage>,
+    /// Watercolor **Granulation** slot luminance (a tagged layer used as the mineral-settling map).
+    granulation_image: Option<brush_settings::BrushTextureImage>,
     /// Set when the user picks the Image kind; the shell polls it to open a file picker.
     texture_image_pending: bool,
     /// Bumped whenever [`texture_image`] changes, so the stamp cache re-renders the Image mask.

@@ -28,8 +28,8 @@ pub const TEX_OFFSET_MIN: f32 = -1.0;
 pub const TEX_OFFSET_MAX: f32 = 1.0;
 /// **Size** (scale) range. `1.0` = one tile per footprint (View) / per [`TEX_TILE_BASE_PX`] (Tiled).
 pub const TEX_SIZE_MIN: f32 = 0.1;
-/// See [`TEX_SIZE_MIN`].
-pub const TEX_SIZE_MAX: f32 = 10.0;
+/// See [`TEX_SIZE_MIN`]. Wide (`100×`) so a paper/grain can tile very fine or very coarse (Enio 2026-07-05).
+pub const TEX_SIZE_MAX: f32 = 100.0;
 /// Canvas pixels spanned by one texture tile at Size `1.0` under the **Tiled** mapping.
 pub const TEX_TILE_BASE_PX: f32 = 256.0;
 

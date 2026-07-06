@@ -28,7 +28,8 @@ pub fn apply(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
         if currently_active {
             hero.bus.push(EditorAction::CancelActiveTool);
         } else {
-            hero.bus.push(EditorAction::ActivateTool { tool_id: "vector" });
+            hero.bus
+                .push(EditorAction::ActivateTool { tool_id: "vector" });
         }
         return true;
     }

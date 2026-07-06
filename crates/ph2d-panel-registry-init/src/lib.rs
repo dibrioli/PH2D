@@ -109,14 +109,6 @@ mod tests {
         {
             n += 1;
         }
-        #[cfg(feature = "panel-vector-inspector")]
-        {
-            n += 1;
-        }
-        #[cfg(feature = "panel-vector-graph")]
-        {
-            n += 1;
-        }
         #[cfg(feature = "panel-upscale")]
         {
             n += 1;

@@ -1,10 +1,10 @@
 //! [`VectorTool`] — style model + panel for the Vector drawing tool.
 //!
-//! The tool is deliberately thin: it holds the current **stroke / fill colour
-//! + stroke width**, projected into a [`FloatingPanel`] (a Width slider + two
-//! colour palettes). The shell's `vector_bridge` reads this style each frame
-//! (downcast via [`Tool::as_any_mut`]) to (a) restyle newly drawn paths and
-//! (b) recolour the selected path when the palette changes.
+//! The tool is deliberately thin: it holds the current stroke colour, fill
+//! colour, and stroke width, projected into a [`FloatingPanel`] (a Width
+//! slider plus two colour palettes). The shell's `vector_bridge` reads this
+//! style each frame (downcast via [`Tool::as_any_mut`]) to restyle newly drawn
+//! paths and to recolour the selected path when the palette changes.
 //!
 //! Colour uses a **curated palette** (RadioGroup) rather than a live picker:
 //! the picker is a chrome-side widget system and a tool `FloatingPanel` routes
@@ -13,7 +13,9 @@
 //! picker is a follow-up increment.
 
 use ph2d_a11y::NodeId;
-use ph2d_editor_core::floating_panel::{FloatingPanel, PanelAnchor, PanelControl, PanelTab, ToolId};
+use ph2d_editor_core::floating_panel::{
+    FloatingPanel, PanelAnchor, PanelControl, PanelTab, ToolId,
+};
 use ph2d_editor_core::tool::{PanelEvent, Tool};
 use ph2d_editor_core::widget::{RadioGroup, RadioOption, Slider};
 

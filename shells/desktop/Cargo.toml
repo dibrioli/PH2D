@@ -38,8 +38,6 @@ ph2d-eval-motion = { path = "../../crates/ph2d-eval-motion" }
 ph2d-node-motion-grid = { path = "../../crates/ph2d-node-motion-grid" }
 ph2d-node-motion-transform = { path = "../../crates/ph2d-node-motion-transform" }
 ph2d-node-motion-clone = { path = "../../crates/ph2d-node-motion-clone" }
-# register_all_nodes gives every node by type-id without a per-node dep.
-ph2d-node-registry-init = { path = "../../crates/ph2d-node-registry-init" }
 # Tool registry — convention-by-discovery infrastructure (PR 8 of
 # the migration plan: `docs/Migracao/2026-05-convention-by-discovery.md`).
 # `init.rs` calls `register_all()` at boot and stashes the built
@@ -172,7 +170,6 @@ ph2d-vec-render = { path = "../../crates/ph2d-vec-render" }
 ph2d-vec-edit = { path = "../../crates/ph2d-vec-edit" }
 # ADR-0108 Fase 1: booleanas edit-time (union/intersect/subtract via linesweeper).
 ph2d-vec-boolean = { path = "../../crates/ph2d-vec-boolean" }
-glam = "0.30"
 ph2d-text = { path = "../../crates/ph2d-text" }
 # bevy_ecs is required as a direct dep so `#[derive(Component)]` can
 # resolve its `::bevy_ecs::*` absolute paths. The shell is the

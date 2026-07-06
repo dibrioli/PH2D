@@ -33,10 +33,10 @@ pub(super) fn dispatch(
 ) {
     // The tool persists in the registry whether or not it is active, so its
     // Style survives tool switches (mirror of the painter bridge).
-    let Some(tool) = tools
-        .tool_by_id_mut(&ToolId::new("vector"))
-        .and_then(|t| t.as_any_mut().downcast_mut::<ph2d_tool_vector::VectorTool>())
-    else {
+    let Some(tool) = tools.tool_by_id_mut(&ToolId::new("vector")).and_then(|t| {
+        t.as_any_mut()
+            .downcast_mut::<ph2d_tool_vector::VectorTool>()
+    }) else {
         return;
     };
 

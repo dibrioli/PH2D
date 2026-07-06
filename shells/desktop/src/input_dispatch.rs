@@ -448,7 +448,6 @@ impl App {
         }
     }
 
-
     pub(crate) fn on_mouse_input(&mut self, state: ElementState, button: MouseButton) {
         let kind = match state {
             ElementState::Pressed => PointerKind::Down,

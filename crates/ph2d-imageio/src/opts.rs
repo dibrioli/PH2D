@@ -223,6 +223,13 @@ pub enum ExportFormat {
     Avif,
     /// W3.T5 — Scalable Vector Graphics (BezPath, paint stack).
     Svg,
+    /// `line/imageio` — Truevision TGA (classic game-art interchange,
+    /// 8-bit RGBA, RLE). No header magic; identified by extension +
+    /// optional v2 footer signature.
+    Tga,
+    /// `line/imageio` — QOI (Quite OK Image; lossless, fast decode).
+    /// Strong `qoif` magic — good import + cook target.
+    Qoi,
 }
 
 impl ExportFormat {
@@ -246,6 +253,8 @@ impl ExportFormat {
             Self::HdrRadiance => "hdr",
             Self::Avif => "avif",
             Self::Svg => "svg",
+            Self::Tga => "tga",
+            Self::Qoi => "qoi",
         }
     }
 
@@ -268,6 +277,8 @@ impl ExportFormat {
             Self::HdrRadiance => "image/vnd.radiance",
             Self::Avif => "image/avif",
             Self::Svg => "image/svg+xml",
+            Self::Tga => "image/x-targa",
+            Self::Qoi => "image/qoi",
         }
     }
 }

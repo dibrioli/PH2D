@@ -362,10 +362,9 @@ pub(crate) fn build_initial_state(
             );
             ph2d_vec_scene::VecScene::new()
         }
-        _ => {
-            eprintln!("[ph2d-vec] Fase 0: cena-demo (smiley); PH2D_VEC_DEMO_N p/ a grade");
-            ph2d_vec_scene::VecScene::demo()
-        }
+        // Default (sem flag): cena VAZIA — a feature é 100% flag-gated, o app
+        // normal não mostra nada da pipeline vetorial nova.
+        _ => ph2d_vec_scene::VecScene::new(),
     };
 
     let gfx = AppGfx {

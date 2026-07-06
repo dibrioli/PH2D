@@ -135,10 +135,15 @@ impl VecScene {
     }
 }
 
+/// Escala da cena-demo em world-units. A câmera-default enquadra uma região
+/// pequena → 1% do tamanho original (Enio smoke 2026-07-05: "objetos gigantes,
+/// canvas todo azul"). Um knob só, trivial de re-tunar.
+const DEMO_SCALE: f64 = 0.01;
+
 /// Círculo aproximado por 4 cúbicas (magic-number canônico de círculo-Bézier
 /// `k = r·0.55228…`, não constante inventada), fechado e preenchido.
 fn demo_blob() -> VecPath {
-    let r = 120.0_f64;
+    let r = 120.0 * DEMO_SCALE;
     let k = r * 0.552_284_75;
     VecPath {
         id: 0,
@@ -154,27 +159,30 @@ fn demo_blob() -> VecPath {
     }
 }
 
-/// Arco aberto (uma cúbica), traçado claro — prova o caminho de stroke.
+/// Arco aberto (uma cúbica), traçado claro — prova o caminho de stroke. Largura
+/// proporcional ao raio (30%) para ficar visível em qualquer `DEMO_SCALE`.
 fn demo_curve() -> VecPath {
+    let p = |x: f64, y: f64| [x * DEMO_SCALE, y * DEMO_SCALE];
+    let width = 120.0 * DEMO_SCALE * 0.3;
     VecPath {
         id: 0,
         verts: vec![
             VecVertex {
-                anchor: [-160.0, -150.0],
-                in_handle: [-160.0, -150.0],
-                out_handle: [-40.0, -280.0],
+                anchor: p(-160.0, -150.0),
+                in_handle: p(-160.0, -150.0),
+                out_handle: p(-40.0, -280.0),
                 kind: VertexKind::Corner,
             },
             VecVertex {
-                anchor: [160.0, -150.0],
-                in_handle: [40.0, -280.0],
-                out_handle: [160.0, -150.0],
+                anchor: p(160.0, -150.0),
+                in_handle: p(40.0, -280.0),
+                out_handle: p(160.0, -150.0),
                 kind: VertexKind::Corner,
             },
         ],
         closed: false,
         fill: None,
-        stroke: Some((Rgba8::new(240, 240, 245, 255), 6.0)),
+        stroke: Some((Rgba8::new(240, 240, 245, 255), width)),
     }
 }
 

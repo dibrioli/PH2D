@@ -85,9 +85,33 @@ fn paint_column(scene: &mut VectorScene, col: Rect, level: f32, theme: Theme) {
     let radius = Radius::Xs.px();
     fill_rounded_rect(scene, col, radius, resolve(ColorToken::Bg2, theme));
     let level = level.clamp(0.0, 1.0);
-    draw_segment(scene, col, 0.0, ZONE_WARN, level, ColorToken::Success, theme);
-    draw_segment(scene, col, ZONE_WARN, ZONE_DANGER, level, ColorToken::Warn, theme);
-    draw_segment(scene, col, ZONE_DANGER, 1.0, level, ColorToken::Danger, theme);
+    draw_segment(
+        scene,
+        col,
+        0.0,
+        ZONE_WARN,
+        level,
+        ColorToken::Success,
+        theme,
+    );
+    draw_segment(
+        scene,
+        col,
+        ZONE_WARN,
+        ZONE_DANGER,
+        level,
+        ColorToken::Warn,
+        theme,
+    );
+    draw_segment(
+        scene,
+        col,
+        ZONE_DANGER,
+        1.0,
+        level,
+        ColorToken::Danger,
+        theme,
+    );
 }
 
 /// Fill the `[lo, hi]` fraction of `col` with `token` if the current `level`

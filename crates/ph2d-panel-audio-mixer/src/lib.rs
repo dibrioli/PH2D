@@ -211,17 +211,17 @@ mod snapshot {
     }
 }
 
-/// Shell → panel: publish this frame's master output peak levels for the meter.
-pub use snapshot::set_levels;
+/// Panel → shell: the master low-pass cutoff (Hz) the Cutoff slider drives.
+pub use snapshot::cutoff as master_cutoff_target;
 /// Panel → shell: the master gain the fader drives — read by the bridge to set
 /// the engine's master gain.
 pub use snapshot::master_gain as master_gain_target;
-/// Panel → shell: the master low-pass cutoff (Hz) the Cutoff slider drives.
-pub use snapshot::cutoff as master_cutoff_target;
-/// Panel → shell: whether the Master mute is engaged (bridge zeroes the gain).
-pub use snapshot::muted as master_muted;
 /// Panel → shell: the master stereo balance the Master pan slider drives.
 pub use snapshot::master_pan as master_pan_target;
+/// Panel → shell: whether the Master mute is engaged (bridge zeroes the gain).
+pub use snapshot::muted as master_muted;
+/// Shell → panel: publish this frame's master output peak levels for the meter.
+pub use snapshot::set_levels;
 /// Shell → panel: publish each sub-bus's post-fader peak levels for its meter.
 pub use snapshot::set_sub_levels;
 /// Panel → shell: each sub-bus fader gain (index-aligned with `BusId::SUB_BUSES`).

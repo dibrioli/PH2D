@@ -44,7 +44,10 @@ fn muting_one_bus_leaves_the_other_sounding() {
 
     // Both buses open → the master carries both voices.
     let both = steady_master_peak(&mut renderer);
-    assert!(both[0] > 0.1 && both[1] > 0.1, "both buses should sound: {both:?}");
+    assert!(
+        both[0] > 0.1 && both[1] > 0.1,
+        "both buses should sound: {both:?}"
+    );
 
     // Mute Music (fold to gain 0) → only SFX remains, so the master is still
     // audible but quieter than with both open.
@@ -62,7 +65,10 @@ fn muting_one_bus_leaves_the_other_sounding() {
     // Per-bus meters: Music post-fader ≈ silent, SFX still hot.
     let bus = engine.bus_levels();
     let [music, sfx] = [bus[0], bus[1]];
-    assert!(music[0] < 1e-3, "muted Music bus meter must read silence: {music:?}");
+    assert!(
+        music[0] < 1e-3,
+        "muted Music bus meter must read silence: {music:?}"
+    );
     assert!(sfx[0] > 0.1, "SFX bus meter must stay hot: {sfx:?}");
 }
 
@@ -102,7 +108,15 @@ fn panning_a_sub_bus_hard_left_empties_the_right_channel() {
 fn master_direct_voice_ignores_sub_bus_faders() {
     let (mut engine, mut renderer) = AudioEngine::new(AudioFormat::stereo(48_000));
     // A voice on Master (default) is unaffected by a muted sub-bus.
-    engine.play(steady(), PlayParams { looping: true, ..PlayParams::default() }).unwrap();
+    engine
+        .play(
+            steady(),
+            PlayParams {
+                looping: true,
+                ..PlayParams::default()
+            },
+        )
+        .unwrap();
     engine.set_bus_gain(BusId::Music, 0.0).unwrap();
     engine.set_bus_gain(BusId::Sfx, 0.0).unwrap();
 

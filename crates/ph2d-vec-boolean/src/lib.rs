@@ -81,7 +81,10 @@ fn from_bez(bp: &BezPath) -> Option<VecPath> {
             PathEl::QuadTo(c, e) => {
                 if let Some(prev) = verts.last().copied() {
                     let a = prev.anchor;
-                    let c1 = [a[0] + 2.0 / 3.0 * (c.x - a[0]), a[1] + 2.0 / 3.0 * (c.y - a[1])];
+                    let c1 = [
+                        a[0] + 2.0 / 3.0 * (c.x - a[0]),
+                        a[1] + 2.0 / 3.0 * (c.y - a[1]),
+                    ];
                     let c2 = [e.x + 2.0 / 3.0 * (c.x - e.x), e.y + 2.0 / 3.0 * (c.y - e.y)];
                     if let Some(pm) = verts.last_mut() {
                         pm.out_handle = c1;

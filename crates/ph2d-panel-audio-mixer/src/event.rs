@@ -45,13 +45,21 @@ pub(crate) fn apply_event(
         // Master fader dragged — the shared slider dispatch already wrote the
         // new value into the store; publish it as the master gain for the shell.
         WidgetEvent::ValueChanged(id) if id == AMIX_FADER => {
-            let gain = host.store().slider(AMIX_FADER).map(|(_, v)| v).unwrap_or(1.0);
+            let gain = host
+                .store()
+                .slider(AMIX_FADER)
+                .map(|(_, v)| v)
+                .unwrap_or(1.0);
             snapshot::set_master_gain(gain);
             return EventOutcome::Consumed;
         }
         // Master cutoff dragged — log-map the 0..1 slider to 20 Hz..20 kHz.
         WidgetEvent::ValueChanged(id) if id == AMIX_CUTOFF => {
-            let v = host.store().slider(AMIX_CUTOFF).map(|(_, v)| v).unwrap_or(1.0);
+            let v = host
+                .store()
+                .slider(AMIX_CUTOFF)
+                .map(|(_, v)| v)
+                .unwrap_or(1.0);
             let hz = 20.0 * 1000.0_f32.powf(v.clamp(0.0, 1.0)); // LITERAL-PX-OK: cutoff log map (20 Hz..20 kHz)
             snapshot::set_cutoff(hz);
             return EventOutcome::Consumed;

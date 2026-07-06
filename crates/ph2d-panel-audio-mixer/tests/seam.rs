@@ -128,10 +128,8 @@ fn sub_bus_fader_drag_publishes_that_bus_gain() {
     let mut state = AudioMixerState;
 
     host.set_slider_value(SUB_FADER[0], 0.4);
-    let outcome = host.apply_panel_event::<AudioMixerPanel>(
-        &mut state,
-        WidgetEvent::ValueChanged(SUB_FADER[0]),
-    );
+    let outcome = host
+        .apply_panel_event::<AudioMixerPanel>(&mut state, WidgetEvent::ValueChanged(SUB_FADER[0]));
 
     assert_eq!(
         outcome,

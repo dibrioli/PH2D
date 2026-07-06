@@ -300,7 +300,8 @@ impl App {
     }
 
     fn vec_save_path() -> String {
-        std::env::var("PH2D_VEC_SAVE_PATH").unwrap_or_else(|_| "ph2d_vec_scene.postcard".to_string())
+        std::env::var("PH2D_VEC_SAVE_PATH")
+            .unwrap_or_else(|_| "ph2d_vec_scene.postcard".to_string())
     }
 
     /// ADR-0108 Fase 1.2: enquanto o Pen novo arrasta um handle, projeta o cursor
@@ -315,7 +316,8 @@ impl App {
         };
         let win = gfx.surface.size();
         let w = gfx.camera.screen_to_world((x, y), win);
-        self.vec_pen.on_drag(&mut gfx.vec_scene, [w[0] as f64, w[1] as f64])
+        self.vec_pen
+            .on_drag(&mut gfx.vec_scene, [w[0] as f64, w[1] as f64])
     }
 
     pub(crate) fn on_cursor_moved(&mut self, position: PhysicalPosition<f64>) {

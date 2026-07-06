@@ -78,8 +78,9 @@ pub fn decode(bytes: &[u8]) -> Result<SampleData, DecodeError> {
                 let spec = *decoded.spec();
                 rate.get_or_insert(spec.rate);
                 channels.get_or_insert(spec.channels.count());
-                let sample_buf = buf
-                    .get_or_insert_with(|| SampleBuffer::<f32>::new(decoded.capacity() as u64, spec));
+                let sample_buf = buf.get_or_insert_with(|| {
+                    SampleBuffer::<f32>::new(decoded.capacity() as u64, spec)
+                });
                 sample_buf.copy_interleaved_ref(decoded);
                 interleaved.extend_from_slice(sample_buf.samples());
             }

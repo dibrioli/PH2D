@@ -211,7 +211,13 @@ impl AudioRenderer {
         // 3. Mix active voices through their sub-buses + master gain, capturing
         //    each sub-bus's post-fader peak for the strip meters.
         let mut bus_peaks = [[0.0f32; 2]; SUB_BUS_COUNT];
-        mixer.render(master, bus_scratch, &mut bus_peaks, frames, &mut on_finished);
+        mixer.render(
+            master,
+            bus_scratch,
+            &mut bus_peaks,
+            frames,
+            &mut on_finished,
+        );
 
         // 4. Publish this block's peak levels (pre-clamp, so clipping reads > 1).
         let mut peak_l = 0.0f32;

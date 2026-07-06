@@ -229,7 +229,11 @@ fn blob(c: [f64; 2], r: f64, fill: Rgba8) -> VecPath {
 }
 
 fn demo_blob() -> VecPath {
-    blob([0.0, 0.0], 120.0 * DEMO_SCALE, Rgba8::new(90, 150, 230, 255))
+    blob(
+        [0.0, 0.0],
+        120.0 * DEMO_SCALE,
+        Rgba8::new(90, 150, 230, 255),
+    )
 }
 
 /// Arco aberto (uma cúbica), traçado claro — prova o caminho de stroke. Largura

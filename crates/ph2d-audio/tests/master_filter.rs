@@ -39,7 +39,10 @@ fn master_lowpass_attenuates_high_frequency() {
     }
     let filtered_peak = out.iter().map(|s| s.abs()).fold(0.0f32, f32::max);
 
-    assert!(open_peak > 0.5, "open path should pass the signal (got {open_peak})");
+    assert!(
+        open_peak > 0.5,
+        "open path should pass the signal (got {open_peak})"
+    );
     assert!(
         filtered_peak < open_peak * 0.5,
         "low-pass must attenuate Nyquist: {filtered_peak} vs open {open_peak}"

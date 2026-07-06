@@ -232,7 +232,8 @@ fn paint_strip(
     let cluster_x = col_x + ((col_w - cluster_w) * 0.5).max(0.0);
 
     let fader_rect = Rect::new(cluster_x, y, FADER_W, STRIP_H);
-    let mut fader = Slider::new(strip.fader_id, strip.label).orientation(SliderOrientation::Vertical);
+    let mut fader =
+        Slider::new(strip.fader_id, strip.label).orientation(SliderOrientation::Vertical);
     fader.set_value(strip.gain.clamp(0.0, 1.0));
     paint_slider(&fader, fader_rect, scene, theme);
     hit_index.register(strip.fader_id, fader_rect);

@@ -207,10 +207,18 @@ impl PenTool {
             for (i, v) in path.verts.iter().enumerate() {
                 if v.kind == VertexKind::Smooth {
                     if dist2(p, v.in_handle) <= r2 {
-                        return Some(Grab { path: sel, vert: i, part: Part::In });
+                        return Some(Grab {
+                            path: sel,
+                            vert: i,
+                            part: Part::In,
+                        });
                     }
                     if dist2(p, v.out_handle) <= r2 {
-                        return Some(Grab { path: sel, vert: i, part: Part::Out });
+                        return Some(Grab {
+                            path: sel,
+                            vert: i,
+                            part: Part::Out,
+                        });
                     }
                 }
             }
@@ -218,7 +226,11 @@ impl PenTool {
         for path in scene.paths() {
             for (i, v) in path.verts.iter().enumerate() {
                 if dist2(p, v.anchor) <= r2 {
-                    return Some(Grab { path: path.id, vert: i, part: Part::Anchor });
+                    return Some(Grab {
+                        path: path.id,
+                        vert: i,
+                        part: Part::Anchor,
+                    });
                 }
             }
         }

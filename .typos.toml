@@ -93,6 +93,10 @@ excede = "excede"
 converte = "converte"
 separe = "separe"
 erro = "erro"
+# pt-BR em comments do Vector reposition (ADR-0108): "comandos" (commands) de
+# encode Vello; "dominante" (dominant) — a fração dominante do custo de re-encode.
+comandos = "comandos"
+dominante = "dominante"
 compense = "compense"
 # Technical terms that show up in shaders / numerics.
 texel = "texel"

@@ -8,7 +8,9 @@
 
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use cpal::{FromSample, SizedSample};
-use ph2d_audio::{AudioEngine, AudioFormat, AudioRenderer, BusId, PlayParams, SampleData, SUB_BUS_COUNT};
+use ph2d_audio::{
+    AudioEngine, AudioFormat, AudioRenderer, BusId, PlayParams, SUB_BUS_COUNT, SampleData,
+};
 
 /// The desktop audio system: the control handle + the live output stream.
 /// Dropping it closes the stream and stops audio.

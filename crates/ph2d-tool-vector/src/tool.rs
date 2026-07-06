@@ -166,6 +166,10 @@ impl Tool for VectorTool {
         match event {
             PanelEvent::SetValue(id, v) if id == ids::VECTOR_WIDTH => {
                 self.stroke_width_px = slider_to_px(v as f32);
+                // Also restyle the selected path (mirror of a colour change), so
+                // the width slider affects the path you're looking at — not just
+                // the next one drawn.
+                self.apply_to_selected = true;
             }
             PanelEvent::Click(id) if id == ids::VECTOR_FILL_NONE => {
                 self.fill = FILL_NONE;

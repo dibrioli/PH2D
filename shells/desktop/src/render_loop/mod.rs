@@ -1276,12 +1276,19 @@ impl crate::App {
             let vector_active = tools
                 .active()
                 .is_some_and(|t| t.id() == ph2d_editor::ToolId::new("vector"));
+            // World units per screen pixel (1px delta) — lets the bridge convert
+            // the tool's px stroke width into the selected path's world width.
+            let vw0 = camera.screen_to_world((0.0, 0.0), window_size);
+            let vw1 = camera.screen_to_world((1.0, 0.0), window_size);
+            let vec_px_to_world =
+                (((vw1[0] - vw0[0]).powi(2) + (vw1[1] - vw0[1]).powi(2)).sqrt()) as f64;
             vector_bridge::dispatch(
                 hero,
                 tools,
                 vec_scene,
                 &mut self.vec_pen,
                 &mut self.vec_history,
+                vec_px_to_world,
             );
             ph2d_vec_render::dispatch(
                 vec_scene,

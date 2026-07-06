@@ -46,6 +46,9 @@ pub(super) fn dispatch(
     scene: &mut VecScene,
     pen: &mut PenTool,
     history: &mut History,
+    // World units per screen pixel (from the camera) — converts the tool's px
+    // stroke width into the path's world-space width when restyling.
+    px_to_world: f64,
 ) {
     let vector_active = tools
         .active()
@@ -82,10 +85,15 @@ pub(super) fn dispatch(
             .store
             .blender_picker(ph2d_editor::ids::INSP_BLENDER_PICKER)
     {
+        // A picked colour is always OPAQUE — the picker is an OKLCH colour, and
+        // the swatch seed's alpha (0 after "None") must NOT stick, else picking
+        // a fill colour after "None" stays invisible (Enio: "none é fixo").
+        let c = value.rgba;
+        let opaque = [c[0], c[1], c[2], 255];
         if stroke_open {
-            tool.set_stroke_rgba(value.rgba);
+            tool.set_stroke_rgba(opaque);
         } else {
-            tool.set_fill_rgba(value.rgba);
+            tool.set_fill_rgba(opaque);
         }
     }
 
@@ -99,19 +107,27 @@ pub(super) fn dispatch(
         fill: rgba(fill),
     });
 
-    // ── 4. Recolour the selected path (undoable, one step per gesture). ───
-    let swatch_session = stroke_open || fill_open;
+    // ── 4. Restyle the selected path — colour + width (undoable, one step per
+    //    gesture). A width-slider DRAG is a gesture like a picker drag, so scope
+    //    its undo the same way (one step per drag). Width follows the tool ONLY
+    //    while the slider is dragged, so a plain colour pick never resizes it.
+    let width_dragging = matches!(
+        hero.store.slider(ph2d_editor::ids::VECTOR_WIDTH),
+        Some((ph2d_editor::widget::SliderState::Dragging, _))
+    );
+    let session = stroke_open || fill_open || width_dragging;
     if tool.take_apply_to_selected()
         && let Some(sel) = pen.selected()
     {
         let new_stroke = rgba(stroke);
         let new_fill = if fill[3] == 0 { None } else { Some(rgba(fill)) };
-        // Only capture + mutate if the colour actually changes the selected
-        // path — so opening+closing the picker with no change costs no undo.
+        let new_w = tool.stroke_width_px() * px_to_world;
         let will_change = scene.paths().iter().find(|p| p.id == sel).is_some_and(|p| {
-            let stroke_differs = matches!(p.stroke, Some((c, _)) if c != new_stroke);
+            let colour_differs = matches!(p.stroke, Some((c, _)) if c != new_stroke);
+            let width_differs = width_dragging
+                && matches!(p.stroke, Some((_, w)) if (w - new_w).abs() > f64::EPSILON);
             let fill_differs = p.closed && p.fill != new_fill;
-            stroke_differs || fill_differs
+            colour_differs || width_differs || fill_differs
         });
         if will_change {
             RECOLOR_PRE.with(|c| {
@@ -120,7 +136,8 @@ pub(super) fn dispatch(
                 }
             });
             if let Some(path) = scene.path_mut(sel) {
-                if let Some((_, w)) = path.stroke {
+                if let Some((_, old_w)) = path.stroke {
+                    let w = if width_dragging { new_w } else { old_w };
                     path.stroke = Some((new_stroke, w));
                 }
                 if path.closed {
@@ -129,9 +146,9 @@ pub(super) fn dispatch(
             }
         }
     }
-    // Commit the gesture's undo when it ends (no picker session this frame):
-    // a discrete pick commits immediately; a picker drag commits on close.
-    if !swatch_session {
+    // Commit the gesture's undo when it ends (no picker / width-drag session):
+    // a discrete pick (None) commits immediately; a drag commits on release.
+    if !session {
         RECOLOR_PRE.with(|c| {
             if let Some(pre) = c.borrow_mut().take() {
                 history.push_undo(pre);

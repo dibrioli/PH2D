@@ -21,10 +21,22 @@ fn balance_gains(pan: f32) -> [f32; 2] {
     [(1.0 - p).min(1.0), (1.0 + p).min(1.0)]
 }
 
-/// Soft-knee limiter: below `THRESHOLD` the signal is untouched; above it, the
-/// excess is smoothly saturated so the output asymptotes to `CEILING` (< 1.0,
-/// so it never hard-clips). C1-continuous at the knee (slope 1), so no audible
-/// kink; transcendental-free (HR-5) — a single divide per sample.
+/// Master limiter ceiling (~ -2 dBFS) — loud peaks are turned down toward this
+/// level. Comfortably below full scale so a limited mix never hard-clips and the
+/// gain reduction is clearly audible when the master is pushed.
+const LIMIT_CEILING: f32 = 0.8;
+/// Gain-reduction attack coefficient (one-pole, per sample): near-instant so a
+/// transient is caught in a fraction of a millisecond.
+const LIMIT_ATTACK: f32 = 0.4;
+/// Gain-reduction release coefficient — slow (~50 ms) so the level eases back up
+/// without audible chatter once the loud part passes.
+const LIMIT_RELEASE: f32 = 0.0004;
+
+/// Soft-knee clip: below `THRESHOLD` the signal is untouched; above it, the
+/// excess is smoothly saturated so the output asymptotes to `CEILING` (< 1.0).
+/// The limiter's final brickwall — catches the transient overshoot before the
+/// gain-reduction envelope has fully engaged. C1-continuous at the knee (slope
+/// 1), transcendental-free (HR-5) — a single divide per sample.
 fn soft_clip(x: f32) -> f32 {
     const THRESHOLD: f32 = 0.8; // knee start (~ -2 dBFS)
     const CEILING: f32 = 0.98; // asymptotic output ceiling (< full scale)
@@ -50,8 +62,11 @@ pub(crate) struct Mixer {
     bus_gain: [SmoothGain; SUB_BUS_COUNT],
     /// Per-sub-bus stereo balance gains `[L, R]`.
     bus_pan: [[f32; 2]; SUB_BUS_COUNT],
-    /// Master soft-clip limiter engaged?
+    /// Master limiter engaged?
     limiter: bool,
+    /// Current limiter gain reduction (`1.0` = none) — a linked-stereo envelope
+    /// carried across blocks so the release is continuous.
+    limiter_gr: f32,
 }
 
 impl Mixer {
@@ -65,6 +80,7 @@ impl Mixer {
             bus_gain: std::array::from_fn(|_| SmoothGain::immediate(1.0)),
             bus_pan: [balance_gains(0.0); SUB_BUS_COUNT],
             limiter: false,
+            limiter_gr: 1.0,
         }
     }
 
@@ -149,20 +165,39 @@ impl Mixer {
             .render_bus(BusId::Master, master, frames, on_finished);
 
         // Master gain, the master low-pass filter (identity = bypass), the master
-        // stereo balance, then the soft-clip limiter (bypassed when disengaged).
+        // stereo balance, then the limiter (bypassed when disengaged).
         let [mpan_l, mpan_r] = self.master_pan;
         let limiter = self.limiter;
+        let mut gr = self.limiter_gr;
         for f in 0..frames {
             let g = self.master_gain.tick();
             let mut l = self.filter_l.process(master[2 * f] * g) * mpan_l;
             let mut r = self.filter_r.process(master[2 * f + 1] * g) * mpan_r;
             if limiter {
-                l = soft_clip(l);
-                r = soft_clip(r);
+                // Linked-stereo gain reduction: fast attack pulls the level down
+                // to the ceiling on loud peaks, slow release eases it back — the
+                // audible level control. `soft_clip` is the brickwall for the
+                // transient overshoot before the envelope catches.
+                let peak = l.abs().max(r.abs());
+                let target = if peak > LIMIT_CEILING {
+                    LIMIT_CEILING / peak
+                } else {
+                    1.0
+                };
+                let coeff = if target < gr {
+                    LIMIT_ATTACK
+                } else {
+                    LIMIT_RELEASE
+                };
+                gr += (target - gr) * coeff;
+                l = soft_clip(l * gr);
+                r = soft_clip(r * gr);
             }
             master[2 * f] = l;
             master[2 * f + 1] = r;
         }
+        // Reset the envelope when disengaged so re-engaging starts clean.
+        self.limiter_gr = if limiter { gr } else { 1.0 };
     }
 
     pub(crate) fn active_voices(&self) -> usize {

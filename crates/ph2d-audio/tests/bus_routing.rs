@@ -141,6 +141,7 @@ fn master_limiter_tames_a_boosted_over_unity_mix() {
         renderer.render(&mut out, 512);
     }
     let clipping = engine.levels();
+    let rms_off = engine.rms();
     assert!(
         clipping[0] > 1.0,
         "precondition: the boosted mix must exceed full scale, got {clipping:?}"
@@ -152,11 +153,18 @@ fn master_limiter_tames_a_boosted_over_unity_mix() {
         renderer.render(&mut out, 512);
     }
     let limited = engine.levels();
+    let rms_on = engine.rms();
     assert!(
         limited[0] <= 1.0,
         "the limiter must keep the master under full scale, got {limited:?}"
     );
     assert!(limited[0] > 0.5, "…without gutting the signal, got {limited:?}");
+    // The audible bit: gain reduction actually lowers the sustained level, not
+    // just the peak tips (a static soft-clip would barely move the RMS).
+    assert!(
+        rms_on[0] < rms_off[0] - 0.05,
+        "the limiter must audibly reduce the sustained level: rms {rms_off:?} → {rms_on:?}"
+    );
 }
 
 #[test]

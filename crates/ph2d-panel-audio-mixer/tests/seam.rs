@@ -17,7 +17,7 @@ use ph2d_ui_testkit::MockPanelHost;
 #[test]
 fn topbar_pill_click_toggles_visibility() {
     let mut host = MockPanelHost::with_panel::<AudioMixerPanel>();
-    let mut state = AudioMixerState::default();
+    let mut state = AudioMixerState;
 
     assert!(
         !host.panel_visible(AudioMixerPanel::ID),
@@ -54,7 +54,7 @@ fn topbar_pill_click_toggles_visibility() {
 #[test]
 fn mute_click_toggles_master_muted() {
     let mut host = MockPanelHost::with_panel::<AudioMixerPanel>();
-    let mut state = AudioMixerState::default();
+    let mut state = AudioMixerState;
 
     let before = master_muted();
     let outcome =

@@ -1,7 +1,7 @@
 //! Audio Mixer panel event routing.
 
 use crate::state::AudioMixerState;
-use crate::{AMIX_MASTER_MUTE, AudioMixerPanel, snapshot};
+use crate::{AMIX_CLOSE, AMIX_MASTER_MUTE, AudioMixerPanel, snapshot};
 use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::WidgetEvent;
 use ph2d_editor_core::panel::{EventOutcome, Panel, PanelHostInternal};
@@ -16,6 +16,11 @@ pub(crate) fn apply_event(
         if id == ids::TOPBAR_AUDIO_MIXER {
             let next = !host.panel_visible(AudioMixerPanel::ID);
             host.set_panel_visible(AudioMixerPanel::ID, next);
+            return EventOutcome::Consumed;
+        }
+        // Header close (X) hides the dock.
+        if id == AMIX_CLOSE {
+            host.set_panel_visible(AudioMixerPanel::ID, false);
             return EventOutcome::Consumed;
         }
         if id == AMIX_MASTER_MUTE {

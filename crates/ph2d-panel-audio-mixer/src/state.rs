@@ -1,10 +1,9 @@
 //! Audio Mixer panel retained state.
-
-use ph2d_editor_core::zones::Rect;
+//!
+//! The panel is right-docked in the shared Inspector slot (it reads
+//! `ctx.layout.inspector` each frame), so it holds no floating geometry — the
+//! dock rect + drag/resize live on the shared `INSP_*` handles.
 
 /// Per-instance retained state, owned by `ErasedPanel<AudioMixerPanel>`.
 #[derive(Clone, Debug, Default)]
-pub struct AudioMixerState {
-    /// Panel rect in viewport pixels; lazily set on first paint.
-    pub rect: Option<Rect>,
-}
+pub struct AudioMixerState;

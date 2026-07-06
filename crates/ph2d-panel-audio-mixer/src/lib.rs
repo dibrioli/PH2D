@@ -17,7 +17,6 @@ mod paint;
 mod populate;
 pub mod state;
 
-pub use paint::default_rect;
 pub use state::AudioMixerState;
 
 use ph2d_a11y::NodeId;
@@ -28,6 +27,8 @@ use ph2d_tool_registry::hash_node_id;
 /// Outer panel rect id. Single source in editor-core so the hero z-order
 /// paint walk (`ids::AUDIO_MIXER_PANEL`) resolves this panel.
 pub const AMIX_PANEL: NodeId = ph2d_editor_core::ids::AUDIO_MIXER_PANEL;
+/// Header close (X) button — hides the dock (also toggled by the TopBar pill).
+pub const AMIX_CLOSE: NodeId = hash_node_id("audio_mixer_close");
 /// Master-strip mute toggle.
 pub const AMIX_MASTER_MUTE: NodeId = hash_node_id("audio_mixer_master_mute");
 

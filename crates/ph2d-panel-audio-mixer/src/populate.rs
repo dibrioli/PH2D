@@ -2,8 +2,8 @@
 
 use crate::fader::FADER_UNITY_POS;
 use crate::{
-    AMIX_CLOSE, AMIX_CUTOFF, AMIX_FADER, AMIX_MASTER_MUTE, AMIX_PAN, AMIX_PLAY, SUB_FADER, SUB_MUTE,
-    SUB_PAN, SUB_SOLO,
+    AMIX_CLOSE, AMIX_CUTOFF, AMIX_FADER, AMIX_MASTER_METER, AMIX_MASTER_MUTE, AMIX_PAN, AMIX_PLAY,
+    SUB_FADER, SUB_METER, SUB_MUTE, SUB_PAN, SUB_SOLO,
 };
 use ph2d_editor_core::interaction::{InteractiveState, WidgetStore};
 use ph2d_editor_core::widget::{ButtonState, SliderOrientation, SliderState};
@@ -24,6 +24,12 @@ pub(crate) fn populate(store: &mut WidgetStore) {
         store.register(id, button());
     }
     for id in SUB_SOLO {
+        store.register(id, button());
+    }
+    // Meters are click-to-clear (the latched clip indicator) — register as
+    // Buttons so the click dispatches, even though they paint as meters.
+    store.register(AMIX_MASTER_METER, button());
+    for id in SUB_METER {
         store.register(id, button());
     }
 

@@ -21,8 +21,10 @@ const ZONE_WARN: f32 = 0.5; // LITERAL-PX-OK: meter zone threshold (amplitude fr
 const ZONE_DANGER: f32 = 0.8; // LITERAL-PX-OK: meter zone threshold (amplitude fraction, not a UI dimension)
 /// Peak-hold marker thickness.
 const HOLD_THICKNESS_PX: f32 = 2.0; // LITERAL-PX-OK: peak-hold marker line thickness (chrome)
+/// Clip cap height at the top of the column when a channel has clipped.
+const CLIP_CAP_PX: f32 = 3.0; // LITERAL-PX-OK: clip-indicator cap height (chrome)
 
-/// A stereo (or mono) level meter: RMS fill + peak-hold marker.
+/// A stereo (or mono) level meter: RMS fill + peak-hold marker + clip cap.
 #[derive(Clone, Debug)]
 pub struct LevelMeter {
     pub id: NodeId,
@@ -31,6 +33,8 @@ pub struct LevelMeter {
     pub rms: [f32; 2],
     /// Per-channel held peak `[left, right]` — the marker line.
     pub peak_hold: [f32; 2],
+    /// Per-channel latched clip flag — a solid `Danger` cap at the column top.
+    pub clipped: [bool; 2],
     /// When false, paints a single (mono) column from channel 0.
     pub stereo: bool,
 }
@@ -42,8 +46,15 @@ impl LevelMeter {
             label: label.into(),
             rms: [0.0, 0.0],
             peak_hold: [0.0, 0.0],
+            clipped: [false, false],
             stereo: true,
         }
+    }
+
+    /// Set the per-channel latched clip flags.
+    pub fn clipped(mut self, left: bool, right: bool) -> Self {
+        self.clipped = [left, right];
+        self
     }
 
     /// Set the RMS fill levels.
@@ -95,16 +106,16 @@ pub fn paint_level_meter(meter: &LevelMeter, rect: Rect, scene: &mut VectorScene
         let col_w = ((rect.w - gap) * 0.5).max(1.0);
         let left = Rect::new(rect.x, rect.y, col_w, rect.h);
         let right = Rect::new(rect.x + col_w + gap, rect.y, col_w, rect.h);
-        paint_column(scene, left, meter.rms[0], meter.peak_hold[0], theme);
-        paint_column(scene, right, meter.rms[1], meter.peak_hold[1], theme);
+        paint_column(scene, left, meter.rms[0], meter.peak_hold[0], meter.clipped[0], theme);
+        paint_column(scene, right, meter.rms[1], meter.peak_hold[1], meter.clipped[1], theme);
     } else {
-        paint_column(scene, rect, meter.rms[0], meter.peak_hold[0], theme);
+        paint_column(scene, rect, meter.rms[0], meter.peak_hold[0], meter.clipped[0], theme);
     }
 }
 
 /// One meter column: `Bg2` track + up to three stacked zone segments (RMS fill)
-/// + a peak-hold marker line.
-fn paint_column(scene: &mut VectorScene, col: Rect, rms: f32, peak_hold: f32, theme: Theme) {
+/// + a peak-hold marker line + a clip cap.
+fn paint_column(scene: &mut VectorScene, col: Rect, rms: f32, peak_hold: f32, clipped: bool, theme: Theme) {
     let radius = Radius::Xs.px();
     fill_rounded_rect(scene, col, radius, resolve(ColorToken::Bg2, theme));
     let rms = rms.clamp(0.0, 1.0);
@@ -112,6 +123,11 @@ fn paint_column(scene: &mut VectorScene, col: Rect, rms: f32, peak_hold: f32, th
     draw_segment(scene, col, ZONE_WARN, ZONE_DANGER, rms, ColorToken::Warn, theme);
     draw_segment(scene, col, ZONE_DANGER, 1.0, rms, ColorToken::Danger, theme);
     draw_peak_hold(scene, col, peak_hold, theme);
+    if clipped {
+        // A solid Danger cap at the very top — latched until the caller clears it.
+        let cap = Rect::new(col.x, col.y, col.w, CLIP_CAP_PX.min(col.h));
+        fill_rounded_rect(scene, cap, radius.min(col.w * 0.5), resolve(ColorToken::Danger, theme));
+    }
 }
 
 /// Fill the `[lo, hi]` fraction of `col` with `token` if `level` reaches into it
@@ -189,19 +205,20 @@ mod tests {
         assert_eq!(m.peak_hold, [0.4, 0.4]);
     }
 
-    fn smoke(rms_l: f32, hold_l: f32, stereo: bool, theme: Theme) {
+    fn smoke(rms_l: f32, hold_l: f32, clipped: bool, stereo: bool, theme: Theme) {
         let mut scene = VectorScene::new();
         let mut m = LevelMeter::new(NodeId(1), "M")
             .rms(rms_l, rms_l * 0.9)
-            .peak_hold(hold_l, hold_l);
+            .peak_hold(hold_l, hold_l)
+            .clipped(clipped, clipped);
         m.stereo = stereo;
         paint_level_meter(&m, Rect::new(0.0, 0.0, 16.0, 80.0), &mut scene, theme);
     }
 
     #[test]
     fn paint_smoke_all_zones() {
-        smoke(0.2, 0.65, true, Theme::Forge); // green fill + amber hold
-        smoke(0.95, 1.3, true, Theme::Blueprint); // red fill + clip hold
-        smoke(0.0, 0.0, false, Theme::Sunstone); // silence, mono
+        smoke(0.2, 0.65, false, true, Theme::Forge); // green fill + amber hold
+        smoke(0.95, 1.3, true, true, Theme::Blueprint); // red fill + clip cap
+        smoke(0.0, 0.0, false, false, Theme::Sunstone); // silence, mono
     }
 }

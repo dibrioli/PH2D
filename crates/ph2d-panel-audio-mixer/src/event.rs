@@ -3,8 +3,8 @@
 use crate::fader::fader_gain;
 use crate::state::AudioMixerState;
 use crate::{
-    AMIX_CLOSE, AMIX_CUTOFF, AMIX_FADER, AMIX_MASTER_MUTE, AMIX_PAN, AMIX_PLAY, AudioMixerPanel,
-    SUB_FADER, SUB_MUTE, SUB_PAN, SUB_SOLO, snapshot,
+    AMIX_CLOSE, AMIX_CUTOFF, AMIX_FADER, AMIX_MASTER_METER, AMIX_MASTER_MUTE, AMIX_PAN, AMIX_PLAY,
+    AudioMixerPanel, SUB_FADER, SUB_METER, SUB_MUTE, SUB_PAN, SUB_SOLO, snapshot,
 };
 use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::WidgetEvent;
@@ -50,6 +50,15 @@ pub(crate) fn apply_event(
             // Per-sub-bus solo toggles.
             if let Some(i) = SUB_SOLO.iter().position(|&s| s == id) {
                 snapshot::toggle_sub_soloed(i);
+                return EventOutcome::Consumed;
+            }
+            // Click a meter to clear its latched clip indicator.
+            if id == AMIX_MASTER_METER {
+                snapshot::clear_master_clip();
+                return EventOutcome::Consumed;
+            }
+            if let Some(i) = SUB_METER.iter().position(|&m| m == id) {
+                snapshot::clear_sub_clip(i);
                 return EventOutcome::Consumed;
             }
         }

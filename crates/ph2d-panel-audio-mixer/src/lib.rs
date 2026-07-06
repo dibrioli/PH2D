@@ -42,6 +42,8 @@ pub const AMIX_PAN: NodeId = hash_node_id("audio_mixer_pan");
 /// Footer "Play Test" toggle — the shell plays a built-in test signal (a pluck
 /// loop on Music + a steady tone on SFX) so the mixer is testable without files.
 pub const AMIX_PLAY: NodeId = hash_node_id("audio_mixer_play_test");
+/// Master meter — clicking it clears the latched clip indicator.
+pub const AMIX_MASTER_METER: NodeId = hash_node_id("audio_mixer_master_meter");
 
 /// Sub-buses shown as their own strips, **in `ph2d_audio::BusId::SUB_BUSES`
 /// order** (Music, SFX). The panel is UI-only (no `ph2d-audio` dep); the shell's
@@ -77,6 +79,13 @@ pub const SUB_PAN: [NodeId; SUB_BUS_COUNT] = [
     hash_node_id("audio_mixer_sfx_pan"),
     hash_node_id("audio_mixer_ui_pan"),
     hash_node_id("audio_mixer_voice_pan"),
+];
+/// Per-sub-bus meter ids (click a meter to clear its latched clip indicator).
+pub const SUB_METER: [NodeId; SUB_BUS_COUNT] = [
+    hash_node_id("audio_mixer_music_meter"),
+    hash_node_id("audio_mixer_sfx_meter"),
+    hash_node_id("audio_mixer_ui_meter"),
+    hash_node_id("audio_mixer_voice_meter"),
 ];
 
 /// Zero-size marker implementing the typed Audio Mixer panel contract.
@@ -116,11 +125,15 @@ mod snapshot {
     /// Per-frame peak-hold decay factor (UI ballistics). The held marker falls
     /// by this each paint; a new peak snaps it back up.
     const PEAK_HOLD_DECAY: f32 = 0.92; // LITERAL-PX-OK: meter peak-hold decay per frame (ballistics, not a UI dimension)
+    /// Peak above this (full scale) latches the clip indicator.
+    const CLIP_THRESHOLD: f32 = 1.0; // LITERAL-PX-OK: clip = exceeds full scale (audio domain)
 
     thread_local! {
         static LEVELS_PEAK: Cell<[f32; 2]> = const { Cell::new([0.0, 0.0]) };
         static LEVELS_RMS: Cell<[f32; 2]> = const { Cell::new([0.0, 0.0]) };
         static PEAK_HOLD: Cell<[f32; 2]> = const { Cell::new([0.0, 0.0]) };
+        static CLIP: Cell<[bool; 2]> = const { Cell::new([false, false]) };
+        static SUB_CLIP: Cell<[[bool; 2]; SUB_BUS_COUNT]> = const { Cell::new([[false, false]; SUB_BUS_COUNT]) };
         static MASTER_GAIN: Cell<f32> = const { Cell::new(1.0) };
         static CUTOFF_HZ: Cell<f32> = const { Cell::new(20_000.0) }; // LITERAL-PX-OK: default cutoff 20 kHz (audio frequency, not a UI metric)
         static MUTED: Cell<bool> = const { Cell::new(false) };
@@ -144,10 +157,30 @@ mod snapshot {
         ]
     }
 
+    /// Latch a clip flag pair against this frame's peak (`true` sticks until cleared).
+    fn latch_clip(prev: [bool; 2], peak: [f32; 2]) -> [bool; 2] {
+        [
+            prev[0] || peak[0] > CLIP_THRESHOLD,
+            prev[1] || peak[1] > CLIP_THRESHOLD,
+        ]
+    }
+
     /// Shell → panel: current master output peak + RMS levels for the meter.
+    /// Latches the clip indicator when the peak exceeds full scale.
     pub fn set_levels(peak: [f32; 2], rms: [f32; 2]) {
         LEVELS_PEAK.with(|c| c.set(peak));
         LEVELS_RMS.with(|c| c.set(rms));
+        CLIP.with(|c| c.set(latch_clip(c.get(), peak)));
+    }
+
+    /// The master latched clip flags (cleared by clicking the meter). Public so
+    /// the clip seam is observable.
+    pub fn master_clipped() -> [bool; 2] {
+        CLIP.with(Cell::get)
+    }
+
+    pub(crate) fn clear_master_clip() {
+        CLIP.with(|c| c.set([false, false]));
     }
 
     /// The master RMS fill for the meter bar.
@@ -217,10 +250,33 @@ mod snapshot {
         })
     }
 
-    /// Shell → panel: current post-fader peak + RMS per sub-bus.
+    /// Shell → panel: current post-fader peak + RMS per sub-bus. Latches each
+    /// sub-bus's clip indicator when its peak exceeds full scale.
     pub fn set_sub_levels(peak: [[f32; 2]; SUB_BUS_COUNT], rms: [[f32; 2]; SUB_BUS_COUNT]) {
         SUB_LEVELS_PEAK.with(|c| c.set(peak));
         SUB_LEVELS_RMS.with(|c| c.set(rms));
+        SUB_CLIP.with(|c| {
+            let mut v = c.get();
+            for i in 0..SUB_BUS_COUNT {
+                v[i] = latch_clip(v[i], peak[i]);
+            }
+            c.set(v);
+        });
+    }
+
+    /// The per-sub-bus latched clip flags.
+    pub(crate) fn sub_clipped() -> [[bool; 2]; SUB_BUS_COUNT] {
+        SUB_CLIP.with(Cell::get)
+    }
+
+    pub(crate) fn clear_sub_clip(i: usize) {
+        SUB_CLIP.with(|c| {
+            let mut v = c.get();
+            if let Some(slot) = v.get_mut(i) {
+                *slot = [false, false];
+            }
+            c.set(v);
+        });
     }
 
     /// The per-sub-bus RMS fills for the meter bars.
@@ -314,6 +370,9 @@ pub use snapshot::master_pan as master_pan_target;
 pub use snapshot::muted as master_muted;
 /// Panel → shell: whether the built-in test signal should be playing.
 pub use snapshot::play_test;
+/// Observable master clip latch (set when the peak exceeds full scale, cleared
+/// by clicking the meter).
+pub use snapshot::master_clipped;
 /// Shell → panel: publish this frame's master output peak levels for the meter.
 pub use snapshot::set_levels;
 /// Shell → panel: publish each sub-bus's post-fader peak levels for its meter.

@@ -12,8 +12,9 @@
 use crate::fader::{FADER_UNITY_POS, fader_db};
 use crate::state::AudioMixerState;
 use crate::{
-    AMIX_CLOSE, AMIX_CUTOFF, AMIX_FADER, AMIX_MASTER_MUTE, AMIX_PAN, AMIX_PANEL, AMIX_PLAY,
-    AudioMixerPanel, SUB_BUS_COUNT, SUB_BUS_LABELS, SUB_FADER, SUB_MUTE, SUB_PAN, SUB_SOLO, snapshot,
+    AMIX_CLOSE, AMIX_CUTOFF, AMIX_FADER, AMIX_MASTER_METER, AMIX_MASTER_MUTE, AMIX_PAN, AMIX_PANEL,
+    AMIX_PLAY, AudioMixerPanel, SUB_BUS_COUNT, SUB_BUS_LABELS, SUB_FADER, SUB_METER, SUB_MUTE,
+    SUB_PAN, SUB_SOLO, snapshot,
 };
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::ids as core_ids;
@@ -45,6 +46,8 @@ struct Strip {
     fader_id: NodeId,
     pan_id: NodeId,
     mute_id: NodeId,
+    /// Meter id — clicking the meter clears its latched clip cap.
+    meter_id: NodeId,
     /// Solo id, or `None` for the Master strip (solo applies to sub-buses only).
     solo_id: Option<NodeId>,
     /// Fader slider position in 0..1 — the dB taper (`fader.rs`) maps it to gain
@@ -59,6 +62,8 @@ struct Strip {
     rms: [f32; 2],
     /// Peak-hold marker `[L, R]` (decayed panel-side).
     peak_hold: [f32; 2],
+    /// Latched clip flags `[L, R]` (a red cap until the meter is clicked).
+    clipped: [bool; 2],
 }
 
 pub(crate) fn paint(_state: &mut AudioMixerState, ctx: &mut PaintCtx) {
@@ -114,9 +119,11 @@ pub(crate) fn paint(_state: &mut AudioMixerState, ctx: &mut PaintCtx) {
     let master_rms = snapshot::master_rms();
     let master_hold = snapshot::tick_master_hold();
     let master_muted = snapshot::muted();
+    let master_clipped = snapshot::master_clipped();
     let sub_rms = snapshot::sub_rms();
     let sub_muted = snapshot::sub_muted();
     let sub_soloed = snapshot::sub_soloed();
+    let sub_clipped = snapshot::sub_clipped();
 
     let (store, hit_index) = ctx.host.store_and_hit_index_mut();
     // Fader values are slider *positions* (0..1); the dB taper maps them to gain.
@@ -142,6 +149,7 @@ pub(crate) fn paint(_state: &mut AudioMixerState, ctx: &mut PaintCtx) {
         fader_id: AMIX_FADER,
         pan_id: AMIX_PAN,
         mute_id: AMIX_MASTER_MUTE,
+        meter_id: AMIX_MASTER_METER,
         solo_id: None, // solo applies to sub-buses only
         gain_pos: master_gain,
         pan: master_pan,
@@ -149,6 +157,7 @@ pub(crate) fn paint(_state: &mut AudioMixerState, ctx: &mut PaintCtx) {
         soloed: false,
         rms: master_rms,
         peak_hold: master_hold,
+        clipped: master_clipped,
     });
     for i in 0..SUB_BUS_COUNT {
         strips.push(Strip {
@@ -156,6 +165,7 @@ pub(crate) fn paint(_state: &mut AudioMixerState, ctx: &mut PaintCtx) {
             fader_id: SUB_FADER[i],
             pan_id: SUB_PAN[i],
             mute_id: SUB_MUTE[i],
+            meter_id: SUB_METER[i],
             solo_id: Some(SUB_SOLO[i]),
             gain_pos: sub_gain[i],
             pan: sub_pan[i],
@@ -163,6 +173,7 @@ pub(crate) fn paint(_state: &mut AudioMixerState, ctx: &mut PaintCtx) {
             soloed: sub_soloed[i],
             rms: sub_rms[i],
             peak_hold: snapshot::tick_sub_hold(i),
+            clipped: sub_clipped[i],
         });
     }
 
@@ -288,8 +299,11 @@ fn paint_strip(
     let meter_rect = Rect::new(cluster_x + FADER_W + Spacing::Sm.px(), y, METER_W, STRIP_H);
     let m = LevelMeter::new(strip.fader_id, strip.label)
         .rms(strip.rms[0], strip.rms[1])
-        .peak_hold(strip.peak_hold[0], strip.peak_hold[1]);
+        .peak_hold(strip.peak_hold[0], strip.peak_hold[1])
+        .clipped(strip.clipped[0], strip.clipped[1]);
     paint_level_meter(&m, meter_rect, scene, theme);
+    // Click the meter to clear its latched clip cap.
+    hit_index.register(strip.meter_id, meter_rect);
     y += STRIP_H + Spacing::Sm.px();
 
     // dB readout — the current fader gain in dB (or "-inf" at the bottom).

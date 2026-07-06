@@ -9,10 +9,10 @@ use ph2d_editor_core::interaction::WidgetEvent;
 use ph2d_editor_core::panel::{EventOutcome, Panel, PanelHostInternal};
 use ph2d_panel_audio_mixer::state::AudioMixerState;
 use ph2d_panel_audio_mixer::{
-    AMIX_CUTOFF, AMIX_FADER, AMIX_MASTER_MUTE, AMIX_PAN, AMIX_PLAY, AudioMixerPanel, FADER_UNITY_POS,
-    SUB_FADER, SUB_MUTE, SUB_PAN, SUB_SOLO, fader_gain, master_cutoff_target, master_gain_target,
-    master_muted, master_pan_target, play_test, sub_gain_target, sub_muted, sub_pan_target,
-    sub_soloed,
+    AMIX_CUTOFF, AMIX_FADER, AMIX_MASTER_METER, AMIX_MASTER_MUTE, AMIX_PAN, AMIX_PLAY,
+    AudioMixerPanel, FADER_UNITY_POS, SUB_FADER, SUB_MUTE, SUB_PAN, SUB_SOLO, fader_gain,
+    master_clipped, master_cutoff_target, master_gain_target, master_muted, master_pan_target,
+    play_test, set_levels, sub_gain_target, sub_muted, sub_pan_target, sub_soloed,
 };
 use ph2d_ui_testkit::MockPanelHost;
 
@@ -160,6 +160,37 @@ fn sub_bus_fader_drag_publishes_that_bus_gain() {
         "the other sub-bus must stay at unity gain, got {}",
         gains[1]
     );
+}
+
+/// A master peak over full scale latches the clip indicator; clicking the meter
+/// clears it. (`set_levels` is the shell→panel publish that also latches clip.)
+#[test]
+fn clip_latches_on_over_unity_peak_and_meter_click_clears_it() {
+    let mut host = MockPanelHost::with_panel::<AudioMixerPanel>();
+    let mut state = AudioMixerState;
+
+    // Clear any latch left on this thread, then publish a clipping peak.
+    host.apply_panel_event::<AudioMixerPanel>(&mut state, WidgetEvent::Click(AMIX_MASTER_METER));
+    set_levels([1.4, 0.2], [0.5, 0.1]);
+    assert_eq!(
+        master_clipped(),
+        [true, false],
+        "a left peak > 1.0 must latch the left clip flag only"
+    );
+
+    // A later quiet frame must NOT un-latch it (latch sticks until cleared).
+    set_levels([0.1, 0.1], [0.05, 0.05]);
+    assert_eq!(master_clipped(), [true, false], "clip latch must stick");
+
+    // Clicking the meter clears the latch.
+    let outcome = host
+        .apply_panel_event::<AudioMixerPanel>(&mut state, WidgetEvent::Click(AMIX_MASTER_METER));
+    assert_eq!(
+        outcome,
+        EventOutcome::Consumed,
+        "panel ignored the meter click — the AMIX_MASTER_METER arm is missing"
+    );
+    assert_eq!(master_clipped(), [false, false], "meter click must clear the clip latch");
 }
 
 /// Clicking the footer Play Test button toggles the play flag the shell reads

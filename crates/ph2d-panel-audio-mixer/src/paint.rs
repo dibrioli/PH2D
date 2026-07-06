@@ -38,7 +38,7 @@ use ph2d_vector::VectorScene;
 
 const FADER_W: f32 = 22.0; // LITERAL-PX-OK: fader column width (chrome)
 const METER_W: f32 = 14.0; // LITERAL-PX-OK: meter column width (chrome)
-const STRIP_H: f32 = 150.0; // LITERAL-PX-OK: fader/meter height (chrome)
+const STRIP_H: f32 = 116.0; // LITERAL-PX-OK: fader/meter height (chrome; kept compact so the master section fits)
 const MUTE_H: f32 = 24.0; // LITERAL-PX-OK: mute button height (chrome)
 const FX_LABEL_W: f32 = 32.0; // LITERAL-PX-OK: master-fx label column width (chrome)
 
@@ -253,6 +253,22 @@ fn paint_master_section(
     theme: Theme,
     hit_index: &mut HitIndex,
 ) {
+    // Play Test first — the primary "make sound" control stays reachable even if
+    // the effect controls below overflow a short Inspector.
+    let playing = snapshot::play_test();
+    paint_toggle(
+        Rect::new(content_x, y, content_w, MUTE_H),
+        if playing { "Stop" } else { "Play Test" },
+        playing,
+        ColorToken::Accent,
+        AMIX_PLAY,
+        scene,
+        text_system,
+        theme,
+        hit_index,
+    );
+    y += MUTE_H + Spacing::Md.px();
+
     // Master output limiter (Accent when engaged) — tames peaks below the clip
     // ceiling instead of hard-clipping.
     paint_toggle(
@@ -305,29 +321,13 @@ fn paint_master_section(
         hit_index,
     );
     y += MUTE_H + Spacing::Sm.px();
-    y = paint_labeled_slider(
+    paint_labeled_slider(
         y,
         "Depth",
         AMIX_DUCK_DEPTH,
         snapshot::duck_depth(),
         content_x,
         content_w,
-        scene,
-        text_system,
-        theme,
-        hit_index,
-    );
-    y += Spacing::Sm.px();
-
-    // Built-in test oscillator toggle (Accent when playing) so the mixer can be
-    // exercised without an external file. The shell owns the signal.
-    let playing = snapshot::play_test();
-    paint_toggle(
-        Rect::new(content_x, y, content_w, MUTE_H),
-        if playing { "Stop" } else { "Play Test" },
-        playing,
-        ColorToken::Accent,
-        AMIX_PLAY,
         scene,
         text_system,
         theme,

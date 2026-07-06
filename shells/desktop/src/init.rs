@@ -344,6 +344,8 @@ pub(crate) fn build_initial_state(
     // ADR-0108 Fase 0: cena-demo prova o seam; `PH2D_VEC_DEMO_N=<n>` troca para a
     // grade de N blobs do spike de escala (kill-criterion §5). Loga a escolha no
     // terminal — diagnóstico infalível de qual caminho rodou.
+    let pen_on =
+        std::env::var("PH2D_VEC_PEN").is_ok_and(|v| v == "1" || v.eq_ignore_ascii_case("true"));
     let vec_scene = match std::env::var("PH2D_VEC_DEMO_N")
         .ok()
         .and_then(|s| s.parse::<usize>().ok())
@@ -351,6 +353,14 @@ pub(crate) fn build_initial_state(
         Some(n) if n > 0 => {
             eprintln!("[ph2d-vec] Fase 0 spike: demo_grid N={n}");
             ph2d_vec_scene::VecScene::demo_grid(n)
+        }
+        // Pen ligado → canvas vazio, pra o desenho aparecer sem o smiley junto.
+        _ if pen_on => {
+            eprintln!(
+                "[ph2d-vec] Fase 1.1: Pen ATIVO — canvas vazio; clique desenha, \
+                 botão direito finaliza o traço"
+            );
+            ph2d_vec_scene::VecScene::new()
         }
         _ => {
             eprintln!("[ph2d-vec] Fase 0: cena-demo (smiley); PH2D_VEC_DEMO_N p/ a grade");

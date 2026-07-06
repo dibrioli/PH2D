@@ -175,6 +175,10 @@ impl App {
             painter_undo_requested: false,
             painter_redo_requested: false,
             committed_vector_pen_paths: Vec::new(),
+            // ADR-0108 Fase 1.1: Pen novo + flag PH2D_VEC_PEN (modo de teste).
+            vec_pen: ph2d_vec_edit::PenTool::new(),
+            vec_pen_enabled: std::env::var("PH2D_VEC_PEN")
+                .is_ok_and(|v| v == "1" || v.eq_ignore_ascii_case("true")),
             llm_vector: crate::llm_vector::LlmVectorEngine::new(),
             vector_scene_entities: Vec::new(),
             last_synced_gizmo_set: Vec::new(),

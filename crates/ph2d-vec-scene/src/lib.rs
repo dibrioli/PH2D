@@ -123,6 +123,12 @@ impl VecScene {
         id
     }
 
+    /// Acesso mutável ao path de id `id` (para edição incremental — ex.: o Pen
+    /// anexando vértices ao traço em progresso).
+    pub fn path_mut(&mut self, id: VecPathId) -> Option<&mut VecPath> {
+        self.paths.iter_mut().find(|p| p.id == id)
+    }
+
     /// Cena de demonstração da Fase 0: um blob fechado **preenchido** + uma curva
     /// aberta **traçada** — prova fill + stroke + curvatura Bézier ponta-a-ponta
     /// pela pipeline nova. Sai de cena quando as ferramentas de desenho entrarem

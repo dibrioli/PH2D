@@ -1,0 +1,16 @@
+[package]
+name = "ph2d-vec-edit"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+[dependencies]
+# Máquinas de estado de EDIÇÃO interativa (Pen agora; Edit/Select/Rig depois) que
+# operam sobre o modelo `ph2d-vec-scene`. Puro (world-space cru); o shell converte
+# screen→world e chama estes métodos. Sem vello/kurbo — igual à cena.
+ph2d-vec-scene = { path = "../ph2d-vec-scene" }

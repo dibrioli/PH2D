@@ -412,6 +412,40 @@ impl App {
             .as_ref()
             .and_then(|g| g.hero_screen.as_ref())
             .is_some_and(|h| h.store.eyedropper_pending().is_some());
+
+        // ADR-0108 Fase 1.1: Pen vetorial NOVO (flag PH2D_VEC_PEN) — só quando o
+        // clique cai no CANVAS (não sobre um painel). Primary Down anexa um vértice
+        // ao traço em `vec_scene` (fecha se perto do início); Secondary finaliza.
+        // Consome o clique (early return). A pill real do topbar entra no cutover
+        // (Fase R); este é um modo de teste dedicado.
+        let over_panel = crate::forwarding::cursor_over_hero_panel(self.gfx.as_ref(), evt.x, evt.y);
+        if self.vec_pen_enabled
+            && matches!(kind, PointerKind::Down)
+            && !menu_open_before
+            && !over_panel
+            && let Some(gfx) = self.gfx.as_mut()
+        {
+            let win = gfx.surface.size();
+            match mapped_button {
+                ph2d_host::PointerButton::Primary => {
+                    let w = gfx.camera.screen_to_world(self.last_pointer, win);
+                    // world-units por pixel (delta de 1px) → limiar/traço em px constantes.
+                    let w0 = gfx.camera.screen_to_world((0.0, 0.0), win);
+                    let w1 = gfx.camera.screen_to_world((1.0, 0.0), win);
+                    let px_to_world =
+                        (((w1[0] - w0[0]).powi(2) + (w1[1] - w0[1]).powi(2)).sqrt()) as f64;
+                    self.vec_pen.on_click(
+                        &mut gfx.vec_scene,
+                        [w[0] as f64, w[1] as f64],
+                        px_to_world,
+                    );
+                }
+                ph2d_host::PointerButton::Secondary => self.vec_pen.finish(),
+                _ => {}
+            }
+            return;
+        }
+
         // Painter layers drag-reparent (W3 T3.8): the dispatch emits a
         // PainterLayerReparent on Up of an active layer-row drag; route it to
         // the active PainterTool, which reverses NodeId→LayerId and applies

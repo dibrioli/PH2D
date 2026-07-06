@@ -504,6 +504,14 @@ pub(crate) struct App {
     /// option (1).
     pub(crate) committed_vector_pen_paths: Vec<ph2d_vector::Ph2dVectorAsset>,
 
+    /// ADR-0108 Fase 1.1: Pen da pipeline vetorial NOVA (opera sobre
+    /// `AppGfx.vec_scene`). Ativo só sob a flag `PH2D_VEC_PEN` (modo de teste; a
+    /// pill real do topbar entra no cutover, Fase R). Sem relação com
+    /// `committed_vector_pen_paths` (sistema antigo).
+    pub(crate) vec_pen: ph2d_vec_edit::PenTool,
+    /// `PH2D_VEC_PEN` ligado no boot (lido 1× no construtor).
+    pub(crate) vec_pen_enabled: bool,
+
     /// P4 (ADR-0061) LLM-vector authoring subsystem: at most one in-flight
     /// background generation + the persistent fallback cache + the API key.
     /// Results are drained each frame by [`App::poll_llm_vector`] and committed

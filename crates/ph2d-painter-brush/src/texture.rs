@@ -576,9 +576,10 @@ pub fn sample(
 /// Sample a **canvas-anchored** (Tiled) texture at canvas pixel `(px, py)` — the paper as a fixed
 /// height-field over the image, independent of any dab (the watercolor render-path reads the Grain slot
 /// through this to granulate the wash, `docs/Painter/10…`). Identity basis, no rotation/jitter; honours
-/// the texture's Size + Offset. Returns the coverage in `[0, 1]`; `1.0` when the slot is inactive.
+/// the texture's Size + Offset. `image` backs [`TextureKind::Image`] (a tagged layer used as paper);
+/// without it that kind is inert. Returns the coverage in `[0, 1]`; `1.0` when the slot is inactive.
 #[must_use]
-pub fn sample_tiled(s: &TextureSettings, px: i64, py: i64) -> f32 {
+pub fn sample_tiled(s: &TextureSettings, px: i64, py: i64, image: Option<&ImageMask>) -> f32 {
     if !s.is_active() {
         return 1.0;
     }
@@ -589,7 +590,7 @@ pub fn sample_tiled(s: &TextureSettings, px: i64, py: i64) -> f32 {
         p[0] * sx / TEX_TILE_BASE_PX + s.offset[0],
         p[1] * sy / TEX_TILE_BASE_PX + s.offset[1],
     ];
-    patterns::sample_kind(s.kind, tex, s.params, None).clamp(0.0, 1.0)
+    patterns::sample_kind(s.kind, tex, s.params, image).clamp(0.0, 1.0)
 }
 
 /// Sample the **View-mapped** texture at the dab-relative unit coord `(u, v) ∈ [-1, 1]` — the

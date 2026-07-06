@@ -156,6 +156,16 @@ pub const CTX_MENU_HIER_USE_AS_BRUSH_TEXTURE: NodeId =
 pub const CTX_MENU_HIER_USE_AS_BRUSH_SHAPE: NodeId =
     hash_node_id("ctx_menu_hier_use_as_brush_shape");
 
+/// Hierarchy row context menu: "Use as **Watercolor Paper**" — install the right-clicked layer/group's
+/// pixels as the watercolor paper (Grain slot, canvas-anchored), so the wash granulates against it
+/// (`docs/Painter/10…` §5). A Group tags its composited children.
+pub const CTX_MENU_HIER_USE_AS_PAPER: NodeId = hash_node_id("ctx_menu_hier_use_as_paper");
+
+/// Hierarchy row context menu: "Use as **Granulation**" — like [`CTX_MENU_HIER_USE_AS_PAPER`] but as a
+/// stronger mineral-settling map (pigment pools harder in the layer's valleys).
+pub const CTX_MENU_HIER_USE_AS_GRANULATION: NodeId =
+    hash_node_id("ctx_menu_hier_use_as_granulation");
+
 // M14.6 F: per-row Hierarchy context menu entries. Triggered by a
 // secondary (right-button) click on any hierarchy row in live mode;
 // `ContextMenuKind::HierarchyRow { row }` carries the target row's

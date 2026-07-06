@@ -193,6 +193,11 @@ pub enum EditorAction {
     HierUseAsBrushTexture { row: ph2d_a11y::NodeId },
     /// "Use as Brush Shape" — shell resolves row → pixels → `set_brush_shape_image` (Enio 2026-06-25).
     HierUseAsBrushShape { row: ph2d_a11y::NodeId },
+    /// "Use as Watercolor Paper" — shell resolves row → pixels → `use_layers_as_watercolor_paper`
+    /// (`docs/Painter/10…` §5).
+    HierUseAsPaper { row: ph2d_a11y::NodeId },
+    /// "Use as Granulation" — shell resolves row → pixels → `use_layers_as_granulation`.
+    HierUseAsGranulation { row: ph2d_a11y::NodeId },
 
     /// Sync `gizmo_selection` to the entity backing the clicked
     /// hierarchy row — cross-panel selection sync from the

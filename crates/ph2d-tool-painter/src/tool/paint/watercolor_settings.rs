@@ -129,6 +129,28 @@ impl PainterTool {
         b.warp = d.warp;
     }
 
+    /// Install a tagged Hierarchy layer/group (its luminance `lum`, `width × height`) as the watercolor
+    /// **paper**: the Grain slot becomes that image, canvas-anchored (Tiled), and the Watercolor
+    /// render-path is turned on so the wash granulates against the layer's own tooth (Fase D — "Use as
+    /// Paper"). Moderate granulation (a paper *surface*). A Group tag passes the composited group pixels.
+    pub fn use_layers_as_watercolor_paper(&mut self, lum: Vec<u8>, width: u32, height: u32) {
+        self.set_brush_texture_image(lum, width, height);
+        self.paint.brush.texture.mapping = TextureMapping::Tiled;
+        self.paint.brush.watercolor = true;
+        if self.paint.brush.granulation <= 0.0 {
+            self.paint.brush.granulation = 0.30; // LITERAL-OK: default paper-surface granulation
+        }
+    }
+
+    /// As [`Self::use_layers_as_watercolor_paper`] but as the **granulation** map (Fase D — "Use as
+    /// Granulation"): a stronger mineral-settling bite, so the pigment pools harder in the layer's valleys.
+    pub fn use_layers_as_granulation(&mut self, lum: Vec<u8>, width: u32, height: u32) {
+        self.set_brush_texture_image(lum, width, height);
+        self.paint.brush.texture.mapping = TextureMapping::Tiled;
+        self.paint.brush.watercolor = true;
+        self.paint.brush.granulation = 0.65; // LITERAL-OK: pronounced mineral-settling granulation
+    }
+
     /// Apply a one-click **brush preset** (the top-of-panel dropdown): `0` = **Digital Basic** (the plain
     /// brush), `1` = **Watercolor Basic** (the optical wash configured to reproduce
     /// `docs/Painter/wet_edges_paint.html`). Both PRESERVE the current colour + radius (a preset is a
@@ -258,5 +280,29 @@ mod tests {
         assert!(!b.watercolor, "Digital Basic turns the render-path off");
         assert_eq!(b.color, [0.2, 0.6, 0.9], "colour still preserved");
         assert_eq!(t.paint.brush.radius_px, 40.0, "radius still preserved");
+    }
+
+    /// Fase D — a tagged layer installs as the watercolor paper: the Grain slot becomes a canvas-anchored
+    /// Image, the render-path turns on, and granulation is set (moderate for Paper, strong for Granulation).
+    #[test]
+    fn use_layers_as_paper_and_granulation_install_the_grain_image() {
+        let lum = vec![128u8; 8 * 8];
+
+        let mut t = PainterTool::default();
+        t.use_layers_as_watercolor_paper(lum.clone(), 8, 8);
+        let b = &t.paint.brush;
+        assert_eq!(b.texture.kind, TextureKind::Image, "paper → Grain Image");
+        assert_eq!(b.texture.mapping, TextureMapping::Tiled, "canvas-anchored");
+        assert!(b.watercolor, "render-path on");
+        assert!((b.granulation - 0.30).abs() < 1e-6, "moderate paper granulation");
+        assert!(t.brush_texture_image().is_some(), "the layer pixels are stored");
+
+        let mut t2 = PainterTool::default();
+        t2.use_layers_as_granulation(lum, 8, 8);
+        assert!(
+            (t2.paint.brush.granulation - 0.65).abs() < 1e-6,
+            "granulation is a stronger mineral-settling bite"
+        );
+        assert_eq!(t2.paint.brush.texture.mapping, TextureMapping::Tiled);
     }
 }

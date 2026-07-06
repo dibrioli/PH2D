@@ -611,6 +611,8 @@ impl crate::App {
             let mut merge_sprites_row: Option<NodeId> = None;
             let mut use_as_brush_texture_row: Option<NodeId> = None;
             let mut use_as_brush_shape_row: Option<NodeId> = None;
+            let mut use_as_paper_row: Option<NodeId> = None;
+            let mut use_as_granulation_row: Option<NodeId> = None;
             let mut hierarchy_row_click: Option<NodeId> = None;
             let mut hierarchy_select_intent: Option<hierarchy::HierarchySelectIntent> = None;
             let mut rename_seed_row: Option<NodeId> = None;
@@ -756,6 +758,12 @@ impl crate::App {
                     }
                     EditorAction::HierUseAsBrushShape { row } => {
                         use_as_brush_shape_row.get_or_insert(row);
+                    }
+                    EditorAction::HierUseAsPaper { row } => {
+                        use_as_paper_row.get_or_insert(row);
+                    }
+                    EditorAction::HierUseAsGranulation { row } => {
+                        use_as_granulation_row.get_or_insert(row);
                     }
                     EditorAction::HierRowClick { row } => {
                         hierarchy_row_click.get_or_insert(row);
@@ -1824,6 +1832,87 @@ impl crate::App {
                                 "Use as {what}: select an image sprite"
                             )));
                         }
+                    }
+                }
+                self.title_dirty = true;
+            }
+            // Hierarchy "Use as Watercolor Paper / Granulation" → read the row's pixels as luminance and
+            // install them as the watercolor paper (Grain slot, canvas-anchored), turning the render-path
+            // on so the wash granulates against the layer. Granulation wins if both fired in one frame.
+            // Mirror of the "Use as Brush Grain" path above (`docs/Painter/10…` §5).
+            let use_as_paper_intent = use_as_granulation_row
+                .map(|r| (r, true))
+                .or(use_as_paper_row.map(|r| (r, false)));
+            if let Some((row, as_granulation)) = use_as_paper_intent
+                && let Some(live) = hero_live.as_ref()
+                && let Some(bits) = live.bridge.entity_for(row)
+            {
+                let on_active_doc = self.last_painter_pushed_entity == Some(bits);
+                // Luminance: the active painter doc composites its layers (a Group of textures folds in);
+                // a different flat sprite reads its baked texture (Rec.601, mirror of the file-load path).
+                let lum_wh: Option<(Vec<u8>, u32, u32)> = if on_active_doc {
+                    tools.set_active(&ph2d_editor::ToolId::new("painter"));
+                    tools
+                        .active_mut()
+                        .and_then(|t| {
+                            t.as_any_mut()
+                                .downcast_mut::<ph2d_tool_painter::PainterTool>()
+                        })
+                        .and_then(|p| p.composite_to_lum())
+                } else {
+                    let entity = ph2d_ecs::Entity::from_bits(bits);
+                    crate::hero_intents::texture_edit::read_sprite_source(
+                        entity,
+                        sim,
+                        renderer,
+                        asset_db,
+                        atlas_asset_map,
+                    )
+                    .map(|src| {
+                        let (w, h) = (src.image.width, src.image.height);
+                        let lum: Vec<u8> = src
+                            .image
+                            .pixels
+                            .chunks_exact(4)
+                            .map(|p| {
+                                ((u32::from(p[0]) * 77
+                                    + u32::from(p[1]) * 150
+                                    + u32::from(p[2]) * 29)
+                                    >> 8) as u8
+                            })
+                            .collect();
+                        (lum, w, h)
+                    })
+                };
+                match lum_wh {
+                    Some((lum, w, h)) => {
+                        tools.set_active(&ph2d_editor::ToolId::new("painter"));
+                        if let Some(painter) = tools.active_mut().and_then(|t| {
+                            t.as_any_mut()
+                                .downcast_mut::<ph2d_tool_painter::PainterTool>()
+                        }) {
+                            if as_granulation {
+                                painter.use_layers_as_granulation(lum, w, h);
+                                toasts.push(ph2d_editor::Toast::success(
+                                    "Watercolor granulation set from layer",
+                                ));
+                            } else {
+                                painter.use_layers_as_watercolor_paper(lum, w, h);
+                                toasts.push(ph2d_editor::Toast::success(
+                                    "Watercolor paper set from layer",
+                                ));
+                            }
+                        }
+                    }
+                    None => {
+                        let what = if as_granulation {
+                            "Granulation"
+                        } else {
+                            "Watercolor Paper"
+                        };
+                        toasts.push(ph2d_editor::Toast::warning(format!(
+                            "Use as {what}: select an image sprite"
+                        )));
                     }
                 }
                 self.title_dirty = true;

@@ -98,6 +98,13 @@ pub enum TextureKind {
     Scales,
     /// Over-under woven bands (basketweave).
     Weave,
+    /// **Cold-press** watercolor paper — a medium random tooth with mild laid-line fibre (the classic
+    /// "NOT" surface). Procedural height-field; feeds the watercolor granulation (`docs/Painter/10…`).
+    PaperCold,
+    /// **Rough** watercolor paper — a deep, pronounced tooth with strong fibre creases (heavy pooling).
+    PaperRough,
+    /// **Hot-press** watercolor paper — a fine, smooth grain with a soft felt mottle (minimal tooth).
+    PaperHot,
 }
 
 impl TextureKind {
@@ -131,6 +138,9 @@ impl TextureKind {
             Self::Hexagons => 23,
             Self::Scales => 24,
             Self::Weave => 25,
+            Self::PaperCold => 26,
+            Self::PaperRough => 27,
+            Self::PaperHot => 28,
         }
     }
 
@@ -163,12 +173,15 @@ impl TextureKind {
             23 => Self::Hexagons,
             24 => Self::Scales,
             25 => Self::Weave,
+            26 => Self::PaperCold,
+            27 => Self::PaperRough,
+            28 => Self::PaperHot,
             _ => Self::None,
         }
     }
 
     /// Number of selectable kinds (drives the dropdown decode range; includes `None`).
-    pub const COUNT: u8 = 26;
+    pub const COUNT: u8 = 29;
 
     /// English label for the picker (HR-15 / app-UI-english-only).
     #[must_use]
@@ -200,6 +213,9 @@ impl TextureKind {
             Self::Hexagons => "Hexagons",
             Self::Scales => "Scales",
             Self::Weave => "Weave",
+            Self::PaperCold => "Paper Cold Press",
+            Self::PaperRough => "Paper Rough",
+            Self::PaperHot => "Paper Hot Press",
         }
     }
 }
@@ -555,6 +571,25 @@ pub fn sample(
         ]
     };
     patterns::sample_kind(s.kind, tex, s.params, image).clamp(0.0, 1.0)
+}
+
+/// Sample a **canvas-anchored** (Tiled) texture at canvas pixel `(px, py)` — the paper as a fixed
+/// height-field over the image, independent of any dab (the watercolor render-path reads the Grain slot
+/// through this to granulate the wash, `docs/Painter/10…`). Identity basis, no rotation/jitter; honours
+/// the texture's Size + Offset. Returns the coverage in `[0, 1]`; `1.0` when the slot is inactive.
+#[must_use]
+pub fn sample_tiled(s: &TextureSettings, px: i64, py: i64) -> f32 {
+    if !s.is_active() {
+        return 1.0;
+    }
+    let sx = s.size[0].clamp(TEX_SIZE_MIN, TEX_SIZE_MAX);
+    let sy = s.size[1].clamp(TEX_SIZE_MIN, TEX_SIZE_MAX);
+    let p = [px as f32 + 0.5, py as f32 + 0.5];
+    let tex = [
+        p[0] * sx / TEX_TILE_BASE_PX + s.offset[0],
+        p[1] * sy / TEX_TILE_BASE_PX + s.offset[1],
+    ];
+    patterns::sample_kind(s.kind, tex, s.params, None).clamp(0.0, 1.0)
 }
 
 /// Sample the **View-mapped** texture at the dab-relative unit coord `(u, v) ∈ [-1, 1]` — the

@@ -409,6 +409,12 @@ impl PainterTool {
         let edge_gain = brush.edge_gain.max(0.0);
         let granulation = brush.granulation.clamp(0.0, 1.0);
         let pigment_mix = brush.effective_pigment_mix();
+        // Deep integration (Fase C): when the Grain slot holds a canvas-anchored (Tiled) texture — e.g. a
+        // Paper — the wash granulates against THAT real paper height-field; otherwise a built-in paper noise.
+        let grain_tex = brush.texture;
+        let grain_paper = granulation > 0.0
+            && grain_tex.is_active()
+            && matches!(grain_tex.mapping, ph2d_painter_brush::TextureMapping::Tiled);
         // Fallback pigment when the colour buffer is faint (straight brush colour → sRGB bytes).
         let fallback = [
             (brush.color[0].clamp(0.0, 1.0) * 255.0 + 0.5) as u8,
@@ -450,7 +456,13 @@ impl PainterTool {
                 }
                 let inner = sample_bilinear(&blur, bw, bh, sx, sy).min(1.0);
                 let edge = (cw * (1.0 - inner) * edge_gain).clamp(0.0, 1.0);
-                let gran = 1.0 + (paper_height(gx as f32, gy as f32) - 0.5) * 2.0 * granulation;
+                // Paper tooth: the selected Grain paper (canvas-anchored) or the built-in noise fallback.
+                let paper_h = if grain_paper {
+                    ph2d_painter_brush::texture::sample_tiled(&grain_tex, gx as i64, gy as i64)
+                } else {
+                    paper_height(gx as f32, gy as f32)
+                };
+                let gran = 1.0 + (paper_h - 0.5) * 2.0 * granulation;
                 let density = ((cw * fill + edge) * gran).max(0.0);
                 let od = density * depth;
 

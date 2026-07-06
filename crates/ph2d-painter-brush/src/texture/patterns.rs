@@ -52,6 +52,9 @@ pub(super) fn sample_kind(
         TextureKind::Hexagons => hexagons(u, v, k),
         TextureKind::Scales => scales(u, v, k),
         TextureKind::Weave => weave(u, v, k),
+        TextureKind::PaperCold => paper_grain(u, v, k, PAPER_COLD),
+        TextureKind::PaperRough => paper_grain(u, v, k, PAPER_ROUGH),
+        TextureKind::PaperHot => paper_grain(u, v, k, PAPER_HOT),
         TextureKind::Image => match image {
             Some(img) => sample_image(img, u, v),
             None => 1.0, // kind is Image but no pixels supplied → inert
@@ -368,6 +371,95 @@ fn gradient(u: f32, k: &[f32]) -> f32 {
 fn grain(u: f32, v: f32, k: &[f32]) -> f32 {
     let (wu, wv) = warp_uv(u * 6.0, v * 6.0, knob(k, 2));
     fbm_g(wu, wv, octaves_from(knob(k, 0)), gain_from(knob(k, 1)))
+}
+
+/// Per-preset character of a watercolor **Paper** height-field (see [`paper_grain`]).
+struct PaperCfg {
+    /// Feature frequency — larger = a finer tooth.
+    base_scale: f32,
+    /// Fibre anisotropy: how much the tooth streaks along the laid-line axis.
+    aniso: f32,
+    /// Ridged-fibre-crease mix (`0` = none) — the sharp laid lines of rough paper.
+    ridge_mix: f32,
+    /// Worley felt-cell mix (`0` = none) — the soft mottle of hot-press paper.
+    cell_mix: f32,
+    /// Intrinsic tooth contrast (peaks-to-valleys), before the user Tooth knob.
+    contrast: f32,
+}
+
+/// **Cold Press** — a medium random tooth with a mild laid-line fibre (the classic "NOT" surface).
+const PAPER_COLD: PaperCfg = PaperCfg {
+    base_scale: 5.0,
+    aniso: 0.4,
+    ridge_mix: 0.15,
+    cell_mix: 0.0,
+    contrast: 0.9,
+};
+/// **Rough** — a deep, pronounced tooth with strong fibre creases (heavy pooling).
+const PAPER_ROUGH: PaperCfg = PaperCfg {
+    base_scale: 3.5,
+    aniso: 0.6,
+    ridge_mix: 0.5,
+    cell_mix: 0.0,
+    contrast: 1.2,
+};
+/// **Hot Press** — a fine, smooth grain with a soft felt mottle (minimal tooth).
+const PAPER_HOT: PaperCfg = PaperCfg {
+    base_scale: 8.0,
+    aniso: 0.15,
+    ridge_mix: 0.0,
+    cell_mix: 0.35,
+    contrast: 0.6,
+};
+
+/// A watercolor **Paper** tooth height-field (valleys dark, peaks bright), shared by the three presets.
+/// A two-scale high-pass of anisotropic fBm gives a crisp tooth (not a soft blob); the preset adds
+/// ridged fibre creases (rough) or a Worley felt mottle (hot-press). Transcendental-free (HR-5): only
+/// [`fbm_g`] / [`value_noise`] / [`felt_cells`] + sums. User knobs (`&params[2..]`): Tooth / Fibre / Scale.
+fn paper_grain(u: f32, v: f32, k: &[f32], cfg: PaperCfg) -> f32 {
+    let tooth = knob(k, 0); // grain contrast (0.5 neutral)
+    let fibre = knob(k, 1); // fibre anisotropy amount
+    let scale = 0.6 + knob(k, 2) * 1.4; // feature-size mult (0.5 → ~1.3)
+    let f = cfg.base_scale * scale;
+    // Anisotropic laid-line coords: stretch across the fibres so the noise streaks along u.
+    let ax = 1.0 + cfg.aniso * fibre * 3.0;
+    let (su, sv) = (u * f, v * f * ax);
+    // Two-scale high-pass → a crisp tooth (peaks + valleys), not a soft billow.
+    let n_fine = fbm_g(su, sv, 4, 0.5);
+    let n_coarse = fbm_g(su * 0.4, sv * 0.4, 2, 0.5);
+    let c = cfg.contrast * (0.7 + tooth * 1.8);
+    let mut h = (0.5 + (n_fine - n_coarse) * c).clamp(0.0, 1.0);
+    // Ridged fibres (laid lines): sharp creases running along the fibre axis.
+    if cfg.ridge_mix > 0.0 {
+        let ridge = 1.0 - (2.0 * value_noise(su * 0.5, sv * 3.0) - 1.0).abs();
+        h = lerp(h, h * (0.55 + 0.45 * ridge), cfg.ridge_mix);
+    }
+    // Felt cells (Worley F1): a soft mottle for hot-press.
+    if cfg.cell_mix > 0.0 {
+        let felt = felt_cells(su, sv);
+        h = lerp(h, h * (0.7 + 0.3 * felt), cfg.cell_mix);
+    }
+    h.clamp(0.0, 1.0)
+}
+
+/// Worley F1 distance over the 3×3 neighbour cells → `[0, 1]` (`0` at a cell centre, `→1` at the joins).
+/// A soft cellular field for the hot-press felt; transcendental-free (hashed jitter + Euclidean dist).
+fn felt_cells(u: f32, v: f32) -> f32 {
+    let (cx, cy) = (ifloor(u), ifloor(v));
+    let mut f1 = 9.0f32;
+    for dy in -1..=1 {
+        for dx in -1..=1 {
+            let (gx, gy) = (cx + dx, cy + dy);
+            let jx = gx as f32 + hash2(gx, gy);
+            let jy = gy as f32 + hash2(gy + 31, gx + 17);
+            let (ex, ey) = (jx - u, jy - v);
+            let d = (ex * ex + ey * ey).sqrt();
+            if d < f1 {
+                f1 = d;
+            }
+        }
+    }
+    f1.min(1.0)
 }
 
 /// **Crosshatch**: crossed diagonal hatch lines. `Thickness` = line width, `Frequency` = line count.

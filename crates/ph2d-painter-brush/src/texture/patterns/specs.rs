@@ -123,5 +123,14 @@ pub fn param_specs(kind: TextureKind) -> &'static [ParamSpec] {
         Weave => &[CONTRAST, BRIGHTNESS, p!("Gap", 0.4), FREQUENCY],
         Hexagons => &[CONTRAST, BRIGHTNESS, p!("Rim", 0.5), FREQUENCY],
         Diamonds | Triangles => &[CONTRAST, BRIGHTNESS, p!("Softness", 0.0)],
+        // Watercolor papers: the tooth contrast, the fibre anisotropy, the feature scale (the preset
+        // sets the character — cold / rough / hot; these fine-tune it).
+        PaperCold | PaperRough | PaperHot => &[
+            CONTRAST,
+            BRIGHTNESS,
+            p!("Tooth", 0.5),
+            p!("Fibre", 0.5),
+            p!("Scale", 0.5),
+        ],
     }
 }

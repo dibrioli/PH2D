@@ -6,7 +6,7 @@
 
 use crate::tool::PainterTool;
 use ph2d_editor_core::tool::PanelEvent;
-use ph2d_painter_brush::BrushSpec;
+use ph2d_painter_brush::{BrushSpec, TextureKind, TextureMapping, TextureSettings};
 
 impl PainterTool {
     /// Route the Watercolor section controls (master enable + Pigment toggle + section reset, and the
@@ -152,6 +152,13 @@ impl PainterTool {
                 warp: 6.0,         // LITERAL-OK: wet_edges warpAmp
                 granulation: 0.30, // LITERAL-OK: wet_edges granAmt
                 pigment: false,
+                // Grain slot = a canvas-anchored cold-press Paper, so the wash granulates against a real
+                // paper tooth (the render-path reads the Tiled Grain — Fase C deep integration).
+                texture: TextureSettings {
+                    kind: TextureKind::PaperCold,
+                    mapping: TextureMapping::Tiled,
+                    ..TextureSettings::default()
+                },
                 ..BrushSpec::default()
             },
             // Digital Basic (0 or any unknown) — the plain default brush, keeping the user's colour + size.
@@ -169,6 +176,7 @@ mod tests {
     use crate::tool::PainterTool;
     use ph2d_editor_core::ids as core_ids;
     use ph2d_editor_core::tool::{PanelEvent, Tool};
+    use ph2d_painter_brush::{TextureKind, TextureMapping};
 
     /// The full panel→tool seam EFFECT (the other half of the panel's `tests/seam.rs` forward proof):
     /// the exact `PanelEvent`s the panel forwards, fed to `handle_panel_event`, mutate the observable
@@ -240,6 +248,9 @@ mod tests {
         assert_eq!(b.depth, 1.2, "wet_edges depth");
         assert_eq!(b.color, [0.2, 0.6, 0.9], "colour preserved across the preset");
         assert_eq!(t.paint.brush.radius_px, 40.0, "radius preserved across the preset");
+        // Grain slot wired to a canvas-anchored cold-press Paper (Fase C deep integration).
+        assert_eq!(t.paint.brush.texture.kind, TextureKind::PaperCold, "Grain = cold-press paper");
+        assert_eq!(t.paint.brush.texture.mapping, TextureMapping::Tiled, "paper is canvas-anchored");
 
         // Digital Basic (idx 0): back to the plain brush, colour + size still preserved.
         t.handle_panel_event(PanelEvent::SelectOption(core_ids::PAINTER_BRUSH_PRESET, "0".into()));

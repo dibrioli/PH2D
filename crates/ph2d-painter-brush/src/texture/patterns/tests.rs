@@ -5,6 +5,52 @@
 use super::*;
 
 #[test]
+fn paper_presets_are_distinct_and_tooth_like() {
+    // Sample each paper preset over a patch at its spec defaults; a paper tooth must sit mid-band (not a
+    // flat wash of black or white) and the three surfaces must be genuinely different fields.
+    fn stats(kind: TextureKind) -> (f32, f32, Vec<f32>) {
+        let mut params = [0.5f32; 6];
+        for (slot, s) in param_specs(kind).iter().enumerate() {
+            params[slot] = s.default;
+        }
+        let mut vals = Vec::new();
+        for i in 0..48 {
+            for j in 0..48 {
+                vals.push(sample_kind(kind, [i as f32 * 0.21, j as f32 * 0.23], params, None));
+            }
+        }
+        let mean = vals.iter().sum::<f32>() / vals.len() as f32;
+        let var = vals.iter().map(|v| (v - mean).powi(2)).sum::<f32>() / vals.len() as f32;
+        (mean, var, vals)
+    }
+    let kinds = [
+        TextureKind::PaperCold,
+        TextureKind::PaperRough,
+        TextureKind::PaperHot,
+    ];
+    let all: Vec<_> = kinds.into_iter().map(stats).collect();
+    for (kind, (mean, var, _)) in kinds.iter().zip(&all) {
+        assert!(
+            (0.2..0.8).contains(mean),
+            "{} tooth should sit mid-band, mean {mean}",
+            kind.name()
+        );
+        assert!(*var > 1e-4, "{} must have tooth relief (variance), got {var}", kind.name());
+    }
+    // The three surfaces differ: at least one sampled pixel diverges between each pair.
+    for a in 0..all.len() {
+        for b in (a + 1)..all.len() {
+            let diff = all[a]
+                .2
+                .iter()
+                .zip(&all[b].2)
+                .any(|(x, y)| (x - y).abs() > 1e-3);
+            assert!(diff, "papers {} and {} are identical", kinds[a].name(), kinds[b].name());
+        }
+    }
+}
+
+#[test]
 fn checker_alternates_by_cell_parity() {
     // Hard checker (Softness 0) reproduces the integer-cell parity.
     let hard = &[0.0f32];

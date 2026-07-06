@@ -37,7 +37,10 @@ pub(super) fn route_brush_dropdown_option(
             decode_paper_mapping_option,
             core_ids::PAINTER_WATERCOLOR_PAPER_MAPPING,
         ),
-        (decode_paper_ramp_mode_option, core_ids::PAINTER_PAPER_RAMP_MODE),
+        (
+            decode_paper_ramp_mode_option,
+            core_ids::PAINTER_PAPER_RAMP_MODE,
+        ),
         (
             decode_paper_ramp_interp_option,
             core_ids::PAINTER_PAPER_RAMP_INTERP,

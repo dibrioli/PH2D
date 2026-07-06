@@ -213,7 +213,8 @@ fn blit_band(ctx: &BlitCtx, dst: &mut [u8], band_y0: i64) -> bool {
             if a <= 0.0 {
                 continue;
             }
-            let out = crate::blend::blend_over_pigment(ctx.blend, prev, ctx.color, a, ctx.pigment_mix);
+            let out =
+                crate::blend::blend_over_pigment(ctx.blend, prev, ctx.color, a, ctx.pigment_mix);
             dst[i] = encode(out[0]);
             dst[i + 1] = encode(out[1]);
             dst[i + 2] = encode(out[2]);

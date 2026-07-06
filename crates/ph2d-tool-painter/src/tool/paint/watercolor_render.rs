@@ -37,7 +37,6 @@ const PAPER: [u8; 3] = [239, 233, 220];
 /// back to the live brush colour (wet_edges `COL_EPS`) — a faint rim carries the fresh pigment, not noise.
 const COL_EPS: u8 = 20;
 
-
 // ── Coverage / colour feather (wet_edges `stampCoverage` radial-gradient stops) ─────────────────────
 /// The soft-disc weight at normalised radius `dn ∈ [0, 1]`: `1.0` at the centre, `0.92` at `0.62`,
 /// `0` at the rim (the two-segment linear gradient of `stampCoverage` / `stampColor`).
@@ -454,8 +453,10 @@ impl PainterTool {
                 // Warp the sample position (organic boundary). Local coords for the region-local fields;
                 // global for the full-canvas colour buffer (same displacement, offset by the region origin).
                 let (sx, sy) = if warp_amp > 0.0 {
-                    let wx = warp_axis(gx as f32, gy as f32, SEED_WARP_X_A, SEED_WARP_X_B) * warp_amp;
-                    let wy = warp_axis(gx as f32, gy as f32, SEED_WARP_Y_A, SEED_WARP_Y_B) * warp_amp;
+                    let wx =
+                        warp_axis(gx as f32, gy as f32, SEED_WARP_X_A, SEED_WARP_X_B) * warp_amp;
+                    let wy =
+                        warp_axis(gx as f32, gy as f32, SEED_WARP_Y_A, SEED_WARP_Y_B) * warp_amp;
                     (bx as f32 + wx, by as f32 + wy)
                 } else {
                     (bx as f32, by as f32)
@@ -565,7 +566,8 @@ impl PainterTool {
                     );
                     for c in 0..3 {
                         let sub = (mixed[c].clamp(0.0, 1.0) * 255.0 + 0.5).clamp(0.0, 255.0);
-                        rgb[c] = (f32::from(rgb[c]) + (sub - f32::from(rgb[c])) * pigment_mix) as u8;
+                        rgb[c] =
+                            (f32::from(rgb[c]) + (sub - f32::from(rgb[c])) * pigment_mix) as u8;
                     }
                 }
                 let out_a = (ab + (1.0 - ab) * film_a).clamp(0.0, 1.0);
@@ -652,7 +654,11 @@ mod tests {
         let base: u8 = 200;
         let pig: u8 = 40;
         // od = 0 → T = 1 → output is the base byte exactly.
-        assert_eq!(lut.transmittance(pig, 0.0), 1.0, "od=0 ⇒ full transmittance");
+        assert_eq!(
+            lut.transmittance(pig, 0.0),
+            1.0,
+            "od=0 ⇒ full transmittance"
+        );
         let lin0 = lut.s2l[base as usize] * 1.0 + lut.s2l[pig as usize] * 0.0;
         assert_eq!(lut.l2s_byte(lin0), base, "od=0 composite = base");
         // Growing od darkens toward the pigment (monotone, bounded by the pigment byte).
@@ -661,7 +667,10 @@ mod tests {
             let t = lut.transmittance(pig, od);
             let lin = lut.s2l[base as usize] * t + lut.s2l[pig as usize] * (1.0 - t);
             let outv = lut.l2s_byte(lin) as i32;
-            assert!(outv <= prev, "od={od}: composite moves toward the (darker) pigment");
+            assert!(
+                outv <= prev,
+                "od={od}: composite moves toward the (darker) pigment"
+            );
             assert!(outv >= pig as i32 - 1, "never past the pigment");
             prev = outv;
         }
@@ -675,6 +684,9 @@ mod tests {
         assert_eq!(a, b, "same input ⇒ same value (deterministic)");
         assert!((0.0..=1.0).contains(&a), "in range");
         let c = value_noise(112.3, 245.6, 5.0, SEED_GRAIN);
-        assert!((a - c).abs() > 1e-4, "distant cells differ (it actually varies)");
+        assert!(
+            (a - c).abs() > 1e-4,
+            "distant cells differ (it actually varies)"
+        );
     }
 }

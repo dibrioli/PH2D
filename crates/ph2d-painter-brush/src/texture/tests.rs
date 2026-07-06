@@ -15,9 +15,7 @@ fn sample_tiled_honours_angle() {
         ..TextureSettings::default()
     };
     let across = |st: &TextureSettings| -> Vec<f32> {
-        (0..40)
-            .map(|i| sample_tiled(st, i * 8, 64, None))
-            .collect()
+        (0..40).map(|i| sample_tiled(st, i * 8, 64, None)).collect()
     };
     s.angle_deg = 0;
     let a = across(&s);
@@ -962,7 +960,11 @@ fn grain_coverage_is_byte_identical_without_granulation() {
     for &depth in &[0.0f32, 0.3, 1.0] {
         for i in 0..=10 {
             let s = i as f32 / 10.0;
-            let base = if depth >= 1.0 { s } else { 1.0 + (s - 1.0) * depth };
+            let base = if depth >= 1.0 {
+                s
+            } else {
+                1.0 + (s - 1.0) * depth
+            };
             assert_eq!(
                 super::grain_coverage(s, depth, 0.0),
                 base,
@@ -985,7 +987,10 @@ fn granulation_rejects_valleys_keeps_peaks() {
     let g_lo = super::grain_coverage(0.3, 1.0, 0.4);
     let g_hi = super::grain_coverage(0.3, 1.0, 0.9);
     let g_none = super::grain_coverage(0.3, 1.0, 0.0);
-    assert!(g_hi < g_lo && g_lo < g_none, "more granulation rejects more valley deposit");
+    assert!(
+        g_hi < g_lo && g_lo < g_none,
+        "more granulation rejects more valley deposit"
+    );
     assert!(g_hi >= 0.0, "coverage stays non-negative");
     // The peak is untouched regardless.
     assert_eq!(super::grain_coverage(1.0, 1.0, 0.9), 1.0);

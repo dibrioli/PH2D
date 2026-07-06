@@ -269,7 +269,11 @@ fn paper_kind_option_forwards_selectoption() {
     let mut st = PainterLayersPanelState;
     let opt = core_ids::painter_paper_kind_option_id(26); // Paper Cold Press
     let outcome = host.apply_panel_event::<PainterLayersPanel>(&mut st, WidgetEvent::Click(opt));
-    assert_eq!(outcome, EventOutcome::Consumed, "Paper kind option ignored — decoder/route missing");
+    assert_eq!(
+        outcome,
+        EventOutcome::Consumed,
+        "Paper kind option ignored — decoder/route missing"
+    );
     let actions = host.drained_actions();
     assert!(
         actions.iter().any(|a| matches!(

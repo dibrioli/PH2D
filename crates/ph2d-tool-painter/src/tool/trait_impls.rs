@@ -298,7 +298,9 @@ impl Tool for PainterTool {
                 }
             }
             // ── Watercolor Paper slot kind + mapping pickers (value = wire u8). ─
-            PanelEvent::SelectOption(id, value) if id == core_ids::PAINTER_WATERCOLOR_PAPER_KIND => {
+            PanelEvent::SelectOption(id, value)
+                if id == core_ids::PAINTER_WATERCOLOR_PAPER_KIND =>
+            {
                 if let Ok(k) = value.parse::<u8>() {
                     self.set_brush_paper_kind(k);
                 }

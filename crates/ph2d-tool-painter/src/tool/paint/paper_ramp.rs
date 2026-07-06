@@ -72,7 +72,10 @@ impl PainterTool {
             self.paint.paper_color_ramp.len(),
         );
         let color = self.paint.paper_color_ramp.eval(pos);
-        let i = self.paint.paper_color_ramp.add_stop(RampStop::new(pos, color));
+        let i = self
+            .paint
+            .paper_color_ramp
+            .add_stop(RampStop::new(pos, color));
         self.invalidate_paper_ramp();
         i
     }

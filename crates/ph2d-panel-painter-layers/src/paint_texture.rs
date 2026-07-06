@@ -65,7 +65,9 @@ pub(crate) fn paint_texture_section(
     // Watercolor mode: the Grain slot IS the granulation map — show the "Same as Paper" toggle + the
     // granulation Amount at the top (the Paper substrate has its own section above). Brush only.
     if brush.watercolor && !compact {
-        y = crate::paint_watercolor::paint_grain_watercolor_extras(ctx, theme, x, content_w, y, brush);
+        y = crate::paint_watercolor::paint_grain_watercolor_extras(
+            ctx, theme, x, content_w, y, brush,
+        );
     }
     let kind = TextureKind::from_u8(brush.texture_kind);
     let mapping = TextureMapping::from_u8(brush.texture_mapping);
@@ -96,7 +98,15 @@ pub(crate) fn paint_texture_section(
     }
 
     // ── Live preview of the current texture pattern, right below the Texture dropdown (Enio 2026-06-24) ──
-    y = paint_texture_preview(ctx, theme, x, content_w, y, brush, state::current_brush_texture_image());
+    y = paint_texture_preview(
+        ctx,
+        theme,
+        x,
+        content_w,
+        y,
+        brush,
+        state::current_brush_texture_image(),
+    );
 
     // ── Per-dab mapping controls — brush only (a layer covers the sprite at identity rotation) ──
     if !compact {

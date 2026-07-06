@@ -16,7 +16,12 @@ fn paper_presets_are_distinct_and_tooth_like() {
         let mut vals = Vec::new();
         for i in 0..48 {
             for j in 0..48 {
-                vals.push(sample_kind(kind, [i as f32 * 0.21, j as f32 * 0.23], params, None));
+                vals.push(sample_kind(
+                    kind,
+                    [i as f32 * 0.21, j as f32 * 0.23],
+                    params,
+                    None,
+                ));
             }
         }
         let mean = vals.iter().sum::<f32>() / vals.len() as f32;
@@ -35,7 +40,11 @@ fn paper_presets_are_distinct_and_tooth_like() {
             "{} tooth should sit mid-band, mean {mean}",
             kind.name()
         );
-        assert!(*var > 1e-4, "{} must have tooth relief (variance), got {var}", kind.name());
+        assert!(
+            *var > 1e-4,
+            "{} must have tooth relief (variance), got {var}",
+            kind.name()
+        );
     }
     // The three surfaces differ: at least one sampled pixel diverges between each pair.
     for a in 0..all.len() {
@@ -45,7 +54,12 @@ fn paper_presets_are_distinct_and_tooth_like() {
                 .iter()
                 .zip(&all[b].2)
                 .any(|(x, y)| (x - y).abs() > 1e-3);
-            assert!(diff, "papers {} and {} are identical", kinds[a].name(), kinds[b].name());
+            assert!(
+                diff,
+                "papers {} and {} are identical",
+                kinds[a].name(),
+                kinds[b].name()
+            );
         }
     }
 }

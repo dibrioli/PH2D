@@ -51,7 +51,8 @@ pub const PAINTER_WATERCOLOR_PAPER_RESET: NodeId =
     hash_node_id("painter_brush.watercolor_paper_reset");
 /// **Paper** slot kind dropdown chip (None / Cold-Rough-Hot Press / other procedural / Image). `SelectOption`
 /// → `set_brush_paper_kind`. Options via [`painter_paper_kind_option_id`].
-pub const PAINTER_WATERCOLOR_PAPER_KIND: NodeId = hash_node_id("painter_brush.watercolor_paper_kind");
+pub const PAINTER_WATERCOLOR_PAPER_KIND: NodeId =
+    hash_node_id("painter_brush.watercolor_paper_kind");
 /// **Paper** Size X (`0.1..100`). `SetValue` → `set_brush_paper_size`(0).
 pub const PAINTER_WATERCOLOR_PAPER_SIZE_X: NodeId =
     hash_node_id("painter_brush.watercolor_paper_size_x");

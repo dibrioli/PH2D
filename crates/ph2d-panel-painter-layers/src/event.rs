@@ -22,10 +22,10 @@ use ph2d_tool_painter::{AdjustmentParams, LayerId, LayerKind, LayerStack, MAX_BL
 mod dab_gizmo;
 mod decode;
 mod option_route;
-mod ramp_picker;
-mod shape_layer_picker;
 mod paper_ramp_picker;
 mod ramp_events;
+mod ramp_picker;
+mod shape_layer_picker;
 mod shape_ramp_picker;
 
 pub(crate) fn apply_event(

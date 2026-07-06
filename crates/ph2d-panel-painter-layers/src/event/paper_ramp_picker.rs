@@ -78,7 +78,8 @@ fn selected_stop_seed() -> [u8; 4] {
     let sel_id = state::selected_paper_ramp_stop();
     state::current_brush()
         .and_then(|b| {
-            let count = (b.paper_color_ramp_stop_count as usize).min(b.paper_color_ramp_stops.len());
+            let count =
+                (b.paper_color_ramp_stop_count as usize).min(b.paper_color_ramp_stops.len());
             b.paper_color_ramp_stops[..count]
                 .iter()
                 .find(|s| s[5] as u8 == sel_id)

@@ -35,10 +35,6 @@ mod stroke_multi; // multi-shape: parked (inactive-but-editable) stroke shapes +
 pub use stroke_multi::StrokeOpBadge;
 /// Per-dab randomize setters (Jitter Scale / Rotate / Randomize Color); split from `brush_settings`.
 mod jitter_settings;
-/// Watercolor section setters + router (edge darkening / granulation / pigment); no fluid sim.
-mod watercolor_settings;
-/// Watercolor edge darkening (#1): per-stroke coverage + the pen-up blur-difference "fringe" pass.
-mod watercolor_render;
 /// The canvas pointer's operation mode (Paint / Smear / Blur / Clone / Mask); split from `paint.rs` (cap).
 mod paint_mode;
 /// Multi-layer Shape (z-ordered layers + per-layer-colour state); split from `paint.rs` (LOC cap).
@@ -48,6 +44,10 @@ mod shape_settings;
 mod shape_snapshot; // unified shape+paint undo: each create/edit/bake = one ModelSnapshot on the timeline
 mod stamp_color_cache; // the cached multi-layer coloured stamp (bake the composite once, blit per dab)
 mod stamp_color_dynamic;
+/// Watercolor edge darkening (#1): per-stroke coverage + the pen-up blur-difference "fringe" pass.
+mod watercolor_render;
+/// Watercolor section setters + router (edge darkening / granulation / pigment); no fluid sim.
+mod watercolor_settings;
 pub(crate) use paint_mode::{PAINT_MODE_COUNT, PaintMode};
 mod lifecycle; // transient-edit reset run at each document (re)bind — abandons pending Fill/stroke/etc.
 /// Drawing symmetry (mirror / radial) — engine glue, canvas-centre resolution + on-canvas pick modes.
@@ -113,6 +113,7 @@ mod selection_gizmo;
 mod warp;
 pub use selection_gizmo::SelectionGizmoView;
 pub use warp::DeformGizmoView;
+mod paper_ramp;
 /// Selection creation input: mode/op/threshold setters + on-canvas pointer gestures (marquee/lasso/flood). [LOC split].
 mod selection_input;
 /// Selection **Offset** (ADR-0103 Am.3): signed-distance grow/shrink + concentric alternating protected /
@@ -127,7 +128,6 @@ mod selection_raster;
 pub(super) mod selection_shapes; // SelectionEntry is re-exported at `crate::tool` for the undo snapshot
 /// Selection **Edit** mode contour tracing (mask → editable boundary polyline); split for the LOC cap.
 mod selection_trace;
-mod paper_ramp;
 mod shape_ramp;
 mod snapshot;
 /// The Blender-style cached brush stamp (render falloff×texture once, scale-blit per dab).

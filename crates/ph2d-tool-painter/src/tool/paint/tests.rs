@@ -10681,7 +10681,10 @@ fn watercolor_wash_is_live_before_pen_up() {
     // Pointer still down: the wash is ALREADY on the canvas (interior differs from the white base) and
     // its rim is ALREADY darker than the centreline.
     let interior = px(&t, size, 44, 48);
-    assert!(lum(interior) < 3 * 255, "the wash is live mid-stroke (interior no longer white)");
+    assert!(
+        lum(interior) < 3 * 255,
+        "the wash is live mid-stroke (interior no longer white)"
+    );
     let rim = px(&t, size, 44, 40); // 8 px above centre → top rim of the radius-10 band
     assert!(
         lum(rim) < lum(interior),

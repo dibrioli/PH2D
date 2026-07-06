@@ -19,9 +19,14 @@ fn paper_kind_option_ids_round_trip_and_dont_collide_with_grain() {
     use super::decode::decode_paper_kind_option;
     use ph2d_editor_core::ids::painter_paper_kind_option_id;
     for k in 0..TextureKind::COUNT {
-        assert_eq!(decode_paper_kind_option(painter_paper_kind_option_id(k)), Some(k));
+        assert_eq!(
+            decode_paper_kind_option(painter_paper_kind_option_id(k)),
+            Some(k)
+        );
         // The Paper slot + the Grain slot share the TextureKind enum but must NOT collide on ids.
-        assert!(decode_paper_kind_option(core_ids::painter_brush_texture_kind_option_id(k)).is_none());
+        assert!(
+            decode_paper_kind_option(core_ids::painter_brush_texture_kind_option_id(k)).is_none()
+        );
     }
 }
 

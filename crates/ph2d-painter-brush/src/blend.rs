@@ -579,12 +579,23 @@ mod tests {
     /// RYB round-trip keeps a colour close to itself (the mix at `t = 0`/`1` is nearly the endpoint).
     #[test]
     fn ryb_mix_endpoints_are_near_identity() {
-        for c in [[0.9, 0.8, 0.1], [0.1, 0.2, 0.75], [0.5, 0.5, 0.5], [0.2, 0.7, 0.3]] {
+        for c in [
+            [0.9, 0.8, 0.1],
+            [0.1, 0.2, 0.75],
+            [0.5, 0.5, 0.5],
+            [0.2, 0.7, 0.3],
+        ] {
             let a = ryb_mix(c, [0.0, 0.0, 0.0], 0.0); // t=0 → c
             let b = ryb_mix([0.0, 0.0, 0.0], c, 1.0); // t=1 → c
             for k in 0..3 {
-                assert!((a[k] - c[k]).abs() < 0.02, "ryb t=0 drifted: {a:?} vs {c:?}");
-                assert!((b[k] - c[k]).abs() < 0.02, "ryb t=1 drifted: {b:?} vs {c:?}");
+                assert!(
+                    (a[k] - c[k]).abs() < 0.02,
+                    "ryb t=0 drifted: {a:?} vs {c:?}"
+                );
+                assert!(
+                    (b[k] - c[k]).abs() < 0.02,
+                    "ryb t=1 drifted: {b:?} vs {c:?}"
+                );
             }
         }
     }

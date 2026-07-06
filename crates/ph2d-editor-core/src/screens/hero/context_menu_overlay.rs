@@ -314,7 +314,11 @@ pub fn paint_context_menu_overlay(
                 "Use as Brush Grain",
                 None,
             ),
-            (ids::CTX_MENU_HIER_USE_AS_PAPER, "Use as Watercolor Paper", None),
+            (
+                ids::CTX_MENU_HIER_USE_AS_PAPER,
+                "Use as Watercolor Paper",
+                None,
+            ),
             (
                 ids::CTX_MENU_HIER_USE_AS_GRANULATION,
                 "Use as Granulation",

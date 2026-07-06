@@ -17,13 +17,16 @@
 //!
 //! ## Smoke contract
 //!
-//! Click the VECTOR pill → the pen activates → click/drag on the canvas draws a
-//! Bézier path → the panel's Width slider + Stroke / Fill palettes restyle new
-//! (and the selected) paths.
+//! Click the VECTOR pill → the pen activates → the docked `ph2d-panel-vector`
+//! Style panel appears (right dock) → click/drag on the canvas draws a Bézier
+//! path → the panel's Width slider + Stroke / Fill colour swatches (OKLCH
+//! picker) restyle new (and the selected) paths.
 
 pub mod icon;
+pub mod params;
 pub mod tool;
 
+pub use params::{VectorStyleSnapshot, px_to_slider, slider_to_px};
 pub use tool::{DEFAULT_STROKE_WIDTH_PX, PALETTE, VectorTool};
 
 use ph2d_a11y::Role;

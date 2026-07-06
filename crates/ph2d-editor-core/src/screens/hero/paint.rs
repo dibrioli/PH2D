@@ -274,6 +274,10 @@ pub fn paint_hero_screen(
         ids::UPS_PANEL,
         ids::PAINTER_SIDEBAR_PANEL,
         ids::VECTOR_INSPECTOR_PANEL,
+        // Vector tool Style panel (ADR-0108 docked `ph2d-panel-vector`): docks
+        // over the inspector slot while the `vector` tool is active. Its
+        // `paint()` no-ops when hidden, so this is inert otherwise.
+        ids::VECTOR_PANEL,
         ids::INSP_BLENDER_PICKER,
         ids::GAL_PANEL,
         ids::AUDIO_MIXER_PANEL,

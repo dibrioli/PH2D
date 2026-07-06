@@ -59,6 +59,11 @@ const HIT_PARITY_ALLOW: &[(&str, &str)] = &[
         "ph2d-panel-vector-inspector",
         "VECTOR_INSPECTOR_FILL_SWATCH",
     ),
+    // Vector tool Style panel (ADR-0108): the Stroke + Fill swatches are picker
+    // swatches — hit-indexed in paint via `register_picker_swatch`, never in
+    // `populate.rs`. Dispatched by the colour-picker hit path in `pointer.rs`.
+    ("ph2d-panel-vector", "VECTOR_STROKE_SWATCH"),
+    ("ph2d-panel-vector", "VECTOR_FILL_SWATCH"),
     // Inline-rename text field: registered dynamically only while rename mode
     // is active; handled in `ph2d-panel-hierarchy/src/event.rs` via
     // Submit/Cancel arms (verified) — not a static populate widget.

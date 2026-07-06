@@ -34,3 +34,25 @@ pub const VECTOR_INSPECTOR_SHAPE_ELLIPSE: NodeId = hash_node_id("vector_inspecto
 pub const VECTOR_INSPECTOR_SHAPE_POLYGON: NodeId = hash_node_id("vector_inspector.shape.polygon");
 pub const VECTOR_INSPECTOR_SHAPE_STAR: NodeId = hash_node_id("vector_inspector.shape.star");
 pub const VECTOR_INSPECTOR_SHAPE_SPIRAL: NodeId = hash_node_id("vector_inspector.shape.spiral");
+
+// ── Vector tool Style panel (ADR-0108 cutover — docked `ph2d-panel-vector`) ──
+// The `vector` tool's Style controls live in a right-docked `Panel<State>` (the
+// tool `FloatingPanel` is unpainted). Width slider (1..20 px) + Stroke / Fill
+// colour swatches (each opens the shared OKLCH picker via `is_picker_swatch`) +
+// a Fill "None" affordance. Distinct slug family from the retired
+// `vector_inspector.*` ids above.
+/// Vector Style panel outer rect id (for `z_order` + hit-barrier).
+pub const VECTOR_PANEL: NodeId = hash_node_id("vector.panel");
+/// Vector Style panel close (X) button.
+pub const VECTOR_CLOSE: NodeId = hash_node_id("vector.close");
+/// Stroke-width slider (bipolar-less: track `0..1` → `1..20` px).
+pub const VECTOR_WIDTH: NodeId = hash_node_id("vector.width");
+/// Px-valued chip linked to [`VECTOR_WIDTH`].
+pub const VECTOR_WIDTH_NUM: NodeId = hash_node_id("vector.width_num");
+/// Stroke-colour swatch — a picker swatch (opens the Blender picker on Down);
+/// the shell read-back applies the picked colour to the new + selected path.
+pub const VECTOR_STROKE_SWATCH: NodeId = hash_node_id("vector.stroke_swatch");
+/// Fill-colour swatch — a picker swatch (alpha 0 ⇒ no fill).
+pub const VECTOR_FILL_SWATCH: NodeId = hash_node_id("vector.fill_swatch");
+/// Fill "None" button — clears the fill (alpha 0) on the selected closed path.
+pub const VECTOR_FILL_NONE: NodeId = hash_node_id("vector.fill_none");

@@ -143,6 +143,11 @@ ph2d-panel-color-equalization = { path = "../../crates/ph2d-panel-color-equaliza
 ph2d-panel-equalize-sizes = { path = "../../crates/ph2d-panel-equalize-sizes", optional = true }
 ph2d-panel-upscale = { path = "../../crates/ph2d-panel-upscale", optional = true }
 ph2d-panel-padding = { path = "../../crates/ph2d-panel-padding", optional = true }
+# Vector Style panel (ADR-0108 cutover) — typed panel with the `vector` tool's
+# Width slider + Stroke / Fill OKLCH colour swatches + Fill "None". Right-docked
+# (Inspector slot takeover) while the `vector` tool is active. Shell publishes
+# the snapshot via `ph2d_panel_vector::set_current_vector_style` (vector_bridge).
+ph2d-panel-vector = { path = "../../crates/ph2d-panel-vector", optional = true }
 # Painter layers panel — typed panel listing the LayerStack (thumb + name +
 # visibility + opacity + blend) + adjustment-layer editors. Right-docked
 # (Inspector slot takeover) when the Painter (layers + effects) tool is active.
@@ -243,6 +248,7 @@ default = [
     "panel-equalize-sizes",
     "panel-upscale",
     "panel-painter-layers",
+    "panel-vector",
     "panel-audio-mixer",
 ]
 # `lite` = explicit "no panels" — host boots with chrome only
@@ -259,6 +265,10 @@ panel-color-equalization = ["ph2d-panel-registry-init/panel-color-equalization",
 panel-equalize-sizes = ["ph2d-panel-registry-init/panel-equalize-sizes", "dep:ph2d-panel-equalize-sizes"]
 panel-upscale        = ["ph2d-panel-registry-init/panel-upscale", "dep:ph2d-panel-upscale"]
 panel-painter-layers = ["ph2d-panel-registry-init/panel-painter-layers", "dep:ph2d-panel-painter-layers"]
+# Vector Style panel + its render_loop bridge (`vector_bridge` publishes the
+# snapshot via `ph2d_panel_vector::set_current_vector_style` + reads the OKLCH
+# picker back into the tool), so the shell needs the direct dep too.
+panel-vector         = ["ph2d-panel-registry-init/panel-vector", "dep:ph2d-panel-vector"]
 panel-grid-snap      = ["ph2d-panel-registry-init/panel-grid-snap"]
 # Direct dep too: the render_loop bridge publishes live levels via
 # `set_snapshot` + reads `master_muted` to drive the engine's master gain.

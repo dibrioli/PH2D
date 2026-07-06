@@ -22,13 +22,14 @@ ph2d-panel-inspector = { path = "../ph2d-panel-inspector", optional = true }
 ph2d-panel-padding = { path = "../ph2d-panel-padding", optional = true }
 ph2d-panel-painter-layers = { path = "../ph2d-panel-painter-layers", optional = true }
 ph2d-panel-upscale = { path = "../ph2d-panel-upscale", optional = true }
+ph2d-panel-vector = { path = "../ph2d-panel-vector", optional = true }
 ph2d-panel-widget-gallery = { path = "../ph2d-panel-widget-gallery", optional = true }
 # <ph2d-panel-sync:deps:end>
 
 [features]
 default = [
     "panel-widget-gallery", "panel-hierarchy", "panel-inspector", "panel-grid-snap",
-    "panel-bgremoval", "panel-padding",
+    "panel-bgremoval", "panel-padding", "panel-vector",
     "panel-color-equalization", "panel-equalize-sizes", "panel-upscale",
     "panel-audio-mixer",
 ]
@@ -47,6 +48,7 @@ panel-inspector = ["dep:ph2d-panel-inspector"]
 panel-padding = ["dep:ph2d-panel-padding"]
 panel-painter-layers = ["dep:ph2d-panel-painter-layers"]
 panel-upscale = ["dep:ph2d-panel-upscale"]
+panel-vector = ["dep:ph2d-panel-vector"]
 panel-widget-gallery = ["dep:ph2d-panel-widget-gallery"]
 # <ph2d-panel-sync:features:end>
 

@@ -410,6 +410,14 @@ const CHROME_IDS: &[(&str, NodeId)] = &[
         "VECTOR_INSPECTOR_SHAPE_SPIRAL",
         ids::VECTOR_INSPECTOR_SHAPE_SPIRAL,
     ),
+    // Vector tool Style panel (ADR-0108 docked `ph2d-panel-vector`).
+    ("VECTOR_PANEL", ids::VECTOR_PANEL),
+    ("VECTOR_CLOSE", ids::VECTOR_CLOSE),
+    ("VECTOR_WIDTH", ids::VECTOR_WIDTH),
+    ("VECTOR_WIDTH_NUM", ids::VECTOR_WIDTH_NUM),
+    ("VECTOR_STROKE_SWATCH", ids::VECTOR_STROKE_SWATCH),
+    ("VECTOR_FILL_SWATCH", ids::VECTOR_FILL_SWATCH),
+    ("VECTOR_FILL_NONE", ids::VECTOR_FILL_NONE),
 ];
 
 /// Pairwise uniqueness across every chrome [`NodeId`]. O(n²) over ~200

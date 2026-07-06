@@ -1,0 +1,33 @@
+[package]
+name = "ph2d-panel-vector"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# Vector Style panel — typed `Panel<State>` (ADR-0029 / ADR-0108 cutover).
+# Right-docked (Inspector slot); visible only while the `vector` tool is
+# active. Width slider (1..20 px) + Stroke / Fill colour swatches that open the
+# shared OKLCH picker + a Fill "None" affordance. The tool `FloatingPanel` is
+# unpainted, so this docked panel is the live Style UI (mirror of Padding).
+
+[dependencies]
+ph2d-editor-core = { path = "../ph2d-editor-core" }
+# The Vector Style vocabulary (`VectorStyleSnapshot` + `px_to_slider` /
+# `slider_to_px` + Width mapping consts) lives in the tool crate (mirror of
+# `ph2d-tool-padding::params`): the panel reads the snapshot it paints and the
+# slider↔chip mapping from there. Direction panel → tool does not cycle (tool
+# depends on editor-core, panel on both).
+ph2d-tool-vector = { path = "../ph2d-tool-vector" }
+ph2d-a11y = { path = "../ph2d-a11y" }
+ph2d-tokens = { path = "../ph2d-tokens" }
+
+[dev-dependencies]
+# Blindagem Fase 1.2: headless behavioral seam harness (populate → apply_event
+# → bus → handle_panel_event). Dev-dep only — the `architecture_cycle_prevention`
+# gate reads `[dependencies]` only, so this builds no runtime cycle.
+ph2d-ui-testkit = { path = "../ph2d-ui-testkit" }

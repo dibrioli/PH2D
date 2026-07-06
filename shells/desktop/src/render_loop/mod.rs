@@ -1276,7 +1276,13 @@ impl crate::App {
             let vector_active = tools
                 .active()
                 .is_some_and(|t| t.id() == ph2d_editor::ToolId::new("vector"));
-            vector_bridge::dispatch(tools, vec_scene, &mut self.vec_pen, &mut self.vec_history);
+            vector_bridge::dispatch(
+                hero,
+                tools,
+                vec_scene,
+                &mut self.vec_pen,
+                &mut self.vec_history,
+            );
             ph2d_vec_render::dispatch(
                 vec_scene,
                 camera.world_to_screen_affine(window_size),

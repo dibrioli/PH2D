@@ -341,6 +341,23 @@ pub(crate) fn build_initial_state(
         imageio_exporters.len(),
     );
 
+    // ADR-0108 Fase 0: cena-demo prova o seam; `PH2D_VEC_DEMO_N=<n>` troca para a
+    // grade de N blobs do spike de escala (kill-criterion §5). Loga a escolha no
+    // terminal — diagnóstico infalível de qual caminho rodou.
+    let vec_scene = match std::env::var("PH2D_VEC_DEMO_N")
+        .ok()
+        .and_then(|s| s.parse::<usize>().ok())
+    {
+        Some(n) if n > 0 => {
+            eprintln!("[ph2d-vec] Fase 0 spike: demo_grid N={n}");
+            ph2d_vec_scene::VecScene::demo_grid(n)
+        }
+        _ => {
+            eprintln!("[ph2d-vec] Fase 0: cena-demo (smiley); PH2D_VEC_DEMO_N p/ a grade");
+            ph2d_vec_scene::VecScene::demo()
+        }
+    };
+
     let gfx = AppGfx {
         surface,
         renderer,
@@ -361,15 +378,8 @@ pub(crate) fn build_initial_state(
         compositor,
         vello_pass,
         vector_scene,
-        // ADR-0108 Fase 0: cena-demo prova o seam; `PH2D_VEC_DEMO_N=<n>` troca
-        // para a grade de N blobs do spike de escala (kill-criterion §5).
-        vec_scene: match std::env::var("PH2D_VEC_DEMO_N")
-            .ok()
-            .and_then(|s| s.parse::<usize>().ok())
-        {
-            Some(n) if n > 0 => ph2d_vec_scene::VecScene::demo_grid(n),
-            _ => ph2d_vec_scene::VecScene::demo(),
-        },
+        // ADR-0108 Fase 0: `vec_scene` escolhido logo acima (smiley ou grade N).
+        vec_scene,
         text_system,
         hero_screen,
         hero_arena: Bump::with_capacity(4096),

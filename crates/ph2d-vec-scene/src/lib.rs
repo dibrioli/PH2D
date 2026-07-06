@@ -144,9 +144,13 @@ impl VecScene {
             return scene;
         }
         let cols = (n as f64).sqrt().ceil() as usize;
-        let spacing = 3.0; // world-units entre centros (r ≈ 1.2 → sem overlap)
-        let half = (cols as f64 - 1.0) * spacing * 0.5;
-        let r = 120.0 * DEMO_SCALE;
+        // Empacota a grade num quadrado que CABE na viewport-default (~±4.8 world,
+        // aferido no smoke) → todos os N ficam visíveis (a grade fica mais densa
+        // conforme N sobe) e o teste de GPU é justo (nada é culled off-screen).
+        let extent = 7.0_f64;
+        let spacing = extent / cols as f64;
+        let r = spacing * 0.4; // raio proporcional ao passo → sem overlap
+        let half = extent * 0.5 - spacing * 0.5;
         for i in 0..n {
             let cx = (i % cols) as f64 * spacing - half;
             let cy = (i / cols) as f64 * spacing - half;

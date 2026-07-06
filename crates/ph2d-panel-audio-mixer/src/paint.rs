@@ -38,6 +38,15 @@ pub(crate) fn paint(_state: &mut AudioMixerState, ctx: &mut PaintCtx) {
     let theme = ctx.host.theme();
     ctx.host.store_mut().set_panel_rect(AMIX_PANEL, rect);
 
+    // Opaque backing: `paint_panel_surface` is 0.96-alpha "glass", so without
+    // this the Inspector still painting behind the shared dock slot bleeds
+    // through. The mixer takes over the slot → fully cover it.
+    fill_rounded_rect(
+        ctx.scene,
+        rect,
+        Radius::Sm.px(),
+        resolve(ColorToken::BgElev, theme),
+    );
     paint_panel_surface(rect, ctx.scene, theme);
     paint_panel_corner_dot(rect, ctx.scene, theme);
     paint_panel_corner_dot_bl(rect, ctx.scene, theme);

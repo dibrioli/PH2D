@@ -7,7 +7,13 @@
 > uma base congelada), que é a arquitetura do wet_edges. Supersede a abordagem "efeito bolt-on" do doc
 > 08 (F1–F4) para o MODO aquarela; o brush digital normal fica intacto.
 >
-> Status: **DESIGN + plano de fases.** F1–F4 (doc 08) já landaram como base reaproveitável.
+> Status: **A–D LANDARAM** (linha `line/Painter`, commits `3bd94798` A · `adc5fbda`+`76ca1e56` B ·
+> `c1637c7e` C · `d7270b9b` D). A+B smoke-aprovados pelo Enio. F1–F4 (doc 08) foram a base
+> reaproveitável (o edge/coverage/blur/RYB viraram peças do render-path óptico).
+>
+> **Follow-ups deferidos (§5 nota):** botões da modifier-toolbar (Mask/Clip/Lock/Ref-style) p/ tag de
+> paper/granulation · tint da COR do papel na base do composite (hoje o tag alimenta o tooth/granulação,
+> não a cor-base) · perf dirty-rect no composite p/ traços grandes.
 
 ---
 

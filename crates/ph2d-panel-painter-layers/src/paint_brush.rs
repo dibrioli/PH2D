@@ -77,24 +77,7 @@ pub(crate) fn paint_brush_body(
     };
 
     // **Preset** dropdown at the very TOP — one-click media presets (Digital Basic / Watercolor Basic).
-    // The "current" preset is inferred from the master watercolor flag (there's no stored preset id — a
-    // preset just seeds the whole `BrushSpec`). Selecting one forwards `SelectOption` → `apply_brush_preset`.
-    let preset_idx = u8::from(brush.watercolor); // 0 = Digital, 1 = Watercolor
-    let (ny, preset_open) = paint_dropdown_row(
-        ctx,
-        theme,
-        x,
-        content_w,
-        y,
-        "Preset",
-        core_ids::PAINTER_BRUSH_PRESET,
-        preset_idx,
-        preset_name(preset_idx),
-    );
-    y = ny;
-    if let Some(r) = preset_open {
-        state::set_pending_brush_preset_dd(Some((r, preset_idx)));
-    }
+    y = paint_preset_row(ctx, theme, x, content_w, y, brush);
 
     // "Sync with other tools" — at the very TOP of every tool's panel. Off (default) = this tool keeps its
     // own settings; on = all paint tools share them (the panel where it's checked seeds the others).
@@ -507,6 +490,35 @@ pub(crate) fn paint_dropdown_chip(
 
     ctx.host.hit_index_mut().register(id, rect);
     open
+}
+
+/// Paint the top-of-panel **Preset** dropdown row, returning the next `y`. The "current" preset is
+/// inferred from the master watercolor flag (there's no stored preset id — a preset just seeds the whole
+/// `BrushSpec`); selecting one forwards `SelectOption(PAINTER_BRUSH_PRESET, idx)` → `apply_brush_preset`.
+fn paint_preset_row(
+    ctx: &mut PaintCtx,
+    theme: ph2d_tokens::Theme,
+    x: f32,
+    content_w: f32,
+    y: f32,
+    brush: BrushSettings,
+) -> f32 {
+    let preset_idx = u8::from(brush.watercolor); // 0 = Digital, 1 = Watercolor
+    let (ny, preset_open) = paint_dropdown_row(
+        ctx,
+        theme,
+        x,
+        content_w,
+        y,
+        "Preset",
+        core_ids::PAINTER_BRUSH_PRESET,
+        preset_idx,
+        preset_name(preset_idx),
+    );
+    if let Some(r) = preset_open {
+        state::set_pending_brush_preset_dd(Some((r, preset_idx)));
+    }
+    ny
 }
 
 /// Display name for a brush-preset index (`0` = Digital, `1` = Watercolor). English UI (HR-15).

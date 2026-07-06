@@ -25,6 +25,7 @@ use std::sync::Arc;
 
 // Ramp UI state accessors live in the sibling `state_ramp` (panel LOC-cap split); re-exported here so
 // callers keep the `state::*` path. The backing thread-locals stay in this module (`pub(crate)`).
+pub(crate) use crate::state_dropdowns::*;
 pub(crate) use crate::state_ramp::*;
 
 /// The brush's published Image texture: `(luminance bytes, width, height)`.
@@ -62,7 +63,7 @@ thread_local! {
 
     /// The open brush blend-mode dropdown for the deferred popover: `(chip_rect, mode_u8)`. Set during
     /// the Brush-section paint, drained at the end of `paint`. Mirror of [`PENDING_BLEND_DD`].
-    static PENDING_BRUSH_BLEND_DD: Cell<Option<(Rect, u8)>> = const { Cell::new(None) };
+    pub(crate) static PENDING_BRUSH_BLEND_DD: Cell<Option<(Rect, u8)>> = const { Cell::new(None) };
 
     /// The open per-layer-colour **Shape layer blend** dropdown (the "B" chip): `(layer_index,
     /// chip_rect, current_mode_u8)`. One-open-at-a-time like [`PENDING_BLEND_DD`]; set during the
@@ -71,25 +72,25 @@ thread_local! {
 
     /// The open brush Falloff dropdown popover: `(chip_rect, current_preset_u8)`.
     /// Mirror of [`PENDING_BRUSH_BLEND_DD`] for the Falloff section chip.
-    static PENDING_BRUSH_FALLOFF_DD: Cell<Option<(Rect, u8)>> = const { Cell::new(None) };
+    pub(crate) static PENDING_BRUSH_FALLOFF_DD: Cell<Option<(Rect, u8)>> = const { Cell::new(None) };
 
     /// The open top-of-panel **Preset** dropdown popover: `(chip_rect, current_preset_idx)`.
-    static PENDING_BRUSH_PRESET_DD: Cell<Option<(Rect, u8)>> = const { Cell::new(None) };
+    pub(crate) static PENDING_BRUSH_PRESET_DD: Cell<Option<(Rect, u8)>> = const { Cell::new(None) };
 
     /// The open Stroke-section Method dropdown popover: `(chip_rect, current_method_u8)`.
-    static PENDING_BRUSH_STROKE_METHOD_DD: Cell<Option<(Rect, u8)>> = const { Cell::new(None) };
+    pub(crate) static PENDING_BRUSH_STROKE_METHOD_DD: Cell<Option<(Rect, u8)>> = const { Cell::new(None) };
 
     /// The open Stroke-section Jitter-Unit dropdown popover: `(chip_rect, current_unit_u8)`.
-    static PENDING_BRUSH_JITTER_UNIT_DD: Cell<Option<(Rect, u8)>> = const { Cell::new(None) };
+    pub(crate) static PENDING_BRUSH_JITTER_UNIT_DD: Cell<Option<(Rect, u8)>> = const { Cell::new(None) };
 
     /// The open Texture-section Kind picker popover: `(chip_rect, current_kind_u8)`.
-    static PENDING_BRUSH_TEXTURE_KIND_DD: Cell<Option<(Rect, u8)>> = const { Cell::new(None) };
+    pub(crate) static PENDING_BRUSH_TEXTURE_KIND_DD: Cell<Option<(Rect, u8)>> = const { Cell::new(None) };
 
     /// The open Shape-section source picker popover (None/Image): `(chip_rect, current_kind_u8)`.
-    static PENDING_BRUSH_SHAPE_KIND_DD: Cell<Option<(Rect, u8)>> = const { Cell::new(None) };
+    pub(crate) static PENDING_BRUSH_SHAPE_KIND_DD: Cell<Option<(Rect, u8)>> = const { Cell::new(None) };
 
     /// The open Texture-section Mapping dropdown popover: `(chip_rect, current_mapping_u8)`.
-    static PENDING_BRUSH_TEXTURE_MAPPING_DD: Cell<Option<(Rect, u8)>> = const { Cell::new(None) };
+    pub(crate) static PENDING_BRUSH_TEXTURE_MAPPING_DD: Cell<Option<(Rect, u8)>> = const { Cell::new(None) };
 
     // Ramp dropdown-popover + selected-stop state — `pub(crate)` so the accessor fns live in the
     // sibling `crate::state_ramp` module (split for the panel LOC cap).
@@ -473,16 +474,6 @@ pub(crate) fn current_dock_shows_layers() -> bool {
     CURRENT_DOCK_SHOWS_LAYERS.with(Cell::get)
 }
 
-/// Stash the open brush blend dropdown for the deferred popover pass.
-pub(crate) fn set_pending_brush_blend_dd(v: Option<(Rect, u8)>) {
-    PENDING_BRUSH_BLEND_DD.with(|c| c.set(v));
-}
-
-/// Take (and clear) the pending brush blend dropdown for the deferred popover paint.
-pub(crate) fn take_pending_brush_blend_dd() -> Option<(Rect, u8)> {
-    PENDING_BRUSH_BLEND_DD.with(|c| c.take())
-}
-
 /// Stash the open per-layer-colour Shape-layer blend dropdown (`(layer_index, chip_rect, mode)`).
 pub(crate) fn set_pending_shape_blend_dd(v: Option<(u8, Rect, u8)>) {
     PENDING_SHAPE_BLEND_DD.with(|c| c.set(v));
@@ -505,76 +496,6 @@ pub(crate) fn pending_shape_blend_dd() -> Option<(u8, Rect, u8)> {
 /// Take (and clear) the pending Shape-layer blend dropdown for the deferred popover paint.
 pub(crate) fn take_pending_shape_blend_dd() -> Option<(u8, Rect, u8)> {
     PENDING_SHAPE_BLEND_DD.with(|c| c.take())
-}
-
-/// Stash the open brush Falloff dropdown for the deferred popover pass.
-pub(crate) fn set_pending_brush_falloff_dd(v: Option<(Rect, u8)>) {
-    PENDING_BRUSH_FALLOFF_DD.with(|c| c.set(v));
-}
-
-/// Take (and clear) the pending brush Falloff dropdown for the deferred popover.
-pub(crate) fn take_pending_brush_falloff_dd() -> Option<(Rect, u8)> {
-    PENDING_BRUSH_FALLOFF_DD.with(|c| c.take())
-}
-
-/// Stash the open top-of-panel Preset dropdown for the deferred popover pass.
-pub(crate) fn set_pending_brush_preset_dd(v: Option<(Rect, u8)>) {
-    PENDING_BRUSH_PRESET_DD.with(|c| c.set(v));
-}
-
-/// Take (and clear) the pending Preset dropdown for the deferred popover.
-pub(crate) fn take_pending_brush_preset_dd() -> Option<(Rect, u8)> {
-    PENDING_BRUSH_PRESET_DD.with(|c| c.take())
-}
-
-/// Stash the open Stroke-section Method dropdown for the deferred popover pass.
-pub(crate) fn set_pending_brush_stroke_method_dd(v: Option<(Rect, u8)>) {
-    PENDING_BRUSH_STROKE_METHOD_DD.with(|c| c.set(v));
-}
-
-/// Take (and clear) the pending Stroke Method dropdown for the deferred popover.
-pub(crate) fn take_pending_brush_stroke_method_dd() -> Option<(Rect, u8)> {
-    PENDING_BRUSH_STROKE_METHOD_DD.with(|c| c.take())
-}
-
-/// Stash the open Stroke-section Jitter-Unit dropdown for the deferred popover pass.
-pub(crate) fn set_pending_brush_jitter_unit_dd(v: Option<(Rect, u8)>) {
-    PENDING_BRUSH_JITTER_UNIT_DD.with(|c| c.set(v));
-}
-
-/// Take (and clear) the pending Stroke Jitter-Unit dropdown for the deferred popover.
-pub(crate) fn take_pending_brush_jitter_unit_dd() -> Option<(Rect, u8)> {
-    PENDING_BRUSH_JITTER_UNIT_DD.with(|c| c.take())
-}
-
-/// Stash the open Texture-section Kind picker for the deferred popover pass.
-pub(crate) fn set_pending_brush_texture_kind_dd(v: Option<(Rect, u8)>) {
-    PENDING_BRUSH_TEXTURE_KIND_DD.with(|c| c.set(v));
-}
-
-/// Take (and clear) the pending Texture Kind picker for the deferred popover.
-pub(crate) fn take_pending_brush_texture_kind_dd() -> Option<(Rect, u8)> {
-    PENDING_BRUSH_TEXTURE_KIND_DD.with(|c| c.take())
-}
-
-/// Stash the open Shape-section source picker for the deferred popover pass.
-pub(crate) fn set_pending_brush_shape_kind_dd(v: Option<(Rect, u8)>) {
-    PENDING_BRUSH_SHAPE_KIND_DD.with(|c| c.set(v));
-}
-
-/// Take (and clear) the pending Shape source picker for the deferred popover.
-pub(crate) fn take_pending_brush_shape_kind_dd() -> Option<(Rect, u8)> {
-    PENDING_BRUSH_SHAPE_KIND_DD.with(|c| c.take())
-}
-
-/// Stash the open Texture-section Mapping dropdown for the deferred popover pass.
-pub(crate) fn set_pending_brush_texture_mapping_dd(v: Option<(Rect, u8)>) {
-    PENDING_BRUSH_TEXTURE_MAPPING_DD.with(|c| c.set(v));
-}
-
-/// Take (and clear) the pending Texture Mapping dropdown for the deferred popover.
-pub(crate) fn take_pending_brush_texture_mapping_dd() -> Option<(Rect, u8)> {
-    PENDING_BRUSH_TEXTURE_MAPPING_DD.with(|c| c.take())
 }
 
 /// Publica o set de multi-seleção atual (W3). Chamado pelo shell uma vez por

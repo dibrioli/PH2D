@@ -110,6 +110,16 @@ impl AudioSystem {
         self.engine.bus_levels()
     }
 
+    /// Current master RMS `[L, R]` (≈ perceived loudness) for the meter fill.
+    pub(crate) fn rms(&self) -> [f32; 2] {
+        self.engine.rms()
+    }
+
+    /// Current post-fader RMS per sub-bus, for the strip meter fills.
+    pub(crate) fn bus_rms(&self) -> [[f32; 2]; SUB_BUS_COUNT] {
+        self.engine.bus_rms()
+    }
+
     /// Set sub-bus `i`'s fader gain, change-gated per bus (mute is folded in by
     /// the caller sending `0.0`, mirroring the master strip).
     pub(crate) fn set_bus_gain(&self, i: usize, gain: f32) {

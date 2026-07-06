@@ -59,6 +59,16 @@ impl AudioEngine {
         self.meter.bus_peaks()
     }
 
+    /// The most recent master RMS `[left, right]` (≈ perceived loudness).
+    pub fn rms(&self) -> [f32; 2] {
+        self.meter.rms()
+    }
+
+    /// The most recent post-fader RMS per sub-bus, in [`BusId::SUB_BUSES`] order.
+    pub fn bus_rms(&self) -> [[f32; 2]; SUB_BUS_COUNT] {
+        self.meter.bus_rms()
+    }
+
     /// The output format the renderer was built for.
     pub fn format(&self) -> AudioFormat {
         self.format
@@ -209,26 +219,39 @@ impl AudioRenderer {
         let (master, bus_scratch) = scratch.split_mut();
 
         // 3. Mix active voices through their sub-buses + master gain, capturing
-        //    each sub-bus's post-fader peak for the strip meters.
+        //    each sub-bus's post-fader peak + RMS for the strip meters.
         let mut bus_peaks = [[0.0f32; 2]; SUB_BUS_COUNT];
+        let mut bus_rms = [[0.0f32; 2]; SUB_BUS_COUNT];
         mixer.render(
             master,
             bus_scratch,
             &mut bus_peaks,
+            &mut bus_rms,
             frames,
             &mut on_finished,
         );
 
-        // 4. Publish this block's peak levels (pre-clamp, so clipping reads > 1).
+        // 4. Publish this block's master peak + RMS (pre-clamp, so clipping reads
+        //    > 1). Peak catches transients; RMS ≈ perceived loudness.
         let mut peak_l = 0.0f32;
         let mut peak_r = 0.0f32;
+        let mut sq_l = 0.0f32;
+        let mut sq_r = 0.0f32;
         for f in 0..frames {
-            peak_l = peak_l.max(master[2 * f].abs());
-            peak_r = peak_r.max(master[2 * f + 1].abs());
+            let l = master[2 * f];
+            let r = master[2 * f + 1];
+            peak_l = peak_l.max(l.abs());
+            peak_r = peak_r.max(r.abs());
+            sq_l += l * l;
+            sq_r += r * r;
         }
-        meter.store(peak_l, peak_r);
-        for (i, [l, r]) in bus_peaks.iter().enumerate() {
-            meter.store_bus(i, *l, *r);
+        let inv_frames = 1.0 / frames.max(1) as f32;
+        meter.store(
+            [peak_l, peak_r],
+            [(sq_l * inv_frames).sqrt(), (sq_r * inv_frames).sqrt()],
+        );
+        for i in 0..SUB_BUS_COUNT {
+            meter.store_bus(i, bus_peaks[i], bus_rms[i]);
         }
 
         // 5. Write to the device buffer in the output layout, clamped to [-1, 1].

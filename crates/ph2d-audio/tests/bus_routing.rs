@@ -105,6 +105,29 @@ fn panning_a_sub_bus_hard_left_empties_the_right_channel() {
 }
 
 #[test]
+fn rms_is_positive_and_never_exceeds_peak() {
+    let (mut engine, mut renderer) = AudioEngine::new(AudioFormat::stereo(48_000));
+    engine.play(steady(), on(BusId::Music)).unwrap();
+    let mut out = vec![0.0f32; 512 * 2];
+    for _ in 0..50 {
+        renderer.render(&mut out, 512);
+    }
+
+    let (peak, rms) = (engine.levels(), engine.rms());
+    assert!(rms[0] > 0.0, "master RMS must be positive with signal: {rms:?}");
+    assert!(
+        rms[0] <= peak[0] + 1e-4,
+        "RMS must never exceed peak (master): rms {rms:?} peak {peak:?}"
+    );
+    let (bpeak, brms) = (engine.bus_levels()[0], engine.bus_rms()[0]);
+    assert!(brms[0] > 0.0, "Music bus RMS must be positive: {brms:?}");
+    assert!(
+        brms[0] <= bpeak[0] + 1e-4,
+        "RMS must never exceed peak (bus): rms {brms:?} peak {bpeak:?}"
+    );
+}
+
+#[test]
 fn master_direct_voice_ignores_sub_bus_faders() {
     let (mut engine, mut renderer) = AudioEngine::new(AudioFormat::stereo(48_000));
     // A voice on Master (default) is unaffected by a muted sub-bus.

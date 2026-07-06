@@ -110,27 +110,55 @@ mod snapshot {
     use crate::SUB_BUS_COUNT;
     use std::cell::Cell;
 
+    /// Per-frame peak-hold decay factor (UI ballistics). The held marker falls
+    /// by this each paint; a new peak snaps it back up.
+    const PEAK_HOLD_DECAY: f32 = 0.92; // LITERAL-PX-OK: meter peak-hold decay per frame (ballistics, not a UI dimension)
+
     thread_local! {
-        static LEVELS: Cell<[f32; 2]> = const { Cell::new([0.0, 0.0]) };
+        static LEVELS_PEAK: Cell<[f32; 2]> = const { Cell::new([0.0, 0.0]) };
+        static LEVELS_RMS: Cell<[f32; 2]> = const { Cell::new([0.0, 0.0]) };
+        static PEAK_HOLD: Cell<[f32; 2]> = const { Cell::new([0.0, 0.0]) };
         static MASTER_GAIN: Cell<f32> = const { Cell::new(1.0) };
         static CUTOFF_HZ: Cell<f32> = const { Cell::new(20_000.0) }; // LITERAL-PX-OK: default cutoff 20 kHz (audio frequency, not a UI metric)
         static MUTED: Cell<bool> = const { Cell::new(false) };
         static MASTER_PAN: Cell<f32> = const { Cell::new(0.0) };
         // Per-sub-bus channels, index-aligned with `BusId::SUB_BUSES`.
-        static SUB_LEVELS: Cell<[[f32; 2]; SUB_BUS_COUNT]> = const { Cell::new([[0.0, 0.0]; SUB_BUS_COUNT]) };
+        static SUB_LEVELS_PEAK: Cell<[[f32; 2]; SUB_BUS_COUNT]> = const { Cell::new([[0.0, 0.0]; SUB_BUS_COUNT]) };
+        static SUB_LEVELS_RMS: Cell<[[f32; 2]; SUB_BUS_COUNT]> = const { Cell::new([[0.0, 0.0]; SUB_BUS_COUNT]) };
+        static SUB_PEAK_HOLD: Cell<[[f32; 2]; SUB_BUS_COUNT]> = const { Cell::new([[0.0, 0.0]; SUB_BUS_COUNT]) };
         static SUB_GAIN: Cell<[f32; SUB_BUS_COUNT]> = const { Cell::new([1.0; SUB_BUS_COUNT]) };
         static SUB_MUTED: Cell<[bool; SUB_BUS_COUNT]> = const { Cell::new([false; SUB_BUS_COUNT]) };
         static SUB_SOLOED: Cell<[bool; SUB_BUS_COUNT]> = const { Cell::new([false; SUB_BUS_COUNT]) };
         static SUB_PAN: Cell<[f32; SUB_BUS_COUNT]> = const { Cell::new([0.0; SUB_BUS_COUNT]) };
     }
 
-    /// Shell → panel: current master output peak levels for the meter.
-    pub fn set_levels(levels: [f32; 2]) {
-        LEVELS.with(|c| c.set(levels));
+    /// Decay the held peak toward silence, snapping up to any new peak.
+    fn hold_step(prev: [f32; 2], peak: [f32; 2]) -> [f32; 2] {
+        [
+            (prev[0] * PEAK_HOLD_DECAY).max(peak[0]),
+            (prev[1] * PEAK_HOLD_DECAY).max(peak[1]),
+        ]
     }
 
-    pub(crate) fn levels() -> [f32; 2] {
-        LEVELS.with(Cell::get)
+    /// Shell → panel: current master output peak + RMS levels for the meter.
+    pub fn set_levels(peak: [f32; 2], rms: [f32; 2]) {
+        LEVELS_PEAK.with(|c| c.set(peak));
+        LEVELS_RMS.with(|c| c.set(rms));
+    }
+
+    /// The master RMS fill for the meter bar.
+    pub(crate) fn master_rms() -> [f32; 2] {
+        LEVELS_RMS.with(Cell::get)
+    }
+
+    /// Advance + return the master peak-hold marker (call once per paint frame).
+    pub(crate) fn tick_master_hold() -> [f32; 2] {
+        let peak = LEVELS_PEAK.with(Cell::get);
+        PEAK_HOLD.with(|c| {
+            let held = hold_step(c.get(), peak);
+            c.set(held);
+            held
+        })
     }
 
     /// Panel → shell: the master gain the fader drives (0..1).
@@ -172,13 +200,28 @@ mod snapshot {
         MASTER_PAN.with(Cell::get)
     }
 
-    /// Shell → panel: current post-fader peak levels per sub-bus.
-    pub fn set_sub_levels(levels: [[f32; 2]; SUB_BUS_COUNT]) {
-        SUB_LEVELS.with(|c| c.set(levels));
+    /// Shell → panel: current post-fader peak + RMS per sub-bus.
+    pub fn set_sub_levels(peak: [[f32; 2]; SUB_BUS_COUNT], rms: [[f32; 2]; SUB_BUS_COUNT]) {
+        SUB_LEVELS_PEAK.with(|c| c.set(peak));
+        SUB_LEVELS_RMS.with(|c| c.set(rms));
     }
 
-    pub(crate) fn sub_levels() -> [[f32; 2]; SUB_BUS_COUNT] {
-        SUB_LEVELS.with(Cell::get)
+    /// The per-sub-bus RMS fills for the meter bars.
+    pub(crate) fn sub_rms() -> [[f32; 2]; SUB_BUS_COUNT] {
+        SUB_LEVELS_RMS.with(Cell::get)
+    }
+
+    /// Advance + return sub-bus `i`'s peak-hold marker (call once per paint frame).
+    pub(crate) fn tick_sub_hold(i: usize) -> [f32; 2] {
+        let peak = SUB_LEVELS_PEAK.with(Cell::get);
+        SUB_PEAK_HOLD.with(|c| {
+            let mut held = c.get();
+            if let Some(slot) = held.get_mut(i) {
+                *slot = hold_step(*slot, peak[i]);
+            }
+            c.set(held);
+            held.get(i).copied().unwrap_or([0.0, 0.0])
+        })
     }
 
     /// Panel → shell: each sub-bus fader gain (0..1).

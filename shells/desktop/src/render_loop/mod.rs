@@ -122,7 +122,7 @@ impl crate::App {
             #[cfg(feature = "panel-audio-mixer")]
             {
                 // Master strip.
-                ph2d_panel_audio_mixer::set_levels(audio.levels());
+                ph2d_panel_audio_mixer::set_levels(audio.levels(), audio.rms());
                 let muted = ph2d_panel_audio_mixer::master_muted();
                 let gain = ph2d_panel_audio_mixer::master_gain_target();
                 audio.set_master_gain(if muted { 0.0 } else { gain });
@@ -130,7 +130,7 @@ impl crate::App {
                 audio.set_master_pan(ph2d_panel_audio_mixer::master_pan_target());
                 // Sub-bus strips — index-aligned with `BusId::SUB_BUSES` (the
                 // panel's strip index i maps to sub-bus i; count guarded below).
-                ph2d_panel_audio_mixer::set_sub_levels(audio.bus_levels());
+                ph2d_panel_audio_mixer::set_sub_levels(audio.bus_levels(), audio.bus_rms());
                 let sub_muted = ph2d_panel_audio_mixer::sub_muted();
                 let sub_soloed = ph2d_panel_audio_mixer::sub_soloed();
                 let sub_gain = ph2d_panel_audio_mixer::sub_gain_target();

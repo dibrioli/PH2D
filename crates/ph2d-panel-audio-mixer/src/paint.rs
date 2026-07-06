@@ -55,7 +55,10 @@ struct Strip {
     pan: f32,
     muted: bool,
     soloed: bool,
-    levels: [f32; 2],
+    /// RMS fill `[L, R]` for the meter bar.
+    rms: [f32; 2],
+    /// Peak-hold marker `[L, R]` (decayed panel-side).
+    peak_hold: [f32; 2],
 }
 
 pub(crate) fn paint(_state: &mut AudioMixerState, ctx: &mut PaintCtx) {
@@ -108,9 +111,10 @@ pub(crate) fn paint(_state: &mut AudioMixerState, ctx: &mut PaintCtx) {
 
     // Gather the live snapshot (shell → panel) + the fader values (the store is
     // the source of truth — the shared slider dispatch writes them on drag).
-    let master_levels = snapshot::levels();
+    let master_rms = snapshot::master_rms();
+    let master_hold = snapshot::tick_master_hold();
     let master_muted = snapshot::muted();
-    let sub_levels = snapshot::sub_levels();
+    let sub_rms = snapshot::sub_rms();
     let sub_muted = snapshot::sub_muted();
     let sub_soloed = snapshot::sub_soloed();
 
@@ -143,7 +147,8 @@ pub(crate) fn paint(_state: &mut AudioMixerState, ctx: &mut PaintCtx) {
         pan: master_pan,
         muted: master_muted,
         soloed: false,
-        levels: master_levels,
+        rms: master_rms,
+        peak_hold: master_hold,
     });
     for i in 0..SUB_BUS_COUNT {
         strips.push(Strip {
@@ -156,7 +161,8 @@ pub(crate) fn paint(_state: &mut AudioMixerState, ctx: &mut PaintCtx) {
             pan: sub_pan[i],
             muted: sub_muted[i],
             soloed: sub_soloed[i],
-            levels: sub_levels[i],
+            rms: sub_rms[i],
+            peak_hold: snapshot::tick_sub_hold(i),
         });
     }
 
@@ -263,7 +269,9 @@ fn paint_strip(
     hit_index.register(strip.fader_id, fader_rect);
 
     let meter_rect = Rect::new(cluster_x + FADER_W + Spacing::Sm.px(), y, METER_W, STRIP_H);
-    let m = LevelMeter::new(strip.fader_id, strip.label).levels(strip.levels[0], strip.levels[1]);
+    let m = LevelMeter::new(strip.fader_id, strip.label)
+        .rms(strip.rms[0], strip.rms[1])
+        .peak_hold(strip.peak_hold[0], strip.peak_hold[1]);
     paint_level_meter(&m, meter_rect, scene, theme);
     y += STRIP_H + Spacing::Sm.px();
 

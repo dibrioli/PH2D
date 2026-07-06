@@ -87,12 +87,14 @@ impl Mixer {
         master: &mut [Sample],
         bus_scratch: &mut [Sample],
         bus_peaks: &mut [[f32; 2]; SUB_BUS_COUNT],
+        bus_rms: &mut [[f32; 2]; SUB_BUS_COUNT],
         frames: usize,
         on_finished: &mut dyn FnMut(SampleData),
     ) {
         let n = frames * 2;
+        let inv_frames = 1.0 / frames.max(1) as f32;
         // Sub-buses: render into the shared scratch, apply the fader, fold into
-        // master, and capture the post-fader peak for the strip meter.
+        // master, and capture the post-fader peak + RMS for the strip meter.
         for (i, &bus) in BusId::SUB_BUSES.iter().enumerate() {
             for s in bus_scratch[..n].iter_mut() {
                 *s = 0.0;
@@ -102,6 +104,8 @@ impl Mixer {
             let [pan_l, pan_r] = self.bus_pan[i];
             let mut peak_l = 0.0f32;
             let mut peak_r = 0.0f32;
+            let mut sq_l = 0.0f32;
+            let mut sq_r = 0.0f32;
             for f in 0..frames {
                 let g = gain.tick();
                 // Post-fader level (pre-pan) is the strip meter reading, so
@@ -110,10 +114,13 @@ impl Mixer {
                 let r = bus_scratch[2 * f + 1] * g;
                 peak_l = peak_l.max(l.abs());
                 peak_r = peak_r.max(r.abs());
+                sq_l += l * l;
+                sq_r += r * r;
                 master[2 * f] += l * pan_l;
                 master[2 * f + 1] += r * pan_r;
             }
             bus_peaks[i] = [peak_l, peak_r];
+            bus_rms[i] = [(sq_l * inv_frames).sqrt(), (sq_r * inv_frames).sqrt()];
         }
 
         // Voices routed straight to the master mix (no sub-bus fader).

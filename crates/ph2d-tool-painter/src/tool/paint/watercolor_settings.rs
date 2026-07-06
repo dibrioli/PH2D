@@ -170,6 +170,7 @@ impl PainterTool {
     pub fn reset_brush_paper(&mut self) {
         self.paint.brush.paper = TextureSettings::default();
         self.paint.paper_image = None;
+        self.paint.paper_image_version = self.paint.paper_image_version.wrapping_add(1);
     }
 
     /// Set the **Paper** slot kind (`TextureKind` wire u8) + force canvas-anchored mapping.
@@ -251,9 +252,22 @@ impl PainterTool {
     /// render-path is turned on. A Group tag passes the composited group pixels.
     pub fn use_layers_as_watercolor_paper(&mut self, lum: Vec<u8>, width: u32, height: u32) {
         self.paint.paper_image = Some(BrushTextureImage::new(lum, width, height));
+        self.paint.paper_image_version = self.paint.paper_image_version.wrapping_add(1);
         self.paint.brush.paper.kind = TextureKind::Image;
         self.paint.brush.paper.mapping = TextureMapping::Tiled;
         self.paint.brush.watercolor = true;
+    }
+
+    /// The Paper slot's imported image `(luminance, w, h)` for the panel's Paper preview. `None` if unset.
+    #[must_use]
+    pub fn brush_paper_image(&self) -> Option<(&[u8], u32, u32)> {
+        self.paint.paper_image.as_ref().map(BrushTextureImage::parts)
+    }
+
+    /// Version of [`Self::brush_paper_image`] — the shell re-publishes only when it changes.
+    #[must_use]
+    pub fn brush_paper_image_version(&self) -> u64 {
+        self.paint.paper_image_version
     }
 
     /// Install a tagged layer/group into the **Granulation** map — the **Grain** slot (`brush.texture`),

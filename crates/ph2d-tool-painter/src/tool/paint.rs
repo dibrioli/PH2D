@@ -341,6 +341,8 @@ pub(crate) struct PaintState {
     /// Heavy, so out of the `Copy` spec; borrowed as an `ImageMask` by the render-path ([`watercolor_render`]).
     /// (The **Granulation** map is the Grain slot, so it reuses [`Self::texture_image`].)
     paper_image: Option<brush_settings::BrushTextureImage>,
+    /// Bumped whenever [`Self::paper_image`] changes, so the shell re-publishes it for the Paper preview.
+    paper_image_version: u64,
     /// Set when the user picks the Image kind; the shell polls it to open a file picker.
     texture_image_pending: bool,
     /// Bumped whenever [`texture_image`] changes, so the stamp cache re-renders the Image mask.

@@ -52,6 +52,11 @@ thread_local! {
     static CURRENT_BRUSH_SHAPE_IMAGE: RefCell<Option<TextureImageSnapshot>> =
         const { RefCell::new(None) };
 
+    /// The watercolor **Paper** slot image `(luminance, w, h)` — published for the Paper section preview
+    /// (`paper.kind == Image`, a tagged layer). Mirrors [`CURRENT_BRUSH_TEXTURE_IMAGE`].
+    static CURRENT_BRUSH_PAPER_IMAGE: RefCell<Option<TextureImageSnapshot>> =
+        const { RefCell::new(None) };
+
     /// The multi-layer **coloured Shape preview** `(premul RGBA, w, h)` — published when Per-Layer Color
     /// is on (the per-layer composite; only the tool has the pixels). `None` → grayscale silhouette.
     static CURRENT_BRUSH_SHAPE_COLOR_PREVIEW: RefCell<Option<TextureImageSnapshot>> =
@@ -445,6 +450,16 @@ pub fn set_current_brush_texture_image(image: Option<TextureImageSnapshot>) {
 /// Read the published brush Image texture (cheap `Arc` clone). `None` → the Image preview is black.
 pub(crate) fn current_brush_texture_image() -> Option<TextureImageSnapshot> {
     CURRENT_BRUSH_TEXTURE_IMAGE.with(|c| c.borrow().clone())
+}
+
+/// Publish the watercolor **Paper** slot image `(luminance, w, h)` for the Paper preview; `None` clears it.
+pub fn set_current_brush_paper_image(image: Option<TextureImageSnapshot>) {
+    CURRENT_BRUSH_PAPER_IMAGE.with(|c| *c.borrow_mut() = image);
+}
+
+/// Read the published Paper slot image (cheap `Arc` clone). `None` → the Image preview is black.
+pub(crate) fn current_brush_paper_image() -> Option<TextureImageSnapshot> {
+    CURRENT_BRUSH_PAPER_IMAGE.with(|c| c.borrow().clone())
 }
 
 /// Publish the brush's **Shape** image `(luminance, w, h)` for the Shape preview. Called by the shell

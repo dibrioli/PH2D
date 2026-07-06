@@ -175,6 +175,19 @@ pub(crate) fn paint_watercolor_section(
 /// Paint the **Paper** + **Granulation** canvas-anchored slots (substrate tooth + mineral settling).
 /// Paper: a kind picker + Size/Angle. Granulation: the amount, a "Same as Paper" checkbox, and — when
 /// off — its own kind + Size/Angle. Returns the next `y`.
+/// Build a `BrushSettings` view whose **texture** (Grain) fields are overwritten from the **Paper** slot,
+/// so the shared [`crate::paint_texture::paint_texture_preview`] renders the paper pattern. The Color Ramp
+/// is forced off (the substrate is a grayscale height-field) — a paper ramp is a follow-up.
+fn paper_preview_view(brush: &BrushSettings) -> BrushSettings {
+    let mut v = *brush;
+    v.texture_kind = brush.paper_kind;
+    v.texture_params = brush.paper_params;
+    v.texture_size = brush.paper_size;
+    v.texture_offset = brush.paper_offset;
+    v.texture_ramp_enabled = false;
+    v
+}
+
 /// Paint the **Paper** section (the substrate the wash sits on) — a collapsible section ABOVE the Grain
 /// section, shown only in watercolor mode. Full parity with the Grain section's controls: Kind picker +
 /// Mapping + Rake + Random Angle + Angle + Offset + Size + Depth + per-pattern params. (The live preview
@@ -221,6 +234,16 @@ pub(crate) fn paint_paper_section(
     if kind == TextureKind::None {
         return y;
     }
+    // ── Live preview of the paper pattern (grayscale; reads the Paper slot via a texture-field view) ──
+    y = crate::paint_texture::paint_texture_preview(
+        ctx,
+        theme,
+        x,
+        content_w,
+        y,
+        paper_preview_view(&brush),
+        state::current_brush_paper_image(),
+    );
     // ── Mapping + Rake + Random Angle (per-dab rotation mappings only) ──
     let mapping = TextureMapping::from_u8(brush.paper_mapping);
     let (ny, open) = paint_dropdown_row(

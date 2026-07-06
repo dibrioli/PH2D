@@ -96,7 +96,7 @@ pub(crate) fn paint_texture_section(
     }
 
     // ── Live preview of the current texture pattern, right below the Texture dropdown (Enio 2026-06-24) ──
-    y = paint_texture_preview(ctx, theme, x, content_w, y, brush);
+    y = paint_texture_preview(ctx, theme, x, content_w, y, brush, state::current_brush_texture_image());
 
     // ── Per-dab mapping controls — brush only (a layer covers the sprite at identity rotation) ──
     if !compact {
@@ -216,6 +216,20 @@ pub(crate) fn paint_texture_section(
         );
     }
 
+    paint_texture_params_and_ramp(ctx, theme, x, content_w, y, brush, kind)
+}
+
+/// Paint the Grain section's tail — the per-pattern params + the Color Ramp sub-editor. Split out to keep
+/// [`paint_texture_section`] under the function LOC cap; reused by the inline Texture-layer editor.
+fn paint_texture_params_and_ramp(
+    ctx: &mut PaintCtx,
+    theme: ph2d_tokens::Theme,
+    x: f32,
+    content_w: f32,
+    mut y: f32,
+    brush: BrushSettings,
+    kind: TextureKind,
+) -> f32 {
     // ── Per-pattern parameters — short labels pair two-per-line, long labels go solo. ──
     let pp: Vec<(&str, ph2d_a11y::NodeId, f32)> = param_specs(kind)
         .iter()
@@ -324,13 +338,16 @@ pub(crate) fn brush_view_from_texture_layer(
 /// (kind + params + size + offset) into a small buffer, then scale-blitted as one image. Grayscale by
 /// default; when the Color Ramp is on it is **ramp-coloured with the stop alpha** (translucent stops
 /// composite over a checker). Bounded resolution keeps it cheap; reflects every knob live.
-fn paint_texture_preview(
+/// `image` is the slot's published luminance (heavy → out of the `Copy` snapshot): the Grain image for
+/// the Grain section, the Paper image for the Paper section. `pub(crate)` so `paint_watercolor` reuses it.
+pub(crate) fn paint_texture_preview(
     ctx: &mut PaintCtx,
     theme: ph2d_tokens::Theme,
     x: f32,
     content_w: f32,
     y: f32,
     brush: BrushSettings,
+    image: Option<(std::sync::Arc<Vec<u8>>, u32, u32)>,
 ) -> f32 {
     let ph = (content_w * 0.5).clamp(56.0, 120.0); // LITERAL-PX-OK: one-off preview-strip min/max height
     let rect = Rect::new(x, y, content_w, ph);
@@ -346,9 +363,7 @@ fn paint_texture_preview(
     } else {
         None
     };
-    // For the Image kind, render the ACTUAL brush image — the host publishes its luminance (the pixels
-    // are too heavy for the `Copy` snapshot); `None` → the Image preview stays black until one is set.
-    let image = state::current_brush_texture_image();
+    // For the Image kind, render the ACTUAL slot image; `None` → the Image preview stays black until set.
     let image_mask = image.as_ref().map(|(lum, w, h)| ImageMask {
         lum: lum.as_slice(),
         width: *w,

@@ -19,6 +19,12 @@ use crate::mixer::Mixer;
 use crate::voice::VoiceId;
 use crate::{CMD_CAPACITY, MAX_VOICES, RETURN_CAPACITY};
 
+/// A low-pass cutoff at/above this reads as "fully open" (identity bypass): it is
+/// the top of the mixer's Tone slider (20 kHz, the audible ceiling), so a filter
+/// here is inaudible. Bypassing it exactly avoids coloring the top octave with a
+/// near-Nyquist low-pass at 48 kHz+, and keeps the open default sample-rate-robust.
+const OPEN_CUTOFF_HZ: f32 = 20_000.0; // LITERAL-PX-OK: audible ceiling / Tone "open" top (audio domain, not a UI metric)
+
 /// Control-side handle. Lives on the game thread; every method just enqueues a
 /// command (allocation happens here, never on the audio thread). Returns opaque
 /// [`VoiceId`]s (HR-8).
@@ -120,25 +126,30 @@ impl AudioEngine {
         self.send(AudioCommand::SetMasterGain { gain })
     }
 
-    /// Low-pass coefficients for `cutoff_hz`, or identity (open) at/near Nyquist.
-    /// Computed on the control thread — no transcendentals on the RT thread.
+    /// Low-pass coefficients for `cutoff_hz`, or identity (true bypass) when the
+    /// filter would be inaudible: at/above the audible ceiling (the Tone slider's
+    /// fully-open top, [`OPEN_CUTOFF_HZ`]) or at/near Nyquist. Without the ceiling
+    /// guard the "open" default (20 kHz) applies a real low-pass at 48 kHz+
+    /// (`sr*0.5*0.9 = 21.6 kHz > 20 kHz`), coloring the top octave. Computed on
+    /// the control thread — no transcendentals on the RT thread.
     fn lowpass_coeffs(&self, cutoff_hz: f32) -> BiquadCoeffs {
         let sr = self.format.sample_rate as f32;
-        if cutoff_hz >= sr * 0.5 * 0.9 {
+        if cutoff_hz >= OPEN_CUTOFF_HZ || cutoff_hz >= sr * 0.5 * 0.9 {
             BiquadCoeffs::identity()
         } else {
             BiquadCoeffs::lowpass(sr, cutoff_hz.max(20.0), std::f32::consts::FRAC_1_SQRT_2)
         }
     }
 
-    /// Set the master low-pass filter cutoff in Hz. At/near Nyquist the filter
-    /// is effectively open (true bypass).
+    /// Set the master low-pass filter cutoff in Hz. At/above the audible ceiling
+    /// ([`OPEN_CUTOFF_HZ`]) or near Nyquist the filter is a true bypass.
     pub fn set_master_cutoff(&self, cutoff_hz: f32) -> Result<(), AudioError> {
         let coeffs = self.lowpass_coeffs(cutoff_hz);
         self.send(AudioCommand::SetMasterFilter { coeffs })
     }
 
-    /// Set a sub-bus's low-pass filter cutoff in Hz (open at/near Nyquist).
+    /// Set a sub-bus's low-pass filter cutoff in Hz (true bypass at/above the
+    /// audible ceiling or near Nyquist).
     pub fn set_bus_cutoff(&self, bus: BusId, cutoff_hz: f32) -> Result<(), AudioError> {
         let coeffs = self.lowpass_coeffs(cutoff_hz);
         self.send(AudioCommand::SetBusFilter { bus, coeffs })
@@ -305,20 +316,35 @@ impl AudioRenderer {
     }
 }
 
+/// Clamp a sample to `[-1, 1]`, mapping any non-finite value (NaN/±∞) to silence.
+/// `f32::clamp` returns NaN for a NaN input, so the plain clamp does not by itself
+/// keep the device buffer finite — a NaN escaping an unstable effect (reverb
+/// feedback, limiter) would reach the device as silence or a pop. This is the
+/// last line: the device only ever sees finite samples in range.
+#[inline]
+fn sanitize(x: Sample) -> Sample {
+    if x.is_finite() {
+        x.clamp(-1.0, 1.0)
+    } else {
+        0.0
+    }
+}
+
 /// Write the interleaved-stereo `master` scratch into the device `out` buffer,
-/// down-mixing to mono if the output layout is mono, clamped to `[-1, 1]`.
+/// down-mixing to mono if the output layout is mono, clamped to `[-1, 1]` with
+/// non-finite samples flushed to silence ([`sanitize`]).
 fn write_out(out: &mut [Sample], master: &[Sample], frames: usize, format: AudioFormat) {
     match format.channels {
         ChannelLayout::Stereo => {
             let n = (frames * 2).min(out.len());
             for i in 0..n {
-                out[i] = master[i].clamp(-1.0, 1.0);
+                out[i] = sanitize(master[i]);
             }
         }
         ChannelLayout::Mono => {
             let n = frames.min(out.len());
             for f in 0..n {
-                out[f] = (0.5 * (master[2 * f] + master[2 * f + 1])).clamp(-1.0, 1.0);
+                out[f] = sanitize(0.5 * (master[2 * f] + master[2 * f + 1]));
             }
         }
     }
@@ -344,5 +370,62 @@ mod tests {
         let b = engine.play(data, PlayParams::default()).unwrap();
         assert_ne!(a, b);
         assert!(!a.is_none() && !b.is_none());
+    }
+
+    #[test]
+    fn open_cutoff_is_true_bypass_across_sample_rates() {
+        // The Tone slider's fully-open top is OPEN_CUTOFF_HZ (20 kHz). At 48 kHz
+        // the Nyquist guard (sr*0.5*0.9 = 21.6 kHz) alone would NOT bypass it, so
+        // the ceiling guard must — at 48 kHz and 96 kHz alike. (Regression: the
+        // "open" default used to apply a real 20 kHz low-pass at 48 kHz+.)
+        for &sr in &[44_100, 48_000, 96_000] {
+            let (engine, _r) = AudioEngine::new(AudioFormat::stereo(sr));
+            assert_eq!(
+                engine.lowpass_coeffs(OPEN_CUTOFF_HZ),
+                BiquadCoeffs::identity(),
+                "fully-open Tone must be a true bypass at {sr} Hz"
+            );
+        }
+        // A cutoff below the ceiling is still a real low-pass (not bypassed).
+        let (engine, _r) = AudioEngine::new(AudioFormat::stereo(48_000));
+        assert_ne!(
+            engine.lowpass_coeffs(1_000.0),
+            BiquadCoeffs::identity(),
+            "a 1 kHz cutoff must filter, not bypass"
+        );
+    }
+
+    #[test]
+    fn write_out_flushes_non_finite_to_silence() {
+        // A NaN/∞ escaping an unstable effect must never reach the device buffer.
+        let fmt = AudioFormat::stereo(48_000);
+        let master = [0.5, f32::NAN, f32::INFINITY, f32::NEG_INFINITY, 2.0, -2.0];
+        let mut out = [7.0f32; 6]; // sentinel: must be overwritten
+        write_out(&mut out, &master, 3, fmt);
+        assert!(
+            out.iter().all(|s| s.is_finite()),
+            "device buffer must be finite"
+        );
+        assert_eq!(out[0], 0.5, "finite in-range sample passes through");
+        assert_eq!(out[1], 0.0, "NaN flushed to silence");
+        assert_eq!(out[2], 0.0, "+∞ flushed to silence");
+        assert_eq!(out[3], 0.0, "-∞ flushed to silence");
+        assert_eq!(out[4], 1.0, "over-range clamps to +1");
+        assert_eq!(out[5], -1.0, "under-range clamps to -1");
+    }
+
+    #[test]
+    fn write_out_mono_downmix_sanitizes() {
+        // Mono down-mix path must also stay finite even if one channel is NaN.
+        let fmt = AudioFormat::mono(48_000);
+        let master = [0.4, 0.4, f32::NAN, 0.2];
+        let mut out = [7.0f32; 2];
+        write_out(&mut out, &master, 2, fmt);
+        assert!(out.iter().all(|s| s.is_finite()));
+        assert_eq!(out[0], 0.4, "average of two equal channels");
+        assert_eq!(
+            out[1], 0.0,
+            "NaN in either channel flushes the frame to silence"
+        );
     }
 }

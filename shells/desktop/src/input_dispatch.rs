@@ -110,6 +110,8 @@ pub(crate) fn vec_bool_op_for_id(id: ph2d_editor::NodeId) -> Option<ph2d_vec_boo
         Some(BoolOp::Subtract)
     } else if id == ph2d_editor::ids::VECTOR_BOOL_INTERSECT {
         Some(BoolOp::Intersect)
+    } else if id == ph2d_editor::ids::VECTOR_BOOL_EXCLUDE {
+        Some(BoolOp::Exclude)
     } else {
         None
     }
@@ -1914,6 +1916,10 @@ mod tests {
         assert_eq!(
             vec_bool_op_for_id(ph2d_editor::ids::VECTOR_BOOL_INTERSECT),
             Some(BoolOp::Intersect)
+        );
+        assert_eq!(
+            vec_bool_op_for_id(ph2d_editor::ids::VECTOR_BOOL_EXCLUDE),
+            Some(BoolOp::Exclude)
         );
         // A non-boolean id (a mode button) is not a boolean op.
         assert_eq!(vec_bool_op_for_id(ph2d_editor::ids::VECTOR_MODE_PEN), None);

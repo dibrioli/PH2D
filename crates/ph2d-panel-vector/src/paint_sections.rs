@@ -493,6 +493,7 @@ impl BodyCtx<'_> {
             (ids::VECTOR_BOOL_UNION, "Union"),
             (ids::VECTOR_BOOL_SUBTRACT, "Subtract"),
             (ids::VECTOR_BOOL_INTERSECT, "Intersect"),
+            (ids::VECTOR_BOOL_EXCLUDE, "Exclude"),
         ] {
             y = self.action_button(id, label, y);
         }

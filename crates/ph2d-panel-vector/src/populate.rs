@@ -175,6 +175,7 @@ pub fn populate(store: &mut WidgetStore) {
     button(store, ids::VECTOR_BOOL_UNION);
     button(store, ids::VECTOR_BOOL_SUBTRACT);
     button(store, ids::VECTOR_BOOL_INTERSECT);
+    button(store, ids::VECTOR_BOOL_EXCLUDE);
 
     // Stroke / Fill Opacity sliders (0..100 %) — seeded at full opacity, matching
     // the tool's default opaque stroke/fill.

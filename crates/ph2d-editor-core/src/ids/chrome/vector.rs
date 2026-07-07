@@ -111,6 +111,7 @@ pub const VECTOR_RRECT_RADIUS_NUM: NodeId = hash_node_id("vector.rrect_radius_nu
 pub const VECTOR_BOOL_UNION: NodeId = hash_node_id("vector.bool.union");
 pub const VECTOR_BOOL_SUBTRACT: NodeId = hash_node_id("vector.bool.subtract");
 pub const VECTOR_BOOL_INTERSECT: NodeId = hash_node_id("vector.bool.intersect");
+pub const VECTOR_BOOL_EXCLUDE: NodeId = hash_node_id("vector.bool.exclude");
 
 // ── Vertex type (ADR-0108 Fase 1 — rich handle editing) ──────────────────────
 // Retype the SELECTED vertex (Corner cusp / Smooth colinear / Symmetric mirror).

@@ -18,6 +18,9 @@ pub enum BoolOp {
     Union,
     Intersect,
     Subtract,
+    /// Exclude (exclusive-or): a região coberta por exatamente UMA das duas
+    /// (a sobreposição vira buraco). O 4º op canônico de Pathfinder.
+    Exclude,
 }
 
 /// Preenchimento do resultado (scaffold; migra p/ tokens no cutover).
@@ -32,6 +35,7 @@ pub fn apply(a: &VecPath, b: &VecPath, op: BoolOp) -> Vec<VecPath> {
         BoolOp::Union => BinaryOp::Union,
         BoolOp::Intersect => BinaryOp::Intersection,
         BoolOp::Subtract => BinaryOp::Difference,
+        BoolOp::Exclude => BinaryOp::Xor,
     };
     let contours = match linesweeper::binary_op(&ka, &kb, FillRule::NonZero, lop) {
         Ok(c) => c.contours().map(|ct| ct.path.clone()).collect::<Vec<_>>(),
@@ -184,5 +188,15 @@ mod tests {
         let a = square(0.0, 0.0, 3.0);
         let b = square(2.0, 2.0, 2.0);
         assert!(!apply(&a, &b, BoolOp::Subtract).is_empty());
+    }
+
+    #[test]
+    fn exclude_overlapping_is_nonempty_identical_is_empty() {
+        let a = square(0.0, 0.0, 3.0);
+        let b = square(2.0, 2.0, 3.0);
+        // XOR of two overlapping squares leaves the non-shared regions.
+        assert!(!apply(&a, &b, BoolOp::Exclude).is_empty());
+        // XOR of a region with itself is empty (everything is shared).
+        assert!(apply(&a, &a, BoolOp::Exclude).is_empty());
     }
 }

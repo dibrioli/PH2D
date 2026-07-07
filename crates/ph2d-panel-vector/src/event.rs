@@ -99,6 +99,7 @@ pub(crate) fn apply_event(
                 || id == ids::VECTOR_BOOL_UNION
                 || id == ids::VECTOR_BOOL_SUBTRACT
                 || id == ids::VECTOR_BOOL_INTERSECT
+                || id == ids::VECTOR_BOOL_EXCLUDE
                 || id == ids::VECTOR_ARRANGE_DUPLICATE
                 || id == ids::VECTOR_ARRANGE_TO_BACK
                 || id == ids::VECTOR_ARRANGE_BACKWARD

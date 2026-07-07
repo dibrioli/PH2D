@@ -37,8 +37,9 @@ impl App {
             timestamp_ns: Self::timestamp_ns(),
         });
 
-        // ADR-0108 Fase 1: modo vetorial (flag PH2D_VEC_PEN) — U/I/D fazem a
-        // booleana das 2 últimas regiões fechadas; Delete/Backspace apaga o path
+        // ADR-0108 Fase 1: modo vetorial (flag PH2D_VEC_PEN) — U/I/D/X fazem a
+        // booleana (Union/Intersect/Difference/Exclude) das 2 últimas regiões
+        // fechadas; Delete/Backspace apaga o path
         // selecionado. Modo de teste dedicado (a pill/menu real entra no cutover,
         // Fase R). Só sem modificadores, pra não colidir com atalhos.
         if self.vector_tool_active()
@@ -51,6 +52,7 @@ impl App {
                 KeyCode::KeyU => Some(ph2d_vec_boolean::BoolOp::Union),
                 KeyCode::KeyI => Some(ph2d_vec_boolean::BoolOp::Intersect),
                 KeyCode::KeyD => Some(ph2d_vec_boolean::BoolOp::Subtract),
+                KeyCode::KeyX => Some(ph2d_vec_boolean::BoolOp::Exclude),
                 _ => None,
             };
             if let Some(op) = op {

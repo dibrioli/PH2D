@@ -73,6 +73,7 @@ pub(crate) fn apply_event(
                 || id == ids::VECTOR_VERT_CORNER
                 || id == ids::VECTOR_VERT_SMOOTH
                 || id == ids::VECTOR_VERT_SYMMETRIC
+                || id == ids::VECTOR_VERT_DELETE
                 || id == ids::VECTOR_BOOL_UNION
                 || id == ids::VECTOR_BOOL_SUBTRACT
                 || id == ids::VECTOR_BOOL_INTERSECT =>

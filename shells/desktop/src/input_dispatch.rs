@@ -130,6 +130,24 @@ pub(crate) fn apply_vec_vertex_kind(
     }
 }
 
+/// Delete the Pen's SELECTED vertex (panel "Delete Node" button / Delete key),
+/// recording ONE undo step iff it removed anything. Free fn (mirror of
+/// [`apply_vec_boolean`]) so the render_loop drain can call it with destructured
+/// refs. Returns whether anything was deleted.
+pub(crate) fn apply_vec_delete_vertex(
+    scene: &mut ph2d_vec_scene::VecScene,
+    history: &mut ph2d_vec_edit::History,
+    pen: &mut ph2d_vec_edit::PenTool,
+) -> bool {
+    let pre = scene.clone();
+    if pen.delete_selected_vertex(scene) {
+        history.push_undo(pre);
+        true
+    } else {
+        false
+    }
+}
+
 /// Map a Vector-panel Vertex-type button `NodeId` to its `VertexKind` (`None` for
 /// any other id). Pure — unit-tested; called from the render_loop drain.
 pub(crate) fn vec_vertex_kind_for_id(id: ph2d_editor::NodeId) -> Option<ph2d_vec_scene::VertexKind> {
@@ -301,7 +319,25 @@ impl App {
         }
     }
 
-    /// ADR-0108 Fase 1: apaga o path selecionado (Delete/Backspace no modo vetorial).
+    /// ADR-0108 Fase 1: Delete/Backspace no modo vetorial — prioriza apagar o
+    /// VÉRTICE selecionado (edição de nó); sem vértice selecionado (ex.: resultado
+    /// de booleana), apaga o PATH inteiro.
+    pub(crate) fn vec_delete_selected_vertex_or_path(&mut self) -> bool {
+        if self.vec_pen.selected_vert().is_some()
+            && let Some(gfx) = self.gfx.as_mut()
+            && apply_vec_delete_vertex(
+                &mut gfx.vec_scene,
+                &mut self.vec_history,
+                &mut self.vec_pen,
+            )
+        {
+            eprintln!("[ph2d-vec] vértice apagado");
+            return true;
+        }
+        self.vec_delete_selected()
+    }
+
+    /// ADR-0108 Fase 1: apaga o path selecionado (fallback do Delete sem vértice).
     fn vec_delete_selected(&mut self) -> bool {
         let Some(sel) = self.vec_pen.selected() else {
             return false;

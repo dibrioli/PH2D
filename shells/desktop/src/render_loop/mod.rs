@@ -734,6 +734,8 @@ impl crate::App {
             // ADR-0108 Fase 1: a Vertex button (Corner/Smooth/Symmetric) retypes
             // the selected vertex — a document edit, applied after the drain.
             let mut pending_vec_vertex_kind: Option<ph2d_vec_scene::VertexKind> = None;
+            // ADR-0108 Fase 1: "Delete Node" button removes the selected vertex.
+            let mut pending_vec_delete_vertex = false;
             let mut transform_edit: Option<ph2d_editor::InspectorTransformInfo> = None;
             let mut visibility_edit: Option<ph2d_editor::InspectorVisibilityInfo> = None;
             let mut sprite_source_change: Option<(u64, RequestedSpriteStrategy)> = None;
@@ -792,6 +794,8 @@ impl crate::App {
                                 crate::input_dispatch::vec_vertex_kind_for_id(*id)
                             {
                                 pending_vec_vertex_kind = Some(kind);
+                            } else if *id == ph2d_editor::ids::VECTOR_VERT_DELETE {
+                                pending_vec_delete_vertex = true;
                             }
                         }
                         if let Some(t) = tools.active_mut() {
@@ -1394,6 +1398,13 @@ impl crate::App {
                     &mut self.vec_history,
                     &mut self.vec_pen,
                     kind,
+                );
+            }
+            if pending_vec_delete_vertex {
+                crate::input_dispatch::apply_vec_delete_vertex(
+                    vec_scene,
+                    &mut self.vec_history,
+                    &mut self.vec_pen,
                 );
             }
             let (vec_mode, vec_sides) = vector_bridge::dispatch(

@@ -408,6 +408,103 @@ fn normalize(v: [f64; 2]) -> Option<[f64; 2]> {
     }
 }
 
+/// Interpolação linear.
+fn lerp(a: [f64; 2], b: [f64; 2], t: f64) -> [f64; 2] {
+    [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t]
+}
+
+/// Avalia a cúbica de Bézier (P0,P1,P2,P3) em `t` (base de Bernstein).
+fn cubic_at(p0: [f64; 2], p1: [f64; 2], p2: [f64; 2], p3: [f64; 2], t: f64) -> [f64; 2] {
+    let u = 1.0 - t;
+    let (w0, w1, w2, w3) = (u * u * u, 3.0 * u * u * t, 3.0 * u * t * t, t * t * t);
+    [
+        w0 * p0[0] + w1 * p1[0] + w2 * p2[0] + w3 * p3[0],
+        w0 * p0[1] + w1 * p1[1] + w2 * p2[1] + w3 * p3[1],
+    ]
+}
+
+/// Nº de segmentos de `path` (fechado inclui o segmento de fechamento).
+fn segment_count(path: &VecPath) -> usize {
+    let n = path.verts.len();
+    if n < 2 {
+        0
+    } else if path.closed {
+        n
+    } else {
+        n - 1
+    }
+}
+
+/// Divide o segmento cúbico `seg` (de `verts[seg]` a `verts[(seg+1) % n]`) no
+/// parâmetro `t ∈ [0,1]` via **de Casteljau**, inserindo um vértice **Smooth**
+/// novo — a FORMA é preservada exatamente (as duas cúbicas resultantes somam a
+/// original). Ajusta o out-handle do vértice anterior e o in-handle do seguinte.
+/// Devolve o índice do vértice novo (`seg + 1`), ou `None` se o segmento não
+/// existe. É o núcleo do "inserir vértice num segmento" (ADR-0108 Fase 1).
+pub fn split_segment(path: &mut VecPath, seg: usize, t: f64) -> Option<usize> {
+    let n = path.verts.len();
+    if seg >= segment_count(path) {
+        return None;
+    }
+    let a = seg;
+    let b = (seg + 1) % n;
+    let t = t.clamp(0.0, 1.0);
+    let (p0, p1) = (path.verts[a].anchor, path.verts[a].out_handle);
+    let (p2, p3) = (path.verts[b].in_handle, path.verts[b].anchor);
+    let q0 = lerp(p0, p1, t);
+    let q1 = lerp(p1, p2, t);
+    let q2 = lerp(p2, p3, t);
+    let r0 = lerp(q0, q1, t);
+    let r1 = lerp(q1, q2, t);
+    let s = lerp(r0, r1, t);
+    // Ajusta os vizinhos ANTES de inserir (índices ainda válidos).
+    path.verts[a].out_handle = q0;
+    path.verts[b].in_handle = q2;
+    path.verts.insert(
+        a + 1,
+        VecVertex {
+            anchor: s,
+            in_handle: r0,
+            out_handle: r1,
+            kind: VertexKind::Smooth,
+        },
+    );
+    Some(a + 1)
+}
+
+/// Ponto mais próximo de `p` sobre os segmentos de `path` (amostragem uniforme,
+/// `samples` por segmento). Devolve `(seg, t, dist²)` — o alvo do "clicar perto
+/// do traço pra inserir um vértice" — ou `None` se não há segmentos.
+#[must_use]
+pub fn nearest_point_on_path(path: &VecPath, p: [f64; 2], samples: u32) -> Option<(usize, f64, f64)> {
+    let n = path.verts.len();
+    let segs = segment_count(path);
+    if segs == 0 {
+        return None;
+    }
+    let s = samples.max(2);
+    let mut best: Option<(usize, f64, f64)> = None;
+    for seg in 0..segs {
+        let (a, b) = (seg, (seg + 1) % n);
+        let (p0, p1) = (path.verts[a].anchor, path.verts[a].out_handle);
+        let (p2, p3) = (path.verts[b].in_handle, path.verts[b].anchor);
+        for k in 0..=s {
+            let t = f64::from(k) / f64::from(s);
+            let c = cubic_at(p0, p1, p2, p3, t);
+            let (dx, dy) = (c[0] - p[0], c[1] - p[1]);
+            let d2 = dx * dx + dy * dy;
+            let better = match best {
+                None => true,
+                Some((_, _, bd)) => d2 < bd,
+            };
+            if better {
+                best = Some((seg, t, d2));
+            }
+        }
+    }
+    best
+}
+
 /// Blob-círculo preenchido (usa [`ellipse`] com `rx = ry`), para a cena-demo.
 fn blob(c: [f64; 2], r: f64, fill: Rgba8) -> VecPath {
     let mut p = ellipse(c, r, r);
@@ -655,5 +752,88 @@ mod tests {
         assert!(!retype_vertex(&mut p, 1, VertexKind::Corner));
         // Out-of-bounds index.
         assert!(!retype_vertex(&mut p, 99, VertexKind::Smooth));
+    }
+
+    /// A curved open segment for split tests.
+    fn curved_segment() -> VecPath {
+        VecPath {
+            id: 0,
+            verts: vec![
+                VecVertex::smooth([0.0, 0.0], [0.0, 0.0], [1.0, 2.0]),
+                VecVertex::smooth([3.0, 0.0], [2.0, 2.0], [3.0, 0.0]),
+            ],
+            closed: false,
+            fill: None,
+            stroke: None,
+        }
+    }
+
+    #[test]
+    fn split_segment_inserts_a_smooth_vertex_on_the_curve() {
+        let mut p = curved_segment();
+        let (p0, p1, p2, p3) = ([0.0, 0.0], [1.0, 2.0], [2.0, 2.0], [3.0, 0.0]);
+        let ni = split_segment(&mut p, 0, 0.4).unwrap();
+        assert_eq!(ni, 1);
+        assert_eq!(p.verts.len(), 3);
+        assert_eq!(p.verts[1].kind, VertexKind::Smooth);
+        // The new anchor lies exactly on the original curve at t = 0.4.
+        let want = cubic_at(p0, p1, p2, p3, 0.4);
+        assert!((p.verts[1].anchor[0] - want[0]).abs() < 1e-9);
+        assert!((p.verts[1].anchor[1] - want[1]).abs() < 1e-9);
+    }
+
+    #[test]
+    fn split_preserves_the_shape_exactly() {
+        let mut p = curved_segment();
+        let (p0, p1, p2, p3) = ([0.0, 0.0], [1.0, 2.0], [2.0, 2.0], [3.0, 0.0]);
+        split_segment(&mut p, 0, 0.4).unwrap();
+        // Left sub-cubic spans original t∈[0,0.4]; its local u maps to orig 0.4·u.
+        let (la0, la1) = (p.verts[0].anchor, p.verts[0].out_handle);
+        let (la2, la3) = (p.verts[1].in_handle, p.verts[1].anchor);
+        for &u in &[0.0_f64, 0.5, 1.0] {
+            let got = cubic_at(la0, la1, la2, la3, u);
+            let want = cubic_at(p0, p1, p2, p3, 0.4 * u);
+            assert!((got[0] - want[0]).abs() < 1e-9 && (got[1] - want[1]).abs() < 1e-9);
+        }
+        // Right sub-cubic spans original t∈[0.4,1].
+        let (ra0, ra1) = (p.verts[1].anchor, p.verts[1].out_handle);
+        let (ra2, ra3) = (p.verts[2].in_handle, p.verts[2].anchor);
+        for &u in &[0.0_f64, 0.5, 1.0] {
+            let got = cubic_at(ra0, ra1, ra2, ra3, u);
+            let want = cubic_at(p0, p1, p2, p3, 0.4 + 0.6 * u);
+            assert!((got[0] - want[0]).abs() < 1e-9 && (got[1] - want[1]).abs() < 1e-9);
+        }
+    }
+
+    #[test]
+    fn split_handles_the_closing_segment_of_a_closed_path() {
+        let mut p = corner_triangle(); // 3 verts, closed → 3 segments (incl. closing)
+        // Closing segment is index 2 (v2 → v0).
+        let ni = split_segment(&mut p, 2, 0.5).unwrap();
+        assert_eq!(ni, 3); // appended at the end
+        assert_eq!(p.verts.len(), 4);
+        // Out of range segment → None.
+        assert!(split_segment(&mut p, 99, 0.5).is_none());
+    }
+
+    #[test]
+    fn nearest_point_on_path_finds_the_click_segment_and_t() {
+        let p = curved_segment();
+        // A point near the midpoint of the (only) segment.
+        let mid = cubic_at([0.0, 0.0], [1.0, 2.0], [2.0, 2.0], [3.0, 0.0], 0.5);
+        let probe = [mid[0], mid[1] + 0.05];
+        let (seg, t, d2) = nearest_point_on_path(&p, probe, 64).unwrap();
+        assert_eq!(seg, 0);
+        assert!((t - 0.5).abs() < 0.1, "t near the middle");
+        assert!(d2.sqrt() < 0.1, "close to the curve");
+        // A single-vertex path has no segments.
+        let dot = VecPath {
+            id: 0,
+            verts: vec![VecVertex::corner([0.0, 0.0])],
+            closed: false,
+            fill: None,
+            stroke: None,
+        };
+        assert!(nearest_point_on_path(&dot, [0.0, 0.0], 8).is_none());
     }
 }

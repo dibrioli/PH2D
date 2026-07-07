@@ -87,3 +87,7 @@ pub const VECTOR_BOOL_INTERSECT: NodeId = hash_node_id("vector.bool.intersect");
 pub const VECTOR_VERT_CORNER: NodeId = hash_node_id("vector.vert.corner");
 pub const VECTOR_VERT_SMOOTH: NodeId = hash_node_id("vector.vert.smooth");
 pub const VECTOR_VERT_SYMMETRIC: NodeId = hash_node_id("vector.vert.symmetric");
+/// "Delete Node" button — removes the selected vertex (re-stitching neighbors);
+/// a document edit routed through the shell drain (mirror of the vertex-type
+/// buttons). Insert is a canvas gesture (click a segment) — no button.
+pub const VECTOR_VERT_DELETE: NodeId = hash_node_id("vector.vert.delete");

@@ -24,8 +24,13 @@ pub enum PenClick {
     Closed,
     /// Agarrou uma âncora/handle existente para editar.
     Grabbed,
+    /// Inseriu um vértice novo num segmento (split de Bézier) e o agarrou.
+    Inserted,
     Ignored,
 }
+
+/// Amostras por segmento no hit-test de "inserir vértice perto do traço".
+const INSERT_SAMPLES: u32 = 24;
 
 /// Parte de um vértice que o hit-test pode agarrar.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -139,6 +144,32 @@ impl PenTool {
         ph2d_vec_scene::retype_vertex(path, i, kind)
     }
 
+    /// Apaga o vértice selecionado (Delete / botão), re-costurando os vizinhos.
+    /// Se o path ficar com < 2 vértices, remove o path inteiro e limpa a seleção.
+    /// A seleção segue no vizinho (delete encadeado). Devolve `true` se apagou.
+    pub fn delete_selected_vertex(&mut self, scene: &mut VecScene) -> bool {
+        let (Some(id), Some(i)) = (self.selected, self.selected_vert) else {
+            return false;
+        };
+        let Some(path) = scene.path_mut(id) else {
+            return false;
+        };
+        if i >= path.verts.len() {
+            return false;
+        }
+        path.verts.remove(i);
+        let remaining = path.verts.len();
+        if remaining < 2 {
+            scene.remove_path(id);
+            self.selected = None;
+            self.selected_vert = None;
+            self.active = None;
+        } else {
+            self.selected_vert = Some(i.min(remaining - 1));
+        }
+        true
+    }
+
     /// Zera todo o estado (ex.: após apagar o path selecionado), preservando o
     /// estilo corrente (é config da tool, não estado de interação).
     pub fn clear(&mut self) {
@@ -210,6 +241,29 @@ impl PenTool {
             }
             self.grab = Some(g);
             return PenClick::Grabbed;
+        }
+
+        // Perto de um SEGMENTO do path selecionado → insere um vértice (split de
+        // Bézier, forma preservada) e o agarra pra arrastar de imediato. Só o
+        // path selecionado (previsível — é onde os gizmos aparecem); mesmo raio
+        // do grab de handle. Computa a proximidade com borrow imutável, depois muta.
+        let insert = self.selected.and_then(|sel| {
+            let path = scene.paths().iter().find(|pp| pp.id == sel)?;
+            let (seg, t, d2) = ph2d_vec_scene::nearest_point_on_path(path, p, INSERT_SAMPLES)?;
+            (d2.sqrt() <= hit_r).then_some((sel, seg, t))
+        });
+        if let Some((sel, seg, t)) = insert
+            && let Some(path) = scene.path_mut(sel)
+            && let Some(ni) = ph2d_vec_scene::split_segment(path, seg, t)
+        {
+            self.selected = Some(sel);
+            self.selected_vert = Some(ni);
+            self.grab = Some(Grab {
+                path: sel,
+                vert: ni,
+                part: Part::Anchor,
+            });
+            return PenClick::Inserted;
         }
 
         // Nada agarrado → começa um path novo.
@@ -567,6 +621,78 @@ mod tests {
         assert_eq!(v.kind, VertexKind::Corner);
         assert_eq!(v.out_handle, [2.0, 2.0]);
         assert_eq!(v.in_handle, [-2.0, 0.0], "in handle untouched (independent)");
+    }
+
+    /// Clicking near a segment of the selected path inserts a vertex (Bézier
+    /// split) and grabs it — the path gains one Smooth vertex.
+    #[test]
+    fn click_on_a_segment_inserts_and_grabs_a_vertex() {
+        let mut scene = VecScene::new();
+        let mut pen = PenTool::new();
+        // Two-vertex open path: a straight segment from (0,0) to (4,0).
+        pen.on_press(&mut scene, [0.0, 0.0], PTW, false);
+        pen.on_release();
+        pen.on_press(&mut scene, [4.0, 0.0], PTW, false);
+        pen.on_release();
+        pen.finish();
+        assert_eq!(scene.paths()[0].verts.len(), 2);
+        // Click on the middle of the segment (well within hit_r = 10·PTW).
+        assert_eq!(
+            pen.on_press(&mut scene, [2.0, 0.0], PTW, false),
+            PenClick::Inserted
+        );
+        assert!(pen.is_dragging(), "new vertex is grabbed for immediate drag");
+        assert_eq!(scene.paths()[0].verts.len(), 3);
+        assert_eq!(scene.paths()[0].verts[1].kind, VertexKind::Smooth);
+        assert_eq!(pen.selected_vert(), Some(1));
+        pen.on_release();
+    }
+
+    #[test]
+    fn far_click_does_not_insert_but_starts_a_new_path() {
+        let mut scene = VecScene::new();
+        let mut pen = PenTool::new();
+        pen.on_press(&mut scene, [0.0, 0.0], PTW, false);
+        pen.on_release();
+        pen.on_press(&mut scene, [4.0, 0.0], PTW, false);
+        pen.on_release();
+        pen.finish();
+        // Far from the segment → a new path starts (not an insert).
+        assert_eq!(
+            pen.on_press(&mut scene, [2.0, 5.0], PTW, false),
+            PenClick::Started
+        );
+        assert_eq!(scene.paths().len(), 2);
+    }
+
+    #[test]
+    fn delete_selected_vertex_removes_one_node_and_keeps_the_path() {
+        let mut scene = VecScene::new();
+        let mut pen = PenTool::new();
+        draw_triangle(&mut pen, &mut scene); // closed, 3 verts
+        pen.on_press(&mut scene, [4.0, 0.0], PTW, false); // select vertex 1
+        pen.on_release();
+        assert_eq!(pen.selected_vert(), Some(1));
+        assert!(pen.delete_selected_vertex(&mut scene));
+        assert_eq!(scene.paths()[0].verts.len(), 2, "one node gone, path kept");
+    }
+
+    #[test]
+    fn deleting_below_two_vertices_removes_the_whole_path() {
+        let mut scene = VecScene::new();
+        let mut pen = PenTool::new();
+        // Two-vertex open path.
+        pen.on_press(&mut scene, [0.0, 0.0], PTW, false);
+        pen.on_release();
+        pen.on_press(&mut scene, [4.0, 0.0], PTW, false);
+        pen.on_release();
+        pen.finish();
+        pen.on_press(&mut scene, [0.0, 0.0], PTW, false); // select vertex 0
+        pen.on_release();
+        assert!(pen.delete_selected_vertex(&mut scene)); // 2 → 1 → remove path
+        assert!(scene.is_empty());
+        assert_eq!(pen.selected(), None);
+        assert_eq!(pen.selected_vert(), None);
     }
 
     /// The Vertex-type buttons target the selected vertex; `selected_vertex_kind`

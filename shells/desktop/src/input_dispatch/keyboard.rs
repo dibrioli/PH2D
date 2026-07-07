@@ -57,7 +57,9 @@ impl App {
                 self.vec_boolean(op);
                 return;
             }
-            if matches!(code, KeyCode::Delete | KeyCode::Backspace) && self.vec_delete_selected() {
+            if matches!(code, KeyCode::Delete | KeyCode::Backspace)
+                && self.vec_delete_selected_vertex_or_path()
+            {
                 return;
             }
         }

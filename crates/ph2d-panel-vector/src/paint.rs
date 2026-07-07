@@ -295,6 +295,19 @@ pub(crate) fn paint(_state: &mut VectorPanelState, ctx: &mut PaintCtx) {
                 paint_segmented_button(rect, label, vtype == *t, bstate, scene, text_system, theme);
                 hit_index.register(*id, rect);
             }
+            y += row_h + Spacing::Xs.px();
+
+            // Delete-node button (full width). Insert is a canvas gesture (click a
+            // segment) — no button.
+            let del_rect = Rect::new(inner_x, y, inner_w, row_h);
+            let del_state = store
+                .button_state(ids::VECTOR_VERT_DELETE)
+                .unwrap_or(ButtonState::Normal);
+            let del_btn = Button::new(ids::VECTOR_VERT_DELETE, "Delete Node")
+                .kind(ButtonKind::Default)
+                .state(del_state);
+            paint_button(&del_btn, del_rect, scene, text_system, theme);
+            hit_index.register(ids::VECTOR_VERT_DELETE, del_rect);
             y += row_h + row_gap;
         }
 

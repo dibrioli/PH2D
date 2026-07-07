@@ -524,6 +524,25 @@ impl BodyCtx<'_> {
             self.hit_index.register(*id, rect);
         }
         let z_rows = zorder.len().div_ceil(z_cols) as f32;
-        z_top + z_rows * self.row_h + (z_rows - 1.0) * z_gap + self.row_gap
+        y = z_top + z_rows * self.row_h + (z_rows - 1.0) * z_gap + self.row_gap;
+
+        // Flip: 2-col row — mirror the selected path left↔right / up↔down.
+        for (i, (id, label)) in [
+            (ids::VECTOR_ARRANGE_FLIP_H, "Flip H"),
+            (ids::VECTOR_ARRANGE_FLIP_V, "Flip V"),
+        ]
+        .iter()
+        .enumerate()
+        {
+            let rx = self.inner_x + i as f32 * (z_w + z_gap);
+            let rect = Rect::new(rx, y, z_w, self.row_h);
+            let bstate = self.store.button_state(*id).unwrap_or(ButtonState::Normal);
+            let btn = Button::new(*id, *label)
+                .kind(ButtonKind::Default)
+                .state(bstate);
+            paint_button(&btn, rect, self.scene, self.text_system, self.theme);
+            self.hit_index.register(*id, rect);
+        }
+        y + self.row_h + self.row_gap
     }
 }

@@ -134,3 +134,6 @@ pub const VECTOR_ARRANGE_TO_BACK: NodeId = hash_node_id("vector.arrange.to_back"
 pub const VECTOR_ARRANGE_BACKWARD: NodeId = hash_node_id("vector.arrange.backward");
 pub const VECTOR_ARRANGE_FORWARD: NodeId = hash_node_id("vector.arrange.forward");
 pub const VECTOR_ARRANGE_TO_FRONT: NodeId = hash_node_id("vector.arrange.to_front");
+// Mirror the selected path (H = left↔right, V = up↔down) around its bbox center.
+pub const VECTOR_ARRANGE_FLIP_H: NodeId = hash_node_id("vector.arrange.flip_h");
+pub const VECTOR_ARRANGE_FLIP_V: NodeId = hash_node_id("vector.arrange.flip_v");

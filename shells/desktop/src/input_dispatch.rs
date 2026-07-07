@@ -222,6 +222,37 @@ pub(crate) fn vec_reorder_for_id(id: ph2d_editor::NodeId) -> Option<ph2d_vec_sce
     }
 }
 
+/// Mirror the SELECTED path (panel Arrange Flip buttons), recording ONE undo step
+/// iff it flipped. Free fn (mirror of [`apply_vec_boolean`]).
+pub(crate) fn apply_vec_flip(
+    scene: &mut ph2d_vec_scene::VecScene,
+    history: &mut ph2d_vec_edit::History,
+    pen: &ph2d_vec_edit::PenTool,
+    axis: ph2d_vec_scene::FlipAxis,
+) {
+    let Some(sel) = pen.selected() else {
+        eprintln!("[ph2d-vec] flip: nenhum path selecionado");
+        return;
+    };
+    let pre = scene.clone();
+    if scene.flip_path(sel, axis) {
+        history.push_undo(pre);
+    }
+}
+
+/// Map a Vector-panel Arrange Flip button `NodeId` to its [`ph2d_vec_scene::FlipAxis`]
+/// (`None` for any other id). Pure — unit-tested; called from the render_loop drain.
+pub(crate) fn vec_flip_for_id(id: ph2d_editor::NodeId) -> Option<ph2d_vec_scene::FlipAxis> {
+    use ph2d_vec_scene::FlipAxis;
+    if id == ph2d_editor::ids::VECTOR_ARRANGE_FLIP_H {
+        Some(FlipAxis::Horizontal)
+    } else if id == ph2d_editor::ids::VECTOR_ARRANGE_FLIP_V {
+        Some(FlipAxis::Vertical)
+    } else {
+        None
+    }
+}
+
 /// The shape kind a Vector draw-mode maps to (`None` = Pen, the non-shape
 /// gesture). Lets the canvas dispatch route Down/Move/Up to the pen or the
 /// shape tool.
@@ -1734,13 +1765,13 @@ impl App {
 #[cfg(test)]
 mod tests {
     use super::{
-        shape_kind_for_mode, shape_up_consumes, vec_bool_op_for_id, vec_reorder_for_id,
-        vec_vertex_kind_for_id,
+        shape_kind_for_mode, shape_up_consumes, vec_bool_op_for_id, vec_flip_for_id,
+        vec_reorder_for_id, vec_vertex_kind_for_id,
     };
     use ph2d_tool_vector::DrawMode;
     use ph2d_vec_boolean::BoolOp;
     use ph2d_vec_edit::ShapeKind;
-    use ph2d_vec_scene::{VertexKind, ZOrder};
+    use ph2d_vec_scene::{FlipAxis, VertexKind, ZOrder};
 
     #[test]
     fn vertex_button_ids_map_to_their_kinds() {
@@ -1786,6 +1817,24 @@ mod tests {
             None
         );
         assert_eq!(vec_reorder_for_id(ph2d_editor::ids::VECTOR_BOOL_UNION), None);
+    }
+
+    #[test]
+    fn flip_button_ids_map_to_their_axis() {
+        assert_eq!(
+            vec_flip_for_id(ph2d_editor::ids::VECTOR_ARRANGE_FLIP_H),
+            Some(FlipAxis::Horizontal)
+        );
+        assert_eq!(
+            vec_flip_for_id(ph2d_editor::ids::VECTOR_ARRANGE_FLIP_V),
+            Some(FlipAxis::Vertical)
+        );
+        // Flip is NOT a reorder and vice-versa.
+        assert_eq!(vec_flip_for_id(ph2d_editor::ids::VECTOR_ARRANGE_TO_BACK), None);
+        assert_eq!(
+            vec_reorder_for_id(ph2d_editor::ids::VECTOR_ARRANGE_FLIP_H),
+            None
+        );
     }
 
     #[test]

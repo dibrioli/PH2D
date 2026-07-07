@@ -736,10 +736,11 @@ impl crate::App {
             let mut pending_vec_vertex_kind: Option<ph2d_vec_scene::VertexKind> = None;
             // ADR-0108 Fase 1: "Delete Node" button removes the selected vertex.
             let mut pending_vec_delete_vertex = false;
-            // ADR-0108: Arrange buttons — z-order restack + Duplicate — act on the
-            // selected path (document ops), applied after the drain.
+            // ADR-0108: Arrange buttons — z-order restack + Duplicate + Flip H/V —
+            // act on the selected path (document ops), applied after the drain.
             let mut pending_vec_reorder: Option<ph2d_vec_scene::ZOrder> = None;
             let mut pending_vec_duplicate = false;
+            let mut pending_vec_flip: Option<ph2d_vec_scene::FlipAxis> = None;
             let mut transform_edit: Option<ph2d_editor::InspectorTransformInfo> = None;
             let mut visibility_edit: Option<ph2d_editor::InspectorVisibilityInfo> = None;
             let mut sprite_source_change: Option<(u64, RequestedSpriteStrategy)> = None;
@@ -806,6 +807,10 @@ impl crate::App {
                                 pending_vec_reorder = Some(order);
                             } else if *id == ph2d_editor::ids::VECTOR_ARRANGE_DUPLICATE {
                                 pending_vec_duplicate = true;
+                            } else if let Some(axis) =
+                                crate::input_dispatch::vec_flip_for_id(*id)
+                            {
+                                pending_vec_flip = Some(axis);
                             }
                         }
                         if let Some(t) = tools.active_mut() {
@@ -1436,6 +1441,14 @@ impl crate::App {
                     &mut self.vec_pen,
                     off,
                     off,
+                );
+            }
+            if let Some(axis) = pending_vec_flip {
+                crate::input_dispatch::apply_vec_flip(
+                    vec_scene,
+                    &mut self.vec_history,
+                    &self.vec_pen,
+                    axis,
                 );
             }
             let vec_cfg = vector_bridge::dispatch(

@@ -71,6 +71,9 @@ fase = "fase"
 elipse = "elipse"
 Elipse = "Elipse"
 colateral = "colateral"
+# "controle" (pt-BR for "control") — e.g. "pontos de controle" (control points)
+# in the Vector flip/geometry comments.
+controle = "controle"
 # pt-BR plurals that typos-cli wants in English.
 individuais = "individuais"
 individual = "individual"

@@ -457,6 +457,8 @@ const CHROME_IDS: &[(&str, NodeId)] = &[
     ("VECTOR_ARRANGE_BACKWARD", ids::VECTOR_ARRANGE_BACKWARD),
     ("VECTOR_ARRANGE_FORWARD", ids::VECTOR_ARRANGE_FORWARD),
     ("VECTOR_ARRANGE_TO_FRONT", ids::VECTOR_ARRANGE_TO_FRONT),
+    ("VECTOR_ARRANGE_FLIP_H", ids::VECTOR_ARRANGE_FLIP_H),
+    ("VECTOR_ARRANGE_FLIP_V", ids::VECTOR_ARRANGE_FLIP_V),
 ];
 
 /// Pairwise uniqueness across every chrome [`NodeId`]. O(n²) over ~200

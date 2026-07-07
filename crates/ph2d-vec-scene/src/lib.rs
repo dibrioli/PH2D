@@ -172,6 +172,15 @@ pub enum ZOrder {
     ToBack,
 }
 
+/// Eixo de espelhamento de um path ([`VecScene::flip_path`]). `Horizontal` =
+/// esquerda↔direita (espelha X); `Vertical` = cima↔baixo (espelha Y). Ambos em
+/// torno do CENTRO da bbox dos pontos de controle do próprio path.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum FlipAxis {
+    Horizontal,
+    Vertical,
+}
+
 /// Cena vetorial — o documento editor-first. `PartialEq` para o undo detectar
 /// mudança real (só vira passo de histórico se a cena mudou de fato).
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
@@ -258,6 +267,37 @@ impl VecScene {
         }
         let p = self.paths.remove(i);
         self.paths.insert(j, p);
+        true
+    }
+
+    /// Espelha o path `id` no eixo `axis`, em torno do centro da bbox dos seus
+    /// pontos de controle (âncora + 2 handles de cada vértice). Reflete os três
+    /// pontos de cada vértice — a forma inverte, a ordem/topologia dos vértices
+    /// fica igual. `false` se o id sumiu ou o path está vazio.
+    pub fn flip_path(&mut self, id: VecPathId, axis: FlipAxis) -> bool {
+        let Some(path) = self.paths.iter_mut().find(|p| p.id == id) else {
+            return false;
+        };
+        if path.verts.is_empty() {
+            return false;
+        }
+        let a = match axis {
+            FlipAxis::Horizontal => 0,
+            FlipAxis::Vertical => 1,
+        };
+        let (mut lo, mut hi) = (f64::INFINITY, f64::NEG_INFINITY);
+        for v in &path.verts {
+            for p in [v.anchor, v.in_handle, v.out_handle] {
+                lo = lo.min(p[a]);
+                hi = hi.max(p[a]);
+            }
+        }
+        let twice_center = lo + hi;
+        for v in &mut path.verts {
+            v.anchor[a] = twice_center - v.anchor[a];
+            v.in_handle[a] = twice_center - v.in_handle[a];
+            v.out_handle[a] = twice_center - v.out_handle[a];
+        }
         true
     }
 

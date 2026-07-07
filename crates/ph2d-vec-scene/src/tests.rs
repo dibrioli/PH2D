@@ -90,6 +90,38 @@ fn duplicate_path_offsets_every_point_and_stacks_on_top() {
 }
 
 #[test]
+fn flip_path_mirrors_around_the_bbox_center() {
+    let mut scene = VecScene::new();
+    // Rectangle spanning x∈[0,10], y∈[0,4] → centers (5, 2).
+    let id = scene.push_path(rectangle([0.0, 0.0], [10.0, 4.0]));
+    let before: Vec<_> = scene.paths()[0].verts.iter().map(|v| v.anchor).collect();
+
+    assert!(scene.flip_path(id, FlipAxis::Horizontal));
+    for (b, v) in before.iter().zip(&scene.paths()[0].verts) {
+        assert!(
+            (v.anchor[0] - (10.0 - b[0])).abs() < 1e-9,
+            "X mirrored about 5"
+        );
+        assert!((v.anchor[1] - b[1]).abs() < 1e-9, "Y unchanged");
+    }
+    // Flipping the same axis twice is the identity.
+    assert!(scene.flip_path(id, FlipAxis::Horizontal));
+    for (b, v) in before.iter().zip(&scene.paths()[0].verts) {
+        assert!((v.anchor[0] - b[0]).abs() < 1e-9);
+    }
+
+    assert!(scene.flip_path(id, FlipAxis::Vertical));
+    for (b, v) in before.iter().zip(&scene.paths()[0].verts) {
+        assert!(
+            (v.anchor[1] - (4.0 - b[1])).abs() < 1e-9,
+            "Y mirrored about 2"
+        );
+        assert!((v.anchor[0] - b[0]).abs() < 1e-9, "X unchanged");
+    }
+    assert!(!scene.flip_path(999, FlipAxis::Horizontal));
+}
+
+#[test]
 fn demo_grid_count() {
     assert_eq!(VecScene::demo_grid(50).paths().len(), 50);
     assert!(VecScene::demo_grid(0).is_empty());

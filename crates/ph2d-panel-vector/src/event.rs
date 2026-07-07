@@ -103,7 +103,9 @@ pub(crate) fn apply_event(
                 || id == ids::VECTOR_ARRANGE_TO_BACK
                 || id == ids::VECTOR_ARRANGE_BACKWARD
                 || id == ids::VECTOR_ARRANGE_FORWARD
-                || id == ids::VECTOR_ARRANGE_TO_FRONT =>
+                || id == ids::VECTOR_ARRANGE_TO_FRONT
+                || id == ids::VECTOR_ARRANGE_FLIP_H
+                || id == ids::VECTOR_ARRANGE_FLIP_V =>
         {
             seam_reset_button(host, id);
             host.bus_mut()

@@ -223,12 +223,14 @@ pub fn populate(store: &mut WidgetStore) {
         GAP_SLIDER_OFFSET,
     );
 
-    // Arrange: Duplicate + z-order restack buttons (act on the selected path).
+    // Arrange: Duplicate + z-order restack + Flip buttons (act on the selected path).
     button(store, ids::VECTOR_ARRANGE_DUPLICATE);
     button(store, ids::VECTOR_ARRANGE_TO_BACK);
     button(store, ids::VECTOR_ARRANGE_BACKWARD);
     button(store, ids::VECTOR_ARRANGE_FORWARD);
     button(store, ids::VECTOR_ARRANGE_TO_FRONT);
+    button(store, ids::VECTOR_ARRANGE_FLIP_H);
+    button(store, ids::VECTOR_ARRANGE_FLIP_V);
 
     // Close (X) button.
     button(store, ids::VECTOR_CLOSE);

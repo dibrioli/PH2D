@@ -136,6 +136,22 @@ pub fn radius_to_slider(px: f64) -> f32 {
         as f32
 }
 
+/// Opacity slider: track `0..=1` → alpha `0..=255`; the chip shows `0..=100`
+/// (percent), so `SCALE = 100`, `OFFSET = 0`.
+pub const OPACITY_SLIDER_SCALE: f32 = 100.0;
+pub const OPACITY_SLIDER_OFFSET: f32 = 0.0;
+
+/// Normalized track `0..=1` → alpha byte `0..=255` (rounded).
+#[must_use]
+pub fn slider_to_opacity(track: f32) -> u8 {
+    (track.clamp(0.0, 1.0) * 255.0).round() as u8
+}
+/// Alpha byte → normalized track (inverse of [`slider_to_opacity`]).
+#[must_use]
+pub fn opacity_to_slider(a: u8) -> f32 {
+    f32::from(a) / 255.0
+}
+
 /// Mode + shape parameters the shell mirrors from the tool each frame to route
 /// canvas gestures (pen vs shape) and drive the [`ShapeTool`] without a downcast.
 ///

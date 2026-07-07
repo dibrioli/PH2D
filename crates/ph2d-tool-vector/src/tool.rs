@@ -25,8 +25,8 @@ use ph2d_editor_core::ids;
 use ph2d_editor_core::tool::{PanelEvent, Tool};
 
 use crate::params::{
-    DrawMode, VectorDrawConfig, VectorStyleSnapshot, slider_to_px, slider_to_radius,
-    slider_to_sides, slider_to_star_inner, slider_to_star_points,
+    DrawMode, VectorDrawConfig, VectorStyleSnapshot, slider_to_opacity, slider_to_px,
+    slider_to_radius, slider_to_sides, slider_to_star_inner, slider_to_star_points,
 };
 
 /// Curated stroke / fill preset palette: `(key, label, sRGB8)`. Retained as the
@@ -44,9 +44,6 @@ pub const PALETTE: &[(&str, &str, [u8; 4])] = &[
     ("blue", "Blue", [90, 150, 230, 255]),
     ("purple", "Purple", [160, 110, 220, 255]),
 ];
-
-/// Fill "None" colour (alpha 0 = no visible fill on close).
-const FILL_NONE: [u8; 4] = [0, 0, 0, 0];
 
 /// Default stroke width in screen pixels (matches the old `PenTool` default).
 pub const DEFAULT_STROKE_WIDTH_PX: f64 = 3.0;
@@ -239,8 +236,14 @@ impl Tool for VectorTool {
             PanelEvent::SetValue(id, v) if id == ids::VECTOR_RRECT_RADIUS => {
                 self.corner_radius_px = slider_to_radius(v as f32);
             }
-            PanelEvent::Click(id) if id == ids::VECTOR_FILL_NONE => {
-                self.fill = FILL_NONE;
+            // Opacity sliders own the fill/stroke alpha (the single source). The
+            // picker only sets RGB. `0 %` alpha ⇒ invisible (no fill).
+            PanelEvent::SetValue(id, v) if id == ids::VECTOR_FILL_OPACITY => {
+                self.fill[3] = slider_to_opacity(v as f32);
+                self.apply_to_selected = true;
+            }
+            PanelEvent::SetValue(id, v) if id == ids::VECTOR_STROKE_OPACITY => {
+                self.stroke[3] = slider_to_opacity(v as f32);
                 self.apply_to_selected = true;
             }
             // Draw-mode segmented row: switches the canvas gesture. No recolour
@@ -308,10 +311,18 @@ mod tests {
     }
 
     #[test]
-    fn fill_none_click_sets_transparent_and_flags_apply() {
+    fn opacity_sliders_set_fill_and_stroke_alpha_and_flag_apply() {
         let mut t = VectorTool::new();
-        Tool::handle_panel_event(&mut t, PanelEvent::Click(ids::VECTOR_FILL_NONE));
+        // Fill Opacity → 0 % = invisible (replaces the old "None" button).
+        Tool::handle_panel_event(&mut t, PanelEvent::SetValue(ids::VECTOR_FILL_OPACITY, 0.0));
         assert_eq!(t.fill_rgba()[3], 0);
+        assert!(t.take_apply_to_selected());
+        // Fill Opacity → 100 %.
+        Tool::handle_panel_event(&mut t, PanelEvent::SetValue(ids::VECTOR_FILL_OPACITY, 1.0));
+        assert_eq!(t.fill_rgba()[3], 255);
+        // Stroke Opacity → 50 % ≈ 128.
+        Tool::handle_panel_event(&mut t, PanelEvent::SetValue(ids::VECTOR_STROKE_OPACITY, 0.5));
+        assert_eq!(t.stroke_rgba()[3], 128);
         assert!(t.take_apply_to_selected());
     }
 

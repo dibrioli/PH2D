@@ -45,7 +45,9 @@ pub(crate) fn apply_event(
             if id == ids::VECTOR_SIDES
                 || id == ids::VECTOR_STAR_POINTS
                 || id == ids::VECTOR_STAR_INNER
-                || id == ids::VECTOR_RRECT_RADIUS =>
+                || id == ids::VECTOR_RRECT_RADIUS
+                || id == ids::VECTOR_STROKE_OPACITY
+                || id == ids::VECTOR_FILL_OPACITY =>
         {
             let track = host.store().slider(id).map(|(_, v)| v).unwrap_or(0.5);
             host.bus_mut()
@@ -62,14 +64,10 @@ pub(crate) fn apply_event(
                 || id == ids::VECTOR_SIDES_NUM
                 || id == ids::VECTOR_STAR_POINTS_NUM
                 || id == ids::VECTOR_STAR_INNER_NUM
-                || id == ids::VECTOR_RRECT_RADIUS_NUM =>
+                || id == ids::VECTOR_RRECT_RADIUS_NUM
+                || id == ids::VECTOR_STROKE_OPACITY_NUM
+                || id == ids::VECTOR_FILL_OPACITY_NUM =>
         {
-            true
-        }
-        WidgetEvent::Click(id) if id == ids::VECTOR_FILL_NONE => {
-            seam_reset_button(host, id);
-            host.bus_mut()
-                .push(EditorAction::ToolPanelEvent(PanelEvent::Click(id)));
             true
         }
         // Draw-mode buttons + Boolean buttons: forward the Click over the generic

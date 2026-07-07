@@ -14,10 +14,10 @@ use crate::ids;
 use ph2d_editor_core::interaction::{InteractiveState, WidgetStore};
 use ph2d_editor_core::widget::{ButtonState, SliderOrientation, SliderState, TextInputState};
 use ph2d_tool_vector::params::{
-    RADIUS_SLIDER_OFFSET, RADIUS_SLIDER_SCALE, SIDES_SLIDER_OFFSET, SIDES_SLIDER_SCALE,
-    STAR_INNER_SLIDER_OFFSET, STAR_INNER_SLIDER_SCALE, STAR_POINTS_SLIDER_OFFSET,
-    STAR_POINTS_SLIDER_SCALE, WIDTH_SLIDER_OFFSET, WIDTH_SLIDER_SCALE, radius_to_slider,
-    sides_to_slider, star_inner_to_slider, star_points_to_slider,
+    OPACITY_SLIDER_OFFSET, OPACITY_SLIDER_SCALE, RADIUS_SLIDER_OFFSET, RADIUS_SLIDER_SCALE,
+    SIDES_SLIDER_OFFSET, SIDES_SLIDER_SCALE, STAR_INNER_SLIDER_OFFSET, STAR_INNER_SLIDER_SCALE,
+    STAR_POINTS_SLIDER_OFFSET, STAR_POINTS_SLIDER_SCALE, WIDTH_SLIDER_OFFSET, WIDTH_SLIDER_SCALE,
+    radius_to_slider, sides_to_slider, star_inner_to_slider, star_points_to_slider,
 };
 use ph2d_tool_vector::{
     DEFAULT_CORNER_RADIUS_PX, DEFAULT_POLYGON_SIDES, DEFAULT_STAR_INNER, DEFAULT_STAR_POINTS,
@@ -175,8 +175,27 @@ pub fn populate(store: &mut WidgetStore) {
     button(store, ids::VECTOR_BOOL_SUBTRACT);
     button(store, ids::VECTOR_BOOL_INTERSECT);
 
-    // Fill "None" button (clears the fill on the selected closed path).
-    button(store, ids::VECTOR_FILL_NONE);
+    // Stroke / Fill Opacity sliders (0..100 %) — seeded at full opacity, matching
+    // the tool's default opaque stroke/fill.
+    slider_chip(
+        store,
+        ids::VECTOR_STROKE_OPACITY,
+        ids::VECTOR_STROKE_OPACITY_NUM,
+        1.0,
+        100.0,
+        OPACITY_SLIDER_SCALE,
+        OPACITY_SLIDER_OFFSET,
+    );
+    slider_chip(
+        store,
+        ids::VECTOR_FILL_OPACITY,
+        ids::VECTOR_FILL_OPACITY_NUM,
+        1.0,
+        100.0,
+        OPACITY_SLIDER_SCALE,
+        OPACITY_SLIDER_OFFSET,
+    );
+
     // Close (X) button.
     button(store, ids::VECTOR_CLOSE);
 }

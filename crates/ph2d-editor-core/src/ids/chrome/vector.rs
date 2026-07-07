@@ -50,12 +50,17 @@ pub const VECTOR_WIDTH: NodeId = hash_node_id("vector.width");
 /// Px-valued chip linked to [`VECTOR_WIDTH`].
 pub const VECTOR_WIDTH_NUM: NodeId = hash_node_id("vector.width_num");
 /// Stroke-colour swatch — a picker swatch (opens the Blender picker on Down);
-/// the shell read-back applies the picked colour to the new + selected path.
+/// the shell read-back applies the picked colour (RGB; alpha kept) to the path.
 pub const VECTOR_STROKE_SWATCH: NodeId = hash_node_id("vector.stroke_swatch");
-/// Fill-colour swatch — a picker swatch (alpha 0 ⇒ no fill).
+/// Fill-colour swatch — a picker swatch (RGB; the Opacity slider owns alpha).
 pub const VECTOR_FILL_SWATCH: NodeId = hash_node_id("vector.fill_swatch");
-/// Fill "None" button — clears the fill (alpha 0) on the selected closed path.
-pub const VECTOR_FILL_NONE: NodeId = hash_node_id("vector.fill_none");
+/// Stroke / Fill **Opacity** sliders (0..100 %) — the single source of the
+/// stroke/fill alpha. `0 %` = invisible (no fill). Each drives the matching
+/// `VectorTool` colour's alpha channel.
+pub const VECTOR_STROKE_OPACITY: NodeId = hash_node_id("vector.stroke_opacity");
+pub const VECTOR_STROKE_OPACITY_NUM: NodeId = hash_node_id("vector.stroke_opacity_num");
+pub const VECTOR_FILL_OPACITY: NodeId = hash_node_id("vector.fill_opacity");
+pub const VECTOR_FILL_OPACITY_NUM: NodeId = hash_node_id("vector.fill_opacity_num");
 
 // ── Draw-mode selector (ADR-0108 Fase 1 — Pen / shape tools) ─────────────────
 // A segmented row that switches the canvas gesture: Pen (draw + edit anchors)

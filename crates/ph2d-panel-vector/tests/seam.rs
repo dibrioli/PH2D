@@ -72,34 +72,35 @@ fn width_slider_drag_reaches_tool_style() {
     );
 }
 
-/// The Fill "None" button must clear the tool's fill + flag the selected path
-/// for recolour, through the seam.
+/// The Fill Opacity slider owns the fill alpha (replaces the old "None" button):
+/// dragging it to 0 makes the fill invisible, through the seam.
 #[test]
-fn fill_none_click_clears_fill_through_seam() {
+fn fill_opacity_slider_sets_alpha_through_seam() {
     let mut host = MockPanelHost::with_panel::<VectorPanel>();
     let mut panel_state = VectorPanelState;
     let mut tool = VectorTool::default();
     assert_ne!(tool.fill_rgba()[3], 0, "precondition: default fill opaque");
 
+    host.set_slider_value(ids::VECTOR_FILL_OPACITY, 0.0);
     let outcome = host.apply_panel_event::<VectorPanel>(
         &mut panel_state,
-        WidgetEvent::Click(ids::VECTOR_FILL_NONE),
+        WidgetEvent::ValueChanged(ids::VECTOR_FILL_OPACITY),
     );
     assert_eq!(
         outcome,
         EventOutcome::Consumed,
-        "Fill-None click was ignored — `event.rs` arm for VECTOR_FILL_NONE is missing"
+        "Fill Opacity edit ignored — `event.rs` arm for VECTOR_FILL_OPACITY is missing"
     );
 
     drain_into_tool(&mut host, &mut tool);
     assert_eq!(
         tool.fill_rgba()[3],
         0,
-        "Fill-None click never cleared the fill through the seam"
+        "Fill Opacity → 0 never cleared the fill alpha through the seam"
     );
     assert!(
         tool.take_apply_to_selected(),
-        "Fill-None must flag the selected path for recolour"
+        "Opacity change must flag the selected path for recolour"
     );
 }
 

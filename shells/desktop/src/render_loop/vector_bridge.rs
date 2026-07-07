@@ -31,6 +31,24 @@ fn rgba(c: [u8; 4]) -> Rgba8 {
     Rgba8::new(c[0], c[1], c[2], c[3])
 }
 
+/// Push `alpha` (0..255) onto an Opacity slider's stored value — unless the user
+/// is dragging it — so a colour-picker alpha change reflects on the panel and the
+/// drag baseline stays correct. The linked chip's display is driven from the
+/// slider track in `paint`, so it follows without a separate push.
+fn sync_opacity_slider(
+    store: &mut ph2d_editor::interaction::WidgetStore,
+    id: ph2d_editor::NodeId,
+    alpha: u8,
+) {
+    use ph2d_editor::InteractiveState;
+    use ph2d_editor::widget::SliderState;
+    if let Some(InteractiveState::Slider { state, value, .. }) = store.get_mut(id)
+        && !matches!(*state, SliderState::Dragging)
+    {
+        *value = f32::from(alpha) / 255.0;
+    }
+}
+
 thread_local! {
     /// Pre-image of the scene captured at the START of a recolour gesture (the
     /// first frame the colour actually changes the selected path). Committed to
@@ -90,15 +108,15 @@ pub(super) fn dispatch(
             .store
             .blender_picker(ph2d_editor::ids::INSP_BLENDER_PICKER)
     {
-        // A picked colour is always OPAQUE — the picker is an OKLCH colour, and
-        // the swatch seed's alpha (0 after "None") must NOT stick, else picking
-        // a fill colour after "None" stays invisible (Enio: "none é fixo").
-        let c = value.rgba;
-        let opaque = [c[0], c[1], c[2], 255];
+        // The picker owns RGB **and alpha**: its alpha flows into the tool's
+        // stroke/fill alpha, and the bridge pushes that back onto the Opacity
+        // slider each frame (below) so the picker's alpha and the panel's
+        // Opacity stay in sync (Enio 2026-07-07).
+        let picked = value.rgba;
         if stroke_open {
-            tool.set_stroke_rgba(opaque);
+            tool.set_stroke_rgba(picked);
         } else {
-            tool.set_fill_rgba(opaque);
+            tool.set_fill_rgba(picked);
         }
     }
 
@@ -163,11 +181,16 @@ pub(super) fn dispatch(
         });
     }
 
-    // ── 5. Sync swatch colours (seeds the picker on open) + publish. ──────
+    // ── 5. Sync swatch colours (seeds the picker on open) + Opacity sliders
+    //    (so a picker alpha shows on the panel) + publish. ──────────────────
     hero.store
         .set_widget_color(ph2d_editor::ids::VECTOR_STROKE_SWATCH, stroke);
     hero.store
         .set_widget_color(ph2d_editor::ids::VECTOR_FILL_SWATCH, fill);
+    // Push the tool's alpha onto the Opacity sliders (unless being dragged) so
+    // an alpha set in the colour picker reflects on the panel, and vice-versa.
+    sync_opacity_slider(&mut hero.store, ph2d_editor::ids::VECTOR_STROKE_OPACITY, stroke[3]);
+    sync_opacity_slider(&mut hero.store, ph2d_editor::ids::VECTOR_FILL_OPACITY, fill[3]);
     #[cfg(feature = "panel-vector")]
     ph2d_panel_vector::set_current_vector_style(if vector_active {
         Some(tool.ui_snapshot())

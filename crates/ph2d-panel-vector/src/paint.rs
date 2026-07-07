@@ -34,7 +34,8 @@ use ph2d_editor_core::widget::{
 use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ColorToken, ROW_H_PX, Spacing, TypeToken};
 use ph2d_tool_vector::params::{
-    DrawMode, radius_to_slider, sides_to_slider, star_inner_to_slider, star_points_to_slider,
+    DrawMode, opacity_to_slider, radius_to_slider, sides_to_slider, star_inner_to_slider,
+    star_points_to_slider,
 };
 use ph2d_tool_vector::{VertexType, px_to_slider};
 
@@ -167,7 +168,34 @@ pub(crate) fn paint(_state: &mut VectorPanelState, ctx: &mut PaintCtx) {
         hit_index.register(ids::VECTOR_STROKE_SWATCH, stroke_swatch_rect);
         y += row_h + row_gap;
 
-        // ── Fill colour swatch + "None" button ──────────────────────────
+        // ── Stroke Opacity slider (single source of the stroke alpha) ────
+        {
+            let track = store
+                .slider(ids::VECTOR_STROKE_OPACITY)
+                .map(|(_, v)| v)
+                .unwrap_or_else(|| opacity_to_slider(snap.stroke[3]));
+            // Display from the (bridge-synced) track so a picker alpha shows here.
+            let pct = f64::from(track) * 100.0;
+            let used = paint_slider_with_chip_layout_adaptive(
+                Rect::new(inner_x, y, inner_w, row_h),
+                "Opacity",
+                track,
+                pct,
+                Some(&format!("{}", pct.round() as i64)),
+                ids::VECTOR_STROKE_OPACITY,
+                ids::VECTOR_STROKE_OPACITY_NUM,
+                LABEL_COL_W,
+                chip_w,
+                store,
+                hit_index,
+                scene,
+                text_system,
+                theme,
+            );
+            y += used + row_gap;
+        }
+
+        // ── Fill colour swatch ──────────────────────────────────────────
         paint_text(
             text_system,
             scene,
@@ -179,35 +207,38 @@ pub(crate) fn paint(_state: &mut VectorPanelState, ctx: &mut PaintCtx) {
             resolve(ColorToken::Text1, theme),
         );
         let fill_swatch_rect = Rect::new(inner_x + inner_w - swatch_w, y, swatch_w, row_h);
-        // Alpha 0 ⇒ "None" — the swatch renders transparent, the accent None
-        // button reads as active.
         let fill_swatch =
             ColorSwatch::new(ids::VECTOR_FILL_SWATCH, "Fill color", snap.fill).size(SwatchSize::Md);
         paint_color_swatch(&fill_swatch, fill_swatch_rect, scene, theme);
         hit_index.register(ids::VECTOR_FILL_SWATCH, fill_swatch_rect);
-
-        // "None" button, pinned just left of the swatch.
-        let none_w = NUMBER_INPUT_MIN_W_PX;
-        let none_rect = Rect::new(
-            fill_swatch_rect.x - Spacing::Sm.px() - none_w,
-            y,
-            none_w,
-            row_h,
-        );
-        let none_kind = if snap.fill[3] == 0 {
-            ButtonKind::Accent
-        } else {
-            ButtonKind::Default
-        };
-        let none_state = store
-            .button_state(ids::VECTOR_FILL_NONE)
-            .unwrap_or(ButtonState::Normal);
-        let none_btn = Button::new(ids::VECTOR_FILL_NONE, "None")
-            .kind(none_kind)
-            .state(none_state);
-        paint_button(&none_btn, none_rect, scene, text_system, theme);
-        hit_index.register(ids::VECTOR_FILL_NONE, none_rect);
         y += row_h + row_gap;
+
+        // ── Fill Opacity slider (single source of the fill alpha; 0 % = none) ──
+        {
+            let track = store
+                .slider(ids::VECTOR_FILL_OPACITY)
+                .map(|(_, v)| v)
+                .unwrap_or_else(|| opacity_to_slider(snap.fill[3]));
+            // Display from the (bridge-synced) track so a picker alpha shows here.
+            let pct = f64::from(track) * 100.0;
+            let used = paint_slider_with_chip_layout_adaptive(
+                Rect::new(inner_x, y, inner_w, row_h),
+                "Opacity",
+                track,
+                pct,
+                Some(&format!("{}", pct.round() as i64)),
+                ids::VECTOR_FILL_OPACITY,
+                ids::VECTOR_FILL_OPACITY_NUM,
+                LABEL_COL_W,
+                chip_w,
+                store,
+                hit_index,
+                scene,
+                text_system,
+                theme,
+            );
+            y += used + row_gap;
+        }
 
         let label_font = TypeToken::Sm.px();
 

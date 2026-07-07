@@ -28,16 +28,13 @@ ph2d-render = { path = "../../crates/ph2d-render" }
 # bytemuck::cast_slice.
 ph2d-color = { path = "../../crates/ph2d-color" }
 bytemuck = { version = "1", features = ["extern_crate_alloc"] }
-# Node-system Motion vertical (W2) — used ONLY by the visual smoke scene
-# (render_loop/motion_smoke.rs), gated behind the PH2D_MOTION_SMOKE env var.
-# Cooks the headless grid→transform→clone graph and feeds its RenderInstances
-# to the existing sprite renderer so the lowering convention can be eyeballed.
+# Node-system substrate for the Motion Nodes module (docs/Motion Nodes/): the
+# `MotionState` cook path (motion_state.rs + render_loop/motion_bridge.rs) cooks
+# the graph per frame and lowers its stream to `RenderInstance`s via
+# `ph2d-eval-motion`. (Replaced the retired PH2D_MOTION_SMOKE debug scene.)
 ph2d-nodegraph = { path = "../../crates/ph2d-nodegraph" }
 ph2d-node-registry = { path = "../../crates/ph2d-node-registry" }
 ph2d-eval-motion = { path = "../../crates/ph2d-eval-motion" }
-ph2d-node-motion-grid = { path = "../../crates/ph2d-node-motion-grid" }
-ph2d-node-motion-transform = { path = "../../crates/ph2d-node-motion-transform" }
-ph2d-node-motion-clone = { path = "../../crates/ph2d-node-motion-clone" }
 # Motion Nodes module (docs/Motion Nodes/): document model + full node registry.
 # `MotionState` (motion_state.rs) holds the persistent `Cook`, the registry (all
 # registered node ops) and the transport; `motion_bridge` cooks it per frame

@@ -25,7 +25,7 @@ mod image_edit;
 mod inspector_commits;
 mod inspector_ordering;
 mod inspector_visibility;
-mod motion_smoke;
+mod motion_bridge;
 mod padding_bridge;
 pub(crate) mod painter_bridge;
 /// Brush-image import helpers (Grain/Shape file pickers), split from
@@ -258,9 +258,9 @@ impl crate::App {
             // through `imageio_importers.find_for(...)`.
             imageio_importers: _,
             imageio_exporters: _,
-            // Motion Nodes M0.T8: state held; consumed by `motion_bridge` in
-            // M0.T10 (per-frame cook while the `motion` tool is active).
-            motion: _,
+            // Motion Nodes: cooked per frame by `motion_bridge` (M0.T10) into its
+            // reused instance buffer while the `motion` tool is active.
+            motion,
         } = gfx;
         let Some(host) = self.host.as_ref() else {
             return;
@@ -498,50 +498,59 @@ impl crate::App {
         .into_iter()
         .flatten()
         .collect();
-        // W2.T3 visual smoke (PH2D_MOTION_SMOKE=1): the Motion vertical owns the
-        // canvas this frame — cook grid→transform→clone and publish its
-        // RenderInstances instead of the M5 demo sim. Debug-only; off by default.
-        if motion_smoke::enabled() {
-            motion_smoke::run(present, renderer);
-        } else {
-            // Project px/m for `Sprite::resolve_anchor` (intrinsic-px
-            // `offset` → local meters). `None` only under the M5 demo /
-            // headless, whose sprites use the centered/offset defaults so
-            // the value is inert; fall back to the canonical default.
-            let ppm = hero_screen
-                .as_ref()
-                .map(|h| h.project.pixels_per_meter)
-                .unwrap_or(ph2d_editor::project::DEFAULT_PIXELS_PER_METER);
-            // W3.T3.11: project-default sampling for all-Inherit sprites,
-            // from the project image filter (PixelArt → Nearest, Smooth →
-            // Linear); repeat defaults to clamp (Disabled).
-            let default_filter = match hero_screen
-                .as_ref()
-                .map(|h| h.project.image_filter)
-                .unwrap_or(ph2d_render::ImageFilterMode::Smooth)
-            {
-                ph2d_render::ImageFilterMode::PixelArt => ph2d_ecs::FilterMode::Nearest,
-                ph2d_render::ImageFilterMode::Smooth => ph2d_ecs::FilterMode::Linear,
-            };
-            // W2.T4 cooked-texture loader: resolve + decode + upload every
-            // `SpriteSource::CookedTexture` sprite's KTX2 (for the device tier,
-            // descending the fallback ladder) BEFORE extract reads back the
-            // cached `texture_id`. Idempotent + cheap after the first upload.
-            cooked_texture_bridge::ensure_uploaded(sim, renderer, asset_db, logical_texture_map);
-            sim_extract::run(
-                dt,
-                sim,
-                present,
-                renderer,
-                prop_state,
-                worklist,
-                sort_scratch,
-                sort_inputs,
-                &preview_overrides,
-                ppm,
-                camera.cull_mask,
-                default_filter,
-                ph2d_ecs::RepeatMode::Disabled,
+        // Project px/m for `Sprite::resolve_anchor` (intrinsic-px `offset` →
+        // local meters). `None` only under the M5 demo / headless, whose sprites
+        // use the centered/offset defaults so the value is inert; fall back to
+        // the canonical default.
+        let ppm = hero_screen
+            .as_ref()
+            .map(|h| h.project.pixels_per_meter)
+            .unwrap_or(ph2d_editor::project::DEFAULT_PIXELS_PER_METER);
+        // W3.T3.11: project-default sampling for all-Inherit sprites, from the
+        // project image filter (PixelArt → Nearest, Smooth → Linear); repeat
+        // defaults to clamp (Disabled).
+        let default_filter = match hero_screen
+            .as_ref()
+            .map(|h| h.project.image_filter)
+            .unwrap_or(ph2d_render::ImageFilterMode::Smooth)
+        {
+            ph2d_render::ImageFilterMode::PixelArt => ph2d_ecs::FilterMode::Nearest,
+            ph2d_render::ImageFilterMode::Smooth => ph2d_ecs::FilterMode::Linear,
+        };
+        // W2.T4 cooked-texture loader: resolve + decode + upload every
+        // `SpriteSource::CookedTexture` sprite's KTX2 (for the device tier,
+        // descending the fallback ladder) BEFORE extract reads back the cached
+        // `texture_id`. Idempotent + cheap after the first upload.
+        cooked_texture_bridge::ensure_uploaded(sim, renderer, asset_db, logical_texture_map);
+        sim_extract::run(
+            dt,
+            sim,
+            present,
+            renderer,
+            prop_state,
+            worklist,
+            sort_scratch,
+            sort_inputs,
+            &preview_overrides,
+            ppm,
+            camera.cull_mask,
+            default_filter,
+            ph2d_ecs::RepeatMode::Disabled,
+        );
+
+        // Motion Nodes M0.T10: cook the node graph per frame into the reused
+        // `MotionState.instances` buffer while the `motion` tool is active (the
+        // present phase injects that slice via `render_with_extra`). Additive to
+        // the scene extract above — the motion stream draws over the scene, it
+        // does not replace it (the retired `motion_smoke` owned the frame; this
+        // does not). Also drives the center split + docked-panel visibility.
+        if let Some(hero) = hero_screen.as_mut() {
+            motion_bridge::dispatch(
+                hero,
+                tools,
+                motion,
+                report.ticks,
+                self.fixed_step.fixed_dt(),
             );
         }
 

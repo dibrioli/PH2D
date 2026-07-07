@@ -46,9 +46,16 @@ impl crate::App {
             compositor,
             vello_pass,
             vector_scene,
+            // Motion Nodes M0.T10/T11: the cooked stream, injected into the sprite
+            // pass below when the `motion` tool is active (bridge cooked it into
+            // `motion.instances` earlier this frame).
+            motion,
             ..
         } = gfx;
         let window_size = surface.size();
+        let motion_active = tools
+            .active()
+            .is_some_and(|t| t.id() == ph2d_editor::ToolId::new("motion"));
 
         // M14.7 polish (10.1 fix): `surface.acquire_frame()` can block
         // until the next swap-chain texture is ready. Under a vsync
@@ -75,12 +82,21 @@ impl crate::App {
                 //   target: `game_rt` (Rgba16Float HDR offscreen)
                 //   ↳ clear color is opaque so the canvas reads as a
                 //   single tinted surface beneath sprites + grid.
-                renderer.render(
+                // Motion Nodes M0.T11: append the cooked node-graph stream to the
+                // sprite pass (empty when the tool is inactive) — drawn without
+                // being spawned into the ECS `present` (stream ≠ ECS, ADR-0035).
+                let motion_slice: &[ph2d_render::RenderInstance] = if motion_active {
+                    &motion.instances
+                } else {
+                    &[]
+                };
+                renderer.render_with_extra(
                     game_rt.view(),
                     present,
                     camera,
                     window_size,
                     wgpu::Color { r, g, b, a: 1.0 },
+                    motion_slice,
                 );
                 // Pass 2: AgX tonemap
                 //   target: `tonemap.output_view()` (Bgra8UnormSrgb LDR)

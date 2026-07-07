@@ -22,7 +22,10 @@ use ph2d_render::RenderInstance;
 pub(crate) struct MotionState {
     /// The persistable document (the graph is the only part that cooks).
     pub(crate) doc: MotionDoc,
-    /// Snapshot undo/redo of `doc`.
+    /// Snapshot undo/redo of `doc`. Held from boot; the graph-edit gestures that
+    /// push onto it land in M1 (the `GraphIntent` dispatch), so it is unread in
+    /// the M0 cook-only path.
+    #[allow(dead_code)]
     pub(crate) history: MotionHistory,
     /// Playback transport (playhead = `tick × fixed_dt`).
     pub(crate) transport: MotionTransport,

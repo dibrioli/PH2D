@@ -14,10 +14,15 @@ use crate::ids;
 use ph2d_editor_core::interaction::{InteractiveState, WidgetStore};
 use ph2d_editor_core::widget::{ButtonState, SliderOrientation, SliderState, TextInputState};
 use ph2d_tool_vector::params::{
-    SIDES_SLIDER_OFFSET, SIDES_SLIDER_SCALE, WIDTH_SLIDER_OFFSET, WIDTH_SLIDER_SCALE,
-    sides_to_slider,
+    RADIUS_SLIDER_OFFSET, RADIUS_SLIDER_SCALE, SIDES_SLIDER_OFFSET, SIDES_SLIDER_SCALE,
+    STAR_INNER_SLIDER_OFFSET, STAR_INNER_SLIDER_SCALE, STAR_POINTS_SLIDER_OFFSET,
+    STAR_POINTS_SLIDER_SCALE, WIDTH_SLIDER_OFFSET, WIDTH_SLIDER_SCALE, radius_to_slider,
+    sides_to_slider, star_inner_to_slider, star_points_to_slider,
 };
-use ph2d_tool_vector::{DEFAULT_POLYGON_SIDES, DEFAULT_STROKE_WIDTH_PX, px_to_slider};
+use ph2d_tool_vector::{
+    DEFAULT_CORNER_RADIUS_PX, DEFAULT_POLYGON_SIDES, DEFAULT_STAR_INNER, DEFAULT_STAR_POINTS,
+    DEFAULT_STROKE_WIDTH_PX, px_to_slider,
+};
 
 /// Register a plain action Button in the Normal state.
 fn button(store: &mut WidgetStore, id: ph2d_a11y::NodeId) {
@@ -27,6 +32,38 @@ fn button(store: &mut WidgetStore, id: ph2d_a11y::NodeId) {
             state: ButtonState::Normal,
         },
     );
+}
+
+/// Register a slider + its linked value chip, seeded at `track` / `display`.
+fn slider_chip(
+    store: &mut WidgetStore,
+    slider: ph2d_a11y::NodeId,
+    chip: ph2d_a11y::NodeId,
+    track: f32,
+    display: f64,
+    scale: f32,
+    offset: f32,
+) {
+    store.register(
+        slider,
+        InteractiveState::Slider {
+            state: SliderState::Normal,
+            value: track,
+            orientation: SliderOrientation::Horizontal,
+        },
+    );
+    store.register(
+        chip,
+        InteractiveState::NumberInput {
+            state: TextInputState::Normal,
+            value: display,
+            buffer: format!("{display}"),
+            caret: 0,
+            last_committed: display,
+            selection_anchor: None,
+        },
+    );
+    store.link_slider_number_mapped(slider, chip, scale, offset);
 }
 
 pub fn populate(store: &mut WidgetStore) {
@@ -58,11 +95,13 @@ pub fn populate(store: &mut WidgetStore) {
         WIDTH_SLIDER_OFFSET,
     );
 
-    // Draw-mode segmented buttons (Pen / Rectangle / Ellipse / Polygon).
+    // Draw-mode segmented buttons (Pen / Rect / Oval / Poly / Star / Round).
     button(store, ids::VECTOR_MODE_PEN);
     button(store, ids::VECTOR_MODE_RECT);
     button(store, ids::VECTOR_MODE_ELLIPSE);
     button(store, ids::VECTOR_MODE_POLYGON);
+    button(store, ids::VECTOR_MODE_STAR);
+    button(store, ids::VECTOR_MODE_RRECT);
 
     // Polygon Sides slider — seeded at the tool's default (`sides_to_slider(5)`).
     // Registered unconditionally (the store is mode-agnostic); the panel only
@@ -91,6 +130,36 @@ pub fn populate(store: &mut WidgetStore) {
         ids::VECTOR_SIDES_NUM,
         SIDES_SLIDER_SCALE,
         SIDES_SLIDER_OFFSET,
+    );
+
+    // Star Points + Inner sliders (shown in Star mode) and RoundRect Radius
+    // slider (shown in RoundRect mode) — seeded at the tool defaults.
+    slider_chip(
+        store,
+        ids::VECTOR_STAR_POINTS,
+        ids::VECTOR_STAR_POINTS_NUM,
+        star_points_to_slider(DEFAULT_STAR_POINTS),
+        f64::from(DEFAULT_STAR_POINTS),
+        STAR_POINTS_SLIDER_SCALE,
+        STAR_POINTS_SLIDER_OFFSET,
+    );
+    slider_chip(
+        store,
+        ids::VECTOR_STAR_INNER,
+        ids::VECTOR_STAR_INNER_NUM,
+        star_inner_to_slider(DEFAULT_STAR_INNER),
+        DEFAULT_STAR_INNER,
+        STAR_INNER_SLIDER_SCALE,
+        STAR_INNER_SLIDER_OFFSET,
+    );
+    slider_chip(
+        store,
+        ids::VECTOR_RRECT_RADIUS,
+        ids::VECTOR_RRECT_RADIUS_NUM,
+        radius_to_slider(DEFAULT_CORNER_RADIUS_PX),
+        DEFAULT_CORNER_RADIUS_PX,
+        RADIUS_SLIDER_SCALE,
+        RADIUS_SLIDER_OFFSET,
     );
 
     // Vertex-type buttons (retype the selected vertex; shown only when a vertex

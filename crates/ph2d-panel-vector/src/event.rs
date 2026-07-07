@@ -39,9 +39,14 @@ pub(crate) fn apply_event(
                 )));
             true
         }
-        // Polygon Sides slider — same shape as Width (track 0..1 → tool projects
-        // to a side count).
-        WidgetEvent::ValueChanged(id) if id == ids::VECTOR_SIDES => {
+        // Shape-parameter sliders — same shape as Width (track 0..1 → the tool
+        // projects to a side/point count, inner ratio, or radius).
+        WidgetEvent::ValueChanged(id)
+            if id == ids::VECTOR_SIDES
+                || id == ids::VECTOR_STAR_POINTS
+                || id == ids::VECTOR_STAR_INNER
+                || id == ids::VECTOR_RRECT_RADIUS =>
+        {
             let track = host.store().slider(id).map(|(_, v)| v).unwrap_or(0.5);
             host.bus_mut()
                 .push(EditorAction::ToolPanelEvent(PanelEvent::SetValue(
@@ -52,8 +57,15 @@ pub(crate) fn apply_event(
         }
         // Chip edits already mirrored to their slider (which fires its own
         // ValueChanged, handled above): swallow to avoid a double notify.
-        WidgetEvent::ValueChanged(id) if id == ids::VECTOR_WIDTH_NUM => true,
-        WidgetEvent::ValueChanged(id) if id == ids::VECTOR_SIDES_NUM => true,
+        WidgetEvent::ValueChanged(id)
+            if id == ids::VECTOR_WIDTH_NUM
+                || id == ids::VECTOR_SIDES_NUM
+                || id == ids::VECTOR_STAR_POINTS_NUM
+                || id == ids::VECTOR_STAR_INNER_NUM
+                || id == ids::VECTOR_RRECT_RADIUS_NUM =>
+        {
+            true
+        }
         WidgetEvent::Click(id) if id == ids::VECTOR_FILL_NONE => {
             seam_reset_button(host, id);
             host.bus_mut()
@@ -70,6 +82,8 @@ pub(crate) fn apply_event(
                 || id == ids::VECTOR_MODE_RECT
                 || id == ids::VECTOR_MODE_ELLIPSE
                 || id == ids::VECTOR_MODE_POLYGON
+                || id == ids::VECTOR_MODE_STAR
+                || id == ids::VECTOR_MODE_RRECT
                 || id == ids::VECTOR_VERT_CORNER
                 || id == ids::VECTOR_VERT_SMOOTH
                 || id == ids::VECTOR_VERT_SYMMETRIC

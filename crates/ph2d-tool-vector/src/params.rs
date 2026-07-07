@@ -43,6 +43,8 @@ pub enum DrawMode {
     Rectangle,
     Ellipse,
     Polygon,
+    Star,
+    RoundRect,
 }
 
 /// UI-facing vertex type for the docked panel's Vertex section (mirror of
@@ -79,6 +81,86 @@ pub fn sides_to_slider(n: u32) -> f32 {
         .clamp(0.0, 1.0)
 }
 
+/// Star point count range (the Points slider spans this).
+pub const STAR_POINTS_MIN: u32 = 3;
+pub const STAR_POINTS_MAX: u32 = 12;
+pub const STAR_POINTS_SLIDER_SCALE: f32 = (STAR_POINTS_MAX - STAR_POINTS_MIN) as f32;
+pub const STAR_POINTS_SLIDER_OFFSET: f32 = STAR_POINTS_MIN as f32;
+
+/// Normalized track `0..=1` → star points `MIN..=MAX` (rounded).
+#[must_use]
+pub fn slider_to_star_points(track: f32) -> u32 {
+    (STAR_POINTS_MIN as f32 + track.clamp(0.0, 1.0) * STAR_POINTS_SLIDER_SCALE).round() as u32
+}
+/// Star points → normalized track (inverse of [`slider_to_star_points`]).
+#[must_use]
+pub fn star_points_to_slider(n: u32) -> f32 {
+    ((n.clamp(STAR_POINTS_MIN, STAR_POINTS_MAX) - STAR_POINTS_MIN) as f32
+        / STAR_POINTS_SLIDER_SCALE)
+        .clamp(0.0, 1.0)
+}
+
+/// Star inner/outer radius ratio range (the Inner slider spans this).
+pub const STAR_INNER_MIN: f64 = 0.1;
+pub const STAR_INNER_MAX: f64 = 0.9;
+pub const STAR_INNER_SLIDER_SCALE: f32 = (STAR_INNER_MAX - STAR_INNER_MIN) as f32;
+pub const STAR_INNER_SLIDER_OFFSET: f32 = STAR_INNER_MIN as f32;
+
+/// Normalized track `0..=1` → star inner ratio `MIN..=MAX`.
+#[must_use]
+pub fn slider_to_star_inner(track: f32) -> f64 {
+    STAR_INNER_MIN + f64::from(track.clamp(0.0, 1.0)) * (STAR_INNER_MAX - STAR_INNER_MIN)
+}
+/// Star inner ratio → normalized track (inverse of [`slider_to_star_inner`]).
+#[must_use]
+pub fn star_inner_to_slider(r: f64) -> f32 {
+    ((r.clamp(STAR_INNER_MIN, STAR_INNER_MAX) - STAR_INNER_MIN) / (STAR_INNER_MAX - STAR_INNER_MIN))
+        as f32
+}
+
+/// Rounded-rect corner radius range in **screen pixels** (the Radius slider spans this).
+pub const RADIUS_MIN_PX: f64 = 0.0;
+pub const RADIUS_MAX_PX: f64 = 40.0;
+pub const RADIUS_SLIDER_SCALE: f32 = (RADIUS_MAX_PX - RADIUS_MIN_PX) as f32;
+pub const RADIUS_SLIDER_OFFSET: f32 = RADIUS_MIN_PX as f32;
+
+/// Normalized track `0..=1` → corner radius px `MIN..=MAX`.
+#[must_use]
+pub fn slider_to_radius(track: f32) -> f64 {
+    RADIUS_MIN_PX + f64::from(track.clamp(0.0, 1.0)) * (RADIUS_MAX_PX - RADIUS_MIN_PX)
+}
+/// Corner radius px → normalized track (inverse of [`slider_to_radius`]).
+#[must_use]
+pub fn radius_to_slider(px: f64) -> f32 {
+    ((px.clamp(RADIUS_MIN_PX, RADIUS_MAX_PX) - RADIUS_MIN_PX) / (RADIUS_MAX_PX - RADIUS_MIN_PX))
+        as f32
+}
+
+/// Mode + shape parameters the shell mirrors from the tool each frame to route
+/// canvas gestures (pen vs shape) and drive the [`ShapeTool`] without a downcast.
+///
+/// [`ShapeTool`]: ph2d_vec_edit::ShapeTool
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct VectorDrawConfig {
+    pub mode: DrawMode,
+    pub polygon_sides: u32,
+    pub star_points: u32,
+    pub star_inner_ratio: f64,
+    pub corner_radius_px: f64,
+}
+
+impl Default for VectorDrawConfig {
+    fn default() -> Self {
+        Self {
+            mode: DrawMode::Pen,
+            polygon_sides: super::tool::DEFAULT_POLYGON_SIDES,
+            star_points: super::tool::DEFAULT_STAR_POINTS,
+            star_inner_ratio: super::tool::DEFAULT_STAR_INNER,
+            corner_radius_px: super::tool::DEFAULT_CORNER_RADIUS_PX,
+        }
+    }
+}
+
 /// Per-frame projection of the tool's Style, published by the shell bridge for
 /// the docked panel to paint. `stroke` / `fill` are sRGB8; `fill[3] == 0` ⇒ no
 /// fill ("None"). `mode` / `polygon_sides` drive the draw-mode segmented row +
@@ -90,6 +172,9 @@ pub struct VectorStyleSnapshot {
     pub stroke_width_px: f64,
     pub mode: DrawMode,
     pub polygon_sides: u32,
+    pub star_points: u32,
+    pub star_inner_ratio: f64,
+    pub corner_radius_px: f64,
 }
 
 impl Default for VectorStyleSnapshot {
@@ -100,6 +185,9 @@ impl Default for VectorStyleSnapshot {
             stroke_width_px: super::tool::DEFAULT_STROKE_WIDTH_PX,
             mode: DrawMode::Pen,
             polygon_sides: super::tool::DEFAULT_POLYGON_SIDES,
+            star_points: super::tool::DEFAULT_STAR_POINTS,
+            star_inner_ratio: super::tool::DEFAULT_STAR_INNER,
+            corner_radius_px: super::tool::DEFAULT_CORNER_RADIUS_PX,
         }
     }
 }

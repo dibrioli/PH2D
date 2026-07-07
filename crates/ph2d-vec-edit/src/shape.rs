@@ -26,6 +26,33 @@ pub enum ShapeKind {
     Rectangle,
     Ellipse,
     Polygon,
+    Star,
+    RoundRect,
+}
+
+/// Per-shape parameters (the shell mirrors these from the Vector tool). Only the
+/// field(s) for the active [`ShapeKind`] matter; the rest are ignored.
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub struct ShapeParams {
+    /// Polygon side count.
+    pub sides: u32,
+    /// Star point count.
+    pub star_points: u32,
+    /// Star inner/outer radius ratio.
+    pub star_inner_ratio: f64,
+    /// Rounded-rect corner radius in **screen pixels** (× `px_to_world` at draw).
+    pub corner_radius_px: f64,
+}
+
+impl Default for ShapeParams {
+    fn default() -> Self {
+        Self {
+            sides: 5,
+            star_points: 5,
+            star_inner_ratio: 0.5,
+            corner_radius_px: 8.0,
+        }
+    }
 }
 
 /// A drag below this many **screen pixels** on both axes is treated as a stray
@@ -43,7 +70,7 @@ pub struct ShapeTool {
     /// The live path being sized (between press and release); `None` when idle.
     active: Option<VecPathId>,
     kind: ShapeKind,
-    sides: u32,
+    params: ShapeParams,
     /// The pressed corner in world-space.
     start: [f64; 2],
     /// World units per screen pixel (captured at press) — sizes the stroke +
@@ -79,13 +106,13 @@ impl ShapeTool {
     }
 
     /// Begin a shape at world-space `p`. Pushes a degenerate path (renders live)
-    /// and records the anchor + kind/sides + `px_to_world`. Returns the new id.
+    /// and records the anchor + kind/params + `px_to_world`. Returns the new id.
     /// A prior in-progress shape (shouldn't happen) is dropped first.
     pub fn on_press(
         &mut self,
         scene: &mut VecScene,
         kind: ShapeKind,
-        sides: u32,
+        params: ShapeParams,
         p: [f64; 2],
         px_to_world: f64,
     ) -> VecPathId {
@@ -93,7 +120,7 @@ impl ShapeTool {
             scene.remove_path(id);
         }
         self.kind = kind;
-        self.sides = sides;
+        self.params = params;
         self.start = p;
         self.px_to_world = px_to_world;
         let id = scene.push_path(self.build(p));
@@ -160,7 +187,21 @@ impl ShapeTool {
             }
             ShapeKind::Polygon => {
                 let (c, rx, ry) = bbox_center_radii(self.start, cur);
-                ph2d_vec_scene::regular_polygon(c, rx, ry, self.sides)
+                ph2d_vec_scene::regular_polygon(c, rx, ry, self.params.sides)
+            }
+            ShapeKind::Star => {
+                let (c, rx, ry) = bbox_center_radii(self.start, cur);
+                ph2d_vec_scene::star(
+                    c,
+                    rx,
+                    ry,
+                    self.params.star_points,
+                    self.params.star_inner_ratio,
+                )
+            }
+            ShapeKind::RoundRect => {
+                let radius = self.params.corner_radius_px * self.px_to_world;
+                ph2d_vec_scene::rounded_rect(self.start, cur, radius)
             }
         };
         let stroke_w = self.style.stroke_w_px * self.px_to_world;
@@ -206,7 +247,7 @@ mod tests {
     fn rectangle_press_drag_release_commits_a_selected_closed_path() {
         let mut scene = VecScene::new();
         let mut shape = ShapeTool::new();
-        shape.on_press(&mut scene, ShapeKind::Rectangle, 5, [0.0, 0.0], PTW);
+        shape.on_press(&mut scene, ShapeKind::Rectangle, ShapeParams::default(), [0.0, 0.0], PTW);
         assert!(shape.is_active());
         shape.on_drag(&mut scene, [4.0, 3.0]);
         assert!(shape.on_release(&mut scene), "a real drag commits");
@@ -222,7 +263,7 @@ mod tests {
     fn tiny_drag_is_discarded_on_release() {
         let mut scene = VecScene::new();
         let mut shape = ShapeTool::new();
-        shape.on_press(&mut scene, ShapeKind::Rectangle, 5, [0.0, 0.0], PTW);
+        shape.on_press(&mut scene, ShapeKind::Rectangle, ShapeParams::default(), [0.0, 0.0], PTW);
         // Move less than MIN_DRAG_PX * PTW on both axes.
         shape.on_drag(&mut scene, [0.01, 0.01]);
         assert!(!shape.on_release(&mut scene), "stray click cancels");
@@ -233,7 +274,7 @@ mod tests {
     fn ellipse_uses_smooth_verts_polygon_uses_corners() {
         let mut scene = VecScene::new();
         let mut shape = ShapeTool::new();
-        shape.on_press(&mut scene, ShapeKind::Ellipse, 5, [0.0, 0.0], PTW);
+        shape.on_press(&mut scene, ShapeKind::Ellipse, ShapeParams::default(), [0.0, 0.0], PTW);
         shape.on_drag(&mut scene, [4.0, 2.0]);
         shape.on_release(&mut scene);
         assert!(
@@ -245,12 +286,58 @@ mod tests {
 
         let mut scene2 = VecScene::new();
         let mut shape2 = ShapeTool::new();
-        shape2.on_press(&mut scene2, ShapeKind::Polygon, 7, [0.0, 0.0], PTW);
+        shape2.on_press(
+            &mut scene2,
+            ShapeKind::Polygon,
+            ShapeParams {
+                sides: 7,
+                ..Default::default()
+            },
+            [0.0, 0.0],
+            PTW,
+        );
         shape2.on_drag(&mut scene2, [4.0, 4.0]);
         shape2.on_release(&mut scene2);
         let p = &scene2.paths()[0];
         assert_eq!(p.verts.len(), 7);
         assert!(p.verts.iter().all(|v| v.kind == VertexKind::Corner));
+    }
+
+    #[test]
+    fn star_and_roundrect_build_the_right_vertex_counts() {
+        // Star with 6 points → 12 verts.
+        let mut scene = VecScene::new();
+        let mut shape = ShapeTool::new();
+        shape.on_press(
+            &mut scene,
+            ShapeKind::Star,
+            ShapeParams {
+                star_points: 6,
+                ..Default::default()
+            },
+            [0.0, 0.0],
+            PTW,
+        );
+        shape.on_drag(&mut scene, [4.0, 4.0]);
+        shape.on_release(&mut scene);
+        assert_eq!(scene.paths()[0].verts.len(), 12);
+
+        // RoundRect with a real radius → 8 corner verts.
+        let mut scene2 = VecScene::new();
+        let mut shape2 = ShapeTool::new();
+        shape2.on_press(
+            &mut scene2,
+            ShapeKind::RoundRect,
+            ShapeParams {
+                corner_radius_px: 20.0,
+                ..Default::default()
+            },
+            [0.0, 0.0],
+            PTW,
+        );
+        shape2.on_drag(&mut scene2, [4.0, 3.0]);
+        shape2.on_release(&mut scene2);
+        assert_eq!(scene2.paths()[0].verts.len(), 8);
     }
 
     #[test]
@@ -261,7 +348,7 @@ mod tests {
             fill: ph2d_vec_scene::Rgba8::new(0, 0, 0, 0), // None
             ..PenStyle::default()
         });
-        shape.on_press(&mut scene, ShapeKind::Rectangle, 5, [0.0, 0.0], PTW);
+        shape.on_press(&mut scene, ShapeKind::Rectangle, ShapeParams::default(), [0.0, 0.0], PTW);
         shape.on_drag(&mut scene, [4.0, 3.0]);
         shape.on_release(&mut scene);
         let p = &scene.paths()[0];
@@ -272,7 +359,7 @@ mod tests {
     fn cancel_removes_in_progress_shape() {
         let mut scene = VecScene::new();
         let mut shape = ShapeTool::new();
-        shape.on_press(&mut scene, ShapeKind::Ellipse, 5, [1.0, 1.0], PTW);
+        shape.on_press(&mut scene, ShapeKind::Ellipse, ShapeParams::default(), [1.0, 1.0], PTW);
         assert_eq!(scene.paths().len(), 1);
         shape.cancel(&mut scene);
         assert!(scene.is_empty() && !shape.is_active());

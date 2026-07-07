@@ -12,7 +12,7 @@
 //!   path novo. Botão direito finaliza o desenho ativo.
 
 pub mod shape;
-pub use shape::{ShapeKind, ShapeTool};
+pub use shape::{ShapeKind, ShapeParams, ShapeTool};
 
 use ph2d_vec_scene::{Rgba8, VecPath, VecPathId, VecScene, VecVertex, VertexKind};
 

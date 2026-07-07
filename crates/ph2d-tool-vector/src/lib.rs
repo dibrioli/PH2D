@@ -26,8 +26,13 @@ pub mod icon;
 pub mod params;
 pub mod tool;
 
-pub use params::{DrawMode, VectorStyleSnapshot, VertexType, px_to_slider, slider_to_px};
-pub use tool::{DEFAULT_POLYGON_SIDES, DEFAULT_STROKE_WIDTH_PX, PALETTE, VectorTool};
+pub use params::{
+    DrawMode, VectorDrawConfig, VectorStyleSnapshot, VertexType, px_to_slider, slider_to_px,
+};
+pub use tool::{
+    DEFAULT_CORNER_RADIUS_PX, DEFAULT_POLYGON_SIDES, DEFAULT_STAR_INNER, DEFAULT_STAR_POINTS,
+    DEFAULT_STROKE_WIDTH_PX, PALETTE, VectorTool,
+};
 
 use ph2d_a11y::Role;
 use ph2d_core::MemoryBudget;

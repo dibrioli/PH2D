@@ -66,11 +66,22 @@ pub const VECTOR_MODE_PEN: NodeId = hash_node_id("vector.mode.pen");
 pub const VECTOR_MODE_RECT: NodeId = hash_node_id("vector.mode.rect");
 pub const VECTOR_MODE_ELLIPSE: NodeId = hash_node_id("vector.mode.ellipse");
 pub const VECTOR_MODE_POLYGON: NodeId = hash_node_id("vector.mode.polygon");
+pub const VECTOR_MODE_STAR: NodeId = hash_node_id("vector.mode.star");
+pub const VECTOR_MODE_RRECT: NodeId = hash_node_id("vector.mode.rrect");
 /// Polygon "Sides" slider (3..12) — shown only in Polygon mode; drives
 /// `VectorTool::polygon_sides`.
 pub const VECTOR_SIDES: NodeId = hash_node_id("vector.sides");
 /// Integer chip paired with [`VECTOR_SIDES`].
 pub const VECTOR_SIDES_NUM: NodeId = hash_node_id("vector.sides_num");
+/// Star "Points" slider (3..12) + "Inner" ratio slider (0.1..0.9) — shown only
+/// in Star mode. Rounded-rect "Radius" slider (0..40 px) — shown only in
+/// RoundRect mode. Each drives the matching `VectorTool` field.
+pub const VECTOR_STAR_POINTS: NodeId = hash_node_id("vector.star_points");
+pub const VECTOR_STAR_POINTS_NUM: NodeId = hash_node_id("vector.star_points_num");
+pub const VECTOR_STAR_INNER: NodeId = hash_node_id("vector.star_inner");
+pub const VECTOR_STAR_INNER_NUM: NodeId = hash_node_id("vector.star_inner_num");
+pub const VECTOR_RRECT_RADIUS: NodeId = hash_node_id("vector.rrect_radius");
+pub const VECTOR_RRECT_RADIUS_NUM: NodeId = hash_node_id("vector.rrect_radius_num");
 
 // ── Boolean ops (ADR-0108 Fase 1 — edit-time union/subtract/intersect) ───────
 // Act on the DOCUMENT (shell-owned `vec_scene`), NOT the tool's Style: the

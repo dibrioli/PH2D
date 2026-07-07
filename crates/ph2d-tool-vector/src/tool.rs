@@ -24,7 +24,10 @@ use ph2d_editor_core::floating_panel::{FloatingPanel, PanelAnchor, ToolId};
 use ph2d_editor_core::ids;
 use ph2d_editor_core::tool::{PanelEvent, Tool};
 
-use crate::params::{DrawMode, VectorStyleSnapshot, slider_to_px, slider_to_sides};
+use crate::params::{
+    DrawMode, VectorDrawConfig, VectorStyleSnapshot, slider_to_px, slider_to_radius,
+    slider_to_sides, slider_to_star_inner, slider_to_star_points,
+};
 
 /// Curated stroke / fill preset palette: `(key, label, sRGB8)`. Retained as the
 /// seed source for the tool's defaults (and a stable named-colour reference);
@@ -51,6 +54,11 @@ pub const DEFAULT_STROKE_WIDTH_PX: f64 = 3.0;
 /// Default polygon side count (a pentagon reads clearly as "polygon").
 pub const DEFAULT_POLYGON_SIDES: u32 = 5;
 
+/// Default star point count / inner ratio / rounded-rect corner radius (px).
+pub const DEFAULT_STAR_POINTS: u32 = 5;
+pub const DEFAULT_STAR_INNER: f64 = 0.5;
+pub const DEFAULT_CORNER_RADIUS_PX: f64 = 12.0;
+
 /// Look up a palette colour by key (defaults only — the live path is the picker).
 fn color_of(key: &str) -> Option<[u8; 4]> {
     PALETTE
@@ -72,6 +80,12 @@ pub struct VectorTool {
     mode: DrawMode,
     /// Sides for `DrawMode::Polygon`, held in `SIDES_MIN..=SIDES_MAX`.
     polygon_sides: u32,
+    /// Points for `DrawMode::Star`.
+    star_points: u32,
+    /// Inner/outer radius ratio for `DrawMode::Star`.
+    star_inner_ratio: f64,
+    /// Corner radius (screen px) for `DrawMode::RoundRect`.
+    corner_radius_px: f64,
     /// Set when a colour changes → the shell recolours the selected path.
     /// Drained by [`Self::take_apply_to_selected`].
     apply_to_selected: bool,
@@ -85,6 +99,9 @@ impl Default for VectorTool {
             stroke_width_px: DEFAULT_STROKE_WIDTH_PX,
             mode: DrawMode::Pen,
             polygon_sides: DEFAULT_POLYGON_SIDES,
+            star_points: DEFAULT_STAR_POINTS,
+            star_inner_ratio: DEFAULT_STAR_INNER,
+            corner_radius_px: DEFAULT_CORNER_RADIUS_PX,
             apply_to_selected: false,
         }
     }
@@ -126,6 +143,18 @@ impl VectorTool {
         self.polygon_sides
     }
 
+    /// Mode + shape parameters the shell mirrors to drive the `ShapeTool`.
+    #[must_use]
+    pub fn draw_config(&self) -> VectorDrawConfig {
+        VectorDrawConfig {
+            mode: self.mode,
+            polygon_sides: self.polygon_sides,
+            star_points: self.star_points,
+            star_inner_ratio: self.star_inner_ratio,
+            corner_radius_px: self.corner_radius_px,
+        }
+    }
+
     /// Set the stroke colour (picker read-back) + flag the selected path for
     /// recolour. `a = 0` is accepted (a fully-transparent stroke is unusual but
     /// not rejected here — the panel drives opaque picks).
@@ -150,6 +179,9 @@ impl VectorTool {
             stroke_width_px: self.stroke_width_px,
             mode: self.mode,
             polygon_sides: self.polygon_sides,
+            star_points: self.star_points,
+            star_inner_ratio: self.star_inner_ratio,
+            corner_radius_px: self.corner_radius_px,
         }
     }
 
@@ -198,6 +230,15 @@ impl Tool for VectorTool {
             PanelEvent::SetValue(id, v) if id == ids::VECTOR_SIDES => {
                 self.polygon_sides = slider_to_sides(v as f32);
             }
+            PanelEvent::SetValue(id, v) if id == ids::VECTOR_STAR_POINTS => {
+                self.star_points = slider_to_star_points(v as f32);
+            }
+            PanelEvent::SetValue(id, v) if id == ids::VECTOR_STAR_INNER => {
+                self.star_inner_ratio = slider_to_star_inner(v as f32);
+            }
+            PanelEvent::SetValue(id, v) if id == ids::VECTOR_RRECT_RADIUS => {
+                self.corner_radius_px = slider_to_radius(v as f32);
+            }
             PanelEvent::Click(id) if id == ids::VECTOR_FILL_NONE => {
                 self.fill = FILL_NONE;
                 self.apply_to_selected = true;
@@ -211,6 +252,10 @@ impl Tool for VectorTool {
             }
             PanelEvent::Click(id) if id == ids::VECTOR_MODE_POLYGON => {
                 self.mode = DrawMode::Polygon
+            }
+            PanelEvent::Click(id) if id == ids::VECTOR_MODE_STAR => self.mode = DrawMode::Star,
+            PanelEvent::Click(id) if id == ids::VECTOR_MODE_RRECT => {
+                self.mode = DrawMode::RoundRect
             }
             _ => {}
         }
@@ -304,6 +349,33 @@ mod tests {
         assert_eq!(t.polygon_sides(), SIDES_MIN);
         Tool::handle_panel_event(&mut t, PanelEvent::SetValue(ids::VECTOR_SIDES, 1.0));
         assert_eq!(t.polygon_sides(), SIDES_MAX);
+    }
+
+    #[test]
+    fn star_and_roundrect_modes_and_their_sliders() {
+        use crate::params::{
+            RADIUS_MAX_PX, STAR_INNER_MAX, STAR_POINTS_MAX, STAR_POINTS_MIN,
+        };
+        let mut t = VectorTool::new();
+        Tool::handle_panel_event(&mut t, PanelEvent::Click(ids::VECTOR_MODE_STAR));
+        assert_eq!(t.mode(), DrawMode::Star);
+        Tool::handle_panel_event(&mut t, PanelEvent::Click(ids::VECTOR_MODE_RRECT));
+        assert_eq!(t.mode(), DrawMode::RoundRect);
+
+        // Star sliders.
+        Tool::handle_panel_event(&mut t, PanelEvent::SetValue(ids::VECTOR_STAR_POINTS, 0.0));
+        Tool::handle_panel_event(&mut t, PanelEvent::SetValue(ids::VECTOR_STAR_INNER, 1.0));
+        let cfg = t.draw_config();
+        assert_eq!(cfg.star_points, STAR_POINTS_MIN);
+        assert!((cfg.star_inner_ratio - STAR_INNER_MAX).abs() < 1e-6);
+
+        // Radius slider.
+        Tool::handle_panel_event(&mut t, PanelEvent::SetValue(ids::VECTOR_RRECT_RADIUS, 1.0));
+        assert!((t.draw_config().corner_radius_px - RADIUS_MAX_PX).abs() < 1e-6);
+
+        // draw_config mirrors the mode + a maxed points slider.
+        Tool::handle_panel_event(&mut t, PanelEvent::SetValue(ids::VECTOR_STAR_POINTS, 1.0));
+        assert_eq!(t.draw_config().star_points, STAR_POINTS_MAX);
     }
 
     #[test]

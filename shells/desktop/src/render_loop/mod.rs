@@ -1407,7 +1407,7 @@ impl crate::App {
                     &mut self.vec_pen,
                 );
             }
-            let (vec_mode, vec_sides) = vector_bridge::dispatch(
+            let vec_cfg = vector_bridge::dispatch(
                 hero,
                 tools,
                 vec_scene,
@@ -1431,10 +1431,9 @@ impl crate::App {
                 self.last_pointer,
                 toasts,
             );
-            // Mirror the tool's draw-mode + sides for the input dispatch's
+            // Mirror the tool's mode + shape params for the input dispatch's
             // pen-vs-shape routing (the downcast lives in the bridge).
-            self.vec_draw_mode = vec_mode;
-            self.vec_polygon_sides = vec_sides;
+            self.vec_draw_config = vec_cfg;
             ph2d_vec_render::dispatch(
                 vec_scene,
                 camera.world_to_screen_affine(window_size),

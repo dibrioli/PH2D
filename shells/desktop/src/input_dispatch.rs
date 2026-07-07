@@ -174,6 +174,18 @@ fn shape_kind_for_mode(mode: ph2d_tool_vector::DrawMode) -> Option<ph2d_vec_edit
         DrawMode::Rectangle => Some(ShapeKind::Rectangle),
         DrawMode::Ellipse => Some(ShapeKind::Ellipse),
         DrawMode::Polygon => Some(ShapeKind::Polygon),
+        DrawMode::Star => Some(ShapeKind::Star),
+        DrawMode::RoundRect => Some(ShapeKind::RoundRect),
+    }
+}
+
+/// The shape parameters (sides / star / radius) from the mirrored tool config.
+fn shape_params(cfg: &ph2d_tool_vector::VectorDrawConfig) -> ph2d_vec_edit::ShapeParams {
+    ph2d_vec_edit::ShapeParams {
+        sides: cfg.polygon_sides,
+        star_points: cfg.star_points,
+        star_inner_ratio: cfg.star_inner_ratio,
+        corner_radius_px: cfg.corner_radius_px,
     }
 }
 
@@ -724,8 +736,8 @@ impl App {
         if self.vector_tool_active() && !menu_open_before {
             match (mapped_button, kind) {
                 (ph2d_host::PointerButton::Primary, PointerKind::Down) if on_canvas => {
-                    let sides = self.vec_polygon_sides;
-                    let shape_kind = shape_kind_for_mode(self.vec_draw_mode);
+                    let params = shape_params(&self.vec_draw_config);
+                    let shape_kind = shape_kind_for_mode(self.vec_draw_config.mode);
                     // Alt held → the Pen breaks the tangent when grabbing a handle.
                     let alt = self.modifiers.alt_key();
                     if let Some(gfx) = self.gfx.as_mut() {
@@ -752,7 +764,7 @@ impl App {
                                 self.vec_shape.on_press(
                                     &mut gfx.vec_scene,
                                     kind,
-                                    sides,
+                                    params,
                                     [w[0] as f64, w[1] as f64],
                                     px_to_world,
                                 );
@@ -762,7 +774,7 @@ impl App {
                     }
                 }
                 (ph2d_host::PointerButton::Primary, PointerKind::Up) => {
-                    if shape_kind_for_mode(self.vec_draw_mode).is_none() {
+                    if shape_kind_for_mode(self.vec_draw_config.mode).is_none() {
                         // Pen: the release ends a handle drag / grab.
                         let consumed = self.vec_pen.on_release();
                         if let Some(gfx) = self.gfx.as_mut() {
@@ -771,7 +783,7 @@ impl App {
                         if consumed {
                             return;
                         }
-                    } else if shape_up_consumes(self.vec_draw_mode, self.vec_shape.is_active()) {
+                    } else if shape_up_consumes(self.vec_draw_config.mode, self.vec_shape.is_active()) {
                         // A shape drag is in progress → finalize it. Commit if the
                         // drag spanned a real size, else discard the stray click
                         // (cancel the pending undo so it doesn't record a spurious
@@ -801,7 +813,7 @@ impl App {
                     // panel buttons receive their Up.
                 }
                 (ph2d_host::PointerButton::Secondary, PointerKind::Down) if on_canvas => {
-                    if shape_kind_for_mode(self.vec_draw_mode).is_none() {
+                    if shape_kind_for_mode(self.vec_draw_config.mode).is_none() {
                         self.vec_pen.finish();
                     } else {
                         if let Some(gfx) = self.gfx.as_mut() {
@@ -1710,6 +1722,11 @@ mod tests {
         assert_eq!(
             shape_kind_for_mode(DrawMode::Polygon),
             Some(ShapeKind::Polygon)
+        );
+        assert_eq!(shape_kind_for_mode(DrawMode::Star), Some(ShapeKind::Star));
+        assert_eq!(
+            shape_kind_for_mode(DrawMode::RoundRect),
+            Some(ShapeKind::RoundRect)
         );
     }
 }

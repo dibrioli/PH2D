@@ -33,7 +33,9 @@ use ph2d_editor_core::widget::{
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ColorToken, ROW_H_PX, Spacing, TypeToken};
-use ph2d_tool_vector::params::{DrawMode, sides_to_slider};
+use ph2d_tool_vector::params::{
+    DrawMode, radius_to_slider, sides_to_slider, star_inner_to_slider, star_points_to_slider,
+};
 use ph2d_tool_vector::{VertexType, px_to_slider};
 
 /// Label column width for the Width slider row + the Stroke / Fill labels.
@@ -221,50 +223,123 @@ pub(crate) fn paint(_state: &mut VectorPanelState, ctx: &mut PaintCtx) {
             resolve(ColorToken::Text2, theme),
         );
         y += label_font + Spacing::Xs.px();
+        // Six modes in a 3-column grid (2 rows): Pen/Rect/Oval · Poly/Star/Round.
         let modes = [
             (ids::VECTOR_MODE_PEN, "Pen", DrawMode::Pen),
             (ids::VECTOR_MODE_RECT, "Rect", DrawMode::Rectangle),
             (ids::VECTOR_MODE_ELLIPSE, "Oval", DrawMode::Ellipse),
             (ids::VECTOR_MODE_POLYGON, "Poly", DrawMode::Polygon),
+            (ids::VECTOR_MODE_STAR, "Star", DrawMode::Star),
+            (ids::VECTOR_MODE_RRECT, "Round", DrawMode::RoundRect),
         ];
+        let mode_cols = 3usize;
         let seg_gap = Spacing::Sm.px();
-        let seg_w = ((inner_w - seg_gap * (modes.len() as f32 - 1.0)) / modes.len() as f32).max(1.0);
+        let seg_w = ((inner_w - seg_gap * (mode_cols as f32 - 1.0)) / mode_cols as f32).max(1.0);
+        let mode_top = y;
         for (i, (id, label, m)) in modes.iter().enumerate() {
-            let rx = inner_x + i as f32 * (seg_w + seg_gap);
-            let rect = Rect::new(rx, y, seg_w, row_h);
+            let rx = inner_x + (i % mode_cols) as f32 * (seg_w + seg_gap);
+            let ry = mode_top + (i / mode_cols) as f32 * (row_h + seg_gap);
+            let rect = Rect::new(rx, ry, seg_w, row_h);
             let state = store.button_state(*id).unwrap_or(ButtonState::Normal);
             paint_segmented_button(rect, label, snap.mode == *m, state, scene, text_system, theme);
             hit_index.register(*id, rect);
         }
-        y += row_h + row_gap;
+        let mode_rows = modes.len().div_ceil(mode_cols) as f32;
+        y = mode_top + mode_rows * row_h + (mode_rows - 1.0) * seg_gap + row_gap;
 
-        // ── Polygon Sides slider (only meaningful in Polygon mode) ──────
-        if snap.mode == DrawMode::Polygon {
-            let track = store
-                .slider(ids::VECTOR_SIDES)
-                .map(|(_, v)| v)
-                .unwrap_or_else(|| sides_to_slider(snap.polygon_sides));
-            let sides_val = store
-                .number_value(ids::VECTOR_SIDES_NUM)
-                .unwrap_or(f64::from(snap.polygon_sides));
-            let sides_display = format!("{}", sides_val.round() as i64);
-            let used = paint_slider_with_chip_layout_adaptive(
-                Rect::new(inner_x, y, inner_w, row_h),
-                "Sides",
-                track,
-                sides_val,
-                Some(&sides_display),
-                ids::VECTOR_SIDES,
-                ids::VECTOR_SIDES_NUM,
-                LABEL_COL_W,
-                chip_w,
-                store,
-                hit_index,
-                scene,
-                text_system,
-                theme,
-            );
-            y += used + row_gap;
+        // ── Per-shape sliders (only for the active shape mode) ──────────
+        let mut shape_slider =
+            |label: &str, slider_id, chip_id, track: f32, val: f64, display: &str, y: &mut f32| {
+                let used = paint_slider_with_chip_layout_adaptive(
+                    Rect::new(inner_x, *y, inner_w, row_h),
+                    label,
+                    track,
+                    val,
+                    Some(display),
+                    slider_id,
+                    chip_id,
+                    LABEL_COL_W,
+                    chip_w,
+                    store,
+                    hit_index,
+                    scene,
+                    text_system,
+                    theme,
+                );
+                *y += used + row_gap;
+            };
+        match snap.mode {
+            DrawMode::Polygon => {
+                let track = store
+                    .slider(ids::VECTOR_SIDES)
+                    .map(|(_, v)| v)
+                    .unwrap_or_else(|| sides_to_slider(snap.polygon_sides));
+                let val = store
+                    .number_value(ids::VECTOR_SIDES_NUM)
+                    .unwrap_or(f64::from(snap.polygon_sides));
+                shape_slider(
+                    "Sides",
+                    ids::VECTOR_SIDES,
+                    ids::VECTOR_SIDES_NUM,
+                    track,
+                    val,
+                    &format!("{}", val.round() as i64),
+                    &mut y,
+                );
+            }
+            DrawMode::Star => {
+                let pt_track = store
+                    .slider(ids::VECTOR_STAR_POINTS)
+                    .map(|(_, v)| v)
+                    .unwrap_or_else(|| star_points_to_slider(snap.star_points));
+                let pt_val = store
+                    .number_value(ids::VECTOR_STAR_POINTS_NUM)
+                    .unwrap_or(f64::from(snap.star_points));
+                shape_slider(
+                    "Points",
+                    ids::VECTOR_STAR_POINTS,
+                    ids::VECTOR_STAR_POINTS_NUM,
+                    pt_track,
+                    pt_val,
+                    &format!("{}", pt_val.round() as i64),
+                    &mut y,
+                );
+                let in_track = store
+                    .slider(ids::VECTOR_STAR_INNER)
+                    .map(|(_, v)| v)
+                    .unwrap_or_else(|| star_inner_to_slider(snap.star_inner_ratio));
+                let in_val = store
+                    .number_value(ids::VECTOR_STAR_INNER_NUM)
+                    .unwrap_or(snap.star_inner_ratio);
+                shape_slider(
+                    "Inner",
+                    ids::VECTOR_STAR_INNER,
+                    ids::VECTOR_STAR_INNER_NUM,
+                    in_track,
+                    in_val,
+                    &format!("{in_val:.2}"),
+                    &mut y,
+                );
+            }
+            DrawMode::RoundRect => {
+                let track = store
+                    .slider(ids::VECTOR_RRECT_RADIUS)
+                    .map(|(_, v)| v)
+                    .unwrap_or_else(|| radius_to_slider(snap.corner_radius_px));
+                let val = store
+                    .number_value(ids::VECTOR_RRECT_RADIUS_NUM)
+                    .unwrap_or(snap.corner_radius_px);
+                shape_slider(
+                    "Radius",
+                    ids::VECTOR_RRECT_RADIUS,
+                    ids::VECTOR_RRECT_RADIUS_NUM,
+                    track,
+                    val,
+                    &format!("{}", val.round() as i64),
+                    &mut y,
+                );
+            }
+            _ => {}
         }
 
         // ── Vertex type (rich handle editing) — only with a vertex selected ──

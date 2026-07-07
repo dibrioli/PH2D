@@ -505,6 +505,88 @@ pub fn nearest_point_on_path(path: &VecPath, p: [f64; 2], samples: u32) -> Optio
     best
 }
 
+/// Teto de pontas de uma estrela (clamp defensivo; o slider real fica em 3..12).
+pub const MAX_STAR_POINTS: u32 = 60;
+
+/// Estrela de `points` pontas inscrita na elipse de raios `rx`/`ry`: `2·points`
+/// vértices de quina alternando raio externo (`rx`,`ry`) e interno
+/// (`rx·inner_ratio`,`ry·inner_ratio`), primeira ponta no topo. `points` clampado
+/// a `[3, MAX_STAR_POINTS]`, `inner_ratio` a `[0.05, 0.95]`. Fechada, sem estilo.
+#[must_use]
+pub fn star(center: [f64; 2], rx: f64, ry: f64, points: u32, inner_ratio: f64) -> VecPath {
+    let n = points.clamp(3, MAX_STAR_POINTS) as usize;
+    let ratio = inner_ratio.clamp(0.05, 0.95);
+    let (cx, cy) = (center[0], center[1]);
+    let step = std::f64::consts::PI / n as f64; // meio passo (2n vértices em 2π)
+    let start = -std::f64::consts::FRAC_PI_2;
+    let verts = (0..2 * n)
+        .map(|i| {
+            let a = start + step * i as f64;
+            let (sx, sy) = if i % 2 == 0 {
+                (rx, ry)
+            } else {
+                (rx * ratio, ry * ratio)
+            };
+            VecVertex::corner([cx + sx * a.cos(), cy + sy * a.sin()])
+        })
+        .collect();
+    VecPath {
+        id: 0,
+        verts,
+        closed: true,
+        fill: None,
+        stroke: None,
+    }
+}
+
+/// Retângulo de cantos arredondados a partir de dois cantos opostos + raio
+/// `radius` (world-units), clampado a metade do menor lado. Oito vértices de
+/// quina: arestas retas + quartos-de-círculo (handles `KAPPA`). `radius ≈ 0` →
+/// [`rectangle`]. Fechado, sem estilo.
+#[must_use]
+pub fn rounded_rect(a: [f64; 2], b: [f64; 2], radius: f64) -> VecPath {
+    let (x0, x1) = (a[0].min(b[0]), a[0].max(b[0]));
+    let (y0, y1) = (a[1].min(b[1]), a[1].max(b[1]));
+    let r = radius.max(0.0).min((x1 - x0) * 0.5).min((y1 - y0) * 0.5);
+    if r < 1e-9 {
+        return rectangle(a, b);
+    }
+    let k = r * KAPPA;
+    // 8 âncoras (sentido horário a partir da aresta de cima) com o handle do arco
+    // no lado curvo e handle nulo (na âncora) no lado reto → quinas independentes.
+    let corner = |anchor: [f64; 2], in_h: [f64; 2], out_h: [f64; 2]| VecVertex {
+        anchor,
+        in_handle: in_h,
+        out_handle: out_h,
+        kind: VertexKind::Corner,
+    };
+    let verts = vec![
+        // v1: fim do arco sup-esq, início da aresta de cima.
+        corner([x0 + r, y0], [x0 + r - k, y0], [x0 + r, y0]),
+        // v2: fim da aresta de cima, início do arco sup-dir.
+        corner([x1 - r, y0], [x1 - r, y0], [x1 - r + k, y0]),
+        // v3: fim do arco sup-dir, início da aresta direita.
+        corner([x1, y0 + r], [x1, y0 + r - k], [x1, y0 + r]),
+        // v4: fim da aresta direita, início do arco inf-dir.
+        corner([x1, y1 - r], [x1, y1 - r], [x1, y1 - r + k]),
+        // v5: fim do arco inf-dir, início da aresta de baixo.
+        corner([x1 - r, y1], [x1 - r + k, y1], [x1 - r, y1]),
+        // v6: fim da aresta de baixo, início do arco inf-esq.
+        corner([x0 + r, y1], [x0 + r, y1], [x0 + r - k, y1]),
+        // v7: fim do arco inf-esq, início da aresta esquerda.
+        corner([x0, y1 - r], [x0, y1 - r + k], [x0, y1 - r]),
+        // v8: fim da aresta esquerda, início do arco sup-esq.
+        corner([x0, y0 + r], [x0, y0 + r], [x0, y0 + r - k]),
+    ];
+    VecPath {
+        id: 0,
+        verts,
+        closed: true,
+        fill: None,
+        stroke: None,
+    }
+}
+
 /// Blob-círculo preenchido (usa [`ellipse`] com `rx = ry`), para a cena-demo.
 fn blob(c: [f64; 2], r: f64, fill: Rgba8) -> VecPath {
     let mut p = ellipse(c, r, r);
@@ -814,6 +896,63 @@ mod tests {
         assert_eq!(p.verts.len(), 4);
         // Out of range segment → None.
         assert!(split_segment(&mut p, 99, 0.5).is_none());
+    }
+
+    #[test]
+    fn star_has_2n_alternating_corner_verts() {
+        let s = star([0.0, 0.0], 4.0, 4.0, 5, 0.5);
+        assert!(s.closed);
+        assert_eq!(s.verts.len(), 10); // 2 · 5
+        assert!(s.verts.iter().all(|v| v.kind == VertexKind::Corner));
+        // Even indices are outer (radius 4), odd are inner (radius 2).
+        let rad = |v: &VecVertex| (v.anchor[0].powi(2) + v.anchor[1].powi(2)).sqrt();
+        assert!((rad(&s.verts[0]) - 4.0).abs() < 1e-9, "outer");
+        assert!((rad(&s.verts[1]) - 2.0).abs() < 1e-9, "inner = 4·0.5");
+        // First point at the top (−Y).
+        assert!(s.verts[0].anchor[0].abs() < 1e-9 && (s.verts[0].anchor[1] + 4.0).abs() < 1e-9);
+        // Clamps.
+        assert_eq!(star([0.0, 0.0], 1.0, 1.0, 2, 0.5).verts.len(), 6); // points → 3
+    }
+
+    #[test]
+    fn rounded_rect_is_eight_corners_within_the_bbox() {
+        let rr = rounded_rect([0.0, 0.0], [10.0, 6.0], 2.0);
+        assert!(rr.closed);
+        assert_eq!(rr.verts.len(), 8);
+        assert!(rr.verts.iter().all(|v| v.kind == VertexKind::Corner));
+        // Every anchor sits inside the bbox.
+        assert!(
+            rr.verts
+                .iter()
+                .all(|v| (0.0..=10.0).contains(&v.anchor[0])
+                    && (0.0..=6.0).contains(&v.anchor[1]))
+        );
+        // At least one handle is offset (the arcs) — the shape is rounded.
+        assert!(
+            rr.verts
+                .iter()
+                .any(|v| v.out_handle != v.anchor || v.in_handle != v.anchor)
+        );
+    }
+
+    #[test]
+    fn rounded_rect_degenerates_to_rectangle_at_zero_radius() {
+        let rr = rounded_rect([0.0, 0.0], [4.0, 3.0], 0.0);
+        assert_eq!(rr.verts.len(), 4);
+        assert_eq!(rr, rectangle([0.0, 0.0], [4.0, 3.0]));
+    }
+
+    #[test]
+    fn rounded_rect_clamps_radius_to_half_the_smaller_side() {
+        // 4×10 rect, huge radius → clamps to 2 (half of 4). Anchors still valid.
+        let rr = rounded_rect([0.0, 0.0], [4.0, 10.0], 999.0);
+        assert_eq!(rr.verts.len(), 8);
+        assert!(
+            rr.verts
+                .iter()
+                .all(|v| (0.0..=4.0).contains(&v.anchor[0])
+                    && (0.0..=10.0).contains(&v.anchor[1]))
+        );
     }
 
     #[test]

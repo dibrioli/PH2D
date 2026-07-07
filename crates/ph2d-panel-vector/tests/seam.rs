@@ -130,6 +130,31 @@ fn mode_button_click_switches_tool_mode_through_seam() {
     );
 }
 
+/// The Star mode button switches the mode, and the Star "Points" slider reaches
+/// the tool's `star_points` through the seam — proving the new shape controls.
+#[test]
+fn star_mode_and_points_slider_reach_the_tool() {
+    use ph2d_tool_vector::params::STAR_POINTS_MAX;
+    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    let mut panel_state = VectorPanelState;
+    let mut tool = VectorTool::default();
+
+    let m = host
+        .apply_panel_event::<VectorPanel>(&mut panel_state, WidgetEvent::Click(ids::VECTOR_MODE_STAR));
+    assert_eq!(m, EventOutcome::Consumed, "Star mode button not wired");
+    drain_into_tool(&mut host, &mut tool);
+    assert_eq!(tool.mode(), DrawMode::Star);
+
+    host.set_slider_value(ids::VECTOR_STAR_POINTS, 1.0);
+    let s = host.apply_panel_event::<VectorPanel>(
+        &mut panel_state,
+        WidgetEvent::ValueChanged(ids::VECTOR_STAR_POINTS),
+    );
+    assert_eq!(s, EventOutcome::Consumed, "Star Points slider not wired");
+    drain_into_tool(&mut host, &mut tool);
+    assert_eq!(tool.draw_config().star_points, STAR_POINTS_MAX);
+}
+
 /// The Polygon Sides slider must reach the tool's `polygon_sides` through the
 /// seam (same shape as the Width slider).
 #[test]

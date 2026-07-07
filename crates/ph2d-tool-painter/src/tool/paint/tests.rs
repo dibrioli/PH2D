@@ -11677,3 +11677,118 @@ fn watercolor_soak_deepens_and_widens_the_dissolve_while_parked() {
         "2 s of dwell must push the dissolved tint farther/heavier into the wash:          held {eh}px/mass {mh} vs quick {eq}px/mass {mq}"
     );
 }
+
+/// **Spread clears the centre of the pool** (Enio 2026-07-07): a wet pool's interior LIGHTENS as the
+/// pigment migrates to the receding front, and — the recovered dynamic — the clearing gets STRONGER
+/// with Spread (a wider wet front empties the centre more). Before the fix, raising the cap to 48 let
+/// Spread exceed the pool radius, `inner = blur(cov)` never saturated, and the edge term FLOODED the
+/// centre (flat dark blob). The `core_r` cap + Spread-scaled thinning restore + strengthen it.
+#[test]
+fn watercolor_spread_clears_the_pool_centre() {
+    fn centre_vs_rim(spread: f32) -> (i32, i32) {
+        let size = 200u32;
+        let mut t = PainterTool::default();
+        t.set_source(vec![255u8; (size * size * 4) as usize], size, size);
+        t.paint.brush = BrushSpec {
+            radius_px: 34.0,
+            hardness: 1.0,
+            falloff: Falloff::Constant,
+            color: [0.20, 0.35, 0.75],
+            space_attenuation: false,
+            watercolor: true,
+            edge_gain: 2.0,
+            edge_spread: spread,
+            granulation: 0.0,
+            warp: 0.0,
+            fill: 0.5,
+            depth: 2.0,
+            wet_rewet: 1.0,
+            ..Default::default()
+        };
+        for slot in &mut t.paint.brush_by_mode {
+            *slot = t.paint.brush;
+        }
+        assert!(t.on_canvas_pointer(cp([100.0, 100.0], PointerPhase::Down)));
+        assert!(t.on_canvas_pointer(cp([100.0, 100.0], PointerPhase::Up)));
+        let lum = |c: [u8; 4]| {
+            (0.2126 * c[0] as f32 + 0.7152 * c[1] as f32 + 0.0722 * c[2] as f32) as i32
+        };
+        // Centre (x=100) vs a rim sample well inside the pool's dark ring (x=118, ~18px out).
+        (lum(px(&t, size, 100, 100)), lum(px(&t, size, 118, 100)))
+    }
+    let (c48, r48) = centre_vs_rim(48.0);
+    let (c16, _) = centre_vs_rim(16.0);
+    // (a) At high Spread the centre is LIGHTER than the rim (the pool clears, not floods).
+    assert!(
+        c48 > r48 + 40,
+        "high Spread must clear the pool centre: centre {c48} vs rim {r48}"
+    );
+    // (b) The clearing SCALES with Spread — Spread 48 clears the centre more than Spread 16.
+    assert!(
+        c48 > c16 + 20,
+        "the clearing must strengthen with Spread: centre@48 {c48} vs centre@16 {c16}"
+    );
+}
+
+/// **High-Spread live cost stays bounded** (Enio 2026-07-07 FPS fix): the rewet blur fields
+/// downsample at wide Spread (`RewetFields`, `ds > 1`) + the no-Wet window uses the capped feather
+/// reach, so a Spread-48 stroke's per-frame recomposite is a small multiple of the Spread-8 cost,
+/// NOT the ~9× the full-res spread²-window path cost (measured 10.3 → 3.0 ms @2048²). Asserts the
+/// SHAPE of the scaling (ratio), not an absolute ms — deterministic, machine-independent.
+#[test]
+#[ignore] // release-only timing; run with `--release -- --ignored`
+fn watercolor_high_spread_frame_cost_bounded() {
+    fn live_ms(spread: f32, dwell: bool) -> f64 {
+        let size = 2048u32;
+        let mut t = PainterTool::default();
+        t.set_source(vec![255u8; (size * size * 4) as usize], size, size);
+        t.paint.brush = BrushSpec {
+            radius_px: 16.0,
+            hardness: 1.0,
+            falloff: Falloff::Constant,
+            color: [0.15, 0.25, 0.70],
+            space_attenuation: false,
+            watercolor: true,
+            edge_gain: 2.0,
+            edge_spread: spread,
+            granulation: 0.4,
+            warp: 3.0,
+            fill: 0.5,
+            depth: 2.0,
+            wet_rewet: 1.0,
+            ..Default::default()
+        };
+        for slot in &mut t.paint.brush_by_mode {
+            *slot = t.paint.brush;
+        }
+        let y = 1024.0f32;
+        assert!(t.on_canvas_pointer(cp([100.0, y], PointerPhase::Down)));
+        let n = 80usize;
+        let mut ms = Vec::with_capacity(n);
+        for i in 0..n {
+            let x = 100.0 + (i as f32 + 1.0) * 4.0;
+            if dwell {
+                for _ in 0..3 {
+                    t.paint_tick(0.033);
+                }
+            }
+            let t0 = std::time::Instant::now();
+            t.on_canvas_pointer(cp([x, y], PointerPhase::Move));
+            ms.push(t0.elapsed().as_secs_f64() * 1e3);
+        }
+        ms.iter().sum::<f64>() / ms.len() as f64
+    }
+    let lo = live_ms(8.0, false);
+    let hi = live_ms(48.0, true);
+    eprintln!(
+        "live spread=8 {lo:.3} ms · spread=48+dwell {hi:.3} ms · ratio {:.1}",
+        hi / lo
+    );
+    // The old spread²-window path made this ratio ~12×; the downsample + capped reach keep it low.
+    assert!(
+        hi < lo * 8.0,
+        "high-Spread dwell frame cost must stay a small multiple of the baseline: \
+         {hi:.3} ms vs {lo:.3} ms (ratio {:.1})",
+        hi / lo
+    );
+}

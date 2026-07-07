@@ -32,11 +32,19 @@ const SS1: f32 = 0.60; // LITERAL-PX-OK: coverage-hardening smoothstep high edge
 /// back to the live brush colour (wet_edges `COL_EPS`) — a faint rim carries the fresh pigment, not noise.
 const COL_EPS: u8 = 20;
 
-/// The rewet's window-local fields, built once per composite: raw paint presence, the per-pixel
-/// water soak (dwell) in two forms — RAW (contact: deepens the lift under the nib) and HALO
-/// (blurred outward: the dwelling water diffuses, widening the dissolve past the disc) — and the
-/// presence + presence-weighted-colour blurs at the plain (`near`, radius = spread) and lingering
-/// (`far`, radius = 2×spread) scales, `[presence, r, g, b]` each. The halo lerps `near → far`.
+/// The rewet's fields, built once per composite: raw paint presence, the per-pixel water soak
+/// (dwell) in two forms — RAW (contact: deepens the lift under the nib) and HALO (blurred outward:
+/// the dwelling water diffuses, widening the dissolve past the disc) — and the presence +
+/// presence-weighted-colour blurs at the plain (`near`, radius = spread) and lingering (`far`,
+/// radius = 2×spread) scales, `[presence, r, g, b]` each. The halo lerps `near → far`.
+///
+/// **Downsampled at high Spread** (`ds > 1`): a box blur is a low-pass, so at a wide Spread the
+/// fields are built + blurred on a `ds`-reduced grid (the box-blur passes then cost `O(window/ds²)`)
+/// and sampled bilinearly back up. The grid is **globally aligned** (`lox0/loy0` are global block
+/// indices), so an output pixel's sampled value is independent of the frame's dirty-rect window —
+/// the live dirty-rect composite stays identical to a full recompose (gate
+/// `…incremental_composite_matches_full`). `ds == 1` (Spread ≤ [`REWET_DS_SPREAD`]) is the exact
+/// full-res path (byte-identical to before the downsample).
 struct RewetFields {
     pres: Vec<f32>,
     soak_raw: Vec<f32>,
@@ -45,7 +53,29 @@ struct RewetFields {
     /// `None` until the stroke actually poured dwell (`wet_soak_active`) — a no-dwell stroke pays
     /// exactly the plain 4-blur rewet cost (measured 1.16 → ~0.6 ms/frame @2048²).
     far: Option<[Vec<f32>; 4]>,
+    /// Low-res grid: downsample factor + dims + global block origin (for the coord mapping).
+    ds: usize,
+    lw: usize,
+    lh: usize,
+    lox0: usize,
+    loy0: usize,
 }
+
+impl RewetFields {
+    /// Sample a low-res field at the window-local warped coord `(sx, sy)` (full-res), mapping through
+    /// the global-aligned downsample grid. `ds == 1` ⇒ `(sx, sy)` verbatim (full-res, exact).
+    #[inline]
+    fn samp(&self, field: &[f32], rx0: usize, ry0: usize, sx: f32, sy: f32) -> f32 {
+        let lx = (rx0 as f32 + sx) / self.ds as f32 - self.lox0 as f32;
+        let ly = (ry0 as f32 + sy) / self.ds as f32 - self.loy0 as f32;
+        sample_bilinear(field, self.lw, self.lh, lx, ly)
+    }
+}
+
+/// Spread (px) at/below which the rewet fields stay full-resolution (`ds = 1`, exact). Above it the
+/// blur grid downsamples (`ds = spread / this`, capped) — the box-blur cost stops growing with
+/// Spread. Set above every unit test's Spread so they all exercise the exact path.
+const REWET_DS_SPREAD: usize = 12;
 
 impl PainterTool {
     /// Whether the watercolor optical render-path drives this stroke: the Watercolor section is on, we're
@@ -126,12 +156,22 @@ impl PainterTool {
         let spread = self.paint.brush.edge_spread.round().clamp(0.0, 48.0) as usize;
         let warp_amp = self.paint.brush.warp.max(0.0);
         let wet = self.paint.brush.wet_rewet.clamp(0.0, 1.0);
-        // Influence radius of a dab beyond its own disc: the blur spread + the warp displacement +
+        // Silhouette-feather radius (`inner`), capped so a pool keeps a saturated core (see below).
+        let core_r = spread.min(((self.paint.brush.radius_px * 0.5).round() as usize).max(1));
+        // Influence radius of a dab beyond its own disc: the blur reach + the warp displacement +
         // bilinear/rounding slack. Output pixels farther than this from the dirty rect cannot have
-        // changed. Once the stroke poured dwell (`wet_soak_active`), the soak-deepened dissolve
-        // reads a second blur at 2× the spread (the dwell widens the bleed), so the reach doubles.
+        // changed. WITHOUT Wet the only blur is the capped `core_r` feather (a wide Spread does NOT
+        // widen the footprint) → a tight window. WITH Wet the dissolve reaches `spread`, and once the
+        // stroke poured dwell (`wet_soak_active`) the soak-deepened dissolve reads a 2× blur, so the
+        // reach doubles.
         let soaked = wet > 0.0 && self.paint.wet_soak_active && self.paint.wet_soak.len() == n;
-        let reach = if soaked { spread * 2 } else { spread };
+        let reach = if wet <= 0.0 {
+            core_r
+        } else if soaked {
+            spread * 2
+        } else {
+            spread
+        };
         let pad = reach + warp_amp.ceil() as usize + 2;
         let x0 = (dirty.x as usize).saturating_sub(pad);
         let y0 = (dirty.y as usize).saturating_sub(pad);
@@ -170,7 +210,14 @@ impl PainterTool {
                 cov_src[dbase + wx] = f32::from(self.paint.stroke_coverage[sbase + wx]) / 255.0;
             }
         }
-        let blur = box_blur(&cov_src, rw, rh, spread);
+        // The silhouette-feather blur (`inner` = `core_r`, feeding the edge pool + interior thinning)
+        // must SATURATE to ~1 in a pool's core. A Spread wider than the pool otherwise reads the WHOLE
+        // pool as "rim": `inner` never reaches 1, the edge term floods the centre, and the loved
+        // "Spread clears the centre" dynamic inverts to a flat dark blob (Enio 2026-07-07, after the
+        // 24→48 cap raise). `core_r` (computed above) caps the feather at ~half the brush so a pool
+        // always keeps a protected core; the WIDE `spread` still drives the dissolve bleed + warp
+        // width. At `spread ≤ radius·½` this is a no-op (`core_r == spread`) → byte-identical.
+        let blur = box_blur(&cov_src, rw, rh, core_r);
 
         let lut = luts();
         let brush = &self.paint.brush;
@@ -186,17 +233,25 @@ impl PainterTool {
         // read window: raw paint presence (for the local lift) + blurred presence-weighted base
         // colour at BOTH blur scales (the soak lerps between them) + the soak itself.
         let rewet = (wet > 0.0).then(|| {
-            let mut pres = vec![0.0f32; rw * rh];
-            let mut wr = vec![0.0f32; rw * rh];
-            let mut wg = vec![0.0f32; rw * rh];
-            let mut wb = vec![0.0f32; rw * rh];
-            let mut soak = vec![0.0f32; rw * rh];
-            for wy in 0..rh {
-                let srow = (ry0 + wy) * fw + rx0;
-                let sbase = srow * 4;
-                let dbase = wy * rw;
-                for wx in 0..rw {
-                    let bi = sbase + wx * 4;
+            // Downsample factor: 1 (exact) up to `REWET_DS_SPREAD`, then `spread / REWET_DS_SPREAD`
+            // capped at 4 (blur cost /ds²). Global-aligned low-res grid over the read window.
+            let ds = (spread / REWET_DS_SPREAD).clamp(1, 4);
+            let lox0 = rx0 / ds;
+            let loy0 = ry0 / ds;
+            let lw = (rx1).div_ceil(ds) - lox0;
+            let lh = (ry1).div_ceil(ds) - loy0;
+            let mut pres = vec![0.0f32; lw * lh];
+            let mut wr = vec![0.0f32; lw * lh];
+            let mut wg = vec![0.0f32; lw * lh];
+            let mut wb = vec![0.0f32; lw * lh];
+            let mut soak = vec![0.0f32; lw * lh];
+            let half = ds / 2;
+            for lj in 0..lh {
+                // Sample each low-res cell at its block CENTRE (ds=1 ⇒ every full-res pixel, exact).
+                let gy = (((loy0 + lj) * ds) + half).min(fh - 1);
+                for li in 0..lw {
+                    let gx = (((lox0 + li) * ds) + half).min(fw - 1);
+                    let bi = (gy * fw + gx) * 4;
                     let ab = f32::from(base[bi + 3]) / 255.0;
                     let (gr, gg, gb) = (
                         f32::from(ground[bi]),
@@ -216,36 +271,38 @@ impl PainterTool {
                     // `PAINT_LO`/`PAINT_HI`).
                     let d = (gr - r).abs().max((gg - g).abs()).max((gb - b).abs());
                     let p = smoothstep(14.0, 50.0, d); // LITERAL-PX-OK: wet_edges PAINT_LO/PAINT_HI
-                    let di = dbase + wx;
+                    let di = lj * lw + li;
                     pres[di] = p;
                     wr[di] = r * p; // presence-premultiplied, so the blur averages PAINT colour only
                     wg[di] = g * p;
                     wb[di] = b * p;
                     if soaked {
-                        soak[di] = f32::from(self.paint.wet_soak[srow + wx]) / 255.0;
+                        soak[di] = f32::from(self.paint.wet_soak[gy * fw + gx]) / 255.0;
                     }
                 }
             }
+            // Blur radii in low-res units (the low-res blur of radius r/ds ≈ a full-res blur of r).
+            let r1 = (spread / ds).max(1);
+            let r2 = ((spread * 2) / ds).max(1);
             // Two blur scales: the plain water spread + the lingering (soaked) spread — the per-pixel
             // soak lerps the dissolve between them ("the longer the water sits, the farther it
             // dissolves"). Soak all-zero ⇒ the second scale is never sampled with weight > 0.
-            let bpres = box_blur(&pres, rw, rh, spread);
-            let br = box_blur(&wr, rw, rh, spread);
-            let bg = box_blur(&wg, rw, rh, spread);
-            let bb = box_blur(&wb, rw, rh, spread);
+            let bpres = box_blur(&pres, lw, lh, r1);
+            let br = box_blur(&wr, lw, lh, r1);
+            let bg = box_blur(&wg, lw, lh, r1);
+            let bb = box_blur(&wb, lw, lh, r1);
             // The far (2×) fields + the soak halo exist only once dwell was poured: the dwelling
             // water DIFFUSES outward (the halo pushes the widened dissolve BEYOND the nib's own
             // disc — a raw disc gated the far blur to exactly the pixels under the brush), while
             // the RAW soak drives the lift (contact: deepest right under the nib).
             let (far, soak_halo) = if soaked {
-                let spread2 = (spread * 2).max(1);
                 let far = [
-                    box_blur(&pres, rw, rh, spread2),
-                    box_blur(&wr, rw, rh, spread2),
-                    box_blur(&wg, rw, rh, spread2),
-                    box_blur(&wb, rw, rh, spread2),
+                    box_blur(&pres, lw, lh, r2),
+                    box_blur(&wr, lw, lh, r2),
+                    box_blur(&wg, lw, lh, r2),
+                    box_blur(&wb, lw, lh, r2),
                 ];
-                (Some(far), box_blur(&soak, rw, rh, spread2))
+                (Some(far), box_blur(&soak, lw, lh, r2))
             } else {
                 (None, Vec::new())
             };
@@ -255,6 +312,11 @@ impl PainterTool {
                 soak_halo,
                 near: [bpres, br, bg, bb],
                 far,
+                ds,
+                lw,
+                lh,
+                lox0,
+                loy0,
             }
         });
         /// Max fraction of the base's pigment the rewet lifts at `wet = 1` under full water (never a
@@ -273,6 +335,12 @@ impl PainterTool {
         /// How much a fully-wet wash thins its own interior fill (deepest where `inner` ≈ 1 — the
         /// pigment migrated out to the receding front; the rim keeps full body).
         const WET_THIN: f32 = 0.35;
+        /// Reference Spread (px) at/below which the interior thinning matches the historical look;
+        /// above it the thinning scales UP (a wetter wash empties its centre MORE — the "spread
+        /// clears the centre" dynamic the artist wants back at high Spread, Enio 2026-07-07).
+        const SPREAD_THIN_REF: f32 = 16.0;
+        /// Cap of the extra thinning multiplier above the reference Spread.
+        const SPREAD_THIN_MAX: f32 = 2.5;
         /// Edge-pool gain of a fully-wet wash (`wet = 1` doubles the receding-front pooling).
         const WET_EDGE_BOOST: f32 = 1.0;
         /// How strongly the paper tooth modulates the wet edge (a wet bloom is ragged, not a clean
@@ -282,6 +350,10 @@ impl PainterTool {
         let fill = brush.fill.clamp(0.0, 1.0);
         let depth = brush.depth.max(0.0);
         let edge_gain = brush.edge_gain.max(0.0);
+        // Interior-thinning multiplier: 1.0 at/below the reference Spread (historical look), rising
+        // toward `SPREAD_THIN_MAX` as Spread grows — a wider wet front empties the centre more.
+        let spread_thin = (1.0 + (spread as f32 - SPREAD_THIN_REF).max(0.0) / SPREAD_THIN_REF)
+            .min(SPREAD_THIN_MAX);
         let granulation = brush.granulation.clamp(0.0, 1.0);
         let pigment_mix = brush.effective_pigment_mix();
         // ── Paper (substrate tooth) + Granulation (mineral-settling mottle) — two canvas-anchored slots.
@@ -384,7 +456,7 @@ impl PainterTool {
                 // before any old paint is involved (Enio 2026-07-06 "mais intenso e menos uniforme").
                 let mut fill_px = fill;
                 if wet > 0.0 {
-                    fill_px = fill * (1.0 - WET_THIN * wet * inner);
+                    fill_px = fill * (1.0 - (WET_THIN * wet * spread_thin * inner).min(0.95));
                     let ragged = (1.0 + (paper_h - 0.5) * 2.0 * WET_RAGGED * wet).max(0.0);
                     edge = (edge * (1.0 + WET_EDGE_BOOST * wet) * ragged).clamp(0.0, 1.5); // LITERAL-PX-OK: wet edge may overshoot the dry clamp
                 }
@@ -397,22 +469,22 @@ impl PainterTool {
                 let mut bleed = [0.0f32; 3];
                 let mut wet_paint = 0.0f32; // local paint presence — gates the wet-driven paint-mix
                 if let Some(f) = &rewet {
-                    let lp = sample_bilinear(&f.pres, rw, rh, sx, sy);
+                    let lp = f.samp(&f.pres, rx0, ry0, sx, sy);
                     wet_paint = lp.clamp(0.0, 1.0);
                     // Soak (dwell) lerps every dissolve field between the plain and the 2× blur scale
                     // and deepens the lift — a lingering brush dissolves farther and digs deeper.
                     // Soak = 0 samples the near fields with weight 1 (bit-identical to no-soak).
                     let (s, s_raw) = if f.far.is_some() {
                         (
-                            sample_bilinear(&f.soak_halo, rw, rh, sx, sy).clamp(0.0, 1.0),
-                            sample_bilinear(&f.soak_raw, rw, rh, sx, sy).clamp(0.0, 1.0),
+                            f.samp(&f.soak_halo, rx0, ry0, sx, sy).clamp(0.0, 1.0),
+                            f.samp(&f.soak_raw, rx0, ry0, sx, sy).clamp(0.0, 1.0),
                         )
                     } else {
                         (0.0, 0.0)
                     };
-                    let fno = sample_bilinear(&f.near[0], rw, rh, sx, sy);
+                    let fno = f.samp(&f.near[0], rx0, ry0, sx, sy);
                     let bp = if let Some(far) = &f.far {
-                        let ffo = sample_bilinear(&far[0], rw, rh, sx, sy);
+                        let ffo = f.samp(&far[0], rx0, ry0, sx, sy);
                         (fno + (ffo - fno) * s).clamp(0.0, 1.0)
                     } else {
                         fno.clamp(0.0, 1.0)
@@ -421,9 +493,9 @@ impl PainterTool {
                     if bp > 1e-4 {
                         let inv = 1.0 / bp;
                         for c in 0..3 {
-                            let nc = sample_bilinear(&f.near[c + 1], rw, rh, sx, sy);
+                            let nc = f.samp(&f.near[c + 1], rx0, ry0, sx, sy);
                             bleed[c] = if let Some(far) = &f.far {
-                                let fc = sample_bilinear(&far[c + 1], rw, rh, sx, sy);
+                                let fc = f.samp(&far[c + 1], rx0, ry0, sx, sy);
                                 (nc + (fc - nc) * s) * inv
                             } else {
                                 nc * inv

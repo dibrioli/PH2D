@@ -228,6 +228,29 @@ F1 é pré-requisito de F2 (o pickup precisa do chão certo pra não carregar be
   (acima) · soak (§5 F3) · seam Paper color em `panel_events_drive_watercolor_state`. 472/472 na
   crate + 758/758 editor-core + 40 panel; clippy 0; LOC caps ok (split `event/picker.rs`).
 
+## §5.2 — Follow-up pós-smoke F1+F3 (2026-07-07): FPS em spread alto + clareamento do centro
+
+Dois problemas reportados no smoke, ambos **medidos antes de corrigir** (regra do alvo irrefutável):
+
+- **Queda severa de FPS em Spread alto.** Sonda @2048² (release): custo/frame ~quadrático no
+  Spread (o `pad` do dirty-rect ∝ Spread → janela ∝ Spread²), e o dwell dobrava o reach + 9 blurs.
+  Medido: plain 0,23→1,15 ms · wet 0,45→2,85 ms · **dwell 0,88→10,3 ms (max 15,5)** de Spread 8→48.
+  Split instrumentado: **os blurs dominavam** (12 ms de campos vs 2,25 ms de loop).
+  **Fix (2 alavancas):** (a) os campos rewet **downsampleiam** em Spread alto (`RewetFields.ds`,
+  grid global-alinhado → `incremental≡full` preservado; `ds=1` até Spread 12 = byte-idêntico, cobre
+  todos os testes); (b) sem Wet o `reach` usa só o `core_r` capado (janela não cresce com Spread).
+  Depois: plain **0,23 ms** (era 1,15) · wet **1,32 ms** (era 2,85) · **dwell 3,0 ms (max 4,7)**
+  (era 10,3/15,5). Guard: `watercolor_high_spread_frame_cost_bounded` (razão hi/lo, não ms absoluto).
+- **"Spread clareando o centro da poça" morto em Spread alto.** Ground-truth: perfil radial
+  **byte-idêntico ao commit-pai** até Spread 24 (o efeito já morria lá) — não foi regressão minha; a
+  subida do cap 24→48 **expôs** o regime onde Spread ≥ raio da poça faz `inner=blur(cov)` nunca
+  saturar em 1 → o termo de borda **inunda** o centro (blob chato). **Fix:** (a) `core_r` capa o
+  blur da silhueta em ~½ do raio do pincel → o núcleo satura, a borda volta a ser rim; (b) o
+  interior-thinning **escala com Spread** acima de `SPREAD_THIN_REF=16` (poça mais molhada esvazia
+  mais o centro). Medido centro→rim @Spread 48: **161 vs 88** (era 88 chato); e monotônico no Spread
+  (24:128 · 32:142 · 48:161). Baixo Spread (≤16) byte-idêntico. Gate:
+  `watercolor_spread_clears_the_pool_centre` (centro > rim +40 E cresce com Spread).
+
 ## §6 — Fora de escopo (explícito)
 
 - **Física real** (shallow-water, dois-layers suspended/settled, secagem temporal, fingering,

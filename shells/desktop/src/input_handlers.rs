@@ -144,6 +144,9 @@ impl App {
     /// loudest source of the text-input conflict (Color Equalization
     /// "Tile Grid" chip swallows digits all day).
     pub(crate) fn handle_editor_key(&mut self, code: KeyCode) {
+        // Computed before the `&mut gfx` borrow (Motion Nodes M1): F over the
+        // graph fits the graph, not the scene.
+        let over_motion_graph = self.cursor_over_motion_graph();
         let Some(gfx) = self.gfx.as_mut() else {
             return;
         };
@@ -239,6 +242,10 @@ impl App {
             // (Blender / Maya "frame view" semantics). Raises a
             // pending intent on the hero — the render_frame drain
             // resolves the selection and updates `gfx.camera`.
+            // Motion Nodes M1: over the graph panel, F fits the GRAPH (handled by
+            // the graph's own dispatch_key arm); suppress the scene frame here so
+            // the two don't both fit (Blender per-area focus).
+            KeyCode::KeyF if over_motion_graph => {}
             KeyCode::Home | KeyCode::KeyF => {
                 if let Some(hero) = gfx.hero_screen.as_mut() {
                     // Wave 2.5 PR 11.8d: bus migration (was

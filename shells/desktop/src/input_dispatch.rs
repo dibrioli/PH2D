@@ -326,12 +326,31 @@ impl App {
             .on_drag(&mut gfx.vec_scene, [w[0] as f64, w[1] as f64])
     }
 
+    /// Motion Nodes M1: is the cursor over the docked graph panel? Drives the
+    /// cursor-gated graph keyboard focus + middle-pan routing (Blender-style F
+    /// acts on the hovered area, graph vs scene).
+    pub(crate) fn cursor_over_motion_graph(&self) -> bool {
+        self.gfx
+            .as_ref()
+            .and_then(|g| g.hero_screen.as_ref())
+            .and_then(|h| h.store.panel_rect(ph2d_editor::ids::MOTION_GRAPH_PANEL))
+            .is_some_and(|r| r.contains(self.last_pointer.0, self.last_pointer.1))
+    }
+
     pub(crate) fn on_cursor_moved(&mut self, position: PhysicalPosition<f64>) {
         // Diagnostics: count every raw winit move (input rate), paired with `paint_stamps_this_frame`
         // in the HUD so the coalescing is visible (high events → 1 stamp).
         self.input_events_this_frame = self.input_events_this_frame.saturating_add(1);
         let prev = self.last_pointer;
         self.last_pointer = (position.x as f32, position.y as f32);
+        // Motion Nodes M1: graph keyboard focus follows the cursor, so F fits the
+        // graph only while hovering it (the scene's F is suppressed there, and
+        // fires everywhere else) — Blender's per-area focus semantics.
+        let over_graph = self.cursor_over_motion_graph();
+        if let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
+            hero.store
+                .set_graph_focused(over_graph.then_some(ph2d_editor::ids::MOTION_GRAPH_PANEL));
+        }
         // M14.4e: cache the latest cursor for DroppedFile — winit's
         // DroppedFile carries no position, so we project the most-
         // recently-seen cursor to world.
@@ -1295,12 +1314,7 @@ impl App {
         // so CursorMoved can drive the pan. Motion Nodes M1: NOT over the graph
         // panel — there middle-drag pans the graph (via its `GraphSurface`
         // gesture), not the camera underneath.
-        let over_graph = self
-            .gfx
-            .as_ref()
-            .and_then(|g| g.hero_screen.as_ref())
-            .and_then(|h| h.store.panel_rect(ph2d_editor::ids::MOTION_GRAPH_PANEL))
-            .is_some_and(|r| r.contains(self.last_pointer.0, self.last_pointer.1));
+        let over_graph = self.cursor_over_motion_graph();
         if button == MouseButton::Middle && !(over_graph && state == ElementState::Pressed) {
             match state {
                 ElementState::Pressed => {

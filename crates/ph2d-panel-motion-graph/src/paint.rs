@@ -9,7 +9,7 @@
 //! back here. All colors are tokens (HR-15); all sizes logical.
 
 use crate::snapshot::{GraphEdgeView, GraphNodeView, GraphViewSnapshot, current_snapshot};
-use crate::state::{Interaction, MotionGraphPanelState, ViewState};
+use crate::state::{MotionGraphPanelState, ViewState};
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::{GraphHitKind, InteractiveState};
@@ -86,7 +86,7 @@ pub(crate) fn paint(state: &mut MotionGraphPanelState, ctx: &mut PaintCtx) {
 
     // Wires under the cards.
     for e in &snap.edges {
-        draw_wire(ctx, state, &snap, e, &view, theme);
+        draw_wire(ctx, &snap, e, &view, theme);
     }
     // Cards, collecting hit rects as we go (background first so nodes win).
     let mut hits: Vec<(NodeId, GraphHitKind, Rect)> =
@@ -147,8 +147,7 @@ fn draw_card(
     view: &View,
     theme: Theme,
 ) -> Rect {
-    let (ox, oy) = node_offset(state, n.id);
-    let (sx, sy) = view.pt(n.x + ox, n.y + oy);
+    let (sx, sy) = view.pt(n.x, n.y);
     let w = CARD_W * view.zoom;
     let h = card_h(n) * view.zoom;
     let r = CARD_RADIUS * view.zoom;
@@ -174,27 +173,26 @@ fn draw_card(
     );
 
     for (i, p) in n.inputs.iter().enumerate() {
-        let (cx, cy) = socket_center(n, view, ox, oy, false, i);
+        let (cx, cy) = socket_center(n, view, false, i);
         fill_circle(ctx.scene, cx, cy, SOCKET_R * view.zoom, resolve(domain_token(p.domain), theme));
     }
     for (i, p) in n.outputs.iter().enumerate() {
-        let (cx, cy) = socket_center(n, view, ox, oy, true, i);
+        let (cx, cy) = socket_center(n, view, true, i);
         fill_circle(ctx.scene, cx, cy, SOCKET_R * view.zoom, resolve(domain_token(p.domain), theme));
     }
     body
 }
 
 /// Screen center of a socket (`output` picks the right vs left edge; `i` is the
-/// row). `ox/oy` is the node's live drag offset in graph space.
-fn socket_center(n: &GraphNodeView, view: &View, ox: f32, oy: f32, output: bool, i: usize) -> (f32, f32) {
-    let edge_x = if output { n.x + CARD_W } else { n.x } + ox;
-    let y = n.y + oy + HEADER_H + i as f32 * ROW_H + ROW_H * 0.5;
+/// row).
+fn socket_center(n: &GraphNodeView, view: &View, output: bool, i: usize) -> (f32, f32) {
+    let edge_x = if output { n.x + CARD_W } else { n.x };
+    let y = n.y + HEADER_H + i as f32 * ROW_H + ROW_H * 0.5;
     view.pt(edge_x, y)
 }
 
 fn draw_wire(
     ctx: &mut PaintCtx,
-    state: &MotionGraphPanelState,
     snap: &GraphViewSnapshot,
     e: &GraphEdgeView,
     view: &View,
@@ -206,30 +204,12 @@ fn draw_wire(
     ) else {
         return;
     };
-    let (fox, foy) = node_offset(state, from.id);
-    let (tox, toy) = node_offset(state, to.id);
-    let (x0, y0) = socket_center(from, view, fox, foy, true, e.from_port as usize);
-    let (x1, y1) = socket_center(to, view, tox, toy, false, e.to_port as usize);
+    let (x0, y0) = socket_center(from, view, true, e.from_port as usize);
+    let (x1, y1) = socket_center(to, view, false, e.to_port as usize);
     let dx = ((x1 - x0).abs() * 0.5 + 20.0 * view.zoom).max(20.0 * view.zoom);
     let pts = cubic_polyline((x0, y0), (x0 + dx, y0), (x1 - dx, y1), (x1, y1), 20);
     let width = if e.delayed { 1.6 } else { 2.4 } * view.zoom;
     stroke_polyline(ctx.scene, &pts, width, resolve(domain_token(e.out_domain), theme));
-}
-
-/// Live graph-space drag offset for `node` (0 unless it is in the active drag).
-fn node_offset(state: &MotionGraphPanelState, node: u32) -> (f32, f32) {
-    if let Interaction::DragNodes {
-        nodes,
-        graph_dx,
-        graph_dy,
-        ..
-    } = &state.interaction
-        && nodes.contains(&node)
-    {
-        (*graph_dx, *graph_dy)
-    } else {
-        (0.0, 0.0)
-    }
 }
 
 /// Register the background + per-node `GraphSurface` hit rects so the M0 dispatch
@@ -249,9 +229,9 @@ fn register_hits(ctx: &mut PaintCtx, rect: Rect, hits: &[(NodeId, GraphHitKind, 
                 },
             );
         }
-        // Wheel-over-canvas → zoom, and route graph keys while docked.
+        // Wheel-over-canvas → zoom. Keyboard focus is cursor-gated by the shell
+        // (Blender-style F acts on the hovered area), so it is NOT set here.
         store.set_graph_canvas(parent, rect);
-        store.set_graph_focused(Some(parent));
     }
     let hit_index = ctx.host.hit_index_mut();
     for (id, _, r) in hits {

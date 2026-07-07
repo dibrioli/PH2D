@@ -29,13 +29,14 @@ pub(crate) enum Interaction {
     Idle,
     /// Panning the canvas — `last` is the previous pointer position (screen).
     Pan { last: (f32, f32) },
-    /// Dragging the selected nodes — `graph_dx/dy` accumulates the graph-space
-    /// delta (rendered live; committed as one `MoveNodes` intent on End).
+    /// Dragging the selected nodes. `last` is the previous pointer (screen);
+    /// each Update pushes an incremental `MoveNodes` delta the shell applies
+    /// live (so the node tracks the cursor with no end-jump). `started` gates the
+    /// one-undo-step bracket (BeginDrag on the first move, EndDrag on release).
     DragNodes {
         nodes: Vec<u32>,
         last: (f32, f32),
-        graph_dx: f32,
-        graph_dy: f32,
+        started: bool,
     },
 }
 

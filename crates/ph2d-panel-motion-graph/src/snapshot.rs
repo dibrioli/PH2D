@@ -63,9 +63,15 @@ pub struct GraphViewSnapshot {
 /// stays in `Panel::State` and is NEVER an intent; only doc mutations are.
 #[derive(Clone, Debug, PartialEq)]
 pub enum GraphIntent {
-    /// Move nodes by a graph-space delta — emitted ONCE at drag End so it is a
-    /// single undo step (the live drag is rendered panel-side meanwhile).
+    /// Open a one-undo-step bracket (the shell snapshots the doc). Pushed on the
+    /// first movement of a node drag.
+    BeginDrag,
+    /// Move nodes by an INCREMENTAL graph-space delta — applied live each frame
+    /// so the node tracks the cursor (no end-jump); the whole drag is one undo
+    /// step (bracketed by [`Self::BeginDrag`]/[`Self::EndDrag`]).
     MoveNodes { nodes: Vec<u32>, dx: f32, dy: f32 },
+    /// Close the bracket (the shell commits the undo step). Pushed on release.
+    EndDrag,
 }
 
 thread_local! {

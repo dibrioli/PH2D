@@ -84,38 +84,40 @@ fn apply_gesture(state: &mut MotionGraphPanelState, g: GraphGesture) {
                     state.interaction = Interaction::DragNodes {
                         nodes: state.selected.iter().copied().collect(),
                         last: (g.x, g.y),
-                        graph_dx: 0.0,
-                        graph_dy: 0.0,
+                        started: false,
                     };
                 }
                 GesturePhase::Update => {
+                    let zoom = state.view.zoom;
                     if let Interaction::DragNodes {
+                        nodes,
                         last,
-                        graph_dx,
-                        graph_dy,
-                        ..
+                        started,
                     } = &mut state.interaction
                     {
-                        *graph_dx += (g.x - last.0) / state.view.zoom;
-                        *graph_dy += (g.y - last.1) / state.view.zoom;
+                        let (dx, dy) = ((g.x - last.0) / zoom, (g.y - last.1) / zoom);
                         *last = (g.x, g.y);
+                        if dx != 0.0 || dy != 0.0 {
+                            if !*started {
+                                push_intent(GraphIntent::BeginDrag);
+                                *started = true;
+                            }
+                            // Applied live by the shell → the node tracks the
+                            // cursor (no end-jump); one undo step for the drag.
+                            push_intent(GraphIntent::MoveNodes {
+                                nodes: nodes.clone(),
+                                dx,
+                                dy,
+                            });
+                        }
                     }
                 }
                 GesturePhase::End => {
-                    if let Interaction::DragNodes {
-                        nodes,
-                        graph_dx,
-                        graph_dy,
-                        ..
-                    } = std::mem::take(&mut state.interaction)
-                        && (graph_dx != 0.0 || graph_dy != 0.0)
-                        && !nodes.is_empty()
+                    if let Interaction::DragNodes { started, .. } =
+                        std::mem::take(&mut state.interaction)
+                        && started
                     {
-                        push_intent(GraphIntent::MoveNodes {
-                            nodes,
-                            dx: graph_dx,
-                            dy: graph_dy,
-                        });
+                        push_intent(GraphIntent::EndDrag);
                     }
                 }
                 GesturePhase::Click | GesturePhase::DoubleClick => {

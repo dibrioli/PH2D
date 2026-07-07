@@ -106,15 +106,18 @@ pub(super) fn dispatch(
 }
 
 /// Apply the panel's queued [`GraphIntent`]s to the shell-owned document (M1.E10).
-/// Each intent is one undo step (snapshot begin → mutate → commit_if_changed).
-/// Positions are UI-only (they never touch the cook), so no `mark_dirty`.
+/// A node drag is a live sequence — `BeginDrag` opens the undo bracket, each
+/// `MoveNodes` applies an incremental delta immediately (so the node tracks the
+/// cursor with no end-jump), `EndDrag` commits one undo step. Positions are
+/// UI-only (they never touch the cook), so no `mark_dirty`.
 #[cfg(feature = "panel-motion-graph")]
 fn apply_graph_intents(motion: &mut MotionState) {
     use ph2d_nodegraph::graph::{NodeId, Pos};
+    use ph2d_panel_motion_graph::GraphIntent;
     for intent in ph2d_panel_motion_graph::drain_intents() {
         match intent {
-            ph2d_panel_motion_graph::GraphIntent::MoveNodes { nodes, dx, dy } => {
-                motion.history.begin(&motion.doc);
+            GraphIntent::BeginDrag => motion.history.begin(&motion.doc),
+            GraphIntent::MoveNodes { nodes, dx, dy } => {
                 for id in nodes {
                     let nid = NodeId(id);
                     if let Some(p) = motion.doc.graph.pos(nid) {
@@ -127,8 +130,8 @@ fn apply_graph_intents(motion: &mut MotionState) {
                         );
                     }
                 }
-                motion.history.commit_if_changed(&motion.doc);
             }
+            GraphIntent::EndDrag => motion.history.commit_if_changed(&motion.doc),
         }
     }
 }

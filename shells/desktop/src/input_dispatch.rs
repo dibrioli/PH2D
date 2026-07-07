@@ -581,6 +581,12 @@ impl App {
         if self.fill_modal_drag_move(self.last_pointer.0, self.last_pointer.1) {
             return;
         }
+        // ADR-0108 Fase 1: node box-select marquee — while Shift+dragging, grow
+        // the box. Early-return so it doesn't pan / draw. No-op unless active.
+        if let Some(m) = self.vec_marquee.as_mut() {
+            m.1 = self.last_pointer;
+            return;
+        }
         // ADR-0108 Fase 1.2: Pen NOVO — arrastar após a âncora puxa os handles
         // Bézier (simétricos). Early-return: não pan/gizmo. No-op sem drag ativo.
         if self.vec_pen_drag_move(self.last_pointer.0, self.last_pointer.1) {
@@ -735,6 +741,14 @@ impl App {
             .unwrap_or(false);
         if self.vector_tool_active() && !menu_open_before {
             match (mapped_button, kind) {
+                // Shift+drag on empty canvas = node box-select marquee (any mode).
+                // Tried first so Shift diverts the press from the pen/shape draw.
+                (ph2d_host::PointerButton::Primary, PointerKind::Down)
+                    if on_canvas && self.modifiers.shift_key() =>
+                {
+                    self.vec_marquee = Some((self.last_pointer, self.last_pointer));
+                    return;
+                }
                 (ph2d_host::PointerButton::Primary, PointerKind::Down) if on_canvas => {
                     let params = shape_params(&self.vec_draw_config);
                     let shape_kind = shape_kind_for_mode(self.vec_draw_config.mode);
@@ -774,6 +788,20 @@ impl App {
                     }
                 }
                 (ph2d_host::PointerButton::Primary, PointerKind::Up) => {
+                    // Marquee release → box-select the anchors inside the box.
+                    if let Some((start, cur)) = self.vec_marquee.take() {
+                        if let Some(gfx) = self.gfx.as_mut() {
+                            let win = gfx.surface.size();
+                            let a = gfx.camera.screen_to_world(start, win);
+                            let b = gfx.camera.screen_to_world(cur, win);
+                            self.vec_pen.box_select(
+                                &gfx.vec_scene,
+                                [a[0] as f64, a[1] as f64],
+                                [b[0] as f64, b[1] as f64],
+                            );
+                        }
+                        return;
+                    }
                     if shape_kind_for_mode(self.vec_draw_config.mode).is_none() {
                         // Pen: the release ends a handle drag / grab.
                         let consumed = self.vec_pen.on_release();

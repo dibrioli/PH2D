@@ -525,6 +525,10 @@ pub(crate) struct App {
     /// the `VectorTool` (the input dispatch can't downcast — that lives in the
     /// allowlisted bridge). Decides pen vs shape routing + sizes the shapes.
     pub(crate) vec_draw_config: ph2d_tool_vector::VectorDrawConfig,
+    /// ADR-0108 Fase 1: node box-select marquee (screen-space `(start, current)`,
+    /// same `(f32, f32)` as `last_pointer`) — Shift+drag on empty canvas while the
+    /// Vector tool is active. `None` when idle; on release drives `box_select`.
+    pub(crate) vec_marquee: Option<((f32, f32), (f32, f32))>,
     /// ADR-0108: undo/redo by snapshot of `vec_scene` (Ctrl+Z / Ctrl+Shift+Z).
     pub(crate) vec_history: ph2d_vec_edit::History,
     /// TOOL_PIVOT: world-space center of the selected sprite's CONTENT

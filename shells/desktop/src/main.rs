@@ -195,6 +195,7 @@ impl App {
             vec_pen: ph2d_vec_edit::PenTool::new(),
             vec_shape: ph2d_vec_edit::ShapeTool::new(),
             vec_draw_config: ph2d_tool_vector::VectorDrawConfig::default(),
+            vec_marquee: None,
             vec_history: ph2d_vec_edit::History::new(),
             frame_ms_ewma: 16.7, // ~60 Hz baseline so the first
                                  // frame's status bar doesn't display

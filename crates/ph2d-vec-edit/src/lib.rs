@@ -79,10 +79,12 @@ pub struct PenTool {
     active: Option<VecPathId>,
     /// Path "selecionado" (último tocado) — mostra e permite agarrar seus handles.
     selected: Option<VecPathId>,
-    /// Vértice "selecionado" no path selecionado (último tocado/agarrado) — o
-    /// alvo dos botões de tipo (Corner/Smooth/Symmetric). `None` = nenhum vértice
-    /// específico (ex.: path inteiro selecionado por uma booleana).
-    selected_vert: Option<usize>,
+    /// Vértices selecionados no path selecionado — o alvo dos botões de tipo
+    /// (Corner/Smooth/Symmetric), do delete e do move em lote. Vazio = nenhum
+    /// vértice específico (ex.: path inteiro selecionado por uma booleana). O
+    /// ÚLTIMO é o "primário" (destaque do painel). Populado por clique único ou
+    /// por box-select (Shift+arrastar).
+    selected_verts: Vec<usize>,
     /// Arrastando o handle do vértice recém-posto (desenho, entre press e release).
     dragging: bool,
     /// Elemento agarrado para edição (entre press e release).
@@ -111,61 +113,118 @@ impl PenTool {
         self.selected
     }
 
-    /// Índice do vértice selecionado no path selecionado (alvo dos botões de tipo).
+    /// Vértice "primário" (último tocado) — o do destaque do painel; `None` se
+    /// nada selecionado.
     pub fn selected_vert(&self) -> Option<usize> {
-        self.selected_vert
+        self.selected_verts.last().copied()
+    }
+
+    /// Todos os vértices selecionados (para o overlay destacá-los).
+    pub fn selected_verts(&self) -> &[usize] {
+        &self.selected_verts
     }
 
     /// Define a seleção de PATH (ex.: selecionar o resultado de uma booleana).
     /// Limpa a seleção de vértice (não há vértice específico).
     pub fn select(&mut self, id: Option<VecPathId>) {
         self.selected = id;
-        self.selected_vert = None;
+        self.selected_verts.clear();
     }
 
-    /// Tipo do vértice selecionado (para o painel destacar Corner/Smooth/Symmetric).
+    /// Box-select: seleciona as âncoras do path (selecionado; senão o que tiver
+    /// mais âncoras na caixa) dentro do retângulo world `[min,max]`. Substitui a
+    /// seleção. Só muda estado de seleção — não muta a cena, não gera undo.
+    pub fn box_select(&mut self, scene: &VecScene, min: [f64; 2], max: [f64; 2]) {
+        let (x0, x1) = (min[0].min(max[0]), min[0].max(max[0]));
+        let (y0, y1) = (min[1].min(max[1]), min[1].max(max[1]));
+        let inside = |a: [f64; 2]| a[0] >= x0 && a[0] <= x1 && a[1] >= y0 && a[1] <= y1;
+        let target = self.selected.or_else(|| {
+            scene
+                .paths()
+                .iter()
+                .map(|p| (p.id, p.verts.iter().filter(|v| inside(v.anchor)).count()))
+                .filter(|&(_, c)| c > 0)
+                .max_by_key(|&(_, c)| c)
+                .map(|(id, _)| id)
+        });
+        let Some(id) = target else {
+            self.selected_verts.clear();
+            return;
+        };
+        self.selected = Some(id);
+        self.selected_verts = scene
+            .paths()
+            .iter()
+            .find(|p| p.id == id)
+            .map(|p| {
+                p.verts
+                    .iter()
+                    .enumerate()
+                    .filter(|(_, v)| inside(v.anchor))
+                    .map(|(i, _)| i)
+                    .collect()
+            })
+            .unwrap_or_default();
+    }
+
+    /// Tipo do vértice primário (para o painel destacar Corner/Smooth/Symmetric).
     /// `None` se não há vértice selecionado ou o índice não existe mais.
     pub fn selected_vertex_kind(&self, scene: &VecScene) -> Option<VertexKind> {
-        let i = self.selected_vert?;
+        let i = self.selected_vert()?;
         let sel = self.selected?;
         let path = scene.paths().iter().find(|p| p.id == sel)?;
         path.verts.get(i).map(|v| v.kind)
     }
 
-    /// Retipa o vértice selecionado (botões Corner/Smooth/Symmetric). Devolve
-    /// `true` se algo mudou (o shell empurra um passo de undo nesse caso).
+    /// Retipa TODOS os vértices selecionados (botões Corner/Smooth/Symmetric).
+    /// Devolve `true` se algo mudou (o shell empurra um passo de undo nesse caso).
     pub fn set_selected_vertex_kind(&mut self, scene: &mut VecScene, kind: VertexKind) -> bool {
-        let (Some(id), Some(i)) = (self.selected, self.selected_vert) else {
+        let Some(id) = self.selected else {
             return false;
         };
         let Some(path) = scene.path_mut(id) else {
             return false;
         };
-        ph2d_vec_scene::retype_vertex(path, i, kind)
+        let mut changed = false;
+        for &i in &self.selected_verts {
+            changed |= ph2d_vec_scene::retype_vertex(path, i, kind);
+        }
+        changed
     }
 
-    /// Apaga o vértice selecionado (Delete / botão), re-costurando os vizinhos.
-    /// Se o path ficar com < 2 vértices, remove o path inteiro e limpa a seleção.
-    /// A seleção segue no vizinho (delete encadeado). Devolve `true` se apagou.
+    /// Apaga TODOS os vértices selecionados (Delete / botão), re-costurando os
+    /// vizinhos. Se o path ficar com < 2 vértices, remove o path inteiro e limpa
+    /// a seleção. A seleção segue no vizinho do 1º apagado (delete encadeado de um
+    /// só). Devolve `true` se apagou algo.
     pub fn delete_selected_vertex(&mut self, scene: &mut VecScene) -> bool {
-        let (Some(id), Some(i)) = (self.selected, self.selected_vert) else {
+        let Some(id) = self.selected else {
             return false;
         };
+        if self.selected_verts.is_empty() {
+            return false;
+        }
         let Some(path) = scene.path_mut(id) else {
             return false;
         };
-        if i >= path.verts.len() {
-            return false;
+        // Remove do maior índice pro menor pra não invalidar os índices.
+        let mut idxs = self.selected_verts.clone();
+        idxs.sort_unstable();
+        idxs.dedup();
+        let lowest = idxs.first().copied().unwrap_or(0);
+        for &i in idxs.iter().rev() {
+            if i < path.verts.len() {
+                path.verts.remove(i);
+            }
         }
-        path.verts.remove(i);
         let remaining = path.verts.len();
+        self.selected_verts.clear();
         if remaining < 2 {
             scene.remove_path(id);
             self.selected = None;
-            self.selected_vert = None;
             self.active = None;
-        } else {
-            self.selected_vert = Some(i.min(remaining - 1));
+        } else if idxs.len() == 1 {
+            // Delete de um só: seleção segue no vizinho (delete encadeado).
+            self.selected_verts = vec![lowest.min(remaining - 1)];
         }
         true
     }
@@ -221,7 +280,7 @@ impl PenTool {
                 }
             }
             path.verts.push(VecVertex::corner(p));
-            self.selected_vert = Some(path.verts.len() - 1);
+            self.selected_verts = vec![path.verts.len() - 1];
             self.dragging = true;
             return PenClick::Added;
         }
@@ -229,7 +288,13 @@ impl PenTool {
         // Parado → hit-test para EDITAR um ponto existente.
         if let Some(g) = self.hit_test(scene, p, hit_r) {
             self.selected = Some(g.path);
-            self.selected_vert = Some(g.vert);
+            // Agarrar uma âncora que JÁ está na multi-seleção mantém o grupo (o
+            // arrasto move todos); qualquer outro grab vira seleção única.
+            if g.part == Part::Anchor && self.selected_verts.contains(&g.vert) {
+                // mantém a seleção de grupo
+            } else {
+                self.selected_verts = vec![g.vert];
+            }
             // Alt + agarrar um HANDLE = quebrar a tangente (vira cusp Corner) antes
             // de arrastar → só esse handle se move (regra Corner). Convenção
             // Illustrator; o undo cobre break+drag num passo (begin no press).
@@ -257,7 +322,7 @@ impl PenTool {
             && let Some(ni) = ph2d_vec_scene::split_segment(path, seg, t)
         {
             self.selected = Some(sel);
-            self.selected_vert = Some(ni);
+            self.selected_verts = vec![ni];
             self.grab = Some(Grab {
                 path: sel,
                 vert: ni,
@@ -276,7 +341,7 @@ impl PenTool {
         });
         self.active = Some(id);
         self.selected = Some(id);
-        self.selected_vert = Some(0);
+        self.selected_verts = vec![0];
         self.dragging = true;
         PenClick::Started
     }
@@ -289,16 +354,32 @@ impl PenTool {
             let Some(path) = scene.path_mut(g.path) else {
                 return false;
             };
+            // Arrasto de ÂNCORA: se a agarrada está na multi-seleção, TODAS as
+            // âncoras selecionadas transladam pelo mesmo delta (âncora + handles);
+            // senão só a agarrada. Handles ficam de fora (são per-vértice).
+            if g.part == Part::Anchor {
+                let Some(grabbed) = path.verts.get(g.vert) else {
+                    return false;
+                };
+                let d = [p[0] - grabbed.anchor[0], p[1] - grabbed.anchor[1]];
+                let group = self.selected_verts.contains(&g.vert);
+                let n = path.verts.len();
+                for i in 0..n {
+                    if i != g.vert && !(group && self.selected_verts.contains(&i)) {
+                        continue;
+                    }
+                    let v = &mut path.verts[i];
+                    v.anchor = [v.anchor[0] + d[0], v.anchor[1] + d[1]];
+                    v.in_handle = [v.in_handle[0] + d[0], v.in_handle[1] + d[1]];
+                    v.out_handle = [v.out_handle[0] + d[0], v.out_handle[1] + d[1]];
+                }
+                return true;
+            }
             let Some(v) = path.verts.get_mut(g.vert) else {
                 return false;
             };
             match g.part {
-                Part::Anchor => {
-                    let d = [p[0] - v.anchor[0], p[1] - v.anchor[1]];
-                    v.anchor = p;
-                    v.in_handle = [v.in_handle[0] + d[0], v.in_handle[1] + d[1]];
-                    v.out_handle = [v.out_handle[0] + d[0], v.out_handle[1] + d[1]];
-                }
+                Part::Anchor => unreachable!("handled above"),
                 // O handle oposto segue a restrição do tipo: Symmetric espelha,
                 // Smooth mantém colinear preservando o comprimento, Corner é livre.
                 Part::In => {
@@ -693,6 +774,91 @@ mod tests {
         assert!(scene.is_empty());
         assert_eq!(pen.selected(), None);
         assert_eq!(pen.selected_vert(), None);
+    }
+
+    /// A square path for multi-select tests: 4 corner anchors at the bbox.
+    fn square_path(scene: &mut VecScene) -> VecPathId {
+        scene.push_path(VecPath {
+            id: 0,
+            verts: vec![
+                VecVertex::corner([0.0, 0.0]),
+                VecVertex::corner([4.0, 0.0]),
+                VecVertex::corner([4.0, 4.0]),
+                VecVertex::corner([0.0, 4.0]),
+            ],
+            closed: true,
+            fill: None,
+            stroke: None,
+        })
+    }
+
+    #[test]
+    fn box_select_picks_the_anchors_inside_the_box() {
+        let mut scene = VecScene::new();
+        let id = square_path(&mut scene);
+        let mut pen = PenTool::new();
+        pen.select(Some(id));
+        // Box over the bottom edge → anchors 0 (0,0) and 1 (4,0).
+        pen.box_select(&scene, [-1.0, -1.0], [5.0, 1.0]);
+        let mut got = pen.selected_verts().to_vec();
+        got.sort_unstable();
+        assert_eq!(got, vec![0, 1]);
+        // With no path pre-selected, box-select auto-picks the path with anchors.
+        let mut pen2 = PenTool::new();
+        pen2.box_select(&scene, [-1.0, -1.0], [5.0, 5.0]);
+        assert_eq!(pen2.selected(), Some(id));
+        assert_eq!(pen2.selected_verts().len(), 4);
+    }
+
+    #[test]
+    fn dragging_a_grouped_anchor_moves_the_whole_selection() {
+        let mut scene = VecScene::new();
+        let id = square_path(&mut scene);
+        let mut pen = PenTool::new();
+        pen.select(Some(id));
+        pen.box_select(&scene, [-1.0, -1.0], [5.0, 1.0]); // verts 0 + 1
+        // Grab anchor 0 (in the group) and drag it +Y by 2.
+        assert_eq!(pen.on_press(&mut scene, [0.0, 0.0], PTW, false), PenClick::Grabbed);
+        pen.on_drag(&mut scene, [0.0, 2.0]);
+        pen.on_release();
+        // BOTH grouped anchors moved by (0,+2); the others stayed.
+        assert_eq!(scene.paths()[0].verts[0].anchor, [0.0, 2.0]);
+        assert_eq!(scene.paths()[0].verts[1].anchor, [4.0, 2.0]);
+        assert_eq!(scene.paths()[0].verts[2].anchor, [4.0, 4.0]);
+    }
+
+    #[test]
+    fn grabbing_an_ungrouped_anchor_collapses_to_single_then_moves_alone() {
+        let mut scene = VecScene::new();
+        let id = square_path(&mut scene);
+        let mut pen = PenTool::new();
+        pen.select(Some(id));
+        pen.box_select(&scene, [-1.0, -1.0], [5.0, 1.0]); // verts 0 + 1
+        // Grab anchor 2 (NOT in the group) → single-select it, move alone.
+        pen.on_press(&mut scene, [4.0, 4.0], PTW, false);
+        assert_eq!(pen.selected_verts(), &[2]);
+        pen.on_drag(&mut scene, [6.0, 6.0]);
+        pen.on_release();
+        assert_eq!(scene.paths()[0].verts[2].anchor, [6.0, 6.0]);
+        assert_eq!(scene.paths()[0].verts[0].anchor, [0.0, 0.0], "vert 0 unmoved");
+    }
+
+    #[test]
+    fn multi_retype_and_multi_delete_apply_to_all_selected() {
+        let mut scene = VecScene::new();
+        let id = square_path(&mut scene);
+        let mut pen = PenTool::new();
+        pen.select(Some(id));
+        pen.box_select(&scene, [-1.0, -1.0], [5.0, 1.0]); // verts 0 + 1
+        // Retype both to Smooth (auto-smoothed from neighbours).
+        assert!(pen.set_selected_vertex_kind(&mut scene, VertexKind::Smooth));
+        assert_eq!(scene.paths()[0].verts[0].kind, VertexKind::Smooth);
+        assert_eq!(scene.paths()[0].verts[1].kind, VertexKind::Smooth);
+        assert_eq!(scene.paths()[0].verts[2].kind, VertexKind::Corner);
+        // Delete both → 4 − 2 = 2 verts remain (path kept).
+        assert!(pen.delete_selected_vertex(&mut scene));
+        assert_eq!(scene.paths()[0].verts.len(), 2);
+        assert!(pen.selected_verts().is_empty());
     }
 
     /// The Vertex-type buttons target the selected vertex; `selected_vertex_kind`

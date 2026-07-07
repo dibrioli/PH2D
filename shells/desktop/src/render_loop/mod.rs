@@ -1443,9 +1443,18 @@ impl crate::App {
                 ph2d_vec_render::draw_overlays(
                     vec_scene,
                     self.vec_pen.selected(),
+                    self.vec_pen.selected_verts(),
                     camera.world_to_screen_affine(window_size),
                     vector_scene,
                 );
+                // Box-select marquee (Shift+drag), in screen-space.
+                if let Some((start, cur)) = self.vec_marquee {
+                    ph2d_vec_render::draw_marquee(
+                        [f64::from(start.0), f64::from(start.1)],
+                        [f64::from(cur.0), f64::from(cur.1)],
+                        vector_scene,
+                    );
+                }
             }
             // Drain the Painter Falloff right-click handle menu choice (chrome
             // parked the HandleType wire u8 in `pending_falloff_point_handle`) →

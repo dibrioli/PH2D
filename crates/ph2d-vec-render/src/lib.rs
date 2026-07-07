@@ -62,6 +62,7 @@ pub fn dispatch(scene: &VecScene, transform: Affine, target: &mut VectorScene) {
 pub fn draw_overlays(
     scene: &VecScene,
     selected: Option<VecPathId>,
+    selected_verts: &[usize],
     transform: Affine,
     target: &mut VectorScene,
 ) {
@@ -99,17 +100,51 @@ pub fn draw_overlays(
                 }
             }
         }
-        for v in &path.verts {
+        for (i, v) in path.verts.iter().enumerate() {
             let a = transform * Point::new(v.anchor[0], v.anchor[1]);
-            let s = 3.5;
-            let col = if is_sel {
-                Color::from_rgba8(250, 180, 90, 255) // laranja = selecionado
+            // A vertex in the multi-selection (selected path only) is drawn bigger
+            // + cyan; other anchors of the selected path are orange; other paths gray.
+            let picked = is_sel && selected_verts.contains(&i);
+            let s = if picked { 4.5 } else { 3.5 };
+            let col = if picked {
+                Color::from_rgba8(90, 200, 235, 255) // ciano = selecionado (grupo)
+            } else if is_sel {
+                Color::from_rgba8(250, 180, 90, 255) // laranja = path selecionado
             } else {
                 Color::from_rgba8(230, 230, 235, 220)
             };
             target.fill_rect(Rect::new(a.x - s, a.y - s, a.x + s, a.y + s), col);
         }
     }
+}
+
+/// Desenha a caixa de **marquee** (box-select) em **screen-space** (o shell
+/// passa cantos de tela): preenchimento translúcido + contorno. Chamada só
+/// enquanto o Shift+arrasto está ativo.
+pub fn draw_marquee(min: [f64; 2], max: [f64; 2], target: &mut VectorScene) {
+    let (x0, x1) = (min[0].min(max[0]), min[0].max(max[0]));
+    let (y0, y1) = (min[1].min(max[1]), min[1].max(max[1]));
+    let rect = Rect::new(x0, y0, x1, y1);
+    target.inner_mut().fill(
+        Fill::NonZero,
+        Affine::IDENTITY,
+        &Brush::Solid(Color::from_rgba8(90, 200, 235, 40)),
+        None,
+        &rect,
+    );
+    let mut outline = BezPath::new();
+    outline.move_to(Point::new(x0, y0));
+    outline.line_to(Point::new(x1, y0));
+    outline.line_to(Point::new(x1, y1));
+    outline.line_to(Point::new(x0, y1));
+    outline.close_path();
+    target.inner_mut().stroke(
+        &Stroke::new(1.0),
+        Affine::IDENTITY,
+        &Brush::Solid(Color::from_rgba8(90, 200, 235, 200)),
+        None,
+        &outline,
+    );
 }
 
 #[inline]

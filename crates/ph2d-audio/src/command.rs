@@ -98,6 +98,18 @@ pub(crate) enum AudioCommand {
         bus: BusId,
         coeffs: BiquadCoeffs,
     },
+    /// Master high-pass (low-cut) filter coefficients (computed control-side).
+    /// Identity = off (bypass); in series ahead of the master low-pass.
+    SetMasterHighpass {
+        coeffs: BiquadCoeffs,
+    },
+    /// A sub-bus's high-pass (low-cut) filter coefficients (computed
+    /// control-side). Identity = off (bypass); in series ahead of that bus's
+    /// low-pass.
+    SetBusHighpass {
+        bus: BusId,
+        coeffs: BiquadCoeffs,
+    },
     /// Master reverb: enable + wet/dry `mix` (0..1) + `room_size` (0..1 decay).
     SetReverb {
         on: bool,

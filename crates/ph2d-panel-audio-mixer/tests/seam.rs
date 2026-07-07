@@ -9,11 +9,12 @@ use ph2d_editor_core::interaction::WidgetEvent;
 use ph2d_editor_core::panel::{EventOutcome, Panel, PanelHostInternal};
 use ph2d_panel_audio_mixer::state::AudioMixerState;
 use ph2d_panel_audio_mixer::{
-    AMIX_CUTOFF, AMIX_DUCK, AMIX_DUCK_DEPTH, AMIX_FADER, AMIX_LIMITER, AMIX_MASTER_METER,
-    AMIX_MASTER_MUTE, AMIX_PAN, AMIX_PLAY, AMIX_REVERB, AMIX_REVERB_SIZE, AudioMixerPanel,
-    FADER_UNITY_POS, SUB_FADER, SUB_MUTE, SUB_PAN, SUB_SOLO, SUB_TONE, duck_depth, ducking,
-    fader_gain, limiter, master_clipped, master_cutoff_target, master_gain_target, master_muted,
-    master_pan_target, play_test, reverb_on, reverb_size, set_levels, sub_gain_target, sub_muted,
+    AMIX_CUTOFF, AMIX_DUCK, AMIX_DUCK_DEPTH, AMIX_FADER, AMIX_LIMITER, AMIX_LOWCUT,
+    AMIX_MASTER_METER, AMIX_MASTER_MUTE, AMIX_PAN, AMIX_PLAY, AMIX_REVERB, AMIX_REVERB_SIZE,
+    AudioMixerPanel, FADER_UNITY_POS, SUB_FADER, SUB_LOWCUT, SUB_MUTE, SUB_PAN, SUB_SOLO, SUB_TONE,
+    duck_depth, ducking, fader_gain, limiter, master_clipped, master_cutoff_target,
+    master_gain_target, master_lowcut_target, master_muted, master_pan_target, play_test,
+    reverb_on, reverb_size, set_levels, sub_gain_target, sub_lowcut_target, sub_muted,
     sub_pan_target, sub_soloed, sub_tone_target,
 };
 use ph2d_ui_testkit::MockPanelHost;
@@ -130,6 +131,38 @@ fn cutoff_drag_publishes_hz() {
         (master_cutoff_target() - 20.0).abs() < 0.5,
         "cutoff slider at 0 must map to ~20 Hz, got {}",
         master_cutoff_target()
+    );
+}
+
+/// Dragging the Low Cut slider up publishes a high cutoff in Hz; at its default
+/// bottom (0.0) it maps to ~20 Hz (off) — read by the shell to drive the master
+/// high-pass. Mirror of the Cutoff seam with the ends flipped.
+#[test]
+fn lowcut_drag_publishes_hz() {
+    let mut host = MockPanelHost::with_panel::<AudioMixerPanel>();
+    let mut state = AudioMixerState;
+
+    host.set_slider_value(AMIX_LOWCUT, 1.0);
+    let outcome = host
+        .apply_panel_event::<AudioMixerPanel>(&mut state, WidgetEvent::ValueChanged(AMIX_LOWCUT));
+    assert_eq!(
+        outcome,
+        EventOutcome::Consumed,
+        "panel ignored the Low Cut ValueChanged — the AMIX_LOWCUT arm is missing"
+    );
+    assert!(
+        (master_lowcut_target() - 20_000.0).abs() < 1.0,
+        "low-cut slider at 1.0 must map to ~20 kHz, got {}",
+        master_lowcut_target()
+    );
+
+    // Back to the bottom → ~20 Hz (off / true bypass).
+    host.set_slider_value(AMIX_LOWCUT, 0.0);
+    host.apply_panel_event::<AudioMixerPanel>(&mut state, WidgetEvent::ValueChanged(AMIX_LOWCUT));
+    assert!(
+        (master_lowcut_target() - 20.0).abs() < 0.5,
+        "low-cut slider at 0 must map to ~20 Hz (off), got {}",
+        master_lowcut_target()
     );
 }
 
@@ -331,6 +364,36 @@ fn sub_bus_tone_drag_publishes_cutoff_hz() {
         (tones[1] - 20_000.0).abs() < 1.0,
         "the other sub-bus tone must stay open (~20 kHz), got {}",
         tones[1]
+    );
+}
+
+/// Dragging a sub-bus Low Cut slider up publishes a high cutoff in Hz into that
+/// bus's slot only — the shell drives its high-pass filter. The others stay at
+/// ~20 Hz (off), proving the SUB_LOWCUT arm routes to the right bus.
+#[test]
+fn sub_bus_lowcut_drag_publishes_cutoff_hz() {
+    let mut host = MockPanelHost::with_panel::<AudioMixerPanel>();
+    let mut state = AudioMixerState;
+
+    host.set_slider_value(SUB_LOWCUT[0], 1.0);
+    let outcome = host
+        .apply_panel_event::<AudioMixerPanel>(&mut state, WidgetEvent::ValueChanged(SUB_LOWCUT[0]));
+
+    assert_eq!(
+        outcome,
+        EventOutcome::Consumed,
+        "panel ignored the sub-bus Low Cut ValueChanged — the SUB_LOWCUT arm is missing"
+    );
+    let lowcuts = sub_lowcut_target();
+    assert!(
+        (lowcuts[0] - 20_000.0).abs() < 1.0,
+        "Low Cut at 1.0 must map to ~20 kHz, got {}",
+        lowcuts[0]
+    );
+    assert!(
+        (lowcuts[1] - 20.0).abs() < 0.5,
+        "the other sub-bus low-cut must stay off (~20 Hz), got {}",
+        lowcuts[1]
     );
 }
 

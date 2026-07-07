@@ -25,6 +25,11 @@ use crate::{CMD_CAPACITY, MAX_VOICES, RETURN_CAPACITY};
 /// near-Nyquist low-pass at 48 kHz+, and keeps the open default sample-rate-robust.
 const OPEN_CUTOFF_HZ: f32 = 20_000.0; // LITERAL-PX-OK: audible ceiling / Tone "open" top (audio domain, not a UI metric)
 
+/// A high-pass (low-cut) cutoff at/below this reads as "off" (identity bypass):
+/// it is the bottom of the mixer's Low Cut slider (20 Hz, the audible floor), so
+/// a high-pass here removes nothing audible. Symmetric to [`OPEN_CUTOFF_HZ`].
+const FLOOR_CUTOFF_HZ: f32 = 20.0; // LITERAL-PX-OK: audible floor / Low Cut "off" bottom (audio domain, not a UI metric)
+
 /// Control-side handle. Lives on the game thread; every method just enqueues a
 /// command (allocation happens here, never on the audio thread). Returns opaque
 /// [`VoiceId`]s (HR-8).
@@ -153,6 +158,34 @@ impl AudioEngine {
     pub fn set_bus_cutoff(&self, bus: BusId, cutoff_hz: f32) -> Result<(), AudioError> {
         let coeffs = self.lowpass_coeffs(cutoff_hz);
         self.send(AudioCommand::SetBusFilter { bus, coeffs })
+    }
+
+    /// High-pass (low-cut) coefficients for `cutoff_hz`, or identity (off) when
+    /// the cut is at/below the audible floor ([`FLOOR_CUTOFF_HZ`] — the Low Cut
+    /// slider's fully-off bottom), so "off" removes nothing. The RBJ builder
+    /// clamps the frequency below Nyquist. Control-thread only (no RT
+    /// transcendentals). Mirror of [`AudioEngine::lowpass_coeffs`].
+    fn highpass_coeffs(&self, cutoff_hz: f32) -> BiquadCoeffs {
+        let sr = self.format.sample_rate as f32;
+        if cutoff_hz <= FLOOR_CUTOFF_HZ {
+            BiquadCoeffs::identity()
+        } else {
+            BiquadCoeffs::highpass(sr, cutoff_hz, std::f32::consts::FRAC_1_SQRT_2)
+        }
+    }
+
+    /// Set the master high-pass (low-cut) cutoff in Hz. At/below the audible
+    /// floor ([`FLOOR_CUTOFF_HZ`]) the filter is off (true bypass).
+    pub fn set_master_highpass(&self, cutoff_hz: f32) -> Result<(), AudioError> {
+        let coeffs = self.highpass_coeffs(cutoff_hz);
+        self.send(AudioCommand::SetMasterHighpass { coeffs })
+    }
+
+    /// Set a sub-bus's high-pass (low-cut) cutoff in Hz (off at/below the audible
+    /// floor).
+    pub fn set_bus_highpass(&self, bus: BusId, cutoff_hz: f32) -> Result<(), AudioError> {
+        let coeffs = self.highpass_coeffs(cutoff_hz);
+        self.send(AudioCommand::SetBusHighpass { bus, coeffs })
     }
 
     /// Set a sub-bus fader gain (smoothed). To mute a bus, send `0.0` (the
@@ -392,6 +425,27 @@ mod tests {
             engine.lowpass_coeffs(1_000.0),
             BiquadCoeffs::identity(),
             "a 1 kHz cutoff must filter, not bypass"
+        );
+    }
+
+    #[test]
+    fn lowcut_off_is_true_bypass_across_sample_rates() {
+        // The Low Cut slider's fully-off bottom is FLOOR_CUTOFF_HZ (20 Hz); a
+        // high-pass there must be an exact bypass at every sample rate (symmetric
+        // to the low-pass "open" ceiling). Above the floor it filters for real.
+        for &sr in &[44_100, 48_000, 96_000] {
+            let (engine, _r) = AudioEngine::new(AudioFormat::stereo(sr));
+            assert_eq!(
+                engine.highpass_coeffs(FLOOR_CUTOFF_HZ),
+                BiquadCoeffs::identity(),
+                "fully-off Low Cut must be a true bypass at {sr} Hz"
+            );
+        }
+        let (engine, _r) = AudioEngine::new(AudioFormat::stereo(48_000));
+        assert_ne!(
+            engine.highpass_coeffs(500.0),
+            BiquadCoeffs::identity(),
+            "a 500 Hz low-cut must filter, not bypass"
         );
     }
 

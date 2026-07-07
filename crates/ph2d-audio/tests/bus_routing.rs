@@ -219,6 +219,50 @@ fn sub_bus_lowpass_attenuates_high_frequency_content() {
 }
 
 #[test]
+fn sub_bus_highpass_attenuates_low_frequency_content() {
+    // A DC / sub-sonic signal on the Music bus: a low-cut (high-pass) must knock
+    // it down — a high-pass blocks DC by construction. Mirror of the low-pass
+    // test with the frequency extreme flipped.
+    let sr = 48_000u32;
+    let fmt = AudioFormat::stereo(sr);
+    // Constant 0.8 = pure DC (0 Hz) — the ultimate low frequency a low-cut removes.
+    let dc = SampleData::from_interleaved(vec![0.8; 960], AudioFormat::mono(sr));
+
+    let (mut engine, mut renderer) = AudioEngine::new(fmt);
+    engine
+        .play(
+            dc,
+            PlayParams {
+                looping: true,
+                bus: BusId::Music,
+                ..PlayParams::default()
+            },
+        )
+        .unwrap();
+
+    let mut out = vec![0.0f32; 512 * 2];
+    for _ in 0..20 {
+        renderer.render(&mut out, 512);
+    }
+    let open = engine.bus_levels()[0];
+    assert!(
+        open[0] > 0.3,
+        "precondition: the open bus passes the DC signal: {open:?}"
+    );
+
+    // Engage the Music bus low-cut at 2 kHz → the DC signal is blocked.
+    engine.set_bus_highpass(BusId::Music, 2_000.0).unwrap();
+    for _ in 0..40 {
+        renderer.render(&mut out, 512);
+    }
+    let filtered = engine.bus_levels()[0];
+    assert!(
+        filtered[0] < open[0] * 0.5,
+        "the high-pass must attenuate the DC/sub-sonic signal (open {open:?} → filtered {filtered:?})"
+    );
+}
+
+#[test]
 fn master_reverb_leaves_a_decaying_tail_after_the_sound_ends() {
     let (mut engine, mut renderer) = AudioEngine::new(AudioFormat::stereo(48_000));
     engine.set_reverb(true, 0.9, 0.6).unwrap();

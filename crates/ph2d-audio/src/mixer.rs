@@ -55,6 +55,10 @@ pub(crate) struct Mixer {
     master_gain: SmoothGain,
     /// Master stereo balance gains `[L, R]`.
     master_pan: [f32; 2],
+    /// Master high-pass (low-cut) filter (per channel), in series ahead of the
+    /// low-pass. Identity coeffs by default = off (bypass).
+    hp_l: Biquad,
+    hp_r: Biquad,
     /// Master low-pass filter (per channel). Identity coeffs by default = bypass.
     filter_l: Biquad,
     filter_r: Biquad,
@@ -62,6 +66,10 @@ pub(crate) struct Mixer {
     bus_gain: [SmoothGain; SUB_BUS_COUNT],
     /// Per-sub-bus stereo balance gains `[L, R]`.
     bus_pan: [[f32; 2]; SUB_BUS_COUNT],
+    /// Per-sub-bus high-pass (low-cut) filter (per channel), ahead of the
+    /// low-pass. Identity = off (bypass).
+    bus_hp_l: [Biquad; SUB_BUS_COUNT],
+    bus_hp_r: [Biquad; SUB_BUS_COUNT],
     /// Per-sub-bus low-pass filter (per channel). Identity = open (bypass).
     bus_filter_l: [Biquad; SUB_BUS_COUNT],
     bus_filter_r: [Biquad; SUB_BUS_COUNT],
@@ -82,10 +90,14 @@ impl Mixer {
             pool: VoicePool::new(max_voices, format),
             master_gain: SmoothGain::immediate(1.0),
             master_pan: balance_gains(0.0),
+            hp_l: Biquad::default(),
+            hp_r: Biquad::default(),
             filter_l: Biquad::default(),
             filter_r: Biquad::default(),
             bus_gain: std::array::from_fn(|_| SmoothGain::immediate(1.0)),
             bus_pan: [balance_gains(0.0); SUB_BUS_COUNT],
+            bus_hp_l: std::array::from_fn(|_| Biquad::default()),
+            bus_hp_r: std::array::from_fn(|_| Biquad::default()),
             bus_filter_l: std::array::from_fn(|_| Biquad::default()),
             bus_filter_r: std::array::from_fn(|_| Biquad::default()),
             limiter: false,
@@ -114,6 +126,10 @@ impl Mixer {
                 self.filter_l.set_coeffs(coeffs);
                 self.filter_r.set_coeffs(coeffs);
             }
+            AudioCommand::SetMasterHighpass { coeffs } => {
+                self.hp_l.set_coeffs(coeffs);
+                self.hp_r.set_coeffs(coeffs);
+            }
             AudioCommand::SetBusGain { bus, gain } => match bus.sub_index() {
                 Some(i) => self.bus_gain[i].set_target(gain),
                 // A `Master`-targeted bus gain is just the master fader.
@@ -128,6 +144,12 @@ impl Mixer {
                 if let Some(i) = bus.sub_index() {
                     self.bus_filter_l[i].set_coeffs(coeffs);
                     self.bus_filter_r[i].set_coeffs(coeffs);
+                }
+            }
+            AudioCommand::SetBusHighpass { bus, coeffs } => {
+                if let Some(i) = bus.sub_index() {
+                    self.bus_hp_l[i].set_coeffs(coeffs);
+                    self.bus_hp_r[i].set_coeffs(coeffs);
                 }
             }
             AudioCommand::SetReverb { on, mix, room_size } => {
@@ -163,6 +185,8 @@ impl Mixer {
             self.pool.render_bus(bus, bus_scratch, frames, on_finished);
             let [pan_l, pan_r] = self.bus_pan[i];
             let gain = &mut self.bus_gain[i];
+            let hp_l = &mut self.bus_hp_l[i];
+            let hp_r = &mut self.bus_hp_r[i];
             let filter_l = &mut self.bus_filter_l[i];
             let filter_r = &mut self.bus_filter_r[i];
             let mut peak_l = 0.0f32;
@@ -171,10 +195,11 @@ impl Mixer {
             let mut sq_r = 0.0f32;
             for f in 0..frames {
                 let g = gain.tick();
-                // Fader, then the bus low-pass (identity = open). Post-filter,
-                // pre-pan is the strip meter reading, so panning doesn't drop it.
-                let l = filter_l.process(bus_scratch[2 * f] * g);
-                let r = filter_r.process(bus_scratch[2 * f + 1] * g);
+                // Fader, then the bus low-cut high-pass, then the low-pass (both
+                // identity = open). Post-filter, pre-pan is the strip meter
+                // reading, so panning doesn't drop it.
+                let l = filter_l.process(hp_l.process(bus_scratch[2 * f] * g));
+                let r = filter_r.process(hp_r.process(bus_scratch[2 * f + 1] * g));
                 peak_l = peak_l.max(l.abs());
                 peak_r = peak_r.max(r.abs());
                 sq_l += l * l;
@@ -190,9 +215,9 @@ impl Mixer {
         self.pool
             .render_bus(BusId::Master, master, frames, on_finished);
 
-        // Master gain, the master low-pass filter (identity = bypass), the reverb
-        // insert (bypassed when off), the master stereo balance, then the limiter
-        // (bypassed when disengaged).
+        // Master gain, the master low-cut high-pass then low-pass filters (both
+        // identity = bypass), the reverb insert (bypassed when off), the master
+        // stereo balance, then the limiter (bypassed when disengaged).
         let [mpan_l, mpan_r] = self.master_pan;
         let limiter = self.limiter;
         let reverb_on = self.reverb_on;
@@ -200,8 +225,10 @@ impl Mixer {
         let mut gr = self.limiter_gr;
         for f in 0..frames {
             let g = self.master_gain.tick();
-            let mut l = self.filter_l.process(master[2 * f] * g);
-            let mut r = self.filter_r.process(master[2 * f + 1] * g);
+            let mut l = self.filter_l.process(self.hp_l.process(master[2 * f] * g));
+            let mut r = self
+                .filter_r
+                .process(self.hp_r.process(master[2 * f + 1] * g));
             if reverb_on {
                 let (wet_l, wet_r) = self.reverb.process(l, r);
                 l = l * (1.0 - reverb_mix) + wet_l * reverb_mix;

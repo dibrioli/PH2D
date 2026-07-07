@@ -2,9 +2,9 @@
 
 use crate::fader::FADER_UNITY_POS;
 use crate::{
-    AMIX_CLOSE, AMIX_CUTOFF, AMIX_DUCK, AMIX_DUCK_DEPTH, AMIX_FADER, AMIX_LIMITER,
+    AMIX_CLOSE, AMIX_CUTOFF, AMIX_DUCK, AMIX_DUCK_DEPTH, AMIX_FADER, AMIX_LIMITER, AMIX_LOWCUT,
     AMIX_MASTER_METER, AMIX_MASTER_MUTE, AMIX_PAN, AMIX_PLAY, AMIX_REVERB, AMIX_REVERB_MIX,
-    AMIX_REVERB_SIZE, SUB_FADER, SUB_METER, SUB_MUTE, SUB_PAN, SUB_SOLO, SUB_TONE,
+    AMIX_REVERB_SIZE, SUB_FADER, SUB_LOWCUT, SUB_METER, SUB_MUTE, SUB_PAN, SUB_SOLO, SUB_TONE,
 };
 use ph2d_editor_core::interaction::{InteractiveState, WidgetStore};
 use ph2d_editor_core::widget::{ButtonState, SliderOrientation, SliderState};
@@ -74,6 +74,19 @@ pub(crate) fn populate(store: &mut WidgetStore) {
     store.register(AMIX_CUTOFF, tone());
     for id in SUB_TONE {
         store.register(id, tone());
+    }
+
+    // Every low-cut (high-pass cutoff) — a horizontal Slider, off at 0.0 (full
+    // left). Master's is `AMIX_LOWCUT`; each sub-bus has its own. apply_event
+    // log-maps 0..1 to 20 Hz..20 kHz (20 Hz = off).
+    let lowcut = || InteractiveState::Slider {
+        state: SliderState::Normal,
+        value: 0.0,
+        orientation: SliderOrientation::Horizontal,
+    };
+    store.register(AMIX_LOWCUT, lowcut());
+    for id in SUB_LOWCUT {
+        store.register(id, lowcut());
     }
 
     // Master reverb Size (decay) + Mix (wet/dry) — horizontal Sliders.

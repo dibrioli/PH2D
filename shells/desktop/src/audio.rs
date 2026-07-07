@@ -22,6 +22,8 @@ pub(crate) struct AudioSystem {
     last_master_gain: std::cell::Cell<f32>,
     /// Same change-gate for the master filter cutoff.
     last_cutoff: std::cell::Cell<f32>,
+    /// Change-gate for the master high-pass (low-cut) cutoff.
+    last_highpass: std::cell::Cell<f32>,
     /// Change-gate for the master balance.
     last_master_pan: std::cell::Cell<f32>,
     /// Change-gate for the master limiter toggle.
@@ -34,6 +36,8 @@ pub(crate) struct AudioSystem {
     last_bus_pan: [std::cell::Cell<f32>; SUB_BUS_COUNT],
     /// Same change-gate, per sub-bus tone (low-pass cutoff Hz).
     last_bus_cutoff: [std::cell::Cell<f32>; SUB_BUS_COUNT],
+    /// Same change-gate, per sub-bus low-cut (high-pass cutoff Hz).
+    last_bus_highpass: [std::cell::Cell<f32>; SUB_BUS_COUNT],
     /// Voices of the built-in test signal while the panel's Play Test is on
     /// (empty = stopped). Looping, so they sound until explicitly stopped.
     test_voices: Vec<VoiceId>,
@@ -104,12 +108,14 @@ impl AudioSystem {
             format,
             last_master_gain: std::cell::Cell::new(1.0),
             last_cutoff: std::cell::Cell::new(20_000.0),
+            last_highpass: std::cell::Cell::new(20.0),
             last_master_pan: std::cell::Cell::new(0.0),
             last_limiter: std::cell::Cell::new(false),
             last_reverb: std::cell::Cell::new((false, 0.5, 0.3)),
             last_bus_gain: std::array::from_fn(|_| std::cell::Cell::new(1.0)),
             last_bus_pan: std::array::from_fn(|_| std::cell::Cell::new(0.0)),
             last_bus_cutoff: std::array::from_fn(|_| std::cell::Cell::new(20_000.0)),
+            last_bus_highpass: std::array::from_fn(|_| std::cell::Cell::new(20.0)),
             test_voices: Vec::new(),
             duck_env: std::cell::Cell::new(1.0),
             _stream: stream,
@@ -175,6 +181,16 @@ impl AudioSystem {
         }
     }
 
+    /// Set sub-bus `i`'s high-pass (low-cut) cutoff (Hz), change-gated per bus.
+    pub(crate) fn set_bus_highpass(&self, i: usize, hz: f32) {
+        if let Some(cell) = self.last_bus_highpass.get(i)
+            && (hz - cell.get()).abs() > f32::EPSILON
+        {
+            let _ = self.engine.set_bus_highpass(BusId::SUB_BUSES[i], hz);
+            cell.set(hz);
+        }
+    }
+
     /// Advance the ducking envelope from the Voice bus level (the sidechain key)
     /// and return the current duck multiplier (`1.0` = none) for Music/SFX. Fast
     /// attack (dip quickly when Voice speaks), slow release. Pure control-side —
@@ -216,6 +232,14 @@ impl AudioSystem {
         if (hz - self.last_cutoff.get()).abs() > f32::EPSILON {
             let _ = self.engine.set_master_cutoff(hz);
             self.last_cutoff.set(hz);
+        }
+    }
+
+    /// Set the master high-pass (low-cut) cutoff (Hz), change-gated.
+    pub(crate) fn set_master_highpass(&self, hz: f32) {
+        if (hz - self.last_highpass.get()).abs() > f32::EPSILON {
+            let _ = self.engine.set_master_highpass(hz);
+            self.last_highpass.set(hz);
         }
     }
 

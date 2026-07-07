@@ -12,10 +12,10 @@
 use crate::fader::{FADER_UNITY_POS, fader_db};
 use crate::state::AudioMixerState;
 use crate::{
-    AMIX_CLOSE, AMIX_CUTOFF, AMIX_DUCK, AMIX_DUCK_DEPTH, AMIX_FADER, AMIX_LIMITER,
+    AMIX_CLOSE, AMIX_CUTOFF, AMIX_DUCK, AMIX_DUCK_DEPTH, AMIX_FADER, AMIX_LIMITER, AMIX_LOWCUT,
     AMIX_MASTER_METER, AMIX_MASTER_MUTE, AMIX_PAN, AMIX_PANEL, AMIX_PLAY, AMIX_REVERB,
     AMIX_REVERB_MIX, AMIX_REVERB_SIZE, AudioMixerPanel, SUB_BUS_COUNT, SUB_BUS_LABELS, SUB_FADER,
-    SUB_METER, SUB_MUTE, SUB_PAN, SUB_SOLO, SUB_TONE, snapshot,
+    SUB_LOWCUT, SUB_METER, SUB_MUTE, SUB_PAN, SUB_SOLO, SUB_TONE, snapshot,
 };
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::ids as core_ids;
@@ -52,6 +52,8 @@ struct Strip {
     meter_id: NodeId,
     /// Tone (low-pass cutoff) slider id — master's is `AMIX_CUTOFF`.
     tone_id: NodeId,
+    /// Low Cut (high-pass cutoff) slider id — master's is `AMIX_LOWCUT`.
+    lowcut_id: NodeId,
     /// Solo id, or `None` for the Master strip (solo applies to sub-buses only).
     solo_id: Option<NodeId>,
     /// Fader slider position in 0..1 — the dB taper (`fader.rs`) maps it to gain
@@ -63,6 +65,9 @@ struct Strip {
     /// Tone slider value in 0..1 (1.0 = open) — display only; the →Hz map is in
     /// `event.rs`.
     tone: f32,
+    /// Low Cut slider value in 0..1 (0.0 = off) — display only; the →Hz map is in
+    /// `event.rs`.
+    lowcut: f32,
     muted: bool,
     soloed: bool,
     /// RMS fill `[L, R]` for the meter bar.
@@ -140,6 +145,7 @@ pub(crate) fn paint(_state: &mut AudioMixerState, ctx: &mut PaintCtx) {
         .unwrap_or(FADER_UNITY_POS);
     let master_pan = store.slider(AMIX_PAN).map(|(_, v)| v).unwrap_or(0.5);
     let master_tone = store.slider(AMIX_CUTOFF).map(|(_, v)| v).unwrap_or(1.0);
+    let master_lowcut = store.slider(AMIX_LOWCUT).map(|(_, v)| v).unwrap_or(0.0);
     let sub_gain: [f32; SUB_BUS_COUNT] = std::array::from_fn(|i| {
         store
             .slider(SUB_FADER[i])
@@ -150,6 +156,8 @@ pub(crate) fn paint(_state: &mut AudioMixerState, ctx: &mut PaintCtx) {
         std::array::from_fn(|i| store.slider(SUB_PAN[i]).map(|(_, v)| v).unwrap_or(0.5));
     let sub_tone: [f32; SUB_BUS_COUNT] =
         std::array::from_fn(|i| store.slider(SUB_TONE[i]).map(|(_, v)| v).unwrap_or(1.0));
+    let sub_lowcut: [f32; SUB_BUS_COUNT] =
+        std::array::from_fn(|i| store.slider(SUB_LOWCUT[i]).map(|(_, v)| v).unwrap_or(0.0));
 
     // Build the strips: Master first, then each sub-bus in canonical order.
     let mut strips = Vec::with_capacity(1 + SUB_BUS_COUNT);
@@ -160,10 +168,12 @@ pub(crate) fn paint(_state: &mut AudioMixerState, ctx: &mut PaintCtx) {
         mute_id: AMIX_MASTER_MUTE,
         meter_id: AMIX_MASTER_METER,
         tone_id: AMIX_CUTOFF,
+        lowcut_id: AMIX_LOWCUT,
         solo_id: None, // solo applies to sub-buses only
         gain_pos: master_gain,
         pan: master_pan,
         tone: master_tone,
+        lowcut: master_lowcut,
         muted: master_muted,
         soloed: false,
         rms: master_rms,
@@ -178,10 +188,12 @@ pub(crate) fn paint(_state: &mut AudioMixerState, ctx: &mut PaintCtx) {
             mute_id: SUB_MUTE[i],
             meter_id: SUB_METER[i],
             tone_id: SUB_TONE[i],
+            lowcut_id: SUB_LOWCUT[i],
             solo_id: Some(SUB_SOLO[i]),
             gain_pos: sub_gain[i],
             pan: sub_pan[i],
             tone: sub_tone[i],
+            lowcut: sub_lowcut[i],
             muted: sub_muted[i],
             soloed: sub_soloed[i],
             rms: sub_rms[i],
@@ -214,9 +226,11 @@ pub(crate) fn paint(_state: &mut AudioMixerState, ctx: &mut PaintCtx) {
     }
 
     // Master section below the strips. Strip stack (see `paint_strip`):
-    // label · pan · tone · fader/meter · dB readout · M/S.
+    // label · pan · tone · low cut · fader/meter · dB readout · M/S.
     let strips_bottom = strip_top
         + TypeToken::Sm.px()
+        + Spacing::Sm.px()
+        + Spacing::Md.px()
         + Spacing::Sm.px()
         + Spacing::Md.px()
         + Spacing::Sm.px()
@@ -385,6 +399,16 @@ fn paint_strip(
     tone.set_value(strip.tone.clamp(0.0, 1.0));
     paint_slider(&tone, tone_rect, scene, theme);
     hit_index.register(strip.tone_id, tone_rect);
+    y += Spacing::Md.px() + Spacing::Sm.px();
+
+    // Low Cut — a thin full-column horizontal high-pass cutoff Slider (off = 0.0,
+    // full left). Mirror of the Tone row directly below it.
+    let lowcut_rect = Rect::new(col_x, y, col_w, Spacing::Md.px());
+    let mut lowcut =
+        Slider::new(strip.lowcut_id, strip.label).orientation(SliderOrientation::Horizontal);
+    lowcut.set_value(strip.lowcut.clamp(0.0, 1.0));
+    paint_slider(&lowcut, lowcut_rect, scene, theme);
+    hit_index.register(strip.lowcut_id, lowcut_rect);
     y += Spacing::Md.px() + Spacing::Sm.px();
 
     // Fader + meter cluster, centered in the column. The fader carries a tick at

@@ -35,6 +35,8 @@ pub const AMIX_CLOSE: NodeId = hash_node_id("audio_mixer_close");
 pub const AMIX_FADER: NodeId = hash_node_id("audio_mixer_fader");
 /// Master low-pass cutoff (a horizontal `Slider` — drag → filter cutoff).
 pub const AMIX_CUTOFF: NodeId = hash_node_id("audio_mixer_cutoff");
+/// Master high-pass / low-cut cutoff (a horizontal `Slider` — drag → low-cut Hz).
+pub const AMIX_LOWCUT: NodeId = hash_node_id("audio_mixer_lowcut");
 /// Master-strip mute toggle.
 pub const AMIX_MASTER_MUTE: NodeId = hash_node_id("audio_mixer_master_mute");
 /// Master stereo balance (a horizontal `Slider` — drag → master pan).
@@ -106,6 +108,13 @@ pub const SUB_TONE: [NodeId; SUB_BUS_COUNT] = [
     hash_node_id("audio_mixer_ui_tone"),
     hash_node_id("audio_mixer_voice_tone"),
 ];
+/// Per-sub-bus low-cut (high-pass cutoff) slider ids (drag → that bus's low-cut).
+pub const SUB_LOWCUT: [NodeId; SUB_BUS_COUNT] = [
+    hash_node_id("audio_mixer_music_lowcut"),
+    hash_node_id("audio_mixer_sfx_lowcut"),
+    hash_node_id("audio_mixer_ui_lowcut"),
+    hash_node_id("audio_mixer_voice_lowcut"),
+];
 
 /// Zero-size marker implementing the typed Audio Mixer panel contract.
 pub struct AudioMixerPanel;
@@ -155,6 +164,7 @@ mod snapshot {
         static SUB_CLIP: Cell<[[bool; 2]; SUB_BUS_COUNT]> = const { Cell::new([[false, false]; SUB_BUS_COUNT]) };
         static MASTER_GAIN: Cell<f32> = const { Cell::new(1.0) };
         static CUTOFF_HZ: Cell<f32> = const { Cell::new(20_000.0) }; // LITERAL-PX-OK: default cutoff 20 kHz (audio frequency, not a UI metric)
+        static LOWCUT_HZ: Cell<f32> = const { Cell::new(20.0) }; // LITERAL-PX-OK: default low-cut 20 Hz (off — audio floor, not a UI metric)
         static MUTED: Cell<bool> = const { Cell::new(false) };
         static MASTER_PAN: Cell<f32> = const { Cell::new(0.0) };
         static PLAY_TEST: Cell<bool> = const { Cell::new(false) };
@@ -173,6 +183,7 @@ mod snapshot {
         static SUB_SOLOED: Cell<[bool; SUB_BUS_COUNT]> = const { Cell::new([false; SUB_BUS_COUNT]) };
         static SUB_PAN: Cell<[f32; SUB_BUS_COUNT]> = const { Cell::new([0.0; SUB_BUS_COUNT]) };
         static SUB_TONE_HZ: Cell<[f32; SUB_BUS_COUNT]> = const { Cell::new([20_000.0; SUB_BUS_COUNT]) }; // LITERAL-PX-OK: default tone cutoff 20 kHz (open)
+        static SUB_LOWCUT_HZ: Cell<[f32; SUB_BUS_COUNT]> = const { Cell::new([20.0; SUB_BUS_COUNT]) }; // LITERAL-PX-OK: default low-cut 20 Hz (off)
     }
 
     /// Decay the held peak toward silence, snapping up to any new peak.
@@ -240,6 +251,16 @@ mod snapshot {
 
     pub fn cutoff() -> f32 {
         CUTOFF_HZ.with(Cell::get)
+    }
+
+    /// Panel → shell: the master high-pass (low-cut) cutoff in Hz (from the Low
+    /// Cut slider; 20 Hz = off).
+    pub(crate) fn set_lowcut(hz: f32) {
+        LOWCUT_HZ.with(|c| c.set(hz));
+    }
+
+    pub fn lowcut() -> f32 {
+        LOWCUT_HZ.with(Cell::get)
     }
 
     pub fn muted() -> bool {
@@ -446,6 +467,22 @@ mod snapshot {
         });
     }
 
+    /// Panel → shell: each sub-bus high-pass (low-cut) cutoff in Hz (from its Low
+    /// Cut slider; 20 Hz = off).
+    pub fn sub_lowcut() -> [f32; SUB_BUS_COUNT] {
+        SUB_LOWCUT_HZ.with(Cell::get)
+    }
+
+    pub(crate) fn set_sub_lowcut(i: usize, hz: f32) {
+        SUB_LOWCUT_HZ.with(|c| {
+            let mut v = c.get();
+            if let Some(slot) = v.get_mut(i) {
+                *slot = hz;
+            }
+            c.set(v);
+        });
+    }
+
     /// Panel → shell: each sub-bus solo flag. When *any* is set, the shell mutes
     /// every non-soloed sub-bus (so you hear only the soloed ones).
     pub fn sub_soloed() -> [bool; SUB_BUS_COUNT] {
@@ -467,6 +504,9 @@ mod snapshot {
 pub use snapshot::cutoff as master_cutoff_target;
 /// Panel → shell: whether the master soft-clip limiter is engaged.
 pub use snapshot::limiter;
+/// Panel → shell: the master high-pass (low-cut) cutoff (Hz) the Low Cut slider
+/// drives (20 Hz = off).
+pub use snapshot::lowcut as master_lowcut_target;
 /// Observable master clip latch (set when the peak exceeds full scale, cleared
 /// by clicking the meter).
 pub use snapshot::master_clipped;
@@ -485,6 +525,9 @@ pub use snapshot::set_levels;
 pub use snapshot::set_sub_levels;
 /// Panel → shell: each sub-bus fader gain (index-aligned with `BusId::SUB_BUSES`).
 pub use snapshot::sub_gain as sub_gain_target;
+/// Panel → shell: each sub-bus high-pass (low-cut) cutoff in Hz (from its Low Cut
+/// slider; 20 Hz = off).
+pub use snapshot::sub_lowcut as sub_lowcut_target;
 /// Panel → shell: each sub-bus mute flag (bridge zeroes that bus's gain).
 pub use snapshot::sub_muted;
 /// Panel → shell: each sub-bus stereo balance (index-aligned with `BusId::SUB_BUSES`).

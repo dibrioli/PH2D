@@ -130,6 +130,7 @@ impl crate::App {
                 let gain = ph2d_panel_audio_mixer::master_gain_target();
                 audio.set_master_gain(if muted { 0.0 } else { gain });
                 audio.set_master_cutoff(ph2d_panel_audio_mixer::master_cutoff_target());
+                audio.set_master_highpass(ph2d_panel_audio_mixer::master_lowcut_target());
                 audio.set_master_pan(ph2d_panel_audio_mixer::master_pan_target());
                 audio.set_master_limiter(ph2d_panel_audio_mixer::limiter());
                 audio.set_reverb(
@@ -145,6 +146,7 @@ impl crate::App {
                 let sub_gain = ph2d_panel_audio_mixer::sub_gain_target();
                 let sub_pan = ph2d_panel_audio_mixer::sub_pan_target();
                 let sub_tone = ph2d_panel_audio_mixer::sub_tone_target();
+                let sub_lowcut = ph2d_panel_audio_mixer::sub_lowcut_target();
                 // Ducking: Music/SFX drop under the Voice bus (dialogue priority).
                 let duck = audio.update_ducking(
                     ph2d_panel_audio_mixer::ducking(),
@@ -170,6 +172,7 @@ impl crate::App {
                     audio.set_bus_gain(i, g);
                     audio.set_bus_pan(i, sub_pan[i]);
                     audio.set_bus_cutoff(i, sub_tone[i]);
+                    audio.set_bus_highpass(i, sub_lowcut[i]);
                 }
             }
         }

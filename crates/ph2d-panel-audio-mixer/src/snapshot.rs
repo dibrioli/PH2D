@@ -45,6 +45,13 @@ thread_local! {
     static SUB_TONE_HZ: Cell<[f32; SUB_BUS_COUNT]> = const { Cell::new([20_000.0; SUB_BUS_COUNT]) }; // LITERAL-PX-OK: default tone cutoff 20 kHz (open)
     static SUB_LOWCUT_HZ: Cell<[f32; SUB_BUS_COUNT]> = const { Cell::new([20.0; SUB_BUS_COUNT]) }; // LITERAL-PX-OK: default low-cut 20 Hz (off)
     static SUB_SEND_AMT: Cell<[f32; SUB_BUS_COUNT]> = const { Cell::new([0.0; SUB_BUS_COUNT]) };
+    static SUB_DELAY_SEND_AMT: Cell<[f32; SUB_BUS_COUNT]> = const { Cell::new([0.0; SUB_BUS_COUNT]) };
+    // Master delay/echo: enable + time (slider pos = seconds, 0..1 s) + feedback +
+    // return mix, all 0..1.
+    static DELAY_ON: Cell<bool> = const { Cell::new(false) };
+    static DELAY_TIME: Cell<f32> = const { Cell::new(0.25) }; // LITERAL-PX-OK: default echo 250 ms (audio param)
+    static DELAY_FEEDBACK: Cell<f32> = const { Cell::new(0.3) }; // LITERAL-PX-OK: default echo feedback (audio param)
+    static DELAY_MIX: Cell<f32> = const { Cell::new(0.3) }; // LITERAL-PX-OK: default delay return level (audio param)
     // Master 3-band EQ slider positions (0..1; 0.5 = flat), [low, mid, high].
     static EQ_POS: Cell<[f32; 3]> = const { Cell::new([0.5; 3]) }; // LITERAL-PX-OK: 3 EQ bands, 0.5 = flat
 }
@@ -209,6 +216,43 @@ pub(crate) fn set_reverb_size(v: f32) {
 
 pub(crate) fn set_reverb_mix(v: f32) {
     REVERB_MIX.with(|c| c.set(v));
+}
+
+/// Panel → shell: master delay enable + time (s) + feedback + return mix.
+pub fn delay_on() -> bool {
+    DELAY_ON.with(Cell::get)
+}
+
+pub fn delay_time() -> f32 {
+    DELAY_TIME.with(Cell::get)
+}
+
+pub fn delay_feedback() -> f32 {
+    DELAY_FEEDBACK.with(Cell::get)
+}
+
+pub fn delay_mix() -> f32 {
+    DELAY_MIX.with(Cell::get)
+}
+
+pub(crate) fn toggle_delay() -> bool {
+    DELAY_ON.with(|c| {
+        let next = !c.get();
+        c.set(next);
+        next
+    })
+}
+
+pub(crate) fn set_delay_time(v: f32) {
+    DELAY_TIME.with(|c| c.set(v));
+}
+
+pub(crate) fn set_delay_feedback(v: f32) {
+    DELAY_FEEDBACK.with(|c| c.set(v));
+}
+
+pub(crate) fn set_delay_mix(v: f32) {
+    DELAY_MIX.with(|c| c.set(v));
 }
 
 /// Panel → shell: ducking enable + depth (every bus ducks under the key bus).
@@ -378,6 +422,22 @@ pub fn sub_send() -> [f32; SUB_BUS_COUNT] {
 
 pub(crate) fn set_sub_send(i: usize, amount: f32) {
     SUB_SEND_AMT.with(|c| {
+        let mut v = c.get();
+        if let Some(slot) = v.get_mut(i) {
+            *slot = amount;
+        }
+        c.set(v);
+    });
+}
+
+/// Panel → shell: each sub-bus delay aux-send amount (0..1; 0 = dry) from its
+/// Send slider in the master Delay section.
+pub fn sub_delay_send() -> [f32; SUB_BUS_COUNT] {
+    SUB_DELAY_SEND_AMT.with(Cell::get)
+}
+
+pub(crate) fn set_sub_delay_send(i: usize, amount: f32) {
+    SUB_DELAY_SEND_AMT.with(|c| {
         let mut v = c.get();
         if let Some(slot) = v.get_mut(i) {
             *slot = amount;

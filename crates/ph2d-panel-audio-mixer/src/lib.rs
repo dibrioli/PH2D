@@ -15,6 +15,7 @@
 mod event;
 mod fader;
 mod paint;
+mod paint_master;
 mod paint_widgets;
 mod populate;
 pub mod state;
@@ -56,6 +57,14 @@ pub const AMIX_REVERB_SIZE: NodeId = hash_node_id("audio_mixer_reverb_size");
 /// Master reverb return-level slider (how much of the wet return is folded back;
 /// labeled "Return"). The reverb is a send/return fed by the per-bus sends.
 pub const AMIX_REVERB_MIX: NodeId = hash_node_id("audio_mixer_reverb_mix");
+/// Master delay/echo enable toggle.
+pub const AMIX_DELAY: NodeId = hash_node_id("audio_mixer_delay");
+/// Master delay Time slider (echo length; slider position is seconds, 0..1 s).
+pub const AMIX_DELAY_TIME: NodeId = hash_node_id("audio_mixer_delay_time");
+/// Master delay Feedback slider (echo decay, 0..1).
+pub const AMIX_DELAY_FEEDBACK: NodeId = hash_node_id("audio_mixer_delay_feedback");
+/// Master delay Return-level slider (how much wet folds back, 0..1).
+pub const AMIX_DELAY_MIX: NodeId = hash_node_id("audio_mixer_delay_mix");
 /// Master 3-band EQ gain sliders (low shelf / mid peak / high shelf; 0.5 = flat).
 pub const AMIX_EQ_LOW: NodeId = hash_node_id("audio_mixer_eq_low");
 pub const AMIX_EQ_MID: NodeId = hash_node_id("audio_mixer_eq_mid");
@@ -132,6 +141,14 @@ pub const SUB_SEND: [NodeId; SUB_BUS_COUNT] = [
     hash_node_id("audio_mixer_ui_send"),
     hash_node_id("audio_mixer_voice_send"),
 ];
+/// Per-sub-bus delay aux-send slider ids (drag → that bus's send into the delay
+/// return). Live in the master Delay footer section, one labeled row per sub-bus.
+pub const SUB_DELAY_SEND: [NodeId; SUB_BUS_COUNT] = [
+    hash_node_id("audio_mixer_music_delay_send"),
+    hash_node_id("audio_mixer_sfx_delay_send"),
+    hash_node_id("audio_mixer_ui_delay_send"),
+    hash_node_id("audio_mixer_voice_delay_send"),
+];
 
 /// Zero-size marker implementing the typed Audio Mixer panel contract.
 pub struct AudioMixerPanel;
@@ -189,6 +206,8 @@ pub use snapshot::set_levels;
 pub use snapshot::set_loudness;
 /// Shell → panel: publish each sub-bus's post-fader peak levels for its meter.
 pub use snapshot::set_sub_levels;
+/// Panel → shell: each sub-bus delay aux-send amount (0..1; 0 = dry).
+pub use snapshot::sub_delay_send as sub_delay_send_target;
 /// Panel → shell: each sub-bus fader gain (index-aligned with `BusId::SUB_BUSES`).
 pub use snapshot::sub_gain as sub_gain_target;
 /// Panel → shell: each sub-bus high-pass (low-cut) cutoff in Hz (from its Low Cut
@@ -204,6 +223,8 @@ pub use snapshot::sub_send as sub_send_target;
 pub use snapshot::sub_soloed;
 /// Panel → shell: each sub-bus low-pass cutoff in Hz (from its Tone slider).
 pub use snapshot::sub_tone as sub_tone_target;
+/// Panel → shell: master delay enable / time (s) / feedback / return mix.
+pub use snapshot::{delay_feedback, delay_mix, delay_on, delay_time};
 /// Panel → shell: ducking enable + depth (Music/SFX duck under the Voice bus).
 pub use snapshot::{duck_depth, ducking, ducking_key};
 /// Panel → shell: master reverb enable / room size / wet-dry mix.

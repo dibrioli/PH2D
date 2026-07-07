@@ -132,6 +132,20 @@ pub(crate) enum AudioCommand {
         mid: BiquadCoeffs,
         high: BiquadCoeffs,
     },
+    /// Master delay/echo return: enable + `time` (s) + `feedback` (0..1) + return
+    /// `mix` level (0..1). A parallel return fed by the per-bus delay sends.
+    SetDelay {
+        on: bool,
+        time: f32,
+        feedback: f32,
+        mix: f32,
+    },
+    /// Set a sub-bus's delay aux-send `amount` (0..1) — how much of that bus's
+    /// post-fader signal feeds the delay return.
+    SetBusDelaySend {
+        bus: BusId,
+        amount: f32,
+    },
 }
 
 /// A message from the audio thread back to the control thread.

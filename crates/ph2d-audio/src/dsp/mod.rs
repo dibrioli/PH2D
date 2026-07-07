@@ -5,6 +5,7 @@
 //! per-voice / per-bus filtering that lands in the features phase.
 
 mod biquad;
+mod delay;
 mod envelope;
 mod gain;
 mod loudness;
@@ -12,6 +13,7 @@ mod pan;
 mod reverb;
 
 pub use biquad::{Biquad, BiquadCoeffs};
+pub use delay::Delay;
 pub use envelope::{Adsr, AdsrParams, AdsrStage};
 pub use gain::SmoothGain;
 pub use loudness::{LoudnessMeter, SILENCE_LUFS, lufs_from_mean_square};

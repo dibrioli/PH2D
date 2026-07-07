@@ -148,6 +148,14 @@ impl crate::App {
                     (eq[1] - 0.5) * EQ_DB_RANGE,
                     (eq[2] - 0.5) * EQ_DB_RANGE,
                 );
+                // Master delay/echo: Time slider position is seconds (0..1 s);
+                // feedback + return mix are raw 0..1. The engine clamps time.
+                audio.set_delay(
+                    ph2d_panel_audio_mixer::delay_on(),
+                    ph2d_panel_audio_mixer::delay_time(),
+                    ph2d_panel_audio_mixer::delay_feedback(),
+                    ph2d_panel_audio_mixer::delay_mix(),
+                );
                 // Sub-bus strips — index-aligned with `BusId::SUB_BUSES` (the
                 // panel's strip index i maps to sub-bus i; count guarded below).
                 ph2d_panel_audio_mixer::set_sub_levels(audio.bus_levels(), audio.bus_rms());
@@ -158,6 +166,7 @@ impl crate::App {
                 let sub_tone = ph2d_panel_audio_mixer::sub_tone_target();
                 let sub_lowcut = ph2d_panel_audio_mixer::sub_lowcut_target();
                 let sub_send = ph2d_panel_audio_mixer::sub_send_target();
+                let sub_delay_send = ph2d_panel_audio_mixer::sub_delay_send_target();
                 // Sidechain ducking: every bus drops under the selected key bus.
                 let duck_key = ph2d_panel_audio_mixer::ducking_key();
                 let duck = audio.update_ducking(
@@ -186,6 +195,7 @@ impl crate::App {
                     audio.set_bus_cutoff(i, sub_tone[i]);
                     audio.set_bus_highpass(i, sub_lowcut[i]);
                     audio.set_bus_send(i, sub_send[i]);
+                    audio.set_bus_delay_send(i, sub_delay_send[i]);
                 }
             }
         }

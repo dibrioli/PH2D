@@ -32,6 +32,8 @@ pub(crate) struct AudioSystem {
     last_reverb: std::cell::Cell<(bool, f32, f32)>,
     /// Change-gate for the master 3-band EQ gains (low, mid, high dB).
     last_eq: std::cell::Cell<(f32, f32, f32)>,
+    /// Change-gate for the master delay (on, time, feedback, mix).
+    last_delay: std::cell::Cell<(bool, f32, f32, f32)>,
     /// Same change-gate, per sub-bus fader (index-aligned with `BusId::SUB_BUSES`).
     last_bus_gain: [std::cell::Cell<f32>; SUB_BUS_COUNT],
     /// Same change-gate, per sub-bus balance.
@@ -42,6 +44,8 @@ pub(crate) struct AudioSystem {
     last_bus_highpass: [std::cell::Cell<f32>; SUB_BUS_COUNT],
     /// Same change-gate, per sub-bus reverb aux-send amount.
     last_bus_send: [std::cell::Cell<f32>; SUB_BUS_COUNT],
+    /// Same change-gate, per sub-bus delay aux-send amount.
+    last_bus_delay_send: [std::cell::Cell<f32>; SUB_BUS_COUNT],
     /// Voices of the built-in test signal while the panel's Play Test is on
     /// (empty = stopped). Looping, so they sound until explicitly stopped.
     test_voices: Vec<VoiceId>,
@@ -117,11 +121,13 @@ impl AudioSystem {
             last_limiter: std::cell::Cell::new(false),
             last_reverb: std::cell::Cell::new((false, 0.5, 0.3)),
             last_eq: std::cell::Cell::new((0.0, 0.0, 0.0)),
+            last_delay: std::cell::Cell::new((false, 0.25, 0.3, 0.3)),
             last_bus_gain: std::array::from_fn(|_| std::cell::Cell::new(1.0)),
             last_bus_pan: std::array::from_fn(|_| std::cell::Cell::new(0.0)),
             last_bus_cutoff: std::array::from_fn(|_| std::cell::Cell::new(20_000.0)),
             last_bus_highpass: std::array::from_fn(|_| std::cell::Cell::new(20.0)),
             last_bus_send: std::array::from_fn(|_| std::cell::Cell::new(0.0)),
+            last_bus_delay_send: std::array::from_fn(|_| std::cell::Cell::new(0.0)),
             test_voices: Vec::new(),
             duck_env: std::cell::Cell::new(1.0),
             _stream: stream,
@@ -208,6 +214,29 @@ impl AudioSystem {
             && (amount - cell.get()).abs() > f32::EPSILON
         {
             let _ = self.engine.set_bus_send(BusId::SUB_BUSES[i], amount);
+            cell.set(amount);
+        }
+    }
+
+    /// Set the master delay (on, time, feedback, mix), change-gated on the tuple.
+    pub(crate) fn set_delay(&self, on: bool, time: f32, feedback: f32, mix: f32) {
+        let (lon, lt, lf, lm) = self.last_delay.get();
+        if on != lon
+            || (time - lt).abs() > f32::EPSILON
+            || (feedback - lf).abs() > f32::EPSILON
+            || (mix - lm).abs() > f32::EPSILON
+        {
+            let _ = self.engine.set_delay(on, time, feedback, mix);
+            self.last_delay.set((on, time, feedback, mix));
+        }
+    }
+
+    /// Set sub-bus `i`'s delay aux-send amount (0..1), change-gated per bus.
+    pub(crate) fn set_bus_delay_send(&self, i: usize, amount: f32) {
+        if let Some(cell) = self.last_bus_delay_send.get(i)
+            && (amount - cell.get()).abs() > f32::EPSILON
+        {
+            let _ = self.engine.set_bus_delay_send(BusId::SUB_BUSES[i], amount);
             cell.set(amount);
         }
     }

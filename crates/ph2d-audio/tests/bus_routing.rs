@@ -295,6 +295,38 @@ fn master_eq_low_shelf_boost_lifts_low_frequency_output() {
 }
 
 #[test]
+fn sub_bus_delay_send_feeds_the_echo_return() {
+    let (mut engine, mut renderer) = AudioEngine::new(AudioFormat::stereo(48_000));
+    // 10 ms delay, no feedback, full return — one clean echo.
+    engine.set_delay(true, 0.01, 0.0, 1.0).unwrap();
+    engine.set_bus_delay_send(BusId::Music, 1.0).unwrap();
+    // A short burst (100 < 512) on Music so the echo lands later in the block.
+    let burst = SampleData::from_interleaved(vec![0.6; 100], AudioFormat::mono(48_000));
+    engine
+        .play(
+            burst,
+            PlayParams {
+                bus: BusId::Music,
+                ..PlayParams::default()
+            },
+        )
+        .unwrap();
+
+    let mut out = vec![0.0f32; 512 * 2];
+    renderer.render(&mut out, 512);
+    // The dry burst is at the block start (samples 0..99); the delay return
+    // echoes it ~480 samples (10 ms) later, well past the burst.
+    let mut echo_peak = 0.0f32;
+    for f in 300..512 {
+        echo_peak = echo_peak.max(out[2 * f].abs());
+    }
+    assert!(
+        echo_peak > 1e-3,
+        "the delay return must echo the burst after the delay time: {echo_peak}"
+    );
+}
+
+#[test]
 fn master_reverb_leaves_a_decaying_tail_after_the_sound_ends() {
     let (mut engine, mut renderer) = AudioEngine::new(AudioFormat::stereo(48_000));
     engine.set_reverb(true, 0.9, 0.6).unwrap();

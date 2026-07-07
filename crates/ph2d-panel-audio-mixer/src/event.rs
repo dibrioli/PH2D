@@ -3,16 +3,18 @@
 use crate::fader::fader_gain;
 use crate::state::AudioMixerState;
 use crate::{
-    AMIX_CLOSE, AMIX_CUTOFF, AMIX_DUCK, AMIX_DUCK_DEPTH, AMIX_DUCK_KEY, AMIX_EQ_HIGH, AMIX_EQ_LOW,
-    AMIX_EQ_MID, AMIX_FADER, AMIX_LIMITER, AMIX_LOWCUT, AMIX_MASTER_METER, AMIX_MASTER_MUTE,
-    AMIX_PAN, AMIX_PLAY, AMIX_REVERB, AMIX_REVERB_MIX, AMIX_REVERB_SIZE, AudioMixerPanel,
-    SUB_FADER, SUB_LOWCUT, SUB_METER, SUB_MUTE, SUB_PAN, SUB_SEND, SUB_SOLO, SUB_TONE, snapshot,
+    AMIX_CLOSE, AMIX_CUTOFF, AMIX_DELAY, AMIX_DELAY_FEEDBACK, AMIX_DELAY_MIX, AMIX_DELAY_TIME,
+    AMIX_DUCK, AMIX_DUCK_DEPTH, AMIX_DUCK_KEY, AMIX_EQ_HIGH, AMIX_EQ_LOW, AMIX_EQ_MID, AMIX_FADER,
+    AMIX_LIMITER, AMIX_LOWCUT, AMIX_MASTER_METER, AMIX_MASTER_MUTE, AMIX_PAN, AMIX_PLAY,
+    AMIX_REVERB, AMIX_REVERB_MIX, AMIX_REVERB_SIZE, AudioMixerPanel, SUB_DELAY_SEND, SUB_FADER,
+    SUB_LOWCUT, SUB_METER, SUB_MUTE, SUB_PAN, SUB_SEND, SUB_SOLO, SUB_TONE, snapshot,
 };
 
 /// Log-map a 0..1 tone slider to a cutoff in Hz (20 Hz..20 kHz).
 fn slider_to_hz(v: f32) -> f32 {
     20.0 * 1000.0_f32.powf(v.clamp(0.0, 1.0)) // LITERAL-PX-OK: cutoff log map (20 Hz..20 kHz)
 }
+use ph2d_a11y::NodeId;
 use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::WidgetEvent;
 use ph2d_editor_core::panel::{EventOutcome, Panel, PanelHostInternal};
@@ -67,6 +69,11 @@ pub(crate) fn apply_event(
             // Sidechain key-bus selector — cycle to the next sub-bus.
             if id == AMIX_DUCK_KEY {
                 snapshot::cycle_duck_key();
+                return EventOutcome::Consumed;
+            }
+            // Master delay/echo enable toggle.
+            if id == AMIX_DELAY {
+                snapshot::toggle_delay();
                 return EventOutcome::Consumed;
             }
             // Per-sub-bus mute toggles.
@@ -154,43 +161,84 @@ pub(crate) fn apply_event(
             snapshot::set_duck_depth(v.clamp(0.0, 1.0));
             return EventOutcome::Consumed;
         }
-        // A sub-bus fader or pan dragged — publish that bus's gain / pan.
-        WidgetEvent::ValueChanged(id) => {
-            if let Some(i) = SUB_FADER.iter().position(|&f| f == id) {
-                let pos = host.store().slider(id).map(|(_, v)| v).unwrap_or(1.0);
-                snapshot::set_sub_gain(i, fader_gain(pos));
-                return EventOutcome::Consumed;
-            }
-            if let Some(i) = SUB_PAN.iter().position(|&p| p == id) {
-                let v = host.store().slider(id).map(|(_, v)| v).unwrap_or(0.5);
-                snapshot::set_sub_pan(i, slider_to_pan(v));
-                return EventOutcome::Consumed;
-            }
-            if let Some(i) = SUB_TONE.iter().position(|&t| t == id) {
-                let v = host.store().slider(id).map(|(_, v)| v).unwrap_or(1.0);
-                snapshot::set_sub_tone(i, slider_to_hz(v));
-                return EventOutcome::Consumed;
-            }
-            if let Some(i) = SUB_LOWCUT.iter().position(|&t| t == id) {
-                let v = host.store().slider(id).map(|(_, v)| v).unwrap_or(0.0);
-                snapshot::set_sub_lowcut(i, slider_to_hz(v));
-                return EventOutcome::Consumed;
-            }
-            if let Some(i) = SUB_SEND.iter().position(|&s| s == id) {
-                let v = host.store().slider(id).map(|(_, v)| v).unwrap_or(0.0);
-                snapshot::set_sub_send(i, v.clamp(0.0, 1.0));
-                return EventOutcome::Consumed;
-            }
-            // Master 3-band EQ — publish the raw 0..1 position; the shell maps it
-            // to ±12 dB. Index-aligned [low, mid, high].
-            let eq_ids = [AMIX_EQ_LOW, AMIX_EQ_MID, AMIX_EQ_HIGH];
-            if let Some(band) = eq_ids.iter().position(|&e| e == id) {
-                let v = host.store().slider(id).map(|(_, v)| v).unwrap_or(0.5);
-                snapshot::set_eq(band, v.clamp(0.0, 1.0));
-                return EventOutcome::Consumed;
-            }
+        // Master delay Time / Feedback / Return dragged — publish the raw 0..1
+        // value (Time's position is read as seconds by the shell).
+        WidgetEvent::ValueChanged(id) if id == AMIX_DELAY_TIME => {
+            let v = host
+                .store()
+                .slider(AMIX_DELAY_TIME)
+                .map(|(_, v)| v)
+                .unwrap_or(0.25); // LITERAL-PX-OK: default echo 250 ms
+            snapshot::set_delay_time(v.clamp(0.0, 1.0));
+            return EventOutcome::Consumed;
         }
+        WidgetEvent::ValueChanged(id) if id == AMIX_DELAY_FEEDBACK => {
+            let v = host
+                .store()
+                .slider(AMIX_DELAY_FEEDBACK)
+                .map(|(_, v)| v)
+                .unwrap_or(0.3); // LITERAL-PX-OK: default echo feedback
+            snapshot::set_delay_feedback(v.clamp(0.0, 1.0));
+            return EventOutcome::Consumed;
+        }
+        WidgetEvent::ValueChanged(id) if id == AMIX_DELAY_MIX => {
+            let v = host
+                .store()
+                .slider(AMIX_DELAY_MIX)
+                .map(|(_, v)| v)
+                .unwrap_or(0.3); // LITERAL-PX-OK: default delay return level
+            snapshot::set_delay_mix(v.clamp(0.0, 1.0));
+            return EventOutcome::Consumed;
+        }
+        // A sub-bus slider (fader/pan/tone/low-cut/send) or a master EQ band
+        // dragged — routed per id in a helper (keeps `apply_event` under its cap).
+        WidgetEvent::ValueChanged(id) => return sub_value_changed(host, id),
         _ => {}
+    }
+    EventOutcome::Ignored
+}
+
+/// Route a `ValueChanged` for the per-sub-bus sliders (fader/pan/tone/low-cut/
+/// reverb+delay sends) and the master 3-band EQ bands to their snapshot channel.
+/// Returns `Ignored` if `id` is none of them.
+fn sub_value_changed(host: &mut dyn PanelHostInternal, id: NodeId) -> EventOutcome {
+    if let Some(i) = SUB_FADER.iter().position(|&f| f == id) {
+        let pos = host.store().slider(id).map(|(_, v)| v).unwrap_or(1.0);
+        snapshot::set_sub_gain(i, fader_gain(pos));
+        return EventOutcome::Consumed;
+    }
+    if let Some(i) = SUB_PAN.iter().position(|&p| p == id) {
+        let v = host.store().slider(id).map(|(_, v)| v).unwrap_or(0.5);
+        snapshot::set_sub_pan(i, slider_to_pan(v));
+        return EventOutcome::Consumed;
+    }
+    if let Some(i) = SUB_TONE.iter().position(|&t| t == id) {
+        let v = host.store().slider(id).map(|(_, v)| v).unwrap_or(1.0);
+        snapshot::set_sub_tone(i, slider_to_hz(v));
+        return EventOutcome::Consumed;
+    }
+    if let Some(i) = SUB_LOWCUT.iter().position(|&t| t == id) {
+        let v = host.store().slider(id).map(|(_, v)| v).unwrap_or(0.0);
+        snapshot::set_sub_lowcut(i, slider_to_hz(v));
+        return EventOutcome::Consumed;
+    }
+    if let Some(i) = SUB_SEND.iter().position(|&s| s == id) {
+        let v = host.store().slider(id).map(|(_, v)| v).unwrap_or(0.0);
+        snapshot::set_sub_send(i, v.clamp(0.0, 1.0));
+        return EventOutcome::Consumed;
+    }
+    if let Some(i) = SUB_DELAY_SEND.iter().position(|&s| s == id) {
+        let v = host.store().slider(id).map(|(_, v)| v).unwrap_or(0.0);
+        snapshot::set_sub_delay_send(i, v.clamp(0.0, 1.0));
+        return EventOutcome::Consumed;
+    }
+    // Master 3-band EQ — publish the raw 0..1 position; the shell maps it to
+    // ±12 dB. Index-aligned [low, mid, high].
+    let eq_ids = [AMIX_EQ_LOW, AMIX_EQ_MID, AMIX_EQ_HIGH];
+    if let Some(band) = eq_ids.iter().position(|&e| e == id) {
+        let v = host.store().slider(id).map(|(_, v)| v).unwrap_or(0.5);
+        snapshot::set_eq(band, v.clamp(0.0, 1.0));
+        return EventOutcome::Consumed;
     }
     EventOutcome::Ignored
 }

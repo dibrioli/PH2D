@@ -2,9 +2,10 @@
 
 use crate::fader::FADER_UNITY_POS;
 use crate::{
-    AMIX_CLOSE, AMIX_CUTOFF, AMIX_DUCK, AMIX_DUCK_DEPTH, AMIX_DUCK_KEY, AMIX_EQ_HIGH, AMIX_EQ_LOW,
-    AMIX_EQ_MID, AMIX_FADER, AMIX_LIMITER, AMIX_LOWCUT, AMIX_MASTER_METER, AMIX_MASTER_MUTE,
-    AMIX_PAN, AMIX_PLAY, AMIX_REVERB, AMIX_REVERB_MIX, AMIX_REVERB_SIZE, SUB_FADER, SUB_LOWCUT,
+    AMIX_CLOSE, AMIX_CUTOFF, AMIX_DELAY, AMIX_DELAY_FEEDBACK, AMIX_DELAY_MIX, AMIX_DELAY_TIME,
+    AMIX_DUCK, AMIX_DUCK_DEPTH, AMIX_DUCK_KEY, AMIX_EQ_HIGH, AMIX_EQ_LOW, AMIX_EQ_MID, AMIX_FADER,
+    AMIX_LIMITER, AMIX_LOWCUT, AMIX_MASTER_METER, AMIX_MASTER_MUTE, AMIX_PAN, AMIX_PLAY,
+    AMIX_REVERB, AMIX_REVERB_MIX, AMIX_REVERB_SIZE, SUB_DELAY_SEND, SUB_FADER, SUB_LOWCUT,
     SUB_METER, SUB_MUTE, SUB_PAN, SUB_SEND, SUB_SOLO, SUB_TONE,
 };
 use ph2d_editor_core::interaction::{InteractiveState, WidgetStore};
@@ -26,6 +27,7 @@ pub(crate) fn populate(store: &mut WidgetStore) {
     store.register(AMIX_REVERB, button());
     store.register(AMIX_DUCK, button());
     store.register(AMIX_DUCK_KEY, button());
+    store.register(AMIX_DELAY, button());
     for id in SUB_MUTE {
         store.register(id, button());
     }
@@ -119,6 +121,32 @@ pub(crate) fn populate(store: &mut WidgetStore) {
     };
     for id in SUB_SEND {
         store.register(id, send());
+    }
+
+    // Master delay/echo — Time (0.25 = 250 ms), Feedback (0.3), Return mix (0.3)
+    // sliders + per-sub-bus delay sends (dry at 0.0). The shell reads Time's
+    // position as seconds.
+    for (id, value) in [
+        (AMIX_DELAY_TIME, 0.25f32), // LITERAL-PX-OK: default echo 250 ms
+        (AMIX_DELAY_FEEDBACK, 0.3), // LITERAL-PX-OK: default echo feedback
+        (AMIX_DELAY_MIX, 0.3),      // LITERAL-PX-OK: default delay return level
+    ] {
+        store.register(
+            id,
+            InteractiveState::Slider {
+                state: SliderState::Normal,
+                value,
+                orientation: SliderOrientation::Horizontal,
+            },
+        );
+    }
+    let delay_send = || InteractiveState::Slider {
+        state: SliderState::Normal,
+        value: 0.0,
+        orientation: SliderOrientation::Horizontal,
+    };
+    for id in SUB_DELAY_SEND {
+        store.register(id, delay_send());
     }
 
     // Master 3-band EQ — Low / Mid / High gain sliders, centered at 0.5 (flat).

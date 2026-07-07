@@ -35,6 +35,7 @@ fn warm_render_does_not_reallocate() {
     let warm_scratch = renderer.scratch_capacity();
     let warm_bus_scratch = renderer.bus_scratch_capacity();
     let warm_send_scratch = renderer.send_scratch_capacity();
+    let warm_delay_send_scratch = renderer.delay_send_scratch_capacity();
     let voice_cap = renderer.voice_capacity();
     assert!(
         warm_scratch >= FRAMES * 2,
@@ -67,6 +68,11 @@ fn warm_render_does_not_reallocate() {
         renderer.send_scratch_capacity(),
         warm_send_scratch,
         "HR-3 violation: the reverb-send scratch reallocated in the hot path"
+    );
+    assert_eq!(
+        renderer.delay_send_scratch_capacity(),
+        warm_delay_send_scratch,
+        "HR-3 violation: the delay-send scratch reallocated in the hot path"
     );
     assert_eq!(
         renderer.voice_capacity(),

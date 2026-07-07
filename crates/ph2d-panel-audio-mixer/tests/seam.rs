@@ -9,14 +9,15 @@ use ph2d_editor_core::interaction::WidgetEvent;
 use ph2d_editor_core::panel::{EventOutcome, Panel, PanelHostInternal};
 use ph2d_panel_audio_mixer::state::AudioMixerState;
 use ph2d_panel_audio_mixer::{
-    AMIX_CUTOFF, AMIX_DUCK, AMIX_DUCK_DEPTH, AMIX_DUCK_KEY, AMIX_EQ_LOW, AMIX_FADER, AMIX_LIMITER,
-    AMIX_LOWCUT, AMIX_MASTER_METER, AMIX_MASTER_MUTE, AMIX_PAN, AMIX_PLAY, AMIX_REVERB,
-    AMIX_REVERB_SIZE, AudioMixerPanel, FADER_UNITY_POS, SUB_FADER, SUB_LOWCUT, SUB_MUTE, SUB_PAN,
-    SUB_SEND, SUB_SOLO, SUB_TONE, duck_depth, ducking, ducking_key, fader_gain, limiter,
-    master_clipped, master_cutoff_target, master_eq_target, master_gain_target,
-    master_lowcut_target, master_muted, master_pan_target, play_test, reverb_on, reverb_size,
-    set_levels, sub_gain_target, sub_lowcut_target, sub_muted, sub_pan_target, sub_send_target,
-    sub_soloed, sub_tone_target,
+    AMIX_CUTOFF, AMIX_DELAY, AMIX_DELAY_TIME, AMIX_DUCK, AMIX_DUCK_DEPTH, AMIX_DUCK_KEY,
+    AMIX_EQ_LOW, AMIX_FADER, AMIX_LIMITER, AMIX_LOWCUT, AMIX_MASTER_METER, AMIX_MASTER_MUTE,
+    AMIX_PAN, AMIX_PLAY, AMIX_REVERB, AMIX_REVERB_SIZE, AudioMixerPanel, FADER_UNITY_POS,
+    SUB_DELAY_SEND, SUB_FADER, SUB_LOWCUT, SUB_MUTE, SUB_PAN, SUB_SEND, SUB_SOLO, SUB_TONE,
+    delay_on, delay_time, duck_depth, ducking, ducking_key, fader_gain, limiter, master_clipped,
+    master_cutoff_target, master_eq_target, master_gain_target, master_lowcut_target, master_muted,
+    master_pan_target, play_test, reverb_on, reverb_size, set_levels, sub_delay_send_target,
+    sub_gain_target, sub_lowcut_target, sub_muted, sub_pan_target, sub_send_target, sub_soloed,
+    sub_tone_target,
 };
 use ph2d_ui_testkit::MockPanelHost;
 
@@ -282,6 +283,48 @@ fn duck_key_click_cycles_the_key_bus() {
         (before + 1) % 4,
         "Key click must advance to the next sub-bus (wraps at 4)"
     );
+}
+
+/// The Delay toggle flips the enable flag, dragging Time publishes the raw 0..1
+/// (seconds), and a sub-bus Delay send publishes into its own slot only.
+#[test]
+fn delay_toggle_time_and_send_publish() {
+    let mut host = MockPanelHost::with_panel::<AudioMixerPanel>();
+    let mut state = AudioMixerState;
+
+    let before = delay_on();
+    let outcome =
+        host.apply_panel_event::<AudioMixerPanel>(&mut state, WidgetEvent::Click(AMIX_DELAY));
+    assert_eq!(
+        outcome,
+        EventOutcome::Consumed,
+        "panel ignored the Delay click — the AMIX_DELAY arm is missing"
+    );
+    assert_ne!(delay_on(), before, "Delay click must flip the enable flag");
+
+    host.set_slider_value(AMIX_DELAY_TIME, 0.5);
+    host.apply_panel_event::<AudioMixerPanel>(
+        &mut state,
+        WidgetEvent::ValueChanged(AMIX_DELAY_TIME),
+    );
+    assert!(
+        (delay_time() - 0.5).abs() < 1e-5,
+        "Time drag must publish the raw value, got {}",
+        delay_time()
+    );
+
+    host.set_slider_value(SUB_DELAY_SEND[0], 0.7);
+    host.apply_panel_event::<AudioMixerPanel>(
+        &mut state,
+        WidgetEvent::ValueChanged(SUB_DELAY_SEND[0]),
+    );
+    let sends = sub_delay_send_target();
+    assert!(
+        (sends[0] - 0.7).abs() < 1e-5,
+        "delay send must publish 0.7, got {}",
+        sends[0]
+    );
+    assert!(sends[1].abs() < 1e-5, "the other bus delay send stays dry");
 }
 
 /// The Reverb toggle flips the enable flag, and dragging Size publishes the raw

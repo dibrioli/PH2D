@@ -233,6 +233,29 @@ impl AudioEngine {
         self.send(AudioCommand::SetBusSend { bus, amount })
     }
 
+    /// Set the master delay/echo return: `on`, `time` (s), `feedback` (0..1),
+    /// return `mix` level (0..1). Fed by [`AudioEngine::set_bus_delay_send`].
+    pub fn set_delay(
+        &self,
+        on: bool,
+        time: f32,
+        feedback: f32,
+        mix: f32,
+    ) -> Result<(), AudioError> {
+        self.send(AudioCommand::SetDelay {
+            on,
+            time,
+            feedback,
+            mix,
+        })
+    }
+
+    /// Set a sub-bus's delay aux-send `amount` (0..1) — how much of that bus's
+    /// post-fader signal feeds the delay return.
+    pub fn set_bus_delay_send(&self, bus: BusId, amount: f32) -> Result<(), AudioError> {
+        self.send(AudioCommand::SetBusDelaySend { bus, amount })
+    }
+
     /// Set the master 3-band EQ gains in dB — low shelf ([`EQ_LOW_HZ`]), mid peak
     /// ([`EQ_MID_HZ`]), high shelf ([`EQ_HIGH_HZ`]). `0 dB` per band = flat
     /// (transparent). Coeffs computed control-side (no RT transcendentals).
@@ -318,17 +341,18 @@ impl AudioRenderer {
 
         // 2. Zero the stereo scratch for this block (reuses capacity when warm).
         scratch.reset(frames * 2);
-        let (master, bus_scratch, send) = scratch.split_mut();
+        let (master, bus_scratch, send, delay_send) = scratch.split_mut();
 
         // 3. Mix active voices through their sub-buses + master gain, capturing
-        //    each sub-bus's post-fader peak + RMS for the strip meters. `send`
-        //    accumulates the per-bus reverb aux-sends for the return.
+        //    each sub-bus's post-fader peak + RMS for the strip meters. `send` /
+        //    `delay_send` accumulate the per-bus reverb / delay aux-sends.
         let mut bus_peaks = [[0.0f32; 2]; SUB_BUS_COUNT];
         let mut bus_rms = [[0.0f32; 2]; SUB_BUS_COUNT];
         mixer.render(
             master,
             bus_scratch,
             send,
+            delay_send,
             &mut bus_peaks,
             &mut bus_rms,
             frames,
@@ -393,6 +417,11 @@ impl AudioRenderer {
     /// Reverb-send bus capacity — the third buffer the HR-3 no-alloc gate checks.
     pub fn send_scratch_capacity(&self) -> usize {
         self.scratch.send_capacity()
+    }
+
+    /// Delay-send bus capacity — the fourth buffer the HR-3 no-alloc gate checks.
+    pub fn delay_send_scratch_capacity(&self) -> usize {
+        self.scratch.delay_send_capacity()
     }
 }
 

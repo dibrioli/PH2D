@@ -39,18 +39,24 @@ impl Panel for MotionGraphPanel {
         if !ctx.host.panel_visible(MotionGraphPanel::ID) {
             // Stale-rect cleanup so `panel_at` stops returning this panel once the
             // tool deactivates.
-            ctx.host.store_mut().clear_panel_rect(ids::MOTION_GRAPH_PANEL);
+            ctx.host
+                .store_mut()
+                .clear_panel_rect(ids::MOTION_GRAPH_PANEL);
             return;
         }
         let rect = ctx.layout.motion_graph;
         if rect.w <= 0.0 || rect.h <= 0.0 {
             // No split (or a degenerate one) → nothing to draw.
-            ctx.host.store_mut().clear_panel_rect(ids::MOTION_GRAPH_PANEL);
+            ctx.host
+                .store_mut()
+                .clear_panel_rect(ids::MOTION_GRAPH_PANEL);
             return;
         }
         let theme = ctx.host.theme();
         // Publish the rect so wheel/click dispatch can route to this panel.
-        ctx.host.store_mut().set_panel_rect(ids::MOTION_GRAPH_PANEL, rect);
+        ctx.host
+            .store_mut()
+            .set_panel_rect(ids::MOTION_GRAPH_PANEL, rect);
         // Fase A: opaque graph canvas fill (dark in every theme) — covers the
         // sprite render underneath the graph half of the split.
         fill_rounded_rect(ctx.scene, rect, 0.0, resolve(ColorToken::GraphBg, theme));

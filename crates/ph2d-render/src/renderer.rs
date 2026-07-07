@@ -669,20 +669,15 @@ impl SpriteRenderer {
         self.render_with_extra(target, present, camera, window, clear_color, &[], None);
     }
 
-    /// Like [`render`](Self::render) but also injects an external instance slice
-    /// into the sprite pass (Motion Nodes M0.T11). The `extra` slice is appended
-    /// to the scene instances collected from `present`, then sorted + run-batched
-    /// together in the same pass — so a cooked node-graph stream draws **without**
-    /// being spawned into `PresentWorld` (stream ≠ ECS, ADR-0035). Pass `&[]` for
-    /// the scene-only path ([`render`](Self::render) does exactly that).
-    ///
-    /// `scene_viewport` (Motion Nodes M0.T13) is an optional `[x, y, w, h]`
-    /// sub-rect in target pixels: when `Some`, the scene renders framed into that
-    /// sub-rect (the split viewport⟂graph — via `set_viewport`/`set_scissor_rect`
-    /// + [`Camera2d::uniform_for_subrect`]) instead of the full target. It is
-    /// honored only on the plain single-pass path; a frame with clip/mask groups
-    /// ignores it (those passes don't take a sub-rect yet) and renders
-    /// full-window — the graph panel still covers the graph area on top.
+    /// [`render`](Self::render) plus two Motion Nodes hooks. `extra` (M0.T11) is
+    /// an external instance slice appended to the scene, sorted + batched in the
+    /// same pass — a cooked node-graph stream draws without being spawned into
+    /// `PresentWorld` (stream ≠ ECS, ADR-0035); `&[]` = scene-only. `scene_viewport`
+    /// (M0.T13) optionally frames the scene into a target sub-rect `[x, y, w, h]`
+    /// px via `set_viewport`/`set_scissor_rect` + [`Camera2d::uniform_for_subrect`]
+    /// (the split viewport-vs-graph); it applies only on the plain single-pass
+    /// path — a clip/mask frame ignores it and renders full-window (still covered
+    /// by the graph panel on top).
     #[allow(clippy::too_many_arguments)]
     pub fn render_with_extra(
         &mut self,
@@ -694,9 +689,8 @@ impl SpriteRenderer {
         extra: &[RenderInstance],
         scene_viewport: Option<[f32; 4]>,
     ) {
-        // Collect scene instances + the injected `extra` slice into `scratch`
-        // and sort into canonical render order (extracted to keep this file
-        // under its LOC cap; Motion Nodes M0.T11).
+        // Collect scene instances + the `extra` slice into `scratch` and sort
+        // (extracted to keep this file under its LOC cap; M0.T11).
         crate::sprite_collect::collect_sorted_instances(&mut self.scratch, present, extra);
         compute_runs(&self.scratch, &mut self.runs);
         // Ensure an atlas bind group exists for every distinct sampling
@@ -718,11 +712,9 @@ impl SpriteRenderer {
         let has_clip = count > 0 && self.runs.iter().any(|r| r.clip_group != 0);
         let has_mask = count > 0 && self.runs.iter().any(|r| r.mask_role != 0);
 
-        // Motion Nodes M0.T13 — the split-viewport sub-rect is honored only on
-        // the plain single-pass path; the clip/mask passes render to the full
-        // target, so pairing the subrect projection with them would mis-project.
-        // A clip/mask frame therefore renders full-window (still covered by the
-        // graph panel on top). `subrect` is the effective viewport this frame.
+        // Motion Nodes M0.T13 — the split sub-rect is honored only on the plain
+        // single-pass path; a clip/mask frame renders full-window (mixing the
+        // subrect projection with the full-target clip pass would mis-project).
         let subrect = scene_viewport.filter(|_| !has_clip && !has_mask);
         let camera_uniform = match subrect {
             Some([_, _, w, h]) => camera.uniform_for_subrect(w, h),
@@ -782,9 +774,8 @@ impl SpriteRenderer {
                 occlusion_query_set: None,
                 multiview_mask: None,
             });
-            // Motion Nodes M0.T13 — frame the scene into the split sub-rect (the
-            // camera uniform above already uses the sub-rect aspect). Clear still
-            // fills the whole attachment; the scissor confines draws.
+            // M0.T13 — confine the scene to the split sub-rect (uniform above uses
+            // its aspect; the clear still fills the whole attachment).
             if let Some([x, y, w, h]) = subrect {
                 pass.set_viewport(x, y, w, h, 0.0, 1.0);
                 pass.set_scissor_rect(x as u32, y as u32, (w.max(1.0)) as u32, (h.max(1.0)) as u32);

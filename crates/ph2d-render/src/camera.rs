@@ -246,7 +246,14 @@ impl Camera2d {
         let half_w = half_h * aspect;
         let cx = self.center[0];
         let cy = self.center[1];
-        Mat4::orthographic_rh(cx - half_w, cx + half_w, cy - half_h, cy + half_h, -1.0, 1.0)
+        Mat4::orthographic_rh(
+            cx - half_w,
+            cx + half_w,
+            cy - half_h,
+            cy + half_h,
+            -1.0,
+            1.0,
+        )
     }
 
     /// [`CameraUniform`] form of [`Self::view_proj_for_subrect`].
@@ -304,7 +311,10 @@ mod tests {
             .to_cols_array_2d();
         for c in 0..4 {
             for r in 0..4 {
-                assert!((full[c][r] - sub[c][r]).abs() < 1e-6, "mismatch at [{c}][{r}]");
+                assert!(
+                    (full[c][r] - sub[c][r]).abs() < 1e-6,
+                    "mismatch at [{c}][{r}]"
+                );
             }
         }
     }

@@ -34,13 +34,17 @@ impl Panel for MotionParamsPanel {
 
     fn paint(_state: &mut MotionParamsPanelState, ctx: &mut PaintCtx) {
         if !ctx.host.panel_visible(MotionParamsPanel::ID) {
-            ctx.host.store_mut().clear_panel_rect(ids::MOTION_PARAMS_PANEL);
+            ctx.host
+                .store_mut()
+                .clear_panel_rect(ids::MOTION_PARAMS_PANEL);
             return;
         }
         let rect = ctx.layout.inspector;
         let theme = ctx.host.theme();
         // Publish the rect so wheel/click dispatch can route to this panel.
-        ctx.host.store_mut().set_panel_rect(ids::MOTION_PARAMS_PANEL, rect);
+        ctx.host
+            .store_mut()
+            .set_panel_rect(ids::MOTION_PARAMS_PANEL, rect);
         // Canonical dark-glass surface + title — identical chrome to the
         // Inspector / Vector panels. Body (param rows) is M1.
         paint_panel_surface(rect, ctx.scene, theme);

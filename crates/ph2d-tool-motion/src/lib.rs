@@ -24,7 +24,7 @@ use ph2d_tool_registry::{HandlerFn, McpExposure, Registry, ToolHandler, ToolMani
 /// Construct the Motion tool as a boxed trait object. Codegen target for
 /// `ph2d-tool-sync` (`register_all_tools`).
 pub fn make() -> Box<dyn ph2d_editor_core::tool::Tool> {
-    Box::new(MotionTool::default())
+    Box::new(MotionTool)
 }
 
 /// Placeholder handler for the `ToolHandler::Stateful` slot — never runs; the

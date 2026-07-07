@@ -538,7 +538,6 @@ impl crate::App {
             ph2d_ecs::RepeatMode::Disabled,
         );
 
-
         // Sprite-layer clear color = backdrop visible in the canvas
         // area through the transparent regions of `vello_rt`. Live
         // editor mode wants a static neutral surface so it doesn't

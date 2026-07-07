@@ -83,9 +83,24 @@ fn key_cmd(kc: u32, cmd: bool) -> KeyEvent {
 fn node_down_move_up_streams_begin_update_end() {
     let (mut store, hits) = graph_setup(GraphHitKind::Node { node: 7 });
     let arena = Bump::new();
-    let _ = dispatch_pointer(&mut store, &hits, pointer(PointerKind::Down, 60.0, 60.0), &arena);
-    let _ = dispatch_pointer(&mut store, &hits, pointer(PointerKind::Move, 120.0, 90.0), &arena);
-    let _ = dispatch_pointer(&mut store, &hits, pointer(PointerKind::Up, 120.0, 90.0), &arena);
+    let _ = dispatch_pointer(
+        &mut store,
+        &hits,
+        pointer(PointerKind::Down, 60.0, 60.0),
+        &arena,
+    );
+    let _ = dispatch_pointer(
+        &mut store,
+        &hits,
+        pointer(PointerKind::Move, 120.0, 90.0),
+        &arena,
+    );
+    let _ = dispatch_pointer(
+        &mut store,
+        &hits,
+        pointer(PointerKind::Up, 120.0, 90.0),
+        &arena,
+    );
 
     let g: Vec<_> = store.drain_graph_gestures().collect();
     assert_eq!(g.len(), 3);
@@ -106,8 +121,18 @@ fn node_down_move_up_streams_begin_update_end() {
 fn down_up_without_movement_is_a_click() {
     let (mut store, hits) = graph_setup(GraphHitKind::Background);
     let arena = Bump::new();
-    let _ = dispatch_pointer(&mut store, &hits, pointer(PointerKind::Down, 60.0, 60.0), &arena);
-    let _ = dispatch_pointer(&mut store, &hits, pointer(PointerKind::Up, 60.0, 60.0), &arena);
+    let _ = dispatch_pointer(
+        &mut store,
+        &hits,
+        pointer(PointerKind::Down, 60.0, 60.0),
+        &arena,
+    );
+    let _ = dispatch_pointer(
+        &mut store,
+        &hits,
+        pointer(PointerKind::Up, 60.0, 60.0),
+        &arena,
+    );
 
     let g: Vec<_> = store.drain_graph_gestures().collect();
     assert_eq!(g.len(), 2);
@@ -121,8 +146,18 @@ fn update_fires_even_after_the_pointer_leaves_the_rect() {
     // gated on the capture being active, NOT on rect containment.
     let (mut store, hits) = graph_setup(GraphHitKind::Node { node: 1 });
     let arena = Bump::new();
-    let _ = dispatch_pointer(&mut store, &hits, pointer(PointerKind::Down, 60.0, 60.0), &arena);
-    let _ = dispatch_pointer(&mut store, &hits, pointer(PointerKind::Move, 999.0, 999.0), &arena);
+    let _ = dispatch_pointer(
+        &mut store,
+        &hits,
+        pointer(PointerKind::Down, 60.0, 60.0),
+        &arena,
+    );
+    let _ = dispatch_pointer(
+        &mut store,
+        &hits,
+        pointer(PointerKind::Move, 999.0, 999.0),
+        &arena,
+    );
 
     let g: Vec<_> = store.drain_graph_gestures().collect();
     assert_eq!(g.len(), 2);
@@ -184,7 +219,12 @@ fn gesture_carries_the_cached_modifiers() {
     store.set_shift_held(true);
     store.set_alt_held(true);
     let arena = Bump::new();
-    let _ = dispatch_pointer(&mut store, &hits, pointer(PointerKind::Down, 60.0, 60.0), &arena);
+    let _ = dispatch_pointer(
+        &mut store,
+        &hits,
+        pointer(PointerKind::Down, 60.0, 60.0),
+        &arena,
+    );
 
     let g: Vec<_> = store.drain_graph_gestures().collect();
     assert!(g[0].mods.shift && g[0].mods.alt && !g[0].mods.cmd);

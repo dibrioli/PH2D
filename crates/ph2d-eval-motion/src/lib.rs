@@ -329,7 +329,10 @@ mod tests {
         lower_to_instances_into(&s2, [0.0, 0.0, 1.0, 1.0], [1.0, 1.0], &mut buf);
         assert_eq!(buf.len(), 1);
         assert_eq!(buf[0].world_pos, [9.0, 9.0]);
-        assert!(buf.capacity() >= cap_before, "capacity retained, not shrunk");
+        assert!(
+            buf.capacity() >= cap_before,
+            "capacity retained, not shrunk"
+        );
     }
 
     #[test]

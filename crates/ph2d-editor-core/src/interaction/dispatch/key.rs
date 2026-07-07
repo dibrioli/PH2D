@@ -17,12 +17,12 @@ use super::keymap::{
     KEY_ENTER, KEY_ESCAPE, KEY_KEY_A, KEY_KEY_C, KEY_KEY_D, KEY_KEY_F, KEY_KEY_K, KEY_KEY_P,
     KEY_KEY_V, KEY_KEY_X, KEY_SPACE, KEY_TAB,
 };
-use crate::interaction::types::GraphKey;
 use super::text_ops::{next_char_boundary, prev_char_boundary};
 use super::{
     commit_hex_buffer, commit_number_buffer, reset_focused_visual_state, revert_number_buffer,
     select_all_in_text_widget, write_hex_canonical,
 };
+use crate::interaction::types::GraphKey;
 use bumpalo::Bump;
 use bumpalo::collections::Vec as BumpVec;
 use ph2d_host::{KeyEvent, KeyKind};

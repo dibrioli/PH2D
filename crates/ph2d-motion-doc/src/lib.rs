@@ -116,7 +116,11 @@ impl MotionDoc {
         let mut base_z = 0u32;
         let mut backdrops: Vec<Backdrop> = Vec::new();
         let mut seen = std::collections::BTreeSet::new();
-        for line in backdrop_part.lines().map(str::trim).filter(|l| !l.is_empty()) {
+        for line in backdrop_part
+            .lines()
+            .map(str::trim)
+            .filter(|l| !l.is_empty())
+        {
             // `b` carries a trailing free-text title, so split into at most 8 fields
             // on single spaces (to_text guarantees single-space separators). Other
             // records use whitespace-collapsing splits.
@@ -134,7 +138,10 @@ impl MotionDoc {
                 let w: f32 = finite(field(&parts, 4, line)?, line)?;
                 let h: f32 = finite(field(&parts, 5, line)?, line)?;
                 let color: u8 = field(&parts, 6, line)?;
-                let title = parts.get(7).map(|s| s.trim().to_string()).unwrap_or_default();
+                let title = parts
+                    .get(7)
+                    .map(|s| s.trim().to_string())
+                    .unwrap_or_default();
                 backdrops.push(Backdrop {
                     id,
                     x,
@@ -220,10 +227,10 @@ impl MotionHistory {
     /// becomes an undo step (and clears redo). If nothing changed, the snapshot is
     /// discarded (does not pollute the history).
     pub fn commit_if_changed(&mut self, doc: &MotionDoc) {
-        if let Some(pre) = self.pending.take() {
-            if &pre != doc {
-                self.push_undo(pre);
-            }
+        if let Some(pre) = self.pending.take()
+            && &pre != doc
+        {
+            self.push_undo(pre);
         }
     }
 
@@ -320,11 +327,12 @@ impl MotionTransport {
             return;
         }
         self.tick = self.tick.saturating_add(steps);
-        if let Some((lo, hi)) = self.loop_range {
-            if hi > lo && self.tick >= hi {
-                let span = hi - lo;
-                self.tick = lo + (self.tick - lo) % span;
-            }
+        if let Some((lo, hi)) = self.loop_range
+            && hi > lo
+            && self.tick >= hi
+        {
+            let span = hi - lo;
+            self.tick = lo + (self.tick - lo) % span;
         }
     }
 }
@@ -423,19 +431,28 @@ mod tests {
     #[test]
     fn serialization_is_deterministic() {
         let doc = sample();
-        assert_eq!(doc.to_text(), MotionDoc::from_text(&doc.to_text()).unwrap().to_text());
+        assert_eq!(
+            doc.to_text(),
+            MotionDoc::from_text(&doc.to_text()).unwrap().to_text()
+        );
     }
 
     #[test]
     fn duplicate_backdrop_id_is_rejected() {
         let text = "v1\n[layout]\n[backdrop]\nz 0\nb 0 0 0 1 1 0 A\nb 0 0 0 1 1 0 B\n";
-        assert!(matches!(MotionDoc::from_text(text), Err(ParseError::BadLine(_))));
+        assert!(matches!(
+            MotionDoc::from_text(text),
+            Err(ParseError::BadLine(_))
+        ));
     }
 
     #[test]
     fn non_finite_backdrop_rect_is_rejected() {
         let text = "v1\n[layout]\n[backdrop]\nb 0 nan 0 1 1 0 A\n";
-        assert!(matches!(MotionDoc::from_text(text), Err(ParseError::BadLine(_))));
+        assert!(matches!(
+            MotionDoc::from_text(text),
+            Err(ParseError::BadLine(_))
+        ));
     }
 
     #[test]

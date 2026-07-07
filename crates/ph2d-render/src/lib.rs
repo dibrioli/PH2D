@@ -51,8 +51,8 @@ pub mod premul;
 pub mod preview_premul;
 pub mod registry;
 pub mod renderer;
-mod sprite_collect;
 pub mod sprite;
+mod sprite_collect;
 /// Sprite Inspector v2 — W0 frozen (schema v3 baseline). The W1
 /// schema bump v3→v4 + ABI changes live behind this module. See
 /// [`docs/HANDOFF_sprite_inspector_v2.md`](../../../docs/HANDOFF_sprite_inspector_v2.md)

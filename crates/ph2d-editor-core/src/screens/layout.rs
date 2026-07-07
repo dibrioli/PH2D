@@ -233,7 +233,12 @@ impl HeroLayout {
                 let left_w = viewport.w * CenterSplit::clamp_t(t);
                 (
                     Rect::new(viewport.x, chrome_top, left_w, chrome_h),
-                    Rect::new(viewport.x + left_w, chrome_top, viewport.w - left_w, chrome_h),
+                    Rect::new(
+                        viewport.x + left_w,
+                        chrome_top,
+                        viewport.w - left_w,
+                        chrome_h,
+                    ),
                 )
             }
         };
@@ -291,7 +296,12 @@ mod split_tests {
 
     #[test]
     fn horizontal_split_scene_on_top_graph_below_partition_the_band() {
-        let l = HeroLayout::for_viewport_split(vp(), false, RAIL_W, CenterSplit::Horizontal { t: 0.55 });
+        let l = HeroLayout::for_viewport_split(
+            vp(),
+            false,
+            RAIL_W,
+            CenterSplit::Horizontal { t: 0.55 },
+        );
         // Scene sits above the graph; both share the band's x/width.
         assert!(l.center_viewport.y < l.motion_graph.y);
         assert!(approx(l.center_viewport.x, l.motion_graph.x));
@@ -308,7 +318,8 @@ mod split_tests {
 
     #[test]
     fn vertical_split_scene_on_left_graph_on_right() {
-        let l = HeroLayout::for_viewport_split(vp(), false, RAIL_W, CenterSplit::Vertical { t: 0.5 });
+        let l =
+            HeroLayout::for_viewport_split(vp(), false, RAIL_W, CenterSplit::Vertical { t: 0.5 });
         assert!(l.center_viewport.x < l.motion_graph.x);
         assert!(approx(l.center_viewport.y, l.motion_graph.y));
         assert!(approx(l.center_viewport.h, l.motion_graph.h));
@@ -320,7 +331,8 @@ mod split_tests {
 
     #[test]
     fn timeline_slot_is_zero_height_at_graph_bottom() {
-        let l = HeroLayout::for_viewport_split(vp(), false, RAIL_W, CenterSplit::Horizontal { t: 0.6 });
+        let l =
+            HeroLayout::for_viewport_split(vp(), false, RAIL_W, CenterSplit::Horizontal { t: 0.6 });
         assert_eq!(l.motion_timeline_slot.h, 0.0);
         assert!(approx(
             l.motion_timeline_slot.y,

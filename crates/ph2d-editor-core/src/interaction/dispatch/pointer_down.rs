@@ -14,7 +14,7 @@ use super::{
     commit_hex_buffer, commit_number_buffer, init_number_buffer, reset_focused_visual_state,
     select_all_in_text_widget,
 };
-use crate::interaction::types::{BlenderHitKind, ContextMenuKind};
+use crate::interaction::types::{BlenderHitKind, ContextMenuKind, GesturePhase, GraphGesture};
 use crate::interaction::{HitIndex, InteractiveState, WidgetEvent, WidgetStore, drag};
 use crate::zones::Rect;
 use bumpalo::collections::Vec as BumpVec;
@@ -32,6 +32,29 @@ pub(super) fn dispatch_down<'frame>(
     events: &mut BumpVec<'frame, WidgetEvent>,
 ) {
     let hit = hit_index.hit_with_rect(event.x, event.y);
+
+    // Motion Nodes M0.T3 — a graph surface captures the pointer for ALL buttons
+    // (incl. Secondary/Middle), BEFORE the context-menu delegation, so a
+    // right-click on the graph opens the graph's own add-menu (panel-side)
+    // instead of the global note menu, and a middle-drag reaches the graph pan.
+    if let Some((id, rect)) = hit
+        && let Some((surface, kind)) = store.graph_surface_at_id(id)
+    {
+        store.set_active(Some(id));
+        store.set_active_rect(Some(rect));
+        store.set_graph_moved(false);
+        let mods = store.gesture_mods();
+        store.push_graph_gesture(GraphGesture {
+            surface,
+            kind,
+            phase: GesturePhase::Begin,
+            x: event.x,
+            y: event.y,
+            button: event.button,
+            mods,
+        });
+        return;
+    }
 
     // Right-click context menus + TopBar/chip popovers. On a handled event the
     // original arm returned immediately — preserve that here.

@@ -133,6 +133,9 @@ impl App {
             hero.store.set_shift_held(self.modifiers.shift_key());
             hero.store
                 .set_cmd_held(self.modifiers.super_key() || self.modifiers.control_key());
+            // Motion Nodes M0.T3 — Alt cache, folded into `GestureMods.alt` for
+            // graph gestures (mirror of shift/cmd; pointer events carry no mods).
+            hero.store.set_alt_held(self.modifiers.alt_key());
         }
     }
 
@@ -403,7 +406,12 @@ impl App {
             pressure: 1.0,
             kind: PointerKind::Move,
             source: PointerSource::Mouse,
-            button: ph2d_host::PointerButton::Primary,
+            // Motion Nodes M0.T1: carry the REAL held button (winit's Move has
+            // none). A middle/right drag now reaches editor-core with its
+            // identity intact — the graph channel needs it (pan/box-select).
+            button: self
+                .held_button
+                .unwrap_or(ph2d_host::PointerButton::Primary),
             timestamp_ns: Self::timestamp_ns(),
         };
         self.handler.on_pointer(evt);
@@ -458,6 +466,13 @@ impl App {
             MouseButton::Right => ph2d_host::PointerButton::Secondary,
             MouseButton::Middle => ph2d_host::PointerButton::Middle,
             _ => ph2d_host::PointerButton::Primary,
+        };
+        // Motion Nodes M0.T1: track the held button so `CursorMoved` can carry
+        // its identity (winit Move events don't). Held between Down and Up.
+        self.held_button = match kind {
+            PointerKind::Down => Some(mapped_button),
+            PointerKind::Up => None,
+            PointerKind::Move => self.held_button,
         };
         let evt = PointerEvent {
             x: self.last_pointer.0,

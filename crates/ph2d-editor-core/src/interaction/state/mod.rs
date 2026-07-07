@@ -19,6 +19,7 @@
 
 mod blender_ops;
 mod chrome_ops;
+mod graph_ops;
 mod panel_ops;
 mod store_core;
 mod store_hierarchy;
@@ -30,7 +31,9 @@ use std::collections::BTreeMap;
 use super::drag::{
     HierarchyDragState, NumberInputDragState, NumberStepperHoldState, ScrollbarDragAnchor,
 };
-use super::types::{BlenderHitKind, ContextMenuRequest, NoteData};
+use super::types::{
+    BlenderHitKind, ContextMenuRequest, GraphGesture, GraphHitKind, GraphKey, GraphZoom, NoteData,
+};
 use super::util::format_number;
 
 use crate::widget::{
@@ -169,6 +172,21 @@ pub enum InteractiveState {
         index: u8,
         /// The curve plotting area, in the same coords as the hit rect — the
         /// drag normalizes against THIS, not the handle's small grab rect.
+        canvas: Rect,
+    },
+    /// Motion Nodes M0.T2 — a hit target inside a graph editor surface (node,
+    /// socket, wire, backdrop, or the background itself). The motion-graph panel
+    /// sets one per target as it paints, mirrored by a [`super::HitIndex`]
+    /// registration. Dispatch captures it on Down and streams [`GraphGesture`]s
+    /// (Begin/Update/End/Click) to the panel via
+    /// [`WidgetStore::push_graph_gesture`] — it never interprets `kind`
+    /// (editor-core knows no graph semantics). `canvas` is the surface's rect
+    /// (for the panel's own coordinate mapping; the pointer position is carried
+    /// raw in the gesture). Mirrors [`InteractiveState::CurvePoint`]'s
+    /// pointer-in-rect routing shim.
+    GraphSurface {
+        parent: NodeId,
+        kind: GraphHitKind,
         canvas: Rect,
     },
     Modal {
@@ -548,6 +566,31 @@ pub struct WidgetStore {
     /// former per-id `PAINTER_COLOR_THUMB` special-case so any panel swatch
     /// (Painter brush color, Vector fill, …) opens the picker uniformly.
     pub(super) picker_swatch_ids: std::collections::BTreeSet<NodeId>,
+    /// Motion Nodes M0.T2 — graph pointer gestures stashed by dispatch, drained
+    /// by the motion-graph panel each frame. Dispatch never interprets them
+    /// (mirror of `curve_point_drag`, but a queue: one frame can hold a Begin
+    /// followed by several Updates).
+    pub(super) graph_gestures: Vec<GraphGesture>,
+    /// Per-surface accumulated anchored-zoom (wheel over the graph canvas),
+    /// drained by the panel. Mirror of `panel_scroll`, plus the zoom anchor.
+    pub(super) graph_zoom: BTreeMap<NodeId, GraphZoom>,
+    /// Graph keyboard commands (Delete/F/A/Esc/K/P/Ctrl+D) produced while a
+    /// graph surface holds focus, drained by the panel.
+    pub(super) graph_keys: Vec<GraphKey>,
+    /// Per-surface canvas rect, republished by the panel each frame so
+    /// `dispatch_wheel` can tell when the cursor is over a graph (mirror of
+    /// `panel_rects`, scoped to graph surfaces).
+    pub(super) graph_canvas: BTreeMap<NodeId, Rect>,
+    /// The graph surface that currently holds keyboard focus (set by the panel
+    /// when the motion tool is active + the graph is hovered/focused), so
+    /// `dispatch_key` routes graph shortcuts. `None` = no graph focus.
+    pub(super) graph_focused: Option<NodeId>,
+    /// Whether the active graph capture has moved since Down — decides End vs
+    /// Click on Up (mirror of the NumberInput drag's threshold flag).
+    pub(super) graph_moved: bool,
+    /// Latest Alt modifier state, mirror of [`Self::shift_held`]/[`Self::cmd_held`].
+    /// Pushed by the shell on `ModifiersChanged`; folded into `GestureMods.alt`.
+    pub(super) alt_held: bool,
 }
 
 #[cfg(test)]

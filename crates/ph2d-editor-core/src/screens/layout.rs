@@ -51,14 +51,16 @@ pub enum CenterSplit {
 
 impl CenterSplit {
     /// Divider clamp — the scene (and graph) always keep at least a quarter.
-    pub const T_MIN: f32 = 0.25;
-    pub const T_MAX: f32 = 0.75;
+    pub const T_MIN: f32 = 0.25; // LITERAL-PX-OK: split ratio (fraction of center), not a design token.
+    pub const T_MAX: f32 = 0.75; // LITERAL-PX-OK: split ratio (fraction of center), not a design token.
     /// Default split fraction — the scene gets 55 % of the center (plan §2.1).
-    pub const T_DEFAULT: f32 = 0.55;
+    pub const T_DEFAULT: f32 = 0.55; // LITERAL-PX-OK: split ratio (fraction of center), not a design token.
 
-    /// Clamp a raw fraction into the legal divider range.
+    /// Clamp a raw fraction into the legal divider range. NaN-aware
+    /// (`safe_clamp`): a divider drag that produced a NaN `t` collapses to the
+    /// lower bound instead of poisoning the layout.
     pub fn clamp_t(t: f32) -> f32 {
-        t.clamp(Self::T_MIN, Self::T_MAX)
+        crate::math::safe_clamp(t, Self::T_MIN, Self::T_MAX)
     }
 
     /// `true` for a horizontal or vertical split (the graph is visible).

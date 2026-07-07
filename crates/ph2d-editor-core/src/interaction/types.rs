@@ -11,6 +11,7 @@
 //! edits.
 
 use ph2d_a11y::NodeId;
+use ph2d_host::PointerButton;
 
 /// A pending palette file-I/O request the picker dispatch raises and the host (shell) services by
 /// opening a file dialog: [`Import`](Self::Import) loads + REPLACES the active palette,
@@ -223,4 +224,121 @@ pub enum ContextMenuKind {
     /// it and calls `PainterTool::set_curve_handle_kind` (crosses as a u8 since
     /// editor-core can't depend on the tool crate).
     CurvePointHandle,
+}
+
+// ───────────────────────────── Motion Nodes M0.T2 ─────────────────────────────
+// Foundational graph-surface dispatch types. Editor-core carries these through
+// the pointer/key dispatch WITHOUT interpreting them: the motion-graph panel
+// registers each hit target with a `GraphHitKind` (Motion Nodes plan §2.2) and
+// reads the drained `GraphGesture`s back. Every element handle is an OPAQUE
+// integer — editor-core knows no graph semantics (same "crosses as an integer"
+// rule as the tool-side context-menu payloads above).
+
+/// What a graph pointer gesture is aimed at. `node`/`edge`/`id` are the panel's
+/// own opaque handles (it maps them back to its `MotionDoc`); `port`/`index` are
+/// element ordinals. Editor-core never dereferences them — it only routes them
+/// from the hit target back to the panel on the drained gesture.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum GraphHitKind {
+    /// Empty canvas. Left-drag pans (the documented middle-button fallback),
+    /// Shift+drag box-selects, right-click opens the add menu.
+    Background,
+    /// A node body — drag moves it, click selects it.
+    Node { node: u64 },
+    /// An input socket — a wire dropped here connects to it.
+    SocketIn { node: u64, port: u16 },
+    /// An output socket — dragging from here begins a wire.
+    SocketOut { node: u64, port: u16 },
+    /// A wire/edge — click selects it, drag adds a waypoint (panel-side).
+    Wire { edge: u64 },
+    /// A wire waypoint handle.
+    Waypoint { edge: u64, index: u16 },
+    /// A backdrop rectangle — drag moves it (and the nodes it frames).
+    Backdrop { id: u64 },
+    /// A backdrop's resize gripper.
+    BackdropResize { id: u64 },
+    /// A node's preview/bypass toggle.
+    PreviewToggle { node: u64 },
+    /// The viewport⟂graph split divider (drag re-splits).
+    SplitDivider,
+}
+
+/// Lifecycle phase of a graph pointer gesture. The panel drives its own state
+/// machine (drag node / draw wire / box-select / pan) off the sequence.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum GesturePhase {
+    /// Pointer down on the target (a drag may follow).
+    Begin,
+    /// Pointer moved while captured — fires every frame, even once the pointer
+    /// has left the target's rect (a node drag continues past the panel edge).
+    Update,
+    /// Pointer up after the gesture moved.
+    End,
+    /// Pointer up with no meaningful movement — a tap.
+    Click,
+    /// A second `Click` on the same target within the double-click window.
+    /// Editor-core dispatch emits only `Begin`/`Update`/`End`/`Click` in M0
+    /// (M0.T3); the panel upgrades consecutive `Click`s to `DoubleClick`. Kept
+    /// in the vocabulary so the panel's match is total.
+    DoubleClick,
+}
+
+/// Modifier snapshot for a gesture. Pointer events carry no modifiers, so these
+/// come from the store's cached `shift_held`/`cmd_held`/`alt_held` (pushed by
+/// the shell on `ModifiersChanged`).
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
+pub struct GestureMods {
+    pub shift: bool,
+    /// Cmd (macOS) OR Ctrl (Linux/Windows) — the "command" modifier.
+    pub cmd: bool,
+    pub alt: bool,
+}
+
+/// One graph pointer gesture, stashed by dispatch and drained by the panel each
+/// frame ([`super::WidgetStore::drain_graph_gestures`]). Positions are global
+/// pixels; the panel maps them into graph space with its own pan/zoom.
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub struct GraphGesture {
+    /// The graph surface (panel) this gesture belongs to — the `parent` of the
+    /// [`super::InteractiveState::GraphSurface`] that was hit.
+    pub surface: NodeId,
+    /// What was under the pointer at `Begin`, carried unchanged through
+    /// Update/End/Click so the panel knows what it is dragging.
+    pub kind: GraphHitKind,
+    pub phase: GesturePhase,
+    pub x: f32,
+    pub y: f32,
+    pub button: PointerButton,
+    pub mods: GestureMods,
+}
+
+/// Accumulated anchored-zoom request for a graph surface (wheel over its
+/// canvas), drained by the panel. `delta` sums the frame's wheel notches;
+/// `(anchor_x, anchor_y)` is the cursor position the zoom should keep fixed.
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub struct GraphZoom {
+    pub delta: f32,
+    pub anchor_x: f32,
+    pub anchor_y: f32,
+}
+
+/// A graph keyboard command, produced by `dispatch_key` when a graph surface
+/// holds focus and drained by the panel. Editor-core maps the keycode; the
+/// panel decides what each verb does.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum GraphKey {
+    /// Delete / Backspace — remove the selected nodes/edges.
+    Delete,
+    /// F — frame/fit the view to the graph (or selection).
+    Fit,
+    /// A — open the add-node menu.
+    Add,
+    /// Escape — cancel the in-progress gesture / clear selection.
+    Escape,
+    /// K — knife (cut wires).
+    Knife,
+    /// P — probe (inspect a node's output).
+    Probe,
+    /// Ctrl/Cmd+D — duplicate the selection.
+    Duplicate,
 }

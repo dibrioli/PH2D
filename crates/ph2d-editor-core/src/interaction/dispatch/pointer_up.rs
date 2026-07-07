@@ -5,6 +5,7 @@
 use super::focus::apply_click;
 use super::hierarchy::{HierDrop, find_hierarchy_drop, find_painter_layer_drop};
 use super::hover::set_widget_released;
+use crate::interaction::types::{GesturePhase, GraphGesture};
 use crate::interaction::{HitIndex, InteractiveState, WidgetEvent, WidgetStore, drag};
 use bumpalo::collections::Vec as BumpVec;
 use ph2d_host::PointerEvent;
@@ -202,6 +203,29 @@ pub(super) fn dispatch_up<'frame>(
         }
     }
     if let Some(active) = store.active_id() {
+        // Motion Nodes M0.T3 — end a graph-surface capture: End if it dragged,
+        // else a Click (a tap). No apply_click / focus side effects — the panel
+        // owns all graph semantics. Runs before the generic release logic.
+        if let Some((surface, kind)) = store.graph_surface_at_id(active) {
+            let phase = if store.take_graph_moved() {
+                GesturePhase::End
+            } else {
+                GesturePhase::Click
+            };
+            let mods = store.gesture_mods();
+            store.push_graph_gesture(GraphGesture {
+                surface,
+                kind,
+                phase,
+                x: event.x,
+                y: event.y,
+                button: event.button,
+                mods,
+            });
+            store.set_active(None);
+            store.set_active_rect(None);
+            return;
+        }
         // "still_hot" is whether the pointer is still inside
         // the widget's rect captured on Down. Using the live
         // `hit_index` for this check breaks transient widgets

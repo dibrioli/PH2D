@@ -78,6 +78,13 @@ impl WidgetStore {
             curve_point_drag: None,
             painter_layer_row_ids: std::collections::BTreeSet::new(),
             picker_swatch_ids: std::collections::BTreeSet::new(),
+            graph_gestures: Vec::new(),
+            graph_zoom: BTreeMap::new(),
+            graph_keys: Vec::new(),
+            graph_canvas: BTreeMap::new(),
+            graph_focused: None,
+            graph_moved: false,
+            alt_held: false,
         }
     }
 

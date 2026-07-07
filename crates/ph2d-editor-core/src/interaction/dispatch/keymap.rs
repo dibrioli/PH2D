@@ -19,6 +19,14 @@ pub const KEY_KEY_A: u32 = 0x41;
 pub const KEY_KEY_C: u32 = 0x43;
 pub const KEY_KEY_V: u32 = 0x56;
 pub const KEY_KEY_X: u32 = 0x58;
+// Motion Nodes M0.T3 — graph-editor shortcut letters (ASCII uppercase, same
+// scheme as A/C/V/X above) + forward Delete (macOS NSEvent function-key range,
+// like the arrows). Consumed by `dispatch_key`'s graph-focus arm.
+pub const KEY_KEY_D: u32 = 0x44;
+pub const KEY_KEY_F: u32 = 0x46;
+pub const KEY_KEY_K: u32 = 0x4B;
+pub const KEY_KEY_P: u32 = 0x50;
+pub const KEY_DELETE: u32 = 0xF728;
 pub const KEY_ARROW_UP: u32 = 0xF700;
 pub const KEY_ARROW_DOWN: u32 = 0xF701;
 pub const KEY_ARROW_LEFT: u32 = 0xF702;

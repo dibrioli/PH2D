@@ -7,7 +7,7 @@ use super::curve::apply_curve_point_drag;
 use super::hover::update_hover;
 use super::number_input::update_drag_value;
 use super::text_ops::{byte_offset_from_click_xy, place_text_caret};
-use crate::interaction::types::BlenderHitKind;
+use crate::interaction::types::{BlenderHitKind, GesturePhase, GraphGesture};
 use crate::interaction::{HitIndex, InteractiveState, WidgetEvent, WidgetStore, drag};
 use bumpalo::collections::Vec as BumpVec;
 use ph2d_host::PointerEvent;
@@ -258,6 +258,23 @@ pub(super) fn dispatch_move<'frame>(
         }
     }
     if let Some(active) = store.active_id() {
+        // Motion Nodes M0.T3 — a captured graph surface streams an Update on
+        // every move (even once the pointer has left its rect: a node drag
+        // continues past the panel edge). The panel drains + interprets it.
+        if let Some((surface, kind)) = store.graph_surface_at_id(active) {
+            store.set_graph_moved(true);
+            let mods = store.gesture_mods();
+            store.push_graph_gesture(GraphGesture {
+                surface,
+                kind,
+                phase: GesturePhase::Update,
+                x: event.x,
+                y: event.y,
+                button: event.button,
+                mods,
+            });
+            return;
+        }
         if let Some(rect) = store.active_rect() {
             // Text drag-to-select: extend the selection from
             // the anchor (set on Down) to the new cursor x.

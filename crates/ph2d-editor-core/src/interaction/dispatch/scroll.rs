@@ -28,6 +28,13 @@ pub fn dispatch_wheel<'frame>(
     arena: &'frame Bump,
 ) -> &'frame [WidgetEvent] {
     let events: BumpVec<'frame, WidgetEvent> = BumpVec::new_in(arena);
+    // Motion Nodes M0.T3 — a wheel over a graph surface is an anchored zoom,
+    // consumed BEFORE any panel scroll so the graph zooms instead of scrolling
+    // the panel underneath. The panel drains + applies the accumulated zoom.
+    if let Some(surface) = store.graph_surface_at(event.x, event.y) {
+        store.add_graph_zoom(surface, event.delta_y, event.x, event.y);
+        return events.into_bump_slice();
+    }
     // An OPEN dropdown popover scrolls first — it floats on top of any panel, and its rect lives in a
     // dedicated slot (not `panel_rects`) so `panel_at` isn't polluted. Its scroll value + heights use
     // the `panel_scroll`/`panel_*_h` tables keyed by the dropdown id.

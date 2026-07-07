@@ -13,9 +13,11 @@ use super::super::{InteractiveState, WidgetEvent, WidgetStore, format_number};
 use super::clipboard::{clipboard_extract_selection, collapse_selection, delete_selection_if_any};
 use super::focus::{apply_click, cycle_focus};
 use super::keymap::{
-    KEY_ARROW_DOWN, KEY_ARROW_LEFT, KEY_ARROW_RIGHT, KEY_ARROW_UP, KEY_BACKSPACE, KEY_ENTER,
-    KEY_ESCAPE, KEY_KEY_A, KEY_KEY_C, KEY_KEY_V, KEY_KEY_X, KEY_SPACE, KEY_TAB,
+    KEY_ARROW_DOWN, KEY_ARROW_LEFT, KEY_ARROW_RIGHT, KEY_ARROW_UP, KEY_BACKSPACE, KEY_DELETE,
+    KEY_ENTER, KEY_ESCAPE, KEY_KEY_A, KEY_KEY_C, KEY_KEY_D, KEY_KEY_F, KEY_KEY_K, KEY_KEY_P,
+    KEY_KEY_V, KEY_KEY_X, KEY_SPACE, KEY_TAB,
 };
+use crate::interaction::types::GraphKey;
 use super::text_ops::{next_char_boundary, prev_char_boundary};
 use super::{
     commit_hex_buffer, commit_number_buffer, reset_focused_visual_state, revert_number_buffer,
@@ -34,6 +36,17 @@ pub fn dispatch_key<'frame>(
 ) -> &'frame [WidgetEvent] {
     let mut events: BumpVec<'frame, WidgetEvent> = BumpVec::new_in(arena);
     if event.kind == KeyKind::Up {
+        return events.into_bump_slice();
+    }
+    // Motion Nodes M0.T3 — while a graph surface holds keyboard focus and no
+    // text widget is being edited, the graph shortcuts (Delete/F/A/Esc/K/P and
+    // Ctrl/Cmd+D) are consumed here, ahead of the generic focus/text handlers.
+    // The panel drains `graph_keys` and decides what each verb does.
+    if store.graph_focused().is_some()
+        && store.focus_id().is_none()
+        && let Some(gk) = graph_key_for(event.keycode, event.modifiers.ctrl || event.modifiers.meta)
+    {
+        store.push_graph_key(gk);
         return events.into_bump_slice();
     }
     match event.keycode {
@@ -388,4 +401,22 @@ pub fn dispatch_key<'frame>(
         _ => {}
     }
     events.into_bump_slice()
+}
+
+/// Motion Nodes M0.T3 — map a keycode (+ whether Cmd/Ctrl is held) to a graph
+/// shortcut. Letter verbs require NO command modifier so `Cmd/Ctrl+A` stays
+/// select-all and only `Cmd/Ctrl+D` duplicates; Delete/Backspace/Escape apply
+/// regardless. Returns `None` for keys the graph doesn't consume (they fall
+/// through to the generic handlers).
+fn graph_key_for(keycode: u32, cmd: bool) -> Option<GraphKey> {
+    Some(match keycode {
+        KEY_DELETE | KEY_BACKSPACE => GraphKey::Delete,
+        KEY_KEY_F if !cmd => GraphKey::Fit,
+        KEY_KEY_A if !cmd => GraphKey::Add,
+        KEY_ESCAPE => GraphKey::Escape,
+        KEY_KEY_K if !cmd => GraphKey::Knife,
+        KEY_KEY_P if !cmd => GraphKey::Probe,
+        KEY_KEY_D if cmd => GraphKey::Duplicate,
+        _ => return None,
+    })
 }

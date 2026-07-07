@@ -152,6 +152,7 @@ impl App {
             audio,
             input: InputState::new(),
             pan_anchor: None,
+            held_button: None,
             eyedropper_dragging: false,
             last_cursor: (0.0, 0.0),
             hovered_files: Vec::new(),

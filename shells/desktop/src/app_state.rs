@@ -332,6 +332,12 @@ pub(crate) struct App {
     /// `Some(anchor)` while a middle-drag is in progress; subsequent
     /// `CursorMoved` events feed `Camera2d::pan_screen_delta`.
     pub(crate) pan_anchor: Option<(f32, f32)>,
+    /// Motion Nodes M0.T1: the pointer button currently held, tracked so
+    /// `CursorMoved` forwards the REAL button to editor-core (winit's Move
+    /// carries no button — the shell used to hardcode `Primary`, which lost
+    /// middle/right identity for graph pan/box-select). `Some` between Down
+    /// and Up; `None` when no button is held.
+    pub(crate) held_button: Option<ph2d_host::PointerButton>,
     /// `true` while the primary button is held with the BgRemoval
     /// eyedropper armed — drives multi-colour sampling on `CursorMoved`.
     /// Set on Primary Down (when over the sprite + armed), cleared on

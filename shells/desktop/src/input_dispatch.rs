@@ -115,6 +115,36 @@ pub(crate) fn vec_bool_op_for_id(id: ph2d_editor::NodeId) -> Option<ph2d_vec_boo
     }
 }
 
+/// Retype the Pen's SELECTED vertex (panel Vertex buttons), recording ONE undo
+/// step iff it actually changed. Free fn (mirror of [`apply_vec_boolean`]) so the
+/// render_loop drain can call it with the destructured shell refs.
+pub(crate) fn apply_vec_vertex_kind(
+    scene: &mut ph2d_vec_scene::VecScene,
+    history: &mut ph2d_vec_edit::History,
+    pen: &mut ph2d_vec_edit::PenTool,
+    kind: ph2d_vec_scene::VertexKind,
+) {
+    let pre = scene.clone();
+    if pen.set_selected_vertex_kind(scene, kind) {
+        history.push_undo(pre);
+    }
+}
+
+/// Map a Vector-panel Vertex-type button `NodeId` to its `VertexKind` (`None` for
+/// any other id). Pure — unit-tested; called from the render_loop drain.
+pub(crate) fn vec_vertex_kind_for_id(id: ph2d_editor::NodeId) -> Option<ph2d_vec_scene::VertexKind> {
+    use ph2d_vec_scene::VertexKind;
+    if id == ph2d_editor::ids::VECTOR_VERT_CORNER {
+        Some(VertexKind::Corner)
+    } else if id == ph2d_editor::ids::VECTOR_VERT_SMOOTH {
+        Some(VertexKind::Smooth)
+    } else if id == ph2d_editor::ids::VECTOR_VERT_SYMMETRIC {
+        Some(VertexKind::Symmetric)
+    } else {
+        None
+    }
+}
+
 /// The shape kind a Vector draw-mode maps to (`None` = Pen, the non-shape
 /// gesture). Lets the canvas dispatch route Down/Move/Up to the pen or the
 /// shape tool.
@@ -660,6 +690,8 @@ impl App {
                 (ph2d_host::PointerButton::Primary, PointerKind::Down) if on_canvas => {
                     let sides = self.vec_polygon_sides;
                     let shape_kind = shape_kind_for_mode(self.vec_draw_mode);
+                    // Alt held → the Pen breaks the tangent when grabbing a handle.
+                    let alt = self.modifiers.alt_key();
                     if let Some(gfx) = self.gfx.as_mut() {
                         let win = gfx.surface.size();
                         let w = gfx.camera.screen_to_world(self.last_pointer, win);
@@ -677,6 +709,7 @@ impl App {
                                     &mut gfx.vec_scene,
                                     [w[0] as f64, w[1] as f64],
                                     px_to_world,
+                                    alt,
                                 );
                             }
                             Some(kind) => {
@@ -1565,10 +1598,33 @@ impl App {
 
 #[cfg(test)]
 mod tests {
-    use super::{shape_kind_for_mode, shape_up_consumes, vec_bool_op_for_id};
+    use super::{
+        shape_kind_for_mode, shape_up_consumes, vec_bool_op_for_id, vec_vertex_kind_for_id,
+    };
     use ph2d_tool_vector::DrawMode;
     use ph2d_vec_boolean::BoolOp;
     use ph2d_vec_edit::ShapeKind;
+    use ph2d_vec_scene::VertexKind;
+
+    #[test]
+    fn vertex_button_ids_map_to_their_kinds() {
+        assert_eq!(
+            vec_vertex_kind_for_id(ph2d_editor::ids::VECTOR_VERT_CORNER),
+            Some(VertexKind::Corner)
+        );
+        assert_eq!(
+            vec_vertex_kind_for_id(ph2d_editor::ids::VECTOR_VERT_SMOOTH),
+            Some(VertexKind::Smooth)
+        );
+        assert_eq!(
+            vec_vertex_kind_for_id(ph2d_editor::ids::VECTOR_VERT_SYMMETRIC),
+            Some(VertexKind::Symmetric)
+        );
+        assert_eq!(
+            vec_vertex_kind_for_id(ph2d_editor::ids::VECTOR_BOOL_UNION),
+            None
+        );
+    }
 
     #[test]
     fn shape_up_only_consumed_while_a_drag_is_live() {

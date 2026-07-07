@@ -30,14 +30,21 @@ impl Rgba8 {
     }
 }
 
-/// Natureza da âncora. Fase 0 mínima; expande na Fase 1 (Smooth colinear,
-/// simetria de handle, etc.).
+/// Natureza da âncora — o trio canônico de editor vetorial (Inkscape/Illustrator).
+/// Governa como a EDIÇÃO de um handle trata o handle oposto ([`retype_vertex`]
+/// aplica a restrição geométrica ao trocar de tipo).
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum VertexKind {
-    /// Handles independentes (quina).
+    /// Quina / cusp: os dois handles são independentes (arrastar um não move o
+    /// outro). Reto quando os handles coincidem com a âncora.
     Corner,
-    /// Handles tratados como suaves na edição (Fase 1 impõe colinearidade).
+    /// Suave: handles **colineares** (tangente contínua), comprimentos
+    /// **independentes** — arrastar um gira o oposto para manter a tangente, mas
+    /// preserva o comprimento dele.
     Smooth,
+    /// Simétrico: colinear **e** comprimentos iguais — arrastar um espelha o
+    /// outro (curvatura contínua). É o que o Pen cria ao arrastar.
+    Symmetric,
 }
 
 /// Vértice cúbico: âncora + dois handles, em coordenadas **absolutas** de
@@ -89,8 +96,9 @@ pub struct VecPath {
 }
 
 /// Versão do wire-format de save (postcard é posicional → bump a cada mudança de
-/// schema). Fase 2: v1. (Versionamento robusto/migração = cutover, Fase R.)
-pub const VEC_SCENE_SCHEMA_VERSION: u32 = 1;
+/// schema). v2: `VertexKind` ganhou `Symmetric` (enum discriminant mudou).
+/// (Versionamento robusto/migração = cutover, Fase R.)
+pub const VEC_SCENE_SCHEMA_VERSION: u32 = 2;
 
 /// Cena vetorial — o documento editor-first. `PartialEq` para o undo detectar
 /// mudança real (só vira passo de histórico se a cena mudou de fato).
@@ -283,6 +291,123 @@ pub fn regular_polygon(center: [f64; 2], rx: f64, ry: f64, sides: u32) -> VecPat
     }
 }
 
+/// Fração do vão ao vizinho usada como comprimento de handle no auto-smooth
+/// (Corner→Smooth com handles degenerados). 1/3 é o default de facto (Inkscape).
+const AUTO_SMOOTH_FRAC: f64 = 1.0 / 3.0;
+
+/// Retipa o vértice `i` de `path` para `kind`, ajustando os handles conforme a
+/// restrição do tipo (o núcleo da edição rica de handles, ADR-0108 Fase 1):
+///
+/// - **Corner**: mantém as posições dos handles (vira cusp de handles
+///   independentes; se colineares antes, continuam onde estão até o próximo drag).
+/// - **Smooth**: torna os handles **colineares** preservando cada comprimento.
+/// - **Symmetric**: colineares **e** comprimento igual (média).
+///
+/// A tangente vem dos handles atuais (`out_rel − in_rel`); se ambos forem
+/// degenerados (cusp reto), é **sintetizada dos vizinhos** (auto-smooth):
+/// tangente = direção `prev→next`, comprimento = [`AUTO_SMOOTH_FRAC`] do vão.
+/// Retorna `true` se algo mudou. Puro; sem trig além de `sqrt` (normalização).
+#[must_use]
+pub fn retype_vertex(path: &mut VecPath, i: usize, kind: VertexKind) -> bool {
+    let n = path.verts.len();
+    if i >= n {
+        return false;
+    }
+    let before = path.verts[i];
+    let a = before.anchor;
+
+    if kind == VertexKind::Corner {
+        // Cusp: só marca o tipo; posições preservadas (independentes a partir daqui).
+        path.verts[i].kind = VertexKind::Corner;
+        return path.verts[i] != before;
+    }
+
+    // Handles atuais relativos à âncora + comprimentos.
+    let in_rel = [before.in_handle[0] - a[0], before.in_handle[1] - a[1]];
+    let out_rel = [before.out_handle[0] - a[0], before.out_handle[1] - a[1]];
+    let li = (in_rel[0] * in_rel[0] + in_rel[1] * in_rel[1]).sqrt();
+    let lo = (out_rel[0] * out_rel[0] + out_rel[1] * out_rel[1]).sqrt();
+    let degenerate = li < 1e-9 && lo < 1e-9;
+
+    // Tangente dos vizinhos (para auto-smooth quando degenerado / sem direção).
+    let neighbor = neighbor_tangent(path, i);
+
+    // Direção da tangente unitária.
+    let tan = if degenerate {
+        match neighbor {
+            Some((t, _)) => t,
+            None => return false, // nada de que sintetizar (path minúsculo)
+        }
+    } else {
+        // out_rel − in_rel aponta ao longo da tangente (out no +t, in no −t).
+        let d = [out_rel[0] - in_rel[0], out_rel[1] - in_rel[1]];
+        match normalize(d).or_else(|| neighbor.map(|(t, _)| t)) {
+            Some(t) => t,
+            None => return false,
+        }
+    };
+
+    let (len_in, len_out) = if degenerate {
+        let base = neighbor.map(|(_, b)| b).unwrap_or(0.0);
+        (base, base)
+    } else if kind == VertexKind::Symmetric {
+        let m = (li + lo) * 0.5;
+        (m, m)
+    } else {
+        (li, lo) // Smooth preserva comprimentos
+    };
+
+    path.verts[i].out_handle = [a[0] + tan[0] * len_out, a[1] + tan[1] * len_out];
+    path.verts[i].in_handle = [a[0] - tan[0] * len_in, a[1] - tan[1] * len_in];
+    path.verts[i].kind = kind;
+    path.verts[i] != before
+}
+
+/// Tangente unitária `prev→next` no vértice `i` (wrap se fechado) + comprimento
+/// de handle sugerido ([`AUTO_SMOOTH_FRAC`] do meio-vão). `None` se não houver
+/// vizinhos utilizáveis (path degenerado) ou os vizinhos coincidirem.
+fn neighbor_tangent(path: &VecPath, i: usize) -> Option<([f64; 2], f64)> {
+    let n = path.verts.len();
+    let a = path.verts[i].anchor;
+    let prev = if i > 0 {
+        Some(path.verts[i - 1].anchor)
+    } else if path.closed {
+        Some(path.verts[n - 1].anchor)
+    } else {
+        None
+    };
+    let next = if i + 1 < n {
+        Some(path.verts[i + 1].anchor)
+    } else if path.closed {
+        Some(path.verts[0].anchor)
+    } else {
+        None
+    };
+    // Endpoints de path aberto usam a própria âncora como o vizinho ausente.
+    let (p, q) = match (prev, next) {
+        (Some(p), Some(q)) => (p, q),
+        (Some(p), None) => (p, a),
+        (None, Some(q)) => (a, q),
+        (None, None) => return None,
+    };
+    let d = [q[0] - p[0], q[1] - p[1]];
+    let len = (d[0] * d[0] + d[1] * d[1]).sqrt();
+    if len < 1e-12 {
+        return None;
+    }
+    Some(([d[0] / len, d[1] / len], len * 0.5 * AUTO_SMOOTH_FRAC))
+}
+
+/// Normaliza `v`; `None` se ~zero.
+fn normalize(v: [f64; 2]) -> Option<[f64; 2]> {
+    let l = (v[0] * v[0] + v[1] * v[1]).sqrt();
+    if l < 1e-9 {
+        None
+    } else {
+        Some([v[0] / l, v[1] / l])
+    }
+}
+
 /// Blob-círculo preenchido (usa [`ellipse`] com `rx = ry`), para a cena-demo.
 fn blob(c: [f64; 2], r: f64, fill: Rgba8) -> VecPath {
     let mut p = ellipse(c, r, r);
@@ -440,5 +565,95 @@ mod tests {
         let a = p.verts[0].anchor;
         assert!((a[0] - 1.0).abs() < 1e-9, "x centered");
         assert!((a[1] - (1.0 - 2.0)).abs() < 1e-9, "y at top of bbox");
+    }
+
+    /// A closed triangle of straight corners (degenerate handles).
+    fn corner_triangle() -> VecPath {
+        VecPath {
+            id: 0,
+            verts: vec![
+                VecVertex::corner([0.0, 0.0]),
+                VecVertex::corner([4.0, 0.0]),
+                VecVertex::corner([2.0, 3.0]),
+            ],
+            closed: true,
+            fill: None,
+            stroke: None,
+        }
+    }
+
+    fn handles_rel(v: &VecVertex) -> ([f64; 2], [f64; 2]) {
+        (
+            [v.in_handle[0] - v.anchor[0], v.in_handle[1] - v.anchor[1]],
+            [v.out_handle[0] - v.anchor[0], v.out_handle[1] - v.anchor[1]],
+        )
+    }
+
+    fn cross(a: [f64; 2], b: [f64; 2]) -> f64 {
+        a[0] * b[1] - a[1] * b[0]
+    }
+    fn dot(a: [f64; 2], b: [f64; 2]) -> f64 {
+        a[0] * b[0] + a[1] * b[1]
+    }
+    fn norm(v: [f64; 2]) -> f64 {
+        (v[0] * v[0] + v[1] * v[1]).sqrt()
+    }
+
+    #[test]
+    fn retype_corner_to_smooth_auto_synthesizes_colinear_handles_from_neighbors() {
+        let mut p = corner_triangle();
+        // Vertex 1 (bbox apex on the base) had degenerate handles → synthesized.
+        assert!(retype_vertex(&mut p, 1, VertexKind::Smooth));
+        let v = p.verts[1];
+        assert_eq!(v.kind, VertexKind::Smooth);
+        let (in_rel, out_rel) = handles_rel(&v);
+        assert!(norm(in_rel) > 1e-6 && norm(out_rel) > 1e-6, "handles grew");
+        // Colinear + opposite (tangent continuous).
+        assert!(cross(in_rel, out_rel).abs() < 1e-9, "colinear");
+        assert!(dot(in_rel, out_rel) < 0.0, "opposite sides of the anchor");
+    }
+
+    #[test]
+    fn retype_to_symmetric_equalizes_handle_lengths() {
+        let mut p = VecPath {
+            id: 0,
+            verts: vec![
+                VecVertex::corner([0.0, 0.0]),
+                // Asymmetric colinear-ish handles on the middle vertex.
+                VecVertex::smooth([4.0, 0.0], [3.0, 0.0], [5.0, 0.5]),
+                VecVertex::corner([8.0, 0.0]),
+            ],
+            closed: false,
+            fill: None,
+            stroke: None,
+        };
+        assert!(retype_vertex(&mut p, 1, VertexKind::Symmetric));
+        let v = p.verts[1];
+        let (in_rel, out_rel) = handles_rel(&v);
+        assert!((norm(in_rel) - norm(out_rel)).abs() < 1e-9, "equal length");
+        assert!(cross(in_rel, out_rel).abs() < 1e-9, "colinear");
+        assert!(dot(in_rel, out_rel) < 0.0, "opposite");
+    }
+
+    #[test]
+    fn retype_to_corner_keeps_handle_positions_as_a_cusp() {
+        let mut p = corner_triangle();
+        let _ = retype_vertex(&mut p, 1, VertexKind::Symmetric); // grow handles
+        let grown = p.verts[1];
+        assert!(retype_vertex(&mut p, 1, VertexKind::Corner));
+        let cusp = p.verts[1];
+        assert_eq!(cusp.kind, VertexKind::Corner);
+        // Handles unchanged — Corner just releases the colinear constraint.
+        assert_eq!(cusp.in_handle, grown.in_handle);
+        assert_eq!(cusp.out_handle, grown.out_handle);
+    }
+
+    #[test]
+    fn retype_is_noop_when_kind_and_geometry_already_match() {
+        let mut p = corner_triangle();
+        // Already Corner with degenerate handles → Corner is a true no-op.
+        assert!(!retype_vertex(&mut p, 1, VertexKind::Corner));
+        // Out-of-bounds index.
+        assert!(!retype_vertex(&mut p, 99, VertexKind::Smooth));
     }
 }

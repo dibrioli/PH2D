@@ -45,6 +45,16 @@ pub enum DrawMode {
     Polygon,
 }
 
+/// UI-facing vertex type for the docked panel's Vertex section (mirror of
+/// `ph2d_vec_scene::VertexKind`; the shell maps between them). Lives in the tool
+/// crate — the panel deps this, not `ph2d-vec-scene` — alongside [`DrawMode`].
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum VertexType {
+    Corner,
+    Smooth,
+    Symmetric,
+}
+
 /// Minimum / maximum polygon sides (inclusive range the Sides slider spans).
 pub const SIDES_MIN: u32 = 3;
 pub const SIDES_MAX: u32 = 12;

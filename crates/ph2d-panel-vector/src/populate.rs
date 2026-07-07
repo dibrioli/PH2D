@@ -93,6 +93,12 @@ pub fn populate(store: &mut WidgetStore) {
         SIDES_SLIDER_OFFSET,
     );
 
+    // Vertex-type buttons (retype the selected vertex; shown only when a vertex
+    // is selected, but registered unconditionally — the store is mode-agnostic).
+    button(store, ids::VECTOR_VERT_CORNER);
+    button(store, ids::VECTOR_VERT_SMOOTH);
+    button(store, ids::VECTOR_VERT_SYMMETRIC);
+
     // Boolean op buttons (act on the two last closed regions of the document).
     button(store, ids::VECTOR_BOOL_UNION);
     button(store, ids::VECTOR_BOOL_SUBTRACT);

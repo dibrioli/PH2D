@@ -187,6 +187,36 @@ fn boolean_button_click_forwards_to_the_bus_for_the_shell() {
     );
 }
 
+/// A Vertex-type button (Smooth) is a DOCUMENT command (retypes the selected
+/// vertex via the shell-side Pen), so — like the Boolean buttons — the seam
+/// proof is that the panel forwards the `Click` onto the bus for the shell drain.
+#[test]
+fn vertex_type_button_click_forwards_to_the_bus_for_the_shell() {
+    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    let mut panel_state = VectorPanelState;
+
+    let outcome = host.apply_panel_event::<VectorPanel>(
+        &mut panel_state,
+        WidgetEvent::Click(ids::VECTOR_VERT_SMOOTH),
+    );
+    assert_eq!(
+        outcome,
+        EventOutcome::Consumed,
+        "Vertex-type button ignored — `event.rs` arm for VECTOR_VERT_* is missing"
+    );
+
+    let forwarded = host.drained_actions().iter().any(|a| {
+        matches!(
+            a,
+            EditorAction::ToolPanelEvent(PanelEvent::Click(id)) if *id == ids::VECTOR_VERT_SMOOTH
+        )
+    });
+    assert!(
+        forwarded,
+        "Vertex-type click never reached the bus as a ToolPanelEvent — the shell can't retype it"
+    );
+}
+
 /// The Close (X) button must emit `CancelActiveTool` (deactivates the tool),
 /// mirror of the Padding panel's Cancel.
 #[test]

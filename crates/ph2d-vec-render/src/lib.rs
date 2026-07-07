@@ -10,7 +10,7 @@
 //! Fase 0: draw estático da cena inteira. **Dirty-tracking** (só re-encodar a
 //! sub-árvore que mudou — a alavanca de escala do ADR-0108) é o próximo passo.
 
-use ph2d_vec_scene::{Rgba8, VecPath, VecPathId, VecScene, VertexKind};
+use ph2d_vec_scene::{Rgba8, VecPath, VecPathId, VecScene};
 use ph2d_vector::{Affine, BezPath, Brush, Circle, Color, Fill, Point, Rect, Stroke, VectorScene};
 
 /// Constrói o `BezPath` (world-space) de um path editável: `move_to` na 1ª âncora,
@@ -69,11 +69,15 @@ pub fn draw_overlays(
         let is_sel = Some(path.id) == selected;
         if is_sel {
             for v in &path.verts {
-                if v.kind != VertexKind::Smooth {
-                    continue;
-                }
                 let a = transform * Point::new(v.anchor[0], v.anchor[1]);
+                // Draw a handle only when it is offset from the anchor — cusps
+                // (Corner), Smooth and Symmetric all show their non-degenerate
+                // handles; a straight corner (handle == anchor) shows nothing.
                 for h in [v.in_handle, v.out_handle] {
+                    let (dx, dy) = (h[0] - v.anchor[0], h[1] - v.anchor[1]);
+                    if dx * dx + dy * dy <= 1e-18 {
+                        continue;
+                    }
                     let hp = transform * Point::new(h[0], h[1]);
                     let mut line = BezPath::new();
                     line.move_to(a);

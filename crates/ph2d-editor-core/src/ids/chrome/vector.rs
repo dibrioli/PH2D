@@ -79,3 +79,11 @@ pub const VECTOR_SIDES_NUM: NodeId = hash_node_id("vector.sides_num");
 pub const VECTOR_BOOL_UNION: NodeId = hash_node_id("vector.bool.union");
 pub const VECTOR_BOOL_SUBTRACT: NodeId = hash_node_id("vector.bool.subtract");
 pub const VECTOR_BOOL_INTERSECT: NodeId = hash_node_id("vector.bool.intersect");
+
+// ── Vertex type (ADR-0108 Fase 1 — rich handle editing) ──────────────────────
+// Retype the SELECTED vertex (Corner cusp / Smooth colinear / Symmetric mirror).
+// A document edit (mutates the path via the shell-side PenTool), shown only when
+// a vertex is selected; each `Click` routes through the shell drain.
+pub const VECTOR_VERT_CORNER: NodeId = hash_node_id("vector.vert.corner");
+pub const VECTOR_VERT_SMOOTH: NodeId = hash_node_id("vector.vert.smooth");
+pub const VECTOR_VERT_SYMMETRIC: NodeId = hash_node_id("vector.vert.symmetric");

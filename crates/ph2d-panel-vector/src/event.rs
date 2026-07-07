@@ -70,6 +70,9 @@ pub(crate) fn apply_event(
                 || id == ids::VECTOR_MODE_RECT
                 || id == ids::VECTOR_MODE_ELLIPSE
                 || id == ids::VECTOR_MODE_POLYGON
+                || id == ids::VECTOR_VERT_CORNER
+                || id == ids::VECTOR_VERT_SMOOTH
+                || id == ids::VECTOR_VERT_SYMMETRIC
                 || id == ids::VECTOR_BOOL_UNION
                 || id == ids::VECTOR_BOOL_SUBTRACT
                 || id == ids::VECTOR_BOOL_INTERSECT =>

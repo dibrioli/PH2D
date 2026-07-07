@@ -731,6 +731,9 @@ impl crate::App {
             // capture it here and apply after the drain (mirror of the U/I/D
             // hotkeys, next to the vector render).
             let mut pending_vec_bool: Option<ph2d_vec_boolean::BoolOp> = None;
+            // ADR-0108 Fase 1: a Vertex button (Corner/Smooth/Symmetric) retypes
+            // the selected vertex — a document edit, applied after the drain.
+            let mut pending_vec_vertex_kind: Option<ph2d_vec_scene::VertexKind> = None;
             let mut transform_edit: Option<ph2d_editor::InspectorTransformInfo> = None;
             let mut visibility_edit: Option<ph2d_editor::InspectorVisibilityInfo> = None;
             let mut sprite_source_change: Option<(u64, RequestedSpriteStrategy)> = None;
@@ -778,14 +781,18 @@ impl crate::App {
                     // semantic mapping (slider id → typed UI edit) lives on
                     // the tool, not here.
                     EditorAction::ToolPanelEvent(ev) => {
-                        // Vector Boolean buttons are DOCUMENT commands, not Style
-                        // edits — capture the op (by ref, PanelEvent isn't Copy)
-                        // to apply after the drain; still forward to the tool
-                        // (which ignores boolean ids) so mode/width/etc. flow.
-                        if let ph2d_editor::tool::PanelEvent::Click(id) = &ev
-                            && let Some(op) = crate::input_dispatch::vec_bool_op_for_id(*id)
-                        {
-                            pending_vec_bool = Some(op);
+                        // Vector Boolean + Vertex buttons are DOCUMENT commands,
+                        // not Style edits — capture them (by ref, PanelEvent isn't
+                        // Copy) to apply after the drain; still forward to the tool
+                        // (which ignores those ids) so mode/width/etc. flow.
+                        if let ph2d_editor::tool::PanelEvent::Click(id) = &ev {
+                            if let Some(op) = crate::input_dispatch::vec_bool_op_for_id(*id) {
+                                pending_vec_bool = Some(op);
+                            } else if let Some(kind) =
+                                crate::input_dispatch::vec_vertex_kind_for_id(*id)
+                            {
+                                pending_vec_vertex_kind = Some(kind);
+                            }
                         }
                         if let Some(t) = tools.active_mut() {
                             t.handle_panel_event(ev);
@@ -1379,6 +1386,14 @@ impl crate::App {
                     &mut self.vec_history,
                     &mut self.vec_pen,
                     op,
+                );
+            }
+            if let Some(kind) = pending_vec_vertex_kind {
+                crate::input_dispatch::apply_vec_vertex_kind(
+                    vec_scene,
+                    &mut self.vec_history,
+                    &mut self.vec_pen,
+                    kind,
                 );
             }
             let (vec_mode, vec_sides) = vector_bridge::dispatch(

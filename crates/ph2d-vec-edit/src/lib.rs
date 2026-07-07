@@ -74,6 +74,10 @@ pub struct PenTool {
     active: Option<VecPathId>,
     /// Path "selecionado" (último tocado) — mostra e permite agarrar seus handles.
     selected: Option<VecPathId>,
+    /// Vértice "selecionado" no path selecionado (último tocado/agarrado) — o
+    /// alvo dos botões de tipo (Corner/Smooth/Symmetric). `None` = nenhum vértice
+    /// específico (ex.: path inteiro selecionado por uma booleana).
+    selected_vert: Option<usize>,
     /// Arrastando o handle do vértice recém-posto (desenho, entre press e release).
     dragging: bool,
     /// Elemento agarrado para edição (entre press e release).
@@ -102,9 +106,37 @@ impl PenTool {
         self.selected
     }
 
-    /// Define a seleção (ex.: selecionar o resultado de uma booleana).
+    /// Índice do vértice selecionado no path selecionado (alvo dos botões de tipo).
+    pub fn selected_vert(&self) -> Option<usize> {
+        self.selected_vert
+    }
+
+    /// Define a seleção de PATH (ex.: selecionar o resultado de uma booleana).
+    /// Limpa a seleção de vértice (não há vértice específico).
     pub fn select(&mut self, id: Option<VecPathId>) {
         self.selected = id;
+        self.selected_vert = None;
+    }
+
+    /// Tipo do vértice selecionado (para o painel destacar Corner/Smooth/Symmetric).
+    /// `None` se não há vértice selecionado ou o índice não existe mais.
+    pub fn selected_vertex_kind(&self, scene: &VecScene) -> Option<VertexKind> {
+        let i = self.selected_vert?;
+        let sel = self.selected?;
+        let path = scene.paths().iter().find(|p| p.id == sel)?;
+        path.verts.get(i).map(|v| v.kind)
+    }
+
+    /// Retipa o vértice selecionado (botões Corner/Smooth/Symmetric). Devolve
+    /// `true` se algo mudou (o shell empurra um passo de undo nesse caso).
+    pub fn set_selected_vertex_kind(&mut self, scene: &mut VecScene, kind: VertexKind) -> bool {
+        let (Some(id), Some(i)) = (self.selected, self.selected_vert) else {
+            return false;
+        };
+        let Some(path) = scene.path_mut(id) else {
+            return false;
+        };
+        ph2d_vec_scene::retype_vertex(path, i, kind)
     }
 
     /// Zera todo o estado (ex.: após apagar o path selecionado), preservando o
@@ -126,7 +158,14 @@ impl PenTool {
     }
 
     /// Pressão primária em world-space `p`. `px_to_world` = world-units por pixel.
-    pub fn on_press(&mut self, scene: &mut VecScene, p: [f64; 2], px_to_world: f64) -> PenClick {
+    /// `alt` = quebrar a tangente ao agarrar um handle (vira cusp / Corner).
+    pub fn on_press(
+        &mut self,
+        scene: &mut VecScene,
+        p: [f64; 2],
+        px_to_world: f64,
+        alt: bool,
+    ) -> PenClick {
         let close_dist = 12.0 * px_to_world;
         let hit_r = 10.0 * px_to_world;
         let stroke_w = self.style.stroke_w_px * px_to_world;
@@ -151,6 +190,7 @@ impl PenTool {
                 }
             }
             path.verts.push(VecVertex::corner(p));
+            self.selected_vert = Some(path.verts.len() - 1);
             self.dragging = true;
             return PenClick::Added;
         }
@@ -158,6 +198,16 @@ impl PenTool {
         // Parado → hit-test para EDITAR um ponto existente.
         if let Some(g) = self.hit_test(scene, p, hit_r) {
             self.selected = Some(g.path);
+            self.selected_vert = Some(g.vert);
+            // Alt + agarrar um HANDLE = quebrar a tangente (vira cusp Corner) antes
+            // de arrastar → só esse handle se move (regra Corner). Convenção
+            // Illustrator; o undo cobre break+drag num passo (begin no press).
+            if alt
+                && matches!(g.part, Part::In | Part::Out)
+                && let Some(path) = scene.path_mut(g.path)
+            {
+                let _ = ph2d_vec_scene::retype_vertex(path, g.vert, VertexKind::Corner);
+            }
             self.grab = Some(g);
             return PenClick::Grabbed;
         }
@@ -172,6 +222,7 @@ impl PenTool {
         });
         self.active = Some(id);
         self.selected = Some(id);
+        self.selected_vert = Some(0);
         self.dragging = true;
         PenClick::Started
     }
@@ -194,22 +245,33 @@ impl PenTool {
                     v.in_handle = [v.in_handle[0] + d[0], v.in_handle[1] + d[1]];
                     v.out_handle = [v.out_handle[0] + d[0], v.out_handle[1] + d[1]];
                 }
+                // O handle oposto segue a restrição do tipo: Symmetric espelha,
+                // Smooth mantém colinear preservando o comprimento, Corner é livre.
                 Part::In => {
                     v.in_handle = p;
-                    if v.kind == VertexKind::Smooth {
-                        v.out_handle = mirror(v.anchor, p);
+                    match v.kind {
+                        VertexKind::Symmetric => v.out_handle = mirror(v.anchor, p),
+                        VertexKind::Smooth => {
+                            v.out_handle = colinear_opposite(v.anchor, p, v.out_handle)
+                        }
+                        VertexKind::Corner => {}
                     }
                 }
                 Part::Out => {
                     v.out_handle = p;
-                    if v.kind == VertexKind::Smooth {
-                        v.in_handle = mirror(v.anchor, p);
+                    match v.kind {
+                        VertexKind::Symmetric => v.in_handle = mirror(v.anchor, p),
+                        VertexKind::Smooth => {
+                            v.in_handle = colinear_opposite(v.anchor, p, v.in_handle)
+                        }
+                        VertexKind::Corner => {}
                     }
                 }
             }
             return true;
         }
-        // Arrasto de handle do vértice em desenho (ponto suave simétrico).
+        // Arrasto de handle do vértice em desenho: o Pen cria handles simétricos
+        // (Symmetric) — o clássico "arrasta pra curvar", quebrável depois (Alt).
         if self.dragging
             && let Some(id) = self.active
             && let Some(path) = scene.path_mut(id)
@@ -217,7 +279,7 @@ impl PenTool {
         {
             v.out_handle = p;
             v.in_handle = mirror(v.anchor, p);
-            v.kind = VertexKind::Smooth;
+            v.kind = VertexKind::Symmetric;
             return true;
         }
         false
@@ -246,22 +308,23 @@ impl PenTool {
         if let Some(sel) = self.selected
             && let Some(path) = scene.paths().iter().find(|pp| pp.id == sel)
         {
+            // Handles de QUALQUER tipo, desde que não-degenerados (offset da
+            // âncora) — cusps (Corner) e Symmetric também têm handles agarráveis,
+            // não só Smooth. Handle tem prioridade sobre âncora (checado antes).
             for (i, v) in path.verts.iter().enumerate() {
-                if v.kind == VertexKind::Smooth {
-                    if dist2(p, v.in_handle) <= r2 {
-                        return Some(Grab {
-                            path: sel,
-                            vert: i,
-                            part: Part::In,
-                        });
-                    }
-                    if dist2(p, v.out_handle) <= r2 {
-                        return Some(Grab {
-                            path: sel,
-                            vert: i,
-                            part: Part::Out,
-                        });
-                    }
+                if dist2(v.in_handle, v.anchor) > 1e-18 && dist2(p, v.in_handle) <= r2 {
+                    return Some(Grab {
+                        path: sel,
+                        vert: i,
+                        part: Part::In,
+                    });
+                }
+                if dist2(v.out_handle, v.anchor) > 1e-18 && dist2(p, v.out_handle) <= r2 {
+                    return Some(Grab {
+                        path: sel,
+                        vert: i,
+                        part: Part::Out,
+                    });
                 }
             }
         }
@@ -282,6 +345,21 @@ impl PenTool {
 
 fn mirror(anchor: [f64; 2], h: [f64; 2]) -> [f64; 2] {
     [2.0 * anchor[0] - h[0], 2.0 * anchor[1] - h[1]]
+}
+
+/// Handle oposto colinear (regra Smooth): aponta na direção contrária ao handle
+/// movido, **preservando o próprio comprimento**. Se o handle movido coincidir
+/// com a âncora (sem direção), devolve o oposto inalterado.
+fn colinear_opposite(anchor: [f64; 2], moved: [f64; 2], opposite: [f64; 2]) -> [f64; 2] {
+    let d = [moved[0] - anchor[0], moved[1] - anchor[1]];
+    let l = (d[0] * d[0] + d[1] * d[1]).sqrt();
+    if l < 1e-9 {
+        return opposite;
+    }
+    let t = [d[0] / l, d[1] / l];
+    let o = [opposite[0] - anchor[0], opposite[1] - anchor[1]];
+    let opp_len = (o[0] * o[0] + o[1] * o[1]).sqrt();
+    [anchor[0] - t[0] * opp_len, anchor[1] - t[1] * opp_len]
 }
 
 fn dist2(a: [f64; 2], b: [f64; 2]) -> f64 {
@@ -375,13 +453,13 @@ mod tests {
     const PTW: f64 = 0.01; // world-units por pixel (câmera fictícia)
 
     fn draw_triangle(pen: &mut PenTool, scene: &mut VecScene) {
-        pen.on_press(scene, [0.0, 0.0], PTW);
+        pen.on_press(scene, [0.0, 0.0], PTW, false);
         pen.on_release();
-        pen.on_press(scene, [4.0, 0.0], PTW);
+        pen.on_press(scene, [4.0, 0.0], PTW, false);
         pen.on_release();
-        pen.on_press(scene, [4.0, 4.0], PTW);
+        pen.on_press(scene, [4.0, 4.0], PTW, false);
         pen.on_release();
-        pen.on_press(scene, [0.02, 0.0], PTW); // fecha (perto do início)
+        pen.on_press(scene, [0.02, 0.0], PTW, false); // fecha (perto do início)
     }
 
     #[test]
@@ -395,13 +473,14 @@ mod tests {
     }
 
     #[test]
-    fn drag_makes_a_smooth_vertex_with_mirrored_handles() {
+    fn drag_makes_a_symmetric_vertex_with_mirrored_handles() {
         let mut scene = VecScene::new();
         let mut pen = PenTool::new();
-        pen.on_press(&mut scene, [0.0, 0.0], PTW);
+        pen.on_press(&mut scene, [0.0, 0.0], PTW, false);
         assert!(pen.on_drag(&mut scene, [1.0, 0.5]));
         let v = scene.paths()[0].verts[0];
-        assert_eq!(v.kind, VertexKind::Smooth);
+        // The Pen creates classic symmetric handles (mirrored) on drag-out.
+        assert_eq!(v.kind, VertexKind::Symmetric);
         assert_eq!(v.out_handle, [1.0, 0.5]);
         assert_eq!(v.in_handle, [-1.0, -0.5]);
         pen.on_release();
@@ -413,7 +492,7 @@ mod tests {
         let mut pen = PenTool::new();
         draw_triangle(&mut pen, &mut scene); // fecha → active None, selected = path
         // pressão sobre a âncora [4,0] → agarra
-        assert_eq!(pen.on_press(&mut scene, [4.0, 0.0], PTW), PenClick::Grabbed);
+        assert_eq!(pen.on_press(&mut scene, [4.0, 0.0], PTW, false), PenClick::Grabbed);
         assert!(pen.is_dragging());
         assert!(pen.on_drag(&mut scene, [5.0, 1.0]));
         pen.on_release();
@@ -422,16 +501,19 @@ mod tests {
     }
 
     #[test]
-    fn grab_a_handle_reshapes_and_mirrors_when_smooth() {
+    fn grab_a_handle_reshapes_and_mirrors_when_symmetric() {
         let mut scene = VecScene::new();
         let mut pen = PenTool::new();
-        // desenha 1 ponto suave e fecha via finish (fica selecionado)
-        pen.on_press(&mut scene, [0.0, 0.0], PTW);
-        pen.on_drag(&mut scene, [1.0, 0.0]); // out=[1,0], in=[-1,0], Smooth
+        // desenha 1 ponto (Symmetric) e fecha via finish (fica selecionado)
+        pen.on_press(&mut scene, [0.0, 0.0], PTW, false);
+        pen.on_drag(&mut scene, [1.0, 0.0]); // out=[1,0], in=[-1,0], Symmetric
         pen.on_release();
         pen.finish();
         // agarra o out-handle em [1,0] e move → in espelha
-        assert_eq!(pen.on_press(&mut scene, [1.0, 0.0], PTW), PenClick::Grabbed);
+        assert_eq!(
+            pen.on_press(&mut scene, [1.0, 0.0], PTW, false),
+            PenClick::Grabbed
+        );
         pen.on_drag(&mut scene, [0.0, 2.0]);
         pen.on_release();
         let v = scene.paths()[0].verts[0];
@@ -439,11 +521,82 @@ mod tests {
         assert_eq!(v.in_handle, [0.0, -2.0]); // espelho pela âncora (0,0)
     }
 
+    /// Draw a vertex, retype it Smooth, then dragging one handle keeps the other
+    /// COLINEAR but preserves its length (unlike Symmetric which mirrors).
+    #[test]
+    fn smooth_handle_drag_keeps_opposite_colinear_and_length() {
+        let mut scene = VecScene::new();
+        let mut pen = PenTool::new();
+        pen.on_press(&mut scene, [0.0, 0.0], PTW, false);
+        pen.on_drag(&mut scene, [2.0, 0.0]); // out=[2,0], in=[-2,0], Symmetric
+        pen.on_release();
+        pen.finish();
+        assert!(pen.set_selected_vertex_kind(&mut scene, VertexKind::Smooth));
+        // Grab the out handle ([2,0]) and swing it up-left.
+        assert_eq!(
+            pen.on_press(&mut scene, [2.0, 0.0], PTW, false),
+            PenClick::Grabbed
+        );
+        pen.on_drag(&mut scene, [0.0, 3.0]); // out now points +Y, len 3
+        pen.on_release();
+        let v = scene.paths()[0].verts[0];
+        assert_eq!(v.out_handle, [0.0, 3.0]);
+        // Opposite stays colinear (opposite dir, −Y) but keeps ITS length (2).
+        assert!((v.in_handle[0] - 0.0).abs() < 1e-9);
+        assert!((v.in_handle[1] - (-2.0)).abs() < 1e-9, "kept length 2, flipped");
+    }
+
+    /// Alt + grabbing a handle breaks the tangent: the vertex becomes a Corner
+    /// (cusp) and only the grabbed handle moves.
+    #[test]
+    fn alt_grab_breaks_the_tangent_into_a_corner() {
+        let mut scene = VecScene::new();
+        let mut pen = PenTool::new();
+        pen.on_press(&mut scene, [0.0, 0.0], PTW, false);
+        pen.on_drag(&mut scene, [2.0, 0.0]); // Symmetric: out=[2,0], in=[-2,0]
+        pen.on_release();
+        pen.finish();
+        // Alt-grab the out handle → break to Corner.
+        assert_eq!(
+            pen.on_press(&mut scene, [2.0, 0.0], PTW, true),
+            PenClick::Grabbed
+        );
+        pen.on_drag(&mut scene, [2.0, 2.0]);
+        pen.on_release();
+        let v = scene.paths()[0].verts[0];
+        assert_eq!(v.kind, VertexKind::Corner);
+        assert_eq!(v.out_handle, [2.0, 2.0]);
+        assert_eq!(v.in_handle, [-2.0, 0.0], "in handle untouched (independent)");
+    }
+
+    /// The Vertex-type buttons target the selected vertex; `selected_vertex_kind`
+    /// reports it for the panel to highlight.
+    #[test]
+    fn selected_vertex_kind_tracks_the_last_touched_vertex() {
+        let mut scene = VecScene::new();
+        let mut pen = PenTool::new();
+        draw_triangle(&mut pen, &mut scene); // closes; last vertex selected
+        // Grab a specific anchor to select that vertex.
+        pen.on_press(&mut scene, [4.0, 0.0], PTW, false);
+        pen.on_release();
+        assert_eq!(pen.selected_vert(), Some(1));
+        assert_eq!(
+            pen.selected_vertex_kind(&scene),
+            Some(VertexKind::Corner) // straight corners from clicks
+        );
+        assert!(pen.set_selected_vertex_kind(&mut scene, VertexKind::Symmetric));
+        assert_eq!(pen.selected_vertex_kind(&scene), Some(VertexKind::Symmetric));
+        // Selecting a whole path (boolean result) clears the vertex selection.
+        pen.select(Some(scene.paths()[0].id));
+        assert_eq!(pen.selected_vert(), None);
+        assert_eq!(pen.selected_vertex_kind(&scene), None);
+    }
+
     #[test]
     fn plain_click_stays_a_corner() {
         let mut scene = VecScene::new();
         let mut pen = PenTool::new();
-        pen.on_press(&mut scene, [0.0, 0.0], PTW);
+        pen.on_press(&mut scene, [0.0, 0.0], PTW, false);
         pen.on_release();
         let v = scene.paths()[0].verts[0];
         assert_eq!(v.kind, VertexKind::Corner);
@@ -487,17 +640,17 @@ mod tests {
             fill: Rgba8::new(40, 200, 40, 128),
         };
         pen.set_style(style);
-        pen.on_press(&mut scene, [0.0, 0.0], PTW);
+        pen.on_press(&mut scene, [0.0, 0.0], PTW, false);
         let (stroke, w) = scene.paths()[0].stroke.expect("stroke");
         assert_eq!(stroke, style.stroke);
         assert_eq!(w, style.stroke_w_px * PTW);
         // Fechar aplica o fill do estilo.
         pen.on_release();
-        pen.on_press(&mut scene, [4.0, 0.0], PTW);
+        pen.on_press(&mut scene, [4.0, 0.0], PTW, false);
         pen.on_release();
-        pen.on_press(&mut scene, [4.0, 4.0], PTW);
+        pen.on_press(&mut scene, [4.0, 4.0], PTW, false);
         pen.on_release();
-        pen.on_press(&mut scene, [0.02, 0.0], PTW); // fecha
+        pen.on_press(&mut scene, [0.02, 0.0], PTW, false); // fecha
         assert_eq!(scene.paths()[0].fill, Some(style.fill));
         // O estilo é config da tool → sobrevive a `clear`.
         pen.clear();

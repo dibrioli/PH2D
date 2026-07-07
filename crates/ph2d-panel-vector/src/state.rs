@@ -8,13 +8,16 @@
 //! (Width slider, Fill-None) and the colour-picker read-back (Stroke / Fill
 //! swatches), so the panel holds no authoritative state.
 
-use ph2d_tool_vector::VectorStyleSnapshot;
+use ph2d_tool_vector::{VectorStyleSnapshot, VertexType};
 use std::cell::{Cell, RefCell};
 
 thread_local! {
     /// Live snapshot published by the host before each `paint`. `None` until
     /// the first push (panel paints defaults).
     static CURRENT_SNAPSHOT: RefCell<Option<VectorStyleSnapshot>> = const { RefCell::new(None) };
+    /// Type of the currently-selected vertex (published by the shell each frame
+    /// from the Pen). `None` = no vertex selected → the Vertex section hides.
+    static CURRENT_VERTEX_TYPE: RefCell<Option<VertexType>> = const { RefCell::new(None) };
     /// Last measured scrollable content height (set by `paint`).
     static LAST_CONTENT_H: Cell<f32> = const { Cell::new(0.0) };
     /// Last visible body height (panel rect minus title + paddings).
@@ -38,6 +41,17 @@ pub fn set_current_vector_style(snapshot: Option<VectorStyleSnapshot>) {
 /// [`VectorStyleSnapshot::default`] when none was pushed.
 pub(crate) fn current_snapshot() -> VectorStyleSnapshot {
     CURRENT_SNAPSHOT.with(|c| c.borrow().unwrap_or_default())
+}
+
+/// Publish the selected vertex's type (or `None` when no vertex is selected).
+/// Called by the shell each frame while the `vector` tool is active.
+pub fn set_selected_vertex_type(kind: Option<VertexType>) {
+    CURRENT_VERTEX_TYPE.with(|c| *c.borrow_mut() = kind);
+}
+
+/// The selected vertex's type this frame (`None` ⇒ hide the Vertex section).
+pub(crate) fn current_vertex_type() -> Option<VertexType> {
+    CURRENT_VERTEX_TYPE.with(|c| *c.borrow())
 }
 
 #[must_use]

@@ -30,7 +30,10 @@ mod paint;
 pub mod populate;
 pub mod state;
 
-pub use state::{VectorPanelState, last_content_h, last_visible_h, set_current_vector_style};
+pub use state::{
+    VectorPanelState, last_content_h, last_visible_h, set_current_vector_style,
+    set_selected_vertex_type,
+};
 
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::interaction::{WidgetEvent, WidgetStore};

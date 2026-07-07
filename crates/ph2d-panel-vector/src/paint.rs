@@ -34,7 +34,7 @@ use ph2d_editor_core::widget::{
 use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ColorToken, ROW_H_PX, Spacing, TypeToken};
 use ph2d_tool_vector::params::{DrawMode, sides_to_slider};
-use ph2d_tool_vector::px_to_slider;
+use ph2d_tool_vector::{VertexType, px_to_slider};
 
 /// Label column width for the Width slider row + the Stroke / Fill labels.
 const LABEL_COL_W: f32 = 64.0; // LITERAL-PX-OK: panel grid metric (per-panel label gutter width)
@@ -265,6 +265,37 @@ pub(crate) fn paint(_state: &mut VectorPanelState, ctx: &mut PaintCtx) {
                 theme,
             );
             y += used + row_gap;
+        }
+
+        // ── Vertex type (rich handle editing) — only with a vertex selected ──
+        if let Some(vtype) = state::current_vertex_type() {
+            paint_text(
+                text_system,
+                scene,
+                "Vertex",
+                inner_x,
+                y,
+                label_font,
+                inner_w,
+                resolve(ColorToken::Text2, theme),
+            );
+            y += label_font + Spacing::Xs.px();
+            let verts = [
+                (ids::VECTOR_VERT_CORNER, "Corner", VertexType::Corner),
+                (ids::VECTOR_VERT_SMOOTH, "Smooth", VertexType::Smooth),
+                (ids::VECTOR_VERT_SYMMETRIC, "Symm", VertexType::Symmetric),
+            ];
+            let vseg_gap = Spacing::Sm.px();
+            let vseg_w =
+                ((inner_w - vseg_gap * (verts.len() as f32 - 1.0)) / verts.len() as f32).max(1.0);
+            for (i, (id, label, t)) in verts.iter().enumerate() {
+                let rx = inner_x + i as f32 * (vseg_w + vseg_gap);
+                let rect = Rect::new(rx, y, vseg_w, row_h);
+                let bstate = store.button_state(*id).unwrap_or(ButtonState::Normal);
+                paint_segmented_button(rect, label, vtype == *t, bstate, scene, text_system, theme);
+                hit_index.register(*id, rect);
+            }
+            y += row_h + row_gap;
         }
 
         // ── Boolean ops — act on the two last closed regions ────────────

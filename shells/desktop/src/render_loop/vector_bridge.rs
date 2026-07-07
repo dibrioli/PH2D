@@ -175,8 +175,27 @@ pub(super) fn dispatch(
     } else {
         None
     });
+    // Publish the selected vertex's type so the panel shows the Vertex section
+    // (Corner/Smooth/Symmetric) + highlights the active one. `None` hides it.
+    #[cfg(feature = "panel-vector")]
+    ph2d_panel_vector::set_selected_vertex_type(if vector_active {
+        pen.selected_vertex_kind(scene).map(vertex_type_of)
+    } else {
+        None
+    });
 
     // Mirror the tool's draw-mode + polygon sides so the input dispatch can
     // route canvas gestures (pen vs shape) without downcasting the tool.
     (tool.mode(), tool.polygon_sides())
+}
+
+/// Map the geometry `VertexKind` to the panel's UI-facing `VertexType`.
+fn vertex_type_of(k: ph2d_vec_scene::VertexKind) -> ph2d_tool_vector::VertexType {
+    use ph2d_tool_vector::VertexType;
+    use ph2d_vec_scene::VertexKind;
+    match k {
+        VertexKind::Corner => VertexType::Corner,
+        VertexKind::Smooth => VertexType::Smooth,
+        VertexKind::Symmetric => VertexType::Symmetric,
+    }
 }

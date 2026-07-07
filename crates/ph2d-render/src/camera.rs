@@ -232,6 +232,31 @@ impl Camera2d {
             view_proj: m.to_cols_array_2d(),
         }
     }
+
+    /// View-projection for rendering into a **sub-rect** of the target (Motion
+    /// Nodes M0.T13 — the split viewport⟂graph). The aspect comes from the
+    /// sub-rect's pixel dimensions (not the full window), so when the caller
+    /// pairs this with `set_viewport`/`set_scissor_rect` the scene fills the
+    /// sub-rect undistorted instead of being squashed by the window aspect.
+    /// Center + `height_world` are unchanged (same framing, smaller area).
+    /// Passing the full window dims yields exactly [`Self::view_proj`].
+    pub fn view_proj_for_subrect(&self, subrect_w_px: f32, subrect_h_px: f32) -> Mat4 {
+        let aspect = subrect_w_px.max(1.0) / subrect_h_px.max(1.0);
+        let half_h = self.height_world * 0.5;
+        let half_w = half_h * aspect;
+        let cx = self.center[0];
+        let cy = self.center[1];
+        Mat4::orthographic_rh(cx - half_w, cx + half_w, cy - half_h, cy + half_h, -1.0, 1.0)
+    }
+
+    /// [`CameraUniform`] form of [`Self::view_proj_for_subrect`].
+    pub fn uniform_for_subrect(&self, subrect_w_px: f32, subrect_h_px: f32) -> CameraUniform {
+        CameraUniform {
+            view_proj: self
+                .view_proj_for_subrect(subrect_w_px, subrect_h_px)
+                .to_cols_array_2d(),
+        }
+    }
 }
 
 impl Default for Camera2d {
@@ -255,6 +280,33 @@ mod tests {
         // non-default mask is set.
         assert_eq!(Camera2d::default().cull_mask, u32::MAX);
         assert_eq!(Camera2d::new([1.0, 2.0], 5.0).cull_mask, u32::MAX);
+    }
+
+    #[test]
+    fn subrect_uniform_uses_the_subrect_aspect() {
+        let cam = Camera2d::new([0.0, 0.0], 10.0); // half_h = 5
+        // A 2:1 sub-rect → half_w = half_h * 2 = 10. Orthographic scale on x is
+        // 2/(right-left) = 1/half_w; on y it's 1/half_h.
+        let m = cam.view_proj_for_subrect(400.0, 200.0).to_cols_array_2d();
+        assert!((m[0][0] - 0.1).abs() < 1e-6, "x scale = 1/half_w = 0.1");
+        assert!((m[1][1] - 0.2).abs() < 1e-6, "y scale = 1/half_h = 0.2");
+    }
+
+    #[test]
+    fn subrect_with_window_dims_equals_full_window_view_proj() {
+        // Passing the whole window through the sub-rect path must be identical to
+        // the full-window projection (no special-casing needed at the call site).
+        let cam = Camera2d::new([3.0, -2.0], 8.0);
+        let win = WindowSize::new(1280, 720);
+        let full = cam.view_proj(win).to_cols_array_2d();
+        let sub = cam
+            .view_proj_for_subrect(win.width as f32, win.height as f32)
+            .to_cols_array_2d();
+        for c in 0..4 {
+            for r in 0..4 {
+                assert!((full[c][r] - sub[c][r]).abs() < 1e-6, "mismatch at [{c}][{r}]");
+            }
+        }
     }
 
     #[test]

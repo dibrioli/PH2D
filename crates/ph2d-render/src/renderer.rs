@@ -666,7 +666,7 @@ impl SpriteRenderer {
         window: WindowSize,
         clear_color: wgpu::Color,
     ) {
-        self.render_with_extra(target, present, camera, window, clear_color, &[]);
+        self.render_with_extra(target, present, camera, window, clear_color, &[], None);
     }
 
     /// Like [`render`](Self::render) but also injects an external instance slice
@@ -675,6 +675,14 @@ impl SpriteRenderer {
     /// together in the same pass — so a cooked node-graph stream draws **without**
     /// being spawned into `PresentWorld` (stream ≠ ECS, ADR-0035). Pass `&[]` for
     /// the scene-only path ([`render`](Self::render) does exactly that).
+    ///
+    /// `scene_viewport` (Motion Nodes M0.T13) is an optional `[x, y, w, h]`
+    /// sub-rect in target pixels: when `Some`, the scene renders framed into that
+    /// sub-rect (the split viewport⟂graph — via `set_viewport`/`set_scissor_rect`
+    /// + [`Camera2d::uniform_for_subrect`]) instead of the full target. It is
+    /// honored only on the plain single-pass path; a frame with clip/mask groups
+    /// ignores it (those passes don't take a sub-rect yet) and renders
+    /// full-window — the graph panel still covers the graph area on top.
     #[allow(clippy::too_many_arguments)]
     pub fn render_with_extra(
         &mut self,
@@ -684,6 +692,7 @@ impl SpriteRenderer {
         window: WindowSize,
         clear_color: wgpu::Color,
         extra: &[RenderInstance],
+        scene_viewport: Option<[f32; 4]>,
     ) {
         // Collect scene instances + the injected `extra` slice into `scratch`
         // and sort into canonical render order (extracted to keep this file
@@ -702,17 +711,27 @@ impl SpriteRenderer {
             .instance_buffer
             .upload(&self.gpu, self.scratch.as_slice());
 
-        let camera_uniform = camera.uniform(window);
-        self.gpu
-            .queue
-            .write_buffer(&self.camera_buffer, 0, bytemuck::bytes_of(&camera_uniform));
-
         // W3 §8: does this frame contain any ClipChildren group or Mask2D /
         // MaskInteraction role? The common case (neither) takes the exact
         // pre-stencil single-pass path below — zero regression, and the
         // stencil attachment is never even allocated.
         let has_clip = count > 0 && self.runs.iter().any(|r| r.clip_group != 0);
         let has_mask = count > 0 && self.runs.iter().any(|r| r.mask_role != 0);
+
+        // Motion Nodes M0.T13 — the split-viewport sub-rect is honored only on
+        // the plain single-pass path; the clip/mask passes render to the full
+        // target, so pairing the subrect projection with them would mis-project.
+        // A clip/mask frame therefore renders full-window (still covered by the
+        // graph panel on top). `subrect` is the effective viewport this frame.
+        let subrect = scene_viewport.filter(|_| !has_clip && !has_mask);
+        let camera_uniform = match subrect {
+            Some([_, _, w, h]) => camera.uniform_for_subrect(w, h),
+            None => camera.uniform(window),
+        };
+        self.gpu
+            .queue
+            .write_buffer(&self.camera_buffer, 0, bytemuck::bytes_of(&camera_uniform));
+
         if has_clip || has_mask {
             // Stencil must match the color target; the live editor's GameRt
             // tracks the window size, so size the stencil to the window.
@@ -763,6 +782,13 @@ impl SpriteRenderer {
                 occlusion_query_set: None,
                 multiview_mask: None,
             });
+            // Motion Nodes M0.T13 — frame the scene into the split sub-rect (the
+            // camera uniform above already uses the sub-rect aspect). Clear still
+            // fills the whole attachment; the scissor confines draws.
+            if let Some([x, y, w, h]) = subrect {
+                pass.set_viewport(x, y, w, h, 0.0, 1.0);
+                pass.set_scissor_rect(x as u32, y as u32, (w.max(1.0)) as u32, (h.max(1.0)) as u32);
+            }
             if count > 0 {
                 pass.set_bind_group(0, &self.frame_bind_group, &[]);
                 pass.set_vertex_buffer(0, self.quad_buffer.slice(..));

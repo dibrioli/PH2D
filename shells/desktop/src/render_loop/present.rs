@@ -50,12 +50,36 @@ impl crate::App {
             // pass below when the `motion` tool is active (the bridge pumped it
             // into `motion.pump.instances` earlier this frame).
             motion,
+            // Motion Nodes M0.T13: read the center split to frame the scene into
+            // its sub-rect (set by the bridge earlier this frame).
+            hero_screen,
             ..
         } = gfx;
         let window_size = surface.size();
         let motion_active = tools
             .active()
             .is_some_and(|t| t.id() == ph2d_editor::ToolId::new("motion"));
+
+        // Motion Nodes M0.T13 — Fase B: when the center is split (Motion mode),
+        // frame the scene into its sub-rect (top for a horizontal Cavalry split,
+        // left for a vertical one) in RENDER-TARGET pixels — the SAME fraction
+        // the graph panel uses, so scene and graph align at any DPI without
+        // plumbing the editor-core layout rect.
+        let scene_viewport: Option<[f32; 4]> = if motion_active {
+            let w = window_size.width as f32;
+            let h = window_size.height as f32;
+            match hero_screen.as_ref().map(|hs| hs.view.center_split) {
+                Some(ph2d_editor::screens::layout::CenterSplit::Horizontal { t }) => {
+                    Some([0.0, 0.0, w, h * t])
+                }
+                Some(ph2d_editor::screens::layout::CenterSplit::Vertical { t }) => {
+                    Some([0.0, 0.0, w * t, h])
+                }
+                _ => None,
+            }
+        } else {
+            None
+        };
 
         // M14.7 polish (10.1 fix): `surface.acquire_frame()` can block
         // until the next swap-chain texture is ready. Under a vsync
@@ -97,6 +121,7 @@ impl crate::App {
                     window_size,
                     wgpu::Color { r, g, b, a: 1.0 },
                     motion_slice,
+                    scene_viewport,
                 );
                 // Pass 2: AgX tonemap
                 //   target: `tonemap.output_view()` (Bgra8UnormSrgb LDR)

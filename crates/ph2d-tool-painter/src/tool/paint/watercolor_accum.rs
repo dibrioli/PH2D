@@ -65,10 +65,13 @@ impl PainterTool {
         if let Some(d) = dabs.last() {
             self.paint.wet_soak_pos = Some((d.center, d.radius_px.max(0.0)));
         }
+        // Dilution (Wet Mix, `docs/Painter/07` §4): more water lays down LESS coverage → a thinner,
+        // paler wash. `flow = 1 − dilution`; default `0` → `flow = 1` (byte-identical).
+        let flow = (1.0 - self.paint.brush.wet_dilution).clamp(0.0, 1.0);
         let cov = &mut self.paint.stroke_coverage;
         for d in dabs {
             let r = d.radius_px;
-            let peak = d.coverage.clamp(0.0, 1.0);
+            let peak = (d.coverage * flow).clamp(0.0, 1.0);
             if r <= 0.0 || peak <= 0.0 {
                 continue;
             }
@@ -109,17 +112,21 @@ impl PainterTool {
         if self.paint.stroke_color.len() != fw * fh * 4 {
             self.paint.stroke_color = vec![0u8; fw * fh * 4];
         }
+        // Wet Mix (`docs/Painter/07` §4): the deposited colour is the mixer's per-dab blend of the
+        // brush colour with the surface it picked up (Charge/Pull). Off (default `wet_charge = 1`) ⇒
+        // each dab's own colour (byte-identical). Computed BEFORE borrowing `stroke_color`.
+        let mixed = self.wet_mix_dab_colors(dabs);
         let buf = &mut self.paint.stroke_color;
-        for d in dabs {
+        for (d, dcol) in dabs.iter().zip(&mixed) {
             let r = d.radius_px;
             let peak = d.coverage.clamp(0.0, 1.0);
             if r <= 0.0 || peak <= 0.0 {
                 continue;
             }
             let col = [
-                (d.color[0].clamp(0.0, 1.0) * 255.0 + 0.5) as u8,
-                (d.color[1].clamp(0.0, 1.0) * 255.0 + 0.5) as u8,
-                (d.color[2].clamp(0.0, 1.0) * 255.0 + 0.5) as u8,
+                (dcol[0].clamp(0.0, 1.0) * 255.0 + 0.5) as u8,
+                (dcol[1].clamp(0.0, 1.0) * 255.0 + 0.5) as u8,
+                (dcol[2].clamp(0.0, 1.0) * 255.0 + 0.5) as u8,
             ];
             let inv_r = 1.0 / r;
             let (cx, cy) = (d.center[0], d.center[1]);

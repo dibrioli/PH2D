@@ -52,6 +52,8 @@ mod watercolor_accum;
 mod watercolor_backdrop;
 /// Watercolor field math (LUTs, noise, blur, samplers); split from `watercolor_render` (LOC cap).
 mod watercolor_field;
+/// Watercolor Wet Mix mixer-brush state (Charge/Dilution/Pull) — per-dab colour pickup + carry.
+mod watercolor_mixer;
 /// Watercolor edge darkening (#1): per-stroke coverage + the pen-up blur-difference "fringe" pass.
 mod watercolor_render;
 /// Watercolor section setters + router (edge darkening / granulation / pigment); no fluid sim.
@@ -436,6 +438,13 @@ pub(crate) struct PaintState {
     /// Whether THIS stroke poured any soak yet — gates the composite's 2×-blur (far) fields, so a
     /// stroke with no dwell pays exactly the plain 4-blur rewet cost.
     wet_soak_active: bool,
+    /// **Watercolor mixer** (Wet Mix — `wet_charge`/`wet_pull`/`wet_dilution`, `docs/Painter/07` §4)
+    /// per-stroke state: the picked-up colour reservoir (unpremultiplied rgb + a presence-weighted
+    /// confidence `w`) and its `recentness` (the Pull-gated resample clock). The brush deposits
+    /// `lerp(brush, reservoir, (1−charge)·w)` — it picks up the frozen surface it crosses and (with
+    /// Pull) drags it downstream. Reset on pen-down; inert unless `wet_charge < 1` (default → skipped,
+    /// byte-identical). See [`super::watercolor_mixer`].
+    wet_mix: watercolor_mixer::WetMix,
     /// The previous dab centre of the Smudge TRUE-SMEAR chain (`None` = stroke start / no smear yet).
     /// With `wet_smudge > 0` each dab DRAGS the frozen base's paint from here to its own centre
     /// (`smear_dab` on the forked [`Self::watercolor_base`]) before the wash composites over it — the

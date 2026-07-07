@@ -11792,3 +11792,184 @@ fn watercolor_high_spread_frame_cost_bounded() {
         hi / lo
     );
 }
+
+/// **T5 (doc 11 §5 F2) — the Wet Mix carries picked-up colour downstream.** A wet mixer brush
+/// (Charge < 1, some Pull) crossing a dry RED band on white picks the red up and drags it along the
+/// gesture: downstream of the band the deposited stroke is redder than the same stroke with the mixer
+/// OFF (Charge 1), and the carried red DECAYS with distance as the brush resamples the white beyond.
+#[test]
+fn watercolor_wet_mix_carries_colour_downstream() {
+    fn run(charge: f32) -> PainterTool {
+        let size = 160u32;
+        let mut src = vec![0u8; (size * size * 4) as usize];
+        for y in 0..size {
+            for x in 0..size {
+                let i = ((y * size + x) * 4) as usize;
+                let p = if (44..56).contains(&x) {
+                    [210u8, 30, 30, 255] // dry red band
+                } else {
+                    [255u8, 255, 255, 255]
+                };
+                src[i..i + 4].copy_from_slice(&p);
+            }
+        }
+        let mut t = PainterTool::default();
+        t.set_source(src, size, size);
+        t.paint.brush = BrushSpec {
+            radius_px: 7.0,
+            hardness: 1.0,
+            falloff: Falloff::Constant,
+            color: [0.20, 0.35, 0.75], // blue brush — carried red reads as a purple shift
+            space_attenuation: false,
+            watercolor: true,
+            edge_gain: 0.0, // isolate the mixer from edge pooling
+            edge_spread: 4.0,
+            granulation: 0.0,
+            warp: 0.0,
+            fill: 0.6,
+            depth: 1.5,
+            wet_rewet: 0.0, // isolate the mixer from the per-pixel rewet
+            wet_charge: charge,
+            wet_pull: 0.6,
+            ..Default::default()
+        };
+        for slot in &mut t.paint.brush_by_mode {
+            *slot = t.paint.brush;
+        }
+        assert!(t.on_canvas_pointer(cp([16.0, 80.0], PointerPhase::Down)));
+        let mut x = 16.0f32;
+        while x < 130.0 {
+            x += 3.0;
+            t.on_canvas_pointer(cp([x, 80.0], PointerPhase::Move));
+        }
+        assert!(t.on_canvas_pointer(cp([x, 80.0], PointerPhase::Up)));
+        t
+    }
+    let size = 160u32;
+    let mixed = run(0.2); // pickup 0.8
+    let plain = run(1.0); // mixer off
+    let redness = |t: &PainterTool, x: u32| {
+        let c = px(t, size, x, 80);
+        i32::from(c[0]) - (i32::from(c[1]) + i32::from(c[2])) / 2
+    };
+    // (a) Downstream (x=70, just past the band) the mixer stroke carries red the plain one lacks.
+    assert!(
+        redness(&mixed, 70) > redness(&plain, 70) + 15,
+        "the mixer must carry the band's red downstream: mixed {} vs plain {}",
+        redness(&mixed, 70),
+        redness(&plain, 70)
+    );
+    // (b) The carried red DECAYS with distance (near the band > far from it).
+    assert!(
+        redness(&mixed, 70) > redness(&mixed, 110) + 8,
+        "the carried colour must decay downstream: near {} vs far {}",
+        redness(&mixed, 70),
+        redness(&mixed, 110)
+    );
+}
+
+/// **T6 (doc 11 §5 F2) — Charge controls the pickup amount.** A lower Charge (more depleted reserve)
+/// blends MORE of the picked-up surface into the deposit: painting a blue mixer stroke straight over
+/// a red field, a low Charge deposits a redder (more mixed) result than a high Charge.
+#[test]
+fn watercolor_wet_mix_charge_controls_pickup() {
+    fn run(charge: f32) -> PainterTool {
+        let size = 96u32;
+        let mut src = vec![0u8; (size * size * 4) as usize];
+        for px4 in src.chunks_exact_mut(4) {
+            px4.copy_from_slice(&[210, 30, 30, 255]); // dry red everywhere
+        }
+        let mut t = PainterTool::default();
+        t.set_source(src, size, size);
+        t.paint.brush = BrushSpec {
+            radius_px: 8.0,
+            hardness: 1.0,
+            falloff: Falloff::Constant,
+            color: [0.15, 0.30, 0.80],
+            space_attenuation: false,
+            watercolor: true,
+            edge_gain: 0.0,
+            edge_spread: 4.0,
+            granulation: 0.0,
+            warp: 0.0,
+            fill: 0.6,
+            depth: 1.5,
+            wet_rewet: 0.0,
+            wet_charge: charge,
+            wet_pull: 0.3,
+            ..Default::default()
+        };
+        for slot in &mut t.paint.brush_by_mode {
+            *slot = t.paint.brush;
+        }
+        assert!(t.on_canvas_pointer(cp([16.0, 48.0], PointerPhase::Down)));
+        let mut x = 16.0f32;
+        while x < 80.0 {
+            x += 3.0;
+            t.on_canvas_pointer(cp([x, 48.0], PointerPhase::Move));
+        }
+        assert!(t.on_canvas_pointer(cp([x, 48.0], PointerPhase::Up)));
+        t
+    }
+    let size = 96u32;
+    let redness = |t: &PainterTool| {
+        let c = px(t, size, 60, 48);
+        i32::from(c[0]) - (i32::from(c[1]) + i32::from(c[2])) / 2
+    };
+    let low = run(0.1); // heavy pickup
+    let high = run(0.9); // light pickup
+    assert!(
+        redness(&low) > redness(&high) + 15,
+        "lower Charge must pick up more of the red surface: low {} vs high {}",
+        redness(&low),
+        redness(&high)
+    );
+}
+
+/// **T7 (doc 11 §5 F2) — the mixer is inert at the default Charge = 1.** With a full fresh reserve
+/// the brush deposits pure fresh colour: a blue stroke straight over a red field stays BLUE (no red
+/// picked up), regardless of Pull — the byte-identical-default guarantee (the mixer path is skipped).
+#[test]
+fn watercolor_wet_mix_default_charge_deposits_pure_colour() {
+    let size = 96u32;
+    let mut src = vec![0u8; (size * size * 4) as usize];
+    for px4 in src.chunks_exact_mut(4) {
+        px4.copy_from_slice(&[210, 30, 30, 255]);
+    }
+    let mut t = PainterTool::default();
+    t.set_source(src, size, size);
+    t.paint.brush = BrushSpec {
+        radius_px: 8.0,
+        hardness: 1.0,
+        falloff: Falloff::Constant,
+        color: [0.10, 0.25, 0.85],
+        space_attenuation: false,
+        watercolor: true,
+        edge_gain: 0.0,
+        edge_spread: 4.0,
+        granulation: 0.0,
+        warp: 0.0,
+        fill: 0.7,
+        depth: 2.0,
+        wet_rewet: 0.0,
+        wet_charge: 1.0, // default → mixer OFF
+        wet_pull: 0.8,   // even with Pull set, no pickup at full charge
+        ..Default::default()
+    };
+    for slot in &mut t.paint.brush_by_mode {
+        *slot = t.paint.brush;
+    }
+    assert!(t.on_canvas_pointer(cp([16.0, 48.0], PointerPhase::Down)));
+    let mut x = 16.0f32;
+    while x < 80.0 {
+        x += 3.0;
+        t.on_canvas_pointer(cp([x, 48.0], PointerPhase::Move));
+    }
+    assert!(t.on_canvas_pointer(cp([x, 48.0], PointerPhase::Up)));
+    let c = px(&t, size, 60, 48);
+    // Deposit is blue: B channel dominates, no red carried up from the field.
+    assert!(
+        c[2] > c[0] + 40,
+        "Charge 1 must deposit pure fresh blue (mixer off), got {c:?}"
+    );
+}

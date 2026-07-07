@@ -1,0 +1,187 @@
+//! Watercolor **Wet Mix** mixer-brush (Procreate Wet Mix / MyPaint-Krita "Dulling", `docs/Painter/07`
+//! §4) — the per-stroke colour-pickup + carry that makes rediluição DIRECTIONAL (the pigment a wet
+//! brush crosses is dragged along the gesture), on top of the per-pixel `wet_rewet` diffusion.
+//!
+//! Per dab, in stroke order, the brush:
+//! 1. resamples the FROZEN pre-stroke surface under its disc — the base composited over the real
+//!    [`ground`](super::watercolor_backdrop), weighted by paint **presence** (how far it departs from
+//!    the local ground, the same reference the rewet uses) — into a running-average **reservoir**;
+//! 2. the resample is gated by **Pull** (`recentness`): Pull 0 resamples every dab (the deposit
+//!    tracks the local surface); Pull → 1 rarely resamples, so the reservoir LAGS and its colour is
+//!    carried far downstream (the smudge length);
+//! 3. deposits `lerp(brush, reservoir, (1 − charge)·w)` — a fully **Charged** brush (default `1`)
+//!    deposits pure fresh colour (the mixer is skipped entirely → byte-identical); a depleted brush
+//!    smears what it picked up.
+//!
+//! **No self-feeding** (the retired reservoir's failure mode, [[project-wash-undo…]] lesson): the
+//! pickup reads `watercolor_base` (frozen at pen-down) over the frozen backdrop, NEVER the live
+//! canvas. **No cadence-binding**: the resample clock is Pull/distance-driven (per dab), not per
+//! frame. The visible signature is the CARRY (Pull) + the pickup fraction (Charge) — not a weak
+//! colour tint. Deterministic (HR-5): only sums/mults over integer-indexed samples.
+
+use super::*;
+
+/// The mixer's per-stroke reservoir: unpremultiplied picked-up colour (straight sRGB `0..1`), a
+/// presence-weighted confidence `w ∈ [0, 1]` (how much real paint it holds), and the Pull resample
+/// clock `recentness`. `w == 0` (fresh / over bare ground) ⇒ the deposit is pure brush colour.
+#[derive(Clone, Copy, Debug, Default)]
+pub(super) struct WetMix {
+    rgb: [f32; 3],
+    w: f32,
+    recentness: f32,
+}
+
+/// Below this `recentness` the Pull gate resamples the surface (and resets `recentness` to 1). Pull 0
+/// ⇒ `update_factor` ≈ 0 ⇒ `recentness` collapses every dab ⇒ resample every dab.
+const RESAMPLE_EPS: f32 = 0.5;
+
+impl PainterTool {
+    /// Whether the Wet Mix mixer drives this stroke's deposited colour: watercolor render-path on and
+    /// `wet_charge < 1` (some pickup). Off ⇒ the deposit is the plain per-dab brush colour (byte-
+    /// identical), and the whole pickup path is skipped.
+    pub(super) fn wet_mixer_active(&self) -> bool {
+        self.watercolor_render_active() && self.paint.brush.wet_charge < 1.0
+    }
+
+    /// Reset the mixer reservoir for a beginning stroke (fresh brush, no pickup yet).
+    pub(super) fn reset_wet_mix(&mut self) {
+        self.paint.wet_mix = WetMix::default();
+    }
+
+    /// Compute the per-dab **deposited** colours for `dabs` (straight sRGB `0..1`), advancing the mixer
+    /// reservoir in stroke order. Mirrors the plain path when the mixer is off (returns each dab's own
+    /// colour). Reads the frozen base + backdrop (cloned `Arc`s, so no borrow clash with the caller's
+    /// `stroke_color` mutation).
+    pub(super) fn wet_mix_dab_colors(&mut self, dabs: &[Dab]) -> Vec<[f32; 3]> {
+        if !self.wet_mixer_active() {
+            return dabs.iter().map(|d| d.color).collect();
+        }
+        let (fw, fh) = self.source_size;
+        let (fw, fh) = (fw as usize, fh as usize);
+        let base = self.paint.watercolor_base.as_ref().map(Arc::clone);
+        let backdrop = self.paint.wet_backdrop.as_ref().map(Arc::clone);
+        let (Some(base), Some(backdrop)) = (base, backdrop) else {
+            return dabs.iter().map(|d| d.color).collect();
+        };
+        if base.len() != fw * fh * 4 || backdrop.len() != fw * fh * 4 || fw == 0 || fh == 0 {
+            return dabs.iter().map(|d| d.color).collect();
+        }
+        let pickup = (1.0 - self.paint.brush.wet_charge).clamp(0.0, 1.0);
+        // Pull → the running-average retention: 0 resamples every dab (no carry, the deposit tracks
+        // the local surface), → ~0.98 holds the load for a long smudge. The concave `p·(2−p)` map
+        // (transcendental-free, computed once per batch — HR-5 safe) gives a usefully long carry
+        // already at a MODERATE Pull; a straight `p·0.98` depleted the load in ~2 dabs (Enio
+        // 2026-07-07: "the mixer must carry the band's red downstream").
+        let p = self.paint.brush.wet_pull.clamp(0.0, 1.0);
+        let update = (p * (2.0 - p) * 0.98).clamp(0.0, 0.98);
+        let mut out = Vec::with_capacity(dabs.len());
+        let mut mix = self.paint.wet_mix;
+        for d in dabs {
+            // ── 1. Pull-gated resample of the frozen surface under the disc ──
+            mix.recentness *= update;
+            if mix.recentness < RESAMPLE_EPS {
+                let (srgb, sw) = sample_surface(&base, &backdrop, fw, fh, d.center, d.radius_px);
+                // Running average in PREMULTIPLIED space (`rgb` holds colour × weight): resampling
+                // over bare ground (`sw = 0`) contributes NO paint, so it only DEPLETES the load
+                // (× update) — it never pulls the carried colour toward the ground. That is the
+                // difference between "the loaded red fades as the brush runs dry" (right) and "the
+                // brush repaints itself white the instant it leaves the band" (the straight-lerp bug,
+                // Enio 2026-07-07). The unpremultiplied colour `rgb / w` stays the picked-up hue.
+                for c in 0..3 {
+                    mix.rgb[c] = update * mix.rgb[c] + (1.0 - update) * sw * srgb[c];
+                }
+                mix.w = update * mix.w + (1.0 - update) * sw;
+                mix.recentness = 1.0;
+            }
+            // ── 2. Deposit: blend the brush colour toward the (unpremultiplied) reservoir colour by
+            //    pickup × load. Load `w` decays downstream ⇒ the carried colour fades with distance. ──
+            let t = (pickup * mix.w).clamp(0.0, 1.0);
+            let mut col = [0.0f32; 3];
+            if mix.w > 1e-4 {
+                let inv = 1.0 / mix.w;
+                for c in 0..3 {
+                    let sc = mix.rgb[c] * inv; // unpremultiply
+                    col[c] = d.color[c] + (sc - d.color[c]) * t;
+                }
+            } else {
+                col = d.color;
+            }
+            out.push(col);
+        }
+        self.paint.wet_mix = mix;
+        out
+    }
+}
+
+/// Average the frozen **surface appearance** (base over ground) + its paint **presence** under the
+/// disc at `center` (radius `r`), via a cheap 5-tap star (centre + 4 mid-radius points). Presence =
+/// the max per-channel departure from the local ground, dead-zoned like the rewet (`14→50` bytes), so
+/// bare ground contributes `w = 0` (no pickup there). Returns `(straight sRGB 0..1, presence 0..1)`.
+fn sample_surface(
+    base: &[u8],
+    ground: &[u8],
+    fw: usize,
+    fh: usize,
+    center: [f32; 2],
+    r: f32,
+) -> ([f32; 3], f32) {
+    let rr = (r * 0.5).max(0.0);
+    let taps = [
+        (center[0], center[1]),
+        (center[0] - rr, center[1]),
+        (center[0] + rr, center[1]),
+        (center[0], center[1] - rr),
+        (center[0], center[1] + rr),
+    ];
+    let mut acc = [0.0f32; 3];
+    let mut pres = 0.0f32;
+    let mut n = 0.0f32;
+    for (tx, ty) in taps {
+        if tx < 0.0 || ty < 0.0 {
+            continue;
+        }
+        let (x, y) = (tx as usize, ty as usize);
+        if x >= fw || y >= fh {
+            continue;
+        }
+        let bi = (y * fw + x) * 4;
+        let ab = f32::from(base[bi + 3]) / 255.0;
+        let (gr, gg, gb) = (
+            f32::from(ground[bi]),
+            f32::from(ground[bi + 1]),
+            f32::from(ground[bi + 2]),
+        );
+        // Base over the real ground (the paint as seen), straight sRGB.
+        let rgb = [
+            f32::from(base[bi]) * ab + gr * (1.0 - ab),
+            f32::from(base[bi + 1]) * ab + gg * (1.0 - ab),
+            f32::from(base[bi + 2]) * ab + gb * (1.0 - ab),
+        ];
+        for c in 0..3 {
+            acc[c] += rgb[c] / 255.0;
+        }
+        // Presence vs the LOCAL ground (dead-zoned, like the rewet's PAINT_LO/PAINT_HI).
+        let dd = (gr - rgb[0])
+            .abs()
+            .max((gg - rgb[1]).abs())
+            .max((gb - rgb[2]).abs());
+        pres += smooth_pres(dd);
+        n += 1.0;
+    }
+    if n <= 0.0 {
+        return ([0.0; 3], 0.0);
+    }
+    (
+        [acc[0] / n, acc[1] / n, acc[2] / n],
+        (pres / n).clamp(0.0, 1.0),
+    )
+}
+
+/// Dead-zone presence ramp (bytes `14 → 50`), matching the rewet's `PAINT_LO`/`PAINT_HI` so the
+/// mixer and the per-pixel rewet agree on "what is liftable paint".
+#[inline]
+fn smooth_pres(d: f32) -> f32 {
+    // Cubic smoothstep over [14, 50] (transcendental-free).
+    let t = ((d - 14.0) / (50.0 - 14.0)).clamp(0.0, 1.0);
+    t * t * (3.0 - 2.0 * t)
+}

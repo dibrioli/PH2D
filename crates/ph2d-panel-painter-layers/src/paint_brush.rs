@@ -223,7 +223,9 @@ pub(crate) fn paint_brush_body(
         //    watercolor the Grain slot IS the granulation map (`docs/Painter/10…` §5). ──
         if brush.watercolor {
             y = sep(ctx.scene, theme, x, content_w, y);
-            y = crate::paint_watercolor::paint_paper_section(ctx, theme, x, content_w, y, brush);
+            y = crate::paint_watercolor_paper::paint_paper_section(
+                ctx, theme, x, content_w, y, brush,
+            );
         }
 
         // ── Section 8: Grain — the texture inside the silhouette (was "Texture", Enio 2026-06-25);
@@ -311,7 +313,7 @@ pub(crate) fn paint_brush_popovers(ctx: &mut PaintCtx, theme: ph2d_tokens::Theme
     // Shape Tone ramp Interpolation dropdown.
     crate::paint_shape_ramp::paint_shape_ramp_popovers(ctx, theme);
     // Watercolor Paper / Granulation kind dropdowns.
-    crate::paint_watercolor::paint_watercolor_popovers(ctx, theme);
+    crate::paint_watercolor_paper::paint_watercolor_popovers(ctx, theme);
 }
 
 /// When the shared Blender picker targets the brush swatch, the hero loop mirrors its live value into

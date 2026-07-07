@@ -305,6 +305,12 @@ pub struct BrushSettings {
     pub wet_smudge: f32,
     /// **Wet** (`0..1`) — wet-on-wet rewetting: lift + dissolve + pool, per-pixel in the composite.
     pub wet_rewet: f32,
+    /// **Charge** (`0..1`) — Wet Mix fresh-paint reserve; `1` = pure fresh (mixer off), `<1` picks up.
+    pub wet_charge: f32,
+    /// **Dilution** (`0..1`) — Wet Mix water: thins the deposit (`flow = 1 − dilution`).
+    pub wet_dilution: f32,
+    /// **Pull** (`0..1`) — Wet Mix colour-carry / smudge length (inert unless `wet_charge < 1`).
+    pub wet_pull: f32,
     /// **Paper** slot kind (`TextureKind` wire u8) — the substrate tooth (its own full section).
     pub paper_kind: u8,
     /// **Paper** slot Mapping (`TextureMapping` wire u8).

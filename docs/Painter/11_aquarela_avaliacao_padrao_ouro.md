@@ -154,9 +154,30 @@ uma constante por um read — re-rodar a sonda de perf (alvo: ≤0,3 ms/frame @2
 - Gates que assumem o bege (lift/bleed/hue/convergência) mudam **junto com esta decisão** — nunca
   silenciosamente (regra do handoff).
 
-### F2 — Rediluição Tier-2: charge/dilution/pull/recentness (doc 07 §4, já projetado)
+### F2 — Rediluição Tier-2: charge/dilution/pull/recentness (doc 07 §4) — **LANDOU 2026-07-07**
 
-**Mudança.** Estado de mixer por traço `{rgb, a, recentness, charge}` premul-linear (doc 07 §4.1):
+> Estado gate-verde no branch (`ph2d-painter-brush` + `ph2d-tool-painter/…/watercolor_mixer.rs` +
+> seam do painel). Aguarda smoke perceptual.
+> - **Motor:** `wet_charge` (1=puro fresco, mixer OFF byte-idêntico; <1 = pickup) · `wet_dilution`
+>   (afina a cobertura, `flow = 1−dilution`) · `wet_pull` (carry) — `BrushSpec`, defaults neutros.
+> - **Mixer** (`watercolor_mixer.rs`): reservatório por-traço `{rgb, w, recentness}` acumulado em
+>   **premultiplicado** — reamostra a superfície CONGELADA (base sobre o ground real, ponderada por
+>   presença) sob o disco (star 5-tap), gate por `recentness`↔`pull`, depósito
+>   `lerp(brush, reservoir, (1−charge)·w)`. Alimenta `stroke_color` → composite óptico existente.
+> - **Achado (medido, não teorizado):** a acumulação por LERP simples repintava o estado de branco
+>   ao sair da banda (carry ~nulo, +3). Premultiplicado = branco (presença 0) só **deplete** o peso,
+>   nunca corrompe a cor carregada. E o mapa `pull→update` reto (`p·0.98`) depletava em ~2 dabs →
+>   côncavo `p·(2−p)·0.98` (transcendental-free, 1×/batch) dá carry longo em Pull moderado.
+> - **Gates:** T5 `watercolor_wet_mix_carries_colour_downstream` (carry + decaimento) · T6
+>   `watercolor_wet_mix_charge_controls_pickup` (Charge↓ = pickup↑) · T7
+>   `watercolor_wet_mix_default_charge_deposits_pure_colour` (Charge=1 = azul puro sobre vermelho) +
+>   seam Charge/Dilution/Pull em `panel_events_drive_watercolor_state`. Default byte-idêntico (27→30
+>   watercolor tests verdes; painel splitado `paint_watercolor_paper.rs` p/ o teto LOC).
+> - **Interação:** F2 (carry direcional pelo gesto) é **complementar** ao `wet_rewet` (difusão
+>   per-pixel, sem direção) — knobs independentes. **Dilution** hoje afina só a cobertura; acoplar à
+>   opacidade/pigmento é polish. **Blur/Grade/Wet-Jitter** deferidos (doc 07 §4.2).
+
+**Mudança (design original).** Estado de mixer por traço `{rgb, a, recentness, charge}` premul-linear (doc 07 §4.1):
 reamostragem do destino gateada por `recentness/pull`; depósito = `mix(brush, state, s)` com
 `s = f(charge_depletion, dilution)`; o resultado alimenta a cor dos dabs → `stroke_color` → o
 render-path óptico existente pinta tudo. Sliders novos na seção Wet (Charge, Dilution, Pull; Blur

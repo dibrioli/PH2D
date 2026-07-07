@@ -56,6 +56,7 @@ mod paint_symmetry;
 mod paint_texture;
 mod paint_texture_ramp;
 mod paint_watercolor;
+mod paint_watercolor_paper;
 mod populate;
 mod populate_brush_chips;
 mod populate_deform;

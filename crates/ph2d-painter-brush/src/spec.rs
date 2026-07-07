@@ -212,6 +212,22 @@ pub struct BrushSpec {
     /// not — a wet wash MIXES with what it rewets ("o segredo", Enio 2026-07-06). `0` (default) skips
     /// everything → byte-identical. Only read by the render-path when [`Self::watercolor`] is on.
     pub wet_rewet: f32,
+    /// **Charge** `0..1` — the mixer-brush fresh-paint reserve (Procreate Wet Mix, `docs/Painter/07`
+    /// §4). `1` (default) = the brush deposits pure fresh colour (the mixer is skipped → byte-
+    /// identical); below `1` the brush picks up the surface it crosses (weighted by paint presence)
+    /// and blends it into the deposit — `pickup = 1 − charge`. The pickup reads the FROZEN pre-stroke
+    /// base (never the live canvas), so it can't self-feed. Only read by the render-path when
+    /// [`Self::watercolor`] is on.
+    pub wet_charge: f32,
+    /// **Dilution** `0..1` — how much water thins the deposit (Procreate Wet Mix). `0` (default) =
+    /// full-strength deposit (byte-identical); `1` = a near-transparent wash (the dab lays down less
+    /// coverage: `flow = 1 − dilution`). Only read by the render-path when [`Self::watercolor`] is on.
+    pub wet_dilution: f32,
+    /// **Pull** `0..1` — the mixer's colour-carry / smudge length (Procreate Wet Mix). `0` (default) =
+    /// the pickup resamples the surface every dab (no carry; the deposit tracks the local surface);
+    /// toward `1` the picked-up colour LAGS and is dragged along the stroke (a red crossed early
+    /// bleeds far downstream). Inert unless [`Self::wet_charge`] < 1. Only read by the render-path.
+    pub wet_pull: f32,
 
     // ── Watercolor Paper slot + Granulation coupling (render-path only) ────────────────────────────
     /// The **Paper** slot: the substrate tooth (its own full texture section — a procedural `Paper*`/other
@@ -281,8 +297,11 @@ impl Default for BrushSpec {
             fill: 0.12,
             depth: 1.2,
             warp: 6.0,
-            wet_smudge: 0.0, // off → byte-identical (the smear path is skipped)
-            wet_rewet: 0.0,  // off → byte-identical (the rewet path is skipped)
+            wet_smudge: 0.0,   // off → byte-identical (the smear path is skipped)
+            wet_rewet: 0.0,    // off → byte-identical (the rewet path is skipped)
+            wet_charge: 1.0,   // full fresh paint → mixer skipped → byte-identical
+            wet_dilution: 0.0, // full-strength deposit → byte-identical
+            wet_pull: 0.0,     // no colour carry (inert unless charge < 1)
             // Paper slot inactive by default (the render-path falls back to its built-in paper noise);
             // granulation follows the paper's tooth until the artist points it at the Grain slot map.
             paper: TextureSettings::default(),

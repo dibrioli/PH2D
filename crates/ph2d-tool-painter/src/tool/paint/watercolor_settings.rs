@@ -87,6 +87,18 @@ impl PainterTool {
                         self.set_brush_wet_rewet(v);
                         true
                     }
+                    x if x == core_ids::PAINTER_WATERCOLOR_CHARGE => {
+                        self.set_brush_wet_charge(v);
+                        true
+                    }
+                    x if x == core_ids::PAINTER_WATERCOLOR_DILUTION => {
+                        self.set_brush_wet_dilution(v);
+                        true
+                    }
+                    x if x == core_ids::PAINTER_WATERCOLOR_PULL => {
+                        self.set_brush_wet_pull(v);
+                        true
+                    }
                     x if x == core_ids::PAINTER_WATERCOLOR_PAPER_SIZE_X => {
                         self.set_brush_paper_size(0, v);
                         true
@@ -183,6 +195,21 @@ impl PainterTool {
         self.paint.brush.wet_rewet = v.clamp(0.0, 1.0);
     }
 
+    /// Set the Wet Mix **Charge** (fresh-paint reserve; `1` = mixer off), clamped to `0..=1`.
+    pub fn set_brush_wet_charge(&mut self, v: f32) {
+        self.paint.brush.wet_charge = v.clamp(0.0, 1.0);
+    }
+
+    /// Set the Wet Mix **Dilution** (water thinning the deposit), clamped to `0..=1`.
+    pub fn set_brush_wet_dilution(&mut self, v: f32) {
+        self.paint.brush.wet_dilution = v.clamp(0.0, 1.0);
+    }
+
+    /// Set the Wet Mix **Pull** (colour-carry / smudge length), clamped to `0..=1`.
+    pub fn set_brush_wet_pull(&mut self, v: f32) {
+        self.paint.brush.wet_pull = v.clamp(0.0, 1.0);
+    }
+
     /// Reset the **Paper** slot to empty (kind `None` → the render-path falls back to the built-in paper
     /// noise), dropping any tagged-layer image. Plain state edit (no undo / pixel touch).
     pub fn reset_brush_paper(&mut self) {
@@ -265,6 +292,9 @@ impl PainterTool {
         b.warp = d.warp;
         b.wet_smudge = d.wet_smudge;
         b.wet_rewet = d.wet_rewet;
+        b.wet_charge = d.wet_charge;
+        b.wet_dilution = d.wet_dilution;
+        b.wet_pull = d.wet_pull;
     }
 
     /// Install a tagged Hierarchy layer/group (its luminance `lum`, `width × height`) into the watercolor
@@ -425,6 +455,26 @@ mod tests {
         );
         t.handle_panel_event(PanelEvent::SetValue(core_ids::PAINTER_WATERCOLOR_WET, 9.0));
         assert_eq!(t.brush_settings().wet_rewet, 1.0, "Wet clamped to 1");
+
+        // Wet Mix mixer knobs: Charge / Dilution / Pull drive the same seam (clamped 0..1).
+        t.handle_panel_event(PanelEvent::SetValue(
+            core_ids::PAINTER_WATERCOLOR_CHARGE,
+            0.3,
+        ));
+        assert!(
+            (t.brush_settings().wet_charge - 0.3).abs() < 1e-6,
+            "Charge set"
+        );
+        t.handle_panel_event(PanelEvent::SetValue(
+            core_ids::PAINTER_WATERCOLOR_DILUTION,
+            0.6,
+        ));
+        assert!(
+            (t.brush_settings().wet_dilution - 0.6).abs() < 1e-6,
+            "Dilution set"
+        );
+        t.handle_panel_event(PanelEvent::SetValue(core_ids::PAINTER_WATERCOLOR_PULL, 2.0));
+        assert_eq!(t.brush_settings().wet_pull, 1.0, "Pull clamped to 1");
 
         // Paper + Granulation slots: kind picker, Size, Angle, and the "Same as Paper" toggle.
         t.handle_panel_event(PanelEvent::SelectOption(

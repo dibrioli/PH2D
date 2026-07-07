@@ -176,6 +176,9 @@ pub(crate) const FALLBACK_BRUSH: BrushSettings = BrushSettings {
     warp: 6.0,        // LITERAL-PX-OK: default boundary warp px (mirrors BrushSpec::default)
     wet_smudge: 0.0,  // LITERAL-PX-OK: Wet Mix off by default (mirrors BrushSpec::default)
     wet_rewet: 0.0,   // LITERAL-PX-OK: wet-on-wet off (mirrors BrushSpec::default)
+    wet_charge: 1.0,  // LITERAL-PX-OK: full fresh paint → mixer off (mirrors BrushSpec::default)
+    wet_dilution: 0.0, // LITERAL-PX-OK: full-strength deposit (mirrors BrushSpec::default)
+    wet_pull: 0.0,    // LITERAL-PX-OK: no colour carry (mirrors BrushSpec::default)
     paper_kind: 0,    // None (TextureKind wire 0)
     paper_mapping: 1, // Tiled (canvas-anchored)
     paper_rake: false,

@@ -51,6 +51,7 @@ impl PainterTool {
         self.paint.wet_frame_dirty = None;
         self.paint.wet_cum_dirty = None;
         self.paint.wet_smear_pos = None; // the Wet Mix true-smear chain restarts with the stroke
+        self.reset_wet_mix(); // the mixer reservoir starts fresh (no pickup) each stroke
         // Watercolor render-path: freeze the pre-stroke canvas as the optical base (shared `Arc`, so O(1);
         // the first composite `make_mut` forks the live buffer, leaving this pristine) PLUS the real
         // ground (the composite of the layers below + document paper colour) the optics read the

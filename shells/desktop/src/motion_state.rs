@@ -43,6 +43,10 @@ pub(crate) struct MotionState {
     /// clean solid quads instead of a whole-atlas thumbnail. `[0,0,1,1]`
     /// (whole atlas) until the shell overrides it.
     pub(crate) default_uv_rect: [f32; 4],
+    /// `size` fallback for instances whose stream carries no `size` column (the
+    /// M0 case). Kept **below** the default grid spacing (`1.0`) so the raw
+    /// default document renders as distinct dots rather than a merged solid band.
+    pub(crate) default_size: [f32; 2],
     /// Reused per-frame lowering buffer — zero-alloc in steady state.
     pub(crate) instances: Vec<RenderInstance>,
 }
@@ -67,6 +71,9 @@ impl MotionState {
             // Whole-atlas until the shell wires a real tile (init.rs). Headless
             // callers / tests keep this default.
             default_uv_rect: [0.0, 0.0, 1.0, 1.0],
+            // Half the default grid spacing (1.0) → distinct dots with clear
+            // gaps in the raw M0 output (framing/size producers land in M1).
+            default_size: [0.5, 0.5],
             instances: Vec::new(),
         }
     }

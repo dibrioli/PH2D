@@ -12106,3 +12106,65 @@ fn watercolor_wet_mix_carried_colour_is_saturated_not_watery() {
         "the carried mix must be a saturated purple (R,B ≫ G), not watery: {c:?}"
     );
 }
+
+/// **Wet Mix deposit priority: a low-pickup dab can't wash out a high-pickup one** (Enio 2026-07-07).
+/// The mixer scales each dab's colour-deposit alpha by its pickup strength, so a bare-ground dab
+/// (leaving a pool) barely writes and cannot overwrite the picked-up colour laid by the in-pool dabs.
+/// Reproduces the reported crossing: a blue mixer stroke drawn through a red pool — the pool's EXIT
+/// edge must stay coloured (the picked-up red survives the exiting dabs), not wash back to plain blue.
+/// (Some entry>exit difference is inherent to a DIRECTIONAL smudge — entering a pool ≠ leaving it —
+/// but the exit must retain a clear share of the pickup, not be a hard cut.)
+#[test]
+fn watercolor_wet_mix_exit_edge_keeps_pickup() {
+    let size = 200u32;
+    let mut src = vec![255u8; (size * size * 4) as usize];
+    let (b0, b1) = (78u32, 122u32); // red band rows
+    for y in b0..b1 {
+        for x in 0..size {
+            let i = ((y * size + x) * 4) as usize;
+            src[i..i + 4].copy_from_slice(&[210, 30, 30, 255]);
+        }
+    }
+    let mut t = PainterTool::default();
+    t.set_source(src, size, size);
+    t.paint.brush = BrushSpec {
+        radius_px: 20.0,
+        hardness: 1.0,
+        falloff: Falloff::Constant,
+        color: [0.15, 0.30, 0.80],
+        space_attenuation: false,
+        watercolor: true,
+        edge_gain: 0.0,
+        edge_spread: 4.0,
+        granulation: 0.0,
+        warp: 0.0,
+        fill: 0.6,
+        depth: 1.5,
+        wet_rewet: 0.0,
+        wet_charge: 0.2,
+        wet_pull: 0.0,
+        ..Default::default()
+    };
+    for slot in &mut t.paint.brush_by_mode {
+        *slot = t.paint.brush;
+    }
+    assert!(t.on_canvas_pointer(cp([100.0, 30.0], PointerPhase::Down)));
+    let mut y = 30.0f32;
+    while y < 175.0 {
+        y += 3.0;
+        t.on_canvas_pointer(cp([100.0, y], PointerPhase::Move));
+    }
+    assert!(t.on_canvas_pointer(cp([100.0, y], PointerPhase::Up)));
+    let purple = |yy: u32| {
+        let c = px(&t, size, 100, yy);
+        i32::from(c[0]) + i32::from(c[2]) - 2 * i32::from(c[1])
+    };
+    let entry = purple(b0 + 4); // entry edge (into the pool from the top)
+    let exit = purple(b1 - 4); // exit edge (leaving the pool at the bottom)
+    // The exit edge keeps a clear majority of the entry's pickup (was a near-hard-cut before the
+    // priority deposit + asymmetric reservoir).
+    assert!(
+        exit > 60 && exit * 3 >= entry * 2,
+        "the exit edge must retain the picked-up colour (not wash to blue): entry {entry} exit {exit}"
+    );
+}

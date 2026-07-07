@@ -118,12 +118,17 @@ impl PainterTool {
         // each dab's own colour (byte-identical). Computed BEFORE borrowing `stroke_color`.
         let mixed = self.wet_mix_dab_colors(dabs);
         let buf = &mut self.paint.stroke_color;
-        for (d, dcol) in dabs.iter().zip(&mixed) {
+        for (d, (dcol, prio)) in dabs.iter().zip(&mixed) {
             let r = d.radius_px;
             let peak = d.coverage.clamp(0.0, 1.0);
             if r <= 0.0 || peak <= 0.0 {
                 continue;
             }
+            // Deposit PRIORITY (Wet Mix): a high-pickup dab writes at full alpha; a low-pickup one
+            // (leaving a pool over bare ground) barely writes, so it can't overwrite the stronger
+            // picked-up colour — the pool's exit edge stays as coloured as its entry (Enio 2026-07-07).
+            // `prio == 1` when the mixer is off ⇒ byte-identical source-over.
+            let prio = prio.clamp(0.0, 1.0);
             let col = [
                 (dcol[0].clamp(0.0, 1.0) * 255.0 + 0.5) as u8,
                 (dcol[1].clamp(0.0, 1.0) * 255.0 + 0.5) as u8,
@@ -144,7 +149,7 @@ impl PainterTool {
                     if dn >= 1.0 {
                         continue;
                     }
-                    let a = peak * feather(dn); // source alpha
+                    let a = peak * feather(dn) * prio; // source alpha, scaled by deposit priority
                     if a <= 0.0 {
                         continue;
                     }

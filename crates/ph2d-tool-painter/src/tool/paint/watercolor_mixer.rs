@@ -54,23 +54,30 @@ impl PainterTool {
         self.paint.wet_mix = WetMix::default();
     }
 
-    /// Compute the per-dab **deposited** colours for `dabs` (straight sRGB `0..1`), advancing the mixer
-    /// reservoir in stroke order. Mirrors the plain path when the mixer is off (returns each dab's own
-    /// colour). Reads the frozen base + backdrop (cloned `Arc`s, so no borrow clash with the caller's
-    /// `stroke_color` mutation).
-    pub(super) fn wet_mix_dab_colors(&mut self, dabs: &[Dab]) -> Vec<[f32; 3]> {
+    /// Compute the per-dab **deposited** colour + **deposit priority** for `dabs`, advancing the mixer
+    /// reservoir in stroke order. The priority (`pickup × load`, `0..1`) scales the colour's deposit
+    /// alpha at splat time ([`super::watercolor_accum`]): a HIGH-pickup dab (in a pool) dominates, a
+    /// LOW-pickup one (leaving the pool, back over bare ground) barely writes — so the picked-up colour
+    /// is NOT overwritten by the following bare-ground dabs (source-over recency). That is what makes
+    /// the pool's EXIT edge as coloured as its ENTRY edge: without it, the last dab over a pixel won,
+    /// and on the exit side that was a bare-ground dab, so the crossing read asymmetric (Enio
+    /// 2026-07-07 — misattributed to Dilution, which is symmetric; the mixer is the source, and
+    /// Dilution only made it more visible by thinning the wash). Priority `1.0` for every dab when the
+    /// mixer is off ⇒ the plain source-over path (byte-identical). Reads the frozen base + backdrop
+    /// (cloned `Arc`s, so no borrow clash with the caller's `stroke_color` mutation).
+    pub(super) fn wet_mix_dab_colors(&mut self, dabs: &[Dab]) -> Vec<([f32; 3], f32)> {
         if !self.wet_mixer_active() {
-            return dabs.iter().map(|d| d.color).collect();
+            return dabs.iter().map(|d| (d.color, 1.0)).collect();
         }
         let (fw, fh) = self.source_size;
         let (fw, fh) = (fw as usize, fh as usize);
         let base = self.paint.watercolor_base.as_ref().map(Arc::clone);
         let backdrop = self.paint.wet_backdrop.as_ref().map(Arc::clone);
         let (Some(base), Some(backdrop)) = (base, backdrop) else {
-            return dabs.iter().map(|d| d.color).collect();
+            return dabs.iter().map(|d| (d.color, 1.0)).collect();
         };
         if base.len() != fw * fh * 4 || backdrop.len() != fw * fh * 4 || fw == 0 || fh == 0 {
-            return dabs.iter().map(|d| d.color).collect();
+            return dabs.iter().map(|d| (d.color, 1.0)).collect();
         }
         let pickup = (1.0 - self.paint.brush.wet_charge).clamp(0.0, 1.0);
         let p = self.paint.brush.wet_pull.clamp(0.0, 1.0);
@@ -95,19 +102,19 @@ impl PainterTool {
             }
             mix.w = update * mix.w + (1.0 - update) * sw;
             // ── 2. Deposit: blend the brush colour toward the (unpremultiplied) reservoir colour by
-            //    pickup × load. Load `w` decays downstream ⇒ the carried colour fades with distance. ──
+            //    the priority `t = pickup × load`. Load `w` decays downstream ⇒ the carried colour
+            //    fades with distance, AND `t` (the deposit priority) decays with it — so a fading
+            //    exit dab can't overwrite a stronger in-pool deposit (symmetric crossing). ──
             let t = (pickup * mix.w).clamp(0.0, 1.0);
-            let mut col = [0.0f32; 3];
+            let mut col = d.color;
             if mix.w > 1e-4 {
                 let inv = 1.0 / mix.w;
                 for c in 0..3 {
                     let sc = mix.rgb[c] * inv; // unpremultiply
                     col[c] = d.color[c] + (sc - d.color[c]) * t;
                 }
-            } else {
-                col = d.color;
             }
-            out.push(col);
+            out.push((col, t));
         }
         self.paint.wet_mix = mix;
         out

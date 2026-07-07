@@ -79,6 +79,14 @@ impl PainterTool {
                         self.set_brush_warp(v);
                         true
                     }
+                    x if x == core_ids::PAINTER_WATERCOLOR_SMUDGE => {
+                        self.set_brush_wet_smudge(v);
+                        true
+                    }
+                    x if x == core_ids::PAINTER_WATERCOLOR_WET => {
+                        self.set_brush_wet_rewet(v);
+                        true
+                    }
                     x if x == core_ids::PAINTER_WATERCOLOR_PAPER_SIZE_X => {
                         self.set_brush_paper_size(0, v);
                         true
@@ -165,6 +173,16 @@ impl PainterTool {
         self.paint.brush.warp = v.clamp(0.0, 24.0);
     }
 
+    /// Set the **Wet Mix / smudge** amount (mixer-brush lift+carry vs fresh pigment), clamped to `0..=1`.
+    pub fn set_brush_wet_smudge(&mut self, v: f32) {
+        self.paint.brush.wet_smudge = v.clamp(0.0, 1.0);
+    }
+
+    /// Set the **Wet** amount (per-pixel wet-on-wet lift + dissolve + pool), clamped to `0..=1`.
+    pub fn set_brush_wet_rewet(&mut self, v: f32) {
+        self.paint.brush.wet_rewet = v.clamp(0.0, 1.0);
+    }
+
     /// Reset the **Paper** slot to empty (kind `None` → the render-path falls back to the built-in paper
     /// noise), dropping any tagged-layer image. Plain state edit (no undo / pixel touch).
     pub fn reset_brush_paper(&mut self) {
@@ -245,6 +263,8 @@ impl PainterTool {
         b.fill = d.fill;
         b.depth = d.depth;
         b.warp = d.warp;
+        b.wet_smudge = d.wet_smudge;
+        b.wet_rewet = d.wet_rewet;
     }
 
     /// Install a tagged Hierarchy layer/group (its luminance `lum`, `width × height`) into the watercolor
@@ -372,6 +392,18 @@ mod tests {
             10.0,
         ));
         assert_eq!(t.brush_settings().warp, 10.0, "Warp set");
+
+        // Wet Mix: the Smudge + Wet sliders drive the same seam (clamped 0..1).
+        t.handle_panel_event(PanelEvent::SetValue(
+            core_ids::PAINTER_WATERCOLOR_SMUDGE,
+            0.8,
+        ));
+        assert!(
+            (t.brush_settings().wet_smudge - 0.8).abs() < 1e-6,
+            "Smudge set"
+        );
+        t.handle_panel_event(PanelEvent::SetValue(core_ids::PAINTER_WATERCOLOR_WET, 9.0));
+        assert_eq!(t.brush_settings().wet_rewet, 1.0, "Wet clamped to 1");
 
         // Paper + Granulation slots: kind picker, Size, Angle, and the "Same as Paper" toggle.
         t.handle_panel_event(PanelEvent::SelectOption(

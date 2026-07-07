@@ -6,7 +6,7 @@
 use super::ramp_lut::RampLutOwner;
 use super::{PaintMode, Region, union_region};
 use crate::tool::PainterTool;
-use ph2d_painter_brush::{BrushBlend, BrushSpec, Dab};
+use ph2d_painter_brush::{BrushBlend, BrushSpec, Dab, StrokeMethod};
 use std::sync::Arc;
 
 impl PainterTool {
@@ -38,8 +38,27 @@ impl PainterTool {
         // Watercolor optical render-path: DON'T deposit dabs on the canvas — accumulate the coverage
         // (max-blended discs) + the deposited colour (source-over), and let `apply_watercolor` reconstruct
         // the whole wash over the frozen base ([`super::watercolor_render`]). Short-circuits every route.
-        if self.watercolor_render_active() {
+        //
+        // Gated on an OPEN watercolor stroke (the frozen base exists ⇔ `paint_begin` ran): the shape
+        // editors (Line/Arc/Ellipse/Polygon/Free Hand, `stroke_multi`) stamp via `stamp_drag_preview`
+        // WITHOUT the stroke lifecycle, so no base is frozen and `apply_watercolor` never runs — routing
+        // them here painted NOTHING and leaked never-cleared coverage. With the gate they fall through to
+        // the plain deposit (the shape paints; the watercolor optics stay a stroke-methods feature).
+        if self.watercolor_render_active() && self.paint.watercolor_base.is_some() {
             self.accumulate_wet_coverage(dabs);
+            // Smudge > 0 = TRUE SMEAR: each dab physically drags the frozen base's paint dab-to-dab
+            // (`smear_wet_base`) and the wash composites over the smeared base. Cumulative methods
+            // only — the re-stamp previews (Drag Dot/Anchored/Line) would re-mutate the base every
+            // frame. Off (default) → byte-identical. The wet-on-wet dissolve/lift (`wet_rewet`) is
+            // per-pixel in `apply_watercolor`, not here.
+            if self.paint.brush.wet_smudge > 0.0
+                && !matches!(
+                    self.paint.brush.stroke_method,
+                    StrokeMethod::DragDot | StrokeMethod::Anchored | StrokeMethod::Line
+                )
+            {
+                self.smear_wet_base(dabs);
+            }
             self.accumulate_wet_color(dabs);
             return;
         }

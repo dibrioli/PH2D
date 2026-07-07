@@ -301,6 +301,10 @@ pub struct BrushSettings {
     pub depth: f32,
     /// **Warp** (canvas px) — organic-boundary displacement of the coverage sampling (render-path).
     pub warp: f32,
+    /// **Smudge** (`0..1`) — Wet Mix amount (mixer-brush lift+carry vs fresh pigment).
+    pub wet_smudge: f32,
+    /// **Wet** (`0..1`) — wet-on-wet rewetting: lift + dissolve + pool, per-pixel in the composite.
+    pub wet_rewet: f32,
     /// **Paper** slot kind (`TextureKind` wire u8) — the substrate tooth (its own full section).
     pub paper_kind: u8,
     /// **Paper** slot Mapping (`TextureMapping` wire u8).

@@ -1,0 +1,292 @@
+//! Watercolor **field math** — the deterministic building blocks of the optical composite
+//! ([`super::watercolor_render`]): the `s2l`/`ln`/`exp` LUTs (all transcendentals run once here, never
+//! per pixel — HR-5), the integer-hash value noise (warp + built-in paper tooth), the smoothstep /
+//! bilinear samplers and the O(n) separable box blur. Split from `watercolor_render.rs` for the
+//! workspace LOC cap.
+
+use ph2d_color::srgb::{linear_to_srgb_byte, srgb_to_linear_byte};
+use std::sync::OnceLock;
+
+// ── LUTs (built once; the ln/exp/pow run only here, never per pixel — HR-5) ──────────────────────────
+const L2S_N: usize = 4096;
+const EXP_N: usize = 2048;
+/// Largest `|exponent|` the Beer–Lambert `exp` LUT spans; `exp(-32) ≈ 1.3e-14 ≈ 0`, so anything past
+/// this is transmittance 0 (opaque pigment) — a safe clamp for even a very dense wash.
+const EXP_MAX: f32 = 32.0;
+
+pub(super) struct Luts {
+    /// sRGB byte → linear-light intensity.
+    pub(super) s2l: [f32; 256],
+    /// `ln(max(linear, 1e-4))` per sRGB byte — the pigment's log-transmittance (clamp avoids `-∞` on black).
+    pub(super) lnl: [f32; 256],
+    /// linear-light intensity (`[0, 1]`, quantised to `L2S_N + 1`) → sRGB byte.
+    pub(super) l2s: [u8; L2S_N + 1],
+    /// `exp(-mag)` for `mag ∈ [0, EXP_MAX]` (quantised to `EXP_N + 1`) — Beer–Lambert transmittance.
+    pub(super) exp_neg: [f32; EXP_N + 1],
+    /// `−ln(max(x, 1e-4))` for `x ∈ [0, 1]` (quantised to `EXP_N + 1`) — the absorbance of a linear
+    /// ratio, for the log-space (density-proportional) Wet lift + subtractive colour mix.
+    pub(super) ln_mag: [f32; EXP_N + 1],
+}
+
+pub(super) fn luts() -> &'static Luts {
+    static LUTS: OnceLock<Luts> = OnceLock::new();
+    LUTS.get_or_init(|| {
+        let mut s2l = [0.0f32; 256];
+        let mut lnl = [0.0f32; 256];
+        for i in 0..256 {
+            let lin = srgb_to_linear_byte(i as u8);
+            s2l[i] = lin;
+            lnl[i] = lin.max(1e-4).ln();
+        }
+        let mut l2s = [0u8; L2S_N + 1];
+        for (i, slot) in l2s.iter_mut().enumerate() {
+            *slot = linear_to_srgb_byte(i as f32 / L2S_N as f32);
+        }
+        let mut exp_neg = [0.0f32; EXP_N + 1];
+        for (i, slot) in exp_neg.iter_mut().enumerate() {
+            *slot = (-(EXP_MAX * i as f32 / EXP_N as f32)).exp();
+        }
+        let mut ln_mag = [0.0f32; EXP_N + 1];
+        for (i, slot) in ln_mag.iter_mut().enumerate() {
+            *slot = -(i as f32 / EXP_N as f32).max(1e-4).ln();
+        }
+        Luts {
+            s2l,
+            lnl,
+            l2s,
+            exp_neg,
+            ln_mag,
+        }
+    })
+}
+
+impl Luts {
+    /// linear intensity → sRGB byte via the LUT (clamped index).
+    #[inline]
+    pub(super) fn l2s_byte(&self, v: f32) -> u8 {
+        let idx = (v.clamp(0.0, 1.0) * L2S_N as f32) as usize;
+        self.l2s[idx.min(L2S_N)]
+    }
+    /// Beer–Lambert transmittance `pigment^(od)` for a pigment byte `c` and optical depth `od ≥ 0`,
+    /// via `exp(lnl[c]·od)` looked up in the `exp` LUT (`lnl[c] ≤ 0` ⇒ the exponent is `≤ 0`).
+    #[inline]
+    pub(super) fn transmittance(&self, c: u8, od: f32) -> f32 {
+        let mag = -self.lnl[c as usize] * od; // = |exponent|, ≥ 0
+        let idx = (mag / EXP_MAX * EXP_N as f32) as usize;
+        self.exp_neg[idx.min(EXP_N)]
+    }
+    /// `−ln(x)` of a linear ratio `x ∈ [0, 1]`, LUT + lerp (the interpolation kills the quantisation
+    /// banding a raw lookup would print into smooth tint gradients).
+    #[inline]
+    pub(super) fn absorbance(&self, x: f32) -> f32 {
+        let f = x.clamp(0.0, 1.0) * EXP_N as f32;
+        let i = (f as usize).min(EXP_N - 1);
+        let t = f - i as f32;
+        self.ln_mag[i] + (self.ln_mag[i + 1] - self.ln_mag[i]) * t
+    }
+    /// `exp(−mag)` for `mag ≥ 0`, LUT + lerp (twin of [`Self::absorbance`]).
+    #[inline]
+    pub(super) fn exp_mag(&self, mag: f32) -> f32 {
+        let f = (mag / EXP_MAX).clamp(0.0, 1.0) * EXP_N as f32;
+        let i = (f as usize).min(EXP_N - 1);
+        let t = f - i as f32;
+        self.exp_neg[i] + (self.exp_neg[i + 1] - self.exp_neg[i]) * t
+    }
+}
+
+// ── Deterministic value noise (integer hash; HR-5 transcendental-free) ───────────────────────────────
+// Distinct seeds keep the two warp axes + the paper grain decorrelated (else the boundary would ripple
+// along the diagonal and the granulation would track the warp).
+pub(super) const SEED_WARP_X_A: u32 = 0x1111_1111;
+pub(super) const SEED_WARP_X_B: u32 = 0x2222_2222;
+pub(super) const SEED_WARP_Y_A: u32 = 0x3333_3333;
+pub(super) const SEED_WARP_Y_B: u32 = 0x4444_4444;
+pub(super) const SEED_GRAIN: u32 = 0x5555_5555;
+
+/// Smoothstep-in-`[0,1]` fade (the value-noise interpolation weight; a cubic, so no transcendental).
+#[inline]
+pub(super) fn smooth01(t: f32) -> f32 {
+    t * t * (3.0 - 2.0 * t)
+}
+
+/// Integer hash of a lattice cell → `[0, 1)` (a `lowbias32`-style avalanche; deterministic + fast).
+#[inline]
+pub(super) fn hash2(ix: i32, iy: i32, seed: u32) -> f32 {
+    let mut h = (ix as u32).wrapping_mul(0x8DA6_B343)
+        ^ (iy as u32).wrapping_mul(0xD816_3841)
+        ^ seed.wrapping_mul(0x1B56_C4E9);
+    h ^= h >> 16;
+    h = h.wrapping_mul(0x7FEB_352D);
+    h ^= h >> 15;
+    h = h.wrapping_mul(0x846C_A68B);
+    h ^= h >> 16;
+    (h >> 8) as f32 / (1u32 << 24) as f32
+}
+
+/// Bilinear value noise with `cell`-px features at `(x, y)` → `[0, 1]` (wet_edges `valueNoise`).
+#[inline]
+pub(super) fn value_noise(x: f32, y: f32, cell: f32, seed: u32) -> f32 {
+    let fx = x / cell;
+    let fy = y / cell;
+    let x0 = fx.floor();
+    let y0 = fy.floor();
+    let (ix, iy) = (x0 as i32, y0 as i32);
+    let sx = smooth01(fx - x0);
+    let sy = smooth01(fy - y0);
+    let a = hash2(ix, iy, seed);
+    let b = hash2(ix + 1, iy, seed);
+    let c = hash2(ix, iy + 1, seed);
+    let d = hash2(ix + 1, iy + 1, seed);
+    let top = a + (b - a) * sx;
+    let bot = c + (d - c) * sx;
+    top + (bot - top) * sy
+}
+
+/// Fractal displacement field (two octaves, cells 22/8 px) in `[-1, 1]` for a warp axis (wet_edges warp).
+#[inline]
+pub(super) fn warp_axis(x: f32, y: f32, sa: u32, sb: u32) -> f32 {
+    (value_noise(x, y, 22.0, sa) * 0.65 + value_noise(x, y, 8.0, sb) * 0.35 - 0.5) * 2.0
+}
+
+/// Paper-tooth granulation height at `(x, y)` in `[0, 1]` (wet_edges `grain`, 5-px value noise). A
+/// built-in field so "Aquarela Básica" granulates before a Paper texture (Fase C) is wired to the Grain slot.
+#[inline]
+pub(super) fn paper_height(x: f32, y: f32) -> f32 {
+    value_noise(x, y, 5.0, SEED_GRAIN)
+}
+
+/// Smoothstep from `e0` to `e1` evaluated at `x` (cubic; clamps outside the edges).
+#[inline]
+pub(super) fn smoothstep(e0: f32, e1: f32, x: f32) -> f32 {
+    if e1 <= e0 {
+        return if x < e0 { 0.0 } else { 1.0 };
+    }
+    smooth01(((x - e0) / (e1 - e0)).clamp(0.0, 1.0))
+}
+
+/// Bilinear sample of a region-local scalar field (clamped to the field edges).
+#[inline]
+pub(super) fn sample_bilinear(src: &[f32], w: usize, h: usize, fx: f32, fy: f32) -> f32 {
+    let fx = fx.clamp(0.0, (w - 1) as f32);
+    let fy = fy.clamp(0.0, (h - 1) as f32);
+    let x0 = fx.floor() as usize;
+    let y0 = fy.floor() as usize;
+    let x1 = (x0 + 1).min(w - 1);
+    let y1 = (y0 + 1).min(h - 1);
+    let tx = fx - x0 as f32;
+    let ty = fy - y0 as f32;
+    let a = src[y0 * w + x0];
+    let b = src[y0 * w + x1];
+    let c = src[y1 * w + x0];
+    let d = src[y1 * w + x1];
+    let top = a + (b - a) * tx;
+    let bot = c + (d - c) * tx;
+    top + (bot - top) * ty
+}
+
+/// Separable box blur of a scalar field, O(n) via per-row/column prefix sums (window count clamped at
+/// the borders, so no darkening bias). Deterministic (only sums + one divide). `radius == 0` is a copy.
+pub(super) fn box_blur(src: &[f32], w: usize, h: usize, radius: usize) -> Vec<f32> {
+    if radius == 0 || w == 0 || h == 0 {
+        return src.to_vec();
+    }
+    // Horizontal pass.
+    let mut tmp = vec![0.0f32; w * h];
+    let mut pref = vec![0.0f32; w + 1];
+    for y in 0..h {
+        let base = y * w;
+        for x in 0..w {
+            pref[x + 1] = pref[x] + src[base + x];
+        }
+        for x in 0..w {
+            let lo = x.saturating_sub(radius);
+            let hi = (x + radius).min(w - 1);
+            tmp[base + x] = (pref[hi + 1] - pref[lo]) / (hi - lo + 1) as f32;
+        }
+    }
+    // Vertical pass.
+    let mut out = vec![0.0f32; w * h];
+    let mut prefc = vec![0.0f32; h + 1];
+    for x in 0..w {
+        for y in 0..h {
+            prefc[y + 1] = prefc[y] + tmp[y * w + x];
+        }
+        for y in 0..h {
+            let lo = y.saturating_sub(radius);
+            let hi = (y + radius).min(h - 1);
+            out[y * w + x] = (prefc[hi + 1] - prefc[lo]) / (hi - lo + 1) as f32;
+        }
+    }
+    out
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Blur of a constant field is the same constant (window-count clamp handles the borders).
+    #[test]
+    fn box_blur_preserves_constant() {
+        let src = vec![0.5f32; 8 * 6];
+        let out = box_blur(&src, 8, 6, 2);
+        for v in out {
+            assert!((v - 0.5).abs() < 1e-6, "constant field must blur to itself");
+        }
+    }
+
+    /// A single spike spreads mass to neighbours (peak drops, a neighbour rises) — proves it blurs.
+    #[test]
+    fn box_blur_spreads_a_spike() {
+        let (w, h) = (9, 9);
+        let mut src = vec![0.0f32; w * h];
+        src[4 * w + 4] = 1.0;
+        let out = box_blur(&src, w, h, 1);
+        assert!(out[4 * w + 4] < 1.0, "peak dropped");
+        assert!(out[4 * w + 5] > 0.0, "mass reached the neighbour");
+    }
+
+    /// The Beer–Lambert LUT path is the exact optical model: at full transmittance (`od = 0`) the pigment
+    /// is invisible (output = base); as `od` grows the output moves monotonically toward the pigment. This
+    /// pins the `s2l`/`exp`/`l2s` LUT composition against the closed-form `base·T + pigment·(1−T)`.
+    #[test]
+    fn beer_lambert_lut_matches_closed_form() {
+        let lut = luts();
+        let base: u8 = 200;
+        let pig: u8 = 40;
+        // od = 0 → T = 1 → output is the base byte exactly.
+        assert_eq!(
+            lut.transmittance(pig, 0.0),
+            1.0,
+            "od=0 ⇒ full transmittance"
+        );
+        let lin0 = lut.s2l[base as usize] * 1.0 + lut.s2l[pig as usize] * 0.0;
+        assert_eq!(lut.l2s_byte(lin0), base, "od=0 composite = base");
+        // Growing od darkens toward the pigment (monotone, bounded by the pigment byte).
+        let mut prev = base as i32;
+        for &od in &[0.5f32, 1.0, 2.0, 4.0, 8.0] {
+            let t = lut.transmittance(pig, od);
+            let lin = lut.s2l[base as usize] * t + lut.s2l[pig as usize] * (1.0 - t);
+            let outv = lut.l2s_byte(lin) as i32;
+            assert!(
+                outv <= prev,
+                "od={od}: composite moves toward the (darker) pigment"
+            );
+            assert!(outv >= pig as i32 - 1, "never past the pigment");
+            prev = outv;
+        }
+    }
+
+    /// Value noise is deterministic, in `[0, 1]`, and varies across cells (not a constant field).
+    #[test]
+    fn value_noise_is_deterministic_and_bounded() {
+        let a = value_noise(12.3, 45.6, 5.0, SEED_GRAIN);
+        let b = value_noise(12.3, 45.6, 5.0, SEED_GRAIN);
+        assert_eq!(a, b, "same input ⇒ same value (deterministic)");
+        assert!((0.0..=1.0).contains(&a), "in range");
+        let c = value_noise(112.3, 245.6, 5.0, SEED_GRAIN);
+        assert!(
+            (a - c).abs() > 1e-4,
+            "distant cells differ (it actually varies)"
+        );
+    }
+}

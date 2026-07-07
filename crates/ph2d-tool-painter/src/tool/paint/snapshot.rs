@@ -217,6 +217,8 @@ impl PainterTool {
             fill: b.fill,
             depth: b.depth,
             warp: b.warp,
+            wet_smudge: b.wet_smudge,
+            wet_rewet: b.wet_rewet,
             paper_kind: b.paper.kind.to_u8(),
             paper_mapping: b.paper.mapping.to_u8(),
             paper_rake: b.paper.rake,

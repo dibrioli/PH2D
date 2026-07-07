@@ -10722,3 +10722,646 @@ fn watercolor_off_is_a_plain_deposit() {
         "the plain blue brush colour landed (blue dominant): {c:?}"
     );
 }
+
+/// Watercolor **TRUE SMEAR** — Smudge > 0 physically DRAGS the already-painted paint along the stroke
+/// ("Smearing", not a colour tint): crossing a red band with Pickup 0 (pure brush-colour wash, so the
+/// smear is isolated) must (a) drag red PAST the band's far edge, and (b) drag white INTO the band's
+/// entry edge — displacement of the base, which the reservoir-only model never did ("levanta mas não
+/// borra a já pintada", Enio 2026-07-06).
+#[test]
+fn watercolor_smudge_true_smears_the_painted_paint() {
+    fn run(smudge: f32) -> PainterTool {
+        let size = 128u32;
+        let mut src = vec![0u8; (size * size * 4) as usize];
+        for y in 0..size {
+            for x in 0..size {
+                let i = ((y * size + x) * 4) as usize;
+                let p = if (40..70).contains(&x) {
+                    [217u8, 13, 13, 255] // red band mid-canvas
+                } else {
+                    [255u8, 255, 255, 255]
+                };
+                src[i..i + 4].copy_from_slice(&p);
+            }
+        }
+        let mut t = PainterTool::default();
+        t.set_source(src, size, size);
+        // NB: the engine's default (soft) falloff — a Constant falloff at full strength degenerates the
+        // smear into a rigid translation (the disc's initial content overwrites everything it crosses).
+        t.paint.brush = BrushSpec {
+            radius_px: 6.0,
+            color: [0.1, 0.2, 0.85],
+            space_attenuation: false,
+            watercolor: true,
+            edge_gain: 0.0,
+            granulation: 0.0,
+            warp: 0.0,
+            fill: 0.3, // a light wash so the (smeared) base reads through
+            depth: 1.0,
+            wet_smudge: smudge,
+            wet_rewet: 0.0, // isolate the physical smear from the wet-on-wet rewet
+            ..Default::default()
+        };
+        for slot in &mut t.paint.brush_by_mode {
+            *slot = t.paint.brush;
+        }
+        // Left-to-right stroke crossing the band and exiting into white.
+        assert!(t.on_canvas_pointer(cp([16.0, 64.0], PointerPhase::Down)));
+        let mut x = 16.0f32;
+        while x < 96.0 {
+            x += 3.0;
+            t.on_canvas_pointer(cp([x, 64.0], PointerPhase::Move));
+        }
+        assert!(t.on_canvas_pointer(cp([x, 64.0], PointerPhase::Up)));
+        t
+    }
+    let size = 128u32;
+    let plain = run(0.0);
+    let smeared = run(0.9);
+    // (a) Past the band's far edge: the smear dragged red out of the band → markedly redder (lower G/B
+    // vs R) than the plain wash over white.
+    let (ex, ey) = (74u32, 64u32);
+    let p = px(&plain, size, ex, ey);
+    let s = px(&smeared, size, ex, ey);
+    let redness = |c: [u8; 4]| i32::from(c[0]) - (i32::from(c[1]) + i32::from(c[2])) / 2;
+    assert!(
+        redness(s) > redness(p) + 40,
+        "smear must drag red past the band edge: smeared {s:?} vs plain {p:?}"
+    );
+    // (b) At the band's entry edge: the smear dragged white INTO the band → lighter than the plain
+    // wash over pristine red.
+    let (bx, by) = (43u32, 64u32);
+    let p = px(&plain, size, bx, by);
+    let s = px(&smeared, size, bx, by);
+    let lum = |c: [u8; 4]| u32::from(c[0]) + u32::from(c[1]) + u32::from(c[2]);
+    assert!(
+        lum(s) > lum(p) + 60,
+        "smear must drag white into the band's entry edge: smeared {s:?} vs plain {p:?}"
+    );
+}
+
+/// Watercolor **dirty-rect** — the live recomposite is LOCAL to the frame's new dabs (wet_edges
+/// `renderFrame`), so the per-frame cost tracks the brush, not the grown stroke (the old cumulative-bbox
+/// recomposite was ~quadratic along a stroke — the "Performance muito aquém do MVP" symptom). Proof by
+/// sentinel: a pixel poked into the ALREADY-painted area, far behind the stroke frontier, must survive
+/// the live passes untouched (a full-bbox recomposite would overwrite it) — and then be recomposited by
+/// the pen-up bake (wet_edges `endStroke`), which makes ONE cumulative pass from the incremental bbox.
+#[test]
+fn watercolor_live_recomposite_is_local_to_the_frame() {
+    let size = 256u32;
+    let mut t = PainterTool::default();
+    t.set_source(vec![255u8; (size * size * 4) as usize], size, size);
+    t.paint.brush = BrushSpec {
+        radius_px: 6.0,
+        hardness: 1.0,
+        falloff: Falloff::Constant,
+        color: [0.15, 0.25, 0.70],
+        space_attenuation: false,
+        watercolor: true,
+        edge_gain: 2.0,
+        edge_spread: 4.0,
+        granulation: 0.0,
+        warp: 0.0,
+        fill: 0.5,
+        depth: 2.0,
+        ..Default::default()
+    };
+    for slot in &mut t.paint.brush_by_mode {
+        *slot = t.paint.brush;
+    }
+    // Paint the left third of a horizontal band, live.
+    assert!(t.on_canvas_pointer(cp([30.0, 128.0], PointerPhase::Down)));
+    t.on_canvas_pointer(cp([50.0, 128.0], PointerPhase::Move));
+    t.on_canvas_pointer(cp([70.0, 128.0], PointerPhase::Move));
+    let washed = px(&t, size, 30, 128);
+    assert_ne!(
+        washed,
+        [255, 255, 255, 255],
+        "the stroke start is washed live"
+    );
+    // Poke a sentinel into the already-painted area. Every later dab lands ≥ 40 px away — far beyond
+    // the influence radius (radius 6 + spread 4 + pads) — so a frame-local recomposite must not touch it.
+    const SENTINEL: [u8; 4] = [7, 250, 11, 255];
+    {
+        let buf = Arc::make_mut(&mut t.canvas_rgba);
+        let i = ((128 * size + 30) * 4) as usize;
+        buf[i..i + 4].copy_from_slice(&SENTINEL);
+    }
+    // Extend the stroke far to the right: the live passes recomposite only around the new dabs.
+    t.on_canvas_pointer(cp([120.0, 128.0], PointerPhase::Move));
+    t.on_canvas_pointer(cp([170.0, 128.0], PointerPhase::Move));
+    assert_eq!(
+        px(&t, size, 30, 128),
+        SENTINEL,
+        "a live pass recomposited far behind the frontier — the dirty rect is not frame-local"
+    );
+    // The frame dirty rect is consumed by each composite; the cumulative one spans the whole band.
+    assert!(t.paint.wet_frame_dirty.is_none(), "frame rect consumed");
+    let cum = t.paint.wet_cum_dirty.expect("cumulative rect tracked");
+    // (The stroke smoother lags the dabs behind the pointer, so the right edge trails the cursor.)
+    assert!(
+        cum.x <= 25 && cum.x + cum.w >= 120,
+        "cumulative rect spans the stroke: {cum:?}"
+    );
+    // Pen-up: the bake recomposites the WHOLE stroke from the tracked bbox — the sentinel is repainted.
+    assert!(t.on_canvas_pointer(cp([220.0, 128.0], PointerPhase::Up)));
+    let baked = px(&t, size, 30, 128);
+    assert_ne!(
+        baked, SENTINEL,
+        "the pen-up bake recomposites the full stroke"
+    );
+    assert_ne!(
+        baked,
+        [255, 255, 255, 255],
+        "…back to the wash, not the base"
+    );
+}
+
+/// Watercolor dirty-rect × moving preview (Drag Dot/Anchored/Line): those methods CLEAR the coverage and
+/// re-stamp the whole shape each frame, so the frame dirty rect must be the UNION of the old + new shape
+/// (`clear_wet_coverage` folds the cumulative rect in) — a rect of only the new dabs would leave the old
+/// position composited as a stale trail. A Drag Dot moved across the canvas must restore the base at its
+/// old position, live.
+#[test]
+fn watercolor_moving_preview_restores_the_old_position() {
+    let size = 96u32;
+    let mut t = PainterTool::default();
+    t.set_source(vec![255u8; (size * size * 4) as usize], size, size);
+    t.paint.brush = BrushSpec {
+        radius_px: 5.0,
+        hardness: 1.0,
+        falloff: Falloff::Constant,
+        color: [0.15, 0.25, 0.70],
+        space_attenuation: false,
+        watercolor: true,
+        edge_gain: 0.0,
+        edge_spread: 3.0,
+        granulation: 0.0,
+        warp: 0.0,
+        fill: 0.6,
+        depth: 2.0,
+        stroke_method: StrokeMethod::DragDot,
+        ..Default::default()
+    };
+    for slot in &mut t.paint.brush_by_mode {
+        *slot = t.paint.brush;
+    }
+    assert!(t.on_canvas_pointer(cp([70.0, 32.0], PointerPhase::Down)));
+    assert_ne!(
+        px(&t, size, 70, 32),
+        [255, 255, 255, 255],
+        "the dot preview is washed at the press point"
+    );
+    // Drag the dot far away: the old position is no longer covered → the live pass restores the base.
+    t.on_canvas_pointer(cp([24.0, 32.0], PointerPhase::Move));
+    assert_eq!(
+        px(&t, size, 70, 32),
+        [255, 255, 255, 255],
+        "the moved preview left a stale trail at the old position"
+    );
+    assert_ne!(
+        px(&t, size, 24, 32),
+        [255, 255, 255, 255],
+        "the dot is washed at the new position"
+    );
+    assert!(t.on_canvas_pointer(cp([24.0, 32.0], PointerPhase::Up)));
+    assert_ne!(
+        px(&t, size, 24, 32),
+        [255, 255, 255, 255],
+        "the release point keeps the committed dot"
+    );
+}
+
+/// Watercolor render-path is gated on an OPEN stroke (the frozen base exists): the shape editors
+/// (Line/Arc/Ellipse/Polygon/Free Hand, `stroke_multi`) stamp via the drag-preview WITHOUT the stroke
+/// lifecycle — routed into the watercolor accumulation they painted NOTHING (no composite ever ran)
+/// and leaked never-cleared coverage. Outside a stroke a dab must fall through to the plain deposit.
+#[test]
+fn watercolor_editor_stamp_deposits_without_an_open_stroke() {
+    let size = 48u32;
+    let mut t = PainterTool::default();
+    t.set_source(vec![255u8; (size * size * 4) as usize], size, size);
+    t.paint.brush = BrushSpec {
+        radius_px: 8.0,
+        hardness: 1.0,
+        falloff: Falloff::Constant,
+        color: [0.1, 0.2, 0.85],
+        watercolor: true,
+        ..Default::default()
+    };
+    // No pointer Down: this is how the shape editors stamp (stamp_drag_preview → stamp_dabs).
+    let dab = Dab {
+        center: [24.0, 24.0],
+        radius_px: 8.0,
+        coverage: 1.0,
+        color: t.paint.brush.color,
+        rotation: [1.0, 0.0],
+        dir: [0.0, 0.0],
+    };
+    t.stamp_dabs(&[dab]);
+    assert_ne!(
+        px(&t, size, 24, 24),
+        [255, 255, 255, 255],
+        "an editor dab with Watercolor on must paint (plain deposit), not a dead brush"
+    );
+    assert!(
+        t.paint.stroke_coverage.iter().all(|&c| c == 0),
+        "no watercolor coverage may leak outside an open stroke"
+    );
+}
+
+/// Manual perf probe (not a gate): per-frame watercolor cost along a LONG stroke on a big canvas —
+/// the dirty-rect must keep it ~constant (the old cumulative recomposite grew it ~quadratically).
+/// Run: `cargo test -p ph2d-tool-painter --release -- --ignored watercolor_perf`
+#[test]
+#[ignore = "manual perf probe — run in --release and read the printed ms"]
+fn watercolor_perf_frame_cost_probe() {
+    probe(0.0);
+    probe(1.0);
+}
+
+fn probe(wet: f32) {
+    let size = 2048u32;
+    let mut t = PainterTool::default();
+    t.set_source(vec![255u8; (size * size * 4) as usize], size, size);
+    t.paint.brush = BrushSpec {
+        radius_px: 16.0,
+        hardness: 1.0,
+        falloff: Falloff::Constant,
+        color: [0.15, 0.25, 0.70],
+        space_attenuation: false,
+        watercolor: true,
+        edge_gain: 2.0,
+        edge_spread: 8.0,
+        granulation: 0.4,
+        warp: 3.0,
+        fill: 0.5,
+        depth: 2.0,
+        wet_rewet: wet,
+        ..Default::default()
+    };
+    for slot in &mut t.paint.brush_by_mode {
+        *slot = t.paint.brush;
+    }
+    let y = 1024.0f32;
+    assert!(t.on_canvas_pointer(cp([100.0, y], PointerPhase::Down)));
+    let n = 440usize; // ~1760 px of stroke, 4 px per Move
+    let mut ms = Vec::with_capacity(n);
+    for i in 0..n {
+        let x = 100.0 + (i as f32 + 1.0) * 4.0;
+        let t0 = std::time::Instant::now();
+        t.on_canvas_pointer(cp([x, y], PointerPhase::Move));
+        ms.push(t0.elapsed().as_secs_f64() * 1e3);
+    }
+    let t0 = std::time::Instant::now();
+    assert!(t.on_canvas_pointer(cp([100.0 + n as f32 * 4.0, y], PointerPhase::Up)));
+    let commit_ms = t0.elapsed().as_secs_f64() * 1e3;
+    let avg = |s: &[f64]| s.iter().sum::<f64>() / s.len() as f64;
+    let max = ms.iter().cloned().fold(0.0f64, f64::max);
+    eprintln!(
+        "watercolor per-frame (wet {wet}): first-40 {:.3} ms · last-40 {:.3} ms · max {max:.3} ms · commit {commit_ms:.3} ms ({n} moves, {size}² canvas)",
+        avg(&ms[..40]),
+        avg(&ms[n - 40..]),
+    );
+    eprintln!("total live {:.1} ms", ms.iter().sum::<f64>());
+}
+
+/// DIFERENCIAL (diagnóstico da regressão do Spread, Enio 2026-07-06): o composite incremental
+/// (dirty-rect por frame) deve ser equivalente a recompor o bbox cumulativo inteiro a cada frame
+/// (o comportamento antigo). Pinta um traço vivo com Edge/Spread/Warp/Granulation realistas, então
+/// força UMA recomposição full do cumulativo (sem commit) e compara byte a byte (tolerância ±1 por
+/// arredondamento de prefix-sum do blur). Divergência ⇒ o dirty-rect deixa pixels stale.
+#[test]
+fn watercolor_incremental_composite_matches_full_recompose() {
+    let size = 256u32;
+    let mut t = PainterTool::default();
+    t.set_source(vec![255u8; (size * size * 4) as usize], size, size);
+    t.paint.brush = BrushSpec {
+        radius_px: 14.0,
+        hardness: 1.0,
+        falloff: Falloff::Constant,
+        color: [0.24, 0.39, 0.63],
+        space_attenuation: false,
+        watercolor: true,
+        edge_gain: 3.0,
+        edge_spread: 12.0,
+        granulation: 0.4,
+        warp: 2.5,
+        fill: 0.35,
+        depth: 2.0,
+        ..Default::default()
+    };
+    for slot in &mut t.paint.brush_by_mode {
+        *slot = t.paint.brush;
+    }
+    // Long diagonal live stroke, pen still down.
+    assert!(t.on_canvas_pointer(cp([30.0, 30.0], PointerPhase::Down)));
+    for i in 1..=40 {
+        let p = 30.0 + i as f32 * 4.5;
+        t.on_canvas_pointer(cp([p, 30.0 + i as f32 * 3.5], PointerPhase::Move));
+    }
+    let incremental: Vec<u8> = t.canvas_rgba.to_vec();
+    // Force ONE full recompose of the whole cumulative bbox (what the old code did every frame).
+    t.paint.wet_frame_dirty = t.paint.wet_cum_dirty;
+    t.apply_watercolor(false);
+    let full: Vec<u8> = t.canvas_rgba.to_vec();
+    let mut worst = 0i32;
+    let mut worst_i = 0usize;
+    for (i, (a, b)) in incremental.iter().zip(full.iter()).enumerate() {
+        let d = (i32::from(*a) - i32::from(*b)).abs();
+        if d > worst {
+            worst = d;
+            worst_i = i;
+        }
+    }
+    assert!(
+        worst <= 1,
+        "incremental deixou pixel stale: Δ{} no byte {} (px {},{})",
+        worst,
+        worst_i,
+        (worst_i / 4) % size as usize,
+        (worst_i / 4) / size as usize
+    );
+}
+
+/// Granulation **Amount is inert without a settling substrate** (Enio 2026-07-06): with NO Grain image
+/// and "Same as Paper" OFF there is nothing to settle into, so cranking Amount must not texture the
+/// wash (it granulated out of thin air via the built-in-noise fallback). With Same-as-Paper ON (the
+/// default) the paper tooth — built-in noise before a Paper is wired — granulates as before
+/// (`watercolor_granulation_textures_the_wash` pins that side).
+#[test]
+fn watercolor_granulation_amount_is_inert_without_a_source() {
+    let size = 64u32;
+    let mut t = PainterTool::default();
+    t.set_source(vec![255u8; (size * size * 4) as usize], size, size);
+    t.paint.brush = BrushSpec {
+        radius_px: 26.0,
+        hardness: 1.0,
+        falloff: Falloff::Constant,
+        color: [0.0, 0.0, 0.0],
+        space_attenuation: false,
+        watercolor: true,
+        edge_gain: 0.0,
+        warp: 0.0,
+        fill: 0.6,
+        granulation: 1.0,             // full Amount…
+        granulation_use_paper: false, // …but no source: Same-as-Paper off…
+        ..Default::default()          // …and no Grain image set
+    };
+    for slot in &mut t.paint.brush_by_mode {
+        *slot = t.paint.brush;
+    }
+    assert!(t.on_canvas_pointer(cp([32.0, 32.0], PointerPhase::Down)));
+    assert!(t.on_canvas_pointer(cp([32.0, 32.0], PointerPhase::Up)));
+    // Deep-interior window (cover ≈ 1): with no substrate the wash must be FLAT (zero variance).
+    let mut vals = Vec::new();
+    for y in 24..40 {
+        for x in 24..40 {
+            vals.push(f64::from(px(&t, size, x, y)[0]));
+        }
+    }
+    let mean = vals.iter().sum::<f64>() / vals.len() as f64;
+    let var = vals.iter().map(|v| (v - mean) * (v - mean)).sum::<f64>() / vals.len() as f64;
+    assert!(
+        var < 0.5,
+        "Amount with no Grain image and Same-as-Paper off must not granulate (variance {var:.2})"
+    );
+}
+
+/// Watercolor **Wet** (wet-on-wet rewetting, per-pixel, no physics — Enio 2026-07-06): a wash crossing
+/// a dry red band must (a) LIFT the paint under it (the band under the wash reads lighter — pigment
+/// pulled off the paper), and (b) DISSOLVE its colour into the wet region (the wash a few px OUTSIDE
+/// the band reads redder — the one-shot diffusion bleed). Smudge 0 isolates the rewet; Wet 0 is the
+/// control (and stays byte-identical to the plain wash, which the 13 base watercolor tests pin).
+#[test]
+fn watercolor_wet_lifts_and_bleeds_the_painted_paint() {
+    fn run(wet: f32) -> PainterTool {
+        let size = 128u32;
+        let mut src = vec![0u8; (size * size * 4) as usize];
+        for y in 0..size {
+            for x in 0..size {
+                let i = ((y * size + x) * 4) as usize;
+                let p = if (40..70).contains(&x) {
+                    [217u8, 13, 13, 255] // dry red band mid-canvas
+                } else {
+                    [255u8, 255, 255, 255]
+                };
+                src[i..i + 4].copy_from_slice(&p);
+            }
+        }
+        let mut t = PainterTool::default();
+        t.set_source(src, size, size);
+        t.paint.brush = BrushSpec {
+            radius_px: 8.0,
+            hardness: 1.0,
+            falloff: Falloff::Constant,
+            color: [0.25, 0.40, 0.62], // a light blue wash — lift/bleed must read through it
+            space_attenuation: false,
+            watercolor: true,
+            edge_gain: 0.0, // isolate the rewet from the edge pooling
+            edge_spread: 6.0,
+            granulation: 0.0,
+            warp: 0.0,
+            fill: 0.25,
+            depth: 1.0,
+            wet_smudge: 0.0,
+            wet_rewet: wet,
+            ..Default::default()
+        };
+        for slot in &mut t.paint.brush_by_mode {
+            *slot = t.paint.brush;
+        }
+        assert!(t.on_canvas_pointer(cp([16.0, 64.0], PointerPhase::Down)));
+        let mut x = 16.0f32;
+        while x < 100.0 {
+            x += 3.0;
+            t.on_canvas_pointer(cp([x, 64.0], PointerPhase::Move));
+        }
+        assert!(t.on_canvas_pointer(cp([x, 64.0], PointerPhase::Up)));
+        t
+    }
+    let size = 128u32;
+    let dry = run(0.0);
+    let wet = run(1.0);
+    // (a) LIFT: deep inside the band, under the wash, the band's pigment is pulled off the paper — the
+    // channel it absorbed least (R, its own reflectance) brightens strongly toward the paper. (Overall
+    // luminance is NOT the right meter: the dissolved red simultaneously tints the wash, darkening G/B —
+    // the pigment redistributes rather than vanishing.)
+    let (ix, iy) = (55u32, 64u32);
+    let d = px(&dry, size, ix, iy);
+    let w = px(&wet, size, ix, iy);
+    assert!(
+        w[0] > d[0] + 40,
+        "Wet must lift the paint under the wash: wet {w:?} vs dry {d:?}"
+    );
+    // (b) BLEED: in the wash a few px OUTSIDE the band, the dissolved red tints the wet region.
+    let (ox, oy) = (73u32, 64u32);
+    let d = px(&dry, size, ox, oy);
+    let w = px(&wet, size, ox, oy);
+    let redness = |c: [u8; 4]| i32::from(c[0]) - (i32::from(c[1]) + i32::from(c[2])) / 2;
+    assert!(
+        redness(w) > redness(d) + 15,
+        "Wet must bleed the dissolved colour beyond the band: wet {w:?} vs dry {d:?}"
+    );
+}
+
+/// Wet **redistributes the wash's own pigment** on ANY canvas (blank included): more water = the
+/// interior thins (pigment migrates out) while the receding front pools harder — so the Spread ring
+/// reads MORE intense under Wet, never drowned (the old uniform pool + the white-canvas presence bug
+/// flattened it — Enio 2026-07-06). On blank canvas there is still no lift/dissolve (nothing darkens
+/// the paper), only the redistribution.
+#[test]
+fn watercolor_wet_redistributes_the_wash_on_blank_canvas() {
+    fn run(wet: f32) -> PainterTool {
+        let size = 96u32;
+        let mut t = PainterTool::default();
+        t.set_source(vec![255u8; (size * size * 4) as usize], size, size);
+        t.paint.brush = BrushSpec {
+            radius_px: 10.0,
+            hardness: 1.0,
+            falloff: Falloff::Constant,
+            color: [0.25, 0.40, 0.62],
+            space_attenuation: false,
+            watercolor: true,
+            edge_gain: 2.0,
+            edge_spread: 5.0,
+            granulation: 0.0,
+            warp: 0.0,
+            fill: 0.4,
+            depth: 2.0,
+            wet_rewet: wet,
+            ..Default::default()
+        };
+        for slot in &mut t.paint.brush_by_mode {
+            *slot = t.paint.brush;
+        }
+        assert!(t.on_canvas_pointer(cp([24.0, 48.0], PointerPhase::Down)));
+        for x in [36.0, 48.0, 60.0, 72.0] {
+            t.on_canvas_pointer(cp([x, 48.0], PointerPhase::Move));
+        }
+        assert!(t.on_canvas_pointer(cp([72.0, 48.0], PointerPhase::Up)));
+        t
+    }
+    let size = 96u32;
+    let dry = run(0.0);
+    let wet = run(1.0);
+    let lum = |c: [u8; 4]| u32::from(c[0]) + u32::from(c[1]) + u32::from(c[2]);
+    // Deep interior of the band: the wet wash is LIGHTER (its pigment migrated to the front).
+    let di = px(&dry, size, 48, 48);
+    let wi = px(&wet, size, 48, 48);
+    assert!(
+        lum(wi) > lum(di),
+        "Wet must thin the wash interior: wet {wi:?} vs dry {di:?}"
+    );
+    // The rim band (just inside the boundary): the wet wash pools HARDER (darker ring).
+    let dr = px(&dry, size, 48, 41);
+    let wr = px(&wet, size, 48, 41);
+    assert!(
+        lum(wr) < lum(dr),
+        "Wet must intensify the receding-front pool: wet {wr:?} vs dry {dr:?}"
+    );
+}
+
+/// Wet lift **stays in the paint's hue without Pigment** (Enio 2026-07-06, screenshot: sem Pigment a
+/// tinta rewetted ficava "pálida e amarelada"): rewetting red paint with a red wash must read light
+/// RED (pink) — the density-proportional log-space lift walks the colour down its own Beer–Lambert
+/// curve — never the cream of the virtual paper (the old linear lerp desaturated straight to cream,
+/// R−G collapsing). Pigment OFF is the whole point here.
+#[test]
+fn watercolor_wet_lift_stays_in_hue_without_pigment() {
+    let size = 96u32;
+    let mut src = vec![0u8; (size * size * 4) as usize];
+    for px4 in src.chunks_exact_mut(4) {
+        px4.copy_from_slice(&[217, 13, 13, 255]); // a dry red wash everywhere
+    }
+    let mut t = PainterTool::default();
+    t.set_source(src, size, size);
+    t.paint.brush = BrushSpec {
+        radius_px: 12.0,
+        hardness: 1.0,
+        falloff: Falloff::Constant,
+        color: [0.85, 0.05, 0.05], // red over red — hue must survive the lift
+        space_attenuation: false,
+        watercolor: true,
+        edge_gain: 0.0,
+        edge_spread: 7.0,
+        granulation: 0.0,
+        warp: 0.0,
+        fill: 0.12,
+        depth: 1.2,
+        pigment: false, // the un-checked path under test
+        wet_smudge: 0.0,
+        wet_rewet: 1.0,
+        ..Default::default()
+    };
+    for slot in &mut t.paint.brush_by_mode {
+        *slot = t.paint.brush;
+    }
+    assert!(t.on_canvas_pointer(cp([30.0, 48.0], PointerPhase::Down)));
+    for x in [42.0, 54.0, 66.0] {
+        t.on_canvas_pointer(cp([x, 48.0], PointerPhase::Move));
+    }
+    assert!(t.on_canvas_pointer(cp([66.0, 48.0], PointerPhase::Up)));
+    // Deep interior of the wash: lifted (lighter than the dry red) but still RED-dominant, not cream.
+    let c = px(&t, size, 48, 48);
+    assert!(c[0] > 220, "the lift lightened the red: {c:?}");
+    assert!(
+        i32::from(c[0]) - i32::from(c[1]) > 60,
+        "the lifted paint must stay in hue (pink, not cream): {c:?}"
+    );
+    assert!(
+        (i32::from(c[1]) - i32::from(c[2])).abs() < 20,
+        "no yellow cast (G≈B for a lifted red): {c:?}"
+    );
+}
+
+/// At full Wet the subtractive paint-mix runs at full strength with or WITHOUT the Pigment checkbox —
+/// `mix = max(Pigment's Mix, wet)` — so the two paths converge byte-identical (the RYB blend is "o
+/// segredo" of the good wet-on-wet, Enio 2026-07-06; it must not be locked behind the checkbox). At
+/// `wet = 0` only the checkbox drives it (the byte-identical default, pinned by the base suite).
+#[test]
+fn watercolor_wet_drives_the_paint_mix_without_pigment() {
+    fn run(pigment: bool) -> PainterTool {
+        let size = 96u32;
+        let mut src = vec![0u8; (size * size * 4) as usize];
+        for px4 in src.chunks_exact_mut(4) {
+            px4.copy_from_slice(&[217, 13, 13, 255]); // dry red everywhere
+        }
+        let mut t = PainterTool::default();
+        t.set_source(src, size, size);
+        t.paint.brush = BrushSpec {
+            radius_px: 12.0,
+            hardness: 1.0,
+            falloff: Falloff::Constant,
+            color: [0.1, 0.2, 0.85], // blue wash over red — the mix is unmistakable
+            space_attenuation: false,
+            watercolor: true,
+            edge_gain: 2.0,
+            edge_spread: 7.0,
+            granulation: 0.3,
+            warp: 3.0,
+            fill: 0.12,
+            depth: 1.2,
+            pigment,
+            wet_smudge: 0.0,
+            wet_rewet: 1.0,
+            ..Default::default()
+        };
+        for slot in &mut t.paint.brush_by_mode {
+            *slot = t.paint.brush;
+        }
+        assert!(t.on_canvas_pointer(cp([30.0, 48.0], PointerPhase::Down)));
+        for x in [42.0, 54.0, 66.0] {
+            t.on_canvas_pointer(cp([x, 48.0], PointerPhase::Move));
+        }
+        assert!(t.on_canvas_pointer(cp([66.0, 48.0], PointerPhase::Up)));
+        t
+    }
+    let off = run(false);
+    let on = run(true);
+    assert_eq!(
+        off.canvas_rgba.as_slice(),
+        on.canvas_rgba.as_slice(),
+        "at wet = 1 the paint-mix must run fully with Pigment unchecked (max(Mix, wet) = 1 both ways)"
+    );
+}

@@ -141,6 +141,37 @@ pub(crate) fn paint_watercolor_section(
             crate::number_field::SIZE_STEP,
             1,
         );
+        // Wet Mix — Smudge = TRUE smear (each dab physically drags the already-painted paint along the
+        // stroke); Wet = wet-on-wet rewetting (paint under the wash lifts, its colour dissolves/bleeds
+        // through the wet region and pools at the rim — per-pixel in the optical composite, no physics).
+        y = crate::number_field::paint_num_row(
+            ctx,
+            theme,
+            x,
+            content_w,
+            y,
+            "Smudge",
+            core_ids::PAINTER_WATERCOLOR_SMUDGE,
+            brush.wet_smudge,
+            0.0,
+            1.0,
+            crate::number_field::FINE_STEP,
+            2,
+        );
+        y = crate::number_field::paint_num_row(
+            ctx,
+            theme,
+            x,
+            content_w,
+            y,
+            "Wet",
+            core_ids::PAINTER_WATERCOLOR_WET,
+            brush.wet_rewet,
+            0.0,
+            1.0,
+            crate::number_field::FINE_STEP,
+            2,
+        );
         // #3 Pigment — subtractive Kubelka–Munk wet-on-wet mixing + its amount.
         y = paint_checkbox_row(
             ctx,

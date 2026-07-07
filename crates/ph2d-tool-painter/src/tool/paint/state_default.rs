@@ -146,6 +146,9 @@ impl Default for PaintState {
             stroke_coverage: Vec::new(),
             stroke_color: Vec::new(),
             watercolor_base: None,
+            wet_smear_pos: None,
+            wet_frame_dirty: None,
+            wet_cum_dirty: None,
             inpaint_mask: Vec::new(),
             inpaint_patch_norm: 0.25, // patch radius 3 (today's InpaintParams::default)
             inpaint_quality_norm: 0.3333, // 6 EM iterations (today's default)

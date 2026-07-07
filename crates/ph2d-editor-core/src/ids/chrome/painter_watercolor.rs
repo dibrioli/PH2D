@@ -38,6 +38,10 @@ pub const PAINTER_WATERCOLOR_FILL: NodeId = hash_node_id("painter_brush.watercol
 pub const PAINTER_WATERCOLOR_DEPTH: NodeId = hash_node_id("painter_brush.watercolor_depth");
 /// **Warp** — organic-boundary displacement in canvas px (render-path). `SetValue` → `set_brush_warp`.
 pub const PAINTER_WATERCOLOR_WARP: NodeId = hash_node_id("painter_brush.watercolor_warp");
+/// **Smudge** — TRUE-smear strength `0..1` (drags the painted paint). `SetValue` → `set_brush_wet_smudge`.
+pub const PAINTER_WATERCOLOR_SMUDGE: NodeId = hash_node_id("painter_brush.watercolor_smudge");
+/// **Wet** — wet-on-wet rewetting `0..1` (lift + dissolve + pool). `SetValue` → `set_brush_wet_rewet`.
+pub const PAINTER_WATERCOLOR_WET: NodeId = hash_node_id("painter_brush.watercolor_wet");
 
 // ── Paper section (canvas-anchored substrate; its own section above Grain; `docs/Painter/10…` §5) ──
 /// Collapsible **Paper** section header (ALL-CAPS + chevron + colour dot).
@@ -123,9 +127,10 @@ pub const PAINTER_WATERCOLOR_CLICKS: [NodeId; 7] = [
 ];
 
 /// The Watercolor **SetValue** number-fields (Edge / Spread / Granulation / Mix + the render-path
-/// optics Fill / Depth / Warp + the full Paper slot: Size / Angle / Offset / Depth / params) — one
-/// membership check for the panel's number-field forward (`is_param_field`) and register loop.
-pub const PAINTER_WATERCOLOR_FIELDS: [NodeId; 19] = [
+/// optics Fill / Depth / Warp + the Wet Mix pair Smudge / Wet + the full Paper slot: Size / Angle /
+/// Offset / Depth / params) — one membership check for the panel's number-field forward
+/// (`is_param_field`) and register loop.
+pub const PAINTER_WATERCOLOR_FIELDS: [NodeId; 21] = [
     PAINTER_WATERCOLOR_EDGE,
     PAINTER_WATERCOLOR_SPREAD,
     PAINTER_WATERCOLOR_GRANULATION,
@@ -133,6 +138,8 @@ pub const PAINTER_WATERCOLOR_FIELDS: [NodeId; 19] = [
     PAINTER_WATERCOLOR_FILL,
     PAINTER_WATERCOLOR_DEPTH,
     PAINTER_WATERCOLOR_WARP,
+    PAINTER_WATERCOLOR_SMUDGE,
+    PAINTER_WATERCOLOR_WET,
     PAINTER_WATERCOLOR_PAPER_SIZE_X,
     PAINTER_WATERCOLOR_PAPER_SIZE_Y,
     PAINTER_WATERCOLOR_PAPER_ANGLE,

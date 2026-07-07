@@ -197,6 +197,21 @@ pub struct BrushSpec {
     /// coverage sampling so the wash boundary is organic (ragged), not a clean disc. `0` = a crisp edge.
     /// Only read by the render-path.
     pub warp: f32,
+    /// **Smudge** amount `0..1`: the TRUE-SMEAR strength — each dab physically DRAGS the pre-stroke
+    /// base's paint from the previous dab centre to its own (Krita Color Smudge "Smearing" / Blender
+    /// `paint_2d_lift_smear`), and the wash composites over the smeared base. `0` (default) skips the
+    /// path → byte-identical. Only read by the render-path when [`Self::watercolor`] is on.
+    pub wet_smudge: f32,
+    /// **Wet** amount `0..1` — wet-on-wet rewetting, per-pixel in the optical composite (no brush
+    /// state, no physics). Two components: (a) the wash's OWN pigment redistributes — the interior
+    /// thins while the receding front pools harder and raggeder (paper-tooth modulated), on any canvas;
+    /// (b) where the wash covers already-painted paint, that paint LIFTS (the base lightens toward the
+    /// paper), DISSOLVES (its colour bleeds up to `edge_spread` px through the wet region — a one-shot
+    /// diffusion blur), and POOLS back into the wash's density at the front (the bloom). Wet also
+    /// drives the subtractive (RYB) paint-mix over the base up to `max(Mix, wet)`, Pigment checked or
+    /// not — a wet wash MIXES with what it rewets ("o segredo", Enio 2026-07-06). `0` (default) skips
+    /// everything → byte-identical. Only read by the render-path when [`Self::watercolor`] is on.
+    pub wet_rewet: f32,
 
     // ── Watercolor Paper slot + Granulation coupling (render-path only) ────────────────────────────
     /// The **Paper** slot: the substrate tooth (its own full texture section — a procedural `Paper*`/other
@@ -266,6 +281,8 @@ impl Default for BrushSpec {
             fill: 0.12,
             depth: 1.2,
             warp: 6.0,
+            wet_smudge: 0.0, // off → byte-identical (the smear path is skipped)
+            wet_rewet: 0.0,  // off → byte-identical (the rewet path is skipped)
             // Paper slot inactive by default (the render-path falls back to its built-in paper noise);
             // granulation follows the paper's tooth until the artist points it at the Grain slot map.
             paper: TextureSettings::default(),

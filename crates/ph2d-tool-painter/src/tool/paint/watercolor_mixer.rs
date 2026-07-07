@@ -136,6 +136,7 @@ fn sample_surface(
     ];
     let mut acc = [0.0f32; 3];
     let mut pres = 0.0f32;
+    let mut psum = 0.0f32; // sum of tap presences — the colour normaliser
     let mut n = 0.0f32;
     for (tx, ty) in taps {
         if tx < 0.0 || ty < 0.0 {
@@ -157,21 +158,28 @@ fn sample_surface(
             f32::from(base[bi + 1]) * ab + gg * (1.0 - ab),
             f32::from(base[bi + 2]) * ab + gb * (1.0 - ab),
         ];
-        for c in 0..3 {
-            acc[c] += rgb[c] / 255.0;
-        }
         let dd = (gr - rgb[0])
             .abs()
             .max((gg - rgb[1]).abs())
             .max((gb - rgb[2]).abs());
-        pres += smooth_pres(dd);
+        let pt = smooth_pres(dd);
+        // PRESENCE-WEIGHT the colour: a bare-ground tap (`pt ≈ 0`) contributes almost nothing to the
+        // hue, so a disc half over a red pool picks up SATURATED red (weight 0.5), not a pink average
+        // of red + white. Averaging the raw colour instead leaked the ground into the reservoir, so
+        // the carried mix read watery / bleached toward white rather than a rich mix (Enio 2026-07-07).
+        for c in 0..3 {
+            acc[c] += pt * rgb[c] / 255.0;
+        }
+        pres += pt;
+        psum += pt;
         n += 1.0;
     }
-    if n <= 0.0 {
+    if n <= 0.0 || psum <= 1e-4 {
         return ([0.0; 3], 0.0);
     }
+    let inv_c = 1.0 / psum;
     (
-        [acc[0] / n, acc[1] / n, acc[2] / n],
+        [acc[0] * inv_c, acc[1] * inv_c, acc[2] * inv_c],
         (pres / n).clamp(0.0, 1.0),
     )
 }

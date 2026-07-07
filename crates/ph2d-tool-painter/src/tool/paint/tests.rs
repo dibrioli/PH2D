@@ -12050,3 +12050,59 @@ fn watercolor_wet_mix_exit_bleed_mirrors_entry() {
         "the exit red reach must be comparable to the entry (mirror), entry {entry_reach} exit {exit_reach}"
     );
 }
+
+/// **Wet Mix carried colour is saturated, not watery** (Enio 2026-07-07). The mixer's disc pickup
+/// averaged the RAW surface colour, so a brush half over a red pool picked up a pink AVERAGE of red +
+/// white — the carried mix read bleached toward white instead of a rich blue+red purple. Presence-
+/// weighting the sample (bare ground contributes to the weight, not the hue) picks up SATURATED red,
+/// so the carried mix is a real purple. Asserts the carried region downstream of a red pool is
+/// purple (R and B both well above G), not a pale near-grey.
+#[test]
+fn watercolor_wet_mix_carried_colour_is_saturated_not_watery() {
+    let size = 160u32;
+    let mut src = vec![255u8; (size * size * 4) as usize];
+    let (band0, band1) = (55u32, 95u32);
+    for y in band0..band1 {
+        for x in 0..size {
+            let i = ((y * size + x) * 4) as usize;
+            src[i..i + 4].copy_from_slice(&[210, 30, 30, 255]);
+        }
+    }
+    let mut t = PainterTool::default();
+    t.set_source(src, size, size);
+    t.paint.brush = BrushSpec {
+        radius_px: 10.0,
+        hardness: 1.0,
+        falloff: Falloff::Constant,
+        color: [0.15, 0.30, 0.80],
+        space_attenuation: false,
+        watercolor: true,
+        edge_gain: 0.0,
+        edge_spread: 4.0,
+        granulation: 0.0,
+        warp: 0.0,
+        fill: 0.6,
+        depth: 1.5,
+        wet_rewet: 0.0,
+        wet_charge: 0.2,
+        wet_pull: 0.6,
+        ..Default::default()
+    };
+    for slot in &mut t.paint.brush_by_mode {
+        *slot = t.paint.brush;
+    }
+    assert!(t.on_canvas_pointer(cp([80.0, 30.0], PointerPhase::Down)));
+    let mut y = 30.0f32;
+    while y < 145.0 {
+        y += 3.0;
+        t.on_canvas_pointer(cp([80.0, y], PointerPhase::Move));
+    }
+    assert!(t.on_canvas_pointer(cp([80.0, y], PointerPhase::Up)));
+    // Just past the pool: a rich purple (R and B each well above G), not a pale near-grey wash.
+    let c = px(&t, size, 80, band1 + 3);
+    let (r, g, b) = (i32::from(c[0]), i32::from(c[1]), i32::from(c[2]));
+    assert!(
+        r > g + 60 && b > g + 40,
+        "the carried mix must be a saturated purple (R,B ≫ G), not watery: {c:?}"
+    );
+}

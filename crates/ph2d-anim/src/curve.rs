@@ -1,0 +1,289 @@
+//! Per-segment interpolation ([`Interp`]) + the standalone editable curve
+//! ([`AnimCurve`], implementing [`AnimationCurveSampler`]).
+//!
+//! [`Interp`] maps a normalized segment fraction `u ∈ [0, 1]` to an eased
+//! fraction `v ∈ [0, 1]`; the actual value blend is always delegated to
+//! [`LinearInterp::lerp`] (so OKLCH colours keep their short-arc hue behaviour).
+
+use core::cmp::Ordering;
+
+use ph2d_vector_traits::{AnimValue, AnimationCurveSampler, LinearInterp};
+
+use crate::easing::Easing;
+
+/// How a keyframe segment is interpolated from its start value to its end value.
+///
+/// The variant belongs to the **outgoing** key of a segment (the interpolation
+/// *leaving* that key toward the next one).
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum Interp {
+    /// Stepped: hold the start value for the whole segment (no blend).
+    Hold,
+    /// Linear: the eased fraction equals `u`.
+    Linear,
+    /// A named easing preset.
+    Eased(Easing),
+    /// A CSS/After-Effects cubic-bézier timing curve with control points
+    /// `P1 = (x1, y1)`, `P2 = (x2, y2)` between the fixed `P0 = (0, 0)` and
+    /// `P3 = (1, 1)`. `Linear`/`Eased` are special cases kept as fast paths.
+    Bezier {
+        /// `P1.x`, kept in `[0, 1]` so the timing function stays monotone in `u`.
+        x1: f64,
+        /// `P1.y` (may leave `[0, 1]` to overshoot).
+        y1: f64,
+        /// `P2.x`, kept in `[0, 1]`.
+        x2: f64,
+        /// `P2.y` (may leave `[0, 1]` to overshoot).
+        y2: f64,
+    },
+}
+
+impl Interp {
+    /// Build a cubic-bézier timing curve, clamping the control-point *x*
+    /// coordinates into `[0, 1]` (CSS validity — a non-monotone `x` has no
+    /// single solution).
+    #[must_use]
+    pub fn bezier(x1: f64, y1: f64, x2: f64, y2: f64) -> Self {
+        Interp::Bezier {
+            x1: x1.clamp(0.0, 1.0),
+            y1,
+            x2: x2.clamp(0.0, 1.0),
+            y2,
+        }
+    }
+
+    /// Map a normalized segment fraction `u` to an eased fraction `v`.
+    ///
+    /// `Hold` returns `0.0` (so a downstream `lerp(start, end, 0)` holds the
+    /// start value — `Hold` needs no special-casing at the call site).
+    #[must_use]
+    pub fn remap(self, u: f64) -> f64 {
+        let u = u.clamp(0.0, 1.0);
+        match self {
+            Interp::Hold => 0.0,
+            Interp::Linear => u,
+            Interp::Eased(e) => e.eval(u),
+            Interp::Bezier { x1, y1, x2, y2 } => solve_cubic_bezier(x1, y1, x2, y2, u),
+        }
+    }
+
+    /// `true` if this interpolation is transcendental-free.
+    ///
+    /// `Hold`, `Linear` and `Bezier` (solved by polynomial Newton/bisection)
+    /// are always deterministic; `Eased` defers to [`Easing::is_deterministic`].
+    #[must_use]
+    pub fn is_deterministic(self) -> bool {
+        match self {
+            Interp::Eased(e) => e.is_deterministic(),
+            _ => true,
+        }
+    }
+}
+
+/// Blend two values across a segment: `lerp(v0, v1, interp.remap(u))`.
+///
+/// Shared by [`crate::Track`] and [`AnimCurve`] so both interpolate identically.
+pub(crate) fn interpolate(v0: AnimValue, v1: AnimValue, interp: Interp, u: f64) -> AnimValue {
+    AnimValue::lerp(v0, v1, interp.remap(u))
+}
+
+/// One control point of an [`AnimCurve`].
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct CurveKey {
+    /// The curve parameter (usually in `[0, 1]`, but any finite value is valid).
+    pub u: f64,
+    /// The value at this point.
+    pub value: AnimValue,
+    /// The interpolation *leaving* this point toward the next.
+    pub interp: Interp,
+}
+
+/// A first-class, editable animation curve — the object of the future graph
+/// editor. Sampled by parameter via [`AnimationCurveSampler::at`].
+///
+/// Control points are kept sorted by `u`. Sampling outside the point range
+/// clamps to the first/last value (flat ends).
+#[derive(Debug, Clone)]
+pub struct AnimCurve {
+    keys: Vec<CurveKey>,
+    default: AnimValue,
+}
+
+impl AnimCurve {
+    /// Build a curve from control points (sorted by `u` internally).
+    ///
+    /// An empty curve samples to `default` — chosen as the first point's value,
+    /// or `AnimValue::Float(0.0)` when there are no points (documented explicit
+    /// default; never a silent empty body).
+    #[must_use]
+    pub fn new(mut keys: Vec<CurveKey>) -> Self {
+        keys.sort_by(|a, b| a.u.partial_cmp(&b.u).unwrap_or(Ordering::Equal));
+        let default = keys.first().map_or(AnimValue::Float(0.0), |k| k.value);
+        Self { keys, default }
+    }
+
+    /// A two-point curve blending `from → to` over `u ∈ [0, 1]` with the given
+    /// easing. Behaviourally the real replacement for
+    /// `ph2d_vector_traits::MockAnimationCurveSampler` when the mock's linear
+    /// blend is generalised to any preset.
+    #[must_use]
+    pub fn ease(from: AnimValue, to: AnimValue, easing: Easing) -> Self {
+        Self::new(vec![
+            CurveKey {
+                u: 0.0,
+                value: from,
+                interp: Interp::Eased(easing),
+            },
+            CurveKey {
+                u: 1.0,
+                value: to,
+                interp: Interp::Hold,
+            },
+        ])
+    }
+
+    /// A two-point straight linear blend `from → to` over `u ∈ [0, 1]`.
+    #[must_use]
+    pub fn linear(from: AnimValue, to: AnimValue) -> Self {
+        Self::new(vec![
+            CurveKey {
+                u: 0.0,
+                value: from,
+                interp: Interp::Linear,
+            },
+            CurveKey {
+                u: 1.0,
+                value: to,
+                interp: Interp::Hold,
+            },
+        ])
+    }
+
+    /// A two-point cubic-bézier blend `from → to` over `u ∈ [0, 1]`.
+    #[must_use]
+    pub fn bezier(from: AnimValue, to: AnimValue, x1: f64, y1: f64, x2: f64, y2: f64) -> Self {
+        Self::new(vec![
+            CurveKey {
+                u: 0.0,
+                value: from,
+                interp: Interp::bezier(x1, y1, x2, y2),
+            },
+            CurveKey {
+                u: 1.0,
+                value: to,
+                interp: Interp::Hold,
+            },
+        ])
+    }
+
+    /// The control points, sorted by `u`.
+    #[must_use]
+    pub fn keys(&self) -> &[CurveKey] {
+        &self.keys
+    }
+
+    /// `true` if the curve has no control points.
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        self.keys.is_empty()
+    }
+
+    /// Number of control points.
+    #[must_use]
+    pub fn len(&self) -> usize {
+        self.keys.len()
+    }
+}
+
+impl AnimationCurveSampler for AnimCurve {
+    fn at(&self, t: f64) -> AnimValue {
+        sample_sorted(&self.keys, self.default, t)
+    }
+}
+
+/// Sample a sorted `[CurveKey]` slice at parameter `t` (flat-clamped ends).
+/// Zero-allocation: binary search + arithmetic only.
+fn sample_sorted(keys: &[CurveKey], default: AnimValue, t: f64) -> AnimValue {
+    match keys {
+        [] => default,
+        [only] => only.value,
+        _ => {
+            let first = keys[0];
+            let last = keys[keys.len() - 1];
+            if t <= first.u {
+                return first.value;
+            }
+            if t >= last.u {
+                return last.value;
+            }
+            // Largest index `i` with `keys[i].u <= t`.
+            let idx = keys
+                .partition_point(|k| k.u <= t)
+                .saturating_sub(1)
+                .min(keys.len() - 2);
+            let k0 = keys[idx];
+            let k1 = keys[idx + 1];
+            let span = k1.u - k0.u;
+            let u = if span > 0.0 { (t - k0.u) / span } else { 0.0 };
+            interpolate(k0.value, k1.value, k0.interp, u)
+        }
+    }
+}
+
+/// Evaluate one axis of the cubic bézier `B(s)` with `P0 = 0`, `P3 = 1` and
+/// control coordinates `p1`, `p2`. Polynomial (transcendental-free).
+fn bezier_axis(p1: f64, p2: f64, s: f64) -> f64 {
+    let c = 3.0 * p1;
+    let b = 3.0 * (p2 - p1) - c;
+    let a = 1.0 - c - b;
+    ((a * s + b) * s + c) * s
+}
+
+/// Derivative of [`bezier_axis`] w.r.t. `s`.
+fn bezier_axis_deriv(p1: f64, p2: f64, s: f64) -> f64 {
+    let c = 3.0 * p1;
+    let b = 3.0 * (p2 - p1) - c;
+    let a = 1.0 - c - b;
+    (3.0 * a * s + 2.0 * b) * s + c
+}
+
+/// Solve a CSS/AE cubic-bézier timing curve: given `x`, find the curve
+/// parameter `s` with `bezier_x(s) == x`, then return `bezier_y(s)`.
+///
+/// Newton–Raphson from `s = x` with a bisection fallback — all polynomial, so
+/// the result is **deterministic** (no transcendental ops).
+fn solve_cubic_bezier(x1: f64, y1: f64, x2: f64, y2: f64, x: f64) -> f64 {
+    const EPS: f64 = 1e-7;
+    let x = x.clamp(0.0, 1.0);
+
+    // Newton–Raphson.
+    let mut s = x;
+    for _ in 0..8 {
+        let err = bezier_axis(x1, x2, s) - x;
+        if err.abs() < EPS {
+            return bezier_axis(y1, y2, s);
+        }
+        let d = bezier_axis_deriv(x1, x2, s);
+        if d.abs() < EPS {
+            break;
+        }
+        s -= err / d;
+    }
+
+    // Bisection fallback on `[0, 1]`.
+    let (mut lo, mut hi) = (0.0f64, 1.0f64);
+    let mut s = x.clamp(lo, hi);
+    while hi - lo > EPS {
+        let cx = bezier_axis(x1, x2, s);
+        if (cx - x).abs() < EPS {
+            break;
+        }
+        if x > cx {
+            lo = s;
+        } else {
+            hi = s;
+        }
+        s = 0.5 * (lo + hi);
+    }
+    bezier_axis(y1, y2, s)
+}

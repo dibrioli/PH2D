@@ -1,0 +1,36 @@
+[package]
+name = "ph2d-anim"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+publish.workspace = true
+
+# Camada 1 of the Motion Nodes study (docs/Motion Nodes/00_estudo_estado_da_arte.md):
+# a keyframe store (Track) + editable curves (AnimCurve) giving REAL impls to the
+# two animation traits frozen in ph2d-vector-traits (AttributeEvaluator,
+# AnimationCurveSampler). Leaf library crate: nothing depends on it yet, no codegen
+# sync touches it (not a ph2d-node-*/ph2d-tool-*/ph2d-panel-*). Wiring into the app
+# (motion.clip node, timeline) is future lines, out of scope here.
+
+[lib]
+
+[dependencies]
+# The frozen animation contracts + AnimValue + the LinearInterp we reuse for
+# value interpolation (OKLCH hue short-arc lives there — never re-implemented here).
+# This is the ONLY runtime dep: the library never constructs a glam / OklchColor
+# value itself (it delegates every blend to LinearInterp), so glam + ph2d-color
+# are test-only and live under [dev-dependencies] (cargo-machete clean).
+ph2d-vector-traits = { path = "../ph2d-vector-traits" }
+
+[dev-dependencies]
+# OklchColor + glam for building colour / Vec2 tracks in the test suite. Path
+# dep matches workspace convention (mirrors ph2d-vector-traits' own dep line).
+ph2d-color = { path = "../ph2d-color" }
+# glam 0.30 — matches ph2d-core's canonical Vec2/Vec3 pin, embedded by the
+# AnimValue::Vec2 / AnimValue::Vec3 variants the tests construct.
+glam = "0.30"
+# dhat-rs for the HR-3 zero-alloc playback gate (tests/no_alloc.rs), mirroring
+# ph2d-ecs/tests/propagate_no_alloc.rs + ph2d-audio/tests/no_alloc_render.rs.
+dhat = "0.3"

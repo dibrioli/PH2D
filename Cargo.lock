@@ -4605,6 +4605,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-anim"
+version = "0.0.0"
+dependencies = [
+ "dhat",
+ "glam 0.30.10",
+ "ph2d-color",
+ "ph2d-vector-traits",
+]
+
+[[package]]
 name = "ph2d-asset"
 version = "0.0.0"
 dependencies = [

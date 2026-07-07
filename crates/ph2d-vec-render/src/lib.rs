@@ -10,8 +10,10 @@
 //! Fase 0: draw estático da cena inteira. **Dirty-tracking** (só re-encodar a
 //! sub-árvore que mudou — a alavanca de escala do ADR-0108) é o próximo passo.
 
-use ph2d_vec_scene::{Rgba8, VecPath, VecPathId, VecScene};
-use ph2d_vector::{Affine, BezPath, Brush, Circle, Color, Fill, Point, Rect, Stroke, VectorScene};
+use ph2d_vec_scene::{LineCap, LineJoin, Rgba8, StrokeSpec, VecPath, VecPathId, VecScene};
+use ph2d_vector::{
+    Affine, BezPath, Brush, Cap, Circle, Color, Fill, Join, Point, Rect, Stroke, VectorScene,
+};
 
 /// Constrói o `BezPath` (world-space) de um path editável: `move_to` na 1ª âncora,
 /// depois uma cúbica por segmento usando `out_handle(i)` e `in_handle(i+1)`;
@@ -43,14 +45,10 @@ pub fn dispatch(scene: &VecScene, transform: Affine, target: &mut VectorScene) {
         if let Some(fill) = path.fill {
             target.fill_path(&bp, &Brush::Solid(color(fill)), transform);
         }
-        if let Some((stroke, width)) = path.stroke {
-            target.inner_mut().stroke(
-                &Stroke::new(width),
-                transform,
-                &Brush::Solid(color(stroke)),
-                None,
-                &bp,
-            );
+        if let Some(s) = path.stroke {
+            target
+                .inner_mut()
+                .stroke(&kurbo_stroke(&s), transform, &Brush::Solid(color(s.color)), None, &bp);
         }
     }
 }
@@ -145,6 +143,34 @@ pub fn draw_marquee(min: [f64; 2], max: [f64; 2], target: &mut VectorScene) {
         None,
         &outline,
     );
+}
+
+/// `StrokeSpec` → `kurbo::Stroke` (ponta/junção + dash). Larguras/dashes ficam em
+/// world-units; o `transform` do render escala p/ screen.
+fn kurbo_stroke(s: &StrokeSpec) -> Stroke {
+    let cap = match s.cap {
+        LineCap::Butt => Cap::Butt,
+        LineCap::Round => Cap::Round,
+        LineCap::Square => Cap::Square,
+    };
+    let join = match s.join {
+        LineJoin::Miter => Join::Miter,
+        LineJoin::Round => Join::Round,
+        LineJoin::Bevel => Join::Bevel,
+    };
+    let stroke = Stroke::new(s.width).with_caps(cap).with_join(join);
+    // `dash` carries width MULTIPLES `(dash, gap)` (width-aware — a thicker line
+    // gets proportionally longer dash + gap, so the cap projection never swallows
+    // the gap). A zero-length gap collapses to a solid look; clamp it off zero so
+    // kurbo never emits a degenerate dash element.
+    match s.dash {
+        Some((d, g)) if d > 0.0 => {
+            let dash_len = d * s.width;
+            let gap_len = (g * s.width).max(f64::EPSILON);
+            stroke.with_dashes(0.0, [dash_len, gap_len])
+        }
+        _ => stroke,
+    }
 }
 
 #[inline]

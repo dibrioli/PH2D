@@ -131,6 +131,43 @@ fn mode_button_click_switches_tool_mode_through_seam() {
     );
 }
 
+/// A Cap button + the Dash and Gap sliders reach the tool through the seam —
+/// the stroke-detail controls.
+#[test]
+fn stroke_cap_dash_and_gap_reach_the_tool() {
+    use ph2d_tool_vector::StrokeCap;
+    use ph2d_tool_vector::params::{DASH_MAX, GAP_MAX};
+    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    let mut panel_state = VectorPanelState;
+    let mut tool = VectorTool::default();
+
+    let c = host.apply_panel_event::<VectorPanel>(
+        &mut panel_state,
+        WidgetEvent::Click(ids::VECTOR_CAP_ROUND),
+    );
+    assert_eq!(c, EventOutcome::Consumed, "Cap button not wired");
+    drain_into_tool(&mut host, &mut tool);
+    assert_eq!(tool.cap(), StrokeCap::Round);
+
+    host.set_slider_value(ids::VECTOR_DASH, 1.0);
+    let d = host.apply_panel_event::<VectorPanel>(
+        &mut panel_state,
+        WidgetEvent::ValueChanged(ids::VECTOR_DASH),
+    );
+    assert_eq!(d, EventOutcome::Consumed, "Dash slider not wired");
+    drain_into_tool(&mut host, &mut tool);
+    assert!((tool.dash() - DASH_MAX).abs() < 1e-6);
+
+    host.set_slider_value(ids::VECTOR_GAP, 1.0);
+    let g = host.apply_panel_event::<VectorPanel>(
+        &mut panel_state,
+        WidgetEvent::ValueChanged(ids::VECTOR_GAP),
+    );
+    assert_eq!(g, EventOutcome::Consumed, "Gap slider not wired");
+    drain_into_tool(&mut host, &mut tool);
+    assert!((tool.gap() - GAP_MAX).abs() < 1e-6);
+}
+
 /// The Star mode button switches the mode, and the Star "Points" slider reaches
 /// the tool's `star_points` through the seam — proving the new shape controls.
 #[test]

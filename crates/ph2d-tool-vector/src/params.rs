@@ -57,6 +57,62 @@ pub enum VertexType {
     Symmetric,
 }
 
+/// UI-facing line cap / join (mirror of `ph2d_vec_scene::{LineCap, LineJoin}`;
+/// the shell maps between them — the tool crate doesn't dep `ph2d-vec-scene`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
+pub enum StrokeCap {
+    #[default]
+    Butt,
+    Round,
+    Square,
+}
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
+pub enum StrokeJoin {
+    #[default]
+    Miter,
+    Round,
+    Bevel,
+}
+
+/// Dash range as a **multiple of the stroke width** (`0` = solid). Width-aware:
+/// the render draws dash/gap of `dash·width`, so a thick line keeps its gaps.
+pub const DASH_MIN: f64 = 0.0;
+pub const DASH_MAX: f64 = 8.0;
+pub const DASH_SLIDER_SCALE: f32 = (DASH_MAX - DASH_MIN) as f32;
+pub const DASH_SLIDER_OFFSET: f32 = DASH_MIN as f32;
+
+/// Normalized track `0..=1` → dash multiple `MIN..=MAX`.
+#[must_use]
+pub fn slider_to_dash(track: f32) -> f64 {
+    DASH_MIN + f64::from(track.clamp(0.0, 1.0)) * (DASH_MAX - DASH_MIN)
+}
+/// Dash multiple → normalized track (inverse of [`slider_to_dash`]).
+#[must_use]
+pub fn dash_to_slider(m: f64) -> f32 {
+    ((m.clamp(DASH_MIN, DASH_MAX) - DASH_MIN) / (DASH_MAX - DASH_MIN)) as f32
+}
+
+/// Gap range as a **multiple of the stroke width**, independent of the dash
+/// length — the render draws the space between dashes as `gap·width`. Same
+/// width-aware model as [`slider_to_dash`]. Default `1` (Dash = 0 ⇒ solid, so
+/// the gap only bites once Dash > 0).
+pub const GAP_MIN: f64 = 0.0;
+pub const GAP_MAX: f64 = 8.0;
+pub const GAP_DEFAULT: f64 = 1.0;
+pub const GAP_SLIDER_SCALE: f32 = (GAP_MAX - GAP_MIN) as f32;
+pub const GAP_SLIDER_OFFSET: f32 = GAP_MIN as f32;
+
+/// Normalized track `0..=1` → gap multiple `MIN..=MAX`.
+#[must_use]
+pub fn slider_to_gap(track: f32) -> f64 {
+    GAP_MIN + f64::from(track.clamp(0.0, 1.0)) * (GAP_MAX - GAP_MIN)
+}
+/// Gap multiple → normalized track (inverse of [`slider_to_gap`]).
+#[must_use]
+pub fn gap_to_slider(m: f64) -> f32 {
+    ((m.clamp(GAP_MIN, GAP_MAX) - GAP_MIN) / (GAP_MAX - GAP_MIN)) as f32
+}
+
 /// Minimum / maximum polygon sides (inclusive range the Sides slider spans).
 pub const SIDES_MIN: u32 = 3;
 pub const SIDES_MAX: u32 = 12;
@@ -191,6 +247,12 @@ pub struct VectorStyleSnapshot {
     pub star_points: u32,
     pub star_inner_ratio: f64,
     pub corner_radius_px: f64,
+    pub cap: StrokeCap,
+    pub join: StrokeJoin,
+    /// Dash as a multiple of stroke width (`0` = solid).
+    pub dash: f64,
+    /// Gap between dashes as a multiple of stroke width.
+    pub gap: f64,
 }
 
 impl Default for VectorStyleSnapshot {
@@ -204,6 +266,10 @@ impl Default for VectorStyleSnapshot {
             star_points: super::tool::DEFAULT_STAR_POINTS,
             star_inner_ratio: super::tool::DEFAULT_STAR_INNER,
             corner_radius_px: super::tool::DEFAULT_CORNER_RADIUS_PX,
+            cap: StrokeCap::Butt,
+            join: StrokeJoin::Miter,
+            dash: 0.0,
+            gap: GAP_DEFAULT,
         }
     }
 }

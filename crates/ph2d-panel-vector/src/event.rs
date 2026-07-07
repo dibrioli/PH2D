@@ -47,7 +47,9 @@ pub(crate) fn apply_event(
                 || id == ids::VECTOR_STAR_INNER
                 || id == ids::VECTOR_RRECT_RADIUS
                 || id == ids::VECTOR_STROKE_OPACITY
-                || id == ids::VECTOR_FILL_OPACITY =>
+                || id == ids::VECTOR_FILL_OPACITY
+                || id == ids::VECTOR_DASH
+                || id == ids::VECTOR_GAP =>
         {
             let track = host.store().slider(id).map(|(_, v)| v).unwrap_or(0.5);
             host.bus_mut()
@@ -66,7 +68,9 @@ pub(crate) fn apply_event(
                 || id == ids::VECTOR_STAR_INNER_NUM
                 || id == ids::VECTOR_RRECT_RADIUS_NUM
                 || id == ids::VECTOR_STROKE_OPACITY_NUM
-                || id == ids::VECTOR_FILL_OPACITY_NUM =>
+                || id == ids::VECTOR_FILL_OPACITY_NUM
+                || id == ids::VECTOR_DASH_NUM
+                || id == ids::VECTOR_GAP_NUM =>
         {
             true
         }
@@ -82,6 +86,12 @@ pub(crate) fn apply_event(
                 || id == ids::VECTOR_MODE_POLYGON
                 || id == ids::VECTOR_MODE_STAR
                 || id == ids::VECTOR_MODE_RRECT
+                || id == ids::VECTOR_CAP_BUTT
+                || id == ids::VECTOR_CAP_ROUND
+                || id == ids::VECTOR_CAP_SQUARE
+                || id == ids::VECTOR_JOIN_MITER
+                || id == ids::VECTOR_JOIN_ROUND
+                || id == ids::VECTOR_JOIN_BEVEL
                 || id == ids::VECTOR_VERT_CORNER
                 || id == ids::VECTOR_VERT_SMOOTH
                 || id == ids::VECTOR_VERT_SYMMETRIC

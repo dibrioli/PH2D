@@ -14,10 +14,11 @@ use crate::ids;
 use ph2d_editor_core::interaction::{InteractiveState, WidgetStore};
 use ph2d_editor_core::widget::{ButtonState, SliderOrientation, SliderState, TextInputState};
 use ph2d_tool_vector::params::{
+    DASH_SLIDER_OFFSET, DASH_SLIDER_SCALE, GAP_DEFAULT, GAP_SLIDER_OFFSET, GAP_SLIDER_SCALE,
     OPACITY_SLIDER_OFFSET, OPACITY_SLIDER_SCALE, RADIUS_SLIDER_OFFSET, RADIUS_SLIDER_SCALE,
     SIDES_SLIDER_OFFSET, SIDES_SLIDER_SCALE, STAR_INNER_SLIDER_OFFSET, STAR_INNER_SLIDER_SCALE,
     STAR_POINTS_SLIDER_OFFSET, STAR_POINTS_SLIDER_SCALE, WIDTH_SLIDER_OFFSET, WIDTH_SLIDER_SCALE,
-    radius_to_slider, sides_to_slider, star_inner_to_slider, star_points_to_slider,
+    gap_to_slider, radius_to_slider, sides_to_slider, star_inner_to_slider, star_points_to_slider,
 };
 use ph2d_tool_vector::{
     DEFAULT_CORNER_RADIUS_PX, DEFAULT_POLYGON_SIDES, DEFAULT_STAR_INNER, DEFAULT_STAR_POINTS,
@@ -194,6 +195,32 @@ pub fn populate(store: &mut WidgetStore) {
         100.0,
         OPACITY_SLIDER_SCALE,
         OPACITY_SLIDER_OFFSET,
+    );
+
+    // Stroke Cap / Join segmented buttons + Dash length slider (0 px = solid).
+    button(store, ids::VECTOR_CAP_BUTT);
+    button(store, ids::VECTOR_CAP_ROUND);
+    button(store, ids::VECTOR_CAP_SQUARE);
+    button(store, ids::VECTOR_JOIN_MITER);
+    button(store, ids::VECTOR_JOIN_ROUND);
+    button(store, ids::VECTOR_JOIN_BEVEL);
+    slider_chip(
+        store,
+        ids::VECTOR_DASH,
+        ids::VECTOR_DASH_NUM,
+        0.0,
+        0.0,
+        DASH_SLIDER_SCALE,
+        DASH_SLIDER_OFFSET,
+    );
+    slider_chip(
+        store,
+        ids::VECTOR_GAP,
+        ids::VECTOR_GAP_NUM,
+        gap_to_slider(GAP_DEFAULT),
+        GAP_DEFAULT,
+        GAP_SLIDER_SCALE,
+        GAP_SLIDER_OFFSET,
     );
 
     // Close (X) button.

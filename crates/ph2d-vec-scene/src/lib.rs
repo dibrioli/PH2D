@@ -30,6 +30,53 @@ impl Rgba8 {
     }
 }
 
+/// Ponta do traço (mapeia p/ `kurbo::Cap` no render). Default = `Butt`.
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Default, Serialize, Deserialize)]
+pub enum LineCap {
+    #[default]
+    Butt,
+    Round,
+    Square,
+}
+
+/// Junção entre segmentos (mapeia p/ `kurbo::Join`). Default = `Miter`.
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Default, Serialize, Deserialize)]
+pub enum LineJoin {
+    #[default]
+    Miter,
+    Round,
+    Bevel,
+}
+
+/// Estilo do traço de um path: cor + largura (world-units) + ponta/junção +
+/// tracejado opcional. Substitui a tupla `(Rgba8, f64)` da Fase 0.
+#[derive(Copy, Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct StrokeSpec {
+    pub color: Rgba8,
+    pub width: f64,
+    pub cap: LineCap,
+    pub join: LineJoin,
+    /// Tracejado como **múltiplos da largura**: `Some((dash, gap))` ⇒ traço de
+    /// `dash·width` e vão de `gap·width`; `None` (ou `dash ≤ 0`) = contínuo.
+    /// Width-aware: engrossar o traço alonga dash e vão na proporção, então a
+    /// projeção da ponta nunca engole o vão.
+    pub dash: Option<(f64, f64)>,
+}
+
+impl StrokeSpec {
+    /// Traço sólido, ponta/junção default (Butt/Miter), sem tracejado.
+    #[must_use]
+    pub fn new(color: Rgba8, width: f64) -> Self {
+        Self {
+            color,
+            width,
+            cap: LineCap::Butt,
+            join: LineJoin::Miter,
+            dash: None,
+        }
+    }
+}
+
 /// Natureza da âncora — o trio canônico de editor vetorial (Inkscape/Illustrator).
 /// Governa como a EDIÇÃO de um handle trata o handle oposto ([`retype_vertex`]
 /// aplica a restrição geométrica ao trocar de tipo).
@@ -91,14 +138,14 @@ pub struct VecPath {
     pub closed: bool,
     /// Preenchimento (None = sem fill).
     pub fill: Option<Rgba8>,
-    /// Traço `(cor, largura em world-units)` (None = sem stroke).
-    pub stroke: Option<(Rgba8, f64)>,
+    /// Traço (None = sem stroke). Ver [`StrokeSpec`].
+    pub stroke: Option<StrokeSpec>,
 }
 
 /// Versão do wire-format de save (postcard é posicional → bump a cada mudança de
-/// schema). v2: `VertexKind` ganhou `Symmetric` (enum discriminant mudou).
-/// (Versionamento robusto/migração = cutover, Fase R.)
-pub const VEC_SCENE_SCHEMA_VERSION: u32 = 2;
+/// schema). v2: `VertexKind` ganhou `Symmetric`. v3: `stroke` virou
+/// [`StrokeSpec`] (cap/join/dash). (Migração robusta = cutover, Fase R.)
+pub const VEC_SCENE_SCHEMA_VERSION: u32 = 3;
 
 /// Cena vetorial — o documento editor-first. `PartialEq` para o undo detectar
 /// mudança real (só vira passo de histórico se a cena mudou de fato).
@@ -625,7 +672,7 @@ fn demo_curve() -> VecPath {
         ],
         closed: false,
         fill: None,
-        stroke: Some((Rgba8::new(240, 240, 245, 255), width)),
+        stroke: Some(StrokeSpec::new(Rgba8::new(240, 240, 245, 255), width)),
     }
 }
 

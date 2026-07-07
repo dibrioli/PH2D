@@ -25,8 +25,9 @@ use ph2d_editor_core::ids;
 use ph2d_editor_core::tool::{PanelEvent, Tool};
 
 use crate::params::{
-    DrawMode, VectorDrawConfig, VectorStyleSnapshot, slider_to_opacity, slider_to_px,
-    slider_to_radius, slider_to_sides, slider_to_star_inner, slider_to_star_points,
+    DrawMode, StrokeCap, StrokeJoin, VectorDrawConfig, VectorStyleSnapshot, slider_to_dash,
+    slider_to_gap, slider_to_opacity, slider_to_px, slider_to_radius, slider_to_sides,
+    slider_to_star_inner, slider_to_star_points,
 };
 
 /// Curated stroke / fill preset palette: `(key, label, sRGB8)`. Retained as the
@@ -83,6 +84,12 @@ pub struct VectorTool {
     star_inner_ratio: f64,
     /// Corner radius (screen px) for `DrawMode::RoundRect`.
     corner_radius_px: f64,
+    /// Stroke cap / join + dash & gap as multiples of the stroke width
+    /// (`dash = 0` = solid; `gap` is the space between dashes).
+    cap: StrokeCap,
+    join: StrokeJoin,
+    dash: f64,
+    gap: f64,
     /// Set when a colour changes → the shell recolours the selected path.
     /// Drained by [`Self::take_apply_to_selected`].
     apply_to_selected: bool,
@@ -99,6 +106,10 @@ impl Default for VectorTool {
             star_points: DEFAULT_STAR_POINTS,
             star_inner_ratio: DEFAULT_STAR_INNER,
             corner_radius_px: DEFAULT_CORNER_RADIUS_PX,
+            cap: StrokeCap::Butt,
+            join: StrokeJoin::Miter,
+            dash: 0.0,
+            gap: crate::params::GAP_DEFAULT,
             apply_to_selected: false,
         }
     }
@@ -140,6 +151,35 @@ impl VectorTool {
         self.polygon_sides
     }
 
+    /// Stroke cap / join / dash (multiple of width) — the shell maps cap/join to
+    /// the geometry enums; the render multiplies dash by the path's width.
+    #[must_use]
+    pub fn cap(&self) -> StrokeCap {
+        self.cap
+    }
+    #[must_use]
+    pub fn join(&self) -> StrokeJoin {
+        self.join
+    }
+    #[must_use]
+    pub fn dash(&self) -> f64 {
+        self.dash
+    }
+    #[must_use]
+    pub fn gap(&self) -> f64 {
+        self.gap
+    }
+
+    /// Set the cap / join + flag the selected path for restyle.
+    fn set_cap(&mut self, cap: StrokeCap) {
+        self.cap = cap;
+        self.apply_to_selected = true;
+    }
+    fn set_join(&mut self, join: StrokeJoin) {
+        self.join = join;
+        self.apply_to_selected = true;
+    }
+
     /// Mode + shape parameters the shell mirrors to drive the `ShapeTool`.
     #[must_use]
     pub fn draw_config(&self) -> VectorDrawConfig {
@@ -179,6 +219,10 @@ impl VectorTool {
             star_points: self.star_points,
             star_inner_ratio: self.star_inner_ratio,
             corner_radius_px: self.corner_radius_px,
+            cap: self.cap,
+            join: self.join,
+            dash: self.dash,
+            gap: self.gap,
         }
     }
 
@@ -259,6 +303,30 @@ impl Tool for VectorTool {
             PanelEvent::Click(id) if id == ids::VECTOR_MODE_STAR => self.mode = DrawMode::Star,
             PanelEvent::Click(id) if id == ids::VECTOR_MODE_RRECT => {
                 self.mode = DrawMode::RoundRect
+            }
+            // Stroke cap / join segmented rows + Dash slider. These are Style →
+            // restyle the selected path (mirror of colour/width).
+            PanelEvent::Click(id) if id == ids::VECTOR_CAP_BUTT => self.set_cap(StrokeCap::Butt),
+            PanelEvent::Click(id) if id == ids::VECTOR_CAP_ROUND => self.set_cap(StrokeCap::Round),
+            PanelEvent::Click(id) if id == ids::VECTOR_CAP_SQUARE => {
+                self.set_cap(StrokeCap::Square)
+            }
+            PanelEvent::Click(id) if id == ids::VECTOR_JOIN_MITER => {
+                self.set_join(StrokeJoin::Miter)
+            }
+            PanelEvent::Click(id) if id == ids::VECTOR_JOIN_ROUND => {
+                self.set_join(StrokeJoin::Round)
+            }
+            PanelEvent::Click(id) if id == ids::VECTOR_JOIN_BEVEL => {
+                self.set_join(StrokeJoin::Bevel)
+            }
+            PanelEvent::SetValue(id, v) if id == ids::VECTOR_DASH => {
+                self.dash = slider_to_dash(v as f32);
+                self.apply_to_selected = true;
+            }
+            PanelEvent::SetValue(id, v) if id == ids::VECTOR_GAP => {
+                self.gap = slider_to_gap(v as f32);
+                self.apply_to_selected = true;
             }
             _ => {}
         }
@@ -360,6 +428,29 @@ mod tests {
         assert_eq!(t.polygon_sides(), SIDES_MIN);
         Tool::handle_panel_event(&mut t, PanelEvent::SetValue(ids::VECTOR_SIDES, 1.0));
         assert_eq!(t.polygon_sides(), SIDES_MAX);
+    }
+
+    #[test]
+    fn stroke_cap_join_dash_arms() {
+        use crate::params::{DASH_MAX, GAP_MAX, StrokeCap, StrokeJoin};
+        let mut t = VectorTool::new();
+        Tool::handle_panel_event(&mut t, PanelEvent::Click(ids::VECTOR_CAP_ROUND));
+        assert_eq!(t.cap(), StrokeCap::Round);
+        assert!(t.take_apply_to_selected(), "cap change restyles the selection");
+        Tool::handle_panel_event(&mut t, PanelEvent::Click(ids::VECTOR_JOIN_BEVEL));
+        assert_eq!(t.join(), StrokeJoin::Bevel);
+        Tool::handle_panel_event(&mut t, PanelEvent::SetValue(ids::VECTOR_DASH, 1.0));
+        assert!((t.dash() - DASH_MAX).abs() < 1e-6);
+        assert!(t.take_apply_to_selected());
+        Tool::handle_panel_event(&mut t, PanelEvent::SetValue(ids::VECTOR_GAP, 1.0));
+        assert!((t.gap() - GAP_MAX).abs() < 1e-6);
+        assert!(t.take_apply_to_selected(), "gap change restyles the selection");
+        // Snapshot carries them.
+        let s = t.ui_snapshot();
+        assert_eq!(s.cap, StrokeCap::Round);
+        assert_eq!(s.join, StrokeJoin::Bevel);
+        assert!((s.dash - DASH_MAX).abs() < 1e-6);
+        assert!((s.gap - GAP_MAX).abs() < 1e-6);
     }
 
     #[test]

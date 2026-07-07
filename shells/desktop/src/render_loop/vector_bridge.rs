@@ -24,7 +24,7 @@
 use ph2d_editor::{HeroScreen, ToolId, ToolRegistry};
 use ph2d_tool_vector::VectorDrawConfig;
 use ph2d_vec_edit::{History, PenStyle, PenTool, ShapeTool};
-use ph2d_vec_scene::{Rgba8, VecScene};
+use ph2d_vec_scene::{LineCap, LineJoin, Rgba8, StrokeSpec, VecScene};
 use std::cell::RefCell;
 
 fn rgba(c: [u8; 4]) -> Rgba8 {
@@ -122,12 +122,21 @@ pub(super) fn dispatch(
 
     let stroke = tool.stroke_rgba();
     let fill = tool.fill_rgba();
+    let cap = line_cap(tool.cap());
+    let join = line_join(tool.join());
+    // Dash + gap are MULTIPLES of the stroke width (width-aware) — the render
+    // scales them by the path's own width, so no px→world conversion here.
+    // `dash = 0` ⇒ solid; otherwise `(dash, gap)` sizes the dash and the space.
+    let dash = (tool.dash() > 0.0).then_some((tool.dash(), tool.gap()));
 
     // ── 3. New paths honour the tool's Style (pen + shape share it). ──────
     let style = PenStyle {
         stroke: rgba(stroke),
         stroke_w_px: tool.stroke_width_px(),
         fill: rgba(fill),
+        cap,
+        join,
+        dash,
     };
     pen.set_style(style);
     shape.set_style(style);
@@ -148,11 +157,15 @@ pub(super) fn dispatch(
         let new_fill = if fill[3] == 0 { None } else { Some(rgba(fill)) };
         let new_w = tool.stroke_width_px() * px_to_world;
         let will_change = scene.paths().iter().find(|p| p.id == sel).is_some_and(|p| {
-            let colour_differs = matches!(p.stroke, Some((c, _)) if c != new_stroke);
-            let width_differs = width_dragging
-                && matches!(p.stroke, Some((_, w)) if (w - new_w).abs() > f64::EPSILON);
+            let stroke_differs = p.stroke.is_some_and(|s| {
+                s.color != new_stroke
+                    || s.cap != cap
+                    || s.join != join
+                    || s.dash != dash
+                    || (width_dragging && (s.width - new_w).abs() > f64::EPSILON)
+            });
             let fill_differs = p.closed && p.fill != new_fill;
-            colour_differs || width_differs || fill_differs
+            stroke_differs || fill_differs
         });
         if will_change {
             RECOLOR_PRE.with(|c| {
@@ -161,9 +174,17 @@ pub(super) fn dispatch(
                 }
             });
             if let Some(path) = scene.path_mut(sel) {
-                if let Some((_, old_w)) = path.stroke {
-                    let w = if width_dragging { new_w } else { old_w };
-                    path.stroke = Some((new_stroke, w));
+                if let Some(old) = path.stroke {
+                    // Keep the path's width unless the Width slider is being dragged
+                    // (mirror of the pre-existing width behaviour); apply the rest.
+                    let width = if width_dragging { new_w } else { old.width };
+                    path.stroke = Some(StrokeSpec {
+                        color: new_stroke,
+                        width,
+                        cap,
+                        join,
+                        dash,
+                    });
                 }
                 if path.closed {
                     path.fill = new_fill;
@@ -209,6 +230,24 @@ pub(super) fn dispatch(
     // Mirror the tool's mode + shape params so the input dispatch can route
     // canvas gestures (pen vs shape) + size the shapes without a downcast.
     tool.draw_config()
+}
+
+/// Map the UI-facing `StrokeCap`/`StrokeJoin` to the geometry enums.
+fn line_cap(c: ph2d_tool_vector::StrokeCap) -> LineCap {
+    use ph2d_tool_vector::StrokeCap;
+    match c {
+        StrokeCap::Butt => LineCap::Butt,
+        StrokeCap::Round => LineCap::Round,
+        StrokeCap::Square => LineCap::Square,
+    }
+}
+fn line_join(j: ph2d_tool_vector::StrokeJoin) -> LineJoin {
+    use ph2d_tool_vector::StrokeJoin;
+    match j {
+        StrokeJoin::Miter => LineJoin::Miter,
+        StrokeJoin::Round => LineJoin::Round,
+        StrokeJoin::Bevel => LineJoin::Bevel,
+    }
 }
 
 /// Map the geometry `VertexKind` to the panel's UI-facing `VertexType`.

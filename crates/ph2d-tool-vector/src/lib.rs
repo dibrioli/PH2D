@@ -27,7 +27,8 @@ pub mod params;
 pub mod tool;
 
 pub use params::{
-    DrawMode, VectorDrawConfig, VectorStyleSnapshot, VertexType, px_to_slider, slider_to_px,
+    DrawMode, StrokeCap, StrokeJoin, VectorDrawConfig, VectorStyleSnapshot, VertexType,
+    px_to_slider, slider_to_px,
 };
 pub use tool::{
     DEFAULT_CORNER_RADIUS_PX, DEFAULT_POLYGON_SIDES, DEFAULT_STAR_INNER, DEFAULT_STAR_POINTS,

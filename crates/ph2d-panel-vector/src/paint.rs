@@ -34,10 +34,10 @@ use ph2d_editor_core::widget::{
 use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ColorToken, ROW_H_PX, Spacing, TypeToken};
 use ph2d_tool_vector::params::{
-    DrawMode, opacity_to_slider, radius_to_slider, sides_to_slider, star_inner_to_slider,
-    star_points_to_slider,
+    DrawMode, dash_to_slider, gap_to_slider, opacity_to_slider, radius_to_slider, sides_to_slider,
+    star_inner_to_slider, star_points_to_slider,
 };
-use ph2d_tool_vector::{VertexType, px_to_slider};
+use ph2d_tool_vector::{StrokeCap, StrokeJoin, VertexType, px_to_slider};
 
 /// Label column width for the Width slider row + the Stroke / Fill labels.
 const LABEL_COL_W: f32 = 64.0; // LITERAL-PX-OK: panel grid metric (per-panel label gutter width)
@@ -184,6 +184,102 @@ pub(crate) fn paint(_state: &mut VectorPanelState, ctx: &mut PaintCtx) {
                 Some(&format!("{}", pct.round() as i64)),
                 ids::VECTOR_STROKE_OPACITY,
                 ids::VECTOR_STROKE_OPACITY_NUM,
+                LABEL_COL_W,
+                chip_w,
+                store,
+                hit_index,
+                scene,
+                text_system,
+                theme,
+            );
+            y += used + row_gap;
+        }
+
+        // ── Stroke Cap / Join segmented rows + Dash slider ──────────────
+        let sd_font = TypeToken::Sm.px();
+        let sd_gap = Spacing::Sm.px();
+        let sd_w = ((inner_w - sd_gap * 2.0) / 3.0).max(1.0);
+        let mut segmented3 = |label: &str,
+                              opts: [(ph2d_a11y::NodeId, &str, bool); 3],
+                              y: &mut f32| {
+            paint_text(
+                text_system,
+                scene,
+                label,
+                inner_x,
+                *y,
+                sd_font,
+                inner_w,
+                resolve(ColorToken::Text2, theme),
+            );
+            *y += sd_font + Spacing::Xs.px();
+            for (i, (id, lbl, active)) in opts.iter().enumerate() {
+                let rx = inner_x + i as f32 * (sd_w + sd_gap);
+                let rect = Rect::new(rx, *y, sd_w, row_h);
+                let st = store.button_state(*id).unwrap_or(ButtonState::Normal);
+                paint_segmented_button(rect, lbl, *active, st, scene, text_system, theme);
+                hit_index.register(*id, rect);
+            }
+            *y += row_h + row_gap;
+        };
+        segmented3(
+            "Cap",
+            [
+                (ids::VECTOR_CAP_BUTT, "Butt", snap.cap == StrokeCap::Butt),
+                (ids::VECTOR_CAP_ROUND, "Round", snap.cap == StrokeCap::Round),
+                (ids::VECTOR_CAP_SQUARE, "Square", snap.cap == StrokeCap::Square),
+            ],
+            &mut y,
+        );
+        segmented3(
+            "Join",
+            [
+                (ids::VECTOR_JOIN_MITER, "Miter", snap.join == StrokeJoin::Miter),
+                (ids::VECTOR_JOIN_ROUND, "Round", snap.join == StrokeJoin::Round),
+                (ids::VECTOR_JOIN_BEVEL, "Bevel", snap.join == StrokeJoin::Bevel),
+            ],
+            &mut y,
+        );
+        {
+            let track = store
+                .slider(ids::VECTOR_DASH)
+                .map(|(_, v)| v)
+                .unwrap_or_else(|| dash_to_slider(snap.dash));
+            let px = store
+                .number_value(ids::VECTOR_DASH_NUM)
+                .unwrap_or(snap.dash);
+            let used = paint_slider_with_chip_layout_adaptive(
+                Rect::new(inner_x, y, inner_w, row_h),
+                "Dash",
+                track,
+                px,
+                Some(&format!("{}", px.round() as i64)),
+                ids::VECTOR_DASH,
+                ids::VECTOR_DASH_NUM,
+                LABEL_COL_W,
+                chip_w,
+                store,
+                hit_index,
+                scene,
+                text_system,
+                theme,
+            );
+            y += used + row_gap;
+        }
+        {
+            let track = store
+                .slider(ids::VECTOR_GAP)
+                .map(|(_, v)| v)
+                .unwrap_or_else(|| gap_to_slider(snap.gap));
+            let px = store.number_value(ids::VECTOR_GAP_NUM).unwrap_or(snap.gap);
+            let used = paint_slider_with_chip_layout_adaptive(
+                Rect::new(inner_x, y, inner_w, row_h),
+                "Gap",
+                track,
+                px,
+                Some(&format!("{}", px.round() as i64)),
+                ids::VECTOR_GAP,
+                ids::VECTOR_GAP_NUM,
                 LABEL_COL_W,
                 chip_w,
                 store,

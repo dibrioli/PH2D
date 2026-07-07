@@ -210,7 +210,7 @@ impl ShapeTool {
         } else {
             Some(self.style.fill)
         };
-        path.stroke = Some((self.style.stroke, stroke_w));
+        path.stroke = Some(self.style.stroke_spec(stroke_w));
         path
     }
 }

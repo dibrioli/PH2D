@@ -62,6 +62,22 @@ pub const VECTOR_STROKE_OPACITY_NUM: NodeId = hash_node_id("vector.stroke_opacit
 pub const VECTOR_FILL_OPACITY: NodeId = hash_node_id("vector.fill_opacity");
 pub const VECTOR_FILL_OPACITY_NUM: NodeId = hash_node_id("vector.fill_opacity_num");
 
+// ── Stroke details (ADR-0108 Fase 1 — cap / join / dash + gap) ───────────────
+// Line cap (Butt/Round/Square) + join (Miter/Round/Bevel) segmented rows + a
+// Dash length slider (0 = solid) + a Gap length slider (space between dashes).
+// Both are multiples of the stroke width. Drive the matching `VectorTool`
+// fields; the bridge applies them to new + selected paths (like colour/width).
+pub const VECTOR_CAP_BUTT: NodeId = hash_node_id("vector.cap.butt");
+pub const VECTOR_CAP_ROUND: NodeId = hash_node_id("vector.cap.round");
+pub const VECTOR_CAP_SQUARE: NodeId = hash_node_id("vector.cap.square");
+pub const VECTOR_JOIN_MITER: NodeId = hash_node_id("vector.join.miter");
+pub const VECTOR_JOIN_ROUND: NodeId = hash_node_id("vector.join.round");
+pub const VECTOR_JOIN_BEVEL: NodeId = hash_node_id("vector.join.bevel");
+pub const VECTOR_DASH: NodeId = hash_node_id("vector.dash");
+pub const VECTOR_DASH_NUM: NodeId = hash_node_id("vector.dash_num");
+pub const VECTOR_GAP: NodeId = hash_node_id("vector.gap");
+pub const VECTOR_GAP_NUM: NodeId = hash_node_id("vector.gap_num");
+
 // ── Draw-mode selector (ADR-0108 Fase 1 — Pen / shape tools) ─────────────────
 // A segmented row that switches the canvas gesture: Pen (draw + edit anchors)
 // vs a drag-to-size shape (Rectangle / Ellipse / Polygon). The tool owns the

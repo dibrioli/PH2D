@@ -14,7 +14,9 @@
 pub mod shape;
 pub use shape::{ShapeKind, ShapeParams, ShapeTool};
 
-use ph2d_vec_scene::{Rgba8, VecPath, VecPathId, VecScene, VecVertex, VertexKind};
+use ph2d_vec_scene::{
+    LineCap, LineJoin, Rgba8, StrokeSpec, VecPath, VecPathId, VecScene, VecVertex, VertexKind,
+};
 
 /// Resultado de uma pressão do Pen (para o shell logar/reagir se quiser).
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -58,6 +60,13 @@ pub struct PenStyle {
     pub stroke_w_px: f64,
     /// Preenchimento aplicado ao FECHAR um path.
     pub fill: Rgba8,
+    /// Ponta / junção do traço.
+    pub cap: LineCap,
+    pub join: LineJoin,
+    /// Dash/vão como **múltiplos da largura**: `Some((dash, gap))` ⇒ traço e vão
+    /// de `dash·width`/`gap·width`; `None` = contínuo. O render multiplica pela
+    /// largura do path.
+    pub dash: Option<(f64, f64)>,
 }
 
 impl Default for PenStyle {
@@ -66,6 +75,23 @@ impl Default for PenStyle {
             stroke: PEN_STROKE,
             stroke_w_px: 3.0,
             fill: PEN_FILL,
+            cap: LineCap::Butt,
+            join: LineJoin::Miter,
+            dash: None,
+        }
+    }
+}
+
+impl PenStyle {
+    /// `StrokeSpec` do traço para `width` world-units (aplica cap/join/dash).
+    #[must_use]
+    pub fn stroke_spec(&self, width: f64) -> StrokeSpec {
+        StrokeSpec {
+            color: self.stroke,
+            width,
+            cap: self.cap,
+            join: self.join,
+            dash: self.dash,
         }
     }
 }
@@ -337,7 +363,7 @@ impl PenTool {
             verts: vec![VecVertex::corner(p)],
             closed: false,
             fill: None,
-            stroke: Some((self.style.stroke, stroke_w)),
+            stroke: Some(self.style.stroke_spec(stroke_w)),
         });
         self.active = Some(id);
         self.selected = Some(id);
@@ -930,12 +956,13 @@ mod tests {
             stroke: Rgba8::new(200, 40, 40, 255),
             stroke_w_px: 5.0,
             fill: Rgba8::new(40, 200, 40, 128),
+            ..PenStyle::default()
         };
         pen.set_style(style);
         pen.on_press(&mut scene, [0.0, 0.0], PTW, false);
-        let (stroke, w) = scene.paths()[0].stroke.expect("stroke");
-        assert_eq!(stroke, style.stroke);
-        assert_eq!(w, style.stroke_w_px * PTW);
+        let s = scene.paths()[0].stroke.expect("stroke");
+        assert_eq!(s.color, style.stroke);
+        assert_eq!(s.width, style.stroke_w_px * PTW);
         // Fechar aplica o fill do estilo.
         pen.on_release();
         pen.on_press(&mut scene, [4.0, 0.0], PTW, false);

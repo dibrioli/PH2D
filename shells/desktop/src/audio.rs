@@ -263,7 +263,7 @@ impl AudioSystem {
                     Err(e) => eprintln!("audio: test signal dropped ({e})"),
                 }
             }
-            println!("audio: test signal ON (pluck→Music, swell→SFX, blip→Voice)");
+            println!("audio: test signal ON (pluck->Music, swell->SFX, blip->Voice)");
         } else if !on && active {
             for id in self.test_voices.drain(..) {
                 let _ = self.engine.stop(id);

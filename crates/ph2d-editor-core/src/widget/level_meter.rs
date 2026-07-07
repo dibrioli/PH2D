@@ -106,27 +106,68 @@ pub fn paint_level_meter(meter: &LevelMeter, rect: Rect, scene: &mut VectorScene
         let col_w = ((rect.w - gap) * 0.5).max(1.0);
         let left = Rect::new(rect.x, rect.y, col_w, rect.h);
         let right = Rect::new(rect.x + col_w + gap, rect.y, col_w, rect.h);
-        paint_column(scene, left, meter.rms[0], meter.peak_hold[0], meter.clipped[0], theme);
-        paint_column(scene, right, meter.rms[1], meter.peak_hold[1], meter.clipped[1], theme);
+        paint_column(
+            scene,
+            left,
+            meter.rms[0],
+            meter.peak_hold[0],
+            meter.clipped[0],
+            theme,
+        );
+        paint_column(
+            scene,
+            right,
+            meter.rms[1],
+            meter.peak_hold[1],
+            meter.clipped[1],
+            theme,
+        );
     } else {
-        paint_column(scene, rect, meter.rms[0], meter.peak_hold[0], meter.clipped[0], theme);
+        paint_column(
+            scene,
+            rect,
+            meter.rms[0],
+            meter.peak_hold[0],
+            meter.clipped[0],
+            theme,
+        );
     }
 }
 
 /// One meter column: `Bg2` track + up to three stacked zone segments (RMS fill)
 /// + a peak-hold marker line + a clip cap.
-fn paint_column(scene: &mut VectorScene, col: Rect, rms: f32, peak_hold: f32, clipped: bool, theme: Theme) {
+fn paint_column(
+    scene: &mut VectorScene,
+    col: Rect,
+    rms: f32,
+    peak_hold: f32,
+    clipped: bool,
+    theme: Theme,
+) {
     let radius = Radius::Xs.px();
     fill_rounded_rect(scene, col, radius, resolve(ColorToken::Bg2, theme));
     let rms = rms.clamp(0.0, 1.0);
     draw_segment(scene, col, 0.0, ZONE_WARN, rms, ColorToken::Success, theme);
-    draw_segment(scene, col, ZONE_WARN, ZONE_DANGER, rms, ColorToken::Warn, theme);
+    draw_segment(
+        scene,
+        col,
+        ZONE_WARN,
+        ZONE_DANGER,
+        rms,
+        ColorToken::Warn,
+        theme,
+    );
     draw_segment(scene, col, ZONE_DANGER, 1.0, rms, ColorToken::Danger, theme);
     draw_peak_hold(scene, col, peak_hold, theme);
     if clipped {
         // A solid Danger cap at the very top — latched until the caller clears it.
         let cap = Rect::new(col.x, col.y, col.w, CLIP_CAP_PX.min(col.h));
-        fill_rounded_rect(scene, cap, radius.min(col.w * 0.5), resolve(ColorToken::Danger, theme));
+        fill_rounded_rect(
+            scene,
+            cap,
+            radius.min(col.w * 0.5),
+            resolve(ColorToken::Danger, theme),
+        );
     }
 }
 
@@ -164,9 +205,18 @@ fn draw_peak_hold(scene: &mut VectorScene, col: Rect, peak_hold: f32, theme: The
     } else {
         ColorToken::Text1
     };
-    let y = (col.y + col.h * (1.0 - ph) - HOLD_THICKNESS_PX * 0.5).clamp(col.y, col.y + col.h - HOLD_THICKNESS_PX);
+    let y = crate::math::safe_clamp(
+        col.y + col.h * (1.0 - ph) - HOLD_THICKNESS_PX * 0.5,
+        col.y,
+        col.y + col.h - HOLD_THICKNESS_PX,
+    );
     let mark = Rect::new(col.x, y, col.w, HOLD_THICKNESS_PX);
-    fill_rounded_rect(scene, mark, Radius::Xs.px().min(col.w * 0.5), resolve(token, theme));
+    fill_rounded_rect(
+        scene,
+        mark,
+        Radius::Xs.px().min(col.w * 0.5),
+        resolve(token, theme),
+    );
 }
 
 #[cfg(test)]

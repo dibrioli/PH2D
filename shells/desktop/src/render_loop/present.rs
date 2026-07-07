@@ -47,8 +47,8 @@ impl crate::App {
             vello_pass,
             vector_scene,
             // Motion Nodes M0.T10/T11: the cooked stream, injected into the sprite
-            // pass below when the `motion` tool is active (bridge cooked it into
-            // `motion.instances` earlier this frame).
+            // pass below when the `motion` tool is active (the bridge pumped it
+            // into `motion.pump.instances` earlier this frame).
             motion,
             ..
         } = gfx;
@@ -86,7 +86,7 @@ impl crate::App {
                 // sprite pass (empty when the tool is inactive) — drawn without
                 // being spawned into the ECS `present` (stream ≠ ECS, ADR-0035).
                 let motion_slice: &[ph2d_render::RenderInstance] = if motion_active {
-                    &motion.instances
+                    &motion.pump.instances
                 } else {
                     &[]
                 };

@@ -12,11 +12,10 @@
 //! Document ≠ tool (ADR-0040): the `MotionTool` is a thin activation handle; all
 //! the state lives here in the shell, mirroring `AppGfx.vec_scene`.
 
+use ph2d_eval_motion::MotionCookPump;
 use ph2d_motion_doc::{MotionDoc, MotionHistory, MotionTransport};
 use ph2d_node_registry::NodeRegistry;
-use ph2d_nodegraph::cook::Cook;
 use ph2d_nodegraph::graph::{Edge, Graph, NodeId};
-use ph2d_render::RenderInstance;
 
 /// Runtime state for the Motion Nodes editor. One instance on `AppGfx`.
 pub(crate) struct MotionState {
@@ -29,9 +28,10 @@ pub(crate) struct MotionState {
     pub(crate) history: MotionHistory,
     /// Playback transport (playhead = `tick × fixed_dt`).
     pub(crate) transport: MotionTransport,
-    /// Persistent cook — its fingerprint memo + `pre`-edge feedback are carried
-    /// across frames, so it must NOT be re-created each frame.
-    pub(crate) cook: Cook,
+    /// Per-frame cook driver (persistent [`Cook`] + reused instance buffer). Its
+    /// [`MotionCookPump::pump`] re-cooks only on a dirty frame, so a paused frame
+    /// is zero-alloc (M0.T12). The rendered slice is `pump.instances`.
+    pub(crate) pump: MotionCookPump,
     /// Registered node ops (the `OpResolver` the cook resolves against).
     pub(crate) registry: NodeRegistry,
     /// Terminal node whose output stream is lowered to instances (`None` until a
@@ -47,8 +47,6 @@ pub(crate) struct MotionState {
     /// M0 case). Kept **below** the default grid spacing (`1.0`) so the raw
     /// default document renders as distinct dots rather than a merged solid band.
     pub(crate) default_size: [f32; 2],
-    /// Reused per-frame lowering buffer — zero-alloc in steady state.
-    pub(crate) instances: Vec<RenderInstance>,
 }
 
 impl MotionState {
@@ -65,7 +63,7 @@ impl MotionState {
             doc,
             history: MotionHistory::new(),
             transport: MotionTransport::new(),
-            cook: Cook::new(),
+            pump: MotionCookPump::new(),
             registry,
             sink,
             // Whole-atlas until the shell wires a real tile (init.rs). Headless
@@ -74,7 +72,6 @@ impl MotionState {
             // Half the default grid spacing (1.0) → distinct dots with clear
             // gaps in the raw M0 output (framing/size producers land in M1).
             default_size: [0.5, 0.5],
-            instances: Vec::new(),
         }
     }
 

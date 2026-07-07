@@ -22,3 +22,7 @@ ph2d-node-registry = { path = "../ph2d-node-registry" }
 ph2d-node-motion-grid = { path = "../ph2d-node-motion-grid" }
 ph2d-node-motion-transform = { path = "../ph2d-node-motion-transform" }
 ph2d-node-motion-clone = { path = "../ph2d-node-motion-clone" }
+# dhat-rs: the paused-frame zero-alloc gate (Motion Nodes M0.T12) — counts
+# heap allocations across a warm, paused re-cook of the sink into a reused
+# buffer (mirror of editor-core's interaction_no_alloc bench).
+dhat = "0.3"

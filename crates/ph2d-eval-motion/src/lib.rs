@@ -153,6 +153,7 @@ pub fn evaluate_motion(
 ///
 /// `default_uv_rect` / `default_size` are the `atlas_uv` / `size` fallbacks for
 /// a stream without the matching column (see [`lower_to_instances_into`]).
+#[allow(clippy::too_many_arguments)] // cook + graph + resolver + target + playhead + 2 defaults + out
 pub fn evaluate_motion_into(
     cook: &mut Cook,
     graph: &Graph,
@@ -172,6 +173,93 @@ pub fn evaluate_motion_into(
         None => out.clear(),
     }
     Ok(())
+}
+
+/// Per-frame Motion cook driver (plan §1.8). Owns the persistent [`Cook`] (its
+/// memo + `pre` feedback must survive across frames) and the reused instance
+/// buffer, and re-cooks the sink **only when the frame is dirty**: the transport
+/// tick advanced (playing / scrub), the graph was edited ([`Self::mark_dirty`]),
+/// or it is the first cook. A paused, unchanged frame skips the cook entirely,
+/// so it touches no heap — the [`Cook`] otherwise re-evaluates each node every
+/// call (it is NOT playhead-memoized for a `Pure` graph). Gated by
+/// `tests/paused_no_alloc.rs` (M0.T12).
+pub struct MotionCookPump {
+    /// Persistent cook — its memo + `pre`-edge feedback are carried across
+    /// frames, so it must NOT be re-created each frame.
+    pub cook: Cook,
+    /// Reused per-frame lowering buffer — zero-alloc in steady state.
+    pub instances: Vec<RenderInstance>,
+    /// The transport tick `instances` currently reflects (`None` = never cooked).
+    last_cooked_tick: Option<u64>,
+    /// Set by a graph edit so the next frame re-cooks even at the same tick.
+    dirty: bool,
+}
+
+impl Default for MotionCookPump {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl MotionCookPump {
+    /// A fresh pump: empty cook + buffer, marked dirty so the first
+    /// [`Self::pump`] cooks.
+    pub fn new() -> Self {
+        Self {
+            cook: Cook::new(),
+            instances: Vec::new(),
+            last_cooked_tick: None,
+            dirty: true,
+        }
+    }
+
+    /// Force a re-cook on the next [`Self::pump`], even at the same tick (call
+    /// after editing the graph while paused). The M1 graph-edit path.
+    pub fn mark_dirty(&mut self) {
+        self.dirty = true;
+    }
+
+    /// Re-cook `sink` into `instances` at `playhead` **iff** the frame is dirty
+    /// (the `tick` changed since the last cook, [`Self::mark_dirty`] was called,
+    /// or this is the first cook). A clean, unchanged frame (paused, no edit)
+    /// leaves the buffer untouched — zero allocation. Returns `true` if it
+    /// cooked. Reuse the SAME pump across frames for the steady state.
+    #[allow(clippy::too_many_arguments)] // graph + resolver + sink + tick + playhead + 2 defaults
+    pub fn pump(
+        &mut self,
+        graph: &Graph,
+        ops: &dyn OpResolver,
+        sink: Option<NodeId>,
+        tick: u64,
+        playhead: f64,
+        default_uv_rect: [f32; 4],
+        default_size: [f32; 2],
+    ) -> bool {
+        if !self.dirty && self.last_cooked_tick == Some(tick) {
+            return false; // paused + unchanged → reuse the buffer, no heap traffic
+        }
+        match sink {
+            Some(s) => {
+                let _ = evaluate_motion_into(
+                    &mut self.cook,
+                    graph,
+                    ops,
+                    s,
+                    playhead,
+                    default_uv_rect,
+                    default_size,
+                    &mut self.instances,
+                );
+                // Advance the 1-tick `pre` feedback once per cooked frame (a
+                // no-op when the graph has no `pre` edge, as the M0 vertical).
+                let _ = self.cook.advance_tick(graph, ops, playhead);
+            }
+            None => self.instances.clear(),
+        }
+        self.last_cooked_tick = Some(tick);
+        self.dirty = false;
+        true
+    }
 }
 
 fn scalar_at(c: Option<&Column>, i: usize, default: f32) -> f32 {
@@ -315,5 +403,34 @@ mod tests {
         assert_eq!(instances.len(), 2);
         assert_eq!(instances[0].world_pos, [0.0, 0.0]);
         assert_eq!(instances[1].world_pos, [10.0, 0.0]);
+    }
+
+    #[test]
+    fn pump_cooks_on_change_and_skips_a_paused_frame() {
+        let mut g = Graph::new();
+        let src = g.add_node("motion.test.src");
+        let mut pump = MotionCookPump::new();
+        let uv = [0.0, 0.0, 1.0, 1.0];
+        let size = [1.0, 1.0];
+
+        // First pump (dirty from `new`) cooks the sink.
+        assert!(pump.pump(&g, &Ops, Some(src), 0, 0.0, uv, size));
+        assert_eq!(pump.instances.len(), 2);
+
+        // Same tick, clean → skip (a paused, unchanged frame).
+        assert!(!pump.pump(&g, &Ops, Some(src), 0, 0.0, uv, size));
+
+        // The tick advanced (playing / scrub) → cook.
+        assert!(pump.pump(&g, &Ops, Some(src), 1, 0.0, uv, size));
+        // …then hold at that tick → skip again.
+        assert!(!pump.pump(&g, &Ops, Some(src), 1, 0.0, uv, size));
+
+        // A graph edit forces a re-cook at the SAME tick.
+        pump.mark_dirty();
+        assert!(pump.pump(&g, &Ops, Some(src), 1, 0.0, uv, size));
+
+        // A `None` sink clears the buffer (still counts as a cook).
+        assert!(pump.pump(&g, &Ops, None, 2, 0.0, uv, size));
+        assert!(pump.instances.is_empty());
     }
 }

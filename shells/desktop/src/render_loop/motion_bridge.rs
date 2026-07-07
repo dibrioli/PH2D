@@ -69,32 +69,21 @@ pub(super) fn dispatch(
         return;
     }
 
-    // ── 3. Advance transport + cook the sink into the reused buffer ────────
+    // ── 3. Advance transport + cook the sink (skipped when paused/unchanged) ──
+    // `advance` is a no-op while paused, so the tick only moves when playing or
+    // scrubbing → the pump skips a static paused frame (zero-alloc, M0.T12). No
+    // framing node in M0, so the pump samples one opaque atlas tile (set in
+    // init.rs) at a sub-spacing size → clean, distinct dots.
     motion.transport.advance(frame_ticks as u64);
     let playhead = motion.playhead(fixed_dt);
-    match motion.sink {
-        Some(sink) => {
-            // Disjoint field borrows (cook / doc / registry / instances).
-            let _ = ph2d_eval_motion::evaluate_motion_into(
-                &mut motion.cook,
-                &motion.doc.graph,
-                &motion.registry,
-                sink,
-                playhead,
-                // No framing node in M0 → instances have no `uv_rect`/`size`
-                // column; sample one opaque atlas tile (set in init.rs) at a
-                // sub-spacing size so the raw output reads as clean, distinct
-                // dots.
-                motion.default_uv_rect,
-                motion.default_size,
-                &mut motion.instances,
-            );
-            // Advance the 1-tick `pre` feedback once per frame, same playhead
-            // (harmless when the graph has no `pre` edge, as the M0 vertical).
-            let _ = motion
-                .cook
-                .advance_tick(&motion.doc.graph, &motion.registry, playhead);
-        }
-        None => motion.instances.clear(),
-    }
+    let tick = motion.transport.tick;
+    motion.pump.pump(
+        &motion.doc.graph,
+        &motion.registry,
+        motion.sink,
+        tick,
+        playhead,
+        motion.default_uv_rect,
+        motion.default_size,
+    );
 }

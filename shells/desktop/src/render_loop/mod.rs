@@ -808,12 +808,9 @@ impl crate::App {
                                 pending_vec_reorder = Some(order);
                             } else if *id == ph2d_editor::ids::VECTOR_ARRANGE_DUPLICATE {
                                 pending_vec_duplicate = true;
-                            } else if let Some(axis) =
-                                crate::input_dispatch::vec_flip_for_id(*id)
-                            {
+                            } else if let Some(axis) = crate::input_dispatch::vec_flip_for_id(*id) {
                                 pending_vec_flip = Some(axis);
-                            } else if let Some(dir) =
-                                crate::input_dispatch::vec_rotate_for_id(*id)
+                            } else if let Some(dir) = crate::input_dispatch::vec_rotate_for_id(*id)
                             {
                                 pending_vec_rotate = Some(dir);
                             }

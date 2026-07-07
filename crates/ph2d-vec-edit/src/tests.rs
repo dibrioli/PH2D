@@ -387,3 +387,36 @@ fn set_style_colors_new_paths_and_survives_clear() {
     pen.clear();
     assert_eq!(pen.style(), style);
 }
+
+#[test]
+fn nudge_translates_whole_path_or_only_selected_verts() {
+    use ph2d_vec_scene::rectangle;
+    let mut scene = VecScene::new();
+    let id = scene.push_path(rectangle([0.0, 0.0], [4.0, 4.0]));
+    let mut pen = PenTool::new();
+
+    // Nothing selected → no-op.
+    assert!(!pen.nudge(&mut scene, 1.0, 1.0));
+
+    // Path selected, no verts → the whole path translates.
+    pen.select(Some(id));
+    let before: Vec<_> = scene.paths()[0].verts.iter().map(|v| v.anchor).collect();
+    assert!(pen.nudge(&mut scene, 1.0, 2.0));
+    for (b, v) in before.iter().zip(&scene.paths()[0].verts) {
+        assert_eq!(v.anchor, [b[0] + 1.0, b[1] + 2.0]);
+    }
+
+    // Box-select a single corner → only that vertex moves.
+    let now: Vec<_> = scene.paths()[0].verts.iter().map(|v| v.anchor).collect();
+    let c = now[0];
+    pen.box_select(&scene, [c[0] - 0.1, c[1] - 0.1], [c[0] + 0.1, c[1] + 0.1]);
+    assert!(pen.nudge(&mut scene, 10.0, 0.0));
+    assert_eq!(scene.paths()[0].verts[0].anchor, [c[0] + 10.0, c[1]]);
+    for i in 1..now.len() {
+        assert_eq!(
+            scene.paths()[0].verts[i].anchor,
+            now[i],
+            "outros vértices ficam"
+        );
+    }
+}

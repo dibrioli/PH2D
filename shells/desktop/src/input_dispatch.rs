@@ -152,7 +152,9 @@ pub(crate) fn apply_vec_delete_vertex(
 
 /// Map a Vector-panel Vertex-type button `NodeId` to its `VertexKind` (`None` for
 /// any other id). Pure — unit-tested; called from the render_loop drain.
-pub(crate) fn vec_vertex_kind_for_id(id: ph2d_editor::NodeId) -> Option<ph2d_vec_scene::VertexKind> {
+pub(crate) fn vec_vertex_kind_for_id(
+    id: ph2d_editor::NodeId,
+) -> Option<ph2d_vec_scene::VertexKind> {
     use ph2d_vec_scene::VertexKind;
     if id == ph2d_editor::ids::VECTOR_VERT_CORNER {
         Some(VertexKind::Corner)
@@ -454,17 +456,38 @@ impl App {
         }
     }
 
+    /// Arrow-key nudge: move the selection by a SCREEN delta (px), converted to
+    /// world (honours zoom + orientation). `record_undo` pushes ONE undo step —
+    /// the caller passes `!repeat`, so a held arrow coalesces into a single step
+    /// (auto-repeats move but don't each record). Returns whether anything moved.
+    pub(crate) fn vec_nudge_selected(&mut self, dx_px: f64, dy_px: f64, record_undo: bool) -> bool {
+        let Some(gfx) = self.gfx.as_mut() else {
+            return false;
+        };
+        let win = gfx.surface.size();
+        let base = gfx.camera.screen_to_world((0.0, 0.0), win);
+        let moved = gfx
+            .camera
+            .screen_to_world((dx_px as f32, dy_px as f32), win);
+        let (dx, dy) = ((moved[0] - base[0]) as f64, (moved[1] - base[1]) as f64);
+        let pre = record_undo.then(|| gfx.vec_scene.clone());
+        if self.vec_pen.nudge(&mut gfx.vec_scene, dx, dy) {
+            if let Some(pre) = pre {
+                self.vec_history.push_undo(pre);
+            }
+            true
+        } else {
+            false
+        }
+    }
+
     /// ADR-0108 Fase 1: Delete/Backspace no modo vetorial — prioriza apagar o
     /// VÉRTICE selecionado (edição de nó); sem vértice selecionado (ex.: resultado
     /// de booleana), apaga o PATH inteiro.
     pub(crate) fn vec_delete_selected_vertex_or_path(&mut self) -> bool {
         if self.vec_pen.selected_vert().is_some()
             && let Some(gfx) = self.gfx.as_mut()
-            && apply_vec_delete_vertex(
-                &mut gfx.vec_scene,
-                &mut self.vec_history,
-                &mut self.vec_pen,
-            )
+            && apply_vec_delete_vertex(&mut gfx.vec_scene, &mut self.vec_history, &mut self.vec_pen)
         {
             eprintln!("[ph2d-vec] vértice apagado");
             return true;
@@ -934,7 +957,10 @@ impl App {
                         if consumed {
                             return;
                         }
-                    } else if shape_up_consumes(self.vec_draw_config.mode, self.vec_shape.is_active()) {
+                    } else if shape_up_consumes(
+                        self.vec_draw_config.mode,
+                        self.vec_shape.is_active(),
+                    ) {
                         // A shape drag is in progress → finalize it. Commit if the
                         // drag spanned a real size, else discard the stray click
                         // (cancel the pending undo so it doesn't record a spurious
@@ -1849,7 +1875,10 @@ mod tests {
             vec_reorder_for_id(ph2d_editor::ids::VECTOR_ARRANGE_DUPLICATE),
             None
         );
-        assert_eq!(vec_reorder_for_id(ph2d_editor::ids::VECTOR_BOOL_UNION), None);
+        assert_eq!(
+            vec_reorder_for_id(ph2d_editor::ids::VECTOR_BOOL_UNION),
+            None
+        );
     }
 
     #[test]
@@ -1863,7 +1892,10 @@ mod tests {
             Some(FlipAxis::Vertical)
         );
         // Flip is NOT a reorder and vice-versa.
-        assert_eq!(vec_flip_for_id(ph2d_editor::ids::VECTOR_ARRANGE_TO_BACK), None);
+        assert_eq!(
+            vec_flip_for_id(ph2d_editor::ids::VECTOR_ARRANGE_TO_BACK),
+            None
+        );
         assert_eq!(
             vec_reorder_for_id(ph2d_editor::ids::VECTOR_ARRANGE_FLIP_H),
             None
@@ -1880,7 +1912,10 @@ mod tests {
             vec_rotate_for_id(ph2d_editor::ids::VECTOR_ARRANGE_ROTATE_CCW),
             Some(Rotate90::Ccw)
         );
-        assert_eq!(vec_rotate_for_id(ph2d_editor::ids::VECTOR_ARRANGE_FLIP_H), None);
+        assert_eq!(
+            vec_rotate_for_id(ph2d_editor::ids::VECTOR_ARRANGE_FLIP_H),
+            None
+        );
         assert_eq!(
             vec_flip_for_id(ph2d_editor::ids::VECTOR_ARRANGE_ROTATE_CW),
             None

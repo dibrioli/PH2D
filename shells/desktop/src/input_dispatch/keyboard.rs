@@ -66,6 +66,37 @@ impl App {
             }
         }
 
+        // Arrow keys nudge the selection (nodes if any, else the whole path).
+        // Allows Shift (coarse 10px, unlike the boolean block above); blocked by
+        // Ctrl/Alt/Super and while drawing. Auto-repeat keeps moving but a held
+        // arrow coalesces into ONE undo step (records only on the first press).
+        if self.vector_tool_active()
+            && state == ElementState::Pressed
+            && !self.vec_pen.is_drawing()
+            && !self.modifiers.control_key()
+            && !self.modifiers.alt_key()
+            && !self.modifiers.super_key()
+            && let PhysicalKey::Code(code) = physical_key
+        {
+            let step = if self.modifiers.shift_key() {
+                10.0
+            } else {
+                1.0
+            };
+            let delta = match code {
+                KeyCode::ArrowLeft => Some((-step, 0.0)),
+                KeyCode::ArrowRight => Some((step, 0.0)),
+                KeyCode::ArrowUp => Some((0.0, -step)),
+                KeyCode::ArrowDown => Some((0.0, step)),
+                _ => None,
+            };
+            if let Some((dx, dy)) = delta
+                && self.vec_nudge_selected(dx, dy, !repeat)
+            {
+                return;
+            }
+        }
+
         // ADR-0108 Fase 2: undo/redo + save/load com Ctrl/Cmd. Ctrl+Z desfaz,
         // Ctrl+Shift+Z / Ctrl+Y refaz, Ctrl+S salva, Ctrl+O carrega.
         if self.vector_tool_active()

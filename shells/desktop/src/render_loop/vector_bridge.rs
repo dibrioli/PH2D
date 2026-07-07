@@ -210,8 +210,16 @@ pub(super) fn dispatch(
         .set_widget_color(ph2d_editor::ids::VECTOR_FILL_SWATCH, fill);
     // Push the tool's alpha onto the Opacity sliders (unless being dragged) so
     // an alpha set in the colour picker reflects on the panel, and vice-versa.
-    sync_opacity_slider(&mut hero.store, ph2d_editor::ids::VECTOR_STROKE_OPACITY, stroke[3]);
-    sync_opacity_slider(&mut hero.store, ph2d_editor::ids::VECTOR_FILL_OPACITY, fill[3]);
+    sync_opacity_slider(
+        &mut hero.store,
+        ph2d_editor::ids::VECTOR_STROKE_OPACITY,
+        stroke[3],
+    );
+    sync_opacity_slider(
+        &mut hero.store,
+        ph2d_editor::ids::VECTOR_FILL_OPACITY,
+        fill[3],
+    );
     #[cfg(feature = "panel-vector")]
     ph2d_panel_vector::set_current_vector_style(if vector_active {
         Some(tool.ui_snapshot())

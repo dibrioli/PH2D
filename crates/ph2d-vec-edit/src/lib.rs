@@ -157,6 +157,33 @@ impl PenTool {
         self.selected_verts.clear();
     }
 
+    /// Nudge por teclado: desloca a seleção por `(dx, dy)` world-units. Se há
+    /// vértices selecionados, translada só eles (âncora + handles); senão, o path
+    /// inteiro. Devolve `true` se moveu algo (nada selecionado ⇒ `false`).
+    pub fn nudge(&mut self, scene: &mut VecScene, dx: f64, dy: f64) -> bool {
+        let Some(sel) = self.selected else {
+            return false;
+        };
+        let Some(path) = scene.path_mut(sel) else {
+            return false;
+        };
+        let shift = |v: &mut VecVertex| {
+            v.anchor = [v.anchor[0] + dx, v.anchor[1] + dy];
+            v.in_handle = [v.in_handle[0] + dx, v.in_handle[1] + dy];
+            v.out_handle = [v.out_handle[0] + dx, v.out_handle[1] + dy];
+        };
+        if self.selected_verts.is_empty() {
+            path.verts.iter_mut().for_each(shift);
+        } else {
+            for &i in &self.selected_verts {
+                if let Some(v) = path.verts.get_mut(i) {
+                    shift(v);
+                }
+            }
+        }
+        true
+    }
+
     /// Box-select: seleciona as âncoras do path (selecionado; senão o que tiver
     /// mais âncoras na caixa) dentro do retângulo world `[min,max]`. Substitui a
     /// seleção. Só muda estado de seleção — não muta a cena, não gera undo.

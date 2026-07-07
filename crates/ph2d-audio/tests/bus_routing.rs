@@ -263,6 +263,38 @@ fn sub_bus_highpass_attenuates_low_frequency_content() {
 }
 
 #[test]
+fn master_eq_low_shelf_boost_lifts_low_frequency_output() {
+    let (mut engine, mut renderer) = AudioEngine::new(AudioFormat::stereo(48_000));
+    // A DC (0 Hz) signal on the master — pure low frequency the low shelf covers.
+    let dc = SampleData::from_interleaved(vec![0.3; 960], AudioFormat::mono(48_000));
+    engine
+        .play(
+            dc,
+            PlayParams {
+                looping: true,
+                ..PlayParams::default()
+            },
+        )
+        .unwrap();
+
+    // Flat EQ (default) baseline: DC passes at its level.
+    let flat = steady_master_peak(&mut renderer);
+    assert!(
+        flat[0] > 0.1,
+        "precondition: DC passes at flat EQ: {flat:?}"
+    );
+
+    // Boost the low shelf +12 dB → the DC level rises well above the baseline
+    // (the pre-clamp meter shows the over-unity boost).
+    engine.set_master_eq(12.0, 0.0, 0.0).unwrap();
+    let boosted = steady_master_peak(&mut renderer);
+    assert!(
+        boosted[0] > flat[0] * 1.5,
+        "a +12 dB low shelf must lift the DC output (flat {flat:?} → boosted {boosted:?})"
+    );
+}
+
+#[test]
 fn master_reverb_leaves_a_decaying_tail_after_the_sound_ends() {
     let (mut engine, mut renderer) = AudioEngine::new(AudioFormat::stereo(48_000));
     engine.set_reverb(true, 0.9, 0.6).unwrap();

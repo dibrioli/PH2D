@@ -15,6 +15,7 @@
 mod event;
 mod fader;
 mod paint;
+mod paint_widgets;
 mod populate;
 pub mod state;
 
@@ -55,6 +56,10 @@ pub const AMIX_REVERB_SIZE: NodeId = hash_node_id("audio_mixer_reverb_size");
 /// Master reverb return-level slider (how much of the wet return is folded back;
 /// labeled "Return"). The reverb is a send/return fed by the per-bus sends.
 pub const AMIX_REVERB_MIX: NodeId = hash_node_id("audio_mixer_reverb_mix");
+/// Master 3-band EQ gain sliders (low shelf / mid peak / high shelf; 0.5 = flat).
+pub const AMIX_EQ_LOW: NodeId = hash_node_id("audio_mixer_eq_low");
+pub const AMIX_EQ_MID: NodeId = hash_node_id("audio_mixer_eq_mid");
+pub const AMIX_EQ_HIGH: NodeId = hash_node_id("audio_mixer_eq_high");
 /// Ducking enable toggle — Music/SFX duck under the Voice bus (dialogue priority).
 pub const AMIX_DUCK: NodeId = hash_node_id("audio_mixer_duck");
 /// Ducking depth slider (how much the ducked buses drop).
@@ -195,6 +200,8 @@ mod snapshot {
         static SUB_TONE_HZ: Cell<[f32; SUB_BUS_COUNT]> = const { Cell::new([20_000.0; SUB_BUS_COUNT]) }; // LITERAL-PX-OK: default tone cutoff 20 kHz (open)
         static SUB_LOWCUT_HZ: Cell<[f32; SUB_BUS_COUNT]> = const { Cell::new([20.0; SUB_BUS_COUNT]) }; // LITERAL-PX-OK: default low-cut 20 Hz (off)
         static SUB_SEND_AMT: Cell<[f32; SUB_BUS_COUNT]> = const { Cell::new([0.0; SUB_BUS_COUNT]) };
+        // Master 3-band EQ slider positions (0..1; 0.5 = flat), [low, mid, high].
+        static EQ_POS: Cell<[f32; 3]> = const { Cell::new([0.5; 3]) }; // LITERAL-PX-OK: 3 EQ bands, 0.5 = flat
     }
 
     /// Decay the held peak toward silence, snapping up to any new peak.
@@ -510,6 +517,22 @@ mod snapshot {
         });
     }
 
+    /// Panel → shell: the master 3-band EQ slider positions (0..1; 0.5 = flat),
+    /// `[low, mid, high]`. The shell maps each to ±12 dB.
+    pub fn eq() -> [f32; 3] {
+        EQ_POS.with(Cell::get)
+    }
+
+    pub(crate) fn set_eq(band: usize, pos: f32) {
+        EQ_POS.with(|c| {
+            let mut v = c.get();
+            if let Some(slot) = v.get_mut(band) {
+                *slot = pos;
+            }
+            c.set(v);
+        });
+    }
+
     /// Panel → shell: each sub-bus solo flag. When *any* is set, the shell mutes
     /// every non-soloed sub-bus (so you hear only the soloed ones).
     pub fn sub_soloed() -> [bool; SUB_BUS_COUNT] {
@@ -529,6 +552,8 @@ mod snapshot {
 
 /// Panel → shell: the master low-pass cutoff (Hz) the Cutoff slider drives.
 pub use snapshot::cutoff as master_cutoff_target;
+/// Panel → shell: the master 3-band EQ slider positions (0..1; 0.5 = flat).
+pub use snapshot::eq as master_eq_target;
 /// Panel → shell: whether the master soft-clip limiter is engaged.
 pub use snapshot::limiter;
 /// Panel → shell: the master high-pass (low-cut) cutoff (Hz) the Low Cut slider

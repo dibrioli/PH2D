@@ -22,6 +22,8 @@ enum RbjKind {
     Highpass,
     Bandpass,
     Peak,
+    LowShelf,
+    HighShelf,
 }
 
 impl BiquadCoeffs {
@@ -56,6 +58,16 @@ impl BiquadCoeffs {
         Self::from_rbj(RbjKind::Peak, sample_rate, freq, q, gain_db)
     }
 
+    /// Low-shelf of `gain_db` below the `freq` Hz corner with quality `q`.
+    pub fn lowshelf(sample_rate: f32, freq: f32, q: f32, gain_db: f32) -> Self {
+        Self::from_rbj(RbjKind::LowShelf, sample_rate, freq, q, gain_db)
+    }
+
+    /// High-shelf of `gain_db` above the `freq` Hz corner with quality `q`.
+    pub fn highshelf(sample_rate: f32, freq: f32, q: f32, gain_db: f32) -> Self {
+        Self::from_rbj(RbjKind::HighShelf, sample_rate, freq, q, gain_db)
+    }
+
     fn from_rbj(kind: RbjKind, sample_rate: f32, freq: f32, q: f32, gain_db: f32) -> Self {
         let sr = sample_rate.max(1.0);
         let w0 = TAU * (freq.clamp(1.0, sr * 0.5) / sr);
@@ -88,6 +100,34 @@ impl BiquadCoeffs {
                     1.0 + alpha / a,
                     -2.0 * cos_w0,
                     1.0 - alpha / a,
+                )
+            }
+            RbjKind::LowShelf => {
+                let a = 10f32.powf(gain_db / 40.0);
+                let tsa = 2.0 * a.sqrt() * alpha;
+                let ap1 = a + 1.0;
+                let am1 = a - 1.0;
+                (
+                    a * (ap1 - am1 * cos_w0 + tsa),
+                    2.0 * a * (am1 - ap1 * cos_w0),
+                    a * (ap1 - am1 * cos_w0 - tsa),
+                    ap1 + am1 * cos_w0 + tsa,
+                    -2.0 * (am1 + ap1 * cos_w0),
+                    ap1 + am1 * cos_w0 - tsa,
+                )
+            }
+            RbjKind::HighShelf => {
+                let a = 10f32.powf(gain_db / 40.0);
+                let tsa = 2.0 * a.sqrt() * alpha;
+                let ap1 = a + 1.0;
+                let am1 = a - 1.0;
+                (
+                    a * (ap1 + am1 * cos_w0 + tsa),
+                    -2.0 * a * (am1 + ap1 * cos_w0),
+                    a * (ap1 + am1 * cos_w0 - tsa),
+                    ap1 - am1 * cos_w0 + tsa,
+                    2.0 * (am1 - ap1 * cos_w0),
+                    ap1 - am1 * cos_w0 - tsa,
                 )
             }
         };
@@ -191,5 +231,56 @@ mod tests {
         let c = BiquadCoeffs::highpass(48_000.0, 1_000.0, 0.707);
         let dc = (c.b0 + c.b1 + c.b2) / (1.0 + c.a1 + c.a2);
         assert!(dc.abs() < 1e-3, "high-pass should block DC, got {dc}");
+    }
+
+    #[test]
+    fn shelves_pass_through_at_zero_gain() {
+        // A 0 dB shelf is a flat filter (numerator == denominator): output = input.
+        for coeffs in [
+            BiquadCoeffs::lowshelf(48_000.0, 120.0, 0.707, 0.0),
+            BiquadCoeffs::highshelf(48_000.0, 8_000.0, 0.707, 0.0),
+        ] {
+            let mut f = Biquad::new(coeffs);
+            for &x in &[0.0, 1.0, -0.5, 0.3, 0.8] {
+                assert!(
+                    (f.process(x) - x).abs() < 1e-5,
+                    "a 0 dB shelf must pass the signal through unchanged"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn low_shelf_boost_raises_dc_gain() {
+        // A +12 dB low shelf lifts DC by 12 dB (≈ 3.98×); its high end stays ~unity.
+        let c = BiquadCoeffs::lowshelf(48_000.0, 200.0, 0.707, 12.0);
+        let dc = (c.b0 + c.b1 + c.b2) / (1.0 + c.a1 + c.a2);
+        let nyq = (c.b0 - c.b1 + c.b2) / (1.0 - c.a1 + c.a2);
+        let boost = 10f32.powf(12.0 / 20.0);
+        assert!(
+            (dc - boost).abs() < 0.1,
+            "low-shelf DC gain must match the +12 dB boost, got {dc}"
+        );
+        assert!(
+            (nyq - 1.0).abs() < 0.05,
+            "low-shelf must leave the high end ~unity, got {nyq}"
+        );
+    }
+
+    #[test]
+    fn high_shelf_boost_raises_nyquist_gain() {
+        // A +12 dB high shelf lifts the top (Nyquist, z=-1) by 12 dB; DC ~unity.
+        let c = BiquadCoeffs::highshelf(48_000.0, 4_000.0, 0.707, 12.0);
+        let dc = (c.b0 + c.b1 + c.b2) / (1.0 + c.a1 + c.a2);
+        let nyq = (c.b0 - c.b1 + c.b2) / (1.0 - c.a1 + c.a2);
+        let boost = 10f32.powf(12.0 / 20.0);
+        assert!(
+            (nyq - boost).abs() < 0.2,
+            "high-shelf Nyquist gain must match the +12 dB boost, got {nyq}"
+        );
+        assert!(
+            (dc - 1.0).abs() < 0.05,
+            "high-shelf must leave DC ~unity, got {dc}"
+        );
     }
 }

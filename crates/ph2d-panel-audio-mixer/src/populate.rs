@@ -2,10 +2,10 @@
 
 use crate::fader::FADER_UNITY_POS;
 use crate::{
-    AMIX_CLOSE, AMIX_CUTOFF, AMIX_DUCK, AMIX_DUCK_DEPTH, AMIX_FADER, AMIX_LIMITER, AMIX_LOWCUT,
-    AMIX_MASTER_METER, AMIX_MASTER_MUTE, AMIX_PAN, AMIX_PLAY, AMIX_REVERB, AMIX_REVERB_MIX,
-    AMIX_REVERB_SIZE, SUB_FADER, SUB_LOWCUT, SUB_METER, SUB_MUTE, SUB_PAN, SUB_SEND, SUB_SOLO,
-    SUB_TONE,
+    AMIX_CLOSE, AMIX_CUTOFF, AMIX_DUCK, AMIX_DUCK_DEPTH, AMIX_EQ_HIGH, AMIX_EQ_LOW, AMIX_EQ_MID,
+    AMIX_FADER, AMIX_LIMITER, AMIX_LOWCUT, AMIX_MASTER_METER, AMIX_MASTER_MUTE, AMIX_PAN,
+    AMIX_PLAY, AMIX_REVERB, AMIX_REVERB_MIX, AMIX_REVERB_SIZE, SUB_FADER, SUB_LOWCUT, SUB_METER,
+    SUB_MUTE, SUB_PAN, SUB_SEND, SUB_SOLO, SUB_TONE,
 };
 use ph2d_editor_core::interaction::{InteractiveState, WidgetStore};
 use ph2d_editor_core::widget::{ButtonState, SliderOrientation, SliderState};
@@ -119,6 +119,17 @@ pub(crate) fn populate(store: &mut WidgetStore) {
     for id in SUB_SEND {
         store.register(id, send());
     }
+
+    // Master 3-band EQ — Low / Mid / High gain sliders, centered at 0.5 (flat).
+    // apply_event publishes the raw 0..1 position; the shell maps it to ±12 dB.
+    let eq = || InteractiveState::Slider {
+        state: SliderState::Normal,
+        value: 0.5,
+        orientation: SliderOrientation::Horizontal,
+    };
+    store.register(AMIX_EQ_LOW, eq());
+    store.register(AMIX_EQ_MID, eq());
+    store.register(AMIX_EQ_HIGH, eq());
 
     // Ducking depth — how much Music/SFX drop under the Voice bus.
     store.register(

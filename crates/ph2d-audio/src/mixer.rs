@@ -62,6 +62,10 @@ pub(crate) struct Mixer {
     /// Master low-pass filter (per channel). Identity coeffs by default = bypass.
     filter_l: Biquad,
     filter_r: Biquad,
+    /// Master 3-band EQ (low shelf, mid peak, high shelf) per channel, in series
+    /// after the master low-pass. Identity coeffs by default = flat (transparent).
+    eq_l: [Biquad; 3],
+    eq_r: [Biquad; 3],
     /// Per-sub-bus fader, indexed by `BusId::sub_index`.
     bus_gain: [SmoothGain; SUB_BUS_COUNT],
     /// Per-sub-bus stereo balance gains `[L, R]`.
@@ -98,6 +102,8 @@ impl Mixer {
             hp_r: Biquad::default(),
             filter_l: Biquad::default(),
             filter_r: Biquad::default(),
+            eq_l: std::array::from_fn(|_| Biquad::default()),
+            eq_r: std::array::from_fn(|_| Biquad::default()),
             bus_gain: std::array::from_fn(|_| SmoothGain::immediate(1.0)),
             bus_pan: [balance_gains(0.0); SUB_BUS_COUNT],
             bus_hp_l: std::array::from_fn(|_| Biquad::default()),
@@ -134,6 +140,15 @@ impl Mixer {
             AudioCommand::SetMasterHighpass { coeffs } => {
                 self.hp_l.set_coeffs(coeffs);
                 self.hp_r.set_coeffs(coeffs);
+            }
+            AudioCommand::SetMasterEq { low, mid, high } => {
+                let bands = [low, mid, high];
+                for (b, c) in self.eq_l.iter_mut().zip(bands) {
+                    b.set_coeffs(c);
+                }
+                for (b, c) in self.eq_r.iter_mut().zip(bands) {
+                    b.set_coeffs(c);
+                }
             }
             AudioCommand::SetBusGain { bus, gain } => match bus.sub_index() {
                 Some(i) => self.bus_gain[i].set_target(gain),
@@ -259,6 +274,11 @@ impl Mixer {
             }
             let mut l = self.filter_l.process(self.hp_l.process(ml * g));
             let mut r = self.filter_r.process(self.hp_r.process(mr * g));
+            // Master 3-band EQ in series (identity bands = flat/transparent).
+            for b in 0..3 {
+                l = self.eq_l[b].process(l);
+                r = self.eq_r[b].process(r);
+            }
             l *= mpan_l;
             r *= mpan_r;
             if limiter {

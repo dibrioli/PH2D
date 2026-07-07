@@ -10,12 +10,14 @@
 //! the panel is built from gallery widgets, not bespoke chrome.
 
 use crate::fader::{FADER_UNITY_POS, fader_db};
+use crate::paint_widgets::{paint_labeled_slider, paint_toggle};
 use crate::state::AudioMixerState;
 use crate::{
-    AMIX_CLOSE, AMIX_CUTOFF, AMIX_DUCK, AMIX_DUCK_DEPTH, AMIX_FADER, AMIX_LIMITER, AMIX_LOWCUT,
-    AMIX_MASTER_METER, AMIX_MASTER_MUTE, AMIX_PAN, AMIX_PANEL, AMIX_PLAY, AMIX_REVERB,
-    AMIX_REVERB_MIX, AMIX_REVERB_SIZE, AudioMixerPanel, SUB_BUS_COUNT, SUB_BUS_LABELS, SUB_FADER,
-    SUB_LOWCUT, SUB_METER, SUB_MUTE, SUB_PAN, SUB_SEND, SUB_SOLO, SUB_TONE, snapshot,
+    AMIX_CLOSE, AMIX_CUTOFF, AMIX_DUCK, AMIX_DUCK_DEPTH, AMIX_EQ_HIGH, AMIX_EQ_LOW, AMIX_EQ_MID,
+    AMIX_FADER, AMIX_LIMITER, AMIX_LOWCUT, AMIX_MASTER_METER, AMIX_MASTER_MUTE, AMIX_PAN,
+    AMIX_PANEL, AMIX_PLAY, AMIX_REVERB, AMIX_REVERB_MIX, AMIX_REVERB_SIZE, AudioMixerPanel,
+    SUB_BUS_COUNT, SUB_BUS_LABELS, SUB_FADER, SUB_LOWCUT, SUB_METER, SUB_MUTE, SUB_PAN, SUB_SEND,
+    SUB_SOLO, SUB_TONE, snapshot,
 };
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::ids as core_ids;
@@ -40,7 +42,6 @@ const FADER_W: f32 = 22.0; // LITERAL-PX-OK: fader column width (chrome)
 const METER_W: f32 = 14.0; // LITERAL-PX-OK: meter column width (chrome)
 const STRIP_H: f32 = 116.0; // LITERAL-PX-OK: fader/meter height (chrome; kept compact so the master section fits)
 const MUTE_H: f32 = 24.0; // LITERAL-PX-OK: mute button height (chrome)
-const FX_LABEL_W: f32 = 32.0; // LITERAL-PX-OK: master-fx label column width (chrome)
 
 /// One channel strip's live data (Master or a sub-bus).
 struct Strip {
@@ -255,8 +256,9 @@ pub(crate) fn paint(_state: &mut AudioMixerState, ctx: &mut PaintCtx) {
     );
 }
 
-/// The master-section footer below the strips: Limiter toggle · Reverb (toggle +
-/// Size/Mix) · Play Test. Split out of `paint` to stay under the fn LOC cap.
+/// The master-section footer below the strips, top-down: Play Test · Limiter ·
+/// EQ (Low/Mid/High) · Reverb (toggle + Size/Return + per-bus sends) · Ducking.
+/// Split out of `paint` to stay under the fn LOC cap.
 #[allow(clippy::too_many_arguments)]
 fn paint_master_section(
     mut y: f32,
@@ -297,6 +299,39 @@ fn paint_master_section(
         hit_index,
     );
     y += MUTE_H + Spacing::Md.px();
+
+    // Master 3-band EQ — Low shelf / Mid peak / High shelf gain sliders (0.5 =
+    // flat). An "EQ" group header so the bands read as their own section, not the
+    // Limiter toggle's children.
+    paint_text_centered(
+        text_system,
+        scene,
+        "EQ",
+        Rect::new(content_x, y, content_w, TypeToken::Xs.px()),
+        TypeToken::Xs.px(),
+        resolve(ColorToken::Text2, theme),
+    );
+    y += TypeToken::Xs.px() + Spacing::Sm.px();
+    let eq = snapshot::eq();
+    for (label, id, value) in [
+        ("Low", AMIX_EQ_LOW, eq[0]),
+        ("Mid", AMIX_EQ_MID, eq[1]),
+        ("High", AMIX_EQ_HIGH, eq[2]),
+    ] {
+        y = paint_labeled_slider(
+            y,
+            label,
+            id,
+            value,
+            content_x,
+            content_w,
+            scene,
+            text_system,
+            theme,
+            hit_index,
+        );
+    }
+    y += Spacing::Sm.px();
 
     // Master reverb: enable toggle + Size (decay) + Mix (wet/dry) thin sliders.
     paint_toggle(
@@ -510,69 +545,4 @@ fn paint_strip(
             );
         }
     }
-}
-
-/// Paint a small left label + a full-width horizontal Slider on one row (the
-/// master-fx parameter rows: reverb Size/Mix, ducking Depth). Returns the next y.
-#[allow(clippy::too_many_arguments)]
-fn paint_labeled_slider(
-    y: f32,
-    label: &str,
-    id: NodeId,
-    value: f32,
-    content_x: f32,
-    content_w: f32,
-    scene: &mut VectorScene,
-    text_system: &mut TextSystem,
-    theme: Theme,
-    hit_index: &mut HitIndex,
-) -> f32 {
-    let label_rect = Rect::new(content_x, y, FX_LABEL_W, Spacing::Md.px());
-    paint_text_centered(
-        text_system,
-        scene,
-        label,
-        label_rect,
-        TypeToken::Xs.px(),
-        resolve(ColorToken::Text2, theme),
-    );
-    let slider_x = content_x + FX_LABEL_W + Spacing::Sm.px();
-    let slider_w = (content_w - FX_LABEL_W - Spacing::Sm.px()).max(1.0);
-    let slider_rect = Rect::new(slider_x, y, slider_w, Spacing::Md.px());
-    let mut slider = Slider::new(id, label).orientation(SliderOrientation::Horizontal);
-    slider.set_value(value.clamp(0.0, 1.0));
-    paint_slider(&slider, slider_rect, scene, theme);
-    hit_index.register(id, slider_rect);
-    y + Spacing::Md.px() + Spacing::Sm.px()
-}
-
-/// Paint one toggle button (mute / solo): `active_bg` tint + `AccentFg` text
-/// when engaged, else `Bg3` + `Text1`. Registers `id` as the hit rect.
-#[allow(clippy::too_many_arguments)]
-fn paint_toggle(
-    rect: Rect,
-    label: &str,
-    active: bool,
-    active_bg: ColorToken,
-    id: NodeId,
-    scene: &mut VectorScene,
-    text_system: &mut TextSystem,
-    theme: Theme,
-    hit_index: &mut HitIndex,
-) {
-    let (bg, fg) = if active {
-        (active_bg, ColorToken::AccentFg)
-    } else {
-        (ColorToken::Bg3, ColorToken::Text1)
-    };
-    fill_rounded_rect(scene, rect, Radius::Sm.px(), resolve(bg, theme));
-    paint_text_centered(
-        text_system,
-        scene,
-        label,
-        rect,
-        TypeToken::Sm.px(),
-        resolve(fg, theme),
-    );
-    hit_index.register(id, rect);
 }

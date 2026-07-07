@@ -138,6 +138,15 @@ impl crate::App {
                     ph2d_panel_audio_mixer::reverb_size(),
                     ph2d_panel_audio_mixer::reverb_mix(),
                 );
+                // Master 3-band EQ: the panel publishes 0..1 slider positions
+                // (0.5 = flat); map each to ±12 dB for the engine.
+                const EQ_DB_RANGE: f32 = 24.0; // ±12 dB across the 0..1 EQ slider
+                let eq = ph2d_panel_audio_mixer::master_eq_target();
+                audio.set_master_eq(
+                    (eq[0] - 0.5) * EQ_DB_RANGE,
+                    (eq[1] - 0.5) * EQ_DB_RANGE,
+                    (eq[2] - 0.5) * EQ_DB_RANGE,
+                );
                 // Sub-bus strips — index-aligned with `BusId::SUB_BUSES` (the
                 // panel's strip index i maps to sub-bus i; count guarded below).
                 ph2d_panel_audio_mixer::set_sub_levels(audio.bus_levels(), audio.bus_rms());

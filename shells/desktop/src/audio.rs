@@ -30,6 +30,8 @@ pub(crate) struct AudioSystem {
     last_limiter: std::cell::Cell<bool>,
     /// Change-gate for the master reverb (on, size, mix) — send only on change.
     last_reverb: std::cell::Cell<(bool, f32, f32)>,
+    /// Change-gate for the master 3-band EQ gains (low, mid, high dB).
+    last_eq: std::cell::Cell<(f32, f32, f32)>,
     /// Same change-gate, per sub-bus fader (index-aligned with `BusId::SUB_BUSES`).
     last_bus_gain: [std::cell::Cell<f32>; SUB_BUS_COUNT],
     /// Same change-gate, per sub-bus balance.
@@ -114,6 +116,7 @@ impl AudioSystem {
             last_master_pan: std::cell::Cell::new(0.0),
             last_limiter: std::cell::Cell::new(false),
             last_reverb: std::cell::Cell::new((false, 0.5, 0.3)),
+            last_eq: std::cell::Cell::new((0.0, 0.0, 0.0)),
             last_bus_gain: std::array::from_fn(|_| std::cell::Cell::new(1.0)),
             last_bus_pan: std::array::from_fn(|_| std::cell::Cell::new(0.0)),
             last_bus_cutoff: std::array::from_fn(|_| std::cell::Cell::new(20_000.0)),
@@ -271,6 +274,20 @@ impl AudioSystem {
         if on != lon || (size - lsize).abs() > f32::EPSILON || (mix - lmix).abs() > f32::EPSILON {
             let _ = self.engine.set_reverb(on, mix, size);
             self.last_reverb.set(next);
+        }
+    }
+
+    /// Set the master 3-band EQ gains in dB (low, mid, high), change-gated on the
+    /// whole triple (send only when a band moves).
+    pub(crate) fn set_master_eq(&self, low: f32, mid: f32, high: f32) {
+        let next = (low, mid, high);
+        let (ll, lm, lh) = self.last_eq.get();
+        if (low - ll).abs() > f32::EPSILON
+            || (mid - lm).abs() > f32::EPSILON
+            || (high - lh).abs() > f32::EPSILON
+        {
+            let _ = self.engine.set_master_eq(low, mid, high);
+            self.last_eq.set(next);
         }
     }
 

@@ -30,6 +30,13 @@ const OPEN_CUTOFF_HZ: f32 = 20_000.0; // LITERAL-PX-OK: audible ceiling / Tone "
 /// a high-pass here removes nothing audible. Symmetric to [`OPEN_CUTOFF_HZ`].
 const FLOOR_CUTOFF_HZ: f32 = 20.0; // LITERAL-PX-OK: audible floor / Low Cut "off" bottom (audio domain, not a UI metric)
 
+/// Master 3-band EQ band centers + shared Q. Fixed — only the per-band gain is
+/// user-set; the classic low-shelf / mid-peak / high-shelf console tone stack.
+const EQ_LOW_HZ: f32 = 120.0; // LITERAL-PX-OK: low-shelf corner (audio domain)
+const EQ_MID_HZ: f32 = 1_000.0; // LITERAL-PX-OK: mid-peak center (audio domain)
+const EQ_HIGH_HZ: f32 = 8_000.0; // LITERAL-PX-OK: high-shelf corner (audio domain)
+const EQ_Q: f32 = std::f32::consts::FRAC_1_SQRT_2; // Butterworth-ish shelf/peak width
+
 /// Control-side handle. Lives on the game thread; every method just enqueues a
 /// command (allocation happens here, never on the audio thread). Returns opaque
 /// [`VoiceId`]s (HR-8).
@@ -217,6 +224,17 @@ impl AudioEngine {
     /// post-fader signal feeds the reverb return.
     pub fn set_bus_send(&self, bus: BusId, amount: f32) -> Result<(), AudioError> {
         self.send(AudioCommand::SetBusSend { bus, amount })
+    }
+
+    /// Set the master 3-band EQ gains in dB — low shelf ([`EQ_LOW_HZ`]), mid peak
+    /// ([`EQ_MID_HZ`]), high shelf ([`EQ_HIGH_HZ`]). `0 dB` per band = flat
+    /// (transparent). Coeffs computed control-side (no RT transcendentals).
+    pub fn set_master_eq(&self, low_db: f32, mid_db: f32, high_db: f32) -> Result<(), AudioError> {
+        let sr = self.format.sample_rate as f32;
+        let low = BiquadCoeffs::lowshelf(sr, EQ_LOW_HZ, EQ_Q, low_db);
+        let mid = BiquadCoeffs::peak(sr, EQ_MID_HZ, EQ_Q, mid_db);
+        let high = BiquadCoeffs::highshelf(sr, EQ_HIGH_HZ, EQ_Q, high_db);
+        self.send(AudioCommand::SetMasterEq { low, mid, high })
     }
 
     /// Drain and drop finished samples returned by the audio thread. Call once

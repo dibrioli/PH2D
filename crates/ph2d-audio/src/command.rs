@@ -125,6 +125,13 @@ pub(crate) enum AudioCommand {
         bus: BusId,
         amount: f32,
     },
+    /// Master 3-band EQ coefficients (low shelf / mid peak / high shelf), computed
+    /// control-side. Identity per band = flat (transparent).
+    SetMasterEq {
+        low: BiquadCoeffs,
+        mid: BiquadCoeffs,
+        high: BiquadCoeffs,
+    },
 }
 
 /// A message from the audio thread back to the control thread.

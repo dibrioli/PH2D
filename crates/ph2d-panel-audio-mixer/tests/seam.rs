@@ -9,12 +9,12 @@ use ph2d_editor_core::interaction::WidgetEvent;
 use ph2d_editor_core::panel::{EventOutcome, Panel, PanelHostInternal};
 use ph2d_panel_audio_mixer::state::AudioMixerState;
 use ph2d_panel_audio_mixer::{
-    AMIX_CUTOFF, AMIX_DUCK, AMIX_DUCK_DEPTH, AMIX_FADER, AMIX_LIMITER, AMIX_LOWCUT,
+    AMIX_CUTOFF, AMIX_DUCK, AMIX_DUCK_DEPTH, AMIX_EQ_LOW, AMIX_FADER, AMIX_LIMITER, AMIX_LOWCUT,
     AMIX_MASTER_METER, AMIX_MASTER_MUTE, AMIX_PAN, AMIX_PLAY, AMIX_REVERB, AMIX_REVERB_SIZE,
     AudioMixerPanel, FADER_UNITY_POS, SUB_FADER, SUB_LOWCUT, SUB_MUTE, SUB_PAN, SUB_SEND, SUB_SOLO,
     SUB_TONE, duck_depth, ducking, fader_gain, limiter, master_clipped, master_cutoff_target,
-    master_gain_target, master_lowcut_target, master_muted, master_pan_target, play_test,
-    reverb_on, reverb_size, set_levels, sub_gain_target, sub_lowcut_target, sub_muted,
+    master_eq_target, master_gain_target, master_lowcut_target, master_muted, master_pan_target,
+    play_test, reverb_on, reverb_size, set_levels, sub_gain_target, sub_lowcut_target, sub_muted,
     sub_pan_target, sub_send_target, sub_soloed, sub_tone_target,
 };
 use ph2d_ui_testkit::MockPanelHost;
@@ -424,6 +424,36 @@ fn sub_bus_send_drag_publishes_amount() {
         sends[1].abs() < 1e-5,
         "the other sub-bus send must stay dry (0), got {}",
         sends[1]
+    );
+}
+
+/// Dragging a master EQ band publishes its raw 0..1 position into that band's
+/// slot only — the shell maps it to ±12 dB. The other bands stay flat (0.5),
+/// proving the EQ arm routes per band.
+#[test]
+fn eq_drag_publishes_position() {
+    let mut host = MockPanelHost::with_panel::<AudioMixerPanel>();
+    let mut state = AudioMixerState;
+
+    host.set_slider_value(AMIX_EQ_LOW, 0.8);
+    let outcome = host
+        .apply_panel_event::<AudioMixerPanel>(&mut state, WidgetEvent::ValueChanged(AMIX_EQ_LOW));
+
+    assert_eq!(
+        outcome,
+        EventOutcome::Consumed,
+        "panel ignored the EQ Low ValueChanged — the AMIX_EQ arm is missing"
+    );
+    let eq = master_eq_target();
+    assert!(
+        (eq[0] - 0.8).abs() < 1e-5,
+        "EQ Low must publish 0.8, got {}",
+        eq[0]
+    );
+    assert!(
+        (eq[1] - 0.5).abs() < 1e-5,
+        "the Mid band must stay flat (0.5), got {}",
+        eq[1]
     );
 }
 

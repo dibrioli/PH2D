@@ -76,6 +76,15 @@ pub const AMIX_DUCK_DEPTH: NodeId = hash_node_id("audio_mixer_duck_depth");
 /// Sidechain key-bus selector button — cycles which sub-bus everything ducks under.
 pub const AMIX_DUCK_KEY: NodeId = hash_node_id("audio_mixer_duck_key");
 
+/// Collapsible section headers for the master-effect footer groups. Registered
+/// via `mark_collapsible_section` in `populate`; clicking a header folds its
+/// group (the dispatch toggles `is_collapsed`, so the panel needs no click arm).
+pub const AMIX_SEC_EQ: NodeId = hash_node_id("audio_mixer_sec_eq");
+pub const AMIX_SEC_REVERB: NodeId = hash_node_id("audio_mixer_sec_reverb");
+pub const AMIX_SEC_DELAY: NodeId = hash_node_id("audio_mixer_sec_delay");
+pub const AMIX_SEC_COMP: NodeId = hash_node_id("audio_mixer_sec_comp");
+pub const AMIX_SEC_DUCK: NodeId = hash_node_id("audio_mixer_sec_duck");
+
 /// Sub-buses shown as their own strips, **in `ph2d_audio::BusId::SUB_BUSES`
 /// order** (Music, SFX). The panel is UI-only (no `ph2d-audio` dep); the shell's
 /// bridge maps strip index `i` → `BusId::SUB_BUSES[i]`, so this count and order

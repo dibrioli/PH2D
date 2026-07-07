@@ -21,16 +21,17 @@ use crate::{
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::ids as core_ids;
 use ph2d_editor_core::interaction::HitIndex;
-use ph2d_editor_core::paint::{fill_rounded_rect, paint_text_centered, resolve};
+use ph2d_editor_core::paint::{fill_rounded_rect, paint_text_centered, rect_to_vello, resolve};
 use ph2d_editor_core::panel::{PaintCtx, Panel};
 use ph2d_editor_core::widget::panel_chrome::{
     PANEL_HEADER_CLOSE_RESERVE, PANEL_HEADER_H_DEFAULT, PANEL_TITLE_BASELINE,
     paint_panel_close_button, paint_panel_corner_dot, paint_panel_corner_dot_bl,
-    paint_panel_surface, paint_panel_title, panel_drag_handle_rect, panel_resize_handle_rect,
-    panel_resize_handle_rect_bl,
+    paint_panel_surface, paint_panel_title, panel_close_button_rect, panel_drag_handle_rect,
+    panel_resize_handle_rect, panel_resize_handle_rect_bl,
 };
 use ph2d_editor_core::widget::{
-    LevelMeter, Slider, SliderOrientation, paint_level_meter, paint_slider,
+    AUDIO_MIXER_SCROLLBAR_ID, LevelMeter, Slider, SliderOrientation, paint_level_meter,
+    paint_scrollbar, paint_slider, scrollbar_is_needed, scrollbar_thumb_rect, scrollbar_track_rect,
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_text::TextSystem;
@@ -126,6 +127,16 @@ pub(crate) fn paint(_state: &mut AudioMixerState, ctx: &mut PaintCtx) {
     paint_panel_close_button(rect, AMIX_CLOSE, ctx.host.hit_index_mut(), ctx.scene, theme);
     let header_bottom = rect.y + PANEL_TITLE_BASELINE + title_size + Spacing::Md.px();
 
+    // The body (strips + the stacked master-effect sections) is clipped + scrolled
+    // — the collapsible effect groups overflow the dock height. Wheel + the
+    // scrollbar thumb (`AUDIO_MIXER_SCROLLBAR_ID` → `AMIX_PANEL`) keep the lower
+    // sections reachable. Read `scroll` BEFORE the mutable store/hit borrow below.
+    let body_top = header_bottom;
+    let bottom_pad = Spacing::Lg.px();
+    let body_h = (rect.y + rect.h - body_top - bottom_pad).max(0.0);
+    let body_rect = Rect::new(rect.x, body_top, rect.w, body_h);
+    let scroll = ctx.host.store().panel_scroll(AMIX_PANEL);
+
     // Gather the live snapshot (shell → panel) + the fader values (the store is
     // the source of truth — the shared slider dispatch writes them on drag).
     let master_rms = snapshot::master_rms();
@@ -209,7 +220,10 @@ pub(crate) fn paint(_state: &mut AudioMixerState, ctx: &mut PaintCtx) {
     let gap = Spacing::Sm.px();
     let cols = strips.len() as f32;
     let col_w = ((content_w - gap * (cols - 1.0)) / cols).max(FADER_W);
-    let strip_top = header_bottom;
+    // Body is scrolled: content lays out from `body_top - scroll`, clipped to the
+    // body rect so anything scrolled past the top/bottom is hidden.
+    let strip_top = body_top - scroll;
+    ctx.scene.push_clip(&rect_to_vello(body_rect));
 
     for (c, strip) in strips.iter().enumerate() {
         let col_x = content_x + c as f32 * (col_w + gap);
@@ -243,8 +257,9 @@ pub(crate) fn paint(_state: &mut AudioMixerState, ctx: &mut PaintCtx) {
         + MUTE_H;
     let footer_y = strips_bottom + Spacing::Lg.px();
 
-    // Master section footer: limiter · reverb · Play Test.
-    paint_master_section(
+    // Master section footer: Play Test · loudness · Limiter · collapsible EQ /
+    // Reverb / Delay / Comp / Ducking. Returns the bottom of the painted body.
+    let final_y = paint_master_section(
         footer_y,
         content_x,
         content_w,
@@ -252,7 +267,42 @@ pub(crate) fn paint(_state: &mut AudioMixerState, ctx: &mut PaintCtx) {
         ctx.text_system,
         theme,
         hit_index,
+        store,
     );
+
+    // Total scrollable height in body-local coords (undo the `- scroll` offset).
+    let content_h = (final_y + scroll) - body_top + bottom_pad;
+    ctx.scene.pop_layer();
+
+    // Scrollbar (only if the content overflows) + publish content/visible heights
+    // so wheel dispatch can clamp; then clamp any leftover over-scroll.
+    if scrollbar_is_needed(content_h, body_h) {
+        let track = scrollbar_track_rect(body_rect);
+        let thumb = scrollbar_thumb_rect(track, scroll, content_h, body_h);
+        let is_active = matches!(
+            ctx.host.store().scrollbar_drag(),
+            Some(d) if d.panel == AMIX_PANEL
+        );
+        paint_scrollbar(
+            body_rect, scroll, content_h, body_h, is_active, ctx.scene, theme,
+        );
+        ctx.host
+            .hit_index_mut()
+            .register(AUDIO_MIXER_SCROLLBAR_ID, thumb);
+    }
+    let store = ctx.host.store_mut();
+    store.set_panel_content_h(AMIX_PANEL, content_h);
+    store.set_panel_visible_h(AMIX_PANEL, body_h);
+    let max_scroll = (content_h - body_h).max(0.0);
+    if store.panel_scroll(AMIX_PANEL) > max_scroll {
+        store.set_panel_scroll(AMIX_PANEL, max_scroll);
+    }
+
+    // Re-register the close button at end-of-frame so scrolled body widgets can't
+    // shadow it (panel_chrome canon).
+    ctx.host
+        .hit_index_mut()
+        .register(AMIX_CLOSE, panel_close_button_rect(rect));
 }
 
 /// Paint one channel strip in its column: label · pan · fader (standard

@@ -1,17 +1,23 @@
 //! Audio Mixer master-section footer painter — Play Test · loudness (LUFS) ·
-//! Limiter · EQ · Reverb · Delay · Ducking. Split out of `paint.rs` to keep it
-//! under the panel LOC cap; a leaf over the shared widget-row helpers.
+//! Limiter, then the collapsible master-effect groups (EQ · Reverb · Delay ·
+//! Comp · Ducking). Split out of `paint.rs` to keep it under the panel LOC cap.
+//!
+//! Each effect group is a canonical collapsible [`SectionHeader`]: its id is
+//! `mark_collapsible_section`-registered in `populate`, so the dispatch folds it
+//! on click (no `apply_event` arm needed); the body paints only when open.
 
 use crate::paint::MUTE_H;
 use crate::paint_widgets::{paint_labeled_slider, paint_toggle};
 use crate::{
     AMIX_DELAY, AMIX_DELAY_FEEDBACK, AMIX_DELAY_MIX, AMIX_DELAY_TIME, AMIX_DUCK, AMIX_DUCK_DEPTH,
     AMIX_DUCK_KEY, AMIX_EQ_HIGH, AMIX_EQ_LOW, AMIX_EQ_MID, AMIX_LIMITER, AMIX_PLAY, AMIX_REVERB,
-    AMIX_REVERB_MIX, AMIX_REVERB_SIZE, SUB_BUS_COUNT, SUB_BUS_LABELS, SUB_COMP, SUB_DELAY_SEND,
-    SUB_SEND, snapshot,
+    AMIX_REVERB_MIX, AMIX_REVERB_SIZE, AMIX_SEC_COMP, AMIX_SEC_DELAY, AMIX_SEC_DUCK, AMIX_SEC_EQ,
+    AMIX_SEC_REVERB, SUB_BUS_COUNT, SUB_BUS_LABELS, SUB_COMP, SUB_DELAY_SEND, SUB_SEND, snapshot,
 };
-use ph2d_editor_core::interaction::HitIndex;
+use ph2d_a11y::NodeId;
+use ph2d_editor_core::interaction::{HitIndex, WidgetStore};
 use ph2d_editor_core::paint::{paint_text_centered, resolve};
+use ph2d_editor_core::widget::{SectionHeader, paint_section_header};
 use ph2d_editor_core::zones::Rect;
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, Spacing, Theme, TypeToken};
@@ -19,265 +25,215 @@ use ph2d_vector::VectorScene;
 
 const LUFS_SILENCE_DISPLAY: f32 = -70.0; // LITERAL-PX-OK: below this the loudness reads "-inf" (audio domain)
 
-/// The master-section footer below the strips, top-down: Play Test · Limiter ·
-/// EQ (Low/Mid/High) · Reverb (toggle + Size/Return + per-bus sends) · Ducking.
-/// Split out of `paint` to stay under the fn LOC cap.
+/// The shared paint context threaded through the footer section painters —
+/// bundles the borrows so each section fn takes just `(&mut Ctx, y)`.
+struct Ctx<'a> {
+    scene: &'a mut VectorScene,
+    text_system: &'a mut TextSystem,
+    hit_index: &'a mut HitIndex,
+    store: &'a WidgetStore,
+    theme: Theme,
+    /// Content left edge + width (the panel's padded inner column).
+    x: f32,
+    w: f32,
+}
+
+/// The master-section footer below the strips, top-down: Play Test · loudness ·
+/// Limiter · EQ · Reverb · Delay · Comp · Ducking. Returns the final `y` (the
+/// bottom of the painted content) so the caller can size the scroll region.
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn paint_master_section(
-    mut y: f32,
+    y0: f32,
     content_x: f32,
     content_w: f32,
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
     theme: Theme,
     hit_index: &mut HitIndex,
-) {
-    // Play Test first — the primary "make sound" control stays reachable even if
-    // the effect controls below overflow a short Inspector.
-    let playing = snapshot::play_test();
-    paint_toggle(
-        Rect::new(content_x, y, content_w, MUTE_H),
-        if playing { "Stop" } else { "Play Test" },
-        playing,
-        ColorToken::Accent,
-        AMIX_PLAY,
+    store: &WidgetStore,
+) -> f32 {
+    let mut ctx = Ctx {
         scene,
         text_system,
-        theme,
         hit_index,
-    );
-    y += MUTE_H + Spacing::Sm.px();
+        store,
+        theme,
+        x: content_x,
+        w: content_w,
+    };
+    let mut y = y0;
+    y = paint_play_test(&mut ctx, y);
+    y = paint_loudness(&mut ctx, y);
+    y = paint_limiter(&mut ctx, y);
+    y = paint_eq(&mut ctx, y);
+    y = paint_reverb(&mut ctx, y);
+    y = paint_delay(&mut ctx, y);
+    y = paint_comp(&mut ctx, y);
+    paint_ducking(&mut ctx, y)
+}
 
-    // Master momentary loudness readout (LUFS, BS.1770) — a monitoring number
-    // below Play Test; "-inf" when the master is effectively silent.
+/// A full-width toggle row; returns the next `y`.
+fn toggle_row(ctx: &mut Ctx, y: f32, label: &str, active: bool, id: NodeId) -> f32 {
+    paint_toggle(
+        Rect::new(ctx.x, y, ctx.w, MUTE_H),
+        label,
+        active,
+        ColorToken::Accent,
+        id,
+        ctx.scene,
+        ctx.text_system,
+        ctx.theme,
+        ctx.hit_index,
+    );
+    y + MUTE_H + Spacing::Sm.px()
+}
+
+/// A labeled thin-slider row; returns the next `y`.
+fn slider_row(ctx: &mut Ctx, y: f32, label: &str, id: NodeId, value: f32) -> f32 {
+    paint_labeled_slider(
+        y,
+        label,
+        id,
+        value,
+        ctx.x,
+        ctx.w,
+        ctx.scene,
+        ctx.text_system,
+        ctx.theme,
+        ctx.hit_index,
+    )
+}
+
+/// Paint a collapsible section header (chevron + uppercase label). Returns
+/// `(open, next_y)`; the dispatch flips `is_collapsed` on click.
+fn section_header(ctx: &mut Ctx, y: f32, id: NodeId, label: &str) -> (bool, f32) {
+    let open = !ctx.store.is_collapsed(id);
+    let rect = Rect::new(ctx.x, y, ctx.w, MUTE_H);
+    let header = SectionHeader::new(id, label).collapsible(open);
+    paint_section_header(&header, rect, ctx.scene, ctx.text_system, ctx.theme);
+    ctx.hit_index.register(id, rect);
+    (open, y + MUTE_H + Spacing::Sm.px())
+}
+
+/// Per-sub-bus labeled rows (used by the Reverb/Delay sends + Comp knobs).
+fn sub_bus_rows(
+    ctx: &mut Ctx,
+    mut y: f32,
+    ids: &[NodeId; SUB_BUS_COUNT],
+    vals: [f32; SUB_BUS_COUNT],
+) -> f32 {
+    for i in 0..SUB_BUS_COUNT {
+        y = slider_row(ctx, y, SUB_BUS_LABELS[i], ids[i], vals[i]);
+    }
+    y
+}
+
+fn paint_play_test(ctx: &mut Ctx, y: f32) -> f32 {
+    // Play Test first — the primary "make sound" control stays reachable.
+    let playing = snapshot::play_test();
+    toggle_row(
+        ctx,
+        y,
+        if playing { "Stop" } else { "Play Test" },
+        playing,
+        AMIX_PLAY,
+    )
+}
+
+fn paint_loudness(ctx: &mut Ctx, y: f32) -> f32 {
+    // Momentary loudness (LUFS, BS.1770); "-inf" when effectively silent.
     let lufs = snapshot::loudness();
-    let loudness_text = if lufs <= LUFS_SILENCE_DISPLAY {
+    let text = if lufs <= LUFS_SILENCE_DISPLAY {
         "-inf LUFS".to_string()
     } else {
         format!("{lufs:.1} LUFS")
     };
     paint_text_centered(
-        text_system,
-        scene,
-        &loudness_text,
-        Rect::new(content_x, y, content_w, TypeToken::Xs.px()),
+        ctx.text_system,
+        ctx.scene,
+        &text,
+        Rect::new(ctx.x, y, ctx.w, TypeToken::Xs.px()),
         TypeToken::Xs.px(),
-        resolve(ColorToken::Text2, theme),
+        resolve(ColorToken::Text2, ctx.theme),
     );
-    y += TypeToken::Xs.px() + Spacing::Md.px();
+    y + TypeToken::Xs.px() + Spacing::Md.px()
+}
 
-    // Master output limiter (Accent when engaged) — tames peaks below the clip
-    // ceiling instead of hard-clipping.
-    paint_toggle(
-        Rect::new(content_x, y, content_w, MUTE_H),
-        "Limiter",
-        snapshot::limiter(),
-        ColorToken::Accent,
-        AMIX_LIMITER,
-        scene,
-        text_system,
-        theme,
-        hit_index,
-    );
-    y += MUTE_H + Spacing::Md.px();
+fn paint_limiter(ctx: &mut Ctx, y: f32) -> f32 {
+    // Master output limiter — tames peaks below the clip ceiling.
+    toggle_row(ctx, y, "Limiter", snapshot::limiter(), AMIX_LIMITER) + Spacing::Sm.px()
+}
 
-    // Master 3-band EQ — Low shelf / Mid peak / High shelf gain sliders (0.5 =
-    // flat). An "EQ" group header so the bands read as their own section, not the
-    // Limiter toggle's children.
-    paint_text_centered(
-        text_system,
-        scene,
-        "EQ",
-        Rect::new(content_x, y, content_w, TypeToken::Xs.px()),
-        TypeToken::Xs.px(),
-        resolve(ColorToken::Text2, theme),
-    );
-    y += TypeToken::Xs.px() + Spacing::Sm.px();
-    let eq = snapshot::eq();
-    for (label, id, value) in [
-        ("Low", AMIX_EQ_LOW, eq[0]),
-        ("Mid", AMIX_EQ_MID, eq[1]),
-        ("High", AMIX_EQ_HIGH, eq[2]),
-    ] {
-        y = paint_labeled_slider(
-            y,
-            label,
-            id,
-            value,
-            content_x,
-            content_w,
-            scene,
-            text_system,
-            theme,
-            hit_index,
-        );
+fn paint_eq(ctx: &mut Ctx, y: f32) -> f32 {
+    let (open, mut y) = section_header(ctx, y, AMIX_SEC_EQ, "EQ");
+    if open {
+        let eq = snapshot::eq();
+        y = slider_row(ctx, y, "Low", AMIX_EQ_LOW, eq[0]);
+        y = slider_row(ctx, y, "Mid", AMIX_EQ_MID, eq[1]);
+        y = slider_row(ctx, y, "High", AMIX_EQ_HIGH, eq[2]);
     }
-    y += Spacing::Sm.px();
+    y + Spacing::Sm.px()
+}
 
-    // Master reverb: enable toggle + Size (decay) + Mix (wet/dry) thin sliders.
-    paint_toggle(
-        Rect::new(content_x, y, content_w, MUTE_H),
-        "Reverb",
-        snapshot::reverb_on(),
-        ColorToken::Accent,
-        AMIX_REVERB,
-        scene,
-        text_system,
-        theme,
-        hit_index,
-    );
-    y += MUTE_H + Spacing::Sm.px();
-    for (label, id, value) in [
-        ("Size", AMIX_REVERB_SIZE, snapshot::reverb_size()),
-        ("Return", AMIX_REVERB_MIX, snapshot::reverb_mix()),
-    ] {
-        y = paint_labeled_slider(
-            y,
-            label,
-            id,
-            value,
-            content_x,
-            content_w,
-            scene,
-            text_system,
-            theme,
-            hit_index,
-        );
+fn paint_reverb(ctx: &mut Ctx, y: f32) -> f32 {
+    let (open, mut y) = section_header(ctx, y, AMIX_SEC_REVERB, "Reverb");
+    if open {
+        y = toggle_row(ctx, y, "Reverb", snapshot::reverb_on(), AMIX_REVERB);
+        y = slider_row(ctx, y, "Size", AMIX_REVERB_SIZE, snapshot::reverb_size());
+        y = slider_row(ctx, y, "Return", AMIX_REVERB_MIX, snapshot::reverb_mix());
+        y = sub_bus_rows(ctx, y, &SUB_SEND, snapshot::sub_send());
     }
-    // Per-sub-bus reverb aux sends — how much of each bus feeds the return.
-    let sends = snapshot::sub_send();
-    for i in 0..SUB_BUS_COUNT {
-        y = paint_labeled_slider(
-            y,
-            SUB_BUS_LABELS[i],
-            SUB_SEND[i],
-            sends[i],
-            content_x,
-            content_w,
-            scene,
-            text_system,
-            theme,
-            hit_index,
-        );
-    }
-    y += Spacing::Sm.px();
+    y + Spacing::Sm.px()
+}
 
-    // Master delay/echo: enable toggle + Time / Feedback / Return + per-bus sends.
-    paint_toggle(
-        Rect::new(content_x, y, content_w, MUTE_H),
-        "Delay",
-        snapshot::delay_on(),
-        ColorToken::Accent,
-        AMIX_DELAY,
-        scene,
-        text_system,
-        theme,
-        hit_index,
-    );
-    y += MUTE_H + Spacing::Sm.px();
-    for (label, id, value) in [
-        ("Time", AMIX_DELAY_TIME, snapshot::delay_time()),
-        ("Fbk", AMIX_DELAY_FEEDBACK, snapshot::delay_feedback()),
-        ("Return", AMIX_DELAY_MIX, snapshot::delay_mix()),
-    ] {
-        y = paint_labeled_slider(
+fn paint_delay(ctx: &mut Ctx, y: f32) -> f32 {
+    let (open, mut y) = section_header(ctx, y, AMIX_SEC_DELAY, "Delay");
+    if open {
+        y = toggle_row(ctx, y, "Delay", snapshot::delay_on(), AMIX_DELAY);
+        y = slider_row(ctx, y, "Time", AMIX_DELAY_TIME, snapshot::delay_time());
+        y = slider_row(
+            ctx,
             y,
-            label,
-            id,
-            value,
-            content_x,
-            content_w,
-            scene,
-            text_system,
-            theme,
-            hit_index,
+            "Fbk",
+            AMIX_DELAY_FEEDBACK,
+            snapshot::delay_feedback(),
         );
+        y = slider_row(ctx, y, "Return", AMIX_DELAY_MIX, snapshot::delay_mix());
+        y = sub_bus_rows(ctx, y, &SUB_DELAY_SEND, snapshot::sub_delay_send());
     }
-    let delay_sends = snapshot::sub_delay_send();
-    for i in 0..SUB_BUS_COUNT {
-        y = paint_labeled_slider(
-            y,
-            SUB_BUS_LABELS[i],
-            SUB_DELAY_SEND[i],
-            delay_sends[i],
-            content_x,
-            content_w,
-            scene,
-            text_system,
-            theme,
-            hit_index,
-        );
-    }
-    y += Spacing::Sm.px();
+    y + Spacing::Sm.px()
+}
 
-    // Per-sub-bus compressor — a single "amount" knob per bus (0 = off; right =
-    // more compression). A "Comp" group header, then one labeled row per sub-bus.
-    paint_text_centered(
-        text_system,
-        scene,
-        "Comp",
-        Rect::new(content_x, y, content_w, TypeToken::Xs.px()),
-        TypeToken::Xs.px(),
-        resolve(ColorToken::Text2, theme),
-    );
-    y += TypeToken::Xs.px() + Spacing::Sm.px();
-    let comps = snapshot::sub_comp();
-    for i in 0..SUB_BUS_COUNT {
-        y = paint_labeled_slider(
-            y,
-            SUB_BUS_LABELS[i],
-            SUB_COMP[i],
-            comps[i],
-            content_x,
-            content_w,
-            scene,
-            text_system,
-            theme,
-            hit_index,
-        );
+fn paint_comp(ctx: &mut Ctx, y: f32) -> f32 {
+    let (open, mut y) = section_header(ctx, y, AMIX_SEC_COMP, "Comp");
+    if open {
+        y = sub_bus_rows(ctx, y, &SUB_COMP, snapshot::sub_comp());
     }
-    y += Spacing::Sm.px();
+    y + Spacing::Sm.px()
+}
 
-    // Ducking (sidechain): enable toggle + Key selector + Depth. Every bus ducks
-    // under the selected Key bus so it cuts through; click Key to cycle the bus.
-    paint_toggle(
-        Rect::new(content_x, y, content_w, MUTE_H),
-        "Ducking",
-        snapshot::ducking(),
-        ColorToken::Accent,
-        AMIX_DUCK,
-        scene,
-        text_system,
-        theme,
-        hit_index,
-    );
-    y += MUTE_H + Spacing::Sm.px();
-    let key_label = format!(
-        "Key: {}",
-        SUB_BUS_LABELS[snapshot::ducking_key() % SUB_BUS_COUNT]
-    );
-    paint_toggle(
-        Rect::new(content_x, y, content_w, MUTE_H),
-        &key_label,
-        false,
-        ColorToken::Accent,
-        AMIX_DUCK_KEY,
-        scene,
-        text_system,
-        theme,
-        hit_index,
-    );
-    y += MUTE_H + Spacing::Sm.px();
-    paint_labeled_slider(
-        y,
-        "Depth",
-        AMIX_DUCK_DEPTH,
-        snapshot::duck_depth(),
-        content_x,
-        content_w,
-        scene,
-        text_system,
-        theme,
-        hit_index,
-    );
+fn paint_ducking(ctx: &mut Ctx, y: f32) -> f32 {
+    let (open, mut y) = section_header(ctx, y, AMIX_SEC_DUCK, "Ducking");
+    if open {
+        y = toggle_row(ctx, y, "Ducking", snapshot::ducking(), AMIX_DUCK);
+        // Key selector (a plain button — cycles the sidechain key sub-bus).
+        let key_label = format!(
+            "Key: {}",
+            SUB_BUS_LABELS[snapshot::ducking_key() % SUB_BUS_COUNT]
+        );
+        paint_toggle(
+            Rect::new(ctx.x, y, ctx.w, MUTE_H),
+            &key_label,
+            false,
+            ColorToken::Accent,
+            AMIX_DUCK_KEY,
+            ctx.scene,
+            ctx.text_system,
+            ctx.theme,
+            ctx.hit_index,
+        );
+        y += MUTE_H + Spacing::Sm.px();
+        y = slider_row(ctx, y, "Depth", AMIX_DUCK_DEPTH, snapshot::duck_depth());
+    }
+    y + Spacing::Sm.px()
 }

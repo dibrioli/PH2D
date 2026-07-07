@@ -5,13 +5,26 @@ use crate::{
     AMIX_CLOSE, AMIX_CUTOFF, AMIX_DELAY, AMIX_DELAY_FEEDBACK, AMIX_DELAY_MIX, AMIX_DELAY_TIME,
     AMIX_DUCK, AMIX_DUCK_DEPTH, AMIX_DUCK_KEY, AMIX_EQ_HIGH, AMIX_EQ_LOW, AMIX_EQ_MID, AMIX_FADER,
     AMIX_LIMITER, AMIX_LOWCUT, AMIX_MASTER_METER, AMIX_MASTER_MUTE, AMIX_PAN, AMIX_PLAY,
-    AMIX_REVERB, AMIX_REVERB_MIX, AMIX_REVERB_SIZE, SUB_COMP, SUB_DELAY_SEND, SUB_FADER,
-    SUB_LOWCUT, SUB_METER, SUB_MUTE, SUB_PAN, SUB_SEND, SUB_SOLO, SUB_TONE,
+    AMIX_REVERB, AMIX_REVERB_MIX, AMIX_REVERB_SIZE, AMIX_SEC_COMP, AMIX_SEC_DELAY, AMIX_SEC_DUCK,
+    AMIX_SEC_EQ, AMIX_SEC_REVERB, SUB_COMP, SUB_DELAY_SEND, SUB_FADER, SUB_LOWCUT, SUB_METER,
+    SUB_MUTE, SUB_PAN, SUB_SEND, SUB_SOLO, SUB_TONE,
 };
 use ph2d_editor_core::interaction::{InteractiveState, WidgetStore};
 use ph2d_editor_core::widget::{ButtonState, SliderOrientation, SliderState};
 
 pub(crate) fn populate(store: &mut WidgetStore) {
+    // Collapsible master-effect section headers — bare hit rects (no
+    // InteractiveState); the dispatch folds them via `toggle_collapsed` on click.
+    for id in [
+        AMIX_SEC_EQ,
+        AMIX_SEC_REVERB,
+        AMIX_SEC_DELAY,
+        AMIX_SEC_COMP,
+        AMIX_SEC_DUCK,
+    ] {
+        store.mark_collapsible_section(id);
+    }
+
     // Header close (X) + every mute (Master + one per sub-bus) + every sub-bus
     // solo — plain Buttons so the panel's apply_event branch fires on Click.
     // Show/hide is also the TopBar `TOPBAR_AUDIO_MIXER` pill. The dock

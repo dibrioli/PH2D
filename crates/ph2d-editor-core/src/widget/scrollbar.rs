@@ -158,6 +158,12 @@ pub const PAINTER_LAYERS_SCROLLBAR_ID: NodeId = NodeId(829);
 /// Independent thumb id so dispatch routes drag-scroll without aliasing the
 /// sidebar / layers panels that share the same dock slot.
 pub const PAINTER_BRUSH_STUDIO_SCROLLBAR_ID: NodeId = NodeId(830);
+/// Audio Mixer docked-panel scrollbar — the channel strips + the stacked
+/// master-effect sections (EQ / Reverb / Delay / Comp / Ducking, each with
+/// per-bus rows) overflow the Inspector-dock height. Independent thumb id so
+/// dispatch routes drag-scroll without aliasing the other dock-slot panels.
+/// (831 is `DROPDOWN_SCROLLBAR_ID` in `widget/dropdown.rs`.)
+pub const AUDIO_MIXER_SCROLLBAR_ID: NodeId = NodeId(832);
 
 #[cfg(test)]
 mod tests {

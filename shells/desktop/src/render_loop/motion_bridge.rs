@@ -81,6 +81,10 @@ pub(super) fn dispatch(
                 &motion.registry,
                 sink,
                 playhead,
+                // No framing node in M0 → instances have no `uv_rect` column;
+                // sample one opaque atlas tile so the raw output reads as clean
+                // solid quads (set from the atlas in init.rs).
+                motion.default_uv_rect,
                 &mut motion.instances,
             );
             // Advance the 1-tick `pre` feedback once per frame, same playhead

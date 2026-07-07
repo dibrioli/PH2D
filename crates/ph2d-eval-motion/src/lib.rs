@@ -14,22 +14,27 @@
 //! A Motion instance stream carries named columns (SoA); a missing column
 //! falls back to a sensible default, so a node only writes what it changes:
 //!
-//! | column | type   | → RenderInstance field | default        |
-//! |--------|--------|------------------------|----------------|
-//! | `P`    | Vec2   | `world_pos`            | `[0,0]`        |
-//! | `size` | Vec2   | `size`                 | `[1,1]`        |
-//! | `rot`  | Scalar | `basis` (rotation rad) | `0` → identity |
-//! | `tint` | Vec4   | `tint` (rgba)          | `[1,1,1,1]`    |
+//! | column    | type   | → RenderInstance field   | default                    |
+//! |-----------|--------|--------------------------|----------------------------|
+//! | `P`       | Vec2   | `world_pos`              | `[0,0]`                    |
+//! | `size`    | Vec2   | `size`                   | `[1,1]`                    |
+//! | `rot`     | Scalar | `basis` (rotation rad)   | `0` → identity             |
+//! | `tint`    | Vec4   | `tint` (rgba)            | `[1,1,1,1]`                |
+//! | `uv_rect` | Vec4   | `atlas_uv` (u0,v0,u1,v1) | caller's `default_uv_rect` |
 //!
-//! `atlas_uv`/`anchor`/`texture_id`/`premultiplied` use the shared-atlas
-//! defaults; richer cloners can extend the convention later.
+//! `anchor`/`texture_id`/`premultiplied` use the shared-atlas defaults. A
+//! stream with no `uv_rect` column takes the caller-supplied `default_uv_rect`
+//! — the shell passes the atlas tile the default document should sample (a
+//! single opaque tile, so the raw M0 output reads as clean solid quads rather
+//! than a whole-atlas thumbnail), while a headless caller passes the
+//! whole-atlas rect. Richer cloners can extend the convention later.
 //!
 //! Producer coverage so far: the W2 Motion vertical (`motion.grid` →
-//! `transform` → `clone`) emits only `P`; `size`/`rot`/`tint` are reserved
-//! columns of the convention with no producer node yet (their lowering is
-//! covered by the `lowering_reads_convention_with_defaults` unit test below). A
-//! later node that sets them needs no change here — the lowering already reads
-//! them.
+//! `transform` → `clone`) emits only `P`; `size`/`rot`/`tint`/`uv_rect` are
+//! reserved columns of the convention with no producer node yet (a framing node
+//! that writes `uv_rect`/`cell` lands in M1). Their lowering is covered by the
+//! unit tests below. A later node that sets them needs no change here — the
+//! lowering already reads them.
 
 use ph2d_nodegraph::attr::{Column, Stream};
 use ph2d_nodegraph::cook::{Cook, CookError, OpResolver};
@@ -40,12 +45,22 @@ use ph2d_render::RenderInstance;
 /// reusing `out`'s capacity: `out` is cleared and refilled, so a steady stream
 /// count frame-to-frame allocates nothing (M0.T11 — the per-frame bridge path;
 /// zero-alloc gated by M0.T12). Pure + headless: no GPU.
-pub fn lower_to_instances_into(stream: &Stream, out: &mut Vec<RenderInstance>) {
+///
+/// `default_uv_rect` is the `atlas_uv` for any instance whose stream has no
+/// `uv_rect` column (the M0 case — no framing node yet). The shell passes a
+/// single opaque atlas tile so the raw default document renders as clean solid
+/// quads; a headless caller passes the whole-atlas rect `[0,0,1,1]`.
+pub fn lower_to_instances_into(
+    stream: &Stream,
+    default_uv_rect: [f32; 4],
+    out: &mut Vec<RenderInstance>,
+) {
     let n = stream.count();
     let p = stream.get("P");
     let size = stream.get("size");
     let rot = stream.get("rot");
     let tint = stream.get("tint");
+    let uv_rect = stream.get("uv_rect");
     out.clear();
     out.reserve(n);
     for i in 0..n {
@@ -58,7 +73,7 @@ pub fn lower_to_instances_into(stream: &Stream, out: &mut Vec<RenderInstance>) {
         out.push(RenderInstance {
             world_pos: vec2_at(p, i, [0.0, 0.0]),
             size: vec2_at(size, i, [1.0, 1.0]),
-            atlas_uv: [0.0, 0.0, 1.0, 1.0],
+            atlas_uv: vec4_at(uv_rect, i, default_uv_rect),
             tint: vec4_at(tint, i, [1.0, 1.0, 1.0, 1.0]),
             basis: [cos_r, sin_r, -sin_r, cos_r],
             premultiplied: 0.0,
@@ -86,10 +101,12 @@ pub fn lower_to_instances_into(stream: &Stream, out: &mut Vec<RenderInstance>) {
 
 /// Lower a cooked instance stream to render instances (one per element).
 /// Pure + headless. Allocates a fresh `Vec`; the per-frame path uses
-/// [`lower_to_instances_into`] to reuse a buffer instead.
+/// [`lower_to_instances_into`] to reuse a buffer instead. Uses the whole-atlas
+/// UV `[0,0,1,1]` for any instance without a `uv_rect` column (the shell path
+/// supplies a real tile via [`lower_to_instances_into`]'s `default_uv_rect`).
 pub fn lower_to_instances(stream: &Stream) -> Vec<RenderInstance> {
     let mut out = Vec::new();
-    lower_to_instances_into(stream, &mut out);
+    lower_to_instances_into(stream, [0.0, 0.0, 1.0, 1.0], &mut out);
     out
 }
 
@@ -112,7 +129,7 @@ pub fn evaluate_motion(
     playhead: f64,
 ) -> Result<Vec<RenderInstance>, CookError> {
     let mut out = Vec::new();
-    evaluate_motion_into(cook, graph, ops, target, playhead, &mut out)?;
+    evaluate_motion_into(cook, graph, ops, target, playhead, [0.0, 0.0, 1.0, 1.0], &mut out)?;
     Ok(out)
 }
 
@@ -121,12 +138,16 @@ pub fn evaluate_motion(
 /// single-port semantics as [`evaluate_motion`]; a target with no output port
 /// leaves `out` empty. Reuse the same [`Cook`] AND the same `out` across frames
 /// for the zero-alloc steady state (gated by M0.T12).
+///
+/// `default_uv_rect` is the `atlas_uv` fallback for a stream without a `uv_rect`
+/// column (see [`lower_to_instances_into`]).
 pub fn evaluate_motion_into(
     cook: &mut Cook,
     graph: &Graph,
     ops: &dyn OpResolver,
     target: NodeId,
     playhead: f64,
+    default_uv_rect: [f32; 4],
     out: &mut Vec<RenderInstance>,
 ) -> Result<(), CookError> {
     let outputs = cook.cook(graph, ops, target, playhead)?;
@@ -134,7 +155,7 @@ pub fn evaluate_motion_into(
     // instance stream (ADR-0058-amendment-1). A non-stream value lowers to no
     // instances (its `as_stream()` is empty).
     match outputs.first() {
-        Some(v) => lower_to_instances_into(v.as_stream(), out),
+        Some(v) => lower_to_instances_into(v.as_stream(), default_uv_rect, out),
         None => out.clear(),
     }
     Ok(())
@@ -191,7 +212,7 @@ mod tests {
         let s = Stream::new(3).with("P", Column::Vec2(vec![[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]]));
         let fresh = lower_to_instances(&s);
         let mut buf = Vec::new();
-        lower_to_instances_into(&s, &mut buf);
+        lower_to_instances_into(&s, [0.0, 0.0, 1.0, 1.0], &mut buf);
         // Same lowered geometry (RenderInstance is not PartialEq → compare fields).
         assert_eq!(buf.len(), fresh.len());
         for (a, b) in buf.iter().zip(&fresh) {
@@ -204,7 +225,7 @@ mod tests {
         // retaining capacity (the zero-alloc steady-state property, M0.T11/T12).
         let cap_before = buf.capacity();
         let s2 = Stream::new(1).with("P", Column::Vec2(vec![[9.0, 9.0]]));
-        lower_to_instances_into(&s2, &mut buf);
+        lower_to_instances_into(&s2, [0.0, 0.0, 1.0, 1.0], &mut buf);
         assert_eq!(buf.len(), 1);
         assert_eq!(buf[0].world_pos, [9.0, 9.0]);
         assert!(buf.capacity() >= cap_before, "capacity retained, not shrunk");
@@ -213,6 +234,27 @@ mod tests {
     #[test]
     fn empty_stream_yields_no_instances() {
         assert!(lower_to_instances(&Stream::new(0)).is_empty());
+    }
+
+    #[test]
+    fn uv_rect_column_overrides_the_default_else_falls_back() {
+        // A `uv_rect` column (M1 framing producer) wins per-instance…
+        let rect = [0.10, 0.20, 0.30, 0.40];
+        let s = Stream::new(2)
+            .with("P", Column::Vec2(vec![[0.0, 0.0], [1.0, 0.0]]))
+            .with("uv_rect", Column::Vec4(vec![rect, rect]));
+        let mut out = Vec::new();
+        // …even when the caller supplies a different default.
+        lower_to_instances_into(&s, [0.0, 0.0, 1.0, 1.0], &mut out);
+        assert_eq!(out[0].atlas_uv, rect);
+        assert_eq!(out[1].atlas_uv, rect);
+
+        // No `uv_rect` column → the caller's default (M0: the shell's atlas
+        // tile, so the raw default document reads as a clean solid quad).
+        let tile = [0.0, 0.0, 0.0078125, 0.0078125];
+        let s2 = Stream::new(1).with("P", Column::Vec2(vec![[0.0, 0.0]]));
+        lower_to_instances_into(&s2, tile, &mut out);
+        assert_eq!(out[0].atlas_uv, tile);
     }
 
     // A minimal source emitting two instances at P=(0,0),(10,0) — stands in for

@@ -37,6 +37,12 @@ pub(crate) struct MotionState {
     /// Terminal node whose output stream is lowered to instances (`None` until a
     /// well-typed sink exists).
     pub(crate) sink: Option<NodeId>,
+    /// `atlas_uv` fallback for instances whose stream carries no `uv_rect`
+    /// column (the M0 case — no framing node yet). Set from the composed atlas
+    /// at init to a single opaque tile, so the raw default document renders as
+    /// clean solid quads instead of a whole-atlas thumbnail. `[0,0,1,1]`
+    /// (whole atlas) until the shell overrides it.
+    pub(crate) default_uv_rect: [f32; 4],
     /// Reused per-frame lowering buffer — zero-alloc in steady state.
     pub(crate) instances: Vec<RenderInstance>,
 }
@@ -58,6 +64,9 @@ impl MotionState {
             cook: Cook::new(),
             registry,
             sink,
+            // Whole-atlas until the shell wires a real tile (init.rs). Headless
+            // callers / tests keep this default.
+            default_uv_rect: [0.0, 0.0, 1.0, 1.0],
             instances: Vec::new(),
         }
     }

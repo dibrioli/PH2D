@@ -107,6 +107,17 @@ pub(crate) fn build_initial_state(
                 (TextureAtlas::dummy(surface.gpu()), false)
             }
         };
+    // Motion Nodes M0: the raw default document has no framing node yet, so its
+    // instances carry no `uv_rect` column and fall back to this rect. Point it
+    // at one opaque atlas tile (tile 0) so the M0 output renders as clean solid
+    // quads rather than a whole-atlas thumbnail (16 tiny tiles in an 8192px
+    // atlas = thin streaks). Whole-atlas fallback on the dummy path (no tiles
+    // packed). Read before the atlas is moved into the renderer below.
+    let motion_default_uv = if atlas.region(0).is_some() {
+        atlas.region_uv(0)
+    } else {
+        [0.0, 0.0, 1.0, 1.0]
+    };
     // M14.5: sprite pipeline now targets the offscreen HDR game RT
     // (Rgba16Float) instead of the swap chain. The tonemap +
     // compositor passes carry pixels through to the surface.
@@ -391,7 +402,13 @@ pub(crate) fn build_initial_state(
         vec_scene,
         // Motion Nodes M0.T8: boot state = default grid→transform→clone vertical
         // + full node registry + paused transport (cooked per frame by the bridge).
-        motion: crate::motion_state::MotionState::new(),
+        // Its instances sample one opaque atlas tile (computed above) so the raw
+        // M0 output renders as clean solid quads.
+        motion: {
+            let mut m = crate::motion_state::MotionState::new();
+            m.default_uv_rect = motion_default_uv;
+            m
+        },
         text_system,
         hero_screen,
         hero_arena: Bump::with_capacity(4096),

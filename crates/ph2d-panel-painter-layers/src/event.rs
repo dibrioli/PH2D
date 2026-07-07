@@ -22,6 +22,7 @@ use ph2d_tool_painter::{AdjustmentParams, LayerId, LayerKind, LayerStack, MAX_BL
 mod dab_gizmo;
 mod decode;
 mod option_route;
+mod picker;
 mod ramp_picker;
 mod shape_layer_picker;
 mod shape_ramp_picker;
@@ -389,24 +390,14 @@ fn decode_adjustment_kind_option(id: ph2d_a11y::NodeId) -> Option<usize> {
 /// otherwise (the caller falls through to the per-layer dispatch). Split out of
 /// `apply_event_impl` so that already-at-cap function stays put.
 fn try_apply_brush_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> Option<bool> {
+    // Colour swatches (brush + watercolor paper) → toggle the shared Blender picker, seeded with
+    // the current colour (the per-frame read-backs forward the picked value). Split: `picker.rs`.
+    if let WidgetEvent::Click(id) = ev
+        && let Some(hit) = picker::try_toggle_shared_picker(host, id)
+    {
+        return Some(hit);
+    }
     match ev {
-        // Colour swatch → toggle the shared Blender picker, seeded with the brush colour (the
-        // read-back in `paint_brush::paint_brush_mode` forwards the picked colour back each frame).
-        WidgetEvent::Click(id) if id == core_ids::PAINTER_COLOR_THUMB => {
-            let store = host.store_mut();
-            if store.picker_target() == Some(id) {
-                store.set_picker_target(None);
-            } else {
-                let rgba = brush_seed_rgba8();
-                store.set_blender_value(
-                    core_ids::INSP_BLENDER_PICKER,
-                    ph2d_tokens::ColorValue::from_rgba8(rgba[0], rgba[1], rgba[2], rgba[3]),
-                );
-                store.set_widget_color(id, rgba);
-                store.set_picker_target(Some(id));
-            }
-            Some(true)
-        }
         // Toggles + momentary buttons → forward as a Click (the tool flips the matching bool / acts).
         WidgetEvent::Click(id)
             if id == core_ids::PAINTER_BRUSH_ERASER
@@ -563,14 +554,6 @@ fn try_apply_brush_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> O
         }
         _ => None,
     }
-}
-
-/// The active brush colour as 8-bit RGBA (opaque), to seed the shared picker.
-fn brush_seed_rgba8() -> [u8; 4] {
-    let enc = |c: f32| (c.clamp(0.0, 1.0) * 255.0 + 0.5) as u8; // LITERAL-PX-OK: sRGB 8-bit normalize
-    state::current_brush()
-        .map(|b| [enc(b.color[0]), enc(b.color[1]), enc(b.color[2]), 255])
-        .unwrap_or([0, 0, 0, 255])
 }
 
 /// Fallback target for the Falloff "−" button when no point is selected: the

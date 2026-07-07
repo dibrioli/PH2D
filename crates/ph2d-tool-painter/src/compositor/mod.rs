@@ -159,6 +159,13 @@ fn decode(rgba8: &[u8], idx: usize) -> [f32; 4] {
     ]
 }
 
+/// Decode one straight sRGB byte channel to linear (the same LUT the compositor decodes layer
+/// texels with, so a ground colour seeded from it is bit-consistent with the layer walk).
+#[inline]
+pub(crate) fn decode_byte(b: u8) -> f32 {
+    SRGB_DECODE_LUT[b as usize]
+}
+
 /// Straight grayscale value `[0, 1]` of a mask texel — Rec.601 luma of the
 /// straight sRGB bytes (`R = G = B` for grayscale mask paint; the formula also
 /// degrades gracefully for a non-grayscale mask). White (255) = fully visible,
@@ -186,4 +193,4 @@ mod compose;
 #[cfg(test)]
 mod tests;
 pub use cache::CompositorCache;
-pub use compose::{composite, composite_region, composite_with_cache};
+pub use compose::{composite, composite_below, composite_region, composite_with_cache};

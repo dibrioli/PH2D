@@ -38,6 +38,14 @@
 | **[07_rendering_modes_wet_mix.md](07_rendering_modes_wet_mix.md)** | Design completo: §0 status de verificação · §2 as 6 features (math + mapeamento) · §3 stroke buffer · §4 Wet Mix · §5 Wet/Burnt Edges · §7 BrushSpec · §8 UI · §10 plano faseado · §11 testes |
 | **[HANDOFF_rendering_modes_wet_mix.md](HANDOFF_rendering_modes_wet_mix.md)** | Roteiro operacional: checkpoint + rollout não-destrutivo (golden Direct) · ordem faseada · anchors `file:line` verificados · gotchas · aceite e2e |
 
+## Linha de trabalho: Aquarela — avaliação vs padrão-ouro + plano (SEM física real)
+
+> Estudo (2026-07-06, a pedido do Enio). **Nenhum código alterado** — diagnóstico + plano com alvos.
+
+| Doc | O que tem |
+|---|---|
+| **[11_aquarela_avaliacao_padrao_ouro.md](11_aquarela_avaliacao_padrao_ouro.md)** | Veredito · modelo atual (file:line) · padrão-ouro Tier-1/Tier-2 (verificado) · **diagnóstico do bege** (papel virtual assado no bake) · **diagnóstico da rediluição** (referência errada + stateless) · plano F1 (backdrop real + campo Paper color) → F2 (charge/dilution/recentness) → F3 (escala S + bleed por permanência) → F4 (K–M opcional), cada fase com asserções-vermelhas |
+
 ## Fontes de referência (untracked no git — decisão de licença pendente)
 
 - **Código:** [`reference/blender-texture-paint/`](../../reference/blender-texture-paint/) — recorte GPL do Texture Painter (Blender 5.2), só estudo.

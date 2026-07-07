@@ -254,6 +254,8 @@ pub fn populate(store: &mut WidgetStore) {
     // populate-register gotcha).
     for id in [
         ph2d_editor_core::ids::PAINTER_COLOR_THUMB,
+        // Watercolor Paper-colour swatch (the document ground; opens the shared picker).
+        ph2d_editor_core::ids::PAINTER_WATERCOLOR_PAPER_COLOR_THUMB,
         ph2d_editor_core::ids::PAINTER_BRUSH_ERASER,
         // "Randomize Color" subsection enable (Color section header checkbox).
         ph2d_editor_core::ids::PAINTER_BRUSH_COLOR_JITTER_ENABLE,

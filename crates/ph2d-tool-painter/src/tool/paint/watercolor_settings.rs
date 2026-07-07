@@ -142,9 +142,9 @@ impl PainterTool {
         self.paint.brush.edge_gain = v.clamp(0.0, 8.0);
     }
 
-    /// Set the **Spread** (edge-darkening blur radius in canvas px), clamped to `1..=24`.
+    /// Set the **Spread** (edge-darkening blur radius in canvas px), clamped to `1..=48`.
     pub fn set_brush_edge_spread(&mut self, v: f32) {
-        self.paint.brush.edge_spread = v.clamp(1.0, 24.0);
+        self.paint.brush.edge_spread = v.clamp(1.0, 48.0);
     }
 
     /// Set the **Granulation** amount (paper-tooth deposit gate), clamped to `0..=1`.
@@ -168,9 +168,9 @@ impl PainterTool {
         self.paint.brush.depth = v.clamp(0.1, 8.0);
     }
 
-    /// Set the render-path **Warp** (organic-boundary displacement, canvas px), clamped to `0..=24`.
+    /// Set the render-path **Warp** (organic-boundary displacement, canvas px), clamped to `0..=48`.
     pub fn set_brush_warp(&mut self, v: f32) {
-        self.paint.brush.warp = v.clamp(0.0, 24.0);
+        self.paint.brush.warp = v.clamp(0.0, 48.0);
     }
 
     /// Set the **Wet Mix / smudge** amount (mixer-brush lift+carry vs fresh pigment), clamped to `0..=1`.
@@ -379,6 +379,27 @@ mod tests {
         t.handle_panel_event(PanelEvent::SetValue(core_ids::PAINTER_WATERCOLOR_MIX, 0.75));
         assert_eq!(t.brush_settings().pigment_mix, 0.75, "Mix set");
 
+        // Paper COLOUR from the shared picker's read-back (the document ground; "r,g,b" 8-bit).
+        assert_eq!(
+            t.brush_settings().paper_color,
+            [1.0, 1.0, 1.0],
+            "paper defaults to white"
+        );
+        t.handle_panel_event(PanelEvent::SelectOption(
+            core_ids::PAINTER_WATERCOLOR_PAPER_COLOR_THUMB,
+            "239,233,220".into(),
+        ));
+        let pc = t.brush_settings().paper_color;
+        assert_eq!(
+            [
+                (pc[0] * 255.0 + 0.5) as u8,
+                (pc[1] * 255.0 + 0.5) as u8,
+                (pc[2] * 255.0 + 0.5) as u8
+            ],
+            [239, 233, 220],
+            "paper colour routed from the picker read-back"
+        );
+
         // Render-path optics: Fill / Depth / Warp drive the same seam.
         t.handle_panel_event(PanelEvent::SetValue(core_ids::PAINTER_WATERCOLOR_FILL, 0.4));
         assert_eq!(t.brush_settings().fill, 0.4, "Fill set");
@@ -489,7 +510,7 @@ mod tests {
             "Paper reset to empty"
         );
 
-        // Clamp: Edge caps at 8, Spread at 24.
+        // Clamp: Edge caps at 8, Spread at 48.
         t.handle_panel_event(PanelEvent::SetValue(
             core_ids::PAINTER_WATERCOLOR_EDGE,
             99.0,
@@ -499,7 +520,7 @@ mod tests {
             core_ids::PAINTER_WATERCOLOR_SPREAD,
             99.0,
         ));
-        assert_eq!(t.brush_settings().edge_spread, 24.0, "Spread clamped to 24");
+        assert_eq!(t.brush_settings().edge_spread, 48.0, "Spread clamped to 48");
 
         // Reset returns the whole section to defaults — the `watercolor`/`pigment` gates OFF (which is
         // what makes a brush neutral); the params go back to their sensible when-enabled defaults.

@@ -229,6 +229,7 @@ impl PainterTool {
             paper_depth: b.paper_depth,
             paper_params: b.paper.params,
             granulation_use_paper: b.granulation_use_paper,
+            paper_color: self.paint.paper_color,
         }
     }
 

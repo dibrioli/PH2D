@@ -61,6 +61,10 @@ impl PainterTool {
                 None => r,
             });
         }
+        // The soak disc follows the newest dab — where the tick heartbeat pours water dwell.
+        if let Some(d) = dabs.last() {
+            self.paint.wet_soak_pos = Some((d.center, d.radius_px.max(0.0)));
+        }
         let cov = &mut self.paint.stroke_coverage;
         for d in dabs {
             let r = d.radius_px;

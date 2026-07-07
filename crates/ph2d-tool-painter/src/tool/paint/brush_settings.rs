@@ -326,6 +326,9 @@ pub struct BrushSettings {
     /// **Granulation "Same as Paper"** — when true the granulation settles into the paper's own tooth
     /// (the Grain slot texture is ignored). Shown in the Grain section in watercolor mode.
     pub granulation_use_paper: bool,
+    /// Document **paper colour** (straight sRGB `0..1`) — the ground the watercolor optics see where
+    /// the backdrop under the active layer is transparent. Tool-global (`PaintState`), not per-brush.
+    pub paper_color: [f32; 3],
 }
 
 /// Max ramp stops the panel snapshot carries (a ramp may hold up to `MAX_RAMP_STOPS = 32`; the editor

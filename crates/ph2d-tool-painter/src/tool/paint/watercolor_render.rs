@@ -28,13 +28,24 @@ use ph2d_painter_brush::blend::ryb_mix;
 /// above `SS1` fully covered — a crisp-but-soft silhouette from the feathered coverage discs.
 const SS0: f32 = 0.12; // LITERAL-PX-OK: coverage-hardening smoothstep low edge (wet_edges)
 const SS1: f32 = 0.60; // LITERAL-PX-OK: coverage-hardening smoothstep high edge (wet_edges)
-/// Virtual **paper** colour (wet_edges `PAPER`): where the painted layer is transparent, the optical
-/// model composites the wash over this so the Beer–Lambert base is a real paper, not black. On an
-/// already-opaque base (a paper fill / prior paint) the layer's own pixels are used instead.
-const PAPER: [u8; 3] = [239, 233, 220];
 /// Minimum colour-buffer alpha (0..255) to trust the deposited colour; below it the composite falls
 /// back to the live brush colour (wet_edges `COL_EPS`) — a faint rim carries the fresh pigment, not noise.
 const COL_EPS: u8 = 20;
+
+/// The rewet's window-local fields, built once per composite: raw paint presence, the per-pixel
+/// water soak (dwell) in two forms — RAW (contact: deepens the lift under the nib) and HALO
+/// (blurred outward: the dwelling water diffuses, widening the dissolve past the disc) — and the
+/// presence + presence-weighted-colour blurs at the plain (`near`, radius = spread) and lingering
+/// (`far`, radius = 2×spread) scales, `[presence, r, g, b]` each. The halo lerps `near → far`.
+struct RewetFields {
+    pres: Vec<f32>,
+    soak_raw: Vec<f32>,
+    soak_halo: Vec<f32>,
+    near: [Vec<f32>; 4],
+    /// `None` until the stroke actually poured dwell (`wet_soak_active`) — a no-dwell stroke pays
+    /// exactly the plain 4-blur rewet cost (measured 1.16 → ~0.6 ms/frame @2048²).
+    far: Option<[Vec<f32>; 4]>,
+}
 
 impl PainterTool {
     /// Whether the watercolor optical render-path drives this stroke: the Watercolor section is on, we're
@@ -77,6 +88,21 @@ impl PainterTool {
             }
             return None;
         }
+        // The frozen GROUND — the real backdrop under the active layer ([`super::watercolor_backdrop`]):
+        // the Beer–Lambert base where the layer is transparent, the rewet's "what is paint" reference
+        // and the lift's target. Frozen together with the base; a missing/mis-sized one (defensive —
+        // e.g. a test driving the composite directly) degrades to a uniform paper-colour ground.
+        let backdrop_arc = match self.paint.wet_backdrop.as_ref() {
+            Some(b) if b.len() == n * 4 => Arc::clone(b),
+            _ => {
+                let p = self.paper_color_rgb8();
+                let mut g = vec![0u8; n * 4];
+                for px in g.chunks_exact_mut(4) {
+                    px.copy_from_slice(&[p[0], p[1], p[2], 255]);
+                }
+                Arc::new(g)
+            }
+        };
 
         // Pick the recomposite rect and CONSUME the frame one (wet_edges `resetFrame`): live = this
         // frame's dabs; commit = the whole stroke (frame folded in — `paint_end`'s finish dabs land
@@ -97,11 +123,16 @@ impl PainterTool {
             return None;
         };
 
-        let spread = self.paint.brush.edge_spread.round().clamp(0.0, 24.0) as usize;
+        let spread = self.paint.brush.edge_spread.round().clamp(0.0, 48.0) as usize;
         let warp_amp = self.paint.brush.warp.max(0.0);
+        let wet = self.paint.brush.wet_rewet.clamp(0.0, 1.0);
         // Influence radius of a dab beyond its own disc: the blur spread + the warp displacement +
-        // bilinear/rounding slack. Output pixels farther than this from the dirty rect cannot have changed.
-        let pad = spread + warp_amp.ceil() as usize + 2;
+        // bilinear/rounding slack. Output pixels farther than this from the dirty rect cannot have
+        // changed. Once the stroke poured dwell (`wet_soak_active`), the soak-deepened dissolve
+        // reads a second blur at 2× the spread (the dwell widens the bleed), so the reach doubles.
+        let soaked = wet > 0.0 && self.paint.wet_soak_active && self.paint.wet_soak.len() == n;
+        let reach = if soaked { spread * 2 } else { spread };
+        let pad = reach + warp_amp.ceil() as usize + 2;
         let x0 = (dirty.x as usize).saturating_sub(pad);
         let y0 = (dirty.y as usize).saturating_sub(pad);
         let x1 = ((dirty.x as usize) + (dirty.w as usize) + pad).min(fw);
@@ -144,58 +175,99 @@ impl PainterTool {
         let lut = luts();
         let brush = &self.paint.brush;
         let base = &**base_arc;
+        let ground = &*backdrop_arc;
 
         // ── Wet-on-wet rewetting (`wet_rewet`, Enio 2026-07-06): where the wash covers already-painted
-        // paint, the paint LIFTS (the base under it lightens toward the paper), its colour DISSOLVES
-        // through the wet region (a one-shot diffusion blur — radius = the same water `spread`), and
-        // POOLS back into the wash's density (the edge term concentrates it at the rim: the bloom).
-        // Per-pixel and stateless — no brush reservoir, no cadence, no physics. `wet = 0` skips it all
-        // (byte-identical, zero cost). Fields over the read window: raw paint presence (for the local
-        // lift) + blurred presence-weighted base colour (the bleed field the dissolve tints from).
-        let wet = brush.wet_rewet.clamp(0.0, 1.0);
+        // paint, the paint LIFTS (the base under it lightens toward the GROUND), its colour DISSOLVES
+        // through the wet region (a one-shot diffusion blur — radius = the water `spread`, growing to
+        // 2× where the brush LINGERED, the per-stroke soak), and POOLS back into the wash's density
+        // (the edge term concentrates it at the rim: the bloom). Per-pixel — no brush reservoir, no
+        // cadence, no physics. `wet = 0` skips it all (byte-identical, zero cost). Fields over the
+        // read window: raw paint presence (for the local lift) + blurred presence-weighted base
+        // colour at BOTH blur scales (the soak lerps between them) + the soak itself.
         let rewet = (wet > 0.0).then(|| {
             let mut pres = vec![0.0f32; rw * rh];
             let mut wr = vec![0.0f32; rw * rh];
             let mut wg = vec![0.0f32; rw * rh];
             let mut wb = vec![0.0f32; rw * rh];
+            let mut soak = vec![0.0f32; rw * rh];
             for wy in 0..rh {
-                let sbase = ((ry0 + wy) * fw + rx0) * 4;
+                let srow = (ry0 + wy) * fw + rx0;
+                let sbase = srow * 4;
                 let dbase = wy * rw;
                 for wx in 0..rw {
                     let bi = sbase + wx * 4;
                     let ab = f32::from(base[bi + 3]) / 255.0;
-                    // The base over the virtual paper, straight sRGB bytes (the paint as seen).
-                    let r = f32::from(base[bi]) * ab + f32::from(PAPER[0]) * (1.0 - ab);
-                    let g = f32::from(base[bi + 1]) * ab + f32::from(PAPER[1]) * (1.0 - ab);
-                    let b = f32::from(base[bi + 2]) * ab + f32::from(PAPER[2]) * (1.0 - ab);
-                    // Presence = how much this pixel DARKENS the paper (pigment only absorbs —
-                    // Beer-Lambert). Anything at/above the paper's own brightness is NOT liftable
-                    // paint: a plain WHITE canvas is brighter than the cream virtual paper, and a
-                    // symmetric colour-distance read it as ~0.8 presence everywhere — the pool then
-                    // flooded the wash interior and drowned the receding-edge (Spread) dynamic
-                    // (Enio 2026-07-06, "matou o efeito dinâmico do spread de novo"). Dead-zoned so
-                    // paper grain doesn't count as paint (wet_edges `PAINT_LO`/`PAINT_HI`).
-                    let d = (f32::from(PAPER[0]) - r)
-                        .max(f32::from(PAPER[1]) - g)
-                        .max(f32::from(PAPER[2]) - b)
-                        .max(0.0);
+                    let (gr, gg, gb) = (
+                        f32::from(ground[bi]),
+                        f32::from(ground[bi + 1]),
+                        f32::from(ground[bi + 2]),
+                    );
+                    // The base over the real ground, straight sRGB bytes (the paint as seen).
+                    let r = f32::from(base[bi]) * ab + gr * (1.0 - ab);
+                    let g = f32::from(base[bi + 1]) * ab + gg * (1.0 - ab);
+                    let b = f32::from(base[bi + 2]) * ab + gb * (1.0 - ab);
+                    // Presence = how far this pixel departs from the LOCAL ground — only the active
+                    // layer's own paint differs from it (an unpainted pixel composites to the ground
+                    // exactly), so the reference is per-pixel true, light pigments included. The old
+                    // global-cream reference read a white canvas as 0.8 presence everywhere (flooded
+                    // the pool, "matou o efeito dinâmico do spread"), and paint LIGHTER than cream
+                    // as none. Dead-zoned so anti-aliasing crumbs don't count as paint (wet_edges
+                    // `PAINT_LO`/`PAINT_HI`).
+                    let d = (gr - r).abs().max((gg - g).abs()).max((gb - b).abs());
                     let p = smoothstep(14.0, 50.0, d); // LITERAL-PX-OK: wet_edges PAINT_LO/PAINT_HI
                     let di = dbase + wx;
                     pres[di] = p;
                     wr[di] = r * p; // presence-premultiplied, so the blur averages PAINT colour only
                     wg[di] = g * p;
                     wb[di] = b * p;
+                    if soaked {
+                        soak[di] = f32::from(self.paint.wet_soak[srow + wx]) / 255.0;
+                    }
                 }
             }
+            // Two blur scales: the plain water spread + the lingering (soaked) spread — the per-pixel
+            // soak lerps the dissolve between them ("the longer the water sits, the farther it
+            // dissolves"). Soak all-zero ⇒ the second scale is never sampled with weight > 0.
             let bpres = box_blur(&pres, rw, rh, spread);
             let br = box_blur(&wr, rw, rh, spread);
             let bg = box_blur(&wg, rw, rh, spread);
             let bb = box_blur(&wb, rw, rh, spread);
-            (pres, bpres, br, bg, bb)
+            // The far (2×) fields + the soak halo exist only once dwell was poured: the dwelling
+            // water DIFFUSES outward (the halo pushes the widened dissolve BEYOND the nib's own
+            // disc — a raw disc gated the far blur to exactly the pixels under the brush), while
+            // the RAW soak drives the lift (contact: deepest right under the nib).
+            let (far, soak_halo) = if soaked {
+                let spread2 = (spread * 2).max(1);
+                let far = [
+                    box_blur(&pres, rw, rh, spread2),
+                    box_blur(&wr, rw, rh, spread2),
+                    box_blur(&wg, rw, rh, spread2),
+                    box_blur(&wb, rw, rh, spread2),
+                ];
+                (Some(far), box_blur(&soak, rw, rh, spread2))
+            } else {
+                (None, Vec::new())
+            };
+            RewetFields {
+                pres,
+                soak_raw: soak,
+                soak_halo,
+                near: [bpres, br, bg, bb],
+                far,
+            }
         });
         /// Max fraction of the base's pigment the rewet lifts at `wet = 1` under full water (never a
         /// full erase — dried pigment doesn't fully redissolve).
         const REWET_LIFT: f32 = 0.85;
+        /// How much a fully-soaked pixel (the brush LINGERED here) deepens the lift beyond
+        /// [`REWET_LIFT`] — capped by [`LIFT_MAX`] (still never a full erase).
+        const SOAK_LIFT: f32 = 0.12;
+        /// Hard ceiling of the lift fraction, soak included.
+        const LIFT_MAX: f32 = 0.95;
+        /// How much a fully-soaked pixel boosts the dissolve amount (the redissolved pigment reads
+        /// stronger where the water sat) — full soak doubles it.
+        const SOAK_DISSOLVE: f32 = 1.0;
         /// How much of the dissolved pigment re-enters the wash's optical density (the bloom's body).
         const REWET_POOL: f32 = 0.35;
         /// How much a fully-wet wash thins its own interior fill (deepest where `inner` ≈ 1 — the
@@ -235,11 +307,6 @@ impl PainterTool {
             (brush.color[2].clamp(0.0, 1.0) * 255.0 + 0.5) as u8,
         ];
         let has_color = self.paint.stroke_color.len() == n * 4;
-        let paper_lin = [
-            lut.s2l[PAPER[0] as usize],
-            lut.s2l[PAPER[1] as usize],
-            lut.s2l[PAPER[2] as usize],
-        ];
 
         let color_buf = &self.paint.stroke_color;
         let out = Arc::make_mut(&mut self.canvas_rgba);
@@ -329,19 +396,40 @@ impl PainterTool {
                 let mut dissolve = 0.0f32;
                 let mut bleed = [0.0f32; 3];
                 let mut wet_paint = 0.0f32; // local paint presence — gates the wet-driven paint-mix
-                if let Some((pres, bpres, br, bg, bb)) = &rewet {
-                    let lp = sample_bilinear(pres, rw, rh, sx, sy);
+                if let Some(f) = &rewet {
+                    let lp = sample_bilinear(&f.pres, rw, rh, sx, sy);
                     wet_paint = lp.clamp(0.0, 1.0);
-                    let bp = sample_bilinear(bpres, rw, rh, sx, sy).clamp(0.0, 1.0);
-                    lift = REWET_LIFT * wet * cw * lp;
+                    // Soak (dwell) lerps every dissolve field between the plain and the 2× blur scale
+                    // and deepens the lift — a lingering brush dissolves farther and digs deeper.
+                    // Soak = 0 samples the near fields with weight 1 (bit-identical to no-soak).
+                    let (s, s_raw) = if f.far.is_some() {
+                        (
+                            sample_bilinear(&f.soak_halo, rw, rh, sx, sy).clamp(0.0, 1.0),
+                            sample_bilinear(&f.soak_raw, rw, rh, sx, sy).clamp(0.0, 1.0),
+                        )
+                    } else {
+                        (0.0, 0.0)
+                    };
+                    let fno = sample_bilinear(&f.near[0], rw, rh, sx, sy);
+                    let bp = if let Some(far) = &f.far {
+                        let ffo = sample_bilinear(&far[0], rw, rh, sx, sy);
+                        (fno + (ffo - fno) * s).clamp(0.0, 1.0)
+                    } else {
+                        fno.clamp(0.0, 1.0)
+                    };
+                    lift = (REWET_LIFT * wet * cw * lp * (1.0 + SOAK_LIFT * s_raw)).min(LIFT_MAX);
                     if bp > 1e-4 {
                         let inv = 1.0 / bp;
-                        bleed = [
-                            sample_bilinear(br, rw, rh, sx, sy) * inv,
-                            sample_bilinear(bg, rw, rh, sx, sy) * inv,
-                            sample_bilinear(bb, rw, rh, sx, sy) * inv,
-                        ];
-                        dissolve = wet * bp;
+                        for c in 0..3 {
+                            let nc = sample_bilinear(&f.near[c + 1], rw, rh, sx, sy);
+                            bleed[c] = if let Some(far) = &f.far {
+                                let fc = sample_bilinear(&far[c + 1], rw, rh, sx, sy);
+                                (nc + (fc - nc) * s) * inv
+                            } else {
+                                nc * inv
+                            };
+                        }
+                        dissolve = (wet * bp * (1.0 + SOAK_DISSOLVE * s)).clamp(0.0, 1.0);
                         // The dissolved pigment re-enters the wash as optical density AT THE RECEDING
                         // FRONT (the same rim shape as the edge term, gain-independent): pigment in
                         // suspension migrates to the wet boundary — the bloom. A UNIFORM pool flooded
@@ -381,37 +469,50 @@ impl PainterTool {
                     }
                 }
 
-                // Effective base in linear light: the layer's own pixels composited over the virtual paper
-                // (so a transparent layer still has a paper to attenuate; an opaque base uses only itself).
+                // Effective base in linear light: the layer's own pixels composited over the REAL
+                // ground (the backdrop under the active layer — so a transparent layer attenuates
+                // what is actually beneath it, not a virtual cream; an opaque base uses only itself).
                 let ab = f32::from(base[gi + 3]) / 255.0;
-                let mut sb = [
-                    lut.s2l[base[gi] as usize] * ab + paper_lin[0] * (1.0 - ab),
-                    lut.s2l[base[gi + 1] as usize] * ab + paper_lin[1] * (1.0 - ab),
-                    lut.s2l[base[gi + 2] as usize] * ab + paper_lin[2] * (1.0 - ab),
+                let ground_lin = [
+                    lut.s2l[ground[gi] as usize],
+                    lut.s2l[ground[gi + 1] as usize],
+                    lut.s2l[ground[gi + 2] as usize],
                 ];
-                // Wet-on-wet LIFT: rewetting pulls the base's pigment off the paper. Density-
+                let mut sb = [
+                    lut.s2l[base[gi] as usize] * ab + ground_lin[0] * (1.0 - ab),
+                    lut.s2l[base[gi + 1] as usize] * ab + ground_lin[1] * (1.0 - ab),
+                    lut.s2l[base[gi + 2] as usize] * ab + ground_lin[2] * (1.0 - ab),
+                ];
+                // Wet-on-wet LIFT: rewetting pulls the base's pigment off the ground. Density-
                 // proportional (log-space): remove a FRACTION of the optical density, so the colour
-                // walks its own Beer–Lambert curve toward the paper — a lifted red reads PINK. (The
-                // linear lerp toward the cream paper desaturated straight to cream — the yellow cast,
-                // Enio 2026-07-06.) Channels at/above the paper's brightness are left alone (nothing
-                // to lift there; pulling them DOWN to the paper would darken, not lift).
+                // walks its own Beer–Lambert curve toward the LOCAL ground — a lifted red on white
+                // reads PINK, on grey it reads grey-pink. (A linear lerp toward a global cream
+                // desaturated straight to cream — the yellow cast, Enio 2026-07-06.) Paint BRIGHTER
+                // than the ground (light pigment on a dark layer below) walks down the mirrored
+                // curve — both directions converge on the ground, never past it.
                 if lift > 0.0 {
                     for c in 0..3 {
-                        let ratio = sb[c] / paper_lin[c];
+                        let g = ground_lin[c].max(1e-4);
+                        let ratio = sb[c] / g;
                         if ratio < 1.0 {
                             let mag = lut.absorbance(ratio) * (1.0 - lift);
-                            sb[c] = paper_lin[c] * lut.exp_mag(mag);
+                            sb[c] = g * lut.exp_mag(mag);
+                        } else if ratio > 1.0 {
+                            let mag = lut.absorbance((g / sb[c]).clamp(0.0, 1.0)) * (1.0 - lift);
+                            sb[c] = (g / lut.exp_mag(mag).max(1e-4)).min(1.0);
                         }
                     }
                 }
                 let mut rgb = [0u8; 3];
                 let mut t_lum = 0.0f32;
+                let mut t_min = 1.0f32;
                 const LUM: [f32; 3] = [0.2126, 0.7152, 0.0722];
                 for c in 0..3 {
                     let t = lut.transmittance(pig[c], od);
                     let lin = sb[c] * t + lut.s2l[pig[c] as usize] * (1.0 - t);
                     rgb[c] = lut.l2s_byte(lin);
                     t_lum += LUM[c] * t;
+                    t_min = t_min.min(t);
                 }
                 // Perceptual film opacity — how much pigment sits here; drives the deposited alpha and
                 // the subtractive (RYB) paint-mix amount over the base paint.
@@ -426,19 +527,15 @@ impl PainterTool {
                 // right back over.
                 let mix_amt = pigment_mix.max(wet * wet_paint);
                 if mix_amt > 0.0 {
-                    let mix_base = if lift > 0.0 {
-                        [
-                            f32::from(lut.l2s_byte(sb[0])) / 255.0,
-                            f32::from(lut.l2s_byte(sb[1])) / 255.0,
-                            f32::from(lut.l2s_byte(sb[2])) / 255.0,
-                        ]
-                    } else {
-                        [
-                            f32::from(base[gi]) / 255.0,
-                            f32::from(base[gi + 1]) / 255.0,
-                            f32::from(base[gi + 2]) / 255.0,
-                        ]
-                    };
+                    // The (possibly lifted) base APPEARANCE over the ground — for an opaque base with
+                    // no lift this is the raw base bytes exactly (`l2s(s2l(b)) == b`); for a
+                    // transparent one it is the ground showing through (the old raw-bytes read was
+                    // black there).
+                    let mix_base = [
+                        f32::from(lut.l2s_byte(sb[0])) / 255.0,
+                        f32::from(lut.l2s_byte(sb[1])) / 255.0,
+                        f32::from(lut.l2s_byte(sb[2])) / 255.0,
+                    ];
                     let mixed = ryb_mix(
                         mix_base,
                         [
@@ -453,10 +550,33 @@ impl PainterTool {
                         rgb[c] = (f32::from(rgb[c]) + (sub - f32::from(rgb[c])) * mix_amt) as u8;
                     }
                 }
-                let out_a = (ab + (1.0 - ab) * film_a).clamp(0.0, 1.0);
-                out[gi] = rgb[0];
-                out[gi + 1] = rgb[1];
-                out[gi + 2] = rgb[2];
+                // Coverage alpha = the STRONGEST per-channel absorption (`1 − min_c T_c`), not the
+                // luminance film: the un-premultiply below needs `a ≥ 1 − T_c` on EVERY channel or
+                // the solve leaves gamut and clamps (a red wash's G/B absorb far more than the
+                // luminance says — measured 59-byte flatten error with the luminance alpha).
+                // `film_a` stays the perceptual meter for the paint-mix strength above.
+                let cov_a = (1.0 - t_min).clamp(0.0, 1.0);
+                let out_a = (ab + (1.0 - ab) * cov_a).clamp(0.0, 1.0);
+                // `rgb` is the target APPEARANCE over the ground. The layer stores straight RGBA
+                // that the compositor will blend over that same ground — so solve the un-premultiply
+                // `L = (appearance − ground·(1−a)) / a` in linear light. Baking the appearance
+                // directly (the old path) baked the ground INTO the pixels: over a white backdrop
+                // the wash carried a permanent cream cast ("puxa para o bege", Enio 2026-07-06).
+                // Opaque base ⇒ a = 1 ⇒ L = appearance, byte-identical to the old path.
+                if out_a <= f32::EPSILON {
+                    // No film and no base: the layer stays untouched (appearance == ground).
+                    out[gi] = base[gi];
+                    out[gi + 1] = base[gi + 1];
+                    out[gi + 2] = base[gi + 2];
+                    out[gi + 3] = base[gi + 3];
+                    continue;
+                }
+                let inv_a = 1.0 / out_a;
+                for c in 0..3 {
+                    let app = lut.s2l[rgb[c] as usize];
+                    let lin = (app - ground_lin[c] * (1.0 - out_a)) * inv_a;
+                    out[gi + c] = lut.l2s_byte(lin);
+                }
                 out[gi + 3] = (out_a * 255.0 + 0.5).clamp(0.0, 255.0) as u8;
             }
         }

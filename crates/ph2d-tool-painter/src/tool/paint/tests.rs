@@ -11365,3 +11365,315 @@ fn watercolor_wet_drives_the_paint_mix_without_pigment() {
         "at wet = 1 the paint-mix must run fully with Pigment unchecked (max(Mix, wet) = 1 both ways)"
     );
 }
+
+/// **T1 (doc 11 §5 F1) — the beige is dead:** a watercolor stroke on a TRANSPARENT layer over a
+/// white layer below must flatten to the SAME appearance as the identical stroke painted directly
+/// on an opaque white base. The old virtual-cream ground baked `T·PAPER·film_a` of beige into the
+/// pixels — over a white backdrop the wash carried a permanent warm cast ("puxa para o bege").
+#[test]
+fn watercolor_ground_is_the_real_backdrop_not_a_virtual_cream() {
+    let size = 96u32;
+    fn wet_brush() -> BrushSpec {
+        BrushSpec {
+            radius_px: 10.0,
+            hardness: 1.0,
+            falloff: Falloff::Constant,
+            color: [0.85, 0.15, 0.15],
+            space_attenuation: false,
+            watercolor: true,
+            edge_gain: 1.5,
+            edge_spread: 6.0,
+            granulation: 0.0,
+            warp: 0.0,
+            fill: 0.2,
+            depth: 1.2,
+            wet_smudge: 0.0,
+            wet_rewet: 0.0,
+            ..Default::default()
+        }
+    }
+    fn stroke(t: &mut PainterTool) {
+        assert!(t.on_canvas_pointer(cp([20.0, 48.0], PointerPhase::Down)));
+        let mut x = 20.0f32;
+        while x < 76.0 {
+            x += 3.0;
+            t.on_canvas_pointer(cp([x, 48.0], PointerPhase::Move));
+        }
+        assert!(t.on_canvas_pointer(cp([x, 48.0], PointerPhase::Up)));
+    }
+    // (a) Reference: the stroke painted directly on an opaque white base.
+    let mut direct = PainterTool::default();
+    direct.set_source(vec![255u8; (size * size * 4) as usize], size, size);
+    direct.paint.brush = wet_brush();
+    for slot in &mut direct.paint.brush_by_mode {
+        *slot = direct.paint.brush;
+    }
+    stroke(&mut direct);
+    // (b) The stroke on a TRANSPARENT layer added above the same white base.
+    let mut layered = PainterTool::default();
+    layered.set_source(vec![255u8; (size * size * 4) as usize], size, size);
+    layered.add_raster_layer("wash").expect("add layer");
+    layered.paint.brush = wet_brush();
+    for slot in &mut layered.paint.brush_by_mode {
+        *slot = layered.paint.brush;
+    }
+    stroke(&mut layered);
+    // Flatten (b) through the real compositor and compare inside the wash.
+    let active = layered.layers.active().expect("active");
+    let src = crate::tool::ToolPixelSource {
+        active_id: active,
+        active_rgba: &layered.canvas_rgba,
+        images: &layered.images,
+    };
+    let flat = crate::compositor::composite(&layered.layers, &src, size, size);
+    let mut worst = 0i32;
+    for y in 40..57u32 {
+        for x in 24..72u32 {
+            let i = ((y * size + x) * 4) as usize;
+            let d = px(&direct, size, x, y);
+            for c in 0..3 {
+                worst = worst.max((i32::from(flat[i + c]) - i32::from(d[c])).abs());
+            }
+        }
+    }
+    assert!(
+        worst <= 2,
+        "flatten(transparent layer over white) must equal painting on white directly \
+         (un-premultiply bake, no ground baked in); worst channel delta {worst}"
+    );
+}
+
+/// **T3-cinza (doc 11 §5 F1) — the rewet presence is ground-relative:** with the document PAPER
+/// COLOUR set to the same mid-gray as the canvas, a plain gray canvas IS the paper — nothing to
+/// lift, so Wet must not brighten the wash's interior. (A gray canvas under the default WHITE
+/// paper is legitimately liftable paint — Rebelle rewets a gray fill the same way; the paper
+/// colour field is exactly how the artist declares "this gray is my paper".) The old global-cream
+/// reference had no such control and read ANY non-cream ground as paint.
+#[test]
+fn watercolor_wet_reads_no_paint_on_a_paper_colored_ground() {
+    fn run(wet: f32) -> PainterTool {
+        let size = 96u32;
+        let mut src = vec![0u8; (size * size * 4) as usize];
+        for px4 in src.chunks_exact_mut(4) {
+            px4.copy_from_slice(&[100, 100, 100, 255]); // uniform mid-gray, no paint anywhere
+        }
+        let mut t = PainterTool::default();
+        t.set_source(src, size, size);
+        t.set_paper_color_rgb8(100, 100, 100); // declare the gray as the document paper
+        t.paint.brush = BrushSpec {
+            radius_px: 10.0,
+            hardness: 1.0,
+            falloff: Falloff::Constant,
+            color: [0.25, 0.40, 0.62],
+            space_attenuation: false,
+            watercolor: true,
+            edge_gain: 0.0, // isolate the rewet from the edge pooling
+            edge_spread: 6.0,
+            granulation: 0.0,
+            warp: 0.0,
+            fill: 0.25,
+            depth: 1.0,
+            wet_smudge: 0.0,
+            wet_rewet: wet,
+            ..Default::default()
+        };
+        for slot in &mut t.paint.brush_by_mode {
+            *slot = t.paint.brush;
+        }
+        assert!(t.on_canvas_pointer(cp([16.0, 48.0], PointerPhase::Down)));
+        let mut x = 16.0f32;
+        while x < 80.0 {
+            x += 3.0;
+            t.on_canvas_pointer(cp([x, 48.0], PointerPhase::Move));
+        }
+        assert!(t.on_canvas_pointer(cp([x, 48.0], PointerPhase::Up)));
+        t
+    }
+    let size = 96u32;
+    let dry = run(0.0);
+    let wet = run(1.0);
+    // Interior of the wash: with no paint below, wet vs dry may differ only by the wash's own
+    // redistribution (interior thinning) — never by a lift toward a foreign paper colour.
+    for x in [30u32, 48, 66] {
+        let d = px(&dry, size, x, 48);
+        let w = px(&wet, size, x, 48);
+        for c in 0..3 {
+            let delta = (i32::from(w[c]) - i32::from(d[c])).abs();
+            assert!(
+                delta <= 12,
+                "plain gray must not be lifted (presence 0): x={x} c={c} wet {w:?} vs dry {d:?}"
+            );
+        }
+    }
+}
+
+/// **T2 (doc 11 §5 F1) — paint LIGHTER than the old cream is liftable now:** a pale near-white
+/// pink band (250,225,225) on white reads presence 0 against the old cream reference (no channel
+/// darker than the paper ⇒ invisible to the rewet); against the real white ground its |Δ| = 30 on
+/// G/B registers, so Wet lifts it toward white.
+#[test]
+fn watercolor_wet_lifts_paint_lighter_than_the_old_cream() {
+    fn run(wet: f32) -> PainterTool {
+        let size = 96u32;
+        let mut src = vec![0u8; (size * size * 4) as usize];
+        for y in 0..size {
+            for x in 0..size {
+                let i = ((y * size + x) * 4) as usize;
+                let p = if (36..60).contains(&x) {
+                    [250u8, 225, 225, 255] // pale pink band — LIGHTER than the old cream paper
+                } else {
+                    [255u8, 255, 255, 255]
+                };
+                src[i..i + 4].copy_from_slice(&p);
+            }
+        }
+        let mut t = PainterTool::default();
+        t.set_source(src, size, size);
+        t.paint.brush = BrushSpec {
+            radius_px: 8.0,
+            hardness: 1.0,
+            falloff: Falloff::Constant,
+            color: [0.98, 0.98, 0.98], // near-clear water: the lift dominates, not the wash's film
+            space_attenuation: false,
+            watercolor: true,
+            edge_gain: 0.0,
+            edge_spread: 6.0,
+            granulation: 0.0,
+            warp: 0.0,
+            fill: 0.25,
+            depth: 1.0,
+            wet_smudge: 0.0,
+            wet_rewet: wet,
+            ..Default::default()
+        };
+        for slot in &mut t.paint.brush_by_mode {
+            *slot = t.paint.brush;
+        }
+        assert!(t.on_canvas_pointer(cp([16.0, 48.0], PointerPhase::Down)));
+        let mut x = 16.0f32;
+        while x < 80.0 {
+            x += 3.0;
+            t.on_canvas_pointer(cp([x, 48.0], PointerPhase::Move));
+        }
+        assert!(t.on_canvas_pointer(cp([x, 48.0], PointerPhase::Up)));
+        t
+    }
+    let size = 96u32;
+    let dry = run(0.0);
+    let wet = run(1.0);
+    let d = px(&dry, size, 48, 48);
+    let w = px(&wet, size, 48, 48);
+    assert!(
+        i32::from(w[1]) >= i32::from(d[1]) + 4 && i32::from(w[2]) >= i32::from(d[2]) + 4,
+        "Wet must lift a pale band toward the white ground (old cream reference read it as \
+         presence 0): wet {w:?} vs dry {d:?}"
+    );
+}
+
+/// **F3 (doc 11 §5) — soak: the longer the water sits, the farther/deeper it dissolves.** Holding
+/// the wet brush parked over a dry band (the tick heartbeat pours dwell) must (a) deepen the lift
+/// under the nib and (b) push the dissolved tint FARTHER outside the band than a pass-through
+/// stroke — the dissolve's blur lerps toward a 2× radius where the soak accumulated.
+#[test]
+fn watercolor_soak_deepens_and_widens_the_dissolve_while_parked() {
+    fn run(hold_s: f32) -> PainterTool {
+        let size = 128u32;
+        let mut src = vec![0u8; (size * size * 4) as usize];
+        for y in 0..size {
+            for x in 0..size {
+                let i = ((y * size + x) * 4) as usize;
+                let p = if (52..76).contains(&x) {
+                    [217u8, 13, 13, 255] // dry red band mid-canvas
+                } else {
+                    [255u8, 255, 255, 255]
+                };
+                src[i..i + 4].copy_from_slice(&p);
+            }
+        }
+        let mut t = PainterTool::default();
+        t.set_source(src, size, size);
+        t.paint.brush = BrushSpec {
+            radius_px: 10.0,
+            hardness: 1.0,
+            falloff: Falloff::Constant,
+            color: [0.25, 0.40, 0.62],
+            space_attenuation: false,
+            watercolor: true,
+            edge_gain: 0.0,
+            edge_spread: 6.0,
+            granulation: 0.0,
+            warp: 0.0,
+            fill: 0.25,
+            depth: 1.0,
+            wet_smudge: 0.0,
+            wet_rewet: 1.0,
+            ..Default::default()
+        };
+        for slot in &mut t.paint.brush_by_mode {
+            *slot = t.paint.brush;
+        }
+        assert!(t.on_canvas_pointer(cp([40.0, 64.0], PointerPhase::Down)));
+        let mut x = 40.0f32;
+        while x < 64.0 {
+            x += 3.0;
+            t.on_canvas_pointer(cp([x, 64.0], PointerPhase::Move));
+        }
+        // Park over the band: each tick pours soak under the nib (0 ticks = pass-through control).
+        let mut held = 0.0f32;
+        while held < hold_s {
+            t.paint_tick(0.1);
+            held += 0.1;
+        }
+        assert!(t.on_canvas_pointer(cp([x, 64.0], PointerPhase::Up)));
+        t
+    }
+    let size = 128u32;
+    let quick = run(0.0);
+    let held = run(2.0);
+    // (a) Deeper lift under the parked nib (soak boosts the lift fraction).
+    let q = px(&quick, size, 62, 64);
+    let h = px(&held, size, 62, 64);
+    // R saturates near the ground already (the band's own reflectance) — the deepened lift +
+    // boosted dissolve read on the absorbed channels (G/B rise as more red mass is pulled out).
+    assert!(
+        i32::from(h[1]) > i32::from(q[1]) + 6,
+        "2 s of dwell must deepen the lift under the nib: held {h:?} vs quick {q:?}"
+    );
+    // (b) Wider bleed: the dissolved red reaches farther LEFT of the band (into the wash) after
+    // the hold — measure the farthest x (walking away from the band edge at 52) still tinted.
+    let redness = |t: &PainterTool, x: u32| {
+        let c = px(t, size, x, 64);
+        i32::from(c[0]) - (i32::from(c[1]) + i32::from(c[2])) / 2
+    };
+    let extent = |t: &PainterTool| {
+        // Baseline: wash 18 px from the band — beyond even the 2× (soaked) blur radius.
+        let base = redness(t, 34);
+        // Walk AWAY-from-band → band edge; the FIRST tinted x is the farthest reach of the bleed.
+        let mut e = 0u32;
+        for x in 35..52u32 {
+            if redness(t, x) > base + 10 {
+                e = 52 - x;
+                break;
+            }
+        }
+        e
+    };
+    let eq = extent(&quick);
+    let eh = extent(&held);
+    // Also compare the total tint MASS beyond the band edge — the first-crossing extent is
+    // threshold-granular, the mass meter sees the whole widened profile.
+    let mass = |t: &PainterTool| {
+        let base = redness(t, 34);
+        (40..52u32)
+            .map(|x| (redness(t, x) - base).max(0))
+            .sum::<i32>()
+    };
+    let (mq, mh) = (mass(&quick), mass(&held));
+    // Margin 1.15: measured +21% at the default knobs (SOAK_DISSOLVE doubles the tint under full
+    // soak; the deepened lift is asserted above) — deterministic engine, so no flake headroom
+    // needed. The perceptual tuning surface is the named SOAK_* consts (doc 11 §5 F3).
+    assert!(
+        eh >= eq && mh as f32 >= mq as f32 * 1.15,
+        "2 s of dwell must push the dissolved tint farther/heavier into the wash:          held {eh}px/mass {mh} vs quick {eq}px/mass {mq}"
+    );
+}

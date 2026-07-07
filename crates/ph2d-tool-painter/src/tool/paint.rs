@@ -48,6 +48,8 @@ mod stamp_color_dynamic;
 mod stroke_lifecycle;
 /// Watercolor stroke buffers: per-stroke coverage + deposited-colour accumulation (+ dirty tracking).
 mod watercolor_accum;
+/// Watercolor real GROUND (backdrop under the active layer + document paper colour) + water soak.
+mod watercolor_backdrop;
 /// Watercolor field math (LUTs, noise, blur, samplers); split from `watercolor_render` (LOC cap).
 mod watercolor_field;
 /// Watercolor edge darkening (#1): per-stroke coverage + the pen-up blur-difference "fringe" pass.
@@ -410,6 +412,30 @@ pub(crate) struct PaintState {
     /// composite reads the "paper + prior paint" from here every frame instead of over-painting in place,
     /// so the wash never accumulates per-dab structure. `Some` only for the duration of a watercolor stroke.
     watercolor_base: Option<Arc<Vec<u8>>>,
+    /// **Watercolor render-path** frozen GROUND — the real backdrop under the active layer: the
+    /// composite of the layers BELOW it, over the document [`Self::paper_color`] where nothing is
+    /// painted (RGBA8, opaque by construction). The optics read the Beer–Lambert base, the rewet
+    /// presence reference and the lift target from HERE, never from a global paper constant — a
+    /// virtual cream baked into the wash was the "puxa pro bege" bug (Enio 2026-07-06). Frozen with
+    /// [`Self::watercolor_base`]; `None` outside a watercolor stroke.
+    wet_backdrop: Option<Arc<Vec<u8>>>,
+    /// Document **paper colour** (straight sRGB `0..1`) — the ground the watercolor optics see where
+    /// the backdrop is fully transparent. Default WHITE (a plain canvas); panel swatch
+    /// `PAINTER_WATERCOLOR_PAPER_COLOR_THUMB` edits it via the shared picker (Rebelle: canvas colour
+    /// is a user-pickable document property). Tool-global (not persisted in the document yet).
+    paper_color: [f32; 3],
+    /// **Watercolor render-path** per-stroke water DWELL (1 byte/px, `w*h`): how long the held brush
+    /// soaked each pixel (grown by [`PainterTool::grow_wet_soak`] on the tick heartbeat). The rewet
+    /// reads it as a `0..1` field: more soak = the dissolve reaches FARTHER (blur-scale lerp) and the
+    /// lift digs DEEPER — "quanto mais a água fica, mais dissolve", without physics. Sized lazily
+    /// with the coverage; cleared on down.
+    wet_soak: Vec<u8>,
+    /// Current soak disc = the last dab's `(centre, radius)` — where the tick heartbeat pours dwell
+    /// while the pointer is parked. `None` = stroke start.
+    wet_soak_pos: Option<([f32; 2], f32)>,
+    /// Whether THIS stroke poured any soak yet — gates the composite's 2×-blur (far) fields, so a
+    /// stroke with no dwell pays exactly the plain 4-blur rewet cost.
+    wet_soak_active: bool,
     /// The previous dab centre of the Smudge TRUE-SMEAR chain (`None` = stroke start / no smear yet).
     /// With `wet_smudge > 0` each dab DRAGS the frozen base's paint from here to its own centre
     /// (`smear_dab` on the forked [`Self::watercolor_base`]) before the wash composites over it — the

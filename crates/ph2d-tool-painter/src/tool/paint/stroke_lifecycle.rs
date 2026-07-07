@@ -52,11 +52,11 @@ impl PainterTool {
         self.paint.wet_cum_dirty = None;
         self.paint.wet_smear_pos = None; // the Wet Mix true-smear chain restarts with the stroke
         // Watercolor render-path: freeze the pre-stroke canvas as the optical base (shared `Arc`, so O(1);
-        // the first composite `make_mut` forks the live buffer, leaving this pristine). The wash is
-        // reconstructed over this every frame instead of over-painting in place.
-        self.paint.watercolor_base = self
-            .watercolor_render_active()
-            .then(|| Arc::clone(&self.canvas_rgba));
+        // the first composite `make_mut` forks the live buffer, leaving this pristine) PLUS the real
+        // ground (the composite of the layers below + document paper colour) the optics read the
+        // Beer–Lambert base / rewet reference from. The wash is reconstructed over these every frame
+        // instead of over-painting in place.
+        self.freeze_watercolor_ground();
         self.paint.per_layer_stroke.reset();
         // Smear chains its source from the previous dab; a fresh stroke has none yet.
         self.paint.last_smear_pos = None;
@@ -162,6 +162,20 @@ impl PainterTool {
             stamped |= !dabs.is_empty();
             self.stamp_dabs(&dabs);
         }
+        // Water dwell: the heartbeat pours soak under the nib (parked OR moving) — a lingering wet
+        // brush deepens/widens its own bleed. When the soak grew with no new dab, fold its disc into
+        // the frame dirty and recomposite anyway, so the growth is visible live while parked.
+        if wet && let Some(r) = self.grow_wet_soak(dt_s) {
+            self.paint.wet_frame_dirty = Some(match self.paint.wet_frame_dirty {
+                Some(f) => union_region(f, r),
+                None => r,
+            });
+            self.paint.wet_cum_dirty = Some(match self.paint.wet_cum_dirty {
+                Some(c) => union_region(c, r),
+                None => r,
+            });
+            stamped = true;
+        }
         if wet && stamped {
             self.apply_watercolor(false);
         }
@@ -203,6 +217,8 @@ impl PainterTool {
         self.paint.line_anchor = None;
         self.paint.last_smear_pos = None;
         self.paint.watercolor_base = None; // defensive: the render-path drops it on commit already
+        self.paint.wet_backdrop = None; // the ground is per-stroke (the stack below may change)
+        self.paint.wet_soak_pos = None;
         if let Some(before) = self.paint.stroke_undo.take() {
             self.commit_structural_edit(before);
         }

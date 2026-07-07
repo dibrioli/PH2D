@@ -394,6 +394,19 @@ impl Tool for PainterTool {
                     self.set_brush_color_channel(2, f32::from(b) / 255.0);
                 }
             }
+            // ── Watercolor PAPER colour from the shared picker: value = "r,g,b" (8-bit native),
+            // forwarded by the panel's per-frame read-back — the document ground the optics see. ──
+            PanelEvent::SelectOption(id, value)
+                if id == core_ids::PAINTER_WATERCOLOR_PAPER_COLOR_THUMB =>
+            {
+                let mut it = value.split(',');
+                if let (Some(r), Some(g), Some(b)) = (it.next(), it.next(), it.next())
+                    && let (Ok(r), Ok(g), Ok(b)) =
+                        (r.parse::<u8>(), g.parse::<u8>(), b.parse::<u8>())
+                {
+                    self.set_paper_color_rgb8(r, g, b);
+                }
+            }
             // ── Curves editor 2-D point drag: value = "layer:channel:index:x:y". ─
             PanelEvent::SelectOption(id, value) if id == core_ids::PAINTER_CURVE_EDIT => {
                 let mut it = value.split(':');

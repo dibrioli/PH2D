@@ -146,6 +146,13 @@ impl Default for PaintState {
             stroke_coverage: Vec::new(),
             stroke_color: Vec::new(),
             watercolor_base: None,
+            wet_backdrop: None,
+            // WHITE ground: a plain canvas is white paper unless the artist picks otherwise (the
+            // cream of the reference demo baked a beige cast into strokes over white).
+            paper_color: [1.0, 1.0, 1.0],
+            wet_soak: Vec::new(),
+            wet_soak_pos: None,
+            wet_soak_active: false,
             wet_smear_pos: None,
             wet_frame_dirty: None,
             wet_cum_dirty: None,

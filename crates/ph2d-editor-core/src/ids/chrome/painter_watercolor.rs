@@ -53,6 +53,12 @@ pub const PAINTER_WATERCOLOR_PAPER_SECTION_COLOR: NodeId =
 /// Paper section **reset** icon button.
 pub const PAINTER_WATERCOLOR_PAPER_RESET: NodeId =
     hash_node_id("painter_brush.watercolor_paper_reset");
+/// **Paper colour** swatch — the document "ground" the watercolor optics see where nothing is painted
+/// below the active layer. Click toggles the shared Blender picker onto it (panel-side, like
+/// `PAINTER_COLOR_THUMB`); the picker read-back forwards `SelectOption(id, "r,g,b")` →
+/// `set_paper_color_rgb8`.
+pub const PAINTER_WATERCOLOR_PAPER_COLOR_THUMB: NodeId =
+    hash_node_id("painter_brush.watercolor_paper_color_thumb");
 /// **Paper** slot kind dropdown chip (None / Cold-Rough-Hot Press / other procedural / Image). `SelectOption`
 /// → `set_brush_paper_kind`. Options via [`painter_paper_kind_option_id`].
 pub const PAINTER_WATERCOLOR_PAPER_KIND: NodeId =

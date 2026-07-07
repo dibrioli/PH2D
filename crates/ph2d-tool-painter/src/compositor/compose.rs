@@ -93,6 +93,72 @@ pub fn composite_with_cache(
     encode(&acc)
 }
 
+/// Composite ONLY the layers strictly **below** `anchor` (in paint order) over an opaque `ground`
+/// colour (straight sRGB8) → canvas-sized straight sRGB8 RGBA, **opaque by construction**. This is
+/// the watercolor optics' real backdrop: what the artist sees under the active layer's paint —
+/// the layers beneath it, and the document paper colour where nothing is painted.
+///
+/// "Below" walks the anchor's root→group path: at every level, the siblings AFTER the path node
+/// (panel order is top-first, so later indices sit beneath), composited outermost-level first
+/// (bottommost content) with the same walk as [`composite`] — blend modes, masks, clipping and
+/// adjustments below the anchor all apply. Ancestor groups' OWN blend/opacity are intentionally
+/// not applied to their below-slices (they would also apply to the anchor's paint itself, which a
+/// backdrop cannot pre-compensate — the composite-time blend covers it). Unknown anchor → plain
+/// ground fill (a mask being painted resolves to its PARENT layer at the call site).
+#[must_use]
+pub fn composite_below(
+    stack: &LayerStack,
+    src: &(impl LayerPixelSource + Sync),
+    width: u32,
+    height: u32,
+    anchor: LayerId,
+    ground: [u8; 3],
+) -> Vec<u8> {
+    // Seed the accumulator with the opaque ground (decoded to linear once).
+    let g = [
+        super::decode_byte(ground[0]),
+        super::decode_byte(ground[1]),
+        super::decode_byte(ground[2]),
+        1.0f32,
+    ];
+    let mut acc = vec![g; (width as usize) * (height as usize)];
+    // The below-slices along the root→anchor path, outermost first.
+    let mut slices: Vec<&[LayerId]> = Vec::new();
+    fn descend<'a>(
+        stack: &'a LayerStack,
+        ids: &'a [LayerId],
+        anchor: LayerId,
+        slices: &mut Vec<&'a [LayerId]>,
+        depth: usize,
+    ) -> bool {
+        if depth > MAX_GROUP_DEPTH {
+            return false;
+        }
+        for (i, &id) in ids.iter().enumerate() {
+            if id == anchor {
+                slices.push(&ids[i + 1..]);
+                return true;
+            }
+            if let Some(LayerKind::Group(gr)) = stack.get(id).map(|l| &l.kind) {
+                slices.push(&ids[i + 1..]); // provisional: below the group
+                if descend(stack, &gr.children, anchor, slices, depth + 1) {
+                    return true;
+                }
+                slices.pop();
+            }
+        }
+        false
+    }
+    if descend(stack, stack.root(), anchor, &mut slices, 0) {
+        for ids in slices {
+            composite_into(
+                &mut acc, ids, stack, src, width, 0, 0, width, height, 0, None,
+            );
+        }
+    }
+    encode(&acc)
+}
+
 fn encode(acc: &[[f32; 4]]) -> Vec<u8> {
     // Force each LazyLock once per composite, not per pixel.
     let thresh = &*SRGB_ENCODE_THRESH;

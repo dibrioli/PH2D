@@ -6,9 +6,10 @@
 //! 1. resamples the FROZEN pre-stroke surface under its disc — the base composited over the real
 //!    [`ground`](super::watercolor_backdrop), weighted by paint **presence** (how far it departs from
 //!    the local ground, the same reference the rewet uses) — into a running-average **reservoir**;
-//! 2. the resample is gated by **Pull** (`recentness`): Pull 0 resamples every dab (the deposit
-//!    tracks the local surface); Pull → 1 rarely resamples, so the reservoir LAGS and its colour is
-//!    carried far downstream (the smudge length);
+//! 2. **asymmetric** running-average: it LOADS fast toward more paint (a strong pickup the moment it
+//!    enters a pool) and UNLOADS slowly toward bare ground, so the picked-up colour LINGERS a few
+//!    dabs past the pool — the EXIT bleed mirrors the ENTRY instead of hard-cutting. **Pull** raises
+//!    the unload retention toward a long smudge (the carried colour dragged far downstream);
 //! 3. deposits `lerp(brush, reservoir, (1 − charge)·w)` — a fully **Charged** brush (default `1`)
 //!    deposits pure fresh colour (the mixer is skipped entirely → byte-identical); a depleted brush
 //!    smears what it picked up.
@@ -23,17 +24,22 @@ use super::*;
 
 /// The mixer's per-stroke reservoir: unpremultiplied picked-up colour (straight sRGB `0..1`), a
 /// presence-weighted confidence `w ∈ [0, 1]` (how much real paint it holds), and the Pull resample
-/// clock `recentness`. `w == 0` (fresh / over bare ground) ⇒ the deposit is pure brush colour.
+/// `w == 0` (fresh / over bare ground) ⇒ the deposit is pure brush colour.
 #[derive(Clone, Copy, Debug, Default)]
 pub(super) struct WetMix {
     rgb: [f32; 3],
     w: f32,
-    recentness: f32,
 }
 
-/// Below this `recentness` the Pull gate resamples the surface (and resets `recentness` to 1). Pull 0
-/// ⇒ `update_factor` ≈ 0 ⇒ `recentness` collapses every dab ⇒ resample every dab.
-const RESAMPLE_EPS: f32 = 0.5;
+/// Reservoir **load** retention (entering paint): low ⇒ the reservoir tracks the surface FAST, so the
+/// brush picks up a pool strongly the moment it enters. Kept separate from the unload retention so
+/// the pickup is strong AND the exit bleed is long (a single rate couples the two: fast enough to
+/// pick up hard is too fast to carry — Enio 2026-07-07).
+const RETAIN_LOAD: f32 = 0.2;
+/// Reservoir **unload** retention floor (leaving paint) at Pull 0 — a wet brush does not forget a
+/// picked-up colour the instant it leaves the pool, so the EXIT bleed persists a few dabs and mirrors
+/// the ENTRY (the reported hard-cut exit). Pull raises it toward a long smudge.
+const RETAIN_UNLOAD_MIN: f32 = 0.88;
 
 impl PainterTool {
     /// Whether the Wet Mix mixer drives this stroke's deposited colour: watercolor render-path on and
@@ -67,32 +73,27 @@ impl PainterTool {
             return dabs.iter().map(|d| d.color).collect();
         }
         let pickup = (1.0 - self.paint.brush.wet_charge).clamp(0.0, 1.0);
-        // Pull → the running-average retention: 0 resamples every dab (no carry, the deposit tracks
-        // the local surface), → ~0.98 holds the load for a long smudge. The concave `p·(2−p)` map
-        // (transcendental-free, computed once per batch — HR-5 safe) gives a usefully long carry
-        // already at a MODERATE Pull; a straight `p·0.98` depleted the load in ~2 dabs (Enio
-        // 2026-07-07: "the mixer must carry the band's red downstream").
         let p = self.paint.brush.wet_pull.clamp(0.0, 1.0);
-        let update = (p * (2.0 - p) * 0.98).clamp(0.0, 0.98);
+        // Unload retention rises with Pull (`p·(2−p)` concave, transcendental-free, HR-5 safe): Pull 0
+        // = a short baseline carry (symmetric exit bleed), Pull → 1 = a long smudge. The LOAD rate is
+        // fixed + fast (RETAIN_LOAD) so the pickup is always strong.
+        let unload =
+            (RETAIN_UNLOAD_MIN + (0.98 - RETAIN_UNLOAD_MIN) * p * (2.0 - p)).clamp(0.0, 0.98);
         let mut out = Vec::with_capacity(dabs.len());
         let mut mix = self.paint.wet_mix;
         for d in dabs {
-            // ── 1. Pull-gated resample of the frozen surface under the disc ──
-            mix.recentness *= update;
-            if mix.recentness < RESAMPLE_EPS {
-                let (srgb, sw) = sample_surface(&base, &backdrop, fw, fh, d.center, d.radius_px);
-                // Running average in PREMULTIPLIED space (`rgb` holds colour × weight): resampling
-                // over bare ground (`sw = 0`) contributes NO paint, so it only DEPLETES the load
-                // (× update) — it never pulls the carried colour toward the ground. That is the
-                // difference between "the loaded red fades as the brush runs dry" (right) and "the
-                // brush repaints itself white the instant it leaves the band" (the straight-lerp bug,
-                // Enio 2026-07-07). The unpremultiplied colour `rgb / w` stays the picked-up hue.
-                for c in 0..3 {
-                    mix.rgb[c] = update * mix.rgb[c] + (1.0 - update) * sw * srgb[c];
-                }
-                mix.w = update * mix.w + (1.0 - update) * sw;
-                mix.recentness = 1.0;
+            // ── 1. Resample the frozen surface under the disc every dab (star), then ASYMMETRIC
+            //    running-average in PREMULTIPLIED space: LOAD fast toward more paint (strong pickup
+            //    on entry), UNLOAD slow toward bare ground (the carried colour lingers past the pool
+            //    → the EXIT bleed mirrors the ENTRY). Bare ground (`sw = 0`) only DEPLETES the load
+            //    (× update); it never pulls the carried hue toward the ground (premul), so `rgb / w`
+            //    stays the picked-up colour. ──
+            let (srgb, sw) = sample_surface(&base, &backdrop, fw, fh, d.center, d.radius_px);
+            let update = if sw >= mix.w { RETAIN_LOAD } else { unload };
+            for c in 0..3 {
+                mix.rgb[c] = update * mix.rgb[c] + (1.0 - update) * sw * srgb[c];
             }
+            mix.w = update * mix.w + (1.0 - update) * sw;
             // ── 2. Deposit: blend the brush colour toward the (unpremultiplied) reservoir colour by
             //    pickup × load. Load `w` decays downstream ⇒ the carried colour fades with distance. ──
             let t = (pickup * mix.w).clamp(0.0, 1.0);
@@ -151,7 +152,6 @@ fn sample_surface(
             f32::from(ground[bi + 1]),
             f32::from(ground[bi + 2]),
         );
-        // Base over the real ground (the paint as seen), straight sRGB.
         let rgb = [
             f32::from(base[bi]) * ab + gr * (1.0 - ab),
             f32::from(base[bi + 1]) * ab + gg * (1.0 - ab),
@@ -160,7 +160,6 @@ fn sample_surface(
         for c in 0..3 {
             acc[c] += rgb[c] / 255.0;
         }
-        // Presence vs the LOCAL ground (dead-zoned, like the rewet's PAINT_LO/PAINT_HI).
         let dd = (gr - rgb[0])
             .abs()
             .max((gg - rgb[1]).abs())

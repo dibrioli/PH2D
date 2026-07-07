@@ -11973,3 +11973,80 @@ fn watercolor_wet_mix_default_charge_deposits_pure_colour() {
         "Charge 1 must deposit pure fresh blue (mixer off), got {c:?}"
     );
 }
+
+/// **Wet Mix exit bleed mirrors the entry** (Enio 2026-07-07, photo). A wet mixer brush (Charge < 1,
+/// Pull 0) drawn ACROSS a painted pool picks its colour up; the ENTRY into the pool always bled the
+/// picked-up colour into the incoming stroke, but the EXIT was a HARD CUT — the reservoir reset to the
+/// bare surface the instant the centre left, and the following dabs overwrote the carried colour
+/// (source-over recency). The asymmetric load/unload reservoir (fast load, slow unload) makes the
+/// picked-up colour LINGER past the pool, so the exit bleeds too. Asserts the exit is no longer a hard
+/// cut (bleeds red near the pool, fading with distance) and that its red EXTENT is comparable to the
+/// entry's — not a perfect mirror (the entry deposits at full pickup, the exit is a fading carry), but
+/// a real symmetric-looking bleed on both sides.
+#[test]
+fn watercolor_wet_mix_exit_bleed_mirrors_entry() {
+    let size = 160u32;
+    let mut src = vec![255u8; (size * size * 4) as usize];
+    let (band0, band1) = (55u32, 105u32); // wide red pool
+    for y in band0..band1 {
+        for x in 0..size {
+            let i = ((y * size + x) * 4) as usize;
+            src[i..i + 4].copy_from_slice(&[210, 30, 30, 255]);
+        }
+    }
+    let mut t = PainterTool::default();
+    t.set_source(src, size, size);
+    t.paint.brush = BrushSpec {
+        radius_px: 11.0,
+        hardness: 1.0,
+        falloff: Falloff::Constant,
+        color: [0.15, 0.30, 0.80],
+        space_attenuation: false,
+        watercolor: true,
+        edge_gain: 0.0,
+        edge_spread: 4.0,
+        granulation: 0.0,
+        warp: 0.0,
+        fill: 0.6,
+        depth: 1.5,
+        wet_rewet: 0.0,
+        wet_charge: 0.15,
+        wet_pull: 0.0, // the reported Charge-only case
+        ..Default::default()
+    };
+    for slot in &mut t.paint.brush_by_mode {
+        *slot = t.paint.brush;
+    }
+    assert!(t.on_canvas_pointer(cp([80.0, 30.0], PointerPhase::Down)));
+    let mut y = 30.0f32;
+    while y < 140.0 {
+        y += 3.0;
+        t.on_canvas_pointer(cp([80.0, y], PointerPhase::Move));
+    }
+    assert!(t.on_canvas_pointer(cp([80.0, y], PointerPhase::Up)));
+    let redness = |yy: u32| {
+        let c = px(&t, size, 80, yy);
+        i32::from(c[0]) - (i32::from(c[1]) + i32::from(c[2])) / 2
+    };
+    // (a) The EXIT (below the pool) bleeds red near the edge — NOT the old flat blue (~ −113).
+    let exit_near = redness(band1 + 1);
+    assert!(
+        exit_near > 15,
+        "the exit must bleed the picked-up red past the pool (was a hard cut): {exit_near}"
+    );
+    // (b) The exit bleed FADES with distance (a gradient, not a slab).
+    assert!(
+        redness(band1 + 1) > redness(band1 + 7) + 15,
+        "the exit bleed must fade with distance: near {} vs far {}",
+        redness(band1 + 1),
+        redness(band1 + 7)
+    );
+    // (c) Both sides bleed red over a comparable EXTENT (the reach mirrors, even if the entry — at
+    //     full pickup — peaks higher than the fading exit carry). Count rows still red (> 8) each way.
+    let entry_reach = (1..15).filter(|&d| redness(band0 - d) > 8).count();
+    let exit_reach = (1..15).filter(|&d| redness(band1 + d) > 8).count();
+    assert!(
+        exit_reach >= 3 && exit_reach + 3 >= entry_reach,
+        "the exit red reach must be comparable to the entry (mirror), entry {entry_reach} exit {exit_reach}"
+    );
+}

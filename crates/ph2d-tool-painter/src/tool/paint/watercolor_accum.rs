@@ -6,8 +6,9 @@
 use super::*;
 
 /// The soft-disc weight at normalised radius `dn ∈ [0, 1]`: `1.0` at the centre, `0.92` at `0.62`,
-/// `0` at the rim (the two-segment linear gradient of `stampCoverage` / `stampColor`).
-fn feather(dn: f32) -> f32 {
+/// `0` at the rim (the two-segment linear gradient of `stampCoverage` / `stampColor`). Shared with
+/// [`super::watercolor_mixer`], whose disc pickup uses the same weighting as the deposit.
+pub(super) fn feather(dn: f32) -> f32 {
     if dn <= 0.62 {
         1.0 - dn / 0.62 * 0.08 // 1.00 → 0.92 across the plateau
     } else {

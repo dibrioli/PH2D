@@ -177,8 +177,10 @@ fn star_mode_and_points_slider_reach_the_tool() {
     let mut panel_state = VectorPanelState;
     let mut tool = VectorTool::default();
 
-    let m = host
-        .apply_panel_event::<VectorPanel>(&mut panel_state, WidgetEvent::Click(ids::VECTOR_MODE_STAR));
+    let m = host.apply_panel_event::<VectorPanel>(
+        &mut panel_state,
+        WidgetEvent::Click(ids::VECTOR_MODE_STAR),
+    );
     assert_eq!(m, EventOutcome::Consumed, "Star mode button not wired");
     drain_into_tool(&mut host, &mut tool);
     assert_eq!(tool.mode(), DrawMode::Star);
@@ -248,6 +250,42 @@ fn boolean_button_click_forwards_to_the_bus_for_the_shell() {
         forwarded,
         "Boolean click never reached the bus as a ToolPanelEvent — the shell can't apply the op"
     );
+}
+
+/// The Arrange buttons (Duplicate + z-order) are DOCUMENT commands acting on the
+/// selected path — the tool ignores them, so the seam proof is that each `Click`
+/// reaches the bus as a `ToolPanelEvent` for the shell drain to apply.
+#[test]
+fn arrange_buttons_forward_to_the_bus_for_the_shell() {
+    for id in [
+        ids::VECTOR_ARRANGE_DUPLICATE,
+        ids::VECTOR_ARRANGE_TO_BACK,
+        ids::VECTOR_ARRANGE_BACKWARD,
+        ids::VECTOR_ARRANGE_FORWARD,
+        ids::VECTOR_ARRANGE_TO_FRONT,
+    ] {
+        let mut host = MockPanelHost::with_panel::<VectorPanel>();
+        let mut panel_state = VectorPanelState;
+
+        let outcome =
+            host.apply_panel_event::<VectorPanel>(&mut panel_state, WidgetEvent::Click(id));
+        assert_eq!(
+            outcome,
+            EventOutcome::Consumed,
+            "Arrange button ignored — `event.rs` arm for VECTOR_ARRANGE_* is missing"
+        );
+
+        let forwarded = host.drained_actions().iter().any(|a| {
+            matches!(
+                a,
+                EditorAction::ToolPanelEvent(PanelEvent::Click(fid)) if *fid == id
+            )
+        });
+        assert!(
+            forwarded,
+            "Arrange click never reached the bus as a ToolPanelEvent — the shell can't apply it"
+        );
+    }
 }
 
 /// A Vertex-type button (Smooth) is a DOCUMENT command (retypes the selected

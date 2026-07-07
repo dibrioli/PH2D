@@ -163,6 +163,65 @@ pub(crate) fn vec_vertex_kind_for_id(id: ph2d_editor::NodeId) -> Option<ph2d_vec
     }
 }
 
+/// Duplicate the SELECTED path (panel "Duplicate" button), offsetting the clone
+/// by `(dx, dy)` world-units so it's visible, and select the copy. Records ONE
+/// undo step iff a path was cloned. Free fn (mirror of [`apply_vec_boolean`]) so
+/// the render_loop drain can call it with the destructured shell refs.
+pub(crate) fn apply_vec_duplicate(
+    scene: &mut ph2d_vec_scene::VecScene,
+    history: &mut ph2d_vec_edit::History,
+    pen: &mut ph2d_vec_edit::PenTool,
+    dx: f64,
+    dy: f64,
+) {
+    let Some(sel) = pen.selected() else {
+        eprintln!("[ph2d-vec] duplicate: nenhum path selecionado");
+        return;
+    };
+    let pre = scene.clone();
+    if let Some(new_id) = scene.duplicate_path(sel, dx, dy) {
+        history.push_undo(pre);
+        pen.select(Some(new_id));
+        eprintln!("[ph2d-vec] duplicate: ok");
+    }
+}
+
+/// Restack the SELECTED path (panel Arrange z-order buttons), recording ONE undo
+/// step iff the position changed. Free fn (mirror of [`apply_vec_boolean`]).
+pub(crate) fn apply_vec_reorder(
+    scene: &mut ph2d_vec_scene::VecScene,
+    history: &mut ph2d_vec_edit::History,
+    pen: &ph2d_vec_edit::PenTool,
+    order: ph2d_vec_scene::ZOrder,
+) {
+    let Some(sel) = pen.selected() else {
+        eprintln!("[ph2d-vec] arrange: nenhum path selecionado");
+        return;
+    };
+    let pre = scene.clone();
+    if scene.reorder_path(sel, order) {
+        history.push_undo(pre);
+    }
+}
+
+/// Map a Vector-panel Arrange z-order button `NodeId` to its [`ph2d_vec_scene::ZOrder`]
+/// (`None` for any other id, incl. Duplicate). Pure — unit-tested; called from
+/// the render_loop drain.
+pub(crate) fn vec_reorder_for_id(id: ph2d_editor::NodeId) -> Option<ph2d_vec_scene::ZOrder> {
+    use ph2d_vec_scene::ZOrder;
+    if id == ph2d_editor::ids::VECTOR_ARRANGE_TO_BACK {
+        Some(ZOrder::ToBack)
+    } else if id == ph2d_editor::ids::VECTOR_ARRANGE_BACKWARD {
+        Some(ZOrder::Lower)
+    } else if id == ph2d_editor::ids::VECTOR_ARRANGE_FORWARD {
+        Some(ZOrder::Raise)
+    } else if id == ph2d_editor::ids::VECTOR_ARRANGE_TO_FRONT {
+        Some(ZOrder::ToFront)
+    } else {
+        None
+    }
+}
+
 /// The shape kind a Vector draw-mode maps to (`None` = Pen, the non-shape
 /// gesture). Lets the canvas dispatch route Down/Move/Up to the pen or the
 /// shape tool.
@@ -1675,12 +1734,13 @@ impl App {
 #[cfg(test)]
 mod tests {
     use super::{
-        shape_kind_for_mode, shape_up_consumes, vec_bool_op_for_id, vec_vertex_kind_for_id,
+        shape_kind_for_mode, shape_up_consumes, vec_bool_op_for_id, vec_reorder_for_id,
+        vec_vertex_kind_for_id,
     };
     use ph2d_tool_vector::DrawMode;
     use ph2d_vec_boolean::BoolOp;
     use ph2d_vec_edit::ShapeKind;
-    use ph2d_vec_scene::VertexKind;
+    use ph2d_vec_scene::{VertexKind, ZOrder};
 
     #[test]
     fn vertex_button_ids_map_to_their_kinds() {
@@ -1700,6 +1760,32 @@ mod tests {
             vec_vertex_kind_for_id(ph2d_editor::ids::VECTOR_BOOL_UNION),
             None
         );
+    }
+
+    #[test]
+    fn arrange_button_ids_map_to_their_zorder() {
+        assert_eq!(
+            vec_reorder_for_id(ph2d_editor::ids::VECTOR_ARRANGE_TO_BACK),
+            Some(ZOrder::ToBack)
+        );
+        assert_eq!(
+            vec_reorder_for_id(ph2d_editor::ids::VECTOR_ARRANGE_BACKWARD),
+            Some(ZOrder::Lower)
+        );
+        assert_eq!(
+            vec_reorder_for_id(ph2d_editor::ids::VECTOR_ARRANGE_FORWARD),
+            Some(ZOrder::Raise)
+        );
+        assert_eq!(
+            vec_reorder_for_id(ph2d_editor::ids::VECTOR_ARRANGE_TO_FRONT),
+            Some(ZOrder::ToFront)
+        );
+        // Duplicate is NOT a reorder (handled separately), nor any non-Arrange id.
+        assert_eq!(
+            vec_reorder_for_id(ph2d_editor::ids::VECTOR_ARRANGE_DUPLICATE),
+            None
+        );
+        assert_eq!(vec_reorder_for_id(ph2d_editor::ids::VECTOR_BOOL_UNION), None);
     }
 
     #[test]

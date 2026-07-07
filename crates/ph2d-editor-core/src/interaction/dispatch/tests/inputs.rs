@@ -671,3 +671,40 @@ fn scrollbar_track_drag_begins_without_focus_and_scrolls() {
     );
     assert!(store.scrollbar_drag().is_none(), "Up ends the drag");
 }
+
+#[test]
+fn vector_panel_scrollbar_thumb_drag_begins_and_scrolls() {
+    // Same proof as above but for the Vector Style panel (ADR-0108): the thumb id
+    // must map to VECTOR_PANEL via `scrollbar_panel_for_id`, and the Down must
+    // begin the drag + the Move scroll it.
+    let mut store = WidgetStore::with_capacity(8);
+    let panel = crate::ids::VECTOR_PANEL;
+    store.set_panel_content_h(panel, 300.0);
+    store.set_panel_visible_h(panel, 100.0);
+    let mut hits = HitIndex::new();
+    hits.register(
+        crate::widget::VECTOR_SCROLLBAR_ID,
+        Rect::new(200.0, 0.0, 10.0, 100.0),
+    );
+    let arena = Bump::new();
+    let _ = dispatch_pointer(
+        &mut store,
+        &hits,
+        pointer(PointerKind::Down, 205.0, 10.0),
+        &arena,
+    );
+    assert!(
+        store.scrollbar_drag().is_some(),
+        "Down on the Vector scrollbar thumb begins a drag (scrollbar_panel_for_id maps VECTOR_SCROLLBAR_ID)"
+    );
+    let _ = dispatch_pointer(
+        &mut store,
+        &hits,
+        pointer(PointerKind::Move, 205.0, 70.0),
+        &arena,
+    );
+    assert!(
+        store.panel_scroll(panel) > 0.0,
+        "dragging the Vector scrollbar scrolled the panel"
+    );
+}

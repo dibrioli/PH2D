@@ -183,7 +183,7 @@ pub fn populate(store: &mut WidgetStore) {
         ids::VECTOR_STROKE_OPACITY,
         ids::VECTOR_STROKE_OPACITY_NUM,
         1.0,
-        100.0,
+        100.0, // LITERAL-PX-OK: initial opacity display = 100 %
         OPACITY_SLIDER_SCALE,
         OPACITY_SLIDER_OFFSET,
     );
@@ -192,7 +192,7 @@ pub fn populate(store: &mut WidgetStore) {
         ids::VECTOR_FILL_OPACITY,
         ids::VECTOR_FILL_OPACITY_NUM,
         1.0,
-        100.0,
+        100.0, // LITERAL-PX-OK: initial opacity display = 100 %
         OPACITY_SLIDER_SCALE,
         OPACITY_SLIDER_OFFSET,
     );
@@ -222,6 +222,13 @@ pub fn populate(store: &mut WidgetStore) {
         GAP_SLIDER_SCALE,
         GAP_SLIDER_OFFSET,
     );
+
+    // Arrange: Duplicate + z-order restack buttons (act on the selected path).
+    button(store, ids::VECTOR_ARRANGE_DUPLICATE);
+    button(store, ids::VECTOR_ARRANGE_TO_BACK);
+    button(store, ids::VECTOR_ARRANGE_BACKWARD);
+    button(store, ids::VECTOR_ARRANGE_FORWARD);
+    button(store, ids::VECTOR_ARRANGE_TO_FRONT);
 
     // Close (X) button.
     button(store, ids::VECTOR_CLOSE);

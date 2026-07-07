@@ -736,6 +736,10 @@ impl crate::App {
             let mut pending_vec_vertex_kind: Option<ph2d_vec_scene::VertexKind> = None;
             // ADR-0108 Fase 1: "Delete Node" button removes the selected vertex.
             let mut pending_vec_delete_vertex = false;
+            // ADR-0108: Arrange buttons — z-order restack + Duplicate — act on the
+            // selected path (document ops), applied after the drain.
+            let mut pending_vec_reorder: Option<ph2d_vec_scene::ZOrder> = None;
+            let mut pending_vec_duplicate = false;
             let mut transform_edit: Option<ph2d_editor::InspectorTransformInfo> = None;
             let mut visibility_edit: Option<ph2d_editor::InspectorVisibilityInfo> = None;
             let mut sprite_source_change: Option<(u64, RequestedSpriteStrategy)> = None;
@@ -796,6 +800,12 @@ impl crate::App {
                                 pending_vec_vertex_kind = Some(kind);
                             } else if *id == ph2d_editor::ids::VECTOR_VERT_DELETE {
                                 pending_vec_delete_vertex = true;
+                            } else if let Some(order) =
+                                crate::input_dispatch::vec_reorder_for_id(*id)
+                            {
+                                pending_vec_reorder = Some(order);
+                            } else if *id == ph2d_editor::ids::VECTOR_ARRANGE_DUPLICATE {
+                                pending_vec_duplicate = true;
                             }
                         }
                         if let Some(t) = tools.active_mut() {
@@ -1405,6 +1415,27 @@ impl crate::App {
                     vec_scene,
                     &mut self.vec_history,
                     &mut self.vec_pen,
+                );
+            }
+            if let Some(order) = pending_vec_reorder {
+                crate::input_dispatch::apply_vec_reorder(
+                    vec_scene,
+                    &mut self.vec_history,
+                    &self.vec_pen,
+                    order,
+                );
+            }
+            if pending_vec_duplicate {
+                // Offset the clone by a fixed SCREEN distance (px → world) so it's
+                // visibly separated at any zoom.
+                const OFFSET_PX: f64 = 12.0;
+                let off = OFFSET_PX * vec_px_to_world;
+                crate::input_dispatch::apply_vec_duplicate(
+                    vec_scene,
+                    &mut self.vec_history,
+                    &mut self.vec_pen,
+                    off,
+                    off,
                 );
             }
             let vec_cfg = vector_bridge::dispatch(

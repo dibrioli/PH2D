@@ -25,6 +25,11 @@ ph2d-editor-core = { path = "../ph2d-editor-core" }
 ph2d-tool-vector = { path = "../ph2d-tool-vector" }
 ph2d-a11y = { path = "../ph2d-a11y" }
 ph2d-tokens = { path = "../ph2d-tokens" }
+# Concrete paint types named by the extracted section painters (`paint_sections`
+# `BodyCtx`): the Vello scene + text shaper. editor-core already pulls both; the
+# panel names them directly now that `paint.rs` delegates section drawing.
+ph2d-text = { path = "../ph2d-text" }
+ph2d-vector = { path = "../ph2d-vector" }
 
 [dev-dependencies]
 # Blindagem Fase 1.2: headless behavioral seam harness (populate → apply_event

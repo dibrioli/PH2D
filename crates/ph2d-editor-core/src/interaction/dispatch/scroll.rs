@@ -115,6 +115,8 @@ pub(super) fn scrollbar_panel_for_id(id: NodeId) -> Option<NodeId> {
         Some(ids::PAINTER_BRUSH_STUDIO_PANEL)
     } else if id == crate::widget::AUDIO_MIXER_SCROLLBAR_ID {
         Some(ids::AUDIO_MIXER_PANEL)
+    } else if id == crate::widget::VECTOR_SCROLLBAR_ID {
+        Some(ids::VECTOR_PANEL)
     } else {
         None
     }

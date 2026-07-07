@@ -123,3 +123,14 @@ pub const VECTOR_VERT_SYMMETRIC: NodeId = hash_node_id("vector.vert.symmetric");
 /// a document edit routed through the shell drain (mirror of the vertex-type
 /// buttons). Insert is a canvas gesture (click a segment) — no button.
 pub const VECTOR_VERT_DELETE: NodeId = hash_node_id("vector.vert.delete");
+
+// ── Arrange (ADR-0108 — path ops: duplicate + z-order) ───────────────────────
+// Act on the SELECTED path (shell-side PenTool selection); document commands
+// routed through the shell drain (mirror of Boolean/Vertex). Duplicate clones
+// the path with a small offset; the four z-order buttons restack it (render
+// order = paths-vec order, index 0 = back).
+pub const VECTOR_ARRANGE_DUPLICATE: NodeId = hash_node_id("vector.arrange.duplicate");
+pub const VECTOR_ARRANGE_TO_BACK: NodeId = hash_node_id("vector.arrange.to_back");
+pub const VECTOR_ARRANGE_BACKWARD: NodeId = hash_node_id("vector.arrange.backward");
+pub const VECTOR_ARRANGE_FORWARD: NodeId = hash_node_id("vector.arrange.forward");
+pub const VECTOR_ARRANGE_TO_FRONT: NodeId = hash_node_id("vector.arrange.to_front");

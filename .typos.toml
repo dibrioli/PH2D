@@ -66,6 +66,11 @@ iy = "iy"
 # foundation rollout comments (Fase 0a..0f) and the Onda 2 hotfixes.
 Fase = "Fase"
 fase = "fase"
+# "elipse" (pt-BR for "ellipse") + "colateral" ("efeito colateral" = side effect)
+# in the Vector data-model / edit comments (ADR-0108 `ph2d-vec-scene`/`-edit`).
+elipse = "elipse"
+Elipse = "Elipse"
+colateral = "colateral"
 # pt-BR plurals that typos-cli wants in English.
 individuais = "individuais"
 individual = "individual"

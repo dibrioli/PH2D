@@ -164,10 +164,49 @@ pub const PAINTER_BRUSH_STUDIO_SCROLLBAR_ID: NodeId = NodeId(830);
 /// dispatch routes drag-scroll without aliasing the other dock-slot panels.
 /// (831 is `DROPDOWN_SCROLLBAR_ID` in `widget/dropdown.rs`.)
 pub const AUDIO_MIXER_SCROLLBAR_ID: NodeId = NodeId(832);
+/// Vector Style docked panel scrollbar (ADR-0108) — the panel body (Stroke/Fill +
+/// Cap/Join + Dash/Gap + Draw modes + per-shape sliders + Vertex + Boolean +
+/// Arrange) overflows the dock height. Independent thumb id so dispatch routes
+/// drag-scroll without aliasing the Inspector that shares the dock slot.
+/// NOTE: `831` is `DROPDOWN_SCROLLBAR_ID` (dropdown.rs) — dispatch special-cases
+/// that id to the open dropdown, so a collision would make this thumb
+/// un-draggable — and `832` is `AUDIO_MIXER_SCROLLBAR_ID` above. Use `833`.
+pub const VECTOR_SCROLLBAR_ID: NodeId = NodeId(833);
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// The scrollbar thumb ids + `DROPDOWN_SCROLLBAR_ID` are hand-assigned raw
+    /// `NodeId`s (820..) — NOT hashed, so `node_id_collisions` (which scans the
+    /// chrome hash-ids) does NOT cover them. A collision silently breaks drag
+    /// routing: dispatch special-cases `DROPDOWN_SCROLLBAR_ID`, so any thumb
+    /// aliased onto it becomes un-draggable (the Vector panel bug, 2026-07-07).
+    /// Assert pairwise uniqueness here so a new panel's id can't re-collide.
+    #[test]
+    fn scrollbar_and_dropdown_thumb_ids_are_unique() {
+        let ids = [
+            ("INSPECTOR", INSPECTOR_SCROLLBAR_ID),
+            ("HIERARCHY", HIERARCHY_SCROLLBAR_ID),
+            ("GALLERY", GALLERY_SCROLLBAR_ID),
+            ("GRID_SETTINGS", GRID_SETTINGS_SCROLLBAR_ID),
+            ("COLOR_EQUALIZATION", COLOR_EQUALIZATION_SCROLLBAR_ID),
+            ("BG_REMOVAL", BG_REMOVAL_SCROLLBAR_ID),
+            ("PADDING", PADDING_SCROLLBAR_ID),
+            ("UPSCALE", UPSCALE_SCROLLBAR_ID),
+            ("EQUALIZE_SIZES", EQUALIZE_SIZES_SCROLLBAR_ID),
+            ("PAINTER_LAYERS", PAINTER_LAYERS_SCROLLBAR_ID),
+            ("PAINTER_BRUSH_STUDIO", PAINTER_BRUSH_STUDIO_SCROLLBAR_ID),
+            ("AUDIO_MIXER", AUDIO_MIXER_SCROLLBAR_ID),
+            ("VECTOR", VECTOR_SCROLLBAR_ID),
+            ("DROPDOWN", crate::widget::DROPDOWN_SCROLLBAR_ID),
+        ];
+        for (i, (na, a)) in ids.iter().enumerate() {
+            for (nb, b) in &ids[i + 1..] {
+                assert_ne!(a, b, "scrollbar id collision: {na} == {nb} ({a:?})");
+            }
+        }
+    }
 
     #[test]
     fn no_scrollbar_when_content_fits() {

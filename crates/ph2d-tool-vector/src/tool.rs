@@ -389,7 +389,10 @@ mod tests {
         Tool::handle_panel_event(&mut t, PanelEvent::SetValue(ids::VECTOR_FILL_OPACITY, 1.0));
         assert_eq!(t.fill_rgba()[3], 255);
         // Stroke Opacity → 50 % ≈ 128.
-        Tool::handle_panel_event(&mut t, PanelEvent::SetValue(ids::VECTOR_STROKE_OPACITY, 0.5));
+        Tool::handle_panel_event(
+            &mut t,
+            PanelEvent::SetValue(ids::VECTOR_STROKE_OPACITY, 0.5),
+        );
         assert_eq!(t.stroke_rgba()[3], 128);
         assert!(t.take_apply_to_selected());
     }
@@ -436,7 +439,10 @@ mod tests {
         let mut t = VectorTool::new();
         Tool::handle_panel_event(&mut t, PanelEvent::Click(ids::VECTOR_CAP_ROUND));
         assert_eq!(t.cap(), StrokeCap::Round);
-        assert!(t.take_apply_to_selected(), "cap change restyles the selection");
+        assert!(
+            t.take_apply_to_selected(),
+            "cap change restyles the selection"
+        );
         Tool::handle_panel_event(&mut t, PanelEvent::Click(ids::VECTOR_JOIN_BEVEL));
         assert_eq!(t.join(), StrokeJoin::Bevel);
         Tool::handle_panel_event(&mut t, PanelEvent::SetValue(ids::VECTOR_DASH, 1.0));
@@ -444,7 +450,10 @@ mod tests {
         assert!(t.take_apply_to_selected());
         Tool::handle_panel_event(&mut t, PanelEvent::SetValue(ids::VECTOR_GAP, 1.0));
         assert!((t.gap() - GAP_MAX).abs() < 1e-6);
-        assert!(t.take_apply_to_selected(), "gap change restyles the selection");
+        assert!(
+            t.take_apply_to_selected(),
+            "gap change restyles the selection"
+        );
         // Snapshot carries them.
         let s = t.ui_snapshot();
         assert_eq!(s.cap, StrokeCap::Round);
@@ -455,9 +464,7 @@ mod tests {
 
     #[test]
     fn star_and_roundrect_modes_and_their_sliders() {
-        use crate::params::{
-            RADIUS_MAX_PX, STAR_INNER_MAX, STAR_POINTS_MAX, STAR_POINTS_MIN,
-        };
+        use crate::params::{RADIUS_MAX_PX, STAR_INNER_MAX, STAR_POINTS_MAX, STAR_POINTS_MIN};
         let mut t = VectorTool::new();
         Tool::handle_panel_event(&mut t, PanelEvent::Click(ids::VECTOR_MODE_STAR));
         assert_eq!(t.mode(), DrawMode::Star);

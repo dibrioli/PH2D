@@ -247,7 +247,13 @@ mod tests {
     fn rectangle_press_drag_release_commits_a_selected_closed_path() {
         let mut scene = VecScene::new();
         let mut shape = ShapeTool::new();
-        shape.on_press(&mut scene, ShapeKind::Rectangle, ShapeParams::default(), [0.0, 0.0], PTW);
+        shape.on_press(
+            &mut scene,
+            ShapeKind::Rectangle,
+            ShapeParams::default(),
+            [0.0, 0.0],
+            PTW,
+        );
         assert!(shape.is_active());
         shape.on_drag(&mut scene, [4.0, 3.0]);
         assert!(shape.on_release(&mut scene), "a real drag commits");
@@ -263,7 +269,13 @@ mod tests {
     fn tiny_drag_is_discarded_on_release() {
         let mut scene = VecScene::new();
         let mut shape = ShapeTool::new();
-        shape.on_press(&mut scene, ShapeKind::Rectangle, ShapeParams::default(), [0.0, 0.0], PTW);
+        shape.on_press(
+            &mut scene,
+            ShapeKind::Rectangle,
+            ShapeParams::default(),
+            [0.0, 0.0],
+            PTW,
+        );
         // Move less than MIN_DRAG_PX * PTW on both axes.
         shape.on_drag(&mut scene, [0.01, 0.01]);
         assert!(!shape.on_release(&mut scene), "stray click cancels");
@@ -274,7 +286,13 @@ mod tests {
     fn ellipse_uses_smooth_verts_polygon_uses_corners() {
         let mut scene = VecScene::new();
         let mut shape = ShapeTool::new();
-        shape.on_press(&mut scene, ShapeKind::Ellipse, ShapeParams::default(), [0.0, 0.0], PTW);
+        shape.on_press(
+            &mut scene,
+            ShapeKind::Ellipse,
+            ShapeParams::default(),
+            [0.0, 0.0],
+            PTW,
+        );
         shape.on_drag(&mut scene, [4.0, 2.0]);
         shape.on_release(&mut scene);
         assert!(
@@ -348,7 +366,13 @@ mod tests {
             fill: ph2d_vec_scene::Rgba8::new(0, 0, 0, 0), // None
             ..PenStyle::default()
         });
-        shape.on_press(&mut scene, ShapeKind::Rectangle, ShapeParams::default(), [0.0, 0.0], PTW);
+        shape.on_press(
+            &mut scene,
+            ShapeKind::Rectangle,
+            ShapeParams::default(),
+            [0.0, 0.0],
+            PTW,
+        );
         shape.on_drag(&mut scene, [4.0, 3.0]);
         shape.on_release(&mut scene);
         let p = &scene.paths()[0];
@@ -359,7 +383,13 @@ mod tests {
     fn cancel_removes_in_progress_shape() {
         let mut scene = VecScene::new();
         let mut shape = ShapeTool::new();
-        shape.on_press(&mut scene, ShapeKind::Ellipse, ShapeParams::default(), [1.0, 1.0], PTW);
+        shape.on_press(
+            &mut scene,
+            ShapeKind::Ellipse,
+            ShapeParams::default(),
+            [1.0, 1.0],
+            PTW,
+        );
         assert_eq!(scene.paths().len(), 1);
         shape.cancel(&mut scene);
         assert!(scene.is_empty() && !shape.is_active());

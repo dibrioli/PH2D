@@ -3,10 +3,10 @@
 use crate::fader::fader_gain;
 use crate::state::AudioMixerState;
 use crate::{
-    AMIX_CLOSE, AMIX_CUTOFF, AMIX_DUCK, AMIX_DUCK_DEPTH, AMIX_EQ_HIGH, AMIX_EQ_LOW, AMIX_EQ_MID,
-    AMIX_FADER, AMIX_LIMITER, AMIX_LOWCUT, AMIX_MASTER_METER, AMIX_MASTER_MUTE, AMIX_PAN,
-    AMIX_PLAY, AMIX_REVERB, AMIX_REVERB_MIX, AMIX_REVERB_SIZE, AudioMixerPanel, SUB_FADER,
-    SUB_LOWCUT, SUB_METER, SUB_MUTE, SUB_PAN, SUB_SEND, SUB_SOLO, SUB_TONE, snapshot,
+    AMIX_CLOSE, AMIX_CUTOFF, AMIX_DUCK, AMIX_DUCK_DEPTH, AMIX_DUCK_KEY, AMIX_EQ_HIGH, AMIX_EQ_LOW,
+    AMIX_EQ_MID, AMIX_FADER, AMIX_LIMITER, AMIX_LOWCUT, AMIX_MASTER_METER, AMIX_MASTER_MUTE,
+    AMIX_PAN, AMIX_PLAY, AMIX_REVERB, AMIX_REVERB_MIX, AMIX_REVERB_SIZE, AudioMixerPanel,
+    SUB_FADER, SUB_LOWCUT, SUB_METER, SUB_MUTE, SUB_PAN, SUB_SEND, SUB_SOLO, SUB_TONE, snapshot,
 };
 
 /// Log-map a 0..1 tone slider to a cutoff in Hz (20 Hz..20 kHz).
@@ -62,6 +62,11 @@ pub(crate) fn apply_event(
             // Ducking enable toggle.
             if id == AMIX_DUCK {
                 snapshot::toggle_ducking();
+                return EventOutcome::Consumed;
+            }
+            // Sidechain key-bus selector — cycle to the next sub-bus.
+            if id == AMIX_DUCK_KEY {
+                snapshot::cycle_duck_key();
                 return EventOutcome::Consumed;
             }
             // Per-sub-bus mute toggles.

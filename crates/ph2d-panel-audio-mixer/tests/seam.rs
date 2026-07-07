@@ -9,13 +9,14 @@ use ph2d_editor_core::interaction::WidgetEvent;
 use ph2d_editor_core::panel::{EventOutcome, Panel, PanelHostInternal};
 use ph2d_panel_audio_mixer::state::AudioMixerState;
 use ph2d_panel_audio_mixer::{
-    AMIX_CUTOFF, AMIX_DUCK, AMIX_DUCK_DEPTH, AMIX_EQ_LOW, AMIX_FADER, AMIX_LIMITER, AMIX_LOWCUT,
-    AMIX_MASTER_METER, AMIX_MASTER_MUTE, AMIX_PAN, AMIX_PLAY, AMIX_REVERB, AMIX_REVERB_SIZE,
-    AudioMixerPanel, FADER_UNITY_POS, SUB_FADER, SUB_LOWCUT, SUB_MUTE, SUB_PAN, SUB_SEND, SUB_SOLO,
-    SUB_TONE, duck_depth, ducking, fader_gain, limiter, master_clipped, master_cutoff_target,
-    master_eq_target, master_gain_target, master_lowcut_target, master_muted, master_pan_target,
-    play_test, reverb_on, reverb_size, set_levels, sub_gain_target, sub_lowcut_target, sub_muted,
-    sub_pan_target, sub_send_target, sub_soloed, sub_tone_target,
+    AMIX_CUTOFF, AMIX_DUCK, AMIX_DUCK_DEPTH, AMIX_DUCK_KEY, AMIX_EQ_LOW, AMIX_FADER, AMIX_LIMITER,
+    AMIX_LOWCUT, AMIX_MASTER_METER, AMIX_MASTER_MUTE, AMIX_PAN, AMIX_PLAY, AMIX_REVERB,
+    AMIX_REVERB_SIZE, AudioMixerPanel, FADER_UNITY_POS, SUB_FADER, SUB_LOWCUT, SUB_MUTE, SUB_PAN,
+    SUB_SEND, SUB_SOLO, SUB_TONE, duck_depth, ducking, ducking_key, fader_gain, limiter,
+    master_clipped, master_cutoff_target, master_eq_target, master_gain_target,
+    master_lowcut_target, master_muted, master_pan_target, play_test, reverb_on, reverb_size,
+    set_levels, sub_gain_target, sub_lowcut_target, sub_muted, sub_pan_target, sub_send_target,
+    sub_soloed, sub_tone_target,
 };
 use ph2d_ui_testkit::MockPanelHost;
 
@@ -258,6 +259,28 @@ fn ducking_toggle_and_depth_publish() {
         (duck_depth() - 0.9).abs() < 1e-5,
         "Depth drag must publish the raw value, got {}",
         duck_depth()
+    );
+}
+
+/// Clicking the sidechain Key selector advances the key sub-bus (wrapping),
+/// proving the AMIX_DUCK_KEY arm drives the shell's duck key.
+#[test]
+fn duck_key_click_cycles_the_key_bus() {
+    let mut host = MockPanelHost::with_panel::<AudioMixerPanel>();
+    let mut state = AudioMixerState;
+
+    let before = ducking_key();
+    let outcome =
+        host.apply_panel_event::<AudioMixerPanel>(&mut state, WidgetEvent::Click(AMIX_DUCK_KEY));
+    assert_eq!(
+        outcome,
+        EventOutcome::Consumed,
+        "panel ignored the Key click — the AMIX_DUCK_KEY arm is missing"
+    );
+    assert_eq!(
+        ducking_key(),
+        (before + 1) % 4,
+        "Key click must advance to the next sub-bus (wraps at 4)"
     );
 }
 

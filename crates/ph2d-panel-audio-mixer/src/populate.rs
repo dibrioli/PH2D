@@ -2,10 +2,10 @@
 
 use crate::fader::FADER_UNITY_POS;
 use crate::{
-    AMIX_CLOSE, AMIX_CUTOFF, AMIX_DUCK, AMIX_DUCK_DEPTH, AMIX_EQ_HIGH, AMIX_EQ_LOW, AMIX_EQ_MID,
-    AMIX_FADER, AMIX_LIMITER, AMIX_LOWCUT, AMIX_MASTER_METER, AMIX_MASTER_MUTE, AMIX_PAN,
-    AMIX_PLAY, AMIX_REVERB, AMIX_REVERB_MIX, AMIX_REVERB_SIZE, SUB_FADER, SUB_LOWCUT, SUB_METER,
-    SUB_MUTE, SUB_PAN, SUB_SEND, SUB_SOLO, SUB_TONE,
+    AMIX_CLOSE, AMIX_CUTOFF, AMIX_DUCK, AMIX_DUCK_DEPTH, AMIX_DUCK_KEY, AMIX_EQ_HIGH, AMIX_EQ_LOW,
+    AMIX_EQ_MID, AMIX_FADER, AMIX_LIMITER, AMIX_LOWCUT, AMIX_MASTER_METER, AMIX_MASTER_MUTE,
+    AMIX_PAN, AMIX_PLAY, AMIX_REVERB, AMIX_REVERB_MIX, AMIX_REVERB_SIZE, SUB_FADER, SUB_LOWCUT,
+    SUB_METER, SUB_MUTE, SUB_PAN, SUB_SEND, SUB_SOLO, SUB_TONE,
 };
 use ph2d_editor_core::interaction::{InteractiveState, WidgetStore};
 use ph2d_editor_core::widget::{ButtonState, SliderOrientation, SliderState};
@@ -25,6 +25,7 @@ pub(crate) fn populate(store: &mut WidgetStore) {
     store.register(AMIX_LIMITER, button());
     store.register(AMIX_REVERB, button());
     store.register(AMIX_DUCK, button());
+    store.register(AMIX_DUCK_KEY, button());
     for id in SUB_MUTE {
         store.register(id, button());
     }

@@ -212,21 +212,23 @@ impl AudioSystem {
         }
     }
 
-    /// Advance the ducking envelope from the Voice bus level (the sidechain key)
-    /// and return the current duck multiplier (`1.0` = none) for Music/SFX. Fast
-    /// attack (dip quickly when Voice speaks), slow release. Pure control-side —
-    /// the engine's per-bus smoothing turns the per-frame target into clean audio.
-    pub(crate) fn update_ducking(&self, on: bool, depth: f32) -> f32 {
-        const KEY_THRESHOLD: f32 = 0.03; // Voice RMS above which ducking engages
+    /// Advance the ducking envelope from sub-bus `key_idx`'s level (the sidechain
+    /// key) and return the current duck multiplier (`1.0` = none) for every other
+    /// bus. Fast attack (dip quickly when the key sounds), slow release. Pure
+    /// control-side — the engine's per-bus smoothing turns the per-frame target
+    /// into clean audio. `key_idx` indexes [`BusId::SUB_BUSES`].
+    pub(crate) fn update_ducking(&self, on: bool, depth: f32, key_idx: usize) -> f32 {
+        const KEY_THRESHOLD: f32 = 0.03; // key RMS above which ducking engages
         const ATTACK: f32 = 0.35; // per-frame toward a deeper duck
         const RELEASE: f32 = 0.06; // per-frame back toward unity
-        // Voice bus is the key (its post-fader RMS).
-        let voice_idx = BusId::SUB_BUSES
-            .iter()
-            .position(|&b| b == BusId::Voice)
-            .unwrap_or(0);
-        let voice = self.engine.bus_rms()[voice_idx];
-        let key = voice[0].max(voice[1]);
+        // The selected key bus's post-fader RMS drives the duck.
+        let key_bus = self
+            .engine
+            .bus_rms()
+            .get(key_idx)
+            .copied()
+            .unwrap_or([0.0, 0.0]);
+        let key = key_bus[0].max(key_bus[1]);
         let target = if on && key > KEY_THRESHOLD {
             1.0 - depth.clamp(0.0, 1.0)
         } else {

@@ -31,6 +31,9 @@ thread_local! {
     static REVERB_MIX: Cell<f32> = const { Cell::new(0.3) }; // LITERAL-PX-OK: default reverb wet/dry mix (audio param)
     static DUCKING: Cell<bool> = const { Cell::new(false) };
     static DUCK_DEPTH: Cell<f32> = const { Cell::new(0.7) }; // LITERAL-PX-OK: default duck depth (audio param)
+    // Sidechain key sub-bus index; everything else ducks under it. Default = the
+    // last sub-bus (Voice), preserving the original dialogue-priority behavior.
+    static DUCK_KEY: Cell<usize> = const { Cell::new(SUB_BUS_COUNT - 1) };
     // Per-sub-bus channels, index-aligned with `BusId::SUB_BUSES`.
     static SUB_LEVELS_PEAK: Cell<[[f32; 2]; SUB_BUS_COUNT]> = const { Cell::new([[0.0, 0.0]; SUB_BUS_COUNT]) };
     static SUB_LEVELS_RMS: Cell<[[f32; 2]; SUB_BUS_COUNT]> = const { Cell::new([[0.0, 0.0]; SUB_BUS_COUNT]) };
@@ -208,13 +211,19 @@ pub(crate) fn set_reverb_mix(v: f32) {
     REVERB_MIX.with(|c| c.set(v));
 }
 
-/// Panel → shell: ducking enable + depth (Music/SFX duck under Voice).
+/// Panel → shell: ducking enable + depth (every bus ducks under the key bus).
 pub fn ducking() -> bool {
     DUCKING.with(Cell::get)
 }
 
 pub fn duck_depth() -> f32 {
     DUCK_DEPTH.with(Cell::get)
+}
+
+/// Panel → shell: the sidechain key sub-bus index (everything else ducks under
+/// it). Defaults to the last sub-bus (Voice).
+pub fn ducking_key() -> usize {
+    DUCK_KEY.with(Cell::get)
 }
 
 pub(crate) fn toggle_ducking() -> bool {
@@ -227,6 +236,15 @@ pub(crate) fn toggle_ducking() -> bool {
 
 pub(crate) fn set_duck_depth(v: f32) {
     DUCK_DEPTH.with(|c| c.set(v));
+}
+
+/// Advance the sidechain key to the next sub-bus (wraps). Returns the new index.
+pub(crate) fn cycle_duck_key() -> usize {
+    DUCK_KEY.with(|c| {
+        let next = (c.get() + 1) % SUB_BUS_COUNT;
+        c.set(next);
+        next
+    })
 }
 
 /// Shell → panel: current post-fader peak + RMS per sub-bus. Latches each

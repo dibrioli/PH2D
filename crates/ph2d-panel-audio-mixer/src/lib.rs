@@ -64,6 +64,8 @@ pub const AMIX_EQ_HIGH: NodeId = hash_node_id("audio_mixer_eq_high");
 pub const AMIX_DUCK: NodeId = hash_node_id("audio_mixer_duck");
 /// Ducking depth slider (how much the ducked buses drop).
 pub const AMIX_DUCK_DEPTH: NodeId = hash_node_id("audio_mixer_duck_depth");
+/// Sidechain key-bus selector button — cycles which sub-bus everything ducks under.
+pub const AMIX_DUCK_KEY: NodeId = hash_node_id("audio_mixer_duck_key");
 
 /// Sub-buses shown as their own strips, **in `ph2d_audio::BusId::SUB_BUSES`
 /// order** (Music, SFX). The panel is UI-only (no `ph2d-audio` dep); the shell's
@@ -203,6 +205,6 @@ pub use snapshot::sub_soloed;
 /// Panel → shell: each sub-bus low-pass cutoff in Hz (from its Tone slider).
 pub use snapshot::sub_tone as sub_tone_target;
 /// Panel → shell: ducking enable + depth (Music/SFX duck under the Voice bus).
-pub use snapshot::{duck_depth, ducking};
+pub use snapshot::{duck_depth, ducking, ducking_key};
 /// Panel → shell: master reverb enable / room size / wet-dry mix.
 pub use snapshot::{reverb_mix, reverb_on, reverb_size};

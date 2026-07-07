@@ -13,11 +13,11 @@ use crate::fader::{FADER_UNITY_POS, fader_db};
 use crate::paint_widgets::{paint_labeled_slider, paint_toggle};
 use crate::state::AudioMixerState;
 use crate::{
-    AMIX_CLOSE, AMIX_CUTOFF, AMIX_DUCK, AMIX_DUCK_DEPTH, AMIX_EQ_HIGH, AMIX_EQ_LOW, AMIX_EQ_MID,
-    AMIX_FADER, AMIX_LIMITER, AMIX_LOWCUT, AMIX_MASTER_METER, AMIX_MASTER_MUTE, AMIX_PAN,
-    AMIX_PANEL, AMIX_PLAY, AMIX_REVERB, AMIX_REVERB_MIX, AMIX_REVERB_SIZE, AudioMixerPanel,
-    SUB_BUS_COUNT, SUB_BUS_LABELS, SUB_FADER, SUB_LOWCUT, SUB_METER, SUB_MUTE, SUB_PAN, SUB_SEND,
-    SUB_SOLO, SUB_TONE, snapshot,
+    AMIX_CLOSE, AMIX_CUTOFF, AMIX_DUCK, AMIX_DUCK_DEPTH, AMIX_DUCK_KEY, AMIX_EQ_HIGH, AMIX_EQ_LOW,
+    AMIX_EQ_MID, AMIX_FADER, AMIX_LIMITER, AMIX_LOWCUT, AMIX_MASTER_METER, AMIX_MASTER_MUTE,
+    AMIX_PAN, AMIX_PANEL, AMIX_PLAY, AMIX_REVERB, AMIX_REVERB_MIX, AMIX_REVERB_SIZE,
+    AudioMixerPanel, SUB_BUS_COUNT, SUB_BUS_LABELS, SUB_FADER, SUB_LOWCUT, SUB_METER, SUB_MUTE,
+    SUB_PAN, SUB_SEND, SUB_SOLO, SUB_TONE, snapshot,
 };
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::ids as core_ids;
@@ -400,14 +400,30 @@ fn paint_master_section(
     }
     y += Spacing::Sm.px();
 
-    // Ducking: enable toggle + Depth. Music/SFX duck under the Voice bus so
-    // dialogue cuts through (the shell keys off the Voice bus level).
+    // Ducking (sidechain): enable toggle + Key selector + Depth. Every bus ducks
+    // under the selected Key bus so it cuts through; click Key to cycle the bus.
     paint_toggle(
         Rect::new(content_x, y, content_w, MUTE_H),
         "Ducking",
         snapshot::ducking(),
         ColorToken::Accent,
         AMIX_DUCK,
+        scene,
+        text_system,
+        theme,
+        hit_index,
+    );
+    y += MUTE_H + Spacing::Sm.px();
+    let key_label = format!(
+        "Key: {}",
+        SUB_BUS_LABELS[snapshot::ducking_key() % SUB_BUS_COUNT]
+    );
+    paint_toggle(
+        Rect::new(content_x, y, content_w, MUTE_H),
+        &key_label,
+        false,
+        ColorToken::Accent,
+        AMIX_DUCK_KEY,
         scene,
         text_system,
         theme,

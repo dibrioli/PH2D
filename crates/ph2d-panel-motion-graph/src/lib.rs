@@ -12,24 +12,21 @@
 
 #![forbid(unsafe_code)]
 
+mod interact;
 mod paint;
 mod snapshot;
+mod state;
 
 pub use snapshot::{
-    GraphEdgeView, GraphNodeView, GraphViewSnapshot, PortView, set_current_motion_graph,
-    snapshot_from,
+    GraphEdgeView, GraphIntent, GraphNodeView, GraphViewSnapshot, PortView, drain_intents,
+    set_current_motion_graph, snapshot_from,
 };
+pub use state::MotionGraphPanelState;
 
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::{WidgetEvent, WidgetStore};
 use ph2d_editor_core::panel::{EventOutcome, PaintCtx, Panel, PanelHostInternal};
-
-/// Retained per-instance state — none yet (the document lives shell-side in
-/// `MotionState`; this panel only renders it). Unit struct so the typed registry
-/// can default-construct it.
-#[derive(Default)]
-pub struct MotionGraphPanelState;
 
 /// Zero-size marker implementing the typed graph-editor panel contract.
 pub struct MotionGraphPanel;
@@ -41,13 +38,14 @@ impl Panel for MotionGraphPanel {
     const NODE_ID: NodeId = ids::MOTION_GRAPH_PANEL;
     const DEFAULT_VISIBLE: bool = false;
 
-    fn paint(_state: &mut MotionGraphPanelState, ctx: &mut PaintCtx) {
+    fn paint(state: &mut MotionGraphPanelState, ctx: &mut PaintCtx) {
         if !ctx.host.panel_visible(MotionGraphPanel::ID) {
             // Stale-rect cleanup so `panel_at` stops returning this panel once the
-            // tool deactivates.
+            // tool deactivates; also drop the graph keyboard focus.
             ctx.host
                 .store_mut()
                 .clear_panel_rect(ids::MOTION_GRAPH_PANEL);
+            ctx.host.store_mut().set_graph_focused(None);
             return;
         }
         let rect = ctx.layout.motion_graph;
@@ -62,9 +60,9 @@ impl Panel for MotionGraphPanel {
         ctx.host
             .store_mut()
             .set_panel_rect(ids::MOTION_GRAPH_PANEL, rect);
-        // Fase A background + the M1 graph (cards / sockets / wires) — reads the
-        // snapshot the shell bridge published this frame.
-        paint::paint(ctx);
+        // Fase A background + the M1 graph (cards / sockets / wires) + gesture
+        // handling — reads the snapshot the shell bridge published this frame.
+        paint::paint(state, ctx);
     }
 
     fn apply_event(

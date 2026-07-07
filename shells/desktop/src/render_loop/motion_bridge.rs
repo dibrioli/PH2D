@@ -65,14 +65,22 @@ pub(super) fn dispatch(
         }
     }
 
-    // ── Publish the graph view to the panel (M1.E10, mold set_current_vector_style) ──
-    // Rebuilt each active frame (Phase 1a); a dirty/cook-epoch gate lands in
-    // Phase 1b. `None` while inactive → no allocation off the editor.
+    // ── Apply the panel's edits, then publish the fresh view (M1.E10) ──────
+    // The panel pushed `GraphIntent`s during last frame's paint; apply them to
+    // the doc (each a single undo step) BEFORE rebuilding the snapshot so the
+    // change shows this frame. Rebuilt each active frame (Phase 1a); a dirty
+    // gate lands later. `None` while inactive → no allocation off the editor.
     #[cfg(feature = "panel-motion-graph")]
-    ph2d_panel_motion_graph::set_current_motion_graph(
-        motion_active
-            .then(|| ph2d_panel_motion_graph::snapshot_from(&motion.doc.graph, &motion.registry)),
-    );
+    {
+        if motion_active {
+            apply_graph_intents(motion);
+        }
+        ph2d_panel_motion_graph::set_current_motion_graph(
+            motion_active.then(|| {
+                ph2d_panel_motion_graph::snapshot_from(&motion.doc.graph, &motion.registry)
+            }),
+        );
+    }
 
     if !motion_active {
         return;
@@ -95,4 +103,32 @@ pub(super) fn dispatch(
         motion.default_uv_rect,
         motion.default_size,
     );
+}
+
+/// Apply the panel's queued [`GraphIntent`]s to the shell-owned document (M1.E10).
+/// Each intent is one undo step (snapshot begin → mutate → commit_if_changed).
+/// Positions are UI-only (they never touch the cook), so no `mark_dirty`.
+#[cfg(feature = "panel-motion-graph")]
+fn apply_graph_intents(motion: &mut MotionState) {
+    use ph2d_nodegraph::graph::{NodeId, Pos};
+    for intent in ph2d_panel_motion_graph::drain_intents() {
+        match intent {
+            ph2d_panel_motion_graph::GraphIntent::MoveNodes { nodes, dx, dy } => {
+                motion.history.begin(&motion.doc);
+                for id in nodes {
+                    let nid = NodeId(id);
+                    if let Some(p) = motion.doc.graph.pos(nid) {
+                        motion.doc.graph.set_pos(
+                            nid,
+                            Pos {
+                                x: p.x + dx,
+                                y: p.y + dy,
+                            },
+                        );
+                    }
+                }
+                motion.history.commit_if_changed(&motion.doc);
+            }
+        }
+    }
 }

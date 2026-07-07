@@ -367,6 +367,10 @@ pub fn cursor_over_hero_panel(gfx: Option<&AppGfx>, x: f32, y: f32) -> bool {
         // Vector Style panel (right-dock takeover, ADR-0108). Same reason as
         // painter-layers: the canvas extends under the docked panel.
         || inside(VECTOR_PANEL)
+        // Motion Nodes graph panel (M1) — the bottom half of the center split.
+        // Without it, wheel-over-graph zooms the camera instead of the graph
+        // (the anchored graph zoom the M0 dispatch routes via `set_graph_canvas`).
+        || inside(ph2d_editor::ids::MOTION_GRAPH_PANEL)
 }
 
 /// ADR-0029 Phase C.2: resolve canvas-picked entity bits to a live

@@ -1292,8 +1292,16 @@ impl App {
             }
         }
         // M14.4b.bis: middle button = camera pan anchor. Tracked here
-        // so CursorMoved can drive the pan.
-        if button == MouseButton::Middle {
+        // so CursorMoved can drive the pan. Motion Nodes M1: NOT over the graph
+        // panel — there middle-drag pans the graph (via its `GraphSurface`
+        // gesture), not the camera underneath.
+        let over_graph = self
+            .gfx
+            .as_ref()
+            .and_then(|g| g.hero_screen.as_ref())
+            .and_then(|h| h.store.panel_rect(ph2d_editor::ids::MOTION_GRAPH_PANEL))
+            .is_some_and(|r| r.contains(self.last_pointer.0, self.last_pointer.1));
+        if button == MouseButton::Middle && !(over_graph && state == ElementState::Pressed) {
             match state {
                 ElementState::Pressed => {
                     self.pan_anchor = Some(self.last_pointer);

@@ -58,8 +58,29 @@ pub struct GraphViewSnapshot {
     pub edges: Vec<GraphEdgeView>,
 }
 
+/// An edit the panel asks the shell to apply to the document (M1.E10, reverse of
+/// [`GraphViewSnapshot`]). Ephemeral view state (pan / zoom / selection / drag)
+/// stays in `Panel::State` and is NEVER an intent; only doc mutations are.
+#[derive(Clone, Debug, PartialEq)]
+pub enum GraphIntent {
+    /// Move nodes by a graph-space delta — emitted ONCE at drag End so it is a
+    /// single undo step (the live drag is rendered panel-side meanwhile).
+    MoveNodes { nodes: Vec<u32>, dx: f32, dy: f32 },
+}
+
 thread_local! {
     static CURRENT: RefCell<Option<GraphViewSnapshot>> = const { RefCell::new(None) };
+    static INTENTS: RefCell<Vec<GraphIntent>> = const { RefCell::new(Vec::new()) };
+}
+
+/// Queue an edit for the shell bridge to apply (panel → shell).
+pub(crate) fn push_intent(intent: GraphIntent) {
+    INTENTS.with(|c| c.borrow_mut().push(intent));
+}
+
+/// Drain the queued edits (shell bridge, each frame). Capacity-retaining.
+pub fn drain_intents() -> Vec<GraphIntent> {
+    INTENTS.with(|c| std::mem::take(&mut *c.borrow_mut()))
 }
 
 /// Publish the current graph snapshot (shell bridge → panel). `None` while the

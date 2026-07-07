@@ -203,29 +203,91 @@ impl VecScene {
 /// canvas todo azul"). Um knob só, trivial de re-tunar.
 const DEMO_SCALE: f64 = 0.01;
 
-/// Blob-círculo (4 cúbicas, magic-number canônico de círculo-Bézier
-/// `k = r·0.55228…`, não constante inventada) centrado em `c`, preenchido.
-fn blob(c: [f64; 2], r: f64, fill: Rgba8) -> VecPath {
-    let k = r * 0.552_284_75;
+/// Constante canônica do círculo-Bézier (`k = r·0.55228…`): o comprimento de
+/// handle que aproxima um quarto de círculo com uma cúbica. Não é constante
+/// inventada — é o valor publicado (4/3·(√2−1)).
+const KAPPA: f64 = 0.552_284_75;
+
+/// Teto de lados de um polígono regular (defensivo contra `sides` absurdo vindo
+/// da UI; o slider real fica em 3..12). Independente do `MAX_POLYGON_SIDES=128`
+/// congelado do modelo *antigo* (`ph2d-vector-doc`); aqui é só um clamp local.
+pub const MAX_POLYGON_SIDES: u32 = 128;
+
+/// Retângulo eixo-alinhado a partir de dois cantos opostos (ordem livre): quatro
+/// vértices de quina, fechado, **sem estilo** (o chamador aplica fill/stroke).
+/// Base das ferramentas de forma (ADR-0108 Fase 1).
+#[must_use]
+pub fn rectangle(a: [f64; 2], b: [f64; 2]) -> VecPath {
+    let (x0, x1) = (a[0].min(b[0]), a[0].max(b[0]));
+    let (y0, y1) = (a[1].min(b[1]), a[1].max(b[1]));
+    VecPath {
+        id: 0,
+        verts: vec![
+            VecVertex::corner([x0, y0]),
+            VecVertex::corner([x1, y0]),
+            VecVertex::corner([x1, y1]),
+            VecVertex::corner([x0, y1]),
+        ],
+        closed: true,
+        fill: None,
+        stroke: None,
+    }
+}
+
+/// Elipse centrada em `center` com semi-eixos `rx`/`ry`: quatro vértices suaves
+/// com os handles canônicos de círculo-Bézier ([`KAPPA`]). Fechada, sem estilo.
+#[must_use]
+pub fn ellipse(center: [f64; 2], rx: f64, ry: f64) -> VecPath {
+    let (cx, cy) = (center[0], center[1]);
+    let (kx, ky) = (rx * KAPPA, ry * KAPPA);
     let v = |ax: f64, ay: f64, ix: f64, iy: f64, ox: f64, oy: f64| {
-        VecVertex::smooth(
-            [c[0] + ax, c[1] + ay],
-            [c[0] + ix, c[1] + iy],
-            [c[0] + ox, c[1] + oy],
-        )
+        VecVertex::smooth([cx + ax, cy + ay], [cx + ix, cy + iy], [cx + ox, cy + oy])
     };
     VecPath {
         id: 0,
         verts: vec![
-            v(r, 0.0, r, -k, r, k),
-            v(0.0, r, k, r, -k, r),
-            v(-r, 0.0, -r, k, -r, -k),
-            v(0.0, -r, -k, -r, k, -r),
+            v(rx, 0.0, rx, -ky, rx, ky),
+            v(0.0, ry, kx, ry, -kx, ry),
+            v(-rx, 0.0, -rx, ky, -rx, -ky),
+            v(0.0, -ry, -kx, -ry, kx, -ry),
         ],
         closed: true,
-        fill: Some(fill),
+        fill: None,
         stroke: None,
     }
+}
+
+/// Polígono regular inscrito na elipse de raios `rx`/`ry`: `sides` vértices de
+/// quina (arestas retas), primeiro vértice no topo (12h). `sides` clampado a
+/// `[3, MAX_POLYGON_SIDES]`. Fechado, sem estilo. Usa cos/sin (geometria de
+/// editor — não é sim determinística; kurbo/vello já usam trig internamente).
+#[must_use]
+pub fn regular_polygon(center: [f64; 2], rx: f64, ry: f64, sides: u32) -> VecPath {
+    let n = sides.clamp(3, MAX_POLYGON_SIDES) as usize;
+    let (cx, cy) = (center[0], center[1]);
+    let step = std::f64::consts::TAU / n as f64;
+    // Ângulo 0 = topo (−Y): começa em 12h e caminha em torno da elipse.
+    let start = -std::f64::consts::FRAC_PI_2;
+    let verts = (0..n)
+        .map(|i| {
+            let a = start + step * i as f64;
+            VecVertex::corner([cx + rx * a.cos(), cy + ry * a.sin()])
+        })
+        .collect();
+    VecPath {
+        id: 0,
+        verts,
+        closed: true,
+        fill: None,
+        stroke: None,
+    }
+}
+
+/// Blob-círculo preenchido (usa [`ellipse`] com `rx = ry`), para a cena-demo.
+fn blob(c: [f64; 2], r: f64, fill: Rgba8) -> VecPath {
+    let mut p = ellipse(c, r, r);
+    p.fill = Some(fill);
+    p
 }
 
 fn demo_blob() -> VecPath {
@@ -313,5 +375,70 @@ mod tests {
     #[test]
     fn from_bytes_rejects_garbage() {
         assert!(VecScene::from_bytes(&[0xFF, 0xFF, 0xFF]).is_err());
+    }
+
+    fn anchor_bbox(p: &VecPath) -> ([f64; 2], [f64; 2]) {
+        let mut mn = [f64::MAX; 2];
+        let mut mx = [f64::MIN; 2];
+        for v in &p.verts {
+            mn[0] = mn[0].min(v.anchor[0]);
+            mn[1] = mn[1].min(v.anchor[1]);
+            mx[0] = mx[0].max(v.anchor[0]);
+            mx[1] = mx[1].max(v.anchor[1]);
+        }
+        (mn, mx)
+    }
+
+    #[test]
+    fn rectangle_is_closed_four_corners_spanning_the_bbox() {
+        // Corners passed in arbitrary order → normalized bbox.
+        let r = rectangle([3.0, 5.0], [-1.0, -2.0]);
+        assert!(r.closed && r.fill.is_none() && r.stroke.is_none());
+        assert_eq!(r.verts.len(), 4);
+        assert!(r.verts.iter().all(|v| v.kind == VertexKind::Corner));
+        let (mn, mx) = anchor_bbox(&r);
+        assert_eq!((mn, mx), ([-1.0, -2.0], [3.0, 5.0]));
+    }
+
+    #[test]
+    fn ellipse_matches_blob_when_radii_equal() {
+        // `blob` now delegates to `ellipse`; the demo circle must be byte-identical
+        // (guards the postcard/demo determinism after the refactor).
+        let mut e = ellipse([0.0, 0.0], 1.2, 1.2);
+        e.fill = Some(Rgba8::new(90, 150, 230, 255));
+        assert_eq!(e, blob([0.0, 0.0], 1.2, Rgba8::new(90, 150, 230, 255)));
+        assert!(e.verts.iter().all(|v| v.kind == VertexKind::Smooth));
+    }
+
+    #[test]
+    fn ellipse_anchors_touch_the_bbox_extents() {
+        let e = ellipse([2.0, 3.0], 4.0, 1.0);
+        let (mn, mx) = anchor_bbox(&e);
+        assert_eq!((mn, mx), ([-2.0, 2.0], [6.0, 4.0]));
+    }
+
+    #[test]
+    fn regular_polygon_has_sides_corner_verts_and_clamps() {
+        let p = regular_polygon([0.0, 0.0], 2.0, 2.0, 5);
+        assert!(p.closed);
+        assert_eq!(p.verts.len(), 5);
+        assert!(p.verts.iter().all(|v| v.kind == VertexKind::Corner));
+        // Clamp: sides < 3 → 3.
+        assert_eq!(regular_polygon([0.0, 0.0], 1.0, 1.0, 0).verts.len(), 3);
+        assert_eq!(
+            regular_polygon([0.0, 0.0], 1.0, 1.0, MAX_POLYGON_SIDES + 99)
+                .verts
+                .len(),
+            MAX_POLYGON_SIDES as usize
+        );
+    }
+
+    #[test]
+    fn regular_polygon_first_vertex_is_at_top() {
+        // Angle 0 = top (−Y): first anchor sits at (cx, cy − ry).
+        let p = regular_polygon([1.0, 1.0], 3.0, 2.0, 6);
+        let a = p.verts[0].anchor;
+        assert!((a[0] - 1.0).abs() < 1e-9, "x centered");
+        assert!((a[1] - (1.0 - 2.0)).abs() < 1e-9, "y at top of bbox");
     }
 }

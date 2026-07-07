@@ -191,8 +191,11 @@ impl App {
             painter_undo_requested: false,
             painter_redo_requested: false,
             // ADR-0108 cutover: the Vector drawing tool's shell-held Pen +
-            // undo history over `AppGfx.vec_scene`.
+            // shape tool + undo history over `AppGfx.vec_scene`.
             vec_pen: ph2d_vec_edit::PenTool::new(),
+            vec_shape: ph2d_vec_edit::ShapeTool::new(),
+            vec_draw_mode: ph2d_tool_vector::DrawMode::Pen,
+            vec_polygon_sides: ph2d_tool_vector::DEFAULT_POLYGON_SIDES,
             vec_history: ph2d_vec_edit::History::new(),
             frame_ms_ewma: 16.7, // ~60 Hz baseline so the first
                                  // frame's status bar doesn't display

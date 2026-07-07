@@ -22,7 +22,8 @@
 //! loop stays downcast-free — mirror of `painter_bridge`.
 
 use ph2d_editor::{HeroScreen, ToolId, ToolRegistry};
-use ph2d_vec_edit::{History, PenStyle, PenTool};
+use ph2d_tool_vector::{DEFAULT_POLYGON_SIDES, DrawMode};
+use ph2d_vec_edit::{History, PenStyle, PenTool, ShapeTool};
 use ph2d_vec_scene::{Rgba8, VecScene};
 use std::cell::RefCell;
 
@@ -40,16 +41,21 @@ thread_local! {
 
 /// Per-frame Vector-tool plumbing. Safe to call every frame; a no-op when the
 /// Vector tool is absent from the registry.
+/// Returns the tool's current `(draw_mode, polygon_sides)` so the shell can
+/// mirror them into `App` (the input dispatch reads those to route canvas
+/// gestures without a downcast). Defaults to `(Pen, DEFAULT_POLYGON_SIDES)` when
+/// the Vector tool is absent.
 pub(super) fn dispatch(
     hero: &mut HeroScreen,
     tools: &mut ToolRegistry,
     scene: &mut VecScene,
     pen: &mut PenTool,
+    shape: &mut ShapeTool,
     history: &mut History,
     // World units per screen pixel (from the camera) — converts the tool's px
     // stroke width into the path's world-space width when restyling.
     px_to_world: f64,
-) {
+) -> (DrawMode, u32) {
     let vector_active = tools
         .active()
         .is_some_and(|t| t.id() == ToolId::new("vector"));
@@ -73,7 +79,7 @@ pub(super) fn dispatch(
     }) else {
         #[cfg(feature = "panel-vector")]
         ph2d_panel_vector::set_current_vector_style(None);
-        return;
+        return (DrawMode::Pen, DEFAULT_POLYGON_SIDES);
     };
 
     // ── 2. Picker read-back: which swatch is the picker targeting? ────────
@@ -100,12 +106,14 @@ pub(super) fn dispatch(
     let stroke = tool.stroke_rgba();
     let fill = tool.fill_rgba();
 
-    // ── 3. New paths honour the tool's Style. ─────────────────────────────
-    pen.set_style(PenStyle {
+    // ── 3. New paths honour the tool's Style (pen + shape share it). ──────
+    let style = PenStyle {
         stroke: rgba(stroke),
         stroke_w_px: tool.stroke_width_px(),
         fill: rgba(fill),
-    });
+    };
+    pen.set_style(style);
+    shape.set_style(style);
 
     // ── 4. Restyle the selected path — colour + width (undoable, one step per
     //    gesture). A width-slider DRAG is a gesture like a picker drag, so scope
@@ -167,4 +175,8 @@ pub(super) fn dispatch(
     } else {
         None
     });
+
+    // Mirror the tool's draw-mode + polygon sides so the input dispatch can
+    // route canvas gestures (pen vs shape) without downcasting the tool.
+    (tool.mode(), tool.polygon_sides())
 }

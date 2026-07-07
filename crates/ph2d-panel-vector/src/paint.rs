@@ -24,8 +24,8 @@ use ph2d_editor_core::panel::{PaintCtx, Panel};
 use ph2d_editor_core::widget::panel_chrome::{
     PANEL_HEAD_PAD, PANEL_HEADER_CLOSE_RESERVE, PANEL_HEADER_H_DEFAULT, PANEL_TITLE_BASELINE,
     paint_panel_close_button, paint_panel_corner_dot, paint_panel_corner_dot_bl,
-    paint_panel_surface, paint_panel_title, panel_close_button_rect, panel_drag_handle_rect,
-    panel_resize_handle_rect, panel_resize_handle_rect_bl,
+    paint_panel_surface, paint_panel_title, paint_segmented_button, panel_close_button_rect,
+    panel_drag_handle_rect, panel_resize_handle_rect, panel_resize_handle_rect_bl,
 };
 use ph2d_editor_core::widget::{
     Button, ButtonKind, ButtonState, ColorSwatch, NUMBER_INPUT_MIN_W_PX, SwatchSize, paint_button,
@@ -33,6 +33,7 @@ use ph2d_editor_core::widget::{
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ColorToken, ROW_H_PX, Spacing, TypeToken};
+use ph2d_tool_vector::params::{DrawMode, sides_to_slider};
 use ph2d_tool_vector::px_to_slider;
 
 /// Label column width for the Width slider row + the Stroke / Fill labels.
@@ -205,6 +206,93 @@ pub(crate) fn paint(_state: &mut VectorPanelState, ctx: &mut PaintCtx) {
         paint_button(&none_btn, none_rect, scene, text_system, theme);
         hit_index.register(ids::VECTOR_FILL_NONE, none_rect);
         y += row_h + row_gap;
+
+        let label_font = TypeToken::Sm.px();
+
+        // ── Draw mode: Pen (draw/edit) vs a drag-to-size shape ──────────
+        paint_text(
+            text_system,
+            scene,
+            "Draw",
+            inner_x,
+            y,
+            label_font,
+            inner_w,
+            resolve(ColorToken::Text2, theme),
+        );
+        y += label_font + Spacing::Xs.px();
+        let modes = [
+            (ids::VECTOR_MODE_PEN, "Pen", DrawMode::Pen),
+            (ids::VECTOR_MODE_RECT, "Rect", DrawMode::Rectangle),
+            (ids::VECTOR_MODE_ELLIPSE, "Oval", DrawMode::Ellipse),
+            (ids::VECTOR_MODE_POLYGON, "Poly", DrawMode::Polygon),
+        ];
+        let seg_gap = Spacing::Sm.px();
+        let seg_w = ((inner_w - seg_gap * (modes.len() as f32 - 1.0)) / modes.len() as f32).max(1.0);
+        for (i, (id, label, m)) in modes.iter().enumerate() {
+            let rx = inner_x + i as f32 * (seg_w + seg_gap);
+            let rect = Rect::new(rx, y, seg_w, row_h);
+            let state = store.button_state(*id).unwrap_or(ButtonState::Normal);
+            paint_segmented_button(rect, label, snap.mode == *m, state, scene, text_system, theme);
+            hit_index.register(*id, rect);
+        }
+        y += row_h + row_gap;
+
+        // ── Polygon Sides slider (only meaningful in Polygon mode) ──────
+        if snap.mode == DrawMode::Polygon {
+            let track = store
+                .slider(ids::VECTOR_SIDES)
+                .map(|(_, v)| v)
+                .unwrap_or_else(|| sides_to_slider(snap.polygon_sides));
+            let sides_val = store
+                .number_value(ids::VECTOR_SIDES_NUM)
+                .unwrap_or(f64::from(snap.polygon_sides));
+            let sides_display = format!("{}", sides_val.round() as i64);
+            let used = paint_slider_with_chip_layout_adaptive(
+                Rect::new(inner_x, y, inner_w, row_h),
+                "Sides",
+                track,
+                sides_val,
+                Some(&sides_display),
+                ids::VECTOR_SIDES,
+                ids::VECTOR_SIDES_NUM,
+                LABEL_COL_W,
+                chip_w,
+                store,
+                hit_index,
+                scene,
+                text_system,
+                theme,
+            );
+            y += used + row_gap;
+        }
+
+        // ── Boolean ops — act on the two last closed regions ────────────
+        paint_text(
+            text_system,
+            scene,
+            "Boolean",
+            inner_x,
+            y,
+            label_font,
+            inner_w,
+            resolve(ColorToken::Text2, theme),
+        );
+        y += label_font + Spacing::Xs.px();
+        let bool_ops = [
+            (ids::VECTOR_BOOL_UNION, "Union"),
+            (ids::VECTOR_BOOL_SUBTRACT, "Subtract"),
+            (ids::VECTOR_BOOL_INTERSECT, "Intersect"),
+        ];
+        for (id, label) in bool_ops {
+            let rect = Rect::new(inner_x, y, inner_w, row_h);
+            let state = store.button_state(id).unwrap_or(ButtonState::Normal);
+            let btn = Button::new(id, label).kind(ButtonKind::Default).state(state);
+            paint_button(&btn, rect, scene, text_system, theme);
+            hit_index.register(id, rect);
+            y += row_h + Spacing::Xs.px();
+        }
+        y += row_gap;
 
         (y - body_top + PANEL_HEAD_PAD).max(0.0)
     };

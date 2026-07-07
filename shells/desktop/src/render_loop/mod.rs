@@ -725,6 +725,12 @@ impl crate::App {
             let mut real_size_entities: Vec<u64> = Vec::new();
             let mut rasterize_entities: Vec<u64> = Vec::new();
             let mut undo_image_edit = false;
+            // ADR-0108 Fase 1: a Boolean button (Union/Subtract/Intersect) in the
+            // docked Vector panel forwards a `ToolPanelEvent::Click`; the op acts
+            // on the DOCUMENT (shell-owned `vec_scene`), not the tool's Style, so
+            // capture it here and apply after the drain (mirror of the U/I/D
+            // hotkeys, next to the vector render).
+            let mut pending_vec_bool: Option<ph2d_vec_boolean::BoolOp> = None;
             let mut transform_edit: Option<ph2d_editor::InspectorTransformInfo> = None;
             let mut visibility_edit: Option<ph2d_editor::InspectorVisibilityInfo> = None;
             let mut sprite_source_change: Option<(u64, RequestedSpriteStrategy)> = None;
@@ -772,6 +778,15 @@ impl crate::App {
                     // semantic mapping (slider id → typed UI edit) lives on
                     // the tool, not here.
                     EditorAction::ToolPanelEvent(ev) => {
+                        // Vector Boolean buttons are DOCUMENT commands, not Style
+                        // edits — capture the op (by ref, PanelEvent isn't Copy)
+                        // to apply after the drain; still forward to the tool
+                        // (which ignores boolean ids) so mode/width/etc. flow.
+                        if let ph2d_editor::tool::PanelEvent::Click(id) = &ev
+                            && let Some(op) = crate::input_dispatch::vec_bool_op_for_id(*id)
+                        {
+                            pending_vec_bool = Some(op);
+                        }
                         if let Some(t) = tools.active_mut() {
                             t.handle_panel_event(ev);
                         }
@@ -1355,11 +1370,23 @@ impl crate::App {
             let vw1 = camera.screen_to_world((1.0, 0.0), window_size);
             let vec_px_to_world =
                 (((vw1[0] - vw0[0]).powi(2) + (vw1[1] - vw0[1]).powi(2)).sqrt()) as f64;
-            vector_bridge::dispatch(
+            // Apply a Boolean button press (drained above) to the document before
+            // the bridge/render so the result selects + renders this frame
+            // (mirror of the U/I/D hotkeys' `vec_boolean`).
+            if let Some(op) = pending_vec_bool {
+                crate::input_dispatch::apply_vec_boolean(
+                    vec_scene,
+                    &mut self.vec_history,
+                    &mut self.vec_pen,
+                    op,
+                );
+            }
+            let (vec_mode, vec_sides) = vector_bridge::dispatch(
                 hero,
                 tools,
                 vec_scene,
                 &mut self.vec_pen,
+                &mut self.vec_shape,
                 &mut self.vec_history,
                 vec_px_to_world,
             );
@@ -1378,6 +1405,10 @@ impl crate::App {
                 self.last_pointer,
                 toasts,
             );
+            // Mirror the tool's draw-mode + sides for the input dispatch's
+            // pen-vs-shape routing (the downcast lives in the bridge).
+            self.vec_draw_mode = vec_mode;
+            self.vec_polygon_sides = vec_sides;
             ph2d_vec_render::dispatch(
                 vec_scene,
                 camera.world_to_screen_affine(window_size),

@@ -54,6 +54,90 @@ pub(crate) mod painter_canvas_input;
 pub(crate) mod painter_falloff_input;
 pub(crate) mod protect_brush;
 
+/// ADR-0108 Fase 1: apply a boolean `op` to the TWO last closed regions of
+/// `scene` (destructive — consumes the operands, inserts the result, records ONE
+/// undo step + selects the result). A free fn so both the U/I/D hotkeys
+/// ([`App::vec_boolean`]) and the panel's Boolean buttons (the render_loop drain,
+/// where `AppGfx` is already destructured and the method isn't callable) can
+/// invoke it with the decomposed refs. Logs + no-ops on < 2 closed regions /
+/// empty result.
+pub(crate) fn apply_vec_boolean(
+    scene: &mut ph2d_vec_scene::VecScene,
+    history: &mut ph2d_vec_edit::History,
+    pen: &mut ph2d_vec_edit::PenTool,
+    op: ph2d_vec_boolean::BoolOp,
+) {
+    let closed: Vec<u64> = scene
+        .paths()
+        .iter()
+        .filter(|p| p.closed)
+        .map(|p| p.id)
+        .collect();
+    if closed.len() < 2 {
+        eprintln!("[ph2d-vec] boolean: precisa de 2 regiões FECHADAS");
+        return;
+    }
+    let (ida, idb) = (closed[closed.len() - 2], closed[closed.len() - 1]);
+    let a = scene.paths().iter().find(|p| p.id == ida).cloned();
+    let b = scene.paths().iter().find(|p| p.id == idb).cloned();
+    if let (Some(a), Some(b)) = (a, b) {
+        let results = ph2d_vec_boolean::apply(&a, &b, op);
+        if results.is_empty() {
+            eprintln!("[ph2d-vec] boolean {op:?}: resultado vazio");
+            return;
+        }
+        let pre = scene.clone(); // undo da booleana
+        scene.remove_path(ida);
+        scene.remove_path(idb);
+        let mut last = None;
+        for r in results {
+            last = Some(scene.push_path(r));
+        }
+        history.push_undo(pre);
+        pen.select(last);
+        eprintln!("[ph2d-vec] boolean {op:?}: ok");
+    }
+}
+
+/// Map a Vector-panel Boolean button `NodeId` to its op (`None` for any other
+/// id). Pure — unit-tested; called from the render_loop drain to turn a
+/// `ToolPanelEvent::Click` into a document boolean.
+pub(crate) fn vec_bool_op_for_id(id: ph2d_editor::NodeId) -> Option<ph2d_vec_boolean::BoolOp> {
+    use ph2d_vec_boolean::BoolOp;
+    if id == ph2d_editor::ids::VECTOR_BOOL_UNION {
+        Some(BoolOp::Union)
+    } else if id == ph2d_editor::ids::VECTOR_BOOL_SUBTRACT {
+        Some(BoolOp::Subtract)
+    } else if id == ph2d_editor::ids::VECTOR_BOOL_INTERSECT {
+        Some(BoolOp::Intersect)
+    } else {
+        None
+    }
+}
+
+/// The shape kind a Vector draw-mode maps to (`None` = Pen, the non-shape
+/// gesture). Lets the canvas dispatch route Down/Move/Up to the pen or the
+/// shape tool.
+fn shape_kind_for_mode(mode: ph2d_tool_vector::DrawMode) -> Option<ph2d_vec_edit::ShapeKind> {
+    use ph2d_tool_vector::DrawMode;
+    use ph2d_vec_edit::ShapeKind;
+    match mode {
+        DrawMode::Pen => None,
+        DrawMode::Rectangle => Some(ShapeKind::Rectangle),
+        DrawMode::Ellipse => Some(ShapeKind::Ellipse),
+        DrawMode::Polygon => Some(ShapeKind::Polygon),
+    }
+}
+
+/// Whether a primary pointer-Up should be **consumed** by the shape tool (and
+/// NOT fall through to the chrome dispatch). Critical: in a shape mode the Up is
+/// consumed ONLY while a shape drag is actually live — otherwise releasing over
+/// a panel button (mode switch / boolean / close) while in a shape mode would
+/// silently swallow the click, leaving every button dead.
+fn shape_up_consumes(mode: ph2d_tool_vector::DrawMode, shape_active: bool) -> bool {
+    shape_kind_for_mode(mode).is_some() && shape_active
+}
+
 impl App {
     pub(crate) fn on_close_request(&mut self, event_loop: &ActiveEventLoop) {
         match self.handler.on_close_request() {
@@ -172,42 +256,18 @@ impl App {
         });
     }
 
-    /// ADR-0108 Fase 1: booleana das DUAS últimas regiões fechadas da cena nova
-    /// (destrutivo — consome os operandos, insere o resultado). Modo de teste.
+    /// ADR-0108 Fase 1: booleana das DUAS últimas regiões fechadas (hotkeys
+    /// U/I/D). Delega ao livre [`apply_vec_boolean`] com os refs decompostos — o
+    /// mesmo caminho usado pelos botões Boolean do painel (drain do render_loop,
+    /// onde `self.gfx` já está destruturado e o método não é chamável).
     fn vec_boolean(&mut self, op: ph2d_vec_boolean::BoolOp) {
-        let Some(gfx) = self.gfx.as_mut() else {
-            return;
-        };
-        let closed: Vec<u64> = gfx
-            .vec_scene
-            .paths()
-            .iter()
-            .filter(|p| p.closed)
-            .map(|p| p.id)
-            .collect();
-        if closed.len() < 2 {
-            eprintln!("[ph2d-vec] boolean: precisa de 2 regiões FECHADAS");
-            return;
-        }
-        let (ida, idb) = (closed[closed.len() - 2], closed[closed.len() - 1]);
-        let a = gfx.vec_scene.paths().iter().find(|p| p.id == ida).cloned();
-        let b = gfx.vec_scene.paths().iter().find(|p| p.id == idb).cloned();
-        if let (Some(a), Some(b)) = (a, b) {
-            let results = ph2d_vec_boolean::apply(&a, &b, op);
-            if results.is_empty() {
-                eprintln!("[ph2d-vec] boolean {op:?}: resultado vazio");
-                return;
-            }
-            let pre = gfx.vec_scene.clone(); // Fase 2: undo da booleana
-            gfx.vec_scene.remove_path(ida);
-            gfx.vec_scene.remove_path(idb);
-            let mut last = None;
-            for r in results {
-                last = Some(gfx.vec_scene.push_path(r));
-            }
-            self.vec_history.push_undo(pre);
-            self.vec_pen.select(last);
-            eprintln!("[ph2d-vec] boolean {op:?}: ok");
+        if let Some(gfx) = self.gfx.as_mut() {
+            apply_vec_boolean(
+                &mut gfx.vec_scene,
+                &mut self.vec_history,
+                &mut self.vec_pen,
+                op,
+            );
         }
     }
 
@@ -374,6 +434,20 @@ impl App {
             .and_then(|h| h.store.panel_rect(ph2d_editor::ids::MOTION_GRAPH_PANEL))
             .is_some_and(|r| r.contains(self.last_pointer.0, self.last_pointer.1))
     }
+    /// ADR-0108 Fase 1: while a shape drag is live, resize it to the cursor.
+    /// No-op unless the Vector tool is active AND a shape gesture is in progress.
+    fn vec_shape_drag_move(&mut self, x: f32, y: f32) -> bool {
+        if !self.vector_tool_active() || !self.vec_shape.is_active() {
+            return false;
+        }
+        let Some(gfx) = self.gfx.as_mut() else {
+            return false;
+        };
+        let win = gfx.surface.size();
+        let w = gfx.camera.screen_to_world((x, y), win);
+        self.vec_shape
+            .on_drag(&mut gfx.vec_scene, [w[0] as f64, w[1] as f64])
+    }
 
     pub(crate) fn on_cursor_moved(&mut self, position: PhysicalPosition<f64>) {
         // Diagnostics: count every raw winit move (input rate), paired with `paint_stamps_this_frame`
@@ -432,6 +506,11 @@ impl App {
         // ADR-0108 Fase 1.2: Pen NOVO — arrastar após a âncora puxa os handles
         // Bézier (simétricos). Early-return: não pan/gizmo. No-op sem drag ativo.
         if self.vec_pen_drag_move(self.last_pointer.0, self.last_pointer.1) {
+            return;
+        }
+        // ADR-0108 Fase 1: shape drag-to-size (Rectangle/Ellipse/Polygon). Same
+        // early-return discipline as the pen; no-op unless a shape drag is live.
+        if self.vec_shape_drag_move(self.last_pointer.0, self.last_pointer.1) {
             return;
         }
         // M14.4b.bis: middle-drag camera pan. Applied BEFORE pointer
@@ -579,6 +658,8 @@ impl App {
         if self.vector_tool_active() && !menu_open_before {
             match (mapped_button, kind) {
                 (ph2d_host::PointerButton::Primary, PointerKind::Down) if on_canvas => {
+                    let sides = self.vec_polygon_sides;
+                    let shape_kind = shape_kind_for_mode(self.vec_draw_mode);
                     if let Some(gfx) = self.gfx.as_mut() {
                         let win = gfx.surface.size();
                         let w = gfx.camera.screen_to_world(self.last_pointer, win);
@@ -590,25 +671,75 @@ impl App {
                         // Fase 2: snapshot pré-interação (vira passo de undo no Up
                         // só se a cena mudar de fato).
                         self.vec_history.begin(&gfx.vec_scene);
-                        self.vec_pen.on_press(
-                            &mut gfx.vec_scene,
-                            [w[0] as f64, w[1] as f64],
-                            px_to_world,
-                        );
+                        match shape_kind {
+                            None => {
+                                self.vec_pen.on_press(
+                                    &mut gfx.vec_scene,
+                                    [w[0] as f64, w[1] as f64],
+                                    px_to_world,
+                                );
+                            }
+                            Some(kind) => {
+                                self.vec_shape.on_press(
+                                    &mut gfx.vec_scene,
+                                    kind,
+                                    sides,
+                                    [w[0] as f64, w[1] as f64],
+                                    px_to_world,
+                                );
+                            }
+                        }
                         return;
                     }
                 }
                 (ph2d_host::PointerButton::Primary, PointerKind::Up) => {
-                    let consumed = self.vec_pen.on_release();
-                    if let Some(gfx) = self.gfx.as_mut() {
-                        self.vec_history.commit_if_changed(&gfx.vec_scene);
-                    }
-                    if consumed {
+                    if shape_kind_for_mode(self.vec_draw_mode).is_none() {
+                        // Pen: the release ends a handle drag / grab.
+                        let consumed = self.vec_pen.on_release();
+                        if let Some(gfx) = self.gfx.as_mut() {
+                            self.vec_history.commit_if_changed(&gfx.vec_scene);
+                        }
+                        if consumed {
+                            return;
+                        }
+                    } else if shape_up_consumes(self.vec_draw_mode, self.vec_shape.is_active()) {
+                        // A shape drag is in progress → finalize it. Commit if the
+                        // drag spanned a real size, else discard the stray click
+                        // (cancel the pending undo so it doesn't record a spurious
+                        // `next_id`-only step). ONLY consume the Up when a shape is
+                        // actually being drawn — otherwise (e.g. releasing over a
+                        // panel button while in a shape mode) the Up MUST fall
+                        // through to the chrome dispatch, else every panel click
+                        // (mode switch, boolean, close) is silently swallowed.
+                        let committed = if let Some(gfx) = self.gfx.as_mut() {
+                            let c = self.vec_shape.on_release(&mut gfx.vec_scene);
+                            if c {
+                                self.vec_history.commit_if_changed(&gfx.vec_scene);
+                            } else {
+                                self.vec_history.cancel();
+                            }
+                            c
+                        } else {
+                            false
+                        };
+                        if committed {
+                            // Select the new shape so it's immediately editable.
+                            self.vec_pen.select(self.vec_shape.selected());
+                        }
                         return;
                     }
+                    // Shape mode but no active drag → fall through to chrome so the
+                    // panel buttons receive their Up.
                 }
                 (ph2d_host::PointerButton::Secondary, PointerKind::Down) if on_canvas => {
-                    self.vec_pen.finish();
+                    if shape_kind_for_mode(self.vec_draw_mode).is_none() {
+                        self.vec_pen.finish();
+                    } else {
+                        if let Some(gfx) = self.gfx.as_mut() {
+                            self.vec_shape.cancel(&mut gfx.vec_scene);
+                        }
+                        self.vec_history.cancel();
+                    }
                     return;
                 }
                 _ => {}
@@ -1429,5 +1560,64 @@ impl App {
                 self.dragging = None;
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{shape_kind_for_mode, shape_up_consumes, vec_bool_op_for_id};
+    use ph2d_tool_vector::DrawMode;
+    use ph2d_vec_boolean::BoolOp;
+    use ph2d_vec_edit::ShapeKind;
+
+    #[test]
+    fn shape_up_only_consumed_while_a_drag_is_live() {
+        // Pen mode never consumes via the shape path (the pen path handles it).
+        assert!(!shape_up_consumes(DrawMode::Pen, false));
+        assert!(!shape_up_consumes(DrawMode::Pen, true));
+        // In a shape mode, a live drag consumes the Up (finalize the shape)...
+        assert!(shape_up_consumes(DrawMode::Rectangle, true));
+        assert!(shape_up_consumes(DrawMode::Polygon, true));
+        // ...but with NO active drag the Up must fall through so a panel-button
+        // click (mode switch / boolean / close) is not swallowed. This is the
+        // exact regression that made every button dead after entering Rect mode.
+        assert!(!shape_up_consumes(DrawMode::Rectangle, false));
+        assert!(!shape_up_consumes(DrawMode::Ellipse, false));
+        assert!(!shape_up_consumes(DrawMode::Polygon, false));
+    }
+
+    #[test]
+    fn boolean_button_ids_map_to_their_ops() {
+        assert_eq!(
+            vec_bool_op_for_id(ph2d_editor::ids::VECTOR_BOOL_UNION),
+            Some(BoolOp::Union)
+        );
+        assert_eq!(
+            vec_bool_op_for_id(ph2d_editor::ids::VECTOR_BOOL_SUBTRACT),
+            Some(BoolOp::Subtract)
+        );
+        assert_eq!(
+            vec_bool_op_for_id(ph2d_editor::ids::VECTOR_BOOL_INTERSECT),
+            Some(BoolOp::Intersect)
+        );
+        // A non-boolean id (a mode button) is not a boolean op.
+        assert_eq!(vec_bool_op_for_id(ph2d_editor::ids::VECTOR_MODE_PEN), None);
+    }
+
+    #[test]
+    fn draw_mode_maps_to_shape_kind_pen_is_none() {
+        assert_eq!(shape_kind_for_mode(DrawMode::Pen), None);
+        assert_eq!(
+            shape_kind_for_mode(DrawMode::Rectangle),
+            Some(ShapeKind::Rectangle)
+        );
+        assert_eq!(
+            shape_kind_for_mode(DrawMode::Ellipse),
+            Some(ShapeKind::Ellipse)
+        );
+        assert_eq!(
+            shape_kind_for_mode(DrawMode::Polygon),
+            Some(ShapeKind::Polygon)
+        );
     }
 }

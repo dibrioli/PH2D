@@ -24,7 +24,7 @@ use ph2d_editor_core::floating_panel::{FloatingPanel, PanelAnchor, ToolId};
 use ph2d_editor_core::ids;
 use ph2d_editor_core::tool::{PanelEvent, Tool};
 
-use crate::params::{VectorStyleSnapshot, slider_to_px};
+use crate::params::{DrawMode, VectorStyleSnapshot, slider_to_px, slider_to_sides};
 
 /// Curated stroke / fill preset palette: `(key, label, sRGB8)`. Retained as the
 /// seed source for the tool's defaults (and a stable named-colour reference);
@@ -48,6 +48,9 @@ const FILL_NONE: [u8; 4] = [0, 0, 0, 0];
 /// Default stroke width in screen pixels (matches the old `PenTool` default).
 pub const DEFAULT_STROKE_WIDTH_PX: f64 = 3.0;
 
+/// Default polygon side count (a pentagon reads clearly as "polygon").
+pub const DEFAULT_POLYGON_SIDES: u32 = 5;
+
 /// Look up a palette colour by key (defaults only — the live path is the picker).
 fn color_of(key: &str) -> Option<[u8; 4]> {
     PALETTE
@@ -56,7 +59,7 @@ fn color_of(key: &str) -> Option<[u8; 4]> {
         .map(|(_, _, c)| *c)
 }
 
-/// Vector drawing tool — Style model only.
+/// Vector drawing tool — Style + draw-mode model only.
 #[derive(Debug, Clone, PartialEq)]
 pub struct VectorTool {
     stroke: [u8; 4],
@@ -64,6 +67,11 @@ pub struct VectorTool {
     fill: [u8; 4],
     /// Stroke width in screen pixels, held in `WIDTH_MIN_PX..=WIDTH_MAX_PX`.
     stroke_width_px: f64,
+    /// Canvas gesture: Pen (draw + edit) vs a drag-to-size shape. The shell
+    /// mirrors this each frame to route canvas input (`vector_bridge`).
+    mode: DrawMode,
+    /// Sides for `DrawMode::Polygon`, held in `SIDES_MIN..=SIDES_MAX`.
+    polygon_sides: u32,
     /// Set when a colour changes → the shell recolours the selected path.
     /// Drained by [`Self::take_apply_to_selected`].
     apply_to_selected: bool,
@@ -75,6 +83,8 @@ impl Default for VectorTool {
             stroke: color_of("white").unwrap_or([240, 240, 245, 255]),
             fill: color_of("blue").unwrap_or([90, 150, 230, 255]),
             stroke_width_px: DEFAULT_STROKE_WIDTH_PX,
+            mode: DrawMode::Pen,
+            polygon_sides: DEFAULT_POLYGON_SIDES,
             apply_to_selected: false,
         }
     }
@@ -104,6 +114,18 @@ impl VectorTool {
         self.stroke_width_px
     }
 
+    /// Current canvas draw-mode (the shell mirrors this to route input).
+    #[must_use]
+    pub fn mode(&self) -> DrawMode {
+        self.mode
+    }
+
+    /// Current polygon side count (only meaningful in `DrawMode::Polygon`).
+    #[must_use]
+    pub fn polygon_sides(&self) -> u32 {
+        self.polygon_sides
+    }
+
     /// Set the stroke colour (picker read-back) + flag the selected path for
     /// recolour. `a = 0` is accepted (a fully-transparent stroke is unusual but
     /// not rejected here — the panel drives opaque picks).
@@ -126,6 +148,8 @@ impl VectorTool {
             stroke: self.stroke,
             fill: self.fill,
             stroke_width_px: self.stroke_width_px,
+            mode: self.mode,
+            polygon_sides: self.polygon_sides,
         }
     }
 
@@ -171,9 +195,22 @@ impl Tool for VectorTool {
                 // the next one drawn.
                 self.apply_to_selected = true;
             }
+            PanelEvent::SetValue(id, v) if id == ids::VECTOR_SIDES => {
+                self.polygon_sides = slider_to_sides(v as f32);
+            }
             PanelEvent::Click(id) if id == ids::VECTOR_FILL_NONE => {
                 self.fill = FILL_NONE;
                 self.apply_to_selected = true;
+            }
+            // Draw-mode segmented row: switches the canvas gesture. No recolour
+            // (mode is not a Style change) — the shell reads `mode()` to route.
+            PanelEvent::Click(id) if id == ids::VECTOR_MODE_PEN => self.mode = DrawMode::Pen,
+            PanelEvent::Click(id) if id == ids::VECTOR_MODE_RECT => self.mode = DrawMode::Rectangle,
+            PanelEvent::Click(id) if id == ids::VECTOR_MODE_ELLIPSE => {
+                self.mode = DrawMode::Ellipse
+            }
+            PanelEvent::Click(id) if id == ids::VECTOR_MODE_POLYGON => {
+                self.mode = DrawMode::Polygon
             }
             _ => {}
         }
@@ -243,15 +280,46 @@ mod tests {
     }
 
     #[test]
+    fn mode_buttons_switch_the_draw_mode() {
+        let mut t = VectorTool::new();
+        assert_eq!(t.mode(), DrawMode::Pen); // default
+        for (id, want) in [
+            (ids::VECTOR_MODE_RECT, DrawMode::Rectangle),
+            (ids::VECTOR_MODE_ELLIPSE, DrawMode::Ellipse),
+            (ids::VECTOR_MODE_POLYGON, DrawMode::Polygon),
+            (ids::VECTOR_MODE_PEN, DrawMode::Pen),
+        ] {
+            Tool::handle_panel_event(&mut t, PanelEvent::Click(id));
+            assert_eq!(t.mode(), want);
+        }
+        // Mode change is NOT a Style edit → never flags a recolour.
+        assert!(!t.take_apply_to_selected());
+    }
+
+    #[test]
+    fn sides_slider_maps_normalized_to_sides() {
+        use crate::params::{SIDES_MAX, SIDES_MIN};
+        let mut t = VectorTool::new();
+        Tool::handle_panel_event(&mut t, PanelEvent::SetValue(ids::VECTOR_SIDES, 0.0));
+        assert_eq!(t.polygon_sides(), SIDES_MIN);
+        Tool::handle_panel_event(&mut t, PanelEvent::SetValue(ids::VECTOR_SIDES, 1.0));
+        assert_eq!(t.polygon_sides(), SIDES_MAX);
+    }
+
+    #[test]
     fn ui_snapshot_round_trips_style() {
         let mut t = VectorTool::new();
         t.set_stroke_rgba([1, 2, 3, 255]);
         t.set_fill_rgba([4, 5, 6, 255]);
         Tool::handle_panel_event(&mut t, PanelEvent::SetValue(ids::VECTOR_WIDTH, 0.5));
+        Tool::handle_panel_event(&mut t, PanelEvent::Click(ids::VECTOR_MODE_POLYGON));
+        Tool::handle_panel_event(&mut t, PanelEvent::SetValue(ids::VECTOR_SIDES, 1.0));
         let s = t.ui_snapshot();
         assert_eq!(s.stroke, [1, 2, 3, 255]);
         assert_eq!(s.fill, [4, 5, 6, 255]);
         assert_eq!(s.stroke_width_px, t.stroke_width_px());
+        assert_eq!(s.mode, DrawMode::Polygon);
+        assert_eq!(s.polygon_sides, t.polygon_sides());
     }
 
     #[test]

@@ -517,6 +517,16 @@ pub(crate) struct App {
     /// input hooks while the `vector` tool is active, and styled each frame from
     /// the tool's palette via `render_loop::vector_bridge`.
     pub(crate) vec_pen: ph2d_vec_edit::PenTool,
+    /// ADR-0108 Fase 1: drag-to-size shape drawing (Rectangle / Ellipse /
+    /// Polygon). Sibling of `vec_pen`; the shell routes canvas input to one or
+    /// the other by `vec_draw_mode` (mirrored from the tool by `vector_bridge`).
+    pub(crate) vec_shape: ph2d_vec_edit::ShapeTool,
+    /// The tool's current canvas gesture, mirrored each frame from the
+    /// `VectorTool` (the input dispatch can't downcast — that lives in the
+    /// allowlisted bridge). Decides pen vs shape routing.
+    pub(crate) vec_draw_mode: ph2d_tool_vector::DrawMode,
+    /// Polygon side count for the shape tool, mirrored from the `VectorTool`.
+    pub(crate) vec_polygon_sides: u32,
     /// ADR-0108: undo/redo by snapshot of `vec_scene` (Ctrl+Z / Ctrl+Shift+Z).
     pub(crate) vec_history: ph2d_vec_edit::History,
     /// TOOL_PIVOT: world-space center of the selected sprite's CONTENT

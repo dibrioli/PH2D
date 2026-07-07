@@ -18,11 +18,11 @@
 use ph2d_editor_core::action_bus::EditorAction;
 use ph2d_editor_core::interaction::WidgetEvent;
 use ph2d_editor_core::panel::EventOutcome;
-use ph2d_editor_core::tool::Tool; // brings `handle_panel_event` into scope
+use ph2d_editor_core::tool::{PanelEvent, Tool}; // brings `handle_panel_event` into scope
 use ph2d_panel_vector::state::VectorPanelState;
 use ph2d_panel_vector::{VectorPanel, ids};
-use ph2d_tool_vector::VectorTool;
-use ph2d_tool_vector::params::slider_to_px;
+use ph2d_tool_vector::params::{SIDES_MAX, slider_to_px};
+use ph2d_tool_vector::{DrawMode, VectorTool};
 use ph2d_ui_testkit::MockPanelHost;
 
 /// Forward every drained `ToolPanelEvent` into the tool (what the shell does
@@ -100,6 +100,90 @@ fn fill_none_click_clears_fill_through_seam() {
     assert!(
         tool.take_apply_to_selected(),
         "Fill-None must flag the selected path for recolour"
+    );
+}
+
+/// A draw-mode button (Rectangle) must switch the tool's mode through the seam
+/// — exercising the mode arm in `event.rs` + `handle_panel_event`.
+#[test]
+fn mode_button_click_switches_tool_mode_through_seam() {
+    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    let mut panel_state = VectorPanelState;
+    let mut tool = VectorTool::default();
+    assert_eq!(tool.mode(), DrawMode::Pen, "precondition: default is Pen");
+
+    let outcome = host.apply_panel_event::<VectorPanel>(
+        &mut panel_state,
+        WidgetEvent::Click(ids::VECTOR_MODE_RECT),
+    );
+    assert_eq!(
+        outcome,
+        EventOutcome::Consumed,
+        "mode button ignored — `event.rs` arm for VECTOR_MODE_* is missing"
+    );
+
+    drain_into_tool(&mut host, &mut tool);
+    assert_eq!(
+        tool.mode(),
+        DrawMode::Rectangle,
+        "mode click never reached the tool through the seam"
+    );
+}
+
+/// The Polygon Sides slider must reach the tool's `polygon_sides` through the
+/// seam (same shape as the Width slider).
+#[test]
+fn sides_slider_drag_reaches_tool_through_seam() {
+    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    let mut panel_state = VectorPanelState;
+    let mut tool = VectorTool::default();
+
+    host.set_slider_value(ids::VECTOR_SIDES, 1.0);
+    let outcome = host.apply_panel_event::<VectorPanel>(
+        &mut panel_state,
+        WidgetEvent::ValueChanged(ids::VECTOR_SIDES),
+    );
+    assert_eq!(
+        outcome,
+        EventOutcome::Consumed,
+        "Sides slider edit ignored — `event.rs` arm for VECTOR_SIDES is missing"
+    );
+
+    drain_into_tool(&mut host, &mut tool);
+    assert_eq!(
+        tool.polygon_sides(),
+        SIDES_MAX,
+        "Sides slider→tool seam delivered the wrong side count"
+    );
+}
+
+/// A Boolean button (Union) is a DOCUMENT command, not a Style edit — the tool
+/// ignores it, so the seam proof is that the panel forwards the `Click` onto the
+/// bus as a `ToolPanelEvent` for the shell drain to apply.
+#[test]
+fn boolean_button_click_forwards_to_the_bus_for_the_shell() {
+    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    let mut panel_state = VectorPanelState;
+
+    let outcome = host.apply_panel_event::<VectorPanel>(
+        &mut panel_state,
+        WidgetEvent::Click(ids::VECTOR_BOOL_UNION),
+    );
+    assert_eq!(
+        outcome,
+        EventOutcome::Consumed,
+        "Boolean button ignored — `event.rs` arm for VECTOR_BOOL_* is missing"
+    );
+
+    let forwarded = host.drained_actions().iter().any(|a| {
+        matches!(
+            a,
+            EditorAction::ToolPanelEvent(PanelEvent::Click(id)) if *id == ids::VECTOR_BOOL_UNION
+        )
+    });
+    assert!(
+        forwarded,
+        "Boolean click never reached the bus as a ToolPanelEvent — the shell can't apply the op"
     );
 }
 

@@ -56,3 +56,26 @@ pub const VECTOR_STROKE_SWATCH: NodeId = hash_node_id("vector.stroke_swatch");
 pub const VECTOR_FILL_SWATCH: NodeId = hash_node_id("vector.fill_swatch");
 /// Fill "None" button — clears the fill (alpha 0) on the selected closed path.
 pub const VECTOR_FILL_NONE: NodeId = hash_node_id("vector.fill_none");
+
+// ── Draw-mode selector (ADR-0108 Fase 1 — Pen / shape tools) ─────────────────
+// A segmented row that switches the canvas gesture: Pen (draw + edit anchors)
+// vs a drag-to-size shape (Rectangle / Ellipse / Polygon). The tool owns the
+// mode (`VectorTool::mode`); each button's `Click` routes through the seam to
+// `handle_panel_event`, mirror of the retired `vector_inspector.shape.*` ids.
+pub const VECTOR_MODE_PEN: NodeId = hash_node_id("vector.mode.pen");
+pub const VECTOR_MODE_RECT: NodeId = hash_node_id("vector.mode.rect");
+pub const VECTOR_MODE_ELLIPSE: NodeId = hash_node_id("vector.mode.ellipse");
+pub const VECTOR_MODE_POLYGON: NodeId = hash_node_id("vector.mode.polygon");
+/// Polygon "Sides" slider (3..12) — shown only in Polygon mode; drives
+/// `VectorTool::polygon_sides`.
+pub const VECTOR_SIDES: NodeId = hash_node_id("vector.sides");
+/// Integer chip paired with [`VECTOR_SIDES`].
+pub const VECTOR_SIDES_NUM: NodeId = hash_node_id("vector.sides_num");
+
+// ── Boolean ops (ADR-0108 Fase 1 — edit-time union/subtract/intersect) ───────
+// Act on the DOCUMENT (shell-owned `vec_scene`), NOT the tool's Style: the
+// panel forwards a `Click` over `ToolPanelEvent` and the shell drain applies
+// the op to the two last closed regions (mirror of the U/I/D hotkeys).
+pub const VECTOR_BOOL_UNION: NodeId = hash_node_id("vector.bool.union");
+pub const VECTOR_BOOL_SUBTRACT: NodeId = hash_node_id("vector.bool.subtract");
+pub const VECTOR_BOOL_INTERSECT: NodeId = hash_node_id("vector.bool.intersect");

@@ -11,6 +11,9 @@
 //!   ou handle existente, **agarra** e arrasta (edição, Fase 1.3); senão começa um
 //!   path novo. Botão direito finaliza o desenho ativo.
 
+pub mod shape;
+pub use shape::{ShapeKind, ShapeTool};
+
 use ph2d_vec_scene::{Rgba8, VecPath, VecPathId, VecScene, VecVertex, VertexKind};
 
 /// Resultado de uma pressão do Pen (para o shell logar/reagir se quiser).
@@ -324,6 +327,13 @@ impl History {
         {
             self.push_undo(pre);
         }
+    }
+
+    /// Descarta o snapshot pendente de `begin` SEM virar passo de undo. Usado quando
+    /// uma interação é cancelada e o efeito colateral (ex.: um shape descartado que
+    /// já consumiu um `next_id`) não deve poluir o histórico com um passo espúrio.
+    pub fn cancel(&mut self) {
+        self.pending = None;
     }
 
     /// Empurra um estado-pré direto pro undo (operação atômica que já sabe que mutou).

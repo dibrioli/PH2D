@@ -1,0 +1,28 @@
+# Motion — the single first-class tool of the Motion Nodes module
+# (docs/Motion Nodes/01_plano_modulo_motion_nodes.md). A node-graph editor tool:
+# activating it splits the center into scene ⟂ graph and shows the docked graph
+# + params panels.
+#
+# Cluster `motion_tools` (sole member). Shell rendering + per-frame cook is the
+# `motion_bridge` over `AppGfx.motion` (MotionState).
+#
+# Canonical source for `crates/ph2d-tool-motion/src/lib.rs`.
+
+[tool]
+id          = "motion"
+cluster     = "motion_tools"
+zone        = "top_right"
+order       = 10
+a11y_role   = "Button"
+icon_slug   = "motion-nodes"
+touches_sim = false
+
+[label]
+pt_br_inline = "Movimento"
+en_us_inline = "Motion"
+fluent_key   = "tool.motion.label"
+
+[memory_budget]
+vram_mb        = 0
+ram_mb         = 1
+heap_script_mb = 0

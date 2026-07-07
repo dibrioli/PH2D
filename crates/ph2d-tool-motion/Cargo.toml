@@ -1,0 +1,31 @@
+[package]
+name = "ph2d-tool-motion"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+publish.workspace = true
+
+# Motion Nodes tool — the single first-class tool of the Motion Nodes module
+# (docs/Motion Nodes/01_plano). A `motion_tools`-cluster pill that activates the
+# node-graph editor: while active the center splits into scene ⟂ graph and the
+# docked graph/params panels appear. Drop-crate per DIRETRIZ §3.A.
+#
+# Per ADR-0040 (tool-as-isolated-feature-crate) the tool is a thin activation
+# handle — the document (`MotionDoc`), the transport and the persistent `Cook`
+# live in the shell's `MotionState` (document ≠ tool), driven by
+# `render_loop::motion_bridge`. M0.T9 ships the registered skeleton.
+
+[lib]
+
+[dependencies]
+# Tool contract + ToolManifest + chrome Registry.
+ph2d-tool-registry = { path = "../ph2d-tool-registry" }
+ph2d-editor-core = { path = "../ph2d-editor-core" }
+# A11y role.
+ph2d-a11y = { path = "../ph2d-a11y" }
+# MemoryBudget canonical (HR-13 boot check).
+ph2d-core = { path = "../ph2d-core" }
+# kurbo BezPath for the pill icon glyph.
+ph2d-vector = { path = "../ph2d-vector" }

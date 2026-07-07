@@ -62,6 +62,13 @@ pub fn topbar_clusters() -> Vec<(ph2d_a11y::NodeId, TopBarCluster)> {
             ids::TOPBAR_VECTOR,
             TopBarCluster::single("VECTOR", IconId::Vector),
         ),
+        // Motion Nodes tool — the single `motion_tools` pill (Motion Nodes M0).
+        // Click activates it via `motion_toggle::apply` →
+        // `EditorAction::ActivateTool { tool_id: "motion" }`.
+        (
+            ids::TOPBAR_MOTION,
+            TopBarCluster::single("MOTION", IconId::MotionNodes),
+        ),
         (ids::TOPBAR_PLAY_BUTTON, TopBarCluster::play()),
         (ids::TOPBAR_RIGHT_LAYERS, TopBarCluster::right()),
         // Widget Gallery (palette) — toggles a floating reference

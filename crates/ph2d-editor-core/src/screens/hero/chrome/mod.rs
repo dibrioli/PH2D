@@ -58,6 +58,7 @@ mod fill_modal;
 mod image_actions;
 mod image_tools_toggle;
 mod io_menu;
+mod motion_toggle;
 mod new_image;
 mod palette_rename;
 mod radius;
@@ -120,5 +121,6 @@ pub fn dispatch_all(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
         || curve_point_handle::apply(hero, event)
         || falloff_handle::apply(hero, event)
         || vector_toggle::apply(hero, event)
+        || motion_toggle::apply(hero, event)
     // <ph2d-chrome-sync:dispatch-end>
 }

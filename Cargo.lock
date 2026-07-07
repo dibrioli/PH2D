@@ -5272,6 +5272,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-panel-motion-graph"
+version = "0.0.0"
+dependencies = [
+ "ph2d-a11y",
+ "ph2d-editor-core",
+ "ph2d-tokens",
+]
+
+[[package]]
+name = "ph2d-panel-motion-params"
+version = "0.0.0"
+dependencies = [
+ "ph2d-a11y",
+ "ph2d-editor-core",
+ "ph2d-tokens",
+]
+
+[[package]]
 name = "ph2d-panel-padding"
 version = "0.0.0"
 dependencies = [
@@ -5313,6 +5331,8 @@ dependencies = [
  "ph2d-panel-grid-snap",
  "ph2d-panel-hierarchy",
  "ph2d-panel-inspector",
+ "ph2d-panel-motion-graph",
+ "ph2d-panel-motion-params",
  "ph2d-panel-padding",
  "ph2d-panel-painter-layers",
  "ph2d-panel-sync",
@@ -5526,6 +5546,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-tool-motion"
+version = "0.0.0"
+dependencies = [
+ "ph2d-a11y",
+ "ph2d-core",
+ "ph2d-editor-core",
+ "ph2d-tool-registry",
+ "ph2d-vector",
+]
+
+[[package]]
 name = "ph2d-tool-move"
 version = "0.0.0"
 dependencies = [
@@ -5605,6 +5636,7 @@ dependencies = [
  "ph2d-tool-equalize-sizes",
  "ph2d-tool-grid-snap",
  "ph2d-tool-make-square",
+ "ph2d-tool-motion",
  "ph2d-tool-move",
  "ph2d-tool-padding",
  "ph2d-tool-painter",

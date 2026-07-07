@@ -31,6 +31,10 @@ pub fn populate(store: &mut WidgetStore) {
         // pointer-Up never emits `Click` and the tool is dead on click.
         // (Audit 2026-06-02 killer.)
         ids::TOPBAR_VECTOR,
+        // Motion Nodes pill — same parity requirement as the Vector pill above
+        // (painted + hit-indexed in the fixture → MUST be registered here or the
+        // pill is dead on click). Motion Nodes M0.T9.
+        ids::TOPBAR_MOTION,
         ids::TOPBAR_WIDGET_GALLERY,
         ids::TOPBAR_GRID_SETTINGS,
         ids::TOPBAR_SETTINGS,

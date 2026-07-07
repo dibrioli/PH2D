@@ -167,6 +167,7 @@ fn expected_icon_slug(manifest_id: &str) -> Option<&'static str> {
         "equalize_sizes" => "equalize-sizes",
         "grid_snap" => "grid-settings",
         "make_square" => "make-square",
+        "motion" => "motion-nodes",
         "padding" => "padding",
         "painter" => "painter",
         "rasterize" => "rasterize",

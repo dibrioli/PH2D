@@ -43,6 +43,11 @@ pub const TOPBAR_AUDIO_MIXER: NodeId = hash_node_id("topbar_audio_mixer");
 /// `"topbar_vector"`) so the Pressed-highlight reconcile loop discovers the
 /// pill via `hash_node_id(manifest.id)` — same path bgremoval/image pills use.
 pub const TOPBAR_VECTOR: NodeId = hash_node_id("vector");
+/// Motion Nodes tool pill (Motion Nodes M0.T9). **Hash key =
+/// `hash_node_id("motion")`** (the manifest id, like [`TOPBAR_VECTOR`]) so the
+/// active-tool Pressed-highlight reconcile discovers the pill via
+/// `hash_node_id(manifest.id)`. Click routes through `chrome::motion_toggle`.
+pub const TOPBAR_MOTION: NodeId = hash_node_id("motion");
 /// Widget Gallery cluster — toggles the floating reference panel
 /// that showcases every canonical widget (Inputs / Slider /
 /// Switches / Lists / Vector / Status / Color / Actions / Identity /

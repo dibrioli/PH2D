@@ -1,0 +1,21 @@
+[package]
+name = "ph2d-panel-motion-params"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+# Motion Nodes node-params panel (Motion Nodes M0.T9). Takes over the Inspector
+# right-dock slot while the `motion` tool is active (mirror of ph2d-panel-vector;
+# the shell's `motion_bridge` drives `panel_visible("motion_params")` + hides the
+# real Inspector). M0 ships the skeleton: canonical dark-glass surface + title.
+# The per-node param rows (generated from `ParamUiHint`) land in M1.
+
+[lib]
+
+[dependencies]
+ph2d-editor-core = { path = "../ph2d-editor-core" }
+ph2d-a11y = { path = "../ph2d-a11y" }
+ph2d-tokens = { path = "../ph2d-tokens" }

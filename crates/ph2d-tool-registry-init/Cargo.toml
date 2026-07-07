@@ -50,6 +50,7 @@ ph2d-tool-color-equalization = { path = "../ph2d-tool-color-equalization" }
 ph2d-tool-equalize-sizes = { path = "../ph2d-tool-equalize-sizes" }
 ph2d-tool-grid-snap = { path = "../ph2d-tool-grid-snap" }
 ph2d-tool-make-square = { path = "../ph2d-tool-make-square" }
+ph2d-tool-motion = { path = "../ph2d-tool-motion" }
 ph2d-tool-move = { path = "../ph2d-tool-move" }
 ph2d-tool-padding = { path = "../ph2d-tool-padding" }
 ph2d-tool-painter = { path = "../ph2d-tool-painter" }

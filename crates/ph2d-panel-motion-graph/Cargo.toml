@@ -1,0 +1,22 @@
+[package]
+name = "ph2d-panel-motion-graph"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+# Motion Nodes graph-editor panel (Motion Nodes M0.T9). Docked in the
+# `motion_graph` region of `HeroLayout`, visible only while the `motion` tool is
+# active (the shell's `motion_bridge` drives `panel_visible("motion_graph")`).
+# M0 ships the skeleton: it paints the opaque graph canvas background (Fase A —
+# covers the sprite render underneath) and publishes its rect for dispatch. Node
+# cards / wiring / gestures land in M1.
+
+[lib]
+
+[dependencies]
+ph2d-editor-core = { path = "../ph2d-editor-core" }
+ph2d-a11y = { path = "../ph2d-a11y" }
+ph2d-tokens = { path = "../ph2d-tokens" }

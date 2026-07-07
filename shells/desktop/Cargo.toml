@@ -253,6 +253,8 @@ default = [
     "panel-painter-layers",
     "panel-vector",
     "panel-audio-mixer",
+    "panel-motion-graph",
+    "panel-motion-params",
 ]
 # `lite` = explicit "no panels" — host boots with chrome only
 # (TopBar + LeftRail + BottomHUD + canvas). Useful for distribution
@@ -268,6 +270,12 @@ panel-color-equalization = ["ph2d-panel-registry-init/panel-color-equalization",
 panel-equalize-sizes = ["ph2d-panel-registry-init/panel-equalize-sizes", "dep:ph2d-panel-equalize-sizes"]
 panel-upscale        = ["ph2d-panel-registry-init/panel-upscale", "dep:ph2d-panel-upscale"]
 panel-painter-layers = ["ph2d-panel-registry-init/panel-painter-layers", "dep:ph2d-panel-painter-layers"]
+# Motion Nodes docked panels (M0). No `dep:` — `motion_bridge` drives them
+# entirely through `hero.panel_visibility` + the shared layout, with no
+# panel-side static channel (the document lives in `MotionState`, not the panel),
+# so the shell needs only the registry-init feature, not a direct crate dep.
+panel-motion-graph   = ["ph2d-panel-registry-init/panel-motion-graph"]
+panel-motion-params  = ["ph2d-panel-registry-init/panel-motion-params"]
 # Vector Style panel + its render_loop bridge (`vector_bridge` publishes the
 # snapshot via `ph2d_panel_vector::set_current_vector_style` + reads the OKLCH
 # picker back into the tool), so the shell needs the direct dep too.

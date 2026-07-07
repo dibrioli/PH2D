@@ -114,7 +114,10 @@ fn rms_is_positive_and_never_exceeds_peak() {
     }
 
     let (peak, rms) = (engine.levels(), engine.rms());
-    assert!(rms[0] > 0.0, "master RMS must be positive with signal: {rms:?}");
+    assert!(
+        rms[0] > 0.0,
+        "master RMS must be positive with signal: {rms:?}"
+    );
     assert!(
         rms[0] <= peak[0] + 1e-4,
         "RMS must never exceed peak (master): rms {rms:?} peak {peak:?}"
@@ -158,7 +161,10 @@ fn master_limiter_tames_a_boosted_over_unity_mix() {
         limited[0] <= 1.0,
         "the limiter must keep the master under full scale, got {limited:?}"
     );
-    assert!(limited[0] > 0.5, "…without gutting the signal, got {limited:?}");
+    assert!(
+        limited[0] > 0.5,
+        "…without gutting the signal, got {limited:?}"
+    );
     // The audible bit: gain reduction actually lowers the sustained level, not
     // just the peak tips (a static soft-clip would barely move the RMS).
     assert!(
@@ -173,7 +179,9 @@ fn sub_bus_lowpass_attenuates_high_frequency_content() {
     let sr = 48_000u32;
     let fmt = AudioFormat::stereo(sr);
     // Alternating ±0.8 = the highest representable frequency (Nyquist).
-    let hi: Vec<f32> = (0..960).map(|i| if i % 2 == 0 { 0.8 } else { -0.8 }).collect();
+    let hi: Vec<f32> = (0..960)
+        .map(|i| if i % 2 == 0 { 0.8 } else { -0.8 })
+        .collect();
     let nyquist = SampleData::from_interleaved(hi, AudioFormat::mono(sr));
 
     let (mut engine, mut renderer) = AudioEngine::new(fmt);
@@ -193,7 +201,10 @@ fn sub_bus_lowpass_attenuates_high_frequency_content() {
         renderer.render(&mut out, 512);
     }
     let open = engine.bus_levels()[0];
-    assert!(open[0] > 0.3, "precondition: the open bus passes the tone: {open:?}");
+    assert!(
+        open[0] > 0.3,
+        "precondition: the open bus passes the tone: {open:?}"
+    );
 
     // Close the Music bus filter to 500 Hz → the Nyquist tone is heavily cut.
     engine.set_bus_cutoff(BusId::Music, 500.0).unwrap();

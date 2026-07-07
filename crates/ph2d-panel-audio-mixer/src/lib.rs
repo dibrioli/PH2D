@@ -465,6 +465,11 @@ mod snapshot {
 
 /// Panel → shell: the master low-pass cutoff (Hz) the Cutoff slider drives.
 pub use snapshot::cutoff as master_cutoff_target;
+/// Panel → shell: whether the master soft-clip limiter is engaged.
+pub use snapshot::limiter;
+/// Observable master clip latch (set when the peak exceeds full scale, cleared
+/// by clicking the meter).
+pub use snapshot::master_clipped;
 /// Panel → shell: the master gain the fader drives — read by the bridge to set
 /// the engine's master gain.
 pub use snapshot::master_gain as master_gain_target;
@@ -474,15 +479,6 @@ pub use snapshot::master_pan as master_pan_target;
 pub use snapshot::muted as master_muted;
 /// Panel → shell: whether the built-in test signal should be playing.
 pub use snapshot::play_test;
-/// Panel → shell: whether the master soft-clip limiter is engaged.
-pub use snapshot::limiter;
-/// Panel → shell: master reverb enable / room size / wet-dry mix.
-pub use snapshot::{reverb_mix, reverb_on, reverb_size};
-/// Panel → shell: ducking enable + depth (Music/SFX duck under the Voice bus).
-pub use snapshot::{duck_depth, ducking};
-/// Observable master clip latch (set when the peak exceeds full scale, cleared
-/// by clicking the meter).
-pub use snapshot::master_clipped;
 /// Shell → panel: publish this frame's master output peak levels for the meter.
 pub use snapshot::set_levels;
 /// Shell → panel: publish each sub-bus's post-fader peak levels for its meter.
@@ -491,9 +487,13 @@ pub use snapshot::set_sub_levels;
 pub use snapshot::sub_gain as sub_gain_target;
 /// Panel → shell: each sub-bus mute flag (bridge zeroes that bus's gain).
 pub use snapshot::sub_muted;
-/// Panel → shell: each sub-bus solo flag (bridge mutes non-soloed buses when any set).
-pub use snapshot::sub_soloed;
 /// Panel → shell: each sub-bus stereo balance (index-aligned with `BusId::SUB_BUSES`).
 pub use snapshot::sub_pan as sub_pan_target;
+/// Panel → shell: each sub-bus solo flag (bridge mutes non-soloed buses when any set).
+pub use snapshot::sub_soloed;
 /// Panel → shell: each sub-bus low-pass cutoff in Hz (from its Tone slider).
 pub use snapshot::sub_tone as sub_tone_target;
+/// Panel → shell: ducking enable + depth (Music/SFX duck under the Voice bus).
+pub use snapshot::{duck_depth, ducking};
+/// Panel → shell: master reverb enable / room size / wet-dry mix.
+pub use snapshot::{reverb_mix, reverb_on, reverb_size};

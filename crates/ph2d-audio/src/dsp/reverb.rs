@@ -184,7 +184,10 @@ mod tests {
         let mut early = l0.abs();
         for _ in 0..4_000 {
             let (l, rr) = r.process(0.0, 0.0);
-            assert!(l.is_finite() && rr.is_finite(), "reverb produced a non-finite sample");
+            assert!(
+                l.is_finite() && rr.is_finite(),
+                "reverb produced a non-finite sample"
+            );
             early = early.max(l.abs());
         }
         assert!(early > 0.0, "an impulse must produce a wet tail");
@@ -193,7 +196,10 @@ mod tests {
             let (l, _) = r.process(0.0, 0.0);
             late = late.max(l.abs());
         }
-        assert!(late < early, "the tail must decay over time (early {early} → late {late})");
+        assert!(
+            late < early,
+            "the tail must decay over time (early {early} → late {late})"
+        );
     }
 
     #[test]

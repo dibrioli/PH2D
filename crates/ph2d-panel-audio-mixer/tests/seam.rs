@@ -192,7 +192,11 @@ fn clip_latches_on_over_unity_peak_and_meter_click_clears_it() {
         EventOutcome::Consumed,
         "panel ignored the meter click — the AMIX_MASTER_METER arm is missing"
     );
-    assert_eq!(master_clipped(), [false, false], "meter click must clear the clip latch");
+    assert_eq!(
+        master_clipped(),
+        [false, false],
+        "meter click must clear the clip latch"
+    );
 }
 
 /// The Ducking toggle flips the enable flag, and dragging Depth publishes the
@@ -239,7 +243,11 @@ fn reverb_toggle_and_size_publish() {
         EventOutcome::Consumed,
         "panel ignored the Reverb click — the AMIX_REVERB arm is missing"
     );
-    assert_ne!(reverb_on(), before, "Reverb click must flip the enable flag");
+    assert_ne!(
+        reverb_on(),
+        before,
+        "Reverb click must flip the enable flag"
+    );
 
     host.set_slider_value(AMIX_REVERB_SIZE, 0.8);
     host.apply_panel_event::<AudioMixerPanel>(
@@ -268,7 +276,11 @@ fn limiter_click_toggles_flag() {
         EventOutcome::Consumed,
         "panel ignored the Limiter click — the AMIX_LIMITER arm is missing"
     );
-    assert_ne!(limiter(), before, "Limiter click must flip the limiter flag");
+    assert_ne!(
+        limiter(),
+        before,
+        "Limiter click must flip the limiter flag"
+    );
 }
 
 /// Clicking the footer Play Test button toggles the play flag the shell reads
@@ -286,7 +298,11 @@ fn play_test_click_toggles_flag() {
         EventOutcome::Consumed,
         "panel ignored the Play Test click — the AMIX_PLAY arm is missing"
     );
-    assert_ne!(play_test(), before, "Play Test click must flip the play flag");
+    assert_ne!(
+        play_test(),
+        before,
+        "Play Test click must flip the play flag"
+    );
 }
 
 /// Dragging a sub-bus Tone slider down publishes a low cutoff in Hz (~20 Hz at

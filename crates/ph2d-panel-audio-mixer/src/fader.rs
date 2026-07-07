@@ -36,7 +36,10 @@ mod tests {
 
     #[test]
     fn unity_position_is_zero_db_unity_gain() {
-        assert!((fader_db(FADER_UNITY_POS)).abs() < 1e-4, "unity pos must be 0 dB");
+        assert!(
+            (fader_db(FADER_UNITY_POS)).abs() < 1e-4,
+            "unity pos must be 0 dB"
+        );
         assert!(
             (fader_gain(FADER_UNITY_POS) - 1.0).abs() < 1e-4,
             "unity pos must be gain 1.0"

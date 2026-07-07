@@ -100,7 +100,18 @@ impl NodeOp for MotionTransform {
 /// Register this node with the runtime registry. Called (via codegen) from
 /// `ph2d-node-registry-init::register_all_nodes`.
 pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
-    reg.register(Box::new(MotionTransform))
+    reg.register(Box::new(MotionTransform))?;
+    // M1.R1 — UI metadata for the card (a spatial modifier → blue transform,
+    // rounded-rect silhouette).
+    reg.register_ui(
+        MANIFEST.id,
+        ph2d_node_registry::NodeUiManifest {
+            display_name: "Transform",
+            category: ph2d_node_registry::NodeUiCategory::Transform,
+            silhouette: ph2d_node_registry::NodeSilhouette::Rect,
+        },
+    );
+    Ok(())
 }
 
 #[cfg(test)]

@@ -12,12 +12,18 @@
 
 #![forbid(unsafe_code)]
 
+mod paint;
+mod snapshot;
+
+pub use snapshot::{
+    GraphEdgeView, GraphNodeView, GraphViewSnapshot, PortView, set_current_motion_graph,
+    snapshot_from,
+};
+
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::{WidgetEvent, WidgetStore};
-use ph2d_editor_core::paint::{fill_rounded_rect, resolve};
 use ph2d_editor_core::panel::{EventOutcome, PaintCtx, Panel, PanelHostInternal};
-use ph2d_tokens::ColorToken;
 
 /// Retained per-instance state — none yet (the document lives shell-side in
 /// `MotionState`; this panel only renders it). Unit struct so the typed registry
@@ -52,14 +58,13 @@ impl Panel for MotionGraphPanel {
                 .clear_panel_rect(ids::MOTION_GRAPH_PANEL);
             return;
         }
-        let theme = ctx.host.theme();
         // Publish the rect so wheel/click dispatch can route to this panel.
         ctx.host
             .store_mut()
             .set_panel_rect(ids::MOTION_GRAPH_PANEL, rect);
-        // Fase A: opaque graph canvas fill (dark in every theme) — covers the
-        // sprite render underneath the graph half of the split.
-        fill_rounded_rect(ctx.scene, rect, 0.0, resolve(ColorToken::GraphBg, theme));
+        // Fase A background + the M1 graph (cards / sockets / wires) — reads the
+        // snapshot the shell bridge published this frame.
+        paint::paint(ctx);
     }
 
     fn apply_event(

@@ -143,7 +143,18 @@ impl NodeOp for MotionClone {
 /// Register this node with the runtime registry. Called (via codegen) from
 /// `ph2d-node-registry-init::register_all_nodes`.
 pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
-    reg.register(Box::new(MotionClone))
+    reg.register(Box::new(MotionClone))?;
+    // M1.R1 — UI metadata for the card (a stream multiplier → muted-green
+    // distribute, rounded-rect silhouette).
+    reg.register_ui(
+        MANIFEST.id,
+        ph2d_node_registry::NodeUiManifest {
+            display_name: "Clone",
+            category: ph2d_node_registry::NodeUiCategory::Distribute,
+            silhouette: ph2d_node_registry::NodeSilhouette::Rect,
+        },
+    );
+    Ok(())
 }
 
 #[cfg(test)]

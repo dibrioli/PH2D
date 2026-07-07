@@ -93,7 +93,18 @@ impl NodeOp for MotionGrid {
 /// Register this node with the runtime registry. Called (via codegen) from
 /// `ph2d-node-registry-init::register_all_nodes`.
 pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
-    reg.register(Box::new(MotionGrid))
+    reg.register(Box::new(MotionGrid))?;
+    // M1.R1 — UI metadata for the card (a generator → green source, widening
+    // trapezoid silhouette).
+    reg.register_ui(
+        MANIFEST.id,
+        ph2d_node_registry::NodeUiManifest {
+            display_name: "Grid",
+            category: ph2d_node_registry::NodeUiCategory::Source,
+            silhouette: ph2d_node_registry::NodeSilhouette::TrapezoidDown,
+        },
+    );
+    Ok(())
 }
 
 #[cfg(test)]

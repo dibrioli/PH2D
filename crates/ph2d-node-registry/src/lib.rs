@@ -16,11 +16,18 @@ use ph2d_nodegraph::cook::OpResolver;
 use ph2d_nodegraph::node::{NodeManifest, NodeOp, NodeTypeId};
 use std::collections::BTreeMap;
 
+mod ui;
+pub use ui::{NodeSilhouette, NodeUiCategory, NodeUiManifest};
+
 /// A registered set of node operations, keyed by their stable type id.
 /// Deterministic iteration (`BTreeMap`, ADR-0022 / HR-5).
 #[derive(Default)]
 pub struct NodeRegistry {
     ops: BTreeMap<NodeTypeId, Box<dyn NodeOp>>,
+    /// M1.R1 — per-type UI side-metadata, keyed the same way as `ops` and kept
+    /// separate so the frozen `NodeManifest` is untouched. A node registers its
+    /// entry in `register` (alongside its op).
+    ui: BTreeMap<NodeTypeId, NodeUiManifest>,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -61,6 +68,17 @@ impl NodeRegistry {
     /// Deterministic iteration over registered manifests (by id order).
     pub fn manifests(&self) -> impl Iterator<Item = &'static NodeManifest> + '_ {
         self.ops.values().map(|op| op.manifest())
+    }
+
+    /// Register a node type's UI metadata (M1.R1). Additive to [`Self::register`]
+    /// — a node registers both its op and its UI manifest; last write wins.
+    pub fn register_ui(&mut self, id: NodeTypeId, ui: NodeUiManifest) {
+        self.ui.insert(id, ui);
+    }
+
+    /// The UI metadata for `id`, if registered (M1.R1).
+    pub fn ui_manifest(&self, id: NodeTypeId) -> Option<&NodeUiManifest> {
+        self.ui.get(&id)
     }
 }
 

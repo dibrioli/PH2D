@@ -65,6 +65,15 @@ pub(super) fn dispatch(
         }
     }
 
+    // ── Publish the graph view to the panel (M1.E10, mold set_current_vector_style) ──
+    // Rebuilt each active frame (Phase 1a); a dirty/cook-epoch gate lands in
+    // Phase 1b. `None` while inactive → no allocation off the editor.
+    #[cfg(feature = "panel-motion-graph")]
+    ph2d_panel_motion_graph::set_current_motion_graph(
+        motion_active
+            .then(|| ph2d_panel_motion_graph::snapshot_from(&motion.doc.graph, &motion.registry)),
+    );
+
     if !motion_active {
         return;
     }

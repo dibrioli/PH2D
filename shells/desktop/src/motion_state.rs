@@ -15,7 +15,7 @@
 use ph2d_eval_motion::MotionCookPump;
 use ph2d_motion_doc::{MotionDoc, MotionHistory, MotionTransport};
 use ph2d_node_registry::NodeRegistry;
-use ph2d_nodegraph::graph::{Edge, Graph, NodeId};
+use ph2d_nodegraph::graph::{Edge, Graph, NodeId, Pos};
 
 /// Runtime state for the Motion Nodes editor. One instance on `AppGfx`.
 pub(crate) struct MotionState {
@@ -100,6 +100,11 @@ fn build_default_vertical(g: &mut Graph, reg: &NodeRegistry) -> Option<NodeId> {
         delayed: false,
     })
     .ok()?;
+    // M1 — lay the default chain left-to-right in graph space so the editor
+    // renders it as connected cards (the panel auto-fits until the user pans).
+    g.set_pos(grid, Pos { x: 0.0, y: 0.0 });
+    g.set_pos(xf, Pos { x: 260.0, y: 0.0 });
+    g.set_pos(clone, Pos { x: 520.0, y: 0.0 });
     // Same "validate on load" the editor runs before cooking — proves the
     // authored graph is well-typed and membrane-clean.
     g.validate(reg).ok()?;

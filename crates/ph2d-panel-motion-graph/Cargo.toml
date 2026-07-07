@@ -20,3 +20,7 @@ authors.workspace = true
 ph2d-editor-core = { path = "../ph2d-editor-core" }
 ph2d-a11y = { path = "../ph2d-a11y" }
 ph2d-tokens = { path = "../ph2d-tokens" }
+# M1 — the graph view model: node UI metadata (category/silhouette) + the port
+# axes (Domain/Dim) that drive socket color/shape and wire color.
+ph2d-node-registry = { path = "../ph2d-node-registry" }
+ph2d-nodegraph = { path = "../ph2d-nodegraph" }

@@ -4818,6 +4818,7 @@ dependencies = [
  "ph2d-panel-equalize-sizes",
  "ph2d-panel-hierarchy",
  "ph2d-panel-inspector",
+ "ph2d-panel-motion-graph",
  "ph2d-panel-padding",
  "ph2d-panel-painter-layers",
  "ph2d-panel-registry-init",
@@ -5277,6 +5278,8 @@ version = "0.0.0"
 dependencies = [
  "ph2d-a11y",
  "ph2d-editor-core",
+ "ph2d-node-registry",
+ "ph2d-nodegraph",
  "ph2d-tokens",
 ]
 

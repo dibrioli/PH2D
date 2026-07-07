@@ -38,6 +38,12 @@ ph2d-eval-motion = { path = "../../crates/ph2d-eval-motion" }
 ph2d-node-motion-grid = { path = "../../crates/ph2d-node-motion-grid" }
 ph2d-node-motion-transform = { path = "../../crates/ph2d-node-motion-transform" }
 ph2d-node-motion-clone = { path = "../../crates/ph2d-node-motion-clone" }
+# Motion Nodes module (docs/Motion Nodes/): document model + full node registry.
+# `MotionState` (motion_state.rs) holds the persistent `Cook`, the registry (all
+# registered node ops) and the transport; `motion_bridge` cooks it per frame
+# while the Motion tool is active.
+ph2d-motion-doc = { path = "../../crates/ph2d-motion-doc" }
+ph2d-node-registry-init = { path = "../../crates/ph2d-node-registry-init" }
 # Tool registry — convention-by-discovery infrastructure (PR 8 of
 # the migration plan: `docs/Migracao/2026-05-convention-by-discovery.md`).
 # `init.rs` calls `register_all()` at boot and stashes the built

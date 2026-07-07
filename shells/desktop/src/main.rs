@@ -47,6 +47,7 @@ mod input_log;
 mod integration;
 mod keymap;
 mod ktx2_smoke;
+mod motion_state;
 mod name_unique;
 mod palette_persist;
 mod render_loop;

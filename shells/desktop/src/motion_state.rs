@@ -1,0 +1,108 @@
+//! `MotionState` — the shell-owned runtime aggregate for the Motion Nodes module
+//! (Motion Nodes M0.T8). Held on `AppGfx.motion`; driven per frame by
+//! `render_loop::motion_bridge` while the `motion` tool is active.
+//!
+//! Bundles the persistable document ([`MotionDoc`], with undo [`MotionHistory`])
+//! with the runtime pieces that never persist: the [`MotionTransport`] (play /
+//! pause / tick), the **persistent** [`Cook`] (its memo + `pre` feedback must
+//! survive across frames), the node [`NodeRegistry`] (the `OpResolver`), the
+//! current sink node, and a reused `Vec<RenderInstance>` lowering buffer (so the
+//! steady-state cook path is zero-alloc — gated by M0.T12).
+//!
+//! Document ≠ tool (ADR-0040): the `MotionTool` is a thin activation handle; all
+//! the state lives here in the shell, mirroring `AppGfx.vec_scene`.
+
+use ph2d_motion_doc::{MotionDoc, MotionHistory, MotionTransport};
+use ph2d_node_registry::NodeRegistry;
+use ph2d_nodegraph::cook::Cook;
+use ph2d_nodegraph::graph::{Edge, Graph, NodeId};
+use ph2d_render::RenderInstance;
+
+/// Runtime state for the Motion Nodes editor. One instance on `AppGfx`.
+pub(crate) struct MotionState {
+    /// The persistable document (the graph is the only part that cooks).
+    pub(crate) doc: MotionDoc,
+    /// Snapshot undo/redo of `doc`.
+    pub(crate) history: MotionHistory,
+    /// Playback transport (playhead = `tick × fixed_dt`).
+    pub(crate) transport: MotionTransport,
+    /// Persistent cook — its fingerprint memo + `pre`-edge feedback are carried
+    /// across frames, so it must NOT be re-created each frame.
+    pub(crate) cook: Cook,
+    /// Registered node ops (the `OpResolver` the cook resolves against).
+    pub(crate) registry: NodeRegistry,
+    /// Terminal node whose output stream is lowered to instances (`None` until a
+    /// well-typed sink exists).
+    pub(crate) sink: Option<NodeId>,
+    /// Reused per-frame lowering buffer — zero-alloc in steady state.
+    pub(crate) instances: Vec<RenderInstance>,
+}
+
+impl MotionState {
+    /// Build the boot state: register every node op + the default
+    /// grid→transform→clone vertical (the M0 smoke graph promoted to a real
+    /// document), transport paused at tick 0.
+    pub(crate) fn new() -> Self {
+        let mut registry = NodeRegistry::new();
+        ph2d_node_registry_init::register_all_nodes(&mut registry)
+            .expect("motion node registry builds");
+        let mut doc = MotionDoc::new();
+        let sink = build_default_vertical(&mut doc.graph, &registry);
+        Self {
+            doc,
+            history: MotionHistory::new(),
+            transport: MotionTransport::new(),
+            cook: Cook::new(),
+            registry,
+            sink,
+            instances: Vec::new(),
+        }
+    }
+
+    /// Current playhead in seconds for the given fixed timestep.
+    pub(crate) fn playhead(&self, fixed_dt: f64) -> f64 {
+        self.transport.playhead(fixed_dt)
+    }
+}
+
+/// Author the default grid→transform→clone vertical into `g`; returns the sink
+/// (the clone node) if the graph is well-typed. Mirror of the retired
+/// `motion_smoke` graph, now the document's initial content.
+fn build_default_vertical(g: &mut Graph, reg: &NodeRegistry) -> Option<NodeId> {
+    let grid = g.add_node("motion.grid");
+    let xf = g.add_node("motion.transform");
+    let clone = g.add_node("motion.clone");
+    g.connect(Edge {
+        from: (grid, 0),
+        to: (xf, 0),
+        delayed: false,
+    })
+    .ok()?;
+    g.connect(Edge {
+        from: (xf, 0),
+        to: (clone, 0),
+        delayed: false,
+    })
+    .ok()?;
+    // Same "validate on load" the editor runs before cooking — proves the
+    // authored graph is well-typed and membrane-clean.
+    g.validate(reg).ok()?;
+    Some(clone)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn new_builds_a_well_typed_default_vertical_with_a_sink() {
+        let state = MotionState::new();
+        assert!(state.sink.is_some(), "default vertical must have a sink");
+        // 3 nodes authored (grid, transform, clone).
+        assert_eq!(state.doc.graph.nodes().len(), 3);
+        // Well-typed against the registry (validate succeeded in `new`).
+        assert!(state.doc.graph.validate(&state.registry).is_ok());
+        // Paused at tick 0 → playhead 0.
+        assert_eq!(state.playhead(1.0 / 60.0), 0.0);
+    }
+}

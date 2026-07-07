@@ -258,6 +258,9 @@ impl crate::App {
             // through `imageio_importers.find_for(...)`.
             imageio_importers: _,
             imageio_exporters: _,
+            // Motion Nodes M0.T8: state held; consumed by `motion_bridge` in
+            // M0.T10 (per-frame cook while the `motion` tool is active).
+            motion: _,
         } = gfx;
         let Some(host) = self.host.as_ref() else {
             return;

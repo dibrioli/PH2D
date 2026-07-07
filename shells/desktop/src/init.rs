@@ -389,6 +389,9 @@ pub(crate) fn build_initial_state(
         vector_scene,
         // ADR-0108 Fase 0: `vec_scene` escolhido logo acima (smiley ou grade N).
         vec_scene,
+        // Motion Nodes M0.T8: boot state = default grid→transform→clone vertical
+        // + full node registry + paused transport (cooked per frame by the bridge).
+        motion: crate::motion_state::MotionState::new(),
         text_system,
         hero_screen,
         hero_arena: Bump::with_capacity(4096),

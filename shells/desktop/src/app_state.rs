@@ -108,6 +108,11 @@ pub(crate) struct AppGfx {
     /// Vello compartilhada. Fase 0 = cena-demo (prova o seam ponta-a-ponta);
     /// Fase 1 = dirigida pelas ferramentas de desenho.
     pub(crate) vec_scene: ph2d_vec_scene::VecScene,
+    /// Motion Nodes runtime state (M0.T8): document + transport + persistent
+    /// `Cook` + node registry + reused instance buffer. Cooked per frame by
+    /// `render_loop::motion_bridge` while the `motion` tool is active. Mirror of
+    /// `vec_scene` — document ≠ tool (ADR-0040).
+    pub(crate) motion: crate::motion_state::MotionState,
     /// parley font + layout context (heavy state). Threaded through
     /// `PaintCtx` so future text passes don't re-load fonts.
     pub(crate) text_system: TextSystem,

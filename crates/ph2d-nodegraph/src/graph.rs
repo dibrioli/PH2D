@@ -120,7 +120,12 @@ pub struct Pos {
     pub y: f32,
 }
 
-#[derive(Default)]
+// `Clone`/`PartialEq` back the Motion Nodes snapshot history (`ph2d-motion-doc`
+// `MotionHistory`, molde `ph2d-vec-edit::History`): undo/redo snapshots the whole
+// document (graph included) and `commit_if_changed` compares pre != current.
+// `Debug` for test/diagnostic ergonomics. All fields already derive the three;
+// `Eq` is intentionally NOT derived (`Pos`/`node_params` carry `f32`).
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct Graph {
     nodes: Vec<NodeInstance>,
     edges: Vec<Edge>,

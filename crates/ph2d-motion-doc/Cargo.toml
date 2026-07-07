@@ -1,0 +1,18 @@
+[package]
+name = "ph2d-motion-doc"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+[dependencies]
+# Documento do módulo Motion Nodes (M0.T7): embrulha o `Graph` congelado do
+# substrato de nós + os backdrops UI-only + `base_z`, e a history por snapshot
+# (molde `ph2d-vec-edit::History`). Serialização = formato textual v1 do
+# nodegraph + seção `[backdrop]` irmã de `[layout]`. Sem UI/render aqui — modelo
+# puro, consumido pelo shell (`MotionState` em `app_state.rs`) e pelo painel.
+ph2d-nodegraph = { path = "../ph2d-nodegraph" }

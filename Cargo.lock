@@ -5083,6 +5083,13 @@ name = "ph2d-memory-gc"
 version = "0.0.0"
 
 [[package]]
+name = "ph2d-motion-doc"
+version = "0.0.0"
+dependencies = [
+ "ph2d-nodegraph",
+]
+
+[[package]]
 name = "ph2d-net"
 version = "0.0.0"
 

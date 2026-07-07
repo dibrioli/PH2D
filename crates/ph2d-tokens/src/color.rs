@@ -356,6 +356,71 @@ color_tokens! {
     CurveB => "curve-b",
     /// `canvas` — viewport background (scene render target backdrop).
     Canvas => "canvas",
+
+    // ── Motion Nodes: node-category header tints (M0.T5, §2.4) ─────
+    // Category identity hues; the card header is `mix(cat, Bg2, 0.55)`.
+    // Same value across all themes — node graph canvas is dark in every
+    // theme (universal node-editor convention), so the identity holds.
+    /// `node-cat-source` — generators / distribution sources.
+    NodeCatSource => "node-cat-source",
+    /// `node-cat-distribute` — cloners / distributions.
+    NodeCatDistribute => "node-cat-distribute",
+    /// `node-cat-transform` — modifiers (move/scale/rotate/tint).
+    NodeCatTransform => "node-cat-transform",
+    /// `node-cat-focus` — falloffs / focus fields.
+    NodeCatFocus => "node-cat-focus",
+    /// `node-cat-fx` — effects (blur/glow/mirror…).
+    NodeCatFx => "node-cat-fx",
+    /// `node-cat-output` — sinks / terminals.
+    NodeCatOutput => "node-cat-output",
+    /// `node-cat-utility` — expressions / adapters / values.
+    NodeCatUtility => "node-cat-utility",
+
+    // ── Motion Nodes: port colors by PortType axis ─────────────────
+    // Socket color = Domain (or Clock for event/static); shape = Dim.
+    /// `port-instances` — `Domain::Instances` (purple).
+    PortInstances => "port-instances",
+    /// `port-vector` — `Domain::Vector` (blue).
+    PortVector => "port-vector",
+    /// `port-field` — `Domain::Field` (orange).
+    PortField => "port-field",
+    /// `port-signal` — `Domain::Signal` (teal).
+    PortSignal => "port-signal",
+    /// `port-control` — `Domain::Control` (lime).
+    PortControl => "port-control",
+    /// `port-event` — `Clock::Event` pulse (magenta).
+    PortEvent => "port-event",
+    /// `port-static` — `Clock::Static` const (neutral).
+    PortStatic => "port-static",
+
+    // ── Motion Nodes: graph surfaces + wire activity ───────────────
+    /// `graph-bg` — node canvas backdrop (dark in every theme).
+    GraphBg => "graph-bg",
+    /// `graph-grid` — faint background grid.
+    GraphGrid => "graph-grid",
+    /// `wire-fire-glow` — decaying glow on an edge whose value changed.
+    WireFireGlow => "wire-fire-glow",
+
+    // ── Motion Nodes: translucent group-backdrop tints (8) ─────────
+    /// `graph-backdrop-1` — translucent group-region tint.
+    GraphBackdrop1 => "graph-backdrop-1",
+    /// `graph-backdrop-2` — translucent group-region tint.
+    GraphBackdrop2 => "graph-backdrop-2",
+    /// `graph-backdrop-3` — translucent group-region tint.
+    GraphBackdrop3 => "graph-backdrop-3",
+    /// `graph-backdrop-4` — translucent group-region tint.
+    GraphBackdrop4 => "graph-backdrop-4",
+    /// `graph-backdrop-5` — translucent group-region tint.
+    GraphBackdrop5 => "graph-backdrop-5",
+    /// `graph-backdrop-6` — translucent group-region tint.
+    GraphBackdrop6 => "graph-backdrop-6",
+    /// `graph-backdrop-7` — translucent group-region tint.
+    GraphBackdrop7 => "graph-backdrop-7",
+    /// `graph-backdrop-8` — translucent group-region tint.
+    GraphBackdrop8 => "graph-backdrop-8",
+
+    /// `attr-write` — gold badge for attribute-write on a node.
+    AttrWrite => "attr-write",
 }
 
 impl ColorToken {
@@ -376,7 +441,7 @@ impl ColorToken {
 }
 
 /// Linear-scan lookup of a color token in a per-theme table generated
-/// from `docs/design/tokens.json`. Tables have 33 entries; ~ns per
+/// from `docs/design/tokens.json`. Tables have ~60 entries; ~ns per
 /// lookup. Not a hot path (paint frame walks tokens once per widget,
 /// not per pixel). Panics on missing key — design-canonical integrity
 /// error (token added to ColorToken enum without matching entry in

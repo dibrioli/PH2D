@@ -143,6 +143,11 @@ impl AudioSystem {
         self.engine.rms()
     }
 
+    /// Current master momentary loudness in LUFS (BS.1770, 400 ms window).
+    pub(crate) fn momentary_lufs(&self) -> f32 {
+        self.engine.momentary_lufs()
+    }
+
     /// Current post-fader RMS per sub-bus, for the strip meter fills.
     pub(crate) fn bus_rms(&self) -> [[f32; 2]; SUB_BUS_COUNT] {
         self.engine.bus_rms()

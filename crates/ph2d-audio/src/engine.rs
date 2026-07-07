@@ -12,7 +12,7 @@ use crate::AudioError;
 use crate::buffer::{MixScratch, SampleData};
 use crate::bus::{BusId, SUB_BUS_COUNT};
 use crate::command::{AudioCommand, AudioReturn, Consumer, PlayParams, Producer, ring};
-use crate::dsp::BiquadCoeffs;
+use crate::dsp::{BiquadCoeffs, LoudnessMeter, lufs_from_mean_square};
 use crate::format::{AudioFormat, ChannelLayout, Sample};
 use crate::meter::AudioMeter;
 use crate::mixer::Mixer;
@@ -80,6 +80,13 @@ impl AudioEngine {
     /// The most recent master RMS `[left, right]` (≈ perceived loudness).
     pub fn rms(&self) -> [f32; 2] {
         self.meter.rms()
+    }
+
+    /// The master's momentary loudness in **LUFS** (BS.1770 K-weighting over a
+    /// 400 ms window). Reads the RT-published mean-square and does the `log10`
+    /// here on the control thread. Silence reads [`crate::dsp::SILENCE_LUFS`].
+    pub fn momentary_lufs(&self) -> f32 {
+        lufs_from_mean_square(self.meter.loudness_mean_square())
     }
 
     /// The most recent post-fader RMS per sub-bus, in [`BusId::SUB_BUSES`] order.
@@ -259,6 +266,8 @@ pub struct AudioRenderer {
     returns: Producer<AudioReturn>,
     meter: Arc<AudioMeter>,
     scratch: MixScratch,
+    /// Momentary-loudness (LUFS) meter over the final master output.
+    loudness: LoudnessMeter,
     format: AudioFormat,
 }
 
@@ -276,6 +285,7 @@ impl AudioRenderer {
             returns,
             meter,
             scratch: MixScratch::new(),
+            loudness: LoudnessMeter::new(format.sample_rate),
             format,
         }
     }
@@ -291,6 +301,7 @@ impl AudioRenderer {
             returns,
             meter,
             scratch,
+            loudness,
             format,
         } = self;
 
@@ -325,7 +336,8 @@ impl AudioRenderer {
         );
 
         // 4. Publish this block's master peak + RMS (pre-clamp, so clipping reads
-        //    > 1). Peak catches transients; RMS ≈ perceived loudness.
+        //    > 1). Peak catches transients; RMS ≈ perceived loudness. Each sample
+        //    also feeds the momentary-loudness (LUFS) window.
         let mut peak_l = 0.0f32;
         let mut peak_r = 0.0f32;
         let mut sq_l = 0.0f32;
@@ -337,7 +349,9 @@ impl AudioRenderer {
             peak_r = peak_r.max(r.abs());
             sq_l += l * l;
             sq_r += r * r;
+            loudness.process(l, r);
         }
+        meter.store_loudness(loudness.mean_square());
         let inv_frames = 1.0 / frames.max(1) as f32;
         meter.store(
             [peak_l, peak_r],

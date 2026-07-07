@@ -33,6 +33,9 @@ fn store_pair(p: &Pair, v: [f32; 2]) {
 pub struct AudioMeter {
     master_peak: Pair,
     master_rms: Pair,
+    /// Momentary-loudness K-weighted **mean-square** (linear) of the master; the
+    /// reader converts it to LUFS off the RT thread (no `log10` here).
+    master_loudness_ms: AtomicU32,
     /// Post-fader `[L, R]` peak/RMS per sub-bus, indexed by `BusId::sub_index`.
     bus_peak: [Pair; SUB_BUS_COUNT],
     bus_rms: [Pair; SUB_BUS_COUNT],
@@ -44,6 +47,7 @@ impl Default for AudioMeter {
         Self {
             master_peak: zero_pair(),
             master_rms: zero_pair(),
+            master_loudness_ms: AtomicU32::new(0),
             bus_peak: from_fn(|_| zero_pair()),
             bus_rms: from_fn(|_| zero_pair()),
         }
@@ -55,6 +59,18 @@ impl AudioMeter {
     pub(crate) fn store(&self, peak: [f32; 2], rms: [f32; 2]) {
         store_pair(&self.master_peak, peak);
         store_pair(&self.master_rms, rms);
+    }
+
+    /// Store the master's momentary K-weighted mean-square for this block.
+    pub(crate) fn store_loudness(&self, mean_square: f32) {
+        self.master_loudness_ms
+            .store(mean_square.to_bits(), Ordering::Relaxed);
+    }
+
+    /// The master's momentary K-weighted mean-square (linear). Convert to LUFS
+    /// with [`crate::dsp::lufs_from_mean_square`] on the reading thread.
+    pub fn loudness_mean_square(&self) -> f32 {
+        f32::from_bits(self.master_loudness_ms.load(Ordering::Relaxed))
     }
 
     /// Store sub-bus `i`'s post-fader peak + RMS for this block.
@@ -99,6 +115,14 @@ mod tests {
         m.store([0.5, 1.25], [0.35, 0.8]);
         assert_eq!(m.peaks(), [0.5, 1.25]);
         assert_eq!(m.rms(), [0.35, 0.8]);
+    }
+
+    #[test]
+    fn round_trips_master_loudness() {
+        let m = AudioMeter::default();
+        assert_eq!(m.loudness_mean_square(), 0.0);
+        m.store_loudness(0.0125);
+        assert_eq!(m.loudness_mean_square(), 0.0125);
     }
 
     #[test]

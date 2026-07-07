@@ -42,6 +42,7 @@ const FADER_W: f32 = 22.0; // LITERAL-PX-OK: fader column width (chrome)
 const METER_W: f32 = 14.0; // LITERAL-PX-OK: meter column width (chrome)
 const STRIP_H: f32 = 116.0; // LITERAL-PX-OK: fader/meter height (chrome; kept compact so the master section fits)
 const MUTE_H: f32 = 24.0; // LITERAL-PX-OK: mute button height (chrome)
+const LUFS_SILENCE_DISPLAY: f32 = -70.0; // LITERAL-PX-OK: below this the loudness reads "-inf" (audio domain)
 
 /// One channel strip's live data (Master or a sub-bus).
 struct Strip {
@@ -283,7 +284,25 @@ fn paint_master_section(
         theme,
         hit_index,
     );
-    y += MUTE_H + Spacing::Md.px();
+    y += MUTE_H + Spacing::Sm.px();
+
+    // Master momentary loudness readout (LUFS, BS.1770) — a monitoring number
+    // below Play Test; "-inf" when the master is effectively silent.
+    let lufs = snapshot::loudness();
+    let loudness_text = if lufs <= LUFS_SILENCE_DISPLAY {
+        "-inf LUFS".to_string()
+    } else {
+        format!("{lufs:.1} LUFS")
+    };
+    paint_text_centered(
+        text_system,
+        scene,
+        &loudness_text,
+        Rect::new(content_x, y, content_w, TypeToken::Xs.px()),
+        TypeToken::Xs.px(),
+        resolve(ColorToken::Text2, theme),
+    );
+    y += TypeToken::Xs.px() + Spacing::Md.px();
 
     // Master output limiter (Accent when engaged) — tames peaks below the clip
     // ceiling instead of hard-clipping.

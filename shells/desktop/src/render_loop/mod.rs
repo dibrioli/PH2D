@@ -126,6 +126,7 @@ impl crate::App {
                 audio.set_test_playing(ph2d_panel_audio_mixer::play_test());
                 // Master strip.
                 ph2d_panel_audio_mixer::set_levels(audio.levels(), audio.rms());
+                ph2d_panel_audio_mixer::set_loudness(audio.momentary_lufs());
                 let muted = ph2d_panel_audio_mixer::master_muted();
                 let gain = ph2d_panel_audio_mixer::master_gain_target();
                 audio.set_master_gain(if muted { 0.0 } else { gain });

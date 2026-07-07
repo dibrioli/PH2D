@@ -666,11 +666,35 @@ impl SpriteRenderer {
         window: WindowSize,
         clear_color: wgpu::Color,
     ) {
+        self.render_with_extra(target, present, camera, window, clear_color, &[]);
+    }
+
+    /// Like [`render`](Self::render) but also injects an external instance slice
+    /// into the sprite pass (Motion Nodes M0.T11). The `extra` slice is appended
+    /// to the scene instances collected from `present`, then sorted + run-batched
+    /// together in the same pass — so a cooked node-graph stream draws **without**
+    /// being spawned into `PresentWorld` (stream ≠ ECS, ADR-0035). Pass `&[]` for
+    /// the scene-only path ([`render`](Self::render) does exactly that).
+    #[allow(clippy::too_many_arguments)]
+    pub fn render_with_extra(
+        &mut self,
+        target: &wgpu::TextureView,
+        present: &mut PresentWorld,
+        camera: &Camera2d,
+        window: WindowSize,
+        clear_color: wgpu::Color,
+        extra: &[RenderInstance],
+    ) {
         self.scratch.clear();
         let mut q = present.world_mut().query::<&RenderInstance>();
         for inst in q.iter(present.world()) {
             self.scratch.push(*inst);
         }
+        // Motion Nodes M0.T11: external cooked-stream instances, injected here
+        // (not spawned into the ECS `present`). They sort + batch with the scene
+        // instances below; a motion instance has `z_order = 0`, `texture_id = 0`
+        // (atlas), so it joins the base atlas run.
+        self.scratch.extend_from_slice(extra);
         // Sort by (z_order, texture_id). z_order is the extract-time
         // sequential counter from `propagate_transforms`'s DFS so the
         // render order matches the Hierarchy panel — without this an

@@ -36,50 +36,61 @@ use ph2d_nodegraph::cook::{Cook, CookError, OpResolver};
 use ph2d_nodegraph::graph::{Graph, NodeId};
 use ph2d_render::RenderInstance;
 
-/// Lower a cooked instance stream to render instances (one per element).
-/// Pure + headless: no GPU, no allocation beyond the output vector.
-pub fn lower_to_instances(stream: &Stream) -> Vec<RenderInstance> {
+/// Lower a cooked instance stream **into `out`** (one instance per element),
+/// reusing `out`'s capacity: `out` is cleared and refilled, so a steady stream
+/// count frame-to-frame allocates nothing (M0.T11 — the per-frame bridge path;
+/// zero-alloc gated by M0.T12). Pure + headless: no GPU.
+pub fn lower_to_instances_into(stream: &Stream, out: &mut Vec<RenderInstance>) {
     let n = stream.count();
     let p = stream.get("P");
     let size = stream.get("size");
     let rot = stream.get("rot");
     let tint = stream.get("tint");
-    (0..n)
-        .map(|i| {
-            // ADR-0070-amendment-4: RenderInstance carries the 2×2 world
-            // basis, not a rotation scalar. A Motion stream emits only a
-            // rotation (no skew), so the basis is a pure rotation matrix
-            // `[cos, sin, -sin, cos]`. RenderInstance is PresentWorld-only
-            // (HR-5 exempt), so std `sin_cos` is fine here.
-            let (sin_r, cos_r) = scalar_at(rot, i, 0.0).sin_cos();
-            RenderInstance {
-                world_pos: vec2_at(p, i, [0.0, 0.0]),
-                size: vec2_at(size, i, [1.0, 1.0]),
-                atlas_uv: [0.0, 0.0, 1.0, 1.0],
-                tint: vec4_at(tint, i, [1.0, 1.0, 1.0, 1.0]),
-                basis: [cos_r, sin_r, -sin_r, cos_r],
-                premultiplied: 0.0,
-                anchor: [0.0, 0.0],
-                // Sprite-Inspector-v2 v4 ABI fields: a Motion node stream has
-                // no per-corner/opacity/flip authoring surface, so they take
-                // their identity values (white gradient, full opacity, no
-                // flip) — byte-identical render to the pre-v4 path.
-                per_corner_tint: [[1.0; 4]; 4],
-                opacity: 1.0,
-                flip_uv: 0,
-                texture_id: 0,
-                // Node-graph emit doesn't have a hierarchy slot — every
-                // motion node's instances share `z_order = 0`. Renderer's
-                // tiebreaker (`texture_id`) groups them into one run.
-                z_order: 0,
-                sampling: 0,
-                uv_xform: RenderInstance::IDENTITY_UV_XFORM,
-                // Node-graph emit has no hierarchy → no clip silhouette.
-                clip_group: RenderInstance::CLIP_GROUP_NONE,
-                clip_meta: 0,
-            }
-        })
-        .collect()
+    out.clear();
+    out.reserve(n);
+    for i in 0..n {
+        // ADR-0070-amendment-4: RenderInstance carries the 2×2 world
+        // basis, not a rotation scalar. A Motion stream emits only a
+        // rotation (no skew), so the basis is a pure rotation matrix
+        // `[cos, sin, -sin, cos]`. RenderInstance is PresentWorld-only
+        // (HR-5 exempt), so std `sin_cos` is fine here.
+        let (sin_r, cos_r) = scalar_at(rot, i, 0.0).sin_cos();
+        out.push(RenderInstance {
+            world_pos: vec2_at(p, i, [0.0, 0.0]),
+            size: vec2_at(size, i, [1.0, 1.0]),
+            atlas_uv: [0.0, 0.0, 1.0, 1.0],
+            tint: vec4_at(tint, i, [1.0, 1.0, 1.0, 1.0]),
+            basis: [cos_r, sin_r, -sin_r, cos_r],
+            premultiplied: 0.0,
+            anchor: [0.0, 0.0],
+            // Sprite-Inspector-v2 v4 ABI fields: a Motion node stream has
+            // no per-corner/opacity/flip authoring surface, so they take
+            // their identity values (white gradient, full opacity, no
+            // flip) — byte-identical render to the pre-v4 path.
+            per_corner_tint: [[1.0; 4]; 4],
+            opacity: 1.0,
+            flip_uv: 0,
+            texture_id: 0,
+            // Node-graph emit doesn't have a hierarchy slot — every
+            // motion node's instances share `z_order = 0`. Renderer's
+            // tiebreaker (`texture_id`) groups them into one run.
+            z_order: 0,
+            sampling: 0,
+            uv_xform: RenderInstance::IDENTITY_UV_XFORM,
+            // Node-graph emit has no hierarchy → no clip silhouette.
+            clip_group: RenderInstance::CLIP_GROUP_NONE,
+            clip_meta: 0,
+        });
+    }
+}
+
+/// Lower a cooked instance stream to render instances (one per element).
+/// Pure + headless. Allocates a fresh `Vec`; the per-frame path uses
+/// [`lower_to_instances_into`] to reuse a buffer instead.
+pub fn lower_to_instances(stream: &Stream) -> Vec<RenderInstance> {
+    let mut out = Vec::new();
+    lower_to_instances_into(stream, &mut out);
+    out
 }
 
 /// Cook `target` at `playhead` and lower its **output port 0** to render
@@ -100,14 +111,33 @@ pub fn evaluate_motion(
     target: NodeId,
     playhead: f64,
 ) -> Result<Vec<RenderInstance>, CookError> {
+    let mut out = Vec::new();
+    evaluate_motion_into(cook, graph, ops, target, playhead, &mut out)?;
+    Ok(out)
+}
+
+/// Cook `target` at `playhead` and lower its output port 0 **into `out`**,
+/// reusing the buffer's capacity (M0.T11 — the per-frame bridge entry). Same
+/// single-port semantics as [`evaluate_motion`]; a target with no output port
+/// leaves `out` empty. Reuse the same [`Cook`] AND the same `out` across frames
+/// for the zero-alloc steady state (gated by M0.T12).
+pub fn evaluate_motion_into(
+    cook: &mut Cook,
+    graph: &Graph,
+    ops: &dyn OpResolver,
+    target: NodeId,
+    playhead: f64,
+    out: &mut Vec<RenderInstance>,
+) -> Result<(), CookError> {
     let outputs = cook.cook(graph, ops, target, playhead)?;
     // A cooked output port is a `CookValue`; a Motion target's port 0 is an
     // instance stream (ADR-0058-amendment-1). A non-stream value lowers to no
     // instances (its `as_stream()` is empty).
-    Ok(outputs
-        .first()
-        .map(|v| lower_to_instances(v.as_stream()))
-        .unwrap_or_default())
+    match outputs.first() {
+        Some(v) => lower_to_instances_into(v.as_stream(), out),
+        None => out.clear(),
+    }
+    Ok(())
 }
 
 fn scalar_at(c: Option<&Column>, i: usize, default: f32) -> f32 {
@@ -154,6 +184,30 @@ mod tests {
         assert_eq!(out[0].basis, RenderInstance::IDENTITY_BASIS);
         assert_eq!(out[1].tint, [1.0, 1.0, 1.0, 1.0]); // default
         assert_eq!(out[0].atlas_uv, [0.0, 0.0, 1.0, 1.0]);
+    }
+
+    #[test]
+    fn lower_into_matches_fresh_and_reuses_capacity() {
+        let s = Stream::new(3).with("P", Column::Vec2(vec![[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]]));
+        let fresh = lower_to_instances(&s);
+        let mut buf = Vec::new();
+        lower_to_instances_into(&s, &mut buf);
+        // Same lowered geometry (RenderInstance is not PartialEq → compare fields).
+        assert_eq!(buf.len(), fresh.len());
+        for (a, b) in buf.iter().zip(&fresh) {
+            assert_eq!(a.world_pos, b.world_pos);
+            assert_eq!(a.size, b.size);
+            assert_eq!(a.tint, b.tint);
+            assert_eq!(a.basis, b.basis);
+        }
+        // Reuse: a second lower with a smaller stream refills the SAME buffer,
+        // retaining capacity (the zero-alloc steady-state property, M0.T11/T12).
+        let cap_before = buf.capacity();
+        let s2 = Stream::new(1).with("P", Column::Vec2(vec![[9.0, 9.0]]));
+        lower_to_instances_into(&s2, &mut buf);
+        assert_eq!(buf.len(), 1);
+        assert_eq!(buf[0].world_pos, [9.0, 9.0]);
+        assert!(buf.capacity() >= cap_before, "capacity retained, not shrunk");
     }
 
     #[test]

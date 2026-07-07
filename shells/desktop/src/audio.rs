@@ -46,6 +46,8 @@ pub(crate) struct AudioSystem {
     last_bus_send: [std::cell::Cell<f32>; SUB_BUS_COUNT],
     /// Same change-gate, per sub-bus delay aux-send amount.
     last_bus_delay_send: [std::cell::Cell<f32>; SUB_BUS_COUNT],
+    /// Same change-gate, per sub-bus compressor amount (0 = off .. 1 = heavy).
+    last_bus_comp: [std::cell::Cell<f32>; SUB_BUS_COUNT],
     /// Voices of the built-in test signal while the panel's Play Test is on
     /// (empty = stopped). Looping, so they sound until explicitly stopped.
     test_voices: Vec<VoiceId>,
@@ -128,6 +130,7 @@ impl AudioSystem {
             last_bus_highpass: std::array::from_fn(|_| std::cell::Cell::new(20.0)),
             last_bus_send: std::array::from_fn(|_| std::cell::Cell::new(0.0)),
             last_bus_delay_send: std::array::from_fn(|_| std::cell::Cell::new(0.0)),
+            last_bus_comp: std::array::from_fn(|_| std::cell::Cell::new(0.0)),
             test_voices: Vec::new(),
             duck_env: std::cell::Cell::new(1.0),
             _stream: stream,
@@ -237,6 +240,23 @@ impl AudioSystem {
             && (amount - cell.get()).abs() > f32::EPSILON
         {
             let _ = self.engine.set_bus_delay_send(BusId::SUB_BUSES[i], amount);
+            cell.set(amount);
+        }
+    }
+
+    /// Set sub-bus `i`'s compressor from a single 0..1 `amount` knob, change-gated
+    /// per bus. The amount drives the threshold down (1.0 = off .. 0.1 = heavy)
+    /// with a fixed musical 4:1 ratio + 10 ms attack / 100 ms release.
+    pub(crate) fn set_bus_compressor(&self, i: usize, amount: f32) {
+        if let Some(cell) = self.last_bus_comp.get(i)
+            && (amount - cell.get()).abs() > f32::EPSILON
+        {
+            let a = amount.clamp(0.0, 1.0);
+            let on = a > 0.001;
+            let threshold = 1.0 - a * 0.9; // 1.0 (off) .. 0.1 (heavy)
+            let _ =
+                self.engine
+                    .set_bus_compressor(BusId::SUB_BUSES[i], on, threshold, 4.0, 0.01, 0.1);
             cell.set(amount);
         }
     }

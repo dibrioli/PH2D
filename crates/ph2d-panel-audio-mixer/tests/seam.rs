@@ -11,13 +11,13 @@ use ph2d_panel_audio_mixer::state::AudioMixerState;
 use ph2d_panel_audio_mixer::{
     AMIX_CUTOFF, AMIX_DELAY, AMIX_DELAY_TIME, AMIX_DUCK, AMIX_DUCK_DEPTH, AMIX_DUCK_KEY,
     AMIX_EQ_LOW, AMIX_FADER, AMIX_LIMITER, AMIX_LOWCUT, AMIX_MASTER_METER, AMIX_MASTER_MUTE,
-    AMIX_PAN, AMIX_PLAY, AMIX_REVERB, AMIX_REVERB_SIZE, AudioMixerPanel, FADER_UNITY_POS,
+    AMIX_PAN, AMIX_PLAY, AMIX_REVERB, AMIX_REVERB_SIZE, AudioMixerPanel, FADER_UNITY_POS, SUB_COMP,
     SUB_DELAY_SEND, SUB_FADER, SUB_LOWCUT, SUB_MUTE, SUB_PAN, SUB_SEND, SUB_SOLO, SUB_TONE,
     delay_on, delay_time, duck_depth, ducking, ducking_key, fader_gain, limiter, master_clipped,
     master_cutoff_target, master_eq_target, master_gain_target, master_lowcut_target, master_muted,
-    master_pan_target, play_test, reverb_on, reverb_size, set_levels, sub_delay_send_target,
-    sub_gain_target, sub_lowcut_target, sub_muted, sub_pan_target, sub_send_target, sub_soloed,
-    sub_tone_target,
+    master_pan_target, play_test, reverb_on, reverb_size, set_levels, sub_comp_target,
+    sub_delay_send_target, sub_gain_target, sub_lowcut_target, sub_muted, sub_pan_target,
+    sub_send_target, sub_soloed, sub_tone_target,
 };
 use ph2d_ui_testkit::MockPanelHost;
 
@@ -325,6 +325,30 @@ fn delay_toggle_time_and_send_publish() {
         sends[0]
     );
     assert!(sends[1].abs() < 1e-5, "the other bus delay send stays dry");
+}
+
+/// Dragging a sub-bus Comp knob publishes its compressor amount into that bus's
+/// slot only — the shell maps it to compressor params. Others stay off.
+#[test]
+fn sub_bus_comp_drag_publishes_amount() {
+    let mut host = MockPanelHost::with_panel::<AudioMixerPanel>();
+    let mut state = AudioMixerState;
+
+    host.set_slider_value(SUB_COMP[0], 0.5);
+    let outcome = host
+        .apply_panel_event::<AudioMixerPanel>(&mut state, WidgetEvent::ValueChanged(SUB_COMP[0]));
+    assert_eq!(
+        outcome,
+        EventOutcome::Consumed,
+        "panel ignored the Comp ValueChanged — the SUB_COMP arm is missing"
+    );
+    let comps = sub_comp_target();
+    assert!(
+        (comps[0] - 0.5).abs() < 1e-5,
+        "Comp must publish 0.5, got {}",
+        comps[0]
+    );
+    assert!(comps[1].abs() < 1e-5, "the other bus compressor stays off");
 }
 
 /// The Reverb toggle flips the enable flag, and dragging Size publishes the raw

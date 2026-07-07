@@ -37,6 +37,17 @@ const EQ_MID_HZ: f32 = 1_000.0; // LITERAL-PX-OK: mid-peak center (audio domain)
 const EQ_HIGH_HZ: f32 = 8_000.0; // LITERAL-PX-OK: high-shelf corner (audio domain)
 const EQ_Q: f32 = std::f32::consts::FRAC_1_SQRT_2; // Butterworth-ish shelf/peak width
 
+/// Per-sample one-pole coefficient for an envelope `time_secs`:
+/// `1 - e^(-1/(t·sr))` (`<= 0` s → instantaneous, coeff `1`). Control-thread only
+/// (uses `exp`) — the compressor's RT `process` takes the coefficient directly.
+fn env_coeff(time_secs: f32, sample_rate: f32) -> f32 {
+    if time_secs <= 0.0 {
+        1.0
+    } else {
+        1.0 - (-1.0 / (time_secs * sample_rate)).exp()
+    }
+}
+
 /// Control-side handle. Lives on the game thread; every method just enqueues a
 /// command (allocation happens here, never on the audio thread). Returns opaque
 /// [`VoiceId`]s (HR-8).
@@ -254,6 +265,30 @@ impl AudioEngine {
     /// post-fader signal feeds the delay return.
     pub fn set_bus_delay_send(&self, bus: BusId, amount: f32) -> Result<(), AudioError> {
         self.send(AudioCommand::SetBusDelaySend { bus, amount })
+    }
+
+    /// Set a sub-bus's compressor: `on`, `threshold` (linear 0..1), `ratio`
+    /// (>=1), and `attack_secs` / `release_secs`. The attack/release times are
+    /// converted to per-sample coefficients here (control thread) so no `exp`
+    /// runs on the audio thread.
+    pub fn set_bus_compressor(
+        &self,
+        bus: BusId,
+        on: bool,
+        threshold: f32,
+        ratio: f32,
+        attack_secs: f32,
+        release_secs: f32,
+    ) -> Result<(), AudioError> {
+        let sr = self.format.sample_rate as f32;
+        self.send(AudioCommand::SetBusCompressor {
+            bus,
+            on,
+            threshold,
+            ratio,
+            attack: env_coeff(attack_secs, sr),
+            release: env_coeff(release_secs, sr),
+        })
     }
 
     /// Set the master 3-band EQ gains in dB — low shelf ([`EQ_LOW_HZ`]), mid peak

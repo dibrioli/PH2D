@@ -167,6 +167,7 @@ impl crate::App {
                 let sub_lowcut = ph2d_panel_audio_mixer::sub_lowcut_target();
                 let sub_send = ph2d_panel_audio_mixer::sub_send_target();
                 let sub_delay_send = ph2d_panel_audio_mixer::sub_delay_send_target();
+                let sub_comp = ph2d_panel_audio_mixer::sub_comp_target();
                 // Sidechain ducking: every bus drops under the selected key bus.
                 let duck_key = ph2d_panel_audio_mixer::ducking_key();
                 let duck = audio.update_ducking(
@@ -196,6 +197,7 @@ impl crate::App {
                     audio.set_bus_highpass(i, sub_lowcut[i]);
                     audio.set_bus_send(i, sub_send[i]);
                     audio.set_bus_delay_send(i, sub_delay_send[i]);
+                    audio.set_bus_compressor(i, sub_comp[i]);
                 }
             }
         }

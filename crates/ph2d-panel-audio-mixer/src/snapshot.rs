@@ -46,6 +46,7 @@ thread_local! {
     static SUB_LOWCUT_HZ: Cell<[f32; SUB_BUS_COUNT]> = const { Cell::new([20.0; SUB_BUS_COUNT]) }; // LITERAL-PX-OK: default low-cut 20 Hz (off)
     static SUB_SEND_AMT: Cell<[f32; SUB_BUS_COUNT]> = const { Cell::new([0.0; SUB_BUS_COUNT]) };
     static SUB_DELAY_SEND_AMT: Cell<[f32; SUB_BUS_COUNT]> = const { Cell::new([0.0; SUB_BUS_COUNT]) };
+    static SUB_COMP_AMT: Cell<[f32; SUB_BUS_COUNT]> = const { Cell::new([0.0; SUB_BUS_COUNT]) };
     // Master delay/echo: enable + time (slider pos = seconds, 0..1 s) + feedback +
     // return mix, all 0..1.
     static DELAY_ON: Cell<bool> = const { Cell::new(false) };
@@ -438,6 +439,22 @@ pub fn sub_delay_send() -> [f32; SUB_BUS_COUNT] {
 
 pub(crate) fn set_sub_delay_send(i: usize, amount: f32) {
     SUB_DELAY_SEND_AMT.with(|c| {
+        let mut v = c.get();
+        if let Some(slot) = v.get_mut(i) {
+            *slot = amount;
+        }
+        c.set(v);
+    });
+}
+
+/// Panel → shell: each sub-bus compressor amount (0..1; 0 = off) from its Comp
+/// slider in the master Compressor section.
+pub fn sub_comp() -> [f32; SUB_BUS_COUNT] {
+    SUB_COMP_AMT.with(Cell::get)
+}
+
+pub(crate) fn set_sub_comp(i: usize, amount: f32) {
+    SUB_COMP_AMT.with(|c| {
         let mut v = c.get();
         if let Some(slot) = v.get_mut(i) {
             *slot = amount;

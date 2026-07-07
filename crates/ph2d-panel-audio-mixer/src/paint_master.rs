@@ -7,8 +7,8 @@ use crate::paint_widgets::{paint_labeled_slider, paint_toggle};
 use crate::{
     AMIX_DELAY, AMIX_DELAY_FEEDBACK, AMIX_DELAY_MIX, AMIX_DELAY_TIME, AMIX_DUCK, AMIX_DUCK_DEPTH,
     AMIX_DUCK_KEY, AMIX_EQ_HIGH, AMIX_EQ_LOW, AMIX_EQ_MID, AMIX_LIMITER, AMIX_PLAY, AMIX_REVERB,
-    AMIX_REVERB_MIX, AMIX_REVERB_SIZE, SUB_BUS_COUNT, SUB_BUS_LABELS, SUB_DELAY_SEND, SUB_SEND,
-    snapshot,
+    AMIX_REVERB_MIX, AMIX_REVERB_SIZE, SUB_BUS_COUNT, SUB_BUS_LABELS, SUB_COMP, SUB_DELAY_SEND,
+    SUB_SEND, snapshot,
 };
 use ph2d_editor_core::interaction::HitIndex;
 use ph2d_editor_core::paint::{paint_text_centered, resolve};
@@ -200,6 +200,34 @@ pub(crate) fn paint_master_section(
             SUB_BUS_LABELS[i],
             SUB_DELAY_SEND[i],
             delay_sends[i],
+            content_x,
+            content_w,
+            scene,
+            text_system,
+            theme,
+            hit_index,
+        );
+    }
+    y += Spacing::Sm.px();
+
+    // Per-sub-bus compressor — a single "amount" knob per bus (0 = off; right =
+    // more compression). A "Comp" group header, then one labeled row per sub-bus.
+    paint_text_centered(
+        text_system,
+        scene,
+        "Comp",
+        Rect::new(content_x, y, content_w, TypeToken::Xs.px()),
+        TypeToken::Xs.px(),
+        resolve(ColorToken::Text2, theme),
+    );
+    y += TypeToken::Xs.px() + Spacing::Sm.px();
+    let comps = snapshot::sub_comp();
+    for i in 0..SUB_BUS_COUNT {
+        y = paint_labeled_slider(
+            y,
+            SUB_BUS_LABELS[i],
+            SUB_COMP[i],
+            comps[i],
             content_x,
             content_w,
             scene,

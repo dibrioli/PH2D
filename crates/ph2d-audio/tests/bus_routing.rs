@@ -295,6 +295,31 @@ fn master_eq_low_shelf_boost_lifts_low_frequency_output() {
 }
 
 #[test]
+fn sub_bus_compressor_reduces_a_loud_bus() {
+    let (mut engine, mut renderer) = AudioEngine::new(AudioFormat::stereo(48_000));
+    engine.play(steady(), on(BusId::Music)).unwrap(); // steady 0.8 on Music
+
+    // Uncompressed baseline (the loud bus, post-fader, ~0.57 after the voice's
+    // equal-power center pan).
+    let open = steady_master_peak(&mut renderer);
+    assert!(open[0] > 0.5, "precondition: the loud bus passes: {open:?}");
+
+    // Engage a 4:1 compressor over 0.3 on Music → its level is pulled well down.
+    engine
+        .set_bus_compressor(BusId::Music, true, 0.3, 4.0, 0.005, 0.05)
+        .unwrap();
+    let compressed = steady_master_peak(&mut renderer);
+    assert!(
+        compressed[0] < open[0] * 0.8,
+        "the compressor must clearly reduce the loud bus (open {open:?} → comp {compressed:?})"
+    );
+    assert!(
+        compressed[0] > 0.15,
+        "…without gutting it to silence: {compressed:?}"
+    );
+}
+
+#[test]
 fn sub_bus_delay_send_feeds_the_echo_return() {
     let (mut engine, mut renderer) = AudioEngine::new(AudioFormat::stereo(48_000));
     // 10 ms delay, no feedback, full return — one clean echo.

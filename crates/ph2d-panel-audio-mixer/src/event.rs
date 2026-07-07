@@ -6,8 +6,8 @@ use crate::{
     AMIX_CLOSE, AMIX_CUTOFF, AMIX_DELAY, AMIX_DELAY_FEEDBACK, AMIX_DELAY_MIX, AMIX_DELAY_TIME,
     AMIX_DUCK, AMIX_DUCK_DEPTH, AMIX_DUCK_KEY, AMIX_EQ_HIGH, AMIX_EQ_LOW, AMIX_EQ_MID, AMIX_FADER,
     AMIX_LIMITER, AMIX_LOWCUT, AMIX_MASTER_METER, AMIX_MASTER_MUTE, AMIX_PAN, AMIX_PLAY,
-    AMIX_REVERB, AMIX_REVERB_MIX, AMIX_REVERB_SIZE, AudioMixerPanel, SUB_DELAY_SEND, SUB_FADER,
-    SUB_LOWCUT, SUB_METER, SUB_MUTE, SUB_PAN, SUB_SEND, SUB_SOLO, SUB_TONE, snapshot,
+    AMIX_REVERB, AMIX_REVERB_MIX, AMIX_REVERB_SIZE, AudioMixerPanel, SUB_COMP, SUB_DELAY_SEND,
+    SUB_FADER, SUB_LOWCUT, SUB_METER, SUB_MUTE, SUB_PAN, SUB_SEND, SUB_SOLO, SUB_TONE, snapshot,
 };
 
 /// Log-map a 0..1 tone slider to a cutoff in Hz (20 Hz..20 kHz).
@@ -230,6 +230,11 @@ fn sub_value_changed(host: &mut dyn PanelHostInternal, id: NodeId) -> EventOutco
     if let Some(i) = SUB_DELAY_SEND.iter().position(|&s| s == id) {
         let v = host.store().slider(id).map(|(_, v)| v).unwrap_or(0.0);
         snapshot::set_sub_delay_send(i, v.clamp(0.0, 1.0));
+        return EventOutcome::Consumed;
+    }
+    if let Some(i) = SUB_COMP.iter().position(|&s| s == id) {
+        let v = host.store().slider(id).map(|(_, v)| v).unwrap_or(0.0);
+        snapshot::set_sub_comp(i, v.clamp(0.0, 1.0));
         return EventOutcome::Consumed;
     }
     // Master 3-band EQ — publish the raw 0..1 position; the shell maps it to

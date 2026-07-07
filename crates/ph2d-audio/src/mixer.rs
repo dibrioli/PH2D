@@ -9,7 +9,7 @@
 use crate::buffer::SampleData;
 use crate::bus::{BusId, SUB_BUS_COUNT};
 use crate::command::AudioCommand;
-use crate::dsp::{Biquad, Delay, Reverb, SmoothGain};
+use crate::dsp::{Biquad, Compressor, Delay, Reverb, SmoothGain};
 use crate::format::{AudioFormat, Sample};
 use crate::pool::VoicePool;
 
@@ -82,6 +82,8 @@ pub(crate) struct Mixer {
     bus_send: [f32; SUB_BUS_COUNT],
     /// Per-sub-bus delay aux-send amount (0..1) — feeds the delay return.
     bus_delay_send: [f32; SUB_BUS_COUNT],
+    /// Per-sub-bus compressor (post-fader/filters dynamics). Bypassed by default.
+    bus_comp: [Compressor; SUB_BUS_COUNT],
     /// Master limiter engaged?
     limiter: bool,
     /// Current limiter gain reduction (`1.0` = none) — a linked-stereo envelope
@@ -119,6 +121,7 @@ impl Mixer {
             bus_filter_r: std::array::from_fn(|_| Biquad::default()),
             bus_send: [0.0; SUB_BUS_COUNT],
             bus_delay_send: [0.0; SUB_BUS_COUNT],
+            bus_comp: [Compressor::default(); SUB_BUS_COUNT],
             limiter: false,
             limiter_gr: 1.0,
             reverb: Reverb::new(format.sample_rate),
@@ -210,6 +213,18 @@ impl Mixer {
                     self.bus_delay_send[i] = amount.clamp(0.0, 1.0);
                 }
             }
+            AudioCommand::SetBusCompressor {
+                bus,
+                on,
+                threshold,
+                ratio,
+                attack,
+                release,
+            } => {
+                if let Some(i) = bus.sub_index() {
+                    self.bus_comp[i].set_params(on, threshold, ratio, attack, release);
+                }
+            }
         }
     }
 
@@ -251,6 +266,7 @@ impl Mixer {
             let hp_r = &mut self.bus_hp_r[i];
             let filter_l = &mut self.bus_filter_l[i];
             let filter_r = &mut self.bus_filter_r[i];
+            let comp = &mut self.bus_comp[i];
             let mut peak_l = 0.0f32;
             let mut peak_r = 0.0f32;
             let mut sq_l = 0.0f32;
@@ -258,10 +274,13 @@ impl Mixer {
             for f in 0..frames {
                 let g = gain.tick();
                 // Fader, then the bus low-cut high-pass, then the low-pass (both
-                // identity = open). Post-filter, pre-pan is the strip meter
-                // reading, so panning doesn't drop it.
-                let l = filter_l.process(hp_l.process(bus_scratch[2 * f] * g));
-                let r = filter_r.process(hp_r.process(bus_scratch[2 * f + 1] * g));
+                // identity = open), then the compressor (bypassed when off).
+                // Post-comp, pre-pan is the strip meter reading, so panning
+                // doesn't drop it.
+                let (l, r) = comp.process(
+                    filter_l.process(hp_l.process(bus_scratch[2 * f] * g)),
+                    filter_r.process(hp_r.process(bus_scratch[2 * f + 1] * g)),
+                );
                 peak_l = peak_l.max(l.abs());
                 peak_r = peak_r.max(r.abs());
                 sq_l += l * l;

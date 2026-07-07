@@ -149,6 +149,14 @@ pub const SUB_DELAY_SEND: [NodeId; SUB_BUS_COUNT] = [
     hash_node_id("audio_mixer_ui_delay_send"),
     hash_node_id("audio_mixer_voice_delay_send"),
 ];
+/// Per-sub-bus compressor amount slider ids (0 = off .. 1 = heavy). Live in the
+/// master Compressor footer section, one labeled row per sub-bus.
+pub const SUB_COMP: [NodeId; SUB_BUS_COUNT] = [
+    hash_node_id("audio_mixer_music_comp"),
+    hash_node_id("audio_mixer_sfx_comp"),
+    hash_node_id("audio_mixer_ui_comp"),
+    hash_node_id("audio_mixer_voice_comp"),
+];
 
 /// Zero-size marker implementing the typed Audio Mixer panel contract.
 pub struct AudioMixerPanel;
@@ -206,6 +214,8 @@ pub use snapshot::set_levels;
 pub use snapshot::set_loudness;
 /// Shell → panel: publish each sub-bus's post-fader peak levels for its meter.
 pub use snapshot::set_sub_levels;
+/// Panel → shell: each sub-bus compressor amount (0..1; 0 = off).
+pub use snapshot::sub_comp as sub_comp_target;
 /// Panel → shell: each sub-bus delay aux-send amount (0..1; 0 = dry).
 pub use snapshot::sub_delay_send as sub_delay_send_target;
 /// Panel → shell: each sub-bus fader gain (index-aligned with `BusId::SUB_BUSES`).

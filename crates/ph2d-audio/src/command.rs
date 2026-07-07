@@ -146,6 +146,16 @@ pub(crate) enum AudioCommand {
         bus: BusId,
         amount: f32,
     },
+    /// Set a sub-bus's compressor: `on`, `threshold` (linear 0..1), `ratio`
+    /// (>=1), and pre-computed per-sample `attack` / `release` coefficients.
+    SetBusCompressor {
+        bus: BusId,
+        on: bool,
+        threshold: f32,
+        ratio: f32,
+        attack: f32,
+        release: f32,
+    },
 }
 
 /// A message from the audio thread back to the control thread.

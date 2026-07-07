@@ -38,6 +38,8 @@ pub(crate) struct AudioSystem {
     last_bus_cutoff: [std::cell::Cell<f32>; SUB_BUS_COUNT],
     /// Same change-gate, per sub-bus low-cut (high-pass cutoff Hz).
     last_bus_highpass: [std::cell::Cell<f32>; SUB_BUS_COUNT],
+    /// Same change-gate, per sub-bus reverb aux-send amount.
+    last_bus_send: [std::cell::Cell<f32>; SUB_BUS_COUNT],
     /// Voices of the built-in test signal while the panel's Play Test is on
     /// (empty = stopped). Looping, so they sound until explicitly stopped.
     test_voices: Vec<VoiceId>,
@@ -116,6 +118,7 @@ impl AudioSystem {
             last_bus_pan: std::array::from_fn(|_| std::cell::Cell::new(0.0)),
             last_bus_cutoff: std::array::from_fn(|_| std::cell::Cell::new(20_000.0)),
             last_bus_highpass: std::array::from_fn(|_| std::cell::Cell::new(20.0)),
+            last_bus_send: std::array::from_fn(|_| std::cell::Cell::new(0.0)),
             test_voices: Vec::new(),
             duck_env: std::cell::Cell::new(1.0),
             _stream: stream,
@@ -188,6 +191,16 @@ impl AudioSystem {
         {
             let _ = self.engine.set_bus_highpass(BusId::SUB_BUSES[i], hz);
             cell.set(hz);
+        }
+    }
+
+    /// Set sub-bus `i`'s reverb aux-send amount (0..1), change-gated per bus.
+    pub(crate) fn set_bus_send(&self, i: usize, amount: f32) {
+        if let Some(cell) = self.last_bus_send.get(i)
+            && (amount - cell.get()).abs() > f32::EPSILON
+        {
+            let _ = self.engine.set_bus_send(BusId::SUB_BUSES[i], amount);
+            cell.set(amount);
         }
     }
 

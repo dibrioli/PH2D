@@ -206,9 +206,17 @@ impl AudioEngine {
         self.send(AudioCommand::SetMasterLimiter { on })
     }
 
-    /// Set the master reverb: `on`, wet/dry `mix` (0..1), `room_size` (0..1).
+    /// Set the master reverb: `on`, return `mix` level (0..1), `room_size` (0..1).
+    /// The reverb is a parallel return fed by [`AudioEngine::set_bus_send`], not a
+    /// master insert.
     pub fn set_reverb(&self, on: bool, mix: f32, room_size: f32) -> Result<(), AudioError> {
         self.send(AudioCommand::SetReverb { on, mix, room_size })
+    }
+
+    /// Set a sub-bus's reverb aux-send `amount` (0..1) — how much of that bus's
+    /// post-fader signal feeds the reverb return.
+    pub fn set_bus_send(&self, bus: BusId, amount: f32) -> Result<(), AudioError> {
+        self.send(AudioCommand::SetBusSend { bus, amount })
     }
 
     /// Drain and drop finished samples returned by the audio thread. Call once
@@ -281,15 +289,17 @@ impl AudioRenderer {
 
         // 2. Zero the stereo scratch for this block (reuses capacity when warm).
         scratch.reset(frames * 2);
-        let (master, bus_scratch) = scratch.split_mut();
+        let (master, bus_scratch, send) = scratch.split_mut();
 
         // 3. Mix active voices through their sub-buses + master gain, capturing
-        //    each sub-bus's post-fader peak + RMS for the strip meters.
+        //    each sub-bus's post-fader peak + RMS for the strip meters. `send`
+        //    accumulates the per-bus reverb aux-sends for the return.
         let mut bus_peaks = [[0.0f32; 2]; SUB_BUS_COUNT];
         let mut bus_rms = [[0.0f32; 2]; SUB_BUS_COUNT];
         mixer.render(
             master,
             bus_scratch,
+            send,
             &mut bus_peaks,
             &mut bus_rms,
             frames,
@@ -346,6 +356,11 @@ impl AudioRenderer {
     /// Per-bus scratch capacity — the other half of the HR-3 no-alloc gate.
     pub fn bus_scratch_capacity(&self) -> usize {
         self.scratch.bus_capacity()
+    }
+
+    /// Reverb-send bus capacity — the third buffer the HR-3 no-alloc gate checks.
+    pub fn send_scratch_capacity(&self) -> usize {
+        self.scratch.send_capacity()
     }
 }
 

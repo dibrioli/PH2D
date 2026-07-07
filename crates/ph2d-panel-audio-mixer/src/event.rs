@@ -6,7 +6,7 @@ use crate::{
     AMIX_CLOSE, AMIX_CUTOFF, AMIX_DUCK, AMIX_DUCK_DEPTH, AMIX_FADER, AMIX_LIMITER, AMIX_LOWCUT,
     AMIX_MASTER_METER, AMIX_MASTER_MUTE, AMIX_PAN, AMIX_PLAY, AMIX_REVERB, AMIX_REVERB_MIX,
     AMIX_REVERB_SIZE, AudioMixerPanel, SUB_FADER, SUB_LOWCUT, SUB_METER, SUB_MUTE, SUB_PAN,
-    SUB_SOLO, SUB_TONE, snapshot,
+    SUB_SEND, SUB_SOLO, SUB_TONE, snapshot,
 };
 
 /// Log-map a 0..1 tone slider to a cutoff in Hz (20 Hz..20 kHz).
@@ -169,6 +169,11 @@ pub(crate) fn apply_event(
             if let Some(i) = SUB_LOWCUT.iter().position(|&t| t == id) {
                 let v = host.store().slider(id).map(|(_, v)| v).unwrap_or(0.0);
                 snapshot::set_sub_lowcut(i, slider_to_hz(v));
+                return EventOutcome::Consumed;
+            }
+            if let Some(i) = SUB_SEND.iter().position(|&s| s == id) {
+                let v = host.store().slider(id).map(|(_, v)| v).unwrap_or(0.0);
+                snapshot::set_sub_send(i, v.clamp(0.0, 1.0));
                 return EventOutcome::Consumed;
             }
         }

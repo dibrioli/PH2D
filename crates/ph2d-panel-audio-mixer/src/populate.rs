@@ -4,7 +4,8 @@ use crate::fader::FADER_UNITY_POS;
 use crate::{
     AMIX_CLOSE, AMIX_CUTOFF, AMIX_DUCK, AMIX_DUCK_DEPTH, AMIX_FADER, AMIX_LIMITER, AMIX_LOWCUT,
     AMIX_MASTER_METER, AMIX_MASTER_MUTE, AMIX_PAN, AMIX_PLAY, AMIX_REVERB, AMIX_REVERB_MIX,
-    AMIX_REVERB_SIZE, SUB_FADER, SUB_LOWCUT, SUB_METER, SUB_MUTE, SUB_PAN, SUB_SOLO, SUB_TONE,
+    AMIX_REVERB_SIZE, SUB_FADER, SUB_LOWCUT, SUB_METER, SUB_MUTE, SUB_PAN, SUB_SEND, SUB_SOLO,
+    SUB_TONE,
 };
 use ph2d_editor_core::interaction::{InteractiveState, WidgetStore};
 use ph2d_editor_core::widget::{ButtonState, SliderOrientation, SliderState};
@@ -106,6 +107,18 @@ pub(crate) fn populate(store: &mut WidgetStore) {
             orientation: SliderOrientation::Horizontal,
         },
     );
+
+    // Per-sub-bus reverb aux-send — horizontal Sliders, dry at 0.0. Live in the
+    // master Reverb section (one labeled row per sub-bus). apply_event publishes
+    // the raw 0..1 amount.
+    let send = || InteractiveState::Slider {
+        state: SliderState::Normal,
+        value: 0.0,
+        orientation: SliderOrientation::Horizontal,
+    };
+    for id in SUB_SEND {
+        store.register(id, send());
+    }
 
     // Ducking depth — how much Music/SFX drop under the Voice bus.
     store.register(

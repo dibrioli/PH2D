@@ -79,9 +79,11 @@ impl std::fmt::Debug for SampleData {
 
 /// Pre-allocated per-block accumulation buffers, interleaved stereo.
 ///
-/// Two reused `Vec`s: the `master` mix, and one `bus` scratch the mixer reuses
-/// for **each** sub-bus in turn (render → apply the bus fader → fold into
-/// master), so N sub-buses cost one extra buffer, not N.
+/// Three reused `Vec`s: the `master` mix, one `bus` scratch the mixer reuses for
+/// **each** sub-bus in turn (render → apply the bus fader → fold into master),
+/// and the `send` bus that accumulates every sub-bus's reverb aux-send across the
+/// block (the parallel effect return's input). N sub-buses cost two extra
+/// buffers, not 2N.
 ///
 /// HR-3: the mixer `reset`s (clear + zero-fill) and refills the same `Vec`s
 /// every block. Once warm (block size stable), `reset` reuses capacity and
@@ -89,6 +91,7 @@ impl std::fmt::Debug for SampleData {
 pub(crate) struct MixScratch {
     master: Vec<Sample>,
     bus: Vec<Sample>,
+    send: Vec<Sample>,
 }
 
 impl MixScratch {
@@ -96,22 +99,25 @@ impl MixScratch {
         Self {
             master: Vec::new(),
             bus: Vec::new(),
+            send: Vec::new(),
         }
     }
 
-    /// Zero both buffers to hold `stereo_len` interleaved samples. Reallocs only
+    /// Zero all buffers to hold `stereo_len` interleaved samples. Reallocs only
     /// when the block grows past the warm capacity.
     pub(crate) fn reset(&mut self, stereo_len: usize) {
         self.master.clear();
         self.master.resize(stereo_len, 0.0);
         self.bus.clear();
         self.bus.resize(stereo_len, 0.0);
+        self.send.clear();
+        self.send.resize(stereo_len, 0.0);
     }
 
-    /// The master mix and the per-bus scratch, both mutable — the mixer needs
-    /// them at once (fold each bus into master).
-    pub(crate) fn split_mut(&mut self) -> (&mut [Sample], &mut [Sample]) {
-        (&mut self.master, &mut self.bus)
+    /// The master mix, the per-bus scratch, and the reverb-send bus, all mutable
+    /// at once — the mixer folds each bus into master while accumulating its send.
+    pub(crate) fn split_mut(&mut self) -> (&mut [Sample], &mut [Sample], &mut [Sample]) {
+        (&mut self.master, &mut self.bus, &mut self.send)
     }
 
     /// Allocated capacity of the master buffer (for the HR-3 capacity gate).
@@ -122,6 +128,11 @@ impl MixScratch {
     /// Allocated capacity of the per-bus scratch (HR-3 capacity gate).
     pub(crate) fn bus_capacity(&self) -> usize {
         self.bus.capacity()
+    }
+
+    /// Allocated capacity of the reverb-send bus (HR-3 capacity gate).
+    pub(crate) fn send_capacity(&self) -> usize {
+        self.send.capacity()
     }
 }
 
@@ -163,8 +174,9 @@ mod tests {
             s.reset(1024);
         }
         assert_eq!(s.capacity(), cap, "warm reset must not reallocate");
-        let (master, bus) = s.split_mut();
+        let (master, bus, send) = s.split_mut();
         assert!(master.iter().all(|&x| x.abs() < f32::EPSILON));
         assert!(bus.iter().all(|&x| x.abs() < f32::EPSILON));
+        assert!(send.iter().all(|&x| x.abs() < f32::EPSILON));
     }
 }

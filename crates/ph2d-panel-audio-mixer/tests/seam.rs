@@ -11,11 +11,11 @@ use ph2d_panel_audio_mixer::state::AudioMixerState;
 use ph2d_panel_audio_mixer::{
     AMIX_CUTOFF, AMIX_DUCK, AMIX_DUCK_DEPTH, AMIX_FADER, AMIX_LIMITER, AMIX_LOWCUT,
     AMIX_MASTER_METER, AMIX_MASTER_MUTE, AMIX_PAN, AMIX_PLAY, AMIX_REVERB, AMIX_REVERB_SIZE,
-    AudioMixerPanel, FADER_UNITY_POS, SUB_FADER, SUB_LOWCUT, SUB_MUTE, SUB_PAN, SUB_SOLO, SUB_TONE,
-    duck_depth, ducking, fader_gain, limiter, master_clipped, master_cutoff_target,
+    AudioMixerPanel, FADER_UNITY_POS, SUB_FADER, SUB_LOWCUT, SUB_MUTE, SUB_PAN, SUB_SEND, SUB_SOLO,
+    SUB_TONE, duck_depth, ducking, fader_gain, limiter, master_clipped, master_cutoff_target,
     master_gain_target, master_lowcut_target, master_muted, master_pan_target, play_test,
     reverb_on, reverb_size, set_levels, sub_gain_target, sub_lowcut_target, sub_muted,
-    sub_pan_target, sub_soloed, sub_tone_target,
+    sub_pan_target, sub_send_target, sub_soloed, sub_tone_target,
 };
 use ph2d_ui_testkit::MockPanelHost;
 
@@ -394,6 +394,36 @@ fn sub_bus_lowcut_drag_publishes_cutoff_hz() {
         (lowcuts[1] - 20.0).abs() < 0.5,
         "the other sub-bus low-cut must stay off (~20 Hz), got {}",
         lowcuts[1]
+    );
+}
+
+/// Dragging a sub-bus reverb Send slider publishes that bus's aux-send amount
+/// (0..1) into its own slot only — the shell routes it to that bus's reverb
+/// send. The others stay dry (0), proving the SUB_SEND arm routes per bus.
+#[test]
+fn sub_bus_send_drag_publishes_amount() {
+    let mut host = MockPanelHost::with_panel::<AudioMixerPanel>();
+    let mut state = AudioMixerState;
+
+    host.set_slider_value(SUB_SEND[0], 0.6);
+    let outcome = host
+        .apply_panel_event::<AudioMixerPanel>(&mut state, WidgetEvent::ValueChanged(SUB_SEND[0]));
+
+    assert_eq!(
+        outcome,
+        EventOutcome::Consumed,
+        "panel ignored the sub-bus Send ValueChanged — the SUB_SEND arm is missing"
+    );
+    let sends = sub_send_target();
+    assert!(
+        (sends[0] - 0.6).abs() < 1e-5,
+        "Send at 0.6 must publish 0.6, got {}",
+        sends[0]
+    );
+    assert!(
+        sends[1].abs() < 1e-5,
+        "the other sub-bus send must stay dry (0), got {}",
+        sends[1]
     );
 }
 

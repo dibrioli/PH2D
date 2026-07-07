@@ -73,12 +73,16 @@ pub(crate) struct Mixer {
     /// Per-sub-bus low-pass filter (per channel). Identity = open (bypass).
     bus_filter_l: [Biquad; SUB_BUS_COUNT],
     bus_filter_r: [Biquad; SUB_BUS_COUNT],
+    /// Per-sub-bus reverb aux-send amount (0..1) — how much of that bus's
+    /// post-fader signal feeds the reverb return. `0` = dry (default).
+    bus_send: [f32; SUB_BUS_COUNT],
     /// Master limiter engaged?
     limiter: bool,
     /// Current limiter gain reduction (`1.0` = none) — a linked-stereo envelope
     /// carried across blocks so the release is continuous.
     limiter_gr: f32,
-    /// Master reverb (insert) + its enable + wet/dry mix.
+    /// Master reverb as a parallel **return** (fed by the per-bus sends, not a
+    /// master insert) + its enable + return level (`reverb_mix`).
     reverb: Reverb,
     reverb_on: bool,
     reverb_mix: f32,
@@ -100,6 +104,7 @@ impl Mixer {
             bus_hp_r: std::array::from_fn(|_| Biquad::default()),
             bus_filter_l: std::array::from_fn(|_| Biquad::default()),
             bus_filter_r: std::array::from_fn(|_| Biquad::default()),
+            bus_send: [0.0; SUB_BUS_COUNT],
             limiter: false,
             limiter_gr: 1.0,
             reverb: Reverb::new(format.sample_rate),
@@ -154,21 +159,33 @@ impl Mixer {
             }
             AudioCommand::SetReverb { on, mix, room_size } => {
                 self.reverb_on = on;
+                // `mix` is the return level (wet fold-back), not a wet/dry insert.
                 self.reverb_mix = mix.clamp(0.0, 1.0);
                 // Fixed, musical damping; Size drives the decay length.
                 self.reverb.set_params(room_size, 0.5);
+            }
+            AudioCommand::SetBusSend { bus, amount } => {
+                if let Some(i) = bus.sub_index() {
+                    self.bus_send[i] = amount.clamp(0.0, 1.0);
+                }
             }
         }
     }
 
     /// Sum active voices into `master` (interleaved stereo): each sub-bus through
-    /// its fader (into `bus_scratch`, then folded in), then master-direct voices,
-    /// then the master gain + low-pass filter. `bus_peaks[i]` receives sub-bus
-    /// `i`'s post-fader `[L, R]` peak. Finished voices' samples go to `on_finished`.
+    /// its fader (into `bus_scratch`, then folded in) while accumulating its reverb
+    /// aux-send into `send`, then master-direct voices, then the reverb return +
+    /// master gain/filters/pan/limiter. `bus_peaks[i]` receives sub-bus `i`'s
+    /// post-fader `[L, R]` peak. Finished voices' samples go to `on_finished`.
+    // The three scratch buffers + two meter outputs are all distinct borrows the
+    // hot path needs at once; bundling them into a struct would only hide the
+    // data flow of the mixer's single per-block entry point.
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn render(
         &mut self,
         master: &mut [Sample],
         bus_scratch: &mut [Sample],
+        send: &mut [Sample],
         bus_peaks: &mut [[f32; 2]; SUB_BUS_COUNT],
         bus_rms: &mut [[f32; 2]; SUB_BUS_COUNT],
         frames: usize,
@@ -184,6 +201,7 @@ impl Mixer {
             }
             self.pool.render_bus(bus, bus_scratch, frames, on_finished);
             let [pan_l, pan_r] = self.bus_pan[i];
+            let send_amt = self.bus_send[i];
             let gain = &mut self.bus_gain[i];
             let hp_l = &mut self.bus_hp_l[i];
             let hp_r = &mut self.bus_hp_r[i];
@@ -204,8 +222,13 @@ impl Mixer {
                 peak_r = peak_r.max(r.abs());
                 sq_l += l * l;
                 sq_r += r * r;
-                master[2 * f] += l * pan_l;
-                master[2 * f + 1] += r * pan_r;
+                let (fold_l, fold_r) = (l * pan_l, r * pan_r);
+                master[2 * f] += fold_l;
+                master[2 * f + 1] += fold_r;
+                // Reverb aux send (post-fader, post-pan): a scaled copy into the
+                // shared send bus, accumulated across every sub-bus this block.
+                send[2 * f] += fold_l * send_amt;
+                send[2 * f + 1] += fold_r * send_amt;
             }
             bus_peaks[i] = [peak_l, peak_r];
             bus_rms[i] = [(sq_l * inv_frames).sqrt(), (sq_r * inv_frames).sqrt()];
@@ -215,8 +238,9 @@ impl Mixer {
         self.pool
             .render_bus(BusId::Master, master, frames, on_finished);
 
-        // Master gain, the master low-cut high-pass then low-pass filters (both
-        // identity = bypass), the reverb insert (bypassed when off), the master
+        // The reverb return (the accumulated per-bus sends through the reverb,
+        // folded back at `reverb_mix`), then master gain, the master low-cut
+        // high-pass then low-pass filters (both identity = bypass), the master
         // stereo balance, then the limiter (bypassed when disengaged).
         let [mpan_l, mpan_r] = self.master_pan;
         let limiter = self.limiter;
@@ -225,15 +249,16 @@ impl Mixer {
         let mut gr = self.limiter_gr;
         for f in 0..frames {
             let g = self.master_gain.tick();
-            let mut l = self.filter_l.process(self.hp_l.process(master[2 * f] * g));
-            let mut r = self
-                .filter_r
-                .process(self.hp_r.process(master[2 * f + 1] * g));
+            // Reverb return: fold the wet send-bus back into the dry master before
+            // the master fader/filters so they govern the wet too (bypass = off).
+            let (mut ml, mut mr) = (master[2 * f], master[2 * f + 1]);
             if reverb_on {
-                let (wet_l, wet_r) = self.reverb.process(l, r);
-                l = l * (1.0 - reverb_mix) + wet_l * reverb_mix;
-                r = r * (1.0 - reverb_mix) + wet_r * reverb_mix;
+                let (wet_l, wet_r) = self.reverb.process(send[2 * f], send[2 * f + 1]);
+                ml += wet_l * reverb_mix;
+                mr += wet_r * reverb_mix;
             }
+            let mut l = self.filter_l.process(self.hp_l.process(ml * g));
+            let mut r = self.filter_r.process(self.hp_r.process(mr * g));
             l *= mpan_l;
             r *= mpan_r;
             if limiter {

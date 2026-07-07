@@ -52,7 +52,8 @@ pub const AMIX_LIMITER: NodeId = hash_node_id("audio_mixer_limiter");
 pub const AMIX_REVERB: NodeId = hash_node_id("audio_mixer_reverb");
 /// Master reverb room-size slider (decay length).
 pub const AMIX_REVERB_SIZE: NodeId = hash_node_id("audio_mixer_reverb_size");
-/// Master reverb wet/dry mix slider.
+/// Master reverb return-level slider (how much of the wet return is folded back;
+/// labeled "Return"). The reverb is a send/return fed by the per-bus sends.
 pub const AMIX_REVERB_MIX: NodeId = hash_node_id("audio_mixer_reverb_mix");
 /// Ducking enable toggle — Music/SFX duck under the Voice bus (dialogue priority).
 pub const AMIX_DUCK: NodeId = hash_node_id("audio_mixer_duck");
@@ -114,6 +115,15 @@ pub const SUB_LOWCUT: [NodeId; SUB_BUS_COUNT] = [
     hash_node_id("audio_mixer_sfx_lowcut"),
     hash_node_id("audio_mixer_ui_lowcut"),
     hash_node_id("audio_mixer_voice_lowcut"),
+];
+/// Per-sub-bus reverb aux-send slider ids (drag → that bus's send into the
+/// reverb return). Live in the master Reverb footer section, one labeled row
+/// per sub-bus.
+pub const SUB_SEND: [NodeId; SUB_BUS_COUNT] = [
+    hash_node_id("audio_mixer_music_send"),
+    hash_node_id("audio_mixer_sfx_send"),
+    hash_node_id("audio_mixer_ui_send"),
+    hash_node_id("audio_mixer_voice_send"),
 ];
 
 /// Zero-size marker implementing the typed Audio Mixer panel contract.
@@ -184,6 +194,7 @@ mod snapshot {
         static SUB_PAN: Cell<[f32; SUB_BUS_COUNT]> = const { Cell::new([0.0; SUB_BUS_COUNT]) };
         static SUB_TONE_HZ: Cell<[f32; SUB_BUS_COUNT]> = const { Cell::new([20_000.0; SUB_BUS_COUNT]) }; // LITERAL-PX-OK: default tone cutoff 20 kHz (open)
         static SUB_LOWCUT_HZ: Cell<[f32; SUB_BUS_COUNT]> = const { Cell::new([20.0; SUB_BUS_COUNT]) }; // LITERAL-PX-OK: default low-cut 20 Hz (off)
+        static SUB_SEND_AMT: Cell<[f32; SUB_BUS_COUNT]> = const { Cell::new([0.0; SUB_BUS_COUNT]) };
     }
 
     /// Decay the held peak toward silence, snapping up to any new peak.
@@ -483,6 +494,22 @@ mod snapshot {
         });
     }
 
+    /// Panel → shell: each sub-bus reverb aux-send amount (0..1; 0 = dry) from its
+    /// Send slider in the master Reverb section.
+    pub fn sub_send() -> [f32; SUB_BUS_COUNT] {
+        SUB_SEND_AMT.with(Cell::get)
+    }
+
+    pub(crate) fn set_sub_send(i: usize, amount: f32) {
+        SUB_SEND_AMT.with(|c| {
+            let mut v = c.get();
+            if let Some(slot) = v.get_mut(i) {
+                *slot = amount;
+            }
+            c.set(v);
+        });
+    }
+
     /// Panel → shell: each sub-bus solo flag. When *any* is set, the shell mutes
     /// every non-soloed sub-bus (so you hear only the soloed ones).
     pub fn sub_soloed() -> [bool; SUB_BUS_COUNT] {
@@ -532,6 +559,8 @@ pub use snapshot::sub_lowcut as sub_lowcut_target;
 pub use snapshot::sub_muted;
 /// Panel → shell: each sub-bus stereo balance (index-aligned with `BusId::SUB_BUSES`).
 pub use snapshot::sub_pan as sub_pan_target;
+/// Panel → shell: each sub-bus reverb aux-send amount (0..1; 0 = dry).
+pub use snapshot::sub_send as sub_send_target;
 /// Panel → shell: each sub-bus solo flag (bridge mutes non-soloed buses when any set).
 pub use snapshot::sub_soloed;
 /// Panel → shell: each sub-bus low-pass cutoff in Hz (from its Tone slider).

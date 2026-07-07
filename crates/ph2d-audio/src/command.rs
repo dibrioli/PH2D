@@ -110,11 +110,20 @@ pub(crate) enum AudioCommand {
         bus: BusId,
         coeffs: BiquadCoeffs,
     },
-    /// Master reverb: enable + wet/dry `mix` (0..1) + `room_size` (0..1 decay).
+    /// Master reverb: enable + return `mix` level (0..1, how much of the wet
+    /// return is folded back into the master) + `room_size` (0..1 decay). The
+    /// reverb is a parallel return fed by the per-bus [`AudioCommand::SetBusSend`]
+    /// aux sends, not a master insert.
     SetReverb {
         on: bool,
         mix: f32,
         room_size: f32,
+    },
+    /// Set a sub-bus's reverb aux-send `amount` (0..1) — how much of that bus's
+    /// post-fader signal is routed into the reverb return.
+    SetBusSend {
+        bus: BusId,
+        amount: f32,
     },
 }
 

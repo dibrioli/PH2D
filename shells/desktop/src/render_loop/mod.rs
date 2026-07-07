@@ -147,6 +147,7 @@ impl crate::App {
                 let sub_pan = ph2d_panel_audio_mixer::sub_pan_target();
                 let sub_tone = ph2d_panel_audio_mixer::sub_tone_target();
                 let sub_lowcut = ph2d_panel_audio_mixer::sub_lowcut_target();
+                let sub_send = ph2d_panel_audio_mixer::sub_send_target();
                 // Ducking: Music/SFX drop under the Voice bus (dialogue priority).
                 let duck = audio.update_ducking(
                     ph2d_panel_audio_mixer::ducking(),
@@ -173,6 +174,7 @@ impl crate::App {
                     audio.set_bus_pan(i, sub_pan[i]);
                     audio.set_bus_cutoff(i, sub_tone[i]);
                     audio.set_bus_highpass(i, sub_lowcut[i]);
+                    audio.set_bus_send(i, sub_send[i]);
                 }
             }
         }

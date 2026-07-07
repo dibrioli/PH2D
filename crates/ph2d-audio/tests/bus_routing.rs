@@ -266,19 +266,57 @@ fn sub_bus_highpass_attenuates_low_frequency_content() {
 fn master_reverb_leaves_a_decaying_tail_after_the_sound_ends() {
     let (mut engine, mut renderer) = AudioEngine::new(AudioFormat::stereo(48_000));
     engine.set_reverb(true, 0.9, 0.6).unwrap();
-    // A short one-shot burst (480 frames < one 512-frame block).
+    // The reverb is a send/return now: a bus only reverbs if it sends. Full send
+    // from the Music bus, and a short one-shot burst (480 < one 512 block) on it.
+    engine.set_bus_send(BusId::Music, 1.0).unwrap();
     let burst = SampleData::from_interleaved(vec![0.6; 480], AudioFormat::mono(48_000));
-    engine.play(burst, PlayParams::default()).unwrap();
+    engine
+        .play(
+            burst,
+            PlayParams {
+                bus: BusId::Music,
+                ..PlayParams::default()
+            },
+        )
+        .unwrap();
 
     let mut out = vec![0.0f32; 512 * 2];
     for _ in 0..30 {
         renderer.render(&mut out, 512);
     }
-    // The dry burst ended after the first block; only the wet tail remains.
+    // The dry burst ended after the first block; only the wet return tail remains.
     let tail = engine.levels();
     assert!(
         tail[0] > 1e-4,
-        "reverb must leave a wet tail after the sound ends: {tail:?}"
+        "the reverb return must leave a wet tail after the sound ends: {tail:?}"
+    );
+}
+
+#[test]
+fn reverb_on_with_zero_send_stays_dry() {
+    // The defining send/return behavior: reverb enabled but every send at 0 must
+    // produce no wet — a bus is dry until it sends. (An insert would wet anyway.)
+    let (mut engine, mut renderer) = AudioEngine::new(AudioFormat::stereo(48_000));
+    engine.set_reverb(true, 0.9, 0.6).unwrap(); // enabled, but no sends set
+    let burst = SampleData::from_interleaved(vec![0.6; 480], AudioFormat::mono(48_000));
+    engine
+        .play(
+            burst,
+            PlayParams {
+                bus: BusId::Music,
+                ..PlayParams::default()
+            },
+        )
+        .unwrap();
+
+    let mut out = vec![0.0f32; 512 * 2];
+    for _ in 0..30 {
+        renderer.render(&mut out, 512);
+    }
+    let tail = engine.levels();
+    assert!(
+        tail[0] < 1e-5,
+        "reverb with zero send must leave no tail (dry): {tail:?}"
     );
 }
 

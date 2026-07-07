@@ -15,7 +15,7 @@ use crate::{
     AMIX_CLOSE, AMIX_CUTOFF, AMIX_DUCK, AMIX_DUCK_DEPTH, AMIX_FADER, AMIX_LIMITER, AMIX_LOWCUT,
     AMIX_MASTER_METER, AMIX_MASTER_MUTE, AMIX_PAN, AMIX_PANEL, AMIX_PLAY, AMIX_REVERB,
     AMIX_REVERB_MIX, AMIX_REVERB_SIZE, AudioMixerPanel, SUB_BUS_COUNT, SUB_BUS_LABELS, SUB_FADER,
-    SUB_LOWCUT, SUB_METER, SUB_MUTE, SUB_PAN, SUB_SOLO, SUB_TONE, snapshot,
+    SUB_LOWCUT, SUB_METER, SUB_MUTE, SUB_PAN, SUB_SEND, SUB_SOLO, SUB_TONE, snapshot,
 };
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::ids as core_ids;
@@ -313,13 +313,29 @@ fn paint_master_section(
     y += MUTE_H + Spacing::Sm.px();
     for (label, id, value) in [
         ("Size", AMIX_REVERB_SIZE, snapshot::reverb_size()),
-        ("Mix", AMIX_REVERB_MIX, snapshot::reverb_mix()),
+        ("Return", AMIX_REVERB_MIX, snapshot::reverb_mix()),
     ] {
         y = paint_labeled_slider(
             y,
             label,
             id,
             value,
+            content_x,
+            content_w,
+            scene,
+            text_system,
+            theme,
+            hit_index,
+        );
+    }
+    // Per-sub-bus reverb aux sends — how much of each bus feeds the return.
+    let sends = snapshot::sub_send();
+    for i in 0..SUB_BUS_COUNT {
+        y = paint_labeled_slider(
+            y,
+            SUB_BUS_LABELS[i],
+            SUB_SEND[i],
+            sends[i],
             content_x,
             content_w,
             scene,

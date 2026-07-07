@@ -285,6 +285,14 @@ pub fn paint_hero_screen(
         // over the inspector slot while the `vector` tool is active. Its
         // `paint()` no-ops when hidden, so this is inert otherwise.
         ids::VECTOR_PANEL,
+        // Motion Nodes docked panels (M0.T9): the graph-editor panel fills the
+        // `motion_graph` split region, the params panel takes the inspector slot.
+        // Both `paint()` no-op when the `motion` tool is inactive (bridge-driven
+        // visibility), so they're inert otherwise. WITHOUT these entries a
+        // registered+visible panel is never reached by this z-order walk → never
+        // painted (the split would be invisible).
+        ids::MOTION_GRAPH_PANEL,
+        ids::MOTION_PARAMS_PANEL,
         ids::INSP_BLENDER_PICKER,
         ids::GAL_PANEL,
         ids::AUDIO_MIXER_PANEL,

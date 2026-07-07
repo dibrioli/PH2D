@@ -538,21 +538,6 @@ impl crate::App {
             ph2d_ecs::RepeatMode::Disabled,
         );
 
-        // Motion Nodes M0.T10: cook the node graph per frame into the reused
-        // `MotionState.instances` buffer while the `motion` tool is active (the
-        // present phase injects that slice via `render_with_extra`). Additive to
-        // the scene extract above — the motion stream draws over the scene, it
-        // does not replace it (the retired `motion_smoke` owned the frame; this
-        // does not). Also drives the center split + docked-panel visibility.
-        if let Some(hero) = hero_screen.as_mut() {
-            motion_bridge::dispatch(
-                hero,
-                tools,
-                motion,
-                report.ticks,
-                self.fixed_step.fixed_dt(),
-            );
-        }
 
         // Sprite-layer clear color = backdrop visible in the canvas
         // area through the transparent regions of `vello_rt`. Live
@@ -1034,7 +1019,7 @@ impl crate::App {
                 // `find_activatable_stateful_tool` helper.
                 let activating_cluster: Option<&'static str> = ph2d_editor::installed_registry()
                     .and_then(|reg| {
-                        ["image_tools", "vector_tools"]
+                        ["image_tools", "vector_tools", "motion_tools"]
                             .into_iter()
                             .find(|&cluster_name| {
                                 reg.cluster(cluster_name).iter().any(|m| {
@@ -1047,11 +1032,11 @@ impl crate::App {
                             })
                     });
                 // Per-cluster activation gate. "image_tools" requires
-                // the IMG mode toggle; "vector_tools" has no toggle in
-                // W1 so always-on (Pen pill is direct-activate).
+                // the IMG mode toggle; "vector_tools" / "motion_tools" have no
+                // toggle so they're always-on (the pill is direct-activate).
                 let gate_on = match activating_cluster {
                     Some("image_tools") => hero.image_edit.mode_on,
-                    Some("vector_tools") => true,
+                    Some("vector_tools") | Some("motion_tools") => true,
                     _ => false,
                 };
                 if gate_on && tools.set_active(&ph2d_editor::ToolId::new(tool_id)) {
@@ -1333,6 +1318,19 @@ impl crate::App {
                 &mut self.vec_pen,
                 &mut self.vec_history,
                 vec_px_to_world,
+            );
+            // Motion Nodes M0.T10: same phase as vector_bridge (AFTER the
+            // ActivateTool drain, so a freshly-activated tool is seen this frame;
+            // BEFORE paint + present, so the split/panel visibility it sets and
+            // the instances it cooks both land this frame). Cooks the graph into
+            // `motion.instances` (present injects them via `render_with_extra`)
+            // and drives the center split + docked-panel visibility.
+            motion_bridge::dispatch(
+                hero,
+                tools,
+                motion,
+                report.ticks,
+                self.fixed_step.fixed_dt(),
             );
             ph2d_vec_render::dispatch(
                 vec_scene,

@@ -343,14 +343,9 @@ impl App {
         self.input_events_this_frame = self.input_events_this_frame.saturating_add(1);
         let prev = self.last_pointer;
         self.last_pointer = (position.x as f32, position.y as f32);
-        // Motion Nodes M1: graph keyboard focus follows the cursor, so F fits the
-        // graph only while hovering it (the scene's F is suppressed there, and
-        // fires everywhere else) — Blender's per-area focus semantics.
-        let over_graph = self.cursor_over_motion_graph();
-        if let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
-            hero.store
-                .set_graph_focused(over_graph.then_some(ph2d_editor::ids::MOTION_GRAPH_PANEL));
-        }
+        // (Graph keyboard focus is set every frame by `motion_bridge` from the
+        // cursor — reliable even when the cursor stops before the panel rect is
+        // published; see its `over_graph` gate.)
         // M14.4e: cache the latest cursor for DroppedFile — winit's
         // DroppedFile carries no position, so we project the most-
         // recently-seen cursor to world.

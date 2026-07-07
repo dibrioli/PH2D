@@ -1330,6 +1330,7 @@ impl crate::App {
                 motion,
                 report.ticks,
                 self.fixed_step.fixed_dt(),
+                self.last_pointer,
             );
             ph2d_vec_render::dispatch(
                 vec_scene,

@@ -29,12 +29,15 @@ use ph2d_editor::{HeroScreen, ToolId, ToolRegistry};
 /// - `frame_ticks`: fixed steps this frame (`FixedStepReport::ticks`) — advances
 ///   the transport when playing.
 /// - `fixed_dt`: the fixed timestep in seconds (playhead = `tick × fixed_dt`).
+/// - `cursor`: the latest pointer position (screen px) — drives the cursor-gated
+///   graph keyboard focus (Blender-style F acts on the hovered area).
 pub(super) fn dispatch(
     hero: &mut HeroScreen,
     tools: &ToolRegistry,
     motion: &mut MotionState,
     frame_ticks: u32,
     fixed_dt: f64,
+    cursor: (f32, f32),
 ) {
     let motion_active = tools
         .active()
@@ -43,6 +46,18 @@ pub(super) fn dispatch(
     // ── 1. Panel visibility (mirror of the Vector dock takeover) ──────────
     hero.panel_visibility.insert("motion_graph", motion_active);
     hero.panel_visibility.insert("motion_params", motion_active);
+
+    // Graph keyboard focus follows the cursor, re-evaluated EVERY frame (not just
+    // on move) so a cursor that stopped over the graph before the panel published
+    // its rect still gets focus by the time a key is pressed. `panel_rect` is from
+    // last frame's paint (stable); `None` off the graph → the scene owns keys.
+    let over_graph = motion_active
+        && hero
+            .store
+            .panel_rect(ph2d_editor::ids::MOTION_GRAPH_PANEL)
+            .is_some_and(|r| r.contains(cursor.0, cursor.1));
+    hero.store
+        .set_graph_focused(over_graph.then_some(ph2d_editor::ids::MOTION_GRAPH_PANEL));
 
     // ── 2. Center split + Inspector takeover — edge-triggered on activation ──
     {

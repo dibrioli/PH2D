@@ -32,6 +32,9 @@ PH2D = "PH2D"
 # ADR-0045 `adjustments::AdjustmentKind::psd_export`): e.g. Levels = "levl",
 # Brightness/Contrast = "brit". They are file-format signatures, not English.
 levl = "levl"
+# `tpic` = a legitimate Truevision TGA file-extension alias (alongside .tga/.icb/
+# .vda/.vst), matched by `ph2d-imageio-tga::supports`. Not a typo of "topic".
+tpic = "tpic"
 # Library/crate names.
 rquickjs = "rquickjs"
 flecs = "flecs"

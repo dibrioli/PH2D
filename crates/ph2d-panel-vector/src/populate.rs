@@ -231,6 +231,8 @@ pub fn populate(store: &mut WidgetStore) {
     button(store, ids::VECTOR_ARRANGE_TO_FRONT);
     button(store, ids::VECTOR_ARRANGE_FLIP_H);
     button(store, ids::VECTOR_ARRANGE_FLIP_V);
+    button(store, ids::VECTOR_ARRANGE_ROTATE_CW);
+    button(store, ids::VECTOR_ARRANGE_ROTATE_CCW);
 
     // Close (X) button.
     button(store, ids::VECTOR_CLOSE);

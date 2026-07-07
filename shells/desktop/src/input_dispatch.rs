@@ -253,6 +253,37 @@ pub(crate) fn vec_flip_for_id(id: ph2d_editor::NodeId) -> Option<ph2d_vec_scene:
     }
 }
 
+/// Rotate the SELECTED path 90° (panel Arrange Rotate buttons), recording ONE undo
+/// step iff it rotated. Free fn (mirror of [`apply_vec_boolean`]).
+pub(crate) fn apply_vec_rotate(
+    scene: &mut ph2d_vec_scene::VecScene,
+    history: &mut ph2d_vec_edit::History,
+    pen: &ph2d_vec_edit::PenTool,
+    dir: ph2d_vec_scene::Rotate90,
+) {
+    let Some(sel) = pen.selected() else {
+        eprintln!("[ph2d-vec] rotate: nenhum path selecionado");
+        return;
+    };
+    let pre = scene.clone();
+    if scene.rotate_path(sel, dir) {
+        history.push_undo(pre);
+    }
+}
+
+/// Map a Vector-panel Arrange Rotate button `NodeId` to its [`ph2d_vec_scene::Rotate90`]
+/// (`None` for any other id). Pure — unit-tested; called from the render_loop drain.
+pub(crate) fn vec_rotate_for_id(id: ph2d_editor::NodeId) -> Option<ph2d_vec_scene::Rotate90> {
+    use ph2d_vec_scene::Rotate90;
+    if id == ph2d_editor::ids::VECTOR_ARRANGE_ROTATE_CW {
+        Some(Rotate90::Cw)
+    } else if id == ph2d_editor::ids::VECTOR_ARRANGE_ROTATE_CCW {
+        Some(Rotate90::Ccw)
+    } else {
+        None
+    }
+}
+
 /// The shape kind a Vector draw-mode maps to (`None` = Pen, the non-shape
 /// gesture). Lets the canvas dispatch route Down/Move/Up to the pen or the
 /// shape tool.
@@ -1766,12 +1797,12 @@ impl App {
 mod tests {
     use super::{
         shape_kind_for_mode, shape_up_consumes, vec_bool_op_for_id, vec_flip_for_id,
-        vec_reorder_for_id, vec_vertex_kind_for_id,
+        vec_reorder_for_id, vec_rotate_for_id, vec_vertex_kind_for_id,
     };
     use ph2d_tool_vector::DrawMode;
     use ph2d_vec_boolean::BoolOp;
     use ph2d_vec_edit::ShapeKind;
-    use ph2d_vec_scene::{FlipAxis, VertexKind, ZOrder};
+    use ph2d_vec_scene::{FlipAxis, Rotate90, VertexKind, ZOrder};
 
     #[test]
     fn vertex_button_ids_map_to_their_kinds() {
@@ -1833,6 +1864,23 @@ mod tests {
         assert_eq!(vec_flip_for_id(ph2d_editor::ids::VECTOR_ARRANGE_TO_BACK), None);
         assert_eq!(
             vec_reorder_for_id(ph2d_editor::ids::VECTOR_ARRANGE_FLIP_H),
+            None
+        );
+    }
+
+    #[test]
+    fn rotate_button_ids_map_to_their_direction() {
+        assert_eq!(
+            vec_rotate_for_id(ph2d_editor::ids::VECTOR_ARRANGE_ROTATE_CW),
+            Some(Rotate90::Cw)
+        );
+        assert_eq!(
+            vec_rotate_for_id(ph2d_editor::ids::VECTOR_ARRANGE_ROTATE_CCW),
+            Some(Rotate90::Ccw)
+        );
+        assert_eq!(vec_rotate_for_id(ph2d_editor::ids::VECTOR_ARRANGE_FLIP_H), None);
+        assert_eq!(
+            vec_flip_for_id(ph2d_editor::ids::VECTOR_ARRANGE_ROTATE_CW),
             None
         );
     }

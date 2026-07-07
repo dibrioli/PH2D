@@ -122,6 +122,37 @@ fn flip_path_mirrors_around_the_bbox_center() {
 }
 
 #[test]
+fn rotate_path_quarter_turn_is_cyclic_and_exact() {
+    let mut scene = VecScene::new();
+    // Rectangle x∈[0,10], y∈[0,4] → bbox center (5, 2), invariant under rotation.
+    let id = scene.push_path(rectangle([0.0, 0.0], [10.0, 4.0]));
+    let before: Vec<_> = scene.paths()[0].verts.iter().map(|v| v.anchor).collect();
+    let same = |scene: &VecScene, want: &[[f64; 2]]| {
+        want.iter()
+            .zip(&scene.paths()[0].verts)
+            .all(|(b, v)| (v.anchor[0] - b[0]).abs() < 1e-9 && (v.anchor[1] - b[1]).abs() < 1e-9)
+    };
+
+    // 4× CW = full turn = identity.
+    for _ in 0..4 {
+        assert!(scene.rotate_path(id, Rotate90::Cw));
+    }
+    assert!(same(&scene, &before), "4× CW returns to the original");
+    // CW then CCW = identity.
+    assert!(scene.rotate_path(id, Rotate90::Cw));
+    assert!(scene.rotate_path(id, Rotate90::Ccw));
+    assert!(same(&scene, &before), "CW·CCW cancels");
+
+    // One CW quarter-turn about (5,2): the (0,0) corner lands at (7,−3).
+    let i0 = before.iter().position(|a| *a == [0.0, 0.0]).unwrap();
+    assert!(scene.rotate_path(id, Rotate90::Cw));
+    let a = scene.paths()[0].verts[i0].anchor;
+    assert!((a[0] - 7.0).abs() < 1e-9 && (a[1] + 3.0).abs() < 1e-9);
+
+    assert!(!scene.rotate_path(999, Rotate90::Cw));
+}
+
+#[test]
 fn demo_grid_count() {
     assert_eq!(VecScene::demo_grid(50).paths().len(), 50);
     assert!(VecScene::demo_grid(0).is_empty());

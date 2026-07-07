@@ -265,6 +265,8 @@ fn arrange_buttons_forward_to_the_bus_for_the_shell() {
         ids::VECTOR_ARRANGE_TO_FRONT,
         ids::VECTOR_ARRANGE_FLIP_H,
         ids::VECTOR_ARRANGE_FLIP_V,
+        ids::VECTOR_ARRANGE_ROTATE_CW,
+        ids::VECTOR_ARRANGE_ROTATE_CCW,
     ] {
         let mut host = MockPanelHost::with_panel::<VectorPanel>();
         let mut panel_state = VectorPanelState;

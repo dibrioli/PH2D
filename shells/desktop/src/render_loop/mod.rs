@@ -741,6 +741,7 @@ impl crate::App {
             let mut pending_vec_reorder: Option<ph2d_vec_scene::ZOrder> = None;
             let mut pending_vec_duplicate = false;
             let mut pending_vec_flip: Option<ph2d_vec_scene::FlipAxis> = None;
+            let mut pending_vec_rotate: Option<ph2d_vec_scene::Rotate90> = None;
             let mut transform_edit: Option<ph2d_editor::InspectorTransformInfo> = None;
             let mut visibility_edit: Option<ph2d_editor::InspectorVisibilityInfo> = None;
             let mut sprite_source_change: Option<(u64, RequestedSpriteStrategy)> = None;
@@ -811,6 +812,10 @@ impl crate::App {
                                 crate::input_dispatch::vec_flip_for_id(*id)
                             {
                                 pending_vec_flip = Some(axis);
+                            } else if let Some(dir) =
+                                crate::input_dispatch::vec_rotate_for_id(*id)
+                            {
+                                pending_vec_rotate = Some(dir);
                             }
                         }
                         if let Some(t) = tools.active_mut() {
@@ -1449,6 +1454,14 @@ impl crate::App {
                     &mut self.vec_history,
                     &self.vec_pen,
                     axis,
+                );
+            }
+            if let Some(dir) = pending_vec_rotate {
+                crate::input_dispatch::apply_vec_rotate(
+                    vec_scene,
+                    &mut self.vec_history,
+                    &self.vec_pen,
+                    dir,
                 );
             }
             let vec_cfg = vector_bridge::dispatch(

@@ -181,6 +181,16 @@ pub enum FlipAxis {
     Vertical,
 }
 
+/// Sentido de uma rotação de 90° ([`VecScene::rotate_path`]), em torno do centro
+/// da bbox do path. `Cw` = horário, `Ccw` = anti-horário (na convenção de tela,
+/// Y para baixo). Quarto-de-volta é transcendental-free (só troca de eixo +
+/// sinal — HR-5).
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum Rotate90 {
+    Cw,
+    Ccw,
+}
+
 /// Cena vetorial — o documento editor-first. `PartialEq` para o undo detectar
 /// mudança real (só vira passo de histórico se a cena mudou de fato).
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
@@ -297,6 +307,43 @@ impl VecScene {
             v.anchor[a] = twice_center - v.anchor[a];
             v.in_handle[a] = twice_center - v.in_handle[a];
             v.out_handle[a] = twice_center - v.out_handle[a];
+        }
+        true
+    }
+
+    /// Rotaciona o path `id` em 90° ([`Rotate90`]) em torno do centro da bbox dos
+    /// seus pontos de controle. Quarto-de-volta = troca de eixo + sinal (sem
+    /// transcendentais, HR-5); handles rotacionam junto, `VertexKind` preservado
+    /// (colinearidade é invariante a rotação). `false` se o id sumiu ou vazio.
+    pub fn rotate_path(&mut self, id: VecPathId, dir: Rotate90) -> bool {
+        let Some(path) = self.paths.iter_mut().find(|p| p.id == id) else {
+            return false;
+        };
+        if path.verts.is_empty() {
+            return false;
+        }
+        let (mut lo, mut hi) = ([f64::INFINITY; 2], [f64::NEG_INFINITY; 2]);
+        for v in &path.verts {
+            for p in [v.anchor, v.in_handle, v.out_handle] {
+                lo[0] = lo[0].min(p[0]);
+                lo[1] = lo[1].min(p[1]);
+                hi[0] = hi[0].max(p[0]);
+                hi[1] = hi[1].max(p[1]);
+            }
+        }
+        let (cx, cy) = ((lo[0] + hi[0]) * 0.5, (lo[1] + hi[1]) * 0.5);
+        // Screen convention (Y down): CW maps (dx,dy)→(−dy, dx); CCW →(dy, −dx).
+        let rot = |p: [f64; 2]| {
+            let (dx, dy) = (p[0] - cx, p[1] - cy);
+            match dir {
+                Rotate90::Cw => [cx - dy, cy + dx],
+                Rotate90::Ccw => [cx + dy, cy - dx],
+            }
+        };
+        for v in &mut path.verts {
+            v.anchor = rot(v.anchor);
+            v.in_handle = rot(v.in_handle);
+            v.out_handle = rot(v.out_handle);
         }
         true
     }

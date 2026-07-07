@@ -137,3 +137,6 @@ pub const VECTOR_ARRANGE_TO_FRONT: NodeId = hash_node_id("vector.arrange.to_fron
 // Mirror the selected path (H = left↔right, V = up↔down) around its bbox center.
 pub const VECTOR_ARRANGE_FLIP_H: NodeId = hash_node_id("vector.arrange.flip_h");
 pub const VECTOR_ARRANGE_FLIP_V: NodeId = hash_node_id("vector.arrange.flip_v");
+// Rotate the selected path 90° (CW / CCW) around its bbox center.
+pub const VECTOR_ARRANGE_ROTATE_CW: NodeId = hash_node_id("vector.arrange.rotate_cw");
+pub const VECTOR_ARRANGE_ROTATE_CCW: NodeId = hash_node_id("vector.arrange.rotate_ccw");

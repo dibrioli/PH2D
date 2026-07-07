@@ -242,10 +242,17 @@ impl App {
             // (Blender / Maya "frame view" semantics). Raises a
             // pending intent on the hero — the render_frame drain
             // resolves the selection and updates `gfx.camera`.
-            // Motion Nodes M1: over the graph panel, F fits the GRAPH (handled by
-            // the graph's own dispatch_key arm); suppress the scene frame here so
-            // the two don't both fit (Blender per-area focus).
-            KeyCode::KeyF if over_motion_graph => {}
+            // Motion Nodes M1: over the graph panel, F fits the GRAPH. Pushed
+            // directly (not via the graph_focused/focus_id dispatch gate, which
+            // could be blocked by a stale focus) using the proven cursor check —
+            // and the arm suppresses the scene frame so the two don't both fit
+            // (Blender per-area focus).
+            KeyCode::KeyF if over_motion_graph => {
+                if let Some(hero) = gfx.hero_screen.as_mut() {
+                    hero.store
+                        .push_graph_key(ph2d_editor::interaction::GraphKey::Fit);
+                }
+            }
             KeyCode::Home | KeyCode::KeyF => {
                 if let Some(hero) = gfx.hero_screen.as_mut() {
                     // Wave 2.5 PR 11.8d: bus migration (was

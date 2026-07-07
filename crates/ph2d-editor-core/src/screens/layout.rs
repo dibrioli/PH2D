@@ -32,6 +32,73 @@ pub const HUD_H: f32 = HUD_H_PX;
 pub const HUD_BOTTOM_PAD: f32 = HUD_BOTTOM_PAD_PX;
 pub const HIER_ROW_H: f32 = HIER_ROW_H_PX;
 
+/// Split of the center region into the scene viewport and the Motion Nodes
+/// graph, applied while the Motion tool is active (Motion Nodes M0.T4).
+///
+/// `t` is the fraction of the center band that the **scene** occupies — the top
+/// slice in [`Self::Horizontal`], the left slice in [`Self::Vertical`] — clamped
+/// to [`Self::T_MIN`]..=[`Self::T_MAX`]. `None` = no split (the scene fills the
+/// whole center; the graph is hidden), the default for every non-Motion tool.
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub enum CenterSplit {
+    /// No split — scene fills the center, graph hidden.
+    None,
+    /// Horizontal divider: scene on top, graph on the bottom (Cavalry layout).
+    Horizontal { t: f32 },
+    /// Vertical divider: scene on the left, graph on the right (TouchDesigner).
+    Vertical { t: f32 },
+}
+
+impl CenterSplit {
+    /// Divider clamp — the scene (and graph) always keep at least a quarter.
+    pub const T_MIN: f32 = 0.25;
+    pub const T_MAX: f32 = 0.75;
+    /// Default split fraction — the scene gets 55 % of the center (plan §2.1).
+    pub const T_DEFAULT: f32 = 0.55;
+
+    /// Clamp a raw fraction into the legal divider range.
+    pub fn clamp_t(t: f32) -> f32 {
+        t.clamp(Self::T_MIN, Self::T_MAX)
+    }
+
+    /// `true` for a horizontal or vertical split (the graph is visible).
+    pub fn is_split(self) -> bool {
+        !matches!(self, Self::None)
+    }
+
+    /// The current divider fraction (or [`Self::T_DEFAULT`] when not split).
+    pub fn t(self) -> f32 {
+        match self {
+            Self::Horizontal { t } | Self::Vertical { t } => t,
+            Self::None => Self::T_DEFAULT,
+        }
+    }
+
+    /// Same orientation, new (clamped) fraction. `None` stays `None`.
+    pub fn with_t(self, t: f32) -> Self {
+        let t = Self::clamp_t(t);
+        match self {
+            Self::Horizontal { .. } => Self::Horizontal { t },
+            Self::Vertical { .. } => Self::Vertical { t },
+            Self::None => Self::None,
+        }
+    }
+
+    /// Switch to a horizontal split (scene on top), preserving the fraction.
+    pub fn to_horizontal(self) -> Self {
+        Self::Horizontal {
+            t: Self::clamp_t(self.t()),
+        }
+    }
+
+    /// Switch to a vertical split (scene on the left), preserving the fraction.
+    pub fn to_vertical(self) -> Self {
+        Self::Vertical {
+            t: Self::clamp_t(self.t()),
+        }
+    }
+}
+
 /// Pre-computed sub-region rects for one frame. Built once per
 /// frame from a viewport rect — cheap.
 #[derive(Copy, Clone, Debug)]
@@ -68,6 +135,19 @@ pub struct HeroLayout {
     /// Visible canvas region (between rail/inspector on the left
     /// and hierarchy on the right, between TopBar and HUD vertically).
     pub canvas: Rect,
+    /// Scene viewport sub-rect (Motion Nodes M0.T4). Equals the full
+    /// [`Self::canvas`] with no split; the top slice (`Horizontal`) or left
+    /// slice (`Vertical`) of the center band when the Motion tool splits it.
+    /// The scene is rendered into this rect via scissor + a sub-rect camera
+    /// (M0.T13) when it differs from `canvas`.
+    pub center_viewport: Rect,
+    /// Motion Nodes graph sub-rect — the complement of [`Self::center_viewport`]
+    /// in the center band. Zero-sized when the split is `None`.
+    pub motion_graph: Rect,
+    /// Zero-height reservation at the bottom edge of [`Self::motion_graph`] for
+    /// the future timeline dock (plan §2.1; the timeline itself is deferred to
+    /// its own module — this only holds the seam).
+    pub motion_timeline_slot: Rect,
 }
 
 impl HeroLayout {
@@ -85,6 +165,21 @@ impl HeroLayout {
     /// (2026-05-24) — the rail shrinks/grows and Inspector/Hierarchy
     /// x-positions follow.
     pub fn for_viewport_mirrored_with_rail_w(viewport: Rect, mirrored: bool, rail_w: f32) -> Self {
+        Self::for_viewport_split(viewport, mirrored, rail_w, CenterSplit::None)
+    }
+
+    /// Layout constructor that also splits the center region for the Motion
+    /// tool (M0.T4). With [`CenterSplit::None`] this is identical to
+    /// [`Self::for_viewport_mirrored_with_rail_w`] — `center_viewport == canvas`,
+    /// `motion_graph`/`motion_timeline_slot` zero-sized. Chrome (rail, panels,
+    /// HUD) floats over the center exactly as before; only the scene/graph split
+    /// is new.
+    pub fn for_viewport_split(
+        viewport: Rect,
+        mirrored: bool,
+        rail_w: f32,
+        split: CenterSplit,
+    ) -> Self {
         let top_bar = Rect::new(
             viewport.x + EDGE_PAD,
             viewport.y + EDGE_PAD,
@@ -120,6 +215,33 @@ impl HeroLayout {
         let painter_layers = inspector;
         let hierarchy = Rect::new(hierarchy_x, chrome_top, HIERARCHY_W, chrome_h);
         let canvas = Rect::new(viewport.x, viewport.y, viewport.w, viewport.h);
+        // Center split (M0.T4): partition the chrome band (chrome_top..chrome_bot,
+        // full width — panels float over it) into the scene sub-rect and the graph
+        // sub-rect. `None` keeps the legacy full-bleed scene (== canvas).
+        let (center_viewport, motion_graph) = match split {
+            CenterSplit::None => (canvas, Rect::new(viewport.x, chrome_top, 0.0, 0.0)),
+            CenterSplit::Horizontal { t } => {
+                let top_h = chrome_h * CenterSplit::clamp_t(t);
+                (
+                    Rect::new(viewport.x, chrome_top, viewport.w, top_h),
+                    Rect::new(viewport.x, chrome_top + top_h, viewport.w, chrome_h - top_h),
+                )
+            }
+            CenterSplit::Vertical { t } => {
+                let left_w = viewport.w * CenterSplit::clamp_t(t);
+                (
+                    Rect::new(viewport.x, chrome_top, left_w, chrome_h),
+                    Rect::new(viewport.x + left_w, chrome_top, viewport.w - left_w, chrome_h),
+                )
+            }
+        };
+        // Timeline dock seam: zero-height strip at the bottom of the graph.
+        let motion_timeline_slot = Rect::new(
+            motion_graph.x,
+            motion_graph.y + motion_graph.h,
+            motion_graph.w,
+            0.0,
+        );
         let bottom_hud = Rect::new(
             viewport.x + (viewport.w - 480.0) * 0.5, // LITERAL-PX-OK: HUD strip width
             viewport.y + viewport.h - HUD_BOTTOM_PAD - HUD_H,
@@ -138,6 +260,79 @@ impl HeroLayout {
             hierarchy,
             bottom_hud,
             canvas,
+            center_viewport,
+            motion_graph,
+            motion_timeline_slot,
         }
+    }
+}
+
+#[cfg(test)]
+mod split_tests {
+    use super::*;
+
+    fn vp() -> Rect {
+        Rect::new(0.0, 0.0, HERO_VIEWPORT_W, HERO_VIEWPORT_H)
+    }
+
+    fn approx(a: f32, b: f32) -> bool {
+        (a - b).abs() < 0.5
+    }
+
+    #[test]
+    fn no_split_scene_is_full_canvas_and_graph_is_empty() {
+        let l = HeroLayout::for_viewport(vp());
+        assert_eq!(l.center_viewport, l.canvas);
+        assert_eq!(l.motion_graph.w, 0.0);
+        assert_eq!(l.motion_graph.h, 0.0);
+    }
+
+    #[test]
+    fn horizontal_split_scene_on_top_graph_below_partition_the_band() {
+        let l = HeroLayout::for_viewport_split(vp(), false, RAIL_W, CenterSplit::Horizontal { t: 0.55 });
+        // Scene sits above the graph; both share the band's x/width.
+        assert!(l.center_viewport.y < l.motion_graph.y);
+        assert!(approx(l.center_viewport.x, l.motion_graph.x));
+        assert!(approx(l.center_viewport.w, l.motion_graph.w));
+        // They tile the band with no gap/overlap at the divider.
+        assert!(approx(
+            l.center_viewport.y + l.center_viewport.h,
+            l.motion_graph.y
+        ));
+        // Scene gets ~55 % of the band height.
+        let band = l.center_viewport.h + l.motion_graph.h;
+        assert!(approx(l.center_viewport.h / band, 0.55));
+    }
+
+    #[test]
+    fn vertical_split_scene_on_left_graph_on_right() {
+        let l = HeroLayout::for_viewport_split(vp(), false, RAIL_W, CenterSplit::Vertical { t: 0.5 });
+        assert!(l.center_viewport.x < l.motion_graph.x);
+        assert!(approx(l.center_viewport.y, l.motion_graph.y));
+        assert!(approx(l.center_viewport.h, l.motion_graph.h));
+        assert!(approx(
+            l.center_viewport.x + l.center_viewport.w,
+            l.motion_graph.x
+        ));
+    }
+
+    #[test]
+    fn timeline_slot_is_zero_height_at_graph_bottom() {
+        let l = HeroLayout::for_viewport_split(vp(), false, RAIL_W, CenterSplit::Horizontal { t: 0.6 });
+        assert_eq!(l.motion_timeline_slot.h, 0.0);
+        assert!(approx(
+            l.motion_timeline_slot.y,
+            l.motion_graph.y + l.motion_graph.h
+        ));
+    }
+
+    #[test]
+    fn divider_fraction_clamps() {
+        assert_eq!(CenterSplit::clamp_t(0.9), CenterSplit::T_MAX);
+        assert_eq!(CenterSplit::clamp_t(0.1), CenterSplit::T_MIN);
+        // Orientation switch preserves the fraction.
+        let h = CenterSplit::Horizontal { t: 0.4 };
+        assert_eq!(h.to_vertical(), CenterSplit::Vertical { t: 0.4 });
+        assert!((h.to_vertical().t() - 0.4).abs() < 1e-6);
     }
 }

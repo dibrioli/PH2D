@@ -234,6 +234,7 @@ impl HeroScreen {
                 ui_mirrored: false,
                 stats_visible: true,
                 grid_visible: true,
+                center_split: crate::screens::layout::CenterSplit::None,
             },
             panel_visibility: default_panel_visibility(),
             image_edit: ImageEditState::default(),

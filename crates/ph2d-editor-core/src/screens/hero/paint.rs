@@ -24,8 +24,15 @@ pub fn paint_hero_screen(
     // preset (Small / Medium / Large; default Small). Switching size
     // shifts Inspector/Hierarchy x-positions accordingly.
     let rail_w = hero.store.rail_button_size().rail_width_px();
-    let mut layout =
-        HeroLayout::for_viewport_mirrored_with_rail_w(viewport, hero.view.ui_mirrored, rail_w);
+    // Motion Nodes M0.T4: `center_split` is `None` for every non-Motion tool, so
+    // this is identical to the legacy layout there; the Motion bridge sets a split
+    // while its tool is active.
+    let mut layout = HeroLayout::for_viewport_split(
+        viewport,
+        hero.view.ui_mirrored,
+        rail_w,
+        hero.view.center_split,
+    );
     // Apply user-driven panel drag offsets to the Inspector +
     // Hierarchy rects. The offsets live on the WidgetStore's
     // `blender_picker_offset` side-table (panel-agnostic — the

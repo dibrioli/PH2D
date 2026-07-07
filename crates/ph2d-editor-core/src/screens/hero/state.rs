@@ -74,6 +74,12 @@ pub struct ViewState {
     /// `true`. Toggled via the "Show Grid" context-menu entry and the
     /// `G` key.
     pub grid_visible: bool,
+    /// Center split between the scene viewport and the Motion Nodes graph
+    /// (Motion Nodes M0.T4). Default [`CenterSplit::None`] — no split for any
+    /// non-Motion tool. The Motion bridge sets it to the remembered orientation
+    /// (default `Horizontal { t: 0.55 }`) on tool-activate and back to `None` on
+    /// deactivate; the graph toolbar's SplitH/SplitV chips flip the orientation.
+    pub center_split: crate::screens::layout::CenterSplit,
 }
 
 impl Default for ViewState {
@@ -82,6 +88,7 @@ impl Default for ViewState {
             ui_mirrored: false,
             stats_visible: true,
             grid_visible: true,
+            center_split: crate::screens::layout::CenterSplit::None,
         }
     }
 }

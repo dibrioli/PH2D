@@ -305,6 +305,15 @@ pub(crate) fn apply_vec_toggle_closed(
     };
     let pre = scene.clone();
     if scene.set_path_closed(sel, !cur) {
+        // Closing a never-filled path seeds its fill from the current Style — so it
+        // paints IMMEDIATELY, matching the pen's auto-close (click the start point).
+        // An existing fill is preserved across open→close cycles.
+        if !cur
+            && let Some(path) = scene.path_mut(sel)
+            && path.fill.is_none()
+        {
+            path.fill = Some(pen.style().fill);
+        }
         history.push_undo(pre);
     }
 }
@@ -2368,6 +2377,17 @@ mod tests {
             scene.paths().iter().find(|p| p.id == sq).unwrap().closed,
             was,
             "toggle flips back"
+        );
+        // Closing a never-filled path seeds a fill so it paints immediately.
+        assert!(
+            scene
+                .paths()
+                .iter()
+                .find(|p| p.id == sq)
+                .unwrap()
+                .fill
+                .is_some(),
+            "closing seeds the Style fill (immediate paint)"
         );
     }
 

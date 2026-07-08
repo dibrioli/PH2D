@@ -74,6 +74,7 @@
 - [node-sync glob prefix](feedback_node_sync_glob_prefix_gotcha.md) — crate na área de nós não pode começar com `ph2d-node-` (gera `::register` inexistente); use outro prefixo
 - [Hier companion allowlist](feedback_hier_companion_dispatch_allowlist.md) — bits novos em 2 sites de `pointer.rs` senão click dropado
 - [Panel populate register](feedback_panel_populate_register.md) — botão novo exige register em `populate.rs`; pintar + hit_index não basta
+- [Painel docado = 4 sites de registro](feedback_docked_panel_registration_four_sites.md) — crate+sync+EXPECTED · **feature-proxy no shell** · **z-order walk em hero/paint.rs** · visibility default+canonical; 2 gates verdes mascaram (painel morto na tela); widgets pela Widget Gallery
 - [Panel arch-gates scope + clamp/const](feedback_panel_arch_gates_scope_and_clamp_const.md) — no_magic_numeric + arch_safe_clamp_only escaneiam TODO ph2d-panel-*/src; hoist de bound de clamp p/ const dispara o clamp-gate (precisa `// CLAMP-OK`)
 - [Panel 2D-drag precisa dispatch](reference_panel_2d_drag_needs_dispatch.md) — 2D-livre = InteractiveState+dispatch em editor-core (padrão BlenderHit); Slider 1D é o único per-Move no painel
 - [NumberInput registra range](reference_number_input_register_range.md) — caixa LIMITADA chama `set_number_range(id,min,max,step)` senão drag escala por `rate×step`

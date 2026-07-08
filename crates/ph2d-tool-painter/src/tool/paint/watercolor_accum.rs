@@ -16,7 +16,46 @@ pub(super) fn feather(dn: f32) -> f32 {
     }
 }
 
+/// Per-pixel PAINT-GATE weight for the watercolor splats: the product of the two canvas gates the
+/// normal stamp route enforces by snapshot/restore ([`PainterTool::restore_deselected_region`] /
+/// [`PainterTool::restore_protected_region`]) — the **selection** coverage (1 = inside, 0 = outside;
+/// a feathered edge scales) × the **protection** scratch keep (`mask_value`: 1 = unprotected, 0 =
+/// frozen). The watercolor path can't use snapshot/restore (its canvas write happens later, in
+/// `apply_watercolor`, over a frozen base), so instead the wash never FORMS on gated-out texels:
+/// the coverage / colour / soak splats scale by this weight, the optics read "no paint here"
+/// (`cw = 0`) and the composite leaves the frozen base verbatim — the same end state the restore
+/// path produces. Callers pass `None` for an inactive gate (both `None` = ungated fast path,
+/// byte-identical to before the gates existed).
+#[inline]
+pub(super) fn splat_keep(sel: Option<&[u8]>, prot: Option<&[u8]>, gidx: usize) -> f32 {
+    let mut keep = 1.0f32;
+    if let Some(m) = sel {
+        keep *= m.get(gidx).map_or(1.0, |&v| f32::from(v) / 255.0);
+    }
+    if let Some(s) = prot
+        && (gidx * 4 + 2) < s.len()
+    {
+        keep *= crate::compositor::mask_value(s, gidx);
+    }
+    keep
+}
+
+/// A cloned paint-gate buffer handle (`None` = that gate is off) — see [`PainterTool::wet_splat_gates`].
+pub(super) type SplatGate = Option<Arc<Vec<u8>>>;
+
 impl PainterTool {
+    /// The two active paint-gate buffers for the watercolor splats (`None` each when its gate is off):
+    /// the selection mask + the protection scratch, as cloned `Arc` handles so the splat loops can hold
+    /// them alongside their `&mut` buffer borrows. See [`splat_keep`].
+    pub(super) fn wet_splat_gates(&self) -> (SplatGate, SplatGate) {
+        let sel = self
+            .selection_restricts_paint()
+            .then(|| Arc::clone(&self.paint.selection_mask));
+        let prot = self
+            .mask_protection_active()
+            .then(|| Arc::clone(&self.paint.mask_scratch_rgba));
+        (sel, prot)
+    }
     /// Zero the per-stroke coverage (retain capacity). Shape-preview methods (Drag Dot / Anchored / Line)
     /// rebuild coverage each frame from the current batch, so the moving preview leaves no trail.
     ///
@@ -69,6 +108,9 @@ impl PainterTool {
         // Dilution (Wet Mix, `docs/Painter/07` §4): more water lays down LESS coverage → a thinner,
         // paler wash. `flow = 1 − dilution`; default `0` → `flow = 1` (byte-identical).
         let flow = (1.0 - self.paint.brush.wet_dilution).clamp(0.0, 1.0);
+        // Selection + protection gates ([`splat_keep`]): the wash never forms on gated-out texels.
+        let (sel, prot) = self.wet_splat_gates();
+        let gated = sel.is_some() || prot.is_some();
         let cov = &mut self.paint.stroke_coverage;
         for d in dabs {
             let r = d.radius_px;
@@ -91,8 +133,20 @@ impl PainterTool {
                     if dn >= 1.0 {
                         continue;
                     }
-                    let v = (peak * feather(dn) * 255.0) as u8;
                     let idx = base + x;
+                    let keep = if gated {
+                        splat_keep(
+                            sel.as_deref().map(Vec::as_slice),
+                            prot.as_deref().map(Vec::as_slice),
+                            idx,
+                        )
+                    } else {
+                        1.0
+                    };
+                    if keep <= 0.0 {
+                        continue;
+                    }
+                    let v = (peak * keep * feather(dn) * 255.0) as u8;
                     if v > cov[idx] {
                         cov[idx] = v;
                     }
@@ -117,6 +171,9 @@ impl PainterTool {
         // brush colour with the surface it picked up (Charge/Pull). Off (default `wet_charge = 1`) ⇒
         // each dab's own colour (byte-identical). Computed BEFORE borrowing `stroke_color`.
         let mixed = self.wet_mix_dab_colors(dabs);
+        // Selection + protection gates — twin of the coverage splat (see [`splat_keep`]).
+        let (sel, prot) = self.wet_splat_gates();
+        let gated = sel.is_some() || prot.is_some();
         let buf = &mut self.paint.stroke_color;
         for (d, (dcol, prio)) in dabs.iter().zip(&mixed) {
             let r = d.radius_px;
@@ -149,7 +206,17 @@ impl PainterTool {
                     if dn >= 1.0 {
                         continue;
                     }
-                    let a = peak * feather(dn) * prio; // source alpha, scaled by deposit priority
+                    let keep = if gated {
+                        splat_keep(
+                            sel.as_deref().map(Vec::as_slice),
+                            prot.as_deref().map(Vec::as_slice),
+                            base + x,
+                        )
+                    } else {
+                        1.0
+                    };
+                    // source alpha = feathered coverage × deposit priority × the paint gates
+                    let a = peak * feather(dn) * prio * keep;
                     if a <= 0.0 {
                         continue;
                     }

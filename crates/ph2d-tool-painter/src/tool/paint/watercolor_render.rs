@@ -428,6 +428,18 @@ impl PainterTool {
             }
         }
         let substrate = &self.paint.wet_substrate;
+        // Selection + protection gates (final enforcement): the splat gates already stop the wash from
+        // FORMING on gated-out texels (so the rim/bleed react at the boundary — the masking-fluid look),
+        // but the composite can still REACH them: the warp displaces the coverage sample (a gated-out
+        // pixel can read in-bounds coverage up to `warp` px away) and the dissolve/soak fields blur
+        // across the boundary. The keep-LERP on the final bytes below (`out = painted·keep +
+        // base·(1−keep)`) is the exact restore semantics of the canvas gates
+        // (`restore_deselected_region` / `restore_protected_region`) — a hard guarantee independent of
+        // any sampling reach. Both `None` (the default) ⇒ `keep ≡ 1`, byte-identical.
+        let (gate_sel, gate_prot) = self.wet_splat_gates();
+        let gate_on = gate_sel.is_some() || gate_prot.is_some();
+        let gsel: Option<&[u8]> = gate_sel.as_deref().map(Vec::as_slice);
+        let gprot: Option<&[u8]> = gate_prot.as_deref().map(Vec::as_slice);
         let out = Arc::make_mut(&mut self.canvas_rgba);
         // PARALLEL composite over OUTPUT rows (ADR-0109 exception to the no-rayon default): each output
         // pixel is a pure function of immutable inputs (frozen base/ground, the coverage + blur fields,
@@ -699,12 +711,32 @@ impl PainterTool {
                         continue;
                     }
                     let inv_a = 1.0 / out_a;
+                    let mut px = [0u8; 4];
                     for c in 0..3 {
                         let app = lut.s2l[rgb[c] as usize];
                         let lin = (app - ground_lin[c] * (1.0 - out_a)) * inv_a;
-                        row[gx * 4 + c] = lut.l2s_byte(lin);
+                        px[c] = lut.l2s_byte(lin);
                     }
-                    row[gx * 4 + 3] = (out_a * 255.0 + 0.5).clamp(0.0, 255.0) as u8;
+                    px[3] = (out_a * 255.0 + 0.5).clamp(0.0, 255.0) as u8;
+                    // Paint gates (selection / protection): keep-lerp the painted bytes toward the
+                    // frozen base — the canvas gates' exact restore semantics, warp/diffusion-proof
+                    // (see the gate hoist above the loop). Ungated (default) writes paint verbatim.
+                    if gate_on {
+                        let keep = watercolor_accum::splat_keep(gsel, gprot, gy * fw + gx);
+                        if keep < 1.0 {
+                            for (c, p) in px.iter_mut().enumerate() {
+                                let painted = f32::from(*p);
+                                let orig = f32::from(base[gi + c]);
+                                *p = (painted * keep + orig * (1.0 - keep))
+                                    .round()
+                                    .clamp(0.0, 255.0) as u8;
+                            }
+                        }
+                    }
+                    row[gx * 4] = px[0];
+                    row[gx * 4 + 1] = px[1];
+                    row[gx * 4 + 2] = px[2];
+                    row[gx * 4 + 3] = px[3];
                 }
             });
         self.mark_dirty(region);

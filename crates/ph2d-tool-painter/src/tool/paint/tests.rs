@@ -12168,3 +12168,86 @@ fn watercolor_wet_mix_exit_edge_keeps_pickup() {
         "the exit edge must retain the picked-up colour (not wash to blue): entry {entry} exit {exit}"
     );
 }
+
+/// **Watercolor respects the Selection + protection-mask gates** (the audit hole, Enio 2026-07-07):
+/// the optical path used to short-circuit BEFORE the canvas gates in `stamp_dabs`, so a watercolor
+/// stroke painted straight through an active selection and the Sculpt-style protection scratch.
+/// Now the wash never FORMS on gated-out texels (splat gates) AND the composite keep-lerps the final
+/// bytes toward the frozen base (restore semantics — warp-proof: this stroke runs Ragged Edge > 0,
+/// whose displaced sampling used to be the leak vector).
+#[test]
+fn watercolor_respects_selection_and_protection_masks() {
+    fn wet_brush(t: &mut PainterTool) {
+        t.paint.brush = BrushSpec {
+            radius_px: 8.0,
+            hardness: 1.0,
+            falloff: Falloff::Constant,
+            color: [0.1, 0.2, 0.7],
+            space_attenuation: false,
+            watercolor: true,
+            fill: 0.6,
+            depth: 2.0,
+            edge_gain: 2.0,
+            edge_spread: 4.0,
+            warp: 4.0, // Ragged Edge ON: proves the composite gate stops the warped-sampling leak
+            wet_rewet: 1.0,
+            ..Default::default()
+        };
+        for slot in &mut t.paint.brush_by_mode {
+            *slot = t.paint.brush;
+        }
+    }
+    let size = 64u32;
+
+    // ── Selection: left half selected; a stroke straddling x=32 must clip at the border. ──
+    let mut t = white_canvas(size, 8.0);
+    wet_brush(&mut t);
+    t.set_rect_selection(0, 0, 32, 64);
+    assert!(t.on_canvas_pointer(cp([32.0, 32.0], PointerPhase::Down)));
+    t.on_canvas_pointer(cp([32.0, 32.0], PointerPhase::Up));
+    assert_ne!(
+        px(&t, size, 28, 32),
+        [255, 255, 255, 255],
+        "inside the selection the wash painted"
+    );
+    for x in [38u32, 44, 50] {
+        assert_eq!(
+            px(&t, size, x, 32),
+            [255, 255, 255, 255],
+            "outside the selection stays pristine (x={x}) — the watercolor gate hole"
+        );
+    }
+
+    // ── Protection scratch: right half painted black (= frozen); the wash must not land there. ──
+    let mut t = white_canvas(size, 8.0);
+    wet_brush(&mut t);
+    t.ensure_mask_scratch();
+    assert!(t.mask_scratch_active(), "scratch installed on the layer");
+    {
+        let scratch = Arc::make_mut(&mut t.paint.mask_scratch_rgba);
+        for y in 0..size {
+            for x in 32..size {
+                let i = ((y * size + x) * 4) as usize;
+                scratch[i] = 0; // black = protect (mask_value 0 = frozen)
+                scratch[i + 1] = 0;
+                scratch[i + 2] = 0;
+                scratch[i + 3] = 255;
+            }
+        }
+    }
+    assert!(t.mask_protection_active(), "protection gate armed");
+    assert!(t.on_canvas_pointer(cp([32.0, 32.0], PointerPhase::Down)));
+    t.on_canvas_pointer(cp([32.0, 32.0], PointerPhase::Up));
+    assert_ne!(
+        px(&t, size, 28, 32),
+        [255, 255, 255, 255],
+        "unprotected side painted"
+    );
+    for x in [38u32, 44, 50] {
+        assert_eq!(
+            px(&t, size, x, 32),
+            [255, 255, 255, 255],
+            "protected texels stay frozen (x={x})"
+        );
+    }
+}

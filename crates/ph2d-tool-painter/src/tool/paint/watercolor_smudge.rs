@@ -21,14 +21,36 @@ impl PainterTool {
     pub(super) fn smear_wet_base(&mut self, dabs: &[Dab]) {
         let smudge = self.paint.brush.wet_smudge.clamp(0.0, 1.0);
         let (w, h) = self.source_size;
+        if smudge <= 0.0 || w == 0 || h == 0 {
+            return;
+        }
+        // Selection + protection gates: the smear mutates the FROZEN BASE, which the composite shows
+        // verbatim wherever the wash doesn't cover — so an ungated smear leaked dragged paint outside
+        // the selection / into the protected region. Mirror of the canvas stamp gate
+        // (`stamp_dabs`): snapshot the smear footprint of the BASE, smear, then lerp the gated texels
+        // back by `keep` (`splat_keep` — the same weights `restore_deselected_region` /
+        // `restore_protected_region` apply to the canvas). Ungated (the default) ⇒ zero-cost path.
+        let (sel, prot) = self.wet_splat_gates();
+        let gate_region = (sel.is_some() || prot.is_some())
+            .then(|| Self::smear_footprint(dabs, self.paint.wet_smear_pos, self.source_size))
+            .flatten();
         let Some(base_arc) = self.paint.watercolor_base.as_mut() else {
             return;
         };
-        if smudge <= 0.0 || w == 0 || h == 0 || base_arc.len() != (w as usize * h as usize * 4) {
+        if base_arc.len() != (w as usize * h as usize * 4) {
             return;
         }
         let spec = self.paint.brush;
         let buf = Arc::make_mut(base_arc);
+        // Pre-smear snapshot of the gated footprint (base bytes, row-major within the region).
+        let before: Option<Vec<u8>> = gate_region.map(|r| {
+            let mut out = Vec::with_capacity((r.w * r.h * 4) as usize);
+            for ry in 0..r.h {
+                let s = (((r.y + ry) * w + r.x) * 4) as usize;
+                out.extend_from_slice(&buf[s..s + (r.w * 4) as usize]);
+            }
+            out
+        });
         let mut from = self.paint.wet_smear_pos;
         let mut touched: Option<Region> = None;
         for d in dabs {
@@ -57,6 +79,32 @@ impl PainterTool {
             }
             from = Some(d.center);
         }
+        // Restore the gated texels of the base (keep-lerp — the exact restore semantics of the
+        // canvas-side gates), so the smear never lands outside the selection / on protected texels.
+        if let (Some(r), Some(orig)) = (gate_region, before.as_ref()) {
+            for ry in 0..r.h {
+                for rx in 0..r.w {
+                    let gidx = ((r.y + ry) * w + (r.x + rx)) as usize;
+                    let keep = super::watercolor_accum::splat_keep(
+                        sel.as_deref().map(Vec::as_slice),
+                        prot.as_deref().map(Vec::as_slice),
+                        gidx,
+                    );
+                    if keep >= 1.0 {
+                        continue;
+                    }
+                    let b = gidx * 4;
+                    let s = ((ry * r.w + rx) * 4) as usize;
+                    for c in 0..4 {
+                        let smeared = f32::from(buf[b + c]);
+                        let o = f32::from(orig[s + c]);
+                        buf[b + c] = (smeared * keep + o * (1.0 - keep))
+                            .round()
+                            .clamp(0.0, 255.0) as u8;
+                    }
+                }
+            }
+        }
         self.paint.wet_smear_pos = from;
         if let Some(rect) = touched {
             self.paint.wet_frame_dirty = Some(match self.paint.wet_frame_dirty {
@@ -68,5 +116,41 @@ impl PainterTool {
                 None => rect,
             });
         }
+    }
+
+    /// The base-buffer footprint a smear batch can touch: the union of each dab's disc (± radius + 1 px)
+    /// plus the chain's previous position (the lift source), clamped to the canvas. `None` when empty /
+    /// fully off-canvas. Mirror of [`Self::dab_batch_region`] but keyed on the WET smear chain
+    /// (`wet_smear_pos`), not the plain-Smear one.
+    fn smear_footprint(dabs: &[Dab], prev: Option<[f32; 2]>, (w, h): (u32, u32)) -> Option<Region> {
+        if w == 0 || h == 0 || dabs.is_empty() {
+            return None;
+        }
+        let (mut minx, mut miny, mut maxx, mut maxy) = (f32::MAX, f32::MAX, f32::MIN, f32::MIN);
+        let mut max_r = 0.0_f32;
+        for d in dabs {
+            let r = d.radius_px + 1.0;
+            max_r = max_r.max(r);
+            minx = minx.min(d.center[0] - r);
+            maxx = maxx.max(d.center[0] + r);
+            miny = miny.min(d.center[1] - r);
+            maxy = maxy.max(d.center[1] + r);
+        }
+        if let Some(p) = prev {
+            minx = minx.min(p[0] - max_r);
+            maxx = maxx.max(p[0] + max_r);
+            miny = miny.min(p[1] - max_r);
+            maxy = maxy.max(p[1] + max_r);
+        }
+        let x0 = minx.floor().max(0.0) as u32;
+        let y0 = miny.floor().max(0.0) as u32;
+        let x1 = (maxx.ceil() as i64).clamp(0, i64::from(w)) as u32;
+        let y1 = (maxy.ceil() as i64).clamp(0, i64::from(h)) as u32;
+        (x1 > x0 && y1 > y0).then_some(Region {
+            x: x0,
+            y: y0,
+            w: x1 - x0,
+            h: y1 - y0,
+        })
     }
 }

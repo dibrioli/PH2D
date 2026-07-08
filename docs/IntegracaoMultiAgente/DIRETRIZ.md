@@ -1,6 +1,6 @@
 # Diretriz de Implementação — PH2D
 
-**Versão:** 8.1 — 2026-07-05 (**foundational deixou de ser serial no Modo L** — [ADR-0107](../architecture/decisions/0107-concurrent-foundational-lines-tested-gate-syntactic-merge.md): qualquer linha toca foundational sob 3 camadas — pontos de extensão append-only, Mergiraf (merge sintático) no resíduo textual, e o **gate da árvore combinada** `scripts/foundational-integrate.sh` no resíduo semântico; só contrato congelado (§4) e mesmo-símbolo de tipo-núcleo seguem seriais. v8.0 — 2026-07-05: **o modo de operação virou função do hardware** — [ADR-0106](../architecture/decisions/0106-parallel-dev-lines-worktrees-workstation.md); `bash scripts/hw-profile.sh` decide: tier `workstation` (Linux 128 GB) = **Modo L**, linhas paralelas por `git worktree` sem Coordenador de plantão, §1.5; tier `constrained` (Mac mini 8 GiB, sessões de smoke/hotfix) = **Modo C**, o modelo v7.1 de 1 Coordenador único + N Implementadores em shared tree, §1.1–1.4 + §7. Baseline anterior: 7.1 — 2026-05-28, papéis consolidados).
+**Versão:** 8.2 — 2026-07-07 (**integração + ship = ordem EXPLÍCITA do Enio, nunca autônomos**: no Modo L a linha fecha o módulo, escreve o **handoff de integração** (§1.5.9) e PARA; o Enio junta os handoffs e abre **um agente integrador dedicado** que resolve todos os conflitos (§1.5.3–1.5.4). Reforçado: **foundational é editável, mas ao CRIAR arquivo foundational projete-o para isolamento** (§1.5.2.1). Só edições pontuais — o mecanismo (`foundational-integrate.sh` + `--ff-only` + Mergiraf) é o mesmo. Baseline: 8.1 — 2026-07-05 — **foundational deixou de ser serial no Modo L** — [ADR-0107](../architecture/decisions/0107-concurrent-foundational-lines-tested-gate-syntactic-merge.md): qualquer linha toca foundational sob 3 camadas — pontos de extensão append-only, Mergiraf (merge sintático) no resíduo textual, e o **gate da árvore combinada** `scripts/foundational-integrate.sh` no resíduo semântico; só contrato congelado (§4) e mesmo-símbolo de tipo-núcleo seguem seriais. v8.0 — 2026-07-05: **o modo de operação virou função do hardware** — [ADR-0106](../architecture/decisions/0106-parallel-dev-lines-worktrees-workstation.md); `bash scripts/hw-profile.sh` decide: tier `workstation` (Linux 128 GB) = **Modo L**, linhas paralelas por `git worktree` sem Coordenador de plantão, §1.5; tier `constrained` (Mac mini 8 GiB, sessões de smoke/hotfix) = **Modo C**, o modelo v7.1 de 1 Coordenador único + N Implementadores em shared tree, §1.1–1.4 + §7. Baseline anterior: 7.1 — 2026-05-28, papéis consolidados).
 **Audiência:** **toda LLM que entra no projeto.** Este doc é **referência** — **NÃO
 leia inteiro**; use o roteador leia-por-tarefa em [`CLAUDE.md §1`](../../CLAUDE.md) e
 leia só a(s) seção(ões) que sua tarefa exige. Obrigatório p/ todos: §0 (sanity), §1
@@ -13,7 +13,7 @@ leia só a(s) seção(ões) que sua tarefa exige. Obrigatório p/ todos: §0 (sa
 
 ## TL;DR
 
-- **Modo por hardware (v8):** rode `bash scripts/hw-profile.sh` PRIMEIRO. `workstation` (Linux 128 GB) = **Modo L (§1.5)** — N linhas paralelas por `git worktree`, integração self-service via `--ff-only`, sem Coordenador de plantão. `constrained` (Mac mini 8 GiB — smoke/hotfix) = **Modo C** — o modelo abaixo. Triagem (§2), receitas (§3), contratos (§4), UI (§5) e a DIRETIVA valem NOS DOIS modos; o que muda é git + concorrência + quem integra/pusha.
+- **Modo por hardware (v8):** rode `bash scripts/hw-profile.sh` PRIMEIRO. `workstation` (Linux 128 GB) = **Modo L (§1.5)** — N linhas paralelas por `git worktree`, sem Coordenador de plantão. **A integração e o ship NÃO são autônomos: acontecem só por ordem EXPLÍCITA do Enio** (§1.5.3–1.5.4). Cada linha fecha o módulo, escreve um **handoff de integração** (§1.5.9) e PARA; o Enio junta os handoffs e abre **um agente integrador dedicado** que resolve TODOS os conflitos e integra as linhas via `--ff-only` + gate testado. `constrained` (Mac mini 8 GiB — smoke/hotfix) = **Modo C** — o modelo abaixo. Triagem (§2), receitas (§3), contratos (§4), UI (§5) e a DIRETIVA valem NOS DOIS modos; o que muda é git + concorrência + quem integra/pusha.
 - **Dois papéis (Modo C):** **um Coordenador único** (absorve foundational + scaffolds + ship + arbitragem de posse) + **N Implementadores** (sempre vários, cada um numa pasta/módulo físicamente disjunto).
 - **Três caminhos** (descobertos via Triagem §2):
   - **(A) Drop-crate (fan-out, §3.A)** — node ou tool nova. Implementador sozinho. Zero edit central. Paraleliza com outros (A).
@@ -104,9 +104,14 @@ Pra violar uma? **Pare e reporte.** Quase certo o Coord não fez scaffold direit
 > (índice, HEAD, working tree e `target/` próprios por linha — a classe inteira de
 > incidentes que o §7 legisla vira impossibilidade física); a **pasta disjunta**, que já
 > era regra, elimina o conflito de **merge** nos drop-crates. Juntos = integração fast-forward
-> na prática, **sem Coordenador de plantão**. As 3 obrigações do §1.4 valem dentro de cada linha,
+> na prática, **sem Coordenador de plantão** — mas **a integração e o ship são disparados por
+> ordem EXPLÍCITA do Enio** (nunca autônomos): cada linha fecha o módulo, escreve o **handoff de
+> integração** (§1.5.9) e PARA; o Enio junta os handoffs e abre **um agente integrador dedicado**
+> que resolve TODOS os conflitos (§1.5.3). As 3 obrigações do §1.4 valem dentro de cada linha,
 > **com uma emenda (ADR-0107): a obrigação 1 (ISOLAMENTO) NÃO proíbe mais foundational no Modo L**
-> — foundational é editável por qualquer linha sob o protocolo testado (1.5.2.1 + 1.5.3);
+> — foundational é editável por qualquer linha sob o protocolo testado (1.5.2.1 + 1.5.3), **mas
+> a própria foundation tem arquitetura de isolamento de propósito: ao CRIAR arquivo foundational
+> novo, projete-o para várias linhas o estenderem sem colidir** (§1.5.2.1, último parágrafo);
 > permanecem-fora-de-limite só os contratos congelados (§4) e mesmo-símbolo de tipo-núcleo.
 > Triagem §2, receitas §3, contratos §4, UI §5 e a DIRETIVA_IMPLEMENTACAO idem.
 > **Proibido no tier `constrained`** — N worktrees × `target/` não cabem em 8 GiB (vide 1.5.6).
@@ -145,18 +150,37 @@ cd Worktrees/line-<módulo>                                 # TODO o trabalho a 
    caps + arch-gate; exige ADR) ou (b) o rebase (1.5.2.3) conflita em **código fora dos arquivos
    do seu módulo** — colisão de *mesmo símbolo* com outra linha viva (1.5.5, última linha), que
    você não resolve na mão. Fora esses dois, foundational não é mais uma fila única (1.5.4).
+   **Isolamento AO CRIAR foundational (importante):** a foundation tem arquitetura de isolamento
+   *de propósito* — é o que permite várias linhas a estenderem em paralelo sem colidir. Quando
+   você **adiciona** algo foundational, projete-o para isolamento: prefira **arquivo/módulo irmão
+   novo** a engordar um arquivo compartilhado; exponha um **ponto de extensão append-only** (lista,
+   marcador de codegen, `mod` por responsabilidade) onde a próxima linha pluga, em vez de um site
+   central que todas editam. Pegue um **id/const/variant único** e some-o a uma lista ordenada
+   (ex.: `NodeId(NNN)` no próximo livre, variant de enum, token) — e **anote-o no handoff (§1.5.9)**
+   para o integrador detectar colisão. Menos superfície compartilhada = menos conflito de merge.
 2. Commits locais frequentes (`--no-verify` de dia, fast mode §8.1). **NUNCA push.**
-   Merge só pelo protocolo 1.5.3.
+   **NUNCA integre nem faça ship por conta própria** — quem funde as linhas é o **agente
+   integrador dedicado**, e só por ordem EXPLÍCITA do Enio (1.5.3–1.5.4). Você fecha a linha,
+   entrega o handoff (§1.5.9) e espera.
 3. **`git rebase main` no início de CADA jornada e antes de integrar** (refs compartilhadas
    entre worktrees — sem fetch). Conflito em arquivo GERADO ou `Cargo.lock` → NUNCA resolva
    na mão (tabela 1.5.5). Conflito em código fora da sua pasta → você violou o item 1.
 4. Inner loop normal (`cargo check -p`, §6); **gate batched no fechamento do módulo**
-   (§6.6.A.2) ANTES de pedir integração — verde-de-compilação vale zero, como sempre.
-5. Linha longa é anti-padrão: integre a cada 1–2 jornadas. Base velha = rebase caro.
+   (§6.6.A.2) — verde-de-compilação vale zero, como sempre. Então **escreva o handoff de
+   integração (§1.5.9), reporte "linha pronta + handoff" e PARE.** Não rode
+   `foundational-integrate.sh` — isso é do integrador, sob ordem do Enio.
+5. Linha longa é anti-padrão: peça integração a cada 1–2 jornadas. Base velha = rebase caro.
 
-#### 1.5.3 Integração ao main (self-service, serializada por `--ff-only`)
+#### 1.5.3 Integração ao main (agente integrador dedicado, por ordem do Enio; serializada por `--ff-only`)
 
-**Um comando faz tudo** (ADR-0107): da SUA linha, com o gate batched do módulo verde:
+**Quem integra:** NÃO é a linha. Quando o Enio **decide integrar** (ordem explícita, fim das
+implementações paralelas), ele coleta o **handoff de integração** de cada linha (§1.5.9) e abre
+**um agente integrador dedicado**. Esse agente resolve TODOS os conflitos entre as linhas e as
+funde ao main, **uma de cada vez**, com o mecanismo abaixo (inalterado, ADR-0107). *(Numa jornada
+de 1 linha só, o próprio operador pode ser o integrador — mas ainda por decisão do Enio, nunca a
+linha se auto-fundindo no meio do trabalho.)*
+
+**Um comando faz tudo:** de dentro da worktree da linha, com o gate batched do módulo verde:
 
 ```bash
 bash scripts/foundational-integrate.sh
@@ -190,7 +214,7 @@ acima. O script é a fonte única — não duplique a lista aqui.)*
 | Arbitragem de posse / anti-colisão git (§7) | **Extinta** — worktree isola git; pasta disjunta isola merge; `--ff-only` serializa a integração |
 | Foundational (não-contrato) | **Não é mais serial** (ADR-0107): qualquer linha toca foundational e integra pelo gate testado (1.5.3). A não-colisão vem de 3 camadas — pontos de extensão append-only onde couber (Camada 0), Mergiraf no resíduo textual (1.5.5), gate da árvore combinada no resíduo semântico (1.5.3). A `line/foundational` dedicada vira **opcional** (útil só p/ um refactor foundational grande e coeso), não mais a única porta |
 | Contratos congelados / scaffolds (B) | Seguem **seriais por natureza** (decisão de design com um dono): contrato congelado exige ADR (§4); mesmo-símbolo de tipo-núcleo = reporte (1.5.2.1). Estes NÃO passam pela Camada 0/1 |
-| Ship + push + babysit CI (§8) | **1× por jornada, sobre o main integrado** — quem fecha a ÚLTIMA integração do dia roda `./scripts/ship.sh` + push + babysit ("o último apaga a luz"), ou o Enio abre uma sessão-ship dedicada. Não bloqueia ninguém durante o dia |
+| Ship + push + babysit CI (§8) | **SÓ por ordem EXPLÍCITA do Enio** (nunca autônomo — nem "o último apaga a luz"): quando o Enio manda "ship/push", o **agente integrador** (ou uma sessão-ship dedicada que ele abre) roda `./scripts/ship.sh` + push + babysit, 1× por jornada sobre o main integrado. Uma linha/agente que integra ou pusha sem ordem explícita **violou o protocolo** ([[feedback_ship_only_enio_end_of_all_lines]] + [[feedback_integration_only_enio_command_end_of_all_lines]]) |
 
 #### 1.5.5 Conflitos de rebase/merge esperados (os ÚNICOS legítimos)
 
@@ -240,11 +264,31 @@ aqui**. Fluxo em 2 fases: (1) o agente cria a própria worktree em
 ESPERA; (2) a tarefa vem na mensagem seguinte (pasta exclusiva + o que construir).
 Tracker/docs do módulo nascem depois, **dentro da própria worktree**.
 
-**Operador (Enio):** o passo a passo do SEU lado (planejar linhas → abrir cada uma → intervir só nos 2 casos irredutíveis → o último faz o ship) está em [`GUIA_JORNADA_MODO_L.md`](GUIA_JORNADA_MODO_L.md).
+**Operador (Enio):** o passo a passo do SEU lado (planejar linhas → abrir cada uma → intervir só nos 2 casos irredutíveis → **coletar o handoff de cada linha e, por ordem sua, abrir o agente integrador + mandar o ship**) está em [`GUIA_JORNADA_MODO_L.md`](GUIA_JORNADA_MODO_L.md).
 
 Você é `workstation`, sem bloco colado, e `git branch --show-current` devolve `main`?
 Você é uma sessão do **primário** (setup/integração/ship) — **não code em `main` no
 Modo L**; pergunte ao Enio qual é a sua linha.
+
+#### 1.5.9 Handoff de integração (cada linha entrega; o Enio passa ao integrador)
+
+Antes de integrar, o **Enio pede a cada linha um handoff de integração** — o documento que
+passa ao **agente integrador** os pontos que evitam conflito/regressão. A linha **NÃO integra
+nem faz ship**; entrega este handoff e espera. Conteúdo mínimo (curto, factual):
+
+1. **Identidade:** branch `line/<módulo>`, HEAD, base do fork (merge-base com main), nº de commits.
+2. **Foundational/compartilhado tocado + por quê** — todo arquivo fora da sua pasta de módulo
+   (ex.: `editor-core`, `ph2d-core`, `shells/*`, `tokens`), aditivo ou não.
+3. **Símbolos que podem COLIDIR com outra linha** — ids/consts/variants/tokens novos com seus
+   valores literais (ex.: `NodeId(832)`, variant de enum, entrada em lista ordenada, chave de
+   token). É o que o integrador grepa pra detectar mesmo-símbolo (§1.5.5).
+4. **Contratos congelados encostados** (§4) — deve ser **nenhum**; se sim, exige ADR (pare e reporte).
+5. **O que só o `ship.sh` pega** (o gate de integração NÃO roda): fmt/typos pré-fork, deps novas
+   p/ machete, clippy latente, RUSTSEC ([[project_integration_prefork_lines_ship_drift]]).
+6. **Ordem/dependências** entre commits, se houver, e **o que smoke-testar** (o que NÃO foi smokado).
+
+Modelo de resumo no fim da linha: *"Linha `<módulo>` pronta (HEAD `<sha>`, N commits). Handoff
+de integração: <itens 2–6>. Aguardo ordem de integração."*
 
 ---
 
@@ -875,7 +919,7 @@ Stage→commit é **operação contínua**. Não pause entre os dois passos.
 
 ---
 
-## 8. Ship + Push + CI (Modo C: Coordenador absorve PRCI · Modo L: quem fecha a última integração da jornada — §1.5.4)
+## 8. Ship + Push + CI (Modo C: Coordenador absorve PRCI · Modo L: SÓ por ordem explícita do Enio, via o agente integrador — §1.5.4)
 
 ### 8.1 Fast mode (dia) vs Ship (fim do dia)
 

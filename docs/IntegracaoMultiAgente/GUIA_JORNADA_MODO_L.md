@@ -1,8 +1,9 @@
 # Guia — Como tocar uma jornada Modo L (do seu lado, Enio)
 
 > **O que é:** o passo a passo do **operador humano** numa jornada multi-agente no
-> desktop Linux (`workstation`). Do abrir-janelas ao ship. **Sem coordenador** —
-> cada linha é autônoma e se integra sozinha (ADR-0106 + ADR-0107).
+> desktop Linux (`workstation`). Do abrir-janelas ao ship. **Sem coordenador de plantão** —
+> cada linha é autônoma; mas a **integração e o ship são decisão SUA (ordem explícita)**,
+> executados por um **agente integrador dedicado** munido do handoff de cada linha (ADR-0106 + ADR-0107).
 >
 > **Não duplica** os outros docs — aponta pra eles:
 > - o **bloco** que você cola: [`MODELO_ABERTURA_LINHA.md`](MODELO_ABERTURA_LINHA.md)
@@ -19,8 +20,9 @@ vale; veja DIRETRIZ §1.1–1.4. Modo L é só no desktop 128 GB.
 
 | Quem | Faz |
 |---|---|
-| **Você (operador)** | Decide os módulos/tarefas disjuntos, abre as janelas, cola o bloco, dá a tarefa. Arbitra só os 2 casos irredutíveis (abaixo). Decide quem faz o ship. |
-| **Cada linha** (1 janela = 1 agente) | Trabalha na worktree dela, roda `cargo check -p` no loop, fecha o gate batched, e **se integra sozinha** ao main via `foundational-integrate.sh`. |
+| **Você (operador)** | Decide os módulos/tarefas disjuntos, abre as janelas, cola o bloco, dá a tarefa. Arbitra só os 2 casos irredutíveis (abaixo). **No fim: coleta o handoff de cada linha, abre o agente integrador e manda o ship — tudo por ordem sua.** |
+| **Cada linha** (1 janela = 1 agente) | Trabalha na worktree dela, roda `cargo check -p` no loop, fecha o gate batched, **escreve o handoff de integração (DIRETRIZ §1.5.9) e PARA** — reporta "linha pronta + handoff" e espera. NÃO integra nem faz ship sozinha. |
+| **Agente integrador** (1 janela, no primário, quando você mandar) | Recebe os handoffs, resolve TODOS os conflitos e funde cada linha via `foundational-integrate.sh` (`--ff-only` + gate testado); o ship só depois, também por ordem sua. |
 
 Não há Coordenador de plantão — a não-colisão é por construção (worktree isola git, pasta
 disjunta isola merge, Mergiraf + gate testado cobrem foundational).
@@ -48,9 +50,9 @@ Para cada linha, **uma janela nova** do Claude **na raiz do repo** (sempre a mes
 Repita por linha. Cada janela é independente; podem rodar em paralelo.
 
 ### 3. Durante a jornada — você quase não intervém
-- Cada linha commita local (`--no-verify`, fast mode), fecha o gate batched e **integra
-  sozinha** (`bash scripts/foundational-integrate.sh` de dentro da worktree). O `--ff-only`
-  serializa: se duas tentam ao mesmo tempo, a 2ª rebaseia e re-tenta — automático.
+- Cada linha commita local (`--no-verify`, fast mode), fecha o gate batched, **escreve o
+  handoff de integração (DIRETRIZ §1.5.9) e reporta "linha pronta + handoff"** — e PARA.
+  **Ela NÃO integra sozinha:** a fusão é depois, pelo agente integrador, por ordem sua.
 - **Você só age quando um agente te REPORTA** (os 2 casos irredutíveis):
 
   | Agente reporta | O que você faz |
@@ -60,16 +62,24 @@ Repita por linha. Cada janela é independente; podem rodar em paralelo.
 
   Fora esses dois, **não faça nada** — a linha resolve (incl. foundational).
 
-### 4. Feche — o último apaga a luz
-- Cada linha integrada segue viva pra próxima wave do módulo (ou o agente "encerra a linha":
-  `git worktree remove` + `git branch -d`).
-- **Ship é 1× por jornada.** Quem fecha a **última integração do dia** roda o ship, ou você
-  abre uma **sessão-ship dedicada** (numa janela no primário, em `main`):
-  ```
-  ./scripts/ship.sh          # paridade EXATA com o CI (fmt/clippy/deny/audit/nextest/typos)
-  git push origin main       # só depois de verde
-  ```
-  Aí babysit o CI (`gh run watch`) até `success` — protocolo em DIRETRIZ §8.
+### 4. Feche — você dispara a integração e o ship (nunca a linha sozinha)
+Quando as linhas reportarem "pronta + handoff" e **você decidir integrar**:
+1. **Junte os handoffs** (um por linha, DIRETRIZ §1.5.9) e abra **uma janela de agente
+   integrador** no primário (`main`). Cole os handoffs + a ordem de integração.
+2. O integrador funde **uma linha de cada vez** via `bash scripts/foundational-integrate.sh`
+   (de dentro de cada worktree): `--ff-only` serializa — a 1ª é FF, as demais rebaseiam sobre
+   o novo main e o integrador resolve os conflitos (Cargo.lock/gerados = regenera; mesmo-símbolo
+   = renumera/decide com base nos handoffs). Ele reporta o **main verde local** e PARA.
+3. Cada linha integrada segue viva pra próxima wave (ou "encerra a linha":
+   `git worktree remove` + `git branch -d`).
+4. **Ship é 1× por jornada, e SÓ quando você mandar** ("ship"/"push"). O integrador (ou uma
+   sessão-ship dedicada) roda:
+   ```
+   ./scripts/ship.sh          # paridade EXATA com o CI (fmt/clippy/deny/audit/nextest/typos)
+   git push origin main       # só depois de verde
+   ```
+   Aí babysit o CI (`gh run watch`) até `success` — protocolo em DIRETRIZ §8.
+   **Nenhum agente pusha sem sua ordem explícita.**
 
 ## Higiene (as 3 que evitam 90% dos problemas)
 
@@ -85,7 +95,7 @@ Repita por linha. Cada janela é independente; podem rodar em paralelo.
 |---|---|---|
 | Estrutura | N linhas autônomas, **sem coordenador** | 1 Coordenador + N Implementadores, shared tree |
 | Isolamento | `git worktree` por linha | pastas + disciplina git (DIRETRIZ §7) |
-| Integração | self-service `--ff-only` + gate testado | Coordenador arbitra e comita |
+| Integração | agente integrador dedicado (`--ff-only` + gate testado), por ordem sua | Coordenador arbitra e comita |
 | Quando | dev do dia-a-dia | smoke/hotfix quando o projeto vai ao Mac |
 
 Branches `line/*` **não viajam pro Mac** — trabalho no Mac é sempre sobre `main`.

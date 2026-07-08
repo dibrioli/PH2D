@@ -73,12 +73,20 @@ A. TODO read/edit/git/cargo acontece DENTRO da sua worktree
    editar crates/... na raiz é editar a árvore ERRADA. Na dúvida,
    `pwd` antes de editar.
 B. Edite a(s) pasta(s) do novo módulo à vontade. Foundational
-   (ph2d-core/editor-core/tokens/host/…) É PERMITIDO sob o protocolo
-   testado (ADR-0107): a integração roda scripts/foundational-integrate.sh
-   (gate da árvore combinada) e o Mergiraf funde o resíduo textual. PARE
-   e reporte ao Enio SÓ se: (a) for contrato congelado (§4, exige ADR),
-   ou (b) o rebase conflitar em código FORA dos seus arquivos (colisão de
-   mesmo-símbolo com outra linha). Nunca negocie com outra linha.
+   (ph2d-core/editor-core/tokens/host/…): você PODE e DEVE tocar, com
+   cuidado, sob o protocolo testado (ADR-0107): a integração roda
+   scripts/foundational-integrate.sh (gate da árvore combinada) e o
+   Mergiraf funde o resíduo textual. PARE e reporte ao Enio SÓ se: (a)
+   for contrato congelado (§4, exige ADR), ou (b) o rebase conflitar em
+   código FORA dos seus arquivos (colisão de mesmo-símbolo com outra
+   linha). Nunca negocie com outra linha.
+B'. Ao CRIAR arquivo foundational novo, projete-o para ISOLAMENTO (a
+   foundation tem arquitetura de isolamento de propósito, pra várias
+   linhas estenderem sem colidir): prefira módulo/arquivo IRMÃO novo a
+   engordar um arquivo compartilhado; use ponto de extensão append-only
+   (lista ordenada, marcador de codegen, mod por responsabilidade). Todo
+   id/const/variant novo = pegue o próximo livre e ANOTE no handoff
+   (regra H) pro integrador detectar colisão.
 C. Commits locais frequentes: git commit --no-verify (fast mode).
    NUNCA push. NUNCA --force. NUNCA git add -A.
 D. git rebase main no início de cada jornada e antes de integrar.
@@ -86,17 +94,19 @@ D. git rebase main no início de cada jornada e antes de integrar.
    resolva na mão — regenere (DIRETRIZ §1.5.5). Conflito em código
    fora da sua pasta = você violou a regra B.
 E. Fechamento do módulo = gate batched (DIRETRIZ §6.6.A.2: nextest-
-   impacted + clippy --all-targets + audit ≥2 lentes + DIRETIVA §3-§5)
-   e SÓ ENTÃO a integração (DIRETRIZ §1.5.3) — UM comando:
-       bash scripts/foundational-integrate.sh
-   Ele faz: rebase main → re-sync (tool/node) → staleness → gate da
-   árvore COMBINADA (cargo check --workspace se a linha tocou
-   foundational; senão -p das crates mudadas) → nextest-impacted →
-   merge --ff-only no primário. Aborta com a orientação certa em cada
-   falha. --ff-only falhou = outra linha integrou antes → só RE-RODE o
-   script (rebase+retesta). Módulo verde que não integrou NÃO fechou.
-F. Ship (ship.sh + push + babysit CI) SÓ se o Enio disser que você
-   fecha a ÚLTIMA integração da jornada (DIRETRIZ §1.5.4 + §8).
+   impacted + clippy --all-targets + audit ≥2 lentes + DIRETIVA §3-§5).
+   Então PARE — NÃO integre nem faça ship por conta própria. Quem funde
+   as linhas é um AGENTE INTEGRADOR DEDICADO, e só por ORDEM EXPLÍCITA
+   do Enio (DIRETRIZ §1.5.3–1.5.4). Você NÃO roda foundational-integrate.sh.
+F. Ship (ship.sh + push + babysit CI): NUNCA por conta própria. É ordem
+   EXPLÍCITA do Enio, feita pelo integrador (DIRETRIZ §1.5.4 + §8).
+   Integrar ou pushar sem ordem = violação do protocolo.
+H. HANDOFF DE INTEGRAÇÃO (entregável obrigatório ao fechar): escreva o
+   handoff que o Enio passa ao integrador (DIRETRIZ §1.5.9) — branch/HEAD/
+   base; foundational tocado + por quê; ids/consts/variants novos com
+   valores (colisão!); contratos congelados encostados (deve ser nenhum);
+   o que só o ship.sh pega (fmt pré-fork/deps machete/clippy latente); o
+   que smoke-testar. Reporte "linha pronta + handoff" e ESPERE.
 G. UI canônica sempre: zero hex, zero f32 literal de UI, tudo por
    tokens/i18n (CLAUDE.md §0.3). Contratos congelados (CLAUDE.md §6)
    são intocáveis nesta linha.

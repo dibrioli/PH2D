@@ -34,7 +34,8 @@
 - [Multi-máquina Mac/Linux/Windows](project_multi_machine_setup.md) — GitHub = fonte única, clone local por máquina; memória vendorizada em `project-memory/` via symlink; runbook `docs/DevOps/MULTI_MACHINE_SETUP.md`
 - [Fast mode / ship](feedback_fast_mode_ship.md) — dia: `git commit --no-verify` sem push; fim: `./scripts/ship.sh` + push + babysit
 - [Ship = Enio-only, fim de TODAS as linhas](feedback_ship_only_enio_end_of_all_lines.md) — nunca ofereça/rode ship no fim da SUA linha; só o Enio decide, no fim da rodada de todas as linhas
-- [Integração = Enio-only, fim de TODAS as linhas](feedback_integration_only_enio_command_end_of_all_lines.md) — Modo L multi-linha: NÃO rode `foundational-integrate.sh` sozinho; commit local + reporte + espere comando do Enio
+- [Integração = Enio-only, via integrador dedicado + handoff](feedback_integration_only_enio_command_end_of_all_lines.md) — Modo L: NÃO integre/shippe sozinho; feche → escreva handoff (DIRETRIZ §1.5.9) → PARE; um **agente integrador dedicado** funde tudo por ordem do Enio
+- [Foundational é editável — mas crie com isolamento](feedback_foundational_editable_design_for_isolation.md) — Modo L: agentes duvidam, mas PODEM tocar foundational; ao CRIAR foundational projete p/ isolamento (módulo irmão/extensão append-only) + anote ids/consts novos no handoff (colisão `NodeId(832)` 2026-07-07)
 - [CI direto + fmt-skew](feedback_ci_direct_lint_gates_and_fmt_skew.md) — lint gates local antes; `cargo fmt` plain = skew, use `rustup run <pin> cargo fmt`
 - [Ship committed vs WIP alheio](feedback_ship_committed_vs_worktree_wip.md) — valide/conserte o committed via `git worktree --detach HEAD`, sem tocar WIP
 - [CI handling](feedback_ci_handling.md) — Enio confere visual; forneça link da run, não fique em polling

@@ -13,8 +13,15 @@
 - [ ] Leia o **tracker único** do módulo (1 por módulo; o resto é histórico arquivado).
 - [ ] Sua mudança cruza foundational / shell / outra crate? **O consumidor faz parte DESTE work item.**
       Proibido armar flag/evento órfão e "fiar depois" — é a causa nº 1 de feature morta (eyedropper, pills).
-      (Modo L: tocar foundational é permitido — ADR-0107; mas quem prova que o consumidor não quebrou é
-      o **gate da árvore combinada** na integração, `cargo check --workspace`, não o `cargo check -p`.)
+      (Modo L: **você PODE e DEVE tocar foundational** — ADR-0107 — mas com cuidado; quem prova que o
+      consumidor não quebrou é o **gate da árvore combinada** na integração, `cargo check --workspace`,
+      não o `cargo check -p`.)
+- [ ] **Ao CRIAR arquivo foundational novo, projete-o para ISOLAMENTO** (a foundation tem arquitetura de
+      isolamento *de propósito* — é o que deixa várias linhas a estenderem sem colidir): prefira
+      **módulo/arquivo irmão novo** a engordar um arquivo compartilhado; exponha **ponto de extensão
+      append-only** (lista ordenada, marcador de codegen, `mod` por responsabilidade) onde a próxima linha
+      pluga, não um site central que todas editam. Id/const/variant novo = pegue o **próximo livre** e
+      **anote no handoff de integração** (DIRETRIZ §1.5.9) pro integrador detectar colisão.
 - [ ] Existe algoritmo de **referência publicado** (transfer sRGB/OKLab, math canônica de blend-mode,
       geometria kurbo/vello, K–M/Mixbox onde houver pigmento)? **Porte-o** antes de escrever a sua versão.
       Constante de magia inventada (`*_MAX`, `*_K`, fator solto) = **PARE** e ache a fonte.
@@ -93,7 +100,8 @@ Um controle interativo atravessa o **seam painel↔tool**, no mínimo **7 sites*
       conjunto de aceitação **concreto/congelado** + **kill-criterion ANTES do build**
       ("se perf > X ms @4K após a tentativa 2, a feature não existe nesta forma").
       Bateu na **2ª reconstrução de topologia** → **PARE e prove o modelo** antes da 3ª (regra two-strikes).
-- [ ] **Modo L:** "fechado" INCLUI a integração ao main — rode **`scripts/foundational-integrate.sh`**
-      (DIRETRIZ §1.5.3: rebase → re-sync → **gate da árvore COMBINADA** `cargo check --workspace`
-      se tocou foundational → `nextest-impacted` → `merge --ff-only` no primário). Módulo verde
-      que não integrou não fechou.
+- [ ] **Modo L:** "fechado" = gate batched verde + **handoff de integração escrito** (DIRETRIZ §1.5.9)
+      + reportou "linha pronta + handoff" — e **PARE**. **NÃO integre nem faça ship por conta própria:**
+      integração (`foundational-integrate.sh`) e ship são de um **agente integrador dedicado**, e só por
+      **ordem EXPLÍCITA do Enio** (DIRETRIZ §1.5.3–1.5.4). Integrar/pushar sem ordem = violação
+      ([[feedback_integration_only_enio_command_end_of_all_lines]] + [[feedback_ship_only_enio_end_of_all_lines]]).

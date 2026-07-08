@@ -10,9 +10,10 @@
 //! Fase 0: draw estático da cena inteira. **Dirty-tracking** (só re-encodar a
 //! sub-árvore que mudou — a alavanca de escala do ADR-0108) é o próximo passo.
 
-use ph2d_vec_scene::{LineCap, LineJoin, Rgba8, StrokeSpec, VecPath, VecPathId, VecScene};
+use ph2d_vec_scene::{LineCap, LineJoin, Paint, Rgba8, StrokeSpec, VecPath, VecPathId, VecScene};
 use ph2d_vector::{
-    Affine, BezPath, Brush, Cap, Circle, Color, Fill, Join, Point, Rect, Stroke, VectorScene,
+    Affine, BezPath, Brush, Cap, Circle, Color, ColorStop, Fill, Gradient, Join, Point, Rect,
+    Stroke, VectorScene,
 };
 
 /// Constrói o `BezPath` (world-space) de um path editável: `move_to` na 1ª âncora,
@@ -42,8 +43,8 @@ pub fn build_bezpath(path: &VecPath) -> BezPath {
 pub fn dispatch(scene: &VecScene, transform: Affine, target: &mut VectorScene) {
     for path in scene.paths() {
         let bp = build_bezpath(path);
-        if let Some(fill) = path.fill {
-            target.fill_path(&bp, &Brush::Solid(color(fill)), transform);
+        if let Some(fill) = &path.fill {
+            target.fill_path(&bp, &fill_brush(fill, path), transform);
         }
         if let Some(s) = path.stroke {
             target.inner_mut().stroke(
@@ -185,6 +186,66 @@ fn pt(p: [f64; 2]) -> Point {
 #[inline]
 fn color(c: Rgba8) -> Color {
     Color::from_rgba8(c.r, c.g, c.b, c.a)
+}
+
+/// World-space bbox of a path's ANCHORS (`(min, max)`) — the frame gradients fit
+/// into. Falls back to the unit rect if the path is empty.
+fn anchor_bounds(path: &VecPath) -> ([f64; 2], [f64; 2]) {
+    let mut lo = [f64::INFINITY; 2];
+    let mut hi = [f64::NEG_INFINITY; 2];
+    for v in &path.verts {
+        lo[0] = lo[0].min(v.anchor[0]);
+        lo[1] = lo[1].min(v.anchor[1]);
+        hi[0] = hi[0].max(v.anchor[0]);
+        hi[1] = hi[1].max(v.anchor[1]);
+    }
+    if lo[0] > hi[0] {
+        ([0.0, 0.0], [1.0, 1.0])
+    } else {
+        (lo, hi)
+    }
+}
+
+/// Peniko color stops from our gradient stops (`(offset f32, Color)` → `ColorStop`).
+fn stops_of(stops: &[ph2d_vec_scene::GradientStop]) -> Vec<ColorStop> {
+    stops
+        .iter()
+        .map(|s| ColorStop::from((s.offset as f32, color(s.color))))
+        .collect()
+}
+
+/// Build the Vello fill brush for a path's [`Paint`]. Linear/Radial map to native
+/// peniko gradients fit to the path's anchor bbox (world-space, so the frame's
+/// world→screen transform maps them correctly). MultiPoint is a solid placeholder
+/// until its IDW image-brush rasterizer lands (gradient group increment 3).
+fn fill_brush(paint: &Paint, path: &VecPath) -> Brush {
+    match paint {
+        Paint::Solid(c) => Brush::Solid(color(*c)),
+        Paint::Linear { stops, angle_deg } => {
+            let (lo, hi) = anchor_bounds(path);
+            let center = [(lo[0] + hi[0]) * 0.5, (lo[1] + hi[1]) * 0.5];
+            let (w, h) = (hi[0] - lo[0], hi[1] - lo[1]);
+            // Unit direction from the angle; ramp spans the bbox extent along it.
+            let rad = angle_deg.to_radians();
+            let (dx, dy) = (rad.cos(), rad.sin());
+            let reach = 0.5 * ((w * dx).abs() + (h * dy).abs());
+            let start = Point::new(center[0] - dx * reach, center[1] - dy * reach);
+            let end = Point::new(center[0] + dx * reach, center[1] + dy * reach);
+            Brush::Gradient(Gradient::new_linear(start, end).with_stops(stops_of(stops).as_slice()))
+        }
+        Paint::Radial { stops } => {
+            let (lo, hi) = anchor_bounds(path);
+            let center = Point::new((lo[0] + hi[0]) * 0.5, (lo[1] + hi[1]) * 0.5);
+            let (w, h) = (hi[0] - lo[0], hi[1] - lo[1]);
+            let radius = (0.5 * (w * w + h * h).sqrt()) as f32;
+            Brush::Gradient(
+                Gradient::new_radial(center, radius.max(f32::MIN_POSITIVE))
+                    .with_stops(stops_of(stops).as_slice()),
+            )
+        }
+        // Increment 3: rasterize the IDW blend into an image brush.
+        Paint::MultiPoint { .. } => Brush::Solid(color(paint.primary_color())),
+    }
 }
 
 #[cfg(test)]

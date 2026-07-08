@@ -312,7 +312,7 @@ pub(crate) fn apply_vec_toggle_closed(
             && let Some(path) = scene.path_mut(sel)
             && path.fill.is_none()
         {
-            path.fill = Some(pen.style().fill);
+            path.fill = Some(ph2d_vec_scene::Paint::solid(pen.style().fill));
         }
         history.push_undo(pre);
     }

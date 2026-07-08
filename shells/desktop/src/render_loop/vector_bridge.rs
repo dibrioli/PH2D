@@ -24,7 +24,7 @@
 use ph2d_editor::{HeroScreen, ToolId, ToolRegistry};
 use ph2d_tool_vector::VectorDrawConfig;
 use ph2d_vec_edit::{History, PenStyle, PenTool, ShapeTool};
-use ph2d_vec_scene::{LineCap, LineJoin, Rgba8, StrokeSpec, VecScene};
+use ph2d_vec_scene::{LineCap, LineJoin, Paint, Rgba8, StrokeSpec, VecScene};
 use std::cell::RefCell;
 
 fn rgba(c: [u8; 4]) -> Rgba8 {
@@ -164,7 +164,7 @@ pub(super) fn dispatch(
                     || s.dash != dash
                     || (width_dragging && (s.width - new_w).abs() > f64::EPSILON)
             });
-            let fill_differs = p.closed && p.fill != new_fill;
+            let fill_differs = p.closed && p.fill.as_ref().map(Paint::primary_color) != new_fill;
             stroke_differs || fill_differs
         });
         if will_change {
@@ -187,7 +187,9 @@ pub(super) fn dispatch(
                     });
                 }
                 if path.closed {
-                    path.fill = new_fill;
+                    // Picking a fill colour sets a SOLID fill (replacing any gradient).
+                    // TODO(gradient increment 2): recolour the active stop instead.
+                    path.fill = new_fill.map(Paint::solid);
                 }
             }
         }

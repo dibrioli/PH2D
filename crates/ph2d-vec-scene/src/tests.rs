@@ -227,6 +227,43 @@ fn from_bytes_rejects_garbage() {
     assert!(VecScene::from_bytes(&[0xFF, 0xFF, 0xFF]).is_err());
 }
 
+#[test]
+fn paint_variants_roundtrip_and_report_primary_color() {
+    let red = Rgba8::new(255, 0, 0, 255);
+    let blue = Rgba8::new(0, 0, 255, 255);
+    let paints = [
+        Paint::solid(red),
+        Paint::Linear {
+            stops: vec![GradientStop::new(0.0, red), GradientStop::new(1.0, blue)],
+            angle_deg: 45.0,
+        },
+        Paint::Radial {
+            stops: vec![GradientStop::new(0.0, red), GradientStop::new(1.0, blue)],
+        },
+        Paint::MultiPoint {
+            points: vec![
+                GradientPoint::new([0.2, 0.2], red, 1.0),
+                GradientPoint::new([0.8, 0.8], blue, 2.0),
+            ],
+        },
+    ];
+    // primary_color = solid / first stop / first point.
+    for p in &paints {
+        assert_eq!(p.primary_color(), red);
+    }
+    // Each variant survives a full scene save/load (postcard, schema v4).
+    let mut scene = VecScene::new();
+    for p in &paints {
+        let mut path = rectangle([0.0, 0.0], [4.0, 4.0]);
+        path.fill = Some(p.clone());
+        scene.push_path(path);
+    }
+    let back = VecScene::from_bytes(&scene.to_bytes().unwrap()).unwrap();
+    assert_eq!(scene, back, "all Paint variants round-trip");
+    // Rgba8 → Paint::Solid via From.
+    assert_eq!(Paint::from(blue), Paint::Solid(blue));
+}
+
 fn anchor_bbox(p: &VecPath) -> ([f64; 2], [f64; 2]) {
     let mut mn = [f64::MAX; 2];
     let mut mx = [f64::MIN; 2];
@@ -255,7 +292,7 @@ fn ellipse_matches_blob_when_radii_equal() {
     // `blob` now delegates to `ellipse`; the demo circle must be byte-identical
     // (guards the postcard/demo determinism after the refactor).
     let mut e = ellipse([0.0, 0.0], 1.2, 1.2);
-    e.fill = Some(Rgba8::new(90, 150, 230, 255));
+    e.fill = Some(Paint::solid(Rgba8::new(90, 150, 230, 255)));
     assert_eq!(e, blob([0.0, 0.0], 1.2, Rgba8::new(90, 150, 230, 255)));
     assert!(e.verts.iter().all(|v| v.kind == VertexKind::Smooth));
 }

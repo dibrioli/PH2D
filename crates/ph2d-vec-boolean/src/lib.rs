@@ -10,7 +10,7 @@
 
 use kurbo::{BezPath, PathEl, Point};
 use linesweeper::{BinaryOp, FillRule};
-use ph2d_vec_scene::{Rgba8, VecPath, VecVertex, VertexKind};
+use ph2d_vec_scene::{Paint, Rgba8, VecPath, VecVertex, VertexKind};
 
 /// Operação booleana entre duas regiões.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -45,7 +45,7 @@ pub fn apply(a: &VecPath, b: &VecPath, op: BoolOp) -> Vec<VecPath> {
         .iter()
         .filter_map(from_bez)
         .map(|mut p| {
-            p.fill = Some(RESULT_FILL);
+            p.fill = Some(Paint::solid(RESULT_FILL));
             p.stroke = a.stroke;
             p
         })

@@ -90,6 +90,93 @@ impl StrokeSpec {
     }
 }
 
+/// Um stop de gradiente linear/radial: cor numa posição `offset ∈ [0,1]` ao longo
+/// da rampa. Ordenados por `offset` crescente pelo editor (o render assume isso).
+#[derive(Copy, Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct GradientStop {
+    pub offset: f64,
+    pub color: Rgba8,
+}
+
+impl GradientStop {
+    #[must_use]
+    pub fn new(offset: f64, color: Rgba8) -> Self {
+        Self { offset, color }
+    }
+}
+
+/// Um ponto de um gradiente **multi-ponto** (freeform, estilo Cavalry / Illustrator
+/// Freeform Gradient): uma cor posicionada em `pos` no espaço NORMALIZADO da bbox
+/// do path (`[0,1]²`, então escala com a forma) + uma `influence` (força/peso IDW).
+/// O render mistura por inverse-distance weighting: `c(p) = Σ wᵢcᵢ / Σ wᵢ`,
+/// `wᵢ = influenceᵢ / (dist(p,posᵢ)² + ε)`.
+#[derive(Copy, Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct GradientPoint {
+    pub pos: [f64; 2],
+    pub color: Rgba8,
+    pub influence: f64,
+}
+
+impl GradientPoint {
+    #[must_use]
+    pub fn new(pos: [f64; 2], color: Rgba8, influence: f64) -> Self {
+        Self {
+            pos,
+            color,
+            influence,
+        }
+    }
+}
+
+/// Preenchimento de um path: cor sólida ou um dos três gradientes. Todos os
+/// gradientes são **relativos à bbox** do path (auto-encaixam na forma; sem
+/// coordenadas absolutas a transformar na Fase 1). Linear/Radial rasterizam nativo
+/// no Vello; MultiPoint (freeform) rasteriza por IDW num image-brush.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub enum Paint {
+    /// Cor chapada.
+    Solid(Rgba8),
+    /// Rampa linear a `angle_deg` graus cruzando a bbox (0° = →, sentido horário).
+    Linear {
+        stops: Vec<GradientStop>,
+        angle_deg: f64,
+    },
+    /// Rampa radial do centro da bbox até o canto (raio = meia-diagonal).
+    Radial { stops: Vec<GradientStop> },
+    /// Multi-ponto freeform (Cavalry): blend IDW de pontos no espaço da bbox.
+    MultiPoint { points: Vec<GradientPoint> },
+}
+
+impl Paint {
+    /// Cor sólida (o caminho comum; `Rgba8` também converte via [`From`]).
+    #[must_use]
+    pub fn solid(color: Rgba8) -> Self {
+        Paint::Solid(color)
+    }
+
+    /// Cor representativa (sólida / 1º stop / 1º ponto) — pra swatch de UI e para
+    /// caminhos legados que esperam uma cor única. Preto opaco se um gradiente
+    /// estiver (invalidamente) vazio.
+    #[must_use]
+    pub fn primary_color(&self) -> Rgba8 {
+        match self {
+            Paint::Solid(c) => *c,
+            Paint::Linear { stops, .. } | Paint::Radial { stops } => {
+                stops.first().map_or(Rgba8::new(0, 0, 0, 255), |s| s.color)
+            }
+            Paint::MultiPoint { points } => {
+                points.first().map_or(Rgba8::new(0, 0, 0, 255), |p| p.color)
+            }
+        }
+    }
+}
+
+impl From<Rgba8> for Paint {
+    fn from(c: Rgba8) -> Self {
+        Paint::Solid(c)
+    }
+}
+
 /// Natureza da âncora — o trio canônico de editor vetorial (Inkscape/Illustrator).
 /// Governa como a EDIÇÃO de um handle trata o handle oposto ([`retype_vertex`]
 /// aplica a restrição geométrica ao trocar de tipo).
@@ -149,16 +236,17 @@ pub struct VecPath {
     pub id: VecPathId,
     pub verts: Vec<VecVertex>,
     pub closed: bool,
-    /// Preenchimento (None = sem fill).
-    pub fill: Option<Rgba8>,
+    /// Preenchimento (None = sem fill). Ver [`Paint`] (sólido ou gradiente).
+    pub fill: Option<Paint>,
     /// Traço (None = sem stroke). Ver [`StrokeSpec`].
     pub stroke: Option<StrokeSpec>,
 }
 
 /// Versão do wire-format de save (postcard é posicional → bump a cada mudança de
 /// schema). v2: `VertexKind` ganhou `Symmetric`. v3: `stroke` virou
-/// [`StrokeSpec`] (cap/join/dash). (Migração robusta = cutover, Fase R.)
-pub const VEC_SCENE_SCHEMA_VERSION: u32 = 3;
+/// [`StrokeSpec`] (cap/join/dash). v4: `fill` virou [`Paint`] (sólido + gradientes
+/// Linear/Radial/MultiPoint). (Migração robusta = cutover, Fase R.)
+pub const VEC_SCENE_SCHEMA_VERSION: u32 = 4;
 
 /// Reordenação na pilha de render (índice `0` = fundo, último = frente). Uma
 /// operação de documento, mapeada pela shell a partir dos botões Arrange (mirror
@@ -538,7 +626,7 @@ pub fn rounded_rect(a: [f64; 2], b: [f64; 2], radius: f64) -> VecPath {
 /// Blob-círculo preenchido (usa [`ellipse`] com `rx = ry`), para a cena-demo.
 fn blob(c: [f64; 2], r: f64, fill: Rgba8) -> VecPath {
     let mut p = ellipse(c, r, r);
-    p.fill = Some(fill);
+    p.fill = Some(Paint::solid(fill));
     p
 }
 

@@ -216,7 +216,7 @@ impl ShapeTool {
         path.fill = if self.style.fill.a == 0 {
             None
         } else {
-            Some(self.style.fill)
+            Some(ph2d_vec_scene::Paint::solid(self.style.fill))
         };
         path.stroke = Some(self.style.stroke_spec(stroke_w));
         path

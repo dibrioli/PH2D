@@ -382,7 +382,10 @@ fn set_style_colors_new_paths_and_survives_clear() {
     pen.on_press(&mut scene, [4.0, 4.0], PTW, false);
     pen.on_release();
     pen.on_press(&mut scene, [0.02, 0.0], PTW, false); // fecha
-    assert_eq!(scene.paths()[0].fill, Some(style.fill));
+    assert_eq!(
+        scene.paths()[0].fill,
+        Some(ph2d_vec_scene::Paint::solid(style.fill))
+    );
     // O estilo é config da tool → sobrevive a `clear`.
     pen.clear();
     assert_eq!(pen.style(), style);

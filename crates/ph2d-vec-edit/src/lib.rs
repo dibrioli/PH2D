@@ -15,7 +15,8 @@ pub mod shape;
 pub use shape::{ShapeKind, ShapeParams, ShapeTool};
 
 use ph2d_vec_scene::{
-    LineCap, LineJoin, Rgba8, StrokeSpec, VecPath, VecPathId, VecScene, VecVertex, VertexKind,
+    LineCap, LineJoin, Paint, Rgba8, StrokeSpec, VecPath, VecPathId, VecScene, VecVertex,
+    VertexKind,
 };
 
 /// Resultado de uma pressão do Pen (para o shell logar/reagir se quiser).
@@ -326,7 +327,7 @@ impl PenTool {
                 let (dx, dy) = (p[0] - first.anchor[0], p[1] - first.anchor[1]);
                 if (dx * dx + dy * dy).sqrt() <= close_dist {
                     path.closed = true;
-                    path.fill = Some(self.style.fill);
+                    path.fill = Some(Paint::solid(self.style.fill));
                     self.active = None;
                     self.dragging = false;
                     return PenClick::Closed;

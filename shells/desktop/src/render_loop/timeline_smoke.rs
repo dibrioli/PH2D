@@ -127,9 +127,7 @@ fn sample_demo(clip: &Clip, playhead_time: f64) -> (f32, f32) {
 /// Cook the base grid and publish playhead-animated instances into `present`.
 pub(super) fn run(present: &mut PresentWorld, renderer: &SpriteRenderer, playhead_time: f64) {
     let mut reg = NodeRegistry::new();
-    ph2d_node_motion_grid::register(&mut reg).expect("motion.grid registers");
-    ph2d_node_motion_transform::register(&mut reg).expect("motion.transform registers");
-    ph2d_node_motion_clone::register(&mut reg).expect("motion.clone registers");
+    ph2d_node_registry_init::register_all_nodes(&mut reg).expect("motion node registry builds");
 
     let mut g = Graph::new();
     let grid = g.add_node("motion.grid");

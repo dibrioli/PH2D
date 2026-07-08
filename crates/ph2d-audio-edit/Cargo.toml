@@ -1,0 +1,17 @@
+[package]
+name = "ph2d-audio-edit"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# Offline, destructive editing of ph2d_audio::SampleData — waveform peak cache +
+# the EditClip document (W1); trim/fade/normalize/filter ops land in W2
+# (docs/Audio/02_plano_implementacao_completo.md §5). Runs on the CONTROL thread
+# only, so HR-3 (no-alloc) and HR-5 (no transcendentals) do NOT apply here.
+[dependencies]
+ph2d-audio = { path = "../ph2d-audio" }

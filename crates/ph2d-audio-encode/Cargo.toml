@@ -1,0 +1,22 @@
+[package]
+name = "ph2d-audio-encode"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# Save-time audio encoding (ph2d_audio::SampleData → file bytes). Kept separate
+# from `ph2d-audio` so no writer/codec dependency reaches the RT mixer. WAV
+# (PCM16/24 + IEEE-float32) now; Ogg Vorbis / Opus land with the game asset-prep
+# wave (docs/Audio/02_plano_implementacao_completo.md §6, W6).
+[dependencies]
+ph2d-audio = { path = "../ph2d-audio" }
+thiserror = "2"
+
+[dev-dependencies]
+# Round-trip the encoded bytes back through the real decoder in tests.
+ph2d-audio-decode = { path = "../ph2d-audio-decode" }

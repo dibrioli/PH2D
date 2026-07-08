@@ -55,6 +55,12 @@ pub fn topbar_clusters() -> Vec<(ph2d_a11y::NodeId, TopBarCluster)> {
             ids::TOPBAR_AUDIO_MIXER,
             TopBarCluster::single("MIX", IconId::Audio),
         ),
+        // Audio Editor — toggles the docked editor panel (transport + Load +
+        // Export) + its floating waveform overlay. Left group, next to the Mixer.
+        (
+            ids::TOPBAR_AUDIO_EDITOR,
+            TopBarCluster::single("WAVE", IconId::Audio),
+        ),
         // Vector drawing tool — the single `vector_tools` pill (ADR-0108
         // cutover). Click activates it via `vector_toggle::apply` →
         // `EditorAction::ActivateTool { tool_id: "vector" }`.

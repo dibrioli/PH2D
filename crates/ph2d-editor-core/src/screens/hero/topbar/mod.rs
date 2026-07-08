@@ -26,6 +26,7 @@ pub fn populate(store: &mut WidgetStore) {
         ids::TOPBAR_OPEN,
         ids::TOPBAR_IMAGE_TOOLS,
         ids::TOPBAR_AUDIO_MIXER,
+        ids::TOPBAR_AUDIO_EDITOR,
         // Vector pill MUST be registered here (not only painted/hit-indexed in
         // cluster_painter.rs): a pill absent here has no `InteractiveState`, so
         // pointer-Up never emits `Click` and the tool is dead on click.
@@ -100,6 +101,7 @@ pub fn populate(store: &mut WidgetStore) {
         (ids::TOPBAR_OPEN, "Open \u{00b7} Cmd+O"),
         (ids::TOPBAR_IMAGE_TOOLS, "Image Tools"),
         (ids::TOPBAR_AUDIO_MIXER, "Audio Mixer"),
+        (ids::TOPBAR_AUDIO_EDITOR, "Audio Editor"),
         (
             ids::TOPBAR_WIDGET_GALLERY,
             "Widget Gallery \u{00b7} reference",

@@ -15,6 +15,7 @@ pub(super) fn topbar_chip_name(id: NodeId) -> Option<&'static str> {
         x if x == ids::TOPBAR_OPEN => "Open",
         x if x == ids::TOPBAR_IMAGE_TOOLS => "Image Tools",
         x if x == ids::TOPBAR_AUDIO_MIXER => "Audio Mixer",
+        x if x == ids::TOPBAR_AUDIO_EDITOR => "Audio Editor",
         x if x == ids::TOPBAR_PLAY_BUTTON => "Play",
         x if x == ids::TOPBAR_PAUSE => "Pause",
         x if x == ids::TOPBAR_RESET => "Reset",

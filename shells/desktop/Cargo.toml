@@ -154,6 +154,9 @@ ph2d-panel-inspector = { path = "../../crates/ph2d-panel-inspector", optional = 
 # Audio Mixer panel (Phase 2.3c) — the render_loop bridge publishes live
 # levels via `set_snapshot` + reads `master_muted` to drive the master gain.
 ph2d-panel-audio-mixer = { path = "../../crates/ph2d-panel-audio-mixer", optional = true }
+# Audio Editor panel (docs/Audio/, W1) — the render_loop editor bridge reads the
+# transport intents + drives the preview engine + publishes position back.
+ph2d-panel-audio-editor = { path = "../../crates/ph2d-panel-audio-editor", optional = true }
 ph2d-panel-bgremoval = { path = "../../crates/ph2d-panel-bgremoval", optional = true }
 ph2d-panel-color-equalization = { path = "../../crates/ph2d-panel-color-equalization", optional = true }
 ph2d-panel-equalize-sizes = { path = "../../crates/ph2d-panel-equalize-sizes", optional = true }
@@ -226,6 +229,10 @@ gilrs = "0.11"
 ph2d-audio = { path = "../../crates/ph2d-audio" }
 # Load-time decode of real audio files (PH2D_AUDIO_FILE smoke) → SampleData.
 ph2d-audio-decode = { path = "../../crates/ph2d-audio-decode" }
+# Audio Editor (docs/Audio/, W1) — offline EditClip (peak cache) + WAV export.
+# Optional, pulled in only by the `panel-audio-editor` feature.
+ph2d-audio-edit = { path = "../../crates/ph2d-audio-edit", optional = true }
+ph2d-audio-encode = { path = "../../crates/ph2d-audio-encode", optional = true }
 cpal = "0.15"
 # arboard: system clipboard read/write for the Cmd+C/V/X handlers in
 # ph2d-editor's dispatch. Constructed once at startup; pasted text is
@@ -274,6 +281,7 @@ default = [
     "panel-painter-layers",
     "panel-vector",
     "panel-audio-mixer",
+    "panel-audio-editor",
     "panel-motion-graph",
     "panel-motion-params",
     "panel-timeline",
@@ -311,3 +319,6 @@ panel-audio-mixer    = ["ph2d-panel-registry-init/panel-audio-mixer", "dep:ph2d-
 # this only needs to flip the registry-init feature that compiles in the
 # `register_all_panels()` push for `TimelinePanel`.
 panel-timeline       = ["ph2d-panel-registry-init/panel-timeline"]
+# Direct dep too: the render_loop editor bridge reads the transport intents +
+# drives the preview engine + publishes position back for the readout/playhead.
+panel-audio-editor   = ["ph2d-panel-registry-init/panel-audio-editor", "dep:ph2d-panel-audio-editor", "dep:ph2d-audio-edit", "dep:ph2d-audio-encode"]

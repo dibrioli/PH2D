@@ -300,6 +300,7 @@ pub fn paint_hero_screen(
         ids::INSP_BLENDER_PICKER,
         ids::GAL_PANEL,
         ids::AUDIO_MIXER_PANEL,
+        ids::AUDIO_EDITOR_PANEL,
         crate::grid_snap::ids::GS_PANEL,
     ] {
         if !z_order.contains(&fallback) {

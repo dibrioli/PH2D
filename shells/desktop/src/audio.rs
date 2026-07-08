@@ -53,6 +53,10 @@ pub(crate) struct AudioSystem {
     test_voices: Vec<VoiceId>,
     /// Ducking gain-reduction envelope (`1.0` = no duck), smoothed per frame.
     duck_env: std::cell::Cell<f32>,
+    /// Audio Editor runtime (docs/Audio/, W1): the loaded clip + preview
+    /// transport state, driven by the `panel-audio-editor` bridge.
+    #[cfg(feature = "panel-audio-editor")]
+    editor: AudioEditorRuntime,
     // Kept alive for the app's lifetime; the callback (which owns the renderer)
     // runs on cpal's thread until this drops. `cpal::Stream` is `!Send` on ALSA,
     // which is fine — `App` never leaves the main thread.
@@ -133,6 +137,8 @@ impl AudioSystem {
             last_bus_comp: std::array::from_fn(|_| std::cell::Cell::new(0.0)),
             test_voices: Vec::new(),
             duck_env: std::cell::Cell::new(1.0),
+            #[cfg(feature = "panel-audio-editor")]
+            editor: AudioEditorRuntime::default(),
             _stream: stream,
         })
     }
@@ -435,6 +441,139 @@ impl AudioSystem {
             ),
             Err(e) => eprintln!("audio: play failed ({e})"),
         }
+    }
+}
+
+/// Audio Editor transport state (docs/Audio/, W1). The panel's single Play/Pause
+/// button cycles Stopped → Playing → Paused → Playing; Stop returns to Stopped.
+#[cfg(feature = "panel-audio-editor")]
+#[derive(Default, Clone, Copy, PartialEq, Eq)]
+enum EditorTransport {
+    #[default]
+    Stopped,
+    Playing,
+    Paused,
+}
+
+/// The Audio Editor's shell-side runtime: the loaded clip + preview transport.
+#[cfg(feature = "panel-audio-editor")]
+#[derive(Default)]
+struct AudioEditorRuntime {
+    clip: Option<ph2d_audio_edit::EditClip>,
+    state: EditorTransport,
+    /// Display name of the loaded clip (file stem).
+    name: String,
+}
+
+#[cfg(feature = "panel-audio-editor")]
+impl AudioSystem {
+    /// Load + decode a file into the editor's [`EditClip`] (rebuilding the peak
+    /// cache). Stops any running preview; playback starts on the next Play.
+    pub(crate) fn editor_load(&mut self, path: &std::path::Path) {
+        let bytes = match std::fs::read(path) {
+            Ok(b) => b,
+            Err(e) => {
+                eprintln!("audio: cannot read {}: {e}", path.display());
+                return;
+            }
+        };
+        let data = match ph2d_audio_decode::decode(&bytes) {
+            Ok(d) => d,
+            Err(e) => {
+                eprintln!("audio: decode failed for {}: {e}", path.display());
+                return;
+            }
+        };
+        let _ = self.engine.stop_preview();
+        self.editor.name = path
+            .file_name()
+            .and_then(|n| n.to_str())
+            .unwrap_or("clip")
+            .to_string();
+        self.editor.clip = Some(ph2d_audio_edit::EditClip::new(data));
+        self.editor.state = EditorTransport::Stopped;
+    }
+
+    /// Cycle the transport: Stopped → play from 0, Playing → pause, Paused →
+    /// resume. `looping` is read at play-from-start time.
+    pub(crate) fn editor_toggle_play(&mut self, looping: bool) {
+        match self.editor.state {
+            EditorTransport::Stopped => {
+                if let Some(clip) = &self.editor.clip {
+                    let params = PlayParams {
+                        looping,
+                        ..PlayParams::default()
+                    };
+                    if self.engine.play_preview(clip.data().clone(), params).is_ok() {
+                        self.editor.state = EditorTransport::Playing;
+                    }
+                }
+            }
+            EditorTransport::Playing => {
+                let _ = self.engine.pause_preview(true);
+                self.editor.state = EditorTransport::Paused;
+            }
+            EditorTransport::Paused => {
+                let _ = self.engine.pause_preview(false);
+                self.editor.state = EditorTransport::Playing;
+            }
+        }
+    }
+
+    /// Stop the preview and rewind to the clip start.
+    pub(crate) fn editor_stop(&mut self) {
+        let _ = self.engine.stop_preview();
+        self.editor.state = EditorTransport::Stopped;
+    }
+
+    /// Write the loaded clip out to `path` as a 16-bit PCM WAV.
+    pub(crate) fn editor_export(&self, path: &std::path::Path) {
+        let Some(clip) = &self.editor.clip else {
+            return;
+        };
+        match ph2d_audio_encode::write_wav(path, clip.data(), ph2d_audio_encode::BitDepth::Pcm16) {
+            Ok(()) => println!("audio: exported {} (WAV PCM16)", path.display()),
+            Err(e) => eprintln!("audio: export failed for {}: {e}", path.display()),
+        }
+    }
+
+    /// Advance transport state on a natural end-of-clip (a non-looping preview
+    /// that finished). Call once per frame from the bridge.
+    pub(crate) fn editor_poll(&mut self) {
+        if self.editor.state == EditorTransport::Playing && !self.engine.preview_playing() {
+            self.editor.state = EditorTransport::Stopped;
+        }
+    }
+
+    /// Whether the editor preview is actively playing (not paused/stopped).
+    pub(crate) fn editor_playing(&self) -> bool {
+        self.editor.state == EditorTransport::Playing
+    }
+
+    /// Whether a clip is loaded.
+    pub(crate) fn editor_loaded(&self) -> bool {
+        self.editor.clip.is_some()
+    }
+
+    /// The preview's current playback position in seconds (clip time base).
+    pub(crate) fn editor_position_secs(&self) -> f64 {
+        match &self.editor.clip {
+            Some(clip) => clip
+                .data()
+                .format()
+                .frames_to_secs(self.engine.preview_frame()),
+            None => 0.0,
+        }
+    }
+
+    /// The loaded clip's duration in seconds (`0` when none).
+    pub(crate) fn editor_duration_secs(&self) -> f64 {
+        self.editor.clip.as_ref().map(|c| c.duration_secs()).unwrap_or(0.0)
+    }
+
+    /// The loaded clip's display name.
+    pub(crate) fn editor_name(&self) -> &str {
+        &self.editor.name
     }
 }
 

@@ -4681,6 +4681,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-audio-edit"
+version = "0.0.0"
+dependencies = [
+ "ph2d-audio",
+]
+
+[[package]]
+name = "ph2d-audio-encode"
+version = "0.0.0"
+dependencies = [
+ "ph2d-audio",
+ "ph2d-audio-decode",
+ "thiserror 2.0.18",
+]
+
+[[package]]
 name = "ph2d-bindgen"
 version = "0.0.0"
 dependencies = [
@@ -4810,6 +4826,8 @@ dependencies = [
  "ph2d-asset-ktx2",
  "ph2d-audio",
  "ph2d-audio-decode",
+ "ph2d-audio-edit",
+ "ph2d-audio-encode",
  "ph2d-color",
  "ph2d-core",
  "ph2d-ecs",
@@ -4826,6 +4844,7 @@ dependencies = [
  "ph2d-node-registry-init",
  "ph2d-nodegraph",
  "ph2d-painter-effects",
+ "ph2d-panel-audio-editor",
  "ph2d-panel-audio-mixer",
  "ph2d-panel-bgremoval",
  "ph2d-panel-color-equalization",
@@ -5284,6 +5303,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-panel-audio-editor"
+version = "0.0.0"
+dependencies = [
+ "ph2d-a11y",
+ "ph2d-editor-core",
+ "ph2d-text",
+ "ph2d-tokens",
+ "ph2d-tool-registry",
+ "ph2d-ui-testkit",
+ "ph2d-vector",
+]
+
+[[package]]
 name = "ph2d-panel-audio-mixer"
 version = "0.0.0"
 dependencies = [
@@ -5435,6 +5467,7 @@ name = "ph2d-panel-registry-init"
 version = "0.0.0"
 dependencies = [
  "ph2d-editor-core",
+ "ph2d-panel-audio-editor",
  "ph2d-panel-audio-mixer",
  "ph2d-panel-bgremoval",
  "ph2d-panel-color-equalization",

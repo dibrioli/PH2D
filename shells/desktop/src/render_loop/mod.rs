@@ -206,6 +206,41 @@ impl crate::App {
                     audio.set_bus_compressor(i, sub_comp[i]);
                 }
             }
+            // Audio Editor bridge (docs/Audio/, W1): drain the panel's one-shot
+            // transport intents → drive the preview engine, then publish the live
+            // position/duration/name back for the readout (+ overlay playhead).
+            #[cfg(feature = "panel-audio-editor")]
+            {
+                use ph2d_panel_audio_editor as ed;
+                if ed::take_load()
+                    && let Some(path) = rfd::FileDialog::new()
+                        .add_filter("audio", &["wav", "flac", "ogg", "mp3", "aiff", "aif"])
+                        .pick_file()
+                {
+                    audio.editor_load(&path);
+                }
+                if ed::take_export()
+                    && audio.editor_loaded()
+                    && let Some(path) = rfd::FileDialog::new()
+                        .add_filter("WAV", &["wav"])
+                        .set_file_name("export.wav")
+                        .save_file()
+                {
+                    audio.editor_export(&path);
+                }
+                if ed::take_play_pause() {
+                    audio.editor_toggle_play(ed::looping());
+                }
+                if ed::take_stop() {
+                    audio.editor_stop();
+                }
+                audio.editor_poll();
+                ed::set_playing(audio.editor_playing());
+                ed::set_loaded(audio.editor_loaded());
+                ed::set_position_secs(audio.editor_position_secs());
+                ed::set_duration_secs(audio.editor_duration_secs());
+                ed::set_clip_name(audio.editor_name());
+            }
         }
         // Coalesced painter Move: stamp the LATEST buffered canvas position ONCE this frame, replacing
         // the per-raw-CursorMoved whole-shape re-stamp storm that ran between frames (the FPS-drop /

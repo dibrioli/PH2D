@@ -12,6 +12,7 @@ authors.workspace = true
 [dependencies]
 ph2d-editor-core               = { path = "../ph2d-editor-core" }
 # <ph2d-panel-sync:deps:begin>
+ph2d-panel-audio-editor = { path = "../ph2d-panel-audio-editor", optional = true }
 ph2d-panel-audio-mixer = { path = "../ph2d-panel-audio-mixer", optional = true }
 ph2d-panel-bgremoval = { path = "../ph2d-panel-bgremoval", optional = true }
 ph2d-panel-color-equalization = { path = "../ph2d-panel-color-equalization", optional = true }
@@ -34,7 +35,7 @@ default = [
     "panel-widget-gallery", "panel-hierarchy", "panel-inspector", "panel-grid-snap",
     "panel-bgremoval", "panel-padding", "panel-vector",
     "panel-color-equalization", "panel-equalize-sizes", "panel-upscale",
-    "panel-audio-mixer",
+    "panel-audio-mixer", "panel-audio-editor",
     "panel-motion-graph", "panel-motion-params",
     "panel-timeline",
 ]
@@ -43,6 +44,7 @@ default = [
 # `cargo run -p ph2d-panel-sync` from a scan of `crates/ph2d-panel-*` —
 # do NOT edit between the markers by hand.
 # <ph2d-panel-sync:features:begin>
+panel-audio-editor = ["dep:ph2d-panel-audio-editor"]
 panel-audio-mixer = ["dep:ph2d-panel-audio-mixer"]
 panel-bgremoval = ["dep:ph2d-panel-bgremoval"]
 panel-color-equalization = ["dep:ph2d-panel-color-equalization"]

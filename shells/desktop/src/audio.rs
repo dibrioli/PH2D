@@ -461,6 +461,12 @@ enum EditorTransport {
 struct AudioEditorRuntime {
     clip: Option<ph2d_audio_edit::EditClip>,
     state: EditorTransport,
+    /// Whether the renderer has *confirmed* the current play (its preview-active
+    /// flag went true at least once). Guards the Playing→Stopped transition
+    /// against the 1-frame lag between enqueuing `PlayPreview` and the audio
+    /// callback processing it — without it, `editor_poll` sees `preview_playing()`
+    /// still false right after Play and wrongly snaps back to Stopped.
+    started: bool,
     /// Display name of the loaded clip (file stem).
     name: String,
 }
@@ -506,6 +512,7 @@ impl AudioSystem {
                     };
                     if self.engine.play_preview(clip.data().clone(), params).is_ok() {
                         self.editor.state = EditorTransport::Playing;
+                        self.editor.started = false;
                     }
                 }
             }
@@ -540,8 +547,14 @@ impl AudioSystem {
     /// Advance transport state on a natural end-of-clip (a non-looping preview
     /// that finished). Call once per frame from the bridge.
     pub(crate) fn editor_poll(&mut self) {
-        if self.editor.state == EditorTransport::Playing && !self.engine.preview_playing() {
-            self.editor.state = EditorTransport::Stopped;
+        if self.editor.state == EditorTransport::Playing {
+            if self.engine.preview_playing() {
+                self.editor.started = true;
+            } else if self.editor.started {
+                // Confirmed-playing then went silent → the clip reached its end.
+                self.editor.state = EditorTransport::Stopped;
+                self.editor.started = false;
+            }
         }
     }
 

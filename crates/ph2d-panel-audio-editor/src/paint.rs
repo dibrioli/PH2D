@@ -15,7 +15,9 @@ use crate::{
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::ids as core_ids;
 use ph2d_editor_core::interaction::HitIndex;
-use ph2d_editor_core::paint::{fill_rounded_rect, paint_text_centered, resolve};
+use ph2d_editor_core::paint::{
+    fill_rounded_rect, paint_text, paint_text_centered, rect_to_vello, resolve,
+};
 use ph2d_editor_core::panel::{PaintCtx, Panel};
 use ph2d_editor_core::widget::panel_chrome::{
     PANEL_HEADER_CLOSE_RESERVE, PANEL_HEADER_H_DEFAULT, PANEL_TITLE_BASELINE,
@@ -88,7 +90,9 @@ pub(crate) fn paint(_state: &mut AudioEditorState, ctx: &mut PaintCtx) {
     let (scene, text_system) = (&mut *ctx.scene, &mut *ctx.text_system);
     let hit_index = ctx.host.hit_index_mut();
 
-    // Clip name.
+    // Clip name — a single-line field, pixel-clipped to the panel width so a
+    // long filename shows only what fits (no wrap/overlap) instead of cramming
+    // the header. A huge `max_width` keeps it on one line; the clip crops it.
     let name_line = snapshot::with_clip_name(|n| {
         if n.is_empty() {
             "No clip loaded".to_string()
@@ -96,15 +100,22 @@ pub(crate) fn paint(_state: &mut AudioEditorState, ctx: &mut PaintCtx) {
             n.to_string()
         }
     });
-    paint_text_centered(
+    let name_h = TypeToken::Sm.px() + Spacing::Xs.px() * 2.0;
+    let name_box = Rect::new(x, y, w, name_h);
+    fill_rounded_rect(scene, name_box, Radius::Sm.px(), resolve(ColorToken::Bg3, theme));
+    scene.push_clip(&rect_to_vello(name_box));
+    paint_text(
         text_system,
         scene,
         &name_line,
-        Rect::new(x, y, w, TypeToken::Sm.px()),
+        x + Spacing::Xs.px(),
+        y + Spacing::Xs.px(),
         TypeToken::Sm.px(),
+        100_000.0, // LITERAL-PX-OK: no-wrap sentinel; the push_clip crops the overflow
         resolve(ColorToken::Text1, theme),
     );
-    y += TypeToken::Sm.px() + Spacing::Sm.px();
+    scene.pop_layer();
+    y += name_h + Spacing::Sm.px();
 
     // Position / duration readout.
     let time_line = format!("{} / {}", fmt_time(pos), fmt_time(dur));

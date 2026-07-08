@@ -191,11 +191,14 @@ fn draw_ruler(
         let secs = dur * frac as f64;
         let label = format!("{secs:.1}s");
         let lw = 34.0; // LITERAL-PX-OK: tick label box width (chrome)
+        // Keep the whole label box inside the waveform area so the first/last
+        // ticks don't spill their text past the timeline edges.
+        let lx = (x - lw * 0.5).clamp(area.x, (area.x + area.w - lw).max(area.x));
         paint_text_centered(
             text,
             scene,
             &label,
-            Rect::new(x - lw * 0.5, ruler_top + 2.0, lw, TypeToken::Xs.px()),
+            Rect::new(lx, ruler_top + 2.0, lw, TypeToken::Xs.px()),
             TypeToken::Xs.px(),
             label_col,
         );

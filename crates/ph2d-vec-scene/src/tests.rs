@@ -744,6 +744,34 @@ fn subdivide_path_doubles_segments_and_preserves_shape() {
     assert!(!scene.subdivide_path(999));
 }
 
+#[test]
+fn set_path_closed_toggles_and_guards() {
+    let mut scene = VecScene::new();
+    // An open 3-point path.
+    let id = scene.push_path(VecPath {
+        id: 0,
+        verts: vec![
+            VecVertex::corner([0.0, 0.0]),
+            VecVertex::corner([4.0, 0.0]),
+            VecVertex::corner([2.0, 3.0]),
+        ],
+        closed: false,
+        fill: None,
+        stroke: None,
+    });
+    assert!(scene.set_path_closed(id, true), "opens → closed");
+    assert!(scene.paths()[0].closed);
+    // Idempotent: already closed.
+    assert!(!scene.set_path_closed(id, true));
+    assert!(scene.set_path_closed(id, false), "closed → open");
+    assert!(!scene.paths()[0].closed);
+
+    // A single-vertex path can't be closed; missing id is a no-op.
+    let dot = scene.push_path(path_at([0.0, 0.0]));
+    assert!(!scene.set_path_closed(dot, true), "< 2 verts can't close");
+    assert!(!scene.set_path_closed(999, true));
+}
+
 /// Sample every cubic segment of a path into a flat list of points.
 fn sample_path(p: &VecPath, per_seg: usize) -> Vec<[f64; 2]> {
     let n = p.verts.len();

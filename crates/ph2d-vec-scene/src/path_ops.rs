@@ -345,6 +345,20 @@ impl VecScene {
         }
         true
     }
+
+    /// Define se o path `id` é fechado (loop) ou aberto (fita). Fechar exige ≥ 2
+    /// vértices. `false` (no-op) se o id sumiu, já estava nesse estado, ou fechar
+    /// é impossível (< 2 vértices).
+    pub fn set_path_closed(&mut self, id: VecPathId, closed: bool) -> bool {
+        let Some(path) = self.paths.iter_mut().find(|p| p.id == id) else {
+            return false;
+        };
+        if path.closed == closed || (closed && path.verts.len() < 2) {
+            return false;
+        }
+        path.closed = closed;
+        true
+    }
 }
 
 /// Ajusta uma ÚNICA cúbica `prev→next` que substitui os dois segmentos originais

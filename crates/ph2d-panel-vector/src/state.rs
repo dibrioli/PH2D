@@ -21,6 +21,9 @@ thread_local! {
     /// Selected path's anchor bbox `[x, y, w, h]` (world), published each frame.
     /// `None` = no path selected → the Transform section hides.
     static CURRENT_TRANSFORM: Cell<Option<[f64; 4]>> = const { Cell::new(None) };
+    /// Selected path's `closed` flag, published each frame (`None` = no selection).
+    /// Drives the Close/Open toggle button's label.
+    static CURRENT_PATH_CLOSED: Cell<Option<bool>> = const { Cell::new(None) };
     /// Rotation-field accumulator: the angle (degrees) the Angle chip last
     /// reported THIS gesture. `event` emits the DELTA `(current − this)` so the
     /// shell rotates incrementally; reset to 0 by `paint` whenever the field is
@@ -71,6 +74,16 @@ pub fn set_current_transform(bbox: Option<[f64; 4]>) {
 /// The selected path's bbox this frame (`None` ⇒ hide the Transform section).
 pub(crate) fn current_transform() -> Option<[f64; 4]> {
     CURRENT_TRANSFORM.with(|c| c.get())
+}
+
+/// Publish the selected path's `closed` flag (or `None` when no path is selected).
+pub fn set_current_path_closed(closed: Option<bool>) {
+    CURRENT_PATH_CLOSED.with(|c| c.set(closed));
+}
+
+/// The selected path's `closed` flag this frame (drives the toggle button label).
+pub(crate) fn current_path_closed() -> Option<bool> {
+    CURRENT_PATH_CLOSED.with(|c| c.get())
 }
 
 /// The angle the Angle chip last reported this gesture (for the delta emit).

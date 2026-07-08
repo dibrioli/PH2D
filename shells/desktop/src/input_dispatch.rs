@@ -288,6 +288,27 @@ pub(crate) fn vec_rotate_for_id(id: ph2d_editor::NodeId) -> Option<ph2d_vec_scen
     }
 }
 
+/// Toggle the SELECTED path between closed (loop) and open (ribbon) — panel
+/// Close/Open button — recording ONE undo step iff it flipped. Free fn (mirror of
+/// [`apply_vec_flip`]).
+pub(crate) fn apply_vec_toggle_closed(
+    scene: &mut ph2d_vec_scene::VecScene,
+    history: &mut ph2d_vec_edit::History,
+    pen: &ph2d_vec_edit::PenTool,
+) {
+    let Some(sel) = pen.selected() else {
+        eprintln!("[ph2d-vec] close-toggle: nenhum path selecionado");
+        return;
+    };
+    let Some(cur) = scene.paths().iter().find(|p| p.id == sel).map(|p| p.closed) else {
+        return;
+    };
+    let pre = scene.clone();
+    if scene.set_path_closed(sel, !cur) {
+        history.push_undo(pre);
+    }
+}
+
 /// Rotate the SELECTED path by `degrees` (panel Transform Angle field — a
 /// relative scrub) about its bbox center, recording ONE undo step iff it turned.
 /// A zero delta is a no-op (no undo). Free fn (mirror of [`apply_vec_rotate`]).
@@ -2333,6 +2354,21 @@ mod tests {
             .verts
             .len();
         assert_eq!(n2, n * 2, "subdivide doubles a closed path's vertices");
+
+        // Close/Open toggle flips the selected path's `closed` flag each click.
+        let was = scene.paths().iter().find(|p| p.id == sq).unwrap().closed;
+        super::apply_vec_toggle_closed(&mut scene, &mut hist, &pen);
+        assert_eq!(
+            scene.paths().iter().find(|p| p.id == sq).unwrap().closed,
+            !was,
+            "toggle flips closed"
+        );
+        super::apply_vec_toggle_closed(&mut scene, &mut hist, &pen);
+        assert_eq!(
+            scene.paths().iter().find(|p| p.id == sq).unwrap().closed,
+            was,
+            "toggle flips back"
+        );
     }
 
     #[test]

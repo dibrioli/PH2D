@@ -254,6 +254,7 @@ pub fn populate(store: &mut WidgetStore) {
     button(store, ids::VECTOR_PATH_SHARPEN);
     button(store, ids::VECTOR_PATH_SIMPLIFY);
     button(store, ids::VECTOR_PATH_SUBDIVIDE);
+    button(store, ids::VECTOR_PATH_CLOSE);
 
     // Close (X) button.
     button(store, ids::VECTOR_CLOSE);

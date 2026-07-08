@@ -246,6 +246,17 @@ pub(super) fn dispatch(
         None
     });
 
+    // Publish the selected path's closed flag so the panel labels the toggle
+    // "Close Path" / "Open Path" correctly.
+    #[cfg(feature = "panel-vector")]
+    ph2d_panel_vector::set_current_path_closed(if vector_active {
+        pen.selected()
+            .and_then(|sel| scene.paths().iter().find(|p| p.id == sel))
+            .map(|p| p.closed)
+    } else {
+        None
+    });
+
     // Calibrate the Transform fields' drag scrub to the camera: `px_to_world`
     // value-units per cursor pixel ⇒ dragging a chip N px moves the shape N px
     // on screen at any zoom (unbounded — no clamp). Live each frame so zoom in/out

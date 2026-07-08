@@ -172,3 +172,6 @@ pub const VECTOR_PATH_SHARPEN: NodeId = hash_node_id("vector.path.sharpen");
 pub const VECTOR_PATH_SIMPLIFY: NodeId = hash_node_id("vector.path.simplify");
 /// Subdivide = insert a midpoint on every segment (exact de Casteljau split).
 pub const VECTOR_PATH_SUBDIVIDE: NodeId = hash_node_id("vector.path.subdivide");
+/// Close/Open toggle — flips the selected path between a closed loop and an open
+/// ribbon (label driven by the published `closed` flag).
+pub const VECTOR_PATH_CLOSE: NodeId = hash_node_id("vector.path.close");

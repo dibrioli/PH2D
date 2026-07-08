@@ -864,6 +864,7 @@ impl crate::App {
             let mut pending_vec_flip: Option<ph2d_vec_scene::FlipAxis> = None;
             let mut pending_vec_rotate: Option<ph2d_vec_scene::Rotate90> = None;
             let mut pending_vec_path_shape: Option<crate::input_dispatch::VecPathShapeOp> = None;
+            let mut pending_vec_toggle_closed = false;
             // Numeric Transform field edit (X/Y/W/H) — a SetValue document command.
             let mut pending_vec_transform: Option<(crate::input_dispatch::VecTransformField, f64)> =
                 None;
@@ -944,6 +945,8 @@ impl crate::App {
                                 crate::input_dispatch::vec_path_shape_for_id(*id)
                             {
                                 pending_vec_path_shape = Some(op);
+                            } else if *id == ph2d_editor::ids::VECTOR_PATH_CLOSE {
+                                pending_vec_toggle_closed = true;
                             }
                         }
                         // Transform fields (X/Y/W/H) are numeric SetValue document
@@ -1649,6 +1652,13 @@ impl crate::App {
                     &mut self.vec_history,
                     &self.vec_pen,
                     op,
+                );
+            }
+            if pending_vec_toggle_closed {
+                crate::input_dispatch::apply_vec_toggle_closed(
+                    vec_scene,
+                    &mut self.vec_history,
+                    &self.vec_pen,
                 );
             }
             let vec_cfg = vector_bridge::dispatch(

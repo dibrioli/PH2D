@@ -15,6 +15,7 @@
 mod geom;
 mod interact;
 mod paint;
+mod paint_chrome;
 mod snapshot;
 mod state;
 

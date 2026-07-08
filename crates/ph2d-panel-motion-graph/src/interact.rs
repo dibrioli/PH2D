@@ -27,6 +27,7 @@ pub(crate) fn process(
     state: &mut MotionGraphPanelState,
     ctx: &mut PaintCtx,
     rect: Rect,
+    center: Rect,
     snap: &GraphViewSnapshot,
 ) {
     let panel = ids::MOTION_GRAPH_PANEL;
@@ -40,7 +41,7 @@ pub(crate) fn process(
     }
     let gestures: Vec<GraphGesture> = ctx.host.store_mut().drain_graph_gestures().collect();
     for g in gestures {
-        apply_gesture(state, g, rect, snap);
+        apply_gesture(state, g, rect, center, snap);
     }
 }
 
@@ -102,6 +103,7 @@ fn apply_gesture(
     state: &mut MotionGraphPanelState,
     g: GraphGesture,
     rect: Rect,
+    center: Rect,
     snap: &GraphViewSnapshot,
 ) {
     match g.kind {
@@ -117,6 +119,31 @@ fn apply_gesture(
             let (to_node, to_port) = crate::paint::wire_target(edge);
             push_intent(GraphIntent::Disconnect { to_node, to_port });
         }
+        // Split divider (E9): drag maps the pointer to a split fraction against
+        // the full center band (scene `center` + graph `rect`). Begin/Update both
+        // emit so the split tracks the cursor live; the shell clamps `t`.
+        GraphHitKind::SplitDivider
+            if matches!(g.phase, GesturePhase::Begin | GesturePhase::Update) =>
+        {
+            let vertical = rect.x > center.x + 0.5;
+            let t = if vertical {
+                (g.x - center.x) / (rect.x + rect.w - center.x).max(1.0)
+            } else {
+                (g.y - center.y) / (rect.y + rect.h - center.y).max(1.0)
+            };
+            push_intent(GraphIntent::SetSplit { t });
+        }
+        // Toolbar chips (E9): SplitH / SplitV flip orientation; Fit re-fits.
+        GraphHitKind::Chrome { id } if g.phase == GesturePhase::Click => match id {
+            crate::paint_chrome::CHROME_SPLIT_H => {
+                push_intent(GraphIntent::SetSplitVertical { vertical: false })
+            }
+            crate::paint_chrome::CHROME_SPLIT_V => {
+                push_intent(GraphIntent::SetSplitVertical { vertical: true })
+            }
+            crate::paint_chrome::CHROME_FIT => state.fitted = false,
+            _ => {}
+        },
         // Input sockets (reverse-drag of an occupied input) + backdrops land
         // later; ignore for now.
         _ => {}
@@ -348,6 +375,14 @@ mod tests {
         w: 800.0,
         h: 600.0,
     };
+    // Scene half of the split (unused by the node/socket/menu tests; a valid
+    // arg for `apply_gesture`).
+    const CENTER: Rect = Rect {
+        x: 0.0,
+        y: 0.0,
+        w: 800.0,
+        h: 300.0,
+    };
 
     fn port(domain: Domain) -> PortView {
         PortView {
@@ -403,12 +438,14 @@ mod tests {
             &mut st,
             gesture(out, GesturePhase::Begin, 10.0, 37.0),
             RECT,
+            CENTER,
             &snap,
         );
         apply_gesture(
             &mut st,
             gesture(out, GesturePhase::Update, 200.0, 37.0),
             RECT,
+            CENTER,
             &snap,
         );
         // The live ghost snapped to a compatible target.
@@ -423,6 +460,7 @@ mod tests {
             &mut st,
             gesture(out, GesturePhase::End, 200.0, 37.0),
             RECT,
+            CENTER,
             &snap,
         );
         let intents = drain_intents();
@@ -448,18 +486,21 @@ mod tests {
             &mut st,
             gesture(out, GesturePhase::Begin, 10.0, 37.0),
             RECT,
+            CENTER,
             &snap,
         );
         apply_gesture(
             &mut st,
             gesture(out, GesturePhase::Update, 500.0, 500.0),
             RECT,
+            CENTER,
             &snap,
         );
         apply_gesture(
             &mut st,
             gesture(out, GesturePhase::End, 500.0, 500.0),
             RECT,
+            CENTER,
             &snap,
         );
         assert!(drain_intents().is_empty());
@@ -478,11 +519,11 @@ mod tests {
             37.0,
         );
         // Plain click: inert.
-        apply_gesture(&mut st, g, RECT, &snap);
+        apply_gesture(&mut st, g, RECT, CENTER, &snap);
         assert!(drain_intents().is_empty());
         // Alt-click: disconnect the edge into (2, 0).
         g.mods.alt = true;
-        apply_gesture(&mut st, g, RECT, &snap);
+        apply_gesture(&mut st, g, RECT, CENTER, &snap);
         assert_eq!(
             drain_intents(),
             vec![GraphIntent::Disconnect {
@@ -520,7 +561,7 @@ mod tests {
         // R-click empty canvas opens the menu at the cursor.
         let mut rc = gesture(GraphHitKind::Background, GesturePhase::Click, 120.0, 90.0);
         rc.button = PointerButton::Secondary;
-        apply_gesture(&mut st, rc, RECT, &two_node_snapshot());
+        apply_gesture(&mut st, rc, RECT, CENTER, &two_node_snapshot());
         let menu = st.add_menu.expect("menu opened");
         assert_eq!(menu.spawn, (120.0, 90.0)); // identity view → graph == screen
         // Left-click the first (only) row → AddNode at the spawn point.
@@ -532,7 +573,7 @@ mod tests {
             row.x + 2.0,
             row.y + 2.0,
         );
-        apply_gesture(&mut st, pick, RECT, &two_node_snapshot());
+        apply_gesture(&mut st, pick, RECT, CENTER, &two_node_snapshot());
         assert_eq!(
             drain_intents(),
             vec![GraphIntent::AddNode {

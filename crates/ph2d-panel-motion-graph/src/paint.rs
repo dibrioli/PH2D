@@ -76,8 +76,13 @@ pub(crate) fn paint(state: &mut MotionGraphPanelState, ctx: &mut PaintCtx) {
         state.fitted = true;
     }
 
+    // The scene half of the center split — the divider drag maps the pointer to a
+    // split fraction against the full center band (`center` + `rect`), and the
+    // toolbar highlights the active orientation (E9).
+    let center = ctx.layout.center_viewport;
+
     // Fold this frame's gestures/zoom/keys into the state before drawing.
-    crate::interact::process(state, ctx, rect, &snap);
+    crate::interact::process(state, ctx, rect, center, &snap);
 
     // Publish the selection so the shell bridge can build the params snapshot for
     // the selected node (M1.P1). Cheap: a small Vec, only while the tool is up.
@@ -115,6 +120,10 @@ pub(crate) fn paint(state: &mut MotionGraphPanelState, ctx: &mut PaintCtx) {
     for n in &snap.nodes {
         push_socket_hits(&mut hits, n, &view);
     }
+    // Split chrome (E9): the draggable divider at the scene boundary + the
+    // SplitH / SplitV / Fit toolbar. Drawn + hit-registered above the graph
+    // content so they win a click there.
+    crate::paint_chrome::draw_split_chrome(ctx, rect, center, theme, &mut hits);
     // While the add-menu is open, a full-canvas Background shield registered LAST
     // makes every click resolve as Background — so a menu row drawn over a card /
     // socket still reaches the menu, and a click off the menu dismisses it
@@ -481,8 +490,9 @@ fn port_out_domain(n: &GraphNodeView, port: u16) -> Domain {
 }
 
 /// FNV-1a-64 of `key` — the runtime sibling of `hash_node_id` (which is
-/// `&'static str`-only) for the dynamic per-element hit ids.
-fn fnv_id(key: &str) -> NodeId {
+/// `&'static str`-only) for the dynamic per-element hit ids. Shared with
+/// `paint_chrome` (the split divider / toolbar hit ids).
+pub(crate) fn fnv_id(key: &str) -> NodeId {
     let mut h: u64 = 0xcbf2_9ce4_8422_2325;
     for b in key.bytes() {
         h ^= b as u64;

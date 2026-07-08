@@ -261,6 +261,10 @@ pub enum GraphHitKind {
     PreviewToggle { node: u64 },
     /// The viewport⟂graph split divider (drag re-splits).
     SplitDivider,
+    /// A graph chrome control (a toolbar chip) — click activates it. `id` is the
+    /// panel's own opaque button ordinal (editor-core never interprets it), same
+    /// "crosses as an integer" rule as the node/edge handles.
+    Chrome { id: u16 },
 }
 
 /// Lifecycle phase of a graph pointer gesture. The panel drives its own state

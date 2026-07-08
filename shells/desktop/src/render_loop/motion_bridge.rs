@@ -93,7 +93,7 @@ pub(super) fn dispatch(
     #[cfg(feature = "panel-motion-graph")]
     {
         if motion_active {
-            apply_graph_intents(motion, toasts);
+            apply_graph_intents(motion, toasts, &mut hero.view.center_split);
             // Publish the addable-node catalog for the add-menu. Rebuilt each
             // active frame (cheap: ~dozens of `Copy` entries) alongside the
             // snapshot; memoizing it is a follow-up like the snapshot's own
@@ -160,7 +160,7 @@ pub(super) fn dispatch(
 ///   membrane), and the edit is kept only when the new edge is legal — else a
 ///   refusal toast is raised and the document is untouched.
 #[cfg(feature = "panel-motion-graph")]
-fn apply_graph_intents(motion: &mut MotionState, toasts: &mut ToastQueue) {
+fn apply_graph_intents(motion: &mut MotionState, toasts: &mut ToastQueue, split: &mut CenterSplit) {
     use ph2d_editor::Toast;
     use ph2d_nodegraph::graph::{Edge, NodeId, Pos};
     use ph2d_panel_motion_graph::GraphIntent;
@@ -250,6 +250,20 @@ fn apply_graph_intents(motion: &mut MotionState, toasts: &mut ToastQueue) {
                     motion.history.push_undo(pre);
                     motion.pump.mark_dirty();
                 }
+            }
+            // Split chrome (E9) — UI-only (no cook / undo). `with_t` clamps the
+            // fraction; orientation flips preserve it.
+            GraphIntent::SetSplit { t } => {
+                if split.is_split() {
+                    *split = split.with_t(t);
+                }
+            }
+            GraphIntent::SetSplitVertical { vertical } => {
+                *split = if vertical {
+                    split.to_vertical()
+                } else {
+                    split.to_horizontal()
+                };
             }
         }
     }

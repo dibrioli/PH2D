@@ -103,6 +103,14 @@ pub enum GraphIntent {
     /// against the double key-dispatch (M0 focus gate + shell cursor push). One
     /// undo step; re-cooks.
     DeleteSelection { nodes: Vec<u32> },
+    /// Set the viewport⟂graph split fraction (divider drag, E9). Absolute `t` in
+    /// the center band; the shell clamps it to the split's legal range. UI-only
+    /// (never touches the cook / undo).
+    SetSplit { t: f32 },
+    /// Flip the split orientation (SplitH/SplitV chips, E9): `true` = vertical
+    /// (scene left, graph right), `false` = horizontal (scene top, graph bottom).
+    /// UI-only.
+    SetSplitVertical { vertical: bool },
 }
 
 /// One addable node type in the add-node menu (M1.E7). Copy — the canonical

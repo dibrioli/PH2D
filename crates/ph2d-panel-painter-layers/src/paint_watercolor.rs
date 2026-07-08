@@ -72,7 +72,24 @@ pub(crate) fn paint_watercolor_section(
         return y;
     }
 
-    // ── Card 1: WASH — how the stroke dries (the flat glaze + its dried character). ──
+    // Three technique cards — each paints its rows off the snapshot and returns
+    // the next `y`. Split out to keep this fn under the panel LOC cap.
+    y = paint_wash_card(ctx, theme, x, content_w, y, &brush);
+    y = paint_brush_card(ctx, theme, x, content_w, y, &brush);
+    y = paint_water_card(ctx, theme, x, content_w, y, &brush);
+
+    y
+}
+
+/// Card 1: WASH — how the stroke dries (the flat glaze + its dried character).
+fn paint_wash_card(
+    ctx: &mut PaintCtx,
+    theme: ph2d_tokens::Theme,
+    x: f32,
+    content_w: f32,
+    y: f32,
+    brush: &BrushSettings,
+) -> f32 {
     let (ix, iw, mut ry, next_y) = card_frame(ctx, theme, x, content_w, y, "Wash", 5);
     ry = card_row(
         ctx,
@@ -144,9 +161,18 @@ pub(crate) fn paint_watercolor_section(
         number_field::SIZE_STEP,
         1,
     );
-    y = next_y;
+    next_y
+}
 
-    // ── Card 2: BRUSH — what's on the brush (the Wet Mix reservoir: pickup, water, carry). ──
+/// Card 2: BRUSH — what's on the brush (the Wet Mix reservoir: pickup, water, carry).
+fn paint_brush_card(
+    ctx: &mut PaintCtx,
+    theme: ph2d_tokens::Theme,
+    x: f32,
+    content_w: f32,
+    y: f32,
+    brush: &BrushSettings,
+) -> f32 {
     let (ix, iw, mut ry, next_y) = card_frame(ctx, theme, x, content_w, y, "Brush", 3);
     ry = card_row(
         ctx,
@@ -190,9 +216,18 @@ pub(crate) fn paint_watercolor_section(
         number_field::FINE_STEP,
         2,
     );
-    y = next_y;
+    next_y
+}
 
-    // ── Card 3: WATER — interaction with paint already on the canvas (rewet / smear / subtractive mix). ──
+/// Card 3: WATER — interaction with paint already on the canvas (rewet / smear / subtractive mix).
+fn paint_water_card(
+    ctx: &mut PaintCtx,
+    theme: ph2d_tokens::Theme,
+    x: f32,
+    content_w: f32,
+    y: f32,
+    brush: &BrushSettings,
+) -> f32 {
     // The **Pigment** slider is the merged old Pigment-toggle + Mix pair: it shows the mixing amount when
     // the gate is on, else `0` (off); `set_brush_pigment_mixing` flips the gate + remembers the amount.
     let pigment_amt = if brush.pigment {
@@ -243,9 +278,7 @@ pub(crate) fn paint_watercolor_section(
         number_field::FINE_STEP,
         2,
     );
-    y = next_y;
-
-    y
+    next_y
 }
 
 /// Draw a titled bordered **card** (the Composite/Clone-card idiom) sized for `n_rows` number rows, and

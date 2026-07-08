@@ -79,6 +79,10 @@ pub(super) fn dispatch(
                         t: CenterSplit::T_DEFAULT,
                     };
                 }
+                // Auto-play on entry so time-driven behaviours animate live the
+                // moment the tool opens (Cavalry/AE preview semantics). Space
+                // toggles pause; nothing moves until a `Temporal` node is wired.
+                motion.transport.play();
             } else {
                 hero.view.center_split = CenterSplit::None;
             }
@@ -271,6 +275,20 @@ fn apply_graph_intents(motion: &mut MotionState, toasts: &mut ToastQueue, split:
                 } else {
                     split.to_horizontal()
                 };
+            }
+            // Transport play/pause (Space) — the shell owns the transport; no
+            // doc edit / undo. The per-frame cook advances only while playing.
+            GraphIntent::TogglePlay => {
+                motion.transport.toggle();
+            }
+            // Set the render output (O) — the node whose cooked stream is lowered
+            // to instances. An output choice, not a doc edit (no undo); re-cooks.
+            GraphIntent::SetSink { node } => {
+                let nid = NodeId(node);
+                if motion.doc.graph.node(nid).is_some() {
+                    motion.sink = Some(nid);
+                    motion.pump.mark_dirty();
+                }
             }
         }
     }
@@ -545,7 +563,9 @@ fn build_params_snapshot(motion: &MotionState) -> Option<ph2d_panel_motion_param
     use ph2d_node_registry::ParamWidget;
     use ph2d_nodegraph::cook::OpResolver;
     use ph2d_nodegraph::graph::NodeId;
-    use ph2d_panel_motion_params::{ColorRow, ParamRow, ParamsSnapshot, ScalarRow};
+    use ph2d_panel_motion_params::{
+        ColorRow, EnumRow, ParamRow, ParamsSnapshot, ScalarRow, ToggleRow,
+    };
 
     let only = selected_motion_node()?;
     let nid = NodeId(only);
@@ -599,6 +619,31 @@ fn build_params_snapshot(motion: &MotionState) -> Option<ph2d_panel_motion_param
         // A non-anchor colour channel is folded into its swatch — no scalar row.
         if consumed.contains(&spec.name) {
             continue;
+        }
+        // A boolean → a real checkbox; an enum → a named segmented selector.
+        if let Some(h) = hint {
+            match h.widget {
+                ParamWidget::Toggle => {
+                    rows.push(ParamRow::Toggle(ToggleRow {
+                        name: spec.name,
+                        label: h.label.to_string(),
+                        on: value_of(spec.name) >= 0.5,
+                    }));
+                    continue;
+                }
+                ParamWidget::Enum { labels } => {
+                    let selected = (value_of(spec.name).round().max(0.0) as usize)
+                        .min(labels.len().max(1) - 1);
+                    rows.push(ParamRow::Enum(EnumRow {
+                        name: spec.name,
+                        label: h.label.to_string(),
+                        selected,
+                        labels,
+                    }));
+                    continue;
+                }
+                _ => {}
+            }
         }
         let value = f64::from(value_of(spec.name));
         rows.push(ParamRow::Scalar(match hint {
@@ -751,5 +796,92 @@ mod tests {
                 "Y = base + ramp + osc at {i}"
             );
         }
+    }
+
+    /// A behaviour's enum / boolean params resolve to NAMED widget rows, not
+    /// number sliders: the selected stagger node yields an `Enum` Channel row
+    /// (X/Y/Rot/Size), an `Enum` Easing row, and a `Toggle` Reverse row — the
+    /// exact fix the Enio asked for (no memorising slider steps).
+    #[test]
+    fn stagger_params_are_named_enums_and_a_checkbox() {
+        use ph2d_panel_motion_params::ParamRow;
+        let mut motion = MotionState::new();
+        let st = motion.doc.graph.add_node("motion.stagger");
+        ph2d_panel_motion_graph::set_graph_selection(vec![st.0]);
+
+        let snap = build_params_snapshot(&motion).expect("stagger resolvable");
+        let channel = snap
+            .rows
+            .iter()
+            .find_map(|r| match r {
+                ParamRow::Enum(e) if e.name == "channel" => Some(e),
+                _ => None,
+            })
+            .expect("channel is a named Enum row, not a slider");
+        assert_eq!(channel.labels, ["X", "Y", "Rot", "Size"]);
+        assert!(
+            snap.rows
+                .iter()
+                .any(|r| matches!(r, ParamRow::Enum(e) if e.name == "easing")),
+            "easing is a named Enum row"
+        );
+        assert!(
+            snap.rows
+                .iter()
+                .any(|r| matches!(r, ParamRow::Toggle(t) if t.name == "reverse")),
+            "reverse is a checkbox (Toggle) row, not a 0/1 slider"
+        );
+        ph2d_panel_motion_graph::set_graph_selection(Vec::new());
+    }
+
+    /// The animation enabler (ask "when do we see animation?"): playing advances
+    /// the playhead — so any `Temporal` behaviour moves — and pausing freezes it.
+    /// The default transport is paused, which is why nothing moved before.
+    #[test]
+    fn transport_play_advances_time_and_pause_freezes_it() {
+        let mut motion = MotionState::new();
+        let dt = 1.0 / 60.0;
+        assert_eq!(motion.playhead(dt), 0.0, "starts paused at t=0");
+        motion.transport.play();
+        motion.transport.advance(30);
+        let t = motion.playhead(dt);
+        assert!(
+            t > 0.0,
+            "playing advances the playhead → behaviours animate"
+        );
+        motion.transport.toggle(); // → paused
+        motion.transport.advance(30);
+        assert_eq!(motion.playhead(dt), t, "paused freezes the playhead");
+    }
+
+    /// Set as Output: the pump renders whatever node `motion.sink` names, so
+    /// pointing it at a node makes that node the visible output — and a `None`
+    /// sink renders nothing (the mechanism the O-key intent drives).
+    #[test]
+    fn sink_drives_what_the_pump_renders() {
+        let mut motion = MotionState::new();
+        let grid = motion.doc.graph.add_node("motion.grid");
+        let (uv, size) = (motion.default_uv_rect, motion.default_size);
+
+        motion.pump.mark_dirty();
+        motion.pump.pump(
+            &motion.doc.graph,
+            &motion.registry,
+            Some(grid),
+            0,
+            0.0,
+            uv,
+            size,
+        );
+        assert!(
+            motion.pump.instances.len() >= 4,
+            "the chosen output node renders its cells"
+        );
+
+        motion.pump.mark_dirty();
+        motion
+            .pump
+            .pump(&motion.doc.graph, &motion.registry, None, 0, 0.0, uv, size);
+        assert_eq!(motion.pump.instances.len(), 0, "no sink → nothing rendered");
     }
 }

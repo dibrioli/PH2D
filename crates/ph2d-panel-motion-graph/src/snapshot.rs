@@ -111,6 +111,13 @@ pub enum GraphIntent {
     /// (scene left, graph right), `false` = horizontal (scene top, graph bottom).
     /// UI-only.
     SetSplitVertical { vertical: bool },
+    /// Toggle transport play/pause (Space) so time-driven behaviours animate.
+    /// The shell owns the transport; UI-only w.r.t. the doc (no undo step).
+    TogglePlay,
+    /// Set `node` as the render output — the node whose cooked stream is lowered
+    /// to instances (the cook's sink). Lets any node become the visible output
+    /// (O key). Re-cooks; no undo step (an output choice, not a doc edit).
+    SetSink { node: u32 },
 }
 
 /// One addable node type in the add-node menu (M1.E7). Copy — the canonical

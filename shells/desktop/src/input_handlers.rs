@@ -270,6 +270,21 @@ impl App {
                         .push_graph_key(ph2d_editor::interaction::GraphKey::Add);
                 }
             }
+            // Motion Nodes M1: over the graph, Space toggles transport play/pause
+            // (so time-driven behaviours animate) and `O` sets the single selected
+            // node as the render output. Same cursor-gated push as F/A/Delete.
+            KeyCode::Space if over_motion_graph => {
+                if let Some(hero) = gfx.hero_screen.as_mut() {
+                    hero.store
+                        .push_graph_key(ph2d_editor::interaction::GraphKey::TogglePlay);
+                }
+            }
+            KeyCode::KeyO if over_motion_graph && !cmd_chord => {
+                if let Some(hero) = gfx.hero_screen.as_mut() {
+                    hero.store
+                        .push_graph_key(ph2d_editor::interaction::GraphKey::SetOutput);
+                }
+            }
             KeyCode::Home | KeyCode::KeyF => {
                 if let Some(hero) = gfx.hero_screen.as_mut() {
                     // Wave 2.5 PR 11.8d: bus migration (was

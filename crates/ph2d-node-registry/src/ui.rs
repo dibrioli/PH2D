@@ -85,6 +85,12 @@ pub enum ParamWidget {
     /// (sRGB→linear) and seeds the picker (linear→sRGB). Reusable by every colour
     /// node (tint, colour-array, gradient, …).
     Color { channels: [&'static str; 4] },
+    /// A single-select from a fixed set of **named** options, rendered as a
+    /// segmented-button row (the same selector the Vector panel uses for
+    /// Cap / Join / Draw) — never a number slider the user must decode. The param
+    /// stores the selected option **index** as its `f32` value (`0..labels.len()`).
+    /// Reusable by every enum-valued param (channel, waveform, easing, …).
+    Enum { labels: &'static [&'static str] },
 }
 
 impl ParamWidget {

@@ -164,8 +164,10 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
 
 use ph2d_node_registry::{ParamUiHint, ParamWidget};
 
-/// Param UI hints (M1.P1). `channel` / `wave` are integer selectors (a dropdown /
-/// segmented widget is a follow-up — an `IntSlider` for now).
+/// Param UI hints (M1.P1). `channel` / `wave` are **named** selectors (segmented
+/// buttons) — never number sliders. The enum option index IS the param value
+/// (channel 0..3; wave 0..3 = Parabolic/Triangle/Square/Saw — "Sine" is the
+/// user-facing name for the transcendental-free parabolic approximation).
 static PARAM_HINTS: &[ParamUiHint] = &[
     ParamUiHint {
         param: "channel",
@@ -173,7 +175,9 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         min: 0.0,
         max: 3.0,
         step: 1.0,
-        widget: ParamWidget::IntSlider,
+        widget: ParamWidget::Enum {
+            labels: &["X", "Y", "Rot", "Size"],
+        },
     },
     ParamUiHint {
         param: "wave",
@@ -181,7 +185,9 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         min: 0.0,
         max: 3.0,
         step: 1.0,
-        widget: ParamWidget::IntSlider,
+        widget: ParamWidget::Enum {
+            labels: &["Sine", "Tri", "Square", "Saw"],
+        },
     },
     ParamUiHint {
         param: "amplitude",

@@ -17,10 +17,13 @@
 mod snapshot;
 
 pub use snapshot::{
-    ColorRow, MotionParamIntent, ParamRow, ParamsSnapshot, ScalarRow, drain_param_intents,
-    param_swatch_id, set_current_params,
+    ColorRow, EnumRow, MotionParamIntent, ParamRow, ParamsSnapshot, ScalarRow, ToggleRow,
+    drain_param_intents, param_swatch_id, set_current_params,
 };
-use snapshot::{MAX_PARAM_ROWS, current_params, param_chip_id, param_slider_id, push_param_intent};
+use snapshot::{
+    MAX_ENUM_OPTIONS, MAX_PARAM_ROWS, current_params, param_checkbox_id, param_chip_id,
+    param_enum_id, param_slider_id, push_param_intent,
+};
 
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::ids;
@@ -29,10 +32,12 @@ use ph2d_editor_core::paint::{paint_text, resolve};
 use ph2d_editor_core::panel::{EventOutcome, PaintCtx, Panel, PanelHostInternal};
 use ph2d_editor_core::widget::panel_chrome::{
     PANEL_HEAD_PAD, PANEL_TITLE_BASELINE, paint_panel_surface, paint_panel_title,
+    paint_segmented_button,
 };
 use ph2d_editor_core::widget::{
-    ColorSwatch, DEFAULT_LABEL_W, NUMBER_INPUT_MIN_W_PX, SliderOrientation, SliderState,
-    SwatchSize, TextInputState, paint_color_swatch, paint_slider_with_chip_layout_adaptive,
+    ButtonState, Checkbox, CheckboxState, CheckboxValue, ColorSwatch, DEFAULT_LABEL_W,
+    NUMBER_INPUT_MIN_W_PX, SliderOrientation, SliderState, SwatchSize, TextInputState,
+    paint_checkbox, paint_color_swatch, paint_slider_with_chip_layout_adaptive,
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ColorToken, ROW_H_PX, Spacing, TypeToken};
@@ -145,6 +150,65 @@ impl Panel for MotionParamsPanel {
                         hit_index.register(swatch_id, srect);
                         y += ROW_H_PX + row_gap;
                     }
+                    ParamRow::Toggle(row) => {
+                        // A real checkbox — label + box on the left (the box owns
+                        // the click; the dispatch flips its value + fires Toggled).
+                        let cb_id = param_checkbox_id(i);
+                        let (cb_state, _) = store
+                            .checkbox(cb_id)
+                            .unwrap_or((CheckboxState::Normal, CheckboxValue::Unchecked));
+                        let value = if row.on {
+                            CheckboxValue::Checked
+                        } else {
+                            CheckboxValue::Unchecked
+                        };
+                        let cb = Checkbox::new(cb_id, row.label.clone())
+                            .state(cb_state)
+                            .value(value);
+                        let crect = Rect::new(inner_x, y, inner_w, ROW_H_PX);
+                        paint_checkbox(&cb, crect, scene, text_system, theme);
+                        hit_index.register(cb_id, crect);
+                        y += ROW_H_PX + row_gap;
+                    }
+                    ParamRow::Enum(row) => {
+                        // Named segmented selector (label line + option buttons),
+                        // mirror of the Vector panel's Cap / Join / Draw rows.
+                        paint_text(
+                            text_system,
+                            scene,
+                            &row.label,
+                            inner_x,
+                            y,
+                            TypeToken::Sm.px(),
+                            inner_w,
+                            resolve(ColorToken::Text2, theme),
+                        );
+                        y += TypeToken::Sm.px() + Spacing::Xs.px();
+                        let k = row.labels.len().min(MAX_ENUM_OPTIONS);
+                        // Up to 4 buttons across, then wrap; a single option → 1.
+                        let cols = k.clamp(1, 4); // CLAMP-OK: segmented column count (option-count layout, not a UI metric)
+                        let gap = Spacing::Sm.px();
+                        let seg_w = ((inner_w - gap * (cols as f32 - 1.0)) / cols as f32).max(1.0);
+                        for (opt, caption) in row.labels.iter().enumerate().take(k) {
+                            let bid = param_enum_id(i, opt);
+                            let rx = inner_x + (opt % cols) as f32 * (seg_w + gap);
+                            let ry = y + (opt / cols) as f32 * (ROW_H_PX + gap);
+                            let brect = Rect::new(rx, ry, seg_w, ROW_H_PX);
+                            let bstate = store.button_state(bid).unwrap_or(ButtonState::Normal);
+                            paint_segmented_button(
+                                brect,
+                                caption,
+                                opt == row.selected,
+                                bstate,
+                                scene,
+                                text_system,
+                                theme,
+                            );
+                            hit_index.register(bid, brect);
+                        }
+                        let seg_rows = k.div_ceil(cols) as f32;
+                        y += seg_rows * ROW_H_PX + (seg_rows - 1.0) * gap + row_gap;
+                    }
                 }
             }
         }
@@ -166,39 +230,21 @@ impl Panel for MotionParamsPanel {
         host: &mut dyn PanelHostInternal,
         ev: WidgetEvent,
     ) -> EventOutcome {
-        let WidgetEvent::ValueChanged(id) = ev else {
-            return EventOutcome::Ignored;
-        };
         let Some(snap) = current_params() else {
             return EventOutcome::Ignored;
         };
-        for slot in 0..snap.rows.len().min(MAX_PARAM_ROWS) {
-            // A chip edit is already mirrored to its slider (which fires its own
-            // ValueChanged, handled below) — swallow to avoid a double notify.
-            if id == param_chip_id(slot) {
-                return EventOutcome::Consumed;
-            }
-            if id == param_slider_id(slot) {
-                // Only scalar rows own a pooled slider; a colour row's swatch
-                // reports through the picker, never a slider ValueChanged.
-                let ParamRow::Scalar(row) = &snap.rows[slot] else {
-                    return EventOutcome::Ignored;
-                };
-                let track = host.store().slider(id).map(|(_, v)| v).unwrap_or(0.5);
-                push_param_intent(MotionParamIntent::SetParam {
-                    node: snap.node,
-                    param: row.name,
-                    value: row_value(track, row.min, row.max, row.integer),
-                });
-                return EventOutcome::Consumed;
-            }
+        match ev {
+            WidgetEvent::ValueChanged(id) => on_value_changed(id, host, &snap),
+            WidgetEvent::Toggled(id) => on_toggled(id, host, &snap),
+            WidgetEvent::Click(id) => on_enum_click(id, &snap),
+            _ => EventOutcome::Ignored,
         }
-        EventOutcome::Ignored
     }
 
     fn populate(store: &mut WidgetStore) {
-        // Register the pooled slider + chip widgets so the dispatch can route
-        // drags/typing even before the first paint seeds their values.
+        // Register the pooled widgets so the dispatch can route drags / clicks /
+        // toggles even before the first paint seeds their values: a slider + chip,
+        // a checkbox, and a row of segmented option buttons per slot.
         for slot in 0..MAX_PARAM_ROWS {
             store.register(
                 param_slider_id(slot),
@@ -209,8 +255,94 @@ impl Panel for MotionParamsPanel {
                 },
             );
             store.register(param_chip_id(slot), number_input(0.0));
+            store.register(
+                param_checkbox_id(slot),
+                InteractiveState::Checkbox {
+                    state: CheckboxState::Normal,
+                    value: CheckboxValue::Unchecked,
+                },
+            );
+            for opt in 0..MAX_ENUM_OPTIONS {
+                store.register(
+                    param_enum_id(slot, opt),
+                    InteractiveState::Button {
+                        state: ButtonState::Normal,
+                    },
+                );
+            }
         }
     }
+}
+
+/// A slider drag / chip commit → emit the scalar row value. A chip fires its own
+/// ValueChanged mirrored from the slider, so it is swallowed to avoid a double
+/// notify. Only Scalar rows own a pooled slider (Color reports via the picker).
+fn on_value_changed(
+    id: NodeId,
+    host: &dyn PanelHostInternal,
+    snap: &ParamsSnapshot,
+) -> EventOutcome {
+    for slot in 0..snap.rows.len().min(MAX_PARAM_ROWS) {
+        if id == param_chip_id(slot) {
+            return EventOutcome::Consumed;
+        }
+        if id == param_slider_id(slot) {
+            let ParamRow::Scalar(row) = &snap.rows[slot] else {
+                return EventOutcome::Ignored;
+            };
+            let track = host.store().slider(id).map(|(_, v)| v).unwrap_or(0.5);
+            push_param_intent(MotionParamIntent::SetParam {
+                node: snap.node,
+                param: row.name,
+                value: row_value(track, row.min, row.max, row.integer),
+            });
+            return EventOutcome::Consumed;
+        }
+    }
+    EventOutcome::Ignored
+}
+
+/// A checkbox flip → emit 1.0 / 0.0 for the Toggle row. The dispatch already
+/// flipped the stored value; read it back rather than tracking the old one.
+fn on_toggled(id: NodeId, host: &dyn PanelHostInternal, snap: &ParamsSnapshot) -> EventOutcome {
+    for slot in 0..snap.rows.len().min(MAX_PARAM_ROWS) {
+        if id == param_checkbox_id(slot) {
+            let ParamRow::Toggle(row) = &snap.rows[slot] else {
+                return EventOutcome::Ignored;
+            };
+            let on = matches!(
+                host.store().checkbox(id).map(|(_, v)| v),
+                Some(CheckboxValue::Checked)
+            );
+            push_param_intent(MotionParamIntent::SetParam {
+                node: snap.node,
+                param: row.name,
+                value: if on { 1.0 } else { 0.0 },
+            });
+            return EventOutcome::Consumed;
+        }
+    }
+    EventOutcome::Ignored
+}
+
+/// A segmented-option click → select that option index for the Enum row.
+fn on_enum_click(id: NodeId, snap: &ParamsSnapshot) -> EventOutcome {
+    for slot in 0..snap.rows.len().min(MAX_PARAM_ROWS) {
+        let ParamRow::Enum(row) = &snap.rows[slot] else {
+            continue;
+        };
+        for opt in 0..row.labels.len().min(MAX_ENUM_OPTIONS) {
+            if id == param_enum_id(slot, opt) {
+                push_param_intent(MotionParamIntent::SetParam {
+                    node: snap.node,
+                    param: row.name,
+                    value: opt as f64,
+                });
+                return EventOutcome::Consumed;
+            }
+        }
+    }
+    EventOutcome::Ignored
 }
 
 /// True while any pooled param row is being interacted with — a slider dragged /
@@ -265,8 +397,29 @@ fn number_input(value: f64) -> InteractiveState {
 /// external edits live-update the knob).
 fn seed_rows(store: &mut WidgetStore, rows: &[ParamRow]) {
     for (i, row) in rows.iter().enumerate().take(MAX_PARAM_ROWS) {
-        // Colour rows have no pooled slider/chip — their swatch seeds from the
-        // shell bridge's `widget_color`, not from here.
+        // Toggle rows: sync the checkbox value to the doc while PRESERVING its
+        // transient hover/press state (the dispatch owns that + flips the value
+        // on click). Colour swatches seed from the bridge's `widget_color`; Enum
+        // buttons are stateless (selection comes from the snapshot at paint).
+        if let ParamRow::Toggle(t) = row {
+            let cb_id = param_checkbox_id(i);
+            let state = store
+                .checkbox(cb_id)
+                .map(|(s, _)| s)
+                .unwrap_or(CheckboxState::Normal);
+            store.register(
+                cb_id,
+                InteractiveState::Checkbox {
+                    state,
+                    value: if t.on {
+                        CheckboxValue::Checked
+                    } else {
+                        CheckboxValue::Unchecked
+                    },
+                },
+            );
+            continue;
+        }
         let ParamRow::Scalar(row) = row else { continue };
         let slider_id = param_slider_id(i);
         let chip_id = param_chip_id(i);

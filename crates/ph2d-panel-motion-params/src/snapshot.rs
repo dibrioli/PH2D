@@ -11,14 +11,36 @@
 use ph2d_a11y::NodeId;
 use std::cell::RefCell;
 
-/// One editable param row — a scalar (slider + numeric chip) or a colour
-/// (swatch → OKLCH picker). Resolved to primitives the panel paints without
-/// touching the registry / graph. `Color` folds a node's four RGBA channel
-/// params behind one canonical swatch; every other param is a `Scalar`.
+/// One editable param row, resolved to primitives the panel paints without
+/// touching the registry / graph:
+/// - `Scalar` — a slider + numeric chip.
+/// - `Color` — a swatch → OKLCH picker (folds four RGBA channel params).
+/// - `Toggle` — a real checkbox (never a 0/1 slider).
+/// - `Enum` — a named segmented-button selector (never a number slider).
 #[derive(Clone, Debug, PartialEq)]
 pub enum ParamRow {
     Scalar(ScalarRow),
     Color(ColorRow),
+    Toggle(ToggleRow),
+    Enum(EnumRow),
+}
+
+/// A checkbox row for a boolean param (`>= 0.5` = on).
+#[derive(Clone, Debug, PartialEq)]
+pub struct ToggleRow {
+    pub name: &'static str,
+    pub label: String,
+    pub on: bool,
+}
+
+/// A named single-select row. `selected` is the current option index (the param
+/// value rounded); `labels` are the option captions painted as segmented buttons.
+#[derive(Clone, Debug, PartialEq)]
+pub struct EnumRow {
+    pub name: &'static str,
+    pub label: String,
+    pub selected: usize,
+    pub labels: &'static [&'static str],
 }
 
 /// A slider + numeric-chip row for one scalar `ParamSpec`.
@@ -105,6 +127,10 @@ pub fn drain_param_intents() -> Vec<MotionParamIntent> {
 /// have 3; the ceiling covers the fan-out nodes without a per-node id scheme).
 pub(crate) const MAX_PARAM_ROWS: usize = 8;
 
+/// Max named options a single `Enum` row's segmented selector supports (covers
+/// the behaviours' channel / wave / easing sets with headroom).
+pub(crate) const MAX_ENUM_OPTIONS: usize = 8;
+
 /// Stable widget id for the `slot`-th param row's slider (pooled, positional —
 /// row `i` of whichever node is selected uses slot `i`).
 pub(crate) fn param_slider_id(slot: usize) -> NodeId {
@@ -122,6 +148,17 @@ pub(crate) fn param_chip_id(slot: usize) -> NodeId {
 /// agreeing on row order. `pub` for the bridge's picker read-back / seeding.
 pub fn param_swatch_id(anchor: &str) -> NodeId {
     fnv_id(&format!("motion_param/swatch/{anchor}"))
+}
+
+/// Stable widget id for the `slot`-th param row's checkbox (Toggle rows).
+pub(crate) fn param_checkbox_id(slot: usize) -> NodeId {
+    fnv_id(&format!("motion_param/check/{slot}"))
+}
+
+/// Stable widget id for option `opt` of the `slot`-th param row's segmented
+/// selector (Enum rows).
+pub(crate) fn param_enum_id(slot: usize, opt: usize) -> NodeId {
+    fnv_id(&format!("motion_param/enum/{slot}/{opt}"))
 }
 
 /// FNV-1a-64 of `key` (same scheme as the graph panel's dynamic hit ids).

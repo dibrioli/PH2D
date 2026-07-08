@@ -162,8 +162,9 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
 
 use ph2d_node_registry::{ParamUiHint, ParamWidget};
 
-/// Param UI hints (M1.P1). `channel` / `easing` are integer selectors (a
-/// dropdown / segmented widget is a follow-up — an `IntSlider` for now).
+/// Param UI hints (M1.P1). `channel` / `easing` are **named** selectors (segmented
+/// buttons), `reverse` a checkbox — never number sliders. The enum option index
+/// IS the param value (channel 0..3, easing 0..3 = the first four `ease` kinds).
 static PARAM_HINTS: &[ParamUiHint] = &[
     ParamUiHint {
         param: "channel",
@@ -171,7 +172,9 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         min: 0.0,
         max: 3.0,
         step: 1.0,
-        widget: ParamWidget::IntSlider,
+        widget: ParamWidget::Enum {
+            labels: &["X", "Y", "Rot", "Size"],
+        },
     },
     ParamUiHint {
         param: "min",
@@ -193,9 +196,11 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         param: "easing",
         label: "Easing",
         min: 0.0,
-        max: 6.0,
+        max: 3.0,
         step: 1.0,
-        widget: ParamWidget::IntSlider,
+        widget: ParamWidget::Enum {
+            labels: &["Linear", "In", "Out", "In-Out"],
+        },
     },
     ParamUiHint {
         param: "reverse",

@@ -49,16 +49,16 @@ pub(crate) struct MotionState {
 }
 
 impl MotionState {
-    /// Build the boot state: register every node op + the default
-    /// grid→transform→clone→output vertical (the M0 smoke graph promoted to a
-    /// real document, terminated by the Output render node), transport paused at
-    /// tick 0.
+    /// Build the boot state: register every node op + the **Cavalry M1 demo** (the
+    /// gate graph: a 20×20 grid → gradient tint → circle falloff → stagger →
+    /// oscillator → Output), terminated by the Output render node. Transport
+    /// paused at tick 0 (the bridge auto-plays on tool entry).
     pub(crate) fn new() -> Self {
         let mut registry = NodeRegistry::new();
         ph2d_node_registry_init::register_all_nodes(&mut registry)
             .expect("motion node registry builds");
         let mut doc = MotionDoc::new();
-        let sink = build_default_vertical(&mut doc.graph, &registry);
+        let sink = build_cavalry_demo(&mut doc.graph, &registry);
         Self {
             doc,
             history: MotionHistory::new(),
@@ -69,9 +69,9 @@ impl MotionState {
             // Whole-atlas until the shell wires a real tile (init.rs). Headless
             // callers / tests keep this default.
             default_uv_rect: [0.0, 0.0, 1.0, 1.0],
-            // Half the default grid spacing (1.0) → distinct dots with clear
-            // gaps in the raw M0 output (framing/size producers land in M1).
-            default_size: [0.5, 0.5],
+            // Below the demo grid's 0.5 gap → distinct dots with clear gaps in the
+            // 20×20 lattice (a stagger/scale that writes a `size` column overrides).
+            default_size: [0.4, 0.4],
         }
     }
 
@@ -81,32 +81,81 @@ impl MotionState {
     }
 }
 
-/// Author the default grid→transform→clone→output vertical into `g`; returns the
-/// sink (the **Output** node) if the graph is well-typed. The Output node is the
-/// render target — the bridge keeps `sink` pointed at it, so the drawn result
-/// follows the graph. Mirror of the retired `motion_smoke` graph, now the initial
-/// document content.
-fn build_default_vertical(g: &mut Graph, reg: &NodeRegistry) -> Option<NodeId> {
+/// Author the **Cavalry M1 gate demo** into `g`; returns the sink (the Output
+/// node) if the graph is well-typed. The chain is
+/// `grid → tint → falloff → stagger → oscillator → output`:
+///
+/// - **grid** 20×20 (400 instances), gap 0.5 → spans ±4.75, framed by the default
+///   `height_world = 10` camera; emits `Index`/`Count`.
+/// - **tint** Gradient (red → blue by index) — the whole grid is a colour ramp
+///   (upstream of the falloff, so it colours every dot, not just the focus).
+/// - **falloff** Circle (radius 4) — a central focus field the behaviours read.
+/// - **stagger** a Y tilt across the grid, masked by the falloff.
+/// - **oscillator** a travelling Sine Y-wave, masked by the falloff (the centre
+///   bounces, the edges hold) — the classic Cavalry focal-motion look.
+///
+/// The Output node is the render target; the bridge keeps `sink` pointed at it.
+fn build_cavalry_demo(g: &mut Graph, reg: &NodeRegistry) -> Option<NodeId> {
     let grid = g.add_node("motion.grid");
-    let xf = g.add_node("motion.transform");
-    let clone = g.add_node("motion.clone");
+    let tint = g.add_node("motion.tint");
+    let falloff = g.add_node("motion.falloff");
+    let stagger = g.add_node("motion.stagger");
+    let osc = g.add_node("motion.oscillator");
     let output = g.add_node("motion.output");
-    for (from, to) in [(grid, xf), (xf, clone), (clone, output)] {
+    for (i, (from, to)) in [
+        (grid, tint),
+        (tint, falloff),
+        (falloff, stagger),
+        (stagger, osc),
+        (osc, output),
+    ]
+    .into_iter()
+    .enumerate()
+    {
         g.connect(Edge {
             from: (from, 0),
             to: (to, 0),
             delayed: false,
         })
         .ok()?;
+        // Lay the chain left-to-right in graph space (connected cards).
+        g.set_pos(
+            from,
+            Pos {
+                x: i as f32 * 220.0,
+                y: 0.0,
+            },
+        );
     }
-    // M1 — lay the default chain left-to-right in graph space so the editor
-    // renders it as connected cards (the panel auto-fits until the user pans).
-    g.set_pos(grid, Pos { x: 0.0, y: 0.0 });
-    g.set_pos(xf, Pos { x: 260.0, y: 0.0 });
-    g.set_pos(clone, Pos { x: 520.0, y: 0.0 });
-    g.set_pos(output, Pos { x: 780.0, y: 0.0 });
-    // Same "validate on load" the editor runs before cooking — proves the
-    // authored graph is well-typed and membrane-clean.
+    g.set_pos(output, Pos { x: 1100.0, y: 0.0 });
+
+    // 20×20 lattice, gap 0.5.
+    g.set_param(grid, "rows", 20.0);
+    g.set_param(grid, "cols", 20.0);
+    g.set_param(grid, "gap_x", 0.5);
+    g.set_param(grid, "gap_y", 0.5);
+    // Gradient tint: red (start) → blue (end) by index (linear-straight RGBA).
+    g.set_param(tint, "mode", 1.0);
+    g.set_param(tint, "r", 1.0);
+    g.set_param(tint, "g", 0.1);
+    g.set_param(tint, "b", 0.1);
+    g.set_param(tint, "r2", 0.1);
+    g.set_param(tint, "g2", 0.3);
+    g.set_param(tint, "b2", 1.0);
+    // Central circle focus (radius 4, smoothstep edge).
+    g.set_param(falloff, "radius", 4.0);
+    // Y tilt across the grid (masked by the falloff).
+    g.set_param(stagger, "channel", 1.0); // Y
+    g.set_param(stagger, "min", -1.0);
+    g.set_param(stagger, "max", 1.0);
+    // Travelling Sine Y-wave (masked by the falloff).
+    g.set_param(osc, "channel", 1.0); // Y
+    g.set_param(osc, "amplitude", 1.0);
+    g.set_param(osc, "frequency", 0.6);
+    g.set_param(osc, "phase_stagger", 0.1);
+
+    // Same "validate on load" the editor runs before cooking — proves the authored
+    // graph is well-typed and membrane-clean.
     g.validate(reg).ok()?;
     Some(output)
 }
@@ -116,20 +165,63 @@ mod tests {
     use super::*;
 
     #[test]
-    fn new_builds_a_well_typed_default_vertical_with_a_sink() {
+    fn new_builds_the_well_typed_cavalry_demo() {
         let state = MotionState::new();
-        assert!(state.sink.is_some(), "default vertical must have a sink");
-        // 4 nodes authored (grid, transform, clone, output).
-        assert_eq!(state.doc.graph.nodes().len(), 4);
-        // The sink is the Output node (the render target).
+        assert!(state.sink.is_some(), "the demo must have a sink");
+        // 6 nodes (grid, tint, falloff, stagger, oscillator, output).
+        assert_eq!(state.doc.graph.nodes().len(), 6);
         let sink = state.sink.unwrap();
         assert_eq!(
             state.doc.graph.node(sink).unwrap().type_name,
             "motion.output"
         );
-        // Well-typed against the registry (validate succeeded in `new`).
         assert!(state.doc.graph.validate(&state.registry).is_ok());
-        // Paused at tick 0 → playhead 0.
-        assert_eq!(state.playhead(1.0 / 60.0), 0.0);
+        assert_eq!(state.playhead(1.0 / 60.0), 0.0); // paused at tick 0
+    }
+
+    #[test]
+    fn cavalry_demo_gate_cooks_400_animated_coloured_instances() {
+        use ph2d_eval_motion::MotionCookPump;
+        // The M1 gate, cooked through the real registry: 20×20 = 400 instances,
+        // gradient-tinted, and the oscillator animates them (Y moves with the
+        // playhead) — proving grid+tint+falloff+stagger+oscillator compose.
+        let state = MotionState::new();
+        let (uv, size) = (state.default_uv_rect, state.default_size);
+
+        let mut pump = MotionCookPump::new();
+        pump.pump(
+            &state.doc.graph,
+            &state.registry,
+            state.sink,
+            0,
+            0.0,
+            uv,
+            size,
+        );
+        assert_eq!(pump.instances.len(), 400, "20×20 grid = 400 instances");
+        // A gradient tint means the instances are not all the same colour.
+        let c0 = pump.instances[0].tint;
+        let clast = pump.instances[399].tint;
+        assert_ne!(c0, clast, "gradient tint varies across the grid");
+
+        // A central instance moves in Y as time advances (oscillator, focus-masked).
+        let mid = 400 / 2 + 10; // an instance near the centre (inside the falloff)
+        let y_at = |ph: f64| {
+            let mut p = MotionCookPump::new();
+            p.pump(
+                &state.doc.graph,
+                &state.registry,
+                state.sink,
+                1,
+                ph,
+                uv,
+                size,
+            );
+            p.instances[mid].world_pos[1]
+        };
+        assert!(
+            (y_at(0.25) - y_at(0.0)).abs() > 1e-4,
+            "the focus region animates over time"
+        );
     }
 }

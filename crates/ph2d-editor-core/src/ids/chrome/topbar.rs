@@ -34,6 +34,11 @@ pub const TOPBAR_IMAGE_TOOLS: NodeId = hash_node_id("topbar_image_tools");
 /// Widget Gallery / Grid Settings panel-toggle pattern). Handled by
 /// `ph2d_panel_audio_mixer::AudioMixerPanel::apply_event`.
 pub const TOPBAR_AUDIO_MIXER: NodeId = hash_node_id("topbar_audio_mixer");
+/// Audio Editor cluster — TopBar single-pill (left group, next to Audio Mixer)
+/// that toggles the docked Audio Editor panel + its floating waveform overlay
+/// (mirrors the Audio Mixer panel-toggle pattern). Handled by
+/// `ph2d_panel_audio_editor::AudioEditorPanel::apply_event`.
+pub const TOPBAR_AUDIO_EDITOR: NodeId = hash_node_id("topbar_audio_editor");
 /// Vector tool pill — TopBar single-pill that activates the Vector drawing
 /// tool (ADR-0108 cutover; sole `vector_tools` member). Click pushes
 /// `EditorAction::ActivateTool { tool_id: "vector" }`; the shell drain in

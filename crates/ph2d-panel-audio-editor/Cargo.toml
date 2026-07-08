@@ -1,0 +1,28 @@
+[package]
+name = "ph2d-panel-audio-editor"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# The Audio Editor panel (docs/Audio/, W1). Docked in the shared Inspector slot:
+# transport (play/pause/stop/loop) + Load + Export + a clip readout. The big
+# waveform + timeline live in the SEPARATE floating overlay on the canvas
+# (ids::AUDIO_OVERLAY_PANEL). UI-only — no ph2d-audio dep; the shell's editor
+# bridge reads the transport intents (snapshot) and drives the preview engine.
+[dependencies]
+ph2d-editor-core = { path = "../ph2d-editor-core" }
+ph2d-a11y = { path = "../ph2d-a11y" }
+ph2d-vector = { path = "../ph2d-vector" }
+ph2d-text = { path = "../ph2d-text" }
+ph2d-tokens = { path = "../ph2d-tokens" }
+ph2d-tool-registry = { path = "../ph2d-tool-registry" }
+
+[dev-dependencies]
+# Behavioral seam test (DIRETIVA §5 DoD): drive real Click events through
+# apply_event and assert the observable transport-intent / visibility effect.
+ph2d-ui-testkit = { path = "../ph2d-ui-testkit" }

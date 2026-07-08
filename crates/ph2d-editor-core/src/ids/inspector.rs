@@ -312,6 +312,19 @@ pub const GAL_PANEL: NodeId = hash_node_id("gal_panel");
 /// z-order paint walk in `screens::hero::paint` resolves + paints it. Toggle
 /// visibility via [`crate::ids::TOPBAR_AUDIO_MIXER`].
 pub const AUDIO_MIXER_PANEL: NodeId = hash_node_id("audio_mixer_panel");
+/// Audio Editor docked panel — root id. Must match
+/// `ph2d_panel_audio_editor::AEDIT_PANEL` (same `hash_node_id` string) so the
+/// z-order paint walk in `screens::hero::paint` resolves + paints it. Toggle
+/// visibility via [`crate::ids::TOPBAR_AUDIO_EDITOR`]. The docked panel holds the
+/// transport + load/export controls; the big waveform + timeline live in the
+/// separate floating [`AUDIO_OVERLAY_PANEL`] on the canvas.
+pub const AUDIO_EDITOR_PANEL: NodeId = hash_node_id("audio_editor_panel");
+/// Audio Editor **floating overlay** — root id for the resizable waveform +
+/// timeline window that floats over the canvas in the gap between the Hierarchy
+/// and Inspector docks. Drag/resize reuse the panel-agnostic
+/// `blender_picker_offset` + `panel_resize_delta` store, keyed by this id
+/// (mirror of the Inspector dock).
+pub const AUDIO_OVERLAY_PANEL: NodeId = hash_node_id("audio_overlay_panel");
 /// Drag handle pill at the top of the Widget Gallery panel.
 pub const GAL_DRAG_HANDLE: NodeId = hash_node_id("gal_drag_handle");
 /// Resize gripper at the Widget Gallery's bottom-right corner.

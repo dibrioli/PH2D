@@ -195,6 +195,39 @@ impl Graph {
         Ok(())
     }
 
+    /// Remove the edge feeding input port `(to, port)`, returning it if present.
+    /// An input port takes at most one edge ([`Graph::connect`]), so this is the
+    /// unambiguous inverse of a `connect` into that port — the editor's alt-click
+    /// disconnect resolves a wire to its unique target input. Removing an edge
+    /// only relaxes the invariants (acyclicity, one-edge-per-input), so no
+    /// re-validation is needed.
+    pub fn disconnect(&mut self, to: NodeId, port: u16) -> Option<Edge> {
+        self.edges
+            .iter()
+            .position(|e| e.to == (to, port))
+            .map(|i| self.edges.remove(i))
+    }
+
+    /// Remove node `id` and everything that references it: its instance, every
+    /// incident edge (as source **or** target), its layout position, and its
+    /// per-instance param overrides. Returns `true` iff the node existed.
+    ///
+    /// A no-op (returns `false`, touches nothing) when `id` is not a node, so a
+    /// stale selection id from the editor deletes cleanly. Only removes, so the
+    /// structural invariants are preserved (the remaining edges were already
+    /// acyclic and one-per-input).
+    pub fn remove_node(&mut self, id: NodeId) -> bool {
+        let before = self.nodes.len();
+        self.nodes.retain(|n| n.id != id);
+        if self.nodes.len() == before {
+            return false;
+        }
+        self.edges.retain(|e| e.from.0 != id && e.to.0 != id);
+        self.layout.remove(&id);
+        self.node_params.remove(&id);
+        true
+    }
+
     pub fn set_pos(&mut self, id: NodeId, pos: Pos) {
         self.layout.insert(id, pos);
     }
@@ -457,6 +490,69 @@ mod tests {
             }),
             Err(EdgeError::InputAlreadyConnected)
         );
+    }
+
+    #[test]
+    fn disconnect_removes_the_edge_into_an_input() {
+        let mut g = Graph::new();
+        let a = g.add_node("a");
+        let b = g.add_node("b");
+        g.connect(Edge {
+            from: (a, 0),
+            to: (b, 1),
+            delayed: false,
+        })
+        .unwrap();
+        assert_eq!(g.edges().len(), 1);
+        // Wrong port → nothing removed.
+        assert_eq!(g.disconnect(b, 0), None);
+        assert_eq!(g.edges().len(), 1);
+        // Right port → the edge comes back out.
+        assert_eq!(
+            g.disconnect(b, 1),
+            Some(Edge {
+                from: (a, 0),
+                to: (b, 1),
+                delayed: false
+            })
+        );
+        assert!(g.edges().is_empty());
+        // The port is free again — a fresh connect is accepted.
+        assert_eq!(
+            g.connect(Edge {
+                from: (a, 0),
+                to: (b, 1),
+                delayed: false
+            }),
+            Ok(())
+        );
+    }
+
+    #[test]
+    fn remove_node_drops_node_incident_edges_layout_and_params() {
+        let mut g = Graph::new();
+        let a = g.add_node("a");
+        let b = g.add_node("b");
+        let c = g.add_node("c");
+        g.connect(edge(a, b, false)).unwrap();
+        g.connect(edge(b, c, false)).unwrap();
+        g.set_pos(b, Pos { x: 1.0, y: 2.0 });
+        g.set_param(b, "k", 3.0);
+
+        assert!(g.remove_node(b));
+        // Node gone.
+        assert!(g.node(b).is_none());
+        assert_eq!(g.nodes().len(), 2);
+        // Both edges incident on `b` (a→b and b→c) are gone; none reference `b`.
+        assert!(g.edges().is_empty());
+        // Layout + param overrides for `b` are gone.
+        assert!(g.pos(b).is_none());
+        assert!(g.node_param_overrides(b).is_none());
+        // Untouched neighbours survive.
+        assert!(g.node(a).is_some() && g.node(c).is_some());
+        // Removing a non-existent node is a no-op.
+        assert!(!g.remove_node(b));
+        assert!(!g.remove_node(NodeId(999)));
     }
 
     #[test]

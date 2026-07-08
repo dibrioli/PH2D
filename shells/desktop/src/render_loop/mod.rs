@@ -1331,6 +1331,7 @@ impl crate::App {
                 report.ticks,
                 self.fixed_step.fixed_dt(),
                 self.last_pointer,
+                toasts,
             );
             ph2d_vec_render::dispatch(
                 vec_scene,

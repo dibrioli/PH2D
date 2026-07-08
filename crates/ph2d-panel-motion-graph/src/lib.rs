@@ -12,14 +12,15 @@
 
 #![forbid(unsafe_code)]
 
+mod geom;
 mod interact;
 mod paint;
 mod snapshot;
 mod state;
 
 pub use snapshot::{
-    GraphEdgeView, GraphIntent, GraphNodeView, GraphViewSnapshot, PortView, drain_intents,
-    set_current_motion_graph, snapshot_from,
+    GraphEdgeView, GraphIntent, GraphNodeView, GraphViewSnapshot, NodeChoice, PortView,
+    drain_intents, set_current_motion_graph, set_current_node_catalog, snapshot_from,
 };
 pub use state::MotionGraphPanelState;
 

@@ -11,15 +11,19 @@
 use ph2d_node_registry::{NodeRegistry, NodeSilhouette, NodeUiCategory};
 use ph2d_nodegraph::graph::Graph;
 use ph2d_nodegraph::node::NodeTypeId;
-use ph2d_nodegraph::port::{Dim, Domain};
+use ph2d_nodegraph::port::{Clock, Dim, Domain};
 use std::cell::RefCell;
 
 /// One socket on a node card. Color ← [`Domain`], shape ← [`Dim`] (plan §2.4).
+/// `clock` completes the [`ph2d_nodegraph::port::PortType`] axes so the editor's
+/// live wire-compatibility preview matches `connects_directly` (domain + dim +
+/// clock) without touching the graph; the membrane check stays server-side.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct PortView {
     pub name: &'static str,
     pub domain: Domain,
     pub dim: Dim,
+    pub clock: Clock,
 }
 
 /// One node card in the view.
@@ -72,11 +76,62 @@ pub enum GraphIntent {
     MoveNodes { nodes: Vec<u32>, dx: f32, dy: f32 },
     /// Close the bracket (the shell commits the undo step). Pushed on release.
     EndDrag,
+    /// Connect an output port to an input port (drag socket→socket). The shell is
+    /// the authority: it runs `Graph::connect` (cycle / occupied-input structure)
+    /// then `Graph::validate` (typing / membrane) on a trial clone and only keeps
+    /// it when the new edge is legal — else it raises a refusal toast. One undo
+    /// step; re-cooks (`mark_dirty`).
+    Connect {
+        from_node: u32,
+        from_port: u16,
+        to_node: u32,
+        to_port: u16,
+    },
+    /// Remove the edge feeding an input port (alt-click a wire). Identified by its
+    /// unique target `(to_node, to_port)`. One undo step; re-cooks.
+    Disconnect { to_node: u32, to_port: u16 },
+    /// Add a node of the given canonical type at a graph-space position (add-node
+    /// menu). `type_name` is a `&'static` canonical name from the published
+    /// [`NodeChoice`] catalog. One undo step; re-cooks.
+    AddNode {
+        type_name: &'static str,
+        x: f32,
+        y: f32,
+    },
+    /// Delete the selected nodes and their orphaned incident edges (Delete key).
+    /// A no-op (no undo step) when `nodes` is empty or none still exist — safe
+    /// against the double key-dispatch (M0 focus gate + shell cursor push). One
+    /// undo step; re-cooks.
+    DeleteSelection { nodes: Vec<u32> },
+}
+
+/// One addable node type in the add-node menu (M1.E7). Copy — the canonical
+/// `type_name` (fed straight back as [`GraphIntent::AddNode`]) and the English
+/// `display` label are both `&'static` (the registry's manifest / UI metadata);
+/// `category` tints the row's dot so the palette teaches the library map.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub struct NodeChoice {
+    pub type_name: &'static str,
+    pub display: &'static str,
+    pub category: NodeUiCategory,
 }
 
 thread_local! {
     static CURRENT: RefCell<Option<GraphViewSnapshot>> = const { RefCell::new(None) };
     static INTENTS: RefCell<Vec<GraphIntent>> = const { RefCell::new(Vec::new()) };
+    static CATALOG: RefCell<Vec<NodeChoice>> = const { RefCell::new(Vec::new()) };
+}
+
+/// Publish the addable-node catalog (shell bridge → panel). Set once on tool
+/// activation (the registry is fixed at boot) and cleared to empty on deactivate.
+pub fn set_current_node_catalog(catalog: Vec<NodeChoice>) {
+    CATALOG.with(|c| *c.borrow_mut() = catalog);
+}
+
+/// Read the published catalog (panel, only while the add-node menu is open, so no
+/// per-frame clone in the common path).
+pub(crate) fn current_catalog() -> Vec<NodeChoice> {
+    CATALOG.with(|c| c.borrow().clone())
 }
 
 /// Queue an edit for the shell bridge to apply (panel → shell).
@@ -114,10 +169,9 @@ pub fn snapshot_from(graph: &Graph, registry: &NodeRegistry) -> GraphViewSnapsho
             let type_id = inst.type_id();
             let manifest = registry.resolve(type_id).map(|op| op.manifest());
             let ui = registry.ui_manifest(type_id);
-            let pos = graph.pos(inst.id).unwrap_or(ph2d_nodegraph::graph::Pos {
-                x: 0.0,
-                y: 0.0,
-            });
+            let pos = graph
+                .pos(inst.id)
+                .unwrap_or(ph2d_nodegraph::graph::Pos { x: 0.0, y: 0.0 });
             GraphNodeView {
                 id: inst.id.0,
                 display_name: ui
@@ -156,6 +210,7 @@ fn port_views(specs: &[ph2d_nodegraph::node::PortSpec]) -> Vec<PortView> {
             name: s.name,
             domain: s.ty.domain,
             dim: s.ty.dim,
+            clock: s.ty.clock,
         })
         .collect()
 }

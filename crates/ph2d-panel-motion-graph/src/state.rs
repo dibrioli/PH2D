@@ -38,6 +38,28 @@ pub(crate) enum Interaction {
         last: (f32, f32),
         started: bool,
     },
+    /// Dragging a new wire out of an output socket (E6). `cur` is the live
+    /// pointer (screen) the ghost wire tracks; `target` is the input socket
+    /// currently under the pointer (if any) plus whether it is locally
+    /// type-compatible (domain + dim + clock) — drives the ghost color + target
+    /// highlight. The drop emits `Connect` for the bridge to validate for real.
+    DrawWire {
+        from_node: u32,
+        from_port: u16,
+        cur: (f32, f32),
+        target: Option<(u32, u16, bool)>,
+    },
+}
+
+/// An open add-node popup (E7). Ephemeral — never undoable.
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub(crate) struct AddMenu {
+    /// Top-left of the popup panel, screen space (the R-click point, clamped at
+    /// paint so the list stays on-canvas).
+    pub screen: (f32, f32),
+    /// Graph-space point the chosen node lands at (the R-click point mapped
+    /// through the view — stable under a later pan/zoom while the menu is open).
+    pub spawn: (f32, f32),
 }
 
 /// Retained panel state.
@@ -49,4 +71,7 @@ pub struct MotionGraphPanelState {
     /// Selected node ids (`NodeId.0`).
     pub(crate) selected: BTreeSet<u32>,
     pub(crate) interaction: Interaction,
+    /// Open add-node popup, or `None`. Opened by R-click on empty canvas / `A`;
+    /// closed by picking a row, clicking away, or Esc.
+    pub(crate) add_menu: Option<AddMenu>,
 }

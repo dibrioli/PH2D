@@ -1,0 +1,186 @@
+//! Shared graph geometry (Motion Nodes M1) — the graph⟷screen affine, card /
+//! socket metrics, socket hit-testing, and the add-node menu layout.
+//!
+//! One source of truth used by both `paint` (draw) and `interact` (hit-test), so
+//! the socket a gesture lands on and the socket that was drawn can never drift
+//! apart. All sizes are logical; the transform scales them by `zoom`.
+
+use crate::snapshot::{GraphNodeView, GraphViewSnapshot};
+use crate::state::{AddMenu, ViewState};
+use ph2d_editor_core::zones::Rect;
+
+// Card metrics in graph (logical) space. Shared with `paint` (draw) so the hit
+// geometry matches the rendered geometry exactly. These are canvas coordinate
+// units, not chrome design tokens (see the note in `paint`), hence LITERAL-PX-OK.
+pub(crate) const CARD_W: f32 = 190.0; // LITERAL-PX-OK: node card width
+pub(crate) const HEADER_H: f32 = 26.0; // LITERAL-PX-OK: node card header height
+pub(crate) const ROW_H: f32 = 22.0; // LITERAL-PX-OK: socket-row height
+pub(crate) const PAD_BOTTOM: f32 = 10.0; // LITERAL-PX-OK: node card bottom padding
+
+/// Half-extent (screen px) of a socket's square hit zone — fixed in screen space
+/// so a socket stays grabbable when the graph is zoomed out (the drawn dot
+/// shrinks with zoom, but the target does not).
+pub(crate) const SOCKET_HIT_R: f32 = 9.0; // LITERAL-PX-OK: socket hit half-extent
+
+// Add-node popup metrics (logical == screen; the menu never scales with zoom).
+pub(crate) const MENU_W: f32 = 200.0; // LITERAL-PX-OK: add-menu popup width
+pub(crate) const MENU_ROW_H: f32 = 22.0; // LITERAL-PX-OK: add-menu row height
+pub(crate) const MENU_HEADER_H: f32 = 22.0; // LITERAL-PX-OK: add-menu header height
+pub(crate) const MENU_PAD: f32 = 5.0; // LITERAL-PX-OK: add-menu inner padding
+
+/// graph-space → screen-space affine: `screen = base + pan + graph * zoom`.
+pub(crate) struct View {
+    base_x: f32,
+    base_y: f32,
+    pan_x: f32,
+    pan_y: f32,
+    pub(crate) zoom: f32,
+}
+
+impl View {
+    pub(crate) fn new(rect: Rect, v: ViewState) -> Self {
+        Self {
+            base_x: rect.x,
+            base_y: rect.y,
+            pan_x: v.pan_x,
+            pan_y: v.pan_y,
+            zoom: v.zoom,
+        }
+    }
+
+    /// graph → screen.
+    pub(crate) fn pt(&self, gx: f32, gy: f32) -> (f32, f32) {
+        (
+            self.base_x + self.pan_x + gx * self.zoom,
+            self.base_y + self.pan_y + gy * self.zoom,
+        )
+    }
+
+    /// screen → graph (inverse of [`Self::pt`]). Used to place a new node at the
+    /// R-click point and to keep the add-menu spawn stable across pan/zoom.
+    pub(crate) fn graph(&self, sx: f32, sy: f32) -> (f32, f32) {
+        (
+            (sx - self.base_x - self.pan_x) / self.zoom,
+            (sy - self.base_y - self.pan_y) / self.zoom,
+        )
+    }
+}
+
+pub(crate) fn card_rows(n: &GraphNodeView) -> f32 {
+    (n.inputs.len().max(n.outputs.len()).max(1)) as f32
+}
+
+pub(crate) fn card_h(n: &GraphNodeView) -> f32 {
+    HEADER_H + card_rows(n) * ROW_H + PAD_BOTTOM
+}
+
+/// Screen center of a socket (`output` picks the right vs left edge; `i` is the
+/// row index).
+pub(crate) fn socket_center(n: &GraphNodeView, view: &View, output: bool, i: usize) -> (f32, f32) {
+    let edge_x = if output { n.x + CARD_W } else { n.x };
+    let y = n.y + HEADER_H + i as f32 * ROW_H + ROW_H * 0.5;
+    view.pt(edge_x, y)
+}
+
+/// The input socket whose square hit zone contains `(x, y)`, if any — the drop
+/// target of a wire drag (the End gesture only carries the pointer position, so
+/// the panel resolves the target socket itself). Returns `(node id, port)`.
+pub(crate) fn hit_input_socket(
+    snap: &GraphViewSnapshot,
+    view: &View,
+    x: f32,
+    y: f32,
+) -> Option<(u32, u16)> {
+    for n in &snap.nodes {
+        for (i, _) in n.inputs.iter().enumerate() {
+            let (cx, cy) = socket_center(n, view, false, i);
+            if (x - cx).abs() <= SOCKET_HIT_R && (y - cy).abs() <= SOCKET_HIT_R {
+                return Some((n.id, i as u16));
+            }
+        }
+    }
+    None
+}
+
+/// The add-node popup's panel rect, clamped so a menu opened near the right/
+/// bottom edge stays fully on `canvas`.
+pub(crate) fn add_menu_panel(menu: &AddMenu, count: usize, canvas: Rect) -> Rect {
+    let h = MENU_HEADER_H + count.max(1) as f32 * MENU_ROW_H + 2.0 * MENU_PAD;
+    let x = menu
+        .screen
+        .0
+        .min(canvas.x + canvas.w - MENU_W)
+        .max(canvas.x);
+    let y = menu.screen.1.min(canvas.y + canvas.h - h).max(canvas.y);
+    Rect::new(x, y, MENU_W, h)
+}
+
+/// The clickable row rect for the `i`-th catalog entry inside `panel`.
+pub(crate) fn add_menu_row(panel: Rect, i: usize) -> Rect {
+    Rect::new(
+        panel.x + MENU_PAD,
+        panel.y + MENU_HEADER_H + MENU_PAD + i as f32 * MENU_ROW_H,
+        panel.w - 2.0 * MENU_PAD,
+        MENU_ROW_H,
+    )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::snapshot::{GraphNodeView, GraphViewSnapshot, PortView};
+    use crate::state::AddMenu;
+    use ph2d_node_registry::{NodeSilhouette, NodeUiCategory};
+    use ph2d_nodegraph::port::{Clock, Dim, Domain};
+
+    fn node_with_inputs(id: u32, x: f32, n_in: usize) -> GraphNodeView {
+        GraphNodeView {
+            id,
+            display_name: "n".into(),
+            category: NodeUiCategory::Utility,
+            silhouette: NodeSilhouette::Rect,
+            x,
+            y: 0.0,
+            inputs: (0..n_in)
+                .map(|_| PortView {
+                    name: "i",
+                    domain: Domain::Instances,
+                    dim: Dim::Scalar,
+                    clock: Clock::Frame,
+                })
+                .collect(),
+            outputs: vec![],
+        }
+    }
+
+    #[test]
+    fn hit_input_socket_resolves_the_right_port() {
+        let snap = GraphViewSnapshot {
+            nodes: vec![node_with_inputs(7, 100.0, 2)],
+            edges: vec![],
+        };
+        let view = View::new(Rect::new(0.0, 0.0, 800.0, 600.0), ViewState::default());
+        // Input 0 center: (100, HEADER_H + ROW_H*0.5) = (100, 37).
+        let (n0, p0) = socket_center(&snap.nodes[0], &view, false, 0);
+        assert!(hit_input_socket(&snap, &view, n0, p0) == Some((7, 0)));
+        // Input 1 center: (100, HEADER_H + ROW_H*1.5) = (100, 59).
+        let (n1, p1) = socket_center(&snap.nodes[0], &view, false, 1);
+        assert_eq!(hit_input_socket(&snap, &view, n1, p1), Some((7, 1)));
+        // Far from any socket → no hit.
+        assert_eq!(hit_input_socket(&snap, &view, 400.0, 400.0), None);
+    }
+
+    #[test]
+    fn add_menu_panel_clamps_into_the_canvas() {
+        let canvas = Rect::new(0.0, 0.0, 300.0, 200.0);
+        // Opened past the right/bottom edge → clamped fully inside.
+        let menu = AddMenu {
+            screen: (290.0, 190.0),
+            spawn: (0.0, 0.0),
+        };
+        let p = add_menu_panel(&menu, 3, canvas);
+        assert!(p.x + p.w <= canvas.x + canvas.w + 0.01);
+        assert!(p.y + p.h <= canvas.y + canvas.h + 0.01);
+        assert!(p.x >= canvas.x && p.y >= canvas.y);
+    }
+}

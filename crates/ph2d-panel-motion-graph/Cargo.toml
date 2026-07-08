@@ -20,7 +20,11 @@ authors.workspace = true
 ph2d-editor-core = { path = "../ph2d-editor-core" }
 ph2d-a11y = { path = "../ph2d-a11y" }
 ph2d-tokens = { path = "../ph2d-tokens" }
+# `PointerButton` — the add-node menu opens on a right-click (Secondary) on empty
+# canvas, so the gesture interpreter distinguishes the button (M1.E7).
+ph2d-host = { path = "../ph2d-host" }
 # M1 — the graph view model: node UI metadata (category/silhouette) + the port
-# axes (Domain/Dim) that drive socket color/shape and wire color.
+# axes (Domain/Dim/Clock) that drive socket color/shape, wire color, and the
+# live connect-compatibility preview.
 ph2d-node-registry = { path = "../ph2d-node-registry" }
 ph2d-nodegraph = { path = "../ph2d-nodegraph" }

@@ -21,7 +21,7 @@
 
 use crate::motion_state::MotionState;
 use ph2d_editor::screens::layout::CenterSplit;
-use ph2d_editor::{HeroScreen, ToolId, ToolRegistry};
+use ph2d_editor::{HeroScreen, ToastQueue, ToolId, ToolRegistry};
 
 /// Per-frame Motion-tool plumbing. Safe to call every frame; a no-op when the
 /// Motion tool is inactive (beyond flipping panel visibility / the split off).
@@ -31,6 +31,10 @@ use ph2d_editor::{HeroScreen, ToolId, ToolRegistry};
 /// - `fixed_dt`: the fixed timestep in seconds (playhead = `tick × fixed_dt`).
 /// - `cursor`: the latest pointer position (screen px) — drives the cursor-gated
 ///   graph keyboard focus (Blender-style F acts on the hovered area).
+/// - `toasts`: the shell toast queue — the connect authority raises a refusal
+///   toast here when a dragged edge is rejected (cycle / occupied / typing /
+///   membrane).
+#[cfg_attr(not(feature = "panel-motion-graph"), allow(unused_variables))]
 pub(super) fn dispatch(
     hero: &mut HeroScreen,
     tools: &ToolRegistry,
@@ -38,6 +42,7 @@ pub(super) fn dispatch(
     frame_ticks: u32,
     fixed_dt: f64,
     cursor: (f32, f32),
+    toasts: &mut ToastQueue,
 ) {
     let motion_active = tools
         .active()
@@ -88,7 +93,14 @@ pub(super) fn dispatch(
     #[cfg(feature = "panel-motion-graph")]
     {
         if motion_active {
-            apply_graph_intents(motion);
+            apply_graph_intents(motion, toasts);
+            // Publish the addable-node catalog for the add-menu. Rebuilt each
+            // active frame (cheap: ~dozens of `Copy` entries) alongside the
+            // snapshot; memoizing it is a follow-up like the snapshot's own
+            // dirty gate.
+            ph2d_panel_motion_graph::set_current_node_catalog(build_catalog(&motion.registry));
+        } else {
+            ph2d_panel_motion_graph::set_current_node_catalog(Vec::new());
         }
         ph2d_panel_motion_graph::set_current_motion_graph(
             motion_active.then(|| {
@@ -121,13 +133,21 @@ pub(super) fn dispatch(
 }
 
 /// Apply the panel's queued [`GraphIntent`]s to the shell-owned document (M1.E10).
-/// A node drag is a live sequence — `BeginDrag` opens the undo bracket, each
-/// `MoveNodes` applies an incremental delta immediately (so the node tracks the
-/// cursor with no end-jump), `EndDrag` commits one undo step. Positions are
-/// UI-only (they never touch the cook), so no `mark_dirty`.
+///
+/// - **Drag** (`BeginDrag`/`MoveNodes`/`EndDrag`) is a live sequence: the bracket
+///   opens the undo step, each incremental delta applies immediately (so the node
+///   tracks the cursor with no end-jump), and the release commits one step.
+///   Positions are UI-only (they never touch the cook) → no `mark_dirty`.
+/// - **Structural** edits (`Connect`/`Disconnect`/`AddNode`/`DeleteSelection`)
+///   each are one atomic undo step and change the cook → `mark_dirty`. Connect is
+///   validated here (the shell is the authority): a trial clone runs
+///   `Graph::connect` (cycle / occupied-input) then `Graph::validate` (typing /
+///   membrane), and the edit is kept only when the new edge is legal — else a
+///   refusal toast is raised and the document is untouched.
 #[cfg(feature = "panel-motion-graph")]
-fn apply_graph_intents(motion: &mut MotionState) {
-    use ph2d_nodegraph::graph::{NodeId, Pos};
+fn apply_graph_intents(motion: &mut MotionState, toasts: &mut ToastQueue) {
+    use ph2d_editor::Toast;
+    use ph2d_nodegraph::graph::{Edge, NodeId, Pos};
     use ph2d_panel_motion_graph::GraphIntent;
     for intent in ph2d_panel_motion_graph::drain_intents() {
         match intent {
@@ -147,6 +167,127 @@ fn apply_graph_intents(motion: &mut MotionState) {
                 }
             }
             GraphIntent::EndDrag => motion.history.commit_if_changed(&motion.doc),
+            GraphIntent::Connect {
+                from_node,
+                from_port,
+                to_node,
+                to_port,
+            } => {
+                let edge = Edge {
+                    from: (NodeId(from_node), from_port),
+                    to: (NodeId(to_node), to_port),
+                    delayed: false,
+                };
+                let mut trial = motion.doc.graph.clone();
+                match trial.connect(edge) {
+                    Err(e) => {
+                        toasts.push(Toast::warning(connect_err_msg(e)));
+                    }
+                    Ok(()) => {
+                        let rejected = match trial.validate(&motion.registry) {
+                            Ok(()) => false,
+                            Err(viols) => viols.iter().any(|v| violation_blocks_edge(v, edge)),
+                        };
+                        if rejected {
+                            toasts.push(Toast::warning("Can't connect: incompatible ports"));
+                        } else {
+                            let pre = motion.doc.clone();
+                            motion.doc.graph = trial;
+                            motion.history.push_undo(pre);
+                            motion.pump.mark_dirty();
+                        }
+                    }
+                }
+            }
+            GraphIntent::Disconnect { to_node, to_port } => {
+                let pre = motion.doc.clone();
+                if motion
+                    .doc
+                    .graph
+                    .disconnect(NodeId(to_node), to_port)
+                    .is_some()
+                {
+                    motion.history.push_undo(pre);
+                    motion.pump.mark_dirty();
+                }
+            }
+            GraphIntent::AddNode { type_name, x, y } => {
+                let pre = motion.doc.clone();
+                let id = motion.doc.graph.add_node(type_name);
+                motion.doc.graph.set_pos(id, Pos { x, y });
+                motion.history.push_undo(pre);
+                motion.pump.mark_dirty();
+            }
+            GraphIntent::DeleteSelection { nodes } => {
+                let pre = motion.doc.clone();
+                let mut changed = false;
+                for id in nodes {
+                    changed |= motion.doc.graph.remove_node(NodeId(id));
+                }
+                if changed {
+                    // Deleting the sink stops the cook cleanly rather than
+                    // pointing it at a phantom node.
+                    if let Some(s) = motion.sink
+                        && motion.doc.graph.node(s).is_none()
+                    {
+                        motion.sink = None;
+                    }
+                    motion.history.push_undo(pre);
+                    motion.pump.mark_dirty();
+                }
+            }
         }
     }
+}
+
+/// Human-readable reason a structural `connect` was rejected (add-menu toast).
+#[cfg(feature = "panel-motion-graph")]
+fn connect_err_msg(e: ph2d_nodegraph::graph::EdgeError) -> &'static str {
+    use ph2d_nodegraph::graph::EdgeError;
+    match e {
+        EdgeError::WouldCycle => "Can't connect: would create a cycle",
+        EdgeError::InputAlreadyConnected => "Can't connect: input already wired",
+        EdgeError::UnknownNode => "Can't connect: unknown node",
+    }
+}
+
+/// Does a validation violation reject *this* just-added edge (as opposed to a
+/// pre-existing problem elsewhere)? Only a type mismatch or a membrane crossing
+/// on the same endpoints blocks the connect.
+#[cfg(feature = "panel-motion-graph")]
+fn violation_blocks_edge(
+    v: &ph2d_nodegraph::graph::Violation,
+    edge: ph2d_nodegraph::graph::Edge,
+) -> bool {
+    use ph2d_nodegraph::graph::Violation;
+    match v {
+        Violation::TypeMismatch { from, to } | Violation::Membrane { from, to } => {
+            *from == edge.from && *to == edge.to
+        }
+        _ => false,
+    }
+}
+
+/// Build the addable-node catalog from the registry (canonical name + English
+/// display label + category), sorted by category then label so the menu groups
+/// by color (the palette teaches the library map, plan §2.4).
+#[cfg(feature = "panel-motion-graph")]
+fn build_catalog(
+    registry: &ph2d_node_registry::NodeRegistry,
+) -> Vec<ph2d_panel_motion_graph::NodeChoice> {
+    use ph2d_node_registry::NodeUiCategory;
+    use ph2d_panel_motion_graph::NodeChoice;
+    let mut v: Vec<NodeChoice> = registry
+        .manifests()
+        .map(|m| {
+            let ui = registry.ui_manifest(m.id);
+            NodeChoice {
+                type_name: m.name,
+                display: ui.map(|u| u.display_name).unwrap_or(m.name),
+                category: ui.map(|u| u.category).unwrap_or(NodeUiCategory::Utility),
+            }
+        })
+        .collect();
+    v.sort_by(|a, b| (a.category as u8, a.display).cmp(&(b.category as u8, b.display)));
+    v
 }

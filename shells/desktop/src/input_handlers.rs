@@ -253,6 +253,23 @@ impl App {
                         .push_graph_key(ph2d_editor::interaction::GraphKey::Fit);
                 }
             }
+            // Motion Nodes M1.E7: over the graph, Delete/Backspace removes the
+            // selected nodes (+ orphan edges) and `A` opens the add-node menu.
+            // Pushed directly on the proven cursor check (same rationale as F);
+            // the panel's Delete/Add handling is idempotent, so the parallel M0
+            // focus-gated dispatch pushing the same verb is harmless.
+            KeyCode::Delete | KeyCode::Backspace if over_motion_graph => {
+                if let Some(hero) = gfx.hero_screen.as_mut() {
+                    hero.store
+                        .push_graph_key(ph2d_editor::interaction::GraphKey::Delete);
+                }
+            }
+            KeyCode::KeyA if over_motion_graph && !cmd_chord => {
+                if let Some(hero) = gfx.hero_screen.as_mut() {
+                    hero.store
+                        .push_graph_key(ph2d_editor::interaction::GraphKey::Add);
+                }
+            }
             KeyCode::Home | KeyCode::KeyF => {
                 if let Some(hero) = gfx.hero_screen.as_mut() {
                     // Wave 2.5 PR 11.8d: bus migration (was

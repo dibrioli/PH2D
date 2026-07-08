@@ -48,6 +48,7 @@ impl PainterTool {
         self.paint.stroke_mask.clear();
         self.paint.stroke_coverage.clear();
         self.paint.stroke_color.clear();
+        self.paint.stroke_density.clear();
         self.paint.wet_frame_dirty = None;
         self.paint.wet_cum_dirty = None;
         self.paint.wet_smear_pos = None; // the Wet Mix true-smear chain restarts with the stroke

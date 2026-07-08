@@ -239,6 +239,83 @@ pub(super) fn box_blur(src: &[f32], w: usize, h: usize, radius: usize) -> Vec<f3
     out
 }
 
+// ── Rewet composite fields (moved from `watercolor_render` for the file-LOC cap) ────────────────────
+
+/// The rewet's fields, built once per composite: raw paint presence, the per-pixel water soak
+/// (dwell) in two forms — RAW (contact: deepens the lift under the nib) and HALO (blurred outward:
+/// the dwelling water diffuses, widening the dissolve past the disc) — and the presence +
+/// presence-weighted-colour blurs at the plain (`near`, radius = spread) and lingering (`far`,
+/// radius = 2×spread) scales, `[presence, r, g, b]` each. The halo lerps `near → far`.
+///
+/// **Downsampled at high Spread** (`ds > 1`): a box blur is a low-pass, so at a wide Spread the
+/// fields are built + blurred on a `ds`-reduced grid (the box-blur passes then cost `O(window/ds²)`)
+/// and sampled bilinearly back up. The grid is **globally aligned** (`lox0/loy0` are global block
+/// indices), so an output pixel's sampled value is independent of the frame's dirty-rect window —
+/// the live dirty-rect composite stays identical to a full recompose (gate
+/// `…incremental_composite_matches_full`). `ds == 1` (Spread ≤ [`REWET_DS_SPREAD`]) is the exact
+/// full-res path (byte-identical to before the downsample).
+pub(super) struct RewetFields {
+    pub(super) pres: Vec<f32>,
+    pub(super) soak_raw: Vec<f32>,
+    pub(super) soak_halo: Vec<f32>,
+    pub(super) near: [Vec<f32>; 4],
+    /// `None` until the stroke actually poured dwell (`wet_soak_active`) — a no-dwell stroke pays
+    /// exactly the plain 4-blur rewet cost (measured 1.16 → ~0.6 ms/frame @2048²).
+    pub(super) far: Option<[Vec<f32>; 4]>,
+    /// Low-res grid: downsample factor + dims + global block origin (for the coord mapping).
+    pub(super) ds: usize,
+    pub(super) lw: usize,
+    pub(super) lh: usize,
+    pub(super) lox0: usize,
+    pub(super) loy0: usize,
+}
+
+impl RewetFields {
+    /// Sample a low-res field at the window-local warped coord `(sx, sy)` (full-res), mapping through
+    /// the global-aligned downsample grid. `ds == 1` ⇒ `(sx, sy)` verbatim (full-res, exact).
+    #[inline]
+    pub(super) fn samp(&self, field: &[f32], rx0: usize, ry0: usize, sx: f32, sy: f32) -> f32 {
+        let lx = (rx0 as f32 + sx) / self.ds as f32 - self.lox0 as f32;
+        let ly = (ry0 as f32 + sy) / self.ds as f32 - self.loy0 as f32;
+        sample_bilinear(field, self.lw, self.lh, lx, ly)
+    }
+}
+
+/// Spread (px) at/below which the rewet fields stay full-resolution (`ds = 1`, exact). Above it the
+/// blur grid downsamples (`ds = spread / this`, capped) — the box-blur cost stops growing with
+/// Spread. Set above every unit test's Spread so they all exercise the exact path.
+pub(super) const REWET_DS_SPREAD: usize = 12;
+
+// ── Rewet tuning constants (moved from `watercolor_render`'s fn body for the file-LOC cap) ─────────
+
+/// Max fraction of the base's pigment the rewet lifts at `wet = 1` under full water (never a
+/// full erase — dried pigment doesn't fully redissolve).
+pub(super) const REWET_LIFT: f32 = 0.85;
+/// How much a fully-soaked pixel (the brush LINGERED here) deepens the lift beyond
+/// [`REWET_LIFT`] — capped by [`LIFT_MAX`] (still never a full erase).
+pub(super) const SOAK_LIFT: f32 = 0.12;
+/// Hard ceiling of the lift fraction, soak included.
+pub(super) const LIFT_MAX: f32 = 0.95;
+/// How much a fully-soaked pixel boosts the dissolve amount (the redissolved pigment reads
+/// stronger where the water sat) — full soak doubles it.
+pub(super) const SOAK_DISSOLVE: f32 = 1.0;
+/// How much of the dissolved pigment re-enters the wash's optical density (the bloom's body).
+pub(super) const REWET_POOL: f32 = 0.35;
+/// How much a fully-wet wash thins its own interior fill (deepest where `inner` ≈ 1 — the
+/// pigment migrated out to the receding front; the rim keeps full body).
+pub(super) const WET_THIN: f32 = 0.35;
+/// Reference Spread (px) at/below which the interior thinning matches the historical look;
+/// above it the thinning scales UP (a wetter wash empties its centre MORE — the "spread
+/// clears the centre" dynamic the artist wants back at high Spread, Enio 2026-07-07).
+pub(super) const SPREAD_THIN_REF: f32 = 16.0;
+/// Cap of the extra thinning multiplier above the reference Spread.
+pub(super) const SPREAD_THIN_MAX: f32 = 2.5;
+/// Edge-pool gain of a fully-wet wash (`wet = 1` doubles the receding-front pooling).
+pub(super) const WET_EDGE_BOOST: f32 = 1.0;
+/// How strongly the paper tooth modulates the wet edge (a wet bloom is ragged, not a clean
+/// ring): ±75% of the pool at `wet = 1`.
+pub(super) const WET_RAGGED: f32 = 0.75;
+
 #[cfg(test)]
 mod tests {
     use super::*;

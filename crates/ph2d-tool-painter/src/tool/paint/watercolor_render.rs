@@ -33,51 +33,6 @@ const SS1: f32 = 0.60; // LITERAL-PX-OK: coverage-hardening smoothstep high edge
 /// back to the live brush colour (wet_edges `COL_EPS`) — a faint rim carries the fresh pigment, not noise.
 const COL_EPS: u8 = 20;
 
-/// The rewet's fields, built once per composite: raw paint presence, the per-pixel water soak
-/// (dwell) in two forms — RAW (contact: deepens the lift under the nib) and HALO (blurred outward:
-/// the dwelling water diffuses, widening the dissolve past the disc) — and the presence +
-/// presence-weighted-colour blurs at the plain (`near`, radius = spread) and lingering (`far`,
-/// radius = 2×spread) scales, `[presence, r, g, b]` each. The halo lerps `near → far`.
-///
-/// **Downsampled at high Spread** (`ds > 1`): a box blur is a low-pass, so at a wide Spread the
-/// fields are built + blurred on a `ds`-reduced grid (the box-blur passes then cost `O(window/ds²)`)
-/// and sampled bilinearly back up. The grid is **globally aligned** (`lox0/loy0` are global block
-/// indices), so an output pixel's sampled value is independent of the frame's dirty-rect window —
-/// the live dirty-rect composite stays identical to a full recompose (gate
-/// `…incremental_composite_matches_full`). `ds == 1` (Spread ≤ [`REWET_DS_SPREAD`]) is the exact
-/// full-res path (byte-identical to before the downsample).
-struct RewetFields {
-    pres: Vec<f32>,
-    soak_raw: Vec<f32>,
-    soak_halo: Vec<f32>,
-    near: [Vec<f32>; 4],
-    /// `None` until the stroke actually poured dwell (`wet_soak_active`) — a no-dwell stroke pays
-    /// exactly the plain 4-blur rewet cost (measured 1.16 → ~0.6 ms/frame @2048²).
-    far: Option<[Vec<f32>; 4]>,
-    /// Low-res grid: downsample factor + dims + global block origin (for the coord mapping).
-    ds: usize,
-    lw: usize,
-    lh: usize,
-    lox0: usize,
-    loy0: usize,
-}
-
-impl RewetFields {
-    /// Sample a low-res field at the window-local warped coord `(sx, sy)` (full-res), mapping through
-    /// the global-aligned downsample grid. `ds == 1` ⇒ `(sx, sy)` verbatim (full-res, exact).
-    #[inline]
-    fn samp(&self, field: &[f32], rx0: usize, ry0: usize, sx: f32, sy: f32) -> f32 {
-        let lx = (rx0 as f32 + sx) / self.ds as f32 - self.lox0 as f32;
-        let ly = (ry0 as f32 + sy) / self.ds as f32 - self.loy0 as f32;
-        sample_bilinear(field, self.lw, self.lh, lx, ly)
-    }
-}
-
-/// Spread (px) at/below which the rewet fields stay full-resolution (`ds = 1`, exact). Above it the
-/// blur grid downsamples (`ds = spread / this`, capped) — the box-blur cost stops growing with
-/// Spread. Set above every unit test's Spread so they all exercise the exact path.
-const REWET_DS_SPREAD: usize = 12;
-
 impl PainterTool {
     /// Whether the watercolor optical render-path drives this stroke: the Watercolor section is on, we're
     /// the normal **Paint** brush (not Smear/Blur/Clone/Mask/Inpaint/Fill/Selection/Deform), and not
@@ -331,33 +286,6 @@ impl PainterTool {
                 loy0,
             }
         });
-        /// Max fraction of the base's pigment the rewet lifts at `wet = 1` under full water (never a
-        /// full erase — dried pigment doesn't fully redissolve).
-        const REWET_LIFT: f32 = 0.85;
-        /// How much a fully-soaked pixel (the brush LINGERED here) deepens the lift beyond
-        /// [`REWET_LIFT`] — capped by [`LIFT_MAX`] (still never a full erase).
-        const SOAK_LIFT: f32 = 0.12;
-        /// Hard ceiling of the lift fraction, soak included.
-        const LIFT_MAX: f32 = 0.95;
-        /// How much a fully-soaked pixel boosts the dissolve amount (the redissolved pigment reads
-        /// stronger where the water sat) — full soak doubles it.
-        const SOAK_DISSOLVE: f32 = 1.0;
-        /// How much of the dissolved pigment re-enters the wash's optical density (the bloom's body).
-        const REWET_POOL: f32 = 0.35;
-        /// How much a fully-wet wash thins its own interior fill (deepest where `inner` ≈ 1 — the
-        /// pigment migrated out to the receding front; the rim keeps full body).
-        const WET_THIN: f32 = 0.35;
-        /// Reference Spread (px) at/below which the interior thinning matches the historical look;
-        /// above it the thinning scales UP (a wetter wash empties its centre MORE — the "spread
-        /// clears the centre" dynamic the artist wants back at high Spread, Enio 2026-07-07).
-        const SPREAD_THIN_REF: f32 = 16.0;
-        /// Cap of the extra thinning multiplier above the reference Spread.
-        const SPREAD_THIN_MAX: f32 = 2.5;
-        /// Edge-pool gain of a fully-wet wash (`wet = 1` doubles the receding-front pooling).
-        const WET_EDGE_BOOST: f32 = 1.0;
-        /// How strongly the paper tooth modulates the wet edge (a wet bloom is ragged, not a clean
-        /// ring): ±75% of the pool at `wet = 1`.
-        const WET_RAGGED: f32 = 0.75;
 
         let fill = brush.fill.clamp(0.0, 1.0);
         let depth = brush.depth.max(0.0);
@@ -391,6 +319,12 @@ impl PainterTool {
             (brush.color[2].clamp(0.0, 1.0) * 255.0 + 0.5) as u8,
         ];
         let has_color = self.paint.stroke_color.len() == n * 4;
+        // Manual textured tip (doc 13 #1 round 3): the per-stroke tip-density buffer scales the
+        // interior fill (`cw·fill·dens`) — the tip's texture reads as pigment variation INSIDE a
+        // normally-wet wash (water fills the tip's silhouette; texture modulates the deposit).
+        // Empty (every non-textured path) ⇒ density ≡ 1 → byte-identical.
+        let has_dens = self.paint.stroke_density.len() == n;
+        let dens_buf = &self.paint.stroke_density;
 
         let color_buf = &self.paint.stroke_color;
         // Substrate memoisation (perf, byte-identical): `paper_h` is canvas-anchored (a pure function of
@@ -524,7 +458,15 @@ impl PainterTool {
                         let ragged = (1.0 + (paper_h - 0.5) * 2.0 * WET_RAGGED * wet).max(0.0);
                         edge = (edge * (1.0 + WET_EDGE_BOOST * wet) * ragged).clamp(0.0, 1.5); // LITERAL-PX-OK: wet edge may overshoot the dry clamp
                     }
-                    let mut density = ((cw * fill_px + edge) * gran).max(0.0);
+                    // Tip density at the warped position (nearest, like the colour buffer).
+                    let tip_dens = if has_dens {
+                        let wgx = (rx0 as f32 + sx).clamp(0.0, (fw - 1) as f32) as usize;
+                        let wgy = (ry0 as f32 + sy).clamp(0.0, (fh - 1) as f32) as usize;
+                        f32::from(dens_buf[wgy * fw + wgx]) / 255.0
+                    } else {
+                        1.0
+                    };
+                    let mut density = ((cw * fill_px * tip_dens + edge) * gran).max(0.0);
                     // Wet-on-wet: sample the bleed field (blurred presence + presence-weighted paint colour)
                     // at the warped position; `lp` = raw local presence (only real paint lifts), `bp` = how
                     // much dissolved pigment reaches this pixel, `bleed` = its (presence-normalised) colour.

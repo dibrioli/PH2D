@@ -62,12 +62,24 @@ pub(super) struct WetShapeStamp {
     img_norm: f32,
 }
 
+/// A textured tip's WETNESS ramp: a normalised tip sample at/below `TIP_WET_LO` is a true hole
+/// (dry — outside the tip / zero bristle contact); by `TIP_WET_HI` the texel is FULLY wet. In real
+/// watercolor the water fills the tip's outer silhouette while the texture modulates the PIGMENT —
+/// so mid-tone texture must not hole the wash (that starved the optics: pale centre + dead rim);
+/// it becomes tip DENSITY instead (`stroke_density` → the composite's fill term).
+const TIP_WET_LO: f32 = 0.03;
+const TIP_WET_HI: f32 = 0.20;
+
 impl WetShapeStamp {
-    /// The dab-local silhouette weight at normalised distance `dn`, sampling the Shape slot (via
-    /// `basis`) when active — the same compose the plain stamp paths use (image REPLACES the falloff,
-    /// procedural is masked by it; Shape Tone ramp deliberately not applied — queued, doc 13 #7).
+    /// The dab-local stamp sample at normalised distance `dn`: `(wet, density)`.
+    /// - Shape inactive ⇒ `(falloff, 1)` — the plain manual disc.
+    /// - IMAGE tip ⇒ wet = the WETNESS envelope (normalised sample through the [`TIP_WET_LO`] ramp —
+    ///   the image still REPLACES the falloff, mirroring `compose_shape_silhouette`'s Image rule, so
+    ///   the tip's outline shapes the wash); density = the normalised sample (the tip's texture).
+    /// - PROCEDURAL tip ⇒ wet = the falloff envelope alone (the pattern must not hole the water);
+    ///   density = the pattern value. (Shape Tone ramp deliberately not applied — queued, doc 13 #7.)
     #[inline]
-    fn weight(
+    fn sample(
         &self,
         dn: f32,
         basis: Option<&ph2d_painter_brush::texture::TexDabBasis>,
@@ -75,7 +87,7 @@ impl WetShapeStamp {
         at: [usize; 2],
         center: [f32; 2],
         radius: f32,
-    ) -> f32 {
+    ) -> (f32, f32) {
         let falloff = self.spec.falloff_weight(dn);
         match basis {
             Some(b) if self.shape_active => {
@@ -88,19 +100,20 @@ impl WetShapeStamp {
                     radius,
                     img,
                 );
-                // Image tips: normalise by the tip's max luminance — the coverage must SATURATE in
-                // the wash core (`cw → 1` gives the body, `inner → 1` confines the edge to the rim);
-                // raw grey luminance starved both (pale centre, dead rim — Enio 2026-07-07). The
-                // tip's relative texture survives the uniform scale.
-                let raw = if self.is_image {
-                    (raw * self.img_norm).min(1.0)
+                if self.is_image {
+                    // Normalise by the tip's max luminance (per-stroke scan): coverage is wetness
+                    // geometry that must SATURATE in the wash core; the RELATIVE texture survives
+                    // as density.
+                    let n = (raw * self.img_norm).min(1.0);
+                    (
+                        super::watercolor_field::smoothstep(TIP_WET_LO, TIP_WET_HI, n),
+                        n,
+                    )
                 } else {
-                    raw
-                };
-                let sv = ph2d_painter_brush::texture::remap_shape_value(raw, None);
-                self.spec.compose_shape_silhouette(sv, falloff)
+                    (falloff, raw.clamp(0.0, 1.0))
+                }
             }
-            _ => falloff,
+            _ => (falloff, 1.0),
         }
     }
 
@@ -194,6 +207,7 @@ impl PainterTool {
             });
         }
         self.paint.stroke_coverage.iter_mut().for_each(|c| *c = 0);
+        self.paint.stroke_density.iter_mut().for_each(|c| *c = 0);
     }
 
     /// Zero the per-stroke deposited-colour buffer (retain capacity); twin of [`Self::clear_wet_coverage`].
@@ -241,9 +255,17 @@ impl PainterTool {
         // draw identical per-dab Random bases — coverage and colour always agree pixel-wise.
         let stamp = self.wet_shape_stamp();
         let mut rng = self.paint.tex_rng; // NOT written back here — the colour pass replays + advances
+        // Tip-density buffer: sized only when a textured tip is stamping (see `stroke_density` docs);
+        // stays empty otherwise so the composite's fast path (density ≡ 1) is untouched. Sized BEFORE
+        // the shape-image borrow below (disjoint field borrows carry the loop).
+        let textured_tip = stamp.as_ref().is_some_and(|s| s.shape_active);
+        if textured_tip && self.paint.stroke_density.len() != fw * fh {
+            self.paint.stroke_density = vec![0u8; fw * fh];
+        }
         let shape_img_owned = self.paint.shape_image.as_ref().map(|i| i.as_mask());
         let canvas = [fw as f32, fh as f32];
         let cov = &mut self.paint.stroke_coverage;
+        let dens_buf = &mut self.paint.stroke_density;
         for d in dabs {
             // Frame draw BEFORE any skip: the colour pass replays this stream per emitted dab, and
             // its skip conditions differ (no Dilution `flow` there) — drawing after a skip would
@@ -282,8 +304,8 @@ impl PainterTool {
                     if keep <= 0.0 {
                         continue;
                     }
-                    let wgt = match (&stamp, &frame) {
-                        (Some(s), Some((fp, basis))) => s.weight(
+                    let (wgt, dens) = match (&stamp, &frame) {
+                        (Some(s), Some((fp, basis))) => s.sample(
                             WetShapeStamp::env_t(*fp, dn, dx, dy, inv_r),
                             basis.as_ref(),
                             shape_img_owned.as_ref(),
@@ -291,11 +313,19 @@ impl PainterTool {
                             d.center,
                             r,
                         ),
-                        _ => feather(dn),
+                        _ => (feather(dn), 1.0),
                     };
                     let v = (peak * keep * wgt * 255.0) as u8;
                     if v > cov[idx] {
                         cov[idx] = v;
+                    }
+                    // Tip density (textured tip only): max-blend, matching the coverage's "one pass"
+                    // union — the composite multiplies it into the interior fill.
+                    if textured_tip && wgt > 0.0 {
+                        let dv = (dens * 255.0) as u8;
+                        if dv > dens_buf[idx] {
+                            dens_buf[idx] = dv;
+                        }
                     }
                 }
             }
@@ -375,14 +405,17 @@ impl PainterTool {
                     // the SAME weight as the coverage splat (manual Shape stamp or the feather),
                     // so the deposited colour and the silhouette always agree.
                     let wgt = match (&stamp, &frame) {
-                        (Some(st), Some((fp, basis))) => st.weight(
-                            WetShapeStamp::env_t(*fp, dn, dx, dy, inv_r),
-                            basis.as_ref(),
-                            shape_img_owned.as_ref(),
-                            [x, y],
-                            d.center,
-                            r,
-                        ),
+                        (Some(st), Some((fp, basis))) => {
+                            st.sample(
+                                WetShapeStamp::env_t(*fp, dn, dx, dy, inv_r),
+                                basis.as_ref(),
+                                shape_img_owned.as_ref(),
+                                [x, y],
+                                d.center,
+                                r,
+                            )
+                            .0
+                        }
                         _ => feather(dn),
                     };
                     let a = peak * wgt * prio * keep;

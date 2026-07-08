@@ -438,6 +438,14 @@ pub(crate) struct PaintState {
     /// Whether THIS stroke poured any soak yet — gates the composite's 2×-blur (far) fields, so a
     /// stroke with no dwell pays exactly the plain 4-blur rewet cost.
     wet_soak_active: bool,
+    /// Manual Shape stamp (Automatic OFF): the per-stroke **tip-density** buffer (`w*h`, `0..255`;
+    /// sized lazily with the coverage). A TEXTURED tip must not HOLE the wash — in real watercolor
+    /// the water fills the tip's outer silhouette while the texture modulates the PIGMENT deposited —
+    /// so the coverage splat stores the saturated wetness ENVELOPE and this buffer carries the tip's
+    /// texture (max-blend, "one pass"), which the composite multiplies into the interior fill term
+    /// (`cw·fill·dens`): typical watercolor body + rim at the OUTER boundary, tip texture as pigment
+    /// variation within. Empty / untouched ⇒ density 1 (byte-identical). Doc 13 #1 round 3.
+    stroke_density: Vec<u8>,
     /// Manual Shape stamp (Automatic OFF): the tip image's luminance NORMALISER (`1 / max_lum`,
     /// `1.0` when no image / all-black). The watercolor coverage is WETNESS GEOMETRY (a max-blend
     /// union that must SATURATE in the wash core — `cw → 1` gives the body, `inner → 1` confines the

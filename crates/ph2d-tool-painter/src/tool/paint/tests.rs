@@ -12455,3 +12455,76 @@ fn watercolor_manual_shape_flatten_rotate_and_grey_tip_normalise() {
         "a uniformly grey tip must paint the SAME wash as a white one (normalised wetness)"
     );
 }
+
+/// **A TEXTURED tip keeps the typical watercolor** (Enio 2026-07-07: "não tem como o algoritmo que
+/// faz a aquarela típica funcionar com textura no slot shape?"): the tip's texture must NOT hole the
+/// wash — water fills the tip's outer silhouette (saturated coverage → body + rim at the OUTER
+/// boundary) while the texture becomes pigment DENSITY within (`stroke_density` × the fill term).
+/// A streaky tip therefore paints a fully-wet wash whose interior VARIES with the streaks instead of
+/// showing white gaps.
+#[test]
+fn watercolor_textured_tip_keeps_typical_wash_with_density_variation() {
+    let size = 64u32;
+    let mut t = white_canvas(size, 12.0);
+    t.paint.brush = BrushSpec {
+        radius_px: 12.0,
+        hardness: 0.0,
+        falloff: Falloff::Watercolor,
+        color: [0.1, 0.2, 0.7],
+        space_attenuation: false,
+        watercolor: true,
+        watercolor_shape_auto: false,
+        fill: 0.6,
+        depth: 2.0,
+        edge_gain: 2.0,
+        edge_spread: 4.0,
+        warp: 0.0,        // measure the footprint, not the organic noise
+        granulation: 0.0, // no mottle — the only interior variation is the tip density
+        ..Default::default()
+    };
+    // Streaky tip: 4-px columns alternating white (255) / mid (100) — bristle-like texture.
+    let mut lum = vec![255u8; 32 * 32];
+    for y in 0..32 {
+        for x in 0..32 {
+            if (x / 4) % 2 == 1 {
+                lum[y * 32 + x] = 100;
+            }
+        }
+    }
+    t.set_brush_shape_image(lum, 32, 32);
+    for slot in &mut t.paint.brush_by_mode {
+        *slot = t.paint.brush;
+    }
+    assert!(t.on_canvas_pointer(cp([32.0, 32.0], PointerPhase::Down)));
+    t.on_canvas_pointer(cp([32.0, 32.0], PointerPhase::Up));
+
+    // (a) TYPICAL WASH: every pixel in the core (radius/2) is painted — no white holes from the
+    //     mid-tone streaks (they are fully WET; only their pigment density differs).
+    let mut holes = 0u32;
+    for y in 27..38u32 {
+        for x in 27..38u32 {
+            if px(&t, size, x, y) == [255, 255, 255, 255] {
+                holes += 1;
+            }
+        }
+    }
+    assert_eq!(
+        holes, 0,
+        "mid-tone streaks must stay WET (no white holes in the core)"
+    );
+
+    // (b) TEXTURE AS DENSITY: the streak pattern shows as intensity variation — the painted core's
+    //     green channel is not uniform (min/max spread beyond rounding noise).
+    let (mut lo, mut hi) = (255u8, 0u8);
+    for y in 30..35u32 {
+        for x in 27..38u32 {
+            let g = px(&t, size, x, y)[1];
+            lo = lo.min(g);
+            hi = hi.max(g);
+        }
+    }
+    assert!(
+        hi - lo >= 8,
+        "the tip texture must read as pigment-density variation (green spread {lo}..{hi})"
+    );
+}

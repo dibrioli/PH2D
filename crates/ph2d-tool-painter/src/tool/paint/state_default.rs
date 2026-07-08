@@ -155,6 +155,7 @@ impl Default for PaintState {
             wet_soak_active: false,
             wet_substrate: Vec::new(),
             wet_shape_norm: 1.0,
+            stroke_density: Vec::new(),
             wet_mix: watercolor_mixer::WetMix::default(),
             wet_smear_pos: None,
             wet_frame_dirty: None,

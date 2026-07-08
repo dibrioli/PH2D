@@ -79,8 +79,27 @@ impl AudioSystem {
             }
         };
         let sample_format = supported.sample_format();
-        let config: cpal::StreamConfig = supported.config();
-        let rate = config.sample_rate.0;
+        let native: cpal::StreamConfig = supported.config();
+        let rate = native.sample_rate.0;
+        // Prefer a STEREO stream even on multi-channel (5.1/7.1) devices. Writing
+        // our stereo mix into only FL/FR of a raw 8-channel stream bypasses
+        // PipeWire's stereo→surround routing/upmix and is inaudible on some 7.1
+        // USB DACs — the "meters alive, no sound" bug (HANDOFF_audio_module §4).
+        // Every working desktop app opens a 2-channel stream, so PipeWire routes +
+        // upmixes it correctly. Only downshift when the device actually offers 2ch;
+        // otherwise keep the native config (old behavior).
+        let use_stereo = native.channels > 2
+            && device
+                .supported_output_configs()
+                .map(|mut cfgs| cfgs.any(|c| c.channels() == 2))
+                .unwrap_or(false);
+        let config: cpal::StreamConfig = if use_stereo {
+            let mut c = native.clone();
+            c.channels = 2;
+            c
+        } else {
+            native
+        };
         let dev_channels = config.channels as usize;
         let format = if dev_channels == 1 {
             AudioFormat::mono(rate)

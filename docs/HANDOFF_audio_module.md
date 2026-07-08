@@ -145,7 +145,25 @@ próprios** em `/home/enio/Documentos/Projetos/PH2D/Worktrees/line-audio`, branc
 
 ---
 
-## 4. O BUG — "grafos vivos, sem som audível" (INVESTIGAR)
+## 4. O BUG — "grafos vivos, sem som audível" (RESOLVIDO 2026-07-08)
+
+### ✅ Causa-raiz + fix (2026-07-08)
+Confirmado o **Diagnóstico #1**: o meter do **Master mexe** → o sinal chega ao
+`write_out` → o problema é **depois** dele (device/sistema). Inspeção do PipeWire
+(`pactl`) revelou a máquina do Enio com saída ativa **7.1 de 8 canais**
+(`alsa_output...HiFi_7_1__Speaker__sink`, s32le 8ch). O app abria o device no
+**config nativo (8 canais)** e o scatter (`build_stream`) escrevia a mix estéreo só
+em **FL/FR (canais 0,1)**, silêncio nos outros 6 — **bypassando o roteamento/upmix
+estéreo→surround do PipeWire**. Todo app audível abre um stream **estéreo** (2ch) e
+deixa o PipeWire mapear; o nosso não.
+**Fix (`audio.rs::AudioSystem::new`):** pedir um stream **estéreo** quando o device
+tem >2 canais **e** oferece uma config de 2ch (`supported_output_configs`), com
+fallback pro nativo. Agora o PipeWire trata como qualquer app estéreo.
+**Fator secundário (verificar se persistir):** há uma entrada **`module-stream-restore`
+salva pro `ph2d-host-desktop`** — o PipeWire lembra rota/volume/**mute** do app entre
+sessões (independente do painel). Se ainda mudo após o fix, no **pavucontrol** →
+Playback → `ph2d-host-desktop` → **desmutar/rotear** (fica lembrado), ou limpar a
+entrada de stream-restore.
 
 ### Sintoma (relato do Enio)
 Toca o Play Test → **os meters/grafos do mixer se mexem** (algo está acontecendo)

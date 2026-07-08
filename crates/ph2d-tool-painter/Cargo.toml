@@ -55,3 +55,7 @@ ph2d-gpu = { path = "../ph2d-gpu", optional = true }
 ph2d-color = { path = "../ph2d-color" }
 # serde for PainterParams + the layer model serialization.
 serde = { version = "1", features = ["derive"] }
+# Data-parallel watercolor composite (ADR-0109 exception to the no-rayon default): the per-pixel optical
+# reconstruction is embarrassingly parallel + byte-identical (disjoint output rows, no reduction, no RNG),
+# so it distributes over the thread pool without touching deterministic replay. Used ONLY there.
+rayon = "1"

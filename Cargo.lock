@@ -5618,6 +5618,7 @@ dependencies = [
  "ph2d-painter-effects",
  "ph2d-tool-registry",
  "ph2d-vector",
+ "rayon",
  "serde",
 ]
 

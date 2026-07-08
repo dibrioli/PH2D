@@ -1715,6 +1715,7 @@ impl crate::App {
                 &mut self.vec_shape,
                 &mut self.vec_history,
                 vec_px_to_world,
+                self.vec_grad_selected,
             );
             // Motion Nodes M0.T10: same phase as vector_bridge (AFTER the
             // ActivateTool drain, so a freshly-activated tool is seen this frame;

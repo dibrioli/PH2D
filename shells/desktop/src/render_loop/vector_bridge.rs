@@ -62,6 +62,7 @@ thread_local! {
 /// Returns the tool's current [`VectorDrawConfig`] so the shell can mirror it
 /// into `App` (the input dispatch reads it to route canvas gestures + size the
 /// shapes without a downcast). Defaults when the Vector tool is absent.
+#[allow(clippy::too_many_arguments)] // per-frame bridge inputs, each distinct
 pub(super) fn dispatch(
     hero: &mut HeroScreen,
     tools: &mut ToolRegistry,
@@ -72,6 +73,9 @@ pub(super) fn dispatch(
     // World units per screen pixel (from the camera) — converts the tool's px
     // stroke width into the path's world-space width when restyling.
     px_to_world: f64,
+    // Selected multi-point gradient point (if any) — the Fill swatch recolors it
+    // instead of the solid fill while a MultiPoint path has a point selected.
+    grad_selected: Option<usize>,
 ) -> VectorDrawConfig {
     let vector_active = tools
         .active()
@@ -150,6 +154,15 @@ pub(super) fn dispatch(
         Some((ph2d_editor::widget::SliderState::Dragging, _))
     );
     let session = stroke_open || fill_open || width_dragging;
+    // Is the Fill swatch editing a selected MULTI-POINT gradient point? (index if so)
+    let recolor_point = grad_selected.and_then(|i| {
+        pen.selected()
+            .and_then(|sel| scene.paths().iter().find(|p| p.id == sel))
+            .and_then(|p| match &p.fill {
+                Some(Paint::MultiPoint { points }) if i < points.len() => Some(i),
+                _ => None,
+            })
+    });
     if tool.take_apply_to_selected()
         && let Some(sel) = pen.selected()
     {
@@ -164,7 +177,20 @@ pub(super) fn dispatch(
                     || s.dash != dash
                     || (width_dragging && (s.width - new_w).abs() > f64::EPSILON)
             });
-            let fill_differs = p.closed && p.fill.as_ref().map(Paint::primary_color) != new_fill;
+            let fill_differs = if let Some(i) = recolor_point {
+                match &p.fill {
+                    Some(Paint::MultiPoint { points }) => {
+                        points.get(i).map(|gp| gp.color) != Some(rgba(fill))
+                    }
+                    _ => false,
+                }
+            } else {
+                // A stray fill pick must NOT clobber a multi-point gradient (recolor
+                // needs a selected point); use the Fill-type selector to go Solid.
+                p.closed
+                    && !matches!(p.fill, Some(Paint::MultiPoint { .. }))
+                    && p.fill.as_ref().map(Paint::primary_color) != new_fill
+            };
             stroke_differs || fill_differs
         });
         if will_change {
@@ -186,9 +212,16 @@ pub(super) fn dispatch(
                         dash,
                     });
                 }
-                if path.closed {
-                    // Picking a fill colour sets a SOLID fill (replacing any gradient).
-                    // TODO(gradient increment 2): recolour the active stop instead.
+                if let Some(i) = recolor_point {
+                    // Recolour the selected multi-point gradient point.
+                    if let Some(Paint::MultiPoint { points }) = path.fill.as_mut()
+                        && let Some(gp) = points.get_mut(i)
+                    {
+                        gp.color = rgba(fill);
+                    }
+                } else if path.closed && !matches!(path.fill, Some(Paint::MultiPoint { .. })) {
+                    // Otherwise picking a fill colour sets a SOLID fill (replacing a
+                    // linear/radial gradient — but never a multi-point one).
                     path.fill = new_fill.map(Paint::solid);
                 }
             }
@@ -208,8 +241,22 @@ pub(super) fn dispatch(
     //    (so a picker alpha shows on the panel) + publish. ──────────────────
     hero.store
         .set_widget_color(ph2d_editor::ids::VECTOR_STROKE_SWATCH, stroke);
+    // The Fill swatch shows the selected gradient point's colour (so the picker
+    // opens seeded on it) when a MultiPoint point is selected, else the tool fill.
+    let fill_swatch_col = recolor_point
+        .and_then(|i| {
+            pen.selected()
+                .and_then(|sel| scene.paths().iter().find(|p| p.id == sel))
+                .and_then(|p| match &p.fill {
+                    Some(Paint::MultiPoint { points }) => points
+                        .get(i)
+                        .map(|gp| [gp.color.r, gp.color.g, gp.color.b, gp.color.a]),
+                    _ => None,
+                })
+        })
+        .unwrap_or(fill);
     hero.store
-        .set_widget_color(ph2d_editor::ids::VECTOR_FILL_SWATCH, fill);
+        .set_widget_color(ph2d_editor::ids::VECTOR_FILL_SWATCH, fill_swatch_col);
     // Push the tool's alpha onto the Opacity sliders (unless being dragged) so
     // an alpha set in the colour picker reflects on the panel, and vice-versa.
     sync_opacity_slider(

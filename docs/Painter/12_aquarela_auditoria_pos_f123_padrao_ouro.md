@@ -376,3 +376,14 @@ azul×vermelho vira púrpura-marrom R-dominante, pigmento real; B−G 40→15). 
 `watercolor_wet_mix_blue_over_yellow_deposits_green`. Segue em aberto na W-A (opcional): o mesmo
 upgrade no `smear_dab` do Smudge; OPT-4 (lerp no `transmittance`) fica pra smoke próprio (muda
 todos os bytes do watercolor por natureza).
+
+### W-B · GRAN-1/2/3 — LANDOU 2026-07-08 (papel mid-band + deposição nos vales)
+
+**GRAN-2 rota 2:** presets Paper = tiles 256² seamless pré-cozidos (periódico por construção,
+oitavas 2-32px + high-pass real = box-blur 32px do próprio campo subtraído). Métrica da auditoria
+razão bloco32/campo: **0,917 → <0,35** (pinado por teste + costura). Hot loop = 1 fetch bilinear
+(mais barato). **GRAN-1:** deposição valley-gated `(1 − k·h·γ)`, γ=0,9 — sinal Curtis correto, sem
+speckle; settle cresce com Rewet+soak e vai a pleno no bake (assenta na secagem). Amount 0 =
+byte-idêntico. **GRAN-3:** fallback 2 oitavas (5px + 2.5px·0,35). Gotcha de teste: `sample_image`
+usa convenção dab-space (`u·0,5+0,5` → 1 unidade de tile = meia imagem). Segue aberto: GRAN-4
+(γ por-pigmento / dissolve), GRAN-5 (escala do fallback), W-C.

@@ -438,6 +438,16 @@ pub(crate) struct PaintState {
     /// Whether THIS stroke poured any soak yet — gates the composite's 2×-blur (far) fields, so a
     /// stroke with no dwell pays exactly the plain 4-blur rewet cost.
     wet_soak_active: bool,
+    /// **Watercolor substrate cache** (perf, byte-identical): the paper-tooth height `paper_h` at each
+    /// canvas pixel (`f32`, `w*h`; `NaN` = not yet computed). The paper is CANVAS-ANCHORED — the same
+    /// canvas pixel yields the same `paper_h` for the whole stroke — but the optical composite recomputes
+    /// it (~28 integer-hashes for a procedural paper) every frame, so a big brush over many frames re-did
+    /// the same work. This memoises it: filled on first touch, reused by every later frame AND the pen-up
+    /// bake. **Reset to all-`NaN` at pen-down** ([`PainterTool::freeze_watercolor_ground`]) so a stroke
+    /// never reads a previous stroke's settings — the paper cannot change mid-stroke, so there is no
+    /// in-stroke invalidation to get wrong. Empty outside a watercolor stroke. Pure memoisation of a
+    /// deterministic function keyed by the exact canvas index ⇒ the composite is byte-identical.
+    wet_substrate: Vec<f32>,
     /// **Watercolor mixer** (Wet Mix — `wet_charge`/`wet_pull`/`wet_dilution`, `docs/Painter/07` §4)
     /// per-stroke state: the picked-up colour reservoir (unpremultiplied rgb + a presence-weighted
     /// confidence `w`) and its `recentness` (the Pull-gated resample clock). The brush deposits

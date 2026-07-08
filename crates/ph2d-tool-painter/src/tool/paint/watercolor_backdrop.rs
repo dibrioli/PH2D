@@ -31,6 +31,18 @@ impl PainterTool {
         self.paint.wet_soak.iter_mut().for_each(|s| *s = 0);
         self.paint.wet_soak_pos = None;
         self.paint.wet_soak_active = false;
+        // Substrate cache: invalidate for the new stroke (the paper is constant WITHIN a stroke, so a
+        // full reset at pen-down is the only invalidation needed — no in-stroke staleness). Filled
+        // lazily by the composite ([`Self::apply_watercolor`]); `NaN` marks an untouched pixel.
+        let n = (self.source_size.0 as usize) * (self.source_size.1 as usize);
+        if self.paint.wet_substrate.len() == n {
+            self.paint
+                .wet_substrate
+                .iter_mut()
+                .for_each(|v| *v = f32::NAN);
+        } else {
+            self.paint.wet_substrate = vec![f32::NAN; n];
+        }
     }
 
     /// Composite the layers strictly BELOW the anchor over the document paper colour → the opaque

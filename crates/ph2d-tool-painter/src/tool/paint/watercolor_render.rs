@@ -381,6 +381,26 @@ impl PainterTool {
         let has_color = self.paint.stroke_color.len() == n * 4;
 
         let color_buf = &self.paint.stroke_color;
+        // Substrate memoisation (perf, byte-identical): `paper_h` is canvas-anchored (a pure function of
+        // the global `(gx, gy)` + the paper settings, both constant within a stroke), so compute it once
+        // per canvas pixel and reuse across frames + the bake. `compute_paper` is the EXACT expression the
+        // per-pixel loop used before; the cache stores/returns its `f32` verbatim (index-keyed, no
+        // collision) ⇒ identical bytes. Falls back to direct compute if the cache isn't sized (defensive).
+        let compute_paper = |gx: usize, gy: usize| -> f32 {
+            if paper_active {
+                ph2d_painter_brush::texture::sample_tiled_rot(
+                    &paper_tex,
+                    gx as i64,
+                    gy as i64,
+                    paper_img.as_ref(),
+                    paper_rot,
+                )
+            } else {
+                paper_height(gx as f32, gy as f32)
+            }
+        };
+        let use_substrate_cache = self.paint.wet_substrate.len() == n;
+        let substrate = &mut self.paint.wet_substrate;
         let out = Arc::make_mut(&mut self.canvas_rgba);
         for by in 0..bh {
             let gy = y0 + by;
@@ -411,17 +431,21 @@ impl PainterTool {
                 }
                 let inner = sample_bilinear(&blur, rw, rh, sx, sy).min(1.0);
                 let mut edge = (cw * (1.0 - inner) * edge_gain).clamp(0.0, 1.0);
-                // Paper tooth (substrate): the active Paper slot, or the built-in noise fallback.
-                let paper_h = if paper_active {
-                    ph2d_painter_brush::texture::sample_tiled_rot(
-                        &paper_tex,
-                        gx as i64,
-                        gy as i64,
-                        paper_img.as_ref(),
-                        paper_rot,
-                    )
+                // Paper tooth (substrate): the active Paper slot, or the built-in noise fallback —
+                // memoised per canvas pixel (`compute_paper` is the identical expression; the cache just
+                // avoids recomputing it every frame for the same pixel).
+                let paper_h = if use_substrate_cache {
+                    let sidx = gy * fw + gx;
+                    let cached = substrate[sidx];
+                    if cached.is_nan() {
+                        let v = compute_paper(gx, gy);
+                        substrate[sidx] = v;
+                        v
+                    } else {
+                        cached
+                    }
                 } else {
-                    paper_height(gx as f32, gy as f32)
+                    compute_paper(gx, gy)
                 };
                 // Granulation field: its own map, or (Same as Paper) the paper's tooth — and NOTHING
                 // otherwise: with no Grain image and Same-as-Paper off there is no settling substrate,

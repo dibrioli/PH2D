@@ -31,7 +31,7 @@ fn is_toggle(id: NodeId) -> bool {
 }
 
 pub(crate) fn apply_event(
-    _state: &mut TimelinePanelState,
+    state: &mut TimelinePanelState,
     host: &mut dyn PanelHostInternal,
     ev: WidgetEvent,
 ) -> EventOutcome {
@@ -39,6 +39,21 @@ pub(crate) fn apply_event(
         // Close (X) — hide the panel (mirror of the other docked panels).
         WidgetEvent::Click(id) if id == ids::TIMELINE_CLOSE => {
             host.set_panel_visible(TimelinePanel::ID, false);
+            EventOutcome::Consumed
+        }
+        // Ruler scrub: the slider value (0..1 over the visible span) maps back to
+        // an absolute time via the span `paint` stored; forward it as a Scrub.
+        WidgetEvent::ValueChanged(id) if id == ids::TIMELINE_RULER => {
+            let v = host
+                .store()
+                .slider(id)
+                .map(|(_, v)| f64::from(v))
+                .unwrap_or(0.0);
+            let time = state.view_start_s + v * state.view_span_s;
+            host.bus_mut()
+                .push(EditorAction::TimelinePanelEvent(PanelEvent::SetValue(
+                    id, time,
+                )));
             EventOutcome::Consumed
         }
         WidgetEvent::Click(id) if is_button(id) => {

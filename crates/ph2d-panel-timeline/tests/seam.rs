@@ -63,6 +63,30 @@ fn time_chip_edit_raises_set_value() {
 }
 
 #[test]
+fn ruler_scrub_maps_value_to_time_and_raises_scrub() {
+    let mut host = MockPanelHost::with_panel::<TimelinePanel>();
+    // Simulate what paint stored: 10 s visible from t=0. A drag to the middle
+    // (0.5) must Scrub to 5 s.
+    let mut state = TimelinePanelState {
+        view_start_s: 0.0,
+        view_span_s: 10.0,
+        ..TimelinePanelState::default()
+    };
+    host.set_slider_value(ids::TIMELINE_RULER, 0.5);
+
+    let outcome = host.apply_panel_event::<TimelinePanel>(
+        &mut state,
+        WidgetEvent::ValueChanged(ids::TIMELINE_RULER),
+    );
+    assert_eq!(outcome, EventOutcome::Consumed);
+    assert_eq!(
+        timeline_events(&mut host),
+        vec![PanelEvent::SetValue(ids::TIMELINE_RULER, 5.0)],
+        "ruler scrub at 0.5 over a 10 s span must Scrub to 5 s"
+    );
+}
+
+#[test]
 fn snap_toggle_raises_toggle_event() {
     let mut host = MockPanelHost::with_panel::<TimelinePanel>();
     let mut state = TimelinePanelState::default();

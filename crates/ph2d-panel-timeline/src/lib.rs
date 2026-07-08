@@ -20,6 +20,7 @@ mod event;
 pub mod ids;
 mod paint;
 pub mod populate;
+mod ruler;
 pub mod state;
 mod transport;
 

@@ -7,7 +7,7 @@
 //! [`TimelineViewSnapshot`] so the wiring is exercised).
 
 use crate::state::{self, TimelinePanelState, set_last_content_h, set_last_visible_h};
-use crate::{TimelinePanel, ids, transport};
+use crate::{TimelinePanel, ids, ruler, transport};
 use ph2d_editor_core::panel::{PaintCtx, Panel};
 use ph2d_editor_core::widget::panel_chrome::{
     PANEL_HEAD_PAD, PANEL_HEADER_CLOSE_RESERVE, PANEL_TITLE_BASELINE, paint_panel_close_button,
@@ -16,7 +16,7 @@ use ph2d_editor_core::widget::panel_chrome::{
 use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::Spacing;
 
-pub(crate) fn paint(_state: &mut TimelinePanelState, ctx: &mut PaintCtx) {
+pub(crate) fn paint(state: &mut TimelinePanelState, ctx: &mut PaintCtx) {
     if !ctx.host.panel_visible(TimelinePanel::ID) {
         // Symmetric stale-rect cleanup so `panel_at` stops returning the panel
         // once it is hidden.
@@ -55,7 +55,7 @@ pub(crate) fn paint(_state: &mut TimelinePanelState, ctx: &mut PaintCtx) {
         theme,
     );
 
-    // Body: the transport row (ruler + dope-sheet lanes land in E3+).
+    // Body: the transport row, then the ruler + lanes region below it.
     let body_top = rect.y + PANEL_TITLE_BASELINE + title_size + Spacing::Sm.px();
     let body = Rect::new(
         rect.x + PANEL_HEAD_PAD,
@@ -63,7 +63,14 @@ pub(crate) fn paint(_state: &mut TimelinePanelState, ctx: &mut PaintCtx) {
         (rect.w - PANEL_HEAD_PAD * 2.0).max(0.0),
         (rect.y + rect.h - body_top - PANEL_HEAD_PAD).max(0.0),
     );
-    transport::paint_bar(ctx, theme, body, &snapshot);
+    let after_transport = transport::paint_bar(ctx, theme, body, &snapshot);
+    let ruler_region = Rect::new(
+        body.x,
+        after_transport,
+        body.w,
+        (body.y + body.h - after_transport).max(0.0),
+    );
+    ruler::paint(ctx, theme, ruler_region, state, &snapshot);
 
     set_last_content_h(0.0);
     set_last_visible_h(rect.h);

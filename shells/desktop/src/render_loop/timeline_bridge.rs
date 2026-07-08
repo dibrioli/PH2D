@@ -55,6 +55,7 @@ pub(crate) fn intent_for_transport(
             Some(I::SeekFrame(playhead.frame(fps) + 1))
         }
         PanelEvent::SetValue(id, v) if id == ids::TIMELINE_TIME_NUM => Some(I::Scrub(v)),
+        PanelEvent::SetValue(id, v) if id == ids::TIMELINE_RULER => Some(I::Scrub(v)),
         PanelEvent::SetValue(id, v) if id == ids::TIMELINE_FRAME_NUM => {
             Some(I::SeekFrame(v as i64))
         }

@@ -29,6 +29,10 @@ pub struct TimelinePanelState {
     pub view_start_s: f64,
     /// Pixels per second (zoom). `> 0`.
     pub px_per_s: f64,
+    /// Seconds currently visible across the ruler width. Written by `paint`
+    /// (from the ruler pixel width ÷ zoom) and read by `event` to map a ruler
+    /// scrub value `0..1` back to an absolute time.
+    pub view_span_s: f64,
 }
 
 impl Default for TimelinePanelState {
@@ -36,6 +40,7 @@ impl Default for TimelinePanelState {
         Self {
             view_start_s: 0.0,
             px_per_s: DEFAULT_PX_PER_S,
+            view_span_s: 0.0,
         }
     }
 }

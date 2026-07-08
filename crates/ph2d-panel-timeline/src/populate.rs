@@ -8,7 +8,9 @@
 
 use crate::ids;
 use ph2d_editor_core::interaction::{InteractiveState, WidgetStore};
-use ph2d_editor_core::widget::{ButtonState, TextInputState, ToggleState};
+use ph2d_editor_core::widget::{
+    ButtonState, SliderOrientation, SliderState, TextInputState, ToggleState,
+};
 
 fn button(store: &mut WidgetStore, id: ph2d_a11y::NodeId) {
     store.register(
@@ -44,6 +46,16 @@ fn number(store: &mut WidgetStore, id: ph2d_a11y::NodeId) {
 }
 
 pub(crate) fn populate(store: &mut WidgetStore) {
+    // The ruler is scrubbed as a horizontal slider (1D drag over its strip; the
+    // panel paints the ticks/playhead itself and reads the slider value on drag).
+    store.register(
+        ids::TIMELINE_RULER,
+        InteractiveState::Slider {
+            state: SliderState::Normal,
+            value: 0.0,
+            orientation: SliderOrientation::Horizontal,
+        },
+    );
     button(store, ids::TIMELINE_PREV_FRAME);
     button(store, ids::TIMELINE_PLAY);
     button(store, ids::TIMELINE_NEXT_FRAME);

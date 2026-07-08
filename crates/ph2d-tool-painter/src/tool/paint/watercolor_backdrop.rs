@@ -31,6 +31,19 @@ impl PainterTool {
         self.paint.wet_soak.iter_mut().for_each(|s| *s = 0);
         self.paint.wet_soak_pos = None;
         self.paint.wet_soak_active = false;
+        // Manual Shape tip normaliser (see `PaintState::wet_shape_norm`): 1 / max luminance of the
+        // Shape image, computed once per stroke — the watercolor coverage must SATURATE in the tip's
+        // core (wetness geometry), so grey tips scale up to full while keeping their relative texture.
+        self.paint.wet_shape_norm = 1.0;
+        if !self.paint.brush.watercolor_shape_auto
+            && let Some(img) = self.paint.shape_image.as_ref()
+        {
+            let (lum, _, _) = img.parts();
+            let max = lum.iter().copied().max().unwrap_or(0);
+            if max > 0 {
+                self.paint.wet_shape_norm = 255.0 / f32::from(max);
+            }
+        }
         // Substrate cache: invalidate for the new stroke (the paper is constant WITHIN a stroke, so a
         // full reset at pen-down is the only invalidation needed — no in-stroke staleness). Filled
         // lazily by the composite ([`Self::apply_watercolor`]); `NaN` marks an untouched pixel.

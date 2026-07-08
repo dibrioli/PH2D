@@ -438,6 +438,14 @@ pub(crate) struct PaintState {
     /// Whether THIS stroke poured any soak yet — gates the composite's 2×-blur (far) fields, so a
     /// stroke with no dwell pays exactly the plain 4-blur rewet cost.
     wet_soak_active: bool,
+    /// Manual Shape stamp (Automatic OFF): the tip image's luminance NORMALISER (`1 / max_lum`,
+    /// `1.0` when no image / all-black). The watercolor coverage is WETNESS GEOMETRY (a max-blend
+    /// union that must SATURATE in the wash core — `cw → 1` gives the body, `inner → 1` confines the
+    /// edge term to the rim), not the plain brush's tonal per-dab alpha (which accumulates by
+    /// source-over). A raw grey tip therefore starved the optics: pale centre + no rim (Enio
+    /// 2026-07-07). Scaling samples by this keeps the tip's RELATIVE texture but guarantees its core
+    /// reaches full coverage. Computed once per stroke at pen-down (`freeze_watercolor_ground`).
+    wet_shape_norm: f32,
     /// **Watercolor substrate cache** (perf, byte-identical): the paper-tooth height `paper_h` at each
     /// canvas pixel (`f32`, `w*h`; `NaN` = not yet computed). The paper is CANVAS-ANCHORED — the same
     /// canvas pixel yields the same `paper_h` for the whole stroke — but the optical composite recomputes

@@ -55,6 +55,11 @@ pub(super) struct WetShapeStamp {
     spec: ph2d_painter_brush::BrushSpec,
     /// Whether the Shape slot actively shapes the silhouette (image present / procedural kind).
     shape_active: bool,
+    /// Whether the Shape slot is an IMAGE tip (the [`Self::img_norm`] scaling applies).
+    is_image: bool,
+    /// Tip-luminance normaliser (`1/max`, from [`PainterTool`]'s per-stroke scan): the coverage is
+    /// wetness geometry and must saturate in the tip core — see `PaintState::wet_shape_norm`.
+    img_norm: f32,
 }
 
 impl WetShapeStamp {
@@ -83,6 +88,15 @@ impl WetShapeStamp {
                     radius,
                     img,
                 );
+                // Image tips: normalise by the tip's max luminance — the coverage must SATURATE in
+                // the wash core (`cw → 1` gives the body, `inner → 1` confines the edge to the rim);
+                // raw grey luminance starved both (pale centre, dead rim — Enio 2026-07-07). The
+                // tip's relative texture survives the uniform scale.
+                let raw = if self.is_image {
+                    (raw * self.img_norm).min(1.0)
+                } else {
+                    raw
+                };
                 let sv = ph2d_painter_brush::texture::remap_shape_value(raw, None);
                 self.spec.compose_shape_silhouette(sv, falloff)
             }
@@ -90,16 +104,21 @@ impl WetShapeStamp {
         }
     }
 
-    /// The per-dab Shape basis (Rake heading / Random draw / Jitter-Rotate footprint), advancing
-    /// `rng` exactly like the plain stamp paths. `None` when the Shape slot is inactive (falloff-only).
-    fn dab_basis(
+    /// The per-dab stamp frame: the flatten/rotate footprint (Shape gizmo `dab_flatten` +
+    /// `dab_angle_deg`, spun by Jitter Rotate) + the Shape basis when the slot is active. The
+    /// footprint deforms the ENVELOPE distance too ([`Self::env_t`]) — Flatten/Rotate act on the
+    /// watercolor stamp like they do on the plain dab.
+    fn dab_frame(
         &self,
         d: &Dab,
         rng: &mut u64,
         canvas: [f32; 2],
-    ) -> Option<ph2d_painter_brush::texture::TexDabBasis> {
-        self.shape_active.then(|| {
-            let fp = self.spec.footprint_deform().rotated_by(d.rotation);
+    ) -> (
+        ph2d_painter_brush::footprint::FootprintDeform,
+        Option<ph2d_painter_brush::texture::TexDabBasis>,
+    ) {
+        let fp = self.spec.footprint_deform().rotated_by(d.rotation);
+        let basis = self.shape_active.then(|| {
             ph2d_painter_brush::texture::dab_basis(
                 &self.spec.shape,
                 d.dir,
@@ -108,7 +127,26 @@ impl WetShapeStamp {
                 [1.0, 0.0],
                 fp,
             )
-        })
+        });
+        (fp, basis)
+    }
+
+    /// The envelope distance for the falloff: the plain `dn` when the footprint is identity (the
+    /// bit-exact continuity path — `falloff_t`'s own rounding differs), else the deformed distance
+    /// (Flatten squeezes the minor axis; Rotate/Jitter orient it).
+    #[inline]
+    fn env_t(
+        fp: ph2d_painter_brush::footprint::FootprintDeform,
+        dn: f32,
+        dx: f32,
+        dy: f32,
+        inv_r: f32,
+    ) -> f32 {
+        if fp.is_identity() {
+            dn
+        } else {
+            fp.falloff_t(dx * inv_r, dy * inv_r)
+        }
     }
 }
 
@@ -134,7 +172,13 @@ impl PainterTool {
             return None;
         }
         let shape_active = spec.shape_silhouette_active(self.paint.shape_image.is_some());
-        Some(WetShapeStamp { spec, shape_active })
+        let is_image = spec.shape.kind == ph2d_painter_brush::TextureKind::Image;
+        Some(WetShapeStamp {
+            spec,
+            shape_active,
+            is_image,
+            img_norm: self.paint.wet_shape_norm,
+        })
     }
     /// Zero the per-stroke coverage (retain capacity). Shape-preview methods (Drag Dot / Anchored / Line)
     /// rebuild coverage each frame from the current batch, so the moving preview leaves no trail.
@@ -201,12 +245,10 @@ impl PainterTool {
         let canvas = [fw as f32, fh as f32];
         let cov = &mut self.paint.stroke_coverage;
         for d in dabs {
-            // Basis draw BEFORE any skip: the colour pass replays this stream per emitted dab, and
+            // Frame draw BEFORE any skip: the colour pass replays this stream per emitted dab, and
             // its skip conditions differ (no Dilution `flow` there) — drawing after a skip would
             // desynchronise the two passes' Random draws.
-            let basis = stamp
-                .as_ref()
-                .and_then(|s| s.dab_basis(d, &mut rng, canvas));
+            let frame = stamp.as_ref().map(|s| s.dab_frame(d, &mut rng, canvas));
             let r = d.radius_px;
             let peak = (d.coverage * flow).clamp(0.0, 1.0);
             if r <= 0.0 || peak <= 0.0 {
@@ -240,16 +282,16 @@ impl PainterTool {
                     if keep <= 0.0 {
                         continue;
                     }
-                    let wgt = match &stamp {
-                        Some(s) => s.weight(
-                            dn,
+                    let wgt = match (&stamp, &frame) {
+                        (Some(s), Some((fp, basis))) => s.weight(
+                            WetShapeStamp::env_t(*fp, dn, dx, dy, inv_r),
                             basis.as_ref(),
                             shape_img_owned.as_ref(),
                             [x, y],
                             d.center,
                             r,
                         ),
-                        None => feather(dn),
+                        _ => feather(dn),
                     };
                     let v = (peak * keep * wgt * 255.0) as u8;
                     if v > cov[idx] {
@@ -288,10 +330,8 @@ impl PainterTool {
         let canvas = [fw as f32, fh as f32];
         let buf = &mut self.paint.stroke_color;
         for (d, (dcol, prio)) in dabs.iter().zip(&mixed) {
-            // Basis draw BEFORE any skip — mirror of the coverage pass (stream sync; see there).
-            let basis = stamp
-                .as_ref()
-                .and_then(|s| s.dab_basis(d, &mut rng, canvas));
+            // Frame draw BEFORE any skip — mirror of the coverage pass (stream sync; see there).
+            let frame = stamp.as_ref().map(|s| s.dab_frame(d, &mut rng, canvas));
             let r = d.radius_px;
             let peak = d.coverage.clamp(0.0, 1.0);
             if r <= 0.0 || peak <= 0.0 {
@@ -334,16 +374,16 @@ impl PainterTool {
                     // source alpha = silhouette weight × deposit priority × the paint gates —
                     // the SAME weight as the coverage splat (manual Shape stamp or the feather),
                     // so the deposited colour and the silhouette always agree.
-                    let wgt = match &stamp {
-                        Some(st) => st.weight(
-                            dn,
+                    let wgt = match (&stamp, &frame) {
+                        (Some(st), Some((fp, basis))) => st.weight(
+                            WetShapeStamp::env_t(*fp, dn, dx, dy, inv_r),
                             basis.as_ref(),
                             shape_img_owned.as_ref(),
                             [x, y],
                             d.center,
                             r,
                         ),
-                        None => feather(dn),
+                        _ => feather(dn),
                     };
                     let a = peak * wgt * prio * keep;
                     if a <= 0.0 {

@@ -12357,3 +12357,101 @@ fn t_dab_paints_asymmetric(t: &mut PainterTool, size: u32) -> bool {
     );
     true
 }
+
+/// **Manual Shape stamp honours Flatten + Rotate + grey-tip normalisation** (Enio 2026-07-07,
+/// smoke round 2): (a) `dab_flatten` squeezes the watercolor footprint into an ellipse and
+/// `dab_angle_deg` orients it — they flowed through `footprint_deform` on the plain dab but the
+/// watercolor envelope used the raw round distance; (b) a GREY tip image must paint the same wash
+/// as a WHITE one (the per-stroke max-luminance normaliser: coverage is wetness geometry that must
+/// saturate — a raw grey tip starved the optics: pale centre, dead rim).
+#[test]
+fn watercolor_manual_shape_flatten_rotate_and_grey_tip_normalise() {
+    fn wet_manual(t: &mut PainterTool) {
+        t.paint.brush = BrushSpec {
+            radius_px: 12.0,
+            hardness: 0.0,
+            falloff: Falloff::Watercolor,
+            color: [0.1, 0.2, 0.7],
+            space_attenuation: false,
+            watercolor: true,
+            watercolor_shape_auto: false,
+            fill: 0.6,
+            depth: 2.0,
+            edge_gain: 2.0,
+            edge_spread: 4.0,
+            warp: 0.0, // no organic boundary noise — the extents measure the FOOTPRINT
+            granulation: 0.0, // no mottle either
+            ..Default::default()
+        };
+        for slot in &mut t.paint.brush_by_mode {
+            *slot = t.paint.brush;
+        }
+    }
+    fn dab(t: &mut PainterTool) {
+        assert!(t.on_canvas_pointer(cp([32.0, 32.0], PointerPhase::Down)));
+        t.on_canvas_pointer(cp([32.0, 32.0], PointerPhase::Up));
+    }
+    /// Painted extent along x and y through the centre row/column.
+    fn extent(t: &PainterTool, size: u32) -> (u32, u32) {
+        let (mut ex, mut ey) = (0u32, 0u32);
+        for d in 0..16u32 {
+            if px(t, size, 32 + d, 32) != [255, 255, 255, 255] {
+                ex = d;
+            }
+            if px(t, size, 32, 32 + d) != [255, 255, 255, 255] {
+                ey = d;
+            }
+        }
+        (ex, ey)
+    }
+    let size = 64u32;
+
+    // (a) Flatten 0.8: the footprint squeezes the minor (y) axis at angle 0…
+    let mut t = white_canvas(size, 12.0);
+    wet_manual(&mut t);
+    t.paint.brush.dab_flatten = 0.8;
+    for slot in &mut t.paint.brush_by_mode {
+        *slot = t.paint.brush;
+    }
+    dab(&mut t);
+    let (ex, ey) = extent(&t, size);
+    assert!(
+        ex >= ey + 3,
+        "Flatten must squeeze the watercolor footprint (x extent {ex} vs y {ey})"
+    );
+    // … and Rotate 90° swaps the axes.
+    let mut t = white_canvas(size, 12.0);
+    wet_manual(&mut t);
+    t.paint.brush.dab_flatten = 0.8;
+    t.paint.brush.dab_angle_deg = 90;
+    for slot in &mut t.paint.brush_by_mode {
+        *slot = t.paint.brush;
+    }
+    dab(&mut t);
+    let (ex, ey) = extent(&t, size);
+    assert!(
+        ey >= ex + 3,
+        "Rotate 90° must re-orient the flattened footprint (x {ex} vs y {ey})"
+    );
+
+    // (b) Grey tip == white tip byte-for-byte (the normaliser rescales 128/255 → 1.0).
+    let mut white_tip = white_canvas(size, 12.0);
+    wet_manual(&mut white_tip);
+    white_tip.set_brush_shape_image(vec![255u8; 16 * 16], 16, 16);
+    for slot in &mut white_tip.paint.brush_by_mode {
+        *slot = white_tip.paint.brush;
+    }
+    dab(&mut white_tip);
+    let mut grey_tip = white_canvas(size, 12.0);
+    wet_manual(&mut grey_tip);
+    grey_tip.set_brush_shape_image(vec![128u8; 16 * 16], 16, 16);
+    for slot in &mut grey_tip.paint.brush_by_mode {
+        *slot = grey_tip.paint.brush;
+    }
+    dab(&mut grey_tip);
+    assert_eq!(
+        white_tip.canvas_rgba.as_slice(),
+        grey_tip.canvas_rgba.as_slice(),
+        "a uniformly grey tip must paint the SAME wash as a white one (normalised wetness)"
+    );
+}

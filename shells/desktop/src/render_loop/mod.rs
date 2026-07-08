@@ -90,6 +90,11 @@ thread_local! {
     static FRAME_PROF_ON: std::cell::Cell<i8> = const { std::cell::Cell::new(-1) };
     static FRAME_PROF_N: std::cell::Cell<u32> = const { std::cell::Cell::new(0) };
     static FRAME_PROF_DISPATCH_US: std::cell::Cell<u64> = const { std::cell::Cell::new(0) };
+    /// Active tool's `on_tick` µs (the watercolor heartbeat: soak pour + live recomposite) —
+    /// the perf-audit phase the original split missed (2026-07-07, "grave FPS drop" hunt).
+    static FRAME_PROF_TICK_US: std::cell::Cell<u64> = const { std::cell::Cell::new(0) };
+    /// `paint_hero_screen` µs (panel/chrome Vello encode — includes the Paper preview).
+    static FRAME_PROF_HERO_US: std::cell::Cell<u64> = const { std::cell::Cell::new(0) };
 }
 
 /// Quiet frames after the last resize event before the present mode saved by the fluid-drag override is
@@ -448,7 +453,14 @@ impl crate::App {
         // (ADR-0049 / ADR-0077 D11) so the wash keeps blooming + drying after pen-up;
         // a no-op default for every other tool, so this costs nothing elsewhere.
         if let Some(t) = tools.active_mut() {
+            // Frame profiler: the heartbeat is where the watercolor live recomposite runs while the
+            // brush is held (soak pour → apply_watercolor) — time it so a paint slowdown is attributable
+            // (one Instant when profiling; zero cost otherwise).
+            let tick_t0 = frame_prof_on().then(Instant::now);
             t.on_tick(frame_ms_now);
+            if let Some(t0) = tick_t0 {
+                FRAME_PROF_TICK_US.with(|c| c.set(t0.elapsed().as_micros() as u64));
+            }
             // Fill dwell gesture: a held-still ColorDrop fires the fill + enters live threshold-adjust
             // (see `input_dispatch::fill_drag`). `last_pointer` is disjoint from `self.gfx.tools`.
             crate::input_dispatch::fill_drag::fill_drag_tick(t, self.last_pointer, frame_ms_now);
@@ -1579,7 +1591,12 @@ impl crate::App {
                 hero.gizmo.global_view = None;
             }
             hero.gizmo.gizmo_hit_map.clear();
+            // Frame profiler: panel/chrome Vello encode (includes the painter panel's Paper preview).
+            let hero_t0 = frame_prof_on().then(Instant::now);
             paint_hero_screen(hero, viewport, vector_scene, paint_ctx.text);
+            if let Some(t0) = hero_t0 {
+                FRAME_PROF_HERO_US.with(|c| c.set(t0.elapsed().as_micros() as u64));
+            }
             // Fase 0f: overlay the active rubber-band rect on top of
             // everything (panels, gizmo, hero chrome). Pure shell
             // concern — coords stay in screen space so the rect
@@ -2141,9 +2158,18 @@ impl crate::App {
                 let total = self.frame_ms_ewma;
                 let encode = self.frame_cpu_ms_ewma;
                 let dispatch_ms = FRAME_PROF_DISPATCH_US.with(|c| c.get()) as f64 / 1000.0;
+                // Perf-audit extension (2026-07-07): the phases where a paint slowdown can hide —
+                // `tick` = active tool's on_tick (watercolor heartbeat recomposite), `stamp` = the
+                // pointer-driven stamps since last frame (Move → apply_watercolor), `hero` = the
+                // panel/chrome Vello encode (includes the Paper preview). `stamp` + `tick` happen
+                // BEFORE cpu_start, so they add to `total` but NOT to `cpu-encode(raw)`.
+                let tick_ms = FRAME_PROF_TICK_US.with(|c| c.get()) as f64 / 1000.0;
+                let stamp_ms = self.last_paint_stamp_us as f64 / 1000.0;
+                let hero_ms = FRAME_PROF_HERO_US.with(|c| c.get()) as f64 / 1000.0;
                 eprintln!(
                     "[frame] total={total:.2}ms (~{:.0} fps) | cpu-encode(raw)={encode:.2}ms \
-                     | present/acquire-stall={:.2}ms | painter-dispatch(cpu)={dispatch_ms:.2}ms",
+                     | present/acquire-stall={:.2}ms | painter-dispatch(cpu)={dispatch_ms:.2}ms \
+                     | tool-tick={tick_ms:.2}ms | stamps={stamp_ms:.2}ms | hero-paint={hero_ms:.2}ms",
                     1000.0 / f64::from(total).max(0.001),
                     (f64::from(total) - f64::from(encode)).max(0.0),
                 );

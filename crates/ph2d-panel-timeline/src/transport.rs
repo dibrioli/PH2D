@@ -11,7 +11,7 @@
 
 use ph2d_editor_core::icons::IconId;
 use ph2d_editor_core::interaction::{InteractiveState, WidgetStore};
-use ph2d_editor_core::paint::{paint_text, resolve};
+use ph2d_editor_core::paint::{paint_text, resolve, stroke_rounded_rect};
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::widget::showcase::read_number_input;
 use ph2d_editor_core::widget::{
@@ -20,7 +20,7 @@ use ph2d_editor_core::widget::{
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_timeline::{DEFAULT_FPS, TimelineViewSnapshot};
-use ph2d_tokens::{ColorToken, Density, ROW_H_PX, Spacing, Theme, TypeToken};
+use ph2d_tokens::{ColorToken, Density, ROW_H_PX, Radius, Spacing, StrokeToken, Theme, TypeToken};
 
 use crate::ids;
 
@@ -203,10 +203,22 @@ fn toggle(
     text: &str,
     on: bool,
 ) -> f32 {
-    label(ctx, theme, text, x, y, TOGGLE_LABEL_W);
     let sw = TypeToken::Xl3.px();
     let sh = Density::Compact.row_h_px();
-    let sx = x + TOGGLE_LABEL_W + Spacing::Xs.px();
+    let pad = Spacing::Xs.px();
+    // Outlined cell grouping [label | switch] so each toggle is demarcated from
+    // its neighbours (Enio 2026-07-08).
+    let cell_w = pad + TOGGLE_LABEL_W + pad + sw + pad;
+    let cell = Rect::new(x, y, cell_w, ROW_H_PX);
+    stroke_rounded_rect(
+        ctx.scene,
+        cell,
+        Radius::Sm.px(),
+        StrokeToken::Thin.px(),
+        resolve(ColorToken::Border, theme),
+    );
+    label(ctx, theme, text, x + pad, y, TOGGLE_LABEL_W);
+    let sx = x + pad + TOGGLE_LABEL_W + pad;
     let rect = Rect::new(sx, y + (ROW_H_PX - sh) * 0.5, sw, sh);
     // Mirror the snapshot's on-state into the store (when not focused) so the
     // painted switch reflects the document and the edit baseline stays correct.
@@ -228,7 +240,7 @@ fn toggle(
     let widget = Toggle::new(id, "").on(on).state(state);
     paint_toggle(&widget, rect, ctx.scene, theme);
     ctx.host.hit_index_mut().register(id, rect);
-    sx + sw
+    x + cell_w
 }
 
 /// A short left-aligned, vertically-centred label of width `w`.

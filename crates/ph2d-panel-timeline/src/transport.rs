@@ -20,14 +20,13 @@ use ph2d_editor_core::widget::{
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_timeline::{DEFAULT_FPS, TimelineViewSnapshot};
-use ph2d_tokens::{ColorToken, ROW_H_PX, Spacing, Theme, TypeToken};
+use ph2d_tokens::{ColorToken, Density, ROW_H_PX, Spacing, Theme, TypeToken};
 
 use crate::ids;
 
 const BTN_W: f32 = 30.0; // LITERAL-PX-OK: square transport icon-button
 const CHIP_W: f32 = 58.0; // LITERAL-PX-OK: seconds/frame number chip width
 const UNIT_W: f32 = 12.0; // LITERAL-PX-OK: "s"/"f" unit-label column
-const TOGGLE_W: f32 = 32.0; // LITERAL-PX-OK: switch body width
 const TOGGLE_LABEL_W: f32 = 52.0; // LITERAL-PX-OK: "AutoKey" label column
 
 /// Paint the transport row inside `body` (top-aligned). Returns the `y` below it.
@@ -191,7 +190,10 @@ fn chip(
     x + CHIP_W
 }
 
-/// Paint a `label | switch` toggle; register the switch hit. Returns the right edge.
+/// Paint a `label | switch` toggle in the exact Widget-Gallery form: a label
+/// column then a `TypeToken::Xl3`-wide, `Density::Compact`-tall pill switch
+/// (proper 2:1 track + thumb), vertically centred in the row. Register the
+/// switch hit. Returns the right edge.
 fn toggle(
     ctx: &mut PaintCtx,
     theme: Theme,
@@ -202,8 +204,10 @@ fn toggle(
     on: bool,
 ) -> f32 {
     label(ctx, theme, text, x, y, TOGGLE_LABEL_W);
-    let sx = x + TOGGLE_LABEL_W + Spacing::Xxs.px();
-    let rect = Rect::new(sx, y, TOGGLE_W, ROW_H_PX);
+    let sw = TypeToken::Xl3.px();
+    let sh = Density::Compact.row_h_px();
+    let sx = x + TOGGLE_LABEL_W + Spacing::Xs.px();
+    let rect = Rect::new(sx, y + (ROW_H_PX - sh) * 0.5, sw, sh);
     // Mirror the snapshot's on-state into the store (when not focused) so the
     // painted switch reflects the document and the edit baseline stays correct.
     {
@@ -220,15 +224,11 @@ fn toggle(
         .toggle(id)
         .map(|(s, _)| s)
         .unwrap_or(ToggleState::Normal);
-    let widget = Toggle {
-        id,
-        label: String::new(),
-        on,
-        state,
-    };
+    // Gallery builder form (label rendered separately, above).
+    let widget = Toggle::new(id, "").on(on).state(state);
     paint_toggle(&widget, rect, ctx.scene, theme);
     ctx.host.hit_index_mut().register(id, rect);
-    sx + TOGGLE_W
+    sx + sw
 }
 
 /// A short left-aligned, vertically-centred label of width `w`.

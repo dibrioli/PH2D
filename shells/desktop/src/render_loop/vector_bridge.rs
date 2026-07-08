@@ -259,6 +259,30 @@ pub(super) fn dispatch(
         None
     });
 
+    // Publish the selected path's fill kind (+ linear angle) so the Fill-type
+    // selector reflects + drives it.
+    #[cfg(feature = "panel-vector")]
+    {
+        use ph2d_panel_vector::FillKind;
+        use ph2d_vec_scene::Paint;
+        let (kind, angle) = if vector_active {
+            match pen
+                .selected()
+                .and_then(|sel| scene.paths().iter().find(|p| p.id == sel))
+                .and_then(|p| p.fill.as_ref())
+            {
+                Some(Paint::Solid(_)) => (Some(FillKind::Solid), None),
+                Some(Paint::Linear { angle_deg, .. }) => (Some(FillKind::Linear), Some(*angle_deg)),
+                Some(Paint::Radial { .. }) => (Some(FillKind::Radial), None),
+                Some(Paint::MultiPoint { .. }) => (Some(FillKind::MultiPoint), None),
+                None => (None, None),
+            }
+        } else {
+            (None, None)
+        };
+        ph2d_panel_vector::set_current_fill(kind, angle);
+    }
+
     // Calibrate the Transform fields' drag scrub to the camera: `px_to_world`
     // value-units per cursor pixel ⇒ dragging a chip N px moves the shape N px
     // on screen at any zoom (unbounded — no clamp). Live each frame so zoom in/out

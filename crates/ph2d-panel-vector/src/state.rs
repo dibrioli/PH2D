@@ -24,6 +24,11 @@ thread_local! {
     /// Selected path's `closed` flag, published each frame (`None` = no selection).
     /// Drives the Close/Open toggle button's label.
     static CURRENT_PATH_CLOSED: Cell<Option<bool>> = const { Cell::new(None) };
+    /// Selected path's fill kind (`None` = no path selected / no fill). Drives the
+    /// Fill-type selector highlight + whether the gradient controls show.
+    static CURRENT_FILL_KIND: Cell<Option<FillKind>> = const { Cell::new(None) };
+    /// Selected path's linear-gradient angle in degrees (`None` unless Linear).
+    static CURRENT_GRAD_ANGLE: Cell<Option<f64>> = const { Cell::new(None) };
     /// Rotation-field accumulator: the angle (degrees) the Angle chip last
     /// reported THIS gesture. `event` emits the DELTA `(current − this)` so the
     /// shell rotates incrementally; reset to 0 by `paint` whenever the field is
@@ -33,6 +38,17 @@ thread_local! {
     static LAST_CONTENT_H: Cell<f32> = const { Cell::new(0.0) };
     /// Last visible body height (panel rect minus title + paddings).
     static LAST_VISIBLE_H: Cell<f32> = const { Cell::new(0.0) };
+}
+
+/// Which kind of fill the selected path has (published by the shell each frame so
+/// the panel's Fill-type selector reflects + drives it). Mirror of the scene
+/// `Paint` variants (kept panel-local so the panel needn't depend on the scene).
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum FillKind {
+    Solid,
+    Linear,
+    Radial,
+    MultiPoint,
 }
 
 /// Retained per-instance state slot for `VectorPanel`. Intentionally empty —
@@ -84,6 +100,23 @@ pub fn set_current_path_closed(closed: Option<bool>) {
 /// The selected path's `closed` flag this frame (drives the toggle button label).
 pub(crate) fn current_path_closed() -> Option<bool> {
     CURRENT_PATH_CLOSED.with(|c| c.get())
+}
+
+/// Publish the selected path's fill kind + linear angle (both `None` when no path
+/// is selected or it has no fill / isn't linear).
+pub fn set_current_fill(kind: Option<FillKind>, angle_deg: Option<f64>) {
+    CURRENT_FILL_KIND.with(|c| c.set(kind));
+    CURRENT_GRAD_ANGLE.with(|c| c.set(angle_deg));
+}
+
+/// The selected path's fill kind this frame (`None` ⇒ hide the Fill-type selector).
+pub(crate) fn current_fill_kind() -> Option<FillKind> {
+    CURRENT_FILL_KIND.with(|c| c.get())
+}
+
+/// The selected path's linear-gradient angle this frame (`None` unless Linear).
+pub(crate) fn current_grad_angle() -> Option<f64> {
+    CURRENT_GRAD_ANGLE.with(|c| c.get())
 }
 
 /// The angle the Angle chip last reported this gesture (for the delta emit).

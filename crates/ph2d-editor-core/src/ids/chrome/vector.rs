@@ -57,6 +57,16 @@ pub const VECTOR_FILL_SWATCH: NodeId = hash_node_id("vector.fill_swatch");
 /// Stroke / Fill **Opacity** sliders (0..100 %) — the single source of the
 /// stroke/fill alpha. `0 %` = invisible (no fill). Each drives the matching
 /// `VectorTool` colour's alpha channel.
+// ── Fill type + gradient (ADR-0108 gradient group) ───────────────────────────
+// Segmented selector switching the SELECTED path's fill between Solid / Linear /
+// Radial (a document command via the shell drain). The Angle slider drives a
+// Linear gradient's direction (shown only in Linear).
+pub const VECTOR_FILL_KIND_SOLID: NodeId = hash_node_id("vector.fill_kind.solid");
+pub const VECTOR_FILL_KIND_LINEAR: NodeId = hash_node_id("vector.fill_kind.linear");
+pub const VECTOR_FILL_KIND_RADIAL: NodeId = hash_node_id("vector.fill_kind.radial");
+pub const VECTOR_GRAD_ANGLE: NodeId = hash_node_id("vector.grad.angle");
+pub const VECTOR_GRAD_ANGLE_NUM: NodeId = hash_node_id("vector.grad.angle_num");
+
 pub const VECTOR_STROKE_OPACITY: NodeId = hash_node_id("vector.stroke_opacity");
 pub const VECTOR_STROKE_OPACITY_NUM: NodeId = hash_node_id("vector.stroke_opacity_num");
 pub const VECTOR_FILL_OPACITY: NodeId = hash_node_id("vector.fill_opacity");

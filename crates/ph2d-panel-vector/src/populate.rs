@@ -27,6 +27,9 @@ use ph2d_tool_vector::{
     DEFAULT_STAR_POINTS, DEFAULT_STROKE_WIDTH_PX, px_to_slider,
 };
 
+/// Linear-gradient Angle slider mapping: track `0..1` → `0..360` degrees.
+const GRAD_ANGLE_SLIDER_SCALE: f32 = 360.0; // LITERAL-PX-OK: degrees in a full turn (math constant)
+
 /// Register a plain action Button in the Normal state.
 fn button(store: &mut WidgetStore, id: ph2d_a11y::NodeId) {
     store.register(
@@ -190,6 +193,21 @@ pub fn populate(store: &mut WidgetStore) {
     button(store, ids::VECTOR_BOOL_SUBTRACT);
     button(store, ids::VECTOR_BOOL_INTERSECT);
     button(store, ids::VECTOR_BOOL_EXCLUDE);
+
+    // Fill-type selector (Solid / Linear / Radial) — act on the selected path.
+    button(store, ids::VECTOR_FILL_KIND_SOLID);
+    button(store, ids::VECTOR_FILL_KIND_LINEAR);
+    button(store, ids::VECTOR_FILL_KIND_RADIAL);
+    // Linear-gradient Angle slider (track 0..1 → 0..360°) + its chip.
+    slider_chip(
+        store,
+        ids::VECTOR_GRAD_ANGLE,
+        ids::VECTOR_GRAD_ANGLE_NUM,
+        0.0,
+        0.0,
+        GRAD_ANGLE_SLIDER_SCALE,
+        0.0,
+    );
 
     // Stroke / Fill Opacity sliders (0..100 %) — seeded at full opacity, matching
     // the tool's default opaque stroke/fill.

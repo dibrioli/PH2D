@@ -318,6 +318,145 @@ pub(crate) fn apply_vec_toggle_closed(
     }
 }
 
+/// Fill kind a Vector-panel Fill-type button targets on the selected path.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub(crate) enum VecFillKind {
+    Solid,
+    Linear,
+    Radial,
+}
+
+/// Map a Fill-type button `NodeId` to its [`VecFillKind`] (`None` otherwise).
+pub(crate) fn vec_fill_kind_for_id(id: ph2d_editor::NodeId) -> Option<VecFillKind> {
+    if id == ph2d_editor::ids::VECTOR_FILL_KIND_SOLID {
+        Some(VecFillKind::Solid)
+    } else if id == ph2d_editor::ids::VECTOR_FILL_KIND_LINEAR {
+        Some(VecFillKind::Linear)
+    } else if id == ph2d_editor::ids::VECTOR_FILL_KIND_RADIAL {
+        Some(VecFillKind::Radial)
+    } else {
+        None
+    }
+}
+
+/// A luminance-opposite (black/white, alpha preserved) — the second stop seeded
+/// when a solid fill first becomes a gradient, so the ramp is visibly a gradient.
+fn contrast_color(c: ph2d_vec_scene::Rgba8) -> ph2d_vec_scene::Rgba8 {
+    let lum = 0.2126 * f64::from(c.r) + 0.7152 * f64::from(c.g) + 0.0722 * f64::from(c.b);
+    if lum > 128.0 {
+        ph2d_vec_scene::Rgba8::new(0, 0, 0, c.a)
+    } else {
+        ph2d_vec_scene::Rgba8::new(255, 255, 255, c.a)
+    }
+}
+
+/// Gradient stops to use when switching to a gradient: reuse the existing gradient's
+/// stops (Linear↔Radial keep them), else seed a 2-stop ramp `[fill → contrast]`.
+fn gradient_stops_from(fill: &Option<ph2d_vec_scene::Paint>) -> Vec<ph2d_vec_scene::GradientStop> {
+    use ph2d_vec_scene::{GradientStop, Paint};
+    match fill {
+        Some(Paint::Linear { stops, .. }) | Some(Paint::Radial { stops }) if stops.len() >= 2 => {
+            stops.clone()
+        }
+        _ => {
+            let base = fill
+                .as_ref()
+                .map_or(ph2d_vec_scene::Rgba8::new(255, 255, 255, 255), |p| {
+                    p.primary_color()
+                });
+            vec![
+                GradientStop::new(0.0, base),
+                GradientStop::new(1.0, contrast_color(base)),
+            ]
+        }
+    }
+}
+
+/// Switch the SELECTED path's fill kind (Solid/Linear/Radial), preserving colour(s):
+/// Solid keeps the primary colour; Linear/Radial seed/keep gradient stops; the
+/// Linear angle survives a round-trip through Radial. One undo step iff it changed.
+pub(crate) fn apply_vec_set_fill_kind(
+    scene: &mut ph2d_vec_scene::VecScene,
+    history: &mut ph2d_vec_edit::History,
+    pen: &ph2d_vec_edit::PenTool,
+    kind: VecFillKind,
+) {
+    use ph2d_vec_scene::Paint;
+    let Some(sel) = pen.selected() else {
+        eprintln!("[ph2d-vec] fill-kind: nenhum path selecionado");
+        return;
+    };
+    let Some(cur) = scene
+        .paths()
+        .iter()
+        .find(|p| p.id == sel)
+        .map(|p| p.fill.clone())
+    else {
+        return;
+    };
+    let angle = match &cur {
+        Some(Paint::Linear { angle_deg, .. }) => *angle_deg,
+        _ => 0.0,
+    };
+    let new_fill = match kind {
+        VecFillKind::Solid => Paint::Solid(
+            cur.as_ref()
+                .map_or(ph2d_vec_scene::Rgba8::new(255, 255, 255, 255), |p| {
+                    p.primary_color()
+                }),
+        ),
+        VecFillKind::Linear => Paint::Linear {
+            stops: gradient_stops_from(&cur),
+            angle_deg: angle,
+        },
+        VecFillKind::Radial => Paint::Radial {
+            stops: gradient_stops_from(&cur),
+        },
+    };
+    if cur.as_ref() == Some(&new_fill) {
+        return;
+    }
+    let pre = scene.clone();
+    if let Some(path) = scene.path_mut(sel) {
+        path.fill = Some(new_fill);
+        history.push_undo(pre);
+    }
+}
+
+/// Set the SELECTED path's Linear-gradient angle (degrees; from the Angle slider's
+/// `track·360`). No-op unless the fill is Linear. One undo step iff it changed.
+pub(crate) fn apply_vec_set_grad_angle(
+    scene: &mut ph2d_vec_scene::VecScene,
+    history: &mut ph2d_vec_edit::History,
+    pen: &ph2d_vec_edit::PenTool,
+    degrees: f64,
+) {
+    use ph2d_vec_scene::Paint;
+    let Some(sel) = pen.selected() else {
+        return;
+    };
+    let cur = scene
+        .paths()
+        .iter()
+        .find(|p| p.id == sel)
+        .and_then(|p| match &p.fill {
+            Some(Paint::Linear { angle_deg, .. }) => Some(*angle_deg),
+            _ => None,
+        });
+    let Some(cur_angle) = cur else {
+        return;
+    };
+    if (cur_angle - degrees).abs() < 1e-9 {
+        return;
+    }
+    let pre = scene.clone();
+    if let Some(Paint::Linear { angle_deg, .. }) = scene.path_mut(sel).and_then(|p| p.fill.as_mut())
+    {
+        *angle_deg = degrees;
+        history.push_undo(pre);
+    }
+}
+
 /// Rotate the SELECTED path by `degrees` (panel Transform Angle field — a
 /// relative scrub) about its bbox center, recording ONE undo step iff it turned.
 /// A zero delta is a no-op (no undo). Free fn (mirror of [`apply_vec_rotate`]).

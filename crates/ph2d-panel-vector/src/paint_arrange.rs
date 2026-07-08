@@ -4,9 +4,69 @@
 //! 600-LOC panel cap; it's an `impl BodyCtx` block over there.
 
 use crate::paint_sections::BodyCtx;
+use crate::state::FillKind;
 use crate::{ids, state};
+use ph2d_editor_core::widget::ButtonState;
+use ph2d_editor_core::widget::panel_chrome::paint_segmented_button;
+use ph2d_editor_core::zones::Rect;
+use ph2d_tokens::Spacing;
+
+/// Full turn in degrees (Angle slider track `0..1` maps to `0..FULL_TURN_DEG`).
+const FULL_TURN_DEG: f64 = 360.0; // LITERAL-PX-OK: degrees in a full turn (math constant)
 
 impl BodyCtx<'_> {
+    /// Fill-type selector (Solid / Linear / Radial) + the Linear angle slider —
+    /// acts on the SELECTED path. Hidden when no path is selected / has no fill.
+    pub(crate) fn fill_type_controls(&mut self, mut y: f32) -> f32 {
+        let Some(kind) = state::current_fill_kind() else {
+            return y;
+        };
+        y = self.section_label("Fill Type", y);
+        let kinds = [
+            (ids::VECTOR_FILL_KIND_SOLID, "Solid", FillKind::Solid),
+            (ids::VECTOR_FILL_KIND_LINEAR, "Linear", FillKind::Linear),
+            (ids::VECTOR_FILL_KIND_RADIAL, "Radial", FillKind::Radial),
+        ];
+        let gap = Spacing::Sm.px();
+        let cw = ((self.inner_w - gap * (kinds.len() as f32 - 1.0)) / kinds.len() as f32).max(1.0);
+        for (i, (id, label, k)) in kinds.iter().enumerate() {
+            let rx = self.inner_x + i as f32 * (cw + gap);
+            let rect = Rect::new(rx, y, cw, self.row_h);
+            let bstate = self.store.button_state(*id).unwrap_or(ButtonState::Normal);
+            paint_segmented_button(
+                rect,
+                label,
+                kind == *k,
+                bstate,
+                self.scene,
+                self.text_system,
+                self.theme,
+            );
+            self.hit_index.register(*id, rect);
+        }
+        y += self.row_h + self.row_gap;
+
+        // Angle slider (Linear only) — track 0..1 → 0..360°.
+        if kind == FillKind::Linear {
+            let angle = state::current_grad_angle().unwrap_or(0.0);
+            let track = self
+                .store
+                .slider(ids::VECTOR_GRAD_ANGLE)
+                .map(|(_, v)| v)
+                .unwrap_or((angle / FULL_TURN_DEG) as f32);
+            let deg = f64::from(track) * FULL_TURN_DEG;
+            y = self.slider_row(
+                "Angle",
+                ids::VECTOR_GRAD_ANGLE,
+                ids::VECTOR_GRAD_ANGLE_NUM,
+                track,
+                deg,
+                &format!("{}", deg.round() as i64),
+                y,
+            );
+        }
+        y
+    }
     /// "Path" section — reshape the whole selected path. Smooth / Sharpen are a
     /// 2-col row; Simplify (fewer points) / Subdivide (more points) are the
     /// point-density pair on a second 2-col row; then a full-width Close/Open

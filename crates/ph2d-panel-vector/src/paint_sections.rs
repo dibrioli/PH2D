@@ -49,7 +49,7 @@ pub(crate) struct BodyCtx<'a> {
 impl BodyCtx<'_> {
     /// A full-width slider + linked value chip row; returns the advanced `y`.
     #[allow(clippy::too_many_arguments)]
-    fn slider_row(
+    pub(crate) fn slider_row(
         &mut self,
         label: &str,
         slider_id: ph2d_a11y::NodeId,
@@ -318,7 +318,7 @@ impl BodyCtx<'_> {
             .map(|(_, v)| v)
             .unwrap_or_else(|| opacity_to_slider(snap.fill[3]));
         let pct = f64::from(track) * 100.0; // LITERAL-PX-OK: fraction→percent for the opacity chip
-        self.slider_row(
+        y = self.slider_row(
             "Opacity",
             ids::VECTOR_FILL_OPACITY,
             ids::VECTOR_FILL_OPACITY_NUM,
@@ -326,7 +326,8 @@ impl BodyCtx<'_> {
             pct,
             &format!("{}", pct.round() as i64),
             y,
-        )
+        );
+        self.fill_type_controls(y)
     }
 
     /// Draw-mode grid (Pen / shapes) + the active mode's per-shape sliders.

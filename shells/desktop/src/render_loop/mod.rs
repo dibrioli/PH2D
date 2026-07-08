@@ -865,6 +865,9 @@ impl crate::App {
             let mut pending_vec_rotate: Option<ph2d_vec_scene::Rotate90> = None;
             let mut pending_vec_path_shape: Option<crate::input_dispatch::VecPathShapeOp> = None;
             let mut pending_vec_toggle_closed = false;
+            let mut pending_vec_fill_kind: Option<crate::input_dispatch::VecFillKind> = None;
+            // Linear-gradient angle (degrees) from the Angle slider (track·360).
+            let mut pending_vec_grad_angle: Option<f64> = None;
             // Numeric Transform field edit (X/Y/W/H) — a SetValue document command.
             let mut pending_vec_transform: Option<(crate::input_dispatch::VecTransformField, f64)> =
                 None;
@@ -947,6 +950,9 @@ impl crate::App {
                                 pending_vec_path_shape = Some(op);
                             } else if *id == ph2d_editor::ids::VECTOR_PATH_CLOSE {
                                 pending_vec_toggle_closed = true;
+                            } else if let Some(k) = crate::input_dispatch::vec_fill_kind_for_id(*id)
+                            {
+                                pending_vec_fill_kind = Some(k);
                             }
                         }
                         // Transform fields (X/Y/W/H) are numeric SetValue document
@@ -958,6 +964,9 @@ impl crate::App {
                                 pending_vec_transform = Some((field, *v));
                             } else if *id == ph2d_editor::ids::VECTOR_TRANSFORM_R {
                                 pending_vec_rotate_by = Some(*v);
+                            } else if *id == ph2d_editor::ids::VECTOR_GRAD_ANGLE {
+                                // Slider carries the track 0..1 → 0..360°.
+                                pending_vec_grad_angle = Some(*v * 360.0);
                             }
                         }
                         if let Some(t) = tools.active_mut() {
@@ -1659,6 +1668,22 @@ impl crate::App {
                     vec_scene,
                     &mut self.vec_history,
                     &self.vec_pen,
+                );
+            }
+            if let Some(kind) = pending_vec_fill_kind {
+                crate::input_dispatch::apply_vec_set_fill_kind(
+                    vec_scene,
+                    &mut self.vec_history,
+                    &self.vec_pen,
+                    kind,
+                );
+            }
+            if let Some(deg) = pending_vec_grad_angle {
+                crate::input_dispatch::apply_vec_set_grad_angle(
+                    vec_scene,
+                    &mut self.vec_history,
+                    &self.vec_pen,
+                    deg,
                 );
             }
             let vec_cfg = vector_bridge::dispatch(

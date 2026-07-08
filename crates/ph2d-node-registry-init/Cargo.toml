@@ -18,7 +18,12 @@ ph2d-node-registry = { path = "../ph2d-node-registry" }
 ph2d-node-debug-const = { path = "../ph2d-node-debug-const" }
 ph2d-node-debug-wave = { path = "../ph2d-node-debug-wave" }
 ph2d-node-motion-clone = { path = "../ph2d-node-motion-clone" }
+ph2d-node-motion-falloff-circle = { path = "../ph2d-node-motion-falloff-circle" }
 ph2d-node-motion-grid = { path = "../ph2d-node-motion-grid" }
+ph2d-node-motion-move = { path = "../ph2d-node-motion-move" }
+ph2d-node-motion-rotate = { path = "../ph2d-node-motion-rotate" }
+ph2d-node-motion-scale = { path = "../ph2d-node-motion-scale" }
+ph2d-node-motion-tint = { path = "../ph2d-node-motion-tint" }
 ph2d-node-motion-transform = { path = "../ph2d-node-motion-transform" }
 # <ph2d-node-sync:end>
 

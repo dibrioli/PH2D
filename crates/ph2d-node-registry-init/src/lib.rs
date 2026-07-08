@@ -18,7 +18,12 @@ pub fn register_all_nodes(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     ph2d_node_debug_const::register(reg)?;
     ph2d_node_debug_wave::register(reg)?;
     ph2d_node_motion_clone::register(reg)?;
+    ph2d_node_motion_falloff_circle::register(reg)?;
     ph2d_node_motion_grid::register(reg)?;
+    ph2d_node_motion_move::register(reg)?;
+    ph2d_node_motion_rotate::register(reg)?;
+    ph2d_node_motion_scale::register(reg)?;
+    ph2d_node_motion_tint::register(reg)?;
     ph2d_node_motion_transform::register(reg)?;
     // <ph2d-node-sync:end>
     Ok(())

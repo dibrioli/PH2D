@@ -5134,7 +5134,47 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-node-motion-falloff-circle"
+version = "0.0.0"
+dependencies = [
+ "ph2d-node-registry",
+ "ph2d-nodegraph",
+]
+
+[[package]]
 name = "ph2d-node-motion-grid"
+version = "0.0.0"
+dependencies = [
+ "ph2d-node-registry",
+ "ph2d-nodegraph",
+]
+
+[[package]]
+name = "ph2d-node-motion-move"
+version = "0.0.0"
+dependencies = [
+ "ph2d-node-registry",
+ "ph2d-nodegraph",
+]
+
+[[package]]
+name = "ph2d-node-motion-rotate"
+version = "0.0.0"
+dependencies = [
+ "ph2d-node-registry",
+ "ph2d-nodegraph",
+]
+
+[[package]]
+name = "ph2d-node-motion-scale"
+version = "0.0.0"
+dependencies = [
+ "ph2d-node-registry",
+ "ph2d-nodegraph",
+]
+
+[[package]]
+name = "ph2d-node-motion-tint"
 version = "0.0.0"
 dependencies = [
  "ph2d-node-registry",
@@ -5163,7 +5203,12 @@ dependencies = [
  "ph2d-node-debug-const",
  "ph2d-node-debug-wave",
  "ph2d-node-motion-clone",
+ "ph2d-node-motion-falloff-circle",
  "ph2d-node-motion-grid",
+ "ph2d-node-motion-move",
+ "ph2d-node-motion-rotate",
+ "ph2d-node-motion-scale",
+ "ph2d-node-motion-tint",
  "ph2d-node-motion-transform",
  "ph2d-node-registry",
  "ph2d-node-sync",

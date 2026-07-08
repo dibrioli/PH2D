@@ -24,7 +24,9 @@ use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, Param
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 
 mod channel;
+mod ease;
 use channel::{apply_channel_delta, falloff_at};
+use ease::ease;
 
 const INST_VEC2: PortType = PortType::new(Domain::Instances, Dim::Vec2, Clock::Frame);
 
@@ -56,8 +58,13 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             name: "max",
             default: 1.0,
         },
+        // Easing = a curve family shaped by a direction (see `ease`).
         ParamSpec {
-            name: "easing",
+            name: "ease_curve",
+            default: 0.0,
+        },
+        ParamSpec {
+            name: "ease_dir",
             default: 0.0,
         },
         ParamSpec {
@@ -68,44 +75,11 @@ pub const MANIFEST: NodeManifest = NodeManifest {
     lowerings: &[LoweringKind::Cpu],
 };
 
-/// A polynomial easing curve on `t ∈ [0,1]` (transcendental-free — HR-5). Unknown
-/// / `0` is linear; the arms mirror `simple_easing`'s quad/cubic family.
-fn ease(kind: i32, t: f32) -> f32 {
-    match kind {
-        1 => t * t,         // In Quad
-        2 => t * (2.0 - t), // Out Quad
-        3 => {
-            // In-Out Quad
-            if t < 0.5 {
-                2.0 * t * t
-            } else {
-                let u = -2.0 * t + 2.0;
-                1.0 - u * u * 0.5
-            }
-        }
-        4 => t * t * t, // In Cubic
-        5 => {
-            // Out Cubic
-            let u = 1.0 - t;
-            1.0 - u * u * u
-        }
-        6 => {
-            // In-Out Cubic
-            if t < 0.5 {
-                4.0 * t * t * t
-            } else {
-                let u = -2.0 * t + 2.0;
-                1.0 - u * u * u * 0.5
-            }
-        }
-        _ => t, // Linear
-    }
-}
-
 /// The per-instance stagger delta before it's added to the channel: the eased
-/// ramp `min→max` at position `raw ∈ [0,1]`, scaled by `falloff`.
-fn stagger_delta(min: f32, max: f32, easing: i32, raw: f32, falloff: f32) -> f32 {
-    (min + ease(easing, raw) * (max - min)) * falloff
+/// ramp `min→max` at position `raw ∈ [0,1]`, scaled by `falloff`. Easing is the
+/// `curve` family shaped by `dir` (In / Out / In-Out) — see [`ease`].
+fn stagger_delta(min: f32, max: f32, curve: i32, dir: i32, raw: f32, falloff: f32) -> f32 {
+    (min + ease(curve, dir, raw) * (max - min)) * falloff
 }
 
 struct MotionStagger;
@@ -119,7 +93,8 @@ impl NodeOp for MotionStagger {
         let channel = ctx.param("channel").round() as i32;
         let min = ctx.param("min");
         let max = ctx.param("max");
-        let easing = ctx.param("easing").round() as i32;
+        let curve = ctx.param("ease_curve").round() as i32;
+        let dir = ctx.param("ease_dir").round() as i32;
         let reverse = ctx.param("reverse") >= 0.5;
         let out = {
             let input = ctx.input(0);
@@ -133,7 +108,7 @@ impl NodeOp for MotionStagger {
                         i as f32 / (n as f32 - 1.0)
                     };
                     let raw = if reverse { 1.0 - raw } else { raw };
-                    stagger_delta(min, max, easing, raw, falloff_at(input, i))
+                    stagger_delta(min, max, curve, dir, raw, falloff_at(input, i))
                 })
                 .collect();
             apply_channel_delta(input, channel, &deltas)
@@ -162,9 +137,10 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
 
 use ph2d_node_registry::{ParamUiHint, ParamWidget};
 
-/// Param UI hints (M1.P1). `channel` / `easing` are **named** selectors (segmented
-/// buttons), `reverse` a checkbox — never number sliders. The enum option index
-/// IS the param value (channel 0..3, easing 0..3 = the first four `ease` kinds).
+/// Param UI hints (M1.P1). `channel` / `ease_curve` / `ease_dir` are **named**
+/// selectors (segmented buttons), `reverse` a checkbox — never number sliders.
+/// Easing is a curve family × direction (the Penner set minus the transcendental
+/// ones); the enum option index IS the param value.
 static PARAM_HINTS: &[ParamUiHint] = &[
     ParamUiHint {
         param: "channel",
@@ -193,13 +169,25 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         widget: ParamWidget::Slider,
     },
     ParamUiHint {
-        param: "easing",
-        label: "Easing",
+        param: "ease_curve",
+        label: "Ease",
         min: 0.0,
-        max: 3.0,
+        max: 7.0,
         step: 1.0,
         widget: ParamWidget::Enum {
-            labels: &["Linear", "In", "Out", "In-Out"],
+            labels: &[
+                "Linear", "Quad", "Cubic", "Quart", "Quint", "Circ", "Back", "Bounce",
+            ],
+        },
+    },
+    ParamUiHint {
+        param: "ease_dir",
+        label: "Direction",
+        min: 0.0,
+        max: 2.0,
+        step: 1.0,
+        widget: ParamWidget::Enum {
+            labels: &["In", "Out", "In-Out"],
         },
     },
     ParamUiHint {
@@ -297,20 +285,25 @@ mod tests {
     }
 
     #[test]
-    fn easing_endpoints_are_exact() {
-        // Every easing maps 0→0 and 1→1 exactly (endpoint-exact ramp).
-        for kind in 0..=6 {
-            assert_eq!(ease(kind, 0.0), 0.0, "ease({kind}, 0)");
-            assert_eq!(ease(kind, 1.0), 1.0, "ease({kind}, 1)");
-        }
-        // In-Quad bends below the diagonal at the midpoint (0.25 < 0.5).
-        assert!(ease(1, 0.5) < 0.5);
+    fn easing_applies_a_non_linear_curve_to_the_ramp() {
+        // Quad-In (curve 1, dir 0) bends the ramp below the diagonal at the
+        // midpoint: min=0,max=4 over 3 instances → mid Δy = 4·ease(1,0,0.5) = 1
+        // (vs 2 for linear). Proves ease_curve/ease_dir flow into the delta.
+        let p = staggered_y(|g, st| {
+            g.set_param(st, "min", 0.0);
+            g.set_param(st, "max", 4.0);
+            g.set_param(st, "ease_curve", 1.0); // Quad
+            g.set_param(st, "ease_dir", 0.0); // In
+        });
+        assert_eq!(p[0][1], 0.0); // endpoint
+        assert_eq!(p[1][1], 1.0); // eased midpoint (below linear's 2)
+        assert_eq!(p[2][1], 4.0); // endpoint
     }
 
     #[test]
     fn single_instance_takes_min() {
         // n == 1 → raw = 0 → delta = min (no divide-by-zero on `n-1`).
-        assert_eq!(stagger_delta(3.0, 9.0, 0, 0.0, 1.0), 3.0);
+        assert_eq!(stagger_delta(3.0, 9.0, 0, 0, 0.0, 1.0), 3.0);
     }
 
     #[test]

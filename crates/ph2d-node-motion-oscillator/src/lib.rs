@@ -8,9 +8,10 @@
 //! column passes through unchanged (count preserved).
 //!
 //! Waveforms are **transcendental-free** (HR-5): `phase` is measured in *cycles*
-//! (unit period) and the shapes are piecewise polynomial — a parabolic
-//! sine-approximation stands in for the true sine (the plan §1.7 marks sine as
-//! non-deterministic).
+//! (unit period) and the shapes are piecewise polynomial. The "Sine" wave is a
+//! parabolic approximation with a 2nd-order correction (Capens/devmaster) — ~0.09%
+//! off a true sine using only multiply + abs — since a real `sin` is
+//! non-deterministic (plan §1.7).
 //!
 //! Params (read via `ctx.param`):
 //! - `channel` (1): target — `0` X, `1` Y, `2` Rotation, `3` Size.
@@ -104,13 +105,19 @@ fn waveform(kind: i32, phase: f32) -> f32 {
         _ => {
             // Parabolic sine-approximation: a +hump over [0,½), a −hump over
             // [½,1), each `±4u(1−u)` — continuous, 0 at 0/½, ±1 at ¼/¾.
-            if f < 0.5 {
+            let p = if f < 0.5 {
                 let u = f * 2.0;
                 4.0 * u * (1.0 - u)
             } else {
                 let u = (f - 0.5) * 2.0;
                 -4.0 * u * (1.0 - u)
-            }
+            };
+            // 2nd-order correction (Capens/devmaster): the bare parabola is ~5.6%
+            // off a true sine (visibly rounder at the crest); `0.225·(p·|p|−p)+p`
+            // drops that to ~0.09% using only multiply + abs (transcendental-free,
+            // HR-5). Endpoint/range-preserving: 0→0, ±1→±1, stays in [-1,1].
+            const Q: f32 = 0.225;
+            Q * (p * p.abs() - p) + p
         }
     }
 }
@@ -322,10 +329,41 @@ mod tests {
                 );
             }
         }
-        // Anchor points of the parabolic sine-approximation.
+        // Anchor points of the corrected sine approximation (preserved).
         assert_eq!(waveform(0, 0.0), 0.0);
         assert_eq!(waveform(0, 0.25), 1.0);
         assert_eq!(waveform(0, 0.75), -1.0);
+    }
+
+    #[test]
+    fn corrected_sine_beats_the_bare_parabola() {
+        use std::f32::consts::TAU;
+        // Compare against a true sine (std::sin — test-only, not in the cook) at
+        // 64 phases. The corrected wave is well under 0.5% error everywhere and
+        // strictly closer than the bare parabola (which peaks ~5.6% off).
+        let bare = |f: f32| {
+            if f < 0.5 {
+                let u = f * 2.0;
+                4.0 * u * (1.0 - u)
+            } else {
+                let u = (f - 0.5) * 2.0;
+                -4.0 * u * (1.0 - u)
+            }
+        };
+        let mut worst_corrected = 0.0f32;
+        let mut worst_bare = 0.0f32;
+        for k in 0..64 {
+            let f = k as f32 / 64.0;
+            let truth = (f * TAU).sin();
+            worst_corrected = worst_corrected.max((waveform(0, f) - truth).abs());
+            worst_bare = worst_bare.max((bare(f) - truth).abs());
+        }
+        assert!(
+            worst_corrected < 0.005,
+            "corrected worst = {worst_corrected}"
+        );
+        assert!(worst_bare > 0.04, "bare parabola should be visibly worse");
+        assert!(worst_corrected < worst_bare);
     }
 
     #[test]

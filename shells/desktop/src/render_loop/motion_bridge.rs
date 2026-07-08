@@ -839,11 +839,21 @@ mod tests {
             })
             .expect("channel is a named Enum row, not a slider");
         assert_eq!(channel.labels, ["X", "Y", "Rot", "Size"]);
+        let ease = snap
+            .rows
+            .iter()
+            .find_map(|r| match r {
+                ParamRow::Enum(e) if e.name == "ease_curve" => Some(e),
+                _ => None,
+            })
+            .expect("ease_curve is a named Enum row");
+        // The rich curve family set (Penner minus the transcendental ones).
+        assert!(ease.labels.contains(&"Bounce") && ease.labels.contains(&"Back"));
         assert!(
             snap.rows
                 .iter()
-                .any(|r| matches!(r, ParamRow::Enum(e) if e.name == "easing")),
-            "easing is a named Enum row"
+                .any(|r| matches!(r, ParamRow::Enum(e) if e.name == "ease_dir")),
+            "ease_dir (In/Out/In-Out) is its own named Enum row"
         );
         assert!(
             snap.rows

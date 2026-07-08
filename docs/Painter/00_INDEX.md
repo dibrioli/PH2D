@@ -46,6 +46,7 @@
 |---|---|
 | **[11_aquarela_avaliacao_padrao_ouro.md](11_aquarela_avaliacao_padrao_ouro.md)** | Veredito · modelo atual (file:line) · padrão-ouro Tier-1/Tier-2 (verificado) · **diagnóstico do bege** (papel virtual assado no bake) · **diagnóstico da rediluição** (referência errada + stateless) · plano F1 (backdrop real + campo Paper color) → F2 (charge/dilution/recentness) → F3 (escala S + bleed por permanência) → F4 (K–M opcional), cada fase com asserções-vermelhas · §5.1/§5.2 landing notes F1+F3+F2 |
 | **[12_aquarela_auditoria_pos_f123_padrao_ouro.md](12_aquarela_auditoria_pos_f123_padrao_ouro.md)** | **Auditoria sistemática pós-F1/F2/F3 (2026-07-07)**: 6 lentes multi-agente c/ fontes EXTERNAS fetchadas + verificação adversarial — 28 achados priorizados (film BL=KM S=0 correto, fica; mistura naive-RGB no mixer/RYB = P1; espectro do papel medido por FFT = causa do "mottled"; backrun inalcançável; Charge sem depleção) · perf MEDIDA (claims doc 11 confirmados) · fences ratificadas · plano W-A..W-D |
+| **[13_fila_integracao_watercolor_secoes.md](13_fila_integracao_watercolor_secoes.md)** | **Fila de integração painel ⟷ watercolor (2026-07-07)**: mapa do que flui/não flui pelo desvio em `stamp_dabs` · ✅ fix Seleção+proteção (3 camadas keyed em `splat_keep`) · **#1: Shape "Automatic"** (checkbox modo-aquarela; desmarcado abre Falloff novo "Watercolor" + Shape image + rotação) · Tiling, shape-editors, Blend/Composite (decisão), Jitter Rotate, alpha-lock |
 
 ## Fontes de referência (untracked no git — decisão de licença pendente)
 

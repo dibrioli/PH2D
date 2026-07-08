@@ -5134,7 +5134,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "ph2d-node-motion-falloff-circle"
+name = "ph2d-node-motion-falloff"
 version = "0.0.0"
 dependencies = [
  "ph2d-node-registry",
@@ -5227,7 +5227,7 @@ dependencies = [
  "ph2d-node-debug-const",
  "ph2d-node-debug-wave",
  "ph2d-node-motion-clone",
- "ph2d-node-motion-falloff-circle",
+ "ph2d-node-motion-falloff",
  "ph2d-node-motion-grid",
  "ph2d-node-motion-move",
  "ph2d-node-motion-oscillator",

@@ -33,6 +33,10 @@ use ph2d_tool_registry::hash_node_id;
 pub const AEDIT_PANEL: NodeId = ph2d_editor_core::ids::AUDIO_EDITOR_PANEL;
 /// Header close (X) — hides the dock (also toggled by the TopBar pill).
 pub const AEDIT_CLOSE: NodeId = hash_node_id("audio_editor_close");
+/// Clip name field — an editable `TextInput` (mirror of the Inspector's entity
+/// name box). The shell publishes the loaded clip's name; the paint step syncs
+/// it into the box on a new load (unless the user is editing it).
+pub const AEDIT_NAME: NodeId = hash_node_id("audio_editor_name");
 /// Play / Pause toggle — one control; the shell flips preview play/pause.
 pub const AEDIT_PLAY: NodeId = hash_node_id("audio_editor_play");
 /// Stop button — stops the preview and rewinds to the clip start.

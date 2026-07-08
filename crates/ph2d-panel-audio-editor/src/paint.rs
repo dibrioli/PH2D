@@ -9,15 +9,13 @@
 
 use crate::state::AudioEditorState;
 use crate::{
-    AEDIT_CLOSE, AEDIT_EXPORT, AEDIT_LOAD, AEDIT_LOOP, AEDIT_PANEL, AEDIT_PLAY, AEDIT_STOP,
-    AudioEditorPanel, snapshot,
+    AEDIT_CLOSE, AEDIT_EXPORT, AEDIT_LOAD, AEDIT_LOOP, AEDIT_NAME, AEDIT_PANEL, AEDIT_PLAY,
+    AEDIT_STOP, AudioEditorPanel, snapshot,
 };
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::ids as core_ids;
-use ph2d_editor_core::interaction::HitIndex;
-use ph2d_editor_core::paint::{
-    fill_rounded_rect, paint_text, paint_text_centered, rect_to_vello, resolve,
-};
+use ph2d_editor_core::interaction::{HitIndex, InteractiveState};
+use ph2d_editor_core::paint::{fill_rounded_rect, paint_text_centered, resolve};
 use ph2d_editor_core::panel::{PaintCtx, Panel};
 use ph2d_editor_core::widget::panel_chrome::{
     PANEL_HEADER_CLOSE_RESERVE, PANEL_HEADER_H_DEFAULT, PANEL_TITLE_BASELINE,
@@ -25,6 +23,7 @@ use ph2d_editor_core::widget::panel_chrome::{
     paint_panel_surface, paint_panel_title, panel_close_button_rect, panel_drag_handle_rect,
     panel_resize_handle_rect, panel_resize_handle_rect_bl,
 };
+use ph2d_editor_core::widget::{TextInput, TextInputState, paint_text_input_with_buffer};
 use ph2d_editor_core::zones::Rect;
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, Radius, Spacing, Theme, TypeToken};
@@ -87,34 +86,61 @@ pub(crate) fn paint(_state: &mut AudioEditorState, ctx: &mut PaintCtx) {
     let pos = snapshot::position_secs();
     let dur = snapshot::duration_secs();
 
+    // Sync the name box from the loaded clip — mirror of the Inspector entity-name
+    // box: overwrite the TextInput's buffer only when a NEW clip loads, and skip
+    // it while the user is editing (focused), so keystrokes aren't clobbered.
+    if let Some(name) = snapshot::clip_name_needs_sync()
+        && ctx.host.store().focus_id() != Some(AEDIT_NAME)
+    {
+        if let Some(InteractiveState::TextInput {
+            state,
+            text,
+            caret,
+            selection_anchor,
+        }) = ctx.host.store_mut().get_mut(AEDIT_NAME)
+        {
+            *state = TextInputState::Normal;
+            text.clear();
+            text.push_str(&name);
+            *caret = text.len();
+            *selection_anchor = None;
+        }
+        snapshot::mark_name_synced();
+    }
+    // Read the name field's live buffer for painting (cloned so the scene borrow
+    // below is free of the store).
+    let (name_state, name_text, name_caret, name_anchor) = match ctx.host.store().get(AEDIT_NAME) {
+        Some(InteractiveState::TextInput {
+            state,
+            text,
+            caret,
+            selection_anchor,
+        }) => (*state, text.clone(), *caret, *selection_anchor),
+        _ => (TextInputState::Normal, String::new(), 0, None),
+    };
+
     let (scene, text_system) = (&mut *ctx.scene, &mut *ctx.text_system);
     let hit_index = ctx.host.hit_index_mut();
 
-    // Clip name — a single-line field, pixel-clipped to the panel width so a
-    // long filename shows only what fits (no wrap/overlap) instead of cramming
-    // the header. A huge `max_width` keeps it on one line; the clip crops it.
-    let name_line = snapshot::with_clip_name(|n| {
-        if n.is_empty() {
-            "No clip loaded".to_string()
-        } else {
-            n.to_string()
-        }
-    });
-    let name_h = TypeToken::Sm.px() + Spacing::Xs.px() * 2.0;
-    let name_box = Rect::new(x, y, w, name_h);
-    fill_rounded_rect(scene, name_box, Radius::Sm.px(), resolve(ColorToken::Bg3, theme));
-    scene.push_clip(&rect_to_vello(name_box));
-    paint_text(
-        text_system,
+    // Clip name — an editable TextInput (mirror of the sprite name box). The
+    // widget clips its own overflow to the field, so a long filename no longer
+    // wraps/crams the header.
+    let name_h = TypeToken::Sm.px() + Spacing::Sm.px() * 2.0;
+    let name_rect = Rect::new(x, y, w, name_h);
+    hit_index.register(AEDIT_NAME, name_rect);
+    let input = TextInput::new(AEDIT_NAME, "")
+        .placeholder("No clip loaded")
+        .state(name_state);
+    paint_text_input_with_buffer(
+        &input,
+        Some(name_text.as_str()),
+        Some(name_caret),
+        name_anchor,
+        name_rect,
         scene,
-        &name_line,
-        x + Spacing::Xs.px(),
-        y + Spacing::Xs.px(),
-        TypeToken::Sm.px(),
-        100_000.0, // LITERAL-PX-OK: no-wrap sentinel; the push_clip crops the overflow
-        resolve(ColorToken::Text1, theme),
+        text_system,
+        theme,
     );
-    scene.pop_layer();
     y += name_h + Spacing::Sm.px();
 
     // Position / duration readout.

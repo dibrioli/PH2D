@@ -1,9 +1,9 @@
 //! Audio Editor panel widget registration.
 
-use crate::{AEDIT_CLOSE, AEDIT_EXPORT, AEDIT_LOAD, AEDIT_LOOP, AEDIT_PLAY, AEDIT_STOP};
+use crate::{AEDIT_CLOSE, AEDIT_EXPORT, AEDIT_LOAD, AEDIT_LOOP, AEDIT_NAME, AEDIT_PLAY, AEDIT_STOP};
 use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::{BlenderHitKind, InteractiveState, WidgetStore};
-use ph2d_editor_core::widget::ButtonState;
+use ph2d_editor_core::widget::{ButtonState, TextInputState};
 
 pub(crate) fn populate(store: &mut WidgetStore) {
     // Floating waveform overlay drag/resize handles — registered as panel-agnostic
@@ -41,4 +41,15 @@ pub(crate) fn populate(store: &mut WidgetStore) {
     ] {
         store.register(id, button());
     }
+
+    // Clip name — an editable TextInput (mirror of the Inspector entity-name box).
+    store.register(
+        AEDIT_NAME,
+        InteractiveState::TextInput {
+            state: TextInputState::Normal,
+            text: String::new(),
+            caret: 0,
+            selection_anchor: None,
+        },
+    );
 }

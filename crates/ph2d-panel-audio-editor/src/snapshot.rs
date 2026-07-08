@@ -25,6 +25,10 @@ thread_local! {
     static DURATION_SECS: Cell<f64> = const { Cell::new(0.0) };
     static LOADED: Cell<bool> = const { Cell::new(false) };
     static CLIP_NAME: RefCell<String> = const { RefCell::new(String::new()) };
+    /// Last name the paint step pushed into the name TextInput — so the box is
+    /// re-synced only when a NEW clip loads, not every frame (which would fight
+    /// user edits). Mirror of the Inspector name box's `last_entity` guard.
+    static LAST_SYNCED_NAME: RefCell<Option<String>> = const { RefCell::new(None) };
 }
 
 /// Set + take a one-shot flag (returns the previous value, resets to `false`).
@@ -131,9 +135,29 @@ pub fn set_clip_name(name: &str) {
     });
 }
 
-/// Read the clip name without cloning (calls `f` with the borrowed string).
-pub(crate) fn with_clip_name<R>(f: impl FnOnce(&str) -> R) -> R {
-    CLIP_NAME.with(|c| f(&c.borrow()))
+/// The clip name if it differs from what was last pushed into the name box —
+/// i.e. a new clip loaded. Returns `None` when already in sync. Does NOT update
+/// the last-synced marker (call [`mark_name_synced`] once the box is updated),
+/// so if the box is skipped this frame (user editing) it re-syncs next frame.
+pub(crate) fn clip_name_needs_sync() -> Option<String> {
+    CLIP_NAME.with(|c| {
+        let cur = c.borrow();
+        LAST_SYNCED_NAME.with(|l| {
+            if l.borrow().as_deref() != Some(cur.as_str()) {
+                Some(cur.clone())
+            } else {
+                None
+            }
+        })
+    })
+}
+
+/// Record that the name box now reflects the current clip name.
+pub(crate) fn mark_name_synced() {
+    CLIP_NAME.with(|c| {
+        let cur = c.borrow().clone();
+        LAST_SYNCED_NAME.with(|l| *l.borrow_mut() = Some(cur));
+    });
 }
 
 #[cfg(test)]
@@ -168,6 +192,9 @@ mod tests {
         assert!(playing() && loaded());
 
         set_clip_name("kick.wav");
-        assert_eq!(with_clip_name(|s| s.to_string()), "kick.wav");
+        // A fresh name reads as "needs sync" (nothing pushed to the box yet).
+        assert_eq!(clip_name_needs_sync().as_deref(), Some("kick.wav"));
+        mark_name_synced();
+        assert_eq!(clip_name_needs_sync(), None, "in sync after marking");
     }
 }

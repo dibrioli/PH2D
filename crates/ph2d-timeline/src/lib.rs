@@ -19,6 +19,18 @@
 //! entity's `Transform`); vector / painter / node-param resolvers plug in later
 //! as sibling modules following the same shape.
 
+pub mod apply;
+pub mod binding;
+pub mod doc;
+pub mod history;
+pub mod prop;
 pub mod sprite;
+pub mod state;
 
+pub use apply::apply_from_doc;
+pub use binding::{TargetBinding, WireId};
+pub use doc::{DEFAULT_FPS, DOC_VERSION, Marker, NamedClip, TimelineDoc};
+pub use history::{HISTORY_CAP, TimelineHistory};
+pub use prop::PropKind;
 pub use sprite::{SpriteAnimation, SpriteProp, apply_sprite_animations};
+pub use state::{SelectedKey, Selection, TimelineFlags, TimelineState};

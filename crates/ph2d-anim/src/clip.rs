@@ -40,7 +40,7 @@ impl From<u64> for AnimTarget {
 }
 
 /// A named collection of tracks plus a total duration.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Clip {
     tracks: Vec<(AnimTarget, Track)>,
     duration: RationalTime,
@@ -87,6 +87,39 @@ impl Clip {
             .iter()
             .find(|(t, _)| *t == target)
             .map(|(_, track)| track)
+    }
+
+    /// The track bound to `target` for mutation (first match).
+    pub fn track_mut(&mut self, target: AnimTarget) -> Option<&mut Track> {
+        self.tracks
+            .iter_mut()
+            .find(|(t, _)| *t == target)
+            .map(|(_, track)| track)
+    }
+
+    /// The track bound to `target`, inserting an empty one (via `make`) if none
+    /// exists. Used by the document's authoring path to lazily create a track
+    /// on first key.
+    pub fn track_or_insert(
+        &mut self,
+        target: AnimTarget,
+        make: impl FnOnce() -> Track,
+    ) -> &mut Track {
+        let idx = match self.tracks.iter().position(|(t, _)| *t == target) {
+            Some(i) => i,
+            None => {
+                self.tracks.push((target, make()));
+                self.tracks.len() - 1
+            }
+        };
+        &mut self.tracks[idx].1
+    }
+
+    /// Remove the track bound to `target`, returning `true` if one was removed.
+    pub fn remove_track(&mut self, target: AnimTarget) -> bool {
+        let before = self.tracks.len();
+        self.tracks.retain(|(t, _)| *t != target);
+        self.tracks.len() != before
     }
 
     /// Sample the track bound to `target` at time `t` (seconds), or `None` if no

@@ -13,6 +13,12 @@ publish.workspace = true
 
 [lib]
 
+[features]
+# `render` adds the sprite-opacity resolver, which writes `Sprite.tint[3]`.
+# `Sprite` lives in `ph2d-render` (a GPU crate); gating keeps the base timeline
+# runtime free of wgpu. The desktop shell enables this feature.
+render = ["dep:ph2d-render"]
+
 [dependencies]
 # bevy_ecs for the #[derive(Component)] on SpriteAnimation (same direct-dep
 # convention as ph2d-render's RenderInstance).
@@ -21,7 +27,13 @@ bevy_ecs = "0.18"
 ph2d-anim = { path = "../ph2d-anim" }
 # Transform (the animated target), SimComponent marker, and World for the apply pass.
 ph2d-ecs = { path = "../ph2d-ecs" }
+# Versioned document persistence (HR-14) + panel snapshot/intent (de)serialization.
+serde = { version = "1", features = ["derive"] }
+# Opacity resolver only (feature-gated): the `Sprite` component whose tint alpha
+# is the sprite opacity channel.
+ph2d-render = { path = "../ph2d-render", optional = true }
 
 [dev-dependencies]
-# Vec2 for building Transforms in the apply tests.
+# Vec2 for building Transforms in the apply tests + JSON round-trip of the doc.
 ph2d-core = { path = "../ph2d-core" }
+serde_json = "1"

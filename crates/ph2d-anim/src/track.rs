@@ -75,6 +75,15 @@ pub struct Track {
     cursor: AtomicUsize,
 }
 
+/// Content equality ignores the atomic playback `cursor` (a transient sampling
+/// hint) and the session-local `ids`/`next_id` — two tracks are equal when they
+/// hold the same keys + default. Used by history dedup ([`crate::TimelineHistory`]).
+impl PartialEq for Track {
+    fn eq(&self, other: &Self) -> bool {
+        self.keys == other.keys && self.default == other.default
+    }
+}
+
 /// Serde proxy for [`Track`] — persists only keys + default and rebuilds through
 /// [`Track::new`] (fresh ids, reset cursor; the atomic cursor + session-local
 /// ids never serialize).

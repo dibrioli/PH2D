@@ -5593,6 +5593,9 @@ dependencies = [
  "ph2d-anim",
  "ph2d-core",
  "ph2d-ecs",
+ "ph2d-render",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]

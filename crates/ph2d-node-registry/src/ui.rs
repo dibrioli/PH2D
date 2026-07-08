@@ -76,6 +76,15 @@ pub enum ParamWidget {
     /// [`IntSlider`](ParamWidget::IntSlider) in v1; a re-roll affordance is a
     /// later refinement).
     Seed,
+    /// An RGBA colour authored via a single swatch → OKLCH picker (the canonical
+    /// colour UI, not four raw channel sliders). Declared on ONE hint whose
+    /// `param` anchors the group; `channels` names the four **linear-straight**
+    /// RGBA channel params it drives (each a declared [`ph2d_nodegraph::node::ParamSpec`]).
+    /// The params panel paints one swatch for the group (suppressing the four
+    /// scalar rows); the shell bridge reads the pick back into these params
+    /// (sRGB→linear) and seeds the picker (linear→sRGB). Reusable by every colour
+    /// node (tint, colour-array, gradient, …).
+    Color { channels: [&'static str; 4] },
 }
 
 impl ParamWidget {

@@ -117,8 +117,15 @@ pub(super) fn dispatch(
     #[cfg(all(feature = "panel-motion-graph", feature = "panel-motion-params"))]
     {
         if motion_active {
-            apply_param_intents(motion, &hero.store);
-            ph2d_panel_motion_params::set_current_params(build_params_snapshot(motion));
+            // Apply this frame's edits (colour picks + scalar sliders) BEFORE
+            // rebuilding, so the panel reflects them; then seed each colour
+            // swatch's picker colour from the freshly-mutated snapshot.
+            apply_param_edits(motion, &hero.store);
+            let snap = build_params_snapshot(motion);
+            if let Some(s) = &snap {
+                seed_color_swatches(&mut hero.store, s);
+            }
+            ph2d_panel_motion_params::set_current_params(snap);
         } else {
             ph2d_panel_motion_params::set_current_params(None);
         }
@@ -321,26 +328,59 @@ fn build_catalog(
     v
 }
 
-/// Apply the params panel's queued [`SetParam`](ph2d_panel_motion_params::MotionParamIntent)
-/// edits to the selected node, bracketed into undo steps (M1.P1). A whole slider
-/// drag is ONE step: the bracket opens when the panel reports an active
-/// interaction (`any_param_editing`) and commits on release; a discrete typed
-/// commit (no active interaction) is wrapped in its own step. Each applied edit
-/// re-cooks (`mark_dirty`). A stale intent whose node no longer exists is
-/// dropped (the intent is node+param tagged).
+/// Apply this frame's params-panel edits to the selected node, bracketed into
+/// undo steps (M1.P1 + colour authoring). Two edit sources, ONE session model:
+///
+/// - **Scalar** slider / chip edits arrive as queued
+///   [`SetParam`](ph2d_panel_motion_params::MotionParamIntent)s.
+/// - **Colour** edits arrive continuously while a swatch's OKLCH picker is open:
+///   the live pick is read back (sRGB→linear) into the group's 4 channel params.
+///
+/// A whole gesture is ONE undo step: the bracket opens on the false→true edge of
+/// an *editing session* (`any_param_editing` OR a colour picker targeting one of
+/// the node's swatches) and commits on release; a discrete typed commit (no
+/// session) is wrapped in its own step. Each applied edit re-cooks
+/// (`mark_dirty`). Stale intents whose node no longer exists are dropped.
 #[cfg(all(feature = "panel-motion-graph", feature = "panel-motion-params"))]
-fn apply_param_intents(motion: &mut MotionState, store: &ph2d_editor::interaction::WidgetStore) {
+fn apply_param_edits(motion: &mut MotionState, store: &ph2d_editor::interaction::WidgetStore) {
     use ph2d_nodegraph::graph::NodeId;
-    use ph2d_panel_motion_params::MotionParamIntent;
+    use ph2d_panel_motion_params::{MotionParamIntent, any_param_editing, param_swatch_id};
     use std::sync::atomic::{AtomicBool, Ordering};
     static PARAM_EDITING: AtomicBool = AtomicBool::new(false);
 
-    let editing = ph2d_panel_motion_params::any_param_editing(store);
+    // The selected node + its colour groups (each = 4 RGBA channel params driven
+    // by one swatch → OKLCH picker).
+    let sel = selected_motion_node().map(NodeId);
+    let groups = sel
+        .and_then(|nid| motion.doc.graph.node(nid).map(|i| i.type_id()))
+        .map(|tid| color_groups(&motion.registry, tid))
+        .unwrap_or_default();
+
+    // A colour pick is an editing session (like a slider drag): its live param
+    // writes coalesce into ONE undo step, opened here + committed on close.
+    let color_session = groups
+        .iter()
+        .any(|ch| store.picker_target() == Some(param_swatch_id(ch[0])));
+    let editing = any_param_editing(store) || color_session;
     let was = PARAM_EDITING.swap(editing, Ordering::Relaxed);
-    // Open the drag bracket on the false→true edge.
     if editing && !was {
         motion.history.begin(&motion.doc);
     }
+
+    // Colour read-back: while a swatch's picker is open, feed the live pick into
+    // its 4 channel params (sRGB→linear), re-cooking only on an actual change.
+    if let Some(nid) = sel {
+        for ch in &groups {
+            if store.picker_target() == Some(param_swatch_id(ch[0]))
+                && let Some((value, _, _, _)) =
+                    store.blender_picker(ph2d_editor::ids::INSP_BLENDER_PICKER)
+            {
+                apply_color_to_node(motion, nid, *ch, value.rgba);
+            }
+        }
+    }
+
+    // Scalar slider / chip edits.
     let intents = ph2d_panel_motion_params::drain_param_intents();
     if !intents.is_empty() {
         // A discrete (typed) commit arrives with no bracket open → its own step.
@@ -359,10 +399,140 @@ fn apply_param_intents(motion: &mut MotionState, store: &ph2d_editor::interactio
             motion.history.commit_if_changed(&motion.doc);
         }
     }
-    // Close the drag bracket on the true→false edge (one step for the drag).
+
+    // Close the session bracket on the true→false edge (one step for the gesture).
     if !editing && was {
         motion.history.commit_if_changed(&motion.doc);
     }
+}
+
+/// The single selected Motion node's `NodeId.0`, or `None` unless exactly one
+/// node is selected (params edit a single node; multi-select is a later step).
+#[cfg(all(feature = "panel-motion-graph", feature = "panel-motion-params"))]
+fn selected_motion_node() -> Option<u32> {
+    match ph2d_panel_motion_graph::current_graph_selection()[..] {
+        [only] => Some(only),
+        _ => None,
+    }
+}
+
+/// The colour groups declared by a node type — the 4-channel RGBA param names
+/// behind each [`ParamWidget::Color`](ph2d_node_registry::ParamWidget) hint.
+#[cfg(all(feature = "panel-motion-graph", feature = "panel-motion-params"))]
+fn color_groups(
+    registry: &ph2d_node_registry::NodeRegistry,
+    type_id: ph2d_nodegraph::node::NodeTypeId,
+) -> Vec<[&'static str; 4]> {
+    use ph2d_node_registry::ParamWidget;
+    registry
+        .param_ui(type_id)
+        .into_iter()
+        .flatten()
+        .filter_map(|h| match h.widget {
+            ParamWidget::Color { channels } => Some(channels),
+            _ => None,
+        })
+        .collect()
+}
+
+/// The current linear-straight values of a node's 4 colour channels (per-instance
+/// override, else the manifest default). Shared by the read-back change-guard and
+/// the snapshot builder so the swatch and the doc agree.
+#[cfg(all(feature = "panel-motion-graph", feature = "panel-motion-params"))]
+fn channel_values(
+    motion: &MotionState,
+    nid: ph2d_nodegraph::graph::NodeId,
+    channels: [&'static str; 4],
+) -> [f32; 4] {
+    use ph2d_nodegraph::cook::OpResolver;
+    let overrides = motion.doc.graph.node_param_overrides(nid);
+    let manifest = motion
+        .doc
+        .graph
+        .node(nid)
+        .and_then(|i| motion.registry.resolve(i.type_id()))
+        .map(|op| op.manifest());
+    let value_of = |name: &str| -> f32 {
+        if let Some(v) = overrides.and_then(|m| m.get(name)).copied() {
+            return v;
+        }
+        manifest
+            .and_then(|m| m.params.iter().find(|p| p.name == name))
+            .map_or(0.0, |p| p.default)
+    };
+    [
+        value_of(channels[0]),
+        value_of(channels[1]),
+        value_of(channels[2]),
+        value_of(channels[3]),
+    ]
+}
+
+/// Write a picked sRGB colour into a node's 4 linear-straight channel params
+/// (RGB via the sRGB transfer function, alpha straight), re-cooking only when the
+/// colour actually changed (the picker stays open across idle frames).
+#[cfg(all(feature = "panel-motion-graph", feature = "panel-motion-params"))]
+fn apply_color_to_node(
+    motion: &mut MotionState,
+    nid: ph2d_nodegraph::graph::NodeId,
+    channels: [&'static str; 4],
+    srgb: [u8; 4],
+) {
+    let new = srgb8_to_linear_rgba(srgb);
+    let cur = channel_values(motion, nid, channels);
+    if !new
+        .into_iter()
+        .zip(cur)
+        .any(|(n, c)| (n - c).abs() > f32::EPSILON)
+    {
+        return;
+    }
+    for (name, v) in channels.into_iter().zip(new) {
+        motion.doc.graph.set_param(nid, name, v);
+    }
+    motion.pump.mark_dirty();
+}
+
+/// Seed each colour swatch's `widget_color` from the snapshot's display colour
+/// (the OKLCH picker reads it on open + the swatch paints it). Keyed by the
+/// anchor channel — the same id the panel registers.
+#[cfg(all(feature = "panel-motion-graph", feature = "panel-motion-params"))]
+fn seed_color_swatches(
+    store: &mut ph2d_editor::interaction::WidgetStore,
+    snap: &ph2d_panel_motion_params::ParamsSnapshot,
+) {
+    use ph2d_panel_motion_params::{ParamRow, param_swatch_id};
+    for row in &snap.rows {
+        if let ParamRow::Color(c) = row {
+            store.set_widget_color(param_swatch_id(c.channels[0]), c.srgb);
+        }
+    }
+}
+
+/// sRGB8 (straight) → linear-straight RGBA `[0,1]` (the Motion wire space): RGB
+/// through the sRGB transfer function, alpha a plain `/255`.
+#[cfg(all(feature = "panel-motion-graph", feature = "panel-motion-params"))]
+fn srgb8_to_linear_rgba(srgb: [u8; 4]) -> [f32; 4] {
+    use ph2d_color::srgb::srgb_to_linear_byte;
+    [
+        srgb_to_linear_byte(srgb[0]),
+        srgb_to_linear_byte(srgb[1]),
+        srgb_to_linear_byte(srgb[2]),
+        f32::from(srgb[3]) / 255.0,
+    ]
+}
+
+/// Linear-straight RGBA `[0,1]` → sRGB8 (straight) for the swatch display /
+/// picker seed: RGB through the linear→sRGB transfer, alpha a plain `×255`.
+#[cfg(all(feature = "panel-motion-graph", feature = "panel-motion-params"))]
+fn linear_rgba_to_srgb8(lin: [f32; 4]) -> [u8; 4] {
+    use ph2d_color::srgb::linear_to_srgb_byte;
+    [
+        linear_to_srgb_byte(lin[0]),
+        linear_to_srgb_byte(lin[1]),
+        linear_to_srgb_byte(lin[2]),
+        (lin[3].clamp(0.0, 1.0) * 255.0 + 0.5) as u8,
+    ]
 }
 
 /// Build the selected node's [`ParamsSnapshot`](ph2d_panel_motion_params::ParamsSnapshot)
@@ -372,14 +542,12 @@ fn apply_param_intents(motion: &mut MotionState, store: &ph2d_editor::interactio
 /// node is selected and resolvable.
 #[cfg(all(feature = "panel-motion-graph", feature = "panel-motion-params"))]
 fn build_params_snapshot(motion: &MotionState) -> Option<ph2d_panel_motion_params::ParamsSnapshot> {
+    use ph2d_node_registry::ParamWidget;
     use ph2d_nodegraph::cook::OpResolver;
     use ph2d_nodegraph::graph::NodeId;
-    use ph2d_panel_motion_params::{ParamRow, ParamsSnapshot};
+    use ph2d_panel_motion_params::{ColorRow, ParamRow, ParamsSnapshot, ScalarRow};
 
-    let selection = ph2d_panel_motion_graph::current_graph_selection();
-    let [only] = selection[..] else {
-        return None; // params edit a single node (multi-select is a later step)
-    };
+    let only = selected_motion_node()?;
     let nid = NodeId(only);
     let inst = motion.doc.graph.node(nid)?;
     let type_id = inst.type_id();
@@ -391,40 +559,131 @@ fn build_params_snapshot(motion: &MotionState) -> Option<ph2d_panel_motion_param
         .unwrap_or_else(|| inst.type_name.clone());
     let hints = motion.registry.param_ui(type_id);
     let overrides = motion.doc.graph.node_param_overrides(nid);
-    let rows = manifest
-        .params
-        .iter()
-        .map(|spec| {
-            let value = overrides
-                .and_then(|m| m.get(spec.name))
-                .copied()
-                .unwrap_or(spec.default) as f64;
-            match hints.and_then(|hs| hs.iter().find(|h| h.param == spec.name)) {
-                Some(h) => ParamRow {
-                    name: spec.name,
-                    label: h.label.to_string(),
-                    value,
-                    min: f64::from(h.min),
-                    max: f64::from(h.max),
-                    step: f64::from(h.step),
-                    integer: h.widget.is_integer(),
-                },
-                // No hint → a plain float slider over a neutral range.
-                None => ParamRow {
-                    name: spec.name,
-                    label: spec.name.to_string(),
-                    value,
-                    min: 0.0,
-                    max: (value * 4.0).max(10.0),
-                    step: 0.1,
-                    integer: false,
-                },
-            }
-        })
+    let value_of = |name: &str| -> f32 {
+        if let Some(v) = overrides.and_then(|m| m.get(name)).copied() {
+            return v;
+        }
+        manifest
+            .params
+            .iter()
+            .find(|p| p.name == name)
+            .map_or(0.0, |p| p.default)
+    };
+
+    // Channels folded into a colour swatch — suppress their standalone rows.
+    let consumed: Vec<&'static str> = color_groups(&motion.registry, type_id)
+        .into_iter()
+        .flatten()
         .collect();
+
+    let mut rows: Vec<ParamRow> = Vec::new();
+    for spec in manifest.params {
+        let hint = hints.and_then(|hs| hs.iter().find(|h| h.param == spec.name));
+        // A `Color`-anchored param emits ONE swatch row for its 4 channels.
+        if let Some(h) = hint
+            && let ParamWidget::Color { channels } = h.widget
+        {
+            let lin = [
+                value_of(channels[0]),
+                value_of(channels[1]),
+                value_of(channels[2]),
+                value_of(channels[3]),
+            ];
+            rows.push(ParamRow::Color(ColorRow {
+                label: h.label.to_string(),
+                channels,
+                srgb: linear_rgba_to_srgb8(lin),
+            }));
+            continue;
+        }
+        // A non-anchor colour channel is folded into its swatch — no scalar row.
+        if consumed.contains(&spec.name) {
+            continue;
+        }
+        let value = f64::from(value_of(spec.name));
+        rows.push(ParamRow::Scalar(match hint {
+            Some(h) => ScalarRow {
+                name: spec.name,
+                label: h.label.to_string(),
+                value,
+                min: f64::from(h.min),
+                max: f64::from(h.max),
+                step: f64::from(h.step),
+                integer: h.widget.is_integer(),
+            },
+            // No hint → a plain float slider over a neutral range.
+            None => ScalarRow {
+                name: spec.name,
+                label: spec.name.to_string(),
+                value,
+                min: 0.0,
+                max: (value * 4.0).max(10.0),
+                step: 0.1,
+                integer: false,
+            },
+        }));
+    }
     Some(ParamsSnapshot {
         node: only,
         title,
         rows,
     })
+}
+
+#[cfg(all(test, feature = "panel-motion-graph", feature = "panel-motion-params"))]
+mod tests {
+    use super::*;
+    use crate::motion_state::MotionState;
+    use ph2d_panel_motion_params::ParamRow;
+
+    /// The reported-bug + colour-authoring seam, end to end and headless: a
+    /// selected `motion.tint` node resolves to exactly ONE colour swatch row
+    /// (not four raw channel sliders), its channels are the RGBA params, and its
+    /// display colour is **opaque white** — the identity default that killed the
+    /// red dominance. This proves the tint's `ParamWidget::Color` hint flows all
+    /// the way to a paintable `ColorRow` (registry → snapshot builder), the exact
+    /// seam a compile-green change would leave unverified.
+    #[test]
+    fn selected_tint_node_yields_one_white_color_row() {
+        let mut motion = MotionState::new();
+        let tint = motion.doc.graph.add_node("motion.tint");
+        ph2d_panel_motion_graph::set_graph_selection(vec![tint.0]);
+
+        let snap = build_params_snapshot(&motion).expect("tint node is resolvable");
+        assert_eq!(snap.rows.len(), 1, "tint authors colour as ONE swatch row");
+        let ParamRow::Color(c) = &snap.rows[0] else {
+            panic!("tint's row must be a colour swatch, not scalar sliders");
+        };
+        assert_eq!(c.channels, ["r", "g", "b", "a"]);
+        // Default params are linear white → sRGB opaque white (the no-op tint).
+        assert_eq!(c.srgb, [255, 255, 255, 255]);
+
+        ph2d_panel_motion_graph::set_graph_selection(Vec::new());
+    }
+
+    /// The colour read-back is the inverse of the swatch display: writing a
+    /// picked sRGB colour lands linear-straight channel values on the node, and
+    /// re-reading them rebuilds the same sRGB swatch (round-trip stable). Guards
+    /// the sRGB↔linear boundary the bridge owns (the Motion wire is linear).
+    #[test]
+    fn color_pick_writes_linear_and_round_trips_to_srgb() {
+        let mut motion = MotionState::new();
+        let tint = motion.doc.graph.add_node("motion.tint");
+        let picked = [40, 160, 220, 128]; // a saturated sRGB blue, half alpha
+
+        apply_color_to_node(&mut motion, tint, ["r", "g", "b", "a"], picked);
+
+        // The stored channels are linear-straight (RGB gamma-decoded, alpha /255).
+        let lin = channel_values(&motion, tint, ["r", "g", "b", "a"]);
+        assert!(lin[0] < lin[2], "blue channel dominates in linear too");
+        assert!((lin[3] - 128.0 / 255.0).abs() < 1e-6, "alpha is straight");
+        // Re-encoding the stored linear colour reproduces the pick (±1 LSB).
+        let srgb = linear_rgba_to_srgb8(lin);
+        for (got, want) in srgb.into_iter().zip(picked) {
+            assert!(
+                got.abs_diff(want) <= 1,
+                "round-trip {srgb:?} ≈ {picked:?} within 1 LSB"
+            );
+        }
+    }
 }

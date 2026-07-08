@@ -11,10 +11,19 @@
 use ph2d_a11y::NodeId;
 use std::cell::RefCell;
 
-/// One editable param row (resolved to primitives the panel paints without
-/// touching the registry / graph).
+/// One editable param row — a scalar (slider + numeric chip) or a colour
+/// (swatch → OKLCH picker). Resolved to primitives the panel paints without
+/// touching the registry / graph. `Color` folds a node's four RGBA channel
+/// params behind one canonical swatch; every other param is a `Scalar`.
 #[derive(Clone, Debug, PartialEq)]
-pub struct ParamRow {
+pub enum ParamRow {
+    Scalar(ScalarRow),
+    Color(ColorRow),
+}
+
+/// A slider + numeric-chip row for one scalar `ParamSpec`.
+#[derive(Clone, Debug, PartialEq)]
+pub struct ScalarRow {
     /// Canonical `ParamSpec::name` — echoed back in [`MotionParamIntent::SetParam`].
     pub name: &'static str,
     /// English label (from the `ParamUiHint`, else the param name).
@@ -26,6 +35,21 @@ pub struct ParamRow {
     pub step: f64,
     /// The chip snaps to whole numbers (count / index / seed).
     pub integer: bool,
+}
+
+/// A colour-swatch row driving four **linear-straight** RGBA channel params
+/// (the canonical colour UI). `srgb` is the bridge-converted display colour
+/// (linear→sRGB) the panel paints + the shell seeds the OKLCH picker with;
+/// `channels` are the params a pick writes back to (sRGB→linear). The swatch's
+/// widget id is [`param_swatch_id`]`(channels[0])`.
+#[derive(Clone, Debug, PartialEq)]
+pub struct ColorRow {
+    /// English label (from the `ParamUiHint`).
+    pub label: String,
+    /// The four RGBA channel param names, in order — echoed to the bridge.
+    pub channels: [&'static str; 4],
+    /// sRGB8 (straight) for painting the swatch + seeding the picker.
+    pub srgb: [u8; 4],
 }
 
 /// The selected node's params, resolved for the panel (M1.P1).
@@ -90,6 +114,14 @@ pub(crate) fn param_slider_id(slot: usize) -> NodeId {
 /// Stable widget id for the `slot`-th param row's numeric chip.
 pub(crate) fn param_chip_id(slot: usize) -> NodeId {
     fnv_id(&format!("motion_param/chip/{slot}"))
+}
+
+/// Stable widget id for a colour-swatch row, keyed by its **anchor channel**
+/// param name (unique within a node) — NOT positional like the slider/chip pool,
+/// so the shell bridge computes the same id from the node's hints without
+/// agreeing on row order. `pub` for the bridge's picker read-back / seeding.
+pub fn param_swatch_id(anchor: &str) -> NodeId {
+    fnv_id(&format!("motion_param/swatch/{anchor}"))
 }
 
 /// FNV-1a-64 of `key` (same scheme as the graph panel's dynamic hit ids).

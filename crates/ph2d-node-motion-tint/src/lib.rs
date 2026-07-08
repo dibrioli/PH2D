@@ -7,8 +7,10 @@
 //! at `falloff = 0` it keeps its existing tint (absent → opaque white). Every
 //! other column passes through unchanged (count preserved). Pure.
 //!
-//! Params (read via `ctx.param`): `r` (1.0), `g` (0.3), `b` (0.1), `a` (1.0) —
-//! a warm opaque default so the colour reads immediately once wired.
+//! Params (read via `ctx.param`): `r` `g` `b` `a`, all `1.0` — **opaque white**,
+//! the identity default for a colour modifier: a white target over the default
+//! white upstream is a visual no-op (at `falloff = 1`), so dropping in a Tint
+//! doesn't recolour anything until the user picks a colour (no red dominance).
 
 use ph2d_node_registry::{NodeRegistry, RegistryError};
 use ph2d_nodegraph::attr::{Column, Stream};
@@ -40,11 +42,11 @@ pub const MANIFEST: NodeManifest = NodeManifest {
         },
         ParamSpec {
             name: "g",
-            default: 0.3,
+            default: 1.0,
         },
         ParamSpec {
             name: "b",
-            default: 0.1,
+            default: 1.0,
         },
         ParamSpec {
             name: "a",
@@ -136,41 +138,22 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
 
 use ph2d_node_registry::{ParamUiHint, ParamWidget};
 
-/// Param UI hints (M1.P1): four linear RGBA channels in `0..1`.
-static PARAM_HINTS: &[ParamUiHint] = &[
-    ParamUiHint {
-        param: "r",
-        label: "Red",
-        min: 0.0,
-        max: 1.0,
-        step: 0.01,
-        widget: ParamWidget::Slider,
+/// Param UI hint (M1.P1 → colour authoring): the four linear-straight RGBA
+/// channels `r,g,b,a` are authored as ONE canonical colour swatch → OKLCH picker
+/// (the app's colour UI), not four raw linear sliders (a raw `0.5` linear reads
+/// as light grey — unintuitive). The single [`ParamWidget::Color`] hint anchors
+/// on `r` and names the four channel params it drives; the params panel paints
+/// the swatch and the shell bridge reads the pick back (sRGB→linear) into them.
+static PARAM_HINTS: &[ParamUiHint] = &[ParamUiHint {
+    param: "r",
+    label: "Color",
+    min: 0.0,
+    max: 1.0,
+    step: 0.01,
+    widget: ParamWidget::Color {
+        channels: ["r", "g", "b", "a"],
     },
-    ParamUiHint {
-        param: "g",
-        label: "Green",
-        min: 0.0,
-        max: 1.0,
-        step: 0.01,
-        widget: ParamWidget::Slider,
-    },
-    ParamUiHint {
-        param: "b",
-        label: "Blue",
-        min: 0.0,
-        max: 1.0,
-        step: 0.01,
-        widget: ParamWidget::Slider,
-    },
-    ParamUiHint {
-        param: "a",
-        label: "Alpha",
-        min: 0.0,
-        max: 1.0,
-        step: 0.01,
-        widget: ParamWidget::Slider,
-    },
-];
+}];
 
 #[cfg(test)]
 mod tests {
@@ -241,6 +224,24 @@ mod tests {
             }
             _ => panic!("tint"),
         }
+    }
+
+    #[test]
+    fn default_params_are_opaque_white_and_no_op_on_white() {
+        // The colour modifier's identity: default params are opaque white, so a
+        // white stream stays white at every falloff — no red/warm dominance from
+        // merely dropping in a Tint (the fix for the reported red cast).
+        let defaults = [
+            MANIFEST.params[0].default,
+            MANIFEST.params[1].default,
+            MANIFEST.params[2].default,
+            MANIFEST.params[3].default,
+        ];
+        assert_eq!(defaults, [1.0, 1.0, 1.0, 1.0]);
+        let white = [1.0, 1.0, 1.0, 1.0];
+        assert_eq!(mixed_tint(white, white, 1.0), white);
+        assert_eq!(mixed_tint(white, white, 0.5), white);
+        assert_eq!(mixed_tint(white, white, 0.0), white);
     }
 
     #[test]

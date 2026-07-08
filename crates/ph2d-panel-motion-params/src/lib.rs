@@ -16,24 +16,26 @@
 
 mod snapshot;
 
-use snapshot::{MAX_PARAM_ROWS, current_params, param_chip_id, param_slider_id, push_param_intent};
 pub use snapshot::{
-    MotionParamIntent, ParamRow, ParamsSnapshot, drain_param_intents, set_current_params,
+    ColorRow, MotionParamIntent, ParamRow, ParamsSnapshot, ScalarRow, drain_param_intents,
+    param_swatch_id, set_current_params,
 };
+use snapshot::{MAX_PARAM_ROWS, current_params, param_chip_id, param_slider_id, push_param_intent};
 
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::{InteractiveState, WidgetEvent, WidgetStore, format_number};
+use ph2d_editor_core::paint::{paint_text, resolve};
 use ph2d_editor_core::panel::{EventOutcome, PaintCtx, Panel, PanelHostInternal};
 use ph2d_editor_core::widget::panel_chrome::{
     PANEL_HEAD_PAD, PANEL_TITLE_BASELINE, paint_panel_surface, paint_panel_title,
 };
 use ph2d_editor_core::widget::{
-    DEFAULT_LABEL_W, NUMBER_INPUT_MIN_W_PX, SliderOrientation, SliderState, TextInputState,
-    paint_slider_with_chip_layout_adaptive,
+    ColorSwatch, DEFAULT_LABEL_W, NUMBER_INPUT_MIN_W_PX, SliderOrientation, SliderState,
+    SwatchSize, TextInputState, paint_color_swatch, paint_slider_with_chip_layout_adaptive,
 };
 use ph2d_editor_core::zones::Rect;
-use ph2d_tokens::{ROW_H_PX, Spacing};
+use ph2d_tokens::{ColorToken, ROW_H_PX, Spacing, TypeToken};
 
 /// Retained panel state — none needed: the selected node + its params live
 /// shell-side (`MotionState`) and the pooled widgets re-seed from the published
@@ -85,37 +87,77 @@ impl Panel for MotionParamsPanel {
         // being interacted with) + refresh each chip's range + slider↔chip link.
         seed_rows(ctx.host.store_mut(), &snap.rows);
 
-        // Phase B — paint each row via the canonical slider-with-chip composite.
-        let scene = &mut *ctx.scene;
-        let text_system = &mut *ctx.text_system;
-        let (store, hit_index) = ctx.host.store_and_hit_index_mut();
-        let mut y = body_top;
-        for (i, row) in snap.rows.iter().enumerate().take(MAX_PARAM_ROWS) {
-            let slider_id = param_slider_id(i);
-            let chip_id = param_chip_id(i);
-            let span = (row.max - row.min).max(f64::EPSILON);
-            let track = store
-                .slider(slider_id)
-                .map(|(_, v)| v)
-                .unwrap_or(normalized_track(row.value, row.min, span));
-            let display = row_value(track, row.min, row.max, row.integer);
-            let used = paint_slider_with_chip_layout_adaptive(
-                Rect::new(inner_x, y, inner_w, ROW_H_PX),
-                &row.label,
-                track,
-                display,
-                None,
-                slider_id,
-                chip_id,
-                DEFAULT_LABEL_W,
-                chip_w,
-                store,
-                hit_index,
-                scene,
-                text_system,
-                theme,
-            );
-            y += used + row_gap;
+        // Phase A — paint each row: a scalar slider-with-chip composite, or a
+        // colour swatch (label + right-aligned swatch, mirror of the Vector
+        // Stroke/Fill rows). Both use the SHARED source-of-truth painters.
+        let label_font = TypeToken::Base.px();
+        {
+            let scene = &mut *ctx.scene;
+            let text_system = &mut *ctx.text_system;
+            let (store, hit_index) = ctx.host.store_and_hit_index_mut();
+            let mut y = body_top;
+            for (i, row) in snap.rows.iter().enumerate().take(MAX_PARAM_ROWS) {
+                match row {
+                    ParamRow::Scalar(row) => {
+                        let slider_id = param_slider_id(i);
+                        let chip_id = param_chip_id(i);
+                        let span = (row.max - row.min).max(f64::EPSILON);
+                        let track = store
+                            .slider(slider_id)
+                            .map(|(_, v)| v)
+                            .unwrap_or(normalized_track(row.value, row.min, span));
+                        let display = row_value(track, row.min, row.max, row.integer);
+                        let used = paint_slider_with_chip_layout_adaptive(
+                            Rect::new(inner_x, y, inner_w, ROW_H_PX),
+                            &row.label,
+                            track,
+                            display,
+                            None,
+                            slider_id,
+                            chip_id,
+                            DEFAULT_LABEL_W,
+                            chip_w,
+                            store,
+                            hit_index,
+                            scene,
+                            text_system,
+                            theme,
+                        );
+                        y += used + row_gap;
+                    }
+                    ParamRow::Color(row) => {
+                        let swatch_w = SwatchSize::Md.px();
+                        paint_text(
+                            text_system,
+                            scene,
+                            &row.label,
+                            inner_x,
+                            y + (ROW_H_PX - label_font) * 0.5,
+                            label_font,
+                            DEFAULT_LABEL_W,
+                            resolve(ColorToken::Text1, theme),
+                        );
+                        let swatch_id = param_swatch_id(row.channels[0]);
+                        let srect = Rect::new(inner_x + inner_w - swatch_w, y, swatch_w, ROW_H_PX);
+                        let sw =
+                            ColorSwatch::new(swatch_id, "Color", row.srgb).size(SwatchSize::Md);
+                        paint_color_swatch(&sw, srect, scene, theme);
+                        hit_index.register(swatch_id, srect);
+                        y += ROW_H_PX + row_gap;
+                    }
+                }
+            }
+        }
+
+        // Phase B (mutable store) — mark each colour swatch so a Down opens the
+        // shared OKLCH picker (generic `is_picker_swatch` dispatch). Idempotent.
+        {
+            let store = ctx.host.store_mut();
+            for row in &snap.rows {
+                if let ParamRow::Color(c) = row {
+                    store.register_picker_swatch(param_swatch_id(c.channels[0]));
+                }
+            }
         }
     }
 
@@ -137,7 +179,11 @@ impl Panel for MotionParamsPanel {
                 return EventOutcome::Consumed;
             }
             if id == param_slider_id(slot) {
-                let row = &snap.rows[slot];
+                // Only scalar rows own a pooled slider; a colour row's swatch
+                // reports through the picker, never a slider ValueChanged.
+                let ParamRow::Scalar(row) = &snap.rows[slot] else {
+                    return EventOutcome::Ignored;
+                };
                 let track = host.store().slider(id).map(|(_, v)| v).unwrap_or(0.5);
                 push_param_intent(MotionParamIntent::SetParam {
                     node: snap.node,
@@ -219,6 +265,9 @@ fn number_input(value: f64) -> InteractiveState {
 /// external edits live-update the knob).
 fn seed_rows(store: &mut WidgetStore, rows: &[ParamRow]) {
     for (i, row) in rows.iter().enumerate().take(MAX_PARAM_ROWS) {
+        // Colour rows have no pooled slider/chip — their swatch seeds from the
+        // shell bridge's `widget_color`, not from here.
+        let ParamRow::Scalar(row) = row else { continue };
         let slider_id = param_slider_id(i);
         let chip_id = param_chip_id(i);
         let span = (row.max - row.min).max(f64::EPSILON);
@@ -287,7 +336,7 @@ mod tests {
         set_current_params(Some(ParamsSnapshot {
             node: 7,
             title: "Grid".into(),
-            rows: vec![ParamRow {
+            rows: vec![ParamRow::Scalar(ScalarRow {
                 name: "rows",
                 label: "Rows".into(),
                 value: 3.0,
@@ -295,11 +344,14 @@ mod tests {
                 max: 20.0,
                 step: 1.0,
                 integer: true,
-            }],
+            })],
         }));
         let got = current_params().expect("published");
         assert_eq!(got.node, 7);
-        assert_eq!(got.rows[0].name, "rows");
+        let ParamRow::Scalar(r0) = &got.rows[0] else {
+            panic!("scalar row");
+        };
+        assert_eq!(r0.name, "rows");
 
         push_param_intent(MotionParamIntent::SetParam {
             node: 7,
@@ -317,5 +369,30 @@ mod tests {
         assert!(drain_param_intents().is_empty()); // capacity-retaining drain
         set_current_params(None);
         assert!(current_params().is_none());
+    }
+
+    #[test]
+    fn color_row_publishes_and_swatch_id_is_anchor_keyed() {
+        // A colour row round-trips through the publish channel, and its swatch id
+        // is derived from the anchor channel name (so the shell bridge computes
+        // the same id) — distinct from other anchors + from the slider pool.
+        set_current_params(Some(ParamsSnapshot {
+            node: 3,
+            title: "Tint".into(),
+            rows: vec![ParamRow::Color(ColorRow {
+                label: "Color".into(),
+                channels: ["r", "g", "b", "a"],
+                srgb: [255, 255, 255, 255],
+            })],
+        }));
+        let got = current_params().expect("published");
+        let ParamRow::Color(c) = &got.rows[0] else {
+            panic!("color row");
+        };
+        assert_eq!(c.channels, ["r", "g", "b", "a"]);
+        assert_eq!(param_swatch_id("r"), param_swatch_id("r"));
+        assert_ne!(param_swatch_id("r"), param_swatch_id("g"));
+        assert_ne!(param_swatch_id("r"), param_slider_id(0));
+        set_current_params(None);
     }
 }

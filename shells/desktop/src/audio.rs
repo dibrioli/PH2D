@@ -79,6 +79,13 @@ impl AudioSystem {
             }
         };
         let sample_format = supported.sample_format();
+        if !matches!(
+            sample_format,
+            cpal::SampleFormat::F32 | cpal::SampleFormat::I16 | cpal::SampleFormat::U16
+        ) {
+            eprintln!("audio: unsupported sample format {sample_format:?}; running silent");
+            return None;
+        }
         let native: cpal::StreamConfig = supported.config();
         let rate = native.sample_rate.0;
         // Prefer a STEREO stream even on multi-channel (5.1/7.1) devices. Writing
@@ -86,50 +93,50 @@ impl AudioSystem {
         // PipeWire's stereo→surround routing/upmix and is inaudible on some 7.1
         // USB DACs — the "meters alive, no sound" bug (HANDOFF_audio_module §4).
         // Every working desktop app opens a 2-channel stream, so PipeWire routes +
-        // upmixes it correctly. Only downshift when the device actually offers 2ch;
-        // otherwise keep the native config (old behavior).
-        let use_stereo = native.channels > 2
-            && device
-                .supported_output_configs()
-                .map(|mut cfgs| cfgs.any(|c| c.channels() == 2))
-                .unwrap_or(false);
-        let config: cpal::StreamConfig = if use_stereo {
-            let mut c = native.clone();
-            c.channels = 2;
-            c
-        } else {
-            native
-        };
-        let dev_channels = config.channels as usize;
-        let format = if dev_channels == 1 {
-            AudioFormat::mono(rate)
-        } else {
-            AudioFormat::stereo(rate)
-        };
-        let (engine, renderer) = AudioEngine::new(format);
-        let our_channels = format.channel_count();
+        // upmixes it. Try 2ch FIRST (even when the device only advertises its native
+        // 8ch config — PipeWire adapts), then fall back to the native layout if the
+        // 2ch stream is actually rejected. Each attempt needs its own renderer since
+        // `build_stream` moves it into the callback.
+        let mut candidates: Vec<cpal::StreamConfig> = Vec::new();
+        if native.channels > 2 {
+            let mut stereo = native.clone();
+            stereo.channels = 2;
+            candidates.push(stereo);
+        }
+        candidates.push(native.clone());
 
-        let built = match sample_format {
-            cpal::SampleFormat::F32 => {
-                build_stream::<f32>(&device, &config, renderer, dev_channels, our_channels)
+        let mut opened: Option<(AudioEngine, cpal::Stream, AudioFormat, usize)> = None;
+        for config in &candidates {
+            let dev_channels = config.channels as usize;
+            let format = if dev_channels == 1 {
+                AudioFormat::mono(rate)
+            } else {
+                AudioFormat::stereo(rate)
+            };
+            let (engine, renderer) = AudioEngine::new(format);
+            let our_channels = format.channel_count();
+            let built = match sample_format {
+                cpal::SampleFormat::F32 => {
+                    build_stream::<f32>(&device, config, renderer, dev_channels, our_channels)
+                }
+                cpal::SampleFormat::I16 => {
+                    build_stream::<i16>(&device, config, renderer, dev_channels, our_channels)
+                }
+                _ => build_stream::<u16>(&device, config, renderer, dev_channels, our_channels),
+            };
+            match built {
+                Ok(stream) => {
+                    opened = Some((engine, stream, format, dev_channels));
+                    break;
+                }
+                Err(e) => {
+                    eprintln!("audio: {dev_channels}ch output config failed ({e}); trying next")
+                }
             }
-            cpal::SampleFormat::I16 => {
-                build_stream::<i16>(&device, &config, renderer, dev_channels, our_channels)
-            }
-            cpal::SampleFormat::U16 => {
-                build_stream::<u16>(&device, &config, renderer, dev_channels, our_channels)
-            }
-            other => {
-                eprintln!("audio: unsupported sample format {other:?}; running silent");
-                return None;
-            }
-        };
-        let stream = match built {
-            Ok(s) => s,
-            Err(e) => {
-                eprintln!("audio: failed to build output stream ({e}); running silent");
-                return None;
-            }
+        }
+        let Some((engine, stream, format, dev_channels)) = opened else {
+            eprintln!("audio: no usable output config; running silent");
+            return None;
         };
         if let Err(e) = stream.play() {
             eprintln!("audio: failed to start stream ({e}); running silent");

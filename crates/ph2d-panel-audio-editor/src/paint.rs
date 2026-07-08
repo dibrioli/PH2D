@@ -15,7 +15,7 @@ use crate::{
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::ids as core_ids;
 use ph2d_editor_core::interaction::{HitIndex, InteractiveState};
-use ph2d_editor_core::paint::{fill_rounded_rect, paint_text_centered, resolve};
+use ph2d_editor_core::paint::{fill_rounded_rect, paint_text_centered, rect_to_vello, resolve};
 use ph2d_editor_core::panel::{PaintCtx, Panel};
 use ph2d_editor_core::widget::panel_chrome::{
     PANEL_HEADER_CLOSE_RESERVE, PANEL_HEADER_H_DEFAULT, PANEL_TITLE_BASELINE,
@@ -131,6 +131,10 @@ pub(crate) fn paint(_state: &mut AudioEditorState, ctx: &mut PaintCtx) {
     let input = TextInput::new(AEDIT_NAME, "")
         .placeholder("No clip loaded")
         .state(name_state);
+    // Clip to the field: the TextInput lays its text out with word-wrap at the
+    // inner width, so a long filename spills onto a 2nd line below the box. A clip
+    // to the single-line box crops that overflow instead of letting it extrapolate.
+    scene.push_clip(&rect_to_vello(name_rect));
     paint_text_input_with_buffer(
         &input,
         Some(name_text.as_str()),
@@ -141,6 +145,7 @@ pub(crate) fn paint(_state: &mut AudioEditorState, ctx: &mut PaintCtx) {
         text_system,
         theme,
     );
+    scene.pop_layer();
     y += name_h + Spacing::Sm.px();
 
     // Position / duration readout.

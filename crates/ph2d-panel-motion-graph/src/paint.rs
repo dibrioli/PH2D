@@ -44,6 +44,7 @@ const TITLE_INSET_R: f32 = 12.0; // LITERAL-PX-OK: card title right inset
 const GRID_STEP: f32 = 32.0; // LITERAL-PX-OK: background grid spacing
 const WIRE_W: f32 = 2.4; // LITERAL-PX-OK: wire stroke width
 const WIRE_W_DELAYED: f32 = 1.6; // LITERAL-PX-OK: delayed (pre) wire stroke width
+const WIRE_W_HOVER: f32 = 4.0; // LITERAL-PX-OK: hovered wire stroke width (targeted for alt-click)
 const GHOST_W: f32 = 2.2; // LITERAL-PX-OK: in-progress ghost wire stroke width
 const WIRE_TANGENT: f32 = 20.0; // LITERAL-PX-OK: horizontal bezier handle length
 const ZOOM_FIT_MIN: f32 = 0.35; // LITERAL-PX-OK: auto-fit zoom floor
@@ -60,10 +61,13 @@ const MENU_ROW_TEXT_Y: f32 = 3.0; // LITERAL-PX-OK: row label y-inset
 const MENU_ROW_SIZE: f32 = 13.0; // LITERAL-PX-OK: row label font size
 const MENU_ROW_TEXT_INSET_R: f32 = 20.0; // LITERAL-PX-OK: row label right inset
 /// How many polyline points a wire's hit path is sampled at (segments = N-1);
-/// each segment becomes one padded hit rect sharing the wire's id.
-const WIRE_HIT_SAMPLES: usize = 9;
-/// Half-thickness (screen px) of a wire's hit rects — a forgiving alt-click zone.
-const WIRE_HIT_R: f32 = 5.0; // LITERAL-PX-OK: wire hit half-thickness
+/// each segment becomes one padded hit rect sharing the wire's id. Denser than
+/// the draw sampling so the padded segment boxes hug the curve (fewer gaps /
+/// off-curve false hits) now that the band is wider.
+const WIRE_HIT_SAMPLES: usize = 16;
+/// Half-thickness (screen px) of a wire's hit rects — a forgiving hover / alt-
+/// click zone (a full band of `2 × WIRE_HIT_R`, independent of zoom).
+const WIRE_HIT_R: f32 = 8.0; // LITERAL-PX-OK: wire hit half-thickness
 
 pub(crate) fn paint(state: &mut MotionGraphPanelState, ctx: &mut PaintCtx) {
     let rect = ctx.layout.motion_graph;
@@ -94,9 +98,13 @@ pub(crate) fn paint(state: &mut MotionGraphPanelState, ctx: &mut PaintCtx) {
     fill_rounded_rect(ctx.scene, rect, 0.0, resolve(ColorToken::GraphBg, theme));
     draw_grid(ctx, rect, theme);
 
-    // Wires under the cards.
+    // Wires under the cards. The hovered wire (the hit-index id under the cursor,
+    // tracked by the shell's free-move hover) is drawn emphasised so it reads as
+    // the alt-click delete target.
+    let hovered = ctx.host.store().hot_id();
     for e in &snap.edges {
-        draw_wire(ctx, &snap, e, &view, theme);
+        let is_hovered = hovered == Some(wire_hit_id(e.to_node, e.to_port));
+        draw_wire(ctx, &snap, e, &view, theme, is_hovered);
     }
 
     // Hit rects, lowest-priority first (last registered wins): background →
@@ -241,18 +249,23 @@ fn draw_wire(
     e: &GraphEdgeView,
     view: &View,
     theme: Theme,
+    hovered: bool,
 ) {
     let Some((p0, p3)) = wire_endpoints(snap, e, view) else {
         return;
     };
     let pts = wire_polyline(p0, p3, view.zoom, 20);
-    let width = if e.delayed { WIRE_W_DELAYED } else { WIRE_W } * view.zoom;
-    stroke_polyline(
-        ctx.scene,
-        &pts,
-        width,
-        resolve(domain_token(e.out_domain), theme),
-    );
+    // Hovered wires draw thicker and in a bright emphasis colour so the delete
+    // target is unmistakable regardless of the port domain hue; others keep
+    // their domain colour and normal (delayed = thinner) width.
+    let (base_w, token) = if hovered {
+        (WIRE_W_HOVER, ColorToken::Text1)
+    } else if e.delayed {
+        (WIRE_W_DELAYED, domain_token(e.out_domain))
+    } else {
+        (WIRE_W, domain_token(e.out_domain))
+    };
+    stroke_polyline(ctx.scene, &pts, base_w * view.zoom, resolve(token, theme));
 }
 
 /// The in-progress wire ghost: from the source output socket to the live pointer,

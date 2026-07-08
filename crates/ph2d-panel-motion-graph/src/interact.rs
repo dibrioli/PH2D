@@ -6,7 +6,7 @@
 //! Coverage: pan (drag empty canvas), anchored wheel zoom, F = fit, Esc =
 //! deselect / cancel, click/shift-select, multi-drag (one `MoveNodes` undo at
 //! End), socket→socket **connect** (with a live compatibility ghost; the shell
-//! validates for real), alt-click a wire = **disconnect**, R-press (anywhere) /
+//! validates for real), alt-press a wire = **disconnect**, R-press (anywhere) /
 //! `A` = **add-node** menu, and Delete = **delete selection**.
 
 use crate::geom::{self, View};
@@ -129,10 +129,12 @@ fn apply_gesture(
         GraphHitKind::SocketOut { node, port } => {
             apply_socket_out(state, g, node as u32, port, rect, snap)
         }
-        // A wire: alt-click removes the edge (identified by its unique target
-        // input, decoded from the opaque handle). Plain clicks are inert for now
-        // (they fall through to the no-op arm below).
-        GraphHitKind::Wire { edge } if g.phase == GesturePhase::Click && g.mods.alt => {
+        // A wire: alt + press removes the edge (identified by its unique target
+        // input, decoded from the opaque handle). On Begin (the press), not the
+        // release, so a click that drifts a pixel — classified End by the
+        // dispatch — still deletes (same robustness as the R-press add-menu).
+        // Plain presses on a wire are inert (fall through to the no-op arm).
+        GraphHitKind::Wire { edge } if g.phase == GesturePhase::Begin && g.mods.alt => {
             let (to_node, to_port) = crate::paint::wire_target(edge);
             push_intent(GraphIntent::Disconnect { to_node, to_port });
         }
@@ -524,14 +526,14 @@ mod tests {
         let handle = crate::paint::wire_handle(2, 0);
         let mut g = gesture(
             GraphHitKind::Wire { edge: handle },
-            GesturePhase::Click,
+            GesturePhase::Begin,
             100.0,
             37.0,
         );
-        // Plain click: inert.
+        // Plain press: inert.
         apply_gesture(&mut st, g, RECT, CENTER, &snap);
         assert!(drain_intents().is_empty());
-        // Alt-click: disconnect the edge into (2, 0).
+        // Alt-press: disconnect the edge into (2, 0).
         g.mods.alt = true;
         apply_gesture(&mut st, g, RECT, CENTER, &snap);
         assert_eq!(

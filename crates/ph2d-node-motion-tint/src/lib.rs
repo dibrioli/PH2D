@@ -1,16 +1,21 @@
 #![forbid(unsafe_code)]
 //! `motion.tint` — a Motion **colour modifier**: sets the `tint` (Vec4 RGBA,
-//! linear straight — §1.2) attribute to the target colour `(r, g, b, a)`,
-//! masked per-instance by the multiplicative `falloff` column. The per-instance
-//! result is `lerp(existing, (r,g,b,a), falloff_i)`, so at `falloff = 1` the
-//! instance takes the target colour **exactly** (any RGBA, alpha included) and
-//! at `falloff = 0` it keeps its existing tint (absent → opaque white). Every
-//! other column passes through unchanged (count preserved). Pure.
+//! linear straight — §1.2) attribute to a target colour, masked per-instance by
+//! the multiplicative `falloff` column. The per-instance result is
+//! `lerp(existing, target_i, falloff_i)`, so at `falloff = 1` the instance takes
+//! the target **exactly** and at `falloff = 0` it keeps its existing tint (absent
+//! → opaque white). Every other column passes through unchanged. Pure.
 //!
-//! Params (read via `ctx.param`): `r` `g` `b` `a`, all `1.0` — **opaque white**,
-//! the identity default for a colour modifier: a white target over the default
-//! white upstream is a visual no-op (at `falloff = 1`), so dropping in a Tint
-//! doesn't recolour anything until the user picks a colour (no red dominance).
+//! Two modes (`mode`): **Solid** (0, the default) applies one uniform colour
+//! `(r,g,b,a)`; **Gradient** (1) sweeps from `(r,g,b,a)` (Start) to
+//! `(r2,g2,b2,a2)` (End) across the stream, keyed by each instance's normalized
+//! identity `Index/(Count−1)` (from the grid; absent → positional `i/(n−1)`), so
+//! a grid reads as a colour ramp. The gradient lerp is in the wire's linear space
+//! (transcendental-free; OKLab is a future, cbrt-gated refinement).
+//!
+//! Defaults: `mode` 0 (Solid); Start `r=g=b=a=1` (**opaque white** — the identity,
+//! so a fresh Tint is a no-op until the artist picks a colour); End `(0,0,0,1)`
+//! (black — so switching to Gradient shows a visible white→black ramp).
 
 use ph2d_node_registry::{NodeRegistry, RegistryError};
 use ph2d_nodegraph::attr::{Column, Stream};
@@ -37,6 +42,11 @@ pub const MANIFEST: NodeManifest = NodeManifest {
     clock: Clock::Frame,
     params: &[
         ParamSpec {
+            name: "mode",
+            default: 0.0,
+        },
+        // Start (Solid = the colour; Gradient = the low end).
+        ParamSpec {
             name: "r",
             default: 1.0,
         },
@@ -52,6 +62,23 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             name: "a",
             default: 1.0,
         },
+        // End (Gradient only).
+        ParamSpec {
+            name: "r2",
+            default: 0.0,
+        },
+        ParamSpec {
+            name: "g2",
+            default: 0.0,
+        },
+        ParamSpec {
+            name: "b2",
+            default: 0.0,
+        },
+        ParamSpec {
+            name: "a2",
+            default: 1.0,
+        },
     ],
     lowerings: &[LoweringKind::Cpu],
 };
@@ -62,6 +89,24 @@ fn falloff_at(stream: &Stream, i: usize) -> f32 {
         Some(Column::Scalar(v)) => v.get(i).copied().unwrap_or(1.0),
         _ => 1.0,
     }
+}
+
+/// Read entry `i` of a Scalar column (absent / wrong-typed → `default`).
+fn scalar_at(col: Option<&Column>, i: usize, default: f32) -> f32 {
+    match col {
+        Some(Column::Scalar(v)) => v.get(i).copied().unwrap_or(default),
+        _ => default,
+    }
+}
+
+/// Per-channel RGBA lerp `a·(1−t) + b·t` (endpoint-exact; linear-straight space).
+fn lerp4(a: [f32; 4], b: [f32; 4], t: f32) -> [f32; 4] {
+    [
+        a[0] * (1.0 - t) + b[0] * t,
+        a[1] * (1.0 - t) + b[1] * t,
+        a[2] * (1.0 - t) + b[2] * t,
+        a[3] * (1.0 - t) + b[3] * t,
+    ]
 }
 
 /// The falloff-masked colour for one instance: `lerp(existing, target, f)` per
@@ -86,11 +131,18 @@ impl NodeOp for MotionTint {
     }
 
     fn eval(&self, ctx: &mut EvalCtx<'_>) {
-        let target = [
+        let gradient = ctx.param("mode").round() as i32 == 1;
+        let start = [
             ctx.param("r"),
             ctx.param("g"),
             ctx.param("b"),
             ctx.param("a"),
+        ];
+        let end = [
+            ctx.param("r2"),
+            ctx.param("g2"),
+            ctx.param("b2"),
+            ctx.param("a2"),
         ];
         let out = {
             let input = ctx.input(0);
@@ -100,8 +152,25 @@ impl NodeOp for MotionTint {
                 Some(Column::Vec4(v)) => v.clone(),
                 _ => vec![[1.0, 1.0, 1.0, 1.0]; n],
             };
+            // Identity columns for the gradient ramp (absent → positional).
+            let index = input.get("Index");
+            let count = input.get("Count");
             let tinted: Vec<[f32; 4]> = (0..n)
                 .map(|i| {
+                    let target = if gradient {
+                        let idx = scalar_at(index, i, i as f32);
+                        let cnt = scalar_at(count, i, n as f32);
+                        // Normalized position 0..1 across the stream (single
+                        // instance → 0, so it just takes the Start colour).
+                        let t = if cnt > 1.0 {
+                            (idx / (cnt - 1.0)).clamp(0.0, 1.0)
+                        } else {
+                            0.0
+                        };
+                        lerp4(start, end, t)
+                    } else {
+                        start
+                    };
                     let e = base.get(i).copied().unwrap_or([1.0, 1.0, 1.0, 1.0]);
                     mixed_tint(e, target, falloff_at(input, i))
                 })
@@ -138,22 +207,44 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
 
 use ph2d_node_registry::{ParamUiHint, ParamWidget};
 
-/// Param UI hint (M1.P1 → colour authoring): the four linear-straight RGBA
-/// channels `r,g,b,a` are authored as ONE canonical colour swatch → OKLCH picker
-/// (the app's colour UI), not four raw linear sliders (a raw `0.5` linear reads
-/// as light grey — unintuitive). The single [`ParamWidget::Color`] hint anchors
-/// on `r` and names the four channel params it drives; the params panel paints
-/// the swatch and the shell bridge reads the pick back (sRGB→linear) into them.
-static PARAM_HINTS: &[ParamUiHint] = &[ParamUiHint {
-    param: "r",
-    label: "Color",
-    min: 0.0,
-    max: 1.0,
-    step: 0.01,
-    widget: ParamWidget::Color {
-        channels: ["r", "g", "b", "a"],
+/// Param UI hints (M1.P1 → colour authoring): a **named** Solid/Gradient selector,
+/// then one canonical colour swatch → OKLCH picker per colour (never raw linear
+/// sliders — a raw `0.5` linear reads as light grey). Each [`ParamWidget::Color`]
+/// hint anchors on its first channel and names the four params it drives; the
+/// shell bridge reads the pick back (sRGB→linear). The `End` swatch is only used
+/// in Gradient mode (it paints regardless — v1 has no per-mode row hiding).
+static PARAM_HINTS: &[ParamUiHint] = &[
+    ParamUiHint {
+        param: "mode",
+        label: "Mode",
+        min: 0.0,
+        max: 1.0,
+        step: 1.0,
+        widget: ParamWidget::Enum {
+            labels: &["Solid", "Gradient"],
+        },
     },
-}];
+    ParamUiHint {
+        param: "r",
+        label: "Color",
+        min: 0.0,
+        max: 1.0,
+        step: 0.01,
+        widget: ParamWidget::Color {
+            channels: ["r", "g", "b", "a"],
+        },
+    },
+    ParamUiHint {
+        param: "r2",
+        label: "End",
+        min: 0.0,
+        max: 1.0,
+        step: 0.01,
+        widget: ParamWidget::Color {
+            channels: ["r2", "g2", "b2", "a2"],
+        },
+    },
+];
 
 #[cfg(test)]
 mod tests {
@@ -226,22 +317,105 @@ mod tests {
         }
     }
 
+    fn default_of(name: &str) -> f32 {
+        MANIFEST
+            .params
+            .iter()
+            .find(|p| p.name == name)
+            .unwrap()
+            .default
+    }
+
     #[test]
     fn default_params_are_opaque_white_and_no_op_on_white() {
-        // The colour modifier's identity: default params are opaque white, so a
-        // white stream stays white at every falloff — no red/warm dominance from
-        // merely dropping in a Tint (the fix for the reported red cast).
-        let defaults = [
-            MANIFEST.params[0].default,
-            MANIFEST.params[1].default,
-            MANIFEST.params[2].default,
-            MANIFEST.params[3].default,
+        // The colour modifier's identity: Solid mode by default, Start opaque
+        // white → a white stream stays white at every falloff (no red/warm
+        // dominance from merely dropping in a Tint — the reported-cast fix).
+        assert_eq!(default_of("mode"), 0.0, "default mode is Solid");
+        let start = [
+            default_of("r"),
+            default_of("g"),
+            default_of("b"),
+            default_of("a"),
         ];
-        assert_eq!(defaults, [1.0, 1.0, 1.0, 1.0]);
+        assert_eq!(start, [1.0, 1.0, 1.0, 1.0]);
         let white = [1.0, 1.0, 1.0, 1.0];
         assert_eq!(mixed_tint(white, white, 1.0), white);
         assert_eq!(mixed_tint(white, white, 0.5), white);
         assert_eq!(mixed_tint(white, white, 0.0), white);
+    }
+
+    #[test]
+    fn lerp4_is_endpoint_exact() {
+        let a = [1.0, 1.0, 1.0, 1.0];
+        let b = [0.2, 0.4, 0.6, 0.3];
+        assert_eq!(lerp4(a, b, 0.0), a);
+        assert_eq!(lerp4(a, b, 1.0), b);
+        assert_eq!(lerp4(a, b, 0.5), [0.6, 0.7, 0.8, 0.65]);
+    }
+
+    #[test]
+    fn gradient_mode_ramps_start_to_end_by_normalized_index() {
+        // A 3-instance stream carrying Index[0,1,2]+Count[3,3,3]; Gradient mode,
+        // default Start=white / End=black → a grayscale ramp keyed by index.
+        static GSRC: NodeManifest = NodeManifest {
+            id: NodeTypeId::of("motion.tint.test.grid"),
+            name: "motion.tint.test.grid",
+            inputs: &[],
+            outputs: &[PortSpec {
+                name: "out",
+                ty: INST_VEC2,
+            }],
+            effect: Effect::Pure,
+            clock: Clock::Frame,
+            params: &[],
+            lowerings: &[LoweringKind::Cpu],
+        };
+        struct GSrc;
+        impl NodeOp for GSrc {
+            fn manifest(&self) -> &'static NodeManifest {
+                &GSRC
+            }
+            fn eval(&self, ctx: &mut EvalCtx<'_>) {
+                ctx.emit(
+                    Stream::new(3)
+                        .with("P", Column::Vec2(vec![[0.0, 0.0], [1.0, 0.0], [2.0, 0.0]]))
+                        .with("Index", Column::Scalar(vec![0.0, 1.0, 2.0]))
+                        .with("Count", Column::Scalar(vec![3.0, 3.0, 3.0])),
+                );
+            }
+        }
+        struct GOps;
+        impl OpResolver for GOps {
+            fn resolve(&self, ty: NodeTypeId) -> Option<&dyn NodeOp> {
+                match ty {
+                    t if t == GSRC.id => Some(&GSrc),
+                    t if t == MANIFEST.id => Some(&MotionTint),
+                    _ => None,
+                }
+            }
+        }
+        let mut g = Graph::new();
+        let src = g.add_node("motion.tint.test.grid");
+        let tn = g.add_node("motion.tint");
+        g.connect(Edge {
+            from: (src, 0),
+            to: (tn, 0),
+            delayed: false,
+        })
+        .unwrap();
+        g.set_param(tn, "mode", 1.0); // Gradient (Start=white, End=black defaults)
+        let mut cook = Cook::new();
+        let out = cook.cook(&g, &GOps, tn, 0.0).unwrap();
+        match out[0].as_stream().get("tint").unwrap() {
+            // falloff absent → 1, so tint == target. t = 0, 0.5, 1 across the ramp.
+            Column::Vec4(v) => {
+                assert_eq!(v[0], [1.0, 1.0, 1.0, 1.0]); // start (white)
+                assert_eq!(v[1], [0.5, 0.5, 0.5, 1.0]); // mid grey
+                assert_eq!(v[2], [0.0, 0.0, 0.0, 1.0]); // end (black)
+            }
+            _ => panic!("tint"),
+        }
     }
 
     #[test]

@@ -683,29 +683,45 @@ fn build_params_snapshot(motion: &MotionState) -> Option<ph2d_panel_motion_param
 mod tests {
     use super::*;
     use crate::motion_state::MotionState;
-    use ph2d_panel_motion_params::ParamRow;
 
     /// The reported-bug + colour-authoring seam, end to end and headless: a
-    /// selected `motion.tint` node resolves to exactly ONE colour swatch row
-    /// (not four raw channel sliders), its channels are the RGBA params, and its
-    /// display colour is **opaque white** — the identity default that killed the
-    /// red dominance. This proves the tint's `ParamWidget::Color` hint flows all
-    /// the way to a paintable `ColorRow` (registry → snapshot builder), the exact
-    /// seam a compile-green change would leave unverified.
+    /// selected `motion.tint` node resolves to a named Mode selector + colour
+    /// SWATCH rows (not raw channel sliders), the Start swatch's channels are the
+    /// RGBA params, and its display colour is **opaque white** — the identity
+    /// default that killed the red dominance. Proves the `Color`/`Enum` hints flow
+    /// all the way to paintable rows (registry → snapshot builder).
     #[test]
-    fn selected_tint_node_yields_one_white_color_row() {
+    fn selected_tint_node_yields_mode_and_colour_swatch_rows() {
+        use ph2d_panel_motion_params::ParamRow;
         let mut motion = MotionState::new();
         let tint = motion.doc.graph.add_node("motion.tint");
         ph2d_panel_motion_graph::set_graph_selection(vec![tint.0]);
 
         let snap = build_params_snapshot(&motion).expect("tint node is resolvable");
-        assert_eq!(snap.rows.len(), 1, "tint authors colour as ONE swatch row");
-        let ParamRow::Color(c) = &snap.rows[0] else {
-            panic!("tint's row must be a colour swatch, not scalar sliders");
-        };
-        assert_eq!(c.channels, ["r", "g", "b", "a"]);
-        // Default params are linear white → sRGB opaque white (the no-op tint).
-        assert_eq!(c.srgb, [255, 255, 255, 255]);
+        // A named Mode enum (Solid/Gradient), never a number slider.
+        assert!(
+            snap.rows
+                .iter()
+                .any(|r| matches!(r, ParamRow::Enum(e) if e.name == "mode")),
+            "mode is a named Enum row"
+        );
+        // The Start colour is a swatch over r/g/b/a, opaque white by default.
+        let start = snap
+            .rows
+            .iter()
+            .find_map(|r| match r {
+                ParamRow::Color(c) if c.channels == ["r", "g", "b", "a"] => Some(c),
+                _ => None,
+            })
+            .expect("Start colour is a swatch, not four sliders");
+        assert_eq!(start.srgb, [255, 255, 255, 255]);
+        // The gradient End is its own swatch over r2/g2/b2/a2.
+        assert!(
+            snap.rows
+                .iter()
+                .any(|r| matches!(r, ParamRow::Color(c) if c.channels == ["r2", "g2", "b2", "a2"])),
+            "End colour is its own swatch"
+        );
 
         ph2d_panel_motion_graph::set_graph_selection(Vec::new());
     }
@@ -856,6 +872,44 @@ mod tests {
         motion.transport.toggle(); // → paused
         motion.transport.advance(30);
         assert_eq!(motion.playhead(dt), t, "paused freezes the playhead");
+    }
+
+    /// The #1→#2 producer/consumer seam through the REAL registry: the grid's
+    /// `Index`/`Count` identity columns drive the tint's Gradient mode, so a grid
+    /// reads as a colour ramp. A 1×3 grid + gradient Start=white/End=black →
+    /// tints white→grey→black across the row.
+    #[test]
+    fn grid_index_drives_the_tint_gradient() {
+        use ph2d_nodegraph::attr::Column;
+        use ph2d_nodegraph::cook::Cook;
+        use ph2d_nodegraph::graph::{Edge, Graph};
+
+        let motion = MotionState::new();
+        let mut g = Graph::new();
+        let grid = g.add_node("motion.grid");
+        let tint = g.add_node("motion.tint");
+        g.set_param(grid, "rows", 1.0);
+        g.set_param(grid, "cols", 3.0); // 3 cells → Index 0,1,2 / Count 3
+        g.set_param(tint, "mode", 1.0); // Gradient (white→black defaults)
+        g.connect(Edge {
+            from: (grid, 0),
+            to: (tint, 0),
+            delayed: false,
+        })
+        .unwrap();
+        g.validate(&motion.registry)
+            .expect("grid → tint is well-typed");
+        let mut cook = Cook::new();
+        let out = cook.cook(&g, &motion.registry, tint, 0.0).unwrap();
+        match out[0].as_stream().get("tint").unwrap() {
+            Column::Vec4(v) => {
+                assert_eq!(v.len(), 3);
+                assert_eq!(v[0], [1.0, 1.0, 1.0, 1.0], "index 0 → Start (white)");
+                assert_eq!(v[1], [0.5, 0.5, 0.5, 1.0], "index 1 → mid grey");
+                assert_eq!(v[2], [0.0, 0.0, 0.0, 1.0], "index 2 → End (black)");
+            }
+            _ => panic!("tint"),
+        }
     }
 
     /// The Output node IS the render sink: the bridge auto-selects it, cooking it

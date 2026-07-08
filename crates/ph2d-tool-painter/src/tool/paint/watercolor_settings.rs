@@ -64,7 +64,7 @@ impl PainterTool {
                         true
                     }
                     x if x == core_ids::PAINTER_WATERCOLOR_MIX => {
-                        self.set_brush_pigment_mix(v);
+                        self.set_brush_pigment_mixing(v);
                         true
                     }
                     x if x == core_ids::PAINTER_WATERCOLOR_FILL => {
@@ -164,9 +164,24 @@ impl PainterTool {
         self.paint.brush.granulation = v.clamp(0.0, 1.0);
     }
 
-    /// Set the **Mix** (subtractive pigment amount), clamped to `0..=1`.
+    /// Set the **Mix** (subtractive pigment amount), clamped to `0..=1`. Does NOT touch the `pigment`
+    /// gate — the panel drives that via [`Self::set_brush_pigment_mixing`]; kept for the tool API.
     pub fn set_brush_pigment_mix(&mut self, v: f32) {
         self.paint.brush.pigment_mix = v.clamp(0.0, 1.0);
+    }
+
+    /// Set the merged **Pigment** slider (the panel's single control replacing the old Pigment toggle +
+    /// Mix pair, redesign 2026-07-07): `> 0` turns the subtractive-mixing gate ON at that amount; `0`
+    /// turns it OFF while KEEPING the last non-zero amount (the `pigment_mix` field is left untouched at
+    /// `0`), so sliding back up restores it — zero-loss, the point of the merge. Clamped to `0..=1`.
+    pub fn set_brush_pigment_mixing(&mut self, v: f32) {
+        let v = v.clamp(0.0, 1.0);
+        if v <= 0.0 {
+            self.paint.brush.pigment = false;
+        } else {
+            self.paint.brush.pigment = true;
+            self.paint.brush.pigment_mix = v;
+        }
     }
 
     /// Set the render-path **Fill** (wash interior density), clamped to `0..=1`.
@@ -403,11 +418,21 @@ mod tests {
         ));
         assert_eq!(t.brush_settings().granulation, 0.5, "Granulation set");
 
-        t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_WATERCOLOR_PIGMENT));
-        assert!(t.brush_settings().pigment, "Pigment toggled on");
-
+        // Pigment: the merged slider (Mix id) drives BOTH the amount and the on/off gate.
         t.handle_panel_event(PanelEvent::SetValue(core_ids::PAINTER_WATERCOLOR_MIX, 0.75));
-        assert_eq!(t.brush_settings().pigment_mix, 0.75, "Mix set");
+        let b = t.brush_settings();
+        assert!(b.pigment, "Pigment slider > 0 enables the gate");
+        assert_eq!(b.pigment_mix, 0.75, "Pigment amount set");
+        // Sliding to 0 turns the gate off but REMEMBERS the amount (zero-loss merge).
+        t.handle_panel_event(PanelEvent::SetValue(core_ids::PAINTER_WATERCOLOR_MIX, 0.0));
+        let b = t.brush_settings();
+        assert!(!b.pigment, "Pigment slider 0 disables the gate");
+        assert_eq!(
+            b.pigment_mix, 0.75,
+            "amount remembered while the gate is off"
+        );
+        // Re-enable for the rest of the sweep (so the reset assertion at the end has a gate to clear).
+        t.handle_panel_event(PanelEvent::SetValue(core_ids::PAINTER_WATERCOLOR_MIX, 0.75));
 
         // Paper COLOUR from the shared picker's read-back (the document ground; "r,g,b" 8-bit).
         assert_eq!(

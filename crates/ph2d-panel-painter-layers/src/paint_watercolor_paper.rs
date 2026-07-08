@@ -108,7 +108,8 @@ pub(crate) fn paint_paper_section(
         paper_preview_view(&brush),
         state::current_brush_paper_image(),
     );
-    // ── Mapping + Rake + Random Angle (per-dab rotation mappings only) ──
+    // ── Mapping (paper is a static substrate; per-dab Rake / Random-Angle were dropped from the UI —
+    //    no reference app rotates paper per-dab; the per-dab rake/random live on the Grain slot). ──
     let mapping = TextureMapping::from_u8(brush.paper_mapping);
     let (ny, open) = paint_dropdown_row(
         ctx,
@@ -124,28 +125,6 @@ pub(crate) fn paint_paper_section(
     y = ny;
     if let Some(r) = open {
         state::set_pending_paper_mapping_dd(Some((r, brush.paper_mapping)));
-    }
-    if mapping.uses_dab_rotation() {
-        y = paint_checkbox_row(
-            ctx,
-            theme,
-            x,
-            content_w,
-            y,
-            core_ids::PAINTER_WATERCOLOR_PAPER_RAKE,
-            "Rake",
-            brush.paper_rake,
-        );
-        y = paint_checkbox_row(
-            ctx,
-            theme,
-            x,
-            content_w,
-            y,
-            core_ids::PAINTER_WATERCOLOR_PAPER_RANDOM,
-            "Random Angle",
-            brush.paper_random,
-        );
     }
     y = number_field::paint_num_row(
         ctx,
@@ -194,14 +173,14 @@ pub(crate) fn paint_paper_section(
         number_field::SIZE_STEP,
         2,
     );
-    // ── Depth (paper tooth strength) ──
+    // ── Tooth (how strongly the paper grain bites the wash — ex-"Depth") ──
     y = number_field::paint_num_row(
         ctx,
         theme,
         x,
         content_w,
         y,
-        "Depth",
+        "Tooth",
         core_ids::PAINTER_WATERCOLOR_PAPER_DEPTH,
         brush.paper_depth.clamp(0.0, 1.0),
         0.0,

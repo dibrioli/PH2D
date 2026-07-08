@@ -324,15 +324,13 @@ pub fn populate(store: &mut WidgetStore) {
         // press feedback + a tooltip now, and lets the future route deliver the Click without a re-register.
         ph2d_editor_core::ids::PAINTER_BRUSH_STROKE_SAVE_OBJECT,
         ph2d_editor_core::ids::PAINTER_BRUSH_TILING_RESET,
-        // Watercolor section: Wet-edges + Pigment checkboxes + the section reset + the Grain-section
-        // "Same as Paper" toggle + the Paper section reset.
+        // Watercolor section: the Enable master toggle + the section reset + the Grain-section
+        // "Same as Paper" toggle + the Paper section reset. (Pigment merged into the Mix slider; Paper
+        // Rake/Random dropped from the UI — redesign 2026-07-07.)
         ph2d_editor_core::ids::PAINTER_WATERCOLOR_ENABLE,
-        ph2d_editor_core::ids::PAINTER_WATERCOLOR_PIGMENT,
         ph2d_editor_core::ids::PAINTER_WATERCOLOR_RESET,
         ph2d_editor_core::ids::PAINTER_WATERCOLOR_GRAN_SAME,
         ph2d_editor_core::ids::PAINTER_WATERCOLOR_PAPER_RESET,
-        ph2d_editor_core::ids::PAINTER_WATERCOLOR_PAPER_RAKE,
-        ph2d_editor_core::ids::PAINTER_WATERCOLOR_PAPER_RANDOM,
     ] {
         store.register(
             id,

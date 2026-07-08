@@ -165,7 +165,16 @@ impl PainterTool {
         }
         // Water dwell: the heartbeat pours soak under the nib (parked OR moving) — a lingering wet
         // brush deepens/widens its own bleed. When the soak grew with no new dab, fold its disc into
-        // the frame dirty and recomposite anyway, so the growth is visible live while parked.
+        // the frame dirty so a composite picks it up.
+        //
+        // PARKED ⇒ recomposite NOW (the visible "bleed deepens under the held nib" — the whole point
+        // of the dwell). MOVING ⇒ do NOT force a composite here: the pointer-Move flush already
+        // recomposited this frame's window, and compositing it AGAIN for the soak DOUBLED the
+        // per-frame watercolor cost mid-gesture (frame profiler 2026-07-07: `stamps` + `tool-tick`
+        // both carried a full composite). The folded dirty carries the soak into the next composite
+        // (≤1 frame later, mid-gesture — imperceptible; a sweeping nib pours almost no local dwell),
+        // and the pen-up bake reads the full soak field regardless ⇒ the painted result is
+        // byte-identical. Airbrush/settle dabs stamped by THIS tick still composite (`stamped` above).
         if wet && let Some(r) = self.grow_wet_soak(dt_s) {
             self.paint.wet_frame_dirty = Some(match self.paint.wet_frame_dirty {
                 Some(f) => union_region(f, r),
@@ -175,7 +184,7 @@ impl PainterTool {
                 Some(c) => union_region(c, r),
                 None => r,
             });
-            stamped = true;
+            stamped |= parked;
         }
         if wet && stamped {
             self.apply_watercolor(false);

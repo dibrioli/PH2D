@@ -307,6 +307,14 @@ pub(crate) struct App {
     /// animatable system samples it for the current frame (the general
     /// timeline's live scalar side). See `render_loop::timeline_smoke`.
     pub(crate) playhead: Playhead,
+    /// The app-general timeline document + selection/history/flags (W1). The
+    /// `render_loop::timeline_bridge` drains `timeline_intents` into it, then
+    /// applies it to the scene at the Playhead. Empty until the panel (W2) or a
+    /// programmatic bind adds tracks.
+    pub(crate) timeline: ph2d_timeline::TimelineState,
+    /// Pending timeline commands (from the panel / auto-key), drained once per
+    /// frame by `render_loop::timeline_bridge`.
+    pub(crate) timeline_intents: Vec<ph2d_timeline::TimelineIntent>,
     pub(crate) last_frame: Instant,
     pub(crate) pending_resize: Option<WindowSize>,
     /// FLUID-DRAG present-mode override: the configured mode saved while a live resize streams (the

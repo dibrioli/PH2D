@@ -45,10 +45,11 @@ ph2d-node-registry-init = { path = "../../crates/ph2d-node-registry-init" }
 # timeline visual smoke (render_loop/timeline_smoke.rs, PH2D_TIMELINE_SMOKE=1) to
 # animate the sprite grid from a Clip sampled at the engine Playhead.
 ph2d-anim = { path = "../../crates/ph2d-anim" }
-# General-timeline runtime (M0): binds ph2d-anim Clips to scene entities and
+# General-timeline runtime (M0/W1): binds ph2d-anim Clips to scene entities and
 # applies them at the Playhead each frame (render_loop apply pass + the KeyB
-# demo bind). SpriteAnimation -> Transform.
-ph2d-timeline = { path = "../../crates/ph2d-timeline" }
+# demo bind), and drives the app-general TimelineDoc via apply_from_doc. The
+# `render` feature enables the sprite-opacity resolver (writes Sprite.tint[3]).
+ph2d-timeline = { path = "../../crates/ph2d-timeline", features = ["render"] }
 # Tool registry — convention-by-discovery infrastructure (PR 8 of
 # the migration plan: `docs/Migracao/2026-05-convention-by-discovery.md`).
 # `init.rs` calls `register_all()` at boot and stashes the built

@@ -141,6 +141,8 @@ impl App {
             handler: LoggingHandler::new(),
             fixed_step: FixedStep::default(),
             playhead: Playhead::default(),
+            timeline: ph2d_timeline::TimelineState::new(),
+            timeline_intents: Vec::new(),
             last_frame: Instant::now(),
             pending_resize: None,
             resize_saved_present_mode: None,

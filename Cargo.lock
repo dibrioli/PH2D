@@ -5590,6 +5590,7 @@ name = "ph2d-timeline"
 version = "0.0.0"
 dependencies = [
  "bevy_ecs",
+ "dhat",
  "ph2d-anim",
  "ph2d-core",
  "ph2d-ecs",

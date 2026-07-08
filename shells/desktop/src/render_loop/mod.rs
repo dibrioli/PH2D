@@ -52,6 +52,7 @@ pub(crate) mod painter_bridge_overlays;
 /// Live GPU preview of a brush Shape-source sprite (when not selected), split from `painter_bridge` for
 /// the HR-18 file-LOC cap.
 pub(crate) mod painter_bridge_shape_preview;
+mod timeline_bridge;
 mod timeline_smoke;
 // `pub(crate)`: `apply_layer_reparent` is called from `input_dispatch` (outside
 // render_loop) to route the W3.T3.8 layer drag-reparent through the allowlisted
@@ -578,6 +579,15 @@ impl crate::App {
             // read it. A no-op when nothing carries a SpriteAnimation; drives any
             // bound sprite (e.g. the KeyB demo) in the real scene.
             ph2d_timeline::apply_sprite_animations(sim.world_mut(), self.playhead.time());
+            // General timeline (W1): drain pending panel/auto-key intents into
+            // the app-general document, then apply it to the scene at the same
+            // Playhead. No-op while the document is empty.
+            timeline_bridge::run(
+                sim.world_mut(),
+                &mut self.timeline,
+                &mut self.playhead,
+                &mut self.timeline_intents,
+            );
             sim_extract::run(
                 dt,
                 sim,

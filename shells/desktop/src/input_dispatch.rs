@@ -310,6 +310,44 @@ impl App {
         })
     }
 
+    /// Motion Nodes M1: is the Motion Nodes tool the active tool? Gates the graph
+    /// undo/redo chord (mirror of `vector_tool_active`).
+    pub(crate) fn motion_tool_active(&self) -> bool {
+        self.gfx.as_ref().is_some_and(|g| {
+            g.tools
+                .active()
+                .is_some_and(|t| t.id() == ph2d_editor::ToolId::new("motion"))
+        })
+    }
+
+    /// Motion Nodes M1 Phase 1b-3: undo the last graph edit (Ctrl/Cmd+Z). The
+    /// `MotionHistory` stack is populated by the graph-edit intents (add / delete
+    /// / connect / disconnect = one step each; a node drag is one bracketed step).
+    /// Restoring the doc changes the cook, so re-cook via `mark_dirty`.
+    fn motion_undo(&mut self) {
+        let Some(gfx) = self.gfx.as_mut() else {
+            return;
+        };
+        let m = &mut gfx.motion;
+        if let Some(prev) = m.history.undo(&m.doc) {
+            m.doc = prev;
+            m.pump.mark_dirty();
+        }
+    }
+
+    /// Motion Nodes M1 Phase 1b-3: redo (Ctrl/Cmd+Shift+Z / Ctrl+Y). Mirror of
+    /// [`Self::motion_undo`].
+    fn motion_redo(&mut self) {
+        let Some(gfx) = self.gfx.as_mut() else {
+            return;
+        };
+        let m = &mut gfx.motion;
+        if let Some(next) = m.history.redo(&m.doc) {
+            m.doc = next;
+            m.pump.mark_dirty();
+        }
+    }
+
     /// ADR-0108: enquanto o Pen arrasta um handle, projeta o cursor pra world e
     /// puxa os handles Bézier do último vértice. No-op barato quando não há
     /// arrasto — chamado a cada CursorMoved.

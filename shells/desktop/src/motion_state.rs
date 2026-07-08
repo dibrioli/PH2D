@@ -21,10 +21,9 @@ use ph2d_nodegraph::graph::{Edge, Graph, NodeId, Pos};
 pub(crate) struct MotionState {
     /// The persistable document (the graph is the only part that cooks).
     pub(crate) doc: MotionDoc,
-    /// Snapshot undo/redo of `doc`. Held from boot; the graph-edit gestures that
-    /// push onto it land in M1 (the `GraphIntent` dispatch), so it is unread in
-    /// the M0 cook-only path.
-    #[allow(dead_code)]
+    /// Snapshot undo/redo of `doc`. The graph-edit intents push onto it (M1
+    /// Phase 1b: connect / disconnect / add / delete / drag), and Ctrl+Z/Y drive
+    /// [`MotionHistory::undo`]/[`redo`] from the shell (Phase 1b-3).
     pub(crate) history: MotionHistory,
     /// Playback transport (playhead = `tick × fixed_dt`).
     pub(crate) transport: MotionTransport,

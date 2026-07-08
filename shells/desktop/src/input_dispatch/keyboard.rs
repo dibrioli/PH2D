@@ -98,6 +98,36 @@ impl App {
             }
         }
 
+        // Motion Nodes M1 Phase 1b-3: graph undo/redo with Ctrl/Cmd, while the
+        // Motion tool is active. Returns early when handled so the same KeyZ does
+        // NOT fall through to the painter / image-edit undo in `handle_editor_key`
+        // (mirror of the Vector block above).
+        if self.motion_tool_active()
+            && state == ElementState::Pressed
+            && !repeat
+            && (self.modifiers.control_key() || self.modifiers.super_key())
+            && let PhysicalKey::Code(code) = physical_key
+        {
+            let handled = match code {
+                KeyCode::KeyZ if self.modifiers.shift_key() => {
+                    self.motion_redo();
+                    true
+                }
+                KeyCode::KeyZ => {
+                    self.motion_undo();
+                    true
+                }
+                KeyCode::KeyY => {
+                    self.motion_redo();
+                    true
+                }
+                _ => false,
+            };
+            if handled {
+                return;
+            }
+        }
+
         // Vector: Escape ends an in-progress path (it stays in the scene, open).
         // Consumed only while the Vector tool is active and the Pen is drawing,
         // so Escape otherwise falls through to widget blur.

@@ -40,6 +40,9 @@ pub struct Playhead {
     rate: f64,
     /// Whether [`Playhead::advance`] moves the position.
     playing: bool,
+    /// Optional `[start, end)` loop; while set, [`Playhead::advance`] wraps the
+    /// position back into the range (deterministically, via `rem_euclid`).
+    loop_range: Option<(f64, f64)>,
 }
 
 impl Playhead {
@@ -56,6 +59,7 @@ impl Playhead {
             },
             rate: 1.0,
             playing: true,
+            loop_range: None,
         }
     }
 
@@ -66,10 +70,18 @@ impl Playhead {
     }
 
     /// Advance the position by one fixed tick (`fixed_dt * rate`) if playing.
-    /// Call this once per simulation tick. The position never goes below `0`.
+    /// Call this once per simulation tick. The position never goes below `0`; if
+    /// a [loop range](Playhead::set_loop) is set, the position wraps back into
+    /// `[start, end)` deterministically.
     pub fn advance(&mut self) {
-        if self.playing {
-            self.time = (self.time + self.fixed_dt * self.rate).max(0.0);
+        if !self.playing {
+            return;
+        }
+        self.time = (self.time + self.fixed_dt * self.rate).max(0.0);
+        if let Some((start, end)) = self.loop_range
+            && end > start
+        {
+            self.time = start + (self.time - start).rem_euclid(end - start);
         }
     }
 
@@ -116,6 +128,28 @@ impl Playhead {
     /// Reset to `t = 0` (keeps rate + play state).
     pub fn rewind(&mut self) {
         self.time = 0.0;
+    }
+
+    /// Set the playback loop to `[start, end)` (seconds). `start` is clamped to
+    /// `>= 0`; a non-finite range or `end <= start` clears the loop instead.
+    /// While set, [`Playhead::advance`] wraps the position back into the range.
+    pub fn set_loop(&mut self, start: f64, end: f64) {
+        if start.is_finite() && end.is_finite() && end > start.max(0.0) {
+            self.loop_range = Some((start.max(0.0), end));
+        } else {
+            self.loop_range = None;
+        }
+    }
+
+    /// Clear the playback loop.
+    pub fn clear_loop(&mut self) {
+        self.loop_range = None;
+    }
+
+    /// The current loop range `[start, end)` in seconds, if any.
+    #[must_use]
+    pub fn loop_range(&self) -> Option<(f64, f64)> {
+        self.loop_range
     }
 
     /// Start advancing.
@@ -246,5 +280,53 @@ mod tests {
             b.advance();
         }
         assert_eq!(a.time().to_bits(), b.time().to_bits());
+    }
+
+    // ── W0.T3: loop range ────────────────────────────────────────────────────
+    #[test]
+    fn advance_wraps_within_loop() {
+        let mut p = Playhead::new(DT);
+        p.set_loop(0.0, 0.05); // ~3 ticks
+        for _ in 0..200 {
+            p.advance();
+        }
+        let t = p.time();
+        assert!((0.0..0.05).contains(&t), "looped time {t} left [0, 0.05)");
+    }
+
+    #[test]
+    fn loop_advance_is_deterministic() {
+        let mut a = Playhead::new(DT);
+        let mut b = Playhead::new(DT);
+        a.set_loop(0.0, 0.05);
+        b.set_loop(0.0, 0.05);
+        for _ in 0..137 {
+            a.advance();
+            b.advance();
+        }
+        assert_eq!(a.time().to_bits(), b.time().to_bits());
+    }
+
+    #[test]
+    fn set_loop_validates_and_clears() {
+        let mut p = Playhead::new(DT);
+        p.set_loop(1.0, 0.5); // end <= start → no loop
+        assert_eq!(p.loop_range(), None);
+        p.set_loop(-1.0, 2.0); // start clamped to 0
+        assert_eq!(p.loop_range(), Some((0.0, 2.0)));
+        p.clear_loop();
+        assert_eq!(p.loop_range(), None);
+    }
+
+    #[test]
+    fn loop_pulls_an_outside_position_into_range() {
+        let mut p = Playhead::new(DT);
+        p.seek(10.0);
+        p.set_loop(1.0, 2.0);
+        for _ in 0..600 {
+            p.advance();
+        }
+        let t = p.time();
+        assert!((1.0..2.0).contains(&t), "t={t} not in [1, 2)");
     }
 }

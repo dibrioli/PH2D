@@ -29,8 +29,10 @@
 
 use core::f64::consts::PI;
 
+use serde::{Deserialize, Serialize};
+
 /// The shape of an easing curve, independent of direction.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum EasingFamily {
     /// Identity (`u`). Ignores the [`EasingMode`].
     Linear,
@@ -89,7 +91,7 @@ impl EasingFamily {
 }
 
 /// The direction an easing family is applied in.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum EasingMode {
     /// Accelerate from rest (the family's base form).
     In,
@@ -105,7 +107,7 @@ impl EasingMode {
 }
 
 /// An easing preset: a [`EasingFamily`] plus an [`EasingMode`].
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Easing {
     /// The curve shape.
     pub family: EasingFamily,

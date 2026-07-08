@@ -4613,6 +4613,8 @@ dependencies = [
  "ph2d-color",
  "ph2d-core",
  "ph2d-vector-traits",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]

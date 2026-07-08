@@ -8,6 +8,7 @@
 use core::cmp::Ordering;
 
 use ph2d_vector_traits::{AnimValue, AnimationCurveSampler, LinearInterp};
+use serde::{Deserialize, Serialize};
 
 use crate::easing::Easing;
 
@@ -15,7 +16,7 @@ use crate::easing::Easing;
 ///
 /// The variant belongs to the **outgoing** key of a segment (the interpolation
 /// *leaving* that key toward the next one).
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub enum Interp {
     /// Stepped: hold the start value for the whole segment (no blend).
     Hold,
@@ -78,6 +79,48 @@ impl Interp {
             _ => true,
         }
     }
+
+    /// The bézier handles of a straight-line (`Linear`) segment — the control
+    /// points of the cubic that reproduces `y = x`. Used as the starting point
+    /// when the graph editor upgrades a non-bézier segment to `Bezier`.
+    pub const LINEAR_HANDLES: ((f64, f64), (f64, f64)) =
+        ((1.0 / 3.0, 1.0 / 3.0), (2.0 / 3.0, 2.0 / 3.0));
+
+    /// The two editable bézier handles in normalized `[0, 1]²` timing space —
+    /// `((out.x, out.y), (in.x, in.y))` = `(P1, P2)`, with the endpoints `P0 =
+    /// (0, 0)` / `P3 = (1, 1)` fixed.
+    ///
+    /// `Bezier` returns its own control points; `Linear` returns
+    /// [`Interp::LINEAR_HANDLES`]. `Hold`/`Eased` have no 2-handle representation
+    /// (`None`) — the editor paints their curve read-only and offers to convert
+    /// by dragging (which routes through [`Interp::with_out_handle`] /
+    /// [`Interp::with_in_handle`], starting from the linear handles).
+    #[must_use]
+    pub fn handles(self) -> Option<((f64, f64), (f64, f64))> {
+        match self {
+            Interp::Bezier { x1, y1, x2, y2 } => Some(((x1, y1), (x2, y2))),
+            Interp::Linear => Some(Self::LINEAR_HANDLES),
+            Interp::Hold | Interp::Eased(_) => None,
+        }
+    }
+
+    /// Replace the **out** handle (`P1`) with `(x1, y1)`, upgrading to `Bezier`.
+    /// The **in** handle is kept from [`Interp::handles`], or the linear default
+    /// when the segment had none (`Hold`/`Eased`). `x1` is clamped to `[0, 1]`.
+    #[must_use]
+    pub fn with_out_handle(self, x1: f64, y1: f64) -> Interp {
+        let (_, (x2, y2)) = self.handles().unwrap_or(Self::LINEAR_HANDLES);
+        Interp::bezier(x1, y1, x2, y2)
+    }
+
+    /// Replace the **in** handle (`P2`) with `(x2, y2)`, upgrading to `Bezier`.
+    /// The **out** handle is kept (linear default for `Hold`/`Eased`). `x2` is
+    /// clamped to `[0, 1]`.
+    #[must_use]
+    pub fn with_in_handle(self, x2: f64, y2: f64) -> Interp {
+        let ((x1, y1), _) = self.handles().unwrap_or(Self::LINEAR_HANDLES);
+        Interp::bezier(x1, y1, x2, y2)
+    }
 }
 
 /// Blend two values across a segment: `lerp(v0, v1, interp.remap(u))`.
@@ -88,11 +131,12 @@ pub(crate) fn interpolate(v0: AnimValue, v1: AnimValue, interp: Interp, u: f64) 
 }
 
 /// One control point of an [`AnimCurve`].
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct CurveKey {
     /// The curve parameter (usually in `[0, 1]`, but any finite value is valid).
     pub u: f64,
     /// The value at this point.
+    #[serde(with = "crate::anim_value_serde")]
     pub value: AnimValue,
     /// The interpolation *leaving* this point toward the next.
     pub interp: Interp,
@@ -103,10 +147,37 @@ pub struct CurveKey {
 ///
 /// Control points are kept sorted by `u`. Sampling outside the point range
 /// clamps to the first/last value (flat ends).
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(from = "AnimCurveData", into = "AnimCurveData")]
 pub struct AnimCurve {
     keys: Vec<CurveKey>,
     default: AnimValue,
+}
+
+/// Serde proxy for [`AnimCurve`] — round-trips through [`AnimCurve::new`] so the
+/// sorted-by-`u` invariant is re-established on load.
+#[derive(Serialize, Deserialize)]
+struct AnimCurveData {
+    keys: Vec<CurveKey>,
+    #[serde(with = "crate::anim_value_serde")]
+    default: AnimValue,
+}
+
+impl From<AnimCurve> for AnimCurveData {
+    fn from(c: AnimCurve) -> Self {
+        Self {
+            keys: c.keys,
+            default: c.default,
+        }
+    }
+}
+
+impl From<AnimCurveData> for AnimCurve {
+    fn from(d: AnimCurveData) -> Self {
+        let mut c = AnimCurve::new(d.keys);
+        c.default = d.default;
+        c
+    }
 }
 
 impl AnimCurve {

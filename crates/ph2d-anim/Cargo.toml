@@ -19,22 +19,23 @@ publish.workspace = true
 [dependencies]
 # The frozen animation contracts + AnimValue + the LinearInterp we reuse for
 # value interpolation (OKLCH hue short-arc lives there — never re-implemented here).
-# This is the ONLY runtime dep: the library never constructs a glam / OklchColor
-# value itself (it delegates every blend to LinearInterp), so glam + ph2d-color
-# are test-only and live under [dev-dependencies] (cargo-machete clean).
 ph2d-vector-traits = { path = "../ph2d-vector-traits" }
+# OklchColor + glam Vec2/Vec3 for the AnimValue serde shim (anim_value_serde.rs):
+# AnimValue is frozen and NOT Serialize, so this crate maps it to a serializable
+# repr and must construct those value types on deserialize.
+ph2d-color = { path = "../ph2d-color" }
+glam = "0.30"
+# serde derives for the persistable timeline data (Track/Key/Clip/Interp/Easing/
+# RationalTime). W0.T4 — HR-14 versioned save (see SCHEMA_VERSION).
+serde = { version = "1", features = ["derive"] }
 
 [dev-dependencies]
 # ph2d-core for the Playhead in the general-timeline seam test
 # (tests/playhead_drive.rs): advancing the engine Playhead drives a Clip sample.
-# core is upstream of everything (no cycle: core depends on no ph2d crate).
 ph2d-core = { path = "../ph2d-core" }
-# OklchColor + glam for building colour / Vec2 tracks in the test suite. Path
-# dep matches workspace convention (mirrors ph2d-vector-traits' own dep line).
-ph2d-color = { path = "../ph2d-color" }
-# glam 0.30 — matches ph2d-core's canonical Vec2/Vec3 pin, embedded by the
-# AnimValue::Vec2 / AnimValue::Vec3 variants the tests construct.
-glam = "0.30"
+# serde_json for the human-readable serde round-trip test (tests/serde_roundtrip.rs).
+# The real save format is the document's choice (postcard); JSON keeps the test legible.
+serde_json = "1"
 # dhat-rs for the HR-3 zero-alloc playback gate (tests/no_alloc.rs), mirroring
 # ph2d-ecs/tests/propagate_no_alloc.rs + ph2d-audio/tests/no_alloc_render.rs.
 dhat = "0.3"

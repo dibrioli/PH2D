@@ -12,6 +12,8 @@
 
 use core::cmp::Ordering;
 
+use serde::{Deserialize, Serialize};
+
 /// Denominator used by [`RationalTime::from_seconds`]: microsecond resolution.
 ///
 /// `from_seconds` is documented as *approximate* — it snaps a real number to
@@ -24,7 +26,7 @@ const SECONDS_DENOM: u32 = 1_000_000;
 /// The denominator is kept `>= 1` (a zero denominator is meaningless and is
 /// clamped to `1` at construction). Equality and ordering are by *normalized
 /// value*: `2/4` equals `1/2`.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct RationalTime {
     num: i64,
     den: u32,

@@ -6,6 +6,7 @@
 //! `ph2d-anim` app-general and isolated.
 
 use ph2d_vector_traits::{AnimValue, AttributeEvaluator};
+use serde::{Deserialize, Serialize};
 
 use crate::time::RationalTime;
 use crate::track::Track;
@@ -15,7 +16,7 @@ use crate::track::Track;
 /// `ph2d-anim` treats this as a meaningless key (HR-8: opaque handles). The
 /// consumer decides whether it names a sprite's rotation, a layer's opacity, a
 /// node param, or a vector property — the same [`Clip`] can drive anything.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct AnimTarget(u64);
 
 impl AnimTarget {
@@ -39,7 +40,7 @@ impl From<u64> for AnimTarget {
 }
 
 /// A named collection of tracks plus a total duration.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Clip {
     tracks: Vec<(AnimTarget, Track)>,
     duration: RationalTime,

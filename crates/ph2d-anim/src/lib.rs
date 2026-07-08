@@ -52,17 +52,24 @@
 //! assert_eq!(track.sample(0.5), AnimValue::Float(5.0));
 //! ```
 
+pub(crate) mod anim_value_serde;
 pub mod clip;
 pub mod curve;
 pub mod easing;
 pub mod time;
 pub mod track;
 
+/// Schema version of the persistable animation data (`Track`/`Clip`/curves).
+///
+/// The timeline document embeds this so future format changes can migrate on
+/// load (HR-14). Bump it whenever a serialized shape changes incompatibly.
+pub const SCHEMA_VERSION: u32 = 1;
+
 pub use clip::{AnimTarget, Clip};
 pub use curve::{AnimCurve, CurveKey, Interp};
 pub use easing::{Easing, EasingFamily, EasingMode};
 pub use time::RationalTime;
-pub use track::{Key, Track};
+pub use track::{Key, KeyId, Track};
 
 // Ergonomic re-export of the contracts this crate implements, so consumers can
 // import the trait + value type from one place. The traits themselves stay

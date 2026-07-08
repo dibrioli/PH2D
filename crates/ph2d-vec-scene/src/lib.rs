@@ -20,6 +20,10 @@ mod geometry;
 pub(crate) use geometry::cubic_at;
 pub use geometry::{nearest_point_on_path, retype_vertex, split_segment};
 
+/// Whole-path transforms (flip / rotate / translate / scale / smooth / sharpen)
+/// live in a sibling module (LOC cap); the `impl VecScene` block is inherent.
+mod path_ops;
+
 #[cfg(test)]
 mod tests;
 
@@ -277,124 +281,6 @@ impl VecScene {
         }
         let p = self.paths.remove(i);
         self.paths.insert(j, p);
-        true
-    }
-
-    /// Espelha o path `id` no eixo `axis`, em torno do centro da bbox dos seus
-    /// pontos de controle (âncora + 2 handles de cada vértice). Reflete os três
-    /// pontos de cada vértice — a forma inverte, a ordem/topologia dos vértices
-    /// fica igual. `false` se o id sumiu ou o path está vazio.
-    pub fn flip_path(&mut self, id: VecPathId, axis: FlipAxis) -> bool {
-        let Some(path) = self.paths.iter_mut().find(|p| p.id == id) else {
-            return false;
-        };
-        if path.verts.is_empty() {
-            return false;
-        }
-        let a = match axis {
-            FlipAxis::Horizontal => 0,
-            FlipAxis::Vertical => 1,
-        };
-        let (mut lo, mut hi) = (f64::INFINITY, f64::NEG_INFINITY);
-        for v in &path.verts {
-            for p in [v.anchor, v.in_handle, v.out_handle] {
-                lo = lo.min(p[a]);
-                hi = hi.max(p[a]);
-            }
-        }
-        let twice_center = lo + hi;
-        for v in &mut path.verts {
-            v.anchor[a] = twice_center - v.anchor[a];
-            v.in_handle[a] = twice_center - v.in_handle[a];
-            v.out_handle[a] = twice_center - v.out_handle[a];
-        }
-        true
-    }
-
-    /// Rotaciona o path `id` em 90° ([`Rotate90`]) em torno do centro da bbox dos
-    /// seus pontos de controle. Quarto-de-volta = troca de eixo + sinal (sem
-    /// transcendentais, HR-5); handles rotacionam junto, `VertexKind` preservado
-    /// (colinearidade é invariante a rotação). `false` se o id sumiu ou vazio.
-    pub fn rotate_path(&mut self, id: VecPathId, dir: Rotate90) -> bool {
-        let Some(path) = self.paths.iter_mut().find(|p| p.id == id) else {
-            return false;
-        };
-        if path.verts.is_empty() {
-            return false;
-        }
-        let (mut lo, mut hi) = ([f64::INFINITY; 2], [f64::NEG_INFINITY; 2]);
-        for v in &path.verts {
-            for p in [v.anchor, v.in_handle, v.out_handle] {
-                lo[0] = lo[0].min(p[0]);
-                lo[1] = lo[1].min(p[1]);
-                hi[0] = hi[0].max(p[0]);
-                hi[1] = hi[1].max(p[1]);
-            }
-        }
-        let (cx, cy) = ((lo[0] + hi[0]) * 0.5, (lo[1] + hi[1]) * 0.5);
-        // Screen convention (Y down): CW maps (dx,dy)→(−dy, dx); CCW →(dy, −dx).
-        let rot = |p: [f64; 2]| {
-            let (dx, dy) = (p[0] - cx, p[1] - cy);
-            match dir {
-                Rotate90::Cw => [cx - dy, cy + dx],
-                Rotate90::Ccw => [cx + dy, cy - dx],
-            }
-        };
-        for v in &mut path.verts {
-            v.anchor = rot(v.anchor);
-            v.in_handle = rot(v.in_handle);
-            v.out_handle = rot(v.out_handle);
-        }
-        true
-    }
-
-    /// Bounding box das ÂNCORAS do path `id` (`(min, max)` em world-units) — a
-    /// extensão usada pelo readout de transform (posição/tamanho). `None` se o id
-    /// sumiu ou o path está vazio.
-    pub fn path_bbox(&self, id: VecPathId) -> Option<([f64; 2], [f64; 2])> {
-        let path = self.paths.iter().find(|p| p.id == id)?;
-        let first = path.verts.first()?;
-        let (mut lo, mut hi) = (first.anchor, first.anchor);
-        for v in &path.verts {
-            lo[0] = lo[0].min(v.anchor[0]);
-            lo[1] = lo[1].min(v.anchor[1]);
-            hi[0] = hi[0].max(v.anchor[0]);
-            hi[1] = hi[1].max(v.anchor[1]);
-        }
-        Some((lo, hi))
-    }
-
-    /// Translada o path `id` por `(dx, dy)` world-units (âncora + handles de todos
-    /// os vértices). `false` se o id sumiu.
-    pub fn translate_path(&mut self, id: VecPathId, dx: f64, dy: f64) -> bool {
-        let Some(path) = self.paths.iter_mut().find(|p| p.id == id) else {
-            return false;
-        };
-        for v in &mut path.verts {
-            v.anchor = [v.anchor[0] + dx, v.anchor[1] + dy];
-            v.in_handle = [v.in_handle[0] + dx, v.in_handle[1] + dy];
-            v.out_handle = [v.out_handle[0] + dx, v.out_handle[1] + dy];
-        }
-        true
-    }
-
-    /// Escala o path `id` por `(sx, sy)` em torno de `pivot` world-units (âncora +
-    /// handles). `false` se o id sumiu.
-    pub fn scale_path(&mut self, id: VecPathId, sx: f64, sy: f64, pivot: [f64; 2]) -> bool {
-        let Some(path) = self.paths.iter_mut().find(|p| p.id == id) else {
-            return false;
-        };
-        let s = |p: [f64; 2]| {
-            [
-                pivot[0] + (p[0] - pivot[0]) * sx,
-                pivot[1] + (p[1] - pivot[1]) * sy,
-            ]
-        };
-        for v in &mut path.verts {
-            v.anchor = s(v.anchor);
-            v.in_handle = s(v.in_handle);
-            v.out_handle = s(v.out_handle);
-        }
         true
     }
 

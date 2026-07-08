@@ -125,7 +125,9 @@ pub(crate) fn apply_event(
                 || id == ids::VECTOR_ARRANGE_FLIP_H
                 || id == ids::VECTOR_ARRANGE_FLIP_V
                 || id == ids::VECTOR_ARRANGE_ROTATE_CW
-                || id == ids::VECTOR_ARRANGE_ROTATE_CCW =>
+                || id == ids::VECTOR_ARRANGE_ROTATE_CCW
+                || id == ids::VECTOR_PATH_SMOOTH
+                || id == ids::VECTOR_PATH_SHARPEN =>
         {
             seam_reset_button(host, id);
             host.bus_mut()

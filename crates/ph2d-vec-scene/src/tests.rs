@@ -508,3 +508,102 @@ fn nearest_point_on_path_finds_the_click_segment_and_t() {
     };
     assert!(nearest_point_on_path(&dot, [0.0, 0.0], 8).is_none());
 }
+
+#[test]
+fn smooth_path_curves_corners_and_sharpen_restores_straight() {
+    let mut scene = VecScene::new();
+    // A polygon is all Corner vertices with degenerate (anchor-coincident) handles.
+    let id = scene.push_path(regular_polygon([0.0, 0.0], 5.0, 5.0, 5));
+    assert!(
+        scene
+            .paths()
+            .iter()
+            .find(|p| p.id == id)
+            .unwrap()
+            .verts
+            .iter()
+            .all(|v| v.kind == VertexKind::Corner
+                && v.in_handle == v.anchor
+                && v.out_handle == v.anchor),
+        "polygon starts as straight corners"
+    );
+
+    // Smooth (1st click): every vertex becomes Smooth with non-degenerate, colinear
+    // handles; on a regular polygon the handle length is IDENTICAL at every vertex
+    // (consistent — same Catmull-Rom rule per point).
+    assert!(scene.smooth_path(id));
+    let verts = scene
+        .paths()
+        .iter()
+        .find(|p| p.id == id)
+        .unwrap()
+        .verts
+        .clone();
+    let out_len =
+        |v: &VecVertex| (v.out_handle[0] - v.anchor[0]).hypot(v.out_handle[1] - v.anchor[1]);
+    let len0 = out_len(&verts[0]);
+    for v in &verts {
+        assert_eq!(v.kind, VertexKind::Smooth);
+        let ir = [v.in_handle[0] - v.anchor[0], v.in_handle[1] - v.anchor[1]];
+        let or = [v.out_handle[0] - v.anchor[0], v.out_handle[1] - v.anchor[1]];
+        assert!(
+            ir[0].hypot(ir[1]) > 1e-6 && or[0].hypot(or[1]) > 1e-6,
+            "handles synthesized from neighbors"
+        );
+        // Colinear (opposite directions): cross ≈ 0, dot < 0.
+        assert!(
+            (ir[0] * or[1] - ir[1] * or[0]).abs() < 1e-9,
+            "handles colinear"
+        );
+        assert!(
+            ir[0] * or[0] + ir[1] * or[1] < 0.0,
+            "in/out point opposite ways"
+        );
+        assert!(
+            (out_len(v) - len0).abs() < 1e-9,
+            "every vertex smoothed by the same amount (consistent)"
+        );
+    }
+
+    // Incremental: a 2nd click GROWS the handles (rounder); anchors never move.
+    assert!(scene.smooth_path(id));
+    let len1 = out_len(&scene.paths().iter().find(|p| p.id == id).unwrap().verts[0]);
+    assert!(
+        len1 > len0 + 1e-9,
+        "2nd click grows the smoothing ({len0} → {len1})"
+    );
+    assert!(
+        scene.paths().iter().find(|p| p.id == id).unwrap().verts[0].anchor == verts[0].anchor,
+        "anchors fixed under smoothing"
+    );
+
+    // Converges: repeated clicks saturate (round) and then change nothing.
+    let mut clicks = 0;
+    while scene.smooth_path(id) {
+        clicks += 1;
+        assert!(clicks < 20, "smoothing must saturate, not grow forever");
+    }
+
+    // Re-smooth after saturation is a no-op.
+    assert!(!scene.smooth_path(id));
+
+    // Sharpen: back to straight corners (anchors preserved).
+    assert!(scene.sharpen_path(id));
+    let after = scene.paths().iter().find(|p| p.id == id).unwrap();
+    assert!(
+        after
+            .verts
+            .iter()
+            .zip(&verts)
+            .all(|(a, b)| a.anchor == b.anchor),
+        "anchors preserved through sharpen"
+    );
+    assert!(after.verts.iter().all(|v| v.kind == VertexKind::Corner
+        && v.in_handle == v.anchor
+        && v.out_handle == v.anchor));
+    // Idempotent: sharpening again changes nothing.
+    assert!(!scene.sharpen_path(id));
+    // Missing id.
+    assert!(!scene.smooth_path(999));
+    assert!(!scene.sharpen_path(999));
+}

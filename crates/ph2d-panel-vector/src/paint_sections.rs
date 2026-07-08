@@ -558,12 +558,24 @@ impl BodyCtx<'_> {
             ],
             y,
         );
-        self.row2(
+        y = self.row2(
             z_w,
             z_gap,
             [
                 (ids::VECTOR_ARRANGE_ROTATE_CW, "Rotate CW"),
                 (ids::VECTOR_ARRANGE_ROTATE_CCW, "Rotate CCW"),
+            ],
+            y,
+        );
+
+        // Path — smooth / sharpen ALL vertices of the selected path.
+        y = self.section_label("Path", y);
+        self.row2(
+            z_w,
+            z_gap,
+            [
+                (ids::VECTOR_PATH_SMOOTH, "Smooth"),
+                (ids::VECTOR_PATH_SHARPEN, "Sharpen"),
             ],
             y,
         )

@@ -156,3 +156,11 @@ pub const VECTOR_TRANSFORM_X: NodeId = hash_node_id("vector.transform.x");
 pub const VECTOR_TRANSFORM_Y: NodeId = hash_node_id("vector.transform.y");
 pub const VECTOR_TRANSFORM_W: NodeId = hash_node_id("vector.transform.w");
 pub const VECTOR_TRANSFORM_H: NodeId = hash_node_id("vector.transform.h");
+
+// ── Path shape (ADR-0108 — whole-path handle ops) ────────────────────────────
+// One-shot buttons acting on ALL vertices of the SELECTED path (document commands
+// via the shell drain, mirror of Arrange). Smooth = auto-colinear handles from
+// neighbors (Inkscape 1/3, curve-ifies a polygon/hand path); Sharpen = collapse
+// handles onto the anchor (straight-segment corners).
+pub const VECTOR_PATH_SMOOTH: NodeId = hash_node_id("vector.path.smooth");
+pub const VECTOR_PATH_SHARPEN: NodeId = hash_node_id("vector.path.sharpen");

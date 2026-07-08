@@ -288,6 +288,47 @@ pub(crate) fn vec_rotate_for_id(id: ph2d_editor::NodeId) -> Option<ph2d_vec_scen
     }
 }
 
+/// Whole-path handle op (panel "Smooth" / "Sharpen" buttons).
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub(crate) enum VecPathShapeOp {
+    Smooth,
+    Sharpen,
+}
+
+/// Smooth / sharpen ALL vertices of the SELECTED path (panel Path buttons),
+/// recording ONE undo step iff it changed. Free fn (mirror of [`apply_vec_flip`]).
+pub(crate) fn apply_vec_path_shape(
+    scene: &mut ph2d_vec_scene::VecScene,
+    history: &mut ph2d_vec_edit::History,
+    pen: &ph2d_vec_edit::PenTool,
+    op: VecPathShapeOp,
+) {
+    let Some(sel) = pen.selected() else {
+        eprintln!("[ph2d-vec] path-shape: nenhum path selecionado");
+        return;
+    };
+    let pre = scene.clone();
+    let changed = match op {
+        VecPathShapeOp::Smooth => scene.smooth_path(sel),
+        VecPathShapeOp::Sharpen => scene.sharpen_path(sel),
+    };
+    if changed {
+        history.push_undo(pre);
+    }
+}
+
+/// Map a Vector-panel Path button `NodeId` to its [`VecPathShapeOp`] (`None`
+/// otherwise). Pure — unit-tested; called from the render_loop drain.
+pub(crate) fn vec_path_shape_for_id(id: ph2d_editor::NodeId) -> Option<VecPathShapeOp> {
+    if id == ph2d_editor::ids::VECTOR_PATH_SMOOTH {
+        Some(VecPathShapeOp::Smooth)
+    } else if id == ph2d_editor::ids::VECTOR_PATH_SHARPEN {
+        Some(VecPathShapeOp::Sharpen)
+    } else {
+        None
+    }
+}
+
 /// Which numeric-transform field a Vector-panel edit targets on the selected
 /// path's anchor bbox (X/Y = top-left, W/H = size).
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -2030,9 +2071,10 @@ impl App {
 #[cfg(test)]
 mod tests {
     use super::{
-        VecTransformField, apply_vec_transform, shape_kind_for_mode, shape_up_consumes,
-        vec_bool_op_for_id, vec_flip_for_id, vec_reorder_for_id, vec_rotate_for_id,
-        vec_transform_field_for_id, vec_vertex_kind_for_id,
+        VecPathShapeOp, VecTransformField, apply_vec_path_shape, apply_vec_transform,
+        shape_kind_for_mode, shape_up_consumes, vec_bool_op_for_id, vec_flip_for_id,
+        vec_path_shape_for_id, vec_reorder_for_id, vec_rotate_for_id, vec_transform_field_for_id,
+        vec_vertex_kind_for_id,
     };
     use ph2d_tool_vector::DrawMode;
     use ph2d_vec_boolean::BoolOp;
@@ -2158,6 +2200,46 @@ mod tests {
         let (lo, hi) = scene.path_bbox(id).unwrap();
         assert!((hi[0] - lo[0] - 20.0).abs() < 1e-9, "W set to 20");
         assert!((lo[0] - 5.0).abs() < 1e-9, "min x pinned during scale");
+    }
+
+    #[test]
+    fn path_shape_ids_map_and_apply_smooths_then_sharpens() {
+        use ph2d_vec_scene::{VertexKind, regular_polygon};
+        assert_eq!(
+            vec_path_shape_for_id(ph2d_editor::ids::VECTOR_PATH_SMOOTH),
+            Some(VecPathShapeOp::Smooth)
+        );
+        assert_eq!(
+            vec_path_shape_for_id(ph2d_editor::ids::VECTOR_PATH_SHARPEN),
+            Some(VecPathShapeOp::Sharpen)
+        );
+        assert_eq!(
+            vec_path_shape_for_id(ph2d_editor::ids::VECTOR_ARRANGE_FLIP_H),
+            None
+        );
+
+        let mut scene = ph2d_vec_scene::VecScene::new();
+        let id = scene.push_path(regular_polygon([0.0, 0.0], 5.0, 5.0, 5));
+        let mut hist = ph2d_vec_edit::History::new();
+        let mut pen = ph2d_vec_edit::PenTool::new();
+        pen.select(Some(id));
+
+        apply_vec_path_shape(&mut scene, &mut hist, &pen, VecPathShapeOp::Smooth);
+        assert!(
+            scene.paths()[0]
+                .verts
+                .iter()
+                .all(|v| v.kind == VertexKind::Smooth),
+            "smooth button curves every vertex"
+        );
+        apply_vec_path_shape(&mut scene, &mut hist, &pen, VecPathShapeOp::Sharpen);
+        assert!(
+            scene.paths()[0]
+                .verts
+                .iter()
+                .all(|v| v.kind == VertexKind::Corner && v.in_handle == v.anchor),
+            "sharpen button flattens every vertex"
+        );
     }
 
     #[test]

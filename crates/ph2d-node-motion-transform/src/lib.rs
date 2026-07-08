@@ -111,8 +111,40 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
             silhouette: ph2d_node_registry::NodeSilhouette::Rect,
         },
     );
+    // M1.P1 — param rows: uniform scale + signed offsets.
+    reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
     Ok(())
 }
+
+use ph2d_node_registry::{ParamUiHint, ParamWidget};
+
+/// Param UI hints (M1.P1) for the transform rows.
+static PARAM_HINTS: &[ParamUiHint] = &[
+    ParamUiHint {
+        param: "scale",
+        label: "Scale",
+        min: 0.0,
+        max: 5.0,
+        step: 0.05,
+        widget: ParamWidget::Slider,
+    },
+    ParamUiHint {
+        param: "offset_x",
+        label: "Offset X",
+        min: -10.0,
+        max: 10.0,
+        step: 0.1,
+        widget: ParamWidget::Slider,
+    },
+    ParamUiHint {
+        param: "offset_y",
+        label: "Offset Y",
+        min: -10.0,
+        max: 10.0,
+        step: 0.1,
+        widget: ParamWidget::Slider,
+    },
+];
 
 #[cfg(test)]
 mod tests {

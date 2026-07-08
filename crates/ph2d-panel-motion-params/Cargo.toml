@@ -18,3 +18,5 @@ authors.workspace = true
 [dependencies]
 ph2d-editor-core = { path = "../ph2d-editor-core" }
 ph2d-a11y = { path = "../ph2d-a11y" }
+# Row layout tokens (ROW_H_PX / Spacing) for the param rows (M1.P1).
+ph2d-tokens = { path = "../ph2d-tokens" }

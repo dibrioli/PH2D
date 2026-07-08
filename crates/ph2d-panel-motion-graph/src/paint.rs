@@ -79,6 +79,10 @@ pub(crate) fn paint(state: &mut MotionGraphPanelState, ctx: &mut PaintCtx) {
     // Fold this frame's gestures/zoom/keys into the state before drawing.
     crate::interact::process(state, ctx, rect, &snap);
 
+    // Publish the selection so the shell bridge can build the params snapshot for
+    // the selected node (M1.P1). Cheap: a small Vec, only while the tool is up.
+    crate::snapshot::set_graph_selection(state.selected.iter().copied().collect());
+
     let view = View::new(rect, state.view);
 
     // Background + grid (Fase A opaque cover + orientation grid).

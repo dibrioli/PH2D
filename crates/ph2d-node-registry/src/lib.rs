@@ -17,7 +17,7 @@ use ph2d_nodegraph::node::{NodeManifest, NodeOp, NodeTypeId};
 use std::collections::BTreeMap;
 
 mod ui;
-pub use ui::{NodeSilhouette, NodeUiCategory, NodeUiManifest};
+pub use ui::{NodeSilhouette, NodeUiCategory, NodeUiManifest, ParamUiHint, ParamWidget};
 
 /// A registered set of node operations, keyed by their stable type id.
 /// Deterministic iteration (`BTreeMap`, ADR-0022 / HR-5).
@@ -28,6 +28,10 @@ pub struct NodeRegistry {
     /// separate so the frozen `NodeManifest` is untouched. A node registers its
     /// entry in `register` (alongside its op).
     ui: BTreeMap<NodeTypeId, NodeUiManifest>,
+    /// M1.P1 — per-type param UI hints (editable range + widget + label for each
+    /// declared `ParamSpec`), keyed the same way. A `&'static` slice per type so
+    /// registration is a single insert; the params panel reads it to build rows.
+    param_ui: BTreeMap<NodeTypeId, &'static [ParamUiHint]>,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -79,6 +83,18 @@ impl NodeRegistry {
     /// The UI metadata for `id`, if registered (M1.R1).
     pub fn ui_manifest(&self, id: NodeTypeId) -> Option<&NodeUiManifest> {
         self.ui.get(&id)
+    }
+
+    /// Register a node type's param UI hints (M1.P1). Additive; last write wins.
+    pub fn register_param_ui(&mut self, id: NodeTypeId, hints: &'static [ParamUiHint]) {
+        self.param_ui.insert(id, hints);
+    }
+
+    /// The param UI hints for `id`, if registered (M1.P1). The params panel pairs
+    /// each with the manifest's `ParamSpec` (falling back to a plain slider when a
+    /// param has no hint).
+    pub fn param_ui(&self, id: NodeTypeId) -> Option<&'static [ParamUiHint]> {
+        self.param_ui.get(&id).copied()
     }
 }
 
@@ -162,6 +178,27 @@ mod tests {
         assert_eq!(reg.len(), 2);
         assert!(reg.resolve(SRC_MAN.id).is_some());
         assert!(reg.resolve(NodeTypeId::of("nope")).is_none());
+    }
+
+    #[test]
+    fn param_ui_hints_round_trip() {
+        static HINTS: &[ParamUiHint] = &[ParamUiHint {
+            param: "rows",
+            label: "Rows",
+            min: 1.0,
+            max: 20.0,
+            step: 1.0,
+            widget: ParamWidget::IntSlider,
+        }];
+        let mut reg = NodeRegistry::new();
+        reg.register(Box::new(Src)).unwrap();
+        assert!(reg.param_ui(SRC_MAN.id).is_none()); // none until registered
+        reg.register_param_ui(SRC_MAN.id, HINTS);
+        let got = reg.param_ui(SRC_MAN.id).expect("registered");
+        assert_eq!(got.len(), 1);
+        assert_eq!(got[0].param, "rows");
+        assert!(got[0].widget.is_integer());
+        assert!(reg.param_ui(NodeTypeId::of("nope")).is_none());
     }
 
     #[test]

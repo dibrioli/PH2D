@@ -104,8 +104,40 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
             silhouette: ph2d_node_registry::NodeSilhouette::TrapezoidDown,
         },
     );
+    // M1.P1 — param rows: whole-number row/column counts, continuous spacing.
+    reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
     Ok(())
 }
+
+use ph2d_node_registry::{ParamUiHint, ParamWidget};
+
+/// Param UI hints (M1.P1) for the grid rows (editable range + widget + label).
+static PARAM_HINTS: &[ParamUiHint] = &[
+    ParamUiHint {
+        param: "rows",
+        label: "Rows",
+        min: 1.0,
+        max: 20.0,
+        step: 1.0,
+        widget: ParamWidget::IntSlider,
+    },
+    ParamUiHint {
+        param: "cols",
+        label: "Columns",
+        min: 1.0,
+        max: 20.0,
+        step: 1.0,
+        widget: ParamWidget::IntSlider,
+    },
+    ParamUiHint {
+        param: "spacing",
+        label: "Spacing",
+        min: 0.0,
+        max: 10.0,
+        step: 0.1,
+        widget: ParamWidget::Slider,
+    },
+];
 
 #[cfg(test)]
 mod tests {

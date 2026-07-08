@@ -57,3 +57,49 @@ pub struct NodeUiManifest {
     pub category: NodeUiCategory,
     pub silhouette: NodeSilhouette,
 }
+
+/// Which widget a param row renders in the params panel (M1.P1). The frozen
+/// [`ph2d_nodegraph::node::ParamSpec`] only carries `{name, default: f32}`, so
+/// the editable range + control + label live here as additive side-metadata.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum ParamWidget {
+    /// Continuous float slider.
+    Slider,
+    /// Whole-number slider — the chip rounds to an integer (count / index).
+    IntSlider,
+    /// Angle (rendered like [`Slider`](ParamWidget::Slider) for now; a dial is a
+    /// later refinement).
+    Angle,
+    /// On/off toggle (0.0 / 1.0). Rendered as a slider clamped to `0..1` in v1.
+    Toggle,
+    /// Random seed — an integer with no meaningful drag range (like
+    /// [`IntSlider`](ParamWidget::IntSlider) in v1; a re-roll affordance is a
+    /// later refinement).
+    Seed,
+}
+
+impl ParamWidget {
+    /// Whether the chip displays / commits whole numbers (drives the
+    /// integer-snapping link in the params panel).
+    #[must_use]
+    pub fn is_integer(self) -> bool {
+        matches!(self, ParamWidget::IntSlider | ParamWidget::Seed)
+    }
+}
+
+/// UI hint for one declared param (M1.P1) — the editable range, step, control,
+/// and English label for a `ParamSpec` of some node type. Registered as an
+/// additive side-table on [`super::NodeRegistry`] (keyed by `NodeTypeId`),
+/// entirely outside the frozen `NodeManifest`. A param with no hint falls back
+/// to a plain [`ParamWidget::Slider`] over a default range in the panel.
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub struct ParamUiHint {
+    /// The `ParamSpec::name` this hint annotates.
+    pub param: &'static str,
+    /// English, result-named label (HR-15).
+    pub label: &'static str,
+    pub min: f32,
+    pub max: f32,
+    pub step: f32,
+    pub widget: ParamWidget,
+}

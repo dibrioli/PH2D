@@ -109,6 +109,21 @@ pub(super) fn dispatch(
         );
     }
 
+    // ── Params panel (M1.P1): apply the selected node's param edits, then
+    // publish its params snapshot ────────────────────────────────────────────
+    // Needs BOTH panels: the selection comes from the graph panel, the rows go
+    // to the params panel. Apply BEFORE the cook so a param change shows this
+    // frame; publish the freshly-mutated doc so the panel reflects it.
+    #[cfg(all(feature = "panel-motion-graph", feature = "panel-motion-params"))]
+    {
+        if motion_active {
+            apply_param_intents(motion, &hero.store);
+            ph2d_panel_motion_params::set_current_params(build_params_snapshot(motion));
+        } else {
+            ph2d_panel_motion_params::set_current_params(None);
+        }
+    }
+
     if !motion_active {
         return;
     }
@@ -290,4 +305,112 @@ fn build_catalog(
         .collect();
     v.sort_by(|a, b| (a.category as u8, a.display).cmp(&(b.category as u8, b.display)));
     v
+}
+
+/// Apply the params panel's queued [`SetParam`](ph2d_panel_motion_params::MotionParamIntent)
+/// edits to the selected node, bracketed into undo steps (M1.P1). A whole slider
+/// drag is ONE step: the bracket opens when the panel reports an active
+/// interaction (`any_param_editing`) and commits on release; a discrete typed
+/// commit (no active interaction) is wrapped in its own step. Each applied edit
+/// re-cooks (`mark_dirty`). A stale intent whose node no longer exists is
+/// dropped (the intent is node+param tagged).
+#[cfg(all(feature = "panel-motion-graph", feature = "panel-motion-params"))]
+fn apply_param_intents(motion: &mut MotionState, store: &ph2d_editor::interaction::WidgetStore) {
+    use ph2d_nodegraph::graph::NodeId;
+    use ph2d_panel_motion_params::MotionParamIntent;
+    use std::sync::atomic::{AtomicBool, Ordering};
+    static PARAM_EDITING: AtomicBool = AtomicBool::new(false);
+
+    let editing = ph2d_panel_motion_params::any_param_editing(store);
+    let was = PARAM_EDITING.swap(editing, Ordering::Relaxed);
+    // Open the drag bracket on the false→true edge.
+    if editing && !was {
+        motion.history.begin(&motion.doc);
+    }
+    let intents = ph2d_panel_motion_params::drain_param_intents();
+    if !intents.is_empty() {
+        // A discrete (typed) commit arrives with no bracket open → its own step.
+        let discrete = !editing && !was;
+        if discrete {
+            motion.history.begin(&motion.doc);
+        }
+        for MotionParamIntent::SetParam { node, param, value } in intents {
+            let nid = NodeId(node);
+            if motion.doc.graph.node(nid).is_some() {
+                motion.doc.graph.set_param(nid, param, value as f32);
+                motion.pump.mark_dirty();
+            }
+        }
+        if discrete {
+            motion.history.commit_if_changed(&motion.doc);
+        }
+    }
+    // Close the drag bracket on the true→false edge (one step for the drag).
+    if !editing && was {
+        motion.history.commit_if_changed(&motion.doc);
+    }
+}
+
+/// Build the selected node's [`ParamsSnapshot`](ph2d_panel_motion_params::ParamsSnapshot)
+/// (M1.P1): the display title + one row per declared `ParamSpec`, pairing each
+/// with its `ParamUiHint` (range / widget / label) and its current value (the
+/// per-instance override, else the manifest default). `None` unless exactly one
+/// node is selected and resolvable.
+#[cfg(all(feature = "panel-motion-graph", feature = "panel-motion-params"))]
+fn build_params_snapshot(motion: &MotionState) -> Option<ph2d_panel_motion_params::ParamsSnapshot> {
+    use ph2d_nodegraph::cook::OpResolver;
+    use ph2d_nodegraph::graph::NodeId;
+    use ph2d_panel_motion_params::{ParamRow, ParamsSnapshot};
+
+    let selection = ph2d_panel_motion_graph::current_graph_selection();
+    let [only] = selection[..] else {
+        return None; // params edit a single node (multi-select is a later step)
+    };
+    let nid = NodeId(only);
+    let inst = motion.doc.graph.node(nid)?;
+    let type_id = inst.type_id();
+    let manifest = motion.registry.resolve(type_id)?.manifest();
+    let title = motion
+        .registry
+        .ui_manifest(type_id)
+        .map(|u| u.display_name.to_string())
+        .unwrap_or_else(|| inst.type_name.clone());
+    let hints = motion.registry.param_ui(type_id);
+    let overrides = motion.doc.graph.node_param_overrides(nid);
+    let rows = manifest
+        .params
+        .iter()
+        .map(|spec| {
+            let value = overrides
+                .and_then(|m| m.get(spec.name))
+                .copied()
+                .unwrap_or(spec.default) as f64;
+            match hints.and_then(|hs| hs.iter().find(|h| h.param == spec.name)) {
+                Some(h) => ParamRow {
+                    name: spec.name,
+                    label: h.label.to_string(),
+                    value,
+                    min: f64::from(h.min),
+                    max: f64::from(h.max),
+                    step: f64::from(h.step),
+                    integer: h.widget.is_integer(),
+                },
+                // No hint → a plain float slider over a neutral range.
+                None => ParamRow {
+                    name: spec.name,
+                    label: spec.name.to_string(),
+                    value,
+                    min: 0.0,
+                    max: (value * 4.0).max(10.0),
+                    step: 0.1,
+                    integer: false,
+                },
+            }
+        })
+        .collect();
+    Some(ParamsSnapshot {
+        node: only,
+        title,
+        rows,
+    })
 }

@@ -120,6 +120,20 @@ thread_local! {
     static CURRENT: RefCell<Option<GraphViewSnapshot>> = const { RefCell::new(None) };
     static INTENTS: RefCell<Vec<GraphIntent>> = const { RefCell::new(Vec::new()) };
     static CATALOG: RefCell<Vec<NodeChoice>> = const { RefCell::new(Vec::new()) };
+    static SELECTION: RefCell<Vec<u32>> = const { RefCell::new(Vec::new()) };
+}
+
+/// Publish the current node selection (panel `paint` → shell bridge, M1.P1). The
+/// bridge reads it to build the selected node's params snapshot for the params
+/// panel. Written every frame from the ephemeral `state.selected`.
+pub fn set_graph_selection(selection: Vec<u32>) {
+    SELECTION.with(|c| *c.borrow_mut() = selection);
+}
+
+/// Read the published node selection (shell bridge). Empty when nothing is
+/// selected or the Motion tool is inactive.
+pub fn current_graph_selection() -> Vec<u32> {
+    SELECTION.with(|c| c.borrow().clone())
 }
 
 /// Publish the addable-node catalog (shell bridge → panel). Set once on tool

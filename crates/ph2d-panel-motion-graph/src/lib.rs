@@ -20,7 +20,8 @@ mod state;
 
 pub use snapshot::{
     GraphEdgeView, GraphIntent, GraphNodeView, GraphViewSnapshot, NodeChoice, PortView,
-    drain_intents, set_current_motion_graph, set_current_node_catalog, snapshot_from,
+    current_graph_selection, drain_intents, set_current_motion_graph, set_current_node_catalog,
+    set_graph_selection, snapshot_from,
 };
 pub use state::MotionGraphPanelState;
 

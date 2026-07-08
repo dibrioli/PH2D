@@ -163,6 +163,10 @@ ph2d-panel-vector = { path = "../../crates/ph2d-panel-vector", optional = true }
 # graph view via `ph2d_panel_motion_graph::set_current_motion_graph` (M1.E10),
 # so the shell needs a direct optional dep beyond the registry-init feature.
 ph2d-panel-motion-graph = { path = "../../crates/ph2d-panel-motion-graph", optional = true }
+# Motion params panel — the bridge publishes the selected node's params
+# (`set_current_params`) + drains its edits (`drain_param_intents`) + reads its
+# widget states for the undo bracket (M1.P1), so a direct optional dep is needed.
+ph2d-panel-motion-params = { path = "../../crates/ph2d-panel-motion-params", optional = true }
 # Painter layers panel — typed panel listing the LayerStack (thumb + name +
 # visibility + opacity + blend) + adjustment-layer editors. Right-docked
 # (Inspector slot takeover) when the Painter (layers + effects) tool is active.
@@ -287,7 +291,7 @@ panel-painter-layers = ["ph2d-panel-registry-init/panel-painter-layers", "dep:ph
 # panel-side static channel (the document lives in `MotionState`, not the panel),
 # so the shell needs only the registry-init feature, not a direct crate dep.
 panel-motion-graph   = ["ph2d-panel-registry-init/panel-motion-graph", "dep:ph2d-panel-motion-graph"]
-panel-motion-params  = ["ph2d-panel-registry-init/panel-motion-params"]
+panel-motion-params  = ["ph2d-panel-registry-init/panel-motion-params", "dep:ph2d-panel-motion-params"]
 # Vector Style panel + its render_loop bridge (`vector_bridge` publishes the
 # snapshot via `ph2d_panel_vector::set_current_vector_style` + reads the OKLCH
 # picker back into the tool), so the shell needs the direct dep too.

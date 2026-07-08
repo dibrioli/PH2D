@@ -154,8 +154,40 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
             silhouette: ph2d_node_registry::NodeSilhouette::Rect,
         },
     );
+    // M1.P1 — param rows: whole-number copy count + signed per-copy step.
+    reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
     Ok(())
 }
+
+use ph2d_node_registry::{ParamUiHint, ParamWidget};
+
+/// Param UI hints (M1.P1) for the clone rows.
+static PARAM_HINTS: &[ParamUiHint] = &[
+    ParamUiHint {
+        param: "count",
+        label: "Count",
+        min: 1.0,
+        max: 32.0,
+        step: 1.0,
+        widget: ParamWidget::IntSlider,
+    },
+    ParamUiHint {
+        param: "step_x",
+        label: "Step X",
+        min: -10.0,
+        max: 10.0,
+        step: 0.1,
+        widget: ParamWidget::Slider,
+    },
+    ParamUiHint {
+        param: "step_y",
+        label: "Step Y",
+        min: -10.0,
+        max: 10.0,
+        step: 0.1,
+        widget: ParamWidget::Slider,
+    },
+];
 
 #[cfg(test)]
 mod tests {

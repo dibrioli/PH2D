@@ -473,11 +473,13 @@ impl AudioRenderer {
         // 3b. Mix the editor preview voice into the master (so it is heard and
         //     metered). Paused → hold position, render nothing. Publish the
         //     playback frame + active flag for the transport playhead.
-        if *preview_active && !*preview_paused && !preview.is_free() {
-            if let Some(done) = preview.render_add(master, frames) {
-                on_finished(done);
-                *preview_active = false;
-            }
+        if *preview_active
+            && !*preview_paused
+            && !preview.is_free()
+            && let Some(done) = preview.render_add(master, frames)
+        {
+            on_finished(done);
+            *preview_active = false;
         }
         meter.store_preview(preview.cursor_frame(), *preview_active);
 

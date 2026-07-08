@@ -324,6 +324,7 @@ pub(crate) enum VecFillKind {
     Solid,
     Linear,
     Radial,
+    MultiPoint,
 }
 
 /// Map a Fill-type button `NodeId` to its [`VecFillKind`] (`None` otherwise).
@@ -334,9 +335,45 @@ pub(crate) fn vec_fill_kind_for_id(id: ph2d_editor::NodeId) -> Option<VecFillKin
         Some(VecFillKind::Linear)
     } else if id == ph2d_editor::ids::VECTOR_FILL_KIND_RADIAL {
         Some(VecFillKind::Radial)
+    } else if id == ph2d_editor::ids::VECTOR_FILL_KIND_MULTI {
+        Some(VecFillKind::MultiPoint)
     } else {
         None
     }
+}
+
+/// Component-wise average of two colours (alpha too).
+fn avg_color(a: ph2d_vec_scene::Rgba8, b: ph2d_vec_scene::Rgba8) -> ph2d_vec_scene::Rgba8 {
+    let m = |x: u8, y: u8| ((u16::from(x) + u16::from(y)) / 2) as u8;
+    ph2d_vec_scene::Rgba8::new(m(a.r, b.r), m(a.g, b.g), m(a.b, b.b), m(a.a, b.a))
+}
+
+/// Multi-point set to use when switching to a freeform fill: reuse existing points,
+/// else seed 3 spread points `[fill, contrast, average]` across the bbox `(lo,hi)`.
+fn gradient_points_from(
+    fill: &Option<ph2d_vec_scene::Paint>,
+    lo: [f64; 2],
+    hi: [f64; 2],
+) -> Vec<ph2d_vec_scene::GradientPoint> {
+    use ph2d_vec_scene::{GradientPoint, Paint};
+    if let Some(Paint::MultiPoint { points }) = fill
+        && !points.is_empty()
+    {
+        return points.clone();
+    }
+    let base = fill
+        .as_ref()
+        .map_or(ph2d_vec_scene::Rgba8::new(255, 255, 255, 255), |p| {
+            p.primary_color()
+        });
+    let contrast = contrast_color(base);
+    let (w, h) = (hi[0] - lo[0], hi[1] - lo[1]);
+    let at = |fx: f64, fy: f64| [lo[0] + w * fx, lo[1] + h * fy];
+    vec![
+        GradientPoint::new(at(0.25, 0.25), base, 1.0),
+        GradientPoint::new(at(0.75, 0.75), contrast, 1.0),
+        GradientPoint::new(at(0.75, 0.25), avg_color(base, contrast), 1.0),
+    ]
 }
 
 /// A luminance-opposite (black/white, alpha preserved) — the second stop seeded
@@ -440,6 +477,12 @@ pub(crate) fn apply_vec_set_fill_kind(
                 radius: 0.5 * (hi[0] - lo[0]).hypot(hi[1] - lo[1]),
             },
         },
+        VecFillKind::MultiPoint => match &cur {
+            Some(p @ Paint::MultiPoint { .. }) => p.clone(),
+            _ => Paint::MultiPoint {
+                points: gradient_points_from(&cur, lo, hi),
+            },
+        },
     };
     if cur.as_ref() == Some(&new_fill) {
         return;
@@ -486,6 +529,57 @@ pub(crate) fn apply_vec_set_grad_angle(
         *e = end;
         history.push_undo(pre);
     }
+}
+
+/// Add a multi-point gradient point at the selected path's bbox center (colour =
+/// the first existing point). No-op unless the fill is MultiPoint. One undo step.
+pub(crate) fn apply_vec_grad_add_point(
+    scene: &mut ph2d_vec_scene::VecScene,
+    history: &mut ph2d_vec_edit::History,
+    pen: &ph2d_vec_edit::PenTool,
+) {
+    use ph2d_vec_scene::{GradientPoint, Paint};
+    let Some(sel) = pen.selected() else {
+        return;
+    };
+    let Some((lo, hi)) = scene.path_bbox(sel) else {
+        return;
+    };
+    let center = [(lo[0] + hi[0]) * 0.5, (lo[1] + hi[1]) * 0.5];
+    let pre = scene.clone();
+    if let Some(Paint::MultiPoint { points }) = scene.path_mut(sel).and_then(|p| p.fill.as_mut()) {
+        let col = points
+            .first()
+            .map_or(ph2d_vec_scene::Rgba8::new(255, 255, 255, 255), |p| p.color);
+        points.push(GradientPoint::new(center, col, 1.0));
+        history.push_undo(pre);
+    }
+}
+
+/// Remove a multi-point gradient point (`selected`, else the last), keeping at
+/// least one. Returns the new selection (`None`). One undo step iff it removed.
+pub(crate) fn apply_vec_grad_remove_point(
+    scene: &mut ph2d_vec_scene::VecScene,
+    history: &mut ph2d_vec_edit::History,
+    pen: &ph2d_vec_edit::PenTool,
+    selected: Option<usize>,
+) -> Option<usize> {
+    use ph2d_vec_scene::Paint;
+    let Some(sel) = pen.selected() else {
+        return selected;
+    };
+    let pre = scene.clone();
+    if let Some(Paint::MultiPoint { points }) = scene.path_mut(sel).and_then(|p| p.fill.as_mut())
+        && points.len() > 1
+    {
+        let idx = selected
+            .filter(|&i| i < points.len())
+            .unwrap_or(points.len() - 1);
+        points.remove(idx);
+        history.push_undo(pre);
+        return None;
+    }
+    selected
 }
 
 /// Rotate the SELECTED path by `degrees` (panel Transform Angle field — a
@@ -1118,6 +1212,60 @@ impl App {
             .on_drag(&mut gfx.vec_scene, [w[0] as f64, w[1] as f64])
     }
 
+    /// Gradient group 3b: hit-test the selected path's multi-point gradient points
+    /// (screen `pos`) → the index within ~9 px (world-scaled). `None` unless the
+    /// Vector tool is active and the selected path has a MultiPoint fill.
+    fn vec_grad_hit(&self, pos: (f32, f32)) -> Option<usize> {
+        if !self.vector_tool_active() {
+            return None;
+        }
+        let gfx = self.gfx.as_ref()?;
+        let sel = self.vec_pen.selected()?;
+        let path = gfx.vec_scene.paths().iter().find(|p| p.id == sel)?;
+        let ph2d_vec_scene::Paint::MultiPoint { points } = path.fill.as_ref()? else {
+            return None;
+        };
+        let win = gfx.surface.size();
+        let w = gfx.camera.screen_to_world(pos, win);
+        let (wx, wy) = (w[0] as f64, w[1] as f64);
+        let w0 = gfx.camera.screen_to_world((0.0, 0.0), win);
+        let w1 = gfx.camera.screen_to_world((1.0, 0.0), win);
+        let px = (((w1[0] - w0[0]).powi(2) + (w1[1] - w0[1]).powi(2)).sqrt()) as f64;
+        let thresh = (9.0 * px).powi(2);
+        let mut best: Option<(usize, f64)> = None;
+        for (i, gp) in points.iter().enumerate() {
+            let d2 = (wx - gp.pos[0]).powi(2) + (wy - gp.pos[1]).powi(2);
+            if d2 <= thresh && best.is_none_or(|(_, b)| d2 < b) {
+                best = Some((i, d2));
+            }
+        }
+        best.map(|(i, _)| i)
+    }
+
+    /// Gradient group 3b: while a multi-point gradient point is grabbed, move it to
+    /// the cursor's world position. No-op unless a grad drag is live.
+    fn vec_grad_drag_move(&mut self, x: f32, y: f32) -> bool {
+        let Some(i) = self.vec_grad_drag else {
+            return false;
+        };
+        let Some(sel) = self.vec_pen.selected() else {
+            return false;
+        };
+        let Some(gfx) = self.gfx.as_mut() else {
+            return false;
+        };
+        let win = gfx.surface.size();
+        let w = gfx.camera.screen_to_world((x, y), win);
+        if let Some(path) = gfx.vec_scene.path_mut(sel)
+            && let Some(ph2d_vec_scene::Paint::MultiPoint { points }) = path.fill.as_mut()
+            && let Some(gp) = points.get_mut(i)
+        {
+            gp.pos = [w[0] as f64, w[1] as f64];
+            return true;
+        }
+        false
+    }
+
     /// Motion Nodes M1: is the cursor over the docked graph panel? Drives the
     /// cursor-gated graph keyboard focus + middle-pan routing (Blender-style F
     /// acts on the hovered area, graph vs scene).
@@ -1206,6 +1354,11 @@ impl App {
         // ADR-0108 Fase 1.2: Pen NOVO — arrastar após a âncora puxa os handles
         // Bézier (simétricos). Early-return: não pan/gizmo. No-op sem drag ativo.
         if self.vec_pen_drag_move(self.last_pointer.0, self.last_pointer.1) {
+            return;
+        }
+        // Gradient group 3b: dragging a multi-point gradient handle. Same
+        // early-return discipline; no-op unless a grad drag is live.
+        if self.vec_grad_drag_move(self.last_pointer.0, self.last_pointer.1) {
             return;
         }
         // ADR-0108 Fase 1: shape drag-to-size (Rectangle/Ellipse/Polygon). Same
@@ -1378,6 +1531,16 @@ impl App {
                     return;
                 }
                 (ph2d_host::PointerButton::Primary, PointerKind::Down) if on_canvas => {
+                    // Gradient group 3b: a Down on a multi-point gradient handle
+                    // starts dragging it (takes priority over pen/shape drawing).
+                    if let Some(i) = self.vec_grad_hit(self.last_pointer) {
+                        self.vec_grad_selected = Some(i);
+                        self.vec_grad_drag = Some(i);
+                        if let Some(gfx) = self.gfx.as_ref() {
+                            self.vec_history.begin(&gfx.vec_scene);
+                        }
+                        return;
+                    }
                     let params = shape_params(&self.vec_draw_config);
                     let shape_kind = shape_kind_for_mode(self.vec_draw_config.mode);
                     // Alt held → the Pen breaks the tangent when grabbing a handle.
@@ -1416,6 +1579,13 @@ impl App {
                     }
                 }
                 (ph2d_host::PointerButton::Primary, PointerKind::Up) => {
+                    // Gradient group 3b: end a gradient-handle drag (commit iff moved).
+                    if self.vec_grad_drag.take().is_some() {
+                        if let Some(gfx) = self.gfx.as_ref() {
+                            self.vec_history.commit_if_changed(&gfx.vec_scene);
+                        }
+                        return;
+                    }
                     // Marquee release → box-select the anchors inside the box.
                     if let Some((start, cur)) = self.vec_marquee.take() {
                         if let Some(gfx) = self.gfx.as_mut() {

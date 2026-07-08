@@ -868,6 +868,8 @@ impl crate::App {
             let mut pending_vec_fill_kind: Option<crate::input_dispatch::VecFillKind> = None;
             // Linear-gradient angle (degrees) from the Angle slider (track·360).
             let mut pending_vec_grad_angle: Option<f64> = None;
+            let mut pending_vec_grad_add = false;
+            let mut pending_vec_grad_remove = false;
             // Numeric Transform field edit (X/Y/W/H) — a SetValue document command.
             let mut pending_vec_transform: Option<(crate::input_dispatch::VecTransformField, f64)> =
                 None;
@@ -953,6 +955,10 @@ impl crate::App {
                             } else if let Some(k) = crate::input_dispatch::vec_fill_kind_for_id(*id)
                             {
                                 pending_vec_fill_kind = Some(k);
+                            } else if *id == ph2d_editor::ids::VECTOR_GRAD_ADD_POINT {
+                                pending_vec_grad_add = true;
+                            } else if *id == ph2d_editor::ids::VECTOR_GRAD_REMOVE_POINT {
+                                pending_vec_grad_remove = true;
                             }
                         }
                         // Transform fields (X/Y/W/H) are numeric SetValue document
@@ -1686,6 +1692,21 @@ impl crate::App {
                     deg,
                 );
             }
+            if pending_vec_grad_add {
+                crate::input_dispatch::apply_vec_grad_add_point(
+                    vec_scene,
+                    &mut self.vec_history,
+                    &self.vec_pen,
+                );
+            }
+            if pending_vec_grad_remove {
+                self.vec_grad_selected = crate::input_dispatch::apply_vec_grad_remove_point(
+                    vec_scene,
+                    &mut self.vec_history,
+                    &self.vec_pen,
+                    self.vec_grad_selected,
+                );
+            }
             let vec_cfg = vector_bridge::dispatch(
                 hero,
                 tools,
@@ -1723,6 +1744,15 @@ impl crate::App {
                     vec_scene,
                     self.vec_pen.selected(),
                     self.vec_pen.selected_verts(),
+                    camera.world_to_screen_affine(window_size),
+                    vector_scene,
+                );
+                // Multi-point gradient handles (only when the selected path is a
+                // MultiPoint fill).
+                ph2d_vec_render::draw_gradient_points(
+                    vec_scene,
+                    self.vec_pen.selected(),
+                    self.vec_grad_selected,
                     camera.world_to_screen_affine(window_size),
                     vector_scene,
                 );

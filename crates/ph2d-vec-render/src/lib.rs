@@ -10,11 +10,14 @@
 //! Fase 0: draw estático da cena inteira. **Dirty-tracking** (só re-encodar a
 //! sub-árvore que mudou — a alavanca de escala do ADR-0108) é o próximo passo.
 
-use ph2d_vec_scene::{LineCap, LineJoin, Paint, Rgba8, StrokeSpec, VecPath, VecPathId, VecScene};
-use ph2d_vector::{
-    Affine, BezPath, Brush, Cap, Circle, Color, ColorStop, Fill, Gradient, Join, Point, Rect,
-    Stroke, VectorScene,
+use ph2d_vec_scene::{
+    GradientPoint, LineCap, LineJoin, Paint, Rgba8, StrokeSpec, VecPath, VecPathId, VecScene,
 };
+use ph2d_vector::{
+    Affine, BezPath, Brush, Cap, Circle, Color, ColorStop, Fill, Gradient, ImageQuality, Join,
+    Point, Rect, Stroke, VectorScene,
+};
+use std::sync::Arc;
 
 /// Constrói o `BezPath` (world-space) de um path editável: `move_to` na 1ª âncora,
 /// depois uma cúbica por segmento usando `out_handle(i)` e `in_handle(i+1)`;
@@ -44,7 +47,11 @@ pub fn dispatch(scene: &VecScene, transform: Affine, target: &mut VectorScene) {
     for path in scene.paths() {
         let bp = build_bezpath(path);
         if let Some(fill) = &path.fill {
-            target.fill_path(&bp, &fill_brush(fill, path), transform);
+            if let Paint::MultiPoint { points } = fill {
+                fill_multipoint(target, &bp, path, points, transform);
+            } else {
+                target.fill_path(&bp, &fill_brush(fill, path), transform);
+            }
         }
         if let Some(s) = path.stroke {
             target.inner_mut().stroke(
@@ -118,6 +125,48 @@ pub fn draw_overlays(
             };
             target.fill_rect(Rect::new(a.x - s, a.y - s, a.x + s, a.y + s), col);
         }
+    }
+}
+
+/// Desenha os **pontos do gradiente multi-ponto** do path `selected` (se o fill for
+/// `MultiPoint`) como bolinhas roxas (estilo Cavalry) em screen-space; a de índice
+/// `active` ganha um anel branco. No-op se não houver multi-ponto selecionado.
+pub fn draw_gradient_points(
+    scene: &VecScene,
+    selected: Option<VecPathId>,
+    active: Option<usize>,
+    transform: Affine,
+    target: &mut VectorScene,
+) {
+    let Some(sel) = selected else { return };
+    let Some(path) = scene.paths().iter().find(|p| p.id == sel) else {
+        return;
+    };
+    let Some(Paint::MultiPoint { points }) = &path.fill else {
+        return;
+    };
+    for (i, gp) in points.iter().enumerate() {
+        let c = transform * Point::new(gp.pos[0], gp.pos[1]);
+        // Swatch of the point's colour, ringed so it reads on any background.
+        target.inner_mut().fill(
+            Fill::NonZero,
+            Affine::IDENTITY,
+            &Brush::Solid(color(gp.color)),
+            None,
+            &Circle::new(c, 5.5),
+        );
+        let ring = if active == Some(i) {
+            Color::from_rgba8(255, 255, 255, 255)
+        } else {
+            Color::from_rgba8(180, 120, 235, 255) // Cavalry purple
+        };
+        target.inner_mut().stroke(
+            &Stroke::new(if active == Some(i) { 2.0 } else { 1.5 }),
+            Affine::IDENTITY,
+            &Brush::Solid(ring),
+            None,
+            &Circle::new(c, 5.5),
+        );
     }
 }
 
@@ -219,9 +268,107 @@ fn fill_brush(paint: &Paint, _path: &VecPath) -> Brush {
             let r = (*radius as f32).max(f32::MIN_POSITIVE);
             Brush::Gradient(Gradient::new_radial(c, r).with_stops(stops_of(stops).as_slice()))
         }
-        // Increment 3: rasterize the IDW blend into an image brush.
+        // MultiPoint is handled by `fill_multipoint` (image-clip path), never here.
         Paint::MultiPoint { .. } => Brush::Solid(color(paint.primary_color())),
     }
+}
+
+/// Raster resolution of the multi-point IDW blend (upscaled bilinearly by the image
+/// brush, so a small buffer stays smooth).
+const IDW_RES: u32 = 64;
+
+/// World-space bbox of a path's CONTROL POINTS (anchor + both handles) — the
+/// convex hull of every Bézier segment, so it FULLY contains the drawn curve
+/// (the anchor-only bbox misses the parts that bulge past the anchors, leaving
+/// the multi-point image unfilled there). Unit rect if empty.
+fn control_point_bounds(path: &VecPath) -> ([f64; 2], [f64; 2]) {
+    let mut lo = [f64::INFINITY; 2];
+    let mut hi = [f64::NEG_INFINITY; 2];
+    for v in &path.verts {
+        for p in [v.anchor, v.in_handle, v.out_handle] {
+            lo[0] = lo[0].min(p[0]);
+            lo[1] = lo[1].min(p[1]);
+            hi[0] = hi[0].max(p[0]);
+            hi[1] = hi[1].max(p[1]);
+        }
+    }
+    if lo[0] > hi[0] {
+        ([0.0, 0.0], [1.0, 1.0])
+    } else {
+        (lo, hi)
+    }
+}
+
+/// Rasterize the Cavalry-style multi-point gradient into a straight-alpha RGBA8
+/// buffer of `res × res`, covering the world bbox `(lo,hi)`. Each texel's colour is
+/// the inverse-distance-weighted blend of the points:
+/// `c(p) = Σ wᵢcᵢ / Σ wᵢ`, `wᵢ = influenceᵢ / (dist²(p,posᵢ) + ε)` — exact colour at
+/// each point, smooth between. Squared distance only (no transcendentals).
+fn rasterize_idw(points: &[GradientPoint], lo: [f64; 2], hi: [f64; 2], res: u32) -> Arc<Vec<u8>> {
+    const EPS: f64 = 1e-6;
+    let n = res as usize;
+    let mut buf = vec![0u8; n * n * 4];
+    let (w, h) = (hi[0] - lo[0], hi[1] - lo[1]);
+    for py in 0..n {
+        for px in 0..n {
+            // Texel center → world point.
+            let wx = lo[0] + (px as f64 + 0.5) / res as f64 * w;
+            let wy = lo[1] + (py as f64 + 0.5) / res as f64 * h;
+            let (mut sr, mut sg, mut sb, mut sa, mut sw) = (0.0, 0.0, 0.0, 0.0, 0.0);
+            for gp in points {
+                let (dx, dy) = (wx - gp.pos[0], wy - gp.pos[1]);
+                let wgt = gp.influence.max(0.0) / (dx * dx + dy * dy + EPS);
+                sr += wgt * f64::from(gp.color.r);
+                sg += wgt * f64::from(gp.color.g);
+                sb += wgt * f64::from(gp.color.b);
+                sa += wgt * f64::from(gp.color.a);
+                sw += wgt;
+            }
+            let inv = if sw > 0.0 { 1.0 / sw } else { 0.0 };
+            let o = (py * n + px) * 4;
+            buf[o] = (sr * inv).round().clamp(0.0, 255.0) as u8;
+            buf[o + 1] = (sg * inv).round().clamp(0.0, 255.0) as u8;
+            buf[o + 2] = (sb * inv).round().clamp(0.0, 255.0) as u8;
+            buf[o + 3] = (sa * inv).round().clamp(0.0, 255.0) as u8;
+        }
+    }
+    Arc::new(buf)
+}
+
+/// Fill `bp` with a multi-point gradient: rasterize the IDW blend over the path's
+/// world bbox, clip to the (screen-space) path, and blit the image scaled to the
+/// bbox. Reuses the tested clip + image-blit path (mirror of the BgRemoval overlay).
+fn fill_multipoint(
+    target: &mut VectorScene,
+    bp: &BezPath,
+    path: &VecPath,
+    points: &[GradientPoint],
+    transform: Affine,
+) {
+    if points.is_empty() {
+        return;
+    }
+    let (lo, hi) = control_point_bounds(path);
+    let (w, h) = (hi[0] - lo[0], hi[1] - lo[1]);
+    if w <= 0.0 || h <= 0.0 {
+        return;
+    }
+    let img = rasterize_idw(points, lo, hi, IDW_RES);
+    // Clip to the path in screen space.
+    let mut screen_bp = bp.clone();
+    screen_bp.apply_affine(transform);
+    target.push_clip(&screen_bp);
+    // Image pixels (0..res) → world bbox → screen.
+    let px_to_world = Affine::translate((lo[0], lo[1]))
+        * Affine::scale_non_uniform(w / f64::from(IDW_RES), h / f64::from(IDW_RES));
+    target.draw_image_rgba_transformed(
+        &img,
+        IDW_RES,
+        IDW_RES,
+        transform * px_to_world,
+        ImageQuality::High,
+    );
+    target.pop_layer();
 }
 
 #[cfg(test)]
@@ -246,6 +393,39 @@ mod tests {
         for path in scene.paths() {
             assert!(!build_bezpath(path).elements().is_empty());
         }
+    }
+
+    #[test]
+    fn idw_raster_is_exact_at_points_and_blends_between() {
+        let red = Rgba8::new(255, 0, 0, 255);
+        let blue = Rgba8::new(0, 0, 255, 255);
+        let pts = [
+            GradientPoint::new([0.0, 0.5], red, 1.0),
+            GradientPoint::new([1.0, 0.5], blue, 1.0),
+        ];
+        let res = 64u32;
+        let buf = rasterize_idw(&pts, [0.0, 0.0], [1.0, 1.0], res);
+        let texel = |px: u32, py: u32| {
+            let o = ((py * res + px) * 4) as usize;
+            [buf[o], buf[o + 1], buf[o + 2], buf[o + 3]]
+        };
+        // Near the left point → almost pure red; near the right → almost pure blue.
+        let left = texel(0, res / 2);
+        let right = texel(res - 1, res / 2);
+        assert!(left[0] > 240 && left[2] < 15, "left ≈ red, got {left:?}");
+        assert!(
+            right[2] > 240 && right[0] < 15,
+            "right ≈ blue, got {right:?}"
+        );
+        // Middle column blends both channels (neither is ~0 or ~255).
+        let mid = texel(res / 2, res / 2);
+        assert!(
+            mid[0] > 40 && mid[0] < 215 && mid[2] > 40 && mid[2] < 215,
+            "mid blends, got {mid:?}"
+        );
+        // Empty points → all-zero buffer (no divide-by-zero).
+        let empty = rasterize_idw(&[], [0.0, 0.0], [1.0, 1.0], 4);
+        assert!(empty.iter().all(|&b| b == 0));
     }
 
     /// Spike de escala (ADR-0108 §5) — custo de re-encode NAIVE por frame (CPU,

@@ -198,6 +198,9 @@ pub fn populate(store: &mut WidgetStore) {
     button(store, ids::VECTOR_FILL_KIND_SOLID);
     button(store, ids::VECTOR_FILL_KIND_LINEAR);
     button(store, ids::VECTOR_FILL_KIND_RADIAL);
+    button(store, ids::VECTOR_FILL_KIND_MULTI);
+    button(store, ids::VECTOR_GRAD_ADD_POINT);
+    button(store, ids::VECTOR_GRAD_REMOVE_POINT);
     // Linear-gradient Angle slider (track 0..1 → 0..360°) + its chip.
     slider_chip(
         store,

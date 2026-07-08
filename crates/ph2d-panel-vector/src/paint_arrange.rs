@@ -26,6 +26,7 @@ impl BodyCtx<'_> {
             (ids::VECTOR_FILL_KIND_SOLID, "Solid", FillKind::Solid),
             (ids::VECTOR_FILL_KIND_LINEAR, "Linear", FillKind::Linear),
             (ids::VECTOR_FILL_KIND_RADIAL, "Radial", FillKind::Radial),
+            (ids::VECTOR_FILL_KIND_MULTI, "Multi", FillKind::MultiPoint),
         ];
         let gap = Spacing::Sm.px();
         let cw = ((self.inner_w - gap * (kinds.len() as f32 - 1.0)) / kinds.len() as f32).max(1.0);
@@ -46,6 +47,19 @@ impl BodyCtx<'_> {
         }
         y += self.row_h + self.row_gap;
 
+        // Multi-point: Add / Remove point (drag points on-canvas to move them).
+        if kind == FillKind::MultiPoint {
+            let two_col = ((self.inner_w - gap) / 2.0).max(1.0);
+            y = self.row2(
+                two_col,
+                gap,
+                [
+                    (ids::VECTOR_GRAD_ADD_POINT, "Add Point"),
+                    (ids::VECTOR_GRAD_REMOVE_POINT, "Remove Point"),
+                ],
+                y,
+            );
+        }
         // Angle slider (Linear only) — track 0..1 → 0..360°.
         if kind == FillKind::Linear {
             let angle = state::current_grad_angle().unwrap_or(0.0);

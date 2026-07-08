@@ -64,8 +64,13 @@ pub const VECTOR_FILL_SWATCH: NodeId = hash_node_id("vector.fill_swatch");
 pub const VECTOR_FILL_KIND_SOLID: NodeId = hash_node_id("vector.fill_kind.solid");
 pub const VECTOR_FILL_KIND_LINEAR: NodeId = hash_node_id("vector.fill_kind.linear");
 pub const VECTOR_FILL_KIND_RADIAL: NodeId = hash_node_id("vector.fill_kind.radial");
+/// Multi-point (Cavalry freeform IDW) fill.
+pub const VECTOR_FILL_KIND_MULTI: NodeId = hash_node_id("vector.fill_kind.multi");
 pub const VECTOR_GRAD_ANGLE: NodeId = hash_node_id("vector.grad.angle");
 pub const VECTOR_GRAD_ANGLE_NUM: NodeId = hash_node_id("vector.grad.angle_num");
+/// Multi-point gradient: add a point (bbox center) / remove the selected point.
+pub const VECTOR_GRAD_ADD_POINT: NodeId = hash_node_id("vector.grad.add_point");
+pub const VECTOR_GRAD_REMOVE_POINT: NodeId = hash_node_id("vector.grad.remove_point");
 
 pub const VECTOR_STROKE_OPACITY: NodeId = hash_node_id("vector.stroke_opacity");
 pub const VECTOR_STROKE_OPACITY_NUM: NodeId = hash_node_id("vector.stroke_opacity_num");

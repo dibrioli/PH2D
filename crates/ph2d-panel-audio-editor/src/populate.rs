@@ -23,6 +23,10 @@ pub(crate) fn populate(store: &mut WidgetStore) {
             },
         );
     }
+    // Body hit-barrier: the overlay floats over the canvas, so its empty body must
+    // swallow clicks (mirror of the registry z-walk's per-panel barrier) or clicks
+    // between the handles fall through to the canvas tool. `Plain` = hittable no-op.
+    store.register(ids::AUDIO_OVERLAY_PANEL, InteractiveState::Plain);
 
     // Every transport control + Load/Export is a plain Button so the panel's
     // apply_event branch fires on Click. Show/hide is the TopBar

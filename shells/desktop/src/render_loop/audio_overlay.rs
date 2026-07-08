@@ -16,7 +16,7 @@ use ph2d_editor::paint::{fill_rounded_rect, paint_text_centered, resolve};
 use ph2d_editor::screens::HeroScreen;
 use ph2d_editor::screens::layout::{EDGE_PAD, HIERARCHY_W, INSPECTOR_W, RAIL_W};
 use ph2d_editor::widget::panel_chrome::{
-    PANEL_HEADER_CLOSE_RESERVE, PANEL_HEADER_H_DEFAULT, paint_panel_corner_dot,
+    PANEL_HEADER_CLOSE_RESERVE, PANEL_HEADER_H_DEFAULT, clamp_panel_rect, paint_panel_corner_dot,
     paint_panel_corner_dot_bl, paint_panel_surface, panel_drag_handle_rect,
     panel_resize_handle_rect, panel_resize_handle_rect_bl,
 };
@@ -27,12 +27,14 @@ use ph2d_vector::VectorScene;
 
 use crate::audio::AudioSystem;
 
-const MIN_W: f32 = 260.0; // LITERAL-PX-OK: overlay minimum width (chrome)
-const MIN_H: f32 = 140.0; // LITERAL-PX-OK: overlay minimum height (chrome)
+const MIN_W: f32 = 260.0; // LITERAL-PX-OK: overlay default minimum width (chrome)
 const DEFAULT_H: f32 = 260.0; // LITERAL-PX-OK: overlay default height (chrome)
 const TOP_MARGIN: f32 = 72.0; // LITERAL-PX-OK: below the TopBar (chrome)
 const HEADER_H: f32 = 26.0; // LITERAL-PX-OK: overlay title-bar height (chrome)
 const RULER_H: f32 = 16.0; // LITERAL-PX-OK: time-ruler strip height (chrome)
+/// Width reserved on the right for the docked Audio Editor panel (matches its
+/// `PANEL_W`), so the overlay's default position doesn't cover it.
+const EDITOR_PANEL_W: f32 = 240.0; // LITERAL-PX-OK: docked editor panel width (chrome)
 
 /// Paint the Audio Editor waveform overlay if the editor panel is open and a
 /// clip is loaded. No-op otherwise.
@@ -52,19 +54,21 @@ pub(super) fn draw_audio_overlay(
     };
     let theme = hero.theme;
 
-    // Default rect: a band in the Hierarchy↔Inspector gap, below the TopBar.
-    let gap = gap_rect(viewport);
-    let base = Rect::new(
-        gap.x,
-        gap.y,
-        gap.w,
-        DEFAULT_H.min((gap.h - TOP_MARGIN).max(MIN_H)),
-    );
-    // Apply the stored drag offset + resize delta, then clamp into the gap.
-    let (ox, oy) = hero.store.blender_picker_offset(ids::AUDIO_OVERLAY_PANEL);
-    let (dw, dh) = hero.store.panel_resize_delta(ids::AUDIO_OVERLAY_PANEL);
-    let rect = clamp_to_gap(base, ox, oy, dw, dh, gap);
+    // Drag/resize use the SAME proven math as the Widget Gallery: `clamp_panel_rect`
+    // against the full viewport, with a `base` strictly SMALLER than that envelope
+    // so the stored drag offset + resize delta have real travel. (A base that fills
+    // its clamp envelope collapses the range to a single point → dead drag/resize —
+    // the original bug.) Default position sits in the canvas, left of the docked
+    // Audio Editor panel; from there it floats/resizes anywhere like the Gallery.
+    let base = default_rect(viewport);
+    let off = hero.store.blender_picker_offset(ids::AUDIO_OVERLAY_PANEL);
+    let resize = hero.store.panel_resize_delta(ids::AUDIO_OVERLAY_PANEL);
+    let (rect, _, _) = clamp_panel_rect(base, off, resize, viewport);
     hero.store.set_panel_rect(ids::AUDIO_OVERLAY_PANEL, rect);
+    // Body hit-barrier FIRST — clicks on the empty overlay body must not fall
+    // through to the canvas tool. The handles below register AFTER, so (newest
+    // wins in the hit-index) they still outrank this barrier.
+    hero.hit_index.register(ids::AUDIO_OVERLAY_PANEL, rect);
 
     // Frame surface + corner dots.
     fill_rounded_rect(
@@ -113,26 +117,18 @@ pub(super) fn draw_audio_overlay(
     );
 }
 
-/// The Hierarchy↔Inspector gap rect (unmirrored default layout), below the
-/// TopBar. The overlay's default position + clamp bounds.
-fn gap_rect(viewport: Rect) -> Rect {
+/// The overlay's DEFAULT rect (before any drag/resize): a comfortable band in the
+/// canvas, to the LEFT of the docked Audio Editor panel (reserved on the right),
+/// below the TopBar. Strictly smaller than the viewport so the viewport-clamped
+/// drag/resize have real travel.
+fn default_rect(viewport: Rect) -> Rect {
     let hier_right = viewport.x + RAIL_W + EDGE_PAD + HIERARCHY_W;
     let insp_left = viewport.x + viewport.w - EDGE_PAD - INSPECTOR_W;
     let x = hier_right + EDGE_PAD;
-    let w = (insp_left - EDGE_PAD - x).max(MIN_W);
-    let y = viewport.y + TOP_MARGIN;
-    let h = (viewport.h - TOP_MARGIN - EDGE_PAD).max(MIN_H);
-    Rect::new(x, y, w, h)
-}
-
-/// Apply drag offset + resize delta to `base`, clamp size to `MIN_*`, and keep
-/// the whole rect inside `gap` (full-containment, like `clamp_panel_rect`).
-fn clamp_to_gap(base: Rect, ox: f32, oy: f32, dw: f32, dh: f32, gap: Rect) -> Rect {
-    let w = (base.w + dw).clamp(MIN_W, gap.w.max(MIN_W));
-    let h = (base.h + dh).clamp(MIN_H, gap.h.max(MIN_H));
-    let x = (base.x + ox).clamp(gap.x, (gap.x + gap.w - w).max(gap.x));
-    let y = (base.y + oy).clamp(gap.y, (gap.y + gap.h - h).max(gap.y));
-    Rect::new(x, y, w, h)
+    // Stop before the docked Audio Editor panel column (width + a gap).
+    let right = (insp_left - EDITOR_PANEL_W - EDGE_PAD * 2.0).max(x + MIN_W);
+    let w = (right - x).max(MIN_W);
+    Rect::new(x, viewport.y + TOP_MARGIN, w, DEFAULT_H)
 }
 
 /// Draw the clip's min/max envelope across `area`, one lane per channel.

@@ -976,6 +976,18 @@ impl App {
             })
             .unwrap_or(false);
         if self.vector_tool_active() && !menu_open_before {
+            // A canvas press while a text field is focused must blur it (commit the
+            // edit) — the pen/shape arms below consume the press and bypass the
+            // chrome dispatch that normally does this. Route it explicitly (only a
+            // primary press with a field actually focused, so normal draw clicks
+            // don't churn dispatch and a right-click can't open a menu here).
+            if mapped_button == ph2d_host::PointerButton::Primary
+                && kind == PointerKind::Down
+                && on_canvas
+                && self.vector_text_field_focused()
+            {
+                let _ = forward_to_hero(self.gfx.as_mut(), evt);
+            }
             match (mapped_button, kind) {
                 // Shift+drag on empty canvas = node box-select marquee (any mode).
                 // Tried first so Shift diverts the press from the pen/shape draw.

@@ -13,15 +13,13 @@ use crate::{
     AEDIT_STOP, AudioEditorPanel, snapshot,
 };
 use ph2d_a11y::NodeId;
-use ph2d_editor_core::ids as core_ids;
 use ph2d_editor_core::interaction::{HitIndex, InteractiveState};
 use ph2d_editor_core::paint::{fill_rounded_rect, paint_text_centered, rect_to_vello, resolve};
 use ph2d_editor_core::panel::{PaintCtx, Panel};
 use ph2d_editor_core::widget::panel_chrome::{
-    PANEL_HEADER_CLOSE_RESERVE, PANEL_HEADER_H_DEFAULT, PANEL_TITLE_BASELINE,
-    paint_panel_close_button, paint_panel_corner_dot, paint_panel_corner_dot_bl,
-    paint_panel_surface, paint_panel_title, panel_close_button_rect, panel_drag_handle_rect,
-    panel_resize_handle_rect, panel_resize_handle_rect_bl,
+    PANEL_HEADER_CLOSE_RESERVE, PANEL_TITLE_BASELINE, paint_panel_close_button,
+    paint_panel_corner_dot, paint_panel_corner_dot_bl, paint_panel_surface, paint_panel_title,
+    panel_close_button_rect,
 };
 use ph2d_editor_core::widget::{TextInput, TextInputState, paint_text_input_with_buffer};
 use ph2d_editor_core::zones::Rect;
@@ -30,18 +28,32 @@ use ph2d_tokens::{ColorToken, Radius, Spacing, Theme, TypeToken};
 use ph2d_vector::VectorScene;
 
 const ROW_H: f32 = 28.0; // LITERAL-PX-OK: transport button row height (chrome)
+/// Fixed width of the docked Audio Editor panel. It sits just LEFT of the shared
+/// Inspector slot so it can be open side-by-side with the Audio Mixer (which owns
+/// that slot) — the transport is compact, so it needs less width than a mixer.
+const PANEL_W: f32 = 240.0; // LITERAL-PX-OK: docked editor panel width (chrome)
 
 pub(crate) fn paint(_state: &mut AudioEditorState, ctx: &mut PaintCtx) {
     if !ctx.host.panel_visible(AudioEditorPanel::ID) {
         ctx.host.store_mut().clear_panel_rect(AEDIT_PANEL);
         return;
     }
-    let rect: Rect = ctx.layout.inspector;
+    // Dock just LEFT of the shared Inspector slot (which the Audio Mixer owns),
+    // so MIX + WAVE can be open side-by-side. Follows the Inspector rect if the
+    // user moves/resizes that dock. Its own drag/resize is NOT wired (the compact
+    // controls don't need it; the movable part is the floating waveform overlay).
+    let insp = ctx.layout.inspector;
+    let gap = Spacing::Md.px();
+    let rect = Rect::new(
+        (insp.x - PANEL_W - gap).max(0.0),
+        insp.y,
+        PANEL_W,
+        insp.h,
+    );
     let theme = ctx.host.theme();
     ctx.host.store_mut().set_panel_rect(AEDIT_PANEL, rect);
 
-    // Opaque backing (the shared dock slot's glass surface would bleed the
-    // Inspector behind it otherwise).
+    // Opaque backing (the glass surface would bleed the canvas/panel behind it).
     fill_rounded_rect(
         ctx.scene,
         rect,
@@ -51,18 +63,6 @@ pub(crate) fn paint(_state: &mut AudioEditorState, ctx: &mut PaintCtx) {
     paint_panel_surface(rect, ctx.scene, theme);
     paint_panel_corner_dot(rect, ctx.scene, theme);
     paint_panel_corner_dot_bl(rect, ctx.scene, theme);
-
-    // Shared dock drag/resize handles (Inspector right-dock canon).
-    {
-        let drag_rect =
-            panel_drag_handle_rect(rect, PANEL_HEADER_H_DEFAULT, PANEL_HEADER_CLOSE_RESERVE);
-        let resize_rect = panel_resize_handle_rect(rect);
-        let resize_bl_rect = panel_resize_handle_rect_bl(rect);
-        let hit_index = ctx.host.hit_index_mut();
-        hit_index.register(core_ids::INSP_DRAG_HANDLE, drag_rect);
-        hit_index.register(core_ids::INSP_RESIZE_HANDLE, resize_rect);
-        hit_index.register(core_ids::INSP_RESIZE_HANDLE_BL, resize_bl_rect);
-    }
 
     let title_size = paint_panel_title(
         rect,

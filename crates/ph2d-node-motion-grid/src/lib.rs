@@ -1,14 +1,19 @@
 #![forbid(unsafe_code)]
-//! `motion.grid` — a Motion **generator**: emits a `rows × cols` grid of
-//! instances on the `P` (Vec2) attribute, spaced by `spacing` meters. No
-//! inputs. Pure (combinational). The instance stream convention is
-//! `ph2d-eval-motion`'s (P → world_pos).
+//! `motion.grid` — a Motion **generator**: emits a `rows × cols` lattice of
+//! instances **centered on the origin**, on the `P` (Vec2) attribute, with
+//! independent `gap_x` / `gap_y` spacing. Also emits per-instance `Index` (`0..n`)
+//! and `Count` (`n`) scalar columns — the stable identity downstream palette /
+//! ramp / normalized effects address (Cavalry/Houdini `@ptnum`/`@numpt`). No
+//! inputs. Pure (combinational). The stream convention is `ph2d-eval-motion`'s.
 //!
-//! Params (read via `ctx.param` — per-instance override else the manifest
-//! default shown): `rows` (3), `cols` (3), `spacing` (1.0). `rows`/`cols` are read as element
-//! counts via [`param_as_count`] (non-finite/negative → 0) and the `rows × cols`
-//! product is capped at [`RECOMMENDED_MAX_ELEMENTS`], so no param value can
-//! overflow the allocation.
+//! Centering (vs. a corner origin) makes every downstream scale / rotate / circle
+//! falloff act symmetrically about the middle of the grid, not a corner.
+//!
+//! Params (read via `ctx.param` — per-instance override else the manifest default
+//! shown): `rows` (3), `cols` (3), `gap_x` (1.0), `gap_y` (1.0). `rows`/`cols` are
+//! read as element counts via [`param_as_count`] (non-finite/negative → 0) and
+//! the `rows × cols` product is capped at [`RECOMMENDED_MAX_ELEMENTS`], so no
+//! param value can overflow the allocation.
 
 use ph2d_node_registry::{NodeRegistry, RegistryError};
 use ph2d_nodegraph::attr::{Column, Stream};
@@ -43,7 +48,11 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             default: 3.0,
         },
         ParamSpec {
-            name: "spacing",
+            name: "gap_x",
+            default: 1.0,
+        },
+        ParamSpec {
+            name: "gap_y",
             default: 1.0,
         },
     ],
@@ -54,19 +63,24 @@ pub const MANIFEST: NodeManifest = NodeManifest {
     lowerings: &[LoweringKind::Cpu],
 };
 
-/// Build the `rows × cols` position grid (row-major, spaced by `spacing`),
-/// capping the element count at `max` so a pathological `rows × cols` can never
-/// overflow the allocation. Pure and `max`-parameterized so the cap is testable
-/// without allocating the full budget. The emitted count is `positions.len()`.
-fn build_grid(rows: usize, cols: usize, spacing: f32, max: usize) -> Vec<[f32; 2]> {
+/// Build the `rows × cols` position grid (row-major), **centered on the origin**
+/// with independent `gap_x` / `gap_y`, capping the element count at `max` so a
+/// pathological `rows × cols` can never overflow the allocation. Pure and
+/// `max`-parameterized so the cap is testable without allocating the full budget.
+/// The emitted count is `positions.len()`. Centering uses the full `rows`/`cols`
+/// (the cap is a pathological guard; normal grids are never capped).
+fn build_grid(rows: usize, cols: usize, gap_x: f32, gap_y: f32, max: usize) -> Vec<[f32; 2]> {
     let count = rows.saturating_mul(cols).min(max);
     let mut positions = Vec::with_capacity(count);
+    // Lattice midpoint at (0,0): shift each index by half the span.
+    let cx = (cols as f32 - 1.0) * 0.5;
+    let cy = (rows as f32 - 1.0) * 0.5;
     'outer: for r in 0..rows {
         for c in 0..cols {
             if positions.len() == count {
                 break 'outer;
             }
-            positions.push([c as f32 * spacing, r as f32 * spacing]);
+            positions.push([(c as f32 - cx) * gap_x, (r as f32 - cy) * gap_y]);
         }
     }
     positions
@@ -85,8 +99,25 @@ impl NodeOp for MotionGrid {
         // so a corrupt scene value can never overflow the allocation.
         let rows = param_as_count(ctx.param("rows"), RECOMMENDED_MAX_ELEMENTS);
         let cols = param_as_count(ctx.param("cols"), RECOMMENDED_MAX_ELEMENTS);
-        let positions = build_grid(rows, cols, ctx.param("spacing"), RECOMMENDED_MAX_ELEMENTS);
-        ctx.emit(Stream::new(positions.len()).with("P", Column::Vec2(positions)));
+        let positions = build_grid(
+            rows,
+            cols,
+            ctx.param("gap_x"),
+            ctx.param("gap_y"),
+            RECOMMENDED_MAX_ELEMENTS,
+        );
+        let n = positions.len();
+        // Per-instance identity: `Index` (0..n) + `Count` (n) — the stable handle
+        // downstream palette / ramp / normalized effects read. `clone` replicates
+        // them per copy, so each copy is a self-contained indexed set.
+        let index: Vec<f32> = (0..n).map(|i| i as f32).collect();
+        let count = vec![n as f32; n];
+        ctx.emit(
+            Stream::new(n)
+                .with("P", Column::Vec2(positions))
+                .with("Index", Column::Scalar(index))
+                .with("Count", Column::Scalar(count)),
+        );
     }
 }
 
@@ -104,14 +135,14 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
             silhouette: ph2d_node_registry::NodeSilhouette::TrapezoidDown,
         },
     );
-    // M1.P1 — param rows: whole-number row/column counts, continuous spacing.
+    // M1.P1 — param rows: whole-number row/column counts, continuous per-axis gap.
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
     Ok(())
 }
 
 use ph2d_node_registry::{ParamUiHint, ParamWidget};
 
-/// Param UI hints (M1.P1) for the grid rows (editable range + widget + label).
+/// Param UI hints (M1.P1) for the grid (editable range + widget + label).
 static PARAM_HINTS: &[ParamUiHint] = &[
     ParamUiHint {
         param: "rows",
@@ -130,8 +161,16 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         widget: ParamWidget::IntSlider,
     },
     ParamUiHint {
-        param: "spacing",
-        label: "Spacing",
+        param: "gap_x",
+        label: "Gap X",
+        min: 0.0,
+        max: 10.0,
+        step: 0.1,
+        widget: ParamWidget::Slider,
+    },
+    ParamUiHint {
+        param: "gap_y",
+        label: "Gap Y",
         min: 0.0,
         max: 10.0,
         step: 0.1,
@@ -153,21 +192,33 @@ mod tests {
     }
 
     #[test]
-    fn emits_default_3x3_grid() {
+    fn emits_default_3x3_grid_centered_with_index_and_count() {
         let mut g = Graph::new();
         let n = g.add_node("motion.grid");
         let mut cook = Cook::new();
         let out = cook.cook(&g, &Ops, n, 0.0).unwrap();
-        let p = out[0].as_stream().get("P").unwrap();
-        assert_eq!(out[0].as_stream().count(), 9); // 3×3
-        match p {
+        let s = out[0].as_stream();
+        assert_eq!(s.count(), 9); // 3×3
+        match s.get("P").unwrap() {
             Column::Vec2(v) => {
-                assert_eq!(v[0], [0.0, 0.0]);
-                assert_eq!(v[1], [1.0, 0.0]); // col 1, spacing 1.0
-                assert_eq!(v[3], [0.0, 1.0]); // row 1
-                assert_eq!(v[8], [2.0, 2.0]); // last
+                // Centered on the origin: spans [-1,1] × [-1,1] at gap 1.0.
+                assert_eq!(v[0], [-1.0, -1.0]);
+                assert_eq!(v[1], [0.0, -1.0]); // col 1
+                assert_eq!(v[3], [-1.0, 0.0]); // row 1
+                assert_eq!(v[8], [1.0, 1.0]); // last
             }
             _ => panic!("P must be Vec2"),
+        }
+        // Per-instance identity columns.
+        match s.get("Index").unwrap() {
+            Column::Scalar(v) => {
+                assert_eq!(v, &vec![0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0]);
+            }
+            _ => panic!("Index must be Scalar"),
+        }
+        match s.get("Count").unwrap() {
+            Column::Scalar(v) => assert_eq!(v, &vec![9.0; 9]),
+            _ => panic!("Count must be Scalar"),
         }
     }
 
@@ -184,25 +235,36 @@ mod tests {
         match out[0].as_stream().get("P").unwrap() {
             Column::Vec2(v) => {
                 assert_eq!(v.len(), 6);
-                assert_eq!(v[5], [2.0, 1.0]); // last of row 1
+                // 2×3 centered: cx=1, cy=0.5 → last = (2-1, 1-0.5) = [1, 0.5].
+                assert_eq!(v[5], [1.0, 0.5]);
             }
             _ => panic!("P must be Vec2"),
         }
     }
 
     #[test]
+    fn independent_gaps_make_a_non_square_lattice() {
+        // gap_x 2, gap_y 1 → wider than tall. Centered 3×3: first row y = -1,
+        // x steps by 2 from -2.
+        let g = build_grid(3, 3, 2.0, 1.0, 64);
+        assert_eq!(g[0], [-2.0, -1.0]);
+        assert_eq!(g[1], [0.0, -1.0]);
+        assert_eq!(g[2], [2.0, -1.0]);
+    }
+
+    #[test]
     fn build_grid_caps_pathological_product_at_max() {
-        // 100 × 100 = 10_000 requested, but max is 4 → exactly 4 emitted, and
-        // the count matches the Vec len (the emit invariant). Row-major order is
-        // preserved up to the cut.
-        let g = build_grid(100, 100, 1.0, 4);
+        // 100 × 100 = 10_000 requested, but max is 4 → exactly 4 emitted (the
+        // emit invariant); row-major (the four share a row, stepping by gap_x).
+        let g = build_grid(100, 100, 1.0, 1.0, 4);
         assert_eq!(g.len(), 4);
-        assert_eq!(g, vec![[0.0, 0.0], [1.0, 0.0], [2.0, 0.0], [3.0, 0.0]]);
+        assert_eq!(g[0][1], g[3][1], "same row (equal y)");
+        assert!((g[1][0] - g[0][0] - 1.0).abs() < 1e-6, "x steps by gap_x");
     }
 
     #[test]
     fn build_grid_zero_dim_is_empty() {
-        assert!(build_grid(0, 5, 1.0, 64).is_empty());
-        assert!(build_grid(5, 0, 1.0, 64).is_empty());
+        assert!(build_grid(0, 5, 1.0, 1.0, 64).is_empty());
+        assert!(build_grid(5, 0, 1.0, 1.0, 64).is_empty());
     }
 }

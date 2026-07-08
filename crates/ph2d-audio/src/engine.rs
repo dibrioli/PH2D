@@ -16,8 +16,14 @@ use crate::dsp::{BiquadCoeffs, LoudnessMeter, lufs_from_mean_square};
 use crate::format::{AudioFormat, ChannelLayout, Sample};
 use crate::meter::AudioMeter;
 use crate::mixer::Mixer;
-use crate::voice::VoiceId;
+use crate::voice::{Voice, VoiceId};
 use crate::{CMD_CAPACITY, MAX_VOICES, RETURN_CAPACITY};
+
+/// Internal marker id for the renderer's dedicated preview voice. It lives
+/// outside the game voice pool (never minted by [`AudioEngine::play`], which
+/// starts at 1 and increments), so a non-zero, out-of-band value keeps it
+/// distinct and `is_free()` correct.
+const PREVIEW_VOICE_ID: VoiceId = VoiceId(u64::MAX);
 
 /// A low-pass cutoff at/above this reads as "fully open" (identity bypass): it is
 /// the top of the mixer's Tone slider (20 kHz, the audible ceiling), so a filter
@@ -108,6 +114,42 @@ impl AudioEngine {
     /// The output format the renderer was built for.
     pub fn format(&self) -> AudioFormat {
         self.format
+    }
+
+    /// Start (or replace) the editor **preview** — audition `data` under
+    /// `params` on a dedicated voice outside the game pool, so it never steals
+    /// game voices. Its playback position is then readable via
+    /// [`AudioEngine::preview_frame`] for the transport playhead. `Err` only if
+    /// the command ring is full.
+    pub fn play_preview(&self, data: SampleData, params: PlayParams) -> Result<(), AudioError> {
+        self.send(AudioCommand::PlayPreview { data, params })
+    }
+
+    /// Jump the preview's playback cursor to `frame` (scrub / seek).
+    pub fn seek_preview(&self, frame: u64) -> Result<(), AudioError> {
+        self.send(AudioCommand::SeekPreview { frame })
+    }
+
+    /// Pause (`true`) or resume (`false`) the preview, holding its position.
+    pub fn pause_preview(&self, paused: bool) -> Result<(), AudioError> {
+        self.send(AudioCommand::PausePreview { paused })
+    }
+
+    /// Stop the preview and free its sample.
+    pub fn stop_preview(&self) -> Result<(), AudioError> {
+        self.send(AudioCommand::StopPreview)
+    }
+
+    /// The preview's current playback position in source frames (transport
+    /// playhead). `0` when idle.
+    pub fn preview_frame(&self) -> u64 {
+        self.meter.preview_frame()
+    }
+
+    /// Whether an editor preview is currently sounding (for showing/hiding the
+    /// playhead and detecting end-of-clip).
+    pub fn preview_playing(&self) -> bool {
+        self.meter.preview_active()
     }
 
     fn send(&self, cmd: AudioCommand) -> Result<(), AudioError> {
@@ -326,6 +368,15 @@ pub struct AudioRenderer {
     scratch: MixScratch,
     /// Momentary-loudness (LUFS) meter over the final master output.
     loudness: LoudnessMeter,
+    /// The editor's dedicated **preview** voice, separate from the game voice
+    /// pool so auditioning a clip in the editor never steals game voices and its
+    /// position is published independently. Reuses [`Voice`]'s resample/interp.
+    preview: Voice,
+    /// Whether [`Self::preview`] is currently sounding (a clip is loaded + not
+    /// stopped/finished).
+    preview_active: bool,
+    /// Whether the preview is paused (holds position, renders silence).
+    preview_paused: bool,
     format: AudioFormat,
 }
 
@@ -344,6 +395,9 @@ impl AudioRenderer {
             meter,
             scratch: MixScratch::new(),
             loudness: LoudnessMeter::new(format.sample_rate),
+            preview: Voice::silent(),
+            preview_active: false,
+            preview_paused: false,
             format,
         }
     }
@@ -360,6 +414,9 @@ impl AudioRenderer {
             meter,
             scratch,
             loudness,
+            preview,
+            preview_active,
+            preview_paused,
             format,
         } = self;
 
@@ -369,9 +426,28 @@ impl AudioRenderer {
             let _ = returns.push(AudioReturn::FinishedSample(data));
         };
 
-        // 1. Apply queued control commands.
+        // 1. Apply queued control commands. Preview commands drive the dedicated
+        //    preview voice here (outside the mixer); everything else is a mixer op.
         while let Some(cmd) = commands.pop() {
-            mixer.apply(cmd, &mut on_finished);
+            match cmd {
+                AudioCommand::PlayPreview { data, params } => {
+                    if let Some(old) = preview.free() {
+                        on_finished(old);
+                    }
+                    preview.start(PREVIEW_VOICE_ID, data, &params, format.sample_rate);
+                    *preview_active = true;
+                    *preview_paused = false;
+                }
+                AudioCommand::SeekPreview { frame } => preview.set_cursor(frame),
+                AudioCommand::PausePreview { paused } => *preview_paused = paused,
+                AudioCommand::StopPreview => {
+                    if let Some(old) = preview.free() {
+                        on_finished(old);
+                    }
+                    *preview_active = false;
+                }
+                other => mixer.apply(other, &mut on_finished),
+            }
         }
 
         // 2. Zero the stereo scratch for this block (reuses capacity when warm).
@@ -393,6 +469,17 @@ impl AudioRenderer {
             frames,
             &mut on_finished,
         );
+
+        // 3b. Mix the editor preview voice into the master (so it is heard and
+        //     metered). Paused → hold position, render nothing. Publish the
+        //     playback frame + active flag for the transport playhead.
+        if *preview_active && !*preview_paused && !preview.is_free() {
+            if let Some(done) = preview.render_add(master, frames) {
+                on_finished(done);
+                *preview_active = false;
+            }
+        }
+        meter.store_preview(preview.cursor_frame(), *preview_active);
 
         // 4. Publish this block's master peak + RMS (pre-clamp, so clipping reads
         //    > 1). Peak catches transients; RMS ≈ perceived loudness. Each sample
@@ -514,6 +601,59 @@ mod tests {
         let b = engine.play(data, PlayParams::default()).unwrap();
         assert_ne!(a, b);
         assert!(!a.is_none() && !b.is_none());
+    }
+
+    #[test]
+    fn preview_advances_seeks_and_finishes() {
+        let (engine, mut r) = AudioEngine::new(AudioFormat::stereo(48_000));
+        // 100-frame mono clip at the output rate → advance is exactly 1 frame per
+        // output frame, so the published position is deterministic.
+        let data = SampleData::from_interleaved(vec![0.2; 100], AudioFormat::mono(48_000));
+        engine.play_preview(data, PlayParams::default()).unwrap();
+
+        let mut out = [0.0f32; 64 * 2];
+        r.render(&mut out, 32);
+        assert!(engine.preview_playing(), "preview should be sounding");
+        assert_eq!(engine.preview_frame(), 32, "advance 1.0 → 32 frames in");
+        // The preview reached the device buffer (non-silent).
+        assert!(out[..64].iter().any(|&s| s.abs() > 0.0));
+
+        // Seek near the end; the next block runs past it and the preview finishes.
+        engine.seek_preview(90).unwrap();
+        r.render(&mut out, 32);
+        assert!(!engine.preview_playing(), "preview should finish after the end");
+    }
+
+    #[test]
+    fn preview_pause_holds_position() {
+        let (engine, mut r) = AudioEngine::new(AudioFormat::stereo(48_000));
+        let data = SampleData::from_interleaved(vec![0.3; 1000], AudioFormat::mono(48_000));
+        engine.play_preview(data, PlayParams::default()).unwrap();
+        let mut out = [0.0f32; 128];
+        r.render(&mut out, 64);
+        let at = engine.preview_frame();
+        assert_eq!(at, 64);
+        engine.pause_preview(true).unwrap();
+        r.render(&mut out, 64);
+        assert_eq!(engine.preview_frame(), at, "paused preview holds position");
+        assert!(engine.preview_playing(), "paused is still active");
+        // Resume advances again.
+        engine.pause_preview(false).unwrap();
+        r.render(&mut out, 64);
+        assert_eq!(engine.preview_frame(), at + 64);
+    }
+
+    #[test]
+    fn preview_is_independent_of_game_voices() {
+        // A preview must not consume a game voice-pool slot.
+        let (mut engine, mut r) = AudioEngine::new(AudioFormat::stereo(48_000));
+        let data = SampleData::from_interleaved(vec![0.1; 200], AudioFormat::mono(48_000));
+        engine.play_preview(data.clone(), PlayParams::default()).unwrap();
+        let _v = engine.play(data, PlayParams::default()).unwrap();
+        let mut out = [0.0f32; 128];
+        r.render(&mut out, 64);
+        assert_eq!(r.active_voices(), 1, "the game voice, not the preview");
+        assert!(engine.preview_playing());
     }
 
     #[test]

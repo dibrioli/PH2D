@@ -225,6 +225,12 @@ impl Mixer {
                     self.bus_comp[i].set_params(on, threshold, ratio, attack, release);
                 }
             }
+            // Editor preview commands are handled by the renderer's dedicated
+            // preview voice (outside this mixer), never forwarded here.
+            AudioCommand::PlayPreview { .. }
+            | AudioCommand::SeekPreview { .. }
+            | AudioCommand::PausePreview { .. }
+            | AudioCommand::StopPreview => {}
         }
     }
 

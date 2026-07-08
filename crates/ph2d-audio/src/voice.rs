@@ -90,6 +90,23 @@ impl Voice {
         self.id
     }
 
+    /// Current read position in whole source frames — the editor preview
+    /// transport publishes this as the playhead.
+    pub(crate) fn cursor_frame(&self) -> u64 {
+        self.cursor.max(0.0) as u64
+    }
+
+    /// Jump the read cursor to `frame` (clamped to the sample length). Used by
+    /// the preview transport's seek/scrub; only meaningful on a started voice.
+    pub(crate) fn set_cursor(&mut self, frame: u64) {
+        let max = self
+            .data
+            .as_ref()
+            .map(|d| d.frame_count() as f64)
+            .unwrap_or(0.0);
+        self.cursor = (frame as f64).clamp(0.0, max);
+    }
+
     /// The bus this voice sums into.
     pub(crate) fn bus(&self) -> BusId {
         self.bus

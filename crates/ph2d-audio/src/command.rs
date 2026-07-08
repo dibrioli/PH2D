@@ -156,6 +156,23 @@ pub(crate) enum AudioCommand {
         attack: f32,
         release: f32,
     },
+    /// Start (or replace) the editor **preview** — a single dedicated voice on
+    /// the renderer, outside the game voice pool, whose playback position is
+    /// published for the transport playhead. Any previous preview is freed.
+    PlayPreview {
+        data: SampleData,
+        params: PlayParams,
+    },
+    /// Jump the preview's playback cursor to `frame` (scrub / seek).
+    SeekPreview {
+        frame: u64,
+    },
+    /// Pause (`true`) or resume (`false`) the preview without losing its position.
+    PausePreview {
+        paused: bool,
+    },
+    /// Stop the preview and free its sample (dropped off the RT thread).
+    StopPreview,
 }
 
 /// A message from the audio thread back to the control thread.

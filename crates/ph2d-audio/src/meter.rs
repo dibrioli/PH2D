@@ -8,7 +8,7 @@
 //! meter widget / panel), not here.
 
 use std::array::from_fn;
-use std::sync::atomic::{AtomicU32, Ordering};
+use std::sync::atomic::{AtomicU32, AtomicU64, Ordering};
 
 use crate::bus::SUB_BUS_COUNT;
 
@@ -39,6 +39,13 @@ pub struct AudioMeter {
     /// Post-fader `[L, R]` peak/RMS per sub-bus, indexed by `BusId::sub_index`.
     bus_peak: [Pair; SUB_BUS_COUNT],
     bus_rms: [Pair; SUB_BUS_COUNT],
+    /// Editor **preview** playback position, in source frames, published by the
+    /// renderer's dedicated preview voice (separate from the game voice pool). The
+    /// transport playhead reads this once per UI frame. `preview_active` is `1`
+    /// while a preview is sounding, `0` when idle/finished (so the playhead can
+    /// hide and the UI can detect the clip reaching its end).
+    preview_frame: AtomicU64,
+    preview_active: AtomicU32,
 }
 
 impl Default for AudioMeter {
@@ -50,6 +57,8 @@ impl Default for AudioMeter {
             master_loudness_ms: AtomicU32::new(0),
             bus_peak: from_fn(|_| zero_pair()),
             bus_rms: from_fn(|_| zero_pair()),
+            preview_frame: AtomicU64::new(0),
+            preview_active: AtomicU32::new(0),
         }
     }
 }
@@ -100,6 +109,24 @@ impl AudioMeter {
     /// Every sub-bus's most recent `[L, R]` RMS, in `BusId::SUB_BUSES` order.
     pub fn bus_rms(&self) -> [[f32; 2]; SUB_BUS_COUNT] {
         from_fn(|i| load(&self.bus_rms[i]))
+    }
+
+    /// Publish the editor preview's playback position (`frame`) and whether it is
+    /// still sounding (`active`). Called by the renderer's preview voice each block.
+    pub(crate) fn store_preview(&self, frame: u64, active: bool) {
+        self.preview_frame.store(frame, Ordering::Relaxed);
+        self.preview_active
+            .store(active as u32, Ordering::Relaxed);
+    }
+
+    /// The editor preview's current playback position, in source frames.
+    pub fn preview_frame(&self) -> u64 {
+        self.preview_frame.load(Ordering::Relaxed)
+    }
+
+    /// Whether an editor preview is currently sounding.
+    pub fn preview_active(&self) -> bool {
+        self.preview_active.load(Ordering::Relaxed) != 0
     }
 }
 

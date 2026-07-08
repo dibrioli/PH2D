@@ -16,6 +16,8 @@
 // FOLLOW-UP: extract the intent-drain match to a `intents.rs` sibling to
 // drop back under the cap (2026-05-21: +SetPresentMode/RealSize tipped it).
 
+#[cfg(feature = "panel-audio-editor")]
+mod audio_overlay;
 pub(crate) mod bgremoval_preview;
 mod color_equalization_bridge;
 mod cooked_texture_bridge;
@@ -2008,6 +2010,25 @@ impl crate::App {
             paint_hero_screen(hero, viewport, vector_scene, paint_ctx.text);
             if let Some(t0) = hero_t0 {
                 FRAME_PROF_HERO_US.with(|c| c.set(t0.elapsed().as_micros() as u64));
+            }
+            // Audio Editor floating waveform overlay (docs/Audio/, W1) — painted
+            // after the hero chrome, in the Hierarchy↔Inspector gap. Reads the
+            // loaded clip from the audio system; no-op when the panel is closed
+            // or no clip is loaded.
+            #[cfg(feature = "panel-audio-editor")]
+            if let Some(audio) = self.audio.as_ref() {
+                audio_overlay::draw_audio_overlay(
+                    hero,
+                    audio,
+                    ph2d_editor::zones::Rect::new(
+                        viewport.x,
+                        viewport.y,
+                        viewport.w,
+                        viewport.h,
+                    ),
+                    vector_scene,
+                    paint_ctx.text,
+                );
             }
             // Fase 0f: overlay the active rubber-band rect on top of
             // everything (panels, gizmo, hero chrome). Pure shell

@@ -575,6 +575,16 @@ impl AudioSystem {
     pub(crate) fn editor_name(&self) -> &str {
         &self.editor.name
     }
+
+    /// The loaded editor clip (for the overlay waveform), if any.
+    pub(crate) fn editor_clip(&self) -> Option<&ph2d_audio_edit::EditClip> {
+        self.editor.clip.as_ref()
+    }
+
+    /// The preview's current playback frame (for the overlay playhead).
+    pub(crate) fn editor_preview_frame(&self) -> u64 {
+        self.engine.preview_frame()
+    }
 }
 
 /// Build the output stream for device sample type `T`. The mixer renders into a

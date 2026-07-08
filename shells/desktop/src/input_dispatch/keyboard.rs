@@ -97,14 +97,17 @@ impl App {
             }
         }
 
-        // ADR-0108 Fase 2: undo/redo + save/load com Ctrl/Cmd. Ctrl+Z desfaz,
-        // Ctrl+Shift+Z / Ctrl+Y refaz, Ctrl+S salva, Ctrl+O carrega.
+        // ADR-0108 Fase 2: undo/redo + save/load + clipboard com Ctrl/Cmd. Ctrl+Z
+        // desfaz, Ctrl+Shift+Z / Ctrl+Y refaz, Ctrl+S salva, Ctrl+O carrega,
+        // Ctrl+C/X/V copia/recorta/cola o path, Ctrl+D duplica. C/X/V cedem o
+        // atalho a um campo de texto focado (clipboard de texto do widget).
         if self.vector_tool_active()
             && state == ElementState::Pressed
             && !repeat
             && (self.modifiers.control_key() || self.modifiers.super_key())
             && let PhysicalKey::Code(code) = physical_key
         {
+            let text_focused = self.vector_text_field_focused();
             let handled = match code {
                 KeyCode::KeyZ if self.modifiers.shift_key() => {
                     self.vec_redo();
@@ -124,6 +127,22 @@ impl App {
                 }
                 KeyCode::KeyO => {
                     self.vec_load();
+                    true
+                }
+                KeyCode::KeyC if !text_focused => {
+                    self.vec_copy();
+                    true
+                }
+                KeyCode::KeyX if !text_focused => {
+                    self.vec_cut();
+                    true
+                }
+                KeyCode::KeyV if !text_focused => {
+                    self.vec_paste();
+                    true
+                }
+                KeyCode::KeyD => {
+                    self.vec_duplicate_shortcut();
                     true
                 }
                 _ => false,

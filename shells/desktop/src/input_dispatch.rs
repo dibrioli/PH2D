@@ -498,6 +498,94 @@ impl App {
     }
 
     /// ADR-0108 Fase 1: apaga o path selecionado (fallback do Delete sem vértice).
+    /// World-space offset for a `px` screen-space diagonal shift (paste / dup
+    /// placement), honouring the current zoom. `(0, 0)` when the gfx isn't ready.
+    fn vec_screen_offset(&self, px: f64) -> (f64, f64) {
+        let Some(gfx) = self.gfx.as_ref() else {
+            return (0.0, 0.0);
+        };
+        let win = gfx.surface.size();
+        let base = gfx.camera.screen_to_world((0.0, 0.0), win);
+        let moved = gfx.camera.screen_to_world((px as f32, px as f32), win);
+        ((moved[0] - base[0]) as f64, (moved[1] - base[1]) as f64)
+    }
+
+    /// True when a text / number / combobox widget holds keyboard focus — Vector
+    /// Ctrl+C/X/V must defer to the OS text clipboard instead of the path one.
+    fn vector_text_field_focused(&self) -> bool {
+        let Some(h) = self.gfx.as_ref().and_then(|g| g.hero_screen.as_ref()) else {
+            return false;
+        };
+        let Some(id) = h.store.focus_id() else {
+            return false;
+        };
+        matches!(
+            h.store.get(id),
+            Some(
+                ph2d_editor::InteractiveState::TextInput { .. }
+                    | ph2d_editor::InteractiveState::NumberInput { .. }
+                    | ph2d_editor::InteractiveState::Combobox { .. }
+            )
+        )
+    }
+
+    /// Vector Ctrl+C: copy the selected path (geometry + style, id-less) into the
+    /// in-app clipboard. No-op if nothing is selected.
+    fn vec_copy(&mut self) {
+        let Some(sel) = self.vec_pen.selected() else {
+            return;
+        };
+        let clip = self
+            .gfx
+            .as_ref()
+            .and_then(|g| g.vec_scene.paths().iter().find(|p| p.id == sel).cloned());
+        if clip.is_some() {
+            self.vec_clipboard = clip;
+        }
+    }
+
+    /// Vector Ctrl+X: copy the selected path, then delete it.
+    fn vec_cut(&mut self) {
+        self.vec_copy();
+        self.vec_delete_selected();
+    }
+
+    /// Vector Ctrl+V: paste the clipboard path, offset ~12 px (screen→world), and
+    /// select it. ONE undo step. No-op if the clipboard is empty.
+    fn vec_paste(&mut self) {
+        let Some(mut clone) = self.vec_clipboard.clone() else {
+            return;
+        };
+        let (dx, dy) = self.vec_screen_offset(12.0);
+        let Some(gfx) = self.gfx.as_mut() else {
+            return;
+        };
+        for v in &mut clone.verts {
+            v.anchor = [v.anchor[0] + dx, v.anchor[1] + dy];
+            v.in_handle = [v.in_handle[0] + dx, v.in_handle[1] + dy];
+            v.out_handle = [v.out_handle[0] + dx, v.out_handle[1] + dy];
+        }
+        let pre = gfx.vec_scene.clone();
+        let new_id = gfx.vec_scene.push_path(clone);
+        self.vec_history.push_undo(pre);
+        self.vec_pen.select(Some(new_id));
+    }
+
+    /// Vector Ctrl+D: duplicate the selected path in place (offset ~12 px) — the
+    /// keyboard sibling of the panel's Arrange "Duplicate" button.
+    fn vec_duplicate_shortcut(&mut self) {
+        let (dx, dy) = self.vec_screen_offset(12.0);
+        if let Some(gfx) = self.gfx.as_mut() {
+            apply_vec_duplicate(
+                &mut gfx.vec_scene,
+                &mut self.vec_history,
+                &mut self.vec_pen,
+                dx,
+                dy,
+            );
+        }
+    }
+
     fn vec_delete_selected(&mut self) -> bool {
         let Some(sel) = self.vec_pen.selected() else {
             return false;

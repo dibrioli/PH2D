@@ -531,6 +531,9 @@ pub(crate) struct App {
     pub(crate) vec_marquee: Option<((f32, f32), (f32, f32))>,
     /// ADR-0108: undo/redo by snapshot of `vec_scene` (Ctrl+Z / Ctrl+Shift+Z).
     pub(crate) vec_history: ph2d_vec_edit::History,
+    /// In-app path clipboard for Vector Ctrl+C/X/V — a clone of the copied path
+    /// (geometry + style, id-less). `None` until the first copy/cut.
+    pub(crate) vec_clipboard: Option<ph2d_vec_scene::VecPath>,
     /// TOOL_PIVOT: world-space center of the selected sprite's CONTENT
     /// bbox (non-transparent pixels), computed once (lazily, on the
     /// first CTRL-held move) per MovePivot drag and reused as a snap

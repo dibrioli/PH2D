@@ -179,6 +179,13 @@ pub(crate) fn paint(_state: &mut VectorPanelState, ctx: &mut PaintCtx) {
                     store.set_number_value(id, v);
                 }
             }
+            // The Angle field is a RELATIVE scrub: seed it to 0 (and reset the
+            // gesture accumulator) whenever it isn't being edited, so each new
+            // drag/type starts from 0 and the shell rotates by the reported delta.
+            if focus != Some(ids::VECTOR_TRANSFORM_R) {
+                store.set_number_value(ids::VECTOR_TRANSFORM_R, 0.0);
+                state::set_rot_last(0.0);
+            }
         }
         store.set_panel_content_h(ids::VECTOR_PANEL, content_h);
         store.set_panel_visible_h(ids::VECTOR_PANEL, body_h);

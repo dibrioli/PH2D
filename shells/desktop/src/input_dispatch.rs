@@ -288,6 +288,32 @@ pub(crate) fn vec_rotate_for_id(id: ph2d_editor::NodeId) -> Option<ph2d_vec_scen
     }
 }
 
+/// Rotate the SELECTED path by `degrees` (panel Transform Angle field — a
+/// relative scrub) about its bbox center, recording ONE undo step iff it turned.
+/// A zero delta is a no-op (no undo). Free fn (mirror of [`apply_vec_rotate`]).
+pub(crate) fn apply_vec_rotate_by(
+    scene: &mut ph2d_vec_scene::VecScene,
+    history: &mut ph2d_vec_edit::History,
+    pen: &ph2d_vec_edit::PenTool,
+    degrees: f64,
+) {
+    if degrees.abs() < 1e-9 {
+        return;
+    }
+    let Some(sel) = pen.selected() else {
+        eprintln!("[ph2d-vec] rotate-by: nenhum path selecionado");
+        return;
+    };
+    let Some((lo, hi)) = scene.path_bbox(sel) else {
+        return;
+    };
+    let pivot = [(lo[0] + hi[0]) * 0.5, (lo[1] + hi[1]) * 0.5];
+    let pre = scene.clone();
+    if scene.rotate_path_by(sel, degrees.to_radians(), pivot) {
+        history.push_undo(pre);
+    }
+}
+
 /// Whole-path reshape op (panel "Smooth" / "Sharpen" / "Simplify" buttons).
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub(crate) enum VecPathShapeOp {

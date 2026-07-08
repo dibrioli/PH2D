@@ -156,6 +156,10 @@ pub const VECTOR_TRANSFORM_X: NodeId = hash_node_id("vector.transform.x");
 pub const VECTOR_TRANSFORM_Y: NodeId = hash_node_id("vector.transform.y");
 pub const VECTOR_TRANSFORM_W: NodeId = hash_node_id("vector.transform.w");
 pub const VECTOR_TRANSFORM_H: NodeId = hash_node_id("vector.transform.h");
+/// Rotation (degrees) — a RELATIVE scrub field (not a bbox readout): each change
+/// rotates the selected path by the delta about its bbox center. Seeded to 0 while
+/// unfocused; the panel owns the per-gesture accumulator.
+pub const VECTOR_TRANSFORM_R: NodeId = hash_node_id("vector.transform.r");
 
 // ── Path shape (ADR-0108 — whole-path handle ops) ────────────────────────────
 // One-shot buttons acting on ALL vertices of the SELECTED path (document commands

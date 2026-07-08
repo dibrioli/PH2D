@@ -124,6 +124,26 @@ impl VecScene {
         true
     }
 
+    /// Rotaciona o path `id` por um ângulo ARBITRÁRIO (`radians`) em torno de
+    /// `pivot` world-units (âncora + 2 handles de cada vértice). Para múltiplos de
+    /// 90° prefira [`Self::rotate_path`] (exato, sem trig). `false` se o id sumiu.
+    pub fn rotate_path_by(&mut self, id: VecPathId, radians: f64, pivot: [f64; 2]) -> bool {
+        let Some(path) = self.paths.iter_mut().find(|p| p.id == id) else {
+            return false;
+        };
+        let (s, c) = radians.sin_cos();
+        let rot = |p: [f64; 2]| {
+            let (dx, dy) = (p[0] - pivot[0], p[1] - pivot[1]);
+            [pivot[0] + dx * c - dy * s, pivot[1] + dx * s + dy * c]
+        };
+        for v in &mut path.verts {
+            v.anchor = rot(v.anchor);
+            v.in_handle = rot(v.in_handle);
+            v.out_handle = rot(v.out_handle);
+        }
+        true
+    }
+
     /// Suaviza TODOS os vértices do path `id` de forma **consistente e incremental**.
     ///
     /// Cada vértice vira `Smooth` com handles ao longo da tangente de Catmull-Rom

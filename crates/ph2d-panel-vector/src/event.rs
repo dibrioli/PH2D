@@ -39,6 +39,19 @@ pub(crate) fn apply_event(
                 )));
             true
         }
+        // Rotation field (R) — a RELATIVE scrub: the panel owns the per-gesture
+        // accumulator, so forward the DELTA since the last report (degrees). The
+        // shell rotates the selected path incrementally about its bbox center.
+        WidgetEvent::ValueChanged(id) if id == ids::VECTOR_TRANSFORM_R => {
+            let cur = host.store().number_value(id).unwrap_or(0.0);
+            let delta = cur - crate::state::rot_last();
+            crate::state::set_rot_last(cur);
+            host.bus_mut()
+                .push(EditorAction::ToolPanelEvent(PanelEvent::SetValue(
+                    id, delta,
+                )));
+            true
+        }
         // Transform number fields (X/Y/W/H) — standalone NumberInputs (NOT slider-
         // linked): forward the committed VALUE as a document command; the shell
         // drain translates (X/Y) / scales (W/H) the selected path.

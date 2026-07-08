@@ -259,6 +259,11 @@ pub(super) fn dispatch(
         ] {
             hero.store.set_number_drag_rate(id, px_to_world);
         }
+        // The Angle (R) field is in DEGREES, not world units — a fixed, gentle
+        // scrub (a full drag across the screen ≈ a couple turns), zoom-independent.
+        const ROT_DRAG_DEG_PER_PX: f64 = 0.5;
+        hero.store
+            .set_number_drag_rate(ph2d_editor::ids::VECTOR_TRANSFORM_R, ROT_DRAG_DEG_PER_PX);
     }
 
     // Mirror the tool's mode + shape params so the input dispatch can route

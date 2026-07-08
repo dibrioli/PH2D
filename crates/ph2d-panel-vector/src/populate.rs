@@ -267,6 +267,7 @@ fn populate_transform_fields(store: &mut WidgetStore) {
         ids::VECTOR_TRANSFORM_Y,
         ids::VECTOR_TRANSFORM_W,
         ids::VECTOR_TRANSFORM_H,
+        ids::VECTOR_TRANSFORM_R,
     ] {
         store.register(
             id,

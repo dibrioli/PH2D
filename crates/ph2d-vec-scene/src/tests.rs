@@ -153,6 +153,36 @@ fn rotate_path_quarter_turn_is_cyclic_and_exact() {
 }
 
 #[test]
+fn rotate_path_by_arbitrary_angle_about_pivot() {
+    use std::f64::consts::FRAC_PI_2;
+    let mut scene = VecScene::new();
+    // A single point at (1,0); rotate +90° about the origin → (0,1).
+    let id = scene.push_path(VecPath {
+        id: 0,
+        verts: vec![VecVertex::corner([1.0, 0.0])],
+        closed: false,
+        fill: None,
+        stroke: None,
+    });
+    assert!(scene.rotate_path_by(id, FRAC_PI_2, [0.0, 0.0]));
+    let a = scene.paths()[0].verts[0].anchor;
+    assert!(
+        (a[0]).abs() < 1e-9 && (a[1] - 1.0).abs() < 1e-9,
+        "got {a:?}"
+    );
+
+    // Rotating back by −90° returns to the start (handles ride along too).
+    assert!(scene.rotate_path_by(id, -FRAC_PI_2, [0.0, 0.0]));
+    let a = scene.paths()[0].verts[0].anchor;
+    assert!(
+        (a[0] - 1.0).abs() < 1e-9 && a[1].abs() < 1e-9,
+        "round-trips: {a:?}"
+    );
+
+    assert!(!scene.rotate_path_by(999, 1.0, [0.0, 0.0]));
+}
+
+#[test]
 fn bbox_translate_and_scale_compose() {
     let mut scene = VecScene::new();
     let id = scene.push_path(rectangle([0.0, 0.0], [10.0, 4.0]));

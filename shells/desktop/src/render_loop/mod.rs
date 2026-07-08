@@ -867,6 +867,8 @@ impl crate::App {
             // Numeric Transform field edit (X/Y/W/H) — a SetValue document command.
             let mut pending_vec_transform: Option<(crate::input_dispatch::VecTransformField, f64)> =
                 None;
+            // Transform Angle field (R) — a relative rotation delta (degrees).
+            let mut pending_vec_rotate_by: Option<f64> = None;
             let mut transform_edit: Option<ph2d_editor::InspectorTransformInfo> = None;
             let mut visibility_edit: Option<ph2d_editor::InspectorVisibilityInfo> = None;
             let mut sprite_source_change: Option<(u64, RequestedSpriteStrategy)> = None;
@@ -946,11 +948,14 @@ impl crate::App {
                         }
                         // Transform fields (X/Y/W/H) are numeric SetValue document
                         // commands (not tool Style) — capture; the tool ignores them.
-                        if let ph2d_editor::tool::PanelEvent::SetValue(id, v) = &ev
-                            && let Some(field) =
+                        if let ph2d_editor::tool::PanelEvent::SetValue(id, v) = &ev {
+                            if let Some(field) =
                                 crate::input_dispatch::vec_transform_field_for_id(*id)
-                        {
-                            pending_vec_transform = Some((field, *v));
+                            {
+                                pending_vec_transform = Some((field, *v));
+                            } else if *id == ph2d_editor::ids::VECTOR_TRANSFORM_R {
+                                pending_vec_rotate_by = Some(*v);
+                            }
                         }
                         if let Some(t) = tools.active_mut() {
                             t.handle_panel_event(ev);
@@ -1628,6 +1633,14 @@ impl crate::App {
                     &self.vec_pen,
                     field,
                     target,
+                );
+            }
+            if let Some(deg) = pending_vec_rotate_by {
+                crate::input_dispatch::apply_vec_rotate_by(
+                    vec_scene,
+                    &mut self.vec_history,
+                    &self.vec_pen,
+                    deg,
                 );
             }
             if let Some(op) = pending_vec_path_shape {

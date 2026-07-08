@@ -21,6 +21,11 @@ thread_local! {
     /// Selected path's anchor bbox `[x, y, w, h]` (world), published each frame.
     /// `None` = no path selected → the Transform section hides.
     static CURRENT_TRANSFORM: Cell<Option<[f64; 4]>> = const { Cell::new(None) };
+    /// Rotation-field accumulator: the angle (degrees) the Angle chip last
+    /// reported THIS gesture. `event` emits the DELTA `(current − this)` so the
+    /// shell rotates incrementally; reset to 0 by `paint` whenever the field is
+    /// unfocused (gesture ended), so the shell stays stateless.
+    static ROT_LAST: Cell<f64> = const { Cell::new(0.0) };
     /// Last measured scrollable content height (set by `paint`).
     static LAST_CONTENT_H: Cell<f32> = const { Cell::new(0.0) };
     /// Last visible body height (panel rect minus title + paddings).
@@ -66,6 +71,17 @@ pub fn set_current_transform(bbox: Option<[f64; 4]>) {
 /// The selected path's bbox this frame (`None` ⇒ hide the Transform section).
 pub(crate) fn current_transform() -> Option<[f64; 4]> {
     CURRENT_TRANSFORM.with(|c| c.get())
+}
+
+/// The angle the Angle chip last reported this gesture (for the delta emit).
+pub(crate) fn rot_last() -> f64 {
+    ROT_LAST.with(Cell::get)
+}
+
+/// Record the Angle chip's current value as the gesture baseline (or reset to 0
+/// between gestures).
+pub(crate) fn set_rot_last(v: f64) {
+    ROT_LAST.with(|c| c.set(v));
 }
 
 #[must_use]

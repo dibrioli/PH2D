@@ -27,13 +27,17 @@ impl BodyCtx<'_> {
             ids::VECTOR_TRANSFORM_Y,
             y,
         );
-        self.number_row(
+        y = self.number_row(
             "W",
             ids::VECTOR_TRANSFORM_W,
             "H",
             ids::VECTOR_TRANSFORM_H,
             y,
-        )
+        );
+        // Rotation — a full-width relative scrub (° per gesture about the bbox
+        // center). Standalone row (no paired field).
+        self.number_cell("R", ids::VECTOR_TRANSFORM_R, self.inner_x, self.inner_w, y);
+        y + self.row_h + self.row_gap
     }
 
     /// A 2-column row of two labelled number fields (X | Y, W | H).

@@ -4611,6 +4611,7 @@ dependencies = [
  "dhat",
  "glam 0.30.10",
  "ph2d-color",
+ "ph2d-core",
  "ph2d-vector-traits",
 ]
 
@@ -4802,6 +4803,7 @@ dependencies = [
  "gilrs",
  "image",
  "libm",
+ "ph2d-anim",
  "ph2d-asset",
  "ph2d-asset-ktx2",
  "ph2d-audio",

@@ -21,7 +21,7 @@ use std::time::Instant;
 
 use bumpalo::Bump;
 use ph2d_asset::{AssetDb, AssetId, LogicalTextureMap};
-use ph2d_core::FixedStep;
+use ph2d_core::{FixedStep, Playhead};
 use ph2d_ecs::scene::{
     ComponentRegistry, EditorCommandQueue, HierarchySnapshot, HierarchyWalkState,
 };
@@ -303,6 +303,10 @@ pub(crate) struct App {
     pub(crate) gfx: Option<AppGfx>,
     pub(crate) handler: LoggingHandler,
     pub(crate) fixed_step: FixedStep,
+    /// Engine-wide timeline cursor. Advanced once per fixed tick; every
+    /// animatable system samples it for the current frame (the general
+    /// timeline's live scalar side). See `render_loop::timeline_smoke`.
+    pub(crate) playhead: Playhead,
     pub(crate) last_frame: Instant,
     pub(crate) pending_resize: Option<WindowSize>,
     /// FLUID-DRAG present-mode override: the configured mode saved while a live resize streams (the

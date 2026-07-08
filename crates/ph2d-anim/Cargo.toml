@@ -25,6 +25,10 @@ publish.workspace = true
 ph2d-vector-traits = { path = "../ph2d-vector-traits" }
 
 [dev-dependencies]
+# ph2d-core for the Playhead in the general-timeline seam test
+# (tests/playhead_drive.rs): advancing the engine Playhead drives a Clip sample.
+# core is upstream of everything (no cycle: core depends on no ph2d crate).
+ph2d-core = { path = "../ph2d-core" }
 # OklchColor + glam for building colour / Vec2 tracks in the test suite. Path
 # dep matches workspace convention (mirrors ph2d-vector-traits' own dep line).
 ph2d-color = { path = "../ph2d-color" }

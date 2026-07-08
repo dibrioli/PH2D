@@ -41,6 +41,10 @@ ph2d-eval-motion = { path = "../../crates/ph2d-eval-motion" }
 # while the Motion tool is active.
 ph2d-motion-doc = { path = "../../crates/ph2d-motion-doc" }
 ph2d-node-registry-init = { path = "../../crates/ph2d-node-registry-init" }
+# General timeline data layer (M0): keyframe store + curves. Used by the
+# timeline visual smoke (render_loop/timeline_smoke.rs, PH2D_TIMELINE_SMOKE=1) to
+# animate the sprite grid from a Clip sampled at the engine Playhead.
+ph2d-anim = { path = "../../crates/ph2d-anim" }
 # Tool registry — convention-by-discovery infrastructure (PR 8 of
 # the migration plan: `docs/Migracao/2026-05-convention-by-discovery.md`).
 # `init.rs` calls `register_all()` at boot and stashes the built

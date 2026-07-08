@@ -68,7 +68,7 @@ use input_log::log_input_event;
 // theme::parse_theme_env moved to init.rs (PR 9c).
 use winit_host::LoggingHandler;
 
-use ph2d_core::{FixedStep, Vec2, install_panic_hook, panic};
+use ph2d_core::{FixedStep, Playhead, Vec2, install_panic_hook, panic};
 use ph2d_ecs::scene::build_hierarchy_snapshot;
 use ph2d_ecs::{Component, SimComponent, SimWorld, Transform};
 use ph2d_editor::paint::Paint;
@@ -140,6 +140,7 @@ impl App {
             gfx: None,
             handler: LoggingHandler::new(),
             fixed_step: FixedStep::default(),
+            playhead: Playhead::default(),
             last_frame: Instant::now(),
             pending_resize: None,
             resize_saved_present_mode: None,

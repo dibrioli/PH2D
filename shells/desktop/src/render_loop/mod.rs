@@ -52,6 +52,7 @@ pub(crate) mod painter_bridge_overlays;
 /// Live GPU preview of a brush Shape-source sprite (when not selected), split from `painter_bridge` for
 /// the HR-18 file-LOC cap.
 pub(crate) mod painter_bridge_shape_preview;
+mod timeline_smoke;
 // `pub(crate)`: `apply_layer_reparent` is called from `input_dispatch` (outside
 // render_loop) to route the W3.T3.8 layer drag-reparent through the allowlisted
 // bridge-queries module instead of downcasting in central dispatch.
@@ -432,6 +433,10 @@ impl crate::App {
             );
         }
         panic::set_frame_id(self.fixed_step.tick_count());
+        // Advance the engine-wide timeline cursor by the ticks that ran this
+        // frame. Every animatable system samples the Playhead for its current
+        // value; while paused it holds. (General timeline, M0 time wire.)
+        self.playhead.advance_ticks(report.ticks);
 
         // Sim tick + extract — extracted to sibling `sim_extract.rs`
         // (Wave 3.2 stage A). Runs the bouncing-motion sim tick and
@@ -498,45 +503,52 @@ impl crate::App {
         .into_iter()
         .flatten()
         .collect();
-        // Project px/m for `Sprite::resolve_anchor` (intrinsic-px `offset` →
-        // local meters). `None` only under the M5 demo / headless, whose sprites
-        // use the centered/offset defaults so the value is inert; fall back to
-        // the canonical default.
-        let ppm = hero_screen
-            .as_ref()
-            .map(|h| h.project.pixels_per_meter)
-            .unwrap_or(ph2d_editor::project::DEFAULT_PIXELS_PER_METER);
-        // W3.T3.11: project-default sampling for all-Inherit sprites, from the
-        // project image filter (PixelArt → Nearest, Smooth → Linear); repeat
-        // defaults to clamp (Disabled).
-        let default_filter = match hero_screen
-            .as_ref()
-            .map(|h| h.project.image_filter)
-            .unwrap_or(ph2d_render::ImageFilterMode::Smooth)
-        {
-            ph2d_render::ImageFilterMode::PixelArt => ph2d_ecs::FilterMode::Nearest,
-            ph2d_render::ImageFilterMode::Smooth => ph2d_ecs::FilterMode::Linear,
-        };
-        // W2.T4 cooked-texture loader: resolve + decode + upload every
-        // `SpriteSource::CookedTexture` sprite's KTX2 (for the device tier,
-        // descending the fallback ladder) BEFORE extract reads back the cached
-        // `texture_id`. Idempotent + cheap after the first upload.
-        cooked_texture_bridge::ensure_uploaded(sim, renderer, asset_db, logical_texture_map);
-        sim_extract::run(
-            dt,
-            sim,
-            present,
-            renderer,
-            prop_state,
-            worklist,
-            sort_scratch,
-            sort_inputs,
-            &preview_overrides,
-            ppm,
-            camera.cull_mask,
-            default_filter,
-            ph2d_ecs::RepeatMode::Disabled,
-        );
+        // General-timeline visual smoke (PH2D_TIMELINE_SMOKE=1): a ph2d-anim
+        // Clip sampled at the live Playhead animates the sprite grid, owning the
+        // canvas this frame instead of the M5 demo sim. Off by default.
+        if timeline_smoke::enabled() {
+            timeline_smoke::run(present, renderer, self.playhead.time());
+        } else {
+            // Project px/m for `Sprite::resolve_anchor` (intrinsic-px `offset` →
+            // local meters). `None` only under the M5 demo / headless, whose sprites
+            // use the centered/offset defaults so the value is inert; fall back to
+            // the canonical default.
+            let ppm = hero_screen
+                .as_ref()
+                .map(|h| h.project.pixels_per_meter)
+                .unwrap_or(ph2d_editor::project::DEFAULT_PIXELS_PER_METER);
+            // W3.T3.11: project-default sampling for all-Inherit sprites, from the
+            // project image filter (PixelArt → Nearest, Smooth → Linear); repeat
+            // defaults to clamp (Disabled).
+            let default_filter = match hero_screen
+                .as_ref()
+                .map(|h| h.project.image_filter)
+                .unwrap_or(ph2d_render::ImageFilterMode::Smooth)
+            {
+                ph2d_render::ImageFilterMode::PixelArt => ph2d_ecs::FilterMode::Nearest,
+                ph2d_render::ImageFilterMode::Smooth => ph2d_ecs::FilterMode::Linear,
+            };
+            // W2.T4 cooked-texture loader: resolve + decode + upload every
+            // `SpriteSource::CookedTexture` sprite's KTX2 (for the device tier,
+            // descending the fallback ladder) BEFORE extract reads back the cached
+            // `texture_id`. Idempotent + cheap after the first upload.
+            cooked_texture_bridge::ensure_uploaded(sim, renderer, asset_db, logical_texture_map);
+            sim_extract::run(
+                dt,
+                sim,
+                present,
+                renderer,
+                prop_state,
+                worklist,
+                sort_scratch,
+                sort_inputs,
+                &preview_overrides,
+                ppm,
+                camera.cull_mask,
+                default_filter,
+                ph2d_ecs::RepeatMode::Disabled,
+            );
+        }
 
         // Sprite-layer clear color = backdrop visible in the canvas
         // area through the transparent regions of `vello_rt`. Live

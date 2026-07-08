@@ -135,7 +135,7 @@ impl BodyCtx<'_> {
     }
 
     /// A full-width action button (Boolean / Vertex-delete / Duplicate).
-    fn action_button(&mut self, id: ph2d_a11y::NodeId, label: &str, y: f32) -> f32 {
+    pub(crate) fn action_button(&mut self, id: ph2d_a11y::NodeId, label: &str, y: f32) -> f32 {
         let rect = Rect::new(self.inner_x, y, self.inner_w, self.row_h);
         let st = self.store.button_state(id).unwrap_or(ButtonState::Normal);
         let btn = Button::new(id, label).kind(ButtonKind::Default).state(st);
@@ -568,23 +568,19 @@ impl BodyCtx<'_> {
             y,
         );
 
-        // Path — reshape ALL vertices of the selected path: Smooth / Sharpen (a
-        // 2-col row) + full-width Simplify (drop redundant points).
-        y = self.section_label("Path", y);
-        y = self.row2(
-            z_w,
-            z_gap,
-            [
-                (ids::VECTOR_PATH_SMOOTH, "Smooth"),
-                (ids::VECTOR_PATH_SHARPEN, "Sharpen"),
-            ],
-            y,
-        );
-        self.action_button(ids::VECTOR_PATH_SIMPLIFY, "Simplify", y)
+        // Path reshape (Smooth/Sharpen/Simplify/Subdivide) — in the sibling
+        // `paint_arrange` module (keeps this file under the 600-LOC panel cap).
+        self.path_section(z_w, z_gap, y)
     }
 
     /// A 2-column row of two half-width action buttons; returns the advanced `y`.
-    fn row2(&mut self, w: f32, gap: f32, items: [(ph2d_a11y::NodeId, &str); 2], y: f32) -> f32 {
+    pub(crate) fn row2(
+        &mut self,
+        w: f32,
+        gap: f32,
+        items: [(ph2d_a11y::NodeId, &str); 2],
+        y: f32,
+    ) -> f32 {
         for (i, (id, label)) in items.iter().enumerate() {
             let rx = self.inner_x + i as f32 * (w + gap);
             let rect = Rect::new(rx, y, w, self.row_h);

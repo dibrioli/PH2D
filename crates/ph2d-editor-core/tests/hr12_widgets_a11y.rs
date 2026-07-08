@@ -244,6 +244,14 @@ const WIDGET_DELEGATE_MARKERS: &[&str] = &[
 /// Panel files that paint via vector/text primitives only (no widget
 /// interaction → no a11y to wire). Each entry: (path key, why).
 const PANEL_A11Y_DELEGATE_OK: &[(&str, &str)] = &[
+    // Vector path-reshape subsection — a thin section painter split from
+    // `paint_sections.rs` for the LOC cap. Its buttons delegate to
+    // `BodyCtx::row2` / `action_button` (in paint_sections), which paint via the
+    // a11y-wired `paint_button` primitive; this file has no widget of its own.
+    (
+        "ph2d-panel-vector/src/paint_arrange.rs",
+        "delegates to row2/action_button (paint_button-backed) in paint_sections",
+    ),
     // CEQ histogram strip — pure RGB-bar visualization (read-only chart,
     // no widget interaction, no AccessKit semantics). Split out from
     // `paint.rs` to satisfy Wave 10 LOC cap.

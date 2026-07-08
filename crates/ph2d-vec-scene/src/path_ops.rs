@@ -317,6 +317,34 @@ impl VecScene {
         }
         changed
     }
+
+    /// Subdivide o path `id`: insere um vértice no meio (`t = 0.5`) de CADA segmento
+    /// via de Casteljau, **preservando a forma exatamente** (as duas cúbicas somam a
+    /// original) — o inverso de [`Self::simplify_path`], para ganhar pontos de
+    /// controle. Recusa (`false`) se o id sumiu, o path tem < 2 vértices, ou passaria
+    /// de [`SUBDIVIDE_MAX_VERTS`] (backstop anti-explosão). Só aritmética exata.
+    pub fn subdivide_path(&mut self, id: VecPathId) -> bool {
+        /// Teto de vértices — recusa a subdivisão que estouraria isto.
+        const SUBDIVIDE_MAX_VERTS: usize = 512;
+
+        let Some(path) = self.paths.iter_mut().find(|p| p.id == id) else {
+            return false;
+        };
+        let n = path.verts.len();
+        if n < 2 {
+            return false;
+        }
+        let segs = if path.closed { n } else { n - 1 };
+        if segs == 0 || n + segs > SUBDIVIDE_MAX_VERTS {
+            return false;
+        }
+        // Do último segmento pro primeiro: cada insert é em `seg+1`, então os índices
+        // dos segmentos ainda não processados (menores) permanecem válidos.
+        for seg in (0..segs).rev() {
+            crate::split_segment(path, seg, 0.5);
+        }
+        true
+    }
 }
 
 /// Ajusta uma ÚNICA cúbica `prev→next` que substitui os dois segmentos originais

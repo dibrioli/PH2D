@@ -706,6 +706,44 @@ fn simplify_path_drops_redundant_points_and_keeps_the_shape() {
     assert!(!scene.simplify_path(999));
 }
 
+#[test]
+fn subdivide_path_doubles_segments_and_preserves_shape() {
+    let mut scene = VecScene::new();
+    // Smoothed 8-gon → a curved closed path (non-degenerate handles).
+    let id = scene.push_path(regular_polygon([0.0, 0.0], 10.0, 10.0, 8));
+    scene.smooth_path(id);
+    let before = scene.paths().iter().find(|p| p.id == id).unwrap().clone();
+    let n0 = before.verts.len();
+    let ref_pts = sample_path(&before, 16);
+
+    // Subdivide: one new vertex per segment (closed ⇒ segs == n).
+    assert!(scene.subdivide_path(id));
+    let after = scene.paths().iter().find(|p| p.id == id).unwrap();
+    assert_eq!(
+        after.verts.len(),
+        n0 * 2,
+        "one midpoint inserted per segment"
+    );
+
+    // Shape preserved EXACTLY (de Casteljau split): every original sample is on
+    // the new curve to numerical precision.
+    let new_pts = sample_path(after, 16);
+    let mut maxd: f64 = 0.0;
+    for rp in &ref_pts {
+        let d = new_pts
+            .iter()
+            .map(|np| (rp[0] - np[0]).hypot(rp[1] - np[1]))
+            .fold(f64::INFINITY, f64::min);
+        maxd = maxd.max(d);
+    }
+    assert!(maxd < 1e-6, "subdivision is shape-exact (max dev {maxd})");
+
+    // A single-vertex / missing path can't subdivide.
+    let dot = scene.push_path(path_at([0.0, 0.0]));
+    assert!(!scene.subdivide_path(dot));
+    assert!(!scene.subdivide_path(999));
+}
+
 /// Sample every cubic segment of a path into a flat list of points.
 fn sample_path(p: &VecPath, per_seg: usize) -> Vec<[f64; 2]> {
     let n = p.verts.len();

@@ -320,6 +320,7 @@ pub(crate) enum VecPathShapeOp {
     Smooth,
     Sharpen,
     Simplify,
+    Subdivide,
 }
 
 /// Smooth / sharpen / simplify ALL vertices of the SELECTED path (panel Path
@@ -340,6 +341,7 @@ pub(crate) fn apply_vec_path_shape(
         VecPathShapeOp::Smooth => scene.smooth_path(sel),
         VecPathShapeOp::Sharpen => scene.sharpen_path(sel),
         VecPathShapeOp::Simplify => scene.simplify_path(sel),
+        VecPathShapeOp::Subdivide => scene.subdivide_path(sel),
     };
     if changed {
         history.push_undo(pre);
@@ -355,6 +357,8 @@ pub(crate) fn vec_path_shape_for_id(id: ph2d_editor::NodeId) -> Option<VecPathSh
         Some(VecPathShapeOp::Sharpen)
     } else if id == ph2d_editor::ids::VECTOR_PATH_SIMPLIFY {
         Some(VecPathShapeOp::Simplify)
+    } else if id == ph2d_editor::ids::VECTOR_PATH_SUBDIVIDE {
+        Some(VecPathShapeOp::Subdivide)
     } else {
         None
     }
@@ -2249,6 +2253,10 @@ mod tests {
             Some(VecPathShapeOp::Simplify)
         );
         assert_eq!(
+            vec_path_shape_for_id(ph2d_editor::ids::VECTOR_PATH_SUBDIVIDE),
+            Some(VecPathShapeOp::Subdivide)
+        );
+        assert_eq!(
             vec_path_shape_for_id(ph2d_editor::ids::VECTOR_ARRANGE_FLIP_H),
             None
         );
@@ -2307,6 +2315,24 @@ mod tests {
             .verts
             .len();
         assert_eq!(after, before - 1, "simplify drops the one redundant point");
+
+        // Subdivide: one midpoint per segment (closed ⇒ doubles the vertex count).
+        let n = scene
+            .paths()
+            .iter()
+            .find(|p| p.id == sq)
+            .unwrap()
+            .verts
+            .len();
+        apply_vec_path_shape(&mut scene, &mut hist, &pen, VecPathShapeOp::Subdivide);
+        let n2 = scene
+            .paths()
+            .iter()
+            .find(|p| p.id == sq)
+            .unwrap()
+            .verts
+            .len();
+        assert_eq!(n2, n * 2, "subdivide doubles a closed path's vertices");
     }
 
     #[test]

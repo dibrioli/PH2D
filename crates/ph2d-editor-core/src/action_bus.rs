@@ -112,6 +112,16 @@ pub enum EditorAction {
     /// adding a panel-edit semantic does not require a new variant here.
     ToolPanelEvent(crate::tool::PanelEvent),
 
+    /// Generic panel → **timeline** event channel (docs/Timeline). The
+    /// bottom-docked `ph2d-panel-timeline` is a document panel (not a tool), so
+    /// its transport / ruler / key edits cannot route through
+    /// [`Self::ToolPanelEvent`]. It reuses the tool-agnostic
+    /// [`crate::tool::PanelEvent`] (a `NodeId` + payload) and the shell drains by
+    /// translating the id into a `ph2d_timeline::TimelineIntent` and pushing it
+    /// onto its intent queue (the timeline semantics live in the shell, keeping
+    /// editor-core free of the timeline crate — mirror of `ToolPanelEvent`).
+    TimelinePanelEvent(crate::tool::PanelEvent),
+
     /// Generic cancel of the active modal tool (ADR-0040 TG-B/TG-C).
     /// Shell drains by calling `tools.set_active(default)` and tearing
     /// down any tool-specific shell-side preview state. Raised by both

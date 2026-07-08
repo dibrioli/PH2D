@@ -841,6 +841,20 @@ impl crate::App {
                             t.handle_panel_event(ev);
                         }
                     }
+                    // docs/Timeline W2.E2: the docked timeline panel is not a
+                    // tool — translate its transport PanelEvents into
+                    // `TimelineIntent`s (id → intent; the timeline semantics live
+                    // here, editor-core stays timeline-agnostic) and queue them
+                    // for `timeline_bridge::run` to apply this frame.
+                    EditorAction::TimelinePanelEvent(ev) => {
+                        if let Some(intent) = timeline_bridge::intent_for_transport(
+                            &ev,
+                            &self.timeline,
+                            &self.playhead,
+                        ) {
+                            self.timeline_intents.push(intent);
+                        }
+                    }
                     // ADR-0040 TG-B/TG-C: generic "cancel the active modal
                     // tool". Switch back to the default tool and tear down
                     // any image-tool shell-side preview caches. Bg Removal +

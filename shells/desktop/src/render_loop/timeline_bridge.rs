@@ -13,6 +13,7 @@
 
 use ph2d_core::Playhead;
 use ph2d_ecs::World;
+use ph2d_editor::tool::PanelEvent;
 use ph2d_timeline::{TimelineIntent, TimelineState, apply_from_doc, apply_intent};
 
 /// Drain pending intents into `timeline`, then apply its document to `world` at
@@ -28,4 +29,85 @@ pub(crate) fn run(
         apply_intent(timeline, playhead, intent);
     }
     apply_from_doc(world, &mut timeline.doc, playhead.time());
+}
+
+/// Translate a transport [`PanelEvent`] (by widget id) into a [`TimelineIntent`].
+/// The timeline semantics live here so editor-core stays timeline-agnostic;
+/// frame-relative and duration-relative commands read the current
+/// `playhead`/`timeline`. Returns `None` for ids this panel does not own.
+pub(crate) fn intent_for_transport(
+    ev: &PanelEvent,
+    timeline: &TimelineState,
+    playhead: &Playhead,
+) -> Option<TimelineIntent> {
+    use TimelineIntent as I;
+    use ph2d_editor::ids;
+    let fps = timeline.doc.fps_display;
+    let duration = || timeline.doc.active_clip().duration().to_seconds();
+    match *ev {
+        PanelEvent::Click(id) if id == ids::TIMELINE_PLAY => Some(I::TogglePlay),
+        PanelEvent::Click(id) if id == ids::TIMELINE_GO_START => Some(I::Scrub(0.0)),
+        PanelEvent::Click(id) if id == ids::TIMELINE_GO_END => Some(I::Scrub(duration())),
+        PanelEvent::Click(id) if id == ids::TIMELINE_PREV_FRAME => {
+            Some(I::SeekFrame(playhead.frame(fps) - 1))
+        }
+        PanelEvent::Click(id) if id == ids::TIMELINE_NEXT_FRAME => {
+            Some(I::SeekFrame(playhead.frame(fps) + 1))
+        }
+        PanelEvent::SetValue(id, v) if id == ids::TIMELINE_TIME_NUM => Some(I::Scrub(v)),
+        PanelEvent::SetValue(id, v) if id == ids::TIMELINE_FRAME_NUM => {
+            Some(I::SeekFrame(v as i64))
+        }
+        PanelEvent::Toggle(id, on) if id == ids::TIMELINE_LOOP => Some(if on {
+            I::SetLoop(Some((0.0, duration().max(1.0 / fps.max(1.0)))))
+        } else {
+            I::SetLoop(None)
+        }),
+        PanelEvent::Toggle(id, on) if id == ids::TIMELINE_AUTOKEY => Some(I::SetAutoKey(on)),
+        PanelEvent::Toggle(id, on) if id == ids::TIMELINE_SNAP => Some(I::SetFrameSnap(on)),
+        _ => None,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use ph2d_editor::ids;
+
+    #[test]
+    fn transport_ids_map_to_intents() {
+        let st = TimelineState::new();
+        let mut ph = Playhead::new(1.0 / 60.0);
+        ph.seek_frame(10, st.doc.fps_display);
+
+        assert_eq!(
+            intent_for_transport(&PanelEvent::Click(ids::TIMELINE_PLAY), &st, &ph),
+            Some(TimelineIntent::TogglePlay)
+        );
+        assert_eq!(
+            intent_for_transport(&PanelEvent::Click(ids::TIMELINE_NEXT_FRAME), &st, &ph),
+            Some(TimelineIntent::SeekFrame(11))
+        );
+        assert_eq!(
+            intent_for_transport(&PanelEvent::Click(ids::TIMELINE_PREV_FRAME), &st, &ph),
+            Some(TimelineIntent::SeekFrame(9))
+        );
+        assert_eq!(
+            intent_for_transport(&PanelEvent::SetValue(ids::TIMELINE_TIME_NUM, 1.5), &st, &ph),
+            Some(TimelineIntent::Scrub(1.5))
+        );
+        assert_eq!(
+            intent_for_transport(&PanelEvent::Toggle(ids::TIMELINE_AUTOKEY, true), &st, &ph),
+            Some(TimelineIntent::SetAutoKey(true))
+        );
+        assert_eq!(
+            intent_for_transport(&PanelEvent::Toggle(ids::TIMELINE_SNAP, false), &st, &ph),
+            Some(TimelineIntent::SetFrameSnap(false))
+        );
+        // A non-transport id (Close is handled in the panel, not translated).
+        assert_eq!(
+            intent_for_transport(&PanelEvent::Click(ids::TIMELINE_CLOSE), &st, &ph),
+            None
+        );
+    }
 }

@@ -521,6 +521,36 @@ pub fn star(center: [f64; 2], rx: f64, ry: f64, points: u32, inner_ratio: f64) -
     }
 }
 
+/// Teto de voltas de uma espiral (clamp defensivo; o slider real fica em 1..8).
+pub const MAX_SPIRAL_TURNS: u32 = 8;
+
+/// Espiral de Arquimedes ABERTA inscrita na elipse de raios `rx`/`ry`, com
+/// `turns` voltas (clampado a `[1, MAX_SPIRAL_TURNS]`). Cresce do centro
+/// (`f = 0`) até a borda (`f = 1`), amostrada a 24 vértices de quina por volta,
+/// primeira amostra no topo. Aberta, sem estilo.
+#[must_use]
+pub fn spiral(center: [f64; 2], rx: f64, ry: f64, turns: u32) -> VecPath {
+    let t = turns.clamp(1, MAX_SPIRAL_TURNS);
+    let (cx, cy) = (center[0], center[1]);
+    let total = std::f64::consts::TAU * f64::from(t);
+    let start = -std::f64::consts::FRAC_PI_2;
+    let steps = t as usize * 24;
+    let verts = (0..=steps)
+        .map(|i| {
+            let f = i as f64 / steps as f64; // 0..1 (fração do raio E do ângulo)
+            let a = start + total * f;
+            VecVertex::corner([cx + rx * f * a.cos(), cy + ry * f * a.sin()])
+        })
+        .collect();
+    VecPath {
+        id: 0,
+        verts,
+        closed: false,
+        fill: None,
+        stroke: None,
+    }
+}
+
 /// Retângulo de cantos arredondados a partir de dois cantos opostos + raio
 /// `radius` (world-units), clampado a metade do menor lado. Oito vértices de
 /// quina: arestas retas + quartos-de-círculo (handles `KAPPA`). `radius ≈ 0` →

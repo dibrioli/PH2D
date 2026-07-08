@@ -236,6 +236,25 @@ fn regular_polygon_first_vertex_is_at_top() {
     assert!((a[1] - (1.0 - 2.0)).abs() < 1e-9, "y at top of bbox");
 }
 
+#[test]
+fn spiral_is_open_grows_from_center_to_edge_and_clamps_turns() {
+    let s = spiral([0.0, 0.0], 2.0, 3.0, 3);
+    assert!(!s.closed && s.fill.is_none() && s.stroke.is_none());
+    // 3 turns × 24 samples + 1 endpoint.
+    assert_eq!(s.verts.len(), 3 * 24 + 1);
+    // First sample at the center (f = 0).
+    assert!(s.verts[0].anchor[0].abs() < 1e-6 && s.verts[0].anchor[1].abs() < 1e-6);
+    // Integer turns → the last sample is back at the top of the bbox: (0, −ry).
+    let last = s.verts.last().unwrap().anchor;
+    assert!(last[0].abs() < 1e-6 && (last[1] + 3.0).abs() < 1e-6);
+    // Turns clamp to [1, MAX_SPIRAL_TURNS].
+    assert_eq!(spiral([0.0, 0.0], 1.0, 1.0, 0).verts.len(), 24 + 1);
+    assert_eq!(
+        spiral([0.0, 0.0], 1.0, 1.0, 99).verts.len(),
+        MAX_SPIRAL_TURNS as usize * 24 + 1
+    );
+}
+
 /// A closed triangle of straight corners (degenerate handles).
 fn corner_triangle() -> VecPath {
     VecPath {

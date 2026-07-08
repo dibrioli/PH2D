@@ -16,13 +16,15 @@ use ph2d_editor_core::widget::{ButtonState, SliderOrientation, SliderState, Text
 use ph2d_tool_vector::params::{
     DASH_SLIDER_OFFSET, DASH_SLIDER_SCALE, GAP_DEFAULT, GAP_SLIDER_OFFSET, GAP_SLIDER_SCALE,
     OPACITY_SLIDER_OFFSET, OPACITY_SLIDER_SCALE, RADIUS_SLIDER_OFFSET, RADIUS_SLIDER_SCALE,
-    SIDES_SLIDER_OFFSET, SIDES_SLIDER_SCALE, STAR_INNER_SLIDER_OFFSET, STAR_INNER_SLIDER_SCALE,
-    STAR_POINTS_SLIDER_OFFSET, STAR_POINTS_SLIDER_SCALE, WIDTH_SLIDER_OFFSET, WIDTH_SLIDER_SCALE,
-    gap_to_slider, radius_to_slider, sides_to_slider, star_inner_to_slider, star_points_to_slider,
+    SIDES_SLIDER_OFFSET, SIDES_SLIDER_SCALE, SPIRAL_TURNS_SLIDER_OFFSET, SPIRAL_TURNS_SLIDER_SCALE,
+    STAR_INNER_SLIDER_OFFSET, STAR_INNER_SLIDER_SCALE, STAR_POINTS_SLIDER_OFFSET,
+    STAR_POINTS_SLIDER_SCALE, WIDTH_SLIDER_OFFSET, WIDTH_SLIDER_SCALE, gap_to_slider,
+    radius_to_slider, sides_to_slider, spiral_turns_to_slider, star_inner_to_slider,
+    star_points_to_slider,
 };
 use ph2d_tool_vector::{
-    DEFAULT_CORNER_RADIUS_PX, DEFAULT_POLYGON_SIDES, DEFAULT_STAR_INNER, DEFAULT_STAR_POINTS,
-    DEFAULT_STROKE_WIDTH_PX, px_to_slider,
+    DEFAULT_CORNER_RADIUS_PX, DEFAULT_POLYGON_SIDES, DEFAULT_SPIRAL_TURNS, DEFAULT_STAR_INNER,
+    DEFAULT_STAR_POINTS, DEFAULT_STROKE_WIDTH_PX, px_to_slider,
 };
 
 /// Register a plain action Button in the Normal state.
@@ -103,6 +105,7 @@ pub fn populate(store: &mut WidgetStore) {
     button(store, ids::VECTOR_MODE_POLYGON);
     button(store, ids::VECTOR_MODE_STAR);
     button(store, ids::VECTOR_MODE_RRECT);
+    button(store, ids::VECTOR_MODE_SPIRAL);
 
     // Polygon Sides slider — seeded at the tool's default (`sides_to_slider(5)`).
     // Registered unconditionally (the store is mode-agnostic); the panel only
@@ -161,6 +164,15 @@ pub fn populate(store: &mut WidgetStore) {
         DEFAULT_CORNER_RADIUS_PX,
         RADIUS_SLIDER_SCALE,
         RADIUS_SLIDER_OFFSET,
+    );
+    slider_chip(
+        store,
+        ids::VECTOR_SPIRAL_TURNS,
+        ids::VECTOR_SPIRAL_TURNS_NUM,
+        spiral_turns_to_slider(DEFAULT_SPIRAL_TURNS),
+        f64::from(DEFAULT_SPIRAL_TURNS),
+        SPIRAL_TURNS_SLIDER_SCALE,
+        SPIRAL_TURNS_SLIDER_OFFSET,
     );
 
     // Vertex-type buttons (retype the selected vertex; shown only when a vertex

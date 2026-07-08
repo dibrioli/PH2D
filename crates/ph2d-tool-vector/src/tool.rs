@@ -27,7 +27,7 @@ use ph2d_editor_core::tool::{PanelEvent, Tool};
 use crate::params::{
     DrawMode, StrokeCap, StrokeJoin, VectorDrawConfig, VectorStyleSnapshot, slider_to_dash,
     slider_to_gap, slider_to_opacity, slider_to_px, slider_to_radius, slider_to_sides,
-    slider_to_star_inner, slider_to_star_points,
+    slider_to_spiral_turns, slider_to_star_inner, slider_to_star_points,
 };
 
 /// Curated stroke / fill preset palette: `(key, label, sRGB8)`. Retained as the
@@ -56,6 +56,8 @@ pub const DEFAULT_POLYGON_SIDES: u32 = 5;
 pub const DEFAULT_STAR_POINTS: u32 = 5;
 pub const DEFAULT_STAR_INNER: f64 = 0.5;
 pub const DEFAULT_CORNER_RADIUS_PX: f64 = 12.0;
+/// Default spiral turn count.
+pub const DEFAULT_SPIRAL_TURNS: u32 = 3;
 
 /// Look up a palette colour by key (defaults only — the live path is the picker).
 fn color_of(key: &str) -> Option<[u8; 4]> {
@@ -84,6 +86,8 @@ pub struct VectorTool {
     star_inner_ratio: f64,
     /// Corner radius (screen px) for `DrawMode::RoundRect`.
     corner_radius_px: f64,
+    /// Turn count for `DrawMode::Spiral`.
+    spiral_turns: u32,
     /// Stroke cap / join + dash & gap as multiples of the stroke width
     /// (`dash = 0` = solid; `gap` is the space between dashes).
     cap: StrokeCap,
@@ -106,6 +110,7 @@ impl Default for VectorTool {
             star_points: DEFAULT_STAR_POINTS,
             star_inner_ratio: DEFAULT_STAR_INNER,
             corner_radius_px: DEFAULT_CORNER_RADIUS_PX,
+            spiral_turns: DEFAULT_SPIRAL_TURNS,
             cap: StrokeCap::Butt,
             join: StrokeJoin::Miter,
             dash: 0.0,
@@ -189,6 +194,7 @@ impl VectorTool {
             star_points: self.star_points,
             star_inner_ratio: self.star_inner_ratio,
             corner_radius_px: self.corner_radius_px,
+            spiral_turns: self.spiral_turns,
         }
     }
 
@@ -219,6 +225,7 @@ impl VectorTool {
             star_points: self.star_points,
             star_inner_ratio: self.star_inner_ratio,
             corner_radius_px: self.corner_radius_px,
+            spiral_turns: self.spiral_turns,
             cap: self.cap,
             join: self.join,
             dash: self.dash,
@@ -280,6 +287,9 @@ impl Tool for VectorTool {
             PanelEvent::SetValue(id, v) if id == ids::VECTOR_RRECT_RADIUS => {
                 self.corner_radius_px = slider_to_radius(v as f32);
             }
+            PanelEvent::SetValue(id, v) if id == ids::VECTOR_SPIRAL_TURNS => {
+                self.spiral_turns = slider_to_spiral_turns(v as f32);
+            }
             // Opacity sliders own the fill/stroke alpha (the single source). The
             // picker only sets RGB. `0 %` alpha ⇒ invisible (no fill).
             PanelEvent::SetValue(id, v) if id == ids::VECTOR_FILL_OPACITY => {
@@ -304,6 +314,7 @@ impl Tool for VectorTool {
             PanelEvent::Click(id) if id == ids::VECTOR_MODE_RRECT => {
                 self.mode = DrawMode::RoundRect
             }
+            PanelEvent::Click(id) if id == ids::VECTOR_MODE_SPIRAL => self.mode = DrawMode::Spiral,
             // Stroke cap / join segmented rows + Dash slider. These are Style →
             // restyle the selected path (mirror of colour/width).
             PanelEvent::Click(id) if id == ids::VECTOR_CAP_BUTT => self.set_cap(StrokeCap::Butt),

@@ -46,6 +46,7 @@ pub(crate) fn apply_event(
                 || id == ids::VECTOR_STAR_POINTS
                 || id == ids::VECTOR_STAR_INNER
                 || id == ids::VECTOR_RRECT_RADIUS
+                || id == ids::VECTOR_SPIRAL_TURNS
                 || id == ids::VECTOR_STROKE_OPACITY
                 || id == ids::VECTOR_FILL_OPACITY
                 || id == ids::VECTOR_DASH
@@ -67,6 +68,7 @@ pub(crate) fn apply_event(
                 || id == ids::VECTOR_STAR_POINTS_NUM
                 || id == ids::VECTOR_STAR_INNER_NUM
                 || id == ids::VECTOR_RRECT_RADIUS_NUM
+                || id == ids::VECTOR_SPIRAL_TURNS_NUM
                 || id == ids::VECTOR_STROKE_OPACITY_NUM
                 || id == ids::VECTOR_FILL_OPACITY_NUM
                 || id == ids::VECTOR_DASH_NUM
@@ -86,6 +88,7 @@ pub(crate) fn apply_event(
                 || id == ids::VECTOR_MODE_POLYGON
                 || id == ids::VECTOR_MODE_STAR
                 || id == ids::VECTOR_MODE_RRECT
+                || id == ids::VECTOR_MODE_SPIRAL
                 || id == ids::VECTOR_CAP_BUTT
                 || id == ids::VECTOR_CAP_ROUND
                 || id == ids::VECTOR_CAP_SQUARE

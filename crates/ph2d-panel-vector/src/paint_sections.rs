@@ -21,7 +21,7 @@ use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, Spacing, Theme, TypeToken};
 use ph2d_tool_vector::params::{
     DrawMode, dash_to_slider, gap_to_slider, opacity_to_slider, radius_to_slider, sides_to_slider,
-    star_inner_to_slider, star_points_to_slider,
+    spiral_turns_to_slider, star_inner_to_slider, star_points_to_slider,
 };
 use ph2d_tool_vector::{StrokeCap, StrokeJoin, VectorStyleSnapshot, VertexType, px_to_slider};
 use ph2d_vector::VectorScene;
@@ -332,7 +332,7 @@ impl BodyCtx<'_> {
     /// Draw-mode grid (Pen / shapes) + the active mode's per-shape sliders.
     pub(crate) fn draw_modes(&mut self, snap: &VectorStyleSnapshot, mut y: f32) -> f32 {
         y = self.section_label("Draw", y);
-        // Six modes in a 3-column grid (2 rows): Pen/Rect/Oval · Poly/Star/Round.
+        // Seven modes in a 3-column grid: Pen/Rect/Oval · Poly/Star/Round · Spiral.
         let modes = [
             (ids::VECTOR_MODE_PEN, "Pen", DrawMode::Pen),
             (ids::VECTOR_MODE_RECT, "Rect", DrawMode::Rectangle),
@@ -340,6 +340,7 @@ impl BodyCtx<'_> {
             (ids::VECTOR_MODE_POLYGON, "Poly", DrawMode::Polygon),
             (ids::VECTOR_MODE_STAR, "Star", DrawMode::Star),
             (ids::VECTOR_MODE_RRECT, "Round", DrawMode::RoundRect),
+            (ids::VECTOR_MODE_SPIRAL, "Spiral", DrawMode::Spiral),
         ];
         let mode_cols = 3usize;
         let seg_gap = Spacing::Sm.px();
@@ -439,6 +440,26 @@ impl BodyCtx<'_> {
                     "Radius",
                     ids::VECTOR_RRECT_RADIUS,
                     ids::VECTOR_RRECT_RADIUS_NUM,
+                    track,
+                    val,
+                    &format!("{}", val.round() as i64),
+                    y,
+                );
+            }
+            DrawMode::Spiral => {
+                let track = self
+                    .store
+                    .slider(ids::VECTOR_SPIRAL_TURNS)
+                    .map(|(_, v)| v)
+                    .unwrap_or_else(|| spiral_turns_to_slider(snap.spiral_turns));
+                let val = self
+                    .store
+                    .number_value(ids::VECTOR_SPIRAL_TURNS_NUM)
+                    .unwrap_or(f64::from(snap.spiral_turns));
+                y = self.slider_row(
+                    "Turns",
+                    ids::VECTOR_SPIRAL_TURNS,
+                    ids::VECTOR_SPIRAL_TURNS_NUM,
                     track,
                     val,
                     &format!("{}", val.round() as i64),

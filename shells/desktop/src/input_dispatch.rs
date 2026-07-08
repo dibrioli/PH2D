@@ -301,16 +301,18 @@ fn shape_kind_for_mode(mode: ph2d_tool_vector::DrawMode) -> Option<ph2d_vec_edit
         DrawMode::Polygon => Some(ShapeKind::Polygon),
         DrawMode::Star => Some(ShapeKind::Star),
         DrawMode::RoundRect => Some(ShapeKind::RoundRect),
+        DrawMode::Spiral => Some(ShapeKind::Spiral),
     }
 }
 
-/// The shape parameters (sides / star / radius) from the mirrored tool config.
+/// The shape parameters (sides / star / radius / spiral) from the mirrored tool config.
 fn shape_params(cfg: &ph2d_tool_vector::VectorDrawConfig) -> ph2d_vec_edit::ShapeParams {
     ph2d_vec_edit::ShapeParams {
         sides: cfg.polygon_sides,
         star_points: cfg.star_points,
         star_inner_ratio: cfg.star_inner_ratio,
         corner_radius_px: cfg.corner_radius_px,
+        spiral_turns: cfg.spiral_turns,
     }
 }
 

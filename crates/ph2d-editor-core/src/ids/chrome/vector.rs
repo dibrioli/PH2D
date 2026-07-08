@@ -89,6 +89,7 @@ pub const VECTOR_MODE_ELLIPSE: NodeId = hash_node_id("vector.mode.ellipse");
 pub const VECTOR_MODE_POLYGON: NodeId = hash_node_id("vector.mode.polygon");
 pub const VECTOR_MODE_STAR: NodeId = hash_node_id("vector.mode.star");
 pub const VECTOR_MODE_RRECT: NodeId = hash_node_id("vector.mode.rrect");
+pub const VECTOR_MODE_SPIRAL: NodeId = hash_node_id("vector.mode.spiral");
 /// Polygon "Sides" slider (3..12) — shown only in Polygon mode; drives
 /// `VectorTool::polygon_sides`.
 pub const VECTOR_SIDES: NodeId = hash_node_id("vector.sides");
@@ -103,6 +104,10 @@ pub const VECTOR_STAR_INNER: NodeId = hash_node_id("vector.star_inner");
 pub const VECTOR_STAR_INNER_NUM: NodeId = hash_node_id("vector.star_inner_num");
 pub const VECTOR_RRECT_RADIUS: NodeId = hash_node_id("vector.rrect_radius");
 pub const VECTOR_RRECT_RADIUS_NUM: NodeId = hash_node_id("vector.rrect_radius_num");
+/// Spiral "Turns" slider (1..8) — shown only in Spiral mode; drives
+/// `VectorTool::spiral_turns`.
+pub const VECTOR_SPIRAL_TURNS: NodeId = hash_node_id("vector.spiral_turns");
+pub const VECTOR_SPIRAL_TURNS_NUM: NodeId = hash_node_id("vector.spiral_turns_num");
 
 // ── Boolean ops (ADR-0108 Fase 1 — edit-time union/subtract/intersect) ───────
 // Act on the DOCUMENT (shell-owned `vec_scene`), NOT the tool's Style: the

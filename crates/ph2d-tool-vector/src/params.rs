@@ -45,6 +45,7 @@ pub enum DrawMode {
     Polygon,
     Star,
     RoundRect,
+    Spiral,
 }
 
 /// UI-facing vertex type for the docked panel's Vertex section (mirror of
@@ -192,6 +193,25 @@ pub fn radius_to_slider(px: f64) -> f32 {
         as f32
 }
 
+/// Spiral turn count range (the Turns slider spans this).
+pub const SPIRAL_TURNS_MIN: u32 = 1;
+pub const SPIRAL_TURNS_MAX: u32 = 8;
+pub const SPIRAL_TURNS_SLIDER_SCALE: f32 = (SPIRAL_TURNS_MAX - SPIRAL_TURNS_MIN) as f32;
+pub const SPIRAL_TURNS_SLIDER_OFFSET: f32 = SPIRAL_TURNS_MIN as f32;
+
+/// Normalized track `0..=1` → spiral turns `MIN..=MAX` (rounded).
+#[must_use]
+pub fn slider_to_spiral_turns(track: f32) -> u32 {
+    (SPIRAL_TURNS_MIN as f32 + track.clamp(0.0, 1.0) * SPIRAL_TURNS_SLIDER_SCALE).round() as u32
+}
+/// Spiral turns → normalized track (inverse of [`slider_to_spiral_turns`]).
+#[must_use]
+pub fn spiral_turns_to_slider(n: u32) -> f32 {
+    ((n.clamp(SPIRAL_TURNS_MIN, SPIRAL_TURNS_MAX) - SPIRAL_TURNS_MIN) as f32
+        / SPIRAL_TURNS_SLIDER_SCALE)
+        .clamp(0.0, 1.0)
+}
+
 /// Opacity slider: track `0..=1` → alpha `0..=255`; the chip shows `0..=100`
 /// (percent), so `SCALE = 100`, `OFFSET = 0`.
 pub const OPACITY_SLIDER_SCALE: f32 = 100.0;
@@ -219,6 +239,7 @@ pub struct VectorDrawConfig {
     pub star_points: u32,
     pub star_inner_ratio: f64,
     pub corner_radius_px: f64,
+    pub spiral_turns: u32,
 }
 
 impl Default for VectorDrawConfig {
@@ -229,6 +250,7 @@ impl Default for VectorDrawConfig {
             star_points: super::tool::DEFAULT_STAR_POINTS,
             star_inner_ratio: super::tool::DEFAULT_STAR_INNER,
             corner_radius_px: super::tool::DEFAULT_CORNER_RADIUS_PX,
+            spiral_turns: super::tool::DEFAULT_SPIRAL_TURNS,
         }
     }
 }
@@ -253,6 +275,8 @@ pub struct VectorStyleSnapshot {
     pub dash: f64,
     /// Gap between dashes as a multiple of stroke width.
     pub gap: f64,
+    /// Turn count for `DrawMode::Spiral`.
+    pub spiral_turns: u32,
 }
 
 impl Default for VectorStyleSnapshot {
@@ -270,6 +294,7 @@ impl Default for VectorStyleSnapshot {
             join: StrokeJoin::Miter,
             dash: 0.0,
             gap: GAP_DEFAULT,
+            spiral_turns: super::tool::DEFAULT_SPIRAL_TURNS,
         }
     }
 }

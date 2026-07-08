@@ -28,6 +28,7 @@ pub enum ShapeKind {
     Polygon,
     Star,
     RoundRect,
+    Spiral,
 }
 
 /// Per-shape parameters (the shell mirrors these from the Vector tool). Only the
@@ -42,6 +43,8 @@ pub struct ShapeParams {
     pub star_inner_ratio: f64,
     /// Rounded-rect corner radius in **screen pixels** (× `px_to_world` at draw).
     pub corner_radius_px: f64,
+    /// Spiral turn count.
+    pub spiral_turns: u32,
 }
 
 impl Default for ShapeParams {
@@ -51,6 +54,7 @@ impl Default for ShapeParams {
             star_points: 5,
             star_inner_ratio: 0.5,
             corner_radius_px: 8.0,
+            spiral_turns: 3,
         }
     }
 }
@@ -202,6 +206,10 @@ impl ShapeTool {
             ShapeKind::RoundRect => {
                 let radius = self.params.corner_radius_px * self.px_to_world;
                 ph2d_vec_scene::rounded_rect(self.start, cur, radius)
+            }
+            ShapeKind::Spiral => {
+                let (c, rx, ry) = bbox_center_radii(self.start, cur);
+                ph2d_vec_scene::spiral(c, rx, ry, self.params.spiral_turns)
             }
         };
         let stroke_w = self.style.stroke_w_px * self.px_to_world;

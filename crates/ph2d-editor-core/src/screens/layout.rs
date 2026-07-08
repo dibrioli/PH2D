@@ -157,7 +157,15 @@ pub struct HeroLayout {
     /// the future timeline dock (plan §2.1; the timeline itself is deferred to
     /// its own module — this only holds the seam).
     pub motion_timeline_slot: Rect,
+    /// General timeline panel slot — a bottom-docked strip spanning the center
+    /// band (between the two side chrome columns), floating over the lower edge
+    /// of the scene. Painted only while `panel_visible("timeline")` (the shell
+    /// drives that from the timeline toggle). Height [`TIMELINE_DOCK_H`].
+    pub timeline: Rect,
 }
+
+/// Default docked height of the general timeline panel (px).
+pub const TIMELINE_DOCK_H: f32 = 240.0; // LITERAL-PX-OK: timeline dock default height
 
 impl HeroLayout {
     pub fn for_viewport(viewport: Rect) -> Self {
@@ -262,6 +270,22 @@ impl HeroLayout {
             480.0, // LITERAL-PX-OK: HUD strip width
             HUD_H,
         );
+        // General timeline dock: bottom strip of the center band, between the two
+        // side chrome columns (so it never overlaps Inspector/Hierarchy), floating
+        // over the scene's lower edge. Side columns swap under `mirrored`.
+        let (left_col_right, right_col_left) = if mirrored {
+            (inspector_x + INSPECTOR_W, hierarchy_x)
+        } else {
+            (hierarchy_x + HIERARCHY_W, inspector_x)
+        };
+        let timeline_x = left_col_right + EDGE_PAD;
+        let timeline_w = (right_col_left - EDGE_PAD - timeline_x).max(0.0);
+        let timeline = Rect::new(
+            timeline_x,
+            (chrome_bot - TIMELINE_DOCK_H).max(chrome_top),
+            timeline_w,
+            TIMELINE_DOCK_H.min(chrome_h),
+        );
         Self {
             viewport,
             top_bar,
@@ -277,6 +301,7 @@ impl HeroLayout {
             center_viewport,
             motion_graph,
             motion_timeline_slot,
+            timeline,
         }
     }
 }

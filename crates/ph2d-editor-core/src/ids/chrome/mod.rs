@@ -36,6 +36,7 @@ mod painter_tiling;
 mod painter_watercolor;
 mod rail;
 mod rail_painter;
+mod timeline;
 mod topbar;
 mod vector;
 
@@ -59,5 +60,6 @@ pub use painter_tiling::*;
 pub use painter_watercolor::*;
 pub use rail::*;
 pub use rail_painter::*;
+pub use timeline::*;
 pub use topbar::*;
 pub use vector::*;

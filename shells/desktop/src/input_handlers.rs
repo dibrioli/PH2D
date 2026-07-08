@@ -187,6 +187,24 @@ impl App {
                 gfx.toasts.push(Toast::info("Toast key (T) pressed"));
                 self.title_dirty = true;
             }
+            // Toggle the bottom-docked general timeline panel (W2.E0). Transport
+            // (Space / , / .) already drives the Playhead; this shows/hides the
+            // editor. Free key — audited against the existing shortcut set.
+            KeyCode::KeyL => {
+                let shown = if let Some(hero) = gfx.hero_screen.as_mut() {
+                    let v = !hero.is_panel_visible("timeline");
+                    hero.panel_visibility.insert("timeline", v);
+                    v
+                } else {
+                    false
+                };
+                gfx.toasts.push(Toast::info(if shown {
+                    "Timeline shown (L)"
+                } else {
+                    "Timeline hidden (L)"
+                }));
+                self.title_dirty = true;
+            }
             // Cmd+Z / Ctrl+Z — context-sensitive undo. With the Painter
             // tool active it undoes the last brush stroke (W2.T2.2;
             // Cmd+Shift+Z redoes); with any other tool it falls back to

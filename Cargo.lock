@@ -5446,6 +5446,7 @@ dependencies = [
  "ph2d-panel-padding",
  "ph2d-panel-painter-layers",
  "ph2d-panel-sync",
+ "ph2d-panel-timeline",
  "ph2d-panel-upscale",
  "ph2d-panel-vector",
  "ph2d-panel-widget-gallery",
@@ -5454,6 +5455,15 @@ dependencies = [
 [[package]]
 name = "ph2d-panel-sync"
 version = "0.0.0"
+
+[[package]]
+name = "ph2d-panel-timeline"
+version = "0.0.0"
+dependencies = [
+ "ph2d-a11y",
+ "ph2d-editor-core",
+ "ph2d-timeline",
+]
 
 [[package]]
 name = "ph2d-panel-upscale"

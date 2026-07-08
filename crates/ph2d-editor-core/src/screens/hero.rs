@@ -562,6 +562,7 @@ fn default_panel_visibility() -> std::collections::BTreeMap<&'static str, bool> 
     map.insert("hierarchy", true);
     map.insert("widget_gallery", false);
     map.insert("grid_snap", false);
+    map.insert("timeline", false);
     map
 }
 
@@ -573,6 +574,7 @@ fn canonical_panel_id(id: &str) -> Option<&'static str> {
         "hierarchy" => Some("hierarchy"),
         "widget_gallery" => Some("widget_gallery"),
         "grid_snap" => Some("grid_snap"),
+        "timeline" => Some("timeline"),
         _ => None,
     }
 }

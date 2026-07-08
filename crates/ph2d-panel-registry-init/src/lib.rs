@@ -68,6 +68,8 @@ pub fn build_typed_registry() -> ph2d_editor_core::panel::PanelRegistry {
     reg.push(ErasedPanel::new::<
         ph2d_panel_painter_layers::PainterLayersPanel,
     >());
+    #[cfg(feature = "panel-timeline")]
+    reg.push(ErasedPanel::new::<ph2d_panel_timeline::TimelinePanel>());
     #[cfg(feature = "panel-upscale")]
     reg.push(ErasedPanel::new::<ph2d_panel_upscale::UpscalePanel>());
     #[cfg(feature = "panel-vector")]
@@ -118,6 +120,10 @@ mod tests {
         // unification enables the panel and this count drifts; cf. memory
         // feedback-fanout-registry-init-friction).
         #[cfg(feature = "panel-painter-layers")]
+        {
+            n += 1;
+        }
+        #[cfg(feature = "panel-timeline")]
         {
             n += 1;
         }

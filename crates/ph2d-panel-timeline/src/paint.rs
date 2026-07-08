@@ -7,13 +7,14 @@
 //! [`TimelineViewSnapshot`] so the wiring is exercised).
 
 use crate::state::{self, TimelinePanelState, set_last_content_h, set_last_visible_h};
-use crate::{TimelinePanel, ids};
+use crate::{TimelinePanel, ids, transport};
 use ph2d_editor_core::panel::{PaintCtx, Panel};
 use ph2d_editor_core::widget::panel_chrome::{
-    PANEL_HEADER_CLOSE_RESERVE, paint_panel_close_button, paint_panel_corner_dot,
-    paint_panel_corner_dot_bl, paint_panel_surface, paint_panel_title,
+    PANEL_HEAD_PAD, PANEL_HEADER_CLOSE_RESERVE, PANEL_TITLE_BASELINE, paint_panel_close_button,
+    paint_panel_corner_dot, paint_panel_corner_dot_bl, paint_panel_surface, paint_panel_title,
 };
 use ph2d_editor_core::zones::Rect;
+use ph2d_tokens::Spacing;
 
 pub(crate) fn paint(_state: &mut TimelinePanelState, ctx: &mut PaintCtx) {
     if !ctx.host.panel_visible(TimelinePanel::ID) {
@@ -27,9 +28,7 @@ pub(crate) fn paint(_state: &mut TimelinePanelState, ctx: &mut PaintCtx) {
 
     let rect: Rect = ctx.layout.timeline;
     let theme = ctx.host.theme();
-    // Read the frame's snapshot (the body will paint it from E2 on); reading it
-    // now keeps the shell→panel publish path live.
-    let _snapshot = state::current_snapshot();
+    let snapshot = state::current_snapshot();
 
     // Publish the rect so wheel/click dispatch can route to this panel.
     ctx.host
@@ -40,7 +39,7 @@ pub(crate) fn paint(_state: &mut TimelinePanelState, ctx: &mut PaintCtx) {
     paint_panel_surface(rect, ctx.scene, theme);
     paint_panel_corner_dot(rect, ctx.scene, theme);
     paint_panel_corner_dot_bl(rect, ctx.scene, theme);
-    let _title = paint_panel_title(
+    let title_size = paint_panel_title(
         rect,
         "Timeline",
         PANEL_HEADER_CLOSE_RESERVE,
@@ -56,7 +55,16 @@ pub(crate) fn paint(_state: &mut TimelinePanelState, ctx: &mut PaintCtx) {
         theme,
     );
 
-    // No scrollable body yet (E2+).
+    // Body: the transport row (ruler + dope-sheet lanes land in E3+).
+    let body_top = rect.y + PANEL_TITLE_BASELINE + title_size + Spacing::Sm.px();
+    let body = Rect::new(
+        rect.x + PANEL_HEAD_PAD,
+        body_top,
+        (rect.w - PANEL_HEAD_PAD * 2.0).max(0.0),
+        (rect.y + rect.h - body_top - PANEL_HEAD_PAD).max(0.0),
+    );
+    transport::paint_bar(ctx, theme, body, &snapshot);
+
     set_last_content_h(0.0);
     set_last_visible_h(rect.h);
 }

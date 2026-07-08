@@ -4837,6 +4837,7 @@ dependencies = [
  "ph2d-panel-padding",
  "ph2d-panel-painter-layers",
  "ph2d-panel-registry-init",
+ "ph2d-panel-timeline",
  "ph2d-panel-upscale",
  "ph2d-panel-vector",
  "ph2d-render",
@@ -5463,6 +5464,8 @@ dependencies = [
  "ph2d-a11y",
  "ph2d-editor-core",
  "ph2d-timeline",
+ "ph2d-tokens",
+ "ph2d-ui-testkit",
 ]
 
 [[package]]

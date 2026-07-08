@@ -143,6 +143,7 @@ impl App {
             playhead: Playhead::default(),
             timeline: ph2d_timeline::TimelineState::new(),
             timeline_intents: Vec::new(),
+            timeline_view: ph2d_timeline::TimelineViewSnapshot::default(),
             last_frame: Instant::now(),
             pending_resize: None,
             resize_saved_present_mode: None,

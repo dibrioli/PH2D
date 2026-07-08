@@ -16,10 +16,12 @@
 
 #![forbid(unsafe_code)]
 
+mod event;
 pub mod ids;
 mod paint;
 pub mod populate;
 pub mod state;
+mod transport;
 
 pub use state::{TimelinePanelState, last_content_h, last_visible_h, set_current_timeline};
 
@@ -42,16 +44,11 @@ impl Panel for TimelinePanel {
     }
 
     fn apply_event(
-        _state: &mut TimelinePanelState,
-        _host: &mut dyn PanelHostInternal,
-        _ev: WidgetEvent,
+        state: &mut TimelinePanelState,
+        host: &mut dyn PanelHostInternal,
+        ev: WidgetEvent,
     ) -> EventOutcome {
-        // W2.E0 scaffold: no interactive controls yet, so nothing to route. The
-        // transport bar / ruler / key lanes (W2.E2+) will translate events into
-        // `TimelineIntent`s and land alongside a `tests/seam.rs` behavioral test
-        // (architecture_interactive_crate_has_behavioral_test) — moved to its own
-        // `event.rs` then. Until then this panel is not interactive.
-        EventOutcome::Ignored
+        event::apply_event(state, host, ev)
     }
 
     fn populate(store: &mut WidgetStore) {

@@ -50,6 +50,10 @@ ph2d-anim = { path = "../../crates/ph2d-anim" }
 # demo bind), and drives the app-general TimelineDoc via apply_from_doc. The
 # `render` feature enables the sprite-opacity resolver (writes Sprite.tint[3]).
 ph2d-timeline = { path = "../../crates/ph2d-timeline", features = ["render"] }
+# Docked timeline panel — the shell publishes its view snapshot each frame via
+# `set_current_timeline` (the panel is also pulled transitively by
+# panel-registry-init, but the direct dep names that publish fn).
+ph2d-panel-timeline = { path = "../../crates/ph2d-panel-timeline" }
 # Tool registry — convention-by-discovery infrastructure (PR 8 of
 # the migration plan: `docs/Migracao/2026-05-convention-by-discovery.md`).
 # `init.rs` calls `register_all()` at boot and stashes the built

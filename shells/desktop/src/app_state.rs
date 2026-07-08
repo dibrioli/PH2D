@@ -315,6 +315,9 @@ pub(crate) struct App {
     /// Pending timeline commands (from the panel / auto-key), drained once per
     /// frame by `render_loop::timeline_bridge`.
     pub(crate) timeline_intents: Vec<ph2d_timeline::TimelineIntent>,
+    /// Reused view-snapshot buffer, rebuilt from `timeline` + `playhead` each
+    /// frame and published to the timeline panel (`set_current_timeline`).
+    pub(crate) timeline_view: ph2d_timeline::TimelineViewSnapshot,
     pub(crate) last_frame: Instant,
     pub(crate) pending_resize: Option<WindowSize>,
     /// FLUID-DRAG present-mode override: the configured mode saved while a live resize streams (the

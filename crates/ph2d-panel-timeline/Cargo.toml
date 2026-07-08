@@ -19,6 +19,13 @@ authors.workspace = true
 [dependencies]
 ph2d-editor-core = { path = "../ph2d-editor-core" }
 ph2d-a11y = { path = "../ph2d-a11y" }
-# The read-model the panel paints (`TimelineViewSnapshot`). W2.E2 re-adds
-# ph2d-tokens + ph2d-text when the body paints real controls.
+# Spacing / type / colour tokens named by the transport bar paint (chips,
+# toggle labels). Text shaping goes through editor-core's paint_text.
+ph2d-tokens = { path = "../ph2d-tokens" }
+# The read-model the panel paints (`TimelineViewSnapshot`).
 ph2d-timeline = { path = "../ph2d-timeline" }
+
+[dev-dependencies]
+# Behavioral seam harness (MockPanelHost) for the transport wire test
+# (architecture_interactive_crate_has_behavioral_test).
+ph2d-ui-testkit = { path = "../ph2d-ui-testkit" }

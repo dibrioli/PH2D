@@ -39,6 +39,7 @@ mod engine;
 mod format;
 mod meter;
 mod mixer;
+mod output;
 mod pool;
 mod voice;
 

@@ -6,8 +6,8 @@
 //! Coverage: pan (drag empty canvas), anchored wheel zoom, F = fit, Esc =
 //! deselect / cancel, click/shift-select, multi-drag (one `MoveNodes` undo at
 //! End), socket→socket **connect** (with a live compatibility ghost; the shell
-//! validates for real), alt-click a wire = **disconnect**, R-click empty canvas
-//! / `A` = **add-node** menu, and Delete = **delete selection**.
+//! validates for real), alt-click a wire = **disconnect**, R-press (anywhere) /
+//! `A` = **add-node** menu, and Delete = **delete selection**.
 
 use crate::geom::{self, View};
 use crate::snapshot::{GraphIntent, GraphViewSnapshot, current_catalog, push_intent};
@@ -106,6 +106,23 @@ fn apply_gesture(
     center: Rect,
     snap: &GraphViewSnapshot,
 ) {
+    // Right-button opens the add-node menu at the cursor — on the PRESS (Begin),
+    // over ANY hit (background, node, socket, wire). Doing it on Begin (not the
+    // release Click) makes it movement-independent: a right-click that drifts a
+    // pixel is classified End by the dispatch, which would otherwise never open
+    // (or would dismiss) the menu. All secondary phases are absorbed here so a
+    // right-drag / right-release never pans, selects, or dismisses.
+    if g.button == PointerButton::Secondary {
+        if g.phase == GesturePhase::Begin {
+            let spawn = View::new(rect, state.view).graph(g.x, g.y);
+            state.add_menu = Some(AddMenu {
+                screen: (g.x, g.y),
+                spawn,
+            });
+            state.interaction = Interaction::Idle;
+        }
+        return;
+    }
     match g.kind {
         GraphHitKind::Background => apply_background(state, g, rect),
         GraphHitKind::Node { node } => apply_node(state, g, node as u32),
@@ -150,15 +167,15 @@ fn apply_gesture(
     }
 }
 
-/// Empty-canvas gestures: pan, selection clear, and the add-node menu (open on
-/// R-click / resolve on the next click).
+/// Empty-canvas gestures (primary button only — the secondary button is fully
+/// handled in [`apply_gesture`]): pan, selection clear, and resolving the
+/// add-node menu the right-press opened.
 fn apply_background(state: &mut MotionGraphPanelState, g: GraphGesture, rect: Rect) {
     match g.phase {
         GesturePhase::Begin => {
-            // Right-button press waits for the release to open the menu; never
-            // pans. While a menu is open, a press consumes (no pan) and the
-            // release resolves it.
-            if g.button == PointerButton::Secondary || state.add_menu.is_some() {
+            // A press while the menu is open consumes (no pan); the release
+            // resolves it. Otherwise begin a pan.
+            if state.add_menu.is_some() {
                 state.interaction = Interaction::Idle;
             } else {
                 state.interaction = Interaction::Pan { last: (g.x, g.y) };
@@ -172,16 +189,9 @@ fn apply_background(state: &mut MotionGraphPanelState, g: GraphGesture, rect: Re
             }
         }
         GesturePhase::Click => {
-            if g.button == PointerButton::Secondary {
-                // R-click empty canvas → open the add menu at the cursor.
-                let spawn = View::new(rect, state.view).graph(g.x, g.y);
-                state.add_menu = Some(AddMenu {
-                    screen: (g.x, g.y),
-                    spawn,
-                });
-            } else if let Some(menu) = state.add_menu.take() {
-                // Any primary click while the menu is open closes it; a click on
-                // a row also adds that node at the menu's spawn point.
+            if let Some(menu) = state.add_menu.take() {
+                // A primary click while the menu is open closes it; a click on a
+                // row also adds that node at the menu's spawn point.
                 resolve_add_menu(&menu, rect, g.x, g.y);
             } else {
                 // A plain tap on empty canvas clears the selection.
@@ -190,7 +200,7 @@ fn apply_background(state: &mut MotionGraphPanelState, g: GraphGesture, rect: Re
             state.interaction = Interaction::Idle;
         }
         GesturePhase::End | GesturePhase::DoubleClick => {
-            // A drag over empty canvas dismisses an open menu without picking.
+            // A primary drag over empty canvas dismisses an open menu.
             state.add_menu = None;
             state.interaction = Interaction::Idle;
         }
@@ -558,8 +568,8 @@ mod tests {
             category: NodeUiCategory::Source,
         }]);
         let mut st = MotionGraphPanelState::default();
-        // R-click empty canvas opens the menu at the cursor.
-        let mut rc = gesture(GraphHitKind::Background, GesturePhase::Click, 120.0, 90.0);
+        // R-press opens the menu at the cursor (on Begin, movement-independent).
+        let mut rc = gesture(GraphHitKind::Background, GesturePhase::Begin, 120.0, 90.0);
         rc.button = PointerButton::Secondary;
         apply_gesture(&mut st, rc, RECT, CENTER, &two_node_snapshot());
         let menu = st.add_menu.expect("menu opened");
@@ -583,5 +593,39 @@ mod tests {
             }]
         );
         assert!(st.add_menu.is_none()); // picking closes the menu
+    }
+
+    #[test]
+    fn right_press_over_a_node_opens_menu_and_release_keeps_it() {
+        let _ = drain_intents();
+        let mut st = MotionGraphPanelState::default();
+        // A right-press whose hit resolved to a node still opens the add-menu
+        // (movement-independent, over any hit) — the node is not selected/dragged.
+        let mut down = gesture(
+            GraphHitKind::Node { node: 7 },
+            GesturePhase::Begin,
+            300.0,
+            150.0,
+        );
+        down.button = PointerButton::Secondary;
+        apply_gesture(&mut st, down, RECT, CENTER, &two_node_snapshot());
+        assert!(
+            st.add_menu.is_some(),
+            "right-press opens the menu over a node"
+        );
+        assert!(st.selected.is_empty(), "the node is not selected");
+        // A right-release classified as End (the click drifted) must NOT dismiss.
+        let mut up = gesture(
+            GraphHitKind::Node { node: 7 },
+            GesturePhase::End,
+            305.0,
+            152.0,
+        );
+        up.button = PointerButton::Secondary;
+        apply_gesture(&mut st, up, RECT, CENTER, &two_node_snapshot());
+        assert!(
+            st.add_menu.is_some(),
+            "the right-release keeps the menu open"
+        );
     }
 }

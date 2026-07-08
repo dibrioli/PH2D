@@ -1,13 +1,14 @@
 #![forbid(unsafe_code)]
-//! `motion.tint` — a Motion **colour modifier**: multiplies the `tint` (Vec4
-//! RGBA, linear straight — §1.2) attribute by a colour that fades from white to
-//! `(r, g, b)` with the multiplicative `falloff` column. The per-instance mix is
-//! `lerp(white, (r,g,b), falloff_i)`, multiplied into any existing `tint`
-//! (absent → white). Alpha is preserved (absent → `1`). Every other column
-//! passes through unchanged (count preserved). Pure.
+//! `motion.tint` — a Motion **colour modifier**: sets the `tint` (Vec4 RGBA,
+//! linear straight — §1.2) attribute to the target colour `(r, g, b, a)`,
+//! masked per-instance by the multiplicative `falloff` column. The per-instance
+//! result is `lerp(existing, (r,g,b,a), falloff_i)`, so at `falloff = 1` the
+//! instance takes the target colour **exactly** (any RGBA, alpha included) and
+//! at `falloff = 0` it keeps its existing tint (absent → opaque white). Every
+//! other column passes through unchanged (count preserved). Pure.
 //!
-//! Params (read via `ctx.param`): `r` (1.0), `g` (0.3), `b` (0.1) — a warm
-//! default so the wash reads immediately when a falloff field is attached.
+//! Params (read via `ctx.param`): `r` (1.0), `g` (0.3), `b` (0.1), `a` (1.0) —
+//! a warm opaque default so the colour reads immediately once wired.
 
 use ph2d_node_registry::{NodeRegistry, RegistryError};
 use ph2d_nodegraph::attr::{Column, Stream};
@@ -45,6 +46,10 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             name: "b",
             default: 0.1,
         },
+        ParamSpec {
+            name: "a",
+            default: 1.0,
+        },
     ],
     lowerings: &[LoweringKind::Cpu],
 };
@@ -57,18 +62,17 @@ fn falloff_at(stream: &Stream, i: usize) -> f32 {
     }
 }
 
-/// The falloff-mixed RGB multiplier for one instance: `lerp(1, channel, f)` per
-/// channel (white at `f = 0`, the full colour at `f = 1`), then multiplied into
-/// the existing RGB. Alpha is carried straight through.
-fn mixed_tint(existing: [f32; 4], color: [f32; 3], f: f32) -> [f32; 4] {
-    // `(1-f)·white + f·c` — the endpoint-exact lerp form (returns exactly white
-    // at f=0 and exactly `c` at f=1, no float drift), then × existing.
-    let mix = |c: f32| (1.0 - f) + c * f;
+/// The falloff-masked colour for one instance: `lerp(existing, target, f)` per
+/// RGBA channel via the endpoint-exact form `existing·(1-f) + target·f` — so it
+/// returns exactly `existing` at `f = 0` and exactly `target` at `f = 1` (any
+/// colour + alpha, no float drift).
+fn mixed_tint(existing: [f32; 4], target: [f32; 4], f: f32) -> [f32; 4] {
+    let lerp = |e: f32, t: f32| e * (1.0 - f) + t * f;
     [
-        existing[0] * mix(color[0]),
-        existing[1] * mix(color[1]),
-        existing[2] * mix(color[2]),
-        existing[3],
+        lerp(existing[0], target[0]),
+        lerp(existing[1], target[1]),
+        lerp(existing[2], target[2]),
+        lerp(existing[3], target[3]),
     ]
 }
 
@@ -80,7 +84,12 @@ impl NodeOp for MotionTint {
     }
 
     fn eval(&self, ctx: &mut EvalCtx<'_>) {
-        let color = [ctx.param("r"), ctx.param("g"), ctx.param("b")];
+        let target = [
+            ctx.param("r"),
+            ctx.param("g"),
+            ctx.param("b"),
+            ctx.param("a"),
+        ];
         let out = {
             let input = ctx.input(0);
             let n = input.count();
@@ -92,7 +101,7 @@ impl NodeOp for MotionTint {
             let tinted: Vec<[f32; 4]> = (0..n)
                 .map(|i| {
                     let e = base.get(i).copied().unwrap_or([1.0, 1.0, 1.0, 1.0]);
-                    mixed_tint(e, color, falloff_at(input, i))
+                    mixed_tint(e, target, falloff_at(input, i))
                 })
                 .collect();
             let mut out = Stream::new(n);
@@ -127,7 +136,7 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
 
 use ph2d_node_registry::{ParamUiHint, ParamWidget};
 
-/// Param UI hints (M1.P1): three linear RGB channels in `0..1`.
+/// Param UI hints (M1.P1): four linear RGBA channels in `0..1`.
 static PARAM_HINTS: &[ParamUiHint] = &[
     ParamUiHint {
         param: "r",
@@ -148,6 +157,14 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     ParamUiHint {
         param: "b",
         label: "Blue",
+        min: 0.0,
+        max: 1.0,
+        step: 0.01,
+        widget: ParamWidget::Slider,
+    },
+    ParamUiHint {
+        param: "a",
+        label: "Alpha",
         min: 0.0,
         max: 1.0,
         step: 0.01,
@@ -200,7 +217,7 @@ mod tests {
     }
 
     #[test]
-    fn tint_fades_from_white_by_falloff() {
+    fn tint_sets_target_masked_by_falloff() {
         let mut g = Graph::new();
         let src = g.add_node("motion.tint.test.src");
         let tn = g.add_node("motion.tint");
@@ -213,25 +230,29 @@ mod tests {
         g.set_param(tn, "r", 1.0);
         g.set_param(tn, "g", 0.0);
         g.set_param(tn, "b", 0.0);
+        g.set_param(tn, "a", 0.4);
         let mut cook = Cook::new();
         let out = cook.cook(&g, &Ops, tn, 0.0).unwrap();
         match out[0].as_stream().get("tint").unwrap() {
-            // i0 f=1: full red (1,0,0,1) ; i1 f=0.5: lerp(white,red,0.5)=(1,0.5,0.5,1)
-            Column::Vec4(v) => assert_eq!(v, &vec![[1.0, 0.0, 0.0, 1.0], [1.0, 0.5, 0.5, 1.0]]),
+            // existing = white; target = (1,0,0,0.4).
+            // i0 f=1: exactly the target ; i1 f=0.5: lerp(white,target,0.5).
+            Column::Vec4(v) => {
+                assert_eq!(v, &vec![[1.0, 0.0, 0.0, 0.4], [1.0, 0.5, 0.5, 0.7]]);
+            }
             _ => panic!("tint"),
         }
     }
 
     #[test]
-    fn mixed_tint_preserves_alpha_and_lerps_rgb() {
-        // f=0 → white multiplier (identity on existing); f=1 → the full colour.
+    fn mixed_tint_reaches_any_rgba_at_full_falloff() {
+        // f=0 → exactly existing (identity); f=1 → exactly the target (all RGBA).
         assert_eq!(
-            mixed_tint([1.0, 1.0, 1.0, 0.5], [0.2, 0.4, 0.6], 0.0),
-            [1.0, 1.0, 1.0, 0.5]
+            mixed_tint([1.0, 1.0, 1.0, 1.0], [0.2, 0.4, 0.6, 0.3], 0.0),
+            [1.0, 1.0, 1.0, 1.0]
         );
         assert_eq!(
-            mixed_tint([1.0, 1.0, 1.0, 0.5], [0.2, 0.4, 0.6], 1.0),
-            [0.2, 0.4, 0.6, 0.5]
+            mixed_tint([1.0, 1.0, 1.0, 1.0], [0.2, 0.4, 0.6, 0.3], 1.0),
+            [0.2, 0.4, 0.6, 0.3]
         );
     }
 }

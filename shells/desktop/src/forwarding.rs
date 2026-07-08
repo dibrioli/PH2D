@@ -75,7 +75,13 @@ pub fn forward_to_hero(
             continue;
         }
         if !hero.apply_event(e) {
-            eprintln!("[hero] unhandled event: {e:?}");
+            // Focus/Blur land unhandled BY DESIGN (the store tracks focus internally; the hero has no
+            // per-widget arm for them) — logging each number-input click drowned the console (Enio
+            // 2026-07-07). Every OTHER unhandled event still prints: it's the dead-seam detector (a
+            // painted-but-unwired widget shows up here first).
+            if !matches!(e, WidgetEvent::Focus(_) | WidgetEvent::Blur(_)) {
+                eprintln!("[hero] unhandled event: {e:?}");
+            }
         }
     }
     // Palette Import / Export: a click on the picker's button flagged a host file-I/O request (the

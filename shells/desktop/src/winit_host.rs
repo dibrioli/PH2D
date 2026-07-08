@@ -14,6 +14,15 @@ use std::sync::Arc;
 use std::time::Instant;
 use winit::window::Window;
 
+/// Whether the dev input log (pointer Down/Up + key lines) prints — `PH2D_INPUT_LOG=1`. Off by
+/// default: the per-click spam drowned the useful console output (perf `[frame]` lines, warnings);
+/// the log itself stays one env var away for pen-input debugging. Cached after the first read.
+fn input_log_on() -> bool {
+    use std::sync::OnceLock;
+    static ON: OnceLock<bool> = OnceLock::new();
+    *ON.get_or_init(|| std::env::var("PH2D_INPUT_LOG").is_ok_and(|v| v != "0"))
+}
+
 pub struct WinitHost {
     window: Arc<Window>,
     scale: Cell<f32>,
@@ -79,7 +88,9 @@ impl HostHandler for LoggingHandler {
         println!("[{:>6}ms] lifecycle: {:?}", self.elapsed_ms(), kind);
     }
     fn on_pointer(&mut self, event: PointerEvent) {
-        if matches!(event.kind, PointerKind::Down | PointerKind::Up) {
+        // Gated (PH2D_INPUT_LOG=1): pointer Down/Up spam retired from the default console
+        // (Enio 2026-07-07, pós-caça de perf) — the log stays available for pen-input debugging.
+        if input_log_on() && matches!(event.kind, PointerKind::Down | PointerKind::Up) {
             println!(
                 "[{:>6}ms] pointer {:?} {:?} ({:.0}, {:.0}) p={:.2}",
                 self.elapsed_ms(),
@@ -92,13 +103,16 @@ impl HostHandler for LoggingHandler {
         }
     }
     fn on_key(&mut self, event: KeyEvent) {
-        println!(
-            "[{:>6}ms] key {:?} keycode={} mods={:?}",
-            self.elapsed_ms(),
-            event.kind,
-            event.keycode,
-            event.modifiers
-        );
+        // Gated with the pointer log (same env): keystroke spam out of the default console.
+        if input_log_on() {
+            println!(
+                "[{:>6}ms] key {:?} keycode={} mods={:?}",
+                self.elapsed_ms(),
+                event.kind,
+                event.keycode,
+                event.modifiers
+            );
+        }
     }
     fn on_close_request(&mut self) -> CloseAction {
         println!("[{:>6}ms] close requested · Close", self.elapsed_ms());

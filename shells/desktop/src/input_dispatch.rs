@@ -582,6 +582,33 @@ pub(crate) fn apply_vec_grad_remove_point(
     selected
 }
 
+/// Set the SELECTED multi-point gradient point's influence (`value` from the
+/// Influence slider's `track·4`). No-op unless the fill is MultiPoint and `point`
+/// is valid. One undo step iff it changed.
+pub(crate) fn apply_vec_grad_influence(
+    scene: &mut ph2d_vec_scene::VecScene,
+    history: &mut ph2d_vec_edit::History,
+    pen: &ph2d_vec_edit::PenTool,
+    point: Option<usize>,
+    value: f64,
+) {
+    use ph2d_vec_scene::Paint;
+    let Some(sel) = pen.selected() else {
+        return;
+    };
+    let Some(i) = point else {
+        return;
+    };
+    let pre = scene.clone();
+    if let Some(Paint::MultiPoint { points }) = scene.path_mut(sel).and_then(|p| p.fill.as_mut())
+        && let Some(gp) = points.get_mut(i)
+        && (gp.influence - value).abs() > 1e-9
+    {
+        gp.influence = value;
+        history.push_undo(pre);
+    }
+}
+
 /// Rotate the SELECTED path by `degrees` (panel Transform Angle field — a
 /// relative scrub) about its bbox center, recording ONE undo step iff it turned.
 /// A zero delta is a no-op (no undo). Free fn (mirror of [`apply_vec_rotate`]).

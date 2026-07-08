@@ -29,6 +29,9 @@ thread_local! {
     static CURRENT_FILL_KIND: Cell<Option<FillKind>> = const { Cell::new(None) };
     /// Selected path's linear-gradient angle in degrees (`None` unless Linear).
     static CURRENT_GRAD_ANGLE: Cell<Option<f64>> = const { Cell::new(None) };
+    /// Selected multi-point gradient point's influence (`None` unless a point is
+    /// selected) — drives the Influence slider's visibility + value.
+    static CURRENT_GRAD_INFLUENCE: Cell<Option<f64>> = const { Cell::new(None) };
     /// Rotation-field accumulator: the angle (degrees) the Angle chip last
     /// reported THIS gesture. `event` emits the DELTA `(current − this)` so the
     /// shell rotates incrementally; reset to 0 by `paint` whenever the field is
@@ -117,6 +120,16 @@ pub(crate) fn current_fill_kind() -> Option<FillKind> {
 /// The selected path's linear-gradient angle this frame (`None` unless Linear).
 pub(crate) fn current_grad_angle() -> Option<f64> {
     CURRENT_GRAD_ANGLE.with(|c| c.get())
+}
+
+/// Publish the selected multi-point gradient point's influence (`None` = no point).
+pub fn set_current_grad_influence(v: Option<f64>) {
+    CURRENT_GRAD_INFLUENCE.with(|c| c.set(v));
+}
+
+/// The selected multi-point point's influence this frame (drives the slider).
+pub(crate) fn current_grad_influence() -> Option<f64> {
+    CURRENT_GRAD_INFLUENCE.with(|c| c.get())
 }
 
 /// The angle the Angle chip last reported this gesture (for the delta emit).

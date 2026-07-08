@@ -29,6 +29,8 @@ use ph2d_tool_vector::{
 
 /// Linear-gradient Angle slider mapping: track `0..1` → `0..360` degrees.
 const GRAD_ANGLE_SLIDER_SCALE: f32 = 360.0; // LITERAL-PX-OK: degrees in a full turn (math constant)
+/// Multi-point Influence slider mapping: track `0..1` → `0..4` (IDW strength).
+const GRAD_INFLUENCE_SLIDER_SCALE: f32 = 4.0; // LITERAL-PX-OK: max IDW influence (domain constant)
 
 /// Register a plain action Button in the Normal state.
 fn button(store: &mut WidgetStore, id: ph2d_a11y::NodeId) {
@@ -209,6 +211,16 @@ pub fn populate(store: &mut WidgetStore) {
         0.0,
         0.0,
         GRAD_ANGLE_SLIDER_SCALE,
+        0.0,
+    );
+    // Multi-point Influence (track 0..1 → 0..4); seeded at the default 1.0.
+    slider_chip(
+        store,
+        ids::VECTOR_GRAD_INFLUENCE,
+        ids::VECTOR_GRAD_INFLUENCE_NUM,
+        1.0 / GRAD_INFLUENCE_SLIDER_SCALE,
+        1.0,
+        GRAD_INFLUENCE_SLIDER_SCALE,
         0.0,
     );
 

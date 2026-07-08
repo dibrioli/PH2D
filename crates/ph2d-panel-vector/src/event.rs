@@ -78,7 +78,8 @@ pub(crate) fn apply_event(
                 || id == ids::VECTOR_FILL_OPACITY
                 || id == ids::VECTOR_DASH
                 || id == ids::VECTOR_GAP
-                || id == ids::VECTOR_GRAD_ANGLE =>
+                || id == ids::VECTOR_GRAD_ANGLE
+                || id == ids::VECTOR_GRAD_INFLUENCE =>
         {
             let track = host.store().slider(id).map(|(_, v)| v).unwrap_or(0.5);
             host.bus_mut()
@@ -101,7 +102,8 @@ pub(crate) fn apply_event(
                 || id == ids::VECTOR_FILL_OPACITY_NUM
                 || id == ids::VECTOR_DASH_NUM
                 || id == ids::VECTOR_GAP_NUM
-                || id == ids::VECTOR_GRAD_ANGLE_NUM =>
+                || id == ids::VECTOR_GRAD_ANGLE_NUM
+                || id == ids::VECTOR_GRAD_INFLUENCE_NUM =>
         {
             true
         }

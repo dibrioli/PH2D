@@ -71,6 +71,9 @@ pub const VECTOR_GRAD_ANGLE_NUM: NodeId = hash_node_id("vector.grad.angle_num");
 /// Multi-point gradient: add a point (bbox center) / remove the selected point.
 pub const VECTOR_GRAD_ADD_POINT: NodeId = hash_node_id("vector.grad.add_point");
 pub const VECTOR_GRAD_REMOVE_POINT: NodeId = hash_node_id("vector.grad.remove_point");
+/// Influence (strength / reach) of the selected multi-point gradient point.
+pub const VECTOR_GRAD_INFLUENCE: NodeId = hash_node_id("vector.grad.influence");
+pub const VECTOR_GRAD_INFLUENCE_NUM: NodeId = hash_node_id("vector.grad.influence_num");
 
 pub const VECTOR_STROKE_OPACITY: NodeId = hash_node_id("vector.stroke_opacity");
 pub const VECTOR_STROKE_OPACITY_NUM: NodeId = hash_node_id("vector.stroke_opacity_num");

@@ -335,6 +335,15 @@ pub(super) fn dispatch(
             (None, None)
         };
         ph2d_panel_vector::set_current_fill(kind, angle);
+        // Publish the selected multi-point point's influence (drives the slider).
+        ph2d_panel_vector::set_current_grad_influence(recolor_point.and_then(|i| {
+            pen.selected()
+                .and_then(|sel| scene.paths().iter().find(|p| p.id == sel))
+                .and_then(|p| match &p.fill {
+                    Some(Paint::MultiPoint { points }) => points.get(i).map(|gp| gp.influence),
+                    _ => None,
+                })
+        }));
     }
 
     // Calibrate the Transform fields' drag scrub to the camera: `px_to_world`

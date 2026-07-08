@@ -870,6 +870,8 @@ impl crate::App {
             let mut pending_vec_grad_angle: Option<f64> = None;
             let mut pending_vec_grad_add = false;
             let mut pending_vec_grad_remove = false;
+            // Multi-point Influence slider (track·4).
+            let mut pending_vec_grad_influence: Option<f64> = None;
             // Numeric Transform field edit (X/Y/W/H) — a SetValue document command.
             let mut pending_vec_transform: Option<(crate::input_dispatch::VecTransformField, f64)> =
                 None;
@@ -973,6 +975,9 @@ impl crate::App {
                             } else if *id == ph2d_editor::ids::VECTOR_GRAD_ANGLE {
                                 // Slider carries the track 0..1 → 0..360°.
                                 pending_vec_grad_angle = Some(*v * 360.0);
+                            } else if *id == ph2d_editor::ids::VECTOR_GRAD_INFLUENCE {
+                                // Track 0..1 → influence 0..4.
+                                pending_vec_grad_influence = Some(*v * 4.0);
                             }
                         }
                         if let Some(t) = tools.active_mut() {
@@ -1705,6 +1710,15 @@ impl crate::App {
                     &mut self.vec_history,
                     &self.vec_pen,
                     self.vec_grad_selected,
+                );
+            }
+            if let Some(v) = pending_vec_grad_influence {
+                crate::input_dispatch::apply_vec_grad_influence(
+                    vec_scene,
+                    &mut self.vec_history,
+                    &self.vec_pen,
+                    self.vec_grad_selected,
+                    v,
                 );
             }
             let vec_cfg = vector_bridge::dispatch(

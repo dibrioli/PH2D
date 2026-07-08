@@ -47,7 +47,8 @@ impl BodyCtx<'_> {
         }
         y += self.row_h + self.row_gap;
 
-        // Multi-point: Add / Remove point (drag points on-canvas to move them).
+        // Multi-point: Add / Remove point (drag points on-canvas to move them) +
+        // Influence slider for the selected point.
         if kind == FillKind::MultiPoint {
             let two_col = ((self.inner_w - gap) / 2.0).max(1.0);
             y = self.row2(
@@ -59,6 +60,24 @@ impl BodyCtx<'_> {
                 ],
                 y,
             );
+            if let Some(inf) = state::current_grad_influence() {
+                const MAX_INFLUENCE: f64 = 4.0; // LITERAL-PX-OK: IDW strength range (domain)
+                let track = self
+                    .store
+                    .slider(ids::VECTOR_GRAD_INFLUENCE)
+                    .map(|(_, v)| v)
+                    .unwrap_or((inf / MAX_INFLUENCE) as f32);
+                let val = f64::from(track) * MAX_INFLUENCE;
+                y = self.slider_row(
+                    "Influence",
+                    ids::VECTOR_GRAD_INFLUENCE,
+                    ids::VECTOR_GRAD_INFLUENCE_NUM,
+                    track,
+                    val,
+                    &format!("{val:.1}"),
+                    y,
+                );
+            }
         }
         // Angle slider (Linear only) — track 0..1 → 0..360°.
         if kind == FillKind::Linear {

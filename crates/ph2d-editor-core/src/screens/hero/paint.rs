@@ -293,6 +293,10 @@ pub fn paint_hero_screen(
         // painted (the split would be invisible).
         ids::MOTION_GRAPH_PANEL,
         ids::MOTION_PARAMS_PANEL,
+        // General timeline (docs/Timeline W2): bottom-docked, visibility toggled
+        // by the `timeline` key. WITHOUT this entry the registered+visible panel
+        // is never reached by the z-order walk → never painted.
+        ids::TIMELINE_PANEL,
         ids::INSP_BLENDER_PICKER,
         ids::GAL_PANEL,
         ids::AUDIO_MIXER_PANEL,

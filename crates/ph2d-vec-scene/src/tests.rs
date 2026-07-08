@@ -607,3 +607,122 @@ fn smooth_path_curves_corners_and_sharpen_restores_straight() {
     assert!(!scene.smooth_path(999));
     assert!(!scene.sharpen_path(999));
 }
+
+#[test]
+fn simplify_path_drops_redundant_points_and_keeps_the_shape() {
+    let mut scene = VecScene::new();
+    // Open path: a straight run of colinear points + one real corner. The two
+    // interior colinear points are redundant (zero deviation); the corner stays.
+    let poly = VecPath {
+        id: 0,
+        verts: vec![
+            VecVertex::corner([0.0, 0.0]),
+            VecVertex::corner([3.0, 0.0]), // colinear on [0,0]→[9,0]
+            VecVertex::corner([6.0, 0.0]), // colinear
+            VecVertex::corner([9.0, 0.0]),
+            VecVertex::corner([9.0, 9.0]), // real corner (large deviation)
+        ],
+        closed: false,
+        fill: None,
+        stroke: None,
+    };
+    let id = scene.push_path(poly);
+    let count = |s: &VecScene| s.paths().iter().find(|p| p.id == id).unwrap().verts.len();
+
+    // Progressive: each click reduces the count until the 3-point floor, then stops.
+    let mut prev = count(&scene);
+    let mut clicks = 0;
+    while scene.simplify_path(id) {
+        let now = count(&scene);
+        assert!(
+            now < prev,
+            "each click removes at least one point ({prev} → {now})"
+        );
+        prev = now;
+        clicks += 1;
+        assert!(clicks < 20, "must reach the floor, not loop forever");
+    }
+    assert_eq!(prev, 3, "simplifies down to the 3-point floor");
+
+    let verts = &scene.paths().iter().find(|p| p.id == id).unwrap().verts;
+    // Endpoints preserved, the real corner kept, colinear midpoints gone.
+    assert_eq!(
+        verts.first().unwrap().anchor,
+        [0.0, 0.0],
+        "start endpoint kept"
+    );
+    assert_eq!(
+        verts.last().unwrap().anchor,
+        [9.0, 9.0],
+        "end endpoint kept"
+    );
+    assert!(
+        verts.iter().any(|v| v.anchor == [9.0, 0.0]),
+        "the real corner survives"
+    );
+    assert!(
+        !verts
+            .iter()
+            .any(|v| v.anchor == [3.0, 0.0] || v.anchor == [6.0, 0.0]),
+        "colinear midpoints removed"
+    );
+
+    // A small closed path (<= 3) is left alone.
+    let tri = scene.push_path(regular_polygon([0.0, 0.0], 5.0, 5.0, 3));
+    assert!(
+        !scene.simplify_path(tri),
+        "3-vertex closed path is at the floor"
+    );
+    assert!(!scene.simplify_path(999));
+}
+
+/// Sample every cubic segment of a path into a flat list of points.
+fn sample_path(p: &VecPath, per_seg: usize) -> Vec<[f64; 2]> {
+    let n = p.verts.len();
+    let segs = if p.closed { n } else { n.saturating_sub(1) };
+    let mut out = Vec::new();
+    for s in 0..segs {
+        let a = &p.verts[s];
+        let b = &p.verts[(s + 1) % n];
+        for k in 0..=per_seg {
+            let t = k as f64 / per_seg as f64;
+            out.push(cubic_at(a.anchor, a.out_handle, b.in_handle, b.anchor, t));
+        }
+    }
+    out
+}
+
+#[test]
+fn simplify_stays_faithful_to_a_smooth_curve() {
+    // A many-sided polygon, smoothed into a near-circular closed curve — a shape
+    // with real curvature (non-degenerate handles).
+    let mut scene = VecScene::new();
+    let id = scene.push_path(regular_polygon([0.0, 0.0], 10.0, 10.0, 16));
+    scene.smooth_path(id);
+    scene.smooth_path(id); // grow the handles so it's genuinely curved
+
+    let before = scene.paths().iter().find(|p| p.id == id).unwrap().clone();
+    let ref_pts = sample_path(&before, 8);
+
+    // One simplify click removes ~20% of the points…
+    assert!(scene.simplify_path(id));
+    let after = scene.paths().iter().find(|p| p.id == id).unwrap();
+    assert!(after.verts.len() < before.verts.len(), "points removed");
+
+    // …and the curve stays FAITHFUL: every original sample is near the new curve.
+    let new_pts = sample_path(after, 16);
+    let diag = 20.0; // bbox diagonal ≈ 2·radius
+    let mut maxd: f64 = 0.0;
+    for rp in &ref_pts {
+        let d = new_pts
+            .iter()
+            .map(|np| (rp[0] - np[0]).hypot(rp[1] - np[1]))
+            .fold(f64::INFINITY, f64::min);
+        maxd = maxd.max(d);
+    }
+    assert!(
+        maxd < 0.05 * diag,
+        "simplified curve stays within 5% of the original ({maxd} vs {})",
+        0.05 * diag
+    );
+}

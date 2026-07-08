@@ -164,3 +164,5 @@ pub const VECTOR_TRANSFORM_H: NodeId = hash_node_id("vector.transform.h");
 // handles onto the anchor (straight-segment corners).
 pub const VECTOR_PATH_SMOOTH: NodeId = hash_node_id("vector.path.smooth");
 pub const VECTOR_PATH_SHARPEN: NodeId = hash_node_id("vector.path.sharpen");
+/// Simplify = drop redundant/near-colinear anchors (RDP-style vertex reduction).
+pub const VECTOR_PATH_SIMPLIFY: NodeId = hash_node_id("vector.path.simplify");

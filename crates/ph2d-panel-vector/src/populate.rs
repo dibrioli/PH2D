@@ -249,9 +249,10 @@ pub fn populate(store: &mut WidgetStore) {
     button(store, ids::VECTOR_ARRANGE_ROTATE_CW);
     button(store, ids::VECTOR_ARRANGE_ROTATE_CCW);
 
-    // Path: Smooth / Sharpen — retype ALL vertices of the selected path.
+    // Path: Smooth / Sharpen / Simplify — reshape ALL vertices of the selected path.
     button(store, ids::VECTOR_PATH_SMOOTH);
     button(store, ids::VECTOR_PATH_SHARPEN);
+    button(store, ids::VECTOR_PATH_SIMPLIFY);
 
     // Close (X) button.
     button(store, ids::VECTOR_CLOSE);

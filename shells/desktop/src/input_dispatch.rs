@@ -288,15 +288,17 @@ pub(crate) fn vec_rotate_for_id(id: ph2d_editor::NodeId) -> Option<ph2d_vec_scen
     }
 }
 
-/// Whole-path handle op (panel "Smooth" / "Sharpen" buttons).
+/// Whole-path reshape op (panel "Smooth" / "Sharpen" / "Simplify" buttons).
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub(crate) enum VecPathShapeOp {
     Smooth,
     Sharpen,
+    Simplify,
 }
 
-/// Smooth / sharpen ALL vertices of the SELECTED path (panel Path buttons),
-/// recording ONE undo step iff it changed. Free fn (mirror of [`apply_vec_flip`]).
+/// Smooth / sharpen / simplify ALL vertices of the SELECTED path (panel Path
+/// buttons), recording ONE undo step iff it changed. Free fn (mirror of
+/// [`apply_vec_flip`]).
 pub(crate) fn apply_vec_path_shape(
     scene: &mut ph2d_vec_scene::VecScene,
     history: &mut ph2d_vec_edit::History,
@@ -311,6 +313,7 @@ pub(crate) fn apply_vec_path_shape(
     let changed = match op {
         VecPathShapeOp::Smooth => scene.smooth_path(sel),
         VecPathShapeOp::Sharpen => scene.sharpen_path(sel),
+        VecPathShapeOp::Simplify => scene.simplify_path(sel),
     };
     if changed {
         history.push_undo(pre);
@@ -324,6 +327,8 @@ pub(crate) fn vec_path_shape_for_id(id: ph2d_editor::NodeId) -> Option<VecPathSh
         Some(VecPathShapeOp::Smooth)
     } else if id == ph2d_editor::ids::VECTOR_PATH_SHARPEN {
         Some(VecPathShapeOp::Sharpen)
+    } else if id == ph2d_editor::ids::VECTOR_PATH_SIMPLIFY {
+        Some(VecPathShapeOp::Simplify)
     } else {
         None
     }
@@ -2214,6 +2219,10 @@ mod tests {
             Some(VecPathShapeOp::Sharpen)
         );
         assert_eq!(
+            vec_path_shape_for_id(ph2d_editor::ids::VECTOR_PATH_SIMPLIFY),
+            Some(VecPathShapeOp::Simplify)
+        );
+        assert_eq!(
             vec_path_shape_for_id(ph2d_editor::ids::VECTOR_ARRANGE_FLIP_H),
             None
         );
@@ -2240,6 +2249,38 @@ mod tests {
                 .all(|v| v.kind == VertexKind::Corner && v.in_handle == v.anchor),
             "sharpen button flattens every vertex"
         );
+
+        // Simplify: a closed square with a redundant midpoint on one edge drops it.
+        let sq = scene.push_path(ph2d_vec_scene::VecPath {
+            id: 0,
+            verts: vec![
+                ph2d_vec_scene::VecVertex::corner([0.0, 0.0]),
+                ph2d_vec_scene::VecVertex::corner([5.0, 0.0]), // redundant midpoint
+                ph2d_vec_scene::VecVertex::corner([10.0, 0.0]),
+                ph2d_vec_scene::VecVertex::corner([10.0, 10.0]),
+                ph2d_vec_scene::VecVertex::corner([0.0, 10.0]),
+            ],
+            closed: true,
+            fill: None,
+            stroke: None,
+        });
+        pen.select(Some(sq));
+        let before = scene
+            .paths()
+            .iter()
+            .find(|p| p.id == sq)
+            .unwrap()
+            .verts
+            .len();
+        apply_vec_path_shape(&mut scene, &mut hist, &pen, VecPathShapeOp::Simplify);
+        let after = scene
+            .paths()
+            .iter()
+            .find(|p| p.id == sq)
+            .unwrap()
+            .verts
+            .len();
+        assert_eq!(after, before - 1, "simplify drops the one redundant point");
     }
 
     #[test]

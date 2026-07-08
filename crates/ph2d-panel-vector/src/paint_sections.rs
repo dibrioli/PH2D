@@ -568,9 +568,10 @@ impl BodyCtx<'_> {
             y,
         );
 
-        // Path — smooth / sharpen ALL vertices of the selected path.
+        // Path — reshape ALL vertices of the selected path: Smooth / Sharpen (a
+        // 2-col row) + full-width Simplify (drop redundant points).
         y = self.section_label("Path", y);
-        self.row2(
+        y = self.row2(
             z_w,
             z_gap,
             [
@@ -578,7 +579,8 @@ impl BodyCtx<'_> {
                 (ids::VECTOR_PATH_SHARPEN, "Sharpen"),
             ],
             y,
-        )
+        );
+        self.action_button(ids::VECTOR_PATH_SIMPLIFY, "Simplify", y)
     }
 
     /// A 2-column row of two half-width action buttons; returns the advanced `y`.

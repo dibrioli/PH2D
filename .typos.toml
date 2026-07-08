@@ -226,6 +226,13 @@ sinal = "sinal"
 varios = "varios"
 vetor = "vetor"
 abd = "abd"
+# pt-BR nos comments do Vector path-ops (ADR-0108 simplify progressivo, fiel à
+# curva): "fiel" (faithful), "progressiva/progressivo" (progressive),
+# "resolvendo" (solving the 2×2 fit system).
+fiel = "fiel"
+progressiva = "progressiva"
+progressivo = "progressivo"
+resolvendo = "resolvendo"
 
 [files]
 extend-exclude = [

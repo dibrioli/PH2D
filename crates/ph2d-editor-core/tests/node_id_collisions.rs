@@ -471,6 +471,7 @@ const CHROME_IDS: &[(&str, NodeId)] = &[
     ("VECTOR_TRANSFORM_H", ids::VECTOR_TRANSFORM_H),
     ("VECTOR_PATH_SMOOTH", ids::VECTOR_PATH_SMOOTH),
     ("VECTOR_PATH_SHARPEN", ids::VECTOR_PATH_SHARPEN),
+    ("VECTOR_PATH_SIMPLIFY", ids::VECTOR_PATH_SIMPLIFY),
 ];
 
 /// Pairwise uniqueness across every chrome [`NodeId`]. O(n²) over ~200

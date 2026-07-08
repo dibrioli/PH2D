@@ -69,9 +69,9 @@ composite. Corpo molhado + rim no contorno EXTERNO + textura como variação de 
 | 7 | **Shape Tone ramp / Per-Layer Color** | ignorados | avaliar semântica em aquarela (tone da silhueta?) |
 | 8 | **Alpha-lock da camada** | não aplicado no bake | mesma família do fix de Seleção; avaliar keep = alpha existente |
 
-**Bônus (`a7712f45`):** slider **Blur** no card Brush — o 4º param do Wet Mix Procreate (doc 07
-§4.2, deferido no F2): raio do disco de pickup do mixer (era hardcoded r×0,5; default 0,5
-byte-idêntico; 0 = pickup pontual, 1 = média do disco).
+**Blur do Wet Mix: exposto (`a7712f45`) e REVERTIDO no smoke** (Enio: "funcionava melhor quando
+ele não era configurável") — o pickup do mixer fica FIXO em r×0,5 (cerca de Chesterton anotada no
+`sample_surface`; não re-expor sem novo smoke).
 
 > Perf/cor (outra dimensão, não-UI): waves W-A..W-D da auditoria em
 > [`12_aquarela_auditoria_pos_f123_padrao_ouro.md`](12_aquarela_auditoria_pos_f123_padrao_ouro.md).

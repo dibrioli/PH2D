@@ -145,6 +145,10 @@ pub(super) fn dispatch(
     // framing node in M0, so the pump samples one opaque atlas tile (set in
     // init.rs) at a sub-spacing size → clean, distinct dots.
     motion.transport.advance(frame_ticks as u64);
+    // The render output IS the Output node — the sink follows the graph (wire a
+    // chain into an Output node and it draws). `None` (no Output node) → the pump
+    // renders nothing. Recomputed each frame so add/delete/rewire just works.
+    motion.sink = output_node(&motion.doc.graph);
     let playhead = motion.playhead(fixed_dt);
     let tick = motion.transport.tick;
     motion.pump.pump(
@@ -251,13 +255,9 @@ fn apply_graph_intents(motion: &mut MotionState, toasts: &mut ToastQueue, split:
                     changed |= motion.doc.graph.remove_node(NodeId(id));
                 }
                 if changed {
-                    // Deleting the sink stops the cook cleanly rather than
-                    // pointing it at a phantom node.
-                    if let Some(s) = motion.sink
-                        && motion.doc.graph.node(s).is_none()
-                    {
-                        motion.sink = None;
-                    }
+                    // The sink is re-resolved from the Output node each frame
+                    // (before the cook), so deleting the Output node cleanly
+                    // stops the render — no manual sink bookkeeping here.
                     motion.history.push_undo(pre);
                     motion.pump.mark_dirty();
                 }
@@ -281,17 +281,21 @@ fn apply_graph_intents(motion: &mut MotionState, toasts: &mut ToastQueue, split:
             GraphIntent::TogglePlay => {
                 motion.transport.toggle();
             }
-            // Set the render output (O) — the node whose cooked stream is lowered
-            // to instances. An output choice, not a doc edit (no undo); re-cooks.
-            GraphIntent::SetSink { node } => {
-                let nid = NodeId(node);
-                if motion.doc.graph.node(nid).is_some() {
-                    motion.sink = Some(nid);
-                    motion.pump.mark_dirty();
-                }
-            }
         }
     }
+}
+
+/// The graph's render sink: the first `motion.output` node, or `None` if there
+/// is none (nothing renders until the user wires a chain into an Output node).
+/// Scanned by node id order so the choice is deterministic when several exist.
+fn output_node(graph: &ph2d_nodegraph::graph::Graph) -> Option<ph2d_nodegraph::graph::NodeId> {
+    // `"motion.output"` is the node's canonical type name (as authored in the
+    // default graph); the shell addresses node types by name, like the tool id.
+    graph
+        .nodes()
+        .iter()
+        .find(|inst| inst.type_name == "motion.output")
+        .map(|inst| inst.id)
 }
 
 /// Human-readable reason a structural `connect` was rejected (add-menu toast).
@@ -854,34 +858,48 @@ mod tests {
         assert_eq!(motion.playhead(dt), t, "paused freezes the playhead");
     }
 
-    /// Set as Output: the pump renders whatever node `motion.sink` names, so
-    /// pointing it at a node makes that node the visible output — and a `None`
-    /// sink renders nothing (the mechanism the O-key intent drives).
+    /// The Output node IS the render sink: the bridge auto-selects it, cooking it
+    /// draws whatever feeds it, and deleting it stops the render (no Output → no
+    /// sink → empty). The output follows the graph, not a hidden toggle.
     #[test]
-    fn sink_drives_what_the_pump_renders() {
+    fn output_node_is_the_render_sink() {
+        use ph2d_nodegraph::graph::{Edge, Graph};
         let mut motion = MotionState::new();
-        let grid = motion.doc.graph.add_node("motion.grid");
         let (uv, size) = (motion.default_uv_rect, motion.default_size);
 
-        motion.pump.mark_dirty();
-        motion.pump.pump(
-            &motion.doc.graph,
-            &motion.registry,
-            Some(grid),
-            0,
-            0.0,
-            uv,
-            size,
-        );
-        assert!(
-            motion.pump.instances.len() >= 4,
-            "the chosen output node renders its cells"
-        );
+        // Fresh graph: grid → Output.
+        let mut g = Graph::new();
+        let grid = g.add_node("motion.grid");
+        let out = g.add_node("motion.output");
+        g.connect(Edge {
+            from: (grid, 0),
+            to: (out, 0),
+            delayed: false,
+        })
+        .unwrap();
+        motion.doc.graph = g;
 
+        // The bridge resolves the sink to the Output node…
+        let sink = output_node(&motion.doc.graph);
+        assert_eq!(sink, Some(out), "the Output node is the render sink");
+        // …and cooking it draws the grid cells feeding it.
         motion.pump.mark_dirty();
         motion
             .pump
-            .pump(&motion.doc.graph, &motion.registry, None, 0, 0.0, uv, size);
-        assert_eq!(motion.pump.instances.len(), 0, "no sink → nothing rendered");
+            .pump(&motion.doc.graph, &motion.registry, sink, 0, 0.0, uv, size);
+        assert!(
+            motion.pump.instances.len() >= 4,
+            "Output renders whatever feeds it"
+        );
+
+        // Delete the Output node → no sink → nothing renders.
+        assert!(motion.doc.graph.remove_node(out));
+        let sink = output_node(&motion.doc.graph);
+        assert_eq!(sink, None, "no Output node → no sink");
+        motion.pump.mark_dirty();
+        motion
+            .pump
+            .pump(&motion.doc.graph, &motion.registry, sink, 0, 0.0, uv, size);
+        assert_eq!(motion.pump.instances.len(), 0, "no Output → empty render");
     }
 }

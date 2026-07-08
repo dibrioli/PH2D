@@ -271,18 +271,12 @@ impl App {
                 }
             }
             // Motion Nodes M1: over the graph, Space toggles transport play/pause
-            // (so time-driven behaviours animate) and `O` sets the single selected
-            // node as the render output. Same cursor-gated push as F/A/Delete.
+            // (so time-driven behaviours animate). The render output is the
+            // `Output` node — wire a chain into one, no keyboard verb needed.
             KeyCode::Space if over_motion_graph => {
                 if let Some(hero) = gfx.hero_screen.as_mut() {
                     hero.store
                         .push_graph_key(ph2d_editor::interaction::GraphKey::TogglePlay);
-                }
-            }
-            KeyCode::KeyO if over_motion_graph && !cmd_chord => {
-                if let Some(hero) = gfx.hero_screen.as_mut() {
-                    hero.store
-                        .push_graph_key(ph2d_editor::interaction::GraphKey::SetOutput);
                 }
             }
             KeyCode::Home | KeyCode::KeyF => {

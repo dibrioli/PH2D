@@ -96,15 +96,6 @@ fn apply_key(state: &mut MotionGraphPanelState, k: GraphKey, rect: Rect) {
         }
         // Space — toggle transport play/pause (the shell owns the transport).
         GraphKey::TogglePlay => push_intent(GraphIntent::TogglePlay),
-        // O — set the single selected node as the render output (the cook sink).
-        // Ambiguous with a multi-selection → no-op (the user picks one node).
-        GraphKey::SetOutput => {
-            if state.selected.len() == 1
-                && let Some(&node) = state.selected.iter().next()
-            {
-                push_intent(GraphIntent::SetSink { node });
-            }
-        }
         // Duplicate / knife / probe land later.
         _ => {}
     }

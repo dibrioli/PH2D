@@ -50,8 +50,9 @@ pub(crate) struct MotionState {
 
 impl MotionState {
     /// Build the boot state: register every node op + the default
-    /// grid→transform→clone vertical (the M0 smoke graph promoted to a real
-    /// document), transport paused at tick 0.
+    /// grid→transform→clone→output vertical (the M0 smoke graph promoted to a
+    /// real document, terminated by the Output render node), transport paused at
+    /// tick 0.
     pub(crate) fn new() -> Self {
         let mut registry = NodeRegistry::new();
         ph2d_node_registry_init::register_all_nodes(&mut registry)
@@ -80,34 +81,34 @@ impl MotionState {
     }
 }
 
-/// Author the default grid→transform→clone vertical into `g`; returns the sink
-/// (the clone node) if the graph is well-typed. Mirror of the retired
-/// `motion_smoke` graph, now the document's initial content.
+/// Author the default grid→transform→clone→output vertical into `g`; returns the
+/// sink (the **Output** node) if the graph is well-typed. The Output node is the
+/// render target — the bridge keeps `sink` pointed at it, so the drawn result
+/// follows the graph. Mirror of the retired `motion_smoke` graph, now the initial
+/// document content.
 fn build_default_vertical(g: &mut Graph, reg: &NodeRegistry) -> Option<NodeId> {
     let grid = g.add_node("motion.grid");
     let xf = g.add_node("motion.transform");
     let clone = g.add_node("motion.clone");
-    g.connect(Edge {
-        from: (grid, 0),
-        to: (xf, 0),
-        delayed: false,
-    })
-    .ok()?;
-    g.connect(Edge {
-        from: (xf, 0),
-        to: (clone, 0),
-        delayed: false,
-    })
-    .ok()?;
+    let output = g.add_node("motion.output");
+    for (from, to) in [(grid, xf), (xf, clone), (clone, output)] {
+        g.connect(Edge {
+            from: (from, 0),
+            to: (to, 0),
+            delayed: false,
+        })
+        .ok()?;
+    }
     // M1 — lay the default chain left-to-right in graph space so the editor
     // renders it as connected cards (the panel auto-fits until the user pans).
     g.set_pos(grid, Pos { x: 0.0, y: 0.0 });
     g.set_pos(xf, Pos { x: 260.0, y: 0.0 });
     g.set_pos(clone, Pos { x: 520.0, y: 0.0 });
+    g.set_pos(output, Pos { x: 780.0, y: 0.0 });
     // Same "validate on load" the editor runs before cooking — proves the
     // authored graph is well-typed and membrane-clean.
     g.validate(reg).ok()?;
-    Some(clone)
+    Some(output)
 }
 
 #[cfg(test)]
@@ -118,8 +119,14 @@ mod tests {
     fn new_builds_a_well_typed_default_vertical_with_a_sink() {
         let state = MotionState::new();
         assert!(state.sink.is_some(), "default vertical must have a sink");
-        // 3 nodes authored (grid, transform, clone).
-        assert_eq!(state.doc.graph.nodes().len(), 3);
+        // 4 nodes authored (grid, transform, clone, output).
+        assert_eq!(state.doc.graph.nodes().len(), 4);
+        // The sink is the Output node (the render target).
+        let sink = state.sink.unwrap();
+        assert_eq!(
+            state.doc.graph.node(sink).unwrap().type_name,
+            "motion.output"
+        );
         // Well-typed against the registry (validate succeeded in `new`).
         assert!(state.doc.graph.validate(&state.registry).is_ok());
         // Paused at tick 0 → playhead 0.

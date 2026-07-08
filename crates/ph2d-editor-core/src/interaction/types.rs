@@ -347,6 +347,4 @@ pub enum GraphKey {
     Duplicate,
     /// Space — toggle transport play/pause (so time-driven behaviours animate).
     TogglePlay,
-    /// O — set the selected node as the render output (the cook's sink).
-    SetOutput,
 }

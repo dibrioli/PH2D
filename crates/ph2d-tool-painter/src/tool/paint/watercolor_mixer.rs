@@ -14,6 +14,10 @@
 //!    deposits pure fresh colour (the mixer is skipped entirely → byte-identical); a depleted brush
 //!    smears what it picked up.
 //!
+//! **Subtractive colour (W-A, doc 12 OPT-1):** the reservoir and the deposit blend in per-channel
+//! ABSORBANCE (the `lnl`/`exp_mag` LUTs — the dissolve's ratified pattern), so the carried mix
+//! behaves like PIGMENT: blue across a yellow pool deposits green, never the sRGB-lerp grey.
+//!
 //! **No self-feeding** (the retired reservoir's failure mode, [[project-wash-undo…]] lesson): the
 //! pickup reads `watercolor_base` (frozen at pen-down) over the frozen backdrop, NEVER the live
 //! canvas. **No cadence-binding**: the resample clock is Pull/distance-driven (per dab), not per
@@ -22,12 +26,15 @@
 
 use super::*;
 
-/// The mixer's per-stroke reservoir: unpremultiplied picked-up colour (straight sRGB `0..1`), a
-/// presence-weighted confidence `w ∈ [0, 1]` (how much real paint it holds), and the Pull resample
-/// `w == 0` (fresh / over bare ground) ⇒ the deposit is pure brush colour.
+/// The mixer's per-stroke reservoir: the picked-up colour as a premultiplied per-channel
+/// **ABSORBANCE** triple (`A = −ln(linear)`, `0` = white / no pigment — W-A, doc 12 OPT-1: paints
+/// mix like PIGMENTS, in log-transmittance space, never by sRGB lerp, which turned blue over a
+/// yellow pool into grey) + a presence-weighted confidence `w ∈ [0, 1]` (how much real paint it
+/// holds). `w == 0` (fresh / over bare ground) ⇒ the deposit is pure brush colour. Kept in FLOAT
+/// end-to-end (the audit's drift warning applies to iterative byte re-quantisation only).
 #[derive(Clone, Copy, Debug, Default)]
 pub(super) struct WetMix {
-    rgb: [f32; 3],
+    absorb: [f32; 3],
     w: f32,
 }
 
@@ -86,6 +93,7 @@ impl PainterTool {
         // fixed + fast (RETAIN_LOAD) so the pickup is always strong.
         let unload =
             (RETAIN_UNLOAD_MIN + (0.98 - RETAIN_UNLOAD_MIN) * p * (2.0 - p)).clamp(0.0, 0.98);
+        let lut = super::watercolor_field::luts();
         let mut out = Vec::with_capacity(dabs.len());
         let mut mix = self.paint.wet_mix;
         for d in dabs {
@@ -97,22 +105,33 @@ impl PainterTool {
             //    stays the picked-up colour. ──
             let (srgb, sw) = sample_surface(&base, &backdrop, fw, fh, d.center, d.radius_px);
             let update = if sw >= mix.w { RETAIN_LOAD } else { unload };
-            for (channel, &s) in mix.rgb.iter_mut().zip(srgb.iter()) {
-                *channel = update * *channel + (1.0 - update) * sw * s;
+            // Convert the sampled appearance to ABSORBANCE at the mixer boundary (W-A): the running
+            // average then blends log-transmittances — a geometric mean of paints, not a light mix.
+            for (channel, &s) in mix.absorb.iter_mut().zip(srgb.iter()) {
+                let byte = (s.clamp(0.0, 1.0) * 255.0 + 0.5) as usize;
+                let a = -lut.lnl[byte.min(255)]; // absorbance ≥ 0; white = 0 (no pigment)
+                *channel = update * *channel + (1.0 - update) * sw * a;
             }
             mix.w = update * mix.w + (1.0 - update) * sw;
             // ── 2. Deposit: blend the brush colour toward the (unpremultiplied) reservoir colour by
-            //    the priority `t = pickup × load`. Load `w` decays downstream ⇒ the carried colour
-            //    fades with distance, AND `t` (the deposit priority) decays with it — so a fading
-            //    exit dab can't overwrite a stronger in-pool deposit (symmetric crossing). ──
+            //    the priority `t = pickup × load`, in ABSORBANCE space (W-A, doc 12 OPT-1): the
+            //    subtractive lerp is what makes blue over a yellow pool deposit GREEN — the sRGB
+            //    lerp it replaces deposited grey ("blue and yellow make gray", Mixbox's flagship
+            //    defect; probe 2026-07-07: deposit (128,128,115) R≈G). Load `w` decays downstream ⇒
+            //    the carried colour fades with distance, AND `t` decays with it — so a fading exit
+            //    dab can't overwrite a stronger in-pool deposit (symmetric crossing). ──
             let t = (pickup * mix.w).clamp(0.0, 1.0);
             let mut col = d.color;
             if mix.w > 1e-4 {
                 let inv = 1.0 / mix.w;
-                for ((out_c, &m), &base_c) in col.iter_mut().zip(mix.rgb.iter()).zip(d.color.iter())
+                for ((out_c, &m), &brush_c) in
+                    col.iter_mut().zip(mix.absorb.iter()).zip(d.color.iter())
                 {
-                    let sc = m * inv; // unpremultiply
-                    *out_c = base_c + (sc - base_c) * t;
+                    let sa = m * inv; // unpremultiply → the carried paint's absorbance
+                    let byte = (brush_c.clamp(0.0, 1.0) * 255.0 + 0.5) as usize;
+                    let ba = -lut.lnl[byte.min(255)]; // the brush pigment's absorbance
+                    let mag = ba + (sa - ba) * t; // subtractive mix (log-space lerp)
+                    *out_c = f32::from(lut.l2s_byte(lut.exp_mag(mag))) / 255.0;
                 }
             }
             out.push((col, t));

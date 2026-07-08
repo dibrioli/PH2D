@@ -12098,12 +12098,17 @@ fn watercolor_wet_mix_carried_colour_is_saturated_not_watery() {
         t.on_canvas_pointer(cp([80.0, y], PointerPhase::Move));
     }
     assert!(t.on_canvas_pointer(cp([80.0, y], PointerPhase::Up)));
-    // Just past the pool: a rich purple (R and B each well above G), not a pale near-grey wash.
+    // Just past the pool: a rich purple (R and B each clearly above G), not a pale near-grey wash.
+    // Margins re-pinned WITH the W-A decision (doc 12 OPT-1, 2026-07-07): the subtractive
+    // (absorbance-space) mix legitimately weights the heavily-carried RED pigment more than the old
+    // sRGB lerp did — deep maroon-purple (measured (166,67,92): R−G=99, B−G=25), exactly how real
+    // red+blue pigment mixes. The test's INTENT is unchanged: G suppressed on both sides + strongly
+    // chromatic (the original bug was a pale wash bleached toward white).
     let c = px(&t, size, 80, band1 + 3);
     let (r, g, b) = (i32::from(c[0]), i32::from(c[1]), i32::from(c[2]));
     assert!(
-        r > g + 60 && b > g + 40,
-        "the carried mix must be a saturated purple (R,B ≫ G), not watery: {c:?}"
+        r > g + 60 && b > g + 15,
+        "the carried mix must be a saturated purple (R,B > G), not watery: {c:?}"
     );
 }
 
@@ -12526,5 +12531,77 @@ fn watercolor_textured_tip_keeps_typical_wash_with_density_variation() {
     assert!(
         hi - lo >= 8,
         "the tip texture must read as pigment-density variation (green spread {lo}..{hi})"
+    );
+}
+
+/// **W-A (doc 12 OPT-1) — the subtractive-mixing discriminant: blue over yellow makes GREEN, not
+/// grey.** A blue mixer brush (Charge 0.3) crossing a dry YELLOW pool must deposit a GREEN-dominant
+/// mix at the pool's exit (absorbance-space lerp = pigment mixing). The sRGB lerp this replaced
+/// deposited khaki/grey — R≈G, measured (128,128,115) pre-fix — the exact "blue and yellow make
+/// gray" defect the Mixbox paper names as the flagship failure of RGB-mixing paint software.
+#[test]
+fn watercolor_wet_mix_blue_over_yellow_deposits_green() {
+    let size = 160u32;
+    let mut src = vec![0u8; (size * size * 4) as usize];
+    for y in 0..size {
+        for x in 0..size {
+            let i = ((y * size + x) * 4) as usize;
+            let p = if (44..70).contains(&x) {
+                [250u8, 220, 40, 255] // dry yellow pool
+            } else {
+                [255u8, 255, 255, 255]
+            };
+            src[i..i + 4].copy_from_slice(&p);
+        }
+    }
+    let mut t = PainterTool::default();
+    t.set_source(src, size, size);
+    t.paint.brush = BrushSpec {
+        radius_px: 7.0,
+        hardness: 1.0,
+        falloff: Falloff::Constant,
+        color: [0.10, 0.20, 0.70], // blue
+        space_attenuation: false,
+        watercolor: true,
+        edge_gain: 0.0,
+        edge_spread: 4.0,
+        granulation: 0.0,
+        warp: 0.0,
+        fill: 0.6,
+        depth: 1.5,
+        wet_rewet: 0.0,
+        wet_charge: 0.3,
+        wet_pull: 0.6,
+        ..Default::default()
+    };
+    for slot in &mut t.paint.brush_by_mode {
+        *slot = t.paint.brush;
+    }
+    assert!(t.on_canvas_pointer(cp([16.0, 80.0], PointerPhase::Down)));
+    let mut x = 16.0f32;
+    while x < 130.0 {
+        x += 2.0;
+        t.on_canvas_pointer(cp([x, 80.0], PointerPhase::Move));
+    }
+    t.on_canvas_pointer(cp([130.0, 80.0], PointerPhase::Up));
+    // At the pool's exit edge the deposited colour must be GREEN-dominant (pigment mix of blue +
+    // yellow), with a real margin — the grey failure mode had R ≈ G.
+    // (x = 66/74 sit at the pool's trailing edge, where the carried mix peaks; farther out the
+    // carry is already decaying toward the brush's blue and the G margin thins by design.)
+    for probe_x in [66u32, 74] {
+        let i = ((80 * size + probe_x) * 4) as usize;
+        let c = &t.paint.stroke_color[i..i + 4];
+        let (r, g, b) = (i32::from(c[0]), i32::from(c[1]), i32::from(c[2]));
+        assert!(
+            g > r + 10 && g > b + 10,
+            "blue over yellow must deposit GREEN at the pool exit (x={probe_x}): rgba=({r},{g},{b})"
+        );
+    }
+    // Far downstream the carry decays and the deposit returns toward the BRUSH's blue.
+    let i = ((80 * size + 100) * 4) as usize;
+    let c = &t.paint.stroke_color[i..i + 4];
+    assert!(
+        c[2] > c[0],
+        "downstream the carry decays back toward the blue brush: rgba={c:?}"
     );
 }

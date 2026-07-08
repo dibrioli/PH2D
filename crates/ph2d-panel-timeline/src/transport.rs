@@ -25,8 +25,8 @@ use ph2d_tokens::{ColorToken, Density, ROW_H_PX, Radius, Spacing, StrokeToken, T
 use crate::ids;
 
 const BTN_W: f32 = 30.0; // LITERAL-PX-OK: square transport icon-button
-const CHIP_W: f32 = 58.0; // LITERAL-PX-OK: seconds/frame number chip width
-const UNIT_W: f32 = 12.0; // LITERAL-PX-OK: "s"/"f" unit-label column
+const CHIP_W: f32 = 72.0; // LITERAL-PX-OK: seconds/frame number chip width
+const CHIP_LABEL_W: f32 = 48.0; // LITERAL-PX-OK: "Time(s)"/"Frames" chip-label column
 const TOGGLE_LABEL_W: f32 = 52.0; // LITERAL-PX-OK: "AutoKey" label column
 
 /// Paint the transport row inside `body` (top-aligned). Returns the `y` below it.
@@ -70,6 +70,8 @@ pub(crate) fn paint_bar(
     } else {
         DEFAULT_FPS
     };
+    label(ctx, theme, "Time(s)", x, y, CHIP_LABEL_W);
+    x += CHIP_LABEL_W + gap * 0.5;
     x = chip(
         ctx,
         theme,
@@ -79,9 +81,9 @@ pub(crate) fn paint_bar(
         snap.time_seconds,
         1.0 / fps,
         2,
-    );
-    label(ctx, theme, "s", x, y, UNIT_W);
-    x += UNIT_W + gap * 0.5;
+    ) + gap;
+    label(ctx, theme, "Frames", x, y, CHIP_LABEL_W);
+    x += CHIP_LABEL_W + gap * 0.5;
     x = chip(
         ctx,
         theme,
@@ -91,9 +93,7 @@ pub(crate) fn paint_bar(
         snap.frame as f64,
         1.0,
         0,
-    );
-    label(ctx, theme, "f", x, y, UNIT_W);
-    x += UNIT_W + gap;
+    ) + gap;
 
     // ── toggles ──────────────────────────────────────────────────────────────
     x = toggle(

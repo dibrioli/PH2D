@@ -64,10 +64,14 @@ composite. Corpo molhado + rim no contorno EXTERNO + textura como variação de 
 | 2 | **Tiling** | ignorado (a replicação `tiled_dabs` vive em `stamp_dabs_routed`, depois do desvio) | replicar os dabs antes do accumulate; o composite/dirty-rect precisa do wrap também |
 | 3 | **Stroke shape-editors** (Curve/Circle/Polygon/Free Hand) | deliberadamente plain (stampam sem lifecycle → sem base congelada) | dar lifecycle/óptica aos bakes dos editors |
 | 4 | **Blend dropdown** | nunca consultado (depósito source-over + óptica própria) | decisão de design: suportar × esconder/dim em modo aquarela (honestidade da UI) |
-| 5 | **Composite Brush** | ignorado (desvio antes do `composite_active`) | idem: decidir semântica ou dim |
+| 5 | ~~**Composite Brush**~~ | ✅ escondido em modo aquarela (`a7712f45`, decisão Enio); Strength não some junto | — |
 | 6 | ~~**Jitter Rotate**~~ | ✅ resolvido com o #1 (silhueta orientável, `5000decc`) | — |
 | 7 | **Shape Tone ramp / Per-Layer Color** | ignorados | avaliar semântica em aquarela (tone da silhueta?) |
 | 8 | **Alpha-lock da camada** | não aplicado no bake | mesma família do fix de Seleção; avaliar keep = alpha existente |
+
+**Bônus (`a7712f45`):** slider **Blur** no card Brush — o 4º param do Wet Mix Procreate (doc 07
+§4.2, deferido no F2): raio do disco de pickup do mixer (era hardcoded r×0,5; default 0,5
+byte-idêntico; 0 = pickup pontual, 1 = média do disco).
 
 > Perf/cor (outra dimensão, não-UI): waves W-A..W-D da auditoria em
 > [`12_aquarela_auditoria_pos_f123_padrao_ouro.md`](12_aquarela_auditoria_pos_f123_padrao_ouro.md).

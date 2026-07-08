@@ -247,41 +247,52 @@ impl PainterTool {
             let mut wb = vec![0.0f32; lw * lh];
             let mut soak = vec![0.0f32; lw * lh];
             let half = ds / 2;
-            for lj in 0..lh {
-                // Sample each low-res cell at its block CENTRE (ds=1 ⇒ every full-res pixel, exact).
-                let gy = (((loy0 + lj) * ds) + half).min(fh - 1);
-                for li in 0..lw {
-                    let gx = (((lox0 + li) * ds) + half).min(fw - 1);
-                    let bi = (gy * fw + gx) * 4;
-                    let ab = f32::from(base[bi + 3]) / 255.0;
-                    let (gr, gg, gb) = (
-                        f32::from(ground[bi]),
-                        f32::from(ground[bi + 1]),
-                        f32::from(ground[bi + 2]),
-                    );
-                    // The base over the real ground, straight sRGB bytes (the paint as seen).
-                    let r = f32::from(base[bi]) * ab + gr * (1.0 - ab);
-                    let g = f32::from(base[bi + 1]) * ab + gg * (1.0 - ab);
-                    let b = f32::from(base[bi + 2]) * ab + gb * (1.0 - ab);
-                    // Presence = how far this pixel departs from the LOCAL ground — only the active
-                    // layer's own paint differs from it (an unpainted pixel composites to the ground
-                    // exactly), so the reference is per-pixel true, light pigments included. The old
-                    // global-cream reference read a white canvas as 0.8 presence everywhere (flooded
-                    // the pool, "matou o efeito dinâmico do spread"), and paint LIGHTER than cream
-                    // as none. Dead-zoned so anti-aliasing crumbs don't count as paint (wet_edges
-                    // `PAINT_LO`/`PAINT_HI`).
-                    let d = (gr - r).abs().max((gg - g).abs()).max((gb - b).abs());
-                    let p = smoothstep(14.0, 50.0, d); // LITERAL-PX-OK: wet_edges PAINT_LO/PAINT_HI
-                    let di = lj * lw + li;
-                    pres[di] = p;
-                    wr[di] = r * p; // presence-premultiplied, so the blur averages PAINT colour only
-                    wg[di] = g * p;
-                    wb[di] = b * p;
-                    if soaked {
-                        soak[di] = f32::from(self.paint.wet_soak[gy * fw + gx]) / 255.0;
+            // Field fill, PARALLEL over grid rows (ADR-0109 class: each cell is a pure function of the
+            // frozen base/ground/soak at its own sampled pixel — no cross-cell reduction, disjoint row
+            // slices per task ⇒ byte-identical to the serial loop). This build ran serial while the
+            // composite below went wide, and at Bleed ≤ 12 it is FULL-res (`ds = 1`) — the frame
+            // profiler pinned it as the Rewet-only FPS dip (Enio 2026-07-07).
+            let soak_src = &self.paint.wet_soak;
+            pres.par_chunks_mut(lw)
+                .zip(wr.par_chunks_mut(lw))
+                .zip(wg.par_chunks_mut(lw))
+                .zip(wb.par_chunks_mut(lw))
+                .zip(soak.par_chunks_mut(lw))
+                .enumerate()
+                .for_each(|(lj, ((((prow, rrow), grow), brow), srow))| {
+                    // Sample each low-res cell at its block CENTRE (ds=1 ⇒ every full-res pixel, exact).
+                    let gy = (((loy0 + lj) * ds) + half).min(fh - 1);
+                    for li in 0..lw {
+                        let gx = (((lox0 + li) * ds) + half).min(fw - 1);
+                        let bi = (gy * fw + gx) * 4;
+                        let ab = f32::from(base[bi + 3]) / 255.0;
+                        let (gr, gg, gb) = (
+                            f32::from(ground[bi]),
+                            f32::from(ground[bi + 1]),
+                            f32::from(ground[bi + 2]),
+                        );
+                        // The base over the real ground, straight sRGB bytes (the paint as seen).
+                        let r = f32::from(base[bi]) * ab + gr * (1.0 - ab);
+                        let g = f32::from(base[bi + 1]) * ab + gg * (1.0 - ab);
+                        let b = f32::from(base[bi + 2]) * ab + gb * (1.0 - ab);
+                        // Presence = how far this pixel departs from the LOCAL ground — only the active
+                        // layer's own paint differs from it (an unpainted pixel composites to the ground
+                        // exactly), so the reference is per-pixel true, light pigments included. The old
+                        // global-cream reference read a white canvas as 0.8 presence everywhere (flooded
+                        // the pool, "matou o efeito dinâmico do spread"), and paint LIGHTER than cream
+                        // as none. Dead-zoned so anti-aliasing crumbs don't count as paint (wet_edges
+                        // `PAINT_LO`/`PAINT_HI`).
+                        let d = (gr - r).abs().max((gg - g).abs()).max((gb - b).abs());
+                        let p = smoothstep(14.0, 50.0, d); // LITERAL-PX-OK: wet_edges PAINT_LO/PAINT_HI
+                        prow[li] = p;
+                        rrow[li] = r * p; // presence-premultiplied: the blur averages PAINT colour only
+                        grow[li] = g * p;
+                        brow[li] = b * p;
+                        if soaked {
+                            srow[li] = f32::from(soak_src[gy * fw + gx]) / 255.0;
+                        }
                     }
-                }
-            }
+                });
             // Blur radii in low-res units (the low-res blur of radius r/ds ≈ a full-res blur of r).
             let r1 = (spread / ds).max(1);
             let r2 = ((spread * 2) / ds).max(1);

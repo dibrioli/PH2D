@@ -41,6 +41,36 @@ pub fn lufs_from_mean_square(mean_square: f32) -> f32 {
     }
 }
 
+/// Full-clip **integrated** loudness (LUFS) of an interleaved buffer — the offline
+/// counterpart to the momentary [`LoudnessMeter`]. Applies the same K-weighting
+/// (so it agrees with the meter's calibration) then averages the mean-square over
+/// the WHOLE clip (an ungated BS.1770 approximation — good enough for a normalize
+/// target). Control-thread / editing only; never on the RT path (it iterates the
+/// whole clip and uses `log10`).
+pub fn integrated_lufs(samples: &[f32], channels: usize, sample_rate: u32) -> f32 {
+    let sr = sample_rate as f32;
+    let pre = BiquadCoeffs::highshelf(sr, PREFILTER_HZ, PREFILTER_Q, PREFILTER_GAIN_DB);
+    let rlb = BiquadCoeffs::highpass(sr, RLB_HZ, RLB_Q);
+    let mut pre_l = Biquad::new(pre);
+    let mut pre_r = Biquad::new(pre);
+    let mut rlb_l = Biquad::new(rlb);
+    let mut rlb_r = Biquad::new(rlb);
+    let ch = channels.max(1);
+    let frames = samples.len() / ch;
+    if frames == 0 {
+        return SILENCE_LUFS;
+    }
+    let mut sum = 0.0f64;
+    for f in 0..frames {
+        let l = samples[f * ch];
+        let r = if ch >= 2 { samples[f * ch + 1] } else { l };
+        let kl = rlb_l.process(pre_l.process(l));
+        let kr = rlb_r.process(pre_r.process(r));
+        sum += (kl * kl + kr * kr) as f64;
+    }
+    lufs_from_mean_square((sum / frames as f64) as f32)
+}
+
 /// Momentary-loudness meter over the final master output. Feed every stereo
 /// sample with [`LoudnessMeter::process`]; read the window mean-square with
 /// [`LoudnessMeter::mean_square`] and convert with [`lufs_from_mean_square`].

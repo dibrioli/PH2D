@@ -14,13 +14,18 @@
 //! (trim/split/fade/normalise/…) land in W2 —
 //! `docs/Audio/02_plano_implementacao_completo.md` §5.
 
+mod ops;
 mod peaks;
 
+pub use ops::{FadeDir, FadeShape, peak, snap_to_zero_crossing};
 pub use peaks::{ColumnPeaks, DEFAULT_BIN_SIZE, PeakCache, column_peaks};
 
 use std::ops::Range;
 
 use ph2d_audio::SampleData;
+
+/// Maximum retained undo snapshots (each is a cheap `Arc` clone of the clip).
+const MAX_HISTORY: usize = 64;
 
 /// The editor's in-memory document: a clip, its waveform peak cache, and the
 /// current sample selection. Rebuilding the cache is the only cost of replacing
@@ -31,6 +36,11 @@ pub struct EditClip {
     peaks: PeakCache,
     /// Selection in **frames**, `start..end`. `None` = nothing selected.
     selection: Option<Range<usize>>,
+    /// Undo timeline — snapshots of `data`; `cursor` is the current one. Cheap:
+    /// each snapshot is an `Arc<[f32]>` refcount bump. A fresh clip / `set_data`
+    /// resets it; every edit `commit`s a new snapshot (truncating the redo tail).
+    history: Vec<SampleData>,
+    cursor: usize,
 }
 
 impl EditClip {
@@ -43,6 +53,8 @@ impl EditClip {
     pub fn with_bin_size(data: SampleData, bin_size: usize) -> Self {
         let peaks = PeakCache::build(&data, bin_size);
         Self {
+            history: vec![data.clone()],
+            cursor: 0,
             data,
             peaks,
             selection: None,
@@ -71,9 +83,9 @@ impl EditClip {
             .frames_to_secs(self.data.frame_count() as u64)
     }
 
-    /// Replace the clip and rebuild the peak cache (keeps the bin size).
-    /// Clamps any existing selection to the new length.
-    pub fn set_data(&mut self, data: SampleData) {
+    /// Install `data` as the current clip: rebuild the peak cache + clamp the
+    /// selection. Does NOT touch the undo timeline (callers manage that).
+    fn install(&mut self, data: SampleData) {
         let bin = self.peaks.bin_size();
         self.peaks = PeakCache::build(&data, bin);
         let frames = data.frame_count();
@@ -82,6 +94,118 @@ impl EditClip {
             let start = sel.start.min(frames);
             let end = sel.end.min(frames);
             self.selection = (start < end).then_some(start..end);
+        }
+    }
+
+    /// Replace the clip and **reset** the undo timeline (the load path — a new
+    /// clip starts a fresh history).
+    pub fn set_data(&mut self, data: SampleData) {
+        self.history = vec![data.clone()];
+        self.cursor = 0;
+        self.install(data);
+    }
+
+    /// Commit an edited buffer as a new undo snapshot (truncating any redo tail),
+    /// capping the timeline at [`MAX_HISTORY`].
+    fn commit(&mut self, data: SampleData) {
+        self.history.truncate(self.cursor + 1);
+        self.history.push(data.clone());
+        if self.history.len() > MAX_HISTORY {
+            let drop = self.history.len() - MAX_HISTORY;
+            self.history.drain(0..drop);
+        }
+        self.cursor = self.history.len() - 1;
+        self.install(data);
+    }
+
+    /// Step back one edit. Returns `false` at the start of the timeline.
+    pub fn undo(&mut self) -> bool {
+        if self.cursor == 0 {
+            return false;
+        }
+        self.cursor -= 1;
+        self.install(self.history[self.cursor].clone());
+        true
+    }
+
+    /// Step forward one edit. Returns `false` at the tip of the timeline.
+    pub fn redo(&mut self) -> bool {
+        if self.cursor + 1 >= self.history.len() {
+            return false;
+        }
+        self.cursor += 1;
+        self.install(self.history[self.cursor].clone());
+        true
+    }
+
+    /// Whether an [`EditClip::undo`] would do anything.
+    pub fn can_undo(&self) -> bool {
+        self.cursor > 0
+    }
+
+    /// Whether an [`EditClip::redo`] would do anything.
+    pub fn can_redo(&self) -> bool {
+        self.cursor + 1 < self.history.len()
+    }
+
+    /// The range edits act on: the selection, or the whole clip when none.
+    fn target(&self) -> Range<usize> {
+        self.selection.clone().unwrap_or(0..self.frame_count())
+    }
+
+    /// Scale the whole clip by `linear` gain (commits an undo step).
+    pub fn apply_gain(&mut self, linear: f32) {
+        self.commit(ops::gain(&self.data, linear));
+    }
+
+    /// Peak-normalize the whole clip to `target_peak` (linear).
+    pub fn apply_normalize_peak(&mut self, target_peak: f32) {
+        self.commit(ops::normalize_peak(&self.data, target_peak));
+    }
+
+    /// Loudness-normalize the whole clip to `target_lufs` (BS.1770).
+    pub fn apply_normalize_lufs(&mut self, target_lufs: f32) {
+        self.commit(ops::normalize_lufs(&self.data, target_lufs));
+    }
+
+    /// Reverse the whole clip.
+    pub fn apply_reverse(&mut self) {
+        self.commit(ops::reverse(&self.data));
+    }
+
+    /// Invert polarity of the whole clip.
+    pub fn apply_invert(&mut self) {
+        self.commit(ops::invert(&self.data));
+    }
+
+    /// Remove DC offset from the whole clip.
+    pub fn apply_remove_dc_offset(&mut self) {
+        self.commit(ops::remove_dc_offset(&self.data));
+    }
+
+    /// Fade the target range (selection or whole clip).
+    pub fn apply_fade(&mut self, shape: FadeShape, dir: FadeDir) {
+        self.commit(ops::fade(&self.data, self.target(), shape, dir));
+    }
+
+    /// Silence the target range.
+    pub fn apply_silence(&mut self) {
+        self.commit(ops::silence(&self.data, self.target()));
+    }
+
+    /// Crop to the selection (no-op with no selection). Clears the selection.
+    pub fn apply_trim(&mut self) {
+        if let Some(sel) = self.selection.clone() {
+            self.commit(ops::trim(&self.data, sel));
+            self.selection = None;
+        }
+    }
+
+    /// Delete the selection (ripple), closing the gap. Clears the selection.
+    pub fn apply_delete(&mut self) {
+        if let Some(sel) = self.selection.clone() {
+            self.commit(ops::delete(&self.data, sel));
+            self.selection = None;
         }
     }
 
@@ -128,6 +252,50 @@ mod tests {
 
         clip.set_selection(Some(500..500)); // empty → cleared
         assert_eq!(clip.selection(), None);
+    }
+
+    #[test]
+    fn apply_undo_redo_timeline() {
+        let d = SampleData::from_interleaved(vec![0.5; 8], AudioFormat::stereo(48_000));
+        let mut clip = EditClip::new(d);
+        assert!(!clip.can_undo() && !clip.can_redo());
+
+        clip.apply_gain(0.5); // 0.5 → 0.25
+        assert_eq!(clip.data().samples()[0], 0.25);
+        assert!(clip.can_undo() && !clip.can_redo());
+
+        clip.apply_invert(); // 0.25 → -0.25
+        assert_eq!(clip.data().samples()[0], -0.25);
+
+        assert!(clip.undo()); // back to 0.25
+        assert_eq!(clip.data().samples()[0], 0.25);
+        assert!(clip.undo()); // back to 0.5
+        assert_eq!(clip.data().samples()[0], 0.5);
+        assert!(!clip.undo(), "at the start of the timeline");
+
+        assert!(clip.redo()); // 0.25 again
+        assert_eq!(clip.data().samples()[0], 0.25);
+
+        // A new edit truncates the redo tail.
+        clip.apply_gain(2.0); // 0.25 → 0.5
+        assert_eq!(clip.data().samples()[0], 0.5);
+        assert!(!clip.can_redo(), "new edit dropped the redo branch");
+    }
+
+    #[test]
+    fn trim_uses_selection_and_clears_it() {
+        let d = SampleData::from_interleaved(
+            vec![1.0, 1.0, 2.0, 2.0, 3.0, 3.0],
+            AudioFormat::stereo(48_000),
+        );
+        let mut clip = EditClip::new(d);
+        clip.set_selection(Some(1..2));
+        clip.apply_trim();
+        assert_eq!(clip.frame_count(), 1);
+        assert_eq!(clip.data().samples(), &[2.0, 2.0]);
+        assert_eq!(clip.selection(), None);
+        assert!(clip.undo(), "trim is undoable");
+        assert_eq!(clip.frame_count(), 3);
     }
 
     #[test]

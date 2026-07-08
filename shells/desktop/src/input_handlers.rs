@@ -303,6 +303,30 @@ impl App {
                     self.title_dirty = true;
                 }
             }
+            // Timeline transport (M0 general timeline): drive the engine
+            // Playhead. Space toggles play/pause; ',' / '.' step one frame
+            // back / forward (pausing, so you land on the frame). Every
+            // animatable system samples the Playhead for the current frame.
+            KeyCode::Space => {
+                let playing = self.playhead.toggle_play();
+                gfx.toasts.push(Toast::info(if playing {
+                    "Timeline · play"
+                } else {
+                    "Timeline · pause"
+                }));
+            }
+            KeyCode::Comma => {
+                self.playhead.pause();
+                let fps = 1.0 / self.playhead.fixed_dt();
+                let f = self.playhead.frame(fps);
+                self.playhead.seek_frame((f - 1).max(0), fps);
+            }
+            KeyCode::Period => {
+                self.playhead.pause();
+                let fps = 1.0 / self.playhead.fixed_dt();
+                let f = self.playhead.frame(fps);
+                self.playhead.seek_frame(f + 1, fps);
+            }
             _ => {}
         }
     }

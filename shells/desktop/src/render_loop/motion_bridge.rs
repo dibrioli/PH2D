@@ -686,4 +686,70 @@ mod tests {
             );
         }
     }
+
+    /// The Behaviours seam, cooked through the REAL registry (not a unit-test
+    /// stub): `grid → stagger → oscillator` is well-typed (validate passes — the
+    /// nodes are registered and their ports match) and cooks end to end, and the
+    /// behaviours actually displace the grid. This is the "isolamento órfão"
+    /// antidote — a node can be unit-green yet unregistered / mistyped in the
+    /// live pipeline; this proves it is wired.
+    #[test]
+    fn grid_stagger_oscillator_cook_through_the_real_registry() {
+        use ph2d_nodegraph::attr::Column;
+        use ph2d_nodegraph::cook::Cook;
+        use ph2d_nodegraph::graph::{Edge, Graph};
+
+        let motion = MotionState::new(); // registry = register_all_nodes
+        let cook_p = |g: &Graph, target| {
+            let mut cook = Cook::new();
+            let out = cook.cook(g, &motion.registry, target, 0.25).unwrap();
+            match out[0].as_stream().get("P").unwrap() {
+                Column::Vec2(v) => v.clone(),
+                _ => panic!("P"),
+            }
+        };
+
+        // Bare grid (baseline) vs grid → stagger(Y) → oscillator(Y).
+        let mut g = Graph::new();
+        let grid = g.add_node("motion.grid");
+        let stagger = g.add_node("motion.stagger");
+        let osc = g.add_node("motion.oscillator");
+        g.connect(Edge {
+            from: (grid, 0),
+            to: (stagger, 0),
+            delayed: false,
+        })
+        .unwrap();
+        g.connect(Edge {
+            from: (stagger, 0),
+            to: (osc, 0),
+            delayed: false,
+        })
+        .unwrap();
+        g.set_param(stagger, "channel", 1.0);
+        g.set_param(stagger, "min", 0.0);
+        g.set_param(stagger, "max", 2.0);
+        g.set_param(osc, "channel", 1.0);
+        g.set_param(osc, "amplitude", 1.0);
+        g.set_param(osc, "phase_stagger", 0.0); // uniform bob → +amplitude at t=¼
+
+        // The whole chain type-checks against the real registry.
+        g.validate(&motion.registry)
+            .expect("grid → stagger → oscillator is well-typed");
+
+        let base = cook_p(&g, grid);
+        let out = cook_p(&g, osc);
+        assert_eq!(out.len(), base.len(), "count preserved through behaviours");
+        assert!(base.len() >= 4, "grid emits its default cells");
+        let n = base.len();
+        for (i, (b, o)) in base.iter().zip(&out).enumerate() {
+            // X untouched; Y = base + stagger ramp (i/(n-1)·2) + oscillator (+1).
+            let ramp = 2.0 * i as f32 / (n as f32 - 1.0);
+            assert!((o[0] - b[0]).abs() < 1e-4, "X untouched at {i}");
+            assert!(
+                (o[1] - (b[1] + ramp + 1.0)).abs() < 1e-4,
+                "Y = base + ramp + osc at {i}"
+            );
+        }
+    }
 }

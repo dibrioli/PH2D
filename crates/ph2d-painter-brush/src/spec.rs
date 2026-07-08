@@ -243,6 +243,13 @@ pub struct BrushSpec {
     /// **Paper Depth**, `0..1`: how strongly the [`Self::paper`] tooth textures the wash (the paper's
     /// substrate bite, independent of the granulation amount). `0` = a flat wash; `1` = full tooth.
     pub paper_depth: f32,
+    /// **Shape "Automatic"** (watercolor mode, Enio 2026-07-07): `true` (default) = the watercolor
+    /// stamp uses its own built-in silhouette (the two-segment feather disc — byte-identical to the
+    /// historical behaviour, the Shape section is not consulted). `false` = the Shape section drives
+    /// the watercolor coverage stamp: [`Self::falloff`] (incl. the [`crate::Falloff::Watercolor`]
+    /// preset = the built-in curve) + [`Self::hardness`] + the Shape slot image/procedural +
+    /// rotation. Only read by the watercolor render-path; inert for a plain brush.
+    pub watercolor_shape_auto: bool,
 }
 
 impl Default for BrushSpec {
@@ -307,6 +314,7 @@ impl Default for BrushSpec {
             paper: TextureSettings::default(),
             granulation_use_paper: true,
             paper_depth: 1.0,
+            watercolor_shape_auto: true, // built-in feather silhouette (byte-identical default)
         }
     }
 }

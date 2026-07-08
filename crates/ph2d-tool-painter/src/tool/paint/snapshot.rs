@@ -209,6 +209,7 @@ impl PainterTool {
             jitter_rotate: b.jitter_rotate,
             jitter_spacing: b.jitter_spacing,
             watercolor: b.watercolor,
+            watercolor_shape_auto: b.watercolor_shape_auto,
             edge_gain: b.edge_gain,
             edge_spread: b.edge_spread,
             granulation: b.granulation,

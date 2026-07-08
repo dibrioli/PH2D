@@ -525,3 +525,28 @@ fn shape_layer_opacity_forwards_setvalue() {
         "opacity scrub never forwarded as SetValue(opacity_id(0)) — seam dead. drained = {actions:?}"
     );
 }
+
+/// The Shape section's watercolor **Automatic** checkbox (doc 13 #1) forwards its click as
+/// `ToolPanelEvent(Click(id))` — the `event.rs` shape-arm membership. A forgotten arm leaves the
+/// checkbox painted, clickable and silently dead (the dead-seam class this suite exists for).
+#[test]
+fn shape_watercolor_automatic_forwards_its_click() {
+    let clicked = core_ids::PAINTER_SHAPE_WATERCOLOR_AUTO;
+    let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
+    let mut st = PainterLayersPanelState;
+    let outcome =
+        host.apply_panel_event::<PainterLayersPanel>(&mut st, WidgetEvent::Click(clicked));
+    assert_eq!(
+        outcome,
+        EventOutcome::Consumed,
+        "Automatic click ignored — event.rs shape Click arm missing the id"
+    );
+    let actions = host.drained_actions();
+    assert!(
+        actions.iter().any(|a| matches!(
+            a,
+            EditorAction::ToolPanelEvent(PanelEvent::Click(id)) if *id == clicked
+        )),
+        "Automatic never forwarded as ToolPanelEvent(Click) — seam dead. drained = {actions:?}"
+    );
+}

@@ -17,6 +17,12 @@ pub const PAINTER_BRUSH_GRAIN_DEPTH: NodeId = hash_node_id("painter_brush.grain_
 /// Brush Shape"); `None` clears the image. `SelectOption` → `set_brush_shape_kind`. Options via
 /// [`painter_shape_kind_option_id`].
 pub const PAINTER_SHAPE_KIND: NodeId = hash_node_id("painter_brush.shape_kind");
+/// **Automatic** checkbox (watercolor mode only, doc 13 #1): checked (default) = the watercolor's
+/// built-in feather silhouette (byte-identical historical stamp; the Shape items hide); unchecked =
+/// the Shape section (Falloff incl. the "Watercolor" preset + image + rotation) drives the watercolor
+/// coverage stamp. `Click` → `toggle_brush_watercolor_shape_auto`.
+pub const PAINTER_SHAPE_WATERCOLOR_AUTO: NodeId =
+    hash_node_id("painter_brush.shape_watercolor_auto");
 
 /// Derive the stable [`NodeId`] for Shape-source option `k` (the `TextureKind` wire discriminant —
 /// only `None`/`Image` are offered) in the open Shape picker popover. Only the open popover's options

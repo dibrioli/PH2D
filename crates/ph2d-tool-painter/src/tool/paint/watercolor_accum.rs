@@ -43,6 +43,75 @@ pub(super) fn splat_keep(sel: Option<&[u8]>, prot: Option<&[u8]>, gidx: usize) -
 /// A cloned paint-gate buffer handle (`None` = that gate is off) — see [`PainterTool::wet_splat_gates`].
 pub(super) type SplatGate = Option<Arc<Vec<u8>>>;
 
+/// Per-batch context for the **manual** (Shape-driven) watercolor stamp — Shape "Automatic" OFF
+/// (doc 13 #1, Enio 2026-07-07): the user's Falloff (incl. the [`ph2d_painter_brush::Falloff::Watercolor`]
+/// preset = the built-in feather, bit-identical) + hardness + the Shape slot silhouette drive the
+/// coverage disc instead of the fixed `feather()`. `None` = Automatic (the historical stamp, untouched).
+///
+/// Everything downstream of the coverage (rim, bleed, thinning, granulation, rewet) is
+/// silhouette-agnostic, so the wet dynamics follow whatever this stamps.
+pub(super) struct WetShapeStamp {
+    /// The captured spec (falloff/hardness/shape read here, never from live state mid-batch).
+    spec: ph2d_painter_brush::BrushSpec,
+    /// Whether the Shape slot actively shapes the silhouette (image present / procedural kind).
+    shape_active: bool,
+}
+
+impl WetShapeStamp {
+    /// The dab-local silhouette weight at normalised distance `dn`, sampling the Shape slot (via
+    /// `basis`) when active — the same compose the plain stamp paths use (image REPLACES the falloff,
+    /// procedural is masked by it; Shape Tone ramp deliberately not applied — queued, doc 13 #7).
+    #[inline]
+    fn weight(
+        &self,
+        dn: f32,
+        basis: Option<&ph2d_painter_brush::texture::TexDabBasis>,
+        img: Option<&ph2d_painter_brush::texture::ImageMask>,
+        at: [usize; 2],
+        center: [f32; 2],
+        radius: f32,
+    ) -> f32 {
+        let falloff = self.spec.falloff_weight(dn);
+        match basis {
+            Some(b) if self.shape_active => {
+                let raw = ph2d_painter_brush::texture::sample_shape_silhouette(
+                    &self.spec.shape,
+                    b,
+                    at[0] as i64,
+                    at[1] as i64,
+                    center,
+                    radius,
+                    img,
+                );
+                let sv = ph2d_painter_brush::texture::remap_shape_value(raw, None);
+                self.spec.compose_shape_silhouette(sv, falloff)
+            }
+            _ => falloff,
+        }
+    }
+
+    /// The per-dab Shape basis (Rake heading / Random draw / Jitter-Rotate footprint), advancing
+    /// `rng` exactly like the plain stamp paths. `None` when the Shape slot is inactive (falloff-only).
+    fn dab_basis(
+        &self,
+        d: &Dab,
+        rng: &mut u64,
+        canvas: [f32; 2],
+    ) -> Option<ph2d_painter_brush::texture::TexDabBasis> {
+        self.shape_active.then(|| {
+            let fp = self.spec.footprint_deform().rotated_by(d.rotation);
+            ph2d_painter_brush::texture::dab_basis(
+                &self.spec.shape,
+                d.dir,
+                rng,
+                canvas,
+                [1.0, 0.0],
+                fp,
+            )
+        })
+    }
+}
+
 impl PainterTool {
     /// The two active paint-gate buffers for the watercolor splats (`None` each when its gate is off):
     /// the selection mask + the protection scratch, as cloned `Arc` handles so the splat loops can hold
@@ -55,6 +124,17 @@ impl PainterTool {
             .mask_protection_active()
             .then(|| Arc::clone(&self.paint.mask_scratch_rgba));
         (sel, prot)
+    }
+
+    /// The manual Shape-driven stamp context when **Automatic is OFF** (doc 13 #1); `None` =
+    /// Automatic (the built-in feather stamp — the historical, byte-identical path).
+    pub(super) fn wet_shape_stamp(&self) -> Option<WetShapeStamp> {
+        let spec = self.paint.brush;
+        if spec.watercolor_shape_auto {
+            return None;
+        }
+        let shape_active = spec.shape_silhouette_active(self.paint.shape_image.is_some());
+        Some(WetShapeStamp { spec, shape_active })
     }
     /// Zero the per-stroke coverage (retain capacity). Shape-preview methods (Drag Dot / Anchored / Line)
     /// rebuild coverage each frame from the current batch, so the moving preview leaves no trail.
@@ -111,8 +191,22 @@ impl PainterTool {
         // Selection + protection gates ([`splat_keep`]): the wash never forms on gated-out texels.
         let (sel, prot) = self.wet_splat_gates();
         let gated = sel.is_some() || prot.is_some();
+        // Shape "Automatic" OFF ⇒ the Shape section drives the stamp ([`WetShapeStamp`]); `None`
+        // (default) = the built-in feather (byte-identical historical path). The colour splat REPLAYS
+        // the same rng stream (it re-reads `tex_rng` and is the one that advances it), so both passes
+        // draw identical per-dab Random bases — coverage and colour always agree pixel-wise.
+        let stamp = self.wet_shape_stamp();
+        let mut rng = self.paint.tex_rng; // NOT written back here — the colour pass replays + advances
+        let shape_img_owned = self.paint.shape_image.as_ref().map(|i| i.as_mask());
+        let canvas = [fw as f32, fh as f32];
         let cov = &mut self.paint.stroke_coverage;
         for d in dabs {
+            // Basis draw BEFORE any skip: the colour pass replays this stream per emitted dab, and
+            // its skip conditions differ (no Dilution `flow` there) — drawing after a skip would
+            // desynchronise the two passes' Random draws.
+            let basis = stamp
+                .as_ref()
+                .and_then(|s| s.dab_basis(d, &mut rng, canvas));
             let r = d.radius_px;
             let peak = (d.coverage * flow).clamp(0.0, 1.0);
             if r <= 0.0 || peak <= 0.0 {
@@ -146,7 +240,18 @@ impl PainterTool {
                     if keep <= 0.0 {
                         continue;
                     }
-                    let v = (peak * keep * feather(dn) * 255.0) as u8;
+                    let wgt = match &stamp {
+                        Some(s) => s.weight(
+                            dn,
+                            basis.as_ref(),
+                            shape_img_owned.as_ref(),
+                            [x, y],
+                            d.center,
+                            r,
+                        ),
+                        None => feather(dn),
+                    };
+                    let v = (peak * keep * wgt * 255.0) as u8;
                     if v > cov[idx] {
                         cov[idx] = v;
                     }
@@ -174,8 +279,19 @@ impl PainterTool {
         // Selection + protection gates — twin of the coverage splat (see [`splat_keep`]).
         let (sel, prot) = self.wet_splat_gates();
         let gated = sel.is_some() || prot.is_some();
+        // Shape "Automatic" OFF: REPLAY the coverage pass's rng stream from the same seed (identical
+        // per-dab Random bases ⇒ colour and coverage agree pixel-wise), then ADVANCE the stroke
+        // stream here — net one advance per batch, like every other stamp route.
+        let stamp = self.wet_shape_stamp();
+        let mut rng = self.paint.tex_rng;
+        let shape_img_owned = self.paint.shape_image.as_ref().map(|i| i.as_mask());
+        let canvas = [fw as f32, fh as f32];
         let buf = &mut self.paint.stroke_color;
         for (d, (dcol, prio)) in dabs.iter().zip(&mixed) {
+            // Basis draw BEFORE any skip — mirror of the coverage pass (stream sync; see there).
+            let basis = stamp
+                .as_ref()
+                .and_then(|s| s.dab_basis(d, &mut rng, canvas));
             let r = d.radius_px;
             let peak = d.coverage.clamp(0.0, 1.0);
             if r <= 0.0 || peak <= 0.0 {
@@ -215,8 +331,21 @@ impl PainterTool {
                     } else {
                         1.0
                     };
-                    // source alpha = feathered coverage × deposit priority × the paint gates
-                    let a = peak * feather(dn) * prio * keep;
+                    // source alpha = silhouette weight × deposit priority × the paint gates —
+                    // the SAME weight as the coverage splat (manual Shape stamp or the feather),
+                    // so the deposited colour and the silhouette always agree.
+                    let wgt = match &stamp {
+                        Some(st) => st.weight(
+                            dn,
+                            basis.as_ref(),
+                            shape_img_owned.as_ref(),
+                            [x, y],
+                            d.center,
+                            r,
+                        ),
+                        None => feather(dn),
+                    };
+                    let a = peak * wgt * prio * keep;
                     if a <= 0.0 {
                         continue;
                     }
@@ -236,5 +365,9 @@ impl PainterTool {
                 }
             }
         }
+        // Manual stamp: advance the stroke's texture-rng stream (once per batch — the coverage pass
+        // replayed the same seed without writing back). Automatic ⇒ `rng` untouched, write-back is a
+        // no-op (the historical stream stays byte-identical).
+        self.paint.tex_rng = rng;
     }
 }

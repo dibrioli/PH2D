@@ -24,6 +24,10 @@ impl PainterTool {
                 self.toggle_brush_watercolor();
                 true
             }
+            PanelEvent::Click(id) if *id == core_ids::PAINTER_SHAPE_WATERCOLOR_AUTO => {
+                self.toggle_brush_watercolor_shape_auto();
+                true
+            }
             PanelEvent::Click(id) if *id == core_ids::PAINTER_WATERCOLOR_PIGMENT => {
                 self.toggle_brush_pigment();
                 true
@@ -142,6 +146,19 @@ impl PainterTool {
     /// Off (default) makes a stroke byte-identical to a plain brush.
     pub fn toggle_brush_watercolor(&mut self) {
         self.paint.brush.watercolor = !self.paint.brush.watercolor;
+    }
+
+    /// Toggle the Shape section's **Automatic** (watercolor silhouette, doc 13 #1). Turning it OFF
+    /// auto-selects the [`ph2d_painter_brush::Falloff::Watercolor`] preset (the built-in feather as a
+    /// curve) so the transition is visually CONTINUOUS — unchecking without touching anything else
+    /// paints the same stamp; the user tunes from there. Turning it back ON just restores the
+    /// built-in stamp (the falloff choice is kept for the plain brush).
+    pub fn toggle_brush_watercolor_shape_auto(&mut self) {
+        let b = &mut self.paint.brush;
+        b.watercolor_shape_auto = !b.watercolor_shape_auto;
+        if !b.watercolor_shape_auto {
+            b.falloff = ph2d_painter_brush::Falloff::Watercolor;
+        }
     }
 
     /// Toggle **Pigment** (subtractive Kubelka–Munk wet-on-wet colour mixing).
@@ -310,6 +327,7 @@ impl PainterTool {
         b.wet_charge = d.wet_charge;
         b.wet_dilution = d.wet_dilution;
         b.wet_pull = d.wet_pull;
+        b.watercolor_shape_auto = d.watercolor_shape_auto;
     }
 
     /// Install a tagged Hierarchy layer/group (its luminance `lum`, `width × height`) into the watercolor

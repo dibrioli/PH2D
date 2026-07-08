@@ -37,11 +37,19 @@ pub enum Falloff {
     /// standalone [`Falloff::weight`] of `Custom` is a neutral linear placeholder
     /// (the real shape needs the curve, which `weight` does not carry).
     Custom = 9,
+    /// The watercolor stamp's two-segment feathered disc — a near-flat plateau (`1.0 → 0.92` across
+    /// `t ≤ 0.62`) then a linear ramp to `0` at the rim (the wet_edges `stampCoverage` profile,
+    /// `watercolor_accum::feather` in the tool). Exposed as a preset so the Shape section's
+    /// "Automatic" (watercolor) can hand the EXACT built-in silhouette to the user for further
+    /// tuning — unchecking Automatic with this preset selected is visually continuous. Formula kept
+    /// bit-identical to the tool's `feather()` (same ops, same order). Appended AFTER `Custom`
+    /// (wire discriminants are append-only). Not a Blender preset.
+    Watercolor = 10,
 }
 
-/// Number of falloff presets, including the editable [`Falloff::Custom`] curve
-/// (mirrors Blender's `eBrushCurvePreset`).
-pub const MAX_FALLOFF: u8 = 10;
+/// Number of falloff presets: Blender's `eBrushCurvePreset` mirror (incl. the editable
+/// [`Falloff::Custom`] curve) + the PH2D [`Falloff::Watercolor`] feather.
+pub const MAX_FALLOFF: u8 = 11;
 
 impl Falloff {
     /// Every preset, in Blender's "Falloff Curve Preset" display order. The index
@@ -57,6 +65,7 @@ impl Falloff {
         Self::InvSquare,
         Self::Constant,
         Self::Custom,
+        Self::Watercolor,
     ];
 
     /// The stable wire discriminant (`0..MAX_FALLOFF`).
@@ -86,6 +95,7 @@ impl Falloff {
             Self::InvSquare => "Inverse Square",
             Self::Constant => "Constant",
             Self::Custom => "Custom",
+            Self::Watercolor => "Watercolor",
         }
     }
 
@@ -117,6 +127,17 @@ impl Falloff {
             // it falls back to the linear ramp (the curve's own default shape) so
             // callers that ignore the curve still get a sane monotone profile.
             Falloff::Custom => p,
+            // The watercolor feather evaluates on the ORIGINAL `t` directly (its plateau/rim split
+            // is distance-anchored, not `p`-anchored) — a `1 − p` round-trip would lose low bits for
+            // tiny `t`. Ops below match the tool's `feather()` exactly → bit-identical.
+            Falloff::Watercolor => {
+                let t = t.max(0.0);
+                if t <= 0.62 {
+                    1.0 - t / 0.62 * 0.08 // 1.00 → 0.92 across the plateau
+                } else {
+                    0.92 * (1.0 - (t - 0.62) / 0.38) // 0.92 → 0 across the rim
+                }
+            }
         }
     }
 }

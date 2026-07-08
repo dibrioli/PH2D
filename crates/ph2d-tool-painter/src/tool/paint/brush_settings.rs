@@ -285,6 +285,9 @@ pub struct BrushSettings {
     // ── Watercolor section (wet-media look; `docs/Painter/08_plano_aquarela_edge_grain_pigment.md`) ──
     /// Master enable for the Watercolor section (edge darkening + granulation + pigment).
     pub watercolor: bool,
+    /// Shape "Automatic" (watercolor): true = built-in feather silhouette; false = the Shape
+    /// section drives the watercolor stamp (doc 13 #1).
+    pub watercolor_shape_auto: bool,
     /// **Edge** darkening gain (`0..`) — the wet-edge "fringe" pooled at stroke boundaries.
     pub edge_gain: f32,
     /// **Spread** (canvas px) — blur radius of the coverage feeding the edge-darkening pass.

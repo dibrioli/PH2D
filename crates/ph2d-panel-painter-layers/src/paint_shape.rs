@@ -49,6 +49,25 @@ pub(crate) fn paint_shape_section(
     if collapsed {
         return y;
     }
+    // ── Watercolor "Automatic" (doc 13 #1): in watercolor mode the stamp defaults to the built-in
+    //    feather silhouette — the section's items don't apply, so they HIDE behind the checked box.
+    //    Unchecking opens them AND routes them into the watercolor coverage stamp (the tool also
+    //    auto-selects the "Watercolor" falloff preset so the transition is visually continuous). ──
+    if brush.watercolor {
+        y = paint_checkbox_row(
+            ctx,
+            theme,
+            x,
+            content_w,
+            y,
+            core_ids::PAINTER_SHAPE_WATERCOLOR_AUTO,
+            "Automatic",
+            brush.watercolor_shape_auto,
+        );
+        if brush.watercolor_shape_auto {
+            return y;
+        }
+    }
     let kind = TextureKind::from_u8(brush.shape_kind);
     let is_image = kind == TextureKind::Image;
 

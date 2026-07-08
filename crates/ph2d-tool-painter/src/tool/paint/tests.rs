@@ -12251,3 +12251,109 @@ fn watercolor_respects_selection_and_protection_masks() {
         );
     }
 }
+
+/// **Shape "Automatic" (doc 13 #1) — the continuity + capability contract.**
+/// (a) CONTINUITY: unchecking Automatic (which auto-selects the `Falloff::Watercolor` preset — the
+/// built-in feather as a curve) paints a stroke BYTE-IDENTICAL to Automatic: the manual path with the
+/// default knobs is the same stamp, so the checkbox transition never pops. (b) CAPABILITY: with a
+/// half-blank Shape image the manual stamp is ASYMMETRIC (the image drives the watercolor silhouette),
+/// which Automatic's round feather can never produce.
+#[test]
+fn watercolor_shape_automatic_continuity_and_image_silhouette() {
+    fn stroke(t: &mut PainterTool) {
+        assert!(t.on_canvas_pointer(cp([24.0, 32.0], PointerPhase::Down)));
+        t.on_canvas_pointer(cp([40.0, 32.0], PointerPhase::Move));
+        t.on_canvas_pointer(cp([40.0, 32.0], PointerPhase::Up));
+    }
+    fn wet(t: &mut PainterTool) {
+        t.paint.brush = BrushSpec {
+            radius_px: 8.0,
+            hardness: 0.0,
+            falloff: Falloff::Smooth,
+            color: [0.1, 0.2, 0.7],
+            space_attenuation: false,
+            watercolor: true,
+            fill: 0.6,
+            depth: 2.0,
+            edge_gain: 2.0,
+            edge_spread: 4.0,
+            ..Default::default()
+        };
+        for slot in &mut t.paint.brush_by_mode {
+            *slot = t.paint.brush;
+        }
+    }
+    let size = 64u32;
+
+    // (a) Automatic ON (default) …
+    let mut auto_t = white_canvas(size, 8.0);
+    wet(&mut auto_t);
+    stroke(&mut auto_t);
+    // … vs the panel toggle OFF (routes through the real seam: also auto-selects Falloff::Watercolor).
+    let mut manual_t = white_canvas(size, 8.0);
+    wet(&mut manual_t);
+    manual_t.handle_panel_event(ph2d_editor_core::tool::PanelEvent::Click(
+        ph2d_editor_core::ids::PAINTER_SHAPE_WATERCOLOR_AUTO,
+    ));
+    let b = manual_t.brush_settings();
+    assert!(!b.watercolor_shape_auto, "toggle turned Automatic off");
+    assert_eq!(
+        manual_t.paint.brush.falloff,
+        Falloff::Watercolor,
+        "unchecking auto-selects the Watercolor falloff preset (continuity)"
+    );
+    for slot in &mut manual_t.paint.brush_by_mode {
+        *slot = manual_t.paint.brush;
+    }
+    stroke(&mut manual_t);
+    assert_eq!(
+        auto_t.canvas_rgba.as_slice(),
+        manual_t.canvas_rgba.as_slice(),
+        "Automatic OFF + Watercolor falloff must paint BYTE-IDENTICAL to Automatic ON"
+    );
+
+    // (b) Manual + a Shape image whose RIGHT half is blank → the wash silhouette goes asymmetric.
+    let mut img_t = white_canvas(size, 8.0);
+    wet(&mut img_t);
+    img_t.paint.brush.watercolor_shape_auto = false;
+    img_t.paint.brush.falloff = Falloff::Watercolor;
+    let mut lum = vec![255u8; 16 * 16];
+    for y in 0..16 {
+        for x in 8..16 {
+            lum[y * 16 + x] = 0; // right half of the tip: no coverage
+        }
+    }
+    img_t.set_brush_shape_image(lum, 16, 16);
+    for slot in &mut img_t.paint.brush_by_mode {
+        *slot = img_t.paint.brush;
+    }
+    assert!(t_dab_paints_asymmetric(&mut img_t, size));
+}
+
+/// Helper for the image-silhouette assertion: one dab at the canvas centre; returns whether the
+/// painted result differs left-vs-right of the centre column (the half-blank tip must show).
+fn t_dab_paints_asymmetric(t: &mut PainterTool, size: u32) -> bool {
+    assert!(t.on_canvas_pointer(cp([32.0, 32.0], PointerPhase::Down)));
+    t.on_canvas_pointer(cp([32.0, 32.0], PointerPhase::Up));
+    let mut left_painted = 0u32;
+    let mut right_painted = 0u32;
+    for y in 24..40u32 {
+        for dx in 1..8u32 {
+            if px(t, size, 32 - dx, y) != [255, 255, 255, 255] {
+                left_painted += 1;
+            }
+            if px(t, size, 32 + dx, y) != [255, 255, 255, 255] {
+                right_painted += 1;
+            }
+        }
+    }
+    assert!(
+        left_painted > 0,
+        "the covered half of the tip painted (left {left_painted})"
+    );
+    assert!(
+        left_painted > right_painted * 2,
+        "the blank half must paint far less (left {left_painted} vs right {right_painted})"
+    );
+    true
+}

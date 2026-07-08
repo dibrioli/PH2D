@@ -146,3 +146,13 @@ pub const VECTOR_ARRANGE_FLIP_V: NodeId = hash_node_id("vector.arrange.flip_v");
 // Rotate the selected path 90° (CW / CCW) around its bbox center.
 pub const VECTOR_ARRANGE_ROTATE_CW: NodeId = hash_node_id("vector.arrange.rotate_cw");
 pub const VECTOR_ARRANGE_ROTATE_CCW: NodeId = hash_node_id("vector.arrange.rotate_ccw");
+
+// ── Transform (ADR-0108 — precise numeric position + size) ───────────────────
+// Standalone NumberInputs (NOT slider-linked) showing the selected path's anchor
+// bbox: X/Y = top-left (world), W/H = size. Seeded each frame from the published
+// bbox (unless focused); editing routes a document command through the shell
+// drain (X/Y → translate, W/H → scale about the bbox min).
+pub const VECTOR_TRANSFORM_X: NodeId = hash_node_id("vector.transform.x");
+pub const VECTOR_TRANSFORM_Y: NodeId = hash_node_id("vector.transform.y");
+pub const VECTOR_TRANSFORM_W: NodeId = hash_node_id("vector.transform.w");
+pub const VECTOR_TRANSFORM_H: NodeId = hash_node_id("vector.transform.h");

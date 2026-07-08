@@ -139,6 +139,7 @@ pub(crate) fn paint(_state: &mut VectorPanelState, ctx: &mut PaintCtx) {
         y = b.stroke_style(&snap, y);
         y = b.fill_style(&snap, y);
         y = b.draw_modes(&snap, y);
+        y = b.transform_section(y);
         y = b.vertex_boolean_arrange(y);
 
         // Total painted height (independent of scroll — both ends shift with it).
@@ -164,6 +165,21 @@ pub(crate) fn paint(_state: &mut VectorPanelState, ctx: &mut PaintCtx) {
         let store = ctx.host.store_mut();
         store.register_picker_swatch(ids::VECTOR_STROKE_SWATCH);
         store.register_picker_swatch(ids::VECTOR_FILL_SWATCH);
+        // Seed the Transform fields from the published bbox (skip the one being
+        // edited so a keystroke isn't clobbered). 1-frame post-commit lag, ok.
+        if let Some([tx, ty, tw, th]) = state::current_transform() {
+            let focus = store.focus_id();
+            for (id, v) in [
+                (ids::VECTOR_TRANSFORM_X, tx),
+                (ids::VECTOR_TRANSFORM_Y, ty),
+                (ids::VECTOR_TRANSFORM_W, tw),
+                (ids::VECTOR_TRANSFORM_H, th),
+            ] {
+                if focus != Some(id) {
+                    store.set_number_value(id, v);
+                }
+            }
+        }
         store.set_panel_content_h(ids::VECTOR_PANEL, content_h);
         store.set_panel_visible_h(ids::VECTOR_PANEL, body_h);
         // Clamp any stale scroll if the content shrank (e.g. a mode switch hid a

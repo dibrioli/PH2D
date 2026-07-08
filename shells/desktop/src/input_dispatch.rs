@@ -288,6 +288,83 @@ pub(crate) fn vec_rotate_for_id(id: ph2d_editor::NodeId) -> Option<ph2d_vec_scen
     }
 }
 
+/// Which numeric-transform field a Vector-panel edit targets on the selected
+/// path's anchor bbox (X/Y = top-left, W/H = size).
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub(crate) enum VecTransformField {
+    X,
+    Y,
+    W,
+    H,
+}
+
+/// Map a Vector-panel Transform field `NodeId` to its [`VecTransformField`]
+/// (`None` for any other id). Pure — unit-tested; called from the render_loop drain.
+pub(crate) fn vec_transform_field_for_id(id: ph2d_editor::NodeId) -> Option<VecTransformField> {
+    if id == ph2d_editor::ids::VECTOR_TRANSFORM_X {
+        Some(VecTransformField::X)
+    } else if id == ph2d_editor::ids::VECTOR_TRANSFORM_Y {
+        Some(VecTransformField::Y)
+    } else if id == ph2d_editor::ids::VECTOR_TRANSFORM_W {
+        Some(VecTransformField::W)
+    } else if id == ph2d_editor::ids::VECTOR_TRANSFORM_H {
+        Some(VecTransformField::H)
+    } else {
+        None
+    }
+}
+
+/// Apply a numeric transform edit to the SELECTED path: X/Y translate the anchor
+/// bbox top-left to `target`; W/H scale (about the bbox min) so that dimension
+/// becomes `target` (clamped > 0; a degenerate dimension can't be resized).
+/// Records ONE undo step iff it changed. Free fn (mirror of [`apply_vec_boolean`]).
+pub(crate) fn apply_vec_transform(
+    scene: &mut ph2d_vec_scene::VecScene,
+    history: &mut ph2d_vec_edit::History,
+    pen: &ph2d_vec_edit::PenTool,
+    field: VecTransformField,
+    target: f64,
+) {
+    let Some(sel) = pen.selected() else {
+        return;
+    };
+    let Some((lo, hi)) = scene.path_bbox(sel) else {
+        return;
+    };
+    let pre = scene.clone();
+    let changed = match field {
+        VecTransformField::X => {
+            let dx = target - lo[0];
+            dx.abs() > 1e-9 && scene.translate_path(sel, dx, 0.0)
+        }
+        VecTransformField::Y => {
+            let dy = target - lo[1];
+            dy.abs() > 1e-9 && scene.translate_path(sel, 0.0, dy)
+        }
+        VecTransformField::W => {
+            let w = hi[0] - lo[0];
+            if w <= 1e-6 {
+                false
+            } else {
+                let sx = target.max(1e-4) / w;
+                (sx - 1.0).abs() > 1e-9 && scene.scale_path(sel, sx, 1.0, lo)
+            }
+        }
+        VecTransformField::H => {
+            let h = hi[1] - lo[1];
+            if h <= 1e-6 {
+                false
+            } else {
+                let sy = target.max(1e-4) / h;
+                (sy - 1.0).abs() > 1e-9 && scene.scale_path(sel, 1.0, sy, lo)
+            }
+        }
+    };
+    if changed {
+        history.push_undo(pre);
+    }
+}
+
 /// The shape kind a Vector draw-mode maps to (`None` = Pen, the non-shape
 /// gesture). Lets the canvas dispatch route Down/Move/Up to the pen or the
 /// shape tool.
@@ -1953,8 +2030,9 @@ impl App {
 #[cfg(test)]
 mod tests {
     use super::{
-        shape_kind_for_mode, shape_up_consumes, vec_bool_op_for_id, vec_flip_for_id,
-        vec_reorder_for_id, vec_rotate_for_id, vec_vertex_kind_for_id,
+        VecTransformField, apply_vec_transform, shape_kind_for_mode, shape_up_consumes,
+        vec_bool_op_for_id, vec_flip_for_id, vec_reorder_for_id, vec_rotate_for_id,
+        vec_transform_field_for_id, vec_vertex_kind_for_id,
     };
     use ph2d_tool_vector::DrawMode;
     use ph2d_vec_boolean::BoolOp;
@@ -2049,6 +2127,37 @@ mod tests {
             vec_flip_for_id(ph2d_editor::ids::VECTOR_ARRANGE_ROTATE_CW),
             None
         );
+    }
+
+    #[test]
+    fn transform_fields_map_and_apply_translates_and_scales() {
+        use ph2d_vec_scene::{VecScene, rectangle};
+        assert_eq!(
+            vec_transform_field_for_id(ph2d_editor::ids::VECTOR_TRANSFORM_X),
+            Some(VecTransformField::X)
+        );
+        assert_eq!(
+            vec_transform_field_for_id(ph2d_editor::ids::VECTOR_TRANSFORM_H),
+            Some(VecTransformField::H)
+        );
+        assert_eq!(
+            vec_transform_field_for_id(ph2d_editor::ids::VECTOR_ARRANGE_FLIP_H),
+            None
+        );
+
+        let mut scene = VecScene::new();
+        let id = scene.push_path(rectangle([0.0, 0.0], [10.0, 4.0]));
+        let mut hist = ph2d_vec_edit::History::new();
+        let mut pen = ph2d_vec_edit::PenTool::new();
+        pen.select(Some(id));
+
+        // X → 5 moves the bbox min; W → 20 doubles the width.
+        apply_vec_transform(&mut scene, &mut hist, &pen, VecTransformField::X, 5.0);
+        assert!((scene.path_bbox(id).unwrap().0[0] - 5.0).abs() < 1e-9);
+        apply_vec_transform(&mut scene, &mut hist, &pen, VecTransformField::W, 20.0);
+        let (lo, hi) = scene.path_bbox(id).unwrap();
+        assert!((hi[0] - lo[0] - 20.0).abs() < 1e-9, "W set to 20");
+        assert!((lo[0] - 5.0).abs() < 1e-9, "min x pinned during scale");
     }
 
     #[test]

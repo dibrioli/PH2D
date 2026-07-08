@@ -18,6 +18,9 @@ thread_local! {
     /// Type of the currently-selected vertex (published by the shell each frame
     /// from the Pen). `None` = no vertex selected → the Vertex section hides.
     static CURRENT_VERTEX_TYPE: RefCell<Option<VertexType>> = const { RefCell::new(None) };
+    /// Selected path's anchor bbox `[x, y, w, h]` (world), published each frame.
+    /// `None` = no path selected → the Transform section hides.
+    static CURRENT_TRANSFORM: Cell<Option<[f64; 4]>> = const { Cell::new(None) };
     /// Last measured scrollable content height (set by `paint`).
     static LAST_CONTENT_H: Cell<f32> = const { Cell::new(0.0) };
     /// Last visible body height (panel rect minus title + paddings).
@@ -52,6 +55,17 @@ pub fn set_selected_vertex_type(kind: Option<VertexType>) {
 /// The selected vertex's type this frame (`None` ⇒ hide the Vertex section).
 pub(crate) fn current_vertex_type() -> Option<VertexType> {
     CURRENT_VERTEX_TYPE.with(|c| *c.borrow())
+}
+
+/// Publish the selected path's anchor bbox `[x, y, w, h]` (world), or `None`.
+/// Called by the shell each frame while the `vector` tool is active.
+pub fn set_current_transform(bbox: Option<[f64; 4]>) {
+    CURRENT_TRANSFORM.with(|c| c.set(bbox));
+}
+
+/// The selected path's bbox this frame (`None` ⇒ hide the Transform section).
+pub(crate) fn current_transform() -> Option<[f64; 4]> {
+    CURRENT_TRANSFORM.with(|c| c.get())
 }
 
 #[must_use]

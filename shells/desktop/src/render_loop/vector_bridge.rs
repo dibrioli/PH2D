@@ -235,6 +235,32 @@ pub(super) fn dispatch(
         None
     });
 
+    // Publish the selected path's anchor bbox `[x, y, w, h]` (world) so the panel
+    // shows + seeds the numeric Transform fields. `None` hides the section.
+    #[cfg(feature = "panel-vector")]
+    ph2d_panel_vector::set_current_transform(if vector_active {
+        pen.selected()
+            .and_then(|sel| scene.path_bbox(sel))
+            .map(|(lo, hi)| [lo[0], lo[1], hi[0] - lo[0], hi[1] - lo[1]])
+    } else {
+        None
+    });
+
+    // Calibrate the Transform fields' drag scrub to the camera: `px_to_world`
+    // value-units per cursor pixel ⇒ dragging a chip N px moves the shape N px
+    // on screen at any zoom (unbounded — no clamp). Live each frame so zoom in/out
+    // keeps the 1:1 feel.
+    if vector_active {
+        for id in [
+            ph2d_editor::ids::VECTOR_TRANSFORM_X,
+            ph2d_editor::ids::VECTOR_TRANSFORM_Y,
+            ph2d_editor::ids::VECTOR_TRANSFORM_W,
+            ph2d_editor::ids::VECTOR_TRANSFORM_H,
+        ] {
+            hero.store.set_number_drag_rate(id, px_to_world);
+        }
+    }
+
     // Mirror the tool's mode + shape params so the input dispatch can route
     // canvas gestures (pen vs shape) + size the shapes without a downcast.
     tool.draw_config()

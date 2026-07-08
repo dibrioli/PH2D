@@ -16,6 +16,7 @@ impl WidgetStore {
             number_to_slider: BTreeMap::new(),
             number_to_slider_mapping: BTreeMap::new(),
             number_range: BTreeMap::new(),
+            number_drag_rate: BTreeMap::new(),
             number_to_slider_snap_integer: std::collections::BTreeSet::new(),
             chips_without_steppers: std::collections::BTreeSet::new(),
             collapsible_sections: std::collections::BTreeSet::new(),
@@ -231,6 +232,20 @@ impl WidgetStore {
     #[must_use]
     pub fn number_range(&self, id: NodeId) -> Option<(f64, f64, f64)> {
         self.number_range.get(&id).copied()
+    }
+
+    /// Register a horizontal drag-scrub rate (**value-units per cursor pixel**)
+    /// for an UNBOUNDED number box — the drag adds `rate·dx` (vertical `rate/10`),
+    /// no clamp. Do NOT also call [`set_number_range`](Self::set_number_range) on
+    /// the same id (the range's proportional model would win + re-impose bounds).
+    pub fn set_number_drag_rate(&mut self, id: NodeId, rate: f64) {
+        self.number_drag_rate.insert(id, rate);
+    }
+
+    /// The registered unbounded drag rate for `id`, if any.
+    #[must_use]
+    pub fn number_drag_rate(&self, id: NodeId) -> Option<f64> {
+        self.number_drag_rate.get(&id).copied()
     }
 
     /// **Deprecated (2026-05-24).** Marking a NumberInput as

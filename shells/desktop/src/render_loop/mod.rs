@@ -863,6 +863,9 @@ impl crate::App {
             let mut pending_vec_duplicate = false;
             let mut pending_vec_flip: Option<ph2d_vec_scene::FlipAxis> = None;
             let mut pending_vec_rotate: Option<ph2d_vec_scene::Rotate90> = None;
+            // Numeric Transform field edit (X/Y/W/H) — a SetValue document command.
+            let mut pending_vec_transform: Option<(crate::input_dispatch::VecTransformField, f64)> =
+                None;
             let mut transform_edit: Option<ph2d_editor::InspectorTransformInfo> = None;
             let mut visibility_edit: Option<ph2d_editor::InspectorVisibilityInfo> = None;
             let mut sprite_source_change: Option<(u64, RequestedSpriteStrategy)> = None;
@@ -935,6 +938,14 @@ impl crate::App {
                             {
                                 pending_vec_rotate = Some(dir);
                             }
+                        }
+                        // Transform fields (X/Y/W/H) are numeric SetValue document
+                        // commands (not tool Style) — capture; the tool ignores them.
+                        if let ph2d_editor::tool::PanelEvent::SetValue(id, v) = &ev
+                            && let Some(field) =
+                                crate::input_dispatch::vec_transform_field_for_id(*id)
+                        {
+                            pending_vec_transform = Some((field, *v));
                         }
                         if let Some(t) = tools.active_mut() {
                             t.handle_panel_event(ev);
@@ -1603,6 +1614,15 @@ impl crate::App {
                     &mut self.vec_history,
                     &self.vec_pen,
                     dir,
+                );
+            }
+            if let Some((field, target)) = pending_vec_transform {
+                crate::input_dispatch::apply_vec_transform(
+                    vec_scene,
+                    &mut self.vec_history,
+                    &self.vec_pen,
+                    field,
+                    target,
                 );
             }
             let vec_cfg = vector_bridge::dispatch(

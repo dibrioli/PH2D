@@ -175,6 +175,8 @@ pub fn populate(store: &mut WidgetStore) {
         SPIRAL_TURNS_SLIDER_OFFSET,
     );
 
+    populate_transform_fields(store);
+
     // Vertex-type buttons (retype the selected vertex; shown only when a vertex
     // is selected, but registered unconditionally — the store is mode-agnostic)
     // + the Delete-node button.
@@ -249,4 +251,32 @@ pub fn populate(store: &mut WidgetStore) {
 
     // Close (X) button.
     button(store, ids::VECTOR_CLOSE);
+}
+
+/// Register the four Transform number fields (X/Y/W/H) — standalone (NOT slider-
+/// linked); seeded from the selected path's bbox each frame, edits route a
+/// document command through the shell drain.
+fn populate_transform_fields(store: &mut WidgetStore) {
+    for id in [
+        ids::VECTOR_TRANSFORM_X,
+        ids::VECTOR_TRANSFORM_Y,
+        ids::VECTOR_TRANSFORM_W,
+        ids::VECTOR_TRANSFORM_H,
+    ] {
+        store.register(
+            id,
+            InteractiveState::NumberInput {
+                state: TextInputState::Normal,
+                value: 0.0,
+                buffer: String::from("0"),
+                caret: 0,
+                last_committed: 0.0,
+                selection_anchor: None,
+            },
+        );
+        // NO `set_number_range` → the field is UNBOUNDED (no clamp, world coords
+        // span any magnitude). The shell's `vector_bridge` calibrates the drag
+        // scrub live via `set_number_drag_rate(px_to_world)` so a chip drag is 1:1
+        // with the shape's on-screen movement at any zoom.
+    }
 }

@@ -370,6 +370,46 @@ fn number_input_body_drag_is_range_proportional_and_clamps() {
     assert!((v - 1.0).abs() < 1e-6, "clamps to max 1.0, got {v}");
 }
 
+/// A registered `number_drag_rate` (value-units per cursor px) takes precedence
+/// over both range-proportional and step-based rates, and — crucially — is
+/// UNBOUNDED: no clamp even under a huge drag. This is how the Vector transform
+/// chips scrub 1:1 with the shape's on-screen motion at any zoom (Enio 2026-07-08).
+#[test]
+fn number_input_body_drag_uses_registered_rate_unbounded() {
+    let (mut store, hits, rect) = number_input_setup(0.0);
+    // Deliberately register a range TOO — the drag_rate must win over it, and the
+    // absence of clamp must survive despite the range being present.
+    store.set_number_range(NodeId(77), -1.0, 1.0, 0.01);
+    store.set_number_drag_rate(NodeId(77), 2.0); // 2 value-units per horizontal px
+    let arena = Bump::new();
+    let _ = dispatch_pointer(
+        &mut store,
+        &hits,
+        pointer(PointerKind::Down, rect.x + 10.0, rect.y + rect.h * 0.5),
+        &arena,
+    );
+    // Cross the threshold (promotion re-anchors — no value jump).
+    let _ = dispatch_pointer(
+        &mut store,
+        &hits,
+        pointer(PointerKind::Move, rect.x + 15.0, rect.y + rect.h * 0.5),
+        &arena,
+    );
+    // 10 px horizontal → delta = 10 * 2.0 = 20 — WAY past the range's max of 1.0,
+    // proving the registered rate wins AND there is no clamp.
+    let _ = dispatch_pointer(
+        &mut store,
+        &hits,
+        pointer(PointerKind::Move, rect.x + 25.0, rect.y + rect.h * 0.5),
+        &arena,
+    );
+    let v = read_value(&store, NodeId(77));
+    assert!(
+        (v - 20.0).abs() < 1e-6,
+        "registered-rate delta unbounded: expected 20.0 got {v}"
+    );
+}
+
 /// M14.A: vertical drag uses the slow rate (5× step / px) and
 /// inverts dy so cursor-up = positive delta (screen coords have
 /// y growing down).

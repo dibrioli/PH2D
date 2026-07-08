@@ -39,6 +39,20 @@ pub(crate) fn apply_event(
                 )));
             true
         }
+        // Transform number fields (X/Y/W/H) — standalone NumberInputs (NOT slider-
+        // linked): forward the committed VALUE as a document command; the shell
+        // drain translates (X/Y) / scales (W/H) the selected path.
+        WidgetEvent::ValueChanged(id)
+            if id == ids::VECTOR_TRANSFORM_X
+                || id == ids::VECTOR_TRANSFORM_Y
+                || id == ids::VECTOR_TRANSFORM_W
+                || id == ids::VECTOR_TRANSFORM_H =>
+        {
+            let val = host.store().number_value(id).unwrap_or(0.0);
+            host.bus_mut()
+                .push(EditorAction::ToolPanelEvent(PanelEvent::SetValue(id, val)));
+            true
+        }
         // Shape-parameter sliders — same shape as Width (track 0..1 → the tool
         // projects to a side/point count, inner ratio, or radius).
         WidgetEvent::ValueChanged(id)

@@ -348,6 +348,56 @@ impl VecScene {
         true
     }
 
+    /// Bounding box das ÂNCORAS do path `id` (`(min, max)` em world-units) — a
+    /// extensão usada pelo readout de transform (posição/tamanho). `None` se o id
+    /// sumiu ou o path está vazio.
+    pub fn path_bbox(&self, id: VecPathId) -> Option<([f64; 2], [f64; 2])> {
+        let path = self.paths.iter().find(|p| p.id == id)?;
+        let first = path.verts.first()?;
+        let (mut lo, mut hi) = (first.anchor, first.anchor);
+        for v in &path.verts {
+            lo[0] = lo[0].min(v.anchor[0]);
+            lo[1] = lo[1].min(v.anchor[1]);
+            hi[0] = hi[0].max(v.anchor[0]);
+            hi[1] = hi[1].max(v.anchor[1]);
+        }
+        Some((lo, hi))
+    }
+
+    /// Translada o path `id` por `(dx, dy)` world-units (âncora + handles de todos
+    /// os vértices). `false` se o id sumiu.
+    pub fn translate_path(&mut self, id: VecPathId, dx: f64, dy: f64) -> bool {
+        let Some(path) = self.paths.iter_mut().find(|p| p.id == id) else {
+            return false;
+        };
+        for v in &mut path.verts {
+            v.anchor = [v.anchor[0] + dx, v.anchor[1] + dy];
+            v.in_handle = [v.in_handle[0] + dx, v.in_handle[1] + dy];
+            v.out_handle = [v.out_handle[0] + dx, v.out_handle[1] + dy];
+        }
+        true
+    }
+
+    /// Escala o path `id` por `(sx, sy)` em torno de `pivot` world-units (âncora +
+    /// handles). `false` se o id sumiu.
+    pub fn scale_path(&mut self, id: VecPathId, sx: f64, sy: f64, pivot: [f64; 2]) -> bool {
+        let Some(path) = self.paths.iter_mut().find(|p| p.id == id) else {
+            return false;
+        };
+        let s = |p: [f64; 2]| {
+            [
+                pivot[0] + (p[0] - pivot[0]) * sx,
+                pivot[1] + (p[1] - pivot[1]) * sy,
+            ]
+        };
+        for v in &mut path.verts {
+            v.anchor = s(v.anchor);
+            v.in_handle = s(v.in_handle);
+            v.out_handle = s(v.out_handle);
+        }
+        true
+    }
+
     /// Serializa a cena (postcard), prefixada pela versão de schema.
     pub fn to_bytes(&self) -> Result<Vec<u8>, String> {
         postcard::to_allocvec(&(VEC_SCENE_SCHEMA_VERSION, self)).map_err(|e| e.to_string())

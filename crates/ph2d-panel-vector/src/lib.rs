@@ -28,12 +28,13 @@ mod event;
 pub mod ids;
 mod paint;
 mod paint_sections;
+mod paint_transform;
 pub mod populate;
 pub mod state;
 
 pub use state::{
-    VectorPanelState, last_content_h, last_visible_h, set_current_vector_style,
-    set_selected_vertex_type,
+    VectorPanelState, last_content_h, last_visible_h, set_current_transform,
+    set_current_vector_style, set_selected_vertex_type,
 };
 
 use ph2d_a11y::NodeId;

@@ -118,7 +118,7 @@ impl BodyCtx<'_> {
     }
 
     /// A `Section` label line (Sm, Text2) + its advance.
-    fn section_label(&mut self, label: &str, mut y: f32) -> f32 {
+    pub(crate) fn section_label(&mut self, label: &str, mut y: f32) -> f32 {
         let label_font = TypeToken::Sm.px();
         paint_text(
             self.text_system,

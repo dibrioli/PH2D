@@ -153,6 +153,32 @@ fn rotate_path_quarter_turn_is_cyclic_and_exact() {
 }
 
 #[test]
+fn bbox_translate_and_scale_compose() {
+    let mut scene = VecScene::new();
+    let id = scene.push_path(rectangle([0.0, 0.0], [10.0, 4.0]));
+    assert_eq!(scene.path_bbox(id).unwrap(), ([0.0, 0.0], [10.0, 4.0]));
+
+    // Translate: bbox min moves, size unchanged.
+    assert!(scene.translate_path(id, 3.0, -2.0));
+    let (lo, hi) = scene.path_bbox(id).unwrap();
+    assert_eq!((lo, hi), ([3.0, -2.0], [13.0, 2.0]));
+
+    // Scale ×2 in X, ×0.5 in Y about the bbox min (top-left pinned).
+    assert!(scene.scale_path(id, 2.0, 0.5, lo));
+    let (lo2, hi2) = scene.path_bbox(id).unwrap();
+    assert!(
+        (lo2[0] - 3.0).abs() < 1e-9 && (lo2[1] + 2.0).abs() < 1e-9,
+        "min pinned"
+    );
+    assert!((hi2[0] - 23.0).abs() < 1e-9, "W 10→20"); // 3 + 10*2
+    assert!((hi2[1] - 0.0).abs() < 1e-9, "H 4→2"); // -2 + 4*0.5
+
+    assert!(scene.path_bbox(999).is_none());
+    assert!(!scene.translate_path(999, 1.0, 1.0));
+    assert!(!scene.scale_path(999, 2.0, 2.0, [0.0, 0.0]));
+}
+
+#[test]
 fn demo_grid_count() {
     assert_eq!(VecScene::demo_grid(50).paths().len(), 50);
     assert!(VecScene::demo_grid(0).is_empty());

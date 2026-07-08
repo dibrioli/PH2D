@@ -260,6 +260,12 @@ pub struct WidgetStore {
     /// the whole range regardless of magnitude) + clamps to it, and the stepper increments by `step`
     /// (Enio 2026-06-25 — a `±1` box no longer races past 100 on a few pixels).
     pub(super) number_range: BTreeMap<NodeId, (f64, f64, f64)>,
+    /// Per-widget horizontal drag-scrub rate in **value-units per cursor pixel**,
+    /// for UNBOUNDED number boxes (no `number_range`): the drag adds `rate·dx`
+    /// (vertical = `rate/10`, precise) with NO clamp. Lets a panel calibrate the
+    /// scrub feel for a large-magnitude, limitless field (e.g. world-space Vector
+    /// Transform X/Y/W/H) without the range-proportional model's implicit bounds.
+    pub(super) number_drag_rate: BTreeMap<NodeId, f64>,
     /// Chip ids that should `.round()` their typed display value before
     /// inverse-projecting into the slider's `0..1` storage. Used for
     /// integer-domain chips (Min Px / Tile Grid / Posterize Dither

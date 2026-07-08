@@ -360,3 +360,19 @@ Dryness/dry-brush e Water-brush (EDGE-2 destrava).
 - Fontes externas (todas fetchadas na sessão): Curtis 1997 · Bousseau 2006 · DiVerdi TVCG 2013 ·
   Mixbox TOG 2021 (+ site) · Procreate Handbook · Krita docs · Rebelle 7/8 manual (4 páginas) ·
   Corel Painter docs (2 páginas) · Adobe helpx (indireto) · MyPaint/Drawpile · handprint.com.
+
+---
+
+## Landing notes
+
+### W-A · OPT-1 — LANDOU 2026-07-08 (mistura subtrativa no Wet Mix)
+
+Conferido ANTES por sonda (ordem do Enio "confira se já funciona"): azul × poça amarela (Charge
+0,3) depositava **(128,128,115)** — o cinza R≈G previsto. Fix: reservatório + depósito em
+**absorbância** per-canal (LUTs `lnl`/`exp_mag`, float end-to-end). Medido DEPOIS:
+**(128,139,68)/(101,119,81)** na saída da poça — verde G-dominante, batendo a previsão numérica da
+verificação adversarial. Gate `carried_colour_is_saturated_not_watery` re-pinado JUNTO (roxo
+azul×vermelho vira púrpura-marrom R-dominante, pigmento real; B−G 40→15). Discriminante permanente:
+`watercolor_wet_mix_blue_over_yellow_deposits_green`. Segue em aberto na W-A (opcional): o mesmo
+upgrade no `smear_dab` do Smudge; OPT-4 (lerp no `transmittance`) fica pra smoke próprio (muda
+todos os bytes do watercolor por natureza).

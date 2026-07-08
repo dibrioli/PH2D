@@ -11,11 +11,13 @@
 pub mod budget;
 pub mod math;
 pub mod panic;
+pub mod playhead;
 pub mod time;
 
 pub use budget::{MemoryBudget, OverBudget, Platform, check_budget};
 pub use math::{ScreenPos, WorldPos};
 pub use panic::install_panic_hook;
+pub use playhead::Playhead;
 pub use time::{FixedStep, FixedStepReport};
 
 // Re-export glam types used across the codebase. Keeping the surface

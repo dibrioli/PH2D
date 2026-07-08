@@ -13,6 +13,88 @@
 | [4](#bug-4--simplify-curve-degenerava-o-schneider-fit-não-fecha-loops) | Simplify Curve degenerava (curva → 2 pontos idênticos / triângulo) | Selection curve simplify (`fit_curve` fechado) | ✅ Resolvido (DP fechado + Catmull-Rom corner-aware) | 2026-07-05 |
 | [5](#bug-5--offset-de-curva-densa-amontoava-os-pontos-após-convert) | Offset amontoava os pontos de uma curva densa após Convert (perda de perfeição) | Stroke offset (movia os pontos de controle) | ✅ Resolvido (offset DRAWING-ONLY, modelo da Seleção) | 2026-07-05 |
 | [6](#bug-6--simplify-quase-bom--offset-arredondava-as-quinas--refit--vértice-reconstruído) | Simplify "quase bom" + offset arredondava as quinas | Simplify/Merge (`curve_refit`) | ✅ Resolvido (refit Schneider corner-split + vértice por interseção de bordas) | 2026-07-05 |
+| [7](#bug-7--aquarela-grave-queda-de-fps--build-profile--composite-2frame--loops-seriais-não-os-algoritmos) | Aquarela: "grave queda de FPS" — build profile + composite 2×/frame + loops seriais, NÃO os algoritmos | Watercolor render-path + dev profile + heartbeat do shell | ✅ Resolvido (60fps em release com todos os knobs; validado pelo Enio via frame profiler) | 2026-07-07 |
+
+---
+
+## Bug #7 — Aquarela: "grave queda de FPS" — build profile + composite 2×/frame + loops seriais, NÃO os algoritmos
+
+**Sintoma (Enio 2026-07-07, em 3 rodadas):** (1) brush >200px com recursos de aquarela = queda severa de
+FPS; (2) após os primeiros fixes, "ainda lento"; (3) **mesmo brush pequeno** (16px) com Bleed/Ragged
+Edge/Rewet/Smudge/Pigment no máximo = queda grave. A aparência acusava "algoritmo de aquarela pesado" —
+e essa pista estava **quase toda errada**.
+
+**Os VERDADEIROS culpados (por ordem de impacto, todos medidos antes de corrigir):**
+
+1. **O build profile — o maior de todos.** O smoke rodava via `cargo run` = **dev opt-0**; o motor
+   custava **10,9 ms/frame em debug vs 2,9 ms em release** (~4×) com os knobs no máximo, e o resto do
+   app (Vello/compositor/painel) somava o próprio overhead de debug ⇒ estourava os 16,7 ms e o vsync
+   amplificava (perde o vblank → 22-28 fps). O brush comum não sentia porque é ~memcpy; a aquarela é
+   matemática por-pixel real (LUTs, blurs, paper procedural) — exatamente o que opt-0 massacra. **Fix:**
+   `[profile.dev.package.*] opt-level=2` só nos 4 crates de paint-math (idiom do `ci-test`; dev
+   10,9→3,75 ms) + smoke de feel SEMPRE em `--release` (`058dabf0`).
+2. **Composite 2×/frame (achado da instrumentação do shell).** Durante o gesto, o Move flush compunha a
+   janela E o heartbeat (`on_tick`) compunha DE NOVO — o `grow_wet_soak` forçava `stamped=true` todo
+   tick. O frame profiler mostrou `stamps` e `tool-tick` carregando ~4-5 ms CADA. **Fix:** `stamped |=
+   parked` — movendo, o soak só folda no dirty (o próximo composite ≤1 frame o inclui); parado (quando o
+   bleed crescer sob a ponta É o efeito), segue ao vivo. Bake byte-idêntico; tick em movimento
+   3,75→0,01 ms (`4e00e8e8`).
+3. **Loops seriais O(janela) num caminho embaraçosamente paralelo.** O composite por-pixel, o `box_blur`
+   e o fill dos campos rewet são funções puras por-pixel/linha sem redução — rodavam single-thread por
+   disciplina "sem rayon" (que existe pro replay determinístico). **Fix:** exceção sancionada
+   **ADR-0109** (3 invariantes: sem redução entre pixels · sem estado mutável compartilhado · sem RNG ⇒
+   bit-idêntico independente de nº de threads): composite ∥ (`d775c31c`), box_blur ∥ por transposição
+   (`93c14b94`), fill dos campos rewet ∥ (`8ac5be35` — o Rewet era o último knob furando 60fps porque
+   com Bleed ≤12 os campos rodam em resolução CHEIA, ds=1). R220 "tudo": frame max 51→10 ms, commit
+   238→44 ms.
+4. **Paper procedural recomputado todo frame.** PaperCold = ~28 hashes inteiros/pixel, canvas-anchored
+   (mesmo pixel ⇒ mesmo valor o traço inteiro) — recalculado a cada composite. **Fix:** memoização
+   `wet_substrate` (f32/px, NaN=não-computado, reset no pen-down — o papel não muda no meio do traço,
+   então não existe invalidação in-stroke pra errar). `+paper` virou grátis após o 1º toque
+   (`2e19c9a0`).
+5. **(Não-bug, mas o fato que explica o "mesmo brush pequeno"):** com Rewet+soak o custo por frame é
+   **pad-dominado** — a janela recomposta = dirty + 2·(2·Bleed + Ragged) ≈ ±144 px por lado com os
+   knobs a 48, **independente do raio do brush**. É a física pedida pelos knobs (1 dab influencia
+   ±144 px), não desperdício: o algoritmo já era assintoticamente correto (dirty-rect incremental +
+   downsample ds + bake 1×).
+
+**Pistas falsas REFUTADAS por medição (tão importantes quanto os fixes):**
+- **"É churn de alocação"** (17 Vecs/frame ∝ janela): implementado o reuso de buffers, medido — **zero
+  ganho** (números idênticos dentro do ruído). Os spikes eram compute-bound; o alocador já reciclava
+  bem. Revertido no ato — mudança que não se paga não fica.
+- **"É a GPU / o upload / o painel":** frame profiler provou GPU 0,8-4 ms (inocente), upload já parcial
+  (dirty-bbox), `hero-paint` estável ~1-3 ms.
+- **"É o mixer (Charge/Dilution/Pull)":** ablação mostrou ~0,4 ms — desprezível.
+- **"O motor está lento" (rodada 3):** ablação reversa com a config exata do Enio provou o motor a
+  **2,9 ms/frame em release** — dentro do orçamento com folga; o problema era o item 1.
+
+**Ferramentas que resolveram (e ficam):** sonda de **ablação reversa** (tudo-no-máximo, desligando 1
+knob por vez — isola o culpado em uma rodada) · **frame profiler do shell** estendido com
+`tool-tick`/`stamps`/`hero-paint` (`PH2D_FLUID_PROFILE=1`, `07d079b9`) — foi ele que pegou o composite
+2× que nenhuma sonda unitária pegava, porque só o app real tem a ordem Move-flush→tick do frame ·
+sondas temporárias em `--release` sempre revertidas após medir.
+
+**Estado final (validado pelo Enio no app, release):** ~60 fps com todos os recursos; Rewet-only medido
+1,1-2,2 ms/frame no motor (R16-R60 × Bleed 7-48). Restante conhecido: pen-down carrega o
+`build_wet_backdrop` full-canvas (~15-25 ms 1×/traço @2048² — o S4/backdrop-regional da auditoria doc
+12 é o fix mapeado, byte-idêntico, se o soluço de início de traço incomodar).
+
+**Lições generalizáveis:**
+1. **"App lento" começa no build profile, não no algoritmo.** Confira `opt-level` ANTES de otimizar
+   código — 4× de graça. Corolário: feel-test é em `--release`; e per-package `opt-level` no dev
+   profile dá smoke realista sem custar o build inteiro.
+2. **Sonda unitária mede o motor; só instrumentar o SHELL pega interação entre fases.** O composite
+   2×/frame era invisível em qualquer teste da crate — existia na ordem real Move→tick do frame. Quando
+   o probe diz "rápido" e o app diz "lento", instrumente o pipeline inteiro e deixe o split apontar.
+3. **Meça para REFUTAR, não só para confirmar.** A teoria da alocação era plausível e caiu em uma
+   medição; sem ela, teríamos complexidade permanente (thread-locals) por zero ganho. Fix que não se
+   paga, reverte.
+4. **Paralelismo byte-idêntico existe e é auditável:** função por-pixel pura + fatias disjuntas + zero
+   redução ⇒ bit-igual em qualquer nº de threads. Mas política de determinismo se fura por ADR com
+   cerca explícita (ADR-0109), nunca por conveniência local.
+5. **Custo pad-dominado engana:** "até brush pequeno é lento" parecia bug e era a janela de influência
+   dos knobs (2·Bleed+Ragged). Entender O QUE escala com O QUÊ (ablação por knob) evita otimizar o
+   termo errado.
 
 ---
 

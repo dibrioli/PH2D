@@ -68,6 +68,13 @@ impl CenterSplit {
         !matches!(self, Self::None)
     }
 
+    /// `true` for a vertical split (side-by-side, divider drawn vertically) —
+    /// the shell reads this to pick the divider's resize cursor (`EwResize` for
+    /// a vertical divider, `NsResize` for a horizontal one).
+    pub fn is_vertical(self) -> bool {
+        matches!(self, Self::Vertical { .. })
+    }
+
     /// The current divider fraction (or [`Self::T_DEFAULT`] when not split).
     pub fn t(self) -> f32 {
         match self {

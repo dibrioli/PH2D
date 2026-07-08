@@ -425,22 +425,49 @@ impl App {
         // in italics at the caret.
     }
 
-    /// Reflect the colour-picker eyedropper state in the OS cursor — a crosshair "target" while a
-    /// pick is armed, the default arrow otherwise. Called each CursorMoved (winit dedups the icon).
+    /// Reflect the current hover context in the OS cursor. Called each
+    /// CursorMoved (winit dedups the icon). Priority: an armed colour-picker
+    /// eyedropper wins (a crosshair "target"), else the Motion graph's split
+    /// divider shows a double-arrow resize cursor (`NsResize` ↕ for a horizontal
+    /// divider, `EwResize` ↔ for a vertical one), else the default arrow.
     fn update_eyedropper_cursor(&self) {
         let Some(win) = self.window.as_ref() else {
             return;
         };
-        let armed = self
+        use winit::window::CursorIcon;
+        let cursor = self
             .gfx
             .as_ref()
             .and_then(|g| g.hero_screen.as_ref())
-            .is_some_and(|h| h.store.eyedropper_pending().is_some());
-        win.set_cursor(if armed {
-            winit::window::CursorIcon::Crosshair
-        } else {
-            winit::window::CursorIcon::Default
-        });
+            .map(|h| {
+                if h.store.eyedropper_pending().is_some() {
+                    CursorIcon::Crosshair
+                } else if self.over_motion_split_divider(h) {
+                    if h.view.center_split.is_vertical() {
+                        CursorIcon::EwResize
+                    } else {
+                        CursorIcon::NsResize
+                    }
+                } else {
+                    CursorIcon::Default
+                }
+            })
+            .unwrap_or(CursorIcon::Default);
+        win.set_cursor(cursor);
+    }
+
+    /// Is the cursor over the Motion graph's draggable split divider? Resolves
+    /// the last-pointer position through the hit index to a `GraphSurface` hit
+    /// and checks its kind — the same channel the divider drag uses, so the
+    /// cursor and the gesture agree on the grab band.
+    fn over_motion_split_divider(&self, hero: &ph2d_editor::HeroScreen) -> bool {
+        let (x, y) = self.last_pointer;
+        hero.hit_index
+            .hit(x, y)
+            .and_then(|id| hero.store.graph_surface_at_id(id))
+            .is_some_and(|(_, kind)| {
+                matches!(kind, ph2d_editor::interaction::GraphHitKind::SplitDivider)
+            })
     }
 
     /// ADR-0108 Fase 1: booleana das DUAS últimas regiões fechadas (hotkeys

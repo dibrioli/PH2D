@@ -15,7 +15,16 @@
   (semântica de restore exata, à prova do vazamento por warp) e snapshot/restore da base no Smudge.
   Teste: `watercolor_respects_selection_and_protection_masks` (com Ragged Edge ligado).
 
-## 🎯 #1 na fila — Shape "Automático" (spec do Enio, 2026-07-07)
+## ✅ #1 — Shape "Automatic" (LANDOU 2026-07-07, `5000decc`)
+
+Implementado conforme a spec abaixo: checkbox na Shape (modo aquarela, default marcado =
+byte-idêntico, provado por teste de continuidade via o seam real), `Falloff::Watercolor` novo
+(wire 10, bit-idêntico ao feather — avaliado no `t` original, round-trip `1−p` perdia bits),
+engine `WetShapeStamp` nos dois splats com RNG replay-sync entre os passes. Hardness participa via
+`falloff_weight`. Deferidos anotados: Shape Tone ramp no stamp (item #7) e `dab_flatten`.
+Jitter Rotate (#6) resolvido de brinde. Smoke pendente.
+
+## 🎯 spec original — Shape "Automático" (Enio, 2026-07-07)
 
 **Modo aquarela apenas**, na seção **Shape**: um checkbox **"Automatic"**, **marcado por default**.
 
@@ -47,7 +56,7 @@
 | 3 | **Stroke shape-editors** (Curve/Circle/Polygon/Free Hand) | deliberadamente plain (stampam sem lifecycle → sem base congelada) | dar lifecycle/óptica aos bakes dos editors |
 | 4 | **Blend dropdown** | nunca consultado (depósito source-over + óptica própria) | decisão de design: suportar × esconder/dim em modo aquarela (honestidade da UI) |
 | 5 | **Composite Brush** | ignorado (desvio antes do `composite_active`) | idem: decidir semântica ou dim |
-| 6 | **Jitter Rotate** | inerte (disco redondo) | resolve-se de graça com o #1 (silhueta orientável) |
+| 6 | ~~**Jitter Rotate**~~ | ✅ resolvido com o #1 (silhueta orientável, `5000decc`) | — |
 | 7 | **Shape Tone ramp / Per-Layer Color** | ignorados | avaliar semântica em aquarela (tone da silhueta?) |
 | 8 | **Alpha-lock da camada** | não aplicado no bake | mesma família do fix de Seleção; avaliar keep = alpha existente |
 

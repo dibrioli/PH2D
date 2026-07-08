@@ -82,7 +82,7 @@ pub(crate) fn paint_bar(
         1.0 / fps,
         2,
     ) + gap;
-    label(ctx, theme, "Frames", x, y, CHIP_LABEL_W);
+    label(ctx, theme, "Frame", x, y, CHIP_LABEL_W);
     x += CHIP_LABEL_W + gap * 0.5;
     x = chip(
         ctx,

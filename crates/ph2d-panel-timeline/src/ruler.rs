@@ -42,9 +42,17 @@ pub(crate) fn paint(
     } else {
         crate::state::DEFAULT_PX_PER_S
     };
-    let view_start = state.view_start_s;
     let span = f64::from(region.w) / px_per_s;
     state.view_span_s = span;
+
+    // Keep the playhead in view: when it leaves the visible span (e.g. free
+    // playback runs off the right edge), page-follow so `view_start` lands on it.
+    // Otherwise the playhead line would sit off-screen (E6 pan/zoom refines this).
+    let mut view_start = state.view_start_s;
+    if span > 0.0 && (snap.time_seconds < view_start || snap.time_seconds >= view_start + span) {
+        view_start = snap.time_seconds.max(0.0);
+        state.view_start_s = view_start;
+    }
 
     let time_to_x = |t: f64| region.x + ((t - view_start) * px_per_s) as f32;
 

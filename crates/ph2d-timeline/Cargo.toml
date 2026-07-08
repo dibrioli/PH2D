@@ -1,0 +1,27 @@
+[package]
+name = "ph2d-timeline"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+publish.workspace = true
+
+# General-timeline runtime: binds ph2d-anim Clips to scene objects and applies
+# them at the engine Playhead (ph2d-core). The first consumer is sprites
+# (SpriteAnimation -> Transform); vector/painter/node-param resolvers join later.
+
+[lib]
+
+[dependencies]
+# bevy_ecs for the #[derive(Component)] on SpriteAnimation (same direct-dep
+# convention as ph2d-render's RenderInstance).
+bevy_ecs = "0.18"
+# Timeline data (Clip / Track / AnimValue / AnimTarget) sampled at the playhead.
+ph2d-anim = { path = "../ph2d-anim" }
+# Transform (the animated target), SimComponent marker, and World for the apply pass.
+ph2d-ecs = { path = "../ph2d-ecs" }
+
+[dev-dependencies]
+# Vec2 for building Transforms in the apply tests.
+ph2d-core = { path = "../ph2d-core" }

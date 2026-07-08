@@ -315,6 +315,29 @@ impl App {
                     "Timeline · pause"
                 }));
             }
+            // Bind a demo spin animation to every sprite so the REAL general-
+            // timeline path (SpriteAnimation -> apply at Playhead -> Transform ->
+            // propagate -> render) can be eyeballed without the authoring panel.
+            // Press Space to play. Rotation-only, so it also shows on the demo's
+            // bouncing sprites (their translation keeps bouncing; they spin too).
+            KeyCode::KeyB => {
+                let clip = demo_spin_clip();
+                let world = gfx.sim.world_mut();
+                let ids: Vec<ph2d_ecs::Entity> = world
+                    .query_filtered::<ph2d_ecs::Entity, ph2d_ecs::With<ph2d_ecs::Transform>>()
+                    .iter(world)
+                    .collect();
+                let n = ids.len();
+                for e in ids {
+                    world
+                        .entity_mut(e)
+                        .insert(ph2d_timeline::SpriteAnimation::new(clip.clone()));
+                }
+                self.playhead.play();
+                gfx.toasts.push(Toast::info(format!(
+                    "Timeline · bound spin to {n} sprite(s) — Space to pause"
+                )));
+            }
             KeyCode::Comma => {
                 self.playhead.pause();
                 let fps = 1.0 / self.playhead.fixed_dt();
@@ -442,4 +465,24 @@ impl App {
             // most 1 frame — visually equivalent to the old path.
         }
     }
+}
+
+/// A demo `Clip` for the `KeyB` visual bind: one full CCW turn over 2 s, looping
+/// (2π wraps back to 0 seamlessly). Rotation-only so it shows on any sprite.
+fn demo_spin_clip() -> ph2d_anim::Clip {
+    use ph2d_anim::{AnimValue, Clip, Interp, Key, RationalTime, Track};
+    let rot = Track::new(vec![
+        Key {
+            t: RationalTime::from_seconds(0.0),
+            value: AnimValue::Float(0.0),
+            interp: Interp::Linear,
+        },
+        Key {
+            t: RationalTime::from_seconds(2.0),
+            value: AnimValue::Float(std::f32::consts::TAU),
+            interp: Interp::Hold,
+        },
+    ]);
+    Clip::new(RationalTime::from_seconds(2.0))
+        .with_track(ph2d_timeline::SpriteProp::Rotation.target(), rot)
 }

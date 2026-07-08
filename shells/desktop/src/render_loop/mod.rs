@@ -533,6 +533,11 @@ impl crate::App {
             // descending the fallback ladder) BEFORE extract reads back the cached
             // `texture_id`. Idempotent + cheap after the first upload.
             cooked_texture_bridge::ensure_uploaded(sim, renderer, asset_db, logical_texture_map);
+            // General timeline (M0): sample every animated sprite's Clip at the
+            // engine Playhead and write its Transform, BEFORE propagation/extract
+            // read it. A no-op when nothing carries a SpriteAnimation; drives any
+            // bound sprite (e.g. the KeyB demo) in the real scene.
+            ph2d_timeline::apply_sprite_animations(sim.world_mut(), self.playhead.time());
             sim_extract::run(
                 dt,
                 sim,

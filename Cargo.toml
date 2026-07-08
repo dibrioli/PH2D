@@ -25,6 +25,20 @@ authors = ["Enio Oliveira Dias Brito <dibrioli@gmail.com>"]
 opt-level = 0
 debug = true
 
+# The watercolor render-path is real per-pixel math (Beer–Lambert LUTs, box blurs, procedural paper,
+# rayon fan-out) — at opt-0 it is ~4× slower (measured 10.9 vs 2.9 ms/frame at max knobs), which pushed
+# a `cargo run` smoke past the frame budget and read as a "grave FPS drop" that release builds don't
+# have. Optimise JUST the paint-math crates in dev (same per-package idiom as `ci-test` below): smoke
+# runs stay realistic, everything else keeps fast unoptimised builds.
+[profile.dev.package.ph2d-tool-painter]
+opt-level = 2
+[profile.dev.package.ph2d-painter-brush]
+opt-level = 2
+[profile.dev.package.ph2d-color]
+opt-level = 2
+[profile.dev.package.rayon]
+opt-level = 2
+
 [profile.release]
 opt-level = 3
 lto = "thin"

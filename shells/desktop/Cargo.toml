@@ -276,6 +276,7 @@ default = [
     "panel-audio-mixer",
     "panel-motion-graph",
     "panel-motion-params",
+    "panel-timeline",
 ]
 # `lite` = explicit "no panels" — host boots with chrome only
 # (TopBar + LeftRail + BottomHUD + canvas). Useful for distribution
@@ -305,3 +306,8 @@ panel-grid-snap      = ["ph2d-panel-registry-init/panel-grid-snap"]
 # Direct dep too: the render_loop bridge publishes live levels via
 # `set_snapshot` + reads `master_muted` to drive the engine's master gain.
 panel-audio-mixer    = ["ph2d-panel-registry-init/panel-audio-mixer", "dep:ph2d-panel-audio-mixer"]
+# General timeline docked panel. `ph2d-panel-timeline` is already a non-optional
+# direct dep (render_loop publishes its snapshot via `set_current_timeline`), so
+# this only needs to flip the registry-init feature that compiles in the
+# `register_all_panels()` push for `TimelinePanel`.
+panel-timeline       = ["ph2d-panel-registry-init/panel-timeline"]

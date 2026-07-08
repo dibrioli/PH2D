@@ -5,6 +5,7 @@
 //! workspace LOC cap.
 
 use ph2d_color::srgb::{linear_to_srgb_byte, srgb_to_linear_byte};
+use rayon::prelude::*;
 use std::sync::OnceLock;
 
 // ── LUTs (built once; the ln/exp/pow run only here, never per pixel — HR-5) ──────────────────────────
@@ -186,37 +187,55 @@ pub(super) fn sample_bilinear(src: &[f32], w: usize, h: usize, fx: f32, fy: f32)
 
 /// Separable box blur of a scalar field, O(n) via per-row/column prefix sums (window count clamped at
 /// the borders, so no darkening bias). Deterministic (only sums + one divide). `radius == 0` is a copy.
+///
+/// **Parallel (ADR-0109 exception).** Both passes distribute over their INDEPENDENT axis — the
+/// horizontal over rows, the vertical over columns — each accumulating its own prefix from the SAME
+/// origin as the serial version (`x = 0` / `y = 0`), so the additions run in the identical order with
+/// identical values ⇒ **bit-identical** output regardless of thread count (same class as the composite:
+/// no cross-lane reduction). The vertical pass writes a transposed buffer (`out_t[x*h + y]`) so each
+/// column is a CONTIGUOUS row there — a safe `par_chunks_mut`, no `unsafe`, no strided writes — then a
+/// final row-parallel transpose lays it back to row-major. A relayout of memory, never of arithmetic.
 pub(super) fn box_blur(src: &[f32], w: usize, h: usize, radius: usize) -> Vec<f32> {
     if radius == 0 || w == 0 || h == 0 {
         return src.to_vec();
     }
-    // Horizontal pass.
+    // Horizontal pass (src → tmp, row-major): each output row depends only on its own source row, so the
+    // per-row prefix from `x = 0` is exactly the serial `pref`.
     let mut tmp = vec![0.0f32; w * h];
-    let mut pref = vec![0.0f32; w + 1];
-    for y in 0..h {
-        let base = y * w;
-        for x in 0..w {
-            pref[x + 1] = pref[x] + src[base + x];
-        }
-        for x in 0..w {
-            let lo = x.saturating_sub(radius);
-            let hi = (x + radius).min(w - 1);
-            tmp[base + x] = (pref[hi + 1] - pref[lo]) / (hi - lo + 1) as f32;
-        }
-    }
-    // Vertical pass.
-    let mut out = vec![0.0f32; w * h];
-    let mut prefc = vec![0.0f32; h + 1];
-    for x in 0..w {
+    tmp.par_chunks_mut(w)
+        .zip(src.par_chunks(w))
+        .for_each(|(trow, srow)| {
+            let mut pref = vec![0.0f32; w + 1];
+            for x in 0..w {
+                pref[x + 1] = pref[x] + srow[x];
+            }
+            for (x, t) in trow.iter_mut().enumerate() {
+                let lo = x.saturating_sub(radius);
+                let hi = (x + radius).min(w - 1);
+                *t = (pref[hi + 1] - pref[lo]) / (hi - lo + 1) as f32;
+            }
+        });
+    // Vertical pass (tmp column `x` → `out_t` row `x`): the per-column prefix from `y = 0` is exactly the
+    // serial `prefc`. Writing the TRANSPOSED layout keeps each task's output contiguous (a safe chunk).
+    let mut out_t = vec![0.0f32; w * h]; // out_t[x * h + y]
+    out_t.par_chunks_mut(h).enumerate().for_each(|(x, ocol)| {
+        let mut pref = vec![0.0f32; h + 1];
         for y in 0..h {
-            prefc[y + 1] = prefc[y] + tmp[y * w + x];
+            pref[y + 1] = pref[y] + tmp[y * w + x];
         }
-        for y in 0..h {
+        for (y, o) in ocol.iter_mut().enumerate() {
             let lo = y.saturating_sub(radius);
             let hi = (y + radius).min(h - 1);
-            out[y * w + x] = (prefc[hi + 1] - prefc[lo]) / (hi - lo + 1) as f32;
+            *o = (pref[hi + 1] - pref[lo]) / (hi - lo + 1) as f32;
         }
-    }
+    });
+    // Transpose out_t (x*h + y) → out (y*w + x), row-parallel (each output row is contiguous).
+    let mut out = vec![0.0f32; w * h];
+    out.par_chunks_mut(w).enumerate().for_each(|(y, orow)| {
+        for (x, o) in orow.iter_mut().enumerate() {
+            *o = out_t[x * h + y];
+        }
+    });
     out
 }
 

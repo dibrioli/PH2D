@@ -2,9 +2,10 @@
 
 - **Status:** ACEITO (Enio, 2026-07-07).
 - **Data:** 2026-07-07.
-- **Escopo:** habilita **um** uso de `rayon` (thread-pool data-parallel) em `ph2d-tool-painter`, restrito
-  ao loop por-pixel do composite óptico de aquarela (`tool/paint/watercolor_render.rs::apply_watercolor`).
-  **Não** abre `rayon`/threading para o resto do codebase.
+- **Escopo:** habilita `rayon` (thread-pool data-parallel) em `ph2d-tool-painter`, restrito ao composite
+  óptico de aquarela — o loop por-pixel (`tool/paint/watercolor_render.rs::apply_watercolor`) **e** o
+  `box_blur` separável que ele usa (`tool/paint/watercolor_field.rs`). **Não** abre `rayon`/threading para
+  o resto do codebase.
 - **Não afeta:** nenhum contrato congelado (Nodes [ADR-0039](0039-nodegraph-contract-freeze-w2t4.md),
   Tools [ADR-0040](0040-tool-as-isolated-feature-crate.md), Vector). Nenhuma mudança de ABI. **Resultado da
   pintura byte-idêntico** (prova em §3).
@@ -76,10 +77,13 @@ Brush grande com papel volta a 60 fps confortável; o freeze do pen-up cai à me
 regressão no brush pequeno** (R=16 TUDO: commit 17 → 11 ms) — o overhead do thread-pool em janelas pequenas
 é desprezível.
 
-**Remanescente (não coberto por este ADR):** as blurs das far-fields do soak (`box_blur`) continuam
-**seriais** — são o próximo item se o caso "soltar a caneta parada com soak alto" ainda incomodar. `box_blur`
-é separável e paralelizável por linhas/colunas byte-idêntico; entraria sob **este mesmo** ADR (mesma classe:
-sem redução entre linhas). Nada urgente — o commit já caiu de 238 → 30–116 ms.
+**`box_blur` paralelizado (2026-07-07, sob este ADR).** As far-fields do soak eram o remanescente serial;
+`box_blur` agora distribui os dois passos sobre o eixo independente (horizontal por-linha, vertical
+por-coluna via buffer transposto — relayout de memória, aritmética idêntica, prefixo da mesma origem).
+Byte-idêntico (units + suíte watercolor 33/33). Ganho medido (R=220, TUDO): commit **116 → 44 ms**
+(spread 8), **30 → 15 ms** (spread 48); frame max **20 → 10 ms**. Acumulado vs baseline original:
+commit 238 → 44 ms (spread 8) / 157 → 15 ms (spread 48); frame max 51 → 10 ms — 60 fps confortável com
+tudo ligado, sem regressão no brush pequeno.
 
 ## 4. Alternativas rejeitadas
 

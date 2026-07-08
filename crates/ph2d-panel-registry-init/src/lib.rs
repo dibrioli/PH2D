@@ -96,6 +96,10 @@ mod tests {
         {
             n += 1;
         }
+        #[cfg(feature = "panel-audio-editor")]
+        {
+            n += 1;
+        }
         #[cfg(feature = "panel-bgremoval")]
         {
             n += 1;

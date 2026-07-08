@@ -272,7 +272,14 @@ pub(super) fn dispatch(
                 .and_then(|p| p.fill.as_ref())
             {
                 Some(Paint::Solid(_)) => (Some(FillKind::Solid), None),
-                Some(Paint::Linear { angle_deg, .. }) => (Some(FillKind::Linear), Some(*angle_deg)),
+                Some(Paint::Linear { start, end, .. }) => {
+                    // Angle of the ramp direction, normalized to [0, 360).
+                    let mut deg = (end[1] - start[1]).atan2(end[0] - start[0]).to_degrees();
+                    if deg < 0.0 {
+                        deg += 360.0;
+                    }
+                    (Some(FillKind::Linear), Some(deg))
+                }
                 Some(Paint::Radial { .. }) => (Some(FillKind::Radial), None),
                 Some(Paint::MultiPoint { .. }) => (Some(FillKind::MultiPoint), None),
                 None => (None, None),

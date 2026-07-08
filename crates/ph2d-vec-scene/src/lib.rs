@@ -107,9 +107,9 @@ impl GradientStop {
 
 /// Um ponto de um gradiente **multi-ponto** (freeform, estilo Cavalry / Illustrator
 /// Freeform Gradient): uma cor posicionada em `pos` no espaço NORMALIZADO da bbox
-/// do path (`[0,1]²`, então escala com a forma) + uma `influence` (força/peso IDW).
-/// O render mistura por inverse-distance weighting: `c(p) = Σ wᵢcᵢ / Σ wᵢ`,
-/// `wᵢ = influenceᵢ / (dist(p,posᵢ)² + ε)`.
+/// do path (`pos` em WORLD-space, mesmo espaço das âncoras, então transforma junto
+/// com a shape) + uma `influence` (força/peso IDW). O render mistura por
+/// inverse-distance weighting: `c(p) = Σ wᵢcᵢ / Σ wᵢ`, `wᵢ = influenceᵢ / (dist² + ε)`.
 #[derive(Copy, Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct GradientPoint {
     pub pos: [f64; 2],
@@ -128,22 +128,29 @@ impl GradientPoint {
     }
 }
 
-/// Preenchimento de um path: cor sólida ou um dos três gradientes. Todos os
-/// gradientes são **relativos à bbox** do path (auto-encaixam na forma; sem
-/// coordenadas absolutas a transformar na Fase 1). Linear/Radial rasterizam nativo
-/// no Vello; MultiPoint (freeform) rasteriza por IDW num image-brush.
+/// Preenchimento de um path: cor sólida ou um dos três gradientes. A geometria do
+/// gradiente é armazenada em **WORLD-space** (mesmo espaço das âncoras) e
+/// **transforma junto com o path** (translate/scale/rotate/flip movem os pontos do
+/// gradiente igual às âncoras) — então rotacionar a shape roda o gradiente
+/// rigidamente, sem "respirar" (o bug do gradiente bbox-relativo). Linear/Radial
+/// rasterizam nativo no Vello; MultiPoint (freeform) por IDW num image-brush.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub enum Paint {
     /// Cor chapada.
     Solid(Rgba8),
-    /// Rampa linear a `angle_deg` graus cruzando a bbox (0° = →, sentido horário).
+    /// Rampa linear do ponto `start` ao `end` (world-space).
     Linear {
         stops: Vec<GradientStop>,
-        angle_deg: f64,
+        start: [f64; 2],
+        end: [f64; 2],
     },
-    /// Rampa radial do centro da bbox até o canto (raio = meia-diagonal).
-    Radial { stops: Vec<GradientStop> },
-    /// Multi-ponto freeform (Cavalry): blend IDW de pontos no espaço da bbox.
+    /// Rampa radial do `center` (world-space) até `radius` (world-units).
+    Radial {
+        stops: Vec<GradientStop>,
+        center: [f64; 2],
+        radius: f64,
+    },
+    /// Multi-ponto freeform (Cavalry): blend IDW de pontos em world-space.
     MultiPoint { points: Vec<GradientPoint> },
 }
 
@@ -161,7 +168,7 @@ impl Paint {
     pub fn primary_color(&self) -> Rgba8 {
         match self {
             Paint::Solid(c) => *c,
-            Paint::Linear { stops, .. } | Paint::Radial { stops } => {
+            Paint::Linear { stops, .. } | Paint::Radial { stops, .. } => {
                 stops.first().map_or(Rgba8::new(0, 0, 0, 255), |s| s.color)
             }
             Paint::MultiPoint { points } => {

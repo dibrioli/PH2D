@@ -183,6 +183,78 @@ fn rotate_path_by_arbitrary_angle_about_pivot() {
 }
 
 #[test]
+fn transforms_move_the_gradient_geometry_rigidly() {
+    use std::f64::consts::FRAC_PI_2;
+    let red = Rgba8::new(255, 0, 0, 255);
+    let blue = Rgba8::new(0, 0, 255, 255);
+    let ends = |scene: &VecScene, id: VecPathId| match &scene
+        .paths()
+        .iter()
+        .find(|p| p.id == id)
+        .unwrap()
+        .fill
+    {
+        Some(Paint::Linear { start, end, .. }) => (*start, *end),
+        other => panic!("expected linear, got {other:?}"),
+    };
+    let close = |a: [f64; 2], b: [f64; 2]| (a[0] - b[0]).abs() < 1e-9 && (a[1] - b[1]).abs() < 1e-9;
+
+    let mut scene = VecScene::new();
+    let mut path = rectangle([0.0, 0.0], [10.0, 4.0]);
+    // A horizontal ramp across the rect (world-space endpoints).
+    path.fill = Some(Paint::Linear {
+        stops: vec![GradientStop::new(0.0, red), GradientStop::new(1.0, blue)],
+        start: [0.0, 2.0],
+        end: [10.0, 2.0],
+    });
+    let id = scene.push_path(path);
+
+    // Rotate +90° about the bbox center (5,2): the ramp endpoints rotate with it
+    // (start→[5,-3], end→[5,7]) — the gradient turns rigidly with the shape.
+    scene.rotate_path_by(id, FRAC_PI_2, [5.0, 2.0]);
+    let (s, e) = ends(&scene, id);
+    assert!(
+        close(s, [5.0, -3.0]) && close(e, [5.0, 7.0]),
+        "rotated rigidly: {s:?} {e:?}"
+    );
+
+    // Rotate back — endpoints return to the original horizontal ramp.
+    scene.rotate_path_by(id, -FRAC_PI_2, [5.0, 2.0]);
+    let (s, e) = ends(&scene, id);
+    assert!(close(s, [0.0, 2.0]) && close(e, [10.0, 2.0]), "round-trips");
+
+    // Translate moves the endpoints too.
+    scene.translate_path(id, 3.0, -1.0);
+    let (s, e) = ends(&scene, id);
+    assert!(close(s, [3.0, 1.0]) && close(e, [13.0, 1.0]), "translated");
+
+    // Flip H mirrors the endpoints about the (translated) shape's bbox center.
+    scene.flip_path(id, FlipAxis::Horizontal);
+    let (s, e) = ends(&scene, id);
+    // bbox x∈[3,13] → center x = 8 → start.x 3→13, end.x 13→3.
+    assert!(close(s, [13.0, 1.0]) && close(e, [3.0, 1.0]), "flipped H");
+
+    // Radial radius scales with a uniform scale.
+    let mut scene2 = VecScene::new();
+    let mut path2 = rectangle([0.0, 0.0], [10.0, 10.0]);
+    path2.fill = Some(Paint::Radial {
+        stops: vec![GradientStop::new(0.0, red), GradientStop::new(1.0, blue)],
+        center: [5.0, 5.0],
+        radius: 4.0,
+    });
+    let id2 = scene2.push_path(path2);
+    scene2.scale_path(id2, 2.0, 2.0, [5.0, 5.0]);
+    if let Some(Paint::Radial { center, radius, .. }) =
+        &scene2.paths().iter().find(|p| p.id == id2).unwrap().fill
+    {
+        assert!(close(*center, [5.0, 5.0]), "center pinned at pivot");
+        assert!((radius - 8.0).abs() < 1e-9, "radius ×2");
+    } else {
+        panic!("expected radial");
+    }
+}
+
+#[test]
 fn bbox_translate_and_scale_compose() {
     let mut scene = VecScene::new();
     let id = scene.push_path(rectangle([0.0, 0.0], [10.0, 4.0]));
@@ -235,10 +307,13 @@ fn paint_variants_roundtrip_and_report_primary_color() {
         Paint::solid(red),
         Paint::Linear {
             stops: vec![GradientStop::new(0.0, red), GradientStop::new(1.0, blue)],
-            angle_deg: 45.0,
+            start: [0.0, 0.0],
+            end: [4.0, 0.0],
         },
         Paint::Radial {
             stops: vec![GradientStop::new(0.0, red), GradientStop::new(1.0, blue)],
+            center: [2.0, 2.0],
+            radius: 2.0,
         },
         Paint::MultiPoint {
             points: vec![

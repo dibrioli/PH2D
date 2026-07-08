@@ -3,7 +3,7 @@
 //! teto de LOC de produção (700). Blocos `impl VecScene` inerentes podem viver
 //! em qualquer módulo da crate — a API pública fica idêntica.
 
-use crate::{FlipAxis, Rotate90, VecPathId, VecScene, VecVertex, VertexKind};
+use crate::{FlipAxis, Paint, Rotate90, VecPathId, VecScene, VecVertex, VertexKind};
 
 impl VecScene {
     /// Espelha o path `id` no eixo `axis`, em torno do centro da bbox dos seus
@@ -34,6 +34,15 @@ impl VecScene {
             v.in_handle[a] = twice_center - v.in_handle[a];
             v.out_handle[a] = twice_center - v.out_handle[a];
         }
+        // The gradient geometry mirrors with the shape (only the flipped axis).
+        transform_fill_geometry(
+            &mut path.fill,
+            |mut p| {
+                p[a] = twice_center - p[a];
+                p
+            },
+            1.0,
+        );
         true
     }
 
@@ -71,6 +80,8 @@ impl VecScene {
             v.in_handle = rot(v.in_handle);
             v.out_handle = rot(v.out_handle);
         }
+        // Gradient geometry rotates with the shape (about the same pivot).
+        transform_fill_geometry(&mut path.fill, rot, 1.0);
         true
     }
 
@@ -101,6 +112,7 @@ impl VecScene {
             v.in_handle = [v.in_handle[0] + dx, v.in_handle[1] + dy];
             v.out_handle = [v.out_handle[0] + dx, v.out_handle[1] + dy];
         }
+        transform_fill_geometry(&mut path.fill, |p| [p[0] + dx, p[1] + dy], 1.0);
         true
     }
 
@@ -121,6 +133,10 @@ impl VecScene {
             v.in_handle = s(v.in_handle);
             v.out_handle = s(v.out_handle);
         }
+        // Gradient geometry scales with the shape; the radial radius by the mean
+        // axis factor (peniko radials are circular, so non-uniform scale is
+        // approximated rather than made elliptical).
+        transform_fill_geometry(&mut path.fill, s, (sx.abs() + sy.abs()) * 0.5);
         true
     }
 
@@ -141,6 +157,10 @@ impl VecScene {
             v.in_handle = rot(v.in_handle);
             v.out_handle = rot(v.out_handle);
         }
+        // Gradient geometry rotates with the shape about the SAME pivot — so the
+        // fill stays locked to the shape and never "breathes" (the Transform R
+        // field case the user hit).
+        transform_fill_geometry(&mut path.fill, rot, 1.0);
         true
     }
 
@@ -358,6 +378,33 @@ impl VecScene {
         }
         path.closed = closed;
         true
+    }
+}
+
+/// Aplica a transformação de ponto `f` (a MESMA das âncoras) à geometria world-space
+/// do gradiente do fill, e escala o raio radial por `radius_scale`. Assim o
+/// gradiente transforma rigidamente com a shape (não "respira" ao rotacionar).
+/// No-op para `Solid` / sem fill.
+fn transform_fill_geometry(
+    fill: &mut Option<Paint>,
+    f: impl Fn([f64; 2]) -> [f64; 2],
+    radius_scale: f64,
+) {
+    match fill {
+        Some(Paint::Linear { start, end, .. }) => {
+            *start = f(*start);
+            *end = f(*end);
+        }
+        Some(Paint::Radial { center, radius, .. }) => {
+            *center = f(*center);
+            *radius *= radius_scale;
+        }
+        Some(Paint::MultiPoint { points }) => {
+            for p in points {
+                p.pos = f(p.pos);
+            }
+        }
+        Some(Paint::Solid(_)) | None => {}
     }
 }
 

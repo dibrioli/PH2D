@@ -355,7 +355,9 @@ fn contrast_color(c: ph2d_vec_scene::Rgba8) -> ph2d_vec_scene::Rgba8 {
 fn gradient_stops_from(fill: &Option<ph2d_vec_scene::Paint>) -> Vec<ph2d_vec_scene::GradientStop> {
     use ph2d_vec_scene::{GradientStop, Paint};
     match fill {
-        Some(Paint::Linear { stops, .. }) | Some(Paint::Radial { stops }) if stops.len() >= 2 => {
+        Some(Paint::Linear { stops, .. }) | Some(Paint::Radial { stops, .. })
+            if stops.len() >= 2 =>
+        {
             stops.clone()
         }
         _ => {
@@ -372,9 +374,24 @@ fn gradient_stops_from(fill: &Option<ph2d_vec_scene::Paint>) -> Vec<ph2d_vec_sce
     }
 }
 
-/// Switch the SELECTED path's fill kind (Solid/Linear/Radial), preserving colour(s):
-/// Solid keeps the primary colour; Linear/Radial seed/keep gradient stops; the
-/// Linear angle survives a round-trip through Radial. One undo step iff it changed.
+/// Linear ramp endpoints spanning the bbox `(lo,hi)` along `degrees` (0° = →),
+/// centered on the bbox — the world-space geometry a linear gradient stores.
+fn linear_span(lo: [f64; 2], hi: [f64; 2], degrees: f64) -> ([f64; 2], [f64; 2]) {
+    let (cx, cy) = ((lo[0] + hi[0]) * 0.5, (lo[1] + hi[1]) * 0.5);
+    let (w, h) = (hi[0] - lo[0], hi[1] - lo[1]);
+    let r = degrees.to_radians();
+    let (dx, dy) = (r.cos(), r.sin());
+    let reach = 0.5 * ((w * dx).abs() + (h * dy).abs());
+    (
+        [cx - dx * reach, cy - dy * reach],
+        [cx + dx * reach, cy + dy * reach],
+    )
+}
+
+/// Switch the SELECTED path's fill kind (Solid/Linear/Radial), preserving colour(s)
+/// and existing gradient geometry when the kind is unchanged; when entering a
+/// gradient from Solid/other, the geometry is seeded to fit the path's bbox. One
+/// undo step iff it changed.
 pub(crate) fn apply_vec_set_fill_kind(
     scene: &mut ph2d_vec_scene::VecScene,
     history: &mut ph2d_vec_edit::History,
@@ -394,10 +411,8 @@ pub(crate) fn apply_vec_set_fill_kind(
     else {
         return;
     };
-    let angle = match &cur {
-        Some(Paint::Linear { angle_deg, .. }) => *angle_deg,
-        _ => 0.0,
-    };
+    let (lo, hi) = scene.path_bbox(sel).unwrap_or(([0.0, 0.0], [1.0, 1.0]));
+    let (cx, cy) = ((lo[0] + hi[0]) * 0.5, (lo[1] + hi[1]) * 0.5);
     let new_fill = match kind {
         VecFillKind::Solid => Paint::Solid(
             cur.as_ref()
@@ -405,12 +420,25 @@ pub(crate) fn apply_vec_set_fill_kind(
                     p.primary_color()
                 }),
         ),
-        VecFillKind::Linear => Paint::Linear {
-            stops: gradient_stops_from(&cur),
-            angle_deg: angle,
+        // Already this kind → keep its geometry; else seed to fit the bbox.
+        VecFillKind::Linear => match &cur {
+            Some(p @ Paint::Linear { .. }) => p.clone(),
+            _ => {
+                let (start, end) = linear_span(lo, hi, 0.0);
+                Paint::Linear {
+                    stops: gradient_stops_from(&cur),
+                    start,
+                    end,
+                }
+            }
         },
-        VecFillKind::Radial => Paint::Radial {
-            stops: gradient_stops_from(&cur),
+        VecFillKind::Radial => match &cur {
+            Some(p @ Paint::Radial { .. }) => p.clone(),
+            _ => Paint::Radial {
+                stops: gradient_stops_from(&cur),
+                center: [cx, cy],
+                radius: 0.5 * (hi[0] - lo[0]).hypot(hi[1] - lo[1]),
+            },
         },
     };
     if cur.as_ref() == Some(&new_fill) {
@@ -424,7 +452,8 @@ pub(crate) fn apply_vec_set_fill_kind(
 }
 
 /// Set the SELECTED path's Linear-gradient angle (degrees; from the Angle slider's
-/// `track·360`). No-op unless the fill is Linear. One undo step iff it changed.
+/// `track·360`) by re-fitting the ramp endpoints across the bbox at that angle.
+/// No-op unless the fill is Linear. One undo step iff it changed.
 pub(crate) fn apply_vec_set_grad_angle(
     scene: &mut ph2d_vec_scene::VecScene,
     history: &mut ph2d_vec_edit::History,
@@ -435,24 +464,26 @@ pub(crate) fn apply_vec_set_grad_angle(
     let Some(sel) = pen.selected() else {
         return;
     };
-    let cur = scene
+    let is_linear = scene
         .paths()
         .iter()
         .find(|p| p.id == sel)
-        .and_then(|p| match &p.fill {
-            Some(Paint::Linear { angle_deg, .. }) => Some(*angle_deg),
-            _ => None,
-        });
-    let Some(cur_angle) = cur else {
-        return;
-    };
-    if (cur_angle - degrees).abs() < 1e-9 {
+        .is_some_and(|p| matches!(p.fill, Some(Paint::Linear { .. })));
+    if !is_linear {
         return;
     }
+    let (lo, hi) = scene.path_bbox(sel).unwrap_or(([0.0, 0.0], [1.0, 1.0]));
+    let (start, end) = linear_span(lo, hi, degrees);
     let pre = scene.clone();
-    if let Some(Paint::Linear { angle_deg, .. }) = scene.path_mut(sel).and_then(|p| p.fill.as_mut())
+    if let Some(Paint::Linear {
+        start: s, end: e, ..
+    }) = scene.path_mut(sel).and_then(|p| p.fill.as_mut())
     {
-        *angle_deg = degrees;
+        if *s == start && *e == end {
+            return;
+        }
+        *s = start;
+        *e = end;
         history.push_undo(pre);
     }
 }

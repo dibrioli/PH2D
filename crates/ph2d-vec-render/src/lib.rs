@@ -188,24 +188,6 @@ fn color(c: Rgba8) -> Color {
     Color::from_rgba8(c.r, c.g, c.b, c.a)
 }
 
-/// World-space bbox of a path's ANCHORS (`(min, max)`) — the frame gradients fit
-/// into. Falls back to the unit rect if the path is empty.
-fn anchor_bounds(path: &VecPath) -> ([f64; 2], [f64; 2]) {
-    let mut lo = [f64::INFINITY; 2];
-    let mut hi = [f64::NEG_INFINITY; 2];
-    for v in &path.verts {
-        lo[0] = lo[0].min(v.anchor[0]);
-        lo[1] = lo[1].min(v.anchor[1]);
-        hi[0] = hi[0].max(v.anchor[0]);
-        hi[1] = hi[1].max(v.anchor[1]);
-    }
-    if lo[0] > hi[0] {
-        ([0.0, 0.0], [1.0, 1.0])
-    } else {
-        (lo, hi)
-    }
-}
-
 /// Peniko color stops from our gradient stops (`(offset f32, Color)` → `ColorStop`).
 fn stops_of(stops: &[ph2d_vec_scene::GradientStop]) -> Vec<ColorStop> {
     stops
@@ -215,33 +197,27 @@ fn stops_of(stops: &[ph2d_vec_scene::GradientStop]) -> Vec<ColorStop> {
 }
 
 /// Build the Vello fill brush for a path's [`Paint`]. Linear/Radial map to native
-/// peniko gradients fit to the path's anchor bbox (world-space, so the frame's
-/// world→screen transform maps them correctly). MultiPoint is a solid placeholder
-/// until its IDW image-brush rasterizer lands (gradient group increment 3).
-fn fill_brush(paint: &Paint, path: &VecPath) -> Brush {
+/// peniko gradients using the paint's OWN world-space geometry (start/end,
+/// center/radius) — which transforms rigidly with the path, so the gradient never
+/// "breathes" under rotation. The frame's world→screen transform maps them.
+/// MultiPoint is a solid placeholder until its IDW image-brush rasterizer lands
+/// (gradient group increment 3).
+fn fill_brush(paint: &Paint, _path: &VecPath) -> Brush {
     match paint {
         Paint::Solid(c) => Brush::Solid(color(*c)),
-        Paint::Linear { stops, angle_deg } => {
-            let (lo, hi) = anchor_bounds(path);
-            let center = [(lo[0] + hi[0]) * 0.5, (lo[1] + hi[1]) * 0.5];
-            let (w, h) = (hi[0] - lo[0], hi[1] - lo[1]);
-            // Unit direction from the angle; ramp spans the bbox extent along it.
-            let rad = angle_deg.to_radians();
-            let (dx, dy) = (rad.cos(), rad.sin());
-            let reach = 0.5 * ((w * dx).abs() + (h * dy).abs());
-            let start = Point::new(center[0] - dx * reach, center[1] - dy * reach);
-            let end = Point::new(center[0] + dx * reach, center[1] + dy * reach);
-            Brush::Gradient(Gradient::new_linear(start, end).with_stops(stops_of(stops).as_slice()))
+        Paint::Linear { stops, start, end } => {
+            let a = Point::new(start[0], start[1]);
+            let b = Point::new(end[0], end[1]);
+            Brush::Gradient(Gradient::new_linear(a, b).with_stops(stops_of(stops).as_slice()))
         }
-        Paint::Radial { stops } => {
-            let (lo, hi) = anchor_bounds(path);
-            let center = Point::new((lo[0] + hi[0]) * 0.5, (lo[1] + hi[1]) * 0.5);
-            let (w, h) = (hi[0] - lo[0], hi[1] - lo[1]);
-            let radius = (0.5 * (w * w + h * h).sqrt()) as f32;
-            Brush::Gradient(
-                Gradient::new_radial(center, radius.max(f32::MIN_POSITIVE))
-                    .with_stops(stops_of(stops).as_slice()),
-            )
+        Paint::Radial {
+            stops,
+            center,
+            radius,
+        } => {
+            let c = Point::new(center[0], center[1]);
+            let r = (*radius as f32).max(f32::MIN_POSITIVE);
+            Brush::Gradient(Gradient::new_radial(c, r).with_stops(stops_of(stops).as_slice()))
         }
         // Increment 3: rasterize the IDW blend into an image brush.
         Paint::MultiPoint { .. } => Brush::Solid(color(paint.primary_color())),

@@ -12605,3 +12605,74 @@ fn watercolor_wet_mix_blue_over_yellow_deposits_green() {
         "downstream the carry decays back toward the blue brush: rgba={c:?}"
     );
 }
+
+/// **GRAN-1 (doc 12, Curtis §4.5): granulação é deposição nos VALES — vales escuros, picos claros.**
+/// O sinal antigo era INVERTIDO (picos h altos escureciam) e o clamp furava o wash com speckle
+/// branco em amount alto. Grain map metade preta (h=0, vales) / metade branca (h=1, picos),
+/// granulation 1.0: o wash sobre os VALES deposita mais (mais escuro) que sobre os picos — e
+/// nenhum texel do wash fica branco puro (sem speckle: o gate é limitado por γ < 1).
+#[test]
+fn watercolor_granulation_deposits_into_valleys_not_peaks() {
+    let size = 64u32;
+    let mut t = white_canvas(size, 10.0);
+    t.paint.brush = BrushSpec {
+        radius_px: 10.0,
+        hardness: 1.0,
+        falloff: Falloff::Constant,
+        color: [0.15, 0.25, 0.7],
+        space_attenuation: false,
+        watercolor: true,
+        fill: 0.6,
+        depth: 2.0,
+        edge_gain: 0.0, // isolate the fill term (no rim)
+        edge_spread: 4.0,
+        warp: 0.0,
+        granulation: 1.0,
+        granulation_use_paper: false, // the Grain slot IS the granulation map
+        ..Default::default()
+    };
+    // Canvas-anchored granulation map: left half BLACK (valleys), right half WHITE (peaks).
+    let mut lum = vec![255u8; 16 * 16];
+    for y in 0..16 {
+        for x in 0..8 {
+            lum[y * 16 + x] = 0;
+        }
+    }
+    t.set_brush_texture_image(lum, 16, 16);
+    t.paint.brush.texture.mapping = ph2d_painter_brush::TextureMapping::Tiled;
+    // Image sampling uses the dab-space convention (`u·0.5 + 0.5`): one tile unit = HALF the
+    // image, so Size 8 makes the full 16-px image span the 64-px canvas — WHITE (peaks) lands on
+    // the left half, BLACK (valleys) on the right (the u-wrap crosses the halves at x = 32).
+    t.paint.brush.texture.size = [8.0, 8.0];
+    for slot in &mut t.paint.brush_by_mode {
+        *slot = t.paint.brush;
+    }
+    assert!(t.on_canvas_pointer(cp([12.0, 32.0], PointerPhase::Down)));
+    for i in 1..=20 {
+        t.on_canvas_pointer(cp([12.0 + i as f32 * 2.0, 32.0], PointerPhase::Move));
+    }
+    t.on_canvas_pointer(cp([52.0, 32.0], PointerPhase::Up));
+    // Mean green channel of the wash core on each half (row 32, away from the rim).
+    let mean_g = |x0: u32, x1: u32| -> f32 {
+        let mut acc = 0.0f32;
+        for x in x0..x1 {
+            acc += f32::from(px(&t, size, x, 32)[1]);
+        }
+        acc / (x1 - x0) as f32
+    };
+    let peaks = mean_g(16, 28); // white-map half (h = 1) — left under the dab-space wrap
+    let valleys = mean_g(36, 48); // black-map half (h = 0) — right
+    assert!(
+        valleys + 8.0 < peaks,
+        "valleys must deposit MORE pigment (darker) than peaks: valleys {valleys:.1} vs peaks {peaks:.1}"
+    );
+    // No white speckle: every core texel is painted (the old symmetric clamp punched h-low texels to 0
+    // density... and at the new sign, γ < 1 bounds the peak side — nothing in the core stays white).
+    for x in 16..48u32 {
+        assert_ne!(
+            px(&t, size, x, 32),
+            [255, 255, 255, 255],
+            "no white speckle inside the wash (x={x})"
+        );
+    }
+}

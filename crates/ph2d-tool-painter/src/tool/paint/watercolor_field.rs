@@ -103,6 +103,7 @@ pub(super) const SEED_WARP_X_B: u32 = 0x2222_2222;
 pub(super) const SEED_WARP_Y_A: u32 = 0x3333_3333;
 pub(super) const SEED_WARP_Y_B: u32 = 0x4444_4444;
 pub(super) const SEED_GRAIN: u32 = 0x5555_5555;
+pub(super) const SEED_GRAIN_FINE: u32 = 0x6666_6666;
 
 /// Smoothstep-in-`[0,1]` fade (the value-noise interpolation weight; a cubic, so no transcendental).
 #[inline]
@@ -149,11 +150,13 @@ pub(super) fn warp_axis(x: f32, y: f32, sa: u32, sb: u32) -> f32 {
     (value_noise(x, y, 22.0, sa) * 0.65 + value_noise(x, y, 8.0, sb) * 0.35 - 0.5) * 2.0
 }
 
-/// Paper-tooth granulation height at `(x, y)` in `[0, 1]` (wet_edges `grain`, 5-px value noise). A
-/// built-in field so "Aquarela Básica" granulates before a Paper texture (Fase C) is wired to the Grain slot.
+/// Paper-tooth granulation height at `(x, y)` in `[0, 1]` — the built-in fallback when no Paper
+/// slot is set. TWO octaves (5 px + 2.5 px, doc 12 GRAN-3): the audit measured the old single
+/// octave as mid-band and uniform (good) but mono-scale full-range — the "digital" side of the
+/// default look; the fine second octave breaks the single-frequency signature.
 #[inline]
 pub(super) fn paper_height(x: f32, y: f32) -> f32 {
-    value_noise(x, y, 5.0, SEED_GRAIN)
+    0.65 * value_noise(x, y, 5.0, SEED_GRAIN) + 0.35 * value_noise(x, y, 2.5, SEED_GRAIN_FINE)
 }
 
 /// Smoothstep from `e0` to `e1` evaluated at `x` (cubic; clamps outside the edges).
@@ -315,6 +318,117 @@ pub(super) const WET_EDGE_BOOST: f32 = 1.0;
 /// How strongly the paper tooth modulates the wet edge (a wet bloom is ragged, not a clean
 /// ring): ±75% of the pool at `wet = 1`.
 pub(super) const WET_RAGGED: f32 = 0.75;
+
+/// Build the [`RewetFields`] for one composite window (moved out of `apply_watercolor` for the
+/// file-LOC cap — pure function of the frozen buffers + window; behaviour unchanged, see the field
+/// docs on [`RewetFields`]).
+#[allow(clippy::too_many_arguments)]
+pub(super) fn build_rewet_fields(
+    base: &[u8],
+    ground: &[u8],
+    wet_soak: &[u8],
+    soaked: bool,
+    (fw, fh): (usize, usize),
+    (rx0, ry0, rx1, ry1): (usize, usize, usize, usize),
+    spread: usize,
+) -> RewetFields {
+    // Downsample factor: 1 (exact) up to `REWET_DS_SPREAD`, then `spread / REWET_DS_SPREAD`
+    // capped at 4 (blur cost /ds²). Global-aligned low-res grid over the read window.
+    let ds = (spread / REWET_DS_SPREAD).clamp(1, 4);
+    let lox0 = rx0 / ds;
+    let loy0 = ry0 / ds;
+    let lw = (rx1).div_ceil(ds) - lox0;
+    let lh = (ry1).div_ceil(ds) - loy0;
+    let mut pres = vec![0.0f32; lw * lh];
+    let mut wr = vec![0.0f32; lw * lh];
+    let mut wg = vec![0.0f32; lw * lh];
+    let mut wb = vec![0.0f32; lw * lh];
+    let mut soak = vec![0.0f32; lw * lh];
+    let half = ds / 2;
+    // Field fill, PARALLEL over grid rows (ADR-0109 class: each cell is a pure function of the
+    // frozen base/ground/soak at its own sampled pixel — no cross-cell reduction, disjoint row
+    // slices per task ⇒ byte-identical to the serial loop). This build ran serial while the
+    // composite below went wide, and at Bleed ≤ 12 it is FULL-res (`ds = 1`) — the frame
+    // profiler pinned it as the Rewet-only FPS dip (Enio 2026-07-07).
+    let soak_src = wet_soak;
+    pres.par_chunks_mut(lw)
+        .zip(wr.par_chunks_mut(lw))
+        .zip(wg.par_chunks_mut(lw))
+        .zip(wb.par_chunks_mut(lw))
+        .zip(soak.par_chunks_mut(lw))
+        .enumerate()
+        .for_each(|(lj, ((((prow, rrow), grow), brow), srow))| {
+            // Sample each low-res cell at its block CENTRE (ds=1 ⇒ every full-res pixel, exact).
+            let gy = (((loy0 + lj) * ds) + half).min(fh - 1);
+            for li in 0..lw {
+                let gx = (((lox0 + li) * ds) + half).min(fw - 1);
+                let bi = (gy * fw + gx) * 4;
+                let ab = f32::from(base[bi + 3]) / 255.0;
+                let (gr, gg, gb) = (
+                    f32::from(ground[bi]),
+                    f32::from(ground[bi + 1]),
+                    f32::from(ground[bi + 2]),
+                );
+                // The base over the real ground, straight sRGB bytes (the paint as seen).
+                let r = f32::from(base[bi]) * ab + gr * (1.0 - ab);
+                let g = f32::from(base[bi + 1]) * ab + gg * (1.0 - ab);
+                let b = f32::from(base[bi + 2]) * ab + gb * (1.0 - ab);
+                // Presence = how far this pixel departs from the LOCAL ground — only the active
+                // layer's own paint differs from it (an unpainted pixel composites to the ground
+                // exactly), so the reference is per-pixel true, light pigments included. The old
+                // global-cream reference read a white canvas as 0.8 presence everywhere (flooded
+                // the pool, "matou o efeito dinâmico do spread"), and paint LIGHTER than cream
+                // as none. Dead-zoned so anti-aliasing crumbs don't count as paint (wet_edges
+                // `PAINT_LO`/`PAINT_HI`).
+                let d = (gr - r).abs().max((gg - g).abs()).max((gb - b).abs());
+                let p = smoothstep(14.0, 50.0, d); // LITERAL-PX-OK: wet_edges PAINT_LO/PAINT_HI
+                prow[li] = p;
+                rrow[li] = r * p; // presence-premultiplied: the blur averages PAINT colour only
+                grow[li] = g * p;
+                brow[li] = b * p;
+                if soaked {
+                    srow[li] = f32::from(soak_src[gy * fw + gx]) / 255.0;
+                }
+            }
+        });
+    // Blur radii in low-res units (the low-res blur of radius r/ds ≈ a full-res blur of r).
+    let r1 = (spread / ds).max(1);
+    let r2 = ((spread * 2) / ds).max(1);
+    // Two blur scales: the plain water spread + the lingering (soaked) spread — the per-pixel
+    // soak lerps the dissolve between them ("the longer the water sits, the farther it
+    // dissolves"). Soak all-zero ⇒ the second scale is never sampled with weight > 0.
+    let bpres = box_blur(&pres, lw, lh, r1);
+    let br = box_blur(&wr, lw, lh, r1);
+    let bg = box_blur(&wg, lw, lh, r1);
+    let bb = box_blur(&wb, lw, lh, r1);
+    // The far (2×) fields + the soak halo exist only once dwell was poured: the dwelling
+    // water DIFFUSES outward (the halo pushes the widened dissolve BEYOND the nib's own
+    // disc — a raw disc gated the far blur to exactly the pixels under the brush), while
+    // the RAW soak drives the lift (contact: deepest right under the nib).
+    let (far, soak_halo) = if soaked {
+        let far = [
+            box_blur(&pres, lw, lh, r2),
+            box_blur(&wr, lw, lh, r2),
+            box_blur(&wg, lw, lh, r2),
+            box_blur(&wb, lw, lh, r2),
+        ];
+        (Some(far), box_blur(&soak, lw, lh, r2))
+    } else {
+        (None, Vec::new())
+    };
+    RewetFields {
+        pres,
+        soak_raw: soak,
+        soak_halo,
+        near: [bpres, br, bg, bb],
+        far,
+        ds,
+        lw,
+        lh,
+        lox0,
+        loy0,
+    }
+}
 
 #[cfg(test)]
 mod tests {

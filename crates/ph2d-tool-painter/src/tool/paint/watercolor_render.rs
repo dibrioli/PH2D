@@ -33,6 +33,18 @@ const SS1: f32 = 0.60; // LITERAL-PX-OK: coverage-hardening smoothstep high edge
 /// back to the live brush colour (wet_edges `COL_EPS`) — a faint rim carries the fresh pigment, not noise.
 const COL_EPS: u8 = 20;
 
+// ── Granulation settling (doc 12 GRAN-1 — Curtis §4.5 valley deposition, Tier-2) ────────────────────
+/// LIVE settle floor: how much of the granulation acts while the stroke is still wet (no water).
+const GRAN_SETTLE_BASE: f32 = 0.55;
+/// How much Rewet (water) raises the live settle — a wetter wash separates pigment more.
+const GRAN_SETTLE_WET: f32 = 0.30;
+/// How much the per-pixel soak (dwell) raises the live settle — lingering water separates hardest.
+const GRAN_SETTLE_SOAK: f32 = 0.35;
+/// Peak-side strength of the valley gate (`1 − k·h·γ`): peaks shed up to γ of their share into the
+/// valleys; `< 1` keeps a floor so full granulation never zeroes the wash (the old symmetric form
+/// clamped low-h texels to 0 → white speckle holes).
+const GRAN_GAMMA: f32 = 0.9;
+
 impl PainterTool {
     /// Whether the watercolor optical render-path drives this stroke: the Watercolor section is on, we're
     /// the normal **Paint** brush (not Smear/Blur/Clone/Mask/Inpaint/Fill/Selection/Deform), and not
@@ -189,102 +201,15 @@ impl PainterTool {
         // read window: raw paint presence (for the local lift) + blurred presence-weighted base
         // colour at BOTH blur scales (the soak lerps between them) + the soak itself.
         let rewet = (wet > 0.0).then(|| {
-            // Downsample factor: 1 (exact) up to `REWET_DS_SPREAD`, then `spread / REWET_DS_SPREAD`
-            // capped at 4 (blur cost /ds²). Global-aligned low-res grid over the read window.
-            let ds = (spread / REWET_DS_SPREAD).clamp(1, 4);
-            let lox0 = rx0 / ds;
-            let loy0 = ry0 / ds;
-            let lw = (rx1).div_ceil(ds) - lox0;
-            let lh = (ry1).div_ceil(ds) - loy0;
-            let mut pres = vec![0.0f32; lw * lh];
-            let mut wr = vec![0.0f32; lw * lh];
-            let mut wg = vec![0.0f32; lw * lh];
-            let mut wb = vec![0.0f32; lw * lh];
-            let mut soak = vec![0.0f32; lw * lh];
-            let half = ds / 2;
-            // Field fill, PARALLEL over grid rows (ADR-0109 class: each cell is a pure function of the
-            // frozen base/ground/soak at its own sampled pixel — no cross-cell reduction, disjoint row
-            // slices per task ⇒ byte-identical to the serial loop). This build ran serial while the
-            // composite below went wide, and at Bleed ≤ 12 it is FULL-res (`ds = 1`) — the frame
-            // profiler pinned it as the Rewet-only FPS dip (Enio 2026-07-07).
-            let soak_src = &self.paint.wet_soak;
-            pres.par_chunks_mut(lw)
-                .zip(wr.par_chunks_mut(lw))
-                .zip(wg.par_chunks_mut(lw))
-                .zip(wb.par_chunks_mut(lw))
-                .zip(soak.par_chunks_mut(lw))
-                .enumerate()
-                .for_each(|(lj, ((((prow, rrow), grow), brow), srow))| {
-                    // Sample each low-res cell at its block CENTRE (ds=1 ⇒ every full-res pixel, exact).
-                    let gy = (((loy0 + lj) * ds) + half).min(fh - 1);
-                    for li in 0..lw {
-                        let gx = (((lox0 + li) * ds) + half).min(fw - 1);
-                        let bi = (gy * fw + gx) * 4;
-                        let ab = f32::from(base[bi + 3]) / 255.0;
-                        let (gr, gg, gb) = (
-                            f32::from(ground[bi]),
-                            f32::from(ground[bi + 1]),
-                            f32::from(ground[bi + 2]),
-                        );
-                        // The base over the real ground, straight sRGB bytes (the paint as seen).
-                        let r = f32::from(base[bi]) * ab + gr * (1.0 - ab);
-                        let g = f32::from(base[bi + 1]) * ab + gg * (1.0 - ab);
-                        let b = f32::from(base[bi + 2]) * ab + gb * (1.0 - ab);
-                        // Presence = how far this pixel departs from the LOCAL ground — only the active
-                        // layer's own paint differs from it (an unpainted pixel composites to the ground
-                        // exactly), so the reference is per-pixel true, light pigments included. The old
-                        // global-cream reference read a white canvas as 0.8 presence everywhere (flooded
-                        // the pool, "matou o efeito dinâmico do spread"), and paint LIGHTER than cream
-                        // as none. Dead-zoned so anti-aliasing crumbs don't count as paint (wet_edges
-                        // `PAINT_LO`/`PAINT_HI`).
-                        let d = (gr - r).abs().max((gg - g).abs()).max((gb - b).abs());
-                        let p = smoothstep(14.0, 50.0, d); // LITERAL-PX-OK: wet_edges PAINT_LO/PAINT_HI
-                        prow[li] = p;
-                        rrow[li] = r * p; // presence-premultiplied: the blur averages PAINT colour only
-                        grow[li] = g * p;
-                        brow[li] = b * p;
-                        if soaked {
-                            srow[li] = f32::from(soak_src[gy * fw + gx]) / 255.0;
-                        }
-                    }
-                });
-            // Blur radii in low-res units (the low-res blur of radius r/ds ≈ a full-res blur of r).
-            let r1 = (spread / ds).max(1);
-            let r2 = ((spread * 2) / ds).max(1);
-            // Two blur scales: the plain water spread + the lingering (soaked) spread — the per-pixel
-            // soak lerps the dissolve between them ("the longer the water sits, the farther it
-            // dissolves"). Soak all-zero ⇒ the second scale is never sampled with weight > 0.
-            let bpres = box_blur(&pres, lw, lh, r1);
-            let br = box_blur(&wr, lw, lh, r1);
-            let bg = box_blur(&wg, lw, lh, r1);
-            let bb = box_blur(&wb, lw, lh, r1);
-            // The far (2×) fields + the soak halo exist only once dwell was poured: the dwelling
-            // water DIFFUSES outward (the halo pushes the widened dissolve BEYOND the nib's own
-            // disc — a raw disc gated the far blur to exactly the pixels under the brush), while
-            // the RAW soak drives the lift (contact: deepest right under the nib).
-            let (far, soak_halo) = if soaked {
-                let far = [
-                    box_blur(&pres, lw, lh, r2),
-                    box_blur(&wr, lw, lh, r2),
-                    box_blur(&wg, lw, lh, r2),
-                    box_blur(&wb, lw, lh, r2),
-                ];
-                (Some(far), box_blur(&soak, lw, lh, r2))
-            } else {
-                (None, Vec::new())
-            };
-            RewetFields {
-                pres,
-                soak_raw: soak,
-                soak_halo,
-                near: [bpres, br, bg, bb],
-                far,
-                ds,
-                lw,
-                lh,
-                lox0,
-                loy0,
-            }
+            build_rewet_fields(
+                base,
+                ground,
+                &self.paint.wet_soak,
+                soaked,
+                (fw, fh),
+                (rx0, ry0, rx1, ry1),
+                spread,
+            )
         });
 
         let fill = brush.fill.clamp(0.0, 1.0);
@@ -325,6 +250,8 @@ impl PainterTool {
         // Empty (every non-textured path) ⇒ density ≡ 1 → byte-identical.
         let has_dens = self.paint.stroke_density.len() == n;
         let dens_buf = &self.paint.stroke_density;
+        // Raw per-pixel soak for the granulation settle (GRAN-1) — read-only in the parallel loop.
+        let soak_buf = &self.paint.wet_soak;
 
         let color_buf = &self.paint.stroke_color;
         // Substrate memoisation (perf, byte-identical): `paper_h` is canvas-anchored (a pure function of
@@ -425,28 +352,54 @@ impl PainterTool {
                     // otherwise: with no Grain image and Same-as-Paper off there is no settling substrate,
                     // so Amount must be inert (falling through to the built-in noise granulated out of thin
                     // air — Enio 2026-07-06).
-                    let gran_component = if gran_own_map {
-                        let g = ph2d_painter_brush::texture::sample_tiled_rot(
+                    // Granulation height source: its own map, or (Same as Paper) the paper's tooth —
+                    // and NOTHING otherwise (no settling substrate ⇒ Amount inert, Enio 2026-07-06).
+                    let gran_h = if gran_own_map {
+                        Some(ph2d_painter_brush::texture::sample_tiled_rot(
                             &gran_tex,
                             gx as i64,
                             gy as i64,
                             gran_img.as_ref(),
                             gran_rot,
-                        );
-                        (g - 0.5) * 2.0 * granulation
+                        ))
                     } else if brush.granulation_use_paper {
-                        (paper_h - 0.5) * 2.0 * granulation
+                        Some(paper_h)
                     } else {
-                        0.0
+                        None
                     };
-                    // Additive: the paper textures the wash by its Depth (only when a Paper is set); the
-                    // granulation adds the pronounced mineral mottle by amount.
+                    // The paper textures the wash by its Depth (only when a Paper is set) — the
+                    // substrate's own subtle symmetric bite, unchanged.
                     let paper_component = if paper_active {
                         (paper_h - 0.5) * paper_depth
                     } else {
                         0.0
                     };
-                    let gran = (1.0 + paper_component + gran_component).max(0.0);
+                    // GRAN-1 (Curtis §4.5, Tier-2): granulation is VALLEY DEPOSITION, not symmetric
+                    // modulation — pigment settles INTO the tooth's valleys (`h` low ⇒ full deposit;
+                    // peaks shed up to γ), the exact SIGN the old form inverted. The settle weight
+                    // grows with water (Rewet) + dwell (soak) and goes FULL at the pen-up bake — the
+                    // "drying moment" — so granulation visibly sets as the stroke dries. Amount 0 ⇒
+                    // factor 1 exactly (byte-identical); no clamp-to-0 speckle (γ < 1 bounds the gate).
+                    let gran = match gran_h {
+                        Some(h) => {
+                            let soak_v = if soaked {
+                                f32::from(soak_buf[gy * fw + gx]) / 255.0
+                            } else {
+                                0.0
+                            };
+                            let settle = if commit {
+                                1.0
+                            } else {
+                                (GRAN_SETTLE_BASE
+                                    + GRAN_SETTLE_WET * wet
+                                    + GRAN_SETTLE_SOAK * soak_v)
+                                    .min(1.0)
+                            };
+                            let k = (granulation * settle).clamp(0.0, 1.0);
+                            ((1.0 + paper_component) * (1.0 - k * h * GRAN_GAMMA)).max(0.0)
+                        }
+                        None => (1.0 + paper_component).max(0.0),
+                    };
                     // Wet also wets the WASH ITSELF (blank canvas included): more water = the wash's own
                     // pigment redistributes — the interior thins toward the receding front, the edge pools
                     // harder, and the pooling follows the paper tooth (a wetter bloom is ragged, not a

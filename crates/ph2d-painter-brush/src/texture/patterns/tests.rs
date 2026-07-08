@@ -313,3 +313,81 @@ fn texture_preview_colorizes_with_the_ramp_and_shows_alpha() {
         .count();
     assert!(off_green > 0, "Off mode shows the opaque green end");
 }
+
+/// **GRAN-2 regression (doc 12, medido por FFT): o tooth dos papéis é MID-BAND, não blotch.**
+/// A métrica da auditoria: `std(médias de blocos 32px) / std(campo)` — o gerador antigo media
+/// **91,7%** (a energia era macro-mancha, λ > 32 px → o wash saía "mottled"); um tooth de verdade
+/// concentra energia em 2-32 px, então as médias de bloco são quase uniformes. Também pina a
+/// costura do tile (periódico por construção: amostra em u e u+1 idênticas).
+#[test]
+fn paper_tiles_are_mid_band_tooth_not_low_frequency_blotch() {
+    for kind in [
+        TextureKind::PaperCold,
+        TextureKind::PaperRough,
+        TextureKind::PaperHot,
+    ] {
+        let mut params = [0.5f32; 6];
+        for (slot, s) in param_specs(kind).iter().enumerate() {
+            params[slot] = s.default;
+        }
+        // 256² patch at 1 texel/px (Size 1): u = i/256 spans exactly one tile.
+        const N: usize = 256;
+        let mut field = vec![0.0f32; N * N];
+        for j in 0..N {
+            for i in 0..N {
+                field[j * N + i] = sample_kind(
+                    kind,
+                    [i as f32 / N as f32, j as f32 / N as f32],
+                    params,
+                    None,
+                );
+            }
+        }
+        let mean = field.iter().sum::<f32>() / (N * N) as f32;
+        let std =
+            (field.iter().map(|v| (v - mean) * (v - mean)).sum::<f32>() / (N * N) as f32).sqrt();
+        assert!(
+            std > 0.03,
+            "{} needs real tooth relief (std {std})",
+            kind.name()
+        );
+        // 32-px block means.
+        let mut blocks = Vec::new();
+        for bj in 0..(N / 32) {
+            for bi in 0..(N / 32) {
+                let mut acc = 0.0f32;
+                for j in 0..32 {
+                    for i in 0..32 {
+                        acc += field[(bj * 32 + j) * N + (bi * 32 + i)];
+                    }
+                }
+                blocks.push(acc / 1024.0);
+            }
+        }
+        let bmean = blocks.iter().sum::<f32>() / blocks.len() as f32;
+        let bstd = (blocks
+            .iter()
+            .map(|v| (v - bmean) * (v - bmean))
+            .sum::<f32>()
+            / blocks.len() as f32)
+            .sqrt();
+        let ratio = bstd / std;
+        assert!(
+            ratio < 0.35,
+            "{}: block-mean std / field std = {ratio:.3} — low-frequency blotch (the old generator \
+             measured 0.917); the tooth must live in the 2-32 px band",
+            kind.name()
+        );
+        // Seamless wrap: one full tile later the field repeats exactly.
+        for &(u, v) in &[(0.123f32, 0.456f32), (0.9, 0.05)] {
+            let a = sample_kind(kind, [u, v], params, None);
+            let b = sample_kind(kind, [u + 1.0, v], params, None);
+            let c = sample_kind(kind, [u, v + 1.0], params, None);
+            assert!(
+                (a - b).abs() < 1e-4 && (a - c).abs() < 1e-4,
+                "{} tile seam",
+                kind.name()
+            );
+        }
+    }
+}

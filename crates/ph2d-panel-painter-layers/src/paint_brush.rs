@@ -136,7 +136,9 @@ pub(crate) fn paint_brush_body(
     );
     // Strength — the single opacity slider. Hidden when the Composite Brush is on: its per-layer
     // Strength sliders (in the card below) replace it. Also hidden in Inpaint (the heal has no opacity).
-    if !brush.composite_enabled && !brush.is_inpaint {
+    // In WATERCOLOR mode the Composite card itself hides (the optical path bypasses it), so a
+    // composite_enabled flag left on must NOT hide Strength there.
+    if (!brush.composite_enabled || brush.watercolor) && !brush.is_inpaint {
         y = paint_slider_chip_row(
             ctx,
             theme,
@@ -163,12 +165,15 @@ pub(crate) fn paint_brush_body(
     // 4c. Composite Brush card (checkbox + the 3-layer Brush/Smear/Blur stack when on) — the plain Brush
     //     tool only (Smear/Blur/Clone/Mask are single-op rail tools; Eraser bypasses composite too — it's
     //     the Erase-Alpha override; `composite_active()` requires the plain Brush + `!eraser`).
+    //     HIDDEN in watercolor mode too (Enio 2026-07-07): the optical render-path short-circuits
+    //     before the composite routing, so the card would be painted-but-inert (dead UI).
     if !brush.is_smear
         && !brush.is_blur
         && !brush.is_clone
         && !brush.eraser
         && !brush.is_mask
         && !brush.is_inpaint
+        && !brush.watercolor
     {
         y = crate::paint_composite::paint_composite_card(ctx, theme, x, content_w, y, brush);
     }

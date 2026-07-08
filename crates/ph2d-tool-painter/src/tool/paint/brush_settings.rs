@@ -288,6 +288,8 @@ pub struct BrushSettings {
     /// Shape "Automatic" (watercolor): true = built-in feather silhouette; false = the Shape
     /// section drives the watercolor stamp (doc 13 #1).
     pub watercolor_shape_auto: bool,
+    /// Wet Mix Blur — the mixer's pickup-disc radius fraction (0.5 = historical default).
+    pub wet_blur: f32,
     /// **Edge** darkening gain (`0..`) — the wet-edge "fringe" pooled at stroke boundaries.
     pub edge_gain: f32,
     /// **Spread** (canvas px) — blur radius of the coverage feeding the edge-darkening pass.

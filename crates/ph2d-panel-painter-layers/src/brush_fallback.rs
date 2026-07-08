@@ -167,6 +167,7 @@ pub(crate) const FALLBACK_BRUSH: BrushSettings = BrushSettings {
     // when-enabled defaults (mirrors BrushSpec::default).
     watercolor: false,
     watercolor_shape_auto: true,
+    wet_blur: 0.5,
     edge_gain: 1.5, // LITERAL-PX-OK: default edge-darkening gain (mirrors BrushSpec::default)
     edge_spread: 7.0, // LITERAL-PX-OK: default edge-darkening blur radius (mirrors BrushSpec::default)
     granulation: 0.3, // LITERAL-PX-OK: default granulation gate (mirrors BrushSpec::default)

@@ -55,6 +55,9 @@ pub const PAINTER_WATERCOLOR_CHARGE: NodeId = hash_node_id("painter_brush.waterc
 pub const PAINTER_WATERCOLOR_DILUTION: NodeId = hash_node_id("painter_brush.watercolor_dilution");
 /// **Pull** — Wet Mix colour-carry `0..1` (smudge length). `SetValue` → `set_brush_wet_pull`.
 pub const PAINTER_WATERCOLOR_PULL: NodeId = hash_node_id("painter_brush.watercolor_pull");
+/// **Blur** — Wet Mix pickup-disc radius `0..1` (Procreate Blur; default 0.5 = historical ring).
+/// `SetValue` → `set_brush_wet_blur`. Inert unless Charge < 1.
+pub const PAINTER_WATERCOLOR_BLUR: NodeId = hash_node_id("painter_brush.watercolor_blur");
 
 // ── Paper section (canvas-anchored substrate; its own section above Grain; `docs/Painter/10…` §5) ──
 /// Collapsible **Paper** section header (ALL-CAPS + chevron + colour dot).
@@ -150,7 +153,7 @@ pub const PAINTER_WATERCOLOR_CLICKS: [NodeId; 4] = [
 /// Concentration(Depth) / Edge Darkening(Edge) / Bleed(Spread) / Ragged Edge(Warp); **Brush** = Charge /
 /// Dilution / Pull; **Water** = Rewet(Wet) / Smudge / Pigment(Mix). Granulation lives in the Grain
 /// section; the full Paper slot (Size / Angle / Offset / Depth / params) in the Paper section.
-pub const PAINTER_WATERCOLOR_FIELDS: [NodeId; 24] = [
+pub const PAINTER_WATERCOLOR_FIELDS: [NodeId; 25] = [
     PAINTER_WATERCOLOR_EDGE,
     PAINTER_WATERCOLOR_SPREAD,
     PAINTER_WATERCOLOR_GRANULATION,
@@ -163,6 +166,7 @@ pub const PAINTER_WATERCOLOR_FIELDS: [NodeId; 24] = [
     PAINTER_WATERCOLOR_CHARGE,
     PAINTER_WATERCOLOR_DILUTION,
     PAINTER_WATERCOLOR_PULL,
+    PAINTER_WATERCOLOR_BLUR,
     PAINTER_WATERCOLOR_PAPER_SIZE_X,
     PAINTER_WATERCOLOR_PAPER_SIZE_Y,
     PAINTER_WATERCOLOR_PAPER_ANGLE,

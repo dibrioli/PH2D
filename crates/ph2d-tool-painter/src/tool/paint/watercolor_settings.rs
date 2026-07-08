@@ -103,6 +103,10 @@ impl PainterTool {
                         self.set_brush_wet_pull(v);
                         true
                     }
+                    x if x == core_ids::PAINTER_WATERCOLOR_BLUR => {
+                        self.set_brush_wet_blur(v);
+                        true
+                    }
                     x if x == core_ids::PAINTER_WATERCOLOR_PAPER_SIZE_X => {
                         self.set_brush_paper_size(0, v);
                         true
@@ -242,6 +246,11 @@ impl PainterTool {
         self.paint.brush.wet_pull = v.clamp(0.0, 1.0);
     }
 
+    /// Set the Wet Mix **Blur** (pickup-disc radius fraction; Procreate Blur), clamped to `0..=1`.
+    pub fn set_brush_wet_blur(&mut self, v: f32) {
+        self.paint.brush.wet_blur = v.clamp(0.0, 1.0);
+    }
+
     /// Reset the **Paper** slot to empty (kind `None` → the render-path falls back to the built-in paper
     /// noise), dropping any tagged-layer image. Plain state edit (no undo / pixel touch).
     pub fn reset_brush_paper(&mut self) {
@@ -327,6 +336,7 @@ impl PainterTool {
         b.wet_charge = d.wet_charge;
         b.wet_dilution = d.wet_dilution;
         b.wet_pull = d.wet_pull;
+        b.wet_blur = d.wet_blur;
         b.watercolor_shape_auto = d.watercolor_shape_auto;
     }
 

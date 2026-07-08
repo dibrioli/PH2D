@@ -302,7 +302,74 @@ Todos = 1 crate `ph2d-node-motion-<slug>` cada, `Effect::Temporal` ou `Pure`, br
 
 ---
 
-## 6. Fontes principais
+## 6. MiniCavalryV2 — o MVP do Enio vs este estudo (adendo 2026-07-06)
+
+Análise de `/home/enio/Documentos/Recursos/Nodes/MiniCavalryV2` (~22,6k LOC JS vanilla, sem build,
+Canvas2D, ~134 nós em 14 categorias, editor de grafo completo, timeline com keyframes, testes
+headless + golden-image Playwright).
+
+**Contexto histórico importante:** o MiniCavalry não é um projeto paralelo — é o **ancestral direto
+do `ph2d-nodegraph`**. O `ARQUITETURA_DOIS_MUNDOS.md` (v2.1, 2026-05-21) espelha deliberadamente a
+PH2D (ECS geracional, FixedStep 60 Hz, SceneDoc, Luau, HR-5), e o `PROMPT_AVALIACAO_ENGINE_PH2D.md`
+é o pedido que originou os ADR-0030..0039 dias depois. O V2, porém, **andou muito além do lado
+Rust**: 134 nós vs 19, UI completa vs zero, timeline+keyframes vs nada.
+
+### Convergência com o estudo (validação empírica)
+
+O MVP implementa, funcionando e intuitivo, quase tudo que este estudo recomendou por pesquisa:
+
+| Recomendação do estudo | No MVP | Nota |
+|---|---|---|
+| Falloff Cavalry-style multiplicativo | `FalloffStrength` como atributo que flui na instância; cada Falloff **multiplica** no upstream (`prev * s`) = empilhamento Cavalry | `src/nodes/falloff.js` — com curvas linear/smoothstep/quad e invert |
+| Stagger (o look Cavalry) | rampa min→max por índice × easing × `FalloffStrength`, **aditiva** ao valor atual | `src/nodes/stagger.js` |
+| Spring/dinâmica | estado por-instância + guard de time-regression (scrub) + sub-step adaptativo (`subDt²·tension < 0.05` — truque de estabilidade que vale portar) | `src/nodes/spring.js` |
+| Keyframes como fonte entre outras | **hierarquia de resolução de param: socket conectado > keyframe > literal** — resolve elegantemente "param animável" | `pull-evaluator.js:133-147` |
+| Timeline híbrida | tracks por-param, binary search + easing por-segmento + hold nas pontas; multi-select/copy-paste/easing-menu na UI | `helpers.js::sampleKeyframeTrack` + `timeline.js` (915 LOC) |
+| Time remap por subárvore | `nodeDef.processTime` recalcula o tempo dos upstreams; subárvore com tempo divergente **não usa cache** | `pull-evaluator.js:108-113` — é o TimeRemap do AE/Cavalry no modelo pull |
+| Atributos nomeados com contrato | schema Houdini (`Position/Rotation/…/FalloffStrength/Skeleton`) + **`reads_attrs`/`writes_attrs` declarados e VALIDADOS** em runtime (violação = badge no nó) | `attr-schema.js` — é o contrato de atributo que falta no lado Rust |
+| State machine como nó | `characters/stateMachine.js` | além de IK 2-bone/FABRIK, rubber hose, skin deformer |
+| Fan-out de nós | **Node Maker**: artista desenha SVG com vocabulário de layers (`slot:in.value`, `mask:lock`, `behavior:*`) + `Instrução:` → agente gera o nó | espelha nosso briefing de node-crate, mas com o ARTISTA como autor — muito alinhado a HR-10/LLM-first |
+
+O avaliador é **pull com cache por-frame** (`_evalCache` válido quando `time === _frameTime`),
+grupos com input/output proxies (subgrafos), promotion de param→socket, conversão de tipos nas
+arestas. Mesma família do nosso Cook — mais simples (limpa o cache todo frame em vez de
+fingerprint), o que confirma que o nosso memo por-fingerprint é um **upgrade**, não uma divergência.
+
+### O que NÃO portar literalmente (gaps vs Hard Rules)
+
+1. **Estado mutável dentro do `process()`** (`node._springState`, `_lastTime`): no substrato Rust
+   isso é exatamente o caso das arestas **`pre`** (ou `Effect::Stateful`). O spring JS integra com
+   `dt = time - _lastTime` de wall-clock (cap 0.033) — precisa re-derivar em fixed-step/`pre` para
+   ser determinístico.
+2. **`setAttr` imutável clona a instância a cada write** (`Object.assign` por atributo): semântica
+   correta (pureza), representação proibida (HR-3 — tempestade de alloc). O `Stream` SoA colunar já
+   é a representação certa; porta-se a *semântica*, não o objeto-por-instância.
+3. **Keyframes amostram `STATE.timeline.currentTime` global**: no Rust o playhead já entra pelo
+   `EvalCtx` — o keyframe store vai para o `ph2d-anim` (Camada 1 deste estudo), com o
+   `sampleKeyframeTrack` do MVP como spec direta da implementação.
+4. **Transcendentais livres** (`Math.sqrt/sin` no motion): ok para presentation (isenta de HR-5),
+   mas o lowering gameplay rejeita (o `ph2d-expr` já modela isso via `is_deterministic()`).
+5. **Promotion + keyframe por-param** pressionam o `ParamSpec` congelado (só `f32`): o MVP é a
+   evidência concreta para o cap-bump/ADR previsto na §5 — e a hierarquia socket>keyframe>literal
+   deve ser adotada como ordem canônica de resolução nesse ADR.
+6. **Grupos/subgrafos** (input/output proxy): o `Graph` Rust é flat — subgrafo é extensão futura
+   (o Blender lazy-graph composável é a referência de como fazer certo).
+
+### Veredito
+
+O MiniCavalryV2 é **a spec executável das camadas 2 e 3 deste estudo** — ele responde com artefato
+funcionando a pergunta que a pesquisa respondeu por fontes: behaviours+falloffs+stagger+timeline
+híbrida É o modelo certo de UX, e é fácil de usar. A pesquisa externa e o MVP chegaram ao mesmo
+lugar por caminhos independentes, o que é o melhor sinal possível.
+
+Estratégia recomendada: o MVP permanece **ferramenta de autoria/spec** (como o próprio doc dele
+define — engine é read-only para ele); o port é **por semântica de nó** (1 nó JS → 1 crate
+`ph2d-node-motion-*` no fan-out aberto), nunca por tradução do avaliador ou do modelo de instância.
+As waves M0/M1 (fio do tempo + `ph2d-anim`) da §5 são exatamente os pré-requisitos para recebê-los;
+o inventário de 134 nós do MVP vira o backlog priorizado do M2, e o Node Maker vira o pipeline de
+autoria de nós por artista em cima do briefing de fan-out existente.
+
+## 7. Fontes principais
 
 - Blender lazy-function graph: [commit 4130f1e (Jacques Lucke, 2022)](https://github.com/blender/blender/commit/4130f1e674f83fc3d53979d3061469af34e1f873) · [Fields](https://developer.blender.org/docs/features/nodes/fields/) · [Depsgraph](https://developer.blender.org/docs/features/core/depsgraph/)
 - Cavalry Behaviours/Falloffs: [docs.cavalry.scenegroup.co/nodes/behaviours](https://docs.cavalry.scenegroup.co/nodes/behaviours/)

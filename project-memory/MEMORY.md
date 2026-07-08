@@ -33,6 +33,7 @@
 ## Ship / CI / cadência
 - [Multi-máquina Mac/Linux/Windows](project_multi_machine_setup.md) — GitHub = fonte única, clone local por máquina; memória vendorizada em `project-memory/` via symlink; runbook `docs/DevOps/MULTI_MACHINE_SETUP.md`
 - [Fast mode / ship](feedback_fast_mode_ship.md) — dia: `git commit --no-verify` sem push; fim: `./scripts/ship.sh` + push + babysit
+- [Ship = Enio-only, fim de TODAS as linhas](feedback_ship_only_enio_end_of_all_lines.md) — nunca ofereça/rode ship no fim da SUA linha; só o Enio decide, no fim da rodada de todas as linhas
 - [CI direto + fmt-skew](feedback_ci_direct_lint_gates_and_fmt_skew.md) — lint gates local antes; `cargo fmt` plain = skew, use `rustup run <pin> cargo fmt`
 - [Ship committed vs WIP alheio](feedback_ship_committed_vs_worktree_wip.md) — valide/conserte o committed via `git worktree --detach HEAD`, sem tocar WIP
 - [CI handling](feedback_ci_handling.md) — Enio confere visual; forneça link da run, não fique em polling
@@ -48,6 +49,7 @@
 - [Ship-prep no-fail-fast](feedback_ship_prep_no_fail_fast.md) — `nextest --no-fail-fast` enumera TODAS as falhas; ship.sh é fail-fast
 - [CI cold-build = @stable rust-cache drift](project_ci_rustcache_stable_drift_pin.md) — `@stable` rotaciona rustc-hash → cache bust; fix timeout 45→90 + pin `@1.95`. Lockfile igual+rustc-hash mudou = drift
 - [ship.sh ≠ 100% paridade CI](feedback_ship_parity_gaps_ci_only.md) — bindgen --check FORA do ship; advisory-db local envelhece (RUSTSEC novo escapa); nextest-impacted quebra em cutover que deleta crates
+- [Integrar linha pré-cutover = drift de ship latente](project_integration_prefork_lines_ship_drift.md) — foundational-integrate roda nextest (pega arch-gates) mas NÃO fmt/typos; linha forkada pré-cutover tem fmt não-canônico (style_edition 2024) → só ship.sh/CI pega; rode ship completo no fechamento
 
 ## Auditoria
 - [Menu "não faz nada" = falta registro no populate](feedback_context_menu_closes_on_down_repaint.md) — grep o id no `populate_*` PRIMEIRO; repaint/close-on-Down = red herring; não mexer no dispatch global
@@ -69,6 +71,7 @@
 - [node-sync glob prefix](feedback_node_sync_glob_prefix_gotcha.md) — crate na área de nós não pode começar com `ph2d-node-` (gera `::register` inexistente); use outro prefixo
 - [Hier companion allowlist](feedback_hier_companion_dispatch_allowlist.md) — bits novos em 2 sites de `pointer.rs` senão click dropado
 - [Panel populate register](feedback_panel_populate_register.md) — botão novo exige register em `populate.rs`; pintar + hit_index não basta
+- [Panel arch-gates scope + clamp/const](feedback_panel_arch_gates_scope_and_clamp_const.md) — no_magic_numeric + arch_safe_clamp_only escaneiam TODO ph2d-panel-*/src; hoist de bound de clamp p/ const dispara o clamp-gate (precisa `// CLAMP-OK`)
 - [Panel 2D-drag precisa dispatch](reference_panel_2d_drag_needs_dispatch.md) — 2D-livre = InteractiveState+dispatch em editor-core (padrão BlenderHit); Slider 1D é o único per-Move no painel
 - [NumberInput registra range](reference_number_input_register_range.md) — caixa LIMITADA chama `set_number_range(id,min,max,step)` senão drag escala por `rate×step`
 - [Pipeline inject, don't cap](feedback_pipeline_inject_dont_cap.md) — feature nova injeta no buffer do pipeline, não capeia o resultado final

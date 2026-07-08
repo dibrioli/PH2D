@@ -27,6 +27,11 @@ integrados ao envelope (fp.falloff_t quando não-identity; identity mantém dn b
 **normalização da ponta** (1/max_lum por traço): cobertura watercolor é geometria de molhado
 max-blend que precisa SATURAR (cw→1 corpo, inner→1 rim) — luminância tonal crua deixava centro
 pálido e rim morto. Ponta cinza uniforme == branca byte-a-byte; textura relativa sobrevive.
+**Round 3 (`57639e65`):** ponta TEXTURIZADA mantém a aquarela típica — split molhado/pigmento:
+wet = envelope saturado (imagem via rampa TIP_WET 0.03→0.20; procedural = só falloff) + density =
+a textura, acumulada em `stroke_density` (per-stroke, max-blend) e multiplicada no fill do
+composite. Corpo molhado + rim no contorno EXTERNO + textura como variação de pigmento; pigmento
+0 = "só água". `watercolor_render` re-split pro teto LOC (RewetFields+consts → field).
 
 ## 🎯 spec original — Shape "Automático" (Enio, 2026-07-07)
 

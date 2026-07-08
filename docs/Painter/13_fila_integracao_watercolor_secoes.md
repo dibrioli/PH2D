@@ -22,7 +22,11 @@ byte-idêntico, provado por teste de continuidade via o seam real), `Falloff::Wa
 (wire 10, bit-idêntico ao feather — avaliado no `t` original, round-trip `1−p` perdia bits),
 engine `WetShapeStamp` nos dois splats com RNG replay-sync entre os passes. Hardness participa via
 `falloff_weight`. Deferidos anotados: Shape Tone ramp no stamp (item #7) e `dab_flatten`.
-Jitter Rotate (#6) resolvido de brinde. Smoke pendente.
+Jitter Rotate (#6) resolvido de brinde. **Round 2 (`1d4ecc36`, pós-smoke):** Flatten/Rotate
+integrados ao envelope (fp.falloff_t quando não-identity; identity mantém dn bit-exato) +
+**normalização da ponta** (1/max_lum por traço): cobertura watercolor é geometria de molhado
+max-blend que precisa SATURAR (cw→1 corpo, inner→1 rim) — luminância tonal crua deixava centro
+pálido e rim morto. Ponta cinza uniforme == branca byte-a-byte; textura relativa sobrevive.
 
 ## 🎯 spec original — Shape "Automático" (Enio, 2026-07-07)
 

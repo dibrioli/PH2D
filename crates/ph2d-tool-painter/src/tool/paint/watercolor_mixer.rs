@@ -97,8 +97,8 @@ impl PainterTool {
             //    stays the picked-up colour. ──
             let (srgb, sw) = sample_surface(&base, &backdrop, fw, fh, d.center, d.radius_px);
             let update = if sw >= mix.w { RETAIN_LOAD } else { unload };
-            for c in 0..3 {
-                mix.rgb[c] = update * mix.rgb[c] + (1.0 - update) * sw * srgb[c];
+            for (channel, &s) in mix.rgb.iter_mut().zip(srgb.iter()) {
+                *channel = update * *channel + (1.0 - update) * sw * s;
             }
             mix.w = update * mix.w + (1.0 - update) * sw;
             // ── 2. Deposit: blend the brush colour toward the (unpremultiplied) reservoir colour by
@@ -109,9 +109,10 @@ impl PainterTool {
             let mut col = d.color;
             if mix.w > 1e-4 {
                 let inv = 1.0 / mix.w;
-                for c in 0..3 {
-                    let sc = mix.rgb[c] * inv; // unpremultiply
-                    col[c] = d.color[c] + (sc - d.color[c]) * t;
+                for ((out_c, &m), &base_c) in col.iter_mut().zip(mix.rgb.iter()).zip(d.color.iter())
+                {
+                    let sc = m * inv; // unpremultiply
+                    *out_c = base_c + (sc - base_c) * t;
                 }
             }
             out.push((col, t));

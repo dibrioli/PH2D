@@ -173,7 +173,7 @@ fn paint_brush_card(
     y: f32,
     brush: &BrushSettings,
 ) -> f32 {
-    let (ix, iw, mut ry, next_y) = card_frame(ctx, theme, x, content_w, y, "Brush", 4);
+    let (ix, iw, mut ry, next_y) = card_frame(ctx, theme, x, content_w, y, "Brush", 3);
     ry = card_row(
         ctx,
         theme,
@@ -202,7 +202,7 @@ fn paint_brush_card(
         number_field::FINE_STEP,
         2,
     );
-    ry = card_row(
+    let _ = card_row(
         ctx,
         theme,
         ix,
@@ -211,20 +211,6 @@ fn paint_brush_card(
         "Pull",
         core_ids::PAINTER_WATERCOLOR_PULL,
         brush.wet_pull,
-        0.0,
-        1.0,
-        number_field::FINE_STEP,
-        2,
-    );
-    let _ = card_row(
-        ctx,
-        theme,
-        ix,
-        iw,
-        ry,
-        "Blur",
-        core_ids::PAINTER_WATERCOLOR_BLUR,
-        brush.wet_blur,
         0.0,
         1.0,
         number_field::FINE_STEP,

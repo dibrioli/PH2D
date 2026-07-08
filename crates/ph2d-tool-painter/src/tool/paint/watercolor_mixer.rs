@@ -81,10 +81,6 @@ impl PainterTool {
         }
         let pickup = (1.0 - self.paint.brush.wet_charge).clamp(0.0, 1.0);
         let p = self.paint.brush.wet_pull.clamp(0.0, 1.0);
-        // Wet Mix Blur (doc 07 §4.2): the pickup-disc radius as a fraction of the dab radius —
-        // small = point pickup (crisp smear), large = whole-disc average (creamy). Default 0.5 =
-        // the historical hardcoded ring, byte-identical.
-        let blur = self.paint.brush.wet_blur.clamp(0.0, 1.0);
         // Unload retention rises with Pull (`p·(2−p)` concave, transcendental-free, HR-5 safe): Pull 0
         // = a short baseline carry (symmetric exit bleed), Pull → 1 = a long smudge. The LOAD rate is
         // fixed + fast (RETAIN_LOAD) so the pickup is always strong.
@@ -99,7 +95,7 @@ impl PainterTool {
             //    → the EXIT bleed mirrors the ENTRY). Bare ground (`sw = 0`) only DEPLETES the load
             //    (× update); it never pulls the carried hue toward the ground (premul), so `rgb / w`
             //    stays the picked-up colour. ──
-            let (srgb, sw) = sample_surface(&base, &backdrop, fw, fh, d.center, d.radius_px * blur);
+            let (srgb, sw) = sample_surface(&base, &backdrop, fw, fh, d.center, d.radius_px);
             let update = if sw >= mix.w { RETAIN_LOAD } else { unload };
             for (channel, &s) in mix.rgb.iter_mut().zip(srgb.iter()) {
                 *channel = update * *channel + (1.0 - update) * sw * s;
@@ -138,9 +134,10 @@ fn sample_surface(
     center: [f32; 2],
     r: f32,
 ) -> ([f32; 3], f32) {
-    // The tap ring sits AT `r` (the caller passes the Blur-scaled pickup radius; the historical
-    // behaviour — ring at half the dab radius — is the default `wet_blur = 0.5`, byte-identical).
-    let rr = r.max(0.0);
+    // Tap ring at HALF the dab radius — FIXED. A configurable pickup radius (Procreate's Wet Mix
+    // Blur) was exposed and REVERTED (Enio 2026-07-07: "funcionava melhor quando ele não era
+    // configurável") — don't re-expose without a smoke that says otherwise.
+    let rr = (r * 0.5).max(0.0);
     let taps = [
         (center[0], center[1]),
         (center[0] - rr, center[1]),

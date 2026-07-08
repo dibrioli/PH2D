@@ -243,12 +243,6 @@ pub struct BrushSpec {
     /// **Paper Depth**, `0..1`: how strongly the [`Self::paper`] tooth textures the wash (the paper's
     /// substrate bite, independent of the granulation amount). `0` = a flat wash; `1` = full tooth.
     pub paper_depth: f32,
-    /// Wet Mix **Blur** (`0..1`, Procreate's Blur — doc 07 §4.2, deferred there, exposed 2026-07-07):
-    /// the mixer's PICKUP-DISC radius as a fraction of the dab radius (`sample_surface`'s tap ring).
-    /// `0` = point pickup (crisp smearing of distinct colours) · `0.5` (default — byte-identical to
-    /// the historical hardcoded `r × 0.5`) · `1` = full-radius pickup (creamy averaged blending).
-    /// Inert unless [`Self::wet_charge`] `< 1` (the mixer itself is off at full Charge).
-    pub wet_blur: f32,
     /// **Shape "Automatic"** (watercolor mode, Enio 2026-07-07): `true` (default) = the watercolor
     /// stamp uses its own built-in silhouette (the two-segment feather disc — byte-identical to the
     /// historical behaviour, the Shape section is not consulted). `false` = the Shape section drives
@@ -321,7 +315,6 @@ impl Default for BrushSpec {
             granulation_use_paper: true,
             paper_depth: 1.0,
             watercolor_shape_auto: true, // built-in feather silhouette (byte-identical default)
-            wet_blur: 0.5, // the historical hardcoded pickup ring (r × 0.5) — byte-identical
         }
     }
 }

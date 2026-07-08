@@ -105,11 +105,6 @@ fn panel_events_drive_watercolor_state() {
     );
     t.handle_panel_event(PanelEvent::SetValue(core_ids::PAINTER_WATERCOLOR_PULL, 2.0));
     assert_eq!(t.brush_settings().wet_pull, 1.0, "Pull clamped to 1");
-    t.handle_panel_event(PanelEvent::SetValue(core_ids::PAINTER_WATERCOLOR_BLUR, 0.2));
-    assert!(
-        (t.brush_settings().wet_blur - 0.2).abs() < 1e-6,
-        "Blur set (pickup-disc radius)"
-    );
 
     // Paper + Granulation slots: kind picker, Size, Angle, and the "Same as Paper" toggle.
     t.handle_panel_event(PanelEvent::SelectOption(

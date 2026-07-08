@@ -46,9 +46,13 @@ pub fn dispatch(scene: &VecScene, transform: Affine, target: &mut VectorScene) {
             target.fill_path(&bp, &Brush::Solid(color(fill)), transform);
         }
         if let Some(s) = path.stroke {
-            target
-                .inner_mut()
-                .stroke(&kurbo_stroke(&s), transform, &Brush::Solid(color(s.color)), None, &bp);
+            target.inner_mut().stroke(
+                &kurbo_stroke(&s),
+                transform,
+                &Brush::Solid(color(s.color)),
+                None,
+                &bp,
+            );
         }
     }
 }

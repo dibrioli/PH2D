@@ -412,10 +412,10 @@ fn nudge_translates_whole_path_or_only_selected_verts() {
     pen.box_select(&scene, [c[0] - 0.1, c[1] - 0.1], [c[0] + 0.1, c[1] + 0.1]);
     assert!(pen.nudge(&mut scene, 10.0, 0.0));
     assert_eq!(scene.paths()[0].verts[0].anchor, [c[0] + 10.0, c[1]]);
-    for i in 1..now.len() {
+    for (i, &expected) in now.iter().enumerate().skip(1) {
         assert_eq!(
             scene.paths()[0].verts[i].anchor,
-            now[i],
+            expected,
             "outros vértices ficam"
         );
     }

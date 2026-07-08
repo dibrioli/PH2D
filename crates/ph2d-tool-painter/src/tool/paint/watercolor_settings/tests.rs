@@ -1,4 +1,3 @@
-
 use crate::tool::PainterTool;
 use ph2d_editor_core::ids as core_ids;
 use ph2d_editor_core::tool::{PanelEvent, Tool};

@@ -56,9 +56,11 @@ pub(crate) fn populate(store: &mut WidgetStore) {
             orientation: SliderOrientation::Horizontal,
         },
     );
+    button(store, ids::TIMELINE_GO_START);
     button(store, ids::TIMELINE_PREV_FRAME);
     button(store, ids::TIMELINE_PLAY);
     button(store, ids::TIMELINE_NEXT_FRAME);
+    button(store, ids::TIMELINE_GO_END);
     button(store, ids::TIMELINE_ADD_TRACK);
     for (id, _) in ids::ADDPROP_BUTTONS {
         button(store, id);

@@ -74,6 +74,12 @@ impl Clip {
         self.duration
     }
 
+    /// Set the clip's authored duration. Keys past it are kept (sampling
+    /// flat-clamps); a shorter clip simply stops looping earlier.
+    pub fn set_duration(&mut self, duration: RationalTime) {
+        self.duration = duration;
+    }
+
     /// All `(target, track)` pairs.
     #[must_use]
     pub fn tracks(&self) -> &[(AnimTarget, Track)] {

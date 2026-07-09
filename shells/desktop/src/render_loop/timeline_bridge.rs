@@ -46,7 +46,10 @@ pub(crate) fn intent_for_transport(
     use TimelineIntent as I;
     use ph2d_editor::ids;
     let fps = timeline.doc.fps_display;
-    let duration = || timeline.doc.active_clip().duration().to_seconds();
+    // "The end" is the last keyframe when it runs past the authored duration —
+    // a fresh clip's duration is 0, which would pin go-to-end (and the loop
+    // range) at t = 0 for every hand-keyed animation.
+    let duration = || timeline.doc.end_seconds();
     match *ev {
         PanelEvent::Click(id) if id == ids::TIMELINE_PLAY => Some(I::TogglePlay),
         PanelEvent::Click(id) if id == ids::TIMELINE_GO_START => Some(I::Scrub(0.0)),
@@ -157,6 +160,68 @@ mod tests {
         assert_eq!(
             intent_for_transport(&PanelEvent::Click(ids::TIMELINE_CLOSE), &st, &ph),
             None
+        );
+    }
+
+    #[test]
+    fn go_start_and_go_end_scrub_to_the_clip_bounds() {
+        use ph2d_timeline::PropKind;
+        let mut st = TimelineState::new();
+        let mut ph = Playhead::new(1.0 / 60.0);
+
+        // Empty doc: both ends are t = 0.
+        assert_eq!(
+            intent_for_transport(&PanelEvent::Click(ids::TIMELINE_GO_START), &st, &ph),
+            Some(TimelineIntent::Scrub(0.0))
+        );
+        assert_eq!(
+            intent_for_transport(&PanelEvent::Click(ids::TIMELINE_GO_END), &st, &ph),
+            Some(TimelineIntent::Scrub(0.0))
+        );
+
+        // Key at 2.5 s: go-to-end must follow the LAST KEY, not the clip's
+        // authored duration (0 on a fresh clip — a dead button otherwise).
+        ph2d_timeline::apply_intent(
+            &mut st,
+            &mut ph,
+            TimelineIntent::AddKey {
+                entity: 1,
+                prop: PropKind::TranslationX,
+                t: ph2d_anim::RationalTime::from_seconds(2.5),
+                value: ph2d_anim::AnimValue::Float(3.0),
+                interp: default_interp(),
+            },
+        );
+        assert_eq!(
+            intent_for_transport(&PanelEvent::Click(ids::TIMELINE_GO_END), &st, &ph),
+            Some(TimelineIntent::Scrub(2.5))
+        );
+        assert_eq!(
+            intent_for_transport(&PanelEvent::Click(ids::TIMELINE_GO_START), &st, &ph),
+            Some(TimelineIntent::Scrub(0.0))
+        );
+    }
+
+    #[test]
+    fn the_default_loop_range_spans_to_the_last_key() {
+        use ph2d_timeline::PropKind;
+        let mut st = TimelineState::new();
+        let mut ph = Playhead::new(1.0 / 60.0);
+        ph2d_timeline::apply_intent(
+            &mut st,
+            &mut ph,
+            TimelineIntent::AddKey {
+                entity: 1,
+                prop: PropKind::TranslationX,
+                t: ph2d_anim::RationalTime::from_seconds(4.0),
+                value: ph2d_anim::AnimValue::Float(1.0),
+                interp: default_interp(),
+            },
+        );
+        assert_eq!(
+            intent_for_transport(&PanelEvent::Toggle(ids::TIMELINE_LOOP, true), &st, &ph),
+            Some(TimelineIntent::SetLoop(Some((0.0, 4.0)))),
+            "looping a hand-keyed clip must not collapse to a zero-length range"
         );
     }
 

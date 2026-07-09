@@ -317,3 +317,39 @@ fn copy_with_no_selection_keeps_the_previous_clipboard() {
         "an empty copy must not clobber a good clipboard"
     );
 }
+
+// ── "The end" of a clip (go-to-end / default loop range) ─────────────────────
+
+#[test]
+fn end_seconds_follows_the_last_key_past_a_zero_duration() {
+    let mut st = TimelineState::new();
+    let mut ph = Playhead::new(DT);
+    // A fresh clip has no authored duration: "the end" is t=0 until keys exist.
+    assert_eq!(st.doc.end_seconds(), 0.0);
+
+    add_key(&mut st, &mut ph, 1, PropKind::TranslationX, 0.0, 5.0);
+    add_key(&mut st, &mut ph, 1, PropKind::TranslationX, 2.5, 9.0);
+    // Another track, ending earlier — the max across tracks wins.
+    add_key(&mut st, &mut ph, 2, PropKind::Rotation, 1.0, 1.0);
+    assert_eq!(
+        st.doc.end_seconds(),
+        2.5,
+        "go-to-end lands on the last keyframe, not on the 0 duration"
+    );
+}
+
+#[test]
+fn end_seconds_respects_an_authored_duration_that_outlasts_the_keys() {
+    use ph2d_anim::RationalTime;
+    let mut st = TimelineState::new();
+    let mut ph = Playhead::new(DT);
+    add_key(&mut st, &mut ph, 1, PropKind::TranslationX, 1.0, 5.0);
+    st.doc
+        .active_clip_mut()
+        .set_duration(RationalTime::from_seconds(10.0));
+    assert_eq!(
+        st.doc.end_seconds(),
+        10.0,
+        "authored duration wins when longer"
+    );
+}

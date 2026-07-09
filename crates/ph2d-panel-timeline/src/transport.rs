@@ -41,6 +41,9 @@ pub(crate) fn paint_bar(
     let mut x = body.x;
 
     // ── transport buttons ────────────────────────────────────────────────────
+    // |◀ ◀ ▶/⏸ ▶ ▶| — jump to start, step back, play/pause, step forward, jump
+    // to end. The skip glyphs bracket the frame-steppers, as every transport does.
+    x = icon_button(ctx, theme, x, y, ids::TIMELINE_GO_START, IconId::SkipBack) + gap * 0.5;
     x = icon_button(
         ctx,
         theme,
@@ -62,7 +65,8 @@ pub(crate) fn paint_bar(
         y,
         ids::TIMELINE_NEXT_FRAME,
         IconId::ChevronRight,
-    ) + gap;
+    ) + gap * 0.5;
+    x = icon_button(ctx, theme, x, y, ids::TIMELINE_GO_END, IconId::SkipForward) + gap;
 
     // ── seconds + frame chips ────────────────────────────────────────────────
     let fps = if snap.fps > 0.0 {

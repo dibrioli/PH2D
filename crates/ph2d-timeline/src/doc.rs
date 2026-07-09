@@ -106,6 +106,25 @@ impl TimelineDoc {
         &self.clips[self.active_clip].clip
     }
 
+    /// Where "the end" of the active clip is, in seconds: the authored clip
+    /// duration, or the last keyframe if the animation runs past it.
+    ///
+    /// A fresh clip has duration `0` and `insert_key` never extends it, so the
+    /// authored duration alone would pin "go to end" at `t = 0` for every
+    /// hand-keyed animation. Transport (go-to-end, the default loop range) reads
+    /// THIS, not `active_clip().duration()`.
+    #[must_use]
+    pub fn end_seconds(&self) -> f64 {
+        let clip = self.active_clip();
+        let last_key = clip
+            .tracks()
+            .iter()
+            .filter_map(|(_, track)| track.keys().last())
+            .map(|k| k.t.to_seconds())
+            .fold(0.0_f64, f64::max);
+        clip.duration().to_seconds().max(last_key)
+    }
+
     /// The clip currently edited, mutably.
     pub fn active_clip_mut(&mut self) -> &mut Clip {
         &mut self.clips[self.active_clip].clip

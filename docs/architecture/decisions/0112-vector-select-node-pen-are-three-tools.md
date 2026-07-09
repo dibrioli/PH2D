@@ -81,6 +81,26 @@ cursor exatamente pelo ponto onde o arrasto começou (Enio, 2026-07-09: *"offset
 em relação ao mouse"*). Por isso `settle_origins` recebe a lista de paths em gesto e os
 deixa em paz até o Up.
 
+## Dois gaps que este ADR ABRE (verificados, não suspeitados)
+
+**1. `vec_save` / `vec_load` (Ctrl+S / Ctrl+O com a tool ativa) perdem a pose.**
+Eles serializam só o `VecScene` (`ph2d_vec_scene.postcard`). Depois de assentar, a
+geometria de cada forma está centrada na origem **dela**, e a pose vive na entidade
+ECS — que não é salva. Consequência exata: `save` → sair → `load` numa sessão nova
+empilha todas as formas na origem do mundo. Um arquivo **antigo** (geometria em
+world-space) ainda carrega certo, porque `settle_origins` o recentra. A quebra é *para
+a frente*, não para trás.
+
+O certo é o save de cena do ECS, não um segundo formato. Até lá, `vec_save` é uma
+conveniência de dev e deve ser tratada como tal.
+
+**2. Transformar uma forma pelo gizmo não é mais desfazível.** `ph2d_vec_edit::History`
+tira snapshot do `VecScene`; um `Transform` não está lá, e o drag do gizmo de sprite
+não empilha undo em lugar nenhum (nem para sprites). Antes do ADR-0111, o gizmo
+vetorial próprio mutava geometria, então **era** desfazível. Ou seja: ficou consistente
+com o resto do editor, e pior do que era. O conserto é um undo de `Transform` para
+todos os objetos, não um remendo vetorial.
+
 ## Consequências
 
 **Boas.** Um clique tem um dono. A caneta faz uma coisa. O pivô de uma forma é o centro

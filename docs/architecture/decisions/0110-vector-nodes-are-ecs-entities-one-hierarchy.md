@@ -73,8 +73,9 @@ spawnada; path removido ⇒ entidade despawnada; árvore reordenada ⇒ `paths`
 re-projetada. É um único módulo (`shells/desktop/src/vec_entities.rs`) e um
 invariante testável — nenhum path sem entidade, nenhuma `VecPathRef` órfã.
 
-**Quebra de save.** `VEC_SCENE_SCHEMA_VERSION` 7 → 8: `VecPath` perde quatro campos
-e `VecScene` perde `groups`. Postcard é posicional.
+**Quebra de save.** `VEC_SCENE_SCHEMA_VERSION` 6 → 7: `VecPath` perde quatro campos
+(`name`/`visible`/`locked`/`parent`) e `VecScene` perde `groups`. Postcard é
+posicional, então um arquivo antigo decodificaria errado sem o bump.
 
 ## §4 — A seleção é COMPARTILHADA (duas armadilhas, as duas já pisadas)
 

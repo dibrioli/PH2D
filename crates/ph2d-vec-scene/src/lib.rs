@@ -310,7 +310,7 @@ pub struct VecPath {
 /// Linear/Radial/MultiPoint). v5: [`GradientPoint`] ganhou `jitter`. v6: `VecPath`
 /// ganhou `subpaths` + `fill_rule` (compound paths). (Migração robusta = cutover,
 /// Fase R.)
-pub const VEC_SCENE_SCHEMA_VERSION: u32 = 6;
+pub const VEC_SCENE_SCHEMA_VERSION: u32 = 7;
 
 /// Reordenação na pilha de render (índice `0` = fundo, último = frente). Uma
 /// operação de documento, mapeada pela shell a partir dos botões Arrange (mirror

@@ -239,6 +239,32 @@ impl App {
             return;
         }
 
+        // General timeline (W2.E7) — Ctrl/Cmd + C/X/V on the dope-sheet keys.
+        // Runs AFTER the Vector/Motion blocks, so an active tool keeps the chord;
+        // requires the panel open, no focused text field, and something to act on
+        // (a selection to copy/cut, a clipboard to paste) — otherwise it falls
+        // through to the OS/text clipboard.
+        if self.timeline_panel_open()
+            && state == ElementState::Pressed
+            && !repeat
+            && (self.modifiers.control_key() || self.modifiers.super_key())
+            && !self.vector_text_field_focused()
+            && let PhysicalKey::Code(code) = physical_key
+        {
+            use ph2d_timeline::TimelineIntent as I;
+            let has_selection = !self.timeline.selection.is_empty();
+            let intent = match code {
+                KeyCode::KeyC if has_selection => Some(I::CopySelection),
+                KeyCode::KeyX if has_selection => Some(I::CutSelection),
+                KeyCode::KeyV if !self.timeline.clipboard.is_empty() => Some(I::Paste),
+                _ => None,
+            };
+            if let Some(intent) = intent {
+                self.timeline_intents.push(intent);
+                return;
+            }
+        }
+
         // Vector: Escape ends an in-progress path (it stays in the scene, open).
         // Consumed only while the Vector tool is active and the Pen is drawing,
         // so Escape otherwise falls through to widget blur.

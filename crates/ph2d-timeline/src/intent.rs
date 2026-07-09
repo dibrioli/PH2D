@@ -87,6 +87,15 @@ pub enum TimelineIntent {
     },
     /// Delete every selected key.
     DeleteSelection,
+    /// Copy the selected keys onto the clipboard (time-rebased to the earliest).
+    /// Not undoable — the clipboard is panel state. A no-op with no selection,
+    /// so an accidental copy never clobbers a good clipboard.
+    CopySelection,
+    /// Copy the selected keys, then delete them (the delete is one undo step).
+    CutSelection,
+    /// Paste the clipboard at the playhead, preserving the copied group's
+    /// internal timing. The pasted keys become the selection; one undo step.
+    Paste,
     /// Set one key's value.
     SetKeyValue {
         /// Track target.
@@ -191,6 +200,39 @@ pub fn apply_intent(state: &mut TimelineState, playhead: &mut Playhead, intent: 
             for_selected_tracks(doc, sel, |track, ids| track.remove_keys(ids));
             sel.clear();
         }),
+        I::CopySelection => copy_selection(state),
+        I::CutSelection => {
+            copy_selection(state);
+            edit(state, |doc, sel| {
+                for_selected_tracks(doc, sel, |track, ids| track.remove_keys(ids));
+                sel.clear();
+            });
+        }
+        I::Paste => {
+            // Snapshot the clipboard out so the `edit` closure can borrow `state`.
+            let items: Vec<_> = state.clipboard.keys().to_vec();
+            let t0 = playhead.time();
+            let snap_on = state.flags.frame_snap;
+            edit(state, |doc, sel| {
+                sel.clear();
+                for ck in &items {
+                    let t = snap_time(
+                        RationalTime::from_seconds(t0 + ck.offset_seconds),
+                        fps,
+                        snap_on,
+                    );
+                    // A track the copy came from may have been unbound since —
+                    // skip it rather than resurrecting a dead binding.
+                    if let Some(track) = doc.active_clip_mut().track_mut(ck.target) {
+                        let key = track.upsert_key(t, ck.value, ck.interp);
+                        sel.add(SelectedKey {
+                            target: ck.target,
+                            key,
+                        });
+                    }
+                }
+            });
+        }
         I::SetKeyValue { target, key, value } => edit(state, |doc, _| {
             if let Some(track) = doc.active_clip_mut().track_mut(target) {
                 track.set_value(key, value);
@@ -224,6 +266,28 @@ pub fn apply_intent(state: &mut TimelineState, playhead: &mut Playhead, intent: 
             state.redo();
         }
     }
+}
+
+/// Copy the selected keys' real `(track, time, value, interp)` onto the
+/// clipboard, time-rebased to the earliest. A selection that resolves to no live
+/// key leaves the clipboard untouched (never clobber a good clipboard).
+fn copy_selection(state: &mut TimelineState) {
+    let picked: Vec<(AnimTarget, f64, AnimValue, Interp)> = {
+        let clip = state.doc.active_clip();
+        state
+            .selection
+            .keys()
+            .iter()
+            .filter_map(|sk| {
+                let k = clip.track(sk.target)?.key(sk.key)?;
+                Some((sk.target, k.t.to_seconds(), k.value, k.interp))
+            })
+            .collect()
+    };
+    if picked.is_empty() {
+        return;
+    }
+    state.clipboard.set_from_absolute(&picked);
 }
 
 /// Run a doc edit as one undo step: snapshot, mutate `(doc, selection)`, commit

@@ -7,6 +7,7 @@
 
 use ph2d_anim::{AnimTarget, KeyId};
 
+use crate::clipboard::TimelineClipboard;
 use crate::doc::TimelineDoc;
 use crate::history::TimelineHistory;
 
@@ -140,6 +141,8 @@ pub struct TimelineState {
     pub history: TimelineHistory,
     /// Transport/panel flags (not undoable).
     pub flags: TimelineFlags,
+    /// Copied keys (panel state, not undoable, not serialized).
+    pub clipboard: TimelineClipboard,
 }
 
 impl TimelineState {

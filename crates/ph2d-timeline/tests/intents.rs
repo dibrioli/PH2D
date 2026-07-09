@@ -160,3 +160,160 @@ fn transport_intents_toggle_and_loop() {
     apply_intent(&mut st, &mut ph, I::SetLoop(None));
     assert_eq!(ph.loop_range(), None);
 }
+
+// ── W2.E7 — clipboard (copy / cut / paste) ───────────────────────────────────
+
+/// Bind entity 1's TranslationX and key it at `0.0` and `0.5`, both selected.
+fn two_selected_keys(st: &mut TimelineState, ph: &mut Playhead) {
+    add_key(st, ph, 1, PropKind::TranslationX, 0.0, 5.0);
+    add_key(st, ph, 1, PropKind::TranslationX, 0.5, 9.0);
+    let target = st
+        .doc
+        .binding_for(1, PropKind::TranslationX)
+        .unwrap()
+        .target;
+    let ids: Vec<_> = st.doc.active_clip().track(target).unwrap().ids().to_vec();
+    apply_intent(
+        st,
+        ph,
+        I::SelectSingle(SelectedKey {
+            target,
+            key: ids[0],
+        }),
+    );
+    apply_intent(
+        st,
+        ph,
+        I::AddToSelection(SelectedKey {
+            target,
+            key: ids[1],
+        }),
+    );
+    assert_eq!(st.selection.len(), 2);
+}
+
+fn key_times(st: &TimelineState) -> Vec<f64> {
+    let target = st
+        .doc
+        .binding_for(1, PropKind::TranslationX)
+        .unwrap()
+        .target;
+    st.doc
+        .active_clip()
+        .track(target)
+        .unwrap()
+        .keys()
+        .iter()
+        .map(|k| k.t.to_seconds())
+        .collect()
+}
+
+#[test]
+fn copy_then_paste_at_the_playhead_preserves_the_group_timing() {
+    let mut st = TimelineState::new();
+    let mut ph = Playhead::new(DT);
+    two_selected_keys(&mut st, &mut ph);
+
+    apply_intent(&mut st, &mut ph, I::CopySelection);
+    assert_eq!(st.clipboard.len(), 2);
+    let offsets: Vec<f64> = st
+        .clipboard
+        .keys()
+        .iter()
+        .map(|k| k.offset_seconds)
+        .collect();
+    assert_eq!(
+        offsets,
+        vec![0.0, 0.5],
+        "rebased to the earliest copied key"
+    );
+
+    // Scrub away and paste: the group lands at the playhead, same 0.5 s spacing.
+    apply_intent(&mut st, &mut ph, I::Scrub(2.0));
+    apply_intent(&mut st, &mut ph, I::Paste);
+    assert_eq!(key_times(&st), vec![0.0, 0.5, 2.0, 2.5]);
+    assert_eq!(
+        st.selection.len(),
+        2,
+        "the pasted keys become the selection"
+    );
+    // Values rode along with the copy.
+    let target = st
+        .doc
+        .binding_for(1, PropKind::TranslationX)
+        .unwrap()
+        .target;
+    let tr = st.doc.active_clip().track(target).unwrap();
+    assert_eq!(tr.keys()[2].value, AnimValue::Float(5.0));
+    assert_eq!(tr.keys()[3].value, AnimValue::Float(9.0));
+}
+
+#[test]
+fn paste_is_a_single_undo_step() {
+    let mut st = TimelineState::new();
+    let mut ph = Playhead::new(DT);
+    two_selected_keys(&mut st, &mut ph);
+    apply_intent(&mut st, &mut ph, I::CopySelection);
+    apply_intent(&mut st, &mut ph, I::Scrub(2.0));
+    apply_intent(&mut st, &mut ph, I::Paste);
+    assert_eq!(key_times(&st).len(), 4);
+
+    apply_intent(&mut st, &mut ph, I::Undo);
+    assert_eq!(
+        key_times(&st),
+        vec![0.0, 0.5],
+        "one undo removes the whole paste"
+    );
+    // The clipboard survives undo — it is not part of the document.
+    assert_eq!(st.clipboard.len(), 2);
+}
+
+#[test]
+fn cut_copies_then_deletes_in_one_undo_step() {
+    let mut st = TimelineState::new();
+    let mut ph = Playhead::new(DT);
+    two_selected_keys(&mut st, &mut ph);
+
+    apply_intent(&mut st, &mut ph, I::CutSelection);
+    assert_eq!(st.clipboard.len(), 2, "cut fills the clipboard");
+    assert!(key_times(&st).is_empty(), "cut removed the keys");
+    assert!(st.selection.is_empty());
+
+    apply_intent(&mut st, &mut ph, I::Undo);
+    assert_eq!(
+        key_times(&st),
+        vec![0.0, 0.5],
+        "one undo restores the cut keys"
+    );
+}
+
+#[test]
+fn paste_with_an_empty_clipboard_is_a_no_op() {
+    let mut st = TimelineState::new();
+    let mut ph = Playhead::new(DT);
+    add_key(&mut st, &mut ph, 1, PropKind::TranslationX, 0.0, 5.0);
+    let undos_before = st.history.can_undo();
+    apply_intent(&mut st, &mut ph, I::Paste);
+    assert_eq!(key_times(&st), vec![0.0], "nothing pasted");
+    assert_eq!(st.history.can_undo(), undos_before);
+    // And one undo still lands on the AddKey, not on an empty paste step.
+    apply_intent(&mut st, &mut ph, I::Undo);
+    assert!(st.doc.binding_for(1, PropKind::TranslationX).is_none());
+}
+
+#[test]
+fn copy_with_no_selection_keeps_the_previous_clipboard() {
+    let mut st = TimelineState::new();
+    let mut ph = Playhead::new(DT);
+    two_selected_keys(&mut st, &mut ph);
+    apply_intent(&mut st, &mut ph, I::CopySelection);
+    assert_eq!(st.clipboard.len(), 2);
+
+    apply_intent(&mut st, &mut ph, I::ClearSelection);
+    apply_intent(&mut st, &mut ph, I::CopySelection);
+    assert_eq!(
+        st.clipboard.len(),
+        2,
+        "an empty copy must not clobber a good clipboard"
+    );
+}

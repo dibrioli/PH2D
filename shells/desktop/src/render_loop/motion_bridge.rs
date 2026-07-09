@@ -171,11 +171,16 @@ pub(super) fn dispatch(
     // cost as before; while paused `advance` is a no-op and the pump
     // early-returns at the unchanged tick, so the loop costs nothing
     // (zero-alloc paused frame, M0.T12).
+    // Time scopes (M2.N1): each `motion.time_remap` node rewrites the clock of
+    // its upstream subtree. Rebuilt per frame — one pass over the node list, and
+    // empty for a graph with no remapper (the common case), so the cook takes
+    // its unscoped path unchanged.
+    let scopes = ph2d_node_motion_time_remap::time_scopes(&motion.doc.graph, &motion.registry);
     for _ in 0..frame_ticks {
         motion.transport.advance(1);
         let playhead = motion.playhead(fixed_dt);
         let tick = motion.transport.tick;
-        motion.pump.pump(
+        motion.pump.pump_scoped(
             &motion.doc.graph,
             &motion.registry,
             &motion.sinks,
@@ -183,13 +188,14 @@ pub(super) fn dispatch(
             playhead,
             motion.default_uv_rect,
             motion.default_size,
+            &scopes,
         );
     }
     // Catch-up for a frame with no fixed step or a paused transport: a dirty
     // edit (param drag, rewire) still re-cooks this frame. No-op when clean.
     let playhead = motion.playhead(fixed_dt);
     let tick = motion.transport.tick;
-    motion.pump.pump(
+    motion.pump.pump_scoped(
         &motion.doc.graph,
         &motion.registry,
         &motion.sinks,
@@ -197,6 +203,7 @@ pub(super) fn dispatch(
         playhead,
         motion.default_uv_rect,
         motion.default_size,
+        &scopes,
     );
 }
 
@@ -334,6 +341,14 @@ fn apply_connect(
             };
             if rejected {
                 toasts.push(Toast::warning("Can't connect: incompatible ports"));
+            } else if scopes_a_sequential_node(&trial) {
+                // A spring / integrate upstream of a Time Remap would be asked
+                // to integrate a recurrence on a rewritten clock — the cook
+                // refuses it (`SequentialInTimeScope`) and the scene goes dark.
+                // Refuse the WIRE instead, with the reason (M2.N1).
+                toasts.push(Toast::warning(
+                    "Can't connect: Time Remap can't rewrite time for a spring or integrate upstream",
+                ));
             } else {
                 let pre = motion.doc.clone();
                 motion.doc.graph = trial;
@@ -346,6 +361,21 @@ fn apply_connect(
             }
         }
     }
+}
+
+/// Does any `motion.time_remap` in `graph` now have a **sequential** node (a
+/// spring / integrate, i.e. one fed by a `pre` edge) in its upstream subtree?
+/// Such a node integrates a recurrence over the outer tick and has no defined
+/// behaviour on a rewritten clock (`CookError::SequentialInTimeScope`), so the
+/// editor refuses the wire that would create the situation rather than let the
+/// cook drop the sink and the scene go dark (M2.N1, plan §1.5).
+#[cfg(feature = "panel-motion-graph")]
+fn scopes_a_sequential_node(graph: &ph2d_nodegraph::graph::Graph) -> bool {
+    graph
+        .nodes()
+        .iter()
+        .filter(|n| n.type_name == ph2d_node_motion_time_remap::MANIFEST.name)
+        .any(|n| ph2d_node_motion_time_remap::scopes_a_sequential_node(graph, n.id))
 }
 
 /// Apply a `Disconnect` intent. An engine-managed `pre` (the plumbing badge)

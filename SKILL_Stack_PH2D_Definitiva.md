@@ -734,9 +734,16 @@ Estudo + evidência primária: [`docs/Motion Nodes/03_reentrada_integrate_estudo
   playhead; aleatoriedade = `hash(seed, id, lane)`) — scrub de graça, replay bit-exato (HR-5).
 - Nós sequenciais futuros: input chamado `state` (mesmo `PortType` do output 0) = porta de
   feedback com self-loop automático; `forces` = idem + plumbing de ramo. Convenção append-only.
-- **Horizonte:** Zona de Simulação (bracket à la Blender, alinha com P4 do design canônico)
-  quando `cook_scoped` existir — generaliza, não substitui, os nós densos. Armadilhas de UX já
-  documentadas no doc 04 §2e.
+- **Escopos de tempo** ([`05_time_scopes_nota_adr.md`](docs/Motion%20Nodes/05_time_scopes_nota_adr.md)):
+  reamostrar uma sub-árvore em outro tempo é trabalho do **puxador**, não do nó (um nó só vê seus
+  inputs já resolvidos). `Cook::cook_scoped` aplica um `TimeMap` ao descer nos inputs do
+  `motion.time_remap`; memo re-chaveado por `(NodeId, ScopeKey)`; lanes mortas podadas no tick.
+  **Nó sequencial dentro de escopo remapeado é RECUSADO** (`SequentialInTimeScope`) — uma
+  recorrência sobre o tick externo não tem leitura sob relógio reescrito; o editor recusa o fio.
+  `Freeze` é de graça (memo); `Loop` é correto mas não-cacheado entre voltas (memo é single-slot).
+- **Horizonte:** Zona de Simulação (bracket à la Blender, alinha com P4 do design canônico) —
+  `cook_scoped` (o pré-requisito) já existe. Generaliza, não substitui, os nós densos. Armadilhas
+  de UX já documentadas no doc 04 §2e.
 
 ## 12. Cross-cutting concerns
 

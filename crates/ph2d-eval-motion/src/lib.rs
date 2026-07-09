@@ -37,7 +37,7 @@
 //! lowering already reads them.
 
 use ph2d_nodegraph::attr::{Column, Stream};
-use ph2d_nodegraph::cook::{Cook, CookError, OpResolver};
+use ph2d_nodegraph::cook::{Cook, CookError, OpResolver, TimeScopes};
 use ph2d_nodegraph::graph::{Graph, NodeId};
 use ph2d_render::RenderInstance;
 
@@ -211,6 +211,9 @@ pub struct MotionCookPump {
     last_cooked_tick: Option<u64>,
     /// Set by a graph edit so the next frame re-cooks even at the same tick.
     dirty: bool,
+    /// The last cook error, if this frame's cook refused a sink. Kept so the
+    /// shell can explain a dark scene instead of leaving the artist guessing.
+    last_error: Option<CookError>,
 }
 
 impl Default for MotionCookPump {
@@ -228,6 +231,7 @@ impl MotionCookPump {
             instances: Vec::new(),
             last_cooked_tick: None,
             dirty: true,
+            last_error: None,
         }
     }
 
@@ -260,33 +264,75 @@ impl MotionCookPump {
         default_uv_rect: [f32; 4],
         default_size: [f32; 2],
     ) -> bool {
+        self.pump_scoped(
+            graph,
+            ops,
+            sinks,
+            tick,
+            playhead,
+            default_uv_rect,
+            default_size,
+            &TimeScopes::new(),
+        )
+    }
+
+    /// [`Self::pump`] under time scopes (M2.N1): every `motion.time_remap` node
+    /// rewrites the clock of its upstream subtree. Build `scopes` with
+    /// `ph2d_node_motion_time_remap::time_scopes` — the substrate keys scopes by
+    /// `NodeId` and knows no node types, so the caller owns that translation.
+    /// An empty map behaves exactly like [`Self::pump`].
+    #[allow(clippy::too_many_arguments)] // `pump` + the scopes; one shell call site
+    pub fn pump_scoped(
+        &mut self,
+        graph: &Graph,
+        ops: &dyn OpResolver,
+        sinks: &[NodeId],
+        tick: u64,
+        playhead: f64,
+        default_uv_rect: [f32; 4],
+        default_size: [f32; 2],
+        scopes: &TimeScopes,
+    ) -> bool {
         if !self.dirty && self.last_cooked_tick == Some(tick) {
             return false; // paused + unchanged → reuse the buffer, no heap traffic
         }
         self.instances.clear();
+        self.last_error = None;
         for &sink in sinks {
-            // A sink that fails to cook (an unknown type mid-edit) contributes
-            // nothing; the others still draw.
-            if let Ok(outputs) = self.cook.cook(graph, ops, sink, playhead)
-                && let Some(v) = outputs.first()
-            {
-                lower_to_instances_onto(
-                    v.as_stream(),
-                    default_uv_rect,
-                    default_size,
-                    &mut self.instances,
-                );
+            // A sink that fails to cook (an unknown type mid-edit, or a
+            // sequential node caught inside a remapped time scope) contributes
+            // nothing; the others still draw. The error is kept for the shell.
+            match self.cook.cook_scoped(graph, ops, sink, playhead, scopes) {
+                Ok(outputs) => {
+                    if let Some(v) = outputs.first() {
+                        lower_to_instances_onto(
+                            v.as_stream(),
+                            default_uv_rect,
+                            default_size,
+                            &mut self.instances,
+                        );
+                    }
+                }
+                Err(e) => self.last_error = Some(e),
             }
         }
         if !sinks.is_empty() {
             // Advance the 1-tick `pre` feedback once per cooked frame — ONCE for
             // the whole graph, not per sink (each sink's `pre` sources are
             // snapshotted by the same call).
-            let _ = self.cook.advance_tick(graph, ops, playhead);
+            let _ = self.cook.advance_tick_scoped(graph, ops, playhead, scopes);
         }
         self.last_cooked_tick = Some(tick);
         self.dirty = false;
         true
+    }
+
+    /// The error from the last cook, if a sink refused. `None` when every sink
+    /// cooked. Lets the shell explain a dark scene rather than leave the artist
+    /// staring at an empty viewport.
+    #[must_use]
+    pub fn last_error(&self) -> Option<&CookError> {
+        self.last_error.as_ref()
     }
 }
 

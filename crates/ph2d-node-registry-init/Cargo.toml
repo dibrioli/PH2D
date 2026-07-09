@@ -35,6 +35,7 @@ ph2d-node-motion-rotate = { path = "../ph2d-node-motion-rotate" }
 ph2d-node-motion-scale = { path = "../ph2d-node-motion-scale" }
 ph2d-node-motion-spring = { path = "../ph2d-node-motion-spring" }
 ph2d-node-motion-stagger = { path = "../ph2d-node-motion-stagger" }
+ph2d-node-motion-time-remap = { path = "../ph2d-node-motion-time-remap" }
 ph2d-node-motion-tint = { path = "../ph2d-node-motion-tint" }
 ph2d-node-motion-transform = { path = "../ph2d-node-motion-transform" }
 ph2d-node-motion-wiggle = { path = "../ph2d-node-motion-wiggle" }

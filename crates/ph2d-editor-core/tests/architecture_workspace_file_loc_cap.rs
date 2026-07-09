@@ -50,7 +50,10 @@ const FILE_OVERAGE_OK: &[(&str, usize)] = &[
     ("ph2d-imageio-apng/src/lib.rs", 768),
     ("ph2d-imageio-ph2d-native/src/schema.rs", 746),
     ("ph2d-imageio-tiff/src/lib.rs", 905),
-    ("ph2d-nodegraph/src/cook.rs", 864),
+    // Retired 2026-07-09 (M2.N1): `cook.rs` was 864 LOC of engine + inline
+    // tests; the tests moved to `cook_tests.rs` + `cook_scope_tests.rs`, so the
+    // engine now sits at ~459 LOC under the plain 700 cap. Entry deleted rather
+    // than raised, per this gate's own instruction.
     ("ph2d-painter-effects/src/adjustments/mod.rs", 946),
     ("ph2d-painter-effects/src/adjustments/spatial.rs", 856),
     ("ph2d-render/src/compressed_pipeline.rs", 993),

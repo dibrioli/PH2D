@@ -292,6 +292,86 @@ fn wiring_a_chain_into_forces_replumbs_the_state_entry() {
     );
 }
 
+/// M2.N1: a Time Remap cannot rewrite the clock of a **sequential** node (one
+/// on a `pre` edge). The cook refuses it (`SequentialInTimeScope`) and the sink
+/// would silently stop drawing — so the editor refuses the WIRE, with the
+/// reason. A remap fed by ordinary nodes still connects.
+///
+/// Falsified against the cook: the graph the guard rejects is exactly the graph
+/// `cook_scoped` errors on, and the graph it accepts cooks clean.
+#[test]
+fn a_wire_dragging_a_sequential_node_under_a_time_remap_is_refused() {
+    use ph2d_editor::ToastQueue;
+    use ph2d_nodegraph::cook::{Cook, CookError};
+    use ph2d_nodegraph::graph::{Edge, Graph};
+
+    let mut motion = MotionState::new();
+    let mut g = Graph::new();
+    let before = g.clone();
+    let grid = g.add_node("motion.grid");
+    let spring = g.add_node("motion.spring");
+    let remap = g.add_node("motion.time_remap");
+    plumbing::reconcile_after(&mut g, &motion.registry, &before); // spring's pre self-loop
+    g.connect(Edge {
+        from: (grid, 0),
+        to: (spring, 0),
+        delayed: false,
+    })
+    .unwrap();
+    motion.doc.graph = g;
+    motion.doc.graph.set_param(remap, "mode", 3.0); // Freeze → a real (non-identity) scope
+    let mut toasts = ToastQueue::new();
+
+    // spring -> remap.in would put the spring inside the remapped scope.
+    apply_connect(&mut motion, &mut toasts, spring.0, 0, remap.0, 0);
+    assert!(
+        !motion.doc.graph.edges().iter().any(|e| e.to == (remap, 0)),
+        "the wire that would scope a sequential node must be refused"
+    );
+
+    // Falsify the guard against the cook: force the edge in — the guard sees it,
+    // and the cook errors on exactly that graph.
+    let mut forced = motion.doc.graph.clone();
+    forced
+        .connect(Edge {
+            from: (spring, 0),
+            to: (remap, 0),
+            delayed: false,
+        })
+        .unwrap();
+    assert!(
+        scopes_a_sequential_node(&forced),
+        "the guard must be what rejected the wire (not some other refusal)"
+    );
+    let scopes = ph2d_node_motion_time_remap::time_scopes(&forced, &motion.registry);
+    assert_eq!(
+        Cook::new()
+            .cook_scoped(&forced, &motion.registry, remap, 1.0, &scopes)
+            .err(),
+        Some(CookError::SequentialInTimeScope { node: spring }),
+        "the guard refuses exactly what the cook refuses"
+    );
+
+    // The grid alone (no `pre` anywhere upstream) connects and cooks fine.
+    apply_connect(&mut motion, &mut toasts, grid.0, 0, remap.0, 0);
+    assert!(
+        motion
+            .doc
+            .graph
+            .edges()
+            .iter()
+            .any(|e| e.from == (grid, 0) && e.to == (remap, 0)),
+        "an ordinary subtree is welcome under a Time Remap"
+    );
+    assert!(!scopes_a_sequential_node(&motion.doc.graph));
+    let scopes = ph2d_node_motion_time_remap::time_scopes(&motion.doc.graph, &motion.registry);
+    assert!(
+        Cook::new()
+            .cook_scoped(&motion.doc.graph, &motion.registry, remap, 1.0, &scopes)
+            .is_ok()
+    );
+}
+
 /// Deleting a mid-chain force re-heals the plumbing: the orphaned upstream
 /// stub loses its state entry, the surviving chain's new dangling head gains
 /// it. And the managed badge itself is not hand-deletable (the disconnect

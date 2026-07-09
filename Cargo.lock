@@ -4840,6 +4840,7 @@ dependencies = [
  "ph2d-imageio-registry-init",
  "ph2d-input",
  "ph2d-motion-doc",
+ "ph2d-node-motion-time-remap",
  "ph2d-node-registry",
  "ph2d-node-registry-init",
  "ph2d-nodegraph",
@@ -5292,6 +5293,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-node-motion-time-remap"
+version = "0.0.0"
+dependencies = [
+ "ph2d-node-registry",
+ "ph2d-nodegraph",
+]
+
+[[package]]
 name = "ph2d-node-motion-tint"
 version = "0.0.0"
 dependencies = [
@@ -5346,6 +5355,7 @@ dependencies = [
  "ph2d-node-motion-scale",
  "ph2d-node-motion-spring",
  "ph2d-node-motion-stagger",
+ "ph2d-node-motion-time-remap",
  "ph2d-node-motion-tint",
  "ph2d-node-motion-transform",
  "ph2d-node-motion-wiggle",

@@ -41,6 +41,11 @@ ph2d-eval-motion = { path = "../../crates/ph2d-eval-motion" }
 # while the Motion tool is active.
 ph2d-motion-doc = { path = "../../crates/ph2d-motion-doc" }
 ph2d-node-registry-init = { path = "../../crates/ph2d-node-registry-init" }
+# Time scopes (M2.N1): the substrate keys scopes by NodeId and knows no node
+# types, so the shell asks the node crate that OWNS the semantic to translate
+# `motion.time_remap` params into `TimeMap`s before each cook (and to refuse a
+# wire that would drag a sequential node under a rewritten clock).
+ph2d-node-motion-time-remap = { path = "../../crates/ph2d-node-motion-time-remap" }
 # General timeline data layer (M0): keyframe store + curves. Used by the
 # timeline visual smoke (render_loop/timeline_smoke.rs, PH2D_TIMELINE_SMOKE=1) to
 # animate the sprite grid from a Clip sampled at the engine Playhead.

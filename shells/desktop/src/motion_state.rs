@@ -111,6 +111,10 @@ impl MotionState {
 /// - **oscillator** a travelling Sine Y-wave, masked by the falloff (the centre
 ///   bounces, the edges hold) — the classic Cavalry focal-motion look.
 /// - **wiggle** an organic X jitter on the focus region (value noise) on top.
+/// - **time_remap** (M2.N1) PingPong 2.5 s — rewrites the clock of the whole
+///   subtree ABOVE it (orbit + wave + wiggle play forward, then backward) while
+///   the spring and the physics below stay on the real clock. A sequential node
+///   may not sit upstream of it: the editor refuses that wire.
 /// - **spring** (M2) on Y chases the travelling wave with lag + overshoot +
 ///   settle (follow-through) — its `pre` self-loop carries the state; masked by
 ///   the falloff like everything else.
@@ -131,6 +135,7 @@ fn build_cavalry_demo(g: &mut Graph, reg: &NodeRegistry) -> Option<Vec<NodeId>> 
     let stagger = g.add_node("motion.stagger");
     let osc = g.add_node("motion.oscillator");
     let wiggle = g.add_node("motion.wiggle");
+    let remap = g.add_node("motion.time_remap");
     let spring = g.add_node("motion.spring");
     let integrate = g.add_node("motion.integrate");
     let vortex = g.add_node("force.vortex");
@@ -145,7 +150,8 @@ fn build_cavalry_demo(g: &mut Graph, reg: &NodeRegistry) -> Option<Vec<NodeId>> 
         (falloff, stagger),
         (stagger, osc),
         (osc, wiggle),
-        (wiggle, spring),
+        (wiggle, remap),
+        (remap, spring),
         (spring, integrate),
         (integrate, output),
     ]
@@ -167,7 +173,7 @@ fn build_cavalry_demo(g: &mut Graph, reg: &NodeRegistry) -> Option<Vec<NodeId>> 
             },
         );
     }
-    g.set_pos(output, Pos { x: 2200.0, y: 0.0 });
+    g.set_pos(output, Pos { x: 2420.0, y: 0.0 });
 
     // Spring state: the `pre` self-loop (what the editor plumbing derives on
     // AddNode). Authored here because the demo builds the graph directly.
@@ -212,21 +218,21 @@ fn build_cavalry_demo(g: &mut Graph, reg: &NodeRegistry) -> Option<Vec<NodeId>> 
     g.set_pos(
         vortex,
         Pos {
-            x: 1320.0,
+            x: 1540.0,
             y: 260.0,
         },
     );
     g.set_pos(
         attractor,
         Pos {
-            x: 1540.0,
+            x: 1760.0,
             y: 260.0,
         },
     );
     g.set_pos(
         drag,
         Pos {
-            x: 1760.0,
+            x: 1980.0,
             y: 260.0,
         },
     );
@@ -267,6 +273,12 @@ fn build_cavalry_demo(g: &mut Graph, reg: &NodeRegistry) -> Option<Vec<NodeId>> 
     g.set_param(wiggle, "channel", 0.0); // X
     g.set_param(wiggle, "amplitude", 0.5);
     g.set_param(wiggle, "frequency", 1.0);
+    // Time Remap (M2.N1) — PingPong over 2.5 s: EVERYTHING above it (the orbit,
+    // the travelling wave, the wiggle) plays forward then backward, while the
+    // spring and the physics below keep the real clock. Watching the rig
+    // rewind while the swirl keeps swirling is the whole point of a time scope.
+    g.set_param(remap, "mode", 2.0); // PingPong (MODE_LABELS index)
+    g.set_param(remap, "duration", 2.5);
     // Follow-through: the Y spring chases the travelling wave with lag +
     // overshoot (channel Y is the spring's default).
     g.set_param(spring, "tension", 12.0);
@@ -301,11 +313,72 @@ mod tests {
         for &s in &state.sinks {
             assert_eq!(state.doc.graph.node(s).unwrap().type_name, "motion.output");
         }
-        // 14 grid-rig nodes + 7 fountain nodes (emitter, integrate, tint,
+        // 15 grid-rig nodes + 7 fountain nodes (emitter, integrate, tint,
         // output, wind, curl, drag).
-        assert_eq!(state.doc.graph.nodes().len(), 21);
+        assert_eq!(state.doc.graph.nodes().len(), 22);
         assert!(state.doc.graph.validate(&state.registry).is_ok());
         assert_eq!(state.playhead(1.0 / 60.0), 0.0); // paused at tick 0
+    }
+
+    /// M2.N1 end to end, through the REAL registry: the demo's Time Remap
+    /// declares a PingPong scope, and the subtree above it really does run on
+    /// the rewritten clock — at `t` and at the mirrored `2·duration - t` the
+    /// remap's output is IDENTICAL, while the raw (unscoped) cook of the same
+    /// subtree is not. That inequality is the falsification: without
+    /// `cook_scoped` the two cooks would agree only by accident.
+    #[test]
+    fn the_demo_time_remap_rewrites_its_upstream_clock() {
+        use ph2d_nodegraph::attr::Column;
+        use ph2d_nodegraph::cook::Cook;
+
+        let state = MotionState::new();
+        let scopes = ph2d_node_motion_time_remap::time_scopes(&state.doc.graph, &state.registry);
+        let remap = state
+            .doc
+            .graph
+            .nodes()
+            .iter()
+            .find(|n| n.type_name == "motion.time_remap")
+            .expect("the demo wires a Time Remap")
+            .id;
+        assert_eq!(scopes.len(), 1, "one non-identity scope: the demo's remap");
+
+        // PingPong(2.5): t = 1.0 and t = 4.0 both map to t' = 1.0.
+        let positions = |t: f64| {
+            let mut cook = Cook::new();
+            let out = cook
+                .cook_scoped(&state.doc.graph, &state.registry, remap, t, &scopes)
+                .unwrap();
+            match out[0].as_stream().get("P") {
+                Some(Column::Vec2(p)) => p.clone(),
+                _ => panic!("the remap forwards an instance stream"),
+            }
+        };
+        assert_eq!(
+            positions(1.0),
+            positions(4.0),
+            "the mirrored playhead must cook the same upstream frame"
+        );
+        // And the triangle wave's full period is 2·duration = 5 s.
+        assert_eq!(
+            positions(0.5),
+            positions(5.5),
+            "PingPong period = 2·duration"
+        );
+
+        // Falsify: the SAME two playheads on the unscoped clock differ (the rig
+        // is genuinely animating, so the equality above is the scope's doing).
+        let raw = |t: f64| {
+            let mut cook = Cook::new();
+            let out = cook
+                .cook(&state.doc.graph, &state.registry, remap, t)
+                .unwrap();
+            match out[0].as_stream().get("P") {
+                Some(Column::Vec2(p)) => p.clone(),
+                _ => panic!("stream"),
+            }
+        };
+        assert_ne!(raw(1.0), raw(4.0), "the rig animates on the real clock");
     }
 
     /// Cook the whole default document through the REAL registry, exactly as

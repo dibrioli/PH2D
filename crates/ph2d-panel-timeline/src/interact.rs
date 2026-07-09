@@ -28,6 +28,10 @@ pub(crate) fn process(
     px_per_s: f64,
     snap: &TimelineViewSnapshot,
 ) {
+    // Drop last frame's committed-move preview: by now the shell has applied the
+    // move and re-published the snapshot, so the diamonds' base positions already
+    // include it (keeping the offset would double it).
+    state.pending_move_dx = None;
     let gestures: Vec<TimelineGesture> = ctx.host.store_mut().drain_timeline_gestures().collect();
     for g in gestures {
         // Primary button only; Secondary/Middle are reserved (context menu / pan).
@@ -87,6 +91,10 @@ fn apply_key(
                 state::push_intent(TimelineIntent::MoveSelectedKeys {
                     delta_seconds: delta,
                 });
+                // Hold the offset for this frame so the diamonds stay put while
+                // the move round-trips through the shell (avoids a 1-frame snap
+                // back to the old position). Cleared next `process`.
+                state.pending_move_dx = Some((delta * px_per_s) as f32);
             }
         }
         GesturePhase::Click | GesturePhase::DoubleClick => {
@@ -141,8 +149,10 @@ pub(crate) fn preview_dx(
     px_per_s: f64,
     snap: &TimelineViewSnapshot,
 ) -> f32 {
+    // A live drag wins; otherwise a just-committed move holds its offset for the
+    // round-trip frame (see `pending_move_dx`).
     let Some(d) = state.key_drag.as_ref() else {
-        return 0.0;
+        return state.pending_move_dx.unwrap_or(0.0);
     };
     match drag_delta_seconds(d, px_per_s, snap) {
         Some(delta) => (delta * px_per_s) as f32,
@@ -291,6 +301,10 @@ mod tests {
             }
         );
         assert!(st.key_drag.is_none(), "the drag ended");
+        // The committed offset is held for the round-trip frame so the diamonds
+        // don't snap back to the old position before the move lands.
+        assert_eq!(st.pending_move_dx, Some(30.0), "0.25 s × 120 px·s⁻¹");
+        assert_eq!(preview_dx(&st, 120.0, &s), 30.0);
     }
 
     #[test]

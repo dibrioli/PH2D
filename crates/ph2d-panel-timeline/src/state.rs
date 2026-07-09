@@ -48,6 +48,12 @@ pub struct TimelinePanelState {
     /// selected diamonds shifted by the live delta and `event`/`interact` can
     /// emit the final `MoveSelectedKeys` on End. `None` when not dragging keys.
     pub key_drag: Option<KeyDrag>,
+    /// Committed-move preview (px) held for exactly the End frame, so the
+    /// selected diamonds stay at the dropped position across the one-frame gap
+    /// between raising `MoveSelectedKeys` and the shell re-publishing the moved
+    /// snapshot — without it the keys flash back to their old spot for a frame.
+    /// Cleared at the top of the next `interact::process` (snapshot has caught up).
+    pub pending_move_dx: Option<f32>,
 }
 
 /// An in-progress dope-sheet key drag: pointer x at Begin + the latest x. The
@@ -74,6 +80,7 @@ impl Default for TimelinePanelState {
             view_span_s: 0.0,
             add_track_open: false,
             key_drag: None,
+            pending_move_dx: None,
         }
     }
 }

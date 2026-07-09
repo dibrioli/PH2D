@@ -102,6 +102,21 @@ abaixo é histórico — não re-investigue.
     e `a_nudge_off_neutral_changes_the_audio` (o bypass não engole edição real);
     `is_bypass_implies_exact_identity` na crate. Apply com o rack intocado **não**
     empilha um passo de undo no-op.
+- **Compressor: make-up preservador de pico (Enio, 2026-07-09)** — subir o `ratio`
+  **aumentava a amplitude** e caminhava pro clipping. Causa: o auto-makeup de
+  livro-texto `(1/threshold)^(1−1/ratio)` é o ganho que traz um sinal de **fundo de
+  escala** de volta a 0 dBFS, e cresce com o ratio; aplicado a material mais quieto
+  ele só amplifica (threshold 0.3, pico 0.5: ratio 4 → 0.86; ratio 20 → 0.97).
+  Agora o make-up é medido do próprio buffer: `peak_in / peak_out` (clampado em 8×).
+  O gain computer só atenua, então o pico **nunca sobe** — subir o ratio reduz a
+  faixa dinâmica, não a amplitude. O campo `makeup` saiu de `Effect::Compress`.
+  - ⚠️ Foi preciso `Compressor::prime()` (novo, append-only em `ph2d-audio`): o
+    `gain` começava em 1.0, então a **primeira amostra escapava sem compressão** —
+    num trecho que já começa no pico isso dava `peak_out == peak_in`, o make-up não
+    tinha nada a devolver, e ainda clicava na borda da seleção. Offline não há razão
+    pra esse transiente de partida.
+  - Teste `higher_ratio_lifts_rms_without_raising_the_peak`: pico nunca sobe (varre
+    ratios × attacks) e, com attack rápido, ratio maior levanta o RMS.
 - **Atalhos:** `Ctrl+Z` undo · `Ctrl+Shift+Z` / `Ctrl+Y` redo (roteados ao
   `EditClip` quando o painel WAVE está aberto com clipe carregado).
 - **Fix:** `cpal::Stream` é dropado no `on_close_request`, não no drop-cascade do

@@ -47,6 +47,29 @@ impl Compressor {
         self.release = release.clamp(0.0, 1.0);
     }
 
+    /// Gain computer: bring the over-threshold excess down by `ratio`. Below the
+    /// threshold the target is unity (no reduction).
+    #[inline]
+    fn target_gain(&self, level: f32) -> f32 {
+        if level > self.threshold {
+            (self.threshold + (level - self.threshold) / self.ratio) / level
+        } else {
+            1.0
+        }
+    }
+
+    /// Settle the envelope on `(l, r)` as if the compressor had already been
+    /// running at that level. **Offline** callers prime on the first frame of a
+    /// region: `gain` otherwise starts at unity, so the first sample escapes
+    /// uncompressed — a startup transient that clicks at a selection edge and
+    /// defeats peak-preserving make-up (the output peak would still equal the
+    /// input's, leaving no reduction to hand back).
+    pub fn prime(&mut self, l: f32, r: f32) {
+        if self.on {
+            self.gain = self.target_gain(l.abs().max(r.abs()));
+        }
+    }
+
     /// Compress one stereo sample (linked detection). Passes through when off.
     #[inline]
     pub fn process(&mut self, l: f32, r: f32) -> (f32, f32) {
@@ -54,13 +77,7 @@ impl Compressor {
             return (l, r);
         }
         let level = l.abs().max(r.abs());
-        // Gain computer: bring the over-threshold excess down by `ratio`. Below
-        // the threshold the target is unity (no reduction).
-        let target = if level > self.threshold {
-            (self.threshold + (level - self.threshold) / self.ratio) / level
-        } else {
-            1.0
-        };
+        let target = self.target_gain(level);
         // Attack when clamping down (target below current gain), release when
         // easing back up — the classic asymmetric envelope.
         let coeff = if target < self.gain {

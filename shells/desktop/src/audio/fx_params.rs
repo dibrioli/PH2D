@@ -84,7 +84,8 @@ static HIGH_PASS: [FxParamSpec; 2] = [
 ];
 static COMPRESS: [FxParamSpec; 4] = [
     spec("Threshold", 0.01, 1.0, true, 0.3, "", false),
-    // Neutral at 1:1 — no reduction, and auto-makeup collapses to unity.
+    // Neutral at 1:1 — no reduction at all (make-up is peak-preserving, so it
+    // collapses to unity too).
     spec("Ratio", 1.0, 20.0, false, 1.0, "x", false),
     spec("Attack", 0.001, 0.2, true, 0.005, "s", false),
     spec("Release", 0.01, 1.0, true, 0.1, "s", false),
@@ -217,15 +218,6 @@ fn real(kind: usize, norms: &[f32; MAX_FX_PARAMS], i: usize) -> f32 {
     }
 }
 
-/// Auto make-up gain for the compressor: the linear boost that brings a
-/// full-scale signal back to unity after `ratio`:1 reduction above `threshold`.
-/// Clamped so an extreme threshold can't detonate the level.
-fn auto_makeup(threshold: f32, ratio: f32) -> f32 {
-    let t = threshold.clamp(0.001, 1.0);
-    let r = ratio.max(1.0);
-    (1.0 / t).powf(1.0 - 1.0 / r).clamp(1.0, 4.0)
-}
-
 /// Build the effect for `kind` at the current slider positions.
 pub(crate) fn build(kind: usize, norms: &[f32; MAX_FX_PARAMS]) -> Option<FxCommand> {
     let v = |i| real(kind, norms, i);
@@ -238,16 +230,14 @@ pub(crate) fn build(kind: usize, norms: &[f32; MAX_FX_PARAMS]) -> Option<FxComma
             cutoff: v(0),
             q: v(1),
         }),
-        2 => {
-            let (threshold, ratio) = (v(0), v(1));
-            FxCommand::Plain(Effect::Compress {
-                threshold,
-                ratio,
-                attack_secs: v(2),
-                release_secs: v(3),
-                makeup: auto_makeup(threshold, ratio),
-            })
-        }
+        // Make-up is automatic and peak-preserving inside the effect: raising the
+        // ratio must not raise the waveform's amplitude.
+        2 => FxCommand::Plain(Effect::Compress {
+            threshold: v(0),
+            ratio: v(1),
+            attack_secs: v(2),
+            release_secs: v(3),
+        }),
         3 => FxCommand::Plain(Effect::Saturate { drive: v(0) }),
         4 => FxCommand::Plain(Effect::Bitcrush {
             bits: v(0) as u32,
@@ -321,13 +311,6 @@ mod tests {
         assert!((mid - 632.0).abs() < 5.0, "log midpoint was {mid}");
         assert_eq!(norm_to_real(cutoff, 0.0), 20.0);
         assert!((norm_to_real(cutoff, 1.0) - 20_000.0).abs() < 1.0);
-    }
-
-    #[test]
-    fn auto_makeup_is_bounded_and_rises_with_ratio() {
-        assert_eq!(auto_makeup(1.0, 4.0), 1.0, "no reduction → no make-up");
-        assert!(auto_makeup(0.3, 8.0) > auto_makeup(0.3, 2.0));
-        assert!(auto_makeup(0.001, 20.0) <= 4.0, "clamped");
     }
 
     /// THE contract of the defaults: selecting an effect (or arrowing past it)

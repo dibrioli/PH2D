@@ -48,7 +48,10 @@ pub enum Effect {
     LowPass { cutoff: f32, q: f32 },
     /// 2nd-order high-pass (thin / de-rumble) at `cutoff` Hz, `q` resonance.
     HighPass { cutoff: f32, q: f32 },
-    /// Feed-forward compressor (glue / level) + linear `makeup` gain.
+    /// Feed-forward compressor (glue / level). Make-up gain is **automatic and
+    /// peak-preserving**: the compressed region is scaled back so its peak matches
+    /// the input's, so raising `ratio` reduces the dynamic range (quiet parts come
+    /// up) without ever raising the waveform's amplitude. Neutral at `ratio` 1.
     Compress {
         /// Level (linear 0..1) above which reduction starts.
         threshold: f32,
@@ -58,8 +61,6 @@ pub enum Effect {
         attack_secs: f32,
         /// Release time (seconds).
         release_secs: f32,
-        /// Post-compression make-up gain (linear).
-        makeup: f32,
     },
     /// `tanh` soft-clip saturation (warmth / drive). Neutral at `drive` 0.
     Saturate { drive: f32 },
@@ -90,8 +91,7 @@ impl Effect {
                 ratio,
                 attack_secs,
                 release_secs,
-                makeup,
-            } if ratio > 1.0 => compress(data, threshold, ratio, attack_secs, release_secs, makeup),
+            } if ratio > 1.0 => compress(data, threshold, ratio, attack_secs, release_secs),
             Effect::Saturate { drive } if drive >= SATURATE_BYPASS_DRIVE => saturate(data, drive),
             Effect::Bitcrush { bits, downsample }
                 if bits < BITCRUSH_BYPASS_BITS || downsample > 1 =>
@@ -274,13 +274,27 @@ fn time_coeff(secs: f32, sr: f32) -> f32 {
 }
 
 /// Stereo-linked compression (mono is duplicated then re-collapsed) + make-up.
+/// Ceiling on the automatic make-up, so a region that is almost entirely above the
+/// threshold (or a near-silent one) can't be blown up.
+const COMPRESS_MAX_MAKEUP: f32 = 8.0;
+
+/// Stereo-linked compression, then **peak-preserving** make-up.
+///
+/// The gain computer only ever attenuates, so the compressed peak is ≤ the input
+/// peak; scaling by their quotient puts the peak exactly back where it was. Raising
+/// `ratio` therefore lifts the quiet parts (RMS up, dynamic range down) and leaves
+/// the waveform's amplitude alone.
+///
+/// The obvious alternative — the textbook `(1/threshold)^(1 - 1/ratio)` — is the
+/// gain that restores a **full-scale** signal, and silently amplifies anything
+/// quieter: at `threshold` 0.3 a peak-0.5 signal came out at 0.86 with `ratio` 4
+/// and 0.97 with `ratio` 20. Raising the ratio made it LOUDER, which is backwards.
 fn compress(
     data: &SampleData,
     threshold: f32,
     ratio: f32,
     attack_secs: f32,
     release_secs: f32,
-    makeup: f32,
 ) -> SampleData {
     let sr = data.format().sample_rate as f32;
     let ch = channels(data);
@@ -294,15 +308,36 @@ fn compress(
         time_coeff(release_secs, sr),
     );
     let mut out = data.samples().to_vec();
+    // Offline: settle the envelope on the first frame. Otherwise the very first
+    // sample escapes uncompressed, which both clicks at a selection edge and makes
+    // `peak_out == peak_in` (so the make-up below would have nothing to give back)
+    // for any region that starts at its loudest.
+    if frames > 0 {
+        let (l, r) = if ch >= 2 {
+            (out[0], out[1])
+        } else {
+            (out[0], out[0])
+        };
+        comp.prime(l, r);
+    }
     for f in 0..frames {
         let base = f * ch;
         if ch >= 2 {
             let (l, r) = comp.process(out[base], out[base + 1]);
-            out[base] = (l * makeup).clamp(-1.0, 1.0);
-            out[base + 1] = (r * makeup).clamp(-1.0, 1.0);
+            out[base] = l;
+            out[base + 1] = r;
         } else {
             let (l, _) = comp.process(out[base], out[base]);
-            out[base] = (l * makeup).clamp(-1.0, 1.0);
+            out[base] = l;
+        }
+    }
+
+    let peak_in = crate::peak(data);
+    let peak_out = out.iter().fold(0.0f32, |m, s| m.max(s.abs()));
+    if peak_out > f32::EPSILON && peak_in > f32::EPSILON {
+        let makeup = (peak_in / peak_out).clamp(1.0, COMPRESS_MAX_MAKEUP);
+        for s in &mut out {
+            *s = (*s * makeup).clamp(-1.0, 1.0);
         }
     }
     SampleData::from_interleaved(out, data.format())
@@ -387,7 +422,6 @@ mod tests {
                 ratio: 4.0,
                 attack_secs: 0.005,
                 release_secs: 0.1,
-                makeup: 1.5,
             },
             Effect::Saturate { drive: 3.0 },
             Effect::Bitcrush {
@@ -424,7 +458,6 @@ mod tests {
                 ratio: 1.0,
                 attack_secs: 0.005,
                 release_secs: 0.1,
-                makeup: 1.0,
             },
             Effect::Saturate { drive: 0.0 },
             Effect::Bitcrush {
@@ -464,6 +497,65 @@ mod tests {
             );
             assert_eq!(fx.render(&d, 0).samples(), d.samples());
         }
+    }
+
+    /// A compressor must SHRINK dynamic range, never grow the waveform. Raising
+    /// `ratio` may only raise the quiet parts (RMS up); the peak stays put.
+    ///
+    /// Regression: the old textbook auto-makeup `(1/threshold)^(1-1/ratio)` assumed
+    /// a full-scale input, so on a peak-0.5 signal `ratio` 4 came out at 0.86 and
+    /// `ratio` 20 at 0.97 — turning the ratio up made it louder.
+    #[test]
+    fn higher_ratio_lifts_rms_without_raising_the_peak() {
+        // A step: a loud half (0.5, above the 0.3 threshold) then a quiet half
+        // (0.1, below it), sign-alternating so |level| is constant within each.
+        // This isolates the gain computer from the sine's per-cycle level swing.
+        let n = 4_800;
+        let samples: Vec<f32> = (0..n)
+            .flat_map(|i| {
+                let amp = if i < n / 2 { 0.5 } else { 0.1 };
+                let s = if i % 2 == 0 { amp } else { -amp };
+                [s, s]
+            })
+            .collect();
+        let d = stereo(samples);
+        let peak_in = crate::peak(&d);
+        let rms = |x: &SampleData| {
+            (x.samples().iter().map(|s| s * s).sum::<f32>() / x.samples().len() as f32).sqrt()
+        };
+
+        let at = |ratio: f32, attack_secs: f32| {
+            Effect::Compress {
+                threshold: 0.3,
+                ratio,
+                attack_secs,
+                release_secs: 0.005,
+            }
+            .apply(&d)
+        };
+
+        // THE guarantee: whatever the ratio or attack, the waveform never grows.
+        for ratio in [2.0, 4.0, 20.0] {
+            for attack in [0.0001, 0.005, 0.05] {
+                let out = at(ratio, attack);
+                assert!(
+                    crate::peak(&out) <= peak_in + 1e-4,
+                    "ratio {ratio} / attack {attack}s raised the peak: {} > {peak_in}",
+                    crate::peak(&out)
+                );
+            }
+        }
+
+        // With an attack fast enough to actually catch the peak, the make-up hands
+        // the level back and a heavier ratio lifts the quiet parts (RMS up).
+        let fast = 0.0001;
+        assert!(
+            rms(&at(20.0, fast)) > rms(&at(2.0, fast)),
+            "a heavier ratio must lift the RMS: {} !> {}",
+            rms(&at(20.0, fast)),
+            rms(&at(2.0, fast))
+        );
+        assert!(rms(&at(2.0, fast)) > rms(&d), "2:1 already lifts the RMS");
     }
 
     #[test]

@@ -238,7 +238,6 @@ fn populate_ops(store: &mut WidgetStore) {
     button(store, ids::VECTOR_ALIGN_BOTTOM);
     button(store, ids::VECTOR_DISTRIBUTE_H);
     button(store, ids::VECTOR_DISTRIBUTE_V);
-    button(store, ids::VECTOR_PIVOT_EDIT);
 }
 
 /// Gradiente (Angle / Influence / Jitter), opacidades e o traço (cap/join/dash).

@@ -845,6 +845,7 @@ impl crate::App {
                 // Deform Transform live ⇒ the sprite gizmo is suppressed for the frame (its corner
                 // handles share the deform gizmo's screen corners on a whole-image transform).
                 painter_bridge_queries::deform_transform_gizmo_active(tools),
+                vec_scene,
             );
             // ─────────────────────────────────────────────────────────
             // Wave 2.5 PR 11.8 closeout — consolidated bus drain.
@@ -941,7 +942,6 @@ impl crate::App {
             let mut pending_vec_grad_remove_stop = false;
             let mut pending_vec_align: Option<crate::input_dispatch::VecAlign> = None;
             let mut pending_vec_distribute: Option<crate::input_dispatch::VecDistribute> = None;
-            let mut pending_vec_pivot_edit = false;
             // Make (true) / Release (false) Compound over the selection.
             let mut pending_vec_compound: Option<bool> = None;
             // Fill rule of the selected compound path: even-odd (true) or non-zero.
@@ -1049,7 +1049,6 @@ impl crate::App {
                             {
                                 pending_vec_distribute = Some(d);
                             } else if *id == ph2d_editor::ids::VECTOR_PIVOT_EDIT {
-                                pending_vec_pivot_edit = true;
                             } else if *id == ph2d_editor::ids::VECTOR_COMPOUND_MAKE {
                                 pending_vec_compound = Some(true);
                             } else if *id == ph2d_editor::ids::VECTOR_COMPOUND_RELEASE {
@@ -1424,7 +1423,22 @@ impl crate::App {
                     Some("vector_tools") | Some("motion_tools") => true,
                     _ => false,
                 };
-                if gate_on && tools.set_active(&ph2d_editor::ToolId::new(tool_id)) {
+                // O pill de um cluster direct-activate ALTERNA: clicar na ferramenta
+                // já ativa sai dela e volta para a default (move). É o que faz uma
+                // forma vetorial voltar a se comportar como qualquer objeto — o
+                // gizmo de sprite a move, o clique a seleciona (ADR-0111). Os
+                // `image_tools` ficam de fora: quem manda neles é o toggle IMG.
+                let already_active = tools.active().map(ph2d_editor::Tool::id)
+                    == Some(ph2d_editor::ToolId::new(tool_id));
+                let toggles_off =
+                    matches!(activating_cluster, Some("vector_tools" | "motion_tools"));
+                if gate_on && already_active && toggles_off {
+                    tools.activate_default();
+                    self.title_dirty = true;
+                    if let Some(active) = tools.active() {
+                        toasts.push(Toast::info(format!("Tool · {}", active.label())));
+                    }
+                } else if gate_on && tools.set_active(&ph2d_editor::ToolId::new(tool_id)) {
                     self.title_dirty = true;
                     if tool_id == "bgremoval" {
                         self.last_bgremoval_pushed_entity = None;
@@ -1700,10 +1714,12 @@ impl crate::App {
             // the bridge/render so the result selects + renders this frame
             // (mirror of the U/I/D hotkeys' `vec_boolean`).
             if let Some(op) = pending_vec_bool {
+                let xf = crate::vec_transform::build(sim, &self.vec_entities);
                 crate::input_dispatch::apply_vec_boolean(
                     vec_scene,
                     &mut self.vec_history,
                     &mut self.vec_pen,
+                    &xf,
                     op,
                 );
             }
@@ -1893,10 +1909,6 @@ impl crate::App {
                     d,
                 );
             }
-            if pending_vec_pivot_edit {
-                // Arm "Set Center": the next canvas press positions the pivot.
-                self.vec_pivot_edit = true;
-            }
             if pending_vec_grad_remove_stop
                 && let Some(si) = self
                     .vec_grad_selected
@@ -1921,7 +1933,6 @@ impl crate::App {
                 &mut self.vec_history,
                 vec_px_to_world,
                 self.vec_grad_selected,
-                self.vec_pivot_edit,
                 self.vec_snap.on,
             );
             // Motion Nodes M0.T10: same phase as vector_bridge (AFTER the
@@ -1952,7 +1963,11 @@ impl crate::App {
                 vec_scene.reorder_to(&order);
             }
             let vec_view = crate::vec_entities::view_state(sim, &self.vec_entities);
+            // ADR-0111 — cada path tem `Transform`. A geometria dele é LOCAL; este é
+            // o afim que a leva ao mundo (a cadeia de pais inclusa).
+            let vec_xf = crate::vec_transform::build(sim, &self.vec_entities);
             self.vec_pen.set_view(vec_view.clone());
+            self.vec_pen.set_xforms(vec_xf.clone());
             // Seleção casada nos dois sentidos: clique na Hierarquia chega no canvas,
             // clique no canvas acende a linha (e a do grupo, se cheio). A seleção do
             // gizmo é COMPARTILHADA com os sprites — só o subconjunto vetorial é nosso.
@@ -1966,71 +1981,35 @@ impl crate::App {
                 vector_active,
             );
 
-            ph2d_vec_render::dispatch(
-                vec_scene,
-                &vec_view,
-                camera.world_to_screen_affine(window_size),
-                vector_scene,
-            );
+            let cam_affine = camera.world_to_screen_affine(window_size);
+            ph2d_vec_render::dispatch(vec_scene, &vec_view, &vec_xf, cam_affine, vector_scene);
             if vector_active {
+                // Âncoras e handles só interessam a quem edita nós (o gizmo de objeto
+                // é o de sprite, e vive fora desta ferramenta).
                 ph2d_vec_render::draw_overlays(
                     vec_scene,
                     &vec_view,
                     self.vec_pen.selected(),
                     self.vec_pen.selected_paths(),
                     self.vec_pen.selected_verts(),
-                    camera.world_to_screen_affine(window_size),
+                    &vec_xf,
+                    cam_affine,
                     vector_scene,
                 );
-                // Sprite-style transform gizmo over the object selection (scale /
-                // rotate / move / movable pivot). Free fn (disjoint App borrows).
-                // A change of selection resets the gizmo orientation + pivot (vector
-                // geometry stores no orientation, so a new selection is axis-aligned).
-                // Painted BEFORE the gradient handles so those dots — which also
-                // outrank it on click — sit visibly on top.
-                let cur_sel = self.vec_pen.selected_paths().to_vec();
-                if cur_sel != self.vec_gizmo_last_sel {
-                    self.vec_gizmo_rotation = 0.0;
-                    self.vec_gizmo_pivot = None;
-                    self.vec_pivot_edit = false;
-                    self.vec_gizmo_last_sel = cur_sel;
-                }
-                // Hidden while points are still being CREATED (pen drawing) — appears
-                // only after the curve is closed / creation is interrupted.
-                if self.vec_pen.is_drawing() {
-                    self.vec_gizmo_hits.clear_for_frame();
-                } else {
-                    crate::vec_gizmo::paint(
+                // Gradient handles (multi-point dots, or linear/radial endpoints)
+                // when the selected path has a gradient fill. A geometria do gradiente
+                // é LOCAL como a do path, então sobe pelo afim dele.
+                if let Some(sel) = self.vec_pen.selected() {
+                    ph2d_vec_render::draw_gradient_handles(
                         vec_scene,
-                        self.vec_pen.selected_paths(),
-                        self.vec_gizmo_pivot,
-                        self.vec_gizmo_rotation,
-                        self.vec_pivot_edit,
-                        self.last_pointer,
-                        camera.center,
-                        camera.height_world,
-                        window_size.width as f32,
-                        window_size.height as f32,
-                        *theme,
-                        &mut self.vec_gizmo_hits,
+                        Some(sel),
+                        self.vec_grad_selected,
+                        ph2d_vec_render::path_to_screen(&vec_xf, sel, cam_affine),
                         vector_scene,
                     );
                 }
-                // Gradient handles (multi-point dots, or linear/radial endpoints)
-                // when the selected path has a gradient fill. On top of the gizmo.
-                ph2d_vec_render::draw_gradient_handles(
-                    vec_scene,
-                    self.vec_pen.selected(),
-                    self.vec_grad_selected,
-                    camera.world_to_screen_affine(window_size),
-                    vector_scene,
-                );
                 // Smart guides do snap (por cima de tudo — explicam o encaixe vivo).
-                ph2d_vec_render::draw_snap_guides(
-                    &self.vec_snap_guides,
-                    camera.world_to_screen_affine(window_size),
-                    vector_scene,
-                );
+                ph2d_vec_render::draw_snap_guides(&self.vec_snap_guides, cam_affine, vector_scene);
                 // Box-select marquee (Shift+drag), in screen-space.
                 if let Some((start, cur)) = self.vec_marquee {
                     ph2d_vec_render::draw_marquee(
@@ -2039,9 +2018,6 @@ impl crate::App {
                         vector_scene,
                     );
                 }
-            } else {
-                // Tool inactive → no gizmo hits linger for the next frame's Down.
-                self.vec_gizmo_hits.clear_for_frame();
             }
             // Drain the Painter Falloff right-click handle menu choice (chrome
             // parked the HandleType wire u8 in `pending_falloff_point_handle`) →

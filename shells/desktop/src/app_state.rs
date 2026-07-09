@@ -568,28 +568,6 @@ pub(crate) struct App {
     /// In-app path clipboard for Vector Ctrl+C/X/V — a clone of the copied path
     /// (geometry + style, id-less). `None` until the first copy/cut.
     pub(crate) vec_clipboard: Option<ph2d_vec_scene::VecClip>,
-    /// Sprite-style transform gizmo for vector shapes (scale/rotate/move/pivot on
-    /// the object selection). Its own hit-index (canonical gizmo ids 950-963),
-    /// rebuilt each vector-render frame; queried on Down.
-    pub(crate) vec_gizmo_hits: ph2d_editor::HitIndex,
-    /// In-progress vector gizmo drag (`None` = idle). Mirror of the sprite gizmo.
-    pub(crate) vec_gizmo_drag: Option<ph2d_editor::GizmoDragState>,
-    /// User-redefined rotation/scale pivot (world). `None` = the selection bbox
-    /// center. Set only via the panel "Set Center" mode ([`Self::vec_pivot_edit`]).
-    pub(crate) vec_gizmo_pivot: Option<[f64; 2]>,
-    /// "Set Center" mode: armed by the panel button, the next canvas press positions
-    /// the pivot; left on mouse Up. While armed, the pivot dot is emphasized.
-    pub(crate) vec_pivot_edit: bool,
-    /// Accumulated gizmo orientation (radians) — the gizmo box rotates WITH the shape
-    /// as you rotate it. Reset to 0 when the object selection changes (geometry
-    /// carries no stored orientation, so re-selecting shows the axis-aligned box).
-    pub(crate) vec_gizmo_rotation: f32,
-    /// Object selection the gizmo rotation/pivot were captured for — a change resets
-    /// both (so a new selection starts axis-aligned with a centered pivot).
-    pub(crate) vec_gizmo_last_sel: Vec<ph2d_vec_scene::VecPathId>,
-    /// Pristine scene snapshot captured at gizmo Down — each Move restores the
-    /// selected paths from it before re-applying the transform (no compounding).
-    pub(crate) vec_gizmo_start: Option<ph2d_vec_scene::VecScene>,
     /// Snap + grid settings of the Vector tool (edited by the panel's Snap section).
     pub(crate) vec_snap: crate::vec_snap::VecSnapSettings,
     /// Snap targets of the CURRENT gesture — collected once at Down (the scene's

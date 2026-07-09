@@ -46,11 +46,17 @@ impl PenTool {
             if !self.view.is_pickable(path.id) {
                 continue;
             }
-            if let Some((_, _, d2)) = ph2d_vec_scene::nearest_point_on_path(path, p, INSERT_SAMPLES)
-                && d2.sqrt() <= hit_r
-                && best.is_none_or(|(_, b)| d2 < b)
+            // A curva é local; o raio de captura é world (ADR-0111). `best` compara
+            // paths de escalas diferentes, então guarda a distância JÁ no mundo.
+            let pl = self.to_local(path.id, p);
+            let scale = self.xf(path.id).mean_scale();
+            if let Some((_, _, d2)) =
+                ph2d_vec_scene::nearest_point_on_path(path, pl, INSERT_SAMPLES)
+                && let d2_world = d2 * scale * scale
+                && d2_world.sqrt() <= hit_r
+                && best.is_none_or(|(_, b)| d2_world < b)
             {
-                best = Some((path.id, d2));
+                best = Some((path.id, d2_world));
             }
         }
         best.map(|(id, _)| id)
@@ -123,16 +129,20 @@ impl PenTool {
     pub fn nudge(&mut self, scene: &mut VecScene, dx: f64, dy: f64) -> bool {
         // Multi-path OBJECT selection (no specific vertices) → move every selected
         // path wholesale (Align/Distribute companion).
+        // `(dx, dy)` é um delta de MUNDO (uma seta do teclado move o mesmo tanto na
+        // tela, esteja o path onde estiver); a geometria é local (ADR-0111).
         if self.selected_verts.is_empty() && self.selected_paths.len() > 1 {
             let mut moved = false;
             for &id in &self.selected_paths {
-                moved |= scene.translate_path(id, dx, dy);
+                let d = self.delta_to_local(id, [dx, dy]);
+                moved |= scene.translate_path(id, d[0], d[1]);
             }
             return moved;
         }
         let Some(sel) = self.selected else {
             return false;
         };
+        let [dx, dy] = self.delta_to_local(sel, [dx, dy]);
         let Some(path) = scene.path_mut(sel) else {
             return false;
         };
@@ -160,11 +170,21 @@ impl PenTool {
         let (x0, x1) = (min[0].min(max[0]), min[0].max(max[0]));
         let (y0, y1) = (min[1].min(max[1]), min[1].max(max[1]));
         let inside = |a: [f64; 2]| a[0] >= x0 && a[0] <= x1 && a[1] >= y0 && a[1] <= y1;
+        // A caixa é world; as âncoras são locais (ADR-0111). Captura só `xforms`
+        // (não `self`) para não travar `self.selected` no borrow-check.
+        let xforms = &self.xforms;
+        let in_world =
+            |id: VecPathId, a: [f64; 2]| inside(ph2d_vec_scene::xform_of(xforms, id).apply(a));
         let target = self.selected.or_else(|| {
             scene
                 .paths()
                 .iter()
-                .map(|p| (p.id, p.verts_all().filter(|v| inside(v.anchor)).count()))
+                .map(|p| {
+                    (
+                        p.id,
+                        p.verts_all().filter(|v| in_world(p.id, v.anchor)).count(),
+                    )
+                })
                 .filter(|&(_, c)| c > 0)
                 .max_by_key(|&(_, c)| c)
                 .map(|(id, _)| id)
@@ -182,7 +202,7 @@ impl PenTool {
             .map(|p| {
                 p.verts_all()
                     .enumerate()
-                    .filter(|(_, v)| inside(v.anchor))
+                    .filter(|(_, v)| in_world(id, v.anchor))
                     .map(|(i, _)| i)
                     .collect()
             })

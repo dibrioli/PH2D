@@ -54,9 +54,10 @@ mod render_loop;
 mod sim_populate;
 mod theme;
 mod vec_entities;
-mod vec_gizmo;
+mod vec_gizmo_view;
 mod vec_selection;
 mod vec_snap;
+mod vec_transform;
 mod winit_host;
 
 pub(crate) use app_state::{
@@ -212,13 +213,6 @@ impl App {
             vec_grad_drag: None,
             vec_grad_selected: None,
             vec_clipboard: None,
-            vec_gizmo_hits: ph2d_editor::HitIndex::new(),
-            vec_gizmo_drag: None,
-            vec_gizmo_pivot: None,
-            vec_pivot_edit: false,
-            vec_gizmo_rotation: 0.0,
-            vec_gizmo_last_sel: Vec::new(),
-            vec_gizmo_start: None,
             vec_snap: crate::vec_snap::VecSnapSettings::default(),
             vec_snap_targets: ph2d_vec_edit::SnapTargets::default(),
             vec_snap_guides: Vec::new(),

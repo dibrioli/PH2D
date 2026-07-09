@@ -38,14 +38,9 @@ impl BodyCtx<'_> {
         // center). Standalone row (no paired field).
         self.number_cell("R", ids::VECTOR_TRANSFORM_R, self.inner_x, self.inner_w, y);
         y += self.row_h + self.row_gap;
-        // "Set Center" — arms the pivot-edit mode; the next canvas press positions
-        // the rotation/scale center (label reflects the armed state).
-        let label = if state::pivot_edit_armed() {
-            "Click canvas to set center"
-        } else {
-            "Set Center"
-        };
-        self.action_button(ids::VECTOR_PIVOT_EDIT, label, y)
+        // ADR-0111: o centro de rotação/escala é o **pivô do gizmo de sprite** (a
+        // forma é um objeto como outro qualquer). Não há botão próprio aqui.
+        y
     }
 
     /// A 2-column row of two labelled number fields (X | Y, W | H).

@@ -132,6 +132,13 @@ pub struct PenTool {
     /// O que a ÁRVORE do editor esconde/trava neste frame (ADR-0110). Publicado
     /// pela shell; um path escondido ou travado não é agarrável.
     view: ph2d_vec_scene::VecViewState,
+    /// Onde cada path ESTÁ (ADR-0111): o afim local→mundo vindo do `Transform` da
+    /// entidade e da cadeia de pais. Publicado pela shell a cada frame.
+    ///
+    /// A regra desta ferramenta: **o que o usuário vê, aponta e encaixa é mundo; o
+    /// que o documento guarda é local.** A conversão mora só na fronteira, nos
+    /// helpers abaixo — nenhum cálculo de geometria muda.
+    xforms: ph2d_vec_scene::VecXforms,
 }
 
 impl PenTool {
@@ -190,6 +197,33 @@ impl PenTool {
         self.view = view;
     }
 
+    /// Publica o afim de cada path (ADR-0111). Chamado com `set_view`, uma vez por
+    /// frame, antes de qualquer hit-test.
+    pub fn set_xforms(&mut self, xforms: ph2d_vec_scene::VecXforms) {
+        self.xforms = xforms;
+    }
+
+    /// O afim local→mundo de `id` (identidade se o path não tem entidade ainda).
+    fn xf(&self, id: VecPathId) -> ph2d_vec_scene::Xform {
+        ph2d_vec_scene::xform_of(&self.xforms, id)
+    }
+
+    /// Um PONTO local do path `id`, no mundo.
+    fn to_world(&self, id: VecPathId, p: [f64; 2]) -> [f64; 2] {
+        self.xf(id).apply(p)
+    }
+
+    /// Um PONTO do mundo, no espaço local de `id`. Um afim degenerado (escala 0)
+    /// não tem volta: devolve `p` — a forma é invisível e nada será agarrado nela.
+    fn to_local(&self, id: VecPathId, p: [f64; 2]) -> [f64; 2] {
+        self.xf(id).inverse().map_or(p, |inv| inv.apply(p))
+    }
+
+    /// Um DELTA do mundo, no espaço local de `id` (só a parte linear).
+    fn delta_to_local(&self, id: VecPathId, d: [f64; 2]) -> [f64; 2] {
+        self.xf(id).inverse().map_or(d, |inv| inv.apply_vec(d))
+    }
+
     /// Pressão primária em world-space `p`. `px_to_world` = world-units por pixel.
     /// `alt` = quebrar a tangente ao agarrar um handle (vira cusp / Corner).
     ///
@@ -211,15 +245,23 @@ impl PenTool {
 
         // Desenhando → continua o pen (adiciona/fecha).
         if let Some(id) = self.active {
+            // O ponto de fechamento é comparado no MUNDO (o cursor está lá).
+            let first_world = scene
+                .paths()
+                .iter()
+                .find(|pp| pp.id == id)
+                .and_then(|pp| pp.verts.first())
+                .map(|v| self.to_world(id, v.anchor));
+            let anchor_local = self.to_local(id, snap(p));
             let Some(path) = scene.path_mut(id) else {
                 self.active = None;
                 self.dragging = false;
                 return PenClick::Ignored;
             };
             if path.verts.len() >= 3
-                && let Some(first) = path.verts.first()
+                && let Some(fw) = first_world
             {
-                let (dx, dy) = (p[0] - first.anchor[0], p[1] - first.anchor[1]);
+                let (dx, dy) = (p[0] - fw[0], p[1] - fw[1]);
                 if (dx * dx + dy * dy).sqrt() <= close_dist {
                     path.closed = true;
                     path.fill = Some(Paint::solid(self.style.fill));
@@ -228,7 +270,7 @@ impl PenTool {
                     return PenClick::Closed;
                 }
             }
-            path.verts.push(VecVertex::corner(snap(p)));
+            path.verts.push(VecVertex::corner(anchor_local));
             self.selected_verts = vec![path.verts.len() - 1];
             self.dragging = true;
             return PenClick::Added;
@@ -271,8 +313,11 @@ impl PenTool {
         // do grab de handle. Computa a proximidade com borrow imutável, depois muta.
         let insert = self.selected.and_then(|sel| {
             let path = scene.paths().iter().find(|pp| pp.id == sel)?;
-            let (seg, t, d2) = ph2d_vec_scene::nearest_point_on_path(path, p, INSERT_SAMPLES)?;
-            (d2.sqrt() <= hit_r).then_some((sel, seg, t))
+            // A curva é local; a distância que o usuário enxerga é mundo.
+            let pl = self.to_local(sel, p);
+            let (seg, t, d2) = ph2d_vec_scene::nearest_point_on_path(path, pl, INSERT_SAMPLES)?;
+            let d_world = d2.sqrt() * self.xf(sel).mean_scale();
+            (d_world <= hit_r).then_some((sel, seg, t))
         });
         if let Some((sel, seg, t)) = insert
             && let Some(path) = scene.path_mut(sel)
@@ -316,6 +361,10 @@ impl PenTool {
     ) -> bool {
         // Edição de ponto agarrado.
         if let Some(g) = self.grab {
+            let xf = self.xf(g.path);
+            let Some(inv) = xf.inverse() else {
+                return false; // forma colapsada: nada a arrastar
+            };
             let Some(path) = scene.path_mut(g.path) else {
                 return false;
             };
@@ -327,7 +376,9 @@ impl PenTool {
                     return false;
                 };
                 let p = snap(p);
-                let d = [p[0] - grabbed.anchor[0], p[1] - grabbed.anchor[1]];
+                // O snap acontece no MUNDO; o delta desce pro espaço local do path.
+                let gw = xf.apply(grabbed.anchor);
+                let d = inv.apply_vec([p[0] - gw[0], p[1] - gw[1]]);
                 let group = self.selected_verts.contains(&g.vert);
                 for i in 0..path.total_verts() {
                     if i != g.vert && !(group && self.selected_verts.contains(&i)) {
@@ -340,6 +391,8 @@ impl PenTool {
                 }
                 return true;
             }
+            // Um handle é uma tangente: sem snap, e no espaço local do path.
+            let p = inv.apply(p);
             let Some(v) = path.vert_mut(g.vert) else {
                 return false;
             };
@@ -374,9 +427,14 @@ impl PenTool {
         // (Symmetric) — o clássico "arrasta pra curvar", quebrável depois (Alt).
         if self.dragging
             && let Some(id) = self.active
-            && let Some(path) = scene.path_mut(id)
-            && let Some(v) = path.verts.last_mut()
         {
+            let p = self.to_local(id, p);
+            let Some(path) = scene.path_mut(id) else {
+                return false;
+            };
+            let Some(v) = path.verts.last_mut() else {
+                return false;
+            };
             v.out_handle = p;
             v.in_handle = mirror(v.anchor, p);
             v.kind = VertexKind::Symmetric;
@@ -403,23 +461,27 @@ impl PenTool {
 
     /// Acha a âncora/handle mais próxima de `p` dentro do raio `r`. Handles só do
     /// path selecionado (é onde os gizmos aparecem); âncoras de todos os paths.
+    /// O raio `r` é WORLD-units (px × zoom), então a comparação acontece no mundo:
+    /// cada ponto local sobe pelo afim do path dele. Assim uma forma escalada a 10×
+    /// não fica com um raio de captura 10× maior — o alvo é do tamanho que se vê.
     fn hit_test(&self, scene: &VecScene, p: [f64; 2], r: f64) -> Option<Grab> {
         let r2 = r * r;
         if let Some(sel) = self.selected
             && let Some(path) = scene.paths().iter().find(|pp| pp.id == sel)
         {
+            let xf = self.xf(sel);
             // Handles de QUALQUER tipo, desde que não-degenerados (offset da
             // âncora) — cusps (Corner) e Symmetric também têm handles agarráveis,
             // não só Smooth. Handle tem prioridade sobre âncora (checado antes).
             for (i, v) in path.verts_all().enumerate() {
-                if dist2(v.in_handle, v.anchor) > 1e-18 && dist2(p, v.in_handle) <= r2 {
+                if dist2(v.in_handle, v.anchor) > 1e-18 && dist2(p, xf.apply(v.in_handle)) <= r2 {
                     return Some(Grab {
                         path: sel,
                         vert: i,
                         part: Part::In,
                     });
                 }
-                if dist2(v.out_handle, v.anchor) > 1e-18 && dist2(p, v.out_handle) <= r2 {
+                if dist2(v.out_handle, v.anchor) > 1e-18 && dist2(p, xf.apply(v.out_handle)) <= r2 {
                     return Some(Grab {
                         path: sel,
                         vert: i,
@@ -433,8 +495,9 @@ impl PenTool {
             if !self.view.is_pickable(path.id) {
                 continue;
             }
+            let xf = self.xf(path.id);
             for (i, v) in path.verts_all().enumerate() {
-                if dist2(p, v.anchor) <= r2 {
+                if dist2(p, xf.apply(v.anchor)) <= r2 {
                     return Some(Grab {
                         path: path.id,
                         vert: i,

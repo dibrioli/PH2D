@@ -125,6 +125,7 @@ pub fn bbox_key_points(lo: [f64; 2], hi: [f64; 2]) -> [[f64; 2]; 9] {
 #[must_use]
 pub fn collect_targets(
     scene: &VecScene,
+    xforms: &ph2d_vec_scene::VecXforms,
     skip_paths: &[VecPathId],
     skip_verts: &[(VecPathId, usize)],
 ) -> SnapTargets {
@@ -133,16 +134,22 @@ pub fn collect_targets(
         if skip_paths.contains(&path.id) {
             continue;
         }
+        // Alvos de snap são pontos que o usuário VÊ: mundo, não local (ADR-0111).
+        let xf = ph2d_vec_scene::xform_of(xforms, path.id);
         let mut deformed = false;
         for (i, v) in path.verts_all().enumerate() {
             if skip_verts.contains(&(path.id, i)) {
                 deformed = true;
             } else {
-                points.push(v.anchor);
+                points.push(xf.apply(v.anchor));
             }
         }
         if !deformed && let Some((lo, hi)) = scene.path_curve_bbox(path.id) {
-            points.extend_from_slice(&bbox_key_points(lo, hi));
+            // Os 9 pontos-chave são do bbox LOCAL; sobem um a um (uma forma girada
+            // dá um quadrilátero, e os pontos dele seguem sendo os cantos/meios).
+            for kp in bbox_key_points(lo, hi) {
+                points.push(xf.apply(kp));
+            }
         }
     }
     SnapTargets { points }
@@ -224,7 +231,7 @@ pub fn snap(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ph2d_vec_scene::rectangle;
+    use ph2d_vec_scene::{VecXforms, rectangle};
 
     fn targets(pts: &[[f64; 2]]) -> SnapTargets {
         SnapTargets {
@@ -397,17 +404,17 @@ mod tests {
         let b = scene.push_path(rectangle([20.0, 0.0], [30.0, 10.0]));
 
         // Nada excluído: 4 âncoras + 9 pontos de bbox, por path.
-        let all = collect_targets(&scene, &[], &[]);
+        let all = collect_targets(&scene, &VecXforms::new(), &[], &[]);
         assert_eq!(all.points.len(), 2 * (4 + 9));
 
         // `a` inteiro fora (é ele que está sendo movido).
-        let no_a = collect_targets(&scene, &[a], &[]);
+        let no_a = collect_targets(&scene, &VecXforms::new(), &[a], &[]);
         assert_eq!(no_a.points.len(), 4 + 9);
         assert!(!no_a.points.contains(&[0.0, 0.0]));
 
         // Uma âncora de `b` em movimento: ela sai E a bbox de `b` sai junto —
         // uma caixa que está sendo deformada não serve de referência.
-        let deforming = collect_targets(&scene, &[], &[(b, 0)]);
+        let deforming = collect_targets(&scene, &VecXforms::new(), &[], &[(b, 0)]);
         assert_eq!(deforming.points.len(), (4 + 9) + 3);
         assert!(!deforming.points.contains(&[20.0, 0.0]));
     }

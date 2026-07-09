@@ -84,6 +84,7 @@ pub(crate) fn apply_vec_boolean(
     scene: &mut ph2d_vec_scene::VecScene,
     history: &mut ph2d_vec_edit::History,
     pen: &mut ph2d_vec_edit::PenTool,
+    xforms: &ph2d_vec_scene::VecXforms,
     op: ph2d_vec_boolean::BoolOp,
 ) {
     let zs = selected_closed_z(scene, pen);
@@ -91,8 +92,18 @@ pub(crate) fn apply_vec_boolean(
         eprintln!("[ph2d-vec] boolean: selecione >= 2 regioes FECHADAS (Shift+clique)");
         return;
     }
-    let operands: Vec<ph2d_vec_scene::VecPath> =
-        zs.iter().map(|&z| scene.paths()[z].clone()).collect();
+    // ADR-0111: os operandos podem ter poses diferentes, e um resultado só vive num
+    // frame. Assa cada um no MUNDO; o path novo nasce world-space e a entidade dele
+    // nasce na identidade — a forma aparece exatamente onde as originais estavam.
+    let operands: Vec<ph2d_vec_scene::VecPath> = zs
+        .iter()
+        .map(|&z| {
+            let mut p = scene.paths()[z].clone();
+            let x = ph2d_vec_scene::xform_of(xforms, p.id);
+            ph2d_vec_scene::bake_xform(&mut p, &x);
+            p
+        })
+        .collect();
     let refs: Vec<&ph2d_vec_scene::VecPath> = operands.iter().collect();
     let results = ph2d_vec_boolean::apply_many(&refs, op);
     if results.is_empty() {
@@ -1146,6 +1157,23 @@ fn shape_up_consumes(mode: ph2d_tool_vector::DrawMode, shape_active: bool) -> bo
     shape_kind_for_mode(mode).is_some() && shape_active
 }
 
+/// O `anchor` e o meio-tamanho **intrínsecos** de um objeto do canvas, na linguagem
+/// do gizmo de sprite: do `Sprite`, se houver; da bbox local da curva, se for uma
+/// forma vetorial (ADR-0111). `([0,0], [0,0])` para o que não é nem um nem outro —
+/// um grupo, que não tem geometria própria.
+fn gizmo_anchor_half(
+    sim: &ph2d_ecs::SimWorld,
+    vec_scene: &ph2d_vec_scene::VecScene,
+    entity: ph2d_ecs::Entity,
+) -> ([f32; 2], [f32; 2]) {
+    if let Some(s) = sim.world().get::<ph2d_render::Sprite>(entity) {
+        return (s.anchor, [s.size[0] * 0.5, s.size[1] * 0.5]);
+    }
+    // `sim`/`vec_scene` chegam separados (e não via `AppGfx`) porque `hero_screen`
+    // está emprestado mutável no Down — campos irmãos, borrows disjuntos.
+    crate::vec_gizmo_view::anchor_half(sim, vec_scene, entity).unwrap_or(([0.0, 0.0], [0.0, 0.0]))
+}
+
 impl App {
     pub(crate) fn on_close_request(&mut self, event_loop: &ActiveEventLoop) {
         match self.handler.on_close_request() {
@@ -1335,10 +1363,12 @@ impl App {
     /// chamável).
     fn vec_boolean(&mut self, op: ph2d_vec_boolean::BoolOp) {
         if let Some(gfx) = self.gfx.as_mut() {
+            let xf = crate::vec_transform::build(&gfx.sim, &self.vec_entities);
             apply_vec_boolean(
                 &mut gfx.vec_scene,
                 &mut self.vec_history,
                 &mut self.vec_pen,
+                &xf,
                 op,
             );
         }
@@ -1713,7 +1743,15 @@ impl App {
         let w0 = gfx.camera.screen_to_world((0.0, 0.0), win);
         let w1 = gfx.camera.screen_to_world((1.0, 0.0), win);
         let px = (((w1[0] - w0[0]).powi(2) + (w1[1] - w0[1]).powi(2)).sqrt()) as f64;
-        ph2d_vec_render::hit_gradient_handle(path, wx, wy, 9.0 * px)
+        // ADR-0111: a geometria do gradiente é LOCAL, como a do path. O cursor desce
+        // pelo afim, e o raio de captura com ele (a forma pode estar escalada).
+        let x = crate::vec_transform::xform_of_transform(crate::vec_transform::world_transform(
+            &gfx.sim,
+            ph2d_ecs::Entity::from_bits(*self.vec_entities.get(&sel)?),
+        ));
+        let inv = x.inverse()?;
+        let l = inv.apply([wx, wy]);
+        ph2d_vec_render::hit_gradient_handle(path, l[0], l[1], 9.0 * px / x.mean_scale())
     }
 
     /// Gradient group: while a gradient handle is grabbed, move it to the cursor's
@@ -1731,6 +1769,20 @@ impl App {
         };
         let win = gfx.surface.size();
         let w = gfx.camera.screen_to_world((x, y), win);
+        // O ponto do gradiente é guardado no espaço local do path (ADR-0111).
+        let w = match self.vec_entities.get(&sel).and_then(|&b| {
+            crate::vec_transform::xform_of_transform(crate::vec_transform::world_transform(
+                &gfx.sim,
+                ph2d_ecs::Entity::from_bits(b),
+            ))
+            .inverse()
+        }) {
+            Some(inv) => {
+                let l = inv.apply([f64::from(w[0]), f64::from(w[1])]);
+                [l[0] as f32, l[1] as f32]
+            }
+            None => w,
+        };
         if let Some(path) = gfx.vec_scene.path_mut(sel) {
             return ph2d_vec_render::drag_gradient_handle(path, handle, w[0] as f64, w[1] as f64);
         }
@@ -1881,16 +1933,8 @@ impl App {
         if self.vec_pen_drag_move(self.last_pointer.0, self.last_pointer.1) {
             return;
         }
-        // Sprite-style transform gizmo drag (scale/rotate/move/pivot). Same early-
-        // return discipline; no-op unless a gizmo drag is live.
-        if let Some((cc, ch, sz)) = self
-            .gfx
-            .as_ref()
-            .map(|g| (g.camera.center, g.camera.height_world, g.surface.size()))
-            && self.advance_vec_gizmo(cc, ch, sz.width as f32, sz.height as f32)
-        {
-            return;
-        }
+        // ADR-0111: não há gizmo vetorial próprio. O gizmo de sprite move o
+        // `Transform` da entidade do path, pelo mesmo caminho de qualquer objeto.
         // Gradient group 3b: dragging a multi-point gradient handle. Same
         // early-return discipline; no-op unless a grad drag is live.
         if self.vec_grad_drag_move(self.last_pointer.0, self.last_pointer.1) {
@@ -2128,15 +2172,6 @@ impl App {
                     //      gizmo, whose bbox interior otherwise swallows every dot.
                     //   3. Transform gizmo handles (scale / rotate / interior move).
                     //   4. Pen / shape drawing + vertex editing.
-                    let cam = self
-                        .gfx
-                        .as_ref()
-                        .map(|g| (g.camera.center, g.camera.height_world, g.surface.size()));
-                    if let Some((cc, ch, sz)) = cam
-                        && self.vec_pivot_edit_down(cc, ch, sz.width as f32, sz.height as f32)
-                    {
-                        return;
-                    }
                     // Gradient group 3b: a Down on a gradient handle starts dragging it.
                     if let Some(i) = self.vec_grad_hit(self.last_pointer) {
                         self.vec_grad_selected = Some(i);
@@ -2144,11 +2179,6 @@ impl App {
                         if let Some(gfx) = self.gfx.as_ref() {
                             self.vec_history.begin(&gfx.vec_scene);
                         }
-                        return;
-                    }
-                    if let Some((cc, ch, sz)) = cam
-                        && self.vec_gizmo_down(cc, ch, sz.width as f32, sz.height as f32)
-                    {
                         return;
                     }
                     let params = shape_params(&self.vec_draw_config);
@@ -2229,10 +2259,6 @@ impl App {
                 (ph2d_host::PointerButton::Primary, PointerKind::Up) => {
                     // Fim de gesto: as guias de snap não sobrevivem ao Up.
                     self.vec_clear_snap_guides();
-                    // Transform gizmo: end the drag (commits one undo step iff moved).
-                    if self.end_vec_gizmo() {
-                        return;
-                    }
                     // Gradient group 3b: end a gradient-handle drag (commit iff moved).
                     if self.vec_grad_drag.take().is_some() {
                         if let Some(gfx) = self.gfx.as_ref() {
@@ -2482,8 +2508,21 @@ impl App {
                     {
                         let window_size = gfx.surface.size();
                         let world_pos = gfx.camera.screen_to_world((evt.x, evt.y), window_size);
-                        let hits =
-                            ph2d_render::pick_sprites_at_world(gfx.present.world_mut(), world_pos);
+                        // ADR-0111: as formas vetoriais desenham POR CIMA dos sprites,
+                        // então entram na frente da lista do clique-cíclico.
+                        let vec_view =
+                            crate::vec_entities::view_state(&gfx.sim, &self.vec_entities);
+                        let mut hits = crate::vec_gizmo_view::pick_all_at_world(
+                            &gfx.sim,
+                            &gfx.vec_scene,
+                            &vec_view,
+                            &self.vec_entities,
+                            world_pos,
+                        );
+                        hits.extend(ph2d_render::pick_sprites_at_world(
+                            gfx.present.world_mut(),
+                            world_pos,
+                        ));
                         if let Some(bits) = hits.first().copied() {
                             hero.gizmo.toggle_in_selection(bits);
                             let primary = hero.gizmo.selection;
@@ -2558,10 +2597,17 @@ impl App {
                         let window_size = gfx.surface.size();
                         let world_pos = gfx.camera.screen_to_world((evt.x, evt.y), window_size);
                         let on_pivot_dot = hit_id == Some(ph2d_editor::gizmo::ids::GIZMO_PIVOT);
-                        let on_sprite =
+                        // ADR-0111: uma forma vetorial também é agarrável pelo interior.
+                        let on_object =
                             ph2d_render::pick_sprite_at_world(gfx.present.world_mut(), world_pos)
-                                == Some(entity_bits);
-                        if (on_pivot_dot || on_sprite)
+                                == Some(entity_bits)
+                                || crate::vec_gizmo_view::contains_world(
+                                    &gfx.sim,
+                                    &gfx.vec_scene,
+                                    entity,
+                                    world_pos,
+                                );
+                        if (on_pivot_dot || on_object)
                             && !ph2d_ecs::is_locked_for_edit(gfx.sim.world(), entity)
                             && let Some(t) = gfx.sim.world().get::<Transform>(entity)
                         {
@@ -2576,11 +2622,8 @@ impl App {
                                 rotation: pw.rotation,
                                 scale: [pw.scale.x, pw.scale.y],
                             };
-                            let sprite = gfx.sim.world().get::<ph2d_render::Sprite>(entity);
-                            let anchor = sprite.map(|s| s.anchor).unwrap_or([0.0, 0.0]);
-                            let half = sprite
-                                .map(|s| [s.size[0] * 0.5, s.size[1] * 0.5])
-                                .unwrap_or([0.0, 0.0]);
+                            let (anchor, half) =
+                                gizmo_anchor_half(&gfx.sim, &gfx.vec_scene, entity);
                             // Invariant quad center = pivot + R·(anchor ⊙ scale).
                             let ax = anchor[0] * snap_t.scale[0];
                             let ay = anchor[1] * snap_t.scale[1];
@@ -2641,12 +2684,8 @@ impl App {
                             };
                             let use_center_anchor =
                                 self.modifiers.control_key() || self.modifiers.super_key();
-                            let sprite_half_intrinsic = gfx
-                                .sim
-                                .world()
-                                .get::<ph2d_render::Sprite>(entity)
-                                .map(|s| [s.size[0] * 0.5, s.size[1] * 0.5])
-                                .unwrap_or([0.0, 0.0]);
+                            let sprite_half_intrinsic =
+                                gizmo_anchor_half(&gfx.sim, &gfx.vec_scene, entity).1;
                             // Onda 2C: pivot world depends on target.
                             // PrimaryIndividual / ExtraIndividual use the
                             // sprite's own anchor (transforms local to it).
@@ -2751,8 +2790,21 @@ impl App {
                         // for the four conditions enumerated.
                         let window_size = gfx.surface.size();
                         let world_pos = gfx.camera.screen_to_world((evt.x, evt.y), window_size);
-                        let hits =
-                            ph2d_render::pick_sprites_at_world(gfx.present.world_mut(), world_pos);
+                        // ADR-0111: as formas vetoriais desenham POR CIMA dos sprites,
+                        // então entram na frente da lista do clique-cíclico.
+                        let vec_view =
+                            crate::vec_entities::view_state(&gfx.sim, &self.vec_entities);
+                        let mut hits = crate::vec_gizmo_view::pick_all_at_world(
+                            &gfx.sim,
+                            &gfx.vec_scene,
+                            &vec_view,
+                            &self.vec_entities,
+                            world_pos,
+                        );
+                        hits.extend(ph2d_render::pick_sprites_at_world(
+                            gfx.present.world_mut(),
+                            world_pos,
+                        ));
                         let same_list = !hits.is_empty() && hits == self.cycle_pick_hits;
                         if !same_list {
                             self.cycle_pick_world = Some(world_pos);
@@ -2958,11 +3010,21 @@ impl App {
                                 gfx.camera.screen_to_world(rb.current_screen, window_size);
                             let rmin = [world_a[0].min(world_b[0]), world_a[1].min(world_b[1])];
                             let rmax = [world_a[0].max(world_b[0]), world_a[1].max(world_b[1])];
-                            let bits = ph2d_render::pick_sprites_in_world_rect(
-                                gfx.present.world_mut(),
+                            let vec_view =
+                                crate::vec_entities::view_state(&gfx.sim, &self.vec_entities);
+                            let mut bits = crate::vec_gizmo_view::pick_in_world_rect(
+                                &gfx.sim,
+                                &gfx.vec_scene,
+                                &vec_view,
+                                &self.vec_entities,
                                 rmin,
                                 rmax,
                             );
+                            bits.extend(ph2d_render::pick_sprites_in_world_rect(
+                                gfx.present.world_mut(),
+                                rmin,
+                                rmax,
+                            ));
                             if !rb.add_mode {
                                 hero.gizmo.clear_all_selection();
                             }
@@ -3472,6 +3534,7 @@ mod tests {
             &mut scene,
             &mut history,
             &mut pen,
+            &ph2d_vec_scene::VecXforms::new(),
             ph2d_vec_boolean::BoolOp::Subtract,
         );
 
@@ -3499,6 +3562,7 @@ mod tests {
             &mut scene,
             &mut history,
             &mut pen,
+            &ph2d_vec_scene::VecXforms::new(),
             ph2d_vec_boolean::BoolOp::Union,
         );
         assert_eq!(scene.paths().len(), 2, "no-op");

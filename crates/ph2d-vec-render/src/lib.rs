@@ -12,7 +12,7 @@
 
 use ph2d_vec_scene::{
     FillRule as VecFillRule, LineCap, LineJoin, Paint, Rgba8, StrokeSpec, VecPath, VecPathId,
-    VecScene, VecViewState,
+    VecScene, VecViewState, VecXforms,
 };
 use ph2d_vector::{
     Affine, BezPath, Brush, Cap, Circle, Color, ColorStop, Fill, Gradient, Join, Point, Rect,
@@ -65,21 +65,34 @@ pub(crate) fn fill_rule(path: &VecPath) -> Fill {
     }
 }
 
-/// Desenha toda a `scene` no `target` (o `VectorScene` do frame) sob `transform`
-/// (o world→screen da câmera). Fill primeiro, stroke por cima.
+/// O afim local→tela do path: o `Transform` dele (ADR-0111), depois a câmera.
+///
+/// A geometria do path é LOCAL; quem a põe no mundo é `xforms`. Path ausente do
+/// mapa ⇒ identidade ⇒ local é mundo, que é o estado de todo path recém-criado.
+#[must_use]
+pub fn path_to_screen(xforms: &VecXforms, id: VecPathId, camera: Affine) -> Affine {
+    camera * Affine::new(ph2d_vec_scene::xform_of(xforms, id).0)
+}
+
+/// Desenha toda a `scene` no `target` (o `VectorScene` do frame) sob `camera`
+/// (o world→screen). Fill primeiro, stroke por cima.
 ///
 /// `view` diz quem a ÁRVORE do editor esconde — a visibilidade é da entidade ECS
-/// do path e dos ancestrais dela, não do documento (ADR-0110).
+/// do path e dos ancestrais dela, não do documento (ADR-0110). `xforms` diz onde
+/// cada path está — o `Transform` da entidade dele (ADR-0111). O stroke escala
+/// junto com a forma, como o contorno de um sprite escalado.
 pub fn dispatch(
     scene: &VecScene,
     view: &VecViewState,
-    transform: Affine,
+    xforms: &VecXforms,
+    camera: Affine,
     target: &mut VectorScene,
 ) {
     for path in scene.paths() {
         if view.is_hidden(path.id) {
             continue;
         }
+        let transform = path_to_screen(xforms, path.id, camera);
         let bp = build_bezpath(path);
         if let Some(fill) = &path.fill {
             if let Paint::MultiPoint { points } = fill {
@@ -119,13 +132,16 @@ pub fn draw_overlays(
     selected: Option<VecPathId>,
     selected_paths: &[VecPathId],
     selected_verts: &[usize],
-    transform: Affine,
+    xforms: &VecXforms,
+    camera: Affine,
     target: &mut VectorScene,
 ) {
     for path in scene.paths() {
         if view.is_hidden(path.id) {
             continue; // um path escondido não mostra âncoras
         }
+        // Âncoras e handles são LOCAIS: passam pelo Transform do path antes da câmera.
+        let transform = path_to_screen(xforms, path.id, camera);
         let is_sel = Some(path.id) == selected;
         // Any path in the OBJECT selection set is highlighted; the primary also shows
         // its Bézier handles + per-vertex picks.
@@ -323,12 +339,13 @@ mod tests {
             let scene = VecScene::demo_grid(n);
             let mut target = VectorScene::new();
             target.reset();
-            dispatch(&scene, &VecViewState::default(), affine, &mut target); // warm
+            let xf = VecXforms::new();
+            dispatch(&scene, &VecViewState::default(), &xf, affine, &mut target); // warm
             let iters = 30;
             let t = Instant::now();
             for _ in 0..iters {
                 target.reset();
-                dispatch(&scene, &VecViewState::default(), affine, &mut target);
+                dispatch(&scene, &VecViewState::default(), &xf, affine, &mut target);
             }
             let ms = t.elapsed().as_secs_f64() * 1000.0 / iters as f64;
             println!(

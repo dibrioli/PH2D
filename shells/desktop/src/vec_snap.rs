@@ -105,8 +105,12 @@ impl App {
         skip_paths: &[VecPathId],
         skip_verts: &[(VecPathId, usize)],
     ) {
+        // Os alvos são pontos de MUNDO; a geometria é local (ADR-0111).
         self.vec_snap_targets = match self.gfx.as_ref() {
-            Some(gfx) => collect_targets(&gfx.vec_scene, skip_paths, skip_verts),
+            Some(gfx) => {
+                let xf = crate::vec_transform::build(&gfx.sim, &self.vec_entities);
+                collect_targets(&gfx.vec_scene, &xf, skip_paths, skip_verts)
+            }
             None => SnapTargets::default(),
         };
     }

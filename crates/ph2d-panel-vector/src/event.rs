@@ -171,8 +171,7 @@ pub(crate) fn apply_event(
                 || id == ids::VECTOR_ALIGN_VCENTER
                 || id == ids::VECTOR_ALIGN_BOTTOM
                 || id == ids::VECTOR_DISTRIBUTE_H
-                || id == ids::VECTOR_DISTRIBUTE_V
-                || id == ids::VECTOR_PIVOT_EDIT =>
+                || id == ids::VECTOR_DISTRIBUTE_V =>
         {
             seam_reset_button(host, id);
             host.bus_mut()

@@ -38,8 +38,6 @@ thread_local! {
     /// Number of paths in the object selection — drives the Align (≥2) / Distribute
     /// (≥3) section visibility.
     static CURRENT_SELECTION_COUNT: Cell<usize> = const { Cell::new(0) };
-    /// Whether the gizmo "Set Center" pivot-edit mode is armed (drives the button label).
-    static CURRENT_PIVOT_EDIT: Cell<bool> = const { Cell::new(false) };
     /// Fill rule of the selected path, `Some` only when it is a COMPOUND path —
     /// the two rules agree on a single contour, so the row would be a no-op there.
     static CURRENT_FILL_RULE: Cell<Option<PathFillRule>> = const { Cell::new(None) };
@@ -172,16 +170,6 @@ pub fn set_current_selection_count(n: usize) {
 /// The object-selection path count this frame (≥2 shows Align, ≥3 shows Distribute).
 pub(crate) fn current_selection_count() -> usize {
     CURRENT_SELECTION_COUNT.with(|c| c.get())
-}
-
-/// Publish whether the "Set Center" pivot-edit mode is armed.
-pub fn set_current_pivot_edit(armed: bool) {
-    CURRENT_PIVOT_EDIT.with(|c| c.set(armed));
-}
-
-/// Whether "Set Center" is armed this frame (drives the button label).
-pub(crate) fn pivot_edit_armed() -> bool {
-    CURRENT_PIVOT_EDIT.with(|c| c.get())
 }
 
 /// Publish the selected path's fill rule — `None` unless it is a compound path

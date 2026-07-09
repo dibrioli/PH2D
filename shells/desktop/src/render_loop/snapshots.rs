@@ -89,6 +89,9 @@ pub(super) fn publish(
     paint_stamps: u32,
     paint_ms: f32,
     suppress_sprite_gizmo: bool,
+    // ADR-0111: uma forma vetorial também publica `GizmoView` — ela é um objeto com
+    // `Transform`, e o gizmo que a manipula é o de sprite.
+    vec_scene: &ph2d_vec_scene::VecScene,
 ) {
     // M14.4a: if live-bridge enabled, rebuild HierarchySnapshot
     // from SimWorld + push into HeroScreen BEFORE paint. The
@@ -247,9 +250,22 @@ pub(super) fn publish(
     // exact same world→view math. Single source of truth for the
     // affine decomposition + anchor compensation; any future render-
     // path tweak only touches this closure.
+    // ADR-0111: sem `Sprite`, tenta a forma vetorial — mesma caixa, mesmo pivô,
+    // mesma rotação, derivados da bbox local da curva e do `Transform` da entidade.
     let build_view =
         |bits: u64, sim: &SimWorld, present: &mut PresentWorld| -> Option<ph2d_editor::GizmoView> {
             let sim_entity = ph2d_ecs::Entity::from_bits(bits);
+            if sim.world().get::<Sprite>(sim_entity).is_none() {
+                return crate::vec_gizmo_view::view(
+                    sim,
+                    vec_scene,
+                    sim_entity,
+                    camera,
+                    window_size,
+                    last_pointer,
+                    pivot_tool_active,
+                );
+            }
             let sprite = sim.world().get::<Sprite>(sim_entity)?;
             let mut q = present
                 .world_mut()

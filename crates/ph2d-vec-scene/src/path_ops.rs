@@ -8,7 +8,7 @@
 //! mover/escalar/rodar leva o buraco junto, e as bboxes enquadram a forma toda.
 
 use crate::compound::contour_segments;
-use crate::{FillRule, FlipAxis, Paint, Rotate90, VecPathId, VecScene};
+use crate::{FillRule, FlipAxis, Paint, Rotate90, VecPath, VecPathId, VecScene};
 
 /// Amostras por segmento cúbico nas varreduras de geometria (bbox / containment).
 /// Apertado o bastante p/ o gizmo e transcendental-free.
@@ -102,6 +102,15 @@ impl VecScene {
         });
         // Gradient geometry rotates with the shape (about the same pivot).
         transform_fill_geometry(&mut path.fill, rot, 1.0);
+        true
+    }
+
+    /// **Assa** o afim `x` na geometria do path `id`. `false` se o id sumiu.
+    pub fn transform_path(&mut self, id: VecPathId, x: &crate::Xform) -> bool {
+        let Some(path) = self.paths.iter_mut().find(|p| p.id == id) else {
+            return false;
+        };
+        bake_xform(path, x);
         true
     }
 
@@ -310,6 +319,29 @@ fn for_each_curve_point(path: &crate::VecPath, mut f: impl FnMut([f64; 2])) {
             }
         }
     }
+}
+
+/// **Assa** o afim `x` na geometria de `path`: âncoras, handles e a geometria do
+/// gradiente passam a estar no frame de destino.
+///
+/// É o que reconcilia frames diferentes antes de uma operação de geometria
+/// (booleana, merge, offset): os operandos vêm de entidades com `Transform`
+/// distintos, e um resultado só pode viver num frame. Assando os operandos no
+/// MUNDO, o resultado nasce em world-space — e a entidade nova dele, na identidade,
+/// o desenha exatamente onde as formas de origem estavam.
+///
+/// Identidade é no-op.
+pub fn bake_xform(path: &mut VecPath, x: &crate::Xform) {
+    if x.is_identity() {
+        return;
+    }
+    let f = |p: [f64; 2]| x.apply(p);
+    path.for_each_vert_mut(|v| {
+        v.anchor = f(v.anchor);
+        v.in_handle = f(v.in_handle);
+        v.out_handle = f(v.out_handle);
+    });
+    transform_fill_geometry(&mut path.fill, f, x.mean_scale());
 }
 
 /// Aplica a transformação de ponto `f` (a MESMA das âncoras) à geometria world-space

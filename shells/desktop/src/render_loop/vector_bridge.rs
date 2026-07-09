@@ -126,7 +126,6 @@ pub(super) fn dispatch(
     // replacing the whole fill with a solid colour.
     grad_handle: Option<GradHandle>,
     // Whether the transform gizmo's "Set Center" pivot-edit mode is armed.
-    pivot_edit: bool,
     // Whether shape-snapping is on, mirrored into the panel's Snap section. The
     // GRID toggle lives in the editor's universal Grid Snap panel.
     snap_on: bool,
@@ -352,8 +351,6 @@ pub(super) fn dispatch(
     });
     // Publish the pivot-edit ("Set Center") armed state for the button label.
     #[cfg(feature = "panel-vector")]
-    ph2d_panel_vector::set_current_pivot_edit(vector_active && pivot_edit);
-
     // Publish shape-snapping so the Snap section reflects (and drives) it.
     #[cfg(feature = "panel-vector")]
     ph2d_panel_vector::set_current_snap(snap_on);

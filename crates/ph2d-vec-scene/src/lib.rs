@@ -29,9 +29,15 @@ pub use compound::{Contour, FillRule};
 mod structure;
 pub use structure::{VecClip, VecViewState};
 
+/// ADR-0111: a geometria do path é LOCAL. O afim que a leva ao mundo vem da
+/// entidade (`Transform` ∘ cadeia de pais) e é publicado pela shell a cada frame.
+mod xform;
+pub use xform::{VecXforms, Xform, xform_of};
+
 /// Whole-path transforms (flip / rotate / translate / scale / bbox) live in a
 /// sibling module (LOC cap); the `impl VecScene` block is inherent.
 mod path_ops;
+pub use path_ops::bake_xform;
 /// Reshape ops (smooth / sharpen / simplify / subdivide), likewise a sibling.
 mod reshape;
 

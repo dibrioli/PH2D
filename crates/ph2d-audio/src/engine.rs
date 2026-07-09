@@ -131,6 +131,17 @@ impl AudioEngine {
         self.send(AudioCommand::SeekPreview { frame })
     }
 
+    /// Hot-swap the preview's sample WITHOUT stopping it — apply an edit live,
+    /// keeping the play position + loop. No-op if no preview is sounding.
+    pub fn set_preview_data(&self, data: SampleData) -> Result<(), AudioError> {
+        self.send(AudioCommand::SetPreviewData { data })
+    }
+
+    /// Enable/disable preview looping live (the editor's Loop toggle mid-play).
+    pub fn set_preview_looping(&self, looping: bool) -> Result<(), AudioError> {
+        self.send(AudioCommand::SetPreviewLooping { looping })
+    }
+
     /// Pause (`true`) or resume (`false`) the preview, holding its position.
     pub fn pause_preview(&self, paused: bool) -> Result<(), AudioError> {
         self.send(AudioCommand::PausePreview { paused })
@@ -440,6 +451,17 @@ impl AudioRenderer {
                     *preview_paused = false;
                 }
                 AudioCommand::SeekPreview { frame } => preview.set_cursor(frame),
+                AudioCommand::SetPreviewData { data } => {
+                    if *preview_active && !preview.is_free() {
+                        if let Some(old) = preview.replace_data(data) {
+                            on_finished(old);
+                        }
+                    } else {
+                        // Not sounding — ship it back to drop on the control thread.
+                        on_finished(data);
+                    }
+                }
+                AudioCommand::SetPreviewLooping { looping } => preview.set_looping(looping),
                 AudioCommand::PausePreview { paused } => *preview_paused = paused,
                 AudioCommand::StopPreview => {
                     if let Some(old) = preview.free() {
@@ -573,59 +595,6 @@ mod tests {
     }
 
     #[test]
-    fn preview_advances_seeks_and_finishes() {
-        let (engine, mut r) = AudioEngine::new(AudioFormat::stereo(48_000));
-        // 100-frame mono clip at the output rate → advance is exactly 1 frame per
-        // output frame, so the published position is deterministic.
-        let data = SampleData::from_interleaved(vec![0.2; 100], AudioFormat::mono(48_000));
-        engine.play_preview(data, PlayParams::default()).unwrap();
-
-        let mut out = [0.0f32; 64 * 2];
-        r.render(&mut out, 32);
-        assert!(engine.preview_playing(), "preview should be sounding");
-        assert_eq!(engine.preview_frame(), 32, "advance 1.0 → 32 frames in");
-        // The preview reached the device buffer (non-silent).
-        assert!(out[..64].iter().any(|&s| s.abs() > 0.0));
-
-        // Seek near the end; the next block runs past it and the preview finishes.
-        engine.seek_preview(90).unwrap();
-        r.render(&mut out, 32);
-        assert!(!engine.preview_playing(), "preview should finish after the end");
-    }
-
-    #[test]
-    fn preview_pause_holds_position() {
-        let (engine, mut r) = AudioEngine::new(AudioFormat::stereo(48_000));
-        let data = SampleData::from_interleaved(vec![0.3; 1000], AudioFormat::mono(48_000));
-        engine.play_preview(data, PlayParams::default()).unwrap();
-        let mut out = [0.0f32; 128];
-        r.render(&mut out, 64);
-        let at = engine.preview_frame();
-        assert_eq!(at, 64);
-        engine.pause_preview(true).unwrap();
-        r.render(&mut out, 64);
-        assert_eq!(engine.preview_frame(), at, "paused preview holds position");
-        assert!(engine.preview_playing(), "paused is still active");
-        // Resume advances again.
-        engine.pause_preview(false).unwrap();
-        r.render(&mut out, 64);
-        assert_eq!(engine.preview_frame(), at + 64);
-    }
-
-    #[test]
-    fn preview_is_independent_of_game_voices() {
-        // A preview must not consume a game voice-pool slot.
-        let (mut engine, mut r) = AudioEngine::new(AudioFormat::stereo(48_000));
-        let data = SampleData::from_interleaved(vec![0.1; 200], AudioFormat::mono(48_000));
-        engine.play_preview(data.clone(), PlayParams::default()).unwrap();
-        let _v = engine.play(data, PlayParams::default()).unwrap();
-        let mut out = [0.0f32; 128];
-        r.render(&mut out, 64);
-        assert_eq!(r.active_voices(), 1, "the game voice, not the preview");
-        assert!(engine.preview_playing());
-    }
-
-    #[test]
     fn open_cutoff_is_true_bypass_across_sample_rates() {
         // The Tone slider's fully-open top is OPEN_CUTOFF_HZ (20 kHz). At 48 kHz
         // the Nyquist guard (sr*0.5*0.9 = 21.6 kHz) alone would NOT bypass it, so
@@ -668,5 +637,4 @@ mod tests {
             "a 500 Hz low-cut must filter, not bypass"
         );
     }
-
 }

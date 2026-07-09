@@ -140,6 +140,27 @@ impl Voice {
         self.pan_gains = equal_power_pan(pan);
     }
 
+    /// Enable/disable looping live (e.g. the editor's Loop toggle mid-playback).
+    pub(crate) fn set_looping(&mut self, looping: bool) {
+        self.looping = looping;
+    }
+
+    /// Hot-swap the playing sample for `data`, KEEPING the read cursor (clamped to
+    /// the new length) so playback continues seamlessly — used by the editor to
+    /// apply an edit without stopping the preview. Returns the previous sample (to
+    /// drop off the RT thread), or `Some(data)` unchanged if this voice is free.
+    pub(crate) fn replace_data(&mut self, data: SampleData) -> Option<SampleData> {
+        if self.id.is_none() {
+            return Some(data);
+        }
+        let max = data.frame_count() as f64;
+        let old = self.data.replace(data);
+        if self.cursor > max {
+            self.cursor = max;
+        }
+        old
+    }
+
     pub(crate) fn release(&mut self) {
         if let Some(e) = self.envelope.as_mut() {
             e.release();

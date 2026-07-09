@@ -239,6 +239,8 @@ impl crate::App {
                 if let Some(cmd) = ed::take_edit_cmd() {
                     audio.editor_apply(cmd);
                 }
+                // Live Loop toggle — takes effect on the sounding preview immediately.
+                audio.editor_set_looping(ed::looping());
                 audio.editor_poll();
                 ed::set_playing(audio.editor_playing());
                 ed::set_loaded(audio.editor_loaded());

@@ -115,8 +115,7 @@ impl AudioMeter {
     /// still sounding (`active`). Called by the renderer's preview voice each block.
     pub(crate) fn store_preview(&self, frame: u64, active: bool) {
         self.preview_frame.store(frame, Ordering::Relaxed);
-        self.preview_active
-            .store(active as u32, Ordering::Relaxed);
+        self.preview_active.store(active as u32, Ordering::Relaxed);
     }
 
     /// The editor preview's current playback position, in source frames.

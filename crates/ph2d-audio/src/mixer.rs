@@ -229,6 +229,8 @@ impl Mixer {
             // preview voice (outside this mixer), never forwarded here.
             AudioCommand::PlayPreview { .. }
             | AudioCommand::SeekPreview { .. }
+            | AudioCommand::SetPreviewData { .. }
+            | AudioCommand::SetPreviewLooping { .. }
             | AudioCommand::PausePreview { .. }
             | AudioCommand::StopPreview => {}
         }

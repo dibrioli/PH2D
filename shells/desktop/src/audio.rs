@@ -493,6 +493,8 @@ struct AudioEditorRuntime {
     /// callback processing it — without it, `editor_poll` sees `preview_playing()`
     /// still false right after Play and wrongly snaps back to Stopped.
     started: bool,
+    /// Change-gate for the live Loop toggle pushed to the preview.
+    last_loop: std::cell::Cell<bool>,
     /// Display name of the loaded clip (file stem).
     name: String,
 }
@@ -626,33 +628,50 @@ impl AudioSystem {
     }
 
     /// Apply a one-shot edit command from the panel to the loaded clip (each
-    /// commits an undo step; undo/redo step the timeline). Stops the preview since
-    /// the clip data changes underneath it.
+    /// commits an undo step; undo/redo step the timeline). Keeps the preview
+    /// PLAYING (and looping): the edited buffer is hot-swapped into the sounding
+    /// preview voice at its current position, so the change is heard live.
     pub(crate) fn editor_apply(&mut self, cmd: ph2d_panel_audio_editor::AudioEditCmd) {
-        use ph2d_panel_audio_editor::AudioEditCmd as Cmd;
-        let Some(clip) = self.editor.clip.as_mut() else {
-            return;
-        };
-        // ±3 dB per click (10^(±3/20)).
-        const GAIN_UP: f32 = 1.412_537_5;
-        const GAIN_DOWN: f32 = 0.707_945_8;
-        match cmd {
-            Cmd::Undo => {
-                clip.undo();
+        {
+            use ph2d_panel_audio_editor::AudioEditCmd as Cmd;
+            let Some(clip) = self.editor.clip.as_mut() else {
+                return;
+            };
+            // ±3 dB per click (10^(±3/20)).
+            const GAIN_UP: f32 = 1.412_537_5;
+            const GAIN_DOWN: f32 = 0.707_945_8;
+            match cmd {
+                Cmd::Undo => {
+                    clip.undo();
+                }
+                Cmd::Redo => {
+                    clip.redo();
+                }
+                Cmd::NormalizePeak => clip.apply_normalize_peak(1.0),
+                Cmd::NormalizeLufs => clip.apply_normalize_lufs(-16.0), // LITERAL-PX-OK: -16 LUFS target
+                Cmd::Reverse => clip.apply_reverse(),
+                Cmd::RemoveDc => clip.apply_remove_dc_offset(),
+                Cmd::Invert => clip.apply_invert(),
+                Cmd::GainDown => clip.apply_gain(GAIN_DOWN),
+                Cmd::GainUp => clip.apply_gain(GAIN_UP),
             }
-            Cmd::Redo => {
-                clip.redo();
-            }
-            Cmd::NormalizePeak => clip.apply_normalize_peak(1.0),
-            Cmd::NormalizeLufs => clip.apply_normalize_lufs(-16.0), // LITERAL-PX-OK: -16 LUFS target
-            Cmd::Reverse => clip.apply_reverse(),
-            Cmd::RemoveDc => clip.apply_remove_dc_offset(),
-            Cmd::Invert => clip.apply_invert(),
-            Cmd::GainDown => clip.apply_gain(GAIN_DOWN),
-            Cmd::GainUp => clip.apply_gain(GAIN_UP),
         }
-        let _ = self.engine.stop_preview();
-        self.editor.state = EditorTransport::Stopped;
+        // Hot-swap the edited buffer into the sounding preview (no stop). No-op if
+        // stopped — the next Play uses the edited clip.
+        if self.engine.preview_playing()
+            && let Some(clip) = self.editor.clip.as_ref()
+        {
+            let _ = self.engine.set_preview_data(clip.data().clone());
+        }
+    }
+
+    /// Push the Loop toggle to the sounding preview live (so toggling Loop during
+    /// playback takes effect immediately). Change-gated so it doesn't flood the ring.
+    pub(crate) fn editor_set_looping(&self, looping: bool) {
+        if self.editor.last_loop.get() != looping {
+            self.editor.last_loop.set(looping);
+            let _ = self.engine.set_preview_looping(looping);
+        }
     }
 
     /// Whether the loaded clip can undo / redo (dims the panel buttons).

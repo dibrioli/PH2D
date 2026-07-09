@@ -167,6 +167,15 @@ pub(crate) enum AudioCommand {
     SeekPreview {
         frame: u64,
     },
+    /// Hot-swap the preview's sample (an edit applied without stopping playback),
+    /// keeping the read cursor. No-op if no preview is sounding.
+    SetPreviewData {
+        data: SampleData,
+    },
+    /// Enable/disable preview looping live (the editor's Loop toggle mid-play).
+    SetPreviewLooping {
+        looping: bool,
+    },
     /// Pause (`true`) or resume (`false`) the preview without losing its position.
     PausePreview {
         paused: bool,

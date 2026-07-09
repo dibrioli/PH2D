@@ -9,10 +9,11 @@
 
 use crate::state::AudioEditorState;
 use crate::{
-    AEDIT_CLOSE, AEDIT_CUT, AEDIT_DC, AEDIT_EXPORT, AEDIT_FADE_IN, AEDIT_FADE_OUT, AEDIT_GAIN_DOWN,
-    AEDIT_GAIN_UP, AEDIT_INVERT, AEDIT_LOAD, AEDIT_LOOP, AEDIT_NAME, AEDIT_NORM_LUFS,
-    AEDIT_NORMALIZE, AEDIT_PANEL, AEDIT_PLAY, AEDIT_REDO, AEDIT_REVERSE, AEDIT_SILENCE, AEDIT_STOP,
-    AEDIT_TRIM, AEDIT_UNDO, AudioEditorPanel, snapshot,
+    AEDIT_BITCRUSH, AEDIT_CLOSE, AEDIT_COMPRESS, AEDIT_CUT, AEDIT_DC, AEDIT_EXPORT, AEDIT_FADE_IN,
+    AEDIT_FADE_OUT, AEDIT_GAIN_DOWN, AEDIT_GAIN_UP, AEDIT_HIGHPASS, AEDIT_INVERT, AEDIT_LOAD,
+    AEDIT_LOOP, AEDIT_LOWPASS, AEDIT_NAME, AEDIT_NORM_LUFS, AEDIT_NORMALIZE, AEDIT_PANEL, AEDIT_PLAY,
+    AEDIT_REDO, AEDIT_REVERSE, AEDIT_SATURATE, AEDIT_SILENCE, AEDIT_STOP, AEDIT_TRIM, AEDIT_UNDO,
+    AEDIT_WIDEN, AudioEditorPanel, snapshot,
 };
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::interaction::{HitIndex, InteractiveState};
@@ -348,6 +349,40 @@ fn paint_edit_section(
         theme,
         hit_index,
     );
+    y += ROW_H + Spacing::Md.px();
+
+    // Effects rack (W3 block 1) — act on the selection, or the whole clip when
+    // none (enabled whenever a clip is loaded, like the whole-clip ops).
+    let fx_rows: [[(&str, NodeId, bool); 2]; 3] = [
+        [
+            ("Low-Pass", AEDIT_LOWPASS, loaded),
+            ("High-Pass", AEDIT_HIGHPASS, loaded),
+        ],
+        [
+            ("Compress", AEDIT_COMPRESS, loaded),
+            ("Saturate", AEDIT_SATURATE, loaded),
+        ],
+        [
+            ("Bitcrush", AEDIT_BITCRUSH, loaded),
+            ("Widen", AEDIT_WIDEN, loaded),
+        ],
+    ];
+    for row in fx_rows {
+        for (i, (label, id, enabled)) in row.into_iter().enumerate() {
+            let bx = x + i as f32 * (half + gap);
+            button(
+                Rect::new(bx, y, half, ROW_H),
+                label,
+                enabled,
+                id,
+                scene,
+                text_system,
+                theme,
+                hit_index,
+            );
+        }
+        y += ROW_H + gap;
+    }
 }
 
 /// Seconds per minute — time-domain constant, not a UI metric.

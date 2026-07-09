@@ -82,6 +82,21 @@ pub const AEDIT_FADE_IN: NodeId = hash_node_id("audio_editor_fade_in");
 /// Fade out across the selection.
 pub const AEDIT_FADE_OUT: NodeId = hash_node_id("audio_editor_fade_out");
 
+// Effects rack (W3 block 1) — offline, length-preserving effects that act on the
+// target range (selection or whole clip) with curated fixed parameters.
+/// Low-pass filter (muffle / warm).
+pub const AEDIT_LOWPASS: NodeId = hash_node_id("audio_editor_lowpass");
+/// High-pass filter (thin / de-rumble).
+pub const AEDIT_HIGHPASS: NodeId = hash_node_id("audio_editor_highpass");
+/// Compressor (glue / level).
+pub const AEDIT_COMPRESS: NodeId = hash_node_id("audio_editor_compress");
+/// `tanh` saturation (warmth / drive).
+pub const AEDIT_SATURATE: NodeId = hash_node_id("audio_editor_saturate");
+/// Bit-crush (lo-fi).
+pub const AEDIT_BITCRUSH: NodeId = hash_node_id("audio_editor_bitcrush");
+/// Stereo widen (M/S).
+pub const AEDIT_WIDEN: NodeId = hash_node_id("audio_editor_widen");
+
 /// A one-shot edit command the panel arms (via a click) and the shell drains +
 /// applies to the loaded `EditClip`. UI-only enum (no `ph2d-audio-edit` dep here);
 /// the shell maps each variant to the matching `EditClip::apply_*` / undo/redo.
@@ -115,6 +130,18 @@ pub enum AudioEditCmd {
     FadeIn,
     /// Fade out across the selection.
     FadeOut,
+    /// Low-pass filter the target range.
+    LowPass,
+    /// High-pass filter the target range.
+    HighPass,
+    /// Compress the target range.
+    Compress,
+    /// Saturate the target range.
+    Saturate,
+    /// Bit-crush the target range.
+    Bitcrush,
+    /// Stereo-widen the target range.
+    StereoWiden,
 }
 
 /// Zero-size marker implementing the typed Audio Editor panel contract.

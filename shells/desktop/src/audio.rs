@@ -708,6 +708,33 @@ impl AudioSystem {
                     ph2d_audio_edit::FadeShape::SCurve,
                     ph2d_audio_edit::FadeDir::Out,
                 ),
+                // Effects rack (W3 block 1) — curated fixed presets (parametric
+                // control + chain + presets are a later block).
+                Cmd::LowPass => clip.apply_effect(ph2d_audio_edit::Effect::LowPass {
+                    cutoff: 3_000.0,
+                    q: 0.707,
+                }),
+                Cmd::HighPass => clip.apply_effect(ph2d_audio_edit::Effect::HighPass {
+                    cutoff: 150.0,
+                    q: 0.707,
+                }),
+                Cmd::Compress => clip.apply_effect(ph2d_audio_edit::Effect::Compress {
+                    threshold: 0.3,
+                    ratio: 4.0,
+                    attack_secs: 0.005,
+                    release_secs: 0.1,
+                    makeup: 1.6,
+                }),
+                Cmd::Saturate => {
+                    clip.apply_effect(ph2d_audio_edit::Effect::Saturate { drive: 3.0 })
+                }
+                Cmd::Bitcrush => clip.apply_effect(ph2d_audio_edit::Effect::Bitcrush {
+                    bits: 6,
+                    downsample: 4,
+                }),
+                Cmd::StereoWiden => {
+                    clip.apply_effect(ph2d_audio_edit::Effect::StereoWidth { width: 1.6 })
+                }
             }
         }
         // Hot-swap the edited buffer into the sounding preview (no stop). No-op if

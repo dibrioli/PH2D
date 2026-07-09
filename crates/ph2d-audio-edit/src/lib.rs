@@ -14,9 +14,11 @@
 //! (trim/split/fade/normalise/…) land in W2 —
 //! `docs/Audio/02_plano_implementacao_completo.md` §5.
 
+mod fx;
 mod ops;
 mod peaks;
 
+pub use fx::Effect;
 pub use ops::{FadeDir, FadeShape, in_range, peak, snap_to_zero_crossing};
 pub use peaks::{ColumnPeaks, DEFAULT_BIN_SIZE, PeakCache, column_peaks};
 
@@ -191,6 +193,15 @@ impl EditClip {
     pub fn apply_remove_dc_offset(&mut self) {
         let t = self.target();
         self.commit(ops::in_range(&self.data, t, ops::remove_dc_offset));
+    }
+
+    /// Apply an offline [`Effect`] (filter / dynamics / character) to the target
+    /// range (selection, or whole clip). Length-preserving, so it splices via
+    /// [`in_range`] exactly like the sample ops — a selection is processed in
+    /// isolation. Commits one undo step.
+    pub fn apply_effect(&mut self, fx: Effect) {
+        let t = self.target();
+        self.commit(ops::in_range(&self.data, t, |d| fx.apply(d)));
     }
 
     /// Fade the target range (selection or whole clip).

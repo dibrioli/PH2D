@@ -208,6 +208,31 @@ impl PainterTool {
 const CANVAS_WET_DRY_PER_S: f32 = 30.0;
 
 impl PainterTool {
+    /// EDGE-1: whether the stroke beginning NOW continues the live **wet session** (one wash):
+    /// watercolor mode, some paper still wet, the session base is sized, the union buffers exist,
+    /// and — the load-bearing guard — `canvas_rgba` is EXACTLY the Arc our last bake produced
+    /// (`Arc::ptr_eq`). Every foreign mutation path (undo restore, layer switch/bind, fill,
+    /// resize, document switch) assigns a fresh Arc, so no per-site invalidation is needed.
+    pub(super) fn wet_session_continues(&self) -> bool {
+        let (fw, fh) = self.source_size;
+        let n = (fw as usize) * (fh as usize);
+        self.watercolor_render_active()
+            && n > 0
+            && self.paint.canvas_wet_rect.is_some()
+            && self.paint.stroke_coverage.len() == n
+            && self.paint.stroke_color.len() == n * 4
+            && self
+                .paint
+                .wet_session_base
+                .as_ref()
+                .is_some_and(|b| b.len() == n * 4)
+            && self
+                .paint
+                .wet_session_canvas
+                .as_ref()
+                .is_some_and(|c| Arc::ptr_eq(c, &self.canvas_rgba))
+    }
+
     /// EDGE-1: pour the finished stroke's coverage into the persistent canvas MOISTURE map
     /// (max-blend over the stroke's cumulative rect). Called at the bake, AFTER the commit
     /// composite — the stroke's own rim renders against dry paper; only strokes that follow
@@ -289,6 +314,18 @@ impl PainterTool {
             self.paint.canvas_wet = Vec::new();
             self.paint.canvas_wet_rect = None;
             self.paint.canvas_wet_carry = 0.0;
+            // Fully dry = the wet SESSION is over: drop its base/guard, and (only with no stroke
+            // open — the tick also fires mid-stroke, and an open stroke owns these buffers) free
+            // the union buffers; the next pen-down starts a fresh wash over the current canvas.
+            self.paint.wet_session_base = None;
+            self.paint.wet_session_canvas = None;
+            if self.paint.stroke.is_none() {
+                self.paint.stroke_coverage = Vec::new();
+                self.paint.stroke_color = Vec::new();
+                self.paint.stroke_density = Vec::new();
+                self.paint.stroke_deplete = Vec::new();
+                self.paint.wet_cum_dirty = None;
+            }
         }
     }
 }

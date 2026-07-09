@@ -277,7 +277,21 @@ impl PainterTool {
         let depletion = self.wet_mix_depletion(dabs);
         if depletion.is_some() && self.paint.stroke_deplete.len() != fw * fh {
             self.paint.stroke_deplete = vec![0u8; fw * fh];
+            // EDGE-1 wet session: the union buffers may already hold PRIOR strokes of this wet
+            // session (painted mixer-off ⇒ full reserve, no map). Backfill their footprint with
+            // 255, or the union re-bake would multiply their density by 0 — the pools vanished.
+            for (d, &c) in self
+                .paint
+                .stroke_deplete
+                .iter_mut()
+                .zip(self.paint.stroke_coverage.iter())
+            {
+                if c > 0 {
+                    *d = 255;
+                }
+            }
         }
+        let map_live = depletion.is_some() || !self.paint.stroke_deplete.is_empty();
         let cov = &mut self.paint.stroke_coverage;
         let dens_buf = &mut self.paint.stroke_density;
         let depl_buf = &mut self.paint.stroke_deplete;
@@ -293,8 +307,10 @@ impl PainterTool {
             // the disc boundary, nearest-sampled at the composite's WARPED coords, read as hard
             // pixelated seams where the wash crosses old paint (Enio smoke 2026-07-08); the ramp
             // matches the coverage's own taper, and stroke-interior pixels take the full value
-            // from a nearer dab via the max-blend.
-            let depl_v = depletion.as_ref().map(|v| v[di].clamp(0.0, 1.0));
+            // from a nearer dab via the max-blend. While the session map is LIVE, a mixer-OFF
+            // stroke still splats FULL reserve (its paint must not read the 0-initialised map).
+            let depl_v =
+                map_live.then(|| depletion.as_ref().map_or(1.0, |v| v[di].clamp(0.0, 1.0)));
             let peak = (d.coverage * flow).clamp(0.0, 1.0);
             if r <= 0.0 || peak <= 0.0 {
                 continue;
@@ -393,7 +409,7 @@ impl PainterTool {
         let shape_img_owned = self.paint.shape_image.as_ref().map(|i| i.as_mask());
         let canvas = [fw as f32, fh as f32];
         let buf = &mut self.paint.stroke_color;
-        for (d, (dcol, prio)) in dabs.iter().zip(&mixed) {
+        for (d, (dcol, prio, depl)) in dabs.iter().zip(&mixed) {
             // Frame draw BEFORE any skip — mirror of the coverage pass (stream sync; see there).
             let frame = stamp.as_ref().map(|s| s.dab_frame(d, &mut rng, canvas));
             let r = d.radius_px;
@@ -406,6 +422,7 @@ impl PainterTool {
             // picked-up colour — the pool's exit edge stays as coloured as its entry (Enio 2026-07-07).
             // `prio == 1` when the mixer is off ⇒ byte-identical source-over.
             let prio = prio.clamp(0.0, 1.0);
+            let depl = depl.clamp(0.0, 1.0);
             let col = [
                 (dcol[0].clamp(0.0, 1.0) * 255.0 + 0.5) as u8,
                 (dcol[1].clamp(0.0, 1.0) * 255.0 + 0.5) as u8,
@@ -452,7 +469,7 @@ impl PainterTool {
                         }
                         _ => feather(dn),
                     };
-                    let a = peak * wgt * prio * keep;
+                    let a = peak * wgt * prio * depl * keep;
                     if a <= 0.0 {
                         continue;
                     }

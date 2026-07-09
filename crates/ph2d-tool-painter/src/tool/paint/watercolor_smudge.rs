@@ -34,7 +34,20 @@ impl PainterTool {
         let gate_region = (sel.is_some() || prot.is_some())
             .then(|| Self::smear_footprint(dabs, self.paint.wet_smear_pos, self.source_size))
             .flatten();
-        let Some(base_arc) = self.paint.watercolor_base.as_mut() else {
+        // EDGE-1 wet session: the smear must mutate the base THE COMPOSITE READS — the session
+        // base when a wet session is live (falling back to the per-stroke base). On the session's
+        // first stroke both fields share one Arc, so `make_mut` forks them: re-share afterwards
+        // (below) to keep the mixer pickup reading the smeared paint, the pre-session behaviour.
+        let shared = match (&self.paint.wet_session_base, &self.paint.watercolor_base) {
+            (Some(s), Some(w)) => Arc::ptr_eq(s, w),
+            _ => false,
+        };
+        let Some(base_arc) = self
+            .paint
+            .wet_session_base
+            .as_mut()
+            .or(self.paint.watercolor_base.as_mut())
+        else {
             return;
         };
         if base_arc.len() != (w as usize * h as usize * 4) {
@@ -104,6 +117,9 @@ impl PainterTool {
                     }
                 }
             }
+        }
+        if shared {
+            self.paint.watercolor_base = self.paint.wet_session_base.clone();
         }
         self.paint.wet_smear_pos = from;
         if let Some(rect) = touched {

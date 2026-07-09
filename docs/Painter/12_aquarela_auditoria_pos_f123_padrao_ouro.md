@@ -425,20 +425,36 @@ decaimento ainda mais linear"). Histórico dos takes:
   (absorbância), nunca o peso de mistura `t`.
 
 
-### W-C · EDGE-1 — LANDOU 2026-07-08 (umidade persistente: washes molhados fundem)
+### W-C · EDGE-1 — LANDOU 2026-07-09, take 2: SESSÃO MOLHADA (take 1 reprovado no smoke)
 
-`canvas_wet` (u8 canvas-wide) **sobrevive ao pen-up**: o bake despeja a cobertura ENDURECIDA
-(o mesmo smoothstep `SS0/SS1` do composite — umidade = "o wash está aqui", interior pleno mesmo
-com flow baixo; a cobertura crua deixava o rim só meio-suprimido) com max-blend + rect vivo;
-seca no heartbeat (`paint_tick` roda todo frame) a `CANVAS_WET_DRY_PER_S = 30` bytes/s ≈ 8,5 s
-(constante do wet map do DiVerdi/Adobe TVCG 2013), com carry fracionário; totalmente seco ⇒
-buffer DROPADO (fast path do composite + custo ocioso zero). No composite, `edge *= 1 − umidade`
-lido na coordenada warpada (a junção acompanha o footprint renderizado do wash anterior) —
-**o rim do traço novo não forma sobre papel ainda molhado** (Curtis §3-4 wet-area mask): traços
-sobrepostos dentro da janela fundem sem contorno duplo; após secar, o mesmo gesto volta a
-desenhar o rim por cima. O rim JÁ ASSADO do wash anterior não é removido (isso é papel do
-rewet/lift — Wet > 0 dissolve; escopo do EDGE-2/4). Pour é pós-bake (o rim do próprio traço
-forma normal contra papel seco). Undo não des-molha (umidade é estado do papel). Teste:
-`watercolor_touching_wet_washes_merge_without_double_rim` (junção molhada ~100 G mais clara que
-a seca; mapa seco = dropado). Knob: `CANVAS_WET_DRY_PER_S` (desce = janela de fusão maior).
-Follow-up possível (EDGE-2/4): gatear também o bloom do rewet-pool pela umidade da junção.
+**Take 1 (atenuação de edge, 2026-07-08):** `edge *= 1 − umidade` suprimia só o rim NOVO — o
+smoke mostrou que o contorno duplo é dominado pelo **rim já assado** do traço anterior visível
+através do wash de cima ("acho que não funcionou"). Atenuar não basta: tem que FUNDIR.
+
+**Take 2 (final): enquanto o papel está molhado, traços consecutivos são UMA sessão molhada.**
+- `canvas_wet` u8 persiste pós-pen-up (pour da cobertura ENDURECIDA smoothstep SS0/SS1, pós-bake,
+  max-blend + rect vivo); seca no heartbeat a `CANVAS_WET_DRY_PER_S = 30` bytes/s ≈ 8,5 s
+  (DiVerdi/Adobe TVCG 2013); seco ⇒ dropa mapa + sessão (fast path, custo ocioso zero).
+- **Sessão** = buffers do traço (coverage/color/density/deplete + cum rect) NÃO zeram no pen-down
+  enquanto `wet_session_continues()`: o composite re-renderiza a **UNIÃO sobre a base da sessão**
+  (`wet_session_base`, congelada no 1º traço) — um wash, UM rim ao redor da união; o rim interno
+  do traço anterior **derrete no re-bake**. Cruzar rápido NÃO escurece (cobertura max-blend =
+  wash único); esperar secar e repassar = glazing escurece — igual aquarela real.
+- **Guarda de invalidação sem hooks:** `wet_session_canvas` = o Arc exato do canvas que o NOSSO
+  bake produziu; qualquer mutação alheia (undo, troca de camada, fill, resize, outro tool) troca
+  o Arc ⇒ `Arc::ptr_eq` falha ⇒ sessão nova. **Undo por traço continua exato** (o snapshot
+  pré-traço já contém a união anterior assada).
+- `watercolor_base` (re-congelada por traço, contém a união assada) segue servindo **mixer
+  pickup + rewet** — cruzar o vizinho na mesma sessão capta a tinta dele normalmente.
+- **Gotchas resolvidos no caminho:** (a) smudge muta a base DA SESSÃO (o `make_mut` bifurcava os
+  dois Arcs e o composite lia a base não-esmeada) + re-share no 1º traço; (b) mapa de depleção é
+  da sessão → ao dimensionar, **backfill 255 sob a cobertura pré-existente** (senão o re-bake
+  multiplicava as poças por 0 e elas SUMIAM) e traço mixer-off splatta 255 com o mapa vivo;
+  (c) alpha da cor volta a × `depl` (exato, do mixer) — pincel esgotado não re-tinge poça molhada
+  em prioridade cheia (na união a poça re-renderiza com a cor contaminada).
+- Atenuação de edge do take 1 REMOVIDA (na união ela derreteria o próprio rim no re-bake).
+- Caveat documentado: trocar parâmetros do brush no MEIO da sessão re-estiliza a união no próximo
+  bake (o composite usa os params correntes) — aceito; sessão dura ~8,5 s.
+- Teste: `watercolor_touching_wet_washes_merge_without_double_rim` (junção molhada: rim de B
+  ausente E rim interno de A derretido, ~100 G mais claro que seco-primeiro; mapa seco dropado).
+  Knob: `CANVAS_WET_DRY_PER_S` (desce = janela de fusão maior).

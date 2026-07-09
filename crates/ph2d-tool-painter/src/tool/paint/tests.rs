@@ -12897,11 +12897,12 @@ fn watercolor_wet_mix_depleted_brush_respects_pool_intensity() {
     );
 }
 
-/// **EDGE-1 (doc 12, W-C): washes que se encostam MOLHADOS fundem — sem contorno duplo.** O bake
-/// despeja a cobertura no mapa de umidade persistente; um traço seguinte dentro da janela de
-/// secagem (~8,5 s, DiVerdi) NÃO forma rim sobre o wash ainda molhado (a junção some — Curtis
-/// §3-4); depois de seco, o mesmo gesto volta a desenhar o rim completo por cima (e o mapa
-/// seco é DROPADO — fast path de volta, sem custo ocioso).
+/// **EDGE-1 (doc 12, W-C): washes que se encostam MOLHADOS fundem — sem contorno duplo.** Dentro
+/// da janela de secagem (~8,5 s, DiVerdi) o segundo traço CONTINUA a sessão molhada: os buffers
+/// acumulam a UNIÃO e o bake re-renderiza tudo sobre a base da sessão — um wash só, um rim só
+/// (o rim interno do primeiro traço DERRETE no re-bake, e o traço novo não desenha rim sobre o
+/// vizinho — Curtis §3-4). Depois de seco, o mesmo gesto volta a empilhar rim por cima (glazing)
+/// e o mapa seco é DROPADO junto com a sessão (fast path de volta, sem custo ocioso).
 #[test]
 fn watercolor_touching_wet_washes_merge_without_double_rim() {
     let run = |dry_first: bool| -> f32 {
@@ -12948,22 +12949,24 @@ fn watercolor_touching_wet_washes_merge_without_double_rim() {
                 "a fully-dried wet map must be dropped (composite fast path back)"
             );
         }
-        stroke_v(&mut t, 88.0); // wash B overlaps A deeply; B's LEFT rim lands in A's light interior
-        // Sample B's left-rim band (x ≈ 78-81, inside B's boundary at 76) — deep in A's light
-        // interior, well clear of A's own baked right rim (~88-92, which is A's legitimate rim).
+        stroke_v(&mut t, 88.0); // wash B overlaps A deeply (union band ≈ 68..100)
+        // Junction probes: B's would-be LEFT rim (x 78-81, deep in A's interior) + A's OWN right
+        // rim position (x 88-91). Merged (wet): both re-render as union INTERIOR — light. Dried
+        // first: B lays a rim over A AND A's baked rim persists under B — both bands dark.
         let mut acc = 0.0f32;
-        for x in 78..82u32 {
+        for x in [78u32, 79, 80, 81, 88, 89, 90, 91] {
             for y in 80..110u32 {
                 acc += f32::from(px(&t, size, x, y)[1]);
             }
         }
-        acc / (4.0 * 30.0)
+        acc / (8.0 * 30.0)
     };
     let wet_junction = run(false);
     let dry_junction = run(true);
     assert!(
         wet_junction > dry_junction + 40.0,
-        "no rim may form over a STILL-WET wash — junction must be lighter than the dried-first \
-         double-contour (wet G {wet_junction:.1} vs dried G {dry_junction:.1})"
+        "wet washes must MERGE into one rim-less junction — both the new stroke's rim over the \
+         neighbour and the neighbour's old inner rim must be gone (wet G {wet_junction:.1} vs \
+         dried-first double-contour G {dry_junction:.1})"
     );
 }

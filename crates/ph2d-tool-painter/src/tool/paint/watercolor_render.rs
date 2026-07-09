@@ -84,8 +84,16 @@ impl PainterTool {
             }
             return None;
         }
-        // The frozen base (own the Arc handle so the canvas make_mut below doesn't alias the field).
-        let base_arc = self.paint.watercolor_base.as_ref().map(Arc::clone)?;
+        // The frozen base (own the Arc handle so the canvas make_mut below doesn't alias the
+        // field). EDGE-1 wet session: the composite reads the SESSION base — the canvas frozen at
+        // the FIRST stroke of the wet window — so a continuing stroke re-renders the whole UNION
+        // from scratch (one wash, one rim) instead of layering over its own previous bake (which
+        // would double-count the older strokes). Falls back to the per-stroke base (identical on
+        // the session's first stroke).
+        let base_arc = match self.paint.wet_session_base.as_ref() {
+            Some(b) if b.len() == n * 4 => Arc::clone(b),
+            _ => self.paint.watercolor_base.as_ref().map(Arc::clone)?,
+        };
         if base_arc.len() != n * 4 {
             if commit {
                 self.paint.watercolor_base = None;
@@ -206,9 +214,16 @@ impl PainterTool {
         // cadence, no physics. `wet = 0` skips it all (byte-identical, zero cost). Fields over the
         // read window: raw paint presence (for the local lift) + blurred presence-weighted base
         // colour at BOTH blur scales (the soak lerps between them) + the soak itself.
+        // Rewet reads the PER-STROKE frozen base (refrozen each pen-down, so mid-session it
+        // INCLUDES the union baked so far): "old paint" for lift/dissolve must see the neighbour
+        // washes, which live in the union buffers and not in the session base.
+        let rewet_base_arc = match self.paint.watercolor_base.as_ref() {
+            Some(b) if b.len() == n * 4 => Arc::clone(b),
+            _ => Arc::clone(&base_arc),
+        };
         let rewet = (wet > 0.0).then(|| {
             build_rewet_fields(
-                base,
+                &rewet_base_arc[..],
                 ground,
                 &self.paint.wet_soak,
                 soaked,
@@ -261,11 +276,6 @@ impl PainterTool {
         // water footprint (and so the edge anatomy) stays whole. Empty ⇒ factor ≡ 1 → byte-identical.
         let has_depl = self.paint.stroke_deplete.len() == n;
         let depl_buf = &self.paint.stroke_deplete;
-        // EDGE-1: persistent canvas moisture — a previous wash still wet under this stroke's
-        // border suppresses the edge term there (washes MERGE, no double rim). Empty = dry
-        // canvas (the drying tick drops the buffer) ⇒ byte-identical fast path.
-        let has_moist = self.paint.canvas_wet.len() == n;
-        let moist_buf = &self.paint.canvas_wet;
         // Raw per-pixel soak for the granulation settle (GRAN-1) — read-only in the parallel loop.
         let soak_buf = &self.paint.wet_soak;
 
@@ -356,14 +366,6 @@ impl PainterTool {
                     }
                     let inner = sample_bilinear(&blur, rw, rh, sx, sy).min(1.0);
                     let mut edge = (cw * (1.0 - inner) * edge_gain).clamp(0.0, 1.0);
-                    // EDGE-1: no rim forms over paper STILL WET from a previous wash (Curtis
-                    // wet-area mask; DiVerdi wet map): attenuate by the local moisture, read at
-                    // the warped coord so the junction tracks the wash's rendered footprint.
-                    if has_moist {
-                        let wgx = (rx0 as f32 + sx).clamp(0.0, (fw - 1) as f32) as usize;
-                        let wgy = (ry0 as f32 + sy).clamp(0.0, (fh - 1) as f32) as usize;
-                        edge *= 1.0 - f32::from(moist_buf[wgy * fw + wgx]) / 255.0;
-                    }
                     // Paper tooth (substrate): the active Paper slot, or the built-in noise fallback —
                     // memoised per canvas pixel (`compute_paper` is the identical expression; the cache just
                     // avoids recomputing it every frame for the same pixel).

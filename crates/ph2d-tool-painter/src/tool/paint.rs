@@ -459,16 +459,28 @@ pub(crate) struct PaintState {
     /// EDGE-1 (doc 12): canvas-wide MOISTURE map (`w*h`, `0..255`) that SURVIVES pen-up — the paper
     /// under a fresh wash stays workably wet and dries on the heartbeat (~8.5 s full→dry, the
     /// DiVerdi/Adobe TVCG 2013 convention; Curtis §3-4 wet-area mask). The bake pours the stroke's
-    /// coverage in (max-blend, AFTER the composite so the stroke's own rim still forms against dry
-    /// paper); the composite attenuates the EDGE term where the paper is still wet under a NEW
-    /// border, so washes that touch while wet MERGE instead of stacking a double rim. Empty = fully
-    /// dry (fast path — the drying tick drops the buffer when it zeroes out). Undo does not
-    /// un-pour: moisture is paper state, not paint.
+    /// HARDENED coverage in (max-blend, AFTER the composite). While any of it is wet, consecutive
+    /// watercolor strokes CONTINUE the same **wet session** ([`PainterTool::wet_session_continues`]):
+    /// the stroke buffers accumulate the UNION and every bake re-renders it over the session base —
+    /// one wash, one rim; the previous stroke's inner rim MELTS on the re-bake (the smoke showed
+    /// suppressing only the NEW rim leaves the baked one visible — the double contour persisted).
+    /// Empty = fully dry (the drying tick drops it + the session). Undo does not un-pour: moisture
+    /// is paper state, not paint (a foreign canvas mutation ends the session via the `Arc` guard).
     canvas_wet: Vec<u8>,
     /// Live bounding rect of the wet area (the decay/pour window) — `None` = dry, zero idle cost.
     canvas_wet_rect: Option<(usize, usize, usize, usize)>,
     /// Fractional drying carry between whole-byte decay steps (heartbeat dt accumulator).
     canvas_wet_carry: f32,
+    /// EDGE-1 wet session: the optical base frozen at the SESSION start (first stroke of the wet
+    /// window) — every bake of the session re-composites the UNION buffers over this, never over
+    /// its own previous bake (which would double-count). Per-stroke `watercolor_base` (refrozen
+    /// each pen-down, so it INCLUDES the union baked so far) keeps serving the mixer pickup and
+    /// the rewet fields.
+    wet_session_base: Option<Arc<Vec<u8>>>,
+    /// EDGE-1 wet session guard: the exact `canvas_rgba` Arc OUR last session bake produced. Any
+    /// foreign mutation (undo, layer switch, fill, resize, other tools) swaps the canvas Arc, so a
+    /// failed `Arc::ptr_eq` at pen-down ends the session — no per-site invalidation hooks needed.
+    wet_session_canvas: Option<Arc<Vec<u8>>>,
     /// Manual Shape stamp (Automatic OFF): the tip image's luminance NORMALISER (`1 / max_lum`,
     /// `1.0` when no image / all-black). The watercolor coverage is WETNESS GEOMETRY (a max-blend
     /// union that must SATURATE in the wash core — `cw → 1` gives the body, `inner → 1` confines the

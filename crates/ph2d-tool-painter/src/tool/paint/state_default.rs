@@ -160,6 +160,8 @@ impl Default for PaintState {
             canvas_wet: Vec::new(),
             canvas_wet_rect: None,
             canvas_wet_carry: 0.0,
+            wet_session_base: None,
+            wet_session_canvas: None,
             wet_mix: watercolor_mixer::WetMix::default(),
             wet_smear_pos: None,
             wet_frame_dirty: None,

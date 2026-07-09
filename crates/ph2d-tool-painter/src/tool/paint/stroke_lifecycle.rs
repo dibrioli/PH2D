@@ -43,23 +43,39 @@ impl PainterTool {
         self.paint.stroke_undo = Some(before);
         self.paint.drag_preview = None;
         self.paint.line_anchor = Some(ev.pos);
+        // EDGE-1 wet session: while the paper is still WET and the canvas is untouched since OUR
+        // last bake, consecutive watercolor strokes are ONE wash — keep the union buffers + cum
+        // rect + session base, so the bake re-renders the union with a single rim (the previous
+        // stroke's inner rim melts). Anything else (dried, foreign edit, mode/layer change) starts
+        // a fresh session over the current canvas.
+        let wet_session = self.wet_session_continues();
         // Reset the Accumulate-OFF cap mask (re-grown by the first dab) + the per-layer-colour
         // accumulation (so the recomposite snapshots THIS stroke's pre-pixels) — both per stroke.
         self.paint.stroke_mask.clear();
-        self.paint.stroke_coverage.clear();
-        self.paint.stroke_color.clear();
-        self.paint.stroke_density.clear();
-        self.paint.stroke_deplete.clear();
+        if !wet_session {
+            self.paint.stroke_coverage.clear();
+            self.paint.stroke_color.clear();
+            self.paint.stroke_density.clear();
+            self.paint.stroke_deplete.clear();
+            self.paint.wet_cum_dirty = None;
+        }
         self.paint.wet_frame_dirty = None;
-        self.paint.wet_cum_dirty = None;
         self.paint.wet_smear_pos = None; // the Wet Mix true-smear chain restarts with the stroke
         self.reset_wet_mix(); // the mixer reservoir starts fresh (no pickup) each stroke
         // Watercolor render-path: freeze the pre-stroke canvas as the optical base (shared `Arc`, so O(1);
         // the first composite `make_mut` forks the live buffer, leaving this pristine) PLUS the real
         // ground (the composite of the layers below + document paper colour) the optics read the
         // Beer–Lambert base / rewet reference from. The wash is reconstructed over these every frame
-        // instead of over-painting in place.
+        // instead of over-painting in place. In a CONTINUING session this refrozen base (which now
+        // includes the union baked so far) feeds only the mixer pickup + rewet; the composite keeps
+        // reading the SESSION base below.
         self.freeze_watercolor_ground();
+        if !wet_session {
+            // Fresh session: composite base = this pen-down's frozen canvas; the guard Arc is set
+            // at the bake. A stale wet map from a broken session keeps drying on its own.
+            self.paint.wet_session_base = self.paint.watercolor_base.clone();
+            self.paint.wet_session_canvas = None;
+        }
         self.paint.per_layer_stroke.reset();
         // Smear chains its source from the previous dab; a fresh stroke has none yet.
         self.paint.last_smear_pos = None;
@@ -220,9 +236,11 @@ impl PainterTool {
         // the base). BEFORE close_stroke so pre-stroke → wash is one undo step (mirror of heal_inpaint).
         if self.watercolor_render_active() {
             self.apply_watercolor(true);
-            // EDGE-1: pour the wash's coverage into the persistent moisture map AFTER the bake —
-            // the stroke's own rim rendered against dry paper; the NEXT stroke merges into it.
+            // EDGE-1: pour the wash into the persistent moisture map AFTER the bake, then arm the
+            // session guard — the exact canvas Arc our bake produced. A stroke landing while the
+            // paper is still wet AND the guard still matches continues this wash (union re-bake).
             self.pour_canvas_wet();
+            self.paint.wet_session_canvas = Some(Arc::clone(&self.canvas_rgba));
         }
         self.close_stroke();
     }

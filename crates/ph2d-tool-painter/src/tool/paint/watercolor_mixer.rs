@@ -94,19 +94,19 @@ impl PainterTool {
     /// Dilution only made it more visible by thinning the wash). Priority `1.0` for every dab when the
     /// mixer is off ⇒ the plain source-over path (byte-identical). Reads the frozen base + backdrop
     /// (cloned `Arc`s, so no borrow clash with the caller's `stroke_color` mutation).
-    pub(super) fn wet_mix_dab_colors(&mut self, dabs: &[Dab]) -> Vec<([f32; 3], f32)> {
+    pub(super) fn wet_mix_dab_colors(&mut self, dabs: &[Dab]) -> Vec<([f32; 3], f32, f32)> {
         if !self.wet_mixer_active() {
-            return dabs.iter().map(|d| (d.color, 1.0)).collect();
+            return dabs.iter().map(|d| (d.color, 1.0, 1.0)).collect();
         }
         let (fw, fh) = self.source_size;
         let (fw, fh) = (fw as usize, fh as usize);
         let base = self.paint.watercolor_base.as_ref().map(Arc::clone);
         let backdrop = self.paint.wet_backdrop.as_ref().map(Arc::clone);
         let (Some(base), Some(backdrop)) = (base, backdrop) else {
-            return dabs.iter().map(|d| (d.color, 1.0)).collect();
+            return dabs.iter().map(|d| (d.color, 1.0, 1.0)).collect();
         };
         if base.len() != fw * fh * 4 || backdrop.len() != fw * fh * 4 || fw == 0 || fh == 0 {
-            return dabs.iter().map(|d| (d.color, 1.0)).collect();
+            return dabs.iter().map(|d| (d.color, 1.0, 1.0)).collect();
         }
         let pickup = (1.0 - self.paint.brush.wet_charge).clamp(0.0, 1.0);
         let p = self.paint.brush.wet_pull.clamp(0.0, 1.0);
@@ -116,6 +116,7 @@ impl PainterTool {
         let unload =
             (RETAIN_UNLOAD_MIN + (0.98 - RETAIN_UNLOAD_MIN) * p * (2.0 - p)).clamp(0.0, 0.98);
         let lut = super::watercolor_field::luts();
+        let charge = self.paint.brush.wet_charge.clamp(0.0, 1.0);
         let mut out = Vec::with_capacity(dabs.len());
         let mut mix = self.paint.wet_mix;
         for d in dabs {
@@ -163,7 +164,14 @@ impl PainterTool {
                     *out_c = f32::from(lut.l2s_byte(lut.exp_mag(mag))) / 255.0;
                 }
             }
-            out.push((col, t));
+            // Deposit intensity for the COLOUR alpha (mirror of the coverage map's factors): a
+            // depleted brush must not re-TINT a wet pool at full priority — in a wet session the
+            // pool re-renders with whatever colour was deposited over it, so the tint has to track
+            // the actual pigment on the brush (fresh reserve OR carried pickup), not just the mix
+            // weight `t`.
+            let depl =
+                deplete_fresh(mix.travel, d.radius_px, charge).max(t * reservoir_pigment(&mix));
+            out.push((col, t, depl));
         }
         self.paint.wet_mix = mix;
         out

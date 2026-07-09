@@ -20,11 +20,10 @@ use ph2d_timeline::{SelectedKey, TimelineIntent, TimelineViewSnapshot};
 use crate::ids;
 use crate::state::{self, KeyDrag, MAX_PX_PER_S, MIN_PX_PER_S, TimelinePanelState};
 
-/// Wheel notches per e-fold of zoom (mirror of the graph's `ZOOM_WHEEL_DIV`) —
-/// bigger = gentler zoom per notch.
-const ZOOM_WHEEL_DIV: f64 = 8.0; // LITERAL-PX-OK: wheel notches per e-fold of time-axis zoom
-/// Pixels the view slides per pan notch.
-const PAN_PX_PER_NOTCH: f64 = 24.0; // LITERAL-PX-OK: time-axis pan step per wheel notch
+/// Wheel **pixels** per e-fold of zoom. The shell delivers line-deltas already
+/// scaled to logical px (16 px per notch), so one notch is ~7% zoom here — the
+/// same sensitivity the motion graph uses.
+const ZOOM_WHEEL_DIV: f64 = 240.0; // LITERAL-PX-OK: wheel px → zoom-factor sensitivity divisor
 
 /// Drain this frame's dope-sheet wheel + gestures and raise the resulting
 /// intents. Call from `paint` BEFORE the view is resolved, so a zoom/pan lands
@@ -128,10 +127,11 @@ fn apply_key(
 /// bound of the clip).
 fn apply_wheel(state: &mut TimelinePanelState, time_x: f32, z: TimelineZoom) {
     // Pan first, in the pre-zoom scale (what the user saw when they scrolled).
-    // A positive notch scrolls the content right ⇒ the view moves EARLIER, the
-    // same sign convention as the panel-scroll path (`panel_scroll - delta_y`).
+    // `pan_delta` is already in logical px; a positive delta scrolls the content
+    // right ⇒ the view moves EARLIER, the same sign convention as the
+    // panel-scroll path (`panel_scroll - delta_y`).
     if z.pan_delta != 0.0 {
-        state.view_start_s -= f64::from(z.pan_delta) * PAN_PX_PER_NOTCH / state.px_per_s;
+        state.view_start_s -= f64::from(z.pan_delta) / state.px_per_s;
     }
     if z.zoom_delta != 0.0 {
         let old = state.px_per_s;
@@ -453,7 +453,7 @@ mod tests {
             &mut st,
             time_x,
             TimelineZoom {
-                zoom_delta: 8.0, // one e-fold in
+                zoom_delta: 240.0, // one e-fold in (wheel px, not notches)
                 pan_delta: 0.0,
                 anchor_x,
             },
@@ -473,7 +473,7 @@ mod tests {
             &mut st,
             0.0,
             TimelineZoom {
-                zoom_delta: 1e3,
+                zoom_delta: 1e4,
                 pan_delta: 0.0,
                 anchor_x: 0.0,
             },
@@ -483,7 +483,7 @@ mod tests {
             &mut st,
             0.0,
             TimelineZoom {
-                zoom_delta: -1e3,
+                zoom_delta: -1e4,
                 pan_delta: 0.0,
                 anchor_x: 0.0,
             },
@@ -496,14 +496,14 @@ mod tests {
         let mut st = TimelinePanelState {
             view_start_s: 1.0,
             ..TimelinePanelState::default()
-        }; // 120 px/s → one notch = 24 px = 0.2 s
-        // A NEGATIVE notch scrolls content left ⇒ the view moves later.
+        }; // 120 px/s → 48 wheel px = 0.4 s
+        // A NEGATIVE delta scrolls content left ⇒ the view moves later.
         apply_wheel(
             &mut st,
             0.0,
             TimelineZoom {
                 zoom_delta: 0.0,
-                pan_delta: -2.0,
+                pan_delta: -48.0,
                 anchor_x: 0.0,
             },
         );
@@ -511,13 +511,13 @@ mod tests {
             (st.view_start_s - 1.4).abs() < 1e-9,
             "panned later by 0.4 s"
         );
-        // A positive notch moves the view earlier, clamped at t = 0.
+        // A positive delta moves the view earlier.
         apply_wheel(
             &mut st,
             0.0,
             TimelineZoom {
                 zoom_delta: 0.0,
-                pan_delta: 2.0,
+                pan_delta: 48.0,
                 anchor_x: 0.0,
             },
         );
@@ -531,7 +531,7 @@ mod tests {
             0.0,
             TimelineZoom {
                 zoom_delta: 0.0,
-                pan_delta: 100.0,
+                pan_delta: 5_000.0,
                 anchor_x: 0.0,
             },
         );

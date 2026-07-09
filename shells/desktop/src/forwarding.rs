@@ -377,6 +377,10 @@ pub fn cursor_over_hero_panel(gfx: Option<&AppGfx>, x: f32, y: f32) -> bool {
         // Without it, wheel-over-graph zooms the camera instead of the graph
         // (the anchored graph zoom the M0 dispatch routes via `set_graph_canvas`).
         || inside(ph2d_editor::ids::MOTION_GRAPH_PANEL)
+        // General timeline dock (W2.E6) — same reason as the graph: without it a
+        // wheel over the dope-sheet zooms the CAMERA behind the panel instead of
+        // the time axis (`set_timeline_canvas`), and the panel's zoom/pan is dead.
+        || inside(ph2d_editor::ids::TIMELINE_PANEL)
 }
 
 /// ADR-0029 Phase C.2: resolve canvas-picked entity bits to a live

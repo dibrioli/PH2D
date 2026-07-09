@@ -365,18 +365,19 @@ pub enum TimelineHitKind {
 }
 
 /// Accumulated wheel input over a timeline surface, drained by the panel.
-/// `zoom_delta` sums the frame's plain wheel notches (anchored zoom of the time
-/// axis, keeping the time under `anchor_x` fixed); `pan_delta` sums the notches
+/// `zoom_delta` sums the frame's plain wheel deltas (anchored zoom of the time
+/// axis, keeping the time under `anchor_x` fixed); `pan_delta` sums the deltas
 /// that mean *pan* (horizontal wheel, or Shift+wheel on a one-axis mouse). Both
-/// are **raw notches** — editor-core assigns no direction; the panel applies the
-/// house convention (a positive notch scrolls content right/down, i.e. the view
-/// moves *earlier*, mirroring `panel_scroll - delta_y`). The 1-D counterpart of
+/// are in the shell's **logical pixels** (it scales line-deltas by ~16 px per
+/// notch). Editor-core assigns no direction; the panel applies the house
+/// convention (a positive delta scrolls content right/down, i.e. the view moves
+/// *earlier*, mirroring `panel_scroll - delta_y`). The 1-D counterpart of
 /// [`GraphZoom`].
 #[derive(Copy, Clone, Debug, Default, PartialEq)]
 pub struct TimelineZoom {
-    /// Summed raw wheel notches meaning zoom (positive = zoom in).
+    /// Summed wheel px meaning zoom (positive = zoom in).
     pub zoom_delta: f32,
-    /// Summed raw wheel notches meaning pan.
+    /// Summed wheel px meaning pan.
     pub pan_delta: f32,
     /// Cursor x (global px) the anchored zoom keeps fixed.
     pub anchor_x: f32,

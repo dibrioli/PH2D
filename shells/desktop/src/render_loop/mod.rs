@@ -579,6 +579,11 @@ impl crate::App {
             // read it. A no-op when nothing carries a SpriteAnimation; drives any
             // bound sprite (e.g. the KeyB demo) in the real scene.
             ph2d_timeline::apply_sprite_animations(sim.world_mut(), self.playhead.time());
+            // W2.E5b — fold the dope-sheet edits the panel raised from its surface
+            // gestures last frame (key select / move / clear) into the intent
+            // queue the bridge drains below (same channel as transport/K intents).
+            self.timeline_intents
+                .extend(ph2d_panel_timeline::drain_intents());
             // W2.E5 capture-the-pose + AutoKey. Two authoring paths write keys at
             // the playhead onto the selected/dragged sprite's bound tracks (AddKey
             // upserts, so a held drag updates one key per time instead of stacking

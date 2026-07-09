@@ -5,7 +5,7 @@
 use super::focus::apply_click;
 use super::hierarchy::{HierDrop, find_hierarchy_drop, find_painter_layer_drop};
 use super::hover::set_widget_released;
-use crate::interaction::types::{GesturePhase, GraphGesture};
+use crate::interaction::types::{GesturePhase, GraphGesture, TimelineGesture};
 use crate::interaction::{HitIndex, InteractiveState, WidgetEvent, WidgetStore, drag};
 use bumpalo::collections::Vec as BumpVec;
 use ph2d_host::PointerEvent;
@@ -214,6 +214,28 @@ pub(super) fn dispatch_up<'frame>(
             };
             let mods = store.gesture_mods();
             store.push_graph_gesture(GraphGesture {
+                surface,
+                kind,
+                phase,
+                x: event.x,
+                y: event.y,
+                button: event.button,
+                mods,
+            });
+            store.set_active(None);
+            store.set_active_rect(None);
+            return;
+        }
+        // W2.E5b — end a timeline-surface capture: End if it dragged, else Click
+        // (a tap). No apply_click/focus side effects — the panel owns semantics.
+        if let Some((surface, kind)) = store.timeline_surface_at_id(active) {
+            let phase = if store.take_timeline_moved() {
+                GesturePhase::End
+            } else {
+                GesturePhase::Click
+            };
+            let mods = store.gesture_mods();
+            store.push_timeline_gesture(TimelineGesture {
                 surface,
                 kind,
                 phase,

@@ -27,6 +27,8 @@ ph2d-tokens = { path = "../ph2d-tokens" }
 ph2d-vector = { path = "../ph2d-vector" }
 # The read-model the panel paints (`TimelineViewSnapshot`).
 ph2d-timeline = { path = "../ph2d-timeline" }
+# `PointerButton` on the dope-sheet gesture (filter drags to the primary button).
+ph2d-host = { path = "../ph2d-host" }
 
 [dev-dependencies]
 # Behavioral seam harness (MockPanelHost) for the transport wire test

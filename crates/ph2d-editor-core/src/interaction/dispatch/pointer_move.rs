@@ -7,7 +7,7 @@ use super::curve::apply_curve_point_drag;
 use super::hover::update_hover;
 use super::number_input::update_drag_value;
 use super::text_ops::{byte_offset_from_click_xy, place_text_caret};
-use crate::interaction::types::{BlenderHitKind, GesturePhase, GraphGesture};
+use crate::interaction::types::{BlenderHitKind, GesturePhase, GraphGesture, TimelineGesture};
 use crate::interaction::{HitIndex, InteractiveState, WidgetEvent, WidgetStore, drag};
 use bumpalo::collections::Vec as BumpVec;
 use ph2d_host::PointerEvent;
@@ -265,6 +265,23 @@ pub(super) fn dispatch_move<'frame>(
             store.set_graph_moved(true);
             let mods = store.gesture_mods();
             store.push_graph_gesture(GraphGesture {
+                surface,
+                kind,
+                phase: GesturePhase::Update,
+                x: event.x,
+                y: event.y,
+                button: event.button,
+                mods,
+            });
+            return;
+        }
+        // W2.E5b — a captured timeline surface streams an Update on every move
+        // (even once the pointer has left its rect: a key drag continues past the
+        // panel edge). Mirror of the graph-surface Update above.
+        if let Some((surface, kind)) = store.timeline_surface_at_id(active) {
+            store.set_timeline_moved(true);
+            let mods = store.gesture_mods();
+            store.push_timeline_gesture(TimelineGesture {
                 surface,
                 kind,
                 phase: GesturePhase::Update,

@@ -18,6 +18,7 @@
 
 mod event;
 pub mod ids;
+mod interact;
 mod paint;
 pub mod populate;
 mod ruler;
@@ -25,7 +26,9 @@ pub mod state;
 mod tracks;
 mod transport;
 
-pub use state::{TimelinePanelState, last_content_h, last_visible_h, set_current_timeline};
+pub use state::{
+    TimelinePanelState, drain_intents, last_content_h, last_visible_h, set_current_timeline,
+};
 
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::interaction::{WidgetEvent, WidgetStore};

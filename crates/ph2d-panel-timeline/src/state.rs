@@ -7,13 +7,20 @@
 //! panels). Per-instance state holds only view transform (pan/zoom of the time
 //! axis), which is panel-local and not undoable.
 
-use ph2d_timeline::TimelineViewSnapshot;
+use ph2d_timeline::{TimelineIntent, TimelineViewSnapshot};
 use std::cell::{Cell, RefCell};
 
 thread_local! {
     /// Live snapshot published by the host before each `paint`. `None` until the
     /// first push (panel paints an empty timeline).
     static CURRENT_SNAPSHOT: RefCell<Option<TimelineViewSnapshot>> = const { RefCell::new(None) };
+    /// Dope-sheet edit intents the panel raised this frame (key select / move /
+    /// clear), drained by the shell into its `timeline_intents` (mirror of the
+    /// motion-graph panel's thread-local `INTENTS`). Transport events still flow
+    /// through the widget bus as `PanelEvent`s; only the surface-gesture edits —
+    /// which carry a `(target, key)` identity `PanelEvent` cannot express — use
+    /// this channel.
+    static INTENTS: RefCell<Vec<TimelineIntent>> = const { RefCell::new(Vec::new()) };
     /// Last measured scrollable content height (set by `paint`).
     static LAST_CONTENT_H: Cell<f32> = const { Cell::new(0.0) };
     /// Last visible body height (panel rect minus header + paddings).
@@ -36,6 +43,21 @@ pub struct TimelinePanelState {
     /// Whether the "+Track" property dropdown is open (panel-local; toggled by
     /// the +Track button, closed on picking a property).
     pub add_track_open: bool,
+    /// In-progress key-diamond drag (dope-sheet), while the pointer is down on a
+    /// key: the pointer x at Begin and the latest x, so `paint` can draw the
+    /// selected diamonds shifted by the live delta and `event`/`interact` can
+    /// emit the final `MoveSelectedKeys` on End. `None` when not dragging keys.
+    pub key_drag: Option<KeyDrag>,
+}
+
+/// An in-progress dope-sheet key drag: pointer x at Begin + the latest x. The
+/// time delta is `(cur_x - start_x) / px_per_s`, frame-snapped on commit.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct KeyDrag {
+    /// Pointer x (global px) when the drag began.
+    pub start_x: f32,
+    /// Latest pointer x (global px).
+    pub cur_x: f32,
 }
 
 impl Default for TimelinePanelState {
@@ -45,6 +67,7 @@ impl Default for TimelinePanelState {
             px_per_s: DEFAULT_PX_PER_S,
             view_span_s: 0.0,
             add_track_open: false,
+            key_drag: None,
         }
     }
 }
@@ -61,6 +84,18 @@ pub fn set_current_timeline(snapshot: Option<TimelineViewSnapshot>) {
 /// The snapshot the host published this frame, or a default empty one.
 pub(crate) fn current_snapshot() -> TimelineViewSnapshot {
     CURRENT_SNAPSHOT.with(|c| c.borrow().clone().unwrap_or_default())
+}
+
+/// Raise a dope-sheet edit intent (called by `interact` while draining gestures).
+pub(crate) fn push_intent(intent: TimelineIntent) {
+    INTENTS.with(|c| c.borrow_mut().push(intent));
+}
+
+/// Drain the dope-sheet edit intents raised since the last call. The shell calls
+/// this each frame and feeds them through `apply_intent` (capacity-retaining).
+#[must_use]
+pub fn drain_intents() -> Vec<TimelineIntent> {
+    INTENTS.with(|c| std::mem::take(&mut *c.borrow_mut()))
 }
 
 /// Last scrollable content height measured by `paint`.

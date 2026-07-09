@@ -6,9 +6,12 @@
 //! popover overlay. Picking one raises `PanelEvent::Click(<prop id>)`; the shell
 //! binds the *currently selected* sprite's matching property (it owns the
 //! selection) and closes the dropdown. Each row's time area paints its key
-//! **diamonds** (E5; selected keys in the accent colour), culled to the visible
-//! span; click-select + drag land in E5b.
+//! **diamonds** (selected keys in the accent colour), culled to the visible
+//! span, and registers their [`TimelineHitKind`] hit targets (+ a `Lane`
+//! background) so the dope-sheet gestures reach `interact` (E5b: click-select,
+//! drag-move, clear-on-empty).
 
+use ph2d_editor_core::interaction::{InteractiveState, TimelineHitKind};
 use ph2d_editor_core::paint::{fill_rounded_rect, paint_text, resolve, stroke_rounded_rect};
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::widget::{Button, ButtonState, paint_button};
@@ -22,6 +25,9 @@ use crate::ids;
 /// Width of the left label column (property + object tag).
 pub(crate) const LABEL_COL_W: f32 = 132.0; // LITERAL-PX-OK: track-label column width
 const DIAMOND_H: f32 = 4.5; // LITERAL-PX-OK: keyframe diamond half-size
+/// Horizontal half-width of a key's clickable hit rect (larger than the visual
+/// diamond so a small target is easy to grab).
+const KEY_HIT_HW: f32 = 7.0; // LITERAL-PX-OK: keyframe grab half-width
 
 /// Paint the "+ Track" dropdown button filling `header` (the label-column slice
 /// aligned with the ruler strip). The property list opens as an overlay popover
@@ -77,7 +83,14 @@ pub(crate) fn paint_add_track_popover(ctx: &mut PaintCtx, theme: Theme, anchor: 
 
 /// Paint one row per binding in `region`: the label (left `label_w` column) and
 /// the key diamonds in the time area (mapped by `time_x`/`view_start`/`px_per_s`,
-/// culled to the visible span). Selected keys paint in the accent colour.
+/// culled to the visible span). Selected keys paint in the accent colour, shifted
+/// by `preview_dx` px while a key drag is in flight.
+///
+/// Registers a [`TimelineHitKind::Lane`] background over the time area (click =
+/// clear selection) and one [`TimelineHitKind::Key`] hit per visible diamond
+/// (click = select, drag = move), so `dispatch` streams gestures the panel's
+/// `interact` step drains. Hits are keyed by the key's *identity* (stable across
+/// frames), not its position.
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn paint_rows(
     ctx: &mut PaintCtx,
@@ -87,9 +100,22 @@ pub(crate) fn paint_rows(
     time_x: f32,
     view_start: f64,
     px_per_s: f64,
+    preview_dx: f32,
     snap: &TimelineViewSnapshot,
 ) {
     let right = region.x + region.w;
+    // Lane background over the time area — a click here clears the selection.
+    let lane = Rect::new(time_x, region.y, (right - time_x).max(0.0), region.h);
+    ctx.host.store_mut().register(
+        ids::TIMELINE_LANES,
+        InteractiveState::TimelineSurface {
+            parent: ids::TIMELINE_PANEL,
+            kind: TimelineHitKind::Lane,
+            canvas: lane,
+        },
+    );
+    ctx.host.hit_index_mut().register(ids::TIMELINE_LANES, lane);
+
     let mut y = region.y;
     for (i, track) in snap.tracks.iter().enumerate() {
         if y + ROW_H_PX > region.y + region.h {
@@ -121,10 +147,16 @@ pub(crate) fn paint_rows(
             label_w - Spacing::Xs.px() * 2.0,
             resolve(color, theme),
         );
-        // Key diamonds.
+        // Key diamonds + their hit targets.
         let cy = y + ROW_H_PX * 0.5;
         for k in &track.keys {
-            let kx = time_x + ((k.t_seconds - view_start) * px_per_s) as f32;
+            let base_x = time_x + ((k.t_seconds - view_start) * px_per_s) as f32;
+            // Selected keys ride the live drag preview.
+            let kx = if k.selected {
+                base_x + preview_dx
+            } else {
+                base_x
+            };
             if kx < time_x - DIAMOND_H || kx > right + DIAMOND_H {
                 continue;
             }
@@ -134,6 +166,22 @@ pub(crate) fn paint_rows(
                 ColorToken::Text1
             };
             paint_diamond(ctx, kx, cy, DIAMOND_H, resolve(tok, theme));
+            // Hit target keyed by identity (stable across frames/reorders). The
+            // grab rect follows the drawn (previewed) position.
+            let id = ids::timeline_key_hit_id(track.target.get(), k.id.get());
+            let hit = Rect::new(kx - KEY_HIT_HW, y, KEY_HIT_HW * 2.0, ROW_H_PX);
+            ctx.host.store_mut().register(
+                id,
+                InteractiveState::TimelineSurface {
+                    parent: ids::TIMELINE_PANEL,
+                    kind: TimelineHitKind::Key {
+                        target: track.target.get(),
+                        key: k.id.get(),
+                    },
+                    canvas: lane,
+                },
+            );
+            ctx.host.hit_index_mut().register(id, hit);
         }
         y += ROW_H_PX;
     }

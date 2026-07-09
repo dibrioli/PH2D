@@ -51,3 +51,21 @@ pub const TIMELINE_RULER: NodeId = hash_node_id("timeline.ruler");
 pub const TIMELINE_LANES: NodeId = hash_node_id("timeline.lanes");
 /// Vertical scrollbar for the track list.
 pub const TIMELINE_SCROLLBAR: NodeId = hash_node_id("timeline.scrollbar");
+
+/// A stable `NodeId` for one key-diamond hit target, keyed by the track's
+/// `AnimTarget` and the key's `KeyId` (both raw u64s). Stable across frames so a
+/// dope-sheet drag's active capture keeps resolving to the same key even as
+/// keys move — the hit is keyed by *identity*, not row/column position. Seeded
+/// from the `timeline.key` domain so it never collides with the `timeline.*`
+/// slug consts. The key set is dynamic, so these can't be consts.
+#[must_use]
+pub fn timeline_key_hit_id(target: u64, key: u64) -> NodeId {
+    // FNV-1a over the 16 identity bytes, seeded from the domain slug hash.
+    const FNV_PRIME: u64 = 0x0000_0100_0000_01b3;
+    let mut h = hash_node_id("timeline.key").0;
+    for b in target.to_le_bytes().into_iter().chain(key.to_le_bytes()) {
+        h ^= u64::from(b);
+        h = h.wrapping_mul(FNV_PRIME);
+    }
+    NodeId(h)
+}

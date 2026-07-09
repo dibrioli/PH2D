@@ -218,6 +218,27 @@ impl App {
             }
         }
 
+        // General timeline (W2.E5b) — Delete/Backspace removes the selected keys
+        // while the panel is open, something is selected, and no text field holds
+        // focus. One undo step (via `apply_intent`). Falls through otherwise so
+        // Delete keeps its meaning in every other context.
+        if self.timeline_panel_open()
+            && state == ElementState::Pressed
+            && !repeat
+            && !self.modifiers.control_key()
+            && !self.modifiers.super_key()
+            && !self.timeline.selection.is_empty()
+            && !self.vector_text_field_focused()
+            && matches!(
+                physical_key,
+                PhysicalKey::Code(KeyCode::Delete | KeyCode::Backspace)
+            )
+        {
+            self.timeline_intents
+                .push(ph2d_timeline::TimelineIntent::DeleteSelection);
+            return;
+        }
+
         // Vector: Escape ends an in-progress path (it stays in the scene, open).
         // Consumed only while the Vector tool is active and the Pen is drawing,
         // so Escape otherwise falls through to widget blur.

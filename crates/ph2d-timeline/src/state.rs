@@ -19,6 +19,19 @@ pub struct SelectedKey {
     pub key: KeyId,
 }
 
+impl SelectedKey {
+    /// Build from raw ids — lets a UI layer that carried the key's identity as
+    /// primitives (e.g. a `TimelineHitKind::Key { target, key }` gesture)
+    /// reconstruct the typed selection without naming the `ph2d-anim` types.
+    #[must_use]
+    pub const fn new(target_raw: u64, key_raw: u64) -> Self {
+        Self {
+            target: AnimTarget::new(target_raw),
+            key: KeyId::new(key_raw),
+        }
+    }
+}
+
 /// The set of selected keys (dope-sheet / graph). Small, order-insensitive; a
 /// `Vec` is fine at the key counts a hand-authored clip holds.
 #[derive(Debug, Default, Clone)]

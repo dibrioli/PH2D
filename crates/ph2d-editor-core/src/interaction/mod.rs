@@ -55,6 +55,6 @@ pub use hit::HitIndex;
 pub use state::{InteractiveState, NamedPalette, WidgetStore};
 pub use types::{
     BlenderHitKind, ContextMenuKind, ContextMenuRequest, GestureMods, GesturePhase, GraphGesture,
-    GraphHitKind, GraphKey, GraphZoom, NoteData, PaletteIoKind,
+    GraphHitKind, GraphKey, GraphZoom, NoteData, PaletteIoKind, TimelineGesture, TimelineHitKind,
 };
 pub use util::{format_number, hsv_to_color_value};

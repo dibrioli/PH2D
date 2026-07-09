@@ -14,7 +14,9 @@ use super::{
     commit_hex_buffer, commit_number_buffer, init_number_buffer, reset_focused_visual_state,
     select_all_in_text_widget,
 };
-use crate::interaction::types::{BlenderHitKind, ContextMenuKind, GesturePhase, GraphGesture};
+use crate::interaction::types::{
+    BlenderHitKind, ContextMenuKind, GesturePhase, GraphGesture, TimelineGesture,
+};
 use crate::interaction::{HitIndex, InteractiveState, WidgetEvent, WidgetStore, drag};
 use crate::zones::Rect;
 use bumpalo::collections::Vec as BumpVec;
@@ -45,6 +47,28 @@ pub(super) fn dispatch_down<'frame>(
         store.set_graph_moved(false);
         let mods = store.gesture_mods();
         store.push_graph_gesture(GraphGesture {
+            surface,
+            kind,
+            phase: GesturePhase::Begin,
+            x: event.x,
+            y: event.y,
+            button: event.button,
+            mods,
+        });
+        return;
+    }
+
+    // W2.E5b — the timeline dope-sheet captures the pointer the same way (a key
+    // diamond or an empty lane); the panel drives select / drag-move / clear off
+    // the gesture stream. Mirror of the graph-surface capture above.
+    if let Some((id, rect)) = hit
+        && let Some((surface, kind)) = store.timeline_surface_at_id(id)
+    {
+        store.set_active(Some(id));
+        store.set_active_rect(Some(rect));
+        store.set_timeline_moved(false);
+        let mods = store.gesture_mods();
+        store.push_timeline_gesture(TimelineGesture {
             surface,
             kind,
             phase: GesturePhase::Begin,

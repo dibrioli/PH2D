@@ -23,6 +23,7 @@ mod graph_ops;
 mod panel_ops;
 mod store_core;
 mod store_hierarchy;
+mod timeline_ops;
 mod widget_accessors;
 
 use ph2d_a11y::NodeId;
@@ -33,6 +34,7 @@ use super::drag::{
 };
 use super::types::{
     BlenderHitKind, ContextMenuRequest, GraphGesture, GraphHitKind, GraphKey, GraphZoom, NoteData,
+    TimelineGesture, TimelineHitKind,
 };
 use super::util::format_number;
 
@@ -187,6 +189,18 @@ pub enum InteractiveState {
     GraphSurface {
         parent: NodeId,
         kind: GraphHitKind,
+        canvas: Rect,
+    },
+    /// A hit target inside the general timeline's dope-sheet surface (a key
+    /// diamond or an empty lane). Mirror of [`InteractiveState::GraphSurface`]:
+    /// dispatch captures it on Down and streams [`TimelineGesture`]s to the
+    /// timeline panel via [`WidgetStore::push_timeline_gesture`]; editor-core
+    /// never interprets `kind`. `canvas` is the dope-sheet rect (for the panel's
+    /// own coordinate mapping; the pointer position is carried raw in the
+    /// gesture).
+    TimelineSurface {
+        parent: NodeId,
+        kind: TimelineHitKind,
         canvas: Rect,
     },
     Modal {
@@ -588,6 +602,12 @@ pub struct WidgetStore {
     /// Whether the active graph capture has moved since Down — decides End vs
     /// Click on Up (mirror of the NumberInput drag's threshold flag).
     pub(super) graph_moved: bool,
+    /// Timeline dope-sheet pointer gestures stashed by dispatch, drained by the
+    /// timeline panel each frame (mirror of `graph_gestures`).
+    pub(super) timeline_gestures: Vec<TimelineGesture>,
+    /// Whether the active timeline capture has moved since Down — decides End vs
+    /// Click on Up (mirror of `graph_moved`).
+    pub(super) timeline_moved: bool,
     /// Latest Alt modifier state, mirror of [`Self::shift_held`]/[`Self::cmd_held`].
     /// Pushed by the shell on `ModifiersChanged`; folded into `GestureMods.alt`.
     pub(super) alt_held: bool,

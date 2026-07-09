@@ -348,3 +348,37 @@ pub enum GraphKey {
     /// Space — toggle transport play/pause (so time-driven behaviours animate).
     TogglePlay,
 }
+
+/// A hit target inside the general timeline's dope-sheet surface. Mirror of
+/// [`GraphHitKind`] scoped to the timeline panel: dispatch captures one on Down
+/// and streams [`TimelineGesture`]s to the panel, never interpreting it. The
+/// handles are opaque — the panel maps `target`/`key` back to its
+/// `ph2d-timeline` document.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum TimelineHitKind {
+    /// Empty lane / dope-sheet background — a click clears the selection.
+    Lane,
+    /// A key diamond on some track — click selects it, drag moves the selection
+    /// in time. `target`/`key` are the track's `AnimTarget` and the key's
+    /// `KeyId`, carried as raw ids (editor-core never dereferences them).
+    Key { target: u64, key: u64 },
+}
+
+/// One timeline dope-sheet pointer gesture, stashed by dispatch and drained by
+/// the panel each frame ([`super::WidgetStore::drain_timeline_gestures`]).
+/// Positions are global pixels; the panel maps them to time with its own
+/// view (`view_start`/`px_per_s`). Mirror of [`GraphGesture`].
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub struct TimelineGesture {
+    /// The timeline surface (panel) this gesture belongs to — the `parent` of
+    /// the [`super::InteractiveState::TimelineSurface`] that was hit.
+    pub surface: NodeId,
+    /// What was under the pointer at `Begin`, carried unchanged through
+    /// Update/End/Click.
+    pub kind: TimelineHitKind,
+    pub phase: GesturePhase,
+    pub x: f32,
+    pub y: f32,
+    pub button: PointerButton,
+    pub mods: GestureMods,
+}

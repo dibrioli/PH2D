@@ -37,6 +37,13 @@ use crate::time::RationalTime;
 pub struct KeyId(u64);
 
 impl KeyId {
+    /// Wrap a raw key id (mirror of [`crate::AnimTarget::new`]) — lets a UI layer
+    /// that carried the id as a primitive reconstruct the typed id.
+    #[must_use]
+    pub const fn new(id: u64) -> Self {
+        Self(id)
+    }
+
     /// The raw id.
     #[must_use]
     pub const fn get(self) -> u64 {

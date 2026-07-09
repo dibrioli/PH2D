@@ -281,4 +281,5 @@ mod curve;
 mod graph;
 mod inputs;
 mod number_drag;
+mod timeline;
 mod widgets;

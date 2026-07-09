@@ -84,6 +84,8 @@ impl WidgetStore {
             graph_canvas: BTreeMap::new(),
             graph_focused: None,
             graph_moved: false,
+            timeline_gestures: Vec::new(),
+            timeline_moved: false,
             alt_held: false,
         }
     }

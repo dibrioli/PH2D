@@ -97,6 +97,11 @@ pub(crate) fn paint(state: &mut TimelinePanelState, ctx: &mut PaintCtx) {
     state.view_start_s = view_start;
     state.view_span_s = span;
 
+    // Drain this frame's dope-sheet gestures (select / drag-move / clear) before
+    // drawing, so the drag preview offset is current for the diamonds below.
+    crate::interact::process(state, ctx, px_per_s, &snapshot);
+    let preview_dx = crate::interact::preview_dx(state, px_per_s, &snapshot);
+
     // "+Track" buttons in the label column, aligned with the ruler strip.
     tracks::paint_add_track(
         ctx,
@@ -117,6 +122,7 @@ pub(crate) fn paint(state: &mut TimelinePanelState, ctx: &mut PaintCtx) {
         time_area.x,
         view_start,
         px_per_s,
+        preview_dx,
         &snapshot,
     );
     // Time axis last, so ticks + playhead overlay the rows.

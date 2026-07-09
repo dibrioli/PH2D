@@ -172,6 +172,16 @@ complementa por baixo.
 
 ## §5 Recomendação
 
+> **STATUS: O1 IMPLEMENTADO (2026-07-09, mesma sessão).** Porta `forces` no integrate;
+> plumbing `pre` engine-managed em `shells/desktop/src/render_loop/motion_bridge_plumbing.rs`
+> (reconcile before/after: self-loop quando vazio, entrada de estado na cabeça do ramo,
+> re-heal em disconnect/delete, badge não-deletável à mão, `pre` expert intocado);
+> badges de portal em `ph2d-panel-motion-graph` (paint + hit compartilham geometria);
+> demos lineares. Falsificado: sem a entrada de estado a fonte morre
+> (`the_fountain_dies_without_its_state_entry`); sem o gesto do bridge o fio no `forces`
+> é recusado (controle em `wiring_a_chain_into_forces_replumbs_the_state_entry`).
+> Modelo canônico agora em SKILL §11.13; evidências da indústria no doc 04.
+
 **O1 agora; O4 como evolução quando `cook_scoped` existir.** O1 entrega o padrão-ouro de
 facilidade (grafo linear, igual ao catálogo de referência e a Houdini/Cavalry/Blender) sem
 abrir mão de nada do que o M2 conquistou (determinismo, física composta, generalidade do ramo).

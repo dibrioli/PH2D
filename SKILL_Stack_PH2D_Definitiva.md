@@ -709,6 +709,35 @@ First-class, com restrições:
 - **Service Worker:** opcional, gerencia offline + cache de assets.
 - **WebGPU adapter selection:** `high-performance` por default; user override via query string `?adapter=low-power` para devmobile testing.
 
+### 11.13 Motion Nodes — modelo canônico de dinâmica (estado, forças, feedback)
+
+Estudo + evidência primária: [`docs/Motion Nodes/03_reentrada_integrate_estudo_padrao_ouro.md`](docs/Motion%20Nodes/03_reentrada_integrate_estudo_padrao_ouro.md)
+(decisão) e [`04_evidencias_industria_feedback_sim.md`](docs/Motion%20Nodes/04_evidencias_industria_feedback_sim.md)
+(Houdini/Blender/Cavalry/Bifrost/ICE/TD/Niagara, com URLs). Regras:
+
+- **O grafo de autoria é um DAG — o usuário NUNCA desenha o laço da simulação.** Padrão-ouro da
+  indústria (POP Solver, Bifrost `influences`, ICE Add Forces, Cavalry `Modifiers`): um nó-solver
+  com as forças como **cadeia lateral** plugada nele.
+- **`pre` (ADR-0032) é mecanismo de MÁQUINA, não gesto de usuário.** O editor cria/mantém a
+  plumbing: porta `forces` do `motion.integrate` vazia → self-loop `out --pre--> forces`
+  automático; cadeia conectada em `forces` → o bridge liga `out --pre--> cabeça(s)` da cadeia
+  (cabeça = input 0 solto no ramo). Precedentes: feedback ports do Bifrost, `Prev_Frame` do
+  Houdini Solver SOP, FrameDelay do vvvv (= o nosso `pre`).
+- **Arestas `pre` renderizam como par de chips/portais** nos sockets (self-loop = chip único),
+  nunca como spline atravessando o canvas. Hover revela o parceiro; delete = mesmo gesto de wire.
+- **Física composta corretamente:** forças são nós `Pure` que ACUMULAM na coluna transiente
+  `accel` do stream; UM `motion.integrate` faz Euler semi-implícito (dt derivado de `sim_t`,
+  clamp `MAX_DT`). Proibido o modelo "cada força integra a própria contribuição com estado
+  oculto por nó" (o do protótipo MiniCavalry) — quebra composição, replay e scrub.
+- **Estado casa por `id`** quando o stream traz a coluna `id` (emitter); sem `id`, identidade
+  posicional e mudança de count re-semeia. Emitter é **stateless** (alive-set = função pura do
+  playhead; aleatoriedade = `hash(seed, id, lane)`) — scrub de graça, replay bit-exato (HR-5).
+- Nós sequenciais futuros: input chamado `state` (mesmo `PortType` do output 0) = porta de
+  feedback com self-loop automático; `forces` = idem + plumbing de ramo. Convenção append-only.
+- **Horizonte:** Zona de Simulação (bracket à la Blender, alinha com P4 do design canônico)
+  quando `cook_scoped` existir — generaliza, não substitui, os nós densos. Armadilhas de UX já
+  documentadas no doc 04 §2e.
+
 ## 12. Cross-cutting concerns
 
 ### 12.1 Memory budgets

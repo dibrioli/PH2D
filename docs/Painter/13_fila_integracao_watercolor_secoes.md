@@ -68,6 +68,13 @@ composite. Corpo molhado + rim no contorno EXTERNO + textura como variação de 
 > caminho byte-idêntico do default); (b) mapa u8 de índice-de-traço + snapshot de params por
 > traço da sessão (geral, mais estado); (c) params divergentes ⇒ encerra sessão (barato, mas
 > perde a fusão — último recurso). Escolher a que preserva o caráter POR TRAÇO mantendo a fusão.
+>
+> **Sintoma adicional (Enio 2026-07-09):** QUALQUER mudança no brush com poças úmidas na tela
+> propaga pelas poças dentro da **área RETANGULAR de ação do brush** — é a janela dirty-rect do
+> composite ao vivo (frame dirty + pad): dentro dela a união re-renderiza com os params novos,
+> fora dela fica o bake antigo ⇒ um remendo retangular visível re-estilizado no meio da poça.
+> Mesmo bug-raiz (params correntes aplicados ao conjunto), segunda manifestação: o fix por-traço
+> resolve as duas; usar este sintoma no teste de regressão (borda do retângulo não pode existir).
 
 | # | Item | Estado hoje | Nota |
 |---|---|---|---|

@@ -21,6 +21,7 @@
 //! integer-hash value noise are built once and deterministic; no transcendental runs in the hot loop.
 
 use super::watercolor_field::*;
+use super::watercolor_rewet_px::rewet_px;
 use super::*;
 use ph2d_painter_brush::blend::ryb_mix;
 use rayon::prelude::*;
@@ -144,12 +145,15 @@ impl PainterTool {
         // stroke poured dwell (`wet_soak_active`) the soak-deepened dissolve reads a 2× blur, so the
         // reach doubles.
         let soaked = wet_any > 0.0 && self.paint.wet_soak_active && self.paint.wet_soak.len() == n;
-        let reach = if wet_any <= 0.0 {
-            core_r
-        } else if soaked {
+        // EDGE-2: carried water poured this session (Dilution) — builds the rewet fields (and its
+        // own halo) regardless of Rewet, so pure water blooms against the paint beneath.
+        let watered = self.paint.stroke_water.len() == n;
+        let reach = if soaked || watered {
             spread * 2
-        } else {
+        } else if wet_any > 0.0 {
             spread
+        } else {
+            core_r
         };
         let pad = reach + warp_any.ceil() as usize + 2;
         let x0 = (dirty.x as usize).saturating_sub(pad);
@@ -218,12 +222,14 @@ impl PainterTool {
             Some(b) if b.len() == n * 4 => Arc::clone(b),
             _ => Arc::clone(&base_arc),
         };
-        let rewet = (wet_any > 0.0).then(|| {
+        let rewet = (wet_any > 0.0 || watered).then(|| {
             build_rewet_fields(
                 &rewet_base_arc[..],
                 ground,
                 &self.paint.wet_soak,
                 soaked,
+                &self.paint.stroke_water,
+                watered,
                 (fw, fh),
                 (rx0, ry0, rx1, ry1),
                 spread,
@@ -291,6 +297,7 @@ impl PainterTool {
         };
         // Raw per-pixel soak for the granulation settle (GRAN-1) — read-only in the parallel loop.
         let soak_buf = &self.paint.wet_soak;
+        let water_buf = &self.paint.stroke_water;
 
         let color_buf = &self.paint.stroke_color;
         // Substrate memoisation (perf, byte-identical): `paper_h` is canvas-anchored (a pure function of
@@ -379,7 +386,15 @@ impl PainterTool {
                         (lx, ly)
                     };
                     let cw = smoothstep(SS0, SS1, sample_bilinear(&cov_src, rw, rh, sx, sy));
-                    if cw <= 0.0 {
+                    // EDGE-2 (backrun): the WATER channel at a SERRATED coord ([`water_at`]) — a
+                    // water pool is live paint-surface even where the PIGMENT coverage is zero
+                    // (pure water, Dilution 1), so the early-out only fires where BOTH are dry.
+                    let (water, wxg, wyg) = if watered {
+                        water_at(water_buf, fw, fh, gx, gy)
+                    } else {
+                        (0.0, 0.0, 0.0)
+                    };
+                    if cw <= 0.0 && water <= 0.0 {
                         // Outside the wash: restore the frozen base (peels any previous frame's composite).
                         row[gx * 4] = base[gi];
                         row[gx * 4 + 1] = base[gi + 1];
@@ -476,57 +491,29 @@ impl PainterTool {
                     if has_depl {
                         density *= f32::from(depl_buf[wgy * fw + wgx]) / 255.0;
                     }
-                    // Wet-on-wet: sample the bleed field (blurred presence + presence-weighted paint colour)
-                    // at the warped position; `lp` = raw local presence (only real paint lifts), `bp` = how
-                    // much dissolved pigment reaches this pixel, `bleed` = its (presence-normalised) colour.
-                    let mut lift = 0.0f32;
-                    let mut dissolve = 0.0f32;
-                    let mut bleed = [0.0f32; 3];
-                    let mut wet_paint = 0.0f32; // local paint presence — gates the wet-driven paint-mix
-                    if let Some(f) = &rewet {
-                        let lp = f.samp(&f.pres, rx0, ry0, sx, sy);
-                        wet_paint = lp.clamp(0.0, 1.0);
-                        // Soak (dwell) lerps every dissolve field between the plain and the 2× blur scale
-                        // and deepens the lift — a lingering brush dissolves farther and digs deeper.
-                        // Soak = 0 samples the near fields with weight 1 (bit-identical to no-soak).
-                        let (s, s_raw) = if f.far.is_some() {
-                            (
-                                f.samp(&f.soak_halo, rx0, ry0, sx, sy).clamp(0.0, 1.0),
-                                f.samp(&f.soak_raw, rx0, ry0, sx, sy).clamp(0.0, 1.0),
-                            )
-                        } else {
-                            (0.0, 0.0)
-                        };
-                        let fno = f.samp(&f.near[0], rx0, ry0, sx, sy);
-                        let bp = if let Some(far) = &f.far {
-                            let ffo = f.samp(&far[0], rx0, ry0, sx, sy);
-                            (fno + (ffo - fno) * s).clamp(0.0, 1.0)
-                        } else {
-                            fno.clamp(0.0, 1.0)
-                        };
-                        lift = (REWET_LIFT * st.wet * cw * lp * (1.0 + SOAK_LIFT * s_raw))
-                            .min(LIFT_MAX);
-                        if bp > 1e-4 {
-                            let inv = 1.0 / bp;
-                            for c in 0..3 {
-                                let nc = f.samp(&f.near[c + 1], rx0, ry0, sx, sy);
-                                bleed[c] = if let Some(far) = &f.far {
-                                    let fc = f.samp(&far[c + 1], rx0, ry0, sx, sy);
-                                    (nc + (fc - nc) * s) * inv
-                                } else {
-                                    nc * inv
-                                };
-                            }
-                            dissolve = (st.wet * bp * (1.0 + SOAK_DISSOLVE * s)).clamp(0.0, 1.0);
-                            // The dissolved pigment re-enters the wash as optical density AT THE RECEDING
-                            // FRONT (the same rim shape as the edge term, gain-independent): pigment in
-                            // suspension migrates to the wet boundary — the bloom. A UNIFORM pool flooded
-                            // the interior and flattened the Spread dynamic (interior must CLEAR as the
-                            // frontier advances; the lift even enhances that over old paint).
-                            density +=
-                                REWET_POOL * st.wet * bp * (cw * (1.0 - inner)).clamp(0.0, 1.0);
-                        }
-                    }
+                    // Wet-on-wet lift / dissolve / pool / backrun ring — [`rewet_px`] (sibling,
+                    // LOC split), verbatim math. `pool` is the density ADDITION from bloom + ring.
+                    let rw_px = match &rewet {
+                        Some(f) => rewet_px(
+                            f,
+                            (rx0, ry0),
+                            (sx, sy),
+                            (wxg, wyg),
+                            water,
+                            st.wet,
+                            cw,
+                            inner,
+                        ),
+                        None => Default::default(),
+                    };
+                    let (lift, dissolve, backrun, bleed, wet_paint) = (
+                        rw_px.lift,
+                        rw_px.dissolve,
+                        rw_px.backrun,
+                        rw_px.bleed,
+                        rw_px.wet_paint,
+                    );
+                    density += rw_px.pool;
                     let od = density * st.depth;
 
                     // Pigment colour: the deposited (source-over) colour where present, else the brush colour.
@@ -555,6 +542,16 @@ impl PainterTool {
                             let b = -lut.lnl[bi];
                             let mag = a + (b - a) * dissolve;
                             pig[c] = lut.l2s_byte(lut.exp_mag(mag));
+                        }
+                    }
+                    // Backrun CONCENTRATION (EDGE-2): the ring's pigment is the pushed paint
+                    // CONCENTRATED — Beer–Lambert saturates at the pigment colour, so density
+                    // alone can never render darker than the wash the pigment came from; the
+                    // "severely darkened edge" needs a darker floor (absorbance × ring).
+                    if backrun > 0.0 {
+                        for p in &mut pig {
+                            let a = -lut.lnl[*p as usize] * (1.0 + BACKRUN_CONC * backrun);
+                            *p = lut.l2s_byte(lut.exp_mag(a));
                         }
                     }
 
@@ -615,7 +612,7 @@ impl PainterTool {
                     // Wet is 0 (byte-identical default preserved). The blend reads the LIFTED base (`sb`)
                     // where the rewet lightened it — mixing against the raw base would paint the lift
                     // right back over.
-                    let mix_amt = st.pigment_mix.max(st.wet * wet_paint);
+                    let mix_amt = st.pigment_mix.max(st.wet.max(water) * wet_paint);
                     if mix_amt > 0.0 {
                         // The (possibly lifted) base APPEARANCE over the ground — for an opaque base with
                         // no lift this is the raw base bytes exactly (`l2s(s2l(b)) == b`); for a

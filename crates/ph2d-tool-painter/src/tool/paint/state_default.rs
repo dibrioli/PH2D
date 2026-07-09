@@ -163,6 +163,7 @@ impl Default for PaintState {
             wet_session_base: None,
             wet_session_canvas: None,
             wet_styles: Default::default(),
+            stroke_water: Vec::new(),
             wet_mix: watercolor_mixer::WetMix::default(),
             wet_smear_pos: None,
             wet_frame_dirty: None,

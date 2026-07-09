@@ -13090,3 +13090,93 @@ fn watercolor_session_keeps_each_strokes_style() {
         g(60)
     );
 }
+
+/// **EDGE-2 (doc 12, W-C): backrun/bloom de ÁGUA LIMPA** — o gesto canônico era inalcançável por
+/// construção (Dilution 1 → flow 0 → cobertura 0 → `cw ≤ 0` pulava TODO o caminho). Agora a água
+/// carregada poura o canal próprio (`stroke_water`) e o composite a trata como superfície viva:
+/// sobre um wash assentado, o interior do pool CLAREIA (lift — "whitened wake") e o pigmento
+/// empurrado escurece o CONTORNO serrilhado (anel `água − halo`, Curtis §2.2 "severely darkened
+/// edges"). Água em papel branco = nada (lift/dissolve/anel ∝ presença de tinta).
+#[test]
+fn watercolor_clean_water_backrun_blooms_on_wet_wash() {
+    let size = 192u32;
+    let mut t = white_canvas(size, 8.0);
+    t.paint.brush = BrushSpec {
+        radius_px: 14.0,
+        hardness: 1.0,
+        falloff: Falloff::Constant,
+        color: [0.85, 0.1, 0.1],
+        space_attenuation: false,
+        watercolor: true,
+        fill: 0.35,
+        depth: 2.0,
+        edge_gain: 0.0,
+        edge_spread: 6.0,
+        warp: 0.0,
+        granulation: 0.0,
+        wet_rewet: 0.0, // Rewet OFF — a ÁGUA sozinha tem que produzir o bloom
+        ..Default::default()
+    };
+    for slot in &mut t.paint.brush_by_mode {
+        *slot = t.paint.brush;
+    }
+    // Wash vertical (banda x ≈ 46..74), assentado (seca a sessão).
+    assert!(t.on_canvas_pointer(cp([60.0, 30.0], PointerPhase::Down)));
+    let mut y = 30.0f32;
+    while y < 160.0 {
+        y += 2.0;
+        t.on_canvas_pointer(cp([60.0, y], PointerPhase::Move));
+    }
+    t.on_canvas_pointer(cp([60.0, 160.0], PointerPhase::Up));
+    for _ in 0..40 {
+        t.paint_tick(0.5);
+    }
+    assert!(t.paint.canvas_wet.is_empty(), "sessão do wash deve secar");
+    let wash_before = f32::from(px(&t, size, 60, 95)[1]);
+    // Gota de ÁGUA PURA (Dilution 1) parada dentro do wash + um rabisco em papel branco.
+    // Raio 30 ≫ o blur do halo (12 px): o interior fica livre do casco (raw ≈ halo) e o anel
+    // forma no contorno — numa gota pequena o casco cobre o centro (bloom todo-anel, físico).
+    t.paint.brush.radius_px = 30.0;
+    t.paint.brush.wet_dilution = 1.0;
+    for slot in &mut t.paint.brush_by_mode {
+        *slot = t.paint.brush;
+    }
+    assert!(t.on_canvas_pointer(cp([60.0, 95.0], PointerPhase::Down)));
+    t.on_canvas_pointer(cp([61.0, 95.0], PointerPhase::Move));
+    t.on_canvas_pointer(cp([60.0, 95.0], PointerPhase::Up));
+    assert!(t.on_canvas_pointer(cp([150.0, 40.0], PointerPhase::Down)));
+    t.on_canvas_pointer(cp([151.0, 40.0], PointerPhase::Move));
+    t.on_canvas_pointer(cp([150.0, 40.0], PointerPhase::Up));
+    // (a) interior do pool clareou (pigmento empurrado — whitened wake).
+    let pool_after = f32::from(px(&t, size, 60, 95)[1]);
+    assert!(
+        pool_after > wash_before + 10.0,
+        "água limpa deve CLAREAR o interior do pool (antes G {wash_before:.0} → depois G {pool_after:.0})"
+    );
+    // (b) o contorno do pool escureceu em algum ponto do anel (raio ~10-20 px, serrilhado).
+    let mut ring_min = 255.0f32;
+    for r in 22..=40u32 {
+        for &(dx, dy) in &[
+            (r as i32, 0),
+            (-(r as i32), 0),
+            (0, r as i32),
+            (0, -(r as i32)),
+        ] {
+            let (x, y) = ((60 + dx) as u32, (95 + dy) as u32);
+            if x < size && y < size {
+                ring_min = ring_min.min(f32::from(px(&t, size, x, y)[1]));
+            }
+        }
+    }
+    assert!(
+        ring_min < wash_before - 8.0,
+        "o pigmento empurrado deve ESCURECER o contorno do pool (wash G {wash_before:.0}, anel mín G {ring_min:.0})"
+    );
+    // (c) água em papel branco = invisível.
+    let blank = px(&t, size, 150, 40);
+    assert_eq!(
+        &blank[..3],
+        &[255, 255, 255],
+        "água pura sobre papel em branco não deposita nada"
+    );
+}

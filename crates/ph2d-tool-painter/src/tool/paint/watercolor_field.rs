@@ -261,6 +261,9 @@ pub(super) struct RewetFields {
     pub(super) pres: Vec<f32>,
     pub(super) soak_raw: Vec<f32>,
     pub(super) soak_halo: Vec<f32>,
+    /// EDGE-2: the CARRIED-water pool's halo (2× blur of `stroke_water`) — the backrun ring is
+    /// `raw − halo` (a shell just inside the pool's serrated contour). Empty unless water poured.
+    pub(super) water_halo: Vec<f32>,
     pub(super) near: [Vec<f32>; 4],
     /// `None` until the stroke actually poured dwell (`wet_soak_active`) — a no-dwell stroke pays
     /// exactly the plain 4-blur rewet cost (measured 1.16 → ~0.6 ms/frame @2048²).
@@ -322,12 +325,14 @@ pub(super) const WET_RAGGED: f32 = 0.75;
 /// Build the [`RewetFields`] for one composite window (moved out of `apply_watercolor` for the
 /// file-LOC cap — pure function of the frozen buffers + window; behaviour unchanged, see the field
 /// docs on [`RewetFields`]).
-#[allow(clippy::too_many_arguments)]
+#[allow(clippy::too_many_arguments)] // field-build seam: every input is a distinct buffer/flag
 pub(super) fn build_rewet_fields(
     base: &[u8],
     ground: &[u8],
     wet_soak: &[u8],
     soaked: bool,
+    stroke_water: &[u8],
+    watered: bool,
     (fw, fh): (usize, usize),
     (rx0, ry0, rx1, ry1): (usize, usize, usize, usize),
     spread: usize,
@@ -344,6 +349,8 @@ pub(super) fn build_rewet_fields(
     let mut wg = vec![0.0f32; lw * lh];
     let mut wb = vec![0.0f32; lw * lh];
     let mut soak = vec![0.0f32; lw * lh];
+    // EDGE-2: the carried-water pool, downsampled like the soak (blurred below into its halo).
+    let mut water = vec![0.0f32; lw * lh];
     let half = ds / 2;
     // Field fill, PARALLEL over grid rows (ADR-0109 class: each cell is a pure function of the
     // frozen base/ground/soak at its own sampled pixel — no cross-cell reduction, disjoint row
@@ -356,8 +363,9 @@ pub(super) fn build_rewet_fields(
         .zip(wg.par_chunks_mut(lw))
         .zip(wb.par_chunks_mut(lw))
         .zip(soak.par_chunks_mut(lw))
+        .zip(water.par_chunks_mut(lw))
         .enumerate()
-        .for_each(|(lj, ((((prow, rrow), grow), brow), srow))| {
+        .for_each(|(lj, (((((prow, rrow), grow), brow), srow), wrow))| {
             // Sample each low-res cell at its block CENTRE (ds=1 ⇒ every full-res pixel, exact).
             let gy = (((loy0 + lj) * ds) + half).min(fh - 1);
             for li in 0..lw {
@@ -389,6 +397,9 @@ pub(super) fn build_rewet_fields(
                 if soaked {
                     srow[li] = f32::from(soak_src[gy * fw + gx]) / 255.0;
                 }
+                if watered {
+                    wrow[li] = f32::from(stroke_water[gy * fw + gx]) / 255.0;
+                }
             }
         });
     // Blur radii in low-res units (the low-res blur of radius r/ds ≈ a full-res blur of r).
@@ -405,6 +416,11 @@ pub(super) fn build_rewet_fields(
     // water DIFFUSES outward (the halo pushes the widened dissolve BEYOND the nib's own
     // disc — a raw disc gated the far blur to exactly the pixels under the brush), while
     // the RAW soak drives the lift (contact: deepest right under the nib).
+    let water_halo = if watered {
+        box_blur(&water, lw, lh, r2)
+    } else {
+        Vec::new()
+    };
     let (far, soak_halo) = if soaked {
         let far = [
             box_blur(&pres, lw, lh, r2),
@@ -420,6 +436,7 @@ pub(super) fn build_rewet_fields(
         pres,
         soak_raw: soak,
         soak_halo,
+        water_halo,
         near: [bpres, br, bg, bb],
         far,
         ds,
@@ -615,4 +632,41 @@ pub(super) fn granulation_factor(
         }
         None => (1.0 + paper_component).max(0.0),
     }
+}
+
+// ── EDGE-2 backrun (doc 12 — Curtis §2.2: "water tends to push pigment along as it spreads,
+// resulting in complex, branching shapes with severely darkened edges") ──────────────────────────
+/// Serration cell of the water-pool contour (px) — the mid-cell integer-hash jitter that turns the
+/// smooth soak disc into the cauliflower boundary (doc 12 prescribes ~8-16 px).
+pub(super) const BACKRUN_JAG_CELL: f32 = 12.0;
+/// Serration amplitude (px) — how far the water contour read is displaced per cell.
+pub(super) const BACKRUN_JAG_PX: f32 = 5.0;
+/// Pool-ring gain: dissolved pigment deposited along the water's serrated contour (the severely
+/// darkened backrun edge). Scales `bp × ring`; calibration knob.
+pub(super) const BACKRUN_POOL: f32 = 2.0;
+/// Ring CONCENTRATION: how much the ring deepens the dissolved pigment's absorbance. Beer–Lambert
+/// saturates AT the pigment colour — density alone can never render darker than the wash the
+/// pigment came from, but a backrun edge is that paint CONCENTRATED (darker floor). Knob.
+pub(super) const BACKRUN_CONC: f32 = 1.5;
+const SEED_JAG_X: u32 = 0x4A47_5801;
+const SEED_JAG_Y: u32 = 0x4A47_5902;
+
+/// Sample the WATER channel (the session soak) at a SERRATED coordinate: canvas-anchored value
+/// noise (cell [`BACKRUN_JAG_CELL`]) displaces the read up to ±[`BACKRUN_JAG_PX`], so the pool's
+/// contour — and the backrun ring derived from it — comes out jagged/organic instead of the soak
+/// disc's smooth edge. Returns `(water 0..1, global x, global y)` of the displaced read (the same
+/// coord must sample the halo, or the ring shell drifts off the serration). Deterministic (HR-5).
+#[inline]
+pub(super) fn water_at(soak: &[u8], fw: usize, fh: usize, gx: usize, gy: usize) -> (f32, f32, f32) {
+    let jx = (value_noise(gx as f32, gy as f32, BACKRUN_JAG_CELL, SEED_JAG_X) * 2.0 - 1.0)
+        * BACKRUN_JAG_PX;
+    let jy = (value_noise(gx as f32, gy as f32, BACKRUN_JAG_CELL, SEED_JAG_Y) * 2.0 - 1.0)
+        * BACKRUN_JAG_PX;
+    let wx = (gx as f32 + jx).clamp(0.0, (fw - 1) as f32);
+    let wy = (gy as f32 + jy).clamp(0.0, (fh - 1) as f32);
+    (
+        f32::from(soak[wy as usize * fw + wx as usize]) / 255.0,
+        wx,
+        wy,
+    )
 }

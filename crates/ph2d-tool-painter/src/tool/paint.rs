@@ -56,6 +56,8 @@ mod watercolor_field;
 mod watercolor_mixer;
 /// Watercolor edge darkening (#1): per-stroke coverage + the pen-up blur-difference "fringe" pass.
 mod watercolor_render;
+/// Watercolor per-pixel rewet terms (lift/dissolve/pool/backrun); split from `watercolor_render`.
+mod watercolor_rewet_px;
 /// Watercolor section setters + router (edge darkening / granulation / pigment); no fluid sim.
 mod watercolor_settings;
 /// Watercolor Wet Mix reservoir (Smudge/Pickup): lift the pre-stroke paint, mix into the dab colour.
@@ -456,13 +458,11 @@ pub(crate) struct PaintState {
     /// the intact coverage — head keeps the full watercolor anatomy, the tail fades rim and body
     /// together toward plain water. Empty ⇒ factor 1 (byte-identical default).
     stroke_deplete: Vec<u8>,
-    /// EDGE-1 (doc 12): canvas-wide MOISTURE map (`w*h`, `0..255`) surviving pen-up — the paper
-    /// dries on the heartbeat (~8.5 s, DiVerdi/Adobe TVCG 2013; Curtis wet-area mask). The bake
-    /// pours the stroke's HARDENED coverage (max-blend, post-composite). While any of it is wet,
-    /// watercolor strokes CONTINUE one **wet session** ([`PainterTool::wet_session_continues`]):
-    /// the buffers accumulate the UNION, re-rendered over the session base — one wash, one rim
-    /// (only-new-rim suppression left the baked double contour — smoke 2026-07-09). Empty = dry
-    /// (tick drops it + the session). Undo does not un-pour (moisture is paper state).
+    /// EDGE-1 (doc 12): canvas-wide MOISTURE map (`w*h`) surviving pen-up — dries on the
+    /// heartbeat (~8.5 s, DiVerdi/Adobe; Curtis wet-area mask); the bake pours the HARDENED
+    /// coverage (max-blend). While wet, watercolor strokes CONTINUE one **wet session**
+    /// ([`PainterTool::wet_session_continues`]): the buffers accumulate the UNION, re-rendered
+    /// over the session base — one wash, one rim. Empty = dry (tick drops it + the session).
     canvas_wet: Vec<u8>,
     /// Live bounding rect of the wet area (the decay/pour window) — `None` = dry, zero idle cost.
     canvas_wet_rect: Option<(usize, usize, usize, usize)>,
@@ -471,6 +471,10 @@ pub(crate) struct PaintState {
     /// EDGE-1 per-stroke style (doc 13 topo): session param table + per-pixel owner map — an
     /// older wash keeps ITS look on the union re-bake ([`watercolor_field::WetSessionStyles`]).
     wet_styles: watercolor_field::WetSessionStyles,
+    /// EDGE-2 backrun: the CARRIED-water pool (`w*h`, session-scoped) — Dilution pours it per dab
+    /// regardless of pigment; the composite lifts/blooms against it (serrated ring = backrun
+    /// edge). Separate from the per-stroke dwell soak (`wet_soak`). Empty = inert.
+    stroke_water: Vec<u8>,
     /// EDGE-1 wet session: the optical base frozen at the SESSION start (first stroke of the wet
     /// window) — every bake of the session re-composites the UNION buffers over this, never over
     /// its own previous bake (which would double-count). Per-stroke `watercolor_base` (refrozen

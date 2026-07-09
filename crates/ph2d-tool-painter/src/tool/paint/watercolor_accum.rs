@@ -252,6 +252,15 @@ impl PainterTool {
         // Dilution (Wet Mix, `docs/Painter/07` §4): more water lays down LESS coverage → a thinner,
         // paler wash. `flow = 1 − dilution`; default `0` → `flow = 1` (byte-identical).
         let flow = (1.0 - self.paint.brush.wet_dilution).clamp(0.0, 1.0);
+        // EDGE-2 (backrun): the WATER the stroke CARRIES pours into the session soak per dab —
+        // pure water (Dilution 1 → flow 0, zero pigment coverage) still lands a wet pool the
+        // composite rewets/blooms against (the canonical gesture was unreachable: `peak = 0` ⇒
+        // the whole path skipped). The dwell pour (`grow_wet_soak`) is TIME-based; the carried
+        // water is not. `dilution = 0` ⇒ inert (byte-identical).
+        let water = self.paint.brush.wet_dilution.clamp(0.0, 1.0);
+        if water > 0.0 && self.paint.stroke_water.len() != fw * fh {
+            self.paint.stroke_water = vec![0u8; fw * fh];
+        }
         // Selection + protection gates ([`splat_keep`]): the wash never forms on gated-out texels.
         let (sel, prot) = self.wet_splat_gates();
         let gated = sel.is_some() || prot.is_some();
@@ -304,6 +313,7 @@ impl PainterTool {
         let dens_buf = &mut self.paint.stroke_density;
         let depl_buf = &mut self.paint.stroke_deplete;
         let own_buf = &mut self.paint.wet_styles.owner;
+        let water_buf = &mut self.paint.stroke_water;
         for (di, d) in dabs.iter().enumerate() {
             // Frame draw BEFORE any skip: the colour pass replays this stream per emitted dab, and
             // its skip conditions differ (no Dilution `flow` there) — drawing after a skip would
@@ -321,7 +331,8 @@ impl PainterTool {
             let depl_v =
                 map_live.then(|| depletion.as_ref().map_or(1.0, |v| v[di].clamp(0.0, 1.0)));
             let peak = (d.coverage * flow).clamp(0.0, 1.0);
-            if r <= 0.0 || peak <= 0.0 {
+            // Water-only dabs (peak 0, Dilution high) still walk the disc to pour the soak.
+            if r <= 0.0 || (peak <= 0.0 && water <= 0.0) {
                 continue;
             }
             let inv_r = 1.0 / r;
@@ -375,9 +386,18 @@ impl PainterTool {
                             dens_buf[idx] = dv;
                         }
                     }
+                    // Carried water (EDGE-2): max-blend into the session WATER pool — the
+                    // composite's backrun ring + lift read it. Feathered by the disc + gates.
+                    if water > 0.0 && wgt > 0.0 {
+                        let s = (water * wgt * keep * 255.0) as u8;
+                        if s > water_buf[idx] {
+                            water_buf[idx] = s;
+                        }
+                    }
                     // Pigment reserve (MIX-1): max-blend wherever the dab touches, tapered over the
                     // outer rim shell so the map never steps 255→0 at a disc boundary (see above).
                     if let Some(dv) = depl_v
+                        && peak > 0.0
                         && wgt > 0.0
                     {
                         let ramp = ((1.0 - dn) / DEPL_RIM_RAMP).min(1.0);
@@ -386,8 +406,10 @@ impl PainterTool {
                             depl_buf[idx] = dvb;
                         }
                     }
-                    // Style owner (recency overwrite — see the map's sizing above).
+                    // Style owner (recency overwrite — see the map's sizing above). A water-only
+                    // dab deposits no pigment and must not steal the style of the wash beneath.
                     if let Some(o) = own_v
+                        && peak > 0.0
                         && wgt > 0.0
                     {
                         own_buf[idx] = o;

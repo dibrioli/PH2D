@@ -460,3 +460,29 @@ através do wash de cima ("acho que não funcionou"). Atenuar não basta: tem qu
 - Teste: `watercolor_touching_wet_washes_merge_without_double_rim` (junção molhada: rim de B
   ausente E rim interno de A derretido, ~100 G mais claro que seco-primeiro; mapa seco dropado).
   Knob: `CANVAS_WET_DRY_PER_S` (desce = janela de fusão maior).
+
+### W-C · EDGE-2 — LANDOU 2026-07-09 (backrun/bloom de água limpa)
+
+O gesto canônico era **inalcançável por construção** (Dilution 1 → `flow = 0` → cobertura zero →
+`cw ≤ 0` pulava todo o caminho). Agora:
+- **Canal de água próprio** `stroke_water` (u8, session-scoped como os buffers da união; SEPARADO
+  do soak de dwell — reusar o `wet_soak` fez o anel nascer sob o pincel parado e quebrou o teste
+  do dwell): Dilution poura por dab (`água·wgt·keep`, max-blend) independente do pigmento; os
+  splats de pigmento/dono são gateados em `peak > 0` (água não rouba ownership nem reserva).
+- **Composite**: pixels `cw ≤ 0` mas com água > 0 seguem vivos (early-out só quando ambos secos);
+  `water` lido em coordenada SERRILHADA (`water_at`: value-noise célula 12 px, ±5 px — o contorno
+  couve-flor; Curtis §2.2). Lift `max(wet·cw, água)` (whitened wake), dissolve `max(wet, água)`,
+  e o **anel** `(água − halo)⁺` (halo = blur 2× do canal, novo campo `water_halo` nos
+  RewetFields) deposita densidade no contorno.
+- **Concentração do anel** (`BACKRUN_CONC = 1.5`): Beer–Lambert satura NA cor do pigmento — só
+  densidade nunca fica mais escuro que o wash de origem; o backrun real é pigmento CONCENTRADO,
+  então o anel aprofunda a absorbância do pigmento dissolvido (o "severely darkened edge").
+- Física emergente: gota pequena (raio ≲ blur 12 px) = bloom todo-anel; poça grande = interior
+  lavado + anel no contorno. Água em papel em branco = invisível (tudo ∝ presença de tinta).
+- Knobs: `BACKRUN_POOL = 2.0` (força do anel), `BACKRUN_CONC = 1.5` (escurecimento),
+  `BACKRUN_JAG_CELL = 12` / `BACKRUN_JAG_PX = 5` (serrilhado).
+- Default byte-idêntico (Dilution 0 = inerte); 492/492. Teste:
+  `watercolor_clean_water_backrun_blooms_on_wet_wash` (interior clareia · anel escurece ·
+  branco intacto). LOC: bloco rewet por-pixel extraído p/ `watercolor_rewet_px.rs` (verbatim).
+- Nota: Dilution segue TAMBÉM diluindo a cobertura do pigmento (`flow`), como antes — a água
+  extra agora existe em paralelo. Rebalancear os dois é calibração de smoke.

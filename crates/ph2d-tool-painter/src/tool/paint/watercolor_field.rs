@@ -634,14 +634,14 @@ pub(super) fn granulation_factor(
 /// smooth soak disc into the cauliflower boundary (doc 12 prescribes ~8-16 px).
 pub(super) const BACKRUN_JAG_CELL: f32 = 12.0;
 /// Serration amplitude (px) — how far the water contour read is displaced per cell.
-pub(super) const BACKRUN_JAG_PX: f32 = 5.0;
+pub(super) const BACKRUN_JAG_PX: f32 = 3.0; // KNOB (Enio 2026-07-09): serrilhado mais fino, menos pixelação
 /// Pool-ring gain: dissolved pigment deposited along the water's serrated contour (the severely
 /// darkened backrun edge). Scales `bp × ring`; calibration knob.
-pub(super) const BACKRUN_POOL: f32 = 2.0;
+pub(super) const BACKRUN_POOL: f32 = 1.6; // KNOB (Enio 2026-07-09): banda do bloom mais leve
 /// Ring CONCENTRATION: how much the ring deepens the dissolved pigment's absorbance. Beer–Lambert
 /// saturates AT the pigment colour — density alone can never render darker than the wash the
 /// pigment came from, but a backrun edge is that paint CONCENTRATED (darker floor). Knob.
-pub(super) const BACKRUN_CONC: f32 = 1.5;
+pub(super) const BACKRUN_CONC: f32 = 1.5; // KNOB: 1.2 clareou o anel aprovado além do guard — mantido
 
 /// The paper-tooth height at a canvas pixel: the Paper slot's tiled/rotated sample, or the
 /// built-in noise fallback — shared by the substrate pre-pass + its fallback (LOC split).

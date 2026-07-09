@@ -34,12 +34,18 @@ const SS1: f32 = 0.60; // LITERAL-PX-OK: coverage-hardening smoothstep high edge
 const COL_EPS: u8 = 20;
 
 // ── Granulation settling (doc 12 GRAN-1 — Curtis §4.5 valley deposition, Tier-2) ────────────────────
-/// LIVE settle floor: how much of the granulation acts while the stroke is still wet (no water).
-const GRAN_SETTLE_BASE: f32 = 0.55;
-/// How much Rewet (water) raises the live settle — a wetter wash separates pigment more.
-const GRAN_SETTLE_WET: f32 = 0.30;
-/// How much the per-pixel soak (dwell) raises the live settle — lingering water separates hardest.
-const GRAN_SETTLE_SOAK: f32 = 0.35;
+// Drying model (Enio 2026-07-08, take 3): the BAKE applies the FULL settle (the real drying
+// physics — the wash visibly "sets" on pen-up), while the LIVE preview runs CLOSE to the dry
+// result so the release reads as a subtle settling, not a pop ("clareamento correspondente
+// próximo em tempo real"). SMOKE-CALIBRATION KNOBS: raise `GRAN_SETTLE_BASE` to bring the live
+// preview closer to the dry look (1.0 = WYSIWYG, no drying dynamic); `WET`/`SOAK` add the live
+// water response on top (capped at the dry value — the preview never overshoots the bake).
+/// LIVE settle floor — how close the wet preview sits to the dry (baked) settle with no water.
+const GRAN_SETTLE_BASE: f32 = 0.80;
+/// How much Rewet (water) raises the live settle toward the dry value.
+const GRAN_SETTLE_WET: f32 = 0.12;
+/// How much the per-pixel soak (dwell) raises the live settle toward the dry value.
+const GRAN_SETTLE_SOAK: f32 = 0.12;
 /// Peak-side strength of the valley gate (`1 − k·h·γ`): peaks shed up to γ of their share into the
 /// valleys; `< 1` keeps a floor so full granulation never zeroes the wash (the old symmetric form
 /// clamped low-h texels to 0 → white speckle holes).
@@ -377,8 +383,10 @@ impl PainterTool {
                     // GRAN-1 (Curtis §4.5, Tier-2): granulation is VALLEY DEPOSITION, not symmetric
                     // modulation — pigment settles INTO the tooth's valleys (`h` low ⇒ full deposit;
                     // peaks shed up to γ), the exact SIGN the old form inverted. The settle weight
-                    // grows with water (Rewet) + local dwell (soak) IN REAL TIME — live == bake.
-                    // Amount 0 ⇒ factor 1 exactly (byte-identical); no clamp-to-0 speckle (γ < 1).
+                    // grows with water (Rewet) + local dwell (soak) live, and goes FULL at the
+                    // pen-up bake (real drying) — with the live preview tuned CLOSE to dry so the
+                    // release is a subtle set, not a pop. Amount 0 ⇒ factor 1 exactly
+                    // (byte-identical); no clamp-to-0 speckle (γ < 1).
                     let gran = match gran_h {
                         Some(h) => {
                             let soak_v = if soaked {
@@ -386,14 +394,18 @@ impl PainterTool {
                             } else {
                                 0.0
                             };
-                            // WYSIWYG (Enio 2026-07-08): the SAME settle live and at the bake —
-                            // a full-only-at-commit weight popped on pen-up ("o artista não obtém
-                            // o aspecto imediato"); the drying read lives on as the REAL-TIME
-                            // wet/soak response instead. No quality cost: only the pop is gone.
-                            let settle = (GRAN_SETTLE_BASE
-                                + GRAN_SETTLE_WET * wet
-                                + GRAN_SETTLE_SOAK * soak_v)
-                                .min(1.0);
+                            // Real drying at the BAKE (full settle) + a live preview that runs
+                            // CLOSE to it (high base, small water headroom) — the pen-up reads as
+                            // a subtle true-to-physics settling instead of a pop. Calibrate via
+                            // the GRAN_SETTLE_* consts above (Enio smoke loop, 2026-07-08).
+                            let settle = if commit {
+                                1.0
+                            } else {
+                                (GRAN_SETTLE_BASE
+                                    + GRAN_SETTLE_WET * wet
+                                    + GRAN_SETTLE_SOAK * soak_v)
+                                    .min(1.0)
+                            };
                             let k = (granulation * settle).clamp(0.0, 1.0);
                             ((1.0 + paper_component) * (1.0 - k * h * GRAN_GAMMA)).max(0.0)
                         }

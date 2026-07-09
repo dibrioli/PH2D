@@ -12970,3 +12970,64 @@ fn watercolor_touching_wet_washes_merge_without_double_rim() {
          dried-first double-contour G {dry_junction:.1})"
     );
 }
+
+/// **EDGE-1 regressão (Enio smoke 2026-07-09, "traços duplicados"):** a janela de secagem vencendo
+/// NO MEIO de um traço aberto não pode duplicar o wash. O teardown antigo derrubava a base da
+/// sessão no tick (mapa zerado) mas deixava os buffers da união vivos (o traço aberto é dono
+/// deles) — o bake do pen-up caía no fallback per-stroke (que JÁ contém a união assada) e
+/// re-renderizava tudo por cima: dupla contagem, o conjunto escurecia de vez. O teardown agora é
+/// ATÔMICO e adiado até não haver traço aberto.
+#[test]
+fn watercolor_session_drying_mid_stroke_does_not_double_bake() {
+    let size = 192u32;
+    let mut t = white_canvas(size, 8.0);
+    t.paint.brush = BrushSpec {
+        radius_px: 12.0,
+        hardness: 1.0,
+        falloff: Falloff::Constant,
+        color: [0.85, 0.1, 0.1],
+        space_attenuation: false,
+        watercolor: true,
+        fill: 0.12,
+        depth: 1.0,
+        edge_gain: 0.0,
+        edge_spread: 4.0,
+        warp: 0.0,
+        granulation: 0.0,
+        ..Default::default()
+    };
+    for slot in &mut t.paint.brush_by_mode {
+        *slot = t.paint.brush;
+    }
+    // Wash A (vertical band at x = 60), baked + poured into the session.
+    assert!(t.on_canvas_pointer(cp([60.0, 30.0], PointerPhase::Down)));
+    let mut y = 30.0f32;
+    while y < 160.0 {
+        y += 2.0;
+        t.on_canvas_pointer(cp([60.0, y], PointerPhase::Move));
+    }
+    t.on_canvas_pointer(cp([60.0, 160.0], PointerPhase::Up));
+    let a_interior_before = f32::from(px(&t, size, 60, 95)[1]);
+    // Stroke C opens while the paper is still wet (session continues), then the drying deadline
+    // fires MID-STROKE (one big heartbeat zeroes the map), then C finishes far from A.
+    assert!(t.on_canvas_pointer(cp([140.0, 30.0], PointerPhase::Down)));
+    let mut y = 30.0f32;
+    while y < 90.0 {
+        y += 2.0;
+        t.on_canvas_pointer(cp([140.0, y], PointerPhase::Move));
+    }
+    t.paint_tick(20.0); // way past the ~8.5 s window — the map zeroes with the stroke OPEN
+    while y < 160.0 {
+        y += 2.0;
+        t.on_canvas_pointer(cp([140.0, y], PointerPhase::Move));
+    }
+    t.on_canvas_pointer(cp([140.0, 160.0], PointerPhase::Up));
+    // A's interior (far from C) must be untouched by C's bake — the double-count re-rendered the
+    // whole union over its own baked pixels and darkened it hard.
+    let a_interior_after = f32::from(px(&t, size, 60, 95)[1]);
+    assert!(
+        (a_interior_after - a_interior_before).abs() <= 2.0,
+        "the drying deadline mid-stroke must not re-bake (duplicate) the neighbour wash \
+         (A interior G {a_interior_before:.1} -> {a_interior_after:.1})"
+    );
+}

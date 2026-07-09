@@ -310,22 +310,24 @@ impl PainterTool {
                 wettest = wettest.max(*w);
             }
         }
-        if wettest == 0 {
+        // Fully dry = the wet SESSION is over — but the teardown is ATOMIC and deferred past any
+        // OPEN stroke: the drying deadline can land mid-stroke (a stroke started near the end of
+        // the window), and dropping the session base while the union buffers live on made the
+        // pen-up bake fall back to the per-stroke base — which already CONTAINS the union baked —
+        // re-rendering it over itself (double-count: the whole wash suddenly darkened hard, Enio
+        // smoke 2026-07-09). With a stroke open we leave the zeroed map in place; its own bake
+        // re-pours (session extends), or a later idle tick tears everything down together.
+        if wettest == 0 && self.paint.stroke.is_none() {
             self.paint.canvas_wet = Vec::new();
             self.paint.canvas_wet_rect = None;
             self.paint.canvas_wet_carry = 0.0;
-            // Fully dry = the wet SESSION is over: drop its base/guard, and (only with no stroke
-            // open — the tick also fires mid-stroke, and an open stroke owns these buffers) free
-            // the union buffers; the next pen-down starts a fresh wash over the current canvas.
             self.paint.wet_session_base = None;
             self.paint.wet_session_canvas = None;
-            if self.paint.stroke.is_none() {
-                self.paint.stroke_coverage = Vec::new();
-                self.paint.stroke_color = Vec::new();
-                self.paint.stroke_density = Vec::new();
-                self.paint.stroke_deplete = Vec::new();
-                self.paint.wet_cum_dirty = None;
-            }
+            self.paint.stroke_coverage = Vec::new();
+            self.paint.stroke_color = Vec::new();
+            self.paint.stroke_density = Vec::new();
+            self.paint.stroke_deplete = Vec::new();
+            self.paint.wet_cum_dirty = None;
         }
     }
 }

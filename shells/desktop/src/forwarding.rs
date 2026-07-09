@@ -341,8 +341,8 @@ pub fn cursor_over_hero_panel(gfx: Option<&AppGfx>, x: f32, y: f32) -> bool {
         return false;
     };
     use ph2d_editor::screens::hero::ids::{
-        BGR_PANEL, CEQ_PANEL, EQS_PANEL, GAL_PANEL, HIER_PANEL, INSP_PANEL, PAD_PANEL,
-        PAINTER_LAYERS_PANEL, UPS_PANEL, VECTOR_PANEL,
+        AUDIO_EDITOR_PANEL, AUDIO_MIXER_PANEL, BGR_PANEL, CEQ_PANEL, EQS_PANEL, GAL_PANEL,
+        HIER_PANEL, INSP_PANEL, PAD_PANEL, PAINTER_LAYERS_PANEL, UPS_PANEL, VECTOR_PANEL,
     };
     let inside = |panel_id| {
         hero.store
@@ -373,6 +373,13 @@ pub fn cursor_over_hero_panel(gfx: Option<&AppGfx>, x: f32, y: f32) -> bool {
         // Vector Style panel (right-dock takeover, ADR-0108). Same reason as
         // painter-layers: the canvas extends under the docked panel.
         || inside(VECTOR_PANEL)
+        // Audio Mixer + Audio Editor (Inspector-slot docks). Both publish a
+        // scrollbar thumb, so both must intercept the wheel — a panel that scrolls
+        // by thumb but zooms the camera on the wheel is the same bug twice. Missing
+        // until 2026-07-09: the mixer's wheel silently zoomed the camera.
+        // `shells/desktop/tests/scrollable_panels_intercept_the_wheel.rs` gates this.
+        || inside(AUDIO_MIXER_PANEL)
+        || inside(AUDIO_EDITOR_PANEL)
         // Motion Nodes graph panel (M1) — the bottom half of the center split.
         // Without it, wheel-over-graph zooms the camera instead of the graph
         // (the anchored graph zoom the M0 dispatch routes via `set_graph_canvas`).

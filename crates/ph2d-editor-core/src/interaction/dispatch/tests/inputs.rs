@@ -708,3 +708,40 @@ fn vector_panel_scrollbar_thumb_drag_begins_and_scrolls() {
         "dragging the Vector scrollbar scrolled the panel"
     );
 }
+
+#[test]
+fn audio_editor_panel_scrollbar_thumb_drag_begins_and_scrolls() {
+    // Same proof for the Audio Editor panel (docs/Audio/, W3 block 3b). The thumb id
+    // must map to AUDIO_EDITOR_PANEL via `scrollbar_panel_for_id` — a thumb aliased
+    // onto `DROPDOWN_SCROLLBAR_ID` (831) would paint but never drag.
+    let mut store = WidgetStore::with_capacity(8);
+    let panel = crate::ids::AUDIO_EDITOR_PANEL;
+    store.set_panel_content_h(panel, 300.0);
+    store.set_panel_visible_h(panel, 100.0);
+    let mut hits = HitIndex::new();
+    hits.register(
+        crate::widget::AUDIO_EDITOR_SCROLLBAR_ID,
+        Rect::new(200.0, 0.0, 10.0, 100.0),
+    );
+    let arena = Bump::new();
+    let _ = dispatch_pointer(
+        &mut store,
+        &hits,
+        pointer(PointerKind::Down, 205.0, 10.0),
+        &arena,
+    );
+    assert!(
+        store.scrollbar_drag().is_some(),
+        "Down on the Audio Editor scrollbar thumb begins a drag"
+    );
+    let _ = dispatch_pointer(
+        &mut store,
+        &hits,
+        pointer(PointerKind::Move, 205.0, 70.0),
+        &arena,
+    );
+    assert!(
+        store.panel_scroll(panel) > 0.0,
+        "dragging the Audio Editor scrollbar scrolled the panel"
+    );
+}

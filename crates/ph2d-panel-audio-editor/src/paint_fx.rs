@@ -14,7 +14,7 @@
 //! kind index, and the shell publishes each slot's label + already-formatted value
 //! (`audio/fx_params.rs`), so no DSP range or unit ever lands here.
 
-use crate::paint::{button, toggle};
+use crate::paint::{ClippedHits, button, toggle};
 use crate::{
     AEDIT_FX_ADD, AEDIT_FX_APPLY, AEDIT_FX_BYPASS, AEDIT_FX_CANCEL, AEDIT_FX_DOWN, AEDIT_FX_NEXT,
     AEDIT_FX_PARAMS, AEDIT_FX_PREV, AEDIT_FX_REMOVE, AEDIT_FX_RESET, AEDIT_FX_STAGE_ONS,
@@ -22,7 +22,6 @@ use crate::{
 };
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::IconId;
-use ph2d_editor_core::interaction::HitIndex;
 use ph2d_editor_core::paint::{fill_rounded_rect, paint_text, paint_text_centered, resolve};
 use ph2d_editor_core::widget::{
     ButtonState, IconButtonStyle, IconGlyph, Slider, SliderOrientation, paint_icon_button,
@@ -39,11 +38,11 @@ const ARROW_W: f32 = 26.0; // LITERAL-PX-OK: selector arrow button width (chrome
 const ACTION_BUTTONS: f32 = 4.0; // LITERAL-PX-OK: fixed count, divides the row width
 
 /// The painter's shared borrows, bundled so each section fits one argument list.
-struct Ctx<'a> {
+struct Ctx<'a, 'h> {
     scene: &'a mut VectorScene,
     text_system: &'a mut TextSystem,
     theme: Theme,
-    hit_index: &'a mut HitIndex,
+    hit_index: &'a mut ClippedHits<'h>,
 }
 
 /// Paint the rack starting at `y`; returns the `y` below it. `loaded` dims the
@@ -58,7 +57,7 @@ pub(crate) fn paint_fx_section(
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
     theme: Theme,
-    hit_index: &mut HitIndex,
+    hit_index: &mut ClippedHits,
 ) -> f32 {
     let ctx = &mut Ctx {
         scene,

@@ -172,6 +172,12 @@ pub const AUDIO_MIXER_SCROLLBAR_ID: NodeId = NodeId(832);
 /// that id to the open dropdown, so a collision would make this thumb
 /// un-draggable — and `832` is `AUDIO_MIXER_SCROLLBAR_ID` above. Use `833`.
 pub const VECTOR_SCROLLBAR_ID: NodeId = NodeId(833);
+/// Audio Editor docked-panel scrollbar (docs/Audio/, W3 block 3b) — the transport +
+/// edit ops + the effects rack (selector, up to 4 parameter sliders, the chain list
+/// and its commit row) overflow the dock height. Independent thumb id so dispatch
+/// routes drag-scroll without aliasing the Audio Mixer / Inspector that share the
+/// dock slot. Next free id is `835`; re-read the collision note above before taking it.
+pub const AUDIO_EDITOR_SCROLLBAR_ID: NodeId = NodeId(834);
 
 #[cfg(test)]
 mod tests {
@@ -199,6 +205,7 @@ mod tests {
             ("PAINTER_BRUSH_STUDIO", PAINTER_BRUSH_STUDIO_SCROLLBAR_ID),
             ("AUDIO_MIXER", AUDIO_MIXER_SCROLLBAR_ID),
             ("VECTOR", VECTOR_SCROLLBAR_ID),
+            ("AUDIO_EDITOR", AUDIO_EDITOR_SCROLLBAR_ID),
             ("DROPDOWN", crate::widget::DROPDOWN_SCROLLBAR_ID),
         ];
         for (i, (na, a)) in ids.iter().enumerate() {

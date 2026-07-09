@@ -175,6 +175,38 @@ abaixo é histórico — não re-investigue.
     cadeia) · **`shells/desktop/src/audio/editor/fx_rack.rs`** (NOVO submódulo — o
     `editor.rs` ia estourar o teto HR-18; descendente de `editor`, então enxerga os
     campos privados de `AudioEditorRuntime`).
+- **Scroll do painel (2026-07-09)** — o painel docado agora **rola** (roda do mouse +
+  barra arrastável), porque a rack estourou a altura do dock. Nada de infra nova: o
+  repo já tinha tudo (`store.panel_scroll`/`panel_content_h`/`panel_visible_h` +
+  `dispatch_wheel` + `widget/scrollbar.rs` + `VectorScene::push_clip`); o painel só
+  ignorava o offset. Espelha o `ph2d-panel-audio-mixer`.
+  - ⚠️ **São QUATRO sites, e só três falham alto.** (1) id do thumb em
+    `widget/scrollbar.rs`; (2) arm em `scrollbar_panel_for_id`
+    (`interaction/dispatch/scroll.rs`) → roteia o DRAG; (3) o painter lê
+    `panel_scroll` + publica `content_h`/`visible_h`; (4) o id em
+    `cursor_over_hero_panel` (`shells/desktop/src/forwarding.rs`) → deixa a RODA
+    chegar. **Esquecer (4) compila, pinta a barra e o thumb arrasta — mas a roda dá
+    zoom na câmera.** O **Audio Mixer estava exatamente assim** e ninguém tinha
+    notado; corrigido junto.
+  - Gate nova: `shells/desktop/tests/scrollable_panels_intercept_the_wheel.rs` —
+    lê os ids de `scrollbar_panel_for_id` e exige cada um dentro de um `inside(...)`
+    de `cursor_over_hero_panel`. **Mutation-testada** (apagar `|| inside(AUDIO_MIXER_PANEL)`
+    faz falhar). A 1ª versão escaneava a função inteira e passava mesmo assim — o
+    `use ...::ids::{...}` no topo do corpo já continha o nome. Allowlist com 1 entrada:
+    `PAINTER_BRUSH_STUDIO_PANEL` (crate deletada por ADR-0099; id vestigial).
+  - **`ClippedHits`** (`clipped_hits.rs`, novo): o `HitIndex` é uma lista plana e
+    global — o clip é só VISUAL. Sem isso, um widget rolado pra cima da barra de
+    título continua **clicável e invisível**. Todo widget do corpo registra por ele;
+    o thumb NÃO (mora na calha, fora do clip). 5 testes.
+  - **Foundational tocado (anotar na integração):** `AUDIO_EDITOR_SCROLLBAR_ID =
+    NodeId(834)` (append-only; 831 = dropdown, 832 = mixer, 833 = vector — próximo
+    livre é **835**) + re-export em `widget/mod.rs` + arm em `scrollbar_panel_for_id`
+    + teste `audio_editor_panel_scrollbar_thumb_drag_begins_and_scrolls` em
+    `dispatch/tests/inputs.rs` + `AUDIO_MIXER_PANEL`/`AUDIO_EDITOR_PANEL` em
+    `cursor_over_hero_panel`.
+  - `paint.rs` está em **588/600 LOC** e `paint()` em ~150/200 (foi preciso extrair
+    `paint_transport_section` / `sync_widget_buffers` / `paint_scroll_chrome` p/ o
+    gate de fn). Próxima seção grande = split de arquivo, não allowlist.
 - **Atalhos:** `Ctrl+Z` undo · `Ctrl+Shift+Z` / `Ctrl+Y` redo (roteados ao
   `EditClip` quando o painel WAVE está aberto com clipe carregado).
 - **Fix:** `cpal::Stream` é dropado no `on_close_request`, não no drop-cascade do

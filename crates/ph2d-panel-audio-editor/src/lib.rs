@@ -15,6 +15,7 @@
 
 #![forbid(unsafe_code)]
 
+mod clipped_hits;
 mod event;
 mod paint;
 mod paint_fx;

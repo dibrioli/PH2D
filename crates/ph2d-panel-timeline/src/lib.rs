@@ -25,6 +25,7 @@ pub mod ids;
 mod interact;
 mod paint;
 pub mod populate;
+mod resize;
 mod ruler;
 mod scrollbar;
 pub mod state;

@@ -6,16 +6,15 @@
 //! - **wheel** — plain = anchored zoom of the time axis (the time under the
 //!   cursor stays put), Ctrl = horizontal pan, Shift = vertical row scroll.
 //! - **middle-drag** — grab-and-slide both axes at once.
-//! - **edge/corner drag** — resize the panel on any of its four sides.
+//! - **F / transport jump** — fit to the keys, or pan the playhead into view.
 //!
+//! Chrome resizes (panel edges, label column, graph height) live in `resize`.
 //! None of these raise intents: the view is panel-local and never undoable.
 
 use ph2d_editor_core::interaction::{GesturePhase, TimelineGesture, TimelineWheel};
-use ph2d_editor_core::zones::Rect;
 use ph2d_timeline::TimelineViewSnapshot;
 
-use crate::geom;
-use crate::state::{DEFAULT_PX_PER_S, MAX_PX_PER_S, MIN_PX_PER_S, ResizeDrag, TimelinePanelState};
+use crate::state::{DEFAULT_PX_PER_S, MAX_PX_PER_S, MIN_PX_PER_S, TimelinePanelState};
 
 /// Wheel **pixels** per e-fold of zoom. The shell delivers line-deltas already
 /// scaled to logical px (16 px per notch), so one notch is ~7% zoom here — the
@@ -139,47 +138,6 @@ pub(crate) fn apply_pan_drag(state: &mut TimelinePanelState, px_per_s: f64, g: T
     }
 }
 
-/// Splitter drag: widen or narrow the track-name column. The width applies to
-/// the one captured at Begin (no drift), and `paint` clamps it into the panel.
-pub(crate) fn apply_label_drag(state: &mut TimelinePanelState, g: TimelineGesture) {
-    match g.phase {
-        GesturePhase::Begin => state.label_drag = Some((state.label_w, g.x)),
-        GesturePhase::Update => {
-            if let Some((w0, x0)) = state.label_drag {
-                state.label_w = w0 + (g.x - x0);
-            }
-        }
-        _ => state.label_drag = None,
-    }
-}
-
-/// Edge/corner drag: move the set edges by the pointer delta from Begin. Deltas
-/// apply to the rect captured at Begin, so a slow drag never accumulates drift.
-pub(crate) fn apply_resize(
-    state: &mut TimelinePanelState,
-    rect: Rect,
-    viewport: Rect,
-    edges: u8,
-    g: TimelineGesture,
-) {
-    match g.phase {
-        GesturePhase::Begin => {
-            state.resize = Some(ResizeDrag {
-                edges,
-                start_rect: rect,
-                start_pointer: (g.x, g.y),
-            });
-        }
-        GesturePhase::Update => {
-            if let Some(d) = state.resize {
-                let (dx, dy) = (g.x - d.start_pointer.0, g.y - d.start_pointer.1);
-                state.rect = Some(geom::resized(d.start_rect, d.edges, dx, dy, viewport));
-            }
-        }
-        _ => state.resize = None,
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -188,7 +146,6 @@ mod tests {
     use ph2d_host::PointerButton;
 
     const SURFACE: ph2d_a11y::NodeId = ph2d_a11y::NodeId(0);
-    const VP: Rect = Rect::new(0.0, 0.0, 1600.0, 900.0);
 
     fn wheel(zoom: f32, pan: f32, scroll: f32, anchor_x: f32) -> TimelineWheel {
         TimelineWheel {
@@ -339,89 +296,53 @@ mod tests {
 
     // ── Resize ───────────────────────────────────────────────────────────
 
-    #[test]
-    fn dragging_the_top_edge_resizes_from_the_rect_captured_at_begin() {
-        let mut st = TimelinePanelState::default();
-        let start = Rect::new(100.0, 600.0, 800.0, 240.0);
-        let g = |phase, y| drag(PointerButton::Primary, phase, 400.0, y);
-
-        apply_resize(
-            &mut st,
-            start,
-            VP,
-            geom::EDGE_T,
-            g(GesturePhase::Begin, 600.0),
-        );
-        apply_resize(
-            &mut st,
-            start,
-            VP,
-            geom::EDGE_T,
-            g(GesturePhase::Update, 550.0),
-        );
-        let r = st.rect.expect("resized");
-        assert_eq!((r.y, r.h), (550.0, 290.0), "grew upward");
-
-        // A second Update still measures from Begin, not from the live rect.
-        apply_resize(
-            &mut st,
-            start,
-            VP,
-            geom::EDGE_T,
-            g(GesturePhase::Update, 500.0),
-        );
-        let r = st.rect.expect("resized");
-        assert_eq!((r.y, r.h), (500.0, 340.0), "no drift accumulation");
-
-        apply_resize(
-            &mut st,
-            start,
-            VP,
-            geom::EDGE_T,
-            g(GesturePhase::End, 500.0),
-        );
-        assert!(st.resize.is_none());
-    }
-
-    // ── Label splitter ───────────────────────────────────────────────────
+    // ── Reveal (transport jump) ──────────────────────────────────────────
 
     #[test]
-    fn dragging_the_splitter_widens_the_label_column() {
+    fn reveal_pans_flush_to_zero_for_go_to_start() {
+        // Panned far right; go-to-start scrubs to t = 0 and the view must follow.
         let mut st = TimelinePanelState {
-            label_w: 132.0,
+            view_start_s: 30.0,
             ..TimelinePanelState::default()
         };
-        apply_label_drag(
-            &mut st,
-            drag(PointerButton::Primary, GesturePhase::Begin, 200.0, 0.0),
+        reveal_time(&mut st, 800.0, 0.0);
+        assert_eq!(
+            st.view_start_s, 0.0,
+            "no negative pan, t=0 sits on the edge"
         );
-        apply_label_drag(
-            &mut st,
-            drag(PointerButton::Primary, GesturePhase::Update, 260.0, 0.0),
-        );
-        assert_eq!(st.label_w, 192.0);
-        // A second Update still measures from Begin, never from the live width.
-        apply_label_drag(
-            &mut st,
-            drag(PointerButton::Primary, GesturePhase::Update, 150.0, 0.0),
-        );
-        assert_eq!(st.label_w, 82.0, "no drift accumulation");
-        apply_label_drag(
-            &mut st,
-            drag(PointerButton::Primary, GesturePhase::End, 150.0, 0.0),
-        );
-        assert!(st.label_drag.is_none());
     }
 
     #[test]
-    fn an_update_without_a_begin_moves_nothing() {
+    fn reveal_pans_right_until_the_time_is_in_view() {
+        // 800 px at 120 px/s = 6.67 s visible from t = 0.
         let mut st = TimelinePanelState::default();
-        let before = st.label_w;
-        apply_label_drag(
-            &mut st,
-            drag(PointerButton::Primary, GesturePhase::Update, 900.0, 0.0),
+        reveal_time(&mut st, 800.0, 20.0);
+        let span = 800.0 / DEFAULT_PX_PER_S;
+        assert!(st.view_start_s > 0.0);
+        assert!(
+            20.0 > st.view_start_s && 20.0 < st.view_start_s + span,
+            "the playhead is inside the span"
         );
-        assert_eq!(st.label_w, before);
+        // ...and a tenth of the span from the right edge, not glued to it.
+        assert!((st.view_start_s + span - 20.0 - span * 0.1).abs() < 1e-9);
+    }
+
+    #[test]
+    fn reveal_leaves_a_time_that_is_already_comfortably_in_view() {
+        // A frame step in the middle of the strip must not jerk the view.
+        let mut st = TimelinePanelState::default();
+        reveal_time(&mut st, 800.0, 3.0);
+        assert_eq!(st.view_start_s, 0.0);
+    }
+
+    #[test]
+    fn reveal_with_no_room_to_paint_is_a_no_op() {
+        let mut st = TimelinePanelState {
+            view_start_s: 5.0,
+            ..TimelinePanelState::default()
+        };
+        reveal_time(&mut st, 0.0, 99.0);
+        assert_eq!(st.view_start_s, 5.0);
     }
 
     // ── Fit (F) ──────────────────────────────────────────────────────────
@@ -502,55 +423,6 @@ mod tests {
         let mut st = TimelinePanelState::default();
         apply_fit(&mut st, 800.0, &snap_with_keys(&[0.0]));
         assert!(st.view_start_s >= 0.0, "{}", st.view_start_s);
-    }
-
-    // ── Reveal (transport jump) ──────────────────────────────────────────
-
-    #[test]
-    fn reveal_pans_flush_to_zero_for_go_to_start() {
-        // Panned far right; go-to-start scrubs to t = 0 and the view must follow.
-        let mut st = TimelinePanelState {
-            view_start_s: 30.0,
-            ..TimelinePanelState::default()
-        };
-        reveal_time(&mut st, 800.0, 0.0);
-        assert_eq!(
-            st.view_start_s, 0.0,
-            "no negative pan, t=0 sits on the edge"
-        );
-    }
-
-    #[test]
-    fn reveal_pans_right_until_the_time_is_in_view() {
-        // 800 px at 120 px/s = 6.67 s visible from t = 0.
-        let mut st = TimelinePanelState::default();
-        reveal_time(&mut st, 800.0, 20.0);
-        let span = 800.0 / DEFAULT_PX_PER_S;
-        assert!(st.view_start_s > 0.0);
-        assert!(
-            20.0 > st.view_start_s && 20.0 < st.view_start_s + span,
-            "the playhead is inside the span"
-        );
-        // ...and a tenth of the span from the right edge, not glued to it.
-        assert!((st.view_start_s + span - 20.0 - span * 0.1).abs() < 1e-9);
-    }
-
-    #[test]
-    fn reveal_leaves_a_time_that_is_already_comfortably_in_view() {
-        // A frame step in the middle of the strip must not jerk the view.
-        let mut st = TimelinePanelState::default();
-        reveal_time(&mut st, 800.0, 3.0);
-        assert_eq!(st.view_start_s, 0.0);
-    }
-
-    #[test]
-    fn reveal_with_no_room_to_paint_is_a_no_op() {
-        let mut st = TimelinePanelState {
-            view_start_s: 5.0,
-            ..TimelinePanelState::default()
-        };
-        reveal_time(&mut st, 0.0, 99.0);
-        assert_eq!(st.view_start_s, 5.0);
     }
 
     #[test]

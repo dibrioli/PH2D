@@ -29,6 +29,11 @@ const ANCHOR_R: f32 = 3.0; // LITERAL-PX-OK: key anchor dot radius
 const HANDLE_R: f32 = 3.5; // LITERAL-PX-OK: bezier handle dot radius
 const HANDLE_HIT_R: f32 = 7.0; // LITERAL-PX-OK: bezier handle grab radius
 const BAND_INSET: f32 = 2.0; // LITERAL-PX-OK: gap between the strip and its graph band
+/// Height of the grab strip along the band bottom (the vertical resize grip).
+const GRIP_H: f32 = 6.0; // LITERAL-PX-OK: graph-height grip strip height
+/// Length of the visible grabber drawn in the middle of that strip.
+const GRIP_BAR_W: f32 = 28.0; // LITERAL-PX-OK: graph-height grabber bar width
+const GRIP_BAR_H: f32 = 2.0; // LITERAL-PX-OK: graph-height grabber bar thickness
 
 /// Paint one expanded track's graph band and register its handle hits, then let
 /// an in-flight handle drag resolve against the geometry it can finally see.
@@ -82,6 +87,43 @@ pub(crate) fn paint_track(
     paint_handles(ctx, theme, state, &band, view, track);
     ctx.scene.pop_layer();
     resolve_drag(state, &band, view, track);
+    paint_height_grip(ctx, theme, state, rect, track.target.get());
+}
+
+/// The grip along the bottom of an expanded row: a short centred bar plus a
+/// full-width invisible strip to grab it by. Every row's grip drags the SAME
+/// height, so a graph opened later comes up at the size the author chose.
+fn paint_height_grip(
+    ctx: &mut PaintCtx,
+    theme: Theme,
+    state: &TimelinePanelState,
+    row: Rect,
+    target: u64,
+) {
+    let strip = Rect::new(row.x, row.y + row.h - GRIP_H, row.w, GRIP_H);
+    let bar = Rect::new(
+        row.x + (row.w - GRIP_BAR_W) * 0.5,
+        strip.y + (GRIP_H - GRIP_BAR_H) * 0.5,
+        GRIP_BAR_W,
+        GRIP_BAR_H,
+    );
+    let tok = if state.graph_resize.is_some() {
+        ColorToken::Accent
+    } else {
+        ColorToken::Border
+    };
+    fill_rounded_rect(ctx.scene, bar, Radius::Xs.px(), resolve(tok, theme));
+
+    let id = ids::timeline_graph_resize_id(target);
+    ctx.host.store_mut().register(
+        id,
+        InteractiveState::TimelineSurface {
+            parent: ids::TIMELINE_PANEL,
+            kind: TimelineHitKind::GraphResize,
+            canvas: strip,
+        },
+    );
+    ctx.host.hit_index_mut().register(id, strip);
 }
 
 /// The value extent of what this row draws across its visible time window, at

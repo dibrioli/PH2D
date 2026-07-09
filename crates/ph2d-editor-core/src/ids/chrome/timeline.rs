@@ -90,6 +90,13 @@ pub fn timeline_twirl_id(target: u64) -> NodeId {
     dynamic_id("timeline.twirl", &[target])
 }
 
+/// A stable `NodeId` for one expanded row's graph-height grip, keyed by the
+/// track's `AnimTarget` (every grip drags the same shared height).
+#[must_use]
+pub fn timeline_graph_resize_id(target: u64) -> NodeId {
+    dynamic_id("timeline.graph_resize", &[target])
+}
+
 /// A stable `NodeId` for one bézier handle in the graph editor (W3.E3), keyed by
 /// the segment's owning `(target, key)` and `which` (`0` = out handle `P1`,
 /// `1` = in handle `P2`).

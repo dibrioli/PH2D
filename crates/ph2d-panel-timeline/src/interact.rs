@@ -24,6 +24,7 @@ use ph2d_timeline::{SelectedKey, TimelineIntent, TimelineViewSnapshot};
 
 use crate::box_select;
 use crate::ids;
+use crate::resize;
 use crate::state::{self, KeyDrag, TimelinePanelState};
 use crate::view;
 
@@ -58,7 +59,7 @@ pub(crate) fn process(
     for g in gestures {
         // Resize grippers own the gesture whatever the button.
         if let TimelineHitKind::ResizeEdge { edges } = g.kind {
-            view::apply_resize(state, rect, viewport, edges, g);
+            resize::apply_resize(state, rect, viewport, edges, g);
             continue;
         }
         match g.button {
@@ -69,7 +70,8 @@ pub(crate) fn process(
                     apply_key(state, px_per_s, snap, SelectedKey::new(target, key), g);
                 }
                 TimelineHitKind::Twirl { target } => apply_twirl(state, target, g),
-                TimelineHitKind::LabelSplitter => view::apply_label_drag(state, g),
+                TimelineHitKind::LabelSplitter => resize::apply_label_drag(state, g),
+                TimelineHitKind::GraphResize => resize::apply_graph_resize(state, g),
                 TimelineHitKind::CurveHandle { target, key, which } => {
                     crate::graph::apply_handle_gesture(state, target, key, which, g);
                 }
@@ -272,6 +274,7 @@ mod tests {
             TimelineHitKind::Lane => box_select::apply_lane(state, g),
             TimelineHitKind::Twirl { target } => apply_twirl(state, target, g),
             TimelineHitKind::LabelSplitter
+            | TimelineHitKind::GraphResize
             | TimelineHitKind::CurveHandle { .. }
             | TimelineHitKind::ResizeEdge { .. } => unreachable!("not fed here"),
         }

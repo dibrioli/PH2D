@@ -9,7 +9,6 @@ use ph2d_editor_core::zones::Rect;
 use ph2d_timeline::TimelineViewSnapshot;
 use ph2d_tokens::{ROW_H_PX, Spacing};
 
-use crate::graph;
 use crate::ids;
 use crate::ruler;
 
@@ -22,11 +21,12 @@ pub(crate) const MIN_W: f32 = 320.0; // LITERAL-PX-OK: min panel width
 /// Smallest the panel may be resized to.
 pub(crate) const MIN_H: f32 = 120.0; // LITERAL-PX-OK: min panel height
 
-// Resize edge bitmask (opaque to editor-core, which only routes it back).
-pub(crate) const EDGE_L: u8 = 1;
-pub(crate) const EDGE_R: u8 = 2;
-pub(crate) const EDGE_T: u8 = 4;
-pub(crate) const EDGE_B: u8 = 8;
+// Resize edge bitmask. Named in editor-core so the shell can pick the matching
+// double-arrow cursor; the resize itself stays entirely here.
+pub(crate) use ph2d_editor_core::interaction::{
+    TIMELINE_EDGE_B as EDGE_B, TIMELINE_EDGE_L as EDGE_L, TIMELINE_EDGE_R as EDGE_R,
+    TIMELINE_EDGE_T as EDGE_T,
+};
 
 /// The resolved sub-rects of one frame's dope sheet.
 #[derive(Clone, Copy, Debug)]
@@ -113,15 +113,15 @@ pub(crate) fn resolve(rect: Rect, after_transport: f32, label_w: f32) -> Geom {
 
 /// Height of one track row: the dope-sheet strip, plus the graph band when the
 /// row is expanded (W3.E1).
-pub(crate) fn row_h(expanded: bool) -> f32 {
-    ROW_H_PX + if expanded { graph::GRAPH_H } else { 0.0 }
+pub(crate) fn row_h(expanded: bool, graph_h: f32) -> f32 {
+    ROW_H_PX + if expanded { graph_h } else { 0.0 }
 }
 
 /// Total height the track rows want, for the scroll range.
-pub(crate) fn content_h(snap: &TimelineViewSnapshot, expanded: &[u64]) -> f32 {
+pub(crate) fn content_h(snap: &TimelineViewSnapshot, expanded: &[u64], graph_h: f32) -> f32 {
     snap.tracks
         .iter()
-        .map(|t| row_h(expanded.contains(&t.target.get())))
+        .map(|t| row_h(expanded.contains(&t.target.get()), graph_h))
         .sum()
 }
 
@@ -136,12 +136,13 @@ pub(crate) fn scroll_max(content_h: f32, rows_h: f32) -> f32 {
 pub(crate) fn row_bands<'a>(
     snap: &'a TimelineViewSnapshot,
     expanded: &'a [u64],
+    graph_h: f32,
     rows_top: f32,
     scroll_y: f32,
 ) -> impl Iterator<Item = (usize, f32, f32)> + 'a {
     let mut y = rows_top - scroll_y;
     snap.tracks.iter().enumerate().map(move |(i, t)| {
-        let h = row_h(expanded.contains(&t.target.get()));
+        let h = row_h(expanded.contains(&t.target.get()), graph_h);
         let top = y;
         y += h;
         (i, top, h)
@@ -293,29 +294,36 @@ mod tests {
 
     #[test]
     fn scroll_max_is_zero_when_everything_fits() {
-        assert_eq!(scroll_max(content_h(&snap_with(2), &[]), 500.0), 0.0);
-        let tall = content_h(&snap_with(20), &[]);
+        const GH: f32 = 132.0;
+        assert_eq!(scroll_max(content_h(&snap_with(2), &[], GH), 500.0), 0.0);
+        let tall = content_h(&snap_with(20), &[], GH);
         assert_eq!(scroll_max(tall, 100.0), tall - 100.0);
     }
 
     #[test]
     fn an_expanded_row_is_taller_and_pushes_the_rows_below_it_down() {
+        const GH: f32 = 132.0;
         let snap = snap_with(3);
-        assert_eq!(content_h(&snap, &[]), ROW_H_PX * 3.0);
-        assert_eq!(content_h(&snap, &[1]), ROW_H_PX * 3.0 + graph::GRAPH_H);
+        assert_eq!(content_h(&snap, &[], GH), ROW_H_PX * 3.0);
+        assert_eq!(content_h(&snap, &[1], GH), ROW_H_PX * 3.0 + GH);
 
         // Row 0 collapsed, row 1 expanded: row 2 starts below BOTH.
-        let bands: Vec<_> = row_bands(&snap, &[1], 0.0, 0.0).collect();
+        let bands: Vec<_> = row_bands(&snap, &[1], GH, 0.0, 0.0).collect();
         assert_eq!(bands[0], (0, 0.0, ROW_H_PX));
-        assert_eq!(bands[1], (1, ROW_H_PX, ROW_H_PX + graph::GRAPH_H));
-        assert_eq!(bands[2].1, ROW_H_PX * 2.0 + graph::GRAPH_H);
+        assert_eq!(bands[1], (1, ROW_H_PX, ROW_H_PX + GH));
+        assert_eq!(bands[2].1, ROW_H_PX * 2.0 + GH);
+
+        // A taller graph pushes them further: the height is not a constant.
+        let taller: Vec<_> = row_bands(&snap, &[1], GH * 2.0, 0.0, 0.0).collect();
+        assert_eq!(taller[2].1, ROW_H_PX * 2.0 + GH * 2.0);
     }
 
     #[test]
     fn scrolling_shifts_every_row_band_up_by_the_same_amount() {
+        const GH: f32 = 132.0;
         let snap = snap_with(3);
-        let unscrolled: Vec<_> = row_bands(&snap, &[], 10.0, 0.0).collect();
-        let scrolled: Vec<_> = row_bands(&snap, &[], 10.0, 30.0).collect();
+        let unscrolled: Vec<_> = row_bands(&snap, &[], GH, 10.0, 0.0).collect();
+        let scrolled: Vec<_> = row_bands(&snap, &[], GH, 10.0, 30.0).collect();
         for (a, b) in unscrolled.iter().zip(&scrolled) {
             assert_eq!(a.1 - 30.0, b.1);
             assert_eq!(a.2, b.2, "scrolling never changes a row's height");

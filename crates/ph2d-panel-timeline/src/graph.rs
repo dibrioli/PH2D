@@ -22,8 +22,18 @@ use ph2d_timeline::{Interp, TimelineIntent, TrackView, handle_coords};
 
 use crate::state::{self, HandleDrag, TimelinePanelState};
 
-/// Height of the curve band added below an expanded row's dope-sheet strip.
-pub(crate) const GRAPH_H: f32 = 132.0; // LITERAL-PX-OK: expanded graph band height
+/// Default height of the curve band added below an expanded row's dope-sheet
+/// strip. The live height is panel state (draggable) — see `state.graph_h`.
+pub(crate) const GRAPH_H_DEFAULT: f32 = 132.0; // LITERAL-PX-OK: default graph band height
+/// Shortest a graph band may be dragged (a curve still readable).
+const GRAPH_H_MIN: f32 = 64.0; // LITERAL-PX-OK: min graph band height
+/// Tallest a graph band may be dragged.
+const GRAPH_H_MAX: f32 = 640.0; // LITERAL-PX-OK: max graph band height
+
+/// Hold a dragged graph height inside its bounds.
+pub(crate) fn clamp_graph_h(h: f32) -> f32 {
+    h.clamp(GRAPH_H_MIN, GRAPH_H_MAX) // CLAMP-OK: const bounds, min<max, non-NaN
+}
 /// Breathing room above and below the fitted range, as a fraction of it.
 const V_PAD_FRAC: f64 = 0.1; // LITERAL-PX-OK: vertical fit margin, fraction of the drawn range
 /// Half-height of the fitted range when everything drawn sits at one value (a

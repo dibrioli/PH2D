@@ -1168,7 +1168,8 @@ impl App {
     /// CursorMoved (winit dedups the icon). Priority: an armed colour-picker
     /// eyedropper wins (a crosshair "target"), else the Motion graph's split
     /// divider shows a double-arrow resize cursor (`NsResize` ↕ for a horizontal
-    /// divider, `EwResize` ↔ for a vertical one), else the default arrow.
+    /// divider, `EwResize` ↔ for a vertical one), else a timeline grab band
+    /// (panel edge, label splitter, graph-height grip), else the default arrow.
     fn update_eyedropper_cursor(&self) {
         let Some(win) = self.window.as_ref() else {
             return;
@@ -1187,12 +1188,38 @@ impl App {
                     } else {
                         CursorIcon::NsResize
                     }
+                } else if let Some(icon) = self.timeline_resize_cursor(h) {
+                    icon
                 } else {
                     CursorIcon::Default
                 }
             })
             .unwrap_or(CursorIcon::Default);
         win.set_cursor(cursor);
+    }
+
+    /// The double-arrow cursor for the timeline grab band under the pointer, if
+    /// any. Resolves the last pointer through the hit index to a `TimelineSurface`
+    /// hit — the same channel the drag uses, so the cursor and the gesture always
+    /// agree on where the band is (mirror of `over_motion_split_divider`).
+    fn timeline_resize_cursor(
+        &self,
+        hero: &ph2d_editor::HeroScreen,
+    ) -> Option<winit::window::CursorIcon> {
+        use ph2d_editor::interaction::TimelineHitKind;
+        use winit::window::CursorIcon;
+        let (x, y) = self.last_pointer;
+        let (_, kind) = hero
+            .hit_index
+            .hit(x, y)
+            .and_then(|id| hero.store.timeline_surface_at_id(id))?;
+        Some(match kind {
+            // The names column widens sideways; the graph band grows downward.
+            TimelineHitKind::LabelSplitter => CursorIcon::EwResize,
+            TimelineHitKind::GraphResize => CursorIcon::NsResize,
+            TimelineHitKind::ResizeEdge { edges } => resize_cursor_for_edges(edges),
+            _ => return None,
+        })
     }
 
     /// Is the cursor over the Motion graph's draggable split divider? Resolves
@@ -3200,5 +3227,71 @@ mod tests {
             shape_kind_for_mode(DrawMode::RoundRect),
             Some(ShapeKind::RoundRect)
         );
+    }
+}
+
+/// The double-arrow cursor for a panel-border grip, given its edge bitmask
+/// (`TIMELINE_EDGE_*`; a corner sets two bits). Corners point along their own
+/// diagonal: the top-left / bottom-right pair is `Nwse` (↖↘), the other `Nesw`.
+fn resize_cursor_for_edges(edges: u8) -> winit::window::CursorIcon {
+    use ph2d_editor::interaction::{
+        TIMELINE_EDGE_B, TIMELINE_EDGE_L, TIMELINE_EDGE_R, TIMELINE_EDGE_T,
+    };
+    use winit::window::CursorIcon;
+    let (l, r) = (edges & TIMELINE_EDGE_L != 0, edges & TIMELINE_EDGE_R != 0);
+    let (t, b) = (edges & TIMELINE_EDGE_T != 0, edges & TIMELINE_EDGE_B != 0);
+    match (l, r, t, b) {
+        (true, _, true, _) | (_, true, _, true) => CursorIcon::NwseResize,
+        (_, true, true, _) | (true, _, _, true) => CursorIcon::NeswResize,
+        (_, _, true, _) | (_, _, _, true) => CursorIcon::NsResize,
+        _ => CursorIcon::EwResize,
+    }
+}
+
+#[cfg(test)]
+mod cursor_tests {
+    use super::resize_cursor_for_edges;
+    use ph2d_editor::interaction::{
+        TIMELINE_EDGE_B, TIMELINE_EDGE_L, TIMELINE_EDGE_R, TIMELINE_EDGE_T,
+    };
+    use winit::window::CursorIcon;
+
+    #[test]
+    fn each_edge_points_across_the_side_it_moves() {
+        assert_eq!(
+            resize_cursor_for_edges(TIMELINE_EDGE_L),
+            CursorIcon::EwResize
+        );
+        assert_eq!(
+            resize_cursor_for_edges(TIMELINE_EDGE_R),
+            CursorIcon::EwResize
+        );
+        assert_eq!(
+            resize_cursor_for_edges(TIMELINE_EDGE_T),
+            CursorIcon::NsResize
+        );
+        assert_eq!(
+            resize_cursor_for_edges(TIMELINE_EDGE_B),
+            CursorIcon::NsResize
+        );
+    }
+
+    #[test]
+    fn each_corner_points_along_its_own_diagonal() {
+        let tl = TIMELINE_EDGE_T | TIMELINE_EDGE_L;
+        let br = TIMELINE_EDGE_B | TIMELINE_EDGE_R;
+        let tr = TIMELINE_EDGE_T | TIMELINE_EDGE_R;
+        let bl = TIMELINE_EDGE_B | TIMELINE_EDGE_L;
+        assert_eq!(resize_cursor_for_edges(tl), CursorIcon::NwseResize);
+        assert_eq!(resize_cursor_for_edges(br), CursorIcon::NwseResize);
+        assert_eq!(resize_cursor_for_edges(tr), CursorIcon::NeswResize);
+        assert_eq!(resize_cursor_for_edges(bl), CursorIcon::NeswResize);
+    }
+
+    #[test]
+    fn an_empty_mask_never_shows_a_vertical_arrow() {
+        // Defensive: a mask with no bits is a horizontal edge by fallback, not a
+        // panic and not a misleading up-down arrow on a left/right grip.
+        assert_eq!(resize_cursor_for_edges(0), CursorIcon::EwResize);
     }
 }

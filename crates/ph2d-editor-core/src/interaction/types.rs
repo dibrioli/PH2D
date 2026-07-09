@@ -372,11 +372,24 @@ pub enum TimelineHitKind {
     /// segment's **outgoing** key (the one whose `Interp` the handle edits);
     /// `which` is `0` for the out handle (`P1`) and `1` for the in handle (`P2`).
     CurveHandle { target: u64, key: u64, which: u8 },
-    /// A resize gripper on the panel's border. `edges` is an opaque bitmask the
-    /// panel defines (one bit per side; a corner sets two) — editor-core only
-    /// routes it back on the gesture.
+    /// The grip along the bottom of an expanded track's graph band — dragging it
+    /// vertically sets the height of every graph band.
+    GraphResize,
+    /// A resize gripper on the panel's border. `edges` is a bitmask of
+    /// [`TIMELINE_EDGE_L`] .. [`TIMELINE_EDGE_B`] (a corner sets two). The panel
+    /// owns the resize itself; the bits are named here only so the shell can pick
+    /// the matching double-arrow cursor.
     ResizeEdge { edges: u8 },
 }
+
+/// Left edge bit of [`TimelineHitKind::ResizeEdge`].
+pub const TIMELINE_EDGE_L: u8 = 1 << 0;
+/// Right edge bit.
+pub const TIMELINE_EDGE_R: u8 = 1 << 1;
+/// Top edge bit.
+pub const TIMELINE_EDGE_T: u8 = 1 << 2;
+/// Bottom edge bit.
+pub const TIMELINE_EDGE_B: u8 = 1 << 3;
 
 /// Accumulated wheel input over a timeline surface, drained by the panel. Three
 /// independent axes, split by modifier the way a dope sheet expects (plain =

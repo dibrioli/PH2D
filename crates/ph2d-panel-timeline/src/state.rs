@@ -80,6 +80,11 @@ pub struct TimelinePanelState {
     /// In-progress splitter drag: `(label_w, pointer x)` at Begin. Deltas apply
     /// to THOSE, so a slow drag never accumulates rounding.
     pub label_drag: Option<(f32, f32)>,
+    /// Height of every expanded row's graph band, dragged by the grip along its
+    /// bottom edge. Shared by all of them, so one drag resizes the lot.
+    pub graph_h: f32,
+    /// In-progress graph-height drag: `(graph_h, pointer y)` at Begin.
+    pub graph_resize: Option<(f32, f32)>,
     /// Tracks (by raw `AnimTarget`) whose graph editor is expanded. Panel-local
     /// view state — never undoable, never saved.
     pub expanded: Vec<u64>,
@@ -188,6 +193,8 @@ impl Default for TimelinePanelState {
             pan_drag: None,
             label_w: crate::tracks::LABEL_COL_W,
             label_drag: None,
+            graph_h: crate::graph::GRAPH_H_DEFAULT,
+            graph_resize: None,
             expanded: Vec::new(),
             handle_drag: None,
             box_drag: None,

@@ -129,8 +129,14 @@ pub(crate) fn paint_rows(
     // Rows overflow the band while scrolling and an expanded one is tall; clip
     // so a half-visible graph never bleeds over the ruler or the scrollbar.
     ctx.scene.push_clip(&rect_to_vello(region));
-    let bands: Vec<(usize, f32, f32)> =
-        geom::row_bands(snap, &state.expanded, region.y, state.scroll_y).collect();
+    let bands: Vec<(usize, f32, f32)> = geom::row_bands(
+        snap,
+        &state.expanded,
+        state.graph_h,
+        region.y,
+        state.scroll_y,
+    )
+    .collect();
     for (i, y, h) in bands {
         // Cull the rows outside the band entirely: a long track list then neither
         // paints nor registers off-screen hits.
@@ -300,6 +306,7 @@ pub(crate) fn keys_in_rect(
     view: graph::TimeView,
     scroll_y: f32,
     expanded: &[u64],
+    graph_h: f32,
     snap: &TimelineViewSnapshot,
     sel: Rect,
 ) -> Vec<SelectedKey> {
@@ -309,7 +316,7 @@ pub(crate) fn keys_in_rect(
     if top_y > bot_y {
         return out;
     }
-    for (i, y, _h) in geom::row_bands(snap, expanded, rows.y, scroll_y) {
+    for (i, y, _h) in geom::row_bands(snap, expanded, graph_h, rows.y, scroll_y) {
         // The diamonds sit on the row's dope-sheet STRIP, never in its graph
         // band — a marquee over the curve must not grab the keys under it.
         let cy = y + ROW_H_PX * 0.5;

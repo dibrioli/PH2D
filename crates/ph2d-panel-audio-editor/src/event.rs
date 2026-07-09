@@ -2,8 +2,9 @@
 
 use crate::state::AudioEditorState;
 use crate::{
-    AEDIT_CLOSE, AEDIT_EXPORT, AEDIT_LOAD, AEDIT_LOOP, AEDIT_PLAY, AEDIT_STOP, AudioEditorPanel,
-    snapshot,
+    AEDIT_CLOSE, AEDIT_DC, AEDIT_EXPORT, AEDIT_GAIN_DOWN, AEDIT_GAIN_UP, AEDIT_INVERT, AEDIT_LOAD,
+    AEDIT_LOOP, AEDIT_NORM_LUFS, AEDIT_NORMALIZE, AEDIT_PLAY, AEDIT_REDO, AEDIT_REVERSE,
+    AEDIT_STOP, AEDIT_UNDO, AudioEditCmd, AudioEditorPanel, snapshot,
 };
 use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::WidgetEvent;
@@ -44,6 +45,32 @@ pub(crate) fn apply_event(
         }
         if id == AEDIT_EXPORT {
             snapshot::request_export();
+            return EventOutcome::Consumed;
+        }
+        // Edit ops → arm the matching one-shot command for the shell.
+        let edit = if id == AEDIT_UNDO {
+            Some(AudioEditCmd::Undo)
+        } else if id == AEDIT_REDO {
+            Some(AudioEditCmd::Redo)
+        } else if id == AEDIT_NORMALIZE {
+            Some(AudioEditCmd::NormalizePeak)
+        } else if id == AEDIT_NORM_LUFS {
+            Some(AudioEditCmd::NormalizeLufs)
+        } else if id == AEDIT_REVERSE {
+            Some(AudioEditCmd::Reverse)
+        } else if id == AEDIT_DC {
+            Some(AudioEditCmd::RemoveDc)
+        } else if id == AEDIT_INVERT {
+            Some(AudioEditCmd::Invert)
+        } else if id == AEDIT_GAIN_DOWN {
+            Some(AudioEditCmd::GainDown)
+        } else if id == AEDIT_GAIN_UP {
+            Some(AudioEditCmd::GainUp)
+        } else {
+            None
+        };
+        if let Some(cmd) = edit {
+            snapshot::request_edit(cmd);
             return EventOutcome::Consumed;
         }
     }

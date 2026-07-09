@@ -48,6 +48,52 @@ pub const AEDIT_LOAD: NodeId = hash_node_id("audio_editor_load");
 /// Export button — the shell writes the current clip out (WAV).
 pub const AEDIT_EXPORT: NodeId = hash_node_id("audio_editor_export");
 
+// Edit ops (W2 §5) — one-shot: click arms an `AudioEditCmd` the shell applies to
+// the `EditClip` (undo timeline). Whole-clip ops (no selection needed).
+/// Undo the last edit.
+pub const AEDIT_UNDO: NodeId = hash_node_id("audio_editor_undo");
+/// Redo the last undone edit.
+pub const AEDIT_REDO: NodeId = hash_node_id("audio_editor_redo");
+/// Peak-normalize to 0 dBFS.
+pub const AEDIT_NORMALIZE: NodeId = hash_node_id("audio_editor_normalize");
+/// Loudness-normalize to −16 LUFS.
+pub const AEDIT_NORM_LUFS: NodeId = hash_node_id("audio_editor_norm_lufs");
+/// Reverse the clip.
+pub const AEDIT_REVERSE: NodeId = hash_node_id("audio_editor_reverse");
+/// Remove DC offset.
+pub const AEDIT_DC: NodeId = hash_node_id("audio_editor_dc");
+/// Invert polarity.
+pub const AEDIT_INVERT: NodeId = hash_node_id("audio_editor_invert");
+/// Gain −3 dB.
+pub const AEDIT_GAIN_DOWN: NodeId = hash_node_id("audio_editor_gain_down");
+/// Gain +3 dB.
+pub const AEDIT_GAIN_UP: NodeId = hash_node_id("audio_editor_gain_up");
+
+/// A one-shot edit command the panel arms (via a click) and the shell drains +
+/// applies to the loaded `EditClip`. UI-only enum (no `ph2d-audio-edit` dep here);
+/// the shell maps each variant to the matching `EditClip::apply_*` / undo/redo.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AudioEditCmd {
+    /// Undo the last edit.
+    Undo,
+    /// Redo the last undone edit.
+    Redo,
+    /// Peak-normalize to 0 dBFS.
+    NormalizePeak,
+    /// Loudness-normalize to −16 LUFS.
+    NormalizeLufs,
+    /// Reverse the clip.
+    Reverse,
+    /// Remove DC offset.
+    RemoveDc,
+    /// Invert polarity.
+    Invert,
+    /// Gain −3 dB.
+    GainDown,
+    /// Gain +3 dB.
+    GainUp,
+}
+
 /// Zero-size marker implementing the typed Audio Editor panel contract.
 pub struct AudioEditorPanel;
 
@@ -75,20 +121,25 @@ impl Panel for AudioEditorPanel {
     }
 }
 
+/// Panel → shell: whether looping is enabled (persistent).
+pub use snapshot::looping;
+/// Shell → panel: publish the loaded clip's display name.
+pub use snapshot::set_clip_name;
+/// Panel → shell: the pending edit command (one-shot; the shell applies it to the
+/// `EditClip`).
+pub use snapshot::take_edit_cmd;
+/// Panel → shell: whether the user requested Export (one-shot; the shell writes
+/// the clip to WAV).
+pub use snapshot::take_export;
+/// Panel → shell: whether the user requested Load (one-shot; the shell opens a
+/// file picker + decodes).
+pub use snapshot::take_load;
 /// Panel → shell: whether the user requested a play/pause toggle this frame
 /// (one-shot; the bridge drains it and flips the preview transport).
 pub use snapshot::take_play_pause;
 /// Panel → shell: whether the user requested Stop (one-shot).
 pub use snapshot::take_stop;
-/// Panel → shell: whether the user requested Load (one-shot; the shell opens a
-/// file picker + decodes).
-pub use snapshot::take_load;
-/// Panel → shell: whether the user requested Export (one-shot; the shell writes
-/// the clip to WAV).
-pub use snapshot::take_export;
-/// Panel → shell: whether looping is enabled (persistent).
-pub use snapshot::looping;
+/// Shell → panel: publish whether undo/redo are currently available (button dim).
+pub use snapshot::{set_can_redo, set_can_undo};
 /// Shell → panel: publish the live transport state for the readout + buttons.
 pub use snapshot::{set_duration_secs, set_loaded, set_playing, set_position_secs};
-/// Shell → panel: publish the loaded clip's display name.
-pub use snapshot::set_clip_name;

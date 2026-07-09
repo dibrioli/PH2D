@@ -9,8 +9,9 @@
 
 use crate::state::AudioEditorState;
 use crate::{
-    AEDIT_CLOSE, AEDIT_EXPORT, AEDIT_LOAD, AEDIT_LOOP, AEDIT_NAME, AEDIT_PANEL, AEDIT_PLAY,
-    AEDIT_STOP, AudioEditorPanel, snapshot,
+    AEDIT_CLOSE, AEDIT_DC, AEDIT_EXPORT, AEDIT_GAIN_DOWN, AEDIT_GAIN_UP, AEDIT_INVERT, AEDIT_LOAD,
+    AEDIT_LOOP, AEDIT_NAME, AEDIT_NORM_LUFS, AEDIT_NORMALIZE, AEDIT_PANEL, AEDIT_PLAY, AEDIT_REDO,
+    AEDIT_REVERSE, AEDIT_STOP, AEDIT_UNDO, AudioEditorPanel, snapshot,
 };
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::interaction::{HitIndex, InteractiveState};
@@ -44,12 +45,7 @@ pub(crate) fn paint(_state: &mut AudioEditorState, ctx: &mut PaintCtx) {
     // controls don't need it; the movable part is the floating waveform overlay).
     let insp = ctx.layout.inspector;
     let gap = Spacing::Md.px();
-    let rect = Rect::new(
-        (insp.x - PANEL_W - gap).max(0.0),
-        insp.y,
-        PANEL_W,
-        insp.h,
-    );
+    let rect = Rect::new((insp.x - PANEL_W - gap).max(0.0), insp.y, PANEL_W, insp.h);
     let theme = ctx.host.theme();
     ctx.host.store_mut().set_panel_rect(AEDIT_PANEL, rect);
 
@@ -72,7 +68,13 @@ pub(crate) fn paint(_state: &mut AudioEditorState, ctx: &mut PaintCtx) {
         ctx.text_system,
         theme,
     );
-    paint_panel_close_button(rect, AEDIT_CLOSE, ctx.host.hit_index_mut(), ctx.scene, theme);
+    paint_panel_close_button(
+        rect,
+        AEDIT_CLOSE,
+        ctx.host.hit_index_mut(),
+        ctx.scene,
+        theme,
+    );
 
     let pad = Spacing::Lg.px();
     let x = rect.x + pad;
@@ -85,6 +87,8 @@ pub(crate) fn paint(_state: &mut AudioEditorState, ctx: &mut PaintCtx) {
     let looping = snapshot::looping();
     let pos = snapshot::position_secs();
     let dur = snapshot::duration_secs();
+    let undo_ok = snapshot::can_undo();
+    let redo_ok = snapshot::can_redo();
 
     // Sync the name box from the loaded clip — mirror of the Inspector entity-name
     // box: overwrite the TextInput's buffer only when a NEW clip loads, and skip
@@ -220,11 +224,88 @@ pub(crate) fn paint(_state: &mut AudioEditorState, ctx: &mut PaintCtx) {
         theme,
         hit_index,
     );
+    y += ROW_H + Spacing::Lg.px();
+
+    // Edit ops (W2) — whole-clip, one-shot; each commits an undo step.
+    paint_edit_section(
+        y,
+        x,
+        w,
+        loaded,
+        undo_ok,
+        redo_ok,
+        scene,
+        text_system,
+        theme,
+        hit_index,
+    );
 
     // Re-register the close button last so body widgets can't shadow it.
     ctx.host
         .hit_index_mut()
         .register(AEDIT_CLOSE, panel_close_button_rect(rect));
+}
+
+/// The whole-clip Edit ops block: Undo/Redo · Normalize/LUFS · Reverse/DC ·
+/// Gain−/Gain+ · Invert. Buttons dim when unavailable (no clip / no history).
+#[allow(clippy::too_many_arguments)]
+fn paint_edit_section(
+    mut y: f32,
+    x: f32,
+    w: f32,
+    loaded: bool,
+    undo_ok: bool,
+    redo_ok: bool,
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+) {
+    let gap = Spacing::Sm.px();
+    let half = ((w - gap) * 0.5).max(1.0);
+    // (label, id, enabled) pairs, laid out two-per-row (last row is single).
+    let rows: [[(&str, NodeId, bool); 2]; 4] = [
+        [("Undo", AEDIT_UNDO, undo_ok), ("Redo", AEDIT_REDO, redo_ok)],
+        [
+            ("Normalize", AEDIT_NORMALIZE, loaded),
+            ("Norm LUFS", AEDIT_NORM_LUFS, loaded),
+        ],
+        [
+            ("Reverse", AEDIT_REVERSE, loaded),
+            ("Rm DC", AEDIT_DC, loaded),
+        ],
+        [
+            ("Gain \u{2212}", AEDIT_GAIN_DOWN, loaded),
+            ("Gain +", AEDIT_GAIN_UP, loaded),
+        ],
+    ];
+    for row in rows {
+        for (i, (label, id, enabled)) in row.into_iter().enumerate() {
+            let bx = x + i as f32 * (half + gap);
+            button(
+                Rect::new(bx, y, half, ROW_H),
+                label,
+                enabled,
+                id,
+                scene,
+                text_system,
+                theme,
+                hit_index,
+            );
+        }
+        y += ROW_H + gap;
+    }
+    // Invert — full width.
+    button(
+        Rect::new(x, y, w, ROW_H),
+        "Invert Polarity",
+        loaded,
+        AEDIT_INVERT,
+        scene,
+        text_system,
+        theme,
+        hit_index,
+    );
 }
 
 /// Format seconds as `m:ss.d` (one decimal), clamped at zero.
@@ -254,7 +335,12 @@ fn button(
     } else {
         ColorToken::Text2
     };
-    fill_rounded_rect(scene, rect, Radius::Sm.px(), resolve(ColorToken::Bg3, theme));
+    fill_rounded_rect(
+        scene,
+        rect,
+        Radius::Sm.px(),
+        resolve(ColorToken::Bg3, theme),
+    );
     paint_text_centered(
         text_system,
         scene,

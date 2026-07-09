@@ -236,12 +236,17 @@ impl crate::App {
                 if ed::take_stop() {
                     audio.editor_stop();
                 }
+                if let Some(cmd) = ed::take_edit_cmd() {
+                    audio.editor_apply(cmd);
+                }
                 audio.editor_poll();
                 ed::set_playing(audio.editor_playing());
                 ed::set_loaded(audio.editor_loaded());
                 ed::set_position_secs(audio.editor_position_secs());
                 ed::set_duration_secs(audio.editor_duration_secs());
                 ed::set_clip_name(audio.editor_name());
+                ed::set_can_undo(audio.editor_can_undo());
+                ed::set_can_redo(audio.editor_can_redo());
             }
         }
         // Coalesced painter Move: stamp the LATEST buffered canvas position ONCE this frame, replacing

@@ -1,6 +1,10 @@
 //! Audio Editor panel widget registration.
 
-use crate::{AEDIT_CLOSE, AEDIT_EXPORT, AEDIT_LOAD, AEDIT_LOOP, AEDIT_NAME, AEDIT_PLAY, AEDIT_STOP};
+use crate::{
+    AEDIT_CLOSE, AEDIT_DC, AEDIT_EXPORT, AEDIT_GAIN_DOWN, AEDIT_GAIN_UP, AEDIT_INVERT, AEDIT_LOAD,
+    AEDIT_LOOP, AEDIT_NAME, AEDIT_NORM_LUFS, AEDIT_NORMALIZE, AEDIT_PLAY, AEDIT_REDO,
+    AEDIT_REVERSE, AEDIT_STOP, AEDIT_UNDO,
+};
 use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::{BlenderHitKind, InteractiveState, WidgetStore};
 use ph2d_editor_core::widget::{ButtonState, TextInputState};
@@ -12,8 +16,14 @@ pub(crate) fn populate(store: &mut WidgetStore) {
     // registers their hit rects each frame + applies the offset/resize).
     for (id, kind) in [
         (ids::AUDIO_OVERLAY_DRAG_HANDLE, BlenderHitKind::DragHandle),
-        (ids::AUDIO_OVERLAY_RESIZE_HANDLE, BlenderHitKind::ResizeHandle),
-        (ids::AUDIO_OVERLAY_RESIZE_HANDLE_BL, BlenderHitKind::ResizeHandleBl),
+        (
+            ids::AUDIO_OVERLAY_RESIZE_HANDLE,
+            BlenderHitKind::ResizeHandle,
+        ),
+        (
+            ids::AUDIO_OVERLAY_RESIZE_HANDLE_BL,
+            BlenderHitKind::ResizeHandleBl,
+        ),
     ] {
         store.register(
             id,
@@ -42,6 +52,16 @@ pub(crate) fn populate(store: &mut WidgetStore) {
         AEDIT_LOOP,
         AEDIT_LOAD,
         AEDIT_EXPORT,
+        // Edit ops (W2).
+        AEDIT_UNDO,
+        AEDIT_REDO,
+        AEDIT_NORMALIZE,
+        AEDIT_NORM_LUFS,
+        AEDIT_REVERSE,
+        AEDIT_DC,
+        AEDIT_INVERT,
+        AEDIT_GAIN_DOWN,
+        AEDIT_GAIN_UP,
     ] {
         store.register(id, button());
     }

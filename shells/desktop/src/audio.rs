@@ -624,6 +624,45 @@ impl AudioSystem {
     pub(crate) fn editor_preview_frame(&self) -> u64 {
         self.engine.preview_frame()
     }
+
+    /// Apply a one-shot edit command from the panel to the loaded clip (each
+    /// commits an undo step; undo/redo step the timeline). Stops the preview since
+    /// the clip data changes underneath it.
+    pub(crate) fn editor_apply(&mut self, cmd: ph2d_panel_audio_editor::AudioEditCmd) {
+        use ph2d_panel_audio_editor::AudioEditCmd as Cmd;
+        let Some(clip) = self.editor.clip.as_mut() else {
+            return;
+        };
+        // ±3 dB per click (10^(±3/20)).
+        const GAIN_UP: f32 = 1.412_537_5;
+        const GAIN_DOWN: f32 = 0.707_945_8;
+        match cmd {
+            Cmd::Undo => {
+                clip.undo();
+            }
+            Cmd::Redo => {
+                clip.redo();
+            }
+            Cmd::NormalizePeak => clip.apply_normalize_peak(1.0),
+            Cmd::NormalizeLufs => clip.apply_normalize_lufs(-16.0), // LITERAL-PX-OK: -16 LUFS target
+            Cmd::Reverse => clip.apply_reverse(),
+            Cmd::RemoveDc => clip.apply_remove_dc_offset(),
+            Cmd::Invert => clip.apply_invert(),
+            Cmd::GainDown => clip.apply_gain(GAIN_DOWN),
+            Cmd::GainUp => clip.apply_gain(GAIN_UP),
+        }
+        let _ = self.engine.stop_preview();
+        self.editor.state = EditorTransport::Stopped;
+    }
+
+    /// Whether the loaded clip can undo / redo (dims the panel buttons).
+    pub(crate) fn editor_can_undo(&self) -> bool {
+        self.editor.clip.as_ref().is_some_and(|c| c.can_undo())
+    }
+
+    pub(crate) fn editor_can_redo(&self) -> bool {
+        self.editor.clip.as_ref().is_some_and(|c| c.can_redo())
+    }
 }
 
 /// Build the output stream for device sample type `T`. The mixer renders into a

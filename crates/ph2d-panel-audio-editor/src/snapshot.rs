@@ -11,12 +11,18 @@
 
 use std::cell::{Cell, RefCell};
 
+use crate::AudioEditCmd;
+
 thread_local! {
     // Panel → shell one-shot intents (drained by the bridge).
     static PLAY_PAUSE_REQ: Cell<bool> = const { Cell::new(false) };
     static STOP_REQ: Cell<bool> = const { Cell::new(false) };
     static LOAD_REQ: Cell<bool> = const { Cell::new(false) };
     static EXPORT_REQ: Cell<bool> = const { Cell::new(false) };
+    static EDIT_CMD: Cell<Option<AudioEditCmd>> = const { Cell::new(None) };
+    // Shell → panel: undo/redo availability (dims the buttons).
+    static CAN_UNDO: Cell<bool> = const { Cell::new(false) };
+    static CAN_REDO: Cell<bool> = const { Cell::new(false) };
     // Panel → shell persistent.
     static LOOPING: Cell<bool> = const { Cell::new(false) };
     // Shell → panel display.
@@ -74,6 +80,33 @@ pub(crate) fn request_export() {
 /// Shell: take the pending Export request (one-shot).
 pub fn take_export() -> bool {
     take(&EXPORT_REQ)
+}
+
+/// Panel: arm an edit command (overwrites any un-drained one — one click/frame).
+pub(crate) fn request_edit(cmd: AudioEditCmd) {
+    EDIT_CMD.with(|c| c.set(Some(cmd)));
+}
+
+/// Shell: take the pending edit command (one-shot).
+pub fn take_edit_cmd() -> Option<AudioEditCmd> {
+    EDIT_CMD.with(|c| c.take())
+}
+
+/// Shell → panel: whether undo/redo are available (dims the buttons).
+pub fn set_can_undo(v: bool) {
+    CAN_UNDO.with(|c| c.set(v));
+}
+
+pub(crate) fn can_undo() -> bool {
+    CAN_UNDO.with(Cell::get)
+}
+
+pub fn set_can_redo(v: bool) {
+    CAN_REDO.with(|c| c.set(v));
+}
+
+pub(crate) fn can_redo() -> bool {
+    CAN_REDO.with(Cell::get)
 }
 
 /// Panel: flip the loop flag; returns the new value.

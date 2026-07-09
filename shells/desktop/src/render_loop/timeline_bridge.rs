@@ -14,21 +14,24 @@
 use ph2d_core::Playhead;
 use ph2d_ecs::World;
 use ph2d_editor::tool::PanelEvent;
-use ph2d_timeline::{PropKind, TimelineIntent, TimelineState, apply_from_doc, apply_intent};
+use ph2d_timeline::{PropKind, TimelineIntent, TimelineState, apply_from_doc_except, apply_intent};
 
 /// Drain pending intents into `timeline`, then apply its document to `world` at
-/// the current `playhead` time. Call each frame in the apply pass, after
-/// `apply_sprite_animations`.
+/// the current `playhead` time. `live_entity` (the entity whose gizmo is being
+/// dragged this frame, if any) is left untouched by the apply so the document
+/// does not fight the live manipulation. Call each frame in the apply pass,
+/// after `apply_sprite_animations`.
 pub(crate) fn run(
     world: &mut World,
     timeline: &mut TimelineState,
     playhead: &mut Playhead,
     intents: &mut Vec<TimelineIntent>,
+    live_entity: Option<u64>,
 ) {
     for intent in intents.drain(..) {
         apply_intent(timeline, playhead, intent);
     }
-    apply_from_doc(world, &mut timeline.doc, playhead.time());
+    apply_from_doc_except(world, &mut timeline.doc, playhead.time(), live_entity);
 }
 
 /// Translate a transport [`PanelEvent`] (by widget id) into a [`TimelineIntent`].

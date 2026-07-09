@@ -267,7 +267,9 @@ fn snap(t: f64, fps: f64, on: bool) -> f64 {
 }
 
 /// Snap a rational time to a whole display frame (returns rational frame time).
-fn snap_time(t: RationalTime, fps: f64, on: bool) -> RationalTime {
+/// Public so the shell's auto-key path snaps recorded keys identically to the
+/// panel-driven `AddKey` intent.
+pub fn snap_time(t: RationalTime, fps: f64, on: bool) -> RationalTime {
     if on && fps.is_finite() && fps > 0.0 {
         let frame = (t.to_seconds() * fps).round() as i64;
         RationalTime::from_frame(frame, fps.round() as u32)

@@ -20,6 +20,16 @@ use crate::sprite::SpriteProp;
 /// the resolved value into each bound entity. Updates each binding's `missing`
 /// flag by liveness. Call once per frame after advancing the Playhead.
 pub fn apply_from_doc(world: &mut World, doc: &mut TimelineDoc, t: f64) {
+    apply_from_doc_except(world, doc, t, None);
+}
+
+/// Like [`apply_from_doc`], but leaves the entity whose bits are `live` (if any)
+/// untouched — the caller is authoring its transform live this frame (a gizmo
+/// drag), so the document must not fight the manipulation. Its `missing` flag is
+/// still refreshed; only the write is skipped. With auto-key armed the drag
+/// records keys, so once the gesture ends `apply_from_doc` resumes on the newly
+/// recorded pose and the entity holds.
+pub fn apply_from_doc_except(world: &mut World, doc: &mut TimelineDoc, t: f64, live: Option<u64>) {
     let n = doc.bindings().len();
     for i in 0..n {
         let b = &doc.bindings()[i];
@@ -28,6 +38,11 @@ pub fn apply_from_doc(world: &mut World, doc: &mut TimelineDoc, t: f64) {
         let alive = world.get_entity(entity).is_ok();
         doc.bindings_mut()[i].missing = !alive;
         if !alive {
+            continue;
+        }
+        // The user is dragging this entity's gizmo — it owns its transform for
+        // the duration of the gesture; don't clobber it from the document.
+        if live == Some(entity_bits) {
             continue;
         }
         // Sample the bound track (skip empty tracks so a just-created binding
@@ -71,6 +86,54 @@ fn write_prop(world: &mut World, entity: Entity, prop: PropKind, v: AnimValue) {
     }
     #[cfg(not(feature = "render"))]
     let _ = (world, entity, prop);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::TimelineDoc;
+    use ph2d_anim::{Interp, RationalTime};
+    use ph2d_core::Vec2;
+
+    /// The live-dragged entity keeps its manipulated transform; every other
+    /// bound entity is still driven from the document.
+    #[test]
+    fn live_entity_is_not_clobbered_by_the_document() {
+        let mut w = World::new();
+        let dragged = w.spawn(Transform::from_translation(Vec2::ZERO)).id();
+        let other = w.spawn(Transform::from_translation(Vec2::ZERO)).id();
+        let mut doc = TimelineDoc::new();
+        let s = RationalTime::from_seconds;
+        // Both entities have a TranslationX key pinning them to 5.0 at t=0.
+        for e in [dragged, other] {
+            doc.insert_key(
+                e.to_bits(),
+                PropKind::TranslationX,
+                s(0.0),
+                AnimValue::Float(5.0),
+                Interp::Hold,
+            );
+        }
+        // Simulate a gizmo drag having just written the dragged entity to 42.
+        w.get_mut::<Transform>(dragged).unwrap().translation.x = 42.0;
+
+        apply_from_doc_except(&mut w, &mut doc, 0.0, Some(dragged.to_bits()));
+
+        assert_eq!(
+            w.get::<Transform>(dragged).unwrap().translation.x,
+            42.0,
+            "the live-dragged entity must keep its manipulated pose (document must not fight it)"
+        );
+        assert_eq!(
+            w.get::<Transform>(other).unwrap().translation.x,
+            5.0,
+            "every other bound entity is still driven from the document"
+        );
+
+        // With no live entity, the document reclaims the dragged one too.
+        apply_from_doc_except(&mut w, &mut doc, 0.0, None);
+        assert_eq!(w.get::<Transform>(dragged).unwrap().translation.x, 5.0);
+    }
 }
 
 #[cfg(all(test, feature = "render"))]

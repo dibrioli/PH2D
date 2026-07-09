@@ -321,6 +321,10 @@ pub(crate) struct App {
     /// Set by the `K` key: on the next frame, insert a keyframe at the playhead
     /// on every track bound to the selected sprite (capturing its current pose).
     pub(crate) timeline_insert_key: bool,
+    /// Whether a gizmo drag was in flight last frame — used to bracket an
+    /// AutoKey drag into a SINGLE undo step (begin on the opening frame, commit
+    /// when it ends) instead of one step per recorded frame.
+    pub(crate) timeline_drag_active: bool,
     pub(crate) last_frame: Instant,
     pub(crate) pending_resize: Option<WindowSize>,
     /// FLUID-DRAG present-mode override: the configured mode saved while a live resize streams (the

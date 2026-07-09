@@ -5466,6 +5466,7 @@ dependencies = [
  "ph2d-timeline",
  "ph2d-tokens",
  "ph2d-ui-testkit",
+ "ph2d-vector",
 ]
 
 [[package]]

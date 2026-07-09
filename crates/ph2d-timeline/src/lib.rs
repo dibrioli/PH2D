@@ -29,11 +29,11 @@ pub mod snapshot;
 pub mod sprite;
 pub mod state;
 
-pub use apply::apply_from_doc;
+pub use apply::{apply_from_doc, apply_from_doc_except};
 pub use binding::{TargetBinding, WireId};
 pub use doc::{DEFAULT_FPS, DOC_VERSION, Marker, NamedClip, TimelineDoc};
 pub use history::{HISTORY_CAP, TimelineHistory};
-pub use intent::{TimelineIntent, apply_intent};
+pub use intent::{TimelineIntent, apply_intent, snap_time};
 pub use prop::PropKind;
 pub use snapshot::{KeyView, TimelineViewSnapshot, TrackView};
 pub use sprite::{SpriteAnimation, SpriteProp, apply_sprite_animations};

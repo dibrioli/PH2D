@@ -107,7 +107,10 @@ pub struct TimelineFlags {
 impl Default for TimelineFlags {
     fn default() -> Self {
         Self {
-            auto_key: false,
+            // Armed by default: this is an animation timeline — dragging a bound
+            // sprite records a key at the playhead, the primary authoring gesture
+            // (the transport pill shows the state and can disarm it).
+            auto_key: true,
             frame_snap: true,
         }
     }

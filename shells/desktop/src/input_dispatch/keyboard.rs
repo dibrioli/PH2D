@@ -12,6 +12,15 @@ use crate::forwarding::{forward_key_to_hero, forward_text_to_hero};
 use crate::keymap::winit_to_editor_keycode;
 
 impl App {
+    /// Whether the bottom-docked general timeline panel is currently visible
+    /// (the context in which Ctrl+Z routes to timeline undo/redo).
+    pub(crate) fn timeline_panel_open(&self) -> bool {
+        self.gfx
+            .as_ref()
+            .and_then(|g| g.hero_screen.as_ref())
+            .is_some_and(|h| h.is_panel_visible("timeline"))
+    }
+
     pub(crate) fn on_keyboard_input(&mut self, event: WinitKeyEvent) {
         let WinitKeyEvent {
             physical_key,
@@ -178,6 +187,33 @@ impl App {
                 _ => false,
             };
             if handled {
+                return;
+            }
+        }
+
+        // General timeline (W1) undo/redo with Ctrl/Cmd, while the docked
+        // timeline panel is open AND it has a step in that direction. Pushed as
+        // an intent so the bridge re-applies the restored document to the scene
+        // the same frame (drain → apply_from_doc). Falls through when the
+        // timeline stack is empty in that direction, so the same chord still
+        // reaches the painter / image-edit undo for other contexts.
+        if self.timeline_panel_open()
+            && state == ElementState::Pressed
+            && !repeat
+            && (self.modifiers.control_key() || self.modifiers.super_key())
+            && let PhysicalKey::Code(code) = physical_key
+        {
+            let redo = matches!(code, KeyCode::KeyY)
+                || (matches!(code, KeyCode::KeyZ) && self.modifiers.shift_key());
+            let undo = matches!(code, KeyCode::KeyZ) && !self.modifiers.shift_key();
+            if redo && self.timeline.history.can_redo() {
+                self.timeline_intents
+                    .push(ph2d_timeline::TimelineIntent::Redo);
+                return;
+            }
+            if undo && self.timeline.history.can_undo() {
+                self.timeline_intents
+                    .push(ph2d_timeline::TimelineIntent::Undo);
                 return;
             }
         }

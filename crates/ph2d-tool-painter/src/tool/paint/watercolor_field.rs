@@ -11,7 +11,8 @@ use std::sync::OnceLock;
 // ── LUTs (built once; the ln/exp/pow run only here, never per pixel — HR-5) ──────────────────────────
 const L2S_N: usize = 4096;
 const EXP_N: usize = 2048;
-/// Largest `|exponent|` the Beer–Lambert `exp` LUT spans (`exp(-32) ≈ 0` — opaque pigment clamp).
+/// Largest `|exponent|` the Beer–Lambert `exp` LUT spans; `exp(-32) ≈ 1.3e-14 ≈ 0`, so anything past
+/// this is transmittance 0 (opaque pigment) — a safe clamp for even a very dense wash.
 const EXP_MAX: f32 = 32.0;
 
 pub(super) struct Luts {
@@ -94,8 +95,9 @@ impl Luts {
     }
 }
 
-// ── Deterministic value noise (integer hash; HR-5 transcendental-free). Distinct seeds keep the
-// warp axes + paper grain decorrelated (else the boundary ripples and the grain tracks the warp).
+// ── Deterministic value noise (integer hash; HR-5 transcendental-free) ───────────────────────────────
+// Distinct seeds keep the two warp axes + the paper grain decorrelated (else the boundary would ripple
+// along the diagonal and the granulation would track the warp).
 pub(super) const SEED_WARP_X_A: u32 = 0x1111_1111;
 pub(super) const SEED_WARP_X_B: u32 = 0x2222_2222;
 pub(super) const SEED_WARP_Y_A: u32 = 0x3333_3333;
@@ -149,8 +151,9 @@ pub(super) fn warp_axis(x: f32, y: f32, sa: u32, sb: u32) -> f32 {
 }
 
 /// Paper-tooth granulation height at `(x, y)` in `[0, 1]` — the built-in fallback when no Paper
-/// slot is set. TWO octaves (5 px + 2.5 px, doc 12 GRAN-3): the fine second octave breaks the
-/// mono-scale "digital" signature the audit measured on the old single octave.
+/// slot is set. TWO octaves (5 px + 2.5 px, doc 12 GRAN-3): the audit measured the old single
+/// octave as mid-band and uniform (good) but mono-scale full-range — the "digital" side of the
+/// default look; the fine second octave breaks the single-frequency signature.
 #[inline]
 pub(super) fn paper_height(x: f32, y: f32) -> f32 {
     0.65 * value_noise(x, y, 5.0, SEED_GRAIN) + 0.35 * value_noise(x, y, 2.5, SEED_GRAIN_FINE)
@@ -248,12 +251,8 @@ pub(super) struct RewetFields {
     pub(super) soak_raw: Vec<f32>,
     pub(super) soak_halo: Vec<f32>,
     /// EDGE-2: the CARRIED-water pool's halo (2× blur of `stroke_water`) — the backrun ring is
-    /// `soft − halo` (a shell just inside the pool's serrated contour). Empty unless water poured.
+    /// `raw − halo` (a shell just inside the pool's serrated contour). Empty unless water poured.
     pub(super) water_halo: Vec<f32>,
-    /// The pool LIGHTLY blurred (~3 px): the ring's raw side — the serration (±5 px) doubled the
-    /// raw edge's traversal speed into 1-px stairs; the small blur kills them, the 12 px cell
-    /// keeps the cauliflower (Enio smoke 2026-07-09 take 2). Empty unless watered.
-    pub(super) water_soft: Vec<f32>,
     pub(super) near: [Vec<f32>; 4],
     /// `None` until the stroke actually poured dwell (`wet_soak_active`) — a no-dwell stroke pays
     /// exactly the plain 4-blur rewet cost (measured 1.16 → ~0.6 ms/frame @2048²).
@@ -405,14 +404,10 @@ pub(super) fn build_rewet_fields(
     // water DIFFUSES outward (the halo pushes the widened dissolve BEYOND the nib's own
     // disc — a raw disc gated the far blur to exactly the pixels under the brush), while
     // the RAW soak drives the lift (contact: deepest right under the nib).
-    let (water_halo, water_soft) = if watered {
-        let soft_r = (3 / ds).max(1); // LITERAL-PX-OK: ~3 px full-res smoothing of the ring's raw side
-        (
-            box_blur(&water, lw, lh, r2),
-            box_blur(&water, lw, lh, soft_r),
-        )
+    let water_halo = if watered {
+        box_blur(&water, lw, lh, r2)
     } else {
-        (Vec::new(), Vec::new())
+        Vec::new()
     };
     let (far, soak_halo) = if soaked {
         let far = [
@@ -430,7 +425,6 @@ pub(super) fn build_rewet_fields(
         soak_raw: soak,
         soak_halo,
         water_halo,
-        water_soft,
         near: [bpres, br, bg, bb],
         far,
         ds,

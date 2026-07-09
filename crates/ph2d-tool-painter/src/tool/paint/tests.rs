@@ -13419,10 +13419,7 @@ fn watercolor_session_brush_changes_do_not_touch_baked_washes() {
     let probe = |t: &PainterTool| -> Vec<[u8; 4]> {
         let mut v = Vec::new();
         for y in 60..140u32 {
-            // Probe até x=68: a DIFUSÃO de estilo (sessão mista) derrete params até ~melt_r
-            // (= core_r máx, 12 px) da massa do traço novo — o contrato agora é "intocado além
-            // da escala de fusão", não "intocado até encostar".
-            for x in 40..=68u32 {
+            for x in 40..=72u32 {
                 v.push(px(t, size, x, y));
             }
         }
@@ -13545,73 +13542,5 @@ fn watercolor_clean_water_backrun_blooms_on_wet_session_wash() {
         &blank[..3],
         &[255, 255, 255],
         "água pura sobre papel em branco não deposita nada"
-    );
-}
-
-/// **EDGE-2 take 2/3 (Enio smoke 2026-07-09, "bordas duras e pixeladas"):** o INTERIOR do pool
-/// d'água de um traço diluído cruzando wash cheio não pode ter staircase — o deepen do CONC
-/// ligava em força total no pixel em que o gate de presença (`bp_ring > 1e-4`) abria (degrau de
-/// 38 bytes DENTRO do pool, longe de qualquer borda), e a leitura crua da união imprimia
-/// penhascos de dono. Agora o deepen escala pela presença (rampa contínua) e nenhuma leitura
-/// crua sai dos campos. A BORDA do bloom (taper serrilhado) é nítida-orgânica por design (o
-/// anel aprovado) e fica fora da varredura.
-#[test]
-fn watercolor_water_streak_interior_has_no_staircase() {
-    let size = 192u32;
-    let mut t = white_canvas(size, 8.0);
-    t.paint.brush = BrushSpec {
-        radius_px: 12.0,
-        hardness: 1.0,
-        falloff: Falloff::Constant,
-        color: [0.85, 0.1, 0.1],
-        space_attenuation: false,
-        watercolor: true,
-        fill: 0.35,
-        depth: 1.5,
-        edge_gain: 0.0,
-        edge_spread: 8.0,
-        warp: 0.0,
-        granulation: 0.0,
-        wet_rewet: 0.0,
-        wet_dilution: 0.0, // wash A CHEIO
-        ..Default::default()
-    };
-    for slot in &mut t.paint.brush_by_mode {
-        *slot = t.paint.brush;
-    }
-    // Wash A horizontal cheio (banda y ≈ 83..107) + traço B vertical com Dilution cruzando.
-    assert!(t.on_canvas_pointer(cp([25.0, 95.0], PointerPhase::Down)));
-    let mut x = 25.0f32;
-    while x < 120.0 {
-        x += 2.0;
-        t.on_canvas_pointer(cp([x, 95.0], PointerPhase::Move));
-    }
-    t.on_canvas_pointer(cp([120.0, 95.0], PointerPhase::Up));
-    t.paint.brush.wet_dilution = 0.7;
-    for slot in &mut t.paint.brush_by_mode {
-        *slot = t.paint.brush;
-    }
-    assert!(t.on_canvas_pointer(cp([60.0, 30.0], PointerPhase::Down)));
-    let mut y = 30.0f32;
-    while y < 160.0 {
-        y += 2.0;
-        t.on_canvas_pointer(cp([60.0, y], PointerPhase::Move));
-    }
-    t.on_canvas_pointer(cp([60.0, 160.0], PointerPhase::Up));
-    // Varredura no INTERIOR do pool de B (x 52..66 — o taper do feather começa em ~x 67),
-    // dentro do interior de A: qualquer degrau grande aqui é staircase de gate/leitura crua.
-    let mut max_step = 0.0f32;
-    let mut at_x = 0u32;
-    for x in 52..66u32 {
-        let a = f32::from(px(&t, size, x, 89)[1]);
-        let b = f32::from(px(&t, size, x + 1, 89)[1]);
-        if (a - b).abs() > max_step {
-            max_step = (a - b).abs();
-            at_x = x;
-        }
-    }
-    assert!(
-        max_step <= 18.0,
-        "o interior do pool sobre o wash deve ser suave — degrau máx G {max_step:.0} em x={at_x}"
     );
 }

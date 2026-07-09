@@ -17,7 +17,7 @@
 mod ops;
 mod peaks;
 
-pub use ops::{FadeDir, FadeShape, peak, snap_to_zero_crossing};
+pub use ops::{FadeDir, FadeShape, in_range, peak, snap_to_zero_crossing};
 pub use peaks::{ColumnPeaks, DEFAULT_BIN_SIZE, PeakCache, column_peaks};
 
 use std::ops::Range;
@@ -153,34 +153,44 @@ impl EditClip {
         self.selection.clone().unwrap_or(0..self.frame_count())
     }
 
-    /// Scale the whole clip by `linear` gain (commits an undo step).
+    /// Scale the target range (selection, or whole clip) by `linear` gain.
     pub fn apply_gain(&mut self, linear: f32) {
-        self.commit(ops::gain(&self.data, linear));
+        let t = self.target();
+        self.commit(ops::in_range(&self.data, t, |d| ops::gain(d, linear)));
     }
 
-    /// Peak-normalize the whole clip to `target_peak` (linear).
+    /// Peak-normalize the target range to `target_peak` (linear).
     pub fn apply_normalize_peak(&mut self, target_peak: f32) {
-        self.commit(ops::normalize_peak(&self.data, target_peak));
+        let t = self.target();
+        self.commit(ops::in_range(&self.data, t, |d| {
+            ops::normalize_peak(d, target_peak)
+        }));
     }
 
-    /// Loudness-normalize the whole clip to `target_lufs` (BS.1770).
+    /// Loudness-normalize the target range to `target_lufs` (BS.1770).
     pub fn apply_normalize_lufs(&mut self, target_lufs: f32) {
-        self.commit(ops::normalize_lufs(&self.data, target_lufs));
+        let t = self.target();
+        self.commit(ops::in_range(&self.data, t, |d| {
+            ops::normalize_lufs(d, target_lufs)
+        }));
     }
 
-    /// Reverse the whole clip.
+    /// Reverse the target range (selection, or whole clip).
     pub fn apply_reverse(&mut self) {
-        self.commit(ops::reverse(&self.data));
+        let t = self.target();
+        self.commit(ops::in_range(&self.data, t, ops::reverse));
     }
 
-    /// Invert polarity of the whole clip.
+    /// Invert polarity of the target range.
     pub fn apply_invert(&mut self) {
-        self.commit(ops::invert(&self.data));
+        let t = self.target();
+        self.commit(ops::in_range(&self.data, t, ops::invert));
     }
 
-    /// Remove DC offset from the whole clip.
+    /// Remove DC offset from the target range.
     pub fn apply_remove_dc_offset(&mut self) {
-        self.commit(ops::remove_dc_offset(&self.data));
+        let t = self.target();
+        self.commit(ops::in_range(&self.data, t, ops::remove_dc_offset));
     }
 
     /// Fade the target range (selection or whole clip).
@@ -296,6 +306,29 @@ mod tests {
         assert_eq!(clip.selection(), None);
         assert!(clip.undo(), "trim is undoable");
         assert_eq!(clip.frame_count(), 3);
+    }
+
+    #[test]
+    fn whole_clip_ops_respect_selection_and_undo() {
+        // 4 stereo frames, all 0.5. Select the middle two and gain them to 0.
+        let d = SampleData::from_interleaved(vec![0.5; 8], AudioFormat::stereo(48_000));
+        let mut clip = EditClip::new(d);
+        clip.set_selection(Some(1..3));
+        clip.apply_gain(0.0);
+        assert_eq!(
+            clip.data().samples(),
+            &[0.5, 0.5, 0.0, 0.0, 0.0, 0.0, 0.5, 0.5],
+            "gain must scope to the selection, not the whole clip"
+        );
+        // The selection survives a length-preserving op (chainable).
+        assert_eq!(clip.selection(), Some(1..3));
+        // Undo brings the selected samples back.
+        assert!(clip.undo(), "selection-scoped gain is undoable");
+        assert_eq!(clip.data().samples(), &[0.5; 8]);
+        // With no selection the same op hits the whole clip.
+        clip.set_selection(None);
+        clip.apply_gain(0.0);
+        assert_eq!(clip.data().samples(), &[0.0; 8]);
     }
 
     #[test]

@@ -221,6 +221,38 @@ impl App {
             // undo runs in `painter_bridge::dispatch`, the downcast-
             // allowed site, via the transient flags set here.
             KeyCode::KeyZ if self.modifiers.super_key() || self.modifiers.control_key() => {
+                // Audio Editor owns Cmd/Ctrl+Z (undo) / +Shift (redo) while its
+                // WAVE panel is open with a clip loaded: the user is editing audio
+                // there, so keyboard undo must step the `EditClip` timeline rather
+                // than the painter/image bus. Only consumes the key when the editor
+                // can actually act — otherwise it falls through to the painter/image
+                // undo below, so global undo still works when there's no audio edit.
+                #[cfg(feature = "panel-audio-editor")]
+                {
+                    let audio_open = gfx
+                        .hero_screen
+                        .as_ref()
+                        .is_some_and(|h| h.is_panel_visible("audio_editor"));
+                    if audio_open
+                        && let Some(a) = self.audio.as_mut()
+                        && a.editor_loaded()
+                    {
+                        let redo = self.modifiers.shift_key();
+                        let can = if redo {
+                            a.editor_can_redo()
+                        } else {
+                            a.editor_can_undo()
+                        };
+                        if can {
+                            a.editor_apply(if redo {
+                                ph2d_panel_audio_editor::AudioEditCmd::Redo
+                            } else {
+                                ph2d_panel_audio_editor::AudioEditCmd::Undo
+                            });
+                            return;
+                        }
+                    }
+                }
                 let painter_active = gfx
                     .tools
                     .active()
@@ -235,6 +267,23 @@ impl App {
                 } else if let Some(hero) = gfx.hero_screen.as_mut() {
                     hero.bus
                         .push(ph2d_editor::action_bus::EditorAction::UndoImageEdit);
+                }
+            }
+            // Cmd/Ctrl+Y — redo in the Audio Editor (the Windows/Linux redo chord,
+            // alongside Cmd/Ctrl+Shift+Z). No-op unless the WAVE panel is open with
+            // a clip that has something to redo.
+            #[cfg(feature = "panel-audio-editor")]
+            KeyCode::KeyY if cmd_chord => {
+                let audio_open = gfx
+                    .hero_screen
+                    .as_ref()
+                    .is_some_and(|h| h.is_panel_visible("audio_editor"));
+                if audio_open
+                    && let Some(a) = self.audio.as_mut()
+                    && a.editor_loaded()
+                    && a.editor_can_redo()
+                {
+                    a.editor_apply(ph2d_panel_audio_editor::AudioEditCmd::Redo);
                 }
             }
             // Cmd+Enter / Ctrl+Enter — commit the active Painter stroke into

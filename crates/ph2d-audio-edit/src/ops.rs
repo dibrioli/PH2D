@@ -54,6 +54,38 @@ fn clamp_range(data: &SampleData, range: Range<usize>) -> Range<usize> {
     start..end
 }
 
+/// Apply a **length-preserving** whole-buffer op to just `range`, splicing the
+/// result back into the clip. For selection-scoped gain / normalize / reverse /
+/// invert / DC: the op runs on the extracted region as a standalone clip, so it
+/// sees ONLY the selected samples (peak, LUFS, mean and frame-order are all
+/// computed within the selection). Whole-clip range short-circuits to `op(data)`
+/// so the no-selection path stays byte-identical to calling the op directly.
+///
+/// The op MUST return the same frame count it was given (gain/invert/normalize/
+/// reverse/remove_dc all do); the splice relies on it.
+pub fn in_range(
+    data: &SampleData,
+    range: Range<usize>,
+    op: impl Fn(&SampleData) -> SampleData,
+) -> SampleData {
+    let r = clamp_range(data, range);
+    if r.start == 0 && r.end == data.frame_count() {
+        return op(data); // whole clip — no splice, no extra copy
+    }
+    if r.start >= r.end {
+        return data.clone();
+    }
+    let region = trim(data, r.clone());
+    let processed = op(&region);
+    let ch = channels(data);
+    let src = data.samples();
+    let mut out = Vec::with_capacity(src.len());
+    out.extend_from_slice(&src[..r.start * ch]);
+    out.extend_from_slice(processed.samples());
+    out.extend_from_slice(&src[r.end * ch..]);
+    SampleData::from_interleaved(out, data.format())
+}
+
 /// Scale every sample by `linear` gain.
 pub fn gain(data: &SampleData, linear: f32) -> SampleData {
     let out: Vec<f32> = data.samples().iter().map(|s| s * linear).collect();
@@ -292,6 +324,22 @@ mod tests {
         let o = fade(&d, 0..10, FadeShape::Linear, FadeDir::Out);
         assert!((o.samples()[0] - 1.0).abs() < 1e-6);
         assert!(o.samples()[18] < o.samples()[2]);
+    }
+
+    #[test]
+    fn in_range_scopes_op_to_selection() {
+        // 4 stereo frames; gain ×0 only on the middle two → the ends survive.
+        let d = stereo(vec![1.0, 1.0, 2.0, 2.0, 3.0, 3.0, 4.0, 4.0]);
+        let g = in_range(&d, 1..3, |x| gain(x, 0.0));
+        assert_eq!(g.samples(), &[1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 4.0, 4.0]);
+        // Whole-clip range is byte-identical to calling the op directly.
+        let whole = in_range(&d, 0..4, |x| gain(x, 0.5));
+        assert_eq!(whole.samples(), gain(&d, 0.5).samples());
+        // Reverse in range flips only the selected frames' order.
+        let r = in_range(&d, 1..4, reverse);
+        assert_eq!(r.samples(), &[1.0, 1.0, 4.0, 4.0, 3.0, 3.0, 2.0, 2.0]);
+        // Empty range is a no-op.
+        assert_eq!(in_range(&d, 2..2, invert).samples(), d.samples());
     }
 
     #[test]

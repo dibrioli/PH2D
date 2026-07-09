@@ -159,7 +159,7 @@ pub(super) fn dispatch(
     // The render output IS the Output node — the sink follows the graph (wire a
     // chain into an Output node and it draws). `None` (no Output node) → the pump
     // renders nothing. Recomputed each frame so add/delete/rewire just works.
-    motion.sink = output_node(&motion.doc.graph);
+    motion.sinks = output_nodes(&motion.doc.graph);
     // One cook + `pre`-advance per FIXED TICK, never per frame (M2-dynamics): a
     // slow frame that produced 2 fixed steps must re-sim BOTH, or a sequential
     // node's trajectory (integrate / spring) would depend on the frame rate —
@@ -174,7 +174,7 @@ pub(super) fn dispatch(
         motion.pump.pump(
             &motion.doc.graph,
             &motion.registry,
-            motion.sink,
+            &motion.sinks,
             tick,
             playhead,
             motion.default_uv_rect,
@@ -188,7 +188,7 @@ pub(super) fn dispatch(
     motion.pump.pump(
         &motion.doc.graph,
         &motion.registry,
-        motion.sink,
+        &motion.sinks,
         tick,
         playhead,
         motion.default_uv_rect,
@@ -267,9 +267,9 @@ fn apply_graph_intents(motion: &mut MotionState, toasts: &mut ToastQueue, split:
                     changed |= motion.doc.graph.remove_node(NodeId(id));
                 }
                 if changed {
-                    // The sink is re-resolved from the Output node each frame
-                    // (before the cook), so deleting the Output node cleanly
-                    // stops the render — no manual sink bookkeeping here.
+                    // The sinks are re-resolved from the Output nodes each
+                    // frame (before the cook), so deleting one cleanly stops its
+                    // scene — no manual sink bookkeeping here.
                     motion.history.push_undo(pre);
                     motion.pump.mark_dirty();
                 }
@@ -392,17 +392,22 @@ fn wire_state_self_loop(
     }
 }
 
-/// The graph's render sink: the first `motion.output` node, or `None` if there
-/// is none (nothing renders until the user wires a chain into an Output node).
-/// Scanned by node id order so the choice is deterministic when several exist.
-fn output_node(graph: &ph2d_nodegraph::graph::Graph) -> Option<ph2d_nodegraph::graph::NodeId> {
+/// The graph's render sinks: **every** `motion.output` node, in node-id order
+/// (deterministic). Each lowers onto the same instance buffer, so a document can
+/// hold several independent scenes — the default one holds a grid rig and a
+/// particle fountain. Empty (nothing renders) until a chain is wired into an
+/// Output node.
+fn output_nodes(graph: &ph2d_nodegraph::graph::Graph) -> Vec<ph2d_nodegraph::graph::NodeId> {
     // `"motion.output"` is the node's canonical type name (as authored in the
     // default graph); the shell addresses node types by name, like the tool id.
-    graph
+    let mut ids: Vec<_> = graph
         .nodes()
         .iter()
-        .find(|inst| inst.type_name == "motion.output")
+        .filter(|inst| inst.type_name == "motion.output")
         .map(|inst| inst.id)
+        .collect();
+    ids.sort();
+    ids
 }
 
 /// Human-readable reason a structural `connect` was rejected (add-menu toast).

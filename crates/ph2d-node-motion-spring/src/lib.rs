@@ -35,7 +35,8 @@ use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, Param
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 
 mod channel;
-use channel::{channel_get, channel_set, falloff_at};
+use channel::{channel_get, channel_set, falloff_at, ids_of};
+use std::collections::BTreeMap;
 
 const INST_VEC2: PortType = PortType::new(Domain::Instances, Dim::Vec2, Clock::Frame);
 
@@ -120,22 +121,23 @@ fn step(
     let n = input.count();
     let targets: Vec<f32> = (0..n).map(|i| channel_get(input, channel, i)).collect();
 
-    let seeded = state.get("spring_value").is_none() || state.count() != n;
-    let (mut value, mut vel) = if seeded {
-        (targets.clone(), vec![0.0f32; n])
-    } else {
+    // Every element starts seeded AT its target (no snap); the ones the state
+    // knows then step. Identity is the `id` column when present (a particle
+    // keeps its spring across the set's churn), else positional.
+    let mut value = targets.clone();
+    let mut vel = vec![0.0f32; n];
+
+    if let Some(prev) = pairing(input, state, n) {
+        let sn = state.count();
         let read = |name: &str| -> Vec<f32> {
             let mut v = match state.get(name) {
                 Some(Column::Scalar(v)) => v.clone(),
                 _ => Vec::new(),
             };
-            v.resize(n, 0.0);
+            v.resize(sn, 0.0);
             v
         };
-        (read("spring_value"), read("spring_vel"))
-    };
-
-    if !seeded {
+        let (s_value, s_vel) = (read("spring_value"), read("spring_vel"));
         let t_prev = match state.get("sim_t") {
             Some(Column::Scalar(v)) => v.first().copied().unwrap_or(playhead),
             _ => playhead,
@@ -149,17 +151,21 @@ fn step(
             1
         };
         let sub_dt = dt / steps as f32;
-        for i in 0..n {
+        for (i, slot) in prev.iter().enumerate() {
+            let Some(j) = *slot else { continue }; // fresh id: stays at its target
+            let (mut v, mut x) = (s_vel[j], s_value[j]);
             // NaN/∞ guard (reference parity): a diverged instance recovers.
-            if !(value[i].is_finite() && vel[i].is_finite()) {
-                value[i] = targets[i];
-                vel[i] = 0.0;
+            if !(x.is_finite() && v.is_finite()) {
+                x = targets[i];
+                v = 0.0;
             }
             for _ in 0..steps {
-                let accel = -friction * vel[i] - tension * (value[i] - targets[i]);
-                vel[i] += accel * sub_dt;
-                value[i] += vel[i] * sub_dt;
+                let accel = -friction * v - tension * (x - targets[i]);
+                v += accel * sub_dt;
+                x += v * sub_dt;
             }
+            value[i] = x;
+            vel[i] = v;
         }
     }
 
@@ -180,6 +186,27 @@ fn step(
     out.set("spring_vel", Column::Scalar(vel));
     out.set("sim_t", Column::Scalar(vec![playhead; n]));
     out
+}
+
+/// For each of the `n` input elements, the row of `state` holding its previous
+/// spring — `None` for a freshly-seen element (it starts at its target).
+/// `None` overall when there is no state yet, or when a count change on an
+/// id-less stream says the set was rebuilt. Mirrors `motion.integrate::pairing`.
+fn pairing(input: &Stream, state: &Stream, n: usize) -> Option<Vec<Option<usize>>> {
+    state.get("spring_value")?; // no state yet (tick 0, `pre` = Empty)
+    let sn = state.count();
+    match (ids_of(input, n), ids_of(state, sn)) {
+        (Some(in_ids), Some(state_ids)) => {
+            let index: BTreeMap<u32, usize> = state_ids
+                .iter()
+                .enumerate()
+                .map(|(j, id)| (*id, j))
+                .collect();
+            Some(in_ids.iter().map(|id| index.get(id).copied()).collect())
+        }
+        _ if sn == n => Some((0..n).map(Some).collect()),
+        _ => None,
+    }
 }
 
 /// Register this node with the runtime registry. Called (via codegen) from

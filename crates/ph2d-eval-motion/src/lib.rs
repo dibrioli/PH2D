@@ -58,13 +58,26 @@ pub fn lower_to_instances_into(
     default_size: [f32; 2],
     out: &mut Vec<RenderInstance>,
 ) {
+    out.clear();
+    lower_to_instances_onto(stream, default_uv_rect, default_size, out);
+}
+
+/// Like [`lower_to_instances_into`] but **appends** — `out` keeps whatever it
+/// already holds. This is how several render sinks compose into one draw: the
+/// pump clears once, then each `motion.output` node's stream lowers onto the
+/// same buffer (still zero-alloc in steady state — capacity is retained).
+pub fn lower_to_instances_onto(
+    stream: &Stream,
+    default_uv_rect: [f32; 4],
+    default_size: [f32; 2],
+    out: &mut Vec<RenderInstance>,
+) {
     let n = stream.count();
     let p = stream.get("P");
     let size = stream.get("size");
     let rot = stream.get("rot");
     let tint = stream.get("tint");
     let uv_rect = stream.get("uv_rect");
-    out.clear();
     out.reserve(n);
     for i in 0..n {
         // ADR-0070-amendment-4: RenderInstance carries the 2×2 world
@@ -224,17 +237,24 @@ impl MotionCookPump {
         self.dirty = true;
     }
 
-    /// Re-cook `sink` into `instances` at `playhead` **iff** the frame is dirty
-    /// (the `tick` changed since the last cook, [`Self::mark_dirty`] was called,
-    /// or this is the first cook). A clean, unchanged frame (paused, no edit)
-    /// leaves the buffer untouched — zero allocation. Returns `true` if it
-    /// cooked. Reuse the SAME pump across frames for the steady state.
-    #[allow(clippy::too_many_arguments)] // graph + resolver + sink + tick + playhead + 2 defaults
+    /// Re-cook every sink in `sinks` into `instances` at `playhead` **iff** the
+    /// frame is dirty (the `tick` changed since the last cook,
+    /// [`Self::mark_dirty`] was called, or this is the first cook). A clean,
+    /// unchanged frame (paused, no edit) leaves the buffer untouched — zero
+    /// allocation. Returns `true` if it cooked. Reuse the SAME pump across
+    /// frames for the steady state.
+    ///
+    /// **Several sinks compose into one draw**: each `motion.output` node in the
+    /// document lowers onto the shared buffer, in the order given (the shell
+    /// scans by node id, so it is deterministic). A document may therefore hold
+    /// independent scenes — a grid rig and a particle fountain — without a
+    /// stream-merging node. An empty `sinks` clears the buffer (nothing renders).
+    #[allow(clippy::too_many_arguments)] // graph + resolver + sinks + tick + playhead + 2 defaults
     pub fn pump(
         &mut self,
         graph: &Graph,
         ops: &dyn OpResolver,
-        sink: Option<NodeId>,
+        sinks: &[NodeId],
         tick: u64,
         playhead: f64,
         default_uv_rect: [f32; 4],
@@ -243,23 +263,26 @@ impl MotionCookPump {
         if !self.dirty && self.last_cooked_tick == Some(tick) {
             return false; // paused + unchanged → reuse the buffer, no heap traffic
         }
-        match sink {
-            Some(s) => {
-                let _ = evaluate_motion_into(
-                    &mut self.cook,
-                    graph,
-                    ops,
-                    s,
-                    playhead,
+        self.instances.clear();
+        for &sink in sinks {
+            // A sink that fails to cook (an unknown type mid-edit) contributes
+            // nothing; the others still draw.
+            if let Ok(outputs) = self.cook.cook(graph, ops, sink, playhead)
+                && let Some(v) = outputs.first()
+            {
+                lower_to_instances_onto(
+                    v.as_stream(),
                     default_uv_rect,
                     default_size,
                     &mut self.instances,
                 );
-                // Advance the 1-tick `pre` feedback once per cooked frame (a
-                // no-op when the graph has no `pre` edge, as the M0 vertical).
-                let _ = self.cook.advance_tick(graph, ops, playhead);
             }
-            None => self.instances.clear(),
+        }
+        if !sinks.is_empty() {
+            // Advance the 1-tick `pre` feedback once per cooked frame — ONCE for
+            // the whole graph, not per sink (each sink's `pre` sources are
+            // snapshotted by the same call).
+            let _ = self.cook.advance_tick(graph, ops, playhead);
         }
         self.last_cooked_tick = Some(tick);
         self.dirty = false;
@@ -430,6 +453,36 @@ mod tests {
     }
 
     #[test]
+    fn several_sinks_compose_into_one_instance_buffer() {
+        // Two independent sinks (here the same source cooked twice — the shell
+        // wires two `motion.output` nodes) append into one buffer, in order.
+        // The capacity is retained across pumps: no per-frame heap traffic.
+        let mut g = Graph::new();
+        let a = g.add_node("motion.test.src");
+        let b = g.add_node("motion.test.src");
+        let mut pump = MotionCookPump::new();
+        let (uv, size) = ([0.0, 0.0, 1.0, 1.0], [1.0, 1.0]);
+
+        assert!(pump.pump(&g, &Ops, &[a, b], 0, 0.0, uv, size));
+        assert_eq!(pump.instances.len(), 4, "both sinks drew (2 + 2)");
+        assert_eq!(pump.instances[0].world_pos, [0.0, 0.0]);
+        assert_eq!(
+            pump.instances[2].world_pos,
+            [0.0, 0.0],
+            "second sink follows"
+        );
+
+        let cap = pump.instances.capacity();
+        assert!(pump.pump(&g, &Ops, &[a], 1, 0.0, uv, size));
+        assert_eq!(
+            pump.instances.len(),
+            2,
+            "dropping a sink drops its instances"
+        );
+        assert!(pump.instances.capacity() >= cap, "capacity retained");
+    }
+
+    #[test]
     fn evaluate_motion_cooks_and_lowers() {
         let mut g = Graph::new();
         let src = g.add_node("motion.test.src");
@@ -449,23 +502,23 @@ mod tests {
         let size = [1.0, 1.0];
 
         // First pump (dirty from `new`) cooks the sink.
-        assert!(pump.pump(&g, &Ops, Some(src), 0, 0.0, uv, size));
+        assert!(pump.pump(&g, &Ops, &[src], 0, 0.0, uv, size));
         assert_eq!(pump.instances.len(), 2);
 
         // Same tick, clean → skip (a paused, unchanged frame).
-        assert!(!pump.pump(&g, &Ops, Some(src), 0, 0.0, uv, size));
+        assert!(!pump.pump(&g, &Ops, &[src], 0, 0.0, uv, size));
 
         // The tick advanced (playing / scrub) → cook.
-        assert!(pump.pump(&g, &Ops, Some(src), 1, 0.0, uv, size));
+        assert!(pump.pump(&g, &Ops, &[src], 1, 0.0, uv, size));
         // …then hold at that tick → skip again.
-        assert!(!pump.pump(&g, &Ops, Some(src), 1, 0.0, uv, size));
+        assert!(!pump.pump(&g, &Ops, &[src], 1, 0.0, uv, size));
 
         // A graph edit forces a re-cook at the SAME tick.
         pump.mark_dirty();
-        assert!(pump.pump(&g, &Ops, Some(src), 1, 0.0, uv, size));
+        assert!(pump.pump(&g, &Ops, &[src], 1, 0.0, uv, size));
 
-        // A `None` sink clears the buffer (still counts as a cook).
-        assert!(pump.pump(&g, &Ops, None, 2, 0.0, uv, size));
+        // No sink clears the buffer (still counts as a cook).
+        assert!(pump.pump(&g, &Ops, &[], 2, 0.0, uv, size));
         assert!(pump.instances.is_empty());
     }
 }

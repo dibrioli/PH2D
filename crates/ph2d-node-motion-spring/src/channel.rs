@@ -18,6 +18,21 @@ pub(crate) fn falloff_at(stream: &Stream, i: usize) -> f32 {
     }
 }
 
+/// Per-element identity keys — the `id` column when present, else `None`
+/// (positional identity). Mirrors `motion.integrate`'s reading of the same
+/// convention, so a spring downstream of the particle emitter tracks each
+/// particle instead of resetting as the set churns.
+pub(crate) fn ids_of(s: &Stream, n: usize) -> Option<Vec<u32>> {
+    match s.get("id") {
+        Some(Column::Scalar(v)) => {
+            let mut out: Vec<u32> = v.iter().map(|f| f.max(0.0) as u32).collect();
+            out.resize(n, 0);
+            Some(out)
+        }
+        _ => None,
+    }
+}
+
 /// Instance `i`'s value on `channel` (absent column → the channel's identity).
 /// Size reads the X component (the spring is uniform, like the reference).
 pub(crate) fn channel_get(stream: &Stream, channel: i32, i: usize) -> f32 {

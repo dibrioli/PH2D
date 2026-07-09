@@ -227,7 +227,7 @@ fn demo_dynamics_swirl_and_replay_deterministically() {
             pump.pump(
                 &motion.doc.graph,
                 &motion.registry,
-                motion.sink,
+                &motion.sinks,
                 k,
                 ph,
                 motion.default_uv_rect,
@@ -276,47 +276,78 @@ fn demo_dynamics_swirl_and_replay_deterministically() {
     assert_eq!(frames_a, frames_b, "the demo trajectory replays exactly");
 }
 
-/// The Output node IS the render sink: the bridge auto-selects it, cooking it
-/// draws whatever feeds it, and deleting it stops the render (no Output -> no
-/// sink -> empty). The output follows the graph, not a hidden toggle.
+/// Output nodes ARE the render sinks: the bridge auto-selects every one of them
+/// (so several independent scenes compose into one draw), cooking them draws
+/// whatever feeds them, and deleting them stops the render. The output follows
+/// the graph, not a hidden toggle.
 #[test]
-fn output_node_is_the_render_sink() {
+fn every_output_node_is_a_render_sink() {
     use ph2d_nodegraph::graph::{Edge, Graph};
     let mut motion = MotionState::new();
     let (uv, size) = (motion.default_uv_rect, motion.default_size);
 
-    // Fresh graph: grid -> Output.
+    // Fresh graph: two independent grids, each into its own Output.
     let mut g = Graph::new();
-    let grid = g.add_node("motion.grid");
-    let out = g.add_node("motion.output");
-    g.connect(Edge {
-        from: (grid, 0),
-        to: (out, 0),
-        delayed: false,
-    })
-    .unwrap();
+    let mut outs = Vec::new();
+    for _ in 0..2 {
+        let grid = g.add_node("motion.grid");
+        let out = g.add_node("motion.output");
+        g.connect(Edge {
+            from: (grid, 0),
+            to: (out, 0),
+            delayed: false,
+        })
+        .unwrap();
+        outs.push(out);
+    }
     motion.doc.graph = g;
 
-    // The bridge resolves the sink to the Output node…
-    let sink = output_node(&motion.doc.graph);
-    assert_eq!(sink, Some(out), "the Output node is the render sink");
-    // …and cooking it draws the grid cells feeding it.
+    // The bridge resolves BOTH Output nodes, in id order…
+    let sinks = output_nodes(&motion.doc.graph);
+    assert_eq!(sinks, outs, "every Output node is a sink, id-ordered");
+    // …and cooking them draws both grids into one buffer.
     motion.pump.mark_dirty();
-    motion
-        .pump
-        .pump(&motion.doc.graph, &motion.registry, sink, 0, 0.0, uv, size);
-    assert!(
-        motion.pump.instances.len() >= 4,
-        "Output renders whatever feeds it"
+    motion.pump.pump(
+        &motion.doc.graph,
+        &motion.registry,
+        &sinks,
+        0,
+        0.0,
+        uv,
+        size,
     );
+    let both = motion.pump.instances.len();
+    assert!(both >= 8, "both grids drew: {both}");
 
-    // Delete the Output node -> no sink -> nothing renders.
-    assert!(motion.doc.graph.remove_node(out));
-    let sink = output_node(&motion.doc.graph);
-    assert_eq!(sink, None, "no Output node -> no sink");
+    // Delete one Output -> only the survivor's scene renders.
+    assert!(motion.doc.graph.remove_node(outs[1]));
+    let sinks = output_nodes(&motion.doc.graph);
+    assert_eq!(sinks.len(), 1);
     motion.pump.mark_dirty();
-    motion
-        .pump
-        .pump(&motion.doc.graph, &motion.registry, sink, 0, 0.0, uv, size);
+    motion.pump.pump(
+        &motion.doc.graph,
+        &motion.registry,
+        &sinks,
+        0,
+        0.0,
+        uv,
+        size,
+    );
+    assert_eq!(motion.pump.instances.len(), both / 2, "half the instances");
+
+    // Delete the last one -> no sink -> nothing renders.
+    assert!(motion.doc.graph.remove_node(outs[0]));
+    let sinks = output_nodes(&motion.doc.graph);
+    assert!(sinks.is_empty(), "no Output node -> no sink");
+    motion.pump.mark_dirty();
+    motion.pump.pump(
+        &motion.doc.graph,
+        &motion.registry,
+        &sinks,
+        0,
+        0.0,
+        uv,
+        size,
+    );
     assert_eq!(motion.pump.instances.len(), 0, "no Output -> empty render");
 }

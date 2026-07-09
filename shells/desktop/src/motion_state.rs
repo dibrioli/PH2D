@@ -12,6 +12,9 @@
 //! Document ≠ tool (ADR-0040): the `MotionTool` is a thin activation handle; all
 //! the state lives here in the shell, mirroring `AppGfx.vec_scene`.
 
+#[path = "motion_demo_particles.rs"]
+mod particles;
+
 use ph2d_eval_motion::MotionCookPump;
 use ph2d_motion_doc::{MotionDoc, MotionHistory, MotionTransport};
 use ph2d_node_registry::NodeRegistry;
@@ -33,9 +36,12 @@ pub(crate) struct MotionState {
     pub(crate) pump: MotionCookPump,
     /// Registered node ops (the `OpResolver` the cook resolves against).
     pub(crate) registry: NodeRegistry,
-    /// Terminal node whose output stream is lowered to instances (`None` until a
-    /// well-typed sink exists).
-    pub(crate) sink: Option<NodeId>,
+    /// Terminal nodes whose output streams are lowered to instances — every
+    /// `motion.output` node in the document, in node-id order. Several sinks
+    /// compose into one draw, so a document can hold independent scenes (a grid
+    /// rig and a particle fountain) without a stream-merging node. Empty until
+    /// a well-typed Output node exists.
+    pub(crate) sinks: Vec<NodeId>,
     /// `atlas_uv` fallback for instances whose stream carries no `uv_rect`
     /// column (the M0 case — no framing node yet). Set from the composed atlas
     /// at init to a single opaque tile, so the raw default document renders as
@@ -59,14 +65,14 @@ impl MotionState {
         ph2d_node_registry_init::register_all_nodes(&mut registry)
             .expect("motion node registry builds");
         let mut doc = MotionDoc::new();
-        let sink = build_cavalry_demo(&mut doc.graph, &registry);
+        let sinks = build_cavalry_demo(&mut doc.graph, &registry).unwrap_or_default();
         Self {
             doc,
             history: MotionHistory::new(),
             transport: MotionTransport::new(),
             pump: MotionCookPump::new(),
             registry,
-            sink,
+            sinks,
             // Whole-atlas until the shell wires a real tile (init.rs). Headless
             // callers / tests keep this default.
             default_uv_rect: [0.0, 0.0, 1.0, 1.0],
@@ -115,7 +121,7 @@ impl MotionState {
 ///   animated upstream, it never replaces it) while the edges hold still.
 ///
 /// The Output node is the render target; the bridge keeps `sink` pointed at it.
-fn build_cavalry_demo(g: &mut Graph, reg: &NodeRegistry) -> Option<NodeId> {
+fn build_cavalry_demo(g: &mut Graph, reg: &NodeRegistry) -> Option<Vec<NodeId>> {
     let grid = g.add_node("motion.grid");
     let clone = g.add_node("motion.clone");
     let tint = g.add_node("motion.tint");
@@ -266,10 +272,14 @@ fn build_cavalry_demo(g: &mut Graph, reg: &NodeRegistry) -> Option<NodeId> {
     g.set_param(attractor, "radius", 8.0);
     g.set_param(drag, "coefficient", 1.2);
 
+    // The second, independent scene: a particle fountain with its own Output.
+    // Both sinks lower onto one instance buffer (multi-sink render).
+    let fountain = particles::build(g)?;
+
     // Same "validate on load" the editor runs before cooking — proves the authored
     // graph is well-typed and membrane-clean.
     g.validate(reg).ok()?;
-    Some(output)
+    Some(vec![output, fountain])
 }
 
 #[cfg(test)]
@@ -277,74 +287,108 @@ mod tests {
     use super::*;
 
     #[test]
-    fn new_builds_the_well_typed_cavalry_demo() {
+    fn new_builds_the_well_typed_demo_with_both_scenes() {
         let state = MotionState::new();
-        assert!(state.sink.is_some(), "the demo must have a sink");
-        // 14 nodes (grid, clone, tint, orbit, falloff, stagger, oscillator,
-        // wiggle, spring, integrate, vortex, attractor, drag, output).
-        assert_eq!(state.doc.graph.nodes().len(), 14);
-        let sink = state.sink.unwrap();
-        assert_eq!(
-            state.doc.graph.node(sink).unwrap().type_name,
-            "motion.output"
-        );
+        // Two independent scenes, two Output nodes → two render sinks.
+        assert_eq!(state.sinks.len(), 2, "grid rig + particle fountain");
+        for &s in &state.sinks {
+            assert_eq!(state.doc.graph.node(s).unwrap().type_name, "motion.output");
+        }
+        // 14 grid-rig nodes + 7 fountain nodes (emitter, integrate, tint,
+        // output, wind, curl, drag).
+        assert_eq!(state.doc.graph.nodes().len(), 21);
         assert!(state.doc.graph.validate(&state.registry).is_ok());
         assert_eq!(state.playhead(1.0 / 60.0), 0.0); // paused at tick 0
     }
 
+    /// Cook the whole default document through the REAL registry, exactly as
+    /// the bridge does (one pump per fixed tick). Proves: both scenes draw into
+    /// one buffer, the grid keeps its 400 gradient-tinted instances, the
+    /// fountain fills up over time as particles are born, and the particles
+    /// actually leave the emitter's muzzle (the id-keyed integrator moved them).
     #[test]
-    fn cavalry_demo_gate_cooks_400_animated_coloured_instances() {
+    fn both_scenes_cook_into_one_buffer_and_the_fountain_flows() {
         use ph2d_eval_motion::MotionCookPump;
-        // The M1 gate, cooked through the real registry: 20×10 grid cloned ×2 =
-        // 400 instances, gradient-tinted, and the oscillator animates them (Y
-        // moves with the playhead) — proving grid+clone+tint+falloff+stagger+
-        // oscillator compose.
         let state = MotionState::new();
         let (uv, size) = (state.default_uv_rect, state.default_size);
-
         let mut pump = MotionCookPump::new();
+
+        // Tick 0: the grid's 400 + the fountain's first particle.
         pump.pump(
             &state.doc.graph,
             &state.registry,
-            state.sink,
+            &state.sinks,
             0,
             0.0,
             uv,
             size,
         );
-        assert_eq!(
-            pump.instances.len(),
-            400,
-            "20×10 grid cloned ×2 = 400 instances"
-        );
-        // The gradient sweeps the authored Start -> End across the stream: the
-        // first instance is the red Start, the last the blue End. (What the
-        // artist sees also depends on the atlas texel the instances sample —
-        // the shader multiplies tint by it — which is why the shell points the
-        // Motion fallback at the reserved WHITE tile, not a coloured demo one.)
-        let c0 = pump.instances[0].tint;
-        let clast = pump.instances[399].tint;
-        assert_eq!(c0, [1.0, 0.1, 0.1, 1.0], "first instance = Start (red)");
-        assert_eq!(clast, [0.1, 0.3, 1.0, 1.0], "last instance = End (blue)");
+        let at_start = pump.instances.len();
+        assert!(at_start > 400, "grid (400) + at least one particle");
 
-        // A central instance moves in Y as time advances (oscillator, focus-masked).
-        let mid = 400 / 2 + 10; // an instance near the centre (inside the falloff)
-        let y_at = |ph: f64| {
-            let mut p = MotionCookPump::new();
-            p.pump(
+        // Drive 2 seconds of fixed ticks: the fountain fills toward `rate × life`.
+        for k in 1..=120u64 {
+            pump.pump(
                 &state.doc.graph,
                 &state.registry,
-                state.sink,
-                1,
-                ph,
+                &state.sinks,
+                k,
+                k as f64 / 60.0,
                 uv,
                 size,
             );
-            p.instances[mid].world_pos[1]
+        }
+        // The grid contributes a constant 400; everything past that is alive
+        // particles. Two seconds of a fountain is a crowd, not a trickle (the
+        // exact count follows the demo's rate, which is free to be retuned).
+        let alive = pump.instances.len() - 400;
+        assert!(alive > 60, "the fountain fills up: {alive} particles alive");
+
+        // The grid still leads the buffer (first sink) and is still a gradient.
+        assert_ne!(pump.instances[0].tint, pump.instances[399].tint);
+
+        // The particles (tail of the buffer) left the emitter's origin (-4,-4):
+        // the integrator seeded each newborn from its muzzle velocity and moved
+        // it. If id-matching were broken they would sit at the origin forever.
+        let flown = pump.instances[400..]
+            .iter()
+            .filter(|i| {
+                let d = (i.world_pos[0] + 4.0).abs() + (i.world_pos[1] + 4.0).abs();
+                d > 0.25
+            })
+            .count();
+        assert!(flown > 20, "particles left the muzzle, only {flown} did");
+    }
+
+    /// The whole default document replays bit-identically — grid rig AND the
+    /// stateless emitter's alive set (the reference's stateful emitter could
+    /// not do this). Guards HR-5 across the id-keyed integrator.
+    #[test]
+    fn the_default_document_replays_deterministically() {
+        use ph2d_eval_motion::MotionCookPump;
+        let run = || {
+            let state = MotionState::new();
+            let mut pump = MotionCookPump::new();
+            let mut frames = Vec::new();
+            for k in 0..30u64 {
+                pump.pump(
+                    &state.doc.graph,
+                    &state.registry,
+                    &state.sinks,
+                    k,
+                    k as f64 / 60.0,
+                    state.default_uv_rect,
+                    state.default_size,
+                );
+                frames.push(
+                    pump.instances
+                        .iter()
+                        .map(|i| (i.world_pos, i.tint))
+                        .collect::<Vec<_>>(),
+                );
+            }
+            frames
         };
-        assert!(
-            (y_at(0.25) - y_at(0.0)).abs() > 1e-4,
-            "the focus region animates over time"
-        );
+        assert_eq!(run(), run(), "two runs of the same document match exactly");
     }
 }

@@ -26,6 +26,25 @@ pub(crate) fn scalar_to_n(s: &Stream, name: &str, n: usize, identity: f32) -> Ve
     v
 }
 
+/// Per-element **identity keys** of a stream: the `id` column when present
+/// (the particle emitter stamps one, stable across a birth/death churn), else
+/// the element's position. `None` when the stream has no `id` column at all —
+/// the caller then knows identity is positional and a count change means the
+/// whole set was rebuilt (a re-seed), not that some elements died.
+pub(crate) fn ids_of(s: &Stream, n: usize) -> Option<Vec<u32>> {
+    match s.get("id") {
+        // Ids are authored as exact small integers in an f32 (`u32 as f32` is
+        // lossless below 2^24 — ~9 hours of spawning at 500/s), so the cast back
+        // is exact. A negative / non-finite id is a corrupt stream: key it to 0.
+        Some(Column::Scalar(v)) => {
+            let mut out: Vec<u32> = v.iter().map(|f| f.max(0.0) as u32).collect();
+            out.resize(n, 0);
+            Some(out)
+        }
+        _ => None,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

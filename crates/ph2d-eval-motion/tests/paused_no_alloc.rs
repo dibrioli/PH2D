@@ -66,12 +66,12 @@ fn paused_frames_allocate_nothing() {
     // Warm: the first pump cooks (dirty from `new`) + fills the buffer to its
     // steady capacity. A second pump at the same tick must already skip.
     assert!(
-        pump.pump(&g, &reg, Some(sink), TICK, PLAYHEAD, UV, SIZE),
+        pump.pump(&g, &reg, &[sink], TICK, PLAYHEAD, UV, SIZE),
         "first pump cooks"
     );
     assert_eq!(pump.instances.len(), 27, "grid 3×3 × clone ×3");
     assert!(
-        !pump.pump(&g, &reg, Some(sink), TICK, PLAYHEAD, UV, SIZE),
+        !pump.pump(&g, &reg, &[sink], TICK, PLAYHEAD, UV, SIZE),
         "a second paused frame at the same tick skips the cook"
     );
     let cap_before = pump.instances.capacity();
@@ -80,7 +80,7 @@ fn paused_frames_allocate_nothing() {
     let profiler = Profiler::builder().testing().build();
     let before = HeapStats::get();
     for _ in 0..FRAMES {
-        let cooked = pump.pump(&g, &reg, Some(sink), TICK, PLAYHEAD, UV, SIZE);
+        let cooked = pump.pump(&g, &reg, &[sink], TICK, PLAYHEAD, UV, SIZE);
         debug_assert!(!cooked);
     }
     let after = HeapStats::get();

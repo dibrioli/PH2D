@@ -34,10 +34,21 @@
 //!   backwards playhead jump (loop wrap) freezes for one tick instead of
 //!   exploding. The shell cooks once per fixed tick, so in steady state `dt`
 //!   IS the fixed timestep (deterministic, HR-5: arithmetic only).
-//! - `rest.count()` changed → **re-seed** (the whole state restarts; per-id
-//!   reconciliation is a follow-up with the particle emitter).
 //! - A non-finite `vel`/`sim_d` element resets that instance (the reference's
 //!   NaN guard: recover automatically instead of freezing a diverged sim).
+//!
+//! ## Identity: the `id` column vs position
+//!
+//! A stream carrying an **`id` column** (the particle emitter stamps one) has
+//! *element identity*: the set churns every tick as particles are born and die,
+//! yet each survivor must keep its velocity and displacement. State is matched
+//! by id; an id with no prior state is **seeded** (taking `vel` from `rest`, so
+//! the emitter's muzzle velocity is what launches it) and a state row whose id
+//! vanished dies with it.
+//!
+//! A stream with **no `id`** (a grid, a cloner) has only positional identity, so
+//! a changed count means the whole set was rebuilt: the state re-seeds wholesale
+//! rather than pairing unrelated elements by index.
 
 use ph2d_node_registry::{NodeRegistry, RegistryError};
 use ph2d_nodegraph::attr::{Column, Stream};
@@ -47,7 +58,8 @@ use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, PortS
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 
 mod columns;
-use columns::{scalar_to_n, vec2_to_n};
+use columns::{ids_of, scalar_to_n, vec2_to_n};
+use std::collections::BTreeMap;
 
 const INST_VEC2: PortType = PortType::new(Domain::Instances, Dim::Vec2, Clock::Frame);
 
@@ -107,7 +119,8 @@ impl NodeOp for MotionIntegrate {
 fn step(rest: &Stream, state: &Stream, playhead: f32) -> Stream {
     let n = rest.count();
     // Every non-sim column flows LIVE from rest; the transient `accel` is
-    // consumed (dropped) and the sim columns are rewritten below.
+    // consumed (dropped) and the sim columns are rewritten below. `id` is NOT a
+    // sim column — it rides through, so next tick's state carries it.
     let mut out = Stream::new(n);
     for (name, col) in rest.columns() {
         if !matches!(name.as_str(), "accel" | "vel" | "sim_d" | "sim_t") {
@@ -116,39 +129,34 @@ fn step(rest: &Stream, state: &Stream, playhead: f32) -> Stream {
     }
     let rest_p = vec2_to_n(rest, "P", n, [0.0, 0.0]);
 
-    // Seed when the loop hasn't produced a state yet (tick 0: `pre` = Empty)
-    // or the element count changed (re-seed, documented).
-    let seeded = state.get("sim_d").is_none() || state.count() != n;
-    let (mut vel, mut sim_d) = if seeded {
-        (vec2_to_n(rest, "vel", n, [0.0, 0.0]), vec![[0.0f32; 2]; n])
-    } else {
-        (
-            vec2_to_n(state, "vel", n, [0.0, 0.0]),
-            vec2_to_n(state, "sim_d", n, [0.0, 0.0]),
-        )
-    };
+    // Every element starts at its seed (`vel` from rest — the emitter's muzzle
+    // velocity — and no displacement); the ones the state knows then step.
+    let mut vel = vec2_to_n(rest, "vel", n, [0.0, 0.0]);
+    let mut sim_d = vec![[0.0f32; 2]; n];
 
-    if !seeded {
+    // Pair each rest element with its prior state row (`None` = seed it).
+    if let Some(prev) = pairing(rest, state, n) {
+        let sn = state.count();
         // dt from the state's own clock column — see the module docs.
-        let t_prev = scalar_to_n(state, "sim_t", n, playhead);
+        let t_prev = scalar_to_n(state, "sim_t", sn, playhead);
         let dt = (playhead - t_prev.first().copied().unwrap_or(playhead)).clamp(0.0, MAX_DT);
-        let accel = vec2_to_n(state, "accel", n, [0.0, 0.0]);
-        for i in 0..n {
+        let s_vel = vec2_to_n(state, "vel", sn, [0.0, 0.0]);
+        let s_sim_d = vec2_to_n(state, "sim_d", sn, [0.0, 0.0]);
+        let accel = vec2_to_n(state, "accel", sn, [0.0, 0.0]);
+        for (i, slot) in prev.iter().enumerate() {
+            let Some(j) = *slot else { continue }; // a fresh id: stays seeded
+            let (mut v, mut d, a) = (s_vel[j], s_sim_d[j], accel[j]);
             // Semi-implicit Euler: velocity first, then position with the NEW
             // velocity (symplectic — stable for oscillatory forces).
-            vel[i][0] += accel[i][0] * dt;
-            vel[i][1] += accel[i][1] * dt;
-            sim_d[i][0] += vel[i][0] * dt;
-            sim_d[i][1] += vel[i][1] * dt;
+            v[0] += a[0] * dt;
+            v[1] += a[1] * dt;
+            d[0] += v[0] * dt;
+            d[1] += v[1] * dt;
             // NaN/∞ guard (reference parity): a diverged instance recovers by
             // resetting instead of freezing the whole sim.
-            if !(vel[i][0].is_finite()
-                && vel[i][1].is_finite()
-                && sim_d[i][0].is_finite()
-                && sim_d[i][1].is_finite())
-            {
-                vel[i] = [0.0, 0.0];
-                sim_d[i] = [0.0, 0.0];
+            if v.iter().chain(&d).all(|x| x.is_finite()) {
+                vel[i] = v;
+                sim_d[i] = d;
             }
         }
     }
@@ -163,6 +171,32 @@ fn step(rest: &Stream, state: &Stream, playhead: f32) -> Stream {
     out.set("sim_d", Column::Vec2(sim_d));
     out.set("sim_t", Column::Scalar(vec![playhead; n]));
     out
+}
+
+/// For each of the `n` rest elements, the row of `state` holding its previous
+/// simulation state — `None` for a freshly-born element (it stays at its seed).
+/// The whole result is `None` (seed everything) when the state carries no sim
+/// columns yet (tick 0, `pre` = Empty) or when a count change on an id-less
+/// stream says the set was rebuilt (see the module docs).
+fn pairing(rest: &Stream, state: &Stream, n: usize) -> Option<Vec<Option<usize>>> {
+    state.get("sim_d")?; // no state yet (tick 0, `pre` = Empty)
+    let sn = state.count();
+    match (ids_of(rest, n), ids_of(state, sn)) {
+        // Element identity: match by id. `BTreeMap` keeps it deterministic and
+        // O(n log n) rather than the O(n·sn) scan a naive `position()` would be.
+        (Some(rest_ids), Some(state_ids)) => {
+            let index: BTreeMap<u32, usize> = state_ids
+                .iter()
+                .enumerate()
+                .map(|(j, id)| (*id, j))
+                .collect();
+            Some(rest_ids.iter().map(|id| index.get(id).copied()).collect())
+        }
+        // Positional identity: a stable count pairs row-for-row; a changed count
+        // means the set was rebuilt, so re-seed rather than pair by index.
+        _ if sn == n => Some((0..n).map(Some).collect()),
+        _ => None,
+    }
 }
 
 /// Register this node with the runtime registry. Called (via codegen) from
@@ -509,6 +543,70 @@ mod tests {
         match out.get("P").unwrap() {
             Column::Vec2(v) => assert_eq!(v[0], [1.0, 1.0], "reset to the live rest pose"),
             _ => panic!("P"),
+        }
+    }
+
+    /// A stream with ids: the survivor keeps its state while its neighbours
+    /// churn around it. Falsify by pairing positionally and instance `7` picks
+    /// up the dead particle's velocity.
+    #[test]
+    fn an_id_survives_the_churn_and_keeps_its_state() {
+        let with_ids = |ids: &[f32], p: &[[f32; 2]]| {
+            Stream::new(ids.len())
+                .with("P", Column::Vec2(p.to_vec()))
+                .with("id", Column::Scalar(ids.to_vec()))
+        };
+        // Tick 0: particles 5 and 7 exist; 7 was launched with vel (2,0).
+        let state = with_ids(&[5.0, 7.0], &[[0.0, 0.0], [0.0, 0.0]])
+            .with("vel", Column::Vec2(vec![[9.0, 9.0], [2.0, 0.0]]))
+            .with("sim_d", Column::Vec2(vec![[9.0, 9.0], [1.0, 0.0]]))
+            .with("accel", Column::Vec2(vec![[0.0, 0.0], [0.0, 0.0]]))
+            .with("sim_t", Column::Scalar(vec![0.0, 0.0]));
+        // Tick 1: particle 5 died, 7 survived (now at row 0), 8 was born.
+        let rest = with_ids(&[7.0, 8.0], &[[0.0, 0.0], [0.0, 0.0]])
+            .with("vel", Column::Vec2(vec![[0.0, 0.0], [-3.0, 0.0]]));
+        let out = step(&rest, &state, 0.1);
+
+        let vel = match out.get("vel").unwrap() {
+            Column::Vec2(v) => v.clone(),
+            _ => panic!("vel"),
+        };
+        let d = match out.get("sim_d").unwrap() {
+            Column::Vec2(v) => v.clone(),
+            _ => panic!("sim_d"),
+        };
+        // 7 kept ITS velocity (2,0) and integrated from ITS displacement (1,0):
+        // no accel, so d = 1 + 2·0.1 = 1.2. Not particle 5's (9,9) garbage.
+        assert_eq!(vel[0], [2.0, 0.0], "the survivor keeps its velocity");
+        assert!((d[0][0] - 1.2).abs() < 1e-5, "and its displacement");
+        // 8 is newborn: seeded from rest's muzzle velocity, zero displacement.
+        assert_eq!(
+            vel[1],
+            [-3.0, 0.0],
+            "the newborn launches at its muzzle vel"
+        );
+        assert_eq!(d[1], [0.0, 0.0]);
+        // The dead particle's row is gone (count follows rest).
+        assert_eq!(out.count(), 2);
+    }
+
+    #[test]
+    fn an_id_stream_that_shrinks_does_not_reseed_the_survivors() {
+        // The count changed, but identity says who survived — the id path must
+        // NOT take the id-less "count changed → re-seed" branch.
+        let state = Stream::new(2)
+            .with("P", Column::Vec2(vec![[0.0, 0.0]; 2]))
+            .with("id", Column::Scalar(vec![1.0, 2.0]))
+            .with("vel", Column::Vec2(vec![[5.0, 0.0], [0.0, 0.0]]))
+            .with("sim_d", Column::Vec2(vec![[4.0, 0.0], [0.0, 0.0]]))
+            .with("sim_t", Column::Scalar(vec![0.0, 0.0]));
+        let rest = Stream::new(1)
+            .with("P", Column::Vec2(vec![[0.0, 0.0]]))
+            .with("id", Column::Scalar(vec![1.0]));
+        let out = step(&rest, &state, 1.0 / 60.0);
+        match out.get("sim_d").unwrap() {
+            Column::Vec2(v) => assert!(v[0][0] > 4.0, "kept + advanced, not reset"),
+            _ => panic!("sim_d"),
         }
     }
 

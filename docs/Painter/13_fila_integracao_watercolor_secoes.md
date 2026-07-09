@@ -59,6 +59,16 @@ composite. Corpo molhado + rim no contorno EXTERNO + textura como variação de 
 
 ## Fila (demais gaps, sem ordem decidida)
 
+> **1º DA FILA (ordem do Enio, 2026-07-09): BUG da sessão molhada — parâmetros por-traço.**
+> Traço 1 com Concentration 1.0 + traço 2 com 0.3 na mesma sessão ⇒ no pen-up o re-bake da
+> união re-estiliza o traço 1 com 0.3 (o composite lê os params CORRENTES do brush pro conjunto;
+> era o caveat documentado do EDGE-1 take 2 — confirmado no smoke, não é aceitável). Rotas a
+> avaliar amanhã: (a) dobrar Concentration (e candidatos: fill/depth) no **mapa por-pixel de
+> reserva** no splat (o `stroke_deplete` já multiplica fill+edge — carrier natural, cuidado com o
+> caminho byte-idêntico do default); (b) mapa u8 de índice-de-traço + snapshot de params por
+> traço da sessão (geral, mais estado); (c) params divergentes ⇒ encerra sessão (barato, mas
+> perde a fusão — último recurso). Escolher a que preserva o caráter POR TRAÇO mantendo a fusão.
+
 | # | Item | Estado hoje | Nota |
 |---|---|---|---|
 | 2 | **Tiling** | ignorado (a replicação `tiled_dabs` vive em `stamp_dabs_routed`, depois do desvio) | replicar os dabs antes do accumulate; o composite/dirty-rect precisa do wrap também |

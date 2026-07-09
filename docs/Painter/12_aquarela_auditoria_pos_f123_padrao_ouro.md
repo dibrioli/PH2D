@@ -453,8 +453,10 @@ através do wash de cima ("acho que não funcionou"). Atenuar não basta: tem qu
   (c) alpha da cor volta a × `depl` (exato, do mixer) — pincel esgotado não re-tinge poça molhada
   em prioridade cheia (na união a poça re-renderiza com a cor contaminada).
 - Atenuação de edge do take 1 REMOVIDA (na união ela derreteria o próprio rim no re-bake).
-- Caveat documentado: trocar parâmetros do brush no MEIO da sessão re-estiliza a união no próximo
-  bake (o composite usa os params correntes) — aceito; sessão dura ~8,5 s.
+- ~~Caveat documentado: trocar parâmetros do brush no MEIO da sessão re-estiliza a união~~ —
+  **PROMOVIDO A BUG (Enio smoke 2026-07-09):** Concentration 1.0 → 0.3 entre traços da sessão
+  converte o traço 1 pra 0.3 no pen-up. **1º da fila de amanhã** (doc 13, topo): params por-traço
+  na união (candidato: dobrar no mapa de reserva por-pixel).
 - Teste: `watercolor_touching_wet_washes_merge_without_double_rim` (junção molhada: rim de B
   ausente E rim interno de A derretido, ~100 G mais claro que seco-primeiro; mapa seco dropado).
   Knob: `CANVAS_WET_DRY_PER_S` (desce = janela de fusão maior).

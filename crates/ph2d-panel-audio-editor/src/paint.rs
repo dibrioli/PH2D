@@ -380,9 +380,15 @@ fn fmt_time(secs: f64) -> String {
     format!("{m}:{rem:04.1}") // LITERAL-PX-OK: mm:ss.d time format spec, not a UI metric
 }
 
-/// A labeled action button: `Bg3` + `Text1` when enabled, dimmed to `Text2`
-/// when not. Registers `id` as the hit rect regardless (disabled is a visual
-/// hint only in W1). Shared with the effects rack section (`paint_fx`).
+/// A labeled action button: `Bg3` + `Text1` when enabled, dimmed to `Text2` when
+/// not. Shared with the effects rack section (`paint_fx`).
+///
+/// A **disabled button does not register a hit rect**, so it cannot be clicked.
+/// It used to register regardless ("disabled is a visual hint only"), which made
+/// every dimmed control silently live: clicking the dimmed `Silence` with no
+/// selection fell through to `target()` and zeroed the WHOLE clip (2026-07-09
+/// audit). The panel dims and the seam refuses — two layers, since a dim alone is
+/// cosmetic.
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn button(
     rect: Rect,
@@ -413,7 +419,9 @@ pub(crate) fn button(
         TypeToken::Sm.px(),
         resolve(fg, theme),
     );
-    hit_index.register(id, rect);
+    if enabled {
+        hit_index.register(id, rect);
+    }
 }
 
 /// A labeled toggle button: `Accent` tint + `AccentFg` when engaged, else `Bg3`

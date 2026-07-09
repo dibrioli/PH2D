@@ -27,7 +27,9 @@ mod ops;
 mod peaks;
 
 pub use fx::{Effect, TailEffect};
-pub use ops::{FadeDir, FadeShape, in_range, in_range_tail, peak, snap_to_zero_crossing};
+pub use ops::{
+    FadeDir, FadeShape, in_range, in_range_tail, in_range_warm, peak, snap_to_zero_crossing,
+};
 pub use peaks::{ColumnPeaks, DEFAULT_BIN_SIZE, PeakCache, column_peaks};
 
 use std::ops::Range;
@@ -204,12 +206,15 @@ impl EditClip {
     }
 
     /// Render an offline [`Effect`] over the target range **without committing** —
-    /// the buffer the editor auditions live. Length-preserving, so it splices via
-    /// [`in_range`] exactly like the sample ops (a selection is processed in
-    /// isolation). Pair with [`EditClip::commit_rendered`] so what the user heard
-    /// is bit-for-bit what lands in the undo timeline.
+    /// the buffer the editor auditions live. Length-preserving, so it splices back
+    /// in place. Stateful effects (the IIR filters) are pre-rolled with the audio
+    /// before the range via [`in_range_warm`], so a mid-clip selection doesn't
+    /// click at its leading edge; memoryless ones get `warmup = 0` and behave
+    /// exactly like [`in_range`]. Pair with [`EditClip::commit_rendered`] so what
+    /// the user heard is bit-for-bit what lands in the undo timeline.
     pub fn render_effect(&self, fx: Effect) -> SampleData {
-        ops::in_range(&self.data, self.target(), |d| fx.apply(d))
+        let warmup = fx.warmup_frames(self.data.format().sample_rate);
+        ops::in_range_warm(&self.data, self.target(), warmup, |d| fx.apply(d))
     }
 
     /// Render a **tail-extending** [`TailEffect`] over the target range without
@@ -451,6 +456,46 @@ mod tests {
         applied.apply_tail_effect(fx);
         assert_eq!(heard.samples(), applied.data().samples());
         assert_eq!(heard.frame_count(), 1_480);
+    }
+
+    /// A filter applied to a MID-CLIP selection must not click at its leading edge.
+    /// Found by the 2026-07-09 audit: `in_range` hands the op an isolated region, so
+    /// the biquad starts with cleared memory — as if silence preceded the selection —
+    /// and its first output collapses toward zero while the untouched neighbour is
+    /// still at full level. `render_effect` now pre-rolls the real preceding audio.
+    #[test]
+    fn filtering_a_mid_clip_selection_does_not_click_at_the_leading_edge() {
+        // 4000 frames of steady DC: any level jump at the splice IS the artifact.
+        let d = SampleData::from_interleaved(vec![0.7; 8_000], AudioFormat::stereo(48_000));
+        let fx = Effect::LowPass {
+            cutoff: 1_000.0,
+            q: 0.707,
+        };
+        let sel = 2_000..3_000;
+        let step = |x: &SampleData| (x.samples()[2_000 * 2] - x.samples()[1_999 * 2]).abs();
+
+        // The cold splice (what plain `in_range` does) really does click.
+        let cold = in_range(&d, sel.clone(), |x| fx.apply(x));
+        assert!(
+            step(&cold) > 0.5,
+            "expected the cold-start click to reproduce, got {}",
+            step(&cold)
+        );
+
+        // `render_effect` pre-rolls the filter → the edge is continuous.
+        let mut clip = EditClip::new(d.clone());
+        clip.set_selection(Some(sel));
+        let warm = clip.render_effect(fx);
+        assert!(
+            step(&warm) < 0.01,
+            "warm-up must remove the edge click, got {}",
+            step(&warm)
+        );
+
+        // No selection: nothing precedes the range, so nothing to warm up on — and
+        // the result stays byte-identical to applying the op directly.
+        let whole = EditClip::new(d.clone());
+        assert_eq!(whole.render_effect(fx).samples(), fx.apply(&d).samples());
     }
 
     #[test]

@@ -106,6 +106,29 @@ impl Effect {
         }
     }
 
+    /// Frames of *preceding* audio this effect needs to enter a mid-clip region
+    /// already settled — see [`crate::in_range_warm`]. Zero for memoryless effects
+    /// and for the compressor, which settles its own envelope via `prime()`.
+    ///
+    /// A 2nd-order section rings for roughly `Q / (π·f0)` seconds per time
+    /// constant, so a low cutoff at high `Q` needs a long pre-roll; the cap keeps
+    /// the extra render bounded.
+    pub fn warmup_frames(&self, sample_rate: u32) -> usize {
+        /// Time constants of pre-roll: `1 - e^-8` ≈ 0.9997 of the way settled.
+        const TAUS: f32 = 8.0;
+        if self.is_bypass() {
+            return 0;
+        }
+        match *self {
+            Effect::LowPass { cutoff, q } | Effect::HighPass { cutoff, q } => {
+                let tau_frames =
+                    q.max(0.1) * sample_rate as f32 / (std::f32::consts::PI * cutoff.max(1.0));
+                ((TAUS * tau_frames) as usize).min(sample_rate as usize) // cap at 1 s
+            }
+            _ => 0,
+        }
+    }
+
     /// Whether this effect is at its neutral point and [`Effect::apply`] would
     /// return the input untouched.
     pub fn is_bypass(&self) -> bool {

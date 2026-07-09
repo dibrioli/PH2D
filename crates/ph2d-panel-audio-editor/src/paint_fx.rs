@@ -95,7 +95,9 @@ pub(crate) fn paint_fx_section(
         scene,
         theme,
     );
-    hit_index.register(AEDIT_FX_RESET, reset_rect);
+    if reset_state == ButtonState::Normal {
+        hit_index.register(AEDIT_FX_RESET, reset_rect);
+    }
     button(
         Rect::new(x + w - ARROW_W, y, ARROW_W, row_h),
         "\u{25b6}",

@@ -117,6 +117,26 @@ abaixo é histórico — não re-investigue.
     pra esse transiente de partida.
   - Teste `higher_ratio_lifts_rms_without_raising_the_peak`: pico nunca sobe (varre
     ratios × attacks) e, com attack rápido, ratio maior levanta o RMS.
+- **Auditoria multiagêntica (2026-07-09)** — 6 lentes + verificação adversarial (3 céticos
+  por achado). 8 achados, 5 confirmados, 3 refutados. Corrigidos:
+  1. **Clique na borda da seleção ao filtrar** (4 lentes convergiram nele): `in_range` entrega
+     ao op uma região ISOLADA, então o biquad começa com memória zerada — como se antes da
+     seleção houvesse silêncio. A 1ª amostra filtrada colapsa pra ~`b0·x` enquanto a vizinha
+     intocada está em nível cheio → degrau de escala cheia. Fix: splice novo **`in_range_warm`**
+     (pre-roll do áudio ANTERIOR ao alvo, descartado depois) + `Effect::warmup_frames`
+     dimensionado por `8·τ`, `τ ≈ Q/(π·f0)`, capado em 1 s. Sem seleção não há o que pré-rolar
+     → byte-idêntico ao `in_range`.
+  2. **Botão dimmed ainda despachava**: `button()` registrava o hit-rect incondicionalmente, então
+     clicar no `Silence` "desabilitado" (sem seleção) caía em `target()` → **zerava o clipe
+     inteiro**. Fix em 2 camadas: dimmed não registra hit **e** `event.rs` recusa armar range-ops
+     sem seleção (essa metade é testável no seam).
+  3. **Export durante audição** exportava o clipe pristino, não o que soa/aparece (waveform e
+     duração já mostravam a audição). Fix: `editor_export` usa `editor_sounding()`.
+  - Refutados (registrados de propósito): `normalize_lufs` sem clamp de pico **não é bug**
+    (loudness-normalization legitimamente passa de ±1; use limiter depois); `equal_power_pan`
+    com `cos/sin` no callback RT **não é bug** (roda 1× por comando e cacheia em `pan_gains`;
+    `pan.rs:10` anota "HR-5 exempt"); `remove_dc` na seleção usar a média local é o
+    comportamento documentado do `in_range`.
 - **Atalhos:** `Ctrl+Z` undo · `Ctrl+Shift+Z` / `Ctrl+Y` redo (roteados ao
   `EditClip` quando o painel WAVE está aberto com clipe carregado).
 - **Fix:** `cpal::Stream` é dropado no `on_close_request`, não no drop-cascade do

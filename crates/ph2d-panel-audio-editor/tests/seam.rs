@@ -10,11 +10,11 @@ use ph2d_editor_core::interaction::WidgetEvent;
 use ph2d_editor_core::panel::EventOutcome;
 use ph2d_panel_audio_editor::state::AudioEditorState;
 use ph2d_panel_audio_editor::{
-    AEDIT_FX_APPLY, AEDIT_FX_CANCEL, AEDIT_FX_NEXT, AEDIT_FX_P0, AEDIT_FX_PREV, AEDIT_FX_RESET,
-    AEDIT_LOAD, AEDIT_LOOP, AEDIT_NORMALIZE, AEDIT_PLAY, AEDIT_STOP, AEDIT_TRIM, AudioEditCmd,
-    AudioEditorPanel, clear_fx_dirty, clear_fx_touched, fx_dirty, fx_kind, fx_norms, fx_touched,
-    looping, set_fx_defaults, set_fx_kind_count, take_edit_cmd, take_load, take_play_pause,
-    take_stop,
+    AEDIT_FADE_IN, AEDIT_FX_APPLY, AEDIT_FX_CANCEL, AEDIT_FX_NEXT, AEDIT_FX_P0, AEDIT_FX_PREV,
+    AEDIT_FX_RESET, AEDIT_LOAD, AEDIT_LOOP, AEDIT_NORMALIZE, AEDIT_PLAY, AEDIT_SILENCE, AEDIT_STOP,
+    AEDIT_TRIM, AudioEditCmd, AudioEditorPanel, clear_fx_dirty, clear_fx_touched, fx_dirty,
+    fx_kind, fx_norms, fx_touched, looping, set_fx_defaults, set_fx_kind_count, set_has_selection,
+    take_edit_cmd, take_load, take_play_pause, take_stop,
 };
 use ph2d_ui_testkit::MockPanelHost;
 
@@ -61,6 +61,7 @@ fn edit_clicks_reach_the_edit_command() {
     let mut host = MockPanelHost::with_panel::<AudioEditorPanel>();
     let mut state = AudioEditorState;
     let _ = take_edit_cmd();
+    set_has_selection(true); // Trim below is a range op; it needs one.
 
     host.apply_panel_event::<AudioEditorPanel>(&mut state, WidgetEvent::Click(AEDIT_NORMALIZE));
     assert_eq!(
@@ -83,6 +84,42 @@ fn edit_clicks_reach_the_edit_command() {
         Some(AudioEditCmd::ApplyFx),
         "Apply Effect click never armed the effect command"
     );
+}
+
+/// Range ops must NOT fire without a selection. `EditClip::target()` silently
+/// falls back to the whole clip, so a stray click on the dimmed `Silence` would
+/// zero the ENTIRE buffer. The panel dims them, but a dim is cosmetic — found by
+/// the 2026-07-09 audit, when disabled buttons still registered their hit rect.
+#[test]
+fn range_ops_refuse_to_fire_without_a_selection() {
+    let mut host = MockPanelHost::with_panel::<AudioEditorPanel>();
+    let mut state = AudioEditorState;
+    let _ = take_edit_cmd();
+
+    set_has_selection(false);
+    host.apply_panel_event::<AudioEditorPanel>(&mut state, WidgetEvent::Click(AEDIT_SILENCE));
+    assert_eq!(
+        take_edit_cmd(),
+        None,
+        "Silence without a selection would zero the whole clip"
+    );
+    host.apply_panel_event::<AudioEditorPanel>(&mut state, WidgetEvent::Click(AEDIT_FADE_IN));
+    assert_eq!(
+        take_edit_cmd(),
+        None,
+        "Fade In without a selection must not fire"
+    );
+    host.apply_panel_event::<AudioEditorPanel>(&mut state, WidgetEvent::Click(AEDIT_TRIM));
+    assert_eq!(
+        take_edit_cmd(),
+        None,
+        "Trim without a selection must not fire"
+    );
+
+    // With a selection they arm normally.
+    set_has_selection(true);
+    host.apply_panel_event::<AudioEditorPanel>(&mut state, WidgetEvent::Click(AEDIT_SILENCE));
+    assert_eq!(take_edit_cmd(), Some(AudioEditCmd::Silence));
 }
 
 /// The live-audition contract. `fx_dirty` is what makes the shell render the

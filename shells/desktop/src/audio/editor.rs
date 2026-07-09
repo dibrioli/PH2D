@@ -298,7 +298,11 @@ impl AudioSystem {
 
     /// Write the loaded clip out to `path` as a 16-bit PCM WAV.
     pub(crate) fn editor_export(&self, path: &std::path::Path) {
-        let Some(clip) = &self.editor.clip else {
+        // Export what is SOUNDING and SHOWN — the live audition when the rack is
+        // previewing, else the committed clip. `editor_clip` / `editor_duration_secs`
+        // already report the audition, so exporting `self.editor.clip` here silently
+        // wrote a dry, shorter file than the waveform on screen (2026-07-09 audit).
+        let Some(clip) = self.editor_sounding() else {
             return;
         };
         match ph2d_audio_encode::write_wav(path, clip.data(), ph2d_audio_encode::BitDepth::Pcm16) {

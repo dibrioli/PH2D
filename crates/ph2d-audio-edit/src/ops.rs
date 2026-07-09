@@ -86,6 +86,48 @@ pub fn in_range(
     SampleData::from_interleaved(out, data.format())
 }
 
+/// Like [`in_range`], but first hands the op `warmup` frames of the audio
+/// **immediately before** the range, then keeps only the range's output.
+///
+/// A stateful processor (an IIR filter) that starts on the first sample of a
+/// mid-clip selection begins with cleared memory — as if the audio before the
+/// selection had been silence. Its output collapses toward zero for the first few
+/// dozen samples while the untouched neighbour sits at full level, so the splice
+/// lands a full-scale step: an audible **click at the selection's leading edge**.
+/// Pre-rolling the real preceding audio lets the filter enter the region already
+/// settled, and the transient is discarded with the pre-roll.
+///
+/// `warmup` is clamped to the audio that actually exists before the range, so a
+/// selection at frame 0 (and the whole-clip case) is byte-identical to
+/// [`in_range`] — there is nothing to warm up on, and nothing to click against.
+pub fn in_range_warm(
+    data: &SampleData,
+    range: Range<usize>,
+    warmup: usize,
+    op: impl Fn(&SampleData) -> SampleData,
+) -> SampleData {
+    let r = clamp_range(data, range);
+    let warm = warmup.min(r.start);
+    if warm == 0 || r.start >= r.end {
+        return in_range(data, r, op);
+    }
+    let ch = channels(data);
+    let region_len = r.end - r.start;
+    let extended = trim(data, r.start - warm..r.end);
+    let processed = op(&extended);
+    // The op must be length-preserving; if it wasn't, fall back rather than slice
+    // garbage out of it.
+    if processed.frame_count() != warm + region_len {
+        return in_range(data, r, op);
+    }
+    let src = data.samples();
+    let mut out = Vec::with_capacity(src.len());
+    out.extend_from_slice(&src[..r.start * ch]);
+    out.extend_from_slice(&processed.samples()[warm * ch..]);
+    out.extend_from_slice(&src[r.end * ch..]);
+    SampleData::from_interleaved(out, data.format())
+}
+
 /// Apply a **tail-extending** op to `range`, ringing the tail out over whatever
 /// follows. The sibling of [`in_range`] for effects (reverb / delay) whose output
 /// outlives their input, so the length-preserving splice doesn't fit.

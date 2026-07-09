@@ -101,6 +101,21 @@ pub(crate) fn apply_event(
             None
         };
         if let Some(cmd) = edit {
+            // Range ops act on the SELECTION. `target()` silently falls back to the
+            // whole clip, so an unguarded Silence with no selection would zero the
+            // entire buffer. The panel dims them, but a dim is cosmetic — refuse to
+            // arm them here too (2026-07-09 audit).
+            let needs_selection = matches!(
+                cmd,
+                AudioEditCmd::Trim
+                    | AudioEditCmd::Cut
+                    | AudioEditCmd::Silence
+                    | AudioEditCmd::FadeIn
+                    | AudioEditCmd::FadeOut
+            );
+            if needs_selection && !snapshot::has_selection() {
+                return EventOutcome::Consumed;
+            }
             snapshot::request_edit(cmd);
             return EventOutcome::Consumed;
         }

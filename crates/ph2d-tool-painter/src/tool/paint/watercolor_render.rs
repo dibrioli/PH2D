@@ -377,9 +377,8 @@ impl PainterTool {
                     // GRAN-1 (Curtis §4.5, Tier-2): granulation is VALLEY DEPOSITION, not symmetric
                     // modulation — pigment settles INTO the tooth's valleys (`h` low ⇒ full deposit;
                     // peaks shed up to γ), the exact SIGN the old form inverted. The settle weight
-                    // grows with water (Rewet) + dwell (soak) and goes FULL at the pen-up bake — the
-                    // "drying moment" — so granulation visibly sets as the stroke dries. Amount 0 ⇒
-                    // factor 1 exactly (byte-identical); no clamp-to-0 speckle (γ < 1 bounds the gate).
+                    // grows with water (Rewet) + local dwell (soak) IN REAL TIME — live == bake.
+                    // Amount 0 ⇒ factor 1 exactly (byte-identical); no clamp-to-0 speckle (γ < 1).
                     let gran = match gran_h {
                         Some(h) => {
                             let soak_v = if soaked {
@@ -387,14 +386,14 @@ impl PainterTool {
                             } else {
                                 0.0
                             };
-                            let settle = if commit {
-                                1.0
-                            } else {
-                                (GRAN_SETTLE_BASE
-                                    + GRAN_SETTLE_WET * wet
-                                    + GRAN_SETTLE_SOAK * soak_v)
-                                    .min(1.0)
-                            };
+                            // WYSIWYG (Enio 2026-07-08): the SAME settle live and at the bake —
+                            // a full-only-at-commit weight popped on pen-up ("o artista não obtém
+                            // o aspecto imediato"); the drying read lives on as the REAL-TIME
+                            // wet/soak response instead. No quality cost: only the pop is gone.
+                            let settle = (GRAN_SETTLE_BASE
+                                + GRAN_SETTLE_WET * wet
+                                + GRAN_SETTLE_SOAK * soak_v)
+                                .min(1.0);
                             let k = (granulation * settle).clamp(0.0, 1.0);
                             ((1.0 + paper_component) * (1.0 - k * h * GRAN_GAMMA)).max(0.0)
                         }

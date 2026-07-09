@@ -264,19 +264,29 @@ impl PainterTool {
         }
         let shape_img_owned = self.paint.shape_image.as_ref().map(|i| i.as_mask());
         let canvas = [fw as f32, fh as f32];
-        // MIX-1: per-dab Charge-depletion factors (None = mixer off, no fade — byte-identical).
+        // MIX-1: per-dab Charge-depletion factors (None = mixer off — byte-identical). The reserve
+        // goes into the per-pixel PIGMENT map, NEVER into the coverage: a sub-saturated coverage
+        // leaves `inner` short of 1.0 across the interior and the edge term floods the centre (the
+        // flat opaque slab, Enio smoke 2026-07-08). Water footprint intact; pigment fades.
         let depletion = self.wet_mix_depletion(dabs);
+        if depletion.is_some() && self.paint.stroke_deplete.len() != fw * fh {
+            self.paint.stroke_deplete = vec![0u8; fw * fh];
+        }
         let cov = &mut self.paint.stroke_coverage;
         let dens_buf = &mut self.paint.stroke_density;
+        let depl_buf = &mut self.paint.stroke_deplete;
         for (di, d) in dabs.iter().enumerate() {
             // Frame draw BEFORE any skip: the colour pass replays this stream per emitted dab, and
             // its skip conditions differ (no Dilution `flow` there) — drawing after a skip would
             // desynchronise the two passes' Random draws.
             let frame = stamp.as_ref().map(|s| s.dab_frame(d, &mut rng, canvas));
             let r = d.radius_px;
-            // Charge depletion fades the whole mark as the fresh reserve runs out (MIX-1).
-            let depl = depletion.as_ref().map_or(1.0, |v| v[di]);
-            let peak = (d.coverage * flow * depl).clamp(0.0, 1.0);
+            // The dab's pigment reserve (fresh + carry), max-blended over its whole footprint —
+            // re-inking a faded trail restores it (a fresh head dab wins over a depleted tail's).
+            let depl_v = depletion
+                .as_ref()
+                .map(|v| (v[di].clamp(0.0, 1.0) * 255.0) as u8);
+            let peak = (d.coverage * flow).clamp(0.0, 1.0);
             if r <= 0.0 || peak <= 0.0 {
                 continue;
             }
@@ -331,6 +341,13 @@ impl PainterTool {
                             dens_buf[idx] = dv;
                         }
                     }
+                    // Pigment reserve (MIX-1): max-blend wherever the dab touches.
+                    if let Some(dv) = depl_v
+                        && wgt > 0.0
+                        && dv > depl_buf[idx]
+                    {
+                        depl_buf[idx] = dv;
+                    }
                 }
             }
         }
@@ -363,7 +380,7 @@ impl PainterTool {
         let shape_img_owned = self.paint.shape_image.as_ref().map(|i| i.as_mask());
         let canvas = [fw as f32, fh as f32];
         let buf = &mut self.paint.stroke_color;
-        for (d, (dcol, prio, depl)) in dabs.iter().zip(&mixed) {
+        for (d, (dcol, prio)) in dabs.iter().zip(&mixed) {
             // Frame draw BEFORE any skip — mirror of the coverage pass (stream sync; see there).
             let frame = stamp.as_ref().map(|s| s.dab_frame(d, &mut rng, canvas));
             let r = d.radius_px;
@@ -376,7 +393,6 @@ impl PainterTool {
             // picked-up colour — the pool's exit edge stays as coloured as its entry (Enio 2026-07-07).
             // `prio == 1` when the mixer is off ⇒ byte-identical source-over.
             let prio = prio.clamp(0.0, 1.0);
-            let depl = depl.clamp(0.0, 1.0);
             let col = [
                 (dcol[0].clamp(0.0, 1.0) * 255.0 + 0.5) as u8,
                 (dcol[1].clamp(0.0, 1.0) * 255.0 + 0.5) as u8,
@@ -423,7 +439,7 @@ impl PainterTool {
                         }
                         _ => feather(dn),
                     };
-                    let a = peak * wgt * prio * depl * keep;
+                    let a = peak * wgt * prio * keep;
                     if a <= 0.0 {
                         continue;
                     }

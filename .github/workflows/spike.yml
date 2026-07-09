@@ -427,6 +427,30 @@ jobs:
         with:
           shared-key: ${{ matrix.os }}
 
+      # c9_replay pulls ph2d-ecs → ph2d-asset → ph2d-imageio-avif →
+      # libavif-sys → libdav1d-sys, which builds dav1d from vendored source
+      # (meson+ninja) with nasm-assembled SIMD. The `test` job installs these
+      # and warms the cache; this job restores it, but a cache miss (seen on
+      # ubuntu) rebuilds the -sys crate and needs the tools present too.
+      - name: Install AVIF build tools (meson + ninja + nasm)
+        shell: bash
+        run: |
+          case "${{ runner.os }}" in
+            Linux)
+              sudo apt-get update && sudo apt-get install -y meson ninja-build nasm
+              ;;
+            macOS)
+              brew install meson ninja nasm
+              ;;
+            Windows)
+              choco install -y nasm ninja
+              python -m pip install --upgrade meson
+              # choco installs nasm to "C:\Program Files\NASM"; put it
+              # on PATH for the dav1d meson build.
+              echo "C:\\Program Files\\NASM" >> "$GITHUB_PATH"
+              ;;
+          esac
+
       - name: Run C9 replay (ECS) and capture baseline hash
         id: replay
         shell: bash

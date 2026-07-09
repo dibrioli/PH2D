@@ -20,3 +20,7 @@ ph2d-editor-core = { path = "../ph2d-editor-core" }
 ph2d-a11y = { path = "../ph2d-a11y" }
 # Row layout tokens (ROW_H_PX / Spacing) for the param rows (M1.P1).
 ph2d-tokens = { path = "../ph2d-tokens" }
+# Paint handles named explicitly by the Angle/Seed row painters in `number_rows`
+# (the editor-core widget painters take `&mut VectorScene` / `&mut TextSystem`).
+ph2d-text = { path = "../ph2d-text" }
+ph2d-vector = { path = "../ph2d-vector" }

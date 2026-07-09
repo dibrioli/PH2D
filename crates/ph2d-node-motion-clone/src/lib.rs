@@ -215,11 +215,11 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     Ok(())
 }
 
-use ph2d_node_registry::{ParamUiHint, ParamWidget};
+use ph2d_node_registry::{AngleUnit, ParamUiHint, ParamWidget};
 
 /// Param UI hints (M1.P1) for the clone rows: whole-number copy count, a polar
-/// step (distance + free angle in turns), and a centre toggle. Angle stays a
-/// slider in turns (the enum-less continuous drivers do — matching `motion.orbit`).
+/// step (distance + free angle), and a centre toggle. The angle is stored in
+/// turns (the cycle-based trig in [`trig`]) and shown in degrees.
 static PARAM_HINTS: &[ParamUiHint] = &[
     ParamUiHint {
         param: "count",
@@ -243,7 +243,9 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         min: -1.0,
         max: 1.0,
         step: 0.01,
-        widget: ParamWidget::Slider,
+        widget: ParamWidget::Angle {
+            unit: AngleUnit::Turns,
+        },
     },
     ParamUiHint {
         param: "center",

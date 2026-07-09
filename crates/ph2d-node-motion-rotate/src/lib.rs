@@ -97,17 +97,20 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     Ok(())
 }
 
-use ph2d_node_registry::{ParamUiHint, ParamWidget};
+use ph2d_node_registry::{AngleUnit, ParamUiHint, ParamWidget};
 
-/// Param UI hints (M1.P1): a signed angle in radians (rendered as an angle dial
-/// once the widget lands; a slider for now).
+/// Param UI hints (M1.P1): a signed angle in **radians** — the unit of the `rot`
+/// stream column this node adds to (the renderer's basis unit). The panel paints
+/// it as a `deg` numeric box (-180..180) and converts back.
 static PARAM_HINTS: &[ParamUiHint] = &[ParamUiHint {
     param: "angle",
     label: "Angle",
     min: -std::f32::consts::PI,
     max: std::f32::consts::PI,
     step: 0.01,
-    widget: ParamWidget::Angle,
+    widget: ParamWidget::Angle {
+        unit: AngleUnit::Radians,
+    },
 }];
 
 #[cfg(test)]

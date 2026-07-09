@@ -191,19 +191,20 @@ fn stagger_params_are_named_enums_and_a_checkbox() {
 }
 
 /// #10 consistency: switching a behaviour's channel resets its magnitude to a
-/// channel-sensible default. A stagger driving Rotation gets a ±¼-turn range
-/// (not the ±1 world-unit range meant for position); an oscillator gets a small
-/// turns amplitude; switching back to a position channel restores the world-unit
-/// range. Non-behaviour node types are untouched.
+/// channel-sensible default. The Rotation channel writes the `rot` stream column,
+/// whose unit is **radians** (the renderer's basis unit) — NOT turns — so a
+/// stagger driving Rotation gets a ±90° = ±pi/2 ramp, not the ±1 world-unit range
+/// meant for position. Non-behaviour node types are untouched.
 #[test]
 fn channel_switch_resets_behaviour_magnitude_to_channel_defaults() {
+    use std::f32::consts::{FRAC_PI_2, FRAC_PI_6};
     let mut motion = MotionState::new();
     let st = motion.doc.graph.add_node("motion.stagger");
 
-    // -> Rotation (channel 2): ±¼-turn ramp, not the position ±1.
+    // -> Rotation (channel 2): a ±90° ramp, expressed in the column's radians.
     apply_channel_presets(&mut motion, st, "motion.stagger", 2.0);
-    assert_eq!(param_value(&motion, st, "min"), -0.25);
-    assert_eq!(param_value(&motion, st, "max"), 0.25);
+    assert_eq!(param_value(&motion, st, "min"), -FRAC_PI_2);
+    assert_eq!(param_value(&motion, st, "max"), FRAC_PI_2);
     // -> Size (channel 3): ±½ scale.
     apply_channel_presets(&mut motion, st, "motion.stagger", 3.0);
     assert_eq!(param_value(&motion, st, "min"), -0.5);
@@ -213,10 +214,10 @@ fn channel_switch_resets_behaviour_magnitude_to_channel_defaults() {
     assert_eq!(param_value(&motion, st, "min"), -1.0);
     assert_eq!(param_value(&motion, st, "max"), 1.0);
 
-    // Oscillator amplitude scales the same way (turns get a small peak).
+    // Oscillator amplitude scales the same way (Rotation peaks at 30° in radians).
     let osc = motion.doc.graph.add_node("motion.oscillator");
     apply_channel_presets(&mut motion, osc, "motion.oscillator", 2.0);
-    assert_eq!(param_value(&motion, osc, "amplitude"), 0.1);
+    assert_eq!(param_value(&motion, osc, "amplitude"), FRAC_PI_6);
     apply_channel_presets(&mut motion, osc, "motion.oscillator", 1.0);
     assert_eq!(param_value(&motion, osc, "amplitude"), 1.0);
 
@@ -228,6 +229,78 @@ fn channel_switch_resets_behaviour_magnitude_to_channel_defaults() {
         1.0,
         "transform untouched"
     );
+}
+
+/// Angle params resolve to a `deg` number-box row (never a raw turns/radians
+/// slider), whatever unit the node stores. Both units land in the SAME artist
+/// unit — degrees — and the row's `deg_to_native` factor converts straight back,
+/// so the panel emits node-native values and the bridge never special-cases it.
+#[test]
+fn angle_params_resolve_to_degree_rows_for_both_units() {
+    use ph2d_panel_motion_params::ParamRow;
+    let mut motion = MotionState::new();
+
+    let angle_row = |motion: &MotionState, who: &str| {
+        build_params_snapshot(motion)
+            .expect("node resolvable")
+            .rows
+            .into_iter()
+            .find_map(|r| match r {
+                ParamRow::Angle(a) if a.name == "angle" => Some(a),
+                _ => None,
+            })
+            .unwrap_or_else(|| panic!("{who} has no Angle row"))
+    };
+
+    // Turns-based (motion.orbit): ±1 turn shows as ±360 deg.
+    let orbit = motion.doc.graph.add_node("motion.orbit");
+    ph2d_panel_motion_graph::set_graph_selection(vec![orbit.0]);
+    let a = angle_row(&motion, "orbit");
+    assert_eq!((a.min_deg, a.max_deg), (-360.0, 360.0));
+    // Typing 90 deg converts back to a quarter turn (the factor is f32-derived,
+    // so compare at f32 precision, not f64).
+    assert!((90.0 * a.deg_to_native - 0.25).abs() < 1e-6);
+
+    // Radians-based (motion.rotate, the `rot` column's unit): ±pi shows as ±180.
+    let rot = motion.doc.graph.add_node("motion.rotate");
+    ph2d_panel_motion_graph::set_graph_selection(vec![rot.0]);
+    let a = angle_row(&motion, "rotate");
+    assert!((a.min_deg + 180.0).abs() < 1e-4 && (a.max_deg - 180.0).abs() < 1e-4);
+    // Typing 90 deg converts back to pi/2 radians.
+    assert!((90.0 * a.deg_to_native - f64::from(std::f32::consts::FRAC_PI_2)).abs() < 1e-6);
+
+    ph2d_panel_motion_graph::set_graph_selection(Vec::new());
+}
+
+/// A Seed param resolves to a Seed row (whole-number box + re-roll button), never
+/// a slider the artist must drag through a range that means nothing.
+#[test]
+fn seed_param_resolves_to_a_seed_row_not_a_slider() {
+    use ph2d_panel_motion_params::ParamRow;
+    let mut motion = MotionState::new();
+    let wig = motion.doc.graph.add_node("motion.wiggle");
+    ph2d_panel_motion_graph::set_graph_selection(vec![wig.0]);
+
+    let snap = build_params_snapshot(&motion).expect("wiggle resolvable");
+    let seed = snap
+        .rows
+        .iter()
+        .find_map(|r| match r {
+            ParamRow::Seed(s) => Some(s),
+            _ => None,
+        })
+        .expect("seed is a Seed row");
+    assert_eq!(seed.name, "seed");
+    assert!(seed.min < seed.max, "the seed box has a usable range");
+    assert!(
+        !snap
+            .rows
+            .iter()
+            .any(|r| matches!(r, ParamRow::Scalar(s) if s.name == "seed")),
+        "seed must not ALSO appear as a scalar slider"
+    );
+
+    ph2d_panel_motion_graph::set_graph_selection(Vec::new());
 }
 
 /// The animation enabler (ask "when do we see animation?"): playing advances

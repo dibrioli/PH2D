@@ -9,6 +9,10 @@
 
 use crate::motion_state::MotionState;
 
+/// The Angle row's stepper / drag increment: whole degrees (the Inspector's
+/// angle convention — a `deg` box never scrubs in fractions).
+const ANGLE_STEP_DEG: f64 = 1.0;
+
 /// Apply this frame's params-panel edits to the selected node, bracketed into
 /// undo steps (M1.P1 + colour authoring). Two edit sources, ONE session model:
 ///
@@ -150,22 +154,25 @@ pub(super) fn apply_channel_presets(
     }
 }
 
-/// Stagger `(min, max)` ramp endpoints per channel: position in world units,
-/// Rotation in turns (±¼), Size in scale delta (±½).
+/// Stagger `(min, max)` ramp endpoints per channel. **The Rotation channel writes
+/// the `rot` stream column, whose unit is RADIANS** (the renderer's basis unit) —
+/// not turns. Position is world units, Size a scale delta.
 fn stagger_channel_range(channel: i32) -> (f32, f32) {
+    use std::f32::consts::FRAC_PI_2;
     match channel {
-        2 => (-0.25, 0.25), // Rotation: ±¼ turn
-        3 => (-0.5, 0.5),   // Size: ±0.5 scale
-        _ => (-1.0, 1.0),   // Position (X/Y): ±1 world unit
+        2 => (-FRAC_PI_2, FRAC_PI_2), // Rotation: ±90° in radians
+        3 => (-0.5, 0.5),             // Size: ±0.5 scale
+        _ => (-1.0, 1.0),             // Position (X/Y): ±1 world unit
     }
 }
 
-/// Oscillator peak `amplitude` per channel (same unit logic as the stagger range).
+/// Oscillator peak `amplitude` per channel (same unit logic as the stagger range —
+/// Rotation is radians, not turns).
 fn oscillator_channel_amplitude(channel: i32) -> f32 {
     match channel {
-        2 => 0.1, // Rotation: ±0.1 turn
-        3 => 0.3, // Size: ±0.3 scale
-        _ => 1.0, // Position: ±1 world unit
+        2 => std::f32::consts::FRAC_PI_6, // Rotation: ±30° in radians
+        3 => 0.3,                         // Size: ±0.3 scale
+        _ => 1.0,                         // Position: ±1 world unit
     }
 }
 
@@ -303,7 +310,7 @@ pub(super) fn build_params_snapshot(
     use ph2d_nodegraph::cook::OpResolver;
     use ph2d_nodegraph::graph::NodeId;
     use ph2d_panel_motion_params::{
-        ColorRow, EnumRow, ParamRow, ParamsSnapshot, ScalarRow, ToggleRow,
+        AngleRow, ColorRow, EnumRow, ParamRow, ParamsSnapshot, ScalarRow, SeedRow, ToggleRow,
     };
 
     let only = selected_motion_node()?;
@@ -359,7 +366,8 @@ pub(super) fn build_params_snapshot(
         if consumed.contains(&spec.name) {
             continue;
         }
-        // A boolean → a real checkbox; an enum → a named segmented selector.
+        // A boolean → a real checkbox; an enum → a named segmented selector; an
+        // angle → a `deg` number box; a seed → a number box + re-roll button.
         if let Some(h) = hint {
             match h.widget {
                 ParamWidget::Toggle => {
@@ -378,6 +386,31 @@ pub(super) fn build_params_snapshot(
                         label: h.label.to_string(),
                         selected,
                         labels,
+                    }));
+                    continue;
+                }
+                ParamWidget::Angle { unit } => {
+                    // Shown in degrees whatever the param stores (turns for a
+                    // cycle-based node, radians for the `rot` column); the row
+                    // carries the inverse factor so the panel emits node-native.
+                    rows.push(ParamRow::Angle(AngleRow {
+                        name: spec.name,
+                        label: h.label.to_string(),
+                        deg: f64::from(unit.to_degrees(value_of(spec.name))),
+                        min_deg: f64::from(unit.to_degrees(h.min)),
+                        max_deg: f64::from(unit.to_degrees(h.max)),
+                        step_deg: ANGLE_STEP_DEG,
+                        deg_to_native: f64::from(unit.deg_to_native()),
+                    }));
+                    continue;
+                }
+                ParamWidget::Seed => {
+                    rows.push(ParamRow::Seed(SeedRow {
+                        name: spec.name,
+                        label: h.label.to_string(),
+                        value: f64::from(value_of(spec.name).round()),
+                        min: f64::from(h.min),
+                        max: f64::from(h.max),
                     }));
                     continue;
                 }

@@ -14,15 +14,53 @@ use std::cell::RefCell;
 /// One editable param row, resolved to primitives the panel paints without
 /// touching the registry / graph:
 /// - `Scalar` — a slider + numeric chip.
-/// - `Color` — a swatch → OKLCH picker (folds four RGBA channel params).
+/// - `Color` — a swatch -> OKLCH picker (folds four RGBA channel params).
 /// - `Toggle` — a real checkbox (never a 0/1 slider).
 /// - `Enum` — a named segmented-button selector (never a number slider).
+/// - `Angle` — a numeric box with a `deg` unit chip (never a raw-radians slider).
+/// - `Seed` — a whole-number box + a re-roll button (never a slider to drag).
 #[derive(Clone, Debug, PartialEq)]
 pub enum ParamRow {
     Scalar(ScalarRow),
     Color(ColorRow),
     Toggle(ToggleRow),
     Enum(EnumRow),
+    Angle(AngleRow),
+    Seed(SeedRow),
+}
+
+/// An angle row, always displayed in **degrees** with a `deg` unit chip. The
+/// bridge converts the param's native unit (turns / radians) to degrees when it
+/// builds the row and hands over [`AngleRow::deg_to_native`] so the panel can
+/// convert straight back — every `SetParam` the panel emits is therefore in the
+/// node's own unit, exactly like a Scalar row (the bridge never special-cases it).
+#[derive(Clone, Debug, PartialEq)]
+pub struct AngleRow {
+    /// Canonical `ParamSpec::name` — echoed back in [`MotionParamIntent::SetParam`].
+    pub name: &'static str,
+    /// English label (from the `ParamUiHint`).
+    pub label: String,
+    /// Current value, in degrees.
+    pub deg: f64,
+    pub min_deg: f64,
+    pub max_deg: f64,
+    pub step_deg: f64,
+    /// Multiply a degrees value by this to recover the param's native unit
+    /// (turns -> `1/360`, radians -> `pi/180`).
+    pub deg_to_native: f64,
+}
+
+/// A random-seed row: a whole-number box plus a re-roll button. A seed has no
+/// meaningful magnitude, so it is never a slider — the artist wants *another*
+/// seed, not a *bigger* one.
+#[derive(Clone, Debug, PartialEq)]
+pub struct SeedRow {
+    pub name: &'static str,
+    pub label: String,
+    /// Current seed (a whole number).
+    pub value: f64,
+    pub min: f64,
+    pub max: f64,
 }
 
 /// A checkbox row for a boolean param (`>= 0.5` = on).
@@ -159,6 +197,18 @@ pub(crate) fn param_checkbox_id(slot: usize) -> NodeId {
 /// selector (Enum rows).
 pub(crate) fn param_enum_id(slot: usize, opt: usize) -> NodeId {
     fnv_id(&format!("motion_param/enum/{slot}/{opt}"))
+}
+
+/// Stable widget id for the `slot`-th param row's standalone numeric box — the
+/// app-standard `NumberInput` (Angle + Seed rows; Scalar rows use the slider's
+/// own chip instead).
+pub(crate) fn param_number_id(slot: usize) -> NodeId {
+    fnv_id(&format!("motion_param/number/{slot}"))
+}
+
+/// Stable widget id for the `slot`-th Seed row's re-roll button.
+pub(crate) fn param_reroll_id(slot: usize) -> NodeId {
+    fnv_id(&format!("motion_param/reroll/{slot}"))
 }
 
 /// FNV-1a-64 of `key` (same scheme as the graph panel's dynamic hit ids).

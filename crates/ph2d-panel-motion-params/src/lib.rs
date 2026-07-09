@@ -14,15 +14,24 @@
 
 #![forbid(unsafe_code)]
 
+mod number_rows;
 mod snapshot;
 
+#[cfg(test)]
+#[path = "lib_tests.rs"]
+mod tests;
+
+use number_rows::{
+    ANGLE_DECIMALS, SEED_DECIMALS, mirror_number, next_seed, number_is_typing, number_value,
+    paint_angle_row, paint_seed_row,
+};
 pub use snapshot::{
-    ColorRow, EnumRow, MotionParamIntent, ParamRow, ParamsSnapshot, ScalarRow, ToggleRow,
-    drain_param_intents, param_swatch_id, set_current_params,
+    AngleRow, ColorRow, EnumRow, MotionParamIntent, ParamRow, ParamsSnapshot, ScalarRow, SeedRow,
+    ToggleRow, drain_param_intents, param_swatch_id, set_current_params,
 };
 use snapshot::{
     MAX_ENUM_OPTIONS, MAX_PARAM_ROWS, current_params, param_checkbox_id, param_chip_id,
-    param_enum_id, param_slider_id, push_param_intent,
+    param_enum_id, param_number_id, param_reroll_id, param_slider_id, push_param_intent,
 };
 
 use ph2d_a11y::NodeId;
@@ -209,6 +218,36 @@ impl Panel for MotionParamsPanel {
                         let seg_rows = k.div_ceil(cols) as f32;
                         y += seg_rows * ROW_H_PX + (seg_rows - 1.0) * gap + row_gap;
                     }
+                    ParamRow::Angle(row) => {
+                        // A `deg` number box — never a raw turns/radians slider.
+                        let used = paint_angle_row(
+                            Rect::new(inner_x, y, inner_w, ROW_H_PX),
+                            &row.label,
+                            param_number_id(i),
+                            row.step_deg,
+                            store,
+                            hit_index,
+                            scene,
+                            text_system,
+                            theme,
+                        );
+                        y += used + row_gap;
+                    }
+                    ParamRow::Seed(row) => {
+                        // A whole-number box + a re-roll button (never a slider).
+                        let used = paint_seed_row(
+                            Rect::new(inner_x, y, inner_w, ROW_H_PX),
+                            &row.label,
+                            param_number_id(i),
+                            param_reroll_id(i),
+                            store,
+                            hit_index,
+                            scene,
+                            text_system,
+                            theme,
+                        );
+                        y += used + row_gap;
+                    }
                 }
             }
         }
@@ -236,7 +275,7 @@ impl Panel for MotionParamsPanel {
         match ev {
             WidgetEvent::ValueChanged(id) => on_value_changed(id, host, &snap),
             WidgetEvent::Toggled(id) => on_toggled(id, host, &snap),
-            WidgetEvent::Click(id) => on_enum_click(id, &snap),
+            WidgetEvent::Click(id) => on_click(id, &snap),
             _ => EventOutcome::Ignored,
         }
     }
@@ -255,6 +294,14 @@ impl Panel for MotionParamsPanel {
                 },
             );
             store.register(param_chip_id(slot), number_input(0.0));
+            // Standalone number box (Angle / Seed rows) + the Seed re-roll button.
+            store.register(param_number_id(slot), number_input(0.0));
+            store.register(
+                param_reroll_id(slot),
+                InteractiveState::Button {
+                    state: ButtonState::Normal,
+                },
+            );
             store.register(
                 param_checkbox_id(slot),
                 InteractiveState::Checkbox {
@@ -284,6 +331,23 @@ fn on_value_changed(
 ) -> EventOutcome {
     for slot in 0..snap.rows.len().min(MAX_PARAM_ROWS) {
         if id == param_chip_id(slot) {
+            return EventOutcome::Consumed;
+        }
+        // The standalone number box of an Angle / Seed row. Angle emits in the
+        // param's NATIVE unit (the box shows degrees), so the bridge stays
+        // unit-agnostic; Seed emits the whole number as typed.
+        if id == param_number_id(slot) {
+            let committed = number_value(host.store(), id);
+            let (param, value) = match &snap.rows[slot] {
+                ParamRow::Angle(row) => (row.name, committed * row.deg_to_native),
+                ParamRow::Seed(row) => (row.name, committed.round()),
+                _ => return EventOutcome::Ignored,
+            };
+            push_param_intent(MotionParamIntent::SetParam {
+                node: snap.node,
+                param,
+                value,
+            });
             return EventOutcome::Consumed;
         }
         if id == param_slider_id(slot) {
@@ -325,30 +389,42 @@ fn on_toggled(id: NodeId, host: &dyn PanelHostInternal, snap: &ParamsSnapshot) -
     EventOutcome::Ignored
 }
 
-/// A segmented-option click → select that option index for the Enum row.
-fn on_enum_click(id: NodeId, snap: &ParamsSnapshot) -> EventOutcome {
+/// A button click: a segmented option selects its index for the Enum row; the
+/// Seed row's re-roll advances the seed deterministically ([`next_seed`]).
+fn on_click(id: NodeId, snap: &ParamsSnapshot) -> EventOutcome {
     for slot in 0..snap.rows.len().min(MAX_PARAM_ROWS) {
-        let ParamRow::Enum(row) = &snap.rows[slot] else {
-            continue;
-        };
-        for opt in 0..row.labels.len().min(MAX_ENUM_OPTIONS) {
-            if id == param_enum_id(slot, opt) {
+        match &snap.rows[slot] {
+            ParamRow::Seed(row) if id == param_reroll_id(slot) => {
                 push_param_intent(MotionParamIntent::SetParam {
                     node: snap.node,
                     param: row.name,
-                    value: opt as f64,
+                    value: next_seed(row.value, row.min, row.max),
                 });
                 return EventOutcome::Consumed;
             }
+            ParamRow::Enum(row) => {
+                for opt in 0..row.labels.len().min(MAX_ENUM_OPTIONS) {
+                    if id == param_enum_id(slot, opt) {
+                        push_param_intent(MotionParamIntent::SetParam {
+                            node: snap.node,
+                            param: row.name,
+                            value: opt as f64,
+                        });
+                        return EventOutcome::Consumed;
+                    }
+                }
+            }
+            _ => {}
         }
     }
     EventOutcome::Ignored
 }
 
 /// True while any pooled param row is being interacted with — a slider dragged /
-/// focused, or a chip focused. The shell reads this as the undo-bracket edge
-/// (open on the false→true transition, commit one step on true→false), so a
-/// whole slider drag is a single undo step (M1.P1).
+/// focused, a chip focused, or a standalone number box (Angle / Seed) focused.
+/// The shell reads this as the undo-bracket edge (open on the false→true
+/// transition, commit one step on true→false), so a whole slider drag — or a
+/// whole type-into-the-angle-box — is a single undo step (M1.P1).
 #[must_use]
 pub fn any_param_editing(store: &WidgetStore) -> bool {
     (0..MAX_PARAM_ROWS).any(|slot| {
@@ -361,7 +437,7 @@ pub fn any_param_editing(store: &WidgetStore) -> bool {
                 state: TextInputState::Focused,
                 ..
             })
-        )
+        ) || number_is_typing(store, param_number_id(slot))
     })
 }
 
@@ -420,6 +496,21 @@ fn seed_rows(store: &mut WidgetStore, rows: &[ParamRow]) {
             );
             continue;
         }
+        // Standalone number boxes (Angle in degrees, Seed as a whole number):
+        // mirror the doc value when unfocused + register the range so the
+        // drag-scrub is range-proportional and the stepper uses `step`.
+        if let ParamRow::Angle(a) = row {
+            let id = param_number_id(i);
+            mirror_number(store, id, a.deg, ANGLE_DECIMALS);
+            store.set_number_range(id, a.min_deg, a.max_deg, a.step_deg);
+            continue;
+        }
+        if let ParamRow::Seed(s) = row {
+            let id = param_number_id(i);
+            mirror_number(store, id, s.value, SEED_DECIMALS);
+            store.set_number_range(id, s.min, s.max, 1.0);
+            continue;
+        }
         let ParamRow::Scalar(row) = row else { continue };
         let slider_id = param_slider_id(i);
         let chip_id = param_chip_id(i);
@@ -460,92 +551,5 @@ fn seed_rows(store: &mut WidgetStore, rows: &[ParamRow]) {
         } else {
             store.link_slider_number_mapped(slider_id, chip_id, span as f32, row.min as f32);
         }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn track_value_maps_over_the_range_and_inverts() {
-        // Continuous: track 0 → min, 0.5 → midpoint, 1 → max.
-        assert!((row_value(0.0, -10.0, 10.0, false) + 10.0).abs() < 1e-6);
-        assert!(row_value(0.5, -10.0, 10.0, false).abs() < 1e-6);
-        assert!((row_value(1.0, -10.0, 10.0, false) - 10.0).abs() < 1e-6);
-        // Integer rows snap the endpoints to whole numbers.
-        assert_eq!(row_value(0.0, 1.0, 20.0, true), 1.0);
-        assert_eq!(row_value(1.0, 1.0, 20.0, true), 20.0);
-        // `normalized_track` is the inverse used to seed the knob.
-        assert!((normalized_track(0.0, -10.0, 20.0) - 0.5).abs() < 1e-6);
-        // Out-of-range values clamp into the track.
-        assert_eq!(normalized_track(100.0, 0.0, 10.0), 1.0);
-        assert_eq!(normalized_track(-5.0, 0.0, 10.0), 0.0);
-    }
-
-    #[test]
-    fn params_and_intent_channels_round_trip() {
-        let _ = drain_param_intents();
-        set_current_params(Some(ParamsSnapshot {
-            node: 7,
-            title: "Grid".into(),
-            rows: vec![ParamRow::Scalar(ScalarRow {
-                name: "rows",
-                label: "Rows".into(),
-                value: 3.0,
-                min: 1.0,
-                max: 20.0,
-                step: 1.0,
-                integer: true,
-            })],
-        }));
-        let got = current_params().expect("published");
-        assert_eq!(got.node, 7);
-        let ParamRow::Scalar(r0) = &got.rows[0] else {
-            panic!("scalar row");
-        };
-        assert_eq!(r0.name, "rows");
-
-        push_param_intent(MotionParamIntent::SetParam {
-            node: 7,
-            param: "rows",
-            value: 5.0,
-        });
-        assert_eq!(
-            drain_param_intents(),
-            vec![MotionParamIntent::SetParam {
-                node: 7,
-                param: "rows",
-                value: 5.0,
-            }]
-        );
-        assert!(drain_param_intents().is_empty()); // capacity-retaining drain
-        set_current_params(None);
-        assert!(current_params().is_none());
-    }
-
-    #[test]
-    fn color_row_publishes_and_swatch_id_is_anchor_keyed() {
-        // A colour row round-trips through the publish channel, and its swatch id
-        // is derived from the anchor channel name (so the shell bridge computes
-        // the same id) — distinct from other anchors + from the slider pool.
-        set_current_params(Some(ParamsSnapshot {
-            node: 3,
-            title: "Tint".into(),
-            rows: vec![ParamRow::Color(ColorRow {
-                label: "Color".into(),
-                channels: ["r", "g", "b", "a"],
-                srgb: [255, 255, 255, 255],
-            })],
-        }));
-        let got = current_params().expect("published");
-        let ParamRow::Color(c) = &got.rows[0] else {
-            panic!("color row");
-        };
-        assert_eq!(c.channels, ["r", "g", "b", "a"]);
-        assert_eq!(param_swatch_id("r"), param_swatch_id("r"));
-        assert_ne!(param_swatch_id("r"), param_swatch_id("g"));
-        assert_ne!(param_swatch_id("r"), param_slider_id(0));
-        set_current_params(None);
     }
 }

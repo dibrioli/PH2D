@@ -141,10 +141,11 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     Ok(())
 }
 
-use ph2d_node_registry::{ParamUiHint, ParamWidget};
+use ph2d_node_registry::{AngleUnit, ParamUiHint, ParamWidget};
 
-/// Param UI hints (M1.P1): signed pivot, static angle (turns), orbit speed
-/// (turns/sec — the enum-less continuous drivers stay sliders).
+/// Param UI hints (M1.P1): signed pivot, static angle (stored in turns, shown as
+/// degrees), orbit speed (turns/sec — the enum-less continuous drivers stay
+/// sliders; a rate is not an angle).
 static PARAM_HINTS: &[ParamUiHint] = &[
     ParamUiHint {
         param: "pivot_x",
@@ -168,7 +169,9 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         min: -1.0,
         max: 1.0,
         step: 0.01,
-        widget: ParamWidget::Slider,
+        widget: ParamWidget::Angle {
+            unit: AngleUnit::Turns,
+        },
     },
     ParamUiHint {
         param: "speed",

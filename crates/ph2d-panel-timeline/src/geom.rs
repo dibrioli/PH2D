@@ -122,12 +122,37 @@ pub(crate) fn row_h(expanded: bool, graph_h: f32) -> f32 {
     ROW_H_PX + if expanded { graph_h } else { 0.0 }
 }
 
-/// Total height the track rows want, for the scroll range.
+/// Height the Summary channel occupies above the tracks. Zero when nothing is
+/// bound: an empty timeline shows no master row to grab.
+pub(crate) fn summary_h(snap: &TimelineViewSnapshot) -> f32 {
+    if snap.tracks.is_empty() {
+        0.0
+    } else {
+        ROW_H_PX
+    }
+}
+
+/// Total height the rows want, for the scroll range — the Summary channel plus
+/// every track (an expanded one carries its graph band).
 pub(crate) fn content_h(snap: &TimelineViewSnapshot, expanded: &[u64], graph_h: f32) -> f32 {
-    snap.tracks
-        .iter()
-        .map(|t| row_h(expanded.contains(&t.target.get()), graph_h))
-        .sum()
+    summary_h(snap)
+        + snap
+            .tracks
+            .iter()
+            .map(|t| row_h(expanded.contains(&t.target.get()), graph_h))
+            .sum::<f32>()
+}
+
+/// The Summary channel's row rect, or `None` when there is no track to summarise.
+/// It scrolls with the rows it aggregates, so its diamonds always sit directly
+/// above the columns they stand for.
+pub(crate) fn summary_band(
+    snap: &TimelineViewSnapshot,
+    rows_top: f32,
+    scroll_y: f32,
+) -> Option<(f32, f32)> {
+    let h = summary_h(snap);
+    (h > 0.0).then_some((rows_top - scroll_y, h))
 }
 
 /// How far the rows can scroll before the last one is flush with the bottom.
@@ -145,7 +170,8 @@ pub(crate) fn row_bands<'a>(
     rows_top: f32,
     scroll_y: f32,
 ) -> impl Iterator<Item = (usize, f32, f32)> + 'a {
-    let mut y = rows_top - scroll_y;
+    // The Summary channel sits above track 0 and scrolls with it.
+    let mut y = rows_top - scroll_y + summary_h(snap);
     snap.tracks.iter().enumerate().map(move |(i, t)| {
         let h = row_h(expanded.contains(&t.target.get()), graph_h);
         let top = y;
@@ -308,19 +334,22 @@ mod tests {
     #[test]
     fn an_expanded_row_is_taller_and_pushes_the_rows_below_it_down() {
         const GH: f32 = 132.0;
+        // The Summary channel is row zero, so every track sits one row lower and
+        // the content is one row taller.
+        const S: f32 = ROW_H_PX;
         let snap = snap_with(3);
-        assert_eq!(content_h(&snap, &[], GH), ROW_H_PX * 3.0);
-        assert_eq!(content_h(&snap, &[1], GH), ROW_H_PX * 3.0 + GH);
+        assert_eq!(content_h(&snap, &[], GH), S + ROW_H_PX * 3.0);
+        assert_eq!(content_h(&snap, &[1], GH), S + ROW_H_PX * 3.0 + GH);
 
         // Row 0 collapsed, row 1 expanded: row 2 starts below BOTH.
         let bands: Vec<_> = row_bands(&snap, &[1], GH, 0.0, 0.0).collect();
-        assert_eq!(bands[0], (0, 0.0, ROW_H_PX));
-        assert_eq!(bands[1], (1, ROW_H_PX, ROW_H_PX + GH));
-        assert_eq!(bands[2].1, ROW_H_PX * 2.0 + GH);
+        assert_eq!(bands[0], (0, S, ROW_H_PX));
+        assert_eq!(bands[1], (1, S + ROW_H_PX, ROW_H_PX + GH));
+        assert_eq!(bands[2].1, S + ROW_H_PX * 2.0 + GH);
 
         // A taller graph pushes them further: the height is not a constant.
         let taller: Vec<_> = row_bands(&snap, &[1], GH * 2.0, 0.0, 0.0).collect();
-        assert_eq!(taller[2].1, ROW_H_PX * 2.0 + GH * 2.0);
+        assert_eq!(taller[2].1, S + ROW_H_PX * 2.0 + GH * 2.0);
     }
 
     #[test]

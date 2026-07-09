@@ -86,7 +86,11 @@ pub(crate) fn apply_key(
 /// the diamonds are painted from still lags by exactly what was emitted here —
 /// `pending_move_dx` carries that offset for one frame and is cleared at the top
 /// of the next `process`.
-fn emit_move(state: &mut TimelinePanelState, px_per_s: f64, snap: &TimelineViewSnapshot) {
+pub(crate) fn emit_move(
+    state: &mut TimelinePanelState,
+    px_per_s: f64,
+    snap: &TimelineViewSnapshot,
+) {
     let Some(d) = state.key_drag else {
         return;
     };

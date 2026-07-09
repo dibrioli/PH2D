@@ -178,12 +178,24 @@ mod tests {
         assert_eq!(state::drain_intents(), vec![], "no ClearSelection");
     }
 
+    /// The Summary channel occupies the first row, so the track rows begin one
+    /// row lower. It carries no keys of its own — a marquee over it catches
+    /// nothing, which is why every span below starts at the very top and still
+    /// only ever reports the two track keys.
+    const SUMMARY: f32 = ROW_H_PX;
+
     #[test]
     fn dragging_an_empty_lane_box_selects_the_keys_inside_it() {
-        let rows = Rect::new(0.0, 0.0, 400.0, ROW_H_PX * 2.0);
+        let rows = Rect::new(0.0, 0.0, 400.0, SUMMARY + ROW_H_PX * 2.0);
         // x ∈ [5, 50] catches row 0's key at x=10 and row 1's at x=15, never the
-        // one at x=200; y spans both rows.
-        let got = box_select(rows, 0.0, (5.0, 0.0), (50.0, ROW_H_PX * 2.0), false);
+        // one at x=200; y spans the Summary band and both track rows.
+        let got = box_select(
+            rows,
+            0.0,
+            (5.0, 0.0),
+            (50.0, SUMMARY + ROW_H_PX * 2.0),
+            false,
+        );
         assert_eq!(
             got,
             vec![
@@ -197,8 +209,14 @@ mod tests {
 
     #[test]
     fn a_shift_marquee_adds_without_clearing() {
-        let rows = Rect::new(0.0, 0.0, 400.0, ROW_H_PX * 2.0);
-        let got = box_select(rows, 0.0, (5.0, 0.0), (50.0, ROW_H_PX * 2.0), true);
+        let rows = Rect::new(0.0, 0.0, 400.0, SUMMARY + ROW_H_PX * 2.0);
+        let got = box_select(
+            rows,
+            0.0,
+            (5.0, 0.0),
+            (50.0, SUMMARY + ROW_H_PX * 2.0),
+            true,
+        );
         assert_eq!(
             got,
             vec![
@@ -211,9 +229,15 @@ mod tests {
 
     #[test]
     fn a_marquee_drawn_backwards_selects_the_same_keys() {
-        let rows = Rect::new(0.0, 0.0, 400.0, ROW_H_PX * 2.0);
+        let rows = Rect::new(0.0, 0.0, 400.0, SUMMARY + ROW_H_PX * 2.0);
         // Bottom-right → top-left: the rect normalizes, the result must not change.
-        let got = box_select(rows, 0.0, (50.0, ROW_H_PX * 2.0), (5.0, 0.0), false);
+        let got = box_select(
+            rows,
+            0.0,
+            (50.0, SUMMARY + ROW_H_PX * 2.0),
+            (5.0, 0.0),
+            false,
+        );
         assert_eq!(got.len(), 3, "ClearSelection + the same two keys");
         assert_eq!(
             got[1],
@@ -223,11 +247,12 @@ mod tests {
 
     #[test]
     fn a_marquee_cannot_reach_rows_scrolled_out_of_the_band() {
-        // A one-row-tall band scrolled down by one row: row 0 is clipped above it,
-        // row 1 is the visible one. A marquee spanning the whole panel height must
-        // catch ONLY row 1's key — not the row hidden under the ruler.
+        // A one-row-tall band scrolled past the Summary channel AND row 0: row 0
+        // is clipped above it, row 1 is the visible one. A marquee spanning the
+        // whole panel height must catch ONLY row 1's key — not the row hidden
+        // under the ruler.
         let rows = Rect::new(0.0, 100.0, 400.0, ROW_H_PX);
-        let got = box_select(rows, ROW_H_PX, (5.0, 0.0), (50.0, 1000.0), false);
+        let got = box_select(rows, SUMMARY + ROW_H_PX, (5.0, 0.0), (50.0, 1000.0), false);
         assert_eq!(
             got,
             vec![

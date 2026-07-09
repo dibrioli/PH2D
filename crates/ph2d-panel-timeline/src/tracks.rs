@@ -23,7 +23,7 @@ use ph2d_vector::{Affine, BezPath, Brush, Fill, Stroke};
 
 use crate::ids;
 use crate::state::TimelinePanelState;
-use crate::{geom, graph, graph_paint};
+use crate::{geom, graph, graph_paint, summary_paint};
 
 /// Width of the left label column (property + object tag).
 pub(crate) const LABEL_COL_W: f32 = 132.0; // LITERAL-PX-OK: track-label column width
@@ -129,6 +129,8 @@ pub(crate) fn paint_rows(
     // Rows overflow the band while scrolling and an expanded one is tall; clip
     // so a half-visible graph never bleeds over the ruler or the scrollbar.
     ctx.scene.push_clip(&rect_to_vello(region));
+    // The master row, above track 0 and scrolling with it.
+    summary_paint::paint(ctx, theme, g, view, preview_dx, state.scroll_y, snap);
     let bands: Vec<(usize, f32, f32)> = geom::row_bands(
         snap,
         &state.expanded,
@@ -348,7 +350,13 @@ pub(crate) fn paint_marquee(ctx: &mut PaintCtx, theme: Theme, rect: Rect) {
 }
 
 /// Fill a keyframe diamond centred at `(cx, cy)` with half-size `h`.
-fn paint_diamond(ctx: &mut PaintCtx, cx: f32, cy: f32, h: f32, color: ph2d_vector::Color) {
+pub(crate) fn paint_diamond(
+    ctx: &mut PaintCtx,
+    cx: f32,
+    cy: f32,
+    h: f32,
+    color: ph2d_vector::Color,
+) {
     let (cx, cy, h) = (cx as f64, cy as f64, h as f64);
     let mut p = BezPath::new();
     p.move_to((cx, cy - h));

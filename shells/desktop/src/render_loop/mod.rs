@@ -637,9 +637,9 @@ impl crate::App {
             if let Some(pick) = hero_screen
                 .as_mut()
                 .and_then(|h| h.pending_timeline_interp.take())
-                && let Some(intent) = timeline_presets::interp_for_pick(&self.timeline, pick)
             {
-                self.timeline_intents.push(intent);
+                let picked = timeline_presets::intents_for_pick(&self.timeline, pick);
+                self.timeline_intents.extend(picked);
             }
             // W2.E5 capture-the-pose + AutoKey. Two authoring paths write keys at
             // the playhead onto the selected/dragged sprite's bound tracks (AddKey

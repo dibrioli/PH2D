@@ -38,9 +38,9 @@ pub fn apply(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
         .store
         .context_menu()
         .or_else(|| hero.store.last_context_menu());
-    let (target, key, open_mode) = match req.map(|r| r.kind) {
-        Some(ContextMenuKind::TimelineSegment { target, key }) => (target, key, TL_NO_EASE_MODE),
-        Some(ContextMenuKind::TimelineSegmentEase { target, key, mode }) => (target, key, mode),
+    let (scope, open_mode) = match req.map(|r| r.kind) {
+        Some(ContextMenuKind::TimelineSegment { scope }) => (scope, TL_NO_EASE_MODE),
+        Some(ContextMenuKind::TimelineSegmentEase { scope, mode }) => (scope, mode),
         _ => return false,
     };
 
@@ -50,7 +50,7 @@ pub fn apply(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
         hero.store.open_context_menu(ContextMenuRequest {
             x,
             y,
-            kind: ContextMenuKind::TimelineSegmentEase { target, key, mode },
+            kind: ContextMenuKind::TimelineSegmentEase { scope, mode },
         });
         return true;
     }
@@ -66,8 +66,7 @@ pub fn apply(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
         return false;
     }
     hero.pending_timeline_interp = Some(TimelineInterpPick {
-        target,
-        key,
+        scope,
         item: id,
         mode: open_mode,
     });

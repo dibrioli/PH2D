@@ -31,6 +31,8 @@ mod resize;
 mod ruler;
 mod scrollbar;
 pub mod state;
+mod summary;
+mod summary_paint;
 mod tracks;
 mod transport;
 mod view;

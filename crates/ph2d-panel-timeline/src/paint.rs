@@ -42,6 +42,7 @@ pub(crate) fn paint(state: &mut TimelinePanelState, ctx: &mut PaintCtx) {
         let key = state.key_drag.take().is_some();
         let handle = state.handle_drag.take().is_some();
         let anchor = state.anchor_drag.take().is_some();
+        state.summary_press = None;
         if key || handle || anchor {
             state::push_intent(ph2d_timeline::TimelineIntent::EndEdit);
         }

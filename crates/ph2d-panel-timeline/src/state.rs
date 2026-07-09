@@ -92,6 +92,11 @@ pub struct TimelinePanelState {
     /// In-progress anchor drag in an expanded track's graph (W3.E5) — the
     /// gesture that retunes a key's VALUE.
     pub anchor_drag: Option<AnchorDrag>,
+    /// The Summary column the pointer went down on, and whether it was already
+    /// fully selected — a plain click on such a column collapses the selection
+    /// to it, while a drag keeps whatever else was selected. `None` when the
+    /// press did not start on the Summary channel.
+    pub summary_press: Option<SummaryPress>,
     /// In-progress box-select (marquee) drag over an empty lane.
     pub box_drag: Option<BoxDrag>,
     /// A box-select that just finished, waiting to be resolved against the key
@@ -183,6 +188,15 @@ pub struct AnchorDrag {
     pub ending: bool,
 }
 
+/// A press that landed on a Summary column.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct SummaryPress {
+    /// The column's time, as `f64::to_bits` (the handle dispatch carries).
+    pub t_bits: u64,
+    /// The whole column was already selected when the press landed.
+    pub was_selected: bool,
+}
+
 /// An in-progress box-select: the pointer at Begin and the latest pointer, in
 /// global px. Keys whose diamond centre falls inside [`BoxDrag::rect`] join the
 /// selection; without `additive` (Shift) the previous selection is replaced.
@@ -245,6 +259,7 @@ impl Default for TimelinePanelState {
             expanded: Vec::new(),
             handle_drag: None,
             anchor_drag: None,
+            summary_press: None,
             box_drag: None,
             box_commit: None,
             rect: None,

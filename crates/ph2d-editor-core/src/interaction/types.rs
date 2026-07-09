@@ -224,16 +224,32 @@ pub enum ContextMenuKind {
     /// it and calls `PainterTool::set_curve_handle_kind` (crosses as a u8 since
     /// editor-core can't depend on the tool crate).
     CurvePointHandle,
-    /// Right-clicked a timeline key — its dope-sheet diamond or its graph anchor.
-    /// Menu offers the presets for the interpolation LEAVING that key (W3.E4):
-    /// Hold / Linear / three easing cascades / Custom. `target` and `key` are the
-    /// raw `AnimTarget`/`KeyId`, opaque here exactly as in [`TimelineHitKind`].
-    TimelineSegment { target: u64, key: u64 },
+    /// Right-clicked a timeline key (its dope-sheet diamond or its graph anchor),
+    /// or a Summary column. Menu offers the presets for the interpolation LEAVING
+    /// the keys in `scope` (W3.E4): Hold / Linear / three easing cascades /
+    /// Custom.
+    TimelineSegment { scope: TimelineInterpScope },
     /// The easing-family submenu of [`ContextMenuKind::TimelineSegment`], opened
     /// by one of its three cascade rows. `mode` is the wire encoding of the mode
     /// that row stands for (`ids::TL_EASE_MODE_*`); the shell pairs it with the
     /// clicked family id. editor-core never names an easing.
-    TimelineSegmentEase { target: u64, key: u64, mode: u8 },
+    TimelineSegmentEase {
+        scope: TimelineInterpScope,
+        mode: u8,
+    },
+}
+
+/// What a timeline preset pick applies to. Both variants are opaque here —
+/// editor-core carries the ids and never dereferences them (same contract as
+/// [`TimelineHitKind`]).
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum TimelineInterpScope {
+    /// One key, named by its track's raw `AnimTarget` and its raw `KeyId`. The
+    /// shell widens this to the whole selection when the key is part of it.
+    Key { target: u64, key: u64 },
+    /// Every key at one time, across every track — the Summary channel's column.
+    /// `t_bits` is `f64::to_bits` of the time in seconds.
+    Column { t_bits: u64 },
 }
 
 /// A preset the user picked from the timeline segment menu, parked on
@@ -246,10 +262,8 @@ pub enum ContextMenuKind {
 /// `ph2d-anim` vocabulary, which lives shell-side with the document.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct TimelineInterpPick {
-    /// Raw `AnimTarget` of the track owning the key.
-    pub target: u64,
-    /// Raw `KeyId` whose outgoing interpolation is being set.
-    pub key: u64,
+    /// The keys this pick retunes.
+    pub scope: TimelineInterpScope,
     /// The clicked row (`ids::CTX_MENU_TL_*`).
     pub item: NodeId,
     /// `ids::TL_EASE_MODE_*`, or `u8::MAX` when the row is not a family.
@@ -395,6 +409,11 @@ pub enum TimelineHitKind {
     /// in time. `target`/`key` are the track's `AnimTarget` and the key's
     /// `KeyId`, carried as raw ids (editor-core never dereferences them).
     Key { target: u64, key: u64 },
+    /// A diamond on the **Summary** channel: the one row that aggregates every
+    /// track's keys by time. Clicking it selects the whole column; dragging moves
+    /// it. `t_bits` is the column's time in seconds, as `f64::to_bits` — an
+    /// opaque, exact, hashable handle (editor-core never reads it as a number).
+    SummaryKey { t_bits: u64 },
     /// A track row's expand/collapse twirl — a click opens that track's graph
     /// editor (`target` is its raw `AnimTarget`).
     Twirl { target: u64 },

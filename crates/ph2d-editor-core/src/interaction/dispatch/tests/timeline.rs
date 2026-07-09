@@ -265,7 +265,7 @@ fn right_clicking_a_key_opens_the_segment_menu_instead_of_capturing_a_drag() {
     // W3.E4 + the trap it walked into: the timeline-surface capture above
     // `handle_down_menus` used to swallow EVERY button, so the menu never opened
     // however correct the rest of the wiring was.
-    use crate::interaction::ContextMenuKind;
+    use crate::interaction::{ContextMenuKind, TimelineInterpScope};
     let (mut store, hits) = timeline_setup(TimelineHitKind::Key { target: 42, key: 3 });
     let arena = Bump::new();
     let _ = dispatch_pointer(
@@ -277,7 +277,9 @@ fn right_clicking_a_key_opens_the_segment_menu_instead_of_capturing_a_drag() {
 
     assert_eq!(
         store.context_menu().map(|r| r.kind),
-        Some(ContextMenuKind::TimelineSegment { target: 42, key: 3 }),
+        Some(ContextMenuKind::TimelineSegment {
+            scope: TimelineInterpScope::Key { target: 42, key: 3 }
+        }),
         "right-click on a key must open its preset menu"
     );
     assert_eq!(
@@ -290,7 +292,7 @@ fn right_clicking_a_key_opens_the_segment_menu_instead_of_capturing_a_drag() {
 
 #[test]
 fn right_clicking_a_graph_anchor_opens_the_same_menu() {
-    use crate::interaction::ContextMenuKind;
+    use crate::interaction::{ContextMenuKind, TimelineInterpScope};
     let (mut store, hits) = timeline_setup(TimelineHitKind::CurveAnchor { target: 7, key: 1 });
     let arena = Bump::new();
     let _ = dispatch_pointer(
@@ -301,8 +303,48 @@ fn right_clicking_a_graph_anchor_opens_the_same_menu() {
     );
     assert_eq!(
         store.context_menu().map(|r| r.kind),
-        Some(ContextMenuKind::TimelineSegment { target: 7, key: 1 })
+        Some(ContextMenuKind::TimelineSegment {
+            scope: TimelineInterpScope::Key { target: 7, key: 1 }
+        })
     );
+}
+
+#[test]
+fn right_clicking_a_summary_column_scopes_the_menu_to_the_whole_column() {
+    // The Summary diamond stands for every key at that time; its preset must
+    // reach all of them, not the one key that happens to be first.
+    use crate::interaction::{ContextMenuKind, TimelineInterpScope};
+    let t_bits = 0.5_f64.to_bits();
+    let (mut store, hits) = timeline_setup(TimelineHitKind::SummaryKey { t_bits });
+    let arena = Bump::new();
+    let _ = dispatch_pointer(
+        &mut store,
+        &hits,
+        rmb(PointerKind::Down, 60.0, 60.0),
+        &arena,
+    );
+    assert_eq!(
+        store.context_menu().map(|r| r.kind),
+        Some(ContextMenuKind::TimelineSegment {
+            scope: TimelineInterpScope::Column { t_bits }
+        })
+    );
+}
+
+#[test]
+fn a_primary_press_on_a_summary_column_captures_a_drag_gesture() {
+    let t_bits = 0.5_f64.to_bits();
+    let (mut store, hits) = timeline_setup(TimelineHitKind::SummaryKey { t_bits });
+    let arena = Bump::new();
+    let _ = dispatch_pointer(
+        &mut store,
+        &hits,
+        pointer(PointerKind::Down, 60.0, 60.0),
+        &arena,
+    );
+    let g: Vec<_> = store.drain_timeline_gestures().collect();
+    assert_eq!(g.len(), 1);
+    assert_eq!(g[0].kind, TimelineHitKind::SummaryKey { t_bits });
 }
 
 #[test]

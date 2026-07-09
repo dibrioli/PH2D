@@ -106,6 +106,14 @@ pub fn timeline_anchor_hit_id(target: u64, key: u64) -> NodeId {
     dynamic_id("timeline.anchor", &[target, key])
 }
 
+/// A stable `NodeId` for one Summary-channel column, keyed by its time in
+/// seconds as `f64::to_bits`. Its own domain: the summary diamond at `t` and a
+/// track's key at `t` are different targets.
+#[must_use]
+pub fn timeline_summary_hit_id(t_bits: u64) -> NodeId {
+    dynamic_id("timeline.summary", &[t_bits])
+}
+
 /// A stable `NodeId` for one bézier handle in the graph editor (W3.E3), keyed by
 /// the segment's owning `(target, key)` and `which` (`0` = out handle `P1`,
 /// `1` = in handle `P2`).

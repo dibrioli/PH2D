@@ -91,18 +91,22 @@ pub(super) fn handle_down_menus(
         // win over the specific one.
         let timeline_seg = hit_id
             .and_then(|id| store.timeline_surface_at_id(id))
-            .and_then(|(_, kind)| match kind {
-                crate::interaction::TimelineHitKind::Key { target, key }
-                | crate::interaction::TimelineHitKind::CurveAnchor { target, key } => {
-                    Some((target, key))
+            .and_then(|(_, kind)| {
+                use crate::interaction::{TimelineHitKind as K, TimelineInterpScope as S};
+                match kind {
+                    K::Key { target, key } | K::CurveAnchor { target, key } => {
+                        Some(S::Key { target, key })
+                    }
+                    // A Summary column: the preset lands on every key at that time.
+                    K::SummaryKey { t_bits } => Some(S::Column { t_bits }),
+                    _ => None,
                 }
-                _ => None,
             });
-        if let Some((target, key)) = timeline_seg {
+        if let Some(scope) = timeline_seg {
             store.open_context_menu(ContextMenuRequest {
                 x: event.x,
                 y: event.y,
-                kind: ContextMenuKind::TimelineSegment { target, key },
+                kind: ContextMenuKind::TimelineSegment { scope },
             });
         } else if let Some(row) = hier_row_id {
             store.open_context_menu(ContextMenuRequest {

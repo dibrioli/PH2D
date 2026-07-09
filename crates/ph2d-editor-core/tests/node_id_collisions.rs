@@ -615,8 +615,8 @@ fn painter_dynamic_ids_dont_collide_with_chrome_or_each_other() {
     }
 }
 
-/// The timeline's five dynamic id families (key diamonds, row twirls,
-/// graph-height grips, curve anchors, bézier handles) share one FNV-1a body,
+/// The timeline's six dynamic id families (key diamonds, row twirls,
+/// graph-height grips, curve anchors, bézier handles, Summary columns) share one FNV-1a body,
 /// differing only by their domain seed. Prove that a twirl for target `T` never
 /// lands on a key hit for target `T` (which a shared seed would have made
 /// possible), nor on any chrome const. The anchor family matters most here: one
@@ -648,6 +648,10 @@ fn timeline_dynamic_ids_dont_collide_with_chrome_or_each_other() {
         check(
             format!("timeline_graph_resize_id({target})"),
             ids::timeline_graph_resize_id(target),
+        );
+        check(
+            format!("timeline_summary_hit_id({target})"),
+            ids::timeline_summary_hit_id(target),
         );
         for &key in &raw {
             check(

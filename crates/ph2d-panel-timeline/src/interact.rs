@@ -28,6 +28,7 @@ use crate::ids;
 use crate::key_drag;
 use crate::resize;
 use crate::state::TimelinePanelState;
+use crate::summary;
 use crate::view;
 
 /// Drain this frame's dope-sheet wheel + gestures and raise the resulting
@@ -76,6 +77,9 @@ pub(crate) fn process(
                         ph2d_timeline::SelectedKey::new(target, key),
                         g,
                     );
+                }
+                TimelineHitKind::SummaryKey { t_bits } => {
+                    summary::apply_gesture(state, px_per_s, snap, t_bits, g);
                 }
                 TimelineHitKind::Twirl { target } => apply_twirl(state, target, g),
                 TimelineHitKind::LabelSplitter => resize::apply_label_drag(state, g),
@@ -167,6 +171,9 @@ mod tests {
             }
             TimelineHitKind::Lane => box_select::apply_lane(state, g),
             TimelineHitKind::Twirl { target } => apply_twirl(state, target, g),
+            TimelineHitKind::SummaryKey { t_bits } => {
+                summary::apply_gesture(state, px_per_s, snap, t_bits, g);
+            }
             TimelineHitKind::LabelSplitter
             | TimelineHitKind::GraphResize
             | TimelineHitKind::CurveAnchor { .. }

@@ -128,13 +128,134 @@ pub fn draw_overlays(
     }
 }
 
-/// Desenha os **pontos do gradiente multi-ponto** do path `selected` (se o fill for
-/// `MultiPoint`) como bolinhas roxas (estilo Cavalry) em screen-space; a de índice
-/// `active` ganha um anel branco. No-op se não houver multi-ponto selecionado.
-pub fn draw_gradient_points(
+/// A draggable handle of a path's gradient fill (on-canvas editing, Cavalry-style).
+/// MultiPoint exposes one handle per point; Linear its two endpoints; Radial its
+/// center + an edge handle (drags the radius). The screen hit-test / camera work
+/// lives in the shell; [`hit_gradient_handle`] / [`drag_gradient_handle`] are the
+/// pure world-space geometry helpers it drives.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum GradHandle {
+    /// A multi-point gradient point by index.
+    Point(usize),
+    /// A linear gradient's start endpoint.
+    LinearStart,
+    /// A linear gradient's end endpoint.
+    LinearEnd,
+    /// A radial gradient's center.
+    RadialCenter,
+    /// A radial gradient's edge (drags the radius).
+    RadialEdge,
+}
+
+impl GradHandle {
+    /// The MultiPoint point index this handle addresses (`None` for linear/radial).
+    #[must_use]
+    pub fn point(self) -> Option<usize> {
+        match self {
+            GradHandle::Point(i) => Some(i),
+            _ => None,
+        }
+    }
+}
+
+/// The world-space anchor of `handle` on `path`'s fill (`None` if the handle
+/// doesn't match the fill kind / index). The radial EDGE sits at `center + (r, 0)`.
+fn handle_world_pos(path: &VecPath, handle: GradHandle) -> Option<[f64; 2]> {
+    match (&path.fill, handle) {
+        (Some(Paint::MultiPoint { points }), GradHandle::Point(i)) => {
+            points.get(i).map(|gp| gp.pos)
+        }
+        (Some(Paint::Linear { start, .. }), GradHandle::LinearStart) => Some(*start),
+        (Some(Paint::Linear { end, .. }), GradHandle::LinearEnd) => Some(*end),
+        (Some(Paint::Radial { center, .. }), GradHandle::RadialCenter) => Some(*center),
+        (Some(Paint::Radial { center, radius, .. }), GradHandle::RadialEdge) => {
+            Some([center[0] + radius, center[1]])
+        }
+        _ => None,
+    }
+}
+
+/// Hit-test all of `path`'s gradient handles at world point `(wx, wy)` within
+/// `world_thresh` world-units, returning the closest match (`None` if none / no
+/// gradient fill). Squared distance only.
+#[must_use]
+pub fn hit_gradient_handle(
+    path: &VecPath,
+    wx: f64,
+    wy: f64,
+    world_thresh: f64,
+) -> Option<GradHandle> {
+    let t2 = world_thresh * world_thresh;
+    let mut best: Option<(GradHandle, f64)> = None;
+    let consider = |best: &mut Option<(GradHandle, f64)>, h: GradHandle| {
+        if let Some(p) = handle_world_pos(path, h) {
+            let d2 = (wx - p[0]).powi(2) + (wy - p[1]).powi(2);
+            if d2 <= t2 && best.is_none_or(|(_, b)| d2 < b) {
+                *best = Some((h, d2));
+            }
+        }
+    };
+    match &path.fill {
+        Some(Paint::MultiPoint { points }) => {
+            for i in 0..points.len() {
+                consider(&mut best, GradHandle::Point(i));
+            }
+        }
+        Some(Paint::Linear { .. }) => {
+            consider(&mut best, GradHandle::LinearStart);
+            consider(&mut best, GradHandle::LinearEnd);
+        }
+        Some(Paint::Radial { .. }) => {
+            consider(&mut best, GradHandle::RadialCenter);
+            consider(&mut best, GradHandle::RadialEdge);
+        }
+        _ => {}
+    }
+    best.map(|(h, _)| h)
+}
+
+/// Move `handle` to world `(wx, wy)` on `path`'s fill (the radial edge sets the
+/// radius = distance to the center). Returns `true` iff it applied. No-op if the
+/// handle doesn't match the fill kind / index.
+pub fn drag_gradient_handle(path: &mut VecPath, handle: GradHandle, wx: f64, wy: f64) -> bool {
+    match (&mut path.fill, handle) {
+        (Some(Paint::MultiPoint { points }), GradHandle::Point(i)) => {
+            if let Some(gp) = points.get_mut(i) {
+                gp.pos = [wx, wy];
+                return true;
+            }
+        }
+        (Some(Paint::Linear { start, .. }), GradHandle::LinearStart) => {
+            *start = [wx, wy];
+            return true;
+        }
+        (Some(Paint::Linear { end, .. }), GradHandle::LinearEnd) => {
+            *end = [wx, wy];
+            return true;
+        }
+        (Some(Paint::Radial { center, .. }), GradHandle::RadialCenter) => {
+            *center = [wx, wy];
+            return true;
+        }
+        (Some(Paint::Radial { center, radius, .. }), GradHandle::RadialEdge) => {
+            *radius = ((wx - center[0]).powi(2) + (wy - center[1]).powi(2))
+                .sqrt()
+                .max(1e-6);
+            return true;
+        }
+        _ => {}
+    }
+    false
+}
+
+/// Desenha os **handles do gradiente** do path `selected` em screen-space (bolinhas
+/// roxas estilo Cavalry): um por ponto (MultiPoint), os dois extremos + a linha da
+/// rampa (Linear), ou o centro + o anel de raio + o handle de borda (Radial). O
+/// handle `active` ganha um anel branco. No-op se não houver gradiente selecionado.
+pub fn draw_gradient_handles(
     scene: &VecScene,
     selected: Option<VecPathId>,
-    active: Option<usize>,
+    active: Option<GradHandle>,
     transform: Affine,
     target: &mut VectorScene,
 ) {
@@ -142,31 +263,77 @@ pub fn draw_gradient_points(
     let Some(path) = scene.paths().iter().find(|p| p.id == sel) else {
         return;
     };
-    let Some(Paint::MultiPoint { points }) = &path.fill else {
-        return;
-    };
-    for (i, gp) in points.iter().enumerate() {
-        let c = transform * Point::new(gp.pos[0], gp.pos[1]);
-        // Swatch of the point's colour, ringed so it reads on any background.
+    let purple = Color::from_rgba8(180, 120, 235, 255); // Cavalry purple
+    let white = Color::from_rgba8(255, 255, 255, 255);
+    // A ringed colour-swatch dot; a white ring marks the active handle.
+    let dot = |target: &mut VectorScene, c: Point, fill: Color, is_active: bool| {
         target.inner_mut().fill(
             Fill::NonZero,
             Affine::IDENTITY,
-            &Brush::Solid(color(gp.color)),
+            &Brush::Solid(fill),
             None,
             &Circle::new(c, 5.5),
         );
-        let ring = if active == Some(i) {
-            Color::from_rgba8(255, 255, 255, 255)
-        } else {
-            Color::from_rgba8(180, 120, 235, 255) // Cavalry purple
-        };
+        let ring = if is_active { white } else { purple };
         target.inner_mut().stroke(
-            &Stroke::new(if active == Some(i) { 2.0 } else { 1.5 }),
+            &Stroke::new(if is_active { 2.0 } else { 1.5 }),
             Affine::IDENTITY,
             &Brush::Solid(ring),
             None,
             &Circle::new(c, 5.5),
         );
+    };
+    match &path.fill {
+        Some(Paint::MultiPoint { points }) => {
+            for (i, gp) in points.iter().enumerate() {
+                let c = transform * Point::new(gp.pos[0], gp.pos[1]);
+                dot(
+                    target,
+                    c,
+                    color(gp.color),
+                    active == Some(GradHandle::Point(i)),
+                );
+            }
+        }
+        Some(Paint::Linear { start, end, stops }) => {
+            let a = transform * Point::new(start[0], start[1]);
+            let b = transform * Point::new(end[0], end[1]);
+            let mut line = BezPath::new();
+            line.move_to(a);
+            line.line_to(b);
+            target.inner_mut().stroke(
+                &Stroke::new(1.5),
+                Affine::IDENTITY,
+                &Brush::Solid(purple),
+                None,
+                &line,
+            );
+            let c0 = stops.first().map_or(purple, |s| color(s.color));
+            let c1 = stops.last().map_or(purple, |s| color(s.color));
+            dot(target, a, c0, active == Some(GradHandle::LinearStart));
+            dot(target, b, c1, active == Some(GradHandle::LinearEnd));
+        }
+        Some(Paint::Radial {
+            center,
+            radius,
+            stops,
+        }) => {
+            let c = transform * Point::new(center[0], center[1]);
+            let e = transform * Point::new(center[0] + radius, center[1]);
+            let sr = ((e.x - c.x).powi(2) + (e.y - c.y).powi(2)).sqrt();
+            target.inner_mut().stroke(
+                &Stroke::new(1.5),
+                Affine::IDENTITY,
+                &Brush::Solid(purple),
+                None,
+                &Circle::new(c, sr),
+            );
+            let cc = stops.first().map_or(purple, |s| color(s.color));
+            let ce = stops.last().map_or(purple, |s| color(s.color));
+            dot(target, c, cc, active == Some(GradHandle::RadialCenter));
+            dot(target, e, ce, active == Some(GradHandle::RadialEdge));
+        }
+        _ => {}
     }
 }
 
@@ -299,11 +466,29 @@ fn control_point_bounds(path: &VecPath) -> ([f64; 2], [f64; 2]) {
     }
 }
 
+/// Deterministic per-texel white noise in `[0, 1)` from a 3-way integer key
+/// (`px`, `py`, point index) via a splitmix64 finalizer — transcendental-free
+/// (HR-5) and stable across frames/machines, so the jitter grain never crawls.
+#[inline]
+fn hash_noise(px: u32, py: u32, i: u32) -> f64 {
+    let mut z = (u64::from(px) << 42)
+        ^ (u64::from(py) << 21)
+        ^ u64::from(i).wrapping_mul(0x9E37_79B9_7F4A_7C15);
+    z = z.wrapping_add(0x9E37_79B9_7F4A_7C15);
+    z = (z ^ (z >> 30)).wrapping_mul(0xBF58_476D_1CE4_E5B9);
+    z = (z ^ (z >> 27)).wrapping_mul(0x94D0_49BB_1331_11EB);
+    z ^= z >> 31;
+    // Top 53 bits → [0, 1).
+    (z >> 11) as f64 / (1u64 << 53) as f64
+}
+
 /// Rasterize the Cavalry-style multi-point gradient into a straight-alpha RGBA8
 /// buffer of `res × res`, covering the world bbox `(lo,hi)`. Each texel's colour is
 /// the inverse-distance-weighted blend of the points:
 /// `c(p) = Σ wᵢcᵢ / Σ wᵢ`, `wᵢ = influenceᵢ / (dist²(p,posᵢ) + ε)` — exact colour at
-/// each point, smooth between. Squared distance only (no transcendentals).
+/// each point, smooth between. Squared distance only (no transcendentals). A point's
+/// `jitter` (0..1) multiplies its weight by a deterministic per-texel noise factor
+/// `1 ± jitter` (grain near that point); `jitter = 0` leaves the blend byte-identical.
 fn rasterize_idw(points: &[GradientPoint], lo: [f64; 2], hi: [f64; 2], res: u32) -> Arc<Vec<u8>> {
     const EPS: f64 = 1e-6;
     let n = res as usize;
@@ -315,9 +500,15 @@ fn rasterize_idw(points: &[GradientPoint], lo: [f64; 2], hi: [f64; 2], res: u32)
             let wx = lo[0] + (px as f64 + 0.5) / res as f64 * w;
             let wy = lo[1] + (py as f64 + 0.5) / res as f64 * h;
             let (mut sr, mut sg, mut sb, mut sa, mut sw) = (0.0, 0.0, 0.0, 0.0, 0.0);
-            for gp in points {
+            for (i, gp) in points.iter().enumerate() {
                 let (dx, dy) = (wx - gp.pos[0], wy - gp.pos[1]);
-                let wgt = gp.influence.max(0.0) / (dx * dx + dy * dy + EPS);
+                let mut wgt = gp.influence.max(0.0) / (dx * dx + dy * dy + EPS);
+                let jit = gp.jitter.clamp(0.0, 1.0);
+                if jit > 0.0 {
+                    let noise = hash_noise(px as u32, py as u32, i as u32);
+                    // Factor ∈ [1−jit, 1+jit), floored at 0 so the weight stays ≥ 0.
+                    wgt *= (1.0 + jit * (noise - 0.5) * 2.0).max(0.0);
+                }
                 sr += wgt * f64::from(gp.color.r);
                 sg += wgt * f64::from(gp.color.g);
                 sb += wgt * f64::from(gp.color.b);
@@ -426,6 +617,36 @@ mod tests {
         // Empty points → all-zero buffer (no divide-by-zero).
         let empty = rasterize_idw(&[], [0.0, 0.0], [1.0, 1.0], 4);
         assert!(empty.iter().all(|&b| b == 0));
+    }
+
+    #[test]
+    fn jitter_perturbs_the_blend_but_zero_is_identical() {
+        let red = Rgba8::new(255, 0, 0, 255);
+        let blue = Rgba8::new(0, 0, 255, 255);
+        let res = 32u32;
+        let base = [
+            GradientPoint::new([0.0, 0.5], red, 1.0),
+            GradientPoint::new([1.0, 0.5], blue, 1.0),
+        ];
+        // jitter = 0 everywhere → byte-identical to the plain blend (default preserved).
+        let plain = rasterize_idw(&base, [0.0, 0.0], [1.0, 1.0], res);
+        let zero_jit = [
+            GradientPoint::with_jitter([0.0, 0.5], red, 1.0, 0.0),
+            GradientPoint::with_jitter([1.0, 0.5], blue, 1.0, 0.0),
+        ];
+        let same = rasterize_idw(&zero_jit, [0.0, 0.0], [1.0, 1.0], res);
+        assert_eq!(*plain, *same, "jitter=0 must be byte-identical");
+        // A non-zero jitter changes at least some texels (grain), but never the
+        // exact colour at a point (its weight dominates → factor is irrelevant there).
+        let jit = [
+            GradientPoint::with_jitter([0.0, 0.5], red, 1.0, 0.8),
+            GradientPoint::with_jitter([1.0, 0.5], blue, 1.0, 0.8),
+        ];
+        let noisy = rasterize_idw(&jit, [0.0, 0.0], [1.0, 1.0], res);
+        assert_ne!(*plain, *noisy, "jitter>0 must perturb the blend");
+        // Deterministic: same inputs → same buffer (no frame crawl).
+        let noisy2 = rasterize_idw(&jit, [0.0, 0.0], [1.0, 1.0], res);
+        assert_eq!(*noisy, *noisy2, "jitter must be deterministic");
     }
 
     /// Spike de escala (ADR-0108 §5) — custo de re-encode NAIVE por frame (CPU,

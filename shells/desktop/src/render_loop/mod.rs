@@ -872,6 +872,7 @@ impl crate::App {
             let mut pending_vec_grad_remove = false;
             // Multi-point Influence slider (track·4).
             let mut pending_vec_grad_influence: Option<f64> = None;
+            let mut pending_vec_grad_jitter: Option<f64> = None;
             // Numeric Transform field edit (X/Y/W/H) — a SetValue document command.
             let mut pending_vec_transform: Option<(crate::input_dispatch::VecTransformField, f64)> =
                 None;
@@ -978,6 +979,9 @@ impl crate::App {
                             } else if *id == ph2d_editor::ids::VECTOR_GRAD_INFLUENCE {
                                 // Track 0..1 → influence 0..4.
                                 pending_vec_grad_influence = Some(*v * 4.0);
+                            } else if *id == ph2d_editor::ids::VECTOR_GRAD_JITTER {
+                                // Track 0..1 → jitter 0..1 (already a fraction).
+                                pending_vec_grad_jitter = Some(*v);
                             }
                         }
                         if let Some(t) = tools.active_mut() {
@@ -1688,6 +1692,10 @@ impl crate::App {
                     &self.vec_pen,
                     kind,
                 );
+                // The old handle no longer addresses the new fill kind — reset the
+                // gradient selection so the overlay highlight + panel don't cling to it.
+                self.vec_grad_selected = None;
+                self.vec_grad_drag = None;
             }
             if let Some(deg) = pending_vec_grad_angle {
                 crate::input_dispatch::apply_vec_set_grad_angle(
@@ -1709,15 +1717,28 @@ impl crate::App {
                     vec_scene,
                     &mut self.vec_history,
                     &self.vec_pen,
-                    self.vec_grad_selected,
-                );
+                    self.vec_grad_selected
+                        .and_then(ph2d_vec_render::GradHandle::point),
+                )
+                .map(ph2d_vec_render::GradHandle::Point);
             }
             if let Some(v) = pending_vec_grad_influence {
                 crate::input_dispatch::apply_vec_grad_influence(
                     vec_scene,
                     &mut self.vec_history,
                     &self.vec_pen,
-                    self.vec_grad_selected,
+                    self.vec_grad_selected
+                        .and_then(ph2d_vec_render::GradHandle::point),
+                    v,
+                );
+            }
+            if let Some(v) = pending_vec_grad_jitter {
+                crate::input_dispatch::apply_vec_grad_jitter(
+                    vec_scene,
+                    &mut self.vec_history,
+                    &self.vec_pen,
+                    self.vec_grad_selected
+                        .and_then(ph2d_vec_render::GradHandle::point),
                     v,
                 );
             }
@@ -1762,9 +1783,9 @@ impl crate::App {
                     camera.world_to_screen_affine(window_size),
                     vector_scene,
                 );
-                // Multi-point gradient handles (only when the selected path is a
-                // MultiPoint fill).
-                ph2d_vec_render::draw_gradient_points(
+                // Gradient handles (multi-point dots, or linear/radial endpoints)
+                // when the selected path has a gradient fill.
+                ph2d_vec_render::draw_gradient_handles(
                     vec_scene,
                     self.vec_pen.selected(),
                     self.vec_grad_selected,

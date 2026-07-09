@@ -78,6 +78,24 @@ impl BodyCtx<'_> {
                     y,
                 );
             }
+            // Jitter (per-texel grain, 0..1) for the selected point — track == value.
+            if let Some(jit) = state::current_grad_jitter() {
+                let track = self
+                    .store
+                    .slider(ids::VECTOR_GRAD_JITTER)
+                    .map(|(_, v)| v)
+                    .unwrap_or(jit as f32);
+                let val = f64::from(track);
+                y = self.slider_row(
+                    "Jitter",
+                    ids::VECTOR_GRAD_JITTER,
+                    ids::VECTOR_GRAD_JITTER_NUM,
+                    track,
+                    val,
+                    &format!("{val:.2}"),
+                    y,
+                );
+            }
         }
         // Angle slider (Linear only) — track 0..1 → 0..360°.
         if kind == FillKind::Linear {

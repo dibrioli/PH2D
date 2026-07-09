@@ -31,6 +31,8 @@ use ph2d_tool_vector::{
 const GRAD_ANGLE_SLIDER_SCALE: f32 = 360.0; // LITERAL-PX-OK: degrees in a full turn (math constant)
 /// Multi-point Influence slider mapping: track `0..1` → `0..4` (IDW strength).
 const GRAD_INFLUENCE_SLIDER_SCALE: f32 = 4.0; // LITERAL-PX-OK: max IDW influence (domain constant)
+/// Multi-point Jitter slider mapping: track `0..1` → `0..1` (per-texel grain).
+const GRAD_JITTER_SLIDER_SCALE: f32 = 1.0; // LITERAL-PX-OK: jitter is already a 0..1 fraction
 
 /// Register a plain action Button in the Normal state.
 fn button(store: &mut WidgetStore, id: ph2d_a11y::NodeId) {
@@ -221,6 +223,16 @@ pub fn populate(store: &mut WidgetStore) {
         1.0 / GRAD_INFLUENCE_SLIDER_SCALE,
         1.0,
         GRAD_INFLUENCE_SLIDER_SCALE,
+        0.0,
+    );
+    // Multi-point Jitter (track 0..1 → 0..1); seeded at the default 0.0 (smooth).
+    slider_chip(
+        store,
+        ids::VECTOR_GRAD_JITTER,
+        ids::VECTOR_GRAD_JITTER_NUM,
+        0.0,
+        0.0,
+        GRAD_JITTER_SLIDER_SCALE,
         0.0,
     );
 

@@ -609,6 +609,33 @@ pub(crate) fn apply_vec_grad_influence(
     }
 }
 
+/// Set the SELECTED multi-point gradient point's jitter (`value` 0..1, from the
+/// Jitter slider's track). No-op unless the fill is MultiPoint and `point` is valid.
+/// One undo step iff it changed.
+pub(crate) fn apply_vec_grad_jitter(
+    scene: &mut ph2d_vec_scene::VecScene,
+    history: &mut ph2d_vec_edit::History,
+    pen: &ph2d_vec_edit::PenTool,
+    point: Option<usize>,
+    value: f64,
+) {
+    use ph2d_vec_scene::Paint;
+    let Some(sel) = pen.selected() else {
+        return;
+    };
+    let Some(i) = point else {
+        return;
+    };
+    let pre = scene.clone();
+    if let Some(Paint::MultiPoint { points }) = scene.path_mut(sel).and_then(|p| p.fill.as_mut())
+        && let Some(gp) = points.get_mut(i)
+        && (gp.jitter - value).abs() > 1e-9
+    {
+        gp.jitter = value;
+        history.push_undo(pre);
+    }
+}
+
 /// Rotate the SELECTED path by `degrees` (panel Transform Angle field — a
 /// relative scrub) about its bbox center, recording ONE undo step iff it turned.
 /// A zero delta is a no-op (no undo). Free fn (mirror of [`apply_vec_rotate`]).
@@ -1239,40 +1266,31 @@ impl App {
             .on_drag(&mut gfx.vec_scene, [w[0] as f64, w[1] as f64])
     }
 
-    /// Gradient group 3b: hit-test the selected path's multi-point gradient points
-    /// (screen `pos`) → the index within ~9 px (world-scaled). `None` unless the
-    /// Vector tool is active and the selected path has a MultiPoint fill.
-    fn vec_grad_hit(&self, pos: (f32, f32)) -> Option<usize> {
+    /// Gradient group: hit-test the selected path's gradient handles (screen `pos`)
+    /// → the handle within ~9 px (world-scaled): a multi-point point, or a
+    /// linear/radial endpoint. `None` unless the Vector tool is active and the
+    /// selected path has a gradient fill.
+    fn vec_grad_hit(&self, pos: (f32, f32)) -> Option<ph2d_vec_render::GradHandle> {
         if !self.vector_tool_active() {
             return None;
         }
         let gfx = self.gfx.as_ref()?;
         let sel = self.vec_pen.selected()?;
         let path = gfx.vec_scene.paths().iter().find(|p| p.id == sel)?;
-        let ph2d_vec_scene::Paint::MultiPoint { points } = path.fill.as_ref()? else {
-            return None;
-        };
         let win = gfx.surface.size();
         let w = gfx.camera.screen_to_world(pos, win);
         let (wx, wy) = (w[0] as f64, w[1] as f64);
         let w0 = gfx.camera.screen_to_world((0.0, 0.0), win);
         let w1 = gfx.camera.screen_to_world((1.0, 0.0), win);
         let px = (((w1[0] - w0[0]).powi(2) + (w1[1] - w0[1]).powi(2)).sqrt()) as f64;
-        let thresh = (9.0 * px).powi(2);
-        let mut best: Option<(usize, f64)> = None;
-        for (i, gp) in points.iter().enumerate() {
-            let d2 = (wx - gp.pos[0]).powi(2) + (wy - gp.pos[1]).powi(2);
-            if d2 <= thresh && best.is_none_or(|(_, b)| d2 < b) {
-                best = Some((i, d2));
-            }
-        }
-        best.map(|(i, _)| i)
+        ph2d_vec_render::hit_gradient_handle(path, wx, wy, 9.0 * px)
     }
 
-    /// Gradient group 3b: while a multi-point gradient point is grabbed, move it to
-    /// the cursor's world position. No-op unless a grad drag is live.
+    /// Gradient group: while a gradient handle is grabbed, move it to the cursor's
+    /// world position (a radial edge sets the radius). No-op unless a grad drag is
+    /// live. Reuses the pure `drag_gradient_handle` geometry helper.
     fn vec_grad_drag_move(&mut self, x: f32, y: f32) -> bool {
-        let Some(i) = self.vec_grad_drag else {
+        let Some(handle) = self.vec_grad_drag else {
             return false;
         };
         let Some(sel) = self.vec_pen.selected() else {
@@ -1283,12 +1301,8 @@ impl App {
         };
         let win = gfx.surface.size();
         let w = gfx.camera.screen_to_world((x, y), win);
-        if let Some(path) = gfx.vec_scene.path_mut(sel)
-            && let Some(ph2d_vec_scene::Paint::MultiPoint { points }) = path.fill.as_mut()
-            && let Some(gp) = points.get_mut(i)
-        {
-            gp.pos = [w[0] as f64, w[1] as f64];
-            return true;
+        if let Some(path) = gfx.vec_scene.path_mut(sel) {
+            return ph2d_vec_render::drag_gradient_handle(path, handle, w[0] as f64, w[1] as f64);
         }
         false
     }
@@ -1547,6 +1561,20 @@ impl App {
                 && self.vector_text_field_focused()
             {
                 let _ = forward_to_hero(self.gfx.as_mut(), evt);
+            }
+            // A canvas press dismisses an open colour picker (click-outside closes
+            // it, mirroring the chrome light-dismiss). `on_canvas` already excludes
+            // the picker rect, so any press reaching here is genuinely outside it —
+            // done BEFORE the grad/pen/shape arms so the picker's colour is never
+            // applied to the handle the press then selects (Enio 2026-07-08).
+            if mapped_button == ph2d_host::PointerButton::Primary
+                && kind == PointerKind::Down
+                && on_canvas
+                && let Some(gfx) = self.gfx.as_mut()
+                && let Some(hero) = gfx.hero_screen.as_mut()
+                && hero.store.picker_target().is_some()
+            {
+                hero.store.set_picker_target(None);
             }
             match (mapped_button, kind) {
                 // Shift+drag on empty canvas = node box-select marquee (any mode).

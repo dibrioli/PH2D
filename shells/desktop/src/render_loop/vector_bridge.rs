@@ -24,11 +24,53 @@
 use ph2d_editor::{HeroScreen, ToolId, ToolRegistry};
 use ph2d_tool_vector::VectorDrawConfig;
 use ph2d_vec_edit::{History, PenStyle, PenTool, ShapeTool};
+use ph2d_vec_render::GradHandle;
 use ph2d_vec_scene::{LineCap, LineJoin, Paint, Rgba8, StrokeSpec, VecScene};
 use std::cell::RefCell;
 
 fn rgba(c: [u8; 4]) -> Rgba8 {
     Rgba8::new(c[0], c[1], c[2], c[3])
+}
+
+/// The colour the selected gradient handle addresses on `fill` — a multi-point
+/// point's colour, or the ramp stop at the START/END end the linear/radial handle
+/// sits on. Drives the Fill swatch, the picker seed, and the recolour. `None` if the
+/// handle doesn't match the fill kind (e.g. a stale selection after a kind switch).
+fn selected_grad_color(fill: &Paint, handle: GradHandle) -> Option<Rgba8> {
+    match (fill, handle) {
+        (Paint::MultiPoint { points }, GradHandle::Point(i)) => points.get(i).map(|gp| gp.color),
+        (Paint::Linear { stops, .. }, GradHandle::LinearStart)
+        | (Paint::Radial { stops, .. }, GradHandle::RadialCenter) => stops.first().map(|s| s.color),
+        (Paint::Linear { stops, .. }, GradHandle::LinearEnd)
+        | (Paint::Radial { stops, .. }, GradHandle::RadialEdge) => stops.last().map(|s| s.color),
+        _ => None,
+    }
+}
+
+/// Recolour the slot the selected gradient handle addresses to `c`; returns whether
+/// it changed. Mirror of [`selected_grad_color`] on the mutable fill.
+fn set_selected_grad_color(fill: &mut Paint, handle: GradHandle, c: Rgba8) -> bool {
+    let slot = match (fill, handle) {
+        (Paint::MultiPoint { points }, GradHandle::Point(i)) => {
+            points.get_mut(i).map(|gp| &mut gp.color)
+        }
+        (Paint::Linear { stops, .. }, GradHandle::LinearStart)
+        | (Paint::Radial { stops, .. }, GradHandle::RadialCenter) => {
+            stops.first_mut().map(|s| &mut s.color)
+        }
+        (Paint::Linear { stops, .. }, GradHandle::LinearEnd)
+        | (Paint::Radial { stops, .. }, GradHandle::RadialEdge) => {
+            stops.last_mut().map(|s| &mut s.color)
+        }
+        _ => None,
+    };
+    match slot {
+        Some(slot) if *slot != c => {
+            *slot = c;
+            true
+        }
+        _ => false,
+    }
 }
 
 /// Push `alpha` (0..255) onto an Opacity slider's stored value — unless the user
@@ -73,9 +115,10 @@ pub(super) fn dispatch(
     // World units per screen pixel (from the camera) — converts the tool's px
     // stroke width into the path's world-space width when restyling.
     px_to_world: f64,
-    // Selected multi-point gradient point (if any) — the Fill swatch recolors it
-    // instead of the solid fill while a MultiPoint path has a point selected.
-    grad_selected: Option<usize>,
+    // Selected gradient handle (a multi-point point OR a linear/radial endpoint) —
+    // the Fill swatch shows its colour and the picker recolours THAT slot instead of
+    // replacing the whole fill with a solid colour.
+    grad_handle: Option<GradHandle>,
 ) -> VectorDrawConfig {
     let vector_active = tools
         .active()
@@ -154,14 +197,15 @@ pub(super) fn dispatch(
         Some((ph2d_editor::widget::SliderState::Dragging, _))
     );
     let session = stroke_open || fill_open || width_dragging;
-    // Is the Fill swatch editing a selected MULTI-POINT gradient point? (index if so)
-    let recolor_point = grad_selected.and_then(|i| {
+    // The selected gradient handle, kept only if it still addresses a colour on the
+    // current fill (a stale handle after a kind switch resolves to `None` and falls
+    // through to the solid-fill path). The picker recolours THIS slot.
+    let active_handle = grad_handle.filter(|&h| {
         pen.selected()
             .and_then(|sel| scene.paths().iter().find(|p| p.id == sel))
-            .and_then(|p| match &p.fill {
-                Some(Paint::MultiPoint { points }) if i < points.len() => Some(i),
-                _ => None,
-            })
+            .and_then(|p| p.fill.as_ref())
+            .and_then(|f| selected_grad_color(f, h))
+            .is_some()
     });
     if tool.take_apply_to_selected()
         && let Some(sel) = pen.selected()
@@ -177,18 +221,15 @@ pub(super) fn dispatch(
                     || s.dash != dash
                     || (width_dragging && (s.width - new_w).abs() > f64::EPSILON)
             });
-            let fill_differs = if let Some(i) = recolor_point {
-                match &p.fill {
-                    Some(Paint::MultiPoint { points }) => {
-                        points.get(i).map(|gp| gp.color) != Some(rgba(fill))
-                    }
-                    _ => false,
-                }
+            let fill_differs = if let Some(h) = active_handle {
+                // Recolour the selected gradient slot (point / ramp stop).
+                p.fill.as_ref().and_then(|f| selected_grad_color(f, h)) != Some(rgba(fill))
             } else {
-                // A stray fill pick must NOT clobber a multi-point gradient (recolor
-                // needs a selected point); use the Fill-type selector to go Solid.
+                // No gradient handle selected → a fill pick only replaces a Solid /
+                // None fill; it must NEVER clobber a gradient (use Fill Type → Solid
+                // for that). Guards the linear/radial→solid regression (Enio 2026-07-08).
                 p.closed
-                    && !matches!(p.fill, Some(Paint::MultiPoint { .. }))
+                    && matches!(p.fill, None | Some(Paint::Solid(_)))
                     && p.fill.as_ref().map(Paint::primary_color) != new_fill
             };
             stroke_differs || fill_differs
@@ -212,16 +253,14 @@ pub(super) fn dispatch(
                         dash,
                     });
                 }
-                if let Some(i) = recolor_point {
-                    // Recolour the selected multi-point gradient point.
-                    if let Some(Paint::MultiPoint { points }) = path.fill.as_mut()
-                        && let Some(gp) = points.get_mut(i)
-                    {
-                        gp.color = rgba(fill);
+                if let Some(h) = active_handle {
+                    // Recolour the selected gradient slot (never converts to solid).
+                    if let Some(paint) = path.fill.as_mut() {
+                        set_selected_grad_color(paint, h, rgba(fill));
                     }
-                } else if path.closed && !matches!(path.fill, Some(Paint::MultiPoint { .. })) {
-                    // Otherwise picking a fill colour sets a SOLID fill (replacing a
-                    // linear/radial gradient — but never a multi-point one).
+                } else if path.closed && matches!(path.fill, None | Some(Paint::Solid(_))) {
+                    // Otherwise a fill pick sets a SOLID fill — but only over a solid /
+                    // empty fill, never over a gradient.
                     path.fill = new_fill.map(Paint::solid);
                 }
             }
@@ -243,16 +282,13 @@ pub(super) fn dispatch(
         .set_widget_color(ph2d_editor::ids::VECTOR_STROKE_SWATCH, stroke);
     // The Fill swatch shows the selected gradient point's colour (so the picker
     // opens seeded on it) when a MultiPoint point is selected, else the tool fill.
-    let fill_swatch_col = recolor_point
-        .and_then(|i| {
+    let fill_swatch_col = active_handle
+        .and_then(|h| {
             pen.selected()
                 .and_then(|sel| scene.paths().iter().find(|p| p.id == sel))
-                .and_then(|p| match &p.fill {
-                    Some(Paint::MultiPoint { points }) => points
-                        .get(i)
-                        .map(|gp| [gp.color.r, gp.color.g, gp.color.b, gp.color.a]),
-                    _ => None,
-                })
+                .and_then(|p| p.fill.as_ref())
+                .and_then(|f| selected_grad_color(f, h))
+                .map(|c| [c.r, c.g, c.b, c.a])
         })
         .unwrap_or(fill);
     hero.store
@@ -335,15 +371,17 @@ pub(super) fn dispatch(
             (None, None)
         };
         ph2d_panel_vector::set_current_fill(kind, angle);
-        // Publish the selected multi-point point's influence (drives the slider).
-        ph2d_panel_vector::set_current_grad_influence(recolor_point.and_then(|i| {
+        // Publish the selected multi-point point's influence + jitter (drive the sliders).
+        let sel_point = active_handle.and_then(GradHandle::point).and_then(|i| {
             pen.selected()
                 .and_then(|sel| scene.paths().iter().find(|p| p.id == sel))
                 .and_then(|p| match &p.fill {
-                    Some(Paint::MultiPoint { points }) => points.get(i).map(|gp| gp.influence),
+                    Some(Paint::MultiPoint { points }) => points.get(i).copied(),
                     _ => None,
                 })
-        }));
+        });
+        ph2d_panel_vector::set_current_grad_influence(sel_point.map(|gp| gp.influence));
+        ph2d_panel_vector::set_current_grad_jitter(sel_point.map(|gp| gp.jitter));
     }
 
     // Calibrate the Transform fields' drag scrub to the camera: `px_to_world`

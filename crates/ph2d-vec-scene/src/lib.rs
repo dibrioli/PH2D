@@ -108,22 +108,39 @@ impl GradientStop {
 /// Um ponto de um gradiente **multi-ponto** (freeform, estilo Cavalry / Illustrator
 /// Freeform Gradient): uma cor posicionada em `pos` no espaço NORMALIZADO da bbox
 /// do path (`pos` em WORLD-space, mesmo espaço das âncoras, então transforma junto
-/// com a shape) + uma `influence` (força/peso IDW). O render mistura por
-/// inverse-distance weighting: `c(p) = Σ wᵢcᵢ / Σ wᵢ`, `wᵢ = influenceᵢ / (dist² + ε)`.
+/// com a shape) + uma `influence` (força/peso IDW) + `jitter` (0..1: ruído
+/// determinístico por-texel na contribuição do ponto — grão estilo Cavalry). O
+/// render mistura por inverse-distance weighting: `c(p) = Σ wᵢcᵢ / Σ wᵢ`,
+/// `wᵢ = influenceᵢ / (dist² + ε)`, com `wᵢ` perturbado por `jitter`.
 #[derive(Copy, Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct GradientPoint {
     pub pos: [f64; 2],
     pub color: Rgba8,
     pub influence: f64,
+    /// Ruído per-texel na contribuição do ponto, `0..1` (0 = blend liso, default).
+    pub jitter: f64,
 }
 
 impl GradientPoint {
+    /// Ponto liso (`jitter = 0`): o caminho comum. Use [`Self::with_jitter`] para o grão.
     #[must_use]
     pub fn new(pos: [f64; 2], color: Rgba8, influence: f64) -> Self {
         Self {
             pos,
             color,
             influence,
+            jitter: 0.0,
+        }
+    }
+
+    /// Igual a [`Self::new`] mas com `jitter` explícito (0..1).
+    #[must_use]
+    pub fn with_jitter(pos: [f64; 2], color: Rgba8, influence: f64, jitter: f64) -> Self {
+        Self {
+            pos,
+            color,
+            influence,
+            jitter,
         }
     }
 }
@@ -252,8 +269,9 @@ pub struct VecPath {
 /// Versão do wire-format de save (postcard é posicional → bump a cada mudança de
 /// schema). v2: `VertexKind` ganhou `Symmetric`. v3: `stroke` virou
 /// [`StrokeSpec`] (cap/join/dash). v4: `fill` virou [`Paint`] (sólido + gradientes
-/// Linear/Radial/MultiPoint). (Migração robusta = cutover, Fase R.)
-pub const VEC_SCENE_SCHEMA_VERSION: u32 = 4;
+/// Linear/Radial/MultiPoint). v5: [`GradientPoint`] ganhou `jitter`. (Migração
+/// robusta = cutover, Fase R.)
+pub const VEC_SCENE_SCHEMA_VERSION: u32 = 5;
 
 /// Reordenação na pilha de render (índice `0` = fundo, último = frente). Uma
 /// operação de documento, mapeada pela shell a partir dos botões Arrange (mirror

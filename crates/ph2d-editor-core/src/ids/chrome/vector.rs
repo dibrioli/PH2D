@@ -74,6 +74,9 @@ pub const VECTOR_GRAD_REMOVE_POINT: NodeId = hash_node_id("vector.grad.remove_po
 /// Influence (strength / reach) of the selected multi-point gradient point.
 pub const VECTOR_GRAD_INFLUENCE: NodeId = hash_node_id("vector.grad.influence");
 pub const VECTOR_GRAD_INFLUENCE_NUM: NodeId = hash_node_id("vector.grad.influence_num");
+/// Jitter (per-texel grain, 0..1) of the selected multi-point gradient point.
+pub const VECTOR_GRAD_JITTER: NodeId = hash_node_id("vector.grad.jitter");
+pub const VECTOR_GRAD_JITTER_NUM: NodeId = hash_node_id("vector.grad.jitter_num");
 
 pub const VECTOR_STROKE_OPACITY: NodeId = hash_node_id("vector.stroke_opacity");
 pub const VECTOR_STROKE_OPACITY_NUM: NodeId = hash_node_id("vector.stroke_opacity_num");

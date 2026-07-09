@@ -32,6 +32,9 @@ thread_local! {
     /// Selected multi-point gradient point's influence (`None` unless a point is
     /// selected) — drives the Influence slider's visibility + value.
     static CURRENT_GRAD_INFLUENCE: Cell<Option<f64>> = const { Cell::new(None) };
+    /// Selected multi-point gradient point's jitter (`None` unless a point is
+    /// selected) — drives the Jitter slider's visibility + value.
+    static CURRENT_GRAD_JITTER: Cell<Option<f64>> = const { Cell::new(None) };
     /// Rotation-field accumulator: the angle (degrees) the Angle chip last
     /// reported THIS gesture. `event` emits the DELTA `(current − this)` so the
     /// shell rotates incrementally; reset to 0 by `paint` whenever the field is
@@ -130,6 +133,16 @@ pub fn set_current_grad_influence(v: Option<f64>) {
 /// The selected multi-point point's influence this frame (drives the slider).
 pub(crate) fn current_grad_influence() -> Option<f64> {
     CURRENT_GRAD_INFLUENCE.with(|c| c.get())
+}
+
+/// Publish the selected multi-point gradient point's jitter (`None` = no point).
+pub fn set_current_grad_jitter(v: Option<f64>) {
+    CURRENT_GRAD_JITTER.with(|c| c.set(v));
+}
+
+/// The selected multi-point point's jitter this frame (drives the slider).
+pub(crate) fn current_grad_jitter() -> Option<f64> {
+    CURRENT_GRAD_JITTER.with(|c| c.get())
 }
 
 /// The angle the Angle chip last reported this gesture (for the delta emit).

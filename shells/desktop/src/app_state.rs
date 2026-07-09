@@ -549,12 +549,12 @@ pub(crate) struct App {
     pub(crate) vec_marquee: Option<((f32, f32), (f32, f32))>,
     /// ADR-0108: undo/redo by snapshot of `vec_scene` (Ctrl+Z / Ctrl+Shift+Z).
     pub(crate) vec_history: ph2d_vec_edit::History,
-    /// Gradient group increment 3b: index of the selected path's multi-point
-    /// gradient point currently being DRAGGED on-canvas (`None` = not dragging).
-    pub(crate) vec_grad_drag: Option<usize>,
-    /// The selected multi-point gradient point (drives the overlay highlight +
-    /// Remove-point target). `None` = none selected.
-    pub(crate) vec_grad_selected: Option<usize>,
+    /// Gradient group: the gradient handle currently being DRAGGED on-canvas —
+    /// a multi-point point OR a linear/radial endpoint (`None` = not dragging).
+    pub(crate) vec_grad_drag: Option<ph2d_vec_render::GradHandle>,
+    /// The selected gradient handle (drives the overlay highlight + the Remove-
+    /// point / Influence / Jitter targets, via [`GradHandle::point`]). `None` = none.
+    pub(crate) vec_grad_selected: Option<ph2d_vec_render::GradHandle>,
     /// In-app path clipboard for Vector Ctrl+C/X/V — a clone of the copied path
     /// (geometry + style, id-less). `None` until the first copy/cut.
     pub(crate) vec_clipboard: Option<ph2d_vec_scene::VecPath>,

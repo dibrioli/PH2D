@@ -203,24 +203,41 @@ impl EditClip {
         self.commit(ops::in_range(&self.data, t, ops::remove_dc_offset));
     }
 
-    /// Apply an offline [`Effect`] (filter / dynamics / character) to the target
-    /// range (selection, or whole clip). Length-preserving, so it splices via
-    /// [`in_range`] exactly like the sample ops — a selection is processed in
-    /// isolation. Commits one undo step.
-    pub fn apply_effect(&mut self, fx: Effect) {
-        let t = self.target();
-        self.commit(ops::in_range(&self.data, t, |d| fx.apply(d)));
+    /// Render an offline [`Effect`] over the target range **without committing** —
+    /// the buffer the editor auditions live. Length-preserving, so it splices via
+    /// [`in_range`] exactly like the sample ops (a selection is processed in
+    /// isolation). Pair with [`EditClip::commit_rendered`] so what the user heard
+    /// is bit-for-bit what lands in the undo timeline.
+    pub fn render_effect(&self, fx: Effect) -> SampleData {
+        ops::in_range(&self.data, self.target(), |d| fx.apply(d))
     }
 
-    /// Apply a **tail-extending** [`TailEffect`] (reverb / delay) to the target
-    /// range. The ring-out bleeds onto the audio after the range, and the clip
-    /// **grows** when the range reaches the end (see [`in_range_tail`]). Commits
-    /// one undo step; the selection survives (clamped if the clip shrank, which
-    /// this never does).
-    pub fn apply_tail_effect(&mut self, fx: TailEffect) {
-        let t = self.target();
+    /// Render a **tail-extending** [`TailEffect`] over the target range without
+    /// committing. The ring-out bleeds onto the audio after the range, and the
+    /// buffer **grows** when the range reaches the end (see [`in_range_tail`]).
+    pub fn render_tail_effect(&self, fx: TailEffect) -> SampleData {
         let tail = fx.tail_frames(self.data.format().sample_rate);
-        let out = ops::in_range_tail(&self.data, t, tail, |region, tail| fx.render(region, tail));
+        ops::in_range_tail(&self.data, self.target(), tail, |region, tail| {
+            fx.render(region, tail)
+        })
+    }
+
+    /// Commit a buffer produced by [`EditClip::render_effect`] /
+    /// [`EditClip::render_tail_effect`] as one undo step.
+    pub fn commit_rendered(&mut self, data: SampleData) {
+        self.commit(data);
+    }
+
+    /// Render + commit an [`Effect`] in one step (one undo step).
+    pub fn apply_effect(&mut self, fx: Effect) {
+        let out = self.render_effect(fx);
+        self.commit(out);
+    }
+
+    /// Render + commit a [`TailEffect`] in one step (one undo step). The clip
+    /// **grows** when the target range reaches the end; the selection survives.
+    pub fn apply_tail_effect(&mut self, fx: TailEffect) {
+        let out = self.render_tail_effect(fx);
         self.commit(out);
     }
 
@@ -392,6 +409,48 @@ mod tests {
         clip.set_selection(Some(0..100));
         clip.apply_tail_effect(echo);
         assert_eq!(clip.frame_count(), 1_000, "tail fits inside → no growth");
+    }
+
+    /// The live-audition contract: the buffer the user HEARS (`render_*`) is
+    /// bit-for-bit the one `commit_rendered` puts in the undo timeline, and it is
+    /// identical to what the one-shot `apply_*` would have produced. A drift here
+    /// means Apply silently sounds different from the preview.
+    #[test]
+    fn rendered_audition_is_what_gets_committed() {
+        let d = SampleData::from_interleaved(vec![0.6; 2_000], AudioFormat::stereo(48_000));
+        let fx = Effect::Saturate { drive: 4.0 };
+
+        let mut auditioned = EditClip::new(d.clone());
+        let heard = auditioned.render_effect(fx);
+        assert_eq!(auditioned.frame_count(), 1_000, "render must NOT mutate");
+        assert!(!auditioned.can_undo(), "render must NOT touch the timeline");
+        auditioned.commit_rendered(heard.clone());
+
+        let mut applied = EditClip::new(d);
+        applied.apply_effect(fx);
+        assert_eq!(auditioned.data().samples(), applied.data().samples());
+        assert_eq!(heard.samples(), applied.data().samples());
+        assert!(auditioned.can_undo() && auditioned.undo());
+    }
+
+    /// Same contract for the tail family, where the audition also changes length.
+    #[test]
+    fn rendered_tail_audition_matches_apply() {
+        let d = SampleData::from_interleaved(vec![0.5; 2_000], AudioFormat::stereo(48_000));
+        let fx = TailEffect::Delay {
+            time_secs: 0.002,
+            feedback: 0.3,
+            mix: 0.5,
+            tail_secs: 0.01,
+        };
+        let clip = EditClip::new(d.clone());
+        let heard = clip.render_tail_effect(fx);
+        assert_eq!(clip.frame_count(), 1_000, "render must NOT mutate");
+
+        let mut applied = EditClip::new(d);
+        applied.apply_tail_effect(fx);
+        assert_eq!(heard.samples(), applied.data().samples());
+        assert_eq!(heard.frame_count(), 1_480);
     }
 
     #[test]

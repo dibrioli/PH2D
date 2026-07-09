@@ -32,6 +32,36 @@ pub(super) struct AudioEditorRuntime {
     last_loop: std::cell::Cell<bool>,
     /// Display name of the loaded clip (file stem).
     name: String,
+    /// The effects rack's **live audition** (W3 block 3a): the effect rendered over
+    /// `clip` but NOT committed. While present it is what sounds and what the
+    /// waveform shows; `clip` stays pristine so Cancel is free. Apply commits this
+    /// exact buffer, so what the user heard is what lands in the undo timeline.
+    fx_audition: Option<ph2d_audio_edit::EditClip>,
+    /// What produced `fx_audition`. Change-gate so a slider that doesn't actually
+    /// move can't re-render the whole clip every frame.
+    fx_sig: Option<FxSig>,
+}
+
+/// Everything the audition depends on: the effect, its parameters, **and the
+/// target range** — moving the selection re-targets the effect, so a stale
+/// audition rendered against the old range must be thrown away.
+type FxSig = (
+    usize,
+    [i32; ph2d_panel_audio_editor::MAX_FX_PARAMS],
+    Option<(usize, usize)>,
+);
+
+/// Quantize the slider normals so float jitter doesn't defeat the change-gate.
+fn fx_sig(
+    kind: usize,
+    norms: &[f32; ph2d_panel_audio_editor::MAX_FX_PARAMS],
+    selection: Option<(usize, usize)>,
+) -> FxSig {
+    let mut q = [0i32; ph2d_panel_audio_editor::MAX_FX_PARAMS];
+    for (slot, n) in q.iter_mut().zip(norms) {
+        *slot = (n * 1_000.0) as i32;
+    }
+    (kind, q, selection)
 }
 
 impl AudioSystem {
@@ -60,6 +90,95 @@ impl AudioSystem {
             .to_string();
         self.editor.clip = Some(ph2d_audio_edit::EditClip::new(data));
         self.editor.state = EditorTransport::Stopped;
+        self.editor_fx_discard();
+    }
+
+    /// The clip the editor currently **sounds and shows**: the live audition when
+    /// the effects rack is previewing, else the committed clip.
+    fn editor_sounding(&self) -> Option<&ph2d_audio_edit::EditClip> {
+        self.editor
+            .fx_audition
+            .as_ref()
+            .or(self.editor.clip.as_ref())
+    }
+
+    /// Push whatever should be sounding into the running preview voice, keeping
+    /// its cursor (no restart). No-op when the preview is not playing.
+    fn editor_hot_swap(&self) {
+        if self.engine.preview_playing()
+            && let Some(clip) = self.editor_sounding()
+        {
+            let _ = self.engine.set_preview_data(clip.data().clone());
+        }
+    }
+
+    /// Drop the audition without touching the clip (used by load / by edits that
+    /// would invalidate it). Does not restore the preview — callers that need the
+    /// old sound back call [`AudioSystem::editor_fx_cancel`].
+    fn editor_fx_discard(&mut self) {
+        self.editor.fx_audition = None;
+        self.editor.fx_sig = None;
+        ph2d_panel_audio_editor::clear_fx_dirty();
+    }
+
+    /// Re-render the effects rack's audition when the user has touched it and the
+    /// parameters actually changed, then hot-swap it into the sounding preview so
+    /// it is heard **live**. The clip stays pristine — this is non-destructive.
+    ///
+    /// Cost is one full effect render over the target range per *parameter change*
+    /// (change-gated, so at most once per frame while dragging). Selecting a range
+    /// scopes the render, which is what keeps long clips responsive.
+    pub(crate) fn editor_fx_update(
+        &mut self,
+        kind: usize,
+        norms: &[f32; ph2d_panel_audio_editor::MAX_FX_PARAMS],
+    ) {
+        let Some(clip) = self.editor.clip.as_ref() else {
+            return;
+        };
+        let selection = clip.selection().map(|r| (r.start, r.end));
+        let sig = fx_sig(kind, norms, selection);
+        if self.editor.fx_sig == Some(sig) {
+            return;
+        }
+        let rendered = match super::fx_params::build(kind, norms) {
+            Some(super::fx_params::FxCommand::Plain(fx)) => clip.render_effect(fx),
+            Some(super::fx_params::FxCommand::Tail(fx)) => clip.render_tail_effect(fx),
+            None => return,
+        };
+        self.editor.fx_audition = Some(ph2d_audio_edit::EditClip::new(rendered));
+        self.editor.fx_sig = Some(sig);
+        self.editor_hot_swap();
+    }
+
+    /// Commit the audition as one undo step — **the exact buffer that was heard**.
+    /// Falls back to rendering now if Apply is pressed without any audition.
+    pub(crate) fn editor_fx_apply(
+        &mut self,
+        kind: usize,
+        norms: &[f32; ph2d_panel_audio_editor::MAX_FX_PARAMS],
+    ) {
+        if self.editor.fx_audition.is_none() {
+            self.editor_fx_update(kind, norms);
+        }
+        if let Some(audition) = self.editor.fx_audition.take()
+            && let Some(clip) = self.editor.clip.as_mut()
+        {
+            clip.commit_rendered(audition.data().clone());
+        }
+        self.editor_fx_discard();
+        self.editor_hot_swap();
+    }
+
+    /// Throw the audition away and put the committed clip back on the wire.
+    pub(crate) fn editor_fx_cancel(&mut self) {
+        self.editor_fx_discard();
+        self.editor_hot_swap();
+    }
+
+    /// Whether an audition is currently sounding (enables the panel's Cancel).
+    pub(crate) fn editor_fx_auditioning(&self) -> bool {
+        self.editor.fx_audition.is_some()
     }
 
     /// Cycle the transport: Stopped → play from 0, Playing → pause, Paused →
@@ -67,7 +186,9 @@ impl AudioSystem {
     pub(crate) fn editor_toggle_play(&mut self, looping: bool) {
         match self.editor.state {
             EditorTransport::Stopped => {
-                if let Some(clip) = &self.editor.clip {
+                // Play what is currently SHOWING — the audition when the rack is
+                // previewing, so pressing Play mid-audition hears the effect.
+                if let Some(clip) = self.editor_sounding() {
                     let params = PlayParams {
                         looping,
                         ..PlayParams::default()
@@ -145,11 +266,10 @@ impl AudioSystem {
         }
     }
 
-    /// The loaded clip's duration in seconds (`0` when none).
+    /// Duration of what is sounding/showing — the audition when previewing (a
+    /// reverb tail makes it longer than the committed clip), else the clip.
     pub(crate) fn editor_duration_secs(&self) -> f64 {
-        self.editor
-            .clip
-            .as_ref()
+        self.editor_sounding()
             .map(|c| c.duration_secs())
             .unwrap_or(0.0)
     }
@@ -159,9 +279,12 @@ impl AudioSystem {
         &self.editor.name
     }
 
-    /// The loaded editor clip (for the overlay waveform), if any.
+    /// The clip the overlay draws: the live audition when the rack is previewing
+    /// (so the waveform shows the effect, tail and all), else the committed clip.
+    /// The **selection** still comes from the committed clip via
+    /// [`AudioSystem::editor_selection`].
     pub(crate) fn editor_clip(&self) -> Option<&ph2d_audio_edit::EditClip> {
-        self.editor.clip.as_ref()
+        self.editor_sounding()
     }
 
     /// The preview's current playback frame (for the overlay playhead).
@@ -174,8 +297,26 @@ impl AudioSystem {
     /// PLAYING (and looping): the edited buffer is hot-swapped into the sounding
     /// preview voice at its current position, so the change is heard live.
     pub(crate) fn editor_apply(&mut self, cmd: ph2d_panel_audio_editor::AudioEditCmd) {
+        use ph2d_panel_audio_editor::AudioEditCmd as Cmd;
+        // The effects rack auditions over the CURRENT clip, so settle it first:
+        // Apply/Cancel are its own verbs, and any OTHER edit would move the clip
+        // out from under the audition (leaving a preview of a buffer that no
+        // longer exists) — cancel it and edit the committed clip.
+        match cmd {
+            Cmd::ApplyFx => {
+                let kind = ph2d_panel_audio_editor::fx_kind();
+                let norms = ph2d_panel_audio_editor::fx_norms();
+                self.editor_fx_apply(kind, &norms);
+                return;
+            }
+            Cmd::CancelFx => {
+                self.editor_fx_cancel();
+                return;
+            }
+            _ if self.editor.fx_audition.is_some() => self.editor_fx_cancel(),
+            _ => {}
+        }
         {
-            use ph2d_panel_audio_editor::AudioEditCmd as Cmd;
             let Some(clip) = self.editor.clip.as_mut() else {
                 return;
             };
@@ -208,28 +349,13 @@ impl AudioSystem {
                     ph2d_audio_edit::FadeShape::SCurve,
                     ph2d_audio_edit::FadeDir::Out,
                 ),
-                // Effects rack (W3 block 3a): the panel holds a kind index +
-                // normalized slider positions; `fx_params` maps them to the real
-                // effect and tells us which splice family it belongs to. A tail
-                // effect run through `apply_effect` would lose its ring-out.
-                Cmd::ApplyFx => {
-                    let kind = ph2d_panel_audio_editor::fx_kind();
-                    let norms = ph2d_panel_audio_editor::fx_norms();
-                    match super::fx_params::build(kind, &norms) {
-                        Some(super::fx_params::FxCommand::Plain(fx)) => clip.apply_effect(fx),
-                        Some(super::fx_params::FxCommand::Tail(fx)) => clip.apply_tail_effect(fx),
-                        None => {}
-                    }
-                }
+                // Handled above (they act on the audition, not on `clip`).
+                Cmd::ApplyFx | Cmd::CancelFx => {}
             }
         }
         // Hot-swap the edited buffer into the sounding preview (no stop). No-op if
         // stopped — the next Play uses the edited clip.
-        if self.engine.preview_playing()
-            && let Some(clip) = self.editor.clip.as_ref()
-        {
-            let _ = self.engine.set_preview_data(clip.data().clone());
-        }
+        self.editor_hot_swap();
     }
 
     /// Push the Loop toggle to the sounding preview live (so toggling Loop during

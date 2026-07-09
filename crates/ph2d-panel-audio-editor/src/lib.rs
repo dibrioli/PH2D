@@ -96,8 +96,10 @@ pub const MAX_FX_PARAMS: usize = 4;
 pub const AEDIT_FX_PREV: NodeId = hash_node_id("audio_editor_fx_prev");
 /// Next effect in the selector.
 pub const AEDIT_FX_NEXT: NodeId = hash_node_id("audio_editor_fx_next");
-/// Apply the selected effect at the current parameters.
+/// Commit the audition (one undo step) — what you hear is what lands.
 pub const AEDIT_FX_APPLY: NodeId = hash_node_id("audio_editor_fx_apply");
+/// Discard the audition and restore the clip's sound.
+pub const AEDIT_FX_CANCEL: NodeId = hash_node_id("audio_editor_fx_cancel");
 /// Parameter slider 0.
 pub const AEDIT_FX_P0: NodeId = hash_node_id("audio_editor_fx_p0");
 /// Parameter slider 1.
@@ -143,9 +145,10 @@ pub enum AudioEditCmd {
     FadeIn,
     /// Fade out across the selection.
     FadeOut,
-    /// Apply the effects rack's selected effect at its current parameters. The
-    /// shell reads [`fx_kind`] + [`fx_norms`] to build it.
+    /// Commit the effects rack's live audition as one undo step.
     ApplyFx,
+    /// Discard the live audition; the clip goes back to how it sounded.
+    CancelFx,
 }
 
 /// Zero-size marker implementing the typed Audio Editor panel contract.
@@ -175,6 +178,11 @@ impl Panel for AudioEditorPanel {
     }
 }
 
+/// Shell → panel: the audition ended (Apply/Cancel) — stop asking for renders.
+pub use snapshot::clear_fx_dirty;
+/// Panel → shell: whether the user has touched the rack since the last
+/// Apply/Cancel — i.e. whether the shell should be auditioning an effect live.
+pub use snapshot::fx_dirty;
 /// Panel → shell: the selected effect index into the shell's `FX_KINDS`.
 pub use snapshot::fx_kind;
 /// Panel → shell: the normalized 0..1 position of every parameter slider.
@@ -183,6 +191,8 @@ pub use snapshot::fx_norms;
 pub use snapshot::looping;
 /// Shell → panel: publish the loaded clip's display name.
 pub use snapshot::set_clip_name;
+/// Shell → panel: whether an audition is currently sounding (enables Cancel).
+pub use snapshot::set_fx_auditioning;
 /// Shell → panel: publish whether a waveform selection exists (range-op buttons).
 pub use snapshot::set_has_selection;
 /// Panel → shell: the pending edit command (one-shot; the shell applies it to the

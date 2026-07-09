@@ -3,8 +3,8 @@
 use crate::state::AudioEditorState;
 use crate::{
     AEDIT_CLOSE, AEDIT_CUT, AEDIT_DC, AEDIT_EXPORT, AEDIT_FADE_IN, AEDIT_FADE_OUT, AEDIT_FX_APPLY,
-    AEDIT_FX_NEXT, AEDIT_FX_PARAMS, AEDIT_FX_PREV, AEDIT_GAIN_DOWN, AEDIT_GAIN_UP, AEDIT_INVERT,
-    AEDIT_LOAD, AEDIT_LOOP, AEDIT_NORM_LUFS, AEDIT_NORMALIZE, AEDIT_PLAY, AEDIT_REDO,
+    AEDIT_FX_CANCEL, AEDIT_FX_NEXT, AEDIT_FX_PARAMS, AEDIT_FX_PREV, AEDIT_GAIN_DOWN, AEDIT_GAIN_UP,
+    AEDIT_INVERT, AEDIT_LOAD, AEDIT_LOOP, AEDIT_NORM_LUFS, AEDIT_NORMALIZE, AEDIT_PLAY, AEDIT_REDO,
     AEDIT_REVERSE, AEDIT_SILENCE, AEDIT_STOP, AEDIT_TRIM, AEDIT_UNDO, AudioEditCmd,
     AudioEditorPanel, snapshot,
 };
@@ -90,6 +90,8 @@ pub(crate) fn apply_event(
             Some(AudioEditCmd::FadeOut)
         } else if id == AEDIT_FX_APPLY {
             Some(AudioEditCmd::ApplyFx)
+        } else if id == AEDIT_FX_CANCEL {
+            Some(AudioEditCmd::CancelFx)
         } else {
             None
         };

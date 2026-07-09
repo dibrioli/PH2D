@@ -23,6 +23,13 @@ thread_local! {
     static FX_KIND_NAME: RefCell<String> = const { RefCell::new(String::new()) };
     static FX_PARAM_VIEWS: RefCell<Vec<(String, String)>> = const { RefCell::new(Vec::new()) };
     static FX_DEFAULTS: Cell<[f32; MAX_FX_PARAMS]> = const { Cell::new([0.0; MAX_FX_PARAMS]) };
+    /// Set ONLY by real user input on the rack (cycling the kind, dragging a
+    /// slider) — never by the paint step's default re-seed, or merely opening the
+    /// panel would start auditioning an effect nobody asked for. While true the
+    /// shell renders + hot-swaps the audition; Apply/Cancel clear it.
+    static FX_DIRTY: Cell<bool> = const { Cell::new(false) };
+    /// Shell → panel: an audition is sounding (enables Cancel).
+    static FX_AUDITIONING: Cell<bool> = const { Cell::new(false) };
     /// Kind whose defaults were last loaded into the sliders. Mirror of the name
     /// box's sync guard: on a kind change the paint step re-seeds the sliders once
     /// instead of fighting the user's drag every frame.
@@ -128,7 +135,7 @@ pub(crate) fn can_redo() -> bool {
 // ---- Effects rack (W3 block 3a) ----
 
 /// Panel: step the effect selector by `delta`, wrapping. No-op until the shell
-/// has published how many kinds there are.
+/// has published how many kinds there are. Starts an audition.
 pub(crate) fn cycle_fx_kind(delta: isize) {
     let count = FX_KIND_COUNT.with(Cell::get);
     if count == 0 {
@@ -138,6 +145,26 @@ pub(crate) fn cycle_fx_kind(delta: isize) {
         let next = (c.get() as isize + delta).rem_euclid(count as isize);
         c.set(next as usize);
     });
+    FX_DIRTY.with(|c| c.set(true));
+}
+
+/// Panel → shell: is there a live audition to render / keep hot-swapped?
+pub fn fx_dirty() -> bool {
+    FX_DIRTY.with(Cell::get)
+}
+
+/// Shell: the audition was committed (Apply) or thrown away (Cancel).
+pub fn clear_fx_dirty() {
+    FX_DIRTY.with(|c| c.set(false));
+}
+
+/// Shell → panel: an audition is sounding (enables the Cancel button).
+pub fn set_fx_auditioning(v: bool) {
+    FX_AUDITIONING.with(|c| c.set(v));
+}
+
+pub(crate) fn fx_auditioning() -> bool {
+    FX_AUDITIONING.with(Cell::get)
 }
 
 /// Panel → shell: the selected effect's index into the shell's `FX_KINDS`.
@@ -150,15 +177,33 @@ pub fn fx_norms() -> [f32; MAX_FX_PARAMS] {
     FX_NORMS.with(Cell::get)
 }
 
-/// Panel: record slider `i`'s new normalized position.
+/// Panel: record slider `i`'s new normalized position from a **user drag** —
+/// starts/refreshes the audition.
 pub(crate) fn set_fx_norm(i: usize, v: f32) {
+    if write_fx_norm(i, v) {
+        FX_DIRTY.with(|c| c.set(true));
+    }
+}
+
+/// Panel: load slider `i` from the selected effect's preset. Does **not** dirty
+/// the rack — re-seeding on a kind change (or on the very first paint) must not
+/// look like the user asked to audition.
+pub(crate) fn seed_fx_norm(i: usize, v: f32) {
+    write_fx_norm(i, v);
+}
+
+fn write_fx_norm(i: usize, v: f32) -> bool {
     FX_NORMS.with(|c| {
         let mut n = c.get();
-        if let Some(slot) = n.get_mut(i) {
-            *slot = v.clamp(0.0, 1.0);
-            c.set(n);
+        match n.get_mut(i) {
+            Some(slot) => {
+                *slot = v.clamp(0.0, 1.0);
+                c.set(n);
+                true
+            }
+            None => false,
         }
-    });
+    })
 }
 
 /// Shell → panel: how many effect kinds the selector cycles.

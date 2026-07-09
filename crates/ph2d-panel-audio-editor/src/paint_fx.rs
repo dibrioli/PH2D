@@ -1,12 +1,19 @@
 //! The effects rack section of the Audio Editor panel (W3 block 3a).
 //!
 //! A selector (`◀ Name ▶`), one labelled slider per parameter of the selected
-//! effect, and Apply. The panel is UI-only: sliders carry **normalized 0..1**
-//! values and the shell publishes each slot's label + already-formatted value
-//! (`audio/fx_params.rs`), so no DSP range or unit ever lands here.
+//! effect, and **Apply / Cancel**. The rack **auditions live**: touching the
+//! selector or any slider marks it dirty, and the shell renders the effect into
+//! the sounding preview so it is heard (and drawn) while you tune. Apply commits
+//! exactly that buffer as one undo step; Cancel throws it away.
+//!
+//! The panel is UI-only: sliders carry **normalized 0..1** values and the shell
+//! publishes each slot's label + already-formatted value (`audio/fx_params.rs`),
+//! so no DSP range or unit ever lands here.
 
 use crate::paint::button;
-use crate::{AEDIT_FX_APPLY, AEDIT_FX_NEXT, AEDIT_FX_PARAMS, AEDIT_FX_PREV, snapshot};
+use crate::{
+    AEDIT_FX_APPLY, AEDIT_FX_CANCEL, AEDIT_FX_NEXT, AEDIT_FX_PARAMS, AEDIT_FX_PREV, snapshot,
+};
 use ph2d_editor_core::interaction::HitIndex;
 use ph2d_editor_core::paint::{paint_text_centered, resolve};
 use ph2d_editor_core::widget::{Slider, SliderOrientation, paint_slider};
@@ -109,11 +116,28 @@ pub(crate) fn paint_fx_section(
     }
 
     y += Spacing::Xs.px();
+
+    // The rack auditions live: touching the selector or a slider renders the
+    // effect into the sounding preview without committing. Apply turns exactly the
+    // buffer you heard into one undo step; Cancel throws it away. Cancel is only
+    // meaningful while something is auditioning.
+    let auditioning = snapshot::fx_auditioning();
+    let btn_w = ((w - gap) * 0.5).max(1.0);
     button(
-        Rect::new(x, y, w, row_h),
-        "Apply Effect",
+        Rect::new(x, y, btn_w, row_h),
+        "Apply",
         loaded,
         AEDIT_FX_APPLY,
+        scene,
+        text_system,
+        theme,
+        hit_index,
+    );
+    button(
+        Rect::new(x + btn_w + gap, y, btn_w, row_h),
+        "Cancel",
+        auditioning,
+        AEDIT_FX_CANCEL,
         scene,
         text_system,
         theme,

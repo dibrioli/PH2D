@@ -122,7 +122,7 @@ pub(crate) fn paint(_state: &mut AudioEditorState, ctx: &mut PaintCtx) {
             {
                 *value = defaults[i];
             }
-            snapshot::set_fx_norm(i, defaults[i]);
+            snapshot::seed_fx_norm(i, defaults[i]);
         }
         snapshot::mark_fx_synced();
     }

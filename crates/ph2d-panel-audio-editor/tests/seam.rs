@@ -10,9 +10,10 @@ use ph2d_editor_core::interaction::WidgetEvent;
 use ph2d_editor_core::panel::EventOutcome;
 use ph2d_panel_audio_editor::state::AudioEditorState;
 use ph2d_panel_audio_editor::{
-    AEDIT_FX_APPLY, AEDIT_FX_NEXT, AEDIT_FX_PREV, AEDIT_LOAD, AEDIT_LOOP, AEDIT_NORMALIZE,
-    AEDIT_PLAY, AEDIT_STOP, AEDIT_TRIM, AudioEditCmd, AudioEditorPanel, fx_kind, looping,
-    set_fx_kind_count, take_edit_cmd, take_load, take_play_pause, take_stop,
+    AEDIT_FX_APPLY, AEDIT_FX_CANCEL, AEDIT_FX_NEXT, AEDIT_FX_P0, AEDIT_FX_PREV, AEDIT_LOAD,
+    AEDIT_LOOP, AEDIT_NORMALIZE, AEDIT_PLAY, AEDIT_STOP, AEDIT_TRIM, AudioEditCmd,
+    AudioEditorPanel, clear_fx_dirty, fx_dirty, fx_kind, looping, set_fx_kind_count, take_edit_cmd,
+    take_load, take_play_pause, take_stop,
 };
 use ph2d_ui_testkit::MockPanelHost;
 
@@ -80,6 +81,38 @@ fn edit_clicks_reach_the_edit_command() {
         take_edit_cmd(),
         Some(AudioEditCmd::ApplyFx),
         "Apply Effect click never armed the effect command"
+    );
+}
+
+/// The live-audition contract. `fx_dirty` is what makes the shell render the
+/// effect into the sounding preview, so it must fire on **user input only** —
+/// merely opening the panel (which re-seeds the sliders with the preset) cannot
+/// start auditioning an effect nobody asked for.
+#[test]
+fn audition_starts_on_user_input_only_and_cancel_arms_its_command() {
+    let mut host = MockPanelHost::with_panel::<AudioEditorPanel>();
+    let mut state = AudioEditorState;
+    clear_fx_dirty();
+    let _ = take_edit_cmd();
+    set_fx_kind_count(3);
+
+    assert!(
+        !fx_dirty(),
+        "a freshly populated rack must not be auditioning"
+    );
+
+    host.apply_panel_event::<AudioEditorPanel>(&mut state, WidgetEvent::Click(AEDIT_FX_NEXT));
+    assert!(fx_dirty(), "cycling the effect must start an audition");
+
+    clear_fx_dirty();
+    host.apply_panel_event::<AudioEditorPanel>(&mut state, WidgetEvent::ValueChanged(AEDIT_FX_P0));
+    assert!(fx_dirty(), "dragging a parameter must start an audition");
+
+    host.apply_panel_event::<AudioEditorPanel>(&mut state, WidgetEvent::Click(AEDIT_FX_CANCEL));
+    assert_eq!(
+        take_edit_cmd(),
+        Some(AudioEditCmd::CancelFx),
+        "Cancel click never armed the discard command"
     );
 }
 

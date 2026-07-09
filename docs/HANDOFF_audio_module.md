@@ -46,6 +46,25 @@ abaixo é histórico — não re-investigue.
   `Effect`/`TailEffect`. Compressor ganhou **auto-makeup**. O `paint` re-semeia os
   sliders com o preset **só quando o efeito muda** (mesmo guard da caixa de nome),
   pra não brigar com o arraste do usuário.
+- **W3 Bloco 3a-bis — audição ao vivo (não-destrutiva)**: mexer no seletor ou num
+  slider marca o rack como *dirty*; o shell renderiza o efeito sobre o clipe
+  **pristino** e faz hot-swap no preview voice → **você ouve enquanto ajusta**, e
+  a waveform do overlay mostra o resultado (cauda inclusa). **Apply** commita
+  **exatamente o buffer que soou** (1 passo de undo); **Cancel** descarta. O clipe
+  só muda no Apply. Invariantes:
+  - `EditClip::render_effect`/`render_tail_effect` (puros) + `commit_rendered`
+    garantem *what-you-hear-is-what-you-commit* (teste
+    `rendered_audition_is_what_gets_committed`).
+  - `fx_dirty` é setado **só por input real** (`cycle_fx_kind`, `set_fx_norm`) —
+    o re-seed dos defaults usa `seed_fx_norm`, senão abrir o painel já começaria a
+    auditar um efeito que ninguém pediu (teste no seam).
+  - O change-gate `FxSig` inclui **a seleção**: mover a seleção re-alveja o efeito
+    e re-renderiza. Qualquer OUTRA edição (gain/trim/undo…) cancela a audição
+    antes, senão o clipe se moveria debaixo dela.
+  - **Custo:** um render completo do target range por *mudança de parâmetro*
+    (change-gated ⇒ no máximo 1 por frame). Selecionar um trecho escopa o render —
+    é o que mantém clipes longos responsivos. Se um dia pesar (reverb com cauda
+    longa em música de 3 min), medir antes de mexer.
 - **Atalhos:** `Ctrl+Z` undo · `Ctrl+Shift+Z` / `Ctrl+Y` redo (roteados ao
   `EditClip` quando o painel WAVE está aberto com clipe carregado).
 - **Fix:** `cpal::Stream` é dropado no `on_close_request`, não no drop-cascade do

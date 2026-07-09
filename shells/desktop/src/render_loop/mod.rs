@@ -259,10 +259,20 @@ impl crate::App {
                 // step seeds the sliders with whenever the kind changes.
                 use crate::audio::fx_params;
                 let kind = ed::fx_kind();
+                let norms = ed::fx_norms();
                 ed::set_fx_kind_count(fx_params::FX_KINDS.len());
                 ed::set_fx_kind_name(fx_params::FX_KINDS[kind]);
                 ed::set_fx_defaults(fx_params::default_norms(kind));
-                ed::set_fx_param_views(&fx_params::views(kind, &ed::fx_norms()));
+                ed::set_fx_param_views(&fx_params::views(kind, &norms));
+                // Live audition: once the user touches the rack, render the effect
+                // over the (pristine) clip and hot-swap it into the sounding
+                // preview, so it is heard while the sliders move. Change-gated
+                // inside, so this is at most one render per parameter change.
+                // Apply commits that exact buffer; Cancel throws it away.
+                if ed::fx_dirty() {
+                    audio.editor_fx_update(kind, &norms);
+                }
+                ed::set_fx_auditioning(audio.editor_fx_auditioning());
             }
         }
         // Coalesced painter Move: stamp the LATEST buffered canvas position ONCE this frame, replacing

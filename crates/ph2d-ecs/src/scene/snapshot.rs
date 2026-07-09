@@ -53,6 +53,11 @@ pub struct HierarchyEntry {
     /// 2026-05-26: `true` iff entity carries [`crate::GroupedChildren`].
     /// Descendants are locked while THIS entity remains editable.
     pub group_locked: bool,
+    /// ADR-0110: o `VecPathId` quando a entidade É um path vetorial
+    /// ([`crate::VecPathRef`]). `None` para sprites e para grupos (que
+    /// são entidades comuns com filhos). O painel usa isto para o ícone
+    /// da linha, e a shell para achar o path sem um segundo mapa.
+    pub vec_path: Option<u64>,
 }
 
 /// DFS-ordered flat view of the sim hierarchy. Each `build_*` pass
@@ -99,6 +104,7 @@ type HierarchyChainFetch = (
     Option<&'static crate::Visibility>,
     Option<&'static crate::Locked>,
     Option<&'static crate::GroupedChildren>,
+    Option<&'static crate::VecPathRef>,
 );
 
 /// Pre-built query state for [`build_hierarchy_snapshot`]. One per
@@ -118,6 +124,7 @@ impl HierarchyWalkState {
                 Option<&crate::Visibility>,
                 Option<&crate::Locked>,
                 Option<&crate::GroupedChildren>,
+                Option<&crate::VecPathRef>,
             )>(),
         }
     }
@@ -170,7 +177,7 @@ pub fn build_hierarchy_snapshot(
     }
 
     while let Some((entity, depth, parent)) = scratch.pop() {
-        let Ok((name, children, vis, lk, grp)) = state.chain.get(sim_w, entity) else {
+        let Ok((name, children, vis, lk, grp, vp)) = state.chain.get(sim_w, entity) else {
             continue;
         };
         out.entries.push(HierarchyEntry {
@@ -181,6 +188,7 @@ pub fn build_hierarchy_snapshot(
             visible: !vis.is_some_and(|v| v.hidden),
             locked: lk.is_some(),
             group_locked: grp.is_some(),
+            vec_path: vp.map(|v| v.0),
         });
         if let Some(children) = children {
             // Push children in reverse so DFS visits the first child

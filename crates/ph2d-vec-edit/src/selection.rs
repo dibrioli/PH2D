@@ -43,6 +43,9 @@ impl PenTool {
         }
         let mut best: Option<(VecPathId, f64)> = None;
         for path in scene.paths() {
+            if !self.view.is_pickable(path.id) {
+                continue;
+            }
             if let Some((_, _, d2)) = ph2d_vec_scene::nearest_point_on_path(path, p, INSERT_SAMPLES)
                 && d2.sqrt() <= hit_r
                 && best.is_none_or(|(_, b)| d2 < b)
@@ -51,6 +54,39 @@ impl PenTool {
             }
         }
         best.map(|(id, _)| id)
+    }
+
+    /// Troca a seleção de OBJETO por `ids`, **preservando** o vértice primário e a
+    /// seleção de vértice. É como a shell expande um clique para o grupo inteiro
+    /// (a árvore é a Hierarquia, ADR-0110) sem estragar a edição de ponto.
+    pub fn set_object_selection(&mut self, ids: &[VecPathId]) {
+        if ids.is_empty() {
+            return;
+        }
+        self.selected_paths = ids.to_vec();
+        if self.selected.is_none_or(|s| !ids.contains(&s)) {
+            self.selected = ids.last().copied();
+            self.selected_verts.clear();
+        }
+    }
+
+    /// Alterna `ids` (um objeto, ou as folhas de um grupo) na seleção de OBJETO
+    /// (Shift+clique): entra e sai inteiro. Limpa a seleção de vértice.
+    pub fn toggle_object_members(&mut self, ids: &[VecPathId]) {
+        if ids.is_empty() {
+            return;
+        }
+        self.selected_verts.clear();
+        if ids.iter().all(|m| self.selected_paths.contains(m)) {
+            self.selected_paths.retain(|p| !ids.contains(p));
+        } else {
+            for m in ids {
+                if !self.selected_paths.contains(m) {
+                    self.selected_paths.push(*m);
+                }
+            }
+        }
+        self.selected = self.selected_paths.last().copied();
     }
 
     /// Vértice "primário" (último tocado) — o do destaque do painel; `None` se

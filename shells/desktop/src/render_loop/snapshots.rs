@@ -300,47 +300,25 @@ pub(super) fn publish(
                 cursor_screen: Some(last_pointer),
             })
         };
+    // Poda ANTES de construir as views: só a morte de uma entidade tira alguém da
+    // seleção (ver `gizmo_prune` — o atalho "sem view = morreu" expulsava as
+    // entidades vetoriais, que não têm `Sprite`).
+    super::gizmo_prune::prune_dead(&mut hero.gizmo, sim);
+    // Onda 2: rebuild the views every frame, from the pruned selection. An entity
+    // with no `Sprite` simply has no view — it stays selected and paints no gizmo.
     hero.gizmo.view = hero
         .gizmo
         .selection
         .and_then(|bits| build_view(bits, sim, present));
-    // Onda 2: rebuild the extras' views every frame. Cleared first so
-    // a sprite that left the selection between frames stops painting.
     hero.gizmo.extra_views.clear();
-    let mut alive_extras: Vec<u64> = Vec::with_capacity(hero.gizmo.extra_selection.len());
     for bits in hero.gizmo.extra_selection.clone() {
         if let Some(v) = build_view(bits, sim, present) {
+            // Cada par carrega os próprios bits, então uma alça nunca é registrada
+            // sob a identidade de outro sprite (Enio 2026-06-08: "a 2ª e 3ª sprites
+            // não giram") — e `extra_views` pode ser um subconjunto de
+            // `extra_selection` sem desalinhar nada.
             hero.gizmo.extra_views.push((bits, v));
-            alive_extras.push(bits);
         }
-    }
-    // Onda 2 hotfix: prune the selection set when sprites disappear
-    // (cascade despawn, parent delete, etc.) — otherwise selected_len
-    // stays >1 and the global gizmo keeps painting over the surviving
-    // single sprite (user-reported: "se deletar algumas e sobrar 1,
-    // o gizmo global fica aparecendo mesmo com uma sprite"). The
-    // bridge / world don't notify; we detect by absence of a view.
-    hero.gizmo.extra_selection = alive_extras;
-    if hero.gizmo.view.is_none() && hero.gizmo.selection.is_some() {
-        // Primary disappeared. Promote oldest extra if any; else clear.
-        hero.gizmo.selection = if !hero.gizmo.extra_selection.is_empty() {
-            let promoted = hero.gizmo.extra_selection.remove(0);
-            // Keep extra_views in lockstep with extra_selection: the promoted
-            // entity becomes the primary (painted via `hero.gizmo.view`), so
-            // its view must leave `extra_views` too. Without this, every
-            // remaining extra is painted with the PREVIOUS extra's view (the
-            // bits/view zip in paint drifts off-by-one) — the gizmo handle is
-            // registered at the wrong sprite's position and the click grabs
-            // the wrong sprite (Enio 2026-06-08: "a 2ª e 3ª sprites não giram").
-            if !hero.gizmo.extra_views.is_empty() {
-                hero.gizmo.extra_views.remove(0);
-            }
-            // re-point hero.gizmo.view to it.
-            hero.gizmo.view = build_view(promoted, sim, present);
-            Some(promoted)
-        } else {
-            None
-        };
     }
     // Onda 2 polish: while a Global gizmo drag is alive, derive the
     // global view from the cached `global_view_start` snapshot +
@@ -415,9 +393,13 @@ pub(super) fn publish(
     // converted to world units at the current zoom so the offset
     // tracks the zoom level — handles stay one handle-size + a gap
     // outside the individuals at any scale.
+    // Conta VIEWS, não bits selecionados: uma seleção de 1 sprite + 1 path
+    // vetorial (ADR-0110) tem `selected_len() == 2` mas uma view só, e o gizmo
+    // global desenharia — deslocado 32 px — em volta de um sprite sozinho.
+    let painted_views = usize::from(hero.gizmo.view.is_some()) + hero.gizmo.extra_views.len();
     hero.gizmo.global_view = if let Some(v) = global_from_drag {
         Some(v)
-    } else if hero.gizmo.selected_len() > 1 {
+    } else if painted_views > 1 {
         let primary = hero.gizmo.view.as_ref();
         let mut iter = primary
             .into_iter()

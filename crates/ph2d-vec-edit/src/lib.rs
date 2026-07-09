@@ -129,6 +129,9 @@ pub struct PenTool {
     grab: Option<Grab>,
     /// Estilo dos paths recém-criados (sincronizado da tool pelo shell).
     style: PenStyle,
+    /// O que a ÁRVORE do editor esconde/trava neste frame (ADR-0110). Publicado
+    /// pela shell; um path escondido ou travado não é agarrável.
+    view: ph2d_vec_scene::VecViewState,
 }
 
 impl PenTool {
@@ -181,6 +184,12 @@ impl PenTool {
         self.style = style;
     }
 
+    /// Publica o que a árvore esconde/trava. Chamado uma vez por frame pela shell,
+    /// antes de qualquer hit-test.
+    pub fn set_view(&mut self, view: ph2d_vec_scene::VecViewState) {
+        self.view = view;
+    }
+
     /// Pressão primária em world-space `p`. `px_to_world` = world-units por pixel.
     /// `alt` = quebrar a tangente ao agarrar um handle (vira cusp / Corner).
     ///
@@ -228,8 +237,13 @@ impl PenTool {
         // Parado → hit-test para EDITAR um ponto existente.
         if let Some(g) = self.hit_test(scene, p, hit_r) {
             self.selected = Some(g.path);
-            // Clique simples reduz a seleção de OBJETO ao path tocado (Shift+clique
-            // multi-seleção é tratado no shell ANTES do on_press).
+            // Clique simples reduz a seleção de OBJETO ao path tocado — ou ao GRUPO
+            // dele, se houver (o gizmo passa a enquadrar o grupo, e o arrasto move
+            // todo mundo). O primário segue sendo o path tocado, então a edição de
+            // vértice continua funcionando dentro do grupo. (Shift+clique é tratado
+            // no shell ANTES do on_press.)
+            // A expansão para o GRUPO é da shell (a árvore é a Hierarquia, ADR-0110):
+            // ela chama `set_object_selection` logo depois, se houver grupo.
             self.selected_paths = vec![g.path];
             // Agarrar uma âncora que JÁ está na multi-seleção de vértice mantém o
             // grupo (o arrasto move todos); qualquer outro grab vira seleção única.
@@ -415,6 +429,10 @@ impl PenTool {
             }
         }
         for path in scene.paths() {
+            // Escondido ou travado (por si ou por um ancestral) não é agarrável.
+            if !self.view.is_pickable(path.id) {
+                continue;
+            }
             for (i, v) in path.verts_all().enumerate() {
                 if dist2(p, v.anchor) <= r2 {
                     return Some(Grab {

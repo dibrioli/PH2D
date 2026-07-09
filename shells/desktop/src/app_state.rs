@@ -567,7 +567,7 @@ pub(crate) struct App {
     pub(crate) vec_grad_selected: Option<ph2d_vec_render::GradHandle>,
     /// In-app path clipboard for Vector Ctrl+C/X/V — a clone of the copied path
     /// (geometry + style, id-less). `None` until the first copy/cut.
-    pub(crate) vec_clipboard: Option<ph2d_vec_scene::VecPath>,
+    pub(crate) vec_clipboard: Option<ph2d_vec_scene::VecClip>,
     /// Sprite-style transform gizmo for vector shapes (scale/rotate/move/pivot on
     /// the object selection). Its own hit-index (canonical gizmo ids 950-963),
     /// rebuilt each vector-render frame; queried on Down.
@@ -597,6 +597,12 @@ pub(crate) struct App {
     pub(crate) vec_snap_targets: ph2d_vec_edit::SnapTargets,
     /// Smart guides to draw this frame (cleared at Up / when nothing snapped).
     pub(crate) vec_snap_guides: Vec<ph2d_vec_render::Guide>,
+    /// `VecPathId` → entidade ECS que o representa na Hierarquia (ADR-0110). O
+    /// invariante "um path ⟺ uma entidade" é mantido por `vec_entities::sync`.
+    pub(crate) vec_entities: crate::vec_entities::VecEntityMap,
+    /// Espelho da última sincronia de seleção canvas ↔ Hierarquia (ADR-0110): diz
+    /// **quem** mudou neste frame, e por isso quem manda. Ver `sync_selection`.
+    pub(crate) vec_sel: crate::vec_selection::VecSelSync,
     /// TOOL_PIVOT: world-space center of the selected sprite's CONTENT
     /// bbox (non-transparent pixels), computed once (lazily, on the
     /// first CTRL-held move) per MovePivot drag and reused as a snap

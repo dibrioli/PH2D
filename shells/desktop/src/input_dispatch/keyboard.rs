@@ -108,8 +108,9 @@ impl App {
 
         // ADR-0108 Fase 2: undo/redo + save/load + clipboard com Ctrl/Cmd. Ctrl+Z
         // desfaz, Ctrl+Shift+Z / Ctrl+Y refaz, Ctrl+S salva, Ctrl+O carrega,
-        // Ctrl+C/X/V copia/recorta/cola o path, Ctrl+D duplica. C/X/V cedem o
-        // atalho a um campo de texto focado (clipboard de texto do widget).
+        // Ctrl+C/X/V copia/recorta/cola a SELEÇÃO (Shift+V cola no lugar), Ctrl+D
+        // duplica, Ctrl+G agrupa (Shift+G desagrupa). C/X/V cedem o atalho a um
+        // campo de texto focado (clipboard de texto do widget).
         if self.vector_tool_active()
             && state == ElementState::Pressed
             && !repeat
@@ -146,12 +147,18 @@ impl App {
                     self.vec_cut();
                     true
                 }
+                // Ctrl+Shift+V cola NO LUGAR (sem o deslocamento diagonal).
                 KeyCode::KeyV if !text_focused => {
-                    self.vec_paste();
+                    self.vec_paste(self.modifiers.shift_key());
                     true
                 }
                 KeyCode::KeyD => {
                     self.vec_duplicate_shortcut();
+                    true
+                }
+                // Ctrl+G agrupa a seleção; Ctrl+Shift+G desagrupa.
+                KeyCode::KeyG => {
+                    self.vec_group(!self.modifiers.shift_key());
                     true
                 }
                 _ => false,

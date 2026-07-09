@@ -54,6 +54,10 @@ pub(crate) mod painter_canvas_input;
 pub(crate) mod painter_falloff_input;
 pub(crate) mod protect_brush;
 
+/// Deslocamento diagonal de um paste/duplicate, em pixels de tela (o zoom converte
+/// para world) — a cópia não nasce exatamente sob o original.
+const PASTE_OFFSET_PX: f64 = 12.0;
+
 /// The z-ordered (back → front) indices of the closed paths in the pen's OBJECT
 /// selection. Boolean and Make Compound both need this: the back-most is the base
 /// and the front-most donates the style (Illustrator's Pathfinder).
@@ -257,16 +261,22 @@ pub(crate) fn apply_vec_duplicate(
     dx: f64,
     dy: f64,
 ) {
-    let Some(sel) = pen.selected() else {
+    let sel = pen.selected_paths().to_vec();
+    if sel.is_empty() {
         eprintln!("[ph2d-vec] duplicate: nenhum path selecionado");
         return;
-    };
-    let pre = scene.clone();
-    if let Some(new_id) = scene.duplicate_path(sel, dx, dy) {
-        history.push_undo(pre);
-        pen.select(Some(new_id));
-        eprintln!("[ph2d-vec] duplicate: ok");
     }
+    // Duplicar É copiar-e-colar: um caminho só, então a estrutura de grupo vem
+    // junto e as duas rotas nunca divergem.
+    let clip = scene.copy_paths(&sel);
+    let pre = scene.clone();
+    let new_ids = scene.paste_clip(&clip, dx, dy);
+    if new_ids.is_empty() {
+        return;
+    }
+    history.push_undo(pre);
+    pen.select_many(&new_ids);
+    eprintln!("[ph2d-vec] duplicate: {} path(s)", new_ids.len());
 }
 
 /// Restack the SELECTED path (panel Arrange z-order buttons), recording ONE undo
@@ -1405,52 +1415,93 @@ impl App {
         )
     }
 
-    /// Vector Ctrl+C: copy the selected path (geometry + style, id-less) into the
-    /// in-app clipboard. No-op if nothing is selected.
+    /// Vector Ctrl+C: copy the object selection into the in-app clipboard. O
+    /// recorte leva os GRUPOS inteiramente selecionados junto (ver `VecScene::
+    /// copy_paths`), então colar reconstrói a estrutura. No-op sem seleção.
     fn vec_copy(&mut self) {
-        let Some(sel) = self.vec_pen.selected() else {
+        let sel = self.vec_pen.selected_paths().to_vec();
+        if sel.is_empty() {
             return;
-        };
-        let clip = self
-            .gfx
-            .as_ref()
-            .and_then(|g| g.vec_scene.paths().iter().find(|p| p.id == sel).cloned());
-        if clip.is_some() {
-            self.vec_clipboard = clip;
+        }
+        if let Some(gfx) = self.gfx.as_ref() {
+            let clip = gfx.vec_scene.copy_paths(&sel);
+            if !clip.is_empty() {
+                self.vec_clipboard = Some(clip);
+            }
         }
     }
 
-    /// Vector Ctrl+X: copy the selected path, then delete it.
+    /// Vector Ctrl+X: copy the object selection, then delete it.
     fn vec_cut(&mut self) {
         self.vec_copy();
         self.vec_delete_selected();
     }
 
-    /// Vector Ctrl+V: paste the clipboard path, offset ~12 px (screen→world), and
-    /// select it. ONE undo step. No-op if the clipboard is empty.
-    fn vec_paste(&mut self) {
-        let Some(mut clone) = self.vec_clipboard.clone() else {
+    /// Vector Ctrl+V: paste the clipboard, offset ~12 px (screen→world), e seleciona
+    /// o resultado. Ctrl+Shift+V cola **no lugar** (sem deslocar). ONE undo step.
+    fn vec_paste(&mut self, in_place: bool) {
+        let Some(clip) = self.vec_clipboard.clone() else {
             return;
         };
-        let (dx, dy) = self.vec_screen_offset(12.0);
+        let (dx, dy) = if in_place {
+            (0.0, 0.0)
+        } else {
+            self.vec_screen_offset(PASTE_OFFSET_PX)
+        };
         let Some(gfx) = self.gfx.as_mut() else {
             return;
         };
-        for v in &mut clone.verts {
-            v.anchor = [v.anchor[0] + dx, v.anchor[1] + dy];
-            v.in_handle = [v.in_handle[0] + dx, v.in_handle[1] + dy];
-            v.out_handle = [v.out_handle[0] + dx, v.out_handle[1] + dy];
-        }
         let pre = gfx.vec_scene.clone();
-        let new_id = gfx.vec_scene.push_path(clone);
+        let new_ids = gfx.vec_scene.paste_clip(&clip, dx, dy);
+        if new_ids.is_empty() {
+            return;
+        }
         self.vec_history.push_undo(pre);
-        self.vec_pen.select(Some(new_id));
+        self.vec_pen.select_many(&new_ids);
     }
 
-    /// Vector Ctrl+D: duplicate the selected path in place (offset ~12 px) — the
-    /// keyboard sibling of the panel's Arrange "Duplicate" button.
+    /// A seleção de objeto que tocar `path` produz — o grupo inteiro, se houver.
+    /// A árvore é a Hierarquia (ADR-0110), então quem sabe disso é o ECS.
+    pub(crate) fn vec_object_selection_for(&self, path: u64) -> Vec<u64> {
+        let Some(gfx) = self.gfx.as_ref() else {
+            return vec![path];
+        };
+        crate::vec_entities::object_selection_for(
+            &gfx.sim,
+            &gfx.vec_scene,
+            &self.vec_entities,
+            path,
+        )
+    }
+
+    /// Ctrl+G / Ctrl+Shift+G: agrupa / desagrupa a seleção. O grupo é uma entidade
+    /// comum, então ele aceita sprite e path vetorial no mesmo saco.
+    fn vec_group(&mut self, group: bool) {
+        let sel: Vec<u64> = self
+            .vec_pen
+            .selected_paths()
+            .iter()
+            .filter_map(|id| self.vec_entities.get(id).copied())
+            .collect();
+        if sel.is_empty() {
+            return;
+        }
+        let Some(gfx) = self.gfx.as_mut() else { return };
+        let sim = &mut gfx.sim;
+        if group {
+            let name = format!("Group {}", sel.len());
+            if crate::vec_entities::group_entities(sim, &sel, name).is_none() {
+                eprintln!("[ph2d-vec] group: selecione >= 2 objetos distintos");
+            }
+        } else if crate::vec_entities::ungroup_entities(sim, &sel) == 0 {
+            eprintln!("[ph2d-vec] ungroup: a selecao nao esta em nenhum grupo");
+        }
+    }
+
+    /// Vector Ctrl+D: duplicate the object selection (offset ~12 px) — o irmão de
+    /// teclado do botão Arrange "Duplicate". Preserva os grupos, como o paste.
     fn vec_duplicate_shortcut(&mut self) {
-        let (dx, dy) = self.vec_screen_offset(12.0);
+        let (dx, dy) = self.vec_screen_offset(PASTE_OFFSET_PX);
         if let Some(gfx) = self.gfx.as_mut() {
             apply_vec_duplicate(
                 &mut gfx.vec_scene,
@@ -1462,22 +1513,28 @@ impl App {
         }
     }
 
+    /// Apaga TODA a seleção de objeto (um grupo some inteiro) e limpa os grupos
+    /// que ficaram sem membro. ONE undo step.
     fn vec_delete_selected(&mut self) -> bool {
-        let Some(sel) = self.vec_pen.selected() else {
+        let sel = self.vec_pen.selected_paths().to_vec();
+        if sel.is_empty() {
             return false;
-        };
+        }
         let Some(gfx) = self.gfx.as_mut() else {
             return false;
         };
         let pre = gfx.vec_scene.clone();
-        if gfx.vec_scene.remove_path(sel) {
-            self.vec_history.push_undo(pre);
-            self.vec_pen.clear();
-            eprintln!("[ph2d-vec] path {sel} apagado");
-            true
-        } else {
-            false
+        let mut any = false;
+        for id in &sel {
+            any |= gfx.vec_scene.remove_path(*id);
         }
+        if !any {
+            return false;
+        }
+        self.vec_history.push_undo(pre);
+        self.vec_pen.clear();
+        eprintln!("[ph2d-vec] {} path(s) apagado(s)", sel.len());
+        true
     }
 
     /// ADR-0108 Fase 2: desfaz o último passo vetorial (Ctrl+Z).
@@ -2051,7 +2108,10 @@ impl App {
                             .path_at(&gfx.vec_scene, [w[0] as f64, w[1] as f64], 10.0 * px)
                     });
                     if let Some(id) = hit {
-                        self.vec_pen.toggle_path(id);
+                        // Um grupo entra e sai da seleção INTEIRO (a árvore é a
+                        // Hierarquia — o ancestral de topo diz quem vem junto).
+                        let members = self.vec_object_selection_for(id);
+                        self.vec_pen.toggle_object_members(&members);
                         // Object selection changed → drop any gradient-handle selection.
                         self.vec_grad_selected = None;
                         self.vec_grad_drag = None;
@@ -2145,6 +2205,12 @@ impl App {
                             }
                         }
                         self.vec_snap_targets = targets;
+                        // Tocar um filho seleciona o GRUPO (a árvore é a Hierarquia).
+                        // Depois do press, porque só agora sabemos o que foi agarrado.
+                        if let Some(primary) = self.vec_pen.selected() {
+                            let members = self.vec_object_selection_for(primary);
+                            self.vec_pen.set_object_selection(&members);
+                        }
                         // Agora sabemos o que o press agarrou: o que se move sai dos
                         // alvos (uma âncora não pode encaixar em si mesma; a forma em
                         // desenho não é referência de nada).

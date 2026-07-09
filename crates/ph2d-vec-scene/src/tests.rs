@@ -1,4 +1,5 @@
 use super::*;
+use crate::shapes::blob;
 
 #[test]
 fn demo_has_fill_and_stroke_paths() {
@@ -1117,4 +1118,86 @@ fn remove_contour_promotes_the_first_subpath() {
     assert_eq!(p.verts[0].anchor, [3.0, 3.0], "o furo virou o contorno");
     // Contorno único não pode ser removido isoladamente.
     assert!(!p.remove_contour(0));
+}
+
+// ─── pilha de z (projeção da árvore) + recorte de copy/paste ───────────────
+
+fn three_rects() -> (VecScene, [VecPathId; 3]) {
+    let mut scene = VecScene::new();
+    let a = scene.push_path(rectangle([0.0, 0.0], [1.0, 1.0]));
+    let b = scene.push_path(rectangle([2.0, 0.0], [3.0, 1.0]));
+    let c = scene.push_path(rectangle([4.0, 0.0], [5.0, 1.0]));
+    (scene, [a, b, c])
+}
+
+fn z(scene: &VecScene) -> Vec<VecPathId> {
+    scene.paths().iter().map(|p| p.id).collect()
+}
+
+/// A pilha de z passa a ser uma PROJEÇÃO da árvore: a shell manda a ordem e o
+/// documento se alinha.
+#[test]
+fn reorder_to_projects_the_tree_order_onto_the_z_stack() {
+    let (mut scene, [a, b, c]) = three_rects();
+    assert!(scene.reorder_to(&[c, a, b]));
+    assert_eq!(z(&scene), vec![c, a, b]);
+    // Idempotente: re-aplicar a mesma ordem não muda nada.
+    assert!(!scene.reorder_to(&[c, a, b]));
+}
+
+/// Um path que a árvore ainda não conhece (criado neste frame) vai pro FUNDO e
+/// preserva a ordem relativa — a projeção nunca perde um path.
+#[test]
+fn reorder_to_never_drops_a_path_the_tree_has_not_seen() {
+    let (mut scene, [a, b, c]) = three_rects();
+    scene.reorder_to(&[c]);
+    assert_eq!(z(&scene), vec![a, b, c], "a e b caem pro fundo, na ordem");
+    assert_eq!(scene.paths().len(), 3);
+    // Ordem vazia = nada muda.
+    assert!(!scene.reorder_to(&[]));
+    assert_eq!(z(&scene), vec![a, b, c]);
+}
+
+#[test]
+fn copy_and_paste_round_trip_geometry_and_style() {
+    let (mut scene, [a, _, _]) = three_rects();
+    let clip = scene.copy_paths(&[a]);
+    assert_eq!(clip.paths.len(), 1);
+    let new = scene.paste_clip(&clip, 10.0, 0.0);
+    assert_eq!(scene.paths().last().unwrap().id, new[0], "vai pro topo");
+    let (lo, _) = scene.path_bbox(new[0]).unwrap();
+    assert_eq!(lo, [10.0, 0.0]);
+    // O recorte é reutilizável: cola de novo, ids novos.
+    let again = scene.paste_clip(&clip, 0.0, 5.0);
+    assert_ne!(again[0], new[0]);
+}
+
+/// Colar move o gradiente e os subpaths junto — `translate_path`, não um loop de
+/// vértices à mão (que deixava o furo e o gradiente para trás).
+#[test]
+fn paste_translates_the_gradient_and_the_subpaths_too() {
+    let mut scene = VecScene::new();
+    let mut donut = rectangle([0.0, 0.0], [10.0, 10.0]);
+    donut.subpaths = vec![Contour::new_closed(rectangle([3.0, 3.0], [7.0, 7.0]).verts)];
+    donut.fill_rule = FillRule::EvenOdd;
+    donut.fill = Some(Paint::Radial {
+        stops: vec![GradientStop::new(0.0, Rgba8::new(1, 2, 3, 255))],
+        center: [5.0, 5.0],
+        radius: 2.0,
+    });
+    let id = scene.push_path(donut);
+
+    let clip = scene.copy_paths(&[id]);
+    let new = scene.paste_clip(&clip, 100.0, 0.0)[0];
+    let p = scene.paths().iter().find(|p| p.id == new).unwrap();
+    assert_eq!(
+        p.subpaths[0].verts[0].anchor,
+        [103.0, 3.0],
+        "o furo veio junto"
+    );
+    assert!(matches!(&p.fill, Some(Paint::Radial { center, .. }) if *center == [105.0, 5.0]));
+    assert!(
+        !scene.path_contains_point(new, [105.0, 5.0]),
+        "o furo é furo"
+    );
 }

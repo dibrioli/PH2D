@@ -146,7 +146,13 @@ impl EntityNodeMap {
                         .name
                         .clone()
                         .unwrap_or_else(|| format!("Entity_{:x}", entry.entity)),
-                    icon: IconId::Sprite,
+                    // ADR-0110: a linha sabe o que é pelo `vec_path` do snapshot —
+                    // um path vetorial, ou um sprite/grupo.
+                    icon: if entry.vec_path.is_some() {
+                        IconId::Vector
+                    } else {
+                        IconId::Sprite
+                    },
                     indent: entry.depth,
                     badge: None,
                     swatch: None,
@@ -182,6 +188,7 @@ mod tests {
             visible: true,
             locked: false,
             group_locked: false,
+            vec_path: None,
         }
     }
 
@@ -265,6 +272,7 @@ mod tests {
                 visible: true,
                 locked: false,
                 group_locked: false,
+                vec_path: None,
             }],
         };
         let (ordered, entries) = m.sync_from_snapshot(&snap);

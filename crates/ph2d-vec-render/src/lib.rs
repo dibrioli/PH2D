@@ -12,7 +12,7 @@
 
 use ph2d_vec_scene::{
     FillRule as VecFillRule, LineCap, LineJoin, Paint, Rgba8, StrokeSpec, VecPath, VecPathId,
-    VecScene,
+    VecScene, VecViewState,
 };
 use ph2d_vector::{
     Affine, BezPath, Brush, Cap, Circle, Color, ColorStop, Fill, Gradient, Join, Point, Rect,
@@ -67,8 +67,19 @@ pub(crate) fn fill_rule(path: &VecPath) -> Fill {
 
 /// Desenha toda a `scene` no `target` (o `VectorScene` do frame) sob `transform`
 /// (o world→screen da câmera). Fill primeiro, stroke por cima.
-pub fn dispatch(scene: &VecScene, transform: Affine, target: &mut VectorScene) {
+///
+/// `view` diz quem a ÁRVORE do editor esconde — a visibilidade é da entidade ECS
+/// do path e dos ancestrais dela, não do documento (ADR-0110).
+pub fn dispatch(
+    scene: &VecScene,
+    view: &VecViewState,
+    transform: Affine,
+    target: &mut VectorScene,
+) {
     for path in scene.paths() {
+        if view.is_hidden(path.id) {
+            continue;
+        }
         let bp = build_bezpath(path);
         if let Some(fill) = &path.fill {
             if let Paint::MultiPoint { points } = fill {
@@ -101,8 +112,10 @@ pub fn dispatch(scene: &VecScene, transform: Affine, target: &mut VectorScene) {
 /// constante em px): quadradinho em cada âncora; e — só no path `selected` — as
 /// linhas âncora→handle + bolinhas nos handles dos vértices suaves. Cores
 /// hardcoded de scaffold (Fase 1); migram p/ tokens no chrome do cutover (Fase R).
+#[allow(clippy::too_many_arguments)]
 pub fn draw_overlays(
     scene: &VecScene,
+    view: &VecViewState,
     selected: Option<VecPathId>,
     selected_paths: &[VecPathId],
     selected_verts: &[usize],
@@ -110,6 +123,9 @@ pub fn draw_overlays(
     target: &mut VectorScene,
 ) {
     for path in scene.paths() {
+        if view.is_hidden(path.id) {
+            continue; // um path escondido não mostra âncoras
+        }
         let is_sel = Some(path.id) == selected;
         // Any path in the OBJECT selection set is highlighted; the primary also shows
         // its Bézier handles + per-vertex picks.
@@ -307,12 +323,12 @@ mod tests {
             let scene = VecScene::demo_grid(n);
             let mut target = VectorScene::new();
             target.reset();
-            dispatch(&scene, affine, &mut target); // warm
+            dispatch(&scene, &VecViewState::default(), affine, &mut target); // warm
             let iters = 30;
             let t = Instant::now();
             for _ in 0..iters {
                 target.reset();
-                dispatch(&scene, affine, &mut target);
+                dispatch(&scene, &VecViewState::default(), affine, &mut target);
             }
             let ms = t.elapsed().as_secs_f64() * 1000.0 / iters as f64;
             println!(

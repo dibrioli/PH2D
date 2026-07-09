@@ -22,6 +22,7 @@ pub(crate) mod bgremoval_preview;
 mod color_equalization_bridge;
 mod cooked_texture_bridge;
 mod equalize_sizes_bridge;
+mod gizmo_prune;
 mod hierarchy;
 mod image_edit;
 mod inspector_commits;
@@ -947,6 +948,7 @@ impl crate::App {
             let mut pending_vec_fill_rule: Option<bool> = None;
             // Snap section: encaixar em formas (a grade é do painel de Grid).
             let mut pending_vec_snap_on: Option<bool> = None;
+
             // Numeric Transform field edit (X/Y/W/H) — a SetValue document command.
             let mut pending_vec_transform: Option<(crate::input_dispatch::VecTransformField, f64)> =
                 None;
@@ -1940,14 +1942,40 @@ impl crate::App {
             // Mirror the tool's mode + shape params for the input dispatch's
             // pen-vs-shape routing (the downcast lives in the bridge).
             self.vec_draw_config = vec_cfg;
+
+            // ADR-0110 — a árvore do editor é a Hierarquia. Reconcilia documento e
+            // entidades (path novo ⇒ entidade; entidade apagada ⇒ path), projeta a
+            // ordem de z da árvore na pilha, e lê visibilidade/trava herdadas.
+            crate::vec_entities::sync(sim, vec_scene, &mut self.vec_entities);
+            if let Some(live) = hero_live.as_ref() {
+                let order = crate::vec_entities::z_order(hero, &live.bridge, &self.vec_entities);
+                vec_scene.reorder_to(&order);
+            }
+            let vec_view = crate::vec_entities::view_state(sim, &self.vec_entities);
+            self.vec_pen.set_view(vec_view.clone());
+            // Seleção casada nos dois sentidos: clique na Hierarquia chega no canvas,
+            // clique no canvas acende a linha (e a do grupo, se cheio). A seleção do
+            // gizmo é COMPARTILHADA com os sprites — só o subconjunto vetorial é nosso.
+            crate::vec_selection::sync_selection(
+                &mut hero.gizmo,
+                sim,
+                vec_scene,
+                &self.vec_entities,
+                &mut self.vec_pen,
+                &mut self.vec_sel,
+                vector_active,
+            );
+
             ph2d_vec_render::dispatch(
                 vec_scene,
+                &vec_view,
                 camera.world_to_screen_affine(window_size),
                 vector_scene,
             );
             if vector_active {
                 ph2d_vec_render::draw_overlays(
                     vec_scene,
+                    &vec_view,
                     self.vec_pen.selected(),
                     self.vec_pen.selected_paths(),
                     self.vec_pen.selected_verts(),

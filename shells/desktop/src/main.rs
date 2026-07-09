@@ -53,7 +53,9 @@ mod palette_persist;
 mod render_loop;
 mod sim_populate;
 mod theme;
+mod vec_entities;
 mod vec_gizmo;
+mod vec_selection;
 mod vec_snap;
 mod winit_host;
 
@@ -220,6 +222,8 @@ impl App {
             vec_snap: crate::vec_snap::VecSnapSettings::default(),
             vec_snap_targets: ph2d_vec_edit::SnapTargets::default(),
             vec_snap_guides: Vec::new(),
+            vec_entities: Default::default(),
+            vec_sel: Default::default(),
             frame_ms_ewma: 16.7, // ~60 Hz baseline so the first
                                  // frame's status bar doesn't display
                                  // a wild value while the EWMA seeds.

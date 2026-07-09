@@ -5214,6 +5214,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-node-motion-wiggle"
+version = "0.0.0"
+dependencies = [
+ "ph2d-node-registry",
+ "ph2d-nodegraph",
+]
+
+[[package]]
 name = "ph2d-node-registry"
 version = "0.0.0"
 dependencies = [
@@ -5237,6 +5245,7 @@ dependencies = [
  "ph2d-node-motion-stagger",
  "ph2d-node-motion-tint",
  "ph2d-node-motion-transform",
+ "ph2d-node-motion-wiggle",
  "ph2d-node-registry",
  "ph2d-node-sync",
 ]

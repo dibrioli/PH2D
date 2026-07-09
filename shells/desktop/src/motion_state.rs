@@ -93,6 +93,7 @@ impl MotionState {
 /// - **stagger** a Y tilt across the grid, masked by the falloff.
 /// - **oscillator** a travelling Sine Y-wave, masked by the falloff (the centre
 ///   bounces, the edges hold) — the classic Cavalry focal-motion look.
+/// - **wiggle** an organic X jitter on the focus region (value noise) on top.
 ///
 /// The Output node is the render target; the bridge keeps `sink` pointed at it.
 fn build_cavalry_demo(g: &mut Graph, reg: &NodeRegistry) -> Option<NodeId> {
@@ -101,13 +102,15 @@ fn build_cavalry_demo(g: &mut Graph, reg: &NodeRegistry) -> Option<NodeId> {
     let falloff = g.add_node("motion.falloff");
     let stagger = g.add_node("motion.stagger");
     let osc = g.add_node("motion.oscillator");
+    let wiggle = g.add_node("motion.wiggle");
     let output = g.add_node("motion.output");
     for (i, (from, to)) in [
         (grid, tint),
         (tint, falloff),
         (falloff, stagger),
         (stagger, osc),
-        (osc, output),
+        (osc, wiggle),
+        (wiggle, output),
     ]
     .into_iter()
     .enumerate()
@@ -127,7 +130,7 @@ fn build_cavalry_demo(g: &mut Graph, reg: &NodeRegistry) -> Option<NodeId> {
             },
         );
     }
-    g.set_pos(output, Pos { x: 1100.0, y: 0.0 });
+    g.set_pos(output, Pos { x: 1320.0, y: 0.0 });
 
     // 20×20 lattice, gap 0.5.
     g.set_param(grid, "rows", 20.0);
@@ -153,6 +156,10 @@ fn build_cavalry_demo(g: &mut Graph, reg: &NodeRegistry) -> Option<NodeId> {
     g.set_param(osc, "amplitude", 1.0);
     g.set_param(osc, "frequency", 0.6);
     g.set_param(osc, "phase_stagger", 0.1);
+    // Organic X jitter on the focus region (value noise).
+    g.set_param(wiggle, "channel", 0.0); // X
+    g.set_param(wiggle, "amplitude", 0.5);
+    g.set_param(wiggle, "frequency", 1.0);
 
     // Same "validate on load" the editor runs before cooking — proves the authored
     // graph is well-typed and membrane-clean.
@@ -168,8 +175,8 @@ mod tests {
     fn new_builds_the_well_typed_cavalry_demo() {
         let state = MotionState::new();
         assert!(state.sink.is_some(), "the demo must have a sink");
-        // 6 nodes (grid, tint, falloff, stagger, oscillator, output).
-        assert_eq!(state.doc.graph.nodes().len(), 6);
+        // 7 nodes (grid, tint, falloff, stagger, oscillator, wiggle, output).
+        assert_eq!(state.doc.graph.nodes().len(), 7);
         let sink = state.sink.unwrap();
         assert_eq!(
             state.doc.graph.node(sink).unwrap().type_name,

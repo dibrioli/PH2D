@@ -28,6 +28,7 @@ ph2d-node-motion-scale = { path = "../ph2d-node-motion-scale" }
 ph2d-node-motion-stagger = { path = "../ph2d-node-motion-stagger" }
 ph2d-node-motion-tint = { path = "../ph2d-node-motion-tint" }
 ph2d-node-motion-transform = { path = "../ph2d-node-motion-transform" }
+ph2d-node-motion-wiggle = { path = "../ph2d-node-motion-wiggle" }
 # <ph2d-node-sync:end>
 
 [dev-dependencies]

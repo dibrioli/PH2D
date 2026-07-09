@@ -28,6 +28,7 @@ pub fn register_all_nodes(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     ph2d_node_motion_stagger::register(reg)?;
     ph2d_node_motion_tint::register(reg)?;
     ph2d_node_motion_transform::register(reg)?;
+    ph2d_node_motion_wiggle::register(reg)?;
     // <ph2d-node-sync:end>
     Ok(())
 }

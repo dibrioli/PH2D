@@ -365,6 +365,9 @@ pub enum TimelineHitKind {
     /// A track row's expand/collapse twirl — a click opens that track's graph
     /// editor (`target` is its raw `AnimTarget`).
     Twirl { target: u64 },
+    /// The vertical splitter between the track-name column and the time area;
+    /// dragging it horizontally widens or narrows the names.
+    LabelSplitter,
     /// A bézier handle in an expanded track's graph. `target`/`key` name the
     /// segment's **outgoing** key (the one whose `Interp` the handle edits);
     /// `which` is `0` for the out handle (`P1`) and `1` for the in handle (`P2`).

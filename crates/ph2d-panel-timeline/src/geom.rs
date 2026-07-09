@@ -12,7 +12,6 @@ use ph2d_tokens::{ROW_H_PX, Spacing};
 use crate::graph;
 use crate::ids;
 use crate::ruler;
-use crate::tracks;
 
 /// Thickness of the resize grip strips along the panel border.
 pub(crate) const GRIP: f32 = 6.0; // LITERAL-PX-OK: resize gripper thickness
@@ -55,24 +54,40 @@ pub(crate) fn body(rect: Rect, title_size: f32) -> Rect {
     )
 }
 
-/// The left edge of the time area — where `view_start_s` maps to. Depends only
-/// on the panel rect, so `interact::process` can have it before the transport
-/// bar paints.
-pub(crate) fn time_x(rect: Rect) -> f32 {
-    let body_x = rect.x + PANEL_HEAD_PAD;
-    let body_w = (rect.w - PANEL_HEAD_PAD * 2.0).max(0.0);
-    body_x + tracks::LABEL_COL_W.min(body_w)
+/// Narrowest the track-name column may be dragged.
+pub(crate) const MIN_LABEL_W: f32 = 56.0; // LITERAL-PX-OK: min track-name column width
+/// Narrowest the time area may be squeezed to by widening the names.
+const MIN_TIME_W: f32 = 120.0; // LITERAL-PX-OK: min time-area width
+/// Half-width of the splitter's grab strip.
+pub(crate) const SPLIT_GRIP: f32 = 4.0; // LITERAL-PX-OK: label splitter grab half-width
+
+/// The user's requested label-column width, held inside the panel's bounds. Never
+/// wider than what leaves [`MIN_TIME_W`] of time area, never below
+/// [`MIN_LABEL_W`] — and never wider than the region itself on a tiny panel.
+pub(crate) fn clamp_label_w(label_w: f32, region_w: f32) -> f32 {
+    let widest = (region_w - MIN_TIME_W).max(MIN_LABEL_W);
+    label_w.min(widest).max(MIN_LABEL_W).min(region_w)
 }
 
-/// Resolve the dope-sheet sub-rects from the panel `rect` and the transport
-/// bar's bottom edge. (`region.h` does not depend on the title size: the body's
-/// bottom is `rect.y + rect.h - PANEL_HEAD_PAD` either way.)
-pub(crate) fn resolve(rect: Rect, after_transport: f32) -> Geom {
+/// The left edge of the time area — where `view_start_s` maps to. Depends only
+/// on the panel rect + the label width, so `interact::process` can have it before
+/// the transport bar paints.
+pub(crate) fn time_x(rect: Rect, label_w: f32) -> f32 {
+    let body_x = rect.x + PANEL_HEAD_PAD;
+    let body_w = (rect.w - PANEL_HEAD_PAD * 2.0).max(0.0);
+    body_x + clamp_label_w(label_w, body_w)
+}
+
+/// Resolve the dope-sheet sub-rects from the panel `rect`, the transport bar's
+/// bottom edge and the (user-resizable) label-column width. (`region.h` does not
+/// depend on the title size: the body's bottom is `rect.y + rect.h -
+/// PANEL_HEAD_PAD` either way.)
+pub(crate) fn resolve(rect: Rect, after_transport: f32, label_w: f32) -> Geom {
     let x = rect.x + PANEL_HEAD_PAD;
     let w = (rect.w - PANEL_HEAD_PAD * 2.0).max(0.0);
     let bottom = rect.y + rect.h - PANEL_HEAD_PAD;
     let region = Rect::new(x, after_transport, w, (bottom - after_transport).max(0.0));
-    let label_w = tracks::LABEL_COL_W.min(region.w);
+    let label_w = clamp_label_w(label_w, region.w);
     let bar_x = region.x + region.w - SCROLLBAR_W;
     let time_area = Rect::new(
         region.x + label_w,
@@ -305,6 +320,34 @@ mod tests {
             assert_eq!(a.1 - 30.0, b.1);
             assert_eq!(a.2, b.2, "scrolling never changes a row's height");
         }
+    }
+
+    #[test]
+    fn the_label_column_stays_between_its_bounds() {
+        // Wide panel: the drag is honoured verbatim.
+        assert_eq!(clamp_label_w(200.0, 800.0), 200.0);
+        // Dragged to nothing: floors at MIN_LABEL_W.
+        assert_eq!(clamp_label_w(0.0, 800.0), MIN_LABEL_W);
+        // Dragged past the right edge: the time area keeps MIN_TIME_W.
+        assert_eq!(clamp_label_w(10_000.0, 800.0), 800.0 - MIN_TIME_W);
+    }
+
+    #[test]
+    fn a_panel_too_narrow_for_both_still_yields_a_finite_column() {
+        // MIN_LABEL_W + MIN_TIME_W does not fit: the label wins, capped by the
+        // region, and never inverts into a negative time area.
+        let w = clamp_label_w(500.0, 80.0);
+        assert!(w > 0.0 && w <= 80.0, "{w}");
+        assert!(clamp_label_w(0.0, 20.0) <= 20.0);
+    }
+
+    #[test]
+    fn the_time_area_starts_where_the_label_column_ends() {
+        let rect = Rect::new(0.0, 0.0, 900.0, 400.0);
+        let g = resolve(rect, 40.0, 200.0);
+        assert_eq!(g.label_w, 200.0);
+        assert_eq!(g.time_area.x, g.region.x + 200.0);
+        assert_eq!(time_x(rect, 200.0), g.time_area.x, "both agree on the seam");
     }
 
     #[test]

@@ -12,10 +12,9 @@
 //! drag-move, clear-on-empty).
 
 use ph2d_editor_core::interaction::{InteractiveState, TimelineHitKind};
-use ph2d_editor_core::paint::{
-    fill_rounded_rect, paint_text, rect_to_vello, resolve, stroke_rounded_rect,
-};
+use ph2d_editor_core::paint::{fill_rounded_rect, rect_to_vello, resolve, stroke_rounded_rect};
 use ph2d_editor_core::panel::PaintCtx;
+use ph2d_editor_core::text_elide::paint_text_elided;
 use ph2d_editor_core::widget::{Button, ButtonState, paint_button};
 use ph2d_editor_core::zones::Rect;
 use ph2d_timeline::{PropKind, SelectedKey, TimelineViewSnapshot};
@@ -157,7 +156,13 @@ pub(crate) fn paint_rows(
             ColorToken::Text1
         };
         let label_x = region.x + TWIRL_W;
-        paint_text(
+        // Elided, never wrapped. In `paint_text`, `max_width` is a WRAP budget:
+        // a name one pixel too long silently became two lines and spilled over
+        // the row below it.
+        // NOTE the wording above avoids a lone apostrophe on purpose — the
+        // panel LOC gate parser treats one inside a comment as a char literal
+        // and stops counting braces (see FN_OVERAGE_OK in that test).
+        paint_text_elided(
             ctx.text_system,
             ctx.scene,
             &text,

@@ -10,15 +10,21 @@
 //! lands on the same frame it is dragged instead of one frame late. Then the rect
 //! is re-resolved (a resize may have moved it) and everything paints from that.
 
+use crate::geom::SPLIT_GRIP;
 use crate::state::{self, TimelinePanelState, set_last_content_h, set_last_visible_h};
 use crate::{TimelinePanel, geom, graph, ids, ruler, scrollbar, tracks, transport};
 use ph2d_editor_core::interaction::{InteractiveState, TimelineHitKind};
+use ph2d_editor_core::paint::{fill_rounded_rect, resolve};
 use ph2d_editor_core::panel::{PaintCtx, Panel};
 use ph2d_editor_core::widget::panel_chrome::{
     PANEL_HEADER_CLOSE_RESERVE, paint_panel_close_button, paint_panel_corner_dot,
     paint_panel_corner_dot_bl, paint_panel_surface, paint_panel_title,
 };
 use ph2d_editor_core::zones::Rect;
+use ph2d_tokens::{ColorToken, Theme};
+
+/// Thickness of the hairline drawn on the label/time seam.
+const SPLIT_LINE_W: f32 = 1.0; // LITERAL-PX-OK: splitter hairline width
 
 pub(crate) fn paint(state: &mut TimelinePanelState, ctx: &mut PaintCtx) {
     if !ctx.host.panel_visible(TimelinePanel::ID) {
@@ -45,7 +51,8 @@ pub(crate) fn paint(state: &mut TimelinePanelState, ctx: &mut PaintCtx) {
 
     // Pass 1: drain this frame's wheel + gestures against the rect we start with.
     let rect0 = geom::clamp_to(state.rect.unwrap_or(docked), viewport);
-    crate::interact::process(state, ctx, rect0, geom::time_x(rect0), viewport, &snapshot);
+    let time_x0 = geom::time_x(rect0, state.label_w);
+    crate::interact::process(state, ctx, rect0, time_x0, viewport, &snapshot);
 
     // Pass 2: a resize may have just moved the panel — paint from the new rect.
     let rect = geom::clamp_to(state.rect.unwrap_or(docked), viewport);
@@ -78,7 +85,10 @@ pub(crate) fn paint(state: &mut TimelinePanelState, ctx: &mut PaintCtx) {
 
     let body = geom::body(rect, title_size);
     let after_transport = transport::paint_bar(ctx, theme, body, &snapshot);
-    let g = geom::resolve(rect, after_transport);
+    let g = geom::resolve(rect, after_transport, state.label_w);
+    // Write the clamped width back, so a drag that ran past the bounds does not
+    // have to be dragged all the way back before the column moves again.
+    state.label_w = g.label_w;
 
     // The WHOLE dope sheet takes the wheel (not just the time column) so a wheel
     // over the label names still scrolls the rows.
@@ -151,11 +161,46 @@ pub(crate) fn paint(state: &mut TimelinePanelState, ctx: &mut PaintCtx) {
     // Time axis last, so ticks + playhead overlay the rows.
     ruler::paint(ctx, theme, g.time_area, view_start, px_per_s, &snapshot);
 
+    // The label/time splitter sits over the lanes AND the ruler, so it is
+    // registered after both — a grab on the seam must not scrub the ruler.
+    paint_label_splitter(
+        ctx,
+        theme,
+        g.region,
+        g.time_area.x,
+        state.label_drag.is_some(),
+    );
+
     // "+Track" property dropdown overlay — painted last so it sits on top.
     tracks::paint_add_track_popover(ctx, theme, header, state.add_track_open);
 
     set_last_content_h(content_h);
     set_last_visible_h(g.rows.h);
+}
+
+/// The seam between the track-name column and the time area: a hairline, plus a
+/// wider invisible strip to grab it by. Highlights while dragging.
+fn paint_label_splitter(ctx: &mut PaintCtx, theme: Theme, region: Rect, x: f32, active: bool) {
+    let line = Rect::new(x - SPLIT_LINE_W * 0.5, region.y, SPLIT_LINE_W, region.h);
+    let tok = if active {
+        ColorToken::Accent
+    } else {
+        ColorToken::Border
+    };
+    fill_rounded_rect(ctx.scene, line, 0.0, resolve(tok, theme));
+
+    let grip = Rect::new(x - SPLIT_GRIP, region.y, SPLIT_GRIP * 2.0, region.h);
+    ctx.host.store_mut().register(
+        ids::TIMELINE_LABEL_SPLIT,
+        InteractiveState::TimelineSurface {
+            parent: ids::TIMELINE_PANEL,
+            kind: TimelineHitKind::LabelSplitter,
+            canvas: grip,
+        },
+    );
+    ctx.host
+        .hit_index_mut()
+        .register(ids::TIMELINE_LABEL_SPLIT, grip);
 }
 
 /// Register the eight edge/corner grippers as `TimelineSurface` hits so dispatch

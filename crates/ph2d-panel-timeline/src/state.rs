@@ -73,6 +73,13 @@ pub struct TimelinePanelState {
     /// Middle-drag pan anchor (last pointer position) while the wheel button is
     /// held over the dope sheet.
     pub pan_drag: Option<(f32, f32)>,
+    /// Width of the track-name column, dragged by the splitter. Clamped into the
+    /// panel's bounds on every paint (`geom::clamp_label_w`), so a resize of the
+    /// panel itself never strands it.
+    pub label_w: f32,
+    /// In-progress splitter drag: `(label_w, pointer x)` at Begin. Deltas apply
+    /// to THOSE, so a slow drag never accumulates rounding.
+    pub label_drag: Option<(f32, f32)>,
     /// Tracks (by raw `AnimTarget`) whose graph editor is expanded. Panel-local
     /// view state — never undoable, never saved.
     pub expanded: Vec<u64>,
@@ -179,6 +186,8 @@ impl Default for TimelinePanelState {
             scroll_y: 0.0,
             scroll_max: 0.0,
             pan_drag: None,
+            label_w: crate::tracks::LABEL_COL_W,
+            label_drag: None,
             expanded: Vec::new(),
             handle_drag: None,
             box_drag: None,

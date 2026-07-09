@@ -68,6 +68,13 @@ const HIT_PARITY_ALLOW: &[(&str, &str)] = &[
     // is active; handled in `ph2d-panel-hierarchy/src/event.rs` via
     // Submit/Cancel arms (verified) — not a static populate widget.
     ("ph2d-panel-hierarchy", "HIER_RENAME_INPUT"),
+    // Timeline label/time splitter: `store.register`-ed in `paint.rs` as an
+    // `InteractiveState::TimelineSurface` (focusable) and dispatched by the
+    // timeline-surface pointer path, not by widget events — so it has no
+    // `populate.rs` entry by design. Same shape as the panel's lanes / key
+    // diamonds / resize grips, which this scan misses only because they are
+    // registered from sibling files rather than `paint.rs`.
+    ("ph2d-panel-timeline", "TIMELINE_LABEL_SPLIT"),
 ];
 
 /// Editor-core global registration files (hero chrome). Shared ids like panel

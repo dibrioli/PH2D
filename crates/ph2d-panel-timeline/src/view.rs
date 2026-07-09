@@ -139,6 +139,20 @@ pub(crate) fn apply_pan_drag(state: &mut TimelinePanelState, px_per_s: f64, g: T
     }
 }
 
+/// Splitter drag: widen or narrow the track-name column. The width applies to
+/// the one captured at Begin (no drift), and `paint` clamps it into the panel.
+pub(crate) fn apply_label_drag(state: &mut TimelinePanelState, g: TimelineGesture) {
+    match g.phase {
+        GesturePhase::Begin => state.label_drag = Some((state.label_w, g.x)),
+        GesturePhase::Update => {
+            if let Some((w0, x0)) = state.label_drag {
+                state.label_w = w0 + (g.x - x0);
+            }
+        }
+        _ => state.label_drag = None,
+    }
+}
+
 /// Edge/corner drag: move the set edges by the pointer delta from Begin. Deltas
 /// apply to the rect captured at Begin, so a slow drag never accumulates drift.
 pub(crate) fn apply_resize(
@@ -367,6 +381,47 @@ mod tests {
             g(GesturePhase::End, 500.0),
         );
         assert!(st.resize.is_none());
+    }
+
+    // ── Label splitter ───────────────────────────────────────────────────
+
+    #[test]
+    fn dragging_the_splitter_widens_the_label_column() {
+        let mut st = TimelinePanelState {
+            label_w: 132.0,
+            ..TimelinePanelState::default()
+        };
+        apply_label_drag(
+            &mut st,
+            drag(PointerButton::Primary, GesturePhase::Begin, 200.0, 0.0),
+        );
+        apply_label_drag(
+            &mut st,
+            drag(PointerButton::Primary, GesturePhase::Update, 260.0, 0.0),
+        );
+        assert_eq!(st.label_w, 192.0);
+        // A second Update still measures from Begin, never from the live width.
+        apply_label_drag(
+            &mut st,
+            drag(PointerButton::Primary, GesturePhase::Update, 150.0, 0.0),
+        );
+        assert_eq!(st.label_w, 82.0, "no drift accumulation");
+        apply_label_drag(
+            &mut st,
+            drag(PointerButton::Primary, GesturePhase::End, 150.0, 0.0),
+        );
+        assert!(st.label_drag.is_none());
+    }
+
+    #[test]
+    fn an_update_without_a_begin_moves_nothing() {
+        let mut st = TimelinePanelState::default();
+        let before = st.label_w;
+        apply_label_drag(
+            &mut st,
+            drag(PointerButton::Primary, GesturePhase::Update, 900.0, 0.0),
+        );
+        assert_eq!(st.label_w, before);
     }
 
     // ── Fit (F) ──────────────────────────────────────────────────────────

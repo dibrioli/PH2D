@@ -69,6 +69,7 @@ pub(crate) fn process(
                     apply_key(state, px_per_s, snap, SelectedKey::new(target, key), g);
                 }
                 TimelineHitKind::Twirl { target } => apply_twirl(state, target, g),
+                TimelineHitKind::LabelSplitter => view::apply_label_drag(state, g),
                 TimelineHitKind::CurveHandle { target, key, which } => {
                     crate::graph::apply_handle_gesture(state, target, key, which, g);
                 }
@@ -270,9 +271,9 @@ mod tests {
             }
             TimelineHitKind::Lane => box_select::apply_lane(state, g),
             TimelineHitKind::Twirl { target } => apply_twirl(state, target, g),
-            TimelineHitKind::CurveHandle { .. } | TimelineHitKind::ResizeEdge { .. } => {
-                unreachable!("not fed here")
-            }
+            TimelineHitKind::LabelSplitter
+            | TimelineHitKind::CurveHandle { .. }
+            | TimelineHitKind::ResizeEdge { .. } => unreachable!("not fed here"),
         }
     }
 

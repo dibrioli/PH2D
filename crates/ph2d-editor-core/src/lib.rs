@@ -46,6 +46,7 @@ pub mod paint;
 pub mod panel;
 pub mod project;
 pub mod screens;
+pub mod text_elide;
 pub mod toast;
 
 /// Test-only helpers exposed for integration tests + downstream

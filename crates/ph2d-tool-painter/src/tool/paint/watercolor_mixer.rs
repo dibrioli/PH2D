@@ -36,13 +36,6 @@ use super::*;
 pub(super) struct WetMix {
     absorb: [f32; 3],
     w: f32,
-    /// Stroke travel in px (MIX-1, doc 12 — Procreate Charge depletion: *"the longer you drag your
-    /// stroke out... the trail of color it leaves will become fainter"*). Advanced once per batch by
-    /// the colour pass; [`PainterTool::wet_mix_depletion`] REPLAYS the chain from the stored value
-    /// (the rng discipline) to feed the coverage pass's per-pixel pigment-reserve map.
-    travel: f32,
-    /// The previous dab centre of the travel chain (`None` = stroke start).
-    last_pos: Option<[f32; 2]>,
 }
 
 /// Reservoir **load** retention (entering paint): low ⇒ the reservoir tracks the surface FAST, so the
@@ -54,21 +47,6 @@ const RETAIN_LOAD: f32 = 0.2;
 /// picked-up colour the instant it leaves the pool, so the EXIT bleed persists a few dabs and mirrors
 /// the ENTRY (the reported hard-cut exit). Pull raises it toward a long smudge.
 const RETAIN_UNLOAD_MIN: f32 = 0.88;
-/// MIX-1 — Charge depletion span: the fresh-paint reserve lasts `SPAN · radius · charge/(1−charge)`
-/// px of stroke travel. Charge controls how LONG the reserve lasts, NEVER the head intensity — the
-/// reserve always starts FULL (`fresh = 1` at travel 0), because any head factor < 1 scaled the
-/// coverage below saturation and flooded the interior with residual edge term (the flat opaque slab,
-/// Enio smoke 2026-07-08). The `charge/(1−charge)` factor approaches ∞ as Charge → 1, meeting the
-/// `wet_charge < 1` gate with no seam. Charge 0.5 on a 16-px brush ⇒ ~1900 px of paint; 0.25 ⇒
-/// ~640 px; 0.1 ⇒ ~210 px. Calibration knob (Enio smoke 2026-07-08): 40 died off too fast on
-/// canvas — "o esmaecimento lento estava melhor" → 120.
-const MIX_DEPLETE_SPAN: f32 = 120.0;
-/// MIX-1 — the reservoir absorbance (max channel, unpremultiplied) that counts as "fully loaded
-/// pigment" for the carry: `A = 2` ⇒ transmittance `e⁻² ≈ 0.135`, a rich dark pool. The carry
-/// intensity is `t × (A_max / this).min(1)`, so a barely-tinted pool (low absorbance) sustains only
-/// a faint smudge — crossing a pale wash must NOT re-ink a depleted brush at full strength (Enio
-/// smoke 2026-07-08: "explode em muito pigmento" ignoring both the brush's and the pool's intensity).
-const MIX_CARRY_FULL_ABSORB: f32 = 2.0;
 
 impl PainterTool {
     /// Whether the Wet Mix mixer drives this stroke's deposited colour: watercolor render-path on and
@@ -119,13 +97,6 @@ impl PainterTool {
         let mut out = Vec::with_capacity(dabs.len());
         let mut mix = self.paint.wet_mix;
         for d in dabs {
-            // MIX-1 — advance the travel chain (one advance per batch, here; the depletion itself is
-            // computed by `wet_mix_depletion`'s replay and lands in the per-pixel pigment map).
-            if let Some(prev) = mix.last_pos {
-                let (dx, dy) = (d.center[0] - prev[0], d.center[1] - prev[1]);
-                mix.travel += (dx * dx + dy * dy).sqrt();
-            }
-            mix.last_pos = Some(d.center);
             // ── 1. Resample the frozen surface under the disc every dab (star), then ASYMMETRIC
             //    running-average in PREMULTIPLIED space: LOAD fast toward more paint (strong pickup
             //    on entry), UNLOAD slow toward bare ground (the carried colour lingers past the pool
@@ -168,54 +139,6 @@ impl PainterTool {
         self.paint.wet_mix = mix;
         out
     }
-
-    /// The per-dab pigment-reserve factors (`fresh ∨ carry`, `0..1`) for the COVERAGE pass's
-    /// per-pixel depletion map — REPLAYS the travel chain from the stored `wet_mix` without writing
-    /// it back (the colour pass advances it once per batch — the rng replay discipline).
-    /// `None` when the mixer is off (no depletion — byte-identical default).
-    pub(super) fn wet_mix_depletion(&self, dabs: &[Dab]) -> Option<Vec<f32>> {
-        if !self.wet_mixer_active() {
-            return None;
-        }
-        let charge = self.paint.brush.wet_charge.clamp(0.0, 1.0);
-        let pickup = (1.0 - charge).clamp(0.0, 1.0);
-        let mut travel = self.paint.wet_mix.travel;
-        let mut last = self.paint.wet_mix.last_pos;
-        // The carry factor needs the reservoir's evolution too — approximate with the CURRENT stored
-        // state (exact per-dab values need the full pickup resample; the coverage fade tolerance is
-        // perceptual, and the colour pass applies the exact factor to the deposit itself).
-        let carry = (pickup * self.paint.wet_mix.w).clamp(0.0, 1.0)
-            * reservoir_pigment(&self.paint.wet_mix);
-        let mut out = Vec::with_capacity(dabs.len());
-        for d in dabs {
-            if let Some(prev) = last {
-                let (dx, dy) = (d.center[0] - prev[0], d.center[1] - prev[1]);
-                travel += (dx * dx + dy * dy).sqrt();
-            }
-            last = Some(d.center);
-            out.push(deplete_fresh(travel, d.radius_px, charge).max(carry));
-        }
-        Some(out)
-    }
-}
-
-/// MIX-1 fresh reserve at `travel` px into the stroke: starts FULL (1.0 — the head always carries
-/// the complete watercolor anatomy) and runs out over a span that grows with Charge, unbounded as
-/// Charge → 1 (seamless against the `wet_charge < 1` mixer gate).
-fn deplete_fresh(travel: f32, radius_px: f32, charge: f32) -> f32 {
-    let span = (MIX_DEPLETE_SPAN * radius_px * charge / (1.0 - charge).max(1e-3)).max(1.0);
-    (1.0 - travel / span).max(0.0)
-}
-
-/// How much PIGMENT the reservoir actually holds (`0..1`): its strongest unpremultiplied absorbance
-/// channel against [`MIX_CARRY_FULL_ABSORB`]. A pale pickup (near-white pool) scores near 0 — the
-/// carry it can sustain is proportionally faint.
-fn reservoir_pigment(mix: &WetMix) -> f32 {
-    if mix.w <= 1e-4 {
-        return 0.0;
-    }
-    let a_max = mix.absorb.iter().fold(0.0f32, |m, &a| m.max(a)) / mix.w;
-    (a_max / MIX_CARRY_FULL_ABSORB).min(1.0)
 }
 
 /// Average the frozen **surface appearance** (base over ground) + its paint **presence** under the

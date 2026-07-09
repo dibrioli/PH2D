@@ -446,16 +446,6 @@ pub(crate) struct PaintState {
     /// (`cw·fill·dens`): typical watercolor body + rim at the OUTER boundary, tip texture as pigment
     /// variation within. Empty / untouched ⇒ density 1 (byte-identical). Doc 13 #1 round 3.
     stroke_density: Vec<u8>,
-    /// Wet Mix (MIX-1): the per-stroke **pigment-reserve** map (`w*h`, `0..255`; sized lazily, only
-    /// while the mixer is on). Charge depletion must fade the PIGMENT, never the WATER: scaling the
-    /// coverage instead leaves the blurred `inner` short of 1.0 across the whole interior, so the
-    /// edge term (`cw·(1−inner)·gain`) floods the centre and the wash reads as a flat opaque slab
-    /// (Enio smoke 2026-07-08 — "matou a borda em qualquer valor < 0.93"). This buffer carries each
-    /// dab's fresh+carry reserve (max-blend: re-inking a faded trail restores it) and the composite
-    /// multiplies it into the whole BRUSH density term (fill + edge) AFTER the rim is derived from
-    /// the intact coverage — head keeps the full watercolor anatomy, the tail fades rim and body
-    /// together toward plain water. Empty ⇒ factor 1 (byte-identical default).
-    stroke_deplete: Vec<u8>,
     /// Manual Shape stamp (Automatic OFF): the tip image's luminance NORMALISER (`1 / max_lum`,
     /// `1.0` when no image / all-black). The watercolor coverage is WETNESS GEOMETRY (a max-blend
     /// union that must SATURATE in the wash core — `cw → 1` gives the body, `inner → 1` confines the

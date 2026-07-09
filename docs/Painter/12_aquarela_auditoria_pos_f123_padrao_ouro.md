@@ -51,7 +51,7 @@
 | OPT-2 | P1 | óptica | `ryb_mix` colapsa complementares em cinza exato (vs KM/Mixbox) | ~40 LOC |
 | EDGE-1 | P1 | bordas | Sem umidade persistente entre traços — washes nunca fundem | ~1 buffer u8 + decay |
 | EDGE-2 | P1 | bordas | Backrun/bloom clássico inexiste; gesto canônico inalcançável (Dilution=1 → cov 0) | ~30-60 LOC |
-| MIX-1 | P1 | mixer | Charge não depleta ao longo do traço (assinatura nº 1 do Procreate) | ~20 LOC |
+| MIX-1 | ~~P1~~ **REJEITADO** | mixer | Charge não depleta ao longo do traço — implementado em 3 takes e REVERTIDO (Enio 2026-07-08: "achei ruim"; vide §W-C abaixo). Não refazer sem pedido | — |
 | MIX-2 | P1 | mixer | Doc-drift: doc 11 promete pickup da base "já-liftada"; código lê base PRISTINA + tripla contagem no regime Wet+Charge altos | ~5-15 LOC |
 | GRAN-1 | P1 | granulação | Granulação = modulação instantânea/simétrica (e sinal invertido vs Curtis), não deposição nos vales | ~40-60 LOC |
 | GRAN-2 | P1 | granulação | Espectro do PaperCold = blotch de baixa freq (FFT: ~90-98% em λ>32px); claim interno "crisp tooth" falso | ~10 LOC (rota 1) |
@@ -190,7 +190,8 @@ Fontes: Curtis 1997 (acima) ·
   implementado. **Correção (~20 LOC, O(1)/dab):** `travel: f32` no WetMix (acumula
   ‖dab_i−dab_{i−1}‖) + `fresh = charge·max(0, 1 − travel/(K·radius·(0.5+charge)))`, atuando na
   INTENSIDADE depositada (peak/flow), ativo só atrás do gate `wet_charge < 1` (default
-  byte-idêntico).
+  byte-idêntico). **VEREDITO 2026-07-08: implementado (3 takes) e REVERTIDO a pedido do Enio —
+  o recurso em si foi reprovado no smoke ("achei esse mix 1 ruim"). Ver §W-C. Não refazer.**
 - **MIX-2 (P1) — doc-drift do pickup + tripla via no regime alto.** Núcleo confirmado: doc 11
   §F2 promete 2× *"o pickup lê a base congelada JÁ-LIFTADA (sb pós-lift)"* como defesa contra
   self-feeding — o código amostra a base **PRISTINA** (mixer.rs:98; o lift só existe no
@@ -339,7 +340,7 @@ suite watercolor: 33 passed / 0 failed / 2 ignored (sondas)
 |------|----------|---------|------------------|
 | W-A "cor" | Mistura subtrativa nos 3 sites (KM single-constant ou absorbância-LUT) + recalibrar card F4 | OPT-1, OPT-2, OPT-5 | Pivot ADR-0096 literal; barato; maior ganho de matiz |
 | W-B "papel" | Espectro do papel (rota 1 ou 2) + deposição valley-gated + fallback 2-oct | GRAN-1, GRAN-2, GRAN-3 | Mata o "mottled" reportado; é o look |
-| W-C "comportamento" | Charge depletion + wet map persistente + água limpa/backrun + rim assinado/modulado | MIX-1, EDGE-1, EDGE-2, EDGE-3, EDGE-4 | O feel; EDGE-3 muda o default → smoke gate |
+| W-C "comportamento" | ~~Charge depletion (MIX-1: REJEITADO pós-smoke)~~ + wet map persistente + água limpa/backrun + rim assinado/modulado | EDGE-1, EDGE-2, EDGE-3, EDGE-4 | O feel; EDGE-3 muda o default → smoke gate |
 | W-D "higiene" | Docs stale (MIX-5, OPT-5, Spread "1..24"→48 em painter_watercolor.rs:27) + testes (PERF-1/2/3, MIX-6) + DET-1/2 | resto | Barato, fecha claims falsos e buracos de gate |
 
 Extras candidatos da lente UX (decisão junto com o redesign do painel, doc à parte): Wetness
@@ -392,28 +393,27 @@ byte-idêntico. **GRAN-3:** fallback 2 oitavas (5px + 2.5px·0,35). Gotcha de te
 usa convenção dab-space (`u·0,5+0,5` → 1 unidade de tile = meia imagem). Segue aberto: GRAN-4
 (γ por-pigmento / dissolve), GRAN-5 (escala do fallback), W-C.
 
-### W-C · MIX-1 — LANDOU 2026-07-08 (Charge depletion; corrigido pós-smoke no mesmo dia)
+### W-C · MIX-1 — TENTADO E REVERTIDO 2026-07-08 (decisão do Enio: "achei esse mix 1 ruim")
 
-**Take 1 (`2924e452`, REPROVADO no smoke):** `fresh = charge·(1−travel/span)` escalando a
-COBERTURA. Dois defeitos sérios (Enio): (1) Charge <0,93 matava a borda — cobertura sub-saturada
-deixa `inner < 1` no interior INTEIRO, o edge term (`cw·(1−inner)·gain`) inunda o centro e o traço
-vira slab opaco chato; (2) cruzar poça pálida explodia pigmento — `depl = max(fresh, t)` com `t` =
-peso de MISTURA (salta pra ~1 em qualquer poça, ignora as duas intensidades).
+**Estado final: Charge NÃO depleta ao longo do traço** — o comportamento é o pré-MIX-1 (Charge =
+só a fração de pickup do mixer), revertido byte-perfeito a `2924e452^`. **Não reimplementar sem
+pedido explícito do Enio.** Histórico dos 3 takes (commits `2924e452` → `8cd93db8`/`cdee4f66` →
+`4b4b8668`, todos desfeitos pelo revert seguinte) e o que se aprendeu:
 
-**Take 2 (`8cd93db8`, final):** *a depleção desbota o PIGMENTO, nunca a ÁGUA.*
-- `fresh` começa em **1.0** (cabeça = anatomia completa); Charge controla a **duração**:
-  `span = 40·r·charge/(1−charge)` (→ ∞ no gate `charge = 1`, sem costura).
-- `carry = t × pigmento real do reservatório` (absorbância máx ÷ `MIX_CARRY_FULL_ABSORB = 2.0`):
-  poça pálida re-tinta quase nada, poça rica sustenta o smudge — as duas intensidades respeitadas.
-- A reserva vai pro **`stroke_deplete`** (mapa u8 por-pixel, max-blend — irmão do `stroke_density`;
-  re-tintar trilha desbotada restaura) e o composite multiplica em `fill + edge` **DEPOIS** do rim
-  derivar da cobertura intacta e **ANTES** do rewet-pool (pigmento dissolvido do canvas não é
-  reserva do pincel). Cauda esgotada = água pura (rewet/lift continuam vivos nela — grátis pro
-  EDGE-2). Default byte-idêntico (mapa vazio ⇒ fator 1).
-- Lição de arquitetura: **cobertura é GEOMETRIA DE ÁGUA saturada** — qualquer feature que precise
-  "enfraquecer" o traço entra como modulação de densidade por-pixel (tip-density, depletion), nunca
-  escalando a cobertura (mesma lição do grey-tip normalise, §Shape).
-- Teste: `watercolor_wet_mix_depleted_brush_respects_pool_intensity` (pálida ≈ nada · rica
-  re-tinta · cabeça forte) + `charge_depletes_along_the_stroke` mantido. 488/488.
-  Calibração: `MIX_DEPLETE_SPAN = 40` (sobe = fôlego maior), `MIX_CARRY_FULL_ABSORB = 2.0`
-  (sobe = smudge mais tímido).
+- **Take 1** (`fresh = charge·(1−travel/span)` escalando a COBERTURA): Charge <0,93 matava a borda
+  — cobertura sub-saturada deixa `inner < 1` no interior INTEIRO e o edge term (`cw·(1−inner)·gain`)
+  inunda o centro (slab opaco); cruzar poça pálida explodia pigmento (`depl = max(fresh, t)` com
+  `t` = peso de MISTURA, que salta pra ~1 em qualquer poça).
+- **Take 2** (depleção como mapa u8 por-pixel `stroke_deplete` multiplicando `fill + edge` no
+  composite, cobertura intacta; `fresh` começando em 1.0 com `span ∝ charge/(1−charge)`; carry
+  pesado pela absorbância real do reservatório): fisicamente coerente, MAS decaimento rápido
+  demais e costuras duras pixeladas no cruzamento (mapa binário 255/0 na borda do disco ×
+  nearest-sample warpado).
+- **Take 3** (span 3× + rampa de 15% do raio no splat): tecnicamente resolvia as costuras, mas o
+  Enio reprovou o feel do recurso como um todo → revert integral.
+- **Lições que FICAM** (valem pra qualquer feature futura): (a) **cobertura é GEOMETRIA DE ÁGUA
+  saturada** — nunca a escale; "enfraquecer" o traço = modulação de densidade por-pixel depois do
+  rim derivar da cobertura intacta (mesma lição do grey-tip normalise, §Shape); (b) qualquer mapa
+  por-pixel novo lido pelo composite precisa de taper na borda do dab (nearest + warp transforma
+  degrau em escada); (c) intensidade de smudge deve pesar o pigmento REAL do reservatório
+  (absorbância), nunca o peso de mistura `t`.

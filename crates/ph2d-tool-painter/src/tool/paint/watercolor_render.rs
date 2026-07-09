@@ -256,11 +256,6 @@ impl PainterTool {
         // Empty (every non-textured path) ⇒ density ≡ 1 → byte-identical.
         let has_dens = self.paint.stroke_density.len() == n;
         let dens_buf = &self.paint.stroke_density;
-        // Wet Mix pigment reserve (MIX-1): scales the whole BRUSH density term (fill + edge) AFTER
-        // the rim is derived from the intact coverage — Charge depletion fades the pigment while the
-        // water footprint (and so the edge anatomy) stays whole. Empty ⇒ factor ≡ 1 → byte-identical.
-        let has_depl = self.paint.stroke_deplete.len() == n;
-        let depl_buf = &self.paint.stroke_deplete;
         // Raw per-pixel soak for the granulation settle (GRAN-1) — read-only in the parallel loop.
         let soak_buf = &self.paint.wet_soak;
 
@@ -436,15 +431,6 @@ impl PainterTool {
                         1.0
                     };
                     let mut density = ((cw * fill_px * tip_dens + edge) * gran).max(0.0);
-                    // MIX-1: the brush's local pigment reserve (fresh + carry) fades fill AND edge
-                    // together over the intact water footprint — the depleted tail dries toward
-                    // plain water. Applied BEFORE the rewet-pool term: pigment dissolved off the
-                    // CANVAS is not the brush's reserve and must not fade with it.
-                    if has_depl {
-                        let wgx = (rx0 as f32 + sx).clamp(0.0, (fw - 1) as f32) as usize;
-                        let wgy = (ry0 as f32 + sy).clamp(0.0, (fh - 1) as f32) as usize;
-                        density *= f32::from(depl_buf[wgy * fw + wgx]) / 255.0;
-                    }
                     // Wet-on-wet: sample the bleed field (blurred presence + presence-weighted paint colour)
                     // at the warped position; `lp` = raw local presence (only real paint lifts), `bp` = how
                     // much dissolved pigment reaches this pixel, `bleed` = its (presence-normalised) colour.

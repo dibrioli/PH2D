@@ -21,7 +21,7 @@
 //! integer-hash value noise are built once and deterministic; no transcendental runs in the hot loop.
 
 use super::watercolor_field::*;
-use super::watercolor_rewet_px::rewet_px;
+use super::watercolor_rewet_px::{rewet_px, style_at};
 use super::*;
 use ph2d_painter_brush::blend::ryb_mix;
 use rayon::prelude::*;
@@ -200,11 +200,9 @@ impl PainterTool {
         // 24→48 cap raise). `core_r` (computed above) caps the feather at ~half the brush so a pool
         // always keeps a protected core; the WIDE `spread` still drives the dissolve bleed + warp
         // width. At `spread ≤ radius·½` this is a no-op (`core_r == spread`) → byte-identical.
-        // EDGE-3: `inner` is the blur of the HARDENED coverage (the visible silhouette), not the
-        // raw one — the raw feather plateau (~0.93) left `cw − inner ≈ 0.07` across the WHOLE
-        // interior, so raising Edge shifted the mid tone of the wash (the audit's exact
-        // complaint) instead of only working the rim. Hardened: flat interior ⇒ `inner = 1`,
-        // edge exactly 0; the rim/fringe keep the full signed contrast.
+        // EDGE-3: `inner` = blur of the HARDENED coverage — the raw plateau (~0.93) left
+        // `cw − inner ≈ 0.07` across the whole interior (raising Edge shifted the wash's mid
+        // tone); hardened ⇒ flat interior reads 1, edge exactly 0, rim/fringe keep contrast.
         let hard: Vec<f32> = cov_src.iter().map(|&c| smoothstep(SS0, SS1, c)).collect();
         let blur = box_blur(&hard, rw, rh, core_r);
 
@@ -306,28 +304,11 @@ impl PainterTool {
         let water_buf = &self.paint.stroke_water;
 
         let color_buf = &self.paint.stroke_color;
-        // Substrate memoisation (perf, byte-identical): `paper_h` is canvas-anchored (a pure function of
-        // the global `(gx, gy)` + the paper settings, both constant within a stroke), so compute it once
-        // per canvas pixel and reuse across frames + the bake. `compute_paper` is the EXACT expression the
-        // per-pixel loop used before; the cache stores/returns its `f32` verbatim (index-keyed, no
-        // collision) ⇒ identical bytes. Falls back to direct compute if the cache isn't sized (defensive).
-        let compute_paper = |gx: usize, gy: usize| -> f32 {
-            if paper_active {
-                ph2d_painter_brush::texture::sample_tiled_rot(
-                    &paper_tex,
-                    gx as i64,
-                    gy as i64,
-                    paper_img.as_ref(),
-                    paper_rot,
-                )
-            } else {
-                paper_height(gx as f32, gy as f32)
-            }
-        };
+        // Substrate memoisation (perf, byte-identical): `paper_h` is canvas-anchored, so compute
+        // once per canvas pixel ([`paper_h_px`], the loop's exact former expression) and reuse
+        // across frames + the bake; pre-pass fills misses serially so the parallel loop reads
+        // immutably. Un-sized cache (defensive) ⇒ the loop falls back to the direct call.
         let use_substrate_cache = self.paint.wet_substrate.len() == n;
-        // Substrate pre-pass (serial): fill the memoised paper height for every OUTPUT pixel not yet
-        // cached, so the PARALLEL composite below can read it immutably (no shared mutable state across
-        // threads). Fill-on-miss ⇒ across a stroke's frames it's mostly hits.
         if use_substrate_cache {
             let substrate = &mut self.paint.wet_substrate;
             for by in 0..bh {
@@ -335,31 +316,32 @@ impl PainterTool {
                 for bx in 0..bw {
                     let sidx = gy * fw + (x0 + bx);
                     if substrate[sidx].is_nan() {
-                        substrate[sidx] = compute_paper(x0 + bx, gy);
+                        substrate[sidx] = paper_h_px(
+                            paper_active,
+                            &paper_tex,
+                            paper_img.as_ref(),
+                            paper_rot,
+                            x0 + bx,
+                            gy,
+                        );
                     }
                 }
             }
         }
         let substrate = &self.paint.wet_substrate;
-        // Selection + protection gates (final enforcement): the splat gates already stop the wash from
-        // FORMING on gated-out texels (so the rim/bleed react at the boundary — the masking-fluid look),
-        // but the composite can still REACH them: the warp displaces the coverage sample (a gated-out
-        // pixel can read in-bounds coverage up to `warp` px away) and the dissolve/soak fields blur
-        // across the boundary. The keep-LERP on the final bytes below (`out = painted·keep +
-        // base·(1−keep)`) is the exact restore semantics of the canvas gates
-        // (`restore_deselected_region` / `restore_protected_region`) — a hard guarantee independent of
-        // any sampling reach. Both `None` (the default) ⇒ `keep ≡ 1`, byte-identical.
+        // Selection + protection gates (final enforcement): the splats already stop the wash
+        // from FORMING on gated-out texels, but warp/dissolve sampling can still REACH them —
+        // the keep-LERP on the final bytes below is the exact restore semantics of the canvas
+        // gates, a hard guarantee independent of reach. Both `None` ⇒ keep ≡ 1, byte-identical.
         let (gate_sel, gate_prot) = self.wet_splat_gates();
         let gate_on = gate_sel.is_some() || gate_prot.is_some();
         let gsel: Option<&[u8]> = gate_sel.as_deref().map(Vec::as_slice);
         let gprot: Option<&[u8]> = gate_prot.as_deref().map(Vec::as_slice);
         let out = Arc::make_mut(&mut self.canvas_rgba);
-        // PARALLEL composite over OUTPUT rows (ADR-0109 exception to the no-rayon default): each output
-        // pixel is a pure function of immutable inputs (frozen base/ground, the coverage + blur fields,
-        // the substrate cache, the LUTs) — no cross-pixel reduction, no shared mutable state, no RNG — so
-        // distributing disjoint rows over the thread pool is BYTE-IDENTICAL to the serial loop (IEEE-754
-        // is per-op deterministic). The band `out[y0..y1]` splits into whole canvas rows; each task writes
-        // ONLY its own row's pixels (`row[gx*4..]`), reading the full-canvas base/ground/colour by `gi`.
+        // PARALLEL composite over OUTPUT rows (ADR-0109 exception): each pixel is a pure
+        // function of immutable inputs — no cross-pixel reduction, no shared mutable state, no
+        // RNG — so disjoint rows over the pool are BYTE-IDENTICAL to the serial loop (IEEE-754
+        // per-op determinism); each task writes only its own row.
         out[y0 * fw * 4..y1 * fw * 4]
             .par_chunks_mut(fw * 4)
             .enumerate()
@@ -374,14 +356,8 @@ impl PainterTool {
                     // fields; global for the full-canvas colour buffer (same displacement + window origin).
                     // Per-stroke style: warp AMPLITUDE by the pixel's owner (read PRE-warp —
                     // the displacement needs the amp first); owner 0 = current brush, old path.
-                    let st_warp = if has_style {
-                        match style_owner[gy * fw + gx] {
-                            0 => warp_amp,
-                            o => style_table[(o as usize - 1).min(style_table.len() - 1)].warp,
-                        }
-                    } else {
-                        warp_amp
-                    };
+                    let st_warp =
+                        style_at(has_style, style_owner, style_table, cur_style, gy * fw + gx).warp;
                     let (sx, sy) = if st_warp > 0.0 {
                         let wx =
                             warp_axis(gx as f32, gy as f32, SEED_WARP_X_A, SEED_WARP_X_B) * st_warp;
@@ -413,29 +389,49 @@ impl PainterTool {
                     // style-owner reads (nearest, like the colour buffer).
                     let wgx = (rx0 as f32 + sx).clamp(0.0, (fw - 1) as f32) as usize;
                     let wgy = (ry0 as f32 + sy).clamp(0.0, (fh - 1) as f32) as usize;
-                    // Per-stroke style: the OWNER stroke's wash params (recency) — an older
-                    // wash keeps ITS Concentration/Edge/water on the re-bake (Enio 2026-07-09).
-                    let st = if has_style {
-                        match style_owner[wgy * fw + wgx] {
-                            0 => cur_style,
-                            o => style_table[(o as usize - 1).min(style_table.len() - 1)],
-                        }
+                    let st = style_at(
+                        has_style,
+                        style_owner,
+                        style_table,
+                        cur_style,
+                        wgy * fw + wgx,
+                    );
+                    // Per-pixel dwell + deposited alpha — read here for the rim modulation
+                    // (EDGE-4) and reused by the granulation settle / pigment blocks below.
+                    let soak_v = if soaked {
+                        f32::from(soak_buf[gy * fw + gx]) / 255.0
                     } else {
-                        cur_style
+                        0.0
                     };
-                    // EDGE-3 (Curtis §4.3.3, conservação): o rim é um unsharp ASSINADO — o lobo
-                    // negativo (onde `inner > cw`, a franja) EMPALIDECE: o pigmento que escurece a
-                    // borda MIGROU do interior, não foi somado do nada ("the pigment migrates from
-                    // the interior... leaving a dark deposit at the edge"). Era `cw·(1−inner)`
-                    // clampado em ≥0 — wash uniforme com contorno; subir Edge deslocava o tom.
-                    let mut edge = (st.edge_gain * (cw - inner)).min(1.0);
+                    let ci = (wgy * fw + wgx) * 4;
+                    let col_a = if has_color {
+                        f32::from(color_buf[ci + 3]) / 255.0
+                    } else {
+                        1.0
+                    };
+                    // EDGE-4: the rim tells the GESTURE's story — stronger where the water pooled
+                    // or lingered (soak), fainter where the brush barely deposited (a depleted
+                    // trail's dry tail). Zero reads beyond fields that already exist.
+                    let gain_px =
+                        st.edge_gain * (1.0 + EDGE_SOAK_BOOST * soak_v) * (0.5 + 0.5 * col_a);
+                    // EDGE-3 (Curtis §4.3.3, conservação): rim = unsharp ASSINADO — o lobo
+                    // negativo (franja, `inner > cw`) EMPALIDECE (o pigmento da borda MIGROU do
+                    // interior; era clampado ≥0 = wash uniforme com contorno). Doc 12 §W-C.
+                    let mut edge = (gain_px * (cw - inner)).min(1.0);
                     // Paper tooth (substrate): the active Paper slot, or the built-in noise fallback —
                     // memoised per canvas pixel (`compute_paper` is the identical expression; the cache just
                     // avoids recomputing it every frame for the same pixel).
                     let paper_h = if use_substrate_cache {
                         substrate[gy * fw + gx]
                     } else {
-                        compute_paper(gx, gy)
+                        paper_h_px(
+                            paper_active,
+                            &paper_tex,
+                            paper_img.as_ref(),
+                            paper_rot,
+                            gx,
+                            gy,
+                        )
                     };
                     // Granulation height source: its own map, or (Same as Paper) the paper's tooth —
                     // and NOTHING otherwise (no settling substrate ⇒ Amount inert, Enio 2026-07-06;
@@ -463,11 +459,6 @@ impl PainterTool {
                     // GRAN-1 (Curtis §4.5, Tier-2): valley deposition + the take-3 drying model —
                     // extracted to [`granulation_factor`] (LOC cap); the amount + water follow the
                     // pixel's OWNER stroke (per-stroke style).
-                    let soak_v = if soaked {
-                        f32::from(soak_buf[gy * fw + gx]) / 255.0
-                    } else {
-                        0.0
-                    };
                     let gran = granulation_factor(
                         gran_h,
                         paper_component,
@@ -529,9 +520,6 @@ impl PainterTool {
 
                     // Pigment colour: the deposited (source-over) colour where present, else the brush colour.
                     let mut pig = if has_color {
-                        let wgx = (rx0 as f32 + sx).clamp(0.0, (fw - 1) as f32);
-                        let wgy = (ry0 as f32 + sy).clamp(0.0, (fh - 1) as f32);
-                        let ci = (wgy as usize * fw + wgx as usize) * 4;
                         if color_buf[ci + 3] > COL_EPS {
                             [color_buf[ci], color_buf[ci + 1], color_buf[ci + 2]]
                         } else {

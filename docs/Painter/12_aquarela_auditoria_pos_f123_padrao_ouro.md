@@ -486,3 +486,25 @@ O gesto canônico era **inalcançável por construção** (Dilution 1 → `flow 
   branco intacto). LOC: bloco rewet por-pixel extraído p/ `watercolor_rewet_px.rs` (verbatim).
 - Nota: Dilution segue TAMBÉM diluindo a cobertura do pigmento (`flow`), como antes — a água
   extra agora existe em paralelo. Rebalancear os dois é calibração de smoke.
+
+### W-C · EDGE-3 + EDGE-4 — LANDOU 2026-07-09 (SMOKE-GATE: mudam o look default do watercolor)
+
+**EDGE-3 — rim assinado com conservação (Curtis §4.3.3):** o edge vira unsharp ASSINADO
+`gain·(cw − inner)` — o lobo negativo (franja, `inner > cw`), antes clampado fora, EMPALIDECE: o
+pigmento que escurece a borda migrou do interior. Junto, `inner` passou a ser blur da cobertura
+**endurecida** (smoothstep SS0/SS1) em vez da crua: o platô do feather (~0,93) deixava resíduo
+`+0,07·gain` no interior INTEIRO — "subir Edge desloca o tom médio", a reclamação literal da
+auditoria. Perfil medido (fill 0,5/depth 2/gain 3): interior 39→39 (tom não desloca) · rim 39→26
+· franja 205→255 (empalidece). Teste 3-propriedades: `watercolor_signed_rim_pales_the_fringe`.
+
+**EDGE-4 — o rim conta a história do gesto:** `gain_px = edge_gain·(1 + 0,5·soak)·(0,5+0,5·alpha)`
+— mais forte onde a água poolou/demorou (dwell), mais fraco onde o depósito foi tênue (cauda seca
+de um traço depletado). Zero reads novos (soak + alpha da cor já existiam por-pixel; hoisted e
+reusados pelo settle/pigment). Knob: `EDGE_SOAK_BOOST = 0.5`. Teste:
+`watercolor_rim_strengthens_where_the_brush_dwelled` (rim em meio-tom — no escuro o Beer–Lambert
+comprime o boost). Gotcha de teste: edge_gain alto satura o clamp (≤1) e esconde qualquer
+modulação.
+
+LOC: `style_at`/`paper_h_px` extraídos p/ os siblings (render/field exatos em 700). 494/494.
+**Ambos mudam o look default do modo aquarela** — vetos revertem individualmente
+(EDGE-4 = só o `gain_px`; EDGE-3 = fórmula + blur endurecido).

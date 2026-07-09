@@ -648,6 +648,29 @@ pub(super) const BACKRUN_POOL: f32 = 2.0;
 /// saturates AT the pigment colour — density alone can never render darker than the wash the
 /// pigment came from, but a backrun edge is that paint CONCENTRATED (darker floor). Knob.
 pub(super) const BACKRUN_CONC: f32 = 1.5;
+
+/// The paper-tooth height at a canvas pixel: the Paper slot's tiled/rotated sample, or the
+/// built-in noise fallback — shared by the substrate pre-pass + its fallback (LOC split).
+pub(super) fn paper_h_px(
+    paper_active: bool,
+    paper_tex: &ph2d_painter_brush::TextureSettings,
+    paper_img: Option<&ph2d_painter_brush::texture::ImageMask>,
+    paper_rot: [f32; 2],
+    gx: usize,
+    gy: usize,
+) -> f32 {
+    if paper_active {
+        ph2d_painter_brush::texture::sample_tiled_rot(
+            paper_tex, gx as i64, gy as i64, paper_img, paper_rot,
+        )
+    } else {
+        paper_height(gx as f32, gy as f32)
+    }
+}
+
+/// EDGE-4: how much per-pixel DWELL (soak) boosts the rim gain — the rim strengthens where the
+/// water pooled/lingered and stays plain elsewhere (the rim tells the gesture's story). Knob.
+pub(super) const EDGE_SOAK_BOOST: f32 = 0.5;
 const SEED_JAG_X: u32 = 0x4A47_5801;
 const SEED_JAG_Y: u32 = 0x4A47_5902;
 

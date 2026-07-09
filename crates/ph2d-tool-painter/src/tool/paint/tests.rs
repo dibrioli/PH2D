@@ -13250,3 +13250,58 @@ fn watercolor_signed_rim_pales_the_fringe() {
         "a franja deve EMPALIDECER com Edge — pigmento migrou pro rim (plain G {fp:.0} vs rimmed G {fr:.0})"
     );
 }
+
+/// **EDGE-4 (doc 12, W-C): o rim conta a história do gesto** — a amplitude deixa de ser uniforme:
+/// onde o pincel DEMOROU (soak/dwell) o rim fortalece (`gain·(1 + k·soak)`), onde o depósito foi
+/// tênue ele esmaece (`×(0.5 + 0.5·alpha)`). Propriedade: segurando o pincel parado num ponto do
+/// traço (com Bleed > 0, o que poura dwell), o rim ADJACENTE ao dwell sai mais escuro que o rim
+/// do resto do traço — mesma geometria, história diferente.
+#[test]
+fn watercolor_rim_strengthens_where_the_brush_dwelled() {
+    let size = 160u32;
+    let mut t = white_canvas(size, 8.0);
+    t.paint.brush = BrushSpec {
+        radius_px: 14.0,
+        hardness: 1.0,
+        falloff: Falloff::Constant,
+        color: [0.85, 0.1, 0.1],
+        space_attenuation: false,
+        watercolor: true,
+        fill: 0.15,
+        depth: 1.0, // rim em MEIO-TOM: no escuro o Beer–Lambert comprime e o boost some
+        edge_gain: 0.8, // abaixo do clamp do edge (≤1) — o boost do dwell precisa de headroom
+        edge_spread: 6.0,
+        warp: 0.0,
+        granulation: 0.0,
+        wet_rewet: 0.5, // Bleed on — the dwell pours soak
+        ..Default::default()
+    };
+    for slot in &mut t.paint.brush_by_mode {
+        *slot = t.paint.brush;
+    }
+    assert!(t.on_canvas_pointer(cp([80.0, 30.0], PointerPhase::Down)));
+    let mut y = 30.0f32;
+    while y < 120.0 {
+        y += 2.0;
+        t.on_canvas_pointer(cp([80.0, y], PointerPhase::Move));
+    }
+    // PARK at (80, 120) — the heartbeat pours dwell under the nib.
+    for _ in 0..30 {
+        t.paint_tick(0.1); // 3 s parked
+    }
+    t.on_canvas_pointer(cp([80.0, 120.0], PointerPhase::Up));
+    // Rim column (x ≈ 88, just inside the silhouette): dwell zone (y ≈ 118-124) vs plain zone
+    // (y ≈ 55-75, far from both the head and the dwell).
+    let rim = |y0: u32, y1: u32| -> f32 {
+        let mut a = 0.0f32;
+        for y in y0..y1 {
+            a += f32::from(px(&t, size, 88, y)[1]);
+        }
+        a / (y1 - y0) as f32
+    };
+    let (plain, dwelled) = (rim(55, 75), rim(116, 126));
+    assert!(
+        dwelled < plain - 6.0,
+        "o rim deve FORTALECER onde o pincel demorou (rim plain G {plain:.0} vs dwell G {dwelled:.0})"
+    );
+}

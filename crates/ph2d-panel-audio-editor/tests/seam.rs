@@ -12,8 +12,8 @@ use ph2d_panel_audio_editor::state::AudioEditorState;
 use ph2d_panel_audio_editor::{
     AEDIT_FX_APPLY, AEDIT_FX_CANCEL, AEDIT_FX_NEXT, AEDIT_FX_P0, AEDIT_FX_PREV, AEDIT_LOAD,
     AEDIT_LOOP, AEDIT_NORMALIZE, AEDIT_PLAY, AEDIT_STOP, AEDIT_TRIM, AudioEditCmd,
-    AudioEditorPanel, clear_fx_dirty, fx_dirty, fx_kind, looping, set_fx_kind_count, take_edit_cmd,
-    take_load, take_play_pause, take_stop,
+    AudioEditorPanel, clear_fx_dirty, clear_fx_touched, fx_dirty, fx_kind, fx_touched, looping,
+    set_fx_kind_count, take_edit_cmd, take_load, take_play_pause, take_stop,
 };
 use ph2d_ui_testkit::MockPanelHost;
 
@@ -114,6 +114,38 @@ fn audition_starts_on_user_input_only_and_cancel_arms_its_command() {
         Some(AudioEditCmd::CancelFx),
         "Cancel click never armed the discard command"
     );
+}
+
+/// `fx_touched` is what tells the shell to **stack** the active effect onto the
+/// live chain when the user switches effects. It must fire on a slider drag and
+/// NOT on the arrows — otherwise browsing the effect list would silently pile up
+/// presets. The shell (not the panel) consumes the flag once it has stacked it.
+#[test]
+fn only_a_tuned_effect_is_marked_for_stacking() {
+    let mut host = MockPanelHost::with_panel::<AudioEditorPanel>();
+    let mut state = AudioEditorState;
+    clear_fx_dirty(); // also clears `touched`
+    set_fx_kind_count(3);
+    assert!(!fx_touched(), "a fresh stage is untouched");
+
+    host.apply_panel_event::<AudioEditorPanel>(&mut state, WidgetEvent::Click(AEDIT_FX_NEXT));
+    assert!(
+        !fx_touched(),
+        "browsing with the arrows must not mark a stage as tuned"
+    );
+
+    host.apply_panel_event::<AudioEditorPanel>(&mut state, WidgetEvent::ValueChanged(AEDIT_FX_P0));
+    assert!(fx_touched(), "dragging a parameter tunes the stage");
+
+    // Switching does NOT clear it here — the shell reads the flag to decide whether
+    // to stack the stage, and clears it afterwards.
+    host.apply_panel_event::<AudioEditorPanel>(&mut state, WidgetEvent::Click(AEDIT_FX_NEXT));
+    assert!(
+        fx_touched(),
+        "the shell consumes the tuned flag, not the panel"
+    );
+    clear_fx_touched();
+    assert!(!fx_touched());
 }
 
 /// The rack's selector must actually move the kind index through the seam — a

@@ -28,8 +28,14 @@ thread_local! {
     /// panel would start auditioning an effect nobody asked for. While true the
     /// shell renders + hot-swaps the audition; Apply/Cancel clear it.
     static FX_DIRTY: Cell<bool> = const { Cell::new(false) };
+    /// Whether the ACTIVE effect's sliders were dragged since it became active.
+    /// Only a *tuned* stage is pushed onto the live chain when the user switches
+    /// effects — otherwise merely browsing with the arrows would stack presets.
+    static FX_TOUCHED: Cell<bool> = const { Cell::new(false) };
     /// Shell → panel: an audition is sounding (enables Cancel).
     static FX_AUDITIONING: Cell<bool> = const { Cell::new(false) };
+    /// Shell → panel: how many effects are already stacked in the live chain.
+    static FX_CHAIN_LEN: Cell<usize> = const { Cell::new(0) };
     /// Kind whose defaults were last loaded into the sliders. Mirror of the name
     /// box's sync guard: on a kind change the paint step re-seeds the sliders once
     /// instead of fighting the user's drag every frame.
@@ -153,9 +159,32 @@ pub fn fx_dirty() -> bool {
     FX_DIRTY.with(Cell::get)
 }
 
-/// Shell: the audition was committed (Apply) or thrown away (Cancel).
+/// Shell: the audition was committed (Apply) or thrown away (Cancel) — the whole
+/// rack goes back to idle, including the active stage's touched flag.
 pub fn clear_fx_dirty() {
     FX_DIRTY.with(|c| c.set(false));
+    FX_TOUCHED.with(|c| c.set(false));
+}
+
+/// Panel → shell: did the user actually tune the ACTIVE effect? The shell pushes
+/// a tuned stage onto the live chain when the effect is switched, and drops an
+/// untouched one (so arrowing through the list doesn't stack presets).
+pub fn fx_touched() -> bool {
+    FX_TOUCHED.with(Cell::get)
+}
+
+/// Shell: the active stage was consumed (pushed onto the chain, or replaced).
+pub fn clear_fx_touched() {
+    FX_TOUCHED.with(|c| c.set(false));
+}
+
+/// Shell → panel: how many effects are stacked in the live chain (0 = none).
+pub fn set_fx_chain_len(n: usize) {
+    FX_CHAIN_LEN.with(|c| c.set(n));
+}
+
+pub(crate) fn fx_chain_len() -> usize {
+    FX_CHAIN_LEN.with(Cell::get)
 }
 
 /// Shell → panel: an audition is sounding (enables the Cancel button).
@@ -178,10 +207,11 @@ pub fn fx_norms() -> [f32; MAX_FX_PARAMS] {
 }
 
 /// Panel: record slider `i`'s new normalized position from a **user drag** —
-/// starts/refreshes the audition.
+/// starts/refreshes the audition and marks the active effect as tuned.
 pub(crate) fn set_fx_norm(i: usize, v: f32) {
     if write_fx_norm(i, v) {
         FX_DIRTY.with(|c| c.set(true));
+        FX_TOUCHED.with(|c| c.set(true));
     }
 }
 

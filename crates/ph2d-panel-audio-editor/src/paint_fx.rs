@@ -117,10 +117,30 @@ pub(crate) fn paint_fx_section(
 
     y += Spacing::Xs.px();
 
+    // Live chain readout: effects you TUNED and then switched away from are stacked
+    // under the active one, so the audition is `clip → stage₀ → … → active`.
+    let chain = snapshot::fx_chain_len();
+    if chain > 0 {
+        let label = if chain == 1 {
+            "Chain: 1 effect below".to_string()
+        } else {
+            format!("Chain: {chain} effects below")
+        };
+        paint_text_centered(
+            text_system,
+            scene,
+            &label,
+            Rect::new(x, y, w, TypeToken::Xs.px()),
+            TypeToken::Xs.px(),
+            resolve(ColorToken::Accent, theme),
+        );
+        y += TypeToken::Xs.px() + Spacing::Xs.px();
+    }
+
     // The rack auditions live: touching the selector or a slider renders the
     // effect into the sounding preview without committing. Apply turns exactly the
-    // buffer you heard into one undo step; Cancel throws it away. Cancel is only
-    // meaningful while something is auditioning.
+    // buffer you heard (whole chain included) into one undo step; Cancel throws it
+    // all away. Cancel is only meaningful while something is auditioning.
     let auditioning = snapshot::fx_auditioning();
     let btn_w = ((w - gap) * 0.5).max(1.0);
     button(

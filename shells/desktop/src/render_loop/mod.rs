@@ -269,10 +269,14 @@ impl crate::App {
                 // preview, so it is heard while the sliders move. Change-gated
                 // inside, so this is at most one render per parameter change.
                 // Apply commits that exact buffer; Cancel throws it away.
+                // Switching to another effect stacks the one you TUNED onto a live
+                // chain, so effects accumulate (`clip → chain → active`) instead of
+                // the previous one vanishing. Apply commits the whole stack.
                 if ed::fx_dirty() {
                     audio.editor_fx_update(kind, &norms);
                 }
                 ed::set_fx_auditioning(audio.editor_fx_auditioning());
+                ed::set_fx_chain_len(audio.editor_fx_chain_len());
             }
         }
         // Coalesced painter Move: stamp the LATEST buffered canvas position ONCE this frame, replacing

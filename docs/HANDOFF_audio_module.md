@@ -65,6 +65,20 @@ abaixo é histórico — não re-investigue.
     (change-gated ⇒ no máximo 1 por frame). Selecionar um trecho escopa o render —
     é o que mantém clipes longos responsivos. Se um dia pesar (reverb com cauda
     longa em música de 3 min), medir antes de mexer.
+- **W3 Bloco 3a-ter — CADEIA ao vivo (efeitos acumulam)**: a audição deixou de
+  renderizar sempre do clipe pristino. Agora é `clipe → chain[0] → … → ativo`.
+  Ao **trocar de efeito**, o estágio que o usuário **ajustou** é empilhado na
+  `fx_chain` e o próximo audita **por cima** dele; um estágio só *navegado* pelas
+  setas é descartado (senão passar pela lista empilharia presets). **Apply**
+  commita a pilha inteira em **1 passo de undo**; **Cancel** joga tudo fora.
+  - O flag `fx_touched` (painel) é setado só pelo arraste de slider; o **shell**
+    o consome (empilha) e limpa — nunca o painel. Seam test prende isso.
+  - `fx_base` = `clipe + chain`, **em cache**: arrastar o slider do efeito ativo
+    re-renderiza **um** estágio, não a cadeia toda. Recomputa quando a cadeia ou o
+    target range muda.
+  - Ao trocar de efeito, o shell usa `default_norms(novo_kind)` **na hora** — o
+    painel só re-semeia os sliders no paint seguinte, e sem isso o frame da troca
+    auditaria o efeito novo com os parâmetros do antigo (glitch audível).
 - **Atalhos:** `Ctrl+Z` undo · `Ctrl+Shift+Z` / `Ctrl+Y` redo (roteados ao
   `EditClip` quando o painel WAVE está aberto com clipe carregado).
 - **Fix:** `cpal::Stream` é dropado no `on_close_request`, não no drop-cascade do

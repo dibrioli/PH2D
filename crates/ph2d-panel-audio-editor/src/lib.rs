@@ -180,6 +180,8 @@ impl Panel for AudioEditorPanel {
 
 /// Shell → panel: the audition ended (Apply/Cancel) — stop asking for renders.
 pub use snapshot::clear_fx_dirty;
+/// Shell: the active stage was consumed (stacked onto the chain, or replaced).
+pub use snapshot::clear_fx_touched;
 /// Panel → shell: whether the user has touched the rack since the last
 /// Apply/Cancel — i.e. whether the shell should be auditioning an effect live.
 pub use snapshot::fx_dirty;
@@ -187,12 +189,17 @@ pub use snapshot::fx_dirty;
 pub use snapshot::fx_kind;
 /// Panel → shell: the normalized 0..1 position of every parameter slider.
 pub use snapshot::fx_norms;
+/// Panel → shell: whether the ACTIVE effect was tuned — a tuned stage is stacked
+/// onto the live chain when the effect is switched; an untouched one is dropped.
+pub use snapshot::fx_touched;
 /// Panel → shell: whether looping is enabled (persistent).
 pub use snapshot::looping;
 /// Shell → panel: publish the loaded clip's display name.
 pub use snapshot::set_clip_name;
 /// Shell → panel: whether an audition is currently sounding (enables Cancel).
 pub use snapshot::set_fx_auditioning;
+/// Shell → panel: how many effects are stacked in the live chain.
+pub use snapshot::set_fx_chain_len;
 /// Shell → panel: publish whether a waveform selection exists (range-op buttons).
 pub use snapshot::set_has_selection;
 /// Panel → shell: the pending edit command (one-shot; the shell applies it to the

@@ -1,0 +1,271 @@
+#![forbid(unsafe_code)]
+//! `force.wind` — a directional force with per-instance gusts. A Motion
+//! **force**: a `Pure`-shaped node (marked `Temporal` — the gusts read the
+//! playhead) that adds its contribution into the transient `accel` column
+//! (× the multiplicative `falloff` field, plan §1.6); `motion.integrate` turns
+//! the accumulated acceleration into motion.
+//!
+//! Reference behaviour (MiniCavalryV2 `forces/wind.js`, clean-room):
+//! `strength · (1 + gust · noise(t·gust_freq, row_i))` along a fixed direction.
+//! Each instance samples its own noise row, so gusts ripple organically across
+//! the set instead of pumping it in lockstep. The noise is the deterministic
+//! value-noise lattice (hash + smootherstep, HR-5), the direction comes from
+//! the parabolic-sine trig — no transcendentals anywhere.
+//!
+//! With `gust = 0` this is a constant directional force — i.e. **gravity**:
+//! `angle = 270°` (Y-up world) and the strength of your choice. A separate
+//! gravity node would be this node minus two params, so it does not exist.
+//!
+//! `angle` is authored in **degrees** (the app's one authored-angle unit),
+//! counter-clockwise from +X: `0°` blows +X, `90°` blows +Y (up), `270°` down.
+
+use ph2d_node_registry::{NodeRegistry, RegistryError};
+use ph2d_nodegraph::cook::EvalCtx;
+use ph2d_nodegraph::effect::Effect;
+use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, ParamSpec, PortSpec};
+use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
+
+mod accum;
+mod noise;
+mod trig;
+use accum::{add_accel, falloff_at};
+use noise::value_noise_2d;
+use trig::cos_sin_cycles;
+
+const INST_VEC2: PortType = PortType::new(Domain::Instances, Dim::Vec2, Clock::Frame);
+
+/// The static contract of this node type (ADR-0031).
+pub const MANIFEST: NodeManifest = NodeManifest {
+    id: NodeTypeId::of("force.wind"),
+    name: "force.wind",
+    inputs: &[PortSpec {
+        name: "in",
+        ty: INST_VEC2,
+    }],
+    outputs: &[PortSpec {
+        name: "out",
+        ty: INST_VEC2,
+    }],
+    // The gusts sample the playhead-scrolled noise field.
+    effect: Effect::Temporal,
+    clock: Clock::Frame,
+    params: &[
+        ParamSpec {
+            name: "angle",
+            default: 0.0,
+        },
+        ParamSpec {
+            name: "strength",
+            default: 3.0,
+        },
+        ParamSpec {
+            name: "gust",
+            default: 0.3,
+        },
+        ParamSpec {
+            name: "gust_freq",
+            default: 1.0,
+        },
+        ParamSpec {
+            name: "seed",
+            default: 0.0,
+        },
+    ],
+    lowerings: &[LoweringKind::Cpu],
+};
+
+struct ForceWind;
+
+impl NodeOp for ForceWind {
+    fn manifest(&self) -> &'static NodeManifest {
+        &MANIFEST
+    }
+
+    fn eval(&self, ctx: &mut EvalCtx<'_>) {
+        // Degrees → cycles for the transcendental-free trig.
+        let (dir_x, dir_y) = cos_sin_cycles(ctx.param("angle") / 360.0);
+        let strength = ctx.param("strength");
+        let gust = ctx.param("gust");
+        let gust_freq = ctx.param("gust_freq");
+        let seed = ctx.param("seed");
+        let t = ctx.playhead() as f32;
+        let out = {
+            let input = ctx.input(0);
+            let contrib: Vec<[f32; 2]> = (0..input.count())
+                .map(|i| {
+                    // Each instance = its own noise row (reference parity: the
+                    // per-instance seed picks the row; time scrolls along x).
+                    let variation = gust * value_noise_2d(t * gust_freq, i as f32 * 0.5 + seed);
+                    let mag = strength * (1.0 + variation) * falloff_at(input, i);
+                    [dir_x * mag, dir_y * mag]
+                })
+                .collect();
+            add_accel(input, &contrib)
+        };
+        ctx.emit(out);
+    }
+}
+
+/// Register this node with the runtime registry. Called (via codegen) from
+/// `ph2d-node-registry-init::register_all_nodes`.
+pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
+    reg.register(Box::new(ForceWind))?;
+    reg.register_ui(
+        MANIFEST.id,
+        ph2d_node_registry::NodeUiManifest {
+            display_name: "Wind",
+            category: ph2d_node_registry::NodeUiCategory::Transform,
+            silhouette: ph2d_node_registry::NodeSilhouette::Rect,
+        },
+    );
+    reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
+    Ok(())
+}
+
+use ph2d_node_registry::{ParamUiHint, ParamWidget};
+
+/// Param UI hints (M1.P1).
+static PARAM_HINTS: &[ParamUiHint] = &[
+    ParamUiHint {
+        param: "angle",
+        label: "Angle",
+        min: 0.0,
+        max: 360.0,
+        step: 1.0,
+        widget: ParamWidget::Angle,
+    },
+    ParamUiHint {
+        param: "strength",
+        label: "Strength",
+        min: 0.0,
+        max: 40.0,
+        step: 0.1,
+        widget: ParamWidget::Slider,
+    },
+    ParamUiHint {
+        param: "gust",
+        label: "Gust",
+        min: 0.0,
+        max: 1.0,
+        step: 0.01,
+        widget: ParamWidget::Slider,
+    },
+    ParamUiHint {
+        param: "gust_freq",
+        label: "Gust Frequency",
+        min: 0.1,
+        max: 5.0,
+        step: 0.05,
+        widget: ParamWidget::Slider,
+    },
+    ParamUiHint {
+        param: "seed",
+        label: "Seed",
+        min: 0.0,
+        max: 100.0,
+        step: 1.0,
+        widget: ParamWidget::Seed,
+    },
+];
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use ph2d_nodegraph::attr::{Column, Stream};
+    use ph2d_nodegraph::cook::{Cook, OpResolver};
+    use ph2d_nodegraph::graph::{Edge, Graph};
+
+    static SRC_MAN: NodeManifest = NodeManifest {
+        id: NodeTypeId::of("force.wind.test.src"),
+        name: "force.wind.test.src",
+        inputs: &[],
+        outputs: &[PortSpec {
+            name: "out",
+            ty: INST_VEC2,
+        }],
+        effect: Effect::Pure,
+        clock: Clock::Frame,
+        params: &[],
+        lowerings: &[LoweringKind::Cpu],
+    };
+    struct Src;
+    impl NodeOp for Src {
+        fn manifest(&self) -> &'static NodeManifest {
+            &SRC_MAN
+        }
+        fn eval(&self, ctx: &mut EvalCtx<'_>) {
+            ctx.emit(Stream::new(3).with("P", Column::Vec2(vec![[0.0, 0.0]; 3])));
+        }
+    }
+    struct Ops;
+    impl OpResolver for Ops {
+        fn resolve(&self, ty: NodeTypeId) -> Option<&dyn NodeOp> {
+            match ty {
+                t if t == SRC_MAN.id => Some(&Src),
+                t if t == MANIFEST.id => Some(&ForceWind),
+                _ => None,
+            }
+        }
+    }
+
+    fn accel_with(params: &[(&str, f32)], playhead: f64) -> Vec<[f32; 2]> {
+        let mut g = Graph::new();
+        let src = g.add_node("force.wind.test.src");
+        let w = g.add_node("force.wind");
+        g.connect(Edge {
+            from: (src, 0),
+            to: (w, 0),
+            delayed: false,
+        })
+        .unwrap();
+        for (name, v) in params {
+            g.set_param(w, *name, *v);
+        }
+        let mut cook = Cook::new();
+        let out = cook.cook(&g, &Ops, w, playhead).unwrap();
+        match out[0].as_stream().get("accel").unwrap() {
+            Column::Vec2(v) => v.clone(),
+            _ => panic!("accel"),
+        }
+    }
+
+    #[test]
+    fn gustless_wind_is_a_constant_directional_force() {
+        // gust = 0 → exactly strength along the angle. 0° = +X.
+        let a = accel_with(&[("gust", 0.0), ("strength", 3.0)], 0.7);
+        for ai in &a {
+            assert!((ai[0] - 3.0).abs() < 1e-5, "blows +X at strength");
+            assert!(ai[1].abs() < 1e-5);
+        }
+        // 270° = −Y (gravity in a Y-up world).
+        let g = accel_with(&[("gust", 0.0), ("angle", 270.0)], 0.0);
+        assert!(g[0][0].abs() < 1e-5);
+        assert!((g[0][1] + 3.0).abs() < 1e-5, "270 deg pulls down (Y-up)");
+    }
+
+    #[test]
+    fn gusts_vary_per_instance_and_over_time() {
+        let a = accel_with(&[("gust", 0.5)], 0.4);
+        assert!(
+            a[0][0] != a[1][0] || a[1][0] != a[2][0],
+            "each instance rides its own noise row"
+        );
+        let b = accel_with(&[("gust", 0.5)], 1.9);
+        assert!((a[0][0] - b[0][0]).abs() > 1e-6, "gusts scroll with time");
+    }
+
+    #[test]
+    fn is_deterministic_for_replay() {
+        assert_eq!(
+            accel_with(&[("gust", 0.7)], 0.9),
+            accel_with(&[("gust", 0.7)], 0.9)
+        );
+    }
+
+    #[test]
+    fn registers_and_resolves() {
+        let mut reg = NodeRegistry::new();
+        register(&mut reg).unwrap();
+        assert!(reg.resolve(MANIFEST.id).is_some());
+    }
+}

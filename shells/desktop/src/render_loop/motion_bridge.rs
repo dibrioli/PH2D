@@ -156,15 +156,33 @@ pub(super) fn dispatch(
     }
 
     // ── 3. Advance transport + cook the sink (skipped when paused/unchanged) ──
-    // `advance` is a no-op while paused, so the tick only moves when playing or
-    // scrubbing → the pump skips a static paused frame (zero-alloc, M0.T12). No
-    // framing node in M0, so the pump samples one opaque atlas tile (set in
-    // init.rs) at a sub-spacing size → clean, distinct dots.
-    motion.transport.advance(frame_ticks as u64);
     // The render output IS the Output node — the sink follows the graph (wire a
     // chain into an Output node and it draws). `None` (no Output node) → the pump
     // renders nothing. Recomputed each frame so add/delete/rewire just works.
     motion.sink = output_node(&motion.doc.graph);
+    // One cook + `pre`-advance per FIXED TICK, never per frame (M2-dynamics): a
+    // slow frame that produced 2 fixed steps must re-sim BOTH, or a sequential
+    // node's trajectory (integrate / spring) would depend on the frame rate —
+    // non-deterministic (plan §1.4: dt fixo). The common frame is 1 tick, same
+    // cost as before; while paused `advance` is a no-op and the pump
+    // early-returns at the unchanged tick, so the loop costs nothing
+    // (zero-alloc paused frame, M0.T12).
+    for _ in 0..frame_ticks {
+        motion.transport.advance(1);
+        let playhead = motion.playhead(fixed_dt);
+        let tick = motion.transport.tick;
+        motion.pump.pump(
+            &motion.doc.graph,
+            &motion.registry,
+            motion.sink,
+            tick,
+            playhead,
+            motion.default_uv_rect,
+            motion.default_size,
+        );
+    }
+    // Catch-up for a frame with no fixed step or a paused transport: a dirty
+    // edit (param drag, rewire) still re-cooks this frame. No-op when clean.
     let playhead = motion.playhead(fixed_dt);
     let tick = motion.transport.tick;
     motion.pump.pump(
@@ -192,8 +210,7 @@ pub(super) fn dispatch(
 ///   refusal toast is raised and the document is untouched.
 #[cfg(feature = "panel-motion-graph")]
 fn apply_graph_intents(motion: &mut MotionState, toasts: &mut ToastQueue, split: &mut CenterSplit) {
-    use ph2d_editor::Toast;
-    use ph2d_nodegraph::graph::{Edge, NodeId, Pos};
+    use ph2d_nodegraph::graph::{NodeId, Pos};
     use ph2d_panel_motion_graph::GraphIntent;
     for intent in ph2d_panel_motion_graph::drain_intents() {
         match intent {
@@ -218,33 +235,7 @@ fn apply_graph_intents(motion: &mut MotionState, toasts: &mut ToastQueue, split:
                 from_port,
                 to_node,
                 to_port,
-            } => {
-                let edge = Edge {
-                    from: (NodeId(from_node), from_port),
-                    to: (NodeId(to_node), to_port),
-                    delayed: false,
-                };
-                let mut trial = motion.doc.graph.clone();
-                match trial.connect(edge) {
-                    Err(e) => {
-                        toasts.push(Toast::warning(connect_err_msg(e)));
-                    }
-                    Ok(()) => {
-                        let rejected = match trial.validate(&motion.registry) {
-                            Ok(()) => false,
-                            Err(viols) => viols.iter().any(|v| violation_blocks_edge(v, edge)),
-                        };
-                        if rejected {
-                            toasts.push(Toast::warning("Can't connect: incompatible ports"));
-                        } else {
-                            let pre = motion.doc.clone();
-                            motion.doc.graph = trial;
-                            motion.history.push_undo(pre);
-                            motion.pump.mark_dirty();
-                        }
-                    }
-                }
-            }
+            } => apply_connect(motion, toasts, from_node, from_port, to_node, to_port),
             GraphIntent::Disconnect { to_node, to_port } => {
                 let pre = motion.doc.clone();
                 if motion
@@ -261,6 +252,11 @@ fn apply_graph_intents(motion: &mut MotionState, toasts: &mut ToastQueue, split:
                 let pre = motion.doc.clone();
                 let id = motion.doc.graph.add_node(type_name);
                 motion.doc.graph.set_pos(id, Pos { x, y });
+                // Sequential-node template (M2-dynamics): an input named
+                // `state` sharing output 0's type is the feedback port — wire
+                // its `pre` self-loop on drop, so integrate/spring land alive
+                // instead of frozen at their seed.
+                wire_state_self_loop(&mut motion.doc.graph, id, &motion.registry);
                 motion.history.push_undo(pre);
                 motion.pump.mark_dirty();
             }
@@ -298,6 +294,101 @@ fn apply_graph_intents(motion: &mut MotionState, toasts: &mut ToastQueue, split:
                 motion.transport.toggle();
             }
         }
+    }
+}
+
+/// Apply a `Connect` intent: validate against the shell-owned document (the
+/// shell is the authority) and commit iff the new edge is legal.
+///
+/// A wire that would close a **cycle** has exactly ONE legal meaning in this
+/// substrate: 1-tick feedback (the Lustre `pre`, ADR-0032) — so it is retried
+/// as a delayed edge instead of refused, with an informative toast. This is
+/// how a force loop (`integrate → forces → integrate`) is wired by hand in
+/// the editor (M2-dynamics).
+#[cfg(feature = "panel-motion-graph")]
+fn apply_connect(
+    motion: &mut MotionState,
+    toasts: &mut ToastQueue,
+    from_node: u32,
+    from_port: u16,
+    to_node: u32,
+    to_port: u16,
+) {
+    use ph2d_editor::Toast;
+    use ph2d_nodegraph::graph::{Edge, EdgeError, NodeId};
+    let fwd = Edge {
+        from: (NodeId(from_node), from_port),
+        to: (NodeId(to_node), to_port),
+        delayed: false,
+    };
+    let mut trial = motion.doc.graph.clone();
+    let (attempt, edge) = match trial.connect(fwd) {
+        Err(EdgeError::WouldCycle) => {
+            let pre_edge = Edge {
+                delayed: true,
+                ..fwd
+            };
+            (trial.connect(pre_edge), pre_edge)
+        }
+        other => (other, fwd),
+    };
+    match attempt {
+        Err(e) => {
+            toasts.push(Toast::warning(connect_err_msg(e)));
+        }
+        Ok(()) => {
+            let rejected = match trial.validate(&motion.registry) {
+                Ok(()) => false,
+                Err(viols) => viols.iter().any(|v| violation_blocks_edge(v, edge)),
+            };
+            if rejected {
+                toasts.push(Toast::warning("Can't connect: incompatible ports"));
+            } else {
+                let pre = motion.doc.clone();
+                motion.doc.graph = trial;
+                motion.history.push_undo(pre);
+                motion.pump.mark_dirty();
+                if edge.delayed {
+                    toasts.push(Toast::info("Connected as 1-tick feedback (pre)"));
+                }
+            }
+        }
+    }
+}
+
+/// Wire the sequential-node template: if `id`'s manifest declares an input
+/// named `state` whose type equals output port 0's, connect the `pre`
+/// self-loop `out --pre--> state`. The convention is append-only: any future
+/// sequential node only has to name its feedback port `state` to get the
+/// template. A node without such a port is untouched.
+#[cfg(feature = "panel-motion-graph")]
+fn wire_state_self_loop(
+    graph: &mut ph2d_nodegraph::graph::Graph,
+    id: ph2d_nodegraph::graph::NodeId,
+    registry: &ph2d_node_registry::NodeRegistry,
+) {
+    use ph2d_nodegraph::cook::OpResolver;
+    let Some(man) = graph
+        .node(id)
+        .and_then(|n| registry.resolve(n.type_id()))
+        .map(|op| op.manifest())
+    else {
+        return;
+    };
+    let Some(out0) = man.outputs.first() else {
+        return;
+    };
+    if let Some((port, _)) = man
+        .inputs
+        .iter()
+        .enumerate()
+        .find(|(_, p)| p.name == "state" && p.ty == out0.ty)
+    {
+        let _ = graph.connect(ph2d_nodegraph::graph::Edge {
+            from: (id, 0),
+            to: (id, port as u16),
+            delayed: true,
+        });
     }
 }
 

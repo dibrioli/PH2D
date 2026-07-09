@@ -82,9 +82,10 @@ impl MotionState {
     }
 }
 
-/// Author the **Cavalry M1 gate demo** into `g`; returns the sink (the Output
-/// node) if the graph is well-typed. The chain is
-/// `grid → clone → tint → orbit → falloff → stagger → oscillator → wiggle → output`:
+/// Author the **Cavalry demo** (M1 gate + M2-dynamics) into `g`; returns the
+/// sink (the Output node) if the graph is well-typed. The chain is
+/// `grid → clone → tint → orbit → falloff → stagger → oscillator → wiggle →
+/// spring → integrate → output`, with the force loop riding integrate's `pre`:
 ///
 /// - **grid** 20×10 (200 instances), gap 0.5 → a half-height lattice; emits
 ///   `Index`/`Count`.
@@ -103,6 +104,15 @@ impl MotionState {
 /// - **oscillator** a travelling Sine Y-wave, masked by the falloff (the centre
 ///   bounces, the edges hold) — the classic Cavalry focal-motion look.
 /// - **wiggle** an organic X jitter on the focus region (value noise) on top.
+/// - **spring** (M2) on Y chases the travelling wave with lag + overshoot +
+///   settle (follow-through) — its `pre` self-loop carries the state; masked by
+///   the falloff like everything else.
+/// - **integrate + vortex → attractor → drag** (M2) — the reference's classic
+///   stable-orbit combo, wired as the `pre` force loop
+///   (`integrate.out --pre--> vortex → attractor → drag → integrate.state`).
+///   The falloff column gates every force, so the focus region swirls in a
+///   damped orbital flow ON TOP of the live wave (physics composes with the
+///   animated upstream, it never replaces it) while the edges hold still.
 ///
 /// The Output node is the render target; the bridge keeps `sink` pointed at it.
 fn build_cavalry_demo(g: &mut Graph, reg: &NodeRegistry) -> Option<NodeId> {
@@ -114,6 +124,11 @@ fn build_cavalry_demo(g: &mut Graph, reg: &NodeRegistry) -> Option<NodeId> {
     let stagger = g.add_node("motion.stagger");
     let osc = g.add_node("motion.oscillator");
     let wiggle = g.add_node("motion.wiggle");
+    let spring = g.add_node("motion.spring");
+    let integrate = g.add_node("motion.integrate");
+    let vortex = g.add_node("force.vortex");
+    let attractor = g.add_node("force.attractor");
+    let drag = g.add_node("force.drag");
     let output = g.add_node("motion.output");
     for (i, (from, to)) in [
         (grid, clone),
@@ -123,7 +138,9 @@ fn build_cavalry_demo(g: &mut Graph, reg: &NodeRegistry) -> Option<NodeId> {
         (falloff, stagger),
         (stagger, osc),
         (osc, wiggle),
-        (wiggle, output),
+        (wiggle, spring),
+        (spring, integrate),
+        (integrate, output),
     ]
     .into_iter()
     .enumerate()
@@ -143,7 +160,63 @@ fn build_cavalry_demo(g: &mut Graph, reg: &NodeRegistry) -> Option<NodeId> {
             },
         );
     }
-    g.set_pos(output, Pos { x: 1760.0, y: 0.0 });
+    g.set_pos(output, Pos { x: 2200.0, y: 0.0 });
+
+    // Spring state: the `pre` self-loop (what the editor template auto-wires).
+    g.connect(Edge {
+        from: (spring, 0),
+        to: (spring, 1),
+        delayed: true,
+    })
+    .ok()?;
+    // Force loop: integrate.out --pre--> vortex → attractor → drag →
+    // integrate.state. The `pre` edge is what makes the cycle legal (feedback).
+    g.connect(Edge {
+        from: (integrate, 0),
+        to: (vortex, 0),
+        delayed: true,
+    })
+    .ok()?;
+    g.connect(Edge {
+        from: (vortex, 0),
+        to: (attractor, 0),
+        delayed: false,
+    })
+    .ok()?;
+    g.connect(Edge {
+        from: (attractor, 0),
+        to: (drag, 0),
+        delayed: false,
+    })
+    .ok()?;
+    g.connect(Edge {
+        from: (drag, 0),
+        to: (integrate, 1),
+        delayed: false,
+    })
+    .ok()?;
+    // The loop row sits under the integrate card.
+    g.set_pos(
+        vortex,
+        Pos {
+            x: 1760.0,
+            y: 260.0,
+        },
+    );
+    g.set_pos(
+        attractor,
+        Pos {
+            x: 1980.0,
+            y: 260.0,
+        },
+    );
+    g.set_pos(
+        drag,
+        Pos {
+            x: 2200.0,
+            y: 260.0,
+        },
+    );
 
     // 20×10 half-lattice, gap 0.5 (the clone tiles it into the full 20×20).
     g.set_param(grid, "rows", 10.0);
@@ -181,6 +254,17 @@ fn build_cavalry_demo(g: &mut Graph, reg: &NodeRegistry) -> Option<NodeId> {
     g.set_param(wiggle, "channel", 0.0); // X
     g.set_param(wiggle, "amplitude", 0.5);
     g.set_param(wiggle, "frequency", 1.0);
+    // Follow-through: the Y spring chases the travelling wave with lag +
+    // overshoot (channel Y is the spring's default).
+    g.set_param(spring, "tension", 12.0);
+    g.set_param(spring, "friction", 2.5);
+    // Stable-orbit combo in the focus region (falloff-gated): a gentle
+    // clockwise swirl, pulled back by the attractor, damped to a steady flow.
+    g.set_param(vortex, "strength", 3.0);
+    g.set_param(vortex, "radius", 7.0);
+    g.set_param(attractor, "strength", 2.5);
+    g.set_param(attractor, "radius", 8.0);
+    g.set_param(drag, "coefficient", 1.2);
 
     // Same "validate on load" the editor runs before cooking — proves the authored
     // graph is well-typed and membrane-clean.
@@ -196,9 +280,9 @@ mod tests {
     fn new_builds_the_well_typed_cavalry_demo() {
         let state = MotionState::new();
         assert!(state.sink.is_some(), "the demo must have a sink");
-        // 9 nodes (grid, clone, tint, orbit, falloff, stagger, oscillator, wiggle,
-        // output).
-        assert_eq!(state.doc.graph.nodes().len(), 9);
+        // 14 nodes (grid, clone, tint, orbit, falloff, stagger, oscillator,
+        // wiggle, spring, integrate, vortex, attractor, drag, output).
+        assert_eq!(state.doc.graph.nodes().len(), 14);
         let sink = state.sink.unwrap();
         assert_eq!(
             state.doc.graph.node(sink).unwrap().type_name,

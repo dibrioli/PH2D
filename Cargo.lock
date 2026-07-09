@@ -5148,6 +5148,38 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-node-force-attractor"
+version = "0.0.0"
+dependencies = [
+ "ph2d-node-registry",
+ "ph2d-nodegraph",
+]
+
+[[package]]
+name = "ph2d-node-force-drag"
+version = "0.0.0"
+dependencies = [
+ "ph2d-node-registry",
+ "ph2d-nodegraph",
+]
+
+[[package]]
+name = "ph2d-node-force-vortex"
+version = "0.0.0"
+dependencies = [
+ "ph2d-node-registry",
+ "ph2d-nodegraph",
+]
+
+[[package]]
+name = "ph2d-node-force-wind"
+version = "0.0.0"
+dependencies = [
+ "ph2d-node-registry",
+ "ph2d-nodegraph",
+]
+
+[[package]]
 name = "ph2d-node-motion-clone"
 version = "0.0.0"
 dependencies = [
@@ -5165,6 +5197,14 @@ dependencies = [
 
 [[package]]
 name = "ph2d-node-motion-grid"
+version = "0.0.0"
+dependencies = [
+ "ph2d-node-registry",
+ "ph2d-nodegraph",
+]
+
+[[package]]
+name = "ph2d-node-motion-integrate"
 version = "0.0.0"
 dependencies = [
  "ph2d-node-registry",
@@ -5220,6 +5260,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-node-motion-spring"
+version = "0.0.0"
+dependencies = [
+ "ph2d-node-registry",
+ "ph2d-nodegraph",
+]
+
+[[package]]
 name = "ph2d-node-motion-stagger"
 version = "0.0.0"
 dependencies = [
@@ -5264,15 +5312,21 @@ version = "0.0.0"
 dependencies = [
  "ph2d-node-debug-const",
  "ph2d-node-debug-wave",
+ "ph2d-node-force-attractor",
+ "ph2d-node-force-drag",
+ "ph2d-node-force-vortex",
+ "ph2d-node-force-wind",
  "ph2d-node-motion-clone",
  "ph2d-node-motion-falloff",
  "ph2d-node-motion-grid",
+ "ph2d-node-motion-integrate",
  "ph2d-node-motion-move",
  "ph2d-node-motion-orbit",
  "ph2d-node-motion-oscillator",
  "ph2d-node-motion-output",
  "ph2d-node-motion-rotate",
  "ph2d-node-motion-scale",
+ "ph2d-node-motion-spring",
  "ph2d-node-motion-stagger",
  "ph2d-node-motion-tint",
  "ph2d-node-motion-transform",

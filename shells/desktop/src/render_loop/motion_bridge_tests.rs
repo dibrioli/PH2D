@@ -130,6 +130,152 @@ fn grid_index_drives_the_tint_gradient() {
     }
 }
 
+/// M2-dynamics: a wire that would close a cycle is retried as a `pre`
+/// (delayed) edge — the one legal meaning of a cycle in this substrate — so a
+/// user CAN hand-wire a feedback loop (spring state, force loop). Reverting
+/// the retry makes the connect refuse and this goes red.
+#[test]
+fn a_cycle_closing_connect_becomes_a_pre_edge() {
+    use ph2d_editor::ToastQueue;
+    use ph2d_nodegraph::graph::{Edge, Graph};
+
+    let mut motion = MotionState::new();
+    let mut g = Graph::new();
+    let grid = g.add_node("motion.grid");
+    let spring = g.add_node("motion.spring");
+    g.connect(Edge {
+        from: (grid, 0),
+        to: (spring, 0),
+        delayed: false,
+    })
+    .unwrap();
+    motion.doc.graph = g;
+    let mut toasts = ToastQueue::new();
+
+    // spring.out -> spring.state closes a (self-)cycle: the shell converts it.
+    apply_connect(&mut motion, &mut toasts, spring.0, 0, spring.0, 1);
+    let edge = motion
+        .doc
+        .graph
+        .edges()
+        .iter()
+        .find(|e| e.to == (spring, 1))
+        .expect("the feedback wire was created, not refused");
+    assert!(edge.delayed, "cycle-closing wire became a pre edge");
+
+    // A plain forward wire stays plain (no over-eager delaying).
+    let plain = motion
+        .doc
+        .graph
+        .edges()
+        .iter()
+        .find(|e| e.to == (spring, 0))
+        .unwrap();
+    assert!(!plain.delayed);
+}
+
+/// M2-dynamics: dropping a sequential node (input named `state`, same type as
+/// output 0) auto-wires its `pre` self-loop, so integrate/spring land alive;
+/// a plain modifier is untouched by the template.
+#[test]
+fn add_node_template_wires_the_state_self_loop() {
+    use ph2d_nodegraph::graph::Graph;
+
+    let motion = MotionState::new();
+    let mut g = Graph::new();
+    let integrate = g.add_node("motion.integrate");
+    let spring = g.add_node("motion.spring");
+    let plain = g.add_node("motion.move");
+    for id in [integrate, spring, plain] {
+        wire_state_self_loop(&mut g, id, &motion.registry);
+    }
+    assert!(
+        g.edges()
+            .iter()
+            .any(|e| e.from == (integrate, 0) && e.to == (integrate, 1) && e.delayed),
+        "integrate got its pre self-loop"
+    );
+    assert!(
+        g.edges()
+            .iter()
+            .any(|e| e.from == (spring, 0) && e.to == (spring, 1) && e.delayed),
+        "spring got its pre self-loop"
+    );
+    assert_eq!(
+        g.edges().len(),
+        2,
+        "a node with no state port is untouched by the template"
+    );
+}
+
+/// M2-dynamics gate: the default demo's physics loop is ALIVE through the real
+/// registry (integrate accumulates displacement in the focus region) and the
+/// whole trajectory replays bit-identically — cooked one pump per fixed tick,
+/// exactly like the bridge. Breaking the pre wiring, the accel consumption or
+/// any force's determinism turns this red.
+#[test]
+fn demo_dynamics_swirl_and_replay_deterministically() {
+    use ph2d_eval_motion::MotionCookPump;
+    use ph2d_nodegraph::attr::Column;
+
+    let run = || {
+        let motion = MotionState::new();
+        let mut pump = MotionCookPump::new();
+        let mut frames = Vec::new();
+        for k in 0..40u64 {
+            let ph = k as f64 / 60.0;
+            pump.pump(
+                &motion.doc.graph,
+                &motion.registry,
+                motion.sink,
+                k,
+                ph,
+                motion.default_uv_rect,
+                motion.default_size,
+            );
+            frames.push(
+                pump.instances
+                    .iter()
+                    .map(|i| i.world_pos)
+                    .collect::<Vec<_>>(),
+            );
+        }
+        (motion, pump, frames)
+    };
+
+    let (motion, mut pump, frames_a) = run();
+    // The force loop displaced SOMETHING: integrate's sim_d is non-zero after
+    // 40 ticks (the falloff gates the edges, so check the max magnitude).
+    let integrate = motion
+        .doc
+        .graph
+        .nodes()
+        .iter()
+        .find(|n| n.type_name == "motion.integrate")
+        .map(|n| n.id)
+        .expect("demo has an integrate node");
+    let ph = 39.0 / 60.0;
+    let out = pump
+        .cook
+        .cook(&motion.doc.graph, &motion.registry, integrate, ph)
+        .unwrap();
+    let max_d = match out[0].as_stream().get("sim_d").expect("sim_d column") {
+        Column::Vec2(v) => v
+            .iter()
+            .map(|d| (d[0] * d[0] + d[1] * d[1]).sqrt())
+            .fold(0.0f32, f32::max),
+        _ => panic!("sim_d"),
+    };
+    assert!(
+        max_d > 1e-3,
+        "the physics loop accumulated displacement, got {max_d}"
+    );
+
+    // Bit-identical replay (HR-5): a second full run matches frame for frame.
+    let (_, _, frames_b) = run();
+    assert_eq!(frames_a, frames_b, "the demo trajectory replays exactly");
+}
+
 /// The Output node IS the render sink: the bridge auto-selects it, cooking it
 /// draws whatever feeds it, and deleting it stops the render (no Output -> no
 /// sink -> empty). The output follows the graph, not a hidden toggle.

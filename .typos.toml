@@ -28,6 +28,9 @@ extend-ignore-identifiers-re = [
 # Project-specific names (not typos).
 ph2d = "ph2d"
 PH2D = "PH2D"
+# pt-BR word in the Motion research docs (docs/Motion Nodes/02_*), read by
+# typos-cli as a misspelt "information".
+informativo = "informativo"
 # Photoshop PSD 4-char adjustment-layer type keys (Adobe's literal format tags,
 # ADR-0045 `adjustments::AdjustmentKind::psd_export`): e.g. Levels = "levl",
 # Brightness/Contrast = "brit". They are file-format signatures, not English.

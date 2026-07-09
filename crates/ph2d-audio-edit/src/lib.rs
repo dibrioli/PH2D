@@ -25,12 +25,14 @@
 mod fx;
 mod ops;
 mod peaks;
+mod truepeak;
 
 pub use fx::{Effect, TailEffect};
 pub use ops::{
     FadeDir, FadeShape, in_range, in_range_tail, in_range_warm, peak, snap_to_zero_crossing,
 };
 pub use peaks::{ColumnPeaks, DEFAULT_BIN_SIZE, PeakCache, column_peaks};
+pub use truepeak::{OVERSAMPLE, true_peak};
 
 use std::ops::Range;
 

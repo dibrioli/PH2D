@@ -259,7 +259,7 @@ impl crate::App {
                 // reading the chain — `fx_chain()` materializes its first stage from
                 // exactly those defaults.
                 use crate::audio::fx_params;
-                ed::set_fx_kind_names(&fx_params::FX_KINDS);
+                ed::set_fx_kind_names(&fx_params::kind_names());
                 ed::set_fx_kind_defaults(&fx_params::all_default_norms());
                 let (kind, norms) = ed::fx_sel_stage();
                 ed::set_fx_param_views(&fx_params::views(kind, &norms));

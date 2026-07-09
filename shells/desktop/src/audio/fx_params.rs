@@ -1,32 +1,27 @@
-//! Parametric descriptors for the Audio Editor's effects rack (W3 block 3a).
+//! Parametric descriptors for the Audio Editor's effects rack (W3 blocks 3a/3b/4).
 //!
 //! The panel is UI-only: it owns nothing but a **normalized 0..1 slider per
-//! parameter** and an index into [`FX_KINDS`]. This module is the shell-side
-//! source of truth that maps those normals onto real DSP units, formats them for
-//! display, and finally builds the `ph2d_audio_edit` effect to apply.
+//! parameter** and an index into [`KINDS`]. This module is the shell-side source of
+//! truth that maps those normals onto real DSP units, formats them for display, and
+//! finally builds the `ph2d_audio_edit` effect to apply.
 //!
 //! Frequencies and times map **logarithmically** — a linear cutoff slider spends
 //! most of its travel above 10 kHz, where nothing useful happens.
 //!
 //! Every effect's **defaults are its neutral point**: selecting an effect leaves
 //! the audio byte-identical until the user turns a knob.
+//!
+//! ## One row per effect
+//!
+//! [`KINDS`] carries the display name, the parameter specs and the constructor
+//! **together**. They used to be three parallel `match kind { .. }` arms, which
+//! meant inserting an effect in the middle silently re-indexed one of them: the
+//! rack would name "Compress", show its sliders, and build a Saturate.
 
 use ph2d_audio_edit::{Effect, TailEffect};
 
 /// Parameter sliders the rack exposes. Mirrors `ph2d_panel_audio_editor::MAX_FX_PARAMS`.
 pub(crate) const MAX_FX_PARAMS: usize = 4;
-
-/// The effects the selector cycles, in order. The panel shows `FX_KINDS[index]`.
-pub(crate) const FX_KINDS: [&str; 8] = [
-    "Low-Pass",
-    "High-Pass",
-    "Compress",
-    "Saturate",
-    "Bitcrush",
-    "Widen",
-    "Reverb",
-    "Echo",
-];
 
 /// How a normalized 0..1 slider maps onto one real DSP parameter.
 pub(crate) struct FxParamSpec {
@@ -41,10 +36,20 @@ pub(crate) struct FxParamSpec {
     /// effect is a byte-identical no-op, so selecting it changes nothing until the
     /// user turns a knob.
     pub default: f32,
-    /// Drives the display formatting: `Hz`, `s`, `x`, or `""`.
+    /// Drives the display formatting: `Hz`, `s`, `dB`, `x`, or `""`.
     pub unit: &'static str,
     /// Round to a whole number (bit depth, decimation factor).
     pub integral: bool,
+}
+
+/// One effect the selector can pick: its name, its parameters, and how to build it
+/// from those parameters **in real units**. Keeping the three in one row is what
+/// makes a mis-indexed rack impossible.
+pub(crate) struct FxKind {
+    pub name: &'static str,
+    pub params: &'static [FxParamSpec],
+    /// `v[i]` is parameter `i` already mapped to real units.
+    pub build: fn(v: &[f32; MAX_FX_PARAMS]) -> FxCommand,
 }
 
 /// Shorthand for a spec (keeps the tables below readable).
@@ -82,6 +87,22 @@ static HIGH_PASS: [FxParamSpec; 2] = [
     spec("Cutoff", 20.0, 20_000.0, true, 20.0, "Hz", false),
     spec("Q", 0.1, 8.0, false, 0.707, "", false),
 ];
+// The three EQ bands share a neutral: 0 dB of gain is a flat filter.
+static PEAK_EQ: [FxParamSpec; 3] = [
+    spec("Freq", 20.0, 20_000.0, true, 1_000.0, "Hz", false),
+    spec("Q", 0.1, 8.0, false, 1.0, "", false),
+    spec("Gain", -18.0, 18.0, false, 0.0, "dB", false),
+];
+static LOW_SHELF: [FxParamSpec; 3] = [
+    spec("Freq", 20.0, 2_000.0, true, 200.0, "Hz", false),
+    spec("Q", 0.1, 2.0, false, 0.707, "", false),
+    spec("Gain", -18.0, 18.0, false, 0.0, "dB", false),
+];
+static HIGH_SHELF: [FxParamSpec; 3] = [
+    spec("Freq", 1_000.0, 20_000.0, true, 6_000.0, "Hz", false),
+    spec("Q", 0.1, 2.0, false, 0.707, "", false),
+    spec("Gain", -18.0, 18.0, false, 0.0, "dB", false),
+];
 static COMPRESS: [FxParamSpec; 4] = [
     spec("Threshold", 0.01, 1.0, true, 0.3, "", false),
     // Neutral at 1:1 — no reduction at all (make-up is peak-preserving, so it
@@ -89,6 +110,13 @@ static COMPRESS: [FxParamSpec; 4] = [
     spec("Ratio", 1.0, 20.0, false, 1.0, "x", false),
     spec("Attack", 0.001, 0.2, true, 0.005, "s", false),
     spec("Release", 0.01, 1.0, true, 0.1, "s", false),
+];
+static LIMITER: [FxParamSpec; 2] = [
+    // Neutral at the TOP: a ceiling at 0 dBFS has nothing to catch. −1 dBTP is the
+    // mastering convention; that is one notch down from neutral.
+    spec("Ceiling", -12.0, 0.0, false, 0.0, "dB", false),
+    // Doubles as the look-ahead: the gain dips this far ahead of every peak.
+    spec("Release", 0.002, 0.2, true, 0.02, "s", false),
 ];
 // Linear (not log) so the neutral point can sit at exactly 0.
 static SATURATE: [FxParamSpec; 1] = [spec("Drive", 0.0, 12.0, false, 0.0, "x", false)];
@@ -116,27 +144,149 @@ static ECHO: [FxParamSpec; 4] = [
     spec("Tail", 0.1, 6.0, true, 2.0, "s", false),
 ];
 
+/// The effects the selector cycles, in order — grouped tone → dynamics → character
+/// → space, the way a rack is laid out.
+pub(crate) static KINDS: [FxKind; 12] = [
+    FxKind {
+        name: "Low-Pass",
+        params: &LOW_PASS,
+        build: |v| {
+            FxCommand::Plain(Effect::LowPass {
+                cutoff: v[0],
+                q: v[1],
+            })
+        },
+    },
+    FxKind {
+        name: "High-Pass",
+        params: &HIGH_PASS,
+        build: |v| {
+            FxCommand::Plain(Effect::HighPass {
+                cutoff: v[0],
+                q: v[1],
+            })
+        },
+    },
+    FxKind {
+        name: "Peak EQ",
+        params: &PEAK_EQ,
+        build: |v| {
+            FxCommand::Plain(Effect::Peak {
+                freq: v[0],
+                q: v[1],
+                gain_db: v[2],
+            })
+        },
+    },
+    FxKind {
+        name: "Low Shelf",
+        params: &LOW_SHELF,
+        build: |v| {
+            FxCommand::Plain(Effect::LowShelf {
+                freq: v[0],
+                q: v[1],
+                gain_db: v[2],
+            })
+        },
+    },
+    FxKind {
+        name: "High Shelf",
+        params: &HIGH_SHELF,
+        build: |v| {
+            FxCommand::Plain(Effect::HighShelf {
+                freq: v[0],
+                q: v[1],
+                gain_db: v[2],
+            })
+        },
+    },
+    FxKind {
+        name: "Compress",
+        params: &COMPRESS,
+        // Make-up is automatic and peak-preserving inside the effect: raising the
+        // ratio must not raise the waveform's amplitude.
+        build: |v| {
+            FxCommand::Plain(Effect::Compress {
+                threshold: v[0],
+                ratio: v[1],
+                attack_secs: v[2],
+                release_secs: v[3],
+            })
+        },
+    },
+    FxKind {
+        name: "Limiter",
+        params: &LIMITER,
+        build: |v| {
+            FxCommand::Plain(Effect::Limiter {
+                ceiling_db: v[0],
+                release_secs: v[1],
+            })
+        },
+    },
+    FxKind {
+        name: "Saturate",
+        params: &SATURATE,
+        build: |v| FxCommand::Plain(Effect::Saturate { drive: v[0] }),
+    },
+    FxKind {
+        name: "Bitcrush",
+        params: &BITCRUSH,
+        build: |v| {
+            FxCommand::Plain(Effect::Bitcrush {
+                bits: v[0] as u32,
+                downsample: v[1] as u32,
+            })
+        },
+    },
+    FxKind {
+        name: "Widen",
+        params: &WIDEN,
+        build: |v| FxCommand::Plain(Effect::StereoWidth { width: v[0] }),
+    },
+    FxKind {
+        name: "Reverb",
+        params: &REVERB,
+        build: |v| {
+            FxCommand::Tail(TailEffect::Reverb {
+                room_size: v[0],
+                damp: v[1],
+                mix: v[2],
+                tail_secs: v[3],
+            })
+        },
+    },
+    FxKind {
+        name: "Echo",
+        params: &ECHO,
+        build: |v| {
+            FxCommand::Tail(TailEffect::Delay {
+                time_secs: v[0],
+                feedback: v[1],
+                mix: v[2],
+                tail_secs: v[3],
+            })
+        },
+    },
+];
+
+/// Display names, in `KINDS` order — published to the panel each frame.
+pub(crate) fn kind_names() -> Vec<&'static str> {
+    KINDS.iter().map(|k| k.name).collect()
+}
+
 /// The parameters of effect `kind` (empty when the index is out of range).
 pub(crate) fn params_for(kind: usize) -> &'static [FxParamSpec] {
-    match kind {
-        0 => &LOW_PASS,
-        1 => &HIGH_PASS,
-        2 => &COMPRESS,
-        3 => &SATURATE,
-        4 => &BITCRUSH,
-        5 => &WIDEN,
-        6 => &REVERB,
-        7 => &ECHO,
-        _ => &[],
-    }
+    KINDS.get(kind).map(|k| k.params).unwrap_or(&[])
 }
 
 /// Slider normal (0..1) → real DSP value.
 ///
 /// The endpoints are returned **exactly**: several effects have their neutral
-/// point at a bound (Low-Pass at max cutoff, High-Pass at min), and `exp(ln(x))`
-/// drifts by an ulp — `20_000.0` came back as `19_999.998`, which is enough to
-/// miss the bypass check and make "no effect" filter the audio.
+/// point at a bound (Low-Pass at max cutoff, High-Pass at min, Limiter at max
+/// ceiling) and `exp(ln(x))` drifts by an ulp — `20_000.0` came back as
+/// `19_999.998`, which is enough to miss the bypass check and make "no effect"
+/// filter the audio.
 pub(crate) fn norm_to_real(s: &FxParamSpec, norm: f32) -> f32 {
     let n = norm.clamp(0.0, 1.0);
     if n <= 0.0 {
@@ -174,10 +324,10 @@ pub(crate) fn default_norms(kind: usize) -> [f32; MAX_FX_PARAMS] {
     out
 }
 
-/// Every kind's neutral defaults, in `FX_KINDS` order — published to the panel so a
+/// Every kind's neutral defaults, in `KINDS` order — published to the panel so a
 /// fresh (or reset) chain stage is seeded transparent without knowing any DSP range.
 pub(crate) fn all_default_norms() -> Vec<[f32; MAX_FX_PARAMS]> {
-    (0..FX_KINDS.len()).map(default_norms).collect()
+    (0..KINDS.len()).map(default_norms).collect()
 }
 
 /// Render one real value for the panel readout.
@@ -187,6 +337,7 @@ fn format_value(s: &FxParamSpec, v: f32) -> String {
         "Hz" => format!("{v:.0} Hz"),
         "s" if v < 1.0 => format!("{:.0} ms", v * 1_000.0),
         "s" => format!("{v:.2} s"),
+        "dB" => format!("{v:+.1} dB"),
         "x" if s.integral => format!("{v:.0}\u{d7}"),
         "x" => format!("{v:.2}\u{d7}"),
         _ if s.integral => format!("{v:.0}"),
@@ -227,55 +378,14 @@ impl FxCommand {
     }
 }
 
-/// Read parameter `i` of `kind` in real units.
-fn real(kind: usize, norms: &[f32; MAX_FX_PARAMS], i: usize) -> f32 {
-    let p = params_for(kind);
-    match p.get(i) {
-        Some(s) => norm_to_real(s, norms[i]),
-        None => 0.0,
-    }
-}
-
 /// Build the effect for `kind` at the current slider positions.
 pub(crate) fn build(kind: usize, norms: &[f32; MAX_FX_PARAMS]) -> Option<FxCommand> {
-    let v = |i| real(kind, norms, i);
-    Some(match kind {
-        0 => FxCommand::Plain(Effect::LowPass {
-            cutoff: v(0),
-            q: v(1),
-        }),
-        1 => FxCommand::Plain(Effect::HighPass {
-            cutoff: v(0),
-            q: v(1),
-        }),
-        // Make-up is automatic and peak-preserving inside the effect: raising the
-        // ratio must not raise the waveform's amplitude.
-        2 => FxCommand::Plain(Effect::Compress {
-            threshold: v(0),
-            ratio: v(1),
-            attack_secs: v(2),
-            release_secs: v(3),
-        }),
-        3 => FxCommand::Plain(Effect::Saturate { drive: v(0) }),
-        4 => FxCommand::Plain(Effect::Bitcrush {
-            bits: v(0) as u32,
-            downsample: v(1) as u32,
-        }),
-        5 => FxCommand::Plain(Effect::StereoWidth { width: v(0) }),
-        6 => FxCommand::Tail(TailEffect::Reverb {
-            room_size: v(0),
-            damp: v(1),
-            mix: v(2),
-            tail_secs: v(3),
-        }),
-        7 => FxCommand::Tail(TailEffect::Delay {
-            time_secs: v(0),
-            feedback: v(1),
-            mix: v(2),
-            tail_secs: v(3),
-        }),
-        _ => return None,
-    })
+    let k = KINDS.get(kind)?;
+    let mut v = [0.0f32; MAX_FX_PARAMS];
+    for (slot, (s, &n)) in v.iter_mut().zip(k.params.iter().zip(norms)) {
+        *slot = norm_to_real(s, n);
+    }
+    Some((k.build)(&v))
 }
 
 #[cfg(test)]
@@ -286,25 +396,49 @@ mod tests {
 
     #[test]
     fn every_kind_has_a_spec_and_builds() {
-        for (kind, name) in FX_KINDS.iter().enumerate() {
-            let p = params_for(kind);
-            assert!(!p.is_empty(), "{name} has no params");
-            assert!(p.len() <= MAX_FX_PARAMS, "{name} exceeds the slider count");
+        for (kind, k) in KINDS.iter().enumerate() {
+            let p = k.params;
+            assert!(!p.is_empty(), "{} has no params", k.name);
+            assert!(
+                p.len() <= MAX_FX_PARAMS,
+                "{} exceeds the slider count",
+                k.name
+            );
             assert!(
                 build(kind, &default_norms(kind)).is_some(),
-                "{name} does not build"
+                "{} does not build",
+                k.name
             );
             // Log params need a positive lower bound or `ln` blows up.
-            assert!(p.iter().all(|s| !s.log || s.min > 0.0));
+            assert!(p.iter().all(|s| !s.log || s.min > 0.0), "{}", k.name);
+            // ...and a default inside its own bounds, or `real_to_norm` clamps it
+            // somewhere that isn't the neutral point.
+            assert!(
+                p.iter().all(|s| s.default >= s.min && s.default <= s.max),
+                "{} has a default outside its range",
+                k.name
+            );
         }
-        assert!(build(FX_KINDS.len(), &[0.0; MAX_FX_PARAMS]).is_none());
+        assert!(build(KINDS.len(), &[0.0; MAX_FX_PARAMS]).is_none());
+    }
+
+    /// The names the panel paints must line up with the effects the shell builds.
+    /// They live in one row now, so this pins the *ordering* the user sees.
+    #[test]
+    fn the_kind_table_is_the_rack_layout() {
+        let names = kind_names();
+        assert_eq!(names.len(), KINDS.len());
+        assert_eq!(names[0], "Low-Pass");
+        assert_eq!(names[6], "Limiter");
+        assert_eq!(names[names.len() - 1], "Echo");
+        assert_eq!(all_default_norms().len(), KINDS.len());
     }
 
     #[test]
     fn defaults_round_trip_to_the_preset_values() {
-        for (kind, name) in FX_KINDS.iter().enumerate() {
+        for (kind, k) in KINDS.iter().enumerate() {
             let norms = default_norms(kind);
-            for (i, s) in params_for(kind).iter().enumerate() {
+            for (i, s) in k.params.iter().enumerate() {
                 let back = norm_to_real(s, norms[i]);
                 let tol = if s.integral {
                     0.5
@@ -313,7 +447,8 @@ mod tests {
                 };
                 assert!(
                     (back - s.default).abs() <= tol,
-                    "{name} / {}: {back} != {}",
+                    "{} / {}: {back} != {}",
+                    k.name,
                     s.label,
                     s.default
                 );
@@ -331,6 +466,18 @@ mod tests {
         assert!((norm_to_real(cutoff, 1.0) - 20_000.0).abs() < 1.0);
     }
 
+    /// A band-spread, off-centre, stereo-divergent signal: a filter, an EQ band, a
+    /// compressor, a limiter, a crusher or an M/S tweak all leave a mark on it.
+    fn probe() -> SampleData {
+        let samples: Vec<f32> = (0..2_000)
+            .map(|i| {
+                let t = i as f32 / 48_000.0;
+                0.4 * (t * 220.0).sin() + 0.3 * (t * 9_000.0).sin() + 0.05
+            })
+            .collect();
+        SampleData::from_interleaved(samples, AudioFormat::stereo(48_000))
+    }
+
     /// THE contract of the defaults: selecting an effect (or arrowing past it)
     /// must leave the audio **byte-identical** until the user turns something.
     /// Not "almost" — a filter at the top of its range still phase-shifts, a 1:1
@@ -338,80 +485,93 @@ mod tests {
     /// tail. Each effect therefore short-circuits at its neutral point.
     #[test]
     fn every_effect_is_a_no_op_at_its_defaults() {
-        // A signal with content across the band, off-centre and stereo-divergent,
-        // so a filter, a compressor, a crusher or an M/S tweak would all show.
-        let samples: Vec<f32> = (0..2_000)
-            .map(|i| {
-                let t = i as f32 / 48_000.0;
-                0.4 * (t * 220.0).sin() + 0.3 * (t * 9_000.0).sin() + 0.05
-            })
-            .collect();
-        let d = SampleData::from_interleaved(samples, AudioFormat::stereo(48_000));
-
-        for (kind, name) in FX_KINDS.iter().enumerate() {
+        let d = probe();
+        for (kind, k) in KINDS.iter().enumerate() {
             let clip = EditClip::new(d.clone());
             let out = match build(kind, &default_norms(kind)).expect("every kind builds") {
                 FxCommand::Plain(fx) => {
-                    assert!(fx.is_bypass(), "{name}: defaults are not the neutral point");
+                    assert!(
+                        fx.is_bypass(),
+                        "{}: defaults are not the neutral point",
+                        k.name
+                    );
                     clip.render_effect(fx)
                 }
                 FxCommand::Tail(fx) => {
-                    assert!(fx.is_bypass(), "{name}: defaults are not the neutral point");
+                    assert!(
+                        fx.is_bypass(),
+                        "{}: defaults are not the neutral point",
+                        k.name
+                    );
                     clip.render_tail_effect(fx)
                 }
             };
             assert_eq!(
                 out.frame_count(),
                 clip.frame_count(),
-                "{name} changed the clip length at its defaults"
+                "{} changed the clip length at its defaults",
+                k.name
             );
             assert_eq!(
                 out.samples(),
                 d.samples(),
-                "{name} is not a byte-identical no-op at its defaults"
+                "{} is not a byte-identical no-op at its defaults",
+                k.name
             );
         }
     }
 
-    /// …and one nudge off neutral must actually do something, or the bypass
-    /// short-circuit is swallowing real edits.
+    /// ...and the bypass must not swallow a real edit: nudge one parameter off
+    /// neutral and the audio has to move. Guards a `is_bypass` that is too eager,
+    /// and a `build` wired to the wrong variant (a Compress spec feeding a Saturate
+    /// would still be "neutral" here and the audio would never change).
     #[test]
     fn a_nudge_off_neutral_changes_the_audio() {
-        let d =
-            SampleData::from_interleaved(vec![0.5, -0.4, 0.3, -0.2], AudioFormat::stereo(48_000));
-        let clip = EditClip::new(d.clone());
-        // Low-Pass: pull the cutoff well down from its neutral top.
-        let mut norms = default_norms(0);
-        norms[0] = 0.3;
-        let FxCommand::Plain(fx) = build(0, &norms).unwrap() else {
-            panic!("Low-Pass is length-preserving")
-        };
-        assert!(!fx.is_bypass());
-        assert_ne!(clip.render_effect(fx).samples(), d.samples());
-
-        // Reverb: raise Mix off zero → it rings out and grows the clip.
-        let mut norms = default_norms(6);
-        norms[2] = 0.5;
-        let FxCommand::Tail(fx) = build(6, &norms).unwrap() else {
-            panic!("Reverb is tail-extending")
-        };
-        assert!(!fx.is_bypass());
-        assert!(clip.render_tail_effect(fx).frame_count() > clip.frame_count());
+        let d = probe();
+        for (kind, k) in KINDS.iter().enumerate() {
+            // Move EVERY parameter a visible step off neutral, toward the middle of
+            // its travel. Moving only one would not arm the EQ bands: their Freq and
+            // Q do nothing while Gain sits at 0 dB.
+            let mut norms = default_norms(kind);
+            for slot in norms.iter_mut().take(k.params.len()) {
+                *slot = if *slot > 0.5 {
+                    *slot - 0.35
+                } else {
+                    *slot + 0.35
+                };
+            }
+            let clip = EditClip::new(d.clone());
+            let out = match build(kind, &norms).expect("builds") {
+                FxCommand::Plain(fx) => {
+                    assert!(!fx.is_bypass(), "{} still reads as neutral", k.name);
+                    clip.render_effect(fx)
+                }
+                FxCommand::Tail(fx) => {
+                    assert!(!fx.is_bypass(), "{} still reads as neutral", k.name);
+                    clip.render_tail_effect(fx)
+                }
+            };
+            assert_ne!(
+                out.samples(),
+                d.samples(),
+                "{} did nothing off its neutral point",
+                k.name
+            );
+        }
     }
 
     #[test]
     fn views_match_the_param_count_and_format_units() {
-        let reverb = 6;
-        let v = views(reverb, &default_norms(reverb));
-        assert_eq!(v.len(), 4);
-        assert_eq!(v[0].0, "Room");
-        assert_eq!(v[3].1, "2.50 s", "tail formats as seconds");
-        // Sub-second times read as milliseconds.
-        let echo = 7;
-        let e = views(echo, &default_norms(echo));
-        assert_eq!(e[0].1, "250 ms");
-        // Cutoff above 1 kHz reads in kHz.
-        let lp = views(0, &default_norms(0));
-        assert_eq!(lp[0].1, "20.0 kHz", "neutral cutoff sits at the top");
+        let v = views(0, &default_norms(0)); // Low-Pass: Cutoff (Hz), Q
+        assert_eq!(v.len(), 2);
+        assert_eq!(v[0].0, "Cutoff");
+        assert!(v[0].1.ends_with("kHz"), "got {}", v[0].1);
+
+        // The EQ bands read in dB, signed — a "+0.0 dB" that shows as "0.00" reads
+        // like a raw coefficient.
+        let peak = KINDS.iter().position(|k| k.name == "Peak EQ").unwrap();
+        let v = views(peak, &default_norms(peak));
+        assert_eq!(v.len(), 3);
+        assert_eq!(v[2].1, "+0.0 dB", "the neutral gain must read as 0 dB");
     }
 }

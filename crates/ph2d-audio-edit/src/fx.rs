@@ -1,10 +1,10 @@
 //! Offline effect processors for the editor (W3 §6 rack). Two families, split by
 //! whether the output outlives the input:
 //!
-//! - [`Effect`] — **length-preserving** (filters, dynamics, character). Routes
-//!   through [`crate::in_range`] just like the W2 ops, so applying to a selection
-//!   processes only the selected samples (filter/compressor state starts fresh at
-//!   the region edge).
+//! - [`Effect`] — **length-preserving** (filters, EQ, dynamics, character). Routes
+//!   through [`crate::in_range_warm`] just like the W2 ops, so applying to a
+//!   selection processes only the selected samples — with a pre-roll of the audio
+//!   before it, so a filter enters the region already settled instead of clicking.
 //! - [`TailEffect`] — **tail-extending** (reverb, delay). Cannot use the
 //!   length-preserving splice: it routes through [`crate::in_range_tail`], which
 //!   rings the tail out over the audio after the range and grows the clip when the
@@ -12,16 +12,22 @@
 //!
 //! Both are control-thread only, so HR-3/HR-5 do not apply (they allocate and use
 //! `tanh`/`exp` freely). Filters, dynamics, reverb and delay reuse the shared
-//! `ph2d_audio::dsp` kit; character effects (saturate/bitcrush/width) are local
-//! pure math.
+//! `ph2d_audio::dsp` kit; character effects (saturate/bitcrush/width) and the
+//! true-peak limiter are local.
+//!
+//! Implementations live in the sibling modules ([`tone`], [`dynamics`], [`space`]);
+//! this file is the two enums and the neutral points they promise.
+
+mod dynamics;
+mod space;
+mod tone;
 
 use ph2d_audio::SampleData;
-use ph2d_audio::dsp::{Biquad, BiquadCoeffs, Compressor, Delay, Reverb};
+use ph2d_audio::dsp::{BiquadCoeffs, Delay, Reverb};
 
-/// Channel count of the clip (≥1).
-fn channels(data: &SampleData) -> usize {
-    data.format().channel_count().max(1)
-}
+use dynamics::{compress, limit};
+use space::render_wet;
+use tone::{biquad_all, bitcrush, saturate, stereo_width};
 
 // Every effect must be a **byte-identical no-op** at its neutral parameters, so
 // the editor can select it (and audition it) without touching the audio until the
@@ -33,6 +39,13 @@ fn channels(data: &SampleData) -> usize {
 const LOWPASS_BYPASS_HZ: f32 = 20_000.0;
 /// A high-pass at or below this cutoff passes the whole audible band → bypass.
 const HIGHPASS_BYPASS_HZ: f32 = 20.0;
+/// An EQ band this close to flat is inaudible — and a "0 dB" RBJ section is only
+/// *algebraically* an identity: its coefficients still round every sample.
+const EQ_BYPASS_GAIN_DB: f32 = 1e-3;
+/// A limiter whose ceiling is at (or above) full scale has nothing to catch that a
+/// `[-1, 1]` buffer could contain in its samples. Dial it below 0 dBFS to work —
+/// the mastering convention is −1 dBTP.
+const LIMITER_BYPASS_CEILING_DB: f32 = 0.0;
 /// Drive below this is inaudible (and `tanh(k)` underflows the normalizer).
 const SATURATE_BYPASS_DRIVE: f32 = 1e-3;
 /// Bit depth at or above this, with no decimation, is transparent → bypass.
@@ -48,6 +61,13 @@ pub enum Effect {
     LowPass { cutoff: f32, q: f32 },
     /// 2nd-order high-pass (thin / de-rumble) at `cutoff` Hz, `q` resonance.
     HighPass { cutoff: f32, q: f32 },
+    /// Peaking bell: `gain_db` boost/cut centred on `freq` Hz, width set by `q`.
+    /// Leaves DC and Nyquist alone. Neutral at `gain_db` 0.
+    Peak { freq: f32, q: f32, gain_db: f32 },
+    /// Low shelf: `gain_db` applied below the `freq` Hz corner. Neutral at 0 dB.
+    LowShelf { freq: f32, q: f32, gain_db: f32 },
+    /// High shelf: `gain_db` applied above the `freq` Hz corner. Neutral at 0 dB.
+    HighShelf { freq: f32, q: f32, gain_db: f32 },
     /// Feed-forward compressor (glue / level). Make-up gain is **automatic and
     /// peak-preserving**: the compressed region is scaled back so its peak matches
     /// the input's, so raising `ratio` reduces the dynamic range (quiet parts come
@@ -60,6 +80,14 @@ pub enum Effect {
         /// Attack time (seconds).
         attack_secs: f32,
         /// Release time (seconds).
+        release_secs: f32,
+    },
+    /// Look-ahead **true-peak** limiter: holds the *reconstructed* waveform under
+    /// `ceiling_db`, not just the samples. Neutral at 0 dBFS.
+    Limiter {
+        /// Ceiling in dBFS (≤ 0). `−1.0` is the mastering convention.
+        ceiling_db: f32,
+        /// Look-ahead and recovery radius, in seconds.
         release_secs: f32,
     },
     /// `tanh` soft-clip saturation (warmth / drive). Neutral at `drive` 0.
@@ -85,6 +113,15 @@ impl Effect {
             Effect::HighPass { cutoff, q } if cutoff > HIGHPASS_BYPASS_HZ => {
                 biquad_all(data, BiquadCoeffs::highpass(sr, cutoff, q))
             }
+            Effect::Peak { freq, q, gain_db } if gain_db.abs() > EQ_BYPASS_GAIN_DB => {
+                biquad_all(data, BiquadCoeffs::peak(sr, freq, q, gain_db))
+            }
+            Effect::LowShelf { freq, q, gain_db } if gain_db.abs() > EQ_BYPASS_GAIN_DB => {
+                biquad_all(data, BiquadCoeffs::lowshelf(sr, freq, q, gain_db))
+            }
+            Effect::HighShelf { freq, q, gain_db } if gain_db.abs() > EQ_BYPASS_GAIN_DB => {
+                biquad_all(data, BiquadCoeffs::highshelf(sr, freq, q, gain_db))
+            }
             // Ratio 1:1 reduces nothing — and would still round the samples.
             Effect::Compress {
                 threshold,
@@ -92,6 +129,10 @@ impl Effect {
                 attack_secs,
                 release_secs,
             } if ratio > 1.0 => compress(data, threshold, ratio, attack_secs, release_secs),
+            Effect::Limiter {
+                ceiling_db,
+                release_secs,
+            } if ceiling_db < LIMITER_BYPASS_CEILING_DB => limit(data, ceiling_db, release_secs),
             Effect::Saturate { drive } if drive >= SATURATE_BYPASS_DRIVE => saturate(data, drive),
             Effect::Bitcrush { bits, downsample }
                 if bits < BITCRUSH_BYPASS_BITS || downsample > 1 =>
@@ -112,18 +153,26 @@ impl Effect {
     ///
     /// A 2nd-order section rings for roughly `Q / (π·f0)` seconds per time
     /// constant, so a low cutoff at high `Q` needs a long pre-roll; the cap keeps
-    /// the extra render bounded.
+    /// the extra render bounded. The limiter needs its whole look-ahead window, or
+    /// its gain curve starts flat at 1.0 and lets the region's first peak through.
     pub fn warmup_frames(&self, sample_rate: u32) -> usize {
         /// Time constants of pre-roll: `1 - e^-8` ≈ 0.9997 of the way settled.
         const TAUS: f32 = 8.0;
         if self.is_bypass() {
             return 0;
         }
+        let cap = sample_rate as usize; // 1 s
         match *self {
             Effect::LowPass { cutoff, q } | Effect::HighPass { cutoff, q } => {
-                let tau_frames =
-                    q.max(0.1) * sample_rate as f32 / (std::f32::consts::PI * cutoff.max(1.0));
-                ((TAUS * tau_frames) as usize).min(sample_rate as usize) // cap at 1 s
+                biquad_warmup(cutoff, q, sample_rate, TAUS).min(cap)
+            }
+            Effect::Peak { freq, q, .. }
+            | Effect::LowShelf { freq, q, .. }
+            | Effect::HighShelf { freq, q, .. } => {
+                biquad_warmup(freq, q, sample_rate, TAUS).min(cap)
+            }
+            Effect::Limiter { release_secs, .. } => {
+                ((release_secs.max(0.0) * sample_rate as f32) as usize).min(cap)
             }
             _ => 0,
         }
@@ -136,12 +185,26 @@ impl Effect {
             *self,
             Effect::LowPass { cutoff, .. } if cutoff >= LOWPASS_BYPASS_HZ)
             || matches!(*self, Effect::HighPass { cutoff, .. } if cutoff <= HIGHPASS_BYPASS_HZ)
+            || matches!(
+                *self,
+                Effect::Peak { gain_db, .. }
+                    | Effect::LowShelf { gain_db, .. }
+                    | Effect::HighShelf { gain_db, .. }
+                    if gain_db.abs() <= EQ_BYPASS_GAIN_DB)
             || matches!(*self, Effect::Compress { ratio, .. } if ratio <= 1.0)
+            || matches!(*self, Effect::Limiter { ceiling_db, .. }
+                if ceiling_db >= LIMITER_BYPASS_CEILING_DB)
             || matches!(*self, Effect::Saturate { drive } if drive < SATURATE_BYPASS_DRIVE)
             || matches!(*self, Effect::Bitcrush { bits, downsample }
                 if bits >= BITCRUSH_BYPASS_BITS && downsample <= 1)
             || matches!(*self, Effect::StereoWidth { width } if (width - 1.0).abs() <= f32::EPSILON)
     }
+}
+
+/// Frames a 2nd-order section needs to settle: `TAUS` time constants of `Q/(π·f0)`.
+fn biquad_warmup(freq: f32, q: f32, sample_rate: u32, taus: f32) -> usize {
+    let tau_frames = q.max(0.1) * sample_rate as f32 / (std::f32::consts::PI * freq.max(1.0));
+    (taus * tau_frames) as usize
 }
 
 /// A **tail-extending** offline effect: its output rings on after the input stops,
@@ -234,191 +297,6 @@ impl TailEffect {
     }
 }
 
-/// Drive a **wet-only** stereo processor (the `dsp` kit's contract) across the
-/// region then `tail_frames` of silence, crossfading dry/wet by `mix`. Mono clips
-/// feed the processor `(x, x)` and collapse its stereo wet back to one channel.
-fn render_wet(
-    data: &SampleData,
-    tail_frames: usize,
-    mix: f32,
-    mut wet: impl FnMut(f32, f32) -> (f32, f32),
-) -> SampleData {
-    let ch = channels(data);
-    let frames = data.frame_count();
-    let src = data.samples();
-    let mix = mix.clamp(0.0, 1.0);
-    let dry_gain = 1.0 - mix;
-    let mut out = Vec::with_capacity((frames + tail_frames) * ch);
-    for f in 0..frames + tail_frames {
-        // Past the region the dry signal is silence — the processor keeps ringing.
-        let (dry_l, dry_r) = if f < frames {
-            let b = f * ch;
-            if ch >= 2 {
-                (src[b], src[b + 1])
-            } else {
-                (src[b], src[b])
-            }
-        } else {
-            (0.0, 0.0)
-        };
-        let (wet_l, wet_r) = wet(dry_l, dry_r);
-        if ch >= 2 {
-            out.push((dry_l * dry_gain + wet_l * mix).clamp(-1.0, 1.0));
-            out.push((dry_r * dry_gain + wet_r * mix).clamp(-1.0, 1.0));
-        } else {
-            let w = (wet_l + wet_r) * 0.5;
-            out.push((dry_l * dry_gain + w * mix).clamp(-1.0, 1.0));
-        }
-    }
-    SampleData::from_interleaved(out, data.format())
-}
-
-/// Run an independent [`Biquad`] per channel over the interleaved buffer.
-fn biquad_all(data: &SampleData, coeffs: BiquadCoeffs) -> SampleData {
-    let ch = channels(data);
-    let mut filters: Vec<Biquad> = (0..ch).map(|_| Biquad::new(coeffs)).collect();
-    let frames = data.frame_count();
-    let mut out = data.samples().to_vec();
-    for f in 0..frames {
-        for (c, filt) in filters.iter_mut().enumerate() {
-            let i = f * ch + c;
-            out[i] = filt.process(out[i]);
-        }
-    }
-    SampleData::from_interleaved(out, data.format())
-}
-
-/// One-shot / per-sample coefficient for a `secs` time-constant at `sr` Hz.
-fn time_coeff(secs: f32, sr: f32) -> f32 {
-    if secs <= 0.0 {
-        return 1.0;
-    }
-    1.0 - (-1.0 / (secs * sr)).exp()
-}
-
-/// Stereo-linked compression (mono is duplicated then re-collapsed) + make-up.
-/// Ceiling on the automatic make-up, so a region that is almost entirely above the
-/// threshold (or a near-silent one) can't be blown up.
-const COMPRESS_MAX_MAKEUP: f32 = 8.0;
-
-/// Stereo-linked compression, then **peak-preserving** make-up.
-///
-/// The gain computer only ever attenuates, so the compressed peak is ≤ the input
-/// peak; scaling by their quotient puts the peak exactly back where it was. Raising
-/// `ratio` therefore lifts the quiet parts (RMS up, dynamic range down) and leaves
-/// the waveform's amplitude alone.
-///
-/// The obvious alternative — the textbook `(1/threshold)^(1 - 1/ratio)` — is the
-/// gain that restores a **full-scale** signal, and silently amplifies anything
-/// quieter: at `threshold` 0.3 a peak-0.5 signal came out at 0.86 with `ratio` 4
-/// and 0.97 with `ratio` 20. Raising the ratio made it LOUDER, which is backwards.
-fn compress(
-    data: &SampleData,
-    threshold: f32,
-    ratio: f32,
-    attack_secs: f32,
-    release_secs: f32,
-) -> SampleData {
-    let sr = data.format().sample_rate as f32;
-    let ch = channels(data);
-    let frames = data.frame_count();
-    let mut comp = Compressor::default();
-    comp.set_params(
-        true,
-        threshold,
-        ratio,
-        time_coeff(attack_secs, sr),
-        time_coeff(release_secs, sr),
-    );
-    let mut out = data.samples().to_vec();
-    // Offline: settle the envelope on the first frame. Otherwise the very first
-    // sample escapes uncompressed, which both clicks at a selection edge and makes
-    // `peak_out == peak_in` (so the make-up below would have nothing to give back)
-    // for any region that starts at its loudest.
-    if frames > 0 {
-        let (l, r) = if ch >= 2 {
-            (out[0], out[1])
-        } else {
-            (out[0], out[0])
-        };
-        comp.prime(l, r);
-    }
-    for f in 0..frames {
-        let base = f * ch;
-        if ch >= 2 {
-            let (l, r) = comp.process(out[base], out[base + 1]);
-            out[base] = l;
-            out[base + 1] = r;
-        } else {
-            let (l, _) = comp.process(out[base], out[base]);
-            out[base] = l;
-        }
-    }
-
-    let peak_in = crate::peak(data);
-    let peak_out = out.iter().fold(0.0f32, |m, s| m.max(s.abs()));
-    if peak_out > f32::EPSILON && peak_in > f32::EPSILON {
-        let makeup = (peak_in / peak_out).clamp(1.0, COMPRESS_MAX_MAKEUP);
-        for s in &mut out {
-            *s = (*s * makeup).clamp(-1.0, 1.0);
-        }
-    }
-    SampleData::from_interleaved(out, data.format())
-}
-
-/// `tanh` soft-clip normalized so full-scale in ≈ full-scale out.
-fn saturate(data: &SampleData, drive: f32) -> SampleData {
-    let k = drive.max(0.1);
-    let norm = 1.0 / k.tanh();
-    let out: Vec<f32> = data
-        .samples()
-        .iter()
-        .map(|&x| (k * x).tanh() * norm)
-        .collect();
-    SampleData::from_interleaved(out, data.format())
-}
-
-/// Quantize to `bits` levels + hold each channel's value for `downsample` frames.
-fn bitcrush(data: &SampleData, bits: u32, downsample: u32) -> SampleData {
-    let ch = channels(data);
-    let frames = data.frame_count();
-    let hold = downsample.max(1) as usize;
-    // Levels for a signed range [-1, 1]: 2^bits steps.
-    let levels = (1u32 << bits.clamp(1, 24)) as f32;
-    let quant = |x: f32| ((x * 0.5 + 0.5) * levels).round() / levels * 2.0 - 1.0;
-    let src = data.samples();
-    let mut out = src.to_vec();
-    let mut held = vec![0.0f32; ch];
-    for f in 0..frames {
-        for c in 0..ch {
-            if f % hold == 0 {
-                held[c] = quant(src[f * ch + c]);
-            }
-            out[f * ch + c] = held[c].clamp(-1.0, 1.0);
-        }
-    }
-    SampleData::from_interleaved(out, data.format())
-}
-
-/// Mid/Side width on stereo clips; mono is returned unchanged.
-fn stereo_width(data: &SampleData, width: f32) -> SampleData {
-    let ch = channels(data);
-    if ch < 2 {
-        return data.clone();
-    }
-    let frames = data.frame_count();
-    let mut out = data.samples().to_vec();
-    for f in 0..frames {
-        let base = f * ch;
-        let (l, r) = (out[base], out[base + 1]);
-        let mid = (l + r) * 0.5;
-        let side = (l - r) * 0.5 * width;
-        out[base] = (mid + side).clamp(-1.0, 1.0);
-        out[base + 1] = (mid - side).clamp(-1.0, 1.0);
-    }
-    SampleData::from_interleaved(out, data.format())
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -428,10 +306,11 @@ mod tests {
         SampleData::from_interleaved(v, AudioFormat::stereo(48_000))
     }
 
-    #[test]
-    fn effects_preserve_length() {
-        let d = stereo(vec![0.3, -0.4, 0.5, -0.6, 0.7, -0.8]); // 3 frames
-        for fx in [
+    /// Every non-neutral `Effect`, for the surface-level invariants below. Keep in
+    /// sync with the enum — a variant missing here is a variant nobody proved
+    /// length-preserving.
+    fn tuned_effects() -> [Effect; 10] {
+        [
             Effect::LowPass {
                 cutoff: 3_000.0,
                 q: 0.707,
@@ -440,11 +319,30 @@ mod tests {
                 cutoff: 150.0,
                 q: 0.707,
             },
+            Effect::Peak {
+                freq: 1_000.0,
+                q: 1.0,
+                gain_db: 6.0,
+            },
+            Effect::LowShelf {
+                freq: 200.0,
+                q: 0.707,
+                gain_db: -6.0,
+            },
+            Effect::HighShelf {
+                freq: 6_000.0,
+                q: 0.707,
+                gain_db: 4.0,
+            },
             Effect::Compress {
                 threshold: 0.3,
                 ratio: 4.0,
                 attack_secs: 0.005,
                 release_secs: 0.1,
+            },
+            Effect::Limiter {
+                ceiling_db: -1.0,
+                release_secs: 0.02,
             },
             Effect::Saturate { drive: 3.0 },
             Effect::Bitcrush {
@@ -452,7 +350,58 @@ mod tests {
                 downsample: 4,
             },
             Effect::StereoWidth { width: 1.6 },
-        ] {
+        ]
+    }
+
+    /// Every neutral `Effect`. Keep in sync with `is_bypass`.
+    fn neutral_effects() -> [Effect; 10] {
+        [
+            Effect::LowPass {
+                cutoff: 20_000.0,
+                q: 0.707,
+            },
+            Effect::HighPass {
+                cutoff: 20.0,
+                q: 0.707,
+            },
+            Effect::Peak {
+                freq: 1_000.0,
+                q: 1.0,
+                gain_db: 0.0,
+            },
+            Effect::LowShelf {
+                freq: 200.0,
+                q: 0.707,
+                gain_db: 0.0,
+            },
+            Effect::HighShelf {
+                freq: 6_000.0,
+                q: 0.707,
+                gain_db: 0.0,
+            },
+            Effect::Compress {
+                threshold: 0.3,
+                ratio: 1.0,
+                attack_secs: 0.005,
+                release_secs: 0.1,
+            },
+            Effect::Limiter {
+                ceiling_db: 0.0,
+                release_secs: 0.02,
+            },
+            Effect::Saturate { drive: 0.0 },
+            Effect::Bitcrush {
+                bits: 16,
+                downsample: 1,
+            },
+            Effect::StereoWidth { width: 1.0 },
+        ]
+    }
+
+    #[test]
+    fn effects_preserve_length() {
+        let d = stereo(vec![0.3, -0.4, 0.5, -0.6, 0.7, -0.8]); // 3 frames
+        for fx in tuned_effects() {
             assert_eq!(
                 fx.apply(&d).frame_count(),
                 3,
@@ -467,34 +416,20 @@ mod tests {
     #[test]
     fn is_bypass_implies_exact_identity() {
         let d = stereo(vec![0.3, -0.4, 0.5, -0.6, 0.7, -0.8]);
-        for fx in [
-            Effect::LowPass {
-                cutoff: 20_000.0,
-                q: 0.707,
-            },
-            Effect::HighPass {
-                cutoff: 20.0,
-                q: 0.707,
-            },
-            Effect::Compress {
-                threshold: 0.3,
-                ratio: 1.0,
-                attack_secs: 0.005,
-                release_secs: 0.1,
-            },
-            Effect::Saturate { drive: 0.0 },
-            Effect::Bitcrush {
-                bits: 16,
-                downsample: 1,
-            },
-            Effect::StereoWidth { width: 1.0 },
-        ] {
+        for fx in neutral_effects() {
             assert!(fx.is_bypass(), "{fx:?} should be neutral");
             assert_eq!(
                 fx.apply(&d).samples(),
                 d.samples(),
                 "{fx:?} altered the audio"
             );
+            assert_eq!(fx.warmup_frames(48_000), 0, "{fx:?} asked for a pre-roll");
+        }
+
+        // ...and the converse: a tuned effect is NOT bypassed, or the rack would
+        // silently ignore the knob the user just turned.
+        for fx in tuned_effects() {
+            assert!(!fx.is_bypass(), "{fx:?} reads as neutral while tuned");
         }
 
         // A fully-dry tail effect must not ring out NOR lengthen the clip.
@@ -522,93 +457,54 @@ mod tests {
         }
     }
 
-    /// A compressor must SHRINK dynamic range, never grow the waveform. Raising
-    /// `ratio` may only raise the quiet parts (RMS up); the peak stays put.
-    ///
-    /// Regression: the old textbook auto-makeup `(1/threshold)^(1-1/ratio)` assumed
-    /// a full-scale input, so on a peak-0.5 signal `ratio` 4 came out at 0.86 and
-    /// `ratio` 20 at 0.97 — turning the ratio up made it louder.
+    /// The three EQ bands must actually shape the band they name, and only it: a
+    /// bell at 1 kHz that also lifts DC is a shelf with a bad haircut.
     #[test]
-    fn higher_ratio_lifts_rms_without_raising_the_peak() {
-        // A step: a loud half (0.5, above the 0.3 threshold) then a quiet half
-        // (0.1, below it), sign-alternating so |level| is constant within each.
-        // This isolates the gain computer from the sine's per-cycle level swing.
-        let n = 4_800;
-        let samples: Vec<f32> = (0..n)
-            .flat_map(|i| {
-                let amp = if i < n / 2 { 0.5 } else { 0.1 };
-                let s = if i % 2 == 0 { amp } else { -amp };
-                [s, s]
-            })
-            .collect();
-        let d = stereo(samples);
-        let peak_in = crate::peak(&d);
-        let rms = |x: &SampleData| {
-            (x.samples().iter().map(|s| s * s).sum::<f32>() / x.samples().len() as f32).sqrt()
+    fn the_eq_bands_shape_the_band_they_name() {
+        let sr = 48_000.0;
+        // Transfer-function magnitude at DC (z=1) and Nyquist (z=-1).
+        let ends = |c: BiquadCoeffs| {
+            (
+                (c.b0 + c.b1 + c.b2) / (1.0 + c.a1 + c.a2),
+                (c.b0 - c.b1 + c.b2) / (1.0 - c.a1 + c.a2),
+            )
         };
+        let boost = 10f32.powf(12.0 / 20.0);
 
-        let at = |ratio: f32, attack_secs: f32| {
-            Effect::Compress {
-                threshold: 0.3,
-                ratio,
-                attack_secs,
-                release_secs: 0.005,
-            }
-            .apply(&d)
-        };
-
-        // THE guarantee: whatever the ratio or attack, the waveform never grows.
-        for ratio in [2.0, 4.0, 20.0] {
-            for attack in [0.0001, 0.005, 0.05] {
-                let out = at(ratio, attack);
-                assert!(
-                    crate::peak(&out) <= peak_in + 1e-4,
-                    "ratio {ratio} / attack {attack}s raised the peak: {} > {peak_in}",
-                    crate::peak(&out)
-                );
-            }
-        }
-
-        // With an attack fast enough to actually catch the peak, the make-up hands
-        // the level back and a heavier ratio lifts the quiet parts (RMS up).
-        let fast = 0.0001;
+        let (dc, nyq) = ends(BiquadCoeffs::peak(sr, 1_000.0, 1.0, 12.0));
         assert!(
-            rms(&at(20.0, fast)) > rms(&at(2.0, fast)),
-            "a heavier ratio must lift the RMS: {} !> {}",
-            rms(&at(20.0, fast)),
-            rms(&at(2.0, fast))
+            (dc - 1.0).abs() < 0.02 && (nyq - 1.0).abs() < 0.02,
+            "bell tilted the ends"
         );
-        assert!(rms(&at(2.0, fast)) > rms(&d), "2:1 already lifts the RMS");
+
+        let (dc, nyq) = ends(BiquadCoeffs::lowshelf(sr, 200.0, 0.707, 12.0));
+        assert!((dc - boost).abs() < 0.1, "low shelf did not lift DC: {dc}");
+        assert!((nyq - 1.0).abs() < 0.05, "low shelf moved the top: {nyq}");
+
+        let (dc, nyq) = ends(BiquadCoeffs::highshelf(sr, 4_000.0, 0.707, 12.0));
+        assert!(
+            (nyq - boost).abs() < 0.2,
+            "high shelf did not lift the top: {nyq}"
+        );
+        assert!((dc - 1.0).abs() < 0.05, "high shelf moved DC: {dc}");
     }
 
+    /// The limiter's warm-up must cover its whole look-ahead window. Without it,
+    /// `in_range_warm` hands it a region whose gain curve starts flat at 1.0 and the
+    /// first peak inside a selection escapes.
     #[test]
-    fn saturate_is_monotonic_and_bounded() {
-        let d = stereo(vec![0.0, 0.1, 0.5, 0.9, -0.5, -0.9]);
-        let s = saturate(&d, 4.0);
-        // Never exceeds unity, and a bigger input stays bigger (monotone).
-        assert!(s.samples().iter().all(|x| x.abs() <= 1.0 + 1e-4));
-        assert!(s.samples()[2] < s.samples()[3], "0.5 -> < 0.9 mapping");
-        // Sign preserved.
-        assert!(s.samples()[3] > 0.0 && s.samples()[5] < 0.0);
-    }
-
-    #[test]
-    fn stereo_width_zero_is_mono_sum() {
-        // width 0 collapses to mid on both channels.
-        let d = stereo(vec![1.0, 0.0, 0.0, 1.0]);
-        let m = stereo_width(&d, 0.0);
-        assert_eq!(m.samples(), &[0.5, 0.5, 0.5, 0.5]);
-        // width 1 is a passthrough.
-        let p = stereo_width(&d, 1.0);
-        assert_eq!(p.samples(), d.samples());
-    }
-
-    #[test]
-    fn bitcrush_quantizes_and_holds() {
-        // 1-bit crush snaps to the rail; downsample holds frame 0 across frame 1.
-        let d = SampleData::from_interleaved(vec![0.7, 0.1], AudioFormat::mono(48_000));
-        let c = bitcrush(&d, 1, 2);
-        assert_eq!(c.samples()[0], c.samples()[1], "held across the decimation");
+    fn the_limiter_asks_for_its_whole_lookahead_as_warmup() {
+        let fx = Effect::Limiter {
+            ceiling_db: -1.0,
+            release_secs: 0.02,
+        };
+        assert_eq!(fx.warmup_frames(48_000), (0.02 * 48_000.0) as usize);
+        // Capped at one second, however long the release.
+        let long = Effect::Limiter {
+            ceiling_db: -1.0,
+            release_secs: 10.0,
+        };
+        assert_eq!(long.warmup_frames(48_000), 48_000);
     }
 
     /// The tail must actually RING — and be long enough to contain the effect's
@@ -679,18 +575,5 @@ mod tests {
             "echo at the tap: {:?}",
             out.samples()
         );
-    }
-
-    #[test]
-    fn lowpass_attenuates_nyquist_more_than_dc() {
-        // A DC-ish ramp vs. an alternating (near-Nyquist) signal: the low-pass must
-        // keep DC energy and kill the alternation.
-        let alt: Vec<f32> = (0..64)
-            .map(|i| if i % 2 == 0 { 1.0 } else { -1.0 })
-            .collect();
-        let d = SampleData::from_interleaved(alt, AudioFormat::mono(48_000));
-        let lp = biquad_all(&d, BiquadCoeffs::lowpass(48_000.0, 1_000.0, 0.707));
-        let energy: f32 = lp.samples().iter().skip(16).map(|x| x * x).sum();
-        assert!(energy < 8.0, "near-Nyquist content strongly attenuated");
     }
 }

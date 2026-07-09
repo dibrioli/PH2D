@@ -207,6 +207,47 @@ abaixo é histórico — não re-investigue.
   - `paint.rs` está em **588/600 LOC** e `paint()` em ~150/200 (foi preciso extrair
     `paint_transport_section` / `sync_widget_buffers` / `paint_scroll_chrome` p/ o
     gate de fn). Próxima seção grande = split de arquivo, não allowlist.
+- **W3 Bloco 4 — DSP essencial: EQ paramétrico + limiter true-peak (2026-07-09)**.
+  A rack foi de 8 para **12 efeitos**: `Peak EQ` · `Low Shelf` · `High Shelf` ·
+  `Limiter`. Ordem nova (tone → dynamics → character → space).
+  - **EQ = zero DSP novo.** `ph2d_audio::dsp::BiquadCoeffs` **já tinha**
+    `peak`/`lowshelf`/`highshelf` (RBJ cookbook), testados. Nenhuma mudança
+    foundational. Neutro dos três = `gain_db == 0` (bypass explícito: um RBJ de 0 dB
+    é identidade *algébrica*, mas ainda arredonda cada amostra).
+  - **`truepeak.rs` (NOVO, pub `true_peak`)** — sobreamostragem 4× (interpolador
+    windowed-sinc de fase fracionária, 12 taps/fase, gerado aqui; **não** é a tabela
+    literal do BS.1770). Por quê: um seno em `fs/4` amostrado a 45° cai em `±0.707`
+    em TODA amostra enquanto a onda contínua vai a `±1.0` — 3 dB de pico invisível
+    pro medidor `max|x[n]|`. Invariantes gateadas: **fase 0 é impulso exato** (o
+    true-peak nunca lê *abaixo* do sample-peak) e **cada fase tem ganho DC unitário**
+    (senão um sinal constante interpola em ripple e inventa pico).
+  - **`Effect::Limiter { ceiling_db, release_secs }`** — look-ahead, ganho
+    **stereo-linked**, nunca amplifica. Neutro em `ceiling_db >= 0` (um teto em
+    0 dBFS não tem o que pegar num buffer `[-1,1]`; a convenção é **−1 dBTP**, um
+    passo abaixo do neutro).
+    - **Por que não estoura**: `g[n] = min(1, ceiling/tp[n])` → **mínimo deslizante**
+      em `±R` → duas médias-caixa com suporte somado `±R`. Após o mínimo,
+      `g_min[n+k] <= g[n]` para todo `|k|<=R` (pois `n` está na janela que produziu
+      `g_min[n+k]`), e o suavizador é uma média ponderada exatamente sobre esses `k`
+      com pesos somando 1. Logo `g_smooth[n] <= g[n]` **em todo n**. O mínimo é o
+      look-ahead; a suavização tira o clique; **nenhum desfaz o outro** — é por isso
+      que os dois usam o MESMO raio.
+    - `sliding_min` = deque monotônica O(n); `box_average` = prefix-sum em **f64**
+      (um acumulador f32 deriva em milhões de frames).
+    - `warmup_frames` do Limiter = a janela inteira de look-ahead (capada em 1 s),
+      senão `in_range_warm` entrega uma região cuja curva de ganho começa em 1.0 e o
+      primeiro pico da SELEÇÃO escapa. Reuso direto do splice da auditoria.
+    - **Mutation-testado**: trocar `sliding_min(&need, radius)` por `need.clone()`
+      derruba os 2 testes (true peak vaza pra 1.028 contra teto 0.891).
+  - **`fx.rs` estourou o teto de 700 LOC** → dividido em `fx/{tone,dynamics,space}.rs`
+    (o enum e os pontos neutros ficam no `fx.rs`). `ops::channels` virou `pub(crate)`.
+  - **`fx_params.rs` virou tabela única** `KINDS: [FxKind; 12]` com **nome + specs +
+    construtor na MESMA linha**. Antes eram três `match kind {}` paralelos: inserir um
+    efeito no meio re-indexava um deles em silêncio — a rack nomearia "Compress",
+    mostraria os sliders dele e construiria um Saturate. Agora é impossível.
+  - **Custo**: o envelope true-peak é ~3 fases × 12 taps × canais por frame. Clipe de
+    minutos numa audição ao vivo pesa; medir antes de otimizar (o render é
+    change-gated e a seleção escopa o alvo).
 - **Atalhos:** `Ctrl+Z` undo · `Ctrl+Shift+Z` / `Ctrl+Y` redo (roteados ao
   `EditClip` quando o painel WAVE está aberto com clipe carregado).
 - **Fix:** `cpal::Stream` é dropado no `on_close_request`, não no drop-cascade do

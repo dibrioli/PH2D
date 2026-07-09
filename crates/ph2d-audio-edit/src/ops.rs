@@ -42,7 +42,9 @@ fn curve(shape: FadeShape, x: f32) -> f32 {
     }
 }
 
-fn channels(data: &SampleData) -> usize {
+/// Interleaved samples per frame (≥1). `AudioFormat::channels` is a `ChannelLayout`
+/// **enum** — `as usize` would silently yield its discriminant (Stereo = 1).
+pub(crate) fn channels(data: &SampleData) -> usize {
     data.format().channel_count().max(1)
 }
 

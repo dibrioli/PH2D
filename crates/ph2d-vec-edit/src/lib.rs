@@ -104,8 +104,13 @@ impl PenStyle {
 pub struct PenTool {
     /// Path em construção (None = a próxima pressão edita ou começa um novo).
     active: Option<VecPathId>,
-    /// Path "selecionado" (último tocado) — mostra e permite agarrar seus handles.
+    /// Path "selecionado" (último tocado / PRIMÁRIO) — mostra e permite agarrar
+    /// seus handles + é o alvo do painel de estilo. É o último de [`Self::selected_paths`].
     selected: Option<VecPathId>,
+    /// Seleção de OBJETO multi-path (Align/Distribute + move em grupo). Um clique
+    /// simples num path a reduz a `[esse path]`; Shift+clique num path o alterna
+    /// (`toggle_path`). O primário ([`Self::selected`]) é sempre o último desta lista.
+    selected_paths: Vec<VecPathId>,
     /// Vértices selecionados no path selecionado — o alvo dos botões de tipo
     /// (Corner/Smooth/Symmetric), do delete e do move em lote. Vazio = nenhum
     /// vértice específico (ex.: path inteiro selecionado por uma booleana). O
@@ -140,6 +145,44 @@ impl PenTool {
         self.selected
     }
 
+    /// A seleção de objeto multi-path (para overlay + Align/Distribute + move em
+    /// grupo). Sempre inclui o primário; vazia quando nada está selecionado.
+    pub fn selected_paths(&self) -> &[VecPathId] {
+        &self.selected_paths
+    }
+
+    /// Shift+clique: alterna `id` na seleção de objeto. Ao adicionar, vira o primário;
+    /// ao remover, o primário passa a ser o último remanescente (ou `None`). Limpa a
+    /// seleção de vértice (a edição de ponto é do primário de clique simples).
+    pub fn toggle_path(&mut self, id: VecPathId) {
+        self.selected_verts.clear();
+        if let Some(pos) = self.selected_paths.iter().position(|&p| p == id) {
+            self.selected_paths.remove(pos);
+            self.selected = self.selected_paths.last().copied();
+        } else {
+            self.selected_paths.push(id);
+            self.selected = Some(id);
+        }
+    }
+
+    /// Hit-test de OBJETO: o path cujo âncora/handle OU contorno está a `hit_r` de
+    /// `p` (o mais próximo). Para o Shift+clique de multi-seleção. `None` = vazio.
+    pub fn path_at(&self, scene: &VecScene, p: [f64; 2], hit_r: f64) -> Option<VecPathId> {
+        if let Some(g) = self.hit_test(scene, p, hit_r) {
+            return Some(g.path);
+        }
+        let mut best: Option<(VecPathId, f64)> = None;
+        for path in scene.paths() {
+            if let Some((_, _, d2)) = ph2d_vec_scene::nearest_point_on_path(path, p, INSERT_SAMPLES)
+                && d2.sqrt() <= hit_r
+                && best.is_none_or(|(_, b)| d2 < b)
+            {
+                best = Some((path.id, d2));
+            }
+        }
+        best.map(|(id, _)| id)
+    }
+
     /// Vértice "primário" (último tocado) — o do destaque do painel; `None` se
     /// nada selecionado.
     pub fn selected_vert(&self) -> Option<usize> {
@@ -152,9 +195,10 @@ impl PenTool {
     }
 
     /// Define a seleção de PATH (ex.: selecionar o resultado de uma booleana).
-    /// Limpa a seleção de vértice (não há vértice específico).
+    /// Reduz a seleção de objeto a `[id]` (ou vazia) e limpa a seleção de vértice.
     pub fn select(&mut self, id: Option<VecPathId>) {
         self.selected = id;
+        self.selected_paths = id.map(|i| vec![i]).unwrap_or_default();
         self.selected_verts.clear();
     }
 
@@ -162,6 +206,15 @@ impl PenTool {
     /// vértices selecionados, translada só eles (âncora + handles); senão, o path
     /// inteiro. Devolve `true` se moveu algo (nada selecionado ⇒ `false`).
     pub fn nudge(&mut self, scene: &mut VecScene, dx: f64, dy: f64) -> bool {
+        // Multi-path OBJECT selection (no specific vertices) → move every selected
+        // path wholesale (Align/Distribute companion).
+        if self.selected_verts.is_empty() && self.selected_paths.len() > 1 {
+            let mut moved = false;
+            for &id in &self.selected_paths {
+                moved |= scene.translate_path(id, dx, dy);
+            }
+            return moved;
+        }
         let Some(sel) = self.selected else {
             return false;
         };
@@ -206,6 +259,7 @@ impl PenTool {
             return;
         };
         self.selected = Some(id);
+        self.selected_paths = vec![id];
         self.selected_verts = scene
             .paths()
             .iter()
@@ -342,8 +396,11 @@ impl PenTool {
         // Parado → hit-test para EDITAR um ponto existente.
         if let Some(g) = self.hit_test(scene, p, hit_r) {
             self.selected = Some(g.path);
-            // Agarrar uma âncora que JÁ está na multi-seleção mantém o grupo (o
-            // arrasto move todos); qualquer outro grab vira seleção única.
+            // Clique simples reduz a seleção de OBJETO ao path tocado (Shift+clique
+            // multi-seleção é tratado no shell ANTES do on_press).
+            self.selected_paths = vec![g.path];
+            // Agarrar uma âncora que JÁ está na multi-seleção de vértice mantém o
+            // grupo (o arrasto move todos); qualquer outro grab vira seleção única.
             if g.part == Part::Anchor && self.selected_verts.contains(&g.vert) {
                 // mantém a seleção de grupo
             } else {
@@ -376,6 +433,7 @@ impl PenTool {
             && let Some(ni) = ph2d_vec_scene::split_segment(path, seg, t)
         {
             self.selected = Some(sel);
+            self.selected_paths = vec![sel];
             self.selected_verts = vec![ni];
             self.grab = Some(Grab {
                 path: sel,
@@ -395,6 +453,7 @@ impl PenTool {
         });
         self.active = Some(id);
         self.selected = Some(id);
+        self.selected_paths = vec![id];
         self.selected_verts = vec![0];
         self.dragging = true;
         PenClick::Started

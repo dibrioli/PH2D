@@ -207,6 +207,16 @@ pub fn populate(store: &mut WidgetStore) {
     button(store, ids::VECTOR_GRAD_REMOVE_POINT);
     button(store, ids::VECTOR_GRAD_ADD_STOP);
     button(store, ids::VECTOR_GRAD_REMOVE_STOP);
+    // Align + Distribute (multi-path object selection).
+    button(store, ids::VECTOR_ALIGN_LEFT);
+    button(store, ids::VECTOR_ALIGN_HCENTER);
+    button(store, ids::VECTOR_ALIGN_RIGHT);
+    button(store, ids::VECTOR_ALIGN_TOP);
+    button(store, ids::VECTOR_ALIGN_VCENTER);
+    button(store, ids::VECTOR_ALIGN_BOTTOM);
+    button(store, ids::VECTOR_DISTRIBUTE_H);
+    button(store, ids::VECTOR_DISTRIBUTE_V);
+    button(store, ids::VECTOR_PIVOT_EDIT);
     // Linear-gradient Angle slider (track 0..1 → 0..360°) + its chip.
     slider_chip(
         store,

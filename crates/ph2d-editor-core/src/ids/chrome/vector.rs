@@ -81,6 +81,21 @@ pub const VECTOR_GRAD_JITTER_NUM: NodeId = hash_node_id("vector.grad.jitter_num"
 pub const VECTOR_GRAD_ADD_STOP: NodeId = hash_node_id("vector.grad.add_stop");
 pub const VECTOR_GRAD_REMOVE_STOP: NodeId = hash_node_id("vector.grad.remove_stop");
 
+// ── Align + Distribute (multi-path object selection) ─────────────────────────
+// Shown when ≥2 paths are selected (Align) / ≥3 (Distribute). Align snaps each
+// selected path's bbox edge/center to the selection's bbox; Distribute evenly
+// spaces the middle paths' centers between the two extremes.
+pub const VECTOR_ALIGN_LEFT: NodeId = hash_node_id("vector.align.left");
+pub const VECTOR_ALIGN_HCENTER: NodeId = hash_node_id("vector.align.hcenter");
+pub const VECTOR_ALIGN_RIGHT: NodeId = hash_node_id("vector.align.right");
+pub const VECTOR_ALIGN_TOP: NodeId = hash_node_id("vector.align.top");
+pub const VECTOR_ALIGN_VCENTER: NodeId = hash_node_id("vector.align.vcenter");
+pub const VECTOR_ALIGN_BOTTOM: NodeId = hash_node_id("vector.align.bottom");
+pub const VECTOR_DISTRIBUTE_H: NodeId = hash_node_id("vector.distribute.h");
+pub const VECTOR_DISTRIBUTE_V: NodeId = hash_node_id("vector.distribute.v");
+/// Arm the transform gizmo's "Set Center" mode (redefine the rotation/scale pivot).
+pub const VECTOR_PIVOT_EDIT: NodeId = hash_node_id("vector.pivot.edit");
+
 pub const VECTOR_STROKE_OPACITY: NodeId = hash_node_id("vector.stroke_opacity");
 pub const VECTOR_STROKE_OPACITY_NUM: NodeId = hash_node_id("vector.stroke_opacity_num");
 pub const VECTOR_FILL_OPACITY: NodeId = hash_node_id("vector.fill_opacity");

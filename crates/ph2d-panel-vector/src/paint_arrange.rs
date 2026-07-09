@@ -6,8 +6,8 @@
 use crate::paint_sections::BodyCtx;
 use crate::state::FillKind;
 use crate::{ids, state};
-use ph2d_editor_core::widget::ButtonState;
 use ph2d_editor_core::widget::panel_chrome::paint_segmented_button;
+use ph2d_editor_core::widget::{Button, ButtonKind, ButtonState, paint_button};
 use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::Spacing;
 
@@ -131,6 +131,59 @@ impl BodyCtx<'_> {
         }
         y
     }
+    /// "Align" + "Distribute" section — shown only with a multi-path OBJECT
+    /// selection (≥2 for Align, ≥3 for Distribute). Two 3-col rows (X-align then
+    /// Y-align) + a 2-col Distribute row. Buttons drive the shell drain.
+    pub(crate) fn align_section(&mut self, mut y: f32) -> f32 {
+        let count = state::current_selection_count();
+        if count < 2 {
+            return y;
+        }
+        y = self.section_label("Align", y);
+        let gap = Spacing::Sm.px();
+        let cols = 3usize;
+        let cw = ((self.inner_w - gap * (cols as f32 - 1.0)) / cols as f32).max(1.0);
+        let rows = [
+            [
+                (ids::VECTOR_ALIGN_LEFT, "Left"),
+                (ids::VECTOR_ALIGN_HCENTER, "Center"),
+                (ids::VECTOR_ALIGN_RIGHT, "Right"),
+            ],
+            [
+                (ids::VECTOR_ALIGN_TOP, "Top"),
+                (ids::VECTOR_ALIGN_VCENTER, "Middle"),
+                (ids::VECTOR_ALIGN_BOTTOM, "Bottom"),
+            ],
+        ];
+        for row in rows {
+            for (i, (id, label)) in row.iter().enumerate() {
+                let rx = self.inner_x + i as f32 * (cw + gap);
+                let rect = Rect::new(rx, y, cw, self.row_h);
+                let bstate = self.store.button_state(*id).unwrap_or(ButtonState::Normal);
+                let btn = Button::new(*id, *label)
+                    .kind(ButtonKind::Default)
+                    .state(bstate);
+                paint_button(&btn, rect, self.scene, self.text_system, self.theme);
+                self.hit_index.register(*id, rect);
+            }
+            y += self.row_h + self.row_gap;
+        }
+        // Distribute needs ≥3 paths (two are always the fixed extremes).
+        if count >= 3 {
+            let two_col = ((self.inner_w - gap) / 2.0).max(1.0);
+            y = self.row2(
+                two_col,
+                gap,
+                [
+                    (ids::VECTOR_DISTRIBUTE_H, "Dist H"),
+                    (ids::VECTOR_DISTRIBUTE_V, "Dist V"),
+                ],
+                y,
+            );
+        }
+        y + self.row_gap
+    }
+
     /// "Path" section — reshape the whole selected path. Smooth / Sharpen are a
     /// 2-col row; Simplify (fewer points) / Subdivide (more points) are the
     /// point-density pair on a second 2-col row; then a full-width Close/Open

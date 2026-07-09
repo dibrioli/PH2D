@@ -35,6 +35,11 @@ thread_local! {
     /// Selected multi-point gradient point's jitter (`None` unless a point is
     /// selected) — drives the Jitter slider's visibility + value.
     static CURRENT_GRAD_JITTER: Cell<Option<f64>> = const { Cell::new(None) };
+    /// Number of paths in the object selection — drives the Align (≥2) / Distribute
+    /// (≥3) section visibility.
+    static CURRENT_SELECTION_COUNT: Cell<usize> = const { Cell::new(0) };
+    /// Whether the gizmo "Set Center" pivot-edit mode is armed (drives the button label).
+    static CURRENT_PIVOT_EDIT: Cell<bool> = const { Cell::new(false) };
     /// Rotation-field accumulator: the angle (degrees) the Angle chip last
     /// reported THIS gesture. `event` emits the DELTA `(current − this)` so the
     /// shell rotates incrementally; reset to 0 by `paint` whenever the field is
@@ -143,6 +148,26 @@ pub fn set_current_grad_jitter(v: Option<f64>) {
 /// The selected multi-point point's jitter this frame (drives the slider).
 pub(crate) fn current_grad_jitter() -> Option<f64> {
     CURRENT_GRAD_JITTER.with(|c| c.get())
+}
+
+/// Publish the number of paths in the object selection (drives Align/Distribute).
+pub fn set_current_selection_count(n: usize) {
+    CURRENT_SELECTION_COUNT.with(|c| c.set(n));
+}
+
+/// The object-selection path count this frame (≥2 shows Align, ≥3 shows Distribute).
+pub(crate) fn current_selection_count() -> usize {
+    CURRENT_SELECTION_COUNT.with(|c| c.get())
+}
+
+/// Publish whether the "Set Center" pivot-edit mode is armed.
+pub fn set_current_pivot_edit(armed: bool) {
+    CURRENT_PIVOT_EDIT.with(|c| c.set(armed));
+}
+
+/// Whether "Set Center" is armed this frame (drives the button label).
+pub(crate) fn pivot_edit_armed() -> bool {
+    CURRENT_PIVOT_EDIT.with(|c| c.get())
 }
 
 /// The angle the Angle chip last reported this gesture (for the delta emit).

@@ -157,7 +157,16 @@ pub(crate) fn apply_event(
                 || id == ids::VECTOR_GRAD_ADD_POINT
                 || id == ids::VECTOR_GRAD_REMOVE_POINT
                 || id == ids::VECTOR_GRAD_ADD_STOP
-                || id == ids::VECTOR_GRAD_REMOVE_STOP =>
+                || id == ids::VECTOR_GRAD_REMOVE_STOP
+                || id == ids::VECTOR_ALIGN_LEFT
+                || id == ids::VECTOR_ALIGN_HCENTER
+                || id == ids::VECTOR_ALIGN_RIGHT
+                || id == ids::VECTOR_ALIGN_TOP
+                || id == ids::VECTOR_ALIGN_VCENTER
+                || id == ids::VECTOR_ALIGN_BOTTOM
+                || id == ids::VECTOR_DISTRIBUTE_H
+                || id == ids::VECTOR_DISTRIBUTE_V
+                || id == ids::VECTOR_PIVOT_EDIT =>
         {
             seam_reset_button(host, id);
             host.bus_mut()

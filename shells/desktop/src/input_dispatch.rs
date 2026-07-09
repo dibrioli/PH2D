@@ -725,6 +725,145 @@ pub(crate) fn apply_vec_grad_remove_stop(
     selected
 }
 
+/// An alignment edge/center the Align buttons snap the selected paths' bboxes to
+/// (within the selection's union bbox).
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub(crate) enum VecAlign {
+    Left,
+    HCenter,
+    Right,
+    Top,
+    VCenter,
+    Bottom,
+}
+
+/// Map an Align button `NodeId` to its [`VecAlign`] (`None` otherwise).
+pub(crate) fn vec_align_for_id(id: ph2d_editor::NodeId) -> Option<VecAlign> {
+    use ph2d_editor::ids as i;
+    Some(match id {
+        x if x == i::VECTOR_ALIGN_LEFT => VecAlign::Left,
+        x if x == i::VECTOR_ALIGN_HCENTER => VecAlign::HCenter,
+        x if x == i::VECTOR_ALIGN_RIGHT => VecAlign::Right,
+        x if x == i::VECTOR_ALIGN_TOP => VecAlign::Top,
+        x if x == i::VECTOR_ALIGN_VCENTER => VecAlign::VCenter,
+        x if x == i::VECTOR_ALIGN_BOTTOM => VecAlign::Bottom,
+        _ => return None,
+    })
+}
+
+/// Distribute axis: even the selected paths' center spacing horizontally / vertically.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub(crate) enum VecDistribute {
+    Horizontal,
+    Vertical,
+}
+
+/// Map a Distribute button `NodeId` to its [`VecDistribute`] (`None` otherwise).
+pub(crate) fn vec_distribute_for_id(id: ph2d_editor::NodeId) -> Option<VecDistribute> {
+    if id == ph2d_editor::ids::VECTOR_DISTRIBUTE_H {
+        Some(VecDistribute::Horizontal)
+    } else if id == ph2d_editor::ids::VECTOR_DISTRIBUTE_V {
+        Some(VecDistribute::Vertical)
+    } else {
+        None
+    }
+}
+
+/// Align every selected path's bbox to the selection's union bbox per [`VecAlign`]
+/// (needs ≥2 selected). One undo step iff anything moved.
+pub(crate) fn apply_vec_align(
+    scene: &mut ph2d_vec_scene::VecScene,
+    history: &mut ph2d_vec_edit::History,
+    pen: &ph2d_vec_edit::PenTool,
+    kind: VecAlign,
+) {
+    let boxes: Vec<(u64, [f64; 2], [f64; 2])> = pen
+        .selected_paths()
+        .iter()
+        .filter_map(|&id| scene.path_bbox(id).map(|(lo, hi)| (id, lo, hi)))
+        .collect();
+    if boxes.len() < 2 {
+        return;
+    }
+    // Union bbox of the selection.
+    let mut ulo = [f64::INFINITY; 2];
+    let mut uhi = [f64::NEG_INFINITY; 2];
+    for &(_, lo, hi) in &boxes {
+        ulo[0] = ulo[0].min(lo[0]);
+        ulo[1] = ulo[1].min(lo[1]);
+        uhi[0] = uhi[0].max(hi[0]);
+        uhi[1] = uhi[1].max(hi[1]);
+    }
+    let pre = scene.clone();
+    let mut moved = false;
+    for (id, lo, hi) in boxes {
+        let (mut dx, mut dy) = (0.0, 0.0);
+        match kind {
+            VecAlign::Left => dx = ulo[0] - lo[0],
+            VecAlign::Right => dx = uhi[0] - hi[0],
+            VecAlign::HCenter => dx = (ulo[0] + uhi[0]) * 0.5 - (lo[0] + hi[0]) * 0.5,
+            // World Y is UP here, so "Top" = the selection's MAX y and "Bottom" =
+            // its MIN y (matches what the user sees on-canvas).
+            VecAlign::Top => dy = uhi[1] - hi[1],
+            VecAlign::Bottom => dy = ulo[1] - lo[1],
+            VecAlign::VCenter => dy = (ulo[1] + uhi[1]) * 0.5 - (lo[1] + hi[1]) * 0.5,
+        }
+        if dx.abs() > 1e-9 || dy.abs() > 1e-9 {
+            moved |= scene.translate_path(id, dx, dy);
+        }
+    }
+    if moved {
+        history.push_undo(pre);
+    }
+}
+
+/// Evenly space the selected paths' bbox CENTERS along `axis`, keeping the two
+/// extremes fixed (needs ≥3 selected). One undo step iff anything moved.
+pub(crate) fn apply_vec_distribute(
+    scene: &mut ph2d_vec_scene::VecScene,
+    history: &mut ph2d_vec_edit::History,
+    pen: &ph2d_vec_edit::PenTool,
+    axis: VecDistribute,
+) {
+    // (id, center-on-axis) for each selected path.
+    let mut items: Vec<(u64, f64)> = pen
+        .selected_paths()
+        .iter()
+        .filter_map(|&id| {
+            scene.path_bbox(id).map(|(lo, hi)| {
+                let c = match axis {
+                    VecDistribute::Horizontal => (lo[0] + hi[0]) * 0.5,
+                    VecDistribute::Vertical => (lo[1] + hi[1]) * 0.5,
+                };
+                (id, c)
+            })
+        })
+        .collect();
+    if items.len() < 3 {
+        return;
+    }
+    items.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal));
+    let n = items.len();
+    let (first, last) = (items[0].1, items[n - 1].1);
+    let step = (last - first) / (n - 1) as f64;
+    let pre = scene.clone();
+    let mut moved = false;
+    for (k, &(id, c)) in items.iter().enumerate().take(n - 1).skip(1) {
+        let target = first + step * k as f64;
+        let d = target - c;
+        if d.abs() > 1e-9 {
+            let (dx, dy) = match axis {
+                VecDistribute::Horizontal => (d, 0.0),
+                VecDistribute::Vertical => (0.0, d),
+            };
+            moved |= scene.translate_path(id, dx, dy);
+        }
+    }
+    if moved {
+        history.push_undo(pre);
+    }
+}
+
 /// Rotate the SELECTED path by `degrees` (panel Transform Angle field — a
 /// relative scrub) about its bbox center, recording ONE undo step iff it turned.
 /// A zero delta is a no-op (no undo). Free fn (mirror of [`apply_vec_rotate`]).
@@ -1486,6 +1625,16 @@ impl App {
         if self.vec_pen_drag_move(self.last_pointer.0, self.last_pointer.1) {
             return;
         }
+        // Sprite-style transform gizmo drag (scale/rotate/move/pivot). Same early-
+        // return discipline; no-op unless a gizmo drag is live.
+        if let Some((cc, ch, sz)) = self
+            .gfx
+            .as_ref()
+            .map(|g| (g.camera.center, g.camera.height_world, g.surface.size()))
+            && self.advance_vec_gizmo(cc, ch, sz.width as f32, sz.height as f32)
+        {
+            return;
+        }
         // Gradient group 3b: dragging a multi-point gradient handle. Same
         // early-return discipline; no-op unless a grad drag is live.
         if self.vec_grad_drag_move(self.last_pointer.0, self.last_pointer.1) {
@@ -1666,15 +1815,51 @@ impl App {
                 hero.store.set_picker_target(None);
             }
             match (mapped_button, kind) {
-                // Shift+drag on empty canvas = node box-select marquee (any mode).
+                // Shift+Down on a PATH → toggle it in the object multi-selection
+                // (Align/Distribute); Shift+Down on empty canvas → vertex marquee.
                 // Tried first so Shift diverts the press from the pen/shape draw.
                 (ph2d_host::PointerButton::Primary, PointerKind::Down)
                     if on_canvas && self.modifiers.shift_key() =>
                 {
+                    let hit = self.gfx.as_ref().and_then(|gfx| {
+                        let win = gfx.surface.size();
+                        let w = gfx.camera.screen_to_world(self.last_pointer, win);
+                        let w0 = gfx.camera.screen_to_world((0.0, 0.0), win);
+                        let w1 = gfx.camera.screen_to_world((1.0, 0.0), win);
+                        let px =
+                            (((w1[0] - w0[0]).powi(2) + (w1[1] - w0[1]).powi(2)).sqrt()) as f64;
+                        self.vec_pen
+                            .path_at(&gfx.vec_scene, [w[0] as f64, w[1] as f64], 10.0 * px)
+                    });
+                    if let Some(id) = hit {
+                        self.vec_pen.toggle_path(id);
+                        // Object selection changed → drop any gradient-handle selection.
+                        self.vec_grad_selected = None;
+                        self.vec_grad_drag = None;
+                        return;
+                    }
                     self.vec_marquee = Some((self.last_pointer, self.last_pointer));
                     return;
                 }
                 (ph2d_host::PointerButton::Primary, PointerKind::Down) if on_canvas => {
+                    // Sprite-style transform gizmo: a Down on a scale/rotate/pivot
+                    // handle (or the bbox interior over empty space) starts a gizmo
+                    // drag — takes priority over gradient handles + pen/shape. A
+                    // press that ISN'T on the gizmo resets the pivot to the bbox
+                    // center (it only persists across gizmo interactions).
+                    if let Some((cc, ch, sz)) = self
+                        .gfx
+                        .as_ref()
+                        .map(|g| (g.camera.center, g.camera.height_world, g.surface.size()))
+                    {
+                        let (ww, wh) = (sz.width as f32, sz.height as f32);
+                        // "Set Center" mode positions the pivot; else a handle drag.
+                        if self.vec_pivot_edit_down(cc, ch, ww, wh)
+                            || self.vec_gizmo_down(cc, ch, ww, wh)
+                        {
+                            return;
+                        }
+                    }
                     // Gradient group 3b: a Down on a multi-point gradient handle
                     // starts dragging it (takes priority over pen/shape drawing).
                     if let Some(i) = self.vec_grad_hit(self.last_pointer) {
@@ -1723,6 +1908,10 @@ impl App {
                     }
                 }
                 (ph2d_host::PointerButton::Primary, PointerKind::Up) => {
+                    // Transform gizmo: end the drag (commits one undo step iff moved).
+                    if self.end_vec_gizmo() {
+                        return;
+                    }
                     // Gradient group 3b: end a gradient-handle drag (commit iff moved).
                     if self.vec_grad_drag.take().is_some() {
                         if let Some(gfx) = self.gfx.as_ref() {

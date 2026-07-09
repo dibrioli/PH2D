@@ -125,6 +125,8 @@ pub(super) fn dispatch(
     // the Fill swatch shows its colour and the picker recolours THAT slot instead of
     // replacing the whole fill with a solid colour.
     grad_handle: Option<GradHandle>,
+    // Whether the transform gizmo's "Set Center" pivot-edit mode is armed.
+    pivot_edit: bool,
 ) -> VectorDrawConfig {
     let vector_active = tools
         .active()
@@ -336,6 +338,18 @@ pub(super) fn dispatch(
     } else {
         None
     });
+
+    // Publish the object-selection path count so the panel shows Align (≥2) /
+    // Distribute (≥3).
+    #[cfg(feature = "panel-vector")]
+    ph2d_panel_vector::set_current_selection_count(if vector_active {
+        pen.selected_paths().len()
+    } else {
+        0
+    });
+    // Publish the pivot-edit ("Set Center") armed state for the button label.
+    #[cfg(feature = "panel-vector")]
+    ph2d_panel_vector::set_current_pivot_edit(vector_active && pivot_edit);
 
     // Publish the selected path's closed flag so the panel labels the toggle
     // "Close Path" / "Open Path" correctly.

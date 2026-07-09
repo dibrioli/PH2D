@@ -521,6 +521,8 @@ impl BodyCtx<'_> {
         }
         y += self.row_gap;
 
+        // Align + Distribute (multi-path object selection; sibling module for cap).
+        y = self.align_section(y);
         // Arrange — Duplicate + z-order (act on the selected path).
         y = self.section_label("Arrange", y);
         y = self.action_button(ids::VECTOR_ARRANGE_DUPLICATE, "Duplicate", y);

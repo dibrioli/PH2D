@@ -101,6 +101,62 @@ impl VecScene {
         Some((lo, hi))
     }
 
+    /// Bounding box da CURVA renderizada do path `id` (`(min, max)` world-units) —
+    /// amostra cada segmento cúbico, então cobre a forma inteira incluindo o que
+    /// abaula PARA FORA das âncoras (ao contrário de [`Self::path_bbox`], que só
+    /// enquadra as âncoras). É o que o gizmo de transform usa. `None` se vazio.
+    pub fn path_curve_bbox(&self, id: VecPathId) -> Option<([f64; 2], [f64; 2])> {
+        self.path_curve_bbox_in_frame(id, 1.0, 0.0)
+    }
+
+    /// Como [`Self::path_curve_bbox`], mas o min/max é medido num **frame
+    /// rotacionado por −θ** (`c = cos θ`, `s = sin θ`) — cada ponto amostrado vira
+    /// `[x·c + y·s, −x·s + y·c]` antes do min/max. É o bbox ORIENTADO (alinhado a θ)
+    /// que o gizmo usa pra girar junto com a forma. `θ = 0` (`c=1,s=0`) = axis-aligned.
+    pub fn path_curve_bbox_in_frame(
+        &self,
+        id: VecPathId,
+        c: f64,
+        s: f64,
+    ) -> Option<([f64; 2], [f64; 2])> {
+        let path = self.paths.iter().find(|p| p.id == id)?;
+        let first = path.verts.first()?;
+        let rot = |p: [f64; 2]| [p[0] * c + p[1] * s, -p[0] * s + p[1] * c];
+        let f0 = rot(first.anchor);
+        let mut lo = f0;
+        let mut hi = f0;
+        // 16 amostras por segmento — apertado o bastante p/ o gizmo, transcendental-free.
+        const SAMPLES: usize = 16;
+        let mut cover = |p0: [f64; 2], p1: [f64; 2], p2: [f64; 2], p3: [f64; 2]| {
+            for k in 0..=SAMPLES {
+                let t = k as f64 / SAMPLES as f64;
+                let u = 1.0 - t;
+                let (uu, tt) = (u * u, t * t);
+                let (b0, b1, b2, b3) = (uu * u, 3.0 * uu * t, 3.0 * u * tt, tt * t);
+                let x = b0 * p0[0] + b1 * p1[0] + b2 * p2[0] + b3 * p3[0];
+                let y = b0 * p0[1] + b1 * p1[1] + b2 * p2[1] + b3 * p3[1];
+                let r = rot([x, y]);
+                lo[0] = lo[0].min(r[0]);
+                lo[1] = lo[1].min(r[1]);
+                hi[0] = hi[0].max(r[0]);
+                hi[1] = hi[1].max(r[1]);
+            }
+        };
+        for pair in path.verts.windows(2) {
+            cover(
+                pair[0].anchor,
+                pair[0].out_handle,
+                pair[1].in_handle,
+                pair[1].anchor,
+            );
+        }
+        if path.closed && path.verts.len() >= 2 {
+            let last = path.verts.last().unwrap();
+            cover(last.anchor, last.out_handle, first.in_handle, first.anchor);
+        }
+        Some((lo, hi))
+    }
+
     /// Translada o path `id` por `(dx, dy)` world-units (âncora + handles de todos
     /// os vértices). `false` se o id sumiu.
     pub fn translate_path(&mut self, id: VecPathId, dx: f64, dy: f64) -> bool {

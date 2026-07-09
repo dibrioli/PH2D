@@ -875,6 +875,9 @@ impl crate::App {
             let mut pending_vec_grad_jitter: Option<f64> = None;
             let mut pending_vec_grad_add_stop = false;
             let mut pending_vec_grad_remove_stop = false;
+            let mut pending_vec_align: Option<crate::input_dispatch::VecAlign> = None;
+            let mut pending_vec_distribute: Option<crate::input_dispatch::VecDistribute> = None;
+            let mut pending_vec_pivot_edit = false;
             // Numeric Transform field edit (X/Y/W/H) — a SetValue document command.
             let mut pending_vec_transform: Option<(crate::input_dispatch::VecTransformField, f64)> =
                 None;
@@ -968,6 +971,14 @@ impl crate::App {
                                 pending_vec_grad_add_stop = true;
                             } else if *id == ph2d_editor::ids::VECTOR_GRAD_REMOVE_STOP {
                                 pending_vec_grad_remove_stop = true;
+                            } else if let Some(a) = crate::input_dispatch::vec_align_for_id(*id) {
+                                pending_vec_align = Some(a);
+                            } else if let Some(d) =
+                                crate::input_dispatch::vec_distribute_for_id(*id)
+                            {
+                                pending_vec_distribute = Some(d);
+                            } else if *id == ph2d_editor::ids::VECTOR_PIVOT_EDIT {
+                                pending_vec_pivot_edit = true;
                             }
                         }
                         // Transform fields (X/Y/W/H) are numeric SetValue document
@@ -1757,6 +1768,26 @@ impl crate::App {
                 .map(ph2d_vec_render::GradHandle::Stop)
                 .or(self.vec_grad_selected);
             }
+            if let Some(a) = pending_vec_align {
+                crate::input_dispatch::apply_vec_align(
+                    vec_scene,
+                    &mut self.vec_history,
+                    &self.vec_pen,
+                    a,
+                );
+            }
+            if let Some(d) = pending_vec_distribute {
+                crate::input_dispatch::apply_vec_distribute(
+                    vec_scene,
+                    &mut self.vec_history,
+                    &self.vec_pen,
+                    d,
+                );
+            }
+            if pending_vec_pivot_edit {
+                // Arm "Set Center": the next canvas press positions the pivot.
+                self.vec_pivot_edit = true;
+            }
             if pending_vec_grad_remove_stop
                 && let Some(si) = self
                     .vec_grad_selected
@@ -1781,6 +1812,7 @@ impl crate::App {
                 &mut self.vec_history,
                 vec_px_to_world,
                 self.vec_grad_selected,
+                self.vec_pivot_edit,
             );
             // Motion Nodes M0.T10: same phase as vector_bridge (AFTER the
             // ActivateTool drain, so a freshly-activated tool is seen this frame;
@@ -1809,6 +1841,7 @@ impl crate::App {
                 ph2d_vec_render::draw_overlays(
                     vec_scene,
                     self.vec_pen.selected(),
+                    self.vec_pen.selected_paths(),
                     self.vec_pen.selected_verts(),
                     camera.world_to_screen_affine(window_size),
                     vector_scene,
@@ -1822,6 +1855,38 @@ impl crate::App {
                     camera.world_to_screen_affine(window_size),
                     vector_scene,
                 );
+                // Sprite-style transform gizmo over the object selection (scale /
+                // rotate / move / movable pivot). Free fn (disjoint App borrows).
+                // A change of selection resets the gizmo orientation + pivot (vector
+                // geometry stores no orientation, so a new selection is axis-aligned).
+                let cur_sel = self.vec_pen.selected_paths().to_vec();
+                if cur_sel != self.vec_gizmo_last_sel {
+                    self.vec_gizmo_rotation = 0.0;
+                    self.vec_gizmo_pivot = None;
+                    self.vec_pivot_edit = false;
+                    self.vec_gizmo_last_sel = cur_sel;
+                }
+                // Hidden while points are still being CREATED (pen drawing) — appears
+                // only after the curve is closed / creation is interrupted.
+                if self.vec_pen.is_drawing() {
+                    self.vec_gizmo_hits.clear_for_frame();
+                } else {
+                    crate::vec_gizmo::paint(
+                        vec_scene,
+                        self.vec_pen.selected_paths(),
+                        self.vec_gizmo_pivot,
+                        self.vec_gizmo_rotation,
+                        self.vec_pivot_edit,
+                        self.last_pointer,
+                        camera.center,
+                        camera.height_world,
+                        window_size.width as f32,
+                        window_size.height as f32,
+                        *theme,
+                        &mut self.vec_gizmo_hits,
+                        vector_scene,
+                    );
+                }
                 // Box-select marquee (Shift+drag), in screen-space.
                 if let Some((start, cur)) = self.vec_marquee {
                     ph2d_vec_render::draw_marquee(
@@ -1830,6 +1895,9 @@ impl crate::App {
                         vector_scene,
                     );
                 }
+            } else {
+                // Tool inactive → no gizmo hits linger for the next frame's Down.
+                self.vec_gizmo_hits.clear_for_frame();
             }
             // Drain the Painter Falloff right-click handle menu choice (chrome
             // parked the HandleType wire u8 in `pending_falloff_point_handle`) →

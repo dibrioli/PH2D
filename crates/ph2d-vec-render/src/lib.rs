@@ -75,12 +75,16 @@ pub fn dispatch(scene: &VecScene, transform: Affine, target: &mut VectorScene) {
 pub fn draw_overlays(
     scene: &VecScene,
     selected: Option<VecPathId>,
+    selected_paths: &[VecPathId],
     selected_verts: &[usize],
     transform: Affine,
     target: &mut VectorScene,
 ) {
     for path in scene.paths() {
         let is_sel = Some(path.id) == selected;
+        // Any path in the OBJECT selection set is highlighted; the primary also shows
+        // its Bézier handles + per-vertex picks.
+        let in_set = selected_paths.contains(&path.id);
         if is_sel {
             for v in &path.verts {
                 let a = transform * Point::new(v.anchor[0], v.anchor[1]);
@@ -120,9 +124,9 @@ pub fn draw_overlays(
             let picked = is_sel && selected_verts.contains(&i);
             let s = if picked { 4.5 } else { 3.5 };
             let col = if picked {
-                Color::from_rgba8(90, 200, 235, 255) // ciano = selecionado (grupo)
-            } else if is_sel {
-                Color::from_rgba8(250, 180, 90, 255) // laranja = path selecionado
+                Color::from_rgba8(90, 200, 235, 255) // ciano = vértice selecionado (grupo)
+            } else if in_set {
+                Color::from_rgba8(250, 180, 90, 255) // laranja = path na seleção de objeto
             } else {
                 Color::from_rgba8(230, 230, 235, 220)
             };

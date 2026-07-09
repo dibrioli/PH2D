@@ -53,6 +53,7 @@ mod palette_persist;
 mod render_loop;
 mod sim_populate;
 mod theme;
+mod vec_gizmo;
 mod winit_host;
 
 pub(crate) use app_state::{
@@ -205,6 +206,13 @@ impl App {
             vec_grad_drag: None,
             vec_grad_selected: None,
             vec_clipboard: None,
+            vec_gizmo_hits: ph2d_editor::HitIndex::new(),
+            vec_gizmo_drag: None,
+            vec_gizmo_pivot: None,
+            vec_pivot_edit: false,
+            vec_gizmo_rotation: 0.0,
+            vec_gizmo_last_sel: Vec::new(),
+            vec_gizmo_start: None,
             frame_ms_ewma: 16.7, // ~60 Hz baseline so the first
                                  // frame's status bar doesn't display
                                  // a wild value while the EWMA seeds.

@@ -79,7 +79,7 @@ fn bulk_move_and_scale() {
     let a = tr.insert_key(secs(0.0), AnimValue::Float(0.0), Interp::Linear);
     let b = tr.insert_key(secs(1.0), AnimValue::Float(1.0), Interp::Linear);
     let c = tr.insert_key(secs(2.0), AnimValue::Float(2.0), Interp::Hold);
-    tr.move_keys(&[a, b, c], 0.5);
+    tr.move_keys(&[a, b, c], secs(0.5));
     for (id, want) in [(a, 0.5), (b, 1.5), (c, 2.5)] {
         assert!((tr.key(id).unwrap().t.to_seconds() - want).abs() < 1e-4);
     }
@@ -94,7 +94,7 @@ fn bulk_remove_and_duplicate() {
     let mut tr = Track::new(vec![]);
     let a = tr.insert_key(secs(0.0), AnimValue::Float(0.0), Interp::Linear);
     let b = tr.insert_key(secs(1.0), AnimValue::Float(1.0), Interp::Linear);
-    let dups = tr.duplicate_keys(&[a, b], 0.1);
+    let dups = tr.duplicate_keys(&[a, b], secs(0.1));
     assert_eq!(dups.len(), 2);
     assert_eq!(tr.len(), 4);
     for d in &dups {
@@ -106,6 +106,42 @@ fn bulk_remove_and_duplicate() {
     tr.remove_keys(&[a, b]);
     assert_eq!(tr.len(), 2); // only the duplicates remain
     assert!(tr.key(a).is_none());
+}
+
+#[test]
+fn a_duplicate_landing_on_an_existing_key_overwrites_it() {
+    // A track may not hold two keys at one instant: the copy replaces the key it
+    // lands on and inherits its id, so `len` grows by one, not two.
+    let mut tr = Track::new(vec![]);
+    let a = tr.insert_key(secs(0.0), AnimValue::Float(7.0), Interp::Linear);
+    let b = tr.insert_key(secs(1.0), AnimValue::Float(9.0), Interp::Hold);
+    let dups = tr.duplicate_keys(&[a, b], secs(1.0));
+    assert_eq!(tr.len(), 3, "0.0, 1.0 (overwritten), 2.0");
+    assert_eq!(dups[0], b, "the copy took over the key it replaced");
+    assert_eq!(tr.key(b).unwrap().value, AnimValue::Float(7.0));
+    assert_eq!(tr.key(b).unwrap().interp, Interp::Linear);
+    // The source is read before anything is written, so the second copy still
+    // carries the ORIGINAL value of `b`, not the one that just overwrote it.
+    assert_eq!(tr.key(dups[1]).unwrap().value, AnimValue::Float(9.0));
+    assert_eq!(
+        tr.key(a).unwrap().value,
+        AnimValue::Float(7.0),
+        "source kept"
+    );
+}
+
+#[test]
+fn a_frame_exact_bulk_move_stays_frame_exact() {
+    // `to_seconds` round-trips would land 2/24 s at 83333 us; the rational path
+    // must not, or a later equality test (upsert, duplicate-overwrite) misses.
+    let mut tr = Track::new(vec![]);
+    let a = tr.insert_key(
+        RationalTime::from_frame(0, 24),
+        AnimValue::Float(0.0),
+        Interp::Linear,
+    );
+    tr.move_keys(&[a], RationalTime::from_frame(2, 24));
+    assert_eq!(tr.key(a).unwrap().t, RationalTime::from_frame(2, 24));
 }
 
 // ── W0.T2: Interp bézier handles ─────────────────────────────────────────────

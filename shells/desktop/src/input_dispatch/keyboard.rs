@@ -257,13 +257,11 @@ impl App {
                 KeyCode::KeyC if has_selection => Some(I::CopySelection),
                 KeyCode::KeyX if has_selection => Some(I::CutSelection),
                 KeyCode::KeyV if !self.timeline.clipboard.is_empty() => Some(I::Paste),
-                // Duplicate one display frame later: in place the copies would
-                // hide exactly under their originals (we have no modal grab to
-                // move them out), which reads as "nothing happened". The copies
-                // become the selection, so a drag moves them straight away.
-                KeyCode::KeyD if has_selection => Some(I::DuplicateSelection {
-                    delta_seconds: 1.0 / self.timeline.doc.fps_display.max(1.0),
-                }),
+                // Duplicate: the copies land on the playhead (or two frames right
+                // of the source when the playhead is already on it) and become
+                // the selection — `apply_intent` owns that policy, it has both
+                // the playhead and the selection.
+                KeyCode::KeyD if has_selection => Some(I::DuplicateSelection),
                 _ => None,
             };
             if let Some(intent) = intent {

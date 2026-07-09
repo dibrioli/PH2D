@@ -280,14 +280,17 @@ impl Track {
 
     // ─── Bulk authoring (W0.T5) ─────────────────────────────────────────────
 
-    /// Shift each listed key by `delta_seconds` (relative bulk drag), re-sorting
-    /// once. Unknown ids are ignored. Times snap to microsecond precision
-    /// ([`RationalTime::from_seconds`]).
-    pub fn move_keys(&mut self, ids: &[KeyId], delta_seconds: f64) {
+    /// Shift each listed key by `delta` (relative bulk drag), re-sorting once.
+    /// Unknown ids are ignored.
+    ///
+    /// The offset is applied with exact rational arithmetic, so a key dragged by
+    /// a whole number of frames lands *exactly* on the frame — round-tripping
+    /// through `to_seconds` would leave it a fraction of a microsecond off, and
+    /// every later equality test (upsert, overwrite-on-duplicate) would miss.
+    pub fn move_keys(&mut self, ids: &[KeyId], delta: RationalTime) {
         for &id in ids {
             if let Some(i) = self.index_of(id) {
-                let s = self.keys[i].t.to_seconds() + delta_seconds;
-                self.keys[i].t = RationalTime::from_seconds(s);
+                self.keys[i].t = self.keys[i].t + delta;
             }
         }
         self.resort();
@@ -319,20 +322,26 @@ impl Track {
         }
     }
 
-    /// Duplicate each listed key, offset by `delta_seconds`, giving each copy a
-    /// fresh id. Returns the new ids (for re-selecting the duplicates).
-    pub fn duplicate_keys(&mut self, ids: &[KeyId], delta_seconds: f64) -> Vec<KeyId> {
-        // Snapshot first — inserting shifts indices.
+    /// Duplicate each listed key, offset by `delta`. Returns the copies' ids, in
+    /// the order the sources were listed (for re-selecting the duplicates).
+    ///
+    /// A copy that lands exactly on an existing key **overwrites** it (and
+    /// inherits its id) — a track may not hold two keys at one instant. The
+    /// sources are read before anything is written, so a copy can safely land on
+    /// another key of the same batch.
+    pub fn duplicate_keys(&mut self, ids: &[KeyId], delta: RationalTime) -> Vec<KeyId> {
+        // Snapshot first — writing shifts indices, and a copy may overwrite a
+        // source that has not been read yet.
         let dups: Vec<Key> = ids
             .iter()
             .filter_map(|&id| self.key(id))
             .map(|k| Key {
-                t: RationalTime::from_seconds(k.t.to_seconds() + delta_seconds),
+                t: k.t + delta,
                 ..k
             })
             .collect();
         dups.into_iter()
-            .map(|k| self.insert_key(k.t, k.value, k.interp))
+            .map(|k| self.upsert_key(k.t, k.value, k.interp))
             .collect()
     }
 

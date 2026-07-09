@@ -80,11 +80,15 @@ pub enum TimelineIntent {
         /// Scale factor.
         factor: f64,
     },
-    /// Duplicate every selected key, offset by `delta_seconds`.
-    DuplicateSelection {
-        /// Offset applied to the copies.
-        delta_seconds: f64,
-    },
+    /// Duplicate every selected key, preserving the group's internal timing.
+    ///
+    /// Where the copies land is read off the playhead (see
+    /// [`duplicate_delta`]): normally the FIRST copy lands on the playhead;
+    /// with the playhead already sitting on the first selected key — where a
+    /// copy would be invisible underneath it — the group is offset two display
+    /// frames instead. Copies overwrite any key they land on. One undo step; the
+    /// copies become the selection.
+    DuplicateSelection,
     /// Delete every selected key.
     DeleteSelection,
     /// Copy the selected keys onto the clipboard (time-rebased to the earliest).
@@ -180,9 +184,14 @@ pub fn apply_intent(state: &mut TimelineState, playhead: &mut Playhead, intent: 
                 sel.set_single(SelectedKey { target, key });
             });
         }
-        I::MoveSelectedKeys { delta_seconds } => edit(state, |doc, sel| {
-            for_selected_tracks(doc, sel, |track, ids| track.move_keys(ids, delta_seconds));
-        }),
+        I::MoveSelectedKeys { delta_seconds } => {
+            // Rationalize the offset ONCE, against the display rate: a whole
+            // number of frames must stay a whole number of frames after the move.
+            let delta = delta_time(delta_seconds, fps, state.flags.frame_snap);
+            edit(state, |doc, sel| {
+                for_selected_tracks(doc, sel, |track, ids| track.move_keys(ids, delta));
+            });
+        }
         I::ScaleSelectedKeys {
             pivot_seconds,
             factor,
@@ -191,28 +200,33 @@ pub fn apply_intent(state: &mut TimelineState, playhead: &mut Playhead, intent: 
                 track.scale_keys(ids, pivot_seconds, factor)
             });
         }),
-        I::DuplicateSelection { delta_seconds } => edit(state, |doc, sel| {
-            // The copies become the selection (Blender): the next drag moves the
-            // duplicates, not the originals they were made from.
-            let mut copies: Vec<SelectedKey> = Vec::new();
-            for target in distinct_targets(sel) {
-                let ids = sel.ids_for(target);
-                if let Some(track) = doc.active_clip_mut().track_mut(target) {
-                    copies.extend(
-                        track
-                            .duplicate_keys(&ids, delta_seconds)
-                            .into_iter()
-                            .map(|key| SelectedKey { target, key }),
-                    );
+        I::DuplicateSelection => {
+            let Some(delta) = duplicate_delta(state, playhead.time()) else {
+                return; // nothing selected
+            };
+            edit(state, |doc, sel| {
+                // The copies become the selection (Blender): the next drag moves
+                // the duplicates, not the originals they were made from.
+                let mut copies: Vec<SelectedKey> = Vec::new();
+                for target in distinct_targets(sel) {
+                    let ids = sel.ids_for(target);
+                    if let Some(track) = doc.active_clip_mut().track_mut(target) {
+                        copies.extend(
+                            track
+                                .duplicate_keys(&ids, delta)
+                                .into_iter()
+                                .map(|key| SelectedKey { target, key }),
+                        );
+                    }
                 }
-            }
-            if !copies.is_empty() {
-                sel.clear();
-                for k in copies {
-                    sel.add(k);
+                if !copies.is_empty() {
+                    sel.clear();
+                    for k in copies {
+                        sel.add(k);
+                    }
                 }
-            }
-        }),
+            });
+        }
         I::DeleteSelection => edit(state, |doc, sel| {
             for_selected_tracks(doc, sel, |track, ids| track.remove_keys(ids));
             sel.clear();
@@ -313,6 +327,61 @@ fn edit(state: &mut TimelineState, f: impl FnOnce(&mut TimelineDoc, &mut Selecti
     state.history.begin(&state.doc);
     f(&mut state.doc, &mut state.selection);
     state.history.commit_if_changed(&state.doc);
+}
+
+/// Frames a duplicate is pushed by when it would otherwise land on top of its
+/// own source (playhead on the first selected key). Two rather than one so the
+/// copy is unmistakably separate at any zoom.
+const DUPLICATE_IDLE_FRAMES: i64 = 2;
+
+/// Turn a UI time offset into an exact [`RationalTime`]. With frame snapping on
+/// the offset is a whole number of display frames, expressed over `fps` so it
+/// stays frame-exact; otherwise it degrades to microseconds.
+fn delta_time(delta_seconds: f64, fps: f64, frame_snap: bool) -> RationalTime {
+    if frame_snap && fps.is_finite() && fps > 0.0 {
+        RationalTime::from_frame(
+            (delta_seconds * fps).round() as i64,
+            fps.round().max(1.0) as u32,
+        )
+    } else {
+        RationalTime::from_seconds(delta_seconds)
+    }
+}
+
+/// Where [`TimelineIntent::DuplicateSelection`] puts the copies, as an offset
+/// from the sources. `None` when nothing is selected.
+///
+/// The first selected key is the group's handle: it lands on the playhead, and
+/// the rest of the group follows rigidly. When the playhead is already ON that
+/// key the copy would hide underneath it (we have no modal grab to drag it out),
+/// so the group is nudged [`DUPLICATE_IDLE_FRAMES`] frames right instead.
+fn duplicate_delta(state: &TimelineState, playhead_seconds: f64) -> Option<RationalTime> {
+    let fps = state.doc.fps_display;
+    let first = earliest_selected_time(state)?;
+    let target = snap_time(
+        RationalTime::from_seconds(playhead_seconds),
+        fps,
+        state.flags.frame_snap,
+    );
+    let delta = target - first;
+    Some(if delta == RationalTime::ZERO {
+        RationalTime::from_frame(DUPLICATE_IDLE_FRAMES, fps.round().max(1.0) as u32)
+    } else {
+        delta
+    })
+}
+
+/// The time of the earliest selected key across every track, or `None` when the
+/// selection is empty (or names keys the document no longer has).
+fn earliest_selected_time(state: &TimelineState) -> Option<RationalTime> {
+    let clip = state.doc.active_clip();
+    state
+        .selection
+        .keys()
+        .iter()
+        .filter_map(|sk| clip.track(sk.target)?.key(sk.key))
+        .map(|k| k.t)
+        .min()
 }
 
 /// The distinct tracks the selection touches, sorted. Collected up front

@@ -356,31 +356,128 @@ fn end_seconds_respects_an_authored_duration_that_outlasts_the_keys() {
 
 // ── W2.E7 — duplicate (Ctrl+D) ───────────────────────────────────────────────
 
+/// The value of the key at `t` on entity 1's TranslationX track.
+fn value_at(st: &TimelineState, t: f64) -> Option<f32> {
+    let target = st.doc.binding_for(1, PropKind::TranslationX)?.target;
+    st.doc
+        .active_clip()
+        .track(target)?
+        .keys()
+        .iter()
+        .find(|k| (k.t.to_seconds() - t).abs() < 1e-9)
+        .map(|k| match k.value {
+            AnimValue::Float(v) => v,
+            _ => panic!("expected a float key"),
+        })
+}
+
+/// Two frames at the default 24 fps display rate.
+const TWO_FRAMES: f64 = 2.0 / 24.0;
+
 #[test]
-fn duplicate_copies_the_keys_and_selects_the_copies() {
+fn duplicate_with_the_playhead_on_the_first_key_offsets_two_frames() {
     let mut st = TimelineState::new();
     let mut ph = Playhead::new(DT);
-    two_selected_keys(&mut st, &mut ph); // keys at 0.0 and 0.5, both selected
+    two_selected_keys(&mut st, &mut ph); // keys at 0.0 and 0.5
+    ph.seek(0.0); // on the first selected key
+
+    apply_intent(&mut st, &mut ph, I::DuplicateSelection);
+
+    let times = key_times(&st);
+    assert_eq!(times.len(), 4);
+    for (got, want) in times.iter().zip([0.0, TWO_FRAMES, 0.5, 0.5 + TWO_FRAMES]) {
+        assert!((got - want).abs() < 1e-9, "{times:?}");
+    }
+}
+
+#[test]
+fn duplicate_lands_the_first_copy_on_the_playhead() {
+    let mut st = TimelineState::new();
+    let mut ph = Playhead::new(DT);
+    two_selected_keys(&mut st, &mut ph); // keys at 0.0 and 0.5
+    ph.seek(1.0);
+
+    apply_intent(&mut st, &mut ph, I::DuplicateSelection);
+
+    assert_eq!(
+        key_times(&st),
+        vec![0.0, 0.5, 1.0, 1.5],
+        "the group keeps its internal timing, anchored at the playhead"
+    );
+}
+
+#[test]
+fn duplicate_before_the_selection_walks_the_copies_left() {
+    let mut st = TimelineState::new();
+    let mut ph = Playhead::new(DT);
+    add_key(&mut st, &mut ph, 1, PropKind::TranslationX, 1.0, 5.0);
+    add_key(&mut st, &mut ph, 1, PropKind::TranslationX, 1.5, 9.0);
+    let target = st
+        .doc
+        .binding_for(1, PropKind::TranslationX)
+        .unwrap()
+        .target;
+    let ids: Vec<_> = st.doc.active_clip().track(target).unwrap().ids().to_vec();
+    apply_intent(
+        &mut st,
+        &mut ph,
+        I::SelectSingle(SelectedKey {
+            target,
+            key: ids[0],
+        }),
+    );
+    apply_intent(
+        &mut st,
+        &mut ph,
+        I::AddToSelection(SelectedKey {
+            target,
+            key: ids[1],
+        }),
+    );
+    ph.seek(0.25);
+
+    apply_intent(&mut st, &mut ph, I::DuplicateSelection);
+    assert_eq!(key_times(&st), vec![0.25, 0.75, 1.0, 1.5]);
+}
+
+#[test]
+fn a_duplicate_overwrites_the_key_it_lands_on() {
+    let mut st = TimelineState::new();
+    let mut ph = Playhead::new(DT);
+    two_selected_keys(&mut st, &mut ph); // 0.0 -> 5.0, 0.5 -> 9.0
+    ph.seek(0.5); // the first copy lands exactly on the second key
+
+    apply_intent(&mut st, &mut ph, I::DuplicateSelection);
+
+    assert_eq!(
+        key_times(&st),
+        vec![0.0, 0.5, 1.0],
+        "three keys, not four — the copy replaced the key at 0.5"
+    );
+    assert_eq!(
+        value_at(&st, 0.5),
+        Some(5.0),
+        "0.5 now holds the copy's value"
+    );
+    assert_eq!(value_at(&st, 1.0), Some(9.0));
+    assert_eq!(value_at(&st, 0.0), Some(5.0), "the source is untouched");
+}
+
+#[test]
+fn duplicate_selects_the_copies_so_the_next_drag_moves_them() {
+    let mut st = TimelineState::new();
+    let mut ph = Playhead::new(DT);
+    two_selected_keys(&mut st, &mut ph);
     let target = st
         .doc
         .binding_for(1, PropKind::TranslationX)
         .unwrap()
         .target;
     let originals: Vec<_> = st.doc.active_clip().track(target).unwrap().ids().to_vec();
+    ph.seek(1.0);
 
-    apply_intent(
-        &mut st,
-        &mut ph,
-        I::DuplicateSelection {
-            delta_seconds: 0.25,
-        },
-    );
+    apply_intent(&mut st, &mut ph, I::DuplicateSelection);
 
-    assert_eq!(
-        key_times(&st),
-        vec![0.0, 0.25, 0.5, 0.75],
-        "copies inserted"
-    );
     assert_eq!(st.selection.len(), 2, "the selection is the two COPIES");
     for key in &originals {
         assert!(
@@ -389,9 +486,8 @@ fn duplicate_copies_the_keys_and_selects_the_copies() {
              leaving the duplicate behind"
         );
     }
-    // And a drag right after Ctrl+D moves the copies, not the originals.
     apply_intent(&mut st, &mut ph, I::MoveSelectedKeys { delta_seconds: 1.0 });
-    assert_eq!(key_times(&st), vec![0.0, 0.5, 1.25, 1.75]);
+    assert_eq!(key_times(&st), vec![0.0, 0.5, 2.0, 2.5]);
 }
 
 #[test]
@@ -399,13 +495,8 @@ fn duplicate_is_one_undo_step() {
     let mut st = TimelineState::new();
     let mut ph = Playhead::new(DT);
     two_selected_keys(&mut st, &mut ph);
-    apply_intent(
-        &mut st,
-        &mut ph,
-        I::DuplicateSelection {
-            delta_seconds: 0.25,
-        },
-    );
+    ph.seek(1.0);
+    apply_intent(&mut st, &mut ph, I::DuplicateSelection);
     assert_eq!(key_times(&st).len(), 4);
     st.undo();
     assert_eq!(
@@ -421,13 +512,42 @@ fn duplicate_with_no_selection_changes_nothing() {
     let mut ph = Playhead::new(DT);
     add_key(&mut st, &mut ph, 1, PropKind::TranslationX, 0.0, 5.0);
     apply_intent(&mut st, &mut ph, I::ClearSelection);
+    apply_intent(&mut st, &mut ph, I::DuplicateSelection);
+    assert_eq!(key_times(&st), vec![0.0]);
+    assert_eq!(st.selection.len(), 0);
+    // The no-op must not have pushed an undo step of its own: one undo goes all
+    // the way back past the AddKey, to the empty document.
+    st.undo();
+    assert!(
+        st.doc.bindings().is_empty(),
+        "a no-op duplicate polluted the undo stack"
+    );
+}
+
+#[test]
+fn a_frame_snapped_move_lands_exactly_on_the_frame() {
+    // The regression that made overwrite-on-duplicate unreliable: a key dragged
+    // by two frames used to land a fraction of a microsecond off the frame, so
+    // a later duplicate onto it inserted a second key instead of replacing it.
+    let mut st = TimelineState::new();
+    let mut ph = Playhead::new(DT);
+    add_key(&mut st, &mut ph, 1, PropKind::TranslationX, 0.0, 5.0);
     apply_intent(
         &mut st,
         &mut ph,
-        I::DuplicateSelection {
-            delta_seconds: 0.25,
+        I::MoveSelectedKeys {
+            delta_seconds: TWO_FRAMES,
         },
     );
-    assert_eq!(key_times(&st), vec![0.0]);
-    assert_eq!(st.selection.len(), 0);
+    let target = st
+        .doc
+        .binding_for(1, PropKind::TranslationX)
+        .unwrap()
+        .target;
+    let t = st.doc.active_clip().track(target).unwrap().keys()[0].t;
+    assert_eq!(
+        t,
+        RationalTime::from_frame(2, 24),
+        "a two-frame drag must be exactly two frames, not 83333 us"
+    );
 }

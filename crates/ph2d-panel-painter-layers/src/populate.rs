@@ -12,6 +12,14 @@ use ph2d_editor_core::widget::{
 };
 
 pub fn populate(store: &mut WidgetStore) {
+    register_chrome_buttons(store);
+    register_brush_inputs(store);
+    register_mask_and_selection(store);
+    register_toggles_and_dropdowns(store);
+}
+
+/// Header / toolbar / modifier chrome buttons + the "+ Adj" dropdown.
+fn register_chrome_buttons(store: &mut WidgetStore) {
     let buttons = [
         ph2d_editor_core::ids::PAINTER_LAYERS_CLOSE,
         // Action toolbar (below the header): New layer / Group / Duplicate /
@@ -55,7 +63,10 @@ pub fn populate(store: &mut WidgetStore) {
             selected_index: None,
         },
     );
+}
 
+/// Brush-properties inputs: sliders, drag-scrub NumberInputs, slider chips, Composite card.
+fn register_brush_inputs(store: &mut WidgetStore) {
     // Brush-properties view (fixed-id, so registered here, not per-frame): the
     // Size / Hardness / Flow / Strength sliders. The panel paints them off the
     // published `BrushSettings` snapshot; the values here are placeholders
@@ -152,6 +163,10 @@ pub fn populate(store: &mut WidgetStore) {
             },
         );
     }
+}
+
+/// Mask section + collapsible headers + Selection section + Deform widgets.
+fn register_mask_and_selection(store: &mut WidgetStore) {
     // Mask section: the sub-brush segments + the whole-canvas op buttons + the overlay-colour swatches
     // are all Buttons (Click channel). Registered here (not in `paint_mask`) so panel-wiring-parity + the
     // dispatch see them. The header is a plain collapsible section (no colour dot).
@@ -249,6 +264,11 @@ pub fn populate(store: &mut WidgetStore) {
     }
     // Deform section (Wave 1) widgets — split into a sibling for the panel file-LOC cap.
     crate::populate_deform::register_deform_widgets(store);
+}
+
+/// Checkbox/action Buttons (swatches, toggles, ramp + stroke-editor actions, Watercolor
+/// chrome), Symmetry clickables, tooltips and the Dropdown chips.
+fn register_toggles_and_dropdowns(store: &mut WidgetStore) {
     // Colour swatch + Eraser toggle + the Stroke-section "Adjust Strength" toggle —
     // Buttons. MUST be registered here or the dispatcher drops the click (the
     // populate-register gotcha).

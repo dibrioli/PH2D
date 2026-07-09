@@ -391,3 +391,29 @@ o Enio). Amount 0 =
 byte-idêntico. **GRAN-3:** fallback 2 oitavas (5px + 2.5px·0,35). Gotcha de teste: `sample_image`
 usa convenção dab-space (`u·0,5+0,5` → 1 unidade de tile = meia imagem). Segue aberto: GRAN-4
 (γ por-pigmento / dissolve), GRAN-5 (escala do fallback), W-C.
+
+### W-C · MIX-1 — LANDOU 2026-07-08 (Charge depletion; corrigido pós-smoke no mesmo dia)
+
+**Take 1 (`2924e452`, REPROVADO no smoke):** `fresh = charge·(1−travel/span)` escalando a
+COBERTURA. Dois defeitos sérios (Enio): (1) Charge <0,93 matava a borda — cobertura sub-saturada
+deixa `inner < 1` no interior INTEIRO, o edge term (`cw·(1−inner)·gain`) inunda o centro e o traço
+vira slab opaco chato; (2) cruzar poça pálida explodia pigmento — `depl = max(fresh, t)` com `t` =
+peso de MISTURA (salta pra ~1 em qualquer poça, ignora as duas intensidades).
+
+**Take 2 (`8cd93db8`, final):** *a depleção desbota o PIGMENTO, nunca a ÁGUA.*
+- `fresh` começa em **1.0** (cabeça = anatomia completa); Charge controla a **duração**:
+  `span = 40·r·charge/(1−charge)` (→ ∞ no gate `charge = 1`, sem costura).
+- `carry = t × pigmento real do reservatório` (absorbância máx ÷ `MIX_CARRY_FULL_ABSORB = 2.0`):
+  poça pálida re-tinta quase nada, poça rica sustenta o smudge — as duas intensidades respeitadas.
+- A reserva vai pro **`stroke_deplete`** (mapa u8 por-pixel, max-blend — irmão do `stroke_density`;
+  re-tintar trilha desbotada restaura) e o composite multiplica em `fill + edge` **DEPOIS** do rim
+  derivar da cobertura intacta e **ANTES** do rewet-pool (pigmento dissolvido do canvas não é
+  reserva do pincel). Cauda esgotada = água pura (rewet/lift continuam vivos nela — grátis pro
+  EDGE-2). Default byte-idêntico (mapa vazio ⇒ fator 1).
+- Lição de arquitetura: **cobertura é GEOMETRIA DE ÁGUA saturada** — qualquer feature que precise
+  "enfraquecer" o traço entra como modulação de densidade por-pixel (tip-density, depletion), nunca
+  escalando a cobertura (mesma lição do grey-tip normalise, §Shape).
+- Teste: `watercolor_wet_mix_depleted_brush_respects_pool_intensity` (pálida ≈ nada · rica
+  re-tinta · cabeça forte) + `charge_depletes_along_the_stroke` mantido. 488/488.
+  Calibração: `MIX_DEPLETE_SPAN = 40` (sobe = fôlego maior), `MIX_CARRY_FULL_ABSORB = 2.0`
+  (sobe = smudge mais tímido).

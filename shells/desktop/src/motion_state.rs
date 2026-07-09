@@ -313,11 +313,62 @@ mod tests {
         for &s in &state.sinks {
             assert_eq!(state.doc.graph.node(s).unwrap().type_name, "motion.output");
         }
-        // 15 grid-rig nodes + 7 fountain nodes (emitter, integrate, tint,
-        // output, wind, curl, drag).
-        assert_eq!(state.doc.graph.nodes().len(), 22);
+        // 15 grid-rig nodes + 8 fountain nodes (emitter, integrate, tint,
+        // trail, output, wind, curl, drag).
+        assert_eq!(state.doc.graph.nodes().len(), 23);
         assert!(state.doc.graph.validate(&state.registry).is_ok());
         assert_eq!(state.playhead(1.0 / 60.0), 0.0); // paused at tick 0
+    }
+
+    /// The trail is alive in the default document and its ring really DROPS the
+    /// generation that ages out: with `length = 6` the fountain draws ~6× the
+    /// instances it draws at `length = 1` (the identity) — and no more. The
+    /// upper bound is the falsification: a ring that forgot to drop the oldest
+    /// generation would grow without bound and blow straight through it.
+    #[test]
+    fn the_trail_multiplies_the_fountain_into_comet_tails() {
+        use ph2d_eval_motion::MotionCookPump;
+
+        // Drive 2 s of fixed ticks and report the fountain's instance count
+        // (the grid rig contributes a constant 400 ahead of it).
+        let fountain_instances = |length: f32| {
+            let mut state = MotionState::new();
+            let trail = state
+                .doc
+                .graph
+                .nodes()
+                .iter()
+                .find(|n| n.type_name == "motion.trail")
+                .expect("the fountain wires a Trail")
+                .id;
+            state.doc.graph.set_param(trail, "length", length);
+            let (uv, size) = (state.default_uv_rect, state.default_size);
+            let mut pump = MotionCookPump::new();
+            for k in 0..=120u64 {
+                pump.pump(
+                    &state.doc.graph,
+                    &state.registry,
+                    &state.sinks,
+                    k,
+                    k as f64 / 60.0,
+                    uv,
+                    size,
+                );
+            }
+            pump.instances.len() - 400
+        };
+
+        let bare = fountain_instances(1.0);
+        let tailed = fountain_instances(6.0);
+        assert!(bare > 60, "the fountain is flowing: {bare} particles");
+        assert!(
+            tailed > 5 * bare,
+            "6 generations should be ~6x {bare}, got {tailed}"
+        );
+        assert!(
+            tailed <= 6 * bare + 6,
+            "the ring must DROP the aged-out generation; {tailed} is unbounded growth"
+        );
     }
 
     /// M2.N1 end to end, through the REAL registry: the demo's Time Remap

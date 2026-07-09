@@ -8,7 +8,7 @@
 //! engine on a churning set:
 //!
 //! ```text
-//! emitter → integrate.rest → tint → output
+//! emitter → integrate.rest → tint → trail ⟲ → output
 //!           ⟲ wind → curl → drag → integrate.forces
 //! ```
 //!
@@ -27,6 +27,11 @@
 //!   like a ballistic jet; **drag** keeps it from running away.
 //! - **tint** Gradient paints by `Index`, which the emitter emits oldest-first
 //!   — so a particle cools from warm at birth to cyan as it ages.
+//! - **trail** (M2) echoes each grain over the last 6 ticks, fading and
+//!   shrinking geometrically — comet tails. Its ring buffer rides its own `pre`
+//!   self-loop. Downstream of the tint, so an echo keeps the colour it was born
+//!   with, and downstream of the integrate, whose id-keyed pairing the trail's
+//!   duplicated `id`s would otherwise break.
 
 use ph2d_nodegraph::graph::{Edge, Graph, NodeId, Pos};
 
@@ -40,15 +45,24 @@ pub(crate) fn build(g: &mut Graph) -> Option<NodeId> {
     let emitter = g.add_node("motion.emitter");
     let integrate = g.add_node("motion.integrate");
     let tint = g.add_node("motion.tint");
+    let trail = g.add_node("motion.trail");
     let output = g.add_node("motion.output");
     let wind = g.add_node("force.wind");
     let curl = g.add_node("force.curl");
     let drag = g.add_node("force.drag");
 
-    // Forward trunk: emitter → integrate.rest → tint → output. The integrate
-    // sits one column further right so the force row below flows INTO it
-    // left→right (no wire ever doubles back).
-    for (n, col) in [(emitter, 0.0), (integrate, 3.0), (tint, 4.0), (output, 5.0)] {
+    // Forward trunk: emitter → integrate.rest → tint → trail → output. The
+    // integrate sits one column further right so the force row below flows INTO
+    // it left→right (no wire ever doubles back). The trail is DOWNSTREAM of the
+    // integrate on purpose: it duplicates `id`s, which would wreck the
+    // id-keyed state pairing if it sat upstream.
+    for (n, col) in [
+        (emitter, 0.0),
+        (integrate, 3.0),
+        (tint, 4.0),
+        (trail, 5.0),
+        (output, 6.0),
+    ] {
         g.set_pos(
             n,
             Pos {
@@ -57,7 +71,12 @@ pub(crate) fn build(g: &mut Graph) -> Option<NodeId> {
             },
         );
     }
-    for (from, to) in [(emitter, integrate), (integrate, tint), (tint, output)] {
+    for (from, to) in [
+        (emitter, integrate),
+        (integrate, tint),
+        (tint, trail),
+        (trail, output),
+    ] {
         g.connect(Edge {
             from: (from, 0),
             to: (to, 0),
@@ -65,6 +84,14 @@ pub(crate) fn build(g: &mut Graph) -> Option<NodeId> {
         })
         .ok()?;
     }
+    // The trail's ring buffer rides its own `pre` self-loop — the same
+    // sequential-node convention the editor auto-plumbs on drop.
+    g.connect(Edge {
+        from: (trail, 0),
+        to: (trail, 1),
+        delayed: true,
+    })
+    .ok()?;
 
     // Force branch into `forces`: ⟲ gravity → turbulence → damping. The `pre`
     // into the head (wind) is the engine-managed state entry.
@@ -131,5 +158,10 @@ pub(crate) fn build(g: &mut Graph) -> Option<NodeId> {
     g.set_param(tint, "r2", 1.0);
     g.set_param(tint, "g2", 0.65);
     g.set_param(tint, "b2", 0.1); // new: warm amber
+    // Comet tails: 6 echoes at 60 Hz ≈ 0.1 s of smear — long enough to read as
+    // a streak, short enough that the curl's swirl stays legible.
+    g.set_param(trail, "length", 6.0);
+    g.set_param(trail, "fade", 0.62);
+    g.set_param(trail, "shrink", 0.88);
     Some(output)
 }

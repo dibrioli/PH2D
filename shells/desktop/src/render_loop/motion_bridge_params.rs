@@ -146,6 +146,15 @@ pub(super) fn apply_channel_presets(
                 .doc
                 .graph
                 .set_param(nid, "amplitude", wave_channel_amplitude(ch));
+            // The oscillator's DC `offset` shares the amplitude's unit, so its
+            // range is channel-dependent too (`channel_range_override`). Any param
+            // whose RANGE moves with the channel must have its VALUE reset with it
+            // — otherwise a 300° offset dialled on Rotation survives into a
+            // ±10-world-unit position channel, outside the range it will be shown
+            // in. Zero is the neutral offset and is legal on every channel.
+            if type_name == "motion.oscillator" {
+                motion.doc.graph.set_param(nid, "offset", 0.0);
+            }
         }
         _ => {}
     }
@@ -183,6 +192,24 @@ fn wave_channel_amplitude(channel: i32) -> f32 {
 /// range that cannot even represent the `±90` preset: the slider would saturate,
 /// display `-10`, and overwrite the doc with `-10` on the first touch.
 ///
+/// Widen `[min, max]` so it **contains** `value` — the invariant every row must
+/// satisfy before it reaches the panel.
+///
+/// A `ParamUiHint`'s range is a suggestion, not a constraint: `Graph::set_param`
+/// never clamps, so a preset, an undo, or a loaded document can hold a value
+/// outside it. A row whose range does not contain its value is a *lying widget* —
+/// `normalized_track` clamps it to the track end, the panel PAINTS the clamped
+/// number instead of the real one, and the first touch emits that clamped number
+/// straight back into the doc, silently destroying the authored value. (That is
+/// exactly the bug the Enio caught with Stagger on the Rotation channel.)
+///
+/// Containing the value costs a degraded slider span in the pathological case and
+/// self-heals the moment the value returns inside the hint's range — a cheap
+/// price for a widget that can never lie or destroy.
+fn contain(min: f32, max: f32, value: f32) -> (f32, f32) {
+    (min.min(value), max.max(value))
+}
+
 /// Returns `(min, max, step)` to use instead of the hint's, or `None` to keep it.
 /// Only Rotation needs widening (Position / Size are already world-unit-scaled).
 fn channel_range_override(type_name: &str, param: &str, channel: i32) -> Option<(f32, f32, f32)> {
@@ -423,24 +450,30 @@ pub(super) fn build_params_snapshot(
                 }
                 ParamWidget::Angle => {
                     // Degrees end to end — the param already stores what the
-                    // `deg` box shows, so the row is a straight copy of the hint.
+                    // `deg` box shows, so the row is a straight copy of the hint
+                    // (widened to contain the value: a drag-scrub clamps to the
+                    // registered range, which would eat an out-of-range angle).
+                    let deg = value_of(spec.name);
+                    let (min, max) = contain(h.min, h.max, deg);
                     rows.push(ParamRow::Angle(AngleRow {
                         name: spec.name,
                         label: h.label.to_string(),
-                        deg: f64::from(value_of(spec.name)),
-                        min_deg: f64::from(h.min),
-                        max_deg: f64::from(h.max),
+                        deg: f64::from(deg),
+                        min_deg: f64::from(min),
+                        max_deg: f64::from(max),
                         step_deg: f64::from(h.step),
                     }));
                     continue;
                 }
                 ParamWidget::Seed => {
+                    let seed = value_of(spec.name).round();
+                    let (min, max) = contain(h.min, h.max, seed);
                     rows.push(ParamRow::Seed(SeedRow {
                         name: spec.name,
                         label: h.label.to_string(),
-                        value: f64::from(value_of(spec.name).round()),
-                        min: f64::from(h.min),
-                        max: f64::from(h.max),
+                        value: f64::from(seed),
+                        min: f64::from(min),
+                        max: f64::from(max),
                     }));
                     continue;
                 }
@@ -452,11 +485,14 @@ pub(super) fn build_params_snapshot(
             Some(h) => {
                 // A behaviour's magnitude range depends on the channel it drives
                 // (degrees on Rotation vs world units on X/Y) — the static hint
-                // can only describe one, so widen it here or the slider saturates
-                // and overwrites the doc on the first touch.
+                // can only describe one, so widen it for ergonomics …
                 let (min, max, step) = channel
                     .and_then(|ch| channel_range_override(&inst.type_name, spec.name, ch))
                     .unwrap_or((h.min, h.max, h.step));
+                // … then widen it again, unconditionally, so it CONTAINS the doc
+                // value. That is the correctness half: no clamp, no lie, no
+                // destroy-on-touch, whatever put the value there.
+                let (min, max) = contain(min, max, value_of(spec.name));
                 ScalarRow {
                     name: spec.name,
                     label: h.label.to_string(),

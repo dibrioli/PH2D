@@ -229,6 +229,96 @@ fn channel_switch_resets_behaviour_magnitude_to_channel_defaults() {
     );
 }
 
+/// **The invariant, over every registered Motion node and every param:** a row's
+/// widget range CONTAINS its value. A row that violates it is a lying widget —
+/// the track clamps, the panel paints the clamped number, and the first touch
+/// writes it back, destroying the authored value.
+///
+/// `Graph::set_param` never clamps to the hint, so a preset, an undo, or a loaded
+/// document can put any value on any param. This drives every node type with a
+/// value far outside its hint (both signs) and asserts the row still contains it.
+/// It is the gate for the whole bug class, not for one node.
+#[test]
+fn every_row_range_contains_its_value_for_every_node_and_param() {
+    use ph2d_nodegraph::cook::OpResolver;
+    use ph2d_panel_motion_params::ParamRow;
+    let mut motion = MotionState::new();
+
+    // Every registered motion node type (the real registry, not a stub list).
+    let types: Vec<&'static str> = motion
+        .registry
+        .manifests()
+        .map(|m| m.name)
+        .filter(|n| n.starts_with("motion."))
+        .collect();
+    assert!(
+        types.len() >= 10,
+        "the registry really has the motion nodes"
+    );
+
+    for ty in types {
+        for extreme in [-9999.0f32, 9999.0] {
+            let node = motion.doc.graph.add_node(ty);
+            // Shove the extreme onto EVERY declared param of this node.
+            let params: Vec<&'static str> = motion
+                .registry
+                .resolve(motion.doc.graph.node(node).unwrap().type_id())
+                .unwrap()
+                .manifest()
+                .params
+                .iter()
+                .map(|p| p.name)
+                .collect();
+            for p in params {
+                motion.doc.graph.set_param(node, p, extreme);
+            }
+            ph2d_panel_motion_graph::set_graph_selection(vec![node.0]);
+
+            let snap = build_params_snapshot(&motion)
+                .unwrap_or_else(|| panic!("{ty} must resolve a snapshot"));
+            for row in &snap.rows {
+                let (name, value, min, max) = match row {
+                    ParamRow::Scalar(r) => (r.name, r.value, r.min, r.max),
+                    ParamRow::Angle(r) => (r.name, r.deg, r.min_deg, r.max_deg),
+                    ParamRow::Seed(r) => (r.name, r.value, r.min, r.max),
+                    // Color / Toggle / Enum carry no continuous range.
+                    _ => continue,
+                };
+                assert!(
+                    min <= value && value <= max,
+                    "{ty}.{name}: value {value} escapes the widget range [{min}, {max}] \
+                     -> the panel would paint a clamped number and destroy it on touch"
+                );
+            }
+        }
+    }
+    ph2d_panel_motion_graph::set_graph_selection(Vec::new());
+}
+
+/// Any param whose widget RANGE moves with the channel must have its VALUE reset
+/// when the channel switches — otherwise it survives into a channel whose range
+/// cannot show it. The oscillator's `offset` was exactly that hole: widened to
+/// ±360 on Rotation, never reset, so a 300° offset landed in a ±10 world-unit
+/// position channel. This pins preset-domain == override-domain.
+#[test]
+fn every_channel_ranged_param_is_reset_on_a_channel_switch() {
+    let mut motion = MotionState::new();
+    let osc = motion.doc.graph.add_node("motion.oscillator");
+
+    // Dial an offset that is only legal on the Rotation channel.
+    motion.doc.graph.set_param(osc, "channel", 2.0);
+    motion.doc.graph.set_param(osc, "offset", 300.0);
+
+    // Switch to a position channel: the preset must bring `offset` back in range.
+    apply_channel_presets(&mut motion, osc, "motion.oscillator", 1.0);
+    assert_eq!(
+        param_value(&motion, osc, "offset"),
+        0.0,
+        "offset must reset with the channel whose range it borrowed"
+    );
+    assert_eq!(param_value(&motion, osc, "amplitude"), 1.0);
+}
+
 /// A behaviour's magnitude WIDGET RANGE follows the channel, not just its value.
 /// The Enio caught this: with Channel=Rot the Stagger showed `Min -10 / Max 10`
 /// even though the preset had written ±90 into the doc. The static hint range
@@ -273,8 +363,12 @@ fn rotation_channel_widens_the_magnitude_range_to_contain_its_preset() {
             "{name} is degree-scaled"
         );
     }
-    // Back on a position channel the world-unit hint range returns.
+    // Back on a position channel the world-unit hint range returns — but ONLY
+    // because the preset also brings the value home. (Switch the channel without
+    // the preset and `contain` correctly keeps the range wide enough to show the
+    // stale ±90 rather than lie about it — that is the other half of the fix.)
     motion.doc.graph.set_param(st, "channel", 1.0);
+    apply_channel_presets(&mut motion, st, "motion.stagger", 1.0);
     assert_eq!(
         (scalar(&motion, "min").min, scalar(&motion, "min").max),
         (-10.0, 10.0)

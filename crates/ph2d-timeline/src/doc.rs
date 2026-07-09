@@ -182,6 +182,25 @@ impl TimelineDoc {
         (target, id)
     }
 
+    /// Like [`TimelineDoc::insert_key`] but **updates** the key at exactly `t`
+    /// rather than stacking a duplicate — the capture-the-pose path (K /
+    /// auto-key) upserts one key per playhead time.
+    pub fn upsert_key(
+        &mut self,
+        entity: u64,
+        prop: PropKind,
+        t: RationalTime,
+        value: AnimValue,
+        interp: Interp,
+    ) -> (AnimTarget, KeyId) {
+        let target = self.bind(entity, prop);
+        let track = self
+            .active_clip_mut()
+            .track_or_insert(target, || Track::new(vec![]).with_default(value));
+        let id = track.upsert_key(t, value, interp);
+        (target, id)
+    }
+
     /// All markers (sorted by insertion; the panel sorts for display).
     #[must_use]
     pub fn markers(&self) -> &[Marker] {

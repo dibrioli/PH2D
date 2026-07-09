@@ -33,6 +33,9 @@ pub struct TimelinePanelState {
     /// (from the ruler pixel width ÷ zoom) and read by `event` to map a ruler
     /// scrub value `0..1` back to an absolute time.
     pub view_span_s: f64,
+    /// Whether the "+Track" property dropdown is open (panel-local; toggled by
+    /// the +Track button, closed on picking a property).
+    pub add_track_open: bool,
 }
 
 impl Default for TimelinePanelState {
@@ -41,6 +44,7 @@ impl Default for TimelinePanelState {
             view_start_s: 0.0,
             px_per_s: DEFAULT_PX_PER_S,
             view_span_s: 0.0,
+            add_track_open: false,
         }
     }
 }

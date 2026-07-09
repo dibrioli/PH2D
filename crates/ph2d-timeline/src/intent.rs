@@ -165,7 +165,9 @@ pub fn apply_intent(state: &mut TimelineState, playhead: &mut Playhead, intent: 
         } => {
             let snapped = snap_time(t, fps, state.flags.frame_snap);
             edit(state, |doc, sel| {
-                let (target, key) = doc.insert_key(entity, prop, snapped, value, interp);
+                // Upsert: capture-the-pose (K / auto-key) updates the key at this
+                // time instead of stacking duplicates when fired repeatedly.
+                let (target, key) = doc.upsert_key(entity, prop, snapped, value, interp);
                 sel.set_single(SelectedKey { target, key });
             });
         }

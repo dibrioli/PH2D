@@ -579,10 +579,15 @@ impl crate::App {
             // read it. A no-op when nothing carries a SpriteAnimation; drives any
             // bound sprite (e.g. the KeyB demo) in the real scene.
             ph2d_timeline::apply_sprite_animations(sim.world_mut(), self.playhead.time());
-            // W2.E5 K-insert: capture the selected sprite's current pose into a
-            // keyframe at the playhead on each of its bound tracks (queued as
-            // AddKey intents, applied by `run` below the same frame).
-            if self.timeline_insert_key {
+            // W2.E5 capture-the-pose: insert/update a keyframe at the playhead on
+            // each of the selected sprite's bound tracks (AddKey upserts). Fires
+            // on the K key, and — while AutoKey is armed — every frame the gizmo
+            // is dragging the sprite, so moving it records the key instead of the
+            // doc fighting the drag. `advance_gizmo_drag` writes the Transform
+            // earlier in the frame, so `sample_prop_value` reads the dragged pose.
+            let autokey_now = self.timeline.flags.auto_key
+                && hero_screen.as_ref().is_some_and(|h| h.gizmo.drag.is_some());
+            if self.timeline_insert_key || autokey_now {
                 self.timeline_insert_key = false;
                 if let Some(entity) = hero_screen
                     .as_ref()

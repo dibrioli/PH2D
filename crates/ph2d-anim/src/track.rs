@@ -209,6 +209,20 @@ impl Track {
         id
     }
 
+    /// Insert a key at `t`, or **update** the existing key at exactly `t` (same
+    /// `RationalTime`). Returns the key's [`KeyId`]. Used by capture-the-pose
+    /// authoring (K / auto-key), which must not stack duplicate keys at one time.
+    pub fn upsert_key(&mut self, t: RationalTime, value: AnimValue, interp: Interp) -> KeyId {
+        if let Some(i) = self.keys.iter().position(|k| k.t == t) {
+            self.keys[i].value = value;
+            self.keys[i].interp = interp;
+            self.invalidate_cursor();
+            self.ids[i]
+        } else {
+            self.insert_key(t, value, interp)
+        }
+    }
+
     /// Remove the key with `id`. Returns `true` if it existed.
     pub fn remove_key(&mut self, id: KeyId) -> bool {
         match self.index_of(id) {

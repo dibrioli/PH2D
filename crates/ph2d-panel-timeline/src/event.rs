@@ -61,7 +61,16 @@ pub(crate) fn apply_event(
                 )));
             EventOutcome::Consumed
         }
+        // "+Track" opens/closes the property dropdown (panel-local; no intent).
+        WidgetEvent::Click(id) if id == ids::TIMELINE_ADD_TRACK => {
+            state.add_track_open = !state.add_track_open;
+            EventOutcome::Consumed
+        }
         WidgetEvent::Click(id) if is_button(id) => {
+            // Picking a property from the dropdown closes it.
+            if ids::ADDPROP_BUTTONS.iter().any(|(bid, _)| *bid == id) {
+                state.add_track_open = false;
+            }
             host.bus_mut()
                 .push(EditorAction::TimelinePanelEvent(PanelEvent::Click(id)));
             EventOutcome::Consumed

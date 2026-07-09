@@ -122,6 +122,14 @@ pub(crate) fn paint(state: &mut TimelinePanelState, ctx: &mut PaintCtx) {
     // Time axis last, so ticks + playhead overlay the rows.
     ruler::paint(ctx, theme, time_area, view_start, px_per_s, &snapshot);
 
+    // "+Track" property dropdown overlay — painted last so it sits on top.
+    tracks::paint_add_track_popover(
+        ctx,
+        theme,
+        Rect::new(region.x, region.y, label_w, ruler::RULER_H),
+        state.add_track_open,
+    );
+
     set_last_content_h(0.0);
     set_last_visible_h(rect.h);
 }

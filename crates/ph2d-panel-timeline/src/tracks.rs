@@ -1,55 +1,77 @@
 //! Track list (W2.E4) — the left label column of the dope-sheet: the "+Track"
-//! property buttons (header row, aligned with the ruler strip) and one row per
-//! binding (property label + a short object tag).
+//! dropdown (header row, aligned with the ruler strip) and one row per binding
+//! (property label + a short object tag).
 //!
-//! "+Track" is six per-property buttons (X/Y/R/Sx/Sy/Op). Clicking one raises a
-//! `PanelEvent::Click(<prop id>)`; the shell binds the *currently selected*
-//! sprite's matching property (it owns the selection). Each row's time area
-//! paints its key **diamonds** (E5; selected keys in the accent colour), culled
-//! to the visible span; click-select + drag land in E5b.
+//! "+Track" is a dropdown button; opening it lists the six properties as a
+//! popover overlay. Picking one raises `PanelEvent::Click(<prop id>)`; the shell
+//! binds the *currently selected* sprite's matching property (it owns the
+//! selection) and closes the dropdown. Each row's time area paints its key
+//! **diamonds** (E5; selected keys in the accent colour), culled to the visible
+//! span; click-select + drag land in E5b.
 
-use ph2d_editor_core::paint::{fill_rounded_rect, paint_text, resolve};
+use ph2d_editor_core::paint::{fill_rounded_rect, paint_text, resolve, stroke_rounded_rect};
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::widget::{Button, ButtonState, paint_button};
 use ph2d_editor_core::zones::Rect;
 use ph2d_timeline::{PropKind, TimelineViewSnapshot};
-use ph2d_tokens::{ColorToken, ROW_H_PX, Radius, Spacing, Theme, TypeToken};
+use ph2d_tokens::{ColorToken, ROW_H_PX, Radius, Spacing, StrokeToken, Theme, TypeToken};
 use ph2d_vector::{Affine, BezPath, Brush, Fill};
 
 use crate::ids;
 
 /// Width of the left label column (property + object tag).
 pub(crate) const LABEL_COL_W: f32 = 132.0; // LITERAL-PX-OK: track-label column width
-const ADD_LABEL_W: f32 = 30.0; // LITERAL-PX-OK: "+Trk" caption column
-const PROP_BTN_W: f32 = 22.0; // LITERAL-PX-OK: square per-property "+Track" button
 const DIAMOND_H: f32 = 4.5; // LITERAL-PX-OK: keyframe diamond half-size
 
-/// Paint the "+Track:" caption + the six per-property buttons in `header`
-/// (the label-column slice aligned with the ruler strip).
+/// Paint the "+ Track" dropdown button filling `header` (the label-column slice
+/// aligned with the ruler strip). The property list opens as an overlay popover
+/// (see [`paint_add_track_popover`], painted last).
 pub(crate) fn paint_add_track(ctx: &mut PaintCtx, theme: Theme, header: Rect) {
-    let font = TypeToken::Sm.px();
-    paint_text(
-        ctx.text_system,
+    let state = ctx
+        .host
+        .store()
+        .button_state(ids::TIMELINE_ADD_TRACK)
+        .unwrap_or(ButtonState::Normal);
+    let btn = Button::new(ids::TIMELINE_ADD_TRACK, "+ Track  \u{25be}").state(state);
+    paint_button(&btn, header, ctx.scene, ctx.text_system, theme);
+    ctx.host
+        .hit_index_mut()
+        .register(ids::TIMELINE_ADD_TRACK, header);
+}
+
+/// Paint the property dropdown as an overlay below `anchor` (the +Track button)
+/// when open, and register each option's hit. Call LAST so it sits on top.
+pub(crate) fn paint_add_track_popover(ctx: &mut PaintCtx, theme: Theme, anchor: Rect, open: bool) {
+    if !open {
+        return;
+    }
+    let n = ids::ADDPROP_BUTTONS.len() as f32;
+    let list = Rect::new(anchor.x, anchor.y + anchor.h, anchor.w, ROW_H_PX * n);
+    fill_rounded_rect(
         ctx.scene,
-        "+Trk",
-        header.x,
-        header.y + (header.h - font) * 0.5,
-        font,
-        ADD_LABEL_W,
-        resolve(ColorToken::Text2, theme),
+        list,
+        Radius::Sm.px(),
+        resolve(ColorToken::BgElev, theme),
     );
-    let mut x = header.x + ADD_LABEL_W + Spacing::Xxs.px();
+    stroke_rounded_rect(
+        ctx.scene,
+        list,
+        Radius::Sm.px(),
+        StrokeToken::Thin.px(),
+        resolve(ColorToken::Border, theme),
+    );
+    let mut y = list.y;
     for (id, label) in ids::ADDPROP_BUTTONS {
-        let rect = Rect::new(x, header.y, PROP_BTN_W, header.h);
+        let r = Rect::new(list.x, y, list.w, ROW_H_PX);
         let state = ctx
             .host
             .store()
             .button_state(id)
             .unwrap_or(ButtonState::Normal);
         let btn = Button::new(id, label).state(state);
-        paint_button(&btn, rect, ctx.scene, ctx.text_system, theme);
-        ctx.host.hit_index_mut().register(id, rect);
-        x += PROP_BTN_W + Spacing::Xxs.px();
+        paint_button(&btn, r, ctx.scene, ctx.text_system, theme);
+        ctx.host.hit_index_mut().register(id, r);
+        y += ROW_H_PX;
     }
 }
 

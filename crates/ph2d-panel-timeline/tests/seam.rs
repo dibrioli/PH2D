@@ -45,14 +45,35 @@ fn play_button_click_raises_transport_event() {
 }
 
 #[test]
-fn add_track_button_raises_click_for_the_shell_to_bind() {
+fn add_track_button_toggles_the_dropdown_locally() {
     let mut host = MockPanelHost::with_panel::<TimelinePanel>();
     let mut state = TimelinePanelState::default();
+    assert!(!state.add_track_open);
+    host.apply_panel_event::<TimelinePanel>(
+        &mut state,
+        WidgetEvent::Click(ids::TIMELINE_ADD_TRACK),
+    );
+    assert!(state.add_track_open, "+Track opens the dropdown");
+    // Toggling is panel-local — no shell event.
+    assert!(timeline_events(&mut host).is_empty());
+}
+
+#[test]
+fn add_track_prop_raises_click_and_closes_the_dropdown() {
+    let mut host = MockPanelHost::with_panel::<TimelinePanel>();
+    let mut state = TimelinePanelState {
+        add_track_open: true,
+        ..TimelinePanelState::default()
+    };
     let outcome = host.apply_panel_event::<TimelinePanel>(
         &mut state,
         WidgetEvent::Click(ids::TIMELINE_ADDPROP_TX),
     );
     assert_eq!(outcome, EventOutcome::Consumed);
+    assert!(
+        !state.add_track_open,
+        "picking a property closes the dropdown"
+    );
     assert_eq!(
         timeline_events(&mut host),
         vec![PanelEvent::Click(ids::TIMELINE_ADDPROP_TX)],

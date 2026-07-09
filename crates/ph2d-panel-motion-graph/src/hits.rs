@@ -33,19 +33,25 @@ const WIRE_HIT_R: f32 = 8.0; // LITERAL-PX-OK: wire hit half-thickness
 // `pre` edge draws as badges at its sockets, never as a spline).
 pub(crate) const PRE_BADGE_R: f32 = 6.0; // LITERAL-PX-OK: portal badge outer radius
 pub(crate) const PRE_BADGE_OFF: f32 = 15.0; // LITERAL-PX-OK: badge centre offset out from its socket
+const PRE_BADGE_DROP: f32 = 11.0; // LITERAL-PX-OK: source badge drop below the socket line
 const PRE_BADGE_HIT_PAD: f32 = 3.0; // LITERAL-PX-OK: extra hit slop around a badge
 
 /// The badge centre(s) standing in for a `pre` edge's spline: one just outside
 /// the source's output socket, one just outside the target's input socket. A
 /// self-loop (the sequential-node template) collapses to the input-side badge
 /// alone — one glyph on the card, not a hairpin.
+///
+/// The source badge drops BELOW the socket line: the same output usually also
+/// feeds a forward wire (integrate → tint), and a badge sitting on that
+/// spline would read as a bead on the wrong edge. The target badge stays on
+/// the line — a plumbed head has no other incoming wire by construction.
 pub(crate) fn pre_badge_centers(
     p0: (f32, f32),
     p3: (f32, f32),
     zoom: f32,
     self_loop: bool,
 ) -> [Option<(f32, f32)>; 2] {
-    let src = (p0.0 + PRE_BADGE_OFF * zoom, p0.1);
+    let src = (p0.0 + PRE_BADGE_OFF * zoom, p0.1 + PRE_BADGE_DROP * zoom);
     let dst = (p3.0 - PRE_BADGE_OFF * zoom, p3.1);
     [(!self_loop).then_some(src), Some(dst)]
 }

@@ -248,6 +248,40 @@ abaixo é histórico — não re-investigue.
   - **Custo**: o envelope true-peak é ~3 fases × 12 taps × canais por frame. Clipe de
     minutos numa audição ao vivo pesa; medir antes de otimizar (o render é
     change-gated e a seleção escopa o alvo).
+- **W3 Bloco 5 — Gate/Expander + De-Esser (2026-07-09)**. Rack: 12 → **14 efeitos**.
+  Ordem final: `Low-Pass · High-Pass · Peak EQ · Low Shelf · High Shelf · Compress ·
+  Gate · De-Esser · Limiter · Saturate · Bitcrush · Widen · Reverb · Echo` (pinada
+  inteira pelo teste `the_kind_table_is_the_rack_layout`).
+  - **`Effect::Gate`** = expansor descendente: acima do threshold passa; abaixo o ganho
+    é `(level/threshold)^(ratio−1)`. **Um knob** vai de expansor suave (2:1) a gate duro
+    (16:1) — sem modo. Neutro em `ratio == 1` (`^0` = 1 em todo nível). Floor −80 dB (um
+    zero absoluto lê como dropout). ⚠️ **Attack ABRE e Release FECHA** — o oposto do
+    compressor. Trocar os dois faz o gate *tremular* em cada passagem quieta; há teste
+    (`the_gate_release_governs_how_slowly_it_closes`).
+  - **`Effect::DeEss`** = **high-shelf dinâmico**, NÃO split-band. O desenho óbvio
+    (`high = highpass(x)`, `low = x − high`, `out = low + g·high`) **está errado**:
+    `x − highpass(x)` não é um lowpass. Um HP de 2ª ordem em 5 kHz passa 9 kHz com
+    |H|≈0.96 *e fase*, então o complemento carrega uma cópia girada da banda alta —
+    baixar `g` não remove a banda, faz um **comb**. Medido: energia da banda alta
+    890 → **435** (ratio 2) → 439 (ratio 6) → **444** (ratio 12). *Apertar o de-esser
+    deixava o "S" mais alto.* O shelf ataca a magnitude direto: cortar mais é sempre
+    cortar mais. Teste `a_heavier_ratio_always_ducks_harder` prende a monotonicidade.
+    - Coeficientes só recalculam quando o ganho move > 0.05 dB (`sin_cos`+`powf` custa
+      ~30 amostras filtradas); `Biquad::set_coeffs` preserva o estado → sem clique.
+    - Sidechain = HP da banda, stereo-linked, attack fixo em 1 ms (sibilância é
+      transiente); só `Release` é exposto. `warmup_frames` cobre o biquad do detector.
+  - **`arms: &'static [usize]` em `FxKind`** — os índices dos knobs que o `is_bypass`
+    observa. Ninguém lê em runtime; existe pra **dois testes segurarem o `is_bypass`
+    por fora**: `turning_an_arming_knob_wakes_the_effect_up` (mexer o arm acorda) e
+    `the_other_knobs_do_nothing_while_the_effect_is_neutral` (mexer o resto NÃO acorda).
+    Bitcrush tem **dois** arms (Bits ou Downsample). Mutation-testado: declarar 1 arm
+    pro Bitcrush derruba a 2ª gate.
+  - ⚠️ O `probe()` dos testes de `fx_params` usava `sin(hz * t)` — sem `2π`, então
+    "220 Hz" eram 35 Hz de radianos no buffer inteiro e o sinal nunca saía de perto do
+    seu offset DC. Um gate não tinha o que fechar. Corrigido pra `sin(TAU·hz·t)`.
+  - **`fx_params.rs` estourou o cap de 600 do shell (HR-18)** → tabela extraída pra
+    `audio/fx_params_table.rs` (447 + 262). O cap do shell é **600**, não os 700 do
+    workspace — foi `shells/desktop/tests/file_loc_caps.rs` que pegou.
 - **Atalhos:** `Ctrl+Z` undo · `Ctrl+Shift+Z` / `Ctrl+Y` redo (roteados ao
   `EditClip` quando o painel WAVE está aberto com clipe carregado).
 - **Fix:** `cpal::Stream` é dropado no `on_close_request`, não no drop-cascade do

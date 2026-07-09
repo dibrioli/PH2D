@@ -19,6 +19,9 @@ use ph2d_audio::{
 mod editor;
 #[cfg(feature = "panel-audio-editor")]
 pub(crate) mod fx_params;
+// The rack's effect table, split out of `fx_params` under the HR-18 shell cap.
+#[cfg(feature = "panel-audio-editor")]
+mod fx_params_table;
 #[cfg(feature = "panel-audio-editor")]
 use editor::AudioEditorRuntime;
 mod signals;

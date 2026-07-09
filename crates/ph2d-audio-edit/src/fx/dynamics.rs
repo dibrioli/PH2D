@@ -1,5 +1,5 @@
-//! Dynamics processors for the rack: the feed-forward compressor and the
-//! look-ahead **true-peak limiter**.
+//! Dynamics processors for the rack: the feed-forward compressor, the downward
+//! **expander / gate**, and the look-ahead **true-peak limiter**.
 //!
 //! Control thread only — allocates and uses `exp`/`powf` freely.
 
@@ -10,11 +10,17 @@ use crate::ops::channels;
 use crate::truepeak::true_peak_envelope;
 
 /// One-shot / per-sample coefficient for a `secs` time-constant at `sr` Hz.
-fn time_coeff(secs: f32, sr: f32) -> f32 {
+pub(super) fn time_coeff(secs: f32, sr: f32) -> f32 {
     if secs <= 0.0 {
         return 1.0;
     }
     1.0 - (-1.0 / (secs * sr)).exp()
+}
+
+/// The interleaved peak of frame `f` across every channel. Dynamics are
+/// **stereo-linked** — a per-channel gain swings the image on every transient.
+pub(super) fn frame_peak(src: &[f32], ch: usize, f: usize) -> f32 {
+    (0..ch).fold(0.0f32, |m, c| m.max(src[f * ch + c].abs()))
 }
 
 /// Ceiling on the automatic make-up, so a region that is almost entirely above the
@@ -81,6 +87,66 @@ pub(super) fn compress(
         let makeup = (peak_in / peak_out).clamp(1.0, COMPRESS_MAX_MAKEUP);
         for s in &mut out {
             *s = (*s * makeup).clamp(-1.0, 1.0);
+        }
+    }
+    SampleData::from_interleaved(out, data.format())
+}
+
+/// The quietest a gated passage can get: −80 dB. A true zero would make a gated
+/// room tone snap to digital silence, which reads as a dropout, not as quiet.
+const GATE_FLOOR: f32 = 1e-4;
+
+/// A downward **expander**, which at a high ratio becomes a noise **gate**.
+///
+/// Above `threshold` the signal passes untouched. Below it, the gain follows
+/// `(level / threshold)^(ratio − 1)`: at `ratio` 1 that is `1.0` for every level (a
+/// no-op, hence the neutral point), at 2 every dB below the threshold becomes two,
+/// and by 20 the floor has effectively been cut away. One knob spans "gentle
+/// expander" to "hard gate" without a mode switch.
+///
+/// `attack_secs` is how fast the gate **opens** (gain rising) and `release_secs` how
+/// slowly it **closes** — the opposite assignment to a compressor, where attack is
+/// the clamp-down. A gate that closes as fast as it opens chatters on every
+/// zero-crossing of a quiet passage.
+///
+/// Stereo-linked, and primed on the first frame so a region that starts loud does
+/// not fade in from the gate's initial state (the same startup transient the
+/// compressor's `prime()` exists to kill).
+pub(super) fn gate(
+    data: &SampleData,
+    threshold: f32,
+    ratio: f32,
+    attack_secs: f32,
+    release_secs: f32,
+) -> SampleData {
+    let frames = data.frame_count();
+    if frames == 0 {
+        return data.clone();
+    }
+    let sr = data.format().sample_rate as f32;
+    let ch = channels(data);
+    let open = time_coeff(attack_secs, sr);
+    let close = time_coeff(release_secs, sr);
+    let threshold = threshold.max(1e-6);
+    let exponent = ratio - 1.0;
+
+    let src = data.samples();
+    let target_for = |level: f32| {
+        if level >= threshold {
+            1.0
+        } else {
+            (level / threshold).powf(exponent).max(GATE_FLOOR)
+        }
+    };
+
+    let mut gain = target_for(frame_peak(src, ch, 0));
+    let mut out = src.to_vec();
+    for f in 0..frames {
+        let target = target_for(frame_peak(src, ch, f));
+        let coeff = if target > gain { open } else { close };
+        gain += (target - gain) * coeff;
+        for c in 0..ch {
+            out[f * ch + c] *= gain;
         }
     }
     SampleData::from_interleaved(out, data.format())
@@ -256,6 +322,118 @@ mod tests {
             rms(&at(2.0, fast))
         );
         assert!(rms(&at(2.0, fast)) > rms(&d), "2:1 already lifts the RMS");
+    }
+
+    /// A loud half then a quiet half, sign-alternating so `|level|` is constant
+    /// within each — the gate's job in one signal.
+    fn loud_then_quiet(loud: f32, quiet: f32) -> SampleData {
+        let n = 9_600;
+        mono(
+            (0..n)
+                .map(|i| {
+                    let amp = if i < n / 2 { loud } else { quiet };
+                    if i % 2 == 0 { amp } else { -amp }
+                })
+                .collect(),
+        )
+    }
+
+    /// The gate must pass what is above the threshold and pull down what is below —
+    /// and the ratio must be the knob that says how hard.
+    #[test]
+    fn the_gate_passes_above_the_threshold_and_expands_below_it() {
+        let d = loud_then_quiet(0.5, 0.02);
+        let rms = |x: &SampleData, range: std::ops::Range<usize>| {
+            let s = &x.samples()[range];
+            (s.iter().map(|v| v * v).sum::<f32>() / s.len() as f32).sqrt()
+        };
+        // Sample the steady state of each half, clear of the attack/release ramps.
+        // The quiet window starts 5 release time-constants (5 × 10 ms = 2 400 frames)
+        // after the transition at 4 800 — a 50 ms release would still be closing all
+        // the way to the end of the clip.
+        let loud = 1_000..4_000;
+        let quiet = 7_500..9_500;
+        let release = 0.01;
+
+        let out = gate(&d, 0.1, 8.0, 0.002, release);
+        assert!(
+            (rms(&out, loud.clone()) - rms(&d, loud.clone())).abs() < 0.01,
+            "the loud half must pass: {} vs {}",
+            rms(&out, loud.clone()),
+            rms(&d, loud.clone())
+        );
+        assert!(
+            rms(&out, quiet.clone()) < rms(&d, quiet.clone()) * 0.2,
+            "the quiet half was not gated: {} vs {}",
+            rms(&out, quiet.clone()),
+            rms(&d, quiet.clone())
+        );
+
+        // A heavier ratio expands harder — that is what the knob means.
+        let gentle = gate(&d, 0.1, 2.0, 0.002, release);
+        let hard = gate(&d, 0.1, 16.0, 0.002, release);
+        assert!(
+            rms(&hard, quiet.clone()) < rms(&gentle, quiet.clone()),
+            "ratio 16 must gate harder than ratio 2"
+        );
+        assert!(
+            rms(&gentle, quiet.clone()) < rms(&d, quiet),
+            "even 2:1 expands the floor down"
+        );
+    }
+
+    /// A gate that could raise the gain above 1 would be an upward expander wearing
+    /// a gate's name — and would push a loud passage into clipping.
+    #[test]
+    fn the_gate_never_amplifies() {
+        let d = loud_then_quiet(0.9, 0.01);
+        let out = gate(&d, 0.1, 8.0, 0.001, 0.02);
+        for (a, b) in d.samples().iter().zip(out.samples()) {
+            assert!(b.abs() <= a.abs() + 1e-6, "{b} > {a}");
+        }
+    }
+
+    /// The gate opens on `attack` and closes on `release` — the OPPOSITE assignment
+    /// to a compressor. Swap them and a gate chatters on every quiet passage instead
+    /// of holding it closed. Proof: a slower release leaves more signal right after
+    /// the loud half ends (the gate is still closing).
+    #[test]
+    fn the_gate_release_governs_how_slowly_it_closes() {
+        let d = loud_then_quiet(0.5, 0.02);
+        let just_after = 4_800..5_400; // the first 12 ms of the quiet half
+        let energy = |x: &SampleData| {
+            x.samples()[just_after.clone()]
+                .iter()
+                .map(|v| v * v)
+                .sum::<f32>()
+        };
+        let quick = gate(&d, 0.1, 8.0, 0.002, 0.002);
+        let slow = gate(&d, 0.1, 8.0, 0.002, 0.2);
+        assert!(
+            energy(&slow) > energy(&quick) * 2.0,
+            "a slow release must still be closing: {} vs {}",
+            energy(&slow),
+            energy(&quick)
+        );
+    }
+
+    /// Stereo gain must be linked, or a gate opens on the left and leaves the right
+    /// behind — the image jumps every time someone breathes.
+    #[test]
+    fn the_gate_links_the_stereo_gain() {
+        // Left is loud, right is under the threshold. Linking means the right rides
+        // the left's open gate: neither channel is gated.
+        let samples: Vec<f32> = (0..4_000).flat_map(|_| [0.5f32, 0.02f32]).collect();
+        let d = stereo(samples);
+        let out = gate(&d, 0.1, 16.0, 0.001, 0.05);
+        let mid = 2_000 * 2;
+        let gain_l = out.samples()[mid] / 0.5;
+        let gain_r = out.samples()[mid + 1] / 0.02;
+        assert!(
+            (gain_l - gain_r).abs() < 1e-4,
+            "channels got different gains: {gain_l} vs {gain_r}"
+        );
+        assert!(gain_l > 0.99, "the loud channel held the gate open");
     }
 
     #[test]

@@ -18,6 +18,7 @@
 //! Implementations live in the sibling modules ([`tone`], [`dynamics`], [`space`]);
 //! this file is the two enums and the neutral points they promise.
 
+mod deess;
 mod dynamics;
 mod space;
 mod tone;
@@ -25,7 +26,8 @@ mod tone;
 use ph2d_audio::SampleData;
 use ph2d_audio::dsp::{BiquadCoeffs, Delay, Reverb};
 
-use dynamics::{compress, limit};
+use deess::deess;
+use dynamics::{compress, gate, limit};
 use space::render_wet;
 use tone::{biquad_all, bitcrush, saturate, stereo_width};
 
@@ -82,6 +84,31 @@ pub enum Effect {
         /// Release time (seconds).
         release_secs: f32,
     },
+    /// Downward expander — a noise **gate** at a high ratio. Passes what is above
+    /// `threshold` and pulls down what is below it by `(level/threshold)^(ratio−1)`.
+    /// `attack_secs` opens the gate, `release_secs` closes it. Neutral at `ratio` 1.
+    Gate {
+        /// Level (linear 0..1) below which expansion starts.
+        threshold: f32,
+        /// Expansion ratio (≥1). 1 is a no-op; ~16 is a hard gate.
+        ratio: f32,
+        /// How fast the gate opens (seconds).
+        attack_secs: f32,
+        /// How slowly it closes (seconds).
+        release_secs: f32,
+    },
+    /// Split-band **de-esser**: compresses only the band above `freq`, so an "S" is
+    /// tamed without ducking the vowel under it. Neutral at `ratio` 1.
+    DeEss {
+        /// Crossover into the sibilance band (Hz).
+        freq: f32,
+        /// Level (linear) the high band must exceed before ducking starts.
+        threshold: f32,
+        /// Compression ratio applied to the high band (≥1).
+        ratio: f32,
+        /// Recovery time (seconds). Attack is fixed fast — sibilance is a transient.
+        release_secs: f32,
+    },
     /// Look-ahead **true-peak** limiter: holds the *reconstructed* waveform under
     /// `ceiling_db`, not just the samples. Neutral at 0 dBFS.
     Limiter {
@@ -129,6 +156,19 @@ impl Effect {
                 attack_secs,
                 release_secs,
             } if ratio > 1.0 => compress(data, threshold, ratio, attack_secs, release_secs),
+            // Ratio 1:1 expands nothing: `(level/threshold)^0` is unity everywhere.
+            Effect::Gate {
+                threshold,
+                ratio,
+                attack_secs,
+                release_secs,
+            } if ratio > 1.0 => gate(data, threshold, ratio, attack_secs, release_secs),
+            Effect::DeEss {
+                freq,
+                threshold,
+                ratio,
+                release_secs,
+            } if ratio > 1.0 => deess(data, freq, threshold, ratio, release_secs),
             Effect::Limiter {
                 ceiling_db,
                 release_secs,
@@ -171,9 +211,17 @@ impl Effect {
             | Effect::HighShelf { freq, q, .. } => {
                 biquad_warmup(freq, q, sample_rate, TAUS).min(cap)
             }
+            // The de-esser's band split is a biquad too. Without a pre-roll its
+            // sidechain opens on a filter transient and ducks audio that never had
+            // an "S" in it.
+            Effect::DeEss { freq, .. } => {
+                biquad_warmup(freq, deess::SPLIT_Q, sample_rate, TAUS).min(cap)
+            }
             Effect::Limiter { release_secs, .. } => {
                 ((release_secs.max(0.0) * sample_rate as f32) as usize).min(cap)
             }
+            // The compressor and the gate prime their own envelope on the region's
+            // first frame, so they enter it settled without any pre-roll.
             _ => 0,
         }
     }
@@ -191,7 +239,12 @@ impl Effect {
                     | Effect::LowShelf { gain_db, .. }
                     | Effect::HighShelf { gain_db, .. }
                     if gain_db.abs() <= EQ_BYPASS_GAIN_DB)
-            || matches!(*self, Effect::Compress { ratio, .. } if ratio <= 1.0)
+            || matches!(
+                *self,
+                Effect::Compress { ratio, .. }
+                    | Effect::Gate { ratio, .. }
+                    | Effect::DeEss { ratio, .. }
+                    if ratio <= 1.0)
             || matches!(*self, Effect::Limiter { ceiling_db, .. }
                 if ceiling_db >= LIMITER_BYPASS_CEILING_DB)
             || matches!(*self, Effect::Saturate { drive } if drive < SATURATE_BYPASS_DRIVE)
@@ -309,7 +362,7 @@ mod tests {
     /// Every non-neutral `Effect`, for the surface-level invariants below. Keep in
     /// sync with the enum — a variant missing here is a variant nobody proved
     /// length-preserving.
-    fn tuned_effects() -> [Effect; 10] {
+    fn tuned_effects() -> [Effect; 12] {
         [
             Effect::LowPass {
                 cutoff: 3_000.0,
@@ -340,6 +393,18 @@ mod tests {
                 attack_secs: 0.005,
                 release_secs: 0.1,
             },
+            Effect::Gate {
+                threshold: 0.05,
+                ratio: 8.0,
+                attack_secs: 0.002,
+                release_secs: 0.1,
+            },
+            Effect::DeEss {
+                freq: 6_000.0,
+                threshold: 0.05,
+                ratio: 6.0,
+                release_secs: 0.05,
+            },
             Effect::Limiter {
                 ceiling_db: -1.0,
                 release_secs: 0.02,
@@ -354,7 +419,7 @@ mod tests {
     }
 
     /// Every neutral `Effect`. Keep in sync with `is_bypass`.
-    fn neutral_effects() -> [Effect; 10] {
+    fn neutral_effects() -> [Effect; 12] {
         [
             Effect::LowPass {
                 cutoff: 20_000.0,
@@ -384,6 +449,18 @@ mod tests {
                 ratio: 1.0,
                 attack_secs: 0.005,
                 release_secs: 0.1,
+            },
+            Effect::Gate {
+                threshold: 0.05,
+                ratio: 1.0,
+                attack_secs: 0.002,
+                release_secs: 0.1,
+            },
+            Effect::DeEss {
+                freq: 6_000.0,
+                threshold: 0.05,
+                ratio: 1.0,
+                release_secs: 0.05,
             },
             Effect::Limiter {
                 ceiling_db: 0.0,

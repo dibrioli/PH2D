@@ -873,6 +873,8 @@ impl crate::App {
             // Multi-point Influence slider (track·4).
             let mut pending_vec_grad_influence: Option<f64> = None;
             let mut pending_vec_grad_jitter: Option<f64> = None;
+            let mut pending_vec_grad_add_stop = false;
+            let mut pending_vec_grad_remove_stop = false;
             // Numeric Transform field edit (X/Y/W/H) — a SetValue document command.
             let mut pending_vec_transform: Option<(crate::input_dispatch::VecTransformField, f64)> =
                 None;
@@ -962,6 +964,10 @@ impl crate::App {
                                 pending_vec_grad_add = true;
                             } else if *id == ph2d_editor::ids::VECTOR_GRAD_REMOVE_POINT {
                                 pending_vec_grad_remove = true;
+                            } else if *id == ph2d_editor::ids::VECTOR_GRAD_ADD_STOP {
+                                pending_vec_grad_add_stop = true;
+                            } else if *id == ph2d_editor::ids::VECTOR_GRAD_REMOVE_STOP {
+                                pending_vec_grad_remove_stop = true;
                             }
                         }
                         // Transform fields (X/Y/W/H) are numeric SetValue document
@@ -1741,6 +1747,30 @@ impl crate::App {
                         .and_then(ph2d_vec_render::GradHandle::point),
                     v,
                 );
+            }
+            if pending_vec_grad_add_stop {
+                self.vec_grad_selected = crate::input_dispatch::apply_vec_grad_add_stop(
+                    vec_scene,
+                    &mut self.vec_history,
+                    &self.vec_pen,
+                )
+                .map(ph2d_vec_render::GradHandle::Stop)
+                .or(self.vec_grad_selected);
+            }
+            if pending_vec_grad_remove_stop
+                && let Some(si) = self
+                    .vec_grad_selected
+                    .and_then(ph2d_vec_render::GradHandle::stop)
+            {
+                // Only an interior stop can be removed; a no-op otherwise keeps the
+                // current selection (endpoint handles aren't removable stops).
+                self.vec_grad_selected = crate::input_dispatch::apply_vec_grad_remove_stop(
+                    vec_scene,
+                    &mut self.vec_history,
+                    &self.vec_pen,
+                    Some(si),
+                )
+                .map(ph2d_vec_render::GradHandle::Stop);
             }
             let vec_cfg = vector_bridge::dispatch(
                 hero,

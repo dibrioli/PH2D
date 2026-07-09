@@ -636,6 +636,95 @@ pub(crate) fn apply_vec_grad_jitter(
     }
 }
 
+/// Component-wise linear blend of two colours at `t ∈ [0,1]`.
+fn lerp_color(a: ph2d_vec_scene::Rgba8, b: ph2d_vec_scene::Rgba8, t: f64) -> ph2d_vec_scene::Rgba8 {
+    let m = |x: u8, y: u8| (f64::from(x) + (f64::from(y) - f64::from(x)) * t).round() as u8;
+    ph2d_vec_scene::Rgba8::new(m(a.r, b.r), m(a.g, b.g), m(a.b, b.b), m(a.a, b.a))
+}
+
+/// The Linear/Radial gradient stops of the selected path (`None` for other fills).
+fn selected_ramp_stops<'a>(
+    scene: &'a ph2d_vec_scene::VecScene,
+    pen: &ph2d_vec_edit::PenTool,
+) -> Option<&'a [ph2d_vec_scene::GradientStop]> {
+    use ph2d_vec_scene::Paint;
+    let sel = pen.selected()?;
+    match &scene.paths().iter().find(|p| p.id == sel)?.fill {
+        Some(Paint::Linear { stops, .. }) | Some(Paint::Radial { stops, .. }) => Some(stops),
+        _ => None,
+    }
+}
+
+/// Add an interior ramp stop to the SELECTED Linear/Radial gradient, at the midpoint
+/// of the widest gap (colour = the blend there). Returns the new stop's index (to
+/// select), or `None` if the fill isn't a ramp. One undo step.
+pub(crate) fn apply_vec_grad_add_stop(
+    scene: &mut ph2d_vec_scene::VecScene,
+    history: &mut ph2d_vec_edit::History,
+    pen: &ph2d_vec_edit::PenTool,
+) -> Option<usize> {
+    use ph2d_vec_scene::{GradientStop, Paint};
+    let sel = pen.selected()?;
+    // Interior stops may cross, so the Vec isn't sorted — find the widest gap on a
+    // sorted (offset, colour) view; the new stop's colour is the blend across it.
+    let stops = selected_ramp_stops(scene, pen)?;
+    if stops.len() < 2 {
+        return None;
+    }
+    let mut sorted: Vec<(f64, ph2d_vec_scene::Rgba8)> =
+        stops.iter().map(|s| (s.offset, s.color)).collect();
+    sorted.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap_or(std::cmp::Ordering::Equal));
+    let mut best = (0usize, f64::NEG_INFINITY);
+    for k in 0..sorted.len() - 1 {
+        let gap = sorted[k + 1].0 - sorted[k].0;
+        if gap > best.1 {
+            best = (k, gap);
+        }
+    }
+    let k = best.0;
+    let off = (sorted[k].0 + sorted[k + 1].0) * 0.5;
+    let col = lerp_color(sorted[k].1, sorted[k + 1].1, 0.5);
+    let pre = scene.clone();
+    if let Some(Paint::Linear { stops, .. }) | Some(Paint::Radial { stops, .. }) =
+        scene.path_mut(sel).and_then(|p| p.fill.as_mut())
+    {
+        // Insert as an INTERIOR stop (just before the last end stop) so the two ends
+        // stay at index 0 / last; return its index to select it.
+        let idx = stops.len() - 1;
+        stops.insert(idx, GradientStop::new(off, col));
+        history.push_undo(pre);
+        return Some(idx);
+    }
+    None
+}
+
+/// Remove the SELECTED interior ramp stop (`selected` index) from the Linear/Radial
+/// gradient, keeping the two end stops (≥2 total). Returns the new selection
+/// (`None`). One undo step iff it removed.
+pub(crate) fn apply_vec_grad_remove_stop(
+    scene: &mut ph2d_vec_scene::VecScene,
+    history: &mut ph2d_vec_edit::History,
+    pen: &ph2d_vec_edit::PenTool,
+    selected: Option<usize>,
+) -> Option<usize> {
+    use ph2d_vec_scene::Paint;
+    let Some(sel) = pen.selected() else {
+        return selected;
+    };
+    let pre = scene.clone();
+    if let Some(Paint::Linear { stops, .. }) | Some(Paint::Radial { stops, .. }) =
+        scene.path_mut(sel).and_then(|p| p.fill.as_mut())
+        && let Some(i) = selected
+        && i > 0
+        && i + 1 < stops.len()
+    {
+        stops.remove(i);
+        history.push_undo(pre);
+        return None;
+    }
+    selected
+}
+
 /// Rotate the SELECTED path by `degrees` (panel Transform Angle field — a
 /// relative scrub) about its bbox center, recording ONE undo step iff it turned.
 /// A zero delta is a no-op (no undo). Free fn (mirror of [`apply_vec_rotate`]).

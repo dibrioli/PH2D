@@ -97,6 +97,19 @@ impl BodyCtx<'_> {
                 );
             }
         }
+        // Linear/Radial: Add / Remove ramp stop (drag interior stops on-canvas).
+        if kind == FillKind::Linear || kind == FillKind::Radial {
+            let two_col = ((self.inner_w - gap) / 2.0).max(1.0);
+            y = self.row2(
+                two_col,
+                gap,
+                [
+                    (ids::VECTOR_GRAD_ADD_STOP, "Add Stop"),
+                    (ids::VECTOR_GRAD_REMOVE_STOP, "Remove Stop"),
+                ],
+                y,
+            );
+        }
         // Angle slider (Linear only) — track 0..1 → 0..360°.
         if kind == FillKind::Linear {
             let angle = state::current_grad_angle().unwrap_or(0.0);

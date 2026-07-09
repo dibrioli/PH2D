@@ -43,6 +43,8 @@ fn selected_grad_color(fill: &Paint, handle: GradHandle) -> Option<Rgba8> {
         | (Paint::Radial { stops, .. }, GradHandle::RadialCenter) => stops.first().map(|s| s.color),
         (Paint::Linear { stops, .. }, GradHandle::LinearEnd)
         | (Paint::Radial { stops, .. }, GradHandle::RadialEdge) => stops.last().map(|s| s.color),
+        (Paint::Linear { stops, .. }, GradHandle::Stop(i))
+        | (Paint::Radial { stops, .. }, GradHandle::Stop(i)) => stops.get(i).map(|s| s.color),
         _ => None,
     }
 }
@@ -61,6 +63,10 @@ fn set_selected_grad_color(fill: &mut Paint, handle: GradHandle, c: Rgba8) -> bo
         (Paint::Linear { stops, .. }, GradHandle::LinearEnd)
         | (Paint::Radial { stops, .. }, GradHandle::RadialEdge) => {
             stops.last_mut().map(|s| &mut s.color)
+        }
+        (Paint::Linear { stops, .. }, GradHandle::Stop(i))
+        | (Paint::Radial { stops, .. }, GradHandle::Stop(i)) => {
+            stops.get_mut(i).map(|s| &mut s.color)
         }
         _ => None,
     };

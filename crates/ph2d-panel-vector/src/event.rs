@@ -155,7 +155,9 @@ pub(crate) fn apply_event(
                 || id == ids::VECTOR_FILL_KIND_RADIAL
                 || id == ids::VECTOR_FILL_KIND_MULTI
                 || id == ids::VECTOR_GRAD_ADD_POINT
-                || id == ids::VECTOR_GRAD_REMOVE_POINT =>
+                || id == ids::VECTOR_GRAD_REMOVE_POINT
+                || id == ids::VECTOR_GRAD_ADD_STOP
+                || id == ids::VECTOR_GRAD_REMOVE_STOP =>
         {
             seam_reset_button(host, id);
             host.bus_mut()

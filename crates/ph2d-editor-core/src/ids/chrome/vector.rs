@@ -77,6 +77,9 @@ pub const VECTOR_GRAD_INFLUENCE_NUM: NodeId = hash_node_id("vector.grad.influenc
 /// Jitter (per-texel grain, 0..1) of the selected multi-point gradient point.
 pub const VECTOR_GRAD_JITTER: NodeId = hash_node_id("vector.grad.jitter");
 pub const VECTOR_GRAD_JITTER_NUM: NodeId = hash_node_id("vector.grad.jitter_num");
+/// Linear/Radial gradient: add an interior ramp stop / remove the selected one.
+pub const VECTOR_GRAD_ADD_STOP: NodeId = hash_node_id("vector.grad.add_stop");
+pub const VECTOR_GRAD_REMOVE_STOP: NodeId = hash_node_id("vector.grad.remove_stop");
 
 pub const VECTOR_STROKE_OPACITY: NodeId = hash_node_id("vector.stroke_opacity");
 pub const VECTOR_STROKE_OPACITY_NUM: NodeId = hash_node_id("vector.stroke_opacity_num");

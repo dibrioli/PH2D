@@ -10,13 +10,36 @@ use ph2d_editor_core::interaction::WidgetEvent;
 use ph2d_editor_core::panel::EventOutcome;
 use ph2d_panel_audio_editor::state::AudioEditorState;
 use ph2d_panel_audio_editor::{
-    AEDIT_FADE_IN, AEDIT_FX_APPLY, AEDIT_FX_CANCEL, AEDIT_FX_NEXT, AEDIT_FX_P0, AEDIT_FX_PREV,
-    AEDIT_FX_RESET, AEDIT_LOAD, AEDIT_LOOP, AEDIT_NORMALIZE, AEDIT_PLAY, AEDIT_SILENCE, AEDIT_STOP,
-    AEDIT_TRIM, AudioEditCmd, AudioEditorPanel, clear_fx_dirty, clear_fx_touched, fx_dirty,
-    fx_kind, fx_norms, fx_touched, looping, set_fx_defaults, set_fx_kind_count, set_has_selection,
-    take_edit_cmd, take_load, take_play_pause, take_stop,
+    AEDIT_FADE_IN, AEDIT_FX_ADD, AEDIT_FX_APPLY, AEDIT_FX_BYPASS, AEDIT_FX_CANCEL, AEDIT_FX_DOWN,
+    AEDIT_FX_NEXT, AEDIT_FX_P0, AEDIT_FX_PREV, AEDIT_FX_REMOVE, AEDIT_FX_RESET, AEDIT_FX_S0_ON,
+    AEDIT_FX_S1, AEDIT_FX_UP, AEDIT_LOAD, AEDIT_LOOP, AEDIT_NORMALIZE, AEDIT_PLAY, AEDIT_SILENCE,
+    AEDIT_STOP, AEDIT_TRIM, AudioEditCmd, AudioEditorPanel, MAX_FX_STAGES, clear_fx_dirty,
+    fx_bypass, fx_chain, fx_dirty, fx_sel, fx_sel_stage, looping, reset_fx_chain,
+    set_fx_kind_defaults, set_fx_kind_names, set_has_selection, take_edit_cmd, take_load,
+    take_play_pause, take_stop,
 };
 use ph2d_ui_testkit::MockPanelHost;
+
+/// The shell publishes the effect-kind table each frame; without it the rack has no
+/// kinds to cycle and no neutral point to seed a fresh stage with, so it stays inert.
+/// Three kinds with distinct neutral points are enough to drive every seam below.
+fn publish_kind_table() {
+    set_fx_kind_names(&["Low-Pass", "High-Pass", "Reverb"]);
+    set_fx_kind_defaults(&[
+        [1.0, 0.25, 0.0, 0.0],
+        [0.0, 0.25, 0.0, 0.0],
+        [0.7, 0.5, 0.0, 0.5],
+    ]);
+}
+
+/// A rack on a known footing: kind table published, chain back to one neutral stage,
+/// nothing auditioning, no armed command.
+fn fresh_rack() {
+    publish_kind_table();
+    reset_fx_chain();
+    clear_fx_dirty();
+    let _ = take_edit_cmd();
+}
 
 /// Clicking Play must reach the play/pause transport intent through the seam.
 #[test]
@@ -122,17 +145,15 @@ fn range_ops_refuse_to_fire_without_a_selection() {
     assert_eq!(take_edit_cmd(), Some(AudioEditCmd::Silence));
 }
 
-/// The live-audition contract. `fx_dirty` is what makes the shell render the
-/// effect into the sounding preview, so it must fire on **user input only** —
-/// merely opening the panel (which re-seeds the sliders with the preset) cannot
-/// start auditioning an effect nobody asked for.
+/// The live-audition contract. `fx_dirty` is what makes the shell render the chain
+/// into the sounding preview, so it must fire on **user input only** — merely
+/// opening the panel (which materializes a neutral first stage) cannot start
+/// auditioning an effect nobody asked for.
 #[test]
 fn audition_starts_on_user_input_only_and_cancel_arms_its_command() {
     let mut host = MockPanelHost::with_panel::<AudioEditorPanel>();
     let mut state = AudioEditorState;
-    clear_fx_dirty();
-    let _ = take_edit_cmd();
-    set_fx_kind_count(3);
+    fresh_rack();
 
     assert!(
         !fx_dirty(),
@@ -154,91 +175,212 @@ fn audition_starts_on_user_input_only_and_cancel_arms_its_command() {
     );
 }
 
-/// `fx_touched` is what tells the shell to **stack** the active effect onto the
-/// live chain when the user switches effects. It must fire on a slider drag and
-/// NOT on the arrows — otherwise browsing the effect list would silently pile up
-/// presets. The shell (not the panel) consumes the flag once it has stacked it.
+/// Switching a stage's kind must re-seed its parameters with the NEW kind's neutral
+/// point. Carrying the old kind's normals over would audition the new effect with
+/// the previous one's settings — an audible glitch, and a stage that reads as
+/// "untouched" while it is not.
 #[test]
-fn only_a_tuned_effect_is_marked_for_stacking() {
+fn switching_kind_reseeds_the_stage_on_the_new_neutral_point() {
     let mut host = MockPanelHost::with_panel::<AudioEditorPanel>();
     let mut state = AudioEditorState;
-    clear_fx_dirty(); // also clears `touched`
-    set_fx_kind_count(3);
-    assert!(!fx_touched(), "a fresh stage is untouched");
+    fresh_rack();
 
+    // Low-Pass is neutral at the TOP of the cutoff range, High-Pass at the bottom.
+    assert_eq!(fx_sel_stage(), (0, [1.0, 0.25, 0.0, 0.0]));
     host.apply_panel_event::<AudioEditorPanel>(&mut state, WidgetEvent::Click(AEDIT_FX_NEXT));
-    assert!(
-        !fx_touched(),
-        "browsing with the arrows must not mark a stage as tuned"
+    assert_eq!(
+        fx_sel_stage(),
+        (1, [0.0, 0.25, 0.0, 0.0]),
+        "the stage kept the previous kind's parameters"
     );
-
-    host.apply_panel_event::<AudioEditorPanel>(&mut state, WidgetEvent::ValueChanged(AEDIT_FX_P0));
-    assert!(fx_touched(), "dragging a parameter tunes the stage");
-
-    // Switching does NOT clear it here — the shell reads the flag to decide whether
-    // to stack the stage, and clears it afterwards.
-    host.apply_panel_event::<AudioEditorPanel>(&mut state, WidgetEvent::Click(AEDIT_FX_NEXT));
-    assert!(
-        fx_touched(),
-        "the shell consumes the tuned flag, not the panel"
-    );
-    clear_fx_touched();
-    assert!(!fx_touched());
 }
 
-/// The per-effect Reset icon must put the ACTIVE effect back on its neutral
-/// defaults through the seam, and untune it — a reset stage must not be stacked
-/// onto the live chain when the user switches effects.
+/// The per-effect Reset icon must put the SELECTED stage back on its kind's neutral
+/// defaults through the seam, leaving the rest of the chain alone.
 #[test]
-fn reset_returns_the_active_effect_to_its_neutral_defaults() {
+fn reset_returns_the_selected_stage_to_its_neutral_defaults() {
     let mut host = MockPanelHost::with_panel::<AudioEditorPanel>();
     let mut state = AudioEditorState;
-    clear_fx_dirty();
-    set_fx_kind_count(3);
-    // The shell publishes the selected effect's neutral point each frame.
-    let neutral = [0.25, 0.75, 0.0, 0.0];
-    set_fx_defaults(neutral);
+    fresh_rack();
+    let neutral = [1.0, 0.25, 0.0, 0.0]; // Low-Pass
 
-    // Drag a parameter off neutral: the stage is now tuned and reset-able.
     host.apply_panel_event::<AudioEditorPanel>(&mut state, WidgetEvent::ValueChanged(AEDIT_FX_P0));
-    assert!(fx_touched());
-    assert_ne!(fx_norms(), neutral, "the drag moved a parameter");
+    assert_ne!(fx_sel_stage().1, neutral, "the drag moved a parameter");
 
     host.apply_panel_event::<AudioEditorPanel>(&mut state, WidgetEvent::Click(AEDIT_FX_RESET));
     assert_eq!(
-        fx_norms(),
+        fx_sel_stage().1,
         neutral,
         "Reset did not restore the neutral defaults"
     );
-    assert!(
-        !fx_touched(),
-        "a reset stage is neutral again — it must not stack onto the chain"
-    );
 }
 
-/// The rack's selector must actually move the kind index through the seam — a
-/// dead arrow leaves the panel painted, clickable and stuck on one effect.
+/// The rack's selector must actually move the SELECTED stage's kind through the
+/// seam — a dead arrow leaves the panel painted, clickable and stuck on one effect.
 #[test]
 fn fx_selector_cycles_the_kind_and_wraps() {
     let mut host = MockPanelHost::with_panel::<AudioEditorPanel>();
     let mut state = AudioEditorState;
-    // The shell publishes how many kinds exist; without it the selector is inert.
-    set_fx_kind_count(3);
+    fresh_rack();
 
-    let start = fx_kind();
+    assert_eq!(fx_sel_stage().0, 0);
     host.apply_panel_event::<AudioEditorPanel>(&mut state, WidgetEvent::Click(AEDIT_FX_NEXT));
-    assert_eq!(fx_kind(), (start + 1) % 3, "Next did not advance the kind");
+    assert_eq!(fx_sel_stage().0, 1, "Next did not advance the kind");
 
     host.apply_panel_event::<AudioEditorPanel>(&mut state, WidgetEvent::Click(AEDIT_FX_PREV));
-    assert_eq!(fx_kind(), start, "Prev did not step back");
+    assert_eq!(fx_sel_stage().0, 0, "Prev did not step back");
 
     // Prev from 0 wraps to the last kind rather than underflowing (usize would panic).
     host.apply_panel_event::<AudioEditorPanel>(&mut state, WidgetEvent::Click(AEDIT_FX_PREV));
+    assert_eq!(fx_sel_stage().0, 2, "Prev at 0 must wrap, not underflow");
+}
+
+/// Add appends a stage **after** the selected one and selects it, seeded on its
+/// neutral point — so growing the chain never changes the sound by itself. Remove
+/// drops the selected stage and keeps the selection inside the chain.
+#[test]
+fn add_and_remove_grow_and_shrink_the_chain_around_the_selection() {
+    let mut host = MockPanelHost::with_panel::<AudioEditorPanel>();
+    let mut state = AudioEditorState;
+    fresh_rack();
+    assert_eq!(fx_chain().len(), 1, "the rack always has a stage to edit");
+
+    // Tune stage 0, then add: the new stage must be neutral, selected, and last.
+    host.apply_panel_event::<AudioEditorPanel>(&mut state, WidgetEvent::ValueChanged(AEDIT_FX_P0));
+    let tuned = fx_chain()[0].norms;
+    host.apply_panel_event::<AudioEditorPanel>(&mut state, WidgetEvent::Click(AEDIT_FX_ADD));
+    assert_eq!(fx_chain().len(), 2);
+    assert_eq!(fx_sel(), 1, "Add selects the stage it created");
+    assert_eq!(fx_chain()[0].norms, tuned, "Add disturbed the tuned stage");
     assert_eq!(
-        fx_kind(),
-        (start + 2) % 3,
-        "Prev at 0 must wrap, not underflow"
+        fx_chain()[1].norms,
+        [1.0, 0.25, 0.0, 0.0],
+        "a fresh stage must be a neutral no-op"
     );
+
+    host.apply_panel_event::<AudioEditorPanel>(&mut state, WidgetEvent::Click(AEDIT_FX_REMOVE));
+    assert_eq!(fx_chain().len(), 1);
+    assert_eq!(fx_sel(), 0, "the selection followed the removal");
+    assert_eq!(fx_chain()[0].norms, tuned, "Remove dropped the wrong stage");
+
+    // The last stage cannot be removed: the rack would have nothing to edit. The
+    // panel dims Remove there, and the seam refuses it too (a dim is cosmetic).
+    host.apply_panel_event::<AudioEditorPanel>(&mut state, WidgetEvent::Click(AEDIT_FX_REMOVE));
+    assert_eq!(fx_chain().len(), 1, "the chain must never empty");
+    assert_eq!(fx_chain()[0].norms, tuned, "the last stage was cleared");
+}
+
+/// Add stops at `MAX_FX_STAGES` — the chain list is sized for exactly that many
+/// rows, so an unbounded Add would paint stages nobody can reach or click.
+#[test]
+fn add_stops_at_the_chain_capacity() {
+    let mut host = MockPanelHost::with_panel::<AudioEditorPanel>();
+    let mut state = AudioEditorState;
+    fresh_rack();
+
+    for _ in 0..MAX_FX_STAGES + 3 {
+        host.apply_panel_event::<AudioEditorPanel>(&mut state, WidgetEvent::Click(AEDIT_FX_ADD));
+    }
+    assert_eq!(fx_chain().len(), MAX_FX_STAGES);
+    assert!(fx_sel() < MAX_FX_STAGES, "the selection stayed in range");
+}
+
+/// Order matters: a filter before a reverb is not the same as after. Up/Down move
+/// the SELECTED stage and the selection travels with it, so a second click keeps
+/// moving the same effect rather than swapping two others.
+#[test]
+fn reordering_moves_the_selected_stage_and_the_selection_follows() {
+    let mut host = MockPanelHost::with_panel::<AudioEditorPanel>();
+    let mut state = AudioEditorState;
+    fresh_rack();
+
+    // Stage 0 = Low-Pass (tuned), stage 1 = High-Pass (fresh, then switched).
+    host.apply_panel_event::<AudioEditorPanel>(&mut state, WidgetEvent::ValueChanged(AEDIT_FX_P0));
+    host.apply_panel_event::<AudioEditorPanel>(&mut state, WidgetEvent::Click(AEDIT_FX_ADD));
+    host.apply_panel_event::<AudioEditorPanel>(&mut state, WidgetEvent::Click(AEDIT_FX_NEXT));
+    assert_eq!(fx_chain()[1].kind, 1, "stage 1 is High-Pass");
+    assert_eq!(fx_sel(), 1);
+
+    host.apply_panel_event::<AudioEditorPanel>(&mut state, WidgetEvent::Click(AEDIT_FX_UP));
+    assert_eq!(fx_chain()[0].kind, 1, "High-Pass did not move up");
+    assert_eq!(fx_chain()[1].kind, 0, "Low-Pass did not move down");
+    assert_eq!(fx_sel(), 0, "the selection must travel with the stage");
+
+    // Up at the top is a no-op, not a wrap or an underflow.
+    host.apply_panel_event::<AudioEditorPanel>(&mut state, WidgetEvent::Click(AEDIT_FX_UP));
+    assert_eq!(fx_chain()[0].kind, 1);
+    assert_eq!(fx_sel(), 0);
+
+    host.apply_panel_event::<AudioEditorPanel>(&mut state, WidgetEvent::Click(AEDIT_FX_DOWN));
+    assert_eq!(fx_chain()[1].kind, 1, "Down did not move it back");
+    assert_eq!(fx_sel(), 1);
+}
+
+/// Clicking a chain row selects it (the selector + sliders follow); the row's eye
+/// takes the stage out of the render **without dropping it** — the per-stage A/B.
+#[test]
+fn a_row_selects_its_stage_and_the_eye_bypasses_it_in_place() {
+    let mut host = MockPanelHost::with_panel::<AudioEditorPanel>();
+    let mut state = AudioEditorState;
+    fresh_rack();
+    host.apply_panel_event::<AudioEditorPanel>(&mut state, WidgetEvent::Click(AEDIT_FX_ADD));
+    host.apply_panel_event::<AudioEditorPanel>(&mut state, WidgetEvent::Click(AEDIT_FX_NEXT));
+    assert_eq!(fx_sel(), 1);
+
+    host.apply_panel_event::<AudioEditorPanel>(&mut state, WidgetEvent::Click(AEDIT_FX_S1));
+    assert_eq!(fx_sel(), 1, "row 1 selects stage 1");
+    host.apply_panel_event::<AudioEditorPanel>(&mut state, WidgetEvent::Click(AEDIT_FX_S0_ON));
+    assert!(!fx_chain()[0].enabled, "the eye did not bypass the stage");
+    assert_eq!(fx_chain().len(), 2, "the eye must not remove the stage");
+    assert_eq!(fx_sel(), 1, "toggling an eye must not move the selection");
+
+    host.apply_panel_event::<AudioEditorPanel>(&mut state, WidgetEvent::Click(AEDIT_FX_S0_ON));
+    assert!(fx_chain()[0].enabled, "the eye did not restore the stage");
+}
+
+/// The global A/B: Bypass swaps the dry clip back in without touching the chain, so
+/// releasing it must return exactly the chain that was there.
+#[test]
+fn global_bypass_keeps_the_chain_and_does_not_start_an_audition() {
+    let mut host = MockPanelHost::with_panel::<AudioEditorPanel>();
+    let mut state = AudioEditorState;
+    fresh_rack();
+    host.apply_panel_event::<AudioEditorPanel>(&mut state, WidgetEvent::ValueChanged(AEDIT_FX_P0));
+    let chain = fx_chain();
+    clear_fx_dirty();
+
+    host.apply_panel_event::<AudioEditorPanel>(&mut state, WidgetEvent::Click(AEDIT_FX_BYPASS));
+    assert!(fx_bypass(), "Bypass click never engaged the A/B");
+    assert_eq!(fx_chain(), chain, "Bypass must not disturb the chain");
+    assert!(
+        !fx_dirty(),
+        "Bypass is a monitor switch — it renders nothing new"
+    );
+
+    host.apply_panel_event::<AudioEditorPanel>(&mut state, WidgetEvent::Click(AEDIT_FX_BYPASS));
+    assert!(!fx_bypass());
+    assert_eq!(fx_chain(), chain);
+}
+
+/// After Apply/Cancel the shell bakes (or drops) the chain, so `reset_fx_chain` must
+/// leave a single neutral stage behind. Re-rendering a chain that is already baked
+/// into the clip would double every effect on the next audition.
+#[test]
+fn reset_leaves_one_neutral_stage_and_releases_the_bypass() {
+    let mut host = MockPanelHost::with_panel::<AudioEditorPanel>();
+    let mut state = AudioEditorState;
+    fresh_rack();
+    host.apply_panel_event::<AudioEditorPanel>(&mut state, WidgetEvent::Click(AEDIT_FX_ADD));
+    host.apply_panel_event::<AudioEditorPanel>(&mut state, WidgetEvent::ValueChanged(AEDIT_FX_P0));
+    host.apply_panel_event::<AudioEditorPanel>(&mut state, WidgetEvent::Click(AEDIT_FX_BYPASS));
+    assert_eq!(fx_chain().len(), 2);
+
+    reset_fx_chain();
+    assert_eq!(fx_chain().len(), 1);
+    assert_eq!(fx_sel(), 0);
+    assert!(!fx_bypass(), "the A/B must not survive a commit");
+    assert!(!fx_dirty(), "a reset rack is idle");
+    assert_eq!(fx_chain()[0].norms, [1.0, 0.25, 0.0, 0.0], "not neutral");
 }
 
 /// The Loop toggle must flip the persistent looping flag through the seam.

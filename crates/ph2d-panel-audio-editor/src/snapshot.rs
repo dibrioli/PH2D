@@ -11,35 +11,34 @@
 
 use std::cell::{Cell, RefCell};
 
-use crate::{AudioEditCmd, MAX_FX_PARAMS};
+use crate::{AudioEditCmd, FxStage, MAX_FX_PARAMS, MAX_FX_STAGES};
 
 thread_local! {
-    // Effects rack (W3 block 3a) — panel → shell: which effect is selected and
-    // where its sliders sit (normalized 0..1; the shell owns the real ranges).
-    static FX_KIND: Cell<usize> = const { Cell::new(0) };
-    static FX_NORMS: Cell<[f32; MAX_FX_PARAMS]> = const { Cell::new([0.0; MAX_FX_PARAMS]) };
+    /// Effects rack (W3 block 3b) — panel → shell: the effect **chain**, in render
+    /// order. The panel owns it; the shell renders `clip → stage₀ → … → stageₙ`.
+    /// Empty until the shell has published the kind table (see [`ensure_chain`]).
+    static FX_CHAIN: RefCell<Vec<FxStage>> = const { RefCell::new(Vec::new()) };
+    /// Which stage the selector + sliders edit. Clamped to the chain.
+    static FX_SEL: Cell<usize> = const { Cell::new(0) };
+    /// Global A/B: hear/see the dry clip while keeping the chain intact.
+    static FX_BYPASS: Cell<bool> = const { Cell::new(false) };
     // Effects rack — shell → panel: what to paint.
-    static FX_KIND_COUNT: Cell<usize> = const { Cell::new(0) };
-    static FX_KIND_NAME: RefCell<String> = const { RefCell::new(String::new()) };
+    static FX_KIND_NAMES: RefCell<Vec<String>> = const { RefCell::new(Vec::new()) };
+    /// Every kind's **neutral** normalized defaults, indexed by kind. A fresh or
+    /// reset stage is seeded from here, so it is a byte-identical no-op.
+    static FX_KIND_DEFAULTS: RefCell<Vec<[f32; MAX_FX_PARAMS]>> = const { RefCell::new(Vec::new()) };
     static FX_PARAM_VIEWS: RefCell<Vec<(String, String)>> = const { RefCell::new(Vec::new()) };
-    static FX_DEFAULTS: Cell<[f32; MAX_FX_PARAMS]> = const { Cell::new([0.0; MAX_FX_PARAMS]) };
-    /// Set ONLY by real user input on the rack (cycling the kind, dragging a
-    /// slider) — never by the paint step's default re-seed, or merely opening the
-    /// panel would start auditioning an effect nobody asked for. While true the
-    /// shell renders + hot-swaps the audition; Apply/Cancel clear it.
+    /// Set ONLY by real user input on the rack — never by the paint step's slider
+    /// re-seed, or merely opening the panel would start auditioning a chain nobody
+    /// asked for. While true the shell renders + hot-swaps the audition;
+    /// Apply/Cancel clear it.
     static FX_DIRTY: Cell<bool> = const { Cell::new(false) };
-    /// Whether the ACTIVE effect's sliders were dragged since it became active.
-    /// Only a *tuned* stage is pushed onto the live chain when the user switches
-    /// effects — otherwise merely browsing with the arrows would stack presets.
-    static FX_TOUCHED: Cell<bool> = const { Cell::new(false) };
-    /// Shell → panel: an audition is sounding (enables Cancel).
+    /// Shell → panel: an audition is sounding (enables Cancel + Bypass).
     static FX_AUDITIONING: Cell<bool> = const { Cell::new(false) };
-    /// Shell → panel: how many effects are already stacked in the live chain.
-    static FX_CHAIN_LEN: Cell<usize> = const { Cell::new(0) };
-    /// Kind whose defaults were last loaded into the sliders. Mirror of the name
-    /// box's sync guard: on a kind change the paint step re-seeds the sliders once
-    /// instead of fighting the user's drag every frame.
-    static FX_SYNCED_KIND: Cell<Option<usize>> = const { Cell::new(None) };
+    /// The panel moved the selected stage's parameters programmatically (kind
+    /// switch, reset, add, select…) — the paint step must push them into the slider
+    /// widgets once. Never set by a user drag, which would fight the drag.
+    static FX_SLIDER_SYNC: Cell<bool> = const { Cell::new(false) };
 
     // Panel → shell one-shot intents (drained by the bridge).
     static PLAY_PAUSE_REQ: Cell<bool> = const { Cell::new(false) };
@@ -138,20 +137,73 @@ pub(crate) fn can_redo() -> bool {
     CAN_REDO.with(Cell::get)
 }
 
-// ---- Effects rack (W3 block 3a) ----
+// ---- Effects rack (W3 blocks 3a/3b) ----
 
-/// Panel: step the effect selector by `delta`, wrapping. No-op until the shell
-/// has published how many kinds there are. Starts an audition.
+/// How many effect kinds the selector cycles (derived from the published names).
+pub(crate) fn fx_kind_count() -> usize {
+    FX_KIND_NAMES.with(|c| c.borrow().len())
+}
+
+/// The neutral normalized defaults of `kind` (all-zero if the shell has not
+/// published its table yet — see [`ensure_chain`], which waits for it).
+fn defaults_for(kind: usize) -> [f32; MAX_FX_PARAMS] {
+    FX_KIND_DEFAULTS.with(|c| c.borrow().get(kind).copied().unwrap_or_default())
+}
+
+/// Make sure the chain holds at least one stage, so the rack always has something
+/// to edit. Deliberately a **no-op until the shell has published the kind table**:
+/// a stage seeded with all-zero normals would sit on the bottom of every range
+/// (Low-Pass at 20 Hz) instead of on its neutral point.
+fn ensure_chain() {
+    if fx_kind_count() == 0 {
+        return;
+    }
+    FX_CHAIN.with(|c| {
+        let mut chain = c.borrow_mut();
+        if chain.is_empty() {
+            chain.push(neutral_stage(0));
+        }
+    });
+}
+
+/// A fresh stage of `kind`, sitting exactly on its neutral (no-op) defaults.
+fn neutral_stage(kind: usize) -> FxStage {
+    FxStage {
+        kind,
+        norms: defaults_for(kind),
+        enabled: true,
+    }
+}
+
+/// Run `f` on the selected stage (after clamping the selection to the chain).
+/// Marks the rack dirty — every caller is a real user edit of the audible chain.
+fn edit_selected(f: impl FnOnce(&mut FxStage)) {
+    ensure_chain();
+    FX_CHAIN.with(|c| {
+        let mut chain = c.borrow_mut();
+        let sel = FX_SEL.with(Cell::get).min(chain.len().saturating_sub(1));
+        FX_SEL.with(|s| s.set(sel));
+        if let Some(stage) = chain.get_mut(sel) {
+            f(stage);
+        }
+    });
+    FX_DIRTY.with(|c| c.set(true));
+}
+
+/// Panel: step the SELECTED stage's effect kind by `delta`, wrapping, and re-seed
+/// its parameters with that kind's neutral defaults. No-op until the shell has
+/// published the kind table.
 pub(crate) fn cycle_fx_kind(delta: isize) {
-    let count = FX_KIND_COUNT.with(Cell::get);
+    let count = fx_kind_count();
     if count == 0 {
         return;
     }
-    FX_KIND.with(|c| {
-        let next = (c.get() as isize + delta).rem_euclid(count as isize);
-        c.set(next as usize);
+    edit_selected(|stage| {
+        let next = (stage.kind as isize + delta).rem_euclid(count as isize) as usize;
+        stage.kind = next;
+        stage.norms = FX_KIND_DEFAULTS.with(|c| c.borrow().get(next).copied().unwrap_or_default());
     });
-    FX_DIRTY.with(|c| c.set(true));
+    FX_SLIDER_SYNC.with(|c| c.set(true));
 }
 
 /// Panel → shell: is there a live audition to render / keep hot-swapped?
@@ -159,58 +211,140 @@ pub fn fx_dirty() -> bool {
     FX_DIRTY.with(Cell::get)
 }
 
-/// Shell: the audition was committed (Apply) or thrown away (Cancel) — the whole
-/// rack goes back to idle, including the active stage's touched flag.
+/// Shell: the audition was committed (Apply) or thrown away (Cancel) — the rack
+/// goes back to idle.
 pub fn clear_fx_dirty() {
     FX_DIRTY.with(|c| c.set(false));
-    FX_TOUCHED.with(|c| c.set(false));
 }
 
-/// Panel → shell: did the user actually tune the ACTIVE effect? The shell pushes
-/// a tuned stage onto the live chain when the effect is switched, and drops an
-/// untouched one (so arrowing through the list doesn't stack presets).
-pub fn fx_touched() -> bool {
-    FX_TOUCHED.with(Cell::get)
+/// Shell: put the rack back to a single neutral stage — after Apply (the chain is
+/// baked into the clip; re-rendering it would double every effect), after Cancel,
+/// and on Load.
+pub fn reset_fx_chain() {
+    FX_CHAIN.with(|c| c.borrow_mut().clear());
+    FX_SEL.with(|c| c.set(0));
+    FX_BYPASS.with(|c| c.set(false));
+    FX_DIRTY.with(|c| c.set(false));
+    ensure_chain();
+    FX_SLIDER_SYNC.with(|c| c.set(true));
 }
 
-/// Shell: the active stage was consumed (pushed onto the chain, or replaced).
-pub fn clear_fx_touched() {
-    FX_TOUCHED.with(|c| c.set(false));
-}
-
-/// Panel: return the SELECTED effect's parameters to their neutral defaults.
-/// Untunes the stage (so switching away no longer stacks it) and forces the paint
-/// step to push the defaults back into the slider widgets. Deliberately leaves
-/// `FX_DIRTY` alone: if an audition is running the shell simply re-renders it
-/// neutral (back to the chain, or to the pristine clip); if none is, nothing to do.
+/// Panel: return the SELECTED stage's parameters to its kind's neutral defaults.
+/// Stays dirty if an audition is running — the shell simply re-renders the chain
+/// with this stage now transparent.
 pub(crate) fn reset_fx_params() {
-    let defaults = FX_DEFAULTS.with(Cell::get);
-    FX_NORMS.with(|c| c.set(defaults));
-    FX_TOUCHED.with(|c| c.set(false));
-    FX_SYNCED_KIND.with(|c| c.set(None));
+    edit_selected(|stage| stage.norms = defaults_for(stage.kind));
+    FX_SLIDER_SYNC.with(|c| c.set(true));
 }
 
-/// Whether every parameter already sits on its neutral default — then there is
+/// Whether the selected stage already sits on its neutral defaults — then there is
 /// nothing to reset and the button is dimmed.
 pub(crate) fn fx_at_defaults() -> bool {
     const EPS: f32 = 1e-4;
-    let (norms, defaults) = (FX_NORMS.with(Cell::get), FX_DEFAULTS.with(Cell::get));
-    norms
+    let Some(stage) = selected_stage() else {
+        return true;
+    };
+    let defaults = defaults_for(stage.kind);
+    stage
+        .norms
         .iter()
         .zip(&defaults)
         .all(|(n, d)| (n - d).abs() <= EPS)
 }
 
-/// Shell → panel: how many effects are stacked in the live chain (0 = none).
-pub fn set_fx_chain_len(n: usize) {
-    FX_CHAIN_LEN.with(|c| c.set(n));
+/// Panel: append a fresh neutral stage after the selected one and select it.
+/// A neutral stage is a no-op, so Add alone never changes the sound.
+pub(crate) fn add_fx_stage() {
+    ensure_chain();
+    let added = FX_CHAIN.with(|c| {
+        let mut chain = c.borrow_mut();
+        if chain.len() >= MAX_FX_STAGES {
+            return false;
+        }
+        let at = (FX_SEL.with(Cell::get) + 1).min(chain.len());
+        chain.insert(at, neutral_stage(0));
+        FX_SEL.with(|s| s.set(at));
+        true
+    });
+    if added {
+        FX_DIRTY.with(|c| c.set(true));
+        FX_SLIDER_SYNC.with(|c| c.set(true));
+    }
 }
 
-pub(crate) fn fx_chain_len() -> usize {
-    FX_CHAIN_LEN.with(Cell::get)
+/// Panel: drop the selected stage. The chain never empties — removing the last
+/// one leaves a fresh neutral stage behind, so the rack still has something to edit.
+pub(crate) fn remove_fx_stage() {
+    ensure_chain();
+    FX_CHAIN.with(|c| {
+        let mut chain = c.borrow_mut();
+        let sel = FX_SEL.with(Cell::get);
+        if sel < chain.len() {
+            chain.remove(sel);
+        }
+        if chain.is_empty() {
+            chain.push(neutral_stage(0));
+        }
+        FX_SEL.with(|s| s.set(sel.min(chain.len() - 1)));
+    });
+    FX_DIRTY.with(|c| c.set(true));
+    FX_SLIDER_SYNC.with(|c| c.set(true));
 }
 
-/// Shell → panel: an audition is sounding (enables the Cancel button).
+/// Panel: move the selected stage `delta` slots (order matters — a filter before
+/// a reverb is not the same as after). Clamped at the ends; the selection follows.
+pub(crate) fn move_fx_stage(delta: isize) {
+    ensure_chain();
+    let moved = FX_CHAIN.with(|c| {
+        let mut chain = c.borrow_mut();
+        let sel = FX_SEL.with(Cell::get);
+        let dst = sel as isize + delta;
+        if sel >= chain.len() || dst < 0 || dst >= chain.len() as isize {
+            return false;
+        }
+        chain.swap(sel, dst as usize);
+        FX_SEL.with(|s| s.set(dst as usize));
+        true
+    });
+    if moved {
+        FX_DIRTY.with(|c| c.set(true));
+    }
+}
+
+/// Panel: make stage `i` the one the selector + sliders edit.
+pub(crate) fn select_fx_stage(i: usize) {
+    if i < fx_stage_count() {
+        FX_SEL.with(|c| c.set(i));
+        FX_SLIDER_SYNC.with(|c| c.set(true));
+    }
+}
+
+/// Panel: flip stage `i` in/out of the render without removing it (per-stage A/B).
+pub(crate) fn toggle_fx_stage_enabled(i: usize) {
+    let toggled = FX_CHAIN.with(|c| match c.borrow_mut().get_mut(i) {
+        Some(stage) => {
+            stage.enabled = !stage.enabled;
+            true
+        }
+        None => false,
+    });
+    if toggled {
+        FX_DIRTY.with(|c| c.set(true));
+    }
+}
+
+/// Panel: flip the global A/B. Does **not** dirty the rack — the chain is intact,
+/// the shell just puts the dry clip back on the wire.
+pub(crate) fn toggle_fx_bypass() {
+    FX_BYPASS.with(|c| c.set(!c.get()));
+}
+
+/// Panel → shell: is the whole chain bypassed (hear/see the dry clip)?
+pub fn fx_bypass() -> bool {
+    FX_BYPASS.with(Cell::get)
+}
+
+/// Shell → panel: an audition is sounding (enables the Cancel + Bypass buttons).
 pub fn set_fx_auditioning(v: bool) {
     FX_AUDITIONING.with(|c| c.set(v));
 }
@@ -219,66 +353,81 @@ pub(crate) fn fx_auditioning() -> bool {
     FX_AUDITIONING.with(Cell::get)
 }
 
-/// Panel → shell: the selected effect's index into the shell's `FX_KINDS`.
-pub fn fx_kind() -> usize {
-    FX_KIND.with(Cell::get)
+/// Panel → shell: the whole chain, in render order.
+pub fn fx_chain() -> Vec<FxStage> {
+    ensure_chain();
+    FX_CHAIN.with(|c| c.borrow().clone())
 }
 
-/// Panel → shell: every parameter slider's normalized 0..1 position.
-pub fn fx_norms() -> [f32; MAX_FX_PARAMS] {
-    FX_NORMS.with(Cell::get)
+pub(crate) fn fx_stage_count() -> usize {
+    FX_CHAIN.with(|c| c.borrow().len())
 }
 
-/// Panel: record slider `i`'s new normalized position from a **user drag** —
-/// starts/refreshes the audition and marks the active effect as tuned.
+/// Panel → shell: the chain index the selector + sliders edit, clamped to the
+/// chain. The shell caches everything upstream of it, so dragging a slider
+/// re-renders only this stage and the ones below it.
+pub fn fx_sel() -> usize {
+    FX_SEL
+        .with(Cell::get)
+        .min(fx_stage_count().saturating_sub(1))
+}
+
+fn selected_stage() -> Option<FxStage> {
+    FX_CHAIN.with(|c| c.borrow().get(fx_sel()).copied())
+}
+
+/// Stage `i`'s `(display name, enabled)` for the chain list.
+pub(crate) fn fx_stage_view(i: usize) -> Option<(String, bool)> {
+    let stage = FX_CHAIN.with(|c| c.borrow().get(i).copied())?;
+    Some((fx_kind_name(stage.kind), stage.enabled))
+}
+
+/// Panel → shell: the SELECTED stage's `(kind, normalized parameters)` — what the
+/// selector names and the sliders show.
+pub fn fx_sel_stage() -> (usize, [f32; MAX_FX_PARAMS]) {
+    ensure_chain();
+    selected_stage()
+        .map(|s| (s.kind, s.norms))
+        .unwrap_or((0, [0.0; MAX_FX_PARAMS]))
+}
+
+/// The selected stage's normalized slider positions (paint).
+pub(crate) fn fx_norms() -> [f32; MAX_FX_PARAMS] {
+    selected_stage().map(|s| s.norms).unwrap_or_default()
+}
+
+/// Panel: record slider `i`'s new normalized position from a **user drag**.
 pub(crate) fn set_fx_norm(i: usize, v: f32) {
-    if write_fx_norm(i, v) {
-        FX_DIRTY.with(|c| c.set(true));
-        FX_TOUCHED.with(|c| c.set(true));
+    if i < MAX_FX_PARAMS {
+        edit_selected(|stage| stage.norms[i] = v.clamp(0.0, 1.0));
     }
 }
 
-/// Panel: load slider `i` from the selected effect's preset. Does **not** dirty
-/// the rack — re-seeding on a kind change (or on the very first paint) must not
-/// look like the user asked to audition.
-pub(crate) fn seed_fx_norm(i: usize, v: f32) {
-    write_fx_norm(i, v);
-}
-
-fn write_fx_norm(i: usize, v: f32) -> bool {
-    FX_NORMS.with(|c| {
-        let mut n = c.get();
-        match n.get_mut(i) {
-            Some(slot) => {
-                *slot = v.clamp(0.0, 1.0);
-                c.set(n);
-                true
-            }
-            None => false,
-        }
-    })
-}
-
-/// Shell → panel: how many effect kinds the selector cycles.
-pub fn set_fx_kind_count(n: usize) {
-    FX_KIND_COUNT.with(|c| c.set(n));
-}
-
-/// Shell → panel: the selected effect's display name.
-pub fn set_fx_kind_name(name: &str) {
-    FX_KIND_NAME.with(|c| {
-        let mut s = c.borrow_mut();
-        s.clear();
-        s.push_str(name);
+/// Shell → panel: the display name of every effect kind, in `FX_KINDS` order.
+/// Also fixes how far the selector cycles.
+pub fn set_fx_kind_names(names: &[&str]) {
+    FX_KIND_NAMES.with(|c| {
+        let mut v = c.borrow_mut();
+        v.clear();
+        v.extend(names.iter().map(|n| (*n).to_string()));
     });
 }
 
-pub(crate) fn fx_kind_name() -> String {
-    FX_KIND_NAME.with(|c| c.borrow().clone())
+pub(crate) fn fx_kind_name(kind: usize) -> String {
+    FX_KIND_NAMES.with(|c| c.borrow().get(kind).cloned().unwrap_or_default())
 }
 
-/// Shell → panel: `(label, formatted value)` per parameter of the selected
-/// effect. Length = that effect's parameter count; the panel hides the rest.
+/// Shell → panel: each kind's **neutral** normalized defaults, in `FX_KINDS` order.
+pub fn set_fx_kind_defaults(defaults: &[[f32; MAX_FX_PARAMS]]) {
+    FX_KIND_DEFAULTS.with(|c| {
+        let mut v = c.borrow_mut();
+        v.clear();
+        v.extend_from_slice(defaults);
+    });
+}
+
+/// Shell → panel: `(label, formatted value)` per parameter of the SELECTED stage.
+/// Length = that effect's parameter count; the panel hides the rest.
 pub fn set_fx_param_views(views: &[(String, String)]) {
     FX_PARAM_VIEWS.with(|c| {
         let mut v = c.borrow_mut();
@@ -291,22 +440,11 @@ pub(crate) fn fx_param_views() -> Vec<(String, String)> {
     FX_PARAM_VIEWS.with(|c| c.borrow().clone())
 }
 
-/// Shell → panel: the normalized slider positions of the selected kind's preset.
-pub fn set_fx_defaults(defaults: [f32; MAX_FX_PARAMS]) {
-    FX_DEFAULTS.with(|c| c.set(defaults));
-}
-
-/// The defaults to seed the sliders with, iff the selected kind changed since the
-/// last [`mark_fx_synced`]. `None` while the kind is unchanged, so a user's drag
-/// isn't overwritten every frame.
-pub(crate) fn fx_defaults_need_sync() -> Option<[f32; MAX_FX_PARAMS]> {
-    let kind = FX_KIND.with(Cell::get);
-    (FX_SYNCED_KIND.with(Cell::get) != Some(kind)).then(|| FX_DEFAULTS.with(Cell::get))
-}
-
-/// Record that the sliders now hold the selected kind's defaults.
-pub(crate) fn mark_fx_synced() {
-    FX_SYNCED_KIND.with(|c| c.set(Some(FX_KIND.with(Cell::get))));
+/// The selected stage's normals, iff the panel moved them **programmatically**
+/// (kind switch, reset, add, remove, select) since the last paint. `None` while
+/// only the user is dragging, so the drag isn't overwritten every frame.
+pub(crate) fn fx_sliders_need_sync() -> Option<[f32; MAX_FX_PARAMS]> {
+    FX_SLIDER_SYNC.with(|c| c.replace(false)).then(fx_norms)
 }
 
 /// Shell → panel: whether a waveform selection exists (enables the range ops).

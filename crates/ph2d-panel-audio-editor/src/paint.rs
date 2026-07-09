@@ -113,18 +113,17 @@ pub(crate) fn paint(_state: &mut AudioEditorState, ctx: &mut PaintCtx) {
         }
         snapshot::mark_name_synced();
     }
-    // Seed the parameter sliders with the selected effect's preset — once per kind
-    // change, never every frame (which would fight the user's drag). Same guard
-    // shape as the name box above.
-    if let Some(defaults) = snapshot::fx_defaults_need_sync() {
+    // Push the selected stage's parameters into the slider widgets whenever the
+    // panel moved them **programmatically** (kind switch, reset, add, select) —
+    // never every frame, which would fight the user's drag. Same guard shape as
+    // the name box above.
+    if let Some(norms) = snapshot::fx_sliders_need_sync() {
         for (i, id) in AEDIT_FX_PARAMS.iter().enumerate() {
             if let Some(InteractiveState::Slider { value, .. }) = ctx.host.store_mut().get_mut(*id)
             {
-                *value = defaults[i];
+                *value = norms[i];
             }
-            snapshot::seed_fx_norm(i, defaults[i]);
         }
-        snapshot::mark_fx_synced();
     }
     // Read the name field's live buffer for painting (cloned so the scene borrow
     // below is free of the store).
@@ -185,6 +184,7 @@ pub(crate) fn paint(_state: &mut AudioEditorState, ctx: &mut PaintCtx) {
         Rect::new(x, y, w, ROW_H),
         play_label,
         playing,
+        loaded,
         AEDIT_PLAY,
         scene,
         text_system,
@@ -210,6 +210,7 @@ pub(crate) fn paint(_state: &mut AudioEditorState, ctx: &mut PaintCtx) {
         Rect::new(x + half + gap, y, half, ROW_H),
         "Loop",
         looping,
+        true,
         AEDIT_LOOP,
         scene,
         text_system,
@@ -425,22 +426,27 @@ pub(crate) fn button(
 }
 
 /// A labeled toggle button: `Accent` tint + `AccentFg` when engaged, else `Bg3`
-/// + `Text1`. Registers `id` as the hit rect.
+/// + `Text1`.
+///
+/// Like [`button`], a **disabled toggle registers no hit rect** — it keeps its
+/// surface (so an engaged-but-inert state still reads as engaged) but loses its
+/// text contrast, and cannot be clicked.
 #[allow(clippy::too_many_arguments)]
-fn toggle(
+pub(crate) fn toggle(
     rect: Rect,
     label: &str,
     active: bool,
+    enabled: bool,
     id: NodeId,
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
     theme: Theme,
     hit_index: &mut HitIndex,
 ) {
-    let (bg, fg) = if active {
-        (ColorToken::Accent, ColorToken::AccentFg)
-    } else {
-        (ColorToken::Bg3, ColorToken::Text1)
+    let (bg, fg) = match (active, enabled) {
+        (true, true) => (ColorToken::Accent, ColorToken::AccentFg),
+        (false, true) => (ColorToken::Bg3, ColorToken::Text1),
+        _ => (ColorToken::Bg3, ColorToken::Text2),
     };
     fill_rounded_rect(scene, rect, Radius::Sm.px(), resolve(bg, theme));
     paint_text_centered(
@@ -451,5 +457,7 @@ fn toggle(
         TypeToken::Sm.px(),
         resolve(fg, theme),
     );
-    hit_index.register(id, rect);
+    if enabled {
+        hit_index.register(id, rect);
+    }
 }

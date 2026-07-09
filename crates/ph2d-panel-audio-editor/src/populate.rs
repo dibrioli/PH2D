@@ -1,11 +1,12 @@
 //! Audio Editor panel widget registration.
 
 use crate::{
-    AEDIT_CLOSE, AEDIT_CUT, AEDIT_DC, AEDIT_EXPORT, AEDIT_FADE_IN, AEDIT_FADE_OUT, AEDIT_FX_APPLY,
-    AEDIT_FX_CANCEL, AEDIT_FX_NEXT, AEDIT_FX_PARAMS, AEDIT_FX_PREV, AEDIT_FX_RESET,
-    AEDIT_GAIN_DOWN, AEDIT_GAIN_UP, AEDIT_INVERT, AEDIT_LOAD, AEDIT_LOOP, AEDIT_NAME,
-    AEDIT_NORM_LUFS, AEDIT_NORMALIZE, AEDIT_PLAY, AEDIT_REDO, AEDIT_REVERSE, AEDIT_SILENCE,
-    AEDIT_STOP, AEDIT_TRIM, AEDIT_UNDO,
+    AEDIT_CLOSE, AEDIT_CUT, AEDIT_DC, AEDIT_EXPORT, AEDIT_FADE_IN, AEDIT_FADE_OUT, AEDIT_FX_ADD,
+    AEDIT_FX_APPLY, AEDIT_FX_BYPASS, AEDIT_FX_CANCEL, AEDIT_FX_DOWN, AEDIT_FX_NEXT,
+    AEDIT_FX_PARAMS, AEDIT_FX_PREV, AEDIT_FX_REMOVE, AEDIT_FX_RESET, AEDIT_FX_STAGE_ONS,
+    AEDIT_FX_STAGES, AEDIT_FX_UP, AEDIT_GAIN_DOWN, AEDIT_GAIN_UP, AEDIT_INVERT, AEDIT_LOAD,
+    AEDIT_LOOP, AEDIT_NAME, AEDIT_NORM_LUFS, AEDIT_NORMALIZE, AEDIT_PLAY, AEDIT_REDO,
+    AEDIT_REVERSE, AEDIT_SILENCE, AEDIT_STOP, AEDIT_TRIM, AEDIT_UNDO,
 };
 use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::{BlenderHitKind, InteractiveState, WidgetStore};
@@ -76,7 +77,18 @@ pub(crate) fn populate(store: &mut WidgetStore) {
         AEDIT_FX_RESET,
         AEDIT_FX_APPLY,
         AEDIT_FX_CANCEL,
+        // Effects chain (W3 block 3b): edit the chain + the global A/B.
+        AEDIT_FX_ADD,
+        AEDIT_FX_REMOVE,
+        AEDIT_FX_UP,
+        AEDIT_FX_DOWN,
+        AEDIT_FX_BYPASS,
     ] {
+        store.register(id, button());
+    }
+
+    // Chain rows: the row selects the stage, the eye toggles it in/out of the render.
+    for id in AEDIT_FX_STAGES.into_iter().chain(AEDIT_FX_STAGE_ONS) {
         store.register(id, button());
     }
 

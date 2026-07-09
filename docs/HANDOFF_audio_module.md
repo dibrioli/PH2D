@@ -137,6 +137,44 @@ abaixo é histórico — não re-investigue.
     com `cos/sin` no callback RT **não é bug** (roda 1× por comando e cacheia em `pan_gains`;
     `pan.rs:10` anota "HR-5 exempt"); `remove_dc` na seleção usar a média local é o
     comportamento documentado do `in_range`.
+- **W3 Bloco 3b — cadeia VISÍVEL e EDITÁVEL (2026-07-09)**: a `fx_chain` deixou de ser
+  um acumulador invisível do shell e virou o **modelo, dono do painel**. O rack agora é
+  um rack de DAW: uma lista de estágios, **um selecionado** (é ele que o seletor e os
+  sliders editam), com `+` (Add) · `🗑` (Remove) · `▲▼` (reordenar) no cabeçalho "Chain",
+  **olho por-estágio** (bypass in-place, sem perder o ajuste) e um **Bypass global**
+  (A/B: ouve/vê/exporta o clipe seco, cadeia intacta).
+  - **Isso MATOU o `fx_touched`/`fx_last`/empilhamento implícito.** Antes, trocar de
+    efeito empilhava o estágio "ajustado" e descartava o "só navegado" — regra sutil
+    que ninguém conseguia inspecionar. Agora Add cria estágio, Remove tira, e ponto.
+  - **Ownership:** painel dona `FX_CHAIN: Vec<FxStage{kind,norms,enabled}>` + `FX_SEL` +
+    `FX_BYPASS`; shell publica a **tabela de kinds** (nomes + normals NEUTROS de cada
+    kind) e renderiza. Isso mantém o painel UI-only: ele semeia um estágio novo
+    transparente sem conhecer nenhuma faixa de DSP. ⚠️ O shell publica a tabela **antes**
+    de ler `fx_chain()` — `ensure_chain()` materializa o 1º estágio a partir dela (sem a
+    tabela, um estágio nasceria com normals 0.0 = Low-Pass em 20 Hz, audível).
+  - **Cache de prefixo (`fx_head`)**: o clipe com `chain[..sel]` já renderizado. Arrastar
+    um slider re-renderiza só `chain[sel..]` (normalmente 1 estágio). Teste
+    `rendering_from_a_cached_head_matches_a_full_render` prende **byte-a-byte** o atalho
+    contra o render completo, **com um efeito de cauda no meio** (onde um cache ingênuo
+    sai de passo). Um drift ali = audição soa uma coisa, Apply commita outra.
+  - **Apply fica DIMMED sob Bypass**: o que soa é o seco, então commitar não landaria
+    nada. `editor_fx_apply` commita `editor_sounding()` (não a audição), então mesmo se o
+    dim falhar o caminho concorda com ele — a invariante "what sounds is what commits"
+    vale pro Play, waveform, Export e Apply pelo mesmo acessador.
+  - Após Apply/Cancel/Load, `reset_fx_chain()` deixa **um estágio neutro**: re-renderizar
+    uma cadeia já assada no clipe dobraria cada efeito.
+  - **Ordem importa** (filtro antes da reverb ≠ depois) — `chain_order_changes_the_result`
+    prende isso; é a razão de existirem ▲▼.
+  - ⚠️ **Gotcha achado pelo teste:** `format().channels` é o enum `ChannelLayout`, não um
+    número — `as usize` devolve o *discriminante* (Stereo = 1) e **compila**. Use
+    `format().channel_count()`. Custou um falso "o áudio depois da seleção mudou".
+  - `MAX_FX_STAGES = 6` (a lista cabe no painel docado, que **não rola**). Add para no
+    teto; Remove é recusado no último estágio (o rack sempre tem o que editar) — dim
+    **e** recusa no `event.rs`, as duas camadas.
+  - Arquivos: `paint_fx.rs` (seletor/params/chain/commit) · `snapshot.rs` (estado da
+    cadeia) · **`shells/desktop/src/audio/editor/fx_rack.rs`** (NOVO submódulo — o
+    `editor.rs` ia estourar o teto HR-18; descendente de `editor`, então enxerga os
+    campos privados de `AudioEditorRuntime`).
 - **Atalhos:** `Ctrl+Z` undo · `Ctrl+Shift+Z` / `Ctrl+Y` redo (roteados ao
   `EditClip` quando o painel WAVE está aberto com clipe carregado).
 - **Fix:** `cpal::Stream` é dropado no `on_close_request`, não no drop-cascade do

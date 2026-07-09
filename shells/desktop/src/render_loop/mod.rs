@@ -252,31 +252,29 @@ impl crate::App {
                 ed::set_can_undo(audio.editor_can_undo());
                 ed::set_can_redo(audio.editor_can_redo());
                 ed::set_has_selection(audio.editor_selection().is_some());
-                // Effects rack (W3 block 3a): the panel owns a kind index + raw
-                // 0..1 slider positions; the shell owns the real DSP ranges. Publish
-                // the selected kind's name, its per-parameter (label, formatted
-                // value) at the current positions, and the preset normals the paint
-                // step seeds the sliders with whenever the kind changes.
+                // Effects rack (W3 blocks 3a/3b): the panel owns the effect CHAIN as
+                // kind indices + raw 0..1 slider positions; the shell owns the real
+                // DSP ranges. Publish the kind table (names + each kind's NEUTRAL
+                // normals, so the panel can seed a fresh stage transparent) BEFORE
+                // reading the chain — `fx_chain()` materializes its first stage from
+                // exactly those defaults.
                 use crate::audio::fx_params;
-                let kind = ed::fx_kind();
-                let norms = ed::fx_norms();
-                ed::set_fx_kind_count(fx_params::FX_KINDS.len());
-                ed::set_fx_kind_name(fx_params::FX_KINDS[kind]);
-                ed::set_fx_defaults(fx_params::default_norms(kind));
+                ed::set_fx_kind_names(&fx_params::FX_KINDS);
+                ed::set_fx_kind_defaults(&fx_params::all_default_norms());
+                let (kind, norms) = ed::fx_sel_stage();
                 ed::set_fx_param_views(&fx_params::views(kind, &norms));
-                // Live audition: once the user touches the rack, render the effect
-                // over the (pristine) clip and hot-swap it into the sounding
+                // Live audition: once the user touches the rack, render the whole
+                // chain over the (pristine) clip and hot-swap it into the sounding
                 // preview, so it is heard while the sliders move. Change-gated
-                // inside, so this is at most one render per parameter change.
-                // Apply commits that exact buffer; Cancel throws it away.
-                // Switching to another effect stacks the one you TUNED onto a live
-                // chain, so effects accumulate (`clip → chain → active`) instead of
-                // the previous one vanishing. Apply commits the whole stack.
+                // inside, so this is at most one render per parameter change, and
+                // everything upstream of the edited stage is cached.
+                // Apply commits that exact buffer as one undo step; Cancel drops it.
                 if ed::fx_dirty() {
-                    audio.editor_fx_update(kind, &norms);
+                    audio.editor_fx_update(&ed::fx_chain(), ed::fx_sel());
                 }
+                // Global A/B — hear/see/export the dry clip without losing the chain.
+                audio.editor_fx_set_bypass(ed::fx_bypass());
                 ed::set_fx_auditioning(audio.editor_fx_auditioning());
-                ed::set_fx_chain_len(audio.editor_fx_chain_len());
             }
         }
         // Coalesced painter Move: stamp the LATEST buffered canvas position ONCE this frame, replacing

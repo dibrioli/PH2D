@@ -2,11 +2,12 @@
 
 use crate::state::AudioEditorState;
 use crate::{
-    AEDIT_CLOSE, AEDIT_CUT, AEDIT_DC, AEDIT_EXPORT, AEDIT_FADE_IN, AEDIT_FADE_OUT, AEDIT_FX_APPLY,
-    AEDIT_FX_CANCEL, AEDIT_FX_NEXT, AEDIT_FX_PARAMS, AEDIT_FX_PREV, AEDIT_FX_RESET,
-    AEDIT_GAIN_DOWN, AEDIT_GAIN_UP, AEDIT_INVERT, AEDIT_LOAD, AEDIT_LOOP, AEDIT_NORM_LUFS,
-    AEDIT_NORMALIZE, AEDIT_PLAY, AEDIT_REDO, AEDIT_REVERSE, AEDIT_SILENCE, AEDIT_STOP, AEDIT_TRIM,
-    AEDIT_UNDO, AudioEditCmd, AudioEditorPanel, snapshot,
+    AEDIT_CLOSE, AEDIT_CUT, AEDIT_DC, AEDIT_EXPORT, AEDIT_FADE_IN, AEDIT_FADE_OUT, AEDIT_FX_ADD,
+    AEDIT_FX_APPLY, AEDIT_FX_BYPASS, AEDIT_FX_CANCEL, AEDIT_FX_DOWN, AEDIT_FX_NEXT,
+    AEDIT_FX_PARAMS, AEDIT_FX_PREV, AEDIT_FX_REMOVE, AEDIT_FX_RESET, AEDIT_FX_STAGE_ONS,
+    AEDIT_FX_STAGES, AEDIT_FX_UP, AEDIT_GAIN_DOWN, AEDIT_GAIN_UP, AEDIT_INVERT, AEDIT_LOAD,
+    AEDIT_LOOP, AEDIT_NORM_LUFS, AEDIT_NORMALIZE, AEDIT_PLAY, AEDIT_REDO, AEDIT_REVERSE,
+    AEDIT_SILENCE, AEDIT_STOP, AEDIT_TRIM, AEDIT_UNDO, AudioEditCmd, AudioEditorPanel, snapshot,
 };
 use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::WidgetEvent;
@@ -49,8 +50,9 @@ pub(crate) fn apply_event(
             snapshot::request_export();
             return EventOutcome::Consumed;
         }
-        // Effects rack selector: cycle the kind. The paint step re-seeds the
-        // parameter sliders with the new effect's preset.
+        // Effects rack selector: cycle the SELECTED stage's kind. Its parameters are
+        // re-seeded with the new effect's neutral defaults, so the stage is a no-op
+        // again until a slider moves.
         if id == AEDIT_FX_PREV {
             snapshot::cycle_fx_kind(-1);
             return EventOutcome::Consumed;
@@ -62,6 +64,42 @@ pub(crate) fn apply_event(
         // Reset the SELECTED effect to its neutral defaults (icon beside the name).
         if id == AEDIT_FX_RESET {
             snapshot::reset_fx_params();
+            return EventOutcome::Consumed;
+        }
+        // Chain editing (W3 block 3b). Add/Remove/Up/Down act on the SELECTED stage.
+        if id == AEDIT_FX_ADD {
+            snapshot::add_fx_stage();
+            return EventOutcome::Consumed;
+        }
+        if id == AEDIT_FX_REMOVE {
+            // The chain never empties (`remove_fx_stage` re-seeds a neutral stage),
+            // but the panel dims Remove at one stage — refuse it here too, so the
+            // seam agrees with the dim (2026-07-09 audit).
+            if snapshot::fx_stage_count() > 1 {
+                snapshot::remove_fx_stage();
+            }
+            return EventOutcome::Consumed;
+        }
+        if id == AEDIT_FX_UP {
+            snapshot::move_fx_stage(-1);
+            return EventOutcome::Consumed;
+        }
+        if id == AEDIT_FX_DOWN {
+            snapshot::move_fx_stage(1);
+            return EventOutcome::Consumed;
+        }
+        // Global A/B: mute the whole chain and hear the dry clip, keeping the chain.
+        if id == AEDIT_FX_BYPASS {
+            snapshot::toggle_fx_bypass();
+            return EventOutcome::Consumed;
+        }
+        // Chain rows: the eye toggles a stage in/out of the render, the row selects it.
+        if let Some(i) = AEDIT_FX_STAGE_ONS.iter().position(|s| *s == id) {
+            snapshot::toggle_fx_stage_enabled(i);
+            return EventOutcome::Consumed;
+        }
+        if let Some(i) = AEDIT_FX_STAGES.iter().position(|s| *s == id) {
+            snapshot::select_fx_stage(i);
             return EventOutcome::Consumed;
         }
         // Edit ops → arm the matching one-shot command for the shell.

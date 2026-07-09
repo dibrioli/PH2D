@@ -174,6 +174,12 @@ pub(crate) fn default_norms(kind: usize) -> [f32; MAX_FX_PARAMS] {
     out
 }
 
+/// Every kind's neutral defaults, in `FX_KINDS` order — published to the panel so a
+/// fresh (or reset) chain stage is seeded transparent without knowing any DSP range.
+pub(crate) fn all_default_norms() -> Vec<[f32; MAX_FX_PARAMS]> {
+    (0..FX_KINDS.len()).map(default_norms).collect()
+}
+
 /// Render one real value for the panel readout.
 fn format_value(s: &FxParamSpec, v: f32) -> String {
     match s.unit {
@@ -207,6 +213,18 @@ pub(crate) enum FxCommand {
     Plain(Effect),
     /// Tail-extending.
     Tail(TailEffect),
+}
+
+impl FxCommand {
+    /// Whether this effect is sitting on its neutral point and would return the
+    /// audio byte-identical. A chain skips these instead of rendering them, so a
+    /// rack full of fresh stages costs nothing.
+    pub(crate) fn is_bypass(&self) -> bool {
+        match self {
+            FxCommand::Plain(fx) => fx.is_bypass(),
+            FxCommand::Tail(fx) => fx.is_bypass(),
+        }
+    }
 }
 
 /// Read parameter `i` of `kind` in real units.

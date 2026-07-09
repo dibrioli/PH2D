@@ -3,6 +3,11 @@
 //! submodule** of `audio`, so its `impl AudioSystem` still reaches the private
 //! fields of `AudioSystem` (Rust: private items are visible to the defining
 //! module and its descendants). The transport + clip logic is unchanged.
+//!
+//! The effects **chain** runtime lives in the `fx_rack` submodule (same visibility
+//! trick, one level deeper) — this file is the transport, the clip and the edits.
+
+mod fx_rack;
 
 use super::AudioSystem;
 use ph2d_audio::PlayParams;
@@ -32,71 +37,22 @@ pub(super) struct AudioEditorRuntime {
     last_loop: std::cell::Cell<bool>,
     /// Display name of the loaded clip (file stem).
     name: String,
-    /// The effects rack's **live audition** (W3 block 3a): the effect rendered over
-    /// `clip` but NOT committed. While present it is what sounds and what the
-    /// waveform shows; `clip` stays pristine so Cancel is free. Apply commits this
-    /// exact buffer, so what the user heard is what lands in the undo timeline.
+    /// The effects rack's **live audition** (W3 blocks 3a/3b): the whole chain
+    /// rendered over `clip` but NOT committed. While present it is what sounds and
+    /// what the waveform shows; `clip` stays pristine so Cancel is free. Apply
+    /// commits this exact buffer, so what the user heard lands in the undo timeline.
     fx_audition: Option<ph2d_audio_edit::EditClip>,
     /// What produced `fx_audition`. Change-gate so a slider that doesn't actually
     /// move can't re-render the whole clip every frame.
-    fx_sig: Option<FxSig>,
-    /// Effects the user TUNED and then switched away from. The audition is
-    /// `clip → chain[0] → … → active`, so switching effects **stacks** instead of
-    /// replacing. Apply commits the whole stack as one undo step; Cancel drops it.
-    fx_chain: Vec<FxStage>,
-    /// `clip` with `fx_chain` already rendered into it — cached, so dragging the
-    /// active effect's sliders re-renders exactly ONE stage, not the whole chain.
-    fx_base: Option<ph2d_audio_edit::EditClip>,
-    /// `(chain length, target range)` that produced `fx_base`.
-    fx_base_sig: Option<(usize, Option<(usize, usize)>)>,
-    /// The effect the rack was on last frame, and its parameters — captured so a
-    /// kind switch can stack the stage the user was tuning (the panel re-seeds its
-    /// sliders to the new preset on the next paint, overwriting them).
-    fx_last: FxStage,
-}
-
-/// One effect in the live chain: its kind index + normalized slider positions.
-type FxStage = (usize, [f32; ph2d_panel_audio_editor::MAX_FX_PARAMS]);
-
-/// Everything the audition depends on: the active effect, its parameters, the
-/// **target range** (moving the selection re-targets the effect) and how many
-/// stages sit underneath it.
-type FxSig = (
-    usize,
-    [i32; ph2d_panel_audio_editor::MAX_FX_PARAMS],
-    Option<(usize, usize)>,
-    usize,
-);
-
-/// Quantize the slider normals so float jitter doesn't defeat the change-gate.
-fn fx_sig(
-    kind: usize,
-    norms: &[f32; ph2d_panel_audio_editor::MAX_FX_PARAMS],
-    selection: Option<(usize, usize)>,
-    chain_len: usize,
-) -> FxSig {
-    let mut q = [0i32; ph2d_panel_audio_editor::MAX_FX_PARAMS];
-    for (slot, n) in q.iter_mut().zip(norms) {
-        *slot = (n * 1_000.0) as i32;
-    }
-    (kind, q, selection, chain_len)
-}
-
-/// Render one chain stage over `base`, carrying the target range forward so every
-/// stage acts on the same selection (clamped if a tail effect grew the buffer).
-fn render_stage(
-    base: &ph2d_audio_edit::EditClip,
-    kind: usize,
-    norms: &[f32; ph2d_panel_audio_editor::MAX_FX_PARAMS],
-) -> ph2d_audio_edit::EditClip {
-    let data = match super::fx_params::build(kind, norms) {
-        Some(super::fx_params::FxCommand::Plain(fx)) => base.render_effect(fx),
-        Some(super::fx_params::FxCommand::Tail(fx)) => base.render_tail_effect(fx),
-        None => return base.clone(),
-    };
-    let mut next = ph2d_audio_edit::EditClip::new(data);
-    next.set_selection(base.selection());
-    next
+    fx_sig: Option<fx_rack::ChainSig>,
+    /// `clip` with the chain stages BEFORE the one being edited already rendered
+    /// into it — cached, so dragging a slider re-renders only that stage and the
+    /// ones below it (usually exactly one).
+    fx_head: Option<ph2d_audio_edit::EditClip>,
+    /// What produced `fx_head`.
+    fx_head_sig: Option<fx_rack::HeadSig>,
+    /// Global A/B: the dry clip sounds/shows/exports while the chain is kept intact.
+    fx_bypass: bool,
 }
 
 impl AudioSystem {
@@ -129,8 +85,13 @@ impl AudioSystem {
     }
 
     /// The clip the editor currently **sounds and shows**: the live audition when
-    /// the effects rack is previewing, else the committed clip.
+    /// the effects rack is previewing, else the committed clip. The global Bypass
+    /// forces the dry clip — that is the whole point of the A/B, and routing Play,
+    /// the waveform, Export and Apply through here is what keeps them agreeing.
     fn editor_sounding(&self) -> Option<&ph2d_audio_edit::EditClip> {
+        if self.editor.fx_bypass {
+            return self.editor.clip.as_ref();
+        }
         self.editor
             .fx_audition
             .as_ref()
@@ -145,116 +106,6 @@ impl AudioSystem {
         {
             let _ = self.engine.set_preview_data(clip.data().clone());
         }
-    }
-
-    /// Drop the audition **and the whole live chain** without touching the clip
-    /// (used by load / by edits that would invalidate them). Does not restore the
-    /// preview — callers that need the old sound back call `editor_fx_cancel`.
-    fn editor_fx_discard(&mut self) {
-        self.editor.fx_audition = None;
-        self.editor.fx_sig = None;
-        self.editor.fx_chain.clear();
-        self.editor.fx_base = None;
-        self.editor.fx_base_sig = None;
-        ph2d_panel_audio_editor::clear_fx_dirty();
-    }
-
-    /// Re-render the effects rack's audition when the user has touched it and the
-    /// parameters actually changed, then hot-swap it into the sounding preview so
-    /// it is heard **live**. The clip stays pristine — this is non-destructive.
-    ///
-    /// Cost is one full effect render over the target range per *parameter change*
-    /// (change-gated, so at most once per frame while dragging). Selecting a range
-    /// scopes the render, which is what keeps long clips responsive.
-    pub(crate) fn editor_fx_update(
-        &mut self,
-        kind: usize,
-        norms: &[f32; ph2d_panel_audio_editor::MAX_FX_PARAMS],
-    ) {
-        if self.editor.clip.is_none() {
-            return;
-        }
-        // Effect switched? The stage the user was TUNING gets stacked onto the live
-        // chain, so the next effect auditions ON TOP of it instead of replacing it.
-        // A stage that was only browsed past (arrows, no slider touched) is dropped.
-        let mut norms = *norms;
-        if kind != self.editor.fx_last.0 {
-            if ph2d_panel_audio_editor::fx_touched() {
-                self.editor.fx_chain.push(self.editor.fx_last);
-            }
-            ph2d_panel_audio_editor::clear_fx_touched();
-            // The panel re-seeds its sliders to this kind's preset on the NEXT
-            // paint. Use those values now, or this frame would audition the new
-            // effect with the previous one's parameters (an audible glitch).
-            norms = super::fx_params::default_norms(kind);
-        }
-        self.editor.fx_last = (kind, norms);
-
-        let clip = self.editor.clip.as_ref().expect("checked above");
-        let selection = clip.selection().map(|r| (r.start, r.end));
-        let chain_len = self.editor.fx_chain.len();
-        let sig = fx_sig(kind, &norms, selection, chain_len);
-        if self.editor.fx_sig == Some(sig) {
-            return;
-        }
-
-        // Rebuild `clip → chain` only when the chain or the target range moved;
-        // dragging the active effect's sliders then costs exactly ONE stage render.
-        let base_sig = (chain_len, selection);
-        if self.editor.fx_base_sig != Some(base_sig) {
-            let chain = self.editor.fx_chain.clone();
-            let mut base = clip.clone();
-            for (k, n) in &chain {
-                base = render_stage(&base, *k, n);
-            }
-            self.editor.fx_base = Some(base);
-            self.editor.fx_base_sig = Some(base_sig);
-        }
-        let base = self.editor.fx_base.as_ref().expect("just built");
-        self.editor.fx_audition = Some(render_stage(base, kind, &norms));
-        self.editor.fx_sig = Some(sig);
-        self.editor_hot_swap();
-    }
-
-    /// Commit the audition as one undo step — **the exact buffer that was heard**,
-    /// which is the whole live chain plus the active effect. Falls back to
-    /// rendering now if Apply is pressed without any audition.
-    pub(crate) fn editor_fx_apply(
-        &mut self,
-        kind: usize,
-        norms: &[f32; ph2d_panel_audio_editor::MAX_FX_PARAMS],
-    ) {
-        if self.editor.fx_audition.is_none() {
-            self.editor_fx_update(kind, norms);
-        }
-        if let Some(audition) = self.editor.fx_audition.take()
-            && let Some(clip) = self.editor.clip.as_mut()
-        {
-            // Every effect is a no-op at its defaults, so Apply on an untouched
-            // rack would otherwise push an identical buffer onto the undo timeline
-            // — an undo step that undoes nothing.
-            if audition.data().samples() != clip.data().samples() {
-                clip.commit_rendered(audition.data().clone());
-            }
-        }
-        self.editor_fx_discard();
-        self.editor_hot_swap();
-    }
-
-    /// Throw the audition away and put the committed clip back on the wire.
-    pub(crate) fn editor_fx_cancel(&mut self) {
-        self.editor_fx_discard();
-        self.editor_hot_swap();
-    }
-
-    /// Whether an audition is currently sounding (enables the panel's Cancel).
-    pub(crate) fn editor_fx_auditioning(&self) -> bool {
-        self.editor.fx_audition.is_some()
-    }
-
-    /// How many tuned effects are stacked under the active one (panel readout).
-    pub(crate) fn editor_fx_chain_len(&self) -> usize {
-        self.editor.fx_chain.len()
     }
 
     /// Cycle the transport: Stopped → play from 0, Playing → pause, Paused →
@@ -384,9 +235,9 @@ impl AudioSystem {
         // longer exists) — cancel it and edit the committed clip.
         match cmd {
             Cmd::ApplyFx => {
-                let kind = ph2d_panel_audio_editor::fx_kind();
-                let norms = ph2d_panel_audio_editor::fx_norms();
-                self.editor_fx_apply(kind, &norms);
+                let chain = ph2d_panel_audio_editor::fx_chain();
+                let sel = ph2d_panel_audio_editor::fx_sel();
+                self.editor_fx_apply(&chain, sel);
                 return;
             }
             Cmd::CancelFx => {

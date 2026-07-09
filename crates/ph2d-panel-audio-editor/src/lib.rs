@@ -83,19 +83,38 @@ pub const AEDIT_FADE_IN: NodeId = hash_node_id("audio_editor_fade_in");
 /// Fade out across the selection.
 pub const AEDIT_FADE_OUT: NodeId = hash_node_id("audio_editor_fade_out");
 
-// Effects rack (W3 block 3a) — ONE parametric effect at a time: a selector cycles
-// the kinds, up to `MAX_FX_PARAMS` sliders tune it, Apply commits it to the target
-// range (selection, or whole clip). Every effect starts at its NEUTRAL point, so
-// selecting one changes nothing until a slider moves. The panel stays UI-only: it
-// holds normalized 0..1 slider positions and an index; the shell owns the real DSP
-// ranges, formatting and the `Effect`/`TailEffect` construction (`audio/fx_params.rs`).
+// Effects rack (W3 blocks 3a/3b) — a **chain** of parametric effects. One stage is
+// SELECTED: the selector cycles its kind, up to `MAX_FX_PARAMS` sliders tune it, and
+// the stage list adds/removes/reorders/bypasses stages. The audition is
+// `clip → stage₀ → … → stageₙ`; Apply commits it as one undo step. Every effect
+// starts at its NEUTRAL point, so a fresh stage changes nothing until a slider moves.
+//
+// The panel stays UI-only: it owns the chain as indices + normalized 0..1 slider
+// positions; the shell owns the real DSP ranges, formatting and the
+// `Effect`/`TailEffect` construction (`audio/fx_params.rs`).
 /// Number of parameter sliders the rack paints. The shell publishes a label +
 /// formatted value per slot; unused slots are hidden.
 pub const MAX_FX_PARAMS: usize = 4;
+/// How many effects the chain can hold. Bounded so the stage list stays inside the
+/// docked panel (and so a runaway Add can't make the audition unaffordable).
+pub const MAX_FX_STAGES: usize = 6;
 
-/// Previous effect in the selector.
+/// One effect in the rack's chain. The panel owns these; the shell reads them each
+/// frame and renders `clip → stage₀ → … → stageₙ` into the live audition.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct FxStage {
+    /// Index into the shell's `FX_KINDS`.
+    pub kind: usize,
+    /// Normalized 0..1 slider positions; the shell maps them onto real DSP units.
+    pub norms: [f32; MAX_FX_PARAMS],
+    /// A bypassed stage stays in the chain but is skipped by the render — the
+    /// per-stage half of the rack's A/B.
+    pub enabled: bool,
+}
+
+/// Previous effect kind for the selected stage.
 pub const AEDIT_FX_PREV: NodeId = hash_node_id("audio_editor_fx_prev");
-/// Next effect in the selector.
+/// Next effect kind for the selected stage.
 pub const AEDIT_FX_NEXT: NodeId = hash_node_id("audio_editor_fx_next");
 /// Return the SELECTED effect's parameters to their neutral defaults.
 pub const AEDIT_FX_RESET: NodeId = hash_node_id("audio_editor_fx_reset");
@@ -103,6 +122,16 @@ pub const AEDIT_FX_RESET: NodeId = hash_node_id("audio_editor_fx_reset");
 pub const AEDIT_FX_APPLY: NodeId = hash_node_id("audio_editor_fx_apply");
 /// Discard the audition and restore the clip's sound.
 pub const AEDIT_FX_CANCEL: NodeId = hash_node_id("audio_editor_fx_cancel");
+/// Append a fresh neutral stage after the selected one, and select it.
+pub const AEDIT_FX_ADD: NodeId = hash_node_id("audio_editor_fx_add");
+/// Remove the selected stage from the chain.
+pub const AEDIT_FX_REMOVE: NodeId = hash_node_id("audio_editor_fx_remove");
+/// Move the selected stage one slot earlier in the chain.
+pub const AEDIT_FX_UP: NodeId = hash_node_id("audio_editor_fx_up");
+/// Move the selected stage one slot later in the chain.
+pub const AEDIT_FX_DOWN: NodeId = hash_node_id("audio_editor_fx_down");
+/// Global A/B: mute the whole chain and hear/see the dry clip, without losing it.
+pub const AEDIT_FX_BYPASS: NodeId = hash_node_id("audio_editor_fx_bypass");
 /// Parameter slider 0.
 pub const AEDIT_FX_P0: NodeId = hash_node_id("audio_editor_fx_p0");
 /// Parameter slider 1.
@@ -114,6 +143,50 @@ pub const AEDIT_FX_P3: NodeId = hash_node_id("audio_editor_fx_p3");
 /// The parameter sliders, indexed by slot.
 pub const AEDIT_FX_PARAMS: [NodeId; MAX_FX_PARAMS] =
     [AEDIT_FX_P0, AEDIT_FX_P1, AEDIT_FX_P2, AEDIT_FX_P3];
+
+/// Chain row 0 — click selects the stage.
+pub const AEDIT_FX_S0: NodeId = hash_node_id("audio_editor_fx_s0");
+/// Chain row 1.
+pub const AEDIT_FX_S1: NodeId = hash_node_id("audio_editor_fx_s1");
+/// Chain row 2.
+pub const AEDIT_FX_S2: NodeId = hash_node_id("audio_editor_fx_s2");
+/// Chain row 3.
+pub const AEDIT_FX_S3: NodeId = hash_node_id("audio_editor_fx_s3");
+/// Chain row 4.
+pub const AEDIT_FX_S4: NodeId = hash_node_id("audio_editor_fx_s4");
+/// Chain row 5.
+pub const AEDIT_FX_S5: NodeId = hash_node_id("audio_editor_fx_s5");
+/// The chain rows, indexed by stage.
+pub const AEDIT_FX_STAGES: [NodeId; MAX_FX_STAGES] = [
+    AEDIT_FX_S0,
+    AEDIT_FX_S1,
+    AEDIT_FX_S2,
+    AEDIT_FX_S3,
+    AEDIT_FX_S4,
+    AEDIT_FX_S5,
+];
+
+/// Chain row 0's enable (eye) toggle.
+pub const AEDIT_FX_S0_ON: NodeId = hash_node_id("audio_editor_fx_s0_on");
+/// Chain row 1's enable toggle.
+pub const AEDIT_FX_S1_ON: NodeId = hash_node_id("audio_editor_fx_s1_on");
+/// Chain row 2's enable toggle.
+pub const AEDIT_FX_S2_ON: NodeId = hash_node_id("audio_editor_fx_s2_on");
+/// Chain row 3's enable toggle.
+pub const AEDIT_FX_S3_ON: NodeId = hash_node_id("audio_editor_fx_s3_on");
+/// Chain row 4's enable toggle.
+pub const AEDIT_FX_S4_ON: NodeId = hash_node_id("audio_editor_fx_s4_on");
+/// Chain row 5's enable toggle.
+pub const AEDIT_FX_S5_ON: NodeId = hash_node_id("audio_editor_fx_s5_on");
+/// The per-stage enable toggles, indexed by stage.
+pub const AEDIT_FX_STAGE_ONS: [NodeId; MAX_FX_STAGES] = [
+    AEDIT_FX_S0_ON,
+    AEDIT_FX_S1_ON,
+    AEDIT_FX_S2_ON,
+    AEDIT_FX_S3_ON,
+    AEDIT_FX_S4_ON,
+    AEDIT_FX_S5_ON,
+];
 
 /// A one-shot edit command the panel arms (via a click) and the shell drains +
 /// applies to the loaded `EditClip`. UI-only enum (no `ph2d-audio-edit` dep here);
@@ -183,26 +256,26 @@ impl Panel for AudioEditorPanel {
 
 /// Shell → panel: the audition ended (Apply/Cancel) — stop asking for renders.
 pub use snapshot::clear_fx_dirty;
-/// Shell: the active stage was consumed (stacked onto the chain, or replaced).
-pub use snapshot::clear_fx_touched;
+/// Panel → shell: whether the global Bypass (A/B) is engaged — the dry clip is
+/// what sounds and shows, but the chain is kept.
+pub use snapshot::fx_bypass;
+/// Panel → shell: the whole effect chain, in render order.
+pub use snapshot::fx_chain;
 /// Panel → shell: whether the user has touched the rack since the last
-/// Apply/Cancel — i.e. whether the shell should be auditioning an effect live.
+/// Apply/Cancel — i.e. whether the shell should be auditioning the chain live.
 pub use snapshot::fx_dirty;
-/// Panel → shell: the selected effect index into the shell's `FX_KINDS`.
-pub use snapshot::fx_kind;
-/// Panel → shell: the normalized 0..1 position of every parameter slider.
-pub use snapshot::fx_norms;
-/// Panel → shell: whether the ACTIVE effect was tuned — a tuned stage is stacked
-/// onto the live chain when the effect is switched; an untouched one is dropped.
-pub use snapshot::fx_touched;
+/// Panel → shell: which chain stage the sliders edit (the shell caches upstream).
+pub use snapshot::fx_sel;
+/// Panel → shell: the SELECTED stage's `(kind, norms)` — what the sliders show.
+pub use snapshot::fx_sel_stage;
 /// Panel → shell: whether looping is enabled (persistent).
 pub use snapshot::looping;
+/// Shell: put the rack back to a single neutral stage (after Apply/Cancel/Load).
+pub use snapshot::reset_fx_chain;
 /// Shell → panel: publish the loaded clip's display name.
 pub use snapshot::set_clip_name;
 /// Shell → panel: whether an audition is currently sounding (enables Cancel).
 pub use snapshot::set_fx_auditioning;
-/// Shell → panel: how many effects are stacked in the live chain.
-pub use snapshot::set_fx_chain_len;
 /// Shell → panel: publish whether a waveform selection exists (range-op buttons).
 pub use snapshot::set_has_selection;
 /// Panel → shell: the pending edit command (one-shot; the shell applies it to the
@@ -223,7 +296,8 @@ pub use snapshot::take_stop;
 pub use snapshot::{set_can_redo, set_can_undo};
 /// Shell → panel: publish the live transport state for the readout + buttons.
 pub use snapshot::{set_duration_secs, set_loaded, set_playing, set_position_secs};
-/// Shell → panel: publish the effects rack's view — how many kinds exist, the
-/// selected kind's name, its per-parameter `(label, formatted value)` pairs, and
-/// the normalized defaults to load into the sliders when the kind changes.
-pub use snapshot::{set_fx_defaults, set_fx_kind_count, set_fx_kind_name, set_fx_param_views};
+/// Shell → panel: publish the effects rack's view — the display name of every
+/// effect kind, each kind's **neutral** normalized defaults (so the panel can seed
+/// a fresh or reset stage), and the selected stage's per-parameter
+/// `(label, formatted value)` pairs.
+pub use snapshot::{set_fx_kind_defaults, set_fx_kind_names, set_fx_param_views};

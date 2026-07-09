@@ -53,8 +53,10 @@ const TITLE_SIZE: f32 = 13.0; // LITERAL-PX-OK: card title font size
 const TITLE_INSET_R: f32 = 12.0; // LITERAL-PX-OK: card title right inset
 const GRID_STEP: f32 = 32.0; // LITERAL-PX-OK: background grid spacing
 const WIRE_W: f32 = 2.4; // LITERAL-PX-OK: wire stroke width
-const WIRE_W_DELAYED: f32 = 1.6; // LITERAL-PX-OK: delayed (pre) wire stroke width
+const WIRE_W_DELAYED: f32 = 1.6; // LITERAL-PX-OK: hover-ghost stroke width revealing a pre pair
 const WIRE_W_HOVER: f32 = 4.0; // LITERAL-PX-OK: hovered wire stroke width (targeted for alt-click)
+const PRE_RING_W: f32 = 1.4; // LITERAL-PX-OK: portal badge ring stroke width
+const PRE_DOT_R: f32 = 2.2; // LITERAL-PX-OK: portal badge inner dot radius
 const GHOST_W: f32 = 2.2; // LITERAL-PX-OK: in-progress ghost wire stroke width
 const WIRE_TANGENT: f32 = 20.0; // LITERAL-PX-OK: horizontal bezier handle length
 const ZOOM_FIT_MIN: f32 = 0.35; // LITERAL-PX-OK: auto-fit zoom floor
@@ -257,18 +259,65 @@ fn draw_wire(
     let Some((p0, p3)) = wire_endpoints(snap, e, view) else {
         return;
     };
+    // A `pre` edge draws as PORTAL BADGES at its sockets, never as a spline
+    // (docs/Motion Nodes/03): the state loop is machine plumbing, so the canvas
+    // keeps reading left→right instead of lassoing back across the graph.
+    // Hovering a badge reveals its partner with a thin ghost of the pair.
+    if e.delayed {
+        draw_pre_badges(ctx, e, p0, p3, view, theme, hovered);
+        return;
+    }
     let pts = wire_polyline(p0, p3, view.zoom, 20);
     // Hovered wires draw thicker and in a bright emphasis colour so the delete
     // target is unmistakable regardless of the port domain hue; others keep
-    // their domain colour and normal (delayed = thinner) width.
+    // their domain colour and normal width.
     let (base_w, token) = if hovered {
         (WIRE_W_HOVER, ColorToken::Text1)
-    } else if e.delayed {
-        (WIRE_W_DELAYED, domain_token(e.out_domain))
     } else {
         (WIRE_W, domain_token(e.out_domain))
     };
     stroke_polyline(ctx.scene, &pts, base_w * view.zoom, resolve(token, theme));
+}
+
+/// The `pre` edge's visual: a ring-and-dot badge just outside each end's
+/// socket (the Bifrost feedback-port reading — "state re-enters here, one tick
+/// later"), or a single badge on the input for the self-loop template. Badge
+/// geometry is shared with the hit path (`hits::pre_badge_centers`).
+fn draw_pre_badges(
+    ctx: &mut PaintCtx,
+    e: &GraphEdgeView,
+    p0: (f32, f32),
+    p3: (f32, f32),
+    view: &View,
+    theme: Theme,
+    hovered: bool,
+) {
+    let token = if hovered {
+        ColorToken::Text1
+    } else {
+        domain_token(e.out_domain)
+    };
+    let color = resolve(token, theme);
+    if hovered {
+        // Reveal the pair: a thin ghost of the path the state actually takes.
+        let pts = wire_polyline(p0, p3, view.zoom, 20);
+        stroke_polyline(ctx.scene, &pts, WIRE_W_DELAYED * view.zoom, color);
+    }
+    let self_loop = e.from_node == e.to_node;
+    for (cx, cy) in crate::hits::pre_badge_centers(p0, p3, view.zoom, self_loop)
+        .into_iter()
+        .flatten()
+    {
+        let r = crate::hits::PRE_BADGE_R * view.zoom;
+        stroke_rounded_rect(
+            ctx.scene,
+            Rect::new(cx - r, cy - r, 2.0 * r, 2.0 * r),
+            r,
+            PRE_RING_W * view.zoom,
+            color,
+        );
+        fill_circle(ctx.scene, cx, cy, PRE_DOT_R * view.zoom, color);
+    }
 }
 
 /// The in-progress wire ghost: from the source output socket to the live pointer,

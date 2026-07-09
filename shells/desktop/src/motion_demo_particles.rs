@@ -9,8 +9,13 @@
 //!
 //! ```text
 //! emitter → integrate.rest → tint → output
-//!           integrate.out --pre--> wind → curl → drag → integrate.state
+//!           ⟲ wind → curl → drag → integrate.forces
 //! ```
+//!
+//! The force branch mirrors the topology the editor plumbing derives when a
+//! user wires the chain into `forces` (docs/Motion Nodes/03): the state enters
+//! the branch's dangling head through the engine-managed `pre` (drawn as
+//! portal badges), never as a hand-authored loop.
 //!
 //! - **emitter**: a stateless fountain (its alive set is a pure function of the
 //!   playhead) firing up out of the lower-left, stamping the `id` column.
@@ -40,34 +45,29 @@ pub(crate) fn build(g: &mut Graph) -> Option<NodeId> {
     let curl = g.add_node("force.curl");
     let drag = g.add_node("force.drag");
 
-    // Forward chain: emitter → integrate.rest → tint → output.
-    for (i, (from, to)) in [(emitter, integrate), (integrate, tint), (tint, output)]
-        .into_iter()
-        .enumerate()
-    {
+    // Forward trunk: emitter → integrate.rest → tint → output. The integrate
+    // sits one column further right so the force row below flows INTO it
+    // left→right (no wire ever doubles back).
+    for (n, col) in [(emitter, 0.0), (integrate, 3.0), (tint, 4.0), (output, 5.0)] {
+        g.set_pos(
+            n,
+            Pos {
+                x: col * COL_W,
+                y: ROW_Y,
+            },
+        );
+    }
+    for (from, to) in [(emitter, integrate), (integrate, tint), (tint, output)] {
         g.connect(Edge {
             from: (from, 0),
             to: (to, 0),
             delayed: false,
         })
         .ok()?;
-        g.set_pos(
-            from,
-            Pos {
-                x: i as f32 * COL_W,
-                y: ROW_Y,
-            },
-        );
     }
-    g.set_pos(
-        output,
-        Pos {
-            x: 3.0 * COL_W,
-            y: ROW_Y,
-        },
-    );
 
-    // Force loop on integrate's `pre`: gravity → turbulence → damping.
+    // Force branch into `forces`: ⟲ gravity → turbulence → damping. The `pre`
+    // into the head (wind) is the engine-managed state entry.
     g.connect(Edge {
         from: (integrate, 0),
         to: (wind, 0),
@@ -92,7 +92,7 @@ pub(crate) fn build(g: &mut Graph) -> Option<NodeId> {
         g.set_pos(
             n,
             Pos {
-                x: COL_W + i as f32 * COL_W,
+                x: i as f32 * COL_W,
                 y: ROW_Y + 260.0,
             },
         );

@@ -31,6 +31,10 @@ use ph2d_editor::{HeroScreen, ToastQueue, ToolId, ToolRegistry};
 #[path = "motion_bridge_params.rs"]
 mod params;
 
+#[cfg(feature = "panel-motion-graph")]
+#[path = "motion_bridge_plumbing.rs"]
+mod plumbing;
+
 #[cfg(all(test, feature = "panel-motion-graph", feature = "panel-motion-params"))]
 #[path = "motion_bridge_tests.rs"]
 mod tests;
@@ -237,42 +241,22 @@ fn apply_graph_intents(motion: &mut MotionState, toasts: &mut ToastQueue, split:
                 to_port,
             } => apply_connect(motion, toasts, from_node, from_port, to_node, to_port),
             GraphIntent::Disconnect { to_node, to_port } => {
-                let pre = motion.doc.clone();
-                if motion
-                    .doc
-                    .graph
-                    .disconnect(NodeId(to_node), to_port)
-                    .is_some()
-                {
-                    motion.history.push_undo(pre);
-                    motion.pump.mark_dirty();
-                }
+                apply_disconnect(motion, toasts, to_node, to_port);
             }
             GraphIntent::AddNode { type_name, x, y } => {
                 let pre = motion.doc.clone();
                 let id = motion.doc.graph.add_node(type_name);
                 motion.doc.graph.set_pos(id, Pos { x, y });
-                // Sequential-node template (M2-dynamics): an input named
-                // `state` sharing output 0's type is the feedback port — wire
-                // its `pre` self-loop on drop, so integrate/spring land alive
-                // instead of frozen at their seed.
-                wire_state_self_loop(&mut motion.doc.graph, id, &motion.registry);
+                // Sequential-node template (docs/Motion Nodes/03): a feedback
+                // host (`state`/`forces` input) lands with its `pre` self-loop
+                // already plumbed, so integrate/spring arrive alive instead of
+                // frozen at their seed.
+                plumbing::reconcile_after(&mut motion.doc.graph, &motion.registry, &pre.graph);
                 motion.history.push_undo(pre);
                 motion.pump.mark_dirty();
             }
             GraphIntent::DeleteSelection { nodes } => {
-                let pre = motion.doc.clone();
-                let mut changed = false;
-                for id in nodes {
-                    changed |= motion.doc.graph.remove_node(NodeId(id));
-                }
-                if changed {
-                    // The sinks are re-resolved from the Output nodes each
-                    // frame (before the cook), so deleting one cleanly stops its
-                    // scene — no manual sink bookkeeping here.
-                    motion.history.push_undo(pre);
-                    motion.pump.mark_dirty();
-                }
+                apply_delete_selection(motion, nodes);
             }
             // Split chrome (E9) — UI-only (no cook / undo). `with_t` clamps the
             // fraction; orientation flips preserve it.
@@ -303,8 +287,9 @@ fn apply_graph_intents(motion: &mut MotionState, toasts: &mut ToastQueue, split:
 /// A wire that would close a **cycle** has exactly ONE legal meaning in this
 /// substrate: 1-tick feedback (the Lustre `pre`, ADR-0032) — so it is retried
 /// as a delayed edge instead of refused, with an informative toast. This is
-/// how a force loop (`integrate → forces → integrate`) is wired by hand in
-/// the editor (M2-dynamics).
+/// the EXPERT path (arbitrary feedback); the bread-and-butter force loop is
+/// never hand-wired — `plumbing` derives it from the `forces` port
+/// (docs/Motion Nodes/03).
 #[cfg(feature = "panel-motion-graph")]
 fn apply_connect(
     motion: &mut MotionState,
@@ -322,6 +307,12 @@ fn apply_connect(
         delayed: false,
     };
     let mut trial = motion.doc.graph.clone();
+    // A feedback port (or a plumbed branch head) holds an engine-managed `pre`;
+    // the user's forward wire takes precedence — clear it here and let the
+    // post-commit reconcile re-plumb the state entry at the branch's new head.
+    // An expert (non-managed) `pre` is NOT cleared: the connect then fails with
+    // the ordinary occupied-port refusal.
+    plumbing::clear_managed_pre_at(&mut trial, &motion.registry, NodeId(to_node), to_port);
     let (attempt, edge) = match trial.connect(fwd) {
         Err(EdgeError::WouldCycle) => {
             let pre_edge = Edge {
@@ -346,6 +337,7 @@ fn apply_connect(
             } else {
                 let pre = motion.doc.clone();
                 motion.doc.graph = trial;
+                plumbing::reconcile_after(&mut motion.doc.graph, &motion.registry, &pre.graph);
                 motion.history.push_undo(pre);
                 motion.pump.mark_dirty();
                 if edge.delayed {
@@ -356,39 +348,56 @@ fn apply_connect(
     }
 }
 
-/// Wire the sequential-node template: if `id`'s manifest declares an input
-/// named `state` whose type equals output port 0's, connect the `pre`
-/// self-loop `out --pre--> state`. The convention is append-only: any future
-/// sequential node only has to name its feedback port `state` to get the
-/// template. A node without such a port is untouched.
+/// Apply a `Disconnect` intent. An engine-managed `pre` (the plumbing badge)
+/// is not hand-deletable — it would re-derive on the next reconcile anyway —
+/// so the gesture steers the user to the edit that DOES change topology.
+/// Everything else disconnects, then the plumbing re-heals (a chain pulled off
+/// a `forces` port gets the host its self-loop back; a chain split mid-way
+/// moves the state entry to the new dangling head).
 #[cfg(feature = "panel-motion-graph")]
-fn wire_state_self_loop(
-    graph: &mut ph2d_nodegraph::graph::Graph,
-    id: ph2d_nodegraph::graph::NodeId,
-    registry: &ph2d_node_registry::NodeRegistry,
-) {
-    use ph2d_nodegraph::cook::OpResolver;
-    let Some(man) = graph
-        .node(id)
-        .and_then(|n| registry.resolve(n.type_id()))
-        .map(|op| op.manifest())
-    else {
+fn apply_disconnect(motion: &mut MotionState, toasts: &mut ToastQueue, to_node: u32, to_port: u16) {
+    use ph2d_nodegraph::graph::NodeId;
+    if plumbing::is_managed_pre(
+        &motion.doc.graph,
+        &motion.registry,
+        NodeId(to_node),
+        to_port,
+    ) {
+        toasts.push(ph2d_editor::Toast::info(
+            "State wiring is automatic - disconnect the chain from the forces port instead",
+        ));
         return;
-    };
-    let Some(out0) = man.outputs.first() else {
-        return;
-    };
-    if let Some((port, _)) = man
-        .inputs
-        .iter()
-        .enumerate()
-        .find(|(_, p)| p.name == "state" && p.ty == out0.ty)
+    }
+    let pre = motion.doc.clone();
+    if motion
+        .doc
+        .graph
+        .disconnect(NodeId(to_node), to_port)
+        .is_some()
     {
-        let _ = graph.connect(ph2d_nodegraph::graph::Edge {
-            from: (id, 0),
-            to: (id, port as u16),
-            delayed: true,
-        });
+        plumbing::reconcile_after(&mut motion.doc.graph, &motion.registry, &pre.graph);
+        motion.history.push_undo(pre);
+        motion.pump.mark_dirty();
+    }
+}
+
+/// Apply a `DeleteSelection` intent. Deleting a mid-chain force re-heals the
+/// state entry onto the branch's new dangling head; orphaned plumbing dies
+/// with the branch (before/after diff in `plumbing`). The sinks are
+/// re-resolved from the Output nodes each frame (before the cook), so deleting
+/// one cleanly stops its scene — no manual sink bookkeeping here.
+#[cfg(feature = "panel-motion-graph")]
+fn apply_delete_selection(motion: &mut MotionState, nodes: Vec<u32>) {
+    use ph2d_nodegraph::graph::NodeId;
+    let pre = motion.doc.clone();
+    let mut changed = false;
+    for id in nodes {
+        changed |= motion.doc.graph.remove_node(NodeId(id));
+    }
+    if changed {
+        plumbing::reconcile_after(&mut motion.doc.graph, &motion.registry, &pre.graph);
+        motion.history.push_undo(pre);
+        motion.pump.mark_dirty();
     }
 }
 

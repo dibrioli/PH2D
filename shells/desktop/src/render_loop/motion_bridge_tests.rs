@@ -174,26 +174,25 @@ fn a_cycle_closing_connect_becomes_a_pre_edge() {
     assert!(!plain.delayed);
 }
 
-/// M2-dynamics: dropping a sequential node (input named `state`, same type as
-/// output 0) auto-wires its `pre` self-loop, so integrate/spring land alive;
-/// a plain modifier is untouched by the template.
+/// Sequential-node template via the plumbing reconcile (docs/Motion Nodes/03):
+/// a feedback host (`forces` on integrate, `state` on spring) lands with its
+/// `pre` self-loop already plumbed; a plain modifier is untouched.
 #[test]
 fn add_node_template_wires_the_state_self_loop() {
     use ph2d_nodegraph::graph::Graph;
 
     let motion = MotionState::new();
     let mut g = Graph::new();
+    let before = g.clone();
     let integrate = g.add_node("motion.integrate");
     let spring = g.add_node("motion.spring");
-    let plain = g.add_node("motion.move");
-    for id in [integrate, spring, plain] {
-        wire_state_self_loop(&mut g, id, &motion.registry);
-    }
+    let _plain = g.add_node("motion.move");
+    plumbing::reconcile_after(&mut g, &motion.registry, &before);
     assert!(
         g.edges()
             .iter()
             .any(|e| e.from == (integrate, 0) && e.to == (integrate, 1) && e.delayed),
-        "integrate got its pre self-loop"
+        "integrate got its pre self-loop on the forces port"
     );
     assert!(
         g.edges()
@@ -204,7 +203,151 @@ fn add_node_template_wires_the_state_self_loop() {
     assert_eq!(
         g.edges().len(),
         2,
-        "a node with no state port is untouched by the template"
+        "a node with no feedback port is untouched by the template"
+    );
+    // Idempotent: a second pass changes nothing.
+    let snapshot = g.clone();
+    plumbing::reconcile_after(&mut g, &motion.registry, &snapshot);
+    assert_eq!(g.edges().len(), 2);
+}
+
+/// The O1 authoring flow (docs/Motion Nodes/03): the user wires a force chain
+/// into integrate's `forces` port and NEVER draws the state loop — the bridge
+/// clears the self-loop, lands the forward wire, and re-plumbs the `pre` into
+/// the chain's dangling head. Pulling the chain off restores the self-loop and
+/// sweeps the branch plumbing. Falsified by construction: skip `apply_connect`
+/// (raw `Graph::connect`) and the forces port is occupied by the self-loop, so
+/// the wire is refused — the plumbing IS what makes the gesture land.
+#[test]
+fn wiring_a_chain_into_forces_replumbs_the_state_entry() {
+    use ph2d_editor::ToastQueue;
+    use ph2d_nodegraph::graph::{Edge, EdgeError, Graph};
+
+    let mut motion = MotionState::new();
+    let mut g = Graph::new();
+    let before = g.clone();
+    let integrate = g.add_node("motion.integrate");
+    let wind = g.add_node("force.wind");
+    let curl = g.add_node("force.curl");
+    let drag = g.add_node("force.drag");
+    plumbing::reconcile_after(&mut g, &motion.registry, &before);
+    for (from, to) in [(wind, curl), (curl, drag)] {
+        g.connect(Edge {
+            from: (from, 0),
+            to: (to, 0),
+            delayed: false,
+        })
+        .unwrap();
+    }
+
+    // Control: WITHOUT the bridge, the self-looped forces port refuses the wire.
+    let mut raw = g.clone();
+    assert_eq!(
+        raw.connect(Edge {
+            from: (drag, 0),
+            to: (integrate, 1),
+            delayed: false,
+        }),
+        Err(EdgeError::InputAlreadyConnected),
+        "the self-loop occupies forces; only the bridge gesture can land there"
+    );
+
+    motion.doc.graph = g;
+    let mut toasts = ToastQueue::new();
+    apply_connect(&mut motion, &mut toasts, drag.0, 0, integrate.0, 1);
+
+    let edges = motion.doc.graph.edges();
+    assert!(
+        edges
+            .iter()
+            .any(|e| e.from == (drag, 0) && e.to == (integrate, 1) && !e.delayed),
+        "the chain landed on forces as a plain forward wire"
+    );
+    assert!(
+        !edges
+            .iter()
+            .any(|e| e.from == (integrate, 0) && e.to == (integrate, 1)),
+        "the self-loop is gone once a chain feeds forces"
+    );
+    assert!(
+        edges
+            .iter()
+            .any(|e| e.from == (integrate, 0) && e.to == (wind, 0) && e.delayed),
+        "the state entry re-plumbed to the chain's dangling head"
+    );
+
+    // Pull the chain off `forces`: plumbing sweeps the branch and restores the
+    // self-loop (the host stays alive, ballistic).
+    apply_disconnect(&mut motion, &mut toasts, integrate.0, 1);
+    let edges = motion.doc.graph.edges();
+    assert!(
+        !edges.iter().any(|e| e.to == (wind, 0)),
+        "the branch's state entry was swept with the chain"
+    );
+    assert!(
+        edges
+            .iter()
+            .any(|e| e.from == (integrate, 0) && e.to == (integrate, 1) && e.delayed),
+        "the forces port self-loops again"
+    );
+}
+
+/// Deleting a mid-chain force re-heals the plumbing: the orphaned upstream
+/// stub loses its state entry, the surviving chain's new dangling head gains
+/// it. And the managed badge itself is not hand-deletable (the disconnect
+/// gesture on it is refused with a toast) while an EXPERT `pre` elsewhere
+/// still is.
+#[test]
+fn plumbing_reheals_on_delete_and_managed_pre_is_not_hand_deletable() {
+    use ph2d_editor::ToastQueue;
+    use ph2d_nodegraph::graph::{Edge, Graph};
+
+    let mut motion = MotionState::new();
+    let mut g = Graph::new();
+    let before = g.clone();
+    let integrate = g.add_node("motion.integrate");
+    let wind = g.add_node("force.wind");
+    let curl = g.add_node("force.curl");
+    let drag = g.add_node("force.drag");
+    plumbing::reconcile_after(&mut g, &motion.registry, &before);
+    for (from, to) in [(wind, curl), (curl, drag)] {
+        g.connect(Edge {
+            from: (from, 0),
+            to: (to, 0),
+            delayed: false,
+        })
+        .unwrap();
+    }
+    motion.doc.graph = g;
+    let mut toasts = ToastQueue::new();
+    apply_connect(&mut motion, &mut toasts, drag.0, 0, integrate.0, 1);
+
+    // The managed badge refuses the delete gesture...
+    let before_len = motion.doc.graph.edges().len();
+    apply_disconnect(&mut motion, &mut toasts, wind.0, 0);
+    assert_eq!(
+        motion.doc.graph.edges().len(),
+        before_len,
+        "the managed state entry is not hand-deletable"
+    );
+
+    // ...while deleting the mid-chain node re-heals: wind's stale entry is
+    // swept, drag (the new dangling head) gains one.
+    apply_delete_selection(&mut motion, vec![curl.0]);
+    let edges = motion.doc.graph.edges();
+    assert!(
+        !edges.iter().any(|e| e.to.0 == curl || e.from.0 == curl),
+        "the deleted node's edges died with it"
+    );
+    assert!(
+        !edges.iter().any(|e| e.to == (wind, 0)),
+        "the orphaned stub lost its state entry"
+    );
+    assert!(
+        edges
+            .iter()
+            .any(|e| e.from == (integrate, 0) && e.to == (drag, 0) && e.delayed),
+        "the surviving chain's new head gained the state entry"
     );
 }
 

@@ -91,7 +91,8 @@ impl MotionState {
 /// Author the **Cavalry demo** (M1 gate + M2-dynamics) into `g`; returns the
 /// sink (the Output node) if the graph is well-typed. The chain is
 /// `grid → clone → tint → orbit → falloff → stagger → oscillator → wiggle →
-/// spring → integrate → output`, with the force loop riding integrate's `pre`:
+/// spring → integrate → output`, with the force branch feeding integrate's
+/// `forces` port (state enters the branch head via the engine-managed `pre`):
 ///
 /// - **grid** 20×10 (200 instances), gap 0.5 → a half-height lattice; emits
 ///   `Index`/`Count`.
@@ -114,8 +115,8 @@ impl MotionState {
 ///   settle (follow-through) — its `pre` self-loop carries the state; masked by
 ///   the falloff like everything else.
 /// - **integrate + vortex → attractor → drag** (M2) — the reference's classic
-///   stable-orbit combo, wired as the `pre` force loop
-///   (`integrate.out --pre--> vortex → attractor → drag → integrate.state`).
+///   stable-orbit combo: the branch `⟲ vortex → attractor → drag` feeds
+///   integrate's `forces` port, with the state entering the head via `pre`.
 ///   The falloff column gates every force, so the focus region swirls in a
 ///   damped orbital flow ON TOP of the live wave (physics composes with the
 ///   animated upstream, it never replaces it) while the edges hold still.
@@ -168,15 +169,20 @@ fn build_cavalry_demo(g: &mut Graph, reg: &NodeRegistry) -> Option<Vec<NodeId>> 
     }
     g.set_pos(output, Pos { x: 2200.0, y: 0.0 });
 
-    // Spring state: the `pre` self-loop (what the editor template auto-wires).
+    // Spring state: the `pre` self-loop (what the editor plumbing derives on
+    // AddNode). Authored here because the demo builds the graph directly.
     g.connect(Edge {
         from: (spring, 0),
         to: (spring, 1),
         delayed: true,
     })
     .ok()?;
-    // Force loop: integrate.out --pre--> vortex → attractor → drag →
-    // integrate.state. The `pre` edge is what makes the cycle legal (feedback).
+    // Force branch into integrate's `forces` port — exactly the topology the
+    // editor plumbing derives when a user wires `vortex → attractor → drag`
+    // into `forces` (docs/Motion Nodes/03): the state enters the chain's
+    // dangling head through the engine-managed `pre` (rendered as portal
+    // badges, not a spline), flows through the forces accumulating `accel`,
+    // and returns. The user never draws this loop; the demo mirrors it.
     g.connect(Edge {
         from: (integrate, 0),
         to: (vortex, 0),
@@ -201,25 +207,26 @@ fn build_cavalry_demo(g: &mut Graph, reg: &NodeRegistry) -> Option<Vec<NodeId>> 
         delayed: false,
     })
     .ok()?;
-    // The loop row sits under the integrate card.
+    // The force row reads left→right INTO the integrate card above its tail:
+    // ⟲ vortex → attractor → drag → integrate.forces.
     g.set_pos(
         vortex,
         Pos {
-            x: 1760.0,
+            x: 1320.0,
             y: 260.0,
         },
     );
     g.set_pos(
         attractor,
         Pos {
-            x: 1980.0,
+            x: 1540.0,
             y: 260.0,
         },
     );
     g.set_pos(
         drag,
         Pos {
-            x: 2200.0,
+            x: 1760.0,
             y: 260.0,
         },
     );
@@ -358,6 +365,56 @@ mod tests {
             })
             .count();
         assert!(flown > 20, "particles left the muzzle, only {flown} did");
+    }
+
+    /// FALSIFICATION of the state plumbing (docs/Motion Nodes/03): the managed
+    /// `pre` into the force chain's head is load-bearing. Remove it and the
+    /// `forces` input cooks empty every tick, the id-pairing re-seeds, no
+    /// displacement ever accumulates — every particle stays pinned to the
+    /// muzzle. The intact twin (previous test) proves the same crowd flies.
+    #[test]
+    fn the_fountain_dies_without_its_state_entry() {
+        use ph2d_eval_motion::MotionCookPump;
+        let mut state = MotionState::new();
+        let wind = state
+            .doc
+            .graph
+            .nodes()
+            .iter()
+            .find(|n| n.type_name == "force.wind")
+            .expect("the fountain's wind node")
+            .id;
+        state
+            .doc
+            .graph
+            .disconnect(wind, 0)
+            .expect("the managed pre into the chain head exists");
+
+        let (uv, size) = (state.default_uv_rect, state.default_size);
+        let mut pump = MotionCookPump::new();
+        for k in 0..=120u64 {
+            pump.pump(
+                &state.doc.graph,
+                &state.registry,
+                &state.sinks,
+                k,
+                k as f64 / 60.0,
+                uv,
+                size,
+            );
+        }
+        // Measured from the TRUE muzzle (-5.5, -4.2): nothing moved at all.
+        let flown = pump.instances[400..]
+            .iter()
+            .filter(|i| {
+                let d = (i.world_pos[0] + 5.5).abs() + (i.world_pos[1] + 4.2).abs();
+                d > 0.25
+            })
+            .count();
+        assert_eq!(
+            flown, 0,
+            "without the state entry the fountain must be dead, yet {flown} flew"
+        );
     }
 
     /// The whole default document replays bit-identically — grid rig AND the

@@ -28,6 +28,28 @@ const WIRE_HIT_SAMPLES: usize = 16;
 /// click zone (a full band of `2 × WIRE_HIT_R`, independent of zoom).
 const WIRE_HIT_R: f32 = 8.0; // LITERAL-PX-OK: wire hit half-thickness
 
+// Portal-badge geometry for `pre` edges — shared by paint and the hit path so
+// the clickable thing is exactly the visible thing (docs/Motion Nodes/03: a
+// `pre` edge draws as badges at its sockets, never as a spline).
+pub(crate) const PRE_BADGE_R: f32 = 6.0; // LITERAL-PX-OK: portal badge outer radius
+pub(crate) const PRE_BADGE_OFF: f32 = 15.0; // LITERAL-PX-OK: badge centre offset out from its socket
+const PRE_BADGE_HIT_PAD: f32 = 3.0; // LITERAL-PX-OK: extra hit slop around a badge
+
+/// The badge centre(s) standing in for a `pre` edge's spline: one just outside
+/// the source's output socket, one just outside the target's input socket. A
+/// self-loop (the sequential-node template) collapses to the input-side badge
+/// alone — one glyph on the card, not a hairpin.
+pub(crate) fn pre_badge_centers(
+    p0: (f32, f32),
+    p3: (f32, f32),
+    zoom: f32,
+    self_loop: bool,
+) -> [Option<(f32, f32)>; 2] {
+    let src = (p0.0 + PRE_BADGE_OFF * zoom, p0.1);
+    let dst = (p3.0 - PRE_BADGE_OFF * zoom, p3.1);
+    [(!self_loop).then_some(src), Some(dst)]
+}
+
 /// `r` intersected with `canvas`, or `None` when they do not overlap. The clip
 /// that hides content past the panel edge must hide its hit rect too (see the
 /// module docs).
@@ -71,6 +93,21 @@ pub(crate) fn push_wire_hits(
     let kind = GraphHitKind::Wire {
         edge: wire_handle(e.to_node, e.to_port),
     };
+    // A `pre` edge has no spline — its hit surface is its badge(s).
+    if e.delayed {
+        let r = (PRE_BADGE_R + PRE_BADGE_HIT_PAD) * view.zoom;
+        let self_loop = e.from_node == e.to_node;
+        for (cx, cy) in pre_badge_centers(p0, p3, view.zoom, self_loop)
+            .into_iter()
+            .flatten()
+        {
+            let rect = Rect::new(cx - r, cy - r, 2.0 * r, 2.0 * r);
+            if let Some(rect) = clip_rect(rect, canvas) {
+                hits.push((id, kind, rect));
+            }
+        }
+        return;
+    }
     let pts = wire_polyline(p0, p3, view.zoom, WIRE_HIT_SAMPLES);
     for seg in pts.windows(2) {
         let (ax, ay) = seg[0];
@@ -234,6 +271,48 @@ mod tests {
         push_card_hit(&mut hits, 8, Rect::new(10.0, 70.0, 190.0, 58.0), CANVAS);
         let (_, _, r) = hits[0];
         assert_eq!((r.y, r.h), (100.0, 28.0), "only the visible band is hit");
+    }
+
+    /// A `pre` edge's hit surface is its badge pair, not a spline band: two
+    /// compact rects for a normal delayed edge, ONE for the self-loop template,
+    /// and the sampled-polyline rects only for plain forward wires. This is
+    /// what keeps the portal badges clickable exactly where they draw
+    /// (docs/Motion Nodes/03).
+    #[test]
+    fn a_pre_edge_hits_as_badges_not_as_a_spline() {
+        let mk_edge = |from: u32, to: u32, delayed: bool| GraphEdgeView {
+            from_node: from,
+            from_port: 0,
+            to_node: to,
+            to_port: 0,
+            delayed,
+            out_domain: Domain::Instances,
+        };
+        let snap = GraphViewSnapshot {
+            nodes: vec![node(1, 20.0, 50.0), node(2, 240.0, 50.0)],
+            edges: vec![],
+        };
+        let view = View::new(CANVAS, ViewState::default());
+
+        let mut plain = Vec::new();
+        push_wire_hits(&mut plain, &snap, &mk_edge(1, 2, false), &view, CANVAS);
+        let mut badges = Vec::new();
+        push_wire_hits(&mut badges, &snap, &mk_edge(1, 2, true), &view, CANVAS);
+        let mut self_loop = Vec::new();
+        push_wire_hits(&mut self_loop, &snap, &mk_edge(2, 2, true), &view, CANVAS);
+
+        assert!(
+            plain.len() > badges.len(),
+            "a forward wire hits along its whole band ({}), a pre edge only at its badges ({})",
+            plain.len(),
+            badges.len()
+        );
+        assert_eq!(badges.len(), 2, "one badge per end of the pre edge");
+        assert_eq!(self_loop.len(), 1, "the self-loop collapses to one badge");
+        // Both badge rects are compact squares, not wire-band slabs.
+        for (_, _, r) in &badges {
+            assert!(r.w <= 2.0 * (PRE_BADGE_R + 4.0) && r.h <= 2.0 * (PRE_BADGE_R + 4.0));
+        }
     }
 
     #[test]

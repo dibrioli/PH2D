@@ -77,10 +77,13 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             name: "rest",
             ty: INST_VEC2,
         },
-        // The feedback port — `state` with the output's own type is the
-        // sequential-node convention the editor auto-wires as a `pre` self-loop.
+        // The feedback port. `forces` receives the force chain's output (last
+        // tick's state with `accel` accumulated); the editor owns its `pre`
+        // plumbing — self-loop when empty, `out --pre--> chain head` when a
+        // chain is wired in (docs/Motion Nodes/03, O1). The user never draws
+        // the loop.
         PortSpec {
-            name: "state",
+            name: "forces",
             ty: INST_VEC2,
         },
     ],

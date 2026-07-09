@@ -1,23 +1,56 @@
-# HANDOFF — Módulo de Áudio (`line/audio`) + BUG "meter vivo, sem som"
+# HANDOFF — Módulo de Áudio (`line/audio`)
 
 > Para o próximo agente. Contém: (1) proposta/plano do módulo, (2) arquitetura,
-> (3) a linha `line/audio` e a integração futura ao `main` (Modo L), (4) **o BUG
-> a investigar** com plano de diagnóstico. Leia inteiro antes de mexer.
+> (3) a linha `line/audio` e a integração ao `main` (Modo L), (4) o histórico do
+> BUG "meter vivo, sem som" (**RESOLVIDO**). Leia o §0 + o §1 antes de mexer.
 
 ---
 
-## 0. TL;DR do que fazer agora
+## 0. TL;DR do estado atual (2026-07-09)
 
-Existe **um bug de áudio real**: os **meters/grafos do mixer se mexem** (sinal
-sendo gerado) mas **não sai som audível** no device. Sua tarefa é **investigar e
-consertar**. O §4 tem o plano. **Não invente** — comece pelo diagnóstico #1
-(meter do Master vs só Music/SFX) que bisecta o problema em 1 observação.
+**A linha está LIMPA, verde e sincronizada com o `main`** (integração concluída;
+o integrador rebaseou os commits — SHAs novos — e ainda acrescentou `split
+audio.rs` sob HR-18, fix de `fmt` drift `style_edition 2024` e AVIF no CI).
+Nada pendente de integrar. Ponto de partida pronto para feature nova.
 
-Tudo isto vive na linha paralela **`line/audio`** (worktree em
-`Worktrees/line-audio`), Modo L (ADR-0106/0107). São **10 commits locais** ainda
-não integrados ao `main` (§3). Trabalhe e comite **nesta linha** (`git commit
---no-verify`), **sem push** — a integração ao `main` é 1× no fim, quando o Enio
-mandar.
+**O bug "meter vivo, sem som" está RESOLVIDO** e **não era código**: o
+WirePlumber guardava `mute:true` por-app em `stream-properties`. Detalhe +
+receita em [`docs/Audio/BUGS_audio.md`](Audio/BUGS_audio.md) (Bug #1). O §4
+abaixo é histórico — não re-investigue.
+
+**O que já landou:**
+- **W1** — `ph2d-audio-encode` (WAV writer) + `ph2d-audio-edit` (`PeakCache`,
+  `EditClip`) + painel docado `ph2d-panel-audio-editor` + **overlay flutuante do
+  waveform** (drag/resize) + **preview transport** na `AudioEngine` (voz
+  dedicada `PREVIEW_VOICE_ID`, fora do pool do jogo).
+- **W2** — ops offline (gain · normalize peak/LUFS · reverse · DC · invert ·
+  trim · cut · silence · fade · zero-crossing) + **undo/redo timeline** +
+  **seleção por arrasto** na waveform + **edição ao vivo** (hot-swap do buffer no
+  preview sem parar o play, com loop).
+- **W3 Bloco 1** — **rack de efeitos offline** (`fx.rs`): `Effect::{LowPass,
+  HighPass, Compress, Saturate, Bitcrush, StereoWidth}`, reusando o kit
+  `ph2d_audio::dsp` (Biquad, Compressor).
+- **Atalhos:** `Ctrl+Z` undo · `Ctrl+Shift+Z` / `Ctrl+Y` redo (roteados ao
+  `EditClip` quando o painel WAVE está aberto com clipe carregado).
+- **Fix:** `cpal::Stream` é dropado no `on_close_request`, não no drop-cascade do
+  `App` (segfault 139 de teardown).
+
+**Invariante-chave do rack:** todo efeito do `fx.rs` é **length-preserving**, por
+isso roteia por `EditClip::apply_effect` → `ops::in_range(target())` e fica
+**selection-aware de graça** (a seleção, quando existe, é o alvo; senão, o clipe
+inteiro). **Efeitos que ESTENDEM o clipe (reverb/delay tail) NÃO cabem nesse
+splice** — precisam de padrão novo.
+
+**Próximo (plano vivo: [`docs/Audio/02_plano_implementacao_completo.md`](Audio/02_plano_implementacao_completo.md)):**
+1. **W3 Bloco 2** — Reverb + Delay/Echo (tail-extending; ver invariante acima).
+2. **W3 Bloco 3** — UI paramétrica + FX chain reordenável + presets (hoje cada
+   efeito é um preset fixo curado no shell, igual aos botões de gain ±3 dB).
+3. Depois: W4 (voz) ∥ W5 (espectral/FFT) → W6 (asset-prep) → W7 (ML).
+
+**Protocolo (Modo L):** trabalhe e comite **nesta linha** (`git commit
+--no-verify`), **sem push**. Você **não integra nem faz ship** — fecha, escreve o
+handoff de integração (DIRETRIZ §1.5.9) e **para**. Integração/ship são decisão
+exclusiva do Enio, via agente integrador dedicado.
 
 ---
 
@@ -288,18 +321,52 @@ real. Ordem sugerida:
 - `voice.rs`/`pool.rs`/`buffer.rs`/`command.rs`/`format.rs`.
 - `tests/bus_routing.rs` — testes de integração de roteamento/efeitos.
 
-**Painel (`crates/ph2d-panel-audio-mixer/src/`):**
-- `lib.rs` — ids `AMIX_*`/`SUB_*`, o mod `snapshot` (thread-locals painel↔shell),
-  Panel impl. `paint.rs` — layout dos strips + `paint_master_section` (footer:
-  Play/Limiter/Reverb/Ducking) + `paint_strip`. `event.rs` — apply_event.
-  `populate.rs` — registro de widgets. `fader.rs` — taper dB. `tests/seam.rs`.
+Também no core, adicionados pelo editor (append-only, isolados):
+- `command.rs` — 6 variantes `AudioCommand::{Play,Seek,SetData,SetLooping,Pause,Stop}Preview`.
+- `engine.rs` — `play_preview`/`seek_preview`/`set_preview_data`/`set_preview_looping`/
+  `pause_preview`/`stop_preview`/`preview_frame`/`preview_playing`; const
+  **`PREVIEW_VOICE_ID = VoiceId(u64::MAX)`** (voz de preview FORA do pool do jogo).
+- `voice.rs` — `replace_data` (**hot-swap** do buffer mantendo o cursor → edição ao vivo).
+- `meter.rs` — atomics `preview_frame: AtomicU64` / `preview_active: AtomicU32`.
+- `dsp/loudness.rs` — `integrated_lufs()` (BS.1770 offline, usado pelo normalize LUFS).
 
-**Shell (`shells/desktop/src/`):**
+**Edição offline (`crates/ph2d-audio-edit/src/`)** — control-thread only, HR-3/HR-5
+NÃO se aplicam (aloca e usa `tanh`/`exp` livremente):
+- `lib.rs` — `EditClip` (clipe + peak cache + seleção + **timeline de undo**,
+  snapshots `Arc` baratos, cap 64); `apply_*` + **`apply_effect`**; `target()` =
+  seleção ou clipe inteiro.
+- `ops.rs` — gain/normalize peak+LUFS/reverse/invert/DC/trim/silence/delete/fade/
+  `snap_to_zero_crossing` + **`in_range`** ⭐ (aplica op length-preserving só na
+  região e reencaixa; é o que torna tudo selection-aware).
+- `fx.rs` — **`Effect`** ⭐ (LowPass/HighPass/Compress/Saturate/Bitcrush/StereoWidth).
+- `peaks.rs` — `PeakCache`/`column_peaks` (envelope min/max p/ a waveform).
+
+**Encode (`crates/ph2d-audio-encode/src/`):** `write_wav`/`encode_wav`, `BitDepth`.
+
+**Painéis (`crates/ph2d-panel-audio-{mixer,editor}/src/`):** ambos UI-only.
+- mixer: `lib.rs` (ids `AMIX_*`/`SUB_*` + `snapshot`), `paint.rs`, `event.rs`,
+  `populate.rs`, `fader.rs`, `tests/seam.rs`.
+- editor: `lib.rs` (ids `AEDIT_*` + **`AudioEditCmd`**, o enum one-shot painel→shell),
+  `paint.rs` (transporte + seções Edit/Range/Effects), `event.rs`, `populate.rs`,
+  `snapshot.rs` (thread-locals), `tests/seam.rs`.
+
+**Shell (`shells/desktop/src/`)** — `audio.rs` foi **dividido** (HR-18 shell cap):
 - `audio.rs` — `AudioSystem` (cpal, `build_stream`/scatter ⭐, `update_ducking`,
-  geradores `pluck/swell/blip_loop`, `set_master_*`/`set_bus_*` change-gated,
-  `write_out` é no core).
-- `render_loop/mod.rs` — **a ponte por-frame** ⭐ (lê snapshot do painel → engine).
+  `set_master_*`/`set_bus_*` change-gated). **Prefere stream 2ch em device 7.1.**
+- `audio/editor.rs` — runtime do editor: `editor_load/toggle_play/apply/…`,
+  `WaveView` (rect+frames publicados p/ o hit-test da seleção).
+- `audio/signals.rs` — geradores `sine_tone`/`pluck`/`swell`/`blip_loop`.
+- `render_loop/mod.rs` — **a ponte por-frame** ⭐ (drena intents dos painéis → engine).
+- `render_loop/audio_overlay.rs` — overlay flutuante do waveform (ruler, playhead,
+  banda de seleção, handles de drag/resize).
+- `input_dispatch.rs` — **seleção por arrasto** na waveform (SHELL-only) + **teardown
+  do `cpal::Stream` no `on_close_request`** ⭐ (segfault 139).
+- `input_handlers.rs` — **Ctrl+Z / Ctrl+Shift+Z / Ctrl+Y** → undo/redo do `EditClip`.
 - `main.rs` — env-smokes `PH2D_AUDIO_SMOKE`/`PH2D_AUDIO_FILE`.
+
+**⚠️ Gotcha de wiring:** nenhum seam test cobre **atalho de teclado** — eles vivem
+só em `input_handlers.rs`. Botão verde no seam ≠ atalho ligado (foi exatamente o
+"undo não funciona" de 2026-07-09: os botões funcionavam, o Ctrl+Z não existia).
 
 **Processo:** `CLAUDE.md` (roteador), `docs/IntegracaoMultiAgente/DIRETRIZ.md` +
 `DIRETIVA_IMPLEMENTACAO.md`, `project-memory/MEMORY.md`.

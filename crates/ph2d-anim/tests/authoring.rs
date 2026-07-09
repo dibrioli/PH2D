@@ -283,3 +283,65 @@ fn a_bezier_reports_its_own_control_points_as_its_tangent_handles() {
     let b = Interp::bezier(0.17, 0.67, 0.83, 0.33);
     assert_eq!(b.tangent_handles(), ((0.17, 0.67), (0.83, 0.33)));
 }
+
+#[test]
+fn to_bezier_freezes_exactly_the_handles_the_editor_draws() {
+    // "Custom" must move nothing on screen: the bezier it produces is the one
+    // whose control points ARE the tangent handles already painted. If these two
+    // ever disagree, picking Custom would visibly kick the curve.
+    for i in [
+        Interp::Linear,
+        Interp::Hold,
+        Interp::Eased(Easing::new(EasingFamily::Cubic, EasingMode::InOut)),
+        Interp::Eased(Easing::new(EasingFamily::Bounce, EasingMode::Out)),
+        Interp::Eased(Easing::new(EasingFamily::Expo, EasingMode::In)),
+    ] {
+        let b = i.to_bezier();
+        assert!(matches!(b, Interp::Bezier { .. }), "{i:?} stayed {b:?}");
+        assert_eq!(
+            b.handles(),
+            Some(i.tangent_handles()),
+            "{i:?} converted to a bezier the editor was not drawing"
+        );
+    }
+}
+
+#[test]
+fn to_bezier_leaves_a_bezier_exactly_as_it_was() {
+    // Idempotent, and bit-exact: re-picking Custom on an authored curve must not
+    // round-trip it through a tangent estimate.
+    let b = Interp::bezier(0.17, 0.67, 0.83, 0.33);
+    assert_eq!(b.to_bezier(), b);
+    assert_eq!(b.to_bezier().to_bezier(), b);
+}
+
+#[test]
+fn to_bezier_keeps_the_endpoints_and_the_ends_slopes() {
+    // The shape between the anchors may change (no cubic is a Bounce); the
+    // endpoints, and the direction the curve leaves and arrives, must not.
+    let sample = |i: Interp, t: f64| {
+        let mut tr = Track::new(vec![]);
+        tr.insert_key(secs(0.0), AnimValue::Float(0.0), i);
+        tr.insert_key(secs(1.0), AnimValue::Float(1.0), Interp::Linear);
+        f64::from(as_f(tr.sample(t)))
+    };
+    let e = Interp::Eased(Easing::new(EasingFamily::Quint, EasingMode::InOut));
+    let b = e.to_bezier();
+    for t in [0.0, 1.0] {
+        assert!(
+            (sample(e, t) - sample(b, t)).abs() < 1e-6,
+            "endpoint {t} moved"
+        );
+    }
+    // Quint InOut leaves flat and arrives flat; so must its frozen bezier.
+    for t in [1e-3, 1.0 - 1e-3] {
+        let (a, c) = (sample(e, t), sample(b, t));
+        assert!((a - c).abs() < 1e-2, "slope diverged at {t}: {a} vs {c}");
+    }
+    // And the middle genuinely differs from a Bounce it cannot represent.
+    let bounce = Interp::Eased(Easing::new(EasingFamily::Bounce, EasingMode::Out));
+    assert!(
+        (sample(bounce, 0.35) - sample(bounce.to_bezier(), 0.35)).abs() > 1e-3,
+        "a cubic cannot be a bounce; the doc comment must stay honest"
+    );
+}

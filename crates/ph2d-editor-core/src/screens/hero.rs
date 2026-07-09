@@ -166,6 +166,10 @@ pub struct HeroScreen {
     /// Pending on-canvas Curve / Free Hand point handle kind from the right-click menu (wire u8 `0`=Free /
     /// `1`=Aligned / `2`=Vector / `3`=Auto); `.take()`n by the shell onto `set_curve_handle_kind`.
     pub pending_curve_point_handle: Option<u8>,
+    /// Pending timeline interpolation preset from the segment right-click menu
+    /// (W3.E4); `.take()`n by the shell, which resolves it into a
+    /// `TimelineIntent::SetInterp`.
+    pub pending_timeline_interp: Option<crate::interaction::TimelineInterpPick>,
     // Wave 2.5 PR 11.8c: 6 hierarchy fields (visibility/reparent/duplicate/delete/reset-transform/add-child)
     // migrated to the bus as `EditorAction::Hier*`.
     // Each push happens in `apply_event` (dispatcher event for
@@ -248,6 +252,7 @@ impl HeroScreen {
             last_viewport: Rect::new(0.0, 0.0, 0.0, 0.0),
             pending_falloff_point_handle: None,
             pending_curve_point_handle: None,
+            pending_timeline_interp: None,
         }
     }
 

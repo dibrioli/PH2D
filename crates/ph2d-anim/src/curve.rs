@@ -154,6 +154,26 @@ impl Interp {
         let ((x1, y1), _) = self.tangent_handles();
         Interp::bezier(x1, y1, x2, y2)
     }
+
+    /// Freeze this interpolation into the `Bezier` **drawn through the handles it
+    /// already shows** — the graph editor's "Custom" preset, and the same curve a
+    /// drag would land on if it grabbed a handle and put it back down.
+    ///
+    /// The result is not always the same *curve*: only the endpoint slopes are
+    /// preserved, and `Hold`, `Bounce` and `Elastic` have no cubic form at all. It
+    /// is the same **handles**, which is what "make this editable" has to mean —
+    /// the alternative (silently keeping a shape no two handles can express) would
+    /// leave the editor lying about what it draws.
+    #[must_use]
+    pub fn to_bezier(self) -> Interp {
+        match self {
+            Interp::Bezier { .. } => self,
+            _ => {
+                let ((x1, y1), (x2, y2)) = self.tangent_handles();
+                Interp::bezier(x1, y1, x2, y2)
+            }
+        }
+    }
 }
 
 /// Step used to measure an easing's slope at an endpoint. Small enough to read

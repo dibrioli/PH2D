@@ -84,7 +84,27 @@ pub(super) fn handle_down_menus(
             }
             .filter(|row| store.is_hierarchy_row(*row))
         });
-        if let Some(row) = hier_row_id {
+        // W3.E4: right-click a timeline key — its dope-sheet diamond or its graph
+        // anchor — to retune the interpolation leaving it. Resolved before the
+        // panel-under fallback for the same reason the hierarchy row is: the
+        // target lives inside the timeline panel, and the broader menu must not
+        // win over the specific one.
+        let timeline_seg = hit_id
+            .and_then(|id| store.timeline_surface_at_id(id))
+            .and_then(|(_, kind)| match kind {
+                crate::interaction::TimelineHitKind::Key { target, key }
+                | crate::interaction::TimelineHitKind::CurveAnchor { target, key } => {
+                    Some((target, key))
+                }
+                _ => None,
+            });
+        if let Some((target, key)) = timeline_seg {
+            store.open_context_menu(ContextMenuRequest {
+                x: event.x,
+                y: event.y,
+                kind: ContextMenuKind::TimelineSegment { target, key },
+            });
+        } else if let Some(row) = hier_row_id {
             store.open_context_menu(ContextMenuRequest {
                 x: event.x,
                 y: event.y,
@@ -115,6 +135,7 @@ pub(super) fn handle_down_menus(
                 && *p != crate::ids::UPS_PANEL
                 && *p != crate::ids::EQS_PANEL
                 && *p != crate::ids::PAINTER_LAYERS_PANEL
+                && *p != crate::ids::TIMELINE_PANEL
                 && *p != crate::grid_snap::ids::GS_PANEL
         }) {
             // `before_section` is filled in by apply_event
@@ -122,10 +143,12 @@ pub(super) fn handle_down_menus(
             // conversion + section y-ranges.
             //
             // Hierarchy + image-tool panels (PAD/BGR/CEQ/UPS/EQS)
-            // are excluded by design — these are transient
-            // operation surfaces, not annotation surfaces. UI
-            // canon post-2026-05-24: notes + outlines live in
-            // Inspector + Widget Gallery only.
+            // + the timeline are excluded by design — these are
+            // transient operation surfaces, not annotation
+            // surfaces. UI canon post-2026-05-24: notes +
+            // outlines live in Inspector + Widget Gallery only.
+            // (The timeline also owns right-click for its own
+            // per-key preset menu, resolved above.)
             store.open_context_menu(ContextMenuRequest {
                 x: event.x,
                 y: event.y,

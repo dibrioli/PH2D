@@ -224,7 +224,40 @@ pub enum ContextMenuKind {
     /// it and calls `PainterTool::set_curve_handle_kind` (crosses as a u8 since
     /// editor-core can't depend on the tool crate).
     CurvePointHandle,
+    /// Right-clicked a timeline key — its dope-sheet diamond or its graph anchor.
+    /// Menu offers the presets for the interpolation LEAVING that key (W3.E4):
+    /// Hold / Linear / three easing cascades / Custom. `target` and `key` are the
+    /// raw `AnimTarget`/`KeyId`, opaque here exactly as in [`TimelineHitKind`].
+    TimelineSegment { target: u64, key: u64 },
+    /// The easing-family submenu of [`ContextMenuKind::TimelineSegment`], opened
+    /// by one of its three cascade rows. `mode` is the wire encoding of the mode
+    /// that row stands for (`ids::TL_EASE_MODE_*`); the shell pairs it with the
+    /// clicked family id. editor-core never names an easing.
+    TimelineSegmentEase { target: u64, key: u64, mode: u8 },
 }
+
+/// A preset the user picked from the timeline segment menu, parked on
+/// [`crate::HeroScreen`] for the shell to drain (mirror of
+/// `pending_curve_point_handle`).
+///
+/// `item` is the clicked menu row's id and `mode` the easing mode it inherited
+/// from its cascade (`u8::MAX` for the rows that carry no mode). editor-core
+/// deliberately stops here: turning `(item, mode)` into an `Interp` needs the
+/// `ph2d-anim` vocabulary, which lives shell-side with the document.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub struct TimelineInterpPick {
+    /// Raw `AnimTarget` of the track owning the key.
+    pub target: u64,
+    /// Raw `KeyId` whose outgoing interpolation is being set.
+    pub key: u64,
+    /// The clicked row (`ids::CTX_MENU_TL_*`).
+    pub item: NodeId,
+    /// `ids::TL_EASE_MODE_*`, or `u8::MAX` when the row is not a family.
+    pub mode: u8,
+}
+
+/// `mode` value for a pick that carries no easing mode (Hold / Linear / Custom).
+pub const TL_NO_EASE_MODE: u8 = u8::MAX;
 
 // ───────────────────────────── Motion Nodes M0.T2 ─────────────────────────────
 // Foundational graph-surface dispatch types. Editor-core carries these through

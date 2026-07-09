@@ -331,6 +331,11 @@ pub fn paint_context_menu_overlay(
             (ids::CTX_MENU_CURVE_HANDLE_VECTOR, "Vector", None),
             (ids::CTX_MENU_CURVE_HANDLE_AUTO, "Auto", None),
         ],
+        // Timeline key: the interpolation leaving it, and the family submenu the
+        // three cascade rows open. Both tables live in `ids` so the overlay, the
+        // populate pass and the shell's resolver can never drift apart.
+        ContextMenuKind::TimelineSegment { .. } => &ids::TIMELINE_SEGMENT_MENU,
+        ContextMenuKind::TimelineSegmentEase { .. } => &ids::TIMELINE_EASE_MENU,
     };
 
     if matches!(req.kind, ContextMenuKind::SceneList) {

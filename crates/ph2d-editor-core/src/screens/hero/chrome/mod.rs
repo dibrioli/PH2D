@@ -73,6 +73,7 @@ mod settings_present;
 mod settings_text;
 mod settings_unit;
 mod theme;
+mod timeline_segment;
 mod vector_toggle;
 mod view_toggles;
 // <ph2d-chrome-sync:end>
@@ -122,5 +123,6 @@ pub fn dispatch_all(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
         || falloff_handle::apply(hero, event)
         || vector_toggle::apply(hero, event)
         || motion_toggle::apply(hero, event)
+        || timeline_segment::apply(hero, event)
     // <ph2d-chrome-sync:dispatch-end>
 }

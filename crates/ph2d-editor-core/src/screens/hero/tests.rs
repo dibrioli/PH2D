@@ -1563,3 +1563,131 @@ fn hierarchy_row_click_silent_for_fixture_only_rows() {
 #[cfg(any())]
 #[test]
 fn hier_menu_one_action_per_drain() {}
+
+// ───────────── W3.E4: timeline segment preset menu (chrome side) ─────────────
+
+/// Stage the menu the way dispatch really leaves it: the Down that precedes the
+/// item Click already CLOSED it, parking the request in `last_context_menu`. A
+/// handler that reads only `context_menu()` passes a naive test and ships dead.
+fn stage_closed_timeline_menu(hero: &mut HeroScreen, kind: crate::interaction::ContextMenuKind) {
+    hero.store
+        .open_context_menu(crate::interaction::ContextMenuRequest {
+            x: 0.0,
+            y: 0.0,
+            kind,
+        });
+    hero.store.close_context_menu();
+}
+
+#[test]
+fn timeline_segment_menu_parks_each_leaf_pick_for_the_shell() {
+    crate::test_support::ensure_panel_registry();
+    use crate::interaction::{ContextMenuKind, TL_NO_EASE_MODE};
+    for item in [
+        ids::CTX_MENU_TL_HOLD,
+        ids::CTX_MENU_TL_LINEAR,
+        ids::CTX_MENU_TL_CUSTOM,
+    ] {
+        let mut hero = HeroScreen::new(NodeId(1));
+        stage_closed_timeline_menu(
+            &mut hero,
+            ContextMenuKind::TimelineSegment { target: 4, key: 9 },
+        );
+        assert!(hero.apply_event(WidgetEvent::Click(item)), "not consumed");
+        let pick = hero.pending_timeline_interp.take().expect("pick parked");
+        assert_eq!((pick.target, pick.key, pick.item), (4, 9, item));
+        assert_eq!(pick.mode, TL_NO_EASE_MODE, "leaf rows carry no mode");
+        assert!(hero.store.last_context_menu().is_none(), "request consumed");
+    }
+}
+
+#[test]
+fn a_cascade_row_opens_the_family_submenu_for_its_mode_and_sets_nothing() {
+    crate::test_support::ensure_panel_registry();
+    use crate::interaction::ContextMenuKind;
+    for (row, mode) in [
+        (ids::CTX_MENU_TL_EASE_IN, ids::TL_EASE_MODE_IN),
+        (ids::CTX_MENU_TL_EASE_OUT, ids::TL_EASE_MODE_OUT),
+        (ids::CTX_MENU_TL_EASE_INOUT, ids::TL_EASE_MODE_INOUT),
+    ] {
+        let mut hero = HeroScreen::new(NodeId(1));
+        stage_closed_timeline_menu(
+            &mut hero,
+            ContextMenuKind::TimelineSegment { target: 4, key: 9 },
+        );
+        assert!(hero.apply_event(WidgetEvent::Click(row)), "not consumed");
+        assert_eq!(
+            hero.store.context_menu().map(|r| r.kind),
+            Some(ContextMenuKind::TimelineSegmentEase {
+                target: 4,
+                key: 9,
+                mode
+            }),
+            "the cascade must carry the segment AND its mode"
+        );
+        assert!(
+            hero.pending_timeline_interp.is_none(),
+            "a cascade row sets no interpolation"
+        );
+    }
+}
+
+#[test]
+fn a_family_click_carries_the_mode_it_inherited_from_the_cascade() {
+    crate::test_support::ensure_panel_registry();
+    use crate::interaction::ContextMenuKind;
+    let mut hero = HeroScreen::new(NodeId(1));
+    stage_closed_timeline_menu(
+        &mut hero,
+        ContextMenuKind::TimelineSegmentEase {
+            target: 4,
+            key: 9,
+            mode: ids::TL_EASE_MODE_OUT,
+        },
+    );
+    assert!(hero.apply_event(WidgetEvent::Click(ids::CTX_MENU_TL_FAM_BOUNCE)));
+    let pick = hero.pending_timeline_interp.take().expect("pick parked");
+    assert_eq!(pick.item, ids::CTX_MENU_TL_FAM_BOUNCE);
+    assert_eq!(pick.mode, ids::TL_EASE_MODE_OUT);
+}
+
+#[test]
+fn a_family_click_with_no_cascade_behind_it_parks_nothing() {
+    crate::test_support::ensure_panel_registry();
+    use crate::interaction::ContextMenuKind;
+    // The tables are public: a family id reaching the top-level menu would have
+    // no mode, and must not park a pick the shell cannot resolve.
+    let mut hero = HeroScreen::new(NodeId(1));
+    stage_closed_timeline_menu(
+        &mut hero,
+        ContextMenuKind::TimelineSegment { target: 4, key: 9 },
+    );
+    let _ = hero.apply_event(WidgetEvent::Click(ids::CTX_MENU_TL_FAM_SINE));
+    assert!(hero.pending_timeline_interp.is_none());
+}
+
+#[test]
+fn a_timeline_preset_click_with_no_menu_behind_it_is_ignored() {
+    crate::test_support::ensure_panel_registry();
+    let mut hero = HeroScreen::new(NodeId(1));
+    let _ = hero.apply_event(WidgetEvent::Click(ids::CTX_MENU_TL_HOLD));
+    assert!(hero.pending_timeline_interp.is_none());
+}
+
+#[test]
+fn every_timeline_menu_row_is_registered_and_hittable() {
+    // A row painted into the menu but never `register`ed is a menu item that
+    // silently does nothing — the failure mode this table-driven wiring exists
+    // to make impossible.
+    crate::test_support::ensure_panel_registry();
+    let hero = HeroScreen::new(NodeId(1));
+    for (id, label, _) in ids::TIMELINE_SEGMENT_MENU
+        .iter()
+        .chain(ids::TIMELINE_EASE_MENU.iter())
+    {
+        assert!(
+            hero.store.get(*id).is_some(),
+            "menu row {label:?} is painted but never registered in populate"
+        );
+    }
+}

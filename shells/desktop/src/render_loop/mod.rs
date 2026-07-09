@@ -55,6 +55,7 @@ pub(crate) mod painter_bridge_overlays;
 /// the HR-18 file-LOC cap.
 pub(crate) mod painter_bridge_shape_preview;
 mod timeline_bridge;
+mod timeline_presets;
 mod timeline_smoke;
 // `pub(crate)`: `apply_layer_reparent` is called from `input_dispatch` (outside
 // render_loop) to route the W3.T3.8 layer drag-reparent through the allowlisted
@@ -629,6 +630,17 @@ impl crate::App {
             // queue the bridge drains below (same channel as transport/K intents).
             self.timeline_intents
                 .extend(ph2d_panel_timeline::drain_intents());
+            // W3.E4 — the segment preset the user picked from a key's right-click
+            // menu. editor-core parked an opaque `(item, mode)` on the hero (it
+            // knows no easings); resolve it against the document here, upstream of
+            // the bridge below, so the curve redraws on THIS frame.
+            if let Some(pick) = hero_screen
+                .as_mut()
+                .and_then(|h| h.pending_timeline_interp.take())
+                && let Some(intent) = timeline_presets::interp_for_pick(&self.timeline, pick)
+            {
+                self.timeline_intents.push(intent);
+            }
             // W2.E5 capture-the-pose + AutoKey. Two authoring paths write keys at
             // the playhead onto the selected/dragged sprite's bound tracks (AddKey
             // upserts, so a held drag updates one key per time instead of stacking

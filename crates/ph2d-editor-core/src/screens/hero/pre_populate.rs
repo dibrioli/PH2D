@@ -426,6 +426,15 @@ fn populate_global_context_menu(store: &mut WidgetStore) {
     ] {
         store.register(id, InteractiveState::Plain);
     }
+    // Timeline segment presets (W3.E4). Driven off the same tables the overlay
+    // paints: a row can never be painted-but-unregistered, which is the shape a
+    // context-menu item takes when it "does nothing".
+    for (id, _, _) in ids::TIMELINE_SEGMENT_MENU
+        .iter()
+        .chain(ids::TIMELINE_EASE_MENU.iter())
+    {
+        store.register(*id, InteractiveState::Plain);
+    }
 }
 
 fn populate_scrollbars(store: &mut WidgetStore) {

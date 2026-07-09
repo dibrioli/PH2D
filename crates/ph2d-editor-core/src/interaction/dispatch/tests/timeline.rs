@@ -251,3 +251,89 @@ fn lane_click_carries_the_lane_kind_and_shift_modifier() {
     assert_eq!(g[0].kind, TimelineHitKind::Lane);
     assert!(g[0].mods.shift, "cached shift rides the gesture");
 }
+
+/// A `Secondary` (right-button) pointer event.
+fn rmb(kind: PointerKind, x: f32, y: f32) -> PointerEvent {
+    PointerEvent {
+        button: ph2d_host::PointerButton::Secondary,
+        ..pointer(kind, x, y)
+    }
+}
+
+#[test]
+fn right_clicking_a_key_opens_the_segment_menu_instead_of_capturing_a_drag() {
+    // W3.E4 + the trap it walked into: the timeline-surface capture above
+    // `handle_down_menus` used to swallow EVERY button, so the menu never opened
+    // however correct the rest of the wiring was.
+    use crate::interaction::ContextMenuKind;
+    let (mut store, hits) = timeline_setup(TimelineHitKind::Key { target: 42, key: 3 });
+    let arena = Bump::new();
+    let _ = dispatch_pointer(
+        &mut store,
+        &hits,
+        rmb(PointerKind::Down, 60.0, 60.0),
+        &arena,
+    );
+
+    assert_eq!(
+        store.context_menu().map(|r| r.kind),
+        Some(ContextMenuKind::TimelineSegment { target: 42, key: 3 }),
+        "right-click on a key must open its preset menu"
+    );
+    assert_eq!(
+        store.drain_timeline_gestures().count(),
+        0,
+        "and must NOT start a drag gesture"
+    );
+    assert_eq!(store.active_id(), None, "nor capture the pointer");
+}
+
+#[test]
+fn right_clicking_a_graph_anchor_opens_the_same_menu() {
+    use crate::interaction::ContextMenuKind;
+    let (mut store, hits) = timeline_setup(TimelineHitKind::CurveAnchor { target: 7, key: 1 });
+    let arena = Bump::new();
+    let _ = dispatch_pointer(
+        &mut store,
+        &hits,
+        rmb(PointerKind::Down, 60.0, 60.0),
+        &arena,
+    );
+    assert_eq!(
+        store.context_menu().map(|r| r.kind),
+        Some(ContextMenuKind::TimelineSegment { target: 7, key: 1 })
+    );
+}
+
+#[test]
+fn right_clicking_an_empty_lane_opens_no_menu() {
+    // The lane owns box-select, not a preset; and the timeline is not an
+    // annotation surface, so the CreateNote fallback must not fire either.
+    let (mut store, hits) = timeline_setup(TimelineHitKind::Lane);
+    let arena = Bump::new();
+    let _ = dispatch_pointer(
+        &mut store,
+        &hits,
+        rmb(PointerKind::Down, 60.0, 60.0),
+        &arena,
+    );
+    assert_eq!(store.context_menu(), None);
+}
+
+#[test]
+fn a_primary_press_on_a_key_still_captures_the_drag() {
+    // The Secondary guard must not cost the left-button gesture stream.
+    let (mut store, hits) = timeline_setup(TimelineHitKind::Key { target: 42, key: 3 });
+    let arena = Bump::new();
+    let _ = dispatch_pointer(
+        &mut store,
+        &hits,
+        pointer(PointerKind::Down, 60.0, 60.0),
+        &arena,
+    );
+    assert_eq!(store.active_id(), Some(KEY_TARGET));
+    let g: Vec<_> = store.drain_timeline_gestures().collect();
+    assert_eq!(g.len(), 1);
+    assert_eq!(g[0].phase, GesturePhase::Begin);
+    assert_eq!(store.context_menu(), None);
+}

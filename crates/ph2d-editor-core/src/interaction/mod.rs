@@ -56,6 +56,7 @@ pub use state::{InteractiveState, NamedPalette, WidgetStore};
 pub use types::{
     BlenderHitKind, ContextMenuKind, ContextMenuRequest, GestureMods, GesturePhase, GraphGesture,
     GraphHitKind, GraphKey, GraphZoom, NoteData, PaletteIoKind, TIMELINE_EDGE_B, TIMELINE_EDGE_L,
-    TIMELINE_EDGE_R, TIMELINE_EDGE_T, TimelineGesture, TimelineHitKind, TimelineWheel,
+    TIMELINE_EDGE_R, TIMELINE_EDGE_T, TL_NO_EASE_MODE, TimelineGesture, TimelineHitKind,
+    TimelineInterpPick, TimelineWheel,
 };
 pub use util::{format_number, hsv_to_color_value};

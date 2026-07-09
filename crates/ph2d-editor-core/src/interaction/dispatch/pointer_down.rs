@@ -61,7 +61,13 @@ pub(super) fn dispatch_down<'frame>(
     // W2.E5b — the timeline dope-sheet captures the pointer the same way (a key
     // diamond or an empty lane); the panel drives select / drag-move / clear off
     // the gesture stream. Mirror of the graph-surface capture above.
-    if let Some((id, rect)) = hit
+    //
+    // Secondary is NOT captured: right-click over the dope sheet belongs to the
+    // context menu (`handle_down_menus`, W3.E4), and capturing it here would
+    // return before that ever ran — a menu that compiles, tests green, and never
+    // opens. The panel's gesture loop reserves Secondary for exactly this reason.
+    if event.button != ph2d_host::PointerButton::Secondary
+        && let Some((id, rect)) = hit
         && let Some((surface, kind)) = store.timeline_surface_at_id(id)
     {
         store.set_active(Some(id));

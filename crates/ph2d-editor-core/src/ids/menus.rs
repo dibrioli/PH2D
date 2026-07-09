@@ -554,3 +554,85 @@ pub const LIVE_SECTION_IDS: [NodeId; 9] = [
 
 /// Grid-snap floating panel root id.
 pub const GS_PANEL: NodeId = NodeId(1000);
+
+// ── Timeline segment (graph editor) preset menu — W3.E4 ────────────────────
+// Right-click a key (its dope-sheet diamond or its graph anchor) to retune the
+// interpolation LEAVING that key. `Hold`/`Linear`/`Custom` land directly; the
+// three cascade rows replace the menu with the easing-family submenu for that
+// mode (`ContextMenuKind::TimelineSegmentEase`, same `\u{25b6}` cascade shape as
+// Settings). editor-core never names an easing: the clicked id crosses to the
+// shell, which owns the `ph2d-anim` vocabulary.
+/// Step: hold the value, then jump at the next key.
+pub const CTX_MENU_TL_HOLD: NodeId = hash_node_id("ctx_menu_tl_hold");
+/// Straight line to the next key.
+pub const CTX_MENU_TL_LINEAR: NodeId = hash_node_id("ctx_menu_tl_linear");
+/// Freeze the drawn handles into an editable bézier (`Interp::to_bezier`).
+pub const CTX_MENU_TL_CUSTOM: NodeId = hash_node_id("ctx_menu_tl_custom");
+/// Cascade row: easing families, accelerating from rest.
+pub const CTX_MENU_TL_EASE_IN: NodeId = hash_node_id("ctx_menu_tl_ease_in");
+/// Cascade row: easing families, decelerating to rest.
+pub const CTX_MENU_TL_EASE_OUT: NodeId = hash_node_id("ctx_menu_tl_ease_out");
+/// Cascade row: easing families, symmetric.
+pub const CTX_MENU_TL_EASE_INOUT: NodeId = hash_node_id("ctx_menu_tl_ease_inout");
+
+/// Sinusoidal easing family.
+pub const CTX_MENU_TL_FAM_SINE: NodeId = hash_node_id("ctx_menu_tl_fam_sine");
+/// Quadratic easing family.
+pub const CTX_MENU_TL_FAM_QUAD: NodeId = hash_node_id("ctx_menu_tl_fam_quad");
+/// Cubic easing family.
+pub const CTX_MENU_TL_FAM_CUBIC: NodeId = hash_node_id("ctx_menu_tl_fam_cubic");
+/// Quartic easing family.
+pub const CTX_MENU_TL_FAM_QUART: NodeId = hash_node_id("ctx_menu_tl_fam_quart");
+/// Quintic easing family.
+pub const CTX_MENU_TL_FAM_QUINT: NodeId = hash_node_id("ctx_menu_tl_fam_quint");
+/// Exponential easing family.
+pub const CTX_MENU_TL_FAM_EXPO: NodeId = hash_node_id("ctx_menu_tl_fam_expo");
+/// Circular easing family.
+pub const CTX_MENU_TL_FAM_CIRC: NodeId = hash_node_id("ctx_menu_tl_fam_circ");
+/// Anticipation/overshoot easing family.
+pub const CTX_MENU_TL_FAM_BACK: NodeId = hash_node_id("ctx_menu_tl_fam_back");
+/// Elastic-spring easing family.
+pub const CTX_MENU_TL_FAM_ELASTIC: NodeId = hash_node_id("ctx_menu_tl_fam_elastic");
+/// Damped-bounce easing family.
+pub const CTX_MENU_TL_FAM_BOUNCE: NodeId = hash_node_id("ctx_menu_tl_fam_bounce");
+
+/// Wire encoding of an easing mode, carried in
+/// `ContextMenuKind::TimelineSegmentEase` from the cascade row that opened the
+/// submenu. Opaque to editor-core; the shell decodes it into an `EasingMode`.
+pub const TL_EASE_MODE_IN: u8 = 0;
+/// Decelerate to rest — see [`TL_EASE_MODE_IN`].
+pub const TL_EASE_MODE_OUT: u8 = 1;
+/// Accelerate then decelerate — see [`TL_EASE_MODE_IN`].
+pub const TL_EASE_MODE_INOUT: u8 = 2;
+
+/// The top-level segment menu, in paint order: the two shapes that need no
+/// tuning, the three easing cascades, then the escape hatch to free handles.
+///
+/// One table, three consumers — the overlay paints it, `pre_populate` registers
+/// it, and the shell's gate proves every row resolves to something. A row added
+/// here and forgotten in the shell is a compile-green menu item that does
+/// nothing; that is the bug this shape exists to make impossible.
+pub const TIMELINE_SEGMENT_MENU: [(NodeId, &str, Option<[u8; 4]>); 6] = [
+    (CTX_MENU_TL_HOLD, "Hold", None),
+    (CTX_MENU_TL_LINEAR, "Linear", None),
+    (CTX_MENU_TL_EASE_IN, "Ease In \u{25b6}", None),
+    (CTX_MENU_TL_EASE_OUT, "Ease Out \u{25b6}", None),
+    (CTX_MENU_TL_EASE_INOUT, "Ease In-Out \u{25b6}", None),
+    (CTX_MENU_TL_CUSTOM, "Custom (B\u{e9}zier)", None),
+];
+
+/// The easing-family submenu, shared by all three modes (the mode rides in the
+/// `ContextMenuKind`). Ordered gentlest-first, with the two non-monotone
+/// families (overshoot, bounce) last — the order animators scan.
+pub const TIMELINE_EASE_MENU: [(NodeId, &str, Option<[u8; 4]>); 10] = [
+    (CTX_MENU_TL_FAM_SINE, "Sine", None),
+    (CTX_MENU_TL_FAM_QUAD, "Quad", None),
+    (CTX_MENU_TL_FAM_CUBIC, "Cubic", None),
+    (CTX_MENU_TL_FAM_QUART, "Quart", None),
+    (CTX_MENU_TL_FAM_QUINT, "Quint", None),
+    (CTX_MENU_TL_FAM_EXPO, "Expo", None),
+    (CTX_MENU_TL_FAM_CIRC, "Circ", None),
+    (CTX_MENU_TL_FAM_BACK, "Back", None),
+    (CTX_MENU_TL_FAM_ELASTIC, "Elastic", None),
+    (CTX_MENU_TL_FAM_BOUNCE, "Bounce", None),
+];

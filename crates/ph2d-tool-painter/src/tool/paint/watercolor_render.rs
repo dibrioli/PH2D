@@ -612,7 +612,11 @@ impl PainterTool {
                     // Wet is 0 (byte-identical default preserved). The blend reads the LIFTED base (`sb`)
                     // where the rewet lightened it — mixing against the raw base would paint the lift
                     // right back over.
-                    let mix_amt = st.pigment_mix.max(st.wet.max(water) * wet_paint);
+                    // Water does NOT drive the RYB paint-mix: a water pool has no pigment of its
+                    // own to blend (its tint is the dissolve), and `water = 1` pushed the mix to
+                    // full-replace — territory where `ryb_mix` degenerates (OPT-2's documented
+                    // defect; the smoke's navy-blue ring). Wet keeps driving it as before.
+                    let mix_amt = st.pigment_mix.max(st.wet * wet_paint);
                     if mix_amt > 0.0 {
                         // The (possibly lifted) base APPEARANCE over the ground — for an opaque base with
                         // no lift this is the raw base bytes exactly (`l2s(s2l(b)) == b`); for a

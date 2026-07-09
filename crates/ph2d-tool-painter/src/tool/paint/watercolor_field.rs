@@ -664,9 +664,14 @@ pub(super) fn water_at(soak: &[u8], fw: usize, fh: usize, gx: usize, gy: usize) 
         * BACKRUN_JAG_PX;
     let wx = (gx as f32 + jx).clamp(0.0, (fw - 1) as f32);
     let wy = (gy as f32 + jy).clamp(0.0, (fh - 1) as f32);
-    (
-        f32::from(soak[wy as usize * fw + wx as usize]) / 255.0,
-        wx,
-        wy,
-    )
+    // BILINEAR read of the u8 pool: a nearest read left 1-px stairs on the ring's inner edge,
+    // which the exponential CONC step amplified into visible pixelation (Enio smoke 2026-07-09).
+    let (x0, y0) = (wx.floor(), wy.floor());
+    let (tx, ty) = (wx - x0, wy - y0);
+    let (ix, iy) = (x0 as usize, y0 as usize);
+    let (ix1, iy1) = ((ix + 1).min(fw - 1), (iy + 1).min(fh - 1));
+    let s = |x: usize, y: usize| f32::from(soak[y * fw + x]) / 255.0;
+    let top = s(ix, iy) + (s(ix1, iy) - s(ix, iy)) * tx;
+    let bot = s(ix, iy1) + (s(ix1, iy1) - s(ix, iy1)) * tx;
+    (top + (bot - top) * ty, wx, wy)
 }

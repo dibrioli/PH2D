@@ -96,6 +96,11 @@ pub(crate) fn paint(state: &mut TimelinePanelState, ctx: &mut PaintCtx) {
     if state::take_fit_request() {
         crate::view::apply_fit(state, g.time_area.w, &snapshot);
     }
+    // A transport jump (go-to-start/end, frame step, typed time) pans the view
+    // after it, so the playhead never lands off-screen while paused.
+    if state::take_reveal_request() {
+        crate::view::reveal_time(state, g.time_area.w, snapshot.time_seconds);
+    }
 
     // Resolve the time view (after the wheel landed) and share it with the ruler
     // + lanes so ticks and key diamonds align.

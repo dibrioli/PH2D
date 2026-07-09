@@ -76,6 +76,29 @@ pub(crate) fn intent_for_transport(
     }
 }
 
+/// Whether this transport event **jumps** the playhead to a time the current
+/// view may not show — go-to-start/end, a frame step off the edge, a typed time
+/// or frame. The shell asks the panel to pan the playhead back into view after
+/// applying one (the panel page-follows only while playing).
+///
+/// Deliberately excludes the ruler scrub (its value is a fraction of the visible
+/// span, so it can never land off-screen) and the flag toggles.
+pub(crate) fn jumps_the_playhead(ev: &PanelEvent) -> bool {
+    use ph2d_editor::ids;
+    match *ev {
+        PanelEvent::Click(id) => {
+            id == ids::TIMELINE_GO_START
+                || id == ids::TIMELINE_GO_END
+                || id == ids::TIMELINE_PREV_FRAME
+                || id == ids::TIMELINE_NEXT_FRAME
+        }
+        PanelEvent::SetValue(id, _) => {
+            id == ids::TIMELINE_TIME_NUM || id == ids::TIMELINE_FRAME_NUM
+        }
+        _ => false,
+    }
+}
+
 /// Sample a bound property's CURRENT value from the scene, for a K-insert
 /// keyframe (capture-the-pose). Transform properties read the entity's
 /// `Transform`; opacity reads `Sprite.tint[3]`.
@@ -223,6 +246,31 @@ mod tests {
             Some(TimelineIntent::SetLoop(Some((0.0, 4.0)))),
             "looping a hand-keyed clip must not collapse to a zero-length range"
         );
+    }
+
+    #[test]
+    fn only_absolute_jumps_ask_the_panel_to_pan() {
+        for ev in [
+            PanelEvent::Click(ids::TIMELINE_GO_START),
+            PanelEvent::Click(ids::TIMELINE_GO_END),
+            PanelEvent::Click(ids::TIMELINE_PREV_FRAME),
+            PanelEvent::Click(ids::TIMELINE_NEXT_FRAME),
+            PanelEvent::SetValue(ids::TIMELINE_TIME_NUM, 9.0),
+            PanelEvent::SetValue(ids::TIMELINE_FRAME_NUM, 200.0),
+        ] {
+            assert!(jumps_the_playhead(&ev), "{ev:?} lands at an absolute time");
+        }
+        // The ruler scrub maps a fraction of the VISIBLE span, so it can never
+        // land off-screen — panning after it would fight the drag.
+        assert!(!jumps_the_playhead(&PanelEvent::SetValue(
+            ids::TIMELINE_RULER,
+            0.5
+        )));
+        assert!(!jumps_the_playhead(&PanelEvent::Click(ids::TIMELINE_PLAY)));
+        assert!(!jumps_the_playhead(&PanelEvent::Toggle(
+            ids::TIMELINE_LOOP,
+            true
+        )));
     }
 
     #[test]

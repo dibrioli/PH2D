@@ -28,6 +28,9 @@ const FIT_PAD: f64 = 0.05; // LITERAL-PX-OK: fit margin as a fraction of the spa
 /// The span a fit falls back to when every key sits at the same instant (or the
 /// clip has a single key): one second centred on it, so the zoom stays sane.
 const FIT_DEGENERATE_SPAN_S: f64 = 1.0; // LITERAL-PX-OK: fallback span for a zero-width key extent
+/// Breathing room kept between a revealed playhead and the edge it came in from,
+/// as a fraction of the visible span.
+const REVEAL_MARGIN: f64 = 0.1; // LITERAL-PX-OK: reveal margin as a fraction of the span
 
 /// Apply one frame's accumulated wheel: `pan` slides `view_start_s`, `scroll`
 /// slides the rows, `zoom` scales `px_per_s` about the cursor holding the time
@@ -86,6 +89,26 @@ pub(crate) fn apply_fit(
     // centred instead of pinning it to the left edge.
     let visible = w / state.px_per_s;
     state.view_start_s = ((first + last) * 0.5 - visible * 0.5).max(0.0);
+}
+
+/// Pan the time axis until `t` is visible, keeping [`REVEAL_MARGIN`] of the span
+/// between it and the edge it was revealed against. A no-op when `t` is already
+/// comfortably in view, so a frame-step in the middle of the strip never jerks
+/// the view; `view_start_s` never goes negative, so go-to-start lands flush on
+/// `t = 0`.
+pub(crate) fn reveal_time(state: &mut TimelinePanelState, time_area_w: f32, t: f64) {
+    let w = f64::from(time_area_w);
+    if w <= 0.0 || state.px_per_s <= 0.0 {
+        return;
+    }
+    let span = w / state.px_per_s;
+    let margin = span * REVEAL_MARGIN;
+    let start = state.view_start_s;
+    if t < start + margin {
+        state.view_start_s = (t - margin).max(0.0);
+    } else if t > start + span - margin {
+        state.view_start_s = (t - span + margin).max(0.0);
+    }
 }
 
 /// The `(earliest, latest)` key time across every track, or `None` if the
@@ -423,6 +446,55 @@ mod tests {
         let mut st = TimelinePanelState::default();
         apply_fit(&mut st, 800.0, &snap_with_keys(&[0.0]));
         assert!(st.view_start_s >= 0.0, "{}", st.view_start_s);
+    }
+
+    // ── Reveal (transport jump) ──────────────────────────────────────────
+
+    #[test]
+    fn reveal_pans_flush_to_zero_for_go_to_start() {
+        // Panned far right; go-to-start scrubs to t = 0 and the view must follow.
+        let mut st = TimelinePanelState {
+            view_start_s: 30.0,
+            ..TimelinePanelState::default()
+        };
+        reveal_time(&mut st, 800.0, 0.0);
+        assert_eq!(
+            st.view_start_s, 0.0,
+            "no negative pan, t=0 sits on the edge"
+        );
+    }
+
+    #[test]
+    fn reveal_pans_right_until_the_time_is_in_view() {
+        // 800 px at 120 px/s = 6.67 s visible from t = 0.
+        let mut st = TimelinePanelState::default();
+        reveal_time(&mut st, 800.0, 20.0);
+        let span = 800.0 / DEFAULT_PX_PER_S;
+        assert!(st.view_start_s > 0.0);
+        assert!(
+            20.0 > st.view_start_s && 20.0 < st.view_start_s + span,
+            "the playhead is inside the span"
+        );
+        // ...and a tenth of the span from the right edge, not glued to it.
+        assert!((st.view_start_s + span - 20.0 - span * 0.1).abs() < 1e-9);
+    }
+
+    #[test]
+    fn reveal_leaves_a_time_that_is_already_comfortably_in_view() {
+        // A frame step in the middle of the strip must not jerk the view.
+        let mut st = TimelinePanelState::default();
+        reveal_time(&mut st, 800.0, 3.0);
+        assert_eq!(st.view_start_s, 0.0);
+    }
+
+    #[test]
+    fn reveal_with_no_room_to_paint_is_a_no_op() {
+        let mut st = TimelinePanelState {
+            view_start_s: 5.0,
+            ..TimelinePanelState::default()
+        };
+        reveal_time(&mut st, 0.0, 99.0);
+        assert_eq!(st.view_start_s, 5.0);
     }
 
     #[test]

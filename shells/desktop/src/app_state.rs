@@ -315,6 +315,12 @@ pub(crate) struct App {
     /// Pending timeline commands (from the panel / auto-key), drained once per
     /// frame by `render_loop::timeline_bridge`.
     pub(crate) timeline_intents: Vec<ph2d_timeline::TimelineIntent>,
+    /// A queued transport jump (go-to-start/end, frame step, typed time) wants
+    /// the dope sheet panned to wherever the playhead lands. It cannot ask the
+    /// panel straight away: the action bus is drained AFTER `timeline_bridge`
+    /// has already run, so the intent applies next frame — asking now would pan
+    /// to the playhead's OLD position. The flag rides across to the apply.
+    pub(crate) timeline_reveal_after_apply: bool,
     /// Reused view-snapshot buffer, rebuilt from `timeline` + `playhead` each
     /// frame and published to the timeline panel (`set_current_timeline`).
     pub(crate) timeline_view: ph2d_timeline::TimelineViewSnapshot,

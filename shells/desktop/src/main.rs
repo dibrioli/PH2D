@@ -144,6 +144,7 @@ impl App {
             playhead: Playhead::default(),
             timeline: ph2d_timeline::TimelineState::new(),
             timeline_intents: Vec::new(),
+            timeline_reveal_after_apply: false,
             timeline_view: ph2d_timeline::TimelineViewSnapshot::default(),
             timeline_insert_key: false,
             timeline_drag_active: false,

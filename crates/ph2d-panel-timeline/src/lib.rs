@@ -32,7 +32,7 @@ mod view;
 
 pub use state::{
     TimelinePanelState, drain_intents, last_content_h, last_visible_h, request_fit,
-    set_current_timeline,
+    request_reveal_playhead, set_current_timeline,
 };
 
 use ph2d_a11y::NodeId;

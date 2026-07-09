@@ -727,6 +727,12 @@ impl crate::App {
                 &mut self.timeline_intents,
                 dragging_entity,
             );
+            // The playhead has now moved: a transport jump queued last frame can
+            // finally ask the panel to pan to it (the snapshot below carries the
+            // new time, and `paint` reads both later this frame).
+            if std::mem::take(&mut self.timeline_reveal_after_apply) {
+                ph2d_panel_timeline::request_reveal_playhead();
+            }
             // Publish the view snapshot the docked timeline panel paints
             // (transport state; tracks/keys from E3+). Rebuilt into a reused
             // buffer, then handed to the panel's thread-local.
@@ -1071,6 +1077,12 @@ impl crate::App {
                             &self.playhead,
                         ) {
                             self.timeline_intents.push(intent);
+                            // A jump to an absolute time may land outside the
+                            // visible span; pan the dope sheet after it (the
+                            // panel page-follows only while playing). Deferred
+                            // to the apply — see `timeline_reveal_after_apply`.
+                            self.timeline_reveal_after_apply |=
+                                timeline_bridge::jumps_the_playhead(&ev);
                         }
                     }
                     // ADR-0040 TG-B/TG-C: generic "cancel the active modal

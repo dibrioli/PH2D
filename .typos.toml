@@ -87,6 +87,11 @@ Registre = "Registre"
 registre = "registre"
 algoritmos = "algoritmos"
 classe = "classe"
+# pt-BR em comentários de teste do Painter (watercolor/textura): "uniformes"
+# (uniform), "longe" (far), "direcional" (directional).
+uniformes = "uniformes"
+longe = "longe"
+direcional = "direcional"
 # More pt-BR tokens that appear inside user-feedback quotes in code
 # comments and tests (kept verbatim to preserve the user's voice).
 nomes = "nomes"

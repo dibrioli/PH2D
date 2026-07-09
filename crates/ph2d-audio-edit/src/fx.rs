@@ -262,7 +262,9 @@ mod tests {
     fn lowpass_attenuates_nyquist_more_than_dc() {
         // A DC-ish ramp vs. an alternating (near-Nyquist) signal: the low-pass must
         // keep DC energy and kill the alternation.
-        let alt: Vec<f32> = (0..64).map(|i| if i % 2 == 0 { 1.0 } else { -1.0 }).collect();
+        let alt: Vec<f32> = (0..64)
+            .map(|i| if i % 2 == 0 { 1.0 } else { -1.0 })
+            .collect();
         let d = SampleData::from_interleaved(alt, AudioFormat::mono(48_000));
         let lp = biquad_all(&d, BiquadCoeffs::lowpass(48_000.0, 1_000.0, 0.707));
         let energy: f32 = lp.samples().iter().skip(16).map(|x| x * x).sum();

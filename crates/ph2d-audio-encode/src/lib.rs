@@ -211,6 +211,9 @@ mod tests {
         assert_eq!(&bytes[12..16], b"fmt ");
         assert_eq!(&bytes[36..40], b"data");
         // data_len = 10 samples * 2 bytes.
-        assert_eq!(u32::from_le_bytes([bytes[40], bytes[41], bytes[42], bytes[43]]), 20);
+        assert_eq!(
+            u32::from_le_bytes([bytes[40], bytes[41], bytes[42], bytes[43]]),
+            20
+        );
     }
 }

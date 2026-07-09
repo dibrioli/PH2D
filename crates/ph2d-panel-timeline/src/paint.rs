@@ -19,8 +19,9 @@ use ph2d_tokens::Spacing;
 pub(crate) fn paint(state: &mut TimelinePanelState, ctx: &mut PaintCtx) {
     if !ctx.host.panel_visible(TimelinePanel::ID) {
         // Symmetric stale-rect cleanup so `panel_at` stops returning the panel
-        // once it is hidden.
+        // (and `dispatch_wheel` stops zooming its time axis) once it is hidden.
         ctx.host.store_mut().clear_panel_rect(ids::TIMELINE_PANEL);
+        ctx.host.store_mut().clear_timeline_canvas();
         set_last_content_h(0.0);
         set_last_visible_h(0.0);
         return;
@@ -79,17 +80,29 @@ pub(crate) fn paint(state: &mut TimelinePanelState, ctx: &mut PaintCtx) {
         (region.w - label_w).max(0.0),
         region.h,
     );
-    // Compute the time view ONCE (page-follow) and share it with the ruler +
-    // lanes so ticks and key diamonds align. When the playhead leaves the
-    // visible span (e.g. free playback), view_start jumps to it (E6 refines).
-    let px_per_s = if state.px_per_s > 0.0 {
-        state.px_per_s
-    } else {
-        state::DEFAULT_PX_PER_S
-    };
+    // Publish the time-axis rect (ruler + lanes) so `dispatch_wheel` routes a
+    // wheel here as zoom/pan instead of scrolling the panel underneath.
+    ctx.host
+        .store_mut()
+        .set_timeline_canvas(ids::TIMELINE_PANEL, time_area);
+
+    // Drain this frame's wheel + dope-sheet gestures BEFORE resolving the view,
+    // so a zoom/pan (and the drag preview offset) land on THIS frame's ruler and
+    // diamonds rather than one frame late.
+    if state.px_per_s <= 0.0 {
+        state.px_per_s = state::DEFAULT_PX_PER_S;
+    }
+    crate::interact::process(state, ctx, time_area.x, &snapshot);
+
+    // Resolve the time view ONCE (after the wheel landed) and share it with the
+    // ruler + lanes so ticks and key diamonds align.
+    let px_per_s = state.px_per_s;
     let span = f64::from(time_area.w) / px_per_s;
     let mut view_start = state.view_start_s;
-    if span > 0.0
+    // Page-follow ONLY while playing: the view chases the playhead during
+    // playback, but a manual pan/zoom while paused is never yanked back.
+    if snapshot.playing
+        && span > 0.0
         && (snapshot.time_seconds < view_start || snapshot.time_seconds >= view_start + span)
     {
         view_start = snapshot.time_seconds.max(0.0);
@@ -97,9 +110,6 @@ pub(crate) fn paint(state: &mut TimelinePanelState, ctx: &mut PaintCtx) {
     state.view_start_s = view_start;
     state.view_span_s = span;
 
-    // Drain this frame's dope-sheet gestures (select / drag-move / clear) before
-    // drawing, so the drag preview offset is current for the diamonds below.
-    crate::interact::process(state, ctx, px_per_s, &snapshot);
     let preview_dx = crate::interact::preview_dx(state, px_per_s, &snapshot);
 
     // "+Track" buttons in the label column, aligned with the ruler strip.

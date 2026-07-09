@@ -87,6 +87,10 @@ impl Default for TimelinePanelState {
 
 /// Default zoom: pixels per second of timeline.
 pub const DEFAULT_PX_PER_S: f64 = 120.0; // LITERAL-PX-OK: default time-axis zoom (px per second), a functional view scale, not a design spacing token
+/// Zoomed all the way out: ~2 px per second (a long clip fits the strip).
+pub const MIN_PX_PER_S: f64 = 2.0; // LITERAL-PX-OK: time-axis zoom floor
+/// Zoomed all the way in: 4000 px per second (sub-frame precision at 60 fps).
+pub const MAX_PX_PER_S: f64 = 4000.0; // LITERAL-PX-OK: time-axis zoom ceiling
 
 /// Publish the current timeline view snapshot. Called by the shell once per
 /// frame; pass `None` to clear.

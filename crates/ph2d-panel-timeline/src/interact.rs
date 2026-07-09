@@ -12,26 +12,40 @@
 //! the panel selection (no key channel here). Right/middle buttons are ignored
 //! (reserved for future menu/pan).
 
-use ph2d_editor_core::interaction::{GesturePhase, TimelineGesture, TimelineHitKind};
+use ph2d_editor_core::interaction::{GesturePhase, TimelineGesture, TimelineHitKind, TimelineZoom};
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_host::PointerButton;
 use ph2d_timeline::{SelectedKey, TimelineIntent, TimelineViewSnapshot};
 
-use crate::state::{self, KeyDrag, TimelinePanelState};
+use crate::ids;
+use crate::state::{self, KeyDrag, MAX_PX_PER_S, MIN_PX_PER_S, TimelinePanelState};
 
-/// Drain this frame's dope-sheet gestures and raise the resulting intents. Call
-/// from `paint`, before drawing, so the preview offset (`state.key_drag`) is
-/// up to date for the same frame's diamonds.
+/// Wheel notches per e-fold of zoom (mirror of the graph's `ZOOM_WHEEL_DIV`) —
+/// bigger = gentler zoom per notch.
+const ZOOM_WHEEL_DIV: f64 = 8.0; // LITERAL-PX-OK: wheel notches per e-fold of time-axis zoom
+/// Pixels the view slides per pan notch.
+const PAN_PX_PER_NOTCH: f64 = 24.0; // LITERAL-PX-OK: time-axis pan step per wheel notch
+
+/// Drain this frame's dope-sheet wheel + gestures and raise the resulting
+/// intents. Call from `paint` BEFORE the view is resolved, so a zoom/pan lands
+/// on the same frame's ruler + diamonds (not one frame late). `time_x` is the
+/// left edge of the time area (where `view_start_s` maps to).
 pub(crate) fn process(
     state: &mut TimelinePanelState,
     ctx: &mut PaintCtx,
-    px_per_s: f64,
+    time_x: f32,
     snap: &TimelineViewSnapshot,
 ) {
     // Drop last frame's committed-move preview: by now the shell has applied the
     // move and re-published the snapshot, so the diamonds' base positions already
     // include it (keeping the offset would double it).
     state.pending_move_dx = None;
+    if let Some(z) = ctx.host.store_mut().take_timeline_zoom(ids::TIMELINE_PANEL) {
+        apply_wheel(state, time_x, z);
+    }
+    // Read the scale AFTER the wheel landed, so a same-frame zoom and the key
+    // drag agree on px-per-second.
+    let px_per_s = state.px_per_s;
     let gestures: Vec<TimelineGesture> = ctx.host.store_mut().drain_timeline_gestures().collect();
     for g in gestures {
         // Primary button only; Secondary/Middle are reserved (context menu / pan).
@@ -106,6 +120,30 @@ fn apply_key(
             }
         }
     }
+}
+
+/// Apply one frame's accumulated wheel to the time-axis view: pan slides
+/// `view_start_s`; zoom scales `px_per_s` about the cursor, holding the time
+/// under `anchor_x` fixed. `view_start_s` never goes negative (t=0 is the left
+/// bound of the clip).
+fn apply_wheel(state: &mut TimelinePanelState, time_x: f32, z: TimelineZoom) {
+    // Pan first, in the pre-zoom scale (what the user saw when they scrolled).
+    // A positive notch scrolls the content right ⇒ the view moves EARLIER, the
+    // same sign convention as the panel-scroll path (`panel_scroll - delta_y`).
+    if z.pan_delta != 0.0 {
+        state.view_start_s -= f64::from(z.pan_delta) * PAN_PX_PER_NOTCH / state.px_per_s;
+    }
+    if z.zoom_delta != 0.0 {
+        let old = state.px_per_s;
+        let new = (old * (f64::from(z.zoom_delta) / ZOOM_WHEEL_DIV).exp())
+            .clamp(MIN_PX_PER_S, MAX_PX_PER_S); // CLAMP-OK: const bounds, min<max, non-NaN
+        // Hold the time under the cursor: t = start + (anchor - time_x)/px_per_s.
+        let off_px = f64::from(z.anchor_x - time_x);
+        let t_anchor = state.view_start_s + off_px / old;
+        state.view_start_s = t_anchor - off_px / new;
+        state.px_per_s = new;
+    }
+    state.view_start_s = state.view_start_s.max(0.0);
 }
 
 /// Whether `sel` is currently selected in the published snapshot.
@@ -394,6 +432,131 @@ mod tests {
             state::drain_intents(),
             vec![TimelineIntent::SelectSingle(SelectedKey::new(7, 4))],
             "a no-drag click collapses the group to the pressed key"
+        );
+    }
+
+    // ── Wheel: anchored zoom + pan (W2.E6) ───────────────────────────────
+
+    /// The time under the cursor, given the view.
+    fn time_at(st: &TimelinePanelState, time_x: f32, x: f32) -> f64 {
+        st.view_start_s + f64::from(x - time_x) / st.px_per_s
+    }
+
+    #[test]
+    fn zoom_holds_the_time_under_the_cursor() {
+        let mut st = TimelinePanelState::default(); // 120 px/s, view_start 0
+        let (time_x, anchor_x) = (100.0_f32, 340.0_f32); // cursor sits at t = 2 s
+        let before = time_at(&st, time_x, anchor_x);
+        assert!((before - 2.0).abs() < 1e-9);
+
+        apply_wheel(
+            &mut st,
+            time_x,
+            TimelineZoom {
+                zoom_delta: 8.0, // one e-fold in
+                pan_delta: 0.0,
+                anchor_x,
+            },
+        );
+        assert!(st.px_per_s > 120.0, "zoomed in");
+        let after = time_at(&st, time_x, anchor_x);
+        assert!(
+            (after - before).abs() < 1e-9,
+            "the time under the cursor must not move: {before} → {after}"
+        );
+    }
+
+    #[test]
+    fn zoom_clamps_to_the_bounds() {
+        let mut st = TimelinePanelState::default();
+        apply_wheel(
+            &mut st,
+            0.0,
+            TimelineZoom {
+                zoom_delta: 1e3,
+                pan_delta: 0.0,
+                anchor_x: 0.0,
+            },
+        );
+        assert_eq!(st.px_per_s, MAX_PX_PER_S);
+        apply_wheel(
+            &mut st,
+            0.0,
+            TimelineZoom {
+                zoom_delta: -1e3,
+                pan_delta: 0.0,
+                anchor_x: 0.0,
+            },
+        );
+        assert_eq!(st.px_per_s, MIN_PX_PER_S);
+    }
+
+    #[test]
+    fn pan_slides_the_view_and_never_goes_negative() {
+        let mut st = TimelinePanelState {
+            view_start_s: 1.0,
+            ..TimelinePanelState::default()
+        }; // 120 px/s → one notch = 24 px = 0.2 s
+        // A NEGATIVE notch scrolls content left ⇒ the view moves later.
+        apply_wheel(
+            &mut st,
+            0.0,
+            TimelineZoom {
+                zoom_delta: 0.0,
+                pan_delta: -2.0,
+                anchor_x: 0.0,
+            },
+        );
+        assert!(
+            (st.view_start_s - 1.4).abs() < 1e-9,
+            "panned later by 0.4 s"
+        );
+        // A positive notch moves the view earlier, clamped at t = 0.
+        apply_wheel(
+            &mut st,
+            0.0,
+            TimelineZoom {
+                zoom_delta: 0.0,
+                pan_delta: 2.0,
+                anchor_x: 0.0,
+            },
+        );
+        assert!(
+            (st.view_start_s - 1.0).abs() < 1e-9,
+            "panned earlier by 0.4 s"
+        );
+
+        apply_wheel(
+            &mut st,
+            0.0,
+            TimelineZoom {
+                zoom_delta: 0.0,
+                pan_delta: 100.0,
+                anchor_x: 0.0,
+            },
+        );
+        assert_eq!(
+            st.view_start_s, 0.0,
+            "t=0 is the left bound; never negative"
+        );
+    }
+
+    #[test]
+    fn zoom_does_not_disturb_the_selection_or_drag() {
+        let mut st = TimelinePanelState::default();
+        apply_wheel(
+            &mut st,
+            0.0,
+            TimelineZoom {
+                zoom_delta: 3.0,
+                pan_delta: 0.0,
+                anchor_x: 50.0,
+            },
+        );
+        assert!(st.key_drag.is_none());
+        assert!(
+            state::drain_intents().is_empty(),
+            "view changes raise no intents"
         );
     }
 

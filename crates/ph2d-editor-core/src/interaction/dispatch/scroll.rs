@@ -35,6 +35,18 @@ pub fn dispatch_wheel<'frame>(
         store.add_graph_zoom(surface, event.delta_y, event.x, event.y);
         return events.into_bump_slice();
     }
+    // W2.E6 — a wheel over the timeline's time axis zooms/pans it, consumed
+    // BEFORE any panel scroll. Plain wheel = anchored zoom; horizontal wheel (or
+    // Shift+wheel, for a one-axis mouse) = pan. The panel drains + applies it.
+    if let Some(surface) = store.timeline_surface_at(event.x, event.y) {
+        let (zoom, pan) = if event.modifiers.shift {
+            (0.0, event.delta_y)
+        } else {
+            (event.delta_y, event.delta_x)
+        };
+        store.add_timeline_zoom(surface, zoom, pan, event.x);
+        return events.into_bump_slice();
+    }
     // An OPEN dropdown popover scrolls first — it floats on top of any panel, and its rect lives in a
     // dedicated slot (not `panel_rects`) so `panel_at` isn't polluted. Its scroll value + heights use
     // the `panel_scroll`/`panel_*_h` tables keyed by the dropdown id.

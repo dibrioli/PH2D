@@ -8,6 +8,7 @@
 
 use super::*;
 use crate::interaction::{GesturePhase, TimelineHitKind};
+use ph2d_host::WheelEvent;
 
 const SURFACE: NodeId = NodeId(700);
 const KEY_TARGET: NodeId = NodeId(701);
@@ -114,6 +115,90 @@ fn update_streams_past_the_rect_edge() {
     assert_eq!(g.len(), 2);
     assert_eq!(g[1].phase, GesturePhase::Update);
     assert_eq!((g[1].x, g[1].y), (999.0, 999.0));
+}
+
+fn wheel(x: f32, y: f32, delta_x: f32, delta_y: f32, shift: bool) -> WheelEvent {
+    WheelEvent {
+        x,
+        y,
+        delta_x,
+        delta_y,
+        modifiers: Modifiers {
+            shift,
+            ctrl: false,
+            alt: false,
+            meta: false,
+        },
+        timestamp_ns: 0,
+    }
+}
+
+// ── Wheel → anchored zoom / pan (W2.E6) ──────────────────────────────────
+
+#[test]
+fn wheel_over_the_time_axis_accumulates_zoom_and_consumes() {
+    let (mut store, _hits) = timeline_setup(TimelineHitKind::Lane);
+    store.set_timeline_canvas(SURFACE, CANVAS);
+    let arena = Bump::new();
+
+    let ev = dispatch_wheel(&mut store, wheel(100.0, 120.0, 0.0, 3.0, false), &arena);
+    assert!(ev.is_empty(), "wheel over the timeline is consumed as zoom");
+    let _ = dispatch_wheel(&mut store, wheel(110.0, 130.0, 0.0, 2.0, false), &arena);
+
+    let z = store.take_timeline_zoom(SURFACE).expect("zoom accumulated");
+    assert_eq!(z.zoom_delta, 5.0, "notches sum (3 + 2)");
+    assert_eq!(z.pan_delta, 0.0);
+    assert_eq!(z.anchor_x, 110.0, "anchor follows the latest cursor");
+    assert!(
+        store.take_timeline_zoom(SURFACE).is_none(),
+        "draining removes it"
+    );
+}
+
+#[test]
+fn shift_wheel_pans_instead_of_zooming() {
+    let (mut store, _hits) = timeline_setup(TimelineHitKind::Lane);
+    store.set_timeline_canvas(SURFACE, CANVAS);
+    let arena = Bump::new();
+    let _ = dispatch_wheel(&mut store, wheel(100.0, 120.0, 0.0, 4.0, true), &arena);
+
+    let z = store
+        .take_timeline_zoom(SURFACE)
+        .expect("wheel accumulated");
+    assert_eq!(z.zoom_delta, 0.0, "Shift+wheel must not zoom");
+    assert_eq!(z.pan_delta, 4.0);
+}
+
+#[test]
+fn horizontal_wheel_pans() {
+    let (mut store, _hits) = timeline_setup(TimelineHitKind::Lane);
+    store.set_timeline_canvas(SURFACE, CANVAS);
+    let arena = Bump::new();
+    let _ = dispatch_wheel(&mut store, wheel(100.0, 120.0, 6.0, 0.0, false), &arena);
+
+    let z = store
+        .take_timeline_zoom(SURFACE)
+        .expect("wheel accumulated");
+    assert_eq!((z.zoom_delta, z.pan_delta), (0.0, 6.0));
+}
+
+#[test]
+fn wheel_outside_the_time_axis_is_not_a_timeline_zoom() {
+    let (mut store, _hits) = timeline_setup(TimelineHitKind::Lane);
+    store.set_timeline_canvas(SURFACE, Rect::new(0.0, 0.0, 100.0, 100.0));
+    let arena = Bump::new();
+    let _ = dispatch_wheel(&mut store, wheel(500.0, 500.0, 0.0, 3.0, false), &arena);
+    assert!(store.take_timeline_zoom(SURFACE).is_none());
+}
+
+#[test]
+fn a_hidden_timeline_leaves_no_stale_zoom_rect() {
+    let (mut store, _hits) = timeline_setup(TimelineHitKind::Lane);
+    store.set_timeline_canvas(SURFACE, CANVAS);
+    store.clear_timeline_canvas(); // what `paint` does while hidden
+    let arena = Bump::new();
+    let _ = dispatch_wheel(&mut store, wheel(100.0, 120.0, 0.0, 3.0, false), &arena);
+    assert!(store.take_timeline_zoom(SURFACE).is_none());
 }
 
 #[test]

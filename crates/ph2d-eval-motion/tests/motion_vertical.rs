@@ -49,14 +49,15 @@ fn grid_transform_clone_lowers_to_render_instances() {
     // 9 grid points × 3 clone copies = 27 render instances.
     assert_eq!(instances.len(), 27);
 
-    // copy 0 = the grid itself (transform is identity at defaults):
-    //   grid[0] = (0,0), grid[8] = (2,2).
-    assert_eq!(instances[0].world_pos, [0.0, 0.0]);
-    assert_eq!(instances[8].world_pos, [2.0, 2.0]);
+    // copy 0 = the grid itself (transform is identity at defaults). The grid is
+    // centred on the origin (spans [-1,1]×[-1,1] at gap 1.0):
+    //   grid[0] = (-1,-1), grid[8] = (1,1).
+    assert_eq!(instances[0].world_pos, [-1.0, -1.0]);
+    assert_eq!(instances[8].world_pos, [1.0, 1.0]);
     // copy 1 = grid + (step_x=2, 0): instances[9] = grid[0] + (2,0).
-    assert_eq!(instances[9].world_pos, [2.0, 0.0]);
+    assert_eq!(instances[9].world_pos, [1.0, -1.0]);
     // copy 2 = grid + (4, 0): instances[18] = grid[0] + (4,0).
-    assert_eq!(instances[18].world_pos, [4.0, 0.0]);
+    assert_eq!(instances[18].world_pos, [3.0, -1.0]);
     // defaults stamped by the lowering:
     assert_eq!(instances[0].size, [1.0, 1.0]);
     assert_eq!(instances[0].tint, [1.0, 1.0, 1.0, 1.0]);

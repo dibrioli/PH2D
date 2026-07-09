@@ -63,7 +63,7 @@ pub(super) fn apply_param_edits(
         }
     }
 
-    // Scalar slider / chip edits.
+    // Scalar slider / chip + enum edits.
     let intents = ph2d_panel_motion_params::drain_param_intents();
     if !intents.is_empty() {
         // A discrete (typed) commit arrives with no bracket open → its own step.
@@ -73,10 +73,20 @@ pub(super) fn apply_param_edits(
         }
         for MotionParamIntent::SetParam { node, param, value } in intents {
             let nid = NodeId(node);
-            if motion.doc.graph.node(nid).is_some() {
-                motion.doc.graph.set_param(nid, param, value as f32);
-                motion.pump.mark_dirty();
+            let Some(inst) = motion.doc.graph.node(nid) else {
+                continue;
+            };
+            // A `channel` switch on a behaviour also resets its magnitude to that
+            // channel's sensible default (world units vs turns vs scale) — same
+            // undo step, so Ctrl+Z restores the old values.
+            let channel_switch = param == "channel"
+                && (param_value(motion, nid, "channel") - value as f32).abs() > f32::EPSILON;
+            let type_name = channel_switch.then(|| inst.type_name.clone());
+            motion.doc.graph.set_param(nid, param, value as f32);
+            if let Some(tn) = type_name {
+                apply_channel_presets(motion, nid, &tn, value as f32);
             }
+            motion.pump.mark_dirty();
         }
         if discrete {
             motion.history.commit_if_changed(&motion.doc);
@@ -86,6 +96,76 @@ pub(super) fn apply_param_edits(
     // Close the session bracket on the true→false edge (one step for the gesture).
     if !editing && was {
         motion.history.commit_if_changed(&motion.doc);
+    }
+}
+
+/// The current value of one param on a node (per-instance override, else the
+/// manifest default; unknown param → `0`).
+pub(super) fn param_value(
+    motion: &MotionState,
+    nid: ph2d_nodegraph::graph::NodeId,
+    name: &str,
+) -> f32 {
+    use ph2d_nodegraph::cook::OpResolver;
+    let overrides = motion.doc.graph.node_param_overrides(nid);
+    if let Some(v) = overrides.and_then(|m| m.get(name)).copied() {
+        return v;
+    }
+    motion
+        .doc
+        .graph
+        .node(nid)
+        .and_then(|i| motion.registry.resolve(i.type_id()))
+        .and_then(|op| op.manifest().params.iter().find(|p| p.name == name))
+        .map_or(0.0, |p| p.default)
+}
+
+/// Reset a behaviour node's magnitude params to a sensible default for the newly
+/// selected channel (#10 consistency). Switching what a stagger/oscillator drives
+/// — X/Y position (world units) vs Rotation (turns) vs Size (scale delta) —
+/// rewrites the range so a `±1` meant for position doesn't read as a wild
+/// ±full-turn / ±huge-scale on the other channels. Editor UX (not node math): it
+/// runs on the channel switch inside the same undo step, so Ctrl+Z restores the
+/// artist's previous values. Non-behaviour node types are a no-op.
+pub(super) fn apply_channel_presets(
+    motion: &mut MotionState,
+    nid: ph2d_nodegraph::graph::NodeId,
+    type_name: &str,
+    channel: f32,
+) {
+    let ch = channel.round() as i32;
+    match type_name {
+        "motion.stagger" => {
+            let (min, max) = stagger_channel_range(ch);
+            motion.doc.graph.set_param(nid, "min", min);
+            motion.doc.graph.set_param(nid, "max", max);
+        }
+        "motion.oscillator" => {
+            motion
+                .doc
+                .graph
+                .set_param(nid, "amplitude", oscillator_channel_amplitude(ch));
+        }
+        _ => {}
+    }
+}
+
+/// Stagger `(min, max)` ramp endpoints per channel: position in world units,
+/// Rotation in turns (±¼), Size in scale delta (±½).
+fn stagger_channel_range(channel: i32) -> (f32, f32) {
+    match channel {
+        2 => (-0.25, 0.25), // Rotation: ±¼ turn
+        3 => (-0.5, 0.5),   // Size: ±0.5 scale
+        _ => (-1.0, 1.0),   // Position (X/Y): ±1 world unit
+    }
+}
+
+/// Oscillator peak `amplitude` per channel (same unit logic as the stagger range).
+fn oscillator_channel_amplitude(channel: i32) -> f32 {
+    match channel {
+        2 => 0.1, // Rotation: ±0.1 turn
+        3 => 0.3, // Size: ±0.3 scale
+        _ => 1.0, // Position: ±1 world unit
     }
 }
 

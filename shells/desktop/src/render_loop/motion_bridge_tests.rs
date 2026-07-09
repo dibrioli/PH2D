@@ -4,7 +4,8 @@
 //! in the sibling `params` submodule.
 
 use super::params::{
-    apply_color_to_node, build_params_snapshot, channel_values, linear_rgba_to_srgb8,
+    apply_channel_presets, apply_color_to_node, build_params_snapshot, channel_values,
+    linear_rgba_to_srgb8, param_value,
 };
 use super::*;
 use crate::motion_state::MotionState;
@@ -187,6 +188,46 @@ fn stagger_params_are_named_enums_and_a_checkbox() {
         "reverse is a checkbox (Toggle) row, not a 0/1 slider"
     );
     ph2d_panel_motion_graph::set_graph_selection(Vec::new());
+}
+
+/// #10 consistency: switching a behaviour's channel resets its magnitude to a
+/// channel-sensible default. A stagger driving Rotation gets a ±¼-turn range
+/// (not the ±1 world-unit range meant for position); an oscillator gets a small
+/// turns amplitude; switching back to a position channel restores the world-unit
+/// range. Non-behaviour node types are untouched.
+#[test]
+fn channel_switch_resets_behaviour_magnitude_to_channel_defaults() {
+    let mut motion = MotionState::new();
+    let st = motion.doc.graph.add_node("motion.stagger");
+
+    // → Rotation (channel 2): ±¼-turn ramp, not the position ±1.
+    apply_channel_presets(&mut motion, st, "motion.stagger", 2.0);
+    assert_eq!(param_value(&motion, st, "min"), -0.25);
+    assert_eq!(param_value(&motion, st, "max"), 0.25);
+    // → Size (channel 3): ±½ scale.
+    apply_channel_presets(&mut motion, st, "motion.stagger", 3.0);
+    assert_eq!(param_value(&motion, st, "min"), -0.5);
+    assert_eq!(param_value(&motion, st, "max"), 0.5);
+    // → back to Y (channel 1): the world-unit range returns.
+    apply_channel_presets(&mut motion, st, "motion.stagger", 1.0);
+    assert_eq!(param_value(&motion, st, "min"), -1.0);
+    assert_eq!(param_value(&motion, st, "max"), 1.0);
+
+    // Oscillator amplitude scales the same way (turns get a small peak).
+    let osc = motion.doc.graph.add_node("motion.oscillator");
+    apply_channel_presets(&mut motion, osc, "motion.oscillator", 2.0);
+    assert_eq!(param_value(&motion, osc, "amplitude"), 0.1);
+    apply_channel_presets(&mut motion, osc, "motion.oscillator", 1.0);
+    assert_eq!(param_value(&motion, osc, "amplitude"), 1.0);
+
+    // A non-behaviour node (transform) is left alone.
+    let xf = motion.doc.graph.add_node("motion.transform");
+    apply_channel_presets(&mut motion, xf, "motion.transform", 2.0);
+    assert_eq!(
+        param_value(&motion, xf, "scale"),
+        1.0,
+        "transform untouched"
+    );
 }
 
 /// The animation enabler (ask "when do we see animation?"): playing advances

@@ -1,11 +1,16 @@
 #![forbid(unsafe_code)]
 //! `motion.transform` — a Motion **modifier**: scales then offsets the `P`
-//! (Vec2) attribute of its input instance stream; passes every other column
-//! through unchanged (count is preserved). Pure.
+//! (Vec2) attribute of its input instance stream, masked per-instance by the
+//! multiplicative `falloff` column (§1.2; absent → `1.0`) so a focus field makes
+//! only its region move — consistent with every other spatial node
+//! (orbit/stagger/oscillator/wiggle all read `falloff`). Passes every other
+//! column through unchanged (count is preserved). Pure.
 //!
 //! Params (read via `ctx.param` — per-instance override else the manifest
-//! default shown): `scale` (1.0), `offset_x` (0.0), `offset_y` (0.0).
-//! `P' = P * scale + (offset_x, offset_y)`.
+//! default shown): `scale` (1.0), `offset_x` (0.0), `offset_y` (0.0). Per
+//! instance: `full = P * scale + (offset_x, offset_y)`, then the falloff blends
+//! `P' = lerp(P, full, falloff)` (`falloff = 0` keeps `P`, `1` takes the full
+//! transform).
 
 use ph2d_node_registry::{NodeRegistry, RegistryError};
 use ph2d_nodegraph::attr::{Column, Stream};
@@ -58,6 +63,23 @@ fn apply_xform(p: [f32; 2], scale: f32, ox: f32, oy: f32) -> [f32; 2] {
     [p[0] * scale + ox, p[1] * scale + oy]
 }
 
+/// The multiplicative `falloff` weight for instance `i` (absent → `1.0`) —
+/// shared masking read, identical to the other spatial Motion nodes.
+fn falloff_at(stream: &Stream, i: usize) -> f32 {
+    match stream.get("falloff") {
+        Some(Column::Scalar(v)) => v.get(i).copied().unwrap_or(1.0),
+        _ => 1.0,
+    }
+}
+
+/// Apply the affine map to `p`, then blend from the original toward the
+/// transformed position by `f` (the falloff): `f = 0` keeps `p`, `f = 1` takes
+/// the full transform. Mirrors `motion.orbit`'s focus blend.
+fn xform_masked(p: [f32; 2], scale: f32, ox: f32, oy: f32, f: f32) -> [f32; 2] {
+    let full = apply_xform(p, scale, ox, oy);
+    [p[0] + (full[0] - p[0]) * f, p[1] + (full[1] - p[1]) * f]
+}
+
 struct MotionTransform;
 
 impl NodeOp for MotionTransform {
@@ -82,8 +104,11 @@ impl NodeOp for MotionTransform {
             for (name, col) in input.columns() {
                 match (name.as_str(), col) {
                     ("P", Column::Vec2(v)) => {
-                        let t: Vec<[f32; 2]> =
-                            v.iter().map(|p| apply_xform(*p, scale, ox, oy)).collect();
+                        let t: Vec<[f32; 2]> = v
+                            .iter()
+                            .enumerate()
+                            .map(|(i, p)| xform_masked(*p, scale, ox, oy, falloff_at(input, i)))
+                            .collect();
                         out.set("P", Column::Vec2(t));
                     }
                     // Every other column is per-element data this node does not
@@ -251,5 +276,78 @@ mod tests {
         assert_eq!(apply_xform([0.0, 0.0], 10.0, 4.0, 7.0), [4.0, 7.0]);
         assert_eq!(apply_xform([1.0, 1.0], 0.0, 0.0, 0.0), [0.0, 0.0]); // collapse
         assert_eq!(apply_xform([-2.0, 5.0], 1.0, 0.0, 0.0), [-2.0, 5.0]); // identity
+    }
+
+    #[test]
+    fn xform_masked_blends_by_falloff() {
+        // f=1 → full transform; f=0 → unmoved; f=0.5 → halfway between.
+        assert_eq!(xform_masked([1.0, 1.0], 2.0, 10.0, 0.0, 1.0), [12.0, 2.0]);
+        assert_eq!(xform_masked([1.0, 1.0], 2.0, 10.0, 0.0, 0.0), [1.0, 1.0]);
+        // full = (12, 2); midpoint with (1,1) = (6.5, 1.5).
+        assert_eq!(xform_masked([1.0, 1.0], 2.0, 10.0, 0.0, 0.5), [6.5, 1.5]);
+    }
+
+    // Source with a falloff column so the mask is exercised end to end.
+    static MASK_SRC_MAN: NodeManifest = NodeManifest {
+        id: NodeTypeId::of("motion.transform.test.masksrc"),
+        name: "motion.transform.test.masksrc",
+        inputs: &[],
+        outputs: &[PortSpec {
+            name: "out",
+            ty: INST_VEC2,
+        }],
+        effect: Effect::Pure,
+        clock: Clock::Frame,
+        params: &[],
+        lowerings: &[LoweringKind::Cpu],
+    };
+    struct MaskSrc;
+    impl NodeOp for MaskSrc {
+        fn manifest(&self) -> &'static NodeManifest {
+            &MASK_SRC_MAN
+        }
+        fn eval(&self, ctx: &mut EvalCtx<'_>) {
+            ctx.emit(
+                Stream::new(2)
+                    .with("P", Column::Vec2(vec![[1.0, 1.0], [2.0, 2.0]]))
+                    .with("falloff", Column::Scalar(vec![1.0, 0.0])),
+            );
+        }
+    }
+    struct MaskOps;
+    impl OpResolver for MaskOps {
+        fn resolve(&self, ty: NodeTypeId) -> Option<&dyn NodeOp> {
+            match ty {
+                t if t == MASK_SRC_MAN.id => Some(&MaskSrc),
+                t if t == MANIFEST.id => Some(&MotionTransform),
+                _ => None,
+            }
+        }
+    }
+
+    #[test]
+    fn falloff_column_masks_the_transform_per_instance() {
+        // scale 2 + offset (10,1): instance 0 (falloff 1) fully transforms;
+        // instance 1 (falloff 0) is untouched — the focus field gates the move,
+        // consistent with orbit/stagger/oscillator/wiggle.
+        let mut g = Graph::new();
+        let src = g.add_node("motion.transform.test.masksrc");
+        let xf = g.add_node("motion.transform");
+        g.connect(Edge {
+            from: (src, 0),
+            to: (xf, 0),
+            delayed: false,
+        })
+        .unwrap();
+        g.set_param(xf, "scale", 2.0);
+        g.set_param(xf, "offset_x", 10.0);
+        g.set_param(xf, "offset_y", 1.0);
+        let mut cook = Cook::new();
+        let out = cook.cook(&g, &MaskOps, xf, 0.0).unwrap();
+        match out[0].as_stream().get("P").unwrap() {
+            // (1,1)*2+(10,1) = (12,3) at full falloff ; (2,2) unmoved at falloff 0.
+            Column::Vec2(v) => assert_eq!(v, &vec![[12.0, 3.0], [2.0, 2.0]]),
+            _ => panic!("P"),
+        }
     }
 }

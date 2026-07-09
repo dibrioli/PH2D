@@ -13,6 +13,7 @@
 #![forbid(unsafe_code)]
 
 mod geom;
+mod hits;
 mod interact;
 mod paint;
 mod paint_chrome;

@@ -4,23 +4,33 @@
 //! (pan/zoom/selection/drag/menu) and draws the graph into the docked
 //! `motion_graph` region: background + grid, wires (under), then node cards with
 //! category-tinted headers, domain-colored sockets, an Accent ring on the
-//! selection, the in-progress wire ghost, and the add-node popup. It registers
-//! `GraphSurface` hit rects — background, then wires, then node bodies, then
-//! sockets (last wins, so a socket beats the node body and a node beats a wire) —
-//! and publishes the canvas rect so the M0 dispatch routes gestures back here.
-//! All colors are tokens (HR-15); the add-menu is hit-tested panel-side against
-//! `Background` gestures (no menu-specific `GraphHitKind`). Sizes are logical.
+//! selection, the in-progress wire ghost, and the add-node popup.
+//!
+//! **The canvas content is drawn inside a Vello clip layer.** Pan and zoom move
+//! the graph freely in its own space, so a card (or a wire, or the drag ghost
+//! that follows a captured pointer) routinely lands past the panel edge; without
+//! the clip it paints straight over the scene viewport above. The split chrome
+//! (divider + toolbar) is drawn OUTSIDE the clip, since the divider line
+//! straddles the panel's own top edge. Hit rects are clipped to the same rect by
+//! [`crate::hits`], so what is invisible is also unclickable.
+//!
+//! Hit rects are registered background → wires → node bodies → sockets (last
+//! wins, so a socket beats the node body and a node beats a wire), and the canvas
+//! rect is published so the M0 dispatch routes gestures back here. All colors are
+//! tokens (HR-15); the add-menu is hit-tested panel-side against `Background`
+//! gestures (no menu-specific `GraphHitKind`). Sizes are logical.
 
 use crate::geom::{self, View, card_h, socket_center};
+use crate::hits::{bg_hit_id, push_card_hit, push_socket_hits, push_wire_hits, register_hits};
 use crate::snapshot::{
     GraphEdgeView, GraphNodeView, GraphViewSnapshot, current_catalog, current_snapshot,
 };
 use crate::state::{AddMenu, Interaction, MotionGraphPanelState, ViewState};
 use ph2d_a11y::NodeId;
-use ph2d_editor_core::ids;
-use ph2d_editor_core::interaction::{GraphHitKind, InteractiveState};
+use ph2d_editor_core::interaction::GraphHitKind;
 use ph2d_editor_core::paint::{
-    fill_circle, fill_rounded_rect, paint_text_title, resolve, stroke_polyline, stroke_rounded_rect,
+    fill_circle, fill_rounded_rect, paint_text_title, rect_to_vello, resolve, stroke_polyline,
+    stroke_rounded_rect,
 };
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::zones::Rect;
@@ -60,14 +70,6 @@ const MENU_ROW_TEXT_X: f32 = 18.0; // LITERAL-PX-OK: row label x-inset
 const MENU_ROW_TEXT_Y: f32 = 3.0; // LITERAL-PX-OK: row label y-inset
 const MENU_ROW_SIZE: f32 = 13.0; // LITERAL-PX-OK: row label font size
 const MENU_ROW_TEXT_INSET_R: f32 = 20.0; // LITERAL-PX-OK: row label right inset
-/// How many polyline points a wire's hit path is sampled at (segments = N-1);
-/// each segment becomes one padded hit rect sharing the wire's id. Denser than
-/// the draw sampling so the padded segment boxes hug the curve (fewer gaps /
-/// off-curve false hits) now that the band is wider.
-const WIRE_HIT_SAMPLES: usize = 16;
-/// Half-thickness (screen px) of a wire's hit rects — a forgiving hover / alt-
-/// click zone (a full band of `2 × WIRE_HIT_R`, independent of zoom).
-const WIRE_HIT_R: f32 = 8.0; // LITERAL-PX-OK: wire hit half-thickness
 
 pub(crate) fn paint(state: &mut MotionGraphPanelState, ctx: &mut PaintCtx) {
     let rect = ctx.layout.motion_graph;
@@ -94,7 +96,16 @@ pub(crate) fn paint(state: &mut MotionGraphPanelState, ctx: &mut PaintCtx) {
 
     let view = View::new(rect, state.view);
 
-    // Background + grid (Fase A opaque cover + orientation grid).
+    // Hit rects, lowest-priority first (last registered wins): background →
+    // wires → node bodies → sockets. So a socket beats the node body it sits on,
+    // a node body beats a wire behind it, and a wire beats empty canvas. Each is
+    // clipped to `rect` by `hits`, matching the paint clip below.
+    let mut hits: Vec<(NodeId, GraphHitKind, Rect)> =
+        vec![(bg_hit_id(), GraphHitKind::Background, rect)];
+
+    // ── Canvas content: clipped to the panel, so a card / wire panned past the
+    // edge never paints over the scene viewport above. ──────────────────────
+    ctx.scene.push_clip(&rect_to_vello(rect));
     fill_rounded_rect(ctx.scene, rect, 0.0, resolve(ColorToken::GraphBg, theme));
     draw_grid(ctx, rect, theme);
 
@@ -103,34 +114,34 @@ pub(crate) fn paint(state: &mut MotionGraphPanelState, ctx: &mut PaintCtx) {
     // the alt-click delete target.
     let hovered = ctx.host.store().hot_id();
     for e in &snap.edges {
-        let is_hovered = hovered == Some(wire_hit_id(e.to_node, e.to_port));
+        let is_hovered = hovered == Some(crate::hits::wire_hit_id(e.to_node, e.to_port));
         draw_wire(ctx, &snap, e, &view, theme, is_hovered);
-    }
-
-    // Hit rects, lowest-priority first (last registered wins): background →
-    // wires → node bodies → sockets. So a socket beats the node body it sits on,
-    // a node body beats a wire behind it, and a wire beats empty canvas.
-    let mut hits: Vec<(NodeId, GraphHitKind, Rect)> =
-        vec![(bg_hit_id(), GraphHitKind::Background, rect)];
-    for e in &snap.edges {
         push_wire_hits(&mut hits, &snap, e, &view, rect);
     }
     // Cards, collecting body hits as we draw them.
     for n in &snap.nodes {
         let body = draw_card(ctx, state, n, &view, theme);
-        hits.push((
-            node_hit_id(n.id),
-            GraphHitKind::Node { node: n.id as u64 },
-            body,
-        ));
+        push_card_hit(&mut hits, n.id, body, rect);
     }
     // Sockets last so they win the overlap with the node edge they sit on.
     for n in &snap.nodes {
-        push_socket_hits(&mut hits, n, &view);
+        push_socket_hits(&mut hits, n, &view, rect);
     }
+    // Overlays above the cards, still clipped: the in-progress wire ghost (it
+    // tracks a CAPTURED pointer, which routinely leaves the panel) and the
+    // add-menu (already clamped on-canvas).
+    if let Interaction::DrawWire { .. } = &state.interaction {
+        draw_wire_ghost(ctx, &snap, state, &view, theme);
+    }
+    if let Some(menu) = state.add_menu {
+        draw_add_menu(ctx, &menu, rect, theme);
+    }
+    ctx.scene.pop_layer();
+
     // Split chrome (E9): the draggable divider at the scene boundary + the
     // SplitH / SplitV / Fit toolbar. Drawn + hit-registered above the graph
-    // content so they win a click there.
+    // content so they win a click there, and OUTSIDE the clip — the divider line
+    // straddles the panel's own top edge and the clip would halve it.
     crate::paint_chrome::draw_split_chrome(ctx, rect, center, theme, &mut hits);
     // While the add-menu is open, a full-canvas Background shield registered LAST
     // makes every click resolve as Background — so a menu row drawn over a card /
@@ -138,14 +149,6 @@ pub(crate) fn paint(state: &mut MotionGraphPanelState, ctx: &mut PaintCtx) {
     // (`interact::apply_background`).
     if state.add_menu.is_some() {
         hits.push((bg_hit_id(), GraphHitKind::Background, rect));
-    }
-
-    // Overlays above the cards: the in-progress wire ghost, then the add-menu.
-    if let Interaction::DrawWire { .. } = &state.interaction {
-        draw_wire_ghost(ctx, &snap, state, &view, theme);
-    }
-    if let Some(menu) = state.add_menu {
-        draw_add_menu(ctx, &menu, rect, theme);
     }
 
     register_hits(ctx, rect, &hits);
@@ -358,35 +361,9 @@ fn draw_add_menu(ctx: &mut PaintCtx, menu: &AddMenu, canvas: Rect, theme: Theme)
     }
 }
 
-/// Register the background + wire + node + socket `GraphSurface` hit rects (in
-/// the order given — last wins) so the M0 dispatch routes gestures here, and
-/// republish the canvas rect for the wheel-zoom hit-test. Keyboard focus is
-/// cursor-gated by the shell, so it is NOT set here.
-fn register_hits(ctx: &mut PaintCtx, rect: Rect, hits: &[(NodeId, GraphHitKind, Rect)]) {
-    let parent = ids::MOTION_GRAPH_PANEL;
-    {
-        let store = ctx.host.store_mut();
-        for (id, kind, _) in hits {
-            store.register(
-                *id,
-                InteractiveState::GraphSurface {
-                    parent,
-                    kind: *kind,
-                    canvas: rect,
-                },
-            );
-        }
-        store.set_graph_canvas(parent, rect);
-    }
-    let hit_index = ctx.host.hit_index_mut();
-    for (id, _, r) in hits {
-        hit_index.register(*id, *r);
-    }
-}
-
 /// Screen endpoints `(output socket, input socket)` of a wire, or `None` if
 /// either endpoint node isn't in the snapshot.
-fn wire_endpoints(
+pub(crate) fn wire_endpoints(
     snap: &GraphViewSnapshot,
     e: &GraphEdgeView,
     view: &View,
@@ -401,82 +378,14 @@ fn wire_endpoints(
 
 /// Sample a horizontal-tangent cubic between two socket centers into `n+1`
 /// polyline points (shared by draw + hit-path so they never diverge).
-fn wire_polyline(p0: (f32, f32), p3: (f32, f32), zoom: f32, n: usize) -> Vec<(f32, f32)> {
+pub(crate) fn wire_polyline(
+    p0: (f32, f32),
+    p3: (f32, f32),
+    zoom: f32,
+    n: usize,
+) -> Vec<(f32, f32)> {
     let dx = ((p3.0 - p0.0).abs() * 0.5 + WIRE_TANGENT * zoom).max(WIRE_TANGENT * zoom);
     cubic_polyline(p0, (p0.0 + dx, p0.1), (p3.0 - dx, p3.1), p3, n)
-}
-
-/// Push a wire's hit rects (all sharing one id encoding the target input) —
-/// several padded segment boxes along the flattened bezier, culled to `canvas`.
-fn push_wire_hits(
-    hits: &mut Vec<(NodeId, GraphHitKind, Rect)>,
-    snap: &GraphViewSnapshot,
-    e: &GraphEdgeView,
-    view: &View,
-    canvas: Rect,
-) {
-    let Some((p0, p3)) = wire_endpoints(snap, e, view) else {
-        return;
-    };
-    let id = wire_hit_id(e.to_node, e.to_port);
-    let kind = GraphHitKind::Wire {
-        edge: wire_handle(e.to_node, e.to_port),
-    };
-    let pts = wire_polyline(p0, p3, view.zoom, WIRE_HIT_SAMPLES);
-    for seg in pts.windows(2) {
-        let (ax, ay) = seg[0];
-        let (bx, by) = seg[1];
-        let x = ax.min(bx) - WIRE_HIT_R;
-        let y = ay.min(by) - WIRE_HIT_R;
-        let r = Rect::new(
-            x,
-            y,
-            (ax - bx).abs() + 2.0 * WIRE_HIT_R,
-            (ay - by).abs() + 2.0 * WIRE_HIT_R,
-        );
-        if rects_overlap(r, canvas) {
-            hits.push((id, kind, r));
-        }
-    }
-}
-
-/// Push a node's input + output socket hit rects (square, fixed screen size).
-fn push_socket_hits(hits: &mut Vec<(NodeId, GraphHitKind, Rect)>, n: &GraphNodeView, view: &View) {
-    for (i, _) in n.inputs.iter().enumerate() {
-        let (cx, cy) = socket_center(n, view, false, i);
-        hits.push((
-            sock_in_id(n.id, i),
-            GraphHitKind::SocketIn {
-                node: n.id as u64,
-                port: i as u16,
-            },
-            socket_hit_rect(cx, cy),
-        ));
-    }
-    for (i, _) in n.outputs.iter().enumerate() {
-        let (cx, cy) = socket_center(n, view, true, i);
-        hits.push((
-            sock_out_id(n.id, i),
-            GraphHitKind::SocketOut {
-                node: n.id as u64,
-                port: i as u16,
-            },
-            socket_hit_rect(cx, cy),
-        ));
-    }
-}
-
-fn socket_hit_rect(cx: f32, cy: f32) -> Rect {
-    Rect::new(
-        cx - geom::SOCKET_HIT_R,
-        cy - geom::SOCKET_HIT_R,
-        2.0 * geom::SOCKET_HIT_R,
-        2.0 * geom::SOCKET_HIT_R,
-    )
-}
-
-fn rects_overlap(a: Rect, b: Rect) -> bool {
-    a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y
 }
 
 /// An Accent ring around a socket (the compatible drop-target highlight), drawn
@@ -513,22 +422,6 @@ pub(crate) fn fnv_id(key: &str) -> NodeId {
     }
     NodeId(h)
 }
-fn bg_hit_id() -> NodeId {
-    fnv_id("motion_graph/bg")
-}
-fn node_hit_id(node: u32) -> NodeId {
-    fnv_id(&format!("motion_graph/node/{node}"))
-}
-fn sock_in_id(node: u32, port: usize) -> NodeId {
-    fnv_id(&format!("motion_graph/sock_in/{node}/{port}"))
-}
-fn sock_out_id(node: u32, port: usize) -> NodeId {
-    fnv_id(&format!("motion_graph/sock_out/{node}/{port}"))
-}
-fn wire_hit_id(to_node: u32, to_port: u16) -> NodeId {
-    fnv_id(&format!("motion_graph/wire/{to_node}/{to_port}"))
-}
-
 /// Opaque `Wire { edge }` handle = the target input `(to_node, to_port)`, which
 /// uniquely identifies the edge (one edge per input). Decoded in `interact` for
 /// `Disconnect`.

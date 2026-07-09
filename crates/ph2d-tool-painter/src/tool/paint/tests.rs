@@ -12750,3 +12750,53 @@ fn watercolor_granulation_bake_settles_beyond_the_live_preview() {
         "valleys keep their deposit across the release (live {val_live:.1} → baked {val_baked:.1})"
     );
 }
+
+/// **MIX-1 (doc 12, W-C): Charge DEPLETA com a distância do traço** — a assinatura nº 1 do
+/// Procreate (Handbook: "the longer you drag your stroke out... the trail of color it leaves will
+/// become fainter"). Um traço LONGO em canvas branco com Charge baixo (reserva curta, nada a
+/// captar no branco) precisa desbotar: a cauda deposita menos que a cabeça. Charge = 1 (default)
+/// pula o mixer inteiro — byte-idêntico, coberto pela suíte.
+#[test]
+fn watercolor_wet_mix_charge_depletes_along_the_stroke() {
+    let size = 256u32;
+    let mut t = white_canvas(size, 8.0);
+    t.paint.brush = BrushSpec {
+        radius_px: 8.0,
+        hardness: 1.0,
+        falloff: Falloff::Constant,
+        color: [0.15, 0.25, 0.7],
+        space_attenuation: false,
+        watercolor: true,
+        fill: 0.6,
+        depth: 2.0,
+        edge_gain: 0.0,
+        edge_spread: 4.0,
+        warp: 0.0,
+        granulation: 0.0,
+        wet_charge: 0.25, // short reserve; white canvas ⇒ nothing to pick up ⇒ pure depletion
+        ..Default::default()
+    };
+    for slot in &mut t.paint.brush_by_mode {
+        *slot = t.paint.brush;
+    }
+    assert!(t.on_canvas_pointer(cp([12.0, 128.0], PointerPhase::Down)));
+    let mut x = 12.0f32;
+    while x < 240.0 {
+        x += 2.0;
+        t.on_canvas_pointer(cp([x, 128.0], PointerPhase::Move));
+    }
+    t.on_canvas_pointer(cp([240.0, 128.0], PointerPhase::Up));
+    let mean_g = |x0: u32, x1: u32| -> f32 {
+        let mut acc = 0.0f32;
+        for x in x0..x1 {
+            acc += f32::from(px(&t, size, x, 128)[1]);
+        }
+        acc / (x1 - x0) as f32
+    };
+    let head = mean_g(20, 60); // fresh reserve
+    let tail = mean_g(190, 230); // depleted
+    assert!(
+        tail > head + 15.0,
+        "the trail must fade as the Charge depletes (head G {head:.1} vs tail G {tail:.1} — lighter = fainter)"
+    );
+}

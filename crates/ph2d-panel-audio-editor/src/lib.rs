@@ -97,6 +97,8 @@ pub const MAX_FX_PARAMS: usize = 4;
 pub const AEDIT_FX_PREV: NodeId = hash_node_id("audio_editor_fx_prev");
 /// Next effect in the selector.
 pub const AEDIT_FX_NEXT: NodeId = hash_node_id("audio_editor_fx_next");
+/// Return the SELECTED effect's parameters to their neutral defaults.
+pub const AEDIT_FX_RESET: NodeId = hash_node_id("audio_editor_fx_reset");
 /// Commit the audition (one undo step) — what you hear is what lands.
 pub const AEDIT_FX_APPLY: NodeId = hash_node_id("audio_editor_fx_apply");
 /// Discard the audition and restore the clip's sound.

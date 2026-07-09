@@ -93,6 +93,11 @@ abaixo é histórico — não re-investigue.
   - ⚠️ `norm_to_real` devolve os **extremos exatos** (`n<=0 → min`, `n>=1 → max`):
     `exp(ln(20_000))` voltava `19_999.998`, o suficiente pra furar o bypass e fazer
     "efeito nenhum" filtrar o áudio. Foi o primeiro teste a falhar.
+  - **Reset por-efeito**: ícone `IconId::Reset` (estilo `Plain`) ao lado do nome,
+    devolve o efeito ATIVO ao neutro. Também *destoca* o estágio (`fx_touched`),
+    senão trocar de efeito empilharia um estágio já neutro. Fica **dimmed** quando
+    os sliders já estão no neutro (`fx_at_defaults`). Não mexe em `fx_dirty`: se há
+    audição, o shell re-renderiza neutro (volta pra cadeia / clipe pristino).
   - Testes: `every_effect_is_a_no_op_at_its_defaults` (byte-idêntico + comprimento)
     e `a_nudge_off_neutral_changes_the_audio` (o bypass não engole edição real);
     `is_bypass_implies_exact_identity` na crate. Apply com o rack intocado **não**

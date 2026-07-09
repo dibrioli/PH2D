@@ -10,10 +10,11 @@ use ph2d_editor_core::interaction::WidgetEvent;
 use ph2d_editor_core::panel::EventOutcome;
 use ph2d_panel_audio_editor::state::AudioEditorState;
 use ph2d_panel_audio_editor::{
-    AEDIT_FX_APPLY, AEDIT_FX_CANCEL, AEDIT_FX_NEXT, AEDIT_FX_P0, AEDIT_FX_PREV, AEDIT_LOAD,
-    AEDIT_LOOP, AEDIT_NORMALIZE, AEDIT_PLAY, AEDIT_STOP, AEDIT_TRIM, AudioEditCmd,
-    AudioEditorPanel, clear_fx_dirty, clear_fx_touched, fx_dirty, fx_kind, fx_touched, looping,
-    set_fx_kind_count, take_edit_cmd, take_load, take_play_pause, take_stop,
+    AEDIT_FX_APPLY, AEDIT_FX_CANCEL, AEDIT_FX_NEXT, AEDIT_FX_P0, AEDIT_FX_PREV, AEDIT_FX_RESET,
+    AEDIT_LOAD, AEDIT_LOOP, AEDIT_NORMALIZE, AEDIT_PLAY, AEDIT_STOP, AEDIT_TRIM, AudioEditCmd,
+    AudioEditorPanel, clear_fx_dirty, clear_fx_touched, fx_dirty, fx_kind, fx_norms, fx_touched,
+    looping, set_fx_defaults, set_fx_kind_count, take_edit_cmd, take_load, take_play_pause,
+    take_stop,
 };
 use ph2d_ui_testkit::MockPanelHost;
 
@@ -146,6 +147,36 @@ fn only_a_tuned_effect_is_marked_for_stacking() {
     );
     clear_fx_touched();
     assert!(!fx_touched());
+}
+
+/// The per-effect Reset icon must put the ACTIVE effect back on its neutral
+/// defaults through the seam, and untune it — a reset stage must not be stacked
+/// onto the live chain when the user switches effects.
+#[test]
+fn reset_returns_the_active_effect_to_its_neutral_defaults() {
+    let mut host = MockPanelHost::with_panel::<AudioEditorPanel>();
+    let mut state = AudioEditorState;
+    clear_fx_dirty();
+    set_fx_kind_count(3);
+    // The shell publishes the selected effect's neutral point each frame.
+    let neutral = [0.25, 0.75, 0.0, 0.0];
+    set_fx_defaults(neutral);
+
+    // Drag a parameter off neutral: the stage is now tuned and reset-able.
+    host.apply_panel_event::<AudioEditorPanel>(&mut state, WidgetEvent::ValueChanged(AEDIT_FX_P0));
+    assert!(fx_touched());
+    assert_ne!(fx_norms(), neutral, "the drag moved a parameter");
+
+    host.apply_panel_event::<AudioEditorPanel>(&mut state, WidgetEvent::Click(AEDIT_FX_RESET));
+    assert_eq!(
+        fx_norms(),
+        neutral,
+        "Reset did not restore the neutral defaults"
+    );
+    assert!(
+        !fx_touched(),
+        "a reset stage is neutral again — it must not stack onto the chain"
+    );
 }
 
 /// The rack's selector must actually move the kind index through the seam — a

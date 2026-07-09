@@ -1,11 +1,13 @@
 //! The effects rack section of the Audio Editor panel (W3 block 3a).
 //!
-//! A selector (`◀ Name ▶`), one labelled slider per parameter of the selected
-//! effect (starting at its neutral, no-op values), and **Apply / Cancel**. The
-//! rack **auditions live**: touching the
-//! selector or any slider marks it dirty, and the shell renders the effect into
-//! the sounding preview so it is heard (and drawn) while you tune. Apply commits
-//! exactly that buffer as one undo step; Cancel throws it away.
+//! A selector (`◀ Name ⟲ ▶`) with a per-effect **Reset** icon beside the name,
+//! one labelled slider per parameter of the selected effect (starting at its
+//! neutral, no-op values), and **Apply / Cancel**.
+//!
+//! The rack **auditions live**: touching the selector or any slider marks it
+//! dirty, and the shell renders the effect into the sounding preview so it is
+//! heard (and drawn) while you tune. Apply commits exactly that buffer as one undo
+//! step; Cancel throws it away.
 //!
 //! The panel is UI-only: sliders carry **normalized 0..1** values and the shell
 //! publishes each slot's label + already-formatted value (`audio/fx_params.rs`),
@@ -13,11 +15,16 @@
 
 use crate::paint::button;
 use crate::{
-    AEDIT_FX_APPLY, AEDIT_FX_CANCEL, AEDIT_FX_NEXT, AEDIT_FX_PARAMS, AEDIT_FX_PREV, snapshot,
+    AEDIT_FX_APPLY, AEDIT_FX_CANCEL, AEDIT_FX_NEXT, AEDIT_FX_PARAMS, AEDIT_FX_PREV, AEDIT_FX_RESET,
+    snapshot,
 };
+use ph2d_editor_core::IconId;
 use ph2d_editor_core::interaction::HitIndex;
 use ph2d_editor_core::paint::{paint_text_centered, resolve};
-use ph2d_editor_core::widget::{Slider, SliderOrientation, paint_slider};
+use ph2d_editor_core::widget::{
+    ButtonState, IconButtonStyle, IconGlyph, Slider, SliderOrientation, paint_icon_button,
+    paint_slider,
+};
 use ph2d_editor_core::zones::Rect;
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, Spacing, Theme, TypeToken};
@@ -42,7 +49,7 @@ pub(crate) fn paint_fx_section(
 ) -> f32 {
     let gap = Spacing::Sm.px();
 
-    // Selector: ◀ | effect name | ▶
+    // Selector row: ◀ | effect name | reset | ▶
     button(
         Rect::new(x, y, ARROW_W, row_h),
         "\u{25c0}",
@@ -53,12 +60,17 @@ pub(crate) fn paint_fx_section(
         theme,
         hit_index,
     );
-    let name_w = (w - (ARROW_W + gap) * 2.0).max(1.0);
+    // Per-effect Reset: a frameless icon beside the name that puts THIS effect's
+    // parameters back on their neutral defaults. Dimmed while they already are.
+    let icon_w = row_h;
+    let name_x = x + ARROW_W + gap;
+    let reset_x = x + w - ARROW_W - gap - icon_w;
+    let name_w = (reset_x - gap - name_x).max(1.0);
     paint_text_centered(
         text_system,
         scene,
         &snapshot::fx_kind_name(),
-        Rect::new(x + ARROW_W + gap, y, name_w, row_h),
+        Rect::new(name_x, y, name_w, row_h),
         TypeToken::Sm.px(),
         resolve(
             if loaded {
@@ -69,6 +81,21 @@ pub(crate) fn paint_fx_section(
             theme,
         ),
     );
+    let reset_rect = Rect::new(reset_x, y, icon_w, icon_w);
+    let reset_state = if loaded && !snapshot::fx_at_defaults() {
+        ButtonState::Normal
+    } else {
+        ButtonState::Disabled
+    };
+    paint_icon_button(
+        reset_rect,
+        IconGlyph::Builtin(IconId::Reset),
+        IconButtonStyle::Plain,
+        reset_state,
+        scene,
+        theme,
+    );
+    hit_index.register(AEDIT_FX_RESET, reset_rect);
     button(
         Rect::new(x + w - ARROW_W, y, ARROW_W, row_h),
         "\u{25b6}",

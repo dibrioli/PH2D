@@ -178,6 +178,29 @@ pub fn clear_fx_touched() {
     FX_TOUCHED.with(|c| c.set(false));
 }
 
+/// Panel: return the SELECTED effect's parameters to their neutral defaults.
+/// Untunes the stage (so switching away no longer stacks it) and forces the paint
+/// step to push the defaults back into the slider widgets. Deliberately leaves
+/// `FX_DIRTY` alone: if an audition is running the shell simply re-renders it
+/// neutral (back to the chain, or to the pristine clip); if none is, nothing to do.
+pub(crate) fn reset_fx_params() {
+    let defaults = FX_DEFAULTS.with(Cell::get);
+    FX_NORMS.with(|c| c.set(defaults));
+    FX_TOUCHED.with(|c| c.set(false));
+    FX_SYNCED_KIND.with(|c| c.set(None));
+}
+
+/// Whether every parameter already sits on its neutral default — then there is
+/// nothing to reset and the button is dimmed.
+pub(crate) fn fx_at_defaults() -> bool {
+    const EPS: f32 = 1e-4;
+    let (norms, defaults) = (FX_NORMS.with(Cell::get), FX_DEFAULTS.with(Cell::get));
+    norms
+        .iter()
+        .zip(&defaults)
+        .all(|(n, d)| (n - d).abs() <= EPS)
+}
+
 /// Shell → panel: how many effects are stacked in the live chain (0 = none).
 pub fn set_fx_chain_len(n: usize) {
     FX_CHAIN_LEN.with(|c| c.set(n));

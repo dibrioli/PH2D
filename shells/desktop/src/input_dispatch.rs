@@ -1059,6 +1059,16 @@ impl App {
         match self.handler.on_close_request() {
             CloseAction::Close => {
                 self.handler.on_lifecycle(Lifecycle::WillTerminate);
+                // Tear the audio system down HERE, deterministically, while the
+                // main thread is quiescent — instead of letting the `cpal::Stream`
+                // (ALSA/PipeWire, `!Send`) drop LAST in the `App` field cascade at
+                // the end of `main`, where `snd_pcm_close` on the pipewire-alsa
+                // plugin segfaults on teardown (benign — fires after "exited
+                // cleanly" — but returns 139, which pollutes exit-code checks).
+                #[cfg(feature = "panel-audio-editor")]
+                {
+                    self.audio = None;
+                }
                 event_loop.exit();
             }
             CloseAction::Cancel => {}

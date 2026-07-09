@@ -157,6 +157,64 @@ impl VecScene {
         Some((lo, hi))
     }
 
+    /// O ponto `p` (world) está DENTRO da região do path `id`? Amostra a curva
+    /// fechada num polígono e faz o teste even-odd (crossing number). Sempre `false`
+    /// p/ path aberto ou id inexistente. Usado pelo gizmo: o arrasto do interior só
+    /// move a forma quando o clique cai NELA — espaço vazio da bbox segue livre pro
+    /// Pen desenhar. Transcendental-free.
+    pub fn path_contains_point(&self, id: VecPathId, p: [f64; 2]) -> bool {
+        let Some(path) = self.paths.iter().find(|pp| pp.id == id) else {
+            return false;
+        };
+        if !path.closed || path.verts.len() < 2 {
+            return false;
+        }
+        const SAMPLES: usize = 16;
+        let mut poly: Vec<[f64; 2]> = Vec::with_capacity(path.verts.len() * SAMPLES);
+        let mut seg = |p0: [f64; 2], p1: [f64; 2], p2: [f64; 2], p3: [f64; 2]| {
+            for k in 0..SAMPLES {
+                let t = k as f64 / SAMPLES as f64;
+                let u = 1.0 - t;
+                let (uu, tt) = (u * u, t * t);
+                let (b0, b1, b2, b3) = (uu * u, 3.0 * uu * t, 3.0 * u * tt, tt * t);
+                poly.push([
+                    b0 * p0[0] + b1 * p1[0] + b2 * p2[0] + b3 * p3[0],
+                    b0 * p0[1] + b1 * p1[1] + b2 * p2[1] + b3 * p3[1],
+                ]);
+            }
+        };
+        for pair in path.verts.windows(2) {
+            seg(
+                pair[0].anchor,
+                pair[0].out_handle,
+                pair[1].in_handle,
+                pair[1].anchor,
+            );
+        }
+        let last = path.verts.last().unwrap();
+        let first = &path.verts[0];
+        seg(last.anchor, last.out_handle, first.in_handle, first.anchor);
+        // Even-odd: conta cruzamentos do raio +X a partir de `p`.
+        let n = poly.len();
+        if n < 3 {
+            return false;
+        }
+        let mut inside = false;
+        let mut j = n - 1;
+        for i in 0..n {
+            let (a, b) = (poly[i], poly[j]);
+            // O guard garante a[1] != b[1] (sem divisão por zero).
+            if (a[1] > p[1]) != (b[1] > p[1]) {
+                let t = (p[1] - a[1]) / (b[1] - a[1]);
+                if p[0] < a[0] + t * (b[0] - a[0]) {
+                    inside = !inside;
+                }
+            }
+            j = i;
+        }
+        inside
+    }
+
     /// Translada o path `id` por `(dx, dy)` world-units (âncora + handles de todos
     /// os vértices). `false` se o id sumiu.
     pub fn translate_path(&mut self, id: VecPathId, dx: f64, dy: f64) -> bool {

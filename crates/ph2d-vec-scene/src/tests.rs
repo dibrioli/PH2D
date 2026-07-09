@@ -934,3 +934,22 @@ fn simplify_stays_faithful_to_a_smooth_curve() {
         0.05 * diag
     );
 }
+
+#[test]
+fn path_contains_point_is_even_odd_and_closed_only() {
+    let mut scene = VecScene::new();
+    let closed = scene.push_path(rectangle([0.0, 0.0], [10.0, 10.0]));
+    // Inside the square.
+    assert!(scene.path_contains_point(closed, [5.0, 5.0]));
+    // Outside on every side.
+    for p in [[-1.0, 5.0], [11.0, 5.0], [5.0, -1.0], [5.0, 11.0]] {
+        assert!(!scene.path_contains_point(closed, p), "outside {p:?}");
+    }
+    // An OPEN path never contains anything (the gizmo's interior-move needs a region).
+    let mut open = rectangle([0.0, 0.0], [10.0, 10.0]);
+    open.closed = false;
+    let open = scene.push_path(open);
+    assert!(!scene.path_contains_point(open, [5.0, 5.0]));
+    // A missing id is never inside.
+    assert!(!scene.path_contains_point(9999, [5.0, 5.0]));
+}

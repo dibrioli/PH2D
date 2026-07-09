@@ -1915,19 +1915,12 @@ impl crate::App {
                     camera.world_to_screen_affine(window_size),
                     vector_scene,
                 );
-                // Gradient handles (multi-point dots, or linear/radial endpoints)
-                // when the selected path has a gradient fill.
-                ph2d_vec_render::draw_gradient_handles(
-                    vec_scene,
-                    self.vec_pen.selected(),
-                    self.vec_grad_selected,
-                    camera.world_to_screen_affine(window_size),
-                    vector_scene,
-                );
                 // Sprite-style transform gizmo over the object selection (scale /
                 // rotate / move / movable pivot). Free fn (disjoint App borrows).
                 // A change of selection resets the gizmo orientation + pivot (vector
                 // geometry stores no orientation, so a new selection is axis-aligned).
+                // Painted BEFORE the gradient handles so those dots — which also
+                // outrank it on click — sit visibly on top.
                 let cur_sel = self.vec_pen.selected_paths().to_vec();
                 if cur_sel != self.vec_gizmo_last_sel {
                     self.vec_gizmo_rotation = 0.0;
@@ -1956,6 +1949,15 @@ impl crate::App {
                         vector_scene,
                     );
                 }
+                // Gradient handles (multi-point dots, or linear/radial endpoints)
+                // when the selected path has a gradient fill. On top of the gizmo.
+                ph2d_vec_render::draw_gradient_handles(
+                    vec_scene,
+                    self.vec_pen.selected(),
+                    self.vec_grad_selected,
+                    camera.world_to_screen_affine(window_size),
+                    vector_scene,
+                );
                 // Box-select marquee (Shift+drag), in screen-space.
                 if let Some((start, cur)) = self.vec_marquee {
                     ph2d_vec_render::draw_marquee(

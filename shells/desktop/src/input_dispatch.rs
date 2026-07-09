@@ -1946,32 +1946,34 @@ impl App {
                     return;
                 }
                 (ph2d_host::PointerButton::Primary, PointerKind::Down) if on_canvas => {
-                    // Sprite-style transform gizmo: a Down on a scale/rotate/pivot
-                    // handle (or the bbox interior over empty space) starts a gizmo
-                    // drag — takes priority over gradient handles + pen/shape. A
-                    // press that ISN'T on the gizmo resets the pivot to the bbox
-                    // center (it only persists across gizmo interactions).
-                    if let Some((cc, ch, sz)) = self
+                    // Canvas press priority (most specific first):
+                    //   1. "Set Center" armed mode (positions the gizmo pivot).
+                    //   2. Gradient handles — tiny (~9 px) and only present when the
+                    //      selected path has a gradient fill, so they must outrank the
+                    //      gizmo, whose bbox interior otherwise swallows every dot.
+                    //   3. Transform gizmo handles (scale / rotate / interior move).
+                    //   4. Pen / shape drawing + vertex editing.
+                    let cam = self
                         .gfx
                         .as_ref()
-                        .map(|g| (g.camera.center, g.camera.height_world, g.surface.size()))
+                        .map(|g| (g.camera.center, g.camera.height_world, g.surface.size()));
+                    if let Some((cc, ch, sz)) = cam
+                        && self.vec_pivot_edit_down(cc, ch, sz.width as f32, sz.height as f32)
                     {
-                        let (ww, wh) = (sz.width as f32, sz.height as f32);
-                        // "Set Center" mode positions the pivot; else a handle drag.
-                        if self.vec_pivot_edit_down(cc, ch, ww, wh)
-                            || self.vec_gizmo_down(cc, ch, ww, wh)
-                        {
-                            return;
-                        }
+                        return;
                     }
-                    // Gradient group 3b: a Down on a multi-point gradient handle
-                    // starts dragging it (takes priority over pen/shape drawing).
+                    // Gradient group 3b: a Down on a gradient handle starts dragging it.
                     if let Some(i) = self.vec_grad_hit(self.last_pointer) {
                         self.vec_grad_selected = Some(i);
                         self.vec_grad_drag = Some(i);
                         if let Some(gfx) = self.gfx.as_ref() {
                             self.vec_history.begin(&gfx.vec_scene);
                         }
+                        return;
+                    }
+                    if let Some((cc, ch, sz)) = cam
+                        && self.vec_gizmo_down(cc, ch, sz.width as f32, sz.height as f32)
+                    {
                         return;
                     }
                     let params = shape_params(&self.vec_draw_config);

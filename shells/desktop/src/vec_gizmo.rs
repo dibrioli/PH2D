@@ -9,7 +9,13 @@
 //! the drag applies INCREMENTALLY from a pristine snapshot captured at Down: each
 //! Move restores the selected paths and re-applies the single active transform about
 //! the gizmo pivot. The pivot is a plain world point ([`App::vec_gizmo_pivot`]),
-//! movable by dragging the pivot dot (no sprite `anchor` compensation needed).
+//! repositioned only via the panel's "Set Center" mode (no sprite `anchor`
+//! compensation needed); the dot itself is not grabbable.
+//!
+//! Canvas-press priority (see `input_dispatch`): pivot-edit mode → gradient handles
+//! → gizmo handles → pen. The gizmo box is outset by [`GIZMO_PAD_PX`] so its handles
+//! never cover a path anchor, and its interior only moves the shape when the press
+//! actually lands INSIDE it (`path_contains_point`), leaving empty bbox space to the pen.
 
 use crate::app_state::App;
 use ph2d_editor::{
@@ -20,11 +26,34 @@ use ph2d_tokens::Theme;
 use ph2d_vec_scene::{VecPathId, VecScene};
 use ph2d_vector::VectorScene;
 
-/// The ORIENTED union bbox of `selected` paths at angle `r` (radians), returned as
-/// the UNROTATED rect `(min, max)` centered at the world center `C` (so `min = C −
-/// half`, `max = C + half`) — the [`GizmoView`] rotates it about `C` by `r`. `None`
-/// if empty. At `r = 0` this is the plain axis-aligned curve bbox.
-fn oriented_bbox(scene: &VecScene, selected: &[VecPathId], r: f64) -> Option<([f64; 2], [f64; 2])> {
+/// Screen-px outset of the gizmo box off the artwork. Without it the 12 px corner /
+/// edge scale handles land EXACTLY on a path's anchors whenever those coincide with
+/// the bbox (a rectangle's or polygon's corners always do), making those vertices
+/// impossible to grab with the pen. The outset keeps a clickable core around each
+/// anchor and moves the edge handles off the outline (so the pen's segment-insert
+/// still works). Standard behaviour in vector editors.
+const GIZMO_PAD_PX: f64 = 14.0;
+
+/// World units for [`GIZMO_PAD_PX`] at this camera. World-per-pixel is
+/// `camera_height_world / window_h` (the same value `pixel_world` derives).
+fn gizmo_pad_world(cam_height: f32, win_h: f32) -> f64 {
+    if win_h <= 0.0 {
+        return 0.0;
+    }
+    GIZMO_PAD_PX * f64::from(cam_height) / f64::from(win_h)
+}
+
+/// The ORIENTED union bbox of `selected` paths at angle `r` (radians), inflated by
+/// `pad` world-units, returned as the UNROTATED rect `(min, max)` centered at the
+/// world center `C` (so `min = C − half`, `max = C + half`) — the [`GizmoView`]
+/// rotates it about `C` by `r`. `None` if empty. At `r = 0`, `pad = 0` this is the
+/// plain axis-aligned curve bbox.
+fn oriented_bbox(
+    scene: &VecScene,
+    selected: &[VecPathId],
+    r: f64,
+    pad: f64,
+) -> Option<([f64; 2], [f64; 2])> {
     let (c, s) = (r.cos(), r.sin());
     let mut lo = [f64::INFINITY; 2];
     let mut hi = [f64::NEG_INFINITY; 2];
@@ -41,9 +70,10 @@ fn oriented_bbox(scene: &VecScene, selected: &[VecPathId], r: f64) -> Option<([f
     if !any {
         return None;
     }
-    // Center in the rotated frame → world (Rot(+r)·cr); half-extents are frame-local.
+    // Center in the rotated frame → world (Rot(+r)·cr); half-extents are frame-local
+    // and inflated by the outset so the handles clear the artwork.
     let cr = [(lo[0] + hi[0]) * 0.5, (lo[1] + hi[1]) * 0.5];
-    let half = [(hi[0] - lo[0]) * 0.5, (hi[1] - lo[1]) * 0.5];
+    let half = [(hi[0] - lo[0]) * 0.5 + pad, (hi[1] - lo[1]) * 0.5 + pad];
     let cw = [cr[0] * c - cr[1] * s, cr[0] * s + cr[1] * c];
     Some((
         [cw[0] - half[0], cw[1] - half[1]],
@@ -81,7 +111,8 @@ pub(crate) fn paint(
     target: &mut VectorScene,
 ) {
     hits.clear_for_frame();
-    let Some((lo, hi)) = oriented_bbox(vec_scene, selected_paths, f64::from(rotation)) else {
+    let pad = gizmo_pad_world(cam_height, win_h);
+    let Some((lo, hi)) = oriented_bbox(vec_scene, selected_paths, f64::from(rotation), pad) else {
         return;
     };
     let piv = pivot.unwrap_or_else(|| center_of(lo, hi));
@@ -104,22 +135,24 @@ pub(crate) fn paint(
 
 impl App {
     /// Oriented union bbox of the object selection (unrotated rect centered at the
-    /// world center) at the current gizmo rotation.
-    fn vec_gizmo_bbox(&self) -> Option<([f64; 2], [f64; 2])> {
+    /// world center) at the current gizmo rotation, inflated by `pad` world-units.
+    fn vec_gizmo_bbox(&self, pad: f64) -> Option<([f64; 2], [f64; 2])> {
         let gfx = self.gfx.as_ref()?;
         oriented_bbox(
             &gfx.vec_scene,
             self.vec_pen.selected_paths(),
             f64::from(self.vec_gizmo_rotation),
+            pad,
         )
     }
 
     /// The current rotation/scale pivot (user-set, else the selection bbox center).
+    /// The outset never moves the center, so `pad = 0` here.
     pub(crate) fn vec_gizmo_pivot_world(&self) -> Option<[f64; 2]> {
         if let Some(p) = self.vec_gizmo_pivot {
             return Some(p);
         }
-        let (lo, hi) = self.vec_gizmo_bbox()?;
+        let (lo, hi) = self.vec_gizmo_bbox(0.0)?;
         Some(center_of(lo, hi))
     }
 
@@ -197,7 +230,8 @@ impl App {
         };
         let cam = self.vec_gizmo_camera(cc, ch, ww, wh);
         let cw = cam.screen_to_world(self.last_pointer);
-        let Some((lo, hi)) = self.vec_gizmo_bbox() else {
+        // Same outset the painter used, so the handle rects and the scale anchors agree.
+        let Some((lo, hi)) = self.vec_gizmo_bbox(gizmo_pad_world(ch, wh)) else {
             return false;
         };
         let c = center_of(lo, hi);
@@ -213,16 +247,28 @@ impl App {
         let Some(kind) = gizmo_kind_for_id(id) else {
             return false;
         };
-        // Interior translate: defer to the pen when it would grab a vertex/outline.
+        // Interior translate is the LOOSEST hit (the whole bbox), so it defers twice:
+        //  - near a vertex / outline → the pen edits it;
+        //  - not actually INSIDE a selected shape → the pen draws (empty bbox space
+        //    must stay usable, e.g. starting a new path inside a selection's box).
         if kind == GizmoDragKind::Translate
             && let Some(gfx) = self.gfx.as_ref()
         {
             let px = pixel_world(&cam);
+            let wp = [f64::from(cw[0]), f64::from(cw[1])];
             if self
                 .vec_pen
-                .path_at(&gfx.vec_scene, [cw[0] as f64, cw[1] as f64], 10.0 * px)
+                .path_at(&gfx.vec_scene, wp, 10.0 * px)
                 .is_some()
             {
+                return false;
+            }
+            let on_shape = self
+                .vec_pen
+                .selected_paths()
+                .iter()
+                .any(|&pid| gfx.vec_scene.path_contains_point(pid, wp));
+            if !on_shape {
                 return false;
             }
         }

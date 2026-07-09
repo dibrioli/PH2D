@@ -348,6 +348,10 @@ pub(crate) struct App {
     /// format — the editor runs silent (degrade-gracefully, like `gilrs`).
     /// Holds the control-side `AudioEngine` + the live cpal output stream.
     pub(crate) audio: Option<crate::audio::AudioSystem>,
+    /// Audio Editor waveform selection drag: the anchor frame while the primary
+    /// button is held over the overlay waveform (`None` = not selecting).
+    #[cfg(feature = "panel-audio-editor")]
+    pub(crate) audio_sel_drag: Option<u64>,
     /// Input snapshot pumped by the gilrs adapter each frame.
     pub(crate) input: InputState,
     /// M14.4b.bis: middle-button camera pan state.

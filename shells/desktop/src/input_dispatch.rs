@@ -1560,6 +1560,34 @@ impl App {
             .on_drag(&mut gfx.vec_scene, [w[0] as f64, w[1] as f64])
     }
 
+    /// The clip frame under `(x, y)` if it's inside the overlay waveform — for
+    /// starting a selection drag. `None` if the overlay is hidden or the point is
+    /// outside the waveform area.
+    #[cfg(feature = "panel-audio-editor")]
+    fn audio_wave_frame_at(&self, x: f32, y: f32) -> Option<u64> {
+        let view = crate::audio::wave_view()?;
+        self.audio.as_ref()?.editor_clip()?;
+        let r = view.rect;
+        (x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h)
+            .then(|| crate::audio::frame_at_x(&view, x))
+    }
+
+    /// Extend the active waveform selection to the cursor `x`. Returns `true` if a
+    /// selection drag is live (the caller early-returns so it doesn't also pan).
+    #[cfg(feature = "panel-audio-editor")]
+    fn audio_sel_drag_move(&mut self, x: f32) -> bool {
+        let Some(anchor) = self.audio_sel_drag else {
+            return false;
+        };
+        if let Some(view) = crate::audio::wave_view() {
+            let cur = crate::audio::frame_at_x(&view, x);
+            if let Some(a) = self.audio.as_mut() {
+                a.editor_set_selection(anchor, cur);
+            }
+        }
+        true
+    }
+
     pub(crate) fn on_cursor_moved(&mut self, position: PhysicalPosition<f64>) {
         // Diagnostics: count every raw winit move (input rate), paired with `paint_stamps_this_frame`
         // in the HUD so the coalescing is visible (high events → 1 stamp).
@@ -1581,6 +1609,13 @@ impl App {
         // also drive a gizmo drag / panel slider.
         if self.eyedropper_dragging {
             self.try_eyedropper_sample(self.last_pointer.0, self.last_pointer.1);
+            return;
+        }
+        // Audio Editor waveform selection drag (SHELL-only): while a selection is
+        // being dragged over the overlay waveform, every motion extends it. Early-
+        // return so it doesn't also pan / drive a gizmo.
+        #[cfg(feature = "panel-audio-editor")]
+        if self.audio_sel_drag_move(self.last_pointer.0) {
             return;
         }
         // Keep the brush-size ring gizmo following the cursor while the
@@ -1747,6 +1782,26 @@ impl App {
             timestamp_ns: Self::timestamp_ns(),
         };
         self.handler.on_pointer(evt);
+        // Audio Editor waveform selection (SHELL-only): a primary press INSIDE the
+        // overlay waveform starts a selection (cleared to a point); release ends
+        // it. Early-return so the press doesn't drive the canvas/gizmo underneath.
+        // Presses on the overlay's title-bar / resize handles fall through (they're
+        // outside the waveform rect) to the shared BlenderHit dispatch.
+        #[cfg(feature = "panel-audio-editor")]
+        match kind {
+            PointerKind::Down
+                if let Some(frame) =
+                    self.audio_wave_frame_at(self.last_pointer.0, self.last_pointer.1) =>
+            {
+                self.audio_sel_drag = Some(frame);
+                if let Some(a) = self.audio.as_mut() {
+                    a.editor_clear_selection();
+                }
+                return;
+            }
+            PointerKind::Up if self.audio_sel_drag.take().is_some() => return,
+            _ => {}
+        }
         // Was a right-click context menu (or the Fill "Fill adjust" modal) open when this click
         // arrived? If so the click belongs to that overlay (its slider/buttons/items) — chrome dispatch
         // in `forward_to_hero` handles it, so the canvas-consume arms below (paint / gizmo / select /

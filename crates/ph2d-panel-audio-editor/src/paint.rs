@@ -9,9 +9,10 @@
 
 use crate::state::AudioEditorState;
 use crate::{
-    AEDIT_CLOSE, AEDIT_DC, AEDIT_EXPORT, AEDIT_GAIN_DOWN, AEDIT_GAIN_UP, AEDIT_INVERT, AEDIT_LOAD,
-    AEDIT_LOOP, AEDIT_NAME, AEDIT_NORM_LUFS, AEDIT_NORMALIZE, AEDIT_PANEL, AEDIT_PLAY, AEDIT_REDO,
-    AEDIT_REVERSE, AEDIT_STOP, AEDIT_UNDO, AudioEditorPanel, snapshot,
+    AEDIT_CLOSE, AEDIT_CUT, AEDIT_DC, AEDIT_EXPORT, AEDIT_FADE_IN, AEDIT_FADE_OUT, AEDIT_GAIN_DOWN,
+    AEDIT_GAIN_UP, AEDIT_INVERT, AEDIT_LOAD, AEDIT_LOOP, AEDIT_NAME, AEDIT_NORM_LUFS,
+    AEDIT_NORMALIZE, AEDIT_PANEL, AEDIT_PLAY, AEDIT_REDO, AEDIT_REVERSE, AEDIT_SILENCE, AEDIT_STOP,
+    AEDIT_TRIM, AEDIT_UNDO, AudioEditorPanel, snapshot,
 };
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::interaction::{HitIndex, InteractiveState};
@@ -89,6 +90,7 @@ pub(crate) fn paint(_state: &mut AudioEditorState, ctx: &mut PaintCtx) {
     let dur = snapshot::duration_secs();
     let undo_ok = snapshot::can_undo();
     let redo_ok = snapshot::can_redo();
+    let has_sel = snapshot::has_selection();
 
     // Sync the name box from the loaded clip — mirror of the Inspector entity-name
     // box: overwrite the TextInput's buffer only when a NEW clip loads, and skip
@@ -234,6 +236,7 @@ pub(crate) fn paint(_state: &mut AudioEditorState, ctx: &mut PaintCtx) {
         loaded,
         undo_ok,
         redo_ok,
+        has_sel,
         scene,
         text_system,
         theme,
@@ -246,8 +249,9 @@ pub(crate) fn paint(_state: &mut AudioEditorState, ctx: &mut PaintCtx) {
         .register(AEDIT_CLOSE, panel_close_button_rect(rect));
 }
 
-/// The whole-clip Edit ops block: Undo/Redo · Normalize/LUFS · Reverse/DC ·
-/// Gain−/Gain+ · Invert. Buttons dim when unavailable (no clip / no history).
+/// The Edit ops block: whole-clip (Undo/Redo · Normalize/LUFS · Reverse/DC ·
+/// Gain−/Gain+ · Invert) then the selection range ops (Trim/Cut · Fade In/Out ·
+/// Silence). Buttons dim when unavailable (no clip / no history / no selection).
 #[allow(clippy::too_many_arguments)]
 fn paint_edit_section(
     mut y: f32,
@@ -256,6 +260,7 @@ fn paint_edit_section(
     loaded: bool,
     undo_ok: bool,
     redo_ok: bool,
+    has_sel: bool,
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
     theme: Theme,
@@ -306,14 +311,54 @@ fn paint_edit_section(
         theme,
         hit_index,
     );
+    y += ROW_H + Spacing::Md.px();
+
+    // Selection range ops — enabled only when a waveform selection exists (drag on
+    // the overlay to make one).
+    let range_rows: [[(&str, NodeId, bool); 2]; 2] = [
+        [("Trim", AEDIT_TRIM, has_sel), ("Cut", AEDIT_CUT, has_sel)],
+        [
+            ("Fade In", AEDIT_FADE_IN, has_sel),
+            ("Fade Out", AEDIT_FADE_OUT, has_sel),
+        ],
+    ];
+    for row in range_rows {
+        for (i, (label, id, enabled)) in row.into_iter().enumerate() {
+            let bx = x + i as f32 * (half + gap);
+            button(
+                Rect::new(bx, y, half, ROW_H),
+                label,
+                enabled,
+                id,
+                scene,
+                text_system,
+                theme,
+                hit_index,
+            );
+        }
+        y += ROW_H + gap;
+    }
+    button(
+        Rect::new(x, y, w, ROW_H),
+        "Silence",
+        has_sel,
+        AEDIT_SILENCE,
+        scene,
+        text_system,
+        theme,
+        hit_index,
+    );
 }
+
+/// Seconds per minute — time-domain constant, not a UI metric.
+const SECS_PER_MIN: f64 = 60.0; // LITERAL-PX-OK: seconds per minute (time math)
 
 /// Format seconds as `m:ss.d` (one decimal), clamped at zero.
 fn fmt_time(secs: f64) -> String {
     let s = secs.max(0.0);
-    let m = (s / 60.0) as u64;
-    let rem = s - (m as f64) * 60.0;
-    format!("{m}:{rem:04.1}")
+    let m = (s / SECS_PER_MIN) as u64;
+    let rem = s - (m as f64) * SECS_PER_MIN;
+    format!("{m}:{rem:04.1}") // LITERAL-PX-OK: mm:ss.d time format spec, not a UI metric
 }
 
 /// A labeled action button: `Bg3` + `Text1` when enabled, dimmed to `Text2`

@@ -47,9 +47,11 @@ pub(super) fn draw_audio_overlay(
 ) {
     if !hero.is_panel_visible("audio_editor") {
         hero.store.clear_panel_rect(ids::AUDIO_OVERLAY_PANEL);
+        crate::audio::set_wave_view(None);
         return;
     }
     let Some(clip) = audio.editor_clip() else {
+        crate::audio::set_wave_view(None);
         return;
     };
     let theme = hero.theme;
@@ -102,15 +104,27 @@ pub(super) fn draw_audio_overlay(
         (ruler_top - body_top).max(1.0),
     );
     draw_waveform(scene, clip, wave, theme);
+    // Selection highlight (under the playhead) + publish the wave viewport so the
+    // shell can hit-test a press over it and map screen-x → clip frame.
+    if let Some((s, e)) = audio.editor_selection() {
+        draw_selection(scene, wave, clip.frame_count() as u64, s, e, theme);
+    }
+    crate::audio::set_wave_view(Some(crate::audio::WaveView {
+        rect: wave,
+        frames: clip.frame_count() as u64,
+    }));
     draw_ruler(scene, text, clip, wave, ruler_top, theme);
     draw_playhead(scene, clip, wave, audio.editor_preview_frame(), theme);
 
     // Register drag + resize handle hit rects into the hero hit-index so the
     // shared BlenderHit dispatch moves/resizes the overlay next frame.
     let drag = panel_drag_handle_rect(rect, PANEL_HEADER_H_DEFAULT, PANEL_HEADER_CLOSE_RESERVE);
-    hero.hit_index.register(ids::AUDIO_OVERLAY_DRAG_HANDLE, drag);
     hero.hit_index
-        .register(ids::AUDIO_OVERLAY_RESIZE_HANDLE, panel_resize_handle_rect(rect));
+        .register(ids::AUDIO_OVERLAY_DRAG_HANDLE, drag);
+    hero.hit_index.register(
+        ids::AUDIO_OVERLAY_RESIZE_HANDLE,
+        panel_resize_handle_rect(rect),
+    );
     hero.hit_index.register(
         ids::AUDIO_OVERLAY_RESIZE_HANDLE_BL,
         panel_resize_handle_rect_bl(rect),
@@ -132,7 +146,12 @@ fn default_rect(viewport: Rect) -> Rect {
 }
 
 /// Draw the clip's min/max envelope across `area`, one lane per channel.
-fn draw_waveform(scene: &mut VectorScene, clip: &ph2d_audio_edit::EditClip, area: Rect, theme: Theme) {
+fn draw_waveform(
+    scene: &mut VectorScene,
+    clip: &ph2d_audio_edit::EditClip,
+    area: Rect,
+    theme: Theme,
+) {
     let channels = clip.data().format().channel_count().max(1);
     let columns = (area.w as usize).clamp(1, 4096);
     let peaks = clip.column_peaks(0, clip.frame_count(), columns);
@@ -145,12 +164,7 @@ fn draw_waveform(scene: &mut VectorScene, clip: &ph2d_audio_edit::EditClip, area
         let center = lane_top + lane_h * 0.5;
         let half = (lane_h * 0.5 - 1.0).max(1.0);
         // Zero line.
-        fill_rounded_rect(
-            scene,
-            Rect::new(area.x, center, area.w, 1.0),
-            0.0,
-            mid,
-        );
+        fill_rounded_rect(scene, Rect::new(area.x, center, area.w, 1.0), 0.0, mid);
         for c in 0..columns {
             let (lo, hi) = peaks.get(c, ch);
             let col_x = area.x + c as f32 * area.w / columns as f32;
@@ -218,4 +232,27 @@ fn draw_playhead(
         0.0,
         resolve(ColorToken::Warn, theme),
     );
+}
+
+/// Draw the selection `[s, e)` (frames) as a translucent band with crisp edges.
+/// (A shell canvas overlay may use literal colors — the `no_literal_color` gate
+/// scans panels + editor-core, not the shell; this mirrors the rubber-band.)
+fn draw_selection(scene: &mut VectorScene, area: Rect, total: u64, s: u64, e: u64, _theme: Theme) {
+    if total == 0 || e <= s {
+        return;
+    }
+    let x_of = |f: u64| area.x + (f as f32 / total as f32) * area.w;
+    let x0 = x_of(s);
+    let x1 = x_of(e);
+    // ColorToken::Selection sRGB (~#3a8ee6), translucent fill + opaque edges.
+    let fill = ph2d_vector::Color::from_rgba8(58, 142, 230, 72);
+    let edge = ph2d_vector::Color::from_rgba8(58, 142, 230, 220);
+    fill_rounded_rect(
+        scene,
+        Rect::new(x0, area.y, (x1 - x0).max(1.0), area.h),
+        0.0,
+        fill,
+    );
+    fill_rounded_rect(scene, Rect::new(x0, area.y, 1.0, area.h), 0.0, edge);
+    fill_rounded_rect(scene, Rect::new(x1 - 1.0, area.y, 1.0, area.h), 0.0, edge);
 }

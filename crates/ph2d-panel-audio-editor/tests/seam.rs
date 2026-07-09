@@ -10,8 +10,8 @@ use ph2d_editor_core::interaction::WidgetEvent;
 use ph2d_editor_core::panel::EventOutcome;
 use ph2d_panel_audio_editor::state::AudioEditorState;
 use ph2d_panel_audio_editor::{
-    AEDIT_LOAD, AEDIT_LOOP, AEDIT_PLAY, AEDIT_STOP, AudioEditorPanel, looping, take_load,
-    take_play_pause, take_stop,
+    AEDIT_LOAD, AEDIT_LOOP, AEDIT_NORMALIZE, AEDIT_PLAY, AEDIT_STOP, AEDIT_TRIM, AudioEditCmd,
+    AudioEditorPanel, looping, take_edit_cmd, take_load, take_play_pause, take_stop,
 };
 use ph2d_ui_testkit::MockPanelHost;
 
@@ -50,6 +50,28 @@ fn stop_and_load_clicks_reach_their_intents() {
 
     host.apply_panel_event::<AudioEditorPanel>(&mut state, WidgetEvent::Click(AEDIT_LOAD));
     assert!(take_load(), "Load click never set the load intent");
+}
+
+/// Edit-op clicks must arm the matching one-shot `AudioEditCmd` through the seam.
+#[test]
+fn edit_clicks_reach_the_edit_command() {
+    let mut host = MockPanelHost::with_panel::<AudioEditorPanel>();
+    let mut state = AudioEditorState;
+    let _ = take_edit_cmd();
+
+    host.apply_panel_event::<AudioEditorPanel>(&mut state, WidgetEvent::Click(AEDIT_NORMALIZE));
+    assert_eq!(
+        take_edit_cmd(),
+        Some(AudioEditCmd::NormalizePeak),
+        "Normalize click never armed the edit command"
+    );
+
+    host.apply_panel_event::<AudioEditorPanel>(&mut state, WidgetEvent::Click(AEDIT_TRIM));
+    assert_eq!(
+        take_edit_cmd(),
+        Some(AudioEditCmd::Trim),
+        "Trim click never armed the edit command"
+    );
 }
 
 /// The Loop toggle must flip the persistent looping flag through the seam.

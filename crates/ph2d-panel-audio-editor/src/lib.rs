@@ -69,6 +69,19 @@ pub const AEDIT_GAIN_DOWN: NodeId = hash_node_id("audio_editor_gain_down");
 /// Gain +3 dB.
 pub const AEDIT_GAIN_UP: NodeId = hash_node_id("audio_editor_gain_up");
 
+// Range ops (W2 §5, block 2b) — act on the waveform SELECTION (enabled only when
+// one exists).
+/// Crop to the selection.
+pub const AEDIT_TRIM: NodeId = hash_node_id("audio_editor_trim");
+/// Delete the selection (ripple).
+pub const AEDIT_CUT: NodeId = hash_node_id("audio_editor_cut");
+/// Silence the selection.
+pub const AEDIT_SILENCE: NodeId = hash_node_id("audio_editor_silence");
+/// Fade in across the selection.
+pub const AEDIT_FADE_IN: NodeId = hash_node_id("audio_editor_fade_in");
+/// Fade out across the selection.
+pub const AEDIT_FADE_OUT: NodeId = hash_node_id("audio_editor_fade_out");
+
 /// A one-shot edit command the panel arms (via a click) and the shell drains +
 /// applies to the loaded `EditClip`. UI-only enum (no `ph2d-audio-edit` dep here);
 /// the shell maps each variant to the matching `EditClip::apply_*` / undo/redo.
@@ -92,6 +105,16 @@ pub enum AudioEditCmd {
     GainDown,
     /// Gain +3 dB.
     GainUp,
+    /// Crop to the selection.
+    Trim,
+    /// Delete the selection (ripple).
+    Cut,
+    /// Silence the selection.
+    Silence,
+    /// Fade in across the selection.
+    FadeIn,
+    /// Fade out across the selection.
+    FadeOut,
 }
 
 /// Zero-size marker implementing the typed Audio Editor panel contract.
@@ -125,6 +148,8 @@ impl Panel for AudioEditorPanel {
 pub use snapshot::looping;
 /// Shell → panel: publish the loaded clip's display name.
 pub use snapshot::set_clip_name;
+/// Shell → panel: publish whether a waveform selection exists (range-op buttons).
+pub use snapshot::set_has_selection;
 /// Panel → shell: the pending edit command (one-shot; the shell applies it to the
 /// `EditClip`).
 pub use snapshot::take_edit_cmd;

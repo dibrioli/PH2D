@@ -249,6 +249,7 @@ impl crate::App {
                 ed::set_clip_name(audio.editor_name());
                 ed::set_can_undo(audio.editor_can_undo());
                 ed::set_can_redo(audio.editor_can_redo());
+                ed::set_has_selection(audio.editor_selection().is_some());
             }
         }
         // Coalesced painter Move: stamp the LATEST buffered canvas position ONCE this frame, replacing
@@ -2027,12 +2028,7 @@ impl crate::App {
                 audio_overlay::draw_audio_overlay(
                     hero,
                     audio,
-                    ph2d_editor::zones::Rect::new(
-                        viewport.x,
-                        viewport.y,
-                        viewport.w,
-                        viewport.h,
-                    ),
+                    ph2d_editor::zones::Rect::new(viewport.x, viewport.y, viewport.w, viewport.h),
                     vector_scene,
                     paint_ctx.text,
                 );

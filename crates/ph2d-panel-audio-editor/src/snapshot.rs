@@ -23,6 +23,8 @@ thread_local! {
     // Shell → panel: undo/redo availability (dims the buttons).
     static CAN_UNDO: Cell<bool> = const { Cell::new(false) };
     static CAN_REDO: Cell<bool> = const { Cell::new(false) };
+    // Shell → panel: whether a waveform selection exists (enables range ops).
+    static HAS_SELECTION: Cell<bool> = const { Cell::new(false) };
     // Panel → shell persistent.
     static LOOPING: Cell<bool> = const { Cell::new(false) };
     // Shell → panel display.
@@ -107,6 +109,15 @@ pub fn set_can_redo(v: bool) {
 
 pub(crate) fn can_redo() -> bool {
     CAN_REDO.with(Cell::get)
+}
+
+/// Shell → panel: whether a waveform selection exists (enables the range ops).
+pub fn set_has_selection(v: bool) {
+    HAS_SELECTION.with(|c| c.set(v));
+}
+
+pub(crate) fn has_selection() -> bool {
+    HAS_SELECTION.with(Cell::get)
 }
 
 /// Panel: flip the loop flag; returns the new value.

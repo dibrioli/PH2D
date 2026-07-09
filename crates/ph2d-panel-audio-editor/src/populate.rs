@@ -1,9 +1,10 @@
 //! Audio Editor panel widget registration.
 
 use crate::{
-    AEDIT_CLOSE, AEDIT_DC, AEDIT_EXPORT, AEDIT_GAIN_DOWN, AEDIT_GAIN_UP, AEDIT_INVERT, AEDIT_LOAD,
-    AEDIT_LOOP, AEDIT_NAME, AEDIT_NORM_LUFS, AEDIT_NORMALIZE, AEDIT_PLAY, AEDIT_REDO,
-    AEDIT_REVERSE, AEDIT_STOP, AEDIT_UNDO,
+    AEDIT_CLOSE, AEDIT_CUT, AEDIT_DC, AEDIT_EXPORT, AEDIT_FADE_IN, AEDIT_FADE_OUT, AEDIT_GAIN_DOWN,
+    AEDIT_GAIN_UP, AEDIT_INVERT, AEDIT_LOAD, AEDIT_LOOP, AEDIT_NAME, AEDIT_NORM_LUFS,
+    AEDIT_NORMALIZE, AEDIT_PLAY, AEDIT_REDO, AEDIT_REVERSE, AEDIT_SILENCE, AEDIT_STOP, AEDIT_TRIM,
+    AEDIT_UNDO,
 };
 use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::{BlenderHitKind, InteractiveState, WidgetStore};
@@ -62,6 +63,12 @@ pub(crate) fn populate(store: &mut WidgetStore) {
         AEDIT_INVERT,
         AEDIT_GAIN_DOWN,
         AEDIT_GAIN_UP,
+        // Range ops (block 2b).
+        AEDIT_TRIM,
+        AEDIT_CUT,
+        AEDIT_SILENCE,
+        AEDIT_FADE_IN,
+        AEDIT_FADE_OUT,
     ] {
         store.register(id, button());
     }

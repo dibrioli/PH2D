@@ -157,6 +157,8 @@ impl App {
             title_dirty: true,
             gilrs,
             audio,
+            #[cfg(feature = "panel-audio-editor")]
+            audio_sel_drag: None,
             input: InputState::new(),
             pan_anchor: None,
             held_button: None,

@@ -470,6 +470,40 @@ impl AudioSystem {
     }
 }
 
+/// The waveform viewport (screen rect + clip length) the overlay publishes each
+/// frame, so the shell's mouse handlers can hit-test a press over the waveform and
+/// map screen-x → clip frame for the selection drag.
+#[cfg(feature = "panel-audio-editor")]
+#[derive(Clone, Copy)]
+pub(crate) struct WaveView {
+    pub rect: ph2d_editor::zones::Rect,
+    pub frames: u64,
+}
+
+#[cfg(feature = "panel-audio-editor")]
+thread_local! {
+    static WAVE_VIEW: std::cell::Cell<Option<WaveView>> = const { std::cell::Cell::new(None) };
+}
+
+/// Overlay → shell: publish (or clear) the waveform viewport for this frame.
+#[cfg(feature = "panel-audio-editor")]
+pub(crate) fn set_wave_view(v: Option<WaveView>) {
+    WAVE_VIEW.with(|c| c.set(v));
+}
+
+/// Shell mouse handlers: the current waveform viewport, if the overlay is shown.
+#[cfg(feature = "panel-audio-editor")]
+pub(crate) fn wave_view() -> Option<WaveView> {
+    WAVE_VIEW.with(std::cell::Cell::get)
+}
+
+/// Map a screen `x` to a clip frame within `view` (clamped to the clip).
+#[cfg(feature = "panel-audio-editor")]
+pub(crate) fn frame_at_x(view: &WaveView, x: f32) -> u64 {
+    let t = ((x - view.rect.x) / view.rect.w.max(1.0)).clamp(0.0, 1.0);
+    ((t as f64) * view.frames as f64) as u64
+}
+
 /// Audio Editor transport state (docs/Audio/, W1). The panel's single Play/Pause
 /// button cycles Stopped → Playing → Paused → Playing; Stop returns to Stopped.
 #[cfg(feature = "panel-audio-editor")]
@@ -538,7 +572,11 @@ impl AudioSystem {
                         looping,
                         ..PlayParams::default()
                     };
-                    if self.engine.play_preview(clip.data().clone(), params).is_ok() {
+                    if self
+                        .engine
+                        .play_preview(clip.data().clone(), params)
+                        .is_ok()
+                    {
                         self.editor.state = EditorTransport::Playing;
                         self.editor.started = false;
                     }
@@ -609,7 +647,11 @@ impl AudioSystem {
 
     /// The loaded clip's duration in seconds (`0` when none).
     pub(crate) fn editor_duration_secs(&self) -> f64 {
-        self.editor.clip.as_ref().map(|c| c.duration_secs()).unwrap_or(0.0)
+        self.editor
+            .clip
+            .as_ref()
+            .map(|c| c.duration_secs())
+            .unwrap_or(0.0)
     }
 
     /// The loaded clip's display name.
@@ -654,6 +696,18 @@ impl AudioSystem {
                 Cmd::Invert => clip.apply_invert(),
                 Cmd::GainDown => clip.apply_gain(GAIN_DOWN),
                 Cmd::GainUp => clip.apply_gain(GAIN_UP),
+                // Range ops (act on the selection).
+                Cmd::Trim => clip.apply_trim(),
+                Cmd::Cut => clip.apply_delete(),
+                Cmd::Silence => clip.apply_silence(),
+                Cmd::FadeIn => clip.apply_fade(
+                    ph2d_audio_edit::FadeShape::SCurve,
+                    ph2d_audio_edit::FadeDir::In,
+                ),
+                Cmd::FadeOut => clip.apply_fade(
+                    ph2d_audio_edit::FadeShape::SCurve,
+                    ph2d_audio_edit::FadeDir::Out,
+                ),
             }
         }
         // Hot-swap the edited buffer into the sounding preview (no stop). No-op if
@@ -672,6 +726,30 @@ impl AudioSystem {
             self.editor.last_loop.set(looping);
             let _ = self.engine.set_preview_looping(looping);
         }
+    }
+
+    /// Set the clip selection to `a..b` (frames, order-independent). Empty range
+    /// clears it. Drives the range edits (Trim/Cut/Silence/Fade).
+    pub(crate) fn editor_set_selection(&mut self, a: u64, b: u64) {
+        if let Some(clip) = self.editor.clip.as_mut() {
+            let (lo, hi) = (a.min(b) as usize, a.max(b) as usize);
+            clip.set_selection(Some(lo..hi));
+        }
+    }
+
+    /// Clear the clip selection.
+    pub(crate) fn editor_clear_selection(&mut self) {
+        if let Some(clip) = self.editor.clip.as_mut() {
+            clip.set_selection(None);
+        }
+    }
+
+    /// The current selection as `(start, end)` frames, if any (for the overlay).
+    pub(crate) fn editor_selection(&self) -> Option<(u64, u64)> {
+        self.editor
+            .clip
+            .as_ref()
+            .and_then(|c| c.selection().map(|r| (r.start as u64, r.end as u64)))
     }
 
     /// Whether the loaded clip can undo / redo (dims the panel buttons).

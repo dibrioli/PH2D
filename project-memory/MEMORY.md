@@ -69,6 +69,7 @@
 ## Padrões de código (gotchas silenciosos)
 - [UI source of truth = gallery + inspector](feedback_ui_source_of_truth_gallery_inspector.md) — UI nova espelha widget-gallery + inspector; não improvisar chrome
 - [UI em inglês](feedback_app_ui_english_only.md) — labels/toasts SEMPRE inglês; conferir AQUI antes de "traduzir" por HR-15
+- [Nada de `→` em string literal](feedback_no_tofu_arrows_in_string_literals.md) — gate `no_tofu_glyphs` em editor-core/shell; `assert!`/`expect()` são strings (comentário é livre)
 - [Tool nova exige IconId](feedback_new_tool_icon_needs_iconid.md) — SVG sem IconId variant (ordem alfabética) quebra TODOS os ícones
 - [Fan-out registry-init](feedback_fanout_registry_init_friction.md) — tool-sync NÃO regenera os 2 testes hand-maintained (cluster order + icon slug)
 - [node-sync glob prefix](feedback_node_sync_glob_prefix_gotcha.md) — crate na área de nós não pode começar com `ph2d-node-` (gera `::register` inexistente); use outro prefixo

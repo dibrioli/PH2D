@@ -59,7 +59,18 @@ composite. Corpo molhado + rim no contorno EXTERNO + textura como variação de 
 
 ## Fila (demais gaps, sem ordem decidida)
 
-> **1º DA FILA (ordem do Enio, 2026-07-09): BUG da sessão molhada — parâmetros por-traço.**
+> ✅ **RESOLVIDO 2026-07-09 (rota a+b combinadas):** tabela de estilos por-traço da sessão
+> (`WetSessionStyles` em `watercolor_field.rs` — fill/depth/edge_gain/wet/granulation/warp/
+> pigment_mix/cor-fallback, capturados com os clamps EXATOS do composite no pen-down) + mapa u8
+> de DONO por-pixel (recência, casa com o source-over da cor; splat no coverage pass). O composite
+> resolve os params do dono por pixel (leitura warpada; warp usa o dono pré-warp); geometria/
+> campos (pad, rewet build, soaked) usam MÁXIMOS da sessão (conservador). Owner 0 / sem estilos =
+> caminho antigo bit-idêntico (491/491 verdes). Fica global por composite (documentado): core_r/
+> spread do blur, fonte da textura de grain, spread_thin, paper. Teste refutável:
+> `watercolor_session_keeps_each_strokes_style` (wash 1 byte-exato pós-união; FAIL sem o fix).
+> Bloco de granulação extraído p/ `granulation_factor` no field (teto LOC).
+>
+> ~~**1º DA FILA (ordem do Enio, 2026-07-09): BUG da sessão molhada — parâmetros por-traço.**~~
 > Traço 1 com Concentration 1.0 + traço 2 com 0.3 na mesma sessão ⇒ no pen-up o re-bake da
 > união re-estiliza o traço 1 com 0.3 (o composite lê os params CORRENTES do brush pro conjunto;
 > era o caveat documentado do EDGE-1 take 2 — confirmado no smoke, não é aceitável). Rotas a

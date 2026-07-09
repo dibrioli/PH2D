@@ -57,6 +57,7 @@ impl PainterTool {
             self.paint.stroke_color.clear();
             self.paint.stroke_density.clear();
             self.paint.stroke_deplete.clear();
+            self.paint.wet_styles.clear();
             self.paint.wet_cum_dirty = None;
         }
         self.paint.wet_frame_dirty = None;
@@ -75,6 +76,13 @@ impl PainterTool {
             // at the bake. A stale wet map from a broken session keeps drying on its own.
             self.paint.wet_session_base = self.paint.watercolor_base.clone();
             self.paint.wet_session_canvas = None;
+        }
+        if self.watercolor_render_active() {
+            // EDGE-1 per-stroke style (doc 13 topo): capture THIS stroke's wash params at pen-down
+            // — the union re-bake resolves them per pixel by the owner map, so an already-painted
+            // wash keeps ITS Concentration/Edge/water instead of being re-styled by the current
+            // brush (Enio 2026-07-09).
+            self.paint.wet_styles.push_capture(&self.paint.brush);
         }
         self.paint.per_layer_stroke.reset();
         // Smear chains its source from the previous dab; a fresh stroke has none yet.

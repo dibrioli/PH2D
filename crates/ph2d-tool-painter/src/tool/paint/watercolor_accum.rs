@@ -292,9 +292,18 @@ impl PainterTool {
             }
         }
         let map_live = depletion.is_some() || !self.paint.stroke_deplete.is_empty();
+        // EDGE-1 per-stroke style: the OWNER map — recency, the LAST stroke to touch a pixel
+        // styles it (matching the colour buffer's source-over). Sized with the session's first
+        // watercolor stroke; `0` = unowned (composite falls back to the current brush).
+        let own_v = (!self.paint.wet_styles.table.is_empty())
+            .then(|| self.paint.wet_styles.current_owner());
+        if own_v.is_some() && self.paint.wet_styles.owner.len() != fw * fh {
+            self.paint.wet_styles.owner = vec![0u8; fw * fh];
+        }
         let cov = &mut self.paint.stroke_coverage;
         let dens_buf = &mut self.paint.stroke_density;
         let depl_buf = &mut self.paint.stroke_deplete;
+        let own_buf = &mut self.paint.wet_styles.owner;
         for (di, d) in dabs.iter().enumerate() {
             // Frame draw BEFORE any skip: the colour pass replays this stream per emitted dab, and
             // its skip conditions differ (no Dilution `flow` there) — drawing after a skip would
@@ -376,6 +385,12 @@ impl PainterTool {
                         if dvb > depl_buf[idx] {
                             depl_buf[idx] = dvb;
                         }
+                    }
+                    // Style owner (recency overwrite — see the map's sizing above).
+                    if let Some(o) = own_v
+                        && wgt > 0.0
+                    {
+                        own_buf[idx] = o;
                     }
                 }
             }

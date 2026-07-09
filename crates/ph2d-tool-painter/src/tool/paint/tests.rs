@@ -13031,3 +13031,62 @@ fn watercolor_session_drying_mid_stroke_does_not_double_bake() {
          (A interior G {a_interior_before:.1} -> {a_interior_after:.1})"
     );
 }
+
+/// **Sessão molhada — params POR TRAÇO (doc 13 topo, Enio 2026-07-09):** traço 1 com Concentration
+/// (depth) alta + traço 2 com baixa na MESMA sessão — o re-bake da união resolvia os params
+/// CORRENTES do brush pro conjunto ("no mouse up o primeiro traço é convertido para 0.3"), e
+/// qualquer mudança propagava pelas poças na janela retangular do composite. Com a tabela de
+/// estilos + mapa de dono, cada wash mantém o SEU caráter byte-exato; o traço novo usa o dele.
+#[test]
+fn watercolor_session_keeps_each_strokes_style() {
+    let size = 192u32;
+    let mut t = white_canvas(size, 8.0);
+    t.paint.brush = BrushSpec {
+        radius_px: 12.0,
+        hardness: 1.0,
+        falloff: Falloff::Constant,
+        color: [0.85, 0.1, 0.1],
+        space_attenuation: false,
+        watercolor: true,
+        fill: 0.3,
+        depth: 2.0, // Concentration ALTA no traço 1
+        edge_gain: 1.0,
+        edge_spread: 4.0,
+        warp: 0.0,
+        granulation: 0.0,
+        ..Default::default()
+    };
+    for slot in &mut t.paint.brush_by_mode {
+        *slot = t.paint.brush;
+    }
+    let stroke_v = |t: &mut PainterTool, x: f32| {
+        assert!(t.on_canvas_pointer(cp([x, 30.0], PointerPhase::Down)));
+        let mut y = 30.0f32;
+        while y < 160.0 {
+            y += 2.0;
+            t.on_canvas_pointer(cp([x, y], PointerPhase::Move));
+        }
+        t.on_canvas_pointer(cp([x, 160.0], PointerPhase::Up));
+    };
+    stroke_v(&mut t, 60.0); // wash A (banda x ≈ 48..72), baked
+    let a_probe: Vec<[u8; 4]> = (80..110u32).map(|y| px(&t, size, 60, y)).collect();
+    // Concentration BAIXA no traço 2 — mesma sessão molhada (imediato).
+    t.paint.brush.depth = 0.6;
+    for slot in &mut t.paint.brush_by_mode {
+        *slot = t.paint.brush;
+    }
+    stroke_v(&mut t, 140.0); // wash B, longe do probe de A mas na mesma união/sessão
+    let a_after: Vec<[u8; 4]> = (80..110u32).map(|y| px(&t, size, 60, y)).collect();
+    assert_eq!(
+        a_probe, a_after,
+        "o wash 1 deve manter SUA Concentration byte-exata após o re-bake da união"
+    );
+    // E o wash 2 usa a Concentration DELE (bem mais claro que o 1).
+    let g = |x: u32| f32::from(px(&t, size, x, 95)[1]);
+    assert!(
+        g(140) > g(60) + 30.0,
+        "o wash 2 rende com a própria Concentration baixa (B G {:.0} vs A G {:.0})",
+        g(140),
+        g(60)
+    );
+}

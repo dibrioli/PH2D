@@ -327,6 +327,7 @@ impl PainterTool {
             self.paint.stroke_color = Vec::new();
             self.paint.stroke_density = Vec::new();
             self.paint.stroke_deplete = Vec::new();
+            self.paint.wet_styles.clear();
             self.paint.wet_cum_dirty = None;
         }
     }

@@ -33,24 +33,6 @@ pub(super) const SS1: f32 = 0.60; // LITERAL-PX-OK: coverage-hardening smoothste
 /// back to the live brush colour (wet_edges `COL_EPS`) — a faint rim carries the fresh pigment, not noise.
 const COL_EPS: u8 = 20;
 
-// ── Granulation settling (doc 12 GRAN-1 — Curtis §4.5 valley deposition, Tier-2) ────────────────────
-// Drying model (Enio 2026-07-08, take 3): the BAKE applies the FULL settle (the real drying
-// physics — the wash visibly "sets" on pen-up), while the LIVE preview runs CLOSE to the dry
-// result so the release reads as a subtle settling, not a pop ("clareamento correspondente
-// próximo em tempo real"). SMOKE-CALIBRATION KNOBS: raise `GRAN_SETTLE_BASE` to bring the live
-// preview closer to the dry look (1.0 = WYSIWYG, no drying dynamic); `WET`/`SOAK` add the live
-// water response on top (capped at the dry value — the preview never overshoots the bake).
-/// LIVE settle floor — how close the wet preview sits to the dry (baked) settle with no water.
-const GRAN_SETTLE_BASE: f32 = 0.80;
-/// How much Rewet (water) raises the live settle toward the dry value.
-const GRAN_SETTLE_WET: f32 = 0.12;
-/// How much the per-pixel soak (dwell) raises the live settle toward the dry value.
-const GRAN_SETTLE_SOAK: f32 = 0.12;
-/// Peak-side strength of the valley gate (`1 − k·h·γ`): peaks shed up to γ of their share into the
-/// valleys; `< 1` keeps a floor so full granulation never zeroes the wash (the old symmetric form
-/// clamped low-h texels to 0 → white speckle holes).
-const GRAN_GAMMA: f32 = 0.9;
-
 impl PainterTool {
     /// Whether the watercolor optical render-path drives this stroke: the Watercolor section is on, we're
     /// the normal **Paint** brush (not Smear/Blur/Clone/Mask/Inpaint/Fill/Selection/Deform), and not
@@ -138,6 +120,21 @@ impl PainterTool {
         let spread = self.paint.brush.edge_spread.round().clamp(0.0, 48.0) as usize;
         let warp_amp = self.paint.brush.warp.max(0.0);
         let wet = self.paint.brush.wet_rewet.clamp(0.0, 1.0);
+        // EDGE-1 per-stroke style (doc 13 topo): geometry/field paths take the SESSION MAXIMA
+        // (conservative — any stroke with water builds the rewet fields; the widest warp pads the
+        // window); the per-pixel terms resolve the OWNER stroke's own values inside the loop.
+        let wet_any = self
+            .paint
+            .wet_styles
+            .table
+            .iter()
+            .fold(wet, |m, s| m.max(s.wet));
+        let warp_any = self
+            .paint
+            .wet_styles
+            .table
+            .iter()
+            .fold(warp_amp, |m, s| m.max(s.warp));
         // Silhouette-feather radius (`inner`), capped so a pool keeps a saturated core (see below).
         let core_r = spread.min(((self.paint.brush.radius_px * 0.5).round() as usize).max(1));
         // Influence radius of a dab beyond its own disc: the blur reach + the warp displacement +
@@ -146,15 +143,15 @@ impl PainterTool {
         // widen the footprint) → a tight window. WITH Wet the dissolve reaches `spread`, and once the
         // stroke poured dwell (`wet_soak_active`) the soak-deepened dissolve reads a 2× blur, so the
         // reach doubles.
-        let soaked = wet > 0.0 && self.paint.wet_soak_active && self.paint.wet_soak.len() == n;
-        let reach = if wet <= 0.0 {
+        let soaked = wet_any > 0.0 && self.paint.wet_soak_active && self.paint.wet_soak.len() == n;
+        let reach = if wet_any <= 0.0 {
             core_r
         } else if soaked {
             spread * 2
         } else {
             spread
         };
-        let pad = reach + warp_amp.ceil() as usize + 2;
+        let pad = reach + warp_any.ceil() as usize + 2;
         let x0 = (dirty.x as usize).saturating_sub(pad);
         let y0 = (dirty.y as usize).saturating_sub(pad);
         let x1 = ((dirty.x as usize) + (dirty.w as usize) + pad).min(fw);
@@ -221,7 +218,7 @@ impl PainterTool {
             Some(b) if b.len() == n * 4 => Arc::clone(b),
             _ => Arc::clone(&base_arc),
         };
-        let rewet = (wet > 0.0).then(|| {
+        let rewet = (wet_any > 0.0).then(|| {
             build_rewet_fields(
                 &rewet_base_arc[..],
                 ground,
@@ -276,6 +273,22 @@ impl PainterTool {
         // water footprint (and so the edge anatomy) stays whole. Empty ⇒ factor ≡ 1 → byte-identical.
         let has_depl = self.paint.stroke_deplete.len() == n;
         let depl_buf = &self.paint.stroke_deplete;
+        // EDGE-1 per-stroke style: owner map + table ([`WetSessionStyles`]); `cur_style` mirrors
+        // the clamped globals above, so unowned pixels and style-less composites resolve to the
+        // EXACT same values as before (bit-identical single-style path).
+        let style_table = &self.paint.wet_styles.table;
+        let style_owner = &self.paint.wet_styles.owner;
+        let has_style = style_owner.len() == n && !style_table.is_empty();
+        let cur_style = WetStrokeStyle {
+            fill,
+            depth,
+            edge_gain,
+            wet,
+            granulation,
+            warp: warp_amp,
+            pigment_mix,
+            color: fallback,
+        };
         // Raw per-pixel soak for the granulation settle (GRAN-1) — read-only in the parallel loop.
         let soak_buf = &self.paint.wet_soak;
 
@@ -346,11 +359,21 @@ impl PainterTool {
                     let gi = (gy * fw + gx) * 4;
                     // Warp the sample position (organic boundary). Window-local coords for the read-window
                     // fields; global for the full-canvas colour buffer (same displacement + window origin).
-                    let (sx, sy) = if warp_amp > 0.0 {
-                        let wx = warp_axis(gx as f32, gy as f32, SEED_WARP_X_A, SEED_WARP_X_B)
-                            * warp_amp;
-                        let wy = warp_axis(gx as f32, gy as f32, SEED_WARP_Y_A, SEED_WARP_Y_B)
-                            * warp_amp;
+                    // Per-stroke style: warp AMPLITUDE by the pixel's owner (read PRE-warp —
+                    // the displacement needs the amp first); owner 0 = current brush, old path.
+                    let st_warp = if has_style {
+                        match style_owner[gy * fw + gx] {
+                            0 => warp_amp,
+                            o => style_table[(o as usize - 1).min(style_table.len() - 1)].warp,
+                        }
+                    } else {
+                        warp_amp
+                    };
+                    let (sx, sy) = if st_warp > 0.0 {
+                        let wx =
+                            warp_axis(gx as f32, gy as f32, SEED_WARP_X_A, SEED_WARP_X_B) * st_warp;
+                        let wy =
+                            warp_axis(gx as f32, gy as f32, SEED_WARP_Y_A, SEED_WARP_Y_B) * st_warp;
                         (lx + wx, ly + wy)
                     } else {
                         (lx, ly)
@@ -365,7 +388,21 @@ impl PainterTool {
                         continue;
                     }
                     let inner = sample_bilinear(&blur, rw, rh, sx, sy).min(1.0);
-                    let mut edge = (cw * (1.0 - inner) * edge_gain).clamp(0.0, 1.0);
+                    // Warped canvas-space indices — shared by the tip-density / pigment-reserve /
+                    // style-owner reads (nearest, like the colour buffer).
+                    let wgx = (rx0 as f32 + sx).clamp(0.0, (fw - 1) as f32) as usize;
+                    let wgy = (ry0 as f32 + sy).clamp(0.0, (fh - 1) as f32) as usize;
+                    // Per-stroke style: the OWNER stroke's wash params (recency) — an older
+                    // wash keeps ITS Concentration/Edge/water on the re-bake (Enio 2026-07-09).
+                    let st = if has_style {
+                        match style_owner[wgy * fw + wgx] {
+                            0 => cur_style,
+                            o => style_table[(o as usize - 1).min(style_table.len() - 1)],
+                        }
+                    } else {
+                        cur_style
+                    };
+                    let mut edge = (cw * (1.0 - inner) * st.edge_gain).clamp(0.0, 1.0);
                     // Paper tooth (substrate): the active Paper slot, or the built-in noise fallback —
                     // memoised per canvas pixel (`compute_paper` is the identical expression; the cache just
                     // avoids recomputing it every frame for the same pixel).
@@ -374,12 +411,9 @@ impl PainterTool {
                     } else {
                         compute_paper(gx, gy)
                     };
-                    // Granulation field: its own map, or (Same as Paper) the paper's tooth — and NOTHING
-                    // otherwise: with no Grain image and Same-as-Paper off there is no settling substrate,
-                    // so Amount must be inert (falling through to the built-in noise granulated out of thin
-                    // air — Enio 2026-07-06).
                     // Granulation height source: its own map, or (Same as Paper) the paper's tooth —
-                    // and NOTHING otherwise (no settling substrate ⇒ Amount inert, Enio 2026-07-06).
+                    // and NOTHING otherwise (no settling substrate ⇒ Amount inert, Enio 2026-07-06;
+                    // the built-in noise fallback granulated out of thin air).
                     let gran_h = if gran_own_map {
                         Some(ph2d_painter_brush::texture::sample_tiled_rot(
                             &gran_tex,
@@ -400,52 +434,36 @@ impl PainterTool {
                     } else {
                         0.0
                     };
-                    // GRAN-1 (Curtis §4.5, Tier-2): granulation is VALLEY DEPOSITION, not symmetric
-                    // modulation — pigment settles INTO the tooth's valleys (`h` low ⇒ full deposit;
-                    // peaks shed up to γ), the exact SIGN the old form inverted. The settle weight
-                    // grows with water (Rewet) + local dwell (soak) live, and goes FULL at the
-                    // pen-up bake (real drying) — with the live preview tuned CLOSE to dry so the
-                    // release is a subtle set, not a pop. Amount 0 ⇒ factor 1 exactly
-                    // (byte-identical); no clamp-to-0 speckle (γ < 1).
-                    let gran = match gran_h {
-                        Some(h) => {
-                            let soak_v = if soaked {
-                                f32::from(soak_buf[gy * fw + gx]) / 255.0
-                            } else {
-                                0.0
-                            };
-                            // Real drying at the BAKE (full settle) + a live preview that runs
-                            // CLOSE to it (high base, small water headroom) — the pen-up reads as
-                            // a subtle true-to-physics settling instead of a pop. Calibrate via
-                            // the GRAN_SETTLE_* consts above (Enio smoke loop, 2026-07-08).
-                            let settle = if commit {
-                                1.0
-                            } else {
-                                (GRAN_SETTLE_BASE
-                                    + GRAN_SETTLE_WET * wet
-                                    + GRAN_SETTLE_SOAK * soak_v)
-                                    .min(1.0)
-                            };
-                            let k = (granulation * settle).clamp(0.0, 1.0);
-                            ((1.0 + paper_component) * (1.0 - k * h * GRAN_GAMMA)).max(0.0)
-                        }
-                        None => (1.0 + paper_component).max(0.0),
+                    // GRAN-1 (Curtis §4.5, Tier-2): valley deposition + the take-3 drying model —
+                    // extracted to [`granulation_factor`] (LOC cap); the amount + water follow the
+                    // pixel's OWNER stroke (per-stroke style).
+                    let soak_v = if soaked {
+                        f32::from(soak_buf[gy * fw + gx]) / 255.0
+                    } else {
+                        0.0
                     };
+                    let gran = granulation_factor(
+                        gran_h,
+                        paper_component,
+                        st.granulation,
+                        st.wet,
+                        soak_v,
+                        commit,
+                    );
                     // Wet also wets the WASH ITSELF (blank canvas included): more water = the wash's own
                     // pigment redistributes — the interior thins toward the receding front, the edge pools
                     // harder, and the pooling follows the paper tooth (a wetter bloom is ragged, not a
                     // clean ring). This is what makes the Spread read intense + organic under Wet even
                     // before any old paint is involved (Enio 2026-07-06 "mais intenso e menos uniforme").
-                    let mut fill_px = fill;
-                    if wet > 0.0 {
-                        fill_px = fill * (1.0 - (WET_THIN * wet * spread_thin * inner).min(0.95));
-                        let ragged = (1.0 + (paper_h - 0.5) * 2.0 * WET_RAGGED * wet).max(0.0);
-                        edge = (edge * (1.0 + WET_EDGE_BOOST * wet) * ragged).clamp(0.0, 1.5); // LITERAL-PX-OK: wet edge may overshoot the dry clamp
+                    let mut fill_px = st.fill;
+                    if st.wet > 0.0 {
+                        fill_px =
+                            st.fill * (1.0 - (WET_THIN * st.wet * spread_thin * inner).min(0.95));
+                        let ragged = (1.0 + (paper_h - 0.5) * 2.0 * WET_RAGGED * st.wet).max(0.0);
+                        edge = (edge * (1.0 + WET_EDGE_BOOST * st.wet) * ragged).clamp(0.0, 1.5); // LITERAL-PX-OK: wet edge may overshoot the dry clamp
                     }
                     // Tip density at the warped position (nearest, like the colour buffer).
                     let tip_dens = if has_dens {
-                        let wgx = (rx0 as f32 + sx).clamp(0.0, (fw - 1) as f32) as usize;
-                        let wgy = (ry0 as f32 + sy).clamp(0.0, (fh - 1) as f32) as usize;
                         f32::from(dens_buf[wgy * fw + wgx]) / 255.0
                     } else {
                         1.0
@@ -456,8 +474,6 @@ impl PainterTool {
                     // plain water. Applied BEFORE the rewet-pool term: pigment dissolved off the
                     // CANVAS is not the brush's reserve and must not fade with it.
                     if has_depl {
-                        let wgx = (rx0 as f32 + sx).clamp(0.0, (fw - 1) as f32) as usize;
-                        let wgy = (ry0 as f32 + sy).clamp(0.0, (fh - 1) as f32) as usize;
                         density *= f32::from(depl_buf[wgy * fw + wgx]) / 255.0;
                     }
                     // Wet-on-wet: sample the bleed field (blurred presence + presence-weighted paint colour)
@@ -488,8 +504,8 @@ impl PainterTool {
                         } else {
                             fno.clamp(0.0, 1.0)
                         };
-                        lift =
-                            (REWET_LIFT * wet * cw * lp * (1.0 + SOAK_LIFT * s_raw)).min(LIFT_MAX);
+                        lift = (REWET_LIFT * st.wet * cw * lp * (1.0 + SOAK_LIFT * s_raw))
+                            .min(LIFT_MAX);
                         if bp > 1e-4 {
                             let inv = 1.0 / bp;
                             for c in 0..3 {
@@ -501,16 +517,17 @@ impl PainterTool {
                                     nc * inv
                                 };
                             }
-                            dissolve = (wet * bp * (1.0 + SOAK_DISSOLVE * s)).clamp(0.0, 1.0);
+                            dissolve = (st.wet * bp * (1.0 + SOAK_DISSOLVE * s)).clamp(0.0, 1.0);
                             // The dissolved pigment re-enters the wash as optical density AT THE RECEDING
                             // FRONT (the same rim shape as the edge term, gain-independent): pigment in
                             // suspension migrates to the wet boundary — the bloom. A UNIFORM pool flooded
                             // the interior and flattened the Spread dynamic (interior must CLEAR as the
                             // frontier advances; the lift even enhances that over old paint).
-                            density += REWET_POOL * wet * bp * (cw * (1.0 - inner)).clamp(0.0, 1.0);
+                            density +=
+                                REWET_POOL * st.wet * bp * (cw * (1.0 - inner)).clamp(0.0, 1.0);
                         }
                     }
-                    let od = density * depth;
+                    let od = density * st.depth;
 
                     // Pigment colour: the deposited (source-over) colour where present, else the brush colour.
                     let mut pig = if has_color {
@@ -520,10 +537,10 @@ impl PainterTool {
                         if color_buf[ci + 3] > COL_EPS {
                             [color_buf[ci], color_buf[ci + 1], color_buf[ci + 2]]
                         } else {
-                            fallback
+                            st.color
                         }
                     } else {
-                        fallback
+                        st.color
                     };
                     // Wet-on-wet DISSOLVE: the lifted paint's colour (diffused through the wet region)
                     // tints the wash's pigment — the old colour bleeds into and beyond its own footprint.
@@ -598,7 +615,7 @@ impl PainterTool {
                     // Wet is 0 (byte-identical default preserved). The blend reads the LIFTED base (`sb`)
                     // where the rewet lightened it — mixing against the raw base would paint the lift
                     // right back over.
-                    let mix_amt = pigment_mix.max(wet * wet_paint);
+                    let mix_amt = st.pigment_mix.max(st.wet * wet_paint);
                     if mix_amt > 0.0 {
                         // The (possibly lifted) base APPEARANCE over the ground — for an opaque base with
                         // no lift this is the raw base bytes exactly (`l2s(s2l(b)) == b`); for a

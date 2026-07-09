@@ -500,3 +500,119 @@ mod tests {
         );
     }
 }
+
+/// EDGE-1 **per-stroke style** (doc 13 topo, Enio 2026-07-09): the wash params captured at each
+/// session stroke's pen-down. The union re-bake resolves them PER PIXEL via the owner map — an
+/// already-painted wash keeps ITS Concentration (depth) / Body / Edge / water / granulation
+/// instead of being re-styled by the current brush (the reported bug: any param change propagated
+/// through the wet pools inside the composite's rectangular window). Values are stored
+/// pre-clamped EXACTLY as the composite clamped its globals, so owner-resolved math is
+/// bit-identical for a single-style session.
+#[derive(Clone, Copy)]
+pub(super) struct WetStrokeStyle {
+    pub(super) fill: f32,
+    pub(super) depth: f32,
+    pub(super) edge_gain: f32,
+    pub(super) wet: f32,
+    pub(super) granulation: f32,
+    pub(super) warp: f32,
+    pub(super) pigment_mix: f32,
+    pub(super) color: [u8; 3],
+}
+
+impl WetStrokeStyle {
+    /// Capture the current brush's wash params — the composite's exact clamps, verbatim.
+    pub(super) fn capture(spec: &ph2d_painter_brush::BrushSpec) -> Self {
+        Self {
+            fill: spec.fill.clamp(0.0, 1.0),
+            depth: spec.depth.max(0.0),
+            edge_gain: spec.edge_gain.max(0.0),
+            wet: spec.wet_rewet.clamp(0.0, 1.0),
+            granulation: spec.granulation.clamp(0.0, 1.0),
+            warp: spec.warp.max(0.0),
+            pigment_mix: spec.effective_pigment_mix(),
+            color: [
+                (spec.color[0].clamp(0.0, 1.0) * 255.0 + 0.5) as u8,
+                (spec.color[1].clamp(0.0, 1.0) * 255.0 + 0.5) as u8,
+                (spec.color[2].clamp(0.0, 1.0) * 255.0 + 0.5) as u8,
+            ],
+        }
+    }
+}
+
+/// The wet session's per-stroke style TABLE + per-pixel OWNER map (`0` = unowned → the current
+/// brush's style; `k` = `table[k−1]`). Ownership is RECENCY — the last stroke to touch a pixel
+/// styles it, matching the colour buffer's source-over. Cleared with the session.
+#[derive(Default)]
+pub(super) struct WetSessionStyles {
+    pub(super) table: Vec<WetStrokeStyle>,
+    pub(super) owner: Vec<u8>,
+}
+
+impl WetSessionStyles {
+    /// Register the beginning stroke's style; the index saturates at 255 (a 256th stroke in one
+    /// wet session shares the last slot — far beyond any real ~8.5 s session).
+    pub(super) fn push_capture(&mut self, spec: &ph2d_painter_brush::BrushSpec) {
+        if self.table.len() < 255 {
+            self.table.push(WetStrokeStyle::capture(spec));
+        } else if let Some(last) = self.table.last_mut() {
+            *last = WetStrokeStyle::capture(spec);
+        }
+    }
+
+    /// The CURRENT stroke's owner byte for the coverage splat.
+    pub(super) fn current_owner(&self) -> u8 {
+        self.table.len().min(255) as u8
+    }
+
+    pub(super) fn clear(&mut self) {
+        self.table.clear();
+        self.owner = Vec::new();
+    }
+}
+
+// ── Granulation settling (doc 12 GRAN-1 — Curtis §4.5 valley deposition, Tier-2) ────────────────────
+// Drying model (Enio 2026-07-08, take 3): the BAKE applies the FULL settle (the real drying
+// physics — the wash visibly "sets" on pen-up), while the LIVE preview runs CLOSE to the dry
+// result so the release reads as a subtle settling, not a pop ("clareamento correspondente
+// próximo em tempo real"). SMOKE-CALIBRATION KNOBS: raise `GRAN_SETTLE_BASE` to bring the live
+// preview closer to the dry look (1.0 = WYSIWYG, no drying dynamic); `WET`/`SOAK` add the live
+// water response on top (capped at the dry value — the preview never overshoots the bake).
+/// LIVE settle floor — how close the wet preview sits to the dry (baked) settle with no water.
+pub(super) const GRAN_SETTLE_BASE: f32 = 0.80;
+/// How much Rewet (water) raises the live settle toward the dry value.
+pub(super) const GRAN_SETTLE_WET: f32 = 0.12;
+/// How much the per-pixel soak (dwell) raises the live settle toward the dry value.
+pub(super) const GRAN_SETTLE_SOAK: f32 = 0.12;
+/// Peak-side strength of the valley gate (`1 − k·h·γ`): peaks shed up to γ of their share into the
+/// valleys; `< 1` keeps a floor so full granulation never zeroes the wash (the old symmetric form
+/// clamped low-h texels to 0 → white speckle holes).
+pub(super) const GRAN_GAMMA: f32 = 0.9;
+
+/// GRAN-1 valley-gated granulation factor (Curtis §4.5, Tier-2 — doc 12): pigment settles INTO
+/// the tooth's valleys (`h` low ⇒ full deposit; peaks shed up to γ). The settle weight grows with
+/// water (Rewet) + local dwell (soak) live, and goes FULL at the pen-up bake (real drying) — the
+/// live preview is tuned CLOSE to dry (GRAN_SETTLE_* knobs) so the release is a subtle set, not a
+/// pop. Amount 0 ⇒ factor `1 + paper_component` exactly; no clamp-to-0 speckle (γ < 1).
+#[inline]
+pub(super) fn granulation_factor(
+    gran_h: Option<f32>,
+    paper_component: f32,
+    granulation: f32,
+    wet: f32,
+    soak_v: f32,
+    commit: bool,
+) -> f32 {
+    match gran_h {
+        Some(h) => {
+            let settle = if commit {
+                1.0
+            } else {
+                (GRAN_SETTLE_BASE + GRAN_SETTLE_WET * wet + GRAN_SETTLE_SOAK * soak_v).min(1.0)
+            };
+            let k = (granulation * settle).clamp(0.0, 1.0);
+            ((1.0 + paper_component) * (1.0 - k * h * GRAN_GAMMA)).max(0.0)
+        }
+        None => (1.0 + paper_component).max(0.0),
+    }
+}

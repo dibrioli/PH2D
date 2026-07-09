@@ -456,21 +456,21 @@ pub(crate) struct PaintState {
     /// the intact coverage — head keeps the full watercolor anatomy, the tail fades rim and body
     /// together toward plain water. Empty ⇒ factor 1 (byte-identical default).
     stroke_deplete: Vec<u8>,
-    /// EDGE-1 (doc 12): canvas-wide MOISTURE map (`w*h`, `0..255`) that SURVIVES pen-up — the paper
-    /// under a fresh wash stays workably wet and dries on the heartbeat (~8.5 s full→dry, the
-    /// DiVerdi/Adobe TVCG 2013 convention; Curtis §3-4 wet-area mask). The bake pours the stroke's
-    /// HARDENED coverage in (max-blend, AFTER the composite). While any of it is wet, consecutive
-    /// watercolor strokes CONTINUE the same **wet session** ([`PainterTool::wet_session_continues`]):
-    /// the stroke buffers accumulate the UNION and every bake re-renders it over the session base —
-    /// one wash, one rim; the previous stroke's inner rim MELTS on the re-bake (the smoke showed
-    /// suppressing only the NEW rim leaves the baked one visible — the double contour persisted).
-    /// Empty = fully dry (the drying tick drops it + the session). Undo does not un-pour: moisture
-    /// is paper state, not paint (a foreign canvas mutation ends the session via the `Arc` guard).
+    /// EDGE-1 (doc 12): canvas-wide MOISTURE map (`w*h`, `0..255`) surviving pen-up — the paper
+    /// dries on the heartbeat (~8.5 s, DiVerdi/Adobe TVCG 2013; Curtis wet-area mask). The bake
+    /// pours the stroke's HARDENED coverage (max-blend, post-composite). While any of it is wet,
+    /// watercolor strokes CONTINUE one **wet session** ([`PainterTool::wet_session_continues`]):
+    /// the buffers accumulate the UNION, re-rendered over the session base — one wash, one rim
+    /// (only-new-rim suppression left the baked double contour — smoke 2026-07-09). Empty = dry
+    /// (tick drops it + the session). Undo does not un-pour (moisture is paper state).
     canvas_wet: Vec<u8>,
     /// Live bounding rect of the wet area (the decay/pour window) — `None` = dry, zero idle cost.
     canvas_wet_rect: Option<(usize, usize, usize, usize)>,
     /// Fractional drying carry between whole-byte decay steps (heartbeat dt accumulator).
     canvas_wet_carry: f32,
+    /// EDGE-1 per-stroke style (doc 13 topo): session param table + per-pixel owner map — an
+    /// older wash keeps ITS look on the union re-bake ([`watercolor_field::WetSessionStyles`]).
+    wet_styles: watercolor_field::WetSessionStyles,
     /// EDGE-1 wet session: the optical base frozen at the SESSION start (first stroke of the wet
     /// window) — every bake of the session re-composites the UNION buffers over this, never over
     /// its own previous bake (which would double-count). Per-stroke `watercolor_base` (refrozen

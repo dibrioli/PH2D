@@ -15,13 +15,15 @@
 //!
 //! Params (read via `ctx.param`):
 //! - `channel` (1): target — `0` X, `1` Y, `2` Rotation, `3` Size.
-//! - `wave` (0): shape — `0` Parabolic (sine-like), `1` Triangle, `2` Square,
-//!   `3` Saw.
+//! - `wave` (0): shape — `0` Sine (parabolic), `1` Triangle, `2` Square, `3` Saw,
+//!   `4` Spike (a narrow unipolar pulse).
 //! - `amplitude` (1): peak of the oscillation (channel-native units).
 //! - `frequency` (1): cycles per second of playhead.
-//! - `phase_stagger` (0.5): per-instance phase offset (cycles) → the wave.
+//! - `phase_stagger` (0.1): per-instance phase offset (cycles) → the travelling wave.
+//! - `offset` (0): a DC shift of the oscillation centre.
+//! - `phase` (0): a global phase offset (cycles) — where in the cycle it starts.
 //!
-//! `delta_i = wave(t·frequency + i·phase_stagger) · amplitude · falloff_i`.
+//! `delta_i = (wave(t·frequency + i·phase_stagger + phase)·amplitude + offset)·falloff_i`.
 
 use ph2d_node_registry::{NodeRegistry, RegistryError};
 use ph2d_nodegraph::cook::EvalCtx;
@@ -69,7 +71,15 @@ pub const MANIFEST: NodeManifest = NodeManifest {
         },
         ParamSpec {
             name: "phase_stagger",
-            default: 0.5,
+            default: 0.1,
+        },
+        ParamSpec {
+            name: "offset",
+            default: 0.0,
+        },
+        ParamSpec {
+            name: "phase",
+            default: 0.0,
         },
     ],
     lowerings: &[LoweringKind::Cpu],
@@ -81,9 +91,9 @@ fn frac(p: f32) -> f32 {
     p - p.floor()
 }
 
-/// A periodic waveform in `[-1,1]` at `phase` (in cycles, period 1). All shapes
-/// are piecewise polynomial → transcendental-free (HR-5). Unknown / `0` is the
-/// parabolic sine-approximation.
+/// A periodic waveform at `phase` (in cycles, period 1) — bipolar `[-1,1]` except
+/// **Spike** (a unipolar `[0,1]` pulse). All shapes are piecewise polynomial →
+/// transcendental-free (HR-5). Unknown / `0` is the parabolic sine-approximation.
 fn waveform(kind: i32, phase: f32) -> f32 {
     let f = frac(phase);
     match kind {
@@ -102,6 +112,11 @@ fn waveform(kind: i32, phase: f32) -> f32 {
             if f < 0.5 { 1.0 } else { -1.0 }
         }
         3 => 2.0 * f - 1.0, // Saw: −1 → +1 rising.
+        4 => {
+            // Spike: a narrow unipolar pulse at the cycle start (a periodic kick).
+            const SPIKE_WIDTH: f32 = 0.08;
+            if f < SPIKE_WIDTH { 1.0 } else { 0.0 }
+        }
         _ => {
             // Parabolic sine-approximation: a +hump over [0,½), a −hump over
             // [½,1), each `±4u(1−u)` — continuous, 0 at 0/½, ±1 at ¼/¾.
@@ -135,14 +150,18 @@ impl NodeOp for MotionOscillator {
         let amplitude = ctx.param("amplitude");
         let frequency = ctx.param("frequency");
         let phase_stagger = ctx.param("phase_stagger");
+        let offset = ctx.param("offset");
+        let phase0 = ctx.param("phase");
         let t = ctx.playhead() as f32;
         let out = {
             let input = ctx.input(0);
             let n = input.count();
             let deltas: Vec<f32> = (0..n)
                 .map(|i| {
-                    let phase = t * frequency + i as f32 * phase_stagger;
-                    waveform(wave, phase) * amplitude * falloff_at(input, i)
+                    let phase = t * frequency + i as f32 * phase_stagger + phase0;
+                    // DC `offset` shifts the oscillation centre; the whole
+                    // contribution is falloff-masked (like every behaviour).
+                    (waveform(wave, phase) * amplitude + offset) * falloff_at(input, i)
                 })
                 .collect();
             apply_channel_delta(input, channel, &deltas)
@@ -190,10 +209,10 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         param: "wave",
         label: "Wave",
         min: 0.0,
-        max: 3.0,
+        max: 4.0,
         step: 1.0,
         widget: ParamWidget::Enum {
-            labels: &["Sine", "Tri", "Square", "Saw"],
+            labels: &["Sine", "Tri", "Square", "Saw", "Spike"],
         },
     },
     ParamUiHint {
@@ -214,10 +233,26 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "phase_stagger",
-        label: "Phase",
+        label: "Stagger",
         min: 0.0,
         max: 2.0,
         step: 0.02,
+        widget: ParamWidget::Slider,
+    },
+    ParamUiHint {
+        param: "offset",
+        label: "Offset",
+        min: -10.0,
+        max: 10.0,
+        step: 0.05,
+        widget: ParamWidget::Slider,
+    },
+    ParamUiHint {
+        param: "phase",
+        label: "Phase",
+        min: 0.0,
+        max: 1.0,
+        step: 0.01,
         widget: ParamWidget::Slider,
     },
 ];
@@ -317,8 +352,8 @@ mod tests {
 
     #[test]
     fn waveforms_stay_in_range_and_are_periodic() {
-        // Every shape is bounded to [-1,1] and repeats each unit cycle.
-        for kind in 0..=3 {
+        // Every shape is bounded to [-1,1] (Spike to [0,1]) and repeats per cycle.
+        for kind in 0..=4 {
             for step in 0..40 {
                 let p = step as f32 * 0.1;
                 let v = waveform(kind, p);
@@ -333,6 +368,28 @@ mod tests {
         assert_eq!(waveform(0, 0.0), 0.0);
         assert_eq!(waveform(0, 0.25), 1.0);
         assert_eq!(waveform(0, 0.75), -1.0);
+        // Spike: a narrow unipolar pulse — 1 at the cycle start, 0 through most.
+        assert_eq!(waveform(4, 0.0), 1.0);
+        assert_eq!(waveform(4, 0.5), 0.0);
+    }
+
+    #[test]
+    fn offset_shifts_the_centre_and_phase_advances_the_cycle() {
+        // A DC `offset` moves the oscillation centre: default Sine at t=0 is 0, so
+        // with offset 2 the instances sit at +2.
+        let p = osc_y_at(0.0, |g, osc| {
+            g.set_param(osc, "phase_stagger", 0.0);
+            g.set_param(osc, "offset", 2.0);
+        });
+        assert_eq!(p, vec![[0.0, 2.0], [0.0, 2.0]]);
+        // A global `phase` of ¼ starts the cycle at the peak (like advancing t):
+        // amplitude 3, phase ¼ → Δy = +3 at t=0.
+        let q = osc_y_at(0.0, |g, osc| {
+            g.set_param(osc, "phase_stagger", 0.0);
+            g.set_param(osc, "amplitude", 3.0);
+            g.set_param(osc, "phase", 0.25);
+        });
+        assert_eq!(q, vec![[0.0, 3.0], [0.0, 3.0]]);
     }
 
     #[test]

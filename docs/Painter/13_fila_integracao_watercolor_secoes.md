@@ -68,6 +68,10 @@ composite. Corpo molhado + rim no contorno EXTERNO + textura como variação de 
 | 6 | ~~**Jitter Rotate**~~ | ✅ resolvido com o #1 (silhueta orientável, `5000decc`) | — |
 | 7 | **Shape Tone ramp / Per-Layer Color** | ignorados | avaliar semântica em aquarela (tone da silhueta?) |
 | 8 | **Alpha-lock da camada** | não aplicado no bake | mesma família do fix de Seleção; avaliar keep = alpha existente |
+| 9 | **Botão "Dry" (secar rápido)** (Enio 2026-07-09) | — | zera o `canvas_wet` + encerra a sessão molhada na hora (bake congelado vira definitivo); equivalente ao "Dry the layer" do Rebelle. UI: painel Watercolor |
+| 10 | **Botão "Wet" (molhar canvas)** (Enio 2026-07-09) | — | re-molha o papel (pour manual no `canvas_wet`, canvas todo ou região) SEM depositar pigmento — próximo traço funde/bloom sobre a pintura existente; é o "Wet the layer" do Rebelle (doc 11 §6 tinha excluído — pedido explícito agora) |
+| 11 | **Slider de tempo de secagem** (Enio 2026-07-09) | const `CANVAS_WET_DRY_PER_S = 30` (~8,5 s) | expor como slider (ex.: 2 s–60 s, ou "∞ = nunca seca sozinho"); vira o knob de calibração da janela de fusão do EDGE-1 |
+| 12 | **Preview de umidade + secagem paulatina** (Enio 2026-07-09) | mapa u8 já existe e decai por byte | (a) overlay on-canvas do `canvas_wet` (véu/brilho de umidade, estilo Rebelle "show wetness"); (b) a secagem GRADUAL influenciando a mescla — hoje a fusão da sessão é binária (molhado enquanto `rect` vivo); usar o valor local do mapa pra atenuar progressivamente a fusão/derretimento do rim conforme seca (meio-seco = meio-rim), casando com o settle do GRAN-1 |
 
 **Blur do Wet Mix: exposto (`a7712f45`) e REVERTIDO no smoke** (Enio: "funcionava melhor quando
 ele não era configurável") — o pickup do mixer fica FIXO em r×0,5 (cerca de Chesterton anotada no

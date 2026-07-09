@@ -50,9 +50,10 @@ pub(crate) struct MotionState {
 
 impl MotionState {
     /// Build the boot state: register every node op + the **Cavalry M1 demo** (the
-    /// gate graph: a 20×20 grid → gradient tint → circle falloff → stagger →
-    /// oscillator → Output), terminated by the Output render node. Transport
-    /// paused at tick 0 (the bridge auto-plays on tool entry).
+    /// gate graph: a 20×10 grid → clone-tiled 20×20 → gradient tint → orbit →
+    /// circle falloff → stagger → oscillator → wiggle → Output), terminated by the
+    /// Output render node. Transport paused at tick 0 (the bridge auto-plays on
+    /// tool entry).
     pub(crate) fn new() -> Self {
         let mut registry = NodeRegistry::new();
         ph2d_node_registry_init::register_all_nodes(&mut registry)
@@ -83,10 +84,16 @@ impl MotionState {
 
 /// Author the **Cavalry M1 gate demo** into `g`; returns the sink (the Output
 /// node) if the graph is well-typed. The chain is
-/// `grid → tint → falloff → stagger → oscillator → output`:
+/// `grid → clone → tint → orbit → falloff → stagger → oscillator → wiggle → output`:
 ///
-/// - **grid** 20×20 (400 instances), gap 0.5 → spans ±4.75, framed by the default
-///   `height_world = 10` camera; emits `Index`/`Count`.
+/// - **grid** 20×10 (200 instances), gap 0.5 → a half-height lattice; emits
+///   `Index`/`Count`.
+/// - **clone** ×2, **centred**, polar step +Y (angle ¼ turn) of `10 rows · 0.5 =
+///   5.0` → the two centred copies tile top/bottom into the exact 20×20 lattice
+///   (400 instances, spanning ±4.75, framed by the default `height_world = 10`
+///   camera). Its continuous `Index`/`Count` renumbering keeps the colour ramp a
+///   single seamless gradient across the whole set — so this reproduces the
+///   20×20 beauty shot pixel-for-pixel while demonstrating the cloner live.
 /// - **tint** Gradient (red → blue by index) — the whole grid is a colour ramp
 ///   (upstream of the falloff, so it colours every dot, not just the focus).
 /// - **orbit** a gentle whole-grid spin about the origin (upstream of the
@@ -100,6 +107,7 @@ impl MotionState {
 /// The Output node is the render target; the bridge keeps `sink` pointed at it.
 fn build_cavalry_demo(g: &mut Graph, reg: &NodeRegistry) -> Option<NodeId> {
     let grid = g.add_node("motion.grid");
+    let clone = g.add_node("motion.clone");
     let tint = g.add_node("motion.tint");
     let orbit = g.add_node("motion.orbit");
     let falloff = g.add_node("motion.falloff");
@@ -108,7 +116,8 @@ fn build_cavalry_demo(g: &mut Graph, reg: &NodeRegistry) -> Option<NodeId> {
     let wiggle = g.add_node("motion.wiggle");
     let output = g.add_node("motion.output");
     for (i, (from, to)) in [
-        (grid, tint),
+        (grid, clone),
+        (clone, tint),
         (tint, orbit),
         (orbit, falloff),
         (falloff, stagger),
@@ -134,13 +143,19 @@ fn build_cavalry_demo(g: &mut Graph, reg: &NodeRegistry) -> Option<NodeId> {
             },
         );
     }
-    g.set_pos(output, Pos { x: 1540.0, y: 0.0 });
+    g.set_pos(output, Pos { x: 1760.0, y: 0.0 });
 
-    // 20×20 lattice, gap 0.5.
-    g.set_param(grid, "rows", 20.0);
+    // 20×10 half-lattice, gap 0.5 (the clone tiles it into the full 20×20).
+    g.set_param(grid, "rows", 10.0);
     g.set_param(grid, "cols", 20.0);
     g.set_param(grid, "gap_x", 0.5);
     g.set_param(grid, "gap_y", 0.5);
+    // Clone ×2, centred, +Y step of `rows · gap_y = 5.0` → the two copies tile
+    // top/bottom into the exact 20×20 lattice; continuous Index keeps one ramp.
+    g.set_param(clone, "count", 2.0);
+    g.set_param(clone, "distance", 5.0);
+    g.set_param(clone, "angle", 0.25); // ¼ turn → +Y
+    g.set_param(clone, "center", 1.0);
     // Gradient tint: red (start) → blue (end) by index (linear-straight RGBA).
     g.set_param(tint, "mode", 1.0);
     g.set_param(tint, "r", 1.0);
@@ -181,8 +196,9 @@ mod tests {
     fn new_builds_the_well_typed_cavalry_demo() {
         let state = MotionState::new();
         assert!(state.sink.is_some(), "the demo must have a sink");
-        // 8 nodes (grid, tint, orbit, falloff, stagger, oscillator, wiggle, output).
-        assert_eq!(state.doc.graph.nodes().len(), 8);
+        // 9 nodes (grid, clone, tint, orbit, falloff, stagger, oscillator, wiggle,
+        // output).
+        assert_eq!(state.doc.graph.nodes().len(), 9);
         let sink = state.sink.unwrap();
         assert_eq!(
             state.doc.graph.node(sink).unwrap().type_name,
@@ -195,9 +211,10 @@ mod tests {
     #[test]
     fn cavalry_demo_gate_cooks_400_animated_coloured_instances() {
         use ph2d_eval_motion::MotionCookPump;
-        // The M1 gate, cooked through the real registry: 20×20 = 400 instances,
-        // gradient-tinted, and the oscillator animates them (Y moves with the
-        // playhead) — proving grid+tint+falloff+stagger+oscillator compose.
+        // The M1 gate, cooked through the real registry: 20×10 grid cloned ×2 =
+        // 400 instances, gradient-tinted, and the oscillator animates them (Y
+        // moves with the playhead) — proving grid+clone+tint+falloff+stagger+
+        // oscillator compose.
         let state = MotionState::new();
         let (uv, size) = (state.default_uv_rect, state.default_size);
 
@@ -211,7 +228,11 @@ mod tests {
             uv,
             size,
         );
-        assert_eq!(pump.instances.len(), 400, "20×20 grid = 400 instances");
+        assert_eq!(
+            pump.instances.len(),
+            400,
+            "20×10 grid cloned ×2 = 400 instances"
+        );
         // A gradient tint means the instances are not all the same colour.
         let c0 = pump.instances[0].tint;
         let clast = pump.instances[399].tint;

@@ -127,6 +127,9 @@ pub(super) fn dispatch(
     grad_handle: Option<GradHandle>,
     // Whether the transform gizmo's "Set Center" pivot-edit mode is armed.
     pivot_edit: bool,
+    // Whether shape-snapping is on, mirrored into the panel's Snap section. The
+    // GRID toggle lives in the editor's universal Grid Snap panel.
+    snap_on: bool,
 ) -> VectorDrawConfig {
     let vector_active = tools
         .active()
@@ -350,6 +353,10 @@ pub(super) fn dispatch(
     // Publish the pivot-edit ("Set Center") armed state for the button label.
     #[cfg(feature = "panel-vector")]
     ph2d_panel_vector::set_current_pivot_edit(vector_active && pivot_edit);
+
+    // Publish shape-snapping so the Snap section reflects (and drives) it.
+    #[cfg(feature = "panel-vector")]
+    ph2d_panel_vector::set_current_snap(snap_on);
 
     // Publish the selected path's fill rule — `Some` ONLY when it is a compound
     // path, since with a single contour both rules paint identically and the row

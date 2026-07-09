@@ -1,15 +1,20 @@
 use super::*;
 
+/// Identidade: os testes de Pen não exercitam snap (o motor tem os seus).
+fn nosnap(p: [f64; 2]) -> [f64; 2] {
+    p
+}
+
 const PTW: f64 = 0.01; // world-units por pixel (câmera fictícia)
 
 fn draw_triangle(pen: &mut PenTool, scene: &mut VecScene) {
-    pen.on_press(scene, [0.0, 0.0], PTW, false);
+    pen.on_press(scene, [0.0, 0.0], PTW, false, &mut nosnap);
     pen.on_release();
-    pen.on_press(scene, [4.0, 0.0], PTW, false);
+    pen.on_press(scene, [4.0, 0.0], PTW, false, &mut nosnap);
     pen.on_release();
-    pen.on_press(scene, [4.0, 4.0], PTW, false);
+    pen.on_press(scene, [4.0, 4.0], PTW, false, &mut nosnap);
     pen.on_release();
-    pen.on_press(scene, [0.02, 0.0], PTW, false); // fecha (perto do início)
+    pen.on_press(scene, [0.02, 0.0], PTW, false, &mut nosnap); // fecha (perto do início)
 }
 
 #[test]
@@ -26,8 +31,8 @@ fn press_builds_then_closes_a_path() {
 fn drag_makes_a_symmetric_vertex_with_mirrored_handles() {
     let mut scene = VecScene::new();
     let mut pen = PenTool::new();
-    pen.on_press(&mut scene, [0.0, 0.0], PTW, false);
-    assert!(pen.on_drag(&mut scene, [1.0, 0.5]));
+    pen.on_press(&mut scene, [0.0, 0.0], PTW, false, &mut nosnap);
+    assert!(pen.on_drag(&mut scene, [1.0, 0.5], &mut nosnap));
     let v = scene.paths()[0].verts[0];
     // The Pen creates classic symmetric handles (mirrored) on drag-out.
     assert_eq!(v.kind, VertexKind::Symmetric);
@@ -43,11 +48,11 @@ fn grab_and_move_an_existing_anchor_translates_its_handles() {
     draw_triangle(&mut pen, &mut scene); // fecha → active None, selected = path
     // pressão sobre a âncora [4,0] → agarra
     assert_eq!(
-        pen.on_press(&mut scene, [4.0, 0.0], PTW, false),
+        pen.on_press(&mut scene, [4.0, 0.0], PTW, false, &mut nosnap),
         PenClick::Grabbed
     );
     assert!(pen.is_dragging());
-    assert!(pen.on_drag(&mut scene, [5.0, 1.0]));
+    assert!(pen.on_drag(&mut scene, [5.0, 1.0], &mut nosnap));
     pen.on_release();
     assert!(!pen.is_dragging());
     assert_eq!(scene.paths()[0].verts[1].anchor, [5.0, 1.0]);
@@ -58,16 +63,16 @@ fn grab_a_handle_reshapes_and_mirrors_when_symmetric() {
     let mut scene = VecScene::new();
     let mut pen = PenTool::new();
     // desenha 1 ponto (Symmetric) e fecha via finish (fica selecionado)
-    pen.on_press(&mut scene, [0.0, 0.0], PTW, false);
-    pen.on_drag(&mut scene, [1.0, 0.0]); // out=[1,0], in=[-1,0], Symmetric
+    pen.on_press(&mut scene, [0.0, 0.0], PTW, false, &mut nosnap);
+    pen.on_drag(&mut scene, [1.0, 0.0], &mut nosnap); // out=[1,0], in=[-1,0], Symmetric
     pen.on_release();
     pen.finish();
     // agarra o out-handle em [1,0] e move → in espelha
     assert_eq!(
-        pen.on_press(&mut scene, [1.0, 0.0], PTW, false),
+        pen.on_press(&mut scene, [1.0, 0.0], PTW, false, &mut nosnap),
         PenClick::Grabbed
     );
-    pen.on_drag(&mut scene, [0.0, 2.0]);
+    pen.on_drag(&mut scene, [0.0, 2.0], &mut nosnap);
     pen.on_release();
     let v = scene.paths()[0].verts[0];
     assert_eq!(v.out_handle, [0.0, 2.0]);
@@ -80,17 +85,17 @@ fn grab_a_handle_reshapes_and_mirrors_when_symmetric() {
 fn smooth_handle_drag_keeps_opposite_colinear_and_length() {
     let mut scene = VecScene::new();
     let mut pen = PenTool::new();
-    pen.on_press(&mut scene, [0.0, 0.0], PTW, false);
-    pen.on_drag(&mut scene, [2.0, 0.0]); // out=[2,0], in=[-2,0], Symmetric
+    pen.on_press(&mut scene, [0.0, 0.0], PTW, false, &mut nosnap);
+    pen.on_drag(&mut scene, [2.0, 0.0], &mut nosnap); // out=[2,0], in=[-2,0], Symmetric
     pen.on_release();
     pen.finish();
     assert!(pen.set_selected_vertex_kind(&mut scene, VertexKind::Smooth));
     // Grab the out handle ([2,0]) and swing it up-left.
     assert_eq!(
-        pen.on_press(&mut scene, [2.0, 0.0], PTW, false),
+        pen.on_press(&mut scene, [2.0, 0.0], PTW, false, &mut nosnap),
         PenClick::Grabbed
     );
-    pen.on_drag(&mut scene, [0.0, 3.0]); // out now points +Y, len 3
+    pen.on_drag(&mut scene, [0.0, 3.0], &mut nosnap); // out now points +Y, len 3
     pen.on_release();
     let v = scene.paths()[0].verts[0];
     assert_eq!(v.out_handle, [0.0, 3.0]);
@@ -108,16 +113,16 @@ fn smooth_handle_drag_keeps_opposite_colinear_and_length() {
 fn alt_grab_breaks_the_tangent_into_a_corner() {
     let mut scene = VecScene::new();
     let mut pen = PenTool::new();
-    pen.on_press(&mut scene, [0.0, 0.0], PTW, false);
-    pen.on_drag(&mut scene, [2.0, 0.0]); // Symmetric: out=[2,0], in=[-2,0]
+    pen.on_press(&mut scene, [0.0, 0.0], PTW, false, &mut nosnap);
+    pen.on_drag(&mut scene, [2.0, 0.0], &mut nosnap); // Symmetric: out=[2,0], in=[-2,0]
     pen.on_release();
     pen.finish();
     // Alt-grab the out handle → break to Corner.
     assert_eq!(
-        pen.on_press(&mut scene, [2.0, 0.0], PTW, true),
+        pen.on_press(&mut scene, [2.0, 0.0], PTW, true, &mut nosnap),
         PenClick::Grabbed
     );
-    pen.on_drag(&mut scene, [2.0, 2.0]);
+    pen.on_drag(&mut scene, [2.0, 2.0], &mut nosnap);
     pen.on_release();
     let v = scene.paths()[0].verts[0];
     assert_eq!(v.kind, VertexKind::Corner);
@@ -136,15 +141,15 @@ fn click_on_a_segment_inserts_and_grabs_a_vertex() {
     let mut scene = VecScene::new();
     let mut pen = PenTool::new();
     // Two-vertex open path: a straight segment from (0,0) to (4,0).
-    pen.on_press(&mut scene, [0.0, 0.0], PTW, false);
+    pen.on_press(&mut scene, [0.0, 0.0], PTW, false, &mut nosnap);
     pen.on_release();
-    pen.on_press(&mut scene, [4.0, 0.0], PTW, false);
+    pen.on_press(&mut scene, [4.0, 0.0], PTW, false, &mut nosnap);
     pen.on_release();
     pen.finish();
     assert_eq!(scene.paths()[0].verts.len(), 2);
     // Click on the middle of the segment (well within hit_r = 10·PTW).
     assert_eq!(
-        pen.on_press(&mut scene, [2.0, 0.0], PTW, false),
+        pen.on_press(&mut scene, [2.0, 0.0], PTW, false, &mut nosnap),
         PenClick::Inserted
     );
     assert!(
@@ -161,14 +166,14 @@ fn click_on_a_segment_inserts_and_grabs_a_vertex() {
 fn far_click_does_not_insert_but_starts_a_new_path() {
     let mut scene = VecScene::new();
     let mut pen = PenTool::new();
-    pen.on_press(&mut scene, [0.0, 0.0], PTW, false);
+    pen.on_press(&mut scene, [0.0, 0.0], PTW, false, &mut nosnap);
     pen.on_release();
-    pen.on_press(&mut scene, [4.0, 0.0], PTW, false);
+    pen.on_press(&mut scene, [4.0, 0.0], PTW, false, &mut nosnap);
     pen.on_release();
     pen.finish();
     // Far from the segment → a new path starts (not an insert).
     assert_eq!(
-        pen.on_press(&mut scene, [2.0, 5.0], PTW, false),
+        pen.on_press(&mut scene, [2.0, 5.0], PTW, false, &mut nosnap),
         PenClick::Started
     );
     assert_eq!(scene.paths().len(), 2);
@@ -179,7 +184,7 @@ fn delete_selected_vertex_removes_one_node_and_keeps_the_path() {
     let mut scene = VecScene::new();
     let mut pen = PenTool::new();
     draw_triangle(&mut pen, &mut scene); // closed, 3 verts
-    pen.on_press(&mut scene, [4.0, 0.0], PTW, false); // select vertex 1
+    pen.on_press(&mut scene, [4.0, 0.0], PTW, false, &mut nosnap); // select vertex 1
     pen.on_release();
     assert_eq!(pen.selected_vert(), Some(1));
     assert!(pen.delete_selected_vertex(&mut scene));
@@ -191,12 +196,12 @@ fn deleting_below_two_vertices_removes_the_whole_path() {
     let mut scene = VecScene::new();
     let mut pen = PenTool::new();
     // Two-vertex open path.
-    pen.on_press(&mut scene, [0.0, 0.0], PTW, false);
+    pen.on_press(&mut scene, [0.0, 0.0], PTW, false, &mut nosnap);
     pen.on_release();
-    pen.on_press(&mut scene, [4.0, 0.0], PTW, false);
+    pen.on_press(&mut scene, [4.0, 0.0], PTW, false, &mut nosnap);
     pen.on_release();
     pen.finish();
-    pen.on_press(&mut scene, [0.0, 0.0], PTW, false); // select vertex 0
+    pen.on_press(&mut scene, [0.0, 0.0], PTW, false, &mut nosnap); // select vertex 0
     pen.on_release();
     assert!(pen.delete_selected_vertex(&mut scene)); // 2 → 1 → remove path
     assert!(scene.is_empty());
@@ -245,10 +250,10 @@ fn dragging_a_grouped_anchor_moves_the_whole_selection() {
     pen.box_select(&scene, [-1.0, -1.0], [5.0, 1.0]); // verts 0 + 1
     // Grab anchor 0 (in the group) and drag it +Y by 2.
     assert_eq!(
-        pen.on_press(&mut scene, [0.0, 0.0], PTW, false),
+        pen.on_press(&mut scene, [0.0, 0.0], PTW, false, &mut nosnap),
         PenClick::Grabbed
     );
-    pen.on_drag(&mut scene, [0.0, 2.0]);
+    pen.on_drag(&mut scene, [0.0, 2.0], &mut nosnap);
     pen.on_release();
     // BOTH grouped anchors moved by (0,+2); the others stayed.
     assert_eq!(scene.paths()[0].verts[0].anchor, [0.0, 2.0]);
@@ -264,9 +269,9 @@ fn grabbing_an_ungrouped_anchor_collapses_to_single_then_moves_alone() {
     pen.select(Some(id));
     pen.box_select(&scene, [-1.0, -1.0], [5.0, 1.0]); // verts 0 + 1
     // Grab anchor 2 (NOT in the group) → single-select it, move alone.
-    pen.on_press(&mut scene, [4.0, 4.0], PTW, false);
+    pen.on_press(&mut scene, [4.0, 4.0], PTW, false, &mut nosnap);
     assert_eq!(pen.selected_verts(), &[2]);
-    pen.on_drag(&mut scene, [6.0, 6.0]);
+    pen.on_drag(&mut scene, [6.0, 6.0], &mut nosnap);
     pen.on_release();
     assert_eq!(scene.paths()[0].verts[2].anchor, [6.0, 6.0]);
     assert_eq!(
@@ -302,7 +307,7 @@ fn selected_vertex_kind_tracks_the_last_touched_vertex() {
     let mut pen = PenTool::new();
     draw_triangle(&mut pen, &mut scene); // closes; last vertex selected
     // Grab a specific anchor to select that vertex.
-    pen.on_press(&mut scene, [4.0, 0.0], PTW, false);
+    pen.on_press(&mut scene, [4.0, 0.0], PTW, false, &mut nosnap);
     pen.on_release();
     assert_eq!(pen.selected_vert(), Some(1));
     assert_eq!(
@@ -324,7 +329,7 @@ fn selected_vertex_kind_tracks_the_last_touched_vertex() {
 fn plain_click_stays_a_corner() {
     let mut scene = VecScene::new();
     let mut pen = PenTool::new();
-    pen.on_press(&mut scene, [0.0, 0.0], PTW, false);
+    pen.on_press(&mut scene, [0.0, 0.0], PTW, false, &mut nosnap);
     pen.on_release();
     let v = scene.paths()[0].verts[0];
     assert_eq!(v.kind, VertexKind::Corner);
@@ -369,17 +374,17 @@ fn set_style_colors_new_paths_and_survives_clear() {
         ..PenStyle::default()
     };
     pen.set_style(style);
-    pen.on_press(&mut scene, [0.0, 0.0], PTW, false);
+    pen.on_press(&mut scene, [0.0, 0.0], PTW, false, &mut nosnap);
     let s = scene.paths()[0].stroke.expect("stroke");
     assert_eq!(s.color, style.stroke);
     assert_eq!(s.width, style.stroke_w_px * PTW);
     // Fechar aplica o fill do estilo.
     pen.on_release();
-    pen.on_press(&mut scene, [4.0, 0.0], PTW, false);
+    pen.on_press(&mut scene, [4.0, 0.0], PTW, false, &mut nosnap);
     pen.on_release();
-    pen.on_press(&mut scene, [4.0, 4.0], PTW, false);
+    pen.on_press(&mut scene, [4.0, 4.0], PTW, false, &mut nosnap);
     pen.on_release();
-    pen.on_press(&mut scene, [0.02, 0.0], PTW, false); // fecha
+    pen.on_press(&mut scene, [0.02, 0.0], PTW, false, &mut nosnap); // fecha
     assert_eq!(
         scene.paths()[0].fill,
         Some(ph2d_vec_scene::Paint::solid(style.fill))
@@ -420,4 +425,92 @@ fn nudge_translates_whole_path_or_only_selected_verts() {
             "outros vértices ficam"
         );
     }
+}
+
+// ─── snap: a costura com o Pen ────────────────────────────────────────────────
+
+/// O snap roda onde o Pen POSICIONA um ponto — vértice novo e 1º ponto de um path
+/// novo. Aqui um encaixe que joga tudo para a origem prova os dois sites.
+#[test]
+fn pen_snaps_the_points_it_places() {
+    let mut scene = VecScene::new();
+    let mut pen = PenTool::new();
+    let mut to_origin = |_p: [f64; 2]| [0.0, 0.0];
+    pen.on_press(&mut scene, [3.0, 3.0], PTW, false, &mut to_origin);
+    assert_eq!(
+        scene.paths()[0].verts[0].anchor,
+        [0.0, 0.0],
+        "1º ponto encaixado"
+    );
+    pen.on_release();
+    pen.on_press(&mut scene, [9.0, 9.0], PTW, false, &mut to_origin);
+    assert_eq!(
+        scene.paths()[0].verts[1].anchor,
+        [0.0, 0.0],
+        "vértice novo encaixado"
+    );
+    pen.on_release();
+}
+
+/// Arrastar ÂNCORA encaixa; arrastar HANDLE não — um handle é tangente, encaixá-lo
+/// numa âncora vizinha só entortaria a curva.
+#[test]
+fn snap_moves_anchors_but_never_handles() {
+    let mut scene = VecScene::new();
+    let mut pen = PenTool::new();
+    let mut shift = |p: [f64; 2]| [p[0] + 1.0, p[1]];
+
+    // Um vértice Symmetric em (0,0) com handles em ±(2,0).
+    pen.on_press(&mut scene, [0.0, 0.0], PTW, false, &mut |p| p);
+    pen.on_drag(&mut scene, [2.0, 0.0], &mut |p| p);
+    pen.on_release();
+    pen.finish();
+
+    // Agarra o HANDLE: o snap é ignorado.
+    assert_eq!(
+        pen.on_press(&mut scene, [2.0, 0.0], PTW, false, &mut |p| p),
+        PenClick::Grabbed
+    );
+    pen.on_drag(&mut scene, [0.0, 3.0], &mut shift);
+    pen.on_release();
+    assert_eq!(
+        scene.paths()[0].verts[0].out_handle,
+        [0.0, 3.0],
+        "handle cru"
+    );
+
+    // Agarra a ÂNCORA: o snap se aplica.
+    assert_eq!(
+        pen.on_press(&mut scene, [0.0, 0.0], PTW, false, &mut |p| p),
+        PenClick::Grabbed
+    );
+    pen.on_drag(&mut scene, [5.0, 5.0], &mut shift);
+    pen.on_release();
+    assert_eq!(
+        scene.paths()[0].verts[0].anchor,
+        [6.0, 5.0],
+        "âncora encaixada"
+    );
+}
+
+/// `dragging_anchors` diz ao shell quais âncoras excluir dos alvos de snap —
+/// senão a âncora arrastada seria alvo de si mesma.
+#[test]
+fn dragging_anchors_reports_the_moving_vertices_only() {
+    let mut scene = VecScene::new();
+    let mut pen = PenTool::new();
+    draw_triangle(&mut pen, &mut scene);
+    let id = scene.paths()[0].id;
+
+    assert_eq!(pen.dragging_anchors(), None, "sem arrasto");
+
+    // Agarra a âncora 1 sozinha.
+    pen.on_press(&mut scene, [4.0, 0.0], PTW, false, &mut |p| p);
+    assert_eq!(pen.dragging_anchors(), Some((id, vec![1])));
+    pen.on_release();
+
+    // Agarra um HANDLE → não é arrasto de âncora.
+    pen.select(Some(id));
+    let _ = pen.set_selected_vertex_kind(&mut scene, VertexKind::Corner);
+    assert_eq!(pen.dragging_anchors(), None);
 }

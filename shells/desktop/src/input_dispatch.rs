@@ -856,10 +856,13 @@ pub(crate) fn apply_vec_align(
     pen: &ph2d_vec_edit::PenTool,
     kind: VecAlign,
 ) {
+    // Bbox de CURVA (a caixa que o gizmo desenha), não a de âncoras: alinhar tem de
+    // casar com o que o usuário vê — uma curva que abaula para fora das âncoras
+    // encostaria errado.
     let boxes: Vec<(u64, [f64; 2], [f64; 2])> = pen
         .selected_paths()
         .iter()
-        .filter_map(|&id| scene.path_bbox(id).map(|(lo, hi)| (id, lo, hi)))
+        .filter_map(|&id| scene.path_curve_bbox(id).map(|(lo, hi)| (id, lo, hi)))
         .collect();
     if boxes.len() < 2 {
         return;
@@ -909,7 +912,7 @@ pub(crate) fn apply_vec_distribute(
         .selected_paths()
         .iter()
         .filter_map(|&id| {
-            scene.path_bbox(id).map(|(lo, hi)| {
+            scene.path_curve_bbox(id).map(|(lo, hi)| {
                 let c = match axis {
                     VecDistribute::Horizontal => (lo[0] + hi[0]) * 0.5,
                     VecDistribute::Vertical => (lo[1] + hi[1]) * 0.5,
@@ -1598,17 +1601,42 @@ impl App {
     /// ADR-0108: enquanto o Pen arrasta um handle, projeta o cursor pra world e
     /// puxa os handles Bézier do último vértice. No-op barato quando não há
     /// arrasto — chamado a cada CursorMoved.
+    ///
+    /// O snap é entregue como closure porque o Pen sabe o que é ÂNCORA (encaixa) e
+    /// o que é handle (não encaixa); a shell só sabe a posição do cursor.
     fn vec_pen_drag_move(&mut self, x: f32, y: f32) -> bool {
         if !self.vector_tool_active() || !self.vec_pen.is_dragging() {
             return false;
         }
+        let cfg = self.vec_snap_cfg(self.vec_px_to_world());
+        // `take` evita emprestar `self` duas vezes: a closure fica com os alvos e as
+        // guias, `self.vec_pen`/`self.gfx` seguem livres. Devolvidos logo abaixo.
+        let targets = std::mem::take(&mut self.vec_snap_targets);
+        let mut guides = Vec::new();
         let Some(gfx) = self.gfx.as_mut() else {
+            self.vec_snap_targets = targets;
             return false;
         };
         let win = gfx.surface.size();
         let w = gfx.camera.screen_to_world((x, y), win);
-        self.vec_pen
-            .on_drag(&mut gfx.vec_scene, [w[0] as f64, w[1] as f64])
+        // `hero_screen` e `vec_scene` são campos IRMÃOS de `AppGfx`: a grade pode ser
+        // consultada enquanto o Pen muta a cena.
+        let mut hero = gfx.hero_screen.as_mut();
+        let mut snap = |p: [f64; 2]| {
+            let mut grid = |q: [f64; 2]| {
+                let h = hero.as_mut()?;
+                crate::vec_snap::ask_grid(&mut h.grid.snap_state, q)
+            };
+            let r = ph2d_vec_edit::snap::snap(&[p], &targets, cfg, Some(&mut grid));
+            guides = crate::vec_snap::guides_of(&r);
+            r.apply(p)
+        };
+        let consumed =
+            self.vec_pen
+                .on_drag(&mut gfx.vec_scene, [w[0] as f64, w[1] as f64], &mut snap);
+        self.vec_snap_targets = targets;
+        self.vec_snap_guides = guides;
+        consumed
     }
 
     /// Gradient group: hit-test the selected path's gradient handles (screen `pos`)
@@ -1676,17 +1704,24 @@ impl App {
     }
     /// ADR-0108 Fase 1: while a shape drag is live, resize it to the cursor.
     /// No-op unless the Vector tool is active AND a shape gesture is in progress.
+    /// A ferramenta de forma não faz hit-test, então o canto é encaixado direto.
     fn vec_shape_drag_move(&mut self, x: f32, y: f32) -> bool {
         if !self.vector_tool_active() || !self.vec_shape.is_active() {
             return false;
         }
+        let Some(w) = self
+            .gfx
+            .as_ref()
+            .map(|gfx| gfx.camera.screen_to_world((x, y), gfx.surface.size()))
+        else {
+            return false;
+        };
+        let cfg = self.vec_snap_cfg(self.vec_px_to_world());
+        let p = self.vec_snap_point([f64::from(w[0]), f64::from(w[1])], cfg);
         let Some(gfx) = self.gfx.as_mut() else {
             return false;
         };
-        let win = gfx.surface.size();
-        let w = gfx.camera.screen_to_world((x, y), win);
-        self.vec_shape
-            .on_drag(&mut gfx.vec_scene, [w[0] as f64, w[1] as f64])
+        self.vec_shape.on_drag(&mut gfx.vec_scene, p)
     }
 
     /// The clip frame under `(x, y)` if it's inside the overlay waveform — for
@@ -2060,6 +2095,11 @@ impl App {
                     let shape_kind = shape_kind_for_mode(self.vec_draw_config.mode);
                     // Alt held → the Pen breaks the tangent when grabbing a handle.
                     let alt = self.modifiers.alt_key();
+                    // Snap targets for THIS gesture: the whole scene as it stands.
+                    // Rebuilt right after the press, once we know what got grabbed.
+                    self.vec_rebuild_snap_targets(&[], &[]);
+                    let cfg = self.vec_snap_cfg(self.vec_px_to_world());
+                    let targets = std::mem::take(&mut self.vec_snap_targets);
                     if let Some(gfx) = self.gfx.as_mut() {
                         let win = gfx.surface.size();
                         let w = gfx.camera.screen_to_world(self.last_pointer, win);
@@ -2071,6 +2111,16 @@ impl App {
                         // Fase 2: snapshot pré-interação (vira passo de undo no Up
                         // só se a cena mudar de fato).
                         self.vec_history.begin(&gfx.vec_scene);
+                        // `hero_screen` e `vec_scene` são campos IRMÃOS de `AppGfx`: a
+                        // grade pode ser consultada enquanto o Pen muta a cena.
+                        let mut hero = gfx.hero_screen.as_mut();
+                        let mut snap = |p: [f64; 2]| {
+                            let mut grid = |q: [f64; 2]| {
+                                let h = hero.as_mut()?;
+                                crate::vec_snap::ask_grid(&mut h.grid.snap_state, q)
+                            };
+                            ph2d_vec_edit::snap::snap(&[p], &targets, cfg, Some(&mut grid)).apply(p)
+                        };
                         match shape_kind {
                             None => {
                                 self.vec_pen.on_press(
@@ -2078,22 +2128,41 @@ impl App {
                                     [w[0] as f64, w[1] as f64],
                                     px_to_world,
                                     alt,
+                                    &mut snap,
                                 );
                             }
                             Some(kind) => {
+                                // A ferramenta de forma não faz hit-test: o canto pode
+                                // ser encaixado antes de entrar.
+                                let p = snap([w[0] as f64, w[1] as f64]);
                                 self.vec_shape.on_press(
                                     &mut gfx.vec_scene,
                                     kind,
                                     params,
-                                    [w[0] as f64, w[1] as f64],
+                                    p,
                                     px_to_world,
                                 );
                             }
                         }
+                        self.vec_snap_targets = targets;
+                        // Agora sabemos o que o press agarrou: o que se move sai dos
+                        // alvos (uma âncora não pode encaixar em si mesma; a forma em
+                        // desenho não é referência de nada).
+                        match (self.vec_pen.dragging_anchors(), self.vec_shape.selected()) {
+                            (Some((pid, verts)), _) => {
+                                let moving: Vec<_> = verts.iter().map(|&v| (pid, v)).collect();
+                                self.vec_rebuild_snap_targets(&[], &moving);
+                            }
+                            (None, Some(sid)) => self.vec_rebuild_snap_targets(&[sid], &[]),
+                            (None, None) => {}
+                        }
                         return;
                     }
+                    self.vec_snap_targets = targets;
                 }
                 (ph2d_host::PointerButton::Primary, PointerKind::Up) => {
+                    // Fim de gesto: as guias de snap não sobrevivem ao Up.
+                    self.vec_clear_snap_guides();
                     // Transform gizmo: end the drag (commits one undo step iff moved).
                     if self.end_vec_gizmo() {
                         return;

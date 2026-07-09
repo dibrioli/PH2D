@@ -502,6 +502,8 @@ const CHROME_IDS: &[(&str, NodeId)] = &[
     ("VECTOR_COMPOUND_RELEASE", ids::VECTOR_COMPOUND_RELEASE),
     ("VECTOR_FILL_RULE_NONZERO", ids::VECTOR_FILL_RULE_NONZERO),
     ("VECTOR_FILL_RULE_EVENODD", ids::VECTOR_FILL_RULE_EVENODD),
+    ("VECTOR_SNAP_OFF", ids::VECTOR_SNAP_OFF),
+    ("VECTOR_SNAP_ON", ids::VECTOR_SNAP_ON),
 ];
 
 /// Pairwise uniqueness across every chrome [`NodeId`]. O(n²) over ~200

@@ -140,6 +140,8 @@ pub(crate) fn apply_event(
                 || id == ids::VECTOR_COMPOUND_RELEASE
                 || id == ids::VECTOR_FILL_RULE_NONZERO
                 || id == ids::VECTOR_FILL_RULE_EVENODD
+                || id == ids::VECTOR_SNAP_OFF
+                || id == ids::VECTOR_SNAP_ON
                 || id == ids::VECTOR_ARRANGE_DUPLICATE
                 || id == ids::VECTOR_ARRANGE_TO_BACK
                 || id == ids::VECTOR_ARRANGE_BACKWARD

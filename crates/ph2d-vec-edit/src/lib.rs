@@ -17,6 +17,9 @@ pub use shape::{ShapeKind, ShapeParams, ShapeTool};
 /// Selection + the document ops that act on it (sibling module, LOC cap).
 mod selection;
 
+pub mod snap;
+pub use snap::{SnapConfig, SnapResult, SnapTargets, bbox_key_points, collect_targets};
+
 use ph2d_vec_scene::{
     LineCap, LineJoin, Paint, Rgba8, StrokeSpec, VecPath, VecPathId, VecScene, VecVertex,
     VertexKind,
@@ -143,6 +146,23 @@ impl PenTool {
         self.dragging || self.grab.is_some()
     }
 
+    /// As ÂNCORAS que o arrasto atual move: `(path, índices planos)`. `None` quando
+    /// não há arrasto de âncora (handle, desenho, ou nada). O snap usa isto para
+    /// excluir da lista de alvos as âncoras que estão vindo junto com o cursor.
+    #[must_use]
+    pub fn dragging_anchors(&self) -> Option<(VecPathId, Vec<usize>)> {
+        let g = self.grab?;
+        if g.part != Part::Anchor {
+            return None;
+        }
+        let verts = if self.selected_verts.contains(&g.vert) {
+            self.selected_verts.clone()
+        } else {
+            vec![g.vert]
+        };
+        Some((g.path, verts))
+    }
+
     /// Zera todo o estado (ex.: após apagar o path selecionado), preservando o
     /// estilo corrente (é config da tool, não estado de interação).
     pub fn clear(&mut self) {
@@ -163,12 +183,18 @@ impl PenTool {
 
     /// Pressão primária em world-space `p`. `px_to_world` = world-units por pixel.
     /// `alt` = quebrar a tangente ao agarrar um handle (vira cusp / Corner).
+    ///
+    /// `snap` roda **só onde um ponto é POSICIONADO** (vértice novo do pen, 1º ponto
+    /// de um path novo) — nunca antes do hit-test, senão encaixar o cursor mudaria o
+    /// que ele agarra; nem no insert-sobre-segmento, cujo ponto tem de ficar na curva.
+    /// Sem snap, passe `&mut |p| p`.
     pub fn on_press(
         &mut self,
         scene: &mut VecScene,
         p: [f64; 2],
         px_to_world: f64,
         alt: bool,
+        snap: &mut dyn FnMut([f64; 2]) -> [f64; 2],
     ) -> PenClick {
         let close_dist = 12.0 * px_to_world;
         let hit_r = 10.0 * px_to_world;
@@ -193,7 +219,7 @@ impl PenTool {
                     return PenClick::Closed;
                 }
             }
-            path.verts.push(VecVertex::corner(p));
+            path.verts.push(VecVertex::corner(snap(p)));
             self.selected_verts = vec![path.verts.len() - 1];
             self.dragging = true;
             return PenClick::Added;
@@ -251,7 +277,7 @@ impl PenTool {
 
         // Nada agarrado → começa um path novo.
         let id = scene.push_path(VecPath {
-            verts: vec![VecVertex::corner(p)],
+            verts: vec![VecVertex::corner(snap(p))],
             stroke: Some(self.style.stroke_spec(stroke_w)),
             ..VecPath::default()
         });
@@ -265,7 +291,15 @@ impl PenTool {
 
     /// Arrasto: puxa os handles do vértice em desenho, OU move o elemento agarrado.
     /// Devolve `true` se consumiu.
-    pub fn on_drag(&mut self, scene: &mut VecScene, p: [f64; 2]) -> bool {
+    ///
+    /// `snap` só se aplica ao arrasto de ÂNCORA — um handle é uma tangente, encaixá-lo
+    /// numa âncora vizinha só produziria curva torta. Sem snap, passe `&mut |p| p`.
+    pub fn on_drag(
+        &mut self,
+        scene: &mut VecScene,
+        p: [f64; 2],
+        snap: &mut dyn FnMut([f64; 2]) -> [f64; 2],
+    ) -> bool {
         // Edição de ponto agarrado.
         if let Some(g) = self.grab {
             let Some(path) = scene.path_mut(g.path) else {
@@ -278,6 +312,7 @@ impl PenTool {
                 let Some(grabbed) = path.vert(g.vert) else {
                     return false;
                 };
+                let p = snap(p);
                 let d = [p[0] - grabbed.anchor[0], p[1] - grabbed.anchor[1]];
                 let group = self.selected_verts.contains(&g.vert);
                 for i in 0..path.total_verts() {

@@ -76,7 +76,17 @@ fn slider_chip(
     store.link_slider_number_mapped(slider, chip, scale, offset);
 }
 
+/// Registra os widgets do painel Vector. Delegado a helpers por seção — o corpo
+/// plano estourava o teto de 200 LOC por função dos painéis.
 pub fn populate(store: &mut WidgetStore) {
+    populate_shape(store);
+    populate_ops(store);
+    populate_style(store);
+    populate_arrange(store);
+}
+
+/// Width + modos de desenho + os sliders per-forma (Sides / Star / RoundRect / Spiral).
+fn populate_shape(store: &mut WidgetStore) {
     // Width slider — seeded at the tool's default (`px_to_slider(3px)`).
     store.register(
         ids::VECTOR_WIDTH,
@@ -183,7 +193,10 @@ pub fn populate(store: &mut WidgetStore) {
     );
 
     populate_transform_fields(store);
+}
 
+/// Vértice, Boolean + Compound, Fill Rule, Snap, tipo de Fill, Align/Distribute.
+fn populate_ops(store: &mut WidgetStore) {
     // Vertex-type buttons (retype the selected vertex; shown only when a vertex
     // is selected, but registered unconditionally — the store is mode-agnostic)
     // + the Delete-node button.
@@ -202,6 +215,10 @@ pub fn populate(store: &mut WidgetStore) {
     // Fill rule (compound paths only — the row hides for a single contour).
     button(store, ids::VECTOR_FILL_RULE_NONZERO);
     button(store, ids::VECTOR_FILL_RULE_EVENODD);
+    // Shape snapping (tool setting, always visible). The grid toggle is in the
+    // editor's universal Grid Snap panel.
+    button(store, ids::VECTOR_SNAP_OFF);
+    button(store, ids::VECTOR_SNAP_ON);
 
     // Fill-type selector (Solid / Linear / Radial) — act on the selected path.
     button(store, ids::VECTOR_FILL_KIND_SOLID);
@@ -222,6 +239,10 @@ pub fn populate(store: &mut WidgetStore) {
     button(store, ids::VECTOR_DISTRIBUTE_H);
     button(store, ids::VECTOR_DISTRIBUTE_V);
     button(store, ids::VECTOR_PIVOT_EDIT);
+}
+
+/// Gradiente (Angle / Influence / Jitter), opacidades e o traço (cap/join/dash).
+fn populate_style(store: &mut WidgetStore) {
     // Linear-gradient Angle slider (track 0..1 → 0..360°) + its chip.
     slider_chip(
         store,
@@ -299,7 +320,10 @@ pub fn populate(store: &mut WidgetStore) {
         GAP_SLIDER_SCALE,
         GAP_SLIDER_OFFSET,
     );
+}
 
+/// Arrange (duplicate / z-order / flip / rotate), reshape de path, e o botão Close.
+fn populate_arrange(store: &mut WidgetStore) {
     // Arrange: Duplicate + z-order restack + Flip buttons (act on the selected path).
     button(store, ids::VECTOR_ARRANGE_DUPLICATE);
     button(store, ids::VECTOR_ARRANGE_TO_BACK);

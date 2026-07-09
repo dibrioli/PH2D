@@ -139,6 +139,7 @@ pub(crate) fn paint(_state: &mut VectorPanelState, ctx: &mut PaintCtx) {
         y = b.stroke_style(&snap, y);
         y = b.fill_style(&snap, y);
         y = b.draw_modes(&snap, y);
+        y = b.snap_section(y);
         y = b.transform_section(y);
         y = b.vertex_boolean_arrange(y);
 

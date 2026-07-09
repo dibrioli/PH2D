@@ -945,6 +945,8 @@ impl crate::App {
             let mut pending_vec_compound: Option<bool> = None;
             // Fill rule of the selected compound path: even-odd (true) or non-zero.
             let mut pending_vec_fill_rule: Option<bool> = None;
+            // Snap section: encaixar em formas (a grade é do painel de Grid).
+            let mut pending_vec_snap_on: Option<bool> = None;
             // Numeric Transform field edit (X/Y/W/H) — a SetValue document command.
             let mut pending_vec_transform: Option<(crate::input_dispatch::VecTransformField, f64)> =
                 None;
@@ -1054,6 +1056,10 @@ impl crate::App {
                                 pending_vec_fill_rule = Some(false);
                             } else if *id == ph2d_editor::ids::VECTOR_FILL_RULE_EVENODD {
                                 pending_vec_fill_rule = Some(true);
+                            } else if *id == ph2d_editor::ids::VECTOR_SNAP_OFF {
+                                pending_vec_snap_on = Some(false);
+                            } else if *id == ph2d_editor::ids::VECTOR_SNAP_ON {
+                                pending_vec_snap_on = Some(true);
                             }
                         }
                         // Transform fields (X/Y/W/H) are numeric SetValue document
@@ -1715,6 +1721,10 @@ impl crate::App {
                     even_odd,
                 );
             }
+            // Snap settings are TOOL state, not document state — no undo step.
+            if let Some(on) = pending_vec_snap_on {
+                self.vec_snap.on = on;
+            }
             if let Some(kind) = pending_vec_vertex_kind {
                 crate::input_dispatch::apply_vec_vertex_kind(
                     vec_scene,
@@ -1910,6 +1920,7 @@ impl crate::App {
                 vec_px_to_world,
                 self.vec_grad_selected,
                 self.vec_pivot_edit,
+                self.vec_snap.on,
             );
             // Motion Nodes M0.T10: same phase as vector_bridge (AFTER the
             // ActivateTool drain, so a freshly-activated tool is seen this frame;
@@ -1983,6 +1994,12 @@ impl crate::App {
                     vec_scene,
                     self.vec_pen.selected(),
                     self.vec_grad_selected,
+                    camera.world_to_screen_affine(window_size),
+                    vector_scene,
+                );
+                // Smart guides do snap (por cima de tudo — explicam o encaixe vivo).
+                ph2d_vec_render::draw_snap_guides(
+                    &self.vec_snap_guides,
                     camera.world_to_screen_affine(window_size),
                     vector_scene,
                 );

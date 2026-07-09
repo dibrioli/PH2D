@@ -225,3 +225,10 @@ pub const VECTOR_COMPOUND_RELEASE: NodeId = hash_node_id("vector.compound.releas
 /// so the row only shows when the path actually has subpaths.
 pub const VECTOR_FILL_RULE_NONZERO: NodeId = hash_node_id("vector.fill.rule.nonzero");
 pub const VECTOR_FILL_RULE_EVENODD: NodeId = hash_node_id("vector.fill.rule.evenodd");
+
+// ── Snap (ADR-0108 — smart guides) ───────────────────────────────────────────
+/// Snap to the other shapes' anchors / bbox key points. Held Alt bypasses it.
+/// The GRID toggle is NOT here: the editor's universal Grid Snap panel owns it
+/// (`grid_snap::ids`), and the Vector module just asks `GridSnapState::snap_world`.
+pub const VECTOR_SNAP_OFF: NodeId = hash_node_id("vector.snap.off");
+pub const VECTOR_SNAP_ON: NodeId = hash_node_id("vector.snap.on");

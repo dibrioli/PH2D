@@ -43,6 +43,9 @@ thread_local! {
     /// Fill rule of the selected path, `Some` only when it is a COMPOUND path —
     /// the two rules agree on a single contour, so the row would be a no-op there.
     static CURRENT_FILL_RULE: Cell<Option<PathFillRule>> = const { Cell::new(None) };
+    /// Whether shape-snapping is on (mirrored from the shell). The GRID toggle
+    /// lives in the editor's universal Grid Snap panel, not here.
+    static CURRENT_SNAP: Cell<bool> = const { Cell::new(true) };
     /// Rotation-field accumulator: the angle (degrees) the Angle chip last
     /// reported THIS gesture. `event` emits the DELTA `(current − this)` so the
     /// shell rotates incrementally; reset to 0 by `paint` whenever the field is
@@ -190,6 +193,16 @@ pub fn set_current_fill_rule(rule: Option<PathFillRule>) {
 /// The selected compound path's fill rule this frame (`None` = not compound).
 pub(crate) fn current_fill_rule() -> Option<PathFillRule> {
     CURRENT_FILL_RULE.with(|c| c.get())
+}
+
+/// Publish whether shape-snapping is on, so the Snap section reflects it.
+pub fn set_current_snap(on: bool) {
+    CURRENT_SNAP.with(|c| c.set(on));
+}
+
+/// Whether shape-snapping is on this frame.
+pub(crate) fn current_snap() -> bool {
+    CURRENT_SNAP.with(|c| c.get())
 }
 
 /// The angle the Angle chip last reported this gesture (for the delta emit).

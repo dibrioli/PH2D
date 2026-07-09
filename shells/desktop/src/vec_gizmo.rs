@@ -165,7 +165,28 @@ impl App {
             window_h: wh,
         }
     }
+}
 
+/// Bbox de curva axis-aligned da união de `ids` em `scene`. É a caixa cujos 9
+/// pontos-chave viram as fontes de snap do Translate.
+fn union_curve_bbox(scene: &VecScene, ids: &[VecPathId]) -> Option<([f64; 2], [f64; 2])> {
+    let mut acc: Option<([f64; 2], [f64; 2])> = None;
+    for &id in ids {
+        let Some((lo, hi)) = scene.path_curve_bbox(id) else {
+            continue;
+        };
+        acc = Some(match acc {
+            None => (lo, hi),
+            Some((a, b)) => (
+                [a[0].min(lo[0]), a[1].min(lo[1])],
+                [b[0].max(hi[0]), b[1].max(hi[1])],
+            ),
+        });
+    }
+    acc
+}
+
+impl App {
     /// Begin a vector gizmo drag: snapshot the scene (pristine + undo baseline).
     fn start_vec_gizmo(
         &mut self,
@@ -201,6 +222,9 @@ impl App {
             self.vec_history.begin(&snap);
             self.vec_gizmo_start = Some(snap);
         }
+        // Alvos do gesto: tudo menos a seleção, que é o que está se movendo.
+        let moving = self.vec_pen.selected_paths().to_vec();
+        self.vec_rebuild_snap_targets(&moving, &[]);
     }
 
     /// While the panel "Set Center" mode is active, a canvas press positions the
@@ -325,29 +349,94 @@ impl App {
             ctrl: self.modifiers.control_key() || self.modifiers.super_key(),
             alt: self.modifiers.alt_key(),
         };
-        let out = compute_gizmo_transform(&drag, &cam, mods, GizmoSnap::default(), None);
+        // The shared gizmo's own Ctrl grid-quantize is disabled (`move_meters = 0`):
+        // the Vector module snaps to the DRAWING, not to a project grid, and Ctrl
+        // already means center-anchor scale here. Rotate keeps its Shift angle snap.
+        let gsnap = GizmoSnap {
+            move_meters: 0.0,
+            ..GizmoSnap::default()
+        };
+        let cfg = self.vec_snap_cfg(self.vec_px_to_world());
+        // `take` frees `self` for the closure; both come back before we return.
+        let targets = std::mem::take(&mut self.vec_snap_targets);
+        let mut guides = Vec::new();
+        // A grade é a UNIVERSAL do editor (`GridSnapState`), a mesma que o gizmo de
+        // sprite e o Painter consultam — o Vector não tem grade própria.
+        let mut hero = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut());
+
+        // Scale rides the gizmo's own hook: the cursor is snapped BEFORE the ratio
+        // math, so the dragged corner lands exactly on the target.
+        let out = if matches!(
+            drag.kind,
+            GizmoDragKind::ScaleCorner { .. } | GizmoDragKind::ScaleEdge { .. }
+        ) {
+            let mut world_snap = |p: [f32; 2]| {
+                let w = [f64::from(p[0]), f64::from(p[1])];
+                let mut grid = |q: [f64; 2]| {
+                    let h = hero.as_mut()?;
+                    crate::vec_snap::ask_grid(&mut h.grid.snap_state, q)
+                };
+                let r = ph2d_vec_edit::snap::snap(&[w], &targets, cfg, Some(&mut grid));
+                guides = crate::vec_snap::guides_of(&r);
+                let s = r.apply(w);
+                [s[0] as f32, s[1] as f32]
+            };
+            compute_gizmo_transform(&drag, &cam, mods, gsnap, Some(&mut world_snap))
+        } else {
+            compute_gizmo_transform(&drag, &cam, mods, gsnap, None)
+        };
+
         let pivot = [drag.pivot_world[0] as f64, drag.pivot_world[1] as f64];
         let r = f64::from(drag.start_transform.rotation);
         let ids = self.vec_pen.selected_paths().to_vec();
         let Some(start) = self.vec_gizmo_start.clone() else {
+            self.vec_snap_targets = targets;
             return true;
         };
+
+        // Translate snaps the whole SELECTION: its nine bbox key points are the
+        // sources, so an edge or the center can be what catches — not just a corner.
+        let translate_delta = if drag.kind == GizmoDragKind::Translate {
+            let mut d = [
+                f64::from(out.translation[0] - drag.start_transform.translation[0]),
+                f64::from(out.translation[1] - drag.start_transform.translation[1]),
+            ];
+            if let Some((lo, hi)) = union_curve_bbox(&start, &ids) {
+                let moved = |p: [f64; 2]| [p[0] + d[0], p[1] + d[1]];
+                let sources = ph2d_vec_edit::bbox_key_points(moved(lo), moved(hi));
+                let mut grid = |q: [f64; 2]| {
+                    let h = hero.as_mut()?;
+                    crate::vec_snap::ask_grid(&mut h.grid.snap_state, q)
+                };
+                let res = ph2d_vec_edit::snap::snap(&sources, &targets, cfg, Some(&mut grid));
+                let sd = res.delta();
+                d = [d[0] + sd[0], d[1] + sd[1]];
+                guides = crate::vec_snap::guides_of(&res);
+            }
+            d
+        } else {
+            [0.0, 0.0]
+        };
+        self.vec_snap_targets = targets;
+        self.vec_snap_guides = guides;
+
         let Some(gfx) = self.gfx.as_mut() else {
             return true;
         };
         for id in ids {
-            // Reset the path to its pristine geometry before re-applying.
+            // Reset the path to its pristine geometry before re-applying. The WHOLE
+            // path: a compound's `subpaths` are geometry too, and leaving them out
+            // made a hole accumulate every Move's transform while its outer contour
+            // was rebuilt from scratch.
             if let Some(src) = start.paths().iter().find(|p| p.id == id).cloned()
                 && let Some(dst) = gfx.vec_scene.path_mut(id)
             {
-                dst.verts = src.verts;
-                dst.fill = src.fill;
+                *dst = src;
             }
             match drag.kind {
                 GizmoDragKind::Translate => {
-                    let dx = f64::from(out.translation[0] - drag.start_transform.translation[0]);
-                    let dy = f64::from(out.translation[1] - drag.start_transform.translation[1]);
-                    gfx.vec_scene.translate_path(id, dx, dy);
+                    gfx.vec_scene
+                        .translate_path(id, translate_delta[0], translate_delta[1]);
                 }
                 GizmoDragKind::ScaleCorner { .. } | GizmoDragKind::ScaleEdge { .. } => {
                     // Oriented scale: un-rotate to the shape's axes, scale, rotate back
@@ -386,6 +475,7 @@ impl App {
             self.vec_pivot_edit = false;
         }
         self.vec_gizmo_start = None;
+        self.vec_clear_snap_guides();
         let scene = self.gfx.as_ref().map(|g| g.vec_scene.clone());
         if let Some(scene) = scene {
             self.vec_history.commit_if_changed(&scene);

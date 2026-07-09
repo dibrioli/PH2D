@@ -590,6 +590,13 @@ pub(crate) struct App {
     /// Pristine scene snapshot captured at gizmo Down — each Move restores the
     /// selected paths from it before re-applying the transform (no compounding).
     pub(crate) vec_gizmo_start: Option<ph2d_vec_scene::VecScene>,
+    /// Snap + grid settings of the Vector tool (edited by the panel's Snap section).
+    pub(crate) vec_snap: crate::vec_snap::VecSnapSettings,
+    /// Snap targets of the CURRENT gesture — collected once at Down (the scene's
+    /// shape doesn't change mid-drag; only the dragged thing, which is excluded).
+    pub(crate) vec_snap_targets: ph2d_vec_edit::SnapTargets,
+    /// Smart guides to draw this frame (cleared at Up / when nothing snapped).
+    pub(crate) vec_snap_guides: Vec<ph2d_vec_render::Guide>,
     /// TOOL_PIVOT: world-space center of the selected sprite's CONTENT
     /// bbox (non-transparent pixels), computed once (lazily, on the
     /// first CTRL-held move) per MovePivot drag and reused as a snap

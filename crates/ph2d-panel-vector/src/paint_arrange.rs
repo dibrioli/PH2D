@@ -55,6 +55,25 @@ impl BodyCtx<'_> {
         y + self.row_h + self.row_gap
     }
 
+    /// Snap em FORMAS — ajuste da ferramenta (não da seleção), sempre visível.
+    /// Segurar Alt ignora o snap momentaneamente, como no Figma.
+    ///
+    /// A grade **não mora aqui**: o editor tem um subsistema universal de grade
+    /// (nove tipos, magnetismo, subdivisões) com painel próprio, e o Vector só
+    /// pergunta a ele. Ligar/desligar a grade é lá.
+    pub(crate) fn snap_section(&mut self, mut y: f32) -> f32 {
+        let on = state::current_snap();
+        y = self.section_label("Snap", y);
+        self.segmented2(
+            "Shapes",
+            [
+                (ids::VECTOR_SNAP_OFF, "Off", !on),
+                (ids::VECTOR_SNAP_ON, "On", on),
+            ],
+            y,
+        )
+    }
+
     /// Make / Release Compound — a 2-across row closing the Boolean section. Merging
     /// closed paths into one compound is how a hole is authored by hand (draw a
     /// contour inside another, merge, and `EvenOdd` vacates the inner region).

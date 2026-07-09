@@ -25,6 +25,10 @@ mod gradient;
 use gradient::fill_multipoint;
 pub use gradient::{GradHandle, drag_gradient_handle, draw_gradient_handles, hit_gradient_handle};
 
+/// Smart guides (o feedback visual do snap), likewise a sibling.
+mod guides;
+pub use guides::{Guide, draw_snap_guides};
+
 /// Constrói o `BezPath` (world-space) de um path editável: para CADA contorno
 /// (primário + `subpaths`), `move_to` na 1ª âncora, depois uma cúbica por segmento
 /// usando `out_handle(i)` e `in_handle(i+1)`; fecha com uma cúbica final se

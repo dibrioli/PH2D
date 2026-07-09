@@ -12896,3 +12896,74 @@ fn watercolor_wet_mix_depleted_brush_respects_pool_intensity() {
         "the smudge tracks the pool's intensity (rich crossing G {rich_cross:.1} < pale crossing G {pale_cross:.1})"
     );
 }
+
+/// **EDGE-1 (doc 12, W-C): washes que se encostam MOLHADOS fundem — sem contorno duplo.** O bake
+/// despeja a cobertura no mapa de umidade persistente; um traço seguinte dentro da janela de
+/// secagem (~8,5 s, DiVerdi) NÃO forma rim sobre o wash ainda molhado (a junção some — Curtis
+/// §3-4); depois de seco, o mesmo gesto volta a desenhar o rim completo por cima (e o mapa
+/// seco é DROPADO — fast path de volta, sem custo ocioso).
+#[test]
+fn watercolor_touching_wet_washes_merge_without_double_rim() {
+    let run = |dry_first: bool| -> f32 {
+        let size = 192u32;
+        let mut t = white_canvas(size, 8.0);
+        t.paint.brush = BrushSpec {
+            radius_px: 12.0,
+            hardness: 1.0,
+            falloff: Falloff::Constant,
+            color: [0.85, 0.1, 0.1],
+            space_attenuation: false,
+            watercolor: true,
+            fill: 0.12,
+            depth: 1.0,
+            edge_gain: 2.5,
+            edge_spread: 6.0,
+            warp: 0.0,
+            granulation: 0.0,
+            ..Default::default()
+        };
+        for slot in &mut t.paint.brush_by_mode {
+            *slot = t.paint.brush;
+        }
+        let stroke_v = |t: &mut PainterTool, x: f32| {
+            assert!(t.on_canvas_pointer(cp([x, 30.0], PointerPhase::Down)));
+            let mut y = 30.0f32;
+            while y < 160.0 {
+                y += 2.0;
+                t.on_canvas_pointer(cp([x, y], PointerPhase::Move));
+            }
+            t.on_canvas_pointer(cp([x, 160.0], PointerPhase::Up));
+        };
+        stroke_v(&mut t, 80.0); // wash A (band x ≈ 68..92) — pours moisture at its bake
+        assert!(
+            !t.paint.canvas_wet.is_empty(),
+            "the bake must pour the wash into the persistent wet map"
+        );
+        if dry_first {
+            for _ in 0..40 {
+                t.paint_tick(0.5); // 20 s of heartbeat — way past the ~8.5 s drying window
+            }
+            assert!(
+                t.paint.canvas_wet.is_empty(),
+                "a fully-dried wet map must be dropped (composite fast path back)"
+            );
+        }
+        stroke_v(&mut t, 88.0); // wash B overlaps A deeply; B's LEFT rim lands in A's light interior
+        // Sample B's left-rim band (x ≈ 78-81, inside B's boundary at 76) — deep in A's light
+        // interior, well clear of A's own baked right rim (~88-92, which is A's legitimate rim).
+        let mut acc = 0.0f32;
+        for x in 78..82u32 {
+            for y in 80..110u32 {
+                acc += f32::from(px(&t, size, x, y)[1]);
+            }
+        }
+        acc / (4.0 * 30.0)
+    };
+    let wet_junction = run(false);
+    let dry_junction = run(true);
+    assert!(
+        wet_junction > dry_junction + 40.0,
+        "no rim may form over a STILL-WET wash — junction must be lighter than the dried-first \
+         double-contour (wet G {wet_junction:.1} vs dried G {dry_junction:.1})"
+    );
+}

@@ -423,3 +423,22 @@ decaimento ainda mais linear"). Histórico dos takes:
   por-pixel novo lido pelo composite precisa de taper na borda do dab (nearest + warp transforma
   degrau em escada); (c) intensidade de smudge deve pesar o pigmento REAL do reservatório
   (absorbância), nunca o peso de mistura `t`.
+
+
+### W-C · EDGE-1 — LANDOU 2026-07-08 (umidade persistente: washes molhados fundem)
+
+`canvas_wet` (u8 canvas-wide) **sobrevive ao pen-up**: o bake despeja a cobertura ENDURECIDA
+(o mesmo smoothstep `SS0/SS1` do composite — umidade = "o wash está aqui", interior pleno mesmo
+com flow baixo; a cobertura crua deixava o rim só meio-suprimido) com max-blend + rect vivo;
+seca no heartbeat (`paint_tick` roda todo frame) a `CANVAS_WET_DRY_PER_S = 30` bytes/s ≈ 8,5 s
+(constante do wet map do DiVerdi/Adobe TVCG 2013), com carry fracionário; totalmente seco ⇒
+buffer DROPADO (fast path do composite + custo ocioso zero). No composite, `edge *= 1 − umidade`
+lido na coordenada warpada (a junção acompanha o footprint renderizado do wash anterior) —
+**o rim do traço novo não forma sobre papel ainda molhado** (Curtis §3-4 wet-area mask): traços
+sobrepostos dentro da janela fundem sem contorno duplo; após secar, o mesmo gesto volta a
+desenhar o rim por cima. O rim JÁ ASSADO do wash anterior não é removido (isso é papel do
+rewet/lift — Wet > 0 dissolve; escopo do EDGE-2/4). Pour é pós-bake (o rim do próprio traço
+forma normal contra papel seco). Undo não des-molha (umidade é estado do papel). Teste:
+`watercolor_touching_wet_washes_merge_without_double_rim` (junção molhada ~100 G mais clara que
+a seca; mapa seco = dropado). Knob: `CANVAS_WET_DRY_PER_S` (desce = janela de fusão maior).
+Follow-up possível (EDGE-2/4): gatear também o bloom do rewet-pool pela umidade da junção.

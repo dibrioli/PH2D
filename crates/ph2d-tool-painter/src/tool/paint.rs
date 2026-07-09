@@ -456,6 +456,19 @@ pub(crate) struct PaintState {
     /// the intact coverage — head keeps the full watercolor anatomy, the tail fades rim and body
     /// together toward plain water. Empty ⇒ factor 1 (byte-identical default).
     stroke_deplete: Vec<u8>,
+    /// EDGE-1 (doc 12): canvas-wide MOISTURE map (`w*h`, `0..255`) that SURVIVES pen-up — the paper
+    /// under a fresh wash stays workably wet and dries on the heartbeat (~8.5 s full→dry, the
+    /// DiVerdi/Adobe TVCG 2013 convention; Curtis §3-4 wet-area mask). The bake pours the stroke's
+    /// coverage in (max-blend, AFTER the composite so the stroke's own rim still forms against dry
+    /// paper); the composite attenuates the EDGE term where the paper is still wet under a NEW
+    /// border, so washes that touch while wet MERGE instead of stacking a double rim. Empty = fully
+    /// dry (fast path — the drying tick drops the buffer when it zeroes out). Undo does not
+    /// un-pour: moisture is paper state, not paint.
+    canvas_wet: Vec<u8>,
+    /// Live bounding rect of the wet area (the decay/pour window) — `None` = dry, zero idle cost.
+    canvas_wet_rect: Option<(usize, usize, usize, usize)>,
+    /// Fractional drying carry between whole-byte decay steps (heartbeat dt accumulator).
+    canvas_wet_carry: f32,
     /// Manual Shape stamp (Automatic OFF): the tip image's luminance NORMALISER (`1 / max_lum`,
     /// `1.0` when no image / all-black). The watercolor coverage is WETNESS GEOMETRY (a max-blend
     /// union that must SATURATE in the wash core — `cw → 1` gives the body, `inner → 1` confines the

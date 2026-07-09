@@ -200,3 +200,95 @@ impl PainterTool {
         })
     }
 }
+
+/// EDGE-1 — paper drying rate in wetness-bytes per second: a fully-wet cell (255) dries in
+/// ~8.5 s, the DiVerdi/Adobe TVCG 2013 wet-map constant (*"wet map cells are set to 255 when
+/// wetted... they take 8.5 seconds to dry"*). Calibration knob: lower = washes stay mergeable
+/// longer.
+const CANVAS_WET_DRY_PER_S: f32 = 30.0;
+
+impl PainterTool {
+    /// EDGE-1: pour the finished stroke's coverage into the persistent canvas MOISTURE map
+    /// (max-blend over the stroke's cumulative rect). Called at the bake, AFTER the commit
+    /// composite — the stroke's own rim renders against dry paper; only strokes that follow
+    /// within the drying window merge into it.
+    pub(super) fn pour_canvas_wet(&mut self) {
+        let (fw, fh) = self.source_size;
+        let (fw, fh) = (fw as usize, fh as usize);
+        let n = fw * fh;
+        if n == 0 || self.paint.stroke_coverage.len() != n {
+            return;
+        }
+        let Some(r) = self.paint.wet_cum_dirty else {
+            return;
+        };
+        let (x0, y0) = ((r.x as usize).min(fw), (r.y as usize).min(fh));
+        let (x1, y1) = (
+            ((r.x + r.w) as usize).min(fw),
+            ((r.y + r.h) as usize).min(fh),
+        );
+        if x0 >= x1 || y0 >= y1 {
+            return;
+        }
+        if self.paint.canvas_wet.len() != n {
+            self.paint.canvas_wet = vec![0u8; n];
+            self.paint.canvas_wet_rect = None;
+        }
+        for y in y0..y1 {
+            let row = y * fw;
+            for x in x0..x1 {
+                // Pour the HARDENED coverage (the composite's own `cw` smoothstep): moisture is
+                // "the wash is here", so the wash INTERIOR is fully wet even at low dab flow —
+                // pouring the raw coverage left the rim only half-suppressed at the junction.
+                let cov = f32::from(self.paint.stroke_coverage[row + x]) / 255.0;
+                let cw = super::watercolor_field::smoothstep(
+                    super::watercolor_render::SS0,
+                    super::watercolor_render::SS1,
+                    cov,
+                );
+                let c = (cw * 255.0) as u8;
+                if c > self.paint.canvas_wet[row + x] {
+                    self.paint.canvas_wet[row + x] = c;
+                }
+            }
+        }
+        self.paint.canvas_wet_rect = Some(match self.paint.canvas_wet_rect {
+            Some((rx0, ry0, rx1, ry1)) => (rx0.min(x0), ry0.min(y0), rx1.max(x1), ry1.max(y1)),
+            None => (x0, y0, x1, y1),
+        });
+    }
+
+    /// EDGE-1: the paper DRIES on the heartbeat — [`CANVAS_WET_DRY_PER_S`] with a fractional
+    /// carry (slow frames still dry at the same wall-clock rate). Drops the buffer once fully
+    /// dry, restoring the composite's moisture-free fast path and zero idle cost.
+    pub(super) fn dry_canvas_wet(&mut self, dt_s: f32) {
+        let Some((x0, y0, x1, y1)) = self.paint.canvas_wet_rect else {
+            return;
+        };
+        let (fw, _fh) = self.source_size;
+        let fw = fw as usize;
+        if self.paint.canvas_wet.is_empty() {
+            self.paint.canvas_wet_rect = None;
+            return;
+        }
+        self.paint.canvas_wet_carry += dt_s.max(0.0) * CANVAS_WET_DRY_PER_S;
+        let step = self.paint.canvas_wet_carry.min(255.0) as u8;
+        if step == 0 {
+            return;
+        }
+        self.paint.canvas_wet_carry -= f32::from(step);
+        let mut wettest = 0u8;
+        for y in y0..y1 {
+            let row = y * fw;
+            for w in &mut self.paint.canvas_wet[row + x0..row + x1] {
+                *w = w.saturating_sub(step);
+                wettest = wettest.max(*w);
+            }
+        }
+        if wettest == 0 {
+            self.paint.canvas_wet = Vec::new();
+            self.paint.canvas_wet_rect = None;
+            self.paint.canvas_wet_carry = 0.0;
+        }
+    }
+}

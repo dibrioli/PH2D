@@ -27,8 +27,8 @@ use rayon::prelude::*;
 
 /// Hardened-coverage smoothstep edges (wet_edges `SS0`/`SS1`): below `SS0` the wash is transparent,
 /// above `SS1` fully covered — a crisp-but-soft silhouette from the feathered coverage discs.
-const SS0: f32 = 0.12; // LITERAL-PX-OK: coverage-hardening smoothstep low edge (wet_edges)
-const SS1: f32 = 0.60; // LITERAL-PX-OK: coverage-hardening smoothstep high edge (wet_edges)
+pub(super) const SS0: f32 = 0.12; // LITERAL-PX-OK: coverage-hardening smoothstep low edge (wet_edges)
+pub(super) const SS1: f32 = 0.60; // LITERAL-PX-OK: coverage-hardening smoothstep high edge (wet_edges)
 /// Minimum colour-buffer alpha (0..255) to trust the deposited colour; below it the composite falls
 /// back to the live brush colour (wet_edges `COL_EPS`) — a faint rim carries the fresh pigment, not noise.
 const COL_EPS: u8 = 20;
@@ -261,6 +261,11 @@ impl PainterTool {
         // water footprint (and so the edge anatomy) stays whole. Empty ⇒ factor ≡ 1 → byte-identical.
         let has_depl = self.paint.stroke_deplete.len() == n;
         let depl_buf = &self.paint.stroke_deplete;
+        // EDGE-1: persistent canvas moisture — a previous wash still wet under this stroke's
+        // border suppresses the edge term there (washes MERGE, no double rim). Empty = dry
+        // canvas (the drying tick drops the buffer) ⇒ byte-identical fast path.
+        let has_moist = self.paint.canvas_wet.len() == n;
+        let moist_buf = &self.paint.canvas_wet;
         // Raw per-pixel soak for the granulation settle (GRAN-1) — read-only in the parallel loop.
         let soak_buf = &self.paint.wet_soak;
 
@@ -351,6 +356,14 @@ impl PainterTool {
                     }
                     let inner = sample_bilinear(&blur, rw, rh, sx, sy).min(1.0);
                     let mut edge = (cw * (1.0 - inner) * edge_gain).clamp(0.0, 1.0);
+                    // EDGE-1: no rim forms over paper STILL WET from a previous wash (Curtis
+                    // wet-area mask; DiVerdi wet map): attenuate by the local moisture, read at
+                    // the warped coord so the junction tracks the wash's rendered footprint.
+                    if has_moist {
+                        let wgx = (rx0 as f32 + sx).clamp(0.0, (fw - 1) as f32) as usize;
+                        let wgy = (ry0 as f32 + sy).clamp(0.0, (fh - 1) as f32) as usize;
+                        edge *= 1.0 - f32::from(moist_buf[wgy * fw + wgx]) / 255.0;
+                    }
                     // Paper tooth (substrate): the active Paper slot, or the built-in noise fallback —
                     // memoised per canvas pixel (`compute_paper` is the identical expression; the cache just
                     // avoids recomputing it every frame for the same pixel).

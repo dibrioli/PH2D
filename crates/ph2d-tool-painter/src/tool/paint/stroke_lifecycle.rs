@@ -145,6 +145,9 @@ impl PainterTool {
         if self.paint.stencil_preview_s > 0.0 {
             self.paint.stencil_preview_s = (self.paint.stencil_preview_s - dt_s).max(0.0);
         }
+        // EDGE-1: the paper dries every frame too (stroke open or not — same class as the decay
+        // above): the persistent moisture poured at each bake fades over the drying window.
+        self.dry_canvas_wet(dt_s);
         // Keep the auto-centre symmetry pivot on the canvas centre every frame (also no-op when idle),
         // so the dashed overlay guide stays correct after a resize / fresh-sprite bind without paint.
         self.resolve_symmetry_geometry();
@@ -217,6 +220,9 @@ impl PainterTool {
         // the base). BEFORE close_stroke so pre-stroke → wash is one undo step (mirror of heal_inpaint).
         if self.watercolor_render_active() {
             self.apply_watercolor(true);
+            // EDGE-1: pour the wash's coverage into the persistent moisture map AFTER the bake —
+            // the stroke's own rim rendered against dry paper; the NEXT stroke merges into it.
+            self.pour_canvas_wet();
         }
         self.close_stroke();
     }

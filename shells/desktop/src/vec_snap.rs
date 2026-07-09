@@ -207,7 +207,7 @@ mod tests {
         let g = guides_of(&r);
         assert_eq!(g.len(), 1, "uma cruz só");
         assert_eq!(g[0].a, [10.0, 20.0], "no ponto de rede");
-        assert_eq!(g[0].a, g[0].b, "degenerado → sem linha");
+        assert_eq!(g[0].a, g[0].b, "degenerado: sem linha");
         assert!(g[0].grid);
     }
 

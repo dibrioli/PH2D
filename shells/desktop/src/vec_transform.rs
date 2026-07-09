@@ -303,7 +303,7 @@ mod tests {
             Transform::IDENTITY,
             "o gesto continua em world-space: identidade"
         );
-        assert!(build(&sim, &map).is_empty(), "afim identidade ⇒ sem offset");
+        assert!(build(&sim, &map).is_empty(), "afim identidade: sem offset");
 
         // Terminado o gesto, aí sim assenta.
         settle_origins(&mut sim, &mut scene, &map, &[]);

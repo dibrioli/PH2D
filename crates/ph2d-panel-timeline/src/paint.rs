@@ -168,7 +168,7 @@ pub(crate) fn paint(state: &mut TimelinePanelState, ctx: &mut PaintCtx) {
         ctx,
         theme,
         g.region,
-        g.time_area.x,
+        g.region.x + g.label_w,
         state.label_drag.is_some(),
     );
 

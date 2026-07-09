@@ -36,7 +36,7 @@ const TWIRL_TIP: f32 = 9.0; // LITERAL-PX-OK: row twirl triangle height
 const DIAMOND_H: f32 = 4.5; // LITERAL-PX-OK: keyframe diamond half-size
 /// Horizontal half-width of a key's clickable hit rect (larger than the visual
 /// diamond so a small target is easy to grab).
-const KEY_HIT_HW: f32 = 7.0; // LITERAL-PX-OK: keyframe grab half-width
+pub(crate) const KEY_HIT_HW: f32 = 7.0; // LITERAL-PX-OK: keyframe grab half-width
 
 /// Paint the "+ Track" dropdown button filling `header` (the label-column slice
 /// aligned with the ruler strip). The property list opens as an overlay popover

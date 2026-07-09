@@ -60,6 +60,13 @@ pub(crate) const MIN_LABEL_W: f32 = 56.0; // LITERAL-PX-OK: min track-name colum
 const MIN_TIME_W: f32 = 120.0; // LITERAL-PX-OK: min time-area width
 /// Half-width of the splitter's grab strip.
 pub(crate) const SPLIT_GRIP: f32 = 4.0; // LITERAL-PX-OK: label splitter grab half-width
+/// Bare gutter between the label/time seam and where `view_start_s` maps.
+///
+/// The splitter grip owns `[seam - SPLIT_GRIP, seam + SPLIT_GRIP]` and, being
+/// registered last, wins every hit inside it. Without the gutter a keyframe at
+/// the left edge of the view would have its grab rect swallowed there, and the
+/// key would be undraggable. Wide enough to clear both (asserted in the tests).
+pub(crate) const TIME_GUTTER: f32 = 12.0; // LITERAL-PX-OK: splitter/first-key separation
 
 /// The user's requested label-column width, held inside the panel's bounds. Never
 /// wider than what leaves [`MIN_TIME_W`] of time area, never below
@@ -69,13 +76,13 @@ pub(crate) fn clamp_label_w(label_w: f32, region_w: f32) -> f32 {
     label_w.min(widest).max(MIN_LABEL_W).min(region_w)
 }
 
-/// The left edge of the time area — where `view_start_s` maps to. Depends only
-/// on the panel rect + the label width, so `interact::process` can have it before
-/// the transport bar paints.
+/// Where `view_start_s` maps — the seam plus [`TIME_GUTTER`]. Depends only on the
+/// panel rect + the label width, so `interact::process` can have it before the
+/// transport bar paints.
 pub(crate) fn time_x(rect: Rect, label_w: f32) -> f32 {
     let body_x = rect.x + PANEL_HEAD_PAD;
     let body_w = (rect.w - PANEL_HEAD_PAD * 2.0).max(0.0);
-    body_x + clamp_label_w(label_w, body_w)
+    body_x + clamp_label_w(label_w, body_w) + TIME_GUTTER
 }
 
 /// Resolve the dope-sheet sub-rects from the panel `rect`, the transport bar's
@@ -89,12 +96,10 @@ pub(crate) fn resolve(rect: Rect, after_transport: f32, label_w: f32) -> Geom {
     let region = Rect::new(x, after_transport, w, (bottom - after_transport).max(0.0));
     let label_w = clamp_label_w(label_w, region.w);
     let bar_x = region.x + region.w - SCROLLBAR_W;
-    let time_area = Rect::new(
-        region.x + label_w,
-        region.y,
-        (bar_x - (region.x + label_w)).max(0.0),
-        region.h,
-    );
+    // The time column starts a gutter past the seam, so the splitter grip and the
+    // first keyframe never fight over the same pixels.
+    let time_left = region.x + label_w + TIME_GUTTER;
+    let time_area = Rect::new(time_left, region.y, (bar_x - time_left).max(0.0), region.h);
     let rows = Rect::new(
         region.x,
         region.y + ruler::RULER_H,
@@ -350,12 +355,32 @@ mod tests {
     }
 
     #[test]
-    fn the_time_area_starts_where_the_label_column_ends() {
+    fn the_time_area_starts_a_gutter_past_the_label_column() {
         let rect = Rect::new(0.0, 0.0, 900.0, 400.0);
         let g = resolve(rect, 40.0, 200.0);
         assert_eq!(g.label_w, 200.0);
-        assert_eq!(g.time_area.x, g.region.x + 200.0);
-        assert_eq!(time_x(rect, 200.0), g.time_area.x, "both agree on the seam");
+        assert_eq!(g.time_area.x, g.region.x + 200.0 + TIME_GUTTER);
+        assert_eq!(
+            time_x(rect, 200.0),
+            g.time_area.x,
+            "the two ways to find the time origin must agree"
+        );
+    }
+
+    #[test]
+    fn the_gutter_keeps_the_splitter_off_the_first_keyframe() {
+        // The splitter grip is registered LAST, so it wins every hit it covers.
+        // A key at the left edge of the view is drawn at `time_x`; its grab rect
+        // starts `KEY_HIT_HW` to the left of that. The gutter is what stops the
+        // two overlapping — drag the key, not the column.
+        let seam = 0.0;
+        let splitter_right = seam + SPLIT_GRIP;
+        let first_key_left = seam + TIME_GUTTER - crate::tracks::KEY_HIT_HW;
+        assert!(
+            first_key_left >= splitter_right,
+            "the splitter grip eats the first keyframe: key hit starts at \
+             {first_key_left}, splitter ends at {splitter_right}"
+        );
     }
 
     #[test]

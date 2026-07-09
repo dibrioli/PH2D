@@ -46,10 +46,12 @@ pub(crate) fn paint_track(
     view: TimeView,
     track: &TrackView,
 ) {
+    // Aligned with the lanes above it: the curve for `t = view_start` lands on
+    // the band's left edge, clear of the splitter grip.
     let band_rect = Rect::new(
-        rect.x + label_w,
+        view.time_x,
         rect.y + BAND_INSET,
-        (rect.w - label_w).max(0.0),
+        (rect.x + rect.w - view.time_x).max(0.0),
         (rect.h - BAND_INSET * 2.0).max(0.0),
     );
     let dragging_here = state

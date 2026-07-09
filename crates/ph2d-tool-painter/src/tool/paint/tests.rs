@@ -12837,7 +12837,7 @@ fn watercolor_wet_mix_depleted_brush_respects_pool_intensity() {
     let mut t = white_canvas(size, 8.0);
     t.paint.brush = spec;
     // Pale pool at x∈[40..110], rich pool at x∈[150..220], both horizontal at y = 200 — far enough
-    // down that a vertical Charge-0.25 stroke (span ≈ 107 px) arrives fully depleted (travel ≈ 188).
+    // down that a vertical Charge-0.1 stroke (span ≈ 107 px) arrives fully depleted (travel ≈ 188).
     t.paint.brush.color = [1.0, 0.78, 0.78]; // pale pink: little pigment to pick up
     for slot in &mut t.paint.brush_by_mode {
         *slot = t.paint.brush;
@@ -12860,9 +12860,9 @@ fn watercolor_wet_mix_depleted_brush_respects_pool_intensity() {
         t.on_canvas_pointer(cp([x, 200.0], PointerPhase::Move));
     }
     t.on_canvas_pointer(cp([220.0, 200.0], PointerPhase::Up));
-    // Two depleted blue crossings (Charge 0.25), one through each pool.
+    // Two depleted blue crossings (Charge 0.1), one through each pool.
     t.paint.brush.color = [0.15, 0.25, 0.7];
-    t.paint.brush.wet_charge = 0.25;
+    t.paint.brush.wet_charge = 0.1;
     for slot in &mut t.paint.brush_by_mode {
         *slot = t.paint.brush;
     }

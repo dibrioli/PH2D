@@ -69,6 +69,12 @@ pub(super) struct WetShapeStamp {
 /// it becomes tip DENSITY instead (`stroke_density` → the composite's fill term).
 const TIP_WET_LO: f32 = 0.03;
 const TIP_WET_HI: f32 = 0.20;
+/// MIX-1: the pigment-reserve splat's taper shell — the outer fraction of the dab radius over which
+/// the splatted value ramps to 0 (`dn ∈ [1−RAMP, 1]`). Keeps the per-pixel depletion map free of
+/// binary 255/0 steps at disc boundaries, which the composite's warped nearest-sample rendered as
+/// hard pixelated seams where a wash crosses old paint (Enio smoke 2026-07-08). Matches the scale
+/// of the coverage feather's own taper; interior pixels take the full value from nearer dabs.
+const DEPL_RIM_RAMP: f32 = 0.15;
 
 impl WetShapeStamp {
     /// The dab-local stamp sample at normalised distance `dn`: `(wet, density)`.
@@ -283,9 +289,12 @@ impl PainterTool {
             let r = d.radius_px;
             // The dab's pigment reserve (fresh + carry), max-blended over its whole footprint —
             // re-inking a faded trail restores it (a fresh head dab wins over a depleted tail's).
-            let depl_v = depletion
-                .as_ref()
-                .map(|v| (v[di].clamp(0.0, 1.0) * 255.0) as u8);
+            // Splatted with a RAMP over the dab's outer rim shell (below): a binary 255/0 step at
+            // the disc boundary, nearest-sampled at the composite's WARPED coords, read as hard
+            // pixelated seams where the wash crosses old paint (Enio smoke 2026-07-08); the ramp
+            // matches the coverage's own taper, and stroke-interior pixels take the full value
+            // from a nearer dab via the max-blend.
+            let depl_v = depletion.as_ref().map(|v| v[di].clamp(0.0, 1.0));
             let peak = (d.coverage * flow).clamp(0.0, 1.0);
             if r <= 0.0 || peak <= 0.0 {
                 continue;
@@ -341,12 +350,16 @@ impl PainterTool {
                             dens_buf[idx] = dv;
                         }
                     }
-                    // Pigment reserve (MIX-1): max-blend wherever the dab touches.
+                    // Pigment reserve (MIX-1): max-blend wherever the dab touches, tapered over the
+                    // outer rim shell so the map never steps 255→0 at a disc boundary (see above).
                     if let Some(dv) = depl_v
                         && wgt > 0.0
-                        && dv > depl_buf[idx]
                     {
-                        depl_buf[idx] = dv;
+                        let ramp = ((1.0 - dn) / DEPL_RIM_RAMP).min(1.0);
+                        let dvb = (dv * ramp * 255.0) as u8;
+                        if dvb > depl_buf[idx] {
+                            depl_buf[idx] = dvb;
+                        }
                     }
                 }
             }

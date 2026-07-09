@@ -59,8 +59,10 @@ const RETAIN_UNLOAD_MIN: f32 = 0.88;
 /// reserve always starts FULL (`fresh = 1` at travel 0), because any head factor < 1 scaled the
 /// coverage below saturation and flooded the interior with residual edge term (the flat opaque slab,
 /// Enio smoke 2026-07-08). The `charge/(1−charge)` factor approaches ∞ as Charge → 1, meeting the
-/// `wet_charge < 1` gate with no seam. Charge 0.5 on a 16-px brush ⇒ ~640 px of paint; 0.25 ⇒ ~213 px.
-const MIX_DEPLETE_SPAN: f32 = 40.0;
+/// `wet_charge < 1` gate with no seam. Charge 0.5 on a 16-px brush ⇒ ~1900 px of paint; 0.25 ⇒
+/// ~640 px; 0.1 ⇒ ~210 px. Calibration knob (Enio smoke 2026-07-08): 40 died off too fast on
+/// canvas — "o esmaecimento lento estava melhor" → 120.
+const MIX_DEPLETE_SPAN: f32 = 120.0;
 /// MIX-1 — the reservoir absorbance (max channel, unpremultiplied) that counts as "fully loaded
 /// pigment" for the carry: `A = 2` ⇒ transmittance `e⁻² ≈ 0.135`, a rich dark pool. The carry
 /// intensity is `t × (A_max / this).min(1)`, so a barely-tinted pool (low absorbance) sustains only

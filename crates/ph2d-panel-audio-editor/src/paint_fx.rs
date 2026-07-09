@@ -1,7 +1,8 @@
 //! The effects rack section of the Audio Editor panel (W3 block 3a).
 //!
 //! A selector (`◀ Name ▶`), one labelled slider per parameter of the selected
-//! effect, and **Apply / Cancel**. The rack **auditions live**: touching the
+//! effect (starting at its neutral, no-op values), and **Apply / Cancel**. The
+//! rack **auditions live**: touching the
 //! selector or any slider marks it dirty, and the shell renders the effect into
 //! the sounding preview so it is heard (and drawn) while you tune. Apply commits
 //! exactly that buffer as one undo step; Cancel throws it away.

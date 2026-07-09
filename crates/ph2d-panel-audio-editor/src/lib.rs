@@ -85,9 +85,10 @@ pub const AEDIT_FADE_OUT: NodeId = hash_node_id("audio_editor_fade_out");
 
 // Effects rack (W3 block 3a) — ONE parametric effect at a time: a selector cycles
 // the kinds, up to `MAX_FX_PARAMS` sliders tune it, Apply commits it to the target
-// range (selection, or whole clip). The panel stays UI-only: it holds normalized
-// 0..1 slider positions and an index; the shell owns the real DSP ranges,
-// formatting and the `Effect`/`TailEffect` construction (`audio/fx_params.rs`).
+// range (selection, or whole clip). Every effect starts at its NEUTRAL point, so
+// selecting one changes nothing until a slider moves. The panel stays UI-only: it
+// holds normalized 0..1 slider positions and an index; the shell owns the real DSP
+// ranges, formatting and the `Effect`/`TailEffect` construction (`audio/fx_params.rs`).
 /// Number of parameter sliders the rack paints. The shell publishes a label +
 /// formatted value per slot; unused slots are hidden.
 pub const MAX_FX_PARAMS: usize = 4;

@@ -7,6 +7,9 @@
 //!
 //! Frequencies and times map **logarithmically** — a linear cutoff slider spends
 //! most of its travel above 10 kHz, where nothing useful happens.
+//!
+//! Every effect's **defaults are its neutral point**: selecting an effect leaves
+//! the audio byte-identical until the user turns a knob.
 
 use ph2d_audio_edit::{Effect, TailEffect};
 
@@ -34,7 +37,9 @@ pub(crate) struct FxParamSpec {
     pub max: f32,
     /// Map the slider logarithmically (frequency, time).
     pub log: bool,
-    /// Default in REAL units — these reproduce the W3 block 1/2 fixed presets.
+    /// Default in REAL units — the effect's **neutral** value. At its defaults an
+    /// effect is a byte-identical no-op, so selecting it changes nothing until the
+    /// user turns a knob.
     pub default: f32,
     /// Drives the display formatting: `Hz`, `s`, `x`, or `""`.
     pub unit: &'static str,
@@ -63,30 +68,42 @@ const fn spec(
     }
 }
 
+// Every `default` below is the effect's NEUTRAL point: selecting an effect (or
+// arrowing past it) must leave the audio byte-identical until the user turns
+// something. `ph2d_audio_edit::{Effect, TailEffect}::is_bypass` mirrors these, and
+// `every_effect_is_a_no_op_at_its_defaults` proves the two agree.
 static LOW_PASS: [FxParamSpec; 2] = [
-    spec("Cutoff", 20.0, 20_000.0, true, 3_000.0, "Hz", false),
+    // Neutral at the TOP of the range: nothing is filtered out.
+    spec("Cutoff", 20.0, 20_000.0, true, 20_000.0, "Hz", false),
     spec("Q", 0.1, 8.0, false, 0.707, "", false),
 ];
 static HIGH_PASS: [FxParamSpec; 2] = [
-    spec("Cutoff", 20.0, 20_000.0, true, 150.0, "Hz", false),
+    // Neutral at the BOTTOM of the range.
+    spec("Cutoff", 20.0, 20_000.0, true, 20.0, "Hz", false),
     spec("Q", 0.1, 8.0, false, 0.707, "", false),
 ];
 static COMPRESS: [FxParamSpec; 4] = [
     spec("Threshold", 0.01, 1.0, true, 0.3, "", false),
-    spec("Ratio", 1.0, 20.0, false, 4.0, "x", false),
+    // Neutral at 1:1 — no reduction, and auto-makeup collapses to unity.
+    spec("Ratio", 1.0, 20.0, false, 1.0, "x", false),
     spec("Attack", 0.001, 0.2, true, 0.005, "s", false),
     spec("Release", 0.01, 1.0, true, 0.1, "s", false),
 ];
-static SATURATE: [FxParamSpec; 1] = [spec("Drive", 0.1, 12.0, true, 3.0, "x", false)];
+// Linear (not log) so the neutral point can sit at exactly 0.
+static SATURATE: [FxParamSpec; 1] = [spec("Drive", 0.0, 12.0, false, 0.0, "x", false)];
 static BITCRUSH: [FxParamSpec; 2] = [
-    spec("Bits", 1.0, 16.0, false, 6.0, "", true),
-    spec("Downsample", 1.0, 32.0, false, 4.0, "x", true),
+    // Neutral = full depth, no decimation.
+    spec("Bits", 1.0, 16.0, false, 16.0, "", true),
+    spec("Downsample", 1.0, 32.0, false, 1.0, "x", true),
 ];
-static WIDEN: [FxParamSpec; 1] = [spec("Width", 0.0, 2.0, false, 1.6, "x", false)];
+// Neutral at width 1.0 (mid/side passthrough), the middle of the range.
+static WIDEN: [FxParamSpec; 1] = [spec("Width", 0.0, 2.0, false, 1.0, "x", false)];
 static REVERB: [FxParamSpec; 4] = [
     spec("Room", 0.0, 1.0, false, 0.7, "", false),
     spec("Damp", 0.0, 1.0, false, 0.5, "", false),
-    spec("Mix", 0.0, 1.0, false, 0.35, "", false),
+    // Neutral: fully dry. A dry tail effect must not even ring out, or it would
+    // lengthen the clip with silence — `tail_frames()` returns 0 when Mix is 0.
+    spec("Mix", 0.0, 1.0, false, 0.0, "", false),
     // Freeverb's shortest comb is ~25 ms: a tail below that renders pure silence.
     spec("Tail", 0.1, 6.0, true, 2.5, "s", false),
 ];
@@ -94,7 +111,7 @@ static ECHO: [FxParamSpec; 4] = [
     // The dsp kit's delay line is one second long, so the tap must stay under it.
     spec("Time", 0.01, 0.99, true, 0.25, "s", false),
     spec("Feedback", 0.0, 0.95, false, 0.4, "", false),
-    spec("Mix", 0.0, 1.0, false, 0.35, "", false),
+    spec("Mix", 0.0, 1.0, false, 0.0, "", false),
     spec("Tail", 0.1, 6.0, true, 2.0, "s", false),
 ];
 
@@ -114,8 +131,19 @@ pub(crate) fn params_for(kind: usize) -> &'static [FxParamSpec] {
 }
 
 /// Slider normal (0..1) → real DSP value.
+///
+/// The endpoints are returned **exactly**: several effects have their neutral
+/// point at a bound (Low-Pass at max cutoff, High-Pass at min), and `exp(ln(x))`
+/// drifts by an ulp — `20_000.0` came back as `19_999.998`, which is enough to
+/// miss the bypass check and make "no effect" filter the audio.
 pub(crate) fn norm_to_real(s: &FxParamSpec, norm: f32) -> f32 {
     let n = norm.clamp(0.0, 1.0);
+    if n <= 0.0 {
+        return s.min;
+    }
+    if n >= 1.0 {
+        return s.max;
+    }
     let v = if s.log {
         (s.min.ln() + n * (s.max.ln() - s.min.ln())).exp()
     } else {
@@ -135,8 +163,8 @@ fn real_to_norm(s: &FxParamSpec, real: f32) -> f32 {
     n.clamp(0.0, 1.0)
 }
 
-/// The normalized slider positions that reproduce effect `kind`'s preset defaults.
-/// Unused slots stay at `0.0` (the panel hides them).
+/// The normalized slider positions of effect `kind`'s **neutral** point — where
+/// it is a byte-identical no-op. Unused slots stay at `0.0` (the panel hides them).
 pub(crate) fn default_norms(kind: usize) -> [f32; MAX_FX_PARAMS] {
     let mut out = [0.0; MAX_FX_PARAMS];
     for (slot, s) in out.iter_mut().zip(params_for(kind)) {
@@ -245,6 +273,8 @@ pub(crate) fn build(kind: usize, norms: &[f32; MAX_FX_PARAMS]) -> Option<FxComma
 #[cfg(test)]
 mod tests {
     use super::*;
+    use ph2d_audio::{AudioFormat, SampleData};
+    use ph2d_audio_edit::EditClip;
 
     #[test]
     fn every_kind_has_a_spec_and_builds() {
@@ -300,6 +330,74 @@ mod tests {
         assert!(auto_makeup(0.001, 20.0) <= 4.0, "clamped");
     }
 
+    /// THE contract of the defaults: selecting an effect (or arrowing past it)
+    /// must leave the audio **byte-identical** until the user turns something.
+    /// Not "almost" — a filter at the top of its range still phase-shifts, a 1:1
+    /// compressor still rounds, and a dry reverb would otherwise append a silent
+    /// tail. Each effect therefore short-circuits at its neutral point.
+    #[test]
+    fn every_effect_is_a_no_op_at_its_defaults() {
+        // A signal with content across the band, off-centre and stereo-divergent,
+        // so a filter, a compressor, a crusher or an M/S tweak would all show.
+        let samples: Vec<f32> = (0..2_000)
+            .map(|i| {
+                let t = i as f32 / 48_000.0;
+                0.4 * (t * 220.0).sin() + 0.3 * (t * 9_000.0).sin() + 0.05
+            })
+            .collect();
+        let d = SampleData::from_interleaved(samples, AudioFormat::stereo(48_000));
+
+        for (kind, name) in FX_KINDS.iter().enumerate() {
+            let clip = EditClip::new(d.clone());
+            let out = match build(kind, &default_norms(kind)).expect("every kind builds") {
+                FxCommand::Plain(fx) => {
+                    assert!(fx.is_bypass(), "{name}: defaults are not the neutral point");
+                    clip.render_effect(fx)
+                }
+                FxCommand::Tail(fx) => {
+                    assert!(fx.is_bypass(), "{name}: defaults are not the neutral point");
+                    clip.render_tail_effect(fx)
+                }
+            };
+            assert_eq!(
+                out.frame_count(),
+                clip.frame_count(),
+                "{name} changed the clip length at its defaults"
+            );
+            assert_eq!(
+                out.samples(),
+                d.samples(),
+                "{name} is not a byte-identical no-op at its defaults"
+            );
+        }
+    }
+
+    /// …and one nudge off neutral must actually do something, or the bypass
+    /// short-circuit is swallowing real edits.
+    #[test]
+    fn a_nudge_off_neutral_changes_the_audio() {
+        let d =
+            SampleData::from_interleaved(vec![0.5, -0.4, 0.3, -0.2], AudioFormat::stereo(48_000));
+        let clip = EditClip::new(d.clone());
+        // Low-Pass: pull the cutoff well down from its neutral top.
+        let mut norms = default_norms(0);
+        norms[0] = 0.3;
+        let FxCommand::Plain(fx) = build(0, &norms).unwrap() else {
+            panic!("Low-Pass is length-preserving")
+        };
+        assert!(!fx.is_bypass());
+        assert_ne!(clip.render_effect(fx).samples(), d.samples());
+
+        // Reverb: raise Mix off zero → it rings out and grows the clip.
+        let mut norms = default_norms(6);
+        norms[2] = 0.5;
+        let FxCommand::Tail(fx) = build(6, &norms).unwrap() else {
+            panic!("Reverb is tail-extending")
+        };
+        assert!(!fx.is_bypass());
+        assert!(clip.render_tail_effect(fx).frame_count() > clip.frame_count());
+    }
+
     #[test]
     fn views_match_the_param_count_and_format_units() {
         let reverb = 6;
@@ -313,6 +411,6 @@ mod tests {
         assert_eq!(e[0].1, "250 ms");
         // Cutoff above 1 kHz reads in kHz.
         let lp = views(0, &default_norms(0));
-        assert_eq!(lp[0].1, "3.0 kHz");
+        assert_eq!(lp[0].1, "20.0 kHz", "neutral cutoff sits at the top");
     }
 }

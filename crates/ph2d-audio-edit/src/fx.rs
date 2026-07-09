@@ -23,9 +23,25 @@ fn channels(data: &SampleData) -> usize {
     data.format().channel_count().max(1)
 }
 
-/// A single offline effect with fixed parameters. The UI picks a curated preset
-/// per button (mirror of the W2 fixed-gain buttons); parametric control + chain +
-/// presets are a later block.
+// Every effect must be a **byte-identical no-op** at its neutral parameters, so
+// the editor can select it (and audition it) without touching the audio until the
+// user actually turns something. "Almost identity" is not enough: a filter at the
+// top of its range still phase-shifts, and a 1:1 compressor still rounds. Each
+// neutral point below is therefore an explicit bypass, not an emergent one.
+
+/// A low-pass at or above this cutoff passes the whole audible band → bypass.
+const LOWPASS_BYPASS_HZ: f32 = 20_000.0;
+/// A high-pass at or below this cutoff passes the whole audible band → bypass.
+const HIGHPASS_BYPASS_HZ: f32 = 20.0;
+/// Drive below this is inaudible (and `tanh(k)` underflows the normalizer).
+const SATURATE_BYPASS_DRIVE: f32 = 1e-3;
+/// Bit depth at or above this, with no decimation, is transparent → bypass.
+const BITCRUSH_BYPASS_BITS: u32 = 16;
+
+/// A single length-preserving offline effect. Each variant has a **neutral point**
+/// at which [`Effect::apply`] returns its input untouched (see
+/// [`Effect::is_bypass`]) — that is where the editor's sliders start, so selecting
+/// an effect never alters the audio until the user turns something.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Effect {
     /// 2nd-order low-pass (muffle / warm) at `cutoff` Hz, `q` resonance.
@@ -45,7 +61,7 @@ pub enum Effect {
         /// Post-compression make-up gain (linear).
         makeup: f32,
     },
-    /// `tanh` soft-clip saturation (warmth / drive); `drive` ≥ ~0.1.
+    /// `tanh` soft-clip saturation (warmth / drive). Neutral at `drive` 0.
     Saturate { drive: f32 },
     /// Lo-fi bit-depth reduction to `bits` + sample-hold decimation by
     /// `downsample` (≥1 = no decimation).
@@ -60,21 +76,48 @@ impl Effect {
     pub fn apply(&self, data: &SampleData) -> SampleData {
         let sr = data.format().sample_rate as f32;
         match *self {
-            Effect::LowPass { cutoff, q } => biquad_all(data, BiquadCoeffs::lowpass(sr, cutoff, q)),
-            Effect::HighPass { cutoff, q } => {
+            // Each arm short-circuits at its neutral point (see the bypass consts):
+            // the returned clip is then the SAME `Arc<[f32]>`, not a re-render.
+            Effect::LowPass { cutoff, q } if cutoff < LOWPASS_BYPASS_HZ => {
+                biquad_all(data, BiquadCoeffs::lowpass(sr, cutoff, q))
+            }
+            Effect::HighPass { cutoff, q } if cutoff > HIGHPASS_BYPASS_HZ => {
                 biquad_all(data, BiquadCoeffs::highpass(sr, cutoff, q))
             }
+            // Ratio 1:1 reduces nothing — and would still round the samples.
             Effect::Compress {
                 threshold,
                 ratio,
                 attack_secs,
                 release_secs,
                 makeup,
-            } => compress(data, threshold, ratio, attack_secs, release_secs, makeup),
-            Effect::Saturate { drive } => saturate(data, drive),
-            Effect::Bitcrush { bits, downsample } => bitcrush(data, bits, downsample),
-            Effect::StereoWidth { width } => stereo_width(data, width),
+            } if ratio > 1.0 => compress(data, threshold, ratio, attack_secs, release_secs, makeup),
+            Effect::Saturate { drive } if drive >= SATURATE_BYPASS_DRIVE => saturate(data, drive),
+            Effect::Bitcrush { bits, downsample }
+                if bits < BITCRUSH_BYPASS_BITS || downsample > 1 =>
+            {
+                bitcrush(data, bits, downsample)
+            }
+            // Width 1.0 is algebraically identity, but `mid ± side` still rounds.
+            Effect::StereoWidth { width } if (width - 1.0).abs() > f32::EPSILON => {
+                stereo_width(data, width)
+            }
+            _ => data.clone(),
         }
+    }
+
+    /// Whether this effect is at its neutral point and [`Effect::apply`] would
+    /// return the input untouched.
+    pub fn is_bypass(&self) -> bool {
+        matches!(
+            *self,
+            Effect::LowPass { cutoff, .. } if cutoff >= LOWPASS_BYPASS_HZ)
+            || matches!(*self, Effect::HighPass { cutoff, .. } if cutoff <= HIGHPASS_BYPASS_HZ)
+            || matches!(*self, Effect::Compress { ratio, .. } if ratio <= 1.0)
+            || matches!(*self, Effect::Saturate { drive } if drive < SATURATE_BYPASS_DRIVE)
+            || matches!(*self, Effect::Bitcrush { bits, downsample }
+                if bits >= BITCRUSH_BYPASS_BITS && downsample <= 1)
+            || matches!(*self, Effect::StereoWidth { width } if (width - 1.0).abs() <= f32::EPSILON)
     }
 }
 
@@ -111,8 +154,25 @@ pub enum TailEffect {
 }
 
 impl TailEffect {
-    /// How many frames of ring-out this effect needs at `sample_rate`.
+    /// Dry→wet crossfade of either variant.
+    fn mix(&self) -> f32 {
+        match *self {
+            TailEffect::Reverb { mix, .. } | TailEffect::Delay { mix, .. } => mix,
+        }
+    }
+
+    /// Whether this effect is at its neutral point (fully dry). Then it must NOT
+    /// even ring out: appending a silent tail would lengthen the clip for nothing.
+    pub fn is_bypass(&self) -> bool {
+        self.mix() <= 0.0
+    }
+
+    /// How many frames of ring-out this effect needs at `sample_rate`. **Zero when
+    /// bypassed**, which is what keeps a fully-dry reverb from growing the clip.
     pub fn tail_frames(&self, sample_rate: u32) -> usize {
+        if self.is_bypass() {
+            return 0;
+        }
         let secs = match *self {
             TailEffect::Reverb { tail_secs, .. } | TailEffect::Delay { tail_secs, .. } => tail_secs,
         };
@@ -122,6 +182,9 @@ impl TailEffect {
     /// Render `data` followed by `tail_frames` of ring-out. Always returns
     /// `data.frame_count() + tail_frames` frames.
     pub fn render(&self, data: &SampleData, tail_frames: usize) -> SampleData {
+        if self.is_bypass() {
+            return data.clone(); // fully dry: `tail_frames` is 0, so lengths match
+        }
         let sr = data.format().sample_rate;
         match *self {
             TailEffect::Reverb {
@@ -338,6 +401,68 @@ mod tests {
                 3,
                 "{fx:?} must keep the frame count"
             );
+        }
+    }
+
+    /// `is_bypass` must be exactly the set of parameters where the effect returns
+    /// its input untouched — the editor selects effects at these values, so an
+    /// "almost identity" here would smear the audio just by browsing the rack.
+    #[test]
+    fn is_bypass_implies_exact_identity() {
+        let d = stereo(vec![0.3, -0.4, 0.5, -0.6, 0.7, -0.8]);
+        for fx in [
+            Effect::LowPass {
+                cutoff: 20_000.0,
+                q: 0.707,
+            },
+            Effect::HighPass {
+                cutoff: 20.0,
+                q: 0.707,
+            },
+            Effect::Compress {
+                threshold: 0.3,
+                ratio: 1.0,
+                attack_secs: 0.005,
+                release_secs: 0.1,
+                makeup: 1.0,
+            },
+            Effect::Saturate { drive: 0.0 },
+            Effect::Bitcrush {
+                bits: 16,
+                downsample: 1,
+            },
+            Effect::StereoWidth { width: 1.0 },
+        ] {
+            assert!(fx.is_bypass(), "{fx:?} should be neutral");
+            assert_eq!(
+                fx.apply(&d).samples(),
+                d.samples(),
+                "{fx:?} altered the audio"
+            );
+        }
+
+        // A fully-dry tail effect must not ring out NOR lengthen the clip.
+        for fx in [
+            TailEffect::Reverb {
+                room_size: 0.7,
+                damp: 0.5,
+                mix: 0.0,
+                tail_secs: 2.5,
+            },
+            TailEffect::Delay {
+                time_secs: 0.25,
+                feedback: 0.4,
+                mix: 0.0,
+                tail_secs: 2.0,
+            },
+        ] {
+            assert!(fx.is_bypass(), "{fx:?} should be neutral");
+            assert_eq!(
+                fx.tail_frames(48_000),
+                0,
+                "{fx:?} would append a silent tail"
+            );
+            assert_eq!(fx.render(&d, 0).samples(), d.samples());
         }
     }
 

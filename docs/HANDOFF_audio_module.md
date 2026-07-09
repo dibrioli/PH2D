@@ -79,6 +79,24 @@ abaixo é histórico — não re-investigue.
   - Ao trocar de efeito, o shell usa `default_norms(novo_kind)` **na hora** — o
     painel só re-semeia os sliders no paint seguinte, e sem isso o frame da troca
     auditaria o efeito novo com os parâmetros do antigo (glitch audível).
+- **Defaults = ponto NEUTRO (Enio, 2026-07-09)**: selecionar um efeito (ou passar
+  por ele com as setas) deixa o áudio **byte-idêntico** até o usuário girar algo.
+  Não basta "quase": um filtro no topo da faixa ainda desloca fase, um compressor
+  1:1 ainda arredonda, e uma reverb seca anexaria uma cauda de silêncio. Por isso
+  cada efeito tem um **bypass explícito** (`Effect::is_bypass` /
+  `TailEffect::is_bypass`), e `tail_frames()` devolve **0** quando `Mix = 0` (é o
+  que impede a reverb seca de crescer o clipe).
+  - Neutros: LowPass cutoff = **max** · HighPass cutoff = **min** · Compress
+    ratio = **1:1** (auto-makeup colapsa pra 1) · Saturate drive = **0** (linear,
+    não log, pra o zero ser alcançável) · Bitcrush **16 bits / 1×** · Widen
+    width = **1.0** · Reverb/Echo **Mix = 0**.
+  - ⚠️ `norm_to_real` devolve os **extremos exatos** (`n<=0 → min`, `n>=1 → max`):
+    `exp(ln(20_000))` voltava `19_999.998`, o suficiente pra furar o bypass e fazer
+    "efeito nenhum" filtrar o áudio. Foi o primeiro teste a falhar.
+  - Testes: `every_effect_is_a_no_op_at_its_defaults` (byte-idêntico + comprimento)
+    e `a_nudge_off_neutral_changes_the_audio` (o bypass não engole edição real);
+    `is_bypass_implies_exact_identity` na crate. Apply com o rack intocado **não**
+    empilha um passo de undo no-op.
 - **Atalhos:** `Ctrl+Z` undo · `Ctrl+Shift+Z` / `Ctrl+Y` redo (roteados ao
   `EditClip` quando o painel WAVE está aberto com clipe carregado).
 - **Fix:** `cpal::Stream` é dropado no `on_close_request`, não no drop-cascade do

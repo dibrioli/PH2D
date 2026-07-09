@@ -230,7 +230,12 @@ impl AudioSystem {
         if let Some(audition) = self.editor.fx_audition.take()
             && let Some(clip) = self.editor.clip.as_mut()
         {
-            clip.commit_rendered(audition.data().clone());
+            // Every effect is a no-op at its defaults, so Apply on an untouched
+            // rack would otherwise push an identical buffer onto the undo timeline
+            // — an undo step that undoes nothing.
+            if audition.data().samples() != clip.data().samples() {
+                clip.commit_rendered(audition.data().clone());
+            }
         }
         self.editor_fx_discard();
         self.editor_hot_swap();

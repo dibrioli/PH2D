@@ -383,7 +383,9 @@ todos os bytes do watercolor por natureza).
 oitavas 2-32px + high-pass real = box-blur 32px do próprio campo subtraído). Métrica da auditoria
 razão bloco32/campo: **0,917 → <0,35** (pinado por teste + costura). Hot loop = 1 fetch bilinear
 (mais barato). **GRAN-1:** deposição valley-gated `(1 − k·h·γ)`, γ=0,9 — sinal Curtis correto, sem
-speckle; settle cresce com Rewet+soak e vai a pleno no bake (assenta na secagem). Amount 0 =
+speckle; settle cresce com Rewet+soak **em tempo real — live == bake (WYSIWYG)**: o a-pleno-só-no-bake
+popava na soltura (Enio 2026-07-08, revertido no mesmo dia; a 'secagem' vive como resposta viva
+à água). Amount 0 =
 byte-idêntico. **GRAN-3:** fallback 2 oitavas (5px + 2.5px·0,35). Gotcha de teste: `sample_image`
 usa convenção dab-space (`u·0,5+0,5` → 1 unidade de tile = meia imagem). Segue aberto: GRAN-4
 (γ por-pigmento / dissolve), GRAN-5 (escala do fallback), W-C.

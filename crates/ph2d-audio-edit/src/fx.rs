@@ -1,18 +1,22 @@
-//! Offline, **length-preserving** effect processors for the editor (W3 §6 rack).
+//! Offline effect processors for the editor (W3 §6 rack). Two families, split by
+//! whether the output outlives the input:
 //!
-//! Each [`Effect`] renders a fresh buffer from a clip — control-thread only, so
-//! HR-3/HR-5 do not apply (they allocate and use `tanh`/`exp` freely). Because
-//! every effect here keeps the frame count, they route through
-//! [`crate::in_range`] just like the W2 ops, so applying to a selection processes
-//! only the selected samples (filter/compressor state starts fresh at the region
-//! edge). Tail-extending effects (reverb/delay) are a separate block — they can't
-//! use the length-preserving splice.
+//! - [`Effect`] — **length-preserving** (filters, dynamics, character). Routes
+//!   through [`crate::in_range`] just like the W2 ops, so applying to a selection
+//!   processes only the selected samples (filter/compressor state starts fresh at
+//!   the region edge).
+//! - [`TailEffect`] — **tail-extending** (reverb, delay). Cannot use the
+//!   length-preserving splice: it routes through [`crate::in_range_tail`], which
+//!   rings the tail out over the audio after the range and grows the clip when the
+//!   range touches the end.
 //!
-//! Filters and dynamics reuse the shared `ph2d_audio::dsp` kit (Biquad,
-//! Compressor); character effects (saturate/bitcrush/width) are local pure math.
+//! Both are control-thread only, so HR-3/HR-5 do not apply (they allocate and use
+//! `tanh`/`exp` freely). Filters, dynamics, reverb and delay reuse the shared
+//! `ph2d_audio::dsp` kit; character effects (saturate/bitcrush/width) are local
+//! pure math.
 
 use ph2d_audio::SampleData;
-use ph2d_audio::dsp::{Biquad, BiquadCoeffs, Compressor};
+use ph2d_audio::dsp::{Biquad, BiquadCoeffs, Compressor, Delay, Reverb};
 
 /// Channel count of the clip (≥1).
 fn channels(data: &SampleData) -> usize {
@@ -72,6 +76,115 @@ impl Effect {
             Effect::StereoWidth { width } => stereo_width(data, width),
         }
     }
+}
+
+/// A **tail-extending** offline effect: its output rings on after the input stops,
+/// so it renders `region + tail` frames and splices via [`crate::in_range_tail`]
+/// (never [`crate::in_range`], which would truncate the tail).
+///
+/// `mix` crossfades dry→wet inside the region (`0` = dry, `1` = fully wet); the
+/// tail is pure wet, since the dry signal has ended there.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum TailEffect {
+    /// Stereo Freeverb room reverb.
+    Reverb {
+        /// Decay length (0..1).
+        room_size: f32,
+        /// High-frequency absorption (0..1).
+        damp: f32,
+        /// Dry→wet crossfade (0..1).
+        mix: f32,
+        /// Ring-out rendered past the region, in seconds.
+        tail_secs: f32,
+    },
+    /// Feedback delay (echo). `time_secs` is clamped to the kit's 1 s line.
+    Delay {
+        /// Echo tap time (seconds, < 1.0).
+        time_secs: f32,
+        /// Repeat feedback (0..1, clamped below unity so echoes decay).
+        feedback: f32,
+        /// Dry→wet crossfade (0..1).
+        mix: f32,
+        /// Ring-out rendered past the region, in seconds.
+        tail_secs: f32,
+    },
+}
+
+impl TailEffect {
+    /// How many frames of ring-out this effect needs at `sample_rate`.
+    pub fn tail_frames(&self, sample_rate: u32) -> usize {
+        let secs = match *self {
+            TailEffect::Reverb { tail_secs, .. } | TailEffect::Delay { tail_secs, .. } => tail_secs,
+        };
+        (secs.max(0.0) * sample_rate as f32) as usize
+    }
+
+    /// Render `data` followed by `tail_frames` of ring-out. Always returns
+    /// `data.frame_count() + tail_frames` frames.
+    pub fn render(&self, data: &SampleData, tail_frames: usize) -> SampleData {
+        let sr = data.format().sample_rate;
+        match *self {
+            TailEffect::Reverb {
+                room_size,
+                damp,
+                mix,
+                ..
+            } => {
+                let mut rv = Reverb::new(sr);
+                rv.set_params(room_size, damp);
+                render_wet(data, tail_frames, mix, move |l, r| rv.process(l, r))
+            }
+            TailEffect::Delay {
+                time_secs,
+                feedback,
+                mix,
+                ..
+            } => {
+                let mut dl = Delay::new(sr);
+                dl.set_params(time_secs, feedback);
+                render_wet(data, tail_frames, mix, move |l, r| dl.process(l, r))
+            }
+        }
+    }
+}
+
+/// Drive a **wet-only** stereo processor (the `dsp` kit's contract) across the
+/// region then `tail_frames` of silence, crossfading dry/wet by `mix`. Mono clips
+/// feed the processor `(x, x)` and collapse its stereo wet back to one channel.
+fn render_wet(
+    data: &SampleData,
+    tail_frames: usize,
+    mix: f32,
+    mut wet: impl FnMut(f32, f32) -> (f32, f32),
+) -> SampleData {
+    let ch = channels(data);
+    let frames = data.frame_count();
+    let src = data.samples();
+    let mix = mix.clamp(0.0, 1.0);
+    let dry_gain = 1.0 - mix;
+    let mut out = Vec::with_capacity((frames + tail_frames) * ch);
+    for f in 0..frames + tail_frames {
+        // Past the region the dry signal is silence — the processor keeps ringing.
+        let (dry_l, dry_r) = if f < frames {
+            let b = f * ch;
+            if ch >= 2 {
+                (src[b], src[b + 1])
+            } else {
+                (src[b], src[b])
+            }
+        } else {
+            (0.0, 0.0)
+        };
+        let (wet_l, wet_r) = wet(dry_l, dry_r);
+        if ch >= 2 {
+            out.push((dry_l * dry_gain + wet_l * mix).clamp(-1.0, 1.0));
+            out.push((dry_r * dry_gain + wet_r * mix).clamp(-1.0, 1.0));
+        } else {
+            let w = (wet_l + wet_r) * 0.5;
+            out.push((dry_l * dry_gain + w * mix).clamp(-1.0, 1.0));
+        }
+    }
+    SampleData::from_interleaved(out, data.format())
 }
 
 /// Run an independent [`Biquad`] per channel over the interleaved buffer.
@@ -256,6 +369,76 @@ mod tests {
         let d = SampleData::from_interleaved(vec![0.7, 0.1], AudioFormat::mono(48_000));
         let c = bitcrush(&d, 1, 2);
         assert_eq!(c.samples()[0], c.samples()[1], "held across the decimation");
+    }
+
+    /// The tail must actually RING — and be long enough to contain the effect's
+    /// first output. Freeverb's shortest comb is ~25 ms, so a reverb rendered with
+    /// a 10 ms tail is pure silence: the preset's `tail_secs` has to clear that
+    /// latency (the shipped reverb preset uses 2.5 s).
+    #[test]
+    fn tail_effects_render_region_plus_a_ringing_tail() {
+        let d = stereo(vec![0.8; 200]); // 100 frames of loud audio
+        for fx in [
+            TailEffect::Reverb {
+                room_size: 0.7,
+                damp: 0.5,
+                mix: 0.35,
+                tail_secs: 0.2, // > the ~25 ms first reflection
+            },
+            TailEffect::Delay {
+                time_secs: 0.001,
+                feedback: 0.4,
+                mix: 0.5,
+                tail_secs: 0.05,
+            },
+        ] {
+            let tail = fx.tail_frames(48_000);
+            let out = fx.render(&d, tail);
+            assert_eq!(out.frame_count(), 100 + tail, "{fx:?} region + tail");
+            let tail_energy: f32 = out.samples()[100 * 2..].iter().map(|x| x * x).sum();
+            assert!(tail_energy > 1e-6, "{fx:?} tail must ring out, got silence");
+            assert!(out.samples().iter().all(|x| x.abs() <= 1.0 + 1e-4));
+        }
+    }
+
+    /// A tail shorter than the effect's own latency yields silence — the failure
+    /// mode that makes a preset feel "broken". Pinned so nobody shortens the
+    /// reverb preset's `tail_secs` without noticing.
+    #[test]
+    fn reverb_tail_shorter_than_first_reflection_is_silent() {
+        let d = stereo(vec![0.8; 200]);
+        let fx = TailEffect::Reverb {
+            room_size: 0.7,
+            damp: 0.5,
+            mix: 1.0,
+            tail_secs: 0.01, // 10 ms < ~25 ms shortest comb
+        };
+        let out = fx.render(&d, fx.tail_frames(48_000));
+        let energy: f32 = out.samples().iter().map(|x| x * x).sum();
+        assert!(
+            energy < 1e-6,
+            "reverb has not emitted its first reflection yet"
+        );
+    }
+
+    #[test]
+    fn delay_tail_echo_lands_at_the_delay_time() {
+        // Mono impulse-ish region, fully wet, no feedback → one echo one tap later.
+        let d = SampleData::from_interleaved(vec![1.0, 0.0, 0.0, 0.0], AudioFormat::mono(1_000));
+        let fx = TailEffect::Delay {
+            time_secs: 0.005, // 5 frames @ 1 kHz
+            feedback: 0.0,
+            mix: 1.0,
+            tail_secs: 0.01, // 10 frames
+        };
+        let out = fx.render(&d, fx.tail_frames(1_000));
+        assert_eq!(out.frame_count(), 14);
+        // Frame 5 carries the echo of the impulse at frame 0.
+        assert!(
+            out.samples()[5] > 0.4,
+            "echo at the tap: {:?}",
+            out.samples()
+        );
     }
 
     #[test]

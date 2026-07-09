@@ -97,6 +97,13 @@ pub const AEDIT_BITCRUSH: NodeId = hash_node_id("audio_editor_bitcrush");
 /// Stereo widen (M/S).
 pub const AEDIT_WIDEN: NodeId = hash_node_id("audio_editor_widen");
 
+// Tail-extending effects (W3 block 2) — their ring-out bleeds past the target
+// range and grows the clip when the range reaches the end.
+/// Room reverb (Freeverb).
+pub const AEDIT_REVERB: NodeId = hash_node_id("audio_editor_reverb");
+/// Feedback delay / echo.
+pub const AEDIT_ECHO: NodeId = hash_node_id("audio_editor_echo");
+
 /// A one-shot edit command the panel arms (via a click) and the shell drains +
 /// applies to the loaded `EditClip`. UI-only enum (no `ph2d-audio-edit` dep here);
 /// the shell maps each variant to the matching `EditClip::apply_*` / undo/redo.
@@ -142,6 +149,10 @@ pub enum AudioEditCmd {
     Bitcrush,
     /// Stereo-widen the target range.
     StereoWiden,
+    /// Reverb the target range (tail rings out past it; may grow the clip).
+    Reverb,
+    /// Echo/delay the target range (tail rings out past it; may grow the clip).
+    Echo,
 }
 
 /// Zero-size marker implementing the typed Audio Editor panel contract.

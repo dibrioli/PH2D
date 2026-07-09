@@ -7,19 +7,27 @@
 //! transcendentals) do not constrain it — fades, normalise, filters, FFT and
 //! pitch work can allocate and use `exp`/`sin`/FFT freely.
 //!
-//! ## W1 scope
+//! ## Layout
 //!
-//! [`PeakCache`] / [`column_peaks`] for waveform rendering and the [`EditClip`]
-//! document (clip + peak cache + selection). The editing operations
-//! (trim/split/fade/normalise/…) land in W2 —
-//! `docs/Audio/02_plano_implementacao_completo.md` §5.
+//! - [`EditClip`] — the document: clip + [`PeakCache`] (waveform) + selection +
+//!   an undo timeline. Every `apply_*` acts on the **target range** (the
+//!   selection, or the whole clip when there is none) and commits one undo step.
+//! - `ops` — sample operations (gain, normalise peak/LUFS, reverse, DC, trim,
+//!   cut, silence, fade, zero-crossing snap), plus the two splice primitives that
+//!   make everything selection-aware: [`in_range`] (length-preserving) and
+//!   [`in_range_tail`] (tail-extending).
+//! - `fx` — the effects rack: [`Effect`] (filters/dynamics/character, splices via
+//!   [`in_range`]) and [`TailEffect`] (reverb/delay, splices via
+//!   [`in_range_tail`] because their ring-out outlives the input).
+//!
+//! Plan: `docs/Audio/02_plano_implementacao_completo.md`.
 
 mod fx;
 mod ops;
 mod peaks;
 
-pub use fx::Effect;
-pub use ops::{FadeDir, FadeShape, in_range, peak, snap_to_zero_crossing};
+pub use fx::{Effect, TailEffect};
+pub use ops::{FadeDir, FadeShape, in_range, in_range_tail, peak, snap_to_zero_crossing};
 pub use peaks::{ColumnPeaks, DEFAULT_BIN_SIZE, PeakCache, column_peaks};
 
 use std::ops::Range;
@@ -204,6 +212,18 @@ impl EditClip {
         self.commit(ops::in_range(&self.data, t, |d| fx.apply(d)));
     }
 
+    /// Apply a **tail-extending** [`TailEffect`] (reverb / delay) to the target
+    /// range. The ring-out bleeds onto the audio after the range, and the clip
+    /// **grows** when the range reaches the end (see [`in_range_tail`]). Commits
+    /// one undo step; the selection survives (clamped if the clip shrank, which
+    /// this never does).
+    pub fn apply_tail_effect(&mut self, fx: TailEffect) {
+        let t = self.target();
+        let tail = fx.tail_frames(self.data.format().sample_rate);
+        let out = ops::in_range_tail(&self.data, t, tail, |region, tail| fx.render(region, tail));
+        self.commit(out);
+    }
+
     /// Fade the target range (selection or whole clip).
     pub fn apply_fade(&mut self, shape: FadeShape, dir: FadeDir) {
         self.commit(ops::fade(&self.data, self.target(), shape, dir));
@@ -340,6 +360,38 @@ mod tests {
         clip.set_selection(None);
         clip.apply_gain(0.0);
         assert_eq!(clip.data().samples(), &[0.0; 8]);
+    }
+
+    #[test]
+    fn tail_effect_grows_the_clip_and_undo_restores_it() {
+        let d = SampleData::from_interleaved(vec![0.5; 2_000], AudioFormat::stereo(48_000));
+        let mut clip = EditClip::new(d);
+        assert_eq!(clip.frame_count(), 1_000);
+
+        let echo = TailEffect::Delay {
+            time_secs: 0.002,
+            feedback: 0.3,
+            mix: 0.5,
+            tail_secs: 0.01, // 480 frames
+        };
+        clip.apply_tail_effect(echo);
+        assert_eq!(
+            clip.frame_count(),
+            1_480,
+            "no selection → whole clip + tail"
+        );
+        assert!(clip.can_undo());
+        assert!(clip.undo());
+        assert_eq!(
+            clip.frame_count(),
+            1_000,
+            "undo restores the original length"
+        );
+
+        // A selection mid-clip: the tail bleeds in, the clip does NOT grow.
+        clip.set_selection(Some(0..100));
+        clip.apply_tail_effect(echo);
+        assert_eq!(clip.frame_count(), 1_000, "tail fits inside → no growth");
     }
 
     #[test]

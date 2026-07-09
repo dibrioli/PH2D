@@ -9,11 +9,11 @@
 
 use crate::state::AudioEditorState;
 use crate::{
-    AEDIT_BITCRUSH, AEDIT_CLOSE, AEDIT_COMPRESS, AEDIT_CUT, AEDIT_DC, AEDIT_EXPORT, AEDIT_FADE_IN,
-    AEDIT_FADE_OUT, AEDIT_GAIN_DOWN, AEDIT_GAIN_UP, AEDIT_HIGHPASS, AEDIT_INVERT, AEDIT_LOAD,
-    AEDIT_LOOP, AEDIT_LOWPASS, AEDIT_NAME, AEDIT_NORM_LUFS, AEDIT_NORMALIZE, AEDIT_PANEL,
-    AEDIT_PLAY, AEDIT_REDO, AEDIT_REVERSE, AEDIT_SATURATE, AEDIT_SILENCE, AEDIT_STOP, AEDIT_TRIM,
-    AEDIT_UNDO, AEDIT_WIDEN, AudioEditorPanel, snapshot,
+    AEDIT_BITCRUSH, AEDIT_CLOSE, AEDIT_COMPRESS, AEDIT_CUT, AEDIT_DC, AEDIT_ECHO, AEDIT_EXPORT,
+    AEDIT_FADE_IN, AEDIT_FADE_OUT, AEDIT_GAIN_DOWN, AEDIT_GAIN_UP, AEDIT_HIGHPASS, AEDIT_INVERT,
+    AEDIT_LOAD, AEDIT_LOOP, AEDIT_LOWPASS, AEDIT_NAME, AEDIT_NORM_LUFS, AEDIT_NORMALIZE,
+    AEDIT_PANEL, AEDIT_PLAY, AEDIT_REDO, AEDIT_REVERB, AEDIT_REVERSE, AEDIT_SATURATE,
+    AEDIT_SILENCE, AEDIT_STOP, AEDIT_TRIM, AEDIT_UNDO, AEDIT_WIDEN, AudioEditorPanel, snapshot,
 };
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::interaction::{HitIndex, InteractiveState};
@@ -353,7 +353,9 @@ fn paint_edit_section(
 
     // Effects rack (W3 block 1) — act on the selection, or the whole clip when
     // none (enabled whenever a clip is loaded, like the whole-clip ops).
-    let fx_rows: [[(&str, NodeId, bool); 2]; 3] = [
+    // The last row is tail-extending (W3 block 2): the ring-out bleeds past the
+    // target range and lengthens the clip when the range reaches the end.
+    let fx_rows: [[(&str, NodeId, bool); 2]; 4] = [
         [
             ("Low-Pass", AEDIT_LOWPASS, loaded),
             ("High-Pass", AEDIT_HIGHPASS, loaded),
@@ -365,6 +367,10 @@ fn paint_edit_section(
         [
             ("Bitcrush", AEDIT_BITCRUSH, loaded),
             ("Widen", AEDIT_WIDEN, loaded),
+        ],
+        [
+            ("Reverb", AEDIT_REVERB, loaded),
+            ("Echo", AEDIT_ECHO, loaded),
         ],
     ];
     for row in fx_rows {

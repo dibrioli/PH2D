@@ -30,22 +30,32 @@ abaixo é histórico — não re-investigue.
 - **W3 Bloco 1** — **rack de efeitos offline** (`fx.rs`): `Effect::{LowPass,
   HighPass, Compress, Saturate, Bitcrush, StereoWidth}`, reusando o kit
   `ph2d_audio::dsp` (Biquad, Compressor).
+- **W3 Bloco 2** — **efeitos com cauda** (`TailEffect::{Reverb, Delay}`, reusando
+  Freeverb + Delay do kit). Splice novo `ops::in_range_tail`: dentro do alvo o
+  efeito **substitui**; a cauda **soma** por cima do que vem depois (áudio
+  original se a seleção é no meio) e o **clipe cresce** se o alvo toca o fim.
+  ⚠️ `tail_secs` precisa vencer a latência do próprio efeito — o comb mais curto
+  do Freeverb é ~25 ms, então cauda curta rende **silêncio** (preset usa 2,5 s;
+  há um teste fixando esse modo de falha).
 - **Atalhos:** `Ctrl+Z` undo · `Ctrl+Shift+Z` / `Ctrl+Y` redo (roteados ao
   `EditClip` quando o painel WAVE está aberto com clipe carregado).
 - **Fix:** `cpal::Stream` é dropado no `on_close_request`, não no drop-cascade do
   `App` (segfault 139 de teardown).
 
-**Invariante-chave do rack:** todo efeito do `fx.rs` é **length-preserving**, por
-isso roteia por `EditClip::apply_effect` → `ops::in_range(target())` e fica
-**selection-aware de graça** (a seleção, quando existe, é o alvo; senão, o clipe
-inteiro). **Efeitos que ESTENDEM o clipe (reverb/delay tail) NÃO cabem nesse
-splice** — precisam de padrão novo.
+**Invariante-chave do rack (duas famílias):** tudo age no **target range** (a
+seleção, quando existe; senão o clipe inteiro), e a família decide o splice:
+- **length-preserving** (`Effect`) → `apply_effect` → `ops::in_range`;
+- **tail-extending** (`TailEffect`) → `apply_tail_effect` → `ops::in_range_tail`.
+
+Efeito novo: escolha a família **antes** de escrever o DSP. Um efeito com cauda
+enfiado no `in_range` tem a cauda **truncada** silenciosamente.
 
 **Próximo (plano vivo: [`docs/Audio/02_plano_implementacao_completo.md`](Audio/02_plano_implementacao_completo.md)):**
-1. **W3 Bloco 2** — Reverb + Delay/Echo (tail-extending; ver invariante acima).
-2. **W3 Bloco 3** — UI paramétrica + FX chain reordenável + presets (hoje cada
+1. **W3 Bloco 3** — UI paramétrica + FX chain reordenável + presets (hoje cada
    efeito é um preset fixo curado no shell, igual aos botões de gain ±3 dB).
-3. Depois: W4 (voz) ∥ W5 (espectral/FFT) → W6 (asset-prep) → W7 (ML).
+   Resto do W3: limiter true-peak, gate/expander, de-esser, multibanda,
+   convolução (FFT particionado), chorus/flanger/phaser, tremolo/auto-pan.
+2. Depois: W4 (voz) ∥ W5 (espectral/FFT) → W6 (asset-prep) → W7 (ML).
 
 **Protocolo (Modo L):** trabalhe e comite **nesta linha** (`git commit
 --no-verify`), **sem push**. Você **não integra nem faz ship** — fecha, escreve o

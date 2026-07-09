@@ -86,6 +86,53 @@ pub fn in_range(
     SampleData::from_interleaved(out, data.format())
 }
 
+/// Apply a **tail-extending** op to `range`, ringing the tail out over whatever
+/// follows. The sibling of [`in_range`] for effects (reverb / delay) whose output
+/// outlives their input, so the length-preserving splice doesn't fit.
+///
+/// `op(region, tail_frames)` must return `region_len + tail_frames` frames: the
+/// processed region (dry/wet already mixed) followed by the ring-out. Then:
+/// - the range is **replaced** by the processed region;
+/// - the tail is **added** on top of the frames after the range — the original
+///   audio when the range sits mid-clip, or fresh silence past the old end, which
+///   is where the **clip grows** (`out_frames = max(orig, range.end + tail)`).
+///
+/// This is the DAW behaviour: a reverb on a mid-clip selection bleeds into the
+/// audio that follows; on a selection touching the end it lengthens the clip.
+pub fn in_range_tail(
+    data: &SampleData,
+    range: Range<usize>,
+    tail_frames: usize,
+    op: impl Fn(&SampleData, usize) -> SampleData,
+) -> SampleData {
+    let r = clamp_range(data, range);
+    if r.start >= r.end {
+        return data.clone();
+    }
+    let ch = channels(data);
+    let region_len = r.end - r.start;
+    let region = trim(data, r.clone());
+    let processed = op(&region, tail_frames);
+    // Trust but verify: never index past what `op` actually produced.
+    let tail = processed
+        .frame_count()
+        .saturating_sub(region_len)
+        .min(tail_frames);
+
+    let src = data.samples();
+    let out_frames = data.frame_count().max(r.end + tail);
+    let mut out = vec![0.0f32; out_frames * ch];
+    out[..src.len()].copy_from_slice(src);
+
+    let p = processed.samples();
+    out[r.start * ch..r.end * ch].copy_from_slice(&p[..region_len * ch]);
+    for i in 0..tail * ch {
+        let dst = r.end * ch + i;
+        out[dst] = (out[dst] + p[region_len * ch + i]).clamp(-1.0, 1.0);
+    }
+    SampleData::from_interleaved(out, data.format())
+}
+
 /// Scale every sample by `linear` gain.
 pub fn gain(data: &SampleData, linear: f32) -> SampleData {
     let out: Vec<f32> = data.samples().iter().map(|s| s * linear).collect();
@@ -340,6 +387,72 @@ mod tests {
         assert_eq!(r.samples(), &[1.0, 1.0, 4.0, 4.0, 3.0, 3.0, 2.0, 2.0]);
         // Empty range is a no-op.
         assert_eq!(in_range(&d, 2..2, invert).samples(), d.samples());
+    }
+
+    /// A stand-in tail op: passes the region through, then emits `tail` frames of
+    /// a constant 0.25 ring-out.
+    fn ring(region: &SampleData, tail: usize) -> SampleData {
+        let ch = region.format().channel_count().max(1);
+        let mut v = region.samples().to_vec();
+        v.extend(std::iter::repeat_n(0.25, tail * ch));
+        SampleData::from_interleaved(v, region.format())
+    }
+
+    #[test]
+    fn in_range_tail_grows_the_clip_at_the_end() {
+        // Whole clip (4 frames) + 2 frames of tail → clip grows to 6.
+        let d = stereo(vec![0.0; 8]);
+        let out = in_range_tail(&d, 0..4, 2, ring);
+        assert_eq!(out.frame_count(), 6);
+        assert_eq!(
+            &out.samples()[8..],
+            &[0.25; 4],
+            "tail appended past the end"
+        );
+    }
+
+    #[test]
+    fn in_range_tail_bleeds_into_following_audio_without_growing() {
+        // 4 frames of 0.5; process frame 1 only, 2 frames of tail. The tail lands
+        // on frames 2..4 (which exist), so the clip length is unchanged and the
+        // tail is ADDED to the audio there (0.5 + 0.25).
+        let d = stereo(vec![0.5; 8]);
+        let out = in_range_tail(&d, 1..2, 2, ring);
+        assert_eq!(
+            out.frame_count(),
+            4,
+            "tail fits inside the clip → no growth"
+        );
+        assert_eq!(
+            &out.samples()[0..2],
+            &[0.5, 0.5],
+            "before the range: untouched"
+        );
+        assert_eq!(
+            &out.samples()[2..4],
+            &[0.5, 0.5],
+            "range: replaced by the op"
+        );
+        assert_eq!(
+            &out.samples()[4..8],
+            &[0.75; 4],
+            "tail added onto what follows"
+        );
+    }
+
+    #[test]
+    fn in_range_tail_clamps_and_handles_degenerate_input() {
+        // Tail summing past full scale is clamped, not wrapped.
+        let loud = stereo(vec![0.9; 8]);
+        let out = in_range_tail(&loud, 0..1, 2, ring);
+        assert!(out.samples().iter().all(|x| x.abs() <= 1.0 + 1e-6));
+        // Empty range = no-op; an op that under-delivers its tail must not panic.
+        assert_eq!(
+            in_range_tail(&loud, 2..2, 4, ring).samples(),
+            loud.samples()
+        );
+        let short = in_range_tail(&loud, 0..4, 3, |r, _| r.clone());
+        assert_eq!(short.frame_count(), 4, "no tail produced → no growth");
     }
 
     #[test]

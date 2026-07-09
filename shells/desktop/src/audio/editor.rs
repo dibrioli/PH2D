@@ -235,6 +235,22 @@ impl AudioSystem {
                 Cmd::StereoWiden => {
                     clip.apply_effect(ph2d_audio_edit::Effect::StereoWidth { width: 1.6 })
                 }
+                // Tail-extending (W3 block 2): the ring-out bleeds past the target
+                // range, growing the clip when the range reaches its end. `tail_secs`
+                // must clear the effect's own latency — Freeverb's shortest comb is
+                // ~25 ms, so a short tail would render pure silence.
+                Cmd::Reverb => clip.apply_tail_effect(ph2d_audio_edit::TailEffect::Reverb {
+                    room_size: 0.7,
+                    damp: 0.5,
+                    mix: 0.35,
+                    tail_secs: 2.5,
+                }),
+                Cmd::Echo => clip.apply_tail_effect(ph2d_audio_edit::TailEffect::Delay {
+                    time_secs: 0.25,
+                    feedback: 0.4,
+                    mix: 0.35,
+                    tail_secs: 2.0,
+                }),
             }
         }
         // Hot-swap the edited buffer into the sounding preview (no stop). No-op if

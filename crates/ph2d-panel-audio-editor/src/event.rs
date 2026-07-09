@@ -2,11 +2,11 @@
 
 use crate::state::AudioEditorState;
 use crate::{
-    AEDIT_BITCRUSH, AEDIT_CLOSE, AEDIT_COMPRESS, AEDIT_CUT, AEDIT_DC, AEDIT_EXPORT, AEDIT_FADE_IN,
-    AEDIT_FADE_OUT, AEDIT_GAIN_DOWN, AEDIT_GAIN_UP, AEDIT_HIGHPASS, AEDIT_INVERT, AEDIT_LOAD,
-    AEDIT_LOOP, AEDIT_LOWPASS, AEDIT_NORM_LUFS, AEDIT_NORMALIZE, AEDIT_PLAY, AEDIT_REDO,
-    AEDIT_REVERSE, AEDIT_SATURATE, AEDIT_SILENCE, AEDIT_STOP, AEDIT_TRIM, AEDIT_UNDO, AEDIT_WIDEN,
-    AudioEditCmd, AudioEditorPanel, snapshot,
+    AEDIT_BITCRUSH, AEDIT_CLOSE, AEDIT_COMPRESS, AEDIT_CUT, AEDIT_DC, AEDIT_ECHO, AEDIT_EXPORT,
+    AEDIT_FADE_IN, AEDIT_FADE_OUT, AEDIT_GAIN_DOWN, AEDIT_GAIN_UP, AEDIT_HIGHPASS, AEDIT_INVERT,
+    AEDIT_LOAD, AEDIT_LOOP, AEDIT_LOWPASS, AEDIT_NORM_LUFS, AEDIT_NORMALIZE, AEDIT_PLAY,
+    AEDIT_REDO, AEDIT_REVERB, AEDIT_REVERSE, AEDIT_SATURATE, AEDIT_SILENCE, AEDIT_STOP, AEDIT_TRIM,
+    AEDIT_UNDO, AEDIT_WIDEN, AudioEditCmd, AudioEditorPanel, snapshot,
 };
 use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::WidgetEvent;
@@ -90,6 +90,10 @@ pub(crate) fn apply_event(
             Some(AudioEditCmd::Bitcrush)
         } else if id == AEDIT_WIDEN {
             Some(AudioEditCmd::StereoWiden)
+        } else if id == AEDIT_REVERB {
+            Some(AudioEditCmd::Reverb)
+        } else if id == AEDIT_ECHO {
+            Some(AudioEditCmd::Echo)
         } else {
             None
         };

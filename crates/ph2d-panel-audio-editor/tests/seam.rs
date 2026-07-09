@@ -10,8 +10,9 @@ use ph2d_editor_core::interaction::WidgetEvent;
 use ph2d_editor_core::panel::EventOutcome;
 use ph2d_panel_audio_editor::state::AudioEditorState;
 use ph2d_panel_audio_editor::{
-    AEDIT_LOAD, AEDIT_LOOP, AEDIT_NORMALIZE, AEDIT_PLAY, AEDIT_SATURATE, AEDIT_STOP, AEDIT_TRIM,
-    AudioEditCmd, AudioEditorPanel, looping, take_edit_cmd, take_load, take_play_pause, take_stop,
+    AEDIT_LOAD, AEDIT_LOOP, AEDIT_NORMALIZE, AEDIT_PLAY, AEDIT_REVERB, AEDIT_SATURATE, AEDIT_STOP,
+    AEDIT_TRIM, AudioEditCmd, AudioEditorPanel, looping, take_edit_cmd, take_load, take_play_pause,
+    take_stop,
 };
 use ph2d_ui_testkit::MockPanelHost;
 
@@ -73,12 +74,20 @@ fn edit_clicks_reach_the_edit_command() {
         "Trim click never armed the edit command"
     );
 
-    // An effects-rack button (W3) rides the same seam.
+    // An effects-rack button (W3 block 1) rides the same seam.
     host.apply_panel_event::<AudioEditorPanel>(&mut state, WidgetEvent::Click(AEDIT_SATURATE));
     assert_eq!(
         take_edit_cmd(),
         Some(AudioEditCmd::Saturate),
         "Saturate click never armed the effect command"
+    );
+
+    // …and so does a tail-extending one (W3 block 2).
+    host.apply_panel_event::<AudioEditorPanel>(&mut state, WidgetEvent::Click(AEDIT_REVERB));
+    assert_eq!(
+        take_edit_cmd(),
+        Some(AudioEditCmd::Reverb),
+        "Reverb click never armed the tail-effect command"
     );
 }
 

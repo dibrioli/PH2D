@@ -140,33 +140,62 @@ pub(super) fn apply_channel_presets(
             motion.doc.graph.set_param(nid, "min", min);
             motion.doc.graph.set_param(nid, "max", max);
         }
-        "motion.oscillator" => {
+        // Both wave behaviours carry the same `channel` enum + `amplitude`.
+        "motion.oscillator" | "motion.wiggle" => {
             motion
                 .doc
                 .graph
-                .set_param(nid, "amplitude", oscillator_channel_amplitude(ch));
+                .set_param(nid, "amplitude", wave_channel_amplitude(ch));
         }
         _ => {}
     }
 }
+
+/// The `channel` enum's Rotation option (see the behaviours' `channel` hint:
+/// `0` X, `1` Y, `2` Rotation, `3` Size).
+const CHANNEL_ROTATION: i32 = 2;
 
 /// Stagger `(min, max)` ramp endpoints per channel. The Rotation channel writes
 /// the `rot` stream column, whose unit is **degrees** (the app's authored-angle
 /// unit); Position is world units, Size a scale delta.
 fn stagger_channel_range(channel: i32) -> (f32, f32) {
     match channel {
-        2 => (-90.0, 90.0), // Rotation: ±90 degrees
-        3 => (-0.5, 0.5),   // Size: ±0.5 scale
-        _ => (-1.0, 1.0),   // Position (X/Y): ±1 world unit
+        CHANNEL_ROTATION => (-90.0, 90.0), // ±90 degrees
+        3 => (-0.5, 0.5),                  // Size: ±0.5 scale
+        _ => (-1.0, 1.0),                  // Position (X/Y): ±1 world unit
     }
 }
 
-/// Oscillator peak `amplitude` per channel (same unit logic as the stagger range).
-fn oscillator_channel_amplitude(channel: i32) -> f32 {
+/// Peak `amplitude` per channel for the wave behaviours (oscillator / wiggle) —
+/// same unit logic as the stagger range.
+fn wave_channel_amplitude(channel: i32) -> f32 {
     match channel {
-        2 => 30.0, // Rotation: ±30 degrees
-        3 => 0.3,  // Size: ±0.3 scale
-        _ => 1.0,  // Position: ±1 world unit
+        CHANNEL_ROTATION => 30.0, // ±30 degrees
+        3 => 0.3,                 // Size: ±0.3 scale
+        _ => 1.0,                 // Position: ±1 world unit
+    }
+}
+
+/// A behaviour's magnitude param needs a **channel-aware widget range**, not just
+/// a channel-aware value: a `ParamUiHint`'s range is static, and the behaviours'
+/// were authored for position (`±10` world units). On the Rotation channel the
+/// same param means DEGREES, where `±10` is a barely-visible tilt — and, worse, a
+/// range that cannot even represent the `±90` preset: the slider would saturate,
+/// display `-10`, and overwrite the doc with `-10` on the first touch.
+///
+/// Returns `(min, max, step)` to use instead of the hint's, or `None` to keep it.
+/// Only Rotation needs widening (Position / Size are already world-unit-scaled).
+fn channel_range_override(type_name: &str, param: &str, channel: i32) -> Option<(f32, f32, f32)> {
+    if channel != CHANNEL_ROTATION {
+        return None;
+    }
+    // A full turn each way, dialled in whole degrees.
+    const TURN: f32 = 360.0;
+    match (type_name, param) {
+        ("motion.stagger", "min" | "max") => Some((-TURN, TURN, 1.0)),
+        ("motion.oscillator", "offset") => Some((-TURN, TURN, 1.0)),
+        ("motion.oscillator" | "motion.wiggle", "amplitude") => Some((0.0, TURN, 1.0)),
+        _ => None,
     }
 }
 
@@ -336,6 +365,15 @@ pub(super) fn build_params_snapshot(
         .flatten()
         .collect();
 
+    // The behaviour channel this node currently drives (`None` for a node that
+    // declares no `channel` param) — it selects the magnitude rows' unit, and so
+    // their widget range (see `channel_range_override`).
+    let channel = manifest
+        .params
+        .iter()
+        .any(|p| p.name == "channel")
+        .then(|| value_of("channel").round() as i32);
+
     let mut rows: Vec<ParamRow> = Vec::new();
     for spec in manifest.params {
         let hint = hints.and_then(|hs| hs.iter().find(|h| h.param == spec.name));
@@ -411,15 +449,24 @@ pub(super) fn build_params_snapshot(
         }
         let value = f64::from(value_of(spec.name));
         rows.push(ParamRow::Scalar(match hint {
-            Some(h) => ScalarRow {
-                name: spec.name,
-                label: h.label.to_string(),
-                value,
-                min: f64::from(h.min),
-                max: f64::from(h.max),
-                step: f64::from(h.step),
-                integer: h.widget.is_integer(),
-            },
+            Some(h) => {
+                // A behaviour's magnitude range depends on the channel it drives
+                // (degrees on Rotation vs world units on X/Y) — the static hint
+                // can only describe one, so widen it here or the slider saturates
+                // and overwrites the doc on the first touch.
+                let (min, max, step) = channel
+                    .and_then(|ch| channel_range_override(&inst.type_name, spec.name, ch))
+                    .unwrap_or((h.min, h.max, h.step));
+                ScalarRow {
+                    name: spec.name,
+                    label: h.label.to_string(),
+                    value,
+                    min: f64::from(min),
+                    max: f64::from(max),
+                    step: f64::from(step),
+                    integer: h.widget.is_integer(),
+                }
+            }
             // No hint → a plain float slider over a neutral range.
             None => ScalarRow {
                 name: spec.name,

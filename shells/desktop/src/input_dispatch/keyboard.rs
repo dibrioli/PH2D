@@ -239,11 +239,11 @@ impl App {
             return;
         }
 
-        // General timeline (W2.E7) — Ctrl/Cmd + C/X/V on the dope-sheet keys.
+        // General timeline (W2.E7) — Ctrl/Cmd + C/X/V/D on the dope-sheet keys.
         // Runs AFTER the Vector/Motion blocks, so an active tool keeps the chord;
         // requires the panel open, no focused text field, and something to act on
-        // (a selection to copy/cut, a clipboard to paste) — otherwise it falls
-        // through to the OS/text clipboard.
+        // (a selection to copy/cut/duplicate, a clipboard to paste) — otherwise it
+        // falls through to the OS/text clipboard.
         if self.timeline_panel_open()
             && state == ElementState::Pressed
             && !repeat
@@ -257,6 +257,13 @@ impl App {
                 KeyCode::KeyC if has_selection => Some(I::CopySelection),
                 KeyCode::KeyX if has_selection => Some(I::CutSelection),
                 KeyCode::KeyV if !self.timeline.clipboard.is_empty() => Some(I::Paste),
+                // Duplicate one display frame later: in place the copies would
+                // hide exactly under their originals (we have no modal grab to
+                // move them out), which reads as "nothing happened". The copies
+                // become the selection, so a drag moves them straight away.
+                KeyCode::KeyD if has_selection => Some(I::DuplicateSelection {
+                    delta_seconds: 1.0 / self.timeline.doc.fps_display.max(1.0),
+                }),
                 _ => None,
             };
             if let Some(intent) = intent {

@@ -192,9 +192,26 @@ pub fn apply_intent(state: &mut TimelineState, playhead: &mut Playhead, intent: 
             });
         }),
         I::DuplicateSelection { delta_seconds } => edit(state, |doc, sel| {
-            for_selected_tracks(doc, sel, |track, ids| {
-                track.duplicate_keys(ids, delta_seconds);
-            });
+            // The copies become the selection (Blender): the next drag moves the
+            // duplicates, not the originals they were made from.
+            let mut copies: Vec<SelectedKey> = Vec::new();
+            for target in distinct_targets(sel) {
+                let ids = sel.ids_for(target);
+                if let Some(track) = doc.active_clip_mut().track_mut(target) {
+                    copies.extend(
+                        track
+                            .duplicate_keys(&ids, delta_seconds)
+                            .into_iter()
+                            .map(|key| SelectedKey { target, key }),
+                    );
+                }
+            }
+            if !copies.is_empty() {
+                sel.clear();
+                for k in copies {
+                    sel.add(k);
+                }
+            }
         }),
         I::DeleteSelection => edit(state, |doc, sel| {
             for_selected_tracks(doc, sel, |track, ids| track.remove_keys(ids));
@@ -298,6 +315,15 @@ fn edit(state: &mut TimelineState, f: impl FnOnce(&mut TimelineDoc, &mut Selecti
     state.history.commit_if_changed(&state.doc);
 }
 
+/// The distinct tracks the selection touches, sorted. Collected up front
+/// (immutable borrow) so the caller can then mutate each track in turn.
+fn distinct_targets(sel: &Selection) -> Vec<AnimTarget> {
+    let mut ts: Vec<AnimTarget> = sel.keys().iter().map(|k| k.target).collect();
+    ts.sort_unstable();
+    ts.dedup();
+    ts
+}
+
 /// Apply `op` to every active-clip track that owns at least one selected key,
 /// passing that track's selected key ids.
 fn for_selected_tracks(
@@ -305,15 +331,7 @@ fn for_selected_tracks(
     sel: &Selection,
     mut op: impl FnMut(&mut ph2d_anim::Track, &[KeyId]),
 ) {
-    // Collect the distinct targets in the selection first (immutable borrow),
-    // then mutate each track (mutable borrow) — no overlap.
-    let targets: Vec<AnimTarget> = {
-        let mut ts: Vec<AnimTarget> = sel.keys().iter().map(|k| k.target).collect();
-        ts.sort_unstable();
-        ts.dedup();
-        ts
-    };
-    for target in targets {
+    for target in distinct_targets(sel) {
         let ids = sel.ids_for(target);
         if let Some(track) = doc.active_clip_mut().track_mut(target) {
             op(track, &ids);

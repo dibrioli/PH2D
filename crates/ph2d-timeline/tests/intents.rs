@@ -353,3 +353,81 @@ fn end_seconds_respects_an_authored_duration_that_outlasts_the_keys() {
         "authored duration wins when longer"
     );
 }
+
+// ── W2.E7 — duplicate (Ctrl+D) ───────────────────────────────────────────────
+
+#[test]
+fn duplicate_copies_the_keys_and_selects_the_copies() {
+    let mut st = TimelineState::new();
+    let mut ph = Playhead::new(DT);
+    two_selected_keys(&mut st, &mut ph); // keys at 0.0 and 0.5, both selected
+    let target = st
+        .doc
+        .binding_for(1, PropKind::TranslationX)
+        .unwrap()
+        .target;
+    let originals: Vec<_> = st.doc.active_clip().track(target).unwrap().ids().to_vec();
+
+    apply_intent(
+        &mut st,
+        &mut ph,
+        I::DuplicateSelection {
+            delta_seconds: 0.25,
+        },
+    );
+
+    assert_eq!(
+        key_times(&st),
+        vec![0.0, 0.25, 0.5, 0.75],
+        "copies inserted"
+    );
+    assert_eq!(st.selection.len(), 2, "the selection is the two COPIES");
+    for key in &originals {
+        assert!(
+            !st.selection.contains(SelectedKey { target, key: *key }),
+            "an original stayed selected — a follow-up drag would move it, \
+             leaving the duplicate behind"
+        );
+    }
+    // And a drag right after Ctrl+D moves the copies, not the originals.
+    apply_intent(&mut st, &mut ph, I::MoveSelectedKeys { delta_seconds: 1.0 });
+    assert_eq!(key_times(&st), vec![0.0, 0.5, 1.25, 1.75]);
+}
+
+#[test]
+fn duplicate_is_one_undo_step() {
+    let mut st = TimelineState::new();
+    let mut ph = Playhead::new(DT);
+    two_selected_keys(&mut st, &mut ph);
+    apply_intent(
+        &mut st,
+        &mut ph,
+        I::DuplicateSelection {
+            delta_seconds: 0.25,
+        },
+    );
+    assert_eq!(key_times(&st).len(), 4);
+    st.undo();
+    assert_eq!(
+        key_times(&st),
+        vec![0.0, 0.5],
+        "one step undoes both copies"
+    );
+}
+
+#[test]
+fn duplicate_with_no_selection_changes_nothing() {
+    let mut st = TimelineState::new();
+    let mut ph = Playhead::new(DT);
+    add_key(&mut st, &mut ph, 1, PropKind::TranslationX, 0.0, 5.0);
+    apply_intent(&mut st, &mut ph, I::ClearSelection);
+    apply_intent(
+        &mut st,
+        &mut ph,
+        I::DuplicateSelection {
+            delta_seconds: 0.25,
+        },
+    );
+    assert_eq!(key_times(&st), vec![0.0]);
+    assert_eq!(st.selection.len(), 0);
+}

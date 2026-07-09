@@ -26,6 +26,11 @@ thread_local! {
     static LAST_CONTENT_H: Cell<f32> = const { Cell::new(0.0) };
     /// Last visible body height (panel rect minus header + paddings).
     static LAST_VISIBLE_H: Cell<f32> = const { Cell::new(0.0) };
+    /// A pending "fit the view to the keys" request (F over the panel). The
+    /// shortcut is read by the shell's keyboard handler, but the view transform
+    /// it fits is panel state — so the shell raises the request here and `paint`
+    /// consumes it once the time area's pixel width is known.
+    static FIT_REQUESTED: Cell<bool> = const { Cell::new(false) };
 }
 
 /// Retained per-instance state for `TimelinePanel`: the horizontal view of the
@@ -63,6 +68,12 @@ pub struct TimelinePanelState {
     /// Middle-drag pan anchor (last pointer position) while the wheel button is
     /// held over the dope sheet.
     pub pan_drag: Option<(f32, f32)>,
+    /// In-progress box-select (marquee) drag over an empty lane.
+    pub box_drag: Option<BoxDrag>,
+    /// A box-select that just finished, waiting to be resolved against the key
+    /// diamonds. Set by `interact` at End, consumed by `paint` the SAME frame —
+    /// only `paint` knows the row geometry a key's `y` depends on.
+    pub box_commit: Option<BoxDrag>,
     /// User-resized panel rect. `None` = use the docked rect from the layout.
     pub rect: Option<Rect>,
     /// In-progress edge/corner resize drag.
@@ -79,6 +90,29 @@ pub struct ResizeDrag {
     pub start_rect: Rect,
     /// The pointer position when the drag began.
     pub start_pointer: (f32, f32),
+}
+
+/// An in-progress box-select: the pointer at Begin and the latest pointer, in
+/// global px. Keys whose diamond centre falls inside [`BoxDrag::rect`] join the
+/// selection; without `additive` (Shift) the previous selection is replaced.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct BoxDrag {
+    /// Pointer position when the drag began.
+    pub start: (f32, f32),
+    /// Latest pointer position.
+    pub cur: (f32, f32),
+    /// Shift was held at Begin: add to the selection instead of replacing it.
+    pub additive: bool,
+}
+
+impl BoxDrag {
+    /// The marquee as a normalized rect (any drag direction).
+    #[must_use]
+    pub fn rect(&self) -> Rect {
+        let (x0, x1) = (self.start.0.min(self.cur.0), self.start.0.max(self.cur.0));
+        let (y0, y1) = (self.start.1.min(self.cur.1), self.start.1.max(self.cur.1));
+        Rect::new(x0, y0, x1 - x0, y1 - y0)
+    }
 }
 
 /// An in-progress dope-sheet key drag: pointer x at Begin + the latest x. The
@@ -109,6 +143,8 @@ impl Default for TimelinePanelState {
             scroll_y: 0.0,
             scroll_max: 0.0,
             pan_drag: None,
+            box_drag: None,
+            box_commit: None,
             rect: None,
             resize: None,
         }
@@ -143,6 +179,18 @@ pub(crate) fn push_intent(intent: TimelineIntent) {
 #[must_use]
 pub fn drain_intents() -> Vec<TimelineIntent> {
     INTENTS.with(|c| std::mem::take(&mut *c.borrow_mut()))
+}
+
+/// Ask the panel to fit its time view to the extent of the keys on the next
+/// paint (the `F` shortcut, raised by the shell while the cursor is over the
+/// panel — Blender's per-area focus).
+pub fn request_fit() {
+    FIT_REQUESTED.with(|c| c.set(true));
+}
+
+/// Consume a pending fit request.
+pub(crate) fn take_fit_request() -> bool {
+    FIT_REQUESTED.with(|c| c.replace(false))
 }
 
 /// Last scrollable content height measured by `paint`.

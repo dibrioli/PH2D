@@ -12,14 +12,22 @@
 
 use ph2d_editor_core::interaction::{GesturePhase, TimelineGesture, TimelineWheel};
 use ph2d_editor_core::zones::Rect;
+use ph2d_timeline::TimelineViewSnapshot;
 
 use crate::geom;
-use crate::state::{MAX_PX_PER_S, MIN_PX_PER_S, ResizeDrag, TimelinePanelState};
+use crate::state::{DEFAULT_PX_PER_S, MAX_PX_PER_S, MIN_PX_PER_S, ResizeDrag, TimelinePanelState};
 
 /// Wheel **pixels** per e-fold of zoom. The shell delivers line-deltas already
 /// scaled to logical px (16 px per notch), so one notch is ~7% zoom here — the
 /// same sensitivity the motion graph uses.
 const ZOOM_WHEEL_DIV: f64 = 240.0; // LITERAL-PX-OK: wheel px → zoom-factor sensitivity divisor
+
+/// Fraction of the fitted span left as breathing room on each side, so the first
+/// and last diamonds never sit exactly on the panel border.
+const FIT_PAD: f64 = 0.05; // LITERAL-PX-OK: fit margin as a fraction of the span
+/// The span a fit falls back to when every key sits at the same instant (or the
+/// clip has a single key): one second centred on it, so the zoom stays sane.
+const FIT_DEGENERATE_SPAN_S: f64 = 1.0; // LITERAL-PX-OK: fallback span for a zero-width key extent
 
 /// Apply one frame's accumulated wheel: `pan` slides `view_start_s`, `scroll`
 /// slides the rows, `zoom` scales `px_per_s` about the cursor holding the time
@@ -47,6 +55,49 @@ pub(crate) fn apply_wheel(state: &mut TimelinePanelState, time_x: f32, w: Timeli
         state.px_per_s = new;
     }
     state.view_start_s = state.view_start_s.max(0.0);
+}
+
+/// Fit the time axis to the extent of every key in the document (`F`, Blender's
+/// per-area focus), with a small margin. An empty document — or a zero-width
+/// `time_area` — resets to the default zoom at `t = 0`; a single key (or several
+/// stacked at one instant) gets a one-second window around it rather than an
+/// infinite zoom.
+pub(crate) fn apply_fit(
+    state: &mut TimelinePanelState,
+    time_area_w: f32,
+    snap: &TimelineViewSnapshot,
+) {
+    let w = f64::from(time_area_w);
+    let extent = key_extent(snap);
+    let Some((first, last)) = extent.filter(|_| w > 0.0) else {
+        state.view_start_s = 0.0;
+        state.px_per_s = DEFAULT_PX_PER_S;
+        return;
+    };
+    let (first, last) = if last - first > 0.0 {
+        let pad = (last - first) * FIT_PAD;
+        (first - pad, last + pad)
+    } else {
+        let half = FIT_DEGENERATE_SPAN_S * 0.5;
+        (first - half, first + half)
+    };
+    state.px_per_s = (w / (last - first)).clamp(MIN_PX_PER_S, MAX_PX_PER_S); // CLAMP-OK: const bounds, min<max, non-NaN
+    // Re-derive the start from the CLAMPED zoom, so a clamp keeps the extent
+    // centred instead of pinning it to the left edge.
+    let visible = w / state.px_per_s;
+    state.view_start_s = ((first + last) * 0.5 - visible * 0.5).max(0.0);
+}
+
+/// The `(earliest, latest)` key time across every track, or `None` if the
+/// document has no keys at all.
+fn key_extent(snap: &TimelineViewSnapshot) -> Option<(f64, f64)> {
+    let mut times = snap
+        .tracks
+        .iter()
+        .flat_map(|t| &t.keys)
+        .map(|k| k.t_seconds);
+    let first = times.next()?;
+    Some(times.fold((first, first), |(lo, hi), t| (lo.min(t), hi.max(t))))
 }
 
 /// Middle-drag: grab-and-slide both axes. Dragging right moves the content right,
@@ -146,7 +197,7 @@ mod tests {
         let after = time_at(&st, time_x, anchor_x);
         assert!(
             (after - before).abs() < 1e-9,
-            "the time under the cursor must not move: {before} → {after}"
+            "the time under the cursor must not move: {before} -> {after}"
         );
     }
 
@@ -293,5 +344,91 @@ mod tests {
             g(GesturePhase::End, 500.0),
         );
         assert!(st.resize.is_none());
+    }
+
+    // ── Fit (F) ──────────────────────────────────────────────────────────
+
+    /// A snapshot whose single track carries a key at each of `times`.
+    fn snap_with_keys(times: &[f64]) -> TimelineViewSnapshot {
+        use ph2d_timeline::{AnimTarget, Interp, KeyId, KeyView, TrackView};
+        TimelineViewSnapshot {
+            tracks: vec![TrackView {
+                target: AnimTarget::new(1),
+                prop: ph2d_timeline::PropKind::TranslationX,
+                entity: 1,
+                missing: false,
+                keys: times
+                    .iter()
+                    .enumerate()
+                    .map(|(i, &t)| KeyView {
+                        id: KeyId::new(i as u64),
+                        t_seconds: t,
+                        interp: Interp::Linear,
+                        selected: false,
+                    })
+                    .collect(),
+            }],
+            ..TimelineViewSnapshot::default()
+        }
+    }
+
+    /// The time at the right edge of a `w`-wide time area.
+    fn view_end(st: &TimelinePanelState, w: f32) -> f64 {
+        st.view_start_s + f64::from(w) / st.px_per_s
+    }
+
+    #[test]
+    fn fit_frames_every_key_with_a_margin() {
+        let mut st = TimelinePanelState::default();
+        apply_fit(&mut st, 800.0, &snap_with_keys(&[1.0, 5.0]));
+        assert!(st.view_start_s < 1.0, "the first key is not on the edge");
+        assert!(
+            view_end(&st, 800.0) > 5.0,
+            "the last key is not on the edge"
+        );
+        // The 4 s extent + 5% each side fills the 800 px area.
+        assert!((st.px_per_s - 800.0 / 4.4).abs() < 1e-6, "{}", st.px_per_s);
+    }
+
+    #[test]
+    fn fit_on_an_empty_document_resets_to_the_default_view() {
+        let mut st = TimelinePanelState {
+            view_start_s: 12.0,
+            px_per_s: 900.0,
+            ..TimelinePanelState::default()
+        };
+        apply_fit(&mut st, 800.0, &TimelineViewSnapshot::default());
+        assert_eq!((st.view_start_s, st.px_per_s), (0.0, DEFAULT_PX_PER_S));
+    }
+
+    #[test]
+    fn fit_on_a_single_key_opens_a_one_second_window_around_it() {
+        // A zero-width extent would divide by zero and slam px_per_s to the cap.
+        let mut st = TimelinePanelState::default();
+        apply_fit(&mut st, 800.0, &snap_with_keys(&[4.0]));
+        assert!((st.px_per_s - 800.0).abs() < 1e-6, "800 px over 1 s");
+        assert!((st.view_start_s - 3.5).abs() < 1e-6, "centred on the key");
+    }
+
+    #[test]
+    fn fit_never_pans_before_zero_and_keeps_the_extent_centred_when_clamped() {
+        // Two keys 4 ms apart: the exact fit wants px_per_s far past the ceiling.
+        let mut st = TimelinePanelState::default();
+        apply_fit(&mut st, 800.0, &snap_with_keys(&[10.0, 10.004]));
+        assert_eq!(st.px_per_s, MAX_PX_PER_S, "zoom clamped");
+        let centre = st.view_start_s + f64::from(800.0_f32) / st.px_per_s * 0.5;
+        assert!((centre - 10.002).abs() < 1e-6, "extent stayed centred");
+
+        // A key at t=0 with the zoom clamped the other way must not pan negative.
+        let mut st = TimelinePanelState::default();
+        apply_fit(&mut st, 800.0, &snap_with_keys(&[0.0]));
+        assert!(st.view_start_s >= 0.0, "{}", st.view_start_s);
+    }
+
+    #[test]
+    fn fit_with_no_room_to_paint_falls_back_to_the_default_view() {
+        let mut st = TimelinePanelState::default();
+        apply_fit(&mut st, 0.0, &snap_with_keys(&[1.0, 5.0]));
+        assert_eq!((st.view_start_s, st.px_per_s), (0.0, DEFAULT_PX_PER_S));
     }
 }

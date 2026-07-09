@@ -145,8 +145,9 @@ impl App {
     /// "Tile Grid" chip swallows digits all day).
     pub(crate) fn handle_editor_key(&mut self, code: KeyCode) {
         // Computed before the `&mut gfx` borrow (Motion Nodes M1): F over the
-        // graph fits the graph, not the scene.
+        // graph fits the graph, not the scene. Same for the timeline (W2.E6).
         let over_motion_graph = self.cursor_over_motion_graph();
+        let over_timeline = self.cursor_over_timeline();
         let Some(gfx) = self.gfx.as_mut() else {
             return;
         };
@@ -326,6 +327,12 @@ impl App {
                         .push_graph_key(ph2d_editor::interaction::GraphKey::Fit);
                 }
             }
+            // Timeline W2.E6: over the dope sheet, F fits the TIME AXIS to the
+            // keys. Same per-area focus rule as the graph, and it likewise
+            // suppresses the scene frame below so only one thing fits. The view
+            // transform is panel state, so this raises a request the panel's
+            // `paint` consumes (it alone knows the time area's pixel width).
+            KeyCode::KeyF if over_timeline => ph2d_panel_timeline::request_fit(),
             // Motion Nodes M1.E7: over the graph, Delete/Backspace removes the
             // selected nodes (+ orphan edges) and `A` opens the add-node menu.
             // Pushed directly on the proven cursor check (same rationale as F);

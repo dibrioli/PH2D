@@ -16,6 +16,7 @@
 
 #![forbid(unsafe_code)]
 
+mod box_select;
 mod event;
 mod geom;
 pub mod ids;
@@ -30,7 +31,8 @@ mod transport;
 mod view;
 
 pub use state::{
-    TimelinePanelState, drain_intents, last_content_h, last_visible_h, set_current_timeline,
+    TimelinePanelState, drain_intents, last_content_h, last_visible_h, request_fit,
+    set_current_timeline,
 };
 
 use ph2d_a11y::NodeId;

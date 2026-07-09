@@ -4,7 +4,8 @@
 //! [`TimelineIntent`]s the shell applies (selection + key moves).
 //!
 //! Coverage: click a diamond → select (Shift = toggle into a multi-selection);
-//! click empty lane → clear; drag a diamond → live preview, one
+//! click empty lane → clear; **drag empty lane → box-select** (Shift = add to
+//! the selection); drag a diamond → live preview, one
 //! `MoveSelectedKeys` (frame-snapped) committed at End (a single undo step).
 //! Pressing an already-selected key keeps the whole selection so a drag moves
 //! the **group** — it only collapses to that key on a plain click (no drag),
@@ -21,6 +22,7 @@ use ph2d_editor_core::zones::Rect;
 use ph2d_host::PointerButton;
 use ph2d_timeline::{SelectedKey, TimelineIntent, TimelineViewSnapshot};
 
+use crate::box_select;
 use crate::ids;
 use crate::state::{self, KeyDrag, TimelinePanelState};
 use crate::view;
@@ -66,7 +68,7 @@ pub(crate) fn process(
                 TimelineHitKind::Key { target, key } => {
                     apply_key(state, px_per_s, snap, SelectedKey::new(target, key), g);
                 }
-                TimelineHitKind::Lane => apply_lane(state, g),
+                TimelineHitKind::Lane => box_select::apply_lane(state, g),
                 TimelineHitKind::ResizeEdge { .. } => unreachable!("handled above"),
             },
             // Secondary is reserved (future context menu).
@@ -145,15 +147,6 @@ fn is_selected(snap: &TimelineViewSnapshot, sel: SelectedKey) -> bool {
         .any(|k| k.id == sel.key && k.selected)
 }
 
-/// Empty-lane gesture: a click (tap) clears the selection.
-fn apply_lane(state: &mut TimelinePanelState, g: TimelineGesture) {
-    match g.phase {
-        GesturePhase::Begin | GesturePhase::Update => state.key_drag = None,
-        GesturePhase::Click => state::push_intent(TimelineIntent::ClearSelection),
-        GesturePhase::End | GesturePhase::DoubleClick => {}
-    }
-}
-
 /// The frame-snapped time delta of a finished key drag, or `None` if it rounds to
 /// zero (no move → no undo step). Snaps to whole display frames when the snapshot
 /// says frame-snap is on, matching the transport's scrub/AddKey snapping.
@@ -197,12 +190,22 @@ mod tests {
     const SURFACE: ph2d_a11y::NodeId = ph2d_a11y::NodeId(0);
 
     fn gesture(kind: TimelineHitKind, phase: GesturePhase, x: f32, shift: bool) -> TimelineGesture {
+        gesture_at(kind, phase, x, 0.0, shift)
+    }
+
+    fn gesture_at(
+        kind: TimelineHitKind,
+        phase: GesturePhase,
+        x: f32,
+        y: f32,
+        shift: bool,
+    ) -> TimelineGesture {
         TimelineGesture {
             surface: SURFACE,
             kind,
             phase,
             x,
-            y: 0.0,
+            y,
             button: PointerButton::Primary,
             mods: GestureMods {
                 shift,
@@ -252,7 +255,7 @@ mod tests {
             TimelineHitKind::Key { target, key } => {
                 apply_key(state, px_per_s, snap, SelectedKey::new(target, key), g);
             }
-            TimelineHitKind::Lane => apply_lane(state, g),
+            TimelineHitKind::Lane => box_select::apply_lane(state, g),
             TimelineHitKind::ResizeEdge { .. } => unreachable!("not fed here"),
         }
     }
@@ -424,17 +427,5 @@ mod tests {
             vec![TimelineIntent::SelectSingle(SelectedKey::new(7, 4))],
             "a no-drag click collapses the group to the pressed key"
         );
-    }
-
-    #[test]
-    fn lane_click_clears_the_selection() {
-        let mut st = TimelinePanelState::default();
-        feed(
-            &mut st,
-            gesture(TimelineHitKind::Lane, GesturePhase::Click, 200.0, false),
-            120.0,
-            &snap(),
-        );
-        assert_eq!(state::drain_intents(), vec![TimelineIntent::ClearSelection]);
     }
 }

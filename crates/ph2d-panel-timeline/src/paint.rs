@@ -26,6 +26,10 @@ pub(crate) fn paint(state: &mut TimelinePanelState, ctx: &mut PaintCtx) {
         // (and `dispatch_wheel` stops zooming its time axis) once it is hidden.
         ctx.host.store_mut().clear_panel_rect(ids::TIMELINE_PANEL);
         ctx.host.store_mut().clear_timeline_canvas();
+        // Drop any in-flight gesture: hiding the panel mid-drag must not leave a
+        // marquee to resolve (or repaint) when it comes back.
+        state.box_drag = None;
+        state.box_commit = None;
         set_last_content_h(0.0);
         set_last_visible_h(0.0);
         return;
@@ -87,6 +91,12 @@ pub(crate) fn paint(state: &mut TimelinePanelState, ctx: &mut PaintCtx) {
     state.scroll_max = geom::scroll_max(snapshot.tracks.len(), g.rows.h);
     state.scroll_y = state.scroll_y.clamp(0.0, state.scroll_max); // CLAMP-OK: measured bounds, min<=max
 
+    // `F` fits the time axis to the keys; it needs the time area's pixel width,
+    // known only now. Runs before the view is read, so the fit lands this frame.
+    if state::take_fit_request() {
+        crate::view::apply_fit(state, g.time_area.w, &snapshot);
+    }
+
     // Resolve the time view (after the wheel landed) and share it with the ruler
     // + lanes so ticks and key diamonds align.
     let px_per_s = state.px_per_s;
@@ -102,6 +112,17 @@ pub(crate) fn paint(state: &mut TimelinePanelState, ctx: &mut PaintCtx) {
     }
     state.view_start_s = view_start;
     state.view_span_s = span;
+
+    // A box-select that ended this frame resolves HERE, where the rows' `y` is
+    // finally known (the gesture only recorded the marquee).
+    crate::box_select::commit(
+        state,
+        g.rows,
+        g.time_area.x,
+        view_start,
+        px_per_s,
+        &snapshot,
+    );
 
     let preview_dx = crate::interact::preview_dx(state, px_per_s, &snapshot);
 
@@ -121,6 +142,10 @@ pub(crate) fn paint(state: &mut TimelinePanelState, ctx: &mut PaintCtx) {
         state.scroll_y,
         &snapshot,
     );
+    // The live box-select rubber band rides over the diamonds it is picking.
+    if let Some(b) = state.box_drag {
+        tracks::paint_marquee(ctx, theme, b.rect());
+    }
     scrollbar::paint(ctx, theme, g.scrollbar, state, content_h);
     // Time axis last, so ticks + playhead overlay the rows.
     ruler::paint(ctx, theme, g.time_area, view_start, px_per_s, &snapshot);

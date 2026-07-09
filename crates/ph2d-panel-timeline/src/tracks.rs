@@ -12,13 +12,15 @@
 //! drag-move, clear-on-empty).
 
 use ph2d_editor_core::interaction::{InteractiveState, TimelineHitKind};
-use ph2d_editor_core::paint::{fill_rounded_rect, paint_text, resolve, stroke_rounded_rect};
+use ph2d_editor_core::paint::{
+    fill_rounded_rect, paint_text, rect_to_vello, resolve, stroke_rounded_rect,
+};
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::widget::{Button, ButtonState, paint_button};
 use ph2d_editor_core::zones::Rect;
-use ph2d_timeline::{PropKind, TimelineViewSnapshot};
+use ph2d_timeline::{PropKind, SelectedKey, TimelineViewSnapshot};
 use ph2d_tokens::{ColorToken, ROW_H_PX, Radius, Spacing, StrokeToken, Theme, TypeToken};
-use ph2d_vector::{Affine, BezPath, Brush, Fill};
+use ph2d_vector::{Affine, BezPath, Brush, Fill, Stroke};
 
 use crate::ids;
 
@@ -188,6 +190,57 @@ pub(crate) fn paint_rows(
             ctx.host.hit_index_mut().register(id, hit);
         }
     }
+}
+
+/// Every key whose diamond **centre** falls inside `sel` (a marquee in global
+/// px). Mirrors the row/column math of [`paint_rows`] exactly — a key the user
+/// can see inside the box is a key that gets selected.
+///
+/// Rows scrolled out of `rows` never match: `sel` is intersected with the band
+/// first, so a marquee dragged past the bottom edge cannot reach into the
+/// clipped rows below it.
+pub(crate) fn keys_in_rect(
+    rows: Rect,
+    time_x: f32,
+    view_start: f64,
+    px_per_s: f64,
+    scroll_y: f32,
+    snap: &TimelineViewSnapshot,
+    sel: Rect,
+) -> Vec<SelectedKey> {
+    let bottom = rows.y + rows.h;
+    let (top_y, bot_y) = (sel.y.max(rows.y), (sel.y + sel.h).min(bottom));
+    let mut out = Vec::new();
+    if top_y > bot_y {
+        return out;
+    }
+    for (i, track) in snap.tracks.iter().enumerate() {
+        let y = rows.y - scroll_y + i as f32 * ROW_H_PX;
+        let cy = y + ROW_H_PX * 0.5;
+        if cy < top_y || cy > bot_y {
+            continue;
+        }
+        for k in &track.keys {
+            let kx = time_x + ((k.t_seconds - view_start) * px_per_s) as f32;
+            if kx >= sel.x && kx <= sel.x + sel.w {
+                out.push(SelectedKey::new(track.target.get(), k.id.get()));
+            }
+        }
+    }
+    out
+}
+
+/// The live box-select rubber band: marching-ants accent outline, no fill (so
+/// the diamonds underneath stay readable). Painted over the rows.
+pub(crate) fn paint_marquee(ctx: &mut PaintCtx, theme: Theme, rect: Rect) {
+    let stroke = Stroke::new(StrokeToken::Thin.px() as f64).with_dashes(0.0, [4.0, 3.0]); // LITERAL-PX-OK: marching-ants dash pattern
+    ctx.scene.inner_mut().stroke(
+        &stroke,
+        Affine::IDENTITY,
+        &Brush::Solid(resolve(ColorToken::Accent, theme)),
+        None,
+        &rect_to_vello(rect),
+    );
 }
 
 /// Fill a keyframe diamond centred at `(cx, cy)` with half-size `h`.

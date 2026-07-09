@@ -13180,3 +13180,73 @@ fn watercolor_clean_water_backrun_blooms_on_wet_wash() {
         "água pura sobre papel em branco não deposita nada"
     );
 }
+
+/// **EDGE-3 (doc 12, W-C): rim ASSINADO com conservação (Curtis §4.3.3)** — o pigmento que
+/// escurece a borda MIGROU do interior/franja; o lobo negativo do unsharp (antes clampado fora)
+/// EMPALIDECE a franja. Propriedade refutável: com Edge > 0, o rim escurece E a franja fica MAIS
+/// CLARA que a mesma franja com Edge = 0 (na fórmula aditiva antiga, Edge > 0 só podia escurecer
+/// ou manter QUALQUER pixel — nunca clarear).
+#[test]
+fn watercolor_signed_rim_pales_the_fringe() {
+    let run = |gain: f32| -> PainterTool {
+        let size = 160u32;
+        let mut t = white_canvas(size, 8.0);
+        t.paint.brush = BrushSpec {
+            radius_px: 16.0,
+            hardness: 1.0,
+            falloff: Falloff::Constant,
+            color: [0.85, 0.1, 0.1],
+            space_attenuation: false,
+            watercolor: true,
+            fill: 0.5,
+            depth: 2.0,
+            edge_gain: gain,
+            edge_spread: 6.0,
+            warp: 0.0,
+            granulation: 0.0,
+            ..Default::default()
+        };
+        for slot in &mut t.paint.brush_by_mode {
+            *slot = t.paint.brush;
+        }
+        assert!(t.on_canvas_pointer(cp([80.0, 30.0], PointerPhase::Down)));
+        let mut y = 30.0f32;
+        while y < 130.0 {
+            y += 2.0;
+            t.on_canvas_pointer(cp([80.0, y], PointerPhase::Move));
+        }
+        t.on_canvas_pointer(cp([80.0, 130.0], PointerPhase::Up));
+        t
+    };
+    let plain = run(0.0);
+    let rimmed = run(3.0);
+    let size = 160u32;
+    let g = |t: &PainterTool, x: u32| -> f32 {
+        let mut a = 0.0f32;
+        for y in 60..100u32 {
+            a += f32::from(px(t, size, x, y)[1]);
+        }
+        a / 40.0
+    };
+    // Interior profundo (x = 84): o tom NÃO desloca com Edge (o resíduo cru-vs-endurecido do
+    // inner deslocava o wash inteiro — a reclamação literal da auditoria).
+    assert!(
+        (g(&rimmed, 84) - g(&plain, 84)).abs() <= 2.0,
+        "Edge não pode deslocar o tom do interior (plain G {:.0} vs rimmed G {:.0})",
+        g(&plain, 84),
+        g(&rimmed, 84)
+    );
+    // Rim (justo dentro da silhueta, x ≈ 90): mais escuro com Edge.
+    assert!(
+        g(&rimmed, 90) < g(&plain, 90) - 8.0,
+        "o rim deve escurecer com Edge (plain G {:.0} vs rimmed G {:.0})",
+        g(&plain, 90),
+        g(&rimmed, 90)
+    );
+    // Franja (onde inner > cw, x ≈ 94): mais CLARA com Edge — o lobo negativo (conservação).
+    let (fp, fr) = (g(&plain, 94), g(&rimmed, 94));
+    assert!(
+        fr > fp + 4.0,
+        "a franja deve EMPALIDECER com Edge — pigmento migrou pro rim (plain G {fp:.0} vs rimmed G {fr:.0})"
+    );
+}

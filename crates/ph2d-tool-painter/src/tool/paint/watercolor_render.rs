@@ -200,7 +200,13 @@ impl PainterTool {
         // 24→48 cap raise). `core_r` (computed above) caps the feather at ~half the brush so a pool
         // always keeps a protected core; the WIDE `spread` still drives the dissolve bleed + warp
         // width. At `spread ≤ radius·½` this is a no-op (`core_r == spread`) → byte-identical.
-        let blur = box_blur(&cov_src, rw, rh, core_r);
+        // EDGE-3: `inner` is the blur of the HARDENED coverage (the visible silhouette), not the
+        // raw one — the raw feather plateau (~0.93) left `cw − inner ≈ 0.07` across the WHOLE
+        // interior, so raising Edge shifted the mid tone of the wash (the audit's exact
+        // complaint) instead of only working the rim. Hardened: flat interior ⇒ `inner = 1`,
+        // edge exactly 0; the rim/fringe keep the full signed contrast.
+        let hard: Vec<f32> = cov_src.iter().map(|&c| smoothstep(SS0, SS1, c)).collect();
+        let blur = box_blur(&hard, rw, rh, core_r);
 
         let lut = luts();
         let brush = &self.paint.brush;
@@ -417,7 +423,12 @@ impl PainterTool {
                     } else {
                         cur_style
                     };
-                    let mut edge = (cw * (1.0 - inner) * st.edge_gain).clamp(0.0, 1.0);
+                    // EDGE-3 (Curtis §4.3.3, conservação): o rim é um unsharp ASSINADO — o lobo
+                    // negativo (onde `inner > cw`, a franja) EMPALIDECE: o pigmento que escurece a
+                    // borda MIGROU do interior, não foi somado do nada ("the pigment migrates from
+                    // the interior... leaving a dark deposit at the edge"). Era `cw·(1−inner)`
+                    // clampado em ≥0 — wash uniforme com contorno; subir Edge deslocava o tom.
+                    let mut edge = (st.edge_gain * (cw - inner)).min(1.0);
                     // Paper tooth (substrate): the active Paper slot, or the built-in noise fallback —
                     // memoised per canvas pixel (`compute_paper` is the identical expression; the cache just
                     // avoids recomputing it every frame for the same pixel).
@@ -475,7 +486,7 @@ impl PainterTool {
                         fill_px =
                             st.fill * (1.0 - (WET_THIN * st.wet * spread_thin * inner).min(0.95));
                         let ragged = (1.0 + (paper_h - 0.5) * 2.0 * WET_RAGGED * st.wet).max(0.0);
-                        edge = (edge * (1.0 + WET_EDGE_BOOST * st.wet) * ragged).clamp(0.0, 1.5); // LITERAL-PX-OK: wet edge may overshoot the dry clamp
+                        edge = (edge * (1.0 + WET_EDGE_BOOST * st.wet) * ragged).min(1.5); // LITERAL-PX-OK: wet edge may overshoot the dry clamp; signed (EDGE-3) keeps the pale lobe
                     }
                     // Tip density at the warped position (nearest, like the colour buffer).
                     let tip_dens = if has_dens {

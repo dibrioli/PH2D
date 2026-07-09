@@ -20,7 +20,7 @@ use ph2d_tokens::{ColorToken, Radius, Spacing, Theme, TypeToken};
 use crate::ids;
 use crate::state::TimelinePanelState;
 
-const RULER_H: f32 = 22.0; // LITERAL-PX-OK: ruler strip height
+pub(crate) const RULER_H: f32 = 22.0; // LITERAL-PX-OK: ruler strip height
 const TICK_MAJOR_H: f32 = 10.0; // LITERAL-PX-OK: labelled second tick height
 const TICK_MINOR_H: f32 = 5.0; // LITERAL-PX-OK: half-second tick height
 const PLAYHEAD_W: f32 = 2.0; // LITERAL-PX-OK: playhead line width

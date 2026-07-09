@@ -45,6 +45,22 @@ fn play_button_click_raises_transport_event() {
 }
 
 #[test]
+fn add_track_button_raises_click_for_the_shell_to_bind() {
+    let mut host = MockPanelHost::with_panel::<TimelinePanel>();
+    let mut state = TimelinePanelState::default();
+    let outcome = host.apply_panel_event::<TimelinePanel>(
+        &mut state,
+        WidgetEvent::Click(ids::TIMELINE_ADDPROP_TX),
+    );
+    assert_eq!(outcome, EventOutcome::Consumed);
+    assert_eq!(
+        timeline_events(&mut host),
+        vec![PanelEvent::Click(ids::TIMELINE_ADDPROP_TX)],
+        "a +Track prop click must reach the shell so it binds the selected sprite"
+    );
+}
+
+#[test]
 fn time_chip_edit_raises_set_value() {
     let mut host = MockPanelHost::with_panel::<TimelinePanel>();
     let mut state = TimelinePanelState::default();

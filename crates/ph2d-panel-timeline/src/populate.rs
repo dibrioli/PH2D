@@ -59,6 +59,9 @@ pub(crate) fn populate(store: &mut WidgetStore) {
     button(store, ids::TIMELINE_PREV_FRAME);
     button(store, ids::TIMELINE_PLAY);
     button(store, ids::TIMELINE_NEXT_FRAME);
+    for (id, _) in ids::ADDPROP_BUTTONS {
+        button(store, id);
+    }
     number(store, ids::TIMELINE_TIME_NUM);
     number(store, ids::TIMELINE_FRAME_NUM);
     toggle(store, ids::TIMELINE_LOOP, false);

@@ -14,7 +14,7 @@
 use ph2d_core::Playhead;
 use ph2d_ecs::World;
 use ph2d_editor::tool::PanelEvent;
-use ph2d_timeline::{TimelineIntent, TimelineState, apply_from_doc, apply_intent};
+use ph2d_timeline::{PropKind, TimelineIntent, TimelineState, apply_from_doc, apply_intent};
 
 /// Drain pending intents into `timeline`, then apply its document to `world` at
 /// the current `playhead` time. Call each frame in the apply pass, after
@@ -70,6 +70,21 @@ pub(crate) fn intent_for_transport(
     }
 }
 
+/// Map a "+Track" property-button id to its [`PropKind`] (the shell binds the
+/// selected sprite's matching property). `None` for non-"+Track" ids.
+pub(crate) fn prop_for_addprop_id(id: ph2d_editor::NodeId) -> Option<PropKind> {
+    use ph2d_editor::ids as c;
+    Some(match id {
+        _ if id == c::TIMELINE_ADDPROP_TX => PropKind::TranslationX,
+        _ if id == c::TIMELINE_ADDPROP_TY => PropKind::TranslationY,
+        _ if id == c::TIMELINE_ADDPROP_ROT => PropKind::Rotation,
+        _ if id == c::TIMELINE_ADDPROP_SX => PropKind::ScaleX,
+        _ if id == c::TIMELINE_ADDPROP_SY => PropKind::ScaleY,
+        _ if id == c::TIMELINE_ADDPROP_OPACITY => PropKind::Opacity,
+        _ => return None,
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -110,5 +125,19 @@ mod tests {
             intent_for_transport(&PanelEvent::Click(ids::TIMELINE_CLOSE), &st, &ph),
             None
         );
+    }
+
+    #[test]
+    fn addprop_ids_map_to_prop_kinds() {
+        use ph2d_timeline::PropKind;
+        assert_eq!(
+            prop_for_addprop_id(ids::TIMELINE_ADDPROP_TX),
+            Some(PropKind::TranslationX)
+        );
+        assert_eq!(
+            prop_for_addprop_id(ids::TIMELINE_ADDPROP_OPACITY),
+            Some(PropKind::Opacity)
+        );
+        assert_eq!(prop_for_addprop_id(ids::TIMELINE_PLAY), None);
     }
 }

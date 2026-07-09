@@ -15,9 +15,14 @@ use ph2d_editor_core::interaction::WidgetEvent;
 use ph2d_editor_core::panel::{EventOutcome, Panel, PanelHostInternal};
 use ph2d_editor_core::tool::PanelEvent;
 
-/// The three transport buttons (Click → `PanelEvent::Click`).
+/// The transport + "+Track" buttons (Click → `PanelEvent::Click`; the shell
+/// maps transport ids to a Playhead command and "+Track" ids to a Bind of the
+/// selected sprite).
 fn is_button(id: NodeId) -> bool {
-    id == ids::TIMELINE_PLAY || id == ids::TIMELINE_PREV_FRAME || id == ids::TIMELINE_NEXT_FRAME
+    id == ids::TIMELINE_PLAY
+        || id == ids::TIMELINE_PREV_FRAME
+        || id == ids::TIMELINE_NEXT_FRAME
+        || ids::ADDPROP_BUTTONS.iter().any(|(bid, _)| *bid == id)
 }
 
 /// The two transport chips (ValueChanged → `PanelEvent::SetValue`).

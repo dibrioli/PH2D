@@ -7,7 +7,7 @@
 //! [`TimelineViewSnapshot`] so the wiring is exercised).
 
 use crate::state::{self, TimelinePanelState, set_last_content_h, set_last_visible_h};
-use crate::{TimelinePanel, ids, ruler, transport};
+use crate::{TimelinePanel, ids, ruler, tracks, transport};
 use ph2d_editor_core::panel::{PaintCtx, Panel};
 use ph2d_editor_core::widget::panel_chrome::{
     PANEL_HEAD_PAD, PANEL_HEADER_CLOSE_RESERVE, PANEL_TITLE_BASELINE, paint_panel_close_button,
@@ -64,13 +64,42 @@ pub(crate) fn paint(state: &mut TimelinePanelState, ctx: &mut PaintCtx) {
         (rect.y + rect.h - body_top - PANEL_HEAD_PAD).max(0.0),
     );
     let after_transport = transport::paint_bar(ctx, theme, body, &snapshot);
-    let ruler_region = Rect::new(
+    // Dope-sheet region below the transport bar: a left label column (+Track /
+    // track names) and a time area (ruler + lanes) to its right.
+    let region = Rect::new(
         body.x,
         after_transport,
         body.w,
         (body.y + body.h - after_transport).max(0.0),
     );
-    ruler::paint(ctx, theme, ruler_region, state, &snapshot);
+    let label_w = tracks::LABEL_COL_W.min(region.w);
+    let time_area = Rect::new(
+        region.x + label_w,
+        region.y,
+        (region.w - label_w).max(0.0),
+        region.h,
+    );
+    // "+Track" buttons in the label column, aligned with the ruler strip.
+    tracks::paint_add_track(
+        ctx,
+        theme,
+        Rect::new(region.x, region.y, label_w, ruler::RULER_H),
+    );
+    // Track rows (labels) below the ruler strip.
+    tracks::paint_rows(
+        ctx,
+        theme,
+        Rect::new(
+            region.x,
+            region.y + ruler::RULER_H,
+            region.w,
+            (region.h - ruler::RULER_H).max(0.0),
+        ),
+        label_w,
+        &snapshot,
+    );
+    // Time axis last, so ticks + playhead overlay the rows.
+    ruler::paint(ctx, theme, time_area, state, &snapshot);
 
     set_last_content_h(0.0);
     set_last_visible_h(rect.h);

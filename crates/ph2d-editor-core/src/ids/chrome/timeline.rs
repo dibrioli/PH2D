@@ -36,6 +36,15 @@ pub const TIMELINE_SNAP: NodeId = hash_node_id("timeline.snap");
 // ── Track list + ruler ───────────────────────────────────────────────────────
 /// "+ Track" button (adds a binding for the selected object's property).
 pub const TIMELINE_ADD_TRACK: NodeId = hash_node_id("timeline.add_track");
+/// The six per-property "+Track" buttons — bind the selected sprite's
+/// Translation X/Y · Rotation · Scale X/Y · Opacity (order matches
+/// `PropKind::ALL`).
+pub const TIMELINE_ADDPROP_TX: NodeId = hash_node_id("timeline.addprop.tx");
+pub const TIMELINE_ADDPROP_TY: NodeId = hash_node_id("timeline.addprop.ty");
+pub const TIMELINE_ADDPROP_ROT: NodeId = hash_node_id("timeline.addprop.rot");
+pub const TIMELINE_ADDPROP_SX: NodeId = hash_node_id("timeline.addprop.sx");
+pub const TIMELINE_ADDPROP_SY: NodeId = hash_node_id("timeline.addprop.sy");
+pub const TIMELINE_ADDPROP_OPACITY: NodeId = hash_node_id("timeline.addprop.opacity");
 /// The time ruler strip (scrub hit-target).
 pub const TIMELINE_RULER: NodeId = hash_node_id("timeline.ruler");
 /// The dope-sheet lanes background (box-select / deselect hit-target).

@@ -22,6 +22,7 @@ mod paint;
 pub mod populate;
 mod ruler;
 pub mod state;
+mod tracks;
 mod transport;
 
 pub use state::{TimelinePanelState, last_content_h, last_visible_h, set_current_timeline};

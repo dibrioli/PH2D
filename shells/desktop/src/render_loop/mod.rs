@@ -852,7 +852,16 @@ impl crate::App {
                     // here, editor-core stays timeline-agnostic) and queue them
                     // for `timeline_bridge::run` to apply this frame.
                     EditorAction::TimelinePanelEvent(ev) => {
-                        if let Some(intent) = timeline_bridge::intent_for_transport(
+                        // "+Track <prop>" binds the selected sprite's property
+                        // (the panel doesn't know the selection; the shell does).
+                        if let ph2d_editor::tool::PanelEvent::Click(id) = &ev
+                            && let Some(prop) = timeline_bridge::prop_for_addprop_id(*id)
+                        {
+                            if let Some(entity) = hero.gizmo.iter_selected().next() {
+                                self.timeline_intents
+                                    .push(ph2d_timeline::TimelineIntent::Bind { entity, prop });
+                            }
+                        } else if let Some(intent) = timeline_bridge::intent_for_transport(
                             &ev,
                             &self.timeline,
                             &self.playhead,

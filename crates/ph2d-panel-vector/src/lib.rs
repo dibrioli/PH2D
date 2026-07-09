@@ -34,10 +34,10 @@ pub mod populate;
 pub mod state;
 
 pub use state::{
-    FillKind, VectorPanelState, last_content_h, last_visible_h, set_current_fill,
-    set_current_grad_influence, set_current_grad_jitter, set_current_path_closed,
-    set_current_pivot_edit, set_current_selection_count, set_current_transform,
-    set_current_vector_style, set_selected_vertex_type,
+    FillKind, PathFillRule, VectorPanelState, last_content_h, last_visible_h, set_current_fill,
+    set_current_fill_rule, set_current_grad_influence, set_current_grad_jitter,
+    set_current_path_closed, set_current_pivot_edit, set_current_selection_count,
+    set_current_transform, set_current_vector_style, set_selected_vertex_type,
 };
 
 use ph2d_a11y::NodeId;

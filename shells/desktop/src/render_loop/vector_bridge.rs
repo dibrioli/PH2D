@@ -351,6 +351,22 @@ pub(super) fn dispatch(
     #[cfg(feature = "panel-vector")]
     ph2d_panel_vector::set_current_pivot_edit(vector_active && pivot_edit);
 
+    // Publish the selected path's fill rule — `Some` ONLY when it is a compound
+    // path, since with a single contour both rules paint identically and the row
+    // would be a no-op control.
+    #[cfg(feature = "panel-vector")]
+    ph2d_panel_vector::set_current_fill_rule(
+        vector_active
+            .then(|| pen.selected())
+            .flatten()
+            .and_then(|sel| scene.paths().iter().find(|p| p.id == sel))
+            .filter(|p| p.is_compound())
+            .map(|p| match p.fill_rule {
+                ph2d_vec_scene::FillRule::NonZero => ph2d_panel_vector::PathFillRule::NonZero,
+                ph2d_vec_scene::FillRule::EvenOdd => ph2d_panel_vector::PathFillRule::EvenOdd,
+            }),
+    );
+
     // Publish the selected path's closed flag so the panel labels the toggle
     // "Close Path" / "Open Path" correctly.
     #[cfg(feature = "panel-vector")]

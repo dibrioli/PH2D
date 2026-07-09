@@ -509,7 +509,8 @@ impl BodyCtx<'_> {
             y += self.row_gap - Spacing::Xs.px();
         }
 
-        // Boolean ops — act on the two last closed regions.
+        // Boolean ops — N-ary over the SELECTED closed regions (back-most is the
+        // base, front-most donates the style). Compound row lives in `paint_arrange`.
         y = self.section_label("Boolean", y);
         for (id, label) in [
             (ids::VECTOR_BOOL_UNION, "Union"),
@@ -519,7 +520,7 @@ impl BodyCtx<'_> {
         ] {
             y = self.action_button(id, label, y);
         }
-        y += self.row_gap;
+        y = self.compound_row(y);
 
         // Align + Distribute (multi-path object selection; sibling module for cap).
         y = self.align_section(y);

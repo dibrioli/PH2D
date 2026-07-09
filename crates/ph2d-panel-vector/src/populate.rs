@@ -192,11 +192,16 @@ pub fn populate(store: &mut WidgetStore) {
     button(store, ids::VECTOR_VERT_SYMMETRIC);
     button(store, ids::VECTOR_VERT_DELETE);
 
-    // Boolean op buttons (act on the two last closed regions of the document).
+    // Boolean op buttons (N-ary over the SELECTED closed regions) + compound row.
     button(store, ids::VECTOR_BOOL_UNION);
     button(store, ids::VECTOR_BOOL_SUBTRACT);
     button(store, ids::VECTOR_BOOL_INTERSECT);
     button(store, ids::VECTOR_BOOL_EXCLUDE);
+    button(store, ids::VECTOR_COMPOUND_MAKE);
+    button(store, ids::VECTOR_COMPOUND_RELEASE);
+    // Fill rule (compound paths only — the row hides for a single contour).
+    button(store, ids::VECTOR_FILL_RULE_NONZERO);
+    button(store, ids::VECTOR_FILL_RULE_EVENODD);
 
     // Fill-type selector (Solid / Linear / Radial) — act on the selected path.
     button(store, ids::VECTOR_FILL_KIND_SOLID);

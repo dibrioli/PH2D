@@ -40,6 +40,9 @@ thread_local! {
     static CURRENT_SELECTION_COUNT: Cell<usize> = const { Cell::new(0) };
     /// Whether the gizmo "Set Center" pivot-edit mode is armed (drives the button label).
     static CURRENT_PIVOT_EDIT: Cell<bool> = const { Cell::new(false) };
+    /// Fill rule of the selected path, `Some` only when it is a COMPOUND path —
+    /// the two rules agree on a single contour, so the row would be a no-op there.
+    static CURRENT_FILL_RULE: Cell<Option<PathFillRule>> = const { Cell::new(None) };
     /// Rotation-field accumulator: the angle (degrees) the Angle chip last
     /// reported THIS gesture. `event` emits the DELTA `(current − this)` so the
     /// shell rotates incrementally; reset to 0 by `paint` whenever the field is
@@ -60,6 +63,14 @@ pub enum FillKind {
     Linear,
     Radial,
     MultiPoint,
+}
+
+/// Fill rule of a compound path — which nested contours are holes. Mirror of the
+/// scene `FillRule` (kept panel-local so the panel needn't depend on the scene).
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum PathFillRule {
+    NonZero,
+    EvenOdd,
 }
 
 /// Retained per-instance state slot for `VectorPanel`. Intentionally empty —
@@ -168,6 +179,17 @@ pub fn set_current_pivot_edit(armed: bool) {
 /// Whether "Set Center" is armed this frame (drives the button label).
 pub(crate) fn pivot_edit_armed() -> bool {
     CURRENT_PIVOT_EDIT.with(|c| c.get())
+}
+
+/// Publish the selected path's fill rule — `None` unless it is a compound path
+/// (the Fill Rule row hides otherwise, since both rules would paint the same).
+pub fn set_current_fill_rule(rule: Option<PathFillRule>) {
+    CURRENT_FILL_RULE.with(|c| c.set(rule));
+}
+
+/// The selected compound path's fill rule this frame (`None` = not compound).
+pub(crate) fn current_fill_rule() -> Option<PathFillRule> {
+    CURRENT_FILL_RULE.with(|c| c.get())
 }
 
 /// The angle the Angle chip last reported this gesture (for the delta emit).

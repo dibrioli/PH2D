@@ -15,15 +15,13 @@ fn push_path_assigns_monotonic_ids() {
         id: 999,
         verts: vec![VecVertex::corner([0.0, 0.0])],
         closed: false,
-        fill: None,
-        stroke: None,
+        ..VecPath::default()
     });
     let b = scene.push_path(VecPath {
         id: 999,
         verts: vec![VecVertex::corner([1.0, 1.0])],
         closed: false,
-        fill: None,
-        stroke: None,
+        ..VecPath::default()
     });
     assert_eq!((a, b), (0, 1));
     assert_eq!(scene.paths()[0].id, 0);
@@ -31,11 +29,9 @@ fn push_path_assigns_monotonic_ids() {
 
 fn path_at(p: [f64; 2]) -> VecPath {
     VecPath {
-        id: 0,
         verts: vec![VecVertex::corner(p)],
         closed: false,
-        fill: None,
-        stroke: None,
+        ..VecPath::default()
     }
 }
 
@@ -158,11 +154,9 @@ fn rotate_path_by_arbitrary_angle_about_pivot() {
     let mut scene = VecScene::new();
     // A single point at (1,0); rotate +90° about the origin → (0,1).
     let id = scene.push_path(VecPath {
-        id: 0,
         verts: vec![VecVertex::corner([1.0, 0.0])],
         closed: false,
-        fill: None,
-        stroke: None,
+        ..VecPath::default()
     });
     assert!(scene.rotate_path_by(id, FRAC_PI_2, [0.0, 0.0]));
     let a = scene.paths()[0].verts[0].anchor;
@@ -426,15 +420,13 @@ fn spiral_is_open_grows_from_center_to_edge_and_clamps_turns() {
 /// A closed triangle of straight corners (degenerate handles).
 fn corner_triangle() -> VecPath {
     VecPath {
-        id: 0,
         verts: vec![
             VecVertex::corner([0.0, 0.0]),
             VecVertex::corner([4.0, 0.0]),
             VecVertex::corner([2.0, 3.0]),
         ],
         closed: true,
-        fill: None,
-        stroke: None,
+        ..VecPath::default()
     }
 }
 
@@ -472,7 +464,6 @@ fn retype_corner_to_smooth_auto_synthesizes_colinear_handles_from_neighbors() {
 #[test]
 fn retype_to_symmetric_equalizes_handle_lengths() {
     let mut p = VecPath {
-        id: 0,
         verts: vec![
             VecVertex::corner([0.0, 0.0]),
             // Asymmetric colinear-ish handles on the middle vertex.
@@ -480,8 +471,7 @@ fn retype_to_symmetric_equalizes_handle_lengths() {
             VecVertex::corner([8.0, 0.0]),
         ],
         closed: false,
-        fill: None,
-        stroke: None,
+        ..VecPath::default()
     };
     assert!(retype_vertex(&mut p, 1, VertexKind::Symmetric));
     let v = p.verts[1];
@@ -516,14 +506,12 @@ fn retype_is_noop_when_kind_and_geometry_already_match() {
 /// A curved open segment for split tests.
 fn curved_segment() -> VecPath {
     VecPath {
-        id: 0,
         verts: vec![
             VecVertex::smooth([0.0, 0.0], [0.0, 0.0], [1.0, 2.0]),
             VecVertex::smooth([3.0, 0.0], [2.0, 2.0], [3.0, 0.0]),
         ],
         closed: false,
-        fill: None,
-        stroke: None,
+        ..VecPath::default()
     }
 }
 
@@ -642,11 +630,9 @@ fn nearest_point_on_path_finds_the_click_segment_and_t() {
     assert!(d2.sqrt() < 0.1, "close to the curve");
     // A single-vertex path has no segments.
     let dot = VecPath {
-        id: 0,
         verts: vec![VecVertex::corner([0.0, 0.0])],
         closed: false,
-        fill: None,
-        stroke: None,
+        ..VecPath::default()
     };
     assert!(nearest_point_on_path(&dot, [0.0, 0.0], 8).is_none());
 }
@@ -756,7 +742,6 @@ fn simplify_path_drops_redundant_points_and_keeps_the_shape() {
     // Open path: a straight run of colinear points + one real corner. The two
     // interior colinear points are redundant (zero deviation); the corner stays.
     let poly = VecPath {
-        id: 0,
         verts: vec![
             VecVertex::corner([0.0, 0.0]),
             VecVertex::corner([3.0, 0.0]), // colinear on [0,0]→[9,0]
@@ -765,8 +750,7 @@ fn simplify_path_drops_redundant_points_and_keeps_the_shape() {
             VecVertex::corner([9.0, 9.0]), // real corner (large deviation)
         ],
         closed: false,
-        fill: None,
-        stroke: None,
+        ..VecPath::default()
     };
     let id = scene.push_path(poly);
     let count = |s: &VecScene| s.paths().iter().find(|p| p.id == id).unwrap().verts.len();
@@ -861,15 +845,13 @@ fn set_path_closed_toggles_and_guards() {
     let mut scene = VecScene::new();
     // An open 3-point path.
     let id = scene.push_path(VecPath {
-        id: 0,
         verts: vec![
             VecVertex::corner([0.0, 0.0]),
             VecVertex::corner([4.0, 0.0]),
             VecVertex::corner([2.0, 3.0]),
         ],
         closed: false,
-        fill: None,
-        stroke: None,
+        ..VecPath::default()
     });
     assert!(scene.set_path_closed(id, true), "opens → closed");
     assert!(scene.paths()[0].closed);
@@ -952,4 +934,187 @@ fn path_contains_point_is_even_odd_and_closed_only() {
     assert!(!scene.path_contains_point(open, [5.0, 5.0]));
     // A missing id is never inside.
     assert!(!scene.path_contains_point(9999, [5.0, 5.0]));
+}
+
+// ─── compound paths (subpaths + fill rule + índice plano) ──────────────────
+
+/// Um retângulo `[a,b]` como contorno fechado solto (buraco / ilha).
+fn contour_rect(a: [f64; 2], b: [f64; 2]) -> Contour {
+    Contour::new_closed(rectangle(a, b).verts)
+}
+
+/// Rosquinha: quadrado 0..10 com um furo 3..7.
+fn donut() -> VecPath {
+    let mut p = rectangle([0.0, 0.0], [10.0, 10.0]);
+    p.subpaths = vec![contour_rect([3.0, 3.0], [7.0, 7.0])];
+    p.fill_rule = FillRule::EvenOdd;
+    p
+}
+
+/// O invariante que torna a extensão segura: sem subpaths, o índice PLANO é o
+/// índice de `verts` — todo caminho de código antigo observa o que sempre viu.
+#[test]
+fn flat_index_is_the_identity_for_a_single_contour_path() {
+    let p = rectangle([0.0, 0.0], [10.0, 10.0]);
+    assert!(!p.is_compound());
+    assert_eq!(p.contour_count(), 1);
+    assert_eq!(p.total_verts(), p.verts.len());
+    assert_eq!(p.total_segments(), p.verts.len()); // fechado: inclui o fechamento
+    for i in 0..p.verts.len() {
+        assert_eq!(p.locate_vert(i), Some((0, i)));
+        assert_eq!(p.flat_vert(0, i), Some(i));
+        assert_eq!(p.vert(i), Some(&p.verts[i]));
+    }
+    assert_eq!(p.locate_vert(p.verts.len()), None);
+}
+
+#[test]
+fn flat_index_walks_the_primary_then_each_subpath() {
+    let p = donut();
+    assert!(p.is_compound());
+    assert_eq!(p.contour_count(), 2);
+    assert_eq!(p.total_verts(), 8);
+    assert_eq!(p.total_segments(), 8);
+    // 0..4 = contorno de fora; 4..8 = o furo.
+    assert_eq!(p.locate_vert(3), Some((0, 3)));
+    assert_eq!(p.locate_vert(4), Some((1, 0)));
+    assert_eq!(p.locate_vert(7), Some((1, 3)));
+    assert_eq!(p.locate_vert(8), None);
+    assert_eq!(p.flat_vert(1, 0), Some(4));
+    assert_eq!(p.flat_segment(1, 0), Some(4));
+    assert_eq!(p.vert(4).map(|v| v.anchor), Some([3.0, 3.0]));
+}
+
+/// EvenOdd: o miolo do furo está FORA. NonZero (mesmos contornos, ambos CCW) o
+/// preenche — é a regra, não a orientação, que decide.
+#[test]
+fn contains_point_honours_the_fill_rule_over_the_hole() {
+    let mut scene = VecScene::new();
+    let id = scene.push_path(donut());
+    assert!(scene.path_contains_point(id, [1.0, 5.0]), "o anel é sólido");
+    assert!(
+        !scene.path_contains_point(id, [5.0, 5.0]),
+        "o furo é vazado"
+    );
+
+    let mut solid = donut();
+    solid.fill_rule = FillRule::NonZero;
+    let id2 = scene.push_path(solid);
+    assert!(
+        scene.path_contains_point(id2, [5.0, 5.0]),
+        "NonZero preenche"
+    );
+}
+
+/// Transformar um compound leva o buraco junto (senão o furo "escorrega").
+#[test]
+fn transforms_carry_every_contour() {
+    let mut scene = VecScene::new();
+    let id = scene.push_path(donut());
+    assert!(scene.translate_path(id, 100.0, 0.0));
+    assert!(scene.path_contains_point(id, [101.0, 5.0]));
+    assert!(
+        !scene.path_contains_point(id, [105.0, 5.0]),
+        "o furo veio junto"
+    );
+
+    assert!(scene.scale_path(id, 2.0, 2.0, [100.0, 0.0]));
+    let p = &scene.paths()[0];
+    assert_eq!(p.subpaths[0].verts[0].anchor, [106.0, 6.0]);
+    // A bbox de curva enquadra a forma toda — o furo está dentro, não a estende.
+    let (lo, hi) = scene.path_curve_bbox(id).unwrap();
+    assert_eq!((lo, hi), ([100.0, 0.0], [120.0, 20.0]));
+}
+
+/// Reshape varre todos os contornos (o furo suaviza junto com a borda).
+#[test]
+fn reshape_ops_span_every_contour() {
+    let mut scene = VecScene::new();
+    let id = scene.push_path(donut());
+    assert!(scene.smooth_path(id));
+    let p = &scene.paths()[0];
+    assert!(
+        p.subpaths[0]
+            .verts
+            .iter()
+            .all(|v| v.kind == VertexKind::Smooth)
+    );
+    assert!(scene.sharpen_path(id));
+    let p = &scene.paths()[0];
+    assert!(
+        p.subpaths[0]
+            .verts
+            .iter()
+            .all(|v| v.kind == VertexKind::Corner)
+    );
+    // Subdivide dobra os vértices de CADA contorno.
+    assert!(scene.subdivide_path(id));
+    let p = &scene.paths()[0];
+    assert_eq!((p.verts.len(), p.subpaths[0].verts.len()), (8, 8));
+}
+
+/// Editar um vértice do buraco: os índices planos endereçam o subpath direto.
+#[test]
+fn split_and_retype_reach_a_subpath_by_flat_index() {
+    let mut scene = VecScene::new();
+    let id = scene.push_path(donut());
+    let path = scene.path_mut(id).unwrap();
+    // Segmento plano 4 = 1º segmento do furo → o vértice novo cai no plano 5.
+    let ni = split_segment(path, 4, 0.5).unwrap();
+    assert_eq!(ni, 5);
+    assert_eq!(path.subpaths[0].verts.len(), 5);
+    assert_eq!(path.vert(ni).map(|v| v.anchor), Some([5.0, 3.0]));
+    // E o retype pega o mesmo vértice.
+    assert!(retype_vertex(path, ni, VertexKind::Corner));
+    assert_eq!(path.subpaths[0].verts[1].kind, VertexKind::Corner);
+    // `nearest_point_on_path` também devolve segmento PLANO: perto do furo (5,3).
+    let (seg, _, d2) = nearest_point_on_path(path, [5.0, 3.05], 24).unwrap();
+    assert!(d2 < 0.01);
+    assert_eq!(
+        path.locate_segment(seg).map(|(c, _)| c),
+        Some(1),
+        "achou o furo"
+    );
+}
+
+#[test]
+fn make_and_release_compound_round_trip() {
+    let mut scene = VecScene::new();
+    let outer = scene.push_path(rectangle([0.0, 0.0], [10.0, 10.0]));
+    let inner = scene.push_path(rectangle([3.0, 3.0], [7.0, 7.0]));
+    // Um contorno dentro do outro: até fundir, são dois paths sólidos.
+    assert!(scene.path_contains_point(outer, [5.0, 5.0]));
+
+    let base = scene.make_compound(&[outer, inner]).unwrap();
+    assert_eq!(base, outer, "a base é a de trás (mantém id + estilo)");
+    assert_eq!(scene.paths().len(), 1);
+    assert_eq!(scene.paths()[0].fill_rule, FillRule::EvenOdd);
+    assert!(!scene.path_contains_point(base, [5.0, 5.0]), "virou buraco");
+
+    let freed = scene.release_compound(base);
+    assert_eq!(freed.len(), 1);
+    assert_eq!(scene.paths().len(), 2);
+    assert!(!scene.paths()[0].is_compound());
+    assert_eq!(scene.paths()[0].fill_rule, FillRule::NonZero);
+    assert!(
+        scene.path_contains_point(base, [5.0, 5.0]),
+        "sólido de novo"
+    );
+    // O liberado entra logo ACIMA da base.
+    assert_eq!(scene.paths()[1].id, freed[0]);
+
+    // Menos de 2 ids válidos = no-op; releasear um path simples devolve vazio.
+    assert_eq!(scene.make_compound(&[base]), None);
+    assert!(scene.release_compound(base).is_empty());
+}
+
+/// Remover o contorno primário PROMOVE o primeiro subpath — o path segue válido.
+#[test]
+fn remove_contour_promotes_the_first_subpath() {
+    let mut p = donut();
+    assert!(p.remove_contour(0));
+    assert!(!p.is_compound());
+    assert_eq!(p.verts[0].anchor, [3.0, 3.0], "o furo virou o contorno");
+    // Contorno único não pode ser removido isoladamente.
+    assert!(!p.remove_contour(0));
 }

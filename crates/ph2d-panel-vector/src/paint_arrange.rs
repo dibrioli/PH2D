@@ -1,26 +1,108 @@
-//! Path-reshape subsection painter for the Vector Style panel: the Smooth /
-//! Sharpen / Simplify / Subdivide buttons that act on ALL vertices of the
-//! selected path. Split from `paint_sections` to keep that file under the
-//! 600-LOC panel cap; it's an `impl BodyCtx` block over there.
+//! Subsection painters for the Vector Style panel: the Smooth / Sharpen /
+//! Simplify / Subdivide reshape buttons, the Fill-type + Fill-rule selectors and
+//! the Make/Release Compound row. Split from `paint_sections` to keep that file
+//! under the 600-LOC panel cap; it's an `impl BodyCtx` block over there.
 
 use crate::paint_sections::BodyCtx;
-use crate::state::FillKind;
+use crate::state::{FillKind, PathFillRule};
 use crate::{ids, state};
+use ph2d_editor_core::paint::{paint_text, resolve};
 use ph2d_editor_core::widget::panel_chrome::paint_segmented_button;
 use ph2d_editor_core::widget::{Button, ButtonKind, ButtonState, paint_button};
 use ph2d_editor_core::zones::Rect;
-use ph2d_tokens::Spacing;
+use ph2d_tokens::{ColorToken, Spacing, TypeToken};
 
 /// Full turn in degrees (Angle slider track `0..1` maps to `0..FULL_TURN_DEG`).
 const FULL_TURN_DEG: f64 = 360.0; // LITERAL-PX-OK: degrees in a full turn (math constant)
 
 impl BodyCtx<'_> {
+    /// A labelled 2-across segmented button row (sibling of `segmented3`).
+    fn segmented2(
+        &mut self,
+        label: &str,
+        opts: [(ph2d_a11y::NodeId, &str, bool); 2],
+        mut y: f32,
+    ) -> f32 {
+        let font = TypeToken::Sm.px();
+        let gap = Spacing::Sm.px();
+        let w = ((self.inner_w - gap) / 2.0).max(1.0);
+        paint_text(
+            self.text_system,
+            self.scene,
+            label,
+            self.inner_x,
+            y,
+            font,
+            self.inner_w,
+            resolve(ColorToken::Text2, self.theme),
+        );
+        y += font + Spacing::Xs.px();
+        for (i, (id, lbl, active)) in opts.iter().enumerate() {
+            let rx = self.inner_x + i as f32 * (w + gap);
+            let rect = Rect::new(rx, y, w, self.row_h);
+            let st = self.store.button_state(*id).unwrap_or(ButtonState::Normal);
+            paint_segmented_button(
+                rect,
+                lbl,
+                *active,
+                st,
+                self.scene,
+                self.text_system,
+                self.theme,
+            );
+            self.hit_index.register(*id, rect);
+        }
+        y + self.row_h + self.row_gap
+    }
+
+    /// Make / Release Compound — a 2-across row closing the Boolean section. Merging
+    /// closed paths into one compound is how a hole is authored by hand (draw a
+    /// contour inside another, merge, and `EvenOdd` vacates the inner region).
+    pub(crate) fn compound_row(&mut self, y: f32) -> f32 {
+        let gap = Spacing::Sm.px();
+        let w = ((self.inner_w - gap) / 2.0).max(1.0);
+        self.row2(
+            w,
+            gap,
+            [
+                (ids::VECTOR_COMPOUND_MAKE, "Compound"),
+                (ids::VECTOR_COMPOUND_RELEASE, "Release"),
+            ],
+            y,
+        )
+    }
+
+    /// Fill rule of the selected path. Only shown for a COMPOUND path — with a
+    /// single contour the two rules paint identically, so the row would be a no-op.
+    fn fill_rule_row(&mut self, y: f32) -> f32 {
+        let Some(rule) = state::current_fill_rule() else {
+            return y;
+        };
+        self.segmented2(
+            "Fill Rule",
+            [
+                (
+                    ids::VECTOR_FILL_RULE_NONZERO,
+                    "Non-Zero",
+                    rule == PathFillRule::NonZero,
+                ),
+                (
+                    ids::VECTOR_FILL_RULE_EVENODD,
+                    "Even-Odd",
+                    rule == PathFillRule::EvenOdd,
+                ),
+            ],
+            y,
+        )
+    }
+
     /// Fill-type selector (Solid / Linear / Radial) + the Linear angle slider —
     /// acts on the SELECTED path. Hidden when no path is selected / has no fill.
     pub(crate) fn fill_type_controls(&mut self, mut y: f32) -> f32 {
         let Some(kind) = state::current_fill_kind() else {
             return y;
         };
+        y = self.fill_rule_row(y);
         y = self.section_label("Fill Type", y);
         let kinds = [
             (ids::VECTOR_FILL_KIND_SOLID, "Solid", FillKind::Solid),

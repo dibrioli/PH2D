@@ -178,8 +178,16 @@ impl VectorScene {
     /// Pair with [`Self::pop_layer`]. Used by scrollable panels to
     /// keep overflowing content inside the panel rect.
     pub fn push_clip(&mut self, path: &impl vello::kurbo::Shape) {
+        self.push_clip_with_rule(path, Fill::NonZero);
+    }
+
+    /// [`Self::push_clip`] with an explicit fill rule. A clip whose
+    /// path has nested contours (a compound path with a hole) needs
+    /// `Fill::EvenOdd` — under `NonZero` the hole would still take
+    /// paint. Pair with [`Self::pop_layer`].
+    pub fn push_clip_with_rule(&mut self, path: &impl vello::kurbo::Shape, rule: Fill) {
         self.inner.push_layer(
-            Fill::NonZero,
+            rule,
             vello::peniko::BlendMode::default(),
             1.0,
             Affine::IDENTITY,

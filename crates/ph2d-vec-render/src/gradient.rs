@@ -435,10 +435,12 @@ pub(crate) fn fill_multipoint(
         return;
     }
     let img = rasterize_idw(points, lo, hi, IDW_RES);
-    // Clip to the path in screen space.
+    // Clip to the path in screen space. `VectorScene::push_clip` hardcodes NonZero,
+    // which would paint the gradient over a compound's hole — push the clip layer
+    // with the path's OWN fill rule instead.
     let mut screen_bp = bp.clone();
     screen_bp.apply_affine(transform);
-    target.push_clip(&screen_bp);
+    target.push_clip_with_rule(&screen_bp, crate::fill_rule(path));
     // Image pixels (0..res) → world bbox → screen.
     let px_to_world = Affine::translate((lo[0], lo[1]))
         * Affine::scale_non_uniform(w / f64::from(IDW_RES), h / f64::from(IDW_RES));
@@ -524,7 +526,6 @@ mod tests {
     fn interior_stops_hit_drag_and_cross_along_the_ramp() {
         use ph2d_vec_scene::{GradientStop, VecVertex};
         let mut path = VecPath {
-            id: 0,
             verts: vec![
                 VecVertex::corner([0.0, 0.0]),
                 VecVertex::corner([10.0, 0.0]),
@@ -540,7 +541,7 @@ mod tests {
                 start: [0.0, 0.0],
                 end: [10.0, 0.0],
             }),
-            stroke: None,
+            ..VecPath::default()
         };
         // Interior stops are indices 1..len-1; the two ends aren't markers.
         assert_eq!(interior_stop_indices(4).collect::<Vec<_>>(), vec![1, 2]);

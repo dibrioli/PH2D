@@ -14,6 +14,9 @@
 pub mod shape;
 pub use shape::{ShapeKind, ShapeParams, ShapeTool};
 
+/// Selection + the document ops that act on it (sibling module, LOC cap).
+mod selection;
+
 use ph2d_vec_scene::{
     LineCap, LineJoin, Paint, Rgba8, StrokeSpec, VecPath, VecPathId, VecScene, VecVertex,
     VertexKind,
@@ -140,203 +143,6 @@ impl PenTool {
         self.dragging || self.grab.is_some()
     }
 
-    /// Path selecionado (o shell mostra seus gizmos de handle).
-    pub fn selected(&self) -> Option<VecPathId> {
-        self.selected
-    }
-
-    /// A seleção de objeto multi-path (para overlay + Align/Distribute + move em
-    /// grupo). Sempre inclui o primário; vazia quando nada está selecionado.
-    pub fn selected_paths(&self) -> &[VecPathId] {
-        &self.selected_paths
-    }
-
-    /// Shift+clique: alterna `id` na seleção de objeto. Ao adicionar, vira o primário;
-    /// ao remover, o primário passa a ser o último remanescente (ou `None`). Limpa a
-    /// seleção de vértice (a edição de ponto é do primário de clique simples).
-    pub fn toggle_path(&mut self, id: VecPathId) {
-        self.selected_verts.clear();
-        if let Some(pos) = self.selected_paths.iter().position(|&p| p == id) {
-            self.selected_paths.remove(pos);
-            self.selected = self.selected_paths.last().copied();
-        } else {
-            self.selected_paths.push(id);
-            self.selected = Some(id);
-        }
-    }
-
-    /// Hit-test de OBJETO: o path cujo âncora/handle OU contorno está a `hit_r` de
-    /// `p` (o mais próximo). Para o Shift+clique de multi-seleção. `None` = vazio.
-    pub fn path_at(&self, scene: &VecScene, p: [f64; 2], hit_r: f64) -> Option<VecPathId> {
-        if let Some(g) = self.hit_test(scene, p, hit_r) {
-            return Some(g.path);
-        }
-        let mut best: Option<(VecPathId, f64)> = None;
-        for path in scene.paths() {
-            if let Some((_, _, d2)) = ph2d_vec_scene::nearest_point_on_path(path, p, INSERT_SAMPLES)
-                && d2.sqrt() <= hit_r
-                && best.is_none_or(|(_, b)| d2 < b)
-            {
-                best = Some((path.id, d2));
-            }
-        }
-        best.map(|(id, _)| id)
-    }
-
-    /// Vértice "primário" (último tocado) — o do destaque do painel; `None` se
-    /// nada selecionado.
-    pub fn selected_vert(&self) -> Option<usize> {
-        self.selected_verts.last().copied()
-    }
-
-    /// Todos os vértices selecionados (para o overlay destacá-los).
-    pub fn selected_verts(&self) -> &[usize] {
-        &self.selected_verts
-    }
-
-    /// Define a seleção de PATH (ex.: selecionar o resultado de uma booleana).
-    /// Reduz a seleção de objeto a `[id]` (ou vazia) e limpa a seleção de vértice.
-    pub fn select(&mut self, id: Option<VecPathId>) {
-        self.selected = id;
-        self.selected_paths = id.map(|i| vec![i]).unwrap_or_default();
-        self.selected_verts.clear();
-    }
-
-    /// Nudge por teclado: desloca a seleção por `(dx, dy)` world-units. Se há
-    /// vértices selecionados, translada só eles (âncora + handles); senão, o path
-    /// inteiro. Devolve `true` se moveu algo (nada selecionado ⇒ `false`).
-    pub fn nudge(&mut self, scene: &mut VecScene, dx: f64, dy: f64) -> bool {
-        // Multi-path OBJECT selection (no specific vertices) → move every selected
-        // path wholesale (Align/Distribute companion).
-        if self.selected_verts.is_empty() && self.selected_paths.len() > 1 {
-            let mut moved = false;
-            for &id in &self.selected_paths {
-                moved |= scene.translate_path(id, dx, dy);
-            }
-            return moved;
-        }
-        let Some(sel) = self.selected else {
-            return false;
-        };
-        let Some(path) = scene.path_mut(sel) else {
-            return false;
-        };
-        let shift = |v: &mut VecVertex| {
-            v.anchor = [v.anchor[0] + dx, v.anchor[1] + dy];
-            v.in_handle = [v.in_handle[0] + dx, v.in_handle[1] + dy];
-            v.out_handle = [v.out_handle[0] + dx, v.out_handle[1] + dy];
-        };
-        if self.selected_verts.is_empty() {
-            path.verts.iter_mut().for_each(shift);
-        } else {
-            for &i in &self.selected_verts {
-                if let Some(v) = path.verts.get_mut(i) {
-                    shift(v);
-                }
-            }
-        }
-        true
-    }
-
-    /// Box-select: seleciona as âncoras do path (selecionado; senão o que tiver
-    /// mais âncoras na caixa) dentro do retângulo world `[min,max]`. Substitui a
-    /// seleção. Só muda estado de seleção — não muta a cena, não gera undo.
-    pub fn box_select(&mut self, scene: &VecScene, min: [f64; 2], max: [f64; 2]) {
-        let (x0, x1) = (min[0].min(max[0]), min[0].max(max[0]));
-        let (y0, y1) = (min[1].min(max[1]), min[1].max(max[1]));
-        let inside = |a: [f64; 2]| a[0] >= x0 && a[0] <= x1 && a[1] >= y0 && a[1] <= y1;
-        let target = self.selected.or_else(|| {
-            scene
-                .paths()
-                .iter()
-                .map(|p| (p.id, p.verts.iter().filter(|v| inside(v.anchor)).count()))
-                .filter(|&(_, c)| c > 0)
-                .max_by_key(|&(_, c)| c)
-                .map(|(id, _)| id)
-        });
-        let Some(id) = target else {
-            self.selected_verts.clear();
-            return;
-        };
-        self.selected = Some(id);
-        self.selected_paths = vec![id];
-        self.selected_verts = scene
-            .paths()
-            .iter()
-            .find(|p| p.id == id)
-            .map(|p| {
-                p.verts
-                    .iter()
-                    .enumerate()
-                    .filter(|(_, v)| inside(v.anchor))
-                    .map(|(i, _)| i)
-                    .collect()
-            })
-            .unwrap_or_default();
-    }
-
-    /// Tipo do vértice primário (para o painel destacar Corner/Smooth/Symmetric).
-    /// `None` se não há vértice selecionado ou o índice não existe mais.
-    pub fn selected_vertex_kind(&self, scene: &VecScene) -> Option<VertexKind> {
-        let i = self.selected_vert()?;
-        let sel = self.selected?;
-        let path = scene.paths().iter().find(|p| p.id == sel)?;
-        path.verts.get(i).map(|v| v.kind)
-    }
-
-    /// Retipa TODOS os vértices selecionados (botões Corner/Smooth/Symmetric).
-    /// Devolve `true` se algo mudou (o shell empurra um passo de undo nesse caso).
-    pub fn set_selected_vertex_kind(&mut self, scene: &mut VecScene, kind: VertexKind) -> bool {
-        let Some(id) = self.selected else {
-            return false;
-        };
-        let Some(path) = scene.path_mut(id) else {
-            return false;
-        };
-        let mut changed = false;
-        for &i in &self.selected_verts {
-            changed |= ph2d_vec_scene::retype_vertex(path, i, kind);
-        }
-        changed
-    }
-
-    /// Apaga TODOS os vértices selecionados (Delete / botão), re-costurando os
-    /// vizinhos. Se o path ficar com < 2 vértices, remove o path inteiro e limpa
-    /// a seleção. A seleção segue no vizinho do 1º apagado (delete encadeado de um
-    /// só). Devolve `true` se apagou algo.
-    pub fn delete_selected_vertex(&mut self, scene: &mut VecScene) -> bool {
-        let Some(id) = self.selected else {
-            return false;
-        };
-        if self.selected_verts.is_empty() {
-            return false;
-        }
-        let Some(path) = scene.path_mut(id) else {
-            return false;
-        };
-        // Remove do maior índice pro menor pra não invalidar os índices.
-        let mut idxs = self.selected_verts.clone();
-        idxs.sort_unstable();
-        idxs.dedup();
-        let lowest = idxs.first().copied().unwrap_or(0);
-        for &i in idxs.iter().rev() {
-            if i < path.verts.len() {
-                path.verts.remove(i);
-            }
-        }
-        let remaining = path.verts.len();
-        self.selected_verts.clear();
-        if remaining < 2 {
-            scene.remove_path(id);
-            self.selected = None;
-            self.active = None;
-        } else if idxs.len() == 1 {
-            // Delete de um só: seleção segue no vizinho (delete encadeado).
-            self.selected_verts = vec![lowest.min(remaining - 1)];
-        }
-        true
-    }
-
     /// Zera todo o estado (ex.: após apagar o path selecionado), preservando o
     /// estilo corrente (é config da tool, não estado de interação).
     pub fn clear(&mut self) {
@@ -445,11 +251,9 @@ impl PenTool {
 
         // Nada agarrado → começa um path novo.
         let id = scene.push_path(VecPath {
-            id: 0,
             verts: vec![VecVertex::corner(p)],
-            closed: false,
-            fill: None,
             stroke: Some(self.style.stroke_spec(stroke_w)),
+            ..VecPath::default()
         });
         self.active = Some(id);
         self.selected = Some(id);
@@ -471,24 +275,23 @@ impl PenTool {
             // âncoras selecionadas transladam pelo mesmo delta (âncora + handles);
             // senão só a agarrada. Handles ficam de fora (são per-vértice).
             if g.part == Part::Anchor {
-                let Some(grabbed) = path.verts.get(g.vert) else {
+                let Some(grabbed) = path.vert(g.vert) else {
                     return false;
                 };
                 let d = [p[0] - grabbed.anchor[0], p[1] - grabbed.anchor[1]];
                 let group = self.selected_verts.contains(&g.vert);
-                let n = path.verts.len();
-                for i in 0..n {
+                for i in 0..path.total_verts() {
                     if i != g.vert && !(group && self.selected_verts.contains(&i)) {
                         continue;
                     }
-                    let v = &mut path.verts[i];
+                    let Some(v) = path.vert_mut(i) else { continue };
                     v.anchor = [v.anchor[0] + d[0], v.anchor[1] + d[1]];
                     v.in_handle = [v.in_handle[0] + d[0], v.in_handle[1] + d[1]];
                     v.out_handle = [v.out_handle[0] + d[0], v.out_handle[1] + d[1]];
                 }
                 return true;
             }
-            let Some(v) = path.verts.get_mut(g.vert) else {
+            let Some(v) = path.vert_mut(g.vert) else {
                 return false;
             };
             match g.part {
@@ -559,7 +362,7 @@ impl PenTool {
             // Handles de QUALQUER tipo, desde que não-degenerados (offset da
             // âncora) — cusps (Corner) e Symmetric também têm handles agarráveis,
             // não só Smooth. Handle tem prioridade sobre âncora (checado antes).
-            for (i, v) in path.verts.iter().enumerate() {
+            for (i, v) in path.verts_all().enumerate() {
                 if dist2(v.in_handle, v.anchor) > 1e-18 && dist2(p, v.in_handle) <= r2 {
                     return Some(Grab {
                         path: sel,
@@ -577,7 +380,7 @@ impl PenTool {
             }
         }
         for path in scene.paths() {
-            for (i, v) in path.verts.iter().enumerate() {
+            for (i, v) in path.verts_all().enumerate() {
                 if dist2(p, v.anchor) <= r2 {
                     return Some(Grab {
                         path: path.id,

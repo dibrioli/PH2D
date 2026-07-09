@@ -20,9 +20,15 @@ mod geometry;
 pub(crate) use geometry::cubic_at;
 pub use geometry::{nearest_point_on_path, retype_vertex, split_segment};
 
-/// Whole-path transforms (flip / rotate / translate / scale / smooth / sharpen)
-/// live in a sibling module (LOC cap); the `impl VecScene` block is inherent.
+/// Compound paths (contornos extras + fill rule) + o índice plano de vértice.
+mod compound;
+pub use compound::{Contour, FillRule};
+
+/// Whole-path transforms (flip / rotate / translate / scale / bbox) live in a
+/// sibling module (LOC cap); the `impl VecScene` block is inherent.
 mod path_ops;
+/// Reshape ops (smooth / sharpen / simplify / subdivide), likewise a sibling.
+mod reshape;
 
 #[cfg(test)]
 mod tests;
@@ -255,7 +261,12 @@ pub type VecPathId = u64;
 
 /// Path vetorial editável: sequência de vértices cúbicos + estilo. Mutável e
 /// clonável — o undo da Fase 1 é snapshot da `VecScene` inteira.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+///
+/// `verts`/`closed` são o contorno **primário**. Um path pode ser **compound**
+/// (buraco, ilha) carregando contornos extras em `subpaths`; [`FillRule`] decide
+/// o que é vazado. Ver o módulo `compound` para o índice plano de vértice que
+/// endereça todos os contornos de uma vez.
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct VecPath {
     pub id: VecPathId,
     pub verts: Vec<VecVertex>,
@@ -264,14 +275,20 @@ pub struct VecPath {
     pub fill: Option<Paint>,
     /// Traço (None = sem stroke). Ver [`StrokeSpec`].
     pub stroke: Option<StrokeSpec>,
+    /// Contornos ADICIONAIS (compound path). Vazio = path de contorno único.
+    pub subpaths: Vec<Contour>,
+    /// Regra de preenchimento entre os contornos. Irrelevante (as duas coincidem)
+    /// quando `subpaths` está vazio.
+    pub fill_rule: FillRule,
 }
 
 /// Versão do wire-format de save (postcard é posicional → bump a cada mudança de
 /// schema). v2: `VertexKind` ganhou `Symmetric`. v3: `stroke` virou
 /// [`StrokeSpec`] (cap/join/dash). v4: `fill` virou [`Paint`] (sólido + gradientes
-/// Linear/Radial/MultiPoint). v5: [`GradientPoint`] ganhou `jitter`. (Migração
-/// robusta = cutover, Fase R.)
-pub const VEC_SCENE_SCHEMA_VERSION: u32 = 5;
+/// Linear/Radial/MultiPoint). v5: [`GradientPoint`] ganhou `jitter`. v6: `VecPath`
+/// ganhou `subpaths` + `fill_rule` (compound paths). (Migração robusta = cutover,
+/// Fase R.)
+pub const VEC_SCENE_SCHEMA_VERSION: u32 = 6;
 
 /// Reordenação na pilha de render (índice `0` = fundo, último = frente). Uma
 /// operação de documento, mapeada pela shell a partir dos botões Arrange (mirror
@@ -474,7 +491,6 @@ pub fn rectangle(a: [f64; 2], b: [f64; 2]) -> VecPath {
     let (x0, x1) = (a[0].min(b[0]), a[0].max(b[0]));
     let (y0, y1) = (a[1].min(b[1]), a[1].max(b[1]));
     VecPath {
-        id: 0,
         verts: vec![
             VecVertex::corner([x0, y0]),
             VecVertex::corner([x1, y0]),
@@ -482,8 +498,7 @@ pub fn rectangle(a: [f64; 2], b: [f64; 2]) -> VecPath {
             VecVertex::corner([x0, y1]),
         ],
         closed: true,
-        fill: None,
-        stroke: None,
+        ..VecPath::default()
     }
 }
 
@@ -497,7 +512,6 @@ pub fn ellipse(center: [f64; 2], rx: f64, ry: f64) -> VecPath {
         VecVertex::smooth([cx + ax, cy + ay], [cx + ix, cy + iy], [cx + ox, cy + oy])
     };
     VecPath {
-        id: 0,
         verts: vec![
             v(rx, 0.0, rx, -ky, rx, ky),
             v(0.0, ry, kx, ry, -kx, ry),
@@ -505,8 +519,7 @@ pub fn ellipse(center: [f64; 2], rx: f64, ry: f64) -> VecPath {
             v(0.0, -ry, -kx, -ry, kx, -ry),
         ],
         closed: true,
-        fill: None,
-        stroke: None,
+        ..VecPath::default()
     }
 }
 
@@ -528,11 +541,9 @@ pub fn regular_polygon(center: [f64; 2], rx: f64, ry: f64, sides: u32) -> VecPat
         })
         .collect();
     VecPath {
-        id: 0,
         verts,
         closed: true,
-        fill: None,
-        stroke: None,
+        ..VecPath::default()
     }
 }
 
@@ -562,11 +573,9 @@ pub fn star(center: [f64; 2], rx: f64, ry: f64, points: u32, inner_ratio: f64) -
         })
         .collect();
     VecPath {
-        id: 0,
         verts,
         closed: true,
-        fill: None,
-        stroke: None,
+        ..VecPath::default()
     }
 }
 
@@ -592,11 +601,9 @@ pub fn spiral(center: [f64; 2], rx: f64, ry: f64, turns: u32) -> VecPath {
         })
         .collect();
     VecPath {
-        id: 0,
         verts,
         closed: false,
-        fill: None,
-        stroke: None,
+        ..VecPath::default()
     }
 }
 
@@ -640,11 +647,9 @@ pub fn rounded_rect(a: [f64; 2], b: [f64; 2], radius: f64) -> VecPath {
         corner([x0, y0 + r], [x0, y0 + r], [x0, y0 + r - k]),
     ];
     VecPath {
-        id: 0,
         verts,
         closed: true,
-        fill: None,
-        stroke: None,
+        ..VecPath::default()
     }
 }
 
@@ -669,7 +674,6 @@ fn demo_curve() -> VecPath {
     let p = |x: f64, y: f64| [x * DEMO_SCALE, y * DEMO_SCALE];
     let width = 120.0 * DEMO_SCALE * 0.3;
     VecPath {
-        id: 0,
         verts: vec![
             VecVertex {
                 anchor: p(-160.0, -150.0),
@@ -685,7 +689,7 @@ fn demo_curve() -> VecPath {
             },
         ],
         closed: false,
-        fill: None,
         stroke: Some(StrokeSpec::new(Rgba8::new(240, 240, 245, 255), width)),
+        ..VecPath::default()
     }
 }

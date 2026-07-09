@@ -54,49 +54,128 @@ pub(crate) mod painter_canvas_input;
 pub(crate) mod painter_falloff_input;
 pub(crate) mod protect_brush;
 
-/// ADR-0108 Fase 1: apply a boolean `op` to the TWO last closed regions of
-/// `scene` (destructive — consumes the operands, inserts the result, records ONE
-/// undo step + selects the result). A free fn so both the U/I/D hotkeys
+/// The z-ordered (back → front) indices of the closed paths in the pen's OBJECT
+/// selection. Boolean and Make Compound both need this: the back-most is the base
+/// and the front-most donates the style (Illustrator's Pathfinder).
+fn selected_closed_z(scene: &ph2d_vec_scene::VecScene, pen: &ph2d_vec_edit::PenTool) -> Vec<usize> {
+    let mut zs: Vec<usize> = pen
+        .selected_paths()
+        .iter()
+        .filter_map(|id| scene.paths().iter().position(|p| p.id == *id && p.closed))
+        .collect();
+    zs.sort_unstable();
+    zs.dedup();
+    zs
+}
+
+/// ADR-0108 Fase 1: apply a boolean `op` to the SELECTED closed regions of `scene`
+/// (destructive — consumes the operands, inserts the result where the base sat,
+/// records ONE undo step + selects the result). N-ary: `Subtract` keeps the
+/// back-most and removes every path above it. A free fn so both the U/I/D hotkeys
 /// ([`App::vec_boolean`]) and the panel's Boolean buttons (the render_loop drain,
 /// where `AppGfx` is already destructured and the method isn't callable) can
-/// invoke it with the decomposed refs. Logs + no-ops on < 2 closed regions /
-/// empty result.
+/// invoke it with the decomposed refs. Logs + no-ops on < 2 selected closed
+/// regions / empty result.
 pub(crate) fn apply_vec_boolean(
     scene: &mut ph2d_vec_scene::VecScene,
     history: &mut ph2d_vec_edit::History,
     pen: &mut ph2d_vec_edit::PenTool,
     op: ph2d_vec_boolean::BoolOp,
 ) {
-    let closed: Vec<u64> = scene
-        .paths()
-        .iter()
-        .filter(|p| p.closed)
-        .map(|p| p.id)
-        .collect();
-    if closed.len() < 2 {
-        eprintln!("[ph2d-vec] boolean: precisa de 2 regiões FECHADAS");
+    let zs = selected_closed_z(scene, pen);
+    if zs.len() < 2 {
+        eprintln!("[ph2d-vec] boolean: selecione >= 2 regioes FECHADAS (Shift+clique)");
         return;
     }
-    let (ida, idb) = (closed[closed.len() - 2], closed[closed.len() - 1]);
-    let a = scene.paths().iter().find(|p| p.id == ida).cloned();
-    let b = scene.paths().iter().find(|p| p.id == idb).cloned();
-    if let (Some(a), Some(b)) = (a, b) {
-        let results = ph2d_vec_boolean::apply(&a, &b, op);
-        if results.is_empty() {
-            eprintln!("[ph2d-vec] boolean {op:?}: resultado vazio");
-            return;
-        }
-        let pre = scene.clone(); // undo da booleana
-        scene.remove_path(ida);
-        scene.remove_path(idb);
-        let mut last = None;
-        for r in results {
-            last = Some(scene.push_path(r));
-        }
-        history.push_undo(pre);
-        pen.select(last);
-        eprintln!("[ph2d-vec] boolean {op:?}: ok");
+    let operands: Vec<ph2d_vec_scene::VecPath> =
+        zs.iter().map(|&z| scene.paths()[z].clone()).collect();
+    let refs: Vec<&ph2d_vec_scene::VecPath> = operands.iter().collect();
+    let results = ph2d_vec_boolean::apply_many(&refs, op);
+    if results.is_empty() {
+        eprintln!("[ph2d-vec] boolean {op:?}: resultado vazio");
+        return;
     }
+    let pre = scene.clone(); // undo da booleana
+    // A base é a de trás: o resultado ocupa a fatia de z dela (não salta pro topo).
+    // Os operandos removidos estão todos em z >= `at`, então o índice segue válido.
+    let at = zs[0];
+    for p in &operands {
+        scene.remove_path(p.id);
+    }
+    let new_ids: Vec<u64> = results
+        .into_iter()
+        .enumerate()
+        .map(|(k, r)| scene.insert_path(at + k, r))
+        .collect();
+    history.push_undo(pre);
+    pen.select_many(&new_ids);
+    eprintln!("[ph2d-vec] boolean {op:?}: ok ({} path[s])", new_ids.len());
+}
+
+/// Make / Release Compound sobre a seleção. **Make** funde os paths fechados
+/// selecionados num só (`EvenOdd` ⇒ um contorno dentro de outro vira buraco na
+/// hora); **Release** devolve cada subpath do(s) selecionado(s) a path próprio.
+/// Um passo de undo; re-seleciona o resultado. Free fn pelo mesmo motivo de
+/// [`apply_vec_boolean`].
+pub(crate) fn apply_vec_compound(
+    scene: &mut ph2d_vec_scene::VecScene,
+    history: &mut ph2d_vec_edit::History,
+    pen: &mut ph2d_vec_edit::PenTool,
+    make: bool,
+) {
+    let pre = scene.clone();
+    if make {
+        let ids: Vec<u64> = selected_closed_z(scene, pen)
+            .iter()
+            .map(|&z| scene.paths()[z].id)
+            .collect();
+        let Some(base) = scene.make_compound(&ids) else {
+            eprintln!("[ph2d-vec] compound: selecione >= 2 regioes FECHADAS");
+            return;
+        };
+        history.push_undo(pre);
+        pen.select(Some(base));
+        return;
+    }
+    let selected: Vec<u64> = pen.selected_paths().to_vec();
+    let mut all: Vec<u64> = Vec::new();
+    for id in &selected {
+        let freed = scene.release_compound(*id);
+        if !freed.is_empty() {
+            all.push(*id);
+            all.extend(freed);
+        }
+    }
+    if all.is_empty() {
+        eprintln!("[ph2d-vec] release: a selecao nao tem compound path");
+        return;
+    }
+    history.push_undo(pre);
+    pen.select_many(&all);
+}
+
+/// Set the selected path's fill rule (the panel's Non-Zero / Even-Odd segmented
+/// row, shown only for compound paths). One undo step; no-op if unchanged.
+pub(crate) fn apply_vec_fill_rule(
+    scene: &mut ph2d_vec_scene::VecScene,
+    history: &mut ph2d_vec_edit::History,
+    pen: &ph2d_vec_edit::PenTool,
+    even_odd: bool,
+) {
+    let rule = if even_odd {
+        ph2d_vec_scene::FillRule::EvenOdd
+    } else {
+        ph2d_vec_scene::FillRule::NonZero
+    };
+    let pre = scene.clone();
+    let Some(path) = pen.selected().and_then(|id| scene.path_mut(id)) else {
+        return;
+    };
+    if path.fill_rule == rule {
+        return;
+    }
+    path.fill_rule = rule;
+    history.push_undo(pre);
 }
 
 /// Map a Vector-panel Boolean button `NodeId` to its op (`None` for any other
@@ -1236,10 +1315,11 @@ impl App {
             })
     }
 
-    /// ADR-0108 Fase 1: booleana das DUAS últimas regiões fechadas (hotkeys
-    /// U/I/D). Delega ao livre [`apply_vec_boolean`] com os refs decompostos — o
-    /// mesmo caminho usado pelos botões Boolean do painel (drain do render_loop,
-    /// onde `self.gfx` já está destruturado e o método não é chamável).
+    /// ADR-0108 Fase 1: booleana N-ária sobre as regiões fechadas SELECIONADAS
+    /// (hotkeys U/I/D/X). Delega ao livre [`apply_vec_boolean`] com os refs
+    /// decompostos — o mesmo caminho usado pelos botões Boolean do painel (drain
+    /// do render_loop, onde `self.gfx` já está destruturado e o método não é
+    /// chamável).
     fn vec_boolean(&mut self, op: ph2d_vec_boolean::BoolOp) {
         if let Some(gfx) = self.gfx.as_mut() {
             apply_vec_boolean(
@@ -3096,7 +3176,6 @@ mod tests {
 
         // Simplify: a closed square with a redundant midpoint on one edge drops it.
         let sq = scene.push_path(ph2d_vec_scene::VecPath {
-            id: 0,
             verts: vec![
                 ph2d_vec_scene::VecVertex::corner([0.0, 0.0]),
                 ph2d_vec_scene::VecVertex::corner([5.0, 0.0]), // redundant midpoint
@@ -3105,8 +3184,7 @@ mod tests {
                 ph2d_vec_scene::VecVertex::corner([0.0, 10.0]),
             ],
             closed: true,
-            fill: None,
-            stroke: None,
+            ..ph2d_vec_scene::VecPath::default()
         });
         pen.select(Some(sq));
         let before = scene
@@ -3228,6 +3306,109 @@ mod tests {
         assert_eq!(
             shape_kind_for_mode(DrawMode::RoundRect),
             Some(ShapeKind::RoundRect)
+        );
+    }
+
+    // ─── boolean/compound: a costura shell ↔ documento ────────────────────────
+
+    /// Cena com um quadrado externo e outro DENTRO dele, ambos selecionados
+    /// (z: externo atrás, interno na frente). Devolve `(scene, pen, ids)`.
+    fn nested_selection() -> (ph2d_vec_scene::VecScene, ph2d_vec_edit::PenTool, [u64; 2]) {
+        let mut scene = ph2d_vec_scene::VecScene::new();
+        let outer = scene.push_path(ph2d_vec_scene::rectangle([0.0, 0.0], [10.0, 10.0]));
+        let inner = scene.push_path(ph2d_vec_scene::rectangle([3.0, 3.0], [7.0, 7.0]));
+        let mut pen = ph2d_vec_edit::PenTool::default();
+        pen.select_many(&[outer, inner]);
+        (scene, pen, [outer, inner])
+    }
+
+    /// A regressão que motivou o bloco: Subtract agia nas duas últimas regiões
+    /// fechadas do DOCUMENTO, ignorando a seleção — e devolvia dois discos
+    /// sólidos em vez de uma rosquinha.
+    #[test]
+    fn boolean_subtract_uses_the_selection_and_makes_a_real_hole() {
+        let (mut scene, mut pen, _) = nested_selection();
+        // Um terceiro path, NÃO selecionado, bem longe: a booleana antiga o teria
+        // agarrado (é uma das duas últimas fechadas); a nova tem de ignorá-lo.
+        let bystander = scene.push_path(ph2d_vec_scene::rectangle([90.0, 90.0], [95.0, 95.0]));
+        let mut history = ph2d_vec_edit::History::default();
+
+        super::apply_vec_boolean(
+            &mut scene,
+            &mut history,
+            &mut pen,
+            ph2d_vec_boolean::BoolOp::Subtract,
+        );
+
+        assert_eq!(scene.paths().len(), 2, "resultado + o bystander intacto");
+        assert!(scene.paths().iter().any(|p| p.id == bystander));
+        let donut = scene.paths().iter().find(|p| p.id != bystander).unwrap();
+        assert!(donut.is_compound(), "o furo vive num subpath");
+        let id = donut.id;
+        assert!(scene.path_contains_point(id, [1.0, 5.0]), "o anel é sólido");
+        assert!(
+            !scene.path_contains_point(id, [5.0, 5.0]),
+            "o centro é vazado"
+        );
+        // O resultado entra na fatia de z da BASE (não salta pro topo).
+        assert_eq!(scene.paths()[0].id, id);
+        assert_eq!(pen.selected(), Some(id), "a booleana seleciona o resultado");
+    }
+
+    #[test]
+    fn boolean_needs_two_selected_closed_regions() {
+        let (mut scene, mut pen, ids) = nested_selection();
+        pen.select(Some(ids[0])); // só um selecionado
+        let mut history = ph2d_vec_edit::History::default();
+        super::apply_vec_boolean(
+            &mut scene,
+            &mut history,
+            &mut pen,
+            ph2d_vec_boolean::BoolOp::Union,
+        );
+        assert_eq!(scene.paths().len(), 2, "no-op");
+    }
+
+    /// Make Compound é como o usuário desenha um buraco à mão; Release desfaz.
+    #[test]
+    fn make_and_release_compound_from_the_selection() {
+        let (mut scene, mut pen, ids) = nested_selection();
+        let mut history = ph2d_vec_edit::History::default();
+
+        super::apply_vec_compound(&mut scene, &mut history, &mut pen, true);
+        assert_eq!(scene.paths().len(), 1);
+        assert!(
+            !scene.path_contains_point(ids[0], [5.0, 5.0]),
+            "virou buraco"
+        );
+        assert_eq!(pen.selected(), Some(ids[0]));
+
+        super::apply_vec_compound(&mut scene, &mut history, &mut pen, false);
+        assert_eq!(scene.paths().len(), 2);
+        assert!(
+            scene.path_contains_point(ids[0], [5.0, 5.0]),
+            "sólido de novo"
+        );
+        assert_eq!(pen.selected_paths().len(), 2, "base + liberado");
+    }
+
+    /// A regra de preenchimento troca o buraco por região sólida, sem tocar a geometria.
+    #[test]
+    fn fill_rule_toggle_vacates_or_fills_the_hole() {
+        let (mut scene, mut pen, ids) = nested_selection();
+        let mut history = ph2d_vec_edit::History::default();
+        super::apply_vec_compound(&mut scene, &mut history, &mut pen, true);
+        assert!(!scene.path_contains_point(ids[0], [5.0, 5.0]));
+
+        super::apply_vec_fill_rule(&mut scene, &mut history, &pen, false); // Non-Zero
+        assert!(
+            scene.path_contains_point(ids[0], [5.0, 5.0]),
+            "NonZero preenche"
+        );
+        super::apply_vec_fill_rule(&mut scene, &mut history, &pen, true); // Even-Odd
+        assert!(
+            !scene.path_contains_point(ids[0], [5.0, 5.0]),
+            "EvenOdd vaza"
         );
     }
 }

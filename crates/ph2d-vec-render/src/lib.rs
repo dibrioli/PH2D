@@ -10,7 +10,10 @@
 //! Fase 0: draw estático da cena inteira. **Dirty-tracking** (só re-encodar a
 //! sub-árvore que mudou — a alavanca de escala do ADR-0108) é o próximo passo.
 
-use ph2d_vec_scene::{LineCap, LineJoin, Paint, Rgba8, StrokeSpec, VecPath, VecPathId, VecScene};
+use ph2d_vec_scene::{
+    FillRule as VecFillRule, LineCap, LineJoin, Paint, Rgba8, StrokeSpec, VecPath, VecPathId,
+    VecScene,
+};
 use ph2d_vector::{
     Affine, BezPath, Brush, Cap, Circle, Color, ColorStop, Fill, Gradient, Join, Point, Rect,
     Stroke, VectorScene,
@@ -22,26 +25,40 @@ mod gradient;
 use gradient::fill_multipoint;
 pub use gradient::{GradHandle, drag_gradient_handle, draw_gradient_handles, hit_gradient_handle};
 
-/// Constrói o `BezPath` (world-space) de um path editável: `move_to` na 1ª âncora,
-/// depois uma cúbica por segmento usando `out_handle(i)` e `in_handle(i+1)`;
-/// fecha com uma cúbica final se `closed`.
+/// Constrói o `BezPath` (world-space) de um path editável: para CADA contorno
+/// (primário + `subpaths`), `move_to` na 1ª âncora, depois uma cúbica por segmento
+/// usando `out_handle(i)` e `in_handle(i+1)`; fecha com uma cúbica final se
+/// `closed`. Um compound vira um só `BezPath` de vários sub-caminhos — é a
+/// [`Fill`] rule que decide o que é buraco.
 pub fn build_bezpath(path: &VecPath) -> BezPath {
     let mut bp = BezPath::new();
-    let verts = &path.verts;
-    let Some(first) = verts.first() else {
-        return bp;
-    };
-    bp.move_to(pt(first.anchor));
-    for pair in verts.windows(2) {
-        let (a, b) = (&pair[0], &pair[1]);
-        bp.curve_to(pt(a.out_handle), pt(b.in_handle), pt(b.anchor));
-    }
-    if path.closed && verts.len() >= 2 {
-        let last = verts.last().unwrap();
-        bp.curve_to(pt(last.out_handle), pt(first.in_handle), pt(first.anchor));
-        bp.close_path();
+    for c in 0..path.contour_count() {
+        let Some((verts, closed)) = path.contour(c) else {
+            continue;
+        };
+        let Some(first) = verts.first() else {
+            continue;
+        };
+        bp.move_to(pt(first.anchor));
+        for pair in verts.windows(2) {
+            let (a, b) = (&pair[0], &pair[1]);
+            bp.curve_to(pt(a.out_handle), pt(b.in_handle), pt(b.anchor));
+        }
+        if closed && verts.len() >= 2 {
+            let last = verts.last().unwrap();
+            bp.curve_to(pt(last.out_handle), pt(first.in_handle), pt(first.anchor));
+            bp.close_path();
+        }
     }
     bp
+}
+
+/// A [`Fill`] rule do Vello para o `fill_rule` do path.
+pub(crate) fn fill_rule(path: &VecPath) -> Fill {
+    match path.fill_rule {
+        VecFillRule::NonZero => Fill::NonZero,
+        VecFillRule::EvenOdd => Fill::EvenOdd,
+    }
 }
 
 /// Desenha toda a `scene` no `target` (o `VectorScene` do frame) sob `transform`
@@ -53,7 +70,15 @@ pub fn dispatch(scene: &VecScene, transform: Affine, target: &mut VectorScene) {
             if let Paint::MultiPoint { points } = fill {
                 fill_multipoint(target, &bp, path, points, transform);
             } else {
-                target.fill_path(&bp, &fill_brush(fill, path), transform);
+                // `VectorScene::fill_path` assume NonZero; um compound precisa da
+                // regra do path (EvenOdd vaza o contorno de dentro).
+                target.inner_mut().fill(
+                    fill_rule(path),
+                    transform,
+                    &fill_brush(fill, path),
+                    None,
+                    &bp,
+                );
             }
         }
         if let Some(s) = path.stroke {
@@ -86,7 +111,7 @@ pub fn draw_overlays(
         // its Bézier handles + per-vertex picks.
         let in_set = selected_paths.contains(&path.id);
         if is_sel {
-            for v in &path.verts {
+            for v in path.verts_all() {
                 let a = transform * Point::new(v.anchor[0], v.anchor[1]);
                 // Draw a handle only when it is offset from the anchor — cusps
                 // (Corner), Smooth and Symmetric all show their non-degenerate
@@ -117,7 +142,9 @@ pub fn draw_overlays(
                 }
             }
         }
-        for (i, v) in path.verts.iter().enumerate() {
+        // Flat index across contours — the same space `hit_test` / `selected_verts`
+        // address, so a hole's anchors pick exactly like the outer contour's.
+        for (i, v) in path.verts_all().enumerate() {
             let a = transform * Point::new(v.anchor[0], v.anchor[1]);
             // A vertex in the multi-selection (selected path only) is drawn bigger
             // + cyan; other anchors of the selected path are orange; other paths gray.
@@ -251,13 +278,7 @@ mod tests {
 
     #[test]
     fn empty_path_yields_empty_bezpath() {
-        let p = VecPath {
-            id: 0,
-            verts: vec![],
-            closed: false,
-            fill: None,
-            stroke: None,
-        };
+        let p = VecPath::default();
         assert!(build_bezpath(&p).elements().is_empty());
     }
 

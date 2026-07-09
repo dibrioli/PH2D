@@ -214,3 +214,14 @@ pub const VECTOR_PATH_SUBDIVIDE: NodeId = hash_node_id("vector.path.subdivide");
 /// Close/Open toggle — flips the selected path between a closed loop and an open
 /// ribbon (label driven by the published `closed` flag).
 pub const VECTOR_PATH_CLOSE: NodeId = hash_node_id("vector.path.close");
+
+// ── Compound paths (ADR-0108 — subpaths + fill rule) ─────────────────────────
+/// Merge the selected closed paths into ONE compound path (a contour inside
+/// another becomes a hole, via `EvenOdd`). Inverse: [`VECTOR_COMPOUND_RELEASE`].
+pub const VECTOR_COMPOUND_MAKE: NodeId = hash_node_id("vector.compound.make");
+/// Split the selected compound path's subpaths back into standalone paths.
+pub const VECTOR_COMPOUND_RELEASE: NodeId = hash_node_id("vector.compound.release");
+/// Fill rule of the selected COMPOUND path — the two agree on a single contour,
+/// so the row only shows when the path actually has subpaths.
+pub const VECTOR_FILL_RULE_NONZERO: NodeId = hash_node_id("vector.fill.rule.nonzero");
+pub const VECTOR_FILL_RULE_EVENODD: NodeId = hash_node_id("vector.fill.rule.evenodd");

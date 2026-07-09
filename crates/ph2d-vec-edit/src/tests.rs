@@ -207,7 +207,6 @@ fn deleting_below_two_vertices_removes_the_whole_path() {
 /// A square path for multi-select tests: 4 corner anchors at the bbox.
 fn square_path(scene: &mut VecScene) -> VecPathId {
     scene.push_path(VecPath {
-        id: 0,
         verts: vec![
             VecVertex::corner([0.0, 0.0]),
             VecVertex::corner([4.0, 0.0]),
@@ -215,8 +214,7 @@ fn square_path(scene: &mut VecScene) -> VecPathId {
             VecVertex::corner([0.0, 4.0]),
         ],
         closed: true,
-        fill: None,
-        stroke: None,
+        ..VecPath::default()
     })
 }
 

@@ -941,6 +941,10 @@ impl crate::App {
             let mut pending_vec_align: Option<crate::input_dispatch::VecAlign> = None;
             let mut pending_vec_distribute: Option<crate::input_dispatch::VecDistribute> = None;
             let mut pending_vec_pivot_edit = false;
+            // Make (true) / Release (false) Compound over the selection.
+            let mut pending_vec_compound: Option<bool> = None;
+            // Fill rule of the selected compound path: even-odd (true) or non-zero.
+            let mut pending_vec_fill_rule: Option<bool> = None;
             // Numeric Transform field edit (X/Y/W/H) — a SetValue document command.
             let mut pending_vec_transform: Option<(crate::input_dispatch::VecTransformField, f64)> =
                 None;
@@ -1042,6 +1046,14 @@ impl crate::App {
                                 pending_vec_distribute = Some(d);
                             } else if *id == ph2d_editor::ids::VECTOR_PIVOT_EDIT {
                                 pending_vec_pivot_edit = true;
+                            } else if *id == ph2d_editor::ids::VECTOR_COMPOUND_MAKE {
+                                pending_vec_compound = Some(true);
+                            } else if *id == ph2d_editor::ids::VECTOR_COMPOUND_RELEASE {
+                                pending_vec_compound = Some(false);
+                            } else if *id == ph2d_editor::ids::VECTOR_FILL_RULE_NONZERO {
+                                pending_vec_fill_rule = Some(false);
+                            } else if *id == ph2d_editor::ids::VECTOR_FILL_RULE_EVENODD {
+                                pending_vec_fill_rule = Some(true);
                             }
                         }
                         // Transform fields (X/Y/W/H) are numeric SetValue document
@@ -1685,6 +1697,22 @@ impl crate::App {
                     &mut self.vec_history,
                     &mut self.vec_pen,
                     op,
+                );
+            }
+            if let Some(make) = pending_vec_compound {
+                crate::input_dispatch::apply_vec_compound(
+                    vec_scene,
+                    &mut self.vec_history,
+                    &mut self.vec_pen,
+                    make,
+                );
+            }
+            if let Some(even_odd) = pending_vec_fill_rule {
+                crate::input_dispatch::apply_vec_fill_rule(
+                    vec_scene,
+                    &mut self.vec_history,
+                    &self.vec_pen,
+                    even_odd,
                 );
             }
             if let Some(kind) = pending_vec_vertex_kind {

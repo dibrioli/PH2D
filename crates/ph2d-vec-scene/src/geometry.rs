@@ -2,15 +2,22 @@
 //! (auto-smooth Corner→Smooth), split de Bézier (de Casteljau) e projeção do
 //! ponto mais próximo do traço. Extraído de `lib.rs` para respeitar o teto de
 //! LOC de produção (700).
+//!
+//! Vértices e segmentos são endereçados pelo **índice plano** do módulo
+//! `compound` (primário, depois cada subpath) — então editar o buraco de uma
+//! rosquinha usa exatamente as mesmas chamadas de editar a borda de fora. Num
+//! path de contorno único o índice plano É o índice de `verts`.
 
+use crate::compound::contour_segments;
 use crate::{VecPath, VecVertex, VertexKind};
 
 /// Fração do vão ao vizinho usada como comprimento de handle no auto-smooth
 /// (Corner→Smooth com handles degenerados). 1/3 é o default de facto (Inkscape).
 const AUTO_SMOOTH_FRAC: f64 = 1.0 / 3.0;
 
-/// Retipa o vértice `i` de `path` para `kind`, ajustando os handles conforme a
-/// restrição do tipo (o núcleo da edição rica de handles, ADR-0108 Fase 1):
+/// Retipa o vértice de índice PLANO `i` de `path` para `kind`, ajustando os
+/// handles conforme a restrição do tipo (o núcleo da edição rica de handles,
+/// ADR-0108 Fase 1):
 ///
 /// - **Corner**: mantém as posições dos handles (vira cusp de handles
 ///   independentes; se colineares antes, continuam onde estão até o próximo drag).
@@ -23,17 +30,24 @@ const AUTO_SMOOTH_FRAC: f64 = 1.0 / 3.0;
 /// Retorna `true` se algo mudou. Puro; sem trig além de `sqrt` (normalização).
 #[must_use]
 pub fn retype_vertex(path: &mut VecPath, i: usize, kind: VertexKind) -> bool {
-    let n = path.verts.len();
-    if i >= n {
+    let Some((c, local)) = path.locate_vert(i) else {
         return false;
-    }
-    let before = path.verts[i];
+    };
+    let Some((verts, closed)) = path.contour_mut(c) else {
+        return false;
+    };
+    retype_in_contour(verts, *closed, local, kind)
+}
+
+/// [`retype_vertex`] dentro de um contorno já resolvido (índice LOCAL).
+fn retype_in_contour(verts: &mut [VecVertex], closed: bool, i: usize, kind: VertexKind) -> bool {
+    let before = verts[i];
     let a = before.anchor;
 
     if kind == VertexKind::Corner {
         // Cusp: só marca o tipo; posições preservadas (independentes a partir daqui).
-        path.verts[i].kind = VertexKind::Corner;
-        return path.verts[i] != before;
+        verts[i].kind = VertexKind::Corner;
+        return verts[i] != before;
     }
 
     // Handles atuais relativos à âncora + comprimentos.
@@ -44,7 +58,7 @@ pub fn retype_vertex(path: &mut VecPath, i: usize, kind: VertexKind) -> bool {
     let degenerate = li < 1e-9 && lo < 1e-9;
 
     // Tangente dos vizinhos (para auto-smooth quando degenerado / sem direção).
-    let neighbor = neighbor_tangent(path, i);
+    let neighbor = neighbor_tangent(verts, closed, i);
 
     // Direção da tangente unitária.
     let tan = if degenerate {
@@ -71,33 +85,33 @@ pub fn retype_vertex(path: &mut VecPath, i: usize, kind: VertexKind) -> bool {
         (li, lo) // Smooth preserva comprimentos
     };
 
-    path.verts[i].out_handle = [a[0] + tan[0] * len_out, a[1] + tan[1] * len_out];
-    path.verts[i].in_handle = [a[0] - tan[0] * len_in, a[1] - tan[1] * len_in];
-    path.verts[i].kind = kind;
-    path.verts[i] != before
+    verts[i].out_handle = [a[0] + tan[0] * len_out, a[1] + tan[1] * len_out];
+    verts[i].in_handle = [a[0] - tan[0] * len_in, a[1] - tan[1] * len_in];
+    verts[i].kind = kind;
+    verts[i] != before
 }
 
-/// Tangente unitária `prev→next` no vértice `i` (wrap se fechado) + comprimento
-/// de handle sugerido ([`AUTO_SMOOTH_FRAC`] do meio-vão). `None` se não houver
-/// vizinhos utilizáveis (path degenerado) ou os vizinhos coincidirem.
-fn neighbor_tangent(path: &VecPath, i: usize) -> Option<([f64; 2], f64)> {
-    let n = path.verts.len();
-    let a = path.verts[i].anchor;
+/// Tangente unitária `prev→next` no vértice `i` do contorno (wrap se fechado) +
+/// comprimento de handle sugerido ([`AUTO_SMOOTH_FRAC`] do meio-vão). `None` se
+/// não houver vizinhos utilizáveis (contorno degenerado) ou eles coincidirem.
+fn neighbor_tangent(verts: &[VecVertex], closed: bool, i: usize) -> Option<([f64; 2], f64)> {
+    let n = verts.len();
+    let a = verts[i].anchor;
     let prev = if i > 0 {
-        Some(path.verts[i - 1].anchor)
-    } else if path.closed {
-        Some(path.verts[n - 1].anchor)
+        Some(verts[i - 1].anchor)
+    } else if closed {
+        Some(verts[n - 1].anchor)
     } else {
         None
     };
     let next = if i + 1 < n {
-        Some(path.verts[i + 1].anchor)
-    } else if path.closed {
-        Some(path.verts[0].anchor)
+        Some(verts[i + 1].anchor)
+    } else if closed {
+        Some(verts[0].anchor)
     } else {
         None
     };
-    // Endpoints de path aberto usam a própria âncora como o vizinho ausente.
+    // Endpoints de contorno aberto usam a própria âncora como o vizinho ausente.
     let (p, q) = match (prev, next) {
         (Some(p), Some(q)) => (p, q),
         (Some(p), None) => (p, a),
@@ -137,88 +151,79 @@ pub(crate) fn cubic_at(p0: [f64; 2], p1: [f64; 2], p2: [f64; 2], p3: [f64; 2], t
     ]
 }
 
-/// Nº de segmentos de `path` (fechado inclui o segmento de fechamento).
-fn segment_count(path: &VecPath) -> usize {
-    let n = path.verts.len();
-    if n < 2 {
-        0
-    } else if path.closed {
-        n
-    } else {
-        n - 1
-    }
-}
-
-/// Divide o segmento cúbico `seg` (de `verts[seg]` a `verts[(seg+1) % n]`) no
-/// parâmetro `t ∈ [0,1]` via **de Casteljau**, inserindo um vértice **Smooth**
-/// novo — a FORMA é preservada exatamente (as duas cúbicas resultantes somam a
-/// original). Ajusta o out-handle do vértice anterior e o in-handle do seguinte.
-/// Devolve o índice do vértice novo (`seg + 1`), ou `None` se o segmento não
-/// existe. É o núcleo do "inserir vértice num segmento" (ADR-0108 Fase 1).
+/// Divide o segmento cúbico de índice PLANO `seg` no parâmetro `t ∈ [0,1]` via
+/// **de Casteljau**, inserindo um vértice **Smooth** novo — a FORMA é preservada
+/// exatamente (as duas cúbicas resultantes somam a original). Ajusta o out-handle
+/// do vértice anterior e o in-handle do seguinte. Devolve o índice PLANO do
+/// vértice novo, ou `None` se o segmento não existe. É o núcleo do "inserir
+/// vértice num segmento" (ADR-0108 Fase 1).
 pub fn split_segment(path: &mut VecPath, seg: usize, t: f64) -> Option<usize> {
-    let n = path.verts.len();
-    if seg >= segment_count(path) {
-        return None;
+    let (c, local) = path.locate_segment(seg)?;
+    {
+        let (verts, _) = path.contour_mut(c)?;
+        let n = verts.len();
+        let a = local;
+        let b = (local + 1) % n;
+        let t = t.clamp(0.0, 1.0);
+        let (p0, p1) = (verts[a].anchor, verts[a].out_handle);
+        let (p2, p3) = (verts[b].in_handle, verts[b].anchor);
+        let q0 = lerp(p0, p1, t);
+        let q1 = lerp(p1, p2, t);
+        let q2 = lerp(p2, p3, t);
+        let r0 = lerp(q0, q1, t);
+        let r1 = lerp(q1, q2, t);
+        let s = lerp(r0, r1, t);
+        // Ajusta os vizinhos ANTES de inserir (índices ainda válidos).
+        verts[a].out_handle = q0;
+        verts[b].in_handle = q2;
+        verts.insert(
+            a + 1,
+            VecVertex {
+                anchor: s,
+                in_handle: r0,
+                out_handle: r1,
+                kind: VertexKind::Smooth,
+            },
+        );
     }
-    let a = seg;
-    let b = (seg + 1) % n;
-    let t = t.clamp(0.0, 1.0);
-    let (p0, p1) = (path.verts[a].anchor, path.verts[a].out_handle);
-    let (p2, p3) = (path.verts[b].in_handle, path.verts[b].anchor);
-    let q0 = lerp(p0, p1, t);
-    let q1 = lerp(p1, p2, t);
-    let q2 = lerp(p2, p3, t);
-    let r0 = lerp(q0, q1, t);
-    let r1 = lerp(q1, q2, t);
-    let s = lerp(r0, r1, t);
-    // Ajusta os vizinhos ANTES de inserir (índices ainda válidos).
-    path.verts[a].out_handle = q0;
-    path.verts[b].in_handle = q2;
-    path.verts.insert(
-        a + 1,
-        VecVertex {
-            anchor: s,
-            in_handle: r0,
-            out_handle: r1,
-            kind: VertexKind::Smooth,
-        },
-    );
-    Some(a + 1)
+    path.flat_vert(c, local + 1)
 }
 
-/// Ponto mais próximo de `p` sobre os segmentos de `path` (amostragem uniforme,
-/// `samples` por segmento). Devolve `(seg, t, dist²)` — o alvo do "clicar perto
-/// do traço pra inserir um vértice" — ou `None` se não há segmentos.
+/// Ponto mais próximo de `p` sobre os segmentos de `path` (todos os contornos;
+/// amostragem uniforme, `samples` por segmento). Devolve `(seg PLANO, t, dist²)` —
+/// o alvo do "clicar perto do traço pra inserir um vértice" — ou `None` se não há
+/// segmentos.
 #[must_use]
 pub fn nearest_point_on_path(
     path: &VecPath,
     p: [f64; 2],
     samples: u32,
 ) -> Option<(usize, f64, f64)> {
-    let n = path.verts.len();
-    let segs = segment_count(path);
-    if segs == 0 {
-        return None;
-    }
     let s = samples.max(2);
     let mut best: Option<(usize, f64, f64)> = None;
-    for seg in 0..segs {
-        let (a, b) = (seg, (seg + 1) % n);
-        let (p0, p1) = (path.verts[a].anchor, path.verts[a].out_handle);
-        let (p2, p3) = (path.verts[b].in_handle, path.verts[b].anchor);
-        for k in 0..=s {
-            let t = f64::from(k) / f64::from(s);
-            let c = cubic_at(p0, p1, p2, p3, t);
-            let (dx, dy) = (c[0] - p[0], c[1] - p[1]);
-            let d2 = dx * dx + dy * dy;
-            let better = match best {
-                None => true,
-                Some((_, _, bd)) => d2 < bd,
-            };
-            if better {
-                best = Some((seg, t, d2));
+    let mut flat = 0usize;
+    for c in 0..path.contour_count() {
+        let (verts, closed) = path.contour(c)?;
+        let n = verts.len();
+        for seg in 0..contour_segments(verts, closed) {
+            let (a, b) = (seg, (seg + 1) % n);
+            let (p0, p1) = (verts[a].anchor, verts[a].out_handle);
+            let (p2, p3) = (verts[b].in_handle, verts[b].anchor);
+            for k in 0..=s {
+                let t = f64::from(k) / f64::from(s);
+                let cpt = cubic_at(p0, p1, p2, p3, t);
+                let (dx, dy) = (cpt[0] - p[0], cpt[1] - p[1]);
+                let d2 = dx * dx + dy * dy;
+                let better = match best {
+                    None => true,
+                    Some((_, _, bd)) => d2 < bd,
+                };
+                if better {
+                    best = Some((flat + seg, t, d2));
+                }
             }
         }
+        flat += contour_segments(verts, closed);
     }
     best
 }

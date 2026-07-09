@@ -207,3 +207,79 @@ fn upsert_key_still_replaces_everything() {
     tr.upsert_key(secs(0.0), AnimValue::Float(7.0), Interp::Hold);
     assert_eq!(tr.key(a).unwrap().interp, Interp::Hold);
 }
+
+// ── W3: handles the graph editor DRAWS (tangents, not the chord) ─────────────
+
+/// The `(x, y)` slope of the cubic timing curve `P0=(0,0) P1 P2 P3=(1,1)` at its
+/// endpoints. Derived from the bezier derivative, independent of the fn under
+/// test — this is what "the handle is tangent to the curve" means.
+fn bezier_endpoint_slopes(((x1, y1), (x2, y2)): ((f64, f64), (f64, f64))) -> (f64, f64) {
+    (y1 / x1, (1.0 - y2) / (1.0 - x2))
+}
+
+#[test]
+fn linear_tangent_handles_are_the_linear_handles() {
+    // The general slope path and the special case must not disagree.
+    assert_eq!(Interp::Linear.tangent_handles(), Interp::LINEAR_HANDLES);
+    let (m0, m1) = bezier_endpoint_slopes(Interp::LINEAR_HANDLES);
+    assert!((m0 - 1.0).abs() < 1e-9 && (m1 - 1.0).abs() < 1e-9);
+}
+
+#[test]
+fn an_eased_segment_shows_handles_tangent_to_its_own_curve() {
+    // Cubic InOut leaves and arrives flat. The old code drew the LINEAR handles,
+    // which sit on the straight chord — visibly off the curve.
+    let e = Easing::new(EasingFamily::Cubic, EasingMode::InOut);
+    let h = Interp::Eased(e).tangent_handles();
+    let (m0, m1) = bezier_endpoint_slopes(h);
+    assert!(m0.abs() < 1e-3, "flat start, got slope {m0}");
+    assert!(m1.abs() < 1e-3, "flat end, got slope {m1}");
+    assert_ne!(h, Interp::LINEAR_HANDLES, "the chord is not the curve");
+
+    // Cubic Out arrives flat but leaves at slope 3.
+    let h = Interp::Eased(Easing::new(EasingFamily::Cubic, EasingMode::Out)).tangent_handles();
+    let (m0, m1) = bezier_endpoint_slopes(h);
+    assert!((m0 - 3.0).abs() < 1e-2, "got {m0}");
+    assert!(m1.abs() < 1e-2, "got {m1}");
+}
+
+#[test]
+fn hold_puts_both_handles_on_the_flat_part_it_actually_draws() {
+    let ((x1, y1), (x2, y2)) = Interp::Hold.tangent_handles();
+    assert_eq!(
+        (y1, y2),
+        (0.0, 0.0),
+        "the curve is flat; so are the handles"
+    );
+    assert!(x1 > 0.0 && x2 > x1 && x2 < 1.0);
+}
+
+#[test]
+fn a_violent_easing_cannot_fling_its_handle_to_infinity() {
+    // Expo Out leaves its anchor almost vertically. The tangent is clamped, so
+    // the handle stays in a range the graph band can fit.
+    let h = Interp::Eased(Easing::new(EasingFamily::Expo, EasingMode::Out)).tangent_handles();
+    assert!(h.0.1.is_finite() && h.0.1 > 1.0, "steep, {:?}", h.0);
+    assert!(h.0.1 < 6.0, "but bounded, {:?}", h.0);
+}
+
+#[test]
+fn converting_an_eased_segment_keeps_the_untouched_end_where_it_was() {
+    let eased = Interp::Eased(Easing::new(EasingFamily::Cubic, EasingMode::InOut));
+    let (_, in_before) = eased.tangent_handles();
+    // Drag the OUT handle; the IN handle must survive as the tangent, not snap
+    // back to the linear default (which is what made the curve jump on grab).
+    let out_dragged = eased.with_out_handle(0.9, 0.2);
+    let (_, in_after) = out_dragged.tangent_handles();
+    assert_eq!(in_after, in_before);
+
+    let (out_before, _) = eased.tangent_handles();
+    let (out_after, _) = eased.with_in_handle(0.1, 0.8).tangent_handles();
+    assert_eq!(out_after, out_before);
+}
+
+#[test]
+fn a_bezier_reports_its_own_control_points_as_its_tangent_handles() {
+    let b = Interp::bezier(0.17, 0.67, 0.83, 0.33);
+    assert_eq!(b.tangent_handles(), ((0.17, 0.67), (0.83, 0.33)));
+}

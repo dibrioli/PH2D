@@ -33,9 +33,13 @@ pub(crate) fn paint(state: &mut TimelinePanelState, ctx: &mut PaintCtx) {
         ctx.host.store_mut().clear_panel_rect(ids::TIMELINE_PANEL);
         ctx.host.store_mut().clear_timeline_canvas();
         // Drop any in-flight gesture: hiding the panel mid-drag must not leave a
-        // marquee to resolve (or repaint) when it comes back.
+        // marquee to resolve (or repaint) when it comes back — nor an undo
+        // bracket open, which would swallow the next atomic edit.
         state.box_drag = None;
         state.box_commit = None;
+        if state.key_drag.take().is_some() || state.handle_drag.take().is_some() {
+            state::push_intent(ph2d_timeline::TimelineIntent::EndEdit);
+        }
         set_last_content_h(0.0);
         set_last_visible_h(0.0);
         return;
@@ -140,7 +144,7 @@ pub(crate) fn paint(state: &mut TimelinePanelState, ctx: &mut PaintCtx) {
     // finally known (the gesture only recorded the marquee).
     crate::box_select::commit(state, g.rows, view, &snapshot);
 
-    let preview_dx = crate::interact::preview_dx(state, px_per_s, &snapshot);
+    let preview_dx = crate::key_drag::preview_dx(state);
 
     // "+Track" button in the label column, aligned with the ruler strip.
     let header = Rect::new(g.region.x, g.region.y, g.label_w, ruler::RULER_H);

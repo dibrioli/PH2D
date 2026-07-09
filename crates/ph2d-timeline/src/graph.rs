@@ -11,7 +11,7 @@
 //! copy of the interpolation living in paint code would silently drift. Here it
 //! is pinned by a golden test against the real sampler.
 
-use ph2d_anim::{AnimValue, Interp, LinearInterp};
+use ph2d_anim::{AnimValue, LinearInterp};
 
 use crate::snapshot::KeyView;
 
@@ -98,7 +98,13 @@ pub fn drawn_extent(keys: &[KeyView], t0: f64, t1: f64, samples: usize) -> Optio
         if !(k0.selected || k1.selected) || k1.t_seconds < t0 || k0.t_seconds > t1 {
             continue;
         }
-        let ((x1, y1), (x2, y2)) = k0.interp.handles().unwrap_or(Interp::LINEAR_HANDLES);
+        // Exact control points only. A `Hold`/`Eased` segment's handles are
+        // TANGENTS the editor derives for display; a steep preset (Expo, Back)
+        // would drag the whole band's fit out to meet a hint, squashing the
+        // curve the author came to look at. Those get clipped instead.
+        let Some(((x1, y1), (x2, y2))) = k0.interp.handles() else {
+            continue;
+        };
         for h in [(x1, y1), (x2, y2)] {
             let (_, v) = handle_point(
                 k0.t_seconds,

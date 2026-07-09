@@ -160,11 +160,13 @@ pub(crate) fn apply_handle_gesture(
     }
 }
 
-/// The segment's two handles in normalized timing space. `Hold`/`Eased` have no
-/// two-handle form, so they show the LINEAR positions — dragging one is what
-/// converts the segment to `Bezier`.
+/// The segment's two handles in normalized timing space — the curve's TANGENTS
+/// at its anchors, whatever the interpolation. `Hold`/`Eased` have no two-handle
+/// form, and drawing them at the linear positions put the dots on the straight
+/// chord instead of on the curve; dragging one converts to `Bezier` from exactly
+/// where it is drawn.
 pub(crate) fn handle_pair(interp: Interp) -> [(f64, f64); 2] {
-    let ((a, b), (c, d)) = interp.handles().unwrap_or(Interp::LINEAR_HANDLES);
+    let ((a, b), (c, d)) = interp.tangent_handles();
     [(a, b), (c, d)]
 }
 
@@ -357,8 +359,9 @@ mod tests {
         // Band fits 0..10 with 10% padding, so the midpoint v = 5 lands at
         // y = 50 either way. x = 25 px is t = 0.25 s.
         let got = drag_out_handle(Interp::Hold, 25.0, 50.0);
-        // (hx, hy) = (0.25, 0.5); the IN handle keeps its linear default.
-        let want = Interp::bezier(0.25, 0.5, 2.0 / 3.0, 2.0 / 3.0);
+        // (hx, hy) = (0.25, 0.5); the IN handle keeps the TANGENT it was drawn
+        // at (flat, for a Hold), not the linear default.
+        let want = Interp::bezier(0.25, 0.5, 2.0 / 3.0, 0.0);
         assert!(
             got.iter().any(|i| matches!(
                 i,
@@ -480,13 +483,35 @@ mod tests {
     }
 
     #[test]
-    fn hold_and_eased_segments_show_the_linear_handles_to_drag_from() {
-        // Nothing to grab otherwise — this is the documented upgrade path.
+    fn handles_sit_on_the_curve_not_on_the_chord() {
+        // A Hold segment is flat, so its handles are flat. Drawing the LINEAR
+        // handles here put the dots on the straight chord, visibly off the curve
+        // until the first drag rebuilt them.
         assert_eq!(
             handle_pair(Interp::Hold),
-            [(1.0 / 3.0, 1.0 / 3.0), (2.0 / 3.0, 2.0 / 3.0)]
+            [(1.0 / 3.0, 0.0), (2.0 / 3.0, 0.0)]
         );
-        assert_eq!(handle_pair(Interp::Linear), handle_pair(Interp::Hold));
+        assert_ne!(handle_pair(Interp::Hold), handle_pair(Interp::Linear));
+    }
+
+    /// Cubic InOut — the interpolation a fresh key gets.
+    fn cubic_in_out() -> Interp {
+        Interp::Eased(ph2d_timeline::Easing::new(
+            ph2d_timeline::EasingFamily::Cubic,
+            ph2d_timeline::EasingMode::InOut,
+        ))
+    }
+
+    #[test]
+    fn an_eased_segment_draws_its_handles_flat_like_its_ends() {
+        let [(x1, y1), (x2, y2)] = handle_pair(cubic_in_out());
+        assert!(y1.abs() < 1e-3, "leaves flat, y1 = {y1}");
+        assert!((1.0 - y2).abs() < 1e-3, "arrives flat, y2 = {y2}");
+        assert!((x1 - 1.0 / 3.0).abs() < 1e-9 && (x2 - 2.0 / 3.0).abs() < 1e-9);
+    }
+
+    #[test]
+    fn a_bezier_reports_its_own_control_points() {
         assert_eq!(
             handle_pair(Interp::bezier(0.1, 0.2, 0.3, 0.4)),
             [(0.1, 0.2), (0.3, 0.4)]

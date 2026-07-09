@@ -104,23 +104,77 @@ impl Interp {
         }
     }
 
+    /// The two handles a graph editor should **draw**, for any interpolation.
+    ///
+    /// Unlike [`Interp::handles`] (which answers "is this exactly a two-handle
+    /// bézier?"), this always answers "where does the curve point?". Each handle
+    /// sits a third of the segment along `x`, on the curve's **tangent** at its
+    /// anchor — so a `Cubic InOut` shows its flat ends instead of the straight
+    /// chord [`Interp::LINEAR_HANDLES`] would draw across them.
+    ///
+    /// It is also the starting point for a drag: [`Interp::with_out_handle`]
+    /// keeps the *other* handle from here, so converting an eased segment to
+    /// `Bezier` leaves the untouched end's shape where it was.
+    ///
+    /// `Hold` has no two-handle form at all (it is flat, then jumps), so both of
+    /// its handles land on the flat part — where the curve actually is.
+    #[must_use]
+    pub fn tangent_handles(self) -> ((f64, f64), (f64, f64)) {
+        // The handles sit at these `x`, exactly where `LINEAR_HANDLES` puts them
+        // (same literals, so `Linear` reaches the identical floats either way).
+        // A cubic through `(0,0)`/`(1,1)` then has endpoint slopes `y1 / x1` and
+        // `(1 - y2) / (1 - x2)`; invert that to place `y` from a measured slope.
+        let (x1, x2) = (Self::LINEAR_HANDLES.0.0, Self::LINEAR_HANDLES.1.0);
+        match self {
+            Interp::Bezier { x1, y1, x2, y2 } => ((x1, y1), (x2, y2)),
+            Interp::Linear => Self::LINEAR_HANDLES,
+            Interp::Hold => ((x1, 0.0), (x2, 0.0)),
+            Interp::Eased(e) => {
+                let m0 = endpoint_slope(e, 0.0);
+                let m1 = endpoint_slope(e, 1.0);
+                ((x1, m0 * x1), (x2, 1.0 - m1 * (1.0 - x2)))
+            }
+        }
+    }
+
     /// Replace the **out** handle (`P1`) with `(x1, y1)`, upgrading to `Bezier`.
-    /// The **in** handle is kept from [`Interp::handles`], or the linear default
-    /// when the segment had none (`Hold`/`Eased`). `x1` is clamped to `[0, 1]`.
+    /// The **in** handle is kept from [`Interp::tangent_handles`], so an eased
+    /// segment converts without the far end jumping. `x1` is clamped to `[0, 1]`.
     #[must_use]
     pub fn with_out_handle(self, x1: f64, y1: f64) -> Interp {
-        let (_, (x2, y2)) = self.handles().unwrap_or(Self::LINEAR_HANDLES);
+        let (_, (x2, y2)) = self.tangent_handles();
         Interp::bezier(x1, y1, x2, y2)
     }
 
     /// Replace the **in** handle (`P2`) with `(x2, y2)`, upgrading to `Bezier`.
-    /// The **out** handle is kept (linear default for `Hold`/`Eased`). `x2` is
+    /// The **out** handle is kept from [`Interp::tangent_handles`]. `x2` is
     /// clamped to `[0, 1]`.
     #[must_use]
     pub fn with_in_handle(self, x2: f64, y2: f64) -> Interp {
-        let ((x1, y1), _) = self.handles().unwrap_or(Self::LINEAR_HANDLES);
+        let ((x1, y1), _) = self.tangent_handles();
         Interp::bezier(x1, y1, x2, y2)
     }
+}
+
+/// Step used to measure an easing's slope at an endpoint. Small enough to read
+/// as a tangent, large enough that `f(u + h) - f(u)` keeps its significant bits.
+const SLOPE_H: f64 = 1e-4;
+
+/// Slopes are clamped here before becoming a handle: `Expo`/`Back` leave their
+/// anchor almost vertically, and an unbounded handle would fly off the band and
+/// drag the vertical fit with it. The tangent's *direction* survives; only an
+/// absurd length is cut.
+const MAX_SLOPE: f64 = 16.0;
+
+/// `f'(u)` of an easing at an endpoint, by one-sided finite difference (the
+/// interior side, so the sample never leaves `[0, 1]` where `eval` clamps).
+fn endpoint_slope(e: Easing, u: f64) -> f64 {
+    let (a, b) = if u <= 0.0 {
+        (0.0, SLOPE_H)
+    } else {
+        (1.0 - SLOPE_H, 1.0)
+    };
+    ((e.eval(b) - e.eval(a)) / SLOPE_H).clamp(-MAX_SLOPE, MAX_SLOPE)
 }
 
 /// Blend two values across a segment: `lerp(v0, v1, interp.remap(u))`.

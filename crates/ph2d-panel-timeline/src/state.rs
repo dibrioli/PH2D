@@ -59,11 +59,10 @@ pub struct TimelinePanelState {
     /// selected diamonds shifted by the live delta and `event`/`interact` can
     /// emit the final `MoveSelectedKeys` on End. `None` when not dragging keys.
     pub key_drag: Option<KeyDrag>,
-    /// Committed-move preview (px) held for exactly the End frame, so the
-    /// selected diamonds stay at the dropped position across the one-frame gap
-    /// between raising `MoveSelectedKeys` and the shell re-publishing the moved
-    /// snapshot — without it the keys flash back to their old spot for a frame.
-    /// Cleared at the top of the next `interact::process` (snapshot has caught up).
+    /// The move emitted THIS frame but not yet visible in the published snapshot
+    /// (intents land one frame later). The selected diamonds ride it so they do
+    /// not lag the cursor by a frame. Cleared at the top of the next
+    /// `interact::process`, by when the snapshot has caught up.
     pub pending_move_dx: Option<f32>,
     /// Vertical scroll of the track rows, in px from the top of the list.
     pub scroll_y: f32,
@@ -177,6 +176,10 @@ pub struct KeyDrag {
     /// dope-sheet disambiguation. `None` when the press already set the
     /// selection (an unselected key, or Shift-toggle).
     pub collapse_to: Option<ph2d_timeline::SelectedKey>,
+    /// Total time delta already emitted as `MoveSelectedKeys`. Each frame emits
+    /// only the difference from here, so the streamed moves sum to exactly the
+    /// snapped delta of the whole drag.
+    pub applied_s: f64,
 }
 
 impl Default for TimelinePanelState {

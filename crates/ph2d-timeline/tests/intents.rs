@@ -738,3 +738,161 @@ fn an_anchor_drag_that_moved_nothing_commits_no_undo_step() {
         "Undo skipped past the empty bracket to the AddKey"
     );
 }
+
+/// Two tracks on entity 1 (TranslationX, Opacity) with keys at `t = 0` and `1`.
+fn two_tracks_two_times(st: &mut TimelineState, ph: &mut Playhead) {
+    for t in [0.0, 1.0] {
+        add_key(st, ph, 1, PropKind::TranslationX, t, t as f32);
+        add_key(st, ph, 1, PropKind::Opacity, t, 1.0 - t as f32);
+    }
+}
+
+fn interps_of(st: &TimelineState, prop: PropKind) -> Vec<Interp> {
+    let target = st.doc.binding_for(1, prop).unwrap().target;
+    st.doc
+        .active_clip()
+        .track(target)
+        .unwrap()
+        .keys()
+        .iter()
+        .map(|k| k.interp)
+        .collect()
+}
+
+fn select_all(st: &mut TimelineState, ph: &mut Playhead) {
+    let keys: Vec<SelectedKey> = [PropKind::TranslationX, PropKind::Opacity]
+        .into_iter()
+        .flat_map(|p| {
+            let target = st.doc.binding_for(1, p).unwrap().target;
+            let ids = st.doc.active_clip().track(target).unwrap().ids().to_vec();
+            ids.into_iter().map(move |key| SelectedKey { target, key })
+        })
+        .collect();
+    apply_intent(st, ph, I::ClearSelection);
+    for k in keys {
+        apply_intent(st, ph, I::AddToSelection(k));
+    }
+}
+
+#[test]
+fn set_selected_interp_retunes_every_selected_key_across_tracks_and_times() {
+    let mut st = TimelineState::new();
+    let mut ph = Playhead::new(DT);
+    two_tracks_two_times(&mut st, &mut ph);
+    select_all(&mut st, &mut ph);
+    let before = st.doc.clone();
+
+    let want = Interp::Eased(ph2d_anim::Easing::new(
+        ph2d_anim::EasingFamily::Bounce,
+        ph2d_anim::EasingMode::Out,
+    ));
+    apply_intent(&mut st, &mut ph, I::SetSelectedInterp { interp: want });
+
+    assert_eq!(interps_of(&st, PropKind::TranslationX), vec![want; 2]);
+    assert_eq!(interps_of(&st, PropKind::Opacity), vec![want; 2]);
+
+    // One undo step for the lot — not one per key.
+    apply_intent(&mut st, &mut ph, I::Undo);
+    assert_eq!(st.doc, before);
+}
+
+#[test]
+fn set_selected_interp_leaves_unselected_keys_alone() {
+    let mut st = TimelineState::new();
+    let mut ph = Playhead::new(DT);
+    two_tracks_two_times(&mut st, &mut ph);
+    // Select ONE key: the first of TranslationX.
+    let target = st
+        .doc
+        .binding_for(1, PropKind::TranslationX)
+        .unwrap()
+        .target;
+    let key = st.doc.active_clip().track(target).unwrap().ids()[0];
+    apply_intent(
+        &mut st,
+        &mut ph,
+        I::SelectSingle(SelectedKey { target, key }),
+    );
+    let opacity_before = interps_of(&st, PropKind::Opacity);
+
+    apply_intent(
+        &mut st,
+        &mut ph,
+        I::SetSelectedInterp {
+            interp: Interp::Hold,
+        },
+    );
+    assert_eq!(interps_of(&st, PropKind::TranslationX)[0], Interp::Hold);
+    assert_ne!(interps_of(&st, PropKind::TranslationX)[1], Interp::Hold);
+    assert_eq!(interps_of(&st, PropKind::Opacity), opacity_before);
+}
+
+#[test]
+fn set_selected_interp_with_nothing_selected_commits_no_undo_step() {
+    let mut st = TimelineState::new();
+    let mut ph = Playhead::new(DT);
+    add_key(&mut st, &mut ph, 1, PropKind::TranslationX, 0.0, 5.0);
+    apply_intent(&mut st, &mut ph, I::ClearSelection);
+    let before = st.doc.clone();
+    apply_intent(
+        &mut st,
+        &mut ph,
+        I::SetSelectedInterp {
+            interp: Interp::Hold,
+        },
+    );
+    assert_eq!(st.doc, before);
+    apply_intent(&mut st, &mut ph, I::Undo);
+    assert_ne!(
+        st.doc, before,
+        "Undo reached past an empty edit to the AddKey"
+    );
+}
+
+#[test]
+fn convert_selection_to_bezier_reads_each_keys_own_curve() {
+    // A mixed selection must stay mixed: each key freezes the handles IT draws.
+    // Broadcasting one key's bezier would silently reshape the others.
+    let mut st = TimelineState::new();
+    let mut ph = Playhead::new(DT);
+    two_tracks_two_times(&mut st, &mut ph);
+    let tx = st
+        .doc
+        .binding_for(1, PropKind::TranslationX)
+        .unwrap()
+        .target;
+    let ids = st.doc.active_clip().track(tx).unwrap().ids().to_vec();
+    // Give the two TranslationX keys different curves.
+    let expo = Interp::Eased(ph2d_anim::Easing::new(
+        ph2d_anim::EasingFamily::Expo,
+        ph2d_anim::EasingMode::In,
+    ));
+    apply_intent(
+        &mut st,
+        &mut ph,
+        I::SetInterp {
+            target: tx,
+            key: ids[0],
+            interp: expo,
+        },
+    );
+    apply_intent(
+        &mut st,
+        &mut ph,
+        I::SetInterp {
+            target: tx,
+            key: ids[1],
+            interp: Interp::Hold,
+        },
+    );
+    select_all(&mut st, &mut ph);
+    apply_intent(&mut st, &mut ph, I::ConvertSelectionToBezier);
+
+    let got = interps_of(&st, PropKind::TranslationX);
+    assert_eq!(got, vec![expo.to_bezier(), Interp::Hold.to_bezier()]);
+    assert_ne!(got[0], got[1], "the mixed selection was flattened");
+    // Every one is now a real bezier, drawn exactly where its handles were.
+    for i in got.iter().chain(interps_of(&st, PropKind::Opacity).iter()) {
+        assert!(matches!(i, Interp::Bezier { .. }), "{i:?}");
+    }
+}

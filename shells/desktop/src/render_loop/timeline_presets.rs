@@ -69,34 +69,59 @@ pub(crate) fn preset_for(item: ph2d_editor::NodeId, mode: u8) -> Option<Preset> 
     Some(Preset::Eased(Easing::new(family, mode)))
 }
 
-/// Turn a picked preset into the `SetInterp` intent for its key, reading the
-/// key's current interpolation when the preset is relative to it (`Custom`).
+/// Turn a picked preset into the intent that applies it.
+///
+/// **Scope follows the selection**, exactly as a drag does: right-clicking a key
+/// that is part of the current selection retunes the WHOLE selection — any number
+/// of tracks, any number of times, one undo step. Right-clicking a key outside it
+/// retunes only that key, and leaves the selection alone. Same disambiguation the
+/// dope-sheet diamond uses for press-and-drag, so the menu never surprises.
+///
 /// `None` when the row is unknown or the key has since been deleted.
 pub(crate) fn interp_for_pick(
     state: &TimelineState,
     pick: ph2d_editor::interaction::TimelineInterpPick,
 ) -> Option<TimelineIntent> {
     use ph2d_anim::{AnimTarget, Interp, KeyId};
+    use ph2d_timeline::SelectedKey;
     let target = AnimTarget::new(pick.target);
     let key = KeyId::new(pick.key);
-    let interp = match preset_for(pick.item, pick.mode)? {
+    let preset = preset_for(pick.item, pick.mode)?;
+    let bulk = state.selection.contains(SelectedKey { target, key });
+
+    // `Custom` has no single `Interp` to broadcast: every key freezes ITS own
+    // handles, so it crosses as its own intent rather than a shared value.
+    if matches!(preset, Preset::Custom) {
+        return Some(if bulk {
+            TimelineIntent::ConvertSelectionToBezier
+        } else {
+            TimelineIntent::SetInterp {
+                target,
+                key,
+                interp: state
+                    .doc
+                    .active_clip()
+                    .track(target)?
+                    .key(key)?
+                    .interp
+                    .to_bezier(),
+            }
+        });
+    }
+    let interp = match preset {
         Preset::Hold => Interp::Hold,
         Preset::Linear => Interp::Linear,
         Preset::Eased(e) => Interp::Eased(e),
-        // The bézier the handles ALREADY show, so "Custom" moves nothing on the
-        // screen — it only makes what is drawn draggable.
-        Preset::Custom => state
-            .doc
-            .active_clip()
-            .track(target)?
-            .key(key)?
-            .interp
-            .to_bezier(),
+        Preset::Custom => unreachable!("handled above"),
     };
-    Some(TimelineIntent::SetInterp {
-        target,
-        key,
-        interp,
+    Some(if bulk {
+        TimelineIntent::SetSelectedInterp { interp }
+    } else {
+        TimelineIntent::SetInterp {
+            target,
+            key,
+            interp,
+        }
     })
 }
 
@@ -206,9 +231,11 @@ mod pick_tests {
     use ph2d_core::Playhead;
     use ph2d_editor::ids as c;
     use ph2d_editor::interaction::{TL_NO_EASE_MODE, TimelineInterpPick};
-    use ph2d_timeline::{PropKind, apply_intent};
+    use ph2d_timeline::{PropKind, SelectedKey, apply_intent};
 
-    /// One track (entity 1, TranslationX) with a single Cubic-InOut key.
+    /// One track (entity 1, TranslationX) with a single Cubic-InOut key. `AddKey`
+    /// leaves it selected, so callers that want the single-key scope must
+    /// `ClearSelection` first — which is the point of this whole module.
     fn doc_with_one_key() -> (TimelineState, AnimTarget, KeyId) {
         let mut st = TimelineState::new();
         let mut ph = Playhead::new(1.0 / 60.0);
@@ -232,6 +259,14 @@ mod pick_tests {
         (st, target, key)
     }
 
+    /// The same doc with nothing selected — the "right-clicked a key outside the
+    /// selection" case.
+    fn doc_unselected() -> (TimelineState, AnimTarget, KeyId) {
+        let (mut st, target, key) = doc_with_one_key();
+        st.selection.clear();
+        (st, target, key)
+    }
+
     fn pick(
         target: AnimTarget,
         key: KeyId,
@@ -246,9 +281,11 @@ mod pick_tests {
         }
     }
 
+    // ── scope: one key, or the whole selection ───────────────────────────
+
     #[test]
-    fn hold_and_linear_reach_the_document_as_themselves() {
-        let (st, target, key) = doc_with_one_key();
+    fn a_key_outside_the_selection_is_retuned_alone() {
+        let (st, target, key) = doc_unselected();
         for (item, want) in [
             (c::CTX_MENU_TL_HOLD, Interp::Hold),
             (c::CTX_MENU_TL_LINEAR, Interp::Linear),
@@ -259,20 +296,37 @@ mod pick_tests {
                     target,
                     key,
                     interp: want
-                })
+                }),
+                "an unselected key must not drag the selection along"
             );
         }
     }
 
     #[test]
-    fn a_family_row_becomes_that_family_in_the_mode_its_cascade_carried() {
+    fn right_clicking_a_selected_key_retunes_every_selected_key() {
+        // The whole point: pick once, and every key selected across any number of
+        // tracks and times gets the same curve, in one undo step.
         let (st, target, key) = doc_with_one_key();
-        let got = interp_for_pick(
-            &st,
-            pick(target, key, c::CTX_MENU_TL_FAM_BACK, c::TL_EASE_MODE_OUT),
-        );
+        assert!(st.selection.contains(SelectedKey { target, key }));
         assert_eq!(
-            got,
+            interp_for_pick(
+                &st,
+                pick(target, key, c::CTX_MENU_TL_FAM_BACK, c::TL_EASE_MODE_OUT)
+            ),
+            Some(TimelineIntent::SetSelectedInterp {
+                interp: Interp::Eased(Easing::new(EasingFamily::Back, EasingMode::Out))
+            })
+        );
+    }
+
+    #[test]
+    fn a_family_row_becomes_that_family_in_the_mode_its_cascade_carried() {
+        let (st, target, key) = doc_unselected();
+        assert_eq!(
+            interp_for_pick(
+                &st,
+                pick(target, key, c::CTX_MENU_TL_FAM_BACK, c::TL_EASE_MODE_OUT)
+            ),
             Some(TimelineIntent::SetInterp {
                 target,
                 key,
@@ -281,12 +335,13 @@ mod pick_tests {
         );
     }
 
+    // ── Custom: no single Interp to broadcast ────────────────────────────
+
     #[test]
     fn custom_freezes_the_handles_the_graph_is_already_drawing() {
         // Not a fresh bezier: the one whose control points are the tangent
-        // handles the editor paints for the key's CURRENT easing. Picking Custom
-        // must not visibly move the curve.
-        let (st, target, key) = doc_with_one_key();
+        // handles the editor paints for the key's CURRENT easing.
+        let (st, target, key) = doc_unselected();
         let current = default_interp();
         let got = interp_for_pick(
             &st,
@@ -307,10 +362,25 @@ mod pick_tests {
     }
 
     #[test]
+    fn custom_over_a_selection_converts_each_key_from_its_own_curve() {
+        // A shared `Interp` would flatten a mixed selection onto one shape, so
+        // Custom crosses as its own intent and each key reads its own handles.
+        let (st, target, key) = doc_with_one_key();
+        assert_eq!(
+            interp_for_pick(
+                &st,
+                pick(target, key, c::CTX_MENU_TL_CUSTOM, TL_NO_EASE_MODE)
+            ),
+            Some(TimelineIntent::ConvertSelectionToBezier),
+            "bulk Custom must not broadcast one key's bezier to the rest"
+        );
+    }
+
+    #[test]
     fn a_pick_naming_a_key_the_document_no_longer_has_resolves_to_nothing() {
         // Custom reads the key; a delete between the right-click and the pick
         // must not panic or fabricate an interpolation.
-        let (st, target, _) = doc_with_one_key();
+        let (st, target, _) = doc_unselected();
         assert_eq!(
             interp_for_pick(
                 &st,

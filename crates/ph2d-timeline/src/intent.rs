@@ -118,6 +118,18 @@ pub enum TimelineIntent {
         /// New interpolation.
         interp: Interp,
     },
+    /// Give **every selected key** the same outgoing interpolation, across any
+    /// number of tracks and times. One undo step. A no-op with nothing selected.
+    SetSelectedInterp {
+        /// The interpolation each selected key receives.
+        interp: Interp,
+    },
+    /// Freeze every selected key's interpolation into the bézier its own handles
+    /// already draw ([`Interp::to_bezier`]). Unlike
+    /// [`TimelineIntent::SetSelectedInterp`] there is no single `Interp` to send:
+    /// each key converts from the curve IT had, so a mixed selection stays mixed
+    /// and nothing moves on screen — it only becomes draggable.
+    ConvertSelectionToBezier,
 
     // ── selection (not undoable) ────────────────────────────────────────────
     /// Replace the selection with a single key.
@@ -285,6 +297,24 @@ pub fn apply_intent(state: &mut TimelineState, playhead: &mut Playhead, intent: 
             if let Some(track) = doc.active_clip_mut().track_mut(target) {
                 track.set_interp(key, interp);
             }
+        }),
+        I::SetSelectedInterp { interp } => edit(state, |doc, sel| {
+            for_selected_tracks(doc, sel, |track, ids| {
+                for &id in ids {
+                    track.set_interp(id, interp);
+                }
+            });
+        }),
+        I::ConvertSelectionToBezier => edit(state, |doc, sel| {
+            for_selected_tracks(doc, sel, |track, ids| {
+                for &id in ids {
+                    // Read each key's OWN curve: one shared `Interp` would flatten
+                    // a mixed selection onto whichever one we happened to pick.
+                    if let Some(k) = track.key(id) {
+                        track.set_interp(id, k.interp.to_bezier());
+                    }
+                }
+            });
         }),
 
         // selection

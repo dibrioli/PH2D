@@ -213,6 +213,7 @@ impl App {
             vec_grad_drag: None,
             vec_grad_selected: None,
             vec_clipboard: None,
+            vec_pivot_edit: false,
             vec_snap: crate::vec_snap::VecSnapSettings::default(),
             vec_snap_targets: ph2d_vec_edit::SnapTargets::default(),
             vec_snap_guides: Vec::new(),

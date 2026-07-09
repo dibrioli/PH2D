@@ -846,6 +846,12 @@ impl crate::App {
                 // handles share the deform gizmo's screen corners on a whole-image transform).
                 painter_bridge_queries::deform_transform_gizmo_active(tools),
                 vec_scene,
+                // O gizmo da forma só existe fora da ferramenta vetorial, ou no modo
+                // Select dela (ADR-0112).
+                !tools
+                    .active()
+                    .is_some_and(|t| t.id() == ph2d_editor::ToolId::new("vector"))
+                    || self.vec_draw_config.mode == ph2d_tool_vector::DrawMode::Select,
             );
             // ─────────────────────────────────────────────────────────
             // Wave 2.5 PR 11.8 closeout — consolidated bus drain.
@@ -930,6 +936,7 @@ impl crate::App {
             let mut pending_vec_rotate: Option<ph2d_vec_scene::Rotate90> = None;
             let mut pending_vec_path_shape: Option<crate::input_dispatch::VecPathShapeOp> = None;
             let mut pending_vec_toggle_closed = false;
+            let mut pending_vec_pivot_edit = false;
             let mut pending_vec_fill_kind: Option<crate::input_dispatch::VecFillKind> = None;
             // Linear-gradient angle (degrees) from the Angle slider (track·360).
             let mut pending_vec_grad_angle: Option<f64> = None;
@@ -1029,6 +1036,8 @@ impl crate::App {
                                 crate::input_dispatch::vec_path_shape_for_id(*id)
                             {
                                 pending_vec_path_shape = Some(op);
+                            } else if *id == ph2d_editor::ids::VECTOR_PIVOT_EDIT {
+                                pending_vec_pivot_edit = true;
                             } else if *id == ph2d_editor::ids::VECTOR_PATH_CLOSE {
                                 pending_vec_toggle_closed = true;
                             } else if let Some(k) = crate::input_dispatch::vec_fill_kind_for_id(*id)
@@ -1048,7 +1057,6 @@ impl crate::App {
                                 crate::input_dispatch::vec_distribute_for_id(*id)
                             {
                                 pending_vec_distribute = Some(d);
-                            } else if *id == ph2d_editor::ids::VECTOR_PIVOT_EDIT {
                             } else if *id == ph2d_editor::ids::VECTOR_COMPOUND_MAKE {
                                 pending_vec_compound = Some(true);
                             } else if *id == ph2d_editor::ids::VECTOR_COMPOUND_RELEASE {
@@ -1795,11 +1803,16 @@ impl crate::App {
                     dir,
                 );
             }
+            // O afim de cada path, para as operações que falam MUNDO (align, distribute,
+            // campos X/Y/W/H). O mapa é o do frame passado — os paths envolvidos já
+            // existem, então basta.
+            let vec_xf_ops = crate::vec_transform::build(sim, &self.vec_entities);
             if let Some((field, target)) = pending_vec_transform {
                 crate::input_dispatch::apply_vec_transform(
                     vec_scene,
                     &mut self.vec_history,
                     &self.vec_pen,
+                    &vec_xf_ops,
                     field,
                     target,
                 );
@@ -1898,6 +1911,7 @@ impl crate::App {
                     vec_scene,
                     &mut self.vec_history,
                     &self.vec_pen,
+                    &vec_xf_ops,
                     a,
                 );
             }
@@ -1906,6 +1920,7 @@ impl crate::App {
                     vec_scene,
                     &mut self.vec_history,
                     &self.vec_pen,
+                    &vec_xf_ops,
                     d,
                 );
             }
@@ -1924,6 +1939,10 @@ impl crate::App {
                 )
                 .map(ph2d_vec_render::GradHandle::Stop);
             }
+            if pending_vec_pivot_edit {
+                // Arma "Set Center": a próxima pressão no canvas põe a ORIGEM ali.
+                self.vec_pivot_edit = true;
+            }
             let vec_cfg = vector_bridge::dispatch(
                 hero,
                 tools,
@@ -1933,6 +1952,8 @@ impl crate::App {
                 &mut self.vec_history,
                 vec_px_to_world,
                 self.vec_grad_selected,
+                &vec_xf_ops,
+                self.vec_pivot_edit,
                 self.vec_snap.on,
             );
             // Motion Nodes M0.T10: same phase as vector_bridge (AFTER the
@@ -1958,6 +1979,16 @@ impl crate::App {
             // entidades (path novo ⇒ entidade; entidade apagada ⇒ path), projeta a
             // ordem de z da árvore na pilha, e lê visibilidade/trava herdadas.
             crate::vec_entities::sync(sim, vec_scene, &mut self.vec_entities);
+            // ADR-0112: a origem (o pivô) de um path nasce no centro do MUNDO. Assim
+            // que a forma pára de crescer, ela vai para o centro dela.
+            // Os dois gestos que escrevem geometria em MUNDO a cada frame: a caneta e
+            // a ferramenta de forma. Nenhum dos dois pode ser assentado no meio.
+            let drawing: Vec<ph2d_vec_scene::VecPathId> =
+                [self.vec_pen.active_path(), self.vec_shape.active_path()]
+                    .into_iter()
+                    .flatten()
+                    .collect();
+            crate::vec_transform::settle_origins(sim, vec_scene, &self.vec_entities, &drawing);
             if let Some(live) = hero_live.as_ref() {
                 let order = crate::vec_entities::z_order(hero, &live.bridge, &self.vec_entities);
                 vec_scene.reorder_to(&order);
@@ -1983,9 +2014,9 @@ impl crate::App {
 
             let cam_affine = camera.world_to_screen_affine(window_size);
             ph2d_vec_render::dispatch(vec_scene, &vec_view, &vec_xf, cam_affine, vector_scene);
-            if vector_active {
-                // Âncoras e handles só interessam a quem edita nós (o gizmo de objeto
-                // é o de sprite, e vive fora desta ferramenta).
+            // Âncoras e handles só interessam a quem edita nós; no modo Select quem
+            // fala é o gizmo (ADR-0112).
+            if vector_active && self.vec_draw_config.mode != ph2d_tool_vector::DrawMode::Select {
                 ph2d_vec_render::draw_overlays(
                     vec_scene,
                     &vec_view,

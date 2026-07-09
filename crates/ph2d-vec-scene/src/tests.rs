@@ -1201,3 +1201,48 @@ fn paste_translates_the_gradient_and_the_subpaths_too() {
         "o furo é furo"
     );
 }
+
+/// ADR-0112: a bbox de MUNDO é o que `align`/`distribute` comparam. Duas formas com
+/// a mesma geometria local (centrada na origem) mas `Transform` diferentes NÃO estão
+/// no mesmo lugar — compará-las localmente as empilharia.
+#[test]
+fn the_world_bbox_separates_two_shapes_that_share_a_local_bbox() {
+    let mut scene = VecScene::new();
+    let a = scene.push_path(rectangle([-1.0, -1.0], [1.0, 1.0]));
+    let b = scene.push_path(rectangle([-1.0, -1.0], [1.0, 1.0]));
+    let mut xf = VecXforms::new();
+    xf.insert(b, Xform([1.0, 0.0, 0.0, 1.0, 100.0, 0.0]));
+
+    assert_eq!(
+        scene.path_curve_bbox(a),
+        scene.path_curve_bbox(b),
+        "local: iguais"
+    );
+    let (a_lo, _) = scene.path_world_curve_bbox(&xf, a).unwrap();
+    let (b_lo, _) = scene.path_world_curve_bbox(&xf, b).unwrap();
+    assert!((a_lo[0] + 1.0).abs() < 1e-9, "{a_lo:?}");
+    assert!(
+        (b_lo[0] - 99.0).abs() < 1e-9,
+        "no mundo, `b` está 100 à direita: {b_lo:?}"
+    );
+}
+
+/// Um delta de MUNDO desce pelo afim antes de virar delta local — senão uma forma
+/// escalada 2× andaria o dobro.
+#[test]
+fn a_world_delta_moves_a_scaled_shape_by_exactly_that_delta() {
+    let mut scene = VecScene::new();
+    let id = scene.push_path(rectangle([0.0, 0.0], [1.0, 1.0]));
+    let mut xf = VecXforms::new();
+    xf.insert(id, Xform([2.0, 0.0, 0.0, 2.0, 0.0, 0.0]));
+
+    let (before, _) = scene.path_world_curve_bbox(&xf, id).unwrap();
+    assert!(scene.translate_path_world(&xf, id, 10.0, 0.0));
+    let (after, _) = scene.path_world_curve_bbox(&xf, id).unwrap();
+    assert!(
+        (after[0] - before[0] - 10.0).abs() < 1e-9,
+        "{before:?} -> {after:?}"
+    );
+    // Guardado em local: 10 / 2 = 5.
+    assert!((scene.paths()[0].verts[0].anchor[0] - 5.0).abs() < 1e-9);
+}

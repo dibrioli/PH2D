@@ -105,7 +105,7 @@ impl Default for VectorTool {
             stroke: color_of("white").unwrap_or([240, 240, 245, 255]),
             fill: color_of("blue").unwrap_or([90, 150, 230, 255]),
             stroke_width_px: DEFAULT_STROKE_WIDTH_PX,
-            mode: DrawMode::Pen,
+            mode: DrawMode::Select,
             polygon_sides: DEFAULT_POLYGON_SIDES,
             star_points: DEFAULT_STAR_POINTS,
             star_inner_ratio: DEFAULT_STAR_INNER,
@@ -302,6 +302,8 @@ impl Tool for VectorTool {
             }
             // Draw-mode segmented row: switches the canvas gesture. No recolour
             // (mode is not a Style change) — the shell reads `mode()` to route.
+            PanelEvent::Click(id) if id == ids::VECTOR_MODE_SELECT => self.mode = DrawMode::Select,
+            PanelEvent::Click(id) if id == ids::VECTOR_MODE_NODE => self.mode = DrawMode::Node,
             PanelEvent::Click(id) if id == ids::VECTOR_MODE_PEN => self.mode = DrawMode::Pen,
             PanelEvent::Click(id) if id == ids::VECTOR_MODE_RECT => self.mode = DrawMode::Rectangle,
             PanelEvent::Click(id) if id == ids::VECTOR_MODE_ELLIPSE => {
@@ -420,12 +422,14 @@ mod tests {
     #[test]
     fn mode_buttons_switch_the_draw_mode() {
         let mut t = VectorTool::new();
-        assert_eq!(t.mode(), DrawMode::Pen); // default
+        assert_eq!(t.mode(), DrawMode::Select); // default
         for (id, want) in [
             (ids::VECTOR_MODE_RECT, DrawMode::Rectangle),
             (ids::VECTOR_MODE_ELLIPSE, DrawMode::Ellipse),
             (ids::VECTOR_MODE_POLYGON, DrawMode::Polygon),
             (ids::VECTOR_MODE_PEN, DrawMode::Pen),
+            (ids::VECTOR_MODE_NODE, DrawMode::Node),
+            (ids::VECTOR_MODE_SELECT, DrawMode::Select),
         ] {
             Tool::handle_panel_event(&mut t, PanelEvent::Click(id));
             assert_eq!(t.mode(), want);

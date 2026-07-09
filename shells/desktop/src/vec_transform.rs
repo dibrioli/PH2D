@@ -64,6 +64,114 @@ pub(crate) fn build(sim: &SimWorld, map: &crate::vec_entities::VecEntityMap) -> 
     out
 }
 
+/// Move a ORIGEM da entidade de `path` para `target_world`, **sem mover a forma**:
+/// a translação vai para lá e a geometria local desloca o mesmo tanto para trás.
+///
+/// É o que dá sentido ao pivô de uma forma vetorial. Um sprite tem a origem no
+/// centro do quad por construção (`anchor = 0`); um path nasce com a geometria em
+/// coordenadas de mundo e a origem em (0,0) — o centro do MUNDO, não o da forma.
+///
+/// Usado em dois lugares, com o mesmo código: ao assentar um path recém-criado
+/// (`target` = centro da bbox) e no botão "Set Center" (`target` = o clique).
+///
+/// `false` se a entidade sumiu, se o path sumiu, ou se o afim é degenerado.
+pub(crate) fn move_origin_to(
+    sim: &mut SimWorld,
+    scene: &mut ph2d_vec_scene::VecScene,
+    entity: Entity,
+    path: ph2d_vec_scene::VecPathId,
+    target_world: [f32; 2],
+) -> bool {
+    if sim.world().get_entity(entity).is_err() {
+        return false;
+    }
+    // A translação vive no espaço do PAI; a geometria, no espaço local (pós R·S).
+    let parent = ph2d_ecs::parent_world_transform(sim.world(), entity);
+    let Some(parent_inv) = xform_of_transform(parent).inverse() else {
+        return false;
+    };
+    let target_parent = parent_inv.apply([f64::from(target_world[0]), f64::from(target_world[1])]);
+    let Some(local) = sim.world().get::<Transform>(entity).copied() else {
+        return false;
+    };
+    // Quanto a origem andou, no espaço do pai.
+    let delta_parent = [
+        target_parent[0] - f64::from(local.translation.x),
+        target_parent[1] - f64::from(local.translation.y),
+    ];
+    // O mesmo deslocamento, no espaço LOCAL da geometria: desfaz a rotação/escala
+    // próprias (a translação não entra — delta é um vetor).
+    let rs = xform_of_transform(Transform {
+        translation: ph2d_core::Vec2::new(0.0, 0.0),
+        ..local
+    });
+    let Some(rs_inv) = rs.inverse() else {
+        return false;
+    };
+    let delta_local = rs_inv.apply_vec(delta_parent);
+    let Some(p) = scene.path_mut(path) else {
+        return false;
+    };
+    // A geometria recua exatamente o que a origem avançou ⇒ a forma não se move.
+    ph2d_vec_scene::bake_xform(
+        p,
+        &Xform([1.0, 0.0, 0.0, 1.0, -delta_local[0], -delta_local[1]]),
+    );
+    if let Some(mut t) = sim.world_mut().get_mut::<Transform>(entity) {
+        t.translation = ph2d_core::Vec2::new(target_parent[0] as f32, target_parent[1] as f32);
+    }
+    true
+}
+
+/// Põe a origem de cada path recém-criado no **centro da bbox dele**.
+///
+/// Um path nasce com a geometria em coordenadas de mundo e a entidade na
+/// identidade — a origem, e portanto o pivô, cai no centro do mundo. Isto conserta
+/// isso assim que a forma pára de crescer (`drawing` = o path que a caneta ainda
+/// está construindo, que ficaria pulando a cada vértice).
+///
+/// Só toca quem está na **identidade e sem pai** — um path já movido, escalado ou
+/// parentado tem a origem que o usuário lhe deu, e não é da nossa conta. Idempotente:
+/// depois de centrado, o delta é zero.
+///
+/// `drawing` são os paths em GESTO: o da caneta e o da ferramenta de forma. Ambos
+/// escrevem geometria em coordenadas de MUNDO a cada frame; assentá-los no meio do
+/// gesto faria a geometria e o `Transform` somarem, e a forma sairia deslocada do
+/// cursor exatamente pelo ponto onde o arrasto começou.
+pub(crate) fn settle_origins(
+    sim: &mut SimWorld,
+    scene: &mut ph2d_vec_scene::VecScene,
+    map: &crate::vec_entities::VecEntityMap,
+    drawing: &[ph2d_vec_scene::VecPathId],
+) {
+    let pending: Vec<(ph2d_vec_scene::VecPathId, Entity)> = map
+        .iter()
+        .filter(|(id, _)| !drawing.contains(id))
+        .map(|(&id, &bits)| (id, Entity::from_bits(bits)))
+        .filter(|&(_, e)| {
+            sim.world().get_entity(e).is_ok()
+                && sim.world().get::<ph2d_ecs::ChildOf>(e).is_none()
+                && sim
+                    .world()
+                    .get::<Transform>(e)
+                    .is_some_and(|t| *t == Transform::IDENTITY)
+        })
+        .collect();
+    for (id, e) in pending {
+        let Some((lo, hi)) = scene.path_curve_bbox(id) else {
+            continue;
+        };
+        let center = [
+            ((lo[0] + hi[0]) * 0.5) as f32,
+            ((lo[1] + hi[1]) * 0.5) as f32,
+        ];
+        if center[0] == 0.0 && center[1] == 0.0 {
+            continue; // já centrado — nada a fazer
+        }
+        move_origin_to(sim, scene, e, id, center);
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -127,6 +235,138 @@ mod tests {
         // E um ponto local [1,0] anda 2 world-units (a escala do pai).
         let p = x.apply([1.0, 0.0]);
         assert!((p[0] - 14.0).abs() < 1e-6, "{p:?}");
+    }
+
+    /// Assentar a origem põe o pivô no CENTRO da forma sem mover um pixel dela.
+    /// Era o bug: um path nascia com a geometria em coordenadas de mundo e a origem
+    /// em (0,0) — o centro do mundo.
+    #[test]
+    fn settling_puts_the_origin_at_the_shape_center_without_moving_the_shape() {
+        let mut sim = SimWorld::default();
+        let mut scene = ph2d_vec_scene::VecScene::new();
+        let mut map = crate::vec_entities::VecEntityMap::new();
+        // Quadrado de [10,20] a [30,40]: centro em (20, 30).
+        let id = scene.push_path(ph2d_vec_scene::rectangle([10.0, 20.0], [30.0, 40.0]));
+        let e = sim
+            .world_mut()
+            .spawn((Transform::IDENTITY, VecPathRef(id)))
+            .id();
+        map.insert(id, e.to_bits());
+
+        let world_before = scene.path_curve_bbox(id).unwrap();
+        settle_origins(&mut sim, &mut scene, &map, &[]);
+
+        let t = sim.world().get::<Transform>(e).copied().unwrap();
+        assert!(
+            (t.translation.x - 20.0).abs() < 1e-4 && (t.translation.y - 30.0).abs() < 1e-4,
+            "a origem foi para o centro da forma: {:?}",
+            t.translation
+        );
+        // A geometria recuou o mesmo tanto ⇒ o bbox de MUNDO não mudou.
+        let x = ph2d_vec_scene::xform_of(&build(&sim, &map), id);
+        let (lo, hi) = scene.path_curve_bbox(id).unwrap();
+        let (wlo, whi) = (x.apply(lo), x.apply(hi));
+        assert!((wlo[0] - world_before.0[0]).abs() < 1e-4, "{wlo:?}");
+        assert!((whi[1] - world_before.1[1]).abs() < 1e-4, "{whi:?}");
+        // E a bbox local ficou centrada na origem.
+        assert!((lo[0] + hi[0]).abs() < 1e-4 && (lo[1] + hi[1]).abs() < 1e-4);
+
+        // Idempotente: rodar de novo não mexe em nada.
+        settle_origins(&mut sim, &mut scene, &map, &[]);
+        let t2 = sim.world().get::<Transform>(e).copied().unwrap();
+        assert_eq!(t2.translation, t.translation);
+    }
+
+    /// REGRESSÃO (Enio 2026-07-09: "forma sendo desenhada com pivot no centro do mundo
+    /// e com um offset bizarro em relação ao mouse").
+    ///
+    /// A ferramenta de forma empurra o path no Down e **reescreve a geometria em
+    /// coordenadas de MUNDO** a cada Move. Se a origem for assentada no meio do gesto,
+    /// geometria e `Transform` passam a somar, e a forma sai deslocada exatamente pelo
+    /// ponto onde o arrasto começou.
+    #[test]
+    fn a_shape_still_being_dragged_is_never_settled() {
+        let mut sim = SimWorld::default();
+        let mut scene = ph2d_vec_scene::VecScene::new();
+        let mut map = crate::vec_entities::VecEntityMap::new();
+        // O degenerado do Down: um quadrado minúsculo longe da origem.
+        let id = scene.push_path(ph2d_vec_scene::rectangle([40.0, 40.0], [40.0, 40.0]));
+        let e = sim
+            .world_mut()
+            .spawn((Transform::IDENTITY, VecPathRef(id)))
+            .id();
+        map.insert(id, e.to_bits());
+
+        settle_origins(&mut sim, &mut scene, &map, &[id]);
+        assert_eq!(
+            sim.world().get::<Transform>(e).copied().unwrap(),
+            Transform::IDENTITY,
+            "o gesto continua em world-space: identidade"
+        );
+        assert!(build(&sim, &map).is_empty(), "afim identidade ⇒ sem offset");
+
+        // Terminado o gesto, aí sim assenta.
+        settle_origins(&mut sim, &mut scene, &map, &[]);
+        let t = sim.world().get::<Transform>(e).copied().unwrap();
+        assert!((t.translation.x - 40.0).abs() < 1e-4);
+    }
+
+    /// O path que a caneta ainda constrói NÃO é assentado — a origem ficaria pulando
+    /// a cada vértice novo.
+    #[test]
+    fn the_path_being_drawn_is_left_alone() {
+        let mut sim = SimWorld::default();
+        let mut scene = ph2d_vec_scene::VecScene::new();
+        let mut map = crate::vec_entities::VecEntityMap::new();
+        let id = scene.push_path(ph2d_vec_scene::rectangle([10.0, 20.0], [30.0, 40.0]));
+        let e = sim
+            .world_mut()
+            .spawn((Transform::IDENTITY, VecPathRef(id)))
+            .id();
+        map.insert(id, e.to_bits());
+        settle_origins(&mut sim, &mut scene, &map, &[id]);
+        assert_eq!(
+            sim.world().get::<Transform>(e).copied().unwrap(),
+            Transform::IDENTITY
+        );
+    }
+
+    /// `move_origin_to` respeita a escala própria da forma: a geometria local recua
+    /// o delta DIVIDIDO pela escala, senão a forma saltaria.
+    #[test]
+    fn moving_the_origin_of_a_scaled_shape_does_not_move_the_shape() {
+        let mut sim = SimWorld::default();
+        let mut scene = ph2d_vec_scene::VecScene::new();
+        let id = scene.push_path(ph2d_vec_scene::rectangle([-1.0, -1.0], [1.0, 1.0]));
+        let e = sim
+            .world_mut()
+            .spawn((t(0.0, 0.0, 3.0), VecPathRef(id)))
+            .id();
+        let mut map = crate::vec_entities::VecEntityMap::new();
+        map.insert(id, e.to_bits());
+
+        let x0 = ph2d_vec_scene::xform_of(&build(&sim, &map), id);
+        let corner_before = x0.apply([1.0, 1.0]); // mundo (3,3)
+
+        assert!(move_origin_to(&mut sim, &mut scene, e, id, [3.0, 3.0]));
+
+        let x1 = ph2d_vec_scene::xform_of(&build(&sim, &map), id);
+        let corner_after = x1.apply(scene.paths()[0].verts_all().nth(2).unwrap().anchor);
+        assert!(
+            (corner_after[0] - corner_before[0]).abs() < 1e-4
+                && (corner_after[1] - corner_before[1]).abs() < 1e-4,
+            "o canto não se moveu: {corner_before:?} -> {corner_after:?}"
+        );
+        let tr = sim
+            .world()
+            .get::<Transform>(e)
+            .copied()
+            .unwrap()
+            .translation;
+        assert!(
+            (tr.x - 3.0).abs() < 1e-4 && (tr.y - 3.0).abs() < 1e-4,
+            "{tr:?}"
+        );
     }
 
     /// Uma entidade morta não produz afim (a `sync` a removeria, mas o mapa pode

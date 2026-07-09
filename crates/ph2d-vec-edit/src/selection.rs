@@ -59,7 +59,22 @@ impl PenTool {
                 best = Some((path.id, d2_world));
             }
         }
-        best.map(|(id, _)| id)
+        if let Some((id, _)) = best {
+            return Some(id);
+        }
+        // Nenhum traço perto: o clique pode ter caído no PREENCHIMENTO. Vale a forma
+        // mais ao topo que contenha o ponto — é como se seleciona uma forma cheia em
+        // qualquer editor, e sem isto a seta branca só pegaria a borda.
+        // `paths` é fundo → topo, então varre-se ao contrário.
+        for path in scene.paths().iter().rev() {
+            if !self.view.is_pickable(path.id) {
+                continue;
+            }
+            if scene.path_contains_point(path.id, self.to_local(path.id, p)) {
+                return Some(path.id);
+            }
+        }
+        None
     }
 
     /// Troca a seleção de OBJETO por `ids`, **preservando** o vértice primário e a

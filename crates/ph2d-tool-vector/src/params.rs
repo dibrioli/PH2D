@@ -38,7 +38,13 @@ pub fn px_to_slider(px: f64) -> f32 {
 /// it and highlights the active one from the published snapshot.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
 pub enum DrawMode {
+    /// Seta preta: seleciona e TRANSFORMA a forma pelo gizmo. Não toca a geometria.
     #[default]
+    Select,
+    /// Seta branca: edita âncoras e handles do path selecionado. Nunca cria um path,
+    /// e o gizmo não aparece (as alças dele comeriam o clique do nó).
+    Node,
+    /// Caneta: cria path novo e edita os nós que ela mesma pôs. Sem gizmo.
     Pen,
     Rectangle,
     Ellipse,
@@ -245,7 +251,7 @@ pub struct VectorDrawConfig {
 impl Default for VectorDrawConfig {
     fn default() -> Self {
         Self {
-            mode: DrawMode::Pen,
+            mode: DrawMode::Select,
             polygon_sides: super::tool::DEFAULT_POLYGON_SIDES,
             star_points: super::tool::DEFAULT_STAR_POINTS,
             star_inner_ratio: super::tool::DEFAULT_STAR_INNER,
@@ -331,8 +337,11 @@ mod tests {
         assert_eq!(slider_to_sides(0.5), (SIDES_MIN + SIDES_MAX) / 2 + 1);
     }
 
+    /// ADR-0112: a ferramenta abre na SELEÇÃO (seta preta), como qualquer editor
+    /// vetorial. A caneta é um modo, não o ponto de partida.
     #[test]
-    fn draw_mode_defaults_to_pen() {
-        assert_eq!(DrawMode::default(), DrawMode::Pen);
+    fn draw_mode_defaults_to_select() {
+        assert_eq!(DrawMode::default(), DrawMode::Select);
+        assert_eq!(VectorDrawConfig::default().mode, DrawMode::Select);
     }
 }

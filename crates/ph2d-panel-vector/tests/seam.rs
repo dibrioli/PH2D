@@ -111,7 +111,12 @@ fn mode_button_click_switches_tool_mode_through_seam() {
     let mut host = MockPanelHost::with_panel::<VectorPanel>();
     let mut panel_state = VectorPanelState;
     let mut tool = VectorTool::default();
-    assert_eq!(tool.mode(), DrawMode::Pen, "precondition: default is Pen");
+    // ADR-0112: a ferramenta abre na SELEÇÃO, como qualquer editor vetorial.
+    assert_eq!(
+        tool.mode(),
+        DrawMode::Select,
+        "precondition: default is Select"
+    );
 
     let outcome = host.apply_panel_event::<VectorPanel>(
         &mut panel_state,

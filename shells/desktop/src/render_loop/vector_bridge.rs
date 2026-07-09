@@ -125,6 +125,10 @@ pub(super) fn dispatch(
     // the Fill swatch shows its colour and the picker recolours THAT slot instead of
     // replacing the whole fill with a solid colour.
     grad_handle: Option<GradHandle>,
+    // Onde cada path ESTÁ (ADR-0111): o readout de posição/tamanho é em MUNDO.
+    xforms: &ph2d_vec_scene::VecXforms,
+    // "Set Center" armado (ADR-0112): só muda o rótulo do botão.
+    pivot_edit: bool,
     // Whether the transform gizmo's "Set Center" pivot-edit mode is armed.
     // Whether shape-snapping is on, mirrored into the panel's Snap section. The
     // GRID toggle lives in the editor's universal Grid Snap panel.
@@ -335,7 +339,7 @@ pub(super) fn dispatch(
     #[cfg(feature = "panel-vector")]
     ph2d_panel_vector::set_current_transform(if vector_active {
         pen.selected()
-            .and_then(|sel| scene.path_bbox(sel))
+            .and_then(|sel| scene.path_world_curve_bbox(xforms, sel))
             .map(|(lo, hi)| [lo[0], lo[1], hi[0] - lo[0], hi[1] - lo[1]])
     } else {
         None
@@ -351,6 +355,7 @@ pub(super) fn dispatch(
     });
     // Publish the pivot-edit ("Set Center") armed state for the button label.
     #[cfg(feature = "panel-vector")]
+    ph2d_panel_vector::set_current_pivot_edit(vector_active && pivot_edit);
     // Publish shape-snapping so the Snap section reflects (and drives) it.
     #[cfg(feature = "panel-vector")]
     ph2d_panel_vector::set_current_snap(snap_on);

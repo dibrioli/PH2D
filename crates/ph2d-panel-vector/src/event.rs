@@ -115,7 +115,9 @@ pub(crate) fn apply_event(
         // applies the op to the document (they are not Style edits, so the tool
         // ignores them). Same forwarder shape either way.
         WidgetEvent::Click(id)
-            if id == ids::VECTOR_MODE_PEN
+            if id == ids::VECTOR_MODE_SELECT
+                || id == ids::VECTOR_MODE_NODE
+                || id == ids::VECTOR_MODE_PEN
                 || id == ids::VECTOR_MODE_RECT
                 || id == ids::VECTOR_MODE_ELLIPSE
                 || id == ids::VECTOR_MODE_POLYGON
@@ -171,7 +173,8 @@ pub(crate) fn apply_event(
                 || id == ids::VECTOR_ALIGN_VCENTER
                 || id == ids::VECTOR_ALIGN_BOTTOM
                 || id == ids::VECTOR_DISTRIBUTE_H
-                || id == ids::VECTOR_DISTRIBUTE_V =>
+                || id == ids::VECTOR_DISTRIBUTE_V
+                || id == ids::VECTOR_PIVOT_EDIT =>
         {
             seam_reset_button(host, id);
             host.bus_mut()

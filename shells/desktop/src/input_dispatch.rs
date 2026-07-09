@@ -875,15 +875,22 @@ pub(crate) fn apply_vec_align(
     scene: &mut ph2d_vec_scene::VecScene,
     history: &mut ph2d_vec_edit::History,
     pen: &ph2d_vec_edit::PenTool,
+    xforms: &ph2d_vec_scene::VecXforms,
     kind: VecAlign,
 ) {
     // Bbox de CURVA (a caixa que o gizmo desenha), não a de âncoras: alinhar tem de
     // casar com o que o usuário vê — uma curva que abaula para fora das âncoras
     // encostaria errado.
+    // Bboxes de MUNDO: alinhar compara formas ENTRE SI, e a bbox local de toda forma
+    // assentada está centrada na origem (ADR-0112).
     let boxes: Vec<(u64, [f64; 2], [f64; 2])> = pen
         .selected_paths()
         .iter()
-        .filter_map(|&id| scene.path_curve_bbox(id).map(|(lo, hi)| (id, lo, hi)))
+        .filter_map(|&id| {
+            scene
+                .path_world_curve_bbox(xforms, id)
+                .map(|(lo, hi)| (id, lo, hi))
+        })
         .collect();
     if boxes.len() < 2 {
         return;
@@ -912,7 +919,7 @@ pub(crate) fn apply_vec_align(
             VecAlign::VCenter => dy = (ulo[1] + uhi[1]) * 0.5 - (lo[1] + hi[1]) * 0.5,
         }
         if dx.abs() > 1e-9 || dy.abs() > 1e-9 {
-            moved |= scene.translate_path(id, dx, dy);
+            moved |= scene.translate_path_world(xforms, id, dx, dy);
         }
     }
     if moved {
@@ -926,6 +933,7 @@ pub(crate) fn apply_vec_distribute(
     scene: &mut ph2d_vec_scene::VecScene,
     history: &mut ph2d_vec_edit::History,
     pen: &ph2d_vec_edit::PenTool,
+    xforms: &ph2d_vec_scene::VecXforms,
     axis: VecDistribute,
 ) {
     // (id, center-on-axis) for each selected path.
@@ -933,7 +941,7 @@ pub(crate) fn apply_vec_distribute(
         .selected_paths()
         .iter()
         .filter_map(|&id| {
-            scene.path_curve_bbox(id).map(|(lo, hi)| {
+            scene.path_world_curve_bbox(xforms, id).map(|(lo, hi)| {
                 let c = match axis {
                     VecDistribute::Horizontal => (lo[0] + hi[0]) * 0.5,
                     VecDistribute::Vertical => (lo[1] + hi[1]) * 0.5,
@@ -1077,24 +1085,29 @@ pub(crate) fn apply_vec_transform(
     scene: &mut ph2d_vec_scene::VecScene,
     history: &mut ph2d_vec_edit::History,
     pen: &ph2d_vec_edit::PenTool,
+    xforms: &ph2d_vec_scene::VecXforms,
     field: VecTransformField,
     target: f64,
 ) {
     let Some(sel) = pen.selected() else {
         return;
     };
-    let Some((lo, hi)) = scene.path_bbox(sel) else {
+    // Os campos do painel são números de MUNDO (ADR-0112).
+    let Some((lo, hi)) = scene.path_world_curve_bbox(xforms, sel) else {
         return;
     };
+    // O escalonamento acontece na geometria local, em torno do canto local que
+    // corresponde ao `lo` de mundo — a razão de escala é a mesma nos dois espaços.
+    let local_lo = scene.path_curve_bbox(sel).map_or([0.0, 0.0], |(l, _)| l);
     let pre = scene.clone();
     let changed = match field {
         VecTransformField::X => {
             let dx = target - lo[0];
-            dx.abs() > 1e-9 && scene.translate_path(sel, dx, 0.0)
+            dx.abs() > 1e-9 && scene.translate_path_world(xforms, sel, dx, 0.0)
         }
         VecTransformField::Y => {
             let dy = target - lo[1];
-            dy.abs() > 1e-9 && scene.translate_path(sel, 0.0, dy)
+            dy.abs() > 1e-9 && scene.translate_path_world(xforms, sel, 0.0, dy)
         }
         VecTransformField::W => {
             let w = hi[0] - lo[0];
@@ -1102,7 +1115,7 @@ pub(crate) fn apply_vec_transform(
                 false
             } else {
                 let sx = target.max(1e-4) / w;
-                (sx - 1.0).abs() > 1e-9 && scene.scale_path(sel, sx, 1.0, lo)
+                (sx - 1.0).abs() > 1e-9 && scene.scale_path(sel, sx, 1.0, local_lo)
             }
         }
         VecTransformField::H => {
@@ -1111,7 +1124,7 @@ pub(crate) fn apply_vec_transform(
                 false
             } else {
                 let sy = target.max(1e-4) / h;
-                (sy - 1.0).abs() > 1e-9 && scene.scale_path(sel, 1.0, sy, lo)
+                (sy - 1.0).abs() > 1e-9 && scene.scale_path(sel, 1.0, sy, local_lo)
             }
         }
     };
@@ -1127,7 +1140,8 @@ fn shape_kind_for_mode(mode: ph2d_tool_vector::DrawMode) -> Option<ph2d_vec_edit
     use ph2d_tool_vector::DrawMode;
     use ph2d_vec_edit::ShapeKind;
     match mode {
-        DrawMode::Pen => None,
+        // Select/Node não desenham (ADR-0112); Pen desenha à mão livre.
+        DrawMode::Select | DrawMode::Node | DrawMode::Pen => None,
         DrawMode::Rectangle => Some(ShapeKind::Rectangle),
         DrawMode::Ellipse => Some(ShapeKind::Ellipse),
         DrawMode::Polygon => Some(ShapeKind::Polygon),
@@ -1639,6 +1653,33 @@ impl App {
 
     /// ADR-0108 cutover: is the Vector drawing tool the active tool? Gates the
     /// Pen input hooks (replaces the retired `PH2D_VEC_PEN` test flag).
+    /// Põe a ORIGEM (o pivô) do path selecionado sob o cursor, sem mover a forma.
+    /// `false` (e não consome o clique) se não há forma selecionada.
+    fn vec_set_origin_to_cursor(&mut self, x: f32, y: f32) -> bool {
+        let Some(sel) = self.vec_pen.selected() else {
+            return false;
+        };
+        let Some(&bits) = self.vec_entities.get(&sel) else {
+            return false;
+        };
+        let Some(gfx) = self.gfx.as_mut() else {
+            return false;
+        };
+        let win = gfx.surface.size();
+        let target = gfx.camera.screen_to_world((x, y), win);
+        let moved = crate::vec_transform::move_origin_to(
+            &mut gfx.sim,
+            &mut gfx.vec_scene,
+            ph2d_ecs::Entity::from_bits(bits),
+            sel,
+            target,
+        );
+        if moved {
+            self.title_dirty = true;
+        }
+        moved
+    }
+
     pub(crate) fn vector_tool_active(&self) -> bool {
         self.gfx.as_ref().is_some_and(|g| {
             g.tools
@@ -2107,7 +2148,28 @@ impl App {
                 h.store.panel_at(evt.x, evt.y).is_none() && h.hit_index.hit(evt.x, evt.y).is_none()
             })
             .unwrap_or(false);
-        if self.vector_tool_active() && !menu_open_before {
+        // "Set Center" armado (ADR-0112): a pressão põe a ORIGEM da forma selecionada
+        // sob o cursor e desarma. Vale em QUALQUER modo — inclusive Select, onde o
+        // pivô do gizmo é o que se está ajustando.
+        if self.vec_pivot_edit
+            && self.vector_tool_active()
+            && mapped_button == ph2d_host::PointerButton::Primary
+            && kind == PointerKind::Down
+            && on_canvas
+            && !menu_open_before
+        {
+            self.vec_pivot_edit = false;
+            if self.vec_set_origin_to_cursor(evt.x, evt.y) {
+                return;
+            }
+        }
+        // ADR-0112: no modo **Select** a ferramenta não captura o canvas — o clique
+        // cai no caminho de sempre (picking de sprite + gizmo), e é assim que uma
+        // forma vetorial se transforma. Só Node e os modos de desenho entram aqui.
+        if self.vector_tool_active()
+            && self.vec_draw_config.mode != ph2d_tool_vector::DrawMode::Select
+            && !menu_open_before
+        {
             // A canvas press while a text field is focused must blur it (commit the
             // edit) — the pen/shape arms below consume the press and bypass the
             // chrome dispatch that normally does this. Route it explicitly (only a
@@ -2211,7 +2273,19 @@ impl App {
                             };
                             ph2d_vec_edit::snap::snap(&[p], &targets, cfg, Some(&mut grid)).apply(p)
                         };
+                        let node_mode =
+                            self.vec_draw_config.mode == ph2d_tool_vector::DrawMode::Node;
                         match shape_kind {
+                            // Node edita nós e NUNCA cria (ADR-0112). Não encaixa
+                            // tampouco: o snap serve a quem POSICIONA um ponto novo.
+                            None if node_mode => {
+                                self.vec_pen.on_press_node(
+                                    &mut gfx.vec_scene,
+                                    [w[0] as f64, w[1] as f64],
+                                    px_to_world,
+                                    alt,
+                                );
+                            }
                             None => {
                                 self.vec_pen.on_press(
                                     &mut gfx.vec_scene,
@@ -3316,9 +3390,23 @@ mod tests {
         pen.select(Some(id));
 
         // X → 5 moves the bbox min; W → 20 doubles the width.
-        apply_vec_transform(&mut scene, &mut hist, &pen, VecTransformField::X, 5.0);
+        apply_vec_transform(
+            &mut scene,
+            &mut hist,
+            &pen,
+            &ph2d_vec_scene::VecXforms::new(),
+            VecTransformField::X,
+            5.0,
+        );
         assert!((scene.path_bbox(id).unwrap().0[0] - 5.0).abs() < 1e-9);
-        apply_vec_transform(&mut scene, &mut hist, &pen, VecTransformField::W, 20.0);
+        apply_vec_transform(
+            &mut scene,
+            &mut hist,
+            &pen,
+            &ph2d_vec_scene::VecXforms::new(),
+            VecTransformField::W,
+            20.0,
+        );
         let (lo, hi) = scene.path_bbox(id).unwrap();
         assert!((hi[0] - lo[0] - 20.0).abs() < 1e-9, "W set to 20");
         assert!((lo[0] - 5.0).abs() < 1e-9, "min x pinned during scale");

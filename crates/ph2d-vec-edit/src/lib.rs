@@ -151,6 +151,12 @@ impl PenTool {
         self.active.is_some()
     }
 
+    /// O path que a caneta está construindo — ainda cresce a cada clique, então a
+    /// shell não deve assentar a origem dele.
+    pub fn active_path(&self) -> Option<VecPathId> {
+        self.active
+    }
+
     /// Está manipulando algo agora (arrasto de desenho OU de edição)?
     pub fn is_dragging(&self) -> bool {
         self.dragging || self.grab.is_some()
@@ -278,63 +284,15 @@ impl PenTool {
 
         // Parado → hit-test para EDITAR um ponto existente.
         if let Some(g) = self.hit_test(scene, p, hit_r) {
-            self.selected = Some(g.path);
-            // Clique simples reduz a seleção de OBJETO ao path tocado — ou ao GRUPO
-            // dele, se houver (o gizmo passa a enquadrar o grupo, e o arrasto move
-            // todo mundo). O primário segue sendo o path tocado, então a edição de
-            // vértice continua funcionando dentro do grupo. (Shift+clique é tratado
-            // no shell ANTES do on_press.)
-            // A expansão para o GRUPO é da shell (a árvore é a Hierarquia, ADR-0110):
-            // ela chama `set_object_selection` logo depois, se houver grupo.
-            self.selected_paths = vec![g.path];
-            // Agarrar uma âncora que JÁ está na multi-seleção de vértice mantém o
-            // grupo (o arrasto move todos); qualquer outro grab vira seleção única.
-            if g.part == Part::Anchor && self.selected_verts.contains(&g.vert) {
-                // mantém a seleção de grupo
-            } else {
-                self.selected_verts = vec![g.vert];
-            }
-            // Alt + agarrar um HANDLE = quebrar a tangente (vira cusp Corner) antes
-            // de arrastar → só esse handle se move (regra Corner). Convenção
-            // Illustrator; o undo cobre break+drag num passo (begin no press).
-            if alt
-                && matches!(g.part, Part::In | Part::Out)
-                && let Some(path) = scene.path_mut(g.path)
-            {
-                let _ = ph2d_vec_scene::retype_vertex(path, g.vert, VertexKind::Corner);
-            }
-            self.grab = Some(g);
+            self.grab_vertex(scene, g, alt);
             return PenClick::Grabbed;
         }
-
-        // Perto de um SEGMENTO do path selecionado → insere um vértice (split de
-        // Bézier, forma preservada) e o agarra pra arrastar de imediato. Só o
-        // path selecionado (previsível — é onde os gizmos aparecem); mesmo raio
-        // do grab de handle. Computa a proximidade com borrow imutável, depois muta.
-        let insert = self.selected.and_then(|sel| {
-            let path = scene.paths().iter().find(|pp| pp.id == sel)?;
-            // A curva é local; a distância que o usuário enxerga é mundo.
-            let pl = self.to_local(sel, p);
-            let (seg, t, d2) = ph2d_vec_scene::nearest_point_on_path(path, pl, INSERT_SAMPLES)?;
-            let d_world = d2.sqrt() * self.xf(sel).mean_scale();
-            (d_world <= hit_r).then_some((sel, seg, t))
-        });
-        if let Some((sel, seg, t)) = insert
-            && let Some(path) = scene.path_mut(sel)
-            && let Some(ni) = ph2d_vec_scene::split_segment(path, seg, t)
-        {
-            self.selected = Some(sel);
-            self.selected_paths = vec![sel];
-            self.selected_verts = vec![ni];
-            self.grab = Some(Grab {
-                path: sel,
-                vert: ni,
-                part: Part::Anchor,
-            });
-            return PenClick::Inserted;
+        if let Some(click) = self.insert_on_selected_segment(scene, p, hit_r) {
+            return click;
         }
 
-        // Nada agarrado → começa um path novo.
+        // Nada agarrado → começa um path novo. É a ÚNICA coisa que a caneta faz e a
+        // edição de nós não (ADR-0112): `on_press_node` para antes desta linha.
         let id = scene.push_path(VecPath {
             verts: vec![VecVertex::corner(snap(p))],
             stroke: Some(self.style.stroke_spec(stroke_w)),
@@ -346,6 +304,42 @@ impl PenTool {
         self.selected_verts = vec![0];
         self.dragging = true;
         PenClick::Started
+    }
+
+    /// Pressão primária no modo **Node** (seta branca): edita âncoras e handles, e
+    /// **nunca cria um path**.
+    ///
+    /// A ordem é a do Illustrator: agarra um handle/âncora; senão insere um vértice
+    /// no segmento do path selecionado; senão seleciona a forma sob o cursor (o
+    /// clique no preenchimento acende as âncoras dela); senão desseleciona.
+    ///
+    /// Não há gizmo neste modo — as alças dele comeriam o clique do nó — então o
+    /// clique no interior de uma forma nunca a transforma, só a seleciona.
+    pub fn on_press_node(
+        &mut self,
+        scene: &mut VecScene,
+        p: [f64; 2],
+        px_to_world: f64,
+        alt: bool,
+    ) -> PenClick {
+        let hit_r = 10.0 * px_to_world;
+        if let Some(g) = self.hit_test(scene, p, hit_r) {
+            self.grab_vertex(scene, g, alt);
+            return PenClick::Grabbed;
+        }
+        if let Some(click) = self.insert_on_selected_segment(scene, p, hit_r) {
+            return click;
+        }
+        match self.path_at(scene, p, hit_r) {
+            Some(id) => {
+                self.select(Some(id));
+                PenClick::Grabbed
+            }
+            None => {
+                self.select(None);
+                PenClick::Ignored
+            }
+        }
     }
 
     /// Arrasto: puxa os handles do vértice em desenho, OU move o elemento agarrado.
@@ -461,6 +455,59 @@ impl PenTool {
 
     /// Acha a âncora/handle mais próxima de `p` dentro do raio `r`. Handles só do
     /// path selecionado (é onde os gizmos aparecem); âncoras de todos os paths.
+    /// Agarra `g` para arrastar: reduz a seleção de objeto ao path tocado e a de
+    /// vértice ao vértice tocado (salvo quando ele já estava num grupo selecionado,
+    /// caso em que o arrasto move o grupo).
+    ///
+    /// A expansão da seleção para o GRUPO é da shell (a árvore é a Hierarquia,
+    /// ADR-0110): ela chama `set_object_selection` logo depois, se houver grupo.
+    fn grab_vertex(&mut self, scene: &mut VecScene, g: Grab, alt: bool) {
+        self.selected = Some(g.path);
+        self.selected_paths = vec![g.path];
+        if !(g.part == Part::Anchor && self.selected_verts.contains(&g.vert)) {
+            self.selected_verts = vec![g.vert];
+        }
+        // Alt + agarrar um HANDLE = quebrar a tangente (vira cusp Corner) antes de
+        // arrastar → só esse handle se move (regra Corner). Convenção Illustrator;
+        // o undo cobre break+drag num passo (begin no press).
+        if alt
+            && matches!(g.part, Part::In | Part::Out)
+            && let Some(path) = scene.path_mut(g.path)
+        {
+            let _ = ph2d_vec_scene::retype_vertex(path, g.vert, VertexKind::Corner);
+        }
+        self.grab = Some(g);
+    }
+
+    /// Perto de um SEGMENTO do path selecionado → insere um vértice (split de
+    /// Bézier, forma preservada) e o agarra pra arrastar de imediato. Só o path
+    /// selecionado (previsível — é onde as âncoras aparecem); mesmo raio do grab de
+    /// handle. `None` quando o cursor não está perto de segmento nenhum.
+    fn insert_on_selected_segment(
+        &mut self,
+        scene: &mut VecScene,
+        p: [f64; 2],
+        hit_r: f64,
+    ) -> Option<PenClick> {
+        let sel = self.selected?;
+        let path = scene.paths().iter().find(|pp| pp.id == sel)?;
+        // A curva é local; a distância que o usuário enxerga é mundo.
+        let pl = self.to_local(sel, p);
+        let (seg, t, d2) = ph2d_vec_scene::nearest_point_on_path(path, pl, INSERT_SAMPLES)?;
+        if d2.sqrt() * self.xf(sel).mean_scale() > hit_r {
+            return None;
+        }
+        let ni = ph2d_vec_scene::split_segment(scene.path_mut(sel)?, seg, t)?;
+        self.selected_paths = vec![sel];
+        self.selected_verts = vec![ni];
+        self.grab = Some(Grab {
+            path: sel,
+            vert: ni,
+            part: Part::Anchor,
+        });
+        Some(PenClick::Inserted)
+    }
+
     /// O raio `r` é WORLD-units (px × zoom), então a comparação acontece no mundo:
     /// cada ponto local sobe pelo afim do path dele. Assim uma forma escalada a 10×
     /// não fica com um raio de captura 10× maior — o alvo é do tamanho que se vê.

@@ -569,6 +569,9 @@ pub(crate) struct App {
     /// (geometry + style, id-less). `None` until the first copy/cut.
     pub(crate) vec_clipboard: Option<ph2d_vec_scene::VecClip>,
     /// Snap + grid settings of the Vector tool (edited by the panel's Snap section).
+    /// "Set Center" armado: a próxima pressão no canvas põe a ORIGEM da forma
+    /// selecionada ali (ADR-0112). Desarma no press.
+    pub(crate) vec_pivot_edit: bool,
     pub(crate) vec_snap: crate::vec_snap::VecSnapSettings,
     /// Snap targets of the CURRENT gesture — collected once at Down (the scene's
     /// shape doesn't change mid-drag; only the dragged thing, which is excluded).

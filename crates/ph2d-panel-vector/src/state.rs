@@ -44,6 +44,8 @@ thread_local! {
     /// Whether shape-snapping is on (mirrored from the shell). The GRID toggle
     /// lives in the editor's universal Grid Snap panel, not here.
     static CURRENT_SNAP: Cell<bool> = const { Cell::new(true) };
+    /// "Set Center" armado: a próxima pressão no canvas reposiciona a origem.
+    static CURRENT_PIVOT_EDIT: Cell<bool> = const { Cell::new(false) };
     /// Rotation-field accumulator: the angle (degrees) the Angle chip last
     /// reported THIS gesture. `event` emits the DELTA `(current − this)` so the
     /// shell rotates incrementally; reset to 0 by `paint` whenever the field is
@@ -220,4 +222,13 @@ pub(crate) fn set_last_content_h(v: f32) {
 
 pub(crate) fn set_last_visible_h(v: f32) {
     LAST_VISIBLE_H.with(|c| c.set(v));
+}
+
+/// Publica se "Set Center" está armado (a shell manda; o painel só reflete).
+pub fn set_current_pivot_edit(armed: bool) {
+    CURRENT_PIVOT_EDIT.with(|c| c.set(armed));
+}
+
+pub(crate) fn pivot_edit_armed() -> bool {
+    CURRENT_PIVOT_EDIT.with(|c| c.get())
 }

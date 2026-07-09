@@ -109,6 +109,15 @@ impl ShapeTool {
         self.committed
     }
 
+    /// O path que o arrasto está construindo. Ele é reescrito em coordenadas de
+    /// MUNDO a cada Move (`on_drag` regenera `verts`), então a shell não pode
+    /// assentar a origem dele no meio do gesto — a geometria e o `Transform` ficariam
+    /// somando (ADR-0112).
+    #[must_use]
+    pub fn active_path(&self) -> Option<VecPathId> {
+        self.active
+    }
+
     /// Begin a shape at world-space `p`. Pushes a degenerate path (renders live)
     /// and records the anchor + kind/params + `px_to_world`. Returns the new id.
     /// A prior in-progress shape (shouldn't happen) is dropped first.

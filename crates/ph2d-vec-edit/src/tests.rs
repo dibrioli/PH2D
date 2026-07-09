@@ -630,3 +630,52 @@ fn snap_targets_of_a_transformed_path_are_published_in_world_space() {
         "e NÃO na origem"
     );
 }
+
+// ── ADR-0112: a caneta cria; a edição de nós, nunca ─────────────────────────
+
+/// O modo Node **jamais** cria um path. Clicar no vazio desseleciona; clicar no
+/// preenchimento de uma forma a seleciona (e acende as âncoras); clicar numa âncora
+/// a agarra. Era o bug: com a pen, clicar em cima de uma forma começava uma linha.
+#[test]
+fn node_mode_never_creates_a_path_and_selects_the_shape_under_the_cursor() {
+    let mut scene = VecScene::new();
+    let mut pen = PenTool::new();
+    let id = scene.push_path(ph2d_vec_scene::rectangle([0.0, 0.0], [10.0, 10.0]));
+    let before = scene.paths().len();
+
+    // Clique no vazio: nada criado, nada selecionado.
+    assert_eq!(
+        pen.on_press_node(&mut scene, [90.0, 90.0], PTW, false),
+        PenClick::Ignored
+    );
+    assert_eq!(scene.paths().len(), before, "não criou path");
+    assert_eq!(pen.selected(), None);
+
+    // Clique DENTRO da forma (longe de qualquer âncora): seleciona, não cria.
+    assert_eq!(
+        pen.on_press_node(&mut scene, [5.0, 5.0], PTW, false),
+        PenClick::Grabbed
+    );
+    assert_eq!(scene.paths().len(), before, "ainda não criou path");
+    assert_eq!(pen.selected(), Some(id), "selecionou a forma sob o cursor");
+
+    // Clique numa âncora: agarra o vértice.
+    assert_eq!(
+        pen.on_press_node(&mut scene, [10.0, 0.0], PTW, false),
+        PenClick::Grabbed
+    );
+    assert_eq!(pen.selected_verts(), [1]);
+    assert_eq!(scene.paths().len(), before);
+}
+
+/// E a caneta segue criando — a separação não a mutilou.
+#[test]
+fn pen_mode_still_starts_a_new_path_on_empty_canvas() {
+    let mut scene = VecScene::new();
+    let mut pen = PenTool::new();
+    assert_eq!(
+        pen.on_press(&mut scene, [3.0, 3.0], PTW, false, &mut nosnap),
+        PenClick::Started
+    );
+    assert_eq!(scene.paths().len(), 1);
+}

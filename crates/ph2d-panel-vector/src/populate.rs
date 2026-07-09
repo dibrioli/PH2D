@@ -116,6 +116,8 @@ fn populate_shape(store: &mut WidgetStore) {
     );
 
     // Draw-mode segmented buttons (Pen / Rect / Oval / Poly / Star / Round).
+    button(store, ids::VECTOR_MODE_SELECT);
+    button(store, ids::VECTOR_MODE_NODE);
     button(store, ids::VECTOR_MODE_PEN);
     button(store, ids::VECTOR_MODE_RECT);
     button(store, ids::VECTOR_MODE_ELLIPSE);
@@ -230,6 +232,7 @@ fn populate_ops(store: &mut WidgetStore) {
     button(store, ids::VECTOR_GRAD_ADD_STOP);
     button(store, ids::VECTOR_GRAD_REMOVE_STOP);
     // Align + Distribute (multi-path object selection).
+    button(store, ids::VECTOR_PIVOT_EDIT);
     button(store, ids::VECTOR_ALIGN_LEFT);
     button(store, ids::VECTOR_ALIGN_HCENTER);
     button(store, ids::VECTOR_ALIGN_RIGHT);

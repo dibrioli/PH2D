@@ -114,6 +114,51 @@ impl VecScene {
         true
     }
 
+    /// Bounding box da curva do path `id` **em coordenadas de MUNDO** (ADR-0111): cada
+    /// ponto amostrado sobe pelo afim da entidade antes do min/max.
+    ///
+    /// É o que qualquer número de mundo precisa — o readout de posição/tamanho do
+    /// painel, e sobretudo `align`/`distribute`, que comparam formas **entre si**. A
+    /// bbox local de toda forma assentada está centrada na origem (ADR-0112), então
+    /// compará-las localmente alinharia tudo no mesmo ponto.
+    ///
+    /// Para uma forma girada isto é o AABB do quadrilátero — o que o usuário vê ao
+    /// encostar as caixas, e não a caixa orientada.
+    pub fn path_world_curve_bbox(
+        &self,
+        xforms: &crate::VecXforms,
+        id: VecPathId,
+    ) -> Option<([f64; 2], [f64; 2])> {
+        let path = self.paths.iter().find(|p| p.id == id)?;
+        let x = crate::xform_of(xforms, id);
+        let f0 = x.apply(path.verts.first()?.anchor);
+        let (mut lo, mut hi) = (f0, f0);
+        for_each_curve_point(path, |pt| {
+            let w = x.apply(pt);
+            lo[0] = lo[0].min(w[0]);
+            lo[1] = lo[1].min(w[1]);
+            hi[0] = hi[0].max(w[0]);
+            hi[1] = hi[1].max(w[1]);
+        });
+        Some((lo, hi))
+    }
+
+    /// Translada o path `id` por um delta de **MUNDO**, convertendo-o para o espaço
+    /// local dele. `false` se o id sumiu ou o afim é degenerado.
+    pub fn translate_path_world(
+        &mut self,
+        xforms: &crate::VecXforms,
+        id: VecPathId,
+        dx: f64,
+        dy: f64,
+    ) -> bool {
+        let Some(inv) = crate::xform_of(xforms, id).inverse() else {
+            return false;
+        };
+        let d = inv.apply_vec([dx, dy]);
+        self.translate_path(id, d[0], d[1])
+    }
+
     /// Bounding box das ÂNCORAS do path `id` (`(min, max)` em world-units, todos os
     /// contornos) — a extensão usada pelo readout de transform (posição/tamanho).
     /// `None` se o id sumiu ou o path está vazio.

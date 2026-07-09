@@ -122,6 +122,10 @@ pub const VECTOR_GAP_NUM: NodeId = hash_node_id("vector.gap_num");
 // vs a drag-to-size shape (Rectangle / Ellipse / Polygon). The tool owns the
 // mode (`VectorTool::mode`); each button's `Click` routes through the seam to
 // `handle_panel_event`, mirror of the retired `vector_inspector.shape.*` ids.
+/// Seta preta — seleciona/transforma a forma pelo gizmo (ADR-0112).
+pub const VECTOR_MODE_SELECT: NodeId = hash_node_id("vector.mode.select");
+/// Seta branca — edita âncoras/handles, sem gizmo (ADR-0112).
+pub const VECTOR_MODE_NODE: NodeId = hash_node_id("vector.mode.node");
 pub const VECTOR_MODE_PEN: NodeId = hash_node_id("vector.mode.pen");
 pub const VECTOR_MODE_RECT: NodeId = hash_node_id("vector.mode.rect");
 pub const VECTOR_MODE_ELLIPSE: NodeId = hash_node_id("vector.mode.ellipse");

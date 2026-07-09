@@ -252,6 +252,17 @@ impl crate::App {
                 ed::set_can_undo(audio.editor_can_undo());
                 ed::set_can_redo(audio.editor_can_redo());
                 ed::set_has_selection(audio.editor_selection().is_some());
+                // Effects rack (W3 block 3a): the panel owns a kind index + raw
+                // 0..1 slider positions; the shell owns the real DSP ranges. Publish
+                // the selected kind's name, its per-parameter (label, formatted
+                // value) at the current positions, and the preset normals the paint
+                // step seeds the sliders with whenever the kind changes.
+                use crate::audio::fx_params;
+                let kind = ed::fx_kind();
+                ed::set_fx_kind_count(fx_params::FX_KINDS.len());
+                ed::set_fx_kind_name(fx_params::FX_KINDS[kind]);
+                ed::set_fx_defaults(fx_params::default_norms(kind));
+                ed::set_fx_param_views(&fx_params::views(kind, &ed::fx_norms()));
             }
         }
         // Coalesced painter Move: stamp the LATEST buffered canvas position ONCE this frame, replacing

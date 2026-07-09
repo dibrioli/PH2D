@@ -1,15 +1,14 @@
 //! Audio Editor panel widget registration.
 
 use crate::{
-    AEDIT_BITCRUSH, AEDIT_CLOSE, AEDIT_COMPRESS, AEDIT_CUT, AEDIT_DC, AEDIT_ECHO, AEDIT_EXPORT,
-    AEDIT_FADE_IN, AEDIT_FADE_OUT, AEDIT_GAIN_DOWN, AEDIT_GAIN_UP, AEDIT_HIGHPASS, AEDIT_INVERT,
-    AEDIT_LOAD, AEDIT_LOOP, AEDIT_LOWPASS, AEDIT_NAME, AEDIT_NORM_LUFS, AEDIT_NORMALIZE,
-    AEDIT_PLAY, AEDIT_REDO, AEDIT_REVERB, AEDIT_REVERSE, AEDIT_SATURATE, AEDIT_SILENCE, AEDIT_STOP,
-    AEDIT_TRIM, AEDIT_UNDO, AEDIT_WIDEN,
+    AEDIT_CLOSE, AEDIT_CUT, AEDIT_DC, AEDIT_EXPORT, AEDIT_FADE_IN, AEDIT_FADE_OUT, AEDIT_FX_APPLY,
+    AEDIT_FX_NEXT, AEDIT_FX_PARAMS, AEDIT_FX_PREV, AEDIT_GAIN_DOWN, AEDIT_GAIN_UP, AEDIT_INVERT,
+    AEDIT_LOAD, AEDIT_LOOP, AEDIT_NAME, AEDIT_NORM_LUFS, AEDIT_NORMALIZE, AEDIT_PLAY, AEDIT_REDO,
+    AEDIT_REVERSE, AEDIT_SILENCE, AEDIT_STOP, AEDIT_TRIM, AEDIT_UNDO,
 };
 use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::{BlenderHitKind, InteractiveState, WidgetStore};
-use ph2d_editor_core::widget::{ButtonState, TextInputState};
+use ph2d_editor_core::widget::{ButtonState, SliderOrientation, SliderState, TextInputState};
 
 pub(crate) fn populate(store: &mut WidgetStore) {
     // Floating waveform overlay drag/resize handles — registered as panel-agnostic
@@ -70,18 +69,26 @@ pub(crate) fn populate(store: &mut WidgetStore) {
         AEDIT_SILENCE,
         AEDIT_FADE_IN,
         AEDIT_FADE_OUT,
-        // Effects rack (W3 block 1).
-        AEDIT_LOWPASS,
-        AEDIT_HIGHPASS,
-        AEDIT_COMPRESS,
-        AEDIT_SATURATE,
-        AEDIT_BITCRUSH,
-        AEDIT_WIDEN,
-        // Tail-extending effects (W3 block 2).
-        AEDIT_REVERB,
-        AEDIT_ECHO,
+        // Effects rack (W3 block 3a): selector + Apply.
+        AEDIT_FX_PREV,
+        AEDIT_FX_NEXT,
+        AEDIT_FX_APPLY,
     ] {
         store.register(id, button());
+    }
+
+    // Effects rack parameter sliders. Values are **normalized 0..1**; the shell
+    // maps them onto real DSP ranges. The paint step seeds them from the selected
+    // effect's preset whenever the kind changes.
+    for id in AEDIT_FX_PARAMS {
+        store.register(
+            id,
+            InteractiveState::Slider {
+                state: SliderState::Normal,
+                value: 0.5,
+                orientation: SliderOrientation::Horizontal,
+            },
+        );
     }
 
     // Clip name — an editable TextInput (mirror of the Inspector entity-name box).

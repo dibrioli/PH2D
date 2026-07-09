@@ -208,49 +208,19 @@ impl AudioSystem {
                     ph2d_audio_edit::FadeShape::SCurve,
                     ph2d_audio_edit::FadeDir::Out,
                 ),
-                // Effects rack (W3 block 1) — curated fixed presets (parametric
-                // control + chain + presets are a later block).
-                Cmd::LowPass => clip.apply_effect(ph2d_audio_edit::Effect::LowPass {
-                    cutoff: 3_000.0,
-                    q: 0.707,
-                }),
-                Cmd::HighPass => clip.apply_effect(ph2d_audio_edit::Effect::HighPass {
-                    cutoff: 150.0,
-                    q: 0.707,
-                }),
-                Cmd::Compress => clip.apply_effect(ph2d_audio_edit::Effect::Compress {
-                    threshold: 0.3,
-                    ratio: 4.0,
-                    attack_secs: 0.005,
-                    release_secs: 0.1,
-                    makeup: 1.6,
-                }),
-                Cmd::Saturate => {
-                    clip.apply_effect(ph2d_audio_edit::Effect::Saturate { drive: 3.0 })
+                // Effects rack (W3 block 3a): the panel holds a kind index +
+                // normalized slider positions; `fx_params` maps them to the real
+                // effect and tells us which splice family it belongs to. A tail
+                // effect run through `apply_effect` would lose its ring-out.
+                Cmd::ApplyFx => {
+                    let kind = ph2d_panel_audio_editor::fx_kind();
+                    let norms = ph2d_panel_audio_editor::fx_norms();
+                    match super::fx_params::build(kind, &norms) {
+                        Some(super::fx_params::FxCommand::Plain(fx)) => clip.apply_effect(fx),
+                        Some(super::fx_params::FxCommand::Tail(fx)) => clip.apply_tail_effect(fx),
+                        None => {}
+                    }
                 }
-                Cmd::Bitcrush => clip.apply_effect(ph2d_audio_edit::Effect::Bitcrush {
-                    bits: 6,
-                    downsample: 4,
-                }),
-                Cmd::StereoWiden => {
-                    clip.apply_effect(ph2d_audio_edit::Effect::StereoWidth { width: 1.6 })
-                }
-                // Tail-extending (W3 block 2): the ring-out bleeds past the target
-                // range, growing the clip when the range reaches its end. `tail_secs`
-                // must clear the effect's own latency — Freeverb's shortest comb is
-                // ~25 ms, so a short tail would render pure silence.
-                Cmd::Reverb => clip.apply_tail_effect(ph2d_audio_edit::TailEffect::Reverb {
-                    room_size: 0.7,
-                    damp: 0.5,
-                    mix: 0.35,
-                    tail_secs: 2.5,
-                }),
-                Cmd::Echo => clip.apply_tail_effect(ph2d_audio_edit::TailEffect::Delay {
-                    time_secs: 0.25,
-                    feedback: 0.4,
-                    mix: 0.35,
-                    tail_secs: 2.0,
-                }),
             }
         }
         // Hot-swap the edited buffer into the sounding preview (no stop). No-op if

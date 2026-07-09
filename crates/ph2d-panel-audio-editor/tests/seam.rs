@@ -10,9 +10,9 @@ use ph2d_editor_core::interaction::WidgetEvent;
 use ph2d_editor_core::panel::EventOutcome;
 use ph2d_panel_audio_editor::state::AudioEditorState;
 use ph2d_panel_audio_editor::{
-    AEDIT_LOAD, AEDIT_LOOP, AEDIT_NORMALIZE, AEDIT_PLAY, AEDIT_REVERB, AEDIT_SATURATE, AEDIT_STOP,
-    AEDIT_TRIM, AudioEditCmd, AudioEditorPanel, looping, take_edit_cmd, take_load, take_play_pause,
-    take_stop,
+    AEDIT_FX_APPLY, AEDIT_FX_NEXT, AEDIT_FX_PREV, AEDIT_LOAD, AEDIT_LOOP, AEDIT_NORMALIZE,
+    AEDIT_PLAY, AEDIT_STOP, AEDIT_TRIM, AudioEditCmd, AudioEditorPanel, fx_kind, looping,
+    set_fx_kind_count, take_edit_cmd, take_load, take_play_pause, take_stop,
 };
 use ph2d_ui_testkit::MockPanelHost;
 
@@ -74,20 +74,37 @@ fn edit_clicks_reach_the_edit_command() {
         "Trim click never armed the edit command"
     );
 
-    // An effects-rack button (W3 block 1) rides the same seam.
-    host.apply_panel_event::<AudioEditorPanel>(&mut state, WidgetEvent::Click(AEDIT_SATURATE));
+    // The effects rack's Apply rides the same seam (W3 block 3a).
+    host.apply_panel_event::<AudioEditorPanel>(&mut state, WidgetEvent::Click(AEDIT_FX_APPLY));
     assert_eq!(
         take_edit_cmd(),
-        Some(AudioEditCmd::Saturate),
-        "Saturate click never armed the effect command"
+        Some(AudioEditCmd::ApplyFx),
+        "Apply Effect click never armed the effect command"
     );
+}
 
-    // …and so does a tail-extending one (W3 block 2).
-    host.apply_panel_event::<AudioEditorPanel>(&mut state, WidgetEvent::Click(AEDIT_REVERB));
+/// The rack's selector must actually move the kind index through the seam — a
+/// dead arrow leaves the panel painted, clickable and stuck on one effect.
+#[test]
+fn fx_selector_cycles_the_kind_and_wraps() {
+    let mut host = MockPanelHost::with_panel::<AudioEditorPanel>();
+    let mut state = AudioEditorState;
+    // The shell publishes how many kinds exist; without it the selector is inert.
+    set_fx_kind_count(3);
+
+    let start = fx_kind();
+    host.apply_panel_event::<AudioEditorPanel>(&mut state, WidgetEvent::Click(AEDIT_FX_NEXT));
+    assert_eq!(fx_kind(), (start + 1) % 3, "Next did not advance the kind");
+
+    host.apply_panel_event::<AudioEditorPanel>(&mut state, WidgetEvent::Click(AEDIT_FX_PREV));
+    assert_eq!(fx_kind(), start, "Prev did not step back");
+
+    // Prev from 0 wraps to the last kind rather than underflowing (usize would panic).
+    host.apply_panel_event::<AudioEditorPanel>(&mut state, WidgetEvent::Click(AEDIT_FX_PREV));
     assert_eq!(
-        take_edit_cmd(),
-        Some(AudioEditCmd::Reverb),
-        "Reverb click never armed the tail-effect command"
+        fx_kind(),
+        (start + 2) % 3,
+        "Prev at 0 must wrap, not underflow"
     );
 }
 

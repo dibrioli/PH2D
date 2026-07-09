@@ -2,11 +2,11 @@
 
 use crate::state::AudioEditorState;
 use crate::{
-    AEDIT_BITCRUSH, AEDIT_CLOSE, AEDIT_COMPRESS, AEDIT_CUT, AEDIT_DC, AEDIT_ECHO, AEDIT_EXPORT,
-    AEDIT_FADE_IN, AEDIT_FADE_OUT, AEDIT_GAIN_DOWN, AEDIT_GAIN_UP, AEDIT_HIGHPASS, AEDIT_INVERT,
-    AEDIT_LOAD, AEDIT_LOOP, AEDIT_LOWPASS, AEDIT_NORM_LUFS, AEDIT_NORMALIZE, AEDIT_PLAY,
-    AEDIT_REDO, AEDIT_REVERB, AEDIT_REVERSE, AEDIT_SATURATE, AEDIT_SILENCE, AEDIT_STOP, AEDIT_TRIM,
-    AEDIT_UNDO, AEDIT_WIDEN, AudioEditCmd, AudioEditorPanel, snapshot,
+    AEDIT_CLOSE, AEDIT_CUT, AEDIT_DC, AEDIT_EXPORT, AEDIT_FADE_IN, AEDIT_FADE_OUT, AEDIT_FX_APPLY,
+    AEDIT_FX_NEXT, AEDIT_FX_PARAMS, AEDIT_FX_PREV, AEDIT_GAIN_DOWN, AEDIT_GAIN_UP, AEDIT_INVERT,
+    AEDIT_LOAD, AEDIT_LOOP, AEDIT_NORM_LUFS, AEDIT_NORMALIZE, AEDIT_PLAY, AEDIT_REDO,
+    AEDIT_REVERSE, AEDIT_SILENCE, AEDIT_STOP, AEDIT_TRIM, AEDIT_UNDO, AudioEditCmd,
+    AudioEditorPanel, snapshot,
 };
 use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::WidgetEvent;
@@ -49,6 +49,16 @@ pub(crate) fn apply_event(
             snapshot::request_export();
             return EventOutcome::Consumed;
         }
+        // Effects rack selector: cycle the kind. The paint step re-seeds the
+        // parameter sliders with the new effect's preset.
+        if id == AEDIT_FX_PREV {
+            snapshot::cycle_fx_kind(-1);
+            return EventOutcome::Consumed;
+        }
+        if id == AEDIT_FX_NEXT {
+            snapshot::cycle_fx_kind(1);
+            return EventOutcome::Consumed;
+        }
         // Edit ops → arm the matching one-shot command for the shell.
         let edit = if id == AEDIT_UNDO {
             Some(AudioEditCmd::Undo)
@@ -78,22 +88,8 @@ pub(crate) fn apply_event(
             Some(AudioEditCmd::FadeIn)
         } else if id == AEDIT_FADE_OUT {
             Some(AudioEditCmd::FadeOut)
-        } else if id == AEDIT_LOWPASS {
-            Some(AudioEditCmd::LowPass)
-        } else if id == AEDIT_HIGHPASS {
-            Some(AudioEditCmd::HighPass)
-        } else if id == AEDIT_COMPRESS {
-            Some(AudioEditCmd::Compress)
-        } else if id == AEDIT_SATURATE {
-            Some(AudioEditCmd::Saturate)
-        } else if id == AEDIT_BITCRUSH {
-            Some(AudioEditCmd::Bitcrush)
-        } else if id == AEDIT_WIDEN {
-            Some(AudioEditCmd::StereoWiden)
-        } else if id == AEDIT_REVERB {
-            Some(AudioEditCmd::Reverb)
-        } else if id == AEDIT_ECHO {
-            Some(AudioEditCmd::Echo)
+        } else if id == AEDIT_FX_APPLY {
+            Some(AudioEditCmd::ApplyFx)
         } else {
             None
         };
@@ -101,6 +97,15 @@ pub(crate) fn apply_event(
             snapshot::request_edit(cmd);
             return EventOutcome::Consumed;
         }
+    }
+    // Dragging a parameter slider republishes its normalized position; the shell
+    // reformats the readout next frame and reads these on Apply.
+    if let WidgetEvent::ValueChanged(id) = ev
+        && let Some(slot) = AEDIT_FX_PARAMS.iter().position(|p| *p == id)
+    {
+        let v = host.store().slider(id).map(|(_, v)| v).unwrap_or(0.0);
+        snapshot::set_fx_norm(slot, v);
+        return EventOutcome::Consumed;
     }
     EventOutcome::Ignored
 }

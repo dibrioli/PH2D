@@ -11,9 +11,23 @@
 
 use std::cell::{Cell, RefCell};
 
-use crate::AudioEditCmd;
+use crate::{AudioEditCmd, MAX_FX_PARAMS};
 
 thread_local! {
+    // Effects rack (W3 block 3a) — panel → shell: which effect is selected and
+    // where its sliders sit (normalized 0..1; the shell owns the real ranges).
+    static FX_KIND: Cell<usize> = const { Cell::new(0) };
+    static FX_NORMS: Cell<[f32; MAX_FX_PARAMS]> = const { Cell::new([0.0; MAX_FX_PARAMS]) };
+    // Effects rack — shell → panel: what to paint.
+    static FX_KIND_COUNT: Cell<usize> = const { Cell::new(0) };
+    static FX_KIND_NAME: RefCell<String> = const { RefCell::new(String::new()) };
+    static FX_PARAM_VIEWS: RefCell<Vec<(String, String)>> = const { RefCell::new(Vec::new()) };
+    static FX_DEFAULTS: Cell<[f32; MAX_FX_PARAMS]> = const { Cell::new([0.0; MAX_FX_PARAMS]) };
+    /// Kind whose defaults were last loaded into the sliders. Mirror of the name
+    /// box's sync guard: on a kind change the paint step re-seeds the sliders once
+    /// instead of fighting the user's drag every frame.
+    static FX_SYNCED_KIND: Cell<Option<usize>> = const { Cell::new(None) };
+
     // Panel → shell one-shot intents (drained by the bridge).
     static PLAY_PAUSE_REQ: Cell<bool> = const { Cell::new(false) };
     static STOP_REQ: Cell<bool> = const { Cell::new(false) };
@@ -109,6 +123,92 @@ pub fn set_can_redo(v: bool) {
 
 pub(crate) fn can_redo() -> bool {
     CAN_REDO.with(Cell::get)
+}
+
+// ---- Effects rack (W3 block 3a) ----
+
+/// Panel: step the effect selector by `delta`, wrapping. No-op until the shell
+/// has published how many kinds there are.
+pub(crate) fn cycle_fx_kind(delta: isize) {
+    let count = FX_KIND_COUNT.with(Cell::get);
+    if count == 0 {
+        return;
+    }
+    FX_KIND.with(|c| {
+        let next = (c.get() as isize + delta).rem_euclid(count as isize);
+        c.set(next as usize);
+    });
+}
+
+/// Panel → shell: the selected effect's index into the shell's `FX_KINDS`.
+pub fn fx_kind() -> usize {
+    FX_KIND.with(Cell::get)
+}
+
+/// Panel → shell: every parameter slider's normalized 0..1 position.
+pub fn fx_norms() -> [f32; MAX_FX_PARAMS] {
+    FX_NORMS.with(Cell::get)
+}
+
+/// Panel: record slider `i`'s new normalized position.
+pub(crate) fn set_fx_norm(i: usize, v: f32) {
+    FX_NORMS.with(|c| {
+        let mut n = c.get();
+        if let Some(slot) = n.get_mut(i) {
+            *slot = v.clamp(0.0, 1.0);
+            c.set(n);
+        }
+    });
+}
+
+/// Shell → panel: how many effect kinds the selector cycles.
+pub fn set_fx_kind_count(n: usize) {
+    FX_KIND_COUNT.with(|c| c.set(n));
+}
+
+/// Shell → panel: the selected effect's display name.
+pub fn set_fx_kind_name(name: &str) {
+    FX_KIND_NAME.with(|c| {
+        let mut s = c.borrow_mut();
+        s.clear();
+        s.push_str(name);
+    });
+}
+
+pub(crate) fn fx_kind_name() -> String {
+    FX_KIND_NAME.with(|c| c.borrow().clone())
+}
+
+/// Shell → panel: `(label, formatted value)` per parameter of the selected
+/// effect. Length = that effect's parameter count; the panel hides the rest.
+pub fn set_fx_param_views(views: &[(String, String)]) {
+    FX_PARAM_VIEWS.with(|c| {
+        let mut v = c.borrow_mut();
+        v.clear();
+        v.extend_from_slice(views);
+    });
+}
+
+pub(crate) fn fx_param_views() -> Vec<(String, String)> {
+    FX_PARAM_VIEWS.with(|c| c.borrow().clone())
+}
+
+/// Shell → panel: the normalized slider positions of the selected kind's preset.
+pub fn set_fx_defaults(defaults: [f32; MAX_FX_PARAMS]) {
+    FX_DEFAULTS.with(|c| c.set(defaults));
+}
+
+/// The defaults to seed the sliders with, iff the selected kind changed since the
+/// last [`mark_fx_synced`]. `None` while the kind is unchanged, so a user's drag
+/// isn't overwritten every frame.
+pub(crate) fn fx_defaults_need_sync() -> Option<[f32; MAX_FX_PARAMS]> {
+    let kind = FX_KIND.with(Cell::get);
+    (FX_SYNCED_KIND.with(Cell::get) != Some(kind)).then(|| FX_DEFAULTS.with(Cell::get))
+}
+
+/// Record that the sliders now hold the selected kind's defaults.
+pub(crate) fn mark_fx_synced() {
+    FX_SYNCED_KIND.with(|c| c.set(Some(FX_KIND.with(Cell::get))));
 }
 
 /// Shell → panel: whether a waveform selection exists (enables the range ops).

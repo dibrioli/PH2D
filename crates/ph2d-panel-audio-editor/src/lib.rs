@@ -17,6 +17,7 @@
 
 mod event;
 mod paint;
+mod paint_fx;
 mod populate;
 pub mod snapshot;
 pub mod state;
@@ -82,27 +83,32 @@ pub const AEDIT_FADE_IN: NodeId = hash_node_id("audio_editor_fade_in");
 /// Fade out across the selection.
 pub const AEDIT_FADE_OUT: NodeId = hash_node_id("audio_editor_fade_out");
 
-// Effects rack (W3 block 1) — offline, length-preserving effects that act on the
-// target range (selection or whole clip) with curated fixed parameters.
-/// Low-pass filter (muffle / warm).
-pub const AEDIT_LOWPASS: NodeId = hash_node_id("audio_editor_lowpass");
-/// High-pass filter (thin / de-rumble).
-pub const AEDIT_HIGHPASS: NodeId = hash_node_id("audio_editor_highpass");
-/// Compressor (glue / level).
-pub const AEDIT_COMPRESS: NodeId = hash_node_id("audio_editor_compress");
-/// `tanh` saturation (warmth / drive).
-pub const AEDIT_SATURATE: NodeId = hash_node_id("audio_editor_saturate");
-/// Bit-crush (lo-fi).
-pub const AEDIT_BITCRUSH: NodeId = hash_node_id("audio_editor_bitcrush");
-/// Stereo widen (M/S).
-pub const AEDIT_WIDEN: NodeId = hash_node_id("audio_editor_widen");
+// Effects rack (W3 block 3a) — ONE parametric effect at a time: a selector cycles
+// the kinds, up to `MAX_FX_PARAMS` sliders tune it, Apply commits it to the target
+// range (selection, or whole clip). The panel stays UI-only: it holds normalized
+// 0..1 slider positions and an index; the shell owns the real DSP ranges,
+// formatting and the `Effect`/`TailEffect` construction (`audio/fx_params.rs`).
+/// Number of parameter sliders the rack paints. The shell publishes a label +
+/// formatted value per slot; unused slots are hidden.
+pub const MAX_FX_PARAMS: usize = 4;
 
-// Tail-extending effects (W3 block 2) — their ring-out bleeds past the target
-// range and grows the clip when the range reaches the end.
-/// Room reverb (Freeverb).
-pub const AEDIT_REVERB: NodeId = hash_node_id("audio_editor_reverb");
-/// Feedback delay / echo.
-pub const AEDIT_ECHO: NodeId = hash_node_id("audio_editor_echo");
+/// Previous effect in the selector.
+pub const AEDIT_FX_PREV: NodeId = hash_node_id("audio_editor_fx_prev");
+/// Next effect in the selector.
+pub const AEDIT_FX_NEXT: NodeId = hash_node_id("audio_editor_fx_next");
+/// Apply the selected effect at the current parameters.
+pub const AEDIT_FX_APPLY: NodeId = hash_node_id("audio_editor_fx_apply");
+/// Parameter slider 0.
+pub const AEDIT_FX_P0: NodeId = hash_node_id("audio_editor_fx_p0");
+/// Parameter slider 1.
+pub const AEDIT_FX_P1: NodeId = hash_node_id("audio_editor_fx_p1");
+/// Parameter slider 2.
+pub const AEDIT_FX_P2: NodeId = hash_node_id("audio_editor_fx_p2");
+/// Parameter slider 3.
+pub const AEDIT_FX_P3: NodeId = hash_node_id("audio_editor_fx_p3");
+/// The parameter sliders, indexed by slot.
+pub const AEDIT_FX_PARAMS: [NodeId; MAX_FX_PARAMS] =
+    [AEDIT_FX_P0, AEDIT_FX_P1, AEDIT_FX_P2, AEDIT_FX_P3];
 
 /// A one-shot edit command the panel arms (via a click) and the shell drains +
 /// applies to the loaded `EditClip`. UI-only enum (no `ph2d-audio-edit` dep here);
@@ -137,22 +143,9 @@ pub enum AudioEditCmd {
     FadeIn,
     /// Fade out across the selection.
     FadeOut,
-    /// Low-pass filter the target range.
-    LowPass,
-    /// High-pass filter the target range.
-    HighPass,
-    /// Compress the target range.
-    Compress,
-    /// Saturate the target range.
-    Saturate,
-    /// Bit-crush the target range.
-    Bitcrush,
-    /// Stereo-widen the target range.
-    StereoWiden,
-    /// Reverb the target range (tail rings out past it; may grow the clip).
-    Reverb,
-    /// Echo/delay the target range (tail rings out past it; may grow the clip).
-    Echo,
+    /// Apply the effects rack's selected effect at its current parameters. The
+    /// shell reads [`fx_kind`] + [`fx_norms`] to build it.
+    ApplyFx,
 }
 
 /// Zero-size marker implementing the typed Audio Editor panel contract.
@@ -182,6 +175,10 @@ impl Panel for AudioEditorPanel {
     }
 }
 
+/// Panel → shell: the selected effect index into the shell's `FX_KINDS`.
+pub use snapshot::fx_kind;
+/// Panel → shell: the normalized 0..1 position of every parameter slider.
+pub use snapshot::fx_norms;
 /// Panel → shell: whether looping is enabled (persistent).
 pub use snapshot::looping;
 /// Shell → panel: publish the loaded clip's display name.
@@ -206,3 +203,7 @@ pub use snapshot::take_stop;
 pub use snapshot::{set_can_redo, set_can_undo};
 /// Shell → panel: publish the live transport state for the readout + buttons.
 pub use snapshot::{set_duration_secs, set_loaded, set_playing, set_position_secs};
+/// Shell → panel: publish the effects rack's view — how many kinds exist, the
+/// selected kind's name, its per-parameter `(label, formatted value)` pairs, and
+/// the normalized defaults to load into the sliders when the kind changes.
+pub use snapshot::{set_fx_defaults, set_fx_kind_count, set_fx_kind_name, set_fx_param_views};

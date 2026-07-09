@@ -9,11 +9,10 @@
 
 use crate::state::AudioEditorState;
 use crate::{
-    AEDIT_BITCRUSH, AEDIT_CLOSE, AEDIT_COMPRESS, AEDIT_CUT, AEDIT_DC, AEDIT_ECHO, AEDIT_EXPORT,
-    AEDIT_FADE_IN, AEDIT_FADE_OUT, AEDIT_GAIN_DOWN, AEDIT_GAIN_UP, AEDIT_HIGHPASS, AEDIT_INVERT,
-    AEDIT_LOAD, AEDIT_LOOP, AEDIT_LOWPASS, AEDIT_NAME, AEDIT_NORM_LUFS, AEDIT_NORMALIZE,
-    AEDIT_PANEL, AEDIT_PLAY, AEDIT_REDO, AEDIT_REVERB, AEDIT_REVERSE, AEDIT_SATURATE,
-    AEDIT_SILENCE, AEDIT_STOP, AEDIT_TRIM, AEDIT_UNDO, AEDIT_WIDEN, AudioEditorPanel, snapshot,
+    AEDIT_CLOSE, AEDIT_CUT, AEDIT_DC, AEDIT_EXPORT, AEDIT_FADE_IN, AEDIT_FADE_OUT, AEDIT_FX_PARAMS,
+    AEDIT_GAIN_DOWN, AEDIT_GAIN_UP, AEDIT_INVERT, AEDIT_LOAD, AEDIT_LOOP, AEDIT_NAME,
+    AEDIT_NORM_LUFS, AEDIT_NORMALIZE, AEDIT_PANEL, AEDIT_PLAY, AEDIT_REDO, AEDIT_REVERSE,
+    AEDIT_SILENCE, AEDIT_STOP, AEDIT_TRIM, AEDIT_UNDO, AudioEditorPanel, snapshot,
 };
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::interaction::{HitIndex, InteractiveState};
@@ -113,6 +112,19 @@ pub(crate) fn paint(_state: &mut AudioEditorState, ctx: &mut PaintCtx) {
             *selection_anchor = None;
         }
         snapshot::mark_name_synced();
+    }
+    // Seed the parameter sliders with the selected effect's preset — once per kind
+    // change, never every frame (which would fight the user's drag). Same guard
+    // shape as the name box above.
+    if let Some(defaults) = snapshot::fx_defaults_need_sync() {
+        for (i, id) in AEDIT_FX_PARAMS.iter().enumerate() {
+            if let Some(InteractiveState::Slider { value, .. }) = ctx.host.store_mut().get_mut(*id)
+            {
+                *value = defaults[i];
+            }
+            snapshot::set_fx_norm(i, defaults[i]);
+        }
+        snapshot::mark_fx_synced();
     }
     // Read the name field's live buffer for painting (cloned so the scene borrow
     // below is free of the store).
@@ -351,44 +363,10 @@ fn paint_edit_section(
     );
     y += ROW_H + Spacing::Md.px();
 
-    // Effects rack (W3 block 1) — act on the selection, or the whole clip when
-    // none (enabled whenever a clip is loaded, like the whole-clip ops).
-    // The last row is tail-extending (W3 block 2): the ring-out bleeds past the
-    // target range and lengthens the clip when the range reaches the end.
-    let fx_rows: [[(&str, NodeId, bool); 2]; 4] = [
-        [
-            ("Low-Pass", AEDIT_LOWPASS, loaded),
-            ("High-Pass", AEDIT_HIGHPASS, loaded),
-        ],
-        [
-            ("Compress", AEDIT_COMPRESS, loaded),
-            ("Saturate", AEDIT_SATURATE, loaded),
-        ],
-        [
-            ("Bitcrush", AEDIT_BITCRUSH, loaded),
-            ("Widen", AEDIT_WIDEN, loaded),
-        ],
-        [
-            ("Reverb", AEDIT_REVERB, loaded),
-            ("Echo", AEDIT_ECHO, loaded),
-        ],
-    ];
-    for row in fx_rows {
-        for (i, (label, id, enabled)) in row.into_iter().enumerate() {
-            let bx = x + i as f32 * (half + gap);
-            button(
-                Rect::new(bx, y, half, ROW_H),
-                label,
-                enabled,
-                id,
-                scene,
-                text_system,
-                theme,
-                hit_index,
-            );
-        }
-        y += ROW_H + gap;
-    }
+    // Effects rack (W3 block 3a) — a selector + parameter sliders + Apply. It acts
+    // on the selection, or the whole clip when there is none, so it only needs a
+    // clip loaded (like the whole-clip ops above).
+    crate::paint_fx::paint_fx_section(y, x, w, loaded, ROW_H, scene, text_system, theme, hit_index);
 }
 
 /// Seconds per minute — time-domain constant, not a UI metric.
@@ -404,9 +382,9 @@ fn fmt_time(secs: f64) -> String {
 
 /// A labeled action button: `Bg3` + `Text1` when enabled, dimmed to `Text2`
 /// when not. Registers `id` as the hit rect regardless (disabled is a visual
-/// hint only in W1).
+/// hint only in W1). Shared with the effects rack section (`paint_fx`).
 #[allow(clippy::too_many_arguments)]
-fn button(
+pub(crate) fn button(
     rect: Rect,
     label: &str,
     enabled: bool,

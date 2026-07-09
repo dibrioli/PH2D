@@ -37,6 +37,15 @@ abaixo é histórico — não re-investigue.
   ⚠️ `tail_secs` precisa vencer a latência do próprio efeito — o comb mais curto
   do Freeverb é ~25 ms, então cauda curta rende **silêncio** (preset usa 2,5 s;
   há um teste fixando esse modo de falha).
+- **W3 Bloco 3a** — **rack paramétrico**: um seletor (`◀ nome ▶`) + até 4 sliders
+  + **Apply**, no lugar dos 8 botões de preset fixo (os defaults *são* os presets).
+  **Divisão de responsabilidade:** o painel continua **UI-only** — guarda só um
+  índice de efeito e sliders **normalizados 0..1**; o shell
+  (`shells/desktop/src/audio/fx_params.rs`) dona as faixas reais, o mapeamento
+  (**log** p/ Hz e tempo), a formatação (`3.0 kHz`, `250 ms`) e a construção do
+  `Effect`/`TailEffect`. Compressor ganhou **auto-makeup**. O `paint` re-semeia os
+  sliders com o preset **só quando o efeito muda** (mesmo guard da caixa de nome),
+  pra não brigar com o arraste do usuário.
 - **Atalhos:** `Ctrl+Z` undo · `Ctrl+Shift+Z` / `Ctrl+Y` redo (roteados ao
   `EditClip` quando o painel WAVE está aberto com clipe carregado).
 - **Fix:** `cpal::Stream` é dropado no `on_close_request`, não no drop-cascade do
@@ -50,12 +59,18 @@ seleção, quando existe; senão o clipe inteiro), e a família decide o splice:
 Efeito novo: escolha a família **antes** de escrever o DSP. Um efeito com cauda
 enfiado no `in_range` tem a cauda **truncada** silenciosamente.
 
+**Adicionar um efeito novo** (o caminho é curto agora): (1) a variante em
+`fx.rs` (escolha a família!), (2) a tabela de params + o arm do `build` em
+`audio/fx_params.rs`, (3) o nome em `FX_KINDS`. O painel **não muda** — ele lê
+tudo do snapshot. `MAX_FX_PARAMS = 4`: um efeito com 5 params exige subir a
+constante nos dois lados (painel + shell) e criar mais um id de slider.
+
 **Próximo (plano vivo: [`docs/Audio/02_plano_implementacao_completo.md`](Audio/02_plano_implementacao_completo.md)):**
-1. **W3 Bloco 3** — UI paramétrica + FX chain reordenável + presets (hoje cada
-   efeito é um preset fixo curado no shell, igual aos botões de gain ±3 dB).
-   Resto do W3: limiter true-peak, gate/expander, de-esser, multibanda,
+1. **W3 Bloco 3b** — **FX chain reordenável + presets** (salvar/carregar) +
+   preview A/B, fechando o critério de aceitação do W3.
+2. Resto do DSP do W3: limiter true-peak, gate/expander, de-esser, multibanda,
    convolução (FFT particionado), chorus/flanger/phaser, tremolo/auto-pan.
-2. Depois: W4 (voz) ∥ W5 (espectral/FFT) → W6 (asset-prep) → W7 (ML).
+3. Depois: W4 (voz) ∥ W5 (espectral/FFT) → W6 (asset-prep) → W7 (ML).
 
 **Protocolo (Modo L):** trabalhe e comite **nesta linha** (`git commit
 --no-verify`), **sem push**. Você **não integra nem faz ship** — fecha, escreve o

@@ -89,6 +89,8 @@ impl MotionState {
 ///   `height_world = 10` camera; emits `Index`/`Count`.
 /// - **tint** Gradient (red → blue by index) — the whole grid is a colour ramp
 ///   (upstream of the falloff, so it colours every dot, not just the focus).
+/// - **orbit** a gentle whole-grid spin about the origin (upstream of the
+///   falloff, so it isn't focus-masked — the lattice slowly rotates as a whole).
 /// - **falloff** Circle (radius 4) — a central focus field the behaviours read.
 /// - **stagger** a Y tilt across the grid, masked by the falloff.
 /// - **oscillator** a travelling Sine Y-wave, masked by the falloff (the centre
@@ -99,6 +101,7 @@ impl MotionState {
 fn build_cavalry_demo(g: &mut Graph, reg: &NodeRegistry) -> Option<NodeId> {
     let grid = g.add_node("motion.grid");
     let tint = g.add_node("motion.tint");
+    let orbit = g.add_node("motion.orbit");
     let falloff = g.add_node("motion.falloff");
     let stagger = g.add_node("motion.stagger");
     let osc = g.add_node("motion.oscillator");
@@ -106,7 +109,8 @@ fn build_cavalry_demo(g: &mut Graph, reg: &NodeRegistry) -> Option<NodeId> {
     let output = g.add_node("motion.output");
     for (i, (from, to)) in [
         (grid, tint),
-        (tint, falloff),
+        (tint, orbit),
+        (orbit, falloff),
         (falloff, stagger),
         (stagger, osc),
         (osc, wiggle),
@@ -130,7 +134,7 @@ fn build_cavalry_demo(g: &mut Graph, reg: &NodeRegistry) -> Option<NodeId> {
             },
         );
     }
-    g.set_pos(output, Pos { x: 1320.0, y: 0.0 });
+    g.set_pos(output, Pos { x: 1540.0, y: 0.0 });
 
     // 20×20 lattice, gap 0.5.
     g.set_param(grid, "rows", 20.0);
@@ -145,6 +149,8 @@ fn build_cavalry_demo(g: &mut Graph, reg: &NodeRegistry) -> Option<NodeId> {
     g.set_param(tint, "r2", 0.1);
     g.set_param(tint, "g2", 0.3);
     g.set_param(tint, "b2", 1.0);
+    // Gentle whole-grid spin about the origin (unmasked — upstream of falloff).
+    g.set_param(orbit, "speed", 0.08);
     // Central circle focus (radius 4, smoothstep edge).
     g.set_param(falloff, "radius", 4.0);
     // Y tilt across the grid (masked by the falloff).
@@ -175,8 +181,8 @@ mod tests {
     fn new_builds_the_well_typed_cavalry_demo() {
         let state = MotionState::new();
         assert!(state.sink.is_some(), "the demo must have a sink");
-        // 7 nodes (grid, tint, falloff, stagger, oscillator, wiggle, output).
-        assert_eq!(state.doc.graph.nodes().len(), 7);
+        // 8 nodes (grid, tint, orbit, falloff, stagger, oscillator, wiggle, output).
+        assert_eq!(state.doc.graph.nodes().len(), 8);
         let sink = state.sink.unwrap();
         assert_eq!(
             state.doc.graph.node(sink).unwrap().type_name,

@@ -21,6 +21,7 @@ ph2d-node-motion-clone = { path = "../ph2d-node-motion-clone" }
 ph2d-node-motion-falloff = { path = "../ph2d-node-motion-falloff" }
 ph2d-node-motion-grid = { path = "../ph2d-node-motion-grid" }
 ph2d-node-motion-move = { path = "../ph2d-node-motion-move" }
+ph2d-node-motion-orbit = { path = "../ph2d-node-motion-orbit" }
 ph2d-node-motion-oscillator = { path = "../ph2d-node-motion-oscillator" }
 ph2d-node-motion-output = { path = "../ph2d-node-motion-output" }
 ph2d-node-motion-rotate = { path = "../ph2d-node-motion-rotate" }

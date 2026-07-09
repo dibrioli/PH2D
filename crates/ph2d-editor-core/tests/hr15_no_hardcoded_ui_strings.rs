@@ -47,6 +47,9 @@ const BASELINE: &[(&str, usize)] = &[
     // sections.rs to sections/identity.rs in the §T2.1 per-section split;
     // i18n migration tracked separately (replaced when Fluent ships).
     ("ph2d-panel-inspector/src/sections/identity.rs", 1),
+    // The Audio Editor's empty-state TextInput placeholder ("No clip loaded").
+    // Generic English fallback — replaced when Fluent runtime ships.
+    ("ph2d-panel-audio-editor/src/paint.rs", 1),
 ];
 
 #[test]

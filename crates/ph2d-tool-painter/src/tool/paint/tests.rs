@@ -12676,3 +12676,77 @@ fn watercolor_granulation_deposits_into_valleys_not_peaks() {
         );
     }
 }
+
+/// **Settle take 3 está LIGADO (Enio 2026-07-08: "nem sei se está funcionando")**: o preview vivo
+/// roda a ~80% do settle e o bake aplica 100% — então soltar a caneta CLAREIA os PICOS do tooth
+/// (o pigmento termina de ceder pros vales) enquanto os VALES ficam praticamente iguais. Se live
+/// e bake fossem idênticos (WYSIWYG) o delta seria 0; se o preview estivesse longe (take 1) o
+/// delta seria um pop. Este teste pina o meio-termo: delta presente, pequeno e direcional.
+#[test]
+fn watercolor_granulation_bake_settles_beyond_the_live_preview() {
+    let size = 64u32;
+    let mut t = white_canvas(size, 10.0);
+    t.paint.brush = BrushSpec {
+        radius_px: 10.0,
+        hardness: 1.0,
+        falloff: Falloff::Constant,
+        color: [0.15, 0.25, 0.7],
+        space_attenuation: false,
+        watercolor: true,
+        fill: 0.6,
+        depth: 2.0,
+        edge_gain: 0.0,
+        edge_spread: 4.0,
+        warp: 0.0,
+        granulation: 1.0,
+        granulation_use_paper: false,
+        wet_rewet: 0.0, // no water: live settle = GRAN_SETTLE_BASE exactly
+        ..Default::default()
+    };
+    let mut lum = vec![255u8; 16 * 16];
+    for y in 0..16 {
+        for x in 0..8 {
+            lum[y * 16 + x] = 0;
+        }
+    }
+    t.set_brush_texture_image(lum, 16, 16);
+    t.paint.brush.texture.mapping = ph2d_painter_brush::TextureMapping::Tiled;
+    t.paint.brush.texture.size = [8.0, 8.0];
+    for slot in &mut t.paint.brush_by_mode {
+        *slot = t.paint.brush;
+    }
+    assert!(t.on_canvas_pointer(cp([12.0, 32.0], PointerPhase::Down)));
+    for i in 1..=20 {
+        t.on_canvas_pointer(cp([12.0 + i as f32 * 2.0, 32.0], PointerPhase::Move));
+    }
+    // LIVE snapshot (last composite before release; the Up lands at the same position, so the
+    // coverage is already saturated — the only delta left is the settle).
+    let live: Vec<u8> = t.canvas_rgba.to_vec();
+    t.on_canvas_pointer(cp([52.0, 32.0], PointerPhase::Up));
+    let mean_g = |buf: &[u8], x0: u32, x1: u32| -> f32 {
+        let mut acc = 0.0f32;
+        for x in x0..x1 {
+            acc += f32::from(buf[((32 * size + x) * 4 + 1) as usize]);
+        }
+        acc / (x1 - x0) as f32
+    };
+    // PEAKS (white-map half, left under the dab-space wrap): the bake sheds MORE pigment → lighter.
+    let (peaks_live, peaks_baked) = (mean_g(&live, 16, 28), mean_g(&t.canvas_rgba, 16, 28));
+    assert!(
+        peaks_baked > peaks_live + 2.0,
+        "the bake must settle beyond the live preview on the PEAKS (live {peaks_live:.1} → baked {peaks_baked:.1})"
+    );
+    // Upper bound = the physics ceiling at FULL amount (gate 0.28 → 0.10 ⇒ ~50 bytes here);
+    // at the default Granulation 0.3 the felt delta is ~⅓ of this (Enio's smoke: "preview
+    // próximo do bake"). The bound guards against a runaway (e.g. live base accidentally 0).
+    assert!(
+        peaks_baked - peaks_live < 80.0,
+        "…bounded set, not a runaway pop (live {peaks_live:.1} → baked {peaks_baked:.1})"
+    );
+    // VALLEYS (black-map half): full deposit in both → essentially unchanged by the release.
+    let (val_live, val_baked) = (mean_g(&live, 36, 48), mean_g(&t.canvas_rgba, 36, 48));
+    assert!(
+        (val_baked - val_live).abs() < 3.0,
+        "valleys keep their deposit across the release (live {val_live:.1} → baked {val_baked:.1})"
+    );
+}

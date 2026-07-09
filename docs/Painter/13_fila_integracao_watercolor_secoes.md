@@ -80,12 +80,14 @@ composite. Corpo molhado + rim no contorno EXTERNO + textura como variação de 
 > traço da sessão (geral, mais estado); (c) params divergentes ⇒ encerra sessão (barato, mas
 > perde a fusão — último recurso). Escolher a que preserva o caráter POR TRAÇO mantendo a fusão.
 >
-> **Sintoma adicional (Enio 2026-07-09):** QUALQUER mudança no brush com poças úmidas na tela
-> propaga pelas poças dentro da **área RETANGULAR de ação do brush** — é a janela dirty-rect do
-> composite ao vivo (frame dirty + pad): dentro dela a união re-renderiza com os params novos,
-> fora dela fica o bake antigo ⇒ um remendo retangular visível re-estilizado no meio da poça.
-> Mesmo bug-raiz (params correntes aplicados ao conjunto), segunda manifestação: o fix por-traço
-> resolve as duas; usar este sintoma no teste de regressão (borda do retângulo não pode existir).
+> ~~**Sintoma adicional (Enio 2026-07-09):** QUALQUER mudança no brush com poças úmidas propaga
+> pelas poças dentro da área RETANGULAR de ação do brush~~ — **RESOLVIDO 2026-07-09**, junto com
+> o retângulo-que-clareia-sem-mudar-params (raiz mais funda que os params do #1: o composite não
+> era função PURA do estado da sessão — campos de rewet lidos do base per-stroke envenenado,
+> settle na flag do frame, soak zerado por traço, core_r/spread_thin do brush vivo, px de água
+> sem dono). Doc 12 §"Reprodutibilidade da sessão". Testes:
+> `watercolor_session_rerender_reproduces_the_bake_byte_exact` +
+> `watercolor_session_brush_changes_do_not_touch_baked_washes`.
 
 | # | Item | Estado hoje | Nota |
 |---|---|---|---|

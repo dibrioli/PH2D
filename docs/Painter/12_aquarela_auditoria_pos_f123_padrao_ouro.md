@@ -508,3 +508,60 @@ modulação.
 LOC: `style_at`/`paper_h_px` extraídos p/ os siblings (render/field exatos em 700). 494/494.
 **Ambos mudam o look default do modo aquarela** — vetos revertem individualmente
 (EDGE-4 = só o `gain_px`; EDGE-3 = fórmula + blur endurecido).
+
+### W-C · Reprodutibilidade da sessão — o retângulo que clareava a poça vizinha (LANDOU 2026-07-09)
+
+**Bug (Enio smoke):** com uma poça úmida na tela, o segundo traço fazia sua área retangular de
+ação aparecer como artefato em tempo real, CLAREANDO a poça vizinha antes de tocá-la (some no
+mouse-up). Raiz: o composite da união NÃO era função pura do estado da sessão — o re-render da
+janela viva produzia bytes diferentes do bake para pixels já assados. Cinco vazamentos:
+
+1. **Campos de rewet lidos do base per-stroke** (recongelado a cada pen-down ⇒ contém a poça 1
+   assada): no bake da poça os campos eram zero (canvas virgem); na janela do traço 2 viravam
+   presença > 0 ⇒ o dissolve tingia o pigmento pra cor PÁLIDA da aparência assada (o
+   clareamento), o pool dobrava o rim, o wet_paint ligava o mix RYB. **Fix:** campos ← base da
+   SESSÃO (o seco embaixo da sessão inteira); vizinho de sessão é água viva, fundido pela união
+   (EDGE-1), não "tinta velha".
+2. **Settle da granulação gated pela flag `commit` do frame:** a poça assada (settle 1.0)
+   re-renderizava viva com ~0.80 — a textura mudava dentro do retângulo e voltava no mouse-up.
+   **Fix:** `settled = commit || dono-do-pixel já commitado`.
+3. **Soak zerado a cada pen-down:** o dwell da poça 1 sumia ⇒ o rim EDGE-4 dela re-renderizava
+   mais fraco. **Fix:** o soak PERSISTE na sessão (zera só em sessão nova; o teardown limpa).
+4. **Geometria do brush VIVO aplicada a pixels alheios:** `core_r` (raio do blur do `inner`) e
+   `spread_thin` eram globais ⇒ trocar Size/Spread re-blurava o rim da poça assada (o "qualquer
+   mudança no brush propaga", doc 13). **Fix:** ambos na `WetStrokeStyle` por-dono; o `inner`
+   ganha um blur por raio DISTINTO da sessão (`inner_blur_set`, normalmente 1 mapa); janela e
+   raios de campo usam os MÁXIMOS da sessão (fold único sobre a tabela).
+5. **Pixels só-água sem dono** resolviam pro estilo do brush vivo (depth/cor do anel derivavam
+   com o traço seguinte). **Fix:** o splat de água reivindica dono em pixel VIRGEM (nunca rouba
+   pixel com pigmento).
+
+**EDGE-2 preservado por campos UNION (`UnionFields`, watercolor_rewet_px.rs):** o anel/tinta do
+backrun sobre wash de sessão (ainda molhado) agora lê os próprios buffers da união — cobertura
+endurecida × alpha depositado + cor crua, mascarados dono ≠ traço vivo (sem auto-anel em traço
+com Dilution) — com blur near/far espelhando os campos secos. Água ESVAZIA o wash que redispersa
+(`lift_wash` multiplica a densidade ANTES do pool: o interior empalidece e a massa volta como
+anel). Sobre pintura SECA (sessão nova) nada muda: base da sessão ≡ base per-stroke no 1º traço.
+
+Extra da mesma família: `stroke_density` criado no MEIO da sessão (trocar pra tip texturizado)
+agora backfilla 255 sob a cobertura existente (gêmeo do backfill do deplete — os washs
+anteriores liam densidade 0 e o interior deles sumia).
+
+Testes (refutáveis, FAIL provado pré-fix):
+`watercolor_session_rerender_reproduces_the_bake_byte_exact` (probe byte-exato vivo E pós-Up,
+com dwell + granulação + Bleed) · `watercolor_session_brush_changes_do_not_touch_baked_washes`
+(brush radicalmente trocado entre traços) · guarda verde-antes-e-depois:
+`watercolor_clean_water_backrun_blooms_on_wet_session_wash` (EDGE-2 sobre wash MOLHADO).
+497/497 · clippy 0 · render 700 / field 694 / paint 600.
+
+Residual de 2ª ordem (documentado, aceito): os raios de blur dos CAMPOS (secos e union) usam o
+máximo da sessão ⇒ um traço de Spread maior entrando numa sessão de GLAZE (campos ≠ 0) pode
+derivar levemente o tint re-renderizado; e o anel de um traço Dilution+pigmento pode
+re-renderizar diferente sob um 3º traço (o `bp_union` exclui só o traço VIVO). Ambos estreitos
+vs o estado anterior, que derivava em TODA re-render.
+
+SMOKE-GATE (muda o look de casos já vistos): (a) traço com Bleed cruzando/margeando poça da
+MESMA sessão não "re-molha" mais a vizinha — fusão pura EDGE-1 (o comportamento antigo era o
+próprio bug); (b) o anel do backrun sobre wash molhado vem do pigmento CRU da união (mais
+saturado que a aparência assada de antes) e o interior esvazia por `lift_wash`. Sobre pintura
+seca, byte-idêntico ao aprovado.

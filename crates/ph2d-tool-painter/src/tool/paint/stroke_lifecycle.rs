@@ -71,7 +71,7 @@ impl PainterTool {
         // instead of over-painting in place. In a CONTINUING session this refrozen base (which now
         // includes the union baked so far) feeds only the mixer pickup + rewet; the composite keeps
         // reading the SESSION base below.
-        self.freeze_watercolor_ground();
+        self.freeze_watercolor_ground(wet_session);
         if !wet_session {
             // Fresh session: composite base = this pen-down's frozen canvas; the guard Arc is set
             // at the bake. A stale wet map from a broken session keeps drying on its own.

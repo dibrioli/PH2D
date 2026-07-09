@@ -432,7 +432,7 @@ pub(crate) struct PaintState {
     /// soaked each pixel (grown by [`PainterTool::grow_wet_soak`] on the tick heartbeat). The rewet
     /// reads it as a `0..1` field: more soak = the dissolve reaches FARTHER (blur-scale lerp) and the
     /// lift digs DEEPER — "quanto mais a água fica, mais dissolve", without physics. Sized lazily
-    /// with the coverage; cleared on down.
+    /// with the coverage; persists through the WET SESSION (cleared on a fresh one).
     wet_soak: Vec<u8>,
     /// Current soak disc = the last dab's `(centre, radius)` — where the tick heartbeat pours dwell
     /// while the pointer is parked. `None` = stroke start.
@@ -473,7 +473,7 @@ pub(crate) struct PaintState {
     wet_styles: watercolor_field::WetSessionStyles,
     /// EDGE-2 backrun: the CARRIED-water pool (`w*h`, session-scoped) — Dilution pours it per dab
     /// regardless of pigment; the composite lifts/blooms against it (serrated ring = backrun
-    /// edge). Separate from the per-stroke dwell soak (`wet_soak`). Empty = inert.
+    /// edge). Separate from the session dwell soak (`wet_soak`). Empty = inert.
     stroke_water: Vec<u8>,
     /// EDGE-1 wet session: the optical base frozen at the SESSION start (first stroke of the wet
     /// window) — every bake of the session re-composites the UNION buffers over this, never over

@@ -188,16 +188,10 @@ pub(super) fn sample_bilinear(src: &[f32], w: usize, h: usize, fx: f32, fy: f32)
     top + (bot - top) * ty
 }
 
-/// Separable box blur of a scalar field, O(n) via per-row/column prefix sums (window count clamped at
-/// the borders, so no darkening bias). Deterministic (only sums + one divide). `radius == 0` is a copy.
-///
-/// **Parallel (ADR-0109 exception).** Both passes distribute over their INDEPENDENT axis — the
-/// horizontal over rows, the vertical over columns — each accumulating its own prefix from the SAME
-/// origin as the serial version (`x = 0` / `y = 0`), so the additions run in the identical order with
-/// identical values ⇒ **bit-identical** output regardless of thread count (same class as the composite:
-/// no cross-lane reduction). The vertical pass writes a transposed buffer (`out_t[x*h + y]`) so each
-/// column is a CONTIGUOUS row there — a safe `par_chunks_mut`, no `unsafe`, no strided writes — then a
-/// final row-parallel transpose lays it back to row-major. A relayout of memory, never of arithmetic.
+/// Separable box blur, O(n) via prefix sums (window count clamped at the borders — no darkening
+/// bias); deterministic. **Parallel (ADR-0109 exception):** each pass distributes over its
+/// INDEPENDENT axis with the serial prefix origin ⇒ bit-identical at any thread count; the
+/// vertical pass writes transposed (contiguous, no `unsafe`) then a row-parallel transpose.
 pub(super) fn box_blur(src: &[f32], w: usize, h: usize, radius: usize) -> Vec<f32> {
     if radius == 0 || w == 0 || h == 0 {
         return src.to_vec();
@@ -244,19 +238,14 @@ pub(super) fn box_blur(src: &[f32], w: usize, h: usize, radius: usize) -> Vec<f3
 
 // ── Rewet composite fields (moved from `watercolor_render` for the file-LOC cap) ────────────────────
 
-/// The rewet's fields, built once per composite: raw paint presence, the per-pixel water soak
-/// (dwell) in two forms — RAW (contact: deepens the lift under the nib) and HALO (blurred outward:
-/// the dwelling water diffuses, widening the dissolve past the disc) — and the presence +
-/// presence-weighted-colour blurs at the plain (`near`, radius = spread) and lingering (`far`,
-/// radius = 2×spread) scales, `[presence, r, g, b]` each. The halo lerps `near → far`.
+/// The rewet's fields, built once per composite: raw paint presence, the water soak (dwell) RAW
+/// (contact lift) + HALO (blurred outward, widening the dissolve), and the presence +
+/// presence-weighted-colour blurs at the plain (`near` = spread) and lingering (`far` = 2×)
+/// scales, `[presence, r, g, b]` each; the halo lerps `near → far`.
 ///
-/// **Downsampled at high Spread** (`ds > 1`): a box blur is a low-pass, so at a wide Spread the
-/// fields are built + blurred on a `ds`-reduced grid (the box-blur passes then cost `O(window/ds²)`)
-/// and sampled bilinearly back up. The grid is **globally aligned** (`lox0/loy0` are global block
-/// indices), so an output pixel's sampled value is independent of the frame's dirty-rect window —
-/// the live dirty-rect composite stays identical to a full recompose (gate
-/// `…incremental_composite_matches_full`). `ds == 1` (Spread ≤ [`REWET_DS_SPREAD`]) is the exact
-/// full-res path (byte-identical to before the downsample).
+/// **Downsampled at high Spread** (`ds > 1`) on a **globally aligned** grid (`lox0/loy0`), so a
+/// sampled value is independent of the frame's dirty-rect window (gate
+/// `…incremental_composite_matches_full`); `ds == 1` (Spread ≤ [`REWET_DS_SPREAD`]) is exact.
 pub(super) struct RewetFields {
     pub(super) pres: Vec<f32>,
     pub(super) soak_raw: Vec<f32>,
@@ -287,9 +276,8 @@ impl RewetFields {
     }
 }
 
-/// Spread (px) at/below which the rewet fields stay full-resolution (`ds = 1`, exact). Above it the
-/// blur grid downsamples (`ds = spread / this`, capped) — the box-blur cost stops growing with
-/// Spread. Set above every unit test's Spread so they all exercise the exact path.
+/// Spread (px) at/below which the rewet fields stay full-resolution (`ds = 1`, exact); above it
+/// the grid downsamples (`ds = spread / this`, capped). Above every unit test's Spread.
 pub(super) const REWET_DS_SPREAD: usize = 12;
 
 // ── Rewet tuning constants (moved from `watercolor_render`'s fn body for the file-LOC cap) ─────────
@@ -535,11 +523,17 @@ pub(super) struct WetStrokeStyle {
     pub(super) warp: f32,
     pub(super) pigment_mix: f32,
     pub(super) color: [u8; 3],
+    /// Per-owner GEOMETRY (doc 13 "mudança no brush propaga"): thinning multiplier, feather-blur
+    /// radius, Spread — a baked wash re-renders with ITS geometry, never the live brush's.
+    pub(super) spread_thin: f32,
+    pub(super) core_r: u16,
+    pub(super) spread_px: u16,
 }
 
 impl WetStrokeStyle {
     /// Capture the current brush's wash params — the composite's exact clamps, verbatim.
     pub(super) fn capture(spec: &ph2d_painter_brush::BrushSpec) -> Self {
+        let spread_px = spec.edge_spread.round().clamp(0.0, 48.0) as usize;
         Self {
             fill: spec.fill.clamp(0.0, 1.0),
             depth: spec.depth.max(0.0),
@@ -553,6 +547,10 @@ impl WetStrokeStyle {
                 (spec.color[1].clamp(0.0, 1.0) * 255.0 + 0.5) as u8,
                 (spec.color[2].clamp(0.0, 1.0) * 255.0 + 0.5) as u8,
             ],
+            spread_thin: (1.0 + (spread_px as f32 - SPREAD_THIN_REF).max(0.0) / SPREAD_THIN_REF)
+                .min(SPREAD_THIN_MAX),
+            core_r: spread_px.min(((spec.radius_px * 0.5).round() as usize).max(1)) as u16,
+            spread_px: spread_px as u16,
         }
     }
 }
@@ -589,12 +587,9 @@ impl WetSessionStyles {
 }
 
 // ── Granulation settling (doc 12 GRAN-1 — Curtis §4.5 valley deposition, Tier-2) ────────────────────
-// Drying model (Enio 2026-07-08, take 3): the BAKE applies the FULL settle (the real drying
-// physics — the wash visibly "sets" on pen-up), while the LIVE preview runs CLOSE to the dry
-// result so the release reads as a subtle settling, not a pop ("clareamento correspondente
-// próximo em tempo real"). SMOKE-CALIBRATION KNOBS: raise `GRAN_SETTLE_BASE` to bring the live
-// preview closer to the dry look (1.0 = WYSIWYG, no drying dynamic); `WET`/`SOAK` add the live
-// water response on top (capped at the dry value — the preview never overshoots the bake).
+// Drying model (Enio 2026-07-08, take 3): the BAKE settles FULLY (the wash "sets" on pen-up);
+// the LIVE preview runs close to dry so the release is subtle. KNOBS: `GRAN_SETTLE_BASE` (1.0 =
+// WYSIWYG), `WET`/`SOAK` add live water response (capped at the dry value).
 /// LIVE settle floor — how close the wet preview sits to the dry (baked) settle with no water.
 pub(super) const GRAN_SETTLE_BASE: f32 = 0.80;
 /// How much Rewet (water) raises the live settle toward the dry value.
@@ -606,11 +601,10 @@ pub(super) const GRAN_SETTLE_SOAK: f32 = 0.12;
 /// clamped low-h texels to 0 → white speckle holes).
 pub(super) const GRAN_GAMMA: f32 = 0.9;
 
-/// GRAN-1 valley-gated granulation factor (Curtis §4.5, Tier-2 — doc 12): pigment settles INTO
-/// the tooth's valleys (`h` low ⇒ full deposit; peaks shed up to γ). The settle weight grows with
-/// water (Rewet) + local dwell (soak) live, and goes FULL at the pen-up bake (real drying) — the
-/// live preview is tuned CLOSE to dry (GRAN_SETTLE_* knobs) so the release is a subtle set, not a
-/// pop. Amount 0 ⇒ factor `1 + paper_component` exactly; no clamp-to-0 speckle (γ < 1).
+/// GRAN-1 valley-gated granulation factor (Curtis §4.5, doc 12): pigment settles INTO the
+/// valleys (peaks shed up to γ). The settle grows with water + dwell live and goes FULL when
+/// `settled` — the pen-up bake OR a pixel whose OWNER is already committed (a baked wash keeps
+/// its DRY settle in the session window, Enio 2026-07-09). Amount 0 ⇒ `1 + paper_component`.
 #[inline]
 pub(super) fn granulation_factor(
     gran_h: Option<f32>,
@@ -618,11 +612,11 @@ pub(super) fn granulation_factor(
     granulation: f32,
     wet: f32,
     soak_v: f32,
-    commit: bool,
+    settled: bool,
 ) -> f32 {
     match gran_h {
         Some(h) => {
-            let settle = if commit {
+            let settle = if settled {
                 1.0
             } else {
                 (GRAN_SETTLE_BASE + GRAN_SETTLE_WET * wet + GRAN_SETTLE_SOAK * soak_v).min(1.0)

@@ -275,7 +275,15 @@ impl PainterTool {
         // the shape-image borrow below (disjoint field borrows carry the loop).
         let textured_tip = stamp.as_ref().is_some_and(|s| s.shape_active);
         if textured_tip && self.paint.stroke_density.len() != fw * fh {
-            self.paint.stroke_density = vec![0u8; fw * fh];
+            let mut dens = vec![0u8; fw * fh];
+            // Sessão molhada: washs ANTERIORES (tip liso ⇒ densidade plena) não podem ler 0 do
+            // mapa recém-criado — backfill 255 sob a cobertura existente (gêmeo do depl abaixo).
+            for (d, &c) in dens.iter_mut().zip(self.paint.stroke_coverage.iter()) {
+                if c > 0 {
+                    *d = 255;
+                }
+            }
+            self.paint.stroke_density = dens;
         }
         let shape_img_owned = self.paint.shape_image.as_ref().map(|i| i.as_mask());
         let canvas = [fw as f32, fh as f32];
@@ -392,6 +400,14 @@ impl PainterTool {
                         let s = (water * wgt * keep * 255.0) as u8;
                         if s > water_buf[idx] {
                             water_buf[idx] = s;
+                        }
+                        // Px VIRGEM ganha o dono da água (o anel resolve o estilo do traço
+                        // d'água PRA SEMPRE, nunca o brush vivo — estabilidade de re-render);
+                        // px com pigmento mantém o dono (a água não rouba o estilo de baixo).
+                        if let Some(o) = own_v
+                            && own_buf[idx] == 0
+                        {
+                            own_buf[idx] = o;
                         }
                     }
                     // Pigment reserve (MIX-1): max-blend wherever the dab touches, tapered over the

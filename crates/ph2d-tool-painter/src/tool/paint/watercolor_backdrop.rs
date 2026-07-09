@@ -18,9 +18,12 @@ const SOAK_RATE_PER_S: f32 = 127.5;
 
 impl PainterTool {
     /// Freeze the watercolor ground for a beginning stroke: the pre-stroke `canvas_rgba` as the
-    /// optical base (shared `Arc`, O(1)) + the real **backdrop** under the active layer. Also resets
-    /// the per-stroke soak. No-op (clears both) when the watercolor render-path is off.
-    pub(super) fn freeze_watercolor_ground(&mut self) {
+    /// optical base (shared `Arc`, O(1)) + the real **backdrop** under the active layer. The soak
+    /// (dwell) resets only on a FRESH session — a CONTINUING wet session keeps the paper's dwell,
+    /// so the union re-renders reproduce the bakes byte-exact (the soak boosts rim/settle per
+    /// pixel; zeroing it per stroke re-rendered the neighbour wash weaker, Enio 2026-07-09).
+    /// No-op (clears both) when the watercolor render-path is off.
+    pub(super) fn freeze_watercolor_ground(&mut self, wet_session: bool) {
         if !self.watercolor_render_active() {
             self.paint.watercolor_base = None;
             self.paint.wet_backdrop = None;
@@ -28,9 +31,11 @@ impl PainterTool {
         }
         self.paint.watercolor_base = Some(Arc::clone(&self.canvas_rgba));
         self.paint.wet_backdrop = Some(Arc::new(self.build_wet_backdrop()));
-        self.paint.wet_soak.iter_mut().for_each(|s| *s = 0);
+        if !wet_session {
+            self.paint.wet_soak.iter_mut().for_each(|s| *s = 0);
+            self.paint.wet_soak_active = false;
+        }
         self.paint.wet_soak_pos = None;
-        self.paint.wet_soak_active = false;
         // Manual Shape tip normaliser (see `PaintState::wet_shape_norm`): 1 / max luminance of the
         // Shape image, computed once per stroke — the watercolor coverage must SATURATE in the tip's
         // core (wetness geometry), so grey tips scale up to full while keeping their relative texture.
@@ -329,6 +334,8 @@ impl PainterTool {
             self.paint.stroke_deplete = Vec::new();
             self.paint.wet_styles.clear();
             self.paint.stroke_water = Vec::new();
+            self.paint.wet_soak = Vec::new();
+            self.paint.wet_soak_active = false;
             self.paint.wet_cum_dirty = None;
         }
     }

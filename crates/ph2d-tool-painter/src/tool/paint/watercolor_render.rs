@@ -21,7 +21,7 @@
 //! integer-hash value noise are built once and deterministic; no transcendental runs in the hot loop.
 
 use super::watercolor_field::*;
-use super::watercolor_rewet_px::{rewet_px, style_at};
+use super::watercolor_rewet_px::{blur_of, build_union_fields, inner_blur_set, rewet_px, style_at};
 use super::*;
 use ph2d_painter_brush::blend::ryb_mix;
 use rayon::prelude::*;
@@ -51,12 +51,10 @@ impl PainterTool {
     /// each frame recomposites cleanly from the pristine pre-stroke pixels (no overlay peel). `commit`
     /// drops the base (pen-up bake, inside the undo transaction); the live passes keep it for the next frame.
     ///
-    /// **Dirty-rect (wet_edges `renderFrame`/`endStroke`):** the live passes recomposite ONLY the frame
-    /// dirty rect — the dabs landed since the last composite, tracked incrementally by
-    /// [`Self::accumulate_wet_coverage`] — padded by the influence radius (a new dab changes `blur(cov)`
-    /// only within `spread`, sampled at most `warp` away), so the per-frame cost tracks the new dabs, not
-    /// the grown stroke. The pen-up bake makes one cumulative pass, also from an incrementally tracked
-    /// bbox — never a full-canvas scan. Returns the recomposited canvas region (`None` = nothing to do).
+    /// **Dirty-rect (wet_edges `renderFrame`/`endStroke`):** the live passes recomposite ONLY the
+    /// frame dirty rect (the dabs since the last composite), padded by the influence radius; the
+    /// pen-up bake makes one cumulative pass from an incrementally tracked bbox — never a
+    /// full-canvas scan. Returns the recomposited canvas region (`None` = nothing to do).
     pub(super) fn apply_watercolor(&mut self, commit: bool) -> Option<Region> {
         let (fw, fh) = self.source_size;
         let (fw, fh) = (fw as usize, fh as usize);
@@ -67,12 +65,10 @@ impl PainterTool {
             }
             return None;
         }
-        // The frozen base (own the Arc handle so the canvas make_mut below doesn't alias the
-        // field). EDGE-1 wet session: the composite reads the SESSION base — the canvas frozen at
-        // the FIRST stroke of the wet window — so a continuing stroke re-renders the whole UNION
-        // from scratch (one wash, one rim) instead of layering over its own previous bake (which
-        // would double-count the older strokes). Falls back to the per-stroke base (identical on
-        // the session's first stroke).
+        // The frozen base (own the Arc so the canvas make_mut below doesn't alias the field).
+        // EDGE-1: the composite reads the SESSION base — frozen at the session's FIRST stroke —
+        // so a continuing stroke re-renders the whole UNION from scratch (one wash, one rim)
+        // instead of double-counting its own bake. Per-stroke fallback = first-stroke identical.
         let base_arc = match self.paint.wet_session_base.as_ref() {
             Some(b) if b.len() == n * 4 => Arc::clone(b),
             _ => self.paint.watercolor_base.as_ref().map(Arc::clone)?,
@@ -83,10 +79,9 @@ impl PainterTool {
             }
             return None;
         }
-        // The frozen GROUND — the real backdrop under the active layer ([`super::watercolor_backdrop`]):
-        // the Beer–Lambert base where the layer is transparent, the rewet's "what is paint" reference
-        // and the lift's target. Frozen together with the base; a missing/mis-sized one (defensive —
-        // e.g. a test driving the composite directly) degrades to a uniform paper-colour ground.
+        // The frozen GROUND ([`super::watercolor_backdrop`]): the Beer–Lambert base where the
+        // layer is transparent, the rewet's "what is paint" reference and the lift's target. A
+        // missing/mis-sized one (defensive) degrades to a uniform paper-colour ground.
         let backdrop_arc = match self.paint.wet_backdrop.as_ref() {
             Some(b) if b.len() == n * 4 => Arc::clone(b),
             _ => {
@@ -99,9 +94,8 @@ impl PainterTool {
             }
         };
 
-        // Pick the recomposite rect and CONSUME the frame one (wet_edges `resetFrame`): live = this
-        // frame's dabs; commit = the whole stroke (frame folded in — `paint_end`'s finish dabs land
-        // after the last live pass).
+        // Pick the recomposite rect and CONSUME the frame one (wet_edges `resetFrame`): live =
+        // this frame's dabs; commit = the whole stroke (`paint_end`'s finish dabs folded in).
         let frame = self.paint.wet_frame_dirty.take();
         let dirty = if commit {
             match (self.paint.wet_cum_dirty, frame) {
@@ -121,39 +115,35 @@ impl PainterTool {
         let spread = self.paint.brush.edge_spread.round().clamp(0.0, 48.0) as usize;
         let warp_amp = self.paint.brush.warp.max(0.0);
         let wet = self.paint.brush.wet_rewet.clamp(0.0, 1.0);
-        // EDGE-1 per-stroke style (doc 13 topo): geometry/field paths take the SESSION MAXIMA
-        // (conservative — any stroke with water builds the rewet fields; the widest warp pads the
-        // window); the per-pixel terms resolve the OWNER stroke's own values inside the loop.
-        let wet_any = self
-            .paint
-            .wet_styles
-            .table
-            .iter()
-            .fold(wet, |m, s| m.max(s.wet));
-        let warp_any = self
-            .paint
-            .wet_styles
-            .table
-            .iter()
-            .fold(warp_amp, |m, s| m.max(s.warp));
         // Silhouette-feather radius (`inner`), capped so a pool keeps a saturated core (see below).
         let core_r = spread.min(((self.paint.brush.radius_px * 0.5).round() as usize).max(1));
-        // Influence radius of a dab beyond its own disc: the blur reach + the warp displacement +
-        // bilinear/rounding slack. Output pixels farther than this from the dirty rect cannot have
-        // changed. WITHOUT Wet the only blur is the capped `core_r` feather (a wide Spread does NOT
-        // widen the footprint) → a tight window. WITH Wet the dissolve reaches `spread`, and once the
-        // stroke poured dwell (`wet_soak_active`) the soak-deepened dissolve reads a 2× blur, so the
-        // reach doubles.
+        // EDGE-1 per-stroke style (doc 13 topo): geometry/field paths take the SESSION MAXIMA
+        // (any stroke with water builds the fields; the widest warp/spread pads the window; the
+        // blur radii are global passes) — per-pixel terms resolve the OWNER's values in the loop.
+        let (wet_any, warp_any, spread_any, core_any) = self.paint.wet_styles.table.iter().fold(
+            (wet, warp_amp, spread, core_r),
+            |(w, wa, sm, cm), s| {
+                (
+                    w.max(s.wet),
+                    wa.max(s.warp),
+                    sm.max(s.spread_px as usize),
+                    cm.max(s.core_r as usize),
+                )
+            },
+        );
+        // Influence radius of a dab beyond its own disc (blur reach + warp + rounding slack):
+        // dry = the capped feather only (a tight window); Wet = the dissolve's spread; a session
+        // that poured dwell reads a 2× blur, so the reach doubles.
         let soaked = wet_any > 0.0 && self.paint.wet_soak_active && self.paint.wet_soak.len() == n;
         // EDGE-2: carried water poured this session (Dilution) — builds the rewet fields (and its
         // own halo) regardless of Rewet, so pure water blooms against the paint beneath.
         let watered = self.paint.stroke_water.len() == n;
         let reach = if soaked || watered {
-            spread * 2
+            spread_any * 2
         } else if wet_any > 0.0 {
-            spread
+            spread_any
         } else {
-            core_r
+            core_any
         };
         let pad = reach + warp_any.ceil() as usize + 2;
         let x0 = (dirty.x as usize).saturating_sub(pad);
@@ -193,42 +183,31 @@ impl PainterTool {
                 cov_src[dbase + wx] = f32::from(self.paint.stroke_coverage[sbase + wx]) / 255.0;
             }
         }
-        // The silhouette-feather blur (`inner` = `core_r`, feeding the edge pool + interior thinning)
-        // must SATURATE to ~1 in a pool's core. A Spread wider than the pool otherwise reads the WHOLE
-        // pool as "rim": `inner` never reaches 1, the edge term floods the centre, and the loved
-        // "Spread clears the centre" dynamic inverts to a flat dark blob (Enio 2026-07-07, after the
-        // 24→48 cap raise). `core_r` (computed above) caps the feather at ~half the brush so a pool
-        // always keeps a protected core; the WIDE `spread` still drives the dissolve bleed + warp
-        // width. At `spread ≤ radius·½` this is a no-op (`core_r == spread`) → byte-identical.
-        // EDGE-3: `inner` = blur of the HARDENED coverage — the raw plateau (~0.93) left
-        // `cw − inner ≈ 0.07` across the whole interior (raising Edge shifted the wash's mid
-        // tone); hardened ⇒ flat interior reads 1, edge exactly 0, rim/fringe keep contrast.
+        // The feather blur (`inner`) must SATURATE to ~1 in a pool's core — `core_r` caps it at
+        // ~half the brush (a wider Spread otherwise read the whole pool as "rim" and the edge
+        // flooded the centre, Enio 2026-07-07); `spread ≤ radius·½` is a no-op. EDGE-3: blur of
+        // the HARDENED coverage (the raw plateau shifted the interior tone with Edge). One blur
+        // per DISTINCT per-owner core_r (usually one): a baked wash keeps ITS feather — the live
+        // brush's radius re-blurred the neighbour's rim (doc 13 "mudança no brush propaga").
         let hard: Vec<f32> = cov_src.iter().map(|&c| smoothstep(SS0, SS1, c)).collect();
-        let blur = box_blur(&hard, rw, rh, core_r);
+        let blurs = inner_blur_set(&hard, rw, rh, &self.paint.wet_styles.table, core_r);
 
         let lut = luts();
         let brush = &self.paint.brush;
         let base = &**base_arc;
         let ground = &*backdrop_arc;
 
-        // ── Wet-on-wet rewetting (`wet_rewet`, Enio 2026-07-06): where the wash covers already-painted
-        // paint, the paint LIFTS (the base under it lightens toward the GROUND), its colour DISSOLVES
-        // through the wet region (a one-shot diffusion blur — radius = the water `spread`, growing to
-        // 2× where the brush LINGERED, the per-stroke soak), and POOLS back into the wash's density
-        // (the edge term concentrates it at the rim: the bloom). Per-pixel — no brush reservoir, no
-        // cadence, no physics. `wet = 0` skips it all (byte-identical, zero cost). Fields over the
-        // read window: raw paint presence (for the local lift) + blurred presence-weighted base
-        // colour at BOTH blur scales (the soak lerps between them) + the soak itself.
-        // Rewet reads the PER-STROKE frozen base (refrozen each pen-down, so mid-session it
-        // INCLUDES the union baked so far): "old paint" for lift/dissolve must see the neighbour
-        // washes, which live in the union buffers and not in the session base.
-        let rewet_base_arc = match self.paint.watercolor_base.as_ref() {
-            Some(b) if b.len() == n * 4 => Arc::clone(b),
-            _ => Arc::clone(&base_arc),
-        };
+        // ── Wet-on-wet rewetting (`wet_rewet`, Enio 2026-07-06): old paint LIFTS toward the
+        // ground, DISSOLVES through the wet region (blur radius = spread, 2× where the brush
+        // lingered) and POOLS back at the rim. `wet = 0` skips it all (byte-identical, zero cost).
+        // The fields read the SESSION base — the dried paint BELOW the whole session. Session-
+        // mates are NOT "old paint" (live water, merged by the union re-render); the refrozen
+        // per-stroke base poisoned reproducibility — the baked neighbour re-rendered through
+        // dissolve/pool/mix as a lightening rectangle (Enio 2026-07-09). The water's redispersion
+        // of session-mate pigment comes from the UNION fields below instead.
         let rewet = (wet_any > 0.0 || watered).then(|| {
             build_rewet_fields(
-                &rewet_base_arc[..],
+                &base_arc[..],
                 ground,
                 &self.paint.wet_soak,
                 soaked,
@@ -236,23 +215,34 @@ impl PainterTool {
                 watered,
                 (fw, fh),
                 (rx0, ry0, rx1, ry1),
-                spread,
+                spread_any,
+            )
+        });
+        let cur_o = self.paint.wet_styles.current_owner();
+        let union_f = rewet.as_ref().filter(|_| watered).map(|f| {
+            build_union_fields(
+                f,
+                &self.paint.stroke_coverage,
+                &self.paint.stroke_color,
+                &self.paint.wet_styles.owner,
+                cur_o,
+                soaked,
+                (fw, fh),
+                spread_any,
             )
         });
 
         let fill = brush.fill.clamp(0.0, 1.0);
         let depth = brush.depth.max(0.0);
         let edge_gain = brush.edge_gain.max(0.0);
-        // Interior-thinning multiplier: 1.0 at/below the reference Spread (historical look), rising
-        // toward `SPREAD_THIN_MAX` as Spread grows — a wider wet front empties the centre more.
+        // Interior-thinning multiplier: 1.0 at/below the reference Spread, rising with Spread.
         let spread_thin = (1.0 + (spread as f32 - SPREAD_THIN_REF).max(0.0) / SPREAD_THIN_REF)
             .min(SPREAD_THIN_MAX);
         let granulation = brush.granulation.clamp(0.0, 1.0);
         let pigment_mix = brush.effective_pigment_mix();
-        // ── Paper (substrate tooth) + Granulation (mineral-settling mottle) — two canvas-anchored slots.
-        // The Paper always textures the wash subtly (a physical substrate); the Granulation adds the
-        // pronounced heavy-pigment settling by `granulation` amount, into its OWN map or (Same as Paper,
-        // the default) the paper's tooth. An inactive Paper falls back to the built-in noise.
+        // ── Paper (substrate tooth) + Granulation (mineral settling) — two canvas-anchored
+        // slots: the Paper textures the wash subtly; the Granulation settles by Amount into its
+        // OWN map or (Same as Paper, default) the paper's tooth. Inactive ⇒ built-in noise.
         let paper_tex = brush.paper;
         let paper_active = paper_tex.is_active();
         let paper_img = self.paint.paper_image.as_ref().map(|i| i.as_mask());
@@ -298,6 +288,9 @@ impl PainterTool {
             warp: warp_amp,
             pigment_mix,
             color: fallback,
+            spread_thin,
+            core_r: core_r as u16,
+            spread_px: spread as u16,
         };
         // Raw per-pixel soak for the granulation settle (GRAN-1) — read-only in the parallel loop.
         let soak_buf = &self.paint.wet_soak;
@@ -384,18 +377,19 @@ impl PainterTool {
                         row[gx * 4 + 3] = base[gi + 3];
                         continue;
                     }
-                    let inner = sample_bilinear(&blur, rw, rh, sx, sy).min(1.0);
                     // Warped canvas-space indices — shared by the tip-density / pigment-reserve /
                     // style-owner reads (nearest, like the colour buffer).
                     let wgx = (rx0 as f32 + sx).clamp(0.0, (fw - 1) as f32) as usize;
                     let wgy = (ry0 as f32 + sy).clamp(0.0, (fh - 1) as f32) as usize;
-                    let st = style_at(
-                        has_style,
-                        style_owner,
-                        style_table,
-                        cur_style,
-                        wgy * fw + wgx,
-                    );
+                    let widx = wgy * fw + wgx;
+                    let st = style_at(has_style, style_owner, style_table, cur_style, widx);
+                    // A pixel owned by a COMMITTED stroke renders SETTLED (its bake's dry state):
+                    // the live flag re-rendered baked washes back to the wet settle (rectangle).
+                    let owner_px = if has_style { style_owner[widx] } else { 0 };
+                    let settled = commit || (owner_px != 0 && owner_px != cur_o);
+                    let inner =
+                        sample_bilinear(blur_of(&blurs, st.core_r as usize), rw, rh, sx, sy)
+                            .min(1.0);
                     // Per-pixel dwell + deposited alpha — read here for the rim modulation
                     // (EDGE-4) and reused by the granulation settle / pigment blocks below.
                     let soak_v = if soaked {
@@ -465,7 +459,7 @@ impl PainterTool {
                         st.granulation,
                         st.wet,
                         soak_v,
-                        commit,
+                        settled,
                     );
                     // Wet also wets the WASH ITSELF (blank canvas included): more water = the wash's own
                     // pigment redistributes — the interior thins toward the receding front, the edge pools
@@ -474,8 +468,8 @@ impl PainterTool {
                     // before any old paint is involved (Enio 2026-07-06 "mais intenso e menos uniforme").
                     let mut fill_px = st.fill;
                     if st.wet > 0.0 {
-                        fill_px =
-                            st.fill * (1.0 - (WET_THIN * st.wet * spread_thin * inner).min(0.95));
+                        fill_px = st.fill
+                            * (1.0 - (WET_THIN * st.wet * st.spread_thin * inner).min(0.95));
                         let ragged = (1.0 + (paper_h - 0.5) * 2.0 * WET_RAGGED * st.wet).max(0.0);
                         edge = (edge * (1.0 + WET_EDGE_BOOST * st.wet) * ragged).min(1.5); // LITERAL-PX-OK: wet edge may overshoot the dry clamp; signed (EDGE-3) keeps the pale lobe
                     }
@@ -498,6 +492,7 @@ impl PainterTool {
                     let rw_px = match &rewet {
                         Some(f) => rewet_px(
                             f,
+                            union_f.as_ref(),
                             (rx0, ry0),
                             (sx, sy),
                             (wxg, wyg),
@@ -515,6 +510,11 @@ impl PainterTool {
                         rw_px.bleed,
                         rw_px.wet_paint,
                     );
+                    // Water EMPTIES the wet wash it redisperses (union lift): the interior pales
+                    // and the mass returns as the ring (`pool`, added after — it must survive).
+                    if rw_px.lift_wash > 0.0 {
+                        density *= 1.0 - rw_px.lift_wash;
+                    }
                     density += rw_px.pool;
                     let od = density * st.depth;
 

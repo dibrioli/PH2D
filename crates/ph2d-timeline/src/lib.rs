@@ -36,5 +36,8 @@ pub use history::{HISTORY_CAP, TimelineHistory};
 pub use intent::{TimelineIntent, apply_intent, snap_time};
 pub use prop::PropKind;
 pub use snapshot::{KeyView, TimelineViewSnapshot, TrackView};
+// The anim vocab the public snapshot/doc API names, re-exported so consumers of
+// `KeyView`/`TrackView`/`SelectedKey` don't need a direct `ph2d-anim` dep.
+pub use ph2d_anim::{AnimTarget, Interp, KeyId};
 pub use sprite::{SpriteAnimation, SpriteProp, apply_sprite_animations};
 pub use state::{SelectedKey, Selection, TimelineFlags, TimelineState};

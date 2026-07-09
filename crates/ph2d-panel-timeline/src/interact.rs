@@ -4,10 +4,13 @@
 //! [`TimelineIntent`]s the shell applies (selection + key moves).
 //!
 //! Coverage: click a diamond → select (Shift = toggle into a multi-selection);
-//! click empty lane → clear; drag a selected diamond → live preview, one
+//! click empty lane → clear; drag a diamond → live preview, one
 //! `MoveSelectedKeys` (frame-snapped) committed at End (a single undo step).
-//! Delete is handled shell-side against the panel selection (no key channel
-//! here). Right/middle buttons are ignored (reserved for future menu/pan).
+//! Pressing an already-selected key keeps the whole selection so a drag moves
+//! the **group** — it only collapses to that key on a plain click (no drag),
+//! the standard dope-sheet disambiguation. Delete is handled shell-side against
+//! the panel selection (no key channel here). Right/middle buttons are ignored
+//! (reserved for future menu/pan).
 
 use ph2d_editor_core::interaction::{GesturePhase, TimelineGesture, TimelineHitKind};
 use ph2d_editor_core::panel::PaintCtx;
@@ -40,8 +43,9 @@ pub(crate) fn process(
     }
 }
 
-/// Key-diamond gesture machine: Begin selects + arms a drag; Update tracks the
-/// pointer; End commits a frame-snapped move; Click just ends the drag.
+/// Key-diamond gesture machine: Begin selects (or preserves a group) + arms a
+/// drag; Update tracks the pointer; End commits a frame-snapped move; a plain
+/// Click collapses a preserved group to the pressed key.
 fn apply_key(
     state: &mut TimelinePanelState,
     px_per_s: f64,
@@ -51,14 +55,22 @@ fn apply_key(
 ) {
     match g.phase {
         GesturePhase::Begin => {
-            state::push_intent(if g.mods.shift {
-                TimelineIntent::ToggleSelect(sel)
+            // Shift toggles; a press on an already-selected key keeps the whole
+            // selection (so a drag moves the group) and only collapses to this
+            // key on a no-drag click; a press on an unselected key selects it.
+            let collapse_to = if g.mods.shift {
+                state::push_intent(TimelineIntent::ToggleSelect(sel));
+                None
+            } else if is_selected(snap, sel) {
+                Some(sel)
             } else {
-                TimelineIntent::SelectSingle(sel)
-            });
+                state::push_intent(TimelineIntent::SelectSingle(sel));
+                None
+            };
             state.key_drag = Some(KeyDrag {
                 start_x: g.x,
                 cur_x: g.x,
+                collapse_to,
             });
         }
         GesturePhase::Update => {
@@ -67,6 +79,8 @@ fn apply_key(
             }
         }
         GesturePhase::End => {
+            // End only fires after movement (dispatch chose it over Click), so a
+            // drag happened: move the group, never collapse.
             if let Some(d) = state.key_drag.take()
                 && let Some(delta) = drag_delta_seconds(&d, px_per_s, snap)
             {
@@ -75,8 +89,24 @@ fn apply_key(
                 });
             }
         }
-        GesturePhase::Click | GesturePhase::DoubleClick => state.key_drag = None,
+        GesturePhase::Click | GesturePhase::DoubleClick => {
+            // A plain click on a preserved group collapses it to the pressed key.
+            if let Some(d) = state.key_drag.take()
+                && let Some(one) = d.collapse_to
+            {
+                state::push_intent(TimelineIntent::SelectSingle(one));
+            }
+        }
     }
+}
+
+/// Whether `sel` is currently selected in the published snapshot.
+fn is_selected(snap: &TimelineViewSnapshot, sel: SelectedKey) -> bool {
+    snap.tracks
+        .iter()
+        .filter(|t| t.target == sel.target)
+        .flat_map(|t| &t.keys)
+        .any(|k| k.id == sel.key && k.selected)
 }
 
 /// Empty-lane gesture: a click (tap) clears the selection.
@@ -150,6 +180,26 @@ mod tests {
             fps: 60.0,
             frame_snap: true,
             ..TimelineViewSnapshot::default()
+        }
+    }
+
+    /// Like [`snap`] but with track `target` carrying key `key`, marked selected.
+    fn snap_with_selected(target: u64, key: u64) -> TimelineViewSnapshot {
+        use ph2d_timeline::{AnimTarget, Interp, KeyId, KeyView, TrackView};
+        TimelineViewSnapshot {
+            tracks: vec![TrackView {
+                target: AnimTarget::new(target),
+                prop: ph2d_timeline::PropKind::TranslationX,
+                entity: 1,
+                missing: false,
+                keys: vec![KeyView {
+                    id: KeyId::new(key),
+                    t_seconds: 0.0,
+                    interp: Interp::Linear,
+                    selected: true,
+                }],
+            }],
+            ..snap()
         }
     }
 
@@ -271,6 +321,65 @@ mod tests {
             state::drain_intents(),
             vec![TimelineIntent::SelectSingle(SelectedKey::new(1, 0))],
             "no MoveSelectedKeys when the snapped delta is zero"
+        );
+    }
+
+    #[test]
+    fn pressing_a_selected_key_preserves_the_group_and_drags_it() {
+        // A press on an already-selected key must NOT collapse the selection —
+        // dragging moves the whole group (no SelectSingle, just the move).
+        let mut st = TimelinePanelState::default();
+        let key = TimelineHitKind::Key { target: 7, key: 4 };
+        let s = snap_with_selected(7, 4);
+        feed(
+            &mut st,
+            gesture(key, GesturePhase::Begin, 100.0, false),
+            120.0,
+            &s,
+        );
+        feed(
+            &mut st,
+            gesture(key, GesturePhase::Update, 130.0, false),
+            120.0,
+            &s,
+        );
+        feed(
+            &mut st,
+            gesture(key, GesturePhase::End, 130.0, false),
+            120.0,
+            &s,
+        );
+        assert_eq!(
+            state::drain_intents(),
+            vec![TimelineIntent::MoveSelectedKeys {
+                delta_seconds: 0.25
+            }],
+            "no SelectSingle — the multi-selection is preserved and moved"
+        );
+    }
+
+    #[test]
+    fn clicking_a_selected_key_without_dragging_collapses_to_it() {
+        // A plain click (no drag) on a selected key collapses to just that key.
+        let mut st = TimelinePanelState::default();
+        let key = TimelineHitKind::Key { target: 7, key: 4 };
+        let s = snap_with_selected(7, 4);
+        feed(
+            &mut st,
+            gesture(key, GesturePhase::Begin, 100.0, false),
+            120.0,
+            &s,
+        );
+        feed(
+            &mut st,
+            gesture(key, GesturePhase::Click, 100.0, false),
+            120.0,
+            &s,
+        );
+        assert_eq!(
+            state::drain_intents(),
+            vec![TimelineIntent::SelectSingle(SelectedKey::new(7, 4))],
+            "a no-drag click collapses the group to the pressed key"
         );
     }
 

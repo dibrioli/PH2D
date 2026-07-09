@@ -58,6 +58,12 @@ pub struct KeyDrag {
     pub start_x: f32,
     /// Latest pointer x (global px).
     pub cur_x: f32,
+    /// The pressed key was already part of a multi-selection and was pressed
+    /// without Shift: keep the whole selection so a drag moves the group, but
+    /// collapse to just this key on a plain click (no drag) — the standard
+    /// dope-sheet disambiguation. `None` when the press already set the
+    /// selection (an unselected key, or Shift-toggle).
+    pub collapse_to: Option<ph2d_timeline::SelectedKey>,
 }
 
 impl Default for TimelinePanelState {

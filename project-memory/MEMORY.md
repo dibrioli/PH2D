@@ -15,6 +15,7 @@
 - [Estilo](feedback_communication_style.md) — pt-BR direto, opções concretas, recomendação primeiro
 - [Simplicidade](feedback_communication_simplicity.md) — direto; sem AskUserQuestion-spam; não antecipe decisões
 - [Comando de rodar inclui o `cd`](feedback_run_command_include_cd.md) — smoke/`cargo run` sempre com `cd <worktree> &&` junto, copiável de uma vez
+- [Exemplo pronto pra smoke](feedback_ready_to_smoke_example.md) — feature nova = autore o exemplo no documento default/demo (auto-play); nunca peça pro Enio montar à mão
 - [Perfeição sem adiamentos](feedback_perfection_no_deferrals.md) — gaps in-scope fecham na sessão; padrão-ouro vence cronograma
 - [Painter: 4 causas + DIRETIVA por-etapa](feedback_painter_inefficiency_4_causes.md) — costura não-testada/audit=compilar/isolamento órfão/alvo irrefutável; antídoto `DIRETIVA_IMPLEMENTACAO.md`
 - [Cerca de Chesterton](feedback_documented_decision_chesterton_fence.md) — comentário "intentionally NOT X" = decisão ratificada; não sobrescrever por 1º-princípios
@@ -82,6 +83,7 @@
 - [ISPC cross-process](feedback_ispc_cross_process_concurrency.md) — asset-cooker ISPC crasha com cargo CONCORRENTE; um cargo de cada vez
 - [Zero-alloc gate = capacidade, não contador global](feedback_zero_alloc_gate_capacity_not_global_counter.md) — dhat `total_blocks` é global do processo → gate flaky; asserte estabilidade de CAPACIDADE dos buffers (determinístico)
 - [Visual bug debug](feedback_visual_bug_debug.md) — aritmética de pixels CEDO + simular visual + instrumentação >> leitura estática
+- [Áudio: meter vivo, sem som = mute salvo no WirePlumber](project_audio_multichannel_silence.md) — NÃO é bug de código; `stream-properties` salva `mute:true` por-app e re-aplica no launch; fix = sed no arquivo + restart wireplumber (ou pactl). Multicanal era pista falsa (channelMap já era FL/FR)
 - [Claimed-green ≠ seu-OS-green](project_painter_t19_latent_red_macos_2026_05_28.md) — "W1 green" pode ser CI/linux; build o commit claimed-green ANTES de caçar regressão
 - [Painter "low-res" = canvas 64px](project_painter_canvas_res_64_not_sim_scale.md) — render macio borra pelo canvas pequeno, não pela escala do sim; cheque a res do source ANTES do shader
 

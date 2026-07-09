@@ -51,7 +51,7 @@
 | OPT-2 | P1 | óptica | `ryb_mix` colapsa complementares em cinza exato (vs KM/Mixbox) | ~40 LOC |
 | EDGE-1 | P1 | bordas | Sem umidade persistente entre traços — washes nunca fundem | ~1 buffer u8 + decay |
 | EDGE-2 | P1 | bordas | Backrun/bloom clássico inexiste; gesto canônico inalcançável (Dilution=1 → cov 0) | ~30-60 LOC |
-| MIX-1 | ~~P1~~ **REJEITADO** | mixer | Charge não depleta ao longo do traço — implementado em 3 takes e REVERTIDO (Enio 2026-07-08: "achei ruim"; vide §W-C abaixo). Não refazer sem pedido | — |
+| MIX-1 | P1 | mixer | Charge não depleta ao longo do traço (assinatura nº 1 do Procreate) — **LANDOU take 4** (vide §W-C: 4 takes + 1 revert no caminho) | ~20 LOC |
 | MIX-2 | P1 | mixer | Doc-drift: doc 11 promete pickup da base "já-liftada"; código lê base PRISTINA + tripla contagem no regime Wet+Charge altos | ~5-15 LOC |
 | GRAN-1 | P1 | granulação | Granulação = modulação instantânea/simétrica (e sinal invertido vs Curtis), não deposição nos vales | ~40-60 LOC |
 | GRAN-2 | P1 | granulação | Espectro do PaperCold = blotch de baixa freq (FFT: ~90-98% em λ>32px); claim interno "crisp tooth" falso | ~10 LOC (rota 1) |
@@ -190,8 +190,8 @@ Fontes: Curtis 1997 (acima) ·
   implementado. **Correção (~20 LOC, O(1)/dab):** `travel: f32` no WetMix (acumula
   ‖dab_i−dab_{i−1}‖) + `fresh = charge·max(0, 1 − travel/(K·radius·(0.5+charge)))`, atuando na
   INTENSIDADE depositada (peak/flow), ativo só atrás do gate `wet_charge < 1` (default
-  byte-idêntico). **VEREDITO 2026-07-08: implementado (3 takes) e REVERTIDO a pedido do Enio —
-  o recurso em si foi reprovado no smoke ("achei esse mix 1 ruim"). Ver §W-C. Não refazer.**
+  byte-idêntico). **VEREDITO 2026-07-08: LANDOU no take 4** — houve revert integral no meio
+  ("achei esse mix 1 ruim") e retorno a pedido do Enio com a curva perceptual. Ver §W-C.
 - **MIX-2 (P1) — doc-drift do pickup + tripla via no regime alto.** Núcleo confirmado: doc 11
   §F2 promete 2× *"o pickup lê a base congelada JÁ-LIFTADA (sb pós-lift)"* como defesa contra
   self-feeding — o código amostra a base **PRISTINA** (mixer.rs:98; o lift só existe no
@@ -340,7 +340,7 @@ suite watercolor: 33 passed / 0 failed / 2 ignored (sondas)
 |------|----------|---------|------------------|
 | W-A "cor" | Mistura subtrativa nos 3 sites (KM single-constant ou absorbância-LUT) + recalibrar card F4 | OPT-1, OPT-2, OPT-5 | Pivot ADR-0096 literal; barato; maior ganho de matiz |
 | W-B "papel" | Espectro do papel (rota 1 ou 2) + deposição valley-gated + fallback 2-oct | GRAN-1, GRAN-2, GRAN-3 | Mata o "mottled" reportado; é o look |
-| W-C "comportamento" | ~~Charge depletion (MIX-1: REJEITADO pós-smoke)~~ + wet map persistente + água limpa/backrun + rim assinado/modulado | EDGE-1, EDGE-2, EDGE-3, EDGE-4 | O feel; EDGE-3 muda o default → smoke gate |
+| W-C "comportamento" | Charge depletion (✓ take 4) + wet map persistente + água limpa/backrun + rim assinado/modulado | MIX-1 ✓, EDGE-1, EDGE-2, EDGE-3, EDGE-4 | O feel; EDGE-3 muda o default → smoke gate |
 | W-D "higiene" | Docs stale (MIX-5, OPT-5, Spread "1..24"→48 em painter_watercolor.rs:27) + testes (PERF-1/2/3, MIX-6) + DET-1/2 | resto | Barato, fecha claims falsos e buracos de gate |
 
 Extras candidatos da lente UX (decisão junto com o redesign do painel, doc à parte): Wetness
@@ -393,12 +393,16 @@ byte-idêntico. **GRAN-3:** fallback 2 oitavas (5px + 2.5px·0,35). Gotcha de te
 usa convenção dab-space (`u·0,5+0,5` → 1 unidade de tile = meia imagem). Segue aberto: GRAN-4
 (γ por-pigmento / dissolve), GRAN-5 (escala do fallback), W-C.
 
-### W-C · MIX-1 — TENTADO E REVERTIDO 2026-07-08 (decisão do Enio: "achei esse mix 1 ruim")
+### W-C · MIX-1 — LANDOU 2026-07-08, take 4 (4 takes + 1 revert integral no mesmo dia)
 
-**Estado final: Charge NÃO depleta ao longo do traço** — o comportamento é o pré-MIX-1 (Charge =
-só a fração de pickup do mixer), revertido byte-perfeito a `2924e452^`. **Não reimplementar sem
-pedido explícito do Enio.** Histórico dos 3 takes (commits `2924e452` → `8cd93db8`/`cdee4f66` →
-`4b4b8668`, todos desfeitos pelo revert seguinte) e o que se aprendeu:
+**Estado final:** depleção como **mapa u8 por-pixel** `stroke_deplete` multiplicando `fill + edge`
+no composite (cobertura/água intocada), `fresh` começando em 1.0 com `span = 120·r·charge/(1−charge)`,
+carry pesado pela absorbância real do reservatório, rampa de 15% do raio no splat, e **decaimento
+QUADRÁTICO em densidade** (`(1−u)²`, take 4): o Beer–Lambert comprime o extremo escuro, então
+linear-em-densidade lia "despenca no fim" (Enio); o quadrático adianta a perda onde o olho não vê
+e pousa suave onde vê — taxa percebida constante. Após o take 3 o Enio pediu revert integral
+(`154cead4`, "achei ruim") e depois o retorno com esta curva ("vamos voltar com o mix mas com
+decaimento ainda mais linear"). Histórico dos takes:
 
 - **Take 1** (`fresh = charge·(1−travel/span)` escalando a COBERTURA): Charge <0,93 matava a borda
   — cobertura sub-saturada deixa `inner < 1` no interior INTEIRO e o edge term (`cw·(1−inner)·gain`)
@@ -409,8 +413,10 @@ pedido explícito do Enio.** Histórico dos 3 takes (commits `2924e452` → `8cd
   pesado pela absorbância real do reservatório): fisicamente coerente, MAS decaimento rápido
   demais e costuras duras pixeladas no cruzamento (mapa binário 255/0 na borda do disco ×
   nearest-sample warpado).
-- **Take 3** (span 3× + rampa de 15% do raio no splat): tecnicamente resolvia as costuras, mas o
-  Enio reprovou o feel do recurso como um todo → revert integral.
+- **Take 3** (span 3× + rampa de 15% do raio no splat): resolveu as costuras; reprovado no feel →
+  revert integral (`154cead4`). **Take 4** (retorno a pedido): curva `(1−u)²` = fade perceptual
+  constante. Calibração: `MIX_DEPLETE_SPAN = 120` (sobe = fôlego maior), `MIX_CARRY_FULL_ABSORB
+  = 2.0` (sobe = smudge mais tímido), expoente da curva (2 = atual; maior = fim ainda mais suave).
 - **Lições que FICAM** (valem pra qualquer feature futura): (a) **cobertura é GEOMETRIA DE ÁGUA
   saturada** — nunca a escale; "enfraquecer" o traço = modulação de densidade por-pixel depois do
   rim derivar da cobertura intacta (mesma lição do grey-tip normalise, §Shape); (b) qualquer mapa

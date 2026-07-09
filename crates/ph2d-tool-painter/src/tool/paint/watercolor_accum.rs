@@ -69,6 +69,12 @@ pub(super) struct WetShapeStamp {
 /// it becomes tip DENSITY instead (`stroke_density` → the composite's fill term).
 const TIP_WET_LO: f32 = 0.03;
 const TIP_WET_HI: f32 = 0.20;
+/// MIX-1: the pigment-reserve splat's taper shell — the outer fraction of the dab radius over which
+/// the splatted value ramps to 0 (`dn ∈ [1−RAMP, 1]`). Keeps the per-pixel depletion map free of
+/// binary 255/0 steps at disc boundaries, which the composite's warped nearest-sample rendered as
+/// hard pixelated seams where a wash crosses old paint (Enio smoke 2026-07-08). Matches the scale
+/// of the coverage feather's own taper; interior pixels take the full value from nearer dabs.
+const DEPL_RIM_RAMP: f32 = 0.15;
 
 impl WetShapeStamp {
     /// The dab-local stamp sample at normalised distance `dn`: `(wet, density)`.
@@ -264,14 +270,31 @@ impl PainterTool {
         }
         let shape_img_owned = self.paint.shape_image.as_ref().map(|i| i.as_mask());
         let canvas = [fw as f32, fh as f32];
+        // MIX-1: per-dab Charge-depletion factors (None = mixer off — byte-identical). The reserve
+        // goes into the per-pixel PIGMENT map, NEVER into the coverage: a sub-saturated coverage
+        // leaves `inner` short of 1.0 across the interior and the edge term floods the centre (the
+        // flat opaque slab, Enio smoke 2026-07-08). Water footprint intact; pigment fades.
+        let depletion = self.wet_mix_depletion(dabs);
+        if depletion.is_some() && self.paint.stroke_deplete.len() != fw * fh {
+            self.paint.stroke_deplete = vec![0u8; fw * fh];
+        }
         let cov = &mut self.paint.stroke_coverage;
         let dens_buf = &mut self.paint.stroke_density;
-        for d in dabs {
+        let depl_buf = &mut self.paint.stroke_deplete;
+        for (di, d) in dabs.iter().enumerate() {
             // Frame draw BEFORE any skip: the colour pass replays this stream per emitted dab, and
             // its skip conditions differ (no Dilution `flow` there) — drawing after a skip would
             // desynchronise the two passes' Random draws.
             let frame = stamp.as_ref().map(|s| s.dab_frame(d, &mut rng, canvas));
             let r = d.radius_px;
+            // The dab's pigment reserve (fresh + carry), max-blended over its whole footprint —
+            // re-inking a faded trail restores it (a fresh head dab wins over a depleted tail's).
+            // Splatted with a RAMP over the dab's outer rim shell (below): a binary 255/0 step at
+            // the disc boundary, nearest-sampled at the composite's WARPED coords, read as hard
+            // pixelated seams where the wash crosses old paint (Enio smoke 2026-07-08); the ramp
+            // matches the coverage's own taper, and stroke-interior pixels take the full value
+            // from a nearer dab via the max-blend.
+            let depl_v = depletion.as_ref().map(|v| v[di].clamp(0.0, 1.0));
             let peak = (d.coverage * flow).clamp(0.0, 1.0);
             if r <= 0.0 || peak <= 0.0 {
                 continue;
@@ -325,6 +348,17 @@ impl PainterTool {
                         let dv = (dens * 255.0) as u8;
                         if dv > dens_buf[idx] {
                             dens_buf[idx] = dv;
+                        }
+                    }
+                    // Pigment reserve (MIX-1): max-blend wherever the dab touches, tapered over the
+                    // outer rim shell so the map never steps 255→0 at a disc boundary (see above).
+                    if let Some(dv) = depl_v
+                        && wgt > 0.0
+                    {
+                        let ramp = ((1.0 - dn) / DEPL_RIM_RAMP).min(1.0);
+                        let dvb = (dv * ramp * 255.0) as u8;
+                        if dvb > depl_buf[idx] {
+                            depl_buf[idx] = dvb;
                         }
                     }
                 }

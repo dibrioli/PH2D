@@ -12750,3 +12750,149 @@ fn watercolor_granulation_bake_settles_beyond_the_live_preview() {
         "valleys keep their deposit across the release (live {val_live:.1} → baked {val_baked:.1})"
     );
 }
+
+/// **MIX-1 (doc 12, W-C): Charge DEPLETA com a distância do traço** — a assinatura nº 1 do
+/// Procreate (Handbook: "the longer you drag your stroke out... the trail of color it leaves will
+/// become fainter"). Um traço LONGO em canvas branco com Charge baixo (reserva curta, nada a
+/// captar no branco) precisa desbotar: a cauda deposita menos que a cabeça. Charge = 1 (default)
+/// pula o mixer inteiro — byte-idêntico, coberto pela suíte.
+#[test]
+fn watercolor_wet_mix_charge_depletes_along_the_stroke() {
+    let size = 256u32;
+    let mut t = white_canvas(size, 8.0);
+    t.paint.brush = BrushSpec {
+        radius_px: 8.0,
+        hardness: 1.0,
+        falloff: Falloff::Constant,
+        color: [0.15, 0.25, 0.7],
+        space_attenuation: false,
+        watercolor: true,
+        fill: 0.6,
+        depth: 2.0,
+        edge_gain: 0.0,
+        edge_spread: 4.0,
+        warp: 0.0,
+        granulation: 0.0,
+        wet_charge: 0.25, // short reserve; white canvas ⇒ nothing to pick up ⇒ pure depletion
+        ..Default::default()
+    };
+    for slot in &mut t.paint.brush_by_mode {
+        *slot = t.paint.brush;
+    }
+    assert!(t.on_canvas_pointer(cp([12.0, 128.0], PointerPhase::Down)));
+    let mut x = 12.0f32;
+    while x < 240.0 {
+        x += 2.0;
+        t.on_canvas_pointer(cp([x, 128.0], PointerPhase::Move));
+    }
+    t.on_canvas_pointer(cp([240.0, 128.0], PointerPhase::Up));
+    let mean_g = |x0: u32, x1: u32| -> f32 {
+        let mut acc = 0.0f32;
+        for x in x0..x1 {
+            acc += f32::from(px(&t, size, x, 128)[1]);
+        }
+        acc / (x1 - x0) as f32
+    };
+    let head = mean_g(20, 60); // fresh reserve
+    let tail = mean_g(190, 230); // depleted
+    assert!(
+        tail > head + 15.0,
+        "the trail must fade as the Charge depletes (head G {head:.1} vs tail G {tail:.1} — lighter = fainter)"
+    );
+}
+
+/// **MIX-1 regressão (Enio smoke 2026-07-08):** um pincel ESGOTADO cruzando uma poça deposita
+/// proporcional às DUAS intensidades — (a) poça PÁLIDA ⇒ quase nada ("explode em muito pigmento"
+/// era o `depl = max(fresh, t)` com `t` = peso de mistura, que salta pra ~1 em qualquer poça);
+/// (b) poça RICA ⇒ o smudge continua vivo (o fix não pode matar o carry). E (c) a CABEÇA de um
+/// traço com Charge baixo mantém a anatomia completa (reserva começa em 1.0 — Charge controla a
+/// duração, nunca a intensidade inicial: escalar a cobertura inundava o interior com edge residual).
+#[test]
+fn watercolor_wet_mix_depleted_brush_respects_pool_intensity() {
+    let size = 256u32;
+    let spec = BrushSpec {
+        radius_px: 8.0,
+        hardness: 1.0,
+        falloff: Falloff::Constant,
+        color: [0.85, 0.1, 0.1],
+        space_attenuation: false,
+        watercolor: true,
+        fill: 0.6,
+        depth: 2.0,
+        edge_gain: 0.0,
+        edge_spread: 4.0,
+        warp: 0.0,
+        granulation: 0.0,
+        ..Default::default()
+    };
+    let stroke_v = |t: &mut PainterTool, x: f32| {
+        assert!(t.on_canvas_pointer(cp([x, 12.0], PointerPhase::Down)));
+        let mut y = 12.0f32;
+        while y < 240.0 {
+            y += 2.0;
+            t.on_canvas_pointer(cp([x, y], PointerPhase::Move));
+        }
+        t.on_canvas_pointer(cp([x, 240.0], PointerPhase::Up));
+    };
+    let mut t = white_canvas(size, 8.0);
+    t.paint.brush = spec;
+    // Pale pool at x∈[40..110], rich pool at x∈[150..220], both horizontal at y = 200 — far enough
+    // down that a vertical Charge-0.1 stroke (span ≈ 107 px) arrives fully depleted (travel ≈ 188).
+    t.paint.brush.color = [1.0, 0.78, 0.78]; // pale pink: little pigment to pick up
+    for slot in &mut t.paint.brush_by_mode {
+        *slot = t.paint.brush;
+    }
+    assert!(t.on_canvas_pointer(cp([40.0, 200.0], PointerPhase::Down)));
+    let mut x = 40.0f32;
+    while x < 110.0 {
+        x += 2.0;
+        t.on_canvas_pointer(cp([x, 200.0], PointerPhase::Move));
+    }
+    t.on_canvas_pointer(cp([110.0, 200.0], PointerPhase::Up));
+    t.paint.brush.color = [0.75, 0.05, 0.05]; // rich red: a real reservoir to smudge from
+    for slot in &mut t.paint.brush_by_mode {
+        *slot = t.paint.brush;
+    }
+    assert!(t.on_canvas_pointer(cp([150.0, 200.0], PointerPhase::Down)));
+    let mut x = 150.0f32;
+    while x < 220.0 {
+        x += 2.0;
+        t.on_canvas_pointer(cp([x, 200.0], PointerPhase::Move));
+    }
+    t.on_canvas_pointer(cp([220.0, 200.0], PointerPhase::Up));
+    // Two depleted blue crossings (Charge 0.1), one through each pool.
+    t.paint.brush.color = [0.15, 0.25, 0.7];
+    t.paint.brush.wet_charge = 0.1;
+    for slot in &mut t.paint.brush_by_mode {
+        *slot = t.paint.brush;
+    }
+    stroke_v(&mut t, 75.0); // through the PALE pool
+    stroke_v(&mut t, 185.0); // through the RICH pool
+    let g = |x: u32, y: u32| f32::from(px(&t, size, x, y)[1]);
+    let head = g(75, 16); // (c) stroke head: full fresh reserve — a strong mark
+    assert!(
+        head < 140.0,
+        "the head of a low-Charge stroke must open at FULL reserve (G {head:.1} — dark = strong)"
+    );
+    let bare_trail = g(75, 160); // depleted, outside any pool: ~plain water
+    let pale_cross = g(75, 200); // (a) depleted × pale pool
+    let pale_pool = g(55, 200); // the pale pool away from the crossing
+    assert!(
+        pale_cross > pale_pool - 45.0,
+        "a depleted brush over a PALE pool must not explode with pigment (pool G {pale_pool:.1} → crossing G {pale_cross:.1})"
+    );
+    assert!(
+        pale_cross > head + 20.0,
+        "…and deposits far less than the brush's own fresh head (head G {head:.1}, crossing G {pale_cross:.1})"
+    );
+    let rich_cross = g(185, 200); // (b) depleted × rich pool
+    let below_rich = g(185, 226); // just past the rich pool: the carried smudge trails out
+    assert!(
+        below_rich < bare_trail - 8.0,
+        "crossing a RICH pool must re-ink the depleted brush (trail after pool G {below_rich:.1} vs bare trail G {bare_trail:.1})"
+    );
+    assert!(
+        rich_cross < pale_cross,
+        "the smudge tracks the pool's intensity (rich crossing G {rich_cross:.1} < pale crossing G {pale_cross:.1})"
+    );
+}

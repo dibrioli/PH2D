@@ -362,23 +362,34 @@ pub enum TimelineHitKind {
     /// in time. `target`/`key` are the track's `AnimTarget` and the key's
     /// `KeyId`, carried as raw ids (editor-core never dereferences them).
     Key { target: u64, key: u64 },
+    /// A resize gripper on the panel's border. `edges` is an opaque bitmask the
+    /// panel defines (one bit per side; a corner sets two) — editor-core only
+    /// routes it back on the gesture.
+    ResizeEdge { edges: u8 },
 }
 
-/// Accumulated wheel input over a timeline surface, drained by the panel.
-/// `zoom_delta` sums the frame's plain wheel deltas (anchored zoom of the time
-/// axis, keeping the time under `anchor_x` fixed); `pan_delta` sums the deltas
-/// that mean *pan* (horizontal wheel, or Shift+wheel on a one-axis mouse). Both
-/// are in the shell's **logical pixels** (it scales line-deltas by ~16 px per
-/// notch). Editor-core assigns no direction; the panel applies the house
+/// Accumulated wheel input over a timeline surface, drained by the panel. Three
+/// independent axes, split by modifier the way a dope sheet expects (plain =
+/// zoom, Ctrl = horizontal pan, Shift = vertical scroll):
+///
+/// - `zoom_delta` — anchored zoom of the time axis, holding the time under
+///   `anchor_x` fixed.
+/// - `pan_delta` — slide the time axis.
+/// - `scroll_delta` — scroll the track rows.
+///
+/// All are in the shell's **logical pixels** (it scales line-deltas by ~16 px
+/// per notch). Editor-core assigns no direction; the panel applies the house
 /// convention (a positive delta scrolls content right/down, i.e. the view moves
-/// *earlier*, mirroring `panel_scroll - delta_y`). The 1-D counterpart of
+/// *earlier*, mirroring `panel_scroll - delta_y`). The counterpart of
 /// [`GraphZoom`].
 #[derive(Copy, Clone, Debug, Default, PartialEq)]
-pub struct TimelineZoom {
+pub struct TimelineWheel {
     /// Summed wheel px meaning zoom (positive = zoom in).
     pub zoom_delta: f32,
-    /// Summed wheel px meaning pan.
+    /// Summed wheel px meaning horizontal pan of the time axis.
     pub pan_delta: f32,
+    /// Summed wheel px meaning vertical scroll of the track rows.
+    pub scroll_delta: f32,
     /// Cursor x (global px) the anchored zoom keeps fixed.
     pub anchor_x: f32,
 }

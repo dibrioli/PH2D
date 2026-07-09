@@ -52,6 +52,24 @@ pub const TIMELINE_LANES: NodeId = hash_node_id("timeline.lanes");
 /// Vertical scrollbar for the track list.
 pub const TIMELINE_SCROLLBAR: NodeId = hash_node_id("timeline.scrollbar");
 
+// ── Resize grippers (4 edges + 4 corners) ────────────────────────────────────
+/// Left edge.
+pub const TIMELINE_RESIZE_L: NodeId = hash_node_id("timeline.resize.l");
+/// Right edge.
+pub const TIMELINE_RESIZE_R: NodeId = hash_node_id("timeline.resize.r");
+/// Top edge (drag up to grow the dock taller).
+pub const TIMELINE_RESIZE_T: NodeId = hash_node_id("timeline.resize.t");
+/// Bottom edge.
+pub const TIMELINE_RESIZE_B: NodeId = hash_node_id("timeline.resize.b");
+/// Top-left corner.
+pub const TIMELINE_RESIZE_TL: NodeId = hash_node_id("timeline.resize.tl");
+/// Top-right corner.
+pub const TIMELINE_RESIZE_TR: NodeId = hash_node_id("timeline.resize.tr");
+/// Bottom-left corner.
+pub const TIMELINE_RESIZE_BL: NodeId = hash_node_id("timeline.resize.bl");
+/// Bottom-right corner.
+pub const TIMELINE_RESIZE_BR: NodeId = hash_node_id("timeline.resize.br");
+
 /// A stable `NodeId` for one key-diamond hit target, keyed by the track's
 /// `AnimTarget` and the key's `KeyId` (both raw u64s). Stable across frames so a
 /// dope-sheet drag's active capture keeps resolving to the same key even as

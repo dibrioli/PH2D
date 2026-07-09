@@ -101,9 +101,11 @@ pub(crate) fn paint_rows(
     view_start: f64,
     px_per_s: f64,
     preview_dx: f32,
+    scroll_y: f32,
     snap: &TimelineViewSnapshot,
 ) {
     let right = region.x + region.w;
+    let bottom = region.y + region.h;
     // Lane background over the time area — a click here clears the selection.
     let lane = Rect::new(time_x, region.y, (right - time_x).max(0.0), region.h);
     ctx.host.store_mut().register(
@@ -116,10 +118,12 @@ pub(crate) fn paint_rows(
     );
     ctx.host.hit_index_mut().register(ids::TIMELINE_LANES, lane);
 
-    let mut y = region.y;
     for (i, track) in snap.tracks.iter().enumerate() {
-        if y + ROW_H_PX > region.y + region.h {
-            break;
+        // Rows scroll as a block; cull the ones outside the band entirely so a
+        // long track list neither paints nor registers off-screen hits.
+        let y = region.y - scroll_y + i as f32 * ROW_H_PX;
+        if y + ROW_H_PX <= region.y || y >= bottom {
+            continue;
         }
         // Zebra so lanes read as discrete rows.
         if i % 2 == 1 {
@@ -183,7 +187,6 @@ pub(crate) fn paint_rows(
             );
             ctx.host.hit_index_mut().register(id, hit);
         }
-        y += ROW_H_PX;
     }
 }
 

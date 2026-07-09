@@ -1555,6 +1555,18 @@ impl App {
             .and_then(|h| h.store.panel_rect(ph2d_editor::ids::MOTION_GRAPH_PANEL))
             .is_some_and(|r| r.contains(self.last_pointer.0, self.last_pointer.1))
     }
+
+    /// W2.E6: is the cursor over the general timeline dock? Mirrors
+    /// [`Self::cursor_over_motion_graph`] — a middle-drag there pans the
+    /// dope-sheet (via its `TimelineSurface` gesture), not the camera behind it.
+    /// Blender-style: the hovered component owns the zoom/pan.
+    pub(crate) fn cursor_over_timeline(&self) -> bool {
+        self.gfx
+            .as_ref()
+            .and_then(|g| g.hero_screen.as_ref())
+            .and_then(|h| h.store.panel_rect(ph2d_editor::ids::TIMELINE_PANEL))
+            .is_some_and(|r| r.contains(self.last_pointer.0, self.last_pointer.1))
+    }
     /// ADR-0108 Fase 1: while a shape drag is live, resize it to the cursor.
     /// No-op unless the Vector tool is active AND a shape gesture is in progress.
     fn vec_shape_drag_move(&mut self, x: f32, y: f32) -> bool {
@@ -2783,11 +2795,12 @@ impl App {
             }
         }
         // M14.4b.bis: middle button = camera pan anchor. Tracked here
-        // so CursorMoved can drive the pan. Motion Nodes M1: NOT over the graph
-        // panel — there middle-drag pans the graph (via its `GraphSurface`
-        // gesture), not the camera underneath.
-        let over_graph = self.cursor_over_motion_graph();
-        if button == MouseButton::Middle && !(over_graph && state == ElementState::Pressed) {
+        // so CursorMoved can drive the pan. Motion Nodes M1 / timeline W2.E6:
+        // NOT over the graph or the timeline dock — there middle-drag pans that
+        // editor (via its own surface gesture), not the camera underneath. The
+        // hovered component owns the pan, Blender-style.
+        let over_pan_editor = self.cursor_over_motion_graph() || self.cursor_over_timeline();
+        if button == MouseButton::Middle && !(over_pan_editor && state == ElementState::Pressed) {
             match state {
                 ElementState::Pressed => {
                     self.pan_anchor = Some(self.last_pointer);

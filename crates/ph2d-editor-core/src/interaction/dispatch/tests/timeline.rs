@@ -117,7 +117,7 @@ fn update_streams_past_the_rect_edge() {
     assert_eq!((g[1].x, g[1].y), (999.0, 999.0));
 }
 
-fn wheel(x: f32, y: f32, delta_x: f32, delta_y: f32, shift: bool) -> WheelEvent {
+fn wheel_mod(x: f32, y: f32, delta_x: f32, delta_y: f32, shift: bool, ctrl: bool) -> WheelEvent {
     WheelEvent {
         x,
         y,
@@ -125,12 +125,35 @@ fn wheel(x: f32, y: f32, delta_x: f32, delta_y: f32, shift: bool) -> WheelEvent 
         delta_y,
         modifiers: Modifiers {
             shift,
-            ctrl: false,
+            ctrl,
             alt: false,
             meta: false,
         },
         timestamp_ns: 0,
     }
+}
+
+fn wheel(x: f32, y: f32, delta_x: f32, delta_y: f32, shift: bool) -> WheelEvent {
+    wheel_mod(x, y, delta_x, delta_y, shift, false)
+}
+
+#[test]
+fn ctrl_wheel_pans_the_time_axis() {
+    let (mut store, _hits) = timeline_setup(TimelineHitKind::Lane);
+    store.set_timeline_canvas(SURFACE, CANVAS);
+    let arena = Bump::new();
+    let _ = dispatch_wheel(
+        &mut store,
+        wheel_mod(100.0, 120.0, 0.0, 5.0, false, true),
+        &arena,
+    );
+
+    let z = store
+        .take_timeline_wheel(SURFACE)
+        .expect("wheel accumulated");
+    assert_eq!(z.zoom_delta, 0.0, "Ctrl+wheel must not zoom");
+    assert_eq!(z.pan_delta, 5.0, "Ctrl+wheel pans the time axis");
+    assert_eq!(z.scroll_delta, 0.0);
 }
 
 // ── Wheel → anchored zoom / pan (W2.E6) ──────────────────────────────────
@@ -145,28 +168,31 @@ fn wheel_over_the_time_axis_accumulates_zoom_and_consumes() {
     assert!(ev.is_empty(), "wheel over the timeline is consumed as zoom");
     let _ = dispatch_wheel(&mut store, wheel(110.0, 130.0, 0.0, 2.0, false), &arena);
 
-    let z = store.take_timeline_zoom(SURFACE).expect("zoom accumulated");
+    let z = store
+        .take_timeline_wheel(SURFACE)
+        .expect("zoom accumulated");
     assert_eq!(z.zoom_delta, 5.0, "notches sum (3 + 2)");
-    assert_eq!(z.pan_delta, 0.0);
+    assert_eq!((z.pan_delta, z.scroll_delta), (0.0, 0.0));
     assert_eq!(z.anchor_x, 110.0, "anchor follows the latest cursor");
     assert!(
-        store.take_timeline_zoom(SURFACE).is_none(),
+        store.take_timeline_wheel(SURFACE).is_none(),
         "draining removes it"
     );
 }
 
 #[test]
-fn shift_wheel_pans_instead_of_zooming() {
+fn shift_wheel_scrolls_the_rows_instead_of_zooming() {
     let (mut store, _hits) = timeline_setup(TimelineHitKind::Lane);
     store.set_timeline_canvas(SURFACE, CANVAS);
     let arena = Bump::new();
     let _ = dispatch_wheel(&mut store, wheel(100.0, 120.0, 0.0, 4.0, true), &arena);
 
     let z = store
-        .take_timeline_zoom(SURFACE)
+        .take_timeline_wheel(SURFACE)
         .expect("wheel accumulated");
     assert_eq!(z.zoom_delta, 0.0, "Shift+wheel must not zoom");
-    assert_eq!(z.pan_delta, 4.0);
+    assert_eq!(z.scroll_delta, 4.0, "Shift+wheel scrolls the track rows");
+    assert_eq!(z.pan_delta, 0.0);
 }
 
 #[test]
@@ -177,9 +203,9 @@ fn horizontal_wheel_pans() {
     let _ = dispatch_wheel(&mut store, wheel(100.0, 120.0, 6.0, 0.0, false), &arena);
 
     let z = store
-        .take_timeline_zoom(SURFACE)
+        .take_timeline_wheel(SURFACE)
         .expect("wheel accumulated");
-    assert_eq!((z.zoom_delta, z.pan_delta), (0.0, 6.0));
+    assert_eq!((z.zoom_delta, z.pan_delta, z.scroll_delta), (0.0, 6.0, 0.0));
 }
 
 #[test]
@@ -188,7 +214,7 @@ fn wheel_outside_the_time_axis_is_not_a_timeline_zoom() {
     store.set_timeline_canvas(SURFACE, Rect::new(0.0, 0.0, 100.0, 100.0));
     let arena = Bump::new();
     let _ = dispatch_wheel(&mut store, wheel(500.0, 500.0, 0.0, 3.0, false), &arena);
-    assert!(store.take_timeline_zoom(SURFACE).is_none());
+    assert!(store.take_timeline_wheel(SURFACE).is_none());
 }
 
 #[test]
@@ -198,7 +224,7 @@ fn a_hidden_timeline_leaves_no_stale_zoom_rect() {
     store.clear_timeline_canvas(); // what `paint` does while hidden
     let arena = Bump::new();
     let _ = dispatch_wheel(&mut store, wheel(100.0, 120.0, 0.0, 3.0, false), &arena);
-    assert!(store.take_timeline_zoom(SURFACE).is_none());
+    assert!(store.take_timeline_wheel(SURFACE).is_none());
 }
 
 #[test]

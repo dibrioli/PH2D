@@ -35,16 +35,21 @@ pub fn dispatch_wheel<'frame>(
         store.add_graph_zoom(surface, event.delta_y, event.x, event.y);
         return events.into_bump_slice();
     }
-    // W2.E6 — a wheel over the timeline's time axis zooms/pans it, consumed
-    // BEFORE any panel scroll. Plain wheel = anchored zoom; horizontal wheel (or
-    // Shift+wheel, for a one-axis mouse) = pan. The panel drains + applies it.
+    // W2.E6 — a wheel over the timeline's dope-sheet drives its own view,
+    // consumed BEFORE any panel scroll. Dope-sheet convention (Blender):
+    // plain wheel = anchored zoom of the time axis, Ctrl+wheel = horizontal pan,
+    // Shift+wheel = vertical scroll of the track rows. A trackpad's horizontal
+    // axis always pans. The panel drains + applies it.
     if let Some(surface) = store.timeline_surface_at(event.x, event.y) {
-        let (zoom, pan) = if event.modifiers.shift {
-            (0.0, event.delta_y)
+        let m = event.modifiers;
+        let (zoom, pan, scroll) = if m.shift {
+            (0.0, event.delta_x, event.delta_y)
+        } else if m.ctrl || m.meta {
+            (0.0, event.delta_y, 0.0)
         } else {
-            (event.delta_y, event.delta_x)
+            (event.delta_y, event.delta_x, 0.0)
         };
-        store.add_timeline_zoom(surface, zoom, pan, event.x);
+        store.add_timeline_wheel(surface, zoom, pan, scroll, event.x);
         return events.into_bump_slice();
     }
     // An OPEN dropdown popover scrolls first — it floats on top of any panel, and its rect lives in a

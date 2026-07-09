@@ -7,6 +7,7 @@
 //! panels). Per-instance state holds only view transform (pan/zoom of the time
 //! axis), which is panel-local and not undoable.
 
+use ph2d_editor_core::zones::Rect;
 use ph2d_timeline::{TimelineIntent, TimelineViewSnapshot};
 use std::cell::{Cell, RefCell};
 
@@ -54,6 +55,30 @@ pub struct TimelinePanelState {
     /// snapshot — without it the keys flash back to their old spot for a frame.
     /// Cleared at the top of the next `interact::process` (snapshot has caught up).
     pub pending_move_dx: Option<f32>,
+    /// Vertical scroll of the track rows, in px from the top of the list.
+    pub scroll_y: f32,
+    /// Scrollable overflow (`content_h - rows_h`), recomputed by `paint`. Kept so
+    /// the wheel/scrollbar can clamp before `paint` re-measures.
+    pub scroll_max: f32,
+    /// Middle-drag pan anchor (last pointer position) while the wheel button is
+    /// held over the dope sheet.
+    pub pan_drag: Option<(f32, f32)>,
+    /// User-resized panel rect. `None` = use the docked rect from the layout.
+    pub rect: Option<Rect>,
+    /// In-progress edge/corner resize drag.
+    pub resize: Option<ResizeDrag>,
+}
+
+/// An in-progress resize: which edges move, and the rect + pointer at Begin.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct ResizeDrag {
+    /// Bitmask of the edges being dragged (`geom::EDGE_*`).
+    pub edges: u8,
+    /// The panel rect when the drag began (deltas apply to THIS, not to the
+    /// live rect, so a slow drag never accumulates rounding).
+    pub start_rect: Rect,
+    /// The pointer position when the drag began.
+    pub start_pointer: (f32, f32),
 }
 
 /// An in-progress dope-sheet key drag: pointer x at Begin + the latest x. The
@@ -81,6 +106,11 @@ impl Default for TimelinePanelState {
             add_track_open: false,
             key_drag: None,
             pending_move_dx: None,
+            scroll_y: 0.0,
+            scroll_max: 0.0,
+            pan_drag: None,
+            rect: None,
+            resize: None,
         }
     }
 }

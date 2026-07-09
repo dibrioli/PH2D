@@ -61,6 +61,13 @@ pub(crate) fn apply_event(
                 )));
             EventOutcome::Consumed
         }
+        // Scrollbar drag: dispatch's vertical slider reads `1.0` at the TOP of
+        // its track, so the scroll fraction is `1 - v` (panel-local; no intent).
+        WidgetEvent::ValueChanged(id) if id == ids::TIMELINE_SCROLLBAR => {
+            let v = host.store().slider(id).map(|(_, v)| v).unwrap_or(1.0);
+            state.scroll_y = crate::scrollbar::value_to_fraction(v) * state.scroll_max;
+            EventOutcome::Consumed
+        }
         // "+Track" opens/closes the property dropdown (panel-local; no intent).
         WidgetEvent::Click(id) if id == ids::TIMELINE_ADD_TRACK => {
             state.add_track_open = !state.add_track_open;

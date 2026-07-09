@@ -34,7 +34,7 @@ use super::drag::{
 };
 use super::types::{
     BlenderHitKind, ContextMenuRequest, GraphGesture, GraphHitKind, GraphKey, GraphZoom, NoteData,
-    TimelineGesture, TimelineHitKind, TimelineZoom,
+    TimelineGesture, TimelineHitKind, TimelineWheel,
 };
 use super::util::format_number;
 
@@ -614,9 +614,9 @@ pub struct WidgetStore {
     /// Whether the active timeline capture has moved since Down — decides End vs
     /// Click on Up (mirror of `graph_moved`).
     pub(super) timeline_moved: bool,
-    /// Per-surface accumulated wheel (anchored zoom + pan of the time axis),
-    /// drained by the timeline panel. Mirror of `graph_zoom`.
-    pub(super) timeline_zoom: BTreeMap<NodeId, TimelineZoom>,
+    /// Per-surface accumulated wheel (anchored zoom + pan + row scroll), drained
+    /// by the timeline panel. Mirror of `graph_zoom`.
+    pub(super) timeline_wheel: BTreeMap<NodeId, TimelineWheel>,
     /// Per-surface time-axis rect, republished by the panel each frame so
     /// `dispatch_wheel` can tell when the cursor is over the dope-sheet (mirror
     /// of `graph_canvas`). Cleared while the panel is hidden.

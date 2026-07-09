@@ -1,14 +1,14 @@
 //! Timeline dope-sheet dispatch channel on [`WidgetStore`] (W2.E5b).
 //!
 //! Editor-core knows no timeline semantics: the pointer/wheel dispatch stashes
-//! typed [`TimelineGesture`]s / [`TimelineZoom`]s here and the timeline panel
+//! typed [`TimelineGesture`]s / [`TimelineWheel`]s here and the timeline panel
 //! drains + interprets them each frame (which diamond was hit, drag-to-move,
 //! clear-on-empty, anchored zoom + pan of the time axis). Lean mirror of the
 //! graph-surface channel (`graph_ops`); keyboard (Delete/undo) is handled
 //! shell-side against the panel selection.
 
 use super::*;
-use crate::interaction::types::{TimelineGesture, TimelineHitKind, TimelineZoom};
+use crate::interaction::types::{TimelineGesture, TimelineHitKind, TimelineWheel};
 
 impl WidgetStore {
     /// Stash one timeline pointer gesture (dispatch → panel).
@@ -43,20 +43,28 @@ impl WidgetStore {
         std::mem::take(&mut self.timeline_moved)
     }
 
-    // ── Anchored zoom + pan (wheel) ──────────────────────────────────────
-    /// Accumulate a wheel notch for `surface`: `zoom` notches drive the anchored
-    /// zoom, `pan` notches slide the time axis. The anchor follows the latest
-    /// cursor. The panel drains + applies it.
-    pub fn add_timeline_zoom(&mut self, surface: NodeId, zoom: f32, pan: f32, anchor_x: f32) {
-        let z = self.timeline_zoom.entry(surface).or_default();
-        z.zoom_delta += zoom;
-        z.pan_delta += pan;
-        z.anchor_x = anchor_x;
+    // ── Wheel: anchored zoom + pan + scroll ──────────────────────────────
+    /// Accumulate a frame's wheel for `surface` across its three axes (zoom /
+    /// horizontal pan / vertical scroll). The anchor follows the latest cursor.
+    /// The panel drains + applies it.
+    pub fn add_timeline_wheel(
+        &mut self,
+        surface: NodeId,
+        zoom: f32,
+        pan: f32,
+        scroll: f32,
+        anchor_x: f32,
+    ) {
+        let w = self.timeline_wheel.entry(surface).or_default();
+        w.zoom_delta += zoom;
+        w.pan_delta += pan;
+        w.scroll_delta += scroll;
+        w.anchor_x = anchor_x;
     }
 
     /// Drain the accumulated wheel for `surface` (removes the entry).
-    pub fn take_timeline_zoom(&mut self, surface: NodeId) -> Option<TimelineZoom> {
-        self.timeline_zoom.remove(&surface)
+    pub fn take_timeline_wheel(&mut self, surface: NodeId) -> Option<TimelineWheel> {
+        self.timeline_wheel.remove(&surface)
     }
 
     // ── Time-axis rect registry (wheel hit-test) ─────────────────────────

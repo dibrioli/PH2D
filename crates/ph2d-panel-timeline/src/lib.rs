@@ -17,14 +17,17 @@
 #![forbid(unsafe_code)]
 
 mod event;
+mod geom;
 pub mod ids;
 mod interact;
 mod paint;
 pub mod populate;
 mod ruler;
+mod scrollbar;
 pub mod state;
 mod tracks;
 mod transport;
+mod view;
 
 pub use state::{
     TimelinePanelState, drain_intents, last_content_h, last_visible_h, set_current_timeline,

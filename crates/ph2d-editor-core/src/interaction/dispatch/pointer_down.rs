@@ -66,7 +66,7 @@ pub(super) fn dispatch_down<'frame>(
     {
         store.set_active(Some(id));
         store.set_active_rect(Some(rect));
-        store.set_timeline_moved(false);
+        store.begin_timeline_press(event.x, event.y);
         let mods = store.gesture_mods();
         store.push_timeline_gesture(TimelineGesture {
             surface,

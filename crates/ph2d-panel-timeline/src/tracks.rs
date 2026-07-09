@@ -29,11 +29,11 @@ use crate::{geom, graph, graph_paint};
 /// Width of the left label column (property + object tag).
 pub(crate) const LABEL_COL_W: f32 = 132.0; // LITERAL-PX-OK: track-label column width
 /// Width of the expand/collapse twirl at the head of each row.
-const TWIRL_W: f32 = 16.0; // LITERAL-PX-OK: row twirl hit column width
+const TWIRL_W: f32 = 24.0; // LITERAL-PX-OK: row twirl hit column width
 /// Half the twirl triangle's flat edge.
-const TWIRL_BASE_HALF: f32 = 4.0; // LITERAL-PX-OK: row twirl triangle half-base
+const TWIRL_BASE_HALF: f32 = 5.0; // LITERAL-PX-OK: row twirl triangle half-base
 /// Height of the twirl triangle, flat edge to apex.
-const TWIRL_TIP: f32 = 7.0; // LITERAL-PX-OK: row twirl triangle height
+const TWIRL_TIP: f32 = 9.0; // LITERAL-PX-OK: row twirl triangle height
 const DIAMOND_H: f32 = 4.5; // LITERAL-PX-OK: keyframe diamond half-size
 /// Horizontal half-width of a key's clickable hit rect (larger than the visual
 /// diamond so a small target is easy to grab).

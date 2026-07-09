@@ -645,3 +645,21 @@ fn undo_during_an_open_bracket_does_not_resurrect_a_stale_snapshot() {
     assert_eq!(st.doc, after_undo, "EndEdit after an Undo changed the doc");
     assert!(!st.history.can_undo() || st.doc == after_undo);
 }
+
+#[test]
+fn re_keying_an_instant_records_the_pose_and_keeps_the_easing() {
+    // Auto-key (or K) on a key the author already eased in the graph editor must
+    // capture the new pose without reverting the curve to the default.
+    let mut st = TimelineState::new();
+    let mut ph = Playhead::new(DT);
+    add_key(&mut st, &mut ph, 1, PropKind::TranslationX, 0.0, 5.0);
+    let custom = Interp::bezier(0.9, 1.4, 0.1, -0.4);
+    set_interp(&mut st, &mut ph, custom);
+
+    // The auto-key path: same `t`, new value, the shell's default interp.
+    add_key(&mut st, &mut ph, 1, PropKind::TranslationX, 0.0, 42.0);
+
+    assert_eq!(key_times(&st), vec![0.0], "no duplicate key stacked");
+    assert_eq!(value_at(&st, 0.0), Some(42.0), "the pose was captured");
+    assert_eq!(first_interp(&st), custom, "the authored ease survived");
+}

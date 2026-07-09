@@ -9,11 +9,12 @@
 
 use ph2d_editor_core::interaction::{InteractiveState, TimelineHitKind};
 use ph2d_editor_core::paint::{
-    fill_circle, fill_rounded_rect, paint_text, resolve, stroke_polyline, stroke_rounded_rect,
+    fill_circle, fill_rounded_rect, paint_text, rect_to_vello, resolve, stroke_polyline,
+    stroke_rounded_rect,
 };
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::zones::Rect;
-use ph2d_timeline::{KeyView, TrackView, handle_point, sample_keys};
+use ph2d_timeline::{KeyView, TrackView, drawn_extent, handle_point, sample_keys};
 use ph2d_tokens::{ColorToken, Radius, Spacing, StrokeToken, Theme, TypeToken};
 
 use crate::graph::{Band, TimeView, handle_pair, resolve_drag};
@@ -46,15 +47,53 @@ pub(crate) fn paint_track(
         (rect.w - label_w).max(0.0),
         (rect.h - BAND_INSET * 2.0).max(0.0),
     );
-    let band = Band::new(band_rect, &track.keys);
+    let dragging_here = state
+        .handle_drag
+        .is_some_and(|d| d.target == track.target.get());
+    let frozen = state
+        .handle_drag
+        .filter(|_| dragging_here)
+        .and_then(|d| d.range);
+    let band = match frozen {
+        // Hold the mapping still for the length of a drag: a band that refit each
+        // frame would change what the pointer's y MEANS, and the handle would
+        // crawl away from the cursor.
+        Some((lo, hi)) => Band::from_range(band_rect, lo, hi),
+        // Otherwise fit to everything the row draws — the curve (overshoot and
+        // all) and the visible handles, not just the key values. Fitting the keys
+        // alone let a strong ease spill out of the band onto the next row.
+        None => Band::fit(band_rect, drawn_extent_of(&band_rect, view, track)),
+    };
+    if dragging_here
+        && let Some(d) = state.handle_drag.as_mut()
+        && d.range.is_none()
+    {
+        d.range = Some(band.range());
+    }
     paint_frame(ctx, theme, rect, band_rect, label_w, &band);
     if track.keys.is_empty() {
         return;
     }
+    // Everything below is confined to the band: a drag can push a handle past the
+    // frozen range, and it must not draw over the neighbouring rows.
+    ctx.scene.push_clip(&rect_to_vello(band_rect));
     paint_curve(ctx, theme, &band, view, &track.keys);
     paint_anchors(ctx, theme, &band, view, &track.keys);
     paint_handles(ctx, theme, state, &band, view, track);
+    ctx.scene.pop_layer();
     resolve_drag(state, &band, view, track);
+}
+
+/// The value extent of what this row draws across its visible time window, at
+/// the same sample density the polyline uses.
+fn drawn_extent_of(band_rect: &Rect, view: TimeView, track: &TrackView) -> Option<(f32, f32)> {
+    let samples = (band_rect.w / CURVE_STEP_PX).ceil() as usize;
+    drawn_extent(
+        &track.keys,
+        view.t(band_rect.x),
+        view.t(band_rect.x + band_rect.w),
+        samples,
+    )
 }
 
 /// The inset background + border, and the fitted range's min/max labels in the
@@ -188,6 +227,11 @@ fn paint_handles(
             };
             fill_circle(ctx.scene, px, py, HANDLE_R, resolve(tok, theme));
 
+            // A handle a drag pushed outside the frozen band is drawn clipped;
+            // do not leave a grab target for it floating over another row.
+            if py < band.rect.y || py > band.rect.y + band.rect.h {
+                continue;
+            }
             let id = ids::timeline_handle_hit_id(target, k0.id.get(), which);
             let hit = Rect::new(
                 px - HANDLE_HIT_R,

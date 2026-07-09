@@ -117,6 +117,12 @@ pub struct HandleDrag {
     pub x: f32,
     /// Latest pointer y (global px).
     pub y: f32,
+    /// The band's value range, frozen on the drag's first paint. A band that
+    /// refit every frame would feed back into the value the pointer maps to —
+    /// drag the handle up, the range grows, the same screen y now means a
+    /// smaller value, and the handle crawls away from the cursor. `None` until
+    /// the first paint resolves it.
+    pub range: Option<(f64, f64)>,
     /// The gesture ended this frame: `paint` resolves it once more, pushes
     /// `EndEdit` to close the undo bracket, and clears the drag.
     pub ending: bool,

@@ -611,9 +611,12 @@ pub struct WidgetStore {
     /// Timeline dope-sheet pointer gestures stashed by dispatch, drained by the
     /// timeline panel each frame (mirror of `graph_gestures`).
     pub(super) timeline_gestures: Vec<TimelineGesture>,
-    /// Whether the active timeline capture has moved since Down — decides End vs
-    /// Click on Up (mirror of `graph_moved`).
+    /// Whether the active timeline capture has moved past the drag slop since
+    /// Down — decides End vs Click on Up (mirror of `graph_moved`).
     pub(super) timeline_moved: bool,
+    /// Pointer position at the timeline capture's Down, the origin the drag slop
+    /// is measured from.
+    pub(super) timeline_press: (f32, f32),
     /// Per-surface accumulated wheel (anchored zoom + pan + row scroll), drained
     /// by the timeline panel. Mirror of `graph_zoom`.
     pub(super) timeline_wheel: BTreeMap<NodeId, TimelineWheel>,

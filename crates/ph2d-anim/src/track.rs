@@ -230,6 +230,23 @@ impl Track {
         }
     }
 
+    /// Insert a key at `t` with `interp`, or — if a key already sits at exactly
+    /// `t` — update **only its value**, keeping the interpolation it has.
+    ///
+    /// This is the capture-the-pose path (`K`, auto-key): re-keying an instant
+    /// records the new pose, it does not throw away the easing the author drew
+    /// in the graph editor. [`Track::upsert_key`], which replaces both, is for
+    /// paste/duplicate — there the incoming key IS the whole key.
+    pub fn upsert_value(&mut self, t: RationalTime, value: AnimValue, interp: Interp) -> KeyId {
+        if let Some(i) = self.keys.iter().position(|k| k.t == t) {
+            self.keys[i].value = value;
+            self.invalidate_cursor();
+            self.ids[i]
+        } else {
+            self.insert_key(t, value, interp)
+        }
+    }
+
     /// Remove the key with `id`. Returns `true` if it existed.
     pub fn remove_key(&mut self, id: KeyId) -> bool {
         match self.index_of(id) {

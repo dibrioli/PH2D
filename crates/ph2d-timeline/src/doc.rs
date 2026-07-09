@@ -204,6 +204,11 @@ impl TimelineDoc {
     /// Like [`TimelineDoc::insert_key`] but **updates** the key at exactly `t`
     /// rather than stacking a duplicate — the capture-the-pose path (K /
     /// auto-key) upserts one key per playhead time.
+    ///
+    /// Re-keying an existing instant records the new pose and **keeps that key's
+    /// interpolation**: nudging the sprite on canvas with auto-key armed must not
+    /// silently undo the easing the author drew in the graph editor. `interp` is
+    /// therefore only the default for a key this call creates.
     pub fn upsert_key(
         &mut self,
         entity: u64,
@@ -216,7 +221,7 @@ impl TimelineDoc {
         let track = self
             .active_clip_mut()
             .track_or_insert(target, || Track::new(vec![]).with_default(value));
-        let id = track.upsert_key(t, value, interp);
+        let id = track.upsert_value(t, value, interp);
         (target, id)
     }
 

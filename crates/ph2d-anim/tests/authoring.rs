@@ -173,3 +173,37 @@ fn dragging_a_handle_upgrades_to_bezier() {
     let ((a, b), (c, d)) = bez.handles().unwrap();
     assert_eq!(Interp::bezier(a, b, c, d), bez);
 }
+
+#[test]
+fn upsert_value_keeps_the_easing_the_author_drew() {
+    // The auto-key bug: nudging the object on canvas re-keyed the playhead's key
+    // through `upsert_key`, which replaced BOTH value and interp — silently
+    // reverting every bezier handle the author had dragged in the graph editor.
+    let mut tr = Track::new(vec![]);
+    let a = tr.insert_key(secs(0.0), AnimValue::Float(1.0), Interp::Linear);
+    let custom = Interp::bezier(0.9, 1.4, 0.1, -0.4);
+    tr.set_interp(a, custom);
+
+    let id = tr.upsert_value(secs(0.0), AnimValue::Float(7.0), Interp::Hold);
+    assert_eq!(id, a, "the existing key was updated, not stacked");
+    assert_eq!(tr.len(), 1);
+    assert_eq!(tr.key(a).unwrap().value, AnimValue::Float(7.0), "new pose");
+    assert_eq!(tr.key(a).unwrap().interp, custom, "the ease survived");
+
+    // On a fresh instant the `interp` argument IS the new key's interpolation.
+    let b = tr.upsert_value(secs(1.0), AnimValue::Float(2.0), Interp::Hold);
+    assert_eq!(tr.key(b).unwrap().interp, Interp::Hold);
+}
+
+#[test]
+fn upsert_key_still_replaces_everything() {
+    // Paste + duplicate carry a whole key; they must overwrite the interp too.
+    let mut tr = Track::new(vec![]);
+    let a = tr.insert_key(
+        secs(0.0),
+        AnimValue::Float(1.0),
+        Interp::bezier(0.9, 0.1, 0.1, 0.9),
+    );
+    tr.upsert_key(secs(0.0), AnimValue::Float(7.0), Interp::Hold);
+    assert_eq!(tr.key(a).unwrap().interp, Interp::Hold);
+}

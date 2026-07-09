@@ -478,6 +478,7 @@ mod tests {
             which: 0,
             x: 0.0,
             y: 0.0,
+            range: None,
             ending: false,
         });
         let _ = state::drain_intents();

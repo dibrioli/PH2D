@@ -18,17 +18,16 @@
 //! gesture.
 
 use ph2d_editor_core::zones::Rect;
-use ph2d_timeline::{Interp, KeyView, TimelineIntent, TrackView, handle_coords, value_extent};
+use ph2d_timeline::{Interp, TimelineIntent, TrackView, handle_coords};
 
 use crate::state::{self, HandleDrag, TimelinePanelState};
 
 /// Height of the curve band added below an expanded row's dope-sheet strip.
 pub(crate) const GRAPH_H: f32 = 132.0; // LITERAL-PX-OK: expanded graph band height
-/// Padding above/below the fitted value range, as a fraction of that range —
-/// room for a moderate overshoot without rescaling under the cursor.
-const V_PAD_FRAC: f64 = 0.25; // LITERAL-PX-OK: vertical fit margin, fraction of the value range
-/// Half-height of the fitted range when every key holds the same value (a flat
-/// track has no range to take a fraction of).
+/// Breathing room above and below the fitted range, as a fraction of it.
+const V_PAD_FRAC: f64 = 0.1; // LITERAL-PX-OK: vertical fit margin, fraction of the drawn range
+/// Half-height of the fitted range when everything drawn sits at one value (a
+/// flat track has no range to take a fraction of).
 const V_PAD_FLAT: f64 = 0.5; // LITERAL-PX-OK: fallback half-range for a flat track
 
 /// The time axis, shared with the ruler and the dope-sheet lanes.
@@ -63,22 +62,29 @@ pub(crate) struct Band {
 }
 
 impl Band {
-    /// Fit to the KEYS' extent, not the curve's: an overshooting handle would
-    /// otherwise rescale the band under the cursor mid-drag. Overshoot past the
-    /// padded range is clipped, which is stable and honest.
-    pub(crate) fn new(rect: Rect, keys: &[KeyView]) -> Self {
-        let (lo, hi) = value_extent(keys).map_or((0.0, 0.0), |(a, b)| (f64::from(a), f64::from(b)));
+    /// Fit `extent` (what the row actually DRAWS — see
+    /// [`ph2d_timeline::drawn_extent`]) into `rect`, with a margin. `None` (an
+    /// empty track) gets a symmetric unit window so the mapping stays finite.
+    pub(crate) fn fit(rect: Rect, extent: Option<(f32, f32)>) -> Self {
+        let (lo, hi) = extent.map_or((0.0, 0.0), |(a, b)| (f64::from(a), f64::from(b)));
         let range = hi - lo;
         let pad = if range > 0.0 {
             range * V_PAD_FRAC
         } else {
             V_PAD_FLAT
         };
-        Self {
-            rect,
-            v_min: lo - pad,
-            v_max: hi + pad,
-        }
+        Self::from_range(rect, lo - pad, hi + pad)
+    }
+
+    /// A band over an explicit value range — used to hold the mapping still for
+    /// the length of a handle drag (see `graph_paint::paint_track`).
+    pub(crate) fn from_range(rect: Rect, v_min: f64, v_max: f64) -> Self {
+        Self { rect, v_min, v_max }
+    }
+
+    /// The value range this band maps, for freezing it across frames.
+    pub(crate) fn range(&self) -> (f64, f64) {
+        (self.v_min, self.v_max)
     }
 
     pub(crate) fn y(&self, v: f64) -> f32 {
@@ -121,6 +127,7 @@ pub(crate) fn apply_handle_gesture(
                 which,
                 x: g.x,
                 y: g.y,
+                range: None,
                 ending: false,
             });
         }
@@ -207,7 +214,8 @@ mod tests {
 
     const BAND: Rect = Rect::new(100.0, 50.0, 400.0, 100.0);
 
-    fn key(t: f64, v: f32) -> KeyView {
+    fn key(t: f64, v: f32) -> ph2d_timeline::KeyView {
+        use ph2d_timeline::KeyView;
         KeyView {
             id: ph2d_timeline::KeyId::new(0),
             t_seconds: t,
@@ -219,17 +227,18 @@ mod tests {
 
     #[test]
     fn the_band_puts_the_highest_value_at_the_top() {
-        let b = Band::new(BAND, &[key(0.0, 0.0), key(1.0, 10.0)]);
+        let b = Band::fit(BAND, Some((0.0, 10.0)));
         assert!(b.y(10.0) < b.y(0.0), "bigger value = smaller y");
         // 25% padding each side of the 0..10 range.
-        assert_eq!((b.v_min, b.v_max), (-2.5, 12.5));
-        assert!((b.y(12.5) - BAND.y).abs() < 1e-4);
-        assert!((b.y(-2.5) - (BAND.y + BAND.h)).abs() < 1e-4);
+        // 10% padding each side of the 0..10 range.
+        assert_eq!((b.v_min, b.v_max), (-1.0, 11.0));
+        assert!((b.y(11.0) - BAND.y).abs() < 1e-4);
+        assert!((b.y(-1.0) - (BAND.y + BAND.h)).abs() < 1e-4);
     }
 
     #[test]
     fn a_flat_track_gets_a_finite_band_instead_of_dividing_by_zero() {
-        let b = Band::new(BAND, &[key(0.0, 4.0), key(1.0, 4.0)]);
+        let b = Band::fit(BAND, Some((4.0, 4.0)));
         assert_eq!((b.v_min, b.v_max), (3.5, 4.5));
         assert!(b.y(4.0).is_finite());
         assert!((b.y(4.0) - (BAND.y + BAND.h * 0.5)).abs() < 1e-4);
@@ -237,14 +246,14 @@ mod tests {
 
     #[test]
     fn an_empty_track_still_maps_finitely() {
-        let b = Band::new(BAND, &[]);
+        let b = Band::fit(BAND, None);
         assert_eq!((b.v_min, b.v_max), (-0.5, 0.5));
         assert!(b.value(BAND.y).is_finite());
     }
 
     #[test]
     fn pixels_round_trip_back_to_values() {
-        let b = Band::new(BAND, &[key(0.0, -3.0), key(1.0, 7.0)]);
+        let b = Band::fit(BAND, Some((-3.0, 7.0)));
         for v in [-3.0, 0.0, 2.5, 7.0] {
             assert!((b.value(b.y(v)) - v).abs() < 1e-4, "{v}");
         }
@@ -252,7 +261,7 @@ mod tests {
 
     #[test]
     fn a_zero_height_band_never_divides_by_zero() {
-        let b = Band::new(Rect::new(0.0, 0.0, 100.0, 0.0), &[key(0.0, 1.0)]);
+        let b = Band::fit(Rect::new(0.0, 0.0, 100.0, 0.0), Some((1.0, 1.0)));
         assert!(b.value(0.0).is_finite());
     }
 
@@ -322,7 +331,7 @@ mod tests {
     /// Drive one full drag of the out handle to `(x, y)` and return the intents.
     fn drag_out_handle(interp: Interp, x: f32, y: f32) -> Vec<TimelineIntent> {
         let tr = track(interp);
-        let band = Band::new(ROW, &tr.keys);
+        let band = Band::fit(ROW, Some((0.0, 10.0)));
         let mut st = TimelinePanelState::default();
         apply_handle_gesture(&mut st, 9, 1, 0, gesture(GesturePhase::Begin, 0.0, 0.0));
         apply_handle_gesture(&mut st, 9, 1, 0, gesture(GesturePhase::Update, x, y));
@@ -335,8 +344,8 @@ mod tests {
 
     #[test]
     fn dragging_an_out_handle_converts_a_hold_segment_to_bezier() {
-        // Band fits 0..10 with 25% padding, so v_max = 12.5 sits at y = 0 and
-        // v = 5 lands at y = 50. x = 25 px is t = 0.25 s.
+        // Band fits 0..10 with 10% padding, so the midpoint v = 5 lands at
+        // y = 50 either way. x = 25 px is t = 0.25 s.
         let got = drag_out_handle(Interp::Hold, 25.0, 50.0);
         // (hx, hy) = (0.25, 0.5); the IN handle keeps its linear default.
         let want = Interp::bezier(0.25, 0.5, 2.0 / 3.0, 2.0 / 3.0);
@@ -380,7 +389,7 @@ mod tests {
 
     #[test]
     fn dragging_above_the_keys_overshoots_instead_of_clamping() {
-        // y = 0 is v = 12.5, past the segment's end value of 10 ⇒ hy = 1.25.
+        // y = 0 is v = 11, past the segment's end value of 10 ⇒ hy = 1.1.
         let got = drag_out_handle(Interp::Linear, 50.0, 0.0);
         let Some(TimelineIntent::SetInterp {
             interp: Interp::Bezier { y1, .. },
@@ -400,7 +409,7 @@ mod tests {
         // the timing (x) without snapping y onto the line.
         let mut tr = track(Interp::bezier(0.4, 0.9, 0.6, 0.1));
         tr.keys[1].value = 0.0;
-        let band = Band::new(ROW, &tr.keys);
+        let band = Band::fit(ROW, Some((0.0, 0.0)));
         let mut st = TimelinePanelState::default();
         apply_handle_gesture(&mut st, 9, 1, 0, gesture(GesturePhase::Begin, 0.0, 0.0));
         apply_handle_gesture(&mut st, 9, 1, 0, gesture(GesturePhase::End, 10.0, 90.0));
@@ -422,7 +431,7 @@ mod tests {
     #[test]
     fn the_last_key_owns_no_segment_and_cannot_be_dragged() {
         let tr = track(Interp::Linear);
-        let band = Band::new(ROW, &tr.keys);
+        let band = Band::fit(ROW, Some((0.0, 10.0)));
         let mut st = TimelinePanelState::default();
         // key 2 is the final key.
         apply_handle_gesture(&mut st, 9, 2, 0, gesture(GesturePhase::Begin, 0.0, 0.0));
@@ -439,7 +448,7 @@ mod tests {
     #[test]
     fn a_drag_on_another_track_is_ignored_by_this_band() {
         let tr = track(Interp::Linear);
-        let band = Band::new(ROW, &tr.keys);
+        let band = Band::fit(ROW, Some((0.0, 10.0)));
         let mut st = TimelinePanelState::default();
         apply_handle_gesture(&mut st, 77, 1, 0, gesture(GesturePhase::Begin, 0.0, 0.0));
         resolve_drag(&mut st, &band, VIEW, &tr);

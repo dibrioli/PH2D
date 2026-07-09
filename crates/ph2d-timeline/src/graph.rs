@@ -11,7 +11,7 @@
 //! copy of the interpolation living in paint code would silently drift. Here it
 //! is pinned by a golden test against the real sampler.
 
-use ph2d_anim::{AnimValue, LinearInterp};
+use ph2d_anim::{AnimValue, Interp, LinearInterp};
 
 use crate::snapshot::KeyView;
 
@@ -47,10 +47,8 @@ pub fn sample_keys(keys: &[KeyView], t: f64) -> Option<f32> {
     }
 }
 
-/// The `(min, max)` of the keys' values, or `None` for an empty track. This is
-/// the vertical extent the expanded row fits to — the keys, not the curve, so a
-/// handle drag never makes the view breathe under the cursor (an overshoot past
-/// the padded range is clipped, which is honest and stable).
+/// The `(min, max)` of the keys' values, or `None` for an empty track. The
+/// anchors only — see [`drawn_extent`] for what the band must actually fit.
 #[must_use]
 pub fn value_extent(keys: &[KeyView]) -> Option<(f32, f32)> {
     let first = keys.first()?.value;
@@ -59,6 +57,60 @@ pub fn value_extent(keys: &[KeyView]) -> Option<(f32, f32)> {
             .map(|k| k.value)
             .fold((first, first), |(lo, hi), v| (lo.min(v), hi.max(v))),
     )
+}
+
+/// The `(min, max)` of **everything the graph editor draws** over the visible
+/// window `[t0, t1]`: the sampled curve (so an overshooting bézier is inside the
+/// range, not off the top of the band), the key anchors, and the handles of any
+/// segment touching a selected key. `None` when the track has no keys.
+///
+/// [`value_extent`] alone is not enough to fit the band: a segment whose handle
+/// was dragged past its endpoint draws far outside its keys' range.
+#[must_use]
+pub fn drawn_extent(keys: &[KeyView], t0: f64, t1: f64, samples: usize) -> Option<(f32, f32)> {
+    if keys.is_empty() {
+        return None;
+    }
+    let (mut lo, mut hi) = (f32::INFINITY, f32::NEG_INFINITY);
+    let mut include = |v: f32| {
+        if v.is_finite() {
+            lo = lo.min(v);
+            hi = hi.max(v);
+        }
+    };
+    let n = samples.max(1);
+    for i in 0..=n {
+        let t = t0 + (t1 - t0) * (i as f64 / n as f64);
+        if let Some(v) = sample_keys(keys, t) {
+            include(v);
+        }
+    }
+    for k in keys
+        .iter()
+        .filter(|k| k.t_seconds >= t0 && k.t_seconds <= t1)
+    {
+        include(k.value);
+    }
+    for w in keys.windows(2) {
+        let (k0, k1) = (&w[0], &w[1]);
+        // Only the handles that are actually painted, and only if the segment
+        // overlaps the window.
+        if !(k0.selected || k1.selected) || k1.t_seconds < t0 || k0.t_seconds > t1 {
+            continue;
+        }
+        let ((x1, y1), (x2, y2)) = k0.interp.handles().unwrap_or(Interp::LINEAR_HANDLES);
+        for h in [(x1, y1), (x2, y2)] {
+            let (_, v) = handle_point(
+                k0.t_seconds,
+                f64::from(k0.value),
+                k1.t_seconds,
+                f64::from(k1.value),
+                h,
+            );
+            include(v as f32);
+        }
+    }
+    (lo <= hi).then_some((lo, hi))
 }
 
 /// The `(time, value)` point of a segment handle whose normalized timing-space
@@ -197,6 +249,53 @@ mod tests {
         ];
         assert_eq!(value_extent(&keys), Some((-2.0, 3.0)));
         assert_eq!(value_extent(&[]), None);
+    }
+
+    #[test]
+    fn drawn_extent_covers_an_overshoot_the_keys_do_not() {
+        // The bug: fitting the band to `value_extent` (the keys) left an
+        // overshooting curve drawn far outside the band, over the next row.
+        let mut k0 = key(0.0, 0.0, Interp::bezier(0.2, 2.5, 0.8, -1.5));
+        k0.selected = true;
+        let keys = [k0, key(1.0, 10.0, Interp::Linear)];
+        assert_eq!(value_extent(&keys), Some((0.0, 10.0)));
+        let (lo, hi) = drawn_extent(&keys, 0.0, 1.0, 200).unwrap();
+        assert!(hi > 10.0, "the curve rises past the last key: {hi}");
+        assert!(lo < 0.0, "and dips below the first: {lo}");
+    }
+
+    #[test]
+    fn drawn_extent_includes_the_handles_of_a_selected_segment() {
+        // A handle can sit outside its own curve (a bezier stays inside the
+        // convex hull of its control points), so fitting the curve alone would
+        // still let the handle escape the band.
+        let mut k0 = key(0.0, 0.0, Interp::bezier(0.5, 3.0, 0.5, 3.0));
+        let keys_unselected = [k0.clone(), key(1.0, 1.0, Interp::Linear)];
+        let curve_only = drawn_extent(&keys_unselected, 0.0, 1.0, 200).unwrap();
+        k0.selected = true;
+        let keys = [k0, key(1.0, 1.0, Interp::Linear)];
+        let with_handles = drawn_extent(&keys, 0.0, 1.0, 200).unwrap();
+        assert_eq!(with_handles.1, 3.0, "the handle at v = 3 is in range");
+        assert!(with_handles.1 > curve_only.1);
+    }
+
+    #[test]
+    fn drawn_extent_only_sees_the_visible_window() {
+        let keys = [
+            key(0.0, 0.0, Interp::Linear),
+            key(1.0, 100.0, Interp::Linear),
+        ];
+        // A window entirely before the first key: the curve flat-clamps to it.
+        assert_eq!(drawn_extent(&keys, -2.0, -1.0, 8), Some((0.0, 0.0)));
+        assert_eq!(drawn_extent(&keys, 0.0, 1.0, 8), Some((0.0, 100.0)));
+        assert_eq!(drawn_extent(&[], 0.0, 1.0, 8), None);
+    }
+
+    #[test]
+    fn drawn_extent_survives_a_degenerate_sample_count() {
+        let keys = [key(0.0, 2.0, Interp::Linear), key(1.0, 4.0, Interp::Linear)];
+        let (lo, hi) = drawn_extent(&keys, 0.0, 1.0, 0).unwrap();
+        assert!(lo.is_finite() && hi.is_finite() && lo <= hi);
     }
 
     #[test]

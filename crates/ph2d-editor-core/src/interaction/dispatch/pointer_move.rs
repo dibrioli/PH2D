@@ -291,7 +291,7 @@ pub(super) fn dispatch_move<'frame>(
         // (even once the pointer has left its rect: a key drag continues past the
         // panel edge). Mirror of the graph-surface Update above.
         if let Some((surface, kind)) = store.timeline_surface_at_id(active) {
-            store.set_timeline_moved(true);
+            store.note_timeline_pointer(event.x, event.y);
             let mods = store.gesture_mods();
             store.push_timeline_gesture(TimelineGesture {
                 surface,

@@ -592,3 +592,43 @@ Teste refutável: `watercolor_water_streak_lateral_is_not_pixelated` (varredura 
 bytes/px; FAIL provado pré-fix com 45). 498/498 · clippy 0 · LOC gates verdes. SMOKE-GATE: o
 "streak bloom" de um traço diluído sobre wash agora rampa suave (o vale escuro fica, a escada
 some); anel da gota grande um fio mais macio (CONC × presença ≈ ×0.9 sobre wash denso).
+
+#### Take 3 (Enio: "Não melhorou. Solicite avaliação de alguns agentes com lentes diferentes")
+
+Painel de 3 lentes paralelas (matemática por-pixel · design do modelo de estado · empírica
+instrumentada) — veredito unânime e quantificado: o corte escalopado era o **mapa de DONO**.
+O claim de estilo reivindicava o disco INTEIRO do dab (`peak>0 && wgt>0`) — o traço pálido
+roubava o estilo do wash denso até a envolvente dos seus discos (onde deposita ~nada), e o
+`style_at` nearest trocava fill+depth de uma vez: **degrau de 144 bytes em 1 px** exatamente na
+troca de owner, com cobertura/alpha/água contínuos ali (empírica); params iguais = degrau ZERO.
+fill carrega 106, depth 64; dilution/edge/rewet/radius inocentes (≤9).
+
+**Fase 1 — claim por DOMINÂNCIA** (`WET_CLAIM_SAT`, watercolor_accum.rs): o dono só muda onde o
+splat vence o max-blend de cobertura (`v >= cov`, empates = recência) ou é depósito de força
+plena (≥ platô do feather, 234 — glaze opaco re-estiliza). Um traço fraco nunca mais re-estiliza
+um wash denso. De graça, conserta 3 contaminações do over-claim (lente 2): buracos na presença
+union (anel EDGE-2 sem fonte nos escalopes), settle vivo dentro de wash assado, re-blur da
+geometria alheia. Byte-identity: traço sobre px virgem claim a igual (cov 0).
+
+**Fase 2 — DIFUSÃO de estilo em sessão MISTA** (`StyleFields`, watercolor_rewet_px.rs): com
+estilos diferentes na sessão, os params escalares (fill/depth/edge/wet/gran/spread_thin/mix/
+warp/core_r) viram campos low-res borrados na escala do rim (`melt_r = core_any`), ponderados
+pela cobertura endurecida e normalizados — a junção derrete como pigmento na água (fill 106→11,
+depth 64→6 no forense). `inner` interpola entre os mapas de blur por-raio (`inner_at`, core_r
+contínuo); warp difundido lido PRÉ-warp. **Snap de exatidão** (`STYLE_SNAP_EPS`): longe das
+junções o campo ≡ o valor do dono (± ruído fp do blur) e SNAPA pro exato — regiões uniformes
+continuam byte-idênticas (todos os testes byte-exatos seguem verdes). Sessão de estilo único
+(o default) nem constrói os campos: caminho escalar intocado. Reprodutibilidade: campos = função
+pura de (owner + tabela + cobertura) — invariante do 2e11f691 mantido.
+
+**Fase 3 — ganho do anel domado**: `BACKRUN_CONC_CAP = 2.6` (aprofundar pigmento em depósito
+denso satura — teto em absorbância) e o deepen escala pela presença como antes (sem staircase de
+gate). O CONC MANTÉM o shell serrilhado: desserrar clareou os espinhos mais fundos do anel seco
+aprovado (testado e revertido) — os espinhos são a assinatura orgânica.
+
+Contrato ajustado: o teste `watercolor_session_brush_changes...` agora sonda até a ESCALA DE
+FUSÃO (melt_r) da massa do traço novo — "intocado além da fusão", não "intocado até encostar".
+Teste novo: `watercolor_water_streak_interior_has_no_staircase` (interior do pool ≤ 18 bytes/px;
+o staircase de gate media 38). A BORDA do bloom d'água segue nítida-orgânica por design (é o
+anel aprovado; taper ~46 bytes/px no pior caso denso) — knobs `BACKRUN_POOL/CONC/CONC_CAP` se o
+smoke pedir mais macio. 498/498 · clippy 0 · LOC verdes.

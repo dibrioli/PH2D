@@ -1,11 +1,8 @@
 //! Watercolor **optical render-path** (the wet-media look, `docs/Painter/10_aquarela_render_path_preset_papers.md`).
 //!
-//! In watercolor mode the normal per-dab deposit is **skipped**; the stroke instead accumulates a
-//! coverage mask ([`PaintState::stroke_coverage`](super::PaintState)) and a deposited-colour buffer
-//! ([`PaintState::stroke_color`](super::PaintState)), and the whole appearance is **reconstructed
-//! optically** each frame over a frozen base — exactly the architecture of
-//! `docs/Painter/wet_edges_paint.html`. This kills the per-dab "bubble" + alpha build-up that a
-//! bolt-on darkening pass inherits (the wash is a single optical field, not stacked stamps).
+//! In watercolor mode the per-dab deposit is **skipped**; the stroke accumulates a coverage mask
+//! + a deposited-colour buffer and the appearance is **reconstructed optically** each frame over
+//! a frozen base (`docs/Painter/wet_edges_paint.html`) — one optical field, not stacked stamps.
 //!
 //! The model, per pixel (over the frozen base `B`, all in **linear light**):
 //! ```text
@@ -21,7 +18,10 @@
 //! integer-hash value noise are built once and deterministic; no transcendental runs in the hot loop.
 
 use super::watercolor_field::*;
-use super::watercolor_rewet_px::{blur_of, build_union_fields, inner_blur_set, rewet_px, style_at};
+use super::watercolor_rewet_px::{
+    BACKRUN_CONC_CAP, build_style_fields, build_union_fields, inner_at, inner_blur_set, rewet_px,
+    style_at,
+};
 use super::*;
 use ph2d_painter_brush::blend::ryb_mix;
 use rayon::prelude::*;
@@ -292,6 +292,20 @@ impl PainterTool {
             core_r: core_r as u16,
             spread_px: spread as u16,
         };
+        // MIXED styles (painel 3-lentes): the scalar params DIFFUSE through the union (blurred
+        // presence-weighted fields at the rim-melt scale) — the junction melts like pigment in
+        // water. Uniform sessions (the default) skip this entirely: exact scalar path.
+        let styles_mixed = has_style && style_table.iter().any(|st| !st.same_params(&cur_style));
+        let style_f = styles_mixed.then(|| {
+            build_style_fields(
+                &self.paint.stroke_coverage,
+                style_owner,
+                style_table,
+                (fw, fh),
+                (rx0, ry0, rx1, ry1),
+                core_any,
+            )
+        });
         // Raw per-pixel soak for the granulation settle (GRAN-1) — read-only in the parallel loop.
         let soak_buf = &self.paint.wet_soak;
         let water_buf = &self.paint.stroke_water;
@@ -349,8 +363,11 @@ impl PainterTool {
                     // fields; global for the full-canvas colour buffer (same displacement + window origin).
                     // Per-stroke style: warp AMPLITUDE by the pixel's owner (read PRE-warp —
                     // the displacement needs the amp first); owner 0 = current brush, old path.
-                    let st_warp =
+                    let mut st_warp =
                         style_at(has_style, style_owner, style_table, cur_style, gy * fw + gx).warp;
+                    if let Some(sf) = &style_f {
+                        st_warp = sf.warp_at(st_warp, rx0, ry0, lx, ly);
+                    }
                     let (sx, sy) = if st_warp > 0.0 {
                         let wx =
                             warp_axis(gx as f32, gy as f32, SEED_WARP_X_A, SEED_WARP_X_B) * st_warp;
@@ -383,13 +400,15 @@ impl PainterTool {
                     let wgy = (ry0 as f32 + sy).clamp(0.0, (fh - 1) as f32) as usize;
                     let widx = wgy * fw + wgx;
                     let st = style_at(has_style, style_owner, style_table, cur_style, widx);
+                    let (st, cr) = match &style_f {
+                        Some(sf) => sf.resolve(st, rx0, ry0, sx, sy),
+                        None => (st, st.core_r as f32),
+                    };
                     // A pixel owned by a COMMITTED stroke renders SETTLED (its bake's dry state):
                     // the live flag re-rendered baked washes back to the wet settle (rectangle).
                     let owner_px = if has_style { style_owner[widx] } else { 0 };
                     let settled = commit || (owner_px != 0 && owner_px != cur_o);
-                    let inner =
-                        sample_bilinear(blur_of(&blurs, st.core_r as usize), rw, rh, sx, sy)
-                            .min(1.0);
+                    let inner = inner_at(&blurs, cr, rw, rh, sx, sy);
                     // Per-pixel dwell + deposited alpha — read here for the rim modulation
                     // (EDGE-4) and reused by the granulation settle / pigment blocks below.
                     let soak_v = if soaked {
@@ -461,11 +480,8 @@ impl PainterTool {
                         soak_v,
                         settled,
                     );
-                    // Wet also wets the WASH ITSELF (blank canvas included): more water = the wash's own
-                    // pigment redistributes — the interior thins toward the receding front, the edge pools
-                    // harder, and the pooling follows the paper tooth (a wetter bloom is ragged, not a
-                    // clean ring). This is what makes the Spread read intense + organic under Wet even
-                    // before any old paint is involved (Enio 2026-07-06 "mais intenso e menos uniforme").
+                    // Wet also wets the WASH ITSELF: interior thins toward the receding front,
+                    // the edge pools harder, ragged by the paper tooth (Enio 2026-07-06).
                     let mut fill_px = st.fill;
                     if st.wet > 0.0 {
                         fill_px = st.fill
@@ -480,10 +496,8 @@ impl PainterTool {
                         1.0
                     };
                     let mut density = ((cw * fill_px * tip_dens + edge) * gran).max(0.0);
-                    // MIX-1: the brush's local pigment reserve (fresh + carry) fades fill AND edge
-                    // together over the intact water footprint — the depleted tail dries toward
-                    // plain water. Applied BEFORE the rewet-pool term: pigment dissolved off the
-                    // CANVAS is not the brush's reserve and must not fade with it.
+                    // MIX-1: the pigment reserve fades fill+edge over the intact water footprint
+                    // (BEFORE the pool term — canvas-dissolved pigment is not the brush's reserve).
                     if has_depl {
                         density *= f32::from(depl_buf[wgy * fw + wgx]) / 255.0;
                     }
@@ -528,12 +542,9 @@ impl PainterTool {
                     } else {
                         st.color
                     };
-                    // Wet-on-wet DISSOLVE: the lifted paint's colour (diffused through the wet region)
-                    // tints the wash's pigment — the old colour bleeds into and beyond its own footprint.
-                    // SUBTRACTIVE mix (absorbance-space geometric mean, via the ln/exp LUTs): paints mix
-                    // like pigments, not light — the linear sRGB lerp desaturated the blend toward the
-                    // paper's cream ("pálida e amarelada sem Pigment", Enio 2026-07-06). Pigment ON still
-                    // adds its full RYB pass on top, unchanged.
+                    // Wet-on-wet DISSOLVE: the lifted colour tints the wash's pigment —
+                    // SUBTRACTIVE (absorbance-space; a linear lerp desaturated toward cream,
+                    // Enio 2026-07-06). Pigment ON still adds its full RYB pass on top.
                     if dissolve > 0.0 {
                         for c in 0..3 {
                             let a = -lut.lnl[pig[c] as usize];
@@ -543,14 +554,15 @@ impl PainterTool {
                             pig[c] = lut.l2s_byte(lut.exp_mag(mag));
                         }
                     }
-                    // Backrun CONCENTRATION (EDGE-2): the ring's pigment is the pushed paint
-                    // CONCENTRATED — Beer–Lambert saturates at the pigment colour, so density
-                    // alone can never render darker than the wash the pigment came from; the
-                    // "severely darkened edge" needs a darker floor (absorbance × ring).
+                    // Backrun CONCENTRATION (EDGE-2): Beer–Lambert saturates AT the pigment
+                    // colour — the darker ring floor needs deepened absorbance.
                     if backrun > 0.0 {
                         for p in &mut pig {
-                            let a = -lut.lnl[*p as usize] * (1.0 + BACKRUN_CONC * backrun);
-                            *p = lut.l2s_byte(lut.exp_mag(a));
+                            // Increment CAPPED in absorbance: piling pigment into a dense deposit
+                            // saturates (uncapped, the water taper walled ~60 bytes/px).
+                            let inc = (-lut.lnl[*p as usize] * BACKRUN_CONC * backrun)
+                                .min(BACKRUN_CONC_CAP);
+                            *p = lut.l2s_byte(lut.exp_mag(-lut.lnl[*p as usize] + inc));
                         }
                     }
 
@@ -568,13 +580,9 @@ impl PainterTool {
                         lut.s2l[base[gi + 1] as usize] * ab + ground_lin[1] * (1.0 - ab),
                         lut.s2l[base[gi + 2] as usize] * ab + ground_lin[2] * (1.0 - ab),
                     ];
-                    // Wet-on-wet LIFT: rewetting pulls the base's pigment off the ground. Density-
-                    // proportional (log-space): remove a FRACTION of the optical density, so the colour
-                    // walks its own Beer–Lambert curve toward the LOCAL ground — a lifted red on white
-                    // reads PINK, on grey it reads grey-pink. (A linear lerp toward a global cream
-                    // desaturated straight to cream — the yellow cast, Enio 2026-07-06.) Paint BRIGHTER
-                    // than the ground (light pigment on a dark layer below) walks down the mirrored
-                    // curve — both directions converge on the ground, never past it.
+                    // Wet-on-wet LIFT, density-proportional (log-space): the colour walks its
+                    // own Beer–Lambert curve toward the LOCAL ground (linear lerp = yellow cast,
+                    // Enio 2026-07-06); brighter-than-ground walks the mirrored curve.
                     if lift > 0.0 {
                         for c in 0..3 {
                             let g = ground_lin[c].max(1e-4);
@@ -603,18 +611,10 @@ impl PainterTool {
                     // Perceptual film opacity — how much pigment sits here; drives the deposited alpha and
                     // the subtractive (RYB) paint-mix amount over the base paint.
                     let film_a = (1.0 - t_lum).clamp(0.0, 1.0);
-                    // The subtractive wet-on-wet MIX — the wash's pigment blending with the paint beneath
-                    // like real paint. It is "o segredo" of the good wet-on-wet look (Enio 2026-07-06), so
-                    // **Wet drives it too**: `max(Pigment's Mix, wet × paint-presence)` — a wet wash mixes
-                    // with what it rewets even with Pigment unchecked (inert on blank canvas, like the
-                    // lift); the checkbox + Mix slider still set the floor and are the only source when
-                    // Wet is 0 (byte-identical default preserved). The blend reads the LIFTED base (`sb`)
-                    // where the rewet lightened it — mixing against the raw base would paint the lift
-                    // right back over.
-                    // Water does NOT drive the RYB paint-mix: a water pool has no pigment of its
-                    // own to blend (its tint is the dissolve), and `water = 1` pushed the mix to
-                    // full-replace — territory where `ryb_mix` degenerates (OPT-2's documented
-                    // defect; the smoke's navy-blue ring). Wet keeps driving it as before.
+                    // Subtractive wet-on-wet MIX ("o segredo", Enio 2026-07-06): Wet drives it
+                    // too — `max(Pigment's Mix, wet × paint-presence)` — inert on blank canvas;
+                    // reads the LIFTED base (raw base would repaint the lift). Water does NOT
+                    // drive it: at full-replace `ryb_mix` degenerates (the navy-ring smoke).
                     let mix_amt = st.pigment_mix.max(st.wet * wet_paint);
                     if mix_amt > 0.0 {
                         // The (possibly lifted) base APPEARANCE over the ground — for an opaque base with
@@ -641,19 +641,14 @@ impl PainterTool {
                                 (f32::from(rgb[c]) + (sub - f32::from(rgb[c])) * mix_amt) as u8;
                         }
                     }
-                    // Coverage alpha = the STRONGEST per-channel absorption (`1 − min_c T_c`), not the
-                    // luminance film: the un-premultiply below needs `a ≥ 1 − T_c` on EVERY channel or
-                    // the solve leaves gamut and clamps (a red wash's G/B absorb far more than the
-                    // luminance says — measured 59-byte flatten error with the luminance alpha).
-                    // `film_a` stays the perceptual meter for the paint-mix strength above.
+                    // Coverage alpha = the STRONGEST per-channel absorption (`1 − min_c T_c`):
+                    // the un-premultiply needs `a ≥ 1 − T_c` per channel or the solve clamps
+                    // (59-byte flatten error with the luminance alpha).
                     let cov_a = (1.0 - t_min).clamp(0.0, 1.0);
                     let out_a = (ab + (1.0 - ab) * cov_a).clamp(0.0, 1.0);
-                    // `rgb` is the target APPEARANCE over the ground. The layer stores straight RGBA
-                    // that the compositor will blend over that same ground — so solve the un-premultiply
-                    // `L = (appearance − ground·(1−a)) / a` in linear light. Baking the appearance
-                    // directly (the old path) baked the ground INTO the pixels: over a white backdrop
-                    // the wash carried a permanent cream cast ("puxa para o bege", Enio 2026-07-06).
-                    // Opaque base ⇒ a = 1 ⇒ L = appearance, byte-identical to the old path.
+                    // `rgb` is the APPEARANCE over the ground; the layer stores straight RGBA —
+                    // solve `L = (appearance − ground·(1−a)) / a` in linear light (baking the
+                    // appearance baked the ground in: "puxa para o bege", Enio 2026-07-06).
                     if out_a <= f32::EPSILON {
                         // No film and no base: the layer stays untouched (appearance == ground).
                         row[gx * 4] = base[gi];

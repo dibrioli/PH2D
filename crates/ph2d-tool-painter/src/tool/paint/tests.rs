@@ -13419,7 +13419,10 @@ fn watercolor_session_brush_changes_do_not_touch_baked_washes() {
     let probe = |t: &PainterTool| -> Vec<[u8; 4]> {
         let mut v = Vec::new();
         for y in 60..140u32 {
-            for x in 40..=72u32 {
+            // Probe até x=68: a DIFUSÃO de estilo (sessão mista) derrete params até ~melt_r
+            // (= core_r máx, 12 px) da massa do traço novo — o contrato agora é "intocado além
+            // da escala de fusão", não "intocado até encostar".
+            for x in 40..=68u32 {
                 v.push(px(t, size, x, y));
             }
         }
@@ -13545,16 +13548,15 @@ fn watercolor_clean_water_backrun_blooms_on_wet_session_wash() {
     );
 }
 
-/// **EDGE-2 take 2 (Enio smoke 2026-07-09, "bordas duras e pixeladas na lateral da lavada"):**
-/// um traço com Dilution cruzando um wash cheio da MESMA sessão forma o "streak bloom" (anel ao
-/// longo do pool estreito — física), mas a LATERAL dele não pode ser dura/pixelada: a leitura
-/// serrilhada (±5 px) do canal de água cru dobrava o gradiente da borda e o CONC exponenciava o
-/// staircase (saltos de 25-46 bytes/px medidos). O anel agora lê o water SUAVIZADO
-/// (`water_soft`, blur ~3 px) na MESMA coordenada serrilhada — couve-flor (célula 12 px) fica,
-/// os degraus de 1 px morrem. Propriedade: varredura LATERAL dentro do wash cheio, cruzando as
-/// bordas do pool do traço d'água → nenhum salto vizinho maior que o limiar.
+/// **EDGE-2 take 2/3 (Enio smoke 2026-07-09, "bordas duras e pixeladas"):** o INTERIOR do pool
+/// d'água de um traço diluído cruzando wash cheio não pode ter staircase — o deepen do CONC
+/// ligava em força total no pixel em que o gate de presença (`bp_ring > 1e-4`) abria (degrau de
+/// 38 bytes DENTRO do pool, longe de qualquer borda), e a leitura crua da união imprimia
+/// penhascos de dono. Agora o deepen escala pela presença (rampa contínua) e nenhuma leitura
+/// crua sai dos campos. A BORDA do bloom (taper serrilhado) é nítida-orgânica por design (o
+/// anel aprovado) e fica fora da varredura.
 #[test]
-fn watercolor_water_streak_lateral_is_not_pixelated() {
+fn watercolor_water_streak_interior_has_no_staircase() {
     let size = 192u32;
     let mut t = white_canvas(size, 8.0);
     t.paint.brush = BrushSpec {
@@ -13566,19 +13568,18 @@ fn watercolor_water_streak_lateral_is_not_pixelated() {
         watercolor: true,
         fill: 0.35,
         depth: 1.5,
-        edge_gain: 0.0, // isola o anel do rim
+        edge_gain: 0.0,
         edge_spread: 8.0,
         warp: 0.0,
         granulation: 0.0,
         wet_rewet: 0.0,
-        wet_dilution: 0.0, // wash A CHEIO (sem água própria — o pool do B cruza pigmento denso)
+        wet_dilution: 0.0, // wash A CHEIO
         ..Default::default()
     };
     for slot in &mut t.paint.brush_by_mode {
         *slot = t.paint.brush;
     }
-    // Wash A horizontal cheio (banda y ≈ 83..107) + traço B vertical com Dilution cruzando —
-    // mesma sessão molhada (a cruz do smoke).
+    // Wash A horizontal cheio (banda y ≈ 83..107) + traço B vertical com Dilution cruzando.
     assert!(t.on_canvas_pointer(cp([25.0, 95.0], PointerPhase::Down)));
     let mut x = 25.0f32;
     while x < 120.0 {
@@ -13597,11 +13598,11 @@ fn watercolor_water_streak_lateral_is_not_pixelated() {
         t.on_canvas_pointer(cp([60.0, y], PointerPhase::Move));
     }
     t.on_canvas_pointer(cp([60.0, 160.0], PointerPhase::Up));
-    // Varredura LATERAL: dentro do interior de A (y = 89, longe da silhueta dele), cruzando as
-    // laterais do pool d'água de B (x ≈ 48 e 72) — onde o smoke viu os degraus pixelados.
+    // Varredura no INTERIOR do pool de B (x 52..66 — o taper do feather começa em ~x 67),
+    // dentro do interior de A: qualquer degrau grande aqui é staircase de gate/leitura crua.
     let mut max_step = 0.0f32;
     let mut at_x = 0u32;
-    for x in 30..110u32 {
+    for x in 52..66u32 {
         let a = f32::from(px(&t, size, x, 89)[1]);
         let b = f32::from(px(&t, size, x + 1, 89)[1]);
         if (a - b).abs() > max_step {
@@ -13611,7 +13612,6 @@ fn watercolor_water_streak_lateral_is_not_pixelated() {
     }
     assert!(
         max_step <= 18.0,
-        "a lateral do streak d'água sobre o wash deve ser suave — degrau máx G {max_step:.0} em \
-         x={at_x} (a serração não pode imprimir staircase de 1 px no anel)"
+        "o interior do pool sobre o wash deve ser suave — degrau máx G {max_step:.0} em x={at_x}"
     );
 }

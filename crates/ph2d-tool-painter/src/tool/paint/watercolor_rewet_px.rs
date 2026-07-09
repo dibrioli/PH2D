@@ -10,9 +10,213 @@ use rayon::prelude::*;
 
 use super::watercolor_field::{
     BACKRUN_POOL, LIFT_MAX, REWET_LIFT, REWET_POOL, RewetFields, SOAK_DISSOLVE, SOAK_LIFT,
-    WetStrokeStyle, box_blur, smoothstep,
+    WetStrokeStyle, box_blur, sample_bilinear, smoothstep,
 };
 use super::watercolor_render::{SS0, SS1};
+
+/// Absorbance CAP of the ring's pigment concentration (EDGE-2): piling redispersed pigment into
+/// an already-dense deposit saturates — uncapped, the multiplicative deepen (`−lnl·CONC`, up to
+/// ~4.6 on a dark channel) turned the water taper's smooth ramp into a ~60-byte/px wall on dense
+/// washes (painel 3-lentes). The cap barely grazes the approved big-drop ring (its deepest bytes
+/// are near-black either side of the cap).
+pub(super) const BACKRUN_CONC_CAP: f32 = 2.6;
+
+/// Snap tolerance of the diffused style params back to the owner's exact value: away from the
+/// junctions the blurred field equals the local style up to blur fp noise (~1e-5) — snapping
+/// restores BIT-EXACT scalar math there (uniform regions render byte-identical to the scalar
+/// path; an od wobble of 1e-3 is far below one output byte).
+const STYLE_SNAP_EPS: f32 = 1e-3;
+
+impl WetStrokeStyle {
+    /// Whether two styles carry the same RENDER params (bitwise on every field the composite
+    /// consumes) — a session whose styles all match keeps the exact scalar path.
+    pub(super) fn same_params(&self, o: &Self) -> bool {
+        self.fill.to_bits() == o.fill.to_bits()
+            && self.depth.to_bits() == o.depth.to_bits()
+            && self.edge_gain.to_bits() == o.edge_gain.to_bits()
+            && self.wet.to_bits() == o.wet.to_bits()
+            && self.granulation.to_bits() == o.granulation.to_bits()
+            && self.warp.to_bits() == o.warp.to_bits()
+            && self.pigment_mix.to_bits() == o.pigment_mix.to_bits()
+            && self.spread_thin.to_bits() == o.spread_thin.to_bits()
+            && self.core_r == o.core_r
+            && self.spread_px == o.spread_px
+    }
+}
+
+/// MIXED-style sessions (painel 3-lentes, Enio smoke 2026-07-09): the scalar wash params DIFFUSE
+/// through the union like pigment in water — presence-weighted, blurred at the rim-melt scale —
+/// so a junction between styles melts over ~2×melt_r instead of cliffing at the owner boundary
+/// (fill+depth carried a 106-144 byte/px cut). Owner-0 cells carry NO mass (the live stroke's
+/// pen-down table entry equals its live style, so re-renders reproduce bakes — the session
+/// invariant). `color` stays nearest (continuity lives in the colour buffer); `core_r` diffuses
+/// as a float and the composite lerps between the per-radius `inner` maps.
+pub(super) struct StyleFields {
+    w: Vec<f32>,
+    /// fill, depth, edge_gain, wet, granulation, spread_thin, pigment_mix, warp, core_r.
+    ch: [Vec<f32>; 9],
+    ds: usize,
+    lw: usize,
+    lh: usize,
+    lox0: usize,
+    loy0: usize,
+}
+
+impl StyleFields {
+    #[inline]
+    fn samp(&self, field: &[f32], rx0: usize, ry0: usize, sx: f32, sy: f32) -> f32 {
+        let lx = (rx0 as f32 + sx) / self.ds as f32 - self.lox0 as f32;
+        let ly = (ry0 as f32 + sy) / self.ds as f32 - self.loy0 as f32;
+        sample_bilinear(field, self.lw, self.lh, lx, ly)
+    }
+
+    #[inline]
+    fn blend(v: f32, own: f32) -> f32 {
+        if (v - own).abs() < STYLE_SNAP_EPS {
+            own
+        } else {
+            v
+        }
+    }
+
+    /// The diffused WARP amplitude at the UNWARPED window-local coord (the amplitude decides the
+    /// displacement, so it cannot read through its own warp) — snapped to the owner's exact value
+    /// away from junctions.
+    pub(super) fn warp_at(&self, own: f32, rx0: usize, ry0: usize, lx: f32, ly: f32) -> f32 {
+        let w = self.samp(&self.w, rx0, ry0, lx, ly);
+        if w <= 1e-4 {
+            return own;
+        }
+        Self::blend(self.samp(&self.ch[7], rx0, ry0, lx, ly) / w, own)
+    }
+
+    /// Resolve the pixel's effective style: the owner's params blended toward the local diffused
+    /// field (each channel snapped when the field agrees with the owner). Returns the style plus
+    /// the CONTINUOUS feather radius for the `inner` lerp.
+    pub(super) fn resolve(
+        &self,
+        st: WetStrokeStyle,
+        rx0: usize,
+        ry0: usize,
+        sx: f32,
+        sy: f32,
+    ) -> (WetStrokeStyle, f32) {
+        let w = self.samp(&self.w, rx0, ry0, sx, sy);
+        if w <= 1e-4 {
+            return (st, st.core_r as f32);
+        }
+        let inv = 1.0 / w;
+        let g = |i: usize| self.samp(&self.ch[i], rx0, ry0, sx, sy) * inv;
+        let mut out = st;
+        out.fill = Self::blend(g(0), st.fill);
+        out.depth = Self::blend(g(1), st.depth);
+        out.edge_gain = Self::blend(g(2), st.edge_gain);
+        out.wet = Self::blend(g(3), st.wet);
+        out.granulation = Self::blend(g(4), st.granulation);
+        out.spread_thin = Self::blend(g(5), st.spread_thin);
+        out.pigment_mix = Self::blend(g(6), st.pigment_mix);
+        let cr = Self::blend(g(8), st.core_r as f32);
+        (out, cr)
+    }
+}
+
+/// Build the [`StyleFields`] over the read window: per cell, the OWNER's params premultiplied by
+/// the hardened-coverage presence (the style mass follows the visible paint), blurred at the
+/// rim-melt radius. Pure function of session state (owner map + table + coverage) — re-renders
+/// reproduce bakes.
+pub(super) fn build_style_fields(
+    coverage: &[u8],
+    owner: &[u8],
+    table: &[WetStrokeStyle],
+    (fw, fh): (usize, usize),
+    (rx0, ry0, rx1, ry1): (usize, usize, usize, usize),
+    melt_r: usize,
+) -> StyleFields {
+    let melt_r = melt_r.max(2);
+    let ds = (melt_r / 12).clamp(1, 4); // LITERAL-PX-OK: same lowres rule as REWET_DS_SPREAD
+    let lox0 = rx0 / ds;
+    let loy0 = ry0 / ds;
+    let lw = rx1.div_ceil(ds) - lox0;
+    let lh = ry1.div_ceil(ds) - loy0;
+    let half = ds / 2;
+    let mut w = vec![0.0f32; lw * lh];
+    let mut ch: [Vec<f32>; 9] = std::array::from_fn(|_| vec![0.0f32; lw * lh]);
+    for lj in 0..lh {
+        let gy = (((loy0 + lj) * ds) + half).min(fh - 1);
+        for li in 0..lw {
+            let gx = (((lox0 + li) * ds) + half).min(fw - 1);
+            let gi = gy * fw + gx;
+            let o = owner[gi];
+            if o == 0 {
+                continue;
+            }
+            let hard = smoothstep(SS0, SS1, f32::from(coverage[gi]) / 255.0);
+            if hard <= 0.0 {
+                continue;
+            }
+            let st = table[(o as usize - 1).min(table.len() - 1)];
+            let idx = lj * lw + li;
+            w[idx] = hard;
+            let vals = [
+                st.fill,
+                st.depth,
+                st.edge_gain,
+                st.wet,
+                st.granulation,
+                st.spread_thin,
+                st.pigment_mix,
+                st.warp,
+                st.core_r as f32,
+            ];
+            for (c, v) in ch.iter_mut().zip(vals) {
+                c[idx] = v * hard;
+            }
+        }
+    }
+    let r = (melt_r / ds).max(1);
+    let w = box_blur(&w, lw, lh, r);
+    let ch = ch.map(|c| box_blur(&c, lw, lh, r));
+    StyleFields {
+        w,
+        ch,
+        ds,
+        lw,
+        lh,
+        lox0,
+        loy0,
+    }
+}
+
+/// `inner` at a CONTINUOUS feather radius: lerp between the two bracketing per-radius blur maps
+/// (an exact radius hits a single map — the bit-exact scalar path away from mixed junctions).
+pub(super) fn inner_at(
+    blurs: &[(usize, Vec<f32>)],
+    cr: f32,
+    rw: usize,
+    rh: usize,
+    sx: f32,
+    sy: f32,
+) -> f32 {
+    let mut lo = &blurs[0];
+    let mut hi = &blurs[blurs.len() - 1];
+    for b in blurs {
+        if (b.0 as f32) <= cr {
+            lo = b;
+        }
+    }
+    for b in blurs.iter().rev() {
+        if (b.0 as f32) >= cr {
+            hi = b;
+        }
+    }
+    let a = sample_bilinear(&lo.1, rw, rh, sx, sy);
+    if hi.0 == lo.0 {
+        return a.min(1.0);
+    }
+    let b = sample_bilinear(&hi.1, rw, rh, sx, sy);
+    let t = (cr - lo.0 as f32) / (hi.0 as f32 - lo.0 as f32);
+    (a + (b - a) * t).min(1.0)
+}
 
 /// Resolve the per-pixel OWNER stroke's style (EDGE-1 per-stroke params — recency ownership: an
 /// older wash keeps ITS Concentration/Edge/water on the union re-bake, Enio 2026-07-09). Owner `0`
@@ -52,15 +256,6 @@ pub(super) fn inner_blur_set(
         .into_iter()
         .map(|r| (r, box_blur(hard, rw, rh, r)))
         .collect()
-}
-
-/// The blur map for one owner's `core_r` (tiny linear scan; the set is per-session-distinct).
-#[inline]
-pub(super) fn blur_of(blurs: &[(usize, Vec<f32>)], r: usize) -> &[f32] {
-    blurs
-        .iter()
-        .find(|(br, _)| *br == r)
-        .map_or(&blurs[0].1[..], |(_, b)| &b[..])
 }
 
 /// EDGE-2 **union pigment fields** — the wet session-mates' pigment presence + premultiplied
@@ -281,10 +476,10 @@ pub(super) fn rewet_px(
                 .clamp(0.0, 1.0);
             let shell = (wsoft - halo).max(0.0);
             // The CONC deepen scales by the ring's pigment PRESENCE: it concentrates REDISPERSED
-            // pigment, so it must fade with its source. The bare presence GATE otherwise flips
-            // the full-strength deepen on/off at the presence tail — a 38-byte/px staircase along
-            // the streak's lateral (Enio smoke 2026-07-09 take 2; the pool term was already
-            // smooth because it always scaled by `bp_ring`).
+            // pigment, so it fades with its source (the bare presence GATE flipped it on/off at
+            // full strength along the presence tail — 38-byte staircases deep INSIDE the pool).
+            // It keeps the SERRATED shell: the ragged dark spikes are the approved ring's organic
+            // signature (unserrating lightened the dry-glaze ring's deepest points).
             out.backrun = shell * bp_ring.min(1.0);
             out.pool += BACKRUN_POOL * bp_ring * shell;
             // Union tint: the neighbour's RAW pigment bleeds into the pool (weight-merged with

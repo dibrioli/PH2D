@@ -205,6 +205,12 @@ impl App {
                 }));
                 self.title_dirty = true;
             }
+            // Insert a keyframe at the playhead on every track bound to the
+            // selected sprite (captures its current pose). Processed next frame
+            // in the render loop, which has the world to sample from.
+            KeyCode::KeyK => {
+                self.timeline_insert_key = true;
+            }
             // Cmd+Z / Ctrl+Z — context-sensitive undo. With the Painter
             // tool active it undoes the last brush stroke (W2.T2.2;
             // Cmd+Shift+Z redoes); with any other tool it falls back to

@@ -22,6 +22,9 @@ ph2d-a11y = { path = "../ph2d-a11y" }
 # Spacing / type / colour tokens named by the transport bar paint (chips,
 # toggle labels). Text shaping goes through editor-core's paint_text.
 ph2d-tokens = { path = "../ph2d-tokens" }
+# Vello scene vocab (BezPath / Affine / Brush / Fill / Color) for the keyframe
+# diamonds — the same crate editor-core paints through.
+ph2d-vector = { path = "../ph2d-vector" }
 # The read-model the panel paints (`TimelineViewSnapshot`).
 ph2d-timeline = { path = "../ph2d-timeline" }
 

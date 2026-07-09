@@ -579,6 +579,40 @@ impl crate::App {
             // read it. A no-op when nothing carries a SpriteAnimation; drives any
             // bound sprite (e.g. the KeyB demo) in the real scene.
             ph2d_timeline::apply_sprite_animations(sim.world_mut(), self.playhead.time());
+            // W2.E5 K-insert: capture the selected sprite's current pose into a
+            // keyframe at the playhead on each of its bound tracks (queued as
+            // AddKey intents, applied by `run` below the same frame).
+            if self.timeline_insert_key {
+                self.timeline_insert_key = false;
+                if let Some(entity) = hero_screen
+                    .as_ref()
+                    .and_then(|h| h.gizmo.iter_selected().next())
+                {
+                    let t = ph2d_anim::RationalTime::from_seconds(self.playhead.time());
+                    let props: Vec<_> = self
+                        .timeline
+                        .doc
+                        .bindings()
+                        .iter()
+                        .filter(|b| b.entity == entity)
+                        .map(|b| b.prop)
+                        .collect();
+                    for prop in props {
+                        if let Some(value) =
+                            timeline_bridge::sample_prop_value(sim.world(), entity, prop)
+                        {
+                            self.timeline_intents
+                                .push(ph2d_timeline::TimelineIntent::AddKey {
+                                    entity,
+                                    prop,
+                                    t,
+                                    value,
+                                    interp: timeline_bridge::default_interp(),
+                                });
+                        }
+                    }
+                }
+            }
             // General timeline (W1): drain pending panel/auto-key intents into
             // the app-general document, then apply it to the scene at the same
             // Playhead. No-op while the document is empty.

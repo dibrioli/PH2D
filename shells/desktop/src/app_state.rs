@@ -318,6 +318,9 @@ pub(crate) struct App {
     /// Reused view-snapshot buffer, rebuilt from `timeline` + `playhead` each
     /// frame and published to the timeline panel (`set_current_timeline`).
     pub(crate) timeline_view: ph2d_timeline::TimelineViewSnapshot,
+    /// Set by the `K` key: on the next frame, insert a keyframe at the playhead
+    /// on every track bound to the selected sprite (capturing its current pose).
+    pub(crate) timeline_insert_key: bool,
     pub(crate) last_frame: Instant,
     pub(crate) pending_resize: Option<WindowSize>,
     /// FLUID-DRAG present-mode override: the configured mode saved while a live resize streams (the

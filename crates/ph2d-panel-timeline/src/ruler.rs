@@ -18,7 +18,6 @@ use ph2d_timeline::TimelineViewSnapshot;
 use ph2d_tokens::{ColorToken, Radius, Spacing, Theme, TypeToken};
 
 use crate::ids;
-use crate::state::TimelinePanelState;
 
 pub(crate) const RULER_H: f32 = 22.0; // LITERAL-PX-OK: ruler strip height
 const TICK_MAJOR_H: f32 = 10.0; // LITERAL-PX-OK: labelled second tick height
@@ -27,33 +26,19 @@ const PLAYHEAD_W: f32 = 2.0; // LITERAL-PX-OK: playhead line width
 const TICK_MAJOR_S: f64 = 1.0; // LITERAL-PX-OK: labelled tick interval (seconds), not a UI metric
 const TICK_MINOR_S: f64 = 0.5; // LITERAL-PX-OK: unlabelled tick interval (seconds), not a UI metric
 
-/// Paint the ruler + playhead across `region` (the panel body below the
-/// transport bar). Registers the ruler scrub hit and writes the view span into
-/// `state` for `event.rs`.
+/// Paint the ruler strip (ticks + labels), the playhead line across `region`,
+/// and register the scrub hit. The view (`view_start`, `px_per_s`) is computed
+/// once in `paint.rs` (page-follow) and shared with the lanes so ticks and key
+/// diamonds align.
 pub(crate) fn paint(
     ctx: &mut PaintCtx,
     theme: Theme,
     region: Rect,
-    state: &mut TimelinePanelState,
+    view_start: f64,
+    px_per_s: f64,
     snap: &TimelineViewSnapshot,
 ) {
-    let px_per_s = if state.px_per_s > 0.0 {
-        state.px_per_s
-    } else {
-        crate::state::DEFAULT_PX_PER_S
-    };
     let span = f64::from(region.w) / px_per_s;
-    state.view_span_s = span;
-
-    // Keep the playhead in view: when it leaves the visible span (e.g. free
-    // playback runs off the right edge), page-follow so `view_start` lands on it.
-    // Otherwise the playhead line would sit off-screen (E6 pan/zoom refines this).
-    let mut view_start = state.view_start_s;
-    if span > 0.0 && (snap.time_seconds < view_start || snap.time_seconds >= view_start + span) {
-        view_start = snap.time_seconds.max(0.0);
-        state.view_start_s = view_start;
-    }
-
     let time_to_x = |t: f64| region.x + ((t - view_start) * px_per_s) as f32;
 
     // Ruler strip background.

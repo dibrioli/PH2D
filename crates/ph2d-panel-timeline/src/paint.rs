@@ -79,13 +79,31 @@ pub(crate) fn paint(state: &mut TimelinePanelState, ctx: &mut PaintCtx) {
         (region.w - label_w).max(0.0),
         region.h,
     );
+    // Compute the time view ONCE (page-follow) and share it with the ruler +
+    // lanes so ticks and key diamonds align. When the playhead leaves the
+    // visible span (e.g. free playback), view_start jumps to it (E6 refines).
+    let px_per_s = if state.px_per_s > 0.0 {
+        state.px_per_s
+    } else {
+        state::DEFAULT_PX_PER_S
+    };
+    let span = f64::from(time_area.w) / px_per_s;
+    let mut view_start = state.view_start_s;
+    if span > 0.0
+        && (snapshot.time_seconds < view_start || snapshot.time_seconds >= view_start + span)
+    {
+        view_start = snapshot.time_seconds.max(0.0);
+    }
+    state.view_start_s = view_start;
+    state.view_span_s = span;
+
     // "+Track" buttons in the label column, aligned with the ruler strip.
     tracks::paint_add_track(
         ctx,
         theme,
         Rect::new(region.x, region.y, label_w, ruler::RULER_H),
     );
-    // Track rows (labels) below the ruler strip.
+    // Track rows (labels + key diamonds) below the ruler strip.
     tracks::paint_rows(
         ctx,
         theme,
@@ -96,10 +114,13 @@ pub(crate) fn paint(state: &mut TimelinePanelState, ctx: &mut PaintCtx) {
             (region.h - ruler::RULER_H).max(0.0),
         ),
         label_w,
+        time_area.x,
+        view_start,
+        px_per_s,
         &snapshot,
     );
     // Time axis last, so ticks + playhead overlay the rows.
-    ruler::paint(ctx, theme, time_area, state, &snapshot);
+    ruler::paint(ctx, theme, time_area, view_start, px_per_s, &snapshot);
 
     set_last_content_h(0.0);
     set_last_visible_h(rect.h);

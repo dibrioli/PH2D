@@ -70,6 +70,36 @@ pub(crate) fn intent_for_transport(
     }
 }
 
+/// Sample a bound property's CURRENT value from the scene, for a K-insert
+/// keyframe (capture-the-pose). Transform properties read the entity's
+/// `Transform`; opacity reads `Sprite.tint[3]`.
+pub(crate) fn sample_prop_value(
+    world: &World,
+    entity_bits: u64,
+    prop: PropKind,
+) -> Option<ph2d_anim::AnimValue> {
+    use ph2d_anim::AnimValue::Float;
+    use ph2d_ecs::{Entity, Transform};
+    let e = Entity::from_bits(entity_bits);
+    let xf = || world.get::<Transform>(e);
+    Some(match prop {
+        PropKind::TranslationX => Float(xf()?.translation.x),
+        PropKind::TranslationY => Float(xf()?.translation.y),
+        PropKind::Rotation => Float(xf()?.rotation),
+        PropKind::ScaleX => Float(xf()?.scale.x),
+        PropKind::ScaleY => Float(xf()?.scale.y),
+        PropKind::Opacity => Float(world.get::<ph2d_render::Sprite>(e)?.tint[3]),
+    })
+}
+
+/// The default interpolation for a freshly inserted key (a gentle ease).
+pub(crate) fn default_interp() -> ph2d_anim::Interp {
+    ph2d_anim::Interp::Eased(ph2d_anim::Easing::new(
+        ph2d_anim::EasingFamily::Cubic,
+        ph2d_anim::EasingMode::InOut,
+    ))
+}
+
 /// Map a "+Track" property-button id to its [`PropKind`] (the shell binds the
 /// selected sprite's matching property). `None` for non-"+Track" ids.
 pub(crate) fn prop_for_addprop_id(id: ph2d_editor::NodeId) -> Option<PropKind> {
@@ -125,6 +155,27 @@ mod tests {
             intent_for_transport(&PanelEvent::Click(ids::TIMELINE_CLOSE), &st, &ph),
             None
         );
+    }
+
+    #[test]
+    fn sample_reads_transform_and_opacity() {
+        use ph2d_anim::AnimValue;
+        use ph2d_core::Vec2;
+        use ph2d_ecs::{Transform, World};
+        let mut w = World::new();
+        let e = w
+            .spawn(Transform::from_translation(Vec2::new(7.0, -3.0)))
+            .id();
+        assert_eq!(
+            sample_prop_value(&w, e.to_bits(), PropKind::TranslationX),
+            Some(AnimValue::Float(7.0))
+        );
+        assert_eq!(
+            sample_prop_value(&w, e.to_bits(), PropKind::TranslationY),
+            Some(AnimValue::Float(-3.0))
+        );
+        // No Sprite component → opacity sample is None (skipped, not a panic).
+        assert_eq!(sample_prop_value(&w, e.to_bits(), PropKind::Opacity), None);
     }
 
     #[test]

@@ -68,14 +68,15 @@ pub(super) fn blur_of(blurs: &[(usize, Vec<f32>)], r: usize) -> &[f32] {
 /// mask): the water redisperses the NEIGHBOUR washes' pigment, and a dilution-carrying stroke
 /// must not ring against itself (the single-stroke path stays byte-identical).
 pub(super) struct UnionFields {
-    pres: Vec<f32>,
     near: [Vec<f32>; 4],
     far: Option<[Vec<f32>; 4]>,
 }
 
 impl UnionFields {
-    /// Sample `(raw presence, blurred presence, colour)` at the warped window-local coord — the
-    /// same near→far soak lerp as the dried-base fields.
+    /// Sample `(blurred presence, colour)` at the warped window-local coord — the same near→far
+    /// soak lerp as the dried-base fields. ONLY blurred reads leave this struct: the raw union
+    /// presence is a per-pixel cliff (hardened coverage × recency-owner mask) and printed a hard
+    /// pixelated seam wherever a term consumed it (Enio smoke 2026-07-09, take 2).
     fn sample(
         &self,
         f: &RewetFields,
@@ -84,8 +85,7 @@ impl UnionFields {
         sx: f32,
         sy: f32,
         s: f32,
-    ) -> (f32, f32, [f32; 3]) {
-        let lp = f.samp(&self.pres, rx0, ry0, sx, sy).clamp(0.0, 1.0);
+    ) -> (f32, [f32; 3]) {
         let n0 = f.samp(&self.near[0], rx0, ry0, sx, sy);
         let bp = if let Some(far) = &self.far {
             let f0 = f.samp(&far[0], rx0, ry0, sx, sy);
@@ -106,7 +106,7 @@ impl UnionFields {
                 };
             }
         }
-        (lp, bp, bleed)
+        (bp, bleed)
     }
 }
 
@@ -129,6 +129,7 @@ pub(super) fn build_union_fields(
     let half = ds / 2;
     let has_col = color.len() == coverage.len() * 4;
     let has_own = owner.len() == coverage.len();
+    // Raw presence is BLUR SOURCE only (see [`UnionFields::sample`]).
     let mut pres = vec![0.0f32; lw * lh];
     let mut wr = vec![0.0f32; lw * lh];
     let mut wg = vec![0.0f32; lw * lh];
@@ -178,7 +179,7 @@ pub(super) fn build_union_fields(
             box_blur(&wb, lw, lh, r2),
         ]
     });
-    UnionFields { pres, near, far }
+    UnionFields { near, far }
 }
 
 /// The rewet terms at one output pixel: how much base paint LIFTS, how much dissolved pigment
@@ -260,18 +261,32 @@ pub(super) fn rewet_px(
     // (`raw − halo`, a shell just inside the jagged boundary — Curtis §2.2 "severely darkened
     // edges"), tints the wash, and EMPTIES the wet wash it came from (`lift_wash`).
     if water > 0.0 {
-        let (lp_u, bp_u, bleed_u) = match u {
+        let (bp_u, bleed_u) = match u {
             Some(u) => u.sample(f, rx0, ry0, sx, sy, s),
-            None => (0.0, 0.0, [0.0; 3]),
+            None => (0.0, [0.0; 3]),
         };
-        out.lift_wash = (REWET_LIFT * water * lp_u * (1.0 + SOAK_LIFT * s_raw)).min(LIFT_MAX);
+        // BLURRED presence: the raw field steps 0→1 in one pixel at the wash's hardened-coverage
+        // edge AND at the recency-owner boundary — a per-pixel cliff the lift multiplied straight
+        // into the density (the hard pixelated junction seams, Enio smoke 2026-07-09 take 2).
+        out.lift_wash = (REWET_LIFT * water * bp_u * (1.0 + SOAK_LIFT * s_raw)).min(LIFT_MAX);
         let bp_ring = bp.max(bp_u);
         if bp_ring > 1e-4 {
             let halo = f
                 .samp(&f.water_halo, rx0, ry0, wxg - rx0 as f32, wyg - ry0 as f32)
                 .clamp(0.0, 1.0);
-            out.backrun = (water - halo).max(0.0);
-            out.pool += BACKRUN_POOL * bp_ring * out.backrun;
+            // Ring raw side = the SOFTENED pool at the same serrated coord — the raw channel's
+            // hard edge stair-stepped under the ±5 px serration (see `water_soft`'s field doc).
+            let wsoft = f
+                .samp(&f.water_soft, rx0, ry0, wxg - rx0 as f32, wyg - ry0 as f32)
+                .clamp(0.0, 1.0);
+            let shell = (wsoft - halo).max(0.0);
+            // The CONC deepen scales by the ring's pigment PRESENCE: it concentrates REDISPERSED
+            // pigment, so it must fade with its source. The bare presence GATE otherwise flips
+            // the full-strength deepen on/off at the presence tail — a 38-byte/px staircase along
+            // the streak's lateral (Enio smoke 2026-07-09 take 2; the pool term was already
+            // smooth because it always scaled by `bp_ring`).
+            out.backrun = shell * bp_ring.min(1.0);
+            out.pool += BACKRUN_POOL * bp_ring * shell;
             // Union tint: the neighbour's RAW pigment bleeds into the pool (weight-merged with
             // the dried-base tint; zero union presence ⇒ the dried path bit-exact).
             let du = (water * bp_u * (1.0 + SOAK_DISSOLVE * s)).clamp(0.0, 1.0);

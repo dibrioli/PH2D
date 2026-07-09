@@ -565,3 +565,30 @@ MESMA sessão não "re-molha" mais a vizinha — fusão pura EDGE-1 (o comportam
 próprio bug); (b) o anel do backrun sobre wash molhado vem do pigmento CRU da união (mais
 saturado que a aparência assada de antes) e o interior esvazia por `lift_wash`. Sobre pintura
 seca, byte-idêntico ao aprovado.
+
+#### Take 2 (Enio smoke 2026-07-09, "resolveu! mas forma bordas duras e pixeladas na lateral da lavada")
+
+O retângulo morreu; sobraram degraus de 25-46 bytes/px na LATERAL de um traço com Dilution
+cruzando wash cheio da sessão. Bisseção instrumentada (perfis por-termo com knobs zerados):
+o **pool sempre foi suave** (escala por `bp_ring`); os culpados eram:
+
+1. **Gate do anel sem rampa no CONC** (o dominante — degrau medido 38): o bloco do anel liga em
+   `bp_ring > 1e-4`, e o deepen do CONC entrava com o `backrun` CHEIO no pixel em que o gate
+   abre (na cauda da presença union o vizinho tem deepen 0 → notch de 89→51). **Fix:**
+   `out.backrun = shell × bp_ring` — o CONC aprofunda pigmento REDISPERSO, então esmaece com a
+   fonte (rampa contínua a partir do gate; o pool já escalava assim e fica byte-igual).
+2. **Serração dobrando o gradiente do raw** (secundário): a coordenada serrilhada (±5 px)
+   atravessa a borda do canal d'água ~2× mais rápido e o CONC exponenciava os passos. **Fix:**
+   campo `water_soft` (blur ~3 px do canal) como lado raw do shell, amostrado NA MESMA
+   coordenada serrilhada — o couve-flor (célula 12 px) fica, os degraus de 1 px morrem.
+
+Medido (lateral, varredura em linha DENTRO do wash): degrau máx 44→13 (dilution pura) e 31→9
+(Bleed+Edge altos). O degrau vertical de ~84 no meu primeiro instrumento era a SILHUETA
+endurecida normal do wash (SS0/SS1, by-design) — instrumento errado, não bug. `lift_wash`
+também passou pro `bp_u` borrado (o raw era um penhasco por-pixel de dono/cobertura — mesmo
+princípio: nenhuma leitura CRUA da union sai do campo).
+
+Teste refutável: `watercolor_water_streak_lateral_is_not_pixelated` (varredura lateral ≤ 18
+bytes/px; FAIL provado pré-fix com 45). 498/498 · clippy 0 · LOC gates verdes. SMOKE-GATE: o
+"streak bloom" de um traço diluído sobre wash agora rampa suave (o vale escuro fica, a escada
+some); anel da gota grande um fio mais macio (CONC × presença ≈ ×0.9 sobre wash denso).

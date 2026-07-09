@@ -13544,3 +13544,74 @@ fn watercolor_clean_water_backrun_blooms_on_wet_session_wash() {
         "água pura sobre papel em branco não deposita nada"
     );
 }
+
+/// **EDGE-2 take 2 (Enio smoke 2026-07-09, "bordas duras e pixeladas na lateral da lavada"):**
+/// um traço com Dilution cruzando um wash cheio da MESMA sessão forma o "streak bloom" (anel ao
+/// longo do pool estreito — física), mas a LATERAL dele não pode ser dura/pixelada: a leitura
+/// serrilhada (±5 px) do canal de água cru dobrava o gradiente da borda e o CONC exponenciava o
+/// staircase (saltos de 25-46 bytes/px medidos). O anel agora lê o water SUAVIZADO
+/// (`water_soft`, blur ~3 px) na MESMA coordenada serrilhada — couve-flor (célula 12 px) fica,
+/// os degraus de 1 px morrem. Propriedade: varredura LATERAL dentro do wash cheio, cruzando as
+/// bordas do pool do traço d'água → nenhum salto vizinho maior que o limiar.
+#[test]
+fn watercolor_water_streak_lateral_is_not_pixelated() {
+    let size = 192u32;
+    let mut t = white_canvas(size, 8.0);
+    t.paint.brush = BrushSpec {
+        radius_px: 12.0,
+        hardness: 1.0,
+        falloff: Falloff::Constant,
+        color: [0.85, 0.1, 0.1],
+        space_attenuation: false,
+        watercolor: true,
+        fill: 0.35,
+        depth: 1.5,
+        edge_gain: 0.0, // isola o anel do rim
+        edge_spread: 8.0,
+        warp: 0.0,
+        granulation: 0.0,
+        wet_rewet: 0.0,
+        wet_dilution: 0.0, // wash A CHEIO (sem água própria — o pool do B cruza pigmento denso)
+        ..Default::default()
+    };
+    for slot in &mut t.paint.brush_by_mode {
+        *slot = t.paint.brush;
+    }
+    // Wash A horizontal cheio (banda y ≈ 83..107) + traço B vertical com Dilution cruzando —
+    // mesma sessão molhada (a cruz do smoke).
+    assert!(t.on_canvas_pointer(cp([25.0, 95.0], PointerPhase::Down)));
+    let mut x = 25.0f32;
+    while x < 120.0 {
+        x += 2.0;
+        t.on_canvas_pointer(cp([x, 95.0], PointerPhase::Move));
+    }
+    t.on_canvas_pointer(cp([120.0, 95.0], PointerPhase::Up));
+    t.paint.brush.wet_dilution = 0.7;
+    for slot in &mut t.paint.brush_by_mode {
+        *slot = t.paint.brush;
+    }
+    assert!(t.on_canvas_pointer(cp([60.0, 30.0], PointerPhase::Down)));
+    let mut y = 30.0f32;
+    while y < 160.0 {
+        y += 2.0;
+        t.on_canvas_pointer(cp([60.0, y], PointerPhase::Move));
+    }
+    t.on_canvas_pointer(cp([60.0, 160.0], PointerPhase::Up));
+    // Varredura LATERAL: dentro do interior de A (y = 89, longe da silhueta dele), cruzando as
+    // laterais do pool d'água de B (x ≈ 48 e 72) — onde o smoke viu os degraus pixelados.
+    let mut max_step = 0.0f32;
+    let mut at_x = 0u32;
+    for x in 30..110u32 {
+        let a = f32::from(px(&t, size, x, 89)[1]);
+        let b = f32::from(px(&t, size, x + 1, 89)[1]);
+        if (a - b).abs() > max_step {
+            max_step = (a - b).abs();
+            at_x = x;
+        }
+    }
+    assert!(
+        max_step <= 18.0,
+        "a lateral do streak d'água sobre o wash deve ser suave — degrau máx G {max_step:.0} em \
+         x={at_x} (a serração não pode imprimir staircase de 1 px no anel)"
+    );
+}

@@ -2,8 +2,8 @@
 //! `motion.clone` — a Motion **cloner**: multiplies its input instance stream
 //! into `count` copies laid along a **polar step axis** — each copy offset on
 //! `P` by `copy_base · (distance·cos θ, distance·sin θ)`, where θ (`angle`, in
-//! turns) frees the row from the X/Y grid so the artist dials any direction with
-//! one control, and `copy_base` is the copy's signed rank. With `center` off the
+//! **degrees**) frees the row from the X/Y grid so the artist dials any direction
+//! with one control, and `copy_base` is the copy's signed rank. With `center` off the
 //! ranks are `0,1,2,…` (the row grows away from the original); with `center` on
 //! they are balanced about zero (`… −1, 0, 1 …`) so the queue straddles the
 //! original instead of trailing from it. Other columns replicate unchanged —
@@ -16,7 +16,7 @@
 //! count`. Pure; the polar direction is transcendental-free (HR-5, see [`trig`]).
 //!
 //! Params (read via `ctx.param` — per-instance override else the manifest
-//! default shown): `count` (3), `distance` (2.0), `angle` (0 turns → +X, so the
+//! default shown): `count` (3), `distance` (2.0), `angle` (0° → +X, so the
 //! default reproduces the old `step = (2, 0)` row), `center` (0 = off).
 //! `count` is read as an element count ([`param_as_count`]) and clamped so the
 //! output `in_count * count` never overflows the allocation; the minimum is one
@@ -36,6 +36,11 @@ mod trig;
 use trig::cos_sin_cycles;
 
 const INST_VEC2: PortType = PortType::new(Domain::Instances, Dim::Vec2, Clock::Frame);
+
+/// Degrees per full turn — the exact divisor from the authored angle into the
+/// cycle-based trig's unit. IEEE division is correctly rounded → deterministic
+/// (HR-5); multiplying by a reciprocal would not be exact.
+const DEG_PER_TURN: f32 = 360.0;
 
 /// The static contract of this node type (ADR-0031).
 pub const MANIFEST: NodeManifest = NodeManifest {
@@ -179,10 +184,11 @@ impl NodeOp for MotionClone {
     }
 
     fn eval(&self, ctx: &mut EvalCtx<'_>) {
-        // Polar step axis: distance along a free direction θ (turns). θ = 0 → +X,
+        // Polar step axis: distance along a free direction θ (degrees). θ = 0 → +X,
         // so `distance = 2` reproduces the old `(step_x, step_y) = (2, 0)` row.
+        // Degrees→cycles at the trig edge (exact IEEE division; HR-5).
         let distance = ctx.param("distance");
-        let (c, s) = cos_sin_cycles(ctx.param("angle"));
+        let (c, s) = cos_sin_cycles(ctx.param("angle") / DEG_PER_TURN);
         let (sx, sy) = (distance * c, distance * s);
         let center = ctx.param("center") >= 0.5; // Toggle: ≥0.5 → centred queue
         // `count` from an `f32` param: total conversion (non-finite/negative →
@@ -215,11 +221,10 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     Ok(())
 }
 
-use ph2d_node_registry::{AngleUnit, ParamUiHint, ParamWidget};
+use ph2d_node_registry::{ParamUiHint, ParamWidget};
 
 /// Param UI hints (M1.P1) for the clone rows: whole-number copy count, a polar
-/// step (distance + free angle), and a centre toggle. The angle is stored in
-/// turns (the cycle-based trig in [`trig`]) and shown in degrees.
+/// step (distance + free angle in degrees), and a centre toggle.
 static PARAM_HINTS: &[ParamUiHint] = &[
     ParamUiHint {
         param: "count",
@@ -240,12 +245,10 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     ParamUiHint {
         param: "angle",
         label: "Angle",
-        min: -1.0,
-        max: 1.0,
-        step: 0.01,
-        widget: ParamWidget::Angle {
-            unit: AngleUnit::Turns,
-        },
+        min: -360.0,
+        max: 360.0,
+        step: 1.0,
+        widget: ParamWidget::Angle,
     },
     ParamUiHint {
         param: "center",
@@ -349,15 +352,29 @@ mod tests {
 
     #[test]
     fn polar_angle_rotates_the_step_axis() {
-        // angle ¼ turn → step direction +Y: count 3, distance 2 → y = 0, 2, 4.
+        // angle 90° → step direction +Y: count 3, distance 2 → y = 0, 2, 4.
         let p = clone_p(|g, clone| {
-            g.set_param(clone, "angle", 0.25);
+            g.set_param(clone, "angle", 90.0);
             g.set_param(clone, "distance", 2.0);
         });
         for (i, expected) in [0.0f32, 2.0, 4.0].into_iter().enumerate() {
             assert!(p[i][0].abs() < 1e-5, "x stays ~0 (pure +Y step)");
             assert!((p[i][1] - expected).abs() < 1e-5, "y = {expected}");
         }
+    }
+
+    #[test]
+    fn a_360_degree_angle_is_the_plus_x_axis_again() {
+        // The degrees→cycles edge is exact: 360° wraps to a whole cycle, so the
+        // step axis returns to +X (guards the `deg / 360` divisor).
+        let p = clone_p(|g, clone| {
+            g.set_param(clone, "angle", 360.0);
+            g.set_param(clone, "distance", 2.0);
+        });
+        assert!(
+            (p[1][0] - 2.0).abs() < 1e-5 && p[1][1].abs() < 1e-5,
+            "back to +X"
+        );
     }
 
     #[test]

@@ -333,13 +333,13 @@ fn on_value_changed(
         if id == param_chip_id(slot) {
             return EventOutcome::Consumed;
         }
-        // The standalone number box of an Angle / Seed row. Angle emits in the
-        // param's NATIVE unit (the box shows degrees), so the bridge stays
-        // unit-agnostic; Seed emits the whole number as typed.
+        // The standalone number box of an Angle / Seed row. An Angle param IS
+        // degrees (the app's authored-angle unit), so the box's value is the
+        // param's value — nothing to convert. Seed emits the whole number typed.
         if id == param_number_id(slot) {
             let committed = number_value(host.store(), id);
             let (param, value) = match &snap.rows[slot] {
-                ParamRow::Angle(row) => (row.name, committed * row.deg_to_native),
+                ParamRow::Angle(row) => (row.name, committed),
                 ParamRow::Seed(row) => (row.name, committed.round()),
                 _ => return EventOutcome::Ignored,
             };

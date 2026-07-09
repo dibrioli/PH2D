@@ -154,7 +154,7 @@ fn build_cavalry_demo(g: &mut Graph, reg: &NodeRegistry) -> Option<NodeId> {
     // top/bottom into the exact 20×20 lattice; continuous Index keeps one ramp.
     g.set_param(clone, "count", 2.0);
     g.set_param(clone, "distance", 5.0);
-    g.set_param(clone, "angle", 0.25); // ¼ turn → +Y
+    g.set_param(clone, "angle", 90.0); // degrees → +Y
     g.set_param(clone, "center", 1.0);
     // Gradient tint: red (start) → blue (end) by index (linear-straight RGBA).
     g.set_param(tint, "mode", 1.0);
@@ -165,7 +165,7 @@ fn build_cavalry_demo(g: &mut Graph, reg: &NodeRegistry) -> Option<NodeId> {
     g.set_param(tint, "g2", 0.3);
     g.set_param(tint, "b2", 1.0);
     // Gentle whole-grid spin about the origin (unmasked — upstream of falloff).
-    g.set_param(orbit, "speed", 0.08);
+    g.set_param(orbit, "speed", 28.8); // degrees/sec — a full revolution in 12.5s
     // Central circle focus (radius 4, smoothstep edge).
     g.set_param(falloff, "radius", 4.0);
     // Y tilt across the grid (masked by the falloff).

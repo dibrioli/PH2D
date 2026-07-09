@@ -29,11 +29,10 @@ pub enum ParamRow {
     Seed(SeedRow),
 }
 
-/// An angle row, always displayed in **degrees** with a `deg` unit chip. The
-/// bridge converts the param's native unit (turns / radians) to degrees when it
-/// builds the row and hands over [`AngleRow::deg_to_native`] so the panel can
-/// convert straight back — every `SetParam` the panel emits is therefore in the
-/// node's own unit, exactly like a Scalar row (the bridge never special-cases it).
+/// An angle row: a number box with a `deg` unit chip. **Degrees end to end** —
+/// the app's one authored-angle unit, so the param already stores what the box
+/// shows and there is nothing to convert in either direction. Whatever consumes
+/// the value (a cycle-based trig, a rotation basis) converts at its own edge.
 #[derive(Clone, Debug, PartialEq)]
 pub struct AngleRow {
     /// Canonical `ParamSpec::name` — echoed back in [`MotionParamIntent::SetParam`].
@@ -45,9 +44,6 @@ pub struct AngleRow {
     pub min_deg: f64,
     pub max_deg: f64,
     pub step_deg: f64,
-    /// Multiply a degrees value by this to recover the param's native unit
-    /// (turns -> `1/360`, radians -> `pi/180`).
-    pub deg_to_native: f64,
 }
 
 /// A random-seed row: a whole-number box plus a re-roll button. A seed has no

@@ -1,11 +1,15 @@
 #![forbid(unsafe_code)]
-//! `motion.rotate` — a Motion **modifier**: adds `angle` (radians) to the `rot`
-//! (Scalar) attribute of its input stream, scaled per-instance by the
+//! `motion.rotate` — a Motion **modifier**: adds `angle` (**degrees**) to the
+//! `rot` (Scalar) attribute of its input stream, scaled per-instance by the
 //! multiplicative `falloff` column (§1.2; absent → `1.0`). A stream without a
 //! `rot` column starts from `0`. `ph2d-eval-motion` turns `rot` into the render
-//! basis (`[cos, sin, -sin, cos]`); this node only accumulates the scalar, so
-//! it stays transcendental-free (HR-5). Every other column passes through
-//! unchanged (count preserved). Pure.
+//! basis (`[cos, sin, -sin, cos]`, converting degrees→radians at that edge);
+//! this node only accumulates the scalar, so it stays transcendental-free
+//! (HR-5). Every other column passes through unchanged (count preserved). Pure.
+//!
+//! Degrees is the app's single authored-angle unit (the Painter's `*_angle_deg`
+//! fields, the Inspector's `deg` boxes) — no radians anywhere in the authoring
+//! surface.
 //!
 //! Params (read via `ctx.param`): `angle` (0.0). `rot'_i = rot_i + angle * falloff_i`.
 
@@ -97,20 +101,17 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     Ok(())
 }
 
-use ph2d_node_registry::{AngleUnit, ParamUiHint, ParamWidget};
+use ph2d_node_registry::{ParamUiHint, ParamWidget};
 
-/// Param UI hints (M1.P1): a signed angle in **radians** — the unit of the `rot`
-/// stream column this node adds to (the renderer's basis unit). The panel paints
-/// it as a `deg` numeric box (-180..180) and converts back.
+/// Param UI hints (M1.P1): a signed angle in **degrees** — the unit of the `rot`
+/// stream column this node adds to. Painted as a `deg` numeric box.
 static PARAM_HINTS: &[ParamUiHint] = &[ParamUiHint {
     param: "angle",
     label: "Angle",
-    min: -std::f32::consts::PI,
-    max: std::f32::consts::PI,
-    step: 0.01,
-    widget: ParamWidget::Angle {
-        unit: AngleUnit::Radians,
-    },
+    min: -180.0,
+    max: 180.0,
+    step: 1.0,
+    widget: ParamWidget::Angle,
 }];
 
 #[cfg(test)]

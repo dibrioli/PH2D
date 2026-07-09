@@ -86,31 +86,31 @@ fn color_row_publishes_and_swatch_id_is_anchor_keyed() {
     set_current_params(None);
 }
 
-/// The Angle row emits in the param's NATIVE unit even though the box shows
-/// degrees: `deg * deg_to_native` is what a `ValueChanged` pushes. A turns
-/// param (factor 1/360) and a radians one (pi/180) both round-trip.
+/// The Angle row publishes degrees end to end — no conversion factor, because the
+/// param already stores degrees (the app's one authored-angle unit). What the box
+/// shows is what a `ValueChanged` pushes back.
 #[test]
-fn angle_row_converts_degrees_back_to_the_native_unit() {
-    let turns = AngleRow {
-        name: "angle",
-        label: "Angle".into(),
-        deg: 90.0,
-        min_deg: -360.0,
-        max_deg: 360.0,
-        step_deg: 1.0,
-        deg_to_native: 1.0 / 360.0,
+fn angle_row_publishes_degrees_verbatim() {
+    let _ = drain_param_intents();
+    set_current_params(Some(ParamsSnapshot {
+        node: 4,
+        title: "Orbit".into(),
+        rows: vec![ParamRow::Angle(AngleRow {
+            name: "angle",
+            label: "Angle".into(),
+            deg: 90.0,
+            min_deg: -360.0,
+            max_deg: 360.0,
+            step_deg: 1.0,
+        })],
+    }));
+    let got = current_params().expect("published");
+    let ParamRow::Angle(a) = &got.rows[0] else {
+        panic!("angle row");
     };
-    assert!(
-        (turns.deg * turns.deg_to_native - 0.25).abs() < 1e-9,
-        "¼ turn"
-    );
-
-    let radians = AngleRow {
-        deg_to_native: std::f64::consts::PI / 180.0,
-        ..turns.clone()
-    };
-    let expected = std::f64::consts::FRAC_PI_2;
-    assert!((radians.deg * radians.deg_to_native - expected).abs() < 1e-9);
+    assert_eq!(a.deg, 90.0);
+    assert_eq!((a.min_deg, a.max_deg), (-360.0, 360.0));
+    set_current_params(None);
 }
 
 /// The Seed row's pooled widgets are distinct from every other row's pool —

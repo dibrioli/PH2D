@@ -9,10 +9,6 @@
 
 use crate::motion_state::MotionState;
 
-/// The Angle row's stepper / drag increment: whole degrees (the Inspector's
-/// angle convention — a `deg` box never scrubs in fractions).
-const ANGLE_STEP_DEG: f64 = 1.0;
-
 /// Apply this frame's params-panel edits to the selected node, bracketed into
 /// undo steps (M1.P1 + colour authoring). Two edit sources, ONE session model:
 ///
@@ -81,7 +77,7 @@ pub(super) fn apply_param_edits(
                 continue;
             };
             // A `channel` switch on a behaviour also resets its magnitude to that
-            // channel's sensible default (world units vs turns vs scale) — same
+            // channel's sensible default (world units vs degrees vs scale) — same
             // undo step, so Ctrl+Z restores the old values.
             let channel_switch = param == "channel"
                 && (param_value(motion, nid, "channel") - value as f32).abs() > f32::EPSILON;
@@ -126,9 +122,9 @@ pub(super) fn param_value(
 
 /// Reset a behaviour node's magnitude params to a sensible default for the newly
 /// selected channel (#10 consistency). Switching what a stagger/oscillator drives
-/// — X/Y position (world units) vs Rotation (turns) vs Size (scale delta) —
-/// rewrites the range so a `±1` meant for position doesn't read as a wild
-/// ±full-turn / ±huge-scale on the other channels. Editor UX (not node math): it
+/// — X/Y position (world units) vs Rotation (degrees) vs Size (scale delta) —
+/// rewrites the range so a `±1` meant for position doesn't read as a barely-there
+/// ±1° / ±huge-scale on the other channels. Editor UX (not node math): it
 /// runs on the channel switch inside the same undo step, so Ctrl+Z restores the
 /// artist's previous values. Non-behaviour node types are a no-op.
 pub(super) fn apply_channel_presets(
@@ -154,25 +150,23 @@ pub(super) fn apply_channel_presets(
     }
 }
 
-/// Stagger `(min, max)` ramp endpoints per channel. **The Rotation channel writes
-/// the `rot` stream column, whose unit is RADIANS** (the renderer's basis unit) —
-/// not turns. Position is world units, Size a scale delta.
+/// Stagger `(min, max)` ramp endpoints per channel. The Rotation channel writes
+/// the `rot` stream column, whose unit is **degrees** (the app's authored-angle
+/// unit); Position is world units, Size a scale delta.
 fn stagger_channel_range(channel: i32) -> (f32, f32) {
-    use std::f32::consts::FRAC_PI_2;
     match channel {
-        2 => (-FRAC_PI_2, FRAC_PI_2), // Rotation: ±90° in radians
-        3 => (-0.5, 0.5),             // Size: ±0.5 scale
-        _ => (-1.0, 1.0),             // Position (X/Y): ±1 world unit
+        2 => (-90.0, 90.0), // Rotation: ±90 degrees
+        3 => (-0.5, 0.5),   // Size: ±0.5 scale
+        _ => (-1.0, 1.0),   // Position (X/Y): ±1 world unit
     }
 }
 
-/// Oscillator peak `amplitude` per channel (same unit logic as the stagger range —
-/// Rotation is radians, not turns).
+/// Oscillator peak `amplitude` per channel (same unit logic as the stagger range).
 fn oscillator_channel_amplitude(channel: i32) -> f32 {
     match channel {
-        2 => std::f32::consts::FRAC_PI_6, // Rotation: ±30° in radians
-        3 => 0.3,                         // Size: ±0.3 scale
-        _ => 1.0,                         // Position: ±1 world unit
+        2 => 30.0, // Rotation: ±30 degrees
+        3 => 0.3,  // Size: ±0.3 scale
+        _ => 1.0,  // Position: ±1 world unit
     }
 }
 
@@ -389,18 +383,16 @@ pub(super) fn build_params_snapshot(
                     }));
                     continue;
                 }
-                ParamWidget::Angle { unit } => {
-                    // Shown in degrees whatever the param stores (turns for a
-                    // cycle-based node, radians for the `rot` column); the row
-                    // carries the inverse factor so the panel emits node-native.
+                ParamWidget::Angle => {
+                    // Degrees end to end — the param already stores what the
+                    // `deg` box shows, so the row is a straight copy of the hint.
                     rows.push(ParamRow::Angle(AngleRow {
                         name: spec.name,
                         label: h.label.to_string(),
-                        deg: f64::from(unit.to_degrees(value_of(spec.name))),
-                        min_deg: f64::from(unit.to_degrees(h.min)),
-                        max_deg: f64::from(unit.to_degrees(h.max)),
-                        step_deg: ANGLE_STEP_DEG,
-                        deg_to_native: f64::from(unit.deg_to_native()),
+                        deg: f64::from(value_of(spec.name)),
+                        min_deg: f64::from(h.min),
+                        max_deg: f64::from(h.max),
+                        step_deg: f64::from(h.step),
                     }));
                     continue;
                 }

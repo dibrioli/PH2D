@@ -1,6 +1,6 @@
 #![forbid(unsafe_code)]
 //! `motion.orbit` — a Motion **spatial transform**: rotates each instance's
-//! position `P` **around a pivot** by `angle + playhead·speed` (turns), masked
+//! position `P` **around a pivot** by `angle + playhead·speed` (**degrees**), masked
 //! per-instance by the multiplicative `falloff` column (§1.2; absent → `1.0`).
 //! The one spatial capability the modifier set lacked — `motion.rotate` only
 //! spins the sprite's own basis in place; this moves the *position* on a circle
@@ -14,8 +14,10 @@
 //! [`trig`]); each frame rotates the pristine upstream `P` by the absolute angle,
 //! so nothing drifts.
 //!
-//! Params (read via `ctx.param`): `pivot_x` (0), `pivot_y` (0), `angle` (0 turns —
-//! a static offset), `speed` (0.2 turns/sec — continuous orbit).
+//! Params (read via `ctx.param`): `pivot_x` (0), `pivot_y` (0), `angle` (0° — a
+//! static offset), `speed` (72°/sec — continuous orbit). Degrees is the app's one
+//! authored-angle unit; the cycle-based trig converts at the edge (`deg / 360`,
+//! an exact IEEE division — deterministic, HR-5).
 
 use ph2d_node_registry::{NodeRegistry, RegistryError};
 use ph2d_nodegraph::attr::{Column, Stream};
@@ -60,11 +62,16 @@ pub const MANIFEST: NodeManifest = NodeManifest {
         },
         ParamSpec {
             name: "speed",
-            default: 0.2,
+            default: 72.0,
         },
     ],
     lowerings: &[LoweringKind::Cpu],
 };
+
+/// Degrees per full turn — the exact divisor that takes an authored angle into
+/// the cycle-based trig's unit. IEEE division is correctly rounded, so this is
+/// deterministic (HR-5); multiplying by a reciprocal would not be exact.
+const DEG_PER_TURN: f32 = 360.0;
 
 /// The multiplicative `falloff` weight for instance `i` (absent → `1.0`).
 fn falloff_at(stream: &Stream, i: usize) -> f32 {
@@ -96,8 +103,8 @@ impl NodeOp for MotionOrbit {
         let pivot = [ctx.param("pivot_x"), ctx.param("pivot_y")];
         let angle = ctx.param("angle");
         let speed = ctx.param("speed");
-        let theta = angle + ctx.playhead() as f32 * speed; // turns (cycles)
-        let (c, s) = cos_sin_cycles(theta);
+        let theta_deg = angle + ctx.playhead() as f32 * speed;
+        let (c, s) = cos_sin_cycles(theta_deg / DEG_PER_TURN);
         let out = {
             let input = ctx.input(0);
             let n = input.count();
@@ -141,11 +148,10 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     Ok(())
 }
 
-use ph2d_node_registry::{AngleUnit, ParamUiHint, ParamWidget};
+use ph2d_node_registry::{ParamUiHint, ParamWidget};
 
-/// Param UI hints (M1.P1): signed pivot, static angle (stored in turns, shown as
-/// degrees), orbit speed (turns/sec — the enum-less continuous drivers stay
-/// sliders; a rate is not an angle).
+/// Param UI hints (M1.P1): signed pivot, static angle (degrees, a `deg` box),
+/// orbit speed (degrees/sec — a rate is not an angle, so it stays a slider).
 static PARAM_HINTS: &[ParamUiHint] = &[
     ParamUiHint {
         param: "pivot_x",
@@ -166,19 +172,17 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     ParamUiHint {
         param: "angle",
         label: "Angle",
-        min: -1.0,
-        max: 1.0,
-        step: 0.01,
-        widget: ParamWidget::Angle {
-            unit: AngleUnit::Turns,
-        },
+        min: -360.0,
+        max: 360.0,
+        step: 1.0,
+        widget: ParamWidget::Angle,
     },
     ParamUiHint {
         param: "speed",
         label: "Speed",
-        min: -2.0,
-        max: 2.0,
-        step: 0.01,
+        min: -720.0,
+        max: 720.0,
+        step: 1.0,
         widget: ParamWidget::Slider,
     },
 ];
@@ -251,11 +255,11 @@ mod tests {
 
     #[test]
     fn quarter_turn_about_origin_maps_x_axis_to_y_axis() {
-        // angle ¼ turn, speed 0, pivot origin: (1,0) → ≈(0,1). Instance 1 has
+        // angle 90°, speed 0, pivot origin: (1,0) → ≈(0,1). Instance 1 has
         // falloff 0 → stays put (mask blends back to the original).
         let p = orbit_p(
             |g, ob| {
-                g.set_param(ob, "angle", 0.25);
+                g.set_param(ob, "angle", 90.0);
                 g.set_param(ob, "speed", 0.0);
             },
             0.0,
@@ -267,12 +271,29 @@ mod tests {
 
     #[test]
     fn speed_drives_a_continuous_orbit_over_time() {
-        // speed ¼ turn/sec: at t=1 the point has swept a quarter turn (like the
-        // static ¼ angle above). Different time → different position.
-        let a = orbit_p(|g, ob| g.set_param(ob, "speed", 0.25), 0.0);
-        let b = orbit_p(|g, ob| g.set_param(ob, "speed", 0.25), 1.0);
+        // speed 90°/sec: at t=1 the point has swept a quarter turn (like the
+        // static 90° angle above). Different time → different position.
+        let a = orbit_p(|g, ob| g.set_param(ob, "speed", 90.0), 0.0);
+        let b = orbit_p(|g, ob| g.set_param(ob, "speed", 90.0), 1.0);
         assert_eq!(a[0], [1.0, 0.0], "t=0 → identity (θ=0)");
         assert!((b[0][1] - 1.0).abs() < 1e-5, "t=1 → quarter-turn to y≈1");
+    }
+
+    #[test]
+    fn a_full_360_degree_angle_is_the_identity() {
+        // The degrees→cycles edge is exact: 360° wraps to a whole cycle, so the
+        // point lands back on itself (guards the `deg / 360` divisor).
+        let p = orbit_p(
+            |g, ob| {
+                g.set_param(ob, "angle", 360.0);
+                g.set_param(ob, "speed", 0.0);
+            },
+            0.0,
+        );
+        assert!(
+            (p[0][0] - 1.0).abs() < 1e-5 && p[0][1].abs() < 1e-5,
+            "360° → identity"
+        );
     }
 
     #[test]
@@ -281,7 +302,7 @@ mod tests {
         let p = orbit_p(
             |g, ob| {
                 g.set_param(ob, "pivot_x", 1.0);
-                g.set_param(ob, "angle", 0.3);
+                g.set_param(ob, "angle", 108.0);
                 g.set_param(ob, "speed", 0.0);
             },
             0.0,

@@ -58,41 +58,6 @@ pub struct NodeUiManifest {
     pub silhouette: NodeSilhouette,
 }
 
-/// The unit a [`ParamWidget::Angle`] param stores its value in. The panel always
-/// *displays* degrees (the artist-facing unit, with a `deg` chip); this says what
-/// to convert from. Motion has both: a node's own cycle-based trig reads
-/// [`Turns`](AngleUnit::Turns), while anything written into the stream's `rot`
-/// column reads [`Radians`](AngleUnit::Radians) (the renderer's basis unit).
-/// Making it explicit beats a per-node comment nobody reads.
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub enum AngleUnit {
-    /// Whole turns / cycles: `1.0` = a full revolution.
-    Turns,
-    /// Radians: `2π` = a full revolution (the `rot` stream column's unit).
-    Radians,
-}
-
-impl AngleUnit {
-    /// Convert a value in this unit to degrees (what the panel shows).
-    #[must_use]
-    pub fn to_degrees(self, native: f32) -> f32 {
-        match self {
-            AngleUnit::Turns => native * 360.0,
-            AngleUnit::Radians => native.to_degrees(),
-        }
-    }
-
-    /// Factor that converts a degrees value back to this unit — the panel
-    /// multiplies by it so the emitted param value is always node-native.
-    #[must_use]
-    pub fn deg_to_native(self) -> f32 {
-        match self {
-            AngleUnit::Turns => 1.0 / 360.0,
-            AngleUnit::Radians => core::f32::consts::PI / 180.0,
-        }
-    }
-}
-
 /// Which widget a param row renders in the params panel (M1.P1). The frozen
 /// [`ph2d_nodegraph::node::ParamSpec`] only carries `{name, default: f32}`, so
 /// the editable range + control + label live here as additive side-metadata.
@@ -102,11 +67,12 @@ pub enum ParamWidget {
     Slider,
     /// Whole-number slider — the chip rounds to an integer (count / index).
     IntSlider,
-    /// An angle: a numeric box with a `deg` unit chip (type `90deg`, drag-scrub),
-    /// always shown in **degrees**. `unit` says what the param itself stores, so
-    /// the panel converts both ways — a turns-based node and a radians-based one
-    /// both read as degrees to the artist.
-    Angle { unit: AngleUnit },
+    /// An angle: a numeric box with a `deg` unit chip (type `90deg`, drag-scrub,
+    /// stepper). **The param stores DEGREES** — the app's one authored-angle unit
+    /// (the Painter's `*_angle_deg` fields, the Inspector's `deg` boxes). Radians
+    /// and turns are implementation details of whatever consumes the value, never
+    /// of the value itself, so there is nothing for the panel to convert.
+    Angle,
     /// On/off toggle (0.0 / 1.0). Rendered as a slider clamped to `0..1` in v1.
     Toggle,
     /// Random seed — a whole-number box plus a **re-roll** button (a seed has no

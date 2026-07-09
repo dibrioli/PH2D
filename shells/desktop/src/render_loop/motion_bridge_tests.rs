@@ -192,19 +192,17 @@ fn stagger_params_are_named_enums_and_a_checkbox() {
 
 /// #10 consistency: switching a behaviour's channel resets its magnitude to a
 /// channel-sensible default. The Rotation channel writes the `rot` stream column,
-/// whose unit is **radians** (the renderer's basis unit) — NOT turns — so a
-/// stagger driving Rotation gets a ±90° = ±pi/2 ramp, not the ±1 world-unit range
-/// meant for position. Non-behaviour node types are untouched.
+/// whose unit is **degrees** — so a stagger driving Rotation gets a ±90 ramp, not
+/// the ±1 world-unit range meant for position. Non-behaviour types are untouched.
 #[test]
 fn channel_switch_resets_behaviour_magnitude_to_channel_defaults() {
-    use std::f32::consts::{FRAC_PI_2, FRAC_PI_6};
     let mut motion = MotionState::new();
     let st = motion.doc.graph.add_node("motion.stagger");
 
-    // -> Rotation (channel 2): a ±90° ramp, expressed in the column's radians.
+    // -> Rotation (channel 2): a ±90 degree ramp.
     apply_channel_presets(&mut motion, st, "motion.stagger", 2.0);
-    assert_eq!(param_value(&motion, st, "min"), -FRAC_PI_2);
-    assert_eq!(param_value(&motion, st, "max"), FRAC_PI_2);
+    assert_eq!(param_value(&motion, st, "min"), -90.0);
+    assert_eq!(param_value(&motion, st, "max"), 90.0);
     // -> Size (channel 3): ±½ scale.
     apply_channel_presets(&mut motion, st, "motion.stagger", 3.0);
     assert_eq!(param_value(&motion, st, "min"), -0.5);
@@ -214,10 +212,10 @@ fn channel_switch_resets_behaviour_magnitude_to_channel_defaults() {
     assert_eq!(param_value(&motion, st, "min"), -1.0);
     assert_eq!(param_value(&motion, st, "max"), 1.0);
 
-    // Oscillator amplitude scales the same way (Rotation peaks at 30° in radians).
+    // Oscillator amplitude scales the same way (Rotation peaks at 30 degrees).
     let osc = motion.doc.graph.add_node("motion.oscillator");
     apply_channel_presets(&mut motion, osc, "motion.oscillator", 2.0);
-    assert_eq!(param_value(&motion, osc, "amplitude"), FRAC_PI_6);
+    assert_eq!(param_value(&motion, osc, "amplitude"), 30.0);
     apply_channel_presets(&mut motion, osc, "motion.oscillator", 1.0);
     assert_eq!(param_value(&motion, osc, "amplitude"), 1.0);
 
@@ -231,12 +229,12 @@ fn channel_switch_resets_behaviour_magnitude_to_channel_defaults() {
     );
 }
 
-/// Angle params resolve to a `deg` number-box row (never a raw turns/radians
-/// slider), whatever unit the node stores. Both units land in the SAME artist
-/// unit — degrees — and the row's `deg_to_native` factor converts straight back,
-/// so the panel emits node-native values and the bridge never special-cases it.
+/// Angle params resolve to a `deg` number-box row, and the row is degrees end to
+/// end — the param stores exactly what the box shows. `motion.rotate` (which adds
+/// to the `rot` column) and `motion.orbit` (whose trig is cycle-based) both
+/// author in the SAME unit; radians and turns exist nowhere on this surface.
 #[test]
-fn angle_params_resolve_to_degree_rows_for_both_units() {
+fn angle_params_resolve_to_degree_rows() {
     use ph2d_panel_motion_params::ParamRow;
     let mut motion = MotionState::new();
 
@@ -252,22 +250,30 @@ fn angle_params_resolve_to_degree_rows_for_both_units() {
             .unwrap_or_else(|| panic!("{who} has no Angle row"))
     };
 
-    // Turns-based (motion.orbit): ±1 turn shows as ±360 deg.
-    let orbit = motion.doc.graph.add_node("motion.orbit");
-    ph2d_panel_motion_graph::set_graph_selection(vec![orbit.0]);
-    let a = angle_row(&motion, "orbit");
-    assert_eq!((a.min_deg, a.max_deg), (-360.0, 360.0));
-    // Typing 90 deg converts back to a quarter turn (the factor is f32-derived,
-    // so compare at f32 precision, not f64).
-    assert!((90.0 * a.deg_to_native - 0.25).abs() < 1e-6);
-
-    // Radians-based (motion.rotate, the `rot` column's unit): ±pi shows as ±180.
+    // motion.rotate feeds the `rot` column: a full-circle range in degrees.
     let rot = motion.doc.graph.add_node("motion.rotate");
     ph2d_panel_motion_graph::set_graph_selection(vec![rot.0]);
     let a = angle_row(&motion, "rotate");
-    assert!((a.min_deg + 180.0).abs() < 1e-4 && (a.max_deg - 180.0).abs() < 1e-4);
-    // Typing 90 deg converts back to pi/2 radians.
-    assert!((90.0 * a.deg_to_native - f64::from(std::f32::consts::FRAC_PI_2)).abs() < 1e-6);
+    assert_eq!(
+        (a.min_deg, a.max_deg),
+        (-180.0, 180.0),
+        "degrees, not radians"
+    );
+    assert_eq!(a.deg, 0.0, "default 0 deg");
+
+    // motion.orbit's polar angle: the same unit, a wider range.
+    let orbit = motion.doc.graph.add_node("motion.orbit");
+    ph2d_panel_motion_graph::set_graph_selection(vec![orbit.0]);
+    let a = angle_row(&motion, "orbit");
+    assert_eq!(
+        (a.min_deg, a.max_deg),
+        (-360.0, 360.0),
+        "degrees, not turns"
+    );
+
+    // Setting 90 deg on the doc reads back as 90 in the row — no conversion.
+    motion.doc.graph.set_param(orbit, "angle", 90.0);
+    assert_eq!(angle_row(&motion, "orbit").deg, 90.0);
 
     ph2d_panel_motion_graph::set_graph_selection(Vec::new());
 }

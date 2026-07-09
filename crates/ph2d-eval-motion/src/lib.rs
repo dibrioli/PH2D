@@ -18,7 +18,7 @@
 //! |-----------|--------|--------------------------|----------------------------|
 //! | `P`       | Vec2   | `world_pos`              | `[0,0]`                    |
 //! | `size`    | Vec2   | `size`                   | caller's `default_size`    |
-//! | `rot`     | Scalar | `basis` (rotation rad)   | `0` → identity             |
+//! | `rot`     | Scalar | `basis` (rotation **deg**) | `0` → identity            |
 //! | `tint`    | Vec4   | `tint` (rgba)            | `[1,1,1,1]`                |
 //! | `uv_rect` | Vec4   | `atlas_uv` (u0,v0,u1,v1) | caller's `default_uv_rect` |
 //!
@@ -72,7 +72,12 @@ pub fn lower_to_instances_into(
         // rotation (no skew), so the basis is a pure rotation matrix
         // `[cos, sin, -sin, cos]`. RenderInstance is PresentWorld-only
         // (HR-5 exempt), so std `sin_cos` is fine here.
-        let (sin_r, cos_r) = scalar_at(rot, i, 0.0).sin_cos();
+        //
+        // The `rot` column is in **degrees** — the app's authored-angle unit
+        // (the Painter's `*_angle_deg` fields, the Inspector's `deg` boxes).
+        // Radians live nowhere in the Motion authoring surface; only this
+        // conversion, at the very edge where the basis is built.
+        let (sin_r, cos_r) = scalar_at(rot, i, 0.0).to_radians().sin_cos();
         out.push(RenderInstance {
             world_pos: vec2_at(p, i, [0.0, 0.0]),
             size: vec2_at(size, i, default_size),
@@ -306,6 +311,33 @@ mod tests {
         assert_eq!(out[0].basis, RenderInstance::IDENTITY_BASIS);
         assert_eq!(out[1].tint, [1.0, 1.0, 1.0, 1.0]); // default
         assert_eq!(out[0].atlas_uv, [0.0, 0.0, 1.0, 1.0]);
+    }
+
+    #[test]
+    fn rot_column_is_degrees_not_radians() {
+        // The authored unit is degrees (the app's convention); the lowering is
+        // the ONLY place it becomes radians, to build the basis. 90 deg maps the
+        // x-axis onto the y-axis: basis = [cos, sin, -sin, cos] = [0, 1, -1, 0].
+        // Read as radians this would be a meaningless ~1.4 rad rotation.
+        let s = Stream::new(3)
+            .with("P", Column::Vec2(vec![[0.0, 0.0], [0.0, 0.0], [0.0, 0.0]]))
+            .with("rot", Column::Scalar(vec![0.0, 90.0, 180.0]));
+        let out = lower_to_instances(&s);
+        assert_eq!(out[0].basis, RenderInstance::IDENTITY_BASIS, "0 deg");
+        let b = out[1].basis;
+        assert!(
+            b[0].abs() < 1e-6 && (b[1] - 1.0).abs() < 1e-6,
+            "90 deg: cos 0, sin 1"
+        );
+        assert!(
+            (b[2] + 1.0).abs() < 1e-6 && b[3].abs() < 1e-6,
+            "90 deg: -sin -1, cos 0"
+        );
+        let b = out[2].basis;
+        assert!(
+            (b[0] + 1.0).abs() < 1e-6 && b[1].abs() < 1e-6,
+            "180 deg: cos -1, sin 0"
+        );
     }
 
     #[test]

@@ -17,7 +17,7 @@ use ph2d_nodegraph::node::{NodeManifest, NodeOp, NodeTypeId};
 use std::collections::BTreeMap;
 
 mod ui;
-pub use ui::{AngleUnit, NodeSilhouette, NodeUiCategory, NodeUiManifest, ParamUiHint, ParamWidget};
+pub use ui::{NodeSilhouette, NodeUiCategory, NodeUiManifest, ParamUiHint, ParamWidget};
 
 /// A registered set of node operations, keyed by their stable type id.
 /// Deterministic iteration (`BTreeMap`, ADR-0022 / HR-5).

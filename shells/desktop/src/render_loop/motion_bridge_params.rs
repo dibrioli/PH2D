@@ -294,15 +294,17 @@ pub(super) fn apply_color_to_node(
     channels: [&'static str; 4],
     srgb: [u8; 4],
 ) {
-    let new = srgb8_to_linear_rgba(srgb);
     let cur = channel_values(motion, nid, channels);
-    if !new
-        .into_iter()
-        .zip(cur)
-        .any(|(n, c)| (n - c).abs() > f32::EPSILON)
-    {
+    // Compare in the space the pick actually lives in — sRGB8, what the picker
+    // reads and writes. Comparing the LINEAR values instead would fire on a doc
+    // colour that is not an exact 8-bit round-trip (say `r = 0.5`): merely OPENING
+    // the picker seeds it with the swatch's 8-bit display colour, the read-back
+    // decodes to `0.50004…`, and the guard would see a change and quantize the
+    // doc — an edit the artist never made, wrapped in an undo step.
+    if srgb == linear_rgba_to_srgb8(cur) {
         return;
     }
+    let new = srgb8_to_linear_rgba(srgb);
     for (name, v) in channels.into_iter().zip(new) {
         motion.doc.graph.set_param(nid, name, v);
     }

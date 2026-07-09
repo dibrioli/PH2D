@@ -35,6 +35,10 @@ mod params;
 #[path = "motion_bridge_tests.rs"]
 mod tests;
 
+#[cfg(all(test, feature = "panel-motion-graph", feature = "panel-motion-params"))]
+#[path = "motion_bridge_param_tests.rs"]
+mod param_tests;
+
 /// Per-frame Motion-tool plumbing. Safe to call every frame; a no-op when the
 /// Motion tool is inactive (beyond flipping panel visibility / the split off).
 ///

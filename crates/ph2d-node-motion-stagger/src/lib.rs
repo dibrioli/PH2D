@@ -9,10 +9,13 @@
 //!
 //! Params (read via `ctx.param`):
 //! - `channel` (1): target channel — `0` X, `1` Y, `2` Rotation, `3` Size.
+//!   Position is world units, Rotation is **degrees** (the `rot` column's unit),
+//!   Size a scale delta on the unit identity `[1,1]`.
 //! - `min` (-1), `max` (1): the ramp endpoints (channel-native units).
-//! - `easing` (0): ramp shape — `0` Linear, `1` InQuad, `2` OutQuad,
-//!   `3` InOutQuad, `4` InCubic, `5` OutCubic, `6` InOutCubic (all polynomial →
+//! - `ease_curve` (0): curve family — `0` Linear, `1` Quad, `2` Cubic, `3` Quart,
+//!   `4` Quint, `5` Circ, `6` Back, `7` Bounce (all polynomial →
 //!   transcendental-free, HR-5).
+//! - `ease_dir` (0): the family's direction — `0` In, `1` Out, `2` In-Out.
 //! - `reverse` (0/1): mirror the ramp (last instance takes `min`).
 //!
 //! `delta_i = (min + ease(raw_i)·(max−min)) · falloff_i`, added to the channel.

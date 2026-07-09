@@ -23,9 +23,17 @@ use ph2d_tokens::{ColorToken, ROW_H_PX, Radius, Spacing, StrokeToken, Theme, Typ
 use ph2d_vector::{Affine, BezPath, Brush, Fill, Stroke};
 
 use crate::ids;
+use crate::state::TimelinePanelState;
+use crate::{geom, graph, graph_paint};
 
 /// Width of the left label column (property + object tag).
 pub(crate) const LABEL_COL_W: f32 = 132.0; // LITERAL-PX-OK: track-label column width
+/// Width of the expand/collapse twirl at the head of each row.
+const TWIRL_W: f32 = 16.0; // LITERAL-PX-OK: row twirl hit column width
+/// Half the twirl triangle's flat edge.
+const TWIRL_BASE_HALF: f32 = 4.0; // LITERAL-PX-OK: row twirl triangle half-base
+/// Height of the twirl triangle, flat edge to apex.
+const TWIRL_TIP: f32 = 7.0; // LITERAL-PX-OK: row twirl triangle height
 const DIAMOND_H: f32 = 4.5; // LITERAL-PX-OK: keyframe diamond half-size
 /// Horizontal half-width of a key's clickable hit rect (larger than the visual
 /// diamond so a small target is easy to grab).
@@ -93,22 +101,21 @@ pub(crate) fn paint_add_track_popover(ctx: &mut PaintCtx, theme: Theme, anchor: 
 /// (click = select, drag = move), so `dispatch` streams gestures the panel's
 /// `interact` step drains. Hits are keyed by the key's *identity* (stable across
 /// frames), not its position.
-#[allow(clippy::too_many_arguments)]
 pub(crate) fn paint_rows(
     ctx: &mut PaintCtx,
     theme: Theme,
-    region: Rect,
-    label_w: f32,
-    time_x: f32,
-    view_start: f64,
-    px_per_s: f64,
+    g: &geom::Geom,
+    view: graph::TimeView,
     preview_dx: f32,
-    scroll_y: f32,
+    state: &mut TimelinePanelState,
     snap: &TimelineViewSnapshot,
 ) {
+    let (region, label_w) = (g.rows, g.label_w);
     let right = region.x + region.w;
     let bottom = region.y + region.h;
-    // Lane background over the time area — a click here clears the selection.
+    let time_x = view.time_x;
+    // Lane background over the time area — a click here clears the selection or
+    // rubber-bands a box-select.
     let lane = Rect::new(time_x, region.y, (right - time_x).max(0.0), region.h);
     ctx.host.store_mut().register(
         ids::TIMELINE_LANES,
@@ -120,13 +127,18 @@ pub(crate) fn paint_rows(
     );
     ctx.host.hit_index_mut().register(ids::TIMELINE_LANES, lane);
 
-    for (i, track) in snap.tracks.iter().enumerate() {
-        // Rows scroll as a block; cull the ones outside the band entirely so a
-        // long track list neither paints nor registers off-screen hits.
-        let y = region.y - scroll_y + i as f32 * ROW_H_PX;
-        if y + ROW_H_PX <= region.y || y >= bottom {
+    // Rows overflow the band while scrolling and an expanded one is tall; clip
+    // so a half-visible graph never bleeds over the ruler or the scrollbar.
+    ctx.scene.push_clip(&rect_to_vello(region));
+    let bands: Vec<(usize, f32, f32)> =
+        geom::row_bands(snap, &state.expanded, region.y, state.scroll_y).collect();
+    for (i, y, h) in bands {
+        // Cull the rows outside the band entirely: a long track list then neither
+        // paints nor registers off-screen hits.
+        if y + h <= region.y || y >= bottom {
             continue;
         }
+        let track = &snap.tracks[i];
         // Zebra so lanes read as discrete rows.
         if i % 2 == 1 {
             fill_row(
@@ -136,6 +148,7 @@ pub(crate) fn paint_rows(
                 ColorToken::Bg2,
             );
         }
+        paint_twirl(ctx, theme, state, region.x, y, track.target.get());
         let font = TypeToken::Sm.px();
         let text = format!("{}  #{}", prop_label(track.prop), track.entity % 10_000);
         let color = if track.missing {
@@ -143,53 +156,131 @@ pub(crate) fn paint_rows(
         } else {
             ColorToken::Text1
         };
+        let label_x = region.x + TWIRL_W;
         paint_text(
             ctx.text_system,
             ctx.scene,
             &text,
-            region.x + Spacing::Xs.px(),
+            label_x,
             y + (ROW_H_PX - font) * 0.5,
             font,
-            label_w - Spacing::Xs.px() * 2.0,
+            (label_w - TWIRL_W - Spacing::Xs.px()).max(0.0),
             resolve(color, theme),
         );
-        // Key diamonds + their hit targets.
-        let cy = y + ROW_H_PX * 0.5;
-        for k in &track.keys {
-            let base_x = time_x + ((k.t_seconds - view_start) * px_per_s) as f32;
-            // Selected keys ride the live drag preview.
-            let kx = if k.selected {
-                base_x + preview_dx
-            } else {
-                base_x
-            };
-            if kx < time_x - DIAMOND_H || kx > right + DIAMOND_H {
-                continue;
-            }
-            let tok = if k.selected {
-                ColorToken::Accent
-            } else {
-                ColorToken::Text1
-            };
-            paint_diamond(ctx, kx, cy, DIAMOND_H, resolve(tok, theme));
-            // Hit target keyed by identity (stable across frames/reorders). The
-            // grab rect follows the drawn (previewed) position.
-            let id = ids::timeline_key_hit_id(track.target.get(), k.id.get());
-            let hit = Rect::new(kx - KEY_HIT_HW, y, KEY_HIT_HW * 2.0, ROW_H_PX);
-            ctx.host.store_mut().register(
-                id,
-                InteractiveState::TimelineSurface {
-                    parent: ids::TIMELINE_PANEL,
-                    kind: TimelineHitKind::Key {
-                        target: track.target.get(),
-                        key: k.id.get(),
-                    },
-                    canvas: lane,
-                },
-            );
-            ctx.host.hit_index_mut().register(id, hit);
+        paint_lane_keys(ctx, theme, track, view, preview_dx, y, lane);
+        if h > ROW_H_PX {
+            let band = Rect::new(region.x, y + ROW_H_PX, region.w, h - ROW_H_PX);
+            graph_paint::paint_track(ctx, theme, state, band, label_w, view, track);
         }
     }
+    ctx.scene.pop_layer();
+}
+
+/// One row's key diamonds + their hit targets, on the dope-sheet strip.
+fn paint_lane_keys(
+    ctx: &mut PaintCtx,
+    theme: Theme,
+    track: &ph2d_timeline::TrackView,
+    view: graph::TimeView,
+    preview_dx: f32,
+    y: f32,
+    lane: Rect,
+) {
+    let (time_x, right) = (view.time_x, view.right);
+    let cy = y + ROW_H_PX * 0.5;
+    for k in &track.keys {
+        let base_x = time_x + ((k.t_seconds - view.view_start) * view.px_per_s) as f32;
+        // Selected keys ride the live drag preview.
+        let kx = if k.selected {
+            base_x + preview_dx
+        } else {
+            base_x
+        };
+        if kx < time_x - DIAMOND_H || kx > right + DIAMOND_H {
+            continue;
+        }
+        let tok = if k.selected {
+            ColorToken::Accent
+        } else {
+            ColorToken::Text1
+        };
+        paint_diamond(ctx, kx, cy, DIAMOND_H, resolve(tok, theme));
+        // Hit target keyed by identity (stable across frames/reorders). The grab
+        // rect follows the drawn (previewed) position.
+        let id = ids::timeline_key_hit_id(track.target.get(), k.id.get());
+        let hit = Rect::new(kx - KEY_HIT_HW, y, KEY_HIT_HW * 2.0, ROW_H_PX);
+        ctx.host.store_mut().register(
+            id,
+            InteractiveState::TimelineSurface {
+                parent: ids::TIMELINE_PANEL,
+                kind: TimelineHitKind::Key {
+                    target: track.target.get(),
+                    key: k.id.get(),
+                },
+                canvas: lane,
+            },
+        );
+        ctx.host.hit_index_mut().register(id, hit);
+    }
+}
+
+/// The expand/collapse twirl at the head of a row: a right-pointing triangle
+/// that turns down when the track's graph editor is open.
+fn paint_twirl(
+    ctx: &mut PaintCtx,
+    theme: Theme,
+    state: &TimelinePanelState,
+    x: f32,
+    y: f32,
+    target: u64,
+) {
+    let open = state.is_expanded(target);
+    let (cx, cy) = (x + TWIRL_W * 0.5, y + ROW_H_PX * 0.5);
+    // An isosceles triangle: `BASE` across the flat edge, `TIP` from that edge to
+    // the apex. Rotated a quarter turn when the row opens (right → down).
+    let (b, t) = (TWIRL_BASE_HALF, TWIRL_TIP);
+    let corners = if open {
+        [
+            (cx - b, cy - t * 0.5),
+            (cx + b, cy - t * 0.5),
+            (cx, cy + t * 0.5),
+        ]
+    } else {
+        [
+            (cx - t * 0.5, cy - b),
+            (cx + t * 0.5, cy),
+            (cx - t * 0.5, cy + b),
+        ]
+    };
+    let mut p = BezPath::new();
+    p.move_to((f64::from(corners[0].0), f64::from(corners[0].1)));
+    for (px, py) in &corners[1..] {
+        p.line_to((f64::from(*px), f64::from(*py)));
+    }
+    p.close_path();
+    let tok = if open {
+        ColorToken::Accent
+    } else {
+        ColorToken::Text2
+    };
+    ctx.scene.inner_mut().fill(
+        Fill::NonZero,
+        Affine::IDENTITY,
+        &Brush::Solid(resolve(tok, theme)),
+        None,
+        &p,
+    );
+    let id = ids::timeline_twirl_id(target);
+    let hit = Rect::new(x, y, TWIRL_W, ROW_H_PX);
+    ctx.host.store_mut().register(
+        id,
+        InteractiveState::TimelineSurface {
+            parent: ids::TIMELINE_PANEL,
+            kind: TimelineHitKind::Twirl { target },
+            canvas: hit,
+        },
+    );
+    ctx.host.hit_index_mut().register(id, hit);
 }
 
 /// Every key whose diamond **centre** falls inside `sel` (a marquee in global
@@ -201,10 +292,9 @@ pub(crate) fn paint_rows(
 /// clipped rows below it.
 pub(crate) fn keys_in_rect(
     rows: Rect,
-    time_x: f32,
-    view_start: f64,
-    px_per_s: f64,
+    view: graph::TimeView,
     scroll_y: f32,
+    expanded: &[u64],
     snap: &TimelineViewSnapshot,
     sel: Rect,
 ) -> Vec<SelectedKey> {
@@ -214,14 +304,16 @@ pub(crate) fn keys_in_rect(
     if top_y > bot_y {
         return out;
     }
-    for (i, track) in snap.tracks.iter().enumerate() {
-        let y = rows.y - scroll_y + i as f32 * ROW_H_PX;
+    for (i, y, _h) in geom::row_bands(snap, expanded, rows.y, scroll_y) {
+        // The diamonds sit on the row's dope-sheet STRIP, never in its graph
+        // band — a marquee over the curve must not grab the keys under it.
         let cy = y + ROW_H_PX * 0.5;
         if cy < top_y || cy > bot_y {
             continue;
         }
+        let track = &snap.tracks[i];
         for k in &track.keys {
-            let kx = time_x + ((k.t_seconds - view_start) * px_per_s) as f32;
+            let kx = view.time_x + ((k.t_seconds - view.view_start) * view.px_per_s) as f32;
             if kx >= sel.x && kx <= sel.x + sel.w {
                 out.push(SelectedKey::new(track.target.get(), k.id.get()));
             }

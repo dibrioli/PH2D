@@ -19,6 +19,8 @@
 mod box_select;
 mod event;
 mod geom;
+mod graph;
+mod graph_paint;
 pub mod ids;
 mod interact;
 mod paint;

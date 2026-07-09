@@ -551,3 +551,97 @@ fn a_frame_snapped_move_lands_exactly_on_the_frame() {
         "a two-frame drag must be exactly two frames, not 83333 us"
     );
 }
+
+// ── W3 — undo bracket around a multi-frame gesture (graph-handle drag) ───────
+
+/// The outgoing interpolation of entity 1's first TranslationX key.
+fn first_interp(st: &TimelineState) -> Interp {
+    let target = st
+        .doc
+        .binding_for(1, PropKind::TranslationX)
+        .unwrap()
+        .target;
+    st.doc.active_clip().track(target).unwrap().keys()[0].interp
+}
+
+fn set_interp(st: &mut TimelineState, ph: &mut Playhead, interp: Interp) {
+    let target = st
+        .doc
+        .binding_for(1, PropKind::TranslationX)
+        .unwrap()
+        .target;
+    let key = st.doc.active_clip().track(target).unwrap().ids()[0];
+    apply_intent(
+        st,
+        ph,
+        I::SetInterp {
+            target,
+            key,
+            interp,
+        },
+    );
+}
+
+#[test]
+fn a_bracketed_gesture_is_one_undo_step_however_many_edits_it_streams() {
+    let mut st = TimelineState::new();
+    let mut ph = Playhead::new(DT);
+    two_selected_keys(&mut st, &mut ph);
+    let before = first_interp(&st);
+
+    // A handle drag: one SetInterp per frame, all inside one bracket.
+    apply_intent(&mut st, &mut ph, I::BeginEdit);
+    for i in 1..=5 {
+        set_interp(
+            &mut st,
+            &mut ph,
+            Interp::bezier(0.1 * f64::from(i), 0.9, 0.8, 0.2),
+        );
+    }
+    apply_intent(&mut st, &mut ph, I::EndEdit);
+    assert_eq!(first_interp(&st), Interp::bezier(0.5, 0.9, 0.8, 0.2));
+
+    // ONE Ctrl+Z restores the pre-drag interpolation, not the 4th frame of it.
+    st.undo();
+    assert_eq!(
+        first_interp(&st),
+        before,
+        "the drag collapsed to a single undo step"
+    );
+}
+
+#[test]
+fn a_bracket_that_changed_nothing_pushes_no_step() {
+    let mut st = TimelineState::new();
+    let mut ph = Playhead::new(DT);
+    add_key(&mut st, &mut ph, 1, PropKind::TranslationX, 0.0, 5.0);
+    apply_intent(&mut st, &mut ph, I::BeginEdit);
+    apply_intent(&mut st, &mut ph, I::EndEdit);
+    // One undo goes back past the AddKey — the empty bracket added no step.
+    st.undo();
+    assert!(st.doc.bindings().is_empty());
+}
+
+#[test]
+fn an_unmatched_end_edit_is_a_no_op() {
+    let mut st = TimelineState::new();
+    let mut ph = Playhead::new(DT);
+    apply_intent(&mut st, &mut ph, I::EndEdit);
+    assert!(!st.history.can_undo());
+}
+
+#[test]
+fn undo_during_an_open_bracket_does_not_resurrect_a_stale_snapshot() {
+    // Pointer capture lost mid-drag: the bracket is open, the user hits Ctrl+Z.
+    // A later EndEdit must not commit the pre-drag doc on top of the undone one.
+    let mut st = TimelineState::new();
+    let mut ph = Playhead::new(DT);
+    two_selected_keys(&mut st, &mut ph);
+    apply_intent(&mut st, &mut ph, I::BeginEdit);
+    set_interp(&mut st, &mut ph, Interp::bezier(0.9, 0.1, 0.1, 0.9));
+    apply_intent(&mut st, &mut ph, I::Undo);
+    let after_undo = st.doc.clone();
+    apply_intent(&mut st, &mut ph, I::EndEdit);
+    assert_eq!(st.doc, after_undo, "EndEdit after an Undo changed the doc");
+    assert!(!st.history.can_undo() || st.doc == after_undo);
+}

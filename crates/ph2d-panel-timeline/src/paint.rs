@@ -11,7 +11,7 @@
 //! is re-resolved (a resize may have moved it) and everything paints from that.
 
 use crate::state::{self, TimelinePanelState, set_last_content_h, set_last_visible_h};
-use crate::{TimelinePanel, geom, ids, ruler, scrollbar, tracks, transport};
+use crate::{TimelinePanel, geom, graph, ids, ruler, scrollbar, tracks, transport};
 use ph2d_editor_core::interaction::{InteractiveState, TimelineHitKind};
 use ph2d_editor_core::panel::{PaintCtx, Panel};
 use ph2d_editor_core::widget::panel_chrome::{
@@ -87,8 +87,8 @@ pub(crate) fn paint(state: &mut TimelinePanelState, ctx: &mut PaintCtx) {
         .set_timeline_canvas(ids::TIMELINE_PANEL, g.region);
 
     // Measure the scroll range, then clamp the model into it.
-    let content_h = geom::content_h(snapshot.tracks.len());
-    state.scroll_max = geom::scroll_max(snapshot.tracks.len(), g.rows.h);
+    let content_h = geom::content_h(&snapshot, &state.expanded);
+    state.scroll_max = geom::scroll_max(content_h, g.rows.h);
     state.scroll_y = state.scroll_y.clamp(0.0, state.scroll_max); // CLAMP-OK: measured bounds, min<=max
 
     // `F` fits the time axis to the keys; it needs the time area's pixel width,
@@ -118,35 +118,31 @@ pub(crate) fn paint(state: &mut TimelinePanelState, ctx: &mut PaintCtx) {
     state.view_start_s = view_start;
     state.view_span_s = span;
 
-    // A box-select that ended this frame resolves HERE, where the rows' `y` is
-    // finally known (the gesture only recorded the marquee).
-    crate::box_select::commit(
-        state,
-        g.rows,
-        g.time_area.x,
+    // The time axis, shared by the ruler, the lanes and every expanded graph.
+    let view = graph::TimeView {
+        time_x: g.time_area.x,
+        right: g.rows.x + g.rows.w,
         view_start,
         px_per_s,
-        &snapshot,
-    );
+    };
+    // A box-select that ended this frame resolves HERE, where the rows' `y` is
+    // finally known (the gesture only recorded the marquee).
+    crate::box_select::commit(state, g.rows, view, &snapshot);
 
     let preview_dx = crate::interact::preview_dx(state, px_per_s, &snapshot);
 
     // "+Track" button in the label column, aligned with the ruler strip.
     let header = Rect::new(g.region.x, g.region.y, g.label_w, ruler::RULER_H);
     tracks::paint_add_track(ctx, theme, header);
-    // Track rows (labels + key diamonds) below the ruler strip.
-    tracks::paint_rows(
-        ctx,
-        theme,
-        g.rows,
-        g.label_w,
-        g.time_area.x,
-        view_start,
-        px_per_s,
-        preview_dx,
-        state.scroll_y,
-        &snapshot,
-    );
+    // Track rows (labels + key diamonds + expanded graph bands) below the ruler.
+    tracks::paint_rows(ctx, theme, &g, view, preview_dx, state, &snapshot);
+    // A handle drag whose row got culled (scrolled away, or its track unbound)
+    // never reached `graph::resolve_drag`: close its undo bracket here so the
+    // next atomic edit is not silently swallowed into it.
+    if state.handle_drag.is_some_and(|d| d.ending) {
+        state.handle_drag = None;
+        state::push_intent(ph2d_timeline::TimelineIntent::EndEdit);
+    }
     // The live box-select rubber band rides over the diamonds it is picking.
     if let Some(b) = state.box_drag {
         tracks::paint_marquee(ctx, theme, b.rect());

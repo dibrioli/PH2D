@@ -6,8 +6,10 @@
 
 use ph2d_editor_core::widget::panel_chrome::{PANEL_HEAD_PAD, PANEL_TITLE_BASELINE};
 use ph2d_editor_core::zones::Rect;
+use ph2d_timeline::TimelineViewSnapshot;
 use ph2d_tokens::{ROW_H_PX, Spacing};
 
+use crate::graph;
 use crate::ids;
 use crate::ruler;
 use crate::tracks;
@@ -94,14 +96,41 @@ pub(crate) fn resolve(rect: Rect, after_transport: f32) -> Geom {
     }
 }
 
+/// Height of one track row: the dope-sheet strip, plus the graph band when the
+/// row is expanded (W3.E1).
+pub(crate) fn row_h(expanded: bool) -> f32 {
+    ROW_H_PX + if expanded { graph::GRAPH_H } else { 0.0 }
+}
+
 /// Total height the track rows want, for the scroll range.
-pub(crate) fn content_h(track_count: usize) -> f32 {
-    track_count as f32 * ROW_H_PX
+pub(crate) fn content_h(snap: &TimelineViewSnapshot, expanded: &[u64]) -> f32 {
+    snap.tracks
+        .iter()
+        .map(|t| row_h(expanded.contains(&t.target.get())))
+        .sum()
 }
 
 /// How far the rows can scroll before the last one is flush with the bottom.
-pub(crate) fn scroll_max(track_count: usize, rows_h: f32) -> f32 {
-    (content_h(track_count) - rows_h).max(0.0)
+pub(crate) fn scroll_max(content_h: f32, rows_h: f32) -> f32 {
+    (content_h - rows_h).max(0.0)
+}
+
+/// Every track's `(index, top_y, height)` in the scrolled rows band. The single
+/// source of the row layout — paint, key hit-testing and box-select all walk it,
+/// so a row's diamonds can never disagree with the row its curve is drawn in.
+pub(crate) fn row_bands<'a>(
+    snap: &'a TimelineViewSnapshot,
+    expanded: &'a [u64],
+    rows_top: f32,
+    scroll_y: f32,
+) -> impl Iterator<Item = (usize, f32, f32)> + 'a {
+    let mut y = rows_top - scroll_y;
+    snap.tracks.iter().enumerate().map(move |(i, t)| {
+        let h = row_h(expanded.contains(&t.target.get()));
+        let top = y;
+        y += h;
+        (i, top, h)
+    })
 }
 
 /// The eight resize grippers as `(id, edges, rect)`, outermost-last so the
@@ -231,10 +260,51 @@ mod tests {
         assert!(out.y + out.h <= VP.h + f32::EPSILON);
     }
 
+    /// `n` collapsed tracks, with those in `expanded` opened.
+    fn snap_with(n: usize) -> TimelineViewSnapshot {
+        TimelineViewSnapshot {
+            tracks: (0..n)
+                .map(|i| ph2d_timeline::TrackView {
+                    target: ph2d_timeline::AnimTarget::new(i as u64),
+                    prop: ph2d_timeline::PropKind::TranslationX,
+                    entity: 1,
+                    missing: false,
+                    keys: Vec::new(),
+                })
+                .collect(),
+            ..TimelineViewSnapshot::default()
+        }
+    }
+
     #[test]
     fn scroll_max_is_zero_when_everything_fits() {
-        assert_eq!(scroll_max(2, 500.0), 0.0);
-        assert_eq!(scroll_max(20, 100.0), content_h(20) - 100.0);
+        assert_eq!(scroll_max(content_h(&snap_with(2), &[]), 500.0), 0.0);
+        let tall = content_h(&snap_with(20), &[]);
+        assert_eq!(scroll_max(tall, 100.0), tall - 100.0);
+    }
+
+    #[test]
+    fn an_expanded_row_is_taller_and_pushes_the_rows_below_it_down() {
+        let snap = snap_with(3);
+        assert_eq!(content_h(&snap, &[]), ROW_H_PX * 3.0);
+        assert_eq!(content_h(&snap, &[1]), ROW_H_PX * 3.0 + graph::GRAPH_H);
+
+        // Row 0 collapsed, row 1 expanded: row 2 starts below BOTH.
+        let bands: Vec<_> = row_bands(&snap, &[1], 0.0, 0.0).collect();
+        assert_eq!(bands[0], (0, 0.0, ROW_H_PX));
+        assert_eq!(bands[1], (1, ROW_H_PX, ROW_H_PX + graph::GRAPH_H));
+        assert_eq!(bands[2].1, ROW_H_PX * 2.0 + graph::GRAPH_H);
+    }
+
+    #[test]
+    fn scrolling_shifts_every_row_band_up_by_the_same_amount() {
+        let snap = snap_with(3);
+        let unscrolled: Vec<_> = row_bands(&snap, &[], 10.0, 0.0).collect();
+        let scrolled: Vec<_> = row_bands(&snap, &[], 10.0, 30.0).collect();
+        for (a, b) in unscrolled.iter().zip(&scrolled) {
+            assert_eq!(a.1 - 30.0, b.1);
+            assert_eq!(a.2, b.2, "scrolling never changes a row's height");
+        }
     }
 
     #[test]

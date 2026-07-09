@@ -73,6 +73,11 @@ pub struct TimelinePanelState {
     /// Middle-drag pan anchor (last pointer position) while the wheel button is
     /// held over the dope sheet.
     pub pan_drag: Option<(f32, f32)>,
+    /// Tracks (by raw `AnimTarget`) whose graph editor is expanded. Panel-local
+    /// view state — never undoable, never saved.
+    pub expanded: Vec<u64>,
+    /// In-progress bézier-handle drag in an expanded track's graph.
+    pub handle_drag: Option<HandleDrag>,
     /// In-progress box-select (marquee) drag over an empty lane.
     pub box_drag: Option<BoxDrag>,
     /// A box-select that just finished, waiting to be resolved against the key
@@ -95,6 +100,26 @@ pub struct ResizeDrag {
     pub start_rect: Rect,
     /// The pointer position when the drag began.
     pub start_pointer: (f32, f32),
+}
+
+/// An in-progress bézier-handle drag. The pointer is recorded in global px; the
+/// band's value↔pixel mapping only exists during `paint`, so `graph::resolve_drag`
+/// turns this into a `SetInterp` there.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct HandleDrag {
+    /// Raw `AnimTarget` of the track being edited.
+    pub target: u64,
+    /// Raw `KeyId` of the segment's OUTGOING key (the one owning the `Interp`).
+    pub key: u64,
+    /// `0` = out handle (`P1`), `1` = in handle (`P2`).
+    pub which: u8,
+    /// Latest pointer x (global px).
+    pub x: f32,
+    /// Latest pointer y (global px).
+    pub y: f32,
+    /// The gesture ended this frame: `paint` resolves it once more, pushes
+    /// `EndEdit` to close the undo bracket, and clears the drag.
+    pub ending: bool,
 }
 
 /// An in-progress box-select: the pointer at Begin and the latest pointer, in
@@ -148,10 +173,34 @@ impl Default for TimelinePanelState {
             scroll_y: 0.0,
             scroll_max: 0.0,
             pan_drag: None,
+            expanded: Vec::new(),
+            handle_drag: None,
             box_drag: None,
             box_commit: None,
             rect: None,
             resize: None,
+        }
+    }
+}
+
+impl TimelinePanelState {
+    /// Whether this track's graph editor is open.
+    #[must_use]
+    pub fn is_expanded(&self, target: u64) -> bool {
+        self.expanded.contains(&target)
+    }
+
+    /// Open/close a track's graph editor. Collapsing also drops an in-flight
+    /// handle drag on that track — its band is about to stop existing.
+    pub fn toggle_expanded(&mut self, target: u64) {
+        if let Some(i) = self.expanded.iter().position(|&t| t == target) {
+            self.expanded.remove(i);
+            if self.handle_drag.is_some_and(|d| d.target == target) {
+                self.handle_drag = None;
+                push_intent(TimelineIntent::EndEdit);
+            }
+        } else {
+            self.expanded.push(target);
         }
     }
 }

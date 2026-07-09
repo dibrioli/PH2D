@@ -21,6 +21,10 @@ pub struct KeyView {
     pub id: KeyId,
     /// Key time in seconds.
     pub t_seconds: f64,
+    /// The key's value, projected to a scalar for the graph editor. Every
+    /// [`PropKind`] is a `Float`; a non-scalar `AnimValue` (unreachable in v1)
+    /// projects to `0.0` and draws as a flat curve.
+    pub value: f32,
     /// Outgoing interpolation (drives the diamond glyph / graph handles).
     pub interp: Interp,
     /// Whether this key is in the current selection.
@@ -115,6 +119,10 @@ impl TimelineViewSnapshot {
                     row.keys.push(KeyView {
                         id,
                         t_seconds: k.t.to_seconds(),
+                        value: match k.value {
+                            ph2d_anim::AnimValue::Float(v) => v,
+                            _ => 0.0,
+                        },
                         interp: k.interp,
                         selected: state.selection.contains(SelectedKey {
                             target: b.target,

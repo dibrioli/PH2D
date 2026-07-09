@@ -56,9 +56,7 @@ pub(crate) fn apply_lane(state: &mut TimelinePanelState, g: TimelineGesture) {
 pub(crate) fn commit(
     state: &mut TimelinePanelState,
     rows: Rect,
-    time_x: f32,
-    view_start: f64,
-    px_per_s: f64,
+    view: crate::graph::TimeView,
     snap: &TimelineViewSnapshot,
 ) {
     let Some(b) = state.box_commit.take() else {
@@ -67,15 +65,9 @@ pub(crate) fn commit(
     if !b.additive {
         state::push_intent(TimelineIntent::ClearSelection);
     }
-    for sel in crate::tracks::keys_in_rect(
-        rows,
-        time_x,
-        view_start,
-        px_per_s,
-        state.scroll_y,
-        snap,
-        b.rect(),
-    ) {
+    for sel in
+        crate::tracks::keys_in_rect(rows, view, state.scroll_y, &state.expanded, snap, b.rect())
+    {
         state::push_intent(TimelineIntent::AddToSelection(sel));
     }
 }
@@ -111,6 +103,7 @@ mod tests {
         let key = |id: u64, t: f64| KeyView {
             id: KeyId::new(id),
             t_seconds: t,
+            value: 0.0,
             interp: Interp::Linear,
             selected: false,
         };
@@ -152,7 +145,13 @@ mod tests {
             apply_lane(&mut st, gesture(phase, x, y, shift));
         }
         assert!(st.box_commit.is_some(), "End parks the marquee for paint");
-        commit(&mut st, rows, 0.0, 0.0, 100.0, &s);
+        let view = crate::graph::TimeView {
+            time_x: 0.0,
+            right: rows.x + rows.w,
+            view_start: 0.0,
+            px_per_s: 100.0,
+        };
+        commit(&mut st, rows, view, &s);
         assert!(st.box_commit.is_none(), "the marquee was consumed");
         state::drain_intents()
     }

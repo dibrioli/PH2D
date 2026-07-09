@@ -136,6 +136,14 @@ pub enum TimelineIntent {
     SetFrameSnap(bool),
 
     // ── history ─────────────────────────────────────────────────────────────
+    /// Open an undo bracket around a multi-frame gesture (a graph-handle drag).
+    /// Until the matching [`TimelineIntent::EndEdit`], every document edit joins
+    /// this one step instead of pushing its own — a drag that emits one
+    /// `SetInterp` per frame must undo in a single Ctrl+Z.
+    BeginEdit,
+    /// Close the bracket opened by [`TimelineIntent::BeginEdit`], pushing one
+    /// undo step if the document actually changed. Unmatched = no-op.
+    EndEdit,
     /// Undo one document step.
     Undo,
     /// Redo one document step.
@@ -290,10 +298,16 @@ pub fn apply_intent(state: &mut TimelineState, playhead: &mut Playhead, intent: 
         I::SetFrameSnap(on) => state.flags.frame_snap = on,
 
         // history
+        I::BeginEdit => state.history.begin(&state.doc),
+        I::EndEdit => state.history.commit_if_changed(&state.doc),
         I::Undo => {
+            // A stray bracket (pointer capture lost, panel hidden mid-drag) would
+            // otherwise commit a stale pre-state on the next EndEdit.
+            state.history.cancel();
             state.undo();
         }
         I::Redo => {
+            state.history.cancel();
             state.redo();
         }
     }
@@ -324,6 +338,13 @@ fn copy_selection(state: &mut TimelineState) {
 /// Run a doc edit as one undo step: snapshot, mutate `(doc, selection)`, commit
 /// only if the document changed.
 fn edit(state: &mut TimelineState, f: impl FnOnce(&mut TimelineDoc, &mut Selection)) {
+    // Inside a `BeginEdit`/`EndEdit` bracket the caller owns the undo step: just
+    // mutate, and let the bracket's commit fold every frame of the gesture into
+    // one. Outside it, the edit is atomic and brackets itself.
+    if state.history.is_open() {
+        f(&mut state.doc, &mut state.selection);
+        return;
+    }
     state.history.begin(&state.doc);
     f(&mut state.doc, &mut state.selection);
     state.history.commit_if_changed(&state.doc);

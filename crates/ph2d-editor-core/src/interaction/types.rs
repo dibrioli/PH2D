@@ -362,6 +362,13 @@ pub enum TimelineHitKind {
     /// in time. `target`/`key` are the track's `AnimTarget` and the key's
     /// `KeyId`, carried as raw ids (editor-core never dereferences them).
     Key { target: u64, key: u64 },
+    /// A track row's expand/collapse twirl — a click opens that track's graph
+    /// editor (`target` is its raw `AnimTarget`).
+    Twirl { target: u64 },
+    /// A bézier handle in an expanded track's graph. `target`/`key` name the
+    /// segment's **outgoing** key (the one whose `Interp` the handle edits);
+    /// `which` is `0` for the out handle (`P1`) and `1` for the in handle (`P2`).
+    CurveHandle { target: u64, key: u64, which: u8 },
     /// A resize gripper on the panel's border. `edges` is an opaque bitmask the
     /// panel defines (one bit per side; a corner sets two) — editor-core only
     /// routes it back on the gesture.

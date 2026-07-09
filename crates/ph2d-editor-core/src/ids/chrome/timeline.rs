@@ -78,10 +78,32 @@ pub const TIMELINE_RESIZE_BR: NodeId = hash_node_id("timeline.resize.br");
 /// slug consts. The key set is dynamic, so these can't be consts.
 #[must_use]
 pub fn timeline_key_hit_id(target: u64, key: u64) -> NodeId {
-    // FNV-1a over the 16 identity bytes, seeded from the domain slug hash.
+    dynamic_id("timeline.key", &[target, key])
+}
+
+/// A stable `NodeId` for one track row's expand/collapse twirl (W3.E1), keyed by
+/// the track's `AnimTarget`.
+#[must_use]
+pub fn timeline_twirl_id(target: u64) -> NodeId {
+    dynamic_id("timeline.twirl", &[target])
+}
+
+/// A stable `NodeId` for one bézier handle in the graph editor (W3.E3), keyed by
+/// the segment's owning `(target, key)` and `which` (`0` = out handle `P1`,
+/// `1` = in handle `P2`).
+#[must_use]
+pub fn timeline_handle_hit_id(target: u64, key: u64, which: u8) -> NodeId {
+    dynamic_id("timeline.handle", &[target, key, u64::from(which)])
+}
+
+/// FNV-1a over `parts`' little-endian bytes, seeded from `domain`'s slug hash.
+/// Each dynamic id family gets its own domain, so a twirl for target `7` and a
+/// key hit for target `7` can never land on the same `NodeId` — nor on any
+/// `timeline.*` const.
+fn dynamic_id(domain: &'static str, parts: &[u64]) -> NodeId {
     const FNV_PRIME: u64 = 0x0000_0100_0000_01b3;
-    let mut h = hash_node_id("timeline.key").0;
-    for b in target.to_le_bytes().into_iter().chain(key.to_le_bytes()) {
+    let mut h = hash_node_id(domain).0;
+    for b in parts.iter().flat_map(|p| p.to_le_bytes()) {
         h ^= u64::from(b);
         h = h.wrapping_mul(FNV_PRIME);
     }

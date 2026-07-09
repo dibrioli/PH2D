@@ -68,6 +68,10 @@ pub(crate) fn process(
                 TimelineHitKind::Key { target, key } => {
                     apply_key(state, px_per_s, snap, SelectedKey::new(target, key), g);
                 }
+                TimelineHitKind::Twirl { target } => apply_twirl(state, target, g),
+                TimelineHitKind::CurveHandle { target, key, which } => {
+                    crate::graph::apply_handle_gesture(state, target, key, which, g);
+                }
                 TimelineHitKind::Lane => box_select::apply_lane(state, g),
                 TimelineHitKind::ResizeEdge { .. } => unreachable!("handled above"),
             },
@@ -135,6 +139,14 @@ fn apply_key(
                 state::push_intent(TimelineIntent::SelectSingle(one));
             }
         }
+    }
+}
+
+/// Twirl gesture: a tap opens/closes that track's graph editor. Only a Click
+/// counts, so a drag begun on the twirl by accident leaves the row alone.
+fn apply_twirl(state: &mut TimelinePanelState, target: u64, g: TimelineGesture) {
+    if matches!(g.phase, GesturePhase::Click) {
+        state.toggle_expanded(target);
     }
 }
 
@@ -236,6 +248,7 @@ mod tests {
                 keys: vec![KeyView {
                     id: KeyId::new(key),
                     t_seconds: 0.0,
+                    value: 0.0,
                     interp: Interp::Linear,
                     selected: true,
                 }],
@@ -256,7 +269,10 @@ mod tests {
                 apply_key(state, px_per_s, snap, SelectedKey::new(target, key), g);
             }
             TimelineHitKind::Lane => box_select::apply_lane(state, g),
-            TimelineHitKind::ResizeEdge { .. } => unreachable!("not fed here"),
+            TimelineHitKind::Twirl { target } => apply_twirl(state, target, g),
+            TimelineHitKind::CurveHandle { .. } | TimelineHitKind::ResizeEdge { .. } => {
+                unreachable!("not fed here")
+            }
         }
     }
 
@@ -402,6 +418,72 @@ mod tests {
             }],
             "no SelectSingle — the multi-selection is preserved and moved"
         );
+    }
+
+    #[test]
+    fn a_twirl_click_toggles_the_tracks_graph_editor() {
+        let mut st = TimelinePanelState::default();
+        let twirl = TimelineHitKind::Twirl { target: 3 };
+        assert!(!st.is_expanded(3));
+        feed(
+            &mut st,
+            gesture(twirl, GesturePhase::Click, 0.0, false),
+            120.0,
+            &snap(),
+        );
+        assert!(st.is_expanded(3), "the row opened");
+        feed(
+            &mut st,
+            gesture(twirl, GesturePhase::Click, 0.0, false),
+            120.0,
+            &snap(),
+        );
+        assert!(!st.is_expanded(3), "and closed again");
+        assert_eq!(
+            state::drain_intents(),
+            vec![],
+            "expansion is view state, not an edit"
+        );
+    }
+
+    #[test]
+    fn pressing_a_twirl_without_releasing_leaves_the_row_alone() {
+        // Only a Click counts: an accidental drag from the twirl must not toggle.
+        let mut st = TimelinePanelState::default();
+        let twirl = TimelineHitKind::Twirl { target: 3 };
+        feed(
+            &mut st,
+            gesture(twirl, GesturePhase::Begin, 0.0, false),
+            120.0,
+            &snap(),
+        );
+        feed(
+            &mut st,
+            gesture(twirl, GesturePhase::End, 40.0, false),
+            120.0,
+            &snap(),
+        );
+        assert!(!st.is_expanded(3));
+    }
+
+    #[test]
+    fn collapsing_a_row_mid_drag_closes_the_handles_undo_bracket() {
+        // The band is about to stop existing, so `resolve_drag` will never fire
+        // again — leaving the bracket open would swallow the next atomic edit.
+        let mut st = TimelinePanelState::default();
+        st.toggle_expanded(3);
+        st.handle_drag = Some(crate::state::HandleDrag {
+            target: 3,
+            key: 1,
+            which: 0,
+            x: 0.0,
+            y: 0.0,
+            ending: false,
+        });
+        let _ = state::drain_intents();
+        st.toggle_expanded(3);
+        assert!(st.handle_drag.is_none());
+        assert_eq!(state::drain_intents(), vec![TimelineIntent::EndEdit]);
     }
 
     #[test]

@@ -386,6 +386,7 @@ mod tests {
                     .map(|(i, &t)| KeyView {
                         id: KeyId::new(i as u64),
                         t_seconds: t,
+                        value: 0.0,
                         interp: Interp::Linear,
                         selected: false,
                     })

@@ -47,6 +47,14 @@ impl TimelineHistory {
         self.pending = None;
     }
 
+    /// Whether a gesture is currently bracketed (a `begin` awaits its commit).
+    /// Atomic edits check this so an edit *inside* a gesture does not close it —
+    /// a handle drag emits one edit per frame and must undo as a single step.
+    #[must_use]
+    pub fn is_open(&self) -> bool {
+        self.pending.is_some()
+    }
+
     /// Push a known-changed pre-state directly onto undo (atomic op).
     pub fn push(&mut self, pre: TimelineDoc) {
         if self.undo.len() >= HISTORY_CAP {

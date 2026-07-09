@@ -66,7 +66,7 @@ pub mod vello_pass;
 
 pub use atlas::{
     ATLAS_DEFAULT_SIZE_PX, AtlasInsertError, AtlasRegion, DEMO_TILE_COUNT, DEMO_TILE_PX,
-    FIRST_IMPORT_KEY, TextureAtlas,
+    FIRST_IMPORT_KEY, TextureAtlas, WHITE_TILE_KEY,
 };
 pub use camera::{Camera2d, CameraUniform};
 pub use compositor::Compositor;

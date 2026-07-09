@@ -88,7 +88,7 @@ pub(crate) fn build_initial_state(
     // harness below, or a future scene/import path).
     let mut logical_texture_map = LogicalTextureMap::new();
     let assets_dir = integration::demo_assets_dir();
-    let (atlas, atlas_is_real) =
+    let (mut atlas, atlas_is_real) =
         match crate::atlas_loader::load_atlas(surface.gpu(), &asset_db, &assets_dir) {
             Ok(atlas) => {
                 println!(
@@ -108,16 +108,15 @@ pub(crate) fn build_initial_state(
             }
         };
     // Motion Nodes M0: the raw default document has no framing node yet, so its
-    // instances carry no `uv_rect` column and fall back to this rect. Point it
-    // at one opaque atlas tile (tile 0) so the M0 output renders as clean solid
-    // quads rather than a whole-atlas thumbnail (16 tiny tiles in an 8192px
-    // atlas = thin streaks). Whole-atlas fallback on the dummy path (no tiles
-    // packed). Read before the atlas is moved into the renderer below.
-    let motion_default_uv = if atlas.region(0).is_some() {
-        atlas.region_uv(0)
-    } else {
-        [0.0, 0.0, 1.0, 1.0]
-    };
+    // instances carry no `uv_rect` column and fall back to this rect. It must be
+    // the reserved opaque WHITE tile: the shader multiplies `tint` by the texel,
+    // so any other tile silently stains the authored colour (the demo's tile 0 is
+    // saturated red -- a red->blue gradient came out red->maroon). Whole-atlas
+    // fallback only if the insert fails. Read before the atlas moves into the
+    // renderer below.
+    let motion_default_uv = atlas
+        .insert_white_tile(surface.gpu())
+        .unwrap_or([0.0, 0.0, 1.0, 1.0]);
     // M14.5: sprite pipeline now targets the offscreen HDR game RT
     // (Rgba16Float) instead of the swap chain. The tonemap +
     // compositor passes carry pixels through to the surface.

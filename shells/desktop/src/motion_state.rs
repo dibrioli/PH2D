@@ -317,10 +317,15 @@ mod tests {
             400,
             "20×10 grid cloned ×2 = 400 instances"
         );
-        // A gradient tint means the instances are not all the same colour.
+        // The gradient sweeps the authored Start -> End across the stream: the
+        // first instance is the red Start, the last the blue End. (What the
+        // artist sees also depends on the atlas texel the instances sample —
+        // the shader multiplies tint by it — which is why the shell points the
+        // Motion fallback at the reserved WHITE tile, not a coloured demo one.)
         let c0 = pump.instances[0].tint;
         let clast = pump.instances[399].tint;
-        assert_ne!(c0, clast, "gradient tint varies across the grid");
+        assert_eq!(c0, [1.0, 0.1, 0.1, 1.0], "first instance = Start (red)");
+        assert_eq!(clast, [0.1, 0.3, 1.0, 1.0], "last instance = End (blue)");
 
         // A central instance moves in Y as time advances (oscillator, focus-masked).
         let mid = 400 / 2 + 10; // an instance near the centre (inside the falloff)

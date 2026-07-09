@@ -110,6 +110,23 @@ pub const DEMO_TILE_COUNT: u32 = 16;
 /// intact while imports are spawned and despawned.
 pub const FIRST_IMPORT_KEY: u32 = 16;
 
+/// Reserved key of the opaque **white** tile ([`TextureAtlas::insert_white_tile`]).
+/// A sentinel at the top of the key space, so it can never collide with the
+/// importer's allocator (which counts up from [`FIRST_IMPORT_KEY`]) and needs
+/// no shared numbering to be bumped.
+///
+/// A quad sampling this tile shows its `tint` **exactly** — the shader
+/// multiplies tint by the texel. Instances that carry no `uv_rect` of their own
+/// (today: every Motion node stream, which has no framing node yet) must sample
+/// it, or the artist's authored colour comes out multiplied by whatever image
+/// happened to sit at the fallback tile.
+pub const WHITE_TILE_KEY: u32 = u32::MAX;
+
+// Compile-time guard on the sentinel: it must sit past every key the demo seeds
+// and every key the importer can allocate, or the white tile would be silently
+// overwritten by a user sprite.
+const _: () = assert!(WHITE_TILE_KEY > FIRST_IMPORT_KEY && WHITE_TILE_KEY > DEMO_TILE_COUNT);
+
 pub struct TextureAtlas {
     pub texture: wgpu::Texture,
     pub view: wgpu::TextureView,
@@ -227,6 +244,19 @@ impl TextureAtlas {
                 .expect("demo HSV tiles always fit into a fresh 4096² atlas");
         }
         atlas
+    }
+
+    /// Insert (or refresh) the reserved opaque **white** tile at
+    /// [`WHITE_TILE_KEY`], returning its UV rect for instances that carry no
+    /// `uv_rect` of their own. A quad sampling it renders its `tint` exactly.
+    ///
+    /// Sized like a demo tile rather than 1×1: the sampler filters at region
+    /// borders, so a one-texel region would blend with whatever the packer put
+    /// next to it. Idempotent (a second call is `insert`'s replace path).
+    pub fn insert_white_tile(&mut self, gpu: &GpuContext) -> Result<[f32; 4], AtlasInsertError> {
+        let px = vec![0xff; (DEMO_TILE_PX * DEMO_TILE_PX * 4) as usize];
+        self.insert(gpu, WHITE_TILE_KEY, DEMO_TILE_PX, DEMO_TILE_PX, &px)
+            .map(|r| r.uv(self.size_px))
     }
 
     /// Pack an `(width × height)` source at native resolution into

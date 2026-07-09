@@ -363,3 +363,48 @@ fn region_uv_recomputes_against_new_size_after_regrow() {
         uv_after[2]
     );
 }
+
+/// The reserved white tile is **opaque white** in the texture, so a quad that
+/// samples it renders its `tint` exactly (the shader multiplies tint × texel).
+///
+/// The defect this guards: the Motion instance stream carries no `uv_rect` yet,
+/// so the shell points it at a fallback tile. It used to be demo tile 0 — a
+/// saturated RED square — which silently stained every authored colour (a
+/// red→blue gradient rendered red→maroon). Sampling white makes tint faithful.
+#[test]
+fn white_tile_is_opaque_white_and_never_collides_with_import_keys() {
+    // (That the reserved key sits past the importer's allocator is a
+    // compile-time `const _: () = assert!(…)` next to the const itself.)
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("skipping: no headless GPU adapter");
+        return;
+    };
+    let mut atlas = TextureAtlas::dummy(&gpu);
+    let uv = atlas.insert_white_tile(&gpu).expect("white tile fits");
+    // A real, non-degenerate UV rect (region_uv returns zeros for a missing key).
+    assert!(
+        uv[2] > uv[0] && uv[3] > uv[1],
+        "white tile has a real uv rect"
+    );
+    let region = atlas.region(WHITE_TILE_KEY).expect("registered");
+    assert_eq!((region.w, region.h), (DEMO_TILE_PX, DEMO_TILE_PX));
+
+    // Read level 0 back and check every texel of the white region.
+    let (side, _, bytes) = atlas.readback_mip(&gpu, 0);
+    for y in region.y..region.y + region.h {
+        for x in region.x..region.x + region.w {
+            let i = ((y * side + x) * 4) as usize;
+            assert_eq!(
+                &bytes[i..i + 4],
+                &[0xff, 0xff, 0xff, 0xff],
+                "texel ({x},{y}) of the white tile"
+            );
+        }
+    }
+
+    // Demo tile 0 (the OLD fallback) is emphatically not white — the reason the
+    // authored tint came out stained.
+    let t0 = atlas.region(0).expect("demo tile 0");
+    let i = ((t0.y * side + t0.x) * 4) as usize;
+    assert_ne!(&bytes[i..i + 4], &[0xff, 0xff, 0xff, 0xff]);
+}

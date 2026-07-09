@@ -22,6 +22,7 @@ use ph2d_editor_core::zones::Rect;
 use ph2d_host::PointerButton;
 use ph2d_timeline::TimelineViewSnapshot;
 
+use crate::anchor_drag;
 use crate::box_select;
 use crate::ids;
 use crate::key_drag;
@@ -79,6 +80,9 @@ pub(crate) fn process(
                 TimelineHitKind::Twirl { target } => apply_twirl(state, target, g),
                 TimelineHitKind::LabelSplitter => resize::apply_label_drag(state, g),
                 TimelineHitKind::GraphResize => resize::apply_graph_resize(state, g),
+                TimelineHitKind::CurveAnchor { target, key } => {
+                    anchor_drag::apply_gesture(state, px_per_s, snap, target, key, g);
+                }
                 TimelineHitKind::CurveHandle { target, key, which } => {
                     crate::graph::apply_handle_gesture(state, target, key, which, g);
                 }
@@ -165,6 +169,7 @@ mod tests {
             TimelineHitKind::Twirl { target } => apply_twirl(state, target, g),
             TimelineHitKind::LabelSplitter
             | TimelineHitKind::GraphResize
+            | TimelineHitKind::CurveAnchor { .. }
             | TimelineHitKind::CurveHandle { .. }
             | TimelineHitKind::ResizeEdge { .. } => unreachable!("not fed here"),
         }

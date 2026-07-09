@@ -17,7 +17,8 @@ use ph2d_editor_core::zones::Rect;
 use ph2d_timeline::{KeyView, TrackView, drawn_extent, handle_point, sample_keys};
 use ph2d_tokens::{ColorToken, Radius, Spacing, StrokeToken, Theme, TypeToken};
 
-use crate::graph::{Band, TimeView, handle_pair, resolve_drag};
+use crate::anchor_drag;
+use crate::graph::{self, Band, TimeView, handle_pair, resolve_drag};
 use crate::ids;
 use crate::state::TimelinePanelState;
 
@@ -26,6 +27,7 @@ use crate::state::TimelinePanelState;
 const CURVE_STEP_PX: f32 = 2.0; // LITERAL-PX-OK: curve polyline sample spacing
 const CURVE_W: f32 = 1.5; // LITERAL-PX-OK: curve stroke width
 const ANCHOR_R: f32 = 3.0; // LITERAL-PX-OK: key anchor dot radius
+const ANCHOR_HIT_R: f32 = 7.0; // LITERAL-PX-OK: key anchor grab radius
 const HANDLE_R: f32 = 3.5; // LITERAL-PX-OK: bezier handle dot radius
 const HANDLE_HIT_R: f32 = 7.0; // LITERAL-PX-OK: bezier handle grab radius
 const BAND_INSET: f32 = 2.0; // LITERAL-PX-OK: gap between the strip and its graph band
@@ -54,29 +56,17 @@ pub(crate) fn paint_track(
         (rect.x + rect.w - view.time_x).max(0.0),
         (rect.h - BAND_INSET * 2.0).max(0.0),
     );
-    let dragging_here = state
-        .handle_drag
-        .is_some_and(|d| d.target == track.target.get());
-    let frozen = state
-        .handle_drag
-        .filter(|_| dragging_here)
-        .and_then(|d| d.range);
-    let band = match frozen {
-        // Hold the mapping still for the length of a drag: a band that refit each
-        // frame would change what the pointer's y MEANS, and the handle would
-        // crawl away from the cursor.
-        Some((lo, hi)) => Band::from_range(band_rect, lo, hi),
-        // Otherwise fit to everything the row draws — the curve (overshoot and
-        // all) and the visible handles, not just the key values. Fitting the keys
-        // alone let a strong ease spill out of the band onto the next row.
-        None => Band::fit(band_rect, drawn_extent_of(&band_rect, view, track)),
-    };
-    if dragging_here
-        && let Some(d) = state.handle_drag.as_mut()
-        && d.range.is_none()
-    {
-        d.range = Some(band.range());
-    }
+    let target = track.target.get();
+    // Fit to everything the row DRAWS — the curve (overshoot and all) and the
+    // visible handles, not just the key values: fitting the keys alone let a
+    // strong ease spill out of the band onto the next row. An in-flight drag
+    // freezes the fit instead (see `graph::band_for`).
+    let band = graph::band_for(
+        state,
+        band_rect,
+        target,
+        drawn_extent_of(&band_rect, view, track),
+    );
     paint_frame(ctx, theme, rect, band_rect, label_w, &band);
     if track.keys.is_empty() {
         return;
@@ -85,11 +75,12 @@ pub(crate) fn paint_track(
     // frozen range, and it must not draw over the neighbouring rows.
     ctx.scene.push_clip(&rect_to_vello(band_rect));
     paint_curve(ctx, theme, &band, view, &track.keys);
-    paint_anchors(ctx, theme, &band, view, &track.keys);
+    paint_anchors(ctx, theme, state, &band, view, track);
     paint_handles(ctx, theme, state, &band, view, track);
     ctx.scene.pop_layer();
     resolve_drag(state, &band, view, track);
-    paint_height_grip(ctx, theme, state, rect, track.target.get());
+    anchor_drag::resolve_drag(state, &band, track);
+    paint_height_grip(ctx, theme, state, rect, target);
 }
 
 /// The grip along the bottom of an expanded row: a short centred bar plus a
@@ -207,20 +198,59 @@ fn paint_curve(ctx: &mut PaintCtx, theme: Theme, band: &Band, view: TimeView, ke
     );
 }
 
-/// A dot per key, on the curve. Selected keys take the accent, matching their
-/// diamond in the strip above.
-fn paint_anchors(ctx: &mut PaintCtx, theme: Theme, band: &Band, view: TimeView, keys: &[KeyView]) {
-    for k in keys {
+/// A dot per key, on the curve, each a grab target for the value drag (W3.E5).
+/// Selected keys take the accent, matching their diamond in the strip above.
+///
+/// Registered BEFORE the handles so that where the two overlap the handle — the
+/// smaller, more precise target, and the one that only appears on a selected
+/// segment — wins the hit (`HitIndex::hit` walks its rects in reverse).
+fn paint_anchors(
+    ctx: &mut PaintCtx,
+    theme: Theme,
+    state: &TimelinePanelState,
+    band: &Band,
+    view: TimeView,
+    track: &TrackView,
+) {
+    let target = track.target.get();
+    for k in &track.keys {
         let (x, y) = (view.x(k.t_seconds), band.y(f64::from(k.value)));
         if x < band.rect.x || x > band.rect.x + band.rect.w {
             continue;
         }
-        let tok = if k.selected {
+        let tok = if anchor_drag::is_dragging(state, target, k) {
+            ColorToken::AccentPress
+        } else if k.selected {
             ColorToken::Accent
         } else {
             ColorToken::Text1
         };
         fill_circle(ctx.scene, x, y, ANCHOR_R, resolve(tok, theme));
+
+        // A key dragged (or eased) beyond the band is drawn clipped; leaving its
+        // grab target behind would let it be grabbed through another row.
+        if y < band.rect.y || y > band.rect.y + band.rect.h {
+            continue;
+        }
+        let id = ids::timeline_anchor_hit_id(target, k.id.get());
+        let hit = Rect::new(
+            x - ANCHOR_HIT_R,
+            y - ANCHOR_HIT_R,
+            ANCHOR_HIT_R * 2.0,
+            ANCHOR_HIT_R * 2.0,
+        );
+        ctx.host.store_mut().register(
+            id,
+            InteractiveState::TimelineSurface {
+                parent: ids::TIMELINE_PANEL,
+                kind: TimelineHitKind::CurveAnchor {
+                    target,
+                    key: k.id.get(),
+                },
+                canvas: band.rect,
+            },
+        );
+        ctx.host.hit_index_mut().register(id, hit);
     }
 }
 

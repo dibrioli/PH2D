@@ -37,7 +37,12 @@ pub(crate) fn paint(state: &mut TimelinePanelState, ctx: &mut PaintCtx) {
         // bracket open, which would swallow the next atomic edit.
         state.box_drag = None;
         state.box_commit = None;
-        if state.key_drag.take().is_some() || state.handle_drag.take().is_some() {
+        // One pointer means at most one of these is armed, but take all three
+        // before testing: `||` would short-circuit and strand the others.
+        let key = state.key_drag.take().is_some();
+        let handle = state.handle_drag.take().is_some();
+        let anchor = state.anchor_drag.take().is_some();
+        if key || handle || anchor {
             state::push_intent(ph2d_timeline::TimelineIntent::EndEdit);
         }
         set_last_content_h(0.0);
@@ -151,11 +156,15 @@ pub(crate) fn paint(state: &mut TimelinePanelState, ctx: &mut PaintCtx) {
     tracks::paint_add_track(ctx, theme, header);
     // Track rows (labels + key diamonds + expanded graph bands) below the ruler.
     tracks::paint_rows(ctx, theme, &g, view, preview_dx, state, &snapshot);
-    // A handle drag whose row got culled (scrolled away, or its track unbound)
-    // never reached `graph::resolve_drag`: close its undo bracket here so the
-    // next atomic edit is not silently swallowed into it.
+    // A handle or anchor drag whose row got culled (scrolled away, or its track
+    // unbound) never reached its `resolve_drag`: close the undo bracket here so
+    // the next atomic edit is not silently swallowed into it.
     if state.handle_drag.is_some_and(|d| d.ending) {
         state.handle_drag = None;
+        state::push_intent(ph2d_timeline::TimelineIntent::EndEdit);
+    }
+    if state.anchor_drag.as_ref().is_some_and(|d| d.ending) {
+        state.anchor_drag = None;
         state::push_intent(ph2d_timeline::TimelineIntent::EndEdit);
     }
     // The live box-select rubber band rides over the diamonds it is picking.

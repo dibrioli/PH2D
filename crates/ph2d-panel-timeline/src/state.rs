@@ -89,6 +89,9 @@ pub struct TimelinePanelState {
     pub expanded: Vec<u64>,
     /// In-progress bézier-handle drag in an expanded track's graph.
     pub handle_drag: Option<HandleDrag>,
+    /// In-progress anchor drag in an expanded track's graph (W3.E5) — the
+    /// gesture that retunes a key's VALUE.
+    pub anchor_drag: Option<AnchorDrag>,
     /// In-progress box-select (marquee) drag over an empty lane.
     pub box_drag: Option<BoxDrag>,
     /// A box-select that just finished, waiting to be resolved against the key
@@ -136,6 +139,47 @@ pub struct HandleDrag {
     pub range: Option<(f64, f64)>,
     /// The gesture ended this frame: `paint` resolves it once more, pushes
     /// `EndEdit` to close the undo bracket, and clears the drag.
+    pub ending: bool,
+}
+
+/// An in-progress anchor drag in an expanded track's graph: the gesture that
+/// edits a key's VALUE (W3.E5).
+///
+/// The value axis is **band-local** — every row auto-fits its own range — so a
+/// pixel offset only carries meaning inside the band it was made in. That is why
+/// the drag records the keys it retunes UP FRONT ([`AnchorDrag::base`], one entry
+/// per selected key on this track) instead of leaning on the live selection: the
+/// sideways half of the same gesture moves the whole selection in time, across
+/// tracks, along the shared ruler.
+///
+/// Each frame re-derives the value from `base + delta`, never from the key's
+/// current value: an incremental `v += delta` would round in `f32` once per
+/// frame and let a slow drag drift away from the cursor.
+#[derive(Clone, Debug, PartialEq)]
+pub struct AnchorDrag {
+    /// Raw `AnimTarget` of the track whose band is being dragged.
+    pub target: u64,
+    /// Pointer position (global px) when the drag began.
+    pub start: (f32, f32),
+    /// Latest pointer position (global px).
+    pub cur: (f32, f32),
+    /// The keys this drag retunes, as `(raw KeyId, value at Begin)`.
+    pub base: Vec<(u64, f32)>,
+    /// Total time delta already emitted as `MoveSelectedKeys` — each frame emits
+    /// only the difference, so the streamed moves sum to exactly the drag.
+    pub applied_s: f64,
+    /// The value offset already emitted, so a frame that moved nothing vertically
+    /// emits no `SetKeyValue`. `None` until the first resolved frame.
+    pub applied_v: Option<f64>,
+    /// The pressed key, when it was already part of a multi-selection and was
+    /// pressed without Shift: keep the group so a drag moves it, but collapse to
+    /// this key on a plain click. Mirrors [`KeyDrag::collapse_to`].
+    pub collapse_to: Option<ph2d_timeline::SelectedKey>,
+    /// The band's value range, frozen on the drag's first paint — see
+    /// [`HandleDrag::range`] for why a refitting band would chase the cursor.
+    pub range: Option<(f64, f64)>,
+    /// The gesture ended this frame: `paint` resolves it once more, closes the
+    /// undo bracket and clears the drag.
     pub ending: bool,
 }
 
@@ -200,6 +244,7 @@ impl Default for TimelinePanelState {
             graph_resize: None,
             expanded: Vec::new(),
             handle_drag: None,
+            anchor_drag: None,
             box_drag: None,
             box_commit: None,
             rect: None,
@@ -216,12 +261,22 @@ impl TimelinePanelState {
     }
 
     /// Open/close a track's graph editor. Collapsing also drops an in-flight
-    /// handle drag on that track — its band is about to stop existing.
+    /// handle or anchor drag on that track — its band is about to stop existing,
+    /// so the `paint`-side resolver that would close the undo bracket will never
+    /// run again.
     pub fn toggle_expanded(&mut self, target: u64) {
         if let Some(i) = self.expanded.iter().position(|&t| t == target) {
             self.expanded.remove(i);
             if self.handle_drag.is_some_and(|d| d.target == target) {
                 self.handle_drag = None;
+                push_intent(TimelineIntent::EndEdit);
+            }
+            if self
+                .anchor_drag
+                .as_ref()
+                .is_some_and(|d| d.target == target)
+            {
+                self.anchor_drag = None;
                 push_intent(TimelineIntent::EndEdit);
             }
         } else {

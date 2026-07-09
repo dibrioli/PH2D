@@ -663,3 +663,78 @@ fn re_keying_an_instant_records_the_pose_and_keeps_the_easing() {
     assert_eq!(value_at(&st, 0.0), Some(42.0), "the pose was captured");
     assert_eq!(first_interp(&st), custom, "the authored ease survived");
 }
+
+#[test]
+fn a_graph_anchor_drag_moves_and_retunes_in_one_undo_step() {
+    // The exact intent stream `ph2d-panel-timeline::anchor_drag` emits for a drag
+    // that goes both sideways (time, whole selection) and upward (value, this
+    // track): a bracket, a streamed move per frame, and one absolute SetKeyValue
+    // per grabbed key rebuilt from the value captured at Begin. Undo must take the
+    // WHOLE gesture back — both axes — in one step.
+    let mut st = TimelineState::new();
+    let mut ph = Playhead::new(DT);
+    add_key(&mut st, &mut ph, 1, PropKind::TranslationX, 0.0, 5.0);
+    add_key(&mut st, &mut ph, 1, PropKind::TranslationX, 1.0, 9.0);
+    let target = st
+        .doc
+        .binding_for(1, PropKind::TranslationX)
+        .unwrap()
+        .target;
+    let key = st.doc.active_clip().track(target).unwrap().ids()[0];
+    apply_intent(
+        &mut st,
+        &mut ph,
+        I::SelectSingle(SelectedKey { target, key }),
+    );
+    let before = st.doc.clone();
+    let undo_depth = |st: &TimelineState| st.history.can_undo();
+    assert!(undo_depth(&st));
+
+    apply_intent(&mut st, &mut ph, I::BeginEdit);
+    // Three frames of one drag: +0.1 s then +0.15 s of time (accrued deltas), and
+    // the value rebuilt each frame from base 5.0 + the pointer's total offset.
+    for (dt, v) in [(0.1, 5.5), (0.15, 6.25), (0.0, 6.5)] {
+        if dt != 0.0 {
+            apply_intent(&mut st, &mut ph, I::MoveSelectedKeys { delta_seconds: dt });
+        }
+        apply_intent(
+            &mut st,
+            &mut ph,
+            I::SetKeyValue {
+                target,
+                key,
+                value: AnimValue::Float(v),
+            },
+        );
+    }
+    apply_intent(&mut st, &mut ph, I::EndEdit);
+
+    assert_eq!(key_times(&st), vec![0.25, 1.0], "the streamed moves summed");
+    assert_eq!(value_at(&st, 0.25), Some(6.5), "the last value won");
+    assert_eq!(
+        first_interp(&st),
+        Interp::Linear,
+        "retuning a value must not touch the segment's easing"
+    );
+
+    // One Ctrl+Z, and BOTH axes go back — a per-frame undo step would need six.
+    apply_intent(&mut st, &mut ph, I::Undo);
+    assert_eq!(st.doc, before, "the whole drag is one undo step");
+}
+
+#[test]
+fn an_anchor_drag_that_moved_nothing_commits_no_undo_step() {
+    // Press, no motion, release: the bracket opens and closes having changed
+    // nothing. A step here would make every stray click cost a Ctrl+Z.
+    let mut st = TimelineState::new();
+    let mut ph = Playhead::new(DT);
+    add_key(&mut st, &mut ph, 1, PropKind::TranslationX, 0.0, 5.0);
+    let before = st.doc.clone();
+    apply_intent(&mut st, &mut ph, I::BeginEdit);
+    apply_intent(&mut st, &mut ph, I::EndEdit);
+    apply_intent(&mut st, &mut ph, I::Undo);
+    assert_ne!(
+        st.doc, before,
+        "Undo skipped past the empty bracket to the AddKey"
+    );
+}

@@ -368,6 +368,10 @@ pub enum TimelineHitKind {
     /// The vertical splitter between the track-name column and the time area;
     /// dragging it horizontally widens or narrows the names.
     LabelSplitter,
+    /// A key's anchor dot in an expanded track's graph. Dragging it edits the key
+    /// in the `(time, value)` plane: sideways moves the selection in time,
+    /// up/down retunes the value. `target`/`key` are the raw `AnimTarget`/`KeyId`.
+    CurveAnchor { target: u64, key: u64 },
     /// A bézier handle in an expanded track's graph. `target`/`key` name the
     /// segment's **outgoing** key (the one whose `Interp` the handle edits);
     /// `which` is `0` for the out handle (`P1`) and `1` for the in handle (`P2`).

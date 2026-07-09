@@ -97,6 +97,15 @@ pub fn timeline_graph_resize_id(target: u64) -> NodeId {
     dynamic_id("timeline.graph_resize", &[target])
 }
 
+/// A stable `NodeId` for one key's anchor dot in the graph editor (W3.E5),
+/// keyed by the track's `AnimTarget` and the key's `KeyId`. A separate domain
+/// from [`timeline_key_hit_id`]: the same key owns a diamond in the dope-sheet
+/// strip AND an anchor in the band below it, and they must not share an id.
+#[must_use]
+pub fn timeline_anchor_hit_id(target: u64, key: u64) -> NodeId {
+    dynamic_id("timeline.anchor", &[target, key])
+}
+
 /// A stable `NodeId` for one bézier handle in the graph editor (W3.E3), keyed by
 /// the segment's owning `(target, key)` and `which` (`0` = out handle `P1`,
 /// `1` = in handle `P2`).

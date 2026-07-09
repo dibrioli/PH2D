@@ -90,7 +90,7 @@ fn emit_move(state: &mut TimelinePanelState, px_per_s: f64, snap: &TimelineViewS
     let Some(d) = state.key_drag else {
         return;
     };
-    let want = drag_delta_seconds(&d, px_per_s, snap);
+    let want = drag_delta_seconds(d.start_x, d.cur_x, px_per_s, snap);
     let delta = want - d.applied_s;
     if delta == 0.0 {
         return;
@@ -105,14 +105,20 @@ fn emit_move(state: &mut TimelinePanelState, px_per_s: f64, snap: &TimelineViewS
     state.pending_move_dx = Some(state.pending_move_dx.unwrap_or(0.0) + dx);
 }
 
-/// The drag's TOTAL frame-snapped time delta so far (`0.0` when it rounds to
+/// A drag's TOTAL frame-snapped time delta so far (`0.0` when it rounds to
 /// nothing). Snaps to whole display frames when the snapshot says frame-snap is
-/// on, matching the transport's scrub/AddKey snapping.
-fn drag_delta_seconds(d: &KeyDrag, px_per_s: f64, snap: &TimelineViewSnapshot) -> f64 {
+/// on, matching the transport's scrub/AddKey snapping. Shared with the graph
+/// editor's anchor drag, which rides the same time axis.
+pub(crate) fn drag_delta_seconds(
+    start_x: f32,
+    cur_x: f32,
+    px_per_s: f64,
+    snap: &TimelineViewSnapshot,
+) -> f64 {
     if px_per_s <= 0.0 {
         return 0.0;
     }
-    let raw = f64::from(d.cur_x - d.start_x) / px_per_s;
+    let raw = f64::from(cur_x - start_x) / px_per_s;
     if snap.frame_snap && snap.fps > 0.0 {
         (raw * snap.fps).round() / snap.fps
     } else {

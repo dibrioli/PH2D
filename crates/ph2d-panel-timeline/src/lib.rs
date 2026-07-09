@@ -16,6 +16,7 @@
 
 #![forbid(unsafe_code)]
 
+mod anchor_drag;
 mod box_select;
 mod event;
 mod geom;

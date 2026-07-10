@@ -25,6 +25,7 @@ mod graph_paint;
 pub mod ids;
 mod interact;
 mod key_drag;
+mod loop_drag;
 mod paint;
 pub mod populate;
 mod resize;

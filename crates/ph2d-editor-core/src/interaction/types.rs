@@ -435,6 +435,10 @@ pub enum TimelineHitKind {
     /// The grip along the bottom of an expanded track's graph band — dragging it
     /// vertically sets the height of every graph band.
     GraphResize,
+    /// A loop-range brace on the ruler. `edge` is `0` = start handle, `1` = end
+    /// handle, `2` = the band between them (drag to move the whole range).
+    /// Dragging sets the playback loop range; the panel maps pointer x to time.
+    LoopBrace { edge: u8 },
     /// A resize gripper on the panel's border. `edges` is a bitmask of
     /// [`TIMELINE_EDGE_L`] .. [`TIMELINE_EDGE_B`] (a corner sets two). The panel
     /// owns the resize itself; the bits are named here only so the shell can pick

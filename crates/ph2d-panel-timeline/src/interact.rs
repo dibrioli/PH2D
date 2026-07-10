@@ -26,6 +26,7 @@ use crate::anchor_drag;
 use crate::box_select;
 use crate::ids;
 use crate::key_drag;
+use crate::loop_drag;
 use crate::resize;
 use crate::state::TimelinePanelState;
 use crate::summary;
@@ -68,7 +69,7 @@ pub(crate) fn process(
         match g.button {
             // Middle-drag pans both axes, anywhere in the dope sheet (Blender).
             PointerButton::Middle => view::apply_pan_drag(state, px_per_s, g),
-            PointerButton::Primary => dispatch_primary(state, px_per_s, snap, g),
+            PointerButton::Primary => dispatch_primary(state, time_x, px_per_s, snap, g),
             // Secondary is reserved (future context menu).
             PointerButton::Secondary => {}
         }
@@ -80,11 +81,15 @@ pub(crate) fn process(
 /// the panel runs.
 pub(crate) fn dispatch_primary(
     state: &mut TimelinePanelState,
+    time_x: f32,
     px_per_s: f64,
     snap: &TimelineViewSnapshot,
     g: TimelineGesture,
 ) {
     match g.kind {
+        TimelineHitKind::LoopBrace { edge } => {
+            loop_drag::apply(state, time_x, px_per_s, snap, edge, g);
+        }
         // Column lock (default): a press on a track key is a press on its whole
         // time column, so grabbing one key grabs the vertical group. Unlocked, it
         // moves alone. Either way, the Summary diamond itself always moves the
@@ -191,7 +196,7 @@ mod tests {
         px_per_s: f64,
         snap: &TimelineViewSnapshot,
     ) {
-        dispatch_primary(state, px_per_s, snap, g);
+        dispatch_primary(state, 0.0, px_per_s, snap, g);
     }
 
     #[test]

@@ -688,4 +688,11 @@ fn timeline_dynamic_ids_dont_collide_with_chrome_or_each_other() {
             }
         }
     }
+    // Loop-range braces: three singletons (start / end / body), not per-target.
+    for edge in 0..3u8 {
+        check(
+            format!("timeline_loop_brace_id({edge})"),
+            ids::timeline_loop_brace_id(edge),
+        );
+    }
 }

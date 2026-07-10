@@ -9,13 +9,13 @@
 //! as a Scrub. Adaptive tick density arrives with zoom (E6); E3 uses fixed 1 s
 //! major / 0.5 s minor ticks at the default zoom.
 
-use ph2d_editor_core::interaction::InteractiveState;
+use ph2d_editor_core::interaction::{InteractiveState, TimelineHitKind};
 use ph2d_editor_core::paint::{fill_rounded_rect, paint_text, resolve};
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::widget::SliderState;
 use ph2d_editor_core::zones::Rect;
 use ph2d_timeline::TimelineViewSnapshot;
-use ph2d_tokens::{ColorToken, Radius, Spacing, Theme, TypeToken};
+use ph2d_tokens::{ColorToken, Radius, Spacing, StrokeToken, Theme, TypeToken};
 
 use crate::ids;
 
@@ -25,6 +25,10 @@ const TICK_MINOR_H: f32 = 5.0; // LITERAL-PX-OK: half-second tick height
 const PLAYHEAD_W: f32 = 2.0; // LITERAL-PX-OK: playhead line width
 const TICK_MAJOR_S: f64 = 1.0; // LITERAL-PX-OK: labelled tick interval (seconds), not a UI metric
 const TICK_MINOR_S: f64 = 0.5; // LITERAL-PX-OK: unlabelled tick interval (seconds), not a UI metric
+/// Visible width of a loop brace's vertical bar.
+const BRACE_W: f32 = 3.0; // LITERAL-PX-OK: loop-brace bar width
+/// Half-width of a brace's grab target — wider than the bar so it is easy to hit.
+const BRACE_HIT_HW: f32 = 6.0; // LITERAL-PX-OK: loop-brace grab half-width
 
 /// Paint the ruler strip (ticks + labels), the playhead line across `region`,
 /// and register the scrub hit. The view (`view_start`, `px_per_s`) is computed
@@ -91,6 +95,10 @@ pub(crate) fn paint(
     ctx.host
         .hit_index_mut()
         .register(ids::TIMELINE_RULER, strip);
+    // The loop braces go on TOP of the scrub strip — registered after it so their
+    // grab targets win the hit where they overlap (`HitIndex::hit` walks in
+    // reverse). Drawn last for the same reason visually.
+    paint_loop(ctx, theme, region, &time_to_x, snap);
     let dragging = matches!(
         ctx.host.store().slider(ids::TIMELINE_RULER),
         Some((SliderState::Dragging, _))
@@ -103,6 +111,101 @@ pub(crate) fn paint(
             *value = v;
         }
     }
+}
+
+/// Paint the loop range's shaded band + its two braces on the ruler, and
+/// register the three grab targets (start · end · body). A no-op when no loop is
+/// set — the braces exist only while the Loop toggle has armed a range.
+fn paint_loop(
+    ctx: &mut PaintCtx,
+    theme: Theme,
+    region: Rect,
+    time_to_x: &impl Fn(f64) -> f32,
+    snap: &TimelineViewSnapshot,
+) {
+    let Some((a, b)) = snap.loop_range else {
+        return;
+    };
+    let right = region.x + region.w;
+    let x0 = time_to_x(a).clamp(region.x, right);
+    let x1 = time_to_x(b).clamp(region.x, right);
+    // Shaded band across the ruler strip between the braces.
+    if x1 > x0 {
+        fill_rounded_rect(
+            ctx.scene,
+            Rect::new(x0, region.y, x1 - x0, RULER_H),
+            Radius::Xs.px(),
+            resolve(ColorToken::AccentSoft, theme),
+        );
+    }
+    // Body grab (move the whole range) UNDER the edge handles, registered first so
+    // the edges win where they overlap.
+    if x1 - x0 > BRACE_HIT_HW * 2.0 {
+        let body = Rect::new(
+            x0 + BRACE_HIT_HW,
+            region.y,
+            x1 - x0 - BRACE_HIT_HW * 2.0,
+            RULER_H,
+        );
+        register_brace(ctx, ids::timeline_loop_brace_id(2), 2, body);
+    }
+    // The two brace bars + their grab targets.
+    for (edge, x, onscreen) in [
+        (
+            0u8,
+            time_to_x(a),
+            time_to_x(a) >= region.x - BRACE_HIT_HW && time_to_x(a) <= right,
+        ),
+        (
+            1u8,
+            time_to_x(b),
+            time_to_x(b) >= region.x && time_to_x(b) <= right + BRACE_HIT_HW,
+        ),
+    ] {
+        if !onscreen {
+            continue;
+        }
+        let clamped = x.clamp(region.x, right);
+        fill_rounded_rect(
+            ctx.scene,
+            Rect::new(clamped - BRACE_W * 0.5, region.y, BRACE_W, RULER_H),
+            Radius::Xs.px(),
+            resolve(ColorToken::Accent, theme),
+        );
+        // A little tick at the top, on the INNER side, so the brace reads as a
+        // bracket [ or ] rather than a second playhead line.
+        let tick_x = if edge == 0 {
+            clamped + BRACE_W * 0.5
+        } else {
+            clamped - BRACE_W * 0.5 - BRACE_W
+        };
+        fill_rounded_rect(
+            ctx.scene,
+            Rect::new(tick_x, region.y, BRACE_W, StrokeToken::Thick.px()),
+            Radius::Xs.px(),
+            resolve(ColorToken::Accent, theme),
+        );
+        let hit = Rect::new(
+            clamped - BRACE_HIT_HW,
+            region.y,
+            BRACE_HIT_HW * 2.0,
+            RULER_H,
+        );
+        register_brace(ctx, ids::timeline_loop_brace_id(edge), edge, hit);
+    }
+}
+
+/// Register one loop brace as a timeline surface + hit rect.
+fn register_brace(ctx: &mut PaintCtx, id: ph2d_a11y::NodeId, edge: u8, rect: Rect) {
+    ctx.host.store_mut().register(
+        id,
+        InteractiveState::TimelineSurface {
+            parent: ids::TIMELINE_PANEL,
+            kind: TimelineHitKind::LoopBrace { edge },
+            canvas: rect,
+        },
+    );
+    ctx.host.hit_index_mut().register(id, rect);
 }
 
 /// Paint ticks at `step`-second intervals across the visible span; labels on

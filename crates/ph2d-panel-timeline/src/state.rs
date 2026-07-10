@@ -102,6 +102,9 @@ pub struct TimelinePanelState {
     /// to it, while a drag keeps whatever else was selected. `None` when the
     /// press did not start on the Summary channel.
     pub summary_press: Option<SummaryPress>,
+    /// In-progress loop-brace drag on the ruler (W4.T3): which edge and the range
+    /// captured at Begin, so a slow drag applies deltas to a fixed origin.
+    pub loop_drag: Option<LoopDrag>,
     /// In-progress box-select (marquee) drag over an empty lane.
     pub box_drag: Option<BoxDrag>,
     /// A box-select that just finished, waiting to be resolved against the key
@@ -193,6 +196,19 @@ pub struct AnchorDrag {
     pub ending: bool,
 }
 
+/// An in-progress loop-brace drag. `edge` is `0` = start, `1` = end, `2` = the
+/// band (move both). The range is captured at Begin so deltas apply to a fixed
+/// origin (no drift on a slow drag).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct LoopDrag {
+    /// `0` = start handle, `1` = end handle, `2` = body.
+    pub edge: u8,
+    /// Pointer x (global px) when the drag began.
+    pub start_x: f32,
+    /// The `(start, end)` loop range in seconds when the drag began.
+    pub start_range: (f64, f64),
+}
+
 /// A press that landed on a Summary column.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct SummaryPress {
@@ -266,6 +282,7 @@ impl Default for TimelinePanelState {
             handle_drag: None,
             anchor_drag: None,
             summary_press: None,
+            loop_drag: None,
             box_drag: None,
             box_commit: None,
             rect: None,

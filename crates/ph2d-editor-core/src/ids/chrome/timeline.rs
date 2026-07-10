@@ -117,6 +117,13 @@ pub fn timeline_summary_hit_id(t_bits: u64) -> NodeId {
     dynamic_id("timeline.summary", &[t_bits])
 }
 
+/// A stable `NodeId` for a loop-range brace on the ruler, keyed by `edge`
+/// (`0` = start, `1` = end, `2` = the band between them).
+#[must_use]
+pub fn timeline_loop_brace_id(edge: u8) -> NodeId {
+    dynamic_id("timeline.loop_brace", &[u64::from(edge)])
+}
+
 /// A stable `NodeId` for one bézier handle in the graph editor (W3.E3), keyed by
 /// the segment's owning `(target, key)` and `which` (`0` = out handle `P1`,
 /// `1` = in handle `P2`).

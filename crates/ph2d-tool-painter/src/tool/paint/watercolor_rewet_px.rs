@@ -8,8 +8,66 @@
 
 use super::watercolor_field::{
     BACKRUN_POOL, LIFT_MAX, REWET_LIFT, REWET_POOL, RewetFields, SOAK_DISSOLVE, SOAK_LIFT,
-    WetStrokeStyle, box_blur,
+    WetStrokeStyle, box_blur, sample_bilinear,
 };
+
+/// Take 10 — raio do blur do campo de molhado por-dono ([`build_wet_field`]): a transição da
+/// junção soma isto à rampa do próprio depósito (~10 px) ⇒ ~15-25 px, escala do feather.
+/// DELIBERADAMENTE menor que o gap do guard de não-contato (A/B a 10 px em
+/// `watercolor_session_brush_changes_do_not_touch_baked_washes`): um box kernel não é geodésico —
+/// raio ≥ gap vazaria molhado entre washes que nem se tocam.
+const WET_FIELD_BLUR_PX: usize = 8; // LITERAL-PX-OK: raio de suavização do campo (vide doc acima)
+
+/// Take 10: MOLHADO É CAMPO, NÃO ESTILO — o `st.wet` do dono entrava BINÁRIO nos termos
+/// wet-driven, e com Rewet DIFERENTE entre traços da sessão a fronteira de dono (recency por
+/// disco) imprimia um degrau de ~11 bytes em 1 px DENTRO da tinta velha (a linha dura do smoke
+/// 2026-07-09; sondas [maps]/[wetmaps], doc 12). O campo é o wet-do-dono com blur MASCARADO por
+/// posse (`blur(wet·m)` + `blur(m)`, divididos no sample): o molhado só se espalha entre pixels
+/// POSSUÍDOS (tinta real se fundindo na junção) — nunca do brush vivo pra poça assada. Sessão de
+/// UM estilo: razão de blurs iguais ⇒ byte-idêntica.
+pub(super) fn build_wet_field(
+    style_owner: &[u8],
+    table: &[WetStrokeStyle],
+    fw: usize,
+    (rx0, ry0): (usize, usize),
+    (rw, rh): (usize, usize),
+) -> (Vec<f32>, Vec<f32>) {
+    let mut wf = vec![0.0f32; rw * rh];
+    let mut mask = vec![0.0f32; rw * rh];
+    for wy in 0..rh {
+        let gy = ry0 + wy;
+        for wx in 0..rw {
+            let o = style_owner[gy * fw + (rx0 + wx)];
+            if o != 0 {
+                wf[wy * rw + wx] = table[(o as usize - 1).min(table.len() - 1)].wet;
+                mask[wy * rw + wx] = 1.0;
+            }
+        }
+    }
+    (
+        box_blur(&wf, rw, rh, WET_FIELD_BLUR_PX),
+        box_blur(&mask, rw, rh, WET_FIELD_BLUR_PX),
+    )
+}
+
+/// O Rewet efetivo no pixel: campo mascarado ÷ massa; sem massa na vizinhança (ou sem campo) ⇒
+/// o `wet` escalar do estilo do dono — o caminho antigo, exato.
+#[inline]
+pub(super) fn sample_wet_field(
+    field: Option<&(Vec<f32>, Vec<f32>)>,
+    (rw, rh): (usize, usize),
+    (sx, sy): (f32, f32),
+    st_wet: f32,
+) -> f32 {
+    field.map_or(st_wet, |(wf, m)| {
+        let mass = sample_bilinear(m, rw, rh, sx, sy);
+        if mass > 1e-4 {
+            sample_bilinear(wf, rw, rh, sx, sy) / mass
+        } else {
+            st_wet
+        }
+    })
+}
 
 /// Resolve the per-pixel OWNER stroke's style (EDGE-1 per-stroke params — recency ownership: an
 /// older wash keeps ITS Concentration/Edge/water on the union re-bake, Enio 2026-07-09). Owner `0`

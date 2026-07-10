@@ -21,7 +21,9 @@
 //! integer-hash value noise are built once and deterministic; no transcendental runs in the hot loop.
 
 use super::watercolor_field::*;
-use super::watercolor_rewet_px::{blur_of, inner_blur_set, rewet_px, style_at};
+use super::watercolor_rewet_px::{
+    blur_of, build_wet_field, inner_blur_set, rewet_px, sample_wet_field, style_at,
+};
 use super::*;
 use ph2d_painter_brush::blend::ryb_mix;
 use rayon::prelude::*;
@@ -30,13 +32,6 @@ use rayon::prelude::*;
 /// above `SS1` fully covered — a crisp-but-soft silhouette from the feathered coverage discs.
 pub(super) const SS0: f32 = 0.12; // LITERAL-PX-OK: coverage-hardening smoothstep low edge (wet_edges)
 pub(super) const SS1: f32 = 0.60; // LITERAL-PX-OK: coverage-hardening smoothstep high edge (wet_edges)
-/// Deposited-colour trust RAMP (0..255): at/above `COL_HI` the composite uses the deposited
-/// colour outright; at/below `COL_LO` the owner's brush colour; between them it LERPS — the old
-/// binary flip (`COL_EPS = 20`) printed a hard border along the alpha-20 contour wherever the
-/// deposited colour differs from the raw one (mixer on: a depleted tail deposits alpha ~2..19,
-/// Enio 2026-07-09 "borda dura ao reduzir Charge").
-const COL_LO: u8 = 8;
-const COL_HI: u8 = 32;
 
 impl PainterTool {
     /// Whether the watercolor optical render-path drives this stroke: the Watercolor section is on, we're
@@ -287,6 +282,10 @@ impl PainterTool {
         // Raw per-pixel soak for the granulation settle (GRAN-1) — read-only in the parallel loop.
         let soak_buf = &self.paint.wet_soak;
         let water_buf = &self.paint.stroke_water;
+        // Take 10: MOLHADO É CAMPO, NÃO ESTILO ([`build_wet_field`], doc lá) — suaviza a
+        // fronteira de dono nos termos wet-driven; sem rewet/água/estilos nem constrói.
+        let wet_field = ((wet_any > 0.0 || watered) && has_style && style_owner.len() == n)
+            .then(|| build_wet_field(style_owner, style_table, fw, (rx0, ry0), (rw, rh)));
 
         let color_buf = &self.paint.stroke_color;
         // Substrate memoisation (perf, byte-identical): `paper_h` is canvas-anchored, so compute
@@ -442,6 +441,10 @@ impl PainterTool {
                     } else {
                         0.0
                     };
+                    // Take 10: TODO termo wet-driven lê o campo borrado ([`sample_wet_field`]) —
+                    // o thinning do interior era o degrau de ~11 bytes/px na fronteira de dono.
+                    let st_wet_px =
+                        sample_wet_field(wet_field.as_ref(), (rw, rh), (sx, sy), st.wet);
                     // GRAN-1 (Curtis §4.5, Tier-2): valley deposition + the take-3 drying model —
                     // extracted to [`granulation_factor`] (LOC cap); the amount + water follow the
                     // pixel's OWNER stroke (per-stroke style).
@@ -449,7 +452,7 @@ impl PainterTool {
                         gran_h,
                         paper_component,
                         st.granulation,
-                        st.wet,
+                        st_wet_px,
                         soak_v,
                         settled,
                     );
@@ -459,11 +462,12 @@ impl PainterTool {
                     // clean ring). This is what makes the Spread read intense + organic under Wet even
                     // before any old paint is involved (Enio 2026-07-06 "mais intenso e menos uniforme").
                     let mut fill_px = st.fill;
-                    if st.wet > 0.0 {
+                    if st_wet_px > 0.0 {
                         fill_px = st.fill
-                            * (1.0 - (WET_THIN * st.wet * st.spread_thin * inner).min(0.95));
-                        let ragged = (1.0 + (paper_h - 0.5) * 2.0 * WET_RAGGED * st.wet).max(0.0);
-                        edge = (edge * (1.0 + WET_EDGE_BOOST * st.wet) * ragged).min(1.5); // LITERAL-PX-OK: wet edge may overshoot the dry clamp; signed (EDGE-3) keeps the pale lobe
+                            * (1.0 - (WET_THIN * st_wet_px * st.spread_thin * inner).min(0.95));
+                        let ragged =
+                            (1.0 + (paper_h - 0.5) * 2.0 * WET_RAGGED * st_wet_px).max(0.0);
+                        edge = (edge * (1.0 + WET_EDGE_BOOST * st_wet_px) * ragged).min(1.5); // LITERAL-PX-OK: wet edge may overshoot the dry clamp; signed (EDGE-3) keeps the pale lobe
                     }
                     // Tip density at the warped position (nearest, like the colour buffer).
                     let tip_dens = if has_dens {
@@ -481,6 +485,7 @@ impl PainterTool {
                     }
                     // Wet-on-wet lift / dissolve / pool / backrun ring — [`rewet_px`] (sibling,
                     // LOC split), verbatim math. `pool` is the density ADDITION from bloom + ring.
+                    // O Rewet dos termos é o CAMPO borrado do wet-do-dono (take 10, `st_wet_px`).
                     let rw_px = match &rewet {
                         Some(f) => rewet_px(
                             f,
@@ -488,7 +493,7 @@ impl PainterTool {
                             (sx, sy),
                             (wxg, wyg),
                             water,
-                            st.wet,
+                            st_wet_px,
                             cw,
                             inner,
                         ),
@@ -504,15 +509,17 @@ impl PainterTool {
                     density += rw_px.pool;
                     let od = density * st.depth;
 
-                    // Pigment colour: the deposited (source-over) colour where present, else the
-                    // brush colour — RAMPED between them over `COL_LO..COL_HI` (see the consts).
+                    // Pigment colour: depositado vs brush por lerp PROPORCIONAL (`ca8/255`, a
+                    // fração de pigmento do depósito). A janela fixa `COL_LO..COL_HI` (take 6)
+                    // cruzava em ~1px na borda do footprint = a LINHA DURA da junção (take 10,
+                    // sonda [maps]); depositado == raw (mixer-off) ⇒ byte-idêntico.
                     let mut pig = st.color;
                     if has_color {
                         let ca8 = color_buf[ci + 3];
-                        if ca8 >= COL_HI {
+                        if ca8 == u8::MAX {
                             pig = [color_buf[ci], color_buf[ci + 1], color_buf[ci + 2]];
-                        } else if ca8 > COL_LO {
-                            let w = f32::from(ca8 - COL_LO) / f32::from(COL_HI - COL_LO);
+                        } else if ca8 > 0 {
+                            let w = f32::from(ca8) / 255.0;
                             for c in 0..3 {
                                 pig[c] = (f32::from(st.color[c])
                                     + (f32::from(color_buf[ci + c]) - f32::from(st.color[c])) * w
@@ -607,7 +614,7 @@ impl PainterTool {
                     // own to blend (its tint is the dissolve), and `water = 1` pushed the mix to
                     // full-replace — territory where `ryb_mix` degenerates (OPT-2's documented
                     // defect; the smoke's navy-blue ring). Wet keeps driving it as before.
-                    let mix_amt = st.pigment_mix.max(st.wet * wet_paint);
+                    let mix_amt = st.pigment_mix.max(st_wet_px * wet_paint);
                     if mix_amt > 0.0 {
                         // The (possibly lifted) base APPEARANCE over the ground — for an opaque base with
                         // no lift this is the raw base bytes exactly (`l2s(s2l(b)) == b`); for a

@@ -13915,64 +13915,238 @@ fn watercolor_wet_session_survives_charge_slider_change() {
     );
 }
 
-/// Regressão do smoke 2026-07-09 (gesto A rodada 2, doc 12 take 9 + screenshot): com Charge < 1
-/// (mixer ligado), wet=0, dil=0, um traço cruzando um wash DA MESMA COR em sessão viva CLAREAVA a
-/// junção (mancha pálida + degrau serrilhado onde o alpha depositado cruza a janela COL_LO..HI).
-/// Pigmento é subtrativo: depositar MAIS tinta nunca clareia. Raiz: o reservatório do mixer
-/// amostra a APARÊNCIA do filme fino (rosa pálido = absorbância baixa) e o lerp
-/// `mag = ba + (sa−ba)·t` DILUÍA o depósito — o mixer deve mudar o MATIZ, nunca a força do
-/// pigmento (diluição é trabalho do Dilution).
+/// Diag do take 10 (rode com `--ignored --nocapture`): perfil 1D de luminância pela junção
+/// (eixo do traço 2) vs a borda orgânica do próprio wash — quantifica a DUREZA da fronteira
+/// do clareamento (bytes/px) pra calibrar a spec de suavidade.
 #[test]
-fn watercolor_mixer_crossing_same_color_does_not_lighten_junction() {
-    let size = 600u32;
-    let mut t = PainterTool::default();
-    t.set_source(vec![255u8; (size * size * 4) as usize], size, size);
-    // Params do smoke do Enio (2026-07-09, rodada 2).
-    t.paint.brush = BrushSpec {
-        radius_px: 54.5,
-        color: [1.0, 0.27, 0.27],
-        spacing: 0.05,
-        watercolor: true,
-        fill: 0.120,
-        depth: 1.20,
-        edge_gain: 0.71,
-        edge_spread: 15.9,
-        warp: 9.9,
-        granulation: 0.30,
-        wet_charge: 0.4267,
-        ..Default::default()
-    };
-    for slot in &mut t.paint.brush_by_mode {
-        *slot = t.paint.brush;
-    }
-    // Traço 1: vertical por x=300.
-    assert!(t.on_canvas_pointer(cp([300.0, 80.0], PointerPhase::Down)));
-    for i in 1..=40 {
-        t.on_canvas_pointer(cp([300.0, 80.0 + i as f32 * 11.0], PointerPhase::Move));
-    }
-    t.on_canvas_pointer(cp([300.0, 520.0], PointerPhase::Up));
-    let mean_patch = |px: &[u8]| -> f32 {
-        let mut sum = 0.0f32;
-        for y in 293..308usize {
-            for x in 293..308usize {
-                let i = (y * size as usize + x) * 4;
-                sum += (f32::from(px[i]) + f32::from(px[i + 1]) + f32::from(px[i + 2])) / 3.0;
+#[ignore = "diag exploratório — imprime perfis de transição da junção (take 10)"]
+fn watercolor_junction_transition_profile() {
+    for (label, wet) in [("chg<1 wet=0", 0.0f32), ("chg<1 wet=1", 1.0f32)] {
+        let size = 600u32;
+        let mut t = PainterTool::default();
+        t.set_source(vec![255u8; (size * size * 4) as usize], size, size);
+        t.paint.brush = BrushSpec {
+            radius_px: 49.8,
+            color: [1.0, 0.27, 0.27],
+            spacing: 0.05,
+            watercolor: true,
+            fill: 0.120,
+            depth: 1.20,
+            edge_gain: 0.70,
+            edge_spread: 22.8,
+            warp: 11.1,
+            granulation: 0.30,
+            wet_charge: 0.4841,
+            wet_dilution: 0.2918,
+            wet_pull: 0.22,
+            wet_rewet: 0.0, // traço 1 sem rewet (como no smoke)
+            ..Default::default()
+        };
+        for slot in &mut t.paint.brush_by_mode {
+            *slot = t.paint.brush;
+        }
+        // Traço 1: vertical por x=300.
+        assert!(t.on_canvas_pointer(cp([300.0, 80.0], PointerPhase::Down)));
+        for i in 1..=40 {
+            t.on_canvas_pointer(cp([300.0, 80.0 + i as f32 * 11.0], PointerPhase::Move));
+            t.on_tick(16.0);
+        }
+        t.on_canvas_pointer(cp([300.0, 520.0], PointerPhase::Up));
+        t.on_tick(16.0);
+        // Traço 2: horizontal por y=300, com o Rewet do caso.
+        t.paint.brush.wet_rewet = wet;
+        for slot in &mut t.paint.brush_by_mode {
+            *slot = t.paint.brush;
+        }
+        assert!(t.on_canvas_pointer(cp([80.0, 300.0], PointerPhase::Down)));
+        for i in 1..=40 {
+            t.on_canvas_pointer(cp([80.0 + i as f32 * 11.0, 300.0], PointerPhase::Move));
+            // Traço LENTO real (o soak do smoke: 30k px) — ~8 frames por move.
+            for _ in 0..8 {
+                t.on_tick(16.0);
             }
         }
-        sum / (15.0 * 15.0)
-    };
-    let before = mean_patch(&t.canvas_rgba);
-    // Traço 2: horizontal por y=300, cruzando em sessão viva (sess=true — papel molhado).
-    assert!(t.wet_session_continues(), "precondição: sessão viva");
-    assert!(t.on_canvas_pointer(cp([80.0, 300.0], PointerPhase::Down)));
-    for i in 1..=40 {
-        t.on_canvas_pointer(cp([80.0 + i as f32 * 11.0, 300.0], PointerPhase::Move));
+        t.on_canvas_pointer(cp([520.0, 300.0], PointerPhase::Up));
+        eprintln!(
+            "[profile] soak_px={} water={}",
+            t.paint.wet_soak.iter().filter(|&&v| v > 0).count(),
+            !t.paint.stroke_water.is_empty(),
+        );
+        let px = &t.canvas_rgba;
+        // Luminância média numa faixa 11px de altura centrada em y=300, x de 180 a 420.
+        let lum = |x: usize| -> f32 {
+            let mut s = 0.0f32;
+            for y in 295..306usize {
+                let i = (y * size as usize + x) * 4;
+                s += (f32::from(px[i]) + f32::from(px[i + 1]) + f32::from(px[i + 2])) / 3.0;
+            }
+            s / 11.0
+        };
+        let prof: Vec<f32> = (180..420).map(lum).collect();
+        let mut grad_max = 0.0f32;
+        let mut grad_at = 0usize;
+        for i in 1..prof.len() {
+            let g = (prof[i] - prof[i - 1]).abs();
+            if g > grad_max {
+                grad_max = g;
+                grad_at = 180 + i;
+            }
+        }
+        // Baseline orgânico: a borda superior do traço 2 longe da junção (scan vertical em x=150).
+        let lumv = |y: usize| -> f32 {
+            let mut s = 0.0f32;
+            for x in 145..156usize {
+                let i = (y * size as usize + x) * 4;
+                s += (f32::from(px[i]) + f32::from(px[i + 1]) + f32::from(px[i + 2])) / 3.0;
+            }
+            s / 11.0
+        };
+        let vprof: Vec<f32> = (220..300).map(lumv).collect();
+        let mut vgrad_max = 0.0f32;
+        for i in 1..vprof.len() {
+            vgrad_max = vgrad_max.max((vprof[i] - vprof[i - 1]).abs());
+        }
+        eprintln!(
+            "[profile {label}] junção: grad_max={grad_max:.1} bytes/px em x={grad_at} | \
+             borda própria: grad_max={vgrad_max:.1} bytes/px | razão={:.2}",
+            grad_max / vgrad_max.max(0.01)
+        );
+        let cells: Vec<String> = prof.iter().step_by(8).map(|v| format!("{v:.0}")).collect();
+        eprintln!("[profile {label}] perfil x180..420/8: {}", cells.join(" "));
+        // Scan VERTICAL em x=300 (dentro do traço 1): cruza a borda do footprint do traço 2 —
+        // a fronteira do lift/rewet DENTRO da tinta velha (os arcos duros da foto do take 10).
+        let lumj = |y: usize| -> f32 {
+            let mut s = 0.0f32;
+            for x in 295..306usize {
+                let i = (y * size as usize + x) * 4;
+                s += (f32::from(px[i]) + f32::from(px[i + 1]) + f32::from(px[i + 2])) / 3.0;
+            }
+            s / 11.0
+        };
+        let jprof: Vec<f32> = (180..420).map(lumj).collect();
+        let mut jgrad_max = 0.0f32;
+        let mut jgrad_at = 0usize;
+        for i in 1..jprof.len() {
+            let g = (jprof[i] - jprof[i - 1]).abs();
+            if g > jgrad_max {
+                jgrad_max = g;
+                jgrad_at = 180 + i;
+            }
+        }
+        eprintln!(
+            "[profile {label}] lift-boundary (scan vertical x=300): grad_max={jgrad_max:.1}              bytes/px em y={jgrad_at} | razão vs borda própria={:.2}",
+            jgrad_max / vgrad_max.max(0.01)
+        );
+        let jcells: Vec<String> = jprof.iter().step_by(8).map(|v| format!("{v:.0}")).collect();
+        eprintln!("[profile {label}] perfil y180..420/8: {}", jcells.join(" "));
+        // Sonda dos MAPAS no penhasco (x=300, y=jgrad_at±8): quem degraua ali?
+        for y in (jgrad_at.saturating_sub(8))..(jgrad_at + 9) {
+            let idx = y * size as usize + 300;
+            eprintln!(
+                "[maps {label}] y={y} lum={:.0} col_a={} depl={} cov={} own={}",
+                lumj(y),
+                t.paint.stroke_color.get(idx * 4 + 3).copied().unwrap_or(0),
+                t.paint.stroke_deplete.get(idx).copied().unwrap_or(0),
+                t.paint.stroke_coverage.get(idx).copied().unwrap_or(0),
+                t.paint.wet_styles.owner.get(idx).copied().unwrap_or(0),
+            );
+        }
+        // Buffers do caminho wet no mesmo corte: água do traço 2 + soak (cru) — qual degraua?
+        for y in (jgrad_at.saturating_sub(8))..(jgrad_at + 9) {
+            let idx = y * size as usize + 300;
+            eprintln!(
+                "[wetmaps {label}] y={y} water={} soak={}",
+                t.paint.stroke_water.get(idx).copied().unwrap_or(0),
+                t.paint.wet_soak.get(idx).copied().unwrap_or(0),
+            );
+        }
     }
-    t.on_canvas_pointer(cp([520.0, 300.0], PointerPhase::Up));
-    let after = mean_patch(&t.canvas_rgba);
-    assert!(
-        after <= before + 2.0,
-        "cruzar o wash com Charge<1 CLAREOU a junção (mixer diluiu o depósito): \
-         média antes={before:.1} depois={after:.1}"
-    );
+}
+
+/// Spec do take 10 (smoke 2026-07-09, rodada 3 + foto): o CLAREAMENTO da junção é o look
+/// desejado ("perdeu o efeito de clareamento" — veto ao clamp do take 9), o defeito é só a
+/// FRONTEIRA dura dele. Dois portadores corrigidos: (a) o flip raw↔depositado na janela fixa
+/// `COL_LO..COL_HI` atravessada em ~1px espacial (→ lerp proporcional `ca8/255`); (b) o `st.wet`
+/// BINÁRIO do mapa de dono nos termos wet-driven quando o Rewet difere entre traços da sessão
+/// (→ campo borrado `wet_field`). Este gate exige AMBOS: clareia E suave.
+#[test]
+fn watercolor_junction_lightening_is_soft_and_preserved() {
+    for (label, wet2) in [("wet=0", 0.0f32), ("wet=1", 1.0f32)] {
+        let size = 600u32;
+        let mut t = PainterTool::default();
+        t.set_source(vec![255u8; (size * size * 4) as usize], size, size);
+        t.paint.brush = BrushSpec {
+            radius_px: 49.8,
+            color: [1.0, 0.27, 0.27],
+            spacing: 0.05,
+            watercolor: true,
+            fill: 0.120,
+            depth: 1.20,
+            edge_gain: 0.70,
+            edge_spread: 22.8,
+            warp: 11.1,
+            granulation: 0.30,
+            wet_charge: 0.4841,
+            wet_dilution: 0.2918,
+            wet_pull: 0.22,
+            wet_rewet: 0.0,
+            ..Default::default()
+        };
+        for slot in &mut t.paint.brush_by_mode {
+            *slot = t.paint.brush;
+        }
+        assert!(t.on_canvas_pointer(cp([300.0, 80.0], PointerPhase::Down)));
+        for i in 1..=40 {
+            t.on_canvas_pointer(cp([300.0, 80.0 + i as f32 * 11.0], PointerPhase::Move));
+            t.on_tick(16.0);
+        }
+        t.on_canvas_pointer(cp([300.0, 520.0], PointerPhase::Up));
+        t.on_tick(16.0);
+        t.paint.brush.wet_rewet = wet2;
+        for slot in &mut t.paint.brush_by_mode {
+            *slot = t.paint.brush;
+        }
+        assert!(t.on_canvas_pointer(cp([80.0, 300.0], PointerPhase::Down)));
+        for i in 1..=40 {
+            t.on_canvas_pointer(cp([80.0 + i as f32 * 11.0, 300.0], PointerPhase::Move));
+            for _ in 0..8 {
+                t.on_tick(16.0);
+            }
+        }
+        t.on_canvas_pointer(cp([520.0, 300.0], PointerPhase::Up));
+        let px = &t.canvas_rgba;
+        // Scan vertical em x=300 (dentro do traço 1, cruzando a fronteira do traço 2).
+        let lum = |y: usize| -> f32 {
+            let mut s = 0.0f32;
+            for x in 295..306usize {
+                let i = (y * size as usize + x) * 4;
+                s += (f32::from(px[i]) + f32::from(px[i + 1]) + f32::from(px[i + 2])) / 3.0;
+            }
+            s / 11.0
+        };
+        // (a) O clareamento EXISTE: platô da junção > corpo do traço 1.
+        let body: f32 = (200..230).map(lum).sum::<f32>() / 30.0;
+        let plateau: f32 = (290..311).map(lum).sum::<f32>() / 21.0;
+        assert!(
+            plateau > body + 2.0,
+            "[{label}] o clareamento da junção sumiu (veto do take 9): corpo={body:.1} \
+             platô={plateau:.1}"
+        );
+        // (b) A fronteira é SUAVE: nenhum degrau de 1px acima de 4 bytes no scan interno
+        // (pré-fix: 7.5 com wet=0, 11.5 com wet=1).
+        let prof: Vec<f32> = (200..400).map(lum).collect();
+        let mut grad_max = 0.0f32;
+        let mut grad_at = 0usize;
+        for i in 1..prof.len() {
+            let g = (prof[i] - prof[i - 1]).abs();
+            if g > grad_max {
+                grad_max = g;
+                grad_at = 200 + i;
+            }
+        }
+        assert!(
+            grad_max <= 4.0,
+            "[{label}] fronteira dura na junção: grad {grad_max:.1} bytes/px em y={grad_at}"
+        );
+    }
 }

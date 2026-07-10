@@ -753,3 +753,38 @@ regressões** — RED→GREEN.
 Pendente: re-smoke do Enio no mesmo gesto (a mancha pálida e o degrau devem sumir; o MIX1 ainda
 imprime — se sobrar serrilhado residual, a próxima lente é o prio/alpha na janela COL, não a
 cor). Diag [wet-diag v2] PERMANECE na árvore até o veredito.
+
+#### Take 10 — veto ao clamp (o clareamento FICA) + a fronteira dura morta nos DOIS portadores
+
+Rodada 3 do smoke: "resolveu a borda dura mas **perdeu o efeito de clareamento**" (o clareamento
+da junção é o LOOK desejado — o take 9 corrigiu a coisa errada) + "ao aumentar Rewet a borda
+volta" (foto: corte duro seguindo a silhueta do traço antigo). Clamp REVERTIDO; a spec correta é
+**clareia E suave**.
+
+**Forense por perfil 1D no harness (params do smoke, traço lento 8 ticks/move, soak 40k px):**
+o eixo horizontal da junção sempre foi suave (0.9 bytes/px); o penhasco está no scan VERTICAL
+(fronteira do footprint do traço 2 DENTRO do traço 1): wet=0 → 7.5 bytes/px; wet=1 → **11.5
+bytes/px, degrau inteiro em 1-2 px** (borda orgânica espalha por 15-25 px). Sondas por-pixel
+(`[maps]`/`[wetmaps]`): `cov`/`depl`/`water` PLANOS no penhasco — os portadores reais:
+
+1. **wet=0:** `col_a` rampa ~20 bytes/px na borda do footprint e a janela `COL_LO..COL_HI`
+   (8..32) é atravessada em ~1 px espacial — o flip raw↔depositado imprime a linha. **Fix:**
+   lerp PROPORCIONAL `ca8/255` no blend do pigmento (a fração de pigmento do depósito; janela
+   removida). 7.5 → **1.6 bytes/px**.
+2. **wet=1:** o `st.wet` do DONO entra binário nos termos wet-driven (thinning do interior — o
+   maior clareador —, boost do edge, `mix_amt`, granulação): com Rewet DIFERENTE entre traços,
+   a fronteira de dono (recency por disco) degraua ~11 bytes em 1 px. **Fix: MOLHADO É CAMPO,
+   NÃO ESTILO** — `build_wet_field` (rewet_px.rs): wet-do-dono com **blur mascarado por posse**
+   (`blur(wet·m)/blur(m)`, raio fixo 8 px < gap do guard de não-contato — box kernel não é
+   geodésico) lido por `sample_wet_field` em todos os termos wet-driven. 11.5 → **1.9 bytes/px**,
+   platô do clareamento (248) intacto.
+
+Guard novo (substitui o teste vetado do take 9):
+`watercolor_junction_lightening_is_soft_and_preserved` — exige clareamento > +2 bytes E grad
+≤ 4 bytes/px, nos dois casos (wet 0/1). Diag `watercolor_junction_transition_profile`
+(`--ignored --nocapture`) fica como ferramenta. **501/501 · clippy 0 · LOC: render 699/700
+(campo extraído pro rewet_px 207/700)**. Byte-identity: um-estilo/mixer-off intactos (guards
+do take 1 verdes; `box_blur_preserves_constant` cobre o campo constante).
+
+Pendente: re-smoke (cruz Charge<1 com e sem Rewet — clareamento presente, fronteira orgânica).
+Diag [wet-diag v2] segue na árvore até o veredito.

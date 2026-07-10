@@ -31,6 +31,11 @@ PH2D = "PH2D"
 # pt-BR word in the Motion research docs (docs/Motion Nodes/02_*), read by
 # typos-cli as a misspelt "information".
 informativo = "informativo"
+# pt-BR word quoting Enio's smoke report inside the watercolor doc-comments
+# (`ph2d-tool-painter/src/tool/paint/{watercolor_rewet_px,tests}.rs`, BUGS #8):
+# "área retangular clareia a poça vizinha". Read as a misspelt "rectangular";
+# it is the Portuguese word, quoted verbatim.
+retangular = "retangular"
 # Photoshop PSD 4-char adjustment-layer type keys (Adobe's literal format tags,
 # ADR-0045 `adjustments::AdjustmentKind::psd_export`): e.g. Levels = "levl",
 # Brightness/Contrast = "brit". They are file-format signatures, not English.

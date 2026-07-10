@@ -152,6 +152,7 @@ impl App {
             timeline_view: ph2d_timeline::TimelineViewSnapshot::default(),
             timeline_insert_key: false,
             timeline_drag_active: false,
+            autokey_baseline: std::collections::BTreeMap::new(),
             last_frame: Instant::now(),
             pending_resize: None,
             resize_saved_present_mode: None,

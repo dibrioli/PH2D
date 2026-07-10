@@ -20,6 +20,7 @@
 //! as sibling modules following the same shape.
 
 pub mod apply;
+pub mod autokey;
 pub mod binding;
 pub mod clipboard;
 pub mod doc;
@@ -32,6 +33,7 @@ pub mod sprite;
 pub mod state;
 
 pub use apply::{apply_from_doc, apply_from_doc_except};
+pub use autokey::{PoseSample, autokey_props};
 pub use binding::{TargetBinding, WireId};
 pub use clipboard::{ClipboardKey, TimelineClipboard};
 pub use doc::{DEFAULT_FPS, DOC_VERSION, Marker, NamedClip, TimelineDoc};

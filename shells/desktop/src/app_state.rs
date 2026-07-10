@@ -331,6 +331,11 @@ pub(crate) struct App {
     /// AutoKey drag into a SINGLE undo step (begin on the opening frame, commit
     /// when it ends) instead of one step per recorded frame.
     pub(crate) timeline_drag_active: bool,
+    /// Last frame's sampled pose per selected sprite, for auto-key's first-touch
+    /// auto-create of UNBOUND properties (a bound property compares to its own
+    /// curve, so it needs no baseline). Rebuilt from the live selection every
+    /// frame — an entity that leaves the selection drops out.
+    pub(crate) autokey_baseline: std::collections::BTreeMap<u64, ph2d_timeline::PoseSample>,
     pub(crate) last_frame: Instant,
     pub(crate) pending_resize: Option<WindowSize>,
     /// FLUID-DRAG present-mode override: the configured mode saved while a live resize streams (the

@@ -18,6 +18,7 @@
 
 #[cfg(feature = "panel-audio-editor")]
 mod audio_overlay;
+mod autokey_pass;
 pub(crate) mod bgremoval_preview;
 mod color_equalization_bridge;
 mod cooked_texture_bridge;
@@ -668,30 +669,18 @@ impl crate::App {
                 let picked = timeline_presets::intents_for_pick(&self.timeline, pick);
                 self.timeline_intents.extend(picked);
             }
-            // W2.E5 capture-the-pose + AutoKey. Two authoring paths write keys at
-            // the playhead onto the selected/dragged sprite's bound tracks (AddKey
-            // upserts, so a held drag updates one key per time instead of stacking
-            // duplicates):
-            //   - K (discrete press) → a one-shot AddKey intent (its own undo step).
-            //   - AutoKey armed + a gizmo drag in flight → each frame the dragged
-            //     pose is upserted DIRECTLY into the doc, bracketed by a SINGLE
-            //     history step at the gesture boundary (so the whole drag is one
-            //     undo, not one per frame).
-            // `advance_gizmo_drag` wrote the Transform earlier in the frame, so
-            // `sample_prop_value` reads the dragged pose; `timeline_bridge::run`
-            // then skips the dragged entity in the apply so the document never
-            // fights the live manipulation.
+            // K (capture-the-pose): a one-shot AddKey on every bound track of the
+            // selected sprite (its own undo step). AutoKey — the pose-following
+            // that keys ANY UI edit — is a single pass AFTER all the frame's
+            // Transform writes (`autokey_pass::run`, below the EditorAction drain),
+            // so it observes the settled pose and cannot fight the apply.
+            //
+            // `dragging_entity` is still needed here: `timeline_bridge::run` skips
+            // it in the apply so the document never fights the live gizmo drag.
             let dragging_entity: Option<u64> = hero_screen
                 .as_ref()
                 .and_then(|h| h.gizmo.drag)
                 .map(|d| d.entity_bits);
-            let auto_key = self.timeline.flags.auto_key;
-            let drag_now = dragging_entity.is_some();
-            // Open one undo step when an auto-key drag begins.
-            if auto_key && drag_now && !self.timeline_drag_active {
-                self.timeline.history.begin(&self.timeline.doc);
-            }
-            // K: capture-the-pose on every bound track of the selected sprite.
             if self.timeline_insert_key {
                 self.timeline_insert_key = false;
                 if let Some(entity) = hero_screen
@@ -723,39 +712,6 @@ impl crate::App {
                     }
                 }
             }
-            // AutoKey: while dragging, record the pose directly (no per-frame undo
-            // step — the gesture bracket makes the whole drag one step).
-            if auto_key && let Some(entity) = dragging_entity {
-                let fps = self.timeline.doc.fps_display;
-                let t = ph2d_timeline::snap_time(
-                    ph2d_anim::RationalTime::from_seconds(self.playhead.time()),
-                    fps,
-                    self.timeline.flags.frame_snap,
-                );
-                let interp = timeline_bridge::default_interp();
-                let props: Vec<_> = self
-                    .timeline
-                    .doc
-                    .bindings()
-                    .iter()
-                    .filter(|b| b.entity == entity)
-                    .map(|b| b.prop)
-                    .collect();
-                for prop in props {
-                    if let Some(value) =
-                        timeline_bridge::sample_prop_value(sim.world(), entity, prop)
-                    {
-                        self.timeline.doc.upsert_key(entity, prop, t, value, interp);
-                    }
-                }
-            }
-            // Close the auto-key gesture when the drag ends: one undo step if it
-            // actually changed the document.
-            if self.timeline_drag_active && !drag_now {
-                let doc = self.timeline.doc.clone();
-                self.timeline.history.commit_if_changed(&doc);
-            }
-            self.timeline_drag_active = drag_now;
             // General timeline (W1): drain pending panel/K intents into the
             // app-general document, then apply it to the scene at the same
             // Playhead — skipping the dragged entity. No-op while empty.
@@ -2297,6 +2253,20 @@ impl crate::App {
             ) {
                 self.title_dirty = true;
             }
+            // AutoKey (W4.T1/T2) — the single choke point. Runs HERE, after every
+            // UI Transform/opacity write for the frame (gizmo early, Inspector +
+            // Hierarchy reset just above) so it reads the settled pose of each
+            // selected sprite and keys only what left its curve. Placed after the
+            // apply pass too, so an undo/paste/scrub — which the apply writes back
+            // to the world — reads world == curve and keys nothing.
+            autokey_pass::run(
+                &mut self.timeline,
+                &self.playhead,
+                &mut self.autokey_baseline,
+                &mut self.timeline_drag_active,
+                hero,
+                sim.world(),
+            );
             // Merge Sprites (Enio 2026-05-27, Hierarchy right-click).
             // Drains BEFORE `image_edit::dispatch` so a same-frame
             // image-edit on one of the originals (extremely unlikely

@@ -14332,3 +14332,19 @@ fn watercolor_route_dispatches_wetness_controls() {
     );
     assert!(t.paint.canvas_wet.is_empty(), "DRY_NOW → dry_session_now");
 }
+
+/// #12a (doc 14): o accessor `canvas_wet_view` expõe o mapa de umidade + rect para o overlay
+/// on-canvas — Some quando molhado, None quando seco. (O véu em si é smoke-only.)
+#[test]
+fn watercolor_canvas_wet_view_exposes_moisture() {
+    let mut t = PainterTool::default();
+    t.set_source(vec![255u8; 32 * 32 * 4], 32, 32);
+    assert!(t.canvas_wet_view().is_none(), "seco → None");
+    t.wet_canvas_now();
+    let (bytes, w, h, rect) = t.canvas_wet_view().expect("molhado → Some");
+    assert_eq!((w, h), (32, 32));
+    assert_eq!(rect, [0, 0, 32, 32], "rect = canvas inteiro");
+    assert!(bytes.iter().all(|&b| b == 255), "umidade cheia");
+    t.dry_session_now();
+    assert!(t.canvas_wet_view().is_none(), "secou → None");
+}

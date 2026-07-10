@@ -363,4 +363,23 @@ impl PainterTool {
         self.paint.canvas_wet_rect = Some((0, 0, fw as usize, fh as usize));
         self.paint.canvas_wet_carry = 0.0;
     }
+
+    /// #12a (doc 14): the canvas MOISTURE map + its live rect for the on-canvas wetness overlay —
+    /// `(bytes, w, h, [x0, y0, x1, y1])`; each byte is the local wetness (`0` = dry, `255` = fully
+    /// wet). `None` when the paper is dry. Read-only; the shell tints the wet region as a sheen.
+    #[must_use]
+    pub fn canvas_wet_view(&self) -> Option<CanvasWetView<'_>> {
+        let (w, h) = self.source_size;
+        let n = (w as usize) * (h as usize);
+        let (x0, y0, x1, y1) = self.paint.canvas_wet_rect?;
+        (n > 0 && self.paint.canvas_wet.len() == n).then_some((
+            &self.paint.canvas_wet[..],
+            w,
+            h,
+            [x0 as u32, y0 as u32, x1 as u32, y1 as u32],
+        ))
+    }
 }
+
+/// The on-canvas wetness overlay's read (#12a): `(moisture bytes, w, h, rect [x0, y0, x1, y1])`.
+pub type CanvasWetView<'a> = (&'a [u8], u32, u32, [u32; 4]);

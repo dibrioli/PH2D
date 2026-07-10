@@ -5237,6 +5237,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-node-motion-noise"
+version = "0.0.0"
+dependencies = [
+ "ph2d-node-registry",
+ "ph2d-nodegraph",
+]
+
+[[package]]
 name = "ph2d-node-motion-orbit"
 version = "0.0.0"
 dependencies = [
@@ -5372,6 +5380,7 @@ dependencies = [
  "ph2d-node-motion-grid",
  "ph2d-node-motion-integrate",
  "ph2d-node-motion-move",
+ "ph2d-node-motion-noise",
  "ph2d-node-motion-orbit",
  "ph2d-node-motion-oscillator",
  "ph2d-node-motion-output",

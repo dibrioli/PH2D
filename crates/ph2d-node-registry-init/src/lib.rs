@@ -28,6 +28,7 @@ pub fn register_all_nodes(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     ph2d_node_motion_grid::register(reg)?;
     ph2d_node_motion_integrate::register(reg)?;
     ph2d_node_motion_move::register(reg)?;
+    ph2d_node_motion_noise::register(reg)?;
     ph2d_node_motion_orbit::register(reg)?;
     ph2d_node_motion_oscillator::register(reg)?;
     ph2d_node_motion_output::register(reg)?;

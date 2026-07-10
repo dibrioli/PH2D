@@ -751,10 +751,19 @@ Estudo + evidência primária: [`docs/Motion Nodes/03_reentrada_integrate_estudo
   bistável no `pre` — nomes de TD/Pd); `motion.strobe` é o consumidor (envelope de decay
   geométrico = ADSR do TD / Notify-State do Unreal). Zero RNG (o `random` do stateMachine do
   MiniCavalry vira `hash`, HR-5).
+- **Noise — campo Perlin gradiente** ([`07_noise_perlin_gradient_field.md`](docs/Motion%20Nodes/07_noise_perlin_gradient_field.md)):
+  `motion.noise` amostra `noise(posição·scale, tempo)` = campo espacial **coerente** (vizinhos
+  fluem juntos), distinto do `motion.wiggle` que faz `noise(tempo, índice)` = jitter **independente**.
+  E é **gradient** noise (zero nos vértices do lattice, sem grade), não value noise. Improved
+  Perlin 2002 (fade quíntico + 8 gradientes isotrópicos `(±1,±2)/(±2,±1)`) + fBm com
+  turbulence/ridged; transcendental-free. **Simplex NÃO** (em 2D a vantagem O(n) é negligível; e
+  foi o *simplex* que teve patente, expirada 2022, não o Perlin clássico) — fica como 2º `type`
+  futuro. Param surface = interseção Cavalry/AE/Houdini/Blender (scale/octaves/roughness/type/speed/seed).
 - **Horizonte:** Zona de Simulação (bracket à la Blender, alinha com P4 do design canônico) —
   `cook_scoped` (o pré-requisito) já existe. Generaliza, não substitui, os nós densos. Armadilhas
   de UX já documentadas no doc 04 §2e. Família pulse restante (`on_change`, `compare`, `switch`,
-  `counter`, `sample_hold`) barata agora que o tipo existe.
+  `counter`, `sample_hold`) barata agora que o tipo existe. Noise: Simplex + domain-warp são
+  follow-ups.
 
 ## 12. Cross-cutting concerns
 

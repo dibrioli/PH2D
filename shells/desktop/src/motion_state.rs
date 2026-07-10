@@ -94,7 +94,7 @@ impl MotionState {
 /// Author the **Cavalry demo** (M1 gate + M2-dynamics) into `g`; returns the
 /// sink (the Output node) if the graph is well-typed. The chain is
 /// `grid → clone → tint → orbit → falloff → stagger → oscillator → wiggle →
-/// spring → integrate → output`, with the force branch feeding integrate's
+/// noise → spring → integrate → output`, with the force branch feeding integrate's
 /// `forces` port (state enters the branch head via the engine-managed `pre`):
 ///
 /// - **grid** 20×10 (200 instances), gap 0.5 → a half-height lattice; emits
@@ -114,8 +114,12 @@ impl MotionState {
 /// - **oscillator** a travelling Sine Y-wave, masked by the falloff (the centre
 ///   bounces, the edges hold) — the classic Cavalry focal-motion look.
 /// - **wiggle** an organic X jitter on the focus region (value noise) on top.
+/// - **noise** a COHERENT Perlin gradient FIELD on Y — neighbouring dots read
+///   nearby points of one field, so the focus swells/sags as an organic surface
+///   (vs the wiggle's independent per-element jitter); falloff-masked (doc 07).
 /// - **time_remap** (M2.N1) PingPong 2.5 s — rewrites the clock of the whole
-///   subtree ABOVE it (orbit + wave + wiggle play forward, then backward) while
+///   subtree ABOVE it (orbit + wave + wiggle + noise play forward, then back)
+///   while
 ///   the spring and the physics below stay on the real clock. A sequential node
 ///   may not sit upstream of it: the editor refuses that wire.
 /// - **spring** (M2) on Y chases the travelling wave with lag + overshoot +
@@ -138,6 +142,7 @@ fn build_cavalry_demo(g: &mut Graph, reg: &NodeRegistry) -> Option<Vec<NodeId>> 
     let stagger = g.add_node("motion.stagger");
     let osc = g.add_node("motion.oscillator");
     let wiggle = g.add_node("motion.wiggle");
+    let noise = g.add_node("motion.noise");
     let remap = g.add_node("motion.time_remap");
     let spring = g.add_node("motion.spring");
     let integrate = g.add_node("motion.integrate");
@@ -153,7 +158,8 @@ fn build_cavalry_demo(g: &mut Graph, reg: &NodeRegistry) -> Option<Vec<NodeId>> 
         (falloff, stagger),
         (stagger, osc),
         (osc, wiggle),
-        (wiggle, remap),
+        (wiggle, noise),
+        (noise, remap),
         (remap, spring),
         (spring, integrate),
         (integrate, output),
@@ -176,7 +182,7 @@ fn build_cavalry_demo(g: &mut Graph, reg: &NodeRegistry) -> Option<Vec<NodeId>> 
             },
         );
     }
-    g.set_pos(output, Pos { x: 2420.0, y: 0.0 });
+    g.set_pos(output, Pos { x: 2640.0, y: 0.0 });
 
     // Spring state: the `pre` self-loop (what the editor plumbing derives on
     // AddNode). Authored here because the demo builds the graph directly.
@@ -276,8 +282,20 @@ fn build_cavalry_demo(g: &mut Graph, reg: &NodeRegistry) -> Option<Vec<NodeId>> 
     g.set_param(wiggle, "channel", 0.0); // X
     g.set_param(wiggle, "amplitude", 0.5);
     g.set_param(wiggle, "frequency", 1.0);
+    // Noise (Perlin gradient field) on Y — a COHERENT drift over the focus:
+    // unlike the wiggle's per-element jitter, neighbouring dots read nearby
+    // points of one field, so the focus swells and sags as an organic surface
+    // on top of the travelling sine. Falloff-masked like everything else.
+    g.set_param(noise, "channel", 1.0); // Y
+    g.set_param(noise, "amplitude", 0.9);
+    g.set_param(noise, "scale", 0.28); // features a few metres across
+    g.set_param(noise, "octaves", 3.0);
+    g.set_param(noise, "roughness", 0.5);
+    g.set_param(noise, "type", 0.0); // fBm
+    g.set_param(noise, "speed", 0.5);
     // Time Remap (M2.N1) — PingPong over 2.5 s: EVERYTHING above it (the orbit,
-    // the travelling wave, the wiggle) plays forward then backward, while the
+    // the travelling wave, the wiggle, the noise field) plays forward then
+    // backward, while the
     // spring and the physics below keep the real clock. Watching the rig
     // rewind while the swirl keeps swirling is the whole point of a time scope.
     g.set_param(remap, "mode", 2.0); // PingPong (MODE_LABELS index)

@@ -6,8 +6,6 @@
 
 use super::*;
 
-use super::*;
-
 #[test]
 fn new_builds_the_well_typed_demo_with_both_scenes() {
     let state = MotionState::new();
@@ -16,9 +14,9 @@ fn new_builds_the_well_typed_demo_with_both_scenes() {
     for &s in &state.sinks {
         assert_eq!(state.doc.graph.node(s).unwrap().type_name, "motion.output");
     }
-    // 15 grid-rig + 8 fountain + 7 pulse-loop (grid, move, tint, strobe,
+    // 16 grid-rig + 8 fountain + 7 pulse-loop (grid, move, tint, strobe,
     // output, clock, threshold) nodes.
-    assert_eq!(state.doc.graph.nodes().len(), 30);
+    assert_eq!(state.doc.graph.nodes().len(), 31);
     assert!(state.doc.graph.validate(&state.registry).is_ok());
     assert_eq!(state.playhead(1.0 / 60.0), 0.0); // paused at tick 0
 }

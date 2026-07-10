@@ -12941,8 +12941,8 @@ fn watercolor_touching_wet_washes_merge_without_double_rim() {
             "the bake must pour the wash into the persistent wet map"
         );
         if dry_first {
-            for _ in 0..40 {
-                t.paint_tick(0.5); // 20 s of heartbeat — way past the ~8.5 s drying window
+            for _ in 0..140 {
+                t.paint_tick(0.5); // 70 s of heartbeat — way past the ~60 s drying window
             }
             assert!(
                 t.paint.canvas_wet.is_empty(),
@@ -13016,7 +13016,7 @@ fn watercolor_session_drying_mid_stroke_does_not_double_bake() {
         y += 2.0;
         t.on_canvas_pointer(cp([140.0, y], PointerPhase::Move));
     }
-    t.paint_tick(20.0); // way past the ~8.5 s window — the map zeroes with the stroke OPEN
+    t.paint_tick(70.0); // way past the ~60 s window — the map zeroes with the stroke OPEN
     while y < 160.0 {
         y += 2.0;
         t.on_canvas_pointer(cp([140.0, y], PointerPhase::Move));
@@ -13128,7 +13128,7 @@ fn watercolor_clean_water_backrun_blooms_on_wet_wash() {
         t.on_canvas_pointer(cp([60.0, y], PointerPhase::Move));
     }
     t.on_canvas_pointer(cp([60.0, 160.0], PointerPhase::Up));
-    for _ in 0..40 {
+    for _ in 0..140 {
         t.paint_tick(0.5);
     }
     assert!(t.paint.canvas_wet.is_empty(), "sessão do wash deve secar");

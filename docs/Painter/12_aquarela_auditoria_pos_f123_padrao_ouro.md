@@ -584,3 +584,20 @@ endurecida + máscara de dono) e o deepen do CONC entrava full-strength no gate.
 ZERO** (nenhum buffer/blur novo — 8f6…): `lift_wash` lê a presença BORRADA `bp_u` (JÁ amostrada
 pro anel) e `backrun ×= bp_ring` (um multiply). Medido: 29→9 bytes/px (refutável, stash-provado).
 Teste permanente: `watercolor_water_junction_owner_line_is_smooth` (≤15). 498/498 · clippy 0.
+
+#### Take 5 — DIAGNÓSTICO FECHADO: o timer de secagem era a costura (diag no app real)
+
+Print [wet-diag] por pen-down no app do Enio (d27b0893, removido em seguida): a sessão molhada
+SOBREVIVE entre a maioria dos traços (`continua=true`, guarda do Arc ok) — mas o traço 4 abriu
+sessão nova por `wet_rect=false`: o TIMER DE SECAGEM (mesmo a 17 s) expirou na pausa natural de
+olhar o resultado. Esse traço GLAZEIA por cima do wash assado — silhueta endurecida + lift na
+borda, dura BY DESIGN (glazing real é de borda nítida) — e as "costuras" dos smokes eram as
+junções DELE; os traços em sessão fundiram perfeitos o tempo todo. Três fixes intra-sessão
+"não mudaram nada" porque o artefato era ENTRE sessões.
+
+Ajuste: `CANVAS_WET_DRY_PER_S 15→4.25` (janela ~60 s). Resposta DEFINITIVA = fila #9-11
+(botões Dry/Wet + slider de secagem 2 s–∞): o estado molhado precisa ser VISÍVEL e comandável,
+não um timer invisível. Lição de processo: 3 takes atacaram o composite porque o harness só
+reproduzia o caminho intra-sessão — 1 linha de eprintln no app real fechou o diagnóstico que
+3 lentes de auditoria estática não fecharam (instrumentação no ambiente REAL > teoria).
+498/498 · clippy 0.

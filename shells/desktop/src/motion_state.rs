@@ -55,10 +55,10 @@ pub(crate) struct MotionState {
 
 impl MotionState {
     /// Build the boot state: register every node op + the **default document** —
-    /// now a single, focused scene: the pulse loop (a uniform clock → Schmitt
-    /// `pulse.threshold` → `pulse.counter` + `motion.strobe`), the module's most
-    /// recent work (docs/Motion Nodes/06, 08). The earlier showcase scenes (the
-    /// Cavalry grid rig and the particle fountain) were removed to keep the boot
+    /// a single, focused scene: the pulse loop (`pulse.beat` metronome →
+    /// `motion.step` + `motion.strobe`), the module's most recent work
+    /// (docs/Motion Nodes/06, 08, 09). The earlier showcase scenes (the Cavalry
+    /// grid rig and the particle fountain) were removed to keep the boot
     /// document focused; they live in git history and every node keeps its own
     /// unit tests. Transport paused at tick 0 (the bridge auto-plays on tool entry).
     pub(crate) fn new() -> Self {
@@ -94,10 +94,12 @@ impl MotionState {
 /// is well-typed.
 ///
 /// The scene — built in the `strobe` sibling module — is the smallest closed
-/// pulse loop *with a reducer*: a uniform clock drives a Schmitt `pulse.threshold`
-/// whose one pulse fans out to a `pulse.counter` (sweeping the grid in discrete
-/// steps) and a `motion.strobe` (flashing it), both on the same beat. See
-/// docs/Motion Nodes/06 (pulse) and 08 (counter).
+/// pulse loop: a `pulse.beat` metronome emits the pulse straight from the
+/// playhead and fans it out to a `motion.step` (sweeping the grid in discrete
+/// notches) and a `motion.strobe` (flashing it), both on the same beat. No
+/// transform channel is involved in the clocking (doc 09 killed the
+/// oscillate-Rotation-into-a-threshold hack). See docs/Motion Nodes/06 (pulse),
+/// 08 (step) and 09 (beat + naming).
 ///
 /// The earlier showcase scenes were removed to keep the boot document focused on
 /// the recent implementation: the **Cavalry grid rig** (clone / orbit / falloff /

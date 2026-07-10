@@ -751,15 +751,26 @@ Estudo + evidência primária: [`docs/Motion Nodes/03_reentrada_integrate_estudo
   bistável no `pre` — nomes de TD/Pd); `motion.strobe` é o consumidor (envelope de decay
   geométrico = ADSR do TD / Notify-State do Unreal). Zero RNG (o `random` do stateMachine do
   MiniCavalry vira `hash`, HR-5).
-- **Pulse counter — o redutor** ([`08_pulse_counter_reducer_bridge.md`](docs/Motion%20Nodes/08_pulse_counter_reducer_bridge.md)):
-  `pulse.counter` é o **primeiro REDUTOR** de pulsos — evento → valor persistente e dirigível
-  (o strobe já cruzava Evento→Frame, mas sua resposta DECAI; a do contador ACUMULA e FICA). É o
-  nó-mãe da família: toggle = `count & 1`, sequência = `count mod N`. Template = **Count CHOP**
-  (TD/Houdini) + carry do Max. Estado = um **tick monotônico** no `pre` (+1 só na borda de
-  subida — edge-safe, TD `Off to On` vs `While On`); a contagem exibida é derivada do tick +
-  modo a cada tick, então os 3 modos caem de um estado: **Wrap** `tick mod N`, **Clamp**
-  `min(tick,N-1)`, **Zigzag** triângulo `2(N-1)`. Módulo euclidiano inteiro (HR-5). Desloca
-  `count·step` no canal (aplicado ao `in` FRESCO, nunca compõe), expõe a coluna `count` crua.
+- **Pulse beat — a FONTE** ([`09_handoff_pulse_signal_source_and_naming.md`](docs/Motion%20Nodes/09_handoff_pulse_signal_source_and_naming.md)):
+  `pulse.beat` é o metrônomo — emite o pulso DIRETO do playhead (`k = floor((t−offset)/period)`,
+  dispara quando `k` muda vs o carregado no `pre`; o primeiro tick também dispara, à la `metro`
+  do Max; `floor` é correctly-rounded → HR-5). Matou o "clock hack" (oscillator em Rotation →
+  threshold: dois nós acoplados por um canal invisível, doc 09 §1). **`Effect::Temporal`** (lê
+  playhead → o playhead entra no fingerprint do memo; o esboço `Pure` do doc 09 serviria beat
+  stale). Critério de prefixo (09 §4.2): `pulse.*` = plumbing abstrato de pulso/valor (beat,
+  threshold, futuros counter-puro/gate/sample_hold) · `motion.*` = behaviour VISÍVEL que mexe no
+  stream (strobe, step).
+- **Motion step — a ponte Evento→Valor** ([`08_pulse_counter_reducer_bridge.md`](docs/Motion%20Nodes/08_pulse_counter_reducer_bridge.md);
+  **ex-`pulse.counter`**, renomeado pelo doc 09 §4.2 — empurra um canal por batida = behaviour
+  visível, não redutor puro; o nome `pulse.counter` ficou LIVRE pro redutor de verdade):
+  `motion.step` acumula pulsos num valor persistente e dirigível (o strobe já cruzava
+  Evento→Frame, mas sua resposta DECAI; a do step ACUMULA e FICA). O núcleo é o contador nó-mãe:
+  toggle = `count & 1`, sequência = `count mod N`. Template = **Count CHOP** (TD/Houdini) +
+  carry do Max. Estado = um **tick monotônico** no `pre` (+1 só na borda de subida — edge-safe,
+  TD `Off to On` vs `While On`); a contagem exibida é derivada do tick + modo a cada tick, então
+  os 3 modos caem de um estado: **Wrap** `tick mod N`, **Clamp** `min(tick,N-1)`, **Zigzag**
+  triângulo `2(N-1)`. Módulo euclidiano inteiro (HR-5). Desloca `count·step` no canal (aplicado
+  ao `in` FRESCO, nunca compõe), expõe a coluna `count` crua.
 - **Noise — campo Perlin gradiente** ([`07_noise_perlin_gradient_field.md`](docs/Motion%20Nodes/07_noise_perlin_gradient_field.md)):
   `motion.noise` amostra `noise(posição·scale, tempo)` = campo espacial **coerente** (vizinhos
   fluem juntos), distinto do `motion.wiggle` que faz `noise(tempo, índice)` = jitter **independente**.
@@ -771,9 +782,10 @@ Estudo + evidência primária: [`docs/Motion Nodes/03_reentrada_integrate_estudo
 - **Horizonte:** Zona de Simulação (bracket à la Blender, alinha com P4 do design canônico) —
   `cook_scoped` (o pré-requisito) já existe. Generaliza, não substitui, os nós densos. Armadilhas
   de UX já documentadas no doc 04 §2e. Família pulse restante (`sample_hold`/latch = rank #2,
-  `gate`/`switch` = #3, `on_change`, `compare`) barata agora que o tipo + o redutor existem
-  (`counter` landou; toggle/sequência são composições dele). Noise: Simplex + domain-warp são
-  follow-ups.
+  `gate`/`switch` = #3, `on_change`, `compare`, e o `pulse.counter` REDUTOR PURO — pede o
+  domínio de valor escalar, doc 09 §4.3) barata agora que o tipo + fonte + ponte existem
+  (`beat`/`step` landaram; toggle/sequência são composições do step). Noise: Simplex +
+  domain-warp são follow-ups.
 
 ## 12. Cross-cutting concerns
 

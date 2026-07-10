@@ -1,15 +1,19 @@
-//! `pulse.counter` — a PULSE train → a persistent, drivable integer count
-//! (Motion Nodes M2, pulse family 3/n; decision doc `08_pulse_counter_*`).
+//! `motion.step` — a PULSE train steps a channel through a persistent staircase
+//! (Motion Nodes M2, pulse family 3/n; decision doc `08_pulse_counter_*`,
+//! renamed from `pulse.counter` by handoff doc `09_handoff_pulse_*` §4.2).
 //!
-//! This is the first REDUCER of the pulse type. `pulse.threshold` turns a signal
-//! into a pulse (value→event); `motion.strobe` turns a pulse into a *momentary*
-//! flash (event→frame, decaying). `pulse.counter` turns a pulse into a
-//! *persistent, accumulated* value — the count survives and grows across ticks,
-//! the inverse of the threshold and the thing that lets an event drive continuous
-//! motion. Every mature tool ships it as a first-class node (TouchDesigner /
-//! Houdini **Count CHOP**, Max **counter**, Cavalry **Timeline Counter**); it is
-//! the "mother" of the pulse-logic family — toggle is `count & 1`, sequence is
-//! `count mod N`, "how many times" is the count itself.
+//! `pulse.threshold` turns a signal into a pulse (value→event); `motion.strobe`
+//! turns a pulse into a *momentary* flash (event→frame, decaying). `motion.step`
+//! turns a pulse into a *persistent, accumulated* displacement — the count
+//! survives and grows across ticks, the inverse of the threshold and the thing
+//! that lets an event drive continuous motion. The counting core is every mature
+//! tool's counter (TouchDesigner / Houdini **Count CHOP**, Max **counter**,
+//! Cavalry **Timeline Counter**) — toggle is `count & 1`, sequence is `count mod
+//! N` — but this node also *applies* `count · step` to a chosen channel, so it
+//! is a visible **behaviour** (hence `motion.*`), not the pure pulse→value
+//! reducer those tools call "counter". The `pulse.counter` name is deliberately
+//! left FREE for that pure reducer, for when a scalar value domain exists to
+//! carry its output (doc 09 §4.3).
 //!
 //! **The state is a monotonic tick, not the folded count.** A per-instance
 //! integer `count_tick` (+1 on each pulse rising edge) rides the `state` pre
@@ -25,7 +29,7 @@
 //! **Edge-safe by construction (the whole correctness point):** the count only
 //! advances on the pulse's rising edge (`pulse > 0.5 && prev <= 0.5`), never
 //! "while high" — TD's `Off to On` vs `While On`. `pulse.threshold` already emits
-//! single-tick pulses, but the counter is robust to any producer (a sustained
+//! single-tick pulses, but the step is robust to any producer (a sustained
 //! Cavalry-style 0/1 level counts once, not once-per-tick).
 //!
 //! Positional per-instance (v1), matching the family: `in`/`pulse`/`state` pair
@@ -61,8 +65,8 @@ const PREV_COL: &str = "count_prev";
 
 /// The static contract of this node type (ADR-0031).
 pub const MANIFEST: NodeManifest = NodeManifest {
-    id: NodeTypeId::of("pulse.counter"),
-    name: "pulse.counter",
+    id: NodeTypeId::of("motion.step"),
+    name: "motion.step",
     inputs: &[
         PortSpec {
             name: "in",
@@ -199,9 +203,9 @@ fn step(input: &Stream, pulse: &Stream, state: &Stream, p: &Params) -> Stream {
     out
 }
 
-struct PulseCounter;
+struct MotionStep;
 
-impl NodeOp for PulseCounter {
+impl NodeOp for MotionStep {
     fn manifest(&self) -> &'static NodeManifest {
         &MANIFEST
     }
@@ -221,13 +225,14 @@ impl NodeOp for PulseCounter {
 /// Register this node with the runtime registry. Called (via codegen) from
 /// `ph2d-node-registry-init::register_all_nodes`.
 pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
-    reg.register(Box::new(PulseCounter))?;
+    reg.register(Box::new(MotionStep))?;
     reg.register_ui(
         MANIFEST.id,
         ph2d_node_registry::NodeUiManifest {
-            display_name: "Counter",
-            // Utility grey: a pulse→value reducer, not a visible transform of its own.
-            category: ph2d_node_registry::NodeUiCategory::Utility,
+            display_name: "Step",
+            // Transform blue: a visible behaviour — it pushes a transform channel
+            // per beat (the very reason it is `motion.*`, not `pulse.*`).
+            category: ph2d_node_registry::NodeUiCategory::Transform,
             silhouette: ph2d_node_registry::NodeSilhouette::Rect,
         },
     );

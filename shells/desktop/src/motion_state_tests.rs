@@ -1,8 +1,8 @@
 //! Headless demo/cook tests for `motion_state` (split for the HR-18 600-LOC
 //! shell cap; declared there as a `#[path]` sibling, so `super` is
 //! `motion_state`). Cook the default document — now the single pulse-loop scene
-//! (a uniform clock → `pulse.threshold` → `pulse.counter` + `motion.strobe`) —
-//! through the REAL registry, exactly as the bridge does.
+//! (a `pulse.beat` metronome → `motion.step` + `motion.strobe`) — through the
+//! REAL registry, exactly as the bridge does.
 
 use super::*;
 
@@ -15,21 +15,24 @@ fn new_builds_the_well_typed_pulse_document() {
         state.doc.graph.node(state.sinks[0]).unwrap().type_name,
         "motion.output"
     );
-    // 8 nodes: grid, move, tint, counter, strobe, output, clock, threshold.
-    assert_eq!(state.doc.graph.nodes().len(), 8);
+    // 7 nodes: grid, move, tint, step, strobe, output, beat. No oscillator and
+    // no threshold: the beat IS the source (doc 09 killed the channel clock).
+    assert_eq!(state.doc.graph.nodes().len(), 7);
     assert!(state.doc.graph.validate(&state.registry).is_ok());
     assert_eq!(state.playhead(1.0 / 60.0), 0.0); // paused at tick 0
 }
 
-/// The pulse loop is alive end to end in the default document: the Schmitt
-/// trigger fires off the uniform clock and the strobe's envelope really
-/// pulses the grid — the dots' size swells on a fire, then decays. Proves the
-/// whole pulse type (produce → consume → visible) through the REAL registry.
+/// The pulse loop is alive end to end in the default document: the metronome
+/// fires off the playhead and the strobe's envelope really pulses the grid —
+/// the dots' size swells on a beat, then decays. Proves the whole pulse type
+/// (source → consume → visible) through the REAL registry, with **no transform
+/// channel involved in the clocking** — the doc 09 point: there is no
+/// `channel` param anywhere in the loop to retune and silently kill it.
 ///
 /// Falsifiable: a broken loop (no pulse ever, or a stuck glow) gives a
-/// CONSTANT size — the swing is the evidence. And the count of swells (~1 per
-/// clock period over 3 s at 0.7 Hz) confirms it is the beat driving it, not
-/// noise.
+/// CONSTANT size — the swing is the evidence. And the count of swells (the
+/// start beat + one per 1.4 s period over 3 s) confirms it is the beat driving
+/// it, not noise.
 #[test]
 fn the_pulse_loop_strobes_the_grid_in_time() {
     use ph2d_eval_motion::MotionCookPump;
@@ -87,10 +90,11 @@ fn the_pulse_loop_strobes_the_grid_in_time() {
             below = true;
         }
     }
-    // 3 s at 0.7 Hz ≈ 2 beats; allow the boundary either way.
+    // Beats at t = 0 (the start beat), 1.4 and 2.8 → 3 swells in 3 s; allow the
+    // boundary either way.
     assert!(
-        (1..=3).contains(&fires),
-        "the beat drives the strobe (~2 fires in 3 s), got {fires}"
+        (2..=4).contains(&fires),
+        "the beat drives the strobe (~3 fires in 3 s), got {fires}"
     );
 
     // The pump path (what the shell runs) also cooks it without panicking.
@@ -105,27 +109,29 @@ fn the_pulse_loop_strobes_the_grid_in_time() {
     ));
 }
 
-/// The pulse COUNTER is alive end to end in the default document: the same beat
-/// that flashes the grid also STEPS it — the grid's X centroid sweeps in discrete
+/// The STEP is alive end to end in the default document: the same beat that
+/// flashes the grid also STEPS it — the grid's X centroid sweeps in discrete
 /// notches and, being a Zigzag, turns around (up then back down) instead of
-/// drifting off. Proves the reducer (docs/Motion Nodes/08) through the REAL
-/// registry: an event driving a PERSISTENT value, the inverse of the threshold.
+/// drifting off. Proves the pulse→persistent-value bridge (docs/Motion
+/// Nodes/08, renamed by 09) through the REAL registry: an event driving a
+/// PERSISTENT value, the inverse of the strobe's decay.
 ///
-/// Falsifiable: a dead counter (no pulse, or a stuck tick) leaves the X centroid
-/// CONSTANT — the sweep is the evidence; and a runaway (counting every tick, or a
-/// wrap that never folds) would break the symmetric bound or never turn around.
+/// Falsifiable: a dead step (no pulse, or a stuck tick) leaves the X centroid
+/// CONSTANT — the sweep is the evidence; and a runaway (counting every tick, or
+/// a wrap that never folds) would break the symmetric bound or never turn
+/// around.
 #[test]
-fn the_pulse_counter_sweeps_the_grid_in_discrete_steps() {
+fn the_step_sweeps_the_grid_in_discrete_notches() {
     use ph2d_nodegraph::attr::Column;
 
     let state = MotionState::new();
     let strobe_sink = *state.sinks.last().unwrap();
     let mut cook = ph2d_nodegraph::cook::Cook::new();
 
-    // Mean X across the grid each tick. The counter shifts every dot by the same
-    // `count · step`, so the centroid = base(-1.0) + count·0.5 — a clean proxy for
-    // the count. Long enough (8 s ≈ 5-6 beats at 0.7 Hz) to reach the zigzag top
-    // (count 4 → +1.0) and fold back down.
+    // Mean X across the grid each tick. The step shifts every dot by the same
+    // `count · step`, so the centroid = base(-1.0) + count·0.5 — a clean proxy
+    // for the count. Long enough (8 s ≈ 6 beats at 1.4 s) to reach the zigzag
+    // top (count 4 → +1.0) and fold back down.
     let mut centroid = Vec::new();
     for k in 0..=480u64 {
         let t = k as f64 / 60.0;
@@ -144,10 +150,10 @@ fn the_pulse_counter_sweeps_the_grid_in_discrete_steps() {
 
     let hi = centroid.iter().copied().fold(f32::MIN, f32::max);
     let lo = centroid.iter().copied().fold(f32::MAX, f32::min);
-    // It SWEEPS: a dead counter would give a flat centroid.
+    // It SWEEPS: a dead step would give a flat centroid.
     assert!(
         hi - lo > 1.0,
-        "the counter must sweep the grid (hi {hi} vs lo {lo}); a flat X = a dead counter"
+        "the step must sweep the grid (hi {hi} vs lo {lo}); a flat X = a dead step"
     );
     // It stays within the symmetric Zigzag reach about the -1.0 pre-offset centre
     // (0..4 counts · 0.5 = 0..2.0 → centroid in [-1.0, 1.0]); a runaway that counts
@@ -171,9 +177,9 @@ fn the_pulse_counter_sweeps_the_grid_in_discrete_steps() {
 }
 
 /// The default document replays bit-identically. The three `pre` self-loops of
-/// the pulse loop — the threshold's latched `armed`, the counter's monotonic
-/// tick, and the strobe's decaying `glow` — carry only integer/hash state, so two
-/// runs match exactly (HR-5).
+/// the pulse loop — the beat's cycle index, the step's monotonic tick, and the
+/// strobe's decaying `glow` — carry only integer/flag state, so two runs match
+/// exactly (HR-5).
 #[test]
 fn the_default_document_replays_deterministically() {
     use ph2d_eval_motion::MotionCookPump;

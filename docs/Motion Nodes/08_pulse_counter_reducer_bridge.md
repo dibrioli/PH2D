@@ -1,5 +1,12 @@
 # 08 — `pulse.counter`: o redutor de pulsos (a ponte Evento→Valor)
 
+> **RENOMEADO (2026-07-10, handoff [09](09_handoff_pulse_signal_source_and_naming.md) §4.2):**
+> o nó deste doc chama-se hoje **`motion.step`** (crate `ph2d-node-motion-step`, display
+> "Step"). Motivo: o counter do MiniCavalry é redutor PURO (pulso→valor, não toca canal);
+> o nosso **empurra um canal por batida** → é um behaviour visível (`motion.*`). O nome
+> `pulse.counter` ficou LIVRE pro redutor puro, quando o domínio de valor existir (09 §4.3).
+> A matemática, os modos e as decisões abaixo continuam válidos por inteiro.
+
 > **Onda M2, família pulse (3/n).** Sequência: `pulse.threshold` (produtor) →
 > `motion.strobe` (consumidor momentâneo) → **`pulse.counter` (redutor persistente)**.
 > Estudo do padrão-ouro ANTES de implementar (método do Enio). Fontes primárias

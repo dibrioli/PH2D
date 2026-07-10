@@ -248,6 +248,30 @@ abaixo é histórico — não re-investigue.
   - **Custo**: o envelope true-peak é ~3 fases × 12 taps × canais por frame. Clipe de
     minutos numa audição ao vivo pesa; medir antes de otimizar (o render é
     change-gated e a seleção escopa o alvo).
+- **W3 — Modulação: Chorus · Flanger · Phaser · Tremolo (2026-07-09)**. Rack: 14 →
+  **18 efeitos** (grupo novo no fim, depois de Reverb/Echo). Todos length-preserving
+  (splice `in_range_warm`), LFO senoidal, **zero dependência nova**, e **nada de
+  painel/snapshot** — cada um é uma linha em `KINDS` que a maquinaria de rack já toca.
+  - **Chorus/Flanger** = uma **linha de delay modulada** compartilhada
+    (`modulated_delay`): a leitura passeia entre `base` e `base+depth` ms no rate do
+    LFO; `feedback` recircula (pente do flanger); `mix` faz dry→wet. Chorus = base
+    18 ms sem feedback; Flanger = base 2 ms com feedback. Leitura **fracionária**
+    (interpolação linear — senão o tap modulado zippa). Canais L/R defasados 90° (sem
+    isso o "stereo chorus" colapsa em mono — teste `stereo_channels_modulate_out_of_phase`).
+  - **Phaser** = cascata de 4 all-pass de 1ª ordem com `fc` varrido pelo LFO
+    (200 Hz→2 kHz log, escala por `depth`), somada ao dry → notches móveis.
+  - **Tremolo** = modulação de amplitude, ganho `1..1-depth`; **em fase** nos dois
+    canais (fora-de-fase seria auto-pan, outro efeito). Depth 0 = `×1.0` = identidade.
+  - **Neutro/arm:** Chorus/Flanger/Phaser neutros em **Mix 0** (dry byte-idêntico via
+    `_ => clone`); Tremolo em **Depth 0**. Os testes do shell (`turning_an_arming_knob`,
+    `the_other_knobs_do_nothing`, `every_effect_is_a_no_op`) iteram os 18 e já cobrem.
+  - **Warmup:** Chorus/Flanger pré-enchem a linha (`base+depth` ms) senão os primeiros
+    ms do wet numa seleção do meio são silêncio (o efeito "sobe"). Phaser assenta em
+    poucas amostras, Tremolo é memoryless → warmup 0.
+  - **`fx.rs` estava em 656/700** → movi os ~300 LOC de teste pra **`fx/tests.rs`**
+    (`mod tests;` resolve pra `src/fx/tests.rs`, sem `#[path]`; é filho de `fx` então
+    enxerga os privados). fx.rs caiu pra 439 — folga durável pro roster crescer. DSP
+    novo em `fx/modulation.rs`. Os arrays `tuned_effects`/`neutral_effects` foram 12→16.
 - **W3 — Presets de cadeia (2026-07-09)**. Salvar/carregar combinações de efeitos.
   - **Duas espécies, dois mecanismos.** **Factory presets** (curados, 7: Voice Cleanup ·
     Podcast · Telephone · Lo-Fi · Master Bus · Wide & Bright · Gate + Glue) são

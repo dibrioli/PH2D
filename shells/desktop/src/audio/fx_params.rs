@@ -155,6 +155,8 @@ fn format_value(s: &FxParamSpec, v: f32) -> String {
         "Hz" => format!("{v:.0} Hz"),
         "s" if v < 1.0 => format!("{:.0} ms", v * 1_000.0),
         "s" => format!("{v:.2} s"),
+        // Already in milliseconds (a modulation depth), not seconds.
+        "ms" => format!("{v:.1} ms"),
         "dB" => format!("{v:+.1} dB"),
         "x" if s.integral => format!("{v:.0}\u{d7}"),
         "x" => format!("{v:.2}\u{d7}"),
@@ -268,6 +270,10 @@ mod tests {
                 "Widen",
                 "Reverb",
                 "Echo",
+                "Chorus",
+                "Flanger",
+                "Phaser",
+                "Tremolo",
             ]
         );
         assert_eq!(all_default_norms().len(), KINDS.len());

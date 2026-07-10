@@ -96,10 +96,32 @@ static ECHO: [FxParamSpec; 4] = [
     spec("Mix", 0.0, 1.0, false, 0.0, "", false),
     spec("Tail", 0.1, 6.0, true, 2.0, "s", false),
 ];
+// The four modulation effects. Each is neutral at Mix (or Depth) 0 — fully dry.
+static CHORUS: [FxParamSpec; 3] = [
+    spec("Rate", 0.05, 8.0, true, 1.0, "Hz", false),
+    spec("Depth", 0.5, 15.0, false, 5.0, "ms", false),
+    spec("Mix", 0.0, 1.0, false, 0.0, "", false),
+];
+static FLANGER: [FxParamSpec; 4] = [
+    spec("Rate", 0.05, 8.0, true, 0.4, "Hz", false),
+    spec("Depth", 0.2, 8.0, false, 3.0, "ms", false),
+    spec("Feedback", 0.0, 0.95, false, 0.4, "", false),
+    spec("Mix", 0.0, 1.0, false, 0.0, "", false),
+];
+static PHASER: [FxParamSpec; 3] = [
+    spec("Rate", 0.05, 8.0, true, 0.5, "Hz", false),
+    spec("Depth", 0.0, 1.0, false, 0.8, "", false),
+    spec("Mix", 0.0, 1.0, false, 0.0, "", false),
+];
+// Depth (not a Mix) is the arm: at 0 the gain stays at 1.0.
+static TREMOLO: [FxParamSpec; 2] = [
+    spec("Rate", 0.1, 16.0, true, 5.0, "Hz", false),
+    spec("Depth", 0.0, 1.0, false, 0.0, "", false),
+];
 
 /// The effects the selector cycles, in order — grouped tone → dynamics → character
 /// → space, the way a rack is laid out.
-pub(crate) static KINDS: [FxKind; 14] = [
+pub(crate) static KINDS: [FxKind; 18] = [
     FxKind {
         name: "Low-Pass",
         params: &LOW_PASS,
@@ -256,6 +278,55 @@ pub(crate) static KINDS: [FxKind; 14] = [
                 feedback: v[1],
                 mix: v[2],
                 tail_secs: v[3],
+            })
+        },
+    },
+    // Modulation group.
+    FxKind {
+        name: "Chorus",
+        params: &CHORUS,
+        arms: &[2], // Mix
+        build: |v| {
+            FxCommand::Plain(Effect::Chorus {
+                rate: v[0],
+                depth_ms: v[1],
+                mix: v[2],
+            })
+        },
+    },
+    FxKind {
+        name: "Flanger",
+        params: &FLANGER,
+        arms: &[3], // Mix
+        build: |v| {
+            FxCommand::Plain(Effect::Flanger {
+                rate: v[0],
+                depth_ms: v[1],
+                feedback: v[2],
+                mix: v[3],
+            })
+        },
+    },
+    FxKind {
+        name: "Phaser",
+        params: &PHASER,
+        arms: &[2], // Mix
+        build: |v| {
+            FxCommand::Plain(Effect::Phaser {
+                rate: v[0],
+                depth: v[1],
+                mix: v[2],
+            })
+        },
+    },
+    FxKind {
+        name: "Tremolo",
+        params: &TREMOLO,
+        arms: &[1], // Depth
+        build: |v| {
+            FxCommand::Plain(Effect::Tremolo {
+                rate: v[0],
+                depth: v[1],
             })
         },
     },

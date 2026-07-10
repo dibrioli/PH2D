@@ -244,6 +244,13 @@ pub fn register_ecs_components(reg: &mut ComponentRegistry) {
     reg.register::<crate::OnScreenEnabler>("ph2d::ecs::OnScreenEnabler");
     reg.register::<crate::UvTransform>("ph2d::ecs::UvTransform");
     reg.register::<crate::BlendMode>("ph2d::ecs::BlendMode");
+    // Trava e group-lock: markers que o Hierarchy edita e que o save/undo precisa
+    // preservar (sem eles, `world_to_snapshot` os descartava em silêncio).
+    reg.register::<crate::Locked>("ph2d::ecs::Locked");
+    reg.register::<crate::GroupedChildren>("ph2d::ecs::GroupedChildren");
+    // ADR-0110: a referência que faz de um path vetorial uma entidade. Sem ela um
+    // save do mundo perderia o vínculo path↔entidade e o load duplicaria as formas.
+    reg.register::<crate::VecPathRef>("ph2d::ecs::VecPathRef");
 }
 
 #[cfg(test)]
@@ -275,12 +282,15 @@ mod tests {
         register_ecs_components(&mut reg);
         // 4 foundational (Transform/Name/Visibility/RootOrder) + 16 W3
         // sorting/visibility/sampling/mask components (incl. Mask2D source)
-        // + 1 §10 BlendMode.
-        assert_eq!(reg.len(), 21);
+        // + 1 §10 BlendMode + 3 save/undo (Locked/GroupedChildren/VecPathRef).
+        assert_eq!(reg.len(), 24);
         assert!(reg.get_by_name("ph2d::ecs::Transform").is_some());
         assert!(reg.get_by_name("ph2d::ecs::Name").is_some());
         assert!(reg.get_by_name("ph2d::ecs::Visibility").is_some());
         assert!(reg.get_by_name("ph2d::ecs::RootOrder").is_some());
+        assert!(reg.get_by_name("ph2d::ecs::Locked").is_some());
+        assert!(reg.get_by_name("ph2d::ecs::GroupedChildren").is_some());
+        assert!(reg.get_by_name("ph2d::ecs::VecPathRef").is_some());
         assert!(reg.get_by_name("ph2d::ecs::ZIndexOverride").is_some());
         assert!(reg.get_by_name("ph2d::ecs::YSort").is_some());
         assert!(reg.get_by_name("ph2d::ecs::TextureFilter").is_some());

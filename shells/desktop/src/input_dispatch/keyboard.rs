@@ -22,6 +22,7 @@ impl App {
     }
 
     pub(crate) fn on_keyboard_input(&mut self, event: WinitKeyEvent) {
+        self.any_input_this_frame = true;
         let WinitKeyEvent {
             physical_key,
             state,
@@ -118,19 +119,10 @@ impl App {
             && let PhysicalKey::Code(code) = physical_key
         {
             let text_focused = self.vector_text_field_focused();
+            // ADR-0110+: undo/redo saíram DAQUI para a fila GLOBAL (`handle_editor_key`
+            // → `undo_request`), que cobre geometria E transform numa fila só. O bloco
+            // vetorial mantém só os atalhos que são dele (save/copy/paste/dup/group).
             let handled = match code {
-                KeyCode::KeyZ if self.modifiers.shift_key() => {
-                    self.vec_redo();
-                    true
-                }
-                KeyCode::KeyZ => {
-                    self.vec_undo();
-                    true
-                }
-                KeyCode::KeyY => {
-                    self.vec_redo();
-                    true
-                }
                 KeyCode::KeyS => {
                     self.vec_save();
                     true

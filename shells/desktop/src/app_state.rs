@@ -563,7 +563,25 @@ pub(crate) struct App {
     /// Vector tool is active. `None` when idle; on release drives `box_select`.
     pub(crate) vec_marquee: Option<((f32, f32), (f32, f32))>,
     /// ADR-0108: undo/redo by snapshot of `vec_scene` (Ctrl+Z / Ctrl+Shift+Z).
+    /// Subsumido pela fila GLOBAL (`undo`, abaixo): ainda é populado pelas ops
+    /// vetoriais, mas o Ctrl+Z já não o lê — a fila global cobre a geometria via
+    /// diff de estado. Remoção é limpeza posterior.
     pub(crate) vec_history: ph2d_vec_edit::History,
+    /// Undo/redo GLOBAL do editor (objetos + hierarquia + canvas) — uma fila só,
+    /// snapshot-based. Ver [`crate::undo`].
+    pub(crate) undo: crate::undo::ProjectUndo,
+    /// O último estado registrado na fila global. O `post_frame_undo` compara o
+    /// estado atual com este (diff) para saber se uma ação virou passo. `None` até
+    /// o primeiro frame estabelecê-lo.
+    pub(crate) undo_baseline: Option<crate::undo::ProjectState>,
+    /// Ctrl+Z / Ctrl+Y pendente (`Some(redo)`), setado pelo teclado e drenado no
+    /// `post_frame_undo` (onde `self` está livre do borrow do render loop).
+    pub(crate) undo_request: Option<bool>,
+    /// Houve QUALQUER evento de input neste frame (mouse ou teclado). O
+    /// `post_frame_undo` só captura+compara quando houve input e nenhum gesto está
+    /// em andamento — barato (frames de input são esparsos), e cobre toda ação
+    /// (gesto, tecla, botão) por um só ponto.
+    pub(crate) any_input_this_frame: bool,
     /// Gradient group: the gradient handle currently being DRAGGED on-canvas —
     /// a multi-point point OR a linear/radial endpoint (`None` = not dragging).
     pub(crate) vec_grad_drag: Option<ph2d_vec_render::GradHandle>,

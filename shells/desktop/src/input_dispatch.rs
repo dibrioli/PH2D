@@ -1581,30 +1581,6 @@ impl App {
         true
     }
 
-    /// ADR-0108 Fase 2: desfaz o último passo vetorial (Ctrl+Z).
-    fn vec_undo(&mut self) {
-        let Some(gfx) = self.gfx.as_mut() else {
-            return;
-        };
-        if let Some(prev) = self.vec_history.undo(&gfx.vec_scene) {
-            gfx.vec_scene = prev;
-            self.vec_pen.finish(); // limpa estado de desenho/arrasto pendente
-            eprintln!("[ph2d-vec] undo");
-        }
-    }
-
-    /// ADR-0108 Fase 2: refaz (Ctrl+Shift+Z / Ctrl+Y).
-    fn vec_redo(&mut self) {
-        let Some(gfx) = self.gfx.as_mut() else {
-            return;
-        };
-        if let Some(next) = self.vec_history.redo(&gfx.vec_scene) {
-            gfx.vec_scene = next;
-            self.vec_pen.finish();
-            eprintln!("[ph2d-vec] redo");
-        }
-    }
-
     /// ADR-0108 Fase 2: salva a cena vetorial em `PH2D_VEC_SAVE_PATH` (default
     /// `ph2d_vec_scene.postcard` no CWD). Ctrl+S no modo vetorial.
     fn vec_save(&mut self) {
@@ -2098,6 +2074,7 @@ impl App {
     }
 
     pub(crate) fn on_mouse_input(&mut self, state: ElementState, button: MouseButton) {
+        self.any_input_this_frame = true;
         let kind = match state {
             ElementState::Pressed => PointerKind::Down,
             ElementState::Released => PointerKind::Up,

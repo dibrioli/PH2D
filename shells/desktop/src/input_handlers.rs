@@ -259,12 +259,24 @@ impl App {
                     .active()
                     .map(|t| t.id() == ph2d_editor::ToolId::new("painter"))
                     .unwrap_or(false);
+                let redo = self.modifiers.shift_key();
+                // Undo GLOBAL de objetos (fila única, ADR-0110+): o fallback do Ctrl+Z
+                // quando nenhum domínio (painter/audio/motion/timeline/vetor) o
+                // consumiu. Só arma o request se há um passo naquele sentido; senão
+                // cai para o image-edit undo de sempre (compat).
+                let global_has = if redo {
+                    self.undo.can_redo()
+                } else {
+                    self.undo.can_undo()
+                };
                 if painter_active {
-                    if self.modifiers.shift_key() {
+                    if redo {
                         self.painter_redo_requested = true;
                     } else {
                         self.painter_undo_requested = true;
                     }
+                } else if global_has {
+                    self.undo_request = Some(redo);
                 } else if let Some(hero) = gfx.hero_screen.as_mut() {
                     hero.bus
                         .push(ph2d_editor::action_bus::EditorAction::UndoImageEdit);

@@ -84,6 +84,24 @@ pub(crate) fn sync(sim: &mut SimWorld, scene: &mut VecScene, map: &mut VecEntity
     }
 }
 
+/// Reconstrói o mapa path↔entidade **a partir do mundo** — varre cada `VecPathRef`
+/// e devolve `VecPathId → Entity::to_bits()`.
+///
+/// É o que um restore (undo ou load de projeto) precisa ANTES do primeiro [`sync`].
+/// O mapa é runtime-only e não é serializado; sem este rebuild, o `sync` veria o
+/// mapa vazio e trataria cada path restaurado como novo — spawnando um SEGUNDO
+/// conjunto de entidades e deixando as restauradas órfãs. Com o rebuild, as três
+/// direções do `sync` viram no-op e a ponte fica consistente de graça.
+#[must_use]
+pub(crate) fn rebuild_map(sim: &mut SimWorld) -> VecEntityMap {
+    let mut map = VecEntityMap::new();
+    let mut q = sim.world_mut().query::<(Entity, &VecPathRef)>();
+    for (e, vp) in q.iter(sim.world()) {
+        map.insert(vp.0, e.to_bits());
+    }
+    map
+}
+
 /// O próximo `RootOrder` livre (o maior em uso + 1). `RootOrder(u32::MAX)` é o
 /// "sem ordem" das raízes que nunca receberam uma, então não conta.
 fn next_root_order(sim: &mut SimWorld) -> u32 {

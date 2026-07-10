@@ -54,6 +54,7 @@ mod render_loop;
 mod sim_populate;
 mod theme;
 mod timeline_persist;
+mod undo;
 mod vec_entities;
 mod vec_gizmo_view;
 mod vec_selection;
@@ -219,6 +220,10 @@ impl App {
             vec_draw_config: ph2d_tool_vector::VectorDrawConfig::default(),
             vec_marquee: None,
             vec_history: ph2d_vec_edit::History::new(),
+            undo: crate::undo::ProjectUndo::default(),
+            undo_baseline: None,
+            undo_request: None,
+            any_input_this_frame: false,
             vec_grad_drag: None,
             vec_grad_selected: None,
             vec_clipboard: None,
@@ -308,6 +313,10 @@ impl App {
     /// for the rationale + the split-impl pattern.
     fn render_frame(&mut self) {
         self.run_render_frame();
+        // Depois do frame (estado já reconciliado pelo `sync`, `self` livre do borrow
+        // do render loop): drena um Ctrl+Z/Y pendente e registra a ação do frame na
+        // fila de undo global, por diff de estado (ver `undo::post_frame_undo`).
+        self.post_frame_undo();
     }
 }
 

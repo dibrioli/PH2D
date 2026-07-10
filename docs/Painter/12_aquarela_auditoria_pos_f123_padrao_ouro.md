@@ -788,3 +788,7 @@ do take 1 verdes; `box_blur_preserves_constant` cobre o campo constante).
 
 Pendente: re-smoke (cruz Charge<1 com e sem Rewet — clareamento presente, fronteira orgânica).
 Diag [wet-diag v2] segue na árvore até o veredito.
+
+**VEREDITO (Enio, 2026-07-09): smoke OK — take 10 aprovado.** Diag [wet-diag v2] removido no
+fechamento; bug registrado em BUGS_painter.md #8; linha fechada com handoff de integração
+(`docs/HANDOFF_line_Painter_integracao_2026-07-09.md`).

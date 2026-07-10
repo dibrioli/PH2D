@@ -16,10 +16,6 @@ impl RasterEditTool for PainterTool {
         // (open shape, pending Fill ColorDrop, Mask scratch, Drag-Dot restore, armed Eyedropper); abandon
         // them so nothing floods / corrupts the freshly-bound sprite. See `paint::lifecycle`.
         self.reset_transient_edit_state();
-        // [wet-diag v2] TEMP: um rebind de source entre traços reatribui o Arc do canvas e QUEBRA a
-        // sessão molhada (guard `arc`) — se esta linha aparecer entre um UP e o DOWN seguinte no
-        // terminal do Enio, achamos o quebrador do gesto A traço 2.
-        eprintln!("[wet-diag] SET_SOURCE {width}x{height}");
         self.canvas_rgba = Arc::new(rgba);
         self.source_size = (width, height);
         self.preview_dirty = true;

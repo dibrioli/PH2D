@@ -14,6 +14,71 @@
 | [5](#bug-5--offset-de-curva-densa-amontoava-os-pontos-após-convert) | Offset amontoava os pontos de uma curva densa após Convert (perda de perfeição) | Stroke offset (movia os pontos de controle) | ✅ Resolvido (offset DRAWING-ONLY, modelo da Seleção) | 2026-07-05 |
 | [6](#bug-6--simplify-quase-bom--offset-arredondava-as-quinas--refit--vértice-reconstruído) | Simplify "quase bom" + offset arredondava as quinas | Simplify/Merge (`curve_refit`) | ✅ Resolvido (refit Schneider corner-split + vértice por interseção de bordas) | 2026-07-05 |
 | [7](#bug-7--aquarela-grave-queda-de-fps--build-profile--composite-2frame--loops-seriais-não-os-algoritmos) | Aquarela: "grave queda de FPS" — build profile + composite 2×/frame + loops seriais, NÃO os algoritmos | Watercolor render-path + dev profile + heartbeat do shell | ✅ Resolvido (60fps em release com todos os knobs; validado pelo Enio via frame profiler) | 2026-07-07 |
+| [8](#bug-8--aquarela-borda-duraserrilhada-nas-junções--retângulo-no-preview--6-fixes-verdes-sem-efeito-o-harness-reproduzia-o-mecanismo-não-o-contexto) | Aquarela: borda dura/serrilhada nas junções (Charge<1 / Rewet) + "retângulo no preview" — 6 fixes verdes sem efeito | Watercolor mixer + render (blend do pigmento, estilo por dono) | ✅ Resolvido (smoke Enio 2026-07-09; clareamento preservado, fronteira orgânica) | 2026-07-09 |
+
+---
+
+## Bug #8 — Aquarela: borda dura/serrilhada nas junções + "retângulo no preview" — 6 fixes verdes sem efeito: o harness reproduzia o MECANISMO, não o CONTEXTO
+
+**Sintomas (Enio, cruz de traços):** (1) borda dura/pixelada na junção entre traços, persistindo
+após pen-up — gatilho "só ao reduzir Charge" (mixer on), e voltando ao subir Rewet; (2) um
+"retângulo" no preview com Charge 1 + Dilution > 0, sumindo no mouse-up.
+
+**A armadilha (a parte que enganou por UMA SEMANA de takes):** SEIS fixes consecutivos, todos com
+mecanismo provado RED→GREEN no harness — e o Enio reportando "nenhuma diferença" em todos. A
+causa não era nenhum dos mecanismos: era a LACUNA harness×app. Todo repro rodava
+`Falloff::Constant`, hardness 1, **warp 0, granulation 0, sem Paper, radius 12-14, pressão fixa
+e sem `paint_tick`** — o app roda o preset Watercolor (feather, warp 6-12, gran 0.3, PaperCold),
+radius 40-100 e o heartbeat por-frame (soak/secagem vivos). Fixes provados num motor que o app
+não executa.
+
+**O método que virou o jogo (doc 12, takes 7-10):**
+1. **Instrumentação no app real** (`[wet-diag]`: spec efetivo por pen-down com 4 casas decimais +
+   estado da sessão por pen-up + salto de pickup do mixer) — 1 gesto do Enio colado do terminal
+   valeu mais que os 6 takes de mecanismo.
+2. **Bissecção por toggle** (`PH2D_PAINT_FULL_UPLOAD=1`, já existia do Bug #2) — separou
+   shell-upload de composite-CPU sem escrever código.
+3. **Perfil 1D + sondas por-pixel no harness com os params EXATOS do dump** — o penhasco estava
+   no eixo que ninguém tinha escaneado (a fronteira do footprint do traço novo DENTRO da tinta
+   velha): degrau inteiro em 1-2 px onde a borda orgânica espalha por 15-25 px. As sondas
+   (`[maps]`/`[wetmaps]`) mataram os suspeitos óbvios um a um: coverage/deplete/water PLANOS no
+   penhasco.
+
+**Causas-raiz (dois portadores independentes + um já morto):**
+- **"Retângulo" (sintoma 2): já estava resolvido** pelo take 6 (água só interage com tinta SECA —
+  o re-molho retroativo da união era o retângulo). Os reports "sem diferença" eram
+  build/condição velha. Confirmado não-reproduzível com e sem o toggle.
+- **Portador A (Charge<1 seco):** o alpha do color-buffer rampa ~20 bytes/px na borda do
+  footprint e a janela de confiança `COL_LO..COL_HI` (8..32) era atravessada em ~1 px espacial —
+  o flip cor-crua↔cor-depositada imprimia a linha (serrilhada pelo warp nearest). **Fix:** lerp
+  proporcional `ca8/255` no blend do pigmento (7.5 → 1.6 bytes/px).
+- **Portador B (Rewet difere entre traços):** o `wet` do DONO entrava **binário** em todos os
+  termos wet-driven (thinning do interior — o maior clareador —, boost do edge, mix, granulação)
+  via o mapa de dono (recency por disco). **Fix: molhado é CAMPO, não estilo** —
+  `build_wet_field`/`sample_wet_field` (blur mascarado por posse, `blur(wet·m)/blur(m)`, raio
+  fixo 8 px < gap do guard de não-contato) — 11.5 → 1.9 bytes/px, clareamento intacto.
+- **Desvio no caminho (take 9, revertido):** um clamp de magnitude no depósito do mixer matou a
+  borda MAS matou junto o clareamento da junção — que era o look desejado. Veto do Enio
+  ("perdeu o efeito de clareamento") → a spec correta é **clareia E suave**, codificada no guard
+  `watercolor_junction_lightening_is_soft_and_preserved` (clareia > +2 bytes E grad ≤ 4
+  bytes/px, com Rewet 0 e 1).
+
+**Lições generalizáveis:**
+1. **Smoke contradiz fix provado ⇒ pare de iterar mecanismo e feche a REPRODUÇÃO** — dump dos
+   params reais no app (1 eprintln por evento) + réplica 1:1 no harness. É a
+   [[feedback_harness_reproduces_mechanism_not_context]], agora com o protocolo que funcionou.
+2. **Meça o PERFIL espacial, não só o valor:** "borda dura" = contraste÷distância. O degrau de 8
+   bytes em 1 px é uma linha dura; os mesmos 8 bytes em 20 px são orgânicos. O teste de dureza
+   certo é o gradiente máximo de 1 px num scan que cruza a fronteira — e há mais de um eixo pra
+   escanear.
+3. **Limiar fixo em bytes sobre um campo com rampa espacial variável = linha dura latente** (a
+   janela COL_LO..HI). A versão suave de um limiar de confiança é o lerp proporcional.
+4. **Params por-traço resolvidos por mapa de dono degrauam na fronteira de posse** quando o
+   parâmetro alimenta termos contínuos — para grandezas físicas espaciais (umidade), o campo
+   borrado (mascarado por posse, pra não vazar pra tinta que não se toca) é a representação
+   certa; o estilo discreto fica pro que é realmente discreto (cor, geometria).
+5. **Registre o look ANTES de "corrigir" um efeito visível:** o clareamento parecia bug e era
+   feature. Fix de aparência sem o veredito do dono do look = risco de take extra.
 
 ---
 

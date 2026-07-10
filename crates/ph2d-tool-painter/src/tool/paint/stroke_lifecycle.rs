@@ -101,67 +101,6 @@ impl PainterTool {
         if matches!(self.paint.paint_mode, PaintMode::Clone) {
             spec.symmetry.enabled = false;
         }
-        // [wet-diag v2] TEMP (Enio 2026-07-09, remover após o diagnóstico): o spec EFETIVO por
-        // pen-down — fecha a lacuna harness×app (doc 12 take 7: todo repro rodou warp 0/gran 0/
-        // radius 12/sem tick; o app roda outra coisa). chg/dil em 4 casas: o painel exibe 2 e
-        // "1.00" pode esconder wet_charge<1 (mixer secretamente ligado).
-        if self.watercolor_render_active() {
-            let dy = self.paint.dynamics;
-            // Breakdown dos guards da sessão (qual quebrou?): wet_rect / coverage / color / base / arc.
-            let n = (self.source_size.0 as usize) * (self.source_size.1 as usize);
-            let guards = format!(
-                "[wr={} cov={} col={} base={} arc={}]",
-                self.paint.canvas_wet_rect.is_some(),
-                self.paint.stroke_coverage.len() == n,
-                self.paint.stroke_color.len() == n * 4,
-                self.paint
-                    .wet_session_base
-                    .as_ref()
-                    .is_some_and(|b| b.len() == n * 4),
-                self.paint
-                    .wet_session_canvas
-                    .as_ref()
-                    .is_some_and(|c| Arc::ptr_eq(c, &self.canvas_rgba)),
-            );
-            eprintln!(
-                "[wet-diag] DOWN pos=({:.0},{:.0}) press={:.3} sess={} {guards} | r={:.1} spc={:.3} \
-                 str={:.2} fall={:?} hard={:.2} auto_shape={} | fill={:.3} depth={:.2} \
-                 gain={:.2} spread={:.1} warp={:.1} gran={:.2}(paper={}) paper={:?} pdep={:.2} \
-                 | pig={}({:.2}) smu={:.2} wet={:.2} chg={:.4} dil={:.4} pull={:.2} | met={:?} \
-                 dyn=[sz={} min={:.2} st={} min={:.2}]",
-                ev.pos[0],
-                ev.pos[1],
-                ev.pressure,
-                wet_session,
-                spec.radius_px,
-                spec.spacing,
-                spec.strength,
-                spec.falloff,
-                spec.hardness,
-                spec.watercolor_shape_auto,
-                spec.fill,
-                spec.depth,
-                spec.edge_gain,
-                spec.edge_spread,
-                spec.warp,
-                spec.granulation,
-                spec.granulation_use_paper,
-                spec.paper.kind,
-                spec.paper_depth,
-                spec.pigment,
-                spec.pigment_mix,
-                spec.wet_smudge,
-                spec.wet_rewet,
-                spec.wet_charge,
-                spec.wet_dilution,
-                spec.wet_pull,
-                spec.stroke_method,
-                dy.size_pressure,
-                dy.size_min,
-                dy.strength_pressure,
-                dy.strength_min,
-            );
-        }
         let mut stroke = Stroke::new(spec, self.paint.dynamics, self.paint.seed);
         // Seed the texture RNG from this stroke's seed, decorrelated from the jitter stream so the
         // two don't lock-step (HR-5: deterministic per stroke).
@@ -305,25 +244,6 @@ impl PainterTool {
         // Watercolor render-path: bake the final optical composite over the frozen base (`commit` drops
         // the base). BEFORE close_stroke so pre-stroke → wash is one undo step (mirror of heal_inpaint).
         if self.watercolor_render_active() {
-            // [wet-diag v2] TEMP: o estado da sessão que o bake vai ler — o que o harness precisa
-            // replicar além do spec (soak/água/janela/estilos/depleção).
-            {
-                let n = (self.source_size.0 as usize) * (self.source_size.1 as usize);
-                eprintln!(
-                    "[wet-diag] UP soak={}({}px) water={} wet_rect={:?} cum={:?} styles={} depl={}",
-                    self.paint.wet_soak_active,
-                    if self.paint.wet_soak.len() == n {
-                        self.paint.wet_soak.iter().filter(|&&s| s > 0).count()
-                    } else {
-                        0
-                    },
-                    !self.paint.stroke_water.is_empty(),
-                    self.paint.canvas_wet_rect,
-                    self.paint.wet_cum_dirty,
-                    self.paint.wet_styles.table.len(),
-                    !self.paint.stroke_deplete.is_empty(),
-                );
-            }
             self.apply_watercolor(true);
             // EDGE-1: pour the wash into the persistent moisture map AFTER the bake, then arm the
             // session guard — the exact canvas Arc our bake produced. A stroke landing while the

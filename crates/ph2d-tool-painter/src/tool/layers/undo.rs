@@ -51,9 +51,6 @@ impl PainterTool {
     /// working buffer, and the panel selection, then refreshes every derived
     /// cache so the composite + GPU preview rebuild.
     pub(crate) fn restore_model(&mut self, m: crate::undo::ModelSnapshot) {
-        // [wet-diag v2] TEMP: undo/redo reatribui o Arc do canvas (quebra de sessão by-design) —
-        // tracer pra descartar/confirmar no gesto A.
-        eprintln!("[wet-diag] RESTORE_MODEL (undo/redo)");
         self.layers = m.layers;
         self.images = m.images;
         self.canvas_rgba = m.canvas_rgba;

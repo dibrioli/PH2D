@@ -272,6 +272,12 @@ abaixo é histórico — não re-investigue.
     (`mod tests;` resolve pra `src/fx/tests.rs`, sem `#[path]`; é filho de `fx` então
     enxerga os privados). fx.rs caiu pra 439 — folga durável pro roster crescer. DSP
     novo em `fx/modulation.rs`. Os arrays `tuned_effects`/`neutral_effects` foram 12→16.
+  - **Fix de display (Enio): slider mostrava "0" onde o valor não era 0.** O `{:.0}`
+    do `format_value` arredondava sub-1 pra zero — o Rate do LFO (mín 0.05 Hz, uma
+    varredura LENTA, não parada) lia "0 Hz" em ~40% do curso, e o Gate Attack (0.5 ms)
+    lia "0 ms". **Não é bug de slider** — o thumb já começa no mínimo real; era só o
+    rótulo. Fix: sub-1 Hz → 2 casas ("0.05 Hz"), sub-1 ms → 1 casa ("0.5 ms"). Gate
+    guard `no_slider_reads_a_false_zero` varre todo param×curso e prende (mutation-testado).
 - **W3 — Presets de cadeia (2026-07-09)**. Salvar/carregar combinações de efeitos.
   - **Duas espécies, dois mecanismos.** **Factory presets** (curados, 7: Voice Cleanup ·
     Podcast · Telephone · Lo-Fi · Master Bus · Wide & Bright · Gate + Glue) são

@@ -149,10 +149,17 @@ pub(crate) fn all_default_norms() -> Vec<[f32; MAX_FX_PARAMS]> {
 }
 
 /// Render one real value for the panel readout.
+///
+/// Sub-unit values keep a decimal, or `{:.0}` rounds them to a **misleading zero**:
+/// an LFO Rate of 0.05 Hz (the slowest sweep, not a stopped one) and a Gate Attack
+/// of 0.5 ms both read "0" without it, which looks like the slider does nothing over
+/// its lower travel (found by Enio, 2026-07-09).
 fn format_value(s: &FxParamSpec, v: f32) -> String {
     match s.unit {
         "Hz" if v >= 1_000.0 => format!("{:.1} kHz", v / 1_000.0),
+        "Hz" if v < 1.0 => format!("{v:.2} Hz"),
         "Hz" => format!("{v:.0} Hz"),
+        "s" if v < 0.001 => format!("{:.1} ms", v * 1_000.0),
         "s" if v < 1.0 => format!("{:.0} ms", v * 1_000.0),
         "s" => format!("{v:.2} s"),
         // Already in milliseconds (a modulation depth), not seconds.
@@ -277,6 +284,43 @@ mod tests {
             ]
         );
         assert_eq!(all_default_norms().len(), KINDS.len());
+    }
+
+    /// No slider may read a bare "0" over any of its travel unless the real value is
+    /// actually zero — a `{:.0}` that rounds 0.05 Hz to "0 Hz" makes the lower half of
+    /// an LFO Rate slider look dead (Enio, 2026-07-09). Walk every parameter across its
+    /// whole range and assert the readout only says a zero quantity when it means it.
+    #[test]
+    fn no_slider_reads_a_false_zero() {
+        for (kind, k) in KINDS.iter().enumerate() {
+            for (i, s) in k.params.iter().enumerate() {
+                for step in 0..=20 {
+                    let n = step as f32 / 20.0;
+                    let mut norms = default_norms(kind);
+                    norms[i] = n;
+                    let shown = &views(kind, &norms)[i].1;
+                    let real = norm_to_real(s, n);
+                    // A readout whose numeric part parses to 0 is only honest when the
+                    // real value rounds to zero at the shown precision.
+                    let num: f32 = shown
+                        .split_whitespace()
+                        .next()
+                        .unwrap()
+                        .trim_end_matches(|c: char| !c.is_ascii_digit() && c != '.' && c != '-')
+                        .parse()
+                        .unwrap_or(0.0);
+                    if num == 0.0 {
+                        assert!(
+                            real < 0.05 || (s.unit == "s" && real < 5e-5),
+                            "{} / {}: shows {:?} but the value is {real}",
+                            k.name,
+                            s.label,
+                            shown
+                        );
+                    }
+                }
+            }
+        }
     }
 
     #[test]

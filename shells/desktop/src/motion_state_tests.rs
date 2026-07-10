@@ -14,9 +14,9 @@ fn new_builds_the_well_typed_demo_with_both_scenes() {
     for &s in &state.sinks {
         assert_eq!(state.doc.graph.node(s).unwrap().type_name, "motion.output");
     }
-    // 16 grid-rig + 8 fountain + 7 pulse-loop (grid, move, tint, strobe,
-    // output, clock, threshold) nodes.
-    assert_eq!(state.doc.graph.nodes().len(), 31);
+    // 16 grid-rig + 8 fountain + 8 pulse-loop (grid, move, tint, counter,
+    // strobe, output, clock, threshold) nodes.
+    assert_eq!(state.doc.graph.nodes().len(), 32);
     assert!(state.doc.graph.validate(&state.registry).is_ok());
     assert_eq!(state.playhead(1.0 / 60.0), 0.0); // paused at tick 0
 }
@@ -104,6 +104,71 @@ fn the_pulse_loop_strobes_the_grid_in_time() {
         uv,
         size
     ));
+}
+
+/// The pulse COUNTER is alive end to end in the default document: the same beat
+/// that flashes the grid also STEPS it — the grid's X centroid sweeps in discrete
+/// notches and, being a Zigzag, turns around (up then back down) instead of
+/// drifting off. Proves the reducer (docs/Motion Nodes/08) through the REAL
+/// registry: an event driving a PERSISTENT value, the inverse of the threshold.
+///
+/// Falsifiable: a dead counter (no pulse, or a stuck tick) leaves the X centroid
+/// CONSTANT — the sweep is the evidence; and a runaway (counting every tick, or a
+/// wrap that never folds) would break the symmetric bound or never turn around.
+#[test]
+fn the_pulse_counter_sweeps_the_grid_in_discrete_steps() {
+    use ph2d_nodegraph::attr::Column;
+
+    let state = MotionState::new();
+    let strobe_sink = *state.sinks.last().unwrap();
+    let mut cook = ph2d_nodegraph::cook::Cook::new();
+
+    // Mean X across the grid each tick. The counter shifts every dot by the same
+    // `count · step`, so the centroid = base(-1.0) + count·0.5 — a clean proxy for
+    // the count. Long enough (8 s ≈ 5-6 beats at 0.7 Hz) to reach the zigzag top
+    // (count 4 → +1.0) and fold back down.
+    let mut centroid = Vec::new();
+    for k in 0..=480u64 {
+        let t = k as f64 / 60.0;
+        let out = cook
+            .cook(&state.doc.graph, &state.registry, strobe_sink, t)
+            .unwrap();
+        let s = out[0].as_stream();
+        let mean = match s.get("P") {
+            Some(Column::Vec2(v)) => v.iter().map(|p| p[0]).sum::<f32>() / v.len().max(1) as f32,
+            _ => 0.0,
+        };
+        centroid.push(mean);
+        cook.advance_tick(&state.doc.graph, &state.registry, t)
+            .unwrap();
+    }
+
+    let hi = centroid.iter().copied().fold(f32::MIN, f32::max);
+    let lo = centroid.iter().copied().fold(f32::MAX, f32::min);
+    // It SWEEPS: a dead counter would give a flat centroid.
+    assert!(
+        hi - lo > 1.0,
+        "the counter must sweep the grid (hi {hi} vs lo {lo}); a flat X = a dead counter"
+    );
+    // It stays within the symmetric Zigzag reach about the -1.0 pre-offset centre
+    // (0..4 counts · 0.5 = 0..2.0 → centroid in [-1.0, 1.0]); a runaway that counts
+    // every tick, or a non-folding wrap, would blow this bound.
+    assert!(
+        (-1.2..=1.2).contains(&hi) && (-1.2..=1.2).contains(&lo),
+        "the sweep is bounded to the zigzag reach: [{lo}, {hi}]"
+    );
+    // It TURNS AROUND: the peak is interior (it went up then came back down), the
+    // Zigzag fold — not a monotonic drift and not a plateau.
+    let peak_at = centroid
+        .iter()
+        .enumerate()
+        .max_by(|a, b| a.1.partial_cmp(b.1).unwrap())
+        .unwrap()
+        .0;
+    assert!(
+        peak_at > 5 && peak_at < centroid.len() - 5,
+        "the zigzag climbs to an interior peak then folds back (peak at tick {peak_at})"
+    );
 }
 
 /// The trail is alive in the default document and its ring really DROPS the

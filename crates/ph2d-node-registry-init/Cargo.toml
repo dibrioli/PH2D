@@ -42,6 +42,7 @@ ph2d-node-motion-tint = { path = "../ph2d-node-motion-tint" }
 ph2d-node-motion-trail = { path = "../ph2d-node-motion-trail" }
 ph2d-node-motion-transform = { path = "../ph2d-node-motion-transform" }
 ph2d-node-motion-wiggle = { path = "../ph2d-node-motion-wiggle" }
+ph2d-node-pulse-counter = { path = "../ph2d-node-pulse-counter" }
 ph2d-node-pulse-threshold = { path = "../ph2d-node-pulse-threshold" }
 # <ph2d-node-sync:end>
 

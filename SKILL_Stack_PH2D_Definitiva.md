@@ -751,6 +751,15 @@ Estudo + evidência primária: [`docs/Motion Nodes/03_reentrada_integrate_estudo
   bistável no `pre` — nomes de TD/Pd); `motion.strobe` é o consumidor (envelope de decay
   geométrico = ADSR do TD / Notify-State do Unreal). Zero RNG (o `random` do stateMachine do
   MiniCavalry vira `hash`, HR-5).
+- **Pulse counter — o redutor** ([`08_pulse_counter_reducer_bridge.md`](docs/Motion%20Nodes/08_pulse_counter_reducer_bridge.md)):
+  `pulse.counter` é o **primeiro REDUTOR** de pulsos — evento → valor persistente e dirigível
+  (o strobe já cruzava Evento→Frame, mas sua resposta DECAI; a do contador ACUMULA e FICA). É o
+  nó-mãe da família: toggle = `count & 1`, sequência = `count mod N`. Template = **Count CHOP**
+  (TD/Houdini) + carry do Max. Estado = um **tick monotônico** no `pre` (+1 só na borda de
+  subida — edge-safe, TD `Off to On` vs `While On`); a contagem exibida é derivada do tick +
+  modo a cada tick, então os 3 modos caem de um estado: **Wrap** `tick mod N`, **Clamp**
+  `min(tick,N-1)`, **Zigzag** triângulo `2(N-1)`. Módulo euclidiano inteiro (HR-5). Desloca
+  `count·step` no canal (aplicado ao `in` FRESCO, nunca compõe), expõe a coluna `count` crua.
 - **Noise — campo Perlin gradiente** ([`07_noise_perlin_gradient_field.md`](docs/Motion%20Nodes/07_noise_perlin_gradient_field.md)):
   `motion.noise` amostra `noise(posição·scale, tempo)` = campo espacial **coerente** (vizinhos
   fluem juntos), distinto do `motion.wiggle` que faz `noise(tempo, índice)` = jitter **independente**.
@@ -761,8 +770,9 @@ Estudo + evidência primária: [`docs/Motion Nodes/03_reentrada_integrate_estudo
   futuro. Param surface = interseção Cavalry/AE/Houdini/Blender (scale/octaves/roughness/type/speed/seed).
 - **Horizonte:** Zona de Simulação (bracket à la Blender, alinha com P4 do design canônico) —
   `cook_scoped` (o pré-requisito) já existe. Generaliza, não substitui, os nós densos. Armadilhas
-  de UX já documentadas no doc 04 §2e. Família pulse restante (`on_change`, `compare`, `switch`,
-  `counter`, `sample_hold`) barata agora que o tipo existe. Noise: Simplex + domain-warp são
+  de UX já documentadas no doc 04 §2e. Família pulse restante (`sample_hold`/latch = rank #2,
+  `gate`/`switch` = #3, `on_change`, `compare`) barata agora que o tipo + o redutor existem
+  (`counter` landou; toggle/sequência são composições dele). Noise: Simplex + domain-warp são
   follow-ups.
 
 ## 12. Cross-cutting concerns

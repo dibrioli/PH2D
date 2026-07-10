@@ -119,10 +119,11 @@ composite. Corpo molhado + rim no contorno EXTERNO + textura como variação de 
 | 10 | **Botão "Wet" (molhar canvas)** (Enio 2026-07-09) | — | re-molha o papel (pour manual no `canvas_wet`, canvas todo ou região) SEM depositar pigmento — próximo traço funde/bloom sobre a pintura existente; é o "Wet the layer" do Rebelle (doc 11 §6 tinha excluído — pedido explícito agora) |
 | 11 | **Slider de tempo de secagem** (Enio 2026-07-09) | const `CANVAS_WET_DRY_PER_S = 25.5` (~10 s, Enio 2026-07-10: 60 s era alto demais) | expor como slider (ex.: 2 s–60 s, ou "∞ = nunca seca sozinho"); vira o knob de calibração da janela de fusão do EDGE-1 |
 | 12 | **Preview de umidade + secagem paulatina** (Enio 2026-07-09) | mapa u8 já existe e decai por byte | (a) overlay on-canvas do `canvas_wet` (véu/brilho de umidade, estilo Rebelle "show wetness"); (b) a secagem GRADUAL influenciando a mescla — hoje a fusão da sessão é binária (molhado enquanto `rect` vivo); usar o valor local do mapa pra atenuar progressivamente a fusão/derretimento do rim conforme seca (meio-seco = meio-rim), casando com o settle do GRAN-1 |
-| 13 | **INVESTIGAÇÃO: retângulos + re-estilo da união ao mudar paper/grain** (Enio 2026-07-10) | bug aberto | vide bloco "Investigações 2026-07-10" abaixo — hipótese forte já mapeada (params NÃO capturados no `WetStrokeStyle`) |
+| 13 | **Retângulos + re-estilo da união ao mudar paper/grain** (Enio 2026-07-10) | ✅ LANDOU 2026-07-11 (`e3cdf551`, substrato por-dono) | vide bloco "Investigações 2026-07-10" abaixo — hipótese forte já mapeada (params NÃO capturados no `WetStrokeStyle`) |
 | 14 | **INVESTIGAÇÃO: retângulos do Per-Layer Color no brush comum** (Enio 2026-07-10, foto) | bug aberto (handoff `HANDOFF_per_layer_color_perf_artifacts.md`) | aplicar o MÉTODO do BUGS #8 (bissecção + perfil + sondas) |
 | 15 | **INVESTIGAÇÃO: perf do Per-Layer Color — otimizações da aquarela não aplicadas** (Enio 2026-07-10) | lento (handoff aberto) | checklist BUGS #7 + stamp-cache + ADR-0109 — vide bloco abaixo |
 | 16 | **PESQUISA: traço de aspecto 3D — como Procreate/Rebelle/Painter fazem** (Enio 2026-07-10) | design | height-map + lighting pass como alternativa barata ao Per-Layer Color — vide bloco abaixo |
+| 17 | **BUG: cores claras (amarelo/azul-claro) quase não aparecem** (Enio 2026-07-11, foto) | bug aberto | Beer-Lambert puro: pigmento claro tem absorbância ~0 nos canais brilhantes → transparente sobre papel branco. Falta BODY/opacidade. Diagnóstico + rotas no bloco "#17" abaixo |
 
 **Blur do Wet Mix: exposto (`a7712f45`) e REVERTIDO no smoke** (Enio: "funcionava melhor quando
 ele não era configurável") — o pickup do mixer fica FIXO em r×0,5 (cerca de Chesterton anotada no
@@ -220,3 +221,33 @@ h é um buffer u8/f16 irmão do coverage; o lighting é um kernel por-pixel puro
 HR-5: normal por diferenças finitas = sem transcendental). Entregável: doc de design
 comparando (a) Per-Layer Color otimizado (#15) × (b) height+lighting nativo, com medição de
 ambos num cenário fixo, e recomendação. Decisão de manter/deprecar Per-Layer Color é do Enio.
+
+### #17 — BUG: cores CLARAS quase não aparecem (amarelo, azul-claro) — Beer-Lambert sem body
+
+**Sintoma (Enio 2026-07-11, foto):** MESMAS configs de brush, cores diferentes — vermelho forte,
+**azul-claro e amarelo quase invisíveis**. Não é config; é o modelo óptico.
+
+**Diagnóstico CONFIRMADO por leitura (`watercolor_render.rs:577-582`):** o depósito é Beer-Lambert
+PURO por canal — `t = transmittance(pig[c], od)`, `lin = base·t + pigment·(1−t)`. Para um canal com
+pigmento CLARO (perto de branco, `pig[c] ≈ 255`) a absorbância é ~0 → **`t ≈ 1` qualquer que seja a
+densidade `od`** → o canal fica na cor do PAPEL. Amarelo `[255,255,50]` só absorve no AZUL → sobre
+papel branco vira branco-levemente-menos-azul = amarelo pálido invisível. Vermelho `[255,50,50]`
+absorve em G+B → aparece forte. Azul-claro idem (2 canais altos). **É a assinatura correta de
+aquarela TRANSPARENTE (washes claros SÃO fracos), mas a magnitude está extrema** — aquarela real
+mostra cores claras porque a tinta tem CORPO (opacidade/scattering), não só absorção.
+
+**Rotas de fix (exige decisão — perceptual × físico):**
+- **(a) Body/opacidade (barato, pragmático):** somar um termo de COBERTURA que alpha-blenda a cor do
+  pigmento sobre a base independente da reflectância do canal — `alpha = fill·cover·k`. O `film_a`
+  (opacidade perceptual, já existe, `:586`) hoje só dirige o mix; usá-lo (ou um irmão) como piso de
+  depósito faz a cor clara registrar. Cuidado com o caminho byte-idêntico default (k=0 ⇒ atual).
+- **(b) Densidade perceptual (médio):** escalar `od` inversamente à luminância do pigmento — cores
+  claras ganham mais densidade pra compensar a baixa absorbância. Menos físico, calibração a olho.
+- **(c) Kubelka–Munk / scattering (grande, o "certo"):** o pivot já previsto (CLAUDE.md, Mixbox/KM)
+  — absorção + scattering K/S dá corpo às cores claras nativamente. É o caminho de estado-da-arte,
+  mas é reescrita do modelo de pigmento.
+- Recomendação: (a) como fix imediato (body term gated, byte-idêntico no default), (c) como norte.
+
+**Método:** RED com uma cor clara (amarelo) medindo o depósito sobre papel branco (Δ do byte deve
+ser >> hoje); fix; verificar que vermelho/escuros ficam byte-idênticos (o body só levanta o piso das
+claras). Precisa do smoke pra calibrar `k`.

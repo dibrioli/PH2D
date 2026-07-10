@@ -54,106 +54,114 @@ const FILE_OVERAGE_OK: &[(&str, usize, &str)] = &[
 /// Per-function overage allowance. Each entry:
 /// (relative file path, function name, allowed LOC, why).
 const FN_OVERAGE_OK: &[(&str, &str, usize, &str)] = &[
+    // ── RE-BASELINE 2026-07-10 (the "deliberate foundational pass" this gate
+    // asked for). Until today the brace walker toggled a char-literal flag on
+    // every `'`, so a prose apostrophe in a `//` comment ("doesn't") or a
+    // lifetime tick (`&'a`) closed a function early and UNDER-counted it. Every
+    // number below is now a real measurement:
+    //   · 3 entries were deleted — their fns are, and were, under the cap
+    //     (grid-snap populate = 126, inspector color_tint = 124,
+    //      painter-layers paint_adjustment_params = 54).
+    //   · 2 entries were lying LOW and are corrected UP to the truth
+    //     (inspector apply_event_impl 353 → 477; paint_transform_section 212 → 281).
+    //   · 8 fns were fully masked and appear here for the first time.
+    // This is a correction of the MEASUREMENT, never a licence to grow: the
+    // numbers may shrink, never rise, and the honest split (per-section helpers
+    // threading `y: f32`) is now unblocked — it is paint/dispatch code with no
+    // unit coverage, so each split lands with its own smoke, one panel at a time.
+    // ──────────────────────────────────────────────────────────────────────────
     // ph2d-panel-color-equalization populate: 200→203 after `cargo fmt --all`
-    // re-flowed long lines (solo Coord 2026-05-29). A data-spec populate (per
-    // the grid-snap precedent below); split into a number_specs helper is the
-    // same deferred follow-up. Frozen at the fmt-canonical 203.
+    // re-flowed long lines (solo Coord 2026-05-29). A data-spec populate; a
+    // split into a number_specs helper is the same deferred follow-up.
     (
         "ph2d-panel-color-equalization/src/populate.rs",
         "populate",
         203,
-        "fmt --all re-flow pushed it 200→203; data-spec populate, split deferred (grid-snap precedent)",
+        "fmt --all re-flow pushed it 200→203; data-spec populate, split deferred",
     ),
-    // Wave 10 / Etapa 5.2: long paint orchestrators that grew with the
-    // panel's feature set. Splitting into per-section helpers is a
-    // follow-up Etapa (one panel at a time, with smoke validation).
-    // Entries here are frozen at the current LOC — adding any new LOC
-    // requires the underlying fn to be split first.
-    // ph2d-panel-bgremoval/src/paint.rs::paint — split Wave 11 §2.2
-    // (paint_sections.rs sibling); orchestrator is ≤ 80 LOC.
-    // ph2d-panel-grid-snap/src/paint.rs::paint_body — split Wave 11 §2.2
-    // (paint_body_sections.rs sibling).
-    // ph2d-panel-grid-snap/src/populate.rs::populate — split Wave 11 §2.2
-    // (number_specs Vec extracted into `default_number_specs` fn). The
-    // gate parser's brace-counter sees ~225 LOC for the body because
-    // every `InteractiveState::X { ... }` literal inside the for-loops
-    // counts as a nested block; the real source-line count is ~135.
-    // Accept the parser's count + 5 LOC headroom.
-    (
-        "ph2d-panel-grid-snap/src/populate.rs",
-        "populate",
-        235,
-        "Wave 11 §2.2 split done; parser counts nested struct-literal blocks (+1 store.register call 2026-05-24 GS_TITLE_COLOR)",
-    ),
-    // Wave 11 / UI canon panel-chrome work (2026-05-24): widened drag
-    // handle + added BL resize gripper require ~4 lines per panel
-    // (1 rect helper call, 2 hit registrations, 1 corner-dot paint).
-    // paint_hierarchy_body was already ~240 LOC pre-canon; split is
-    // deferred to its own follow-up Wave (one panel at a time, with
-    // smoke validation per DIRETRIZ §3.B.1).
+    // Wave 10 / Etapa 5.2: long paint orchestrators that grew with the panel's
+    // feature set. Splitting into per-section helpers is a follow-up Etapa (one
+    // panel at a time, with smoke validation).
     (
         "ph2d-panel-hierarchy/src/paint.rs",
         "paint_hierarchy_body",
         388,
-        "Wave 11 UI canon panel-chrome + tree-line gap elimination, then +68 LOC from 2026-05 hierarchy companion-bit features (same-name dedup, icon hit-area, double-click focus, tree-line alignment). Per-section split (helpers threading `y`) stays a dedicated smoke-validated follow-up Wave (DIRETRIZ §3.B.1) — paint code with no unit coverage; a blind split risks visual regression the gate can't catch. Allowance reconciled to landed LOC by solo Coord 2026-05-29; split tracked outstanding.",
+        "Wave 10 paint orchestrator; per-section split deferred (needs smoke)",
     ),
-    // Wave 11 UI canon: paint_transform_section gained adaptive
-    // layout (label-above when narrow + per-row returned height).
-    // Add ~40 LOC for the if-narrow branch + closure return path.
-    // Split into header/inline-row/stacked-row helpers is a follow-up
-    // (one panel at a time, with smoke).
-    (
-        "ph2d-panel-inspector/src/sections/transform.rs",
-        "paint_transform_section",
-        212,
-        "Wave 11 adaptive label-above + per-section narrow + Rotation align — split deferred. Moved to sections/transform.rs in the §T2.1 file split (sections.rs → per-section modules); allowance reconciled from 260 to the landed 212 LOC.",
-    ),
-    (
-        "ph2d-panel-inspector/src/sections/color_tint.rs",
-        "paint_color_tint_section",
-        289,
-        "W2 sub-tab orchestrator (header + [Tint][Self][Corners][Effects] strip + 4 arm bodies). The §T2.1 file split EXPOSED the true size — the pre-split sections.rs monolith's naive brace-counter under-counted it (braces in earlier string/char literals shifted the depth). Per-tab helper split (each arm → a fn threading `cur_y`) is the same smoke-validated follow-up as paint_transform_section / paint_hierarchy_body — paint code with no unit coverage; a blind split risks visual regression the gate can't catch. Frozen at the landed 289.",
-    ),
-    // Enio 2026-05-26: paint_hierarchy_row cresceu com os 2 novos
-    // ícones (lock + group) + companion hit registers + ícone-foco
-    // double-click hit zone. Split por section é follow-up.
     (
         "ph2d-panel-hierarchy/src/row.rs",
         "paint_hierarchy_row",
-        300,
-        "Enio 2026-05-26 lock/group icons + icon-companion hit zone — split deferred",
+        291,
+        "row painter (icons + twirl + rename + companions); re-baselined 300→291 by the comment-aware parser",
     ),
-    // Pre-existing oversized event dispatcher. Was ~493 LOC on
-    // origin/main; the 2026-05-31 Color & Tint sub-tab removal cut it to
-    // 353. The body is a sequence of independent first-match-wins
-    // `if let WidgetEvent::… { … return true }` blocks. A clean extraction
-    // into per-cluster `try_*` helpers (each well under cap) is ready, but
-    // the gate's brace-walk parser miscounts the helpers — it tracks
-    // `'`/`"` inside `//` comments, so an odd apostrophe ("doesn't",
-    // "sprite's") overruns the function boundary. Landing the split needs
-    // a comment-aware parser fix first, which re-baselines EVERY panel's
-    // allowance (it unmasks other pre-existing violations too) — a
-    // deliberate foundational pass, not a pause-time rush. Frozen at 353.
+    (
+        "ph2d-panel-hierarchy/src/event.rs",
+        "apply_event",
+        216,
+        "unmasked by the 2026-07-10 parser fix; first-match-wins click dispatch, per-cluster try_* split deferred",
+    ),
+    // The inspector is the worst offender and the reason the split was blocked:
+    // the parser under-counted its dispatcher by 124 LOC.
     (
         "ph2d-panel-inspector/src/event.rs",
         "apply_event_impl",
-        353,
-        "pre-existing oversized dispatcher (was ~493 on origin/main, cut to 353 by the Color&Tint sub-tab removal); per-cluster try_* split is ready but blocked on a comment-aware parser fix that re-baselines all panel allowances — deferred to a deliberate pass",
+        477,
+        "was frozen at a mis-measured 353; truly 477. Sequence of independent first-match-wins `if let WidgetEvent::…` blocks — per-cluster try_* split is ready and now unblocked",
     ),
-    // Coord 2026-06-04 ship-prep: Painter W4 adjustment dispatch + param rows grew
-    // with the bespoke kinds. Per-cluster / per-kind helper split is a Painter-impl
-    // follow-up; frozen at the ship-canonical LOC.
+    (
+        "ph2d-panel-inspector/src/paint.rs",
+        "paint_inspector",
+        431,
+        "unmasked by the 2026-07-10 parser fix; §0-§9 section orchestrator, per-section split deferred (needs smoke)",
+    ),
+    (
+        "ph2d-panel-inspector/src/sections/render_source.rs",
+        "paint_render_source_section",
+        307,
+        "unmasked by the 2026-07-10 parser fix; per-row split deferred (needs smoke)",
+    ),
+    (
+        "ph2d-panel-inspector/src/sections/transform.rs",
+        "paint_transform_section",
+        281,
+        "was frozen at a mis-measured 212; truly 281. Per-row split deferred (needs smoke)",
+    ),
+    (
+        "ph2d-panel-inspector/src/sync.rs",
+        "sync_sprite_fields",
+        202,
+        "unmasked by the 2026-07-10 parser fix; field-by-field mirror, 2 LOC over — split is mechanical",
+    ),
+    // Painter W4 adjustment dispatch + param rows grew with the bespoke kinds.
     (
         "ph2d-panel-painter-layers/src/event.rs",
         "apply_event_impl",
-        299,
-        "Painter W4 adjustment event dispatch grew with bespoke kinds — per-cluster split deferred (Painter impl follow-up)",
+        281,
+        "Painter W4 adjustment event dispatch; re-baselined 299→281 by the comment-aware parser",
     ),
     (
-        "ph2d-panel-painter-layers/src/paint_adjust.rs",
-        "paint_adjustment_params",
-        227,
-        "Painter W4 per-adjustment param rows — per-kind helper split deferred (Painter impl follow-up)",
+        "ph2d-panel-painter-layers/src/paint.rs",
+        "paint",
+        273,
+        "unmasked by the 2026-07-10 parser fix; layer-stack paint orchestrator, per-section split deferred (needs smoke)",
+    ),
+    (
+        "ph2d-panel-painter-layers/src/paint_brush.rs",
+        "paint_brush_body",
+        215,
+        "unmasked by the 2026-07-10 parser fix; Brush/Stroke/Shape/Grain sections, per-section split deferred (needs smoke)",
+    ),
+    (
+        "ph2d-panel-equalize-sizes/src/paint.rs",
+        "paint_body_sections",
+        255,
+        "unmasked by the 2026-07-10 parser fix; per-section split deferred (needs smoke)",
+    ),
+    (
+        "ph2d-panel-audio-mixer/src/paint.rs",
+        "paint",
+        225,
+        "unmasked by the 2026-07-10 parser fix; per-strip split deferred (needs smoke)",
     ),
 ];
 
@@ -264,6 +272,68 @@ fn panel_functions_under_loc_cap() {
     );
 }
 
+/// Guard the allowance list itself. An entry whose function has been split
+/// (or deleted) below the cap is dead weight: it silently re-permits the
+/// overage if the function ever grows back. The 2026-07-10 re-baseline found
+/// three such fossils — `grid-snap::populate` (really 126 LOC, frozen at 235),
+/// `inspector::paint_color_tint_section` (124, frozen at 289) and
+/// `painter-layers::paint_adjustment_params` (54, frozen at 227) — each one a
+/// standing licence to triple in size unnoticed. Mirrors the same guard on
+/// `architecture_workspace_file_loc_cap`.
+#[test]
+fn fn_overage_allowlist_has_no_stale_entries() {
+    let crates_root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("..");
+    let mut measured: Vec<(String, String, usize)> = Vec::new();
+    for panel_dir in collect_panel_dirs(&crates_root) {
+        let src = panel_dir.join("src");
+        if !src.is_dir() {
+            continue;
+        }
+        let crate_name = panel_dir
+            .file_name()
+            .and_then(|n| n.to_str())
+            .unwrap_or("")
+            .to_string();
+        visit_files(&src, &mut |path| {
+            let body = fs::read_to_string(path).expect("read panel file");
+            let rel = path
+                .strip_prefix(&panel_dir)
+                .map(|p| p.to_string_lossy().into_owned())
+                .unwrap_or_else(|_| path.display().to_string());
+            let key = format!("{crate_name}/{rel}");
+            for (fn_name, loc) in extract_fn_locs(&body) {
+                measured.push((key.clone(), fn_name, loc));
+            }
+        });
+    }
+
+    let mut stale: Vec<String> = Vec::new();
+    for (key, fn_name, allowed, _) in FN_OVERAGE_OK {
+        match measured
+            .iter()
+            .find(|(k, f, _)| k == key && f == fn_name)
+            .map(|(_, _, loc)| *loc)
+        {
+            None => stale.push(format!("{key}::{fn_name} — function no longer exists")),
+            Some(loc) if loc <= PANEL_FN_LOC_CAP => stale.push(format!(
+                "{key}::{fn_name} — now {loc} LOC, under the {PANEL_FN_LOC_CAP} cap"
+            )),
+            Some(loc) if loc < *allowed => stale.push(format!(
+                "{key}::{fn_name} — now {loc} LOC, entry still frozen at {allowed}"
+            )),
+            Some(_) => {}
+        }
+    }
+
+    assert!(
+        stale.is_empty(),
+        "FN_OVERAGE_OK entries that no longer describe reality:\n  {}\n\
+         fix: delete the entry (fn is under the cap) or lower it to the \
+         measured LOC. Allowances shrink; they never grow.",
+        stale.join("\n  ")
+    );
+}
+
 fn collect_panel_dirs(crates_root: &Path) -> Vec<PathBuf> {
     let mut out: Vec<PathBuf> = Vec::new();
     let Ok(entries) = fs::read_dir(crates_root) else {
@@ -304,71 +374,129 @@ fn visit_files(dir: &Path, cb: &mut dyn FnMut(&Path)) {
 
 /// Extract `(fn_name, body_loc)` pairs from a Rust source. Body LOC
 /// counts the lines between the `fn name(...) {` opener and the
-/// matching `}`, inclusive. Naive about braces inside strings/chars
-/// (sufficient for panel code where `{}` literals in UI strings are
-/// extremely rare) but skips `#[cfg(test)]` modules entirely.
+/// matching `}`, inclusive, and skips `#[cfg(test)]` modules entirely.
+///
+/// The brace walk is **comment-aware** (see [`find_matching_brace`]).
+/// It used to toggle a naive `in_char` flag on every `'`, so a prose
+/// apostrophe inside a `//` comment ("doesn't", "sprite's") or a
+/// lifetime tick (`&'a`) desynchronised the depth counter and closed
+/// the function early — under-counting it. `apply_event_impl` in
+/// `ph2d-panel-inspector` measured 353 that way and is really 477.
 fn extract_fn_locs(src: &str) -> Vec<(String, usize)> {
     let stripped = strip_test_modules(src);
     let mut out: Vec<(String, usize)> = Vec::new();
-    let bytes = stripped.as_bytes();
     let mut i = 0;
-    while i < bytes.len() {
-        if let Some((name, body_start)) = find_fn_opener(&stripped, i) {
-            // body_start is the index of `{`. Walk to matching close.
-            let mut depth = 0i32;
-            let mut j = body_start;
-            let mut in_str = false;
-            let mut in_char = false;
-            let mut esc = false;
-            while j < bytes.len() {
-                let c = bytes[j];
-                if esc {
-                    esc = false;
-                    j += 1;
-                    continue;
-                }
-                if c == b'\\' && (in_str || in_char) {
-                    esc = true;
-                    j += 1;
-                    continue;
-                }
-                if !in_char && c == b'"' {
-                    in_str = !in_str;
-                    j += 1;
-                    continue;
-                }
-                if !in_str && c == b'\'' {
-                    // crude: toggle on char start (lifetime 'a slips through but balanced)
-                    in_char = !in_char;
-                    j += 1;
-                    continue;
-                }
-                if !in_str && !in_char {
-                    match c {
-                        b'{' => depth += 1,
-                        b'}' => {
-                            depth -= 1;
-                            if depth == 0 {
-                                let body = &stripped[body_start..=j];
-                                let loc = body.lines().count();
-                                out.push((name, loc));
-                                i = j + 1;
-                                break;
-                            }
-                        }
-                        _ => {}
-                    }
-                }
-                j += 1;
-            }
-            if j >= bytes.len() {
-                break;
-            }
-        } else {
+    while i < stripped.len() {
+        let Some((name, body_start)) = find_fn_opener(&stripped, i) else {
             break;
-        }
+        };
+        let Some(body_end) = find_matching_brace(&stripped, body_start) else {
+            break;
+        };
+        out.push((name, stripped[body_start..=body_end].lines().count()));
+        i = body_end + 1;
     }
     out
+}
+
+/// Walk from the `{` at `open` to its matching `}`, ignoring braces that
+/// live inside a comment, a string (raw or not) or a char literal.
+/// Returns the byte index of the closing `}`.
+fn find_matching_brace(src: &str, open: usize) -> Option<usize> {
+    let b = src.as_bytes();
+    let mut depth = 0i32;
+    let mut i = open;
+    while i < b.len() {
+        match b[i] {
+            b'/' if i + 1 < b.len() && b[i + 1] == b'/' => i = find_line_end(b, i),
+            b'/' if i + 1 < b.len() && b[i + 1] == b'*' => {
+                i = i + 2 + src[i + 2..].find("*/")? + 2;
+            }
+            // `r"…"` / `r#"…"#` (and the `r` of `br"…"`, whose `b` is inert).
+            b'r' if i + 1 < b.len() && matches!(b[i + 1], b'"' | b'#') => {
+                match skip_raw_string(src, i) {
+                    Some(next) => i = next,
+                    // A raw *identifier* (`r#type`) — not a string.
+                    None => i += 1,
+                }
+            }
+            b'"' => i = skip_string(b, i)?,
+            b'\'' => i = skip_char_or_lifetime(b, i),
+            b'{' => {
+                depth += 1;
+                i += 1;
+            }
+            b'}' => {
+                depth -= 1;
+                if depth == 0 {
+                    return Some(i);
+                }
+                i += 1;
+            }
+            _ => i += 1,
+        }
+    }
+    None
+}
+
+/// From the opening `"`, return the index just past the closing one.
+fn skip_string(b: &[u8], from: usize) -> Option<usize> {
+    let mut i = from + 1;
+    while i < b.len() {
+        match b[i] {
+            b'\\' => i += 2,
+            b'"' => return Some(i + 1),
+            _ => i += 1,
+        }
+    }
+    None
+}
+
+/// From the `r` of `r##"…"##`, return the index just past the terminator.
+/// `None` when this `r` opens a raw identifier rather than a raw string.
+fn skip_raw_string(src: &str, from: usize) -> Option<usize> {
+    let b = src.as_bytes();
+    let mut i = from + 1;
+    let mut hashes = 0usize;
+    while i < b.len() && b[i] == b'#' {
+        hashes += 1;
+        i += 1;
+    }
+    if i >= b.len() || b[i] != b'"' {
+        return None;
+    }
+    i += 1;
+    let mut terminator = String::with_capacity(hashes + 1);
+    terminator.push('"');
+    terminator.extend(std::iter::repeat_n('#', hashes));
+    src[i..]
+        .find(&terminator)
+        .map(|rel| i + rel + terminator.len())
+}
+
+/// From a `'`, return the index just past a char literal (`'x'`, `'\n'`,
+/// `b'{'`), or just past the tick alone when it opens a lifetime (`&'a`,
+/// `'static`) — a lifetime has no closing quote to find.
+fn skip_char_or_lifetime(b: &[u8], from: usize) -> usize {
+    let after_tick = from + 1;
+    if after_tick < b.len() && b[after_tick] == b'\\' {
+        // Escaped: scan to the closing quote (`'\n'`, `'\''`, `'\u{1F}'`).
+        let mut j = after_tick + 1;
+        while j < b.len() && b[j] != b'\'' {
+            j += 1;
+        }
+        return if j < b.len() { j + 1 } else { after_tick };
+    }
+    // Unescaped char literals are one scalar wide; a quote further out than
+    // that means we are looking at a lifetime, not a literal.
+    let mut j = after_tick;
+    while j < b.len() && j < after_tick + 4 {
+        if b[j] == b'\'' {
+            return j + 1;
+        }
+        j += 1;
+    }
+    after_tick
 }
 
 /// Find next `fn <name>(...) {` (or `<vis> fn ... {`) starting at
@@ -517,24 +645,11 @@ fn strip_test_modules(src: &str) -> String {
         if j >= bytes.len() {
             break;
         }
-        let mut depth = 0i32;
-        let mut k = j;
-        while k < bytes.len() {
-            match bytes[k] {
-                b'{' => depth += 1,
-                b'}' => {
-                    depth -= 1;
-                    if depth == 0 {
-                        break;
-                    }
-                }
-                _ => {}
-            }
-            k += 1;
-        }
-        if k >= bytes.len() {
+        // Comment-aware, like `extract_fn_locs` — a brace quoted inside a
+        // test's string or comment must not end the module early.
+        let Some(k) = find_matching_brace(src, j) else {
             break;
-        }
+        };
         // Skip the test mod entirely.
         i = k + 1;
     }

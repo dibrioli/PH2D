@@ -13544,3 +13544,66 @@ fn watercolor_clean_water_backrun_blooms_on_wet_session_wash() {
         "água pura sobre papel em branco não deposita nada"
     );
 }
+
+/// **Costura na junção (Enio smoke 2026-07-09, cruz rápida com Dilution — take knobs):** a linha
+/// dura seguia a fronteira de ROUBO DE DONO do traço novo dentro da união (a presença union crua
+/// do `lift_wash` e o deepen full-strength no gate flipavam em 1 px ali — 29 bytes medidos).
+/// Fix zero-custo: `lift_wash` lê a presença BORRADA (`bp_u`, já amostrada pro anel) e o
+/// `backrun` escala pela presença da fonte. Mesmos params nos dois traços — a junção tem que
+/// derreter (o degrau residual é o taper suave da água).
+#[test]
+fn watercolor_water_junction_owner_line_is_smooth() {
+    let size = 192u32;
+    let mut t = white_canvas(size, 8.0);
+    t.paint.brush = BrushSpec {
+        radius_px: 14.0,
+        hardness: 1.0,
+        falloff: Falloff::Constant,
+        color: [0.85, 0.1, 0.1],
+        space_attenuation: false,
+        watercolor: true,
+        fill: 0.35,
+        depth: 1.5,
+        edge_gain: 1.5,
+        edge_spread: 8.0,
+        warp: 0.0,
+        granulation: 0.0,
+        wet_rewet: 0.3,
+        wet_dilution: 0.5,
+        ..Default::default()
+    };
+    for slot in &mut t.paint.brush_by_mode {
+        *slot = t.paint.brush;
+    }
+    // VERTICAL primeiro (x = 60), HORIZONTAL por último (y = 95) — a ordem do smoke; a fronteira
+    // de dono do horizontal corta o vertical em y ≈ 81.
+    assert!(t.on_canvas_pointer(cp([60.0, 30.0], PointerPhase::Down)));
+    let mut y = 30.0f32;
+    while y < 160.0 {
+        y += 2.0;
+        t.on_canvas_pointer(cp([60.0, y], PointerPhase::Move));
+    }
+    t.on_canvas_pointer(cp([60.0, 160.0], PointerPhase::Up));
+    assert!(t.on_canvas_pointer(cp([20.0, 95.0], PointerPhase::Down)));
+    let mut x = 20.0f32;
+    while x < 170.0 {
+        x += 2.0;
+        t.on_canvas_pointer(cp([x, 95.0], PointerPhase::Move));
+    }
+    t.on_canvas_pointer(cp([170.0, 95.0], PointerPhase::Up));
+    let mut max_step = 0.0f32;
+    let mut at_y = 0u32;
+    for y in 60..95u32 {
+        let a = f32::from(px(&t, size, 60, y)[1]);
+        let b = f32::from(px(&t, size, 60, y + 1)[1]);
+        if (a - b).abs() > max_step {
+            max_step = (a - b).abs();
+            at_y = y;
+        }
+    }
+    assert!(
+        max_step <= 15.0,
+        "a junção da cruz deve derreter — degrau máx G {max_step:.0} em y={at_y} \
+         (sem o fix a linha de dono degrauzava 29)"
+    );
+}

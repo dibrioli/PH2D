@@ -565,3 +565,22 @@ MESMA sessão não "re-molha" mais a vizinha — fusão pura EDGE-1 (o comportam
 próprio bug); (b) o anel do backrun sobre wash molhado vem do pigmento CRU da união (mais
 saturado que a aparência assada de antes) e o interior esvazia por `lift_wash`. Sobre pintura
 seca, byte-idêntico ao aprovado.
+
+#### Take 4 — reversão + knobs + o ajuste cirúrgico de custo zero (Enio: "não resolveu e caiu FPS")
+
+Ordem do Enio: reverter takes 2/3 inteiros (d42349dd — sai StyleFields/difusão, claim por
+dominância, water_soft, CONC_CAP e os builds por-frame que derrubaram FPS; o retângulo visto na
+build do take 3 morre junto — os guards byte-exatos do 2e11f691 seguem verdes) e atacar por
+CALIBRAÇÃO. Knobs (3c863f65): **CANVAS_WET_DRY_PER_S 30→15** (janela 8,5s→17s — 8,5s expirava
+entre traços e o traço seguinte GLAZEAVA com silhueta dura by-design; hipótese-chave do "não
+resolveu") · BACKRUN_JAG_PX 5→3 · BACKRUN_POOL 2.0→1.6 · CONC mantido 1.5 (1.2 clareava o anel
+aprovado além do guard).
+
+Smoke seguinte (cruz rápida, mesma sessão, MESMOS params + Dilution): costura fina seguindo a
+fronteira de roubo de dono do traço novo. Forense harness (V-primeiro/H-último, coluna pela
+junção): degrau 29 bytes/px na linha do dono. Mecanismo: os DOIS reads não-rampados do bloco
+d'água — `lift_wash` multiplicava a presença union CRUA (lp_u, cliff de 1 px na cobertura
+endurecida + máscara de dono) e o deepen do CONC entrava full-strength no gate. **Fix de custo
+ZERO** (nenhum buffer/blur novo — 8f6…): `lift_wash` lê a presença BORRADA `bp_u` (JÁ amostrada
+pro anel) e `backrun ×= bp_ring` (um multiply). Medido: 29→9 bytes/px (refutável, stash-provado).
+Teste permanente: `watercolor_water_junction_owner_line_is_smooth` (≤15). 498/498 · clippy 0.

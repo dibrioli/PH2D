@@ -260,17 +260,23 @@ pub(super) fn rewet_px(
     // (`raw − halo`, a shell just inside the jagged boundary — Curtis §2.2 "severely darkened
     // edges"), tints the wash, and EMPTIES the wet wash it came from (`lift_wash`).
     if water > 0.0 {
-        let (lp_u, bp_u, bleed_u) = match u {
+        let (_lp_u, bp_u, bleed_u) = match u {
             Some(u) => u.sample(f, rx0, ry0, sx, sy, s),
             None => (0.0, 0.0, [0.0; 3]),
         };
-        out.lift_wash = (REWET_LIFT * water * lp_u * (1.0 + SOAK_LIFT * s_raw)).min(LIFT_MAX);
+        // BLURRED presence (bp_u, já amostrada pro anel — custo zero): a crua (lp_u) degrauza
+        // 0→1 em 1 px na linha de cobertura endurecida do wash vizinho — o esvaziamento ligava
+        // num pixel e a costura seguia a silhueta original do wash DENTRO da água do traço novo
+        // (Enio smoke 2026-07-09, cruz rápida: linha nítida nas junções topo/fundo).
+        out.lift_wash = (REWET_LIFT * water * bp_u * (1.0 + SOAK_LIFT * s_raw)).min(LIFT_MAX);
         let bp_ring = bp.max(bp_u);
         if bp_ring > 1e-4 {
             let halo = f
                 .samp(&f.water_halo, rx0, ry0, wxg - rx0 as f32, wyg - ry0 as f32)
                 .clamp(0.0, 1.0);
-            out.backrun = (water - halo).max(0.0);
+            // Escala pela PRESENÇA do pigmento-fonte: o gate `bp_ring > 1e-4` sozinho flipava o
+            // deepen do CONC em força total no pixel em que abre (staircase de 38 bytes medido).
+            out.backrun = (water - halo).max(0.0) * bp_ring.min(1.0);
             out.pool += BACKRUN_POOL * bp_ring * out.backrun;
             // Union tint: the neighbour's RAW pigment bleeds into the pool (weight-merged with
             // the dried-base tint; zero union presence ⇒ the dried path bit-exact).

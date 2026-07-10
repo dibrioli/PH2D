@@ -131,6 +131,35 @@ pub enum TimelineIntent {
     /// and nothing moves on screen — it only becomes draggable.
     ConvertSelectionToBezier,
 
+    // ── markers (W4.T3; each is one undo step) ──────────────────────────────
+    /// Add a marker at `t_seconds` with `label` (user content; the shell
+    /// auto-names it). Frame-snapped like a key.
+    AddMarker {
+        /// Marker time in seconds.
+        t_seconds: f64,
+        /// Author-visible label.
+        label: String,
+    },
+    /// Move the marker at storage `index` to `t_seconds` (frame-snapped).
+    MoveMarker {
+        /// Storage index (stable across a drag).
+        index: usize,
+        /// New time in seconds.
+        t_seconds: f64,
+    },
+    /// Remove the marker at storage `index`.
+    RemoveMarker {
+        /// Storage index.
+        index: usize,
+    },
+    /// Relabel the marker at storage `index`.
+    RenameMarker {
+        /// Storage index.
+        index: usize,
+        /// New label.
+        label: String,
+    },
+
     // ── selection (not undoable) ────────────────────────────────────────────
     /// Replace the selection with a single key.
     SelectSingle(SelectedKey),
@@ -297,6 +326,32 @@ pub fn apply_intent(state: &mut TimelineState, playhead: &mut Playhead, intent: 
             if let Some(track) = doc.active_clip_mut().track_mut(target) {
                 track.set_interp(key, interp);
             }
+        }),
+        I::AddMarker { t_seconds, label } => {
+            let snapped = snap_time(
+                RationalTime::from_seconds(t_seconds),
+                fps,
+                state.flags.frame_snap,
+            );
+            edit(state, |doc, _| {
+                doc.add_marker(snapped, label);
+            });
+        }
+        I::MoveMarker { index, t_seconds } => {
+            let snapped = snap_time(
+                RationalTime::from_seconds(t_seconds),
+                fps,
+                state.flags.frame_snap,
+            );
+            edit(state, |doc, _| {
+                doc.move_marker(index, snapped);
+            });
+        }
+        I::RemoveMarker { index } => edit(state, |doc, _| {
+            doc.remove_marker(index);
+        }),
+        I::RenameMarker { index, label } => edit(state, |doc, _| {
+            doc.set_marker_label(index, label);
         }),
         I::SetSelectedInterp { interp } => edit(state, |doc, sel| {
             for_selected_tracks(doc, sel, |track, ids| {

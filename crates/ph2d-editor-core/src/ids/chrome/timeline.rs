@@ -124,6 +124,13 @@ pub fn timeline_loop_brace_id(edge: u8) -> NodeId {
     dynamic_id("timeline.loop_brace", &[u64::from(edge)])
 }
 
+/// A stable `NodeId` for a marker pennant on the ruler, keyed by its storage
+/// index.
+#[must_use]
+pub fn timeline_marker_hit_id(index: usize) -> NodeId {
+    dynamic_id("timeline.marker", &[index as u64])
+}
+
 /// A stable `NodeId` for one bézier handle in the graph editor (W3.E3), keyed by
 /// the segment's owning `(target, key)` and `which` (`0` = out handle `P1`,
 /// `1` = in handle `P2`).

@@ -29,6 +29,11 @@ const TICK_MINOR_S: f64 = 0.5; // LITERAL-PX-OK: unlabelled tick interval (secon
 const BRACE_W: f32 = 3.0; // LITERAL-PX-OK: loop-brace bar width
 /// Half-width of a brace's grab target — wider than the bar so it is easy to hit.
 const BRACE_HIT_HW: f32 = 6.0; // LITERAL-PX-OK: loop-brace grab half-width
+/// Width + height of a marker pennant.
+const MARKER_W: f32 = 6.0; // LITERAL-PX-OK: marker pennant width
+const MARKER_H: f32 = 9.0; // LITERAL-PX-OK: marker pennant height
+/// Extra grab padding either side of a marker pennant.
+const MARKER_HIT_PAD: f32 = 4.0; // LITERAL-PX-OK: marker grab padding
 
 /// Paint the ruler strip (ticks + labels), the playhead line across `region`,
 /// and register the scrub hit. The view (`view_start`, `px_per_s`) is computed
@@ -95,10 +100,11 @@ pub(crate) fn paint(
     ctx.host
         .hit_index_mut()
         .register(ids::TIMELINE_RULER, strip);
-    // The loop braces go on TOP of the scrub strip — registered after it so their
-    // grab targets win the hit where they overlap (`HitIndex::hit` walks in
-    // reverse). Drawn last for the same reason visually.
+    // The loop braces + markers go on TOP of the scrub strip — registered after
+    // it so their grab targets win the hit where they overlap (`HitIndex::hit`
+    // walks in reverse). Drawn last for the same reason visually.
     paint_loop(ctx, theme, region, &time_to_x, snap);
+    paint_markers(ctx, theme, region, &time_to_x, snap);
     let dragging = matches!(
         ctx.host.store().slider(ids::TIMELINE_RULER),
         Some((SliderState::Dragging, _))
@@ -192,6 +198,67 @@ fn paint_loop(
             RULER_H,
         );
         register_brace(ctx, ids::timeline_loop_brace_id(edge), edge, hit);
+    }
+}
+
+/// Paint a pennant + label per marker at the top of the ruler, and register each
+/// as a `Marker` hit (keyed by storage index). Culls markers scrolled off-screen.
+fn paint_markers(
+    ctx: &mut PaintCtx,
+    theme: Theme,
+    region: Rect,
+    time_to_x: &impl Fn(f64) -> f32,
+    snap: &TimelineViewSnapshot,
+) {
+    let right = region.x + region.w;
+    let font = TypeToken::Xs.px();
+    for (index, (t, label)) in snap.markers.iter().enumerate() {
+        let x = time_to_x(*t);
+        if x < region.x - MARKER_W || x > right {
+            continue;
+        }
+        // A little pennant: a filled flag off the top-left, so it reads as a tag
+        // pinned at the time, distinct from a tick or the playhead.
+        fill_rounded_rect(
+            ctx.scene,
+            Rect::new(x, region.y, MARKER_W, MARKER_H),
+            Radius::Xs.px(),
+            resolve(ColorToken::Warn, theme),
+        );
+        // The stem down the strip.
+        fill_rounded_rect(
+            ctx.scene,
+            Rect::new(x, region.y, 1.0, RULER_H), // LITERAL-PX-OK: 1px marker stem
+            Radius::Xs.px(),
+            resolve(ColorToken::Warn, theme),
+        );
+        // Label to the right of the pennant, elided so it never runs off.
+        ph2d_editor_core::text_elide::paint_text_elided(
+            ctx.text_system,
+            ctx.scene,
+            label,
+            x + MARKER_W + Spacing::Xs.px(),
+            region.y + (MARKER_H - font) * 0.5,
+            font,
+            (right - x - MARKER_W).max(0.0),
+            resolve(ColorToken::Text2, theme),
+        );
+        let hit = Rect::new(
+            x - MARKER_HIT_PAD,
+            region.y,
+            MARKER_W + MARKER_HIT_PAD * 2.0,
+            RULER_H,
+        );
+        let id = ids::timeline_marker_hit_id(index);
+        ctx.host.store_mut().register(
+            id,
+            InteractiveState::TimelineSurface {
+                parent: ids::TIMELINE_PANEL,
+                kind: TimelineHitKind::Marker { index },
+                canvas: hit,
+            },
+        );
+        ctx.host.hit_index_mut().register(id, hit);
     }
 }
 

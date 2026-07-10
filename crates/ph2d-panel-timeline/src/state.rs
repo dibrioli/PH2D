@@ -105,6 +105,8 @@ pub struct TimelinePanelState {
     /// In-progress loop-brace drag on the ruler (W4.T3): which edge and the range
     /// captured at Begin, so a slow drag applies deltas to a fixed origin.
     pub loop_drag: Option<LoopDrag>,
+    /// Storage index of the marker being dragged on the ruler (W4.T3), if any.
+    pub marker_drag: Option<usize>,
     /// In-progress box-select (marquee) drag over an empty lane.
     pub box_drag: Option<BoxDrag>,
     /// A box-select that just finished, waiting to be resolved against the key
@@ -283,6 +285,7 @@ impl Default for TimelinePanelState {
             anchor_drag: None,
             summary_press: None,
             loop_drag: None,
+            marker_drag: None,
             box_drag: None,
             box_commit: None,
             rect: None,

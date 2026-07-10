@@ -27,6 +27,7 @@ use crate::box_select;
 use crate::ids;
 use crate::key_drag;
 use crate::loop_drag;
+use crate::marker_drag;
 use crate::resize;
 use crate::state::TimelinePanelState;
 use crate::summary;
@@ -89,6 +90,9 @@ pub(crate) fn dispatch_primary(
     match g.kind {
         TimelineHitKind::LoopBrace { edge } => {
             loop_drag::apply(state, time_x, px_per_s, snap, edge, g);
+        }
+        TimelineHitKind::Marker { index } => {
+            marker_drag::apply(state, time_x, px_per_s, snap, index, g);
         }
         // Column lock (default): a press on a track key is a press on its whole
         // time column, so grabbing one key grabs the vertical group. Unlocked, it

@@ -246,6 +246,28 @@ impl App {
             return;
         }
 
+        // General timeline (W4.T3) — `M` drops a marker at the playhead while the
+        // panel is open (Blender's marker key). Intercepted here, before the
+        // global theme toggle `M` in `input_handlers`, so it only reclaims the key
+        // in the timeline context; a focused text field keeps `M` for typing.
+        if self.timeline_panel_open()
+            && state == ElementState::Pressed
+            && !repeat
+            && !self.modifiers.control_key()
+            && !self.modifiers.super_key()
+            && !self.modifiers.alt_key()
+            && !self.vector_text_field_focused()
+            && matches!(physical_key, PhysicalKey::Code(KeyCode::KeyM))
+        {
+            let label = format!("M{}", self.timeline.doc.markers().len() + 1);
+            self.timeline_intents
+                .push(ph2d_timeline::TimelineIntent::AddMarker {
+                    t_seconds: self.playhead.time(),
+                    label,
+                });
+            return;
+        }
+
         // General timeline (W2.E7) — Ctrl/Cmd + C/X/V/D on the dope-sheet keys.
         // Runs AFTER the Vector/Motion blocks, so an active tool keeps the chord;
         // requires the panel open, no focused text field, and something to act on

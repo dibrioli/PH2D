@@ -896,3 +896,88 @@ fn convert_selection_to_bezier_reads_each_keys_own_curve() {
         assert!(matches!(i, Interp::Bezier { .. }), "{i:?}");
     }
 }
+
+#[test]
+fn markers_add_move_rename_remove_each_one_undo_step() {
+    let mut st = TimelineState::new();
+    let mut ph = Playhead::new(DT);
+    let before = st.doc.clone();
+
+    apply_intent(
+        &mut st,
+        &mut ph,
+        I::AddMarker {
+            t_seconds: 1.0,
+            label: "M1".into(),
+        },
+    );
+    assert_eq!(st.doc.markers().len(), 1);
+    assert_eq!(st.doc.markers()[0].label, "M1");
+    assert!((st.doc.markers()[0].t.to_seconds() - 1.0).abs() < 1e-9);
+
+    apply_intent(
+        &mut st,
+        &mut ph,
+        I::MoveMarker {
+            index: 0,
+            t_seconds: 2.0,
+        },
+    );
+    assert!((st.doc.markers()[0].t.to_seconds() - 2.0).abs() < 1e-9);
+
+    apply_intent(
+        &mut st,
+        &mut ph,
+        I::RenameMarker {
+            index: 0,
+            label: "beat".into(),
+        },
+    );
+    assert_eq!(st.doc.markers()[0].label, "beat");
+
+    // Four discrete edits → four undo steps back to empty.
+    apply_intent(&mut st, &mut ph, I::RemoveMarker { index: 0 });
+    assert!(st.doc.markers().is_empty());
+    for _ in 0..4 {
+        apply_intent(&mut st, &mut ph, I::Undo);
+    }
+    assert_eq!(st.doc, before, "every marker edit was its own undo step");
+}
+
+#[test]
+fn a_marker_add_frame_snaps_like_a_key() {
+    let mut st = TimelineState::new();
+    let mut ph = Playhead::new(DT);
+    // 60 fps, frame-snap on: 1.007 s snaps to frame 60 = 1.0 s.
+    apply_intent(
+        &mut st,
+        &mut ph,
+        I::AddMarker {
+            t_seconds: 1.007,
+            label: "x".into(),
+        },
+    );
+    let m = st.doc.markers()[0].t;
+    assert_eq!(
+        m,
+        ph2d_anim::RationalTime::from_frame(60, 60),
+        "snapped to the frame"
+    );
+}
+
+#[test]
+fn moving_a_marker_that_does_not_exist_is_a_harmless_noop() {
+    let mut st = TimelineState::new();
+    let mut ph = Playhead::new(DT);
+    let before = st.doc.clone();
+    apply_intent(
+        &mut st,
+        &mut ph,
+        I::MoveMarker {
+            index: 9,
+            t_seconds: 1.0,
+        },
+    );
+    apply_intent(&mut st, &mut ph, I::RemoveMarker { index: 9 });
+    assert_eq!(st.doc, before, "out-of-range marker ops change nothing");
+}

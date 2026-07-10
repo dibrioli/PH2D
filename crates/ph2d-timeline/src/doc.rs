@@ -250,6 +250,30 @@ impl TimelineDoc {
         }
     }
 
+    /// Move the marker at `index` to `t` (storage order is preserved, so the
+    /// index stays valid across a drag). Returns `true` if it existed.
+    pub fn move_marker(&mut self, index: usize, t: RationalTime) -> bool {
+        match self.markers.get_mut(index) {
+            Some(m) => {
+                m.t = t;
+                true
+            }
+            None => false,
+        }
+    }
+
+    /// Relabel the marker at `index`. Returns `true` if it existed. Marker labels
+    /// are user content, not HR-15 UI strings.
+    pub fn set_marker_label(&mut self, index: usize, label: impl Into<String>) -> bool {
+        match self.markers.get_mut(index) {
+            Some(m) => {
+                m.label = label.into();
+                true
+            }
+            None => false,
+        }
+    }
+
     /// After loading, reseat the target allocator past every bound target so new
     /// bindings never collide with loaded ones (defensive against hand-edited
     /// or older files).

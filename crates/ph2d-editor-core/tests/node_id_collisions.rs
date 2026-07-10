@@ -695,4 +695,11 @@ fn timeline_dynamic_ids_dont_collide_with_chrome_or_each_other() {
             ids::timeline_loop_brace_id(edge),
         );
     }
+    // Marker pennants, keyed by storage index.
+    for index in [0usize, 1, 2, 7, 42, 1000] {
+        check(
+            format!("timeline_marker_hit_id({index})"),
+            ids::timeline_marker_hit_id(index),
+        );
+    }
 }

@@ -439,6 +439,9 @@ pub enum TimelineHitKind {
     /// handle, `2` = the band between them (drag to move the whole range).
     /// Dragging sets the playback loop range; the panel maps pointer x to time.
     LoopBrace { edge: u8 },
+    /// A marker pennant on the ruler, keyed by its storage `index`. A plain click
+    /// seeks the playhead to it, Alt+click removes it, a drag moves it.
+    Marker { index: usize },
     /// A resize gripper on the panel's border. `edges` is a bitmask of
     /// [`TIMELINE_EDGE_L`] .. [`TIMELINE_EDGE_B`] (a corner sets two). The panel
     /// owns the resize itself; the bits are named here only so the shell can pick

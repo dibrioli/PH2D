@@ -601,3 +601,33 @@ não um timer invisível. Lição de processo: 3 takes atacaram o composite porq
 reproduzia o caminho intra-sessão — 1 linha de eprintln no app real fechou o diagnóstico que
 3 lentes de auditoria estática não fecharam (instrumentação no ambiente REAL > teoria).
 498/498 · clippy 0.
+
+#### Take 6 — os gatilhos do Enio fecham os dois bugs: retângulo = máscara instável da união · borda = flip do COL_EPS
+
+Enio isolou: "borda dura só ao reduzir Charge; retângulo no preview só com Charge 1 e Dilution
+> 0". Forense de cada um:
+
+**Retângulo (Dilution):** a fonte union do anel/lift era mascarada por `owner != traço_VIVO` —
+instável por construção: um traço com Dilution rega o próprio corpo; no bake dele o próprio
+pigmento está excluído (sem auto-efeito), mas no pen-down do PRÓXIMO traço ele vira
+"estrangeiro" e lift/anel RETROAGEM sobre o wash inteiro dentro da janela viva (o retângulo;
+some no pen-up porque o commit re-assa tudo uniforme). Não existe máscara estável sem estado
+por-par-de-traços. **Decisão: simplificar** — água interage com tinta SECA (base da sessão, o
+caminho de glaze aprovado, byte-idêntico); companheiros de sessão MOLHADOS interagem só pela
+FUSÃO da união (EDGE-1: um corpo d'água). Deletados: UnionFields/build, lift_wash, tint union,
+bp_ring (−145 linhas em watercolor_rewet_px.rs, zero custo por-frame). Comportamento retirado
+de propósito: anel de água sobre wash AINDA-molhado da mesma sessão (o teste-guarda T3 saiu
+junto) — com o Dry button (fila #9) o artista escolhe quando o wash "seca" pra bloom de glaze.
+Guarda novo (FAIL provado pré-fix):
+`watercolor_diluted_wash_is_not_retroactively_rewetted_by_next_stroke`.
+
+**Borda (Charge < 1):** forense com controle — o muro na travessia do traço é o rim endurecido
+BY-DESIGN (charge 1.0 dá degrau MAIOR, 198 vs 158; não é o bug). O que muda com Charge < 1: a
+cauda deplecionada deposita alpha 2..19 (a = peak·wgt·prio·depl), TODO abaixo do flip binário
+`COL_EPS = 20` que trocava a cor do pixel entre depositada (mixada) e crua num contorno duro —
+invisível em cruz monocromática, borda dura quando o mixer pegou cor. Fix: RAMPA
+`COL_LO=8..COL_HI=32` (lerp; ≥32 = depositada pura, caminho antigo intacto).
+
+499/499 · clippy 0 · LOC verdes (rewet_px 294→149). Pendente de smoke: (a) retângulo morto com
+Dilution; (b) borda do Charge — se persistir em cruz MONOCROMÁTICA, o portador não é a cor
+(candidato seguinte: prio/pickup do mixer nas travessias de poça).

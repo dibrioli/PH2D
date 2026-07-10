@@ -6,13 +6,10 @@
 //! Split from `watercolor_render.rs` for the workspace LOC cap; pure functions of the sampled
 //! fields (the ADR-0109 parallel-composite invariants hold: no cross-pixel state, no RNG).
 
-use rayon::prelude::*;
-
 use super::watercolor_field::{
     BACKRUN_POOL, LIFT_MAX, REWET_LIFT, REWET_POOL, RewetFields, SOAK_DISSOLVE, SOAK_LIFT,
-    WetStrokeStyle, box_blur, smoothstep,
+    WetStrokeStyle, box_blur,
 };
-use super::watercolor_render::{SS0, SS1};
 
 /// Resolve the per-pixel OWNER stroke's style (EDGE-1 per-stroke params — recency ownership: an
 /// older wash keeps ITS Concentration/Edge/water on the union re-bake, Enio 2026-07-09). Owner `0`
@@ -63,129 +60,10 @@ pub(super) fn blur_of(blurs: &[(usize, Vec<f32>)], r: usize) -> &[f32] {
         .map_or(&blurs[0].1[..], |(_, b)| &b[..])
 }
 
-/// EDGE-2 **union pigment fields** — the wet session-mates' pigment presence + premultiplied
-/// colour on the [`RewetFields`] low-res grid, EXCLUDING the live stroke's own deposit (owner
-/// mask): the water redisperses the NEIGHBOUR washes' pigment, and a dilution-carrying stroke
-/// must not ring against itself (the single-stroke path stays byte-identical).
-pub(super) struct UnionFields {
-    pres: Vec<f32>,
-    near: [Vec<f32>; 4],
-    far: Option<[Vec<f32>; 4]>,
-}
-
-impl UnionFields {
-    /// Sample `(raw presence, blurred presence, colour)` at the warped window-local coord — the
-    /// same near→far soak lerp as the dried-base fields.
-    fn sample(
-        &self,
-        f: &RewetFields,
-        rx0: usize,
-        ry0: usize,
-        sx: f32,
-        sy: f32,
-        s: f32,
-    ) -> (f32, f32, [f32; 3]) {
-        let lp = f.samp(&self.pres, rx0, ry0, sx, sy).clamp(0.0, 1.0);
-        let n0 = f.samp(&self.near[0], rx0, ry0, sx, sy);
-        let bp = if let Some(far) = &self.far {
-            let f0 = f.samp(&far[0], rx0, ry0, sx, sy);
-            (n0 + (f0 - n0) * s).clamp(0.0, 1.0)
-        } else {
-            n0.clamp(0.0, 1.0)
-        };
-        let mut bleed = [0.0f32; 3];
-        if bp > 1e-4 {
-            let inv = 1.0 / bp;
-            for c in 0..3 {
-                let nc = f.samp(&self.near[c + 1], rx0, ry0, sx, sy);
-                bleed[c] = if let Some(far) = &self.far {
-                    let fc = f.samp(&far[c + 1], rx0, ry0, sx, sy);
-                    (nc + (fc - nc) * s) * inv
-                } else {
-                    nc * inv
-                };
-            }
-        }
-        (lp, bp, bleed)
-    }
-}
-
-/// Build the [`UnionFields`] on `f`'s grid from the UNION buffers (session-stable): presence =
-/// hardened coverage × deposited alpha, colour = the deposited bytes, both masked to owners ≠ the
-/// live stroke. Blurs mirror the dried set (near = spread, far = 2× when soaked). Parallel over
-/// grid rows (ADR-0109 class: pure per-cell reads, disjoint row slices ⇒ byte-identical).
-#[allow(clippy::too_many_arguments)] // field-build seam: every input is a distinct buffer/flag
-pub(super) fn build_union_fields(
-    f: &RewetFields,
-    coverage: &[u8],
-    color: &[u8],
-    owner: &[u8],
-    cur_o: u8,
-    soaked: bool,
-    (fw, fh): (usize, usize),
-    spread: usize,
-) -> UnionFields {
-    let (ds, lw, lh) = (f.ds, f.lw, f.lh);
-    let half = ds / 2;
-    let has_col = color.len() == coverage.len() * 4;
-    let has_own = owner.len() == coverage.len();
-    let mut pres = vec![0.0f32; lw * lh];
-    let mut wr = vec![0.0f32; lw * lh];
-    let mut wg = vec![0.0f32; lw * lh];
-    let mut wb = vec![0.0f32; lw * lh];
-    pres.par_chunks_mut(lw)
-        .zip(wr.par_chunks_mut(lw))
-        .zip(wg.par_chunks_mut(lw))
-        .zip(wb.par_chunks_mut(lw))
-        .enumerate()
-        .for_each(|(lj, (((prow, rrow), grow), brow))| {
-            let gy = (((f.loy0 + lj) * ds) + half).min(fh - 1);
-            for li in 0..lw {
-                let gx = (((f.lox0 + li) * ds) + half).min(fw - 1);
-                let gi = gy * fw + gx;
-                // Only committed session-mates count (owned, and not by the live stroke).
-                if !has_own || owner[gi] == 0 || owner[gi] == cur_o {
-                    continue;
-                }
-                let hard = smoothstep(SS0, SS1, f32::from(coverage[gi]) / 255.0);
-                let ca = if has_col {
-                    f32::from(color[gi * 4 + 3]) / 255.0
-                } else {
-                    1.0
-                };
-                let p = hard * ca;
-                prow[li] = p;
-                if has_col && p > 0.0 {
-                    rrow[li] = f32::from(color[gi * 4]) * p;
-                    grow[li] = f32::from(color[gi * 4 + 1]) * p;
-                    brow[li] = f32::from(color[gi * 4 + 2]) * p;
-                }
-            }
-        });
-    let r1 = (spread / ds).max(1);
-    let near = [
-        box_blur(&pres, lw, lh, r1),
-        box_blur(&wr, lw, lh, r1),
-        box_blur(&wg, lw, lh, r1),
-        box_blur(&wb, lw, lh, r1),
-    ];
-    let far = soaked.then(|| {
-        let r2 = ((spread * 2) / ds).max(1);
-        [
-            box_blur(&pres, lw, lh, r2),
-            box_blur(&wr, lw, lh, r2),
-            box_blur(&wg, lw, lh, r2),
-            box_blur(&wb, lw, lh, r2),
-        ]
-    });
-    UnionFields { pres, near, far }
-}
-
 /// The rewet terms at one output pixel: how much base paint LIFTS, how much dissolved pigment
 /// tints (`dissolve`, colour in `bleed`), the local raw paint presence (`wet_paint`, gates the
 /// wet-driven paint-mix), the backrun ring shell (EDGE-2 — concentrates the pigment floor), how
-/// much the WATER empties the wet wash's own density (`lift_wash` — the redispersed mass that
-/// re-enters as the ring), and the optical-density ADDITION from the pool/bloom terms.
+/// and the optical-density ADDITION from the pool/bloom terms.
 #[derive(Default)]
 pub(super) struct RewetPx {
     pub(super) lift: f32,
@@ -194,7 +72,6 @@ pub(super) struct RewetPx {
     pub(super) wet_paint: f32,
     pub(super) bleed: [f32; 3],
     pub(super) pool: f32,
-    pub(super) lift_wash: f32,
 }
 
 /// Evaluate the rewet terms at the warped sample `(sx, sy)` (window-local) / serrated water read
@@ -205,7 +82,6 @@ pub(super) struct RewetPx {
 #[allow(clippy::too_many_arguments)] // per-pixel kernel seam: each input is a distinct sample
 pub(super) fn rewet_px(
     f: &RewetFields,
-    u: Option<&UnionFields>,
     (rx0, ry0): (usize, usize),
     (sx, sy): (f32, f32),
     (wxg, wyg): (f32, f32),
@@ -255,40 +131,19 @@ pub(super) fn rewet_px(
         // Spread dynamic (interior must CLEAR as the frontier advances).
         out.pool = REWET_POOL * st_wet * bp * (cw * (1.0 - inner)).clamp(0.0, 1.0);
     }
-    // Backrun (EDGE-2) — water over pigment, DRIED (below the session) or WET (a session-mate,
-    // via the union fields): the redispersed pigment pools along the water's serrated contour
-    // (`raw − halo`, a shell just inside the jagged boundary — Curtis §2.2 "severely darkened
-    // edges"), tints the wash, and EMPTIES the wet wash it came from (`lift_wash`).
-    if water > 0.0 {
-        let (_lp_u, bp_u, bleed_u) = match u {
-            Some(u) => u.sample(f, rx0, ry0, sx, sy, s),
-            None => (0.0, 0.0, [0.0; 3]),
-        };
-        // BLURRED presence (bp_u, já amostrada pro anel — custo zero): a crua (lp_u) degrauza
-        // 0→1 em 1 px na linha de cobertura endurecida do wash vizinho — o esvaziamento ligava
-        // num pixel e a costura seguia a silhueta original do wash DENTRO da água do traço novo
-        // (Enio smoke 2026-07-09, cruz rápida: linha nítida nas junções topo/fundo).
-        out.lift_wash = (REWET_LIFT * water * bp_u * (1.0 + SOAK_LIFT * s_raw)).min(LIFT_MAX);
-        let bp_ring = bp.max(bp_u);
-        if bp_ring > 1e-4 {
-            let halo = f
-                .samp(&f.water_halo, rx0, ry0, wxg - rx0 as f32, wyg - ry0 as f32)
-                .clamp(0.0, 1.0);
-            // Escala pela PRESENÇA do pigmento-fonte: o gate `bp_ring > 1e-4` sozinho flipava o
-            // deepen do CONC em força total no pixel em que abre (staircase de 38 bytes medido).
-            out.backrun = (water - halo).max(0.0) * bp_ring.min(1.0);
-            out.pool += BACKRUN_POOL * bp_ring * out.backrun;
-            // Union tint: the neighbour's RAW pigment bleeds into the pool (weight-merged with
-            // the dried-base tint; zero union presence ⇒ the dried path bit-exact).
-            let du = (water * bp_u * (1.0 + SOAK_DISSOLVE * s)).clamp(0.0, 1.0);
-            if du > 0.0 {
-                let wsum = out.dissolve + du;
-                for (b, u) in out.bleed.iter_mut().zip(bleed_u) {
-                    *b = (*b * out.dissolve + u * du) / wsum;
-                }
-                out.dissolve = out.dissolve.max(du);
-            }
-        }
+    // Backrun ring (EDGE-2) — water over the DRIED paint below the session (the base): the
+    // redispersed pigment pools along the water's serrated contour (`raw − halo`, Curtis §2.2
+    // "severely darkened edges"), scaled pela PRESENÇA da fonte (o gate sozinho flipava o CONC
+    // full-strength na cauda da presença — staircase). Companheiro de sessão MOLHADO não é fonte
+    // de anel/lift: ele é UM corpo d'água com este traço (fusão da união, EDGE-1) — a fonte
+    // union mascarada por dono re-molhava washs assados RETROATIVAMENTE a cada pen-down novo
+    // (o retângulo da janela viva com Dilution, Enio 2026-07-09).
+    if water > 0.0 && bp > 1e-4 {
+        let halo = f
+            .samp(&f.water_halo, rx0, ry0, wxg - rx0 as f32, wyg - ry0 as f32)
+            .clamp(0.0, 1.0);
+        out.backrun = (water - halo).max(0.0) * bp.min(1.0);
+        out.pool += BACKRUN_POOL * bp * out.backrun;
     }
     out
 }

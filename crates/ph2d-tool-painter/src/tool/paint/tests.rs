@@ -11084,6 +11084,80 @@ fn watercolor_incremental_composite_matches_full_recompose() {
     );
 }
 
+/// **Paridade incremental com ÁGUA (Enio 2026-07-09, "retângulo no preview com Charge 1 +
+/// Dilution > 0"):** o composite vivo por dirty-rect tem que bater com a recomposição full
+/// TAMBÉM com o canal d'água ativo — o anel lê o halo numa coordenada SERRILHADA (±JAG_PX), e a
+/// janela viva não padava esse deslocamento: perto da borda da janela o blur do halo perdia
+/// suporte e os valores mudavam a cada frame (retângulos que somem no pen-up).
+#[test]
+fn watercolor_incremental_composite_matches_full_with_water() {
+    let size = 256u32;
+    let mut t = PainterTool::default();
+    t.set_source(vec![255u8; (size * size * 4) as usize], size, size);
+    t.paint.brush = BrushSpec {
+        radius_px: 14.0,
+        hardness: 1.0,
+        falloff: Falloff::Constant,
+        color: [0.24, 0.39, 0.63],
+        space_attenuation: false,
+        watercolor: true,
+        edge_gain: 3.0,
+        edge_spread: 12.0,
+        granulation: 0.4,
+        warp: 2.5,
+        fill: 0.35,
+        depth: 2.0,
+        wet_rewet: 0.3,
+        wet_dilution: 0.6, // água carregada — o caso do smoke (Charge 1 default)
+        ..Default::default()
+    };
+    for slot in &mut t.paint.brush_by_mode {
+        *slot = t.paint.brush;
+    }
+    // Wash A assado (SEM água) — o anel/lift d'água só liga sobre PIGMENTO (bp_ring > 0); numa
+    // tela virgem o halo nem é lido e a paridade passa vazia.
+    t.paint.brush.wet_dilution = 0.0;
+    for slot in &mut t.paint.brush_by_mode {
+        *slot = t.paint.brush;
+    }
+    assert!(t.on_canvas_pointer(cp([30.0, 60.0], PointerPhase::Down)));
+    for i in 1..=40 {
+        t.on_canvas_pointer(cp([30.0 + i as f32 * 4.5, 60.0], PointerPhase::Move));
+    }
+    t.on_canvas_pointer(cp([210.0, 60.0], PointerPhase::Up));
+    // Traço B com ÁGUA, VIVO, cruzando o wash em diagonal — paridade no estado ao vivo.
+    t.paint.brush.wet_dilution = 0.6;
+    for slot in &mut t.paint.brush_by_mode {
+        *slot = t.paint.brush;
+    }
+    assert!(t.on_canvas_pointer(cp([30.0, 30.0], PointerPhase::Down)));
+    for i in 1..=40 {
+        let p = 30.0 + i as f32 * 4.5;
+        t.on_canvas_pointer(cp([p, 30.0 + i as f32 * 3.5], PointerPhase::Move));
+    }
+    let incremental: Vec<u8> = t.canvas_rgba.to_vec();
+    t.paint.wet_frame_dirty = t.paint.wet_cum_dirty;
+    t.apply_watercolor(false);
+    let full: Vec<u8> = t.canvas_rgba.to_vec();
+    let mut worst = 0i32;
+    let mut worst_i = 0usize;
+    for (i, (a, b)) in incremental.iter().zip(full.iter()).enumerate() {
+        let d = (i32::from(*a) - i32::from(*b)).abs();
+        if d > worst {
+            worst = d;
+            worst_i = i;
+        }
+    }
+    assert!(
+        worst <= 1,
+        "incremental com água deixou pixel stale: Δ{} no byte {} (px {},{})",
+        worst,
+        worst_i,
+        (worst_i / 4) % size as usize,
+        (worst_i / 4) / size as usize
+    );
+}
+
 /// Granulation **Amount is inert without a settling substrate** (Enio 2026-07-06): with NO Grain image
 /// and "Same as Paper" OFF there is nothing to settle into, so cranking Amount must not texture the
 /// wash (it granulated out of thin air via the built-in-noise fallback). With Same-as-Paper ON (the
@@ -13459,92 +13533,6 @@ fn watercolor_session_brush_changes_do_not_touch_baked_washes() {
     assert!(px(&t, size, 106, 80)[0] < 250, "B (azul) pintou de verdade");
 }
 
-/// **EDGE-2 na SESSÃO VIVA (guarda de regressão):** gota d'água limpa sobre wash AINDA MOLHADO
-/// (mesma sessão) — o pigmento redispersável vem dos BUFFERS DA UNIÃO (fonte estável de sessão),
-/// não do base per-stroke envenenado. Interior do pool clareia (lift do wash), contorno
-/// serrilhado escurece (anel), água em papel branco segue invisível.
-#[test]
-fn watercolor_clean_water_backrun_blooms_on_wet_session_wash() {
-    let size = 192u32;
-    let mut t = white_canvas(size, 8.0);
-    t.paint.brush = BrushSpec {
-        radius_px: 14.0,
-        hardness: 1.0,
-        falloff: Falloff::Constant,
-        color: [0.85, 0.1, 0.1],
-        space_attenuation: false,
-        watercolor: true,
-        fill: 0.35,
-        depth: 2.0,
-        edge_gain: 0.0,
-        edge_spread: 6.0,
-        warp: 0.0,
-        granulation: 0.0,
-        wet_rewet: 0.0, // Rewet OFF — a ÁGUA sozinha tem que produzir o bloom
-        ..Default::default()
-    };
-    for slot in &mut t.paint.brush_by_mode {
-        *slot = t.paint.brush;
-    }
-    // Wash vertical (banda x ≈ 46..74), assado mas AINDA MOLHADO (sessão viva, sem secar).
-    assert!(t.on_canvas_pointer(cp([60.0, 30.0], PointerPhase::Down)));
-    let mut y = 30.0f32;
-    while y < 160.0 {
-        y += 2.0;
-        t.on_canvas_pointer(cp([60.0, y], PointerPhase::Move));
-    }
-    t.on_canvas_pointer(cp([60.0, 160.0], PointerPhase::Up));
-    assert!(
-        !t.paint.canvas_wet.is_empty(),
-        "a sessão deve estar viva (wash molhado)"
-    );
-    let wash_before = f32::from(px(&t, size, 60, 95)[1]);
-    // Gota de ÁGUA PURA (Dilution 1) parada dentro do wash molhado + rabisco em papel branco.
-    t.paint.brush.radius_px = 30.0;
-    t.paint.brush.wet_dilution = 1.0;
-    for slot in &mut t.paint.brush_by_mode {
-        *slot = t.paint.brush;
-    }
-    assert!(t.on_canvas_pointer(cp([60.0, 95.0], PointerPhase::Down)));
-    t.on_canvas_pointer(cp([61.0, 95.0], PointerPhase::Move));
-    t.on_canvas_pointer(cp([60.0, 95.0], PointerPhase::Up));
-    assert!(t.on_canvas_pointer(cp([150.0, 40.0], PointerPhase::Down)));
-    t.on_canvas_pointer(cp([151.0, 40.0], PointerPhase::Move));
-    t.on_canvas_pointer(cp([150.0, 40.0], PointerPhase::Up));
-    // (a) interior do pool clareou (pigmento empurrado pra fora — whitened wake).
-    let pool_after = f32::from(px(&t, size, 60, 95)[1]);
-    assert!(
-        pool_after > wash_before + 10.0,
-        "água limpa sobre wash MOLHADO deve clarear o interior (antes G {wash_before:.0} → depois G {pool_after:.0})"
-    );
-    // (b) o contorno do pool escureceu em algum ponto do anel.
-    let mut ring_min = 255.0f32;
-    for r in 22..=40u32 {
-        for &(dx, dy) in &[
-            (r as i32, 0),
-            (-(r as i32), 0),
-            (0, r as i32),
-            (0, -(r as i32)),
-        ] {
-            let (x, y) = ((60 + dx) as u32, (95 + dy) as u32);
-            if x < size && y < size {
-                ring_min = ring_min.min(f32::from(px(&t, size, x, y)[1]));
-            }
-        }
-    }
-    assert!(
-        ring_min < wash_before - 8.0,
-        "o pigmento empurrado deve escurecer o contorno (wash G {wash_before:.0}, anel mín G {ring_min:.0})"
-    );
-    // (c) água em papel branco = invisível.
-    let blank = px(&t, size, 150, 40);
-    assert_eq!(
-        &blank[..3],
-        &[255, 255, 255],
-        "água pura sobre papel em branco não deposita nada"
-    );
-}
-
 /// **Costura na junção (Enio smoke 2026-07-09, cruz rápida com Dilution — take knobs):** a linha
 /// dura seguia a fronteira de ROUBO DE DONO do traço novo dentro da união (a presença union crua
 /// do `lift_wash` e o deepen full-strength no gate flipavam em 1 px ali — 29 bytes medidos).
@@ -13606,4 +13594,69 @@ fn watercolor_water_junction_owner_line_is_smooth() {
         "a junção da cruz deve derreter — degrau máx G {max_step:.0} em y={at_y} \
          (sem o fix a linha de dono degrauzava 29)"
     );
+}
+
+/// **O retângulo do preview com Dilution (Enio 2026-07-09, "só com charge 1 e dilution > 0"):**
+/// um traço com Dilution rega o PRÓPRIO corpo; a máscara dos campos union excluía o traço VIVO
+/// (`owner != cur`) — instável: no bake do traço A o próprio pigmento fica de fora (sem
+/// auto-anel), mas no pen-down de B o A vira "estrangeiro" e lift/anel RETROAGEM sobre o wash
+/// inteiro dentro da janela viva de B (o retângulo; some no pen-up porque o commit re-assa tudo
+/// uniforme). Água agora interage só com tinta SECA (base da sessão); molhado funde pela união.
+/// Propriedade: os bytes assados de A não mudam UM byte durante o traço B.
+#[test]
+fn watercolor_diluted_wash_is_not_retroactively_rewetted_by_next_stroke() {
+    let size = 192u32;
+    let mut t = white_canvas(size, 8.0);
+    t.paint.brush = BrushSpec {
+        radius_px: 12.0,
+        hardness: 1.0,
+        falloff: Falloff::Constant,
+        color: [0.85, 0.1, 0.1],
+        space_attenuation: false,
+        watercolor: true,
+        fill: 0.3,
+        depth: 1.5,
+        edge_gain: 1.5,
+        edge_spread: 8.0,
+        warp: 0.0,
+        granulation: 0.5,
+        wet_rewet: 0.3,
+        wet_dilution: 0.6, // o gatilho do smoke (Charge 1 default)
+        ..Default::default()
+    };
+    for slot in &mut t.paint.brush_by_mode {
+        *slot = t.paint.brush;
+    }
+    // Wash A assado (banda x ≈ 48..72), com a própria água (Dilution).
+    assert!(t.on_canvas_pointer(cp([60.0, 40.0], PointerPhase::Down)));
+    let mut y = 40.0f32;
+    while y < 120.0 {
+        y += 2.0;
+        t.on_canvas_pointer(cp([60.0, y], PointerPhase::Move));
+    }
+    t.on_canvas_pointer(cp([60.0, 120.0], PointerPhase::Up));
+    let probe = |t: &PainterTool| -> Vec<[u8; 4]> {
+        let mut v = Vec::new();
+        for y in 60..110u32 {
+            for x in 44..=66u32 {
+                v.push(px(t, size, x, y));
+            }
+        }
+        v
+    };
+    let baked = probe(&t);
+    // Traço B perto (sem encostar): a janela viva cobre A — A não pode mudar um byte.
+    assert!(t.on_canvas_pointer(cp([92.0, 40.0], PointerPhase::Down)));
+    let mut y = 40.0f32;
+    while y < 120.0 {
+        y += 2.0;
+        t.on_canvas_pointer(cp([92.0, y], PointerPhase::Move));
+    }
+    assert_eq!(
+        probe(&t),
+        baked,
+        "o wash diluído assado não pode ser re-molhado retroativamente na janela viva de B"
+    );
+    t.on_canvas_pointer(cp([92.0, 120.0], PointerPhase::Up));
+    assert_eq!(probe(&t), baked, "nem no re-bake da união do pen-up de B");
 }

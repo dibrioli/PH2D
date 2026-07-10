@@ -21,7 +21,7 @@
 //! integer-hash value noise are built once and deterministic; no transcendental runs in the hot loop.
 
 use super::watercolor_field::*;
-use super::watercolor_rewet_px::{blur_of, build_union_fields, inner_blur_set, rewet_px, style_at};
+use super::watercolor_rewet_px::{blur_of, inner_blur_set, rewet_px, style_at};
 use super::*;
 use ph2d_painter_brush::blend::ryb_mix;
 use rayon::prelude::*;
@@ -30,9 +30,13 @@ use rayon::prelude::*;
 /// above `SS1` fully covered — a crisp-but-soft silhouette from the feathered coverage discs.
 pub(super) const SS0: f32 = 0.12; // LITERAL-PX-OK: coverage-hardening smoothstep low edge (wet_edges)
 pub(super) const SS1: f32 = 0.60; // LITERAL-PX-OK: coverage-hardening smoothstep high edge (wet_edges)
-/// Minimum colour-buffer alpha (0..255) to trust the deposited colour; below it the composite falls
-/// back to the live brush colour (wet_edges `COL_EPS`) — a faint rim carries the fresh pigment, not noise.
-const COL_EPS: u8 = 20;
+/// Deposited-colour trust RAMP (0..255): at/above `COL_HI` the composite uses the deposited
+/// colour outright; at/below `COL_LO` the owner's brush colour; between them it LERPS — the old
+/// binary flip (`COL_EPS = 20`) printed a hard border along the alpha-20 contour wherever the
+/// deposited colour differs from the raw one (mixer on: a depleted tail deposits alpha ~2..19,
+/// Enio 2026-07-09 "borda dura ao reduzir Charge").
+const COL_LO: u8 = 8;
+const COL_HI: u8 = 32;
 
 impl PainterTool {
     /// Whether the watercolor optical render-path drives this stroke: the Watercolor section is on, we're
@@ -219,18 +223,6 @@ impl PainterTool {
             )
         });
         let cur_o = self.paint.wet_styles.current_owner();
-        let union_f = rewet.as_ref().filter(|_| watered).map(|f| {
-            build_union_fields(
-                f,
-                &self.paint.stroke_coverage,
-                &self.paint.stroke_color,
-                &self.paint.wet_styles.owner,
-                cur_o,
-                soaked,
-                (fw, fh),
-                spread_any,
-            )
-        });
 
         let fill = brush.fill.clamp(0.0, 1.0);
         let depth = brush.depth.max(0.0);
@@ -492,7 +484,6 @@ impl PainterTool {
                     let rw_px = match &rewet {
                         Some(f) => rewet_px(
                             f,
-                            union_f.as_ref(),
                             (rx0, ry0),
                             (sx, sy),
                             (wxg, wyg),
@@ -510,24 +501,25 @@ impl PainterTool {
                         rw_px.bleed,
                         rw_px.wet_paint,
                     );
-                    // Water EMPTIES the wet wash it redisperses (union lift): the interior pales
-                    // and the mass returns as the ring (`pool`, added after — it must survive).
-                    if rw_px.lift_wash > 0.0 {
-                        density *= 1.0 - rw_px.lift_wash;
-                    }
                     density += rw_px.pool;
                     let od = density * st.depth;
 
-                    // Pigment colour: the deposited (source-over) colour where present, else the brush colour.
-                    let mut pig = if has_color {
-                        if color_buf[ci + 3] > COL_EPS {
-                            [color_buf[ci], color_buf[ci + 1], color_buf[ci + 2]]
-                        } else {
-                            st.color
+                    // Pigment colour: the deposited (source-over) colour where present, else the
+                    // brush colour — RAMPED between them over `COL_LO..COL_HI` (see the consts).
+                    let mut pig = st.color;
+                    if has_color {
+                        let ca8 = color_buf[ci + 3];
+                        if ca8 >= COL_HI {
+                            pig = [color_buf[ci], color_buf[ci + 1], color_buf[ci + 2]];
+                        } else if ca8 > COL_LO {
+                            let w = f32::from(ca8 - COL_LO) / f32::from(COL_HI - COL_LO);
+                            for c in 0..3 {
+                                pig[c] = (f32::from(st.color[c])
+                                    + (f32::from(color_buf[ci + c]) - f32::from(st.color[c])) * w
+                                    + 0.5) as u8;
+                            }
                         }
-                    } else {
-                        st.color
-                    };
+                    }
                     // Wet-on-wet DISSOLVE: the lifted paint's colour (diffused through the wet region)
                     // tints the wash's pigment — the old colour bleeds into and beyond its own footprint.
                     // SUBTRACTIVE mix (absorbance-space geometric mean, via the ln/exp LUTs): paints mix

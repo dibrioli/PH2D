@@ -21,7 +21,7 @@
 
 use super::watercolor_field::*;
 use super::watercolor_rewet_px::{
-    blur_of, build_wet_field, inner_blur_set, rewet_px, sample_wet_field, style_at,
+    apply_wet_lift, blur_of, build_wet_field, inner_blur_set, rewet_px, sample_wet_field, style_at,
 };
 use super::*;
 use ph2d_painter_brush::blend::ryb_mix;
@@ -548,27 +548,9 @@ impl PainterTool {
                         lut.s2l[base[gi + 1] as usize] * ab + ground_lin[1] * (1.0 - ab),
                         lut.s2l[base[gi + 2] as usize] * ab + ground_lin[2] * (1.0 - ab),
                     ];
-                    // Wet-on-wet LIFT: rewetting pulls the base's pigment off the ground. Density-
-                    // proportional (log-space): remove a FRACTION of the optical density, so the colour
-                    // walks its own Beer–Lambert curve toward the LOCAL ground — a lifted red on white
-                    // reads PINK, on grey it reads grey-pink. (A linear lerp toward a global cream
-                    // desaturated straight to cream — the yellow cast, Enio 2026-07-06.) Paint BRIGHTER
-                    // than the ground (light pigment on a dark layer below) walks down the mirrored
-                    // curve — both directions converge on the ground, never past it.
-                    if lift > 0.0 {
-                        for c in 0..3 {
-                            let g = ground_lin[c].max(1e-4);
-                            let ratio = sb[c] / g;
-                            if ratio < 1.0 {
-                                let mag = lut.absorbance(ratio) * (1.0 - lift);
-                                sb[c] = g * lut.exp_mag(mag);
-                            } else if ratio > 1.0 {
-                                let mag =
-                                    lut.absorbance((g / sb[c]).clamp(0.0, 1.0)) * (1.0 - lift);
-                                sb[c] = (g / lut.exp_mag(mag).max(1e-4)).min(1.0);
-                            }
-                        }
-                    }
+                    // Wet-on-wet LIFT ([`apply_wet_lift`]): rewetting walks the base's pigment toward the
+                    // LOCAL ground in log space (`lift` already moisture-scaled — a dried spot won't lift).
+                    apply_wet_lift(&mut sb, &ground_lin, lift, lut);
                     // BODY / OPACITY (doc 13 #17): pure Beer–Lambert only subtracts, so a light-valued
                     // pigment barely deposits ("azul e amarelo quase não aparecem"). Body lays the pigment's
                     // OWN colour over the transmittance result ([`watercolor_lut::Luts::body_cov`]; `0` ⇒ no-op).

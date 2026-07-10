@@ -222,6 +222,12 @@ pub(super) const WET_PREVIEW_DEFAULT: f32 = 0.3;
 /// Strong so the reactivation is clearly visible; the artist still tempers it with the brush's Rewet up.
 pub(super) const WET_CANVAS_REWET: f32 = 0.8;
 
+/// #12b (doc 14) — edges-to-centre drying: a wet pool recedes from its PERIMETER inward, not uniformly.
+/// On each decay step a pixel loses the flat `step` PLUS this gain × the gap to its driest 4-neighbour
+/// (`0` in a flat interior ⇒ uniform there; large at the wet front ⇒ the boundary recedes first). `2`
+/// makes a sharp front dry ~3× the interior rate.
+pub(super) const WET_ERODE_GAIN: u32 = 2;
+
 impl PainterTool {
     /// EDGE-1: whether the stroke beginning NOW continues the live **wet session** (one wash):
     /// watercolor mode, some paper still wet, the session base is sized, the union buffers exist,
@@ -301,9 +307,10 @@ impl PainterTool {
         });
     }
 
-    /// EDGE-1: the paper DRIES on the heartbeat — [`CANVAS_WET_DRY_PER_S`] with a fractional
-    /// carry (slow frames still dry at the same wall-clock rate). Drops the buffer once fully
-    /// dry, restoring the composite's moisture-free fast path and zero idle cost.
+    /// EDGE-1: the paper DRIES on the heartbeat — [`CANVAS_WET_DRY_PER_S`] with a fractional carry (slow
+    /// frames still dry at the same wall-clock rate). #12b: the drying is EDGES-TO-CENTRE — the boundary
+    /// recedes faster than the interior ([`WET_ERODE_GAIN`]), a wet pool shrinking from its perimeter like
+    /// real paper. Drops the buffer once fully dry, restoring the moisture-free fast path.
     pub(super) fn dry_canvas_wet(&mut self, dt_s: f32) {
         let Some((x0, y0, x1, y1)) = self.paint.canvas_wet_rect else {
             return;
@@ -320,12 +327,38 @@ impl PainterTool {
             return;
         }
         self.paint.canvas_wet_carry -= f32::from(step);
+        // Snapshot the rect so the 4-neighbour gap reads the PRE-step moisture (order-independent);
+        // outside the rect counts as dry (0), so the wet front recedes at the rect edge too.
+        let (rw, rh) = (x1 - x0, y1 - y0);
+        let mut old = vec![0u8; rw * rh];
+        for oy in 0..rh {
+            let src = (y0 + oy) * fw + x0;
+            old[oy * rw..oy * rw + rw].copy_from_slice(&self.paint.canvas_wet[src..src + rw]);
+        }
         let mut wettest = 0u8;
-        for y in y0..y1 {
-            let row = y * fw;
-            for w in &mut self.paint.canvas_wet[row + x0..row + x1] {
-                *w = w.saturating_sub(step);
-                wettest = wettest.max(*w);
+        for oy in 0..rh {
+            for ox in 0..rw {
+                let o = old[oy * rw + ox];
+                if o == 0 {
+                    continue;
+                }
+                let up = if oy > 0 { old[(oy - 1) * rw + ox] } else { 0 };
+                let down = if oy + 1 < rh {
+                    old[(oy + 1) * rw + ox]
+                } else {
+                    0
+                };
+                let left = if ox > 0 { old[oy * rw + ox - 1] } else { 0 };
+                let right = if ox + 1 < rw {
+                    old[oy * rw + ox + 1]
+                } else {
+                    0
+                };
+                let gap = o.saturating_sub(up.min(down).min(left).min(right));
+                let erode = ((u32::from(gap) * u32::from(step) * WET_ERODE_GAIN) / 255) as u8;
+                let nv = o.saturating_sub(step.saturating_add(erode));
+                self.paint.canvas_wet[(y0 + oy) * fw + x0 + ox] = nv;
+                wettest = wettest.max(nv);
             }
         }
         // Fully dry = the wet SESSION is over — but the teardown is ATOMIC and deferred past any

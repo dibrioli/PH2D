@@ -125,6 +125,7 @@ impl PainterTool {
         // the stroke). Replaces the per-dab deposit that `stamp_dabs` skipped in watercolor mode.
         if self.watercolor_render_active() {
             self.apply_watercolor(false);
+            self.pour_canvas_wet(); // #2: moisture is laid LIVE (the damp shows during the stroke, not at pen-up)
         }
         self.paint.dabs = dabs;
         self.paint.stroke = Some(stroke);
@@ -157,6 +158,7 @@ impl PainterTool {
         // untouched, so each frame recomposites cleanly from the grown coverage + colour).
         if self.watercolor_render_active() {
             self.apply_watercolor(false);
+            self.pour_canvas_wet(); // #2: moisture is laid LIVE (the damp shows during the stroke, not at pen-up)
         }
         self.paint.dabs = dabs;
         self.paint.stroke = Some(stroke);
@@ -228,6 +230,7 @@ impl PainterTool {
         }
         if wet && stamped {
             self.apply_watercolor(false);
+            self.pour_canvas_wet(); // #2: live moisture on the held/settling heartbeat too
         }
         self.paint.dabs = dabs;
         self.paint.stroke = Some(stroke);

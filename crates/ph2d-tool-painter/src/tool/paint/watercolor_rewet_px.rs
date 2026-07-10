@@ -7,11 +7,34 @@
 //! fields (the ADR-0109 parallel-composite invariants hold: no cross-pixel state, no RNG).
 
 use super::watercolor_field::{
-    BACKRUN_POOL, LIFT_MAX, REWET_LIFT, REWET_POOL, RewetFields, SOAK_DISSOLVE, SOAK_LIFT,
+    BACKRUN_POOL, LIFT_MAX, Luts, REWET_LIFT, REWET_POOL, RewetFields, SOAK_DISSOLVE, SOAK_LIFT,
     WetStrokeStyle, box_blur, paper_h_px, sample_bilinear,
 };
 use ph2d_painter_brush::TextureSettings;
 use ph2d_painter_brush::texture::{ImageMask, angle_basis, sample_tiled_rot};
+
+/// Wet-on-wet **LIFT** applied to the (linear) session base `sb`: rewetting pulls the base's pigment off
+/// toward the LOCAL `ground`, density-proportional in log space, so a lifted red on white reads pink and
+/// on grey reads grey-pink (both directions converge on the ground, never past it). `lift = 0` ⇒ no-op.
+/// Extracted from the composite for the LOC cap; the `lift` the caller passes is already moisture-scaled
+/// (#12b: a dried spot doesn't reactivate).
+#[inline]
+pub(super) fn apply_wet_lift(sb: &mut [f32; 3], ground_lin: &[f32; 3], lift: f32, lut: &Luts) {
+    if lift <= 0.0 {
+        return;
+    }
+    for c in 0..3 {
+        let g = ground_lin[c].max(1e-4);
+        let ratio = sb[c] / g;
+        if ratio < 1.0 {
+            let mag = lut.absorbance(ratio) * (1.0 - lift);
+            sb[c] = g * lut.exp_mag(mag);
+        } else if ratio > 1.0 {
+            let mag = lut.absorbance((g / sb[c]).clamp(0.0, 1.0)) * (1.0 - lift);
+            sb[c] = (g / lut.exp_mag(mag).max(1e-4)).min(1.0);
+        }
+    }
+}
 
 /// Take 10 — raio do blur do campo de molhado por-dono ([`build_wet_field`]): a transição da
 /// junção soma isto à rampa do próprio depósito (~10 px) ⇒ ~15-25 px, escala do feather.

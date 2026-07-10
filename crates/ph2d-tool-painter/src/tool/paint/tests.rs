@@ -13445,6 +13445,92 @@ fn watercolor_second_stroke_does_not_reset_the_first_strokes_drying() {
     );
 }
 
+/// **#2 (Enio smoke 2026-07-11):** a umidade é lançada AO VIVO durante o traço — o damp aparece enquanto
+/// pinta, não só no mouse-up ("a umidade só aparece no mouse up. isso é muito feio"). Sem SOLTAR, o mapa de
+/// umidade já tem que estar populado sobre a região pintada (o pour antes rodava só no bake).
+#[test]
+fn watercolor_wetness_is_laid_live_during_the_stroke() {
+    let size = 96u32;
+    let mut t = white_canvas(size, 8.0);
+    t.paint.brush = BrushSpec {
+        radius_px: 12.0,
+        hardness: 1.0,
+        falloff: Falloff::Constant,
+        color: [0.85, 0.1, 0.1],
+        space_attenuation: false,
+        watercolor: true,
+        fill: 0.3,
+        depth: 1.0,
+        edge_gain: 0.0,
+        warp: 0.0,
+        granulation: 0.0,
+        ..Default::default()
+    };
+    for slot in &mut t.paint.brush_by_mode {
+        *slot = t.paint.brush;
+    }
+    assert!(t.on_canvas_pointer(cp([48.0, 30.0], PointerPhase::Down)));
+    t.on_canvas_pointer(cp([48.0, 50.0], PointerPhase::Move));
+    // NO pen-up yet — the moisture must already be present (live pour), not empty until the bake.
+    assert!(
+        t.paint.canvas_wet.iter().any(|&w| w > 0),
+        "the wetness must be laid LIVE during the stroke (not only at pen-up)"
+    );
+}
+
+/// **#3a/#12b (Enio smoke 2026-07-11):** o papel seca das BORDAS para o CENTRO — a poça molhada recede pelo
+/// perímetro, não uniformemente. Pinto uma banda sólida (interior despeja umidade plana), seco PARCIALMENTE,
+/// e o núcleo profundo continua mais úmido que a borda (a secagem uniforme esvaziaria os dois juntos).
+#[test]
+fn watercolor_drying_recedes_from_the_edges() {
+    let size = 96u32;
+    let mut t = white_canvas(size, 8.0);
+    t.paint.brush = BrushSpec {
+        radius_px: 18.0,
+        hardness: 1.0,
+        falloff: Falloff::Constant,
+        color: [0.85, 0.1, 0.1],
+        space_attenuation: false,
+        watercolor: true,
+        fill: 0.6,
+        depth: 1.0,
+        edge_gain: 0.0,
+        warp: 0.0,
+        granulation: 0.0,
+        ..Default::default()
+    };
+    for slot in &mut t.paint.brush_by_mode {
+        *slot = t.paint.brush;
+    }
+    // A solid vertical band centred on x = 48 (radius 18 ⇒ x ≈ 30..66).
+    assert!(t.on_canvas_pointer(cp([48.0, 20.0], PointerPhase::Down)));
+    let mut y = 20.0f32;
+    while y < 76.0 {
+        y += 2.0;
+        t.on_canvas_pointer(cp([48.0, y], PointerPhase::Move));
+    }
+    t.on_canvas_pointer(cp([48.0, 76.0], PointerPhase::Up));
+    let wet_at = |t: &PainterTool, x: usize| t.paint.canvas_wet[48 * size as usize + x];
+    let center0 = wet_at(&t, 48);
+    assert!(
+        center0 > 200,
+        "the band interior pours a high flat moisture ({center0})"
+    );
+    // Dry partially (the erosion recedes the perimeter faster than the flat interior decay).
+    for _ in 0..12 {
+        t.paint_tick(0.5);
+    }
+    let center = wet_at(&t, 48);
+    // x = 34 is INTERIOR (coverage ~1 ⇒ it poured the same flat moisture as the centre): under a UNIFORM
+    // decay it would equal the centre, but the edges-to-centre recession has eaten into it (front near x=34).
+    let edge = wet_at(&t, 34);
+    assert!(center > 0, "the deep centre must still be wet ({center})");
+    assert!(
+        u32::from(edge) + 40 < u32::from(center),
+        "the recession must eat an INTERIOR pixel ahead of the deep centre (edge {edge} vs centre {center})"
+    );
+}
+
 /// **EDGE-1 regressão (Enio smoke 2026-07-09, "traços duplicados"):** a janela de secagem vencendo
 /// NO MEIO de um traço aberto não pode duplicar o wash. O teardown antigo derrubava a base da
 /// sessão no tick (mapa zerado) mas deixava os buffers da união vivos (o traço aberto é dono

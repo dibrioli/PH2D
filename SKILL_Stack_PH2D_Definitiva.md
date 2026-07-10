@@ -741,9 +741,20 @@ Estudo + evidência primária: [`docs/Motion Nodes/03_reentrada_integrate_estudo
   **Nó sequencial dentro de escopo remapeado é RECUSADO** (`SequentialInTimeScope`) — uma
   recorrência sobre o tick externo não tem leitura sob relógio reescrito; o editor recusa o fio.
   `Freeze` é de graça (memo); `Loop` é correto mas não-cacheado entre voltas (memo é single-slot).
+- **Pulse — gatilho de 1ª classe** ([`06_pulse_gatilho_primeira_classe.md`](docs/Motion%20Nodes/06_pulse_gatilho_primeira_classe.md)):
+  um evento discreto é um TIPO — `PortType(Instances, Scalar, Event)` — não um `0/1` por
+  convenção. Segue Rive ("*Trigger… can only become true for a short time*"), **departure
+  deliberada de Cavalry** (que só tem value 0/1). O substrato já impõe: um port `Event` não
+  conecta num `Frame` por aresta plana, então `pulse ≠ value` é erro de compilação. A coluna
+  `pulse` vale `1.0` só no tick da borda; **detecção de borda é do PRODUTOR**, via `pre` (o
+  consumidor só lê "1.0? dispara"). `pulse.threshold` é Schmitt (`rise`>`fall`, histerese
+  bistável no `pre` — nomes de TD/Pd); `motion.strobe` é o consumidor (envelope de decay
+  geométrico = ADSR do TD / Notify-State do Unreal). Zero RNG (o `random` do stateMachine do
+  MiniCavalry vira `hash`, HR-5).
 - **Horizonte:** Zona de Simulação (bracket à la Blender, alinha com P4 do design canônico) —
   `cook_scoped` (o pré-requisito) já existe. Generaliza, não substitui, os nós densos. Armadilhas
-  de UX já documentadas no doc 04 §2e.
+  de UX já documentadas no doc 04 §2e. Família pulse restante (`on_change`, `compare`, `switch`,
+  `counter`, `sample_hold`) barata agora que o tipo existe.
 
 ## 12. Cross-cutting concerns
 

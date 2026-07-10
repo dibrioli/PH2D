@@ -507,6 +507,16 @@ fn chrome_node_ids_are_pairwise_unique() {
     // Sort by id so any collision lands in adjacent pairs.
     let mut sorted: Vec<(NodeId, &'static str)> =
         CHROME_IDS.iter().map(|(n, id)| (*id, *n)).collect();
+    // The timeline segment menu publishes its rows as tables rather than as
+    // hand-listed consts, so pull them in from the tables themselves: a row added
+    // there can never slip past this gate the way a forgotten CHROME_IDS entry
+    // would (the label doubles as the collision report's name).
+    sorted.extend(
+        ids::TIMELINE_SEGMENT_MENU
+            .iter()
+            .chain(ids::TIMELINE_EASE_MENU.iter())
+            .map(|(id, label, _)| (*id, *label)),
+    );
     sorted.sort_by_key(|(id, _)| id.0);
 
     for w in sorted.windows(2) {

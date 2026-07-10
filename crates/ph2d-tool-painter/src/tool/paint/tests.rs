@@ -11158,6 +11158,205 @@ fn watercolor_incremental_composite_matches_full_with_water() {
     );
 }
 
+/// Paridade incremental×full nos **params do APP** (investigação 2026-07-09, doc 12 take 7): todo
+/// repro anterior do harness rodou `Falloff::Constant`/hardness 1/warp 0/gran 0/sem papel/radius
+/// 12-14/**sem `on_tick`** — o app real roda o preset Watercolor (feather auto-shape, warp 6,
+/// gran 0.3, PaperCold, spacing 0.05), radius 60-100 e o heartbeat por frame (soak/secagem ativos).
+/// Este cenário replica o gesto do smoke do Enio (wash assado + traço diagonal VIVO cruzando) na
+/// escala do app, com `on_tick(16)` intercalado por Move. O retângulo do preview (sintoma B) é a
+/// classe "janela incremental ≠ full": se este teste FALHAR, a reprodução do gap harness×app está
+/// fechada na árvore.
+fn watercolor_app_params_incremental_vs_full(
+    wet_charge: f32,
+    edge_spread: f32,
+    probe_at: Option<u32>,
+) -> (Vec<u8>, Vec<u8>, u32) {
+    use ph2d_painter_brush::{TextureKind, TextureMapping, TextureSettings};
+    let size = 512u32;
+    let mut t = PainterTool::default();
+    t.set_source(vec![255u8; (size * size * 4) as usize], size, size);
+    // Preset "Watercolor Basic" (watercolor_settings::apply_brush_preset idx 1) + água do smoke.
+    // Falloff/hardness ficam no default do app (Smooth/0 + watercolor_shape_auto = feather).
+    // Gap restante conhecido: pressão fixa 1.0 (o desktop manda pressão real; dynamics.size_pressure
+    // encolhe o primeiro dab) — o dump [wet-diag] do app fecha esse resíduo.
+    t.paint.brush = BrushSpec {
+        radius_px: 80.0,
+        color: [0.24, 0.39, 0.63],
+        spacing: 0.05,
+        watercolor: true,
+        fill: 0.12,
+        depth: 1.2,
+        edge_gain: 3.0,
+        edge_spread,
+        warp: 6.0,
+        granulation: 0.30,
+        pigment: false,
+        paper: TextureSettings {
+            kind: TextureKind::PaperCold,
+            mapping: TextureMapping::Tiled,
+            ..TextureSettings::default()
+        },
+        wet_rewet: 0.3,
+        wet_dilution: 0.0, // wash A sem água (liga no traço B)
+        wet_charge,
+        ..Default::default()
+    };
+    for slot in &mut t.paint.brush_by_mode {
+        *slot = t.paint.brush;
+    }
+    // Wash A assado (SEM água), horizontal — com o heartbeat do app entre os Moves.
+    assert!(t.on_canvas_pointer(cp([60.0, 250.0], PointerPhase::Down)));
+    for i in 1..=40 {
+        t.on_canvas_pointer(cp([60.0 + i as f32 * 10.0, 250.0], PointerPhase::Move));
+        t.on_tick(16.0);
+    }
+    t.on_canvas_pointer(cp([460.0, 250.0], PointerPhase::Up));
+    t.on_tick(16.0);
+    // Traço B com ÁGUA, VIVO, cruzando o wash em diagonal (cruza em ~(250,250)).
+    t.paint.brush.wet_dilution = 0.6;
+    for slot in &mut t.paint.brush_by_mode {
+        *slot = t.paint.brush;
+    }
+    assert!(t.on_canvas_pointer(cp([100.0, 60.0], PointerPhase::Down)));
+    for i in 1..=40 {
+        t.on_canvas_pointer(cp(
+            [100.0 + i as f32 * 7.5, 60.0 + i as f32 * 9.5],
+            PointerPhase::Move,
+        ));
+        // O app entrega ~2 eventos de ponteiro por frame (120 Hz pointer / 60 Hz frame): um segundo
+        // Move no MESMO batch antes do tick, como o shell faz.
+        t.on_canvas_pointer(cp(
+            [
+                100.0 + (i as f32 + 0.5) * 7.5,
+                60.0 + (i as f32 + 0.5) * 9.5,
+            ],
+            PointerPhase::Move,
+        ));
+        t.on_tick(16.0);
+        // Dwell do gesto real: logo após cruzar o wash o artista PARA a caneta (~2 s) — o soak
+        // jorra sob a nib parada e liga o branch global `soaked` dos fields; só a janela do frame
+        // é recomposta, o resto da união fica com o field pré-soak (o retângulo).
+        if i == 22 {
+            for _ in 0..10 {
+                t.on_tick(200.0);
+            }
+        }
+        // Probe MID-STROKE: o retângulo do smoke é transiente (frames posteriores repintam por
+        // cima); a comparação de estado-final não o captura — esta sim.
+        if probe_at == Some(i) {
+            let incremental: Vec<u8> = t.canvas_rgba.to_vec();
+            t.paint.wet_frame_dirty = t.paint.wet_cum_dirty;
+            t.apply_watercolor(false);
+            let full: Vec<u8> = t.canvas_rgba.to_vec();
+            return (incremental, full, size);
+        }
+    }
+    let incremental: Vec<u8> = t.canvas_rgba.to_vec();
+    t.paint.wet_frame_dirty = t.paint.wet_cum_dirty;
+    t.apply_watercolor(false);
+    let full: Vec<u8> = t.canvas_rgba.to_vec();
+    (incremental, full, size)
+}
+
+fn worst_byte_delta(incremental: &[u8], full: &[u8]) -> (i32, usize) {
+    let mut worst = 0i32;
+    let mut worst_i = 0usize;
+    for (i, (a, b)) in incremental.iter().zip(full.iter()).enumerate() {
+        let d = (i32::from(*a) - i32::from(*b)).abs();
+        if d > worst {
+            worst = d;
+            worst_i = i;
+        }
+    }
+    (worst, worst_i)
+}
+
+/// Diag espacial do gap (rode com `--ignored --nocapture`): o diff incremental×full forma um
+/// RETÂNGULO coerente (o artefato do smoke) ou speckle disperso (ruído de arredondamento)?
+#[test]
+#[ignore = "diag exploratório — imprime o mapa espacial do diff incremental×full nos params do app"]
+fn watercolor_app_params_diff_spatial_map() {
+    for (label, charge, spread, probe) in [
+        ("diluted(chg=1,spr=7)", 1.0f32, 7.0f32, None),
+        ("diluted(chg=1,spr=30)", 1.0, 30.0, None),
+        ("mixer(chg=0.7,spr=30)", 0.7, 30.0, None),
+        ("MID diluted(chg=1,spr=7)@23", 1.0, 7.0, Some(23)),
+        ("MID diluted(chg=1,spr=30)@23", 1.0, 30.0, Some(23)),
+        ("MID mixer(chg=0.7,spr=30)@23", 0.7, 30.0, Some(23)),
+    ] {
+        let (inc, full, size) = watercolor_app_params_incremental_vs_full(charge, spread, probe);
+        let s = size as usize;
+        let (worst, _) = worst_byte_delta(&inc, &full);
+        let mut count = 0usize;
+        let (mut x0, mut y0, mut x1, mut y1) = (usize::MAX, usize::MAX, 0usize, 0usize);
+        // Mapa 32×32 (célula = 16px): nº de pixels com Δ≥1 por célula.
+        let mut grid = vec![0u32; 32 * 32];
+        for i in 0..s * s {
+            let d = (0..4)
+                .map(|c| (i32::from(inc[i * 4 + c]) - i32::from(full[i * 4 + c])).abs())
+                .max()
+                .unwrap_or(0);
+            if d >= 1 {
+                count += 1;
+                let (x, y) = (i % s, i / s);
+                x0 = x0.min(x);
+                y0 = y0.min(y);
+                x1 = x1.max(x);
+                y1 = y1.max(y);
+                grid[(y / 16).min(31) * 32 + (x / 16).min(31)] += 1;
+            }
+        }
+        eprintln!(
+            "[spatial-diag {label}] worst=Δ{worst} pixels_diff={count} bbox=({x0},{y0})..({x1},{y1})"
+        );
+        for gy in 0..32 {
+            let row: String = (0..32)
+                .map(|gx| match grid[gy * 32 + gx] {
+                    0 => '.',
+                    1..=9 => 'o',
+                    10..=99 => 'O',
+                    _ => '#',
+                })
+                .collect();
+            eprintln!("[spatial-diag {label}] {row}");
+        }
+    }
+}
+
+#[test]
+#[ignore = "RED conhecido (doc 12 take 7): Δ2 de staleness incremental nos params do app (sub-visível; \
+tolerância do gate é ≤1). Vira gate regular quando o residual for corrigido."]
+fn watercolor_app_params_incremental_matches_full_diluted() {
+    // Sintoma B do smoke (Charge 1 + Dilution > 0): retângulo no preview que some no mouse-up.
+    let (inc, full, size) = watercolor_app_params_incremental_vs_full(1.0, 7.0, None);
+    let (worst, worst_i) = worst_byte_delta(&inc, &full);
+    assert!(
+        worst <= 1,
+        "params do APP: incremental deixou pixel stale (retângulo do preview): Δ{} no byte {} (px {},{})",
+        worst,
+        worst_i,
+        (worst_i / 4) % size as usize,
+        (worst_i / 4) / size as usize
+    );
+}
+
+#[test]
+#[ignore = "RED conhecido (doc 12 take 7): Δ2 de staleness incremental nos params do app com mixer \
+ligado (sub-visível). Vira gate regular quando o residual for corrigido."]
+fn watercolor_app_params_incremental_matches_full_mixer_on() {
+    // Sintoma A do smoke (Charge < 1, mixer ligado): borda dura na junção entre traços.
+    let (inc, full, size) = watercolor_app_params_incremental_vs_full(0.7, 7.0, None);
+    let (worst, worst_i) = worst_byte_delta(&inc, &full);
+    assert!(
+        worst <= 1,
+        "params do APP c/ mixer: incremental deixou pixel stale na travessia: Δ{} no byte {} (px {},{})",
+        worst,
+        worst_i,
+        (worst_i / 4) % size as usize,
+        (worst_i / 4) / size as usize
+    );
+}
+
 /// Granulation **Amount is inert without a settling substrate** (Enio 2026-07-06): with NO Grain image
 /// and "Same as Paper" OFF there is nothing to settle into, so cranking Amount must not texture the
 /// wash (it granulated out of thin air via the built-in-noise fallback). With Same-as-Paper ON (the

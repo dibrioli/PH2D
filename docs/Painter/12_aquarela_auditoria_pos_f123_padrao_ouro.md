@@ -631,3 +631,55 @@ invisível em cruz monocromática, borda dura quando o mixer pegou cor. Fix: RAM
 499/499 · clippy 0 · LOC verdes (rewet_px 294→149). Pendente de smoke: (a) retângulo morto com
 Dilution; (b) borda do Charge — se persistir em cruz MONOCROMÁTICA, o portador não é a cor
 (candidato seguinte: prio/pickup do mixer nas travessias de poça).
+
+#### Take 7 — investigação 4-lentes do gap harness×app (2026-07-09, pós-handoff): PARE de iterar mecanismo
+
+Auditoria paralela de 4 lentes read-only (preview GPU · mapeamento do painel · gap de params ·
+mixer) + medição empírica na árvore. Resultados que REORIENTAM o trabalho:
+
+**1. A lacuna-mãe, nomeada e medida (lente 3):** TODO repro do harness rodou `Falloff::Constant`,
+hardness 1, **warp 0.0, granulation 0, sem Paper, radius 12-14, pressão fixa 1.0 e SEM
+`paint_tick`** — o app roda o preset Watercolor (feather `watercolor_shape_auto`, **warp 6.0,
+gran 0.30, PaperCold**, spacing 0.05), radius 60-100, pressão real (dynamics `size_pressure`
+encolhe o dab) e o heartbeat por-frame (soak/secagem ATIVOS: o gate de paridade nunca exercita o
+branch `soaked`/`far`/`soak_halo` nem `dry_canvas_wet`). Os 6 fixes foram provados num motor que
+o app não roda. Termos com escala FIXA em px mudam de caráter em r=80: o rim vira casca de ~7 px
+(`core_r = spread.min(r/2)`), o warp nearest domina a textura de borda, o 5-tap star do mixer
+fica por-dab-descontínuo, e spread ≥ 24 liga o grid block-downsampled (`ds = spread/12`,
+1..4) que NENHUM teste cobre.
+
+**2. Medição: a paridade incremental×full de ESTADO-FINAL está sã nos params do app.** Testes
+novos `watercolor_app_params_incremental_matches_full_{diluted,mixer_on}` (512², r=80, preset +
+água, 2 Moves/tick, dwell parked de 2 s): Δ máx = **2 bytes** (speckle disperso, sem retângulo
+coerente — mapa espacial em `watercolor_app_params_diff_spatial_map`, `--ignored --nocapture`).
+Probe MID-STROKE (logo pós-dwell): também Δ2. Ou seja: **o retângulo do smoke NÃO está
+reproduzido na árvore** — ou depende dos params exatos do Enio (spread alto? método shape?
+pressão?), ou não está no canvas CPU. Os 2 testes ficam `#[ignore]` como repro executável do
+resíduo Δ2 (tolerância do gate é ≤1) — viram gate quando o residual for corrigido.
+
+**3. Upload B.1 auditado (lente 1): estruturalmente fiel** — `mark_dirty(region)` do
+`apply_watercolor` limita EXATAMENTE o loop de escrita (pad = reach+warp+2 inclui a água), o
+rect de upload = união dos marks, e o arc-token não consegue false-skip mid-stroke (o snapshot
+de undo pinna o Arc anterior → `make_mut` sempre realoca). O caminho GPU recomposita FULL
+(stack não-trivial) e o wet-envelope parcial (`drive(seed_full=false)`) está MORTO (sem caller).
+**Bissecção pronta:** `PH2D_PAINT_FULL_UPLOAD=1` (criado pros "rectangular artifacts" do
+Per-Layer Color) força upload full → se o retângulo sumir, é a lane do shell; se ficar, é o
+canvas CPU nos params do Enio.
+
+**4. Painel (lente 2): mapeamento estanque, MAS** o display arredonda pra 2 casas — **"1.00"
+pode esconder `wet_charge < 1`** (mixer secretamente ligado; o gatilho "Charge 1" do retângulo
+pode estar rodando o caminho de depleção). O blur-commit re-parseia com 3 casas (0.9995 → 1.0 um
+gesto depois). Por isso o diag imprime chg/dil com 4 casas.
+
+**5. Mixer (lente 4, confirmado por leitura):** o degrau do Charge<1 é DESENHADO pra ser rápido
+(`RETAIN_LOAD=0.2`: w salta 0→0.96 em 2-3 dabs na entrada da poça) e é renderizado DURO por 3
+mecanismos nunca atacados: splat de disco chato (taper 15%·r), **carry batch-stale** em
+`wet_mix_depletion` (UM carry por batch inteiro — a entrada na poça fica carry≈0 o batch todo e
+SALTA no seguinte: degrau quantizado na fronteira de batch, granularidade que o harness
+single-batch não tem), e leituras nearest em coords warpadas (warp 6). O bake lê os mesmos
+buffers → persiste pós-pen-up. Candidatos de fix APÓS confirmação no app: suavizar o carry
+por-dab (replay já existe), taper maior no splat, e/ou amostrar o mapa de depleção bilinear.
+
+**Instrumentação [wet-diag v2] na árvore (TEMP, remover após diagnóstico):** `DOWN` (spec efetivo
+completo + pressão + dynamics + sessão, 1 linha/traço), `UP` (estado da sessão no bake) e `MIX1`
+(salto de pickup na travessia, só na transição). Protocolo de smoke no handoff.

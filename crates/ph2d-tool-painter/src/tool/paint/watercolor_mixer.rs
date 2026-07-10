@@ -119,6 +119,9 @@ impl PainterTool {
         let charge = self.paint.brush.wet_charge.clamp(0.0, 1.0);
         let mut out = Vec::with_capacity(dabs.len());
         let mut mix = self.paint.wet_mix;
+        // [wet-diag v2] TEMP: pickup do dab anterior — o print MIX1 abaixo dispara só no SALTO
+        // (travessia de poça), poucas linhas por cruzamento.
+        let mut diag_t_prev = (pickup * mix.w).clamp(0.0, 1.0);
         for d in dabs {
             // MIX-1 — advance the travel chain (one advance per batch, here; the depletion itself is
             // computed by `wet_mix_depletion`'s replay and lands in the per-pixel pigment map).
@@ -171,6 +174,25 @@ impl PainterTool {
             // weight `t`.
             let depl =
                 deplete_fresh(mix.travel, d.radius_px, charge).max(t * reservoir_pigment(&mix));
+            // [wet-diag v2] TEMP (Enio 2026-07-09): salto de pickup entre dabs consecutivos =
+            // fronteira de poça (MIX-1). Prova/refuta o degrau duro do Charge<1 no app real.
+            if (t - diag_t_prev).abs() > (0.3 * pickup).max(0.05) {
+                eprintln!(
+                    "[wet-diag] MIX1 dab=({:.0},{:.0}) travel={:.0} sw={:.3} w={:.3} \
+                     t={:.3}<-{:.3} fresh={:.3} pig={:.3} depl={:.3}",
+                    d.center[0],
+                    d.center[1],
+                    mix.travel,
+                    sw,
+                    mix.w,
+                    t,
+                    diag_t_prev,
+                    deplete_fresh(mix.travel, d.radius_px, charge),
+                    reservoir_pigment(&mix),
+                    depl,
+                );
+            }
+            diag_t_prev = t;
             out.push((col, t, depl));
         }
         self.paint.wet_mix = mix;

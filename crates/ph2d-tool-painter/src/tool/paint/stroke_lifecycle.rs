@@ -107,8 +107,24 @@ impl PainterTool {
         // "1.00" pode esconder wet_charge<1 (mixer secretamente ligado).
         if self.watercolor_render_active() {
             let dy = self.paint.dynamics;
+            // Breakdown dos guards da sessão (qual quebrou?): wet_rect / coverage / color / base / arc.
+            let n = (self.source_size.0 as usize) * (self.source_size.1 as usize);
+            let guards = format!(
+                "[wr={} cov={} col={} base={} arc={}]",
+                self.paint.canvas_wet_rect.is_some(),
+                self.paint.stroke_coverage.len() == n,
+                self.paint.stroke_color.len() == n * 4,
+                self.paint
+                    .wet_session_base
+                    .as_ref()
+                    .is_some_and(|b| b.len() == n * 4),
+                self.paint
+                    .wet_session_canvas
+                    .as_ref()
+                    .is_some_and(|c| Arc::ptr_eq(c, &self.canvas_rgba)),
+            );
             eprintln!(
-                "[wet-diag] DOWN pos=({:.0},{:.0}) press={:.3} sess={} | r={:.1} spc={:.3} \
+                "[wet-diag] DOWN pos=({:.0},{:.0}) press={:.3} sess={} {guards} | r={:.1} spc={:.3} \
                  str={:.2} fall={:?} hard={:.2} auto_shape={} | fill={:.3} depth={:.2} \
                  gain={:.2} spread={:.1} warp={:.1} gran={:.2}(paper={}) paper={:?} pdep={:.2} \
                  | pig={}({:.2}) smu={:.2} wet={:.2} chg={:.4} dil={:.4} pull={:.2} | met={:?} \

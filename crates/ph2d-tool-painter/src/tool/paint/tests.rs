@@ -13859,3 +13859,58 @@ fn watercolor_diluted_wash_is_not_retroactively_rewetted_by_next_stroke() {
     t.on_canvas_pointer(cp([92.0, 120.0], PointerPhase::Up));
     assert_eq!(probe(&t), baked, "nem no re-bake da união do pen-up de B");
 }
+
+/// Regressão do smoke 2026-07-09 (gesto A, doc 12 take 8): o diag `[wet-diag]` mostrou
+/// `sess=false` no pen-down IMEDIATAMENTE após o Enio reduzir o slider de Charge — mexer num
+/// slider watercolor NÃO pode quebrar a sessão molhada (o traço seguinte vira glaze sobre
+/// "seco" e ganha o rim duro by-design na junção: a "borda dura ao reduzir Charge"). O gesto
+/// com Charge intacto (2→3) manteve `sess=true`, isolando o slider como o gatilho.
+#[test]
+fn watercolor_wet_session_survives_charge_slider_change() {
+    use ph2d_editor_core::ids as core_ids;
+    use ph2d_editor_core::tool::{PanelEvent, Tool};
+    let size = 256u32;
+    let mut t = PainterTool::default();
+    t.set_source(vec![255u8; (size * size * 4) as usize], size, size);
+    t.paint.brush = BrushSpec {
+        radius_px: 20.0,
+        watercolor: true,
+        wet_charge: 1.0,
+        ..Default::default()
+    };
+    for slot in &mut t.paint.brush_by_mode {
+        *slot = t.paint.brush;
+    }
+    assert!(t.on_canvas_pointer(cp([60.0, 128.0], PointerPhase::Down)));
+    for i in 1..=20 {
+        t.on_canvas_pointer(cp([60.0 + i as f32 * 7.0, 128.0], PointerPhase::Move));
+    }
+    t.on_canvas_pointer(cp([200.0, 128.0], PointerPhase::Up));
+    assert!(
+        t.wet_session_continues(),
+        "controle: a sessão deve estar viva logo após o bake"
+    );
+    // O caminho REAL do painel (handle_panel_event → route_brush_watercolor_event →
+    // set_brush_wet_charge), não o setter puro.
+    t.handle_panel_event(PanelEvent::SetValue(
+        core_ids::PAINTER_WATERCOLOR_CHARGE,
+        0.4608,
+    ));
+    let n = (size as usize) * (size as usize);
+    assert!(
+        t.wet_session_continues(),
+        "mexer no slider de Charge quebrou a sessão molhada — guards: wet_rect={} cov={} col={} \
+         base={} arc={}",
+        t.paint.canvas_wet_rect.is_some(),
+        t.paint.stroke_coverage.len() == n,
+        t.paint.stroke_color.len() == n * 4,
+        t.paint
+            .wet_session_base
+            .as_ref()
+            .is_some_and(|b| b.len() == n * 4),
+        t.paint
+            .wet_session_canvas
+            .as_ref()
+            .is_some_and(|c| Arc::ptr_eq(c, &t.canvas_rgba)),
+    );
+}

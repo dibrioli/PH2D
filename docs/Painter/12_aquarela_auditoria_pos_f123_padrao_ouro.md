@@ -683,3 +683,37 @@ por-dab (replay já existe), taper maior no splat, e/ou amostrar o mapa de deple
 **Instrumentação [wet-diag v2] na árvore (TEMP, remover após diagnóstico):** `DOWN` (spec efetivo
 completo + pressão + dynamics + sessão, 1 linha/traço), `UP` (estado da sessão no bake) e `MIX1`
 (salto de pickup na travessia, só na transição). Protocolo de smoke no handoff.
+
+#### Take 8 — smoke com [wet-diag v2] (2026-07-09, noite): B não reproduz mais; A tem DOIS atores; a sessão quebra ao mexer no slider
+
+**Gesto B (retângulo): NÃO REPRODUZ** — 2 runs (com e sem `PH2D_PAINT_FULL_UPLOAD=1`), Dilution
+0.54, warp 10.8-12.4, soak ativo (80k px) — nada. A simplificação do take 6 (água só interage
+com tinta seca) matou o retângulo de verdade; os "nenhuma diferença" anteriores eram
+build/condição velha. Monitorar; os testes `#[ignore]` do take 7 seguem como gate do resíduo Δ2.
+
+**Gesto A (borda dura, Charge<1) — o dado de ouro do diag:**
+
+1. **A sessão molhada QUEBROU (`sess=false`) exatamente no pen-down após reduzir o slider de
+   Charge** (traço 1→2, chg 1.0→0.4608); entre traços SEM mexer no slider (2→3) a sessão
+   continuou. Sessão quebrada = o traço seguinte GLAZEIA sobre "seco" = rim duro by-design na
+   junção — explica o gatilho "só ao reduzir Charge" sem tocar no mixer. **MAS o harness
+   inocentou o caminho do painel**: teste novo
+   `watercolor_wet_session_survives_charge_slider_change` (o `handle_panel_event` REAL →
+   `set_brush_wet_charge`) passa VERDE — o quebrador é outro ator do app entre os traços.
+   Tracers novos na árvore: `[wet-diag] SET_SOURCE` (rebind reatribui o Arc → guard `arc`),
+   `[wet-diag] RESTORE_MODEL` (undo/redo), e o DOWN agora imprime o breakdown
+   `[wr cov col base arc]` — a próxima rodada aponta o guard e o ator.
+2. **MIX1 confirmado no app:** na travessia, `t` salta 0.108→0.280 em UM dab (fronteira de
+   batch; spacing 0.05·r ≈ 2.4 px → transição pixel-scale) com `fresh=0.944` — **a depleção NÃO
+   participa** (depl fica fresh-dominado); o portador do degrau é o prio/tint do mixer. Fix
+   candidato (pós-confirmação de qual traço mostra a borda): suavizar a transição do prio
+   por-dab (lerp no espaço do spacing) e/ou leitura bilinear dos mapas nearest-warpados.
+3. **Params reais do Enio** (harness deve usar): r 40-63, spread 20.5-23.2, **warp 10.3-12.4**
+   (acima do preset 6!), gain 0.78-1.12, gran 0.30 + PaperCold, spacing 0.05, dyn sz=true,
+   press=1.000 nas linhas (mouse? os DOWNs mostram pressão 1 constante).
+
+**Próxima rodada (gesto A de novo, mesmo fluxo):** colar as linhas + dizer EM QUAL traço a borda
+aparece (o traço logo após mexer no slider, o seguinte, ou ambos) + screenshot. Se
+`SET_SOURCE`/`RESTORE_MODEL` aparecer entre UP e DOWN, achamos o quebrador; se o guard for
+`wet_rect`, é o timer/pour; se nada quebrar e a borda persistir no traço com `sess=true`, o alvo
+é o item 2 (mixer prio).

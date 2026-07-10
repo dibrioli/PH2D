@@ -3,9 +3,10 @@
 //! from `graph`; that module owns every fact this one draws.
 //!
 //! It reads as a header rather than a track: its own background, a rule under it,
-//! no twirl, and diamonds a size larger than the ones they stand for. A column
-//! only takes the accent when **every** key beneath it is selected — a half-
-//! selected column that looked grabbed would lie about what a drag will move.
+//! no twirl, and amber diamonds a size larger than the ones they stand for — the
+//! master handles, the loudest thing on the sheet. A column only takes the accent
+//! ring when **every** key beneath it is selected; a half-selected column that
+//! looked grabbed would lie about what a drag will move.
 
 use ph2d_editor_core::interaction::{InteractiveState, TimelineHitKind};
 use ph2d_editor_core::paint::{fill_rounded_rect, resolve};
@@ -25,6 +26,8 @@ use crate::tracks::paint_diamond;
 const SUMMARY_DIAMOND_H: f32 = 6.0; // LITERAL-PX-OK: summary column diamond half-size
 /// Grab half-width of a Summary column, a touch wider than its diamond.
 const SUMMARY_HIT_HW: f32 = 8.0; // LITERAL-PX-OK: summary column grab half-width
+/// How far the ring behind a Summary diamond extends past it.
+const RING_W: f32 = 1.5; // LITERAL-PX-OK: summary diamond keyline / selection ring
 /// The rule that separates the master row from the tracks it summarises.
 const RULE_H: f32 = 1.0; // LITERAL-PX-OK: summary row bottom rule
 
@@ -105,17 +108,31 @@ fn paint_column(
     } else {
         base_x
     };
+    // Cull against the RING, not the fill: the ring is what reaches furthest, and
+    // a column culled a pixel early would pop its outline off at the edge.
     let right = row.x + row.w;
-    if x < view.time_x - SUMMARY_DIAMOND_H || x > right + SUMMARY_DIAMOND_H {
+    let reach = SUMMARY_DIAMOND_H + RING_W;
+    if x < view.time_x - reach || x > right + reach {
         return;
     }
     let cy = row.y + ROW_H_PX * 0.5;
-    let tok = if c.all_selected {
+    // The ring reads "grabbed", the amber reads "master row". Selection is a RING
+    // rather than a second hue on purpose: `accent` is orange in the Sunstone
+    // theme, close enough to `warn` that a hue swap alone would leave selected and
+    // unselected columns telling the same story there.
+    let ring = if c.all_selected {
         ColorToken::Accent
     } else {
-        ColorToken::Text2
+        ColorToken::BorderStrong
     };
-    paint_diamond(ctx, x, cy, SUMMARY_DIAMOND_H, resolve(tok, theme));
+    paint_diamond(ctx, x, cy, SUMMARY_DIAMOND_H + RING_W, resolve(ring, theme));
+    paint_diamond(
+        ctx,
+        x,
+        cy,
+        SUMMARY_DIAMOND_H,
+        resolve(ColorToken::Warn, theme),
+    );
 
     let id = ids::timeline_summary_hit_id(c.t_bits());
     let hit = Rect::new(x - SUMMARY_HIT_HW, row.y, SUMMARY_HIT_HW * 2.0, row.h);

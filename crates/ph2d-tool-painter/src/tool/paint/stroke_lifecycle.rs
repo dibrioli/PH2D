@@ -49,6 +49,26 @@ impl PainterTool {
         // stroke's inner rim melts). Anything else (dried, foreign edit, mode/layer change) starts
         // a fresh session over the current canvas.
         let wet_session = self.wet_session_continues();
+        // TEMP-DIAG (Enio 2026-07-09, remover após diagnóstico): por que a sessão molhada
+        // continua/quebra no app real — imprime 1 linha por pen-down no terminal.
+        if self.watercolor_render_active() {
+            let n = (self.source_size.0 as usize) * (self.source_size.1 as usize);
+            eprintln!(
+                "[wet-diag] continua={} | wet_rect={} cov={} col={} base={} arc={}",
+                wet_session,
+                self.paint.canvas_wet_rect.is_some(),
+                self.paint.stroke_coverage.len() == n,
+                self.paint.stroke_color.len() == n * 4,
+                self.paint
+                    .wet_session_base
+                    .as_ref()
+                    .is_some_and(|b| b.len() == n * 4),
+                self.paint
+                    .wet_session_canvas
+                    .as_ref()
+                    .is_some_and(|c| Arc::ptr_eq(c, &self.canvas_rgba)),
+            );
+        }
         // Reset the Accumulate-OFF cap mask (re-grown by the first dab) + the per-layer-colour
         // accumulation (so the recomposite snapshots THIS stroke's pre-pixels) — both per stroke.
         self.paint.stroke_mask.clear();

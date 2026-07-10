@@ -456,15 +456,17 @@ pub(super) struct WetStrokeStyle {
 }
 
 impl WetStrokeStyle {
-    /// Capture the current brush's wash params — the composite's exact clamps, verbatim.
-    pub(super) fn capture(spec: &ph2d_painter_brush::BrushSpec) -> Self {
+    /// Capture the current brush's wash params — the composite's exact clamps, verbatim. `forced_wet`
+    /// is the **Wet the layer** floor (#3): the captured Rewet is `max(brush Rewet, forced)`, so strokes
+    /// made after the Wet button lift the existing paint even at brush Rewet `0` (`forced = 0` ⇒ verbatim).
+    pub(super) fn capture(spec: &ph2d_painter_brush::BrushSpec, forced_wet: f32) -> Self {
         let spread_px = spec.edge_spread.round().clamp(0.0, 48.0) as usize;
         Self {
             fill: spec.fill.clamp(0.0, 1.0),
             depth: spec.depth.max(0.0),
             opacity: spec.opacity.clamp(0.0, 1.0),
             edge_gain: spec.edge_gain.max(0.0),
-            wet: spec.wet_rewet.clamp(0.0, 1.0),
+            wet: spec.wet_rewet.max(forced_wet).clamp(0.0, 1.0),
             granulation: spec.granulation.clamp(0.0, 1.0),
             warp: spec.warp.max(0.0),
             pigment_mix: spec.effective_pigment_mix(),
@@ -497,11 +499,11 @@ pub(super) struct WetSessionStyles {
 impl WetSessionStyles {
     /// Register the beginning stroke's style; the index saturates at 255 (a 256th stroke in one
     /// wet session shares the last slot — far beyond any real ~8.5 s session).
-    pub(super) fn push_capture(&mut self, spec: &ph2d_painter_brush::BrushSpec) {
+    pub(super) fn push_capture(&mut self, spec: &ph2d_painter_brush::BrushSpec, forced_wet: f32) {
         if self.table.len() < 255 {
-            self.table.push(WetStrokeStyle::capture(spec));
+            self.table.push(WetStrokeStyle::capture(spec, forced_wet));
         } else if let Some(last) = self.table.last_mut() {
-            *last = WetStrokeStyle::capture(spec);
+            *last = WetStrokeStyle::capture(spec, forced_wet);
         }
     }
 

@@ -478,6 +478,11 @@ pub(crate) struct PaintState {
     /// the wet region (`0` = no preview). CANVAS-level display setting (not per-brush); the Wetness card's
     /// slider drives it (`set_wet_preview_intensity`), the shell reads [`Self::wet_preview_intensity`].
     wet_preview_intensity: f32,
+    /// #3 (doc 14, Enio 2026-07-11): the **Wet the layer** forced rewet. `wet_canvas_now` (the Wet button)
+    /// re-opens a wet session over the current canvas and sets this so strokes made now LIFT/blend the
+    /// EXISTING paint even with the brush's own Rewet at `0` (Rebelle "Wet the layer"). `0` = no forcing
+    /// (byte-identical). Cleared by [`Self::dry_session_now`] (the session's teardown / drying deadline).
+    wet_session_wetness: f32,
     /// EDGE-1 per-stroke style (doc 13 topo): session param table + per-pixel owner map — an
     /// older wash keeps ITS look on the union re-bake ([`watercolor_field::WetSessionStyles`]).
     wet_styles: watercolor_field::WetSessionStyles,

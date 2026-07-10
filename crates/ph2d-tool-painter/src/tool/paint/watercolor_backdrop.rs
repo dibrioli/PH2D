@@ -217,6 +217,11 @@ pub(super) const CANVAS_WET_DRY_DEFAULT: f32 = 25.5;
 /// (the Wetness card's slider); this is only its default.
 pub(super) const WET_PREVIEW_DEFAULT: f32 = 0.3;
 
+/// #3 (doc 14) — the **Wet the layer** forced rewet level: how strongly strokes lift/blend the EXISTING
+/// paint after the Wet button re-wets the canvas (Rebelle-style), independent of the brush's own Rewet.
+/// Strong so the reactivation is clearly visible; the artist still tempers it with the brush's Rewet up.
+pub(super) const WET_CANVAS_REWET: f32 = 0.8;
+
 impl PainterTool {
     /// EDGE-1: whether the stroke beginning NOW continues the live **wet session** (one wash):
     /// watercolor mode, some paper still wet, the session base is sized, the union buffers exist,
@@ -354,13 +359,18 @@ impl PainterTool {
         self.paint.wet_soak = Vec::new();
         self.paint.wet_soak_active = false;
         self.paint.wet_cum_dirty = None;
+        self.paint.wet_stroke_dirty = None;
+        self.paint.wet_session_wetness = 0.0; // the forced "Wet the layer" rewet ends with the session (#3)
     }
 
-    /// EDGE-1 (doc 13 #10): re-moisten the WHOLE canvas WITHOUT depositing pigment — Rebelle "Wet
-    /// the layer". Fills `canvas_wet` = 255 over the full canvas so (a) the wetness is visible
-    /// (#12a overlay), (b) the drying timer runs, and (c) strokes made now start/continue a wet
-    /// session that stays mergeable for the drying window. Existing DRY paint isn't pulled into the
-    /// fusion buffers (that's what Rewet lifts); this only arms the moisture. No pixel touch.
+    /// EDGE-1 (doc 13 #10 + doc 14 #3): **Wet the layer** (Rebelle). Re-moisten the whole canvas WITHOUT
+    /// depositing pigment AND re-open a wet session bound to the CURRENT canvas so strokes made now FUSE
+    /// with the EXISTING paint — dropping water on a dry wash reactivates it. Fills `canvas_wet` = 255
+    /// (visible damp #12a + the drying/fusion window), freezes the current pixels as the session base (what
+    /// the rewet lifts) over the ground below (the lift target), starts the union buffers EMPTY (untouched
+    /// paint stays exactly as-is until a stroke reaches it), and FORCES the rewet ([`WET_CANVAS_REWET`]) so
+    /// the reactivation shows even with the brush's own Rewet at `0`. No pixel touch (the lift happens when
+    /// you paint). Off the watercolor render-path it only arms the moisture (nothing to fuse).
     pub(super) fn wet_canvas_now(&mut self) {
         let (fw, fh) = self.source_size;
         let n = (fw as usize) * (fh as usize);
@@ -370,6 +380,25 @@ impl PainterTool {
         self.paint.canvas_wet = vec![255u8; n];
         self.paint.canvas_wet_rect = Some((0, 0, fw as usize, fh as usize));
         self.paint.canvas_wet_carry = 0.0;
+        if !self.watercolor_render_active() {
+            return;
+        }
+        // The existing pixels ARE the wet-session base (what the rewet reactivates); the ground below is
+        // the lift target. Empty union buffers ⇒ `wet_session_continues` passes and the next stroke joins
+        // this session (lifting the base) instead of starting fresh over the dry paint.
+        self.paint.watercolor_base = Some(Arc::clone(&self.canvas_rgba));
+        self.paint.wet_backdrop = Some(Arc::new(self.build_wet_backdrop()));
+        self.paint.wet_session_base = Some(Arc::clone(&self.canvas_rgba));
+        self.paint.wet_session_canvas = Some(Arc::clone(&self.canvas_rgba));
+        self.paint.stroke_coverage = vec![0u8; n];
+        self.paint.stroke_color = vec![0u8; n * 4];
+        self.paint.stroke_density = Vec::new();
+        self.paint.stroke_deplete = Vec::new();
+        self.paint.stroke_water = Vec::new();
+        self.paint.wet_styles.clear();
+        self.paint.wet_cum_dirty = None;
+        self.paint.wet_stroke_dirty = None;
+        self.paint.wet_session_wetness = WET_CANVAS_REWET;
     }
 
     /// #12a (doc 14): the canvas MOISTURE map + its live rect for the on-canvas wetness overlay —

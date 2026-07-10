@@ -13300,6 +13300,86 @@ fn watercolor_touching_wet_washes_merge_without_double_rim() {
     );
 }
 
+/// **EDGE-1 #3 (Enio smoke 2026-07-11) — "Wet the layer" (Rebelle):** o botão **Wet** re-molha o canvas e
+/// reabre uma sessão molhada sobre a tinta EXISTENTE, com um rewet FORÇADO — então um traço de água clara
+/// (Rewet do pincel = 0) feito depois LEVANTA a tinta seca (clareia rumo ao papel), coisa que NÃO acontece
+/// sem apertar Wet (água clara sobre papel seco não reativa nada). Propriedade: mesmo A seco + mesmo B de
+/// água, o núcleo de A fica mais claro COM Wet que SEM. DIRETIVA §4 (o forced-rewet é o discriminador).
+#[test]
+fn watercolor_wet_button_reactivates_dry_paint() {
+    let size = 96u32;
+    fn dry_wash_a(size: u32) -> PainterTool {
+        let mut t = white_canvas(size, 8.0);
+        t.paint.brush = BrushSpec {
+            radius_px: 16.0,
+            hardness: 1.0,
+            falloff: Falloff::Constant,
+            color: [0.8, 0.1, 0.1], // a solid dark-red wash to reactivate
+            space_attenuation: false,
+            watercolor: true,
+            fill: 0.6,
+            depth: 1.5,
+            edge_gain: 0.0,
+            warp: 0.0,
+            granulation: 0.0,
+            wet_rewet: 0.0, // the brush itself does NOT rewet — only the Wet button will
+            ..Default::default()
+        };
+        for slot in &mut t.paint.brush_by_mode {
+            *slot = t.paint.brush;
+        }
+        // Wash A — a vertical band at x = 48.
+        assert!(t.on_canvas_pointer(cp([48.0, 20.0], PointerPhase::Down)));
+        let mut y = 20.0f32;
+        while y < 76.0 {
+            y += 2.0;
+            t.on_canvas_pointer(cp([48.0, y], PointerPhase::Move));
+        }
+        t.on_canvas_pointer(cp([48.0, 76.0], PointerPhase::Up));
+        // Dry it FULLY (past the ~10 s window) so the session tears down — A is dry paint now.
+        for _ in 0..60 {
+            t.paint_tick(0.5);
+        }
+        assert!(
+            t.paint.canvas_wet.is_empty(),
+            "A must be fully dry before the test"
+        );
+        t
+    }
+    // A clear-water stroke over A (same brush, near-white colour, low fill → the deposit is negligible,
+    // any change is the LIFT). `press_wet` toggles the Wet button before painting.
+    let clear_water_over_a = |press_wet: bool| -> [u8; 4] {
+        let mut t = dry_wash_a(size);
+        t.paint.brush.color = [0.98, 0.98, 0.98];
+        t.paint.brush.fill = 0.1;
+        t.paint.brush.opacity = 0.0; // no body: pure transparent water, so any change is the LIFT only
+        for slot in &mut t.paint.brush_by_mode {
+            *slot = t.paint.brush;
+        }
+        if press_wet {
+            t.wet_canvas_now();
+        }
+        assert!(t.on_canvas_pointer(cp([48.0, 20.0], PointerPhase::Down)));
+        let mut y = 20.0f32;
+        while y < 76.0 {
+            y += 2.0;
+            t.on_canvas_pointer(cp([48.0, y], PointerPhase::Move));
+        }
+        t.on_canvas_pointer(cp([48.0, 76.0], PointerPhase::Up));
+        px(&t, size, 48, 48)
+    };
+    let lum = |p: [u8; 4]| u32::from(p[0]) + u32::from(p[1]) + u32::from(p[2]);
+    let with_wet = clear_water_over_a(true);
+    let without_wet = clear_water_over_a(false);
+    assert!(
+        lum(with_wet) > lum(without_wet) + 30,
+        "the Wet button must reactivate the dry wash (a clear-water stroke lifts it lighter): \
+         with Wet {with_wet:?} (lum {}) vs without {without_wet:?} (lum {})",
+        lum(with_wet),
+        lum(without_wet),
+    );
+}
+
 /// **EDGE-1 #4 (Enio smoke 2026-07-11):** cada traço seca no SEU próprio relógio — um segundo traço
 /// (longe do primeiro) NÃO pode re-molhar o wash anterior. `stroke_coverage` é a UNIÃO da sessão; despejar
 /// isso na moisture pela rect cumulativa re-molhava TUDO a 255 no bake de cada traço (resetando a secagem

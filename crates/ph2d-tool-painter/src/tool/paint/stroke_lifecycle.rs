@@ -86,7 +86,10 @@ impl PainterTool {
             // — the union re-bake resolves them per pixel by the owner map, so an already-painted
             // wash keeps ITS Concentration/Edge/water instead of being re-styled by the current
             // brush (Enio 2026-07-09).
-            self.paint.wet_styles.push_capture(&self.paint.brush);
+            let forced_wet = self.paint.wet_session_wetness;
+            self.paint
+                .wet_styles
+                .push_capture(&self.paint.brush, forced_wet);
         }
         self.paint.per_layer_stroke.reset();
         // Smear chains its source from the previous dab; a fresh stroke has none yet.

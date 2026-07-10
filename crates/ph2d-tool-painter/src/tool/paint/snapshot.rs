@@ -72,6 +72,8 @@ impl PainterTool {
         }
         // Per-layer blend + the brush-only per-layer opacity arrays (the "B" chip + the opacity box).
         let (shape_layer_blend, shape_layer_opacity) = self.paint.shape_layers.panel_blend_arrays();
+        // Canvas-level Drying Time (seconds) carried in the display snapshot for the Wetness slider.
+        let dry_time_s = self.dry_time_s();
         BrushSettings {
             size_px: b.radius_px,
             size_norm: size_px_to_norm(b.radius_px),
@@ -223,6 +225,7 @@ impl PainterTool {
             wet_charge: b.wet_charge,
             wet_dilution: b.wet_dilution,
             wet_pull: b.wet_pull,
+            dry_time_s,
             paper_kind: b.paper.kind.to_u8(),
             paper_mapping: b.paper.mapping.to_u8(),
             paper_rake: b.paper.rake,

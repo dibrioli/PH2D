@@ -14150,3 +14150,114 @@ fn watercolor_junction_lightening_is_soft_and_preserved() {
         );
     }
 }
+
+/// #11 (doc 13): o slider de Drying Time mapeia SEGUNDOS → taxa de secagem (`255/seg`) e volta,
+/// com clamp em `2..60 s`. Canvas-level (não muda por modo de pincel).
+#[test]
+fn watercolor_dry_time_slider_maps_seconds_to_rate() {
+    let mut t = PainterTool::default();
+    t.set_source(vec![255u8; 16 * 16 * 4], 16, 16);
+    t.set_dry_time_s(10.0);
+    assert!((t.dry_time_s() - 10.0).abs() < 0.05, "10 s round-trips");
+    assert!(
+        (t.paint.dry_rate_per_s - 25.5).abs() < 0.1,
+        "10 s ⇒ ~25.5 bytes/s"
+    );
+    t.set_dry_time_s(60.0);
+    assert!(
+        (t.paint.dry_rate_per_s - 4.25).abs() < 0.05,
+        "60 s ⇒ ~4.25 bytes/s"
+    );
+    t.set_dry_time_s(0.5); // abaixo do mínimo → clamp em 2 s
+    assert!((t.dry_time_s() - 2.0).abs() < 0.05, "clamp inferior 2 s");
+    t.set_dry_time_s(999.0); // acima do máximo → clamp em 60 s
+    assert!((t.dry_time_s() - 60.0).abs() < 0.05, "clamp superior 60 s");
+    // Default = ~10 s (o knob CANVAS_WET_DRY_DEFAULT).
+    let fresh = PainterTool::default();
+    assert!((fresh.dry_time_s() - 10.0).abs() < 0.05, "default ~10 s");
+}
+
+/// #9 (doc 13): o botão Dry encerra a sessão molhada NA HORA — os pixels assados ficam, mas a
+/// fusão com traços futuros acaba (canvas_wet zerado, sessão morta).
+#[test]
+fn watercolor_dry_button_ends_the_wet_session() {
+    let size = 64u32;
+    let mut t = PainterTool::default();
+    t.set_source(vec![255u8; (size * size * 4) as usize], size, size);
+    t.paint.brush = BrushSpec {
+        radius_px: 16.0,
+        watercolor: true,
+        ..Default::default()
+    };
+    for slot in &mut t.paint.brush_by_mode {
+        *slot = t.paint.brush;
+    }
+    assert!(t.on_canvas_pointer(cp([16.0, 32.0], PointerPhase::Down)));
+    for i in 1..=12 {
+        t.on_canvas_pointer(cp([16.0 + i as f32 * 3.0, 32.0], PointerPhase::Move));
+    }
+    t.on_canvas_pointer(cp([52.0, 32.0], PointerPhase::Up));
+    assert!(
+        t.wet_session_continues(),
+        "precondição: sessão viva após o bake"
+    );
+    let baked = t.canvas_rgba.clone();
+    t.dry_session_now();
+    assert!(!t.wet_session_continues(), "Dry encerrou a sessão");
+    assert!(t.paint.canvas_wet.is_empty(), "canvas_wet zerado");
+    assert!(t.paint.canvas_wet_rect.is_none(), "rect de umidade zerado");
+    assert_eq!(t.canvas_rgba, baked, "Dry NÃO toca os pixels assados");
+}
+
+/// #10 (doc 13): o botão Wet re-molha o canvas inteiro SEM depositar pigmento (canvas_wet = 255
+/// full + rect = canvas todo), sem tocar os pixels.
+#[test]
+fn watercolor_wet_button_moistens_the_canvas() {
+    let size = 32u32;
+    let mut t = PainterTool::default();
+    let src = vec![200u8; (size * size * 4) as usize];
+    t.set_source(src.clone(), size, size);
+    t.wet_canvas_now();
+    let n = (size * size) as usize;
+    assert_eq!(t.paint.canvas_wet.len(), n, "canvas_wet dimensionado");
+    assert!(
+        t.paint.canvas_wet.iter().all(|&w| w == 255),
+        "umidade cheia"
+    );
+    assert_eq!(
+        t.paint.canvas_wet_rect,
+        Some((0, 0, size as usize, size as usize)),
+        "rect = canvas inteiro"
+    );
+    assert_eq!(
+        t.canvas_rgba.as_slice(),
+        src.as_slice(),
+        "Wet NÃO deposita pigmento"
+    );
+}
+
+/// Costura do ROUTE (doc 13 #9-#11): os ids novos da Wetness card despacham pelos setters certos
+/// via `route_brush_watercolor_event` — o par do seam.rs do painel (que cobre o forward).
+#[test]
+fn watercolor_route_dispatches_wetness_controls() {
+    use ph2d_editor_core::ids as core_ids;
+    use ph2d_editor_core::tool::PanelEvent;
+    let mut t = PainterTool::default();
+    t.set_source(vec![255u8; 32 * 32 * 4], 32, 32);
+    assert!(t.route_brush_watercolor_event(&PanelEvent::SetValue(
+        core_ids::PAINTER_WATERCOLOR_DRY_TIME,
+        30.0
+    )));
+    assert!(
+        (t.dry_time_s() - 30.0).abs() < 0.05,
+        "DRY_TIME → set_dry_time_s"
+    );
+    assert!(
+        t.route_brush_watercolor_event(&PanelEvent::Click(core_ids::PAINTER_WATERCOLOR_WET_NOW))
+    );
+    assert!(!t.paint.canvas_wet.is_empty(), "WET_NOW → wet_canvas_now");
+    assert!(
+        t.route_brush_watercolor_event(&PanelEvent::Click(core_ids::PAINTER_WATERCOLOR_DRY_NOW))
+    );
+    assert!(t.paint.canvas_wet.is_empty(), "DRY_NOW → dry_session_now");
+}

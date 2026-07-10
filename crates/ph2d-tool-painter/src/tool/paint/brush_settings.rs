@@ -314,6 +314,9 @@ pub struct BrushSettings {
     pub wet_dilution: f32,
     /// **Pull** (`0..1`) — Wet Mix colour-carry / smudge length (inert unless `wet_charge < 1`).
     pub wet_pull: f32,
+    /// **Drying Time** in SECONDS (`2..60 s`) — CANVAS-level, not a brush param (carried in this
+    /// display snapshot for the Wetness card's slider read-back). Doc 13 #11.
+    pub dry_time_s: f32,
     /// **Paper** slot kind (`TextureKind` wire u8) — the substrate tooth (its own full section).
     pub paper_kind: u8,
     /// **Paper** slot Mapping (`TextureMapping` wire u8).

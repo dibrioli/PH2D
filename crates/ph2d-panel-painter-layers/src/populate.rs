@@ -353,6 +353,9 @@ fn register_toggles_and_dropdowns(store: &mut WidgetStore) {
         ph2d_editor_core::ids::PAINTER_WATERCOLOR_RESET,
         ph2d_editor_core::ids::PAINTER_WATERCOLOR_GRAN_SAME,
         ph2d_editor_core::ids::PAINTER_WATERCOLOR_PAPER_RESET,
+        // Wetness card (doc 13 #9/#10): Dry (end the wet session) / Wet (re-moisten the canvas).
+        ph2d_editor_core::ids::PAINTER_WATERCOLOR_DRY_NOW,
+        ph2d_editor_core::ids::PAINTER_WATERCOLOR_WET_NOW,
     ] {
         store.register(
             id,

@@ -206,11 +206,11 @@ impl PainterTool {
     }
 }
 
-/// EDGE-1 — paper drying rate in wetness-bytes per second: a fully-wet cell (255) dries in
-/// ~8.5 s, the DiVerdi/Adobe TVCG 2013 wet-map constant (*"wet map cells are set to 255 when
-/// wetted... they take 8.5 seconds to dry"*). Calibration knob: lower = washes stay mergeable
-/// longer.
-const CANVAS_WET_DRY_PER_S: f32 = 25.5; // KNOB (Enio 2026-07-10): janela ~10 s — 60 s ficou "extremamente alto" no uso real; o slider da fila #11 dará o controle explícito (histórico: 30 ≈ 8,5 s DiVerdi → 4.25 ≈ 60 s no diag do timer)
+/// EDGE-1 — DEFAULT paper drying rate in wetness-bytes per second (~10 s window, Enio 2026-07-10:
+/// 60 s ficou "extremamente alto"; histórico: 30 ≈ 8,5 s DiVerdi/Adobe TVCG 2013 → 4.25 ≈ 60 s). The
+/// live rate is now `PaintState::dry_rate_per_s` (the Drying-Time slider, doc 13 #11); this is only
+/// its default. `255 / seconds`: 10 s → 25.5.
+pub(super) const CANVAS_WET_DRY_DEFAULT: f32 = 25.5;
 
 impl PainterTool {
     /// EDGE-1: whether the stroke beginning NOW continues the live **wet session** (one wash):
@@ -301,7 +301,7 @@ impl PainterTool {
             self.paint.canvas_wet_rect = None;
             return;
         }
-        self.paint.canvas_wet_carry += dt_s.max(0.0) * CANVAS_WET_DRY_PER_S;
+        self.paint.canvas_wet_carry += dt_s.max(0.0) * self.paint.dry_rate_per_s.max(0.0);
         let step = self.paint.canvas_wet_carry.min(255.0) as u8;
         if step == 0 {
             return;
@@ -323,20 +323,44 @@ impl PainterTool {
         // smoke 2026-07-09). With a stroke open we leave the zeroed map in place; its own bake
         // re-pours (session extends), or a later idle tick tears everything down together.
         if wettest == 0 && self.paint.stroke.is_none() {
-            self.paint.canvas_wet = Vec::new();
-            self.paint.canvas_wet_rect = None;
-            self.paint.canvas_wet_carry = 0.0;
-            self.paint.wet_session_base = None;
-            self.paint.wet_session_canvas = None;
-            self.paint.stroke_coverage = Vec::new();
-            self.paint.stroke_color = Vec::new();
-            self.paint.stroke_density = Vec::new();
-            self.paint.stroke_deplete = Vec::new();
-            self.paint.wet_styles.clear();
-            self.paint.stroke_water = Vec::new();
-            self.paint.wet_soak = Vec::new();
-            self.paint.wet_soak_active = false;
-            self.paint.wet_cum_dirty = None;
+            self.dry_session_now();
         }
+    }
+
+    /// EDGE-1 (doc 13 #9): END the wet session NOW — the atomic teardown (drop the moisture map +
+    /// every session/union buffer + the frozen base + soak). The baked washes STAY in `canvas_rgba`
+    /// (this doesn't touch pixels); only the FUSION with future strokes ends — Rebelle "Dry the
+    /// layer". Shared by the drying-deadline path above and the **Dry** button. Idempotent.
+    pub(super) fn dry_session_now(&mut self) {
+        self.paint.canvas_wet = Vec::new();
+        self.paint.canvas_wet_rect = None;
+        self.paint.canvas_wet_carry = 0.0;
+        self.paint.wet_session_base = None;
+        self.paint.wet_session_canvas = None;
+        self.paint.stroke_coverage = Vec::new();
+        self.paint.stroke_color = Vec::new();
+        self.paint.stroke_density = Vec::new();
+        self.paint.stroke_deplete = Vec::new();
+        self.paint.wet_styles.clear();
+        self.paint.stroke_water = Vec::new();
+        self.paint.wet_soak = Vec::new();
+        self.paint.wet_soak_active = false;
+        self.paint.wet_cum_dirty = None;
+    }
+
+    /// EDGE-1 (doc 13 #10): re-moisten the WHOLE canvas WITHOUT depositing pigment — Rebelle "Wet
+    /// the layer". Fills `canvas_wet` = 255 over the full canvas so (a) the wetness is visible
+    /// (#12a overlay), (b) the drying timer runs, and (c) strokes made now start/continue a wet
+    /// session that stays mergeable for the drying window. Existing DRY paint isn't pulled into the
+    /// fusion buffers (that's what Rewet lifts); this only arms the moisture. No pixel touch.
+    pub(super) fn wet_canvas_now(&mut self) {
+        let (fw, fh) = self.source_size;
+        let n = (fw as usize) * (fh as usize);
+        if n == 0 {
+            return;
+        }
+        self.paint.canvas_wet = vec![255u8; n];
+        self.paint.canvas_wet_rect = Some((0, 0, fw as usize, fh as usize));
+        self.paint.canvas_wet_carry = 0.0;
     }
 }

@@ -12,6 +12,11 @@ use ph2d_painter_brush::{
     TextureMapping, TextureSettings,
 };
 
+/// Drying-Time slider bounds in SECONDS (doc 13 #11) — the wet-session fusion window. Canvas-level
+/// (not a brush param); mapped to `PaintState::dry_rate_per_s` as `255 / seconds`.
+pub const DRY_TIME_MIN_S: f32 = 2.0;
+pub const DRY_TIME_MAX_S: f32 = 60.0;
+
 impl PainterTool {
     /// Route the Watercolor section controls (master enable + Pigment toggle + section reset, and the
     /// Edge / Spread / Granulation / Mix sliders) from the layers panel's generic channel to the
@@ -50,6 +55,14 @@ impl PainterTool {
             }
             PanelEvent::Click(id) if *id == core_ids::PAINTER_WATERCOLOR_PAPER_RANDOM => {
                 self.toggle_brush_paper_random();
+                true
+            }
+            PanelEvent::Click(id) if *id == core_ids::PAINTER_WATERCOLOR_DRY_NOW => {
+                self.dry_session_now();
+                true
+            }
+            PanelEvent::Click(id) if *id == core_ids::PAINTER_WATERCOLOR_WET_NOW => {
+                self.wet_canvas_now();
                 true
             }
             PanelEvent::SetValue(id, v) => {
@@ -97,6 +110,10 @@ impl PainterTool {
                     }
                     x if x == core_ids::PAINTER_WATERCOLOR_DILUTION => {
                         self.set_brush_wet_dilution(v);
+                        true
+                    }
+                    x if x == core_ids::PAINTER_WATERCOLOR_DRY_TIME => {
+                        self.set_dry_time_s(v);
                         true
                     }
                     x if x == core_ids::PAINTER_WATERCOLOR_PULL => {
@@ -242,6 +259,20 @@ impl PainterTool {
         self.paint.brush.wet_pull = v.clamp(0.0, 1.0);
     }
 
+    /// Set the paper **Drying Time** in SECONDS (canvas-level, `2..60 s`) → the wetness-bytes/second
+    /// rate (`255 / seconds`); the wet-session fusion window (doc 13 #11). Read back via
+    /// [`Self::dry_time_s`].
+    pub fn set_dry_time_s(&mut self, seconds: f32) {
+        let s = seconds.clamp(DRY_TIME_MIN_S, DRY_TIME_MAX_S);
+        self.paint.dry_rate_per_s = 255.0 / s;
+    }
+
+    /// The current Drying Time in seconds (the panel slider's value) — inverse of the stored rate.
+    #[must_use]
+    pub fn dry_time_s(&self) -> f32 {
+        (255.0 / self.paint.dry_rate_per_s.max(0.001)).clamp(DRY_TIME_MIN_S, DRY_TIME_MAX_S)
+    }
+
     /// Reset the **Paper** slot to empty (kind `None` → the render-path falls back to the built-in paper
     /// noise), dropping any tagged-layer image. Plain state edit (no undo / pixel touch).
     pub fn reset_brush_paper(&mut self) {
@@ -328,6 +359,8 @@ impl PainterTool {
         b.wet_dilution = d.wet_dilution;
         b.wet_pull = d.wet_pull;
         b.watercolor_shape_auto = d.watercolor_shape_auto;
+        // Drying Time is canvas-level (not on `b`): reset it to the ~10 s default too.
+        self.paint.dry_rate_per_s = super::watercolor_backdrop::CANVAS_WET_DRY_DEFAULT;
     }
 
     /// Install a tagged Hierarchy layer/group (its luminance `lum`, `width × height`) into the watercolor

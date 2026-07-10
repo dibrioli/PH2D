@@ -56,6 +56,17 @@ pub const PAINTER_WATERCOLOR_DILUTION: NodeId = hash_node_id("painter_brush.wate
 /// **Pull** — Wet Mix colour-carry `0..1` (smudge length). `SetValue` → `set_brush_wet_pull`.
 pub const PAINTER_WATERCOLOR_PULL: NodeId = hash_node_id("painter_brush.watercolor_pull");
 
+// ── Wetness / canvas controls (session-level, NOT brush; the paper's moisture, doc 13 #9-#11) ──
+/// **Drying Time** — seconds for the wet paper to fully dry (`2..60 s`; the wet-session fusion
+/// window). CANVAS-level (not per-brush): `SetValue` → `set_dry_time_s`. Shown in the Wetness card.
+pub const PAINTER_WATERCOLOR_DRY_TIME: NodeId = hash_node_id("painter_brush.watercolor_dry_time");
+/// **Dry** button — end the wet session NOW (the bake becomes permanent; Rebelle "Dry the layer").
+/// `Click` → `dry_session_now`.
+pub const PAINTER_WATERCOLOR_DRY_NOW: NodeId = hash_node_id("painter_brush.watercolor_dry_now");
+/// **Wet** button — re-moisten the whole canvas WITHOUT depositing pigment, so strokes made now
+/// fuse (Rebelle "Wet the layer"). `Click` → `wet_canvas_now`.
+pub const PAINTER_WATERCOLOR_WET_NOW: NodeId = hash_node_id("painter_brush.watercolor_wet_now");
+
 // ── Paper section (canvas-anchored substrate; its own section above Grain; `docs/Painter/10…` §5) ──
 /// Collapsible **Paper** section header (ALL-CAPS + chevron + colour dot).
 pub const PAINTER_WATERCOLOR_PAPER_SECTION: NodeId =
@@ -138,11 +149,13 @@ pub fn painter_paper_kind_option_id(k: u8) -> NodeId {
 /// Pigment toggle merged into the [`PAINTER_WATERCOLOR_MIX`] slider (redesign 2026-07-07); Paper
 /// Rake/Random were dropped from the UI (no app rotates paper per-dab) — their tool setters + route arms
 /// stay for the API, just no widget forwards them.
-pub const PAINTER_WATERCOLOR_CLICKS: [NodeId; 4] = [
+pub const PAINTER_WATERCOLOR_CLICKS: [NodeId; 6] = [
     PAINTER_WATERCOLOR_ENABLE,
     PAINTER_WATERCOLOR_RESET,
     PAINTER_WATERCOLOR_GRAN_SAME,
     PAINTER_WATERCOLOR_PAPER_RESET,
+    PAINTER_WATERCOLOR_DRY_NOW,
+    PAINTER_WATERCOLOR_WET_NOW,
 ];
 
 /// The Watercolor **SetValue** number-fields — one membership check for the panel's number-field forward
@@ -150,7 +163,8 @@ pub const PAINTER_WATERCOLOR_CLICKS: [NodeId; 4] = [
 /// Concentration(Depth) / Edge Darkening(Edge) / Bleed(Spread) / Ragged Edge(Warp); **Brush** = Charge /
 /// Dilution / Pull; **Water** = Rewet(Wet) / Smudge / Pigment(Mix). Granulation lives in the Grain
 /// section; the full Paper slot (Size / Angle / Offset / Depth / params) in the Paper section.
-pub const PAINTER_WATERCOLOR_FIELDS: [NodeId; 24] = [
+pub const PAINTER_WATERCOLOR_FIELDS: [NodeId; 25] = [
+    PAINTER_WATERCOLOR_DRY_TIME,
     PAINTER_WATERCOLOR_EDGE,
     PAINTER_WATERCOLOR_SPREAD,
     PAINTER_WATERCOLOR_GRANULATION,

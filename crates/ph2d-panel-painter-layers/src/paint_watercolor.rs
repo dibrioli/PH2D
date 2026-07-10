@@ -16,6 +16,7 @@ use crate::number_field;
 use ph2d_editor_core::ids as core_ids;
 use ph2d_editor_core::paint::{fill_rounded_rect, paint_text, resolve, stroke_rounded_rect};
 use ph2d_editor_core::panel::PaintCtx;
+use ph2d_editor_core::widget::{SegmentedAdaptive, SegmentedOption, paint_segmented_adaptive};
 use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ColorToken, ROW_H_PX, Radius, Spacing, StrokeToken, TypeToken};
 use ph2d_tool_painter::BrushSettings;
@@ -28,6 +29,8 @@ const SPREAD_MAX: f32 = 48.0; // LITERAL-PX-OK: watercolor Bleed blur-radius max
 const DEPTH_MIN: f32 = 0.1; // LITERAL-PX-OK: Beer–Lambert optical-depth min (parameter domain)
 const DEPTH_MAX: f32 = 8.0; // LITERAL-PX-OK: Beer–Lambert optical-depth max (parameter domain)
 const WARP_MAX: f32 = 48.0; // LITERAL-PX-OK: watercolor Ragged-Edge displacement max (px; range pair of SPREAD_MAX)
+const DRY_TIME_MIN: f32 = 2.0; // LITERAL-PX-OK: Drying-Time slider min (seconds; matches DRY_TIME_MIN_S clamp)
+const DRY_TIME_MAX: f32 = 60.0; // LITERAL-PX-OK: Drying-Time slider max (seconds; matches DRY_TIME_MAX_S clamp)
 
 /// Wider label column for the Watercolor cards' descriptive technique names ("Edge Darkening",
 /// "Concentration", "Pigment") — the shared `number_field` column (70 px) clips them.
@@ -77,8 +80,82 @@ pub(crate) fn paint_watercolor_section(
     y = paint_wash_card(ctx, theme, x, content_w, y, &brush);
     y = paint_brush_card(ctx, theme, x, content_w, y, &brush);
     y = paint_water_card(ctx, theme, x, content_w, y, &brush);
+    y = paint_wetness_card(ctx, theme, x, content_w, y, &brush);
 
     y
+}
+
+/// Card 4: WETNESS — canvas-level moisture controls (doc 13 #9-#11), NOT brush params: the
+/// **Drying Time** slider (how long the paper stays mergeable) + **Dry** (end the wet session now,
+/// the bake becomes permanent) / **Wet** (re-moisten the canvas so strokes made now fuse). The
+/// slider reads `brush.dry_time_s` (carried in the display snapshot; it maps to the canvas rate).
+fn paint_wetness_card(
+    ctx: &mut PaintCtx,
+    theme: ph2d_tokens::Theme,
+    x: f32,
+    content_w: f32,
+    y: f32,
+    brush: &BrushSettings,
+) -> f32 {
+    let (ix, iw, mut ry, next_y) = card_frame(ctx, theme, x, content_w, y, "Wetness", 2);
+    ry = card_row(
+        ctx,
+        theme,
+        ix,
+        iw,
+        ry,
+        "Drying Time",
+        core_ids::PAINTER_WATERCOLOR_DRY_TIME,
+        brush.dry_time_s,
+        DRY_TIME_MIN,
+        DRY_TIME_MAX,
+        1.0, // whole-second scrub step
+        0,   // whole seconds
+    );
+    let _ = wetness_button_row(
+        ctx,
+        theme,
+        ix,
+        iw,
+        ry,
+        &[
+            (core_ids::PAINTER_WATERCOLOR_DRY_NOW, "Dry"),
+            (core_ids::PAINTER_WATERCOLOR_WET_NOW, "Wet"),
+        ],
+    );
+    next_y
+}
+
+/// A row of momentary action buttons (none selected) — the Dry/Wet canvas actions. Mirrors
+/// `paint_deform`'s `seg_group` (a `SegmentedAdaptive` reused as a button row); each option forwards
+/// a plain `Click` via the `PAINTER_WATERCOLOR_CLICKS` membership in the panel's `event.rs`.
+fn wetness_button_row(
+    ctx: &mut PaintCtx,
+    theme: ph2d_tokens::Theme,
+    x: f32,
+    content_w: f32,
+    y: f32,
+    options: &[(ph2d_a11y::NodeId, &str)],
+) -> f32 {
+    let opts: Vec<SegmentedOption> = options
+        .iter()
+        .map(|(id, label)| SegmentedOption::new(*id, *label))
+        .collect();
+    let seg = SegmentedAdaptive::new(ph2d_a11y::NodeId(0), "Canvas wetness actions", opts)
+        .selected(usize::MAX);
+    let scene = &mut *ctx.scene;
+    let text_system = &mut *ctx.text_system;
+    let (store, hit_index) = ctx.host.store_and_hit_index_mut();
+    let used = paint_segmented_adaptive(
+        &seg,
+        Rect::new(x, y, content_w, ROW_H_PX),
+        scene,
+        text_system,
+        theme,
+        store,
+        hit_index,
+    );
+    y + used + Spacing::Xs.px()
 }
 
 /// Card 1: WASH — how the stroke dries (the flat glaze + its dried character).

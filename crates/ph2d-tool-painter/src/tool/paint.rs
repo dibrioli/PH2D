@@ -468,6 +468,10 @@ pub(crate) struct PaintState {
     canvas_wet_rect: Option<(usize, usize, usize, usize)>,
     /// Fractional drying carry between whole-byte decay steps (heartbeat dt accumulator).
     canvas_wet_carry: f32,
+    /// EDGE-1 (doc 13 #11): paper drying RATE in wetness-bytes/second — CANVAS-level (not per-brush,
+    /// so it never varies by paint mode). The Wetness card's Drying-Time slider drives it
+    /// (`set_dry_time_s`, seconds → `255/seconds`); default `CANVAS_WET_DRY_DEFAULT` (~10 s).
+    dry_rate_per_s: f32,
     /// EDGE-1 per-stroke style (doc 13 topo): session param table + per-pixel owner map — an
     /// older wash keeps ITS look on the union re-bake ([`watercolor_field::WetSessionStyles`]).
     wet_styles: watercolor_field::WetSessionStyles,

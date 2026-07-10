@@ -23,6 +23,8 @@ pub(crate) mod fx_params;
 #[cfg(feature = "panel-audio-editor")]
 mod fx_params_table;
 #[cfg(feature = "panel-audio-editor")]
+pub(crate) mod fx_presets;
+#[cfg(feature = "panel-audio-editor")]
 use editor::AudioEditorRuntime;
 mod signals;
 use signals::{blip_loop, pluck_loop, sine_tone, swell_loop};

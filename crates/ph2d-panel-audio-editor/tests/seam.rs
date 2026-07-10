@@ -12,11 +12,13 @@ use ph2d_panel_audio_editor::state::AudioEditorState;
 use ph2d_panel_audio_editor::{
     AEDIT_FADE_IN, AEDIT_FX_ADD, AEDIT_FX_APPLY, AEDIT_FX_BYPASS, AEDIT_FX_CANCEL, AEDIT_FX_DOWN,
     AEDIT_FX_NEXT, AEDIT_FX_P0, AEDIT_FX_PREV, AEDIT_FX_REMOVE, AEDIT_FX_RESET, AEDIT_FX_S0_ON,
-    AEDIT_FX_S1, AEDIT_FX_UP, AEDIT_LOAD, AEDIT_LOOP, AEDIT_NORMALIZE, AEDIT_PLAY, AEDIT_SILENCE,
-    AEDIT_STOP, AEDIT_TRIM, AudioEditCmd, AudioEditorPanel, MAX_FX_STAGES, clear_fx_dirty,
-    fx_bypass, fx_chain, fx_dirty, fx_sel, fx_sel_stage, looping, reset_fx_chain,
-    set_fx_kind_defaults, set_fx_kind_names, set_has_selection, take_edit_cmd, take_load,
-    take_play_pause, take_stop,
+    AEDIT_FX_S1, AEDIT_FX_UP, AEDIT_LOAD, AEDIT_LOOP, AEDIT_NORMALIZE, AEDIT_PLAY,
+    AEDIT_PRESET_APPLY, AEDIT_PRESET_LOAD, AEDIT_PRESET_NEXT, AEDIT_PRESET_PREV, AEDIT_PRESET_SAVE,
+    AEDIT_SILENCE, AEDIT_STOP, AEDIT_TRIM, AudioEditCmd, AudioEditorPanel, MAX_FX_STAGES,
+    clear_fx_dirty, fx_bypass, fx_chain, fx_dirty, fx_sel, fx_sel_stage, looping, preset_sel,
+    reset_fx_chain, set_fx_kind_defaults, set_fx_kind_names, set_has_selection, set_preset_names,
+    take_apply_preset, take_edit_cmd, take_load, take_load_preset, take_play_pause,
+    take_save_preset, take_stop,
 };
 use ph2d_ui_testkit::MockPanelHost;
 
@@ -396,4 +398,50 @@ fn loop_click_toggles_looping() {
         before,
         "Loop click never flipped the looping flag — the AEDIT_LOOP arm is dead"
     );
+}
+
+/// The preset selector must cycle over the factory names the shell published, and
+/// Apply must arm the "load this preset" one-shot — WITHOUT the panel touching the
+/// chain itself (the shell owns the factory table).
+#[test]
+fn preset_selector_cycles_and_apply_arms_its_intent() {
+    let mut host = MockPanelHost::with_panel::<AudioEditorPanel>();
+    let mut state = AudioEditorState;
+    set_preset_names(&["Voice Cleanup", "Telephone", "Master Bus"]);
+    let _ = take_apply_preset();
+
+    let start = preset_sel();
+    host.apply_panel_event::<AudioEditorPanel>(&mut state, WidgetEvent::Click(AEDIT_PRESET_NEXT));
+    assert_eq!(
+        preset_sel(),
+        (start + 1) % 3,
+        "Next did not advance the preset"
+    );
+    host.apply_panel_event::<AudioEditorPanel>(&mut state, WidgetEvent::Click(AEDIT_PRESET_PREV));
+    assert_eq!(preset_sel(), start, "Prev did not step back");
+
+    // Browsing must NOT arm an apply — otherwise arrowing the list would keep
+    // overwriting the chain.
+    assert!(!take_apply_preset(), "cycling armed an apply");
+    host.apply_panel_event::<AudioEditorPanel>(&mut state, WidgetEvent::Click(AEDIT_PRESET_APPLY));
+    assert!(
+        take_apply_preset(),
+        "Apply click never armed the load-preset intent"
+    );
+    assert!(!take_apply_preset(), "the intent is one-shot");
+}
+
+/// Save and Load must arm their file-dialog one-shots through the seam — a dead arm
+/// leaves the button painted and the user's chain unsaveable.
+#[test]
+fn preset_save_and_load_arm_their_file_intents() {
+    let mut host = MockPanelHost::with_panel::<AudioEditorPanel>();
+    let mut state = AudioEditorState;
+    let _ = take_save_preset();
+    let _ = take_load_preset();
+
+    host.apply_panel_event::<AudioEditorPanel>(&mut state, WidgetEvent::Click(AEDIT_PRESET_SAVE));
+    assert!(take_save_preset(), "Save click never armed the save intent");
+    host.apply_panel_event::<AudioEditorPanel>(&mut state, WidgetEvent::Click(AEDIT_PRESET_LOAD));
+    assert!(take_load_preset(), "Load click never armed the load intent");
 }

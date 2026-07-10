@@ -262,11 +262,44 @@ impl crate::App {
                 // normals, so the panel can seed a fresh stage transparent) BEFORE
                 // reading the chain — `fx_chain()` materializes its first stage from
                 // exactly those defaults.
-                use crate::audio::fx_params;
+                use crate::audio::{fx_params, fx_presets};
                 ed::set_fx_kind_names(&fx_params::kind_names());
                 ed::set_fx_kind_defaults(&fx_params::all_default_norms());
                 let (kind, norms) = ed::fx_sel_stage();
                 ed::set_fx_param_views(&fx_params::views(kind, &norms));
+
+                // Chain presets. Publish the factory names for the selector, then
+                // drain its three one-shots: Apply loads a factory preset into the
+                // chain (it auditions like any edit); Save / Load are user preset
+                // FILES via a native dialog. `set_fx_chain` marks the chain dirty, so
+                // the audition + Apply-to-commit flow below carries them for free.
+                ed::set_preset_names(&fx_presets::factory_names());
+                if ed::take_apply_preset() {
+                    ed::set_fx_chain(fx_presets::factory_chain(ed::preset_sel()));
+                }
+                if ed::take_save_preset()
+                    && let Some(path) = rfd::FileDialog::new()
+                        .add_filter("PH2D audio preset", &["txt"])
+                        .set_file_name("chain-preset.txt")
+                        .save_file()
+                {
+                    let text = fx_presets::serialize_chain(&ed::fx_chain());
+                    if let Err(e) = std::fs::write(&path, text) {
+                        eprintln!("audio: preset save failed for {}: {e}", path.display());
+                    }
+                }
+                if ed::take_load_preset()
+                    && let Some(path) = rfd::FileDialog::new()
+                        .add_filter("PH2D audio preset", &["txt"])
+                        .pick_file()
+                {
+                    match std::fs::read_to_string(&path) {
+                        Ok(text) => ed::set_fx_chain(fx_presets::parse_chain(&text)),
+                        Err(e) => {
+                            eprintln!("audio: preset load failed for {}: {e}", path.display())
+                        }
+                    }
+                }
                 // Live audition: once the user touches the rack, render the whole
                 // chain over the (pristine) clip and hot-swap it into the sounding
                 // preview, so it is heard while the sliders move. Change-gated

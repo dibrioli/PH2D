@@ -122,7 +122,7 @@ pub(crate) fn norm_to_real(s: &FxParamSpec, norm: f32) -> f32 {
 }
 
 /// Real DSP value → slider normal (0..1). Inverse of [`norm_to_real`].
-fn real_to_norm(s: &FxParamSpec, real: f32) -> f32 {
+pub(crate) fn real_to_norm(s: &FxParamSpec, real: f32) -> f32 {
     let v = real.clamp(s.min, s.max);
     let n = if s.log {
         (v.ln() - s.min.ln()) / (s.max.ln() - s.min.ln())

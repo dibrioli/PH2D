@@ -248,6 +248,32 @@ abaixo é histórico — não re-investigue.
   - **Custo**: o envelope true-peak é ~3 fases × 12 taps × canais por frame. Clipe de
     minutos numa audição ao vivo pesa; medir antes de otimizar (o render é
     change-gated e a seleção escopa o alvo).
+- **W3 — Presets de cadeia (2026-07-09)**. Salvar/carregar combinações de efeitos.
+  - **Duas espécies, dois mecanismos.** **Factory presets** (curados, 7: Voice Cleanup ·
+    Podcast · Telephone · Lo-Fi · Master Bus · Wide & Bright · Gate + Glue) são
+    navegados no painel por um seletor `◀ nome ▶` + **Apply**. **User presets** são
+    ARQUIVOS: **Save/Load** abrem `rfd::FileDialog` (mesmo padrão do Load/Export do WAV).
+  - **Chaveado por NOME, nunca por índice.** A cadeia é `Vec<FxStage{kind,norms,enabled}>`
+    e `kind` é índice em `KINDS` — que os blocos 4 e 5 já reordenaram. Um preset que
+    guardasse índices viraria outro efeito. Factory specifica em **unidades reais por
+    label** (`ovr("Cutoff", 90.0)`) e resolve por nome+label; o formato de arquivo é
+    `Effect Name | on|off | n0 n1 …` (norms verbatim → round-trip exato).
+    `parse_chain` **pula** linha/nome desconhecido (um preset velho carrega o que dá).
+  - **Arquitetura:** `shells/desktop/src/audio/fx_presets.rs` (NOVO) dona a tabela +
+    serialização (só o shell tem o mapa nome↔kind). O painel ganhou `set_fx_chain`
+    (substitui a cadeia inteira, marca dirty → audita na hora, Apply commita) + o
+    módulo irmão `presets.rs` (estado do seletor + 3 intents one-shot). O bridge publica
+    os nomes e drena Apply/Save/Load. **Reusa 100% do fluxo de audição** — carregar um
+    preset é como girar um slider.
+  - **Testes:** `every_factory_stage_resolves` (todo nome+label existe — um typo dropava
+    o estágio em silêncio), `factory_presets_are_audible` (nenhum resolve pra cadeia
+    toda-neutra = no-op mudo), `user_preset_round_trips_including_disabled_stages`,
+    `parse_is_keyed_by_name_not_index`, `parse_skips_junk_and_unknown_effects`. +2 no
+    seam (seletor cicla / Apply arma sem tocar a cadeia; Save/Load armam os file-intents).
+  - ⚠️ **`snapshot.rs` está CRAVADO em 600/600 LOC** (o `set_fx_chain` encostou no teto).
+    Passa, mas o **próximo campo transborda** — a extração natural é mover o estado da
+    FX-chain (`FX_CHAIN` + add/remove/move/select/toggle) pra um irmão `fx_chain.rs`.
+    Vide [[project_painter_core_files_at_loc_cap]] e [[feedback_loc_cap_split_not_allowlist_and_fmt_reexpands]].
 - **W3 Bloco 5 — Gate/Expander + De-Esser (2026-07-09)**. Rack: 12 → **14 efeitos**.
   Ordem final: `Low-Pass · High-Pass · Peak EQ · Low Shelf · High Shelf · Compress ·
   Gate · De-Esser · Limiter · Saturate · Bitcrush · Widen · Reverb · Echo` (pinada

@@ -18,7 +18,8 @@ use crate::paint::{ClippedHits, button, toggle};
 use crate::{
     AEDIT_FX_ADD, AEDIT_FX_APPLY, AEDIT_FX_BYPASS, AEDIT_FX_CANCEL, AEDIT_FX_DOWN, AEDIT_FX_NEXT,
     AEDIT_FX_PARAMS, AEDIT_FX_PREV, AEDIT_FX_REMOVE, AEDIT_FX_RESET, AEDIT_FX_STAGE_ONS,
-    AEDIT_FX_STAGES, AEDIT_FX_UP, MAX_FX_STAGES, snapshot,
+    AEDIT_FX_STAGES, AEDIT_FX_UP, AEDIT_PRESET_APPLY, AEDIT_PRESET_LOAD, AEDIT_PRESET_NEXT,
+    AEDIT_PRESET_PREV, AEDIT_PRESET_SAVE, MAX_FX_STAGES, presets, snapshot,
 };
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::IconId;
@@ -36,6 +37,8 @@ use ph2d_vector::VectorScene;
 const ARROW_W: f32 = 26.0; // LITERAL-PX-OK: selector arrow button width (chrome)
 /// Buttons in the chain action row (Add · Remove · Up · Down).
 const ACTION_BUTTONS: f32 = 4.0; // LITERAL-PX-OK: fixed count, divides the row width
+/// Buttons in the preset action row (Apply · Save · Load).
+const PRESET_BUTTONS: f32 = 3.0; // LITERAL-PX-OK: fixed count, divides the row width
 
 /// The painter's shared borrows, bundled so each section fits one argument list.
 struct Ctx<'a, 'h> {
@@ -65,10 +68,76 @@ pub(crate) fn paint_fx_section(
         theme,
         hit_index,
     };
+    let y = paint_presets(y, x, w, loaded, row_h, ctx);
     let y = paint_selector(y, x, w, loaded, row_h, ctx);
     let y = paint_params(y, x, w, loaded, ctx);
     let y = paint_chain(y, x, w, loaded, row_h, ctx);
     paint_commit_row(y, x, w, loaded, row_h, ctx)
+}
+
+/// The preset row: `◀ Factory preset ▶` over `Apply · Save · Load`. Apply loads the
+/// selected factory preset into the chain (it auditions at once); Save / Load are
+/// user preset **files** via a native dialog — the OS browser is their picker, so no
+/// in-panel list is needed. Sits above the effect selector: a preset is a starting
+/// point you then tune.
+fn paint_presets(mut y: f32, x: f32, w: f32, loaded: bool, row_h: f32, ctx: &mut Ctx) -> f32 {
+    let gap = Spacing::Sm.px();
+    let has_presets = presets::preset_count() > 0;
+    button(
+        Rect::new(x, y, ARROW_W, row_h),
+        "\u{25c0}",
+        has_presets,
+        AEDIT_PRESET_PREV,
+        ctx.scene,
+        ctx.text_system,
+        ctx.theme,
+        ctx.hit_index,
+    );
+    let name_x = x + ARROW_W + gap;
+    let name_w = (w - 2.0 * (ARROW_W + gap)).max(1.0);
+    paint_text_centered(
+        ctx.text_system,
+        ctx.scene,
+        &presets::preset_name(),
+        Rect::new(name_x, y, name_w, row_h),
+        TypeToken::Sm.px(),
+        resolve(text_tone(has_presets), ctx.theme),
+    );
+    button(
+        Rect::new(x + w - ARROW_W, y, ARROW_W, row_h),
+        "\u{25b6}",
+        has_presets,
+        AEDIT_PRESET_NEXT,
+        ctx.scene,
+        ctx.text_system,
+        ctx.theme,
+        ctx.hit_index,
+    );
+    y += row_h + gap;
+
+    // Apply (factory) · Save · Load (files). Apply needs a preset to load; Save/Load
+    // need a clip loaded, like every other file action.
+    let bw = ((w - gap * (PRESET_BUTTONS - 1.0)) / PRESET_BUTTONS).max(1.0);
+    for (i, (label, enabled, id)) in [
+        ("Apply", has_presets, AEDIT_PRESET_APPLY),
+        ("Save", loaded, AEDIT_PRESET_SAVE),
+        ("Load", loaded, AEDIT_PRESET_LOAD),
+    ]
+    .into_iter()
+    .enumerate()
+    {
+        button(
+            Rect::new(x + (bw + gap) * i as f32, y, bw, row_h),
+            label,
+            enabled,
+            id,
+            ctx.scene,
+            ctx.text_system,
+            ctx.theme,
+            ctx.hit_index,
+        );
+    }
+    y + row_h + Spacing::Md.px()
 }
 
 /// `◀ | effect name | ⟲ | ▶` — sets the SELECTED stage's kind. The Reset icon is

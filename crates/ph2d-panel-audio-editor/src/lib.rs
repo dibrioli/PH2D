@@ -20,6 +20,7 @@ mod event;
 mod paint;
 mod paint_fx;
 mod populate;
+pub mod presets;
 pub mod snapshot;
 pub mod state;
 
@@ -133,6 +134,20 @@ pub const AEDIT_FX_UP: NodeId = hash_node_id("audio_editor_fx_up");
 pub const AEDIT_FX_DOWN: NodeId = hash_node_id("audio_editor_fx_down");
 /// Global A/B: mute the whole chain and hear/see the dry clip, without losing it.
 pub const AEDIT_FX_BYPASS: NodeId = hash_node_id("audio_editor_fx_bypass");
+
+// Chain presets (W3) — a `◀ name ▶` selector over the factory presets, Apply to load
+// the selected one into the chain, and Save/Load for user preset files.
+/// Previous factory preset in the selector.
+pub const AEDIT_PRESET_PREV: NodeId = hash_node_id("audio_editor_preset_prev");
+/// Next factory preset in the selector.
+pub const AEDIT_PRESET_NEXT: NodeId = hash_node_id("audio_editor_preset_next");
+/// Load the selected factory preset into the chain (auditions immediately).
+pub const AEDIT_PRESET_APPLY: NodeId = hash_node_id("audio_editor_preset_apply");
+/// Save the current chain to a user preset file (native dialog).
+pub const AEDIT_PRESET_SAVE: NodeId = hash_node_id("audio_editor_preset_save");
+/// Load a user preset file into the chain (native dialog).
+pub const AEDIT_PRESET_LOAD: NodeId = hash_node_id("audio_editor_preset_load");
+
 /// Parameter slider 0.
 pub const AEDIT_FX_P0: NodeId = hash_node_id("audio_editor_fx_p0");
 /// Parameter slider 1.
@@ -277,6 +292,9 @@ pub use snapshot::reset_fx_chain;
 pub use snapshot::set_clip_name;
 /// Shell → panel: whether an audition is currently sounding (enables Cancel).
 pub use snapshot::set_fx_auditioning;
+/// Shell → panel: replace the whole chain (the preset-load path); it auditions at
+/// once and Apply commits it.
+pub use snapshot::set_fx_chain;
 /// Shell → panel: publish whether a waveform selection exists (range-op buttons).
 pub use snapshot::set_has_selection;
 /// Panel → shell: the pending edit command (one-shot; the shell applies it to the
@@ -302,3 +320,15 @@ pub use snapshot::{set_duration_secs, set_loaded, set_playing, set_position_secs
 /// a fresh or reset stage), and the selected stage's per-parameter
 /// `(label, formatted value)` pairs.
 pub use snapshot::{set_fx_kind_defaults, set_fx_kind_names, set_fx_param_views};
+
+// Chain presets (W3).
+/// Panel → shell: which factory preset the selector shows (the shell builds it).
+pub use presets::preset_sel;
+/// Shell → panel: publish the factory preset names the selector cycles.
+pub use presets::set_preset_names;
+/// Panel → shell: whether the user asked to apply the selected factory preset.
+pub use presets::take_apply_preset;
+/// Panel → shell: whether the user asked to load a user preset file (native dialog).
+pub use presets::take_load_preset;
+/// Panel → shell: whether the user asked to save the chain to a user preset file.
+pub use presets::take_save_preset;

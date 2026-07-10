@@ -6,8 +6,10 @@ use crate::{
     AEDIT_FX_APPLY, AEDIT_FX_BYPASS, AEDIT_FX_CANCEL, AEDIT_FX_DOWN, AEDIT_FX_NEXT,
     AEDIT_FX_PARAMS, AEDIT_FX_PREV, AEDIT_FX_REMOVE, AEDIT_FX_RESET, AEDIT_FX_STAGE_ONS,
     AEDIT_FX_STAGES, AEDIT_FX_UP, AEDIT_GAIN_DOWN, AEDIT_GAIN_UP, AEDIT_INVERT, AEDIT_LOAD,
-    AEDIT_LOOP, AEDIT_NORM_LUFS, AEDIT_NORMALIZE, AEDIT_PLAY, AEDIT_REDO, AEDIT_REVERSE,
-    AEDIT_SILENCE, AEDIT_STOP, AEDIT_TRIM, AEDIT_UNDO, AudioEditCmd, AudioEditorPanel, snapshot,
+    AEDIT_LOOP, AEDIT_NORM_LUFS, AEDIT_NORMALIZE, AEDIT_PLAY, AEDIT_PRESET_APPLY,
+    AEDIT_PRESET_LOAD, AEDIT_PRESET_NEXT, AEDIT_PRESET_PREV, AEDIT_PRESET_SAVE, AEDIT_REDO,
+    AEDIT_REVERSE, AEDIT_SILENCE, AEDIT_STOP, AEDIT_TRIM, AEDIT_UNDO, AudioEditCmd,
+    AudioEditorPanel, presets, snapshot,
 };
 use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::WidgetEvent;
@@ -91,6 +93,28 @@ pub(crate) fn apply_event(
         // Global A/B: mute the whole chain and hear the dry clip, keeping the chain.
         if id == AEDIT_FX_BYPASS {
             snapshot::toggle_fx_bypass();
+            return EventOutcome::Consumed;
+        }
+        // Chain presets. The selector just browses; Apply/Save/Load arm one-shots the
+        // shell drains (it owns the factory table + the effect-name ↔ kind mapping).
+        if id == AEDIT_PRESET_PREV {
+            presets::cycle_preset(-1);
+            return EventOutcome::Consumed;
+        }
+        if id == AEDIT_PRESET_NEXT {
+            presets::cycle_preset(1);
+            return EventOutcome::Consumed;
+        }
+        if id == AEDIT_PRESET_APPLY {
+            presets::request_apply_preset();
+            return EventOutcome::Consumed;
+        }
+        if id == AEDIT_PRESET_SAVE {
+            presets::request_save_preset();
+            return EventOutcome::Consumed;
+        }
+        if id == AEDIT_PRESET_LOAD {
+            presets::request_load_preset();
             return EventOutcome::Consumed;
         }
         // Chain rows: the eye toggles a stage in/out of the render, the row selects it.

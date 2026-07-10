@@ -229,6 +229,26 @@ pub fn reset_fx_chain() {
     FX_SLIDER_SYNC.with(|c| c.set(true));
 }
 
+/// Shell: **replace** the whole chain — the preset load path (a factory preset or a
+/// user file). Marks it dirty so it auditions immediately, exactly like tuning a
+/// slider; Apply then commits it. Clamped to [`MAX_FX_STAGES`]; an empty chain (a
+/// preset that resolved to nothing) falls back to one neutral stage so the rack is
+/// never left with nothing to edit.
+pub fn set_fx_chain(mut chain: Vec<FxStage>) {
+    chain.truncate(MAX_FX_STAGES);
+    FX_CHAIN.with(|c| {
+        let mut c = c.borrow_mut();
+        *c = chain;
+        if c.is_empty() {
+            c.push(neutral_stage(0));
+        }
+    });
+    FX_SEL.with(|c| c.set(0));
+    FX_BYPASS.with(|c| c.set(false));
+    FX_DIRTY.with(|c| c.set(true));
+    FX_SLIDER_SYNC.with(|c| c.set(true));
+}
+
 /// Panel: return the SELECTED stage's parameters to its kind's neutral defaults.
 /// Stays dirty if an audition is running — the shell simply re-renders the chain
 /// with this stage now transparent.

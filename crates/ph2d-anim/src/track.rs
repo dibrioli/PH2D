@@ -310,7 +310,38 @@ impl Track {
                 self.keys[i].t = self.keys[i].t + delta;
             }
         }
+        self.merge_moved_over_stationary(ids);
         self.resort();
+    }
+
+    /// After a move, a moved key that lands on a stationary key's exact time
+    /// **absorbs** it: the two become one, the moved key winning (its value and
+    /// interpolation stay). Overlapping keys must not silently stack two at one
+    /// instant.
+    ///
+    /// The move is rigid — one `delta` for every id in `ids` — so moved keys keep
+    /// their relative spacing and never collide with **each other**; a collision
+    /// is always a moved key meeting a key that stayed put. The moved one wins,
+    /// matching the duplicate-overwrite rule ([`Track::upsert_key`]).
+    fn merge_moved_over_stationary(&mut self, moved_ids: &[KeyId]) {
+        let moved_times: Vec<RationalTime> = moved_ids
+            .iter()
+            .filter_map(|&id| self.index_of(id).map(|i| self.keys[i].t))
+            .collect();
+        if moved_times.is_empty() {
+            return;
+        }
+        let mut i = 0;
+        while i < self.keys.len() {
+            let stationary = !moved_ids.contains(&self.ids[i]);
+            if stationary && moved_times.iter().any(|t| *t == self.keys[i].t) {
+                self.keys.remove(i);
+                self.ids.remove(i);
+            } else {
+                i += 1;
+            }
+        }
+        self.invalidate_cursor();
     }
 
     /// Scale each listed key's time about `pivot_seconds` by `factor`

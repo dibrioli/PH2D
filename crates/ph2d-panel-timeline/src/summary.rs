@@ -72,6 +72,18 @@ pub(crate) fn column_at(snap: &TimelineViewSnapshot, t_bits: u64) -> Option<Colu
     columns(snap).into_iter().find(|c| c.t_bits() == t_bits)
 }
 
+/// The `t_bits` handle of the column a given track key sits on — the bridge from
+/// a `Key` hit to a `SummaryKey` gesture when the column lock is on.
+pub(crate) fn key_t_bits(snap: &TimelineViewSnapshot, target: u64, key: u64) -> Option<u64> {
+    snap.tracks
+        .iter()
+        .find(|t| t.target.get() == target)?
+        .keys
+        .iter()
+        .find(|k| k.id.get() == key)
+        .map(|k| k.t_seconds.to_bits())
+}
+
 /// Interpret one gesture on a Summary diamond.
 ///
 /// Press makes the column the selection (Shift adds it to whatever is already

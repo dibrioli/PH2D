@@ -417,6 +417,10 @@ pub enum TimelineHitKind {
     /// A track row's expand/collapse twirl — a click opens that track's graph
     /// editor (`target` is its raw `AnimTarget`).
     Twirl { target: u64 },
+    /// The padlock on the Summary channel — a click toggles the column lock. When
+    /// locked (default), grabbing any single key grabs its whole time column;
+    /// unlocked, keys move independently. Panel-local view state, no payload.
+    SummaryLock,
     /// The vertical splitter between the track-name column and the time area;
     /// dragging it horizontally widens or narrows the names.
     LabelSplitter,

@@ -75,6 +75,11 @@ const HIT_PARITY_ALLOW: &[(&str, &str)] = &[
     // diamonds / resize grips, which this scan misses only because they are
     // registered from sibling files rather than `paint.rs`.
     ("ph2d-panel-timeline", "TIMELINE_LABEL_SPLIT"),
+    // Summary channel column-lock padlock: `store.register`-ed in
+    // `summary_paint.rs` as a `TimelineSurface` (kind `SummaryLock`) and toggled
+    // by the timeline-surface pointer path, not by widget events — same shape as
+    // `TIMELINE_LABEL_SPLIT`, so no `populate.rs` entry by design.
+    ("ph2d-panel-timeline", "TIMELINE_SUMMARY_LOCK"),
 ];
 
 /// Editor-core global registration files (hero chrome). Shared ids like panel

@@ -345,3 +345,93 @@ fn to_bezier_keeps_the_endpoints_and_the_ends_slopes() {
         "a cubic cannot be a bounce; the doc comment must stay honest"
     );
 }
+
+// ── move_keys merges overlapping keys (dope-sheet column drag) ────────────────
+
+#[test]
+fn moving_a_key_onto_another_merges_them_and_the_moved_one_wins() {
+    // Two keys at t = 0 (value 0) and t = 1 (value 10). Drag the first onto the
+    // second: they become ONE key at t = 1 carrying the MOVED key's value, not
+    // two stacked at one instant.
+    let mut tr = Track::new(vec![]);
+    let a = tr.insert_key(secs(0.0), AnimValue::Float(0.0), Interp::Hold);
+    let _b = tr.insert_key(secs(1.0), AnimValue::Float(10.0), Interp::Linear);
+    tr.move_keys(&[a], secs(1.0)); // a: 0 -> 1, onto b
+    assert_eq!(tr.len(), 1, "the two keys merged into one");
+    let ts: Vec<f64> = tr.keys().iter().map(|k| k.t.to_seconds()).collect();
+    assert_eq!(ts, vec![1.0]);
+    assert_eq!(as_f(tr.sample(1.0)), 0.0, "the MOVED key's value survived");
+    assert_eq!(
+        tr.key(a).map(|k| k.interp),
+        Some(Interp::Hold),
+        "and its interp"
+    );
+}
+
+#[test]
+fn a_move_that_lands_clear_of_every_other_key_merges_nothing() {
+    let mut tr = Track::new(vec![]);
+    let a = tr.insert_key(secs(0.0), AnimValue::Float(0.0), Interp::Linear);
+    let b = tr.insert_key(secs(1.0), AnimValue::Float(10.0), Interp::Linear);
+    tr.move_keys(&[a], secs(0.25)); // a -> 0.25, still short of b at 1.0
+    assert_eq!(tr.len(), 2);
+    assert!((tr.key(a).unwrap().t.to_seconds() - 0.25).abs() < 1e-9);
+    assert!((tr.key(b).unwrap().t.to_seconds() - 1.0).abs() < 1e-9);
+}
+
+#[test]
+fn a_rigid_group_move_never_merges_the_group_with_itself() {
+    // Three keys moved by one delta keep their spacing — none collide with each
+    // other, however far they travel.
+    let mut tr = Track::new(vec![]);
+    let a = tr.insert_key(secs(0.0), AnimValue::Float(0.0), Interp::Linear);
+    let b = tr.insert_key(secs(1.0), AnimValue::Float(10.0), Interp::Linear);
+    let c = tr.insert_key(secs(2.0), AnimValue::Float(20.0), Interp::Linear);
+    tr.move_keys(&[a, b, c], secs(5.0));
+    assert_eq!(tr.len(), 3, "the moved group stays three keys");
+    let ts: Vec<f64> = tr.keys().iter().map(|k| k.t.to_seconds()).collect();
+    assert_eq!(ts, vec![5.0, 6.0, 7.0]);
+}
+
+#[test]
+fn a_group_dragged_onto_another_group_merges_pairwise() {
+    // Columns {0,1} dragged right by 2 land on {2,3}: 0->2 and 1->3 each absorb
+    // the stationary key there. Four keys become two, moved values winning.
+    let mut tr = Track::new(vec![]);
+    let a = tr.insert_key(secs(0.0), AnimValue::Float(100.0), Interp::Linear);
+    let b = tr.insert_key(secs(1.0), AnimValue::Float(200.0), Interp::Linear);
+    tr.insert_key(secs(2.0), AnimValue::Float(0.0), Interp::Linear);
+    tr.insert_key(secs(3.0), AnimValue::Float(0.0), Interp::Linear);
+    tr.move_keys(&[a, b], secs(2.0));
+    assert_eq!(tr.len(), 2);
+    assert_eq!(
+        as_f(tr.sample(2.0)),
+        100.0,
+        "moved a overwrote the key at 2"
+    );
+    assert_eq!(
+        as_f(tr.sample(3.0)),
+        200.0,
+        "moved b overwrote the key at 3"
+    );
+}
+
+#[test]
+fn a_frame_exact_move_merges_where_to_seconds_would_have_missed() {
+    // The merge uses exact RationalTime equality, so a frame-snapped drag lands
+    // ON the target frame — the microsecond drift `to_seconds` leaves would have
+    // left two keys a hair apart, unmerged.
+    let mut tr = Track::new(vec![]);
+    let a = tr.insert_key(
+        RationalTime::from_frame(0, 24),
+        AnimValue::Float(1.0),
+        Interp::Linear,
+    );
+    let _b = tr.insert_key(
+        RationalTime::from_frame(2, 24),
+        AnimValue::Float(2.0),
+        Interp::Linear,
+    );
+    tr.move_keys(&[a], RationalTime::from_frame(2, 24)); // 0 -> frame 2, exactly
+    assert_eq!(tr.len(), 1, "exact frame equality merged them");
+}

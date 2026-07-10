@@ -87,6 +87,11 @@ pub struct TimelinePanelState {
     /// Tracks (by raw `AnimTarget`) whose graph editor is expanded. Panel-local
     /// view state — never undoable, never saved.
     pub expanded: Vec<u64>,
+    /// The Summary channel's column lock, toggled by its padlock. **Closed by
+    /// default:** grabbing any single key grabs its whole time column, so keys
+    /// stay vertically aligned. Open it to move keys independently. Either way,
+    /// grabbing the Summary diamond itself always moves the whole column.
+    pub column_lock: bool,
     /// In-progress bézier-handle drag in an expanded track's graph.
     pub handle_drag: Option<HandleDrag>,
     /// In-progress anchor drag in an expanded track's graph (W3.E5) — the
@@ -257,6 +262,7 @@ impl Default for TimelinePanelState {
             graph_h: crate::graph::GRAPH_H_DEFAULT,
             graph_resize: None,
             expanded: Vec::new(),
+            column_lock: true,
             handle_drag: None,
             anchor_drag: None,
             summary_press: None,

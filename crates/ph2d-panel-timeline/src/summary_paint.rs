@@ -8,16 +8,18 @@
 //! ring when **every** key beneath it is selected; a half-selected column that
 //! looked grabbed would lie about what a drag will move.
 
+use ph2d_editor_core::icons::IconId;
 use ph2d_editor_core::interaction::{InteractiveState, TimelineHitKind};
-use ph2d_editor_core::paint::{fill_rounded_rect, resolve};
+use ph2d_editor_core::paint::{fill_rounded_rect, paint_icon, resolve};
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::zones::Rect;
 use ph2d_timeline::TimelineViewSnapshot;
-use ph2d_tokens::{ColorToken, ROW_H_PX, Radius, Spacing, Theme, TypeToken};
+use ph2d_tokens::{ColorToken, ROW_H_PX, Radius, Spacing, StrokeToken, Theme, TypeToken};
 
 use crate::geom;
 use crate::graph::TimeView;
 use crate::ids;
+use crate::state::TimelinePanelState;
 use crate::summary::{Column, columns};
 use crate::tracks::paint_diamond;
 
@@ -35,19 +37,23 @@ const RULE_H: f32 = 1.0; // LITERAL-PX-OK: summary row bottom rule
 /// the `panel.timeline.*` i18n sweep with the rest of this panel's strings.
 const SUMMARY_LABEL: &str = "Summary";
 
-/// Paint the Summary channel and register one grab target per column. A no-op
-/// when nothing is bound — an empty timeline shows no master row.
+/// Side of the square padlock button at the right of the Summary label.
+const LOCK_SIZE: f32 = 14.0; // LITERAL-PX-OK: summary column-lock padlock button side
+
+/// Paint the Summary channel and register one grab target per column, plus the
+/// column-lock padlock. A no-op when nothing is bound — an empty timeline shows
+/// no master row.
 pub(crate) fn paint(
     ctx: &mut PaintCtx,
     theme: Theme,
     g: &geom::Geom,
     view: TimeView,
     preview_dx: f32,
-    scroll_y: f32,
+    state: &TimelinePanelState,
     snap: &TimelineViewSnapshot,
 ) {
     let region = g.rows;
-    let Some((y, h)) = geom::summary_band(snap, region.y, scroll_y) else {
+    let Some((y, h)) = geom::summary_band(snap, region.y, state.scroll_y) else {
         return;
     };
     // Scrolled out from under the ruler: neither paint nor leave hits behind.
@@ -67,7 +73,16 @@ pub(crate) fn paint(
         Radius::Xs.px(),
         resolve(ColorToken::BorderEmph, theme),
     );
+    // The padlock sits at the right end of the label column; the label text is
+    // elided to leave room for it, so a wide "Summary" never runs under it.
+    let lock = Rect::new(
+        region.x + g.label_w - LOCK_SIZE - Spacing::Sm.px(),
+        y + (ROW_H_PX - LOCK_SIZE) * 0.5,
+        LOCK_SIZE,
+        LOCK_SIZE,
+    );
     let font = TypeToken::Sm.px();
+    let label_budget = (lock.x - region.x - Spacing::Sm.px() * 2.0).max(0.0);
     ph2d_editor_core::text_elide::paint_text_elided(
         ctx.text_system,
         ctx.scene,
@@ -75,9 +90,10 @@ pub(crate) fn paint(
         region.x + Spacing::Sm.px(),
         y + (ROW_H_PX - font) * 0.5,
         font,
-        (g.label_w - Spacing::Sm.px() * 2.0).max(0.0),
+        label_budget,
         resolve(ColorToken::Text2, theme),
     );
+    paint_lock(ctx, theme, lock, state.column_lock);
 
     let lane = Rect::new(
         view.time_x,
@@ -88,6 +104,36 @@ pub(crate) fn paint(
     for c in columns(snap) {
         paint_column(ctx, theme, &c, view, preview_dx, row, lane);
     }
+}
+
+/// The column-lock padlock at the right of the Summary label: closed when the
+/// lock is on (the default — keys stay column-bound), open when off. It reads as
+/// accent when locked so the "on" state is the visible one, and registers a
+/// `SummaryLock` surface hit a click toggles.
+fn paint_lock(ctx: &mut PaintCtx, theme: Theme, rect: Rect, locked: bool) {
+    let (icon, tint) = if locked {
+        (IconId::Lock, ColorToken::Accent)
+    } else {
+        (IconId::Unlock, ColorToken::Text3)
+    };
+    paint_icon(
+        ctx.scene,
+        icon,
+        rect,
+        resolve(tint, theme),
+        StrokeToken::Default.px(),
+    );
+    ctx.host.store_mut().register(
+        ids::TIMELINE_SUMMARY_LOCK,
+        InteractiveState::TimelineSurface {
+            parent: ids::TIMELINE_PANEL,
+            kind: TimelineHitKind::SummaryLock,
+            canvas: rect,
+        },
+    );
+    ctx.host
+        .hit_index_mut()
+        .register(ids::TIMELINE_SUMMARY_LOCK, rect);
 }
 
 /// One column: its diamond at the shared time, and the grab target under it.

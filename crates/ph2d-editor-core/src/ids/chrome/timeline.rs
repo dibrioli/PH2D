@@ -53,6 +53,9 @@ pub const TIMELINE_LANES: NodeId = hash_node_id("timeline.lanes");
 pub const TIMELINE_SCROLLBAR: NodeId = hash_node_id("timeline.scrollbar");
 /// Draggable splitter between the track-name column and the time area.
 pub const TIMELINE_LABEL_SPLIT: NodeId = hash_node_id("timeline.label_split");
+/// Padlock on the Summary channel — toggles the column lock (see
+/// [`crate::interaction::TimelineHitKind::SummaryLock`]).
+pub const TIMELINE_SUMMARY_LOCK: NodeId = hash_node_id("timeline.summary_lock");
 
 // ── Resize grippers (4 edges + 4 corners) ────────────────────────────────────
 /// Left edge.

@@ -68,33 +68,64 @@ pub(crate) fn process(
         match g.button {
             // Middle-drag pans both axes, anywhere in the dope sheet (Blender).
             PointerButton::Middle => view::apply_pan_drag(state, px_per_s, g),
-            PointerButton::Primary => match g.kind {
-                TimelineHitKind::Key { target, key } => {
-                    key_drag::apply_key(
-                        state,
-                        px_per_s,
-                        snap,
-                        ph2d_timeline::SelectedKey::new(target, key),
-                        g,
-                    );
-                }
-                TimelineHitKind::SummaryKey { t_bits } => {
-                    summary::apply_gesture(state, px_per_s, snap, t_bits, g);
-                }
-                TimelineHitKind::Twirl { target } => apply_twirl(state, target, g),
-                TimelineHitKind::LabelSplitter => resize::apply_label_drag(state, g),
-                TimelineHitKind::GraphResize => resize::apply_graph_resize(state, g),
-                TimelineHitKind::CurveAnchor { target, key } => {
-                    anchor_drag::apply_gesture(state, px_per_s, snap, target, key, g);
-                }
-                TimelineHitKind::CurveHandle { target, key, which } => {
-                    crate::graph::apply_handle_gesture(state, target, key, which, g);
-                }
-                TimelineHitKind::Lane => box_select::apply_lane(state, g),
-                TimelineHitKind::ResizeEdge { .. } => unreachable!("handled above"),
-            },
+            PointerButton::Primary => dispatch_primary(state, px_per_s, snap, g),
             // Secondary is reserved (future context menu).
             PointerButton::Secondary => {}
+        }
+    }
+}
+
+/// Route one Primary-button gesture to the machine that owns its hit kind.
+/// Shared with the tests so the lock routing below is exercised by the same code
+/// the panel runs.
+pub(crate) fn dispatch_primary(
+    state: &mut TimelinePanelState,
+    px_per_s: f64,
+    snap: &TimelineViewSnapshot,
+    g: TimelineGesture,
+) {
+    match g.kind {
+        // Column lock (default): a press on a track key is a press on its whole
+        // time column, so grabbing one key grabs the vertical group. Unlocked, it
+        // moves alone. Either way, the Summary diamond itself always moves the
+        // column (`SummaryKey`, below).
+        TimelineHitKind::Key { target, key } => {
+            if let Some(t_bits) = state
+                .column_lock
+                .then(|| summary::key_t_bits(snap, target, key))
+                .flatten()
+            {
+                summary::apply_gesture(state, px_per_s, snap, t_bits, g);
+            } else {
+                key_drag::apply_key(
+                    state,
+                    px_per_s,
+                    snap,
+                    ph2d_timeline::SelectedKey::new(target, key),
+                    g,
+                );
+            }
+        }
+        TimelineHitKind::SummaryKey { t_bits } => {
+            summary::apply_gesture(state, px_per_s, snap, t_bits, g);
+        }
+        TimelineHitKind::SummaryLock => {
+            if matches!(g.phase, GesturePhase::Click) {
+                state.column_lock = !state.column_lock;
+            }
+        }
+        TimelineHitKind::Twirl { target } => apply_twirl(state, target, g),
+        TimelineHitKind::LabelSplitter => resize::apply_label_drag(state, g),
+        TimelineHitKind::GraphResize => resize::apply_graph_resize(state, g),
+        TimelineHitKind::CurveAnchor { target, key } => {
+            anchor_drag::apply_gesture(state, px_per_s, snap, target, key, g);
+        }
+        TimelineHitKind::CurveHandle { target, key, which } => {
+            crate::graph::apply_handle_gesture(state, target, key, which, g);
+        }
+        TimelineHitKind::Lane => box_select::apply_lane(state, g),
+        TimelineHitKind::ResizeEdge { .. } => {
+            unreachable!("resize edges are handled before the button match")
         }
     }
 }
@@ -152,34 +183,15 @@ mod tests {
         }
     }
 
-    // Run the machine directly (bypassing the store drain, which needs a host).
+    // Run the real Primary router (bypassing the store drain, which needs a host)
+    // so these exercise the same dispatch the panel does, lock routing and all.
     fn feed(
         state: &mut TimelinePanelState,
         g: TimelineGesture,
         px_per_s: f64,
         snap: &TimelineViewSnapshot,
     ) {
-        match g.kind {
-            TimelineHitKind::Key { target, key } => {
-                key_drag::apply_key(
-                    state,
-                    px_per_s,
-                    snap,
-                    ph2d_timeline::SelectedKey::new(target, key),
-                    g,
-                );
-            }
-            TimelineHitKind::Lane => box_select::apply_lane(state, g),
-            TimelineHitKind::Twirl { target } => apply_twirl(state, target, g),
-            TimelineHitKind::SummaryKey { t_bits } => {
-                summary::apply_gesture(state, px_per_s, snap, t_bits, g);
-            }
-            TimelineHitKind::LabelSplitter
-            | TimelineHitKind::GraphResize
-            | TimelineHitKind::CurveAnchor { .. }
-            | TimelineHitKind::CurveHandle { .. }
-            | TimelineHitKind::ResizeEdge { .. } => unreachable!("not fed here"),
-        }
+        dispatch_primary(state, px_per_s, snap, g);
     }
 
     #[test]
@@ -247,5 +259,163 @@ mod tests {
         st.toggle_expanded(3);
         assert!(st.handle_drag.is_none());
         assert_eq!(state::drain_intents(), vec![TimelineIntent::EndEdit]);
+    }
+
+    // ── column lock: press a key, grab its whole column (or not) ─────────────
+
+    /// Two tracks, each with a key at t = 0, so pressing either key's diamond
+    /// finds a two-key column. Track 0 key 1; track 5 key 7.
+    fn two_key_column() -> TimelineViewSnapshot {
+        use ph2d_timeline::{AnimTarget, Interp, KeyId, KeyView, PropKind, TrackView};
+        let k = |id: u64| KeyView {
+            id: KeyId::new(id),
+            t_seconds: 0.0,
+            value: 0.0,
+            interp: Interp::Linear,
+            selected: false,
+        };
+        TimelineViewSnapshot {
+            fps: 60.0,
+            frame_snap: true,
+            tracks: vec![
+                TrackView {
+                    target: AnimTarget::new(0),
+                    prop: PropKind::TranslationX,
+                    entity: 1,
+                    missing: false,
+                    keys: vec![k(1)],
+                },
+                TrackView {
+                    target: AnimTarget::new(5),
+                    prop: PropKind::Opacity,
+                    entity: 1,
+                    missing: false,
+                    keys: vec![k(7)],
+                },
+            ],
+            ..snap()
+        }
+    }
+
+    #[test]
+    fn locked_pressing_a_key_grabs_its_whole_column() {
+        // The default. Pressing one key at t = 0 selects EVERY key at t = 0, so a
+        // drag moves the vertical group — routed through the Summary machine.
+        let mut st = TimelinePanelState::default();
+        assert!(st.column_lock, "closed by default");
+        let key = TimelineHitKind::Key { target: 0, key: 1 };
+        feed(
+            &mut st,
+            gesture(key, GesturePhase::Begin, 10.0, false),
+            120.0,
+            &two_key_column(),
+        );
+        assert_eq!(
+            state::drain_intents(),
+            vec![
+                TimelineIntent::BeginEdit,
+                TimelineIntent::ClearSelection,
+                TimelineIntent::AddToSelection(ph2d_timeline::SelectedKey::new(0, 1)),
+                TimelineIntent::AddToSelection(ph2d_timeline::SelectedKey::new(5, 7)),
+            ],
+            "locked: the whole column, not just the pressed key"
+        );
+    }
+
+    #[test]
+    fn unlocked_pressing_a_key_grabs_only_that_key() {
+        let mut st = TimelinePanelState {
+            column_lock: false,
+            ..TimelinePanelState::default()
+        };
+        let key = TimelineHitKind::Key { target: 0, key: 1 };
+        feed(
+            &mut st,
+            gesture(key, GesturePhase::Begin, 10.0, false),
+            120.0,
+            &two_key_column(),
+        );
+        assert_eq!(
+            state::drain_intents(),
+            vec![
+                TimelineIntent::BeginEdit,
+                TimelineIntent::SelectSingle(ph2d_timeline::SelectedKey::new(0, 1)),
+            ],
+            "unlocked: just the pressed key — the other track stays put"
+        );
+    }
+
+    #[test]
+    fn a_locked_press_on_a_key_with_no_column_falls_back_to_the_key_itself() {
+        // Snapshot lag: the pressed key isn't in the published snapshot. Rather
+        // than doing nothing, treat it as a plain key press.
+        let mut st = TimelinePanelState::default();
+        let key = TimelineHitKind::Key { target: 9, key: 9 };
+        feed(
+            &mut st,
+            gesture(key, GesturePhase::Begin, 10.0, false),
+            120.0,
+            &two_key_column(),
+        );
+        assert_eq!(
+            state::drain_intents(),
+            vec![
+                TimelineIntent::BeginEdit,
+                TimelineIntent::SelectSingle(ph2d_timeline::SelectedKey::new(9, 9)),
+            ],
+        );
+    }
+
+    #[test]
+    fn clicking_the_padlock_toggles_the_column_lock() {
+        let mut st = TimelinePanelState::default();
+        assert!(st.column_lock);
+        feed(
+            &mut st,
+            gesture(
+                TimelineHitKind::SummaryLock,
+                GesturePhase::Click,
+                0.0,
+                false,
+            ),
+            120.0,
+            &snap(),
+        );
+        assert!(!st.column_lock, "one click opens it");
+        feed(
+            &mut st,
+            gesture(
+                TimelineHitKind::SummaryLock,
+                GesturePhase::Click,
+                0.0,
+                false,
+            ),
+            120.0,
+            &snap(),
+        );
+        assert!(st.column_lock, "another closes it");
+        assert_eq!(
+            state::drain_intents(),
+            vec![],
+            "the lock is view state, not an edit"
+        );
+    }
+
+    #[test]
+    fn pressing_the_padlock_without_releasing_does_not_toggle() {
+        // Only a Click counts, so a stray drag from the padlock leaves it alone.
+        let mut st = TimelinePanelState::default();
+        feed(
+            &mut st,
+            gesture(
+                TimelineHitKind::SummaryLock,
+                GesturePhase::Begin,
+                0.0,
+                false,
+            ),
+            120.0,
+            &snap(),
+        );
+        assert!(st.column_lock, "a press is not a toggle");
     }
 }

@@ -235,12 +235,11 @@ impl PainterTool {
         let paper_img = self.paint.paper_image.as_ref().map(|i| i.as_mask());
         // Precompute each slot's Angle rotation basis ONCE (the per-degree walk is not per-pixel-cheap).
         let paper_rot = ph2d_painter_brush::texture::angle_basis(paper_tex.angle_deg);
-        // The Granulation map is the **Grain** slot (`brush.texture`) — used only when "Same as Paper" is
-        // off; otherwise the granulation settles into the paper's own tooth.
+        // The Granulation map is the **Grain** slot (`brush.texture`) — used only when "Same as Paper"
+        // is off; otherwise the granulation settles into the paper's own tooth. (`gran_own_map` +
+        // `gran_rot` moved into `SubstrateSession`, which resolves them per owner — #13.)
         let gran_tex = brush.texture;
-        let gran_own_map = !brush.granulation_use_paper && gran_tex.is_active();
         let gran_img = self.paint.texture_image.as_ref().map(|i| i.as_mask());
-        let gran_rot = ph2d_painter_brush::texture::angle_basis(gran_tex.angle_deg);
         let paper_depth = brush.paper_depth.clamp(0.0, 1.0);
         // Fallback pigment when the colour buffer is faint (straight brush colour → sRGB bytes).
         let fallback = [
@@ -278,7 +277,20 @@ impl PainterTool {
             spread_thin,
             core_r: core_r as u16,
             spread_px: spread as u16,
+            paper: paper_tex,
+            paper_depth,
+            granulation_use_paper: brush.granulation_use_paper,
+            texture: gran_tex,
         };
+        // #13 (doc 14): per-owner SUBSTRATE. Single-substrate sessions resolve to the globals
+        // (byte-identical + cache live); a multi-substrate session (paper/grain changed mid-session)
+        // resolves paper/grain per OWNER so a baked wash keeps ITS substrate (kills "aplica a tudo").
+        let substrate_session = watercolor_rewet_px::SubstrateSession::build(
+            &cur_style,
+            style_table,
+            paper_img,
+            gran_img,
+        );
         // Raw per-pixel soak for the granulation settle (GRAN-1) — read-only in the parallel loop.
         let soak_buf = &self.paint.wet_soak;
         let water_buf = &self.paint.stroke_water;
@@ -291,8 +303,10 @@ impl PainterTool {
         // Substrate memoisation (perf, byte-identical): `paper_h` is canvas-anchored, so compute
         // once per canvas pixel ([`paper_h_px`], the loop's exact former expression) and reuse
         // across frames + the bake; pre-pass fills misses serially so the parallel loop reads
-        // immutably. Un-sized cache (defensive) ⇒ the loop falls back to the direct call.
-        let use_substrate_cache = self.paint.wet_substrate.len() == n;
+        // immutably. Un-sized cache (defensive) ⇒ the loop falls back to the direct call. Multi-
+        // substrate ⇒ the cache is invalid (it assumes ONE paper); disable it so the loop resolves
+        // paper/grain per owner (see `SubstrateSession`).
+        let use_substrate_cache = self.paint.wet_substrate.len() == n && !substrate_session.multi();
         if use_substrate_cache {
             let substrate = &mut self.paint.wet_substrate;
             for by in 0..bh {
@@ -403,44 +417,12 @@ impl PainterTool {
                     // negativo (franja, `inner > cw`) EMPALIDECE (o pigmento da borda MIGROU do
                     // interior; era clampado ≥0 = wash uniforme com contorno). Doc 12 §W-C.
                     let mut edge = (gain_px * (cw - inner)).min(1.0);
-                    // Paper tooth (substrate): the active Paper slot, or the built-in noise fallback —
-                    // memoised per canvas pixel (`compute_paper` is the identical expression; the cache just
-                    // avoids recomputing it every frame for the same pixel).
-                    let paper_h = if use_substrate_cache {
-                        substrate[gy * fw + gx]
-                    } else {
-                        paper_h_px(
-                            paper_active,
-                            &paper_tex,
-                            paper_img.as_ref(),
-                            paper_rot,
-                            gx,
-                            gy,
-                        )
-                    };
-                    // Granulation height source: its own map, or (Same as Paper) the paper's tooth —
-                    // and NOTHING otherwise (no settling substrate ⇒ Amount inert, Enio 2026-07-06;
-                    // the built-in noise fallback granulated out of thin air).
-                    let gran_h = if gran_own_map {
-                        Some(ph2d_painter_brush::texture::sample_tiled_rot(
-                            &gran_tex,
-                            gx as i64,
-                            gy as i64,
-                            gran_img.as_ref(),
-                            gran_rot,
-                        ))
-                    } else if brush.granulation_use_paper {
-                        Some(paper_h)
-                    } else {
-                        None
-                    };
-                    // The paper textures the wash by its Depth (only when a Paper is set) — the
-                    // substrate's own subtle symmetric bite, unchanged.
-                    let paper_component = if paper_active {
-                        (paper_h - 0.5) * paper_depth
-                    } else {
-                        0.0
-                    };
+                    // Paper tooth + Granulation source + paper-depth component — resolved per OWNER
+                    // (#13): the cached value when single-substrate (byte-identical), else recomputed
+                    // from the owner's paper. See [`SubstrateSession::at`].
+                    let cached_ph = use_substrate_cache.then(|| substrate[gy * fw + gx]);
+                    let (paper_h, gran_h, paper_component) =
+                        substrate_session.at(&st, owner_px, cached_ph, gx, gy);
                     // Take 10: TODO termo wet-driven lê o campo borrado ([`sample_wet_field`]) —
                     // o thinning do interior era o degrau de ~11 bytes/px na fronteira de dono.
                     let st_wet_px =

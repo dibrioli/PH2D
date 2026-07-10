@@ -8,8 +8,10 @@
 
 use super::watercolor_field::{
     BACKRUN_POOL, LIFT_MAX, REWET_LIFT, REWET_POOL, RewetFields, SOAK_DISSOLVE, SOAK_LIFT,
-    WetStrokeStyle, box_blur, sample_bilinear,
+    WetStrokeStyle, box_blur, paper_h_px, sample_bilinear,
 };
+use ph2d_painter_brush::TextureSettings;
+use ph2d_painter_brush::texture::{ImageMask, angle_basis, sample_tiled_rot};
 
 /// Take 10 — raio do blur do campo de molhado por-dono ([`build_wet_field`]): a transição da
 /// junção soma isto à rampa do próprio depósito (~10 px) ⇒ ~15-25 px, escala do feather.
@@ -204,4 +206,163 @@ pub(super) fn rewet_px(
         out.pool += BACKRUN_POOL * bp * out.backrun;
     }
     out
+}
+
+/// The Paper/Grain **SUBSTRATE** resolver for one composite pass (doc 14 #13, smoke 2026-07-10).
+///
+/// A **single-substrate** session (every owner shares the paper/grain SETTINGS) resolves to the live
+/// brush's globals — byte-identical to the old inline block, and the per-canvas-pixel substrate cache
+/// stays live. A **multi-substrate** session (the user changed Paper Kind / Same-as-Paper / Grain
+/// mid-session) has each pixel resolve its paper/grain from its OWNER style, so a baked wash keeps ITS
+/// substrate instead of being re-textured by the current brush — the "aplica a tudo" + rectangles
+/// bug. The loaded paper/grain IMAGES stay session-shared in v1 (only the SETTINGS are per-owner,
+/// which covers the reported triggers: procedural Paper Kind · Same as Paper · Grain Amount).
+pub(super) struct SubstrateSession<'a> {
+    multi: bool,
+    // Effective globals (derived from the current style = the live brush).
+    paper_active: bool,
+    paper: TextureSettings,
+    paper_rot: [f32; 2],
+    paper_depth: f32,
+    gran_own_map: bool,
+    gran: TextureSettings,
+    gran_rot: [f32; 2],
+    gran_use_paper: bool,
+    paper_img: Option<ImageMask<'a>>,
+    gran_img: Option<ImageMask<'a>>,
+    // Per-owner Angle bases (multi only; index 0 = current brush, k = table[k-1]).
+    paper_rots: Vec<[f32; 2]>,
+    gran_rots: Vec<[f32; 2]>,
+}
+
+impl<'a> SubstrateSession<'a> {
+    /// Build from the current style (the live brush's substrate) + the session style table.
+    pub(super) fn build(
+        cur: &WetStrokeStyle,
+        table: &[WetStrokeStyle],
+        paper_img: Option<ImageMask<'a>>,
+        gran_img: Option<ImageMask<'a>>,
+    ) -> Self {
+        // Multi iff any owner's substrate differs from the first (the current stroke's style is IN
+        // the table — pushed at pen-down — so the live brush is covered; unowned pixels are outside
+        // the wash / restored, so comparing table entries is sufficient).
+        let multi = !table.is_empty() && {
+            let f = &table[0];
+            table.iter().any(|s| {
+                s.paper != f.paper
+                    || s.paper_depth != f.paper_depth
+                    || s.granulation_use_paper != f.granulation_use_paper
+                    || s.texture != f.texture
+            })
+        };
+        let (paper_rots, gran_rots) = if multi {
+            let mut pr = Vec::with_capacity(table.len() + 1);
+            let mut gr = Vec::with_capacity(table.len() + 1);
+            pr.push(angle_basis(cur.paper.angle_deg)); // owner 0 = current brush
+            gr.push(angle_basis(cur.texture.angle_deg));
+            for s in table {
+                pr.push(angle_basis(s.paper.angle_deg));
+                gr.push(angle_basis(s.texture.angle_deg));
+            }
+            (pr, gr)
+        } else {
+            (Vec::new(), Vec::new())
+        };
+        Self {
+            multi,
+            paper_active: cur.paper.is_active(),
+            paper: cur.paper,
+            paper_rot: angle_basis(cur.paper.angle_deg),
+            paper_depth: cur.paper_depth,
+            gran_own_map: !cur.granulation_use_paper && cur.texture.is_active(),
+            gran: cur.texture,
+            gran_rot: angle_basis(cur.texture.angle_deg),
+            gran_use_paper: cur.granulation_use_paper,
+            paper_img,
+            gran_img,
+            paper_rots,
+            gran_rots,
+        }
+    }
+
+    /// True when owners have differing substrates → the per-canvas-pixel substrate cache is invalid
+    /// (the caller must disable it and let [`Self::at`] recompute per owner).
+    #[inline]
+    pub(super) fn multi(&self) -> bool {
+        self.multi
+    }
+
+    /// `(paper_h, gran_h, paper_component)` at one pixel. `cached_paper_h` = the memoised substrate
+    /// value when the cache is live (single-substrate only); `None` recomputes from the owner's paper.
+    pub(super) fn at(
+        &self,
+        st: &WetStrokeStyle,
+        owner: u8,
+        cached_paper_h: Option<f32>,
+        gx: usize,
+        gy: usize,
+    ) -> (f32, Option<f32>, f32) {
+        let (
+            paper_active,
+            paper,
+            paper_rot,
+            paper_depth,
+            gran_own_map,
+            gran,
+            gran_rot,
+            gran_use_paper,
+        ) = if self.multi {
+            let o = owner as usize;
+            (
+                st.paper.is_active(),
+                &st.paper,
+                self.paper_rots.get(o).copied().unwrap_or(self.paper_rot),
+                st.paper_depth,
+                !st.granulation_use_paper && st.texture.is_active(),
+                &st.texture,
+                self.gran_rots.get(o).copied().unwrap_or(self.gran_rot),
+                st.granulation_use_paper,
+            )
+        } else {
+            (
+                self.paper_active,
+                &self.paper,
+                self.paper_rot,
+                self.paper_depth,
+                self.gran_own_map,
+                &self.gran,
+                self.gran_rot,
+                self.gran_use_paper,
+            )
+        };
+        let paper_h = cached_paper_h.unwrap_or_else(|| {
+            paper_h_px(
+                paper_active,
+                paper,
+                self.paper_img.as_ref(),
+                paper_rot,
+                gx,
+                gy,
+            )
+        });
+        let gran_h = if gran_own_map {
+            Some(sample_tiled_rot(
+                gran,
+                gx as i64,
+                gy as i64,
+                self.gran_img.as_ref(),
+                gran_rot,
+            ))
+        } else if gran_use_paper {
+            Some(paper_h)
+        } else {
+            None
+        };
+        let paper_component = if paper_active {
+            (paper_h - 0.5) * paper_depth
+        } else {
+            0.0
+        };
+        (paper_h, gran_h, paper_component)
+    }
 }

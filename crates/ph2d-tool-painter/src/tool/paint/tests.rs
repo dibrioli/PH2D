@@ -13732,6 +13732,77 @@ fn watercolor_session_brush_changes_do_not_touch_baked_washes() {
     assert!(px(&t, size, 106, 80)[0] < 250, "B (azul) pintou de verdade");
 }
 
+/// #13 (doc 14, smoke Enio 2026-07-10): mudar o SUBSTRATO (paper kind / Same-as-Paper / grain)
+/// entre traços da MESMA sessão não pode re-renderizar a poça assada de A com o substrato NOVO —
+/// o sintoma do "aplica a tudo" + retângulos. O substrato precisa ser POR-DONO como a geometria e
+/// a aparência (#1). RED até o fix por-dono do #13 (o composite lê paper/gran GLOBAIS do brush vivo).
+#[test]
+fn watercolor_session_substrate_change_does_not_touch_baked_washes() {
+    use ph2d_painter_brush::{TextureKind, TextureMapping};
+    let size = 192u32;
+    let mut t = white_canvas(size, 8.0);
+    t.paint.brush = BrushSpec {
+        radius_px: 24.0,
+        hardness: 1.0,
+        falloff: Falloff::Constant,
+        color: [0.85, 0.1, 0.1],
+        space_attenuation: false,
+        watercolor: true,
+        fill: 0.5,
+        depth: 1.5,
+        edge_gain: 1.0,
+        edge_spread: 24.0,
+        warp: 0.0,
+        granulation: 0.9, // forte, pra o substrato pesar no bake
+        wet_rewet: 0.3,
+        ..Default::default()
+    };
+    t.paint.brush.paper.kind = TextureKind::PaperCold;
+    t.paint.brush.paper.mapping = TextureMapping::Tiled;
+    for slot in &mut t.paint.brush_by_mode {
+        *slot = t.paint.brush;
+    }
+    // Wash A (banda x ≈ 36..84), assado com PaperCold.
+    assert!(t.on_canvas_pointer(cp([60.0, 40.0], PointerPhase::Down)));
+    let mut y = 40.0f32;
+    while y < 120.0 {
+        y += 2.0;
+        t.on_canvas_pointer(cp([60.0, y], PointerPhase::Move));
+    }
+    t.on_canvas_pointer(cp([60.0, 120.0], PointerPhase::Up));
+    // Sonda o NÚCLEO de A (x 48..64): dono de A e DENTRO da janela de re-bake de B (dab 72..120
+    // padded 26 = 46..146), mas FORA da cobertura de B (disco em x=96, borda esquerda ~72) — então
+    // B nunca vira dono ali. Só o substrato global (bug) mudaria esses bytes no commit de B.
+    let probe = |t: &PainterTool| -> Vec<[u8; 4]> {
+        let mut v = Vec::new();
+        for y in 60..140u32 {
+            for x in 48..=64u32 {
+                v.push(px(t, size, x, y));
+            }
+        }
+        v
+    };
+    let baked = probe(&t);
+    // Traço B (mesma sessão, mesma geometria) TROCA o papel para None — a janela larga de B cobre A,
+    // e o composite re-texturiza a poça assada de A com o substrato novo (o bug).
+    t.paint.brush.paper.kind = TextureKind::None;
+    for slot in &mut t.paint.brush_by_mode {
+        *slot = t.paint.brush;
+    }
+    assert!(t.on_canvas_pointer(cp([96.0, 40.0], PointerPhase::Down)));
+    let mut y = 40.0f32;
+    while y < 120.0 {
+        y += 2.0;
+        t.on_canvas_pointer(cp([96.0, y], PointerPhase::Move));
+    }
+    t.on_canvas_pointer(cp([96.0, 120.0], PointerPhase::Up));
+    assert_eq!(
+        probe(&t),
+        baked,
+        "trocar o papel re-texturizou a poça assada de A (substrato global — bug #13)"
+    );
+}
+
 /// **Costura na junção (Enio smoke 2026-07-09, cruz rápida com Dilution — take knobs):** a linha
 /// dura seguia a fronteira de ROUBO DE DONO do traço novo dentro da união (a presença union crua
 /// do `lift_wash` e o deepen full-strength no gate flipavam em 1 px ali — 29 bytes medidos).

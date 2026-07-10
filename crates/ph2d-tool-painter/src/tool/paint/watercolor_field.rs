@@ -528,6 +528,15 @@ pub(super) struct WetStrokeStyle {
     pub(super) spread_thin: f32,
     pub(super) core_r: u16,
     pub(super) spread_px: u16,
+    /// Per-owner SUBSTRATE (doc 14 #13, smoke 2026-07-10): the Paper slot + its Depth + the "Same as
+    /// Paper" flag + the Grain slot. A baked wash keeps ITS paper/grain — changing the substrate for
+    /// the next stroke must NOT re-texture the pool below (the "aplica a tudo" + rectangles bug). The
+    /// IMAGES (loaded custom paper/grain) stay session-shared in v1; only the SETTINGS are per-owner,
+    /// which covers the reported triggers (paper Kind · Same as Paper · Grain Amount).
+    pub(super) paper: ph2d_painter_brush::TextureSettings,
+    pub(super) paper_depth: f32,
+    pub(super) granulation_use_paper: bool,
+    pub(super) texture: ph2d_painter_brush::TextureSettings,
 }
 
 impl WetStrokeStyle {
@@ -551,6 +560,10 @@ impl WetStrokeStyle {
                 .min(SPREAD_THIN_MAX),
             core_r: spread_px.min(((spec.radius_px * 0.5).round() as usize).max(1)) as u16,
             spread_px: spread_px as u16,
+            paper: spec.paper,
+            paper_depth: spec.paper_depth.clamp(0.0, 1.0),
+            granulation_use_paper: spec.granulation_use_paper,
+            texture: spec.texture,
         }
     }
 }

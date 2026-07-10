@@ -210,7 +210,7 @@ impl PainterTool {
 /// ~8.5 s, the DiVerdi/Adobe TVCG 2013 wet-map constant (*"wet map cells are set to 255 when
 /// wetted... they take 8.5 seconds to dry"*). Calibration knob: lower = washes stay mergeable
 /// longer.
-const CANVAS_WET_DRY_PER_S: f32 = 4.25; // KNOB (Enio 2026-07-09): janela ~60 s — o diag provou o timer expirando no ritmo real (pausa de olhar > 17 s ⇒ o traço seguinte glazeava com borda dura); o slider da fila #11 dará o controle explícito
+const CANVAS_WET_DRY_PER_S: f32 = 25.5; // KNOB (Enio 2026-07-10): janela ~10 s — 60 s ficou "extremamente alto" no uso real; o slider da fila #11 dará o controle explícito (histórico: 30 ≈ 8,5 s DiVerdi → 4.25 ≈ 60 s no diag do timer)
 
 impl PainterTool {
     /// EDGE-1: whether the stroke beginning NOW continues the live **wet session** (one wash):

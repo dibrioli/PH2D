@@ -57,6 +57,23 @@ composite. Corpo molhado + rim no contorno EXTERNO + textura como variação de 
   (bake silhueta-only); o mixer (5-tap) e o depósito por prioridade seguem funcionando (amostram, não
   desenham).
 
+## 🎯 LOTE DA JORNADA 2026-07-11 (ordem do Enio, 2026-07-10)
+
+> A próxima jornada trabalha ESTE lote (tabela abaixo + bloco "Investigações 2026-07-10"):
+>
+> **UI/feature aquarela:** **#9** Botão Dry (secar já) · **#10** Botão Wet (molhar canvas) ·
+> **#11** Slider de tempo de secagem (default novo: 10 s — `CANVAS_WET_DRY_PER_S = 25.5`,
+> Enio 2026-07-10: 60 s era "extremamente alto") · **#12** preview de umidade on-canvas +
+> secagem PAULATINA em tempo real influenciando a mescla.
+> UI pelos 4 sites de registro de painel + Widget Gallery
+> ([[feedback_docked_panel_registration_four_sites]]).
+>
+> **Investigações:** **#13** retângulos + re-estilo da união ao mudar paper/grain (hipótese
+> forte já mapeada — começar estendendo o guard aos params não-capturados) · **#14** retângulos
+> do Per-Layer Color no brush comum (método BUGS #8) · **#15** perf do Per-Layer Color
+> (checklist de 6 otimizações da aquarela) · **#16** pesquisa traço-3D (height-map + lighting
+> vs Per-Layer Color, doc de design com medição).
+
 ## Fila (demais gaps, sem ordem decidida)
 
 > ✅ **RESOLVIDO 2026-07-09 (rota a+b combinadas):** tabela de estilos por-traço da sessão
@@ -100,8 +117,12 @@ composite. Corpo molhado + rim no contorno EXTERNO + textura como variação de 
 | 8 | **Alpha-lock da camada** | não aplicado no bake | mesma família do fix de Seleção; avaliar keep = alpha existente |
 | 9 | **Botão "Dry" (secar rápido)** (Enio 2026-07-09) | — | zera o `canvas_wet` + encerra a sessão molhada na hora (bake congelado vira definitivo); equivalente ao "Dry the layer" do Rebelle. UI: painel Watercolor |
 | 10 | **Botão "Wet" (molhar canvas)** (Enio 2026-07-09) | — | re-molha o papel (pour manual no `canvas_wet`, canvas todo ou região) SEM depositar pigmento — próximo traço funde/bloom sobre a pintura existente; é o "Wet the layer" do Rebelle (doc 11 §6 tinha excluído — pedido explícito agora) |
-| 11 | **Slider de tempo de secagem** (Enio 2026-07-09) | const `CANVAS_WET_DRY_PER_S = 30` (~8,5 s) | expor como slider (ex.: 2 s–60 s, ou "∞ = nunca seca sozinho"); vira o knob de calibração da janela de fusão do EDGE-1 |
+| 11 | **Slider de tempo de secagem** (Enio 2026-07-09) | const `CANVAS_WET_DRY_PER_S = 25.5` (~10 s, Enio 2026-07-10: 60 s era alto demais) | expor como slider (ex.: 2 s–60 s, ou "∞ = nunca seca sozinho"); vira o knob de calibração da janela de fusão do EDGE-1 |
 | 12 | **Preview de umidade + secagem paulatina** (Enio 2026-07-09) | mapa u8 já existe e decai por byte | (a) overlay on-canvas do `canvas_wet` (véu/brilho de umidade, estilo Rebelle "show wetness"); (b) a secagem GRADUAL influenciando a mescla — hoje a fusão da sessão é binária (molhado enquanto `rect` vivo); usar o valor local do mapa pra atenuar progressivamente a fusão/derretimento do rim conforme seca (meio-seco = meio-rim), casando com o settle do GRAN-1 |
+| 13 | **INVESTIGAÇÃO: retângulos + re-estilo da união ao mudar paper/grain** (Enio 2026-07-10) | bug aberto | vide bloco "Investigações 2026-07-10" abaixo — hipótese forte já mapeada (params NÃO capturados no `WetStrokeStyle`) |
+| 14 | **INVESTIGAÇÃO: retângulos do Per-Layer Color no brush comum** (Enio 2026-07-10, foto) | bug aberto (handoff `HANDOFF_per_layer_color_perf_artifacts.md`) | aplicar o MÉTODO do BUGS #8 (bissecção + perfil + sondas) |
+| 15 | **INVESTIGAÇÃO: perf do Per-Layer Color — otimizações da aquarela não aplicadas** (Enio 2026-07-10) | lento (handoff aberto) | checklist BUGS #7 + stamp-cache + ADR-0109 — vide bloco abaixo |
+| 16 | **PESQUISA: traço de aspecto 3D — como Procreate/Rebelle/Painter fazem** (Enio 2026-07-10) | design | height-map + lighting pass como alternativa barata ao Per-Layer Color — vide bloco abaixo |
 
 **Blur do Wet Mix: exposto (`a7712f45`) e REVERTIDO no smoke** (Enio: "funcionava melhor quando
 ele não era configurável") — o pickup do mixer fica FIXO em r×0,5 (cerca de Chesterton anotada no
@@ -109,3 +130,93 @@ ele não era configurável") — o pickup do mixer fica FIXO em r×0,5 (cerca de
 
 > Perf/cor (outra dimensão, não-UI): waves W-A..W-D da auditoria em
 > [`12_aquarela_auditoria_pos_f123_padrao_ouro.md`](12_aquarela_auditoria_pos_f123_padrao_ouro.md).
+
+
+---
+
+## Investigações enfileiradas 2026-07-10 (Enio — "coloque na fila para amanhã")
+
+> Contexto colhido HOJE pra o agente de amanhã não recomeçar do zero. Método obrigatório: o do
+> **BUGS_painter.md #8** (instrumentar o app real → bissectar → perfil 1D → sondas por-pixel →
+> só então fix com RED→GREEN). Não iterar mecanismo sem reprodução fechada.
+
+### #13 — Retângulos ao redor do brush + re-estilo da união inteira ao mudar paper/grain (aquarela)
+
+**Sintoma (Enio):** traço 1 → mudar QUALQUER propriedade do brush watercolor (ex.: Amount do
+grain, "Same as Paper", textura do papel) → traço 2 sobre a poça ÚMIDA ⇒ (a) retângulos nas
+áreas ao redor do brush; (b) **o brush novo é aplicado a TODA a área úmida da união, mesmo onde
+o traço 2 não tocou**.
+
+**Hipótese forte (já verificada por leitura hoje):** o `WetStrokeStyle`
+(`watercolor_field.rs:517-531`) captura fill/depth/edge_gain/wet/granulation(Amount)/warp/
+pigment_mix/color/spread_thin/core_r/spread_px — mas **NÃO captura** `paper` (TextureSettings),
+`paper_depth`, `granulation_use_paper` (Same as Paper) nem o Grain slot (`brush.texture`).
+Esses são lidos **globalmente do brush VIVO** no `apply_watercolor`
+(`watercolor_render.rs` ~L230-250: `paper_tex`/`paper_active`/`paper_img`/`paper_rot`/
+`gran_tex`/`gran_own_map`/`gran_img`/`gran_rot`/`paper_depth`) — a união re-renderiza INTEIRA
+com o substrato novo ⇒ o "aplica a tudo". Era um caveat DOCUMENTADO da rota a+b de 2026-07-09
+("Fica global por composite: … fonte da textura de grain, paper"). O guard
+`watercolor_session_brush_changes_do_not_touch_baked_washes` passa porque só varia params
+capturados — **estender o guard aos não-capturados deve dar o RED imediato** (começar por aí).
+Os retângulos = janelas incrementais do frame (frame dirty + pad) re-renderizando com globals
+novos contra o entorno do bake velho — a classe do resíduo Δ2 do take 7, amplificada de
+sub-visível pra gritante pela mudança de substrato. Atenção também ao cache
+`wet_substrate` (memoização do paper_h por pixel do canvas): invalidação na troca de
+paper/rotação — cache meio-velho/meio-novo = retângulos por si só.
+
+**Direção de fix a avaliar:** capturar os 4 no `WetStrokeStyle` (resolver substrato POR DONO —
+custo: paper_h por estilo, o cache `wet_substrate` vira por-estilo ou cai) × encerrar a sessão
+na troca de substrato (barato, perde a fusão — último recurso, mesma régua do item (c) da
+rota antiga).
+
+### #14 — Retângulos do Per-Layer Color no brush COMUM (foto do Enio 2026-07-10)
+
+**Sintoma:** os mesmos retângulos (bordas retas de janelas/discos no corpo do traço — vide foto
+anexada na sessão de 2026-07-10) no brush normal (não-aquarela) com **Per-Layer Color** ativo.
+Handoff aberto: `docs/HANDOFF_per_layer_color_perf_artifacts.md` ("listras retangulares";
+teoria do coverage-map sujo REFUTADA lá — não re-investigar essa rota). BUGS #2 resolveu uma
+família disso em 2026-06-29; a que sobrou nunca passou pelo método do #8.
+
+**Plano:** (1) bissecção com `PH2D_PAINT_FULL_UPLOAD=1` (o toggle já existe no bridge —
+separa upload-parcial-do-shell × conteúdo do canvas CPU); (2) se CPU: perfil 1D + sondas nos
+buffers do per-layer (`per_layer_stroke`, restore/re-stamp do drag-preview — o restore-region
+retangular do `stamp_drag_preview` é suspeito natural pra bordas retas); (3) fix só com
+RED→GREEN nos params reais (dump via eprintln 1-linha, padrão [wet-diag]).
+
+### #15 — Perf do Per-Layer Color: otimizações da aquarela NÃO aplicadas (checklist)
+
+O handoff aberto diagnostica: re-stamp da forma INTEIRA por-move × N≤16 camadas + recomposite
+O(bbox·N). Lições da aquarela que provavelmente NÃO foram portadas (verificar uma a uma —
+BUGS #7 + memórias):
+
+1. **Profile de build** (BUGS #7 raiz 1): `[profile.dev.package.*] opt-level=2` cobre os crates
+   de paint-math — o per-layer roda nesses crates? Medir em `--release` ANTES de otimizar.
+2. **Composite 2×/frame** (BUGS #7 raiz 2): o per-layer também compõe no Move flush E no tick?
+3. **ADR-0109** (BUGS #7 raiz 3): os loops do re-stamp/recomposite per-layer são puros
+   por-pixel (sem redução/RNG/estado compartilhado)? → rayon sancionado.
+4. **Stamp cache** ([[project_painter_texture_brush_stamp_cache]]): o per-layer re-amostra
+   falloff×textura por dab? O `StampMask` cacheado foi a cura do textured-brush.
+5. **Incremental de verdade:** re-stampar só os dabs NOVOS (não a forma inteira por-move) +
+   dirty-rect por camada (não bbox global × N).
+6. **Medir a ESCALA primeiro** ([[feedback_measure_perf_symptom_scale]]): fixar o nº em ms
+   por-frame por-knob antes de escolher o alvo.
+
+### #16 — PESQUISA: traço de aspecto 3D sem N camadas (o objetivo do Per-Layer Color)
+
+**Pergunta do Enio:** Procreate e outros produzem traços com aspecto 3D — como? Dá pra
+implementar aqui mais barato que o Per-Layer Color (que existe PRA isso mas pesa)?
+
+**Ponto de partida da pesquisa (verificar fontes antes de afirmar — zero claim sem
+grep/WebFetch, [[feedback_no_industrial_claims_without_verification]]):** a técnica-padrão da
+indústria pra "3D stroke" 2D é **height-map + lighting em 1 passe**, não N camadas: o traço
+acumula um canal de ALTURA (h) junto do pigmento; um passe screen-space deriva a normal do
+gradiente de h (Sobel/forward-diff) e aplica iluminação direcional/specular — Corel Painter
+(Impasto), Rebelle 7 (impasto/metallic layers), ArtRage (oil thickness), Krita (experimentos
+de bump do brush) seguem essa família; Procreate: investigar o que o motor faz em brushes
+"dimensionais" (Blend modes + normal-like shading?) e os 3D Materials (outra coisa — pintura
+EM modelo 3D). Custo esperado: O(pixels do dirty-rect) × 1 passe (gradiente + dot product) —
+**ordens abaixo de O(bbox·N camadas)** do Per-Layer Color, e casa com nosso pipeline (o canal
+h é um buffer u8/f16 irmão do coverage; o lighting é um kernel por-pixel puro → ADR-0109;
+HR-5: normal por diferenças finitas = sem transcendental). Entregável: doc de design
+comparando (a) Per-Layer Color otimizado (#15) × (b) height+lighting nativo, com medição de
+ambos num cenário fixo, e recomendação. Decisão de manter/deprecar Per-Layer Color é do Enio.

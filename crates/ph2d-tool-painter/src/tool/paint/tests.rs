@@ -13914,3 +13914,65 @@ fn watercolor_wet_session_survives_charge_slider_change() {
             .is_some_and(|c| Arc::ptr_eq(c, &t.canvas_rgba)),
     );
 }
+
+/// Regressão do smoke 2026-07-09 (gesto A rodada 2, doc 12 take 9 + screenshot): com Charge < 1
+/// (mixer ligado), wet=0, dil=0, um traço cruzando um wash DA MESMA COR em sessão viva CLAREAVA a
+/// junção (mancha pálida + degrau serrilhado onde o alpha depositado cruza a janela COL_LO..HI).
+/// Pigmento é subtrativo: depositar MAIS tinta nunca clareia. Raiz: o reservatório do mixer
+/// amostra a APARÊNCIA do filme fino (rosa pálido = absorbância baixa) e o lerp
+/// `mag = ba + (sa−ba)·t` DILUÍA o depósito — o mixer deve mudar o MATIZ, nunca a força do
+/// pigmento (diluição é trabalho do Dilution).
+#[test]
+fn watercolor_mixer_crossing_same_color_does_not_lighten_junction() {
+    let size = 600u32;
+    let mut t = PainterTool::default();
+    t.set_source(vec![255u8; (size * size * 4) as usize], size, size);
+    // Params do smoke do Enio (2026-07-09, rodada 2).
+    t.paint.brush = BrushSpec {
+        radius_px: 54.5,
+        color: [1.0, 0.27, 0.27],
+        spacing: 0.05,
+        watercolor: true,
+        fill: 0.120,
+        depth: 1.20,
+        edge_gain: 0.71,
+        edge_spread: 15.9,
+        warp: 9.9,
+        granulation: 0.30,
+        wet_charge: 0.4267,
+        ..Default::default()
+    };
+    for slot in &mut t.paint.brush_by_mode {
+        *slot = t.paint.brush;
+    }
+    // Traço 1: vertical por x=300.
+    assert!(t.on_canvas_pointer(cp([300.0, 80.0], PointerPhase::Down)));
+    for i in 1..=40 {
+        t.on_canvas_pointer(cp([300.0, 80.0 + i as f32 * 11.0], PointerPhase::Move));
+    }
+    t.on_canvas_pointer(cp([300.0, 520.0], PointerPhase::Up));
+    let mean_patch = |px: &[u8]| -> f32 {
+        let mut sum = 0.0f32;
+        for y in 293..308usize {
+            for x in 293..308usize {
+                let i = (y * size as usize + x) * 4;
+                sum += (f32::from(px[i]) + f32::from(px[i + 1]) + f32::from(px[i + 2])) / 3.0;
+            }
+        }
+        sum / (15.0 * 15.0)
+    };
+    let before = mean_patch(&t.canvas_rgba);
+    // Traço 2: horizontal por y=300, cruzando em sessão viva (sess=true — papel molhado).
+    assert!(t.wet_session_continues(), "precondição: sessão viva");
+    assert!(t.on_canvas_pointer(cp([80.0, 300.0], PointerPhase::Down)));
+    for i in 1..=40 {
+        t.on_canvas_pointer(cp([80.0 + i as f32 * 11.0, 300.0], PointerPhase::Move));
+    }
+    t.on_canvas_pointer(cp([520.0, 300.0], PointerPhase::Up));
+    let after = mean_patch(&t.canvas_rgba);
+    assert!(
+        after <= before + 2.0,
+        "cruzar o wash com Charge<1 CLAREOU a junção (mixer diluiu o depósito): \
+         média antes={before:.1} depois={after:.1}"
+    );
+}

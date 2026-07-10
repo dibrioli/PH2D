@@ -717,3 +717,39 @@ aparece (o traço logo após mexer no slider, o seguinte, ou ambos) + screenshot
 `SET_SOURCE`/`RESTORE_MODEL` aparecer entre UP e DOWN, achamos o quebrador; se o guard for
 `wet_rect`, é o timer/pour; se nada quebrar e a borda persistir no traço com `sess=true`, o alvo
 é o item 2 (mixer prio).
+
+#### Take 9 — REPRODUZIDO e CORRIGIDO: o mixer diluía o depósito (junção pálida + degrau serrilhado)
+
+Rodada 2 do smoke (screenshot + guards) derrubou a teoria da sessão: **não houve slider mid-run
+(chg=0.4267 desde o início), as travessias rodaram com `sess=true` — e a borda apareceu mesmo
+assim**. Os `sess=false` da rodada eram legítimos (início de run: tudo desarmado; pós-undo:
+`RESTORE_MODEL` ×2 no tracer, quebra by-design). O visível: a REGIÃO DO CRUZAMENTO mais clara
+que os dois traços + fronteira dura serrilhada onde o footprint do traço 2 termina dentro do
+traço 1.
+
+**Eliminação por leitura:** depleção (`stroke_deplete`) é max-blend com backfill 255 — não pode
+clarear; coverage max-blend — idem; owner map com estilos idênticos — render igual. Sobra UM
+caminho que clareia: o **depósito de cor do mixer**. `sample_surface` amostra a APARÊNCIA do
+filme (wash fino sobre papel branco = rosa pálido = absorbância baixa); o lerp
+`mag = ba + (sa−ba)·t` puxava o depósito pra BAIXO da força da brocha → vermelho-sobre-vermelho
+depositava vermelho mais claro, recency sobrescrevia a junção → mancha pálida; o degrau
+serrilhado = a fronteira onde o alpha depositado cruza a janela `COL_LO..COL_HI` (raw ↔
+depositada), lida em coords warpadas nearest (warp ~10).
+
+**Repro RED na árvore (gap FECHADO):**
+`watercolor_mixer_crossing_same_color_does_not_lighten_junction` — params exatos do smoke
+(r=54.5, spread 15.9, warp 9.9, gain 0.71, gran 0.30, chg=0.4267, wet=0, dil=0), cruz
+monocromática em sessão viva: junção clareou 233.6→241.0 (média 15×15). Pigmento é subtrativo —
+depositar mais tinta nunca clareia.
+
+**Fix (watercolor_mixer.rs, depósito):** o pickup muda o **MATIZ**, nunca **DILUI** — mistura
+subtrativa por canal como antes, depois re-escala de magnitude L∞ **só pra cima**
+(`s = ba_max/mix_max` quando `mix_max < ba_max`): mesma cor → depósito idêntico ao da brocha
+(junção invariante); pool mais escuro → segue depositando mais escuro; azul sobre amarelo →
+verde na força da brocha (diluição é trabalho do Dilution). `t=0`/mixer-off → `s=1`,
+byte-idêntico. HR-5-safe (mul/div/max; ln/exp nas LUTs existentes). **501/501 verdes, zero
+regressões** — RED→GREEN.
+
+Pendente: re-smoke do Enio no mesmo gesto (a mancha pálida e o degrau devem sumir; o MIX1 ainda
+imprime — se sobrar serrilhado residual, a próxima lente é o prio/alpha na janela COL, não a
+cor). Diag [wet-diag v2] PERMANECE na árvore até o veredito.

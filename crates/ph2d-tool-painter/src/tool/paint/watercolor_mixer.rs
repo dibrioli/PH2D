@@ -157,14 +157,32 @@ impl PainterTool {
             let mut col = d.color;
             if mix.w > 1e-4 {
                 let inv = 1.0 / mix.w;
-                for ((out_c, &m), &brush_c) in
-                    col.iter_mut().zip(mix.absorb.iter()).zip(d.color.iter())
-                {
-                    let sa = m * inv; // unpremultiply → the carried paint's absorbance
-                    let byte = (brush_c.clamp(0.0, 1.0) * 255.0 + 0.5) as usize;
+                // Mistura subtrativa por canal (o MATIZ), depois re-escala de magnitude: o
+                // reservatório amostra a APARÊNCIA do filme fino (absorbância baixa — rosa
+                // pálido num wash vermelho), e o lerp cru DILUÍA o depósito — cruzar o próprio
+                // wash CLAREAVA a junção (mancha pálida + degrau serrilhado na janela COL_LO..HI,
+                // smoke 2026-07-09, doc 12 take 9). Pigmento é subtrativo: o pickup muda o matiz,
+                // nunca a força — re-escala só pra CIMA (um pool mais escuro que a brocha segue
+                // depositando mais escuro; t=0 e mixer-off ficam byte-idênticos: s=1).
+                let mut mags = [0.0f32; 3];
+                let mut ba_max = 0.0f32;
+                let mut mix_max = 0.0f32;
+                for (c, m) in mags.iter_mut().enumerate() {
+                    let sa = mix.absorb[c] * inv; // unpremultiply → the carried paint's absorbance
+                    let byte = (d.color[c].clamp(0.0, 1.0) * 255.0 + 0.5) as usize;
                     let ba = -lut.lnl[byte.min(255)]; // the brush pigment's absorbance
-                    let mag = ba + (sa - ba) * t; // subtractive mix (log-space lerp)
-                    *out_c = f32::from(lut.l2s_byte(lut.exp_mag(mag))) / 255.0;
+                    *m = ba + (sa - ba) * t; // subtractive mix (log-space lerp)
+                    ba_max = ba_max.max(ba);
+                    mix_max = mix_max.max(*m);
+                }
+                if mix_max > 1e-6 && mix_max < ba_max {
+                    let s = ba_max / mix_max;
+                    for m in &mut mags {
+                        *m *= s;
+                    }
+                }
+                for (out_c, &m) in col.iter_mut().zip(mags.iter()) {
+                    *out_c = f32::from(lut.l2s_byte(lut.exp_mag(m))) / 255.0;
                 }
             }
             // Deposit intensity for the COLOUR alpha (mirror of the coverage map's factors): a

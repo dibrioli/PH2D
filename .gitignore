@@ -78,3 +78,7 @@ target-slots/
 # See docs/AUDIT_vector_module_W1_results.md C1-C3.
 vector_pen_*.ph2d-vector
 target/vector-scratch/
+
+# Artefatos de save local do editor (smoke)
+ph2d_project.postcard
+ph2d_vec_scene.postcard

@@ -50,6 +50,7 @@ mod ktx2_smoke;
 mod motion_state;
 mod name_unique;
 mod palette_persist;
+mod project;
 mod render_loop;
 mod sim_populate;
 mod theme;

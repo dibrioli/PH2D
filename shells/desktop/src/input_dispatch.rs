@@ -1581,52 +1581,6 @@ impl App {
         true
     }
 
-    /// ADR-0108 Fase 2: salva a cena vetorial em `PH2D_VEC_SAVE_PATH` (default
-    /// `ph2d_vec_scene.postcard` no CWD). Ctrl+S no modo vetorial.
-    fn vec_save(&mut self) {
-        let Some(gfx) = self.gfx.as_ref() else {
-            return;
-        };
-        let path = Self::vec_save_path();
-        match gfx.vec_scene.to_bytes() {
-            Ok(bytes) => match std::fs::write(&path, &bytes) {
-                Ok(()) => eprintln!("[ph2d-vec] salvo: {path} ({} bytes)", bytes.len()),
-                Err(e) => eprintln!("[ph2d-vec] erro ao salvar {path}: {e}"),
-            },
-            Err(e) => eprintln!("[ph2d-vec] erro ao serializar: {e}"),
-        }
-    }
-
-    /// ADR-0108 Fase 2: carrega a cena de `PH2D_VEC_SAVE_PATH` (Ctrl+O). O load é
-    /// undoável (snapshot pré).
-    fn vec_load(&mut self) {
-        let path = Self::vec_save_path();
-        let bytes = match std::fs::read(&path) {
-            Ok(b) => b,
-            Err(e) => {
-                eprintln!("[ph2d-vec] sem arquivo {path}: {e}");
-                return;
-            }
-        };
-        match ph2d_vec_scene::VecScene::from_bytes(&bytes) {
-            Ok(scene) => {
-                let Some(gfx) = self.gfx.as_mut() else {
-                    return;
-                };
-                self.vec_history.push_undo(gfx.vec_scene.clone());
-                gfx.vec_scene = scene;
-                self.vec_pen.clear();
-                eprintln!("[ph2d-vec] carregado: {path}");
-            }
-            Err(e) => eprintln!("[ph2d-vec] erro ao carregar {path}: {e}"),
-        }
-    }
-
-    fn vec_save_path() -> String {
-        std::env::var("PH2D_VEC_SAVE_PATH")
-            .unwrap_or_else(|_| "ph2d_vec_scene.postcard".to_string())
-    }
-
     /// W4: write the timeline document to its sidecar (Ctrl+S while the timeline
     /// panel is the context). Tracks are named by their object's name so they
     /// reconnect on load (see `timeline_persist`).

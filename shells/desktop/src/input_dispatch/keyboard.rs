@@ -107,11 +107,32 @@ impl App {
             }
         }
 
-        // ADR-0108 Fase 2: undo/redo + save/load + clipboard com Ctrl/Cmd. Ctrl+Z
-        // desfaz, Ctrl+Shift+Z / Ctrl+Y refaz, Ctrl+S salva, Ctrl+O carrega,
-        // Ctrl+C/X/V copia/recorta/cola a SELEÇÃO (Shift+V cola no lugar), Ctrl+D
-        // duplica, Ctrl+G agrupa (Shift+G desagrupa). C/X/V cedem o atalho a um
-        // campo de texto focado (clipboard de texto do widget).
+        // Ctrl+S / Ctrl+O — save/load de PROJETO, GLOBAL (qualquer tool). O projeto é
+        // mundo + geometria + pixels (`crate::project`). Cede a um campo de texto
+        // focado (senão Ctrl+S num nome roubaria o atalho).
+        if state == ElementState::Pressed
+            && !repeat
+            && (self.modifiers.control_key() || self.modifiers.super_key())
+            && !self.vector_text_field_focused()
+            && let PhysicalKey::Code(code) = physical_key
+        {
+            match code {
+                KeyCode::KeyS => {
+                    self.project_save();
+                    return;
+                }
+                KeyCode::KeyO => {
+                    self.project_load();
+                    return;
+                }
+                _ => {}
+            }
+        }
+
+        // ADR-0108 Fase 2: undo/redo + clipboard com Ctrl/Cmd. Ctrl+Z desfaz (GLOBAL,
+        // em `handle_editor_key`), Ctrl+C/X/V copia/recorta/cola a SELEÇÃO (Shift+V
+        // cola no lugar), Ctrl+D duplica, Ctrl+G agrupa (Shift+G desagrupa). C/X/V
+        // cedem o atalho a um campo de texto focado (clipboard de texto do widget).
         if self.vector_tool_active()
             && state == ElementState::Pressed
             && !repeat
@@ -123,14 +144,6 @@ impl App {
             // → `undo_request`), que cobre geometria E transform numa fila só. O bloco
             // vetorial mantém só os atalhos que são dele (save/copy/paste/dup/group).
             let handled = match code {
-                KeyCode::KeyS => {
-                    self.vec_save();
-                    true
-                }
-                KeyCode::KeyO => {
-                    self.vec_load();
-                    true
-                }
                 KeyCode::KeyC if !text_focused => {
                     self.vec_copy();
                     true

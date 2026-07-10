@@ -31,10 +31,10 @@ const UNDO_CAP: usize = 256;
 /// árvore, trava, e o `VecPathRef` que liga um path à entidade (ADR-0110). `VecScene`
 /// é a geometria, que vive fora do ECS. Juntos são o projeto inteiro exceto os
 /// pixels dos sprites (estáveis, não mudam a cada ação — o save os anexa à parte).
-#[derive(Clone, PartialEq, Debug)]
+#[derive(Clone, PartialEq, Debug, serde::Serialize, serde::Deserialize)]
 pub(crate) struct ProjectState {
-    world: WorldSnapshot,
-    vec: VecScene,
+    pub(crate) world: WorldSnapshot,
+    pub(crate) vec: VecScene,
 }
 
 impl ProjectState {

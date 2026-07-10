@@ -244,6 +244,10 @@ impl PainterTool {
                 Some(c) => union_region(c, r),
                 None => r,
             });
+            self.paint.wet_stroke_dirty = Some(match self.paint.wet_stroke_dirty {
+                Some(c) => union_region(c, r),
+                None => r,
+            });
         }
         // The soak disc follows the newest dab — where the tick heartbeat pours water dwell.
         if let Some(d) = dabs.last() {

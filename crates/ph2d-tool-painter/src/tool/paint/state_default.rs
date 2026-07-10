@@ -161,6 +161,7 @@ impl Default for PaintState {
             canvas_wet_rect: None,
             canvas_wet_carry: 0.0,
             dry_rate_per_s: super::watercolor_backdrop::CANVAS_WET_DRY_DEFAULT,
+            wet_preview_intensity: super::watercolor_backdrop::WET_PREVIEW_DEFAULT,
             wet_session_base: None,
             wet_session_canvas: None,
             wet_styles: Default::default(),
@@ -169,6 +170,7 @@ impl Default for PaintState {
             wet_smear_pos: None,
             wet_frame_dirty: None,
             wet_cum_dirty: None,
+            wet_stroke_dirty: None,
             inpaint_mask: Vec::new(),
             inpaint_patch_norm: 0.25, // patch radius 3 (today's InpaintParams::default)
             inpaint_quality_norm: 0.3333, // 6 EM iterations (today's default)

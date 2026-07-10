@@ -64,6 +64,10 @@ pub const PAINTER_WATERCOLOR_PULL: NodeId = hash_node_id("painter_brush.watercol
 /// **Drying Time** — seconds for the wet paper to fully dry (`2..60 s`; the wet-session fusion
 /// window). CANVAS-level (not per-brush): `SetValue` → `set_dry_time_s`. Shown in the Wetness card.
 pub const PAINTER_WATERCOLOR_DRY_TIME: NodeId = hash_node_id("painter_brush.watercolor_dry_time");
+/// **Wetness Preview** strength (`0..1`, `0` = no preview) — the max veil alpha the shell paints over the
+/// wet paper (a discreet damp darkening). CANVAS-level display: `SetValue` → `set_wet_preview_intensity`.
+pub const PAINTER_WATERCOLOR_WET_PREVIEW: NodeId =
+    hash_node_id("painter_brush.watercolor_wet_preview");
 /// **Dry** button — end the wet session NOW (the bake becomes permanent; Rebelle "Dry the layer").
 /// `Click` → `dry_session_now`.
 pub const PAINTER_WATERCOLOR_DRY_NOW: NodeId = hash_node_id("painter_brush.watercolor_dry_now");
@@ -167,8 +171,9 @@ pub const PAINTER_WATERCOLOR_CLICKS: [NodeId; 6] = [
 /// Concentration(Depth) / Opacity / Edge Darkening(Edge) / Bleed(Spread) / Ragged Edge(Warp); **Brush** = Charge /
 /// Dilution / Pull; **Water** = Rewet(Wet) / Smudge / Pigment(Mix). Granulation lives in the Grain
 /// section; the full Paper slot (Size / Angle / Offset / Depth / params) in the Paper section.
-pub const PAINTER_WATERCOLOR_FIELDS: [NodeId; 26] = [
+pub const PAINTER_WATERCOLOR_FIELDS: [NodeId; 27] = [
     PAINTER_WATERCOLOR_DRY_TIME,
+    PAINTER_WATERCOLOR_WET_PREVIEW,
     PAINTER_WATERCOLOR_EDGE,
     PAINTER_WATERCOLOR_SPREAD,
     PAINTER_WATERCOLOR_GRANULATION,

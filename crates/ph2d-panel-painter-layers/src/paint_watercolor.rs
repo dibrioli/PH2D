@@ -97,7 +97,7 @@ fn paint_wetness_card(
     y: f32,
     brush: &BrushSettings,
 ) -> f32 {
-    let (ix, iw, mut ry, next_y) = card_frame(ctx, theme, x, content_w, y, "Wetness", 2);
+    let (ix, iw, mut ry, next_y) = card_frame(ctx, theme, x, content_w, y, "Wetness", 3);
     ry = card_row(
         ctx,
         theme,
@@ -111,6 +111,20 @@ fn paint_wetness_card(
         DRY_TIME_MAX,
         1.0, // whole-second scrub step
         0,   // whole seconds
+    );
+    ry = card_row(
+        ctx,
+        theme,
+        ix,
+        iw,
+        ry,
+        "Preview",
+        core_ids::PAINTER_WATERCOLOR_WET_PREVIEW,
+        brush.wet_preview,
+        0.0,
+        1.0,
+        number_field::FINE_STEP,
+        2,
     );
     let _ = wetness_button_row(
         ctx,

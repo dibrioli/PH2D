@@ -474,6 +474,10 @@ pub(crate) struct PaintState {
     /// so it never varies by paint mode). The Wetness card's Drying-Time slider drives it
     /// (`set_dry_time_s`, seconds → `255/seconds`); default `CANVAS_WET_DRY_DEFAULT` (~10 s).
     dry_rate_per_s: f32,
+    /// #12a (doc 14): the on-canvas wetness PREVIEW strength — the max veil alpha the shell paints over
+    /// the wet region (`0` = no preview). CANVAS-level display setting (not per-brush); the Wetness card's
+    /// slider drives it (`set_wet_preview_intensity`), the shell reads [`Self::wet_preview_intensity`].
+    wet_preview_intensity: f32,
     /// EDGE-1 per-stroke style (doc 13 topo): session param table + per-pixel owner map — an
     /// older wash keeps ITS look on the union re-bake ([`watercolor_field::WetSessionStyles`]).
     wet_styles: watercolor_field::WetSessionStyles,
@@ -531,6 +535,11 @@ pub(crate) struct PaintState {
     /// its bbox. [`Self::clear_wet_coverage`] folds it into the frame dirty (the cleared shape must be
     /// recomposited — the moving-preview union) before dropping it.
     wet_cum_dirty: Option<Region>,
+    /// **Watercolor render-path** THIS-STROKE dirty rect — reset every `paint_begin` (even inside a wet
+    /// session, unlike [`Self::wet_cum_dirty`] which accumulates the whole session's union). Only the
+    /// current stroke's OWN footprint re-wets the moisture map at the bake ([`Self::pour_canvas_wet`]),
+    /// so a second stroke never resets the drying clock of the earlier washes (doc 14 #4, Enio 2026-07-11).
+    wet_stroke_dirty: Option<Region>,
     /// **Inpaint** defect mask (1 byte/px, `>= 128` ⇒ heal). Accumulated as the user brushes in Inpaint
     /// mode; on pen-up [`super::inpaint`] reconstructs the marked region and clears it. Sized `w*h`.
     inpaint_mask: Vec<u8>,

@@ -291,6 +291,11 @@ fn draw_wetness_overlay(
     window_size: WindowSize,
     vector_scene: &mut VectorScene,
 ) {
+    // Wetness-preview strength (Wetness card slider): 0 ⇒ no preview.
+    let intensity = painter.wet_preview_intensity();
+    if intensity <= 0.0 {
+        return;
+    }
     let Some((wet, cw, ch, [rx0, ry0, rx1, ry1])) = painter.canvas_wet_view() else {
         return;
     };
@@ -308,9 +313,12 @@ fn draw_wetness_overlay(
     if rw == 0 || rh == 0 {
         return;
     }
-    // Straight-alpha cool sheen over the wet region — Vello premultiplies on draw.
-    const TINT: [u8; 3] = [110, 190, 255]; // LITERAL-COLOR-OK: wetness sheen (cool water blue)
-    const MAX_ALPHA: f32 = 0.30; // LITERAL-COLOR-OK: veil opacity at full wetness (subtle)
+    // Straight-alpha DAMP-PAPER darkening over the wet region (Enio 2026-07-11: "sem tonalidade
+    // azulada" — wet paper just darkens, no water-blue sheen). Near-neutral dark tint, a hair warm so it
+    // reads as damp paper, not a grey wash; the slider (`intensity`) scales the max veil alpha. Vello
+    // premultiplies on draw.
+    const TINT: [u8; 3] = [34, 31, 28]; // LITERAL-COLOR-OK: damp-paper darkening (near-neutral, faint warm)
+    let max_alpha = intensity * 0.55; // LITERAL-COLOR-OK: slider 0..1 → veil alpha 0..0.55 at full wetness
     let cwu = cw as usize;
     let mut veil = vec![0u8; rw * rh * 4];
     for y in 0..rh {
@@ -323,7 +331,7 @@ fn draw_wetness_overlay(
                 veil[p] = TINT[0];
                 veil[p + 1] = TINT[1];
                 veil[p + 2] = TINT[2];
-                veil[p + 3] = ((f32::from(w) / 255.0) * MAX_ALPHA * 255.0) as u8;
+                veil[p + 3] = ((f32::from(w) / 255.0) * max_alpha * 255.0) as u8;
             }
         }
     }

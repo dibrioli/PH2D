@@ -131,6 +131,10 @@ impl PainterTool {
                 Some(c) => union_region(c, rect),
                 None => rect,
             });
+            self.paint.wet_stroke_dirty = Some(match self.paint.wet_stroke_dirty {
+                Some(c) => union_region(c, rect),
+                None => rect,
+            });
         }
     }
 

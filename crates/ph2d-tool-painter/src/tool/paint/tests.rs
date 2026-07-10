@@ -13300,6 +13300,71 @@ fn watercolor_touching_wet_washes_merge_without_double_rim() {
     );
 }
 
+/// **EDGE-1 #4 (Enio smoke 2026-07-11):** cada traço seca no SEU próprio relógio — um segundo traço
+/// (longe do primeiro) NÃO pode re-molhar o wash anterior. `stroke_coverage` é a UNIÃO da sessão; despejar
+/// isso na moisture pela rect cumulativa re-molhava TUDO a 255 no bake de cada traço (resetando a secagem
+/// dos anteriores). O pour agora usa só a footprint do traço atual. Propriedade: seco parcialmente o A,
+/// pinto B longe, e a umidade de A no seu núcleo NÃO sobe (sem o fix ela voltaria a 255). DIRETIVA §4.
+#[test]
+fn watercolor_second_stroke_does_not_reset_the_first_strokes_drying() {
+    let size = 160u32;
+    let mut t = white_canvas(size, 8.0);
+    t.paint.brush = BrushSpec {
+        radius_px: 12.0,
+        hardness: 1.0,
+        falloff: Falloff::Constant,
+        color: [0.85, 0.1, 0.1],
+        space_attenuation: false,
+        watercolor: true,
+        fill: 0.2,
+        depth: 1.0,
+        edge_gain: 0.0,
+        warp: 0.0,
+        granulation: 0.0,
+        ..Default::default()
+    };
+    for slot in &mut t.paint.brush_by_mode {
+        *slot = t.paint.brush;
+    }
+    let stroke_v = |t: &mut PainterTool, x: f32| {
+        assert!(t.on_canvas_pointer(cp([x, 30.0], PointerPhase::Down)));
+        let mut y = 30.0f32;
+        while y < 130.0 {
+            y += 2.0;
+            t.on_canvas_pointer(cp([x, y], PointerPhase::Move));
+        }
+        t.on_canvas_pointer(cp([x, 130.0], PointerPhase::Up));
+    };
+    let wet_at = |t: &PainterTool, x: usize, y: usize| t.paint.canvas_wet[y * size as usize + x];
+
+    stroke_v(&mut t, 40.0); // wash A (band x ≈ 28..52) — pours moisture at its bake
+    assert!(
+        !t.paint.canvas_wet.is_empty(),
+        "A's bake must pour moisture"
+    );
+    // Dry A partially: ~4 s of heartbeat (rate 25.5 ⇒ ~102 bytes off 255, still comfortably wet).
+    for _ in 0..8 {
+        t.paint_tick(0.5);
+    }
+    let a_before = wet_at(&t, 40, 80);
+    assert!(
+        a_before > 0 && a_before < 220,
+        "A must have partially dried before B (got {a_before})"
+    );
+
+    stroke_v(&mut t, 120.0); // wash B (band x ≈ 108..132) — FAR from A, no overlap
+    let a_after = wet_at(&t, 40, 80);
+    let b_fresh = wet_at(&t, 120, 80);
+    assert!(
+        u32::from(b_fresh) > u32::from(a_after) + 40,
+        "B is freshly wet, A stayed drier: B {b_fresh} vs A {a_after}"
+    );
+    assert!(
+        a_after <= a_before,
+        "painting B must NOT re-wet A's core (its own drying clock): A was {a_before}, became {a_after}"
+    );
+}
+
 /// **EDGE-1 regressão (Enio smoke 2026-07-09, "traços duplicados"):** a janela de secagem vencendo
 /// NO MEIO de um traço aberto não pode duplicar o wash. O teardown antigo derrubava a base da
 /// sessão no tick (mapa zerado) mas deixava os buffers da união vivos (o traço aberto é dono

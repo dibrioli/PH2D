@@ -120,6 +120,10 @@ impl PainterTool {
                         self.set_dry_time_s(v);
                         true
                     }
+                    x if x == core_ids::PAINTER_WATERCOLOR_WET_PREVIEW => {
+                        self.set_wet_preview_intensity(v);
+                        true
+                    }
                     x if x == core_ids::PAINTER_WATERCOLOR_PULL => {
                         self.set_brush_wet_pull(v);
                         true
@@ -283,6 +287,13 @@ impl PainterTool {
         (255.0 / self.paint.dry_rate_per_s.max(0.001)).clamp(DRY_TIME_MIN_S, DRY_TIME_MAX_S)
     }
 
+    /// Set the on-canvas **Wetness Preview** strength (`0..=1`, `0` = no preview) — the max veil alpha
+    /// the shell paints over the wet paper (canvas-level display setting, doc 14 #12a). Read back via
+    /// [`Self::wet_preview_intensity`].
+    pub fn set_wet_preview_intensity(&mut self, v: f32) {
+        self.paint.wet_preview_intensity = v.clamp(0.0, 1.0);
+    }
+
     /// Reset the **Paper** slot to empty (kind `None` → the render-path falls back to the built-in paper
     /// noise), dropping any tagged-layer image. Plain state edit (no undo / pixel touch).
     pub fn reset_brush_paper(&mut self) {
@@ -370,8 +381,9 @@ impl PainterTool {
         b.wet_dilution = d.wet_dilution;
         b.wet_pull = d.wet_pull;
         b.watercolor_shape_auto = d.watercolor_shape_auto;
-        // Drying Time is canvas-level (not on `b`): reset it to the ~10 s default too.
+        // Drying Time + wetness-preview are canvas-level (not on `b`): reset them to their defaults too.
         self.paint.dry_rate_per_s = super::watercolor_backdrop::CANVAS_WET_DRY_DEFAULT;
+        self.paint.wet_preview_intensity = super::watercolor_backdrop::WET_PREVIEW_DEFAULT;
     }
 
     /// Install a tagged Hierarchy layer/group (its luminance `lum`, `width × height`) into the watercolor

@@ -212,6 +212,11 @@ impl PainterTool {
 /// its default. `255 / seconds`: 10 s → 25.5.
 pub(super) const CANVAS_WET_DRY_DEFAULT: f32 = 25.5;
 
+/// #12a (doc 14) — DEFAULT wetness-preview strength: the max veil alpha the shell paints over the wet
+/// paper (a discreet damp darkening). `0` = no preview. The live value is `PaintState::wet_preview_intensity`
+/// (the Wetness card's slider); this is only its default.
+pub(super) const WET_PREVIEW_DEFAULT: f32 = 0.3;
+
 impl PainterTool {
     /// EDGE-1: whether the stroke beginning NOW continues the live **wet session** (one wash):
     /// watercolor mode, some paper still wet, the session base is sized, the union buffers exist,
@@ -239,9 +244,12 @@ impl PainterTool {
     }
 
     /// EDGE-1: pour the finished stroke's coverage into the persistent canvas MOISTURE map
-    /// (max-blend over the stroke's cumulative rect). Called at the bake, AFTER the commit
-    /// composite — the stroke's own rim renders against dry paper; only strokes that follow
-    /// within the drying window merge into it.
+    /// (max-blend over THIS STROKE's footprint). Called at the bake, AFTER the commit composite —
+    /// the stroke's own rim renders against dry paper; only strokes that follow within the drying
+    /// window merge into it. Uses the per-stroke rect (`wet_stroke_dirty`), NOT the session cumulative
+    /// (`wet_cum_dirty`): `stroke_coverage` is the whole session UNION, so pouring it over the
+    /// cumulative rect re-wet every earlier wash to 255 — resetting their drying clocks (#4). Restricting
+    /// to this stroke's footprint re-wets only what it painted (its overlap with a prior wash included).
     pub(super) fn pour_canvas_wet(&mut self) {
         let (fw, fh) = self.source_size;
         let (fw, fh) = (fw as usize, fh as usize);
@@ -249,7 +257,7 @@ impl PainterTool {
         if n == 0 || self.paint.stroke_coverage.len() != n {
             return;
         }
-        let Some(r) = self.paint.wet_cum_dirty else {
+        let Some(r) = self.paint.wet_stroke_dirty else {
             return;
         };
         let (x0, y0) = ((r.x as usize).min(fw), (r.y as usize).min(fh));
@@ -378,6 +386,13 @@ impl PainterTool {
             h,
             [x0 as u32, y0 as u32, x1 as u32, y1 as u32],
         ))
+    }
+
+    /// #12a (doc 14): the on-canvas wetness PREVIEW strength (`0..1`) — the max veil alpha the shell
+    /// paints over the wet paper. `0` = no preview. The Wetness card's slider drives it.
+    #[must_use]
+    pub fn wet_preview_intensity(&self) -> f32 {
+        self.paint.wet_preview_intensity.clamp(0.0, 1.0)
     }
 }
 

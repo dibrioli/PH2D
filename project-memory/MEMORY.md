@@ -30,6 +30,7 @@
 - [git stash multiagente](feedback_git_stash_multiagent_danger.md) — stash pop com índice sujo injeta conflict markers em arquivo alheio
 - [cargo fmt -p reformata WIP alheio](feedback_cargo_fmt_p_reformats_foreign_wip.md) — formata TODA a crate incl. WIP alheio; use `rustfmt <meus arquivos>`
 - [Worktree agent stale base](feedback_worktree_agent_stale_base.md) — `Agent(worktree)` ramifica do HEAD de início; só p/ audit read-only
+- [`sed -i` relativo escreve no repo errado](feedback_sed_relative_path_hits_primary_cwd.md) — `cd` composto pode não valer; mutação de arquivo SEMPRE por caminho absoluto (Modo L: senão edita o `main`)
 
 ## Ship / CI / cadência
 - [Multi-máquina Mac/Linux/Windows](project_multi_machine_setup.md) — GitHub = fonte única, clone local por máquina; memória vendorizada em `project-memory/` via symlink; runbook `docs/DevOps/MULTI_MACHINE_SETUP.md`
@@ -57,6 +58,7 @@
 ## Auditoria
 - [Menu "não faz nada" = falta registro no populate](feedback_context_menu_closes_on_down_repaint.md) — grep o id no `populate_*` PRIMEIRO; repaint/close-on-Down = red herring; não mexer no dispatch global
 - [Meça a ESCALA do sintoma antes da causa](feedback_measure_perf_symptom_scale.md) — perf: fixe o nº (ms) primeiro; frame(4-16ms) vs ⅓s muda a classe de causa; bench-verde≠vivo
+- [Harness reproduz mecanismo, não contexto](feedback_harness_reproduces_mechanism_not_context.md) — smoke contradiz fix provado ⇒ instrumente o guard no app real (eprintln por evento), não itere mecanismo
 - [Unit-verde ≠ funciona no produto](feedback_tool_unit_green_integration_dead.md) — tool passa unit+CI e está morta (pill não registrada/input não wirado); só audit e2e pega
 - [Gizmo errado = cheque o HIT, não a math](feedback_gizmo_verify_hit_target_before_transform_math.md) — logue o target resolvido no grab ANTES da math; era colisão de id
 - [Lens diversity](feedback_audit_lens_diversity.md) — rotacionar lentes; ≥2 paralelas; gates executáveis > claims verbais
@@ -74,6 +76,7 @@
 - [Fan-out registry-init](feedback_fanout_registry_init_friction.md) — tool-sync NÃO regenera os 2 testes hand-maintained (cluster order + icon slug)
 - [node-sync glob prefix](feedback_node_sync_glob_prefix_gotcha.md) — crate na área de nós não pode começar com `ph2d-node-` (gera `::register` inexistente); use outro prefixo
 - [Hier companion allowlist](feedback_hier_companion_dispatch_allowlist.md) — bits novos em 2 sites de `pointer.rs` senão click dropado
+- [Botão dimmed ainda despacha](feedback_disabled_button_still_dispatches.md) — dim é cosmético; não-registrar hit + recusar no event.rs; cuidado com `unwrap_or(escopo_maior)` atrás de op destrutiva
 - [Panel populate register](feedback_panel_populate_register.md) — botão novo exige register em `populate.rs`; pintar + hit_index não basta
 - [Painel docado = 4 sites de registro](feedback_docked_panel_registration_four_sites.md) — crate+sync+EXPECTED · **feature-proxy no shell** · **z-order walk em hero/paint.rs** · visibility default+canonical; 2 gates verdes mascaram (painel morto na tela); widgets pela Widget Gallery
 - [Panel arch-gates scope + clamp/const](feedback_panel_arch_gates_scope_and_clamp_const.md) — no_magic_numeric + arch_safe_clamp_only escaneiam TODO ph2d-panel-*/src; hoist de bound de clamp p/ const dispara o clamp-gate (precisa `// CLAMP-OK`)
@@ -97,6 +100,7 @@
 - [Texture Layer = raster-backed](project_texture_layer_design.md) — `LayerKind::Texture` pré-renderizado em `images[id]`; compõe de graça; roteamento via `route_texture_layer_event`
 - [Brush audit 2026-06-18](project_brush_audit_2026_06_18.md) — (HISTÓRICO, brush deletado) claims de paridade CPU↔GPU MENTEM (latentes); meça antes de confiar
 - [Norte node-centric](project_node_centric_decision_2026_05_21.md) — engine = sistema de nós multi-domínio; `ph2d-nodegraph`+`ph2d-expr`; FBP isolation = unidade multi-agente
+- [Motion keyframes adiados p/ a timeline](project_motion_keyframes_deferred_timeline_integration.md) — M2.W1 do Motion ADIADO 2026-07-09 (timeline nasce em outra linha); pesquisa pré-impl preservada
 - [Vector cutover ADR-0108](project_vector_cutover_adr0108.md) — módulo REPOSICIONADO (Rive-referenced, GPU/editor-first); motor novo `ph2d-vec-*` + tool `ph2d-tool-vector`; 30 crates antigas retiradas; gotchas: icon-sort=slug, gate-doc FICA, Painter reusa IconId::Vector*, teardown compiler-guided
 - [Modelo multi-agente = função do HW (Modo L/C)](project_multiagent_modo_l_2026_07_05.md) — workstation=**Modo L** (linhas por worktree, SEM coordenador, foundational concorrente via gate testado + Mergiraf); constrained=Modo C (v7.1). ADR-0106/0107 + [guia](../docs/IntegracaoMultiAgente/GUIA_JORNADA_MODO_L.md)
 - [HISTÓRICO: reescrita DIRETRIZ v6.8](project_diretriz_v68_2026_05_22.md) — v6.7→v6.8 (ADR-0040); o "2 papéis/Coord absorve PRCI" é **Modo-C-only** agora (superseded acima)

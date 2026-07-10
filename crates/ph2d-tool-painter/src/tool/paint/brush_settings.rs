@@ -302,6 +302,9 @@ pub struct BrushSettings {
     pub fill: f32,
     /// **Depth** (`> 0`) — Beer–Lambert optical-depth scale (render-path `DEPTH`).
     pub depth: f32,
+    /// **Opacity** (`0..1`) — pigment body / hiding power: lays the pigment's own colour so light-valued
+    /// pigments deposit at their hue instead of near-invisible pure Beer–Lambert tinting (#17). `0` = off.
+    pub opacity: f32,
     /// **Warp** (canvas px) — organic-boundary displacement of the coverage sampling (render-path).
     pub warp: f32,
     /// **Smudge** (`0..1`) — Wet Mix amount (mixer-brush lift+carry vs fresh pigment).

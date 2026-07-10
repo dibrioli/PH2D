@@ -50,8 +50,10 @@ mod stroke_lifecycle;
 mod watercolor_accum;
 /// Watercolor real GROUND (backdrop under the active layer + document paper colour) + water soak.
 mod watercolor_backdrop;
-/// Watercolor field math (LUTs, noise, blur, samplers); split from `watercolor_render` (LOC cap).
+/// Watercolor field math (noise, blur, samplers, per-stroke styles); split from `watercolor_render`.
 mod watercolor_field;
+/// Watercolor optical LUTs (`s2l`/`ln`/`exp`) + pigment-body helpers; split for the LOC cap (HR-5).
+mod watercolor_lut;
 /// Watercolor Wet Mix mixer-brush state (Charge/Dilution/Pull) — per-dab colour pickup + carry.
 mod watercolor_mixer;
 /// Watercolor edge darkening (#1): per-stroke coverage + the pen-up blur-difference "fringe" pass.

@@ -10646,6 +10646,61 @@ fn watercolor_pigment_mixes_wet_on_wet_toward_green() {
     );
 }
 
+/// Watercolor render-path #4 — **Opacity (pigment body)** lets a LIGHT-valued pigment deposit at its hue
+/// (doc 13 #17: "azul e amarelo quase não aparecem"). Pure Beer–Lambert (`opacity = 0`) can only subtract
+/// light, so a light yellow over white paper leaves its bright channels at `Tᵢ ≈ 1` and barely darkens —
+/// the reported bug. Turning Opacity up lays the pigment's own colour (scattering / hiding power), so the
+/// SAME wash darkens substantially MORE and keeps its yellow character (blue absorbed hardest). The
+/// `opacity = 0` render is byte-identical to the old path by construction: `body_cov = 0` ⇒ the fold term
+/// `(s2l[pig] − optical)·0.0` is exactly `0.0` and `max(1−t_min, 0)` is unchanged. Real composite,
+/// Edge/Warp/Granulation off to isolate the body term. DIRETIVA §4 (verified RED by neutering the fold).
+#[test]
+fn watercolor_opacity_gives_light_pigments_body() {
+    fn light_yellow_center(opacity: f32) -> [u8; 4] {
+        let size = 64u32;
+        let mut t = PainterTool::default();
+        t.set_source(vec![255u8; (size * size * 4) as usize], size, size);
+        t.paint.brush = BrushSpec {
+            radius_px: 20.0,
+            hardness: 1.0,
+            falloff: Falloff::Constant,
+            color: [0.95, 0.85, 0.20], // light yellow → bright R,G (near-transparent under Beer–Lambert)
+            space_attenuation: false,
+            watercolor: true,
+            edge_gain: 0.0, // isolate the body term from the rim
+            granulation: 0.0,
+            warp: 0.0,
+            fill: 0.15, // a thin default-ish wash — where the light-pigment invisibility bites hardest
+            depth: 1.2,
+            opacity,
+            ..Default::default()
+        };
+        for slot in &mut t.paint.brush_by_mode {
+            *slot = t.paint.brush;
+        }
+        assert!(t.on_canvas_pointer(cp([32.0, 32.0], PointerPhase::Down)));
+        assert!(t.on_canvas_pointer(cp([32.0, 32.0], PointerPhase::Up)));
+        px(&t, size, 32, 32)
+    }
+    // Total darkening away from white paper — the "how much did the wash actually deposit" meter.
+    let deposit =
+        |p: [u8; 4]| (255 - u32::from(p[0])) + (255 - u32::from(p[1])) + (255 - u32::from(p[2]));
+    let transparent = light_yellow_center(0.0); // pure Beer–Lambert → the faint, near-invisible wash
+    let bodied = light_yellow_center(0.8); //       body on → the pigment shows at its hue
+    assert!(
+        deposit(bodied) > deposit(transparent) + 30,
+        "Opacity must give a light pigment body (deposit far more): bodied {bodied:?} (Δ{}) vs transparent {transparent:?} (Δ{})",
+        deposit(bodied),
+        deposit(transparent),
+    );
+    // The character stays YELLOW: blue is the hardest-absorbed channel in both (body lays the pigment's
+    // OWN colour, it does not gray the wash toward paper).
+    assert!(
+        bodied[2] < bodied[0] && bodied[2] < bodied[1],
+        "body must preserve the pigment hue (blue absorbed hardest): {bodied:?}"
+    );
+}
+
 /// Watercolor render-path is **LIVE** — the wash appears *during* the stroke (each frame recomposited
 /// from the growing coverage over the frozen base), not as a jump on release. Paint a horizontal band
 /// and, WITHOUT releasing, assert (a) the interior already differs from the white base and (b) the rim
@@ -11815,6 +11870,7 @@ fn watercolor_wet_lifts_paint_lighter_than_the_old_cream() {
             warp: 0.0,
             fill: 0.25,
             depth: 1.0,
+            opacity: 0.0, // near-clear water = no body film; isolate the wet LIFT (its own test)
             wet_smudge: 0.0,
             wet_rewet: wet,
             ..Default::default()
@@ -13477,6 +13533,7 @@ fn watercolor_signed_rim_pales_the_fringe() {
             edge_spread: 6.0,
             warp: 0.0,
             granulation: 0.0,
+            opacity: 0.0, // isolate the signed rim from the body/opacity film (its own test)
             ..Default::default()
         };
         for slot in &mut t.paint.brush_by_mode {

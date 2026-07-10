@@ -167,7 +167,7 @@ fn paint_wash_card(
     y: f32,
     brush: &BrushSettings,
 ) -> f32 {
-    let (ix, iw, mut ry, next_y) = card_frame(ctx, theme, x, content_w, y, "Wash", 5);
+    let (ix, iw, mut ry, next_y) = card_frame(ctx, theme, x, content_w, y, "Wash", 6);
     ry = card_row(
         ctx,
         theme,
@@ -193,6 +193,20 @@ fn paint_wash_card(
         brush.depth,
         DEPTH_MIN,
         DEPTH_MAX,
+        number_field::FINE_STEP,
+        2,
+    );
+    ry = card_row(
+        ctx,
+        theme,
+        ix,
+        iw,
+        ry,
+        "Opacity",
+        core_ids::PAINTER_WATERCOLOR_OPACITY,
+        brush.opacity,
+        0.0,
+        1.0,
         number_field::FINE_STEP,
         2,
     );

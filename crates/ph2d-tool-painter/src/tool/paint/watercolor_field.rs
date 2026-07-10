@@ -1,99 +1,12 @@
 //! Watercolor **field math** — the deterministic building blocks of the optical composite
-//! ([`super::watercolor_render`]): the `s2l`/`ln`/`exp` LUTs (all transcendentals run once here, never
-//! per pixel — HR-5), the integer-hash value noise (warp + built-in paper tooth), the smoothstep /
-//! bilinear samplers and the O(n) separable box blur. Split from `watercolor_render.rs` for the
-//! workspace LOC cap.
+//! ([`super::watercolor_render`]): the integer-hash value noise (warp + built-in paper tooth), the
+//! smoothstep / bilinear samplers and the O(n) separable box blur, plus the per-stroke [`WetStrokeStyle`]
+//! + session tables. The optical `s2l`/`ln`/`exp` LUTs live in [`super::watercolor_lut`] (re-exported
+//! below so callers keep using `watercolor_field::{Luts, luts}`). Split from `watercolor_render.rs` for
+//! the workspace LOC cap.
 
-use ph2d_color::srgb::{linear_to_srgb_byte, srgb_to_linear_byte};
+pub(super) use super::watercolor_lut::*;
 use rayon::prelude::*;
-use std::sync::OnceLock;
-
-// ── LUTs (built once; the ln/exp/pow run only here, never per pixel — HR-5) ──────────────────────────
-const L2S_N: usize = 4096;
-const EXP_N: usize = 2048;
-/// Largest `|exponent|` the Beer–Lambert `exp` LUT spans; `exp(-32) ≈ 1.3e-14 ≈ 0`, so anything past
-/// this is transmittance 0 (opaque pigment) — a safe clamp for even a very dense wash.
-const EXP_MAX: f32 = 32.0;
-
-pub(super) struct Luts {
-    /// sRGB byte → linear-light intensity.
-    pub(super) s2l: [f32; 256],
-    /// `ln(max(linear, 1e-4))` per sRGB byte — the pigment's log-transmittance (clamp avoids `-∞` on black).
-    pub(super) lnl: [f32; 256],
-    /// linear-light intensity (`[0, 1]`, quantised to `L2S_N + 1`) → sRGB byte.
-    pub(super) l2s: [u8; L2S_N + 1],
-    /// `exp(-mag)` for `mag ∈ [0, EXP_MAX]` (quantised to `EXP_N + 1`) — Beer–Lambert transmittance.
-    pub(super) exp_neg: [f32; EXP_N + 1],
-    /// `−ln(max(x, 1e-4))` for `x ∈ [0, 1]` (quantised to `EXP_N + 1`) — the absorbance of a linear
-    /// ratio, for the log-space (density-proportional) Wet lift + subtractive colour mix.
-    pub(super) ln_mag: [f32; EXP_N + 1],
-}
-
-pub(super) fn luts() -> &'static Luts {
-    static LUTS: OnceLock<Luts> = OnceLock::new();
-    LUTS.get_or_init(|| {
-        let mut s2l = [0.0f32; 256];
-        let mut lnl = [0.0f32; 256];
-        for i in 0..256 {
-            let lin = srgb_to_linear_byte(i as u8);
-            s2l[i] = lin;
-            lnl[i] = lin.max(1e-4).ln();
-        }
-        let mut l2s = [0u8; L2S_N + 1];
-        for (i, slot) in l2s.iter_mut().enumerate() {
-            *slot = linear_to_srgb_byte(i as f32 / L2S_N as f32);
-        }
-        let mut exp_neg = [0.0f32; EXP_N + 1];
-        for (i, slot) in exp_neg.iter_mut().enumerate() {
-            *slot = (-(EXP_MAX * i as f32 / EXP_N as f32)).exp();
-        }
-        let mut ln_mag = [0.0f32; EXP_N + 1];
-        for (i, slot) in ln_mag.iter_mut().enumerate() {
-            *slot = -(i as f32 / EXP_N as f32).max(1e-4).ln();
-        }
-        Luts {
-            s2l,
-            lnl,
-            l2s,
-            exp_neg,
-            ln_mag,
-        }
-    })
-}
-
-impl Luts {
-    /// linear intensity → sRGB byte via the LUT (clamped index).
-    #[inline]
-    pub(super) fn l2s_byte(&self, v: f32) -> u8 {
-        let idx = (v.clamp(0.0, 1.0) * L2S_N as f32) as usize;
-        self.l2s[idx.min(L2S_N)]
-    }
-    /// Beer–Lambert transmittance `pigment^(od)` for a pigment byte `c` and optical depth `od ≥ 0`,
-    /// via `exp(lnl[c]·od)` looked up in the `exp` LUT (`lnl[c] ≤ 0` ⇒ the exponent is `≤ 0`).
-    #[inline]
-    pub(super) fn transmittance(&self, c: u8, od: f32) -> f32 {
-        let mag = -self.lnl[c as usize] * od; // = |exponent|, ≥ 0
-        let idx = (mag / EXP_MAX * EXP_N as f32) as usize;
-        self.exp_neg[idx.min(EXP_N)]
-    }
-    /// `−ln(x)` of a linear ratio `x ∈ [0, 1]`, LUT + lerp (the interpolation kills the quantisation
-    /// banding a raw lookup would print into smooth tint gradients).
-    #[inline]
-    pub(super) fn absorbance(&self, x: f32) -> f32 {
-        let f = x.clamp(0.0, 1.0) * EXP_N as f32;
-        let i = (f as usize).min(EXP_N - 1);
-        let t = f - i as f32;
-        self.ln_mag[i] + (self.ln_mag[i + 1] - self.ln_mag[i]) * t
-    }
-    /// `exp(−mag)` for `mag ≥ 0`, LUT + lerp (twin of [`Self::absorbance`]).
-    #[inline]
-    pub(super) fn exp_mag(&self, mag: f32) -> f32 {
-        let f = (mag / EXP_MAX).clamp(0.0, 1.0) * EXP_N as f32;
-        let i = (f as usize).min(EXP_N - 1);
-        let t = f - i as f32;
-        self.exp_neg[i] + (self.exp_neg[i + 1] - self.exp_neg[i]) * t
-    }
-}
 
 // ── Deterministic value noise (integer hash; HR-5 transcendental-free) ───────────────────────────────
 // Distinct seeds keep the two warp axes + the paper grain decorrelated (else the boundary would ripple
@@ -517,6 +430,9 @@ mod tests {
 pub(super) struct WetStrokeStyle {
     pub(super) fill: f32,
     pub(super) depth: f32,
+    /// Per-owner **Opacity** (pigment body / hiding power): a baked light-pigment wash keeps ITS body
+    /// when a later stroke changes Opacity, like every other wash param. `0` = pure transmittance.
+    pub(super) opacity: f32,
     pub(super) edge_gain: f32,
     pub(super) wet: f32,
     pub(super) granulation: f32,
@@ -546,6 +462,7 @@ impl WetStrokeStyle {
         Self {
             fill: spec.fill.clamp(0.0, 1.0),
             depth: spec.depth.max(0.0),
+            opacity: spec.opacity.clamp(0.0, 1.0),
             edge_gain: spec.edge_gain.max(0.0),
             wet: spec.wet_rewet.clamp(0.0, 1.0),
             granulation: spec.granulation.clamp(0.0, 1.0),

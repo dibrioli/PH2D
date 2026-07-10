@@ -92,6 +92,10 @@ impl PainterTool {
                         self.set_brush_depth(v);
                         true
                     }
+                    x if x == core_ids::PAINTER_WATERCOLOR_OPACITY => {
+                        self.set_brush_opacity(v);
+                        true
+                    }
                     x if x == core_ids::PAINTER_WATERCOLOR_WARP => {
                         self.set_brush_warp(v);
                         true
@@ -229,6 +233,12 @@ impl PainterTool {
         self.paint.brush.depth = v.clamp(0.1, 8.0);
     }
 
+    /// Set the render-path **Opacity** (pigment body / hiding power), clamped to `0..=1`. `0` = pure
+    /// transparent Beer–Lambert (byte-identical); higher lets light pigments deposit at their hue (#17).
+    pub fn set_brush_opacity(&mut self, v: f32) {
+        self.paint.brush.opacity = v.clamp(0.0, 1.0);
+    }
+
     /// Set the render-path **Warp** (organic-boundary displacement, canvas px), clamped to `0..=48`.
     pub fn set_brush_warp(&mut self, v: f32) {
         self.paint.brush.warp = v.clamp(0.0, 48.0);
@@ -352,6 +362,7 @@ impl PainterTool {
         b.pigment_mix = d.pigment_mix;
         b.fill = d.fill;
         b.depth = d.depth;
+        b.opacity = d.opacity;
         b.warp = d.warp;
         b.wet_smudge = d.wet_smudge;
         b.wet_rewet = d.wet_rewet;

@@ -174,6 +174,7 @@ pub(crate) const FALLBACK_BRUSH: BrushSettings = BrushSettings {
     pigment_mix: 0.5, // LITERAL-PX-OK: default pigment mix (mirrors BrushSpec::default)
     fill: 0.12,       // LITERAL-PX-OK: default wash fill density (mirrors BrushSpec::default)
     depth: 1.2,       // LITERAL-PX-OK: default Beer–Lambert depth (mirrors BrushSpec::default)
+    opacity: 0.4,     // LITERAL-PX-OK: default pigment body / hiding power (mirrors BrushSpec::default)
     warp: 6.0,        // LITERAL-PX-OK: default boundary warp px (mirrors BrushSpec::default)
     wet_smudge: 0.0,  // LITERAL-PX-OK: Wet Mix off by default (mirrors BrushSpec::default)
     wet_rewet: 0.0,   // LITERAL-PX-OK: wet-on-wet off (mirrors BrushSpec::default)

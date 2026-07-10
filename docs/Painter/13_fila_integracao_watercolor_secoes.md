@@ -123,7 +123,7 @@ composite. Corpo molhado + rim no contorno EXTERNO + textura como variação de 
 | 14 | **INVESTIGAÇÃO: retângulos do Per-Layer Color no brush comum** (Enio 2026-07-10, foto) | bug aberto (handoff `HANDOFF_per_layer_color_perf_artifacts.md`) | aplicar o MÉTODO do BUGS #8 (bissecção + perfil + sondas) |
 | 15 | **INVESTIGAÇÃO: perf do Per-Layer Color — otimizações da aquarela não aplicadas** (Enio 2026-07-10) | lento (handoff aberto) | checklist BUGS #7 + stamp-cache + ADR-0109 — vide bloco abaixo |
 | 16 | **PESQUISA: traço de aspecto 3D — como Procreate/Rebelle/Painter fazem** (Enio 2026-07-10) | design | height-map + lighting pass como alternativa barata ao Per-Layer Color — vide bloco abaixo |
-| 17 | **BUG: cores claras (amarelo/azul-claro) quase não aparecem** (Enio 2026-07-11, foto) | bug aberto | Beer-Lambert puro: pigmento claro tem absorbância ~0 nos canais brilhantes → transparente sobre papel branco. Falta BODY/opacidade. Diagnóstico + rotas no bloco "#17" abaixo |
+| 17 | **BUG: cores claras (amarelo/azul-claro) quase não aparecem** (Enio 2026-07-11, foto) | ✅ LANDOU 2026-07-11 (rota (a): slider **Opacity** = pigment body/hiding power) | vide bloco "#17" abaixo — resolução no fim do bloco |
 
 **Blur do Wet Mix: exposto (`a7712f45`) e REVERTIDO no smoke** (Enio: "funcionava melhor quando
 ele não era configurável") — o pickup do mixer fica FIXO em r×0,5 (cerca de Chesterton anotada no
@@ -251,3 +251,20 @@ mostra cores claras porque a tinta tem CORPO (opacidade/scattering), não só ab
 **Método:** RED com uma cor clara (amarelo) medindo o depósito sobre papel branco (Δ do byte deve
 ser >> hoje); fix; verificar que vermelho/escuros ficam byte-idênticos (o body só levanta o piso das
 claras). Precisa do smoke pra calibrar `k`.
+
+**✅ RESOLUÇÃO (2026-07-11) — rota (a), slider Opacity:**
+- **Modelo:** `body_cov = opacity·(1 − e^{−k·od})` (`BODY_OD_GAIN k=6`, `watercolor_lut::Luts::body_cov`);
+  o composite deita a cor do PRÓPRIO pigmento sobre o resultado Beer-Lambert por `body_cov` — value-
+  independent, então o amarelo aparece na sua matiz em vez de `Tᵢ≈1`. **`opacity=0` ⇒ fold no-op, byte-
+  idêntico** (prova: `x + (…)·0.0 = x`). Default `0.4` (só ativo com Watercolor ON → brush default intacto).
+- **Alpha in-gamut (crítico):** o body derruba o canal mais-absorvido abaixo do piso `ground·(1−a)` do
+  un-premultiply → `L` clampava (erro de 22 bytes no bake de camada transparente). Fix: `cov_a =
+  max(1−t_min, a_body)` onde `a_body = max_c gamut_alpha(app_c, ground_c)` (o alpha mínimo que mantém
+  `L∈[0,1]` nos dois lados). `a_body=0` quando body off → `cov_a` byte-idêntico.
+- **Split LOC:** o campo novo transbordou `watercolor_render.rs`/`watercolor_field.rs` (ambos a 1 linha do
+  teto 700 no main) → extraído `watercolor_lut.rs` (LUTs + helpers ópticos), re-exportado por glob.
+- **Testes:** `watercolor_opacity_gives_light_pigments_body` (RED provado neutralizando o fold: amarelo dá
+  `[255,253,197]` idêntico com/sem opacity → GREEN com o fold). `signed_rim`/`wet_lift` isolados com
+  `opacity:0` (o body é o filme, ortogonal ao rim/lift). 508 testes verdes, clippy 0.
+- **UI:** slider **Opacity** no card **Wash** (após Concentration), `PAINTER_WATERCOLOR_OPACITY`.
+- **Aberto:** calibrar `k`/default no smoke; rota (c) Kubelka–Munk segue o norte (supersede o body term).

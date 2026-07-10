@@ -193,6 +193,15 @@ pub struct BrushSpec {
     /// channel is `Tᵢ = pigmentᵢ^(D·depth)` in linear light, so a larger depth darkens the absorbed
     /// channels faster (the hue shifts more with thickness). Only read by the render-path.
     pub depth: f32,
+    /// **Opacity** (pigment body / hiding power), `0..1`. Pure Beer–Lambert (`opacity = 0`) can only
+    /// SUBTRACT light, so a light-valued pigment — yellow, light blue — leaves its bright channels at
+    /// `Tᵢ ≈ 1` and barely deposits over white paper ("azul e amarelo quase não aparecem", Enio
+    /// 2026-07-10). Body models the pigment's SCATTERING: it lays the pigment's own colour over the
+    /// transmittance result with a coverage `opacity·(1 − e^{−k·od})` (od = deposit), so light pigments
+    /// show at their hue regardless of value — transparent watercolor toward gouache. `0` (default-off
+    /// for a plain brush; the render-path default is `0.4`) is byte-identical (the fold is skipped).
+    /// Distinct from [`Self::flow`] (deposit RATE). Only read by the render-path when `watercolor` is on.
+    pub opacity: f32,
     /// **Warp** amplitude in canvas px (wet_edges `warpAmp`): a fractal value-noise field displaces the
     /// coverage sampling so the wash boundary is organic (ragged), not a clean disc. `0` = a crisp edge.
     /// Only read by the render-path.
@@ -303,6 +312,9 @@ impl Default for BrushSpec {
             // Render-path optics (wet_edges defaults); inert unless `watercolor` is on.
             fill: 0.12,
             depth: 1.2,
+            // Pigment body: lifts light-valued pigments so they deposit at their hue (not near-invisible
+            // over white). Inert unless `watercolor` is on → a plain brush is byte-identical regardless.
+            opacity: 0.4,
             warp: 6.0,
             wet_smudge: 0.0,   // off → byte-identical (the smear path is skipped)
             wet_rewet: 0.0,    // off → byte-identical (the rewet path is skipped)

@@ -4,8 +4,7 @@
 //! coverage mask ([`PaintState::stroke_coverage`](super::PaintState)) and a deposited-colour buffer
 //! ([`PaintState::stroke_color`](super::PaintState)), and the whole appearance is **reconstructed
 //! optically** each frame over a frozen base — exactly the architecture of
-//! `docs/Painter/wet_edges_paint.html`. This kills the per-dab "bubble" + alpha build-up that a
-//! bolt-on darkening pass inherits (the wash is a single optical field, not stacked stamps).
+//! `docs/Painter/wet_edges_paint.html` (one optical field, not stacked stamps).
 //!
 //! The model, per pixel (over the frozen base `B`, all in **linear light**):
 //! ```text
@@ -17,8 +16,8 @@
 //!   Tᵢ    = pigmentᵢ^(D·depth)                              // Beer–Lambert transmittance per channel
 //!   outᵢ  = l2s( s2l(Bᵢ)·Tᵢ + s2l(pigmentᵢ)·(1 − Tᵢ) )     // base attenuated + pigment scattered
 //! ```
-//! All per-pixel math is table lookups + sums/mults (HR-5): the `s2l`/`lnl`/`l2s`/`exp` LUTs and the
-//! integer-hash value noise are built once and deterministic; no transcendental runs in the hot loop.
+//! All per-pixel math is table lookups + sums/mults (HR-5) — LUTs in [`super::watercolor_lut`], the
+//! integer-hash value noise in [`super::watercolor_field`]; no transcendental runs in the hot loop.
 
 use super::watercolor_field::*;
 use super::watercolor_rewet_px::{
@@ -34,9 +33,9 @@ pub(super) const SS0: f32 = 0.12; // LITERAL-PX-OK: coverage-hardening smoothste
 pub(super) const SS1: f32 = 0.60; // LITERAL-PX-OK: coverage-hardening smoothstep high edge (wet_edges)
 
 impl PainterTool {
-    /// Whether the watercolor optical render-path drives this stroke: the Watercolor section is on, we're
-    /// the normal **Paint** brush (not Smear/Blur/Clone/Mask/Inpaint/Fill/Selection/Deform), and not
-    /// erasing. Off ⇒ a byte-identical plain brush (the whole path is skipped, deposit + composite alike).
+    /// Whether the watercolor optical render-path drives this stroke: Watercolor on, the normal **Paint**
+    /// brush (not Smear/Blur/Clone/Mask/Inpaint/Fill/Selection/Deform), not erasing. Off ⇒ byte-identical
+    /// plain brush (the whole path is skipped, deposit + composite alike).
     pub(super) fn watercolor_render_active(&self) -> bool {
         self.paint.brush.watercolor
             && matches!(self.paint.paint_mode, PaintMode::Paint)
@@ -46,14 +45,13 @@ impl PainterTool {
     /// Composite the watercolor wash over the frozen base ([`PaintState::watercolor_base`](super::PaintState)).
     ///
     /// Reads the coverage + deposited-colour buffers, reconstructs the optical density `D`, and applies
-    /// per-channel Beer–Lambert in linear light — see the module docs. The base is a separate `Arc`, so
-    /// each frame recomposites cleanly from the pristine pre-stroke pixels (no overlay peel). `commit`
-    /// drops the base (pen-up bake, inside the undo transaction); the live passes keep it for the next frame.
+    /// per-channel Beer–Lambert in linear light — see the module docs. The base is a separate `Arc` (each
+    /// frame recomposites from the pristine pre-stroke pixels, no overlay peel); `commit` drops it at the
+    /// pen-up bake (inside the undo transaction), the live passes keep it for the next frame.
     ///
-    /// **Dirty-rect (wet_edges `renderFrame`/`endStroke`):** the live passes recomposite ONLY the
-    /// frame dirty rect (the dabs since the last composite), padded by the influence radius; the
-    /// pen-up bake makes one cumulative pass from an incrementally tracked bbox — never a
-    /// full-canvas scan. Returns the recomposited canvas region (`None` = nothing to do).
+    /// **Dirty-rect (wet_edges `renderFrame`/`endStroke`):** live passes recomposite ONLY the frame
+    /// dirty rect (dabs since the last composite) padded by the influence radius; the pen-up bake makes
+    /// one cumulative pass from a tracked bbox — never a full scan. Returns the region (`None` = no-op).
     pub(super) fn apply_watercolor(&mut self, commit: bool) -> Option<Region> {
         let (fw, fh) = self.source_size;
         let (fw, fh) = (fw as usize, fh as usize);
@@ -268,6 +266,7 @@ impl PainterTool {
         let cur_style = WetStrokeStyle {
             fill,
             depth,
+            opacity: brush.opacity.clamp(0.0, 1.0),
             edge_gain,
             wet,
             granulation,
@@ -570,14 +569,31 @@ impl PainterTool {
                             }
                         }
                     }
+                    // BODY / OPACITY (doc 13 #17): pure Beer–Lambert only subtracts, so a light-valued
+                    // pigment barely deposits ("azul e amarelo quase não aparecem"). Body lays the pigment's
+                    // OWN colour over the transmittance result ([`watercolor_lut::Luts::body_cov`]; `0` ⇒ no-op).
+                    let body_cov = lut.body_cov(st.opacity, od);
                     let mut rgb = [0u8; 3];
                     let mut t_lum = 0.0f32;
                     let mut t_min = 1.0f32;
+                    // Extra alpha the BODY-shifted appearance needs to stay in gamut (0 when body off, so
+                    // `cov_a` is byte-identical). Body lays the pigment's own colour, which can push a
+                    // channel PAST the `1 − t_min` floor the un-premultiply assumes — over white the most-
+                    // absorbed channel drops below `ground·(1−a)` and `L` clamps (a 22-byte flatten error).
+                    let mut a_body = 0.0f32;
                     const LUM: [f32; 3] = [0.2126, 0.7152, 0.0722];
                     for c in 0..3 {
                         let t = lut.transmittance(pig[c], od);
-                        let lin = sb[c] * t + lut.s2l[pig[c] as usize] * (1.0 - t);
+                        let optical = sb[c] * t + lut.s2l[pig[c] as usize] * (1.0 - t);
+                        // Hide the substrate under the pigment's own colour by `body_cov` (0 ⇒ optical).
+                        let lin = optical + (lut.s2l[pig[c] as usize] - optical) * body_cov;
                         rgb[c] = lut.l2s_byte(lin);
+                        if body_cov > 0.0 {
+                            // Keep the un-premultiply in gamut: body can push a channel past the `1 − t_min`
+                            // floor. Uses the quantised `app` the un-premultiply reads ([`gamut_alpha`]).
+                            a_body =
+                                a_body.max(gamut_alpha(lut.s2l[rgb[c] as usize], ground_lin[c]));
+                        }
                         t_lum += LUM[c] * t;
                         t_min = t_min.min(t);
                     }
@@ -626,8 +642,11 @@ impl PainterTool {
                     // luminance film: the un-premultiply below needs `a ≥ 1 − T_c` on EVERY channel or
                     // the solve leaves gamut and clamps (a red wash's G/B absorb far more than the
                     // luminance says — measured 59-byte flatten error with the luminance alpha).
-                    // `film_a` stays the perceptual meter for the paint-mix strength above.
-                    let cov_a = (1.0 - t_min).clamp(0.0, 1.0);
+                    // `film_a` stays the perceptual meter for the paint-mix strength above. Body backs the
+                    // hidden substrate with the exact alpha its appearance needs (`a_body`, 0 when body
+                    // off) so a light opaque pigment un-premultiplies to its own colour, not a clamped
+                    // ghost; `a_body = 0` ⇒ `cov_a = 1 − t_min` unchanged (byte-identical).
+                    let cov_a = (1.0 - t_min).max(a_body).clamp(0.0, 1.0);
                     let out_a = (ab + (1.0 - ab) * cov_a).clamp(0.0, 1.0);
                     // `rgb` is the target APPEARANCE over the ground. The layer stores straight RGBA
                     // that the compositor will blend over that same ground — so solve the un-premultiply

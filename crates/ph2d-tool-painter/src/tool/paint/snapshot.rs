@@ -219,6 +219,7 @@ impl PainterTool {
             pigment_mix: b.pigment_mix,
             fill: b.fill,
             depth: b.depth,
+            opacity: b.opacity,
             warp: b.warp,
             wet_smudge: b.wet_smudge,
             wet_rewet: b.wet_rewet,

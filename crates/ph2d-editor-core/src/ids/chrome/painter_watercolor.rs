@@ -42,6 +42,10 @@ pub const PAINTER_WATERCOLOR_FILL: NodeId = hash_node_id("painter_brush.watercol
 /// **Concentration** — Beer–Lambert optical-depth scale (pigment:water, render-path). `SetValue` →
 /// `set_brush_depth`.
 pub const PAINTER_WATERCOLOR_DEPTH: NodeId = hash_node_id("painter_brush.watercolor_depth");
+/// **Opacity** — pigment body / hiding power `0..1` (render-path): lays the pigment's own colour so
+/// light-valued pigments (yellow, light blue) deposit at their hue instead of near-invisible pure
+/// Beer–Lambert tinting (doc 13 #17). `SetValue` → `set_brush_opacity`. `0` = transparent (byte-identical).
+pub const PAINTER_WATERCOLOR_OPACITY: NodeId = hash_node_id("painter_brush.watercolor_opacity");
 /// **Ragged Edge** — organic-boundary displacement in canvas px (render-path). `SetValue` →
 /// `set_brush_warp`.
 pub const PAINTER_WATERCOLOR_WARP: NodeId = hash_node_id("painter_brush.watercolor_warp");
@@ -160,10 +164,10 @@ pub const PAINTER_WATERCOLOR_CLICKS: [NodeId; 6] = [
 
 /// The Watercolor **SetValue** number-fields — one membership check for the panel's number-field forward
 /// (`is_param_field`) and register loop. UI cards (redesign 2026-07-07): **Wash** = Body(Fill) /
-/// Concentration(Depth) / Edge Darkening(Edge) / Bleed(Spread) / Ragged Edge(Warp); **Brush** = Charge /
+/// Concentration(Depth) / Opacity / Edge Darkening(Edge) / Bleed(Spread) / Ragged Edge(Warp); **Brush** = Charge /
 /// Dilution / Pull; **Water** = Rewet(Wet) / Smudge / Pigment(Mix). Granulation lives in the Grain
 /// section; the full Paper slot (Size / Angle / Offset / Depth / params) in the Paper section.
-pub const PAINTER_WATERCOLOR_FIELDS: [NodeId; 25] = [
+pub const PAINTER_WATERCOLOR_FIELDS: [NodeId; 26] = [
     PAINTER_WATERCOLOR_DRY_TIME,
     PAINTER_WATERCOLOR_EDGE,
     PAINTER_WATERCOLOR_SPREAD,
@@ -171,6 +175,7 @@ pub const PAINTER_WATERCOLOR_FIELDS: [NodeId; 25] = [
     PAINTER_WATERCOLOR_MIX,
     PAINTER_WATERCOLOR_FILL,
     PAINTER_WATERCOLOR_DEPTH,
+    PAINTER_WATERCOLOR_OPACITY,
     PAINTER_WATERCOLOR_WARP,
     PAINTER_WATERCOLOR_SMUDGE,
     PAINTER_WATERCOLOR_WET,

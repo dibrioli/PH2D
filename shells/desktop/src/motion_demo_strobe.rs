@@ -1,8 +1,9 @@
-//! The pulse-loop scene of the default Motion document (M2 pulse family).
-//! A `#[path]` sibling of `motion_state`, kept out of it for the LOC cap.
+//! The pulse-loop scene — the **sole scene of the default Motion document** (M2
+//! pulse family). A `#[path]` sibling of `motion_state`, kept out of it for the
+//! LOC cap.
 //!
-//! A third independent scene proving the **pulse type** end to end — the first
-//! producer→consumer pulse loop in the engine (docs/Motion Nodes/06, 08):
+//! It proves the **pulse type** end to end — the producer→reducer→consumer pulse
+//! loop (docs/Motion Nodes/06, 08):
 //!
 //! ```text
 //! grid → tint → counter → strobe → output
@@ -31,13 +32,13 @@
 //! flashes on every beat** — the counter's persistent step (state that lasts) next
 //! to the strobe's momentary flash (an envelope that decays), both driven by one
 //! pulse. This is the smallest closed pulse loop with a reducer (produce → reduce →
-//! consume → visible), at the top of the visible central band (both side panels
-//! cover the corners), overlapping the grid rig — the bright flash reads on top.
+//! consume → visible). As the sole scene it sits **centred on the world origin**,
+//! sweeping symmetrically about centre.
 
 use ph2d_nodegraph::graph::{Edge, Graph, NodeId, Pos};
 
-/// Graph-space origin of this scene's card row.
-const ROW_Y: f32 = -520.0;
+/// Graph-space origin of this scene's card row (the sole scene → at the origin).
+const ROW_Y: f32 = 0.0;
 const COL_W: f32 = 220.0;
 
 /// Author the pulse-loop scene into `g`; returns its Output node (a third sink).
@@ -146,19 +147,16 @@ pub(crate) fn build(g: &mut Graph) -> Option<NodeId> {
         );
     }
 
-    // A 4×3 row of big, well-spaced dots. Both side panels (Hierarchy left,
-    // Motion right) cover the viewport corners, so this sits in the visible
-    // central band along the TOP, overlapping the grid rig — the bright flash
-    // dominates on top of it.
+    // A 4×3 grid of big, well-spaced dots, the grid centred on the origin.
     g.set_param(grid, "rows", 3.0);
     g.set_param(grid, "cols", 4.0);
     g.set_param(grid, "gap_x", 1.6);
     g.set_param(grid, "gap_y", 1.1);
-    // Top-centre of the visible band. `dx` is pre-offset by half the counter's
-    // zigzag reach (N-1=4 counts · step 0.5 = 2.0 → -1.0) so the beat-driven sweep
+    // Centred on the world origin. `dx` is pre-offset by half the counter's zigzag
+    // reach (N-1=4 counts · step 0.5 = 2.0 → -1.0) so the beat-driven sweep
     // ping-pongs SYMMETRICALLY about centre instead of drifting off to one side.
     g.set_param(place, "dx", -1.0);
-    g.set_param(place, "dy", 3.6);
+    g.set_param(place, "dy", 0.0);
     // A calm base colour so the white flash reads as a brighten, not a hue jump.
     g.set_param(tint, "mode", 0.0); // Solid
     g.set_param(tint, "r", 0.25);

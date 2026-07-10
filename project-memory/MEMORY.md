@@ -121,7 +121,7 @@
 - [Painter W3 audit-2 + dirty-rect GPU](project_painter_w3_audit2_perf_2026_06_01.md) — 6-lens zero-critical + partial GPU upload + checked Q16.16; commits local; SMOKE pendente
 - [Vector W7 WoS fora de budget](project_wos_diffusion_over_budget_2026_06_06.md) — GPU diffusion-curve CORRETO mas ~20-100× fora do budget; JBU low-res é o caminho
 - [Spatial GPU = reconcilia contra apply_*](project_painter_w4_spatial_gpu_bloom_sh.md) — Bloom/S-H GPU reconciliados bit-a-bit contra CPU via dev-dep; impl liga via gpu_spatial_code
-- [Panel LOC-gate parser bug](project_panel_loc_gate_parser_masked_debt.md) — parser conta `'"{}` dentro de `//` → false overruns; mascara fns oversized reais
+- [Panel LOC-gate parser bug — RESOLVIDO 2026-07-10](project_panel_loc_gate_parser_masked_debt.md) — o gate mentia p/ BAIXO (apóstrofo em `//` fechava a fn cedo: 353 vs 477 reais); fix comment-aware + re-baseline + guarda anti-fóssil. Lição: verde não prova ausência de dívida, prova que o medidor não a viu. Aberto: split das 14 fns
 - [Painter core files NO TETO 600 LOC](project_painter_core_files_at_loc_cap.md) — paint/brush_settings/stroke/trait_impls exatos em 600; campo novo transborda → orce split
 - [KTX2 Basis rejeitado](project_ktx2_phase1_done_phase2_aborted_2026_05_26.md) — runtime Basis abortado; cooking offline nativo per-platform (ADR-0055-v4)
 - [imageio AVIF *-sys deps](project_imageio_avif_pathc_2026_05_28.md) — libavif-sys (dav1d+rav1e) precisa meson/nasm/cmake no CI; único format-crate sem `forbid(unsafe)`

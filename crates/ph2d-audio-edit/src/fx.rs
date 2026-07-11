@@ -19,6 +19,7 @@
 //! this file is the two enums and the neutral points they promise.
 
 mod deess;
+mod deplosive;
 mod dynamics;
 mod modulation;
 mod space;
@@ -28,6 +29,7 @@ use ph2d_audio::SampleData;
 use ph2d_audio::dsp::{BiquadCoeffs, Delay, Reverb};
 
 use deess::deess;
+use deplosive::deplosive;
 use dynamics::{compress, gate, leveler, limit};
 use modulation::{modulated_delay, phaser, tremolo};
 use space::render_wet;
@@ -128,6 +130,19 @@ pub enum Effect {
         /// Compression ratio applied to the high band (≥1).
         ratio: f32,
         /// Recovery time (seconds). Attack is fixed fast — sibilance is a transient.
+        release_secs: f32,
+    },
+    /// Split-band **de-plosive**: the mirror of the de-esser — ducks the low "pop"
+    /// band below `freq` when a `p`/`b` breath burst spikes it, leaving the voice's
+    /// body alone. Neutral at `ratio` 1.
+    DePlosive {
+        /// Crossover into the plosive band (Hz), ~80–200.
+        freq: f32,
+        /// Level (linear) the low band must exceed before ducking starts.
+        threshold: f32,
+        /// Compression ratio applied to the low band (≥1).
+        ratio: f32,
+        /// Recovery time (seconds). Attack is fixed fast — a plosive is a transient.
         release_secs: f32,
     },
     /// Look-ahead **true-peak** limiter: holds the *reconstructed* waveform under
@@ -246,6 +261,12 @@ impl Effect {
                 ratio,
                 release_secs,
             } if ratio > 1.0 => deess(data, freq, threshold, ratio, release_secs),
+            Effect::DePlosive {
+                freq,
+                threshold,
+                ratio,
+                release_secs,
+            } if ratio > 1.0 => deplosive(data, freq, threshold, ratio, release_secs),
             Effect::Limiter {
                 ceiling_db,
                 release_secs,
@@ -317,7 +338,7 @@ impl Effect {
             // The de-esser's band split is a biquad too. Without a pre-roll its
             // sidechain opens on a filter transient and ducks audio that never had
             // an "S" in it.
-            Effect::DeEss { freq, .. } => {
+            Effect::DeEss { freq, .. } | Effect::DePlosive { freq, .. } => {
                 biquad_warmup(freq, deess::SPLIT_Q, sample_rate, TAUS).min(cap)
             }
             // Narrow (high-Q) cuts at a low frequency ring for a while; pre-roll the
@@ -360,6 +381,7 @@ impl Effect {
                 Effect::Compress { ratio, .. }
                     | Effect::Gate { ratio, .. }
                     | Effect::DeEss { ratio, .. }
+                    | Effect::DePlosive { ratio, .. }
                     if ratio <= 1.0)
             || matches!(*self, Effect::Limiter { ceiling_db, .. }
                 if ceiling_db >= LIMITER_BYPASS_CEILING_DB)

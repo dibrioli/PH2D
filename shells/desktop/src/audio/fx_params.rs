@@ -272,6 +272,7 @@ mod tests {
                 "Compress",
                 "Gate",
                 "De-Esser",
+                "De-Plosive",
                 "Limiter",
                 "Leveler",
                 "Saturate",

@@ -70,6 +70,14 @@ static DE_ESSER: [FxParamSpec; 4] = [
     // Attack is fixed fast inside the effect: sibilance is a transient.
     spec("Release", 0.005, 0.3, true, 0.05, "s", false),
 ];
+// Mirror of the de-esser on the low "pop" band. Neutral at 1:1 (a 0 dB low-shelf).
+static DE_PLOSIVE: [FxParamSpec; 4] = [
+    spec("Freq", 60.0, 250.0, true, 120.0, "Hz", false),
+    spec("Threshold", 0.005, 0.5, true, 0.05, "", false),
+    spec("Ratio", 1.0, 10.0, false, 1.0, "x", false),
+    // Attack is fixed fast inside the effect: a plosive is a transient.
+    spec("Release", 0.01, 0.4, true, 0.08, "s", false),
+];
 static LIMITER: [FxParamSpec; 2] = [
     // Neutral at the TOP: a ceiling at 0 dBFS has nothing to catch. −1 dBTP is the
     // mastering convention; that is one notch down from neutral.
@@ -133,7 +141,7 @@ static TREMOLO: [FxParamSpec; 2] = [
 
 /// The effects the selector cycles, in order — grouped tone → dynamics → character
 /// → space, the way a rack is laid out.
-pub(crate) static KINDS: [FxKind; 20] = [
+pub(crate) static KINDS: [FxKind; 21] = [
     FxKind {
         name: "Low-Pass",
         params: &LOW_PASS,
@@ -238,6 +246,19 @@ pub(crate) static KINDS: [FxKind; 20] = [
         arms: &[2], // Ratio
         build: |v| {
             FxCommand::Plain(Effect::DeEss {
+                freq: v[0],
+                threshold: v[1],
+                ratio: v[2],
+                release_secs: v[3],
+            })
+        },
+    },
+    FxKind {
+        name: "De-Plosive",
+        params: &DE_PLOSIVE,
+        arms: &[2], // Ratio
+        build: |v| {
+            FxCommand::Plain(Effect::DePlosive {
                 freq: v[0],
                 threshold: v[1],
                 ratio: v[2],

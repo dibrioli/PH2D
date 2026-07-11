@@ -8,8 +8,8 @@ use crate::ids;
 use crate::paint_sections::BodyCtx;
 use crate::state;
 use ph2d_editor_core::paint::{paint_text, resolve};
-use ph2d_editor_core::widget::ButtonState;
 use ph2d_editor_core::widget::panel_chrome::paint_segmented_button;
+use ph2d_editor_core::widget::{Button, ButtonKind, ButtonState, paint_button};
 use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ColorToken, Spacing};
 use ph2d_tool_vector::VectorStyleSnapshot;
@@ -229,6 +229,7 @@ impl BodyCtx<'_> {
             &format!("{}", wval.round() as i64),
             y,
         );
+        y = self.font_picker_row(y);
         // Read-only string preview (the active session's text, or a hint when empty).
         y = self.section_label("Text", y);
         let text = state::current_text().unwrap_or_default();
@@ -248,5 +249,43 @@ impl BodyCtx<'_> {
             resolve(color, self.theme),
         );
         y + self.row_h + self.row_gap
+    }
+
+    /// Font-family picker row: `<` prev | current family name | `>` next. The shell
+    /// cycles the chosen system font (or the bundled default) on each button click.
+    fn font_picker_row(&mut self, mut y: f32) -> f32 {
+        y = self.section_label("Font", y);
+        let btn_w = self.row_h;
+        let gap = Spacing::Sm.px();
+        self.arrow_button(ids::VECTOR_TEXT_FONT_PREV, "<", self.inner_x, btn_w, y);
+        self.arrow_button(
+            ids::VECTOR_TEXT_FONT_NEXT,
+            ">",
+            self.inner_x + self.inner_w - btn_w,
+            btn_w,
+            y,
+        );
+        // Current family name, filling the space between the two arrows.
+        let name = state::current_text_font().unwrap_or_default();
+        paint_text(
+            self.text_system,
+            self.scene,
+            &name,
+            self.inner_x + btn_w + gap,
+            y + (self.row_h - self.font) * 0.5,
+            self.font,
+            (self.inner_w - 2.0 * (btn_w + gap)).max(1.0),
+            resolve(ColorToken::Text1, self.theme),
+        );
+        y + self.row_h + self.row_gap
+    }
+
+    /// A small square action button (used by the font-picker `<` / `>`).
+    fn arrow_button(&mut self, id: ph2d_a11y::NodeId, label: &str, x: f32, w: f32, y: f32) {
+        let rect = Rect::new(x, y, w, self.row_h);
+        let st = self.store.button_state(id).unwrap_or(ButtonState::Normal);
+        let btn = Button::new(id, label).kind(ButtonKind::Default).state(st);
+        paint_button(&btn, rect, self.scene, self.text_system, self.theme);
+        self.hit_index.register(id, rect);
     }
 }

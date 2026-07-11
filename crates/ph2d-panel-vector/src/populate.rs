@@ -231,6 +231,9 @@ fn populate_shape(store: &mut WidgetStore) {
         TEXT_WEIGHT_SLIDER_SCALE,
         TEXT_WEIGHT_SLIDER_OFFSET,
     );
+    // Font-family picker prev / next (`<` / `>`) — cycle the chosen system font.
+    button(store, ids::VECTOR_TEXT_FONT_PREV);
+    button(store, ids::VECTOR_TEXT_FONT_NEXT);
 
     populate_transform_fields(store);
 }

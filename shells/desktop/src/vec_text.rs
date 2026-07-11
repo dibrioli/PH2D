@@ -8,7 +8,7 @@
 
 use ph2d_vec_scene::{Paint, StrokeSpec, VecPathId};
 
-use crate::vec_glyph::{font, resolve_style, text_advance_width, text_to_vec_paths};
+use crate::vec_glyph::{resolve_style, text_advance_width, text_to_vec_paths};
 
 /// Entrelinha como múltiplo do tamanho.
 const LINE_SPACING: f64 = 1.2;
@@ -24,6 +24,9 @@ pub(crate) struct VecTextEdit {
     pub size: f64,
     /// Peso da fonte variável (eixo `wght`, ex. 100..900) aplicado ao contorno.
     pub weight: f32,
+    /// Família de fonte escolhida (`None` = a InterVariable embutida). Resolvida em
+    /// `VariableFont` por `vec_font::resolve` a cada regen.
+    pub family: Option<String>,
     /// Preenchimento dos glyphs (do Style do painel; `None` = sem fill).
     pub fill: Option<Paint>,
     /// Traço dos glyphs (do Style: cor/largura/cap/join/dash), como nas formas.
@@ -69,6 +72,7 @@ impl crate::app_state::App {
             origin: world,
             size: self.vec_text_size, // o tamanho corrente do painel (Size slider)
             weight: self.vec_text_weight, // o peso corrente (Weight slider)
+            family: self.vec_text_family.clone(), // a família corrente (Font picker)
             fill,
             stroke,
             text: String::new(),
@@ -126,14 +130,12 @@ impl crate::app_state::App {
 /// explicitamente (não `self.gfx`) para ser chamável tanto do caminho de teclado
 /// (`vec_text_regen`) quanto do render loop, onde `gfx` já está com borrow dividido.
 fn regen_into(scene: &mut ph2d_vec_scene::VecScene, edit: &mut VecTextEdit) {
-    let Some(font) = font() else {
-        return;
-    };
+    let font = crate::vec_font::resolve(edit.family.as_deref());
     for id in edit.ids.drain(..) {
         scene.remove_path(id);
     }
     let paths = text_to_vec_paths(
-        font,
+        &font,
         &edit.text,
         edit.size,
         &axes_of(edit),
@@ -222,16 +224,34 @@ pub(crate) fn apply_text_weight(
     }
 }
 
+/// Cicla a família de fonte (botões `<`/`>` do painel) por `dir` (+1/−1): atualiza o
+/// default corrente da shell (`family_field`) e, se há sessão ativa, a família dela +
+/// regenera com a nova fonte. `None` = a InterVariable embutida. Mirror de
+/// [`apply_text_size`]; a resolução/enumeração fica em [`crate::vec_font`].
+pub(crate) fn cycle_text_font(
+    edit: &mut Option<VecTextEdit>,
+    family_field: &mut Option<String>,
+    scene: &mut ph2d_vec_scene::VecScene,
+    dir: i32,
+) {
+    let next = crate::vec_font::cycle_family(family_field.as_deref(), dir);
+    *family_field = next.clone();
+    if let Some(edit) = edit.as_mut() {
+        edit.family = next;
+        regen_into(scene, edit);
+    }
+}
+
 /// Os dois pontos (world) do cursor de texto vertical na ponta da última linha —
 /// `None` se não há edição. Fn livre (não método) para o render poder chamá-la lendo
 /// só o campo `vec_text_edit`, sem emprestar o `App` inteiro (o `gfx` está vivo lá).
 #[must_use]
 pub(crate) fn caret_of(edit: Option<&VecTextEdit>) -> Option<([f64; 2], [f64; 2])> {
     let edit = edit?;
-    let font = font()?;
+    let font = crate::vec_font::resolve(edit.family.as_deref());
     let last_line = edit.text.rsplit('\n').next().unwrap_or("");
     let line_idx = edit.text.matches('\n').count();
-    let cx = edit.origin[0] + text_advance_width(font, last_line, edit.size, &axes_of(edit));
+    let cx = edit.origin[0] + text_advance_width(&font, last_line, edit.size, &axes_of(edit));
     let baseline = edit.origin[1] - line_idx as f64 * edit.size * LINE_SPACING;
     Some((
         [cx, baseline - 0.2 * edit.size],
@@ -255,6 +275,7 @@ mod tests {
             origin: [5.0, 2.0],
             size: 1.0,
             weight: 400.0,
+            family: None,
             fill: Some(black()),
             stroke: None,
             text: "Hi".to_string(),
@@ -279,6 +300,7 @@ mod tests {
             origin: [0.0, 0.0],
             size: 1.0,
             weight: 400.0,
+            family: None,
             fill: Some(black()),
             stroke: None,
             text: "A".to_string(),
@@ -300,6 +322,7 @@ mod tests {
             origin: [0.0, 0.0],
             size: 1.0,
             weight: 400.0,
+            family: None,
             fill: Some(black()),
             stroke: None,
             text: "A".to_string(),

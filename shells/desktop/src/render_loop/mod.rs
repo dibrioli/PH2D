@@ -1048,6 +1048,8 @@ impl crate::App {
             // Text Weight slider (`wght` axis) — updates the active session + the
             // weight a new session starts at.
             let mut pending_vec_text_weight: Option<f32> = None;
+            // Text font-family cycle (`<` = -1 / `>` = +1) from the panel picker.
+            let mut pending_vec_font_cycle: Option<i32> = None;
             let mut transform_edit: Option<ph2d_editor::InspectorTransformInfo> = None;
             let mut visibility_edit: Option<ph2d_editor::InspectorVisibilityInfo> = None;
             let mut sprite_source_change: Option<(u64, RequestedSpriteStrategy)> = None;
@@ -1156,6 +1158,10 @@ impl crate::App {
                                 pending_vec_snap_on = Some(false);
                             } else if *id == ph2d_editor::ids::VECTOR_SNAP_ON {
                                 pending_vec_snap_on = Some(true);
+                            } else if *id == ph2d_editor::ids::VECTOR_TEXT_FONT_PREV {
+                                pending_vec_font_cycle = Some(-1);
+                            } else if *id == ph2d_editor::ids::VECTOR_TEXT_FONT_NEXT {
+                                pending_vec_font_cycle = Some(1);
                             }
                         }
                         // Transform fields (X/Y/W/H) are numeric SetValue document
@@ -1950,6 +1956,14 @@ impl crate::App {
                     weight,
                 );
             }
+            if let Some(dir) = pending_vec_font_cycle {
+                crate::vec_text::cycle_text_font(
+                    &mut self.vec_text_edit,
+                    &mut self.vec_text_family,
+                    vec_scene,
+                    dir,
+                );
+            }
             if let Some(op) = pending_vec_path_shape {
                 crate::input_dispatch::apply_vec_path_shape(
                     vec_scene,
@@ -2141,6 +2155,13 @@ impl crate::App {
             #[cfg(feature = "panel-vector")]
             ph2d_panel_vector::set_current_text(
                 self.vec_text_edit.as_ref().map(|e| e.text.clone()),
+            );
+            // Publica o rótulo da família de fonte corrente (o seletor `<` nome `>`);
+            // `None` fora do modo Text esconde a linha da fonte.
+            #[cfg(feature = "panel-vector")]
+            ph2d_panel_vector::set_current_text_font(
+                (self.vec_draw_config.mode == ph2d_tool_vector::DrawMode::Text)
+                    .then(|| crate::vec_font::display_name(self.vec_text_family.as_deref())),
             );
 
             // ADR-0110 — a árvore do editor é a Hierarquia. Reconcilia documento e

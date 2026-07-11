@@ -224,6 +224,9 @@ ph2d-flip-render = { path = "../../crates/ph2d-flip-render" }
 # foundational mas está FORA do gate congelado (que só escaneia -doc/-traits).
 ph2d-vector-font = { path = "../../crates/ph2d-vector-font" }
 ph2d-text = { path = "../../crates/ph2d-text" }
+# Enumeração de fontes do sistema (famílias + bytes) para a escolha de fonte do
+# texto vetorial. Mesma versão que o parley do ph2d-text já traz na árvore.
+fontique = "0.6"
 # bevy_ecs is required as a direct dep so `#[derive(Component)]` can
 # resolve its `::bevy_ecs::*` absolute paths. The shell is the
 # application layer and is the only place we tolerate this leak.

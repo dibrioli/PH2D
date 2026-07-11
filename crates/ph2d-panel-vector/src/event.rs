@@ -132,6 +132,8 @@ pub(crate) fn apply_event(
                 || id == ids::VECTOR_MODE_LINE
                 || id == ids::VECTOR_MODE_ARC
                 || id == ids::VECTOR_MODE_TEXT
+                || id == ids::VECTOR_TEXT_FONT_PREV
+                || id == ids::VECTOR_TEXT_FONT_NEXT
                 || id == ids::VECTOR_CAP_BUTT
                 || id == ids::VECTOR_CAP_ROUND
                 || id == ids::VECTOR_CAP_SQUARE

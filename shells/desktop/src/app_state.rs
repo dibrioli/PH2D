@@ -651,6 +651,9 @@ pub(crate) struct App {
     /// Peso (`wght`) que a próxima sessão de texto começa e que o slider Weight do
     /// painel edita. Persiste entre sessões.
     pub(crate) vec_text_weight: f32,
+    /// Família de fonte corrente do texto (`None` = InterVariable embutida). Os botões
+    /// `<`/`>` do painel ciclam; persiste entre sessões.
+    pub(crate) vec_text_family: Option<String>,
     /// `VecPathId` → entidade ECS que o representa na Hierarquia (ADR-0110). O
     /// invariante "um path ⟺ uma entidade" é mantido por `vec_entities::sync`.
     pub(crate) vec_entities: crate::vec_entities::VecEntityMap,

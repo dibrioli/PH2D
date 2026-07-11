@@ -152,6 +152,10 @@ pub const VECTOR_TEXT_SIZE_NUM: NodeId = hash_node_id("vector.text.size_num");
 pub const VECTOR_TEXT_WEIGHT: NodeId = hash_node_id("vector.text.weight");
 /// Value chip paired with [`VECTOR_TEXT_WEIGHT`].
 pub const VECTOR_TEXT_WEIGHT_NUM: NodeId = hash_node_id("vector.text.weight_num");
+/// Text font-family picker prev / next buttons (`<` / `>`) — shown only in Text mode;
+/// cycle the chosen system font family (or the bundled default) of the text.
+pub const VECTOR_TEXT_FONT_PREV: NodeId = hash_node_id("vector.text.font_prev");
+pub const VECTOR_TEXT_FONT_NEXT: NodeId = hash_node_id("vector.text.font_next");
 /// Polygon "Sides" slider (3..12) — shown only in Polygon mode; drives
 /// `VectorTool::polygon_sides`.
 pub const VECTOR_SIDES: NodeId = hash_node_id("vector.sides");

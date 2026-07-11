@@ -65,6 +65,7 @@ mod theme;
 mod timeline_persist;
 mod undo;
 mod vec_entities;
+mod vec_font;
 mod vec_gizmo_view;
 mod vec_glyph;
 mod vec_overlay;
@@ -259,6 +260,7 @@ impl App {
             vec_text_edit: None,
             vec_text_size: ph2d_tool_vector::params::DEFAULT_TEXT_SIZE,
             vec_text_weight: ph2d_tool_vector::params::DEFAULT_TEXT_WEIGHT as f32,
+            vec_text_family: None,
             vec_entities: Default::default(),
             flip_entities: Default::default(),
             vec_sel: Default::default(),

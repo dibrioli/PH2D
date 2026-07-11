@@ -14,8 +14,6 @@
 //! não vetores-tangente. Quad `S–Q–E` sobe pra cúbica com controles absolutos
 //! `S + ⅔(Q−S)` e `E + ⅔(Q−E)`; a cúbica usa `c1`/`c2` diretos.
 
-use std::sync::OnceLock;
-
 use ph2d_vec_edit::PenStyle;
 use ph2d_vec_scene::{Contour, FillRule, Paint, StrokeSpec, VecPath, VecVertex};
 use ph2d_vector_font::{AxisTag, GlyphOutline, PathCommand, VariableFont};
@@ -32,14 +30,6 @@ pub(crate) fn resolve_style(
     let fill = (style.fill.a != 0).then(|| Paint::solid(style.fill));
     let stroke = Some(style.stroke_spec(style.stroke_w_px * px_to_world));
     (fill, stroke)
-}
-
-/// A fonte embutida (InterVariable), parseada 1× e cacheada. `None` só se os bytes
-/// embutidos falharem o parse — nunca em runtime (é a mesma fonte que a UI usa).
-pub(crate) fn font() -> Option<&'static VariableFont> {
-    static FONT: OnceLock<Option<VariableFont>> = OnceLock::new();
-    FONT.get_or_init(|| VariableFont::new(ph2d_text::inter_variable_ttf().to_vec()).ok())
-        .as_ref()
 }
 
 /// Layout linear de uma string em `VecPath`s — um por glyph com contorno, posicionado
@@ -448,7 +438,8 @@ mod tests {
     /// Multi-linha: a 2ª linha desce (world y-up → y negativo abaixo da baseline).
     #[test]
     fn a_second_line_sits_below_the_first() {
-        let font = font().expect("fonte embutida");
+        let font = VariableFont::new(ph2d_text::inter_variable_ttf().to_vec()).expect("embutida");
+        let font = &font;
         let min_y = |paths: &[VecPath]| {
             paths
                 .iter()

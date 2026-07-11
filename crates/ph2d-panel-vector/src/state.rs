@@ -50,6 +50,9 @@ thread_local! {
     /// LEITURA no painel (display); a digitação segue no canvas (A2). Publicado
     /// pela shell a cada frame.
     static CURRENT_TEXT: RefCell<Option<String>> = const { RefCell::new(None) };
+    /// Rótulo da família de fonte corrente do texto (embutida ou do sistema),
+    /// publicado pela shell. Exibido entre os botões `<`/`>` do seletor de fonte.
+    static CURRENT_TEXT_FONT: RefCell<Option<String>> = const { RefCell::new(None) };
     /// Rotation-field accumulator: the angle (degrees) the Angle chip last
     /// reported THIS gesture. `event` emits the DELTA `(current − this)` so the
     /// shell rotates incrementally; reset to 0 by `paint` whenever the field is
@@ -246,4 +249,15 @@ pub fn set_current_text(text: Option<String>) {
 /// O texto da sessão ativa este frame (`None` ⇒ nada a exibir).
 pub(crate) fn current_text() -> Option<String> {
     CURRENT_TEXT.with(|c| c.borrow().clone())
+}
+
+/// Publica o rótulo da família de fonte corrente do texto (a shell resolve o nome,
+/// inclusive o da embutida). `None` fora do modo Text.
+pub fn set_current_text_font(name: Option<String>) {
+    CURRENT_TEXT_FONT.with(|c| *c.borrow_mut() = name);
+}
+
+/// O rótulo da família de fonte corrente este frame (para o seletor `<` nome `>`).
+pub(crate) fn current_text_font() -> Option<String> {
+    CURRENT_TEXT_FONT.with(|c| c.borrow().clone())
 }

@@ -116,6 +116,13 @@ static ECHO: [FxParamSpec; 4] = [
     spec("Mix", 0.0, 1.0, false, 0.0, "", false),
     spec("Tail", 0.1, 6.0, true, 2.0, "s", false),
 ];
+// Same knobs as Echo — the difference is the cross-fed topology, not the controls.
+static PING_PONG: [FxParamSpec; 4] = [
+    spec("Time", 0.01, 0.99, true, 0.25, "s", false),
+    spec("Feedback", 0.0, 0.95, false, 0.4, "", false),
+    spec("Mix", 0.0, 1.0, false, 0.0, "", false),
+    spec("Tail", 0.1, 6.0, true, 2.0, "s", false),
+];
 // The four modulation effects. Each is neutral at Mix (or Depth) 0 — fully dry.
 static CHORUS: [FxParamSpec; 3] = [
     spec("Rate", 0.05, 8.0, true, 1.0, "Hz", false),
@@ -153,7 +160,7 @@ static PITCH_SHIFT: [FxParamSpec; 2] = [
 
 /// The effects the selector cycles, in order — grouped tone → dynamics → character
 /// → space, the way a rack is laid out.
-pub(crate) static KINDS: [FxKind; 23] = [
+pub(crate) static KINDS: [FxKind; 24] = [
     FxKind {
         name: "Low-Pass",
         params: &LOW_PASS,
@@ -343,6 +350,19 @@ pub(crate) static KINDS: [FxKind; 23] = [
         arms: &[2], // Mix
         build: |v| {
             FxCommand::Tail(TailEffect::Delay {
+                time_secs: v[0],
+                feedback: v[1],
+                mix: v[2],
+                tail_secs: v[3],
+            })
+        },
+    },
+    FxKind {
+        name: "Ping-Pong",
+        params: &PING_PONG,
+        arms: &[2], // Mix
+        build: |v| {
+            FxCommand::Tail(TailEffect::PingPong {
                 time_secs: v[0],
                 feedback: v[1],
                 mix: v[2],

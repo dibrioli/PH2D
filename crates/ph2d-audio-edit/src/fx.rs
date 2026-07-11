@@ -34,7 +34,7 @@ use deplosive::deplosive;
 use dynamics::{compress, gate, leveler, limit};
 use modulation::{modulated_delay, phaser, ring_mod, tremolo};
 use pitch::{PITCH_BYPASS_ST, pitch_shift};
-use space::render_wet;
+use space::{pingpong, render_wet};
 use tone::{HUM_Q, biquad_all, bitcrush, dehum, saturate, stereo_width};
 
 /// Chorus base delay (ms): a detuned doubling sits well behind the dry signal.
@@ -470,13 +470,27 @@ pub enum TailEffect {
         /// Ring-out rendered past the region, in seconds.
         tail_secs: f32,
     },
+    /// **Ping-pong** delay: like [`TailEffect::Delay`], but each repeat bounces to the
+    /// opposite channel — a stereo echo walking L→R→L. Neutral at `mix` 0.
+    PingPong {
+        /// Bounce time (seconds, < 1.0).
+        time_secs: f32,
+        /// Repeat feedback (0..1, clamped below unity so bounces decay).
+        feedback: f32,
+        /// Dry→wet crossfade (0..1).
+        mix: f32,
+        /// Ring-out rendered past the region, in seconds.
+        tail_secs: f32,
+    },
 }
 
 impl TailEffect {
-    /// Dry→wet crossfade of either variant.
+    /// Dry→wet crossfade of any variant.
     fn mix(&self) -> f32 {
         match *self {
-            TailEffect::Reverb { mix, .. } | TailEffect::Delay { mix, .. } => mix,
+            TailEffect::Reverb { mix, .. }
+            | TailEffect::Delay { mix, .. }
+            | TailEffect::PingPong { mix, .. } => mix,
         }
     }
 
@@ -493,7 +507,9 @@ impl TailEffect {
             return 0;
         }
         let secs = match *self {
-            TailEffect::Reverb { tail_secs, .. } | TailEffect::Delay { tail_secs, .. } => tail_secs,
+            TailEffect::Reverb { tail_secs, .. }
+            | TailEffect::Delay { tail_secs, .. }
+            | TailEffect::PingPong { tail_secs, .. } => tail_secs,
         };
         (secs.max(0.0) * sample_rate as f32) as usize
     }
@@ -526,6 +542,12 @@ impl TailEffect {
                 dl.set_params(time_secs, feedback);
                 render_wet(data, tail_frames, mix, move |l, r| dl.process(l, r))
             }
+            TailEffect::PingPong {
+                time_secs,
+                feedback,
+                mix,
+                ..
+            } => pingpong(data, tail_frames, time_secs, feedback, mix),
         }
     }
 }

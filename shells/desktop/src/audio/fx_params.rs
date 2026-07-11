@@ -282,6 +282,7 @@ mod tests {
                 "Widen",
                 "Reverb",
                 "Echo",
+                "Ping-Pong",
                 "Chorus",
                 "Flanger",
                 "Phaser",

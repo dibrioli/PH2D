@@ -51,19 +51,46 @@ pub fn apply_from_doc_except(
         if skip(entity_bits) {
             continue;
         }
+        // Time Remap is the timeline's own meta-property, never a scene write:
+        // it is CONSUMED below as the entity's sampling clock.
+        if prop == PropKind::TimeRemap {
+            continue;
+        }
+        let t_entity = remapped_time(doc, entity_bits, t);
         // Sample the bound track (skip empty tracks so a just-created binding
         // never forces the property to a default value).
         let sampled = doc.active_clip().track(target).and_then(|tr| {
             if tr.is_empty() {
                 None
             } else {
-                Some(tr.sample(t))
+                Some(tr.sample(t_entity))
             }
         });
         if let Some(v) = sampled {
             write_prop(world, entity, prop, v);
         }
     }
+}
+
+/// The time `entity`'s tracks sample at: its Time Remap track's value at the
+/// playhead — the AE model (slope < 1 slow motion, flat freeze, negative
+/// reverse) — or the playhead itself when it has none / an empty track (the
+/// identity: binding "Time" changes nothing until keys are authored). Clamped
+/// non-negative like every playhead time. A linear scan over the few bindings:
+/// zero-alloc (HR-3, the paused bridge path is gated).
+fn remapped_time(doc: &TimelineDoc, entity: u64, t: f64) -> f64 {
+    for b in doc.bindings() {
+        if b.entity != entity || b.prop != PropKind::TimeRemap || b.missing {
+            continue;
+        }
+        if let Some(tr) = doc.active_clip().track(b.target)
+            && !tr.is_empty()
+            && let AnimValue::Float(v) = tr.sample(t)
+        {
+            return f64::from(v).max(0.0);
+        }
+    }
+    t
 }
 
 /// Write one resolved property value into an entity, via the sprite resolver.
@@ -92,6 +119,109 @@ fn write_prop(world: &mut World, entity: Entity, prop: PropKind, v: AnimValue) {
     }
     #[cfg(not(feature = "render"))]
     let _ = (world, entity, prop);
+}
+
+#[cfg(test)]
+mod time_remap_tests {
+    use super::*;
+    use crate::TimelineDoc;
+    use ph2d_anim::{Interp, RationalTime};
+    use ph2d_core::Vec2;
+
+    /// A world with one sprite entity whose TranslationX is keyed 0 → 10 over
+    /// `0..4 s` (linear: `x(t_source) = 2.5·t_source`).
+    fn rig() -> (World, Entity, TimelineDoc) {
+        let mut w = World::new();
+        let e = w.spawn(Transform::from_translation(Vec2::ZERO)).id();
+        let mut doc = TimelineDoc::new();
+        let s = RationalTime::from_seconds;
+        for (t, v) in [(0.0, 0.0), (4.0, 10.0)] {
+            doc.insert_key(
+                e.to_bits(),
+                PropKind::TranslationX,
+                s(t),
+                AnimValue::Float(v),
+                Interp::Linear,
+            );
+        }
+        (w, e, doc)
+    }
+
+    fn x_at(w: &mut World, e: Entity, doc: &mut TimelineDoc, t: f64) -> f32 {
+        apply_from_doc(w, doc, t);
+        w.get::<Transform>(e).unwrap().translation.x
+    }
+
+    fn remap_key(doc: &mut TimelineDoc, e: Entity, t: f64, source: f32, interp: Interp) {
+        doc.insert_key(
+            e.to_bits(),
+            PropKind::TimeRemap,
+            RationalTime::from_seconds(t),
+            AnimValue::Float(source),
+            interp,
+        );
+    }
+
+    #[test]
+    fn a_remap_curve_retimes_every_other_track_of_its_entity() {
+        // Remap (0 → 0, 2 → 4): the playhead covers the 4 s animation in 2 s —
+        // double speed. At playhead 1 the source time is 2 → x = 5.
+        let (mut w, e, mut doc) = rig();
+        remap_key(&mut doc, e, 0.0, 0.0, Interp::Linear);
+        remap_key(&mut doc, e, 2.0, 4.0, Interp::Linear);
+        assert_eq!(x_at(&mut w, e, &mut doc, 1.0), 5.0, "2x speed");
+        assert_eq!(
+            x_at(&mut w, e, &mut doc, 2.0),
+            10.0,
+            "done in half the time"
+        );
+    }
+
+    #[test]
+    fn a_flat_remap_freezes_and_a_falling_one_reverses() {
+        let (mut w, e, mut doc) = rig();
+        // Freeze: a single key holds source time at 2 s → x pinned at 5.
+        remap_key(&mut doc, e, 0.0, 2.0, Interp::Hold);
+        assert_eq!(x_at(&mut w, e, &mut doc, 0.0), 5.0);
+        assert_eq!(x_at(&mut w, e, &mut doc, 3.0), 5.0, "frozen while t moves");
+        // Reverse: remap (0 → 4, 4 → 0) plays the animation backwards.
+        let (mut w, e, mut doc) = rig();
+        remap_key(&mut doc, e, 0.0, 4.0, Interp::Linear);
+        remap_key(&mut doc, e, 4.0, 0.0, Interp::Linear);
+        assert_eq!(x_at(&mut w, e, &mut doc, 0.0), 10.0, "starts at the end");
+        assert_eq!(x_at(&mut w, e, &mut doc, 4.0), 0.0, "ends at the start");
+        assert_eq!(x_at(&mut w, e, &mut doc, 1.0), 7.5, "backwards through 3 s");
+    }
+
+    #[test]
+    fn an_empty_or_missing_remap_track_is_the_identity() {
+        // Bind "Time" with no keys: nothing changes until the user authors.
+        let (mut w, e, mut doc) = rig();
+        doc.bind(e.to_bits(), PropKind::TimeRemap);
+        assert_eq!(x_at(&mut w, e, &mut doc, 2.0), 5.0, "identity: x(2) = 5");
+        // And another entity's remap never leaks onto this one.
+        let stranger = w.spawn(Transform::from_translation(Vec2::ZERO)).id();
+        remap_key(&mut doc, stranger, 0.0, 99.0, Interp::Hold);
+        assert_eq!(x_at(&mut w, e, &mut doc, 2.0), 5.0, "per-entity clock");
+    }
+
+    #[test]
+    fn the_remap_track_itself_never_writes_a_scene_property() {
+        // A Time key whose VALUE is huge must not bleed into any Transform
+        // field — the remap binding is consumed as a clock, never written.
+        let (mut w, e, mut doc) = rig();
+        remap_key(&mut doc, e, 0.0, 0.0, Interp::Linear);
+        let before = *w.get::<Transform>(e).unwrap();
+        apply_from_doc(&mut w, &mut doc, 0.0);
+        let after = *w.get::<Transform>(e).unwrap();
+        assert_eq!(before.translation.y, after.translation.y);
+        assert_eq!(before.rotation, after.rotation);
+        assert_eq!(before.scale, after.scale);
+        assert_eq!(
+            after.translation.x, 0.0,
+            "x follows its own track at source 0"
+        );
+    }
 }
 
 #[cfg(test)]

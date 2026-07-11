@@ -31,10 +31,21 @@ pub enum PropKind {
     ScaleY = 4,
     /// Sprite opacity — the alpha channel of `Sprite.tint` (`[0, 1]`).
     Opacity = 5,
+    /// **Time remap** (W5, AE model): the timeline's own meta-property — a
+    /// keyed curve mapping playhead time → the SOURCE time this entity's other
+    /// tracks sample at (seconds → seconds). Slope < 1 is slow motion, > 1
+    /// speeds up, flat freezes, negative slope reverses. Never writes a scene
+    /// property (`as_sprite_transform` is `None`; the apply consumes it as the
+    /// entity's clock) and never auto-keys (it is not in [`PropKind::ALL`],
+    /// the pose list). Appended — the discriminant is a frozen wire value.
+    TimeRemap = 6,
 }
 
 impl PropKind {
-    /// Every kind, in authoring order (matches the "+ Track" property list).
+    /// The six SCENE properties, in authoring order — the pose the auto-key
+    /// pass samples ([`crate::PoseSample`] is exactly this array's shape).
+    /// [`PropKind::TimeRemap`] is deliberately absent: it is the timeline's
+    /// own clock, not a scene value (the "+ Track" list adds it separately).
     pub const ALL: [PropKind; 6] = [
         PropKind::TranslationX,
         PropKind::TranslationY,
@@ -60,6 +71,7 @@ impl PropKind {
             3 => Some(PropKind::ScaleX),
             4 => Some(PropKind::ScaleY),
             5 => Some(PropKind::Opacity),
+            6 => Some(PropKind::TimeRemap),
             _ => None,
         }
     }
@@ -76,6 +88,7 @@ impl PropKind {
             PropKind::ScaleX => "scale_x",
             PropKind::ScaleY => "scale_y",
             PropKind::Opacity => "opacity",
+            PropKind::TimeRemap => "time",
         }
     }
 
@@ -90,7 +103,7 @@ impl PropKind {
             PropKind::Rotation => Some(SpriteProp::Rotation),
             PropKind::ScaleX => Some(SpriteProp::ScaleX),
             PropKind::ScaleY => Some(SpriteProp::ScaleY),
-            PropKind::Opacity => None,
+            PropKind::Opacity | PropKind::TimeRemap => None,
         }
     }
 }

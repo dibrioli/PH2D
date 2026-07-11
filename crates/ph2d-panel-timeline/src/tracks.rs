@@ -386,6 +386,7 @@ fn prop_label(p: PropKind) -> &'static str {
         PropKind::ScaleX => ph2d_i18n::tr("panel.timeline.prop.scale_x"),
         PropKind::ScaleY => ph2d_i18n::tr("panel.timeline.prop.scale_y"),
         PropKind::Opacity => ph2d_i18n::tr("panel.timeline.prop.opacity"),
+        PropKind::TimeRemap => ph2d_i18n::tr("panel.timeline.prop.time"),
     }
 }
 

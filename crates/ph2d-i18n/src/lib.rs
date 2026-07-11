@@ -100,6 +100,7 @@ pub fn tr(key: &str) -> &'static str {
         "panel.timeline.prop.scale_x" => "Scale X",
         "panel.timeline.prop.scale_y" => "Scale Y",
         "panel.timeline.prop.opacity" => "Opacity",
+        "panel.timeline.prop.time" => "Time",
         // Pass-through for unknown keys so the missing entry is
         // visible in the UI (the rendered key is intentionally ugly).
         _ => leak_key(key),

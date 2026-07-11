@@ -48,6 +48,9 @@ pub const TIMELINE_ADDPROP_ROT: NodeId = hash_node_id("timeline.addprop.rot");
 pub const TIMELINE_ADDPROP_SX: NodeId = hash_node_id("timeline.addprop.sx");
 pub const TIMELINE_ADDPROP_SY: NodeId = hash_node_id("timeline.addprop.sy");
 pub const TIMELINE_ADDPROP_OPACITY: NodeId = hash_node_id("timeline.addprop.opacity");
+/// "+Track" for **Time Remap** (W5): binds the entity's per-object clock — a
+/// keyed curve retiming every other track it has (AE time remap).
+pub const TIMELINE_ADDPROP_TIME: NodeId = hash_node_id("timeline.addprop.time");
 /// The time ruler strip (scrub hit-target).
 pub const TIMELINE_RULER: NodeId = hash_node_id("timeline.ruler");
 /// The dope-sheet lanes background (box-select / deselect hit-target).

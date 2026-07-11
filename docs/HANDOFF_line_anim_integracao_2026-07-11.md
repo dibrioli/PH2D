@@ -187,6 +187,20 @@ novos de slope + 154 anim+timeline + 290 total com painel + clippy `--all-target
 
 ---
 
+## 11. Feature W5 — time remap (modelo AE, por objeto)
+
+**O quê:** `PropKind::TimeRemap = 6` — uma track **"Time"** keyável por entidade mapeando tempo do playhead → tempo-fonte (segundos→segundos): slope < 1 = slow-mo, > 1 = acelera, flat = **freeze**, descendo = **reverse**. `apply_from_doc` computa `remapped_time` por entidade (scan linear **zero-alloc** — o gate dhat foi estendido com bindings de remap e segue verde) e TODAS as outras tracks da entidade amostram nesse relógio. A track de remap nunca escreve cena (consumida como clock).
+
+**Autoria:** a track é UI **normal** — dope-sheet, graph editor, weighted tangents e speed graph funcionam nela de graça (o valor é segundos). **+Track** ganhou "Time" (`TIMELINE_ADDPROP_TIME`, i18n `panel.timeline.prop.time`; popup/populate/wiring derivam do array — 7º botão automático). **K semeia identidade** (`valor = t`) em track vazia — bindar Time não muda nada até editar — e **na-curva** quando há keys (`key_value_for` no bridge). `sample_prop_value(TimeRemap) = None` → **auto-key nunca toca** o remap (`ALL` continua sendo a pose de 6; `PoseSample=[;6]` intacto).
+
+**Símbolos novos (grep de colisão):** `PropKind::TimeRemap = 6` (discriminante wire, apendado) · `TIMELINE_ADDPROP_TIME` (`hash("timeline.addprop.time")`) · i18n `panel.timeline.prop.time` · `ADDPROP_BUTTONS` 6→7 · `key_value_for`/`remapped_time`. Zero contrato congelado. **NÃO confundir** com `motion.time_remap` dos Motion Nodes (escopo de cook de sub-árvore — outro sistema, outra crate).
+
+**Prova:** 4 testes de apply (2× speed · freeze · reverse · identidade/per-entity/nunca-escreve-cena) + seed do K (identidade + na-curva) + id novo no shell + dhat estendido zero-alloc + **mutação dirigida** (neutralizar `remapped_time` → freeze/reverse vermelhos). 1259/1259 nas 5 crates; clippy `--all-targets` verde.
+
+**Próximo (fila do Enio): roving keys.**
+
+---
+
 ## Cauda da W4 ainda aberta (para a próxima rodada — decisão do Enio)
 
 - **W4.T4** — docar a timeline no `motion_timeline_slot` quando o split do Motion está ativo (coordenação leve com Motion).

@@ -233,10 +233,17 @@ keys em massa → undo — tudo pela UI.
 ### W5 — Backlog (pós-v1; ordem sugerida por valor)
 
 Performing por gesto (Dreams-style, gravar durante o play) · ~~speed graph~~ ✅ **(landou
-2026-07-11)** · ~~weighted/value-space tangents~~ ✅ **(landou 2026-07-11)** · roving keys ·
-keyframe-layers/NLA blend · time remap · multi-clip UI + nó `motion.clip` (seam Motion) ·
-markers→signals/eventos · API MCP/Luau da timeline (HR-10) · bake procedural⇄keys (ponte Cavalry) ·
-export.
+2026-07-11)** · ~~weighted/value-space tangents~~ ✅ **(landou 2026-07-11)** · ~~time remap~~ ✅
+**(landou 2026-07-11)** · roving keys (**PRÓXIMO** — fila do Enio) · keyframe-layers/NLA blend ·
+multi-clip UI + nó `motion.clip` (seam Motion) · markers→signals/eventos · API MCP/Luau da timeline
+(HR-10) · bake procedural⇄keys (ponte Cavalry) · export.
+
+**Time remap (W5, FECHADO 2026-07-11):** `PropKind::TimeRemap = 6` — track **"Time"** por entidade
+(playhead → tempo-fonte; slope<1 slow-mo, flat freeze, descendo reverse) que retima TODAS as outras
+tracks da entidade (`remapped_time` no apply, scan zero-alloc). A curva é UI normal (dope/graph/
+weighted/speed de graça); +Track ganhou "Time"; **K semeia identidade** em track vazia e na-curva
+com keys (`key_value_for`); auto-key nunca a toca (`ALL` = pose de 6). Não confundir com
+`motion.time_remap` (Motion Nodes, escopo de cook).
 
 **Weighted tangents (W5, FECHADO 2026-07-11):** `Interp::BezierW{x1,dy1,x2,dy2}` — bézier no plano
 `(u, valor)` com influência x (fração, mesmo solver) e **dy absoluto** (AE/Blender): segmento flat

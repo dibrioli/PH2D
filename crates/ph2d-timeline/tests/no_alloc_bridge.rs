@@ -37,6 +37,24 @@ fn apply_from_doc_is_zero_alloc_steady_state() {
             AnimValue::Float(i as f32),
             Interp::Hold,
         );
+        // Half of them carry a Time Remap track too, so the per-entity clock
+        // lookup (`remapped_time`'s linear scan + sample) is under the gate.
+        if i % 2 == 0 {
+            doc.insert_key(
+                e.to_bits(),
+                PropKind::TimeRemap,
+                s(0.0),
+                AnimValue::Float(0.0),
+                Interp::Linear,
+            );
+            doc.insert_key(
+                e.to_bits(),
+                PropKind::TimeRemap,
+                s(1.0),
+                AnimValue::Float(0.5),
+                Interp::Linear,
+            );
+        }
     }
     std::hint::black_box(&ents);
 

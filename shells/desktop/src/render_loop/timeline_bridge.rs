@@ -137,7 +137,39 @@ pub(crate) fn sample_prop_value(
         PropKind::ScaleX => Float(xf()?.scale.x),
         PropKind::ScaleY => Float(xf()?.scale.y),
         PropKind::Opacity => Float(world.get::<ph2d_render::Sprite>(e)?.tint[3]),
+        // The timeline's own clock has no scene value to sample — the K flow
+        // seeds it through `key_value_for` instead.
+        PropKind::TimeRemap => return None,
     })
+}
+
+/// The value a K-inserted key carries for `prop` at playhead `t_secs`: scene
+/// properties sample the live world ([`sample_prop_value`]); **Time Remap** has
+/// no scene value — a new key lands ON its own curve (the retime the entity
+/// already plays), or at the IDENTITY (`t`) on an empty track, so binding
+/// "Time" and pressing K lays down a remap that changes nothing until edited.
+pub(crate) fn key_value_for(
+    world: &World,
+    timeline: &TimelineState,
+    entity: u64,
+    prop: PropKind,
+    t_secs: f64,
+) -> Option<ph2d_anim::AnimValue> {
+    use ph2d_anim::AttributeEvaluator;
+    if prop == PropKind::TimeRemap {
+        let source = timeline
+            .doc
+            .binding_for(entity, prop)
+            .and_then(|b| timeline.doc.active_clip().track(b.target))
+            .filter(|tr| !tr.is_empty())
+            .map(|tr| match tr.sample(t_secs) {
+                ph2d_anim::AnimValue::Float(v) => f64::from(v),
+                _ => t_secs,
+            })
+            .unwrap_or(t_secs);
+        return Some(ph2d_anim::AnimValue::Float(source as f32));
+    }
+    sample_prop_value(world, entity, prop)
 }
 
 /// The default interpolation for a freshly inserted key (a gentle ease).
@@ -159,6 +191,7 @@ pub(crate) fn prop_for_addprop_id(id: ph2d_editor::NodeId) -> Option<PropKind> {
         _ if id == c::TIMELINE_ADDPROP_SX => PropKind::ScaleX,
         _ if id == c::TIMELINE_ADDPROP_SY => PropKind::ScaleY,
         _ if id == c::TIMELINE_ADDPROP_OPACITY => PropKind::Opacity,
+        _ if id == c::TIMELINE_ADDPROP_TIME => PropKind::TimeRemap,
         _ => return None,
     })
 }
@@ -324,6 +357,56 @@ mod tests {
             prop_for_addprop_id(ids::TIMELINE_ADDPROP_OPACITY),
             Some(PropKind::Opacity)
         );
+        assert_eq!(
+            prop_for_addprop_id(ids::TIMELINE_ADDPROP_TIME),
+            Some(PropKind::TimeRemap)
+        );
         assert_eq!(prop_for_addprop_id(ids::TIMELINE_PLAY), None);
+    }
+
+    #[test]
+    fn k_seeds_a_time_remap_key_on_its_curve_or_at_the_identity() {
+        use ph2d_anim::AnimValue::Float;
+        use ph2d_ecs::World;
+        let w = World::new();
+        let mut st = TimelineState::new();
+        let mut ph = Playhead::new(1.0 / 60.0);
+        // Empty Time track: K at t = 1.5 seeds the IDENTITY (source = playhead),
+        // so the remap changes nothing until the author edits it.
+        ph2d_timeline::apply_intent(
+            &mut st,
+            &mut ph,
+            TimelineIntent::Bind {
+                entity: 1,
+                prop: PropKind::TimeRemap,
+            },
+        );
+        assert_eq!(
+            key_value_for(&w, &st, 1, PropKind::TimeRemap, 1.5),
+            Some(Float(1.5)),
+            "empty Time track seeds the identity"
+        );
+        // With keys (0 → 0, 2 → 4), a K at t = 1 lands ON the curve (source 2)
+        // — inserting it must not jump the retime the entity already plays.
+        for (t, v) in [(0.0, 0.0f32), (2.0, 4.0)] {
+            ph2d_timeline::apply_intent(
+                &mut st,
+                &mut ph,
+                TimelineIntent::AddKey {
+                    entity: 1,
+                    prop: PropKind::TimeRemap,
+                    t: ph2d_anim::RationalTime::from_seconds(t),
+                    value: Float(v),
+                    interp: ph2d_anim::Interp::Linear,
+                },
+            );
+        }
+        assert_eq!(
+            key_value_for(&w, &st, 1, PropKind::TimeRemap, 1.0),
+            Some(Float(2.0)),
+            "a keyed Time track seeds ON its own curve"
+        );
+        // A scene prop still samples the world (a dead entity has none).
+        assert_eq!(key_value_for(&w, &st, 1, PropKind::TranslationX, 1.0), None);
     }
 }

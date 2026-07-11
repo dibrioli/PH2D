@@ -779,9 +779,16 @@ impl crate::App {
                     .map(|b| b.prop)
                     .collect();
                 for prop in props {
-                    if let Some(value) =
-                        timeline_bridge::sample_prop_value(sim.world(), entity, prop)
-                    {
+                    // `key_value_for`: scene props sample the live pose; a Time
+                    // Remap track keys ON its own curve (identity on an empty
+                    // one), so K can author the retime too.
+                    if let Some(value) = timeline_bridge::key_value_for(
+                        sim.world(),
+                        &self.timeline,
+                        entity,
+                        prop,
+                        self.playhead.time(),
+                    ) {
                         self.timeline_intents
                             .push(ph2d_timeline::TimelineIntent::AddKey {
                                 entity,

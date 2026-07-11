@@ -117,6 +117,17 @@ imperceptível (linha SDR ∈ [0,1]); o ganho é **blend bit-idêntico ao Painte
   de destructure: `present.rs`, `render_loop/mod.rs`, e o literal em `init.rs`).
   Crate nova `ph2d-flip-render`. `mod flip_pass` = `pub(crate)`. Tipo novo
   `render_loop::flip_pass::FlipComposite`. **Nenhum count/registry/contrato** no W1.
+- **W2 Select/gizmo (2ª rodada):** módulos shell novos `mod flip_gizmo_view;` +
+  `mod flip_transform;` (`main.rs`) e `mod flip_pass_cache;` (`render_loop/mod.rs`).
+  Símbolos novos em `ph2d-flip`: `FlipObject::geometry_bbox`/`bake_affine`; em
+  `ph2d-flip-render`: `FlipGpuData::append`. **Edições ADITIVAS em arquivos SHARED**
+  (colisão textual possível se outra linha tocar os MESMOS sites — Mergiraf funde,
+  mas confira): `input_dispatch.rs` (~6 sites de pick/marquee/gizmo_anchor_half, TODOS
+  ao lado do bloco vetorial existente — mesmo padrão), `render_loop/snapshots.rs`
+  (branch Flip no `build_view` + 2 params novos em `publish`), `render_loop/mod.rs`
+  (`settle_origins` do Flip + `flip_gizmo_on` no `publish`), `present.rs`
+  (`flip_transform::build` + param `models` no `flip_pass::render`), `flip_draw.rs`/
+  `flip_erase.rs` (fronteira world→local). **Nenhum count/registry/contrato novo.**
 
 > Colisão mais provável com outra linha: se **outra linha também bumpou
 > `register_ecs_components`** (novo componente), o `reg.len()` esperado soma —
@@ -480,28 +491,43 @@ O Enio smokou o W2 e apontou 4 itens. **3 corrigidos** (commit `ce88bbc7`/`f84dc
    nos pontos apagados (cap plano = borda dura). Agora preserva os pontos de
    opacidade reduzida (gradiente macio); só descarta traços 100% apagados.
 
-**4. "Select não funciona" — GAP REAL, aberto (T2.4 incompleto).** O objeto Flip é
-uma entidade ECS (`FlipObjectRef`), mas **nunca foi ligado ao gizmo/picking**: o
-picking de canvas é especializado por meio (sprite = `Sprite`, vetor =
-`VecPathRef`), e a entidade Flip não tem nenhum dos dois → não é clicável nem
-transformável. Além disso o **render do Flip ignora o `Transform` da entidade**
-(a geometria é MUNDO com `Transform` identidade — `flip_pass` compõe direto). Pra
-o "Select move o objeto" (ADR-0111) valer, falta um pacote focado:
-- `flip_gizmo_view` (espelho do `vec_gizmo_view`): `anchor_half`/`view`/
-  `contains_world`/`pick_all_at_world` a partir da bbox de MUNDO das strokes.
-- **render aplica o `Transform`**: `flip_pass` estagia cada objeto com
-  `world_to_clip · model` (multiplicação de matriz — sem mudar shader; o
-  `CameraRaw.world_to_clip` já é o afim). + geometria LOCAL (settle do pivô no
-  centro, `bake` convertendo world→local na fronteira) pra rotate/scale certos.
-- **fiar o picking do Flip** nos ~10 sites de `input_dispatch` hoje vetor-only
-  (Down-pick, contains, marquee) + publicar a `GizmoView` em `snapshots.rs:265`.
-É invasivo no dispatch de seleção (vetor-especializado) — melhor com smoke. Não
-foi feito nesta sessão por risco (sem GUI aqui). **Estimativa ~250-350 LOC.**
+**4. "Select não funciona" — RESOLVIDO (2ª rodada, commits `feat(flip): Select/gizmo`
++ `refactor split`).** Paridade ADR-0111 completa: o objeto Flip agora é
+selecionável (Hierarquia OU clique no canvas) e movido/girado/escalado pelo **gizmo
+de sprite**, como uma forma vetorial. Peças:
+- `flip_transform` (espelho de `vec_transform`): geometria LOCAL + `Transform`;
+  `settle_origins` põe o pivô no centro da arte no fim do gesto (pula o objeto EM
+  GESTO); `move_origin_to` bake sobre TODOS os desenhos (`FlipObject::bake_affine`).
+- `flip_gizmo_view` (espelho de `vec_gizmo_view`): `anchor_half`/`view`/
+  `contains_world`/`pick_all_at_world`/`pick_in_world_rect` da bbox local + pose.
+- **render aplica o model por-objeto** (`flip_pass::fold_model`): `world_to_clip ·
+  model` + `px_per_world · mean_scale` (o traço engrossa junto na escala). Sem mexer
+  shader. Identidade = sem custo (caminho comum, byte-idêntico ao antes).
+- **draw/erase localizam** na fronteira MUNDO→LOCAL (`flip_active_world_to_local`);
+  identidade num objeto novo (desenho normal intacto).
+- **wiring**: `settle` no reconcile; `GizmoView` publicada em `snapshots` (fora dos
+  modos Draw/Erase); picking ADITIVO ao vetor nos ~6 sites de `input_dispatch`
+  (cíclico, marquee, pivô, over-art) + `gizmo_anchor_half` ganhou branch Flip (drag
+  de scale/rotate correto).
+- 20 testes novos (bbox/bake, settle, gizmo pick/view, `fold_model`). O **seam de
+  canvas não é unit-testável** — precisa do smoke do Enio (mas a Hierarquia +
+  gizmo-drag já são exercitáveis e a math toda está coberta).
+
+**Blend em TEMPO REAL (2ª rodada, commit `fix(flip): blend do preview em tempo real`):**
+o preview ao vivo era `draw_overlay` (Normal) SEMPRE por cima → o blend só "aparecia"
+no pen-up. Agora o traço em curso é DOBRADO na fatia da camada ativa
+(`FlipGpuData::append` + `collect_layers` atribui o preview à camada-alvo), então
+compõe pelo blend/opacity dela a cada frame (byte-idêntico ao bake). Camada-alvo
+oculta/irresolvível cai no overlay Normal (fallback: nunca desenhar às cegas).
 
 ## Aberto (fora do W0/W1/W2, por design)
 
-- **Select/gizmo do objeto Flip** (acima) — o gap de maior valor imediato.
 - **W3 (próximo):** Frames · Ghost Frames · Tween — guia em **§W3-NEXT** acima.
+- **Refinos do Select (não-bloqueantes):** escala NÃO-uniforme engrossa o traço pela
+  escala MÉDIA (`mean_scale`) — aproximação; espessura anisotrópica exigiria passar o
+  afim ao shader. Persistência da pose Flip no `ProjectState` (o `Transform` é ECS →
+  já entra no `WorldSnapshot`; a geometria local idem — deve funcionar, mas não
+  smoke-testei o round-trip pós-move).
 - **Refinos do painel/borracha (não-bloqueantes):** duplicar/agrupar camada
   (só `add`/`delete`/reorder landaram; `FlipObject` não tem `duplicate_layer`);
   reorder por DRAG (só ↑↓ por botão); máscaras de camada na UI (`FlipLayer.masks`

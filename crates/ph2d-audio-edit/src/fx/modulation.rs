@@ -22,7 +22,8 @@ const STEREO_PHASE: f32 = TAU / 4.0;
 /// Read `buf` at a **fractional** sample offset behind `write`, wrapping. Linear
 /// interpolation between the two neighbouring samples — a modulated delay lands
 /// between samples on almost every frame, and rounding to the nearest one zippers.
-fn frac_read(buf: &[f32], write: usize, delay: f32) -> f32 {
+/// Shared with the sibling [`super::pitch`] shifter, which sweeps its own taps.
+pub(super) fn frac_read(buf: &[f32], write: usize, delay: f32) -> f32 {
     let len = buf.len();
     let mut rp = write as f32 - delay;
     while rp < 0.0 {

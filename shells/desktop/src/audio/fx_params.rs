@@ -165,6 +165,8 @@ fn format_value(s: &FxParamSpec, v: f32) -> String {
         // Already in milliseconds (a modulation depth), not seconds.
         "ms" => format!("{v:.1} ms"),
         "dB" => format!("{v:+.1} dB"),
+        // Semitones, signed like dB: "+7.0 st" reads as a shift, "7.00" as a coefficient.
+        "st" => format!("{v:+.1} st"),
         "x" if s.integral => format!("{v:.0}\u{d7}"),
         "x" => format!("{v:.2}\u{d7}"),
         _ if s.integral => format!("{v:.0}"),
@@ -285,6 +287,7 @@ mod tests {
                 "Phaser",
                 "Tremolo",
                 "Ring Mod",
+                "Pitch Shift",
             ]
         );
         assert_eq!(all_default_norms().len(), KINDS.len());

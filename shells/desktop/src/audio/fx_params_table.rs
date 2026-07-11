@@ -144,10 +144,16 @@ static RING_MOD: [FxParamSpec; 2] = [
     spec("Freq", 20.0, 4_000.0, true, 500.0, "Hz", false),
     spec("Mix", 0.0, 1.0, false, 0.0, "", false),
 ];
+// Semitones is the arm — neutral at 0 (linear so 0 lands exactly at slider centre).
+// Mix stays fully wet by default (the pitched voice), pull down to blend a detune.
+static PITCH_SHIFT: [FxParamSpec; 2] = [
+    spec("Semitones", -12.0, 12.0, false, 0.0, "st", false),
+    spec("Mix", 0.0, 1.0, false, 1.0, "", false),
+];
 
 /// The effects the selector cycles, in order — grouped tone → dynamics → character
 /// → space, the way a rack is laid out.
-pub(crate) static KINDS: [FxKind; 22] = [
+pub(crate) static KINDS: [FxKind; 23] = [
     FxKind {
         name: "Low-Pass",
         params: &LOW_PASS,
@@ -400,6 +406,17 @@ pub(crate) static KINDS: [FxKind; 22] = [
         build: |v| {
             FxCommand::Plain(Effect::RingMod {
                 freq: v[0],
+                mix: v[1],
+            })
+        },
+    },
+    FxKind {
+        name: "Pitch Shift",
+        params: &PITCH_SHIFT,
+        arms: &[0], // Semitones
+        build: |v| {
+            FxCommand::Plain(Effect::PitchShift {
+                semitones: v[0],
                 mix: v[1],
             })
         },

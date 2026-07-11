@@ -22,6 +22,7 @@ mod deess;
 mod deplosive;
 mod dynamics;
 mod modulation;
+mod pitch;
 mod space;
 mod tone;
 
@@ -32,6 +33,7 @@ use deess::deess;
 use deplosive::deplosive;
 use dynamics::{compress, gate, leveler, limit};
 use modulation::{modulated_delay, phaser, ring_mod, tremolo};
+use pitch::{PITCH_BYPASS_ST, pitch_shift};
 use space::render_wet;
 use tone::{HUM_Q, biquad_all, bitcrush, dehum, saturate, stereo_width};
 
@@ -220,6 +222,15 @@ pub enum Effect {
         /// Dry→wet crossfade (0..1).
         mix: f32,
     },
+    /// **Pitch shift**: retunes by `semitones` (±) with a time-domain granular
+    /// shifter — the monster / chipmunk / robot voice. Formants move with the pitch.
+    /// `mix` crossfades dry→wet. Neutral at `semitones` 0 (or `mix` 0).
+    PitchShift {
+        /// Shift in semitones (negative = down, positive = up).
+        semitones: f32,
+        /// Dry→wet crossfade (0..1).
+        mix: f32,
+    },
 }
 
 impl Effect {
@@ -317,6 +328,12 @@ impl Effect {
             }
             Effect::Tremolo { rate, depth } if depth > MOD_BYPASS => tremolo(data, rate, depth),
             Effect::RingMod { freq, mix } if mix > MOD_BYPASS => ring_mod(data, freq, mix),
+            // Needs a real shift AND some wet: either at neutral is a pass-through.
+            Effect::PitchShift { semitones, mix }
+                if semitones.abs() > PITCH_BYPASS_ST && mix > MOD_BYPASS =>
+            {
+                pitch_shift(data, semitones, mix)
+            }
             _ => data.clone(),
         }
     }
@@ -366,6 +383,9 @@ impl Effect {
             Effect::Flanger { depth_ms, .. } => {
                 (((FLANGER_BASE_MS + depth_ms) * 0.001 * sample_rate as f32) as usize).min(cap)
             }
+            // The pitch shifter's delay line starts empty; without a pre-roll its taps
+            // read silence for the first grain and the region swells in. Fill it.
+            Effect::PitchShift { .. } => pitch::GRAIN.min(cap),
             // The compressor and the gate prime their own envelope on the region's
             // first frame; the phaser's all-pass state settles in a handful of
             // samples; tremolo is memoryless. None need a pre-roll.
@@ -407,6 +427,8 @@ impl Effect {
                     | Effect::RingMod { mix, .. }
                     if mix <= MOD_BYPASS)
             || matches!(*self, Effect::Tremolo { depth, .. } if depth <= MOD_BYPASS)
+            || matches!(*self, Effect::PitchShift { semitones, mix }
+                if semitones.abs() <= PITCH_BYPASS_ST || mix <= MOD_BYPASS)
             || matches!(*self, Effect::DeHum { depth, .. } if depth <= HUM_BYPASS_DEPTH)
             || matches!(*self, Effect::Leveler { amount, .. } if amount <= LEVELER_BYPASS_AMOUNT)
     }

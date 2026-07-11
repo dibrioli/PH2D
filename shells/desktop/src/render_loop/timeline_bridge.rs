@@ -9,7 +9,7 @@
 //! `motion_bridge` / `vector_bridge` compose their crate logic).
 //!
 //! A no-op when the document is empty (no bindings) and no intents are pending,
-//! so the KeyB `SpriteAnimation` demo path is unaffected.
+//! so any programmatic `SpriteAnimation` bind is left untouched.
 
 use ph2d_core::Playhead;
 use ph2d_ecs::World;

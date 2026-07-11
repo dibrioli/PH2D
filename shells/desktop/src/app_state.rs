@@ -323,7 +323,7 @@ pub(crate) struct App {
     pub(crate) fixed_step: FixedStep,
     /// Engine-wide timeline cursor. Advanced once per fixed tick; every
     /// animatable system samples it for the current frame (the general
-    /// timeline's live scalar side). See `render_loop::timeline_smoke`.
+    /// timeline's live scalar side). See `render_loop::timeline_bridge`.
     pub(crate) playhead: Playhead,
     /// The app-general timeline document + selection/history/flags (W1). The
     /// `render_loop::timeline_bridge` drains `timeline_intents` into it, then

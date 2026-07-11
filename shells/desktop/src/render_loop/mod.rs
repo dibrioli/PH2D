@@ -64,7 +64,6 @@ pub(crate) mod painter_bridge_shape_preview;
 pub(crate) mod painter_bridge_wetness;
 mod timeline_bridge;
 mod timeline_presets;
-mod timeline_smoke;
 // `pub(crate)`: `apply_layer_reparent` is called from `input_dispatch` (outside
 // render_loop) to route the W3.T3.8 layer drag-reparent through the allowlisted
 // bridge-queries module instead of downcasting in central dispatch.
@@ -707,137 +706,130 @@ impl crate::App {
         .into_iter()
         .flatten()
         .collect();
-        // General-timeline visual smoke (PH2D_TIMELINE_SMOKE=1): a ph2d-anim
-        // Clip sampled at the live Playhead animates the sprite grid, owning the
-        // canvas this frame instead of the M5 demo sim. Off by default.
-        if timeline_smoke::enabled() {
-            timeline_smoke::run(present, renderer, self.playhead.time());
-        } else {
-            // Project px/m for `Sprite::resolve_anchor` (intrinsic-px `offset` →
-            // local meters). `None` only under the M5 demo / headless, whose sprites
-            // use the centered/offset defaults so the value is inert; fall back to
-            // the canonical default.
-            let ppm = hero_screen
+        // Project px/m for `Sprite::resolve_anchor` (intrinsic-px `offset` →
+        // local meters). `None` only under the M5 demo / headless, whose sprites
+        // use the centered/offset defaults so the value is inert; fall back to
+        // the canonical default.
+        let ppm = hero_screen
+            .as_ref()
+            .map(|h| h.project.pixels_per_meter)
+            .unwrap_or(ph2d_editor::project::DEFAULT_PIXELS_PER_METER);
+        // W3.T3.11: project-default sampling for all-Inherit sprites, from the
+        // project image filter (PixelArt → Nearest, Smooth → Linear); repeat
+        // defaults to clamp (Disabled).
+        let default_filter = match hero_screen
+            .as_ref()
+            .map(|h| h.project.image_filter)
+            .unwrap_or(ph2d_render::ImageFilterMode::Smooth)
+        {
+            ph2d_render::ImageFilterMode::PixelArt => ph2d_ecs::FilterMode::Nearest,
+            ph2d_render::ImageFilterMode::Smooth => ph2d_ecs::FilterMode::Linear,
+        };
+        // W2.T4 cooked-texture loader: resolve + decode + upload every
+        // `SpriteSource::CookedTexture` sprite's KTX2 (for the device tier,
+        // descending the fallback ladder) BEFORE extract reads back the cached
+        // `texture_id`. Idempotent + cheap after the first upload.
+        cooked_texture_bridge::ensure_uploaded(sim, renderer, asset_db, logical_texture_map);
+        // General timeline (M0): sample every animated sprite's Clip at the
+        // engine Playhead and write its Transform, BEFORE propagation/extract
+        // read it. A no-op when nothing carries a SpriteAnimation; drives any
+        // sprite carrying one (programmatic binds) in the real scene.
+        ph2d_timeline::apply_sprite_animations(sim.world_mut(), self.playhead.time());
+        // W2.E5b — fold the dope-sheet edits the panel raised from its surface
+        // gestures last frame (key select / move / clear) into the intent
+        // queue the bridge drains below (same channel as transport/K intents).
+        self.timeline_intents
+            .extend(ph2d_panel_timeline::drain_intents());
+        // W3.E4 — the segment preset the user picked from a key's right-click
+        // menu. editor-core parked an opaque `(item, mode)` on the hero (it
+        // knows no easings); resolve it against the document here, upstream of
+        // the bridge below, so the curve redraws on THIS frame.
+        if let Some(pick) = hero_screen
+            .as_mut()
+            .and_then(|h| h.pending_timeline_interp.take())
+        {
+            let picked = timeline_presets::intents_for_pick(&self.timeline, pick);
+            self.timeline_intents.extend(picked);
+        }
+        // K (capture-the-pose): a one-shot AddKey on every bound track of the
+        // selected sprite (its own undo step). AutoKey — the pose-following
+        // that keys ANY UI edit — is a single pass AFTER all the frame's
+        // Transform writes (`autokey_pass::run`, below the EditorAction drain),
+        // so it observes the settled pose and cannot fight the apply.
+        //
+        // `dragging_entity` is still needed here: `timeline_bridge::run` skips
+        // it in the apply so the document never fights the live gizmo drag.
+        let dragging_entity: Option<u64> = hero_screen
+            .as_ref()
+            .and_then(|h| h.gizmo.drag)
+            .map(|d| d.entity_bits);
+        if self.timeline_insert_key {
+            self.timeline_insert_key = false;
+            if let Some(entity) = hero_screen
                 .as_ref()
-                .map(|h| h.project.pixels_per_meter)
-                .unwrap_or(ph2d_editor::project::DEFAULT_PIXELS_PER_METER);
-            // W3.T3.11: project-default sampling for all-Inherit sprites, from the
-            // project image filter (PixelArt → Nearest, Smooth → Linear); repeat
-            // defaults to clamp (Disabled).
-            let default_filter = match hero_screen
-                .as_ref()
-                .map(|h| h.project.image_filter)
-                .unwrap_or(ph2d_render::ImageFilterMode::Smooth)
+                .and_then(|h| h.gizmo.iter_selected().next())
             {
-                ph2d_render::ImageFilterMode::PixelArt => ph2d_ecs::FilterMode::Nearest,
-                ph2d_render::ImageFilterMode::Smooth => ph2d_ecs::FilterMode::Linear,
-            };
-            // W2.T4 cooked-texture loader: resolve + decode + upload every
-            // `SpriteSource::CookedTexture` sprite's KTX2 (for the device tier,
-            // descending the fallback ladder) BEFORE extract reads back the cached
-            // `texture_id`. Idempotent + cheap after the first upload.
-            cooked_texture_bridge::ensure_uploaded(sim, renderer, asset_db, logical_texture_map);
-            // General timeline (M0): sample every animated sprite's Clip at the
-            // engine Playhead and write its Transform, BEFORE propagation/extract
-            // read it. A no-op when nothing carries a SpriteAnimation; drives any
-            // bound sprite (e.g. the KeyB demo) in the real scene.
-            ph2d_timeline::apply_sprite_animations(sim.world_mut(), self.playhead.time());
-            // W2.E5b — fold the dope-sheet edits the panel raised from its surface
-            // gestures last frame (key select / move / clear) into the intent
-            // queue the bridge drains below (same channel as transport/K intents).
-            self.timeline_intents
-                .extend(ph2d_panel_timeline::drain_intents());
-            // W3.E4 — the segment preset the user picked from a key's right-click
-            // menu. editor-core parked an opaque `(item, mode)` on the hero (it
-            // knows no easings); resolve it against the document here, upstream of
-            // the bridge below, so the curve redraws on THIS frame.
-            if let Some(pick) = hero_screen
-                .as_mut()
-                .and_then(|h| h.pending_timeline_interp.take())
-            {
-                let picked = timeline_presets::intents_for_pick(&self.timeline, pick);
-                self.timeline_intents.extend(picked);
-            }
-            // K (capture-the-pose): a one-shot AddKey on every bound track of the
-            // selected sprite (its own undo step). AutoKey — the pose-following
-            // that keys ANY UI edit — is a single pass AFTER all the frame's
-            // Transform writes (`autokey_pass::run`, below the EditorAction drain),
-            // so it observes the settled pose and cannot fight the apply.
-            //
-            // `dragging_entity` is still needed here: `timeline_bridge::run` skips
-            // it in the apply so the document never fights the live gizmo drag.
-            let dragging_entity: Option<u64> = hero_screen
-                .as_ref()
-                .and_then(|h| h.gizmo.drag)
-                .map(|d| d.entity_bits);
-            if self.timeline_insert_key {
-                self.timeline_insert_key = false;
-                if let Some(entity) = hero_screen
-                    .as_ref()
-                    .and_then(|h| h.gizmo.iter_selected().next())
-                {
-                    let t = ph2d_anim::RationalTime::from_seconds(self.playhead.time());
-                    let props: Vec<_> = self
-                        .timeline
-                        .doc
-                        .bindings()
-                        .iter()
-                        .filter(|b| b.entity == entity)
-                        .map(|b| b.prop)
-                        .collect();
-                    for prop in props {
-                        if let Some(value) =
-                            timeline_bridge::sample_prop_value(sim.world(), entity, prop)
-                        {
-                            self.timeline_intents
-                                .push(ph2d_timeline::TimelineIntent::AddKey {
-                                    entity,
-                                    prop,
-                                    t,
-                                    value,
-                                    interp: timeline_bridge::default_interp(),
-                                });
-                        }
+                let t = ph2d_anim::RationalTime::from_seconds(self.playhead.time());
+                let props: Vec<_> = self
+                    .timeline
+                    .doc
+                    .bindings()
+                    .iter()
+                    .filter(|b| b.entity == entity)
+                    .map(|b| b.prop)
+                    .collect();
+                for prop in props {
+                    if let Some(value) =
+                        timeline_bridge::sample_prop_value(sim.world(), entity, prop)
+                    {
+                        self.timeline_intents
+                            .push(ph2d_timeline::TimelineIntent::AddKey {
+                                entity,
+                                prop,
+                                t,
+                                value,
+                                interp: timeline_bridge::default_interp(),
+                            });
                     }
                 }
             }
-            // General timeline (W1): drain pending panel/K intents into the
-            // app-general document, then apply it to the scene at the same
-            // Playhead — skipping the dragged entity. No-op while empty.
-            timeline_bridge::run(
-                sim.world_mut(),
-                &mut self.timeline,
-                &mut self.playhead,
-                &mut self.timeline_intents,
-                dragging_entity,
-            );
-            // The playhead has now moved: a transport jump queued last frame can
-            // finally ask the panel to pan to it (the snapshot below carries the
-            // new time, and `paint` reads both later this frame).
-            if std::mem::take(&mut self.timeline_reveal_after_apply) {
-                ph2d_panel_timeline::request_reveal_playhead();
-            }
-            // Publish the view snapshot the docked timeline panel paints
-            // (transport state; tracks/keys from E3+). Rebuilt into a reused
-            // buffer, then handed to the panel's thread-local.
-            self.timeline_view.rebuild(&self.timeline, &self.playhead);
-            ph2d_panel_timeline::set_current_timeline(Some(self.timeline_view.clone()));
-            sim_extract::run(
-                dt,
-                sim,
-                present,
-                renderer,
-                prop_state,
-                worklist,
-                sort_scratch,
-                sort_inputs,
-                &preview_overrides,
-                ppm,
-                camera.cull_mask,
-                default_filter,
-                ph2d_ecs::RepeatMode::Disabled,
-            );
         }
+        // General timeline (W1): drain pending panel/K intents into the
+        // app-general document, then apply it to the scene at the same
+        // Playhead — skipping the dragged entity. No-op while empty.
+        timeline_bridge::run(
+            sim.world_mut(),
+            &mut self.timeline,
+            &mut self.playhead,
+            &mut self.timeline_intents,
+            dragging_entity,
+        );
+        // The playhead has now moved: a transport jump queued last frame can
+        // finally ask the panel to pan to it (the snapshot below carries the
+        // new time, and `paint` reads both later this frame).
+        if std::mem::take(&mut self.timeline_reveal_after_apply) {
+            ph2d_panel_timeline::request_reveal_playhead();
+        }
+        // Publish the view snapshot the docked timeline panel paints
+        // (transport state; tracks/keys from E3+). Rebuilt into a reused
+        // buffer, then handed to the panel's thread-local.
+        self.timeline_view.rebuild(&self.timeline, &self.playhead);
+        ph2d_panel_timeline::set_current_timeline(Some(self.timeline_view.clone()));
+        sim_extract::run(
+            dt,
+            sim,
+            present,
+            renderer,
+            prop_state,
+            worklist,
+            sort_scratch,
+            sort_inputs,
+            &preview_overrides,
+            ppm,
+            camera.cull_mask,
+            default_filter,
+            ph2d_ecs::RepeatMode::Disabled,
+        );
 
         // Sprite-layer clear color = backdrop visible in the canvas
         // area through the transparent regions of `vello_rt`. Live

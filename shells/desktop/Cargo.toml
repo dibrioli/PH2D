@@ -46,13 +46,13 @@ ph2d-node-registry-init = { path = "../../crates/ph2d-node-registry-init" }
 # `motion.time_remap` params into `TimeMap`s before each cook (and to refuse a
 # wire that would drag a sequential node under a rewritten clock).
 ph2d-node-motion-time-remap = { path = "../../crates/ph2d-node-motion-time-remap" }
-# General timeline data layer (M0): keyframe store + curves. Used by the
-# timeline visual smoke (render_loop/timeline_smoke.rs, PH2D_TIMELINE_SMOKE=1) to
-# animate the sprite grid from a Clip sampled at the engine Playhead.
+# General timeline data layer (M0): keyframe store + curves. Backs the
+# app-general TimelineDoc (authoring + sampling at the engine Playhead) and the
+# per-component SpriteAnimation apply path.
 ph2d-anim = { path = "../../crates/ph2d-anim" }
 # General-timeline runtime (M0/W1): binds ph2d-anim Clips to scene entities and
-# applies them at the Playhead each frame (render_loop apply pass + the KeyB
-# demo bind), and drives the app-general TimelineDoc via apply_from_doc. The
+# applies them at the Playhead each frame (render_loop apply pass), and drives
+# the app-general TimelineDoc via apply_from_doc. The
 # `render` feature enables the sprite-opacity resolver (writes Sprite.tint[3]).
 ph2d-timeline = { path = "../../crates/ph2d-timeline", features = ["render"] }
 # Docked timeline panel — the shell publishes its view snapshot each frame via

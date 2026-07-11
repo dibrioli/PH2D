@@ -11,8 +11,9 @@ turno de todas as linhas** (regra vigente da jornada); smoke com o Enio no gate 
 - Relógio: `ph2d-core::Playhead` (time f64 + play/pause/seek/rate/frame) avançado 1×/tick no render
   loop; transporte por teclado (Space, `,`/`.`).
 - Runtime de binding: `ph2d-timeline` — `SpriteAnimation`(ECS) + `SpriteProp` (AnimTarget opaco →
-  propriedade do `Transform`) + `apply_sprite_animations` no frame; provas visual (KeyB /
-  `PH2D_TIMELINE_SMOKE=1`) e headless (`playhead_drive`, `apply`).
+  propriedade do `Transform`) + `apply_sprite_animations` no frame; prova viva = o **painel Timeline**
+  (W2/W3), mais headless (`playhead_drive`, `apply`). (Os scaffolds de smoke KeyB /
+  `PH2D_TIMELINE_SMOKE=1` foram aposentados na W4.T5 — a autoria real os substituiu.)
 
 > Escopo: a **timeline GERAL do app** — anima QUALQUER propriedade (sprite, layer do painter, param
 > de motion node, vetor). NÃO é a timeline do módulo Motion Nodes (deferida lá; encaixe =
@@ -179,7 +180,7 @@ layout slot + IconId + tokens) · shell (`timeline_bridge.rs`, app_state, input_
 | W1.T9 | Gate dhat: bridge com doc não-vazio, **paused = 0 allocs** (molde motion M0.T12) | HR-3 |
 
 **Gate W1:** headless — intents dirigem doc+playhead e a cena muda (teste de integração no shell);
-dhat verde. Smoke Enio opcional (KeyB ainda é a prova visual).
+dhat verde. Smoke Enio opcional (à época, KeyB era a prova visual; aposentado na W4.T5).
 
 ### W2 — Painel Timeline v1: transporte + dope-sheet (a onda grande)
 
@@ -222,7 +223,7 @@ keys em massa → undo — tudo pela UI.
 | W4.T2 | Auto-create track no auto-key (opção no doc) — mover objeto sem track cria binding+track+key | P3 |
 | W4.T3 | Loop braces arrastáveis na régua + **markers** (add/move/rename popup; dado W1.T1) | |
 | W4.T4 | Dock no `motion_timeline_slot` quando o split Motion está ativo (slot h=0 → altura real; coordenação leve com motion) | verificar slot no layout atual |
-| W4.T5 | **Aposentar** `timeline_smoke.rs` + hook KeyB (substituídos por autoria real); atualizar docs/CLAUDE §5 | tecla B liberada |
+| ~~W4.T5~~ ✅ | **Aposentado** `timeline_smoke.rs` (arquivo + `mod` + branch no render loop) + hook KeyB + helper `demo_spin_clip` (substituídos pela autoria real); comentários stale limpos (Cargo.toml/app_state/timeline_bridge); docs/CLAUDE §5 atualizados | tecla B **liberada** (cai no `_ => {}`) |
 | W4.T6 | Persistência end-to-end no save real do projeto (fecha W1.T8) + migration test | HR-14 |
 | W4.T7 | Fechar unificação do relógio (se W1.T7 ficou parcial) + remover transporte duplicado | |
 | W4.T8 | Gate batched final da linha: nextest-impacted + clippy --all-targets + audit ≥2 lentes + DIRETIVA §3 template por claim + perf da cena de referência | fechamento do módulo |

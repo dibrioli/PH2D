@@ -120,5 +120,36 @@ na mesma linha:
 - Gates re-rodados no fechamento da rodada: nextest 404 pass (node crates + shell), clippy
   0, fmt pinado, typos 0, machete 0.
 
-*"Linha `MotionNodes` pronta (HEAD no worktree, 8 commits). Handoff acima. Aguardo ordem de
+## 8. Rodada 3 (mesmo dia): M2.N2/N3 — `Cook::checkpoint/restore` + scrub para trás — doc 11
+
+Pesquisado o padrão-ouro ANTES de codar (GGPO/GGRS, Houdini, Blender, binjgb) e implementado o
+scrub para trás determinístico ([doc 11](Motion%20Nodes/11_checkpoint_restore_scrub_nota_adr.md)).
+**Foundational aditivo — contratos congelados intocados.** Commits adicionais na mesma linha:
+
+- **`ph2d-nodegraph/src/cook.rs`:** `pub struct CookCheckpoint` + `Cook::checkpoint()`/`restore()`
+  (snapshot do feedback `pre` + tick; restore limpa o memo). Aditivo — nenhuma API existente mudou.
+  Testes bit-exatos em `cook_tests.rs`.
+- **`ph2d-eval-motion`:** módulo novo `checkpoint.rs` (`CheckpointRing` dense + âncora seed,
+  `RECENT_CAPACITY=300`) + `MotionCookPump::{scrub_to_scoped, advance_or_scrub_scoped,
+  cook_sinks_into}` + `mark_dirty` limpa o ring. **`lib.rs` foi 650→732 → DIVIDIDO** (não
+  allowlist): testes inline movidos p/ `eval_tests.rs`, scrub p/ `scrub_tests.rs` (`lib.rs` a 522).
+- **Shell:** `motion_bridge.rs` troca os 2 call-sites do pump por `advance_or_scrub_scoped`;
+  `MotionState::playhead` **removido** (redundante — callers de teste migrados p/
+  `transport.playhead`). Teste de integração do loop-wrap com o registry real
+  (`a_loop_range_replays_the_simulation_from_its_start`).
+- **Símbolos novos** (detalhe no doc 11 §5): `CookCheckpoint`, `CheckpointRing`/`RECENT_CAPACITY`,
+  os 3 métodos do pump, e os 2 arquivos-teste novos em eval-motion. **Nenhum** id/token/dep novo.
+- **Arquivos divididos (merge textual):** `ph2d-eval-motion/src/lib.rs` → + `eval_tests.rs` +
+  `scrub_tests.rs`; `ph2d-nodegraph/src/cook.rs` ganhou `CookCheckpoint` + 2 métodos + testes em
+  `cook_tests.rs` (já era `#[path]` sibling).
+- **Gates:** nextest 542 pass (rdeps de nodegraph+eval-motion, inclui shell), arch-gates verdes
+  (LOC cap + `architecture_contract_surface` — contrato intacto), clippy 0, fmt 1.95, typos 0,
+  machete 0, HR-5 0 em produção, `paused_frames_allocate_nothing` verde (zero-alloc pausado
+  preservado).
+- **Smoke pendente (Enio):** com a régua/timeline ainda deferida, a via visual é o **loop**: setar
+  um `loop_range` e ver a mola/strobe **reiniciar** a cada volta em vez de congelar no fim (hoje o
+  loop-wrap está wirado; um botão de loop na UI é follow-up). Headless já prova via
+  `a_loop_range_replays_the_simulation_from_its_start`.
+
+*"Linha `MotionNodes` pronta (HEAD no worktree, 10 commits). Handoff acima. Aguardo ordem de
 integração."*

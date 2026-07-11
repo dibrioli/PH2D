@@ -1,8 +1,9 @@
 //! Headless demo/cook tests for `motion_state` (split for the HR-18 600-LOC
 //! shell cap; declared there as a `#[path]` sibling, so `super` is
 //! `motion_state`). Cook the default document — now the single pulse-loop scene
-//! (a `pulse.beat` metronome → `pulse.counter` → `motion.drive` + `motion.strobe`) — through the
-//! REAL registry, exactly as the bridge does.
+//! (a `pulse.beat` metronome → `pulse.counter` → `motion.drive` for X + a
+//! `value.lfo` → `value.map_range` → `motion.drive` for Y + `motion.strobe`) —
+//! through the REAL registry, exactly as the bridge does.
 
 use super::*;
 
@@ -15,10 +16,11 @@ fn new_builds_the_well_typed_pulse_document() {
         state.doc.graph.node(state.sinks[0]).unwrap().type_name,
         "motion.output"
     );
-    // 8 nodes: grid, move, tint, drive, strobe, output, beat, counter. The
-    // sweep is now COMPOSED (pulse.counter → motion.drive) instead of bundled
-    // in motion.step — the value domain (doc 12).
-    assert_eq!(state.doc.graph.nodes().len(), 8);
+    // 11 nodes: grid, move, tint, drive_x, drive_y, strobe, output, beat,
+    // counter, lfo, map_range. TWO value chains — the discrete beat→counter→
+    // drive_x (X, broadcast) and the continuous lfo→map_range→drive_y (Y,
+    // element-wise) — instead of the bundled motion.step (the value domain, doc 12).
+    assert_eq!(state.doc.graph.nodes().len(), 11);
     assert!(state.doc.graph.validate(&state.registry).is_ok());
     assert_eq!(state.transport.playhead(1.0 / 60.0), 0.0); // paused at tick 0
 }
@@ -175,6 +177,89 @@ fn the_value_domain_sweeps_the_grid_in_discrete_notches() {
     assert!(
         peak_at > 5 && peak_at < centroid.len() - 5,
         "the zigzag climbs to an interior peak then folds back (peak at tick {peak_at})"
+    );
+}
+
+/// The SECOND value chain (the continuous one) is alive and ELEMENT-WISE: a
+/// `value.lfo` emits a length-N field, `value.map_range` reshapes it, and a
+/// `motion.drive` routes it onto Y — so every dot bobs, and (unlike the X
+/// broadcast) the per-instance `phase_stagger` makes the dots bob *out of phase*
+/// with each other: a travelling wave. This is the doc-12 win the discrete chain
+/// can't show — the length-N element-wise path next to X's length-1 broadcast.
+///
+/// The LFO is stateless (a pure function of the playhead), so we cook at a sweep
+/// of times without advancing tick state and read Y straight off the sink.
+///
+/// Falsifiable three ways: a dead LFO/map_range/drive_y chain leaves Y FLAT
+/// (min per-dot range ~0); a broken `map_range` lets the raw amplitude through so
+/// the bob exceeds its bounded span; and a BROADCAST value (the stagger lost, or
+/// a length-1 field) moves every dot in lock-step, collapsing the at-one-instant
+/// spread to zero.
+#[test]
+fn the_continuous_lfo_chain_ripples_the_grid_in_y_element_wise() {
+    use ph2d_nodegraph::attr::Column;
+
+    let state = MotionState::new();
+    let strobe_sink = *state.sinks.last().unwrap();
+    let mut cook = ph2d_nodegraph::cook::Cook::new();
+
+    // One full LFO period (2 s ≈ 120 ticks). Record every dot's Y each tick.
+    let mut frames: Vec<Vec<f32>> = Vec::new();
+    for k in 0..=120u64 {
+        let t = k as f64 / 60.0;
+        let out = cook
+            .cook(&state.doc.graph, &state.registry, strobe_sink, t)
+            .unwrap();
+        let ys: Vec<f32> = match out[0].as_stream().get("P") {
+            Some(Column::Vec2(v)) => v.iter().map(|p| p[1]).collect(),
+            _ => Vec::new(),
+        };
+        frames.push(ys);
+    }
+    let n = frames[0].len();
+    assert!(
+        n >= 2,
+        "need several dots to see a travelling wave, got {n}"
+    );
+
+    // Per-dot Y range over the period, and per-dot time-mean (≈ the constant base
+    // grid Y, since a full period of the wave averages out).
+    let mut ranges = Vec::with_capacity(n);
+    let mut means = Vec::with_capacity(n);
+    for i in 0..n {
+        let col: Vec<f32> = frames.iter().map(|f| f[i]).collect();
+        let hi = col.iter().copied().fold(f32::MIN, f32::max);
+        let lo = col.iter().copied().fold(f32::MAX, f32::min);
+        ranges.push(hi - lo);
+        means.push(col.iter().sum::<f32>() / col.len() as f32);
+    }
+
+    // ALIVE: every dot bobs (the map_range [-0.5,0.5] span → ~1.0 of travel). A
+    // dead value chain leaves Y flat.
+    let min_range = ranges.iter().copied().fold(f32::MAX, f32::min);
+    assert!(
+        min_range > 0.5,
+        "every dot must bob in Y (min range {min_range}); a flat Y = a dead LFO chain"
+    );
+    // BOUNDED by the glue: map_range clamps the raw [-1,1] into [-0.5,0.5], so no
+    // dot travels much past 1.0. A bypassed map_range would let the amplitude through.
+    let max_range = ranges.iter().copied().fold(f32::MIN, f32::max);
+    assert!(
+        max_range < 1.2,
+        "the bob is bounded by map_range (max range {max_range}); a raw LFO would overshoot"
+    );
+    // ELEMENT-WISE: at one mid-swing instant, subtract each dot's own base Y —
+    // the remaining displacements are NOT all equal (the travelling wave). A
+    // length-1 broadcast would move every dot by the identical amount → spread 0.
+    let mid = 30usize; // t = 0.5 s, a quarter period in
+    let disp: Vec<f32> = (0..n).map(|i| frames[mid][i] - means[i]).collect();
+    let dhi = disp.iter().copied().fold(f32::MIN, f32::max);
+    let dlo = disp.iter().copied().fold(f32::MAX, f32::min);
+    assert!(
+        dhi - dlo > 0.2,
+        "the per-instance stagger makes dots differ at one instant (spread {}); \
+         a broadcast value would move them in lock-step",
+        dhi - dlo
     );
 }
 

@@ -47,6 +47,8 @@ pub fn register_all_nodes(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     ph2d_node_pulse_beat::register(reg)?;
     ph2d_node_pulse_counter::register(reg)?;
     ph2d_node_pulse_threshold::register(reg)?;
+    ph2d_node_value_lfo::register(reg)?;
+    ph2d_node_value_map_range::register(reg)?;
     // <ph2d-node-sync:end>
     Ok(())
 }

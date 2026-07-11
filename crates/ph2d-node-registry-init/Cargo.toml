@@ -47,6 +47,8 @@ ph2d-node-motion-wiggle = { path = "../ph2d-node-motion-wiggle" }
 ph2d-node-pulse-beat = { path = "../ph2d-node-pulse-beat" }
 ph2d-node-pulse-counter = { path = "../ph2d-node-pulse-counter" }
 ph2d-node-pulse-threshold = { path = "../ph2d-node-pulse-threshold" }
+ph2d-node-value-lfo = { path = "../ph2d-node-value-lfo" }
+ph2d-node-value-map-range = { path = "../ph2d-node-value-map-range" }
 # <ph2d-node-sync:end>
 
 [dev-dependencies]

@@ -2,38 +2,48 @@
 //! pulse + value families). A `#[path]` sibling of `motion_state`, kept out of
 //! it for the LOC cap.
 //!
-//! It proves the **pulse type AND the value domain** end to end — a source
-//! reduces to a value, the value drives a channel, all off one beat
-//! (docs/Motion Nodes/06, 08, 09, 12):
+//! It proves the **pulse type AND the value domain** end to end with **TWO
+//! independent value chains** driving two channels of the same grid — a discrete
+//! one off a beat, a continuous one off an LFO (docs/Motion Nodes/06, 08, 09, 12):
 //!
 //! ```text
-//! grid → move → tint → drive → strobe → output
+//! grid → move → tint → drive_x → drive_y → strobe → output
 //!        grid → beat ⟲ → { counter.pulse, strobe.pulse }
-//!               counter.out --pre--> counter.state ; counter.out → drive.value
+//!               counter.out --pre--> counter.state ; counter.out → drive_x.value
+//!        grid → lfo → map_range → drive_y.value
 //!               strobe.out  --pre--> strobe.state
 //! ```
 //!
+//! **Discrete chain (X)** — a beat reduced to a stepping value:
 //! - **beat** (`pulse.beat`, doc 09): the metronome — emits the PULSE straight
 //!   from the playhead, one beat per `period`. No transform channel anywhere
 //!   (the earlier scene faked the clock by oscillating Rotation into a threshold
 //!   — doc 09 §1's "clock hack"). Its cycle index rides a `pre` self-loop; the
-//!   one pulse fans out to BOTH consumers below.
+//!   one pulse fans out to counter AND strobe.
 //! - **counter** (`pulse.counter`, doc 12): the PURE reducer — each beat advances
 //!   a persistent count that ZIGZAGS 0..N..0 and emits it as a **value** (never a
 //!   channel). Its monotonic tick rides its own `pre` self-loop.
-//! - **drive** (`motion.drive`, doc 12): routes the counter's value onto the X
-//!   channel (`value · scale`), sliding the whole grid a discrete notch — the
-//!   sequencer sweep, now COMPOSED from a value instead of bundled. The same
-//!   value could fan out to a second drive (X *and* Rotation) — the value-domain
-//!   win that `motion.step` (which bundles reduce+apply) cannot do.
-//! - **strobe** (`motion.strobe`): the SAME pulse lights every dot to full glow —
+//! - **drive_x** (`motion.drive`, doc 12): routes the counter's length-1 value
+//!   onto X (`value · scale`), BROADCAST to every dot → the whole grid slides a
+//!   discrete notch. The sequencer sweep, COMPOSED from a value, not bundled.
+//!
+//! **Continuous chain (Y)** — a stateless oscillation reshaped and routed:
+//! - **lfo** (`value.lfo`, doc 12): reads the grid for its count (12) and emits a
+//!   length-N **value** field — a sine with a per-instance `phase_stagger`, so a
+//!   travelling wave ripples across the dots (the ELEMENT-WISE path, next to X's
+//!   broadcast). Stateless (reads the playhead).
+//! - **map_range** (`value.map_range`, doc 12): the glue — remaps the LFO's raw
+//!   `[-1,1]` to the `[-0.5,0.5]` world span Y actually wants (the Houdini `fit`).
+//! - **drive_y** (`motion.drive`): routes that field onto Y, element-wise → each
+//!   dot bobs at its own phase. The SAME node type as drive_x, a different channel.
+//!
+//! - **strobe** (`motion.strobe`): the SAME beat lights every dot to full glow —
 //!   a size boost + white flash — that decays geometrically. Its own `pre` loop.
 //!
-//! The payoff of both families in one shot: the grid **steps to a new place and
-//! flashes on every beat** — a persistent value-driven notch next to a decaying
-//! flash, both off one pulse. This is the smallest closed loop that exercises the
-//! value domain (reduce → value → drive → visible). Centred on the world origin,
-//! sweeping symmetrically about centre.
+//! The payoff: the grid **steps sideways in discrete beats WHILE rippling up and
+//! down continuously**, and flashes on each beat — a broadcast value-notch and an
+//! element-wise travelling wave, two chains through one grid. The value domain's
+//! whole thesis (produce → reshape → route, composable) made visible.
 //!
 //! (`motion.step` — the bundled reduce+apply — and `pulse.threshold` stay
 //! registered with their own unit tests; the boot scene now composes the
@@ -50,20 +60,26 @@ pub(crate) fn build(g: &mut Graph) -> Option<NodeId> {
     let grid = g.add_node("motion.grid");
     let place = g.add_node("motion.move");
     let tint = g.add_node("motion.tint");
-    let drive = g.add_node("motion.drive");
+    let drive_x = g.add_node("motion.drive");
+    let drive_y = g.add_node("motion.drive");
     let strobe = g.add_node("motion.strobe");
     let output = g.add_node("motion.output");
     let beat = g.add_node("pulse.beat");
     let counter = g.add_node("pulse.counter");
+    let lfo = g.add_node("value.lfo");
+    let map_range = g.add_node("value.map_range");
 
-    // Visible trunk: grid → move → tint → drive.in → strobe.in → output.
+    // Visible trunk: grid → move → tint → drive_x → drive_y → strobe → output.
+    // drive_x writes X, drive_y writes Y — the two channels compose (each copies
+    // the other's column through and rewrites only its own).
     for (n, col) in [
         (grid, 0.0),
         (place, 1.0),
         (tint, 2.0),
-        (drive, 3.0),
-        (strobe, 4.0),
-        (output, 5.0),
+        (drive_x, 3.0),
+        (drive_y, 4.0),
+        (strobe, 5.0),
+        (output, 6.0),
     ] {
         g.set_pos(
             n,
@@ -76,8 +92,9 @@ pub(crate) fn build(g: &mut Graph) -> Option<NodeId> {
     for (from, to) in [
         (grid, place),
         (place, tint),
-        (tint, drive),
-        (drive, strobe),
+        (tint, drive_x),
+        (drive_x, drive_y),
+        (drive_y, strobe),
         (strobe, output),
     ] {
         g.connect(Edge {
@@ -88,36 +105,39 @@ pub(crate) fn build(g: &mut Graph) -> Option<NodeId> {
         .ok()?;
     }
 
-    // Value/pulse branch: grid → beat (the stream tells the metronome N). The
-    // one pulse feeds counter.pulse (port 0) and strobe.pulse (port 1); the
-    // counter's VALUE feeds drive.value (port 1). One beat, one reduced value,
-    // two visible responses.
-    g.connect(Edge {
-        from: (grid, 0),
-        to: (beat, 0),
-        delayed: false,
-    })
-    .ok()?;
-    g.connect(Edge {
-        from: (beat, 0),
-        to: (counter, 0),
-        delayed: false,
-    })
-    .ok()?;
-    g.connect(Edge {
-        from: (beat, 0),
-        to: (strobe, 1),
-        delayed: false,
-    })
-    .ok()?;
-    g.connect(Edge {
-        from: (counter, 0),
-        to: (drive, 1),
-        delayed: false,
-    })
-    .ok()?;
+    // Discrete branch: grid → beat (the stream tells the metronome N). The one
+    // pulse feeds counter.pulse (port 0) and strobe.pulse (port 1); the counter's
+    // VALUE feeds drive_x.value (port 1) — broadcast to every dot.
+    for (from, to) in [
+        ((grid, 0), (beat, 0)),
+        ((beat, 0), (counter, 0)),
+        ((beat, 0), (strobe, 1)),
+        ((counter, 0), (drive_x, 1)),
+    ] {
+        g.connect(Edge {
+            from,
+            to,
+            delayed: false,
+        })
+        .ok()?;
+    }
+    // Continuous branch: grid → lfo (count source) → map_range → drive_y.value
+    // (port 1) — an element-wise travelling wave onto Y.
+    for (from, to) in [
+        ((grid, 0), (lfo, 0)),
+        ((lfo, 0), (map_range, 0)),
+        ((map_range, 0), (drive_y, 1)),
+    ] {
+        g.connect(Edge {
+            from,
+            to,
+            delayed: false,
+        })
+        .ok()?;
+    }
     // The three `pre` self-loops (what the editor auto-plumbs on drop): the
     // beat's cycle index, the counter's monotonic tick, and the strobe's glow.
+    // The LFO and map_range are stateless → no feedback.
     for (n, port) in [(beat, 1), (counter, 1), (strobe, 2)] {
         g.connect(Edge {
             from: (n, 0),
@@ -126,7 +146,12 @@ pub(crate) fn build(g: &mut Graph) -> Option<NodeId> {
         })
         .ok()?;
     }
-    for (n, col, dy) in [(beat, 1.0, 220.0), (counter, 2.0, 220.0)] {
+    for (n, col, dy) in [
+        (beat, 1.0, 220.0),
+        (counter, 2.0, 220.0),
+        (lfo, 1.0, 440.0),
+        (map_range, 2.0, 440.0),
+    ] {
         g.set_pos(
             n,
             Pos {
@@ -159,11 +184,27 @@ pub(crate) fn build(g: &mut Graph) -> Option<NodeId> {
     // counts), emitting it as a value. The value PERSISTS between beats.
     g.set_param(counter, "count_max", 5.0);
     g.set_param(counter, "mode", 2.0); // Zigzag — a ping-pong sweep
-    // The drive: value → X, scaled 0.5 (the ±1.0 sweep about the pre-offset
-    // centre), added to the channel — the discrete sequencer notch.
-    g.set_param(drive, "channel", 0.0); // X
-    g.set_param(drive, "scale", 0.5);
-    g.set_param(drive, "mode", 0.0); // Add
+    // drive_x: the counter's length-1 value → X, scaled 0.5 (the ±1.0 sweep about
+    // the pre-offset centre), BROADCAST to every dot — the discrete sequencer notch.
+    g.set_param(drive_x, "channel", 0.0); // X
+    g.set_param(drive_x, "scale", 0.5);
+    g.set_param(drive_x, "mode", 0.0); // Add
+    // The LFO: a slow (2 s) sine emitting a length-12 value field, staggered
+    // 0.12 cycle per instance → a travelling wave rippling across the grid.
+    g.set_param(lfo, "wave", 0.0); // Sine
+    g.set_param(lfo, "period", 2.0);
+    g.set_param(lfo, "amplitude", 1.0); // raw [-1,1]
+    g.set_param(lfo, "phase_stagger", 0.12);
+    // map_range: reshape the raw [-1,1] into the ±0.5 world span Y wants (a bob
+    // just under half the vertical gap of 1.1). Clamp on is harmless here.
+    g.set_param(map_range, "in_lo", -1.0);
+    g.set_param(map_range, "in_hi", 1.0);
+    g.set_param(map_range, "out_lo", -0.5);
+    g.set_param(map_range, "out_hi", 0.5);
+    // drive_y: that field → Y, element-wise (each dot its own phase), added.
+    g.set_param(drive_y, "channel", 1.0); // Y
+    g.set_param(drive_y, "scale", 1.0);
+    g.set_param(drive_y, "mode", 0.0); // Add
     // A punchy flash that fades over ~0.3 s. A firm size boost so the pulse is
     // unmistakable (kept below the level that saturates the dots into one solid
     // block).

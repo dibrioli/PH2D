@@ -55,9 +55,10 @@ pub(crate) struct MotionState {
 
 impl MotionState {
     /// Build the boot state: register every node op + the **default document** —
-    /// a single, focused scene: the pulse loop (`pulse.beat` metronome →
-    /// `pulse.counter` → `motion.drive` + `motion.strobe`), the module's most
-    /// recent work (docs/Motion Nodes/06, 08, 09, 12). The earlier showcase scenes (the Cavalry
+    /// a single, focused scene: the pulse loop plus TWO value chains (a
+    /// `pulse.beat` metronome → `pulse.counter` → `motion.drive` for X, a
+    /// `value.lfo` → `value.map_range` → `motion.drive` for Y, + `motion.strobe`),
+    /// the module's most recent work (docs/Motion Nodes/06, 08, 09, 12). The earlier showcase scenes (the Cavalry
     /// grid rig and the particle fountain) were removed to keep the boot
     /// document focused; they live in git history and every node keeps its own
     /// unit tests. Transport paused at tick 0 (the bridge auto-plays on tool entry).
@@ -89,11 +90,13 @@ impl MotionState {
 /// is well-typed.
 ///
 /// The scene — built in the `strobe` sibling module — is the smallest closed
-/// pulse loop: a `pulse.beat` metronome emits the pulse straight from the
-/// playhead; a `pulse.counter` reduces it to a value that a `motion.drive`
-/// routes onto X (sweeping the grid in discrete notches), and a `motion.strobe`
-/// flashes it, all on the same beat. No transform channel is involved in the
-/// clocking (doc 09 killed the oscillate-Rotation-into-a-threshold hack). See
+/// pulse loop plus the value domain's two chains: a `pulse.beat` metronome emits
+/// the pulse straight from the playhead; a `pulse.counter` reduces it to a value
+/// that a `motion.drive` BROADCASTS onto X (sweeping the whole grid in discrete
+/// notches); in parallel a `value.lfo` → `value.map_range` feeds a second
+/// `motion.drive` ELEMENT-WISE onto Y (a continuous travelling wave); and a
+/// `motion.strobe` flashes on the same beat. No transform channel is involved in
+/// the clocking (doc 09 killed the oscillate-Rotation-into-a-threshold hack). See
 /// docs/Motion Nodes/06 (pulse), 08 (counter), 09 (beat + naming), 12 (value).
 ///
 /// The earlier showcase scenes were removed to keep the boot document focused on

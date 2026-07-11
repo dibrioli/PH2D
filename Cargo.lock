@@ -5433,11 +5433,29 @@ dependencies = [
  "ph2d-node-pulse-threshold",
  "ph2d-node-registry",
  "ph2d-node-sync",
+ "ph2d-node-value-lfo",
+ "ph2d-node-value-map-range",
 ]
 
 [[package]]
 name = "ph2d-node-sync"
 version = "0.0.0"
+
+[[package]]
+name = "ph2d-node-value-lfo"
+version = "0.0.0"
+dependencies = [
+ "ph2d-node-registry",
+ "ph2d-nodegraph",
+]
+
+[[package]]
+name = "ph2d-node-value-map-range"
+version = "0.0.0"
+dependencies = [
+ "ph2d-node-registry",
+ "ph2d-nodegraph",
+]
 
 [[package]]
 name = "ph2d-nodegraph"

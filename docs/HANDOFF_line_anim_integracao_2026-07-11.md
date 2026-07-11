@@ -197,6 +197,8 @@ novos de slope + 154 anim+timeline + 290 total com painel + clippy `--all-target
 
 **Prova:** 4 testes de apply (2× speed · freeze · reverse · identidade/per-entity/nunca-escreve-cena) + seed do K (identidade + na-curva) + id novo no shell + dhat estendido zero-alloc + **mutação dirigida** (neutralizar `remapped_time` → freeze/reverse vermelhos). 1259/1259 nas 5 crates; clippy `--all-targets` verde.
 
+**§11.1 — Fix "Time bugado" (smoke do Enio: criar key Time travava a autoria de pose):** duas metades. **(a)** `remapped_time` extrapolava por HOLD fora dos keys — UM key semeado pelo K congelava o relógio da entidade pra sempre (0 keys = identidade, 1 key = freeze: descontinuidade). Agora **extrapola em slope 1** (identidade deslocada pelo key de borda); exceção: **último key `Hold` = freeze-frame** (o freeze do AE sobrevive — o teste antigo de freeze usava Hold e passou intacto). **(b)** autoria em tempo cru vs apply em tempo remapeado: auto-key (diff + insert), pin de pose deslocada e K agora usam o **relógio da entidade** (`remapped_time`, agora `pub`; `key_insert_time` no bridge) — o key landa no tempo FONTE, onde o apply amostra, e a pose gruda. A track Time em si segue keyando no tempo do playhead. Consequência de exibição: sob remap ≠ identidade, um K no playhead `t` desenha o key da cena na régua no tempo-fonte (as tracks são autoradas em tempo-fonte — modelo precomp do AE). **4 mutantes dirigidos** (hold-extrapolation · diff armado em t cru · pin em t cru · K em t cru) → cada um derruba seu teste. 51 + 205 verdes; clippy + LOC ok. Commit `56217b44`.
+
 **Próximo (fila do Enio): roving keys.**
 
 ---

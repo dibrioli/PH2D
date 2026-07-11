@@ -155,6 +155,47 @@ impl FlipObject {
         self.drawings.get_mut(id.0 as usize)
     }
 
+    // ── pose / bounds (ADR-0111 parity: o objeto tem Transform + geometria LOCAL) ─
+
+    /// A caixa envolvente de TODOS os pontos de TODOS os desenhos do objeto, no
+    /// espaço em que a geometria está guardada (`(min, max)`), ou `None` se o objeto
+    /// não tem nenhum ponto. É a bbox que o gizmo lê (via `flip_gizmo_view`) e o
+    /// centro que o `settle` põe como pivô.
+    #[must_use]
+    pub fn geometry_bbox(&self) -> Option<([f32; 2], [f32; 2])> {
+        let mut it = self
+            .drawings
+            .iter()
+            .flat_map(|d| d.strokes.iter())
+            .flat_map(|s| s.positions().iter());
+        let first = it.next()?;
+        let (mut lo, mut hi) = ([first.x, first.y], [first.x, first.y]);
+        for p in it {
+            lo[0] = lo[0].min(p.x);
+            lo[1] = lo[1].min(p.y);
+            hi[0] = hi[0].max(p.x);
+            hi[1] = hi[1].max(p.y);
+        }
+        Some((lo, hi))
+    }
+
+    /// Aplica o afim 2D `m` (`[a, b, c, d, e, f]`, col-major: `x' = a·x + c·y + e`,
+    /// `y' = b·x + d·y + f`) às POSIÇÕES de todos os pontos de todos os desenhos —
+    /// deslocando a geometria inteira do objeto de uma vez. Usado pelo `settle`/
+    /// "Set Center" (sempre translação pura → largura/opacidade/cor intactas; a
+    /// escala do gizmo vive no `Transform` e entra no render, não aqui).
+    pub fn bake_affine(&mut self, m: [f64; 6]) {
+        for d in &mut self.drawings {
+            for s in &mut d.strokes {
+                for p in s.positions_mut() {
+                    let (x, y) = (f64::from(p.x), f64::from(p.y));
+                    p.x = (m[0] * x + m[2] * y + m[4]) as f32;
+                    p.y = (m[1] * x + m[3] * y + m[5]) as f32;
+                }
+            }
+        }
+    }
+
     // ── ops de frame (mantêm o refcount) ─────────────────────────────────────
 
     /// Insere uma chave em `key` na camada, criando um **desenho novo vazio** que
@@ -378,6 +419,43 @@ mod tests {
         assert_eq!(ids(&o), vec![b, c, a]);
         assert!(!o.lower_layer(b), "B já é o fundo");
         assert!(!o.raise_layer(LayerId(999)), "id inexistente");
+    }
+
+    /// Empurra um traço de 2 pontos `a`→`b` no desenho `d`.
+    fn push_seg(o: &mut FlipObject, d: DrawingId, a: [f32; 2], b: [f32; 2]) {
+        let mut s = crate::stroke::FlipStroke::new();
+        s.push_default(ph2d_core::Vec2::new(a[0], a[1]));
+        s.push_default(ph2d_core::Vec2::new(b[0], b[1]));
+        o.drawing_mut(d).unwrap().strokes.push(s);
+    }
+
+    #[test]
+    fn geometry_bbox_unions_all_strokes_and_drawings() {
+        let (mut o, l, d0) = object_with_one_frame();
+        assert_eq!(o.geometry_bbox(), None, "objeto sem pontos: sem bbox");
+        push_seg(&mut o, d0, [10.0, 20.0], [30.0, 15.0]);
+        // 2º desenho noutro quadro estende a bbox.
+        let d1 = o
+            .insert_frame(l, 5, Hold::Implicit, KeyKind::Keyframe)
+            .unwrap();
+        push_seg(&mut o, d1, [-5.0, 40.0], [12.0, 41.0]);
+        assert_eq!(
+            o.geometry_bbox(),
+            Some(([-5.0, 15.0], [30.0, 41.0])),
+            "união de todos os pontos de todos os desenhos"
+        );
+    }
+
+    #[test]
+    fn bake_affine_translation_shifts_every_point() {
+        let (mut o, _l, d0) = object_with_one_frame();
+        push_seg(&mut o, d0, [10.0, 20.0], [30.0, 40.0]);
+        // Translação pura (-10, -20): a geometria recua, a bbox acompanha.
+        o.bake_affine([1.0, 0.0, 0.0, 1.0, -10.0, -20.0]);
+        assert_eq!(o.geometry_bbox(), Some(([0.0, 0.0], [20.0, 20.0])));
+        // Largura/opacidade não são tocadas por um bake de translação.
+        let s = &o.drawing(d0).unwrap().strokes[0];
+        assert_eq!(s.positions()[0], ph2d_core::Vec2::new(0.0, 0.0));
     }
 
     #[test]

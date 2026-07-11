@@ -100,6 +100,7 @@ fn srgb8_to_linear(c: [u8; 4]) -> Rgba {
 /// chave se o quadro ainda não tem desenho. `px_to_world` = mundo por pixel de
 /// tela (a largura do brush é em px → convertida pra mundo). Uma camada TRAVADA
 /// (`locked`) recusa o traço. Devolve `true` se assou.
+#[allow(clippy::too_many_arguments)] // doc+playhead+estilo+camada+amostras+afim são intrínsecos
 pub(crate) fn bake_stroke(
     flip: &mut FlipDoc,
     playhead: &ph2d_core::Playhead,

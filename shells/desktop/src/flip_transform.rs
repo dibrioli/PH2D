@@ -176,7 +176,7 @@ mod tests {
     /// O objeto na identidade não entra no mapa de afins (caminho comum: nada a pagar).
     #[test]
     fn an_untransformed_object_is_absent_from_the_map() {
-        let (doc, sim, map, _, _) = doc_with_segment([0.0, 0.0], [1.0, 1.0]);
+        let (_doc, sim, map, _, _) = doc_with_segment([0.0, 0.0], [1.0, 1.0]);
         assert!(build(&sim, &map).is_empty());
     }
 

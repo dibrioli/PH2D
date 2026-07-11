@@ -25,6 +25,7 @@ mod cooked_texture_bridge;
 mod equalize_sizes_bridge;
 pub(crate) mod flip_bridge;
 pub(crate) mod flip_pass;
+mod flip_pass_cache;
 mod gizmo_prune;
 mod hierarchy;
 mod image_edit;

@@ -369,7 +369,7 @@ mod tests {
     /// O marquee pega o objeto pela bbox de MUNDO.
     #[test]
     fn the_marquee_selects_a_translated_object_by_its_world_bbox() {
-        let (mut doc, mut sim, map, _oid, e) = doc_with_segment([-1.0, -1.0], [1.0, 1.0]);
+        let (doc, mut sim, map, _oid, e) = doc_with_segment([-1.0, -1.0], [1.0, 1.0]);
         sim.world_mut().entity_mut(e).insert(Transform {
             translation: ph2d_core::Vec2::new(20.0, 20.0),
             ..Transform::IDENTITY

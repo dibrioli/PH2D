@@ -146,8 +146,13 @@ pub(crate) fn erase_at(
     }
 }
 
-/// Soft-erase pen-up cleanup: drop points below the opacity threshold, splitting
-/// each stroke at the gaps. No-op for the other modes (caller gates by mode).
+/// Soft-erase pen-up cleanup: drop only strokes that were erased AWAY entirely
+/// (todos os pontos < limiar). **Não divide** o traço nos pontos parciais — os
+/// pontos com opacidade reduzida (incl. ~0 no meio) ficam, pra o renderer
+/// interpolar a opacidade por-ponto e o apagado seguir com borda MACIA. Dividir
+/// (o 1º corte) trocava a queda suave por um corte com cap plano = borda dura
+/// (Enio 2026-07-11: "no bake do traço o apagado fica com bordas duras").
+/// No-op para os outros modos (o caller filtra por modo).
 pub(crate) fn cleanup_soft(
     flip: &mut ph2d_flip::FlipDoc,
     playhead: &ph2d_core::Playhead,
@@ -156,23 +161,10 @@ pub(crate) fn cleanup_soft(
     let Some(dr) = active_drawing_mut(flip, playhead, active_layer) else {
         return false;
     };
-    let mut changed = false;
-    let mut out: Vec<FlipStroke> = Vec::new();
-    for s in std::mem::take(&mut dr.strokes) {
-        let low: Vec<bool> = s
-            .opacities()
-            .iter()
-            .map(|o| *o < OPACITY_REMOVE_THRESHOLD)
-            .collect();
-        if low.iter().any(|&b| b) {
-            changed = true;
-            out.extend(split_by(&s, |i| !low[i]));
-        } else {
-            out.push(s);
-        }
-    }
-    dr.strokes = out;
-    changed
+    let before = dr.strokes.len();
+    dr.strokes
+        .retain(|s| s.opacities().iter().any(|o| *o >= OPACITY_REMOVE_THRESHOLD));
+    dr.strokes.len() != before
 }
 
 impl crate::App {

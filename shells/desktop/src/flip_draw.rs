@@ -142,12 +142,15 @@ pub(crate) fn bake_stroke(
         return false;
     };
 
-    // Active smoothing (T2.7): o mesmo que o preview mostrou. As pressões seguem
-    // 1:1 (o smooth só move posições).
+    // Active smoothing (T2.7): assa EXATAMENTE o traço que o preview mostrou — o
+    // mesmo `active_smooth`, sem decimar. O RDP do 1º corte (0.75px) deixava o
+    // traço assado mais anguloso que o preview (Enio 2026-07-11: "o desenho em
+    // tempo real está mais suave que o traço cosido após mouse up"); mantê-los
+    // idênticos vale mais que "enxuto". As pressões seguem 1:1 (o smooth só move
+    // posições). Uma decimação visualmente-perdida-zero (RDP fininho) tira só
+    // pontos EXATAMENTE colineares, sem cortar curva.
     let smoothed = crate::flip_smooth::active_smooth(points, style.smoothing);
-    // Simplify RDP no pen-up (T2.8): reduz a contagem preservando a forma. Só no
-    // BAKE (o preview mostra denso; o commit é enxuto). `tol` em MUNDO (~0.75px).
-    let tol = 0.75 * px_to_world;
+    let tol = 0.05 * px_to_world; // ~0.05px — só remove colinear puro (invisível)
     let keep = crate::flip_smooth::simplify_rdp(&smoothed, tol);
     let pts: Vec<Vec2> = keep.iter().map(|&i| smoothed[i]).collect();
     let prs: Vec<f32> = keep.iter().map(|&i| pressures[i]).collect();

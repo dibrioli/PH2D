@@ -123,3 +123,122 @@ pub(crate) fn apply_panel_event(
         PanelEvent::Toggle(..) => false,
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use ph2d_flip::FlipDoc;
+
+    /// A doc with one object + two layers (bottom `a`, top `b`); `b` active.
+    fn doc_2layers() -> (FlipDoc, LayerId, LayerId) {
+        let mut doc = FlipDoc::new();
+        let oid = doc.push_object("Flip");
+        let obj = doc.object_mut(oid).unwrap();
+        let a = obj.add_layer("A");
+        let b = obj.add_layer("B");
+        (doc, a, b)
+    }
+
+    fn wid(layer: LayerId, kind: FlipLayerWidget) -> ph2d_editor::NodeId {
+        ids::flip_layer_widget_id(u64::from(layer.0), kind)
+    }
+
+    #[test]
+    fn add_and_delete_layer() {
+        let (mut doc, _a, _b) = doc_2layers();
+        let oid = doc.objects().first().unwrap().id;
+        let mut active = None;
+        assert!(apply_panel_event(
+            &PanelEvent::Click(ids::FLIP_LAYER_ADD),
+            &mut doc,
+            &mut active
+        ));
+        assert_eq!(doc.object(oid).unwrap().layers().len(), 3);
+        assert!(active.is_some(), "new layer becomes active");
+        // Delete the active layer.
+        assert!(apply_panel_event(
+            &PanelEvent::Click(ids::FLIP_LAYER_DELETE),
+            &mut doc,
+            &mut active
+        ));
+        assert_eq!(doc.object(oid).unwrap().layers().len(), 2);
+    }
+
+    #[test]
+    fn row_select_sets_active_layer() {
+        let (mut doc, a, _b) = doc_2layers();
+        let mut active = None;
+        // Row-select is not a doc mutation (returns false) but sets active.
+        assert!(!apply_panel_event(
+            &PanelEvent::Click(wid(a, FlipLayerWidget::Row)),
+            &mut doc,
+            &mut active
+        ));
+        assert_eq!(active, Some(a));
+    }
+
+    #[test]
+    fn visibility_and_lock_toggle() {
+        let (mut doc, a, _b) = doc_2layers();
+        let oid = doc.objects().first().unwrap().id;
+        let mut active = None;
+        assert!(apply_panel_event(
+            &PanelEvent::Click(wid(a, FlipLayerWidget::Visibility)),
+            &mut doc,
+            &mut active
+        ));
+        assert!(!doc.object(oid).unwrap().layer(a).unwrap().visible);
+        assert!(apply_panel_event(
+            &PanelEvent::Click(wid(a, FlipLayerWidget::Lock)),
+            &mut doc,
+            &mut active
+        ));
+        assert!(doc.object(oid).unwrap().layer(a).unwrap().locked);
+    }
+
+    #[test]
+    fn reorder_up_swaps_layers() {
+        let (mut doc, a, b) = doc_2layers(); // [a, b]
+        let oid = doc.objects().first().unwrap().id;
+        let mut active = None;
+        // Raise the bottom layer `a` → [b, a].
+        assert!(apply_panel_event(
+            &PanelEvent::Click(wid(a, FlipLayerWidget::MoveUp)),
+            &mut doc,
+            &mut active
+        ));
+        let ids_now: Vec<LayerId> = doc
+            .object(oid)
+            .unwrap()
+            .layers()
+            .iter()
+            .map(|l| l.id)
+            .collect();
+        assert_eq!(ids_now, vec![b, a]);
+    }
+
+    #[test]
+    fn opacity_setvalue_and_blend_selectoption() {
+        let (mut doc, _a, b) = doc_2layers();
+        let oid = doc.objects().first().unwrap().id;
+        let mut active = None;
+        // Opacity slider on the top layer.
+        assert!(apply_panel_event(
+            &PanelEvent::SetValue(wid(b, FlipLayerWidget::Opacity), 0.4),
+            &mut doc,
+            &mut active
+        ));
+        assert!((doc.object(oid).unwrap().layer(b).unwrap().opacity - 0.4).abs() < 1e-6);
+        // Blend dropdown option → SelectOption(blend_chip_id, mode). Mode 1 = Multiply.
+        assert!(apply_panel_event(
+            &PanelEvent::SelectOption(wid(b, FlipLayerWidget::Blend), "1".to_string()),
+            &mut doc,
+            &mut active
+        ));
+        assert_eq!(
+            doc.object(oid).unwrap().layer(b).unwrap().blend,
+            BlendMode::Multiply,
+            "blend option applied through the seam"
+        );
+    }
+}

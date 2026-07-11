@@ -160,6 +160,7 @@ pub(crate) fn layers_section(
             m,
             row,
             snap.active == Some(row.id),
+            idx == 0, // bottom layer = base (no blend chip)
             can_up,
             can_down,
             y,
@@ -169,7 +170,10 @@ pub(crate) fn layers_section(
     y
 }
 
-/// Paint one layer block (3 lines): eye/lock/name/↑↓, blend chip, opacity.
+/// Paint one layer block: eye/lock/name/↑↓, (blend chip), opacity. The BOTTOM
+/// layer (`is_base`) gets NO blend chip — it composites against nothing beneath,
+/// so its blend mode is a no-op (mirror of the Painter layers panel hiding the
+/// base blend). That block is 2 lines; the others are 3.
 #[allow(clippy::too_many_arguments)]
 fn paint_layer_block(
     ctx: &mut PaintCtx,
@@ -177,6 +181,7 @@ fn paint_layer_block(
     m: &LayerMetrics,
     row: &FlipLayerRow,
     active: bool,
+    is_base: bool,
     can_up: bool,
     can_down: bool,
     mut y: f32,
@@ -184,9 +189,10 @@ fn paint_layer_block(
 ) -> f32 {
     let line_gap = Spacing::Xs.px();
     let block_top = y;
-    // 3 rows (eye/name/↑↓, blend, opacity) + 2 inter-row gaps — line COUNTS, not
-    // a design metric.
-    let block_h = m.row_h * 3.0 + line_gap * 2.0; // LITERAL-PX-OK: row/gap counts
+    // Rows (eye/name/↑↓, [blend], opacity) + inter-row gaps — line COUNTS, not a
+    // design metric. The base layer drops the blend line (2 rows).
+    let rows = if is_base { 2.0 } else { 3.0 }; // LITERAL-PX-OK: line COUNT (2 or 3), not a metric
+    let block_h = m.row_h * rows + line_gap * (rows - 1.0); // LITERAL-PX-OK: row/gap counts
 
     // Active-row accent outline (painted first, behind the controls).
     if active {
@@ -280,11 +286,13 @@ fn paint_layer_block(
         .register(row_id, Rect::new(name_x, y, name_w, m.row_h));
     y += m.row_h + line_gap;
 
-    // ── Line 2: blend-mode dropdown chip ──
-    let blend_id = ids::flip_layer_widget_id(row.id, FlipLayerWidget::Blend);
-    let chip_rect = Rect::new(m.inner_x + gap, y, m.inner_w - gap * 2.0, m.row_h);
-    paint_blend_chip(ctx, theme, blend_id, row, chip_rect, pending);
-    y += m.row_h + line_gap;
+    // ── Line 2: blend-mode dropdown chip (não no fundo — blend contra nada). ──
+    if !is_base {
+        let blend_id = ids::flip_layer_widget_id(row.id, FlipLayerWidget::Blend);
+        let chip_rect = Rect::new(m.inner_x + gap, y, m.inner_w - gap * 2.0, m.row_h);
+        paint_blend_chip(ctx, theme, blend_id, row, chip_rect, pending);
+        y += m.row_h + line_gap;
+    }
 
     // ── Line 3: bare opacity slider + NN% readout ──
     let op_id = ids::flip_layer_widget_id(row.id, FlipLayerWidget::Opacity);

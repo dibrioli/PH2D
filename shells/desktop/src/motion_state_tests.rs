@@ -1,8 +1,8 @@
 //! Headless demo/cook tests for `motion_state` (split for the HR-18 600-LOC
 //! shell cap; declared there as a `#[path]` sibling, so `super` is
-//! `motion_state`). Cook the default document — now a `motion.color_ramp` rainbow
-//! sunburst and a `motion.color_array` palette grid, each a `Pure` layout animated
-//! through a `value.lfo` — through the REAL registry.
+//! `motion_state`). Cook the default document — now a `motion.combine` (a grid + a ring
+//! concatenated) and a `motion.mixer` (a grid blended into a circle), each a `Pure`
+//! layout animated through a `value.lfo` — through the REAL registry.
 
 use super::*;
 use ph2d_nodegraph::attr::Column;
@@ -20,24 +20,11 @@ fn positions_at(state: &MotionState, sink: NodeId, t: f64) -> Vec<[f32; 2]> {
     }
 }
 
-/// The `tint` column (linear RGBA) of one sink at playhead `t` — what the colour nodes
-/// write.
-fn tints_at(state: &MotionState, sink: NodeId, t: f64) -> Vec<[f32; 4]> {
-    let mut cook = Cook::new();
-    let out = cook
-        .cook(&state.doc.graph, &state.registry, sink, t)
-        .unwrap();
-    match out[0].as_stream().get("tint") {
-        Some(Column::Vec4(v)) => v.clone(),
-        _ => Vec::new(),
-    }
-}
-
 fn mean_x(pos: &[[f32; 2]]) -> f32 {
     pos.iter().map(|p| p[0]).sum::<f32>() / pos.len() as f32
 }
 
-/// The largest over-time travel of any single element (fixed count in both scenes).
+/// The largest over-time travel of any single element (both scenes keep a fixed count).
 fn max_travel(frames: &[Vec<[f32; 2]>]) -> f32 {
     let n = frames[0].len();
     let mut worst = 0.0f32;
@@ -54,16 +41,11 @@ fn max_travel(frames: &[Vec<[f32; 2]>]) -> f32 {
     worst
 }
 
-/// The number of distinct colours in a tint set (exact equality — palette colours are
-/// exact param values).
-fn distinct_colours(tints: &[[f32; 4]]) -> usize {
-    let mut seen: Vec<[f32; 4]> = Vec::new();
-    for c in tints {
-        if !seen.iter().any(|s| s == c) {
-            seen.push(*c);
-        }
-    }
-    seen.len()
+fn sweep(state: &MotionState, sink: NodeId, kmax: u64) -> Vec<Vec<[f32; 2]>> {
+    (0..=kmax)
+        .step_by(3)
+        .map(|k| positions_at(state, sink, k as f64 / 60.0))
+        .collect()
 }
 
 #[test]
@@ -76,68 +58,54 @@ fn new_builds_the_well_typed_value_document() {
             "motion.output"
         );
     }
-    // 10 nodes: {distribute_radial, color_ramp, move, output, lfo} + {grid, color_array,
-    // move, output, lfo}. The two newest nodes (doc 29) — a `motion.color_ramp` and a
-    // `motion.color_array`, each driven by a `value.lfo`.
-    assert_eq!(state.doc.graph.nodes().len(), 10);
+    // 14 nodes: {grid, radial, combine, tint, move, output, lfo} + {grid, radial, mixer,
+    // tint, move, output, lfo}. The two newest nodes (doc 30) — a `motion.combine` and a
+    // `motion.mixer`, each fed by two sources (the first branch-and-merge graphs).
+    assert_eq!(state.doc.graph.nodes().len(), 14);
     assert!(state.doc.graph.validate(&state.registry).is_ok());
     assert_eq!(state.transport.playhead(1.0 / 60.0), 0.0); // paused at tick 0
 }
 
-/// `motion.color_ramp` is alive end to end (doc 29): the 60-point sunburst is coloured by
-/// a rainbow (many distinct hues) and spins via the `spin` lfo, so it travels; the scene
-/// sits on the left. Falsifiable: a solid colour → one hue; a dead spin → static.
+/// `motion.combine` is alive end to end (doc 30): the 100-point grid and the 40-point
+/// ring concatenate into ONE 140-point stream, and the ring spins so it travels; the
+/// scene sits on the left. Falsifiable: no merge → 100 (not 140); a dead ring → static.
 #[test]
-fn the_rainbow_sunburst_spins_and_is_colourful() {
+fn the_grid_and_ring_combine() {
     let state = MotionState::new();
-    let sink = state.sinks[0]; // the rainbow scene (added first)
-    let mut frames = Vec::new();
-    for k in 0..=150u64 {
-        let pos = positions_at(&state, sink, k as f64 / 60.0);
-        assert_eq!(pos.len(), 60, "the 60-point sunburst");
-        frames.push(pos);
+    let frames = sweep(&state, state.sinks[0], 150); // the combine scene (added first)
+    for f in &frames {
+        assert_eq!(f.len(), 140, "100 grid + 40 ring concatenated");
     }
-    assert!(max_travel(&frames) > 0.3, "the spin lfo turns the sunburst");
-    // The rainbow spans many colours (well beyond a solid tint's one).
-    let tints = tints_at(&state, sink, 0.0);
+    assert!(max_travel(&frames) > 0.3, "the ring spins");
+    let mean = frames.iter().map(|f| mean_x(f)).sum::<f32>() / frames.len() as f32;
     assert!(
-        distinct_colours(&tints) > 20,
-        "the rainbow is colourful ({} distinct)",
-        distinct_colours(&tints)
+        mean < -3.0,
+        "the combined cloud sits on the left (mean x {mean})"
+    );
+}
+
+/// `motion.mixer` is alive end to end (doc 30): the 64-point grid is blended toward the
+/// 64-point circle (count = the min, 64), and the `blend` sine lfo morphs it, so the
+/// points travel a lot; the scene sits on the right. Falsifiable: a dead blend → the grid
+/// never moves toward the circle.
+#[test]
+fn the_grid_morphs_into_the_circle() {
+    let state = MotionState::new();
+    let frames = sweep(&state, state.sinks[1], 300); // the mixer scene (added second)
+    for f in &frames {
+        assert_eq!(f.len(), 64, "min(64 grid, 64 circle)");
+    }
+    assert!(
+        max_travel(&frames) > 0.8,
+        "the blend lfo morphs grid into circle"
     );
     let mean = frames.iter().map(|f| mean_x(f)).sum::<f32>() / frames.len() as f32;
-    assert!(mean < -3.0, "the sunburst sits on the left (mean x {mean})");
+    assert!(mean > 3.0, "the morph sits on the right (mean x {mean})");
 }
 
-/// `motion.color_array` is alive end to end (doc 29): the 100-point grid takes exactly a
-/// 4-colour palette, and the `offset` saw lfo marches it (the colour at a fixed index
-/// changes over time); the scene sits on the right. Falsifiable: >4 colours → not a
-/// palette; a dead offset → the index-0 colour never changes.
-#[test]
-fn the_palette_grid_marches() {
-    let state = MotionState::new();
-    let sink = state.sinks[1]; // the palette scene (added second)
-    let pos = positions_at(&state, sink, 0.0);
-    assert_eq!(pos.len(), 100, "the 10×10 grid");
-    // Exactly a 4-colour palette.
-    let tints0 = tints_at(&state, sink, 0.0);
-    assert_eq!(distinct_colours(&tints0), 4, "a 4-colour palette");
-    // The palette marches: index-0's colour differs at some later frame (offset shifted).
-    let marched = (0..=240u64).any(|k| {
-        let t = tints_at(&state, sink, k as f64 / 60.0);
-        !t.is_empty() && t[0] != tints0[0]
-    });
-    assert!(marched, "the offset lfo marches the palette");
-    let mean = mean_x(&pos);
-    assert!(
-        mean > 3.0,
-        "the palette grid sits on the right (mean x {mean})"
-    );
-}
-
-/// The default document replays bit-identically. Both scenes are deterministic (radial
-/// parabolic trig, ramp/palette arithmetic; the lfos are stateless playhead reads), so
-/// two runs match exactly (HR-5).
+/// The default document replays bit-identically. Both scenes are deterministic (grid /
+/// radial arithmetic, combine copying, mixer component lerp; the lfos are stateless
+/// playhead reads), so two runs match exactly (HR-5).
 #[test]
 fn the_default_document_replays_deterministically() {
     use ph2d_eval_motion::MotionCookPump;

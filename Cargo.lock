@@ -5288,6 +5288,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-node-motion-combine"
+version = "0.0.0"
+dependencies = [
+ "ph2d-node-registry",
+ "ph2d-nodegraph",
+]
+
+[[package]]
 name = "ph2d-node-motion-cull"
 version = "0.0.0"
 dependencies = [
@@ -5393,6 +5401,14 @@ dependencies = [
 
 [[package]]
 name = "ph2d-node-motion-mirror"
+version = "0.0.0"
+dependencies = [
+ "ph2d-node-registry",
+ "ph2d-nodegraph",
+]
+
+[[package]]
+name = "ph2d-node-motion-mixer"
 version = "0.0.0"
 dependencies = [
  "ph2d-node-registry",
@@ -5680,6 +5696,7 @@ dependencies = [
  "ph2d-node-motion-collide",
  "ph2d-node-motion-color-array",
  "ph2d-node-motion-color-ramp",
+ "ph2d-node-motion-combine",
  "ph2d-node-motion-cull",
  "ph2d-node-motion-distribute-curve",
  "ph2d-node-motion-distribute-radial",
@@ -5694,6 +5711,7 @@ dependencies = [
  "ph2d-node-motion-lattice",
  "ph2d-node-motion-look-at",
  "ph2d-node-motion-mirror",
+ "ph2d-node-motion-mixer",
  "ph2d-node-motion-morph",
  "ph2d-node-motion-move",
  "ph2d-node-motion-noise",

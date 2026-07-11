@@ -54,11 +54,11 @@ pub(crate) struct MotionState {
 }
 
 impl MotionState {
-    /// Build the boot state: register every node op + the **default document** — on the
-    /// left a radial sunburst coloured by a **rainbow gradient** (`motion.color_ramp`)
-    /// that spins; on the right a grid coloured by a **cycling palette**
-    /// (`motion.color_array`) whose slots march across it. Each animated by a `value.lfo`.
-    /// Kept deliberately small (docs/Motion Nodes/12, 29). The earlier scenes (the
+    /// Build the boot state: register every node op + the **default document** — the first
+    /// with branch-and-merge topology: on the left a grid and a spinning ring
+    /// **concatenated** into one cloud (`motion.combine`); on the right a grid **blended**
+    /// into a circle (`motion.mixer`, its `blend` morphing square↔ring). By `value.lfo`s.
+    /// Kept deliberately small (docs/Motion Nodes/12, 30). The earlier scenes (the
     /// Cavalry grid rig, the sim scenes, the deformer scenes) and the earlier
     /// value/pulse + M3/M4 chains were removed to keep the boot document focused; they
     /// live in git history and every node keeps its own unit tests + stays registered
@@ -90,11 +90,11 @@ impl MotionState {
 /// module's most recent work). Returns their sinks (the Output nodes) if the graph
 /// is well-typed.
 ///
-/// The scenes — built in the `strobe` sibling module — are two curve layouts animated by
-/// the value domain: on the LEFT a `motion.distribute_curve` marquee whose `offset` a saw
-/// `value.lfo` ramps (dots flow down the Bézier); on the RIGHT a `motion.spline_wrap`
-/// ribbon (a 3×12 grid) whose `amount` a sine `value.lfo` sweeps (flat ↔ wrapped onto the
-/// S-curve). See docs/Motion Nodes/12 (value), 28 (distribute_curve + spline_wrap).
+/// The scenes — built in the `strobe` sibling module — are the first branch-and-merge
+/// graphs: on the LEFT a grid and a spinning ring **concatenated** by `motion.combine`
+/// (140 dots); on the RIGHT a grid **blended** into a circle by `motion.mixer` (Blend
+/// mode), a sine `value.lfo` morphing the square into the ring and back. See
+/// docs/Motion Nodes/12 (value), 30 (combine + mixer).
 ///
 /// The earlier scenes were removed to keep the boot document small and legible: the
 /// **Cavalry grid rig**, the sim scenes, the deformer scenes, and the earlier value,

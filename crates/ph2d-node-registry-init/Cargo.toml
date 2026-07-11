@@ -28,6 +28,7 @@ ph2d-node-motion-clone = { path = "../ph2d-node-motion-clone" }
 ph2d-node-motion-collide = { path = "../ph2d-node-motion-collide" }
 ph2d-node-motion-color-array = { path = "../ph2d-node-motion-color-array" }
 ph2d-node-motion-color-ramp = { path = "../ph2d-node-motion-color-ramp" }
+ph2d-node-motion-combine = { path = "../ph2d-node-motion-combine" }
 ph2d-node-motion-cull = { path = "../ph2d-node-motion-cull" }
 ph2d-node-motion-distribute-curve = { path = "../ph2d-node-motion-distribute-curve" }
 ph2d-node-motion-distribute-radial = { path = "../ph2d-node-motion-distribute-radial" }
@@ -42,6 +43,7 @@ ph2d-node-motion-kaleidoscope = { path = "../ph2d-node-motion-kaleidoscope" }
 ph2d-node-motion-lattice = { path = "../ph2d-node-motion-lattice" }
 ph2d-node-motion-look-at = { path = "../ph2d-node-motion-look-at" }
 ph2d-node-motion-mirror = { path = "../ph2d-node-motion-mirror" }
+ph2d-node-motion-mixer = { path = "../ph2d-node-motion-mixer" }
 ph2d-node-motion-morph = { path = "../ph2d-node-motion-morph" }
 ph2d-node-motion-move = { path = "../ph2d-node-motion-move" }
 ph2d-node-motion-noise = { path = "../ph2d-node-motion-noise" }

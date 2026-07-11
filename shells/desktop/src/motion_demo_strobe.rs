@@ -1,37 +1,38 @@
-//! The M1 colour demo — the **default Motion document**: on the LEFT a radial sunburst
-//! coloured by a **rainbow gradient** (`motion.color_ramp`) that spins; on the RIGHT a
-//! grid coloured by a **cycling palette** (`motion.color_array`) whose slots march across
-//! it. The two colour nodes that were missing — until now `motion.tint` (a single solid)
-//! was the only colour source. Two independent scenes (each its own `motion.output` sink
-//! — the bridge composes several into one draw), kept small so each new node reads on its
-//! own. A `#[path]` sibling of `motion_state`, kept out for the LOC cap.
+//! The M1 stream demo — the **default Motion document**, the first with **branch-and-
+//! merge** topology (until now every graph was one linear chain): on the LEFT a grid and
+//! a ring are **concatenated** into one cloud (`motion.combine`); on the RIGHT a grid is
+//! **blended** into a circle (`motion.mixer` in Blend mode, its `blend` swept by a sine
+//! `value.lfo` — a square morphing to a ring and back). Each scene is a Y: two sources
+//! converging on the new node. Two independent scenes (each its own `motion.output` sink),
+//! kept small so each new node reads on its own. A `#[path]` sibling of `motion_state`,
+//! kept out for the LOC cap.
 //!
 //! ```text
-//! LEFT  (rainbow):  distribute_radial → color_ramp(Rainbow) → move(−6) → output  lfo(sine) → spin
-//! RIGHT (palette):  grid → color_array(4 colours) → move(+6) → output            lfo(saw)  → offset
+//! LEFT  (combine): grid ┐                          RIGHT (mixer): grid ┐
+//!         radial(spin) ┴→ combine → tint → move(−6) → out    radial ┴→ mixer(Blend) → tint → move(+6) → out
+//!                                                                      lfo(sine) → blend
 //! ```
 //!
-//! - **color_ramp** (`motion.color_ramp`, doc 29): the 60 radial points are coloured by
-//!   their normalised index along a rainbow ramp → concentric spectral rings; the sunburst
-//!   spins via the `spin` `value.lfo`.
-//! - **color_array** (`motion.color_array`, doc 29): a 10×10 grid takes a 4-colour palette
-//!   by `index mod 4`; the `offset` saw `value.lfo` marches the palette across the grid.
+//! - **combine** (`motion.combine`, doc 30): a 10×10 grid and a spinning 40-point ring
+//!   stack into one 140-point stream (concatenation — the Merge/Join).
+//! - **mixer** (`motion.mixer`, doc 30): a 64-point grid and a 64-point circle, blended
+//!   element-wise; the `blend` `value.lfo` morphs the square into the ring and back.
 //!
-//! See docs/Motion Nodes/29 (color_ramp + color_array). The whole value/pulse vocabulary +
-//! the other M3/M4 nodes stay registered (drop them in the editor).
+//! See docs/Motion Nodes/30 (combine + mixer). The whole value/pulse vocabulary + the
+//! other M3/M4 nodes stay registered (drop them in the editor).
 
 use ph2d_nodegraph::graph::{Edge, Graph, NodeId, Pos};
 
-const COL_W: f32 = 200.0;
-const RAINBOW_ROW: f32 = 0.0;
-const PALETTE_ROW: f32 = 320.0;
+const COL_W: f32 = 190.0;
+const COMBINE_ROW: f32 = 0.0;
+const MIXER_ROW: f32 = 340.0;
 
-/// Author both scenes into `g`; returns their Output nodes (the sinks), the rainbow
+/// Author both scenes into `g`; returns their Output nodes (the sinks), the combine
 /// scene's first so the sink order is stable (id-ascending).
 pub(crate) fn build(g: &mut Graph) -> Option<Vec<NodeId>> {
-    let rainbow = build_rainbow_scene(g)?;
-    let palette = build_palette_scene(g)?;
-    Some(vec![rainbow, palette])
+    let combine = build_combine_scene(g)?;
+    let mixer = build_mixer_scene(g)?;
+    Some(vec![combine, mixer])
 }
 
 /// Connect `from` → `to` on the given ports, an immediate (non-delayed) edge.
@@ -44,20 +45,36 @@ fn wire(g: &mut Graph, from: (NodeId, u16), to: (NodeId, u16)) -> Option<()> {
     .ok()
 }
 
-/// LEFT: a rainbow radial sunburst that spins. Returns its Output node.
-fn build_rainbow_scene(g: &mut Graph) -> Option<NodeId> {
-    let radial = g.add_node("motion.distribute_radial");
-    let ramp = g.add_node("motion.color_ramp");
+/// LEFT: a grid and a spinning ring concatenated. Returns its Output node.
+fn build_combine_scene(g: &mut Graph) -> Option<NodeId> {
+    let grid = g.add_node("motion.grid");
+    let ring = g.add_node("motion.distribute_radial");
+    let combine = g.add_node("motion.combine");
+    let tint = g.add_node("motion.tint");
     let mv = g.add_node("motion.move");
     let output = g.add_node("motion.output");
     let lfo = g.add_node("value.lfo");
 
-    for (n, col) in [(radial, 0.0), (ramp, 1.0), (mv, 2.0), (output, 3.0)] {
+    g.set_pos(
+        grid,
+        Pos {
+            x: 0.0,
+            y: COMBINE_ROW,
+        },
+    );
+    g.set_pos(
+        ring,
+        Pos {
+            x: 0.0,
+            y: COMBINE_ROW + 120.0,
+        },
+    );
+    for (n, col) in [(combine, 1.0), (tint, 2.0), (mv, 3.0), (output, 4.0)] {
         g.set_pos(
             n,
             Pos {
                 x: col * COL_W,
-                y: RAINBOW_ROW,
+                y: COMBINE_ROW,
             },
         );
     }
@@ -65,24 +82,32 @@ fn build_rainbow_scene(g: &mut Graph) -> Option<NodeId> {
         lfo,
         Pos {
             x: 0.0,
-            y: RAINBOW_ROW + 160.0,
+            y: COMBINE_ROW + 240.0,
         },
     );
 
-    wire(g, (radial, 0), (ramp, 0))?;
-    wire(g, (ramp, 0), (mv, 0))?;
+    wire(g, (grid, 0), (combine, 0))?;
+    wire(g, (ring, 0), (combine, 1))?;
+    wire(g, (combine, 0), (tint, 0))?;
+    wire(g, (tint, 0), (mv, 0))?;
     wire(g, (mv, 0), (output, 0))?;
-    wire(g, (lfo, 0), (radial, 0))?; // → spin
+    wire(g, (lfo, 0), (ring, 0))?; // → ring spin
 
-    // 60 points over 4 rings, coloured by index along the Rainbow ramp, spinning, left.
-    g.set_param(radial, "count", 60.0);
-    g.set_param(radial, "rings", 4.0);
-    g.set_param(radial, "radius", 3.0);
-    g.set_param(radial, "inner", 0.6);
-    g.set_param(ramp, "preset", 0.0); // Rainbow
+    // A 10×10 grid + a 40-point ring around it → 140 dots, amber, left.
+    g.set_param(grid, "rows", 10.0);
+    g.set_param(grid, "cols", 10.0);
+    g.set_param(grid, "gap_x", 0.45);
+    g.set_param(grid, "gap_y", 0.45);
+    g.set_param(ring, "count", 40.0);
+    g.set_param(ring, "rings", 1.0);
+    g.set_param(ring, "radius", 3.2);
+    g.set_param(tint, "mode", 0.0); // Solid
+    g.set_param(tint, "r", 0.95);
+    g.set_param(tint, "g", 0.70);
+    g.set_param(tint, "b", 0.20);
     g.set_param(mv, "dx", -6.0);
     g.set_param(mv, "dy", 0.0);
-    // lfo → spin: a slow sine, ±180° → the sunburst turns.
+    // lfo → ring spin: a slow sine, ±180°.
     g.set_param(lfo, "wave", 0.0); // Sine
     g.set_param(lfo, "period", 6.0);
     g.set_param(lfo, "amplitude", 180.0);
@@ -90,20 +115,36 @@ fn build_rainbow_scene(g: &mut Graph) -> Option<NodeId> {
     Some(output)
 }
 
-/// RIGHT: a grid with a marching 4-colour palette. Returns its Output node.
-fn build_palette_scene(g: &mut Graph) -> Option<NodeId> {
+/// RIGHT: a grid blended into a circle. Returns its Output node.
+fn build_mixer_scene(g: &mut Graph) -> Option<NodeId> {
     let grid = g.add_node("motion.grid");
-    let array = g.add_node("motion.color_array");
+    let circle = g.add_node("motion.distribute_radial");
+    let mixer = g.add_node("motion.mixer");
+    let tint = g.add_node("motion.tint");
     let mv = g.add_node("motion.move");
     let output = g.add_node("motion.output");
     let lfo = g.add_node("value.lfo");
 
-    for (n, col) in [(grid, 0.0), (array, 1.0), (mv, 2.0), (output, 3.0)] {
+    g.set_pos(
+        grid,
+        Pos {
+            x: 0.0,
+            y: MIXER_ROW,
+        },
+    );
+    g.set_pos(
+        circle,
+        Pos {
+            x: 0.0,
+            y: MIXER_ROW + 120.0,
+        },
+    );
+    for (n, col) in [(mixer, 1.0), (tint, 2.0), (mv, 3.0), (output, 4.0)] {
         g.set_pos(
             n,
             Pos {
                 x: col * COL_W,
-                y: PALETTE_ROW,
+                y: MIXER_ROW,
             },
         );
     }
@@ -111,27 +152,36 @@ fn build_palette_scene(g: &mut Graph) -> Option<NodeId> {
         lfo,
         Pos {
             x: 0.0,
-            y: PALETTE_ROW + 160.0,
+            y: MIXER_ROW + 240.0,
         },
     );
 
-    wire(g, (grid, 0), (array, 0))?;
-    wire(g, (array, 0), (mv, 0))?;
+    wire(g, (grid, 0), (mixer, 0))?;
+    wire(g, (circle, 0), (mixer, 1))?;
+    wire(g, (mixer, 0), (tint, 0))?;
+    wire(g, (tint, 0), (mv, 0))?;
     wire(g, (mv, 0), (output, 0))?;
-    wire(g, (lfo, 0), (array, 1))?; // → offset
+    wire(g, (lfo, 0), (mixer, 4))?; // → blend weight
 
-    // A 10×10 grid with the default red/green/blue/yellow palette, marching, right.
-    g.set_param(grid, "rows", 10.0);
-    g.set_param(grid, "cols", 10.0);
-    g.set_param(grid, "gap_x", 0.5);
-    g.set_param(grid, "gap_y", 0.5);
-    g.set_param(array, "colors", 4.0);
+    // An 8×8 grid (64) blended toward a 64-point circle → a square↔ring morph, cyan, right.
+    g.set_param(grid, "rows", 8.0);
+    g.set_param(grid, "cols", 8.0);
+    g.set_param(grid, "gap_x", 0.55);
+    g.set_param(grid, "gap_y", 0.55);
+    g.set_param(circle, "count", 64.0);
+    g.set_param(circle, "rings", 1.0);
+    g.set_param(circle, "radius", 2.4);
+    g.set_param(mixer, "mode", 2.0); // Blend (in0 → in1)
+    g.set_param(tint, "mode", 0.0); // Solid
+    g.set_param(tint, "r", 0.25);
+    g.set_param(tint, "g", 0.80);
+    g.set_param(tint, "b", 0.95);
     g.set_param(mv, "dx", 6.0);
     g.set_param(mv, "dy", 0.0);
-    // lfo → offset: a saw ramping 0→4 (amp 2 about 2) so the palette marches a full cycle.
-    g.set_param(lfo, "wave", 3.0); // Saw
-    g.set_param(lfo, "period", 4.0);
-    g.set_param(lfo, "amplitude", 2.0);
-    g.set_param(lfo, "offset", 2.0);
+    // lfo → blend: a sine about 0.5, ±0.5 → blend ∈ [0, 1] (grid ↔ circle).
+    g.set_param(lfo, "wave", 0.0); // Sine
+    g.set_param(lfo, "period", 5.0);
+    g.set_param(lfo, "amplitude", 0.5);
+    g.set_param(lfo, "offset", 0.5);
     Some(output)
 }

@@ -17,7 +17,9 @@
 //! shader + passe entram a seguir.
 
 mod pack;
+mod pipeline;
 
 pub use pack::{
     FLAG_CLOSED, FLAG_END_FLAT, FLAG_START_FLAT, FlipGpuData, GpuPoint, GpuStroke, pack_drawing,
 };
+pub use pipeline::{CameraRaw, FlipRenderer};

@@ -21,3 +21,7 @@ wgpu = "28"
 # Empacotamento de storage buffers (Pod/Zeroable + cast_slice), mesma convenção
 # do `instance_buffer` do ph2d-render.
 bytemuck = { version = "1", features = ["derive"] }
+
+[dev-dependencies]
+# block_on para os testes GPU headless (`--ignored`), como os testes do ph2d-gpu.
+pollster = "0.4"

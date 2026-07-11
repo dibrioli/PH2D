@@ -212,7 +212,17 @@ impl PainterTool {
         // ── Paper (substrate tooth) + Granulation (mineral settling) — two canvas-anchored
         // slots: the Paper textures the wash subtly; the Granulation settles by Amount into its
         // OWN map or (Same as Paper, default) the paper's tooth. Inactive ⇒ built-in noise.
-        let paper_tex = brush.paper;
+        // Seamless Tiling (doc 13 #2): the sprite-period context for the canvas-anchored PROCEDURAL
+        // noise (RaggedEdge warp, paper granulation, backrun jag — wrapped at the sprite period below)
+        // AND the slot-texture snap. Tiling off ⇒ `NoiseTile::NONE` ⇒ byte-identical.
+        let noise_tile = if self.paint.tiling[0] || self.paint.tiling[1] {
+            NoiseTile::new((fw, fh), self.paint.tiling)
+        } else {
+            NoiseTile::NONE
+        };
+        // #2b (doc 13): snap a slot IMAGE's Size so a whole number of tiles spans the sprite → the
+        // Paper / Grain image is seamless across the seam (matching the procedural noise). No-op off-tiling.
+        let paper_tex = snap_slot_size(brush.paper, noise_tile);
         let paper_active = paper_tex.is_active();
         let paper_img = self.paint.paper_image.as_ref().map(|i| i.as_mask());
         // Precompute each slot's Angle rotation basis ONCE (the per-degree walk is not per-pixel-cheap).
@@ -220,7 +230,7 @@ impl PainterTool {
         // The Granulation map is the **Grain** slot (`brush.texture`) — used only when "Same as Paper"
         // is off; otherwise the granulation settles into the paper's own tooth. (`gran_own_map` +
         // `gran_rot` moved into `SubstrateSession`, which resolves them per owner — #13.)
-        let gran_tex = brush.texture;
+        let gran_tex = snap_slot_size(brush.texture, noise_tile);
         let gran_img = self.paint.texture_image.as_ref().map(|i| i.as_mask());
         let paper_depth = brush.paper_depth.clamp(0.0, 1.0);
         // Fallback pigment when the colour buffer is faint (straight brush colour → sRGB bytes).
@@ -264,16 +274,6 @@ impl PainterTool {
             paper_depth,
             granulation_use_paper: brush.granulation_use_paper,
             texture: gran_tex,
-        };
-        // Seamless Tiling (doc 13 #2): the canvas-anchored PROCEDURAL noises (RaggedEdge warp, paper
-        // granulation, backrun jag) wrap at the sprite period on the tiled axes, so their fields are
-        // periodic and the painted texture — not just the coverage — is continuous across the seam.
-        // Tiling off ⇒ `NoiseTile::NONE` ⇒ byte-identical. (Paper/Grain SLOT textures still sample at
-        // their own period/rotation — sprite-seamless slot textures are a follow-up.)
-        let noise_tile = if self.paint.tiling[0] || self.paint.tiling[1] {
-            NoiseTile::new((fw, fh), self.paint.tiling)
-        } else {
-            NoiseTile::NONE
         };
         // #13 (doc 14): per-owner SUBSTRATE. Single-substrate sessions resolve to the globals
         // (byte-identical + cache live); a multi-substrate session (paper/grain changed mid-session)

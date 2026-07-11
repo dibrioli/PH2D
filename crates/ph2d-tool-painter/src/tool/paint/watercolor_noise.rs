@@ -4,6 +4,10 @@
 //! `watercolor_field.rs` for the workspace LOC cap; re-exported there so callers keep using
 //! `watercolor_field::{value_noise_tiled, warp_axis, NoiseTile, …}`. HR-5: transcendental-free.
 
+use ph2d_painter_brush::TextureKind;
+use ph2d_painter_brush::TextureSettings;
+use ph2d_painter_brush::texture::TEX_TILE_BASE_PX;
+
 // ── Deterministic value noise (integer hash; HR-5 transcendental-free) ───────────────────────────────
 // Distinct seeds keep the two warp axes + the paper grain decorrelated (else the boundary would ripple
 // along the diagonal and the granulation would track the warp).
@@ -59,6 +63,16 @@ impl NoiseTile {
             period: [size.0 as f32, size.1 as f32],
             on,
         }
+    }
+
+    /// The per-axis sprite PERIOD (px) for a slot-texture snap ([`snap_slot_size`], doc 13 #2b); `0` =
+    /// that axis isn't tiled (no snap).
+    #[inline]
+    pub(super) fn slot_period(self) -> [f32; 2] {
+        [
+            if self.on[0] { self.period[0] } else { 0.0 },
+            if self.on[1] { self.period[1] } else { 0.0 },
+        ]
     }
 
     /// Effective cell + wrap period (in WHOLE cells) for axis `i`: rounds the cell count so an integer
@@ -134,6 +148,33 @@ pub(super) fn paper_height(x: f32, y: f32, tile: NoiseTile) -> f32 {
         + 0.35 * value_noise_tiled(x, y, 2.5, SEED_GRAIN_FINE, tile)
 }
 
+/// #2b (doc 13): snap a slot texture's **Size** so a WHOLE number of tiles spans the sprite on each
+/// tiled axis — an IMAGE slot (its UV is `fract`-wrapped) then repeats seamlessly across the sprite
+/// seam, matching the procedural noise. **Image kinds only:** a procedural pattern isn't periodic at
+/// integer tiles, and silently rescaling it when Tiling toggles would surprise. Non-tiled axis / tiling
+/// off / non-Image ⇒ unchanged (byte-identical). Rotation ≠ 0 still seams (a rotated tile grid can't
+/// align with the axis-aligned seam) — the documented limitation.
+pub(super) fn snap_slot_size(mut s: TextureSettings, tile: NoiseTile) -> TextureSettings {
+    if !matches!(s.kind, TextureKind::Image) {
+        return s;
+    }
+    let snap = |size: f32, period: f32| {
+        if period > 0.0 {
+            // `sample_image` maps `cu = rel * 0.5 + 0.5` and repeats every whole `cu` → every TWO units
+            // of `rel`. A whole number of repeats across the sprite therefore needs an EVEN tile count
+            // (`≥ 2`); an odd count would land the seam on the image's half-way point.
+            let raw = period * size / TEX_TILE_BASE_PX;
+            let tiles = (raw / 2.0).round().max(1.0) * 2.0;
+            tiles * TEX_TILE_BASE_PX / period
+        } else {
+            size
+        }
+    };
+    let p = tile.slot_period();
+    s.size = [snap(s.size[0], p[0]), snap(s.size[1], p[1])];
+    s
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -197,5 +238,60 @@ mod tests {
             differs,
             "NoiseTile::NONE must stay non-periodic (byte-identical path)"
         );
+    }
+
+    /// **#2b: a slot IMAGE tiles seamlessly under Tiling.** Snapping Size to a whole number of tiles across
+    /// the sprite makes the `fract`-wrapped image repeat exactly at the seam; the RAW size seams (the
+    /// control that proves the snap is what fixes it). Off-tiling + procedural kinds ⇒ unchanged.
+    #[test]
+    fn slot_image_tiles_seamlessly_under_tiling() {
+        use ph2d_painter_brush::texture::{ImageMask, angle_basis, sample_tiled_rot};
+        let (pw, ph) = (100i64, 60i64);
+        let tile = NoiseTile::new((pw as usize, ph as usize), [true, true]);
+        let lum: Vec<u8> = (0..64).map(|i| ((i * 37) % 256) as u8).collect(); // non-uniform 8×8
+        let mask = ImageMask {
+            lum: &lum,
+            width: 8,
+            height: 8,
+        };
+        let raw = TextureSettings {
+            kind: TextureKind::Image,
+            size: [1.37, 0.83],
+            ..Default::default()
+        };
+        let snapped = snap_slot_size(raw, tile);
+        let rot = angle_basis(0);
+        let tx = pw as f32 * snapped.size[0] / TEX_TILE_BASE_PX;
+        let ty = ph as f32 * snapped.size[1] / TEX_TILE_BASE_PX;
+        assert!(
+            (tx - tx.round()).abs() < 1e-4 && (ty - ty.round()).abs() < 1e-4,
+            "snap must yield whole tiles across the sprite ({tx}, {ty})"
+        );
+        for y in [3i64, 19, 41] {
+            let a = sample_tiled_rot(&snapped, 0, y, Some(&mask), rot);
+            let b = sample_tiled_rot(&snapped, pw, y, Some(&mask), rot);
+            assert!((a - b).abs() < 1e-4, "X seam not seamless at y={y}: {a} vs {b}");
+        }
+        for x in [5i64, 27, 63] {
+            let a = sample_tiled_rot(&snapped, x, 0, Some(&mask), rot);
+            let b = sample_tiled_rot(&snapped, x, ph, Some(&mask), rot);
+            assert!((a - b).abs() < 1e-4, "Y seam not seamless at x={x}");
+        }
+        // Control: the RAW (unsnapped) size seams somewhere across the sprite.
+        let seams = (0..ph).any(|y| {
+            (sample_tiled_rot(&raw, 0, y, Some(&mask), rot)
+                - sample_tiled_rot(&raw, pw, y, Some(&mask), rot))
+            .abs()
+                > 1e-4
+        });
+        assert!(seams, "control: an unsnapped image should seam across the sprite");
+        // Off-tiling + procedural kinds ⇒ unchanged (byte-identical).
+        assert_eq!(snap_slot_size(raw, NoiseTile::NONE).size, raw.size);
+        let proc = TextureSettings {
+            kind: TextureKind::Noise,
+            size: [1.37, 0.83],
+            ..Default::default()
+        };
+        assert_eq!(snap_slot_size(proc, tile).size, proc.size);
     }
 }

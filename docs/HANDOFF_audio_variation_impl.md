@@ -1,15 +1,21 @@
-# HANDOFF de integração — Áudio W6 · Variation containers (`line/audio`)
+# HANDOFF de integração — Áudio W6 · Variation + import + OGG export (`line/audio`)
 
 > DIRETRIZ §1.5.9. A linha fechou o bloco, comitou local e **PAROU** — não integra
 > nem faz ship (Enio-only, via integrador dedicado). Módulo tracker vivo:
 > [`HANDOFF_audio_module.md`](HANDOFF_audio_module.md). Plano: [`Audio/02_plano_implementacao_completo.md`](Audio/02_plano_implementacao_completo.md) §W6.
+>
+> ⚠️ **ATENÇÃO INTEGRADOR:** este lote adiciona **1 dependência de codec** (`vorbis_rs`,
+> ADR-0113) — vide §3 (deps) e §5 (o build cross-SO só é provado no CI). É o item de
+> maior risco do lote.
 
 ## 1. Identidade
-- **Branch:** `line/audio` · **HEAD:** `ecd2587a` · **merge-base com main:** `1c7c9a22` (= HEAD do main integrado).
-- **HEAD atual:** `6bf70ca1`. **Commits à frente do main:** **3** —
+- **Branch:** `line/audio` · **merge-base com main:** `1c7c9a22` (= HEAD do main integrado).
+- **HEAD atual:** `c37efcd3`. **Commits à frente do main:** **5** —
   1. `ecd2587a feat(audio): W6 variation containers — random/sequence/shuffle + jitter + weights`
   2. `e48e237b docs(audio): W6 variation containers — tracker + handoff`
   3. `6bf70ca1 feat(audio): W6 import por convenção — Add Folder popula o set (natural sort)`
+  4. `80add6ed docs(audio): W6 import por convenção — tracker + handoff`
+  5. `c37efcd3 feat(audio): W6 export Ogg Vorbis via vorbis_rs (ADR-0113); Opus adiado`
 - Árvore limpa. Fast-forward puro sobre o main atual (a linha foi resetada ao main recém-integrado antes de começar).
 
 ## 2. Foundational / compartilhado tocado (e por quê)
@@ -27,10 +33,14 @@ Os outros 2 arquivos de shell tocados são do **próprio módulo de áudio** (n�
 **Nenhum encostado.** Áudio não adiciona `Tool`/`Node` gateado; `SCHEMA_VERSION` intacto (o manifesto de variação é um arquivo-texto próprio `.txt`, **não** o save do projeto). Nenhum ADR necessário.
 
 ## 5. O que só o `ship.sh` pega (o gate de integração NÃO roda) — [[project_integration_prefork_lines_ship_drift]]
-- **fmt:** rodei `rustup run 1.95 rustfmt --edition 2024 --check` em **todos** os 13 arquivos → canônico (exit 0). Sem fmt-skew esperado.
-- **Deps novas:** **ZERO** (variação é Rust puro; sem crate nova) → machete/deny/audit não têm o que reclamar deste bloco.
-- **clippy:** rodei `cargo clippy --all-targets` em `ph2d-audio-edit`, `ph2d-panel-audio-editor` e `ph2d-host-desktop` → limpo. **NÃO** rodei `clippy --workspace --all-targets` (o ship roda; se acusar latente cross-crate, é pré-existente, não deste bloco).
-- **typos:** não rodei o typos-cli; texto en-US canônico.
+- **fmt:** `rustup run 1.95 rustfmt --edition 2024 --check` em **todos** os arquivos tocados → canônico (exit 0) a cada commit. Sem fmt-skew esperado.
+- **⚠️ DEP NOVA (o item de maior risco):** **`vorbis_rs 0.5.5`** em `ph2d-audio-encode` (commit `c37efcd3`, ADR-0113) + transitivos `aotuv_lancer_vorbis_sys`, `ogg_next_sys`, `tinyvec`, `tinyvec_macros` — todos permissivos (BSD-3 / Zlib-MIT-Apache). `ph2d-audio-decode` virou **dev-dep** de `ph2d-audio-encode` (round-trip).
+  - **deny:** rodei `cargo deny check` → **licenses/advisories/bans/sources ok** (BSD-3 já estava em `deny.toml`; **zero mudança**). Duplicata `thiserror` 1.x (o sys-crate usa 1.x) = **warn**, não erro.
+  - **machete:** `vorbis_rs` é usado (`encode_ogg`), `ph2d-audio-decode` dev-dep é usado (testes) → sem unused-dep.
+  - **⚠️ SÓ O CI PROVA:** `vorbis_rs` compila **libvorbis+libogg C vendorizado por `cc`**. Verifiquei o build só no **Linux** (deste worktree); **Windows e macOS só no CI do Enio** — o gate de integração compila num host só. Se falhar cross-SO, **kill-criterion no ADR-0113** (reverter após 2 tentativas de flags `cc`). Precisa apenas de `cc` (sem meson/nasm/pkg-config/bindgen/system lib — ao contrário do AVIF).
+  - **RUSTSEC:** deny checa contra a **advisory-db LOCAL** (que envelhece); um aviso novo contra libvorbis pode escapar local e só vermelhar no CI (baixo risco: libvorbis maduro).
+- **clippy:** `cargo clippy --all-targets` em `ph2d-audio-edit`, `ph2d-audio-encode`, `ph2d-panel-audio-editor`, `ph2d-host-desktop` → limpo. **NÃO** rodei `--workspace`.
+- **typos:** não rodei o typos-cli; texto canônico.
 
 ## 6. Ordem / dependências / smoke
 - **1 commit, sem ordem interna.** Fast-forward direto.
@@ -47,6 +57,7 @@ Container de variação estilo Wwise/FMOD, **autorado + auditado + salvo** no pa
 - **Painel** (`variation_state.rs` + `paint_variation.rs`, UI-only + thread-local bridge): lista selecionável · seletor de estratégia · Add/Remove/Play · Weight ÷2/×2 · sliders Pitch/Gain jitter · Save/Load. `apply_event` ganhou `variation_click`; extraí `edit_cmd_for` p/ manter `apply_event` sob o cap de 200 LOC/fn (fmt re-expandiu → 207).
 - **Shell** (`audio/editor/variation.rs`): dona `VariationSet` + cache de clipes decodados (index-aligned) + `VariationPicker`; `editor_play_variation` toca o pick com jitter pela **preview voice** (borrow transiente — a audição é one-shot, não mexe no transporte do clipe carregado). Smoke `editor_variation_smoke` semeia 4 blips via `write_wav` + `editor_add_variation_folder`.
 - **Import por convenção (commit `6bf70ca1`):** botão **Add Folder…** → `rfd::pick_folder` → `editor_add_variation_folder(dir)` varre a pasta, filtra por extensão de áudio (`is_audio_path`), **ordena natural** (`ph2d_audio_edit::natural_cmp` — `step_2` < `step_10`, Sequence depende) e adiciona até o cap (reusa `editor_add_variation`, que no-opa cheio). É o `name_01..NN → grupo`: aponta pra pasta do grupo e pega o set inteiro num clique. Append (não limpa o set). Novo id `AEDIT_VAR_ADD_FOLDER` (string-hashed) + intent + seam.
-- **Aberto no W6:** export OGG/Opus (dep + ADR). Follow-ups da variação: enable-toggle por-entry na UI (o modelo/manifesto já carregam `enabled`, só falta o botão); manifesto guarda caminho ABSOLUTO (relativo à pasta do manifesto = mais portátil, follow-up); overlay não desenha o set (é set de arquivos, não timeline — proposital).
+- **Export Ogg Vorbis (commit `c37efcd3`, ADR-0113):** `ph2d-audio-encode::{encode_ogg,write_ogg}` via `vorbis_rs` (API segura → `forbid(unsafe_code)` mantido; de-interleava p/ planar; VBR `OGG_DEFAULT_QUALITY=0.5`). **Round-trip provado** (2 testes: encode → `ph2d_audio_decode` re-decoda estéreo+mono, mesmo layout/duração/RMS). UI: botão **Export OGG…** (transport; **Export…**→**Export WAV…**), intent em `loop_state.rs` (não em `snapshot.rs`, que está 600/600), `editor_export_ogg` escreve o SOUNDING clip (Ogg não carrega `smpl`/`cue` → loop/markers seguem WAV-only). Testes de `ph2d-audio-encode` extraídos p/ `src/tests.rs` (lib.rs 767→513, sob 700). **Opus adiado** (ADR-0113 §Opus): via Rust força `unsafe` neste crate (`unsafe-libopus`) ou libopus de sistema (`audiopus`) — recomendação = crate irmão isolado `ph2d-audio-opus` (puro-Rust, `unsafe` contido), decisão própria pro próximo passo.
+- **Aberto no W6:** Opus (acima) · codec/residência por-asset + readout tamanho/RAM. Follow-ups da variação: enable-toggle por-entry na UI (o modelo/manifesto já carregam `enabled`); manifesto guarda caminho ABSOLUTO (relativo = mais portátil, follow-up); overlay não desenha o set (proposital).
 
-*"Linha `audio` pronta (HEAD `6bf70ca1`, 3 commits). Handoff de integração acima. Aguardo ordem de integração."*
+*"Linha `audio` pronta (HEAD `c37efcd3`, 5 commits; **+1 dep nova `vorbis_rs`**). Handoff de integração acima. Aguardo ordem de integração."*

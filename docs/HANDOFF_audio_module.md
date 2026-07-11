@@ -493,6 +493,25 @@ abaixo é histórico — não re-investigue.
   - **Aberto (variação):** enable-toggle por-entry na UI (modelo/manifesto já têm `enabled`) ·
     manifesto guarda caminho absoluto (relativo = follow-up de portabilidade) ·
     overlay não desenha o set (é set de arquivos, não timeline — proposital).
+- **W6 Bloco 6 — Export Ogg Vorbis (2026-07-11, `line/audio`, commit `c37efcd3`, NÃO
+  integrado; [ADR-0113](architecture/decisions/0113-audio-export-ogg-vorbis-via-vorbis-rs-opus-deferred.md)).**
+  Export comprimido `.ogg` p/ entrega de asset — **+1 dependência** (`vorbis_rs`, a 1ª
+  dep de codec de encode do módulo).
+  - **`ph2d-audio-encode::{encode_ogg,write_ogg}`** via `vorbis_rs` (reference libvorbis
+    aoTuV/Lancer, **vendorizado + `cc`**, sem system lib/meson/nasm/bindgen). **API segura
+    → `forbid(unsafe_code)` mantido.** BSD-3 (já em `deny.toml`; deny verde), royalty-free
+    (HR-1 #6). De-interleava p/ planar; VBR `OGG_DEFAULT_QUALITY=0.5`; `EncodeError::Codec`.
+  - **Round-trip PROVADO** (não só compila): 2 testes encode → `ph2d_audio_decode` re-decoda
+    (Symphonia já faz Vorbis) estéreo+mono, confere layout/sample-rate/duração(±50ms)/RMS.
+    Testes extraídos p/ `src/tests.rs` (lib.rs 767→513, sob o cap 700).
+  - **UI:** botão **Export OGG…** (transport; **Export…**→**Export WAV…**). Intent em
+    `loop_state.rs` (`snapshot.rs` está 600/600) → shell `editor_export_ogg` escreve o
+    SOUNDING clip. Ogg **não** carrega `smpl`/`cue` → loop/markers seguem WAV-only. +seam.
+  - **⚠️ Integrador:** o build cross-SO do `vorbis_rs` (compila C por `cc`) **só é provado
+    no CI** — verifiquei só Linux. Kill-criterion no ADR-0113.
+  - **Opus ADIADO** (ADR-0113 §Opus): via Rust ou força `unsafe` no crate (`unsafe-libopus`)
+    ou libopus de sistema no CI (`audiopus`); recomendação = crate irmão isolado
+    `ph2d-audio-opus` (puro-Rust, `unsafe` contido) — decisão própria pro próximo passo.
 - **Atalhos:** `Ctrl+Z` undo · `Ctrl+Shift+Z` / `Ctrl+Y` redo (roteados ao
   `EditClip` quando o painel WAVE está aberto com clipe carregado).
 - **Fix:** `cpal::Stream` é dropado no `on_close_request`, não no drop-cascade do

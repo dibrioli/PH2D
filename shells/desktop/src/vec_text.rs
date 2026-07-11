@@ -15,8 +15,20 @@
 
 use std::sync::OnceLock;
 
-use ph2d_vec_scene::{Contour, FillRule, Paint, VecPath, VecPathId, VecVertex};
+use ph2d_vec_edit::PenStyle;
+use ph2d_vec_scene::{Contour, FillRule, Paint, StrokeSpec, VecPath, VecPathId, VecVertex};
 use ph2d_vector_font::{GlyphOutline, PathCommand, VariableFont};
+
+/// Resolve o Style do Pen (fill/stroke/width em px) no par (fill, stroke) que cada
+/// glyph-path recebe — mesma regra das formas (`shape.rs`): sem preenchimento quando
+/// alpha 0; traço sempre presente (o render pula width/alpha 0). Assim o texto herda
+/// Fill/Stroke/Width/Cap/Join do painel do vetor como qualquer forma.
+#[must_use]
+fn resolve_style(style: &PenStyle, px_to_world: f64) -> (Option<Paint>, Option<StrokeSpec>) {
+    let fill = (style.fill.a != 0).then(|| Paint::solid(style.fill));
+    let stroke = Some(style.stroke_spec(style.stroke_w_px * px_to_world));
+    (fill, stroke)
+}
 
 /// A fonte embutida (InterVariable), parseada 1× e cacheada. `None` só se os bytes
 /// embutidos falharem o parse — nunca em runtime (é a mesma fonte que a UI usa).
@@ -35,7 +47,8 @@ pub(crate) fn text_to_vec_paths(
     text: &str,
     font_size: f64,
     origin: [f64; 2],
-    fill: &Paint,
+    fill: &Option<Paint>,
+    stroke: &Option<StrokeSpec>,
 ) -> Vec<VecPath> {
     let upem = f64::from(font.units_per_em().max(1));
     let scale = font_size / upem;
@@ -58,6 +71,7 @@ pub(crate) fn text_to_vec_paths(
                 scale,
                 [origin[0] + pen_x, origin[1] + pen_y],
                 fill.clone(),
+                *stroke,
             )
         {
             out.push(path);
@@ -87,7 +101,8 @@ pub(crate) fn glyph_to_vec_path(
     outline: &GlyphOutline,
     scale: f64,
     origin: [f64; 2],
-    fill: Paint,
+    fill: Option<Paint>,
+    stroke: Option<StrokeSpec>,
 ) -> Option<VecPath> {
     let mut b = Build::new(scale, origin);
     for cmd in &outline.commands {
@@ -99,7 +114,7 @@ pub(crate) fn glyph_to_vec_path(
             PathCommand::Close => b.close(),
         }
     }
-    b.finish(fill)
+    b.finish(fill, stroke)
 }
 
 /// Estado do builder: contornos fechados já prontos + o que está aberto. Cada
@@ -219,7 +234,7 @@ impl Build {
         self.flush();
     }
 
-    fn finish(mut self, fill: Paint) -> Option<VecPath> {
+    fn finish(mut self, fill: Option<Paint>, stroke: Option<StrokeSpec>) -> Option<VecPath> {
         self.flush();
         if self.contours.is_empty() {
             return None;
@@ -235,7 +250,8 @@ impl Build {
         Some(VecPath {
             verts,
             closed: true,
-            fill: Some(fill),
+            fill,
+            stroke,
             subpaths,
             fill_rule: FillRule::NonZero,
             ..Default::default()
@@ -263,8 +279,10 @@ pub(crate) struct VecTextEdit {
     pub origin: [f64; 2],
     /// Tamanho em unidades de world.
     pub size: f64,
-    /// Cor de preenchimento dos glyphs.
-    pub fill: Paint,
+    /// Preenchimento dos glyphs (do Style do painel; `None` = sem fill).
+    pub fill: Option<Paint>,
+    /// Traço dos glyphs (do Style: cor/largura/cap/join/dash), como nas formas.
+    pub stroke: Option<StrokeSpec>,
     /// Conteúdo digitado.
     pub text: String,
     /// Os paths dos glyphs atualmente na cena (regenerados a cada mudança).
@@ -299,10 +317,14 @@ impl crate::app_state::App {
     /// uma nova com a baseline no ponto clicado.
     pub(crate) fn vec_text_click(&mut self, world: [f64; 2]) {
         self.vec_text_finish();
+        // O texto herda o Style ATIVO do painel do vetor (fill/stroke/width/cap/join)
+        // — a mesma regra das formas — capturado no clique.
+        let (fill, stroke) = resolve_style(&self.vec_pen.style(), self.vec_px_to_world());
         self.vec_text_edit = Some(VecTextEdit {
             origin: world,
             size: DEFAULT_TEXT_SIZE,
-            fill: Paint::solid(ph2d_vec_scene::Rgba8::new(30, 30, 30, 255)),
+            fill,
+            stroke,
             text: String::new(),
             ids: Vec::new(),
         });
@@ -356,7 +378,14 @@ impl crate::app_state::App {
         for id in edit.ids.drain(..) {
             gfx.vec_scene.remove_path(id);
         }
-        let paths = text_to_vec_paths(font, &edit.text, edit.size, edit.origin, &edit.fill);
+        let paths = text_to_vec_paths(
+            font,
+            &edit.text,
+            edit.size,
+            edit.origin,
+            &edit.fill,
+            &edit.stroke,
+        );
         for path in paths {
             let id = gfx.vec_scene.push_path(path);
             edit.ids.push(id);
@@ -408,7 +437,8 @@ mod tests {
             ]),
             1.0 / 1000.0,
             [0.0, 0.0],
-            black(),
+            Some(black()),
+            None,
         )
         .expect("triângulo tem área");
         assert_eq!(p.verts.len(), 3, "o fecho fundiu, sem 4º vértice");
@@ -431,7 +461,8 @@ mod tests {
             ]),
             1.0 / 1000.0,
             [0.0, 0.0],
-            black(),
+            Some(black()),
+            None,
         )
         .unwrap();
         assert!(
@@ -459,7 +490,8 @@ mod tests {
             ]),
             1.0 / 1000.0,
             [0.0, 0.0],
-            black(),
+            Some(black()),
+            None,
         )
         .unwrap();
         assert_eq!(p.verts.len(), 4, "contorno externo");
@@ -483,7 +515,8 @@ mod tests {
             ]),
             1.0, // sem escala pra conta redonda
             [0.0, 0.0],
-            black(),
+            Some(black()),
+            None,
         )
         .unwrap();
         // S=(0,0), Q=(600,0) → out = (400, 0) absoluto.
@@ -508,7 +541,8 @@ mod tests {
             ]),
             1.0,
             [0.0, 0.0],
-            black(),
+            Some(black()),
+            None,
         )
         .unwrap();
         assert!((p.verts[0].out_handle[0] - 300.0).abs() < 1e-4, "out = c1");
@@ -518,7 +552,30 @@ mod tests {
     /// Um glyph sem contorno fechável (espaço) devolve `None`.
     #[test]
     fn an_empty_outline_is_none() {
-        assert!(glyph_to_vec_path(&outline(vec![]), 1.0, [0.0, 0.0], black()).is_none());
+        assert!(
+            glyph_to_vec_path(&outline(vec![]), 1.0, [0.0, 0.0], Some(black()), None).is_none()
+        );
+    }
+
+    /// O Style do painel vira o par (fill, stroke) do texto: sem preenchimento quando
+    /// alpha 0, e traço SEMPRE presente (o render pula width/alpha 0) — como nas formas.
+    #[test]
+    fn the_panel_style_flows_into_the_glyph_paint() {
+        let style = PenStyle {
+            fill: Rgba8::new(200, 30, 30, 255),
+            ..PenStyle::default()
+        };
+        let (fill, stroke) = resolve_style(&style, 0.01);
+        assert!(fill.is_some(), "fill opaco vira Some");
+        assert!(stroke.is_some(), "traço sempre presente");
+        let clear = PenStyle {
+            fill: Rgba8::new(0, 0, 0, 0),
+            ..PenStyle::default()
+        };
+        assert!(
+            resolve_style(&clear, 0.01).0.is_none(),
+            "fill transparente = None"
+        );
     }
 
     /// O cursor de texto fica à direita da origem depois de digitar, e é vertical.
@@ -527,7 +584,8 @@ mod tests {
         let edit = VecTextEdit {
             origin: [5.0, 2.0],
             size: 1.0,
-            fill: black(),
+            fill: Some(black()),
+            stroke: None,
             text: "Hi".to_string(),
             ids: Vec::new(),
         };
@@ -549,8 +607,8 @@ mod tests {
                 .map(|v| v.anchor[1])
                 .fold(f64::INFINITY, f64::min)
         };
-        let one = text_to_vec_paths(font, "A", 1.0, [0.0, 0.0], &black());
-        let two = text_to_vec_paths(font, "A\nA", 1.0, [0.0, 0.0], &black());
+        let one = text_to_vec_paths(font, "A", 1.0, [0.0, 0.0], &Some(black()), &None);
+        let two = text_to_vec_paths(font, "A\nA", 1.0, [0.0, 0.0], &Some(black()), &None);
         assert!(
             min_y(&one) >= -1e-6,
             "linha única: baseline em 0, sem descer"

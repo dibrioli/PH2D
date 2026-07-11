@@ -1,12 +1,13 @@
 //! Modulation effects for the rack: chorus, flanger, phaser, tremolo, ring mod,
-//! auto-pan.
+//! auto-pan, trance gate, doubler.
 //!
 //! All are **length-preserving** (they route through [`crate::in_range_warm`] like
-//! the filters). Chorus and flanger share a modulated fractional-delay line; the
-//! phaser is a modulated all-pass cascade; tremolo is sub-audio amplitude modulation;
-//! auto-pan is the same but in counter-phase across the two channels; ring mod is
-//! amplitude modulation by an *audio-rate* carrier. All but ring mod ride a **sine
-//! LFO**; the ring modulator's sine is the carrier itself.
+//! the filters). Chorus, flanger and the doubler share a modulated fractional-delay
+//! line; the phaser is a modulated all-pass cascade; tremolo is sub-audio amplitude
+//! modulation; auto-pan is the same but in counter-phase across the two channels; the
+//! trance gate is a rhythmic square-wave amplitude gate; ring mod is amplitude
+//! modulation by an *audio-rate* carrier. All but ring mod ride a **sine LFO** (or a
+//! square, for the gate); the ring modulator's sine is the carrier itself.
 //!
 //! Control thread only — allocates and uses `sin`/`tan` freely.
 
@@ -14,6 +15,7 @@ use std::f32::consts::TAU;
 
 use ph2d_audio::SampleData;
 
+use super::dynamics::time_coeff;
 use crate::ops::channels;
 
 /// The stereo LFO phase offset between L and R: a quarter cycle. Zero would make a
@@ -214,6 +216,86 @@ pub(super) fn auto_pan(data: &SampleData, rate_hz: f32, depth: f32) -> SampleDat
             let g = if c == 0 { gain_l } else { gain_r };
             out[f * ch + c] = src[f * ch + c] * g;
         }
+    }
+    SampleData::from_interleaved(out, data.format())
+}
+
+/// **Trance gate**: chops the signal into a rhythmic on/off pulse at `rate_hz`. A 50%
+/// duty square drives the gain between unity and `1 - depth`, its edges rounded by a
+/// one-pole smoother (`smooth_secs`) so the chop never clicks — short smoothing gives a
+/// hard stutter, long smoothing melts into a tremolo. Neutral at `depth` 0 (the gain
+/// stays at unity).
+pub(super) fn trance_gate(
+    data: &SampleData,
+    rate_hz: f32,
+    depth: f32,
+    smooth_secs: f32,
+) -> SampleData {
+    let sr = data.format().sample_rate as f32;
+    let ch = channels(data);
+    let frames = data.frame_count();
+    let depth = depth.clamp(0.0, 1.0);
+    let coeff = time_coeff(smooth_secs, sr);
+    let step = rate_hz / sr; // cycles per sample
+    let src = data.samples();
+    let mut out = src.to_vec();
+    let mut phase = 0.0f32; // 0..1 through one on/off cycle
+    let mut sm = 1.0f32; // smoothed gate, primed open so the region starts unmuted
+    for f in 0..frames {
+        let target = if phase < 0.5 { 1.0 } else { 0.0 };
+        sm += (target - sm) * coeff;
+        let gain = 1.0 - depth * (1.0 - sm);
+        for c in 0..ch {
+            out[f * ch + c] = src[f * ch + c] * gain;
+        }
+        phase += step;
+        if phase >= 1.0 {
+            phase -= 1.0;
+        }
+    }
+    SampleData::from_interleaved(out, data.format())
+}
+
+/// A doubler's slow LFO — a drift, not a warble.
+const DOUBLER_RATE_HZ: f32 = 0.7;
+/// The right voice's base delay relative to the left's, so the two takes don't line up.
+const DOUBLER_SPREAD: f32 = 1.35;
+
+/// **Doubler** (ADT): fakes a second take by mixing two detuned, slow-drifting delayed
+/// copies of the signal, hard-panned left and right — longer base delays and a slower
+/// LFO than the chorus, so it reads as a second voice rather than a wobble. No feedback
+/// (a doubler doesn't resonate). Neutral at `mix` 0. On a mono clip there is one voice,
+/// so it becomes a single detuned double.
+pub(super) fn doubler(data: &SampleData, delay_ms: f32, detune_ms: f32, mix: f32) -> SampleData {
+    let sr = data.format().sample_rate as f32;
+    let ch = channels(data);
+    let frames = data.frame_count();
+    let mix = mix.clamp(0.0, 1.0);
+    let base = (delay_ms * 0.001 * sr).max(1.0);
+    let depth = (detune_ms * 0.001 * sr).max(0.0);
+    let len = (base * DOUBLER_SPREAD + depth) as usize + 4;
+    let step = TAU * DOUBLER_RATE_HZ / sr;
+
+    let mut bufs: Vec<Vec<f32>> = (0..ch).map(|_| vec![0.0f32; len]).collect();
+    let mut write = 0usize;
+    let src = data.samples();
+    let mut out = src.to_vec();
+    for f in 0..frames {
+        for (c, buf) in bufs.iter_mut().enumerate() {
+            // The right voice trails a longer delay and sweeps in counter-phase — the
+            // two takes drift apart, which is the width.
+            let (vbase, ph0) = if c % 2 == 0 {
+                (base, 0.0)
+            } else {
+                (base * DOUBLER_SPREAD, TAU * 0.5)
+            };
+            let delay = vbase + depth * (0.5 + 0.5 * (step * f as f32 + ph0).sin());
+            let delayed = frac_read(buf, write, delay);
+            let x = src[f * ch + c];
+            buf[write] = x;
+            out[f * ch + c] = ((1.0 - mix) * x + mix * delayed).clamp(-1.0, 1.0);
+        }
+        write = (write + 1) % len;
     }
     SampleData::from_interleaved(out, data.format())
 }
@@ -454,5 +536,48 @@ mod tests {
         assert!(max_lr > 0.5, "never panned hard left: max L-R {max_lr}");
         assert!(min_lr < -0.5, "never panned hard right: min L-R {min_lr}");
         assert!(s.iter().all(|v| v.abs() <= 1.0 + 1e-4), "auto-pan clipped");
+    }
+
+    /// Depth 0 keeps the gain at unity — a byte-identical no-op.
+    #[test]
+    fn trance_gate_at_zero_depth_is_identity() {
+        let d = probe();
+        assert_eq!(trance_gate(&d, 4.0, 0.0, 0.005).samples(), d.samples());
+    }
+
+    /// THE gate contract: at full depth with tight smoothing the signal is chopped —
+    /// loud during the "on" half, near-silent during the "off" half.
+    #[test]
+    fn trance_gate_chops_the_signal() {
+        let d = mono(vec![0.8f32; 48_000]);
+        let out = trance_gate(&d, 4.0, 1.0, 0.0008); // 4 Hz, full depth, fast edges
+        let s = out.samples();
+        let peak = s.iter().fold(0.0f32, |m, v| m.max(v.abs()));
+        let trough = s.iter().fold(1.0f32, |m, v| m.min(v.abs()));
+        assert!(peak > 0.75, "on-phase should pass the signal, got {peak}");
+        assert!(trough < 0.05, "off-phase should silence it, got {trough}");
+    }
+
+    /// Mix 0 is a byte-identical no-op.
+    #[test]
+    fn doubler_at_zero_mix_is_identity() {
+        let d = probe();
+        assert_eq!(doubler(&d, 20.0, 6.0, 0.0).samples(), d.samples());
+    }
+
+    /// A doubler thickens the signal and spreads it: it changes the audio, stays
+    /// bounded, and drives the two channels apart (the two hard-panned voices).
+    #[test]
+    fn doubler_widens_and_stays_bounded() {
+        let d = probe();
+        let out = doubler(&d, 20.0, 6.0, 0.5);
+        assert_ne!(out.samples(), d.samples(), "doubler did nothing");
+        assert!(
+            out.samples().iter().all(|v| v.abs() <= 1.0 + 1e-4),
+            "doubler clipped"
+        );
+        let s = out.samples();
+        let diff: f32 = (0..4_800).map(|f| (s[f * 2] - s[f * 2 + 1]).abs()).sum();
+        assert!(diff > 1.0, "the two voices stayed in lockstep: diff {diff}");
     }
 }

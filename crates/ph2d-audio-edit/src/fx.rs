@@ -33,7 +33,7 @@ use ph2d_audio::dsp::{BiquadCoeffs, Delay, Reverb};
 use deess::deess;
 use deplosive::deplosive;
 use dynamics::{compress, gate, leveler, limit};
-use modulation::{auto_pan, modulated_delay, phaser, ring_mod, tremolo};
+use modulation::{auto_pan, doubler, modulated_delay, phaser, ring_mod, trance_gate, tremolo};
 use pitch::{PITCH_BYPASS_ST, pitch_shift};
 use space::{pingpong, render_wet};
 use tone::{HUM_Q, biquad_all, bitcrush, dehum, saturate, stereo_width};
@@ -233,6 +233,26 @@ pub enum Effect {
         /// Sweep depth (0..1); 1 walks fully hard-left to hard-right.
         depth: f32,
     },
+    /// **Trance gate**: a rhythmic on/off amplitude gate at `rate`, edges smoothed by
+    /// `smooth_secs`. Neutral at `depth` 0 (gain stays at unity).
+    TranceGate {
+        /// Gate rate (Hz).
+        rate: f32,
+        /// How far the "off" phase ducks (0..1); 1 chops to silence.
+        depth: f32,
+        /// Edge smoothing time (seconds): short = hard stutter, long = tremolo.
+        smooth_secs: f32,
+    },
+    /// **Doubler** (ADT): two detuned, slow-drifting delayed copies hard-panned L/R and
+    /// mixed with the dry signal — a faked second take. Neutral at `mix` 0.
+    Doubler {
+        /// Base delay of the doubled voice (ms).
+        delay_ms: f32,
+        /// Detune sweep depth (ms).
+        detune_ms: f32,
+        /// Dry→wet crossfade (0..1).
+        mix: f32,
+    },
     /// **Ring modulator**: multiplies the signal by an audio-rate sine carrier at
     /// `freq` — the robot / metallic voice. `mix` crossfades dry→wet. Neutral at
     /// `mix` 0 (fully dry).
@@ -353,6 +373,16 @@ impl Effect {
             }
             Effect::Tremolo { rate, depth } if depth > MOD_BYPASS => tremolo(data, rate, depth),
             Effect::AutoPan { rate, depth } if depth > MOD_BYPASS => auto_pan(data, rate, depth),
+            Effect::TranceGate {
+                rate,
+                depth,
+                smooth_secs,
+            } if depth > MOD_BYPASS => trance_gate(data, rate, depth, smooth_secs),
+            Effect::Doubler {
+                delay_ms,
+                detune_ms,
+                mix,
+            } if mix > MOD_BYPASS => doubler(data, delay_ms, detune_ms, mix),
             Effect::RingMod { freq, mix } if mix > MOD_BYPASS => ring_mod(data, freq, mix),
             // Needs a real shift AND some wet: either at neutral is a pass-through.
             Effect::PitchShift { semitones, mix }
@@ -409,6 +439,12 @@ impl Effect {
             Effect::Flanger { depth_ms, .. } => {
                 (((FLANGER_BASE_MS + depth_ms) * 0.001 * sample_rate as f32) as usize).min(cap)
             }
+            // Same as chorus/flanger — the doubler's delay line starts empty.
+            Effect::Doubler {
+                delay_ms,
+                detune_ms,
+                ..
+            } => (((delay_ms + detune_ms) * 0.001 * sample_rate as f32) as usize).min(cap),
             // The pitch shifter's delay line starts empty; without a pre-roll its taps
             // read silence for the first grain and the region swells in. Fill it.
             Effect::PitchShift { .. } => pitch::GRAIN.min(cap),
@@ -454,8 +490,11 @@ impl Effect {
                     if mix <= MOD_BYPASS)
             || matches!(
                 *self,
-                Effect::Tremolo { depth, .. } | Effect::AutoPan { depth, .. }
+                Effect::Tremolo { depth, .. }
+                    | Effect::AutoPan { depth, .. }
+                    | Effect::TranceGate { depth, .. }
                     if depth <= MOD_BYPASS)
+            || matches!(*self, Effect::Doubler { mix, .. } if mix <= MOD_BYPASS)
             || matches!(*self, Effect::PitchShift { semitones, mix }
                 if semitones.abs() <= PITCH_BYPASS_ST || mix <= MOD_BYPASS)
             || matches!(*self, Effect::DeHum { depth, .. } if depth <= HUM_BYPASS_DEPTH)

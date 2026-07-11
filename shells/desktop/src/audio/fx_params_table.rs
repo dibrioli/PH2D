@@ -157,6 +157,19 @@ static AUTO_PAN: [FxParamSpec; 2] = [
     spec("Rate", 0.05, 8.0, true, 1.0, "Hz", false),
     spec("Depth", 0.0, 1.0, false, 0.0, "", false),
 ];
+// Depth is the arm (0 = gain stays open). Smooth is a time (log): short = stutter.
+// Default 12 Hz — a fast, immediately-audible stutter (sixteenths near 180 BPM).
+static TRANCE_GATE: [FxParamSpec; 3] = [
+    spec("Rate", 0.5, 16.0, true, 12.0, "Hz", false),
+    spec("Depth", 0.0, 1.0, false, 0.0, "", false),
+    spec("Smooth", 0.001, 0.05, true, 0.005, "s", false),
+];
+// Mix is the arm. Delay/Detune are in ms (the doubled voice's tap + sweep).
+static DOUBLER: [FxParamSpec; 3] = [
+    spec("Delay", 5.0, 40.0, true, 20.0, "ms", false),
+    spec("Detune", 0.5, 15.0, false, 6.0, "ms", false),
+    spec("Mix", 0.0, 1.0, false, 0.0, "", false),
+];
 // Mix is the arm (0 = dry = pass-through). Freq is the carrier, log-swept across the
 // low-mid band where the robot/metallic character lives.
 static RING_MOD: [FxParamSpec; 2] = [
@@ -172,7 +185,7 @@ static PITCH_SHIFT: [FxParamSpec; 2] = [
 
 /// The effects the selector cycles, in order — grouped tone → dynamics → character
 /// → space, the way a rack is laid out.
-pub(crate) static KINDS: [FxKind; 26] = [
+pub(crate) static KINDS: [FxKind; 28] = [
     FxKind {
         name: "Low-Pass",
         params: &LOW_PASS,
@@ -450,6 +463,30 @@ pub(crate) static KINDS: [FxKind; 26] = [
             FxCommand::Plain(Effect::AutoPan {
                 rate: v[0],
                 depth: v[1],
+            })
+        },
+    },
+    FxKind {
+        name: "Trance Gate",
+        params: &TRANCE_GATE,
+        arms: &[1], // Depth
+        build: |v| {
+            FxCommand::Plain(Effect::TranceGate {
+                rate: v[0],
+                depth: v[1],
+                smooth_secs: v[2],
+            })
+        },
+    },
+    FxKind {
+        name: "Doubler",
+        params: &DOUBLER,
+        arms: &[2], // Mix
+        build: |v| {
+            FxCommand::Plain(Effect::Doubler {
+                delay_ms: v[0],
+                detune_ms: v[1],
+                mix: v[2],
             })
         },
     },

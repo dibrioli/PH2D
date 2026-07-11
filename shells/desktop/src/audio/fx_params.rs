@@ -289,6 +289,8 @@ mod tests {
                 "Phaser",
                 "Tremolo",
                 "Auto-Pan",
+                "Trance Gate",
+                "Doubler",
                 "Ring Mod",
                 "Pitch Shift",
             ]

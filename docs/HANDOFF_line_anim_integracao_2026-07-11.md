@@ -271,9 +271,31 @@ novos de slope + 154 anim+timeline + 290 total com painel + clippy `--all-target
 
 ---
 
+## 16. Feature W5 — Performing / Record (gravar durante o play, `26a77af4`)
+
+**O quê (pedido do Enio, 2026-07-11):** um toggle **Record** novo na barra de transporte (ao lado do AutoKey). Com Record armado **e tocando**, arrastar um objeto **grava a pose ao vivo** ao longo do playhead — mocap na mão, 1 key por frame de display, o traço inteiro em **1 passo de undo**.
+
+**O AVISO DO ENIO (autoplay+play gravava keys) honrado por CONSTRUÇÃO.** O guard de captura:
+```
+let capturing = if playing { performing && drag_now } else { armed };
+```
+No play, só grava com **gesto de gizmo ATIVO** (`drag_now`). A pose passiva que a animação está dirigindo **nunca** minta key — um Play puro, mesmo com **AutoKey armado**, grava zero. Segunda barreira independente: o diff do autokey compara no **relógio CRU do apply** (o fix da §15/B6) — sem movimento real, `autokey_props` retorna vazio. Duas camadas, mesmo resultado: **nada grava sem o usuário arrastar**.
+
+**Por que é limpo:** o `autokey_pass::run` roda DEPOIS do `timeline_bridge::run`, que pula a entidade em drag no apply (`live_entity`) — então a pose lida da entidade arrastada é a do usuário, e as não-arrastadas ficam on-curve (o apply as escreveu) → o diff só pega a arrastada. O bracket de undo reusa o de gizmo-drag: um record atravessa N frames de play mas commita **1 step** quando o drag solta.
+
+**Costura (7 pontas, DIRETIVA §2):** `TimelineFlags.performing` + `TimelineIntent::SetPerforming` + `TimelineViewSnapshot.performing` (motor, `ph2d-timeline`) · `TIMELINE_RECORD` id + i18n `panel.timeline.record="Record"` (editor-core/i18n) · populate + paint na barra + `is_toggle` no event + re-export (painel) · `intent_for_transport` → `SetPerforming` + o guard `capturing` (shell). **Zero contrato congelado; `DOC_VERSION` intacto** (`TimelineFlags` não é serializado). Método novo `MockPanelHost::set_toggle_on` no testkit (append-only, espelha `set_slider_value`).
+
+**Símbolos novos (grep de colisão):** `TimelineFlags.performing` · `TimelineIntent::SetPerforming` · `TimelineViewSnapshot.performing` · `TIMELINE_RECORD` (`hash("timeline.record")`) · i18n `panel.timeline.record` · `apply_samples` ganhou o param `performing: bool` · `MockPanelHost::set_toggle_on`.
+
+**Prova IRREFUTÁVEL (5 testes + mutação):** `a_plain_play_with_autokey_armed_records_nothing` (o aviso exato do Enio) · `performing_without_a_drag_records_nothing` (é o GESTO que grava, não a pose) · `performing_with_a_drag_records_the_dragged_pose` (a feature) · `performing_is_inert_when_paused` (só modo de play) · `a_performing_session_is_one_undo_step`. **Mutação dirigida** (`capturing = if playing { true }`, capturar sempre no play) → os **2 testes do aviso ficam vermelhos**, o de gravar-com-drag segue verde — prova de que o guard é o que impede o autoplay de gravar. Mais o seam do toggle Record (→ shell) + o intent test. Gate: **1283/1283** nas 5 crates + clippy `--all-targets` + fmt pin + LOC caps (autokey_pass 234/600).
+
+**Smoke do Enio (pendente):** anime um sprite (2 keys) → **arme Record** → **Play** → durante o play **arraste o objeto** → a trajetória é gravada como keys ao longo do tempo; solte → 1 Ctrl+Z desfaz a sessão inteira. **Prova do aviso:** Play **sem arrastar** (com AutoKey OU Record armado) → **nenhum** key novo. Record é modal (off por default).
+
+---
+
 ## Cauda da W4 ainda aberta (para a próxima rodada — decisão do Enio)
 
 - **W4.T4** — docar a timeline no `motion_timeline_slot` quando o split do Motion está ativo (coordenação leve com Motion).
 - **W4.T7** — unificar o relógio: `MotionTransport` derivar do `Playhead` + remover transporte duplicado em `motion_bridge.rs` (coordenação leve com Motion).
 - **W4.T6 (= B5)** — save de projeto unificado cena+timeline + id estável de entity (**deferido** — cross-cutting, esforço coordenado, não landar solo).
-- **W5** — backlog pós-v1 (Enio prioriza).
+- **W5 restante** (Performing **landou** §16): NLA / multi-clip UI (dado já é `Vec<NamedClip>`, só a UI falta) · markers→signals · MCP/Luau · bake curves→keyframes · export.

@@ -35,6 +35,24 @@ pub(super) fn dispatch_down<'frame>(
 ) {
     let hit = hit_index.hit_with_rect(event.x, event.y);
 
+    // With a context menu open, a non-Secondary Down on a graph / timeline
+    // surface is a DISMISSAL, not a gesture: the menus float OVER those
+    // surfaces, so "clicking outside the menu" usually lands on one — and the
+    // captures below would both start a gesture under the menu and `return`
+    // before the close-on-outside block ever ran (an easing submenu that never
+    // closed, Enio 2026-07-11). Fully consumed: the dismissing click must not
+    // box-select / drag what it happened to land on. Secondary falls through —
+    // right-click relocates the menu via `handle_down_menus` / the graph's own
+    // add-menu, exactly as with no menu open.
+    if store.context_menu().is_some()
+        && event.button != ph2d_host::PointerButton::Secondary
+        && let Some((id, _)) = hit
+        && (store.graph_surface_at_id(id).is_some() || store.timeline_surface_at_id(id).is_some())
+    {
+        store.close_context_menu();
+        return;
+    }
+
     // Motion Nodes M0.T3 — a graph surface captures the pointer for ALL buttons
     // (incl. Secondary/Middle), BEFORE the context-menu delegation, so a
     // right-click on the graph opens the graph's own add-menu (panel-side)

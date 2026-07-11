@@ -441,6 +441,42 @@ fn a_primary_press_on_a_summary_column_captures_a_drag_gesture() {
 }
 
 #[test]
+fn a_primary_down_over_the_dope_sheet_closes_an_open_menu_instead_of_dragging() {
+    // The menus float OVER the dope-sheet, so "clicking outside the menu" lands
+    // on a timeline surface — which used to CAPTURE the Down and return before
+    // the close-on-outside ever ran: an easing submenu that never closed, plus
+    // a box-select silently begun under it (Enio, 2026-07-11).
+    use crate::interaction::{ContextMenuKind, ContextMenuRequest, TimelineInterpScope};
+    let (mut store, hits) = timeline_setup(TimelineHitKind::Lane);
+    store.open_context_menu(ContextMenuRequest {
+        x: 300.0,
+        y: 100.0,
+        kind: ContextMenuKind::TimelineSegmentEase {
+            scope: TimelineInterpScope::Key { target: 42, key: 3 },
+            mode: crate::ids::TL_EASE_MODE_IN,
+        },
+    });
+    let arena = Bump::new();
+    let _ = dispatch_pointer(
+        &mut store,
+        &hits,
+        pointer(PointerKind::Down, 60.0, 60.0),
+        &arena,
+    );
+    assert_eq!(
+        store.context_menu(),
+        None,
+        "a primary Down outside the menu must close it"
+    );
+    assert_eq!(
+        store.drain_timeline_gestures().count(),
+        0,
+        "and must NOT start a gesture under it"
+    );
+    assert_eq!(store.active_id(), None, "nor capture the pointer");
+}
+
+#[test]
 fn right_clicking_an_empty_lane_opens_no_menu() {
     // The lane owns box-select, not a preset; and the timeline is not an
     // annotation surface, so the CreateNote fallback must not fire either.

@@ -145,6 +145,12 @@ static TREMOLO: [FxParamSpec; 2] = [
     spec("Rate", 0.1, 16.0, true, 5.0, "Hz", false),
     spec("Depth", 0.0, 1.0, false, 0.0, "", false),
 ];
+// Depth is the arm (0 = both channels at unity). Rate sweeps slower than a tremolo —
+// a pan you follow, not a flutter.
+static AUTO_PAN: [FxParamSpec; 2] = [
+    spec("Rate", 0.05, 8.0, true, 1.0, "Hz", false),
+    spec("Depth", 0.0, 1.0, false, 0.0, "", false),
+];
 // Mix is the arm (0 = dry = pass-through). Freq is the carrier, log-swept across the
 // low-mid band where the robot/metallic character lives.
 static RING_MOD: [FxParamSpec; 2] = [
@@ -160,7 +166,7 @@ static PITCH_SHIFT: [FxParamSpec; 2] = [
 
 /// The effects the selector cycles, in order — grouped tone → dynamics → character
 /// → space, the way a rack is laid out.
-pub(crate) static KINDS: [FxKind; 24] = [
+pub(crate) static KINDS: [FxKind; 25] = [
     FxKind {
         name: "Low-Pass",
         params: &LOW_PASS,
@@ -414,6 +420,17 @@ pub(crate) static KINDS: [FxKind; 24] = [
         arms: &[1], // Depth
         build: |v| {
             FxCommand::Plain(Effect::Tremolo {
+                rate: v[0],
+                depth: v[1],
+            })
+        },
+    },
+    FxKind {
+        name: "Auto-Pan",
+        params: &AUTO_PAN,
+        arms: &[1], // Depth
+        build: |v| {
+            FxCommand::Plain(Effect::AutoPan {
                 rate: v[0],
                 depth: v[1],
             })

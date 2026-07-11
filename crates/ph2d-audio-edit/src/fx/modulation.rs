@@ -1,10 +1,12 @@
-//! Modulation effects for the rack: chorus, flanger, phaser, tremolo, ring mod.
+//! Modulation effects for the rack: chorus, flanger, phaser, tremolo, ring mod,
+//! auto-pan.
 //!
 //! All are **length-preserving** (they route through [`crate::in_range_warm`] like
 //! the filters). Chorus and flanger share a modulated fractional-delay line; the
 //! phaser is a modulated all-pass cascade; tremolo is sub-audio amplitude modulation;
-//! ring mod is amplitude modulation by an *audio-rate* carrier. The first four ride a
-//! **sine LFO**; the ring modulator's sine is the carrier itself.
+//! auto-pan is the same but in counter-phase across the two channels; ring mod is
+//! amplitude modulation by an *audio-rate* carrier. All but ring mod ride a **sine
+//! LFO**; the ring modulator's sine is the carrier itself.
 //!
 //! Control thread only — allocates and uses `sin`/`tan` freely.
 
@@ -179,6 +181,38 @@ pub(super) fn ring_mod(data: &SampleData, freq: f32, mix: f32) -> SampleData {
         phase += step;
         if phase >= TAU {
             phase -= TAU;
+        }
+    }
+    SampleData::from_interleaved(out, data.format())
+}
+
+/// **Auto-pan**: a stereo LFO that walks the signal left↔right. Where tremolo dips
+/// both channels together, this dips them in **counter-phase** — as the left gain
+/// falls the right rises — so the image sweeps across the field instead of pulsing in
+/// place. `depth` (0..1) sets how far it travels; 0 leaves both gains at unity (the
+/// neutral point), 1 sweeps fully hard-left to hard-right.
+///
+/// A **balance** pan law (not constant-power): centre is exactly unity, so `depth` 0
+/// is a byte-identical no-op. On a mono clip there is nothing to pan, so it collapses
+/// to the two gains landing on the one channel — effectively a tremolo; the sweep
+/// needs two channels to be heard.
+pub(super) fn auto_pan(data: &SampleData, rate_hz: f32, depth: f32) -> SampleData {
+    let sr = data.format().sample_rate as f32;
+    let ch = channels(data);
+    let frames = data.frame_count();
+    let depth = depth.clamp(0.0, 1.0);
+    let step = TAU * rate_hz / sr;
+    let src = data.samples();
+    let mut out = src.to_vec();
+    for f in 0..frames {
+        // Pan position in [-depth, depth]: negative = left, positive = right.
+        let p = depth * (step * f as f32).sin();
+        // Balance law: the side you pan toward stays at unity, the other ducks.
+        let gain_l = 1.0 - p.max(0.0);
+        let gain_r = 1.0 + p.min(0.0);
+        for c in 0..ch {
+            let g = if c == 0 { gain_l } else { gain_r };
+            out[f * ch + c] = src[f * ch + c] * g;
         }
     }
     SampleData::from_interleaved(out, data.format())
@@ -394,5 +428,31 @@ mod tests {
             deep.samples().iter().all(|s| s.abs() <= 1.0 + 1e-4),
             "ring mod clipped"
         );
+    }
+
+    /// Depth 0 leaves both gains at exactly unity — a byte-identical no-op.
+    #[test]
+    fn auto_pan_at_zero_depth_is_identity() {
+        let d = probe();
+        assert_eq!(auto_pan(&d, 1.0, 0.0).samples(), d.samples());
+    }
+
+    /// THE auto-pan contract: the image swings both ways. With a steady stereo signal
+    /// the left-minus-right difference reaches strongly positive (panned left) and
+    /// strongly negative (panned right) over one LFO cycle — and never clips.
+    #[test]
+    fn auto_pan_moves_the_image_side_to_side() {
+        let d = stereo(vec![0.8f32; 48_000]); // 24 000 stereo frames of DC
+        let out = auto_pan(&d, 2.0, 1.0); // 2 Hz, full sweep
+        let s = out.samples();
+        let (mut max_lr, mut min_lr) = (f32::MIN, f32::MAX);
+        for f in 0..24_000 {
+            let lr = s[f * 2] - s[f * 2 + 1];
+            max_lr = max_lr.max(lr);
+            min_lr = min_lr.min(lr);
+        }
+        assert!(max_lr > 0.5, "never panned hard left: max L-R {max_lr}");
+        assert!(min_lr < -0.5, "never panned hard right: min L-R {min_lr}");
+        assert!(s.iter().all(|v| v.abs() <= 1.0 + 1e-4), "auto-pan clipped");
     }
 }

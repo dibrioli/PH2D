@@ -32,7 +32,7 @@ use ph2d_audio::dsp::{BiquadCoeffs, Delay, Reverb};
 use deess::deess;
 use deplosive::deplosive;
 use dynamics::{compress, gate, leveler, limit};
-use modulation::{modulated_delay, phaser, ring_mod, tremolo};
+use modulation::{auto_pan, modulated_delay, phaser, ring_mod, tremolo};
 use pitch::{PITCH_BYPASS_ST, pitch_shift};
 use space::{pingpong, render_wet};
 use tone::{HUM_Q, biquad_all, bitcrush, dehum, saturate, stereo_width};
@@ -213,6 +213,14 @@ pub enum Effect {
         /// Modulation depth (0..1); 1 dips to silence at each trough.
         depth: f32,
     },
+    /// **Auto-pan**: a counter-phase stereo LFO that walks the image left↔right.
+    /// Neutral at `depth` 0 (both channels stay at unity).
+    AutoPan {
+        /// LFO rate (Hz).
+        rate: f32,
+        /// Sweep depth (0..1); 1 walks fully hard-left to hard-right.
+        depth: f32,
+    },
     /// **Ring modulator**: multiplies the signal by an audio-rate sine carrier at
     /// `freq` — the robot / metallic voice. `mix` crossfades dry→wet. Neutral at
     /// `mix` 0 (fully dry).
@@ -327,6 +335,7 @@ impl Effect {
                 phaser(data, rate, depth, mix)
             }
             Effect::Tremolo { rate, depth } if depth > MOD_BYPASS => tremolo(data, rate, depth),
+            Effect::AutoPan { rate, depth } if depth > MOD_BYPASS => auto_pan(data, rate, depth),
             Effect::RingMod { freq, mix } if mix > MOD_BYPASS => ring_mod(data, freq, mix),
             // Needs a real shift AND some wet: either at neutral is a pass-through.
             Effect::PitchShift { semitones, mix }
@@ -426,7 +435,10 @@ impl Effect {
                     | Effect::Phaser { mix, .. }
                     | Effect::RingMod { mix, .. }
                     if mix <= MOD_BYPASS)
-            || matches!(*self, Effect::Tremolo { depth, .. } if depth <= MOD_BYPASS)
+            || matches!(
+                *self,
+                Effect::Tremolo { depth, .. } | Effect::AutoPan { depth, .. }
+                    if depth <= MOD_BYPASS)
             || matches!(*self, Effect::PitchShift { semitones, mix }
                 if semitones.abs() <= PITCH_BYPASS_ST || mix <= MOD_BYPASS)
             || matches!(*self, Effect::DeHum { depth, .. } if depth <= HUM_BYPASS_DEPTH)

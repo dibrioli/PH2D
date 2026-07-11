@@ -287,6 +287,7 @@ mod tests {
                 "Flanger",
                 "Phaser",
                 "Tremolo",
+                "Auto-Pan",
                 "Ring Mod",
                 "Pitch Shift",
             ]

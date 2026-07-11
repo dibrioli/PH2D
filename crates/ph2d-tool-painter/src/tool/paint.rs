@@ -508,6 +508,25 @@ pub(crate) struct PaintState {
     /// foreign mutation (undo, layer switch, fill, resize, other tools) swaps the canvas Arc, so a
     /// failed `Arc::ptr_eq` at pen-down ends the session — no per-site invalidation hooks needed.
     wet_session_canvas: Option<Arc<Vec<u8>>>,
+    /// **Live-editable wash** (Enio 2026-07-11): the LAST committed wash stays re-renderable while the
+    /// paper is still wet (until the next stroke or Dry), so changing a Grain/Paper texture param
+    /// (Size/Angle/Offset/kind/…) re-renders the whole wash — central AND every Tiling copy — instead of
+    /// only affecting the NEXT stroke. This is the pre-wash BASE + the frozen GROUND our last bake
+    /// composited over; `apply_watercolor` reconstructs the wash from them over [`Self::wet_editable_region`]
+    /// with the CURRENT brush texture. `None` ⇒ no editable wash (byte-identical: nothing re-renders).
+    wet_editable_base: Option<Arc<Vec<u8>>>,
+    /// The frozen GROUND ([`Self::wet_backdrop`]) of the editable wash — kept past `close_stroke` (which
+    /// drops the live one) so the re-render's Beer–Lambert base matches the committed look.
+    wet_editable_backdrop: Option<Arc<Vec<u8>>>,
+    /// The committed wash's footprint (already full-axis on a tiled axis, from `dab_batch_region`), so the
+    /// live re-render touches exactly the wash + its Tiling copies, not the whole canvas.
+    wet_editable_region: Option<Region>,
+    /// The `(Grain, Paper)` texture settings the editable wash was last rendered with — the paint tick
+    /// re-renders when the live brush's slots differ (a param moved), then refreshes this. `None` ⇒ inert.
+    wet_editable_tex: Option<(
+        ph2d_painter_brush::TextureSettings,
+        ph2d_painter_brush::TextureSettings,
+    )>,
     /// Manual Shape stamp (Automatic OFF): the tip image's luminance NORMALISER (`1 / max_lum`,
     /// `1.0` when no image / all-black). The watercolor coverage is WETNESS GEOMETRY (a max-blend
     /// union that must SATURATE in the wash core — `cw → 1` gives the body, `inner → 1` confines the

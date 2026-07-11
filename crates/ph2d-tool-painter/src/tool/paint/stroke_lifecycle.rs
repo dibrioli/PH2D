@@ -184,6 +184,17 @@ impl PainterTool {
         // Keep the auto-centre symmetry pivot on the canvas centre every frame (also no-op when idle),
         // so the dashed overlay guide stays correct after a resize / fresh-sprite bind without paint.
         self.resolve_symmetry_geometry();
+        // Live-editable wash (Enio 2026-07-11): while the paper is still wet and no stroke is open, a moved
+        // Grain/Paper texture param re-renders the WHOLE committed wash (central + every Tiling copy) so the
+        // wet wash reflects the new texture live — not only the next stroke. Inert unless a param changed.
+        if self.paint.stroke.is_none()
+            && self.watercolor_render_active()
+            && self.paint.wet_editable_base.is_some()
+            && self.paint.wet_editable_tex
+                != Some((self.paint.brush.texture, self.paint.brush.paper))
+        {
+            self.rerender_editable_wash();
+        }
         let parked = !self.paint.moved_this_frame;
         self.paint.moved_this_frame = false;
         let Some(mut stroke) = self.paint.stroke.take() else {
@@ -257,12 +268,29 @@ impl PainterTool {
         // Watercolor render-path: bake the final optical composite over the frozen base (`commit` drops
         // the base). BEFORE close_stroke so pre-stroke → wash is one undo step (mirror of heal_inpaint).
         if self.watercolor_render_active() {
-            self.apply_watercolor(true);
+            // Keep the pre-wash BASE + frozen GROUND the bake composites over, so the wash stays
+            // re-renderable while the paper is wet (live Grain/Paper edits, Enio 2026-07-11): the commit
+            // drops the live base and `close_stroke` drops the ground, so capture them first.
+            let editable_base = self
+                .paint
+                .wet_session_base
+                .clone()
+                .or_else(|| self.paint.watercolor_base.clone());
+            let editable_backdrop = self.paint.wet_backdrop.clone();
+            let region = self.apply_watercolor(true);
             // EDGE-1: pour the wash into the persistent moisture map AFTER the bake, then arm the
             // session guard — the exact canvas Arc our bake produced. A stroke landing while the
             // paper is still wet AND the guard still matches continues this wash (union re-bake).
             self.pour_canvas_wet();
             self.paint.wet_session_canvas = Some(Arc::clone(&self.canvas_rgba));
+            // Arm the live-editable wash over the committed footprint (already full-axis on a tiled axis).
+            if let (Some(base), Some(region)) = (editable_base, region) {
+                self.paint.wet_editable_base = Some(base);
+                self.paint.wet_editable_backdrop = editable_backdrop;
+                self.paint.wet_editable_region = Some(region);
+                self.paint.wet_editable_tex =
+                    Some((self.paint.brush.texture, self.paint.brush.paper));
+            }
         }
         self.close_stroke();
     }

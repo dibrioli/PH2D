@@ -12855,6 +12855,89 @@ fn watercolor_tiling_wraps_the_wash_across_the_seam() {
     );
 }
 
+/// **A texture-param change re-renders the still-wet wash — central AND every Tiling copy (Enio
+/// 2026-07-11).** After pen-up the wash bakes, but the last wash stays re-renderable while the paper is
+/// wet: changing the Grain Size re-renders the whole committed wash (not just the next stroke). The setter
+/// alone is inert (only stores the value); the paint tick applies it. With Tiling on, the WRAPPED copy
+/// re-renders too. RED before the feature: the baked wash never reacts to a Size change.
+#[test]
+fn watercolor_texture_size_rerenders_the_wet_wash_and_all_tiles() {
+    let size = 64u32;
+    let mut t = white_canvas(size, 8.0);
+    t.paint.brush = BrushSpec {
+        radius_px: 8.0,
+        hardness: 1.0,
+        falloff: Falloff::Constant,
+        color: [0.1, 0.2, 0.7],
+        space_attenuation: false,
+        watercolor: true,
+        fill: 0.6,
+        depth: 2.0,
+        edge_gain: 2.0,
+        edge_spread: 4.0,
+        granulation: 1.0, // granulation ON so the Grain texture modulates the wash visibly
+        texture: ph2d_painter_brush::TextureSettings {
+            kind: ph2d_painter_brush::TextureKind::Noise,
+            size: [1.0, 1.0],
+            ..Default::default()
+        },
+        ..Default::default()
+    };
+    for slot in &mut t.paint.brush_by_mode {
+        *slot = t.paint.brush;
+    }
+    t.paint.tiling = [true, true];
+
+    // Paint a wash at x=62 (footprint [54,70] crosses the far edge ⇒ a wrapped copy paints x∈[0,6]); lift.
+    assert!(t.on_canvas_pointer(cp([62.0, 32.0], PointerPhase::Down)));
+    t.on_canvas_pointer(cp([62.0, 32.0], PointerPhase::Up));
+
+    let central_before = px(&t, size, 60, 32);
+    let wrapped_before = px(&t, size, 2, 32);
+    assert_ne!(
+        central_before,
+        [255, 255, 255, 255],
+        "the wash baked at the right edge"
+    );
+    assert_ne!(
+        wrapped_before,
+        [255, 255, 255, 255],
+        "tiling wrapped the wash to the left edge"
+    );
+
+    // The setter alone only STORES the value — the baked canvas is untouched until the tick applies it.
+    t.set_brush_texture_size(0, 6.0);
+    assert_eq!(
+        px(&t, size, 60, 32),
+        central_before,
+        "the Size setter must not touch the canvas by itself"
+    );
+
+    // The paint tick re-renders the still-wet wash with the new Grain Size.
+    t.paint_tick(0.016);
+    let central_after = px(&t, size, 60, 32);
+    let wrapped_after = px(&t, size, 2, 32);
+    assert_ne!(
+        central_before, central_after,
+        "the wet wash re-rendered centrally with the new Grain Size"
+    );
+    assert_ne!(
+        wrapped_before, wrapped_after,
+        "the WRAPPED Tiling copy re-rendered too (all tiles update together)"
+    );
+
+    // Once the session dries the wash is permanent — a further Size change no longer re-renders it.
+    t.dry_session_now();
+    let dry_before = px(&t, size, 60, 32);
+    t.set_brush_texture_size(0, 12.0);
+    t.paint_tick(0.016);
+    assert_eq!(
+        px(&t, size, 60, 32),
+        dry_before,
+        "a dried wash is permanent — texture edits no longer re-render it"
+    );
+}
+
 /// **Alpha-lock is a no-op where the layer is fully opaque (byte-identical, §0.6).** On an opaque
 /// canvas every texel has `ka = 1` ⇒ the splat gate is `1.0` and the composite's α-pin re-writes the
 /// already-opaque α — so a locked stroke must be byte-for-byte the same as the unlocked one.

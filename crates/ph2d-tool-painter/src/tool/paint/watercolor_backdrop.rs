@@ -31,6 +31,9 @@ impl PainterTool {
         }
         self.paint.watercolor_base = Some(Arc::clone(&self.canvas_rgba));
         self.paint.wet_backdrop = Some(Arc::new(self.build_wet_backdrop()));
+        // A new wet render supersedes any live-editable wash — the previous one is now permanent (it was
+        // baked into `canvas_rgba` at its pen-up, which THIS base freeze captured). Drop its snapshot.
+        self.clear_wet_editable();
         if !wet_session {
             self.paint.wet_soak.iter_mut().for_each(|s| *s = 0);
             self.paint.wet_soak_active = false;
@@ -405,6 +408,53 @@ impl PainterTool {
         self.paint.wet_cum_dirty = None;
         self.paint.wet_stroke_dirty = None;
         self.paint.wet_session_wetness = 0.0; // the forced "Wet the layer" rewet ends with the session (#3)
+        self.clear_wet_editable(); // the wash is now permanent — no more live texture edits
+    }
+
+    /// Drop the live-editable wash snapshot (Enio 2026-07-11): the last wash stops re-rendering on a
+    /// texture-param change. Called when the wash becomes permanent — the session dries or a NEW wet render
+    /// starts (a fresh ground is frozen). The baked pixels in `canvas_rgba` are untouched.
+    pub(super) fn clear_wet_editable(&mut self) {
+        self.paint.wet_editable_base = None;
+        self.paint.wet_editable_backdrop = None;
+        self.paint.wet_editable_region = None;
+        self.paint.wet_editable_tex = None;
+    }
+
+    /// Re-render the **live-editable wash** (Enio 2026-07-11): reconstruct the LAST committed wash from its
+    /// kept pre-wash base + frozen ground with the CURRENT brush texture, over the committed footprint
+    /// (already full-axis on a tiled axis ⇒ central AND every Tiling copy). Driven by the paint tick when a
+    /// Grain/Paper param moved while the paper is still wet, so the wash reflects the new texture live — not
+    /// only the next stroke. No editable wash / mis-sized buffers ⇒ no-op (byte-identical).
+    pub(super) fn rerender_editable_wash(&mut self) {
+        let (Some(base), Some(region)) = (
+            self.paint.wet_editable_base.clone(),
+            self.paint.wet_editable_region,
+        ) else {
+            return;
+        };
+        let (fw, fh) = self.source_size;
+        let n = (fw as usize) * (fh as usize);
+        if n == 0
+            || base.len() != n * 4
+            || self.paint.stroke_coverage.len() != n
+            || self.paint.stroke_color.len() != n * 4
+        {
+            return;
+        }
+        // `close_stroke` dropped the live base + ground; point the render at the kept snapshot and force the
+        // committed footprint dirty, then reconstruct the wash with the CURRENT texture (`apply_watercolor`
+        // reads `brush.texture`/`paper`). `commit=false` keeps the base for the next edit.
+        self.paint.watercolor_base = Some(Arc::clone(&base));
+        self.paint.wet_backdrop = self.paint.wet_editable_backdrop.clone();
+        self.paint.wet_frame_dirty = Some(region);
+        self.apply_watercolor(false);
+        // Keep ONLY the snapshot live (mirror the post-`close_stroke` state) and re-arm the session guard —
+        // `apply_watercolor`'s `Arc::make_mut` forked `canvas_rgba`, so the old guard Arc no longer matches.
+        self.paint.watercolor_base = None;
+        self.paint.wet_backdrop = None;
+        self.paint.wet_session_canvas = Some(Arc::clone(&self.canvas_rgba));
+        self.paint.wet_editable_tex = Some((self.paint.brush.texture, self.paint.brush.paper));
     }
 
     /// EDGE-1 (doc 13 #10 + doc 14 #3): **Wet the layer** (Rebelle). Re-moisten the whole canvas WITHOUT

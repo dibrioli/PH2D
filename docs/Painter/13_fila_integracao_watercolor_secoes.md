@@ -108,7 +108,7 @@ composite. Corpo molhado + rim no contorno EXTERNO + textura como variação de 
 
 | # | Item | Estado hoje | Nota |
 |---|---|---|---|
-| 2 | **Tiling** | ignorado (a replicação `tiled_dabs` vive em `stamp_dabs_routed`, depois do desvio) | replicar os dabs antes do accumulate; o composite/dirty-rect precisa do wrap também |
+| 2 | **Tiling** | ✅ LANDOU 2026-07-11 | O desvio watercolor em `stamp_dabs` short-circuita ANTES do `tiled_dabs` do `stamp_dabs_routed`. Fix: replicar os dabs (`tiling::tiled_dabs`) **antes** dos dois accumulate (coverage+color, MESMA lista → rng em lock-step). Dirty-rect/composite **já** cobrem a borda oposta — `dab_batch_region` é tiling-aware (span inteiro do eixo com tiling ligado); só faltava os splats FORMAREM o wash lá. Rim/feather do wrap clampa na borda (não-toroidal) = **consistente com o brush comum**. Off ⇒ byte-idêntico. Teste: `watercolor_tiling_wraps_the_wash_across_the_seam` (RED: sem o fix a borda oposta fica pristina). **Follow-up menor:** o `smear_wet_base` (Smudge>0) fica no chain cru sem wrap (rara tripla tiling+smudge+aquarela; Smudge off por default) |
 | 3 | **Stroke shape-editors** (Curve/Circle/Polygon/Free Hand) | deliberadamente plain (stampam sem lifecycle → sem base congelada) | dar lifecycle/óptica aos bakes dos editors |
 | 4 | **Blend dropdown** | nunca consultado (depósito source-over + óptica própria) | decisão de design: suportar × esconder/dim em modo aquarela (honestidade da UI) |
 | 5 | ~~**Composite Brush**~~ | ✅ escondido em modo aquarela (`a7712f45`, decisão Enio); Strength não some junto | — |

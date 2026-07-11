@@ -12649,6 +12649,50 @@ fn watercolor_alpha_lock_paints_only_into_existing_alpha() {
     }
 }
 
+/// **Tiling (doc 13 #2) — the watercolor wash wraps seamlessly across the sprite seam.** A wet dab
+/// hard against the right edge (radius crosses x=64) with X-tiling on must ALSO deposit the wrapped
+/// part on the left edge, so the painted texture tiles. RED before the fix: the watercolor route
+/// short-circuits `stamp_dabs` BEFORE `tiled_dabs`, so only the original (un-wrapped) dab forms.
+#[test]
+fn watercolor_tiling_wraps_the_wash_across_the_seam() {
+    let size = 64u32;
+    let mut t = white_canvas(size, 8.0);
+    t.paint.brush = BrushSpec {
+        radius_px: 8.0,
+        hardness: 1.0,
+        falloff: Falloff::Constant,
+        color: [0.1, 0.2, 0.7],
+        space_attenuation: false,
+        watercolor: true,
+        fill: 0.6,
+        depth: 2.0,
+        edge_gain: 2.0,
+        edge_spread: 4.0,
+        ..Default::default()
+    };
+    for slot in &mut t.paint.brush_by_mode {
+        *slot = t.paint.brush;
+    }
+    t.paint.tiling = [true, false]; // seamless wrap on X
+
+    // Dab at x=62 (r=8 ⇒ footprint [54,70] crosses the far edge at x=64).
+    assert!(t.on_canvas_pointer(cp([62.0, 32.0], PointerPhase::Down)));
+    t.on_canvas_pointer(cp([62.0, 32.0], PointerPhase::Up));
+
+    assert_ne!(
+        px(&t, size, 61, 32),
+        [255, 255, 255, 255],
+        "the wash landed on the right edge"
+    );
+    // The wrapped copy (shifted −64 ⇒ centre −2, footprint [−10,6]) paints x∈[0,6] on the left edge —
+    // unreachable from x=62 without the wrap (distance 60 ≫ radius 8), so any paint here IS the tile.
+    assert_ne!(
+        px(&t, size, 2, 32),
+        [255, 255, 255, 255],
+        "tiling wrapped the wash onto the left edge (seamless seam)"
+    );
+}
+
 /// **Alpha-lock is a no-op where the layer is fully opaque (byte-identical, §0.6).** On an opaque
 /// canvas every texel has `ka = 1` ⇒ the splat gate is `1.0` and the composite's α-pin re-writes the
 /// already-opaque α — so a locked stroke must be byte-for-byte the same as the unlocked one.

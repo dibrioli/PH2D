@@ -45,12 +45,26 @@ impl PainterTool {
         // them here painted NOTHING and leaked never-cleared coverage. With the gate they fall through to
         // the plain deposit (the shape paints; the watercolor optics stay a stroke-methods feature).
         if self.watercolor_render_active() && self.paint.watercolor_base.is_some() {
-            self.accumulate_wet_coverage(dabs);
+            // Seamless Tiling (doc 13 #2): replicate the dabs across the wrapped sprite edges BEFORE the
+            // accumulate, so an edge-crossing wash also FORMS on the opposite edge (the divergence above
+            // short-circuits before `stamp_dabs_routed`'s own `tiled_dabs`). The splats are canvas-indexed
+            // (a wrapped dab's disc lands on the far edge) and `dab_batch_region` already spans the whole
+            // tiled axis, so the frame dirty rect + composite window follow. Both passes get the SAME
+            // wrapped list so their rng streams stay in lock-step. Off ⇒ the raw dabs (byte-identical).
+            let tiled;
+            let wet_dabs: &[Dab] = if self.paint.tiling[0] || self.paint.tiling[1] {
+                tiled = super::tiling::tiled_dabs(dabs, self.source_size, self.paint.tiling);
+                &tiled
+            } else {
+                dabs
+            };
+            self.accumulate_wet_coverage(wet_dabs);
             // Smudge > 0 = TRUE SMEAR: each dab physically drags the frozen base's paint dab-to-dab
             // (`smear_wet_base`) and the wash composites over the smeared base. Cumulative methods
             // only — the re-stamp previews (Drag Dot/Anchored/Line) would re-mutate the base every
             // frame. Off (default) → byte-identical. The wet-on-wet dissolve/lift (`wet_rewet`) is
-            // per-pixel in `apply_watercolor`, not here.
+            // per-pixel in `apply_watercolor`, not here. Smear needs the UNtiled dab CHAIN (a single
+            // source position dab-to-dab), so it keeps the raw `dabs` (its Tiling is a follow-up).
             if self.paint.brush.wet_smudge > 0.0
                 && !matches!(
                     self.paint.brush.stroke_method,
@@ -59,7 +73,7 @@ impl PainterTool {
             {
                 self.smear_wet_base(dabs);
             }
-            self.accumulate_wet_color(dabs);
+            self.accumulate_wet_color(wet_dabs);
             return;
         }
         // Two footprint gates share one snapshot: the Sculpt-style protection mask (freeze painted texels)

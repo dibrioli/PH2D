@@ -17,6 +17,26 @@ use ph2d_painter_brush::{
 pub const DRY_TIME_MIN_S: f32 = 2.0;
 pub const DRY_TIME_MAX_S: f32 = 60.0;
 
+/// Default **Paper** Size for a PROCEDURAL kind (`set_brush_paper_kind`). The paper is canvas-Tiled
+/// (`rel = px·size/256`), so Size `1` = 256-px features = "giant blobs"; this gives ~21-px features (a
+/// fine, legible paper tooth) instead. Not finer, because the panel preview shows `3·size` tiles — a much
+/// larger Size would mush the preview into an unreadable field (the user tunes finer from here if wanted).
+pub const PAPER_PROCEDURAL_DEFAULT_SIZE: f32 = 12.0;
+
+/// True when a Paper kind is a **procedural** pattern (canvas-Tiled, needs a fine default Size), as
+/// opposed to a baked 256² **preset** tile, a loaded **Image**, or **None** (all one full tile per 256 px
+/// ⇒ Size `1`). Used by [`PainterTool::set_brush_paper_kind`] to default the Size per scale class.
+fn is_procedural_paper(kind: TextureKind) -> bool {
+    !matches!(
+        kind,
+        TextureKind::None
+            | TextureKind::Image
+            | TextureKind::PaperCold
+            | TextureKind::PaperRough
+            | TextureKind::PaperHot
+    )
+}
+
 impl PainterTool {
     /// Route the Watercolor section controls (master enable + Pigment toggle + section reset, and the
     /// Edge / Spread / Granulation / Mix sliders) from the layers panel's generic channel to the
@@ -302,15 +322,31 @@ impl PainterTool {
         self.paint.paper_image_version = self.paint.paper_image_version.wrapping_add(1);
     }
 
-    /// Set the **Paper** slot kind (`TextureKind` wire u8) + force canvas-anchored mapping, and reset the
-    /// params to the kind's `param_specs` defaults — mirroring the Grain slot (`reset_texture_params`).
-    /// Without the reset the Paper slot kept the neutral `0.5` params, so e.g. Voronoi rendered with
-    /// Randomness `0.5` + Metric `0.5` (Chebyshev = square cells) instead of its own defaults (Randomness
-    /// `1.0` + Metric `0.0` = organic), looking nothing like the same kind in the Grain slot (Enio 2026-07-11).
+    /// Set the **Paper** slot kind (`TextureKind` wire u8) + force canvas-anchored mapping, reset the
+    /// params to the kind's `param_specs` defaults (mirroring the Grain slot's `reset_texture_params` —
+    /// without it Voronoi rendered with the neutral Randomness `0.5` + Metric `0.5` = Chebyshev square
+    /// cells instead of its own defaults, Enio 2026-07-11), and give a scale-appropriate default **Size**.
+    ///
+    /// The paper is canvas-**Tiled** (`rel = px·size/256`), so a PROCEDURAL at Size `1` shows 256-px
+    /// features — "giant blobs", nothing like paper tooth — while a baked 256² **preset** / a loaded
+    /// **Image** IS one full tile per 256 px (Size `1`). So a procedural defaults to a fine tooth
+    /// ([`PAPER_PROCEDURAL_DEFAULT_SIZE`]); a preset/image to `1`. The default only re-applies when the
+    /// SCALE CLASS changes (procedural ↔ bitmap), so switching between two procedural kinds preserves a
+    /// Size the user tuned (Enio 2026-07-11).
     pub fn set_brush_paper_kind(&mut self, k: u8) {
-        self.paint.brush.paper.kind = TextureKind::from_u8(k);
+        let old = self.paint.brush.paper.kind;
+        let kind = TextureKind::from_u8(k);
+        self.paint.brush.paper.kind = kind;
         self.paint.brush.paper.mapping = TextureMapping::Tiled;
         self.reset_paper_params();
+        if is_procedural_paper(kind) != is_procedural_paper(old) {
+            let s = if is_procedural_paper(kind) {
+                PAPER_PROCEDURAL_DEFAULT_SIZE
+            } else {
+                1.0 // baked preset tile / centred Image = one full 256-px tile
+            };
+            self.paint.brush.paper.size = [s, s];
+        }
     }
 
     /// Reset the Paper slot params to the active kind's `param_specs` defaults (unused slots stay at the

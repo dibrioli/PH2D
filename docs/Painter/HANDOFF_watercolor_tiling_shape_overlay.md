@@ -11,7 +11,9 @@
 ## 0. Estado da linha (commits locais desta jornada, do mais novo pro mais velho)
 
 ```
-<novo> fix(watercolor): Paper reseta params ao trocar kind (Voronoi casa Grain) ← ÚLTIMO
+<novo> feat(watercolor): Paper procedural default de Size fino (~21px, não blobs de 256) ← ÚLTIMO
+<novo> test(watercolor): guard all-kinds Paper==Grain params (fecha a classe do bug)
+<novo> fix(watercolor): Paper reseta params ao trocar kind (Voronoi casa Grain)
 <novo> fix(watercolor): grain casa a ESCALA do brush (ViewPlane→canvas por radius)
 <novo> feat(watercolor): Dots/Scales tilam seamless via hash-wrap (#2 Fase 2 completa)
 <novo> feat(watercolor): patterns analíticos tilam seamless sob Tiling (#2 Fase 2)

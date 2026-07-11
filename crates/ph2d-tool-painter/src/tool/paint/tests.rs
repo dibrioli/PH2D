@@ -4700,6 +4700,57 @@ fn paper_kind_change_resets_params_to_kind_defaults_matching_grain() {
     );
 }
 
+/// **A procedural Paper kind defaults to a FINE tooth Size; presets/Image stay at 1 (Enio 2026-07-11).**
+/// The paper is canvas-Tiled (`rel = px·size/256`), so a procedural at Size 1 shows 256-px "giant blobs".
+/// Picking a procedural defaults the Size to `PAPER_PROCEDURAL_DEFAULT_SIZE`; a baked preset / Image is one
+/// full tile per 256 px ⇒ Size 1. The default only re-applies when the SCALE CLASS changes (procedural ↔
+/// bitmap), so a Size the user tuned survives a switch between two procedural kinds.
+#[test]
+fn procedural_paper_defaults_to_a_fine_size_presets_stay_at_one() {
+    use super::watercolor_settings::PAPER_PROCEDURAL_DEFAULT_SIZE;
+    use ph2d_painter_brush::TextureKind;
+    let mut t = white_canvas(32, 8.0);
+    let fine = PAPER_PROCEDURAL_DEFAULT_SIZE;
+    assert!(
+        fine > 4.0,
+        "the fine default must be meaningfully finer than Size 1"
+    );
+
+    // None → procedural: class changes ⇒ fine default.
+    t.set_brush_paper_kind(TextureKind::Voronoi.to_u8());
+    assert_eq!(
+        t.brush_settings().paper_size,
+        [fine, fine],
+        "Voronoi paper gets the fine tooth default"
+    );
+
+    // Procedural → procedural: SAME class ⇒ a user-tuned Size survives the kind switch.
+    t.set_brush_paper_size(0, 30.0);
+    t.set_brush_paper_size(1, 30.0);
+    t.set_brush_paper_kind(TextureKind::Noise.to_u8());
+    assert_eq!(
+        t.brush_settings().paper_size,
+        [30.0, 30.0],
+        "tuned Size preserved within the procedural class"
+    );
+
+    // Procedural → baked preset: class changes ⇒ back to one full tile (Size 1).
+    t.set_brush_paper_kind(TextureKind::PaperCold.to_u8());
+    assert_eq!(
+        t.brush_settings().paper_size,
+        [1.0, 1.0],
+        "a baked preset resets to Size 1 (one 256² tile)"
+    );
+
+    // Preset → procedural again ⇒ the fine default returns.
+    t.set_brush_paper_kind(TextureKind::Checker.to_u8());
+    assert_eq!(
+        t.brush_settings().paper_size,
+        [fine, fine],
+        "back to the fine default for a procedural"
+    );
+}
+
 /// **Comprehensive guard: EVERY kind renders the same in Paper and Grain (Enio 2026-07-11).** The whole
 /// bug class the smoke surfaced is "a slot doesn't reset its params to the kind defaults, so the same kind
 /// looks different per slot". This sweeps all `TextureKind`s: after selecting a kind in BOTH slots, their

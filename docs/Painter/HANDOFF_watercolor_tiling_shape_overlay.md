@@ -11,7 +11,8 @@
 ## 0. Estado da linha (commits locais desta jornada, do mais novo pro mais velho)
 
 ```
-4fa05563 feat(watercolor): overlay editável CONTÍNUO (uma cópia), sem partir nos tiles   ← ÚLTIMO
+d9df426f fix(watercolor): overlay some além da costura — tiles do Repeat Image cobriam o chrome ← ÚLTIMO (resolve §1)
+4fa05563 feat(watercolor): overlay editável CONTÍNUO (uma cópia), sem partir nos tiles
 49216a01 feat(watercolor): edit-in-tile multi-shape — badges tiladas + grab de qualquer forma
 27bcd421 feat(watercolor): overlay 3×3 nos tiles p/ Ellipse/Polygon/Line (paridade visual)
 1633274a fix(watercolor): edit-in-tile por offset FIXO no gesto (corrige 2 bugs)
@@ -52,7 +53,32 @@ nextest-impacted escapam — o integrador drena latentes, orce 2-4 iterações; 
 
 ---
 
-## 1. PROBLEMA ABERTO — overlay/edição de forma na costura do tiling (o motivo deste handoff)
+## 1. ~~PROBLEMA ABERTO~~ **RESOLVIDO 2026-07-11 (`d9df426f`, pendente smoke)** — overlay na costura do tiling
+
+> **DIAGNÓSTICO FECHADO (a pergunta-chave abaixo foi respondida):** a geometria **CRUZA a borda**
+> (x > iw) — já era provado pelo teste verde `shape_in_sprite_grab_drags_past_the_seam_without_wrapping`
+> (âncora em x=80 com iw=64) e o freehand empurra pontos crus — e o overlay contínuo (`4fa05563`)
+> desenhava certo, un-clipped. O que "parava na borda" **não era clamp nem clip: era Z-ORDER** —
+> `draw_repeat_image` rodava **DEPOIS** de `draw_overlays` na **MESMA** `vector_scene`
+> (`painter_bridge.rs`, dispatch), então os 8 blits full-canvas **opacos** dos tiles vizinhos pintavam
+> por cima de todo chrome além da borda (overlay do editor, brush ring, marching ants). Dentro da
+> sprite o conteúdo real está no pipeline (SOB a cena vetorial) → overlay visível; fora, tile por cima
+> → "cortado na borda". **Retro-explica o "editor partido" das cópias 3×3** (tentativa 1): as cópias
+> também eram desenhadas antes dos tiles, então só sobrevivia o pedaço da cópia ±iw que caía DENTRO da
+> célula central.
+>
+> **Fix (`d9df426f`):** `draw_repeat_image` desenha **PRIMEIRO** (tiles = conteúdo de canvas; chrome
+> por cima) — ordem agora: repeat tiles → selection overlay → draw_overlays. Bônus: brush ring e
+> marching ants voltam a aparecer sobre os tiles vizinhos (a hit-region 3×3 já era pintável).
+> **Asserção-vermelha:** gate novo `shells/desktop/tests/repeat_image_tiles_draw_under_the_editing_chrome.rs`
+> (lê o fonte do dispatch; reordenar de volta = RED). Gates rodados: check/clippy `-p ph2d-host-desktop`
+> verdes, LOC caps verdes, 530 lib-tests do tool + brush verdes.
+>
+> **Smoke pendente (Enio):** aquarela + Tiling X + Repeat Image, Free Hand cruzando a borda direita →
+> o overlay (caixa + spine + handles) deve seguir CONTÍNUO por cima do tile vizinho; brush ring visível
+> sobre os tiles. `cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-Painter && cargo run -p ph2d-host-desktop`
+>
+> O texto original do problema segue abaixo (histórico do diagnóstico).
 
 ### Sintoma (Enio, smoke 2026-07-11)
 Free Hand (e Line/Ellipse/Polygon) em aquarela + **Tiling** + **Repeat Image**, forma desenhada

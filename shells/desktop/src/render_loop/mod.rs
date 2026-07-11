@@ -55,6 +55,9 @@ pub(crate) mod painter_bridge_overlays;
 /// Live GPU preview of a brush Shape-source sprite (when not selected), split from `painter_bridge` for
 /// the HR-18 file-LOC cap.
 pub(crate) mod painter_bridge_shape_preview;
+/// On-canvas wetness sheen veil (Watercolor render-path), split from `painter_bridge_overlays` for the
+/// HR-18 file-LOC cap.
+pub(crate) mod painter_bridge_wetness;
 mod timeline_bridge;
 mod timeline_presets;
 mod timeline_smoke;

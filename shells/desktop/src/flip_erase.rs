@@ -224,19 +224,25 @@ impl crate::App {
             return;
         };
         let active_layer = self.flip_active_layer;
+        // Fronteira MUNDO→LOCAL (ADR-0111): a geometria de um objeto já movido pelo
+        // gizmo é LOCAL, então o cursor (mundo) desce ao espaço local e o raio recua
+        // pela escala. Identidade num objeto não-movido (o comum) → no-op.
+        let w2l = self.flip_active_world_to_local();
         if let Some(gfx) = self.gfx.as_mut() {
             let win = gfx.surface.size();
             let w = gfx.camera.screen_to_world((x, y), win);
             let px_to_world = gfx.camera.height_world.max(f32::EPSILON) / win.height.max(1) as f32;
             // Eraser radius = the brush size (px → world); strength = brush opacity.
             let radius = (style.width_px as f32 * 0.5) * px_to_world;
+            let local = w2l.apply([f64::from(w[0]), f64::from(w[1])]);
+            let radius_local = radius * w2l.mean_scale() as f32;
             erase_at(
                 &mut gfx.flip,
                 &self.playhead,
                 active_layer,
                 style.erase,
-                Vec2::new(w[0], w[1]),
-                radius,
+                Vec2::new(local[0] as f32, local[1] as f32),
+                radius_local,
                 style.opacity,
             );
         }

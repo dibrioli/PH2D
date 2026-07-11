@@ -62,6 +62,9 @@ impl crate::App {
             flip_render,
             flip_compose,
             flip_composite,
+            // ADR-0111: o `Transform` de cada objeto Flip vem do ECS; o passe o dobra
+            // no `world_to_clip` (a arte é LOCAL). Identidade = sem custo.
+            sim,
             ..
         } = gfx;
         let window_size = surface.size();
@@ -136,6 +139,7 @@ impl crate::App {
                 //   compositor 22-modos) no `game_rt`, amostrado pelo playhead,
                 //   MESMA câmera dos sprites. O blit final usa LoadOp::Load (preserva
                 //   os sprites por baixo). No-op sem camada Flip ativa (default).
+                let flip_models = crate::flip_transform::build(sim, &self.flip_entities);
                 super::flip_pass::render(
                     flip,
                     flip_render,
@@ -143,6 +147,7 @@ impl crate::App {
                     flip_composite,
                     flip_preview.as_ref(),
                     self.flip_active_layer,
+                    &flip_models,
                     &self.playhead,
                     game_rt,
                     camera,

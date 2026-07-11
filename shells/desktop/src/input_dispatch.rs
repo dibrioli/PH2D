@@ -1181,14 +1181,19 @@ fn shape_up_consumes(mode: ph2d_tool_vector::DrawMode, shape_active: bool) -> bo
 fn gizmo_anchor_half(
     sim: &ph2d_ecs::SimWorld,
     vec_scene: &ph2d_vec_scene::VecScene,
+    flip: &ph2d_flip::FlipDoc,
     entity: ph2d_ecs::Entity,
 ) -> ([f32; 2], [f32; 2]) {
     if let Some(s) = sim.world().get::<ph2d_render::Sprite>(entity) {
         return (s.anchor, [s.size[0] * 0.5, s.size[1] * 0.5]);
     }
-    // `sim`/`vec_scene` chegam separados (e não via `AppGfx`) porque `hero_screen`
-    // está emprestado mutável no Down — campos irmãos, borrows disjuntos.
-    crate::vec_gizmo_view::anchor_half(sim, vec_scene, entity).unwrap_or(([0.0, 0.0], [0.0, 0.0]))
+    // `sim`/`vec_scene`/`flip` chegam separados (e não via `AppGfx`) porque
+    // `hero_screen` está emprestado mutável no Down — campos irmãos, borrows
+    // disjuntos. Vetor OU objeto Flip (ADR-0111): a bbox local + `Transform`.
+    if let Some(ah) = crate::vec_gizmo_view::anchor_half(sim, vec_scene, entity) {
+        return ah;
+    }
+    crate::flip_gizmo_view::anchor_half(sim, flip, entity).unwrap_or(([0.0, 0.0], [0.0, 0.0]))
 }
 
 impl App {
@@ -2704,6 +2709,15 @@ impl App {
                             world_pos,
                             crate::vec_gizmo_view::stroke_hit_r(&gfx.camera, window_size),
                         );
+                        // ADR-0113/ADR-0111: a arte Flip também compõe por cima dos
+                        // sprites — entra na lista do clique-cíclico, sob o vetor.
+                        hits.extend(crate::flip_gizmo_view::pick_all_at_world(
+                            &gfx.sim,
+                            &gfx.flip,
+                            &self.flip_entities,
+                            world_pos,
+                            crate::flip_gizmo_view::stroke_hit_r(&gfx.camera, window_size),
+                        ));
                         hits.extend(ph2d_render::pick_sprites_at_world(
                             gfx.present.world_mut(),
                             world_pos,
@@ -2783,6 +2797,21 @@ impl App {
                                 })
                         })
                     };
+                    // Idem para a arte Flip: uma nuvem de traços não tem interior, então
+                    // o gizmo de sprite colapsaria e os handles roubariam o clique.
+                    // Sobre a arte ⇒ o arrasto é Translate dela (cai no canvas-pick).
+                    let over_flip_art = {
+                        let window_size = gfx.surface.size();
+                        let world_pos = gfx.camera.screen_to_world((evt.x, evt.y), window_size);
+                        !crate::flip_gizmo_view::pick_all_at_world(
+                            &gfx.sim,
+                            &gfx.flip,
+                            &self.flip_entities,
+                            world_pos,
+                            crate::flip_gizmo_view::stroke_hit_r(&gfx.camera, window_size),
+                        )
+                        .is_empty()
+                    };
                     // Also recognize Translate from a keyed bbox-interior
                     // hit — clicking the interior of an extra or the global
                     // gizmo should open a group translate via the
@@ -2817,7 +2846,8 @@ impl App {
                         let window_size = gfx.surface.size();
                         let world_pos = gfx.camera.screen_to_world((evt.x, evt.y), window_size);
                         let on_pivot_dot = hit_id == Some(ph2d_editor::gizmo::ids::GIZMO_PIVOT);
-                        // ADR-0111: uma forma vetorial também é agarrável pelo interior.
+                        // ADR-0111: uma forma vetorial ou um objeto Flip também é
+                        // agarrável pela arte (não só pelo dot do pivô).
                         let on_object =
                             ph2d_render::pick_sprite_at_world(gfx.present.world_mut(), world_pos)
                                 == Some(entity_bits)
@@ -2827,6 +2857,13 @@ impl App {
                                     entity,
                                     world_pos,
                                     crate::vec_gizmo_view::stroke_hit_r(&gfx.camera, window_size),
+                                )
+                                || crate::flip_gizmo_view::contains_world(
+                                    &gfx.sim,
+                                    &gfx.flip,
+                                    entity,
+                                    world_pos,
+                                    crate::flip_gizmo_view::stroke_hit_r(&gfx.camera, window_size),
                                 );
                         if (on_pivot_dot || on_object)
                             && !ph2d_ecs::is_locked_for_edit(gfx.sim.world(), entity)
@@ -2844,7 +2881,7 @@ impl App {
                                 scale: [pw.scale.x, pw.scale.y],
                             };
                             let (anchor, half) =
-                                gizmo_anchor_half(&gfx.sim, &gfx.vec_scene, entity);
+                                gizmo_anchor_half(&gfx.sim, &gfx.vec_scene, &gfx.flip, entity);
                             // Invariant quad center = pivot + R·(anchor ⊙ scale).
                             let ax = anchor[0] * snap_t.scale[0];
                             let ay = anchor[1] * snap_t.scale[1];
@@ -2874,6 +2911,7 @@ impl App {
                         // MovePivot drag opened; Move events drive it.
                     } else if is_specific_handle
                         && !over_open_vec_stroke
+                        && !over_flip_art
                         && let Some(gkind) = effective_kind
                         && let Some(entity_bits) = match effective_target {
                             ph2d_editor::GizmoTarget::ExtraIndividual(bits) => Some(bits),
@@ -2907,7 +2945,7 @@ impl App {
                             let use_center_anchor =
                                 self.modifiers.control_key() || self.modifiers.super_key();
                             let sprite_half_intrinsic =
-                                gizmo_anchor_half(&gfx.sim, &gfx.vec_scene, entity).1;
+                                gizmo_anchor_half(&gfx.sim, &gfx.vec_scene, &gfx.flip, entity).1;
                             // Onda 2C: pivot world depends on target.
                             // PrimaryIndividual / ExtraIndividual use the
                             // sprite's own anchor (transforms local to it).
@@ -3007,7 +3045,8 @@ impl App {
                             || matches!(gizmo_kind, Some(ph2d_editor::GizmoDragKind::Translate))
                             || hit_id == Some(ph2d_editor::gizmo::ids::GIZMO_PIVOT)
                             || is_keyed_translate
-                            || over_open_vec_stroke)
+                            || over_open_vec_stroke
+                            || over_flip_art)
                     {
                         // Canvas pick (M14.7 A) — see commit history
                         // for the four conditions enumerated.
@@ -3025,6 +3064,15 @@ impl App {
                             world_pos,
                             crate::vec_gizmo_view::stroke_hit_r(&gfx.camera, window_size),
                         );
+                        // ADR-0113/ADR-0111: a arte Flip também compõe por cima dos
+                        // sprites — entra na lista do clique-cíclico, sob o vetor.
+                        hits.extend(crate::flip_gizmo_view::pick_all_at_world(
+                            &gfx.sim,
+                            &gfx.flip,
+                            &self.flip_entities,
+                            world_pos,
+                            crate::flip_gizmo_view::stroke_hit_r(&gfx.camera, window_size),
+                        ));
                         hits.extend(ph2d_render::pick_sprites_at_world(
                             gfx.present.world_mut(),
                             world_pos,
@@ -3255,6 +3303,15 @@ impl App {
                                 rmin,
                                 rmax,
                             );
+                            // ADR-0113/ADR-0111: o marquee também pega objetos Flip pela
+                            // bbox de mundo.
+                            bits.extend(crate::flip_gizmo_view::pick_in_world_rect(
+                                &gfx.sim,
+                                &gfx.flip,
+                                &self.flip_entities,
+                                rmin,
+                                rmax,
+                            ));
                             bits.extend(ph2d_render::pick_sprites_in_world_rect(
                                 gfx.present.world_mut(),
                                 rmin,

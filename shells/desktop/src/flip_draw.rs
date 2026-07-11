@@ -14,6 +14,7 @@ use ph2d_core::Vec2;
 use ph2d_flip::{FlipDoc, FlipDrawing, FlipStroke, Hold, KeyKind, LayerId, Point, Rgba};
 use ph2d_flip_render::{FlipGpuData, pack_drawing};
 use ph2d_tool_flip::{FlipMode, FlipStyleSnapshot};
+use ph2d_vec_scene::Xform;
 
 /// O traço do Flip em curso: amostras em MUNDO + pressão por amostra.
 #[derive(Default)]
@@ -107,6 +108,7 @@ pub(crate) fn bake_stroke(
     points: &[Vec2],
     pressures: &[f32],
     px_to_world: f32,
+    world_to_local: &Xform,
 ) -> bool {
     if points.len() < 2 {
         return false;
@@ -156,24 +158,32 @@ pub(crate) fn bake_stroke(
     let prs: Vec<f32> = keep.iter().map(|&i| pressures[i]).collect();
     drawing
         .strokes
-        .push(build_stroke(style, &pts, &prs, px_to_world));
+        .push(build_stroke(style, &pts, &prs, px_to_world, world_to_local));
     true
 }
 
-/// Constrói um `FlipStroke` a partir das amostras (mundo) + estilo. Compartilhado
+/// Constrói um `FlipStroke` a partir das amostras (MUNDO) + estilo. Compartilhado
 /// pelo bake (pen-up) e pelo preview ao vivo (durante o arrasto).
+///
+/// ADR-0111: a geometria é guardada no espaço LOCAL do objeto (o gizmo pode tê-lo
+/// movido). `world_to_local` converte as posições na fronteira e a largura recua
+/// pela escala (`mean_scale`), pra o render — que refaz `× model` — devolver a
+/// espessura de tela pretendida. Identidade = objeto não-movido → no-op.
 fn build_stroke(
     style: &FlipStyleSnapshot,
     points: &[Vec2],
     pressures: &[f32],
     px_to_world: f32,
+    world_to_local: &Xform,
 ) -> FlipStroke {
     let color = srgb8_to_linear(style.stroke);
-    let base_w = (style.width_px as f32) * px_to_world; // px de tela → mundo
+    let wscale = world_to_local.mean_scale() as f32;
+    let base_w = (style.width_px as f32) * px_to_world * wscale; // px→mundo→local
     let mut s = FlipStroke::new();
     for (&p, &pr) in points.iter().zip(pressures.iter()) {
+        let l = world_to_local.apply([f64::from(p.x), f64::from(p.y)]);
         s.push_point(Point {
-            pos: p,
+            pos: Vec2::new(l[0] as f32, l[1] as f32),
             // Pressão→largura (1º corte, linear; a curva de falloff é T2.6+).
             width: base_w * pr.clamp(0.05, 1.0),
             opacity: style.opacity,
@@ -191,6 +201,30 @@ impl crate::App {
     #[must_use]
     pub(crate) fn flip_wants_canvas(&self) -> bool {
         self.flip_active && matches!(self.flip_style.map(|s| s.mode), Some(FlipMode::Draw))
+    }
+
+    /// O afim MUNDO→LOCAL do objeto Flip ativo (o 1º). ADR-0111: o gizmo pode ter
+    /// movido o objeto (geometria LOCAL + `Transform`); a mão desenha/apaga em
+    /// MUNDO, então converte-se na fronteira. Identidade se o objeto nunca foi
+    /// movido, sumiu, ou colapsou — caminho comum (desenho normal), no-op.
+    #[must_use]
+    pub(crate) fn flip_active_world_to_local(&self) -> Xform {
+        let Some(gfx) = self.gfx.as_ref() else {
+            return Xform::IDENTITY;
+        };
+        let Some(oid) = gfx.flip.objects().first().map(|o| o.id) else {
+            return Xform::IDENTITY;
+        };
+        let Some(&bits) = self.flip_entities.get(&oid) else {
+            return Xform::IDENTITY;
+        };
+        let e = ph2d_ecs::Entity::from_bits(bits);
+        if gfx.sim.world().get_entity(e).is_err() {
+            return Xform::IDENTITY;
+        }
+        crate::flip_transform::object_xform(&gfx.sim, e)
+            .inverse()
+            .unwrap_or(Xform::IDENTITY)
     }
 
     /// Pen-down do desenho Flip: começa um traço na coord de mundo. Devolve
@@ -235,6 +269,9 @@ impl crate::App {
             return None;
         }
         let style = self.flip_style?;
+        // O preview é dobrado na fatia da camada ativa (espaço LOCAL do objeto); as
+        // amostras são MUNDO → converte, senão o preview folga do traço final.
+        let w2l = self.flip_active_world_to_local();
         let gfx = self.gfx.as_ref()?;
         let (pts, prs) = self.flip_draw.samples();
         if pts.len() < 2 {
@@ -246,7 +283,7 @@ impl crate::App {
         let smoothed = crate::flip_smooth::active_smooth(pts, style.smoothing);
         let mut d = FlipDrawing::default();
         d.strokes
-            .push(build_stroke(&style, &smoothed, prs, px_to_world));
+            .push(build_stroke(&style, &smoothed, prs, px_to_world, &w2l));
         Some(pack_drawing(&d))
     }
 
@@ -261,6 +298,9 @@ impl crate::App {
         };
         let style = self.flip_style;
         let active_layer = self.flip_active_layer;
+        // Fronteira MUNDO→LOCAL (ADR-0111): num objeto já movido pelo gizmo o traço
+        // é guardado no espaço local dele. Identidade num objeto novo (o comum).
+        let w2l = self.flip_active_world_to_local();
         if let Some(gfx) = self.gfx.as_mut()
             && let Some(style) = style
         {
@@ -274,6 +314,7 @@ impl crate::App {
                 &points,
                 &pressures,
                 px_to_world,
+                &w2l,
             );
         }
         true

@@ -22,8 +22,9 @@
 //! loga packs vs hits por frame.
 
 use ph2d_core::Playhead;
-use ph2d_flip::{FlipDoc, FlipDrawing, LayerId};
+use ph2d_flip::{FlipDoc, FlipDrawing, FlipObjectId, LayerId};
 use ph2d_flip_render::{CameraRaw, FlipCompose, FlipGpuData, FlipRenderer, pack_drawing};
+use ph2d_vec_scene::Xform;
 use ph2d_gpu::GpuContext;
 use ph2d_host::WindowSize;
 use ph2d_render::layer_compositor::{
@@ -150,6 +151,10 @@ struct LayerRef<'a> {
     cache_key: (u64, u32),
     drawing: Option<&'a FlipDrawing>,
     preview: Option<&'a FlipGpuData>,
+    /// O afim LOCAL→mundo do objeto desta camada (ADR-0111): o gizmo move/gira/
+    /// escala via `Transform`, e o render o dobra no `world_to_clip`. Identidade
+    /// para um objeto não-transformado (caminho comum) — sem custo.
+    model: Xform,
 }
 
 /// Compõe o Flip amostrado em `playhead` no `game_rt`, mais o **preview ao vivo**
@@ -164,6 +169,7 @@ pub(crate) fn render(
     flip_composite: &mut Option<FlipComposite>,
     preview: Option<&FlipGpuData>,
     active_layer: Option<LayerId>,
+    models: &[(FlipObjectId, Xform)],
     playhead: &Playhead,
     game_rt: &GameRt,
     camera: &Camera2d,
@@ -173,7 +179,7 @@ pub(crate) fn render(
     // O preview é atribuído à camada ativa (dobrado na fatia dela). `unfolded` só
     // sobra quando a camada-alvo é invisível/irresolvível — aí cai no overlay
     // Normal (o usuário nunca desenha às cegas).
-    let (layers, unfolded) = collect_layers(flip, playhead, preview, active_layer);
+    let (layers, unfolded) = collect_layers(flip, playhead, preview, active_layer, models);
     if layers.is_empty() && unfolded.is_none() {
         return;
     }
@@ -260,8 +266,17 @@ fn composite_layers(
             } else {
                 tess.get(&l.cache_key).expect("garantido no passe 1")
             };
-            let slice =
-                flip_compose.stage_layer(&gpu.device, &gpu.queue, flip_render, cam, data, (w, h));
+            // A geometria é LOCAL; o `model` do objeto entra pelo `world_to_clip`
+            // (e a espessura pela escala). Identidade = a câmera base, sem custo.
+            let cam_obj;
+            let layer_cam: &CameraRaw = if l.model.is_identity() {
+                cam
+            } else {
+                cam_obj = fold_model(cam, &l.model);
+                &cam_obj
+            };
+            let slice = flip_compose
+                .stage_layer(&gpu.device, &gpu.queue, flip_render, layer_cam, data, (w, h));
             if let Err(e) =
                 compositor.inject_slice_from_texture(gpu, &ops, l.key, slice, w, h, (0, 0, w, h), 0)
             {
@@ -355,6 +370,7 @@ fn collect_layers<'a>(
     playhead: &Playhead,
     preview: Option<&'a FlipGpuData>,
     active_layer: Option<LayerId>,
+    models: &[(FlipObjectId, Xform)],
 ) -> (Vec<LayerRef<'a>>, Option<&'a FlipGpuData>) {
     // Camada-alvo do preview: a ativa do 1º objeto (se ainda existe) ou o topo —
     // exatamente o fallback que o `bake_stroke` usa. `None` sem preview.
@@ -370,6 +386,12 @@ fn collect_layers<'a>(
     let mut unfolded = preview; // vira None assim que o preview é dobrado
     for obj in flip.objects() {
         let frame = obj.frame_at(playhead);
+        // O afim LOCAL→mundo do objeto (ADR-0111). Ausente = identidade (o objeto
+        // nunca foi movido; a geometria ainda É mundo).
+        let model = models
+            .iter()
+            .find(|(id, _)| *id == obj.id)
+            .map_or(Xform::IDENTITY, |(_, x)| *x);
         for layer in obj.layers() {
             if !layer.visible {
                 continue; // oculta não contribui (preview numa oculta cai no fallback)
@@ -392,6 +414,7 @@ fn collect_layers<'a>(
                 cache_key: (obj.id.0, did.map_or(u32::MAX, |d| d.0)),
                 drawing: if has_geo { drawing } else { None },
                 preview: this_preview,
+                model,
             });
         }
     }
@@ -453,6 +476,34 @@ fn drawing_hash(d: &FlipDrawing) -> u64 {
         h = fnv(h, 0xFFFF_FFFF);
     }
     fnv(h, d.strokes.len() as u32)
+}
+
+/// A câmera do passe com o `model` LOCAL→mundo do objeto dobrado: `world_to_clip ·
+/// model`, e a espessura escalada pela escala média do objeto (`px_per_world ·
+/// mean_scale`) — para o traço engrossar junto quando o gizmo escala. É isto que
+/// deixa o gizmo de sprite mover/girar/escalar a arte SEM reescrever geometria.
+fn fold_model(base: &CameraRaw, model: &Xform) -> CameraRaw {
+    let [a, b, c, d, e, f] = model.0;
+    // `model` como 4×4 col-major (`m[col][row]`): local (x, y, 0, 1) → mundo.
+    let m: [[f32; 4]; 4] = [
+        [a as f32, b as f32, 0.0, 0.0],
+        [c as f32, d as f32, 0.0, 0.0],
+        [0.0, 0.0, 1.0, 0.0],
+        [e as f32, f as f32, 0.0, 1.0],
+    ];
+    let p = base.world_to_clip; // col-major (mundo→clip)
+    // combined = P · M (col-major): combined[j][row] = Σ_k P[k][row] · M[j][k].
+    let mut w = [[0.0f32; 4]; 4];
+    for (j, wj) in w.iter_mut().enumerate() {
+        for (row, wjr) in wj.iter_mut().enumerate() {
+            let mut s = 0.0;
+            for k in 0..4 {
+                s += p[k][row] * m[j][k];
+            }
+            *wjr = s;
+        }
+    }
+    CameraRaw::new(w, base.viewport, base.px_per_world * model.mean_scale() as f32)
 }
 
 /// Converte a `Camera2d` (mundo→clip ortográfico) no uniform do passe. O
@@ -524,6 +575,48 @@ mod tests {
         let after_a = c.packs;
         c.ensure(key, &b); // mesmo slot, conteúdo diferente → re-pack
         assert_eq!(c.packs, after_a + 1, "conteúdo mudou deve re-tesselar");
+    }
+
+    /// Aplica um `world_to_clip` col-major a um ponto homogêneo (x, y, 0, 1).
+    fn apply4(m: &[[f32; 4]; 4], x: f32, y: f32) -> [f32; 4] {
+        let v = [x, y, 0.0, 1.0];
+        let mut out = [0.0f32; 4];
+        for (row, o) in out.iter_mut().enumerate() {
+            let mut s = 0.0;
+            for (j, vj) in v.iter().enumerate() {
+                s += m[j][row] * vj;
+            }
+            *o = s;
+        }
+        out
+    }
+
+    /// `fold_model` dobra o `model` LOCAL→mundo no `world_to_clip`: um ponto LOCAL
+    /// mapeia como se estivesse no mundo `model·local`, e a espessura escala pela
+    /// escala média do objeto.
+    #[test]
+    fn fold_model_translates_local_into_clip_and_scales_thickness() {
+        // Base = clip identidade (o ponto de mundo vira ele mesmo), zoom 100 px/mundo.
+        let base = CameraRaw::new(
+            [
+                [1.0, 0.0, 0.0, 0.0],
+                [0.0, 1.0, 0.0, 0.0],
+                [0.0, 0.0, 1.0, 0.0],
+                [0.0, 0.0, 0.0, 1.0],
+            ],
+            [800.0, 600.0],
+            100.0,
+        );
+        // Translação (10, 5): o local (3, 2) deve cair no clip do mundo (13, 7).
+        let t = fold_model(&base, &Xform([1.0, 0.0, 0.0, 1.0, 10.0, 5.0]));
+        let p = apply4(&t.world_to_clip, 3.0, 2.0);
+        assert!((p[0] - 13.0).abs() < 1e-4 && (p[1] - 7.0).abs() < 1e-4, "{p:?}");
+        assert!((t.px_per_world - 100.0).abs() < 1e-4, "translação não escala");
+        // Escala 2×: a espessura (px_per_world) dobra e o local (1,0) vira mundo (2,0).
+        let s = fold_model(&base, &Xform([2.0, 0.0, 0.0, 2.0, 0.0, 0.0]));
+        assert!((s.px_per_world - 200.0).abs() < 1e-4, "escala engrossa o traço");
+        let q = apply4(&s.world_to_clip, 1.0, 0.0);
+        assert!((q[0] - 2.0).abs() < 1e-4 && q[1].abs() < 1e-4, "{q:?}");
     }
 
     /// O hash é estável para conteúdo idêntico e sensível a uma mudança mínima.

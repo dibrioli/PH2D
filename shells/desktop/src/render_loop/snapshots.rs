@@ -22,6 +22,7 @@ use ph2d_asset::AssetDb;
 use ph2d_asset::AssetId;
 use ph2d_ecs::{Name, PresentWorld, SimRef, SimWorld, Transform, Visibility};
 use ph2d_editor::HeroScreen;
+use ph2d_flip::FlipDoc;
 use ph2d_host::WindowSize;
 use ph2d_render::{Camera2d, Sprite};
 use std::collections::BTreeMap;
@@ -95,6 +96,11 @@ pub(super) fn publish(
     // ADR-0112: …mas NÃO nos modos de desenho/edição de nós. As alças do gizmo
     // registram hit-rects e comeriam o clique da âncora.
     vec_gizmo_on: bool,
+    // ADR-0113/ADR-0111: um objeto Flip TAMBÉM publica `GizmoView` (mesma caixa/pivô/
+    // rotação, da bbox local da arte + `Transform`), fora dos modos Draw/Erase da
+    // tool Flip (senão o gizmo comeria o clique do canvas).
+    flip: &FlipDoc,
+    flip_gizmo_on: bool,
 ) {
     // M14.4a: if live-bridge enabled, rebuild HierarchySnapshot
     // from SimWorld + push into HeroScreen BEFORE paint. The
@@ -259,18 +265,37 @@ pub(super) fn publish(
         |bits: u64, sim: &SimWorld, present: &mut PresentWorld| -> Option<ph2d_editor::GizmoView> {
             let sim_entity = ph2d_ecs::Entity::from_bits(bits);
             if sim.world().get::<Sprite>(sim_entity).is_none() {
-                if !vec_gizmo_on {
-                    return None;
+                // Não é sprite: uma forma vetorial ou um objeto Flip — cada um lê o
+                // gizmo de sprite da sua bbox local + `Transform`.
+                if sim.world().get::<ph2d_ecs::VecPathRef>(sim_entity).is_some() {
+                    if !vec_gizmo_on {
+                        return None;
+                    }
+                    return crate::vec_gizmo_view::view(
+                        sim,
+                        vec_scene,
+                        sim_entity,
+                        camera,
+                        window_size,
+                        last_pointer,
+                        pivot_tool_active,
+                    );
                 }
-                return crate::vec_gizmo_view::view(
-                    sim,
-                    vec_scene,
-                    sim_entity,
-                    camera,
-                    window_size,
-                    last_pointer,
-                    pivot_tool_active,
-                );
+                if sim.world().get::<ph2d_ecs::FlipObjectRef>(sim_entity).is_some() {
+                    if !flip_gizmo_on {
+                        return None;
+                    }
+                    return crate::flip_gizmo_view::view(
+                        sim,
+                        flip,
+                        sim_entity,
+                        camera,
+                        window_size,
+                        last_pointer,
+                        pivot_tool_active,
+                    );
+                }
+                return None; // grupo/outro: sem gizmo próprio
             }
             let sprite = sim.world().get::<Sprite>(sim_entity)?;
             let mut q = present

@@ -920,6 +920,16 @@ impl crate::App {
                     .active()
                     .is_some_and(|t| t.id() == ph2d_editor::ToolId::new("vector"))
                     || self.vec_draw_config.mode == ph2d_tool_vector::DrawMode::Select,
+                flip,
+                // Idem para o objeto Flip: gizmo fora da tool Flip, ou no modo Select
+                // dela — em Draw/Erase ele comeria o clique do canvas (ADR-0112 parity).
+                !tools
+                    .active()
+                    .is_some_and(|t| t.id() == ph2d_editor::ToolId::new("flip"))
+                    || matches!(
+                        self.flip_style.map(|s| s.mode),
+                        Some(ph2d_tool_flip::FlipMode::Select)
+                    ),
             );
             // ─────────────────────────────────────────────────────────
             // Wave 2.5 PR 11.8 closeout — consolidated bus drain.
@@ -2096,6 +2106,15 @@ impl crate::App {
                     .flatten()
                     .collect();
             crate::vec_transform::settle_origins(sim, vec_scene, &self.vec_entities, &drawing);
+            // ADR-0113/ADR-0111: idem para os objetos Flip — o pivô nasce no centro do
+            // MUNDO; assim que a arte pára de crescer, ele vai para o centro dela (e a
+            // geometria vira LOCAL). O objeto EM GESTO (desenho/borracha ativos) NÃO é
+            // assentado — a mão escreve MUNDO a cada frame e somar geometria+Transform
+            // deslocaria a arte do cursor.
+            let flip_gesturing = (self.flip_draw.is_active() || self.flip_erasing)
+                .then(|| flip.objects().first().map(|o| o.id))
+                .flatten();
+            crate::flip_transform::settle_origins(sim, flip, &self.flip_entities, flip_gesturing);
             if let Some(live) = hero_live.as_ref() {
                 let order = crate::vec_entities::z_order(hero, &live.bridge, &self.vec_entities);
                 vec_scene.reorder_to(&order);

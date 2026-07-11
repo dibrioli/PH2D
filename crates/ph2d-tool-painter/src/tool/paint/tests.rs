@@ -13445,6 +13445,66 @@ fn watercolor_second_stroke_does_not_reset_the_first_strokes_drying() {
     );
 }
 
+/// **#4b (Enio smoke 2026-07-11, "retângulo gigante na união"):** um traço cujo BBOX apenas CONTÉM um wash
+/// anterior (sem a footprint cobri-lo) NÃO pode re-molhar esse wash. `stroke_coverage` é a UNIÃO; o pour
+/// despejava-a sobre o RECT do traço → re-molhava os pixels do vizinho DENTRO do rect a 255 (um retângulo
+/// de umidade que o overlay pintava). Fix: o pour restringe à footprint DONA (`owner == cur_o`). Sonda: um
+/// pixel de A coberto por A, DENTRO do bbox do diagonal B, mas FORA da footprint de B — não re-molha.
+#[test]
+fn watercolor_overlapping_bbox_does_not_rewet_the_neighbour_wash() {
+    let size = 80u32;
+    let mut t = white_canvas(size, 8.0);
+    t.paint.brush = BrushSpec {
+        radius_px: 8.0,
+        hardness: 1.0,
+        falloff: Falloff::Constant,
+        color: [0.1, 0.3, 0.9],
+        space_attenuation: false,
+        watercolor: true,
+        fill: 0.5,
+        depth: 1.0,
+        edge_gain: 0.0,
+        warp: 0.0,
+        granulation: 0.0,
+        ..Default::default()
+    };
+    for slot in &mut t.paint.brush_by_mode {
+        *slot = t.paint.brush;
+    }
+    let wet_at = |t: &PainterTool, x: usize, y: usize| t.paint.canvas_wet[y * size as usize + x];
+    // A: horizontal band at y = 30 (x ≈ 12..68). Bake, then dry a little.
+    assert!(t.on_canvas_pointer(cp([20.0, 30.0], PointerPhase::Down)));
+    let mut x = 20.0f32;
+    while x < 60.0 {
+        x += 2.0;
+        t.on_canvas_pointer(cp([x, 30.0], PointerPhase::Move));
+    }
+    t.on_canvas_pointer(cp([60.0, 30.0], PointerPhase::Up));
+    for _ in 0..6 {
+        t.paint_tick(0.5);
+    }
+    let a_probe_before = wet_at(&t, 25, 30); // on A, will fall inside B's bbox but NOT B's footprint
+    assert!(
+        a_probe_before > 0 && a_probe_before < 230,
+        "A's probe must be wet-but-decayed before B ({a_probe_before})"
+    );
+    // B: DIAGONAL from (20,60) to (60,20) — its bbox (20..60, 20..60) CONTAINS A, but at x=25 B sits at
+    // y≈55, so (25,30) is inside B's bbox yet OUTSIDE B's footprint. Same wet session (A still wet).
+    assert!(t.on_canvas_pointer(cp([20.0, 60.0], PointerPhase::Down)));
+    let mut s = 0.0f32;
+    while s < 40.0 {
+        s += 2.0;
+        t.on_canvas_pointer(cp([20.0 + s, 60.0 - s], PointerPhase::Move));
+    }
+    t.on_canvas_pointer(cp([60.0, 20.0], PointerPhase::Up));
+    let a_probe_after = wet_at(&t, 25, 30);
+    assert!(
+        a_probe_after <= a_probe_before,
+        "B's bbox merely CONTAINS A here — its footprint doesn't reach (25,30), so it must NOT re-wet it: \
+         was {a_probe_before}, became {a_probe_after}"
+    );
+}
+
 /// **#2 (Enio smoke 2026-07-11):** a umidade é lançada AO VIVO durante o traço — o damp aparece enquanto
 /// pinta, não só no mouse-up ("a umidade só aparece no mouse up. isso é muito feio"). Sem SOLTAR, o mapa de
 /// umidade já tem que estar populado sobre a região pintada (o pour antes rodava só no bake).

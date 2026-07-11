@@ -255,12 +255,13 @@ impl PainterTool {
     }
 
     /// EDGE-1: pour the finished stroke's coverage into the persistent canvas MOISTURE map
-    /// (max-blend over THIS STROKE's footprint). Called at the bake, AFTER the commit composite —
+    /// (max-blend over THIS STROKE's OWN footprint). Called at the bake, AFTER the commit composite —
     /// the stroke's own rim renders against dry paper; only strokes that follow within the drying
-    /// window merge into it. Uses the per-stroke rect (`wet_stroke_dirty`), NOT the session cumulative
-    /// (`wet_cum_dirty`): `stroke_coverage` is the whole session UNION, so pouring it over the
-    /// cumulative rect re-wet every earlier wash to 255 — resetting their drying clocks (#4). Restricting
-    /// to this stroke's footprint re-wets only what it painted (its overlap with a prior wash included).
+    /// window merge into it. Restricted to the pixels THIS stroke OWNS (`wet_styles.owner == cur_o`,
+    /// recency): `stroke_coverage` is the whole session UNION, so pouring it over any RECT re-wet the
+    /// earlier washes' pixels that fell inside the rect — a rectangular re-wet patch over the neighbour
+    /// (Enio 2026-07-11 "retângulo gigante na união"; the per-stroke RECT of #4 only shrank it). The owner
+    /// map is exactly this stroke's footprint (its overlap with a prior wash included, by recency).
     pub(super) fn pour_canvas_wet(&mut self) {
         let (fw, fh) = self.source_size;
         let (fw, fh) = (fw as usize, fh as usize);
@@ -283,9 +284,17 @@ impl PainterTool {
             self.paint.canvas_wet = vec![0u8; n];
             self.paint.canvas_wet_rect = None;
         }
+        // Only THIS stroke's OWN footprint re-wets (not the union coverage over the rect) — else a stroke
+        // whose bbox merely CONTAINS an earlier wash re-wet that wash into a rectangle. `has_owner` false
+        // (no style map) ⇒ pour the whole rect, the pre-owner-map behaviour.
+        let cur_o = self.paint.wet_styles.current_owner();
+        let has_owner = self.paint.wet_styles.owner.len() == n;
         for y in y0..y1 {
             let row = y * fw;
             for x in x0..x1 {
+                if has_owner && self.paint.wet_styles.owner[row + x] != cur_o {
+                    continue;
+                }
                 // Pour the HARDENED coverage (the composite's own `cw` smoothstep): moisture is
                 // "the wash is here", so the wash INTERIOR is fully wet even at low dab flow —
                 // pouring the raw coverage left the rim only half-suppressed at the junction.

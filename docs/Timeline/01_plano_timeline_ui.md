@@ -237,16 +237,24 @@ Performing por gesto (Dreams-style, gravar durante o play) · ~~speed graph~~ �
 remap · multi-clip UI + nó `motion.clip` (seam Motion) · markers→signals/eventos · API MCP/Luau da
 timeline (HR-10) · bake procedural⇄keys (ponte Cavalry) · export.
 
-**Speed graph (W5, FECHADO 2026-07-11):** 2ª vista do graph editor plotando velocidade
-(`d(value)/dt`) — toggle **Speed** panel-local na barra de transporte. Math em `ph2d-timeline::speed`
-(`sample_speed` diferencia a easing pura `Interp::remap` em espaço-u normalizado → fiel ao que toca,
-sem spike de Hold; `speed_extent` sempre inclui a linha-zero; `out/in_handle_y_for_speed` inverte
-velocidade→tangente mantendo a influência x). `graph_paint`/`graph::resolve_drag` ramificam em
-`state.speed_view` reusando `CurveHandle`/`HandleDrag`. Arrastar um speed-handle reafina a tangente
-do endpoint; segmento flat (dv=0) mantém o handle. `TIMELINE_SPEED` + `panel.timeline.speed`. Testes:
-9 goldens de math + 3 seam (toggle · retune · flat) + mutação dirigida. **Weighted tangents** é o
-follow-up natural (a edição de speed hoje mantém a influência fixa; tangentes com peso dariam o eixo
-de influência completo no speed graph).
+**Speed graph (W5, FECHADO 2026-07-11 + auditoria padrão-ouro no mesmo dia):** 2ª vista do graph
+editor plotando velocidade (`d(value)/dt`) — toggle **Speed** panel-local na barra de transporte.
+Math: `ph2d_anim::Interp::slope(u)` = derivada **analítica** do `remap` que toca (chain rule
+paramétrica `y'(s)/x'(s)` no MESMO solver Newton do `remap` — **port do Chromium
+`ui/gfx/geometry/cubic_bezier.cc`**: `SlopeWithEpsilon` + cascata `InitGradients` para control-point
+coincidente com o endpoint; tangente vertical = ±∞, o display pula amostras non-finite; `Eased` =
+diferença central de `eval`, sem o clamp de handle do `endpoint_slope`). `ph2d-timeline::speed`:
+`sample_speed` per-segmento (Hold = 0 limpo) · `segment_endpoint_speed` — os dots editáveis ancoram
+**nas keys** (convenção AE; velocidade é descontínua na key, então uma key compartilhada mostra os
+dots in/out dos 2 segmentos empilhados) e derivam do `slope()`, **nunca** dos `tangent_handles` (o
+chord do Hold lia 3·rate — bug pego na auditoria) · `speed_extent` inclui linha-zero + dots de
+segmento selecionado (espelho do `drawn_extent`) · `out/in_handle_y_for_speed` inverte
+velocidade→tangente mantendo a influência x. **Semântica AE verificada:** speed graph de propriedade
+1D é **com sinal** (negativo = valor caindo) — nosso design confere. `graph_paint`/`resolve_drag`
+ramificam em `state.speed_view` reusando `CurveHandle`/`HandleDrag`; alternar a vista derruba drag em
+curso (fecha o bracket de undo). Testes: 4 goldens de slope (fd do remap + endpoints CSS + cascata +
+vertical) + 12 de speed + 3 seam (toggle · retune · flat) + mutações dirigidas. **Weighted tangents**
+segue como follow-up (a edição de speed mantém a influência fixa).
 
 ## B4. Verificação (como cada onda fecha)
 

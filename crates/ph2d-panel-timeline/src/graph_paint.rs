@@ -15,7 +15,8 @@ use ph2d_editor_core::paint::{
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::zones::Rect;
 use ph2d_timeline::{
-    KeyView, TrackView, drawn_extent, handle_point, sample_keys, sample_speed, speed_extent,
+    KeyView, TrackView, drawn_extent, handle_point, sample_keys, sample_speed,
+    segment_endpoint_speed, speed_extent,
 };
 use ph2d_tokens::{ColorToken, Radius, Spacing, StrokeToken, Theme, TypeToken};
 
@@ -390,7 +391,11 @@ fn paint_speed_curve(
     let mut points = Vec::with_capacity(n);
     for i in 0..n {
         let x = (left + i as f32 * CURVE_STEP_PX).min(right);
-        if let Some(s) = sample_speed(keys, view.t(x)) {
+        // A vertical tangent samples ±∞ — skip it (one-pixel gap at the spike)
+        // rather than feed the polyline a non-finite y.
+        if let Some(s) = sample_speed(keys, view.t(x))
+            && s.is_finite()
+        {
             points.push((x, band.y(f64::from(s))));
         }
     }
@@ -402,10 +407,14 @@ fn paint_speed_curve(
     );
 }
 
-/// Each selected segment's start/end VELOCITY as a draggable dot at the same time
-/// as its value handle. Dragging one vertically retunes that endpoint's speed →
-/// the bézier tangent (`graph::resolve_drag` in speed mode). Reuses the value
-/// handles' `CurveHandle` id/hit — only one of the two is painted per frame.
+/// Each selected segment's start/end VELOCITY as a draggable dot AT its key
+/// (AE's convention: speed handles attach at the keyframes — velocity is
+/// discontinuous there, so a shared key shows the in dot and the out dot of its
+/// two segments stacked at the same x). Dragging one vertically retunes that
+/// endpoint's speed → the bézier tangent (`graph::resolve_drag` in speed mode).
+/// Reuses the value handles' `CurveHandle` id/hit — only one of the two handle
+/// sets is painted per frame. A non-finite speed (vertical tangent) paints no
+/// dot: the curve spikes off-band there and there is no point to grab.
 fn paint_speed_handles(
     ctx: &mut PaintCtx,
     theme: Theme,
@@ -420,28 +429,16 @@ fn paint_speed_handles(
         if !(k0.selected || k1.selected) {
             continue;
         }
-        let span = k1.t_seconds - k0.t_seconds;
-        let rate = if span != 0.0 {
-            (f64::from(k1.value) - f64::from(k0.value)) / span
-        } else {
-            0.0
-        };
-        // Endpoint slopes of the cubic → velocities: `(dv/span)·y1/x1` at the
-        // start, `(dv/span)·(1-y2)/(1-x2)` at the end. A degenerate influence
-        // (x1==0 / x2==1) has no slope; show it flat on the zero line.
-        let h = handle_pair(k0.interp);
-        let out_speed = if h[0].0 != 0.0 {
-            rate * h[0].1 / h[0].0
-        } else {
-            0.0
-        };
-        let in_speed = if h[1].0 != 1.0 {
-            rate * (1.0 - h[1].1) / (1.0 - h[1].0)
-        } else {
-            0.0
-        };
-        for (which, hx, speed) in [(0u8, h[0].0, out_speed), (1u8, h[1].0, in_speed)] {
-            let t = k0.t_seconds + hx * span;
+        for which in [0u8, 1u8] {
+            let speed = segment_endpoint_speed(k0, k1, which);
+            if !speed.is_finite() {
+                continue;
+            }
+            let t = if which == 0 {
+                k0.t_seconds
+            } else {
+                k1.t_seconds
+            };
             let (px, py) = (view.x(t), band.y(speed));
             if px < band.rect.x || px > band.rect.x + band.rect.w {
                 continue;

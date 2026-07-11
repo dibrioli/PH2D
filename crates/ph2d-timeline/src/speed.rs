@@ -6,10 +6,12 @@
 //! you see is the speed that plays (B0.P4).
 //!
 //! For a segment `k0 → k1` the value is `v0 + dv · P(u)`, `u = (t - t0) / span`
-//! and `P = interp.remap`. So the velocity is
-//! `d(value)/dt = dv · P'(u) / span`, where `P'` is differenced in normalized
-//! `u`-space — never across a key, so a `Hold` reads as a clean zero, not a
-//! differenced jump spike.
+//! and `P = interp.remap`. So the velocity is `d(value)/dt = dv · P'(u) / span`,
+//! where `P'` is [`ph2d_anim::Interp::slope`] — the ANALYTIC derivative of the
+//! remap the runtime plays (parametric chain rule on the same bézier solve;
+//! ported from the CSS reference, Chromium `cubic_bezier.cc`). Per-segment, so
+//! a `Hold` reads as a clean zero, never a differenced jump spike. A vertical
+//! tangent is `±∞` — display code skips non-finite samples.
 //!
 //! Editing the speed at a segment endpoint maps back to that segment's bézier
 //! tangent slope, keeping the handle's timing (influence) fixed. For a cubic
@@ -20,14 +22,10 @@
 
 use crate::snapshot::KeyView;
 
-/// Central-difference half-window in normalized `u`-space. Small enough that the
-/// O(h) error of differencing a smooth easing is sub-pixel, large enough to stay
-/// clear of f64 cancellation.
-const DIFF_U: f64 = 1.0e-3;
-
 /// The curve's instantaneous velocity `d(value)/dt` at `t` seconds — the speed
 /// graph's y. Zero outside the key range (the value is flat-clamped there), for a
 /// single key, and on a zero-span segment. `None` for a track with no keys.
+/// `±∞` at a vertical tangent — callers skip non-finite values.
 #[must_use]
 pub fn sample_speed(keys: &[KeyView], t: f64) -> Option<f32> {
     let (first, last) = (keys.first()?, keys.last()?);
@@ -35,7 +33,7 @@ pub fn sample_speed(keys: &[KeyView], t: f64) -> Option<f32> {
         return Some(0.0);
     }
     // The segment containing `t`. `t ∈ [first, last]`; clamp the index to the
-    // final segment so `t == last` differences that segment, not past it.
+    // final segment so `t == last` reads that segment's end, not past it.
     let idx = keys
         .partition_point(|k| k.t_seconds <= t)
         .saturating_sub(1)
@@ -47,35 +45,63 @@ pub fn sample_speed(keys: &[KeyView], t: f64) -> Option<f32> {
         return Some(0.0);
     }
     let u = ((t - k0.t_seconds) / span).clamp(0.0, 1.0); // CLAMP-OK: normalized u
-    // dP/du of the pure easing, differenced in u-space (bounded [0,1], never
-    // crossing a key). At the ends it degrades to a one-sided difference.
-    let ua = (u - DIFF_U).max(0.0);
-    let ub = (u + DIFF_U).min(1.0);
-    let du = ub - ua;
-    if du <= 0.0 {
-        return Some(0.0);
-    }
-    let dpdu = (k0.interp.remap(ub) - k0.interp.remap(ua)) / du;
-    Some((dv * dpdu / span) as f32)
+    Some((dv * k0.interp.slope(u) / span) as f32)
 }
 
-/// The `(min, max)` velocity the speed graph draws across `[t0, t1]`, always
-/// widened to include `0` so the zero-velocity reference line stays on-screen and
-/// the sign of the motion is readable. `None` for an empty track.
+/// The velocity at one end of a segment — where the speed graph pins that
+/// side's editable dot (AE attaches speed handles AT the keyframes). `which`
+/// matches the value-view handles: `0` = the segment's START (out side of
+/// `k0`), `1` = its END (in side of `k1`).
+///
+/// `dv/span · slope(0|1)` on the segment's own interp — NOT [`sample_speed`]
+/// at the key's time, which reads the NEXT segment there (velocity is
+/// discontinuous at keys). A `Hold` reads `0` at both ends (it is flat, then
+/// steps); `±∞` at a vertical tangent — callers skip non-finite.
+#[must_use]
+pub fn segment_endpoint_speed(k0: &KeyView, k1: &KeyView, which: u8) -> f64 {
+    let span = k1.t_seconds - k0.t_seconds;
+    if span <= 0.0 {
+        return 0.0;
+    }
+    let dv = f64::from(k1.value) - f64::from(k0.value);
+    let u = if which == 0 { 0.0 } else { 1.0 };
+    dv * k0.interp.slope(u) / span
+}
+
+/// The `(min, max)` velocity the speed graph draws across `[t0, t1]`: the
+/// sampled curve plus the endpoint dots of segments touching a **selected** key
+/// (the pixel grid can straddle a steep endpoint the dot pins exactly — the
+/// same reason [`crate::drawn_extent`] folds the value handles in). Always
+/// widened to include `0` so the zero-velocity reference line stays on-screen
+/// and the sign of the motion is readable. `None` for an empty track.
 #[must_use]
 pub fn speed_extent(keys: &[KeyView], t0: f64, t1: f64, samples: usize) -> Option<(f32, f32)> {
     if keys.is_empty() {
         return None;
     }
     let (mut lo, mut hi) = (0.0f32, 0.0f32); // the zero reference line is always in
+    let mut include = |v: f32| {
+        if v.is_finite() {
+            lo = lo.min(v);
+            hi = hi.max(v);
+        }
+    };
     let n = samples.max(1);
     for i in 0..=n {
         let t = t0 + (t1 - t0) * (i as f64 / n as f64);
-        if let Some(s) = sample_speed(keys, t)
-            && s.is_finite()
-        {
-            lo = lo.min(s);
-            hi = hi.max(s);
+        if let Some(s) = sample_speed(keys, t) {
+            include(s);
+        }
+    }
+    for w in keys.windows(2) {
+        let (k0, k1) = (&w[0], &w[1]);
+        // Only the dots that are actually painted, and only if the segment
+        // overlaps the window (mirror of `drawn_extent`).
+        if !(k0.selected || k1.selected) || k1.t_seconds < t0 || k0.t_seconds > t1 {
+            continue;
+        }
+        for which in [0u8, 1u8] {
+            include(segment_endpoint_speed(k0, k1, which) as f32);
         }
     }
     Some((lo, hi))
@@ -223,6 +249,63 @@ mod tests {
         let y2 = in_handle_y_for_speed(0.0, 0.0, 2.0, 10.0, x2, 15.0).unwrap();
         let end_speed = ((1.0 - y2) / (1.0 - x2)) * (10.0 / 2.0);
         assert!((end_speed - 15.0).abs() < 1e-9, "end speed = {end_speed}");
+    }
+
+    #[test]
+    fn a_holds_endpoint_dots_read_zero_speed() {
+        // THE display bug the audit caught: deriving the dot from the value
+        // view's tangent handles read a Hold's IN side as 3× the linear rate
+        // (the chord from the flat handle up to the anchor). A Hold is flat,
+        // then steps — its velocity is 0 at BOTH ends.
+        let k0 = key(0.0, 0.0, Interp::Hold);
+        let k1 = key(1.0, 10.0, Interp::Linear);
+        assert_eq!(segment_endpoint_speed(&k0, &k1, 0), 0.0, "out side");
+        assert_eq!(segment_endpoint_speed(&k0, &k1, 1), 0.0, "in side");
+        // And the reference cases stay right: Linear reads its rate at both
+        // ends; an eased segment reads the analytic endpoint slopes.
+        let k0 = key(0.0, 0.0, Interp::Linear);
+        assert_eq!(segment_endpoint_speed(&k0, &k1, 0), 10.0);
+        assert_eq!(segment_endpoint_speed(&k0, &k1, 1), 10.0);
+        let k0 = key(0.0, 0.0, Interp::bezier(0.25, 0.1, 0.25, 1.0));
+        let start = segment_endpoint_speed(&k0, &k1, 0);
+        assert!((start - 4.0).abs() < 1e-9, "rate 10 · slope 0.4: {start}");
+    }
+
+    #[test]
+    fn a_vertical_tangent_is_infinite_and_never_poisons_the_extent() {
+        // P1 = (0, 1): the value moves instantly at the start — true velocity
+        // +∞. The dot/sample is non-finite (display skips it) and the fitted
+        // extent stays finite from the interior samples.
+        let k0 = {
+            let mut k = key(0.0, 0.0, Interp::bezier(0.0, 1.0, 0.58, 1.0));
+            k.selected = true;
+            k
+        };
+        let k1 = key(1.0, 10.0, Interp::Linear);
+        assert!(segment_endpoint_speed(&k0, &k1, 0).is_infinite());
+        let (lo, hi) = speed_extent(&[k0, k1], 0.0, 1.0, 64).unwrap();
+        assert!(lo.is_finite() && hi.is_finite(), "extent stays finite");
+    }
+
+    #[test]
+    fn the_extent_covers_a_steep_selected_endpoint_the_pixel_grid_misses() {
+        // Start slope 1.0/0.05 = 20 ⇒ start speed 200. A panned window puts the
+        // key BETWEEN grid samples (16 over [-0.3, 1.0] land at ±0.05 around
+        // it), where the curve has already slowed far below 200. Selected: the
+        // dot pins the true 200 into the fit. Unselected: the fit only sees
+        // the samples (mirror of drawn_extent's handle rule).
+        let mut k0 = key(0.0, 0.0, Interp::bezier(0.05, 1.0, 0.66, 1.0));
+        let k1 = key(1.0, 10.0, Interp::Linear);
+        let unselected = speed_extent(&[k0.clone(), k1.clone()], -0.3, 1.0, 16)
+            .unwrap()
+            .1;
+        k0.selected = true;
+        let selected = speed_extent(&[k0, k1], -0.3, 1.0, 16).unwrap().1;
+        assert!(
+            (f64::from(selected) - 200.0).abs() < 1e-3,
+            "selected fit pins the endpoint speed: {selected}"
+        );
+        assert!(selected > unselected, "the dot widened the fit");
     }
 
     #[test]

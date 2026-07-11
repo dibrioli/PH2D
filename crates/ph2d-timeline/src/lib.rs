@@ -45,7 +45,10 @@ pub use intent::{TimelineIntent, apply_intent, snap_time};
 pub use persist::{resolve_entities, stamp_wire_ids};
 pub use prop::PropKind;
 pub use snapshot::{KeyView, TimelineViewSnapshot, TrackView};
-pub use speed::{in_handle_y_for_speed, out_handle_y_for_speed, sample_speed, speed_extent};
+pub use speed::{
+    in_handle_y_for_speed, out_handle_y_for_speed, sample_speed, segment_endpoint_speed,
+    speed_extent,
+};
 // The anim vocab the public snapshot/doc API names, re-exported so consumers of
 // `KeyView`/`TrackView`/`SelectedKey` don't need a direct `ph2d-anim` dep.
 pub use ph2d_anim::{AnimTarget, AnimValue, Easing, EasingFamily, EasingMode, Interp, KeyId};

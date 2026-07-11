@@ -96,9 +96,17 @@ pub(crate) fn apply_event(
         // Speed-graph view toggle (W5) — panel-local view state, NOT a document
         // command: flip it here (no bus/intent), like the +Track dropdown. The
         // transport bar mirrors `speed_view` back into the store's switch each
-        // paint, so the painted toggle follows this flip.
+        // paint, so the painted toggle follows this flip. Any in-flight band
+        // gesture maps its pointer through the OLD view's value range — drop it
+        // (and close its undo bracket) rather than let it resolve as garbage
+        // (mirror of the hide-panel cleanup in `paint`).
         WidgetEvent::Toggled(id) if id == ids::TIMELINE_SPEED => {
             state.speed_view = !state.speed_view;
+            let handle = state.handle_drag.take().is_some();
+            let anchor = state.anchor_drag.take().is_some();
+            if handle || anchor {
+                crate::state::push_intent(ph2d_timeline::TimelineIntent::EndEdit);
+            }
             EventOutcome::Consumed
         }
         WidgetEvent::Toggled(id) if is_toggle(id) => {

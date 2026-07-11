@@ -68,6 +68,29 @@ impl Interp {
         }
     }
 
+    /// The timing function's slope `dP/du` at `u` — the derivative of
+    /// [`Interp::remap`], for the speed graph.
+    ///
+    /// Analytic where a closed form exists: `Hold = 0`, `Linear = 1`, and
+    /// `Bezier` by the parametric chain rule `y'(s) / x'(s)` on the SAME
+    /// Newton/bisection solve `remap` uses (ported from the CSS reference,
+    /// Chromium `cubic_bezier.cc` — see [`bezier_slope`] for the degenerate
+    /// cascade). `Eased` has no closed form exposed, so it is a central
+    /// difference of [`Easing::eval`] (unclamped, unlike the handle-placement
+    /// [`endpoint_slope`]).
+    ///
+    /// May be `±∞` at a vertical tangent (`Bezier` with a control point on the
+    /// segment edge) — display code skips non-finite values.
+    #[must_use]
+    pub fn slope(self, u: f64) -> f64 {
+        match self {
+            Interp::Hold => 0.0,
+            Interp::Linear => 1.0,
+            Interp::Eased(e) => eased_slope(e, u),
+            Interp::Bezier { x1, y1, x2, y2 } => bezier_slope(x1, y1, x2, y2, u),
+        }
+    }
+
     /// `true` if this interpolation is transcendental-free.
     ///
     /// `Hold`, `Linear` and `Bezier` (solved by polynomial Newton/bisection)
@@ -398,6 +421,13 @@ fn bezier_axis_deriv(p1: f64, p2: f64, s: f64) -> f64 {
 /// Newton–Raphson from `s = x` with a bisection fallback — all polynomial, so
 /// the result is **deterministic** (no transcendental ops).
 fn solve_cubic_bezier(x1: f64, y1: f64, x2: f64, y2: f64, x: f64) -> f64 {
+    bezier_axis(y1, y2, solve_bezier_param(x1, x2, x))
+}
+
+/// The parameter half of [`solve_cubic_bezier`]: the `s` with
+/// `bezier_x(s) == x`. Split out so [`bezier_slope`] differentiates the SAME
+/// solve `remap` samples — a second solver would drift.
+fn solve_bezier_param(x1: f64, x2: f64, x: f64) -> f64 {
     const EPS: f64 = 1e-7;
     let x = x.clamp(0.0, 1.0);
 
@@ -406,7 +436,7 @@ fn solve_cubic_bezier(x1: f64, y1: f64, x2: f64, y2: f64, x: f64) -> f64 {
     for _ in 0..8 {
         let err = bezier_axis(x1, x2, s) - x;
         if err.abs() < EPS {
-            return bezier_axis(y1, y2, s);
+            return s;
         }
         let d = bezier_axis_deriv(x1, x2, s);
         if d.abs() < EPS {
@@ -430,5 +460,144 @@ fn solve_cubic_bezier(x1: f64, y1: f64, x2: f64, y2: f64, x: f64) -> f64 {
         }
         s = 0.5 * (lo + hi);
     }
-    bezier_axis(y1, y2, s)
+    s
+}
+
+/// The slope `dy/dx` of a CSS cubic-bézier timing curve at input `x` — the
+/// parametric chain rule `y'(s) / x'(s)` at the solved parameter, exactly as
+/// the reference implementation computes it (Chromium
+/// `ui/gfx/geometry/cubic_bezier.cc`, `SlopeWithEpsilon`).
+///
+/// Degenerate cases follow the reference too:
+/// - `0/0` at an endpoint (control point coincident with it): the tangent is
+///   derived from the next control point — the `InitGradients` cascade.
+/// - `0/0` in the interior (a cusp): `0`, per `SlopeWithEpsilon`.
+/// - `x' == 0` with `y' != 0` (vertical tangent): the true limit `±∞` — the
+///   reference squeezes it through `ToFinite`; callers here guard/skip
+///   non-finite for display instead.
+fn bezier_slope(x1: f64, y1: f64, x2: f64, y2: f64, x: f64) -> f64 {
+    let s = solve_bezier_param(x1, x2, x);
+    let dx = bezier_axis_deriv(x1, x2, s);
+    let dy = bezier_axis_deriv(y1, y2, s);
+    if dx == 0.0 && dy == 0.0 {
+        return if s <= 0.0 {
+            bezier_start_gradient(x1, y1, x2, y2)
+        } else if s >= 1.0 {
+            bezier_end_gradient(x1, y1, x2, y2)
+        } else {
+            0.0
+        };
+    }
+    dy / dx
+}
+
+/// The bézier's tangent slope at its START when the direct ratio is `0/0`
+/// (`P1` coincident with `P0`) — ported verbatim from Chromium
+/// `cubic_bezier.cc` `InitGradients`: the tangent falls through to the line
+/// toward the next non-coincident control point.
+fn bezier_start_gradient(x1: f64, y1: f64, x2: f64, y2: f64) -> f64 {
+    if x1 > 0.0 {
+        y1 / x1
+    } else if y1 == 0.0 && x2 > 0.0 {
+        y2 / x2
+    } else if y1 == 0.0 && y2 == 0.0 {
+        1.0
+    } else {
+        0.0
+    }
+}
+
+/// The bézier's tangent slope at its END when the direct ratio is `0/0`
+/// (`P2` coincident with `P3`) — the `InitGradients` end cascade.
+fn bezier_end_gradient(x1: f64, y1: f64, x2: f64, y2: f64) -> f64 {
+    if x2 < 1.0 {
+        (y2 - 1.0) / (x2 - 1.0)
+    } else if y2 == 1.0 && x1 < 1.0 {
+        (y1 - 1.0) / (x1 - 1.0)
+    } else if y2 == 1.0 && y1 == 1.0 {
+        1.0
+    } else {
+        0.0
+    }
+}
+
+/// `f'(u)` of an easing anywhere in `[0, 1]`, by central difference (one-sided
+/// at the ends). Unlike [`endpoint_slope`] this is NOT clamped: it feeds the
+/// speed graph, which must show the true rate, not a handle-length policy.
+fn eased_slope(e: Easing, u: f64) -> f64 {
+    let u = u.clamp(0.0, 1.0);
+    let a = (u - SLOPE_H).max(0.0);
+    let b = (u + SLOPE_H).min(1.0);
+    (e.eval(b) - e.eval(a)) / (b - a)
+}
+
+#[cfg(test)]
+mod slope_tests {
+    use super::*;
+    use crate::easing::{EasingFamily, EasingMode};
+
+    /// Central difference of `remap` — the ground truth the analytic slope must
+    /// reproduce (`remap` is what the runtime plays).
+    fn fd(interp: Interp, u: f64) -> f64 {
+        let h = 1e-5;
+        (interp.remap(u + h) - interp.remap(u - h)) / (2.0 * h)
+    }
+
+    #[test]
+    fn the_slope_is_the_derivative_of_the_remap_that_plays() {
+        let cases = [
+            Interp::Linear,
+            Interp::Hold,
+            Interp::bezier(0.42, 0.0, 0.58, 1.0), // CSS ease-in-out
+            Interp::bezier(0.2, 1.4, 0.8, -0.3),  // overshoot both ends
+            Interp::Eased(Easing::new(EasingFamily::Cubic, EasingMode::InOut)),
+        ];
+        for interp in cases {
+            for i in 1..100 {
+                let u = f64::from(i) / 100.0;
+                let (got, want) = (interp.slope(u), fd(interp, u));
+                assert!(
+                    (got - want).abs() < 1e-3 + want.abs() * 1e-2,
+                    "{interp:?} at u = {u}: slope {got} vs finite-diff {want}"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn bezier_endpoint_slopes_match_the_css_reference() {
+        // CSS `ease` (0.25, 0.1, 0.25, 1.0): start = y1/x1 = 0.4; end has
+        // P2 short of P3, so end = (y2-1)/(x2-1) = 0/(−0.75) = 0. Tolerance:
+        // the chain rule reaches these through `3·p` products, one ULP off
+        // the exact ratios.
+        let ease = Interp::bezier(0.25, 0.1, 0.25, 1.0);
+        assert!((ease.slope(0.0) - 0.4).abs() < 1e-12);
+        assert!(ease.slope(1.0).abs() < 1e-12);
+        // Hold is flat everywhere; Linear is the identity.
+        assert_eq!(Interp::Hold.slope(0.0), 0.0);
+        assert_eq!(Interp::Linear.slope(0.5), 1.0);
+    }
+
+    #[test]
+    fn a_coincident_control_point_falls_through_the_reference_cascade() {
+        // P1 = (0, 0): the start tangent is the line toward P2 — the
+        // `InitGradients` second branch (y2/x2).
+        let i = Interp::bezier(0.0, 0.0, 0.5, 0.25);
+        assert_eq!(i.slope(0.0), 0.5);
+        // P2 = (1, 1): the end tangent falls through to P1.
+        let i = Interp::bezier(0.5, 0.5, 1.0, 1.0);
+        assert_eq!(i.slope(1.0), 1.0);
+        // Both coincident on one side: the tangent degenerates to the chord.
+        let i = Interp::bezier(0.0, 0.0, 1.0, 1.0);
+        assert_eq!(i.slope(0.0), 1.0);
+    }
+
+    #[test]
+    fn a_vertical_tangent_reads_infinite_not_a_lie() {
+        // P1 = (0, 1): the curve leaves the origin straight up — the value
+        // moves instantly. The slope is the true limit (+∞), which display
+        // code skips as non-finite; reporting 0 here would hide real motion.
+        let i = Interp::bezier(0.0, 1.0, 0.58, 1.0);
+        assert!(i.slope(0.0).is_infinite() && i.slope(0.0) > 0.0);
+    }
 }

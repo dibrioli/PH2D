@@ -47,7 +47,8 @@ Da W4.T5 + fix: **nenhum** (só remoção + 1-liner). Do **speed graph (§8)**, 
 
 - **`TIMELINE_SPEED`** — chrome id novo em `ph2d-editor-core::ids::chrome::timeline` (`hash_node_id("timeline.speed")`), append-only após `TIMELINE_SNAP`. Re-export glob (`pub use timeline::*`) → também na lista explícita do painel `ids.rs`.
 - **i18n `panel.timeline.speed` = "Speed"** — nova arm em `ph2d-i18n/src/lib.rs` após `panel.timeline.snap`.
-- **`ph2d-timeline::speed`** — módulo irmão NOVO (`sample_speed`/`speed_extent`/`out_handle_y_for_speed`/`in_handle_y_for_speed`) + 4 re-exports no `lib.rs`. Nome de módulo isolado, sem colisão.
+- **`ph2d-timeline::speed`** — módulo irmão NOVO (`sample_speed`/`speed_extent`/`segment_endpoint_speed`/`out_handle_y_for_speed`/`in_handle_y_for_speed`) + re-exports no `lib.rs`. Nome de módulo isolado, sem colisão.
+- **`ph2d_anim::Interp::slope(u)`** — método novo (append-only) + helpers privados `solve_bezier_param`/`bezier_slope`/`bezier_start_gradient`/`bezier_end_gradient`/`eased_slope` em `curve.rs` (§8.1 fix A). `Interp` NÃO é contrato gateado; o solver do `remap` foi refatorado **byte-idêntico** (goldens 62/62).
 - **`TimelinePanelState.speed_view: bool`** — campo novo (panel-local). Reusa o `CurveHandle`/`HandleDrag` existentes (NÃO adiciona variant em `TimelineHitKind` — contrato de dispatch intacto).
 
 Nenhum contrato congelado (§4) tocado (o `TimelineHitKind` não é gateado; nenhum `NodeOp`/`Tool`/`AnimValue`).
@@ -133,6 +134,27 @@ Uma **2ª vista do graph editor** que plota a **velocidade** (`d(value)/dt`) da 
 **Prova (DIRETIVA §3–5):** 9 goldens de math em `speed.rs` (linear=rate const; ease slow/fast/slow; hold=0 sem spike; inverso exato dos dois handles; round-trip no sampler numérico) + **3 seam comportamentais** — `speed_toggle_flips_the_view_locally` (toggle flipa `speed_view`, zero evento de shell), `dragging_a_speed_handle_retunes_the_tangent_to_that_velocity` (drive real do gesto → `SetInterp` com slope na velocidade-alvo + influência preservada), `a_speed_drag_on_a_flat_segment_keeps_the_handle`. **Mutação dirigida** nos 2 invariantes (neutralizar o branch de `resolve_drag` → retune falha; neutralizar o flip do toggle → toggle test falha). ASSERÇÃO-VERMELHA presente em cada claim.
 
 **O que NÃO foi smokado por mim:** o render visual do painel (headless não pinta a tela). Ver §6.6.
+
+### §8.1 Auditoria padrão-ouro (a pedido do Enio, 2026-07-11) — 3 achados, 3 fixes
+
+Referências: **Chromium `ui/gfx/geometry/cubic_bezier.cc`** (a implementação de referência do CSS
+cubic-bezier: derivada por chain rule paramétrica `y'(s)/x'(s)` em `SlopeWithEpsilon` + cascata
+`InitGradients` p/ endpoints degenerados) e **semântica do speed graph do After Effects** (Adobe
+helpx + Creative COW: para propriedade 1D/dimensão separada o gráfico é **com sinal**; magnitude
+só em posição espacial combinada).
+
+| # | Achado | Fix |
+|---|---|---|
+| A | `sample_speed` usava **diferença finita** (`DIFF_U=1e-3`) onde a referência computa a derivada **analiticamente** — e o repo já tinha `bezier_axis_deriv`. Violação da regra "porte o algoritmo de referência" (DIRETIVA §1) | `Interp::slope(u)` novo em `ph2d-anim` (port do Chromium: chain rule no MESMO solver Newton do `remap` — `solve_bezier_param` extraído byte-idêntico — + cascata `InitGradients` p/ 0/0 + ±∞ em tangente vertical; `Eased` = diferença central de `eval` sem o clamp de handle). `sample_speed` = `dv·slope(u)/span` |
+| B | O dot de speed do **Hold** lia **3·rate** no lado in (derivado do chord dos `tangent_handles`, que é convenção de DESENHO do value view, não derivada) — um Hold é flat e vale **0** nas duas pontas | `segment_endpoint_speed(k0,k1,which)` via `slope(0\|1)` — Hold = 0 ✓; teste red-assertion `a_holds_endpoint_dots_read_zero_speed` + mutação (Hold→1.0 no slope → vermelho) |
+| C | Dots de speed flutuavam a 1/3–2/3 do segmento (posição dos handles de VALOR); a convenção AE ancora os speed handles **nas keyframes**. E tangente vertical (`x1=0`) mostrava dot em 0 (mentira) com a curva espicando | Dots relocados p/ `(t0, out)` / `(t1, in)`; non-finite (vertical) não pinta dot nem envenena o fit (`speed_extent`/curva filtram); `speed_extent` agora inclui os dots de segmento selecionado (espelho do `drawn_extent`) — pega endpoint íngreme que o grid de 2px perde |
+
+**Confirmados pela auditoria (sem mudança):** velocidade **com sinal** = comportamento AE p/ 1D ✓ ·
+inversos `out/in_handle_y_for_speed` = álgebra exata dos endpoint slopes (`y1/x1`, `(1-y2)/(1-x2)` —
+os mesmos do Chromium) ✓ · derivação per-segmento (Hold sem spike de fronteira) ✓ · edição mantém
+influência x (weighted = W5) ✓. Extra: alternar a vista derruba drag em curso (fecha o bracket).
+Verificação: goldens de `ph2d-anim` **byte-idênticos** pós-refactor do solver (62/62) + 4 goldens
+novos de slope + 154 anim+timeline + 290 total com painel + clippy `--all-targets` verdes.
 
 ---
 

@@ -70,6 +70,39 @@ static TELEPHONE: [FStage; 4] = [
     stage("Saturate", &[ovr("Drive", 5.0)]),
     stage("Bitcrush", &[ovr("Bits", 10.0)]),
 ];
+// A squad radio: band-limited harder than a phone, with a honking mid resonance (a
+// cheap comms speaker), squashed flat by its AGC, and grit from the transmitter. No
+// bitcrush — that reads as digital; a radio reads as gritty and compressed.
+static RADIO: [FStage; 5] = [
+    stage("High-Pass", &[ovr("Cutoff", 400.0)]),
+    stage("Low-Pass", &[ovr("Cutoff", 3_000.0)]),
+    stage(
+        "Peak EQ",
+        &[ovr("Freq", 1_800.0), ovr("Q", 2.0), ovr("Gain", 8.0)],
+    ),
+    stage("Compress", &[ovr("Threshold", 0.08), ovr("Ratio", 8.0)]),
+    stage("Saturate", &[ovr("Drive", 7.0)]),
+];
+// Inside a helmet (spacesuit / pilot / diving): a boxy low-mid resonance from the
+// enclosed shell, muffled highs the shell absorbs, and a tight short reverb — the
+// reflection of the tiny cavity is what actually sells "helmet".
+static HELMET: [FStage; 4] = [
+    stage("High-Pass", &[ovr("Cutoff", 120.0)]),
+    stage(
+        "Peak EQ",
+        &[ovr("Freq", 500.0), ovr("Q", 2.5), ovr("Gain", 9.0)],
+    ),
+    stage("Low-Pass", &[ovr("Cutoff", 4_000.0)]),
+    stage(
+        "Reverb",
+        &[
+            ovr("Room", 0.3),
+            ovr("Damp", 0.6),
+            ovr("Mix", 0.28),
+            ovr("Tail", 0.4),
+        ],
+    ),
+];
 static LO_FI: [FStage; 3] = [
     stage("Bitcrush", &[ovr("Bits", 8.0), ovr("Downsample", 2.0)]),
     stage("Low-Pass", &[ovr("Cutoff", 6_000.0)]),
@@ -91,7 +124,7 @@ static GATE_TIGHTEN: [FStage; 2] = [
     stage("Compress", &[ovr("Threshold", 0.3), ovr("Ratio", 3.0)]),
 ];
 
-static FACTORY: [Preset; 7] = [
+static FACTORY: [Preset; 9] = [
     Preset {
         name: "Voice Cleanup",
         stages: &VOICE_CLEANUP,
@@ -103,6 +136,14 @@ static FACTORY: [Preset; 7] = [
     Preset {
         name: "Telephone",
         stages: &TELEPHONE,
+    },
+    Preset {
+        name: "Radio",
+        stages: &RADIO,
+    },
+    Preset {
+        name: "Helmet",
+        stages: &HELMET,
     },
     Preset {
         name: "Lo-Fi",

@@ -123,13 +123,25 @@ pub(crate) fn apply_samples(
     // Diff each sprite against its curve (bound) or last frame (unbound), and
     // rebuild the baseline in one pass. The diff reads the document BEFORE any
     // upsert, so the whole selection is judged against one consistent state.
-    let mut to_key: Vec<(u64, PropKind, f32)> = Vec::new();
+    let mut to_key: Vec<(u64, PropKind, f32, RationalTime)> = Vec::new();
     let mut next_baseline: BTreeMap<u64, PoseSample> = BTreeMap::new();
     for &(entity, pose) in samples {
+        // The entity's own clock: under a Time Remap its scene tracks are
+        // authored in SOURCE time — the diff must compare (and a key must
+        // land) at the exact time the apply pass sampled, or world == curve
+        // breaks: every pose edit would key at an invisible time and snap
+        // back. Identity (the common case, remapped == playhead) keeps the
+        // frame-snapped playhead time byte-identical to before.
+        let t_src = ph2d_timeline::remapped_time(&timeline.doc, entity, playhead.time());
+        let t_e = if t_src == playhead.time() {
+            t
+        } else {
+            RationalTime::from_seconds(t_src)
+        };
         let base = ak.baseline.get(&entity).copied().unwrap_or([None; 6]);
         if armed {
-            for (prop, v) in autokey_props(&timeline.doc, entity, t, &pose, &base, true) {
-                to_key.push((entity, prop, v));
+            for (prop, v) in autokey_props(&timeline.doc, entity, t_e, &pose, &base, true) {
+                to_key.push((entity, prop, v, t_e));
             }
         }
         // Displaced-pose pin (paused only — while playing the apply drives the
@@ -141,7 +153,7 @@ pub(crate) fn apply_samples(
             // `allow_create = false`: only BOUND props matter here — an unbound
             // one is never overwritten by the apply, so it needs no pin.
             let off_curve =
-                !autokey_props(&timeline.doc, entity, t, &pose, &base, false).is_empty();
+                !autokey_props(&timeline.doc, entity, t_e, &pose, &base, false).is_empty();
             if !armed && off_curve {
                 ak.displaced.insert(entity);
             } else {
@@ -164,10 +176,10 @@ pub(crate) fn apply_samples(
             timeline.history.begin(&timeline.doc);
         }
         let interp = default_interp();
-        for (entity, prop, v) in &to_key {
+        for (entity, prop, v, t_e) in &to_key {
             timeline
                 .doc
-                .upsert_key(*entity, *prop, t, AnimValue::Float(*v), interp);
+                .upsert_key(*entity, *prop, *t_e, AnimValue::Float(*v), interp);
         }
         if discrete {
             let doc = timeline.doc.clone();
@@ -428,6 +440,86 @@ mod tests {
         );
         assert!(ak.displaced.is_empty(), "armed keys instead of pinning");
         assert_eq!(tx_at(&st, 0.5), Some(7.0), "armed: the pose was keyed");
+    }
+
+    #[test]
+    fn a_remapped_entity_diffs_and_keys_at_its_source_time_not_the_playhead() {
+        // The "Time bugado" shell half: the apply samples a remapped entity's
+        // tracks at its SOURCE time, so the auto-key diff must compare — and a
+        // new key must land — at that same time. Comparing at the raw playhead
+        // reads the applied pose as "off-curve" every frame (spurious keys /
+        // spurious pins), and a key inserted at the playhead is invisible at
+        // the current pose (snap-back).
+        let (mut st, ph) = state_with_tx_track(); // paused at 0.5; TX 0→0, 1→10
+        let mut ak = AutokeyState::default();
+        // 2x remap (0 → 0, 1 → 2): at playhead 0.5 the source time is 1.0,
+        // where the TX curve says 10 (NOT the 5 it says at raw 0.5).
+        let mut ph2 = Playhead::new(1.0 / 60.0);
+        for (t, v) in [(0.0, 0.0f32), (1.0, 2.0)] {
+            apply_intent(
+                &mut st,
+                &mut ph2,
+                I::AddKey {
+                    entity: E,
+                    prop: PropKind::TimeRemap,
+                    t: RationalTime::from_seconds(t),
+                    value: AnimValue::Float(v),
+                    interp: ph2d_anim::Interp::Linear,
+                },
+            );
+        }
+        // The pose the apply just wrote (curve at SOURCE 1.0 = 10): on-curve →
+        // keys nothing, pins nothing. (Diffing at raw 0.5 would scream 10 ≠ 5.)
+        let before = st.doc.clone();
+        frame(
+            &mut st,
+            &ph,
+            &[(E, pose(&[(TX, 10.0)]))],
+            false,
+            true,
+            &mut ak,
+        );
+        assert_eq!(st.doc, before, "the applied remapped pose is on-curve");
+        // Disarmed, the same pose must not pin either.
+        frame(
+            &mut st,
+            &ph,
+            &[(E, pose(&[(TX, 10.0)]))],
+            false,
+            false,
+            &mut ak,
+        );
+        assert!(ak.displaced.is_empty(), "on-curve at source time: no pin");
+        // A pose that happens to sit on the curve's RAW-playhead value (5) is
+        // genuinely displaced from the SOURCE pose (10) — it must be keyed. A
+        // diff at the raw playhead reads it as on-curve and drops the edit.
+        frame(
+            &mut st,
+            &ph,
+            &[(E, pose(&[(TX, 5.0)]))],
+            false,
+            true,
+            &mut ak,
+        );
+        assert_eq!(
+            tx_at(&st, 1.0),
+            Some(5.0),
+            "the displaced pose keyed at SOURCE 1.0, where the apply samples it"
+        );
+        // And again with an arbitrary pose: the key lands at the source time.
+        frame(
+            &mut st,
+            &ph,
+            &[(E, pose(&[(TX, 12.0)]))],
+            false,
+            true,
+            &mut ak,
+        );
+        assert_eq!(
+            tx_at(&st, 1.0),
+            Some(12.0),
+            "the key landed at source 1.0, not playhead 0.5"
+        );
     }
 
     #[test]

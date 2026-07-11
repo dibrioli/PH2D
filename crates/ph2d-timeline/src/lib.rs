@@ -34,7 +34,7 @@ pub mod speed;
 pub mod sprite;
 pub mod state;
 
-pub use apply::{apply_from_doc, apply_from_doc_except};
+pub use apply::{apply_from_doc, apply_from_doc_except, remapped_time};
 pub use autokey::{PoseSample, autokey_props};
 pub use binding::{TargetBinding, WireId};
 pub use clipboard::{ClipboardKey, TimelineClipboard};

@@ -172,6 +172,27 @@ pub(crate) fn key_value_for(
     sample_prop_value(world, entity, prop)
 }
 
+/// The track time a K-inserted key lands at, for playhead `t_secs`: scene
+/// props key at the entity's own clock ([`ph2d_timeline::remapped_time`]) —
+/// tracks are authored in SOURCE time, the same time the apply samples them
+/// at, so under a Time Remap the captured pose stays visible at the playhead
+/// instead of landing at an invisible time and snapping back. The Time track
+/// itself keys at the playhead (the map lives in playhead time). Identity /
+/// no remap: `t_secs` unchanged.
+pub(crate) fn key_insert_time(
+    timeline: &TimelineState,
+    entity: u64,
+    prop: PropKind,
+    t_secs: f64,
+) -> ph2d_anim::RationalTime {
+    let t = if prop == PropKind::TimeRemap {
+        t_secs
+    } else {
+        ph2d_timeline::remapped_time(&timeline.doc, entity, t_secs)
+    };
+    ph2d_anim::RationalTime::from_seconds(t)
+}
+
 /// The default interpolation for a freshly inserted key (a gentle ease).
 pub(crate) fn default_interp() -> ph2d_anim::Interp {
     ph2d_anim::Interp::Eased(ph2d_anim::Easing::new(
@@ -362,6 +383,34 @@ mod tests {
             Some(PropKind::TimeRemap)
         );
         assert_eq!(prop_for_addprop_id(ids::TIMELINE_PLAY), None);
+    }
+
+    #[test]
+    fn k_keys_scene_props_at_the_entitys_remapped_clock() {
+        use ph2d_anim::AnimValue::Float;
+        let mut st = TimelineState::new();
+        let mut ph = Playhead::new(1.0 / 60.0);
+        // No remap: identity (a scene key lands at the playhead).
+        let at = |st: &TimelineState, prop, t: f64| key_insert_time(st, 1, prop, t).to_seconds();
+        assert_eq!(at(&st, PropKind::TranslationX, 1.0), 1.0);
+        // 2x remap (0 → 0, 2 → 4): a TX key at playhead 1 lands at SOURCE 2 —
+        // where the apply samples it — while the Time track itself keys at the
+        // playhead (the map lives in playhead time).
+        for (t, v) in [(0.0, 0.0f32), (2.0, 4.0)] {
+            ph2d_timeline::apply_intent(
+                &mut st,
+                &mut ph,
+                TimelineIntent::AddKey {
+                    entity: 1,
+                    prop: PropKind::TimeRemap,
+                    t: ph2d_anim::RationalTime::from_seconds(t),
+                    value: Float(v),
+                    interp: ph2d_anim::Interp::Linear,
+                },
+            );
+        }
+        assert_eq!(at(&st, PropKind::TranslationX, 1.0), 2.0, "source time");
+        assert_eq!(at(&st, PropKind::TimeRemap, 1.0), 1.0, "playhead time");
     }
 
     #[test]

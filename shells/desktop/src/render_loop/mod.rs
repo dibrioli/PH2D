@@ -769,7 +769,6 @@ impl crate::App {
                 .as_ref()
                 .and_then(|h| h.gizmo.iter_selected().next())
             {
-                let t = ph2d_anim::RationalTime::from_seconds(self.playhead.time());
                 let props: Vec<_> = self
                     .timeline
                     .doc
@@ -781,7 +780,8 @@ impl crate::App {
                 for prop in props {
                     // `key_value_for`: scene props sample the live pose; a Time
                     // Remap track keys ON its own curve (identity on an empty
-                    // one), so K can author the retime too.
+                    // one), so K can author the retime too. `key_insert_time`:
+                    // scene keys land at the entity's own (remapped) clock.
                     if let Some(value) = timeline_bridge::key_value_for(
                         sim.world(),
                         &self.timeline,
@@ -793,7 +793,12 @@ impl crate::App {
                             .push(ph2d_timeline::TimelineIntent::AddKey {
                                 entity,
                                 prop,
-                                t,
+                                t: timeline_bridge::key_insert_time(
+                                    &self.timeline,
+                                    entity,
+                                    prop,
+                                    self.playhead.time(),
+                                ),
                                 value,
                                 interp: timeline_bridge::default_interp(),
                             });

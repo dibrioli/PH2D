@@ -75,19 +75,45 @@ pub fn apply_from_doc_except(
 /// The time `entity`'s tracks sample at: its Time Remap track's value at the
 /// playhead — the AE model (slope < 1 slow motion, flat freeze, negative
 /// reverse) — or the playhead itself when it has none / an empty track (the
-/// identity: binding "Time" changes nothing until keys are authored). Clamped
-/// non-negative like every playhead time. A linear scan over the few bindings:
-/// zero-alloc (HR-3, the paused bridge path is gated).
-fn remapped_time(doc: &TimelineDoc, entity: u64, t: f64) -> f64 {
+/// identity: binding "Time" changes nothing until keys are authored).
+///
+/// **Outside the keyed range the clock extrapolates at slope 1** (identity
+/// offset through the boundary key), instead of the track's flat-hold: a
+/// track's hold would freeze the entity's whole timeline the moment the FIRST
+/// key lands — K seeds the identity, so one seeded key must change nothing
+/// anywhere, exactly like zero keys. The one exception is a **`Hold` last
+/// key**, which freezes from there on (the deliberate AE freeze-frame).
+///
+/// Clamped non-negative like every playhead time. A linear scan over the few
+/// bindings: zero-alloc (HR-3, the paused bridge path is gated).
+pub fn remapped_time(doc: &TimelineDoc, entity: u64, t: f64) -> f64 {
+    let as_f64 = |v: AnimValue| match v {
+        AnimValue::Float(f) => Some(f64::from(f)),
+        _ => None,
+    };
     for b in doc.bindings() {
         if b.entity != entity || b.prop != PropKind::TimeRemap || b.missing {
             continue;
         }
-        if let Some(tr) = doc.active_clip().track(b.target)
-            && !tr.is_empty()
-            && let AnimValue::Float(v) = tr.sample(t)
-        {
-            return f64::from(v).max(0.0);
+        let Some(tr) = doc.active_clip().track(b.target) else {
+            continue;
+        };
+        let (Some(first), Some(last)) = (tr.keys().first(), tr.keys().last()) else {
+            continue; // empty track = identity
+        };
+        let (t0, t1) = (first.t.to_seconds(), last.t.to_seconds());
+        let source = if t < t0 {
+            as_f64(first.value).map(|v| v + (t - t0))
+        } else if t > t1 {
+            as_f64(last.value).map(|v| match last.interp {
+                ph2d_anim::Interp::Hold => v,
+                _ => v + (t - t1),
+            })
+        } else {
+            as_f64(tr.sample(t))
+        };
+        if let Some(v) = source {
+            return v.max(0.0);
         }
     }
     t
@@ -191,6 +217,48 @@ mod time_remap_tests {
         assert_eq!(x_at(&mut w, e, &mut doc, 0.0), 10.0, "starts at the end");
         assert_eq!(x_at(&mut w, e, &mut doc, 4.0), 0.0, "ends at the start");
         assert_eq!(x_at(&mut w, e, &mut doc, 1.0), 7.5, "backwards through 3 s");
+    }
+
+    #[test]
+    fn a_single_seeded_time_key_keeps_the_identity_clock() {
+        // THE "Time bugado" case: K seeds one identity key (a non-Hold interp).
+        // The track's flat-hold would freeze the clock at that one value for
+        // every playhead time — the sprite snapped back and no further pose
+        // could be authored. Outside the keyed range the clock must extrapolate
+        // at slope 1: one seeded key behaves exactly like zero keys.
+        let (mut w, e, mut doc) = rig();
+        remap_key(&mut doc, e, 1.0, 1.0, Interp::Linear);
+        assert_eq!(x_at(&mut w, e, &mut doc, 1.0), 2.5, "on the key: identity");
+        assert_eq!(
+            x_at(&mut w, e, &mut doc, 3.0),
+            7.5,
+            "after the key the clock keeps advancing (x(3) = 7.5, not frozen at 2.5)"
+        );
+        assert_eq!(
+            x_at(&mut w, e, &mut doc, 0.0),
+            0.0,
+            "before the key too (x(0) = 0, not held at the key's value)"
+        );
+    }
+
+    #[test]
+    fn extrapolation_continues_a_ramp_at_normal_speed_but_a_hold_last_key_freezes() {
+        // 2x ramp (0 → 0, 1 → 2): past the last key the clock resumes at
+        // slope 1 from where the ramp left it — source 2 + (t − 1).
+        let (mut w, e, mut doc) = rig();
+        remap_key(&mut doc, e, 0.0, 0.0, Interp::Linear);
+        remap_key(&mut doc, e, 1.0, 2.0, Interp::Linear);
+        assert_eq!(x_at(&mut w, e, &mut doc, 3.0), 10.0, "source 4 at t = 3");
+        // The same ramp with a HOLD last key freezes from there on (the
+        // deliberate AE freeze-frame survives the extrapolation rule).
+        let (mut w, e, mut doc) = rig();
+        remap_key(&mut doc, e, 0.0, 0.0, Interp::Linear);
+        remap_key(&mut doc, e, 1.0, 2.0, Interp::Hold);
+        assert_eq!(x_at(&mut w, e, &mut doc, 3.0), 5.0, "held at source 2");
+        // Extrapolating backwards below zero clamps like every playhead time.
+        let (mut w, e, mut doc) = rig();
+        remap_key(&mut doc, e, 2.0, 0.5, Interp::Linear);
+        assert_eq!(x_at(&mut w, e, &mut doc, 0.0), 0.0, "clamped at source 0");
     }
 
     #[test]

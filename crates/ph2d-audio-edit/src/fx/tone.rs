@@ -23,6 +23,50 @@ pub(super) fn biquad_all(data: &SampleData, coeffs: BiquadCoeffs) -> SampleData 
     SampleData::from_interleaved(out, data.format())
 }
 
+/// Full-depth mains-hum attenuation, in dB — a deep, narrow peaking cut is a de-facto
+/// notch (a true zero would need a `notch()` in the RT core; a −60 dB cut is inaudible
+/// residue and reuses the existing `peak`).
+const HUM_MAX_CUT_DB: f32 = 60.0;
+/// Q of each hum cut — narrow enough that only the ~`freq/Q` Hz around the mains line
+/// is touched, leaving the voice around it intact.
+pub(super) const HUM_Q: f32 = 30.0;
+/// Cap on how many harmonics De-Hum chases (fundamental counts as the first).
+const HUM_MAX_HARMONICS: u32 = 8;
+
+/// **De-Hum**: a per-channel cascade of deep narrow peaking cuts at the mains
+/// fundamental `freq` (50 EU / 60 US) and its harmonics, killing electrical buzz +
+/// overtones. `depth` (0..1) scales the cut from 0 dB (identity — the neutral point) to
+/// `−HUM_MAX_CUT_DB`. Length-preserving. Ported from the RBJ peaking filter (no invented
+/// constant); presentation math, HR-5 exempt (control thread).
+pub(super) fn dehum(data: &SampleData, freq: f32, depth: f32, harmonics: u32) -> SampleData {
+    let ch = channels(data);
+    let sr = data.format().sample_rate as f32;
+    let nyquist = sr * 0.5;
+    let cut_db = -depth.clamp(0.0, 1.0) * HUM_MAX_CUT_DB;
+    // One deep narrow cut per harmonic (incl. the fundamental) that sits below Nyquist.
+    let bands: Vec<BiquadCoeffs> = (1..=harmonics.clamp(1, HUM_MAX_HARMONICS))
+        .map(|h| freq.max(1.0) * h as f32)
+        .filter(|&f| f < nyquist)
+        .map(|f| BiquadCoeffs::peak(sr, f, HUM_Q, cut_db))
+        .collect();
+    let mut chains: Vec<Vec<Biquad>> = (0..ch)
+        .map(|_| bands.iter().map(|&c| Biquad::new(c)).collect())
+        .collect();
+    let frames = data.frame_count();
+    let mut out = data.samples().to_vec();
+    for f in 0..frames {
+        for (c, chain) in chains.iter_mut().enumerate() {
+            let i = f * ch + c;
+            let mut s = out[i];
+            for filt in chain.iter_mut() {
+                s = filt.process(s);
+            }
+            out[i] = s;
+        }
+    }
+    SampleData::from_interleaved(out, data.format())
+}
+
 /// `tanh` soft-clip normalized so full-scale in ≈ full-scale out.
 pub(super) fn saturate(data: &SampleData, drive: f32) -> SampleData {
     let k = drive.max(0.1);
@@ -126,6 +170,53 @@ mod tests {
         let lp = biquad_all(&d, BiquadCoeffs::lowpass(48_000.0, 1_000.0, 0.707));
         let energy: f32 = lp.samples().iter().skip(16).map(|x| x * x).sum();
         assert!(energy < 8.0, "near-Nyquist content strongly attenuated");
+    }
+
+    #[test]
+    fn dehum_kills_the_mains_line_and_spares_the_voice() {
+        let sr = 48_000.0;
+        let n = 9600; // 0.2 s
+        let tone = |hz: f32| -> Vec<f32> {
+            (0..n)
+                .map(|i| (i as f32 * std::f32::consts::TAU * hz / sr).sin())
+                .collect()
+        };
+        let (hum, voice) = (tone(60.0), tone(1000.0));
+        let mixed: Vec<f32> = hum
+            .iter()
+            .zip(&voice)
+            .map(|(h, v)| h * 0.5 + v * 0.5)
+            .collect();
+        let d = SampleData::from_interleaved(mixed, AudioFormat::mono(48_000));
+        let cleaned = dehum(&d, 60.0, 1.0, 1);
+        // Correlate the cleaned signal against each pure component (skip the filter
+        // warm-up). The 60 Hz line must be crushed; the 1 kHz "voice" must survive.
+        let corr = |b: &[f32]| -> f32 {
+            cleaned
+                .samples()
+                .iter()
+                .skip(2000)
+                .zip(b.iter().skip(2000))
+                .map(|(x, y)| x * y)
+                .sum::<f32>()
+                .abs()
+        };
+        let (hum_left, voice_left) = (corr(&hum), corr(&voice));
+        assert!(
+            hum_left < voice_left * 0.1,
+            "hum not suppressed: {hum_left} vs voice {voice_left}"
+        );
+    }
+
+    #[test]
+    fn dehum_at_zero_depth_is_identity() {
+        // depth 0 → 0 dB peaking cuts, which are algebraically a pass-through — the
+        // rack's neutral point (the `apply` guard also short-circuits to a clone).
+        let d = stereo(vec![0.1, -0.2, 0.3, -0.4, 0.5, -0.6]);
+        let out = dehum(&d, 50.0, 0.0, 4);
+        for (a, b) in d.samples().iter().zip(out.samples()) {
+            assert!((a - b).abs() < 1e-6, "0-depth de-hum altered the signal");
+        }
     }
 
     /// A peaking bell boosts its own band and leaves DC and Nyquist alone — that is

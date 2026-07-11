@@ -40,6 +40,12 @@ static HIGH_SHELF: [FxParamSpec; 3] = [
     spec("Q", 0.1, 2.0, false, 0.707, "", false),
     spec("Gain", -18.0, 18.0, false, 0.0, "dB", false),
 ];
+// Depth is the arm (0 = 0 dB cut = pass-through). Freq covers both mains standards.
+static DE_HUM: [FxParamSpec; 3] = [
+    spec("Freq", 50.0, 60.0, false, 50.0, "Hz", false),
+    spec("Depth", 0.0, 1.0, false, 0.0, "", false),
+    spec("Harmonics", 1.0, 8.0, false, 4.0, "", true),
+];
 static COMPRESS: [FxParamSpec; 4] = [
     spec("Threshold", 0.01, 1.0, true, 0.3, "", false),
     // Neutral at 1:1 — no reduction at all (make-up is peak-preserving, so it
@@ -121,7 +127,7 @@ static TREMOLO: [FxParamSpec; 2] = [
 
 /// The effects the selector cycles, in order — grouped tone → dynamics → character
 /// → space, the way a rack is laid out.
-pub(crate) static KINDS: [FxKind; 18] = [
+pub(crate) static KINDS: [FxKind; 19] = [
     FxKind {
         name: "Low-Pass",
         params: &LOW_PASS,
@@ -177,6 +183,18 @@ pub(crate) static KINDS: [FxKind; 18] = [
                 freq: v[0],
                 q: v[1],
                 gain_db: v[2],
+            })
+        },
+    },
+    FxKind {
+        name: "De-Hum",
+        params: &DE_HUM,
+        arms: &[1], // Depth
+        build: |v| {
+            FxCommand::Plain(Effect::DeHum {
+                freq: v[0],
+                depth: v[1],
+                harmonics: v[2] as u32,
             })
         },
     },

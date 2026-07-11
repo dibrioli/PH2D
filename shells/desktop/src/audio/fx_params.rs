@@ -268,6 +268,7 @@ mod tests {
                 "Peak EQ",
                 "Low Shelf",
                 "High Shelf",
+                "De-Hum",
                 "Compress",
                 "Gate",
                 "De-Esser",

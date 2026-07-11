@@ -31,7 +31,7 @@ use deess::deess;
 use dynamics::{compress, gate, limit};
 use modulation::{modulated_delay, phaser, tremolo};
 use space::render_wet;
-use tone::{biquad_all, bitcrush, saturate, stereo_width};
+use tone::{HUM_Q, biquad_all, bitcrush, dehum, saturate, stereo_width};
 
 /// Chorus base delay (ms): a detuned doubling sits well behind the dry signal.
 const CHORUS_BASE_MS: f32 = 18.0;
@@ -61,6 +61,8 @@ const SATURATE_BYPASS_DRIVE: f32 = 1e-3;
 const BITCRUSH_BYPASS_BITS: u32 = 16;
 /// A modulation effect fully dry (`mix`/`depth` at 0) passes the signal through.
 const MOD_BYPASS: f32 = 0.0;
+/// De-Hum at `depth` 0 makes 0 dB cuts (a pass-through), so it is the neutral point.
+const HUM_BYPASS_DEPTH: f32 = 0.0;
 
 /// A single length-preserving offline effect. Each variant has a **neutral point**
 /// at which [`Effect::apply`] returns its input untouched (see
@@ -79,6 +81,14 @@ pub enum Effect {
     LowShelf { freq: f32, q: f32, gain_db: f32 },
     /// High shelf: `gain_db` applied above the `freq` Hz corner. Neutral at 0 dB.
     HighShelf { freq: f32, q: f32, gain_db: f32 },
+    /// **De-Hum**: removes mains buzz — a cascade of deep narrow cuts at `freq`
+    /// (50 EU / 60 US) and its harmonics. `depth` (0..1) sets the attenuation
+    /// (0 = bypass); `harmonics` how many overtones to chase. Neutral at `depth` 0.
+    DeHum {
+        freq: f32,
+        depth: f32,
+        harmonics: u32,
+    },
     /// Feed-forward compressor (glue / level). Make-up gain is **automatic and
     /// peak-preserving**: the compressed region is scaled back so its peak matches
     /// the input's, so raising `ratio` reduces the dynamic range (quiet parts come
@@ -197,6 +207,12 @@ impl Effect {
             Effect::HighShelf { freq, q, gain_db } if gain_db.abs() > EQ_BYPASS_GAIN_DB => {
                 biquad_all(data, BiquadCoeffs::highshelf(sr, freq, q, gain_db))
             }
+            // Depth 0 is a 0 dB cut = pass-through (and would still round each sample).
+            Effect::DeHum {
+                freq,
+                depth,
+                harmonics,
+            } if depth > HUM_BYPASS_DEPTH => dehum(data, freq, depth, harmonics),
             // Ratio 1:1 reduces nothing — and would still round the samples.
             Effect::Compress {
                 threshold,
@@ -285,6 +301,9 @@ impl Effect {
             Effect::DeEss { freq, .. } => {
                 biquad_warmup(freq, deess::SPLIT_Q, sample_rate, TAUS).min(cap)
             }
+            // Narrow (high-Q) cuts at a low frequency ring for a while; pre-roll the
+            // fundamental's notch (the longest). Harmonics settle faster.
+            Effect::DeHum { freq, .. } => biquad_warmup(freq, HUM_Q, sample_rate, TAUS).min(cap),
             Effect::Limiter { release_secs, .. } => {
                 ((release_secs.max(0.0) * sample_rate as f32) as usize).min(cap)
             }
@@ -336,6 +355,7 @@ impl Effect {
                     | Effect::Phaser { mix, .. }
                     if mix <= MOD_BYPASS)
             || matches!(*self, Effect::Tremolo { depth, .. } if depth <= MOD_BYPASS)
+            || matches!(*self, Effect::DeHum { depth, .. } if depth <= HUM_BYPASS_DEPTH)
     }
 }
 

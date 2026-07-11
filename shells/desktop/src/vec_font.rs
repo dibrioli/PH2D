@@ -87,6 +87,10 @@ impl FontDb {
 
 thread_local! {
     static DB: RefCell<Option<FontDb>> = const { RefCell::new(None) };
+    /// Fontes IMPORTADAS de arquivo (nome de exibição → fonte). Independentes do
+    /// scan do sistema; entram no ciclo antes das famílias do sistema.
+    static IMPORTED: RefCell<BTreeMap<String, Arc<VariableFont>>> =
+        const { RefCell::new(BTreeMap::new()) };
 }
 
 /// Roda `f` com o catálogo, construindo-o (escaneia o sistema) na 1ª vez.
@@ -94,14 +98,28 @@ fn with_db<R>(f: impl FnOnce(&mut FontDb) -> R) -> R {
     DB.with(|c| f(c.borrow_mut().get_or_insert_with(FontDb::new)))
 }
 
+/// Importa uma fonte de bytes de arquivo (`.ttf`/`.otf`) sob o rótulo `name`.
+/// Devolve `Some(name)` se parseou (para virar a família corrente), `None` se os
+/// bytes não são uma fonte válida. Não toca o `Collection` do sistema.
+#[must_use]
+pub(crate) fn import(name: String, bytes: Vec<u8>) -> Option<String> {
+    let font = Arc::new(VariableFont::new(bytes).ok()?);
+    IMPORTED.with(|m| m.borrow_mut().insert(name.clone(), font));
+    Some(name)
+}
+
 /// A fonte de uma sessão de texto: a família escolhida (do sistema) ou a embutida.
 /// Chamado a cada regen — barato após o 1º load (lookup + `Arc::clone`).
 #[must_use]
 pub(crate) fn resolve(family: Option<&str>) -> Arc<VariableFont> {
-    match family {
-        None => embedded(),
-        Some(name) => with_db(|db| db.load(name)).unwrap_or_else(embedded),
+    let Some(name) = family else {
+        return embedded();
+    };
+    // Importadas primeiro (não constroem o scan do sistema), depois o sistema.
+    if let Some(f) = IMPORTED.with(|m| m.borrow().get(name).cloned()) {
+        return f;
     }
+    with_db(|db| db.load(name)).unwrap_or_else(embedded)
 }
 
 /// Cicla a família escolhida por `dir` (+1 próxima / −1 anterior) sobre a lista
@@ -109,18 +127,20 @@ pub(crate) fn resolve(family: Option<&str>) -> Arc<VariableFont> {
 /// catálogo na 1ª chamada (é quando o usuário abre o seletor).
 #[must_use]
 pub(crate) fn cycle_family(current: Option<&str>, dir: i32) -> Option<String> {
+    let imported: Vec<String> = IMPORTED.with(|m| m.borrow().keys().cloned().collect());
     with_db(|db| {
-        let len = db.families.len() + 1; // +1 = a entrada embutida (índice 0)
-        let cur = match current {
-            None => 0,
-            Some(name) => db
-                .families
-                .iter()
-                .position(|f| f == name)
-                .map_or(0, |i| i + 1),
-        };
-        let next = (cur as i32 + dir).rem_euclid(len as i32) as usize;
-        (next != 0).then(|| db.families[next - 1].clone())
+        // Lista navegável: [Embutida] ++ importadas ++ famílias do sistema.
+        let mut names: Vec<Option<String>> =
+            Vec::with_capacity(1 + imported.len() + db.families.len());
+        names.push(None);
+        names.extend(imported.iter().cloned().map(Some));
+        names.extend(db.families.iter().cloned().map(Some));
+        let cur = names
+            .iter()
+            .position(|n| n.as_deref() == current)
+            .unwrap_or(0);
+        let next = (cur as i32 + dir).rem_euclid(names.len() as i32) as usize;
+        names[next].clone()
     })
 }
 
@@ -166,5 +186,23 @@ mod tests {
         if let Some(fam) = cycle_family(None, 1) {
             assert!(resolve(Some(&fam)).units_per_em() > 0);
         }
+    }
+
+    /// Uma fonte importada resolve pelo nome e entra no ciclo antes das do sistema
+    /// (ciclar +1 da embutida cai nela). Usa os bytes da embutida como arquivo-teste.
+    #[test]
+    fn an_imported_font_resolves_and_leads_the_cycle() {
+        let name = import(
+            "ZZImportTest".to_owned(),
+            ph2d_text::inter_variable_ttf().to_vec(),
+        )
+        .expect("bytes da embutida parseiam");
+        assert_eq!(name, "ZZImportTest");
+        assert!(resolve(Some("ZZImportTest")).units_per_em() > 0);
+        assert_eq!(cycle_family(None, 1), Some("ZZImportTest".to_owned()));
+        assert!(
+            import("bad".to_owned(), vec![0, 1, 2, 3]).is_none(),
+            "lixo não parseia"
+        );
     }
 }

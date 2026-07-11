@@ -242,6 +242,39 @@ pub(crate) fn cycle_text_font(
     }
 }
 
+/// Botão "Import Font…": abre o seletor nativo (rfd), lê um `.ttf`/`.otf`, registra a
+/// fonte (rótulo = nome do arquivo) e a torna a família corrente + regenera. `false`
+/// se o usuário cancelou ou o arquivo não é uma fonte válida. O diálogo é modal
+/// (bloqueia o frame como os outros imports do shell).
+pub(crate) fn import_text_font(
+    edit: &mut Option<VecTextEdit>,
+    family_field: &mut Option<String>,
+    scene: &mut ph2d_vec_scene::VecScene,
+) -> bool {
+    let Some(path) = rfd::FileDialog::new()
+        .add_filter("Font (TTF / OTF)", &["ttf", "otf", "ttc"])
+        .pick_file()
+    else {
+        return false; // cancelado
+    };
+    let Ok(bytes) = std::fs::read(&path) else {
+        return false;
+    };
+    let label = path
+        .file_stem()
+        .map(|s| s.to_string_lossy().into_owned())
+        .unwrap_or_else(|| "Imported".to_owned());
+    let Some(name) = crate::vec_font::import(label, bytes) else {
+        return false; // não é uma fonte válida
+    };
+    *family_field = Some(name.clone());
+    if let Some(edit) = edit.as_mut() {
+        edit.family = Some(name);
+        regen_into(scene, edit);
+    }
+    true
+}
+
 /// Os dois pontos (world) do cursor de texto vertical na ponta da última linha —
 /// `None` se não há edição. Fn livre (não método) para o render poder chamá-la lendo
 /// só o campo `vec_text_edit`, sem emprestar o `App` inteiro (o `gfx` está vivo lá).

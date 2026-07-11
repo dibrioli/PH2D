@@ -234,6 +234,7 @@ fn populate_shape(store: &mut WidgetStore) {
     // Font-family picker prev / next (`<` / `>`) — cycle the chosen system font.
     button(store, ids::VECTOR_TEXT_FONT_PREV);
     button(store, ids::VECTOR_TEXT_FONT_NEXT);
+    button(store, ids::VECTOR_TEXT_FONT_IMPORT);
 
     populate_transform_fields(store);
 }

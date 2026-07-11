@@ -156,6 +156,9 @@ pub const VECTOR_TEXT_WEIGHT_NUM: NodeId = hash_node_id("vector.text.weight_num"
 /// cycle the chosen system font family (or the bundled default) of the text.
 pub const VECTOR_TEXT_FONT_PREV: NodeId = hash_node_id("vector.text.font_prev");
 pub const VECTOR_TEXT_FONT_NEXT: NodeId = hash_node_id("vector.text.font_next");
+/// Text "Import Font…" button — opens a native file picker for a `.ttf`/`.otf`,
+/// loads it as the current text font (and adds it to the cycle).
+pub const VECTOR_TEXT_FONT_IMPORT: NodeId = hash_node_id("vector.text.font_import");
 /// Polygon "Sides" slider (3..12) — shown only in Polygon mode; drives
 /// `VectorTool::polygon_sides`.
 pub const VECTOR_SIDES: NodeId = hash_node_id("vector.sides");

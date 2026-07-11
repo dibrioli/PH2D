@@ -4842,6 +4842,7 @@ dependencies = [
  "bytemuck",
  "core-graphics",
  "cpal",
+ "fontique",
  "gilrs",
  "image",
  "libm",

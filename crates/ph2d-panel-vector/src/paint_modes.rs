@@ -277,7 +277,9 @@ impl BodyCtx<'_> {
             (self.inner_w - 2.0 * (btn_w + gap)).max(1.0),
             resolve(ColorToken::Text1, self.theme),
         );
-        y + self.row_h + self.row_gap
+        y += self.row_h + self.row_gap;
+        // Import a font file (.ttf/.otf) as the current text font.
+        self.action_button(ids::VECTOR_TEXT_FONT_IMPORT, "Import Font...", y)
     }
 
     /// A small square action button (used by the font-picker `<` / `>`).

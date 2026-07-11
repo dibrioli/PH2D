@@ -1050,6 +1050,8 @@ impl crate::App {
             let mut pending_vec_text_weight: Option<f32> = None;
             // Text font-family cycle (`<` = -1 / `>` = +1) from the panel picker.
             let mut pending_vec_font_cycle: Option<i32> = None;
+            // "Import Font…" button — opens a native picker for a .ttf/.otf.
+            let mut pending_vec_font_import = false;
             let mut transform_edit: Option<ph2d_editor::InspectorTransformInfo> = None;
             let mut visibility_edit: Option<ph2d_editor::InspectorVisibilityInfo> = None;
             let mut sprite_source_change: Option<(u64, RequestedSpriteStrategy)> = None;
@@ -1162,6 +1164,8 @@ impl crate::App {
                                 pending_vec_font_cycle = Some(-1);
                             } else if *id == ph2d_editor::ids::VECTOR_TEXT_FONT_NEXT {
                                 pending_vec_font_cycle = Some(1);
+                            } else if *id == ph2d_editor::ids::VECTOR_TEXT_FONT_IMPORT {
+                                pending_vec_font_import = true;
                             }
                         }
                         // Transform fields (X/Y/W/H) are numeric SetValue document
@@ -1962,6 +1966,13 @@ impl crate::App {
                     &mut self.vec_text_family,
                     vec_scene,
                     dir,
+                );
+            }
+            if pending_vec_font_import {
+                crate::vec_text::import_text_font(
+                    &mut self.vec_text_edit,
+                    &mut self.vec_text_family,
+                    vec_scene,
                 );
             }
             if let Some(op) = pending_vec_path_shape {

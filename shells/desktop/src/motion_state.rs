@@ -56,17 +56,16 @@ pub(crate) struct MotionState {
 impl MotionState {
     /// Build the boot state: register every node op + the **default document** —
     /// one small, focused scene that isolates the two newest value-domain nodes
-    /// (doc 16) on a single grid, both driven by the SAME travelling `value.lfo`:
-    /// `value.math` MULTIPLIES a per-dot Ramp by the wave → a size gradient that
-    /// breathes (the continuous read), and `pulse.compare` fires a pulse on each
-    /// dot's rising crossing → a `motion.strobe` flash rippling across the grid
-    /// (the discrete read). Kept deliberately small (~10 nodes) so each new node
-    /// reads on its own (docs/Motion Nodes/12, 13, 16). The earlier showcase scenes
-    /// (the Cavalry grid rig, the particle fountain) and the pulse/counter/
-    /// sample-hold chains were removed to keep the boot document focused; they live
-    /// in git history and every node keeps its own unit tests + stays registered
-    /// (drop them in the editor). Transport paused at tick 0 (the bridge auto-plays
-    /// on tool entry).
+    /// (doc 17) on a single grid: a `value.switch` routes the Size between an
+    /// ordered `instance_field` Ramp and a Random scatter as a `value.lfo` `select`
+    /// cycles, and a `pulse.on_change` fires a `motion.strobe` flash the tick the
+    /// pattern flips. Kept deliberately small (~11 nodes) so each new node reads on
+    /// its own (docs/Motion Nodes/12, 14, 17). The earlier scenes (the Cavalry grid
+    /// rig, the particle fountain) and the earlier value chains (metronome/counter/
+    /// sample-hold/math/compare/per-channel drives) were removed to keep the boot
+    /// document focused; they live in git history and every node keeps its own unit
+    /// tests + stays registered (drop them in the editor). Transport paused at tick
+    /// 0 (the bridge auto-plays on tool entry).
     pub(crate) fn new() -> Self {
         let mut registry = NodeRegistry::new();
         ph2d_node_registry_init::register_all_nodes(&mut registry)
@@ -95,19 +94,18 @@ impl MotionState {
 /// is well-typed.
 ///
 /// The scene — built in the `strobe` sibling module — isolates the two newest
-/// value-domain nodes (doc 16) on a single grid, both driven by the SAME
-/// travelling `value.lfo`: `value.math` MULTIPLIES a per-dot `value.instance_field`
-/// Ramp by the wave and a `value.map_range` reshapes it onto Size (a gradient that
-/// breathes — the continuous read); `pulse.compare` fires a pulse on each dot's
-/// rising crossing and a `motion.strobe` flashes it (a ripple across the grid —
-/// the discrete read). One wave, two ways. See docs/Motion Nodes/12 (value),
-/// 13 (lfo/map_range), 16 (math+compare).
+/// value-domain nodes (doc 17) on a single grid: a `value.switch` routes the Size
+/// between an ordered `value.instance_field` Ramp and a Random scatter as a
+/// `value.lfo` `select` cycles `0 ↔ 1` (the routing), and a `pulse.on_change`
+/// watches the switched value and fires a `motion.strobe` flash the tick the
+/// pattern flips (the change-detection). See docs/Motion Nodes/12 (value),
+/// 14 (instance_field), 17 (switch+on_change).
 ///
 /// The earlier scenes were removed to keep the boot document small and legible:
 /// the **Cavalry grid rig**, the **particle fountain**, and the earlier value
-/// chains (pulse metronome → counter → drive, sample-hold, per-channel drives).
-/// They remain in git history and every node keeps its own unit tests; the nodes
-/// stay registered, so any of them can be dropped back in the editor.
+/// chains (metronome/counter/drive, sample-hold, math, compare, per-channel
+/// drives). They remain in git history and every node keeps its own unit tests;
+/// the nodes stay registered, so any of them can be dropped back in the editor.
 fn build_default_document(g: &mut Graph, reg: &NodeRegistry) -> Option<Vec<NodeId>> {
     let scene = strobe::build(g)?;
     // Same "validate on load" the editor runs before cooking — proves the authored

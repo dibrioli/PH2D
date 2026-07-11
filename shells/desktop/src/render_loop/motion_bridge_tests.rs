@@ -514,31 +514,31 @@ fn every_output_node_is_a_render_sink() {
 /// M2.N2 end to end through the REAL registry + transport: a `loop_range` that
 /// wraps the playhead backwards **replays the simulation from the loop start**
 /// instead of showing the marching-future state. This is the reachable payoff of
-/// checkpoint/restore — the default value scene (a `pulse.compare` firing a
-/// decaying `motion.strobe` flash — both sequential `pre`-loop nodes) looped,
-/// cooked exactly as the bridge cooks it (`advance_or_scrub_scoped`), must produce
-/// the IDENTICAL frame sequence on every lap.
+/// checkpoint/restore — the default value scene (a `pulse.on_change` firing a
+/// decaying `motion.strobe` flash the tick a `value.switch` flips — both sequential
+/// `pre`-loop nodes) looped, cooked exactly as the bridge cooks it
+/// (`advance_or_scrub_scoped`), must produce the IDENTICAL frame sequence per lap.
 ///
-/// The marching signal is the reference dot's tint red: the blue base (0.25)
-/// spikes to ~0.9 when its travelling wave crosses the compare threshold, then the
-/// strobe glow decays back — bright flash, dim tail within a lap.
+/// The marching signal is the brightest dot's tint red: the blue base (0.25)
+/// spikes to ~0.9 when the switch flips (the lfo crosses `0.5`, ~tick 61), then the
+/// strobe glow decays back — bright flash, dim tail within the lap.
 ///
-/// Falsifiable: the flash-then-decay makes an early frame bright and a late frame
-/// dim (`hi > lo·1.5`); a naive forward pump at the wrap would carry the dim,
-/// decayed glow into the new lap — so `lap2` would match the dim tail, not the
-/// bright start. The scrub path is what makes `lap2 == lap1`.
+/// Falsifiable: the flash-then-decay makes a mid frame bright and the tail dim
+/// (`hi > lo·1.5`); a naive forward pump at the wrap would carry the dim, decayed
+/// glow into the new lap — so `lap2` would match the dim tail, not replay the
+/// flash. The scrub path is what makes `lap2 == lap1`.
 #[test]
 fn a_loop_range_replays_the_simulation_from_its_start() {
     use ph2d_eval_motion::MotionCookPump;
     use ph2d_nodegraph::cook::TimeScopes;
 
-    let state = MotionState::new(); // the pulse-loop default doc (sequential nodes)
+    let state = MotionState::new(); // the value-switch default doc (sequential nodes)
     let (uv, size) = (state.default_uv_rect, state.default_size);
     let scopes = TimeScopes::new();
     let sinks = &state.sinks;
-    const LAP: u64 = 45; // ticks per lap
+    const LAP: u64 = 90; // ticks per lap — long enough to contain a switch flip
 
-    // Cook one lap, capturing each frame's reference-dot flash (tint red).
+    // Cook one lap, capturing each frame's brightest flash (max tint red).
     let lap = |pump: &mut MotionCookPump| -> Vec<f32> {
         let mut sig = Vec::new();
         let mut transport = ph2d_motion_doc::MotionTransport {
@@ -561,7 +561,12 @@ fn a_loop_range_replays_the_simulation_from_its_start() {
                 size,
                 &scopes,
             );
-            sig.push(pump.instances.first().map(|i| i.tint[0]).unwrap_or(0.0));
+            sig.push(
+                pump.instances
+                    .iter()
+                    .map(|i| i.tint[0])
+                    .fold(0.0_f32, f32::max),
+            );
         }
         sig
     };

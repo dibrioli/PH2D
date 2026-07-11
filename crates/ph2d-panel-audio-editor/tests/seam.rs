@@ -20,6 +20,7 @@ use ph2d_panel_audio_editor::{
     set_fx_kind_defaults, set_fx_kind_names, set_has_selection, set_loop_span, set_preset_names,
     take_apply_preset, take_batch_lufs, take_clear_loop, take_edit_cmd, take_load,
     take_load_preset, take_play_pause, take_save_preset, take_set_loop, take_stop,
+    take_toggle_mono,
 };
 use ph2d_ui_testkit::MockPanelHost;
 
@@ -422,20 +423,25 @@ fn loop_set_arms_only_with_a_selection() {
     assert!(take_set_loop(), "Set Loop never armed the set-loop intent");
 }
 
-/// Force-to-mono rides the edit-command seam like the other whole-clip ops; Batch
-/// LUFS is a folder op that arms its own one-shot the bridge turns into a picker.
+/// Force-to-mono is a NON-destructive toggle — its click arms the mono-toggle intent
+/// (NOT a destructive edit command). Batch LUFS is a folder op with its own one-shot.
 #[test]
-fn force_mono_and_batch_lufs_reach_their_intents() {
+fn force_mono_toggle_and_batch_lufs_reach_their_intents() {
     let mut host = MockPanelHost::with_panel::<AudioEditorPanel>();
     let mut state = AudioEditorState;
     let _ = take_edit_cmd();
+    let _ = take_toggle_mono();
     let _ = take_batch_lufs();
 
     host.apply_panel_event::<AudioEditorPanel>(&mut state, WidgetEvent::Click(AEDIT_MONO));
+    assert!(
+        take_toggle_mono(),
+        "Force Mono click never armed the mono-toggle intent"
+    );
     assert_eq!(
         take_edit_cmd(),
-        Some(AudioEditCmd::ForceMono),
-        "Force Mono click never armed the edit command"
+        None,
+        "Force Mono must NOT arm a destructive edit command"
     );
 
     host.apply_panel_event::<AudioEditorPanel>(&mut state, WidgetEvent::Click(AEDIT_BATCH_LUFS));

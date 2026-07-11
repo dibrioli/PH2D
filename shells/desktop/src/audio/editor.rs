@@ -74,6 +74,16 @@ pub(super) struct AudioEditorRuntime {
     /// bar follow the mouse. Cleared when playback takes authority back (Play / resume
     /// / Stop / Load, or a scrub release while playing).
     scrub_frame: Option<u64>,
+    /// Force-to-mono (W6): a **non-destructive** output toggle, like the fx Bypass. The
+    /// clip stays stereo (undo intact); while on, `editor_sounding` returns the
+    /// downmixed [`mono_view`] so Play, the waveform, Export all hear/show/write mono.
+    force_mono: bool,
+    /// Cached mono downmix of the current output base while [`force_mono`] is on,
+    /// rebuilt only when the base buffer changes (see [`mono_sig`]).
+    mono_view: Option<ph2d_audio_edit::EditClip>,
+    /// Signature `(ptr, len)` of the base buffer `mono_view` was built from — so the
+    /// downmix is not recomputed every frame.
+    mono_sig: Option<(usize, usize)>,
 }
 
 impl AudioSystem {
@@ -105,14 +115,16 @@ impl AudioSystem {
         self.editor.playing_loop_region = false;
         self.editor.loop_sig = None;
         self.editor.scrub_frame = Some(0);
+        // A fresh clip starts un-mono'd.
+        self.editor.force_mono = false;
+        self.editor.mono_view = None;
+        self.editor.mono_sig = None;
         self.editor_fx_discard();
     }
 
-    /// The clip the editor currently **sounds and shows**: the live audition when
-    /// the effects rack is previewing, else the committed clip. The global Bypass
-    /// forces the dry clip — that is the whole point of the A/B, and routing Play,
-    /// the waveform, Export and Apply through here is what keeps them agreeing.
-    fn editor_sounding(&self) -> Option<&ph2d_audio_edit::EditClip> {
+    /// The clip **before** the force-mono view: the live audition when the effects rack
+    /// is previewing, else the committed clip. The global Bypass forces the dry clip.
+    fn editor_base(&self) -> Option<&ph2d_audio_edit::EditClip> {
         if self.editor.fx_bypass {
             return self.editor.clip.as_ref();
         }
@@ -120,6 +132,63 @@ impl AudioSystem {
             .fx_audition
             .as_ref()
             .or(self.editor.clip.as_ref())
+    }
+
+    /// The clip the editor currently **sounds and shows**: [`editor_base`] with the
+    /// **force-mono** view laid on top when that toggle is on. Routing Play, the
+    /// waveform, Export and Apply through here keeps them all agreeing.
+    fn editor_sounding(&self) -> Option<&ph2d_audio_edit::EditClip> {
+        if self.editor.force_mono
+            && let Some(m) = self.editor.mono_view.as_ref()
+        {
+            return Some(m);
+        }
+        self.editor_base()
+    }
+
+    /// Whether the non-destructive force-mono view is engaged (published to the panel
+    /// so its toggle lights up).
+    pub(crate) fn editor_force_mono(&self) -> bool {
+        self.editor.force_mono
+    }
+
+    /// Flip the force-mono output toggle. Non-destructive — the clip stays as it is;
+    /// only what sounds/shows/exports changes. Rebuilds the view + live-switches the
+    /// preview so the change is heard immediately.
+    pub(crate) fn editor_toggle_force_mono(&mut self) {
+        self.editor.force_mono = !self.editor.force_mono;
+        self.editor_refresh_mono_view();
+        self.editor_hot_swap();
+    }
+
+    /// Rebuild the cached mono downmix when force-mono is on and the base buffer
+    /// changed (an edit, an fx audition, a Bypass flip). Cheap no-op otherwise. Call
+    /// once per frame from the bridge so the mono view tracks edits.
+    pub(crate) fn editor_refresh_mono_view(&mut self) {
+        if !self.editor.force_mono {
+            self.editor.mono_view = None;
+            self.editor.mono_sig = None;
+            return;
+        }
+        let sig = self.editor_base().map(|c| {
+            let s = c.data().samples();
+            (s.as_ptr() as usize, s.len())
+        });
+        if sig.is_none() {
+            self.editor.mono_view = None;
+            self.editor.mono_sig = None;
+            return;
+        }
+        if self.editor.mono_sig == sig && self.editor.mono_view.is_some() {
+            return;
+        }
+        if let Some(data) = self
+            .editor_base()
+            .map(|c| ph2d_audio_edit::force_mono(c.data()))
+        {
+            self.editor.mono_view = Some(ph2d_audio_edit::EditClip::new(data));
+            self.editor.mono_sig = sig;
+        }
     }
 
     /// Push whatever should be sounding into the running preview voice, keeping
@@ -371,7 +440,6 @@ impl AudioSystem {
                 Cmd::Reverse => clip.apply_reverse(),
                 Cmd::RemoveDc => clip.apply_remove_dc_offset(),
                 Cmd::Invert => clip.apply_invert(),
-                Cmd::ForceMono => clip.apply_force_mono(),
                 Cmd::GainDown => clip.apply_gain(GAIN_DOWN),
                 Cmd::GainUp => clip.apply_gain(GAIN_UP),
                 // Range ops (act on the selection).

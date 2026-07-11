@@ -5,11 +5,11 @@
 //! button dims — and refuses in the seam — when it has nothing to act on (no clip /
 //! no history / no selection). Ends by delegating to the effects rack.
 
-use crate::paint::{ClippedHits, ROW_H, button};
+use crate::paint::{ClippedHits, ROW_H, button, toggle};
 use crate::{
     AEDIT_CUT, AEDIT_DC, AEDIT_FADE_IN, AEDIT_FADE_OUT, AEDIT_GAIN_DOWN, AEDIT_GAIN_UP,
     AEDIT_INVERT, AEDIT_MONO, AEDIT_NORM_LUFS, AEDIT_NORMALIZE, AEDIT_REDO, AEDIT_REVERSE,
-    AEDIT_SILENCE, AEDIT_TRIM, AEDIT_UNDO,
+    AEDIT_SILENCE, AEDIT_TRIM, AEDIT_UNDO, loop_state,
 };
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::zones::Rect;
@@ -79,9 +79,10 @@ pub(crate) fn paint_edit_section(
         theme,
         hit_index,
     );
-    button(
+    toggle(
         Rect::new(x + half + gap, y, half, ROW_H),
         "Force Mono",
+        loop_state::mono_on(),
         loaded,
         AEDIT_MONO,
         scene,

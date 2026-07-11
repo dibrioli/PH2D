@@ -24,6 +24,30 @@ thread_local! {
     static CLEAR_LOOP_REQ: Cell<bool> = const { Cell::new(false) };
     /// Panel → shell: normalize a whole folder of audio to a target loudness.
     static BATCH_LUFS_REQ: Cell<bool> = const { Cell::new(false) };
+    /// Panel → shell: flip the non-destructive force-mono output toggle (one-shot).
+    static TOGGLE_MONO_REQ: Cell<bool> = const { Cell::new(false) };
+    /// Shell → panel: whether force-mono is currently engaged (lights the toggle).
+    static MONO_ON: Cell<bool> = const { Cell::new(false) };
+}
+
+/// Panel: arm "flip the force-mono output toggle".
+pub(crate) fn request_toggle_mono() {
+    TOGGLE_MONO_REQ.with(|c| c.set(true));
+}
+
+/// Shell: take the pending mono-toggle request (one-shot).
+pub fn take_toggle_mono() -> bool {
+    TOGGLE_MONO_REQ.with(|c| c.replace(false))
+}
+
+/// Shell → panel: publish whether force-mono is engaged.
+pub fn set_mono_on(on: bool) {
+    MONO_ON.with(|c| c.set(on));
+}
+
+/// Whether force-mono is engaged (for the toggle's lit state).
+pub(crate) fn mono_on() -> bool {
+    MONO_ON.with(Cell::get)
 }
 
 /// Panel: arm "batch-normalize a folder to a target LUFS".

@@ -323,6 +323,16 @@ impl crate::App {
                 audio.editor_fx_set_bypass(ed::fx_bypass());
                 ed::set_fx_auditioning(audio.editor_fx_auditioning());
 
+                // Force-to-mono — a NON-destructive output toggle. Flip on click (which
+                // rebuilds the view + live-switches the preview); otherwise keep the
+                // mono view fresh vs. edits. Publish the state so the button lights.
+                if ed::take_toggle_mono() {
+                    audio.editor_toggle_force_mono();
+                } else {
+                    audio.editor_refresh_mono_view();
+                }
+                ed::set_mono_on(audio.editor_force_mono());
+
                 // Loop points (W6 — asset-prep). Set (from selection, auto-snapped) /
                 // Clear the region; there is no separate Audition — Loop + Play plays
                 // the region (handled above). While a region loops, hot-swap a fresh

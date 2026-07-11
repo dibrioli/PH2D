@@ -70,7 +70,8 @@ pub const AEDIT_REVERSE: NodeId = hash_node_id("audio_editor_reverse");
 pub const AEDIT_DC: NodeId = hash_node_id("audio_editor_dc");
 /// Invert polarity.
 pub const AEDIT_INVERT: NodeId = hash_node_id("audio_editor_invert");
-/// Force-to-mono (downmix the whole clip for 3D positional audio).
+/// Force-to-mono — a **non-destructive** output toggle (downmix for 3D positional
+/// audio); click again to revert. The clip stays stereo.
 pub const AEDIT_MONO: NodeId = hash_node_id("audio_editor_mono");
 /// Batch LUFS — normalize a whole folder of audio to a target loudness (file op).
 pub const AEDIT_BATCH_LUFS: NodeId = hash_node_id("audio_editor_batch_lufs");
@@ -241,8 +242,6 @@ pub enum AudioEditCmd {
     RemoveDc,
     /// Invert polarity.
     Invert,
-    /// Downmix the whole clip to mono (for 3D positional audio).
-    ForceMono,
     /// Gain −3 dB.
     GainDown,
     /// Gain +3 dB.
@@ -341,15 +340,19 @@ pub use snapshot::{set_duration_secs, set_loaded, set_playing, set_position_secs
 /// `(label, formatted value)` pairs.
 pub use snapshot::{set_fx_kind_defaults, set_fx_kind_names, set_fx_param_views};
 
-// Loop points + batch (W6 asset-prep).
+// Loop points + batch + force-mono (W6 asset-prep).
 /// Shell → panel: publish the loop region as `(start_secs, end_secs)` for the readout.
 pub use loop_state::set_loop_span;
+/// Shell → panel: publish whether force-mono is engaged (lights the toggle).
+pub use loop_state::set_mono_on;
 /// Panel → shell: whether the user asked to batch-normalize a folder (one-shot).
 pub use loop_state::take_batch_lufs;
 /// Panel → shell: whether the user asked to clear the loop (one-shot).
 pub use loop_state::take_clear_loop;
 /// Panel → shell: whether the user asked to set the loop from the selection (one-shot).
 pub use loop_state::take_set_loop;
+/// Panel → shell: whether the user asked to flip the force-mono toggle (one-shot).
+pub use loop_state::take_toggle_mono;
 /// Panel → shell: the loop crossfade slider position (`0..1`).
 pub use loop_state::xfade_norm;
 

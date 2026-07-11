@@ -409,12 +409,17 @@ abaixo é histórico — não re-investigue.
     codec/residência + export OGG/Opus · import por convenção.
 - **W6 Bloco 3 — Force-to-mono + Batch LUFS (2026-07-10)**. Dois preparos de biblioteca
   de jogo, sem dep nova.
-  - **Force Mono** (`ops::force_mono` + `EditClip::apply_force_mono`, `AudioEditCmd::ForceMono`):
-    downmix do CLIPE INTEIRO (média dos canais) → mono, pra som 3D posicional (que
-    precisa ser mono pra panejar no espaço). Op destrutiva (undo timeline); no-op se já
-    mono; **preserva a contagem de frames** (só muda o layout de canal), então seleção +
-    loop sobrevivem. Botão na seção Edit (`Invert | Force Mono`). O overlay redesenha 1
-    lane automaticamente (lê `channel_count`).
+  - **Force Mono** (`ops::force_mono` re-exportado; downmix = média dos canais → mono,
+    pra som 3D posicional que precisa ser mono pra panejar no espaço). **NÃO-destrutivo
+    (revisão pós-feedback do Enio):** virou um **toggle de saída** igual ao Bypass do
+    rack — o clipe fica estéreo (undo intacto) e o downmix é uma **view** (`mono_view`,
+    cache invalidado por `(ptr,len)` da base) aplicada só em `editor_sounding` (Play /
+    waveform / Export). Clicar de novo reverte instantâneo; live-switch do preview no
+    toggle (`editor_toggle_force_mono` → refresh + hot-swap). Botão na seção Edit
+    (`Invert | Force Mono`, **toggle** aceso via `mono_on`); reseta no Load. O overlay
+    redesenha 1 lane sozinho (lê `channel_count` da view). O op destrutivo
+    `EditClip::apply_force_mono` continua existindo (API + teste), só não é o que o
+    botão usa.
   - **Batch LUFS** (`shells/desktop/src/audio/editor/batch.rs`): normaliza uma PASTA
     inteira a um alvo (−16 LUFS) escrevendo cópias em `<pasta>/normalized/` (PCM16).
     **Não-destrutivo** (originais intactos). Reusa decode + `normalize_lufs` (re-exportado
@@ -426,8 +431,9 @@ abaixo é histórico — não re-investigue.
   - **Intent do batch** foi pra `loop_state.rs` (renomeado no doc pra "asset-prep panel
     state": loop + batch) — o `snapshot.rs` está em 600/600, então não dava pra add lá.
   - **Ready-to-smoke:** o `PH2D_AUDIO_LOOP_SMOKE=1` agora gera um tom **estéreo** (L 220 /
-    R 223 Hz) → 2 lanes no overlay; **Force Mono** colapsa em 1. Batch LUFS: clique o
-    botão → escolha uma pasta com WAVs → cópias normalizadas em `normalized/`.
+    R 223 Hz) → 2 lanes no overlay; **Force Mono** (toggle) colapsa em 1 e clicar de
+    novo volta pra 2. Batch LUFS: clique o botão → escolha uma pasta com WAVs → cópias
+    normalizadas em `normalized/`.
 - **Atalhos:** `Ctrl+Z` undo · `Ctrl+Shift+Z` / `Ctrl+Y` redo (roteados ao
   `EditClip` quando o painel WAVE está aberto com clipe carregado).
 - **Fix:** `cpal::Stream` é dropado no `on_close_request`, não no drop-cascade do

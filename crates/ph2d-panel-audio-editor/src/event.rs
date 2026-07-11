@@ -80,6 +80,12 @@ pub(crate) fn apply_event(
             loop_state::request_batch_lufs();
             return EventOutcome::Consumed;
         }
+        // Force-to-mono — a NON-destructive output toggle (like the fx Bypass); the
+        // shell flips the downmix view without touching the clip.
+        if id == AEDIT_MONO {
+            loop_state::request_toggle_mono();
+            return EventOutcome::Consumed;
+        }
         // Effects rack selector: cycle the SELECTED stage's kind. Its parameters are
         // re-seeded with the new effect's neutral defaults, so the stage is a no-op
         // again until a slider moves.
@@ -173,8 +179,6 @@ pub(crate) fn apply_event(
             Some(AudioEditCmd::RemoveDc)
         } else if id == AEDIT_INVERT {
             Some(AudioEditCmd::Invert)
-        } else if id == AEDIT_MONO {
-            Some(AudioEditCmd::ForceMono)
         } else if id == AEDIT_GAIN_DOWN {
             Some(AudioEditCmd::GainDown)
         } else if id == AEDIT_GAIN_UP {

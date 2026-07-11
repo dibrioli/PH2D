@@ -18,7 +18,7 @@ use std::sync::OnceLock;
 
 use ph2d_vec_edit::PenStyle;
 use ph2d_vec_scene::{Contour, FillRule, Paint, StrokeSpec, VecPath, VecVertex};
-use ph2d_vector_font::{GlyphOutline, PathCommand, VariableFont};
+use ph2d_vector_font::{AxisTag, GlyphOutline, PathCommand, VariableFont};
 
 /// Resolve o Style do Pen (fill/stroke/width em px) no par (fill, stroke) que cada
 /// glyph-path recebe — mesma regra das formas (`shape.rs`): sem preenchimento quando
@@ -43,13 +43,15 @@ pub(crate) fn font() -> Option<&'static VariableFont> {
 }
 
 /// Layout linear de uma string em `VecPath`s — um por glyph com contorno, posicionado
-/// pelo avanço horizontal. `font_size` em unidades de world. `\n` desce uma linha
-/// (entrelinha 1.2·size). Sem shaping complexo (kerning/ligaduras) — W1 é advance-only.
+/// pelo avanço horizontal. `font_size` em unidades de world; `axes` são os valores dos
+/// eixos variáveis (ex. `wght`) aplicados ao contorno E ao avanço (métrica muda com o
+/// peso). `\n` desce uma linha (entrelinha 1.2·size). Sem shaping complexo — advance-only.
 #[must_use]
 pub(crate) fn text_to_vec_paths(
     font: &VariableFont,
     text: &str,
     font_size: f64,
+    axes: &[(AxisTag, f32)],
     origin: [f64; 2],
     fill: &Option<Paint>,
     stroke: &Option<StrokeSpec>,
@@ -68,8 +70,8 @@ pub(crate) fn text_to_vec_paths(
         let Some(gid) = font.glyph_for_char(ch) else {
             continue;
         };
-        let advance = f64::from(font.advance(gid, &[]).unwrap_or(0.0));
-        if let Ok(outline) = font.outline(gid, &[])
+        let advance = f64::from(font.advance(gid, axes).unwrap_or(0.0));
+        if let Ok(outline) = font.outline(gid, axes)
             && let Some(path) = glyph_to_vec_path(
                 &outline,
                 scale,
@@ -86,14 +88,20 @@ pub(crate) fn text_to_vec_paths(
 }
 
 /// Largura de avanço total de uma string (uma linha), em unidades de world. Usada
-/// para centralizar um bloco de texto horizontalmente.
+/// para centralizar um bloco de texto. `axes` no mesmo `location` do layout (o avanço
+/// muda com o peso), senão o cursor descasa do glyph em pesos não-default.
 #[must_use]
-pub(crate) fn text_advance_width(font: &VariableFont, text: &str, font_size: f64) -> f64 {
+pub(crate) fn text_advance_width(
+    font: &VariableFont,
+    text: &str,
+    font_size: f64,
+    axes: &[(AxisTag, f32)],
+) -> f64 {
     let scale = font_size / f64::from(font.units_per_em().max(1));
     text.chars()
         .filter(|&c| c != '\n')
         .filter_map(|c| font.glyph_for_char(c))
-        .map(|g| f64::from(font.advance(g, &[]).unwrap_or(0.0)) * scale)
+        .map(|g| f64::from(font.advance(g, axes).unwrap_or(0.0)) * scale)
         .sum()
 }
 
@@ -448,8 +456,8 @@ mod tests {
                 .map(|v| v.anchor[1])
                 .fold(f64::INFINITY, f64::min)
         };
-        let one = text_to_vec_paths(font, "A", 1.0, [0.0, 0.0], &Some(black()), &None);
-        let two = text_to_vec_paths(font, "A\nA", 1.0, [0.0, 0.0], &Some(black()), &None);
+        let one = text_to_vec_paths(font, "A", 1.0, &[], [0.0, 0.0], &Some(black()), &None);
+        let two = text_to_vec_paths(font, "A\nA", 1.0, &[], [0.0, 0.0], &Some(black()), &None);
         assert!(
             min_y(&one) >= -1e-6,
             "linha única: baseline em 0, sem descer"

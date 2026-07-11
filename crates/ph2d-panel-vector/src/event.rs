@@ -76,6 +76,7 @@ pub(crate) fn apply_event(
                 || id == ids::VECTOR_SPIRAL_TURNS
                 || id == ids::VECTOR_ARC_DEGREES
                 || id == ids::VECTOR_TEXT_SIZE
+                || id == ids::VECTOR_TEXT_WEIGHT
                 || id == ids::VECTOR_STROKE_OPACITY
                 || id == ids::VECTOR_FILL_OPACITY
                 || id == ids::VECTOR_DASH
@@ -102,6 +103,7 @@ pub(crate) fn apply_event(
                 || id == ids::VECTOR_RRECT_RADIUS_NUM
                 || id == ids::VECTOR_SPIRAL_TURNS_NUM
                 || id == ids::VECTOR_TEXT_SIZE_NUM
+                || id == ids::VECTOR_TEXT_WEIGHT_NUM
                 || id == ids::VECTOR_STROKE_OPACITY_NUM
                 || id == ids::VECTOR_FILL_OPACITY_NUM
                 || id == ids::VECTOR_DASH_NUM

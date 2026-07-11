@@ -60,6 +60,33 @@ pub fn text_size_to_slider(size: f64) -> f32 {
         .clamp(0.0, 1.0)
 }
 
+/// Variable-font Weight (`wght` axis) — the Text-mode Weight slider's range. Inter
+/// Variable spans 100..900 (default 400), the CSS/OpenType weight scale. Shared by the
+/// panel (seed + chip mapping) and the shell drain (track → weight).
+pub const TEXT_WEIGHT_MIN: f64 = 100.0;
+pub const TEXT_WEIGHT_MAX: f64 = 900.0;
+/// Default weight for a new text session (`wght` 400 = Regular).
+pub const DEFAULT_TEXT_WEIGHT: f64 = 400.0;
+
+/// Affine slider mapping `weight = track * SCALE + OFFSET` (track `0..=1`).
+pub const TEXT_WEIGHT_SLIDER_SCALE: f32 = (TEXT_WEIGHT_MAX - TEXT_WEIGHT_MIN) as f32;
+pub const TEXT_WEIGHT_SLIDER_OFFSET: f32 = TEXT_WEIGHT_MIN as f32;
+
+/// Normalized slider track `0..=1` → font weight `MIN..=MAX`.
+#[must_use]
+pub fn slider_to_text_weight(track: f32) -> f64 {
+    TEXT_WEIGHT_MIN + f64::from(track.clamp(0.0, 1.0)) * (TEXT_WEIGHT_MAX - TEXT_WEIGHT_MIN)
+}
+
+/// Font weight → normalized slider track `0..=1` (inverse of [`slider_to_text_weight`]);
+/// seeds the knob from the shell's current weight.
+#[must_use]
+pub fn text_weight_to_slider(weight: f64) -> f32 {
+    (((weight.clamp(TEXT_WEIGHT_MIN, TEXT_WEIGHT_MAX) - TEXT_WEIGHT_MIN)
+        / (TEXT_WEIGHT_MAX - TEXT_WEIGHT_MIN)) as f32)
+        .clamp(0.0, 1.0)
+}
+
 /// The canvas gesture the Vector tool performs (ADR-0108 Fase 1). `Pen` is the
 /// draw + edit-anchor gesture (`PenTool`); the shape modes are drag-to-size
 /// (`ShapeTool`). The tool owns the mode; the docked panel's segmented row sets

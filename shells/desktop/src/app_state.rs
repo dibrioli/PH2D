@@ -648,6 +648,9 @@ pub(crate) struct App {
     /// Tamanho (world) que a próxima sessão de texto começa e que o slider Size do
     /// painel edita. Persiste entre sessões (é o default corrente do usuário).
     pub(crate) vec_text_size: f64,
+    /// Peso (`wght`) que a próxima sessão de texto começa e que o slider Weight do
+    /// painel edita. Persiste entre sessões.
+    pub(crate) vec_text_weight: f32,
     /// `VecPathId` → entidade ECS que o representa na Hierarquia (ADR-0110). O
     /// invariante "um path ⟺ uma entidade" é mantido por `vec_entities::sync`.
     pub(crate) vec_entities: crate::vec_entities::VecEntityMap,

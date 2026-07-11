@@ -1045,6 +1045,9 @@ impl crate::App {
             // Text Size slider (world units) — updates the active session + the
             // size a new session starts at.
             let mut pending_vec_text_size: Option<f64> = None;
+            // Text Weight slider (`wght` axis) — updates the active session + the
+            // weight a new session starts at.
+            let mut pending_vec_text_weight: Option<f32> = None;
             let mut transform_edit: Option<ph2d_editor::InspectorTransformInfo> = None;
             let mut visibility_edit: Option<ph2d_editor::InspectorVisibilityInfo> = None;
             let mut sprite_source_change: Option<(u64, RequestedSpriteStrategy)> = None;
@@ -1177,6 +1180,12 @@ impl crate::App {
                                 // Track 0..1 → glyph size (world units); shared mapping.
                                 pending_vec_text_size =
                                     Some(ph2d_tool_vector::params::slider_to_text_size(*v as f32));
+                            } else if *id == ph2d_editor::ids::VECTOR_TEXT_WEIGHT {
+                                // Track 0..1 → font weight (wght); shared mapping.
+                                pending_vec_text_weight = Some(
+                                    ph2d_tool_vector::params::slider_to_text_weight(*v as f32)
+                                        as f32,
+                                );
                             }
                         }
                         // ADR-0113 W2: Flip layer ops (add/delete/select/visibility/
@@ -1931,6 +1940,14 @@ impl crate::App {
                     &mut self.vec_text_size,
                     vec_scene,
                     size,
+                );
+            }
+            if let Some(weight) = pending_vec_text_weight {
+                crate::vec_text::apply_text_weight(
+                    &mut self.vec_text_edit,
+                    &mut self.vec_text_weight,
+                    vec_scene,
+                    weight,
                 );
             }
             if let Some(op) = pending_vec_path_shape {

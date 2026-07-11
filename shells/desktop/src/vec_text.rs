@@ -22,6 +22,8 @@ pub(crate) struct VecTextEdit {
     pub origin: [f64; 2],
     /// Tamanho em unidades de world.
     pub size: f64,
+    /// Peso da fonte variável (eixo `wght`, ex. 100..900) aplicado ao contorno.
+    pub weight: f32,
     /// Preenchimento dos glyphs (do Style do painel; `None` = sem fill).
     pub fill: Option<Paint>,
     /// Traço dos glyphs (do Style: cor/largura/cap/join/dash), como nas formas.
@@ -66,6 +68,7 @@ impl crate::app_state::App {
         self.vec_text_edit = Some(VecTextEdit {
             origin: world,
             size: self.vec_text_size, // o tamanho corrente do painel (Size slider)
+            weight: self.vec_text_weight, // o peso corrente (Weight slider)
             fill,
             stroke,
             text: String::new(),
@@ -133,6 +136,7 @@ fn regen_into(scene: &mut ph2d_vec_scene::VecScene, edit: &mut VecTextEdit) {
         font,
         &edit.text,
         edit.size,
+        &axes_of(edit),
         edit.origin,
         &edit.fill,
         &edit.stroke,
@@ -140,6 +144,13 @@ fn regen_into(scene: &mut ph2d_vec_scene::VecScene, edit: &mut VecTextEdit) {
     for path in paths {
         edit.ids.push(scene.push_path(path));
     }
+}
+
+/// Os valores dos eixos variáveis da sessão (hoje só `wght`). O default 400 já casa
+/// com a location neutra do skrifa; mandar sempre é inofensivo e deixa o eixo pronto
+/// para novos eixos (opsz/slnt) sem tocar as assinaturas do converter.
+fn axes_of(edit: &VecTextEdit) -> [(ph2d_vector_font::AxisTag, f32); 1] {
+    [(ph2d_vector_font::AxisTag::WEIGHT, edit.weight)]
 }
 
 /// Sincroniza o Style de uma sessão de texto ATIVA com o Style vivo do painel, por
@@ -195,6 +206,22 @@ pub(crate) fn apply_text_size(
     }
 }
 
+/// Aplica o peso vindo do slider Weight do painel: atualiza o default corrente da
+/// shell (`weight_field`) e, se há sessão ativa, o peso dela + regenera os glyphs ao
+/// vivo (o contorno da fonte variável muda com o `wght`). Mirror de [`apply_text_size`].
+pub(crate) fn apply_text_weight(
+    edit: &mut Option<VecTextEdit>,
+    weight_field: &mut f32,
+    scene: &mut ph2d_vec_scene::VecScene,
+    weight: f32,
+) {
+    *weight_field = weight;
+    if let Some(edit) = edit.as_mut() {
+        edit.weight = weight;
+        regen_into(scene, edit);
+    }
+}
+
 /// Os dois pontos (world) do cursor de texto vertical na ponta da última linha —
 /// `None` se não há edição. Fn livre (não método) para o render poder chamá-la lendo
 /// só o campo `vec_text_edit`, sem emprestar o `App` inteiro (o `gfx` está vivo lá).
@@ -204,7 +231,7 @@ pub(crate) fn caret_of(edit: Option<&VecTextEdit>) -> Option<([f64; 2], [f64; 2]
     let font = font()?;
     let last_line = edit.text.rsplit('\n').next().unwrap_or("");
     let line_idx = edit.text.matches('\n').count();
-    let cx = edit.origin[0] + text_advance_width(font, last_line, edit.size);
+    let cx = edit.origin[0] + text_advance_width(font, last_line, edit.size, &axes_of(edit));
     let baseline = edit.origin[1] - line_idx as f64 * edit.size * LINE_SPACING;
     Some((
         [cx, baseline - 0.2 * edit.size],
@@ -227,6 +254,7 @@ mod tests {
         let edit = VecTextEdit {
             origin: [5.0, 2.0],
             size: 1.0,
+            weight: 400.0,
             fill: Some(black()),
             stroke: None,
             text: "Hi".to_string(),
@@ -250,6 +278,7 @@ mod tests {
         let mut edit = Some(VecTextEdit {
             origin: [0.0, 0.0],
             size: 1.0,
+            weight: 400.0,
             fill: Some(black()),
             stroke: None,
             text: "A".to_string(),
@@ -270,6 +299,7 @@ mod tests {
         let mut edit = Some(VecTextEdit {
             origin: [0.0, 0.0],
             size: 1.0,
+            weight: 400.0,
             fill: Some(black()),
             stroke: None,
             text: "A".to_string(),

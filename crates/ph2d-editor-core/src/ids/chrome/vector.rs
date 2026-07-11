@@ -147,6 +147,11 @@ pub const VECTOR_MODE_TEXT: NodeId = hash_node_id("vector.mode.text");
 pub const VECTOR_TEXT_SIZE: NodeId = hash_node_id("vector.text.size");
 /// Value chip paired with [`VECTOR_TEXT_SIZE`].
 pub const VECTOR_TEXT_SIZE_NUM: NodeId = hash_node_id("vector.text.size_num");
+/// Text "Weight" slider (`wght` axis 100..900) — shown only in Text mode; drives the
+/// variable-font weight of the active session + the weight a new session starts at.
+pub const VECTOR_TEXT_WEIGHT: NodeId = hash_node_id("vector.text.weight");
+/// Value chip paired with [`VECTOR_TEXT_WEIGHT`].
+pub const VECTOR_TEXT_WEIGHT_NUM: NodeId = hash_node_id("vector.text.weight_num");
 /// Polygon "Sides" slider (3..12) — shown only in Polygon mode; drives
 /// `VectorTool::polygon_sides`.
 pub const VECTOR_SIDES: NodeId = hash_node_id("vector.sides");

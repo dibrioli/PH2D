@@ -258,6 +258,7 @@ impl App {
             vec_snap_guides: Vec::new(),
             vec_text_edit: None,
             vec_text_size: ph2d_tool_vector::params::DEFAULT_TEXT_SIZE,
+            vec_text_weight: ph2d_tool_vector::params::DEFAULT_TEXT_WEIGHT as f32,
             vec_entities: Default::default(),
             flip_entities: Default::default(),
             vec_sel: Default::default(),

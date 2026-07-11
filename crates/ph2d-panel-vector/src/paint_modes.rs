@@ -14,8 +14,9 @@ use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ColorToken, Spacing};
 use ph2d_tool_vector::VectorStyleSnapshot;
 use ph2d_tool_vector::params::{
-    DEFAULT_TEXT_SIZE, DrawMode, arc_degrees_to_slider, radius_to_slider, sides_to_slider,
-    spiral_turns_to_slider, star_inner_to_slider, star_points_to_slider, text_size_to_slider,
+    DEFAULT_TEXT_SIZE, DEFAULT_TEXT_WEIGHT, DrawMode, arc_degrees_to_slider, radius_to_slider,
+    sides_to_slider, spiral_turns_to_slider, star_inner_to_slider, star_points_to_slider,
+    text_size_to_slider, text_weight_to_slider,
 };
 
 impl BodyCtx<'_> {
@@ -207,6 +208,25 @@ impl BodyCtx<'_> {
             track,
             val,
             &format!("{val:.2}"),
+            y,
+        );
+        // Weight (`wght` axis) slider — the variable-font weight.
+        let wtrack = self
+            .store
+            .slider(ids::VECTOR_TEXT_WEIGHT)
+            .map(|(_, v)| v)
+            .unwrap_or_else(|| text_weight_to_slider(DEFAULT_TEXT_WEIGHT));
+        let wval = self
+            .store
+            .number_value(ids::VECTOR_TEXT_WEIGHT_NUM)
+            .unwrap_or(DEFAULT_TEXT_WEIGHT);
+        y = self.slider_row(
+            "Weight",
+            ids::VECTOR_TEXT_WEIGHT,
+            ids::VECTOR_TEXT_WEIGHT_NUM,
+            wtrack,
+            wval,
+            &format!("{}", wval.round() as i64),
             y,
         );
         // Read-only string preview (the active session's text, or a hint when empty).

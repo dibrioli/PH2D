@@ -15,16 +15,15 @@ use ph2d_editor_core::interaction::{InteractiveState, WidgetStore};
 use ph2d_editor_core::widget::{ButtonState, SliderOrientation, SliderState, TextInputState};
 use ph2d_tool_vector::params::{
     ARC_DEGREES_SLIDER_OFFSET, ARC_DEGREES_SLIDER_SCALE, DASH_SLIDER_OFFSET, DASH_SLIDER_SCALE,
-    GAP_DEFAULT, GAP_SLIDER_OFFSET, GAP_SLIDER_SCALE, OPACITY_SLIDER_OFFSET, OPACITY_SLIDER_SCALE,
-    RADIUS_SLIDER_OFFSET, RADIUS_SLIDER_SCALE, SIDES_SLIDER_OFFSET, SIDES_SLIDER_SCALE,
-    SPIRAL_TURNS_SLIDER_OFFSET, SPIRAL_TURNS_SLIDER_SCALE, STAR_INNER_SLIDER_OFFSET,
-    STAR_INNER_SLIDER_SCALE, STAR_POINTS_SLIDER_OFFSET, STAR_POINTS_SLIDER_SCALE,
-    WIDTH_SLIDER_OFFSET, WIDTH_SLIDER_SCALE, arc_degrees_to_slider, gap_to_slider,
-    radius_to_slider, sides_to_slider, spiral_turns_to_slider, star_inner_to_slider,
-    star_points_to_slider,
-};
-use ph2d_tool_vector::params::{
-    DEFAULT_TEXT_SIZE, TEXT_SIZE_SLIDER_OFFSET, TEXT_SIZE_SLIDER_SCALE, text_size_to_slider,
+    DEFAULT_TEXT_SIZE, DEFAULT_TEXT_WEIGHT, GAP_DEFAULT, GAP_SLIDER_OFFSET, GAP_SLIDER_SCALE,
+    OPACITY_SLIDER_OFFSET, OPACITY_SLIDER_SCALE, RADIUS_SLIDER_OFFSET, RADIUS_SLIDER_SCALE,
+    SIDES_SLIDER_OFFSET, SIDES_SLIDER_SCALE, SPIRAL_TURNS_SLIDER_OFFSET, SPIRAL_TURNS_SLIDER_SCALE,
+    STAR_INNER_SLIDER_OFFSET, STAR_INNER_SLIDER_SCALE, STAR_POINTS_SLIDER_OFFSET,
+    STAR_POINTS_SLIDER_SCALE, TEXT_SIZE_SLIDER_OFFSET, TEXT_SIZE_SLIDER_SCALE,
+    TEXT_WEIGHT_SLIDER_OFFSET, TEXT_WEIGHT_SLIDER_SCALE, WIDTH_SLIDER_OFFSET, WIDTH_SLIDER_SCALE,
+    arc_degrees_to_slider, gap_to_slider, radius_to_slider, sides_to_slider,
+    spiral_turns_to_slider, star_inner_to_slider, star_points_to_slider, text_size_to_slider,
+    text_weight_to_slider,
 };
 use ph2d_tool_vector::{
     DEFAULT_ARC_DEGREES, DEFAULT_CORNER_RADIUS_PX, DEFAULT_POLYGON_SIDES, DEFAULT_SPIRAL_TURNS,
@@ -220,6 +219,17 @@ fn populate_shape(store: &mut WidgetStore) {
         DEFAULT_TEXT_SIZE,
         TEXT_SIZE_SLIDER_SCALE,
         TEXT_SIZE_SLIDER_OFFSET,
+    );
+    // Text "Weight" slider (`wght` 100..900) — shown only in Text mode; seeded at the
+    // default weight (Regular 400).
+    slider_chip(
+        store,
+        ids::VECTOR_TEXT_WEIGHT,
+        ids::VECTOR_TEXT_WEIGHT_NUM,
+        text_weight_to_slider(DEFAULT_TEXT_WEIGHT),
+        DEFAULT_TEXT_WEIGHT,
+        TEXT_WEIGHT_SLIDER_SCALE,
+        TEXT_WEIGHT_SLIDER_OFFSET,
     );
 
     populate_transform_fields(store);

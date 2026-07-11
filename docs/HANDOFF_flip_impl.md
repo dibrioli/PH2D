@@ -1,16 +1,28 @@
-# HANDOFF de integração — linha `line/FLIP`, Waves W0 (dados) + W1 (render GPU)
+# HANDOFF — linha `line/FLIP`, Waves W0 (dados) + W1 (render GPU) + W2 (tool+desenho, PARCIAL)
 
-> Entregável §1.5.9 (DIRETRIZ). A linha está **fechada e PARADA** — não integrei
-> nem pushei. Este doc é o que o Enio passa ao agente integrador.
+> **Dois leitores:** (a) o **integrador** (§1.5.9) — o que fundir, símbolos que
+> colidem, gates; (b) o **próximo implementador desta linha** — onde a tool de
+> desenho parou e **exatamente como continuar** (o painel + a borracha). A seção
+> **"## W2"** abaixo é pro (b). A linha está **aberta, commitada local, NÃO
+> integrada/pushada** — commits `--no-verify`, fast mode.
 
 ## 1. Identidade
 
 - **Branch:** `line/FLIP`
-- **HEAD:** `48b590d7`
+- **HEAD:** `0ce648aa`
 - **Base (merge-base com `main`):** `1c7c9a22`
-- **Commits na linha:** 15 (todos `--no-verify`, fast mode)
+- **Commits na linha:** 22 (todos `--no-verify`, fast mode)
 
 ```
+# — W2 (tool + desenho, PARCIAL — falta o painel + a borracha) —
+0ce648aa W2 T2.8 — pen-up simplify RDP
+b83d22ae W2 T2.7 — active smoothing (o "assentar")
+11200f02 W2 fix — preview ao vivo do traço
+80529e8e W2 T2.5-T2.6 — flip_bridge + desenho (pointer→mundo→traço)
+792dea44 W2 T2.4 — pill Flip no topbar (aparece + alterna)
+7e1a572c W2 T2.1-T2.3 — tool ph2d-tool-flip + IconId::Flip + tool-sync
+# — W0+W1 (fechados) —
+89ec5df0 docs — handoff W0+W1
 # — W1 (render GPU) —
 48b590d7 fix(flip): BTreeMap no cache de tesselação (ADR-0022 disallowed HashMap)
 42c75414 style(flip): fmt canônico (pin 1.95) nos arquivos de T1.7
@@ -230,11 +242,157 @@ NÃO-CHECADO-PELA-COMPILAÇÃO: que hash-colisão não sirva geometria errada (m
 chave `(obj,did)` limita colisões a UM desenho; hash só decide re-pack).
 LOC LIDAS: `flip_pass.rs` inteiro + `drawing.rs`/`stroke.rs` (os campos que o hash lê).
 
-## Aberto (fora do W0/W1, por design)
+---
 
-- **W2 (tool + painel):** criar/editar objeto Flip pela UI (pill + `IconId` + painel
-  docado), desenhar traço com pointer. O `flip_entities::sync` já está wirado e vira
-  ativo assim que a tool criar objetos.
+# W2 — Tool de desenho + Painel (PARCIAL) — guia do próximo implementador
+
+**Status:** a **mão de desenho está completa e smokeada**; **falta o painel docado
+(T2.10–T2.16) e a borracha (T2.9)**. Plano completo: `docs/Flip/01_plano_waves.md`
+§W2 (untracked na árvore primária — leia de lá). Referência clean-room do desenho/
+borracha: `docs/Flip/02_referencia_algoritmos_blender_5.2.md` §5.
+
+## W2.1 — O que está PRONTO (T2.1–T2.8)
+
+| Task | Entregue |
+|---|---|
+| T2.1–T2.3 | Crate `ph2d-tool-flip` (drop-crate ADR-0040) + `IconId::Flip` + tool-sync. |
+| T2.4 | Pill **FLIP** no topbar (aparece + alterna a tool). |
+| T2.5–T2.6 | `flip_bridge` + desenho: pointer→mundo→`FlipStroke` no `FlipDoc`. |
+| preview | Traço em curso rasterizado ao vivo (overlay), vira documento no pen-up. |
+| T2.7 | **Active smoothing** (blur binomial, cauda assenta — `flip_smooth.rs`). |
+| T2.8 | Pen-up **simplify RDP** (traço enxuto no commit). |
+
+## W2.2 — Arquitetura do desenho (o fluxo, ponta-a-ponta)
+
+```
+pill FLIP (chrome/flip_toggle.rs) → EditorAction::ActivateTool{"flip"}
+  → render_loop::mod drain ativa a tool (gate 'flip_tools', 3 sites)
+render_loop::flip_bridge::publish(tools)  [1×/frame, downcast ALLOWLISTADO]
+  → App.flip_active + App.flip_style  (cache; input_dispatch NÃO faz downcast)
+on_mouse_input / on_cursor_moved  (input_dispatch.rs)
+  → App::flip_canvas_down/move/up  (flip_draw.rs) → screen_to_world → FlipDraw
+present::run_present_phase → App::flip_preview_data() [antes do borrow de gfx]
+  → flip_pass::render(preview) → draw_overlay (rasteriza o traço em curso)
+pen-up → flip_canvas_up → bake_stroke: active_smooth → simplify_rdp → push no
+  desenho ativo (1º objeto, camada TOPO, quadro atual; cria chave se preciso)
+```
+
+**Padrão-chave (herdado do Vector):** *documento ≠ tool*. A `FlipTool` só guarda
+estilo+modo; o documento (`FlipDoc`) e a interação (traço em curso) vivem no shell.
+O **downcast concreto** só no `flip_bridge` (allowlistado em
+`tests/architecture_no_downcast_to_concrete_tool_in_shell.rs`); o `input_dispatch`
+lê o **cache** publicado — nunca faz downcast.
+
+## W2.3 — Arquivos do W2 (onde mexer)
+
+**Crate da tool** (`crates/ph2d-tool-flip/`): `lib.rs` (make/register/MANIFEST,
+cluster `flip_tools`), `tool.rs` (`FlipTool` = estilo+modo, `handle_panel_event`
+é **stub VAZIO** esperando os node-ids do painel), `params.rs` (`FlipMode`
+Select/Draw/Erase, `EraseMode`, `FlipStyleSnapshot`, mapas de slider), `icon.rs`.
+
+**Fiação do pill (chrome hand-maintained — NÃO é derivado do manifest!):**
+`ids/chrome/topbar.rs` (`TOPBAR_FLIP`), `chrome/flip_toggle.rs` (z=271, gerado no
+dispatch por chrome-sync), `screens/hero/fixture.rs` (pill), `topbar/mod.rs`
+(`populate`), `render_loop/mod.rs` (gate `flip_tools` em 3 sites).
+
+**Desenho (shell):** `flip_draw.rs` (`FlipDraw` amostragem + `bake_stroke` +
+`build_stroke` + métodos `flip_canvas_*` no App + `flip_preview_data`),
+`flip_smooth.rs` (`active_smooth` binomial + `simplify_rdp`), `render_loop/
+flip_bridge.rs` (publish), `flip_pass.rs` (`render` ganhou `preview` +
+`draw_overlay`), `input_dispatch.rs` (braço Down/Up + guard de move),
+`app_state.rs` (`flip_active`/`flip_style`/`flip_draw`), `present.rs` (preview).
+
+## W2.4 — ⚠️ DECISÕES INTERINAS que o próximo implementador PRECISA reverter/tratar
+
+1. **`FlipTool` default = `Draw`** (`tool.rs`, comentário `INTERINO`). Foi pra o
+   pill já desenhar sem UI de modo. **Volte a `Select`** (arbitragem ADR-0112:
+   gizmo só no Select) **quando os botões de modo do painel landarem (T2.15).** O
+   teste `fresh_tool_defaults` também volta pra Select.
+2. **Alvo do traço fixo:** `bake_stroke`/`flip_preview_data` desenham SEMPRE no
+   **1º objeto, camada de TOPO (última do slice), quadro atual**. Sem seleção de
+   objeto/camada. A **seção Layers (T2.15)** deve publicar a camada ativa e o bake
+   passa a usá-la.
+3. **Precisa de `PH2D_FLIP_DEMO=1`:** desenhar num doc VAZIO é no-op (`bake_stroke`
+   sai se não há objeto). **T2.17** deve criar um objeto Flip (pill/atalho) quando
+   o doc está vazio, ou autorar um no boot.
+4. **Modo Draw só:** sem painel não há como ir pra Select/Erase. Um atalho
+   temporário de teclado destravaria a **borracha (T2.9)** antes do painel, se
+   quiser testá-la já.
+5. **Pressão = 1.0** (mouse). O caminho de pen real (Apple Pencil) entra por outra
+   fonte de ponteiro — a curva pressão→raio/opacidade (falloff do Painter,
+   `HANDOFF_painter_falloff_curve`) é refino de T2.6+.
+
+## W2.5 — PRÓXIMOS PASSOS (exatos)
+
+**T2.10–T2.16 — Painel docado `ph2d-panel-flip`** (o grande bloco, ~2000 LOC).
+- **Template:** `crates/ph2d-panel-vector/` (2196 LOC, 10 arquivos: `lib.rs`
+  Panel impl, `ids.rs`, `state.rs`, `populate.rs`, `paint*.rs`, `event.rs`). Copie
+  a estrutura.
+- **Registro docado = 6 sites** (memória `feedback_docked_panel_registration_four_sites`
+  + o plano §T2.11): (1) a crate (`impl Panel`, `ID="flip"`, `NODE_ID=ids::
+  FLIP_PANEL`, `DEFAULT_VISIBLE=false`) + node-id em `ids/chrome/flip.rs`; (2)
+  `cargo run -p ph2d-panel-sync`; (3) bloco em `EXPECTED_TYPED`
+  (`ph2d-panel-registry-init/src/lib.rs`, hand-maintained); (4) feature-proxy no
+  shell (`shells/desktop/Cargo.toml`: dep opcional + `[features]` + `default`); (5)
+  z-order walk (`screens/hero/paint.rs`); (6) visibility.
+- **Bridge de visibilidade:** `shells/desktop/src/render_loop/flip_bridge.rs` JÁ
+  EXISTE (publica estilo) — estenda-o pra `hero.panel_visibility.insert("flip",
+  flip_active)` + toggle do inspector (espelhe `vector_bridge.rs:141-150`).
+- **Seam painel↔tool (T2.16):** o painel emite `ToolPanelEvent`(`SetValue`/`Click`
+  por node-id) → chega em `FlipTool::handle_panel_event` (hoje **stub vazio** em
+  `tool.rs` — é só preencher os braços por `ids::FLIP_*`, espelhando o
+  `VectorTool::handle_panel_event`). Os setters já existem (`set_stroke_rgba`,
+  `set_mode`, e adicione width/hardness/opacity/smoothing).
+- **Seções:** Brush (size/hardness/opacity/smoothing — sliders com range, memória
+  `reference_number_input_register_range`), Color (swatch → `BlenderColorPicker`
+  OKLCH compartilhado via `register_picker_swatch`, read-back no bridge como o
+  Vector), Layers (add/delete/reorder/blend/opacity/visibility — o `FlipObject`/
+  `FlipLayer` já têm toda a mecânica; espelhe `ph2d-panel-painter-layers`), e a
+  **linha de modos Select/Draw/Erase** (segmented, destaca o ativo do snapshot).
+- **Gotcha (memória `feedback_ui_source_of_truth_gallery_inspector`):** UI nova
+  espelha a Widget Gallery + o inspector; não improvise chrome. Strings em INGLÊS
+  (`feedback_app_ui_english_only`). Zero hex/f32-UI (tokens).
+
+**T2.9 — Borracha** (destravada pelo botão Erase do painel). Referência §5
+(`erase.cc`): **Soft** (reduz opacidade por rings 2px, remove < 1e-4 no up),
+**Hard** (corta a curva nas interseções do círculo), **Stroke** (apaga o traço
+inteiro tocado). Materiais travados preservados nos 3. A interação espelha o
+desenho (um `flip_erase.rs` irmão do `flip_draw.rs`, gated por `mode == Erase`).
+
+**T2.17 — Ready-to-smoke:** criar objeto Flip do zero (ver §W2.4 item 3).
+
+## W2.6 — Gate W2 (parcial) + gotchas aprendidos
+
+- `cargo test -p ph2d-tool-flip` → **8 verdes**. `flip_smooth::tests` → **7**
+  (smoothing/ancoragem/`far_points_freeze` + RDP). Gate de downcast, tool-sync
+  staleness, `enum_order_matches_svgs`, cluster-order, icon-slug → verdes.
+- **Gotcha #1 (custou um smoke):** o manifest registrado **não** faz o pill
+  aparecer — o topbar é **chrome hand-maintained** (fixture + toggle + chrome-sync
+  + populate + o gate de ativação). "unit-verde ≠ integração viva" (T2.4).
+- **Gotcha #2:** o traço só aparecia no pen-up — faltava o **preview overlay** ao
+  vivo (rasterizar o gesto a cada frame; vira doc só no up).
+- **Gotcha #3:** `input_dispatch` não pode fazer downcast (gate) → o `flip_bridge`
+  publica o estilo num cache que o dispatch lê.
+- **Nota perf:** o `TessCache` (W1) é chaveado por hash de CONTEÚDO → uma edição
+  ao vivo do desenho (o bake) re-tessela correto, sem invalidação manual.
+
+## W2.7 — Símbolos novos do W2 (grep-áveis, p/ o integrador)
+
+- Crate nova `ph2d-tool-flip`; `IconId::Flip` (enum + `ALL_ICONS`, entre FitView/
+  Folder); `ids::TOPBAR_FLIP = hash_node_id("flip")`; `chrome::flip_toggle`;
+  cluster `"flip_tools"`; campos `App.flip_active`/`flip_style`/`flip_draw`;
+  módulos shell `flip_draw`/`flip_smooth`/`render_loop::flip_bridge`; entrada nova
+  na `DOWNCAST_ALLOWLIST` (`src/render_loop/flip_bridge.rs`). **Nenhum
+  count/registry/contrato congelado tocado no W2.** tool-sync regenerou
+  `ph2d-tool-registry-init` (deps + register/make + design-sync test).
+
+---
+
+## Aberto (fora do W0/W1/W2-parcial, por design)
+
+- **W2 restante:** o **painel docado** (T2.10–T2.16) + a **borracha** (T2.9) +
+  ready-to-smoke (T2.17) — guia detalhado na seção **"# W2"** acima (§W2.5 = os
+  passos exatos; §W2.4 = as decisões interinas a reverter).
 - **Deferido no W1 (v1 usa flat caps + miter clampado):** round caps, bevel/round
   joins. Máscaras de camada (`FlipLayer.masks`) — o modelo carrega, o compositor v1
   não aplica (o op-list GPU não tem máscara; igual ao Painter).

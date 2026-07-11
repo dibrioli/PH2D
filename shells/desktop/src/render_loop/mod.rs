@@ -23,6 +23,7 @@ pub(crate) mod bgremoval_preview;
 mod color_equalization_bridge;
 mod cooked_texture_bridge;
 mod equalize_sizes_bridge;
+pub(crate) mod flip_bridge;
 pub(crate) mod flip_pass;
 mod gizmo_prune;
 mod hierarchy;
@@ -2043,6 +2044,13 @@ impl crate::App {
             // Mirror the tool's mode + shape params for the input dispatch's
             // pen-vs-shape routing (the downcast lives in the bridge).
             self.vec_draw_config = vec_cfg;
+
+            // ADR-0113 W2: espelha o estado da tool Flip (ativa + estilo de brush)
+            // pro input_dispatch decidir/assar o desenho sem downcast (o downcast
+            // vive no flip_bridge, allowlistado).
+            let (flip_active, flip_style) = flip_bridge::publish(tools);
+            self.flip_active = flip_active;
+            self.flip_style = flip_style;
 
             // ADR-0110 — a árvore do editor é a Hierarquia. Reconcilia documento e
             // entidades (path novo ⇒ entidade; entidade apagada ⇒ path), projeta a

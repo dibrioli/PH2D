@@ -37,6 +37,7 @@ mod atlas_loader;
 mod audio;
 mod cursor_pos;
 mod flip_demo;
+mod flip_draw;
 mod flip_entities;
 mod forwarding;
 mod hero_bridge;
@@ -228,6 +229,10 @@ impl App {
             vec_pen: ph2d_vec_edit::PenTool::new(),
             vec_shape: ph2d_vec_edit::ShapeTool::new(),
             vec_draw_config: ph2d_tool_vector::VectorDrawConfig::default(),
+            // ADR-0113 W2: estado de desenho do Flip (publicado pelo flip_bridge).
+            flip_active: false,
+            flip_style: None,
+            flip_draw: crate::flip_draw::FlipDraw::default(),
             vec_marquee: None,
             vec_history: ph2d_vec_edit::History::new(),
             undo: crate::undo::ProjectUndo::default(),

@@ -581,6 +581,16 @@ pub(crate) struct App {
     /// the `VectorTool` (the input dispatch can't downcast — that lives in the
     /// allowlisted bridge). Decides pen vs shape routing + sizes the shapes.
     pub(crate) vec_draw_config: ph2d_tool_vector::VectorDrawConfig,
+    /// ADR-0113 W2: a tool Flip está ativa? Cacheado do registry pelo `flip_bridge`
+    /// (o `input_dispatch` não pode fazer downcast — vive no bridge allowlistado).
+    pub(crate) flip_active: bool,
+    /// ADR-0113 W2: o estilo de brush + modo espelhados do `FlipTool` a cada frame
+    /// pelo `flip_bridge`. `None` quando a tool está inativa. O `input_dispatch` lê
+    /// isto (sem downcast) pra decidir desenhar + assar o traço.
+    pub(crate) flip_style: Option<ph2d_tool_flip::FlipStyleSnapshot>,
+    /// ADR-0113 W2: o traço do Flip em curso (amostras mundo+pressão); assado no
+    /// `FlipDoc` no pen-up. Vazio quando não há gesto.
+    pub(crate) flip_draw: crate::flip_draw::FlipDraw,
     /// ADR-0108 Fase 1: node box-select marquee (screen-space `(start, current)`,
     /// same `(f32, f32)` as `last_pointer`) — Shift+drag on empty canvas while the
     /// Vector tool is active. `None` when idle; on release drives `box_select`.

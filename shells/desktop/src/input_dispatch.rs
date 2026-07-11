@@ -1957,6 +1957,12 @@ impl App {
         if self.painter_canvas_move(self.last_pointer.0, self.last_pointer.1) {
             return;
         }
+        // Flip stroke (ADR-0113 W2, SHELL-only): while a Flip canvas stroke is open,
+        // every motion adds a world sample. Early-return so it doesn't also drive a
+        // gizmo drag / pan. No-op unless a Flip stroke is in progress.
+        if self.flip_canvas_move(self.last_pointer.0, self.last_pointer.1) {
+            return;
+        }
         // Fill (Bucket) ColorDrop drag (SHELL-only): while a colour is being dragged from the Fill rail
         // button onto the canvas, deliver it to the painter's Fill. Early-return so it doesn't pan.
         if self.fill_drag_move(self.last_pointer.0, self.last_pointer.1) {
@@ -2178,6 +2184,25 @@ impl App {
                 h.store.panel_at(evt.x, evt.y).is_none() && h.hit_index.hit(evt.x, evt.y).is_none()
             })
             .unwrap_or(false);
+        // ADR-0113 W2: desenho do Flip. O pen-UP sempre encerra um traço em curso
+        // (consome), mesmo que o modo tenha mudado no meio. O pen-DOWN começa um
+        // traço só no modo Draw, em canvas vazio — em Select cai no gizmo/pick.
+        if kind == PointerKind::Up
+            && mapped_button == ph2d_host::PointerButton::Primary
+            && self.flip_draw.is_active()
+            && self.flip_canvas_up()
+        {
+            return;
+        }
+        if self.flip_wants_canvas()
+            && kind == PointerKind::Down
+            && mapped_button == ph2d_host::PointerButton::Primary
+            && on_canvas
+            && !menu_open_before
+            && self.flip_canvas_down(self.last_pointer.0, self.last_pointer.1)
+        {
+            return;
+        }
         // "Set Center" armado (ADR-0112): a pressão põe a ORIGEM da forma selecionada
         // sob o cursor e desarma. Vale em QUALQUER modo — inclusive Select, onde o
         // pivô do gizmo é o que se está ajustando.

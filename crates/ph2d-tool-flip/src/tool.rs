@@ -40,7 +40,10 @@ impl Default for FlipTool {
             hardness: 1.0,
             opacity: 1.0,
             smoothing: 0.5,
-            mode: FlipMode::Select,
+            // INTERINO (W2): default = Draw pra o pill já desenhar no smoke; sem
+            // UI de modo ainda. Volta a Select (gizmo, arbitragem ADR-0112) quando
+            // os botões de modo do painel landarem (T2.15).
+            mode: FlipMode::Draw,
             erase: EraseMode::Soft,
         }
     }
@@ -153,7 +156,7 @@ mod tests {
         let t = FlipTool::new();
         assert_eq!(t.stroke_rgba(), DEFAULT_STROKE);
         assert_eq!(t.width_px(), DEFAULT_WIDTH_PX);
-        assert_eq!(t.mode(), FlipMode::Select); // gizmo funciona no boot
+        assert_eq!(t.mode(), FlipMode::Draw); // INTERINO W2 (Select volta em T2.15)
         assert_eq!(t.hardness(), 1.0);
     }
 

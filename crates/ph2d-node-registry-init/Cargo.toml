@@ -26,6 +26,8 @@ ph2d-node-motion-bend = { path = "../ph2d-node-motion-bend" }
 ph2d-node-motion-boids = { path = "../ph2d-node-motion-boids" }
 ph2d-node-motion-clone = { path = "../ph2d-node-motion-clone" }
 ph2d-node-motion-collide = { path = "../ph2d-node-motion-collide" }
+ph2d-node-motion-color-array = { path = "../ph2d-node-motion-color-array" }
+ph2d-node-motion-color-ramp = { path = "../ph2d-node-motion-color-ramp" }
 ph2d-node-motion-cull = { path = "../ph2d-node-motion-cull" }
 ph2d-node-motion-distribute-curve = { path = "../ph2d-node-motion-distribute-curve" }
 ph2d-node-motion-distribute-radial = { path = "../ph2d-node-motion-distribute-radial" }

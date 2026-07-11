@@ -5271,6 +5271,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-node-motion-color-array"
+version = "0.0.0"
+dependencies = [
+ "ph2d-node-registry",
+ "ph2d-nodegraph",
+]
+
+[[package]]
+name = "ph2d-node-motion-color-ramp"
+version = "0.0.0"
+dependencies = [
+ "ph2d-color",
+ "ph2d-node-registry",
+ "ph2d-nodegraph",
+]
+
+[[package]]
 name = "ph2d-node-motion-cull"
 version = "0.0.0"
 dependencies = [
@@ -5661,6 +5678,8 @@ dependencies = [
  "ph2d-node-motion-boids",
  "ph2d-node-motion-clone",
  "ph2d-node-motion-collide",
+ "ph2d-node-motion-color-array",
+ "ph2d-node-motion-color-ramp",
  "ph2d-node-motion-cull",
  "ph2d-node-motion-distribute-curve",
  "ph2d-node-motion-distribute-radial",

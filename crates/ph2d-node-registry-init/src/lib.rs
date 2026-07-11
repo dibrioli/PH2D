@@ -26,6 +26,8 @@ pub fn register_all_nodes(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     ph2d_node_motion_boids::register(reg)?;
     ph2d_node_motion_clone::register(reg)?;
     ph2d_node_motion_collide::register(reg)?;
+    ph2d_node_motion_color_array::register(reg)?;
+    ph2d_node_motion_color_ramp::register(reg)?;
     ph2d_node_motion_cull::register(reg)?;
     ph2d_node_motion_distribute_curve::register(reg)?;
     ph2d_node_motion_distribute_radial::register(reg)?;

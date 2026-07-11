@@ -55,10 +55,10 @@ pub(crate) struct MotionState {
 
 impl MotionState {
     /// Build the boot state: register every node op + the **default document** — on the
-    /// left a marquee of dots **flowing along a Bézier path** (`motion.distribute_curve`,
-    /// `offset` ramped by a saw `value.lfo`); on the right a grid ribbon **wrapped onto an
-    /// S-curve** (`motion.spline_wrap`, `amount` swept by a sine `value.lfo`).
-    /// Kept deliberately small (docs/Motion Nodes/12, 28). The earlier scenes (the
+    /// left a radial sunburst coloured by a **rainbow gradient** (`motion.color_ramp`)
+    /// that spins; on the right a grid coloured by a **cycling palette**
+    /// (`motion.color_array`) whose slots march across it. Each animated by a `value.lfo`.
+    /// Kept deliberately small (docs/Motion Nodes/12, 29). The earlier scenes (the
     /// Cavalry grid rig, the sim scenes, the deformer scenes) and the earlier
     /// value/pulse + M3/M4 chains were removed to keep the boot document focused; they
     /// live in git history and every node keeps its own unit tests + stays registered

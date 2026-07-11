@@ -420,6 +420,10 @@ impl crate::App {
             vello_pass,
             vector_scene,
             vec_scene,
+            // ADR-0113: cena Flip. A ponte objeto↔entidade é reconciliada todo
+            // frame (abaixo, ao lado do vetor). No W0 é no-op — nenhuma tool cria
+            // objetos ainda; o render entra no W1.
+            flip,
             text_system,
             hero_screen,
             hero_arena,
@@ -2038,6 +2042,10 @@ impl crate::App {
             // entidades (path novo ⇒ entidade; entidade apagada ⇒ path), projeta a
             // ordem de z da árvore na pilha, e lê visibilidade/trava herdadas.
             crate::vec_entities::sync(sim, vec_scene, &mut self.vec_entities);
+            // ADR-0113: idem para os objetos Flip (objeto novo ⇒ entidade; entidade
+            // apagada ⇒ objeto). No W0 é no-op (nenhuma tool cria objetos ainda); a
+            // tool do W2 passa a populá-lo.
+            crate::flip_entities::sync(sim, flip, &mut self.flip_entities);
             // ADR-0112: a origem (o pivô) de um path nasce no centro do MUNDO. Assim
             // que a forma pára de crescer, ela vai para o centro dela.
             // Os dois gestos que escrevem geometria em MUNDO a cada frame: a caneta e

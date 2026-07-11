@@ -19,6 +19,7 @@
 
 use ph2d_ecs::scene::{ComponentRegistry, WorldSnapshot, snapshot_to_world, world_to_snapshot};
 use ph2d_ecs::{Entity, SimWorld, Transform, TransformPropagationState, With, WorklistBuf};
+use ph2d_flip::FlipDoc;
 use ph2d_vec_scene::VecScene;
 
 /// Profundidade máxima da pilha (interações comuns, não infinitas). Igual ao
@@ -28,13 +29,19 @@ const UNDO_CAP: usize = 256;
 /// O estado mutável do projeto num instante: o mundo + a geometria vetorial.
 ///
 /// `WorldSnapshot` cobre toda entidade com componente registrado — pose, nome,
-/// árvore, trava, e o `VecPathRef` que liga um path à entidade (ADR-0110). `VecScene`
-/// é a geometria, que vive fora do ECS. Juntos são o projeto inteiro exceto os
+/// árvore, trava, e as referências que ligam um path (`VecPathRef`) ou um objeto
+/// Flip (`FlipObjectRef`) à entidade (ADR-0110/0113). `VecScene` e `FlipDoc` são
+/// as geometrias, que vivem fora do ECS. Juntos são o projeto inteiro exceto os
 /// pixels dos sprites (estáveis, não mudam a cada ação — o save os anexa à parte).
+///
+/// `FlipDoc` é determinístico (Vec/BTreeMap/ids monotônicos), então — ao contrário
+/// do `WorldSnapshot` — não precisa de `canonicalize`: capturar o mesmo estado
+/// duas vezes dá `FlipDoc`s iguais e o diff de undo não registra passo espúrio.
 #[derive(Clone, PartialEq, Debug, serde::Serialize, serde::Deserialize)]
 pub(crate) struct ProjectState {
     pub(crate) world: WorldSnapshot,
     pub(crate) vec: VecScene,
+    pub(crate) flip: FlipDoc,
 }
 
 impl ProjectState {
@@ -44,6 +51,7 @@ impl ProjectState {
     pub(crate) fn capture(
         sim: &SimWorld,
         vec: &VecScene,
+        flip: &FlipDoc,
         registry: &ComponentRegistry,
         prop: &mut TransformPropagationState,
         worklist: &mut WorklistBuf,
@@ -56,22 +64,31 @@ impl ProjectState {
         Self {
             world,
             vec: vec.clone(),
+            flip: flip.clone(),
         }
     }
 
     /// Restaura este estado. Limpa as entidades editáveis do mundo, re-spawna do
-    /// snapshot, e devolve a geometria + a **ponte path↔entidade reconstruída** (o
-    /// mapa é runtime-only; sem o rebuild, o `sync` duplicaria as formas).
+    /// snapshot, e devolve as geometrias + as **pontes reconstruídas** (vetor e
+    /// Flip; os mapas são runtime-only — sem o rebuild, o `sync` duplicaria as
+    /// formas/objetos).
     ///
-    /// O chamador atribui os dois: `gfx.vec_scene = vec; self.vec_entities = map`.
+    /// O chamador atribui os quatro: `gfx.vec_scene = vec; gfx.flip = flip;
+    /// self.vec_entities = vec_map; self.flip_entities = flip_map`.
     #[must_use]
     pub(crate) fn restore(
         &self,
         sim: &mut SimWorld,
         registry: &ComponentRegistry,
-    ) -> (VecScene, crate::vec_entities::VecEntityMap) {
-        // 1. Limpa: toda entidade editável tem `Transform` (sprites, formas, grupos).
-        //    O despawn cascateia por `ChildOf`, então um filho já removido é benigno.
+    ) -> (
+        VecScene,
+        crate::vec_entities::VecEntityMap,
+        FlipDoc,
+        crate::flip_entities::FlipEntityMap,
+    ) {
+        // 1. Limpa: toda entidade editável tem `Transform` (sprites, formas,
+        //    objetos Flip, grupos). O despawn cascateia por `ChildOf`, então um
+        //    filho já removido é benigno.
         let editable: Vec<Entity> = {
             let mut q = sim.world_mut().query_filtered::<Entity, With<Transform>>();
             q.iter(sim.world()).collect()
@@ -81,9 +98,11 @@ impl ProjectState {
         }
         // 2. Re-spawna do snapshot (ids do mundo são novos — o snapshot é portável).
         let _ = snapshot_to_world(sim.world_mut(), &self.world, registry);
-        // 3. Reconstrói a ponte a partir do `VecPathRef` restaurado.
-        let map = crate::vec_entities::rebuild_map(sim);
-        (self.vec.clone(), map)
+        // 3. Reconstrói as pontes a partir dos `VecPathRef`/`FlipObjectRef`
+        //    restaurados.
+        let vec_map = crate::vec_entities::rebuild_map(sim);
+        let flip_map = crate::flip_entities::rebuild_map(sim);
+        (self.vec.clone(), vec_map, self.flip.clone(), flip_map)
     }
 }
 
@@ -187,6 +206,7 @@ impl crate::App {
         Some(ProjectState::capture(
             &gfx.sim,
             &gfx.vec_scene,
+            &gfx.flip,
             &gfx.component_registry,
             &mut gfx.prop_state,
             &mut gfx.worklist,
@@ -200,12 +220,14 @@ impl crate::App {
         let Some(gfx) = self.gfx.as_mut() else {
             return;
         };
-        let (vec, map) = state.restore(&mut gfx.sim, &gfx.component_registry);
+        let (vec, map, flip, flip_map) = state.restore(&mut gfx.sim, &gfx.component_registry);
         gfx.vec_scene = vec;
+        gfx.flip = flip;
         if let Some(hero) = gfx.hero_screen.as_mut() {
             hero.gizmo.clear_all_selection();
         }
         self.vec_entities = map;
+        self.flip_entities = flip_map;
         self.vec_sel = crate::vec_selection::VecSelSync::default();
         self.vec_pen.clear();
         self.undo_baseline = Some(state.clone());
@@ -310,7 +332,7 @@ mod tests {
     fn capture(sim: &mut SimWorld, vec: &VecScene, reg: &ComponentRegistry) -> ProjectState {
         let mut prop = TransformPropagationState::new(sim.world_mut());
         let mut wl = WorklistBuf::new();
-        ProjectState::capture(sim, vec, reg, &mut prop, &mut wl)
+        ProjectState::capture(sim, vec, &FlipDoc::new(), reg, &mut prop, &mut wl)
     }
 
     /// Capturar → mexer no mundo E na geometria → restaurar devolve o estado exato,
@@ -331,7 +353,7 @@ mod tests {
         vec = VecScene::new();
         vec.push_path(rectangle([9.0, 9.0], [10.0, 10.0]));
 
-        let (rvec, map) = before.restore(&mut sim, &reg);
+        let (rvec, map, _rflip, _fmap) = before.restore(&mut sim, &reg);
         vec = rvec;
 
         // A geometria voltou ao original.
@@ -359,7 +381,7 @@ mod tests {
         let reg = registry();
         let (mut sim, vec) = scene();
         let snap = capture(&mut sim, &vec, &reg);
-        let (mut rvec, mut map) = snap.restore(&mut sim, &reg);
+        let (mut rvec, mut map, _rflip, _fmap) = snap.restore(&mut sim, &reg);
 
         let entities_before = map.len();
         crate::vec_entities::sync(&mut sim, &mut rvec, &mut map);
@@ -388,6 +410,7 @@ mod tests {
         let s1 = ProjectState {
             world: s0.world.clone(),
             vec: vec1,
+            flip: FlipDoc::new(),
         };
         stack.push_undo(s0.clone());
         assert!(stack.can_undo() && !stack.can_redo());
@@ -424,10 +447,59 @@ mod tests {
         let reg = registry();
         let (mut sim, vec) = scene();
         let snap = capture(&mut sim, &vec, &reg);
-        let (rvec, _) = snap.restore(&mut sim, &reg);
+        let (rvec, _, _, _) = snap.restore(&mut sim, &reg);
         let again = capture(&mut sim, &rvec, &reg);
         assert_eq!(snap, again, "restore->capture != capture original");
     }
+    /// ADR-0113: o `FlipDoc` entra na captura como 3º campo. Round-trip por
+    /// capture→restore, a ponte objeto↔entidade é reconstruída, e capturar o
+    /// mesmo estado 2× é idêntico (o flip é determinístico — sem diff espúrio).
+    #[test]
+    fn flip_survives_capture_restore_and_rebuilds_bridge() {
+        use ph2d_flip::{Hold, KeyKind};
+        let reg = registry();
+        let mut sim = SimWorld::new();
+        let vec = VecScene::new();
+        // Documento Flip: um objeto (camada + frame + traço) + a entidade-ponte.
+        let mut flip = FlipDoc::new();
+        let oid = flip.push_object("Char");
+        {
+            let obj = flip.object_mut(oid).unwrap();
+            let l = obj.add_layer("L");
+            let d = obj
+                .insert_frame(l, 0, Hold::Implicit, KeyKind::Keyframe)
+                .unwrap();
+            obj.drawing_mut(d).unwrap().strokes.push(Default::default());
+        }
+        sim.world_mut().spawn((
+            Transform::default(),
+            Name::new("Char"),
+            ph2d_ecs::FlipObjectRef(oid.0),
+        ));
+
+        let snap = {
+            let mut prop = TransformPropagationState::new(sim.world_mut());
+            let mut wl = WorklistBuf::new();
+            ProjectState::capture(&sim, &vec, &flip, &reg, &mut prop, &mut wl)
+        };
+
+        // Muda o flip (adiciona objeto) e restaura ao capturado.
+        flip.push_object("Extra");
+        let (_rvec, _vmap, rflip, fmap) = snap.restore(&mut sim, &reg);
+        assert_eq!(rflip.objects().len(), 1, "o flip voltou ao capturado");
+        assert_eq!(fmap.len(), 1, "a ponte flip reconstruída tem o objeto");
+        let (&fid, &bits) = fmap.iter().next().unwrap();
+        assert_eq!(fid, oid);
+        assert!(sim.world().get_entity(Entity::from_bits(bits)).is_ok());
+
+        // Capturar o mesmo estado 2× = idêntico (sem passo espúrio de undo).
+        let mut prop = TransformPropagationState::new(sim.world_mut());
+        let mut wl = WorklistBuf::new();
+        let a = ProjectState::capture(&sim, &vec, &rflip, &reg, &mut prop, &mut wl);
+        let b = ProjectState::capture(&sim, &vec, &rflip, &reg, &mut prop, &mut wl);
+        assert_eq!(a, b, "flip determinístico → sem diff espúrio");
+    }
+
     /// REGRESSÃO (Enio 2026-07-09: "ao deletar não volta no mesmo lugar"). O
     /// `RootOrder` (a posição de z / linha na hierarquia) tem de sobreviver ao
     /// ciclo capturar → deletar → restaurar.

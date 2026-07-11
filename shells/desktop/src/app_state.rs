@@ -108,6 +108,11 @@ pub(crate) struct AppGfx {
     /// Vello compartilhada. Fase 0 = cena-demo (prova o seam ponta-a-ponta);
     /// Fase 1 = dirigida pelas ferramentas de desenho.
     pub(crate) vec_scene: ph2d_vec_scene::VecScene,
+    /// ADR-0113: cena Flip (animação quadro-a-quadro). Documento puro
+    /// (`ph2d-flip`); cada objeto vira uma entidade na Hierarquia via
+    /// `FlipObjectRef`, ponte mantida por `flip_entities::sync`. Mirror do
+    /// `vec_scene` — document ≠ tool. Guardada no `ProjectState` (undo/save).
+    pub(crate) flip: ph2d_flip::FlipDoc,
     /// Motion Nodes runtime state (M0.T8): document + transport + persistent
     /// `Cook` + node registry + reused instance buffer. Cooked per frame by
     /// `render_loop::motion_bridge` while the `motion` tool is active. Mirror of
@@ -609,6 +614,9 @@ pub(crate) struct App {
     /// `VecPathId` → entidade ECS que o representa na Hierarquia (ADR-0110). O
     /// invariante "um path ⟺ uma entidade" é mantido por `vec_entities::sync`.
     pub(crate) vec_entities: crate::vec_entities::VecEntityMap,
+    /// `FlipObjectId` → entidade ECS que o representa na Hierarquia (ADR-0113). O
+    /// invariante "um objeto ⟺ uma entidade" é mantido por `flip_entities::sync`.
+    pub(crate) flip_entities: crate::flip_entities::FlipEntityMap,
     /// Espelho da última sincronia de seleção canvas ↔ Hierarquia (ADR-0110): diz
     /// **quem** mudou neste frame, e por isso quem manda. Ver `sync_selection`.
     pub(crate) vec_sel: crate::vec_selection::VecSelSync,

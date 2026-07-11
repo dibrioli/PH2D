@@ -4792,6 +4792,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-flip"
+version = "0.0.0"
+dependencies = [
+ "ph2d-core",
+ "ph2d-painter-effects",
+ "postcard",
+ "serde",
+]
+
+[[package]]
 name = "ph2d-gpu"
 version = "0.0.0"
 dependencies = [
@@ -4833,6 +4843,7 @@ dependencies = [
  "ph2d-ecs",
  "ph2d-editor",
  "ph2d-eval-motion",
+ "ph2d-flip",
  "ph2d-gpu",
  "ph2d-host",
  "ph2d-i18n",

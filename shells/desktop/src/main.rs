@@ -36,6 +36,7 @@ mod app_state;
 mod atlas_loader;
 mod audio;
 mod cursor_pos;
+mod flip_entities;
 mod forwarding;
 mod hero_bridge;
 mod hero_intents;
@@ -240,6 +241,7 @@ impl App {
             vec_snap_targets: ph2d_vec_edit::SnapTargets::default(),
             vec_snap_guides: Vec::new(),
             vec_entities: Default::default(),
+            flip_entities: Default::default(),
             vec_sel: Default::default(),
             frame_ms_ewma: 16.7, // ~60 Hz baseline so the first
                                  // frame's status bar doesn't display

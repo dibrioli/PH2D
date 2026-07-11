@@ -175,9 +175,14 @@ mod tests {
     fn project_file_round_trips_through_postcard() {
         let mut vec = VecScene::new();
         vec.push_path(rectangle([0.0, 0.0], [2.0, 2.0]));
+        // ADR-0113: o FlipDoc entra no ProjectState (3º campo) → o save o carrega
+        // de graça (mesma captura do undo).
+        let mut flip = ph2d_flip::FlipDoc::new();
+        flip.push_object("Anim");
         let state = ProjectState {
             world: WorldSnapshot::new(),
             vec,
+            flip,
         };
         let file = ProjectFile {
             state: state.clone(),

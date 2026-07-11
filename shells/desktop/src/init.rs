@@ -399,6 +399,8 @@ pub(crate) fn build_initial_state(
         vector_scene,
         // ADR-0108 Fase 0: `vec_scene` escolhido logo acima (smiley ou grade N).
         vec_scene,
+        // ADR-0113: cena Flip vazia no boot (a tool do W2 cria objetos).
+        flip: ph2d_flip::FlipDoc::new(),
         // Motion Nodes M0.T8: boot state = default grid→transform→clone vertical
         // + full node registry + paused transport (cooked per frame by the bridge).
         // Its instances sample one opaque atlas tile (computed above) so the raw

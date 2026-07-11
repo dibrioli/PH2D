@@ -1,5 +1,11 @@
 # HANDOFF — Time remap ainda quebra a animação · fila W5 · protocolo de integração (linha `line/anim`)
 
+> **✅ RESOLVIDO (2026-07-11, commit `72803d18`):** o fix do §3 foi aplicado, com o repro do §2
+> vermelho→verde no caminho real do shell + varredura do §4.2 completa + gate batched verde.
+> Prova e detalhes no **[handoff de integração §13](HANDOFF_line_anim_integracao_2026-07-11.md)**.
+> **Pendente só o smoke do Enio no app** (§4.1 / integração §13.3) — o DoD. O restante deste
+> arquivo fica como registro da caçada; a **fila do §5** (itens 2–5) segue aberta.
+
 > **Para:** o próximo agente que assumir a **linha `line/anim`** (Timeline) em **Modo L**.
 > **De:** agente anterior (fechou time remap v1, o fix "§11.1" que NÃO resolveu, e roving keys).
 > **Data:** 2026-07-11. **Worktree:** `/home/enio/Documentos/Projetos/PH2D/Worktrees/line-anim/` · **branch:** `line/anim`.

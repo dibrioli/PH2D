@@ -197,7 +197,7 @@ novos de slope + 154 anim+timeline + 290 total com painel + clippy `--all-target
 
 **Prova:** 4 testes de apply (2× speed · freeze · reverse · identidade/per-entity/nunca-escreve-cena) + seed do K (identidade + na-curva) + id novo no shell + dhat estendido zero-alloc + **mutação dirigida** (neutralizar `remapped_time` → freeze/reverse vermelhos). 1259/1259 nas 5 crates; clippy `--all-targets` verde.
 
-**⚠️ §11 + §11.1 INSUFICIENTES (Enio, 2026-07-11): o Time remap AINDA anula a animação de posição.** Causa-raiz confirmada (seed do K flat-clampa vs `remapped_time` extrapola slope-1) + fix candidato + protocolo de validação in-app em **[HANDOFF_time_remap_bug_e_fila_2026-07-11.md](HANDOFF_time_remap_bug_e_fila_2026-07-11.md)**. Trate o "landou" do §11 como **NÃO-fechado** até o app rodando provar o contrário.
+**⚠️ §11 + §11.1 eram INSUFICIENTES (Enio, 2026-07-11): o Time remap ainda anulava a animação de posição.** Causa-raiz + fix definitivo na **§13** (commit `72803d18`) — o seed do K agora é a MESMA transform da amostragem. **Smoke do Enio pendente** (§13.3); até lá o fechamento é condicional.
 
 **§11.1 — Fix "Time bugado" (smoke do Enio: criar key Time travava a autoria de pose):** duas metades. **(a)** `remapped_time` extrapolava por HOLD fora dos keys — UM key semeado pelo K congelava o relógio da entidade pra sempre (0 keys = identidade, 1 key = freeze: descontinuidade). Agora **extrapola em slope 1** (identidade deslocada pelo key de borda); exceção: **último key `Hold` = freeze-frame** (o freeze do AE sobrevive — o teste antigo de freeze usava Hold e passou intacto). **(b)** autoria em tempo cru vs apply em tempo remapeado: auto-key (diff + insert), pin de pose deslocada e K agora usam o **relógio da entidade** (`remapped_time`, agora `pub`; `key_insert_time` no bridge) — o key landa no tempo FONTE, onde o apply amostra, e a pose gruda. A track Time em si segue keyando no tempo do playhead. Consequência de exibição: sob remap ≠ identidade, um K no playhead `t` desenha o key da cena na régua no tempo-fonte (as tracks são autoradas em tempo-fonte — modelo precomp do AE). **4 mutantes dirigidos** (hold-extrapolation · diff armado em t cru · pin em t cru · K em t cru) → cada um derruba seu teste. 51 + 205 verdes; clippy + LOC ok. Commit `56217b44`.
 
@@ -217,7 +217,27 @@ novos de slope + 154 anim+timeline + 290 total com painel + clippy `--all-target
 
 **Prova:** 5 testes no motor (proporcional · run acumulado · reversing=travel · zero-travel uniforme + bordas pinadas · flags seguem keys por edits+serde) + 3 de intents (reflow por valor/vizinho/upsert · 1 undo step + un-rove pina · bulk) + 3 do menu (resolve+toggle · misto converge · coluna) + **mutação dirigida 4/4** (resolvedor morto → 4 vermelhos · choke edit() · hook upsert · direção do toggle). Suítes das 5 crates verdes + clippy `--all-targets` + LOC caps + dhat. Commit `5b8b6e7f`.
 
-**Fila do Enio: vazia — aguardando smoke (time remap + roving) e próxima ordem.**
+**Fila do Enio: vazia — aguardando smoke (time remap §13 + roving) e próxima ordem.**
+
+---
+
+## 13. Bug fix — Time remap anulava a animação (3º e definitivo, `72803d18`) — SUPERSEDE a metade (b) do problema da §11.1
+
+**Sintoma (Enio, 2026-07-11):** bindar **Time** e criar keyframes (K em t=0, scrub, K de novo — o fluxo natural de 2 âncoras) **congelava** a posição e todas as outras tracks da entidade.
+
+**Causa-raiz (a inconsistência que a §11.1 deixou passar):** o **seed do K** (`key_value_for`, branch `TimeRemap`) usava `tr.sample(t)` = **flat-clamp** fora do intervalo de keys, enquanto a **amostragem** (`remapped_time`) extrapola em **slope 1** (§11.1a). K@0 numa track vazia semeia identidade `(0,0)`; K@2 com 1 key flat-clampava em `0` → track `{(0,0),(2,0)}` = **remap PLANO** = todas as tracks da entidade amostram na fonte 0 = "animação anulada".
+
+**Fix (`timeline_bridge.rs`, `key_value_for`):** o seed do K virou **a MESMA função** da amostragem — `ph2d_timeline::remapped_time` (identidade em track vazia · na-curva entre keys · **slope-1 fora** · Hold = freeze deliberado · skip de binding missing · clamp ≥ 0 — tudo herdado por construção, [[feedback_derived_coordinate_seed_must_match_sample]]). Zero símbolo novo, zero contrato tocado; superfície = 1 função no shell.
+
+**Prova (o alvo irrefutável que faltou nos 2 fixes anteriores):**
+1. `time_remap_double_k_must_not_freeze_position` — dirige o caminho REAL do K do shell (`key_value_for` + `key_insert_time` + `apply_from_doc`): **vermelho antes** (`x@1 = 0`, congelado) → **verde depois** (`x@1 = 2.5`, `x@3 = 7.5`, identidade). O run vermelho pré-fix é a mutação dirigida (restaurar o flat-clamp reprova).
+2. `k_past_a_hold_freeze_seeds_the_frozen_clock` — o freeze do **Hold** segue deliberado: K além de um último key Hold semeia a fonte congelada e os keys de cena landam no relógio congelado.
+3. In-range **não regride**: `k_seeds_a_time_remap_key_on_its_curve_or_at_the_identity` (na-curva + identidade em track vazia) passou intacto.
+4. **Varredura dos outros autores de valor de Time:** graph editor **nunca emite `AddKey`** (só Move/SetKeyValue/SetInterp — valor user-driven) · auto-key **duplamente guardado** (`PropKind::ALL` = pose de 6 sem TimeRemap E `sample_prop_value(TimeRemap)=None`) · Duplicate/Paste preservam valor **verbatim** (`duplicate_keys`/`upsert_key(t, ck.value, ck.interp)`) — nenhuma outra fonte de seed sintetizado.
+
+**Gate:** `rustup run 1.95 cargo fmt` ✓ · nextest `ph2d-timeline`+`ph2d-host-desktop` **320/320** (inclui dhat `apply_from_doc_is_zero_alloc_steady_state`) ✓ · clippy `--all-targets -D warnings` ✓ · LOC 568/600 ✓.
+
+**§13.3 — Smoke do Enio (pendente, o DoD):** `cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-anim && cargo run -p ph2d-host-desktop` → animar X de um sprite (2 keys, 0→4s) → **+Track → Time** → **K em t=0**, scrub p/ t=2, **K de novo** → a posição deve **continuar tocando** (antes congelava); então arrastar as âncoras de Time no graph pra ver slow-mo/freeze/reverse reais.
 
 ---
 

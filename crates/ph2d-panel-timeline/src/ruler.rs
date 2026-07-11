@@ -16,6 +16,7 @@ use ph2d_editor_core::widget::SliderState;
 use ph2d_editor_core::zones::Rect;
 use ph2d_timeline::TimelineViewSnapshot;
 use ph2d_tokens::{ColorToken, Radius, Spacing, StrokeToken, Theme, TypeToken};
+use ph2d_vector::{Affine, BezPath, Brush, Fill};
 
 use crate::ids;
 
@@ -58,6 +59,9 @@ pub(crate) fn paint(
         Radius::Xs.px(),
         resolve(ColorToken::Bg2, theme),
     );
+    // The loop's shaded band goes BEHIND the ticks + labels so it tints the strip
+    // without hiding the time numbers.
+    paint_loop_band(ctx, theme, region, &time_to_x, snap);
 
     // Minor + major ticks (+ labels on majors).
     paint_ticks(
@@ -103,7 +107,7 @@ pub(crate) fn paint(
     // The loop braces + markers go on TOP of the scrub strip — registered after
     // it so their grab targets win the hit where they overlap (`HitIndex::hit`
     // walks in reverse). Drawn last for the same reason visually.
-    paint_loop(ctx, theme, region, &time_to_x, snap);
+    paint_loop_braces(ctx, theme, region, &time_to_x, snap);
     paint_markers(ctx, theme, region, &time_to_x, snap);
     let dragging = matches!(
         ctx.host.store().slider(ids::TIMELINE_RULER),
@@ -119,10 +123,9 @@ pub(crate) fn paint(
     }
 }
 
-/// Paint the loop range's shaded band + its two braces on the ruler, and
-/// register the three grab targets (start · end · body). A no-op when no loop is
-/// set — the braces exist only while the Loop toggle has armed a range.
-fn paint_loop(
+/// Paint just the loop range's shaded band. Called BEFORE the ticks so the
+/// numbers stay legible over it. A no-op when no loop is set.
+fn paint_loop_band(
     ctx: &mut PaintCtx,
     theme: Theme,
     region: Rect,
@@ -135,7 +138,6 @@ fn paint_loop(
     let right = region.x + region.w;
     let x0 = time_to_x(a).clamp(region.x, right);
     let x1 = time_to_x(b).clamp(region.x, right);
-    // Shaded band across the ruler strip between the braces.
     if x1 > x0 {
         fill_rounded_rect(
             ctx.scene,
@@ -144,6 +146,24 @@ fn paint_loop(
             resolve(ColorToken::AccentSoft, theme),
         );
     }
+}
+
+/// Paint the loop's two braces + register the three grab targets (start · end ·
+/// body). Called AFTER the scrub hit so the braces win the overlap. A no-op when
+/// no loop is set.
+fn paint_loop_braces(
+    ctx: &mut PaintCtx,
+    theme: Theme,
+    region: Rect,
+    time_to_x: &impl Fn(f64) -> f32,
+    snap: &TimelineViewSnapshot,
+) {
+    let Some((a, b)) = snap.loop_range else {
+        return;
+    };
+    let right = region.x + region.w;
+    let x0 = time_to_x(a).clamp(region.x, right);
+    let x1 = time_to_x(b).clamp(region.x, right);
     // Body grab (move the whole range) UNDER the edge handles, registered first so
     // the edges win where they overlap.
     if x1 - x0 > BRACE_HIT_HW * 2.0 {
@@ -212,42 +232,49 @@ fn paint_markers(
 ) {
     let right = region.x + region.w;
     let font = TypeToken::Xs.px();
+    let half = MARKER_W * 0.5;
     for (index, (t, label)) in snap.markers.iter().enumerate() {
         let x = time_to_x(*t);
-        if x < region.x - MARKER_W || x > right {
+        if x < region.x - half || x > right + half {
             continue;
         }
-        // A little pennant: a filled flag off the top-left, so it reads as a tag
-        // pinned at the time, distinct from a tick or the playhead.
+        let color = resolve(ColorToken::Warn, theme);
+        // The stem: a 1px line down the ruler strip, marking the exact time.
         fill_rounded_rect(
             ctx.scene,
-            Rect::new(x, region.y, MARKER_W, MARKER_H),
+            Rect::new(x - 0.5, region.y, 1.0, RULER_H), // LITERAL-PX-OK: 1px marker stem
             Radius::Xs.px(),
-            resolve(ColorToken::Warn, theme),
+            color,
         );
-        // The stem down the strip.
-        fill_rounded_rect(
-            ctx.scene,
-            Rect::new(x, region.y, 1.0, RULER_H), // LITERAL-PX-OK: 1px marker stem
-            Radius::Xs.px(),
-            resolve(ColorToken::Warn, theme),
+        // The pennant: a triangle whose apex points DOWN to the stem, base along
+        // the top of the ruler — a flag pinned at the time.
+        fill_triangle(
+            ctx,
+            [
+                (x - half, region.y),
+                (x + half, region.y),
+                (x, region.y + MARKER_H),
+            ],
+            color,
         );
-        // Label to the right of the pennant, elided so it never runs off.
+        // Label to the right of the triangle, elided so it never runs off.
         ph2d_editor_core::text_elide::paint_text_elided(
             ctx.text_system,
             ctx.scene,
             label,
-            x + MARKER_W + Spacing::Xs.px(),
+            x + half + Spacing::Xs.px(),
             region.y + (MARKER_H - font) * 0.5,
             font,
-            (right - x - MARKER_W).max(0.0),
+            (right - x - half).max(0.0),
             resolve(ColorToken::Text2, theme),
         );
+        // Grab target = the triangle only (top `MARKER_H`), never the stem below,
+        // so clicking the LINE scrubs while clicking the TRIANGLE grabs the marker.
         let hit = Rect::new(
-            x - MARKER_HIT_PAD,
+            x - half - MARKER_HIT_PAD,
             region.y,
             MARKER_W + MARKER_HIT_PAD * 2.0,
-            RULER_H,
+            MARKER_H,
         );
         let id = ids::timeline_marker_hit_id(index);
         ctx.host.store_mut().register(
@@ -260,6 +287,22 @@ fn paint_markers(
         );
         ctx.host.hit_index_mut().register(id, hit);
     }
+}
+
+/// Fill a triangle through three points (the marker pennant).
+fn fill_triangle(ctx: &mut PaintCtx, corners: [(f32, f32); 3], color: ph2d_vector::Color) {
+    let mut p = BezPath::new();
+    p.move_to((f64::from(corners[0].0), f64::from(corners[0].1)));
+    p.line_to((f64::from(corners[1].0), f64::from(corners[1].1)));
+    p.line_to((f64::from(corners[2].0), f64::from(corners[2].1)));
+    p.close_path();
+    ctx.scene.inner_mut().fill(
+        Fill::NonZero,
+        Affine::IDENTITY,
+        &Brush::Solid(color),
+        None,
+        &p,
+    );
 }
 
 /// Register one loop brace as a timeline surface + hit rect.

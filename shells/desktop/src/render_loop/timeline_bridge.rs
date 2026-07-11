@@ -53,6 +53,10 @@ pub(crate) fn intent_for_transport(
     match *ev {
         PanelEvent::Click(id) if id == ids::TIMELINE_PLAY => Some(I::TogglePlay),
         PanelEvent::Click(id) if id == ids::TIMELINE_GO_START => Some(I::Scrub(0.0)),
+        PanelEvent::Click(id) if id == ids::TIMELINE_ADD_MARKER => Some(I::AddMarker {
+            t_seconds: playhead.time(),
+            label: format!("M{}", timeline.doc.markers().len() + 1),
+        }),
         PanelEvent::Click(id) if id == ids::TIMELINE_GO_END => Some(I::Scrub(duration())),
         PanelEvent::Click(id) if id == ids::TIMELINE_PREV_FRAME => {
             Some(I::SeekFrame(playhead.frame(fps) - 1))

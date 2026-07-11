@@ -184,3 +184,63 @@ fn end_clears_the_drag_state() {
     assert!(st.loop_drag.is_none(), "the drag ended");
     let _ = state::drain_intents();
 }
+
+#[test]
+fn clicking_inside_the_loop_band_scrubs_to_that_time() {
+    // A plain click on the body (edge 2) seeks the playhead there instead of
+    // being swallowed — the range only slides on a drag.
+    let mut st = TimelinePanelState::default();
+    let s = snap();
+    apply(
+        &mut st,
+        0.0,
+        100.0,
+        &s,
+        2,
+        gesture(2, GesturePhase::Begin, 200.0),
+    );
+    apply(
+        &mut st,
+        0.0,
+        100.0,
+        &s,
+        2,
+        gesture(2, GesturePhase::Click, 200.0),
+    );
+    assert_eq!(
+        state::drain_intents().last(),
+        Some(&TimelineIntent::Scrub(2.0)),
+        "x = 200 px is t = 2 s"
+    );
+    assert!(st.loop_drag.is_none());
+}
+
+#[test]
+fn clicking_a_brace_handle_does_not_scrub() {
+    // A click on an edge handle is a grab that changed nothing — it must not
+    // also seek.
+    let mut st = TimelinePanelState::default();
+    let s = snap();
+    apply(
+        &mut st,
+        0.0,
+        100.0,
+        &s,
+        0,
+        gesture(0, GesturePhase::Begin, 100.0),
+    );
+    apply(
+        &mut st,
+        0.0,
+        100.0,
+        &s,
+        0,
+        gesture(0, GesturePhase::Click, 100.0),
+    );
+    assert!(
+        !state::drain_intents()
+            .iter()
+            .any(|i| matches!(i, TimelineIntent::Scrub(_))),
+        "an edge-handle click must not scrub"
+    );
+}

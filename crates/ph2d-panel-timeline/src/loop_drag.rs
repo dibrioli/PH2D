@@ -44,7 +44,17 @@ pub(crate) fn apply(
                 state.loop_drag = None;
             }
         }
-        GesturePhase::Click | GesturePhase::DoubleClick => state.loop_drag = None,
+        GesturePhase::Click | GesturePhase::DoubleClick => {
+            // A plain click on the BODY band scrubs the playhead to that time (the
+            // range only slides on an actual drag), so clicking inside the loop
+            // behaves like clicking the ruler. A click on a brace handle does
+            // nothing — it is a grab target, not a seek.
+            if state.loop_drag.is_some_and(|d| d.edge == 2) {
+                let t = time_at(state.view_start_s, time_x, px_per_s, g.x, snap);
+                state::push_intent(TimelineIntent::Scrub(t));
+            }
+            state.loop_drag = None;
+        }
     }
 }
 

@@ -20,6 +20,7 @@ use ph2d_editor_core::tool::PanelEvent;
 /// selected sprite).
 fn is_button(id: NodeId) -> bool {
     id == ids::TIMELINE_PLAY
+        || id == ids::TIMELINE_ADD_MARKER
         || id == ids::TIMELINE_GO_START
         || id == ids::TIMELINE_GO_END
         || id == ids::TIMELINE_PREV_FRAME

@@ -62,6 +62,7 @@ pub(crate) fn populate(store: &mut WidgetStore) {
     button(store, ids::TIMELINE_NEXT_FRAME);
     button(store, ids::TIMELINE_GO_END);
     button(store, ids::TIMELINE_ADD_TRACK);
+    button(store, ids::TIMELINE_ADD_MARKER);
     for (id, _) in ids::ADDPROP_BUTTONS {
         button(store, id);
     }

@@ -15,8 +15,8 @@ use ph2d_editor_core::paint::{paint_text, resolve, stroke_rounded_rect};
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::widget::showcase::read_number_input;
 use ph2d_editor_core::widget::{
-    ButtonState, IconButtonStyle, IconGlyph, NumberInput, Toggle, ToggleState, paint_icon_button,
-    paint_number_input_with_buffer, paint_toggle,
+    Button, ButtonState, IconButtonStyle, IconGlyph, NumberInput, Toggle, ToggleState,
+    paint_button, paint_icon_button, paint_number_input_with_buffer, paint_toggle,
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_timeline::{DEFAULT_FPS, TimelineViewSnapshot};
@@ -25,6 +25,7 @@ use ph2d_tokens::{ColorToken, Density, ROW_H_PX, Radius, Spacing, StrokeToken, T
 use crate::ids;
 
 const BTN_W: f32 = 30.0; // LITERAL-PX-OK: square transport icon-button
+const ADD_MARKER_W: f32 = 40.0; // LITERAL-PX-OK: "+M" add-marker button width
 const CHIP_W: f32 = 72.0; // LITERAL-PX-OK: seconds/frame number chip width
 const CHIP_LABEL_W: f32 = 48.0; // LITERAL-PX-OK: "Time(s)"/"Frames" chip-label column
 const TOGGLE_LABEL_W: f32 = 52.0; // LITERAL-PX-OK: "AutoKey" label column
@@ -118,7 +119,7 @@ pub(crate) fn paint_bar(
         "AutoKey",
         snap.auto_key,
     ) + gap;
-    let _ = toggle(
+    x = toggle(
         ctx,
         theme,
         x,
@@ -126,9 +127,29 @@ pub(crate) fn paint_bar(
         ids::TIMELINE_SNAP,
         "Snap",
         snap.frame_snap,
-    );
+    ) + gap;
+
+    // "+M" — drop a marker at the playhead (W4.T3). Same one-click authoring as
+    // pressing M, for discoverability.
+    add_marker_button(ctx, theme, x, y);
 
     y + ROW_H_PX + Spacing::Sm.px()
+}
+
+/// Paint the "+M" add-marker button + register its hit. `+` matches the
+/// "+Track" convention (the affordance that ADDS something).
+fn add_marker_button(ctx: &mut PaintCtx, theme: Theme, x: f32, y: f32) {
+    let rect = Rect::new(x, y, ADD_MARKER_W, ROW_H_PX);
+    let state = ctx
+        .host
+        .store()
+        .button_state(ids::TIMELINE_ADD_MARKER)
+        .unwrap_or(ButtonState::Normal);
+    let btn = Button::new(ids::TIMELINE_ADD_MARKER, "+M").state(state);
+    paint_button(&btn, rect, ctx.scene, ctx.text_system, theme);
+    ctx.host
+        .hit_index_mut()
+        .register(ids::TIMELINE_ADD_MARKER, rect);
 }
 
 /// Paint one square icon-button; register its hit rect. Returns the right edge.

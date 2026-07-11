@@ -117,8 +117,10 @@ impl PainterTool {
         let core_r = spread.min(((self.paint.brush.radius_px * 0.5).round() as usize).max(1));
         // EDGE-1 per-stroke style (doc 13 topo): geometry/field paths take the SESSION MAXIMA
         // (see `session_maxima`) — per-pixel terms resolve the OWNER's values in the loop.
-        let (wet_any, warp_any, spread_any, core_any) =
-            self.paint.wet_styles.session_maxima(wet, warp_amp, spread, core_r);
+        let (wet_any, warp_any, spread_any, core_any) = self
+            .paint
+            .wet_styles
+            .session_maxima(wet, warp_amp, spread, core_r);
         // Influence radius of a dab beyond its own disc (blur reach + warp + rounding slack):
         // dry = the capped feather only (a tight window); Wet = the dissolve's spread; a session
         // that poured dwell reads a 2× blur, so the reach doubles.

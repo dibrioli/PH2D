@@ -35,8 +35,15 @@ pub(super) fn fill_substrate_cache(
         for bx in 0..bw {
             let sidx = gy * fw + (x0 + bx);
             if substrate[sidx].is_nan() {
-                substrate[sidx] =
-                    paper_h_px(paper_active, paper_tex, paper_img, paper_rot, x0 + bx, gy, tile);
+                substrate[sidx] = paper_h_px(
+                    paper_active,
+                    paper_tex,
+                    paper_img,
+                    paper_rot,
+                    x0 + bx,
+                    gy,
+                    tile,
+                );
             }
         }
     }

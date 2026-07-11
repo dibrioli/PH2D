@@ -109,8 +109,7 @@ pub(super) fn value_noise_tiled(x: f32, y: f32, cell: f32, seed: u32, tile: Nois
 /// warp). `tile` makes it seamless across the sprite seam (doc 13 #2); `NONE` ⇒ non-periodic (old).
 #[inline]
 pub(super) fn warp_axis(x: f32, y: f32, sa: u32, sb: u32, tile: NoiseTile) -> f32 {
-    (value_noise_tiled(x, y, 22.0, sa, tile) * 0.65
-        + value_noise_tiled(x, y, 8.0, sb, tile) * 0.35
+    (value_noise_tiled(x, y, 22.0, sa, tile) * 0.65 + value_noise_tiled(x, y, 8.0, sb, tile) * 0.35
         - 0.5)
         * 2.0
 }

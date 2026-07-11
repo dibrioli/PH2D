@@ -344,7 +344,6 @@ mod tests {
             prev = outv;
         }
     }
-
 }
 
 /// EDGE-1 **per-stroke style** (doc 13 topo, Enio 2026-07-09): the wash params captured at each
@@ -451,14 +450,16 @@ impl WetSessionStyles {
         spread: usize,
         core: usize,
     ) -> (f32, f32, usize, usize) {
-        self.table.iter().fold((wet, warp, spread, core), |(w, wa, sm, cm), s| {
-            (
-                w.max(s.wet),
-                wa.max(s.warp),
-                sm.max(s.spread_px as usize),
-                cm.max(s.core_r as usize),
-            )
-        })
+        self.table
+            .iter()
+            .fold((wet, warp, spread, core), |(w, wa, sm, cm), s| {
+                (
+                    w.max(s.wet),
+                    wa.max(s.warp),
+                    sm.max(s.spread_px as usize),
+                    cm.max(s.core_r as usize),
+                )
+            })
     }
 
     pub(super) fn clear(&mut self) {
@@ -566,9 +567,11 @@ pub(super) fn water_at(
     gy: usize,
     tile: NoiseTile,
 ) -> (f32, f32, f32) {
-    let jx = (value_noise_tiled(gx as f32, gy as f32, BACKRUN_JAG_CELL, SEED_JAG_X, tile) * 2.0 - 1.0)
+    let jx = (value_noise_tiled(gx as f32, gy as f32, BACKRUN_JAG_CELL, SEED_JAG_X, tile) * 2.0
+        - 1.0)
         * BACKRUN_JAG_PX;
-    let jy = (value_noise_tiled(gx as f32, gy as f32, BACKRUN_JAG_CELL, SEED_JAG_Y, tile) * 2.0 - 1.0)
+    let jy = (value_noise_tiled(gx as f32, gy as f32, BACKRUN_JAG_CELL, SEED_JAG_Y, tile) * 2.0
+        - 1.0)
         * BACKRUN_JAG_PX;
     let wx = (gx as f32 + jx).clamp(0.0, (fw - 1) as f32);
     let wy = (gy as f32 + jy).clamp(0.0, (fh - 1) as f32);

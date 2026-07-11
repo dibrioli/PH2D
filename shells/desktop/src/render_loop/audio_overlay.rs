@@ -115,7 +115,7 @@ pub(super) fn draw_audio_overlay(
     let played_frac = (ph_frame as f32 / total).clamp(0.0, 1.0);
     // Only split played/unplayed once playback has advanced; a stopped clip shows the
     // whole waveform lit.
-    let played_x = (ph_frame > 0).then(|| wave.x + played_frac * wave.w);
+    let played_x = (ph_frame > 0).then_some(wave.x + played_frac * wave.w);
     draw_ruler(scene, text, clip, ruler, theme);
     draw_waveform(scene, clip, wave, played_x, theme);
     // Selection highlight (under the playhead) + publish the wave viewport so the

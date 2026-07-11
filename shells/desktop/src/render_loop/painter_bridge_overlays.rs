@@ -231,6 +231,9 @@ fn draw_symmetry_overlay(
 /// sprite (a 3×3 tile grid), so the artist sees the seamless tiling result. The centre is the real
 /// sprite (drawn by the pipeline); we draw only the 8 wraps as overlay images, each abutting at the
 /// sprite edges. No-op unless Repeat Image is on and a CPU composite for the selected sprite exists.
+/// Must draw BEFORE the editing chrome (`painter_bridge::dispatch` calls it first): the tiles are
+/// opaque full-canvas blits, so drawn later they cover any overlay past the sprite border (z-order
+/// gate: `repeat_image_tiles_draw_under_the_editing_chrome`).
 #[allow(clippy::too_many_arguments)]
 pub(super) fn draw_repeat_image(
     painter: &PainterTool,

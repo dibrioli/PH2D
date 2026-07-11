@@ -421,7 +421,21 @@ pub(super) fn dispatch(
             camera,
             window_size,
         );
-        // Selection overlay FIRST (under the editor handles + brush ring): marching ants + hatching + the
+        // Repeat Image FIRST: the 3×3 tile preview is canvas CONTENT (the composite at the 8 neighbour
+        // positions), so it must sit UNDER all editing chrome. Drawn after the overlays it covered any
+        // chrome extending past the sprite border — a shape crossing the seam lost its editor overlay
+        // beyond the edge, and the brush ring / marching ants vanished over the neighbour tiles
+        // (the "overlay stops at the seam" bug, Enio 2026-07-11).
+        super::painter_bridge_overlays::draw_repeat_image(
+            painter,
+            hero,
+            sim,
+            camera,
+            window_size,
+            vector_scene,
+            painter_preview.as_ref(),
+        );
+        // Selection overlay next (under the editor handles + brush ring): marching ants + hatching + the
         // crosshair cursor.
         super::painter_bridge_selection_overlay::draw_selection_overlay(
             painter,
@@ -441,16 +455,6 @@ pub(super) fn dispatch(
             vector_scene,
             text_system,
             cursor,
-        );
-        // Repeat Image: the 3×3 tile preview (the composite drawn at the 8 neighbour positions).
-        super::painter_bridge_overlays::draw_repeat_image(
-            painter,
-            hero,
-            sim,
-            camera,
-            window_size,
-            vector_scene,
-            painter_preview.as_ref(),
         );
     }
 

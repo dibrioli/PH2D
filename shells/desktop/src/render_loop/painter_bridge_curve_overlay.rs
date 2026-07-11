@@ -42,6 +42,9 @@ pub(super) fn draw_curve_overlay(
             // toroidally like the raster wash, so per-tile copies split a shape crossing the seam. It stays
             // visible beyond the sprite (un-clipped) + editable from any tile via the tool's pointer-wrap
             // (mirrors `painter_bridge_overlays::overlay_tile_offsets`, the single tiling switch).
+            // "Beyond the sprite" only holds while the Repeat Image tiles draw BEFORE this chrome in
+            // `painter_bridge::dispatch` — the tiles are opaque full-canvas blits (z-order gate:
+            // `repeat_image_tiles_draw_under_the_editing_chrome`).
             let affine = super::bgremoval_preview::sprite_image_to_screen_affine(
                 iw,
                 ih,

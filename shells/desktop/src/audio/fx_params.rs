@@ -277,6 +277,7 @@ mod tests {
                 "De-Plosive",
                 "Limiter",
                 "Leveler",
+                "Transient",
                 "Saturate",
                 "Bitcrush",
                 "Widen",

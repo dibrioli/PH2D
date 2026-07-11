@@ -25,6 +25,7 @@ mod modulation;
 mod pitch;
 mod space;
 mod tone;
+mod transient;
 
 use ph2d_audio::SampleData;
 use ph2d_audio::dsp::{BiquadCoeffs, Delay, Reverb};
@@ -36,6 +37,7 @@ use modulation::{auto_pan, modulated_delay, phaser, ring_mod, tremolo};
 use pitch::{PITCH_BYPASS_ST, pitch_shift};
 use space::{pingpong, render_wet};
 use tone::{HUM_Q, biquad_all, bitcrush, dehum, saturate, stereo_width};
+use transient::{TRANSIENT_BYPASS, transient_shape};
 
 /// Chorus base delay (ms): a detuned doubling sits well behind the dry signal.
 const CHORUS_BASE_MS: f32 = 18.0;
@@ -165,6 +167,16 @@ pub enum Effect {
         amount: f32,
         /// Envelope time constant (seconds): larger = slower, gentler ride.
         speed_secs: f32,
+    },
+    /// **Transient shaper**: boosts or softens a hit's attack and sustain
+    /// independently, via a fast/slow amplitude-follower pair. Level-independent, so a
+    /// quiet hit shapes like a loud one and steady tone is untouched. Neutral at
+    /// `attack` 0 and `sustain` 0.
+    Transient {
+        /// Attack shaping (−1 soften … 0 off … +1 punch).
+        attack: f32,
+        /// Sustain shaping (−1 tighten … 0 off … +1 fill).
+        sustain: f32,
     },
     /// `tanh` soft-clip saturation (warmth / drive). Neutral at `drive` 0.
     Saturate { drive: f32 },
@@ -305,6 +317,11 @@ impl Effect {
                 amount,
                 speed_secs,
             } if amount > LEVELER_BYPASS_AMOUNT => leveler(data, target_db, amount, speed_secs),
+            Effect::Transient { attack, sustain }
+                if attack.abs() > TRANSIENT_BYPASS || sustain.abs() > TRANSIENT_BYPASS =>
+            {
+                transient_shape(data, attack, sustain)
+            }
             Effect::Saturate { drive } if drive >= SATURATE_BYPASS_DRIVE => saturate(data, drive),
             Effect::Bitcrush { bits, downsample }
                 if bits < BITCRUSH_BYPASS_BITS || downsample > 1 =>
@@ -443,6 +460,8 @@ impl Effect {
                 if semitones.abs() <= PITCH_BYPASS_ST || mix <= MOD_BYPASS)
             || matches!(*self, Effect::DeHum { depth, .. } if depth <= HUM_BYPASS_DEPTH)
             || matches!(*self, Effect::Leveler { amount, .. } if amount <= LEVELER_BYPASS_AMOUNT)
+            || matches!(*self, Effect::Transient { attack, sustain }
+                if attack.abs() <= TRANSIENT_BYPASS && sustain.abs() <= TRANSIENT_BYPASS)
     }
 }
 

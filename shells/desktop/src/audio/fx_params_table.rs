@@ -91,6 +91,12 @@ static LEVELER: [FxParamSpec; 3] = [
     spec("Amount", 0.0, 1.0, false, 0.0, "", false),
     spec("Speed", 0.05, 2.0, true, 0.5, "s", false),
 ];
+// BOTH knobs arm it — each shapes a separate part of the hit, either alone wakes it.
+// Linear (−1..+1) so the 0 neutral lands exactly at slider centre.
+static TRANSIENT: [FxParamSpec; 2] = [
+    spec("Attack", -1.0, 1.0, false, 0.0, "", false),
+    spec("Sustain", -1.0, 1.0, false, 0.0, "", false),
+];
 // Linear (not log) so the neutral point can sit at exactly 0.
 static SATURATE: [FxParamSpec; 1] = [spec("Drive", 0.0, 12.0, false, 0.0, "x", false)];
 static BITCRUSH: [FxParamSpec; 2] = [
@@ -166,7 +172,7 @@ static PITCH_SHIFT: [FxParamSpec; 2] = [
 
 /// The effects the selector cycles, in order — grouped tone → dynamics → character
 /// → space, the way a rack is laid out.
-pub(crate) static KINDS: [FxKind; 25] = [
+pub(crate) static KINDS: [FxKind; 26] = [
     FxKind {
         name: "Low-Pass",
         params: &LOW_PASS,
@@ -311,6 +317,17 @@ pub(crate) static KINDS: [FxKind; 25] = [
                 target_db: v[0],
                 amount: v[1],
                 speed_secs: v[2],
+            })
+        },
+    },
+    FxKind {
+        name: "Transient",
+        params: &TRANSIENT,
+        arms: &[0, 1], // Attack, Sustain
+        build: |v| {
+            FxCommand::Plain(Effect::Transient {
+                attack: v[0],
+                sustain: v[1],
             })
         },
     },

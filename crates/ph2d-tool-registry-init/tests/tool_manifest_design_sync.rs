@@ -165,6 +165,7 @@ fn expected_icon_slug(manifest_id: &str) -> Option<&'static str> {
         "bgremoval" => "bg-removal",
         "color_equalization" => "color-equalization",
         "equalize_sizes" => "equalize-sizes",
+        "flip" => "flip",
         "grid_snap" => "grid-settings",
         "make_square" => "make-square",
         "motion" => "motion-nodes",

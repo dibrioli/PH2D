@@ -1,0 +1,27 @@
+[package]
+name = "ph2d-tool-flip"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+publish.workspace = true
+
+# Flip drawing tool (ADR-0113 W2) — a first-class `flip_tools`-cluster pill that
+# drives frame-by-frame 2D animation. Drop-crate per DIRETRIZ §3.A / ADR-0040:
+# the tool owns only its BRUSH style + draw-mode (Select/Draw/Erase). The
+# document (`FlipDoc`) + the pointer→world→stroke interaction live in the shell
+# (`flip_bridge`) — document ≠ tool, exactly like the Vector tool.
+
+[lib]
+
+[dependencies]
+# Tool contract + ToolManifest + chrome Registry.
+ph2d-tool-registry = { path = "../ph2d-tool-registry" }
+ph2d-editor-core = { path = "../ph2d-editor-core" }
+# A11y role.
+ph2d-a11y = { path = "../ph2d-a11y" }
+# MemoryBudget canonical (HR-13 boot check).
+ph2d-core = { path = "../ph2d-core" }
+# kurbo BezPath for the pill icon glyph (same source the Vector tool uses).
+ph2d-vector = { path = "../ph2d-vector" }

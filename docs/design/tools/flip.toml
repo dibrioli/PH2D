@@ -1,0 +1,25 @@
+# Flip — a ferramenta de primeira classe do módulo Flip (ADR-0113), animação
+# quadro-a-quadro (port 2D do Grease Pencil). Modos Select/Draw/Erase; o painel
+# hospeda Brush/Color/Layers. Render + roteamento de ponteiro = o `flip_bridge`
+# sobre `AppGfx.flip` (`FlipDoc`).
+#
+# Fonte canônica para `crates/ph2d-tool-flip/src/lib.rs`.
+
+[tool]
+id          = "flip"
+cluster     = "flip_tools"
+zone        = "top_right"
+order       = 10
+a11y_role   = "Button"
+icon_slug   = "flip"
+touches_sim = false
+
+[label]
+pt_br_inline = "Flip"
+en_us_inline = "Flip"
+fluent_key   = "tool.flip.label"
+
+[memory_budget]
+vram_mb        = 0
+ram_mb         = 1
+heap_script_mb = 0

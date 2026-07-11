@@ -30,6 +30,7 @@ pub fn register_all(reg: &mut Registry) {
     ph2d_tool_bgremoval::register(reg);
     ph2d_tool_color_equalization::register(reg);
     ph2d_tool_equalize_sizes::register(reg);
+    ph2d_tool_flip::register(reg);
     ph2d_tool_grid_snap::register(reg);
     ph2d_tool_make_square::register(reg);
     ph2d_tool_motion::register(reg);
@@ -54,6 +55,7 @@ pub fn register_all_tools(reg: &mut ToolRegistry) {
     reg.register(ph2d_tool_bgremoval::make());
     reg.register(ph2d_tool_color_equalization::make());
     reg.register(ph2d_tool_equalize_sizes::make());
+    reg.register(ph2d_tool_flip::make());
     reg.register(ph2d_tool_motion::make());
     reg.register(ph2d_tool_move::make());
     reg.register(ph2d_tool_padding::make());

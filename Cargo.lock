@@ -4894,6 +4894,7 @@ dependencies = [
  "ph2d-tool-bgremoval",
  "ph2d-tool-color-equalization",
  "ph2d-tool-equalize-sizes",
+ "ph2d-tool-flip",
  "ph2d-tool-make-square",
  "ph2d-tool-padding",
  "ph2d-tool-painter",
@@ -5919,6 +5920,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-tool-flip"
+version = "0.0.0"
+dependencies = [
+ "ph2d-a11y",
+ "ph2d-core",
+ "ph2d-editor-core",
+ "ph2d-tool-registry",
+ "ph2d-vector",
+]
+
+[[package]]
 name = "ph2d-tool-grid-snap"
 version = "0.0.0"
 dependencies = [
@@ -6029,6 +6041,7 @@ dependencies = [
  "ph2d-tool-bgremoval",
  "ph2d-tool-color-equalization",
  "ph2d-tool-equalize-sizes",
+ "ph2d-tool-flip",
  "ph2d-tool-grid-snap",
  "ph2d-tool-make-square",
  "ph2d-tool-motion",

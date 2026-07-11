@@ -591,6 +591,14 @@ pub(crate) struct App {
     /// ADR-0113 W2: o traço do Flip em curso (amostras mundo+pressão); assado no
     /// `FlipDoc` no pen-up. Vazio quando não há gesto.
     pub(crate) flip_draw: crate::flip_draw::FlipDraw,
+    /// ADR-0113 W2: a camada ATIVA do Flip (alvo do traço/borracha + destaque no
+    /// painel). Setada pela seleção de linha no painel (drain do shell); `None`
+    /// ⇒ o bake usa a camada de topo (o `flip_bridge` também destaca a de topo).
+    pub(crate) flip_active_layer: Option<ph2d_flip::LayerId>,
+    /// ADR-0113 W2 T2.9: uma borracha do Flip está em curso (Down..Up no modo
+    /// Erase). Enquanto `true`, cada move apaga sob o cursor; o pen-up faz o
+    /// cleanup do Soft. `false` quando não há gesto.
+    pub(crate) flip_erasing: bool,
     /// ADR-0108 Fase 1: node box-select marquee (screen-space `(start, current)`,
     /// same `(f32, f32)` as `last_pointer`) — Shift+drag on empty canvas while the
     /// Vector tool is active. `None` when idle; on release drives `box_select`.

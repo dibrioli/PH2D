@@ -1159,6 +1159,16 @@ impl crate::App {
                                 pending_vec_grad_jitter = Some(*v);
                             }
                         }
+                        // ADR-0113 W2: Flip layer ops (add/delete/select/visibility/
+                        // lock/reorder/opacity/blend) are DOCUMENT edits — apply to
+                        // `gfx.flip` + the active-layer pointer (mirror of the vector
+                        // Boolean/Arrange capture). No-op for non-Flip ids. Still
+                        // forward `ev` to the tool below (it ignores layer ids).
+                        crate::flip_layers::apply_panel_event(
+                            &ev,
+                            flip,
+                            &mut self.flip_active_layer,
+                        );
                         if let Some(t) = tools.active_mut() {
                             t.handle_panel_event(ev);
                         }
@@ -2045,10 +2055,26 @@ impl crate::App {
             // pen-vs-shape routing (the downcast lives in the bridge).
             self.vec_draw_config = vec_cfg;
 
+            // ADR-0113 W2 T2.17 (ready-to-smoke): ativar a tool Flip num documento
+            // VAZIO cria um objeto inicial (1 camada) pra desenhar na hora — sem
+            // ele o `bake_stroke` sai (não há objeto). Só na borda de ativação;
+            // um doc já povoado (ex. PH2D_FLIP_DEMO) não é tocado.
+            {
+                let now_active = tools
+                    .active()
+                    .is_some_and(|t| t.id() == ph2d_editor::ToolId::new("flip"));
+                if now_active && !self.flip_active && flip.is_empty() {
+                    let oid = flip.push_object("Flip");
+                    if let Some(obj) = flip.object_mut(oid) {
+                        self.flip_active_layer = Some(obj.add_layer("Layer 1"));
+                    }
+                }
+            }
             // ADR-0113 W2: espelha o estado da tool Flip (ativa + estilo de brush)
             // pro input_dispatch decidir/assar o desenho sem downcast (o downcast
             // vive no flip_bridge, allowlistado).
-            let (flip_active, flip_style) = flip_bridge::publish(tools);
+            let (flip_active, flip_style) =
+                flip_bridge::publish(hero, tools, flip, self.flip_active_layer);
             self.flip_active = flip_active;
             self.flip_style = flip_style;
 

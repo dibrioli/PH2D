@@ -39,6 +39,8 @@ mod cursor_pos;
 mod flip_demo;
 mod flip_draw;
 mod flip_entities;
+mod flip_erase;
+mod flip_layers;
 mod flip_smooth;
 mod forwarding;
 mod hero_bridge;
@@ -234,6 +236,8 @@ impl App {
             flip_active: false,
             flip_style: None,
             flip_draw: crate::flip_draw::FlipDraw::default(),
+            flip_active_layer: None,
+            flip_erasing: false,
             vec_marquee: None,
             vec_history: ph2d_vec_edit::History::new(),
             undo: crate::undo::ProjectUndo::default(),

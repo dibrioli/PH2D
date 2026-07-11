@@ -1963,6 +1963,12 @@ impl App {
         if self.flip_canvas_move(self.last_pointer.0, self.last_pointer.1) {
             return;
         }
+        // Flip eraser (ADR-0113 W2 T2.9): while an erase gesture is open, every
+        // motion erases under the cursor. Early-return like the stroke. No-op
+        // unless a Flip erase is in progress.
+        if self.flip_erase_canvas_move(self.last_pointer.0, self.last_pointer.1) {
+            return;
+        }
         // Fill (Bucket) ColorDrop drag (SHELL-only): while a colour is being dragged from the Fill rail
         // button onto the canvas, deliver it to the painter's Fill. Early-return so it doesn't pan.
         if self.fill_drag_move(self.last_pointer.0, self.last_pointer.1) {
@@ -2194,12 +2200,31 @@ impl App {
         {
             return;
         }
+        // Flip eraser (T2.9): the pen-UP ends an erase gesture (+ Soft cleanup).
+        if kind == PointerKind::Up
+            && mapped_button == ph2d_host::PointerButton::Primary
+            && self.flip_erasing
+            && self.flip_erase_canvas_up()
+        {
+            return;
+        }
         if self.flip_wants_canvas()
             && kind == PointerKind::Down
             && mapped_button == ph2d_host::PointerButton::Primary
             && on_canvas
             && !menu_open_before
             && self.flip_canvas_down(self.last_pointer.0, self.last_pointer.1)
+        {
+            return;
+        }
+        // Flip eraser (T2.9): a pen-DOWN in Erase mode on the canvas begins an
+        // erase gesture (Select falls through to gizmo/pick, like Draw).
+        if self.flip_wants_erase()
+            && kind == PointerKind::Down
+            && mapped_button == ph2d_host::PointerButton::Primary
+            && on_canvas
+            && !menu_open_before
+            && self.flip_erase_canvas_down(self.last_pointer.0, self.last_pointer.1)
         {
             return;
         }

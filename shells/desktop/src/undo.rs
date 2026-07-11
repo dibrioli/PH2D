@@ -497,7 +497,7 @@ mod tests {
         let mut wl = WorklistBuf::new();
         let a = ProjectState::capture(&sim, &vec, &rflip, &reg, &mut prop, &mut wl);
         let b = ProjectState::capture(&sim, &vec, &rflip, &reg, &mut prop, &mut wl);
-        assert_eq!(a, b, "flip determinístico → sem diff espúrio");
+        assert_eq!(a, b, "flip determinístico -> sem diff espúrio");
     }
 
     /// REGRESSÃO (Enio 2026-07-09: "ao deletar não volta no mesmo lugar"). O

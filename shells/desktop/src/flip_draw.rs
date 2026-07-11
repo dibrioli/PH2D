@@ -11,7 +11,7 @@
 //! premium) é T2.7; RDP no pen-up é T2.8.
 
 use ph2d_core::Vec2;
-use ph2d_flip::{FlipDoc, FlipDrawing, FlipStroke, Hold, KeyKind, Point, Rgba};
+use ph2d_flip::{FlipDoc, FlipDrawing, FlipStroke, Hold, KeyKind, LayerId, Point, Rgba};
 use ph2d_flip_render::{FlipGpuData, pack_drawing};
 use ph2d_tool_flip::{FlipMode, FlipStyleSnapshot};
 
@@ -95,13 +95,15 @@ fn srgb8_to_linear(c: [u8; 4]) -> Rgba {
 }
 
 /// Assa `(points, pressures)` (mundo) num `FlipStroke` e o empurra no desenho
-/// ativo do 1º objeto (camada de topo) no quadro atual. Cria uma chave se o
-/// quadro ainda não tem desenho. `px_to_world` = mundo por pixel de tela (a
-/// largura do brush é em px → convertida pra mundo). Devolve `true` se assou.
+/// ativo do 1º objeto na CAMADA ATIVA (fallback: topo) no quadro atual. Cria uma
+/// chave se o quadro ainda não tem desenho. `px_to_world` = mundo por pixel de
+/// tela (a largura do brush é em px → convertida pra mundo). Uma camada TRAVADA
+/// (`locked`) recusa o traço. Devolve `true` se assou.
 pub(crate) fn bake_stroke(
     flip: &mut FlipDoc,
     playhead: &ph2d_core::Playhead,
     style: &FlipStyleSnapshot,
+    active_layer: Option<LayerId>,
     points: &[Vec2],
     pressures: &[f32],
     px_to_world: f32,
@@ -115,11 +117,18 @@ pub(crate) fn bake_stroke(
     let Some(obj) = flip.object_mut(oid) else {
         return false;
     };
-    // Camada de topo (última do slice). Sem UI de camadas ainda (T2.15), é onde o
-    // traço vai.
-    let Some(layer_id) = obj.layers().last().map(|l| l.id) else {
+    // A camada ATIVA (setada pela seleção de linha no painel), com fallback pra a
+    // camada de topo (última do slice) quando nenhuma foi selecionada.
+    let Some(layer_id) = active_layer
+        .filter(|id| obj.layer(*id).is_some())
+        .or_else(|| obj.layers().last().map(|l| l.id))
+    else {
         return false;
     };
+    // Camada travada não aceita traço (mesma regra do GP; materiais travados).
+    if obj.layer(layer_id).is_some_and(|l| l.locked) {
+        return false;
+    }
     let frame = obj.frame_at(playhead);
     // Desenho ativo no quadro; se não há (antes da 1ª chave / sentinela), cria uma.
     let did = match obj.layer(layer_id).and_then(|l| l.drawing_at(frame)) {
@@ -248,6 +257,7 @@ impl crate::App {
             return true; // toque simples (<2 pontos): consumido, sem traço
         };
         let style = self.flip_style;
+        let active_layer = self.flip_active_layer;
         if let Some(gfx) = self.gfx.as_mut()
             && let Some(style) = style
         {
@@ -257,6 +267,7 @@ impl crate::App {
                 &mut gfx.flip,
                 &self.playhead,
                 &style,
+                active_layer,
                 &points,
                 &pressures,
                 px_to_world,

@@ -142,6 +142,7 @@ impl crate::App {
                     flip_compose,
                     flip_composite,
                     flip_preview.as_ref(),
+                    self.flip_active_layer,
                     &self.playhead,
                     game_rt,
                     camera,

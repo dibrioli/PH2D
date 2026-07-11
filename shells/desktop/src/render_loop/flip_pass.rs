@@ -22,7 +22,7 @@
 //! loga packs vs hits por frame.
 
 use ph2d_core::Playhead;
-use ph2d_flip::{FlipDoc, FlipDrawing};
+use ph2d_flip::{FlipDoc, FlipDrawing, LayerId};
 use ph2d_flip_render::{CameraRaw, FlipCompose, FlipGpuData, FlipRenderer, pack_drawing};
 use ph2d_gpu::GpuContext;
 use ph2d_host::WindowSize;
@@ -138,17 +138,24 @@ impl LayerPixelProvider for DummyProvider<'_> {
 
 /// Uma camada pronta pra compor: a chave estável do compositor, blend/opacity, a
 /// chave do cache de tesselação e o desenho-fonte (empacotado sob demanda).
+///
+/// `drawing` é `None` numa camada que carrega SÓ o preview ao vivo (1º traço numa
+/// camada ainda vazia); `preview`, quando presente, é o traço em curso **dobrado
+/// nesta fatia** — compõe pelo blend/opacity DESTA camada em tempo real (idêntico
+/// ao bake). Só a camada-alvo do preview recebe `preview: Some`.
 struct LayerRef<'a> {
     key: u64,
     blend: u8,
     opacity: f32,
     cache_key: (u64, u32),
-    drawing: &'a FlipDrawing,
+    drawing: Option<&'a FlipDrawing>,
+    preview: Option<&'a FlipGpuData>,
 }
 
 /// Compõe o Flip amostrado em `playhead` no `game_rt`, mais o **preview ao vivo**
-/// do traço em curso (`preview`, se houver). No-op se não há camada ativa NEM
-/// preview (cena vazia = o default sem `PH2D_FLIP_DEMO`).
+/// do traço em curso (`preview`, se houver), **dobrado na fatia da camada ativa**
+/// (`active_layer`) para compor pelo blend/opacity dela em tempo real. No-op se
+/// não há camada ativa NEM preview (cena vazia = o default sem `PH2D_FLIP_DEMO`).
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn render(
     flip: &FlipDoc,
@@ -156,14 +163,18 @@ pub(crate) fn render(
     flip_compose: &mut FlipCompose,
     flip_composite: &mut Option<FlipComposite>,
     preview: Option<&FlipGpuData>,
+    active_layer: Option<LayerId>,
     playhead: &Playhead,
     game_rt: &GameRt,
     camera: &Camera2d,
     window: WindowSize,
     gpu: &GpuContext,
 ) {
-    let layers = collect_layers(flip, playhead);
-    if layers.is_empty() && preview.is_none() {
+    // O preview é atribuído à camada ativa (dobrado na fatia dela). `unfolded` só
+    // sobra quando a camada-alvo é invisível/irresolvível — aí cai no overlay
+    // Normal (o usuário nunca desenha às cegas).
+    let (layers, unfolded) = collect_layers(flip, playhead, preview, active_layer);
+    if layers.is_empty() && unfolded.is_none() {
         return;
     }
     let (w, h) = (window.width.max(1), window.height.max(1));
@@ -182,10 +193,10 @@ pub(crate) fn render(
         );
     }
 
-    // Preview ao vivo: o traço em curso rasterizado DIRETO por cima do composite
-    // (premult-over = Normal), transitório — vira documento só no pen-up. Reusa o
+    // Fallback: preview não-atribuído (camada-alvo oculta/inexistente) — rasteriza
+    // DIRETO por cima do composite (premult-over = Normal), transitório. Reusa o
     // `flip_render` (os buffers dele já foram consumidos pela composição acima).
-    if let Some(pv) = preview {
+    if let Some(pv) = unfolded {
         draw_overlay(flip_render, pv, &cam, game_rt, (w, h), gpu);
     }
 }
@@ -217,9 +228,12 @@ fn composite_layers(
     comp.ensure_dummy(w, h);
     comp.tess.reset_stats();
 
-    // Passe 1: garante a tesselação de cada camada (cache-hit num hold/pan/zoom).
+    // Passe 1: garante a tesselação das camadas COM desenho (cache-hit num
+    // hold/pan/zoom). Uma camada só-preview (`drawing: None`) não cacheia.
     for l in layers {
-        comp.tess.ensure(l.cache_key, l.drawing);
+        if let Some(d) = l.drawing {
+            comp.tess.ensure(l.cache_key, d);
+        }
     }
 
     // Passe 2: rasteriza + injeta cada camada. O straight scratch é reusado: a
@@ -230,7 +244,22 @@ fn composite_layers(
             compositor, tess, ..
         } = comp;
         for l in layers {
-            let data = tess.get(&l.cache_key).expect("garantido no passe 1");
+            // Camada-alvo do preview: dobra o traço em curso na geometria dela
+            // (clone só desta camada, só enquanto desenha) → compõe pelo blend/
+            // opacity dela em tempo real. As demais reusam o cache direto.
+            let merged;
+            let data: &FlipGpuData = if let Some(pv) = l.preview {
+                let mut base = if l.drawing.is_some() {
+                    tess.get(&l.cache_key).cloned().unwrap_or_default()
+                } else {
+                    FlipGpuData::default()
+                };
+                base.append(pv);
+                merged = base;
+                &merged
+            } else {
+                tess.get(&l.cache_key).expect("garantido no passe 1")
+            };
             let slice =
                 flip_compose.stage_layer(&gpu.device, &gpu.queue, flip_render, cam, data, (w, h));
             if let Err(e) =
@@ -312,36 +341,61 @@ fn draw_overlay(
 }
 
 /// As camadas ativas AGORA, na ordem de composição (objeto por objeto; dentro de
-/// cada objeto, de baixo p/ cima = ordem do slice; só visíveis, com desenho não
-/// vazio). Cada objeto amostra pelo SEU FPS. NÃO empacota — isso é sob demanda
-/// no cache (`ensure_tess`), pra troca de quadro barata.
-fn collect_layers<'a>(flip: &'a FlipDoc, playhead: &Playhead) -> Vec<LayerRef<'a>> {
+/// cada objeto, de baixo p/ cima = ordem do slice; só visíveis). Cada objeto
+/// amostra pelo SEU FPS. NÃO empacota — isso é sob demanda no cache (`ensure_tess`),
+/// pra troca de quadro barata.
+///
+/// O `preview` (traço em curso) é **dobrado na camada-alvo** — a `active_layer` do
+/// 1º objeto (fallback: topo, igual ao bake) — para compor pelo blend/opacity dela
+/// em tempo real, na posição z certa (inclusive uma camada ainda VAZIA, sintetizada
+/// aqui). Devolve `(camadas, preview_não_atribuído)`: o 2º é `Some` só quando a
+/// camada-alvo é oculta/inexistente (cai no overlay Normal — nunca desenhar às cegas).
+fn collect_layers<'a>(
+    flip: &'a FlipDoc,
+    playhead: &Playhead,
+    preview: Option<&'a FlipGpuData>,
+    active_layer: Option<LayerId>,
+) -> (Vec<LayerRef<'a>>, Option<&'a FlipGpuData>) {
+    // Camada-alvo do preview: a ativa do 1º objeto (se ainda existe) ou o topo —
+    // exatamente o fallback que o `bake_stroke` usa. `None` sem preview.
+    let target: Option<(u64, LayerId)> = preview.and_then(|_| {
+        let obj = flip.objects().first()?;
+        let lid = active_layer
+            .filter(|id| obj.layer(*id).is_some())
+            .or_else(|| obj.layers().last().map(|l| l.id))?;
+        Some((obj.id.0, lid))
+    });
+
     let mut out = Vec::new();
+    let mut unfolded = preview; // vira None assim que o preview é dobrado
     for obj in flip.objects() {
         let frame = obj.frame_at(playhead);
         for layer in obj.layers() {
             if !layer.visible {
-                continue;
+                continue; // oculta não contribui (preview numa oculta cai no fallback)
             }
-            let Some(did) = layer.drawing_at(frame) else {
-                continue;
+            let this_preview = if target == Some((obj.id.0, layer.id)) {
+                unfolded.take()
+            } else {
+                None
             };
-            let Some(drawing) = obj.drawing(did) else {
-                continue;
-            };
-            if drawing.strokes.is_empty() {
-                continue; // camada transparente não contribui em nenhum modo
+            let did = layer.drawing_at(frame);
+            let drawing = did.and_then(|d| obj.drawing(d));
+            let has_geo = drawing.is_some_and(|d| !d.strokes.is_empty());
+            if !has_geo && this_preview.is_none() {
+                continue; // sem geometria e sem preview aqui = não compõe
             }
             out.push(LayerRef {
                 key: layer_key(obj.id.0, layer.id.0),
                 blend: layer.blend.to_u8(),
                 opacity: layer.opacity,
-                cache_key: (obj.id.0, did.0),
-                drawing,
+                cache_key: (obj.id.0, did.map_or(u32::MAX, |d| d.0)),
+                drawing: if has_geo { drawing } else { None },
+                preview: this_preview,
             });
         }
     }
-    out
+    (out, unfolded)
 }
 
 /// Chave estável do compositor por (objeto, camada) — determinística e distinta

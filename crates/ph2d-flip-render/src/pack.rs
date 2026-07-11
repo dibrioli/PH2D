@@ -90,6 +90,34 @@ impl FlipGpuData {
     pub fn point_count(&self) -> usize {
         self.points.len()
     }
+
+    /// Anexa `other`, deslocando os índices para o espaço GLOBAL deste buffer
+    /// (`sid` via `point_stroke`/posição na tabela, `first_point`, e a depth
+    /// absoluta dos fills). Usado para **dobrar o preview ao vivo na fatia da
+    /// camada ativa** — o traço em curso passa a compor pelo blend/opacity DELA em
+    /// tempo real, byte-idêntico ao que o bake produz (mesmo slice, mesmos over
+    /// entre traços, um blend no fim). O apenso ganha `sid` MAIOR → depth maior →
+    /// por cima dos traços já presentes (mesma regra GREATER do pack normal).
+    pub fn append(&mut self, other: &FlipGpuData) {
+        let point_base = self.points.len() as u32;
+        let stroke_base = self.strokes.len() as u32;
+        self.points.extend_from_slice(&other.points);
+        self.point_stroke
+            .extend(other.point_stroke.iter().map(|&s| s + stroke_base));
+        self.strokes.extend(other.strokes.iter().map(|s| {
+            let mut s = *s;
+            s.first_point += point_base;
+            s
+        }));
+        // Fills carregam depth ABSOLUTA = (2·sid+1)·DEPTH_STEP (o traço lê o sid no
+        // shader; o fill não). Rebaseia pelo mesmo deslocamento de sid para casar.
+        let depth_shift = 2.0 * stroke_base as f32 * DEPTH_STEP;
+        self.fills.extend(other.fills.iter().map(|v| {
+            let mut v = *v;
+            v.depth += depth_shift;
+            v
+        }));
+    }
 }
 
 /// Empacota `flags` a partir dos atributos por-curva.
@@ -281,6 +309,46 @@ mod tests {
         let empty = FlipDrawing::new();
         let g2 = pack_drawings(&[&d0, &empty, &d1]);
         assert_eq!(g2.point_stroke, vec![0, 0, 1]);
+    }
+
+    #[test]
+    fn append_rebases_indices_like_pack_drawings() {
+        // Dobrar o preview na fatia da camada = anexar dois buffers já empacotados
+        // deve dar o MESMO layout que empacotar os dois desenhos juntos.
+        let mut d0 = FlipDrawing::new();
+        let mut s = FlipStroke::new();
+        s.push_default(Vec2::new(0.0, 0.0));
+        s.push_default(Vec2::new(1.0, 0.0));
+        d0.strokes.push(s);
+        let mut d1 = FlipDrawing::new();
+        let mut s = FlipStroke::new();
+        s.push_default(Vec2::new(2.0, 0.0));
+        s.push_default(Vec2::new(3.0, 0.0));
+        d1.strokes.push(s);
+
+        let mut merged = pack_drawing(&d0);
+        merged.append(&pack_drawing(&d1));
+        let joined = pack_drawings(&[&d0, &d1]);
+
+        assert_eq!(merged.points, joined.points, "pontos concatenados");
+        assert_eq!(merged.point_stroke, joined.point_stroke, "sid global");
+        assert_eq!(merged.strokes, joined.strokes, "first_point deslocado");
+        // O apenso ganha o sid MAIOR (por cima).
+        assert_eq!(merged.point_stroke, vec![0, 0, 1, 1]);
+    }
+
+    #[test]
+    fn append_empty_base_equals_the_other() {
+        // Camada ativa vazia (1º traço) + preview = só o preview.
+        let mut d = FlipDrawing::new();
+        let mut s = FlipStroke::new();
+        s.push_default(Vec2::new(0.0, 0.0));
+        s.push_default(Vec2::new(1.0, 1.0));
+        d.strokes.push(s);
+        let only = pack_drawing(&d);
+        let mut merged = FlipGpuData::default();
+        merged.append(&only);
+        assert_eq!(merged, only);
     }
 
     #[test]

@@ -17,6 +17,7 @@ ph2d-panel-audio-mixer = { path = "../ph2d-panel-audio-mixer", optional = true }
 ph2d-panel-bgremoval = { path = "../ph2d-panel-bgremoval", optional = true }
 ph2d-panel-color-equalization = { path = "../ph2d-panel-color-equalization", optional = true }
 ph2d-panel-equalize-sizes = { path = "../ph2d-panel-equalize-sizes", optional = true }
+ph2d-panel-flip = { path = "../ph2d-panel-flip", optional = true }
 ph2d-panel-grid-snap = { path = "../ph2d-panel-grid-snap", optional = true }
 ph2d-panel-hierarchy = { path = "../ph2d-panel-hierarchy", optional = true }
 ph2d-panel-inspector = { path = "../ph2d-panel-inspector", optional = true }
@@ -49,6 +50,7 @@ panel-audio-mixer = ["dep:ph2d-panel-audio-mixer"]
 panel-bgremoval = ["dep:ph2d-panel-bgremoval"]
 panel-color-equalization = ["dep:ph2d-panel-color-equalization"]
 panel-equalize-sizes = ["dep:ph2d-panel-equalize-sizes"]
+panel-flip = ["dep:ph2d-panel-flip"]
 panel-grid-snap = ["dep:ph2d-panel-grid-snap"]
 panel-hierarchy = ["dep:ph2d-panel-hierarchy"]
 panel-inspector = ["dep:ph2d-panel-inspector"]

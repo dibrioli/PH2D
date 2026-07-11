@@ -4876,6 +4876,7 @@ dependencies = [
  "ph2d-panel-bgremoval",
  "ph2d-panel-color-equalization",
  "ph2d-panel-equalize-sizes",
+ "ph2d-panel-flip",
  "ph2d-panel-hierarchy",
  "ph2d-panel-inspector",
  "ph2d-panel-motion-graph",
@@ -5590,6 +5591,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-panel-flip"
+version = "0.0.0"
+dependencies = [
+ "ph2d-a11y",
+ "ph2d-editor-core",
+ "ph2d-painter-effects",
+ "ph2d-text",
+ "ph2d-tokens",
+ "ph2d-tool-flip",
+ "ph2d-ui-testkit",
+ "ph2d-vector",
+]
+
+[[package]]
 name = "ph2d-panel-grid-snap"
 version = "0.0.0"
 dependencies = [
@@ -5691,6 +5706,7 @@ dependencies = [
  "ph2d-panel-bgremoval",
  "ph2d-panel-color-equalization",
  "ph2d-panel-equalize-sizes",
+ "ph2d-panel-flip",
  "ph2d-panel-grid-snap",
  "ph2d-panel-hierarchy",
  "ph2d-panel-inspector",

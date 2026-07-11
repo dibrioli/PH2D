@@ -1,0 +1,15 @@
+//! Widget `NodeId`s for the Flip Style panel.
+//!
+//! Like the other panel crates, the ids stay defined in editor-core
+//! (`ph2d_editor_core::ids`) — the layout + z-order walk + `node_id_collisions`
+//! arch test all reference them, and re-defining them here would fork the
+//! source of truth. This module is a convenience re-export so the panel's
+//! internal modules can write `crate::ids::FLIP_*`.
+
+pub use ph2d_editor_core::ids::{
+    FLIP_CLOSE, FLIP_ERASE_HARD, FLIP_ERASE_SOFT, FLIP_ERASE_STROKE, FLIP_HARDNESS,
+    FLIP_HARDNESS_NUM, FLIP_LAYER_ADD, FLIP_LAYER_DELETE, FLIP_MODE_DRAW, FLIP_MODE_ERASE,
+    FLIP_MODE_SELECT, FLIP_OPACITY, FLIP_OPACITY_NUM, FLIP_PANEL, FLIP_SIZE, FLIP_SIZE_NUM,
+    FLIP_SMOOTHING, FLIP_SMOOTHING_NUM, FLIP_STROKE_SWATCH, FlipLayerWidget,
+    flip_layer_blend_option_id, flip_layer_widget_id,
+};

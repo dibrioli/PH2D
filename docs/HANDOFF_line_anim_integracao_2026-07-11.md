@@ -1,12 +1,12 @@
-# Handoff de integração — linha `line/anim` (Timeline W4.T5 + fix auto-key/play)
+# Handoff de integração — linha `line/anim` (Timeline W4.T5 + fix auto-key/play + speed graph)
 
 **Data:** 2026-07-11 · **Regime:** Modo L (workstation) · DIRETRIZ §1.5.9
 **Status:** linha pronta — **NÃO integrada, NÃO shipada** (aguarda ordem explícita do Enio).
 
 > Escopo desta rodada: **(a)** cauda da W4 → T5 (aposentar os scaffolds de debug da timeline);
-> **(b)** bug fix — **auto-key criava um keyframe por quadro no Play** (§7). W4.T8 (gate batched)
-> rodado aqui embaixo. A Timeline v1 (W0–W3, W4.T1–T3, Summary) já estava **integrada em main**
-> antes desta linha reabrir — nada a re-landar.
+> **(b)** bug fix — **auto-key criava um keyframe por quadro no Play** (§7); **(c)** feature W5 —
+> **speed graph** (vista de velocidade + edição, §8). W4.T8 (gate batched) rodado aqui embaixo. A
+> Timeline v1 (W0–W3, W4.T1–T3, Summary) já estava **integrada em main** antes desta linha reabrir.
 
 ---
 
@@ -15,9 +15,11 @@
 - **Branch:** `line/anim`
 - **Commits à frente de main (base `1c7c9a22` == main HEAD):**
   1. `b7f62238` — `chore(timeline): W4.T5 — aposenta timeline_smoke + hook KeyB; tecla B livre`
-  2. `50211c5d` — `docs(anim): handoff de integração W4.T5` (este doc)
+  2. `50211c5d` — `docs(anim): handoff de integração W4.T5`
   3. `bd412e01` — `fix(timeline): auto-key inerte durante o play` (§7)
-  4. + o commit deste update do handoff
+  4. `0cfadd02` — `docs(anim): handoff — adiciona fix auto-key/play`
+  5. `e78c0394` — `feat(timeline): speed graph — velocity view + editable speed handles` (§8)
+  6. + o commit deste update do handoff
 - **Base do fork:** `1c7c9a22` — **== main HEAD atual** → integração é **fast-forward puro** (`--ff-only` trivial, sem rebase, sem drift).
 
 ## 2. Foundational / compartilhado tocado + por quê
@@ -41,7 +43,14 @@ Mudança confinada ao **shell** (`shells/desktop`) + docs. **Nenhuma crate found
 
 ## 3. Símbolos que podem COLIDIR com outra linha
 
-**Nenhum.** Zero id/const/variant/token **novo** — esta rodada só **remove**. `mod timeline_smoke` retirado; `KeyCode::KeyB` liberado (cai no `_ => {}`). Nada a grepar por mesmo-símbolo.
+Da W4.T5 + fix: **nenhum** (só remoção + 1-liner). Do **speed graph (§8)**, símbolos NOVOS a grepar por mesmo-símbolo:
+
+- **`TIMELINE_SPEED`** — chrome id novo em `ph2d-editor-core::ids::chrome::timeline` (`hash_node_id("timeline.speed")`), append-only após `TIMELINE_SNAP`. Re-export glob (`pub use timeline::*`) → também na lista explícita do painel `ids.rs`.
+- **i18n `panel.timeline.speed` = "Speed"** — nova arm em `ph2d-i18n/src/lib.rs` após `panel.timeline.snap`.
+- **`ph2d-timeline::speed`** — módulo irmão NOVO (`sample_speed`/`speed_extent`/`out_handle_y_for_speed`/`in_handle_y_for_speed`) + 4 re-exports no `lib.rs`. Nome de módulo isolado, sem colisão.
+- **`TimelinePanelState.speed_view: bool`** — campo novo (panel-local). Reusa o `CurveHandle`/`HandleDrag` existentes (NÃO adiciona variant em `TimelineHitKind` — contrato de dispatch intacto).
+
+Nenhum contrato congelado (§4) tocado (o `TimelineHitKind` não é gateado; nenhum `NodeOp`/`Tool`/`AnimValue`).
 
 ## 4. Contratos congelados encostados (§4)
 
@@ -63,6 +72,7 @@ Mudança confinada ao **shell** (`shells/desktop`) + docs. **Nenhuma crate found
   3. Pressionar **B** → **nada acontece** (tecla liberada; antes fazia "bound spin to N sprites").
   4. `PH2D_TIMELINE_SMOKE=1 cargo run …` → o env-flag **não faz mais nada** (não substitui a cena demo).
   5. **(§7)** objeto animado + **AutoKey armado** + **Play** → a timeline **não** cria keyframes por quadro; pausar e mover ainda grava normalmente.
+  6. **(§8)** anime uma faixa, expanda o graph (twirl), marque **Speed** na barra de transporte → a band mostra a curva de **velocidade** (linha-zero no meio); selecione uma key e arraste um handle na vertical → a velocidade daquele trecho muda ao vivo (a tangente/easing por baixo se reafina).
 - **O que NÃO foi smokado por mim:** o run visual (headless não cobre a tela). Confiança alta: comportamento default byte-idêntico + 206/206 testes do shell verdes (o fix da §7 tem teste + mutação dirigida).
 
 ---
@@ -107,6 +117,22 @@ LOC LIDAS: grep completo + os sites de edição.
 **Superfície:** só `shells/desktop/src/render_loop/autokey_pass.rs` (crate do shell). **Zero símbolo novo, zero contrato tocado.** `Playhead::is_playing()` já existia.
 
 **Prova:** teste `playing_does_not_auto_key_even_when_the_pose_looks_off_its_curve` (pose off-curve + armado + PLAYING → doc intocado; controle pausado → grava). **Mutação dirigida** (remover `&& !playhead.is_playing()`) reproduz o bug: insere a key espúria no play → teste vermelho. Restaurado.
+
+---
+
+## 8. Feature W5 — speed graph (`e78c0394`)
+
+Uma **2ª vista do graph editor** que plota a **velocidade** (`d(value)/dt`) da curva (padrão AE/Cavalry/Blender). Toggle **Speed** panel-local na barra de transporte alterna toda band expandida entre valor e velocidade; arrastar um speed-handle reafina a tangente.
+
+**Superfície:** `ph2d-timeline` (novo módulo `speed.rs` + 4 re-exports) · `ph2d-panel-timeline` (`state.speed_view`, `transport`/`event`/`populate` p/ o toggle, `graph_paint`/`graph` branch view+edit, testes) · `ph2d-editor-core` (id `TIMELINE_SPEED`, append-only) · `ph2d-i18n` (`panel.timeline.speed`). **Sem tocar o shell** (o painel republica o snapshot como sempre). Símbolos novos listados em §3.
+
+**Modelo (o que auditar):**
+- `sample_speed` = `dv·P'(u)/span`, diferenciando a **easing pura** `Interp::remap` em espaço-u normalizado — a MESMA fn que o runtime toca (WYSIWYG), uniforme p/ Hold/Linear/Bezier/Eased, e **nunca cruza uma key** (Hold lê zero, sem spike de fronteira). `speed_extent` sempre inclui a linha-zero.
+- Edição = inverso EXATO velocidade→inclinação da tangente (`y1/x1` no início, `(1-y2)/(1-x2)` no fim), mantendo a **influência x fixa**; segmento flat (`dv=0`) → sem velocidade a escalar → mantém o handle. Reusa `CurveHandle`/`HandleDrag` (só um conjunto de handles pinta por frame — sem colisão de id).
+
+**Prova (DIRETIVA §3–5):** 9 goldens de math em `speed.rs` (linear=rate const; ease slow/fast/slow; hold=0 sem spike; inverso exato dos dois handles; round-trip no sampler numérico) + **3 seam comportamentais** — `speed_toggle_flips_the_view_locally` (toggle flipa `speed_view`, zero evento de shell), `dragging_a_speed_handle_retunes_the_tangent_to_that_velocity` (drive real do gesto → `SetInterp` com slope na velocidade-alvo + influência preservada), `a_speed_drag_on_a_flat_segment_keeps_the_handle`. **Mutação dirigida** nos 2 invariantes (neutralizar o branch de `resolve_drag` → retune falha; neutralizar o flip do toggle → toggle test falha). ASSERÇÃO-VERMELHA presente em cada claim.
+
+**O que NÃO foi smokado por mim:** o render visual do painel (headless não pinta a tela). Ver §6.6.
 
 ---
 

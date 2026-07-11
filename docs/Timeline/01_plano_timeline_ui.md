@@ -232,10 +232,21 @@ keys em massa → undo — tudo pela UI.
 
 ### W5 — Backlog (pós-v1; ordem sugerida por valor)
 
-Performing por gesto (Dreams-style, gravar durante o play) · speed graph · weighted/value-space
-tangents · roving keys · keyframe-layers/NLA blend · time remap · multi-clip UI + nó `motion.clip`
-(seam Motion) · markers→signals/eventos · API MCP/Luau da timeline (HR-10) · bake procedural⇄keys
-(ponte Cavalry) · export.
+Performing por gesto (Dreams-style, gravar durante o play) · ~~speed graph~~ ✅ **(landou
+2026-07-11)** · weighted/value-space tangents · roving keys · keyframe-layers/NLA blend · time
+remap · multi-clip UI + nó `motion.clip` (seam Motion) · markers→signals/eventos · API MCP/Luau da
+timeline (HR-10) · bake procedural⇄keys (ponte Cavalry) · export.
+
+**Speed graph (W5, FECHADO 2026-07-11):** 2ª vista do graph editor plotando velocidade
+(`d(value)/dt`) — toggle **Speed** panel-local na barra de transporte. Math em `ph2d-timeline::speed`
+(`sample_speed` diferencia a easing pura `Interp::remap` em espaço-u normalizado → fiel ao que toca,
+sem spike de Hold; `speed_extent` sempre inclui a linha-zero; `out/in_handle_y_for_speed` inverte
+velocidade→tangente mantendo a influência x). `graph_paint`/`graph::resolve_drag` ramificam em
+`state.speed_view` reusando `CurveHandle`/`HandleDrag`. Arrastar um speed-handle reafina a tangente
+do endpoint; segmento flat (dv=0) mantém o handle. `TIMELINE_SPEED` + `panel.timeline.speed`. Testes:
+9 goldens de math + 3 seam (toggle · retune · flat) + mutação dirigida. **Weighted tangents** é o
+follow-up natural (a edição de speed hoje mantém a influência fixa; tangentes com peso dariam o eixo
+de influência completo no speed graph).
 
 ## B4. Verificação (como cada onda fecha)
 

@@ -30,7 +30,7 @@ use ph2d_render::layer_compositor::{
     LayerCompositor, LayerOp, LayerPixelProvider, LayerPixels, Region,
 };
 use ph2d_render::{Camera2d, GameRt};
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 
 /// A sessão de composição por-camada do Flip: o `LayerCompositor` do Painter, o
 /// buffer dummy e o cache de tesselação. As fatias reais entram por
@@ -69,7 +69,9 @@ impl FlipComposite {
 /// geometria; a tesselação (ear-clipping + layout) NÃO re-roda.
 #[derive(Default)]
 struct TessCache {
-    map: HashMap<(u64, u32), CachedTess>,
+    // `BTreeMap` (não `HashMap`): ADR-0022 / HR-5 — determinístico, sem hasher; o
+    // cache é pequeno (≤ nº de desenhos ativos), então O(log n) é irrelevante.
+    map: BTreeMap<(u64, u32), CachedTess>,
     packs: u32,
     hits: u32,
 }

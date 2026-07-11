@@ -235,9 +235,21 @@ pub(crate) fn cycle_text_font(
     dir: i32,
 ) {
     let next = crate::vec_font::cycle_family(family_field.as_deref(), dir);
-    *family_field = next.clone();
+    set_text_font(edit, family_field, scene, next);
+}
+
+/// Define a família de fonte corrente diretamente (escolha no dropdown, `None` = a
+/// embutida) + regenera a sessão ativa. Mesmo efeito que [`cycle_text_font`], mas
+/// com um alvo explícito em vez de próximo/anterior.
+pub(crate) fn set_text_font(
+    edit: &mut Option<VecTextEdit>,
+    family_field: &mut Option<String>,
+    scene: &mut ph2d_vec_scene::VecScene,
+    family: Option<String>,
+) {
+    *family_field = family.clone();
     if let Some(edit) = edit.as_mut() {
-        edit.family = next;
+        edit.family = family;
         regen_into(scene, edit);
     }
 }

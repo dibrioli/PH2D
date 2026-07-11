@@ -66,6 +66,8 @@ mod timeline_persist;
 mod undo;
 mod vec_entities;
 mod vec_font;
+#[cfg(feature = "panel-vector")]
+mod vec_font_preview;
 mod vec_gizmo_view;
 mod vec_glyph;
 mod vec_overlay;

@@ -205,4 +205,11 @@ pub(crate) fn paint(_state: &mut VectorPanelState, ctx: &mut PaintCtx) {
     ctx.host
         .hit_index_mut()
         .register(ids::VECTOR_CLOSE, panel_close_button_rect(rect));
+
+    // Deferred: the Font dropdown popover paints (and hit-registers its rows) ON
+    // TOP of every section — the chip stashed its rect during the body paint when
+    // open. Painted last so the floating list occludes the body + owns the clicks.
+    if let Some(chip_rect) = state::take_pending_font_dd() {
+        crate::font_dropdown::paint(ctx, chip_rect, theme);
+    }
 }

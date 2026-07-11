@@ -80,9 +80,9 @@ pub use combobox::{
 pub use context_menu::{ContextMenu, ContextMenuEntry, paint_context_menu};
 pub use divider::{Divider, DividerOrientation, paint_divider};
 pub use dropdown::{
-    DROPDOWN_SCROLLBAR_ID, Dropdown, DropdownOption, DropdownState, paint_dropdown,
-    paint_dropdown_chip, paint_dropdown_popover, paint_dropdown_popover_in_viewport,
-    paint_dropdown_popover_scrolled,
+    DROPDOWN_SCROLLBAR_ID, Dropdown, DropdownOption, DropdownState, opaque as resolve_opaque,
+    paint_dropdown, paint_dropdown_chip, paint_dropdown_popover,
+    paint_dropdown_popover_in_viewport, paint_dropdown_popover_scrolled,
 };
 pub use icon_button::{IconButtonStyle, IconGlyph, paint_icon_button};
 pub use key_value_list::{KeyValueEntry, KeyValueList, paint_key_value_list};

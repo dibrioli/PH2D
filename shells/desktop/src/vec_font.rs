@@ -122,26 +122,35 @@ pub(crate) fn resolve(family: Option<&str>) -> Arc<VariableFont> {
     with_db(|db| db.load(name)).unwrap_or_else(embedded)
 }
 
-/// Cicla a família escolhida por `dir` (+1 próxima / −1 anterior) sobre a lista
-/// `[Embutida] ++ famílias`, com wrap. `None` = a entrada embutida. Constrói o
-/// catálogo na 1ª chamada (é quando o usuário abre o seletor).
+/// A lista selecionável de fontes, na ordem canônica `[Embutida] ++ importadas ++
+/// famílias do sistema` (`None` = a embutida). É a MESMA ordem que o ciclo `<`/`>`
+/// e o dropdown usam, então o índice publicado no preview casa com o que a shell
+/// aplica. Constrói o catálogo do sistema na 1ª chamada (é quando o usuário abre o
+/// seletor / o dropdown).
 #[must_use]
-pub(crate) fn cycle_family(current: Option<&str>, dir: i32) -> Option<String> {
+pub(crate) fn pickable_families() -> Vec<Option<String>> {
     let imported: Vec<String> = IMPORTED.with(|m| m.borrow().keys().cloned().collect());
     with_db(|db| {
-        // Lista navegável: [Embutida] ++ importadas ++ famílias do sistema.
         let mut names: Vec<Option<String>> =
             Vec::with_capacity(1 + imported.len() + db.families.len());
         names.push(None);
         names.extend(imported.iter().cloned().map(Some));
         names.extend(db.families.iter().cloned().map(Some));
-        let cur = names
-            .iter()
-            .position(|n| n.as_deref() == current)
-            .unwrap_or(0);
-        let next = (cur as i32 + dir).rem_euclid(names.len() as i32) as usize;
-        names[next].clone()
+        names
     })
+}
+
+/// Cicla a família escolhida por `dir` (+1 próxima / −1 anterior) sobre
+/// [`pickable_families`], com wrap. `None` = a entrada embutida.
+#[must_use]
+pub(crate) fn cycle_family(current: Option<&str>, dir: i32) -> Option<String> {
+    let names = pickable_families();
+    let cur = names
+        .iter()
+        .position(|n| n.as_deref() == current)
+        .unwrap_or(0);
+    let next = (cur as i32 + dir).rem_euclid(names.len() as i32) as usize;
+    names[next].clone()
 }
 
 /// O rótulo a exibir para a família corrente (a embutida tem nome próprio).

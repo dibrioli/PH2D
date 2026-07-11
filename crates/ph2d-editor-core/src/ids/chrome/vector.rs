@@ -1,4 +1,5 @@
 //! Vector module chrome NodeIds (VGRAPH_* geometry-graph + VECTOR_INSPECTOR_*).
+use super::painter::fnv_node_id_runtime;
 use super::{NodeId, hash_node_id};
 
 /// Vector Geometry-Graph panel (W3 T3.1) — docked panel that places the
@@ -159,6 +160,20 @@ pub const VECTOR_TEXT_FONT_NEXT: NodeId = hash_node_id("vector.text.font_next");
 /// Text "Import Font…" button — opens a native file picker for a `.ttf`/`.otf`,
 /// loads it as the current text font (and adds it to the cycle).
 pub const VECTOR_TEXT_FONT_IMPORT: NodeId = hash_node_id("vector.text.font_import");
+/// Text font **dropdown** chip (between the `<` / `>` arrows) — a `Dropdown` whose
+/// open popover lists every pickable family rendered **in its own outline** (real
+/// style preview). Option clicks route by [`vector_text_font_option_id`].
+pub const VECTOR_TEXT_FONT_DD: NodeId = hash_node_id("vector.text.font_dd");
+
+/// Stable [`NodeId`] for the `index`-th family row in the open font dropdown
+/// (index into the shell's pickable list `[bundled] ++ imported ++ system`). Runtime
+/// `format!` (the family count is only known at runtime); the FNV twin keeps it in
+/// the same id space as the `hash_node_id` consts. Mirrors the Painter option-id
+/// factories (`painter_brush_*_option_id`).
+#[must_use]
+pub fn vector_text_font_option_id(index: usize) -> NodeId {
+    fnv_node_id_runtime(&format!("vector.text.fontopt.{index}"))
+}
 /// Polygon "Sides" slider (3..12) — shown only in Polygon mode; drives
 /// `VectorTool::polygon_sides`.
 pub const VECTOR_SIDES: NodeId = hash_node_id("vector.sides");

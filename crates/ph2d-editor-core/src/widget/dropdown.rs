@@ -414,7 +414,7 @@ pub fn paint_dropdown_popover_in_viewport<T: Clone + PartialEq>(
 /// shows the content behind it through token-level alpha (e.g.
 /// `AccentSoft` is alpha 0x29 by design — fine for inline overlays,
 /// wrong for an opaque surface).
-fn opaque(token: ColorToken, theme: Theme) -> ph2d_vector::Color {
+pub fn opaque(token: ColorToken, theme: Theme) -> ph2d_vector::Color {
     let c = token.resolve(theme);
     ph2d_vector::Color::from_rgba8(c.r, c.g, c.b, 0xFF) // LITERAL-COLOR-OK: token-bridge with forced-opaque alpha (popover must occlude content behind it)
 }

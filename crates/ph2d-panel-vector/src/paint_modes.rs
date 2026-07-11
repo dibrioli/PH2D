@@ -7,9 +7,12 @@
 use crate::ids;
 use crate::paint_sections::BodyCtx;
 use crate::state;
+use ph2d_editor_core::interaction::InteractiveState;
 use ph2d_editor_core::paint::{paint_text, resolve};
 use ph2d_editor_core::widget::panel_chrome::paint_segmented_button;
-use ph2d_editor_core::widget::{Button, ButtonKind, ButtonState, paint_button};
+use ph2d_editor_core::widget::{
+    Button, ButtonKind, ButtonState, Dropdown, DropdownOption, paint_button, paint_dropdown_chip,
+};
 use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ColorToken, Spacing};
 use ph2d_tool_vector::VectorStyleSnapshot;
@@ -251,8 +254,9 @@ impl BodyCtx<'_> {
         y + self.row_h + self.row_gap
     }
 
-    /// Font-family picker row: `<` prev | current family name | `>` next. The shell
-    /// cycles the chosen system font (or the bundled default) on each button click.
+    /// Font-family picker row: `<` prev | **dropdown chip** | `>` next. The arrows
+    /// cycle; the chip opens the styled popover (each family drawn in its own
+    /// outline — [`crate::font_dropdown`]). The shell owns the family list + fonts.
     fn font_picker_row(&mut self, mut y: f32) -> f32 {
         y = self.section_label("Font", y);
         let btn_w = self.row_h;
@@ -265,18 +269,32 @@ impl BodyCtx<'_> {
             btn_w,
             y,
         );
-        // Current family name, filling the space between the two arrows.
-        let name = state::current_text_font().unwrap_or_default();
-        paint_text(
-            self.text_system,
-            self.scene,
-            &name,
+        // Center: the font dropdown chip (name + chevron), filling the gap between
+        // the arrows. Reads its open flag from the store (toggled by the generic
+        // dispatch on click); when open, stash the rect for the deferred popover.
+        let chip = Rect::new(
             self.inner_x + btn_w + gap,
-            y + (self.row_h - self.font) * 0.5,
-            self.font,
+            y,
             (self.inner_w - 2.0 * (btn_w + gap)).max(1.0),
-            resolve(ColorToken::Text1, self.theme),
+            self.row_h,
         );
+        let open = matches!(
+            self.store.get(ids::VECTOR_TEXT_FONT_DD),
+            Some(InteractiveState::Dropdown { open: true, .. })
+        );
+        let name = state::current_text_font().unwrap_or_default();
+        let dd = Dropdown::new(
+            ids::VECTOR_TEXT_FONT_DD,
+            "",
+            vec![DropdownOption::new(ids::VECTOR_TEXT_FONT_DD, (), name)],
+        )
+        .selected(())
+        .open(open);
+        paint_dropdown_chip(&dd, chip, self.scene, self.text_system, self.theme);
+        self.hit_index.register(ids::VECTOR_TEXT_FONT_DD, chip);
+        if open {
+            state::set_pending_font_dd(Some(chip));
+        }
         y += self.row_h + self.row_gap;
         // Import a font file (.ttf/.otf) as the current text font.
         self.action_button(ids::VECTOR_TEXT_FONT_IMPORT, "Import Font...", y)

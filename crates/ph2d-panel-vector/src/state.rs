@@ -8,7 +8,10 @@
 //! (Width slider, Fill-None) and the colour-picker read-back (Stroke / Fill
 //! swatches), so the panel holds no authoritative state.
 
+use ph2d_a11y::NodeId;
+use ph2d_editor_core::zones::Rect;
 use ph2d_tool_vector::{VectorStyleSnapshot, VertexType};
+use ph2d_vector::BezPath;
 use std::cell::{Cell, RefCell};
 
 thread_local! {
@@ -62,6 +65,19 @@ thread_local! {
     static LAST_CONTENT_H: Cell<f32> = const { Cell::new(0.0) };
     /// Last visible body height (panel rect minus title + paddings).
     static LAST_VISIBLE_H: Cell<f32> = const { Cell::new(0.0) };
+    /// Font dropdown previews: one [`FontPreview`] per pickable family, in the
+    /// shell's pickable order (`[bundled] ++ imported ++ system`). Each carries the
+    /// family name **pre-rendered in that family's own outline** (em-normalised,
+    /// y-up) — the popover draws it as the row's real-style preview. Built lazily by
+    /// the shell (only after [`request_font_previews`]) so the system-font scan +
+    /// parse is paid the first time the dropdown opens, never on Text-mode entry.
+    static FONT_PREVIEWS: RefCell<Vec<FontPreview>> = const { RefCell::new(Vec::new()) };
+    /// One-shot: the popover sets this when it has no previews yet; the shell reads
+    /// it (`take_want_font_previews`), builds + publishes, and it stays quiet after.
+    static WANT_FONT_PREVIEWS: Cell<bool> = const { Cell::new(false) };
+    /// Chip rect stashed by the body paint when the font dropdown is open, taken by
+    /// the deferred popover pass so the list paints ON TOP of every section.
+    static PENDING_FONT_DD: Cell<Option<Rect>> = const { Cell::new(None) };
 }
 
 /// Which kind of fill the selected path has (published by the shell each frame so
@@ -260,4 +276,58 @@ pub fn set_current_text_font(name: Option<String>) {
 /// O rótulo da família de fonte corrente este frame (para o seletor `<` nome `>`).
 pub(crate) fn current_text_font() -> Option<String> {
     CURRENT_TEXT_FONT.with(|c| c.borrow().clone())
+}
+
+/// Uma família selecionável no dropdown de fonte, já com o **nome renderizado no
+/// próprio contorno** dela (preview de estilo real). Construída pela shell (que tem
+/// os `VariableFont`) e publicada via [`set_current_text_font_previews`]; o painel
+/// só desenha `outline` na linha, sem tocar em nenhuma fonte.
+#[derive(Clone, Debug)]
+pub struct FontPreview {
+    /// A chave da família (`None` = a embutida) — o que a shell aplica ao escolher.
+    pub family: Option<String>,
+    /// Rótulo de exibição (fallback em texto quando o contorno sai vazio, ex. uma
+    /// família sem os glyphs do próprio nome).
+    pub display: String,
+    /// O nome da família desenhado na fonte dela, **em espaço-em (1 = units_per_em),
+    /// y-up** e com o avanço acumulado em x. O painel escala/translada por `Affine`.
+    pub outline: BezPath,
+    /// Largura total do nome em espaço-em (para não desenhar além da linha).
+    pub advance_em: f64,
+}
+
+/// Publica a lista de previews do dropdown de fonte (a shell constrói sob demanda).
+pub fn set_current_text_font_previews(previews: Vec<FontPreview>) {
+    FONT_PREVIEWS.with(|c| *c.borrow_mut() = previews);
+}
+
+/// Roda `f` com as previews publicadas (sem clonar o `Vec`/`BezPath`).
+pub(crate) fn with_font_previews<R>(f: impl FnOnce(&[FontPreview]) -> R) -> R {
+    FONT_PREVIEWS.with(|c| f(&c.borrow()))
+}
+
+/// O popover pede à shell que construa as previews (quando ainda não há nenhuma).
+pub(crate) fn request_font_previews() {
+    WANT_FONT_PREVIEWS.with(|c| c.set(true));
+}
+
+/// A shell drena o pedido (one-shot): `true` ⇒ construa + publique as previews.
+pub fn take_want_font_previews() -> bool {
+    WANT_FONT_PREVIEWS.with(|c| c.replace(false))
+}
+
+/// Índice da família cujo id de opção do dropdown é `id` (`None` se não for uma
+/// opção de fonte). Casa contra as previews publicadas na ordem selecionável.
+pub(crate) fn font_option_index(id: NodeId) -> Option<usize> {
+    with_font_previews(|p| (0..p.len()).find(|&i| crate::ids::vector_text_font_option_id(i) == id))
+}
+
+/// O body-paint guarda o rect do chip quando o dropdown de fonte está aberto; o
+/// pass diferido do popover o consome (para pintar POR CIMA das seções).
+pub(crate) fn set_pending_font_dd(rect: Option<Rect>) {
+    PENDING_FONT_DD.with(|c| c.set(rect));
+}
+
+pub(crate) fn take_pending_font_dd() -> Option<Rect> {
+    PENDING_FONT_DD.with(|c| c.take())
 }

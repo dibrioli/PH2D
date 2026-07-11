@@ -474,6 +474,7 @@ const CHROME_IDS: &[(&str, NodeId)] = &[
     ("VECTOR_TEXT_FONT_PREV", ids::VECTOR_TEXT_FONT_PREV),
     ("VECTOR_TEXT_FONT_NEXT", ids::VECTOR_TEXT_FONT_NEXT),
     ("VECTOR_TEXT_FONT_IMPORT", ids::VECTOR_TEXT_FONT_IMPORT),
+    ("VECTOR_TEXT_FONT_DD", ids::VECTOR_TEXT_FONT_DD),
     ("VECTOR_SIDES", ids::VECTOR_SIDES),
     ("VECTOR_SIDES_NUM", ids::VECTOR_SIDES_NUM),
     ("VECTOR_STAR_POINTS", ids::VECTOR_STAR_POINTS),
@@ -770,6 +771,27 @@ fn timeline_dynamic_ids_dont_collide_with_chrome_or_each_other() {
         check(
             format!("timeline_marker_hit_id({index})"),
             ids::timeline_marker_hit_id(index),
+        );
+    }
+}
+
+/// The Vector font-dropdown option ids (one per pickable family, keyed by list
+/// index) must not collide with a chrome const nor with each other — a collision
+/// would route a family pick to the wrong widget. Mirrors the painter / timeline
+/// dynamic-id guards. Indices span dense (small) + sparse (large) family counts.
+#[test]
+fn vector_dynamic_ids_dont_collide_with_chrome_or_each_other() {
+    let chrome: std::collections::BTreeSet<u64> = CHROME_IDS.iter().map(|(_, id)| id.0).collect();
+    let mut seen: std::collections::BTreeSet<u64> = std::collections::BTreeSet::new();
+    for index in [0usize, 1, 2, 3, 7, 42, 255, 1000, 100_000] {
+        let id = ids::vector_text_font_option_id(index).0;
+        assert!(
+            !chrome.contains(&id),
+            "vector_text_font_option_id({index}) (id {id:#018x}) collides with a chrome const",
+        );
+        assert!(
+            seen.insert(id),
+            "vector_text_font_option_id({index}) (id {id:#018x}) collides with another dynamic id",
         );
     }
 }

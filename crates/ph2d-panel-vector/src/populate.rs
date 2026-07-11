@@ -12,7 +12,9 @@
 
 use crate::ids;
 use ph2d_editor_core::interaction::{InteractiveState, WidgetStore};
-use ph2d_editor_core::widget::{ButtonState, SliderOrientation, SliderState, TextInputState};
+use ph2d_editor_core::widget::{
+    ButtonState, DropdownState, SliderOrientation, SliderState, TextInputState,
+};
 use ph2d_tool_vector::params::{
     ARC_DEGREES_SLIDER_OFFSET, ARC_DEGREES_SLIDER_SCALE, DASH_SLIDER_OFFSET, DASH_SLIDER_SCALE,
     DEFAULT_TEXT_SIZE, DEFAULT_TEXT_WEIGHT, GAP_DEFAULT, GAP_SLIDER_OFFSET, GAP_SLIDER_SCALE,
@@ -235,6 +237,16 @@ fn populate_shape(store: &mut WidgetStore) {
     button(store, ids::VECTOR_TEXT_FONT_PREV);
     button(store, ids::VECTOR_TEXT_FONT_NEXT);
     button(store, ids::VECTOR_TEXT_FONT_IMPORT);
+    // Font dropdown chip (between the arrows): a `Dropdown` so the generic
+    // open/close dispatch toggles its popover (the styled family list).
+    store.register_if_absent(
+        ids::VECTOR_TEXT_FONT_DD,
+        InteractiveState::Dropdown {
+            state: DropdownState::Normal,
+            open: false,
+            selected_index: None,
+        },
+    );
 
     populate_transform_fields(store);
 }

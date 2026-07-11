@@ -18,9 +18,9 @@
 //! pointer.rs); the shell's `vector_bridge` reads the pick back into the tool.
 
 use crate::ids;
-use crate::state::VectorPanelState;
+use crate::state::{self, VectorPanelState};
 use ph2d_editor_core::action_bus::EditorAction;
-use ph2d_editor_core::interaction::WidgetEvent;
+use ph2d_editor_core::interaction::{InteractiveState, WidgetEvent};
 use ph2d_editor_core::panel::{EventOutcome, PanelHostInternal, seam_reset_button};
 use ph2d_editor_core::tool::PanelEvent;
 
@@ -195,6 +195,28 @@ pub(crate) fn apply_event(
         WidgetEvent::Click(id) if id == ids::VECTOR_CLOSE => {
             seam_reset_button(host, id);
             host.bus_mut().push(EditorAction::CancelActiveTool);
+            true
+        }
+        // A family row in the open Font dropdown: close the chip (light-dismiss
+        // won't fire — the click is INSIDE the popover) and forward the picked
+        // index over `SelectOption`; the shell resolves it to a family + regens.
+        WidgetEvent::Click(id) if state::font_option_index(id).is_some() => {
+            if let Some(i) = state::font_option_index(id) {
+                if let Some(InteractiveState::Dropdown {
+                    open,
+                    selected_index,
+                    ..
+                }) = host.store_mut().get_mut(ids::VECTOR_TEXT_FONT_DD)
+                {
+                    *open = false;
+                    *selected_index = Some(i);
+                }
+                host.bus_mut()
+                    .push(EditorAction::ToolPanelEvent(PanelEvent::SelectOption(
+                        ids::VECTOR_TEXT_FONT_DD,
+                        i.to_string(),
+                    )));
+            }
             true
         }
         _ => false,

@@ -1050,6 +1050,8 @@ impl crate::App {
             let mut pending_vec_text_weight: Option<f32> = None;
             // Text font-family cycle (`<` = -1 / `>` = +1) from the panel picker.
             let mut pending_vec_font_cycle: Option<i32> = None;
+            // Font dropdown option pick — index into `vec_font::pickable_families()`.
+            let mut pending_vec_font_pick: Option<usize> = None;
             // "Import Font…" button — opens a native picker for a .ttf/.otf.
             let mut pending_vec_font_import = false;
             let mut transform_edit: Option<ph2d_editor::InspectorTransformInfo> = None;
@@ -1197,6 +1199,13 @@ impl crate::App {
                                         as f32,
                                 );
                             }
+                        }
+                        // Font dropdown pick: `SelectOption(chip, "<index>")` → the
+                        // family index into `vec_font::pickable_families()`.
+                        if let ph2d_editor::tool::PanelEvent::SelectOption(id, val) = &ev
+                            && *id == ph2d_editor::ids::VECTOR_TEXT_FONT_DD
+                        {
+                            pending_vec_font_pick = val.parse::<usize>().ok();
                         }
                         // ADR-0113 W2: Flip layer ops (add/delete/select/visibility/
                         // lock/reorder/opacity/blend) are DOCUMENT edits — apply to
@@ -1968,12 +1977,34 @@ impl crate::App {
                     dir,
                 );
             }
+            if let Some(i) = pending_vec_font_pick {
+                // Índice na MESMA lista que gerou as previews → família escolhida.
+                let family = crate::vec_font::pickable_families()
+                    .get(i)
+                    .cloned()
+                    .flatten();
+                crate::vec_text::set_text_font(
+                    &mut self.vec_text_edit,
+                    &mut self.vec_text_family,
+                    vec_scene,
+                    family,
+                );
+            }
             if pending_vec_font_import {
-                crate::vec_text::import_text_font(
+                let imported = crate::vec_text::import_text_font(
                     &mut self.vec_text_edit,
                     &mut self.vec_text_family,
                     vec_scene,
                 );
+                // A fonte importada entra no dropdown: reconstrói as previews agora.
+                #[cfg(feature = "panel-vector")]
+                if imported {
+                    ph2d_panel_vector::set_current_text_font_previews(
+                        crate::vec_font_preview::build_previews(),
+                    );
+                }
+                #[cfg(not(feature = "panel-vector"))]
+                let _ = imported;
             }
             if let Some(op) = pending_vec_path_shape {
                 crate::input_dispatch::apply_vec_path_shape(
@@ -2174,6 +2205,17 @@ impl crate::App {
                 (self.vec_draw_config.mode == ph2d_tool_vector::DrawMode::Text)
                     .then(|| crate::vec_font::display_name(self.vec_text_family.as_deref())),
             );
+            // Dropdown de fonte: constrói as previews (nome de cada família na fonte
+            // dela) SÓ quando o painel pede — i.e. na 1ª abertura do dropdown. Assim o
+            // scan+parse das fontes do sistema é pago no open, nunca ao entrar no Text.
+            #[cfg(feature = "panel-vector")]
+            if self.vec_draw_config.mode == ph2d_tool_vector::DrawMode::Text
+                && ph2d_panel_vector::take_want_font_previews()
+            {
+                ph2d_panel_vector::set_current_text_font_previews(
+                    crate::vec_font_preview::build_previews(),
+                );
+            }
 
             // ADR-0110 — a árvore do editor é a Hierarquia. Reconcilia documento e
             // entidades (path novo ⇒ entidade; entidade apagada ⇒ path), projeta a

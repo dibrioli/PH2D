@@ -53,9 +53,12 @@ impl crate::App {
             // Motion Nodes M0.T13: read the center split to frame the scene into
             // its sub-rect (set by the bridge earlier this frame).
             hero_screen,
-            // ADR-0113 W1: a cena Flip + o rasterizador do traço (passe 1b abaixo).
+            // ADR-0113 W1: a cena Flip + o rasterizador do traço + a composição
+            // por-camada (compositor 22-modos), tudo no passe 1b abaixo.
             flip,
             flip_render,
+            flip_compose,
+            flip_composite,
             ..
         } = gfx;
         let window_size = surface.size();
@@ -126,12 +129,15 @@ impl crate::App {
                     motion_slice,
                     scene_viewport,
                 );
-                // Pass 1b: Flip strokes (ADR-0113 W1) into `game_rt`, amostrado
-                //   pelo playhead, MESMA câmera dos sprites. LoadOp::Load preserva
-                //   os sprites por baixo. No-op sem objeto Flip (default).
+                // Pass 1b: Flip (ADR-0113 W1) composto por-camada (blend/opacity via
+                //   compositor 22-modos) no `game_rt`, amostrado pelo playhead,
+                //   MESMA câmera dos sprites. O blit final usa LoadOp::Load (preserva
+                //   os sprites por baixo). No-op sem camada Flip ativa (default).
                 super::flip_pass::render(
                     flip,
                     flip_render,
+                    flip_compose,
+                    flip_composite,
                     &self.playhead,
                     game_rt,
                     camera,

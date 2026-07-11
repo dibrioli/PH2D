@@ -1,13 +1,17 @@
 //! Demo ready-to-smoke do Flip (ADR-0113 W1): um objeto animado para VER o render
-//! do traço na hora. Flag-gated por `PH2D_FLIP_DEMO=1` (default = cena vazia, como
-//! a pipeline vetorial nova — o app normal não mostra nada do Flip até a tool do W2).
+//! do traço + a **composição por-camada** (T1.7) na hora. Flag-gated por
+//! `PH2D_FLIP_DEMO=1` (default = cena vazia, como a pipeline vetorial nova — o app
+//! normal não mostra nada do Flip até a tool do W2).
 //!
 //! Coordenadas em mundo (a `Camera2d` default enquadra ~10 unidades de altura em
-//! torno da origem). Ligue `PH2D_FLIP_DEMO=1` e dê play (o transporte) para ver o
-//! traço da camada FG saltar entre os 3 quadros-chave.
+//! torno da origem). Ligue `PH2D_FLIP_DEMO=1` e dê play (o transporte) para ver a
+//! camada FG saltar entre os 3 quadros-chave. A camada FG usa blend **Multiply**:
+//! onde o quadrado que se move cruza o retângulo amarelo do BG, a sobreposição
+//! **escurece** (amarelo × magenta) — a prova visual de T1.7.
 
 use ph2d_core::Vec2;
 use ph2d_flip::{Fill, FlipDoc, FlipStroke, Hold, KeyKind, Point, Rgba};
+use ph2d_painter_effects::BlendMode;
 
 /// A cena Flip de boot: vazia por padrão; o objeto-demo sob `PH2D_FLIP_DEMO`.
 pub(crate) fn demo_scene() -> FlipDoc {
@@ -15,33 +19,45 @@ pub(crate) fn demo_scene() -> FlipDoc {
     if std::env::var_os("PH2D_FLIP_DEMO").is_none() {
         return doc;
     }
-    eprintln!("[ph2d-flip] PH2D_FLIP_DEMO ativo — objeto 'Demo Flip' (BG + FG 3 quadros @12fps)");
+    eprintln!(
+        "[ph2d-flip] PH2D_FLIP_DEMO ativo — objeto 'Demo Flip' (BG amarelo + FG Multiply 3 quadros @12fps)"
+    );
     let oid = doc.push_object("Demo Flip");
     let obj = doc.object_mut(oid).expect("objeto recém-criado existe");
     obj.fps = 12.0;
 
-    // BG: uma moldura + um quadrado PREENCHIDO (prova o fill), segurando a
-    // animação inteira (1 desenho, hold implícito).
+    // BG: um retângulo amarelo PREENCHIDO (o campo que a FG vai multiplicar) + uma
+    // moldura, segurando a animação inteira (1 desenho, hold implícito). Normal.
     let bg = obj.add_layer("BG");
     if let Some(d) = obj.insert_frame(bg, 0, Hold::Implicit, KeyKind::Keyframe) {
         let dr = obj.drawing_mut(d).expect("desenho recém-criado");
-        dr.strokes.push(filled_square());
+        dr.strokes.push(filled_rect(
+            Vec2::new(-2.5, -1.2),
+            Vec2::new(2.5, 1.2),
+            Rgba::new(0.95, 0.8, 0.2, 1.0), // amarelo
+        ));
         dr.strokes.push(frame_rect());
     }
 
-    // FG: 3 quadros-chave (0/8/16) com um traço que salta + varia a hardness.
+    // FG: blend MULTIPLY. 3 quadros-chave (0/8/16) com um quadrado magenta que
+    // varre o amarelo → a interseção escurece (Multiply). Prova T1.7 no smoke.
     let fg = obj.add_layer("FG");
+    obj.layer_mut(fg).expect("camada FG").blend = BlendMode::Multiply;
     let keys = [
         (0_i32, Vec2::new(-2.0, 0.0)),
-        (8, Vec2::new(0.0, 1.2)),
+        (8, Vec2::new(0.0, 0.0)),
         (16, Vec2::new(2.0, 0.0)),
     ];
-    for (frame, pos) in keys {
+    for (frame, cx) in keys {
         if let Some(d) = obj.insert_frame(fg, frame, Hold::Implicit, KeyKind::Keyframe) {
             obj.drawing_mut(d)
                 .expect("desenho recém-criado")
                 .strokes
-                .push(moving_mark(pos));
+                .push(filled_rect(
+                    Vec2::new(cx.x - 0.9, cx.y - 0.9),
+                    Vec2::new(cx.x + 0.9, cx.y + 0.9),
+                    Rgba::new(0.85, 0.2, 0.7, 1.0), // magenta
+                ));
         }
     }
     doc
@@ -69,50 +85,28 @@ fn frame_rect() -> FlipStroke {
     s
 }
 
-/// Um quadrado fechado PREENCHIDO (fill verde translúcido, contorno fino) no
-/// canto direito — a prova visual do T1.6 (fill triangulado).
-fn filled_square() -> FlipStroke {
+/// Um retângulo fechado PREENCHIDO (fill + contorno na mesma cor), de `min` a
+/// `max` em mundo.
+fn filled_rect(min: Vec2, max: Vec2, color: Rgba) -> FlipStroke {
     let mut s = FlipStroke::new();
-    let outline = Rgba::new(0.2, 0.7, 0.3, 1.0);
     for corner in [
-        Vec2::new(1.4, -1.4),
-        Vec2::new(2.4, -1.4),
-        Vec2::new(2.4, -0.4),
-        Vec2::new(1.4, -0.4),
+        min,
+        Vec2::new(max.x, min.y),
+        max,
+        Vec2::new(min.x, max.y),
     ] {
         s.push_point(Point {
             pos: corner,
             width: 0.04,
             opacity: 1.0,
-            color: outline,
+            color,
         });
     }
     s.closed = true;
     s.hardness = 1.0;
     s.fill = Some(Fill {
-        color: Rgba::new(0.2, 0.7, 0.3, 1.0),
-        opacity: 0.5,
-    });
-    s
-}
-
-/// Um traço vertical curto e grosso (vermelho, macio) na posição `pos` — a marca
-/// que se move entre os quadros.
-fn moving_mark(pos: Vec2) -> FlipStroke {
-    let mut s = FlipStroke::new();
-    let red = Rgba::new(0.9, 0.1, 0.1, 1.0);
-    s.push_point(Point {
-        pos: Vec2::new(pos.x, pos.y - 0.6),
-        width: 0.3,
+        color,
         opacity: 1.0,
-        color: red,
     });
-    s.push_point(Point {
-        pos: Vec2::new(pos.x, pos.y + 0.6),
-        width: 0.3,
-        opacity: 1.0,
-        color: red,
-    });
-    s.hardness = 0.6;
     s
 }

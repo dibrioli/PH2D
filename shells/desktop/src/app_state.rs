@@ -116,6 +116,16 @@ pub(crate) struct AppGfx {
     /// ADR-0113 W1: o pipeline wgpu que rasteriza o traço do Flip no `game_rt`
     /// (HDR), amostrado pelo playhead. Criado 1× (device + formato do game_rt).
     pub(crate) flip_render: ph2d_flip_render::FlipRenderer,
+    /// ADR-0113 W1 T1.7: as passagens de espaço-de-cor (resolve 16F→sRGB8 e blit
+    /// sRGB8→16F) que ligam o rasterizador ao `LayerCompositor` do Painter. Criado
+    /// 1× (device + formato do game_rt). O compositor em si é o `flip_composite`.
+    pub(crate) flip_compose: ph2d_flip_render::FlipCompose,
+    /// ADR-0113 W1 T1.7: a sessão de composição por-camada do Flip — o
+    /// `LayerCompositor` 22-modos do Painter + o buffer dummy que satisfaz o
+    /// filtro de tamanho do `ensure_slice` (as fatias reais entram por
+    /// `inject_slice_from_texture`, então o dummy nunca é subido). Lazy: só nasce
+    /// quando há camada Flip ativa (cena vazia = `None`, sem custo de GPU).
+    pub(crate) flip_composite: Option<crate::render_loop::flip_pass::FlipComposite>,
     /// Motion Nodes runtime state (M0.T8): document + transport + persistent
     /// `Cook` + node registry + reused instance buffer. Cooked per frame by
     /// `render_loop::motion_bridge` while the `motion` tool is active. Mirror of

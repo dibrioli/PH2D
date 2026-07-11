@@ -25,3 +25,10 @@ bytemuck = { version = "1", features = ["derive"] }
 [dev-dependencies]
 # block_on para os testes GPU headless (`--ignored`), como os testes do ph2d-gpu.
 pollster = "0.4"
+# SÓ testes: o e2e de T1.7 valida o seam real (stage → inject → composite → blit)
+# com o `LayerCompositor` 22-modos de verdade. Em PRODUÇÃO esse reuso é
+# orquestrado no shell (o compositor NÃO é dep de runtime do flip-render).
+ph2d-render = { path = "../ph2d-render" }
+ph2d-gpu = { path = "../ph2d-gpu" }
+# O wire u8 dos 22 modos (Normal/Multiply) para montar a op-list do teste.
+ph2d-painter-effects = { path = "../ph2d-painter-effects" }

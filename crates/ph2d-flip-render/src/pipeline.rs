@@ -340,7 +340,7 @@ impl FlipRenderer {
 }
 
 /// Blend premultiplicado over (src já vem multiplicado por alpha).
-fn premult_over() -> wgpu::BlendState {
+pub(crate) fn premult_over() -> wgpu::BlendState {
     let over = wgpu::BlendComponent {
         src_factor: wgpu::BlendFactor::One,
         dst_factor: wgpu::BlendFactor::OneMinusSrcAlpha,
@@ -363,7 +363,7 @@ fn depth_greater(format: wgpu::TextureFormat) -> wgpu::DepthStencilState {
     }
 }
 
-fn tri_list() -> wgpu::PrimitiveState {
+pub(crate) fn tri_list() -> wgpu::PrimitiveState {
     wgpu::PrimitiveState {
         topology: wgpu::PrimitiveTopology::TriangleList,
         strip_index_format: None,
@@ -375,7 +375,7 @@ fn tri_list() -> wgpu::PrimitiveState {
     }
 }
 
-fn no_msaa() -> wgpu::MultisampleState {
+pub(crate) fn no_msaa() -> wgpu::MultisampleState {
     wgpu::MultisampleState {
         count: 1,
         mask: !0,

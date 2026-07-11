@@ -4808,6 +4808,9 @@ dependencies = [
  "bytemuck",
  "ph2d-core",
  "ph2d-flip",
+ "ph2d-gpu",
+ "ph2d-painter-effects",
+ "ph2d-render",
  "pollster",
  "wgpu",
 ]

@@ -381,6 +381,9 @@ pub(crate) fn build_initial_state(
     // Criado ANTES do literal (o `surface` é movido pra dentro dele).
     let flip_render =
         ph2d_flip_render::FlipRenderer::new(&surface.gpu().device, ph2d_render::GameRt::FORMAT);
+    // W1 T1.7: as passagens resolve/blit da composição por-camada (mesmo formato).
+    let flip_compose =
+        ph2d_flip_render::FlipCompose::new(&surface.gpu().device, ph2d_render::GameRt::FORMAT);
 
     let gfx = AppGfx {
         surface,
@@ -410,6 +413,9 @@ pub(crate) fn build_initial_state(
         // ADR-0113 W1: rasterizador do traço, no formato HDR do game_rt (criado
         // logo acima, antes do literal — `surface` já foi movido aqui).
         flip_render,
+        // W1 T1.7: passagens de espaço-de-cor da composição; o compositor é lazy.
+        flip_compose,
+        flip_composite: None,
         // Motion Nodes M0.T8: boot state = default grid→transform→clone vertical
         // + full node registry + paused transport (cooked per frame by the bridge).
         // Its instances sample one opaque atlas tile (computed above) so the raw

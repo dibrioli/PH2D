@@ -145,9 +145,13 @@ pub(crate) fn sample_prop_value(
 
 /// The value a K-inserted key carries for `prop` at playhead `t_secs`: scene
 /// properties sample the live world ([`sample_prop_value`]); **Time Remap** has
-/// no scene value — a new key lands ON its own curve (the retime the entity
-/// already plays), or at the IDENTITY (`t`) on an empty track, so binding
-/// "Time" and pressing K lays down a remap that changes nothing until edited.
+/// no scene value — a new key lands ON the clock the entity ALREADY plays
+/// ([`ph2d_timeline::remapped_time`]: identity on an empty track, on-curve
+/// between keys, slope-1 extrapolation past them, Hold's freeze respected), so
+/// K never bends the remap. Seeding through any OTHER transform than the one
+/// the apply samples with re-creates the freeze: `tr.sample` flat-clamps past
+/// the last key, so K@0 then K@2 laid down a FLAT map = every track of the
+/// entity frozen at source 0 (the 2026-07-11 "Time nullifies the animation").
 pub(crate) fn key_value_for(
     world: &World,
     timeline: &TimelineState,
@@ -155,18 +159,8 @@ pub(crate) fn key_value_for(
     prop: PropKind,
     t_secs: f64,
 ) -> Option<ph2d_anim::AnimValue> {
-    use ph2d_anim::AttributeEvaluator;
     if prop == PropKind::TimeRemap {
-        let source = timeline
-            .doc
-            .binding_for(entity, prop)
-            .and_then(|b| timeline.doc.active_clip().track(b.target))
-            .filter(|tr| !tr.is_empty())
-            .map(|tr| match tr.sample(t_secs) {
-                ph2d_anim::AnimValue::Float(v) => f64::from(v),
-                _ => t_secs,
-            })
-            .unwrap_or(t_secs);
+        let source = ph2d_timeline::remapped_time(&timeline.doc, entity, t_secs);
         return Some(ph2d_anim::AnimValue::Float(source as f32));
     }
     sample_prop_value(world, entity, prop)
@@ -457,5 +451,118 @@ mod tests {
         );
         // A scene prop still samples the world (a dead entity has none).
         assert_eq!(key_value_for(&w, &st, 1, PropKind::TranslationX, 1.0), None);
+    }
+
+    // The natural K flow — K at t=0, scrub, K again — must lay down an
+    // identity-shaped remap, not a FLAT one that freezes every track of the
+    // entity at source 0 ("Time nullifies the animation", 2026-07-11). Drives
+    // the exact functions the shell's K handler uses.
+    #[test]
+    fn time_remap_double_k_must_not_freeze_position() {
+        use ph2d_anim::AnimValue::Float;
+        use ph2d_core::Vec2;
+        use ph2d_ecs::{Transform, World};
+        let mut w = World::new();
+        let e = w.spawn(Transform::from_translation(Vec2::ZERO)).id();
+        let eb = e.to_bits();
+        let mut st = TimelineState::new();
+        let mut ph = Playhead::new(1.0 / 60.0);
+        for (t, v) in [(0.0, 0.0f32), (4.0, 10.0)] {
+            apply_intent(
+                &mut st,
+                &mut ph,
+                TimelineIntent::AddKey {
+                    entity: eb,
+                    prop: PropKind::TranslationX,
+                    t: ph2d_anim::RationalTime::from_seconds(t),
+                    value: Float(v),
+                    interp: ph2d_anim::Interp::Linear,
+                },
+            );
+        }
+        apply_intent(
+            &mut st,
+            &mut ph,
+            TimelineIntent::Bind {
+                entity: eb,
+                prop: PropKind::TimeRemap,
+            },
+        );
+        // Two K presses through the SAME functions the shell's K handler uses.
+        for playhead_t in [0.0f64, 2.0] {
+            let v = key_value_for(&w, &st, eb, PropKind::TimeRemap, playhead_t).unwrap();
+            let t = key_insert_time(&st, eb, PropKind::TimeRemap, playhead_t);
+            apply_intent(
+                &mut st,
+                &mut ph,
+                TimelineIntent::AddKey {
+                    entity: eb,
+                    prop: PropKind::TimeRemap,
+                    t,
+                    value: v,
+                    interp: default_interp(),
+                },
+            );
+        }
+        ph2d_timeline::apply_from_doc(&mut w, &mut st.doc, 1.0);
+        let x1 = w.get::<Transform>(e).unwrap().translation.x;
+        assert!(
+            (x1 - 2.5).abs() < 1e-4,
+            "posição congelada: x@1 = {x1}, esperado 2.5"
+        );
+        // And past the seeded range the identity must keep playing too.
+        ph2d_timeline::apply_from_doc(&mut w, &mut st.doc, 3.0);
+        let x3 = w.get::<Transform>(e).unwrap().translation.x;
+        assert!(
+            (x3 - 7.5).abs() < 1e-4,
+            "posição congelada: x@3 = {x3}, esperado 7.5"
+        );
+    }
+
+    // Hold's freeze-frame is DELIBERATE: past a Hold last key the entity plays
+    // frozen, so a K there seeds the frozen clock (what the entity plays), not
+    // a slope-1 continuation — seed and sampling stay the same transform.
+    #[test]
+    fn k_past_a_hold_freeze_seeds_the_frozen_clock() {
+        use ph2d_anim::AnimValue::Float;
+        use ph2d_ecs::World;
+        let w = World::new();
+        let mut st = TimelineState::new();
+        let mut ph = Playhead::new(1.0 / 60.0);
+        ph2d_timeline::apply_intent(
+            &mut st,
+            &mut ph,
+            TimelineIntent::Bind {
+                entity: 1,
+                prop: PropKind::TimeRemap,
+            },
+        );
+        for (t, v, interp) in [
+            (0.0, 0.0f32, ph2d_anim::Interp::Linear),
+            (2.0, 4.0, ph2d_anim::Interp::Hold),
+        ] {
+            ph2d_timeline::apply_intent(
+                &mut st,
+                &mut ph,
+                TimelineIntent::AddKey {
+                    entity: 1,
+                    prop: PropKind::TimeRemap,
+                    t: ph2d_anim::RationalTime::from_seconds(t),
+                    value: Float(v),
+                    interp,
+                },
+            );
+        }
+        assert_eq!(
+            key_value_for(&w, &st, 1, PropKind::TimeRemap, 3.0),
+            Some(Float(4.0)),
+            "K past a Hold freeze seeds the frozen source, matching the apply"
+        );
+        // Scene props key at the same frozen clock (where the apply samples).
+        assert_eq!(
+            key_insert_time(&st, 1, PropKind::TranslationX, 3.0).to_seconds(),
+            4.0,
+            "scene keys land at the frozen source time"
+        );
     }
 }

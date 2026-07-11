@@ -1,0 +1,78 @@
+//! O que o frame vetorial desenha POR CIMA da cena, por modo de desenho (ADR-0112).
+//!
+//! Há duas famílias de overlay, com regras de visibilidade DIFERENTES — confundir as
+//! duas foi o bug do P1 (as guias de snap sumiam no modo Select):
+//!
+//! - **Overlays de edição** (âncoras, handles bézier, alças de gradiente, marquee de
+//!   box-select): só FORA do Select. No Select quem transforma a forma é o gizmo de
+//!   sprite; as alças de nó comeriam o clique dele (ADR-0112).
+//! - **Guias de snap** (as linhas que explicam o encaixe vivo): valem em QUALQUER
+//!   modo. O gizmo-move do Select encaixa a forma igual ao pen/shape-tool/node-edit,
+//!   então a guia precisa aparecer lá também — era o que faltava.
+//!
+//! A decisão vive aqui, fora do `render_loop`, para ser testável sem gfx/câmera: é o
+//! ponto que trava o P1 (uma regressão que re-agrupasse a guia sob o guard de modo
+//! quebra o teste abaixo, não só o smoke).
+
+use ph2d_tool_vector::DrawMode;
+
+/// Quais overlays vetoriais este frame desenha, dado se a tool está ativa e o modo.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub(crate) struct VecOverlayPlan {
+    /// Âncoras, handles, alças de gradiente e marquee — edição/seleção-de-forma,
+    /// que não aparecem no Select (lá manda o gizmo, ADR-0112).
+    pub edit: bool,
+    /// Guias de alinhamento do snap — desenhadas em TODOS os modos, inclusive o
+    /// Select (gizmo-move).
+    pub snap_guides: bool,
+}
+
+/// A política de visibilidade dos overlays vetoriais deste frame.
+#[must_use]
+pub(crate) fn vec_overlay_plan(vector_active: bool, mode: DrawMode) -> VecOverlayPlan {
+    VecOverlayPlan {
+        edit: vector_active && mode != DrawMode::Select,
+        snap_guides: vector_active,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// O P1: no modo Select as guias de snap TÊM que aparecer (o gizmo-move encaixa a
+    /// forma), mas os overlays de edição de nó NÃO — lá quem fala é o gizmo.
+    #[test]
+    fn select_mode_shows_snap_guides_but_not_edit_overlays() {
+        let plan = vec_overlay_plan(true, DrawMode::Select);
+        assert!(
+            plan.snap_guides,
+            "guia de snap no Select (gizmo-move encaixa)"
+        );
+        assert!(!plan.edit, "âncoras/handles NÃO no Select (ADR-0112)");
+    }
+
+    /// Nos modos de desenho/edição de nó, os dois overlays aparecem.
+    #[test]
+    fn draw_and_node_modes_show_both_overlays() {
+        for mode in [
+            DrawMode::Pen,
+            DrawMode::Node,
+            DrawMode::Rectangle,
+            DrawMode::Line,
+            DrawMode::Arc,
+        ] {
+            let plan = vec_overlay_plan(true, mode);
+            assert!(plan.edit, "{mode:?} desenha âncoras/handles");
+            assert!(plan.snap_guides, "{mode:?} desenha guias de snap");
+        }
+    }
+
+    /// Tool inativa: nenhum overlay vetorial (o canvas é de outra ferramenta).
+    #[test]
+    fn inactive_tool_draws_no_vector_overlays() {
+        let plan = vec_overlay_plan(false, DrawMode::Node);
+        assert!(!plan.edit);
+        assert!(!plan.snap_guides);
+    }
+}

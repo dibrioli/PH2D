@@ -66,6 +66,7 @@ mod timeline_persist;
 mod undo;
 mod vec_entities;
 mod vec_gizmo_view;
+mod vec_overlay;
 mod vec_selection;
 mod vec_snap;
 mod vec_transform;

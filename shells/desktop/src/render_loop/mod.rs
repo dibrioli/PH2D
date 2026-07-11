@@ -2141,9 +2141,13 @@ impl crate::App {
 
             let cam_affine = camera.world_to_screen_affine(window_size);
             ph2d_vec_render::dispatch(vec_scene, &vec_view, &vec_xf, cam_affine, vector_scene);
-            // Âncoras e handles só interessam a quem edita nós; no modo Select quem
-            // fala é o gizmo (ADR-0112).
-            if vector_active && self.vec_draw_config.mode != ph2d_tool_vector::DrawMode::Select {
+            // Âncoras/handles/gradiente/marquee só interessam a quem edita nós; no
+            // modo Select quem fala é o gizmo (ADR-0112). As guias de snap são caso à
+            // parte (valem em TODOS os modos) — `vec_overlay` separa as duas políticas
+            // num ponto testável (P1).
+            let overlay =
+                crate::vec_overlay::vec_overlay_plan(vector_active, self.vec_draw_config.mode);
+            if overlay.edit {
                 ph2d_vec_render::draw_overlays(
                     vec_scene,
                     &vec_view,
@@ -2166,8 +2170,6 @@ impl crate::App {
                         vector_scene,
                     );
                 }
-                // Smart guides do snap (por cima de tudo — explicam o encaixe vivo).
-                ph2d_vec_render::draw_snap_guides(&self.vec_snap_guides, cam_affine, vector_scene);
                 // Box-select marquee (Shift+drag), in screen-space.
                 if let Some((start, cur)) = self.vec_marquee {
                     ph2d_vec_render::draw_marquee(
@@ -2176,6 +2178,11 @@ impl crate::App {
                         vector_scene,
                     );
                 }
+            }
+            // Smart guides do snap: FORA do guard de modo — explicam o encaixe vivo em
+            // qualquer modo, inclusive o gizmo-move do Select (P1, ADR-0112).
+            if overlay.snap_guides {
+                ph2d_vec_render::draw_snap_guides(&self.vec_snap_guides, cam_affine, vector_scene);
             }
             // Drain the Painter Falloff right-click handle menu choice (chrome
             // parked the HandleType wire u8 in `pending_falloff_point_handle`) →

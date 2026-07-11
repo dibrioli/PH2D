@@ -13,6 +13,10 @@
 //! Undo grouping mirrors the pre-existing gizmo bracket: a gizmo drag is one step
 //! across the whole gesture; a discrete edit (Inspector field, Reset) is one step
 //! for the frame it lands on.
+//!
+//! While the transport is **playing**, the pass is inert: the pose is the
+//! animation driving the object, not a user edit, so there is nothing to key
+//! (record-during-play "performing" is W5, not v1).
 
 use std::collections::BTreeMap;
 
@@ -39,8 +43,10 @@ fn sample_pose(world: &World, entity: u64) -> PoseSample {
 }
 
 /// Auto-key the current selection. `armed` is `panel_open && auto_key`, resolved
-/// by the caller. Rebuilds `baseline` from the live selection every frame (so it
-/// tracks selection changes) and brackets the undo step via `drag_active`.
+/// by the caller; the pass additionally goes inert while the transport is playing
+/// (`playhead.is_playing()`). Rebuilds `baseline` from the live selection every
+/// frame (so it tracks selection changes) and brackets the undo step via
+/// `drag_active`.
 pub(crate) fn run(
     timeline: &mut TimelineState,
     playhead: &Playhead,
@@ -81,6 +87,15 @@ pub(crate) fn apply_samples(
     baseline: &mut BTreeMap<u64, PoseSample>,
     drag_active: &mut bool,
 ) {
+    // While the transport is PLAYING the pose changes every frame because the
+    // animation is driving the object, not the user — so auto-key must stay
+    // silent (v1 has no record-during-play "performing"; that is W5). Without
+    // this, the apply pass writes world = curve(raw playhead t) each frame while
+    // the off-curve diff below compares against curve(snapped t); the two
+    // disagree under frame-snap / float drift, so every played frame would mint a
+    // spurious key. The baseline still advances below (exactly as when disarmed),
+    // so pausing mid-play never misreads the settled pose as a jump.
+    let armed = armed && !playhead.is_playing();
     let fps = timeline.doc.fps_display;
     let t = ph2d_timeline::snap_time(
         RationalTime::from_seconds(playhead.time()),
@@ -162,6 +177,7 @@ mod tests {
             );
         }
         ph.seek(0.5); // curve says x = 5 here
+        ph.pause(); // the tests edit while PAUSED; play-suppression is its own test
         (st, ph)
     }
 
@@ -354,5 +370,52 @@ mod tests {
         // Next frame nothing is selected → the baseline empties.
         frame(&mut st, &ph, &[], false, true, &mut base, &mut drag);
         assert!(base.is_empty(), "an unselected entity leaves the baseline");
+    }
+
+    #[test]
+    fn playing_does_not_auto_key_even_when_the_pose_looks_off_its_curve() {
+        // The Play + AutoKey regression: during playback the apply pass rewrites
+        // the pose every frame, and the frame-snap/raw-time mismatch made the
+        // off-curve diff fire, minting a key per frame. While playing, the pass
+        // must be inert regardless of the pose.
+        let (mut st, mut ph) = state_with_tx_track(); // paused; curve x = 5 at 0.5
+        let before = st.doc.clone();
+        let mut base = BTreeMap::new();
+        let mut drag = false;
+        // Armed (panel open + auto_key on) and the pose looks off-curve (7 vs 5),
+        // but the transport is PLAYING → nothing is keyed.
+        ph.play();
+        frame(
+            &mut st,
+            &ph,
+            &[(E, pose(&[(TX, 7.0)]))],
+            false,
+            true,
+            &mut base,
+            &mut drag,
+        );
+        assert_eq!(st.doc, before, "playing suppresses auto-key");
+        assert_eq!(
+            base.get(&E).and_then(|p| p[TX]),
+            Some(7.0),
+            "the baseline still advances while playing (so pausing is not a jump)"
+        );
+        // Control: the SAME off-curve pose DOES key once PAUSED, proving the play
+        // gate — not something else — is what suppressed it.
+        ph.pause();
+        frame(
+            &mut st,
+            &ph,
+            &[(E, pose(&[(TX, 7.0)]))],
+            false,
+            true,
+            &mut base,
+            &mut drag,
+        );
+        assert_eq!(
+            tx_at(&st, 0.5),
+            Some(7.0),
+            "paused: the off-curve pose keys as before"
+        );
     }
 }

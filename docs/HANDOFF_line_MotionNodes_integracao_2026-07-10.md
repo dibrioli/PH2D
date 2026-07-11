@@ -182,5 +182,40 @@ e implementada a **fatia 1** do domínio de valor ([doc 12](Motion%20Nodes/12_do
 - **Follow-up nomeado (fan-out, doc 12 §5):** `value.lfo` · `value.map_range` · `pulse.sample_hold`
   · `pulse.compare` · `value.instance_field` (o único que minta campo len-N) · `value.switch`.
 
-*"Linha `MotionNodes` pronta (HEAD no worktree, 12 commits). Handoff acima. Aguardo ordem de
+## 10. Rodada 5 (mesmo dia): LFO + Map Range (fatia 2 do valor) — doc 13
+
+Fecha os 2 primeiros follow-ups do doc 12 §5, de novo pesquisando o padrão-ouro antes de codar
+(TD LFO/Math CHOP, Houdini `fit`/`efit`, Cavalry, Nuke, Max). **Fan-out aditivo — contratos
+congelados intocados** ([doc 13](Motion%20Nodes/13_lfo_map_range_nota_adr.md)). Commits adicionais na
+mesma linha:
+
+- **crate nova `ph2d-node-value-lfo`** (tipo `value.lfo`): o PRODUTOR contínuo `in?(instances) →
+  value`. Reutiliza o **wave core transcendental-free do `motion.oscillator`** (copiado em `wave.rs`,
+  convenção leaf). `in` **opcional** (lido só p/ contagem): conectado → campo length-N com
+  `phase_stagger` (onda viajante); desconectado → length-1 (global). `period` (segundos, guard
+  `MIN_PERIOD`), `Effect::Temporal`.
+- **crate nova `ph2d-node-value-map-range`** (tipo `value.map_range`): a cola `value → value`
+  unária, `fit` linear com **clamp no `t` normalizado** (default ON = Houdini `fit`; OFF = `efit`
+  extrapolador), guard `MIN_SPAN` (span degenerado → `out_lo`, nunca `NaN`). `Effect::Pure`.
+- **cena boot com 2ª cadeia de valor**: `grid → lfo → map_range → drive_y(Y)` (contínua,
+  element-wise) ao lado de `beat → counter → drive_x(X)` (discreta, broadcast). O `drive` virou
+  `drive_x`+`drive_y` — **mesmo tipo `motion.drive`**, outro canal (a regra de broadcast escala).
+  **11 nós** (era 8); teste do shell `the_continuous_lfo_chain_ripples_the_grid_in_y_element_wise`
+  (3 falsificações: Y-plano / bounds estourados / lock-step) + contagem + doc-comments.
+- **`ph2d-node-registry-init` regenerado** (34 crates — **ponto de merge textual**; resolver rodando
+  `cargo run -p ph2d-node-sync` na árvore combinada).
+- **Símbolos novos:** tipos `value.lfo`/`value.map_range`, as 2 crates, `value_lfo::VALUE` +
+  `value_map_range::VALUE` (mirrors locais do tipo, não símbolos compartilhados). **Nenhum**
+  contrato/id/token/dep novo.
+- **Gates:** value crates 12 pass + shell motion 25 pass (inclui o teste Y novo), contrato intacto
+  (NodeOp=2/OpResolver=1/NodeManifest=8), registry staleness em sync, clippy 0, fmt 1.95, typos 0,
+  machete 0, HR-5 0 (grep transcendentais nas crates novas), LOC ok (lib.rs 334/309, cap 700).
+- **Smoke (Enio):** `cd <worktree> && cargo run -p ph2d-host-desktop` → tool Motion → a grade
+  **desliza em X por beats E ondula em Y continuamente** (a onda viajante), piscando no beat. No
+  editor dá pra dropar `value.lfo → value.map_range → motion.drive` em qualquer canal.
+- **Follow-up nomeado (doc 13 §5):** `pulse.sample_hold` · `pulse.compare` (fecham o combo
+  `LFO → Counter → SampleHold → drive`) · `value.instance_field` (minta campo len-N) ·
+  `value.switch` · `value.math` (1º combinador de 2 campos de valor).
+
+*"Linha `MotionNodes` pronta (HEAD no worktree, 14 commits). Handoff acima. Aguardo ordem de
 integração."*

@@ -11,32 +11,15 @@ use ph2d_render::Camera2d;
 use ph2d_tool_painter::PainterTool;
 use ph2d_vector::VectorScene;
 
-/// The image-space tile offsets (px) to REPLICATE a shape-editor overlay across, matching the wash's
-/// Repeat-Image 3×3 (edit-in-tile, Enio 2026-07-11): the shape's wash + geometry show in the wrapped
-/// neighbour tiles, so the editable chrome is drawn there too (and the tool folds a tile grab back onto the
-/// sprite geometry). Just `[(0, 0)]` unless Repeat Image AND Tiling are on for that axis (⇒ centre tile only,
-/// unchanged). Shared by every stroke-shape overlay (curve / ellipse / polygon / line).
-pub(super) fn overlay_tile_offsets(painter: &PainterTool, iw: u32, ih: u32) -> Vec<(f64, f64)> {
-    let repeat = painter.repeat_image();
-    let tiling = painter.brush_tiling();
-    let (iwf, ihf) = (f64::from(iw), f64::from(ih));
-    let xs: &[f64] = if repeat && tiling[0] {
-        &[-iwf, 0.0, iwf]
-    } else {
-        &[0.0]
-    };
-    let ys: &[f64] = if repeat && tiling[1] {
-        &[-ihf, 0.0, ihf]
-    } else {
-        &[0.0]
-    };
-    let mut out = Vec::with_capacity(xs.len() * ys.len());
-    for &oy in ys {
-        for &ox in xs {
-            out.push((ox, oy));
-        }
-    }
-    out
+/// The image-space offsets (px) to draw a shape-editor overlay at. Currently just the geometry itself —
+/// **a single continuous overlay** (Enio 2026-07-11): a VECTOR overlay can't wrap toroidally the way the
+/// raster wash does (Repeat Image tiles the *wrapped* sprite), so per-tile copies "split" a shape crossing
+/// the seam. One continuous overlay reads cleanly — it stays VISIBLE beyond the sprite (un-clipped) and is
+/// still editable from any tile via the tool's pointer-wrap (`route_shape_pointer_multi`). This is the ONE
+/// switch: a future toroidal-wrap overlay would re-populate the 3×3 offsets here. Shared by every
+/// stroke-shape overlay (ellipse / polygon / line / op-badges); the curve overlay mirrors it inline.
+pub(super) fn overlay_tile_offsets(_painter: &PainterTool, _iw: u32, _ih: u32) -> Vec<(f64, f64)> {
+    vec![(0.0, 0.0)]
 }
 
 /// Draw every Painter editing overlay for the active tool into `vector_scene`.

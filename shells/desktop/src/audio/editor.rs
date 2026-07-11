@@ -103,7 +103,7 @@ impl AudioSystem {
         self.editor.state = EditorTransport::Stopped;
         self.editor.playing_loop_region = false;
         self.editor.loop_sig = None;
-        self.editor.scrub_frame = None;
+        self.editor.scrub_frame = Some(0);
         self.editor_fx_discard();
     }
 
@@ -131,8 +131,8 @@ impl AudioSystem {
         }
     }
 
-    /// Cycle the transport: Stopped → play from 0, Playing → pause, Paused →
-    /// resume. `looping` is read at play-from-start time.
+    /// Cycle the transport: Stopped → play from the playhead, Playing → pause,
+    /// Paused → resume. `looping` is read at play-from-start time.
     ///
     /// **Loop unifies with the region (W6):** when Loop is on AND a loop region is set,
     /// Play plays the **click-free crossfaded region** on repeat (the green brackets);
@@ -175,6 +175,25 @@ impl AudioSystem {
                     ..PlayParams::default()
                 };
                 if self.engine.play_preview(buf, params).is_ok() {
+                    // Begin at the parked playhead (the vertical line) — map it into the
+                    // buffer and seek right after starting, so Play ALWAYS starts from
+                    // the line, never sometimes at 0. Commands drain in order before the
+                    // first block renders, so there is no blip.
+                    if let Some(sf) = self.editor.scrub_frame {
+                        let start = if plays_region {
+                            self.editor
+                                .clip
+                                .as_ref()
+                                .and_then(|c| c.loop_region())
+                                .map(|lp| {
+                                    sf.clamp(lp.start as u64, lp.end as u64) - lp.start as u64
+                                })
+                                .unwrap_or(0)
+                        } else {
+                            sf
+                        };
+                        let _ = self.engine.seek_preview(start);
+                    }
                     self.editor.state = EditorTransport::Playing;
                     self.editor.started = false;
                     self.editor.playing_loop_region = plays_region;
@@ -200,7 +219,9 @@ impl AudioSystem {
         self.editor.state = EditorTransport::Stopped;
         self.editor.playing_loop_region = false;
         self.editor.loop_sig = None;
-        self.editor.scrub_frame = None; // rewind to the start
+        // Park the playhead at 0 deterministically — the engine's reported frame can
+        // linger after a free, so pin the line so the next Play starts from it.
+        self.editor.scrub_frame = Some(0);
     }
 
     /// Write the loaded clip out to `path` as a 16-bit PCM WAV.
@@ -259,6 +280,7 @@ impl AudioSystem {
                 // Confirmed-playing then went silent → the clip reached its end.
                 self.editor.state = EditorTransport::Stopped;
                 self.editor.started = false;
+                self.editor.scrub_frame = Some(0); // rewind the line to the start
             }
         }
     }

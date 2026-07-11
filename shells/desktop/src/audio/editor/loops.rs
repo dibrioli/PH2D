@@ -43,7 +43,7 @@ impl AudioSystem {
             self.editor.playing_loop_region = false;
             self.editor.loop_sig = None;
             self.editor.state = EditorTransport::Stopped;
-            self.editor.scrub_frame = None;
+            self.editor.scrub_frame = Some(0);
         }
     }
 

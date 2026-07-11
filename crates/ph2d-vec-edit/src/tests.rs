@@ -1,4 +1,7 @@
 use super::*;
+// `Rgba8` was a private `use` in the crate root until PenStyle moved to `pen_support`
+// (HR-18 split); the test constructs `PenStyle` literals, so import it directly now.
+use ph2d_vec_scene::Rgba8;
 
 /// Identidade: os testes de Pen não exercitam snap (o motor tem os seus).
 fn nosnap(p: [f64; 2]) -> [f64; 2] {

@@ -414,7 +414,7 @@ mod tests {
         let (mut sim, vec) = scene();
         let a = capture(&mut sim, &vec, &reg);
         let b = capture(&mut sim, &vec, &reg);
-        assert_eq!(a, b, "captura não-determinística → diff espúrio");
+        assert_eq!(a, b, "captura não-determinística -> diff espúrio");
     }
 
     /// E depois de um restore (ids de entidade NOVOS), capturar de novo tem de dar o
@@ -426,7 +426,7 @@ mod tests {
         let snap = capture(&mut sim, &vec, &reg);
         let (rvec, _) = snap.restore(&mut sim, &reg);
         let again = capture(&mut sim, &rvec, &reg);
-        assert_eq!(snap, again, "restore→capture != capture original");
+        assert_eq!(snap, again, "restore->capture != capture original");
     }
     /// REGRESSÃO (Enio 2026-07-09: "ao deletar não volta no mesmo lugar"). O
     /// `RootOrder` (a posição de z / linha na hierarquia) tem de sobreviver ao

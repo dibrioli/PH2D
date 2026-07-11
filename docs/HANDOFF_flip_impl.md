@@ -520,6 +520,28 @@ no pen-up. Agora o traço em curso é DOBRADO na fatia da camada ativa
 compõe pelo blend/opacity dela a cada frame (byte-idêntico ao bake). Camada-alvo
 oculta/irresolvível cai no overlay Normal (fallback: nunca desenhar às cegas).
 
+## Smoke do Enio (2026-07-11, 3ª rodada) — auto-overlap + hardness (GPU-verificados)
+
+1. **"O mesmo traço passando por cima de si mesmo é pintado por baixo"** ✅ — a
+   profundidade é **por-stroke** (todos os pontos no mesmo depth), com teste `GREATER`;
+   no auto-overlap o 2º fragmento (depth igual) falhava → a parte mais VELHA por cima.
+   Trocado p/ **`GreaterEqual`** (`pipeline::depth_greater_equal`): entre strokes/fills
+   o sid maior segue ganhando (depth estritamente maior), mas no MESMO depth a parte
+   desenhada DEPOIS compõe por cima — como o GP / uma caneta real.
+2. **"Alpha estranho com hardness < 1"** ✅ — o fragment usava `pow(1-dn, 10·(1-hard))`
+   (decai cedo demais → traço translúcido). Trocado pelo **perfil redondo do GP**:
+   `mask = 1 - smoothstep(hardness, 1, dn)` (núcleo cheio até `hardness`, queda suave
+   até a borda) com o AA de ~1px dobrado na MESMA `smoothstep`. `flip.wgsl:fs_main`.
+   **Verificados em GPU REAL** (o adapter roda neste Linux, não só Metal): novo teste
+   `a_stroke_crossing_itself_draws_the_later_part_on_top` + `hardness_controls_edge_falloff`
+   + os 4 render/composite existentes passam.
+
+**"Select do traço não" — feature FUTURA, não bug.** O que landou é seleção do OBJETO
+inteiro (gizmo de sprite, igual sprite/vetor). Selecionar/editar um TRAÇO individual é
+o **Edit Mode do Grease Pencil** — um modo à parte com hit-test por-stroke, estado de
+seleção de traço/ponto, realce e transform do subconjunto. É um pacote próprio (não um
+fix); candidato natural a W3/edit-mode. NÃO foi feito nesta rodada.
+
 ## Aberto (fora do W0/W1/W2, por design)
 
 - **W3 (próximo):** Frames · Ghost Frames · Tween — guia em **§W3-NEXT** acima.

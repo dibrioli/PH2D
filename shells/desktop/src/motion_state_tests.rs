@@ -1,9 +1,10 @@
 //! Headless demo/cook tests for `motion_state` (split for the HR-18 600-LOC
 //! shell cap; declared there as a `#[path]` sibling, so `super` is
 //! `motion_state`). Cook the default document — now the single pulse-loop scene
-//! (a `pulse.beat` metronome → `pulse.counter` → `motion.drive` for X + a
-//! `value.lfo` → `value.map_range` → `motion.drive` for Y + `motion.strobe`) —
-//! through the REAL registry, exactly as the bridge does.
+//! (a `pulse.beat` metronome → `pulse.counter` → drive for X + a `value.lfo` →
+//! `pulse.sample_hold` → `value.map_range` → drive for Y + a
+//! `value.instance_field` → `value.map_range` → drive for Size + `motion.strobe`)
+//! — through the REAL registry, exactly as the bridge does.
 
 use super::*;
 
@@ -16,11 +17,12 @@ fn new_builds_the_well_typed_pulse_document() {
         state.doc.graph.node(state.sinks[0]).unwrap().type_name,
         "motion.output"
     );
-    // 11 nodes: grid, move, tint, drive_x, drive_y, strobe, output, beat,
-    // counter, lfo, map_range. TWO value chains — the discrete beat→counter→
-    // drive_x (X, broadcast) and the continuous lfo→map_range→drive_y (Y,
-    // element-wise) — instead of the bundled motion.step (the value domain, doc 12).
-    assert_eq!(state.doc.graph.nodes().len(), 11);
+    // 15 nodes: grid, move, tint, drive_x, drive_y, drive_size, strobe, output,
+    // beat, counter, lfo, sample_hold, map_range, instance_field, size_range.
+    // THREE value chains — discrete beat→counter→drive_x (X, broadcast),
+    // sample-and-held lfo→sample_hold→map_range→drive_y (Y), and per-element
+    // instance_field→size_range→drive_size (Size) — the value domain (docs 12-14).
+    assert_eq!(state.doc.graph.nodes().len(), 15);
     assert!(state.doc.graph.validate(&state.registry).is_ok());
     assert_eq!(state.transport.playhead(1.0 / 60.0), 0.0); // paused at tick 0
 }
@@ -76,9 +78,11 @@ fn the_pulse_loop_strobes_the_grid_in_time() {
         hi > lo * 1.5,
         "the strobe must SWING (hi {hi} vs lo {lo}); a constant size = a dead loop"
     );
+    // The biggest dot's gradient base (~0.55) times the full-glow boost (×3.2)
+    // clears 1.5 — a fire boosts size well above the resting gradient.
     assert!(
         hi > 1.5,
-        "a fire boosts size well above the unit base: {hi}"
+        "a fire boosts size well above the gradient base: {hi}"
     );
 
     // Count the swells (a fire = a rise past a mid level after being below).
@@ -180,32 +184,32 @@ fn the_value_domain_sweeps_the_grid_in_discrete_notches() {
     );
 }
 
-/// The SECOND value chain (the continuous one) is alive and ELEMENT-WISE: a
-/// `value.lfo` emits a length-N field, `value.map_range` reshapes it, and a
-/// `motion.drive` routes it onto Y — so every dot bobs, and (unlike the X
-/// broadcast) the per-instance `phase_stagger` makes the dots bob *out of phase*
-/// with each other: a travelling wave. This is the doc-12 win the discrete chain
-/// can't show — the length-N element-wise path next to X's length-1 broadcast.
+/// The SAMPLE-AND-HOLD chain (Y) has the `sah~` signature: a `value.lfo` feeds a
+/// `pulse.sample_hold` triggered by the beat, so the smooth travelling wave is
+/// FROZEN into a staircase — Y holds constant between beats and steps only on
+/// them (doc 14, the doc-09 canonical combo). It stays ELEMENT-WISE: the LFO's
+/// per-instance `phase_stagger` survives the sample, so dots in the same grid row
+/// hold *different* levels (a broadcast/length-1 collapse would give one level
+/// per row).
 ///
-/// The LFO is stateless (a pure function of the playhead), so we cook at a sweep
-/// of times without advancing tick state and read Y straight off the sink.
+/// `pulse.sample_hold` is SEQUENTIAL (it holds state on a `pre` loop), so we pump
+/// ticks in order (cook → advance_tick), exactly as playback does.
 ///
-/// Falsifiable three ways: a dead LFO/map_range/drive_y chain leaves Y FLAT
-/// (min per-dot range ~0); a broken `map_range` lets the raw amplitude through so
-/// the bob exceeds its bounded span; and a BROADCAST value (the stagger lost, or
-/// a length-1 field) moves every dot in lock-step, collapsing the at-one-instant
-/// spread to zero.
+/// Falsifiable three ways: a smooth (un-held) chain would CHANGE Y within a beat
+/// interval (no plateau); a dead chain leaves Y perfectly constant forever (no
+/// step); and a broadcast collapse of the field would leave only one Y per base
+/// row (3 distinct values), not the >3 the staggered hold produces.
 #[test]
-fn the_continuous_lfo_chain_ripples_the_grid_in_y_element_wise() {
+fn the_sample_and_hold_chain_staircases_the_grid_in_y() {
     use ph2d_nodegraph::attr::Column;
 
     let state = MotionState::new();
     let strobe_sink = *state.sinks.last().unwrap();
     let mut cook = ph2d_nodegraph::cook::Cook::new();
 
-    // One full LFO period (2 s ≈ 120 ticks). Record every dot's Y each tick.
+    // Pump ~3.3 s (200 ticks ≈ 2+ beats at 1.4 s). Record every dot's Y each tick.
     let mut frames: Vec<Vec<f32>> = Vec::new();
-    for k in 0..=120u64 {
+    for k in 0..=200u64 {
         let t = k as f64 / 60.0;
         let out = cook
             .cook(&state.doc.graph, &state.registry, strobe_sink, t)
@@ -215,58 +219,95 @@ fn the_continuous_lfo_chain_ripples_the_grid_in_y_element_wise() {
             _ => Vec::new(),
         };
         frames.push(ys);
+        cook.advance_tick(&state.doc.graph, &state.registry, t)
+            .unwrap();
     }
     let n = frames[0].len();
-    assert!(
-        n >= 2,
-        "need several dots to see a travelling wave, got {n}"
-    );
+    assert!(n >= 4, "need the full grid to see the staircase, got {n}");
 
-    // Per-dot Y range over the period, and per-dot time-mean (≈ the constant base
-    // grid Y, since a full period of the wave averages out).
-    let mut ranges = Vec::with_capacity(n);
-    let mut means = Vec::with_capacity(n);
-    for i in 0..n {
-        let col: Vec<f32> = frames.iter().map(|f| f[i]).collect();
-        let hi = col.iter().copied().fold(f32::MIN, f32::max);
-        let lo = col.iter().copied().fold(f32::MAX, f32::min);
-        ranges.push(hi - lo);
-        means.push(col.iter().sum::<f32>() / col.len() as f32);
-    }
-
-    // ALIVE: every dot bobs (the map_range [-0.5,0.5] span → ~1.0 of travel). A
-    // dead value chain leaves Y flat.
-    let min_range = ranges.iter().copied().fold(f32::MAX, f32::min);
-    assert!(
-        min_range > 0.5,
-        "every dot must bob in Y (min range {min_range}); a flat Y = a dead LFO chain"
+    // HOLDS: the beat fires at tick 0 and ~tick 84 (period 1.4 s). Ticks 20 and 60
+    // are inside the first hold interval → dot 0's Y is IDENTICAL (a plateau). A
+    // smooth chain would keep moving between the beats.
+    assert_eq!(
+        frames[20][0], frames[60][0],
+        "Y holds constant between beats (the sample-and-hold plateau)"
     );
-    // BOUNDED by the glue: map_range clamps the raw [-1,1] into [-0.5,0.5], so no
-    // dot travels much past 1.0. A bypassed map_range would let the amplitude through.
-    let max_range = ranges.iter().copied().fold(f32::MIN, f32::max);
-    assert!(
-        max_range < 1.2,
-        "the bob is bounded by map_range (max range {max_range}); a raw LFO would overshoot"
+    // STEPS: across a beat (tick 60 held-from-0 vs tick 120 held-from-~84) dot 0's
+    // Y changes — the staircase steps. A frozen/dead chain never moves.
+    assert_ne!(
+        frames[60][0], frames[120][0],
+        "Y steps to a new held level on the next beat"
     );
-    // ELEMENT-WISE: at one mid-swing instant, subtract each dot's own base Y —
-    // the remaining displacements are NOT all equal (the travelling wave). A
-    // length-1 broadcast would move every dot by the identical amount → spread 0.
-    let mid = 30usize; // t = 0.5 s, a quarter period in
-    let disp: Vec<f32> = (0..n).map(|i| frames[mid][i] - means[i]).collect();
-    let dhi = disp.iter().copied().fold(f32::MIN, f32::max);
-    let dlo = disp.iter().copied().fold(f32::MAX, f32::min);
+    // ELEMENT-WISE: at a held instant, the number of DISTINCT Y values exceeds the
+    // 3 grid rows — dots that share a base row hold different sampled levels (the
+    // stagger survived the hold). A broadcast/length-1 collapse → exactly 3.
+    let round = |v: f32| (v * 1000.0).round() as i64;
+    let mut distinct: Vec<i64> = frames[60].iter().map(|&y| round(y)).collect();
+    distinct.sort_unstable();
+    distinct.dedup();
     assert!(
-        dhi - dlo > 0.2,
-        "the per-instance stagger makes dots differ at one instant (spread {}); \
-         a broadcast value would move them in lock-step",
-        dhi - dlo
+        distinct.len() > 3,
+        "the staggered hold gives >3 distinct Y (got {}); a broadcast collapse would give 3 (one per row)",
+        distinct.len()
     );
 }
 
-/// The default document replays bit-identically. The three `pre` self-loops of
-/// the pulse loop — the beat's cycle index, the counter's monotonic tick, and the
-/// strobe's decaying `glow` — carry only integer/flag state, so two runs match
-/// exactly (HR-5).
+/// The SPATIAL chain (Size) proves `value.instance_field` mints per-element
+/// variation: the dots carry a size GRADIENT (small → big by index), not one
+/// uniform size. This is the doc-14 capability nothing before could show — a
+/// length-N field born from instance identity, not a behaviour's private stagger.
+///
+/// Read at a tick deep inside a hold interval, where the strobe's glow has
+/// decayed to ~0, so the size is the bare gradient (not a flash). Falsifiable: a
+/// dead/absent instance_field leaves every dot the same size (spread ~0); a
+/// bypassed size_range would let the raw 0..1 ramp through (overshooting the span).
+#[test]
+fn the_instance_field_chain_gives_the_grid_a_size_gradient() {
+    use ph2d_nodegraph::attr::Column;
+
+    let state = MotionState::new();
+    let strobe_sink = *state.sinks.last().unwrap();
+    let mut cook = ph2d_nodegraph::cook::Cook::new();
+
+    // Pump to tick 60 — inside the first hold interval, ~60 ticks after the
+    // tick-0 beat, so the glow (decay 0.88) has faded to ≈0.
+    let mut sizes: Vec<f32> = Vec::new();
+    for k in 0..=60u64 {
+        let t = k as f64 / 60.0;
+        let out = cook
+            .cook(&state.doc.graph, &state.registry, strobe_sink, t)
+            .unwrap();
+        if k == 60 {
+            sizes = match out[0].as_stream().get("size") {
+                Some(Column::Vec2(v)) => v.iter().map(|s| s[0]).collect(),
+                _ => Vec::new(),
+            };
+        }
+        cook.advance_tick(&state.doc.graph, &state.registry, t)
+            .unwrap();
+    }
+    assert!(sizes.len() >= 4, "need the full grid, got {}", sizes.len());
+
+    let hi = sizes.iter().copied().fold(f32::MIN, f32::max);
+    let lo = sizes.iter().copied().fold(f32::MAX, f32::min);
+    // A real GRADIENT: sizes span a visible range, not one uniform value.
+    assert!(
+        hi - lo > 0.1,
+        "instance_field must spread the sizes (got [{lo}, {hi}]); a uniform size = a dead field"
+    );
+    // BOUNDED by size_range (0.3..0.55) with the glow ≈ 0: a bypassed range would
+    // let the raw 0..1 ramp through and blow past the span.
+    assert!(
+        hi < 0.6,
+        "the gradient is bounded by size_range at rest (max {hi}); a raw ramp would overshoot"
+    );
+}
+
+/// The default document replays bit-identically. The four `pre` self-loops of
+/// the scene — the beat's cycle index, the counter's monotonic tick, the
+/// sample_hold's held value, and the strobe's decaying `glow` — carry only
+/// integer/flag/sampled state, so two runs match exactly (HR-5; the LFO,
+/// map_ranges and instance_field are stateless pure functions).
 #[test]
 fn the_default_document_replays_deterministically() {
     use ph2d_eval_motion::MotionCookPump;

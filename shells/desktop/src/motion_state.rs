@@ -55,10 +55,11 @@ pub(crate) struct MotionState {
 
 impl MotionState {
     /// Build the boot state: register every node op + the **default document** —
-    /// a single, focused scene: the pulse loop plus TWO value chains (a
-    /// `pulse.beat` metronome → `pulse.counter` → `motion.drive` for X, a
-    /// `value.lfo` → `value.map_range` → `motion.drive` for Y, + `motion.strobe`),
-    /// the module's most recent work (docs/Motion Nodes/06, 08, 09, 12). The earlier showcase scenes (the Cavalry
+    /// a single, focused scene: the pulse loop plus THREE value chains (a
+    /// `pulse.beat` metronome → `pulse.counter` → drive for X, a
+    /// `value.lfo` → `pulse.sample_hold` → `value.map_range` → drive for Y, a
+    /// `value.instance_field` → `value.map_range` → drive for Size, + `motion.strobe`),
+    /// the module's most recent work (docs/Motion Nodes/06, 08, 09, 12, 13, 14). The earlier showcase scenes (the Cavalry
     /// grid rig and the particle fountain) were removed to keep the boot
     /// document focused; they live in git history and every node keeps its own
     /// unit tests. Transport paused at tick 0 (the bridge auto-plays on tool entry).
@@ -90,14 +91,15 @@ impl MotionState {
 /// is well-typed.
 ///
 /// The scene — built in the `strobe` sibling module — is the smallest closed
-/// pulse loop plus the value domain's two chains: a `pulse.beat` metronome emits
+/// pulse loop plus the value domain's three chains: a `pulse.beat` metronome emits
 /// the pulse straight from the playhead; a `pulse.counter` reduces it to a value
 /// that a `motion.drive` BROADCASTS onto X (sweeping the whole grid in discrete
-/// notches); in parallel a `value.lfo` → `value.map_range` feeds a second
-/// `motion.drive` ELEMENT-WISE onto Y (a continuous travelling wave); and a
-/// `motion.strobe` flashes on the same beat. No transform channel is involved in
-/// the clocking (doc 09 killed the oscillate-Rotation-into-a-threshold hack). See
-/// docs/Motion Nodes/06 (pulse), 08 (counter), 09 (beat + naming), 12 (value).
+/// notches); a `value.lfo` → `pulse.sample_hold` → `value.map_range` SAMPLES-AND-
+/// HOLDS onto Y (a staircased travelling wave); a `value.instance_field` →
+/// `value.map_range` mints a per-element Size gradient; and a `motion.strobe`
+/// flashes on the same beat. No transform channel is involved in the clocking
+/// (doc 09 killed the oscillate-Rotation-into-a-threshold hack). See docs/Motion
+/// Nodes/06 (pulse), 08 (counter), 09 (beat), 12 (value), 13 (lfo), 14 (s&h+field).
 ///
 /// The earlier showcase scenes were removed to keep the boot document focused on
 /// the recent implementation: the **Cavalry grid rig** (clone / orbit / falloff /

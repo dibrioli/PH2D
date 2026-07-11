@@ -13,6 +13,35 @@ use super::watercolor_field::{
 use ph2d_painter_brush::TextureSettings;
 use ph2d_painter_brush::texture::{ImageMask, angle_basis, sample_tiled_rot};
 
+/// Fill the canvas-anchored `paper_h` cache for the region's MISSES (`NaN`), serially, so the parallel
+/// composite reads it immutably (perf memo; single-substrate only — the caller gates on `!multi()`).
+/// A FREE fn, not a method: it borrows only the `substrate` slice, disjoint from the composite's live
+/// `paper_img` borrow of `self` (a `&mut self` method would alias it). Split from the composite (LOC).
+/// `region = (x0, y0, bw, bh)` in canvas px. Seamless Tiling wraps the built-in noise via `tile` (#2).
+#[allow(clippy::too_many_arguments)]
+pub(super) fn fill_substrate_cache(
+    substrate: &mut [f32],
+    paper_active: bool,
+    paper_tex: &TextureSettings,
+    paper_img: Option<&ImageMask>,
+    paper_rot: [f32; 2],
+    region: (usize, usize, usize, usize),
+    fw: usize,
+    tile: NoiseTile,
+) {
+    let (x0, y0, bw, bh) = region;
+    for by in 0..bh {
+        let gy = y0 + by;
+        for bx in 0..bw {
+            let sidx = gy * fw + (x0 + bx);
+            if substrate[sidx].is_nan() {
+                substrate[sidx] =
+                    paper_h_px(paper_active, paper_tex, paper_img, paper_rot, x0 + bx, gy, tile);
+            }
+        }
+    }
+}
+
 /// Wet-on-wet **LIFT** applied to the (linear) session base `sb`: rewetting pulls the base's pigment off
 /// toward the LOCAL `ground`, density-proportional in log space, so a lifted red on white reads pink and
 /// on grey reads grey-pink (both directions converge on the ground, never past it). `lift = 0` ⇒ no-op.

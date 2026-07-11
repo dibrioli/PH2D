@@ -116,19 +116,9 @@ impl PainterTool {
         // Silhouette-feather radius (`inner`), capped so a pool keeps a saturated core (see below).
         let core_r = spread.min(((self.paint.brush.radius_px * 0.5).round() as usize).max(1));
         // EDGE-1 per-stroke style (doc 13 topo): geometry/field paths take the SESSION MAXIMA
-        // (any stroke with water builds the fields; the widest warp/spread pads the window; the
-        // blur radii are global passes) — per-pixel terms resolve the OWNER's values in the loop.
-        let (wet_any, warp_any, spread_any, core_any) = self.paint.wet_styles.table.iter().fold(
-            (wet, warp_amp, spread, core_r),
-            |(w, wa, sm, cm), s| {
-                (
-                    w.max(s.wet),
-                    wa.max(s.warp),
-                    sm.max(s.spread_px as usize),
-                    cm.max(s.core_r as usize),
-                )
-            },
-        );
+        // (see `session_maxima`) — per-pixel terms resolve the OWNER's values in the loop.
+        let (wet_any, warp_any, spread_any, core_any) =
+            self.paint.wet_styles.session_maxima(wet, warp_amp, spread, core_r);
         // Influence radius of a dab beyond its own disc (blur reach + warp + rounding slack):
         // dry = the capped feather only (a tight window); Wet = the dissolve's spread; a session
         // that poured dwell reads a 2× blur, so the reach doubles.
@@ -323,24 +313,16 @@ impl PainterTool {
         // paper/grain per owner (see `SubstrateSession`).
         let use_substrate_cache = self.paint.wet_substrate.len() == n && !substrate_session.multi();
         if use_substrate_cache {
-            let substrate = &mut self.paint.wet_substrate;
-            for by in 0..bh {
-                let gy = y0 + by;
-                for bx in 0..bw {
-                    let sidx = gy * fw + (x0 + bx);
-                    if substrate[sidx].is_nan() {
-                        substrate[sidx] = paper_h_px(
-                            paper_active,
-                            &paper_tex,
-                            paper_img.as_ref(),
-                            paper_rot,
-                            x0 + bx,
-                            gy,
-                            noise_tile,
-                        );
-                    }
-                }
-            }
+            watercolor_rewet_px::fill_substrate_cache(
+                &mut self.paint.wet_substrate,
+                paper_active,
+                &paper_tex,
+                paper_img.as_ref(),
+                paper_rot,
+                (x0, y0, bw, bh),
+                fw,
+                noise_tile,
+            );
         }
         let substrate = &self.paint.wet_substrate;
         // Selection + protection gates (final enforcement): the splats already stop the wash
@@ -382,21 +364,8 @@ impl PainterTool {
                         .as_ref()
                         .map_or(st_warp, |sf| sf.sample_warp(lx, ly, st_warp));
                     let (sx, sy) = if st_warp > 0.0 {
-                        let wx = warp_axis(
-                            gx as f32,
-                            gy as f32,
-                            SEED_WARP_X_A,
-                            SEED_WARP_X_B,
-                            noise_tile,
-                        ) * st_warp;
-                        let wy = warp_axis(
-                            gx as f32,
-                            gy as f32,
-                            SEED_WARP_Y_A,
-                            SEED_WARP_Y_B,
-                            noise_tile,
-                        ) * st_warp;
-                        (lx + wx, ly + wy)
+                        let (wx, wy) = warp_offset(gx as f32, gy as f32, noise_tile);
+                        (lx + wx * st_warp, ly + wy * st_warp)
                     } else {
                         (lx, ly)
                     };

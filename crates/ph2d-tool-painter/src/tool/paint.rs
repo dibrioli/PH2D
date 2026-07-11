@@ -56,6 +56,8 @@ mod watercolor_field;
 mod watercolor_lut;
 /// Watercolor Wet Mix mixer-brush state (Charge/Dilution/Pull) — per-dab colour pickup + carry.
 mod watercolor_mixer;
+/// Watercolor canvas-anchored value noise + [`NoiseTile`] sprite-wrap (seamless tiling, doc 13 #2).
+mod watercolor_noise;
 /// Watercolor edge darkening (#1): per-stroke coverage + the pen-up blur-difference "fringe" pass.
 mod watercolor_render;
 /// Watercolor per-pixel rewet terms (lift/dissolve/pool/backrun); split from `watercolor_render`.

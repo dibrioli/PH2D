@@ -40,8 +40,8 @@ pub use binding::{TargetBinding, WireId};
 pub use clipboard::{ClipboardKey, TimelineClipboard};
 pub use doc::{DEFAULT_FPS, DOC_VERSION, Marker, NamedClip, TimelineDoc};
 pub use graph::{
-    drawn_extent, handle_coords, handle_point, sample_keys, segment_handle_points, value_extent,
-    weighted_with_endpoint_speed, weighted_with_handle,
+    drawn_extent, handle_coords, handle_point, sample_keys, segment_handle_points,
+    speed_handle_tip, value_extent, weighted_with_handle, weighted_with_speed_handle,
 };
 pub use history::{HISTORY_CAP, TimelineHistory};
 pub use intent::{TimelineIntent, apply_intent, snap_time};

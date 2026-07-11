@@ -183,6 +183,8 @@ novos de slope + 154 anim+timeline + 290 total com painel + clippy `--all-target
 
 **Prova:** 5 testes no motor (flat-bulge — a red-assertion da feature · equivalência lossless · derivada vs fd · cascata degenerada/vertical · legado == caminho antigo) + golden `sample_keys` estendido com key W + drags do painel re-especificados (flat toma o valor · overshoot em dy · speed em flat) + round-trip serde com W + **2 mutações dirigidas**: (a) remover o branch W do `interpolate` → o golden bit-a-bit acusa o desalinhamento painel↔runtime; (b) zerar o dy no motor → flat-bulge vermelho. 506/506 nas 4 crates; clippy `--all-targets` verde. O produtor de speed tinha um bug pego pelo compilador durante o build (retunava as DUAS pontas) — corrigido + teste reforçado (a outra ponta não se move).
 
+**§10.1 — Speed handles AE-style (braço de influência, mesmo dia; smoke do Enio pediu paridade com o AE):** cada endpoint no speed graph agora desenha **âncora** no ponto de velocidade do key + **braço horizontal** cujo comprimento É a influência + **ponta arrastável** (`speed_handle_tip` em ph2d-timeline dá a posição; hit na PONTA, mesmo id `CurveHandle`). A ponta edita em **2D como no AE**: vertical = velocidade, horizontal = influência — um único producer `weighted_with_speed_handle(k0,k1,which,t,v)` (influência clampada ao segmento e longe do zero degenerado, `MIN_INFLUENCE = 1e-3` = os 0.1% do AE); o lado oposto NUNCA se move. `weighted_with_endpoint_speed` (vertical-only, existiu por ~1 commit) foi **removido** — superseded. Testes: round-trip da ponta (influência mantida em drag vertical) · drag horizontal seta a influência · mutação no eixo horizontal morde. 507/507.
+
 ---
 
 ## Cauda da W4 ainda aberta (para a próxima rodada — decisão do Enio)

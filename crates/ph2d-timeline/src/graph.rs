@@ -159,29 +159,49 @@ pub fn weighted_with_handle(k0: &KeyView, k1: &KeyView, which: u8, t: f64, v: f6
     weighted_from_points(k0, k1, out, inn)
 }
 
-/// A weighted tangent pair whose `which` endpoint moves at `speed` (value
-/// units per second), keeping both influences and the other side's offset.
-/// Inverse of the endpoint velocity: `v(start) = dy1 / (x1·span)` and
-/// `v(end) = −dy2 / ((1−x2)·span)`. A degenerate influence (`x1 == 0` /
-/// `x2 == 1`) has no finite tangent to retune — the handle keeps its offset.
+/// AE's minimum influence (0.1%): a zero-influence side has no tangent to
+/// author a speed with (`speed = dy / (x·span)` degenerates), so the speed
+/// graph's horizontal drag clamps just short of it.
+const MIN_INFLUENCE: f64 = 1.0e-3;
+
+/// The speed graph's editable handle TIP for one side of a segment (AE's
+/// yellow arm): it extends horizontally from the key's speed point, and its
+/// length IS the influence — the tip sits at `(t0 + x·span, endpoint speed)`.
+/// `None` when the endpoint speed is not finite (a vertical tangent: the
+/// curve spikes off-band and there is nothing to grab).
 #[must_use]
-pub fn weighted_with_endpoint_speed(k0: &KeyView, k1: &KeyView, which: u8, speed: f64) -> Interp {
+pub fn speed_handle_tip(k0: &KeyView, k1: &KeyView, which: u8) -> Option<(f64, f64)> {
+    let speed = crate::speed::segment_endpoint_speed(k0, k1, which);
+    if !speed.is_finite() {
+        return None;
+    }
+    let [out, inn] = segment_handle_points(k0, k1);
+    let t = if which == 0 { out.0 } else { inn.0 };
+    Some((t, speed))
+}
+
+/// A weighted tangent pair from one SPEED-graph handle drag — the AE gesture:
+/// the pointer's `t` sets that side's INFLUENCE (the arm's length, clamped to
+/// the segment and away from [`MIN_INFLUENCE`]'s degenerate zero) and `v` its
+/// SPEED (value units per second): `dy1 = v·x1·span` / `dy2 = −v·(1−x2)·span`.
+/// The other side keeps the position it is drawn at — a speed edit on one key
+/// must not silently re-ease the far end of the segment.
+#[must_use]
+pub fn weighted_with_speed_handle(k0: &KeyView, k1: &KeyView, which: u8, t: f64, v: f64) -> Interp {
     let span = k1.t_seconds - k0.t_seconds;
     let (t0, v0) = (k0.t_seconds, f64::from(k0.value));
     let v1 = f64::from(k1.value);
     let [out, inn] = segment_handle_points(k0, k1);
-    let x1 = if span > 0.0 { (out.0 - t0) / span } else { 0.0 };
-    let x2 = if span > 0.0 { (inn.0 - t0) / span } else { 1.0 };
-    // Only the ASKED endpoint is retuned; the other side keeps the offset it
-    // is drawn at (a speed edit on one key must not silently re-ease the far
-    // end of the segment).
+    let mut x1 = if span > 0.0 { (out.0 - t0) / span } else { 0.0 };
+    let mut x2 = if span > 0.0 { (inn.0 - t0) / span } else { 1.0 };
     let (mut dy1, mut dy2) = (out.1 - v0, inn.1 - v1);
+    let u = if span > 0.0 { (t - t0) / span } else { 0.0 };
     if which == 0 {
-        if x1 > 0.0 {
-            dy1 = speed * x1 * span;
-        }
-    } else if x2 < 1.0 {
-        dy2 = -speed * (1.0 - x2) * span;
+        x1 = u.clamp(MIN_INFLUENCE, 1.0); // CLAMP-OK: const bounds, min<max
+        dy1 = v * x1 * span;
+    } else {
+        x2 = u.clamp(0.0, 1.0 - MIN_INFLUENCE); // CLAMP-OK: const bounds, min<max
+        dy2 = -v * (1.0 - x2) * span;
     }
     Interp::bezier_w(x1, dy1, x2, dy2)
 }

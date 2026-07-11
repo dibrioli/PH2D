@@ -196,14 +196,17 @@ mod tests {
         // sloped segment AND on a flat one — the flat case is the capability
         // weighted tangents add (the old normalized inverse had no value
         // change to scale and declined).
-        use crate::graph::weighted_with_endpoint_speed;
+        use crate::graph::{speed_handle_tip, weighted_with_speed_handle};
         for (v0, v1) in [(0.0f32, 10.0f32), (5.0, 5.0)] {
             let k0 = key(0.0, v0, Interp::Linear);
             let k1 = key(2.0, v1, Interp::Linear);
             for which in [0u8, 1u8] {
                 let before_other = segment_endpoint_speed(&k0, &k1, 1 - which);
+                // A vertical-only drag: the pointer stays at the tip's t (the
+                // influence holds) and asks for velocity 15.
+                let (tip_t, _) = speed_handle_tip(&k0, &k1, which).unwrap();
                 let mut k0w = k0.clone();
-                k0w.interp = weighted_with_endpoint_speed(&k0, &k1, which, 15.0);
+                k0w.interp = weighted_with_speed_handle(&k0, &k1, which, tip_t, 15.0);
                 let got = segment_endpoint_speed(&k0w, &k1, which);
                 assert!(
                     (got - 15.0).abs() < 1e-9,
@@ -216,6 +219,10 @@ mod tests {
                     (other - before_other).abs() < 1e-9,
                     "v0={v0} which={which}: far end moved {before_other} -> {other}"
                 );
+                // ...and the tip itself round-trips: same influence, new speed.
+                let (t_after, s_after) = speed_handle_tip(&k0w, &k1, which).unwrap();
+                assert!((t_after - tip_t).abs() < 1e-9, "influence held: {t_after}");
+                assert!((s_after - 15.0).abs() < 1e-9);
             }
         }
     }
@@ -298,12 +305,13 @@ mod tests {
         // End to end against the sampler: a segment eased slow-in has a low
         // start speed; retuning the endpoint to a HIGHER speed through the
         // weighted producer and reading the sampler back lands on the target.
-        use crate::graph::weighted_with_endpoint_speed;
+        use crate::graph::{speed_handle_tip, weighted_with_speed_handle};
         let k0 = key(0.0, 0.0, Interp::bezier(1.0 / 3.0, 0.05, 0.66, 1.0)); // slow in
         let k1 = key(2.0, 10.0, Interp::Linear);
         let s0 = sample_speed(&[k0.clone(), k1.clone()], 0.02).unwrap();
+        let (tip_t, _) = speed_handle_tip(&k0, &k1, 0).unwrap();
         let mut k0w = k0.clone();
-        k0w.interp = weighted_with_endpoint_speed(&k0, &k1, 0, 12.0);
+        k0w.interp = weighted_with_speed_handle(&k0, &k1, 0, tip_t, 12.0);
         let s1 = sample_speed(&[k0w, k1], 0.02).unwrap();
         assert!(s1 > s0, "start speed rose: {s0} -> {s1}");
         // ...and lands near the 12 asked for (sampled just off the endpoint).

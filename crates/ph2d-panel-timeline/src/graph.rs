@@ -18,9 +18,7 @@
 //! gesture.
 
 use ph2d_editor_core::zones::Rect;
-use ph2d_timeline::{
-    TimelineIntent, TrackView, weighted_with_endpoint_speed, weighted_with_handle,
-};
+use ph2d_timeline::{TimelineIntent, TrackView, weighted_with_handle, weighted_with_speed_handle};
 
 use crate::state::{self, HandleDrag, TimelinePanelState};
 
@@ -227,9 +225,9 @@ pub(crate) fn resolve_drag(
     // finally takes the drag (its `dy` is absolute, the gap the normalized form
     // could not express).
     let interp = if state.speed_view {
-        // Speed edit: the pointer's y is a VELOCITY — retune that endpoint's
-        // tangent, keeping its influence.
-        weighted_with_endpoint_speed(k0, k1, d.which, band.value(d.y))
+        // Speed edit, the AE gesture: vertical = VELOCITY, horizontal =
+        // INFLUENCE (the arm's length) — one tip drags both.
+        weighted_with_speed_handle(k0, k1, d.which, view.t(d.x), band.value(d.y))
     } else {
         // Value edit: the dragged handle follows the pointer in (time, value).
         weighted_with_handle(k0, k1, d.which, view.t(d.x), band.value(d.y))

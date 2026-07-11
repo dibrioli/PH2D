@@ -15,8 +15,8 @@ use ph2d_editor_core::paint::{
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::zones::Rect;
 use ph2d_timeline::{
-    KeyView, TrackView, drawn_extent, sample_keys, sample_speed, segment_endpoint_speed,
-    segment_handle_points, speed_extent,
+    KeyView, TrackView, drawn_extent, sample_keys, sample_speed, segment_handle_points,
+    speed_extent, speed_handle_tip,
 };
 use ph2d_tokens::{ColorToken, Radius, Spacing, StrokeToken, Theme, TypeToken};
 
@@ -403,14 +403,15 @@ fn paint_speed_curve(
     );
 }
 
-/// Each selected segment's start/end VELOCITY as a draggable dot AT its key
-/// (AE's convention: speed handles attach at the keyframes — velocity is
-/// discontinuous there, so a shared key shows the in dot and the out dot of its
-/// two segments stacked at the same x). Dragging one vertically retunes that
-/// endpoint's speed → the bézier tangent (`graph::resolve_drag` in speed mode).
-/// Reuses the value handles' `CurveHandle` id/hit — only one of the two handle
-/// sets is painted per frame. A non-finite speed (vertical tangent) paints no
-/// dot: the curve spikes off-band there and there is no point to grab.
+/// Each selected segment's speed handle as AE draws it: an ANCHOR dot at the
+/// key's speed point (velocity is discontinuous at a key, so a shared key
+/// shows the in and out dots of its two segments stacked at the same x), a
+/// horizontal ARM whose length is the influence, and a draggable TIP at its
+/// end — vertical drag retunes the SPEED, horizontal drag the INFLUENCE
+/// (`graph::resolve_drag` in speed mode). Reuses the value handles'
+/// `CurveHandle` id/hit — only one of the two handle sets is painted per
+/// frame. A non-finite speed (vertical tangent) paints nothing: the curve
+/// spikes off-band there and there is no point to grab.
 fn paint_speed_handles(
     ctx: &mut PaintCtx,
     theme: Theme,
@@ -426,19 +427,33 @@ fn paint_speed_handles(
             continue;
         }
         for which in [0u8, 1u8] {
-            let speed = segment_endpoint_speed(k0, k1, which);
-            if !speed.is_finite() {
+            let Some((tip_t, speed)) = speed_handle_tip(k0, k1, which) else {
                 continue;
-            }
-            let t = if which == 0 {
+            };
+            let key_t = if which == 0 {
                 k0.t_seconds
             } else {
                 k1.t_seconds
             };
-            let (px, py) = (view.x(t), band.y(speed));
+            let py = band.y(speed);
+            let (ax, px) = (view.x(key_t), view.x(tip_t));
             if px < band.rect.x || px > band.rect.x + band.rect.w {
                 continue;
             }
+            // The influence arm, from the key's speed point out to its tip.
+            stroke_polyline(
+                ctx.scene,
+                &[(ax, py), (px, py)],
+                StrokeToken::Thin.px(),
+                resolve(ColorToken::TimelineHandleLine, theme),
+            );
+            fill_circle(
+                ctx.scene,
+                ax,
+                py,
+                ANCHOR_R,
+                resolve(ColorToken::TimelineKey, theme),
+            );
             let dragged = state
                 .handle_drag
                 .is_some_and(|d| d.target == target && d.key == k0.id.get() && d.which == which);

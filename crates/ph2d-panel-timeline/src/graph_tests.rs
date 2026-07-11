@@ -212,10 +212,45 @@ fn dragging_a_speed_handle_retunes_the_tangent_to_that_velocity() {
         (velocity - 20.0).abs() < 1e-9,
         "start velocity must be the 20 the pointer asked: {velocity}"
     );
+    // The AE gesture's second axis: the pointer sat at x = 50 px = t = 0.5,
+    // so the horizontal component set the INFLUENCE to 0.5 (arm half-way).
     assert!(
-        (x1 - 1.0 / 3.0).abs() < 1e-9,
-        "the influence x is kept, not moved: {x1}"
+        (x1 - 0.5).abs() < 1e-9,
+        "the horizontal drag sets the influence: {x1}"
     );
+}
+
+#[test]
+fn a_vertical_speed_drag_from_the_tip_keeps_the_influence() {
+    // Dragging straight up from the tip: the pointer's x stays at the arm's
+    // end (t = x1·span = 1/3 s → 33.33 px), so only the speed changes — the
+    // influence the author had holds.
+    let band = Band::fit(ROW, Some((0.0, 40.0)));
+    let tip_x = (100.0f64 / 3.0) as f32;
+    let tr = track(Interp::Linear);
+    let mut st = TimelinePanelState {
+        speed_view: true,
+        ..TimelinePanelState::default()
+    };
+    apply_handle_gesture(&mut st, 9, 1, 0, gesture(GesturePhase::Begin, tip_x, 0.0));
+    apply_handle_gesture(&mut st, 9, 1, 0, gesture(GesturePhase::End, tip_x, 50.0));
+    resolve_drag(&mut st, &band, VIEW, &tr);
+    let got = state::drain_intents();
+    let Some(TimelineIntent::SetInterp {
+        interp: Interp::BezierW { x1, dy1, .. },
+        ..
+    }) = got
+        .iter()
+        .find(|i| matches!(i, TimelineIntent::SetInterp { .. }))
+    else {
+        panic!("no weighted SetInterp in {got:?}")
+    };
+    assert!(
+        (x1 - 1.0 / 3.0).abs() < 1e-6,
+        "vertical-only: influence held at 1/3: {x1}"
+    );
+    let velocity = dy1 / x1;
+    assert!((velocity - 20.0).abs() < 1e-3, "speed follows: {velocity}");
 }
 
 #[test]

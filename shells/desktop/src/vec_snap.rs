@@ -16,9 +16,13 @@
 //! "quebrar a tangente" ao AGARRAR um handle, mas isso é decidido no Down e handles
 //! nunca encaixam, então os dois usos não se cruzam.
 
+use crate::Transform;
 use crate::app_state::App;
+use ph2d_ecs::{Entity, SimWorld, VecPathRef};
 use ph2d_editor::grid_snap::GridSnapState;
-use ph2d_vec_edit::snap::{SnapConfig, SnapResult, SnapTargets, collect_targets, snap};
+use ph2d_vec_edit::snap::{
+    SnapConfig, SnapResult, SnapTargets, bbox_key_points, collect_targets, snap,
+};
 use ph2d_vec_render::Guide;
 use ph2d_vec_scene::VecPathId;
 
@@ -133,6 +137,130 @@ impl App {
     /// Zera as guias (fim de gesto / gesto sem encaixe).
     pub(crate) fn vec_clear_snap_guides(&mut self) {
         self.vec_snap_guides.clear();
+    }
+
+    /// Os pontos-FONTE de um arrasto de forma/grupo: os 9 pontos-chave da bbox de
+    /// curva COMBINADA (mundo) mais cada âncora dos membros. Um grupo alinha como um
+    /// bloco rígido só (a bbox combinada), e cada vértice ainda pode encaixar.
+    fn vec_move_sources(&self, ids: &[VecPathId]) -> Vec<[f64; 2]> {
+        let Some(gfx) = self.gfx.as_ref() else {
+            return Vec::new();
+        };
+        let xf = crate::vec_transform::build(&gfx.sim, &self.vec_entities);
+        let mut pts = Vec::new();
+        let (mut lo, mut hi) = ([f64::INFINITY; 2], [f64::NEG_INFINITY; 2]);
+        let mut any = false;
+        for &id in ids {
+            if let Some(p) = gfx.vec_scene.paths().iter().find(|p| p.id == id) {
+                let x = ph2d_vec_scene::xform_of(&xf, id);
+                for v in p.verts_all() {
+                    pts.push(x.apply(v.anchor));
+                }
+            }
+            if let Some((l, h)) = gfx.vec_scene.path_world_curve_bbox(&xf, id) {
+                lo[0] = lo[0].min(l[0]);
+                lo[1] = lo[1].min(l[1]);
+                hi[0] = hi[0].max(h[0]);
+                hi[1] = hi[1].max(h[1]);
+                any = true;
+            }
+        }
+        if any {
+            pts.extend(bbox_key_points(lo, hi));
+        }
+        pts
+    }
+
+    /// Encaixa a FORMA/GRUPO arrastado (`ids`) contra a cena + grade pelo motor puro
+    /// `ph2d_vec_edit::snap`, registra as GUIAS, e devolve o delta de MUNDO a somar aos
+    /// `Transform` de todos os membros. `[0, 0]` se nada encaixou. É o análogo de
+    /// [`Self::vec_snap_point`] para um arrasto de objeto (várias fontes, um delta).
+    fn vec_snap_move(&mut self, ids: &[VecPathId]) -> [f64; 2] {
+        let sources = self.vec_move_sources(ids);
+        if sources.is_empty() {
+            self.vec_snap_guides.clear();
+            return [0.0, 0.0];
+        }
+        let cfg = self.vec_snap_cfg(self.vec_px_to_world());
+        let targets = std::mem::take(&mut self.vec_snap_targets);
+        let mut hero = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut());
+        let mut grid = |q: [f64; 2]| {
+            let h = hero.as_mut()?;
+            ask_grid(&mut h.grid.snap_state, q)
+        };
+        let r = snap(&sources, &targets, cfg, Some(&mut grid));
+        self.vec_snap_targets = targets;
+        self.vec_snap_guides = guides_of(&r);
+        r.delta()
+    }
+
+    /// Snap vetorial em TEMPO REAL durante um arraste de gizmo: chamado a cada
+    /// `CursorMoved`, logo depois de `advance_gizmo_drag` seguir o cursor. Encaixa a
+    /// forma/grupo (bordas/centros/vértices, X e Y independentes, mais a grade) e
+    /// desliza TODOS os membros pelo mesmo delta — um grupo alinha como bloco rígido.
+    /// As guias aparecem no frame. No-op se não há drag, se é `MovePivot`, ou se nada
+    /// arrastado é vetorial.
+    pub(crate) fn snap_dragged_vec_during_drag(&mut self) {
+        let drag = self
+            .gfx
+            .as_ref()
+            .and_then(|g| g.hero_screen.as_ref())
+            .and_then(|h| h.gizmo.drag);
+        let Some(drag) = drag else {
+            self.vec_snap_guides.clear();
+            return;
+        };
+        if matches!(drag.kind, ph2d_editor::GizmoDragKind::MovePivot) {
+            return;
+        }
+        let mut bits = vec![drag.entity_bits];
+        bits.extend(self.group_drag_starts.iter().map(|s| s.entity_bits));
+        let ids: Vec<VecPathId> = self.gfx.as_ref().map_or_else(Vec::new, |g| {
+            bits.iter()
+                .filter_map(|&b| {
+                    g.sim
+                        .world()
+                        .get::<VecPathRef>(Entity::from_bits(b))
+                        .map(|v| v.0)
+                })
+                .collect()
+        });
+        if ids.is_empty() {
+            return;
+        }
+        // Alvos = tudo menos o que se move (a cena é estável durante o arraste; só o
+        // skip muda). Recolher por Move é barato p/ a contagem de formas típica.
+        self.vec_rebuild_snap_targets(&ids, &[]);
+        let delta = self.vec_snap_move(&ids);
+        if delta == [0.0, 0.0] {
+            return;
+        }
+        if let Some(gfx) = self.gfx.as_mut() {
+            for &b in &bits {
+                slide_entity_world(&mut gfx.sim, b, delta);
+            }
+        }
+    }
+}
+
+/// Desliza a entidade `bits` por um delta de MUNDO, convertido para o frame local do
+/// pai e somado à `translation`. No-op se o delta é nulo. Recebe só o `SimWorld` (não
+/// o `AppGfx`) para não colidir com um borrow vivo de `hero_screen` no chamador.
+pub(crate) fn slide_entity_world(sim: &mut SimWorld, bits: u64, delta: [f64; 2]) {
+    if delta == [0.0, 0.0] {
+        return;
+    }
+    let entity = Entity::from_bits(bits);
+    let pw = ph2d_ecs::parent_world_transform(sim.world(), entity);
+    let parent = ph2d_editor::TransformSnapshot {
+        translation: [pw.translation.x, pw.translation.y],
+        rotation: pw.rotation,
+        scale: [pw.scale.x, pw.scale.y],
+    };
+    let [dx, dy] = ph2d_editor::world_delta_to_local(parent, delta[0] as f32, delta[1] as f32);
+    if let Some(mut t) = sim.world_mut().get_mut::<Transform>(entity) {
+        t.translation.x += dx;
+        t.translation.y += dy;
     }
 }
 

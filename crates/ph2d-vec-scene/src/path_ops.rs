@@ -283,68 +283,6 @@ impl VecScene {
         best.map(|(delta, _)| delta)
     }
 
-    /// As coordenadas X e Y "snapáveis" do path `id` em MUNDO: as três linhas da bbox
-    /// de curva em cada eixo (esquerda/centro/direita em X; topo/centro/baixo em Y)
-    /// mais cada âncora. É a matéria-prima do snap de alinhamento — casando X-com-X e
-    /// Y-com-Y cobrem-se bordas, centros e vértices (incl. vértice↔centro).
-    fn snap_axes_world(&self, xforms: &crate::VecXforms, id: VecPathId) -> (Vec<f64>, Vec<f64>) {
-        let mut xs = Vec::new();
-        let mut ys = Vec::new();
-        if let Some((lo, hi)) = self.path_world_curve_bbox(xforms, id) {
-            xs.extend([lo[0], (lo[0] + hi[0]) * 0.5, hi[0]]);
-            ys.extend([lo[1], (lo[1] + hi[1]) * 0.5, hi[1]]);
-        }
-        if let Some(p) = self.paths.iter().find(|p| p.id == id) {
-            let x = crate::xform_of(xforms, id);
-            for v in &p.verts {
-                let w = x.apply(v.anchor);
-                xs.push(w[0]);
-                ys.push(w[1]);
-            }
-        }
-        (xs, ys)
-    }
-
-    /// O deslocamento `[dx, dy]` em MUNDO que **alinha** o path `id` a outra forma —
-    /// o snap completo de editor vetorial. Os eixos são INDEPENDENTES: X gruda quando
-    /// uma linha snapável (borda/centro/vértice) do `id` cai a ≤ `tol` de uma do
-    /// vizinho (alinhamento vertical), e Y idem (horizontal). Cobre borda↔borda,
-    /// centro↔centro, vértice↔centro, vértice↔vértice — de referências possivelmente
-    /// diferentes em cada eixo, como Figma. Só DESLIZA (o chamador soma ao
-    /// `Transform`); nunca distorce nem funde. `[0, 0]` se nada está perto.
-    #[must_use]
-    pub fn align_snap_delta(&self, id: VecPathId, xforms: &crate::VecXforms, tol: f64) -> [f64; 2] {
-        let (mxs, mys) = self.snap_axes_world(xforms, id);
-        if mxs.is_empty() {
-            return [0.0, 0.0];
-        }
-        let (mut oxs, mut oys) = (Vec::new(), Vec::new());
-        for p in self
-            .paths
-            .iter()
-            .filter(|p| p.id != id && !p.verts.is_empty())
-        {
-            let (xs, ys) = self.snap_axes_world(xforms, p.id);
-            oxs.extend(xs);
-            oys.extend(ys);
-        }
-        // Menor deslocamento (≤ tol) que faz alguma linha do `id` coincidir com uma do
-        // vizinho, por eixo.
-        let best = |mine: &[f64], other: &[f64]| -> f64 {
-            let mut b: Option<f64> = None;
-            for &m in mine {
-                for &o in other {
-                    let d = o - m;
-                    if d.abs() <= tol && b.is_none_or(|bd: f64| d.abs() < bd.abs()) {
-                        b = Some(d);
-                    }
-                }
-            }
-            b.unwrap_or(0.0)
-        };
-        [best(&mxs, &oxs), best(&mys, &oys)]
-    }
-
     /// **Solda** os endpoints da forma RECÉM-CRIADA `new_id` aos nós de endpoint de
     /// outros paths abertos que estejam a ≤ `tol` (mundo). É o que permite fechar uma
     /// forma com várias linhas/arcos/traços da pen: **basta os nós ficarem próximos**

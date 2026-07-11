@@ -53,7 +53,6 @@ mod keyboard;
 pub(crate) mod painter_canvas_input;
 pub(crate) mod painter_falloff_input;
 pub(crate) mod protect_brush;
-mod vec_snap;
 
 /// Deslocamento diagonal de um paste/duplicate, em pixels de tela (o zoom converte
 /// para world) — a cópia não nasce exatamente sob o original.
@@ -3249,52 +3248,45 @@ impl App {
                                 (fill.a != 0).then(|| ph2d_vec_scene::Paint::solid(fill));
                             let win = gfx.surface.size();
                             let tol = crate::vec_gizmo_view::stroke_hit_r(&gfx.camera, win) * 1.5;
+                            // O alinhamento (bordas/centros/vértices + grade, com guias)
+                            // já foi aplicado ao vivo pelo motor de snap durante o
+                            // arraste. No release resta só a FUSÃO das formas abertas:
+                            // encaixa a ponta num endpoint vizinho (RÍGIDO, sem
+                            // distorcer) e solda.
                             let mut welded = false;
                             for id in moved_ids {
-                                // Recomputa os xforms a cada solda (uma fusão muda o
-                                // scene) e pula o que já foi consumido por outra.
                                 if !gfx.vec_scene.paths().iter().any(|p| p.id == id) {
                                     continue;
                                 }
                                 let Some(bits) = self.vec_entities.get(&id).copied() else {
                                     continue;
                                 };
-                                let closed =
-                                    gfx.vec_scene.paths().iter().any(|p| p.id == id && p.closed);
-                                // Alinhamento final (X/Y independentes: bordas / centros /
-                                // vértices) — vale p/ toda forma, o mesmo snap do arraste.
+                                if gfx.vec_scene.paths().iter().any(|p| p.id == id && p.closed) {
+                                    continue; // fechada não funde
+                                }
                                 let xforms =
                                     crate::vec_transform::build(&gfx.sim, &self.vec_entities);
-                                let align = gfx.vec_scene.align_snap_delta(id, &xforms, tol);
-                                vec_snap::slide_entity_world(&mut gfx.sim, bits, align);
-                                // Só a forma ABERTA funde: encaixa a PONTA num endpoint
-                                // vizinho (RÍGIDO, sem distorcer) e solda — a ponta já
-                                // coincide, uma segunda ponta (fecho) cede o mínimo.
-                                if !closed {
-                                    let xforms =
-                                        crate::vec_transform::build(&gfx.sim, &self.vec_entities);
-                                    if let Some(rd) =
-                                        gfx.vec_scene.rigid_snap_delta(id, &xforms, tol)
-                                    {
-                                        vec_snap::slide_entity_world(&mut gfx.sim, bits, rd);
-                                    }
-                                    let xforms =
-                                        crate::vec_transform::build(&gfx.sim, &self.vec_entities);
-                                    if gfx.vec_scene.weld_new_shape(
-                                        id,
-                                        &xforms,
-                                        tol,
-                                        fill_on_close.clone(),
-                                    ) > 0
-                                    {
-                                        welded = true;
-                                    }
+                                if let Some(rd) = gfx.vec_scene.rigid_snap_delta(id, &xforms, tol) {
+                                    crate::vec_snap::slide_entity_world(&mut gfx.sim, bits, rd);
+                                }
+                                let xforms =
+                                    crate::vec_transform::build(&gfx.sim, &self.vec_entities);
+                                if gfx.vec_scene.weld_new_shape(
+                                    id,
+                                    &xforms,
+                                    tol,
+                                    fill_on_close.clone(),
+                                ) > 0
+                                {
+                                    welded = true;
                                 }
                             }
                             if welded {
                                 self.vec_history.commit_if_changed(&gfx.vec_scene);
                             }
                         }
+                        // Fim do gesto: apaga as guias de alinhamento.
+                        self.vec_snap_guides.clear();
                     }
                     // Onda 1: release the group-translate snapshot so
                     // the next single-select drag doesn't accidentally

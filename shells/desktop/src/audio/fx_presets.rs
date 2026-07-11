@@ -123,8 +123,48 @@ static GATE_TIGHTEN: [FStage; 2] = [
     stage("Gate", &[ovr("Threshold", 0.04), ovr("Ratio", 8.0)]),
     stage("Compress", &[ovr("Threshold", 0.3), ovr("Ratio", 3.0)]),
 ];
+// Character presets that lean on the newer effects (ring mod, distortion, exciter,
+// trance gate, ping-pong, chorus, vibrato, auto-pan).
+static ROBOT: [FStage; 3] = [
+    stage("Ring Mod", &[ovr("Freq", 200.0), ovr("Mix", 0.7)]),
+    stage("Distortion", &[ovr("Drive", 0.4), ovr("Tone", 0.5)]),
+    stage("Bitcrush", &[ovr("Bits", 8.0)]),
+];
+static MEGAPHONE: [FStage; 4] = [
+    stage("High-Pass", &[ovr("Cutoff", 500.0)]),
+    stage(
+        "Peak EQ",
+        &[ovr("Freq", 1_800.0), ovr("Q", 3.0), ovr("Gain", 8.0)],
+    ),
+    stage("Distortion", &[ovr("Drive", 0.5), ovr("Tone", 0.6)]),
+    stage("Low-Pass", &[ovr("Cutoff", 4_000.0)]),
+];
+static UNDERWATER: [FStage; 3] = [
+    stage("Low-Pass", &[ovr("Cutoff", 1_200.0)]),
+    stage("Chorus", &[ovr("Rate", 0.5), ovr("Mix", 0.6)]),
+    stage(
+        "Reverb",
+        &[ovr("Room", 0.6), ovr("Mix", 0.4), ovr("Tail", 3.0)],
+    ),
+];
+static SCI_FI_COMM: [FStage; 3] = [
+    stage("Ring Mod", &[ovr("Freq", 1_200.0), ovr("Mix", 0.3)]),
+    stage("Trance Gate", &[ovr("Rate", 10.0), ovr("Depth", 0.7)]),
+    stage(
+        "Ping-Pong",
+        &[ovr("Time", 0.18), ovr("Feedback", 0.5), ovr("Mix", 0.4)],
+    ),
+];
+static AIR: [FStage; 2] = [
+    stage("Exciter", &[ovr("Freq", 4_000.0), ovr("Amount", 0.6)]),
+    stage("High Shelf", &[ovr("Freq", 10_000.0), ovr("Gain", 3.0)]),
+];
+static WOBBLE: [FStage; 2] = [
+    stage("Vibrato", &[ovr("Rate", 5.0), ovr("Depth", 4.0)]),
+    stage("Auto-Pan", &[ovr("Rate", 2.0), ovr("Depth", 0.7)]),
+];
 
-static FACTORY: [Preset; 9] = [
+static FACTORY: [Preset; 15] = [
     Preset {
         name: "Voice Cleanup",
         stages: &VOICE_CLEANUP,
@@ -160,6 +200,30 @@ static FACTORY: [Preset; 9] = [
     Preset {
         name: "Gate + Glue",
         stages: &GATE_TIGHTEN,
+    },
+    Preset {
+        name: "Robot",
+        stages: &ROBOT,
+    },
+    Preset {
+        name: "Megaphone",
+        stages: &MEGAPHONE,
+    },
+    Preset {
+        name: "Underwater",
+        stages: &UNDERWATER,
+    },
+    Preset {
+        name: "Sci-Fi Comm",
+        stages: &SCI_FI_COMM,
+    },
+    Preset {
+        name: "Air",
+        stages: &AIR,
+    },
+    Preset {
+        name: "Wobble",
+        stages: &WOBBLE,
     },
 ];
 

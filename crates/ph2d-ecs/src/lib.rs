@@ -41,6 +41,7 @@
 //! cascading import churn.
 
 pub mod blend;
+pub mod flip_object_ref;
 pub mod masking;
 pub mod name;
 pub mod present;
@@ -57,6 +58,7 @@ pub mod visibility;
 pub mod visibility_layer;
 
 pub use blend::BlendMode;
+pub use flip_object_ref::FlipObjectRef;
 pub use masking::{ClipChildren, ClipMode, Mask2D, MaskInteraction, MaskMode};
 pub use name::Name;
 pub use present::{PresentComponent, PresentWorld};

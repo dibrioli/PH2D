@@ -149,23 +149,28 @@ pub(super) fn paper_height(x: f32, y: f32, tile: NoiseTile) -> f32 {
 }
 
 /// #2b (doc 13): snap a slot texture's **Size** so a WHOLE number of tiles spans the sprite on each
-/// tiled axis — an IMAGE slot (its UV is `fract`-wrapped) then repeats seamlessly across the sprite
-/// seam, matching the procedural noise. **Image kinds only:** a procedural pattern isn't periodic at
-/// integer tiles, and silently rescaling it when Tiling toggles would surprise. Non-tiled axis / tiling
-/// off / non-Image ⇒ unchanged (byte-identical). Rotation ≠ 0 still seams (a rotated tile grid can't
-/// align with the axis-aligned seam) — the documented limitation.
+/// tiled axis, making a **bitmap-like** slot repeat seamlessly across the sprite seam (matching the
+/// procedural noise). Covers the two bitmap kinds: an **Image** (its UV is `fract`-wrapped, repeating
+/// every 2 units of `rel` because `sample_image` maps `cu = rel·0.5 + 0.5`) and the baked 256² **Paper**
+/// tiles (`PaperCold`/`Rough`/`Hot`, repeating every 1 unit of `rel`). A LATTICE procedural (Noise /
+/// Checker / Voronoi / …) is NOT snap-tileable — it would seam mid-cell — so it's left unchanged (its
+/// any-size tiling needs a lattice wrap in `patterns.rs`, a follow-up). Non-tiled axis / tiling off ⇒
+/// unchanged (byte-identical). The Size quantises to the nearest whole tile count (inherent to a fixed
+/// tile: it can only repeat a WHOLE number of times) — imperceptible at fine scales. Rotation ≠ 0 still
+/// seams (a rotated tile grid can't align with the axis-aligned seam) — the documented limitation.
 pub(super) fn snap_slot_size(mut s: TextureSettings, tile: NoiseTile) -> TextureSettings {
-    if !matches!(s.kind, TextureKind::Image) {
-        return s;
-    }
-    let snap = |size: f32, period: f32| {
-        if period > 0.0 {
-            // `sample_image` maps `cu = rel * 0.5 + 0.5` and repeats every whole `cu` → every TWO units
-            // of `rel`. A whole number of repeats across the sprite therefore needs an EVEN tile count
-            // (`≥ 2`); an odd count would land the seam on the image's half-way point.
-            let raw = period * size / TEX_TILE_BASE_PX;
-            let tiles = (raw / 2.0).round().max(1.0) * 2.0;
-            tiles * TEX_TILE_BASE_PX / period
+    // The tile period in `rel` units, per bitmap kind; a non-bitmap kind isn't snap-tileable.
+    let rep = match s.kind {
+        TextureKind::Image => 2.0,
+        TextureKind::PaperCold | TextureKind::PaperRough | TextureKind::PaperHot => 1.0,
+        _ => return s,
+    };
+    let snap = |size: f32, period_px: f32| {
+        if period_px > 0.0 {
+            // Round the texture's span across the sprite to a whole number of tile-periods `rep` so the
+            // seam lands on a tile boundary (a fixed tile can only repeat a WHOLE number of times).
+            let reps = (period_px * size / (TEX_TILE_BASE_PX * rep)).round().max(1.0) * rep;
+            reps * TEX_TILE_BASE_PX / period_px
         } else {
             size
         }
@@ -293,5 +298,38 @@ mod tests {
             ..Default::default()
         };
         assert_eq!(snap_slot_size(proc, tile).size, proc.size);
+    }
+
+    /// **#2b: a baked PAPER preset tiles seamlessly under Tiling.** The 256² paper tile repeats every 1
+    /// unit of `rel`, so snapping Size to a whole tile count across the sprite lands the seam on a tile
+    /// boundary. Control: the raw (unsnapped) Size seams. Off-tiling ⇒ unchanged.
+    #[test]
+    fn slot_paper_preset_tiles_seamlessly_under_tiling() {
+        use ph2d_painter_brush::texture::{angle_basis, sample_tiled_rot};
+        let (pw, ph) = (100i64, 60i64);
+        let tile = NoiseTile::new((pw as usize, ph as usize), [true, true]);
+        let raw = TextureSettings {
+            kind: TextureKind::PaperCold,
+            size: [0.9, 1.3],
+            ..Default::default()
+        };
+        let snapped = snap_slot_size(raw, tile);
+        let rot = angle_basis(0);
+        for y in [3i64, 29, 51] {
+            let a = sample_tiled_rot(&snapped, 0, y, None, rot);
+            let b = sample_tiled_rot(&snapped, pw, y, None, rot);
+            assert!((a - b).abs() < 1e-4, "paper X seam at y={y}: {a} vs {b}");
+        }
+        for x in [7i64, 41, 88] {
+            let a = sample_tiled_rot(&snapped, x, 0, None, rot);
+            let b = sample_tiled_rot(&snapped, x, ph, None, rot);
+            assert!((a - b).abs() < 1e-4, "paper Y seam at x={x}");
+        }
+        let seams = (0..ph).any(|y| {
+            (sample_tiled_rot(&raw, 0, y, None, rot) - sample_tiled_rot(&raw, pw, y, None, rot)).abs()
+                > 1e-4
+        });
+        assert!(seams, "control: an unsnapped paper preset should seam across the sprite");
+        assert_eq!(snap_slot_size(raw, NoiseTile::NONE).size, raw.size);
     }
 }

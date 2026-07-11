@@ -220,8 +220,9 @@ impl PainterTool {
         } else {
             NoiseTile::NONE
         };
-        // #2b (doc 13): snap a slot IMAGE's Size so a whole number of tiles spans the sprite → the
-        // Paper / Grain image is seamless across the seam (matching the procedural noise). No-op off-tiling.
+        // #2b (doc 13): snap a BITMAP slot's Size (Image or a baked Paper preset) so a whole number of
+        // tiles spans the sprite → it repeats seamlessly across the seam (matching the procedural noise).
+        // Lattice procedurals aren't snapped (see `snap_slot_size`). No-op off-tiling ⇒ byte-identical.
         let paper_tex = snap_slot_size(brush.paper, noise_tile);
         let paper_active = paper_tex.is_active();
         let paper_img = self.paint.paper_image.as_ref().map(|i| i.as_mask());

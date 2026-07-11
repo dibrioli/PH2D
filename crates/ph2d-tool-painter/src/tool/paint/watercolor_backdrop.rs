@@ -385,8 +385,9 @@ impl PainterTool {
     /// EDGE-1 (doc 13 #9): END the wet session NOW — the atomic teardown (drop the moisture map +
     /// every session/union buffer + the frozen base + soak). The baked washes STAY in `canvas_rgba`
     /// (this doesn't touch pixels); only the FUSION with future strokes ends — Rebelle "Dry the
-    /// layer". Shared by the drying-deadline path above and the **Dry** button. Idempotent.
-    pub(super) fn dry_session_now(&mut self) {
+    /// layer". Shared by the drying-deadline path above, the **Dry** button, and undo/redo (the canvas
+    /// identity changed, so the moisture map is stale — clear it, Enio 2026-07-11). Idempotent.
+    pub(crate) fn dry_session_now(&mut self) {
         self.paint.canvas_wet = Vec::new();
         self.paint.canvas_wet_rect = None;
         self.paint.canvas_wet_carry = 0.0;

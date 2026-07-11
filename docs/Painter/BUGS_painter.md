@@ -16,6 +16,40 @@
 | [7](#bug-7--aquarela-grave-queda-de-fps--build-profile--composite-2frame--loops-seriais-não-os-algoritmos) | Aquarela: "grave queda de FPS" — build profile + composite 2×/frame + loops seriais, NÃO os algoritmos | Watercolor render-path + dev profile + heartbeat do shell | ✅ Resolvido (60fps em release com todos os knobs; validado pelo Enio via frame profiler) | 2026-07-07 |
 | [8](#bug-8--aquarela-borda-duraserrilhada-nas-junções--retângulo-no-preview--6-fixes-verdes-sem-efeito-o-harness-reproduzia-o-mecanismo-não-o-contexto) | Aquarela: borda dura/serrilhada nas junções (Charge<1 / Rewet) + "retângulo no preview" — 6 fixes verdes sem efeito | Watercolor mixer + render (blend do pigmento, estilo por dono) | ✅ Resolvido (smoke Enio 2026-07-09; clareamento preservado, fronteira orgânica) | 2026-07-09 |
 | [9](#bug-9--preview-de-umidade-retângulo-na-união--o-pour-re-molhava-o-vizinho-dentro-do-bbox) | Preview de umidade: "retângulo maldito/gigante" na união de traços úmidos | Moisture pour (`pour_canvas_wet`) + overlay do shell | ✅ Resolvido (pour por-footprint-dona; blur do véu foi tentativa errada) | 2026-07-11 |
+| [10](#bug-10--borda-dura-na-junção-ao-mudar-params-de-wash-e-cruzar-traço-úmido--params-por-dono-degrauavam) | Borda dura na junção ao mudar params de Wash (Body/Concentration/Edge/Opacity/RaggedEdge) e cruzar traço úmido | Watercolor render (params por-dono discretos) | ✅ Resolvido (campo suavizado `build_style_field`; grad 118→13) | 2026-07-11 |
+
+---
+
+## Bug #10 — Borda dura na junção ao mudar params de Wash e cruzar traço úmido — params por-dono degrauavam
+
+**Sintoma (Enio):** pintar um traço, mudar **Body/Concentration/Edge/Opacity/RaggedEdge** e cruzar o traço
+ANTERIOR ainda úmido imprimia uma borda dura na junção; e o **Warp** do traço NOVO re-warpava a junção do
+VELHO (artefato). Regra do Enio: *o traço antigo NUNCA muda por config do novo.*
+
+**Causa-raiz:** a **mesma classe do Bug #8 (lição #4)**, que a gente só tinha resolvido pro `wet`. Os OUTROS
+params por-dono contínuos (fill/Body, depth/Concentration, edge_gain/Edge, opacity/Opacity [novo do #17],
+warp/RaggedEdge) eram lidos DISCRETOS via `style_at` (recência por disco) → **degrauavam na fronteira de
+posse** (a junção). O `wet` já era CAMPO borrado (`build_wet_field`); os 5 outros faltavam.
+
+**Fix:** `build_style_field` generaliza o `blur(param·mask)/blur(mask)` MASCARADO por posse pros 5 params —
+o traço velho mantém os SEUS params, a fronteira suaviza. Detalhes que evitam regressão:
+- **Só quando os donos DIFEREM** (`params_differ`) ⇒ senão discreto, **byte-idêntico** (o blur uniforme
+  reproduz o valor). Sessão de um estilo / params iguais = zero mudança.
+- **Mascarado por posse** (só pixels DONOS contribuem, owner-0 do brush vivo NÃO) ⇒ não vaza pros pixels
+  de um wash que **não se toca** com o novo (o guard `..._do_not_touch_baked_washes` segue verde). Um
+  descuido meu incluiu o owner-0 e vazou o brush novo por cima do gap — o guard pegou na hora.
+- **Warp lê PRÉ-warp** `(lx,ly)` (a amplitude vem antes do deslocamento); os outros no warped `(sx,sy)`.
+- **Geometria/cor** (`color`, `core_r`, `spread_*`, paper/grain) ficam DISCRETOS (lição #4: campo pra
+  grandeza física contínua, discreto pro que é realmente discreto).
+- RED→GREEN: gradiente máx da junção com params trocados **118 → 13 bytes/px** (medido desabilitando o campo).
+
+**Junto:** as bordas da umidade (mesma classe de boundary-step) ganharam um blur GENTIL do véu (r=4) — agora
+SEGURO porque a raiz do retângulo (#9) foi corrigida (o over-blur anterior só espalhava o retângulo do
+pour-união, que não existe mais). Só o preview; o mapa de umidade fica intacto. E **undo agora limpa a
+umidade** (`dry_session_now` no `restore_model` — o canvas mudou de identidade, a sessão molhada é stale).
+
+**Lição:** quando um fix por-dono (o `wet` do #8) resolve UM parâmetro, **todos os params da mesma família
+que alimentam termos contínuos têm o mesmo bug latente** — generalize o mecanismo, não trate caso a caso.
 
 ---
 

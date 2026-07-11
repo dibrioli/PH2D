@@ -86,6 +86,10 @@ impl PainterTool {
         self.restore_deform(m.deform_disp, m.deform_pre, m.deform_active);
         self.bump_all_layer_pixels();
         self.invalidate_composite();
+        // Watercolor: the canvas identity just changed under the wet session — its moisture map (+ frozen
+        // base + union buffers) is now stale (the overlay showed the undone stroke's damp; the guard Arc no
+        // longer matches). Tear it down so undo/redo clears the wetness (Enio 2026-07-11). No-op when dry.
+        self.dry_session_now();
         self.preview_dirty = true;
     }
 

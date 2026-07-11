@@ -13450,6 +13450,44 @@ fn watercolor_second_stroke_does_not_reset_the_first_strokes_drying() {
 /// despejava-a sobre o RECT do traço → re-molhava os pixels do vizinho DENTRO do rect a 255 (um retângulo
 /// de umidade que o overlay pintava). Fix: o pour restringe à footprint DONA (`owner == cur_o`). Sonda: um
 /// pixel de A coberto por A, DENTRO do bbox do diagonal B, mas FORA da footprint de B — não re-molha.
+/// **Undo apaga a umidade (Enio smoke 2026-07-11):** desfazer um traço de aquarela tem que limpar o mapa
+/// de umidade — o canvas voltou, mas o overlay continuava mostrando o damp do traço desfeito.
+#[test]
+fn watercolor_undo_clears_the_moisture() {
+    let size = 64u32;
+    let mut t = white_canvas(size, 8.0);
+    t.paint.brush = BrushSpec {
+        radius_px: 10.0,
+        hardness: 1.0,
+        falloff: Falloff::Constant,
+        color: [0.1, 0.3, 0.9],
+        space_attenuation: false,
+        watercolor: true,
+        fill: 0.4,
+        depth: 1.0,
+        ..Default::default()
+    };
+    for slot in &mut t.paint.brush_by_mode {
+        *slot = t.paint.brush;
+    }
+    assert!(t.on_canvas_pointer(cp([32.0, 20.0], PointerPhase::Down)));
+    let mut y = 20.0f32;
+    while y < 44.0 {
+        y += 2.0;
+        t.on_canvas_pointer(cp([32.0, y], PointerPhase::Move));
+    }
+    t.on_canvas_pointer(cp([32.0, 44.0], PointerPhase::Up));
+    assert!(
+        t.paint.canvas_wet.iter().any(|&w| w > 0),
+        "the stroke must have poured moisture"
+    );
+    assert!(t.undo_last(), "the stroke is undoable");
+    assert!(
+        t.paint.canvas_wet.is_empty(),
+        "undo must clear the wet session's moisture map (no stale damp overlay)"
+    );
+}
+
 #[test]
 fn watercolor_overlapping_bbox_does_not_rewet_the_neighbour_wash() {
     let size = 80u32;

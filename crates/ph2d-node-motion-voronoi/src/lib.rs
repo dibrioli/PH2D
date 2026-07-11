@@ -12,10 +12,18 @@
 //! **Algorithm — Lloyd's algorithm (Voronoi iteration), grid-approximated.** The
 //! exact method computes each point's Voronoi cell (Fortune's sweep) and moves it to
 //! the polygon centroid; the standard practical form (the 2002 weighted-Voronoi
-//! stippling method; the CPU cousin of the GPU jump-flood) discretises the domain into a
-//! `RESOLUTION²` grid, assigns each sample to its nearest point, and moves each point
-//! to the mean of its samples — repeated `iterations` times. It is deterministic and
+//! stippling method; the CPU cousin of the GPU jump-flood) discretises the domain into
+//! a `res²` grid, assigns each sample to its nearest point, and moves each point to the
+//! mean of its samples — repeated `iterations` times. The grid `res` scales with the
+//! count (≈16 samples/point), so the cost tracks the work. Deterministic and
 //! transcendental-free (HR-5: squared distances only, no `sqrt`).
+//!
+//! **Cost (read before animating).** A cook is `O(iterations · res² · count)`.
+//! With `relax` UNCONNECTED (a static CVT) the node cooks once and the memo caches it
+//! — free thereafter. But **animating `relax`** (a `value.lfo`) re-runs the *whole*
+//! relaxation every frame (the raw seed and relaxed CVT are fixed, yet a Pure node
+//! can't cache across frames), so keep `count`/`iterations` modest when it is live —
+//! this is a genuinely heavier node than the other distributions.
 //!
 //! A **Source** node (no stream input, mints `P`). Stateless seed (Jarzynski/Olano
 //! hash), so it reproduces bit-for-bit. `Effect::Pure` (no clock — the animation
@@ -38,11 +46,24 @@ const INST_VEC2: PortType = PortType::new(Domain::Instances, Dim::Vec2, Clock::F
 const VALUE: PortType = PortType::new(Domain::Instances, Dim::Scalar, Clock::Frame);
 const VALUE_COL: &str = "v";
 
-/// The Lloyd sampling grid resolution (samples = RESOLUTION²). Higher = more accurate
-/// centroids, more cost.
-const RESOLUTION: usize = 64;
-/// Cap on the point count (cost is O(iterations · RESOLUTION² · count)).
+/// Target grid samples per point — the Lloyd grid resolution scales so every cell
+/// gets roughly this many samples (accurate centroids without over-sampling).
+const SAMPLES_PER_POINT: usize = 16;
+/// Clamp on the sampling grid side (samples = res²). The lower bound keeps a small
+/// count's centroids sane; the upper bound caps the per-eval cost.
+const MIN_RES: usize = 20;
+const MAX_RES: usize = 96;
+/// Cap on the point count (cost is O(iterations · res² · count)).
 const MAX_POINTS: usize = 600;
+
+/// The Lloyd sampling grid side for `count` points: `√(count · SAMPLES_PER_POINT)`,
+/// clamped. This keeps the grid cost proportional to the work (≈ `count·16` samples)
+/// instead of a fixed `64²` — the fix for the per-frame recompute when `relax` is
+/// animated (each animated frame re-runs the whole relaxation; see the module docs).
+fn resolution(count: usize) -> usize {
+    let ideal = ((count * SAMPLES_PER_POINT) as f32).sqrt().ceil() as usize;
+    ideal.clamp(MIN_RES, MAX_RES)
+}
 
 /// The static contract of this node type (ADR-0031).
 pub const MANIFEST: NodeManifest = NodeManifest {
@@ -79,10 +100,11 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             name: "seed",
             default: 1.0,
         },
-        // Lloyd iterations — more = closer to the ideal CVT.
+        // Lloyd iterations — more = closer to the ideal CVT (it converges fast, so
+        // 8 is near-converged; kept modest since it re-runs when `relax` is animated).
         ParamSpec {
             name: "iterations",
-            default: 12.0,
+            default: 8.0,
         },
     ],
     lowerings: &[LoweringKind::Cpu],
@@ -97,14 +119,14 @@ fn seed_points(count: usize, w: f32, h: f32, seed: u32) -> Vec<[f32; 2]> {
 
 /// One Lloyd iteration: assign every grid sample to its nearest point, then move each
 /// point to the mean of its assigned samples. Points with no samples hold still.
-fn lloyd_step(points: &[[f32; 2]], w: f32, h: f32) -> Vec<[f32; 2]> {
+fn lloyd_step(points: &[[f32; 2]], w: f32, h: f32, res: usize) -> Vec<[f32; 2]> {
     let n = points.len();
     let mut sum = vec![[0.0f32; 2]; n];
     let mut count = vec![0u32; n];
-    for gy in 0..RESOLUTION {
-        let sy = ((gy as f32 + 0.5) / RESOLUTION as f32 - 0.5) * h;
-        for gx in 0..RESOLUTION {
-            let sx = ((gx as f32 + 0.5) / RESOLUTION as f32 - 0.5) * w;
+    for gy in 0..res {
+        let sy = ((gy as f32 + 0.5) / res as f32 - 0.5) * h;
+        for gx in 0..res {
+            let sx = ((gx as f32 + 0.5) / res as f32 - 0.5) * w;
             // Nearest point (squared distance — no sqrt).
             let mut best = 0usize;
             let mut best_d = f32::MAX;
@@ -146,9 +168,10 @@ fn relaxed_points(
     relax: f32,
 ) -> Vec<[f32; 2]> {
     let raw = seed_points(count, w, h, seed);
+    let res = resolution(count);
     let mut relaxed = raw.clone();
     for _ in 0..iterations {
-        relaxed = lloyd_step(&relaxed, w, h);
+        relaxed = lloyd_step(&relaxed, w, h, res);
     }
     let t = relax.clamp(0.0, 1.0);
     raw.iter()

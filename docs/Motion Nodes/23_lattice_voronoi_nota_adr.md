@@ -36,12 +36,18 @@ stippling ponderado 2002 + jump-flood na GPU). Veredito:
 - Lloyd: repetidamente **move cada ponto pro centroide da sua célula de Voronoi** → converge pra CVT (mais
   regular que blue-noise, quase-hexagonal). O método exato usa Voronoi de Fortune + centroide do polígono; a
   **forma prática padrão** (stippling ponderado 2002; primo-CPU do jump-flood na GPU) **discretiza o domínio
-  numa grade `RESOLUTION²`**, atribui cada amostra ao ponto mais próximo, e move cada ponto pra média das suas
+  numa grade `res²`**, atribui cada amostra ao ponto mais próximo, e move cada ponto pra média das suas
   amostras — repetido `iterations` vezes. **Deterministico e HR-5** (distâncias ao quadrado, sem `sqrt`).
 - Um **`relax` value input** toca a relaxação (lerp raw-seed → CVT relaxada) → um `value.lfo` faz a nuvem
   **se organizar numa colmeia e dissolver** (mostra o próprio algoritmo). Seed hasheado, `Effect::Pure`.
   Testado por **Lloyd empareja a nuvem** (min-gap da CVT ≫ ruído branco), **relax lerpa** (0=seed, 0.5=meio,
   1=CVT), pontos dentro do domínio, replay + seed re-rola.
+- **Custo (Enio reportou queda de fps — CORRIGIDO):** um cook é `O(iterations · res² · count)`. Com `relax`
+  **desconectado** (CVT estático) o memo cacheia → livre. Mas **animar `relax`** re-roda a relaxação INTEIRA
+  todo frame (raw+CVT são fixos, mas um nó `Pure` não cacheia entre frames). O `RESOLUTION=64²` fixo custava
+  **12.8 ms/frame em debug** (77% do budget 60fps) na cena. Fix: **`res` adaptativa ao count**
+  (`√(count·16)`, clamp [20,96]) → a grade escala com o trabalho; a cena (count 64→48, iters 10→6) caiu pra
+  **1.2 ms/frame**. Módulo doc tem a nota de custo; `iterations` default 12→8 (Lloyd converge rápido).
 
 ## 3. O que foi adicionado (fatia)
 
@@ -50,7 +56,7 @@ empacotamento triangular (passo de linha `√3/2`, ímpares meia-deslocadas); `j
 colmeia. `Effect::Pure`, Source, `hash.rs` (splitmix). Display "Lattice".
 
 **`ph2d-node-motion-voronoi` (drop-crate, a RELAXAÇÃO DE LLOYD):** `(relax?) → out`. `count` pontos relaxados
-por `iterations` passos de Lloyd (grade `RESOLUTION²=64²`), `relax` value input lerpa raw→CVT. `Effect::Pure`,
+por `iterations` passos de Lloyd (grade `res²` adaptativa ao count), `relax` value input lerpa raw→CVT. `Effect::Pure`,
 Source, `hash.rs`, `sqrt`-free. Display "Voronoi".
 
 **Cena boot — DUAS cenas pequenas** (`motion_demo_strobe.rs`, 10 nós, 2 sinks):

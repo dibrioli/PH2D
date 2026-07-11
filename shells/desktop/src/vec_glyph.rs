@@ -444,7 +444,7 @@ mod tests {
             p.verts
                 .iter()
                 .all(|v| v.kind == ph2d_vec_scene::VertexKind::Smooth),
-            "junções curva↔reta = Smooth"
+            "juncoes curva-reta = Smooth"
         );
         // Um triângulo (line-line em toda quina) permanece Corner.
         let tri = glyph_to_vec_path(

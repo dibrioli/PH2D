@@ -1,15 +1,16 @@
 //! Headless demo/cook tests for `motion_state` (split for the HR-18 600-LOC
 //! shell cap; declared there as a `#[path]` sibling, so `super` is
-//! `motion_state`). Cook the default document — now a `motion.kaleidoscope` mandala
-//! and a `motion.collide` circle-packing, each a `Pure` layout animated through a
-//! `value.lfo` — through the REAL registry.
+//! `motion_state`). Cook the default document — now two grids revealed by a shared
+//! `value.lfo` sweeping a `motion.cull` fraction, ordered by a `motion.sort` (radial
+//! wipe left, random dissolve right) — through the REAL registry.
 
 use super::*;
 use ph2d_nodegraph::attr::Column;
 use ph2d_nodegraph::cook::Cook;
 
 /// The `P` column of one sink at playhead `t`. Both scenes are `Pure` (no `pre`
-/// state), so cooking at a playhead is enough — no tick advance.
+/// state), so cooking at a playhead is enough — no tick advance. The count VARIES over
+/// time (the cull reveal), so callers must not assume a fixed length.
 fn positions_at(state: &MotionState, sink: NodeId, t: f64) -> Vec<[f32; 2]> {
     let mut cook = Cook::new();
     let out = cook
@@ -25,22 +26,29 @@ fn mean_x(pos: &[[f32; 2]]) -> f32 {
     pos.iter().map(|p| p[0]).sum::<f32>() / pos.len() as f32
 }
 
-/// The largest over-time travel of any single element — 0 for a static layout,
-/// positive when it animates.
-fn max_travel(frames: &[Vec<[f32; 2]>]) -> f32 {
-    let n = frames[0].len();
-    let mut worst = 0.0f32;
-    for i in 0..n {
-        let (mut hi, mut lo) = ([f32::MIN; 2], [f32::MAX; 2]);
-        for f in frames {
-            for a in 0..2 {
-                hi[a] = hi[a].max(f[i][a]);
-                lo[a] = lo[a].min(f[i][a]);
-            }
-        }
-        worst = worst.max((hi[0] - lo[0]) + (hi[1] - lo[1]));
+/// The x-extent (max − min x) of a layout — a proxy for how spread the survivors are.
+fn span(pos: &[[f32; 2]]) -> f32 {
+    let (mut lo, mut hi) = (f32::MAX, f32::MIN);
+    for p in pos {
+        lo = lo.min(p[0]);
+        hi = hi.max(p[0]);
     }
-    worst
+    hi - lo
+}
+
+/// Sweep one sink over a full lfo period (5 s = 300 frames), returning each frame's `P`.
+fn sweep(state: &MotionState, sink: NodeId) -> Vec<Vec<[f32; 2]>> {
+    (0..=300u64)
+        .step_by(3)
+        .map(|k| positions_at(state, sink, k as f64 / 60.0))
+        .collect()
+}
+
+/// The frames with the fewest and the most survivors (the reveal's extremes).
+fn min_and_max_by_count(frames: &[Vec<[f32; 2]>]) -> (&Vec<[f32; 2]>, &Vec<[f32; 2]>) {
+    let lo = frames.iter().min_by_key(|f| f.len()).unwrap();
+    let hi = frames.iter().max_by_key(|f| f.len()).unwrap();
+    (lo, hi)
 }
 
 #[test]
@@ -53,98 +61,59 @@ fn new_builds_the_well_typed_value_document() {
             "motion.output"
         );
     }
-    // 12 nodes: {fibonacci, kaleidoscope, move, tint, output, lfo} + {grid, collide,
-    // move, tint, output, lfo}. The two newest nodes (doc 26) — a `motion.kaleidoscope`
-    // and a `motion.collide`, each driven by a `value.lfo`.
-    assert_eq!(state.doc.graph.nodes().len(), 12);
+    // 13 nodes: one shared {lfo} + two scenes of {grid, sort, cull, tint, move, output}.
+    // The two newest nodes (doc 27) — a `motion.sort` and a `motion.cull`, the shared
+    // `value.lfo` driving both culls' amount.
+    assert_eq!(state.doc.graph.nodes().len(), 13);
     assert!(state.doc.graph.validate(&state.registry).is_ok());
     assert_eq!(state.transport.playhead(1.0 / 60.0), 0.0); // paused at tick 0
 }
 
-/// `motion.kaleidoscope` is alive end to end (doc 26): the 6-seed Fibonacci spiral is
-/// folded into 8 mirrored slices (48 dots) and the `spin` lfo turns the mandala, so its
-/// points travel over time; the scene sits on the left. Falsifiable: a dead spin leaves
-/// the mandala static; no fold → 6 (not 48).
+/// `motion.sort` (radial) + `motion.cull` are alive end to end (doc 27): the cull reveal
+/// varies the count, and because the sort orders radially the fewest-survivor frame is a
+/// TIGHT centre cluster while the most-survivor frame is the wide grid — a centre-out
+/// wipe. The scene sits on the left. Falsifiable: no sort → the sparse frame would be
+/// spread, not clustered; a dead cull → the count wouldn't vary.
 #[test]
-fn the_mandala_spins() {
+fn the_radial_wipe_grows_from_the_centre() {
     let state = MotionState::new();
-    let mandala_sink = state.sinks[0]; // the mandala scene's Output (added first)
-    let mut frames = Vec::new();
-    let mut means = Vec::new();
-    for k in 0..=150u64 {
-        let t = k as f64 / 60.0;
-        let pos = positions_at(&state, mandala_sink, t);
-        assert_eq!(pos.len(), 48, "6 spiral seeds × 8 kaleidoscope slices");
-        means.push(mean_x(&pos));
-        frames.push(pos);
-    }
-    assert!(max_travel(&frames) > 0.3, "the spin lfo turns the mandala");
-    let mean = means.iter().sum::<f32>() / means.len() as f32;
-    assert!(mean < -3.0, "the mandala sits on the left (mean x {mean})");
+    let frames = sweep(&state, state.sinks[0]); // the radial scene (added first)
+    let (lo, hi) = min_and_max_by_count(&frames);
+    assert!(lo.len() < hi.len(), "the cull reveal varies the count");
+    // Centre-out: the sparse frame is a tight centre cluster; the full frame is wide.
+    assert!(
+        span(lo) < 2.0 && span(hi) > 3.5 && span(lo) < span(hi) * 0.6,
+        "radial wipe grows outward (sparse span {}, full span {})",
+        span(lo),
+        span(hi)
+    );
+    let mean = frames.iter().map(|f| mean_x(f)).sum::<f32>() / frames.len() as f32;
+    assert!(mean < -3.0, "the wipe sits on the left (mean x {mean})");
 }
 
-/// `motion.collide` is alive end to end (doc 26): the 8×8 overlapping grid is pushed
-/// apart into a packing (64 dots) and the `spread` lfo breathes the radius, so the
-/// points travel; the scene sits on the right. Falsifiable: a dead collide leaves the
-/// tight grid (no travel, closer than the disc diameter).
+/// `motion.sort` (random) + `motion.cull` (doc 27): the SAME cull reveal, but the random
+/// order makes even the fewest-survivor frame stay spread across the grid — a dissolve,
+/// not a centre wipe. The scene sits on the right. Falsifiable: a radial sort would make
+/// the sparse frame cluster (small span) like the left scene.
 #[test]
-fn the_grid_packs_apart_and_breathes() {
+fn the_random_dissolve_stays_spread() {
     let state = MotionState::new();
-    let packing_sink = state.sinks[1]; // the grid+collide scene's Output (added second)
-    let mut frames = Vec::new();
-    let mut means = Vec::new();
-    for k in 0..=90u64 {
-        let t = k as f64 / 60.0;
-        let pos = positions_at(&state, packing_sink, t);
-        assert_eq!(pos.len(), 64, "the 8×8 grid");
-        means.push(mean_x(&pos));
-        frames.push(pos);
-    }
-    // The packing separates: at the widest breath no two dots are closer than the disc
-    // diameter (radius 0.3 × spread ≤ 1.5 → up to 0.9; assert the tight-grid 0.45
-    // spacing is broken open — the collide fired). Check the frame with the largest span.
-    let widest = frames
-        .iter()
-        .max_by(|a, b| span(a).partial_cmp(&span(b)).unwrap())
-        .unwrap();
+    let frames = sweep(&state, state.sinks[1]); // the random scene (added second)
+    let (lo, hi) = min_and_max_by_count(&frames);
+    assert!(lo.len() < hi.len(), "the cull reveal varies the count");
+    // A random subset spans most of the grid even when sparse (contrast the left wipe).
     assert!(
-        min_pair_dist(widest) > 0.45 + 1e-3,
-        "collide broke the 0.45 grid open (min pair {})",
-        min_pair_dist(widest)
+        span(lo) > 3.0,
+        "random dissolve stays spread even when sparse (sparse span {})",
+        span(lo)
     );
-    assert!(
-        max_travel(&frames) > 0.1,
-        "the spread lfo breathes the packing"
-    );
-    let mean = means.iter().sum::<f32>() / means.len() as f32;
-    assert!(mean > 3.0, "the packing sits on the right (mean x {mean})");
+    let mean = frames.iter().map(|f| mean_x(f)).sum::<f32>() / frames.len() as f32;
+    assert!(mean > 3.0, "the dissolve sits on the right (mean x {mean})");
 }
 
-/// The x-span of a layout (max − min x) — a cheap proxy for how far the packing inflated.
-fn span(pos: &[[f32; 2]]) -> f32 {
-    let (mut lo, mut hi) = (f32::MAX, f32::MIN);
-    for p in pos {
-        lo = lo.min(p[0]);
-        hi = hi.max(p[0]);
-    }
-    hi - lo
-}
-
-/// The smallest distance between any two elements (O(n²) — fine at this count).
-fn min_pair_dist(pos: &[[f32; 2]]) -> f32 {
-    let mut worst = f32::MAX;
-    for a in 0..pos.len() {
-        for b in (a + 1)..pos.len() {
-            let (dx, dy) = (pos[a][0] - pos[b][0], pos[a][1] - pos[b][1]);
-            worst = worst.min((dx * dx + dy * dy).sqrt());
-        }
-    }
-    worst
-}
-
-/// The default document replays bit-identically. Both scenes are deterministic
-/// (parabolic trig for the mandala fold, arithmetic push-apart for the packing; the lfos
-/// are stateless playhead reads), so two runs match exactly (HR-5).
+/// The default document replays bit-identically. Both scenes are deterministic (grid
+/// arithmetic, a stable sort + splitmix hash for the random key, integer cull counting;
+/// the lfo is a stateless playhead read), so two runs match exactly (HR-5).
 #[test]
 fn the_default_document_replays_deterministically() {
     use ph2d_eval_motion::MotionCookPump;

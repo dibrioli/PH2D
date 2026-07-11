@@ -54,12 +54,12 @@ pub(crate) struct MotionState {
 }
 
 impl MotionState {
-    /// Build the boot state: register every node op + the **default document** — on
-    /// the left a spinning **mandala** (a Fibonacci spiral folded 8-fold by
-    /// `motion.kaleidoscope`); on the right a tight grid that **packs apart** into a
-    /// breathing circle-packing (`motion.collide`, the Push-Apart relaxation with an
-    /// animated radius). Each animated by a `value.lfo`.
-    /// Kept deliberately small (docs/Motion Nodes/12, 26). The earlier scenes (the
+    /// Build the boot state: register every node op + the **default document** — two
+    /// grids revealed by a shared `value.lfo` sweeping a **cull** fraction, differing
+    /// only in how a **sort** orders the reveal: on the left `motion.sort` orders
+    /// **radially** (the cull wipes in from the centre); on the right **randomly** (the
+    /// cull dissolves it in specks).
+    /// Kept deliberately small (docs/Motion Nodes/12, 27). The earlier scenes (the
     /// Cavalry grid rig, the sim scenes, the deformer scenes) and the earlier
     /// value/pulse + M3/M4 chains were removed to keep the boot document focused; they
     /// live in git history and every node keeps its own unit tests + stays registered
@@ -91,12 +91,11 @@ impl MotionState {
 /// module's most recent work). Returns their sinks (the Output nodes) if the graph
 /// is well-typed.
 ///
-/// The scenes — built in the `strobe` sibling module — are two side-by-side layouts
-/// animated by the value domain: on the LEFT a **mandala** — a small Fibonacci spiral
-/// folded into 8-fold mirrored symmetry (`motion.kaleidoscope`) whose `spin` is a
-/// `value.lfo` turning it; on the RIGHT a tight 8×8 grid **pushed apart** into a circle-
-/// packing (`motion.collide`) whose `spread` is a `value.lfo` breathing the disc radius.
-/// See docs/Motion Nodes/12 (value), 26 (kaleidoscope + collide).
+/// The scenes — built in the `strobe` sibling module — are two 10×10 grids revealed by a
+/// shared `value.lfo` sweeping a `motion.cull` fraction, differing only in how a
+/// `motion.sort` orders the reveal: on the LEFT the sort is **radial** (a centre-out
+/// wipe); on the RIGHT it is **random** (a dissolve). One lfo fans out to both culls.
+/// See docs/Motion Nodes/12 (value), 27 (sort + cull).
 ///
 /// The earlier scenes were removed to keep the boot document small and legible: the
 /// **Cavalry grid rig**, the sim scenes, the deformer scenes, and the earlier value,

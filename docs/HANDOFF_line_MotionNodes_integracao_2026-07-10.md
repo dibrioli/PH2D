@@ -100,5 +100,25 @@ Contratos: **zero** — `NodeOp`/`OpResolver`/`NodeManifest` intocados (gate ver
   nada de animação morrer por troca de canal (o bug do doc 09 §1 é impossível por construção).
   Headless equivalente já provado: `motion_state_tests.rs` (4 testes, cozinham o registry real).
 
-*"Linha `MotionNodes` pronta (HEAD no worktree, 6 commits). Handoff acima. Aguardo ordem de
+## 7. Rodada 2 (mesmo dia): auditoria dos 30 nós + correções — doc 10
+
+Após o smoke do doc 09, o Enio pediu auditoria de TODOS os nós e mandou aplicar o
+necessário ([doc 10](Motion%20Nodes/10_auditoria_30_nos_correcoes.md)). Commits adicionais
+na mesma linha:
+
+- **`Effect::Pure` → `Temporal`** em `motion.integrate` + `motion.spring` (leem playhead;
+  fecha o buraco latente do scrub M2.N2). **Sem impacto de colisão** — mudança interna às
+  crates dos nós.
+- **`motion.strobe`**: hint morto de `flash_amount` removido (era suprimido pelo fold do
+  Color no bridge) + a aplicação do flash agora respeita a coluna `falloff`.
+- **Labels de canal unificados** `"Rotation"` (stagger/oscillator/spring/wiggle) — o teste
+  hand-maintained `stagger_params_are_named_enums_and_a_checkbox`
+  (`shells/desktop/src/render_loop/motion_bridge_param_tests.rs`) foi atualizado junto;
+  outra linha que pinar esses labels colide aí.
+- 6 doc-comments corrigidos + 7 testes de lacuna novos (detalhe no doc 10). Nenhum
+  contrato, nenhum id novo, nenhuma dep nova.
+- Gates re-rodados no fechamento da rodada: nextest 404 pass (node crates + shell), clippy
+  0, fmt pinado, typos 0, machete 0.
+
+*"Linha `MotionNodes` pronta (HEAD no worktree, 8 commits). Handoff acima. Aguardo ordem de
 integração."*

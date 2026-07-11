@@ -146,7 +146,14 @@ impl App {
             gfx: None,
             handler: LoggingHandler::new(),
             fixed_step: FixedStep::default(),
-            playhead: Playhead::default(),
+            // Start paused: the transport should not run the moment the window
+            // opens (the playhead default is "playing" — foundational, motion
+            // relies on it — so the app pauses its own playhead explicitly).
+            playhead: {
+                let mut ph = Playhead::default();
+                ph.pause();
+                ph
+            },
             timeline: ph2d_timeline::TimelineState::new(),
             timeline_intents: Vec::new(),
             timeline_reveal_after_apply: false,

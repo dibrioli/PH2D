@@ -146,14 +146,16 @@ struct LayerRef<'a> {
     drawing: &'a FlipDrawing,
 }
 
-/// Compõe o Flip amostrado em `playhead` no `game_rt`. No-op se não há camada
-/// ativa (cena vazia = o default sem `PH2D_FLIP_DEMO`).
+/// Compõe o Flip amostrado em `playhead` no `game_rt`, mais o **preview ao vivo**
+/// do traço em curso (`preview`, se houver). No-op se não há camada ativa NEM
+/// preview (cena vazia = o default sem `PH2D_FLIP_DEMO`).
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn render(
     flip: &FlipDoc,
     flip_render: &mut FlipRenderer,
     flip_compose: &mut FlipCompose,
     flip_composite: &mut Option<FlipComposite>,
+    preview: Option<&FlipGpuData>,
     playhead: &Playhead,
     game_rt: &GameRt,
     camera: &Camera2d,
@@ -161,12 +163,45 @@ pub(crate) fn render(
     gpu: &GpuContext,
 ) {
     let layers = collect_layers(flip, playhead);
-    if layers.is_empty() {
+    if layers.is_empty() && preview.is_none() {
         return;
     }
     let (w, h) = (window.width.max(1), window.height.max(1));
     let cam = camera_raw(camera, window);
 
+    if !layers.is_empty() {
+        composite_layers(
+            &layers,
+            flip_render,
+            flip_compose,
+            flip_composite,
+            game_rt,
+            &cam,
+            (w, h),
+            gpu,
+        );
+    }
+
+    // Preview ao vivo: o traço em curso rasterizado DIRETO por cima do composite
+    // (premult-over = Normal), transitório — vira documento só no pen-up. Reusa o
+    // `flip_render` (os buffers dele já foram consumidos pela composição acima).
+    if let Some(pv) = preview {
+        draw_overlay(flip_render, pv, &cam, game_rt, (w, h), gpu);
+    }
+}
+
+/// Compõe as camadas ativas (blend/opacity por-camada) e blita no `game_rt`.
+#[allow(clippy::too_many_arguments)]
+fn composite_layers(
+    layers: &[LayerRef<'_>],
+    flip_render: &mut FlipRenderer,
+    flip_compose: &mut FlipCompose,
+    flip_composite: &mut Option<FlipComposite>,
+    game_rt: &GameRt,
+    cam: &CameraRaw,
+    (w, h): (u32, u32),
+    gpu: &GpuContext,
+) {
     // A op-list (bottom-to-top = ordem das camadas), construída antes do loop
     // porque o `inject`/`composite` dimensionam o array de fatias por ela.
     let ops: Vec<LayerOp> = layers
@@ -183,7 +218,7 @@ pub(crate) fn render(
     comp.tess.reset_stats();
 
     // Passe 1: garante a tesselação de cada camada (cache-hit num hold/pan/zoom).
-    for l in &layers {
+    for l in layers {
         comp.tess.ensure(l.cache_key, l.drawing);
     }
 
@@ -194,10 +229,10 @@ pub(crate) fn render(
         let FlipComposite {
             compositor, tess, ..
         } = comp;
-        for l in &layers {
+        for l in layers {
             let data = tess.get(&l.cache_key).expect("garantido no passe 1");
             let slice =
-                flip_compose.stage_layer(&gpu.device, &gpu.queue, flip_render, &cam, data, (w, h));
+                flip_compose.stage_layer(&gpu.device, &gpu.queue, flip_render, cam, data, (w, h));
             if let Err(e) =
                 compositor.inject_slice_from_texture(gpu, &ops, l.key, slice, w, h, (0, 0, w, h), 0)
             {
@@ -222,6 +257,58 @@ pub(crate) fn render(
         }
     }
     comp.tess.log();
+}
+
+/// Rasteriza `data` DIRETO no `game_rt` (premult-over, `LoadOp::Load`) com o depth
+/// próprio do Flip — o overlay do preview ao vivo. Uma passagem simples (sem o
+/// compositor 22-modos): o traço em curso é sempre Normal por cima.
+fn draw_overlay(
+    flip_render: &mut FlipRenderer,
+    data: &FlipGpuData,
+    cam: &CameraRaw,
+    game_rt: &GameRt,
+    (w, h): (u32, u32),
+    gpu: &GpuContext,
+) {
+    if data.is_empty() {
+        return;
+    }
+    flip_render.upload(&gpu.device, &gpu.queue, cam, data);
+    flip_render.ensure_depth(&gpu.device, (w, h));
+    let mut enc = gpu
+        .device
+        .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+            label: Some("ph2d-flip preview overlay"),
+        });
+    {
+        let mut pass = enc.begin_render_pass(&wgpu::RenderPassDescriptor {
+            label: Some("ph2d-flip preview overlay pass"),
+            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                view: game_rt.view(),
+                depth_slice: None,
+                resolve_target: None,
+                ops: wgpu::Operations {
+                    load: wgpu::LoadOp::Load,
+                    store: wgpu::StoreOp::Store,
+                },
+            })],
+            depth_stencil_attachment: flip_render.depth_view().map(|v| {
+                wgpu::RenderPassDepthStencilAttachment {
+                    view: v,
+                    depth_ops: Some(wgpu::Operations {
+                        load: wgpu::LoadOp::Clear(0.0),
+                        store: wgpu::StoreOp::Discard,
+                    }),
+                    stencil_ops: None,
+                }
+            }),
+            timestamp_writes: None,
+            occlusion_query_set: None,
+            multiview_mask: None,
+        });
+        flip_render.draw(&mut pass);
+    }
+    gpu.queue.submit([enc.finish()]);
 }
 
 /// As camadas ativas AGORA, na ordem de composição (objeto por objeto; dentro de

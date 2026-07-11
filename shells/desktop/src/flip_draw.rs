@@ -11,7 +11,8 @@
 //! premium) é T2.7; RDP no pen-up é T2.8.
 
 use ph2d_core::Vec2;
-use ph2d_flip::{FlipDoc, FlipStroke, Hold, KeyKind, Point, Rgba};
+use ph2d_flip::{FlipDoc, FlipDrawing, FlipStroke, Hold, KeyKind, Point, Rgba};
+use ph2d_flip_render::{FlipGpuData, pack_drawing};
 use ph2d_tool_flip::{FlipMode, FlipStyleSnapshot};
 
 /// O traço do Flip em curso: amostras em MUNDO + pressão por amostra.
@@ -55,6 +56,12 @@ impl FlipDraw {
         self.points.push(world);
         self.pressures.push(pressure);
         true
+    }
+
+    /// As amostras acumuladas (mundo, pressão) — pra o preview ao vivo.
+    #[must_use]
+    pub(crate) fn samples(&self) -> (&[Vec2], &[f32]) {
+        (&self.points, &self.pressures)
     }
 
     /// Encerra o traço e devolve as amostras (mundo, pressão), limpando o estado.
@@ -126,6 +133,20 @@ pub(crate) fn bake_stroke(
         return false;
     };
 
+    drawing
+        .strokes
+        .push(build_stroke(style, points, pressures, px_to_world));
+    true
+}
+
+/// Constrói um `FlipStroke` a partir das amostras (mundo) + estilo. Compartilhado
+/// pelo bake (pen-up) e pelo preview ao vivo (durante o arrasto).
+fn build_stroke(
+    style: &FlipStyleSnapshot,
+    points: &[Vec2],
+    pressures: &[f32],
+    px_to_world: f32,
+) -> FlipStroke {
     let color = srgb8_to_linear(style.stroke);
     let base_w = (style.width_px as f32) * px_to_world; // px de tela → mundo
     let mut s = FlipStroke::new();
@@ -140,8 +161,7 @@ pub(crate) fn bake_stroke(
     }
     s.hardness = style.hardness;
     s.closed = false;
-    drawing.strokes.push(s);
-    true
+    s
 }
 
 impl crate::App {
@@ -183,6 +203,27 @@ impl crate::App {
         self.flip_draw
             .extend(Vec2::new(w[0], w[1]), 1.0, px_per_world);
         true
+    }
+
+    /// GPU-data do traço em curso pro **preview ao vivo** (renderizado por cima do
+    /// composite a cada frame; vira documento só no pen-up). `None` quando não há
+    /// gesto ou < 2 amostras.
+    #[must_use]
+    pub(crate) fn flip_preview_data(&self) -> Option<FlipGpuData> {
+        if !self.flip_draw.is_active() {
+            return None;
+        }
+        let style = self.flip_style?;
+        let gfx = self.gfx.as_ref()?;
+        let (pts, prs) = self.flip_draw.samples();
+        if pts.len() < 2 {
+            return None;
+        }
+        let win = gfx.surface.size();
+        let px_to_world = gfx.camera.height_world.max(f32::EPSILON) / win.height.max(1) as f32;
+        let mut d = FlipDrawing::default();
+        d.strokes.push(build_stroke(&style, pts, prs, px_to_world));
+        Some(pack_drawing(&d))
     }
 
     /// Pen-up: assa o traço acumulado no `FlipDoc`. Devolve `true` se um gesto

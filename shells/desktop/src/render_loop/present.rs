@@ -23,6 +23,9 @@ impl crate::App {
     /// across the encode work (excluding the vsync-blocking
     /// `acquire_frame` call).
     pub(super) fn run_present_phase(&mut self, cpu_start: Instant, r: f64, g: f64, b: f64) {
+        // ADR-0113 W2: GPU-data do traço Flip em curso (preview ao vivo), construída
+        // ANTES do borrow de `self.gfx` (lê a câmera + o gesto; devolve owned).
+        let flip_preview = self.flip_preview_data();
         let Some(gfx) = self.gfx.as_mut() else {
             return;
         };
@@ -138,6 +141,7 @@ impl crate::App {
                     flip_render,
                     flip_compose,
                     flip_composite,
+                    flip_preview.as_ref(),
                     &self.playhead,
                     game_rt,
                     camera,

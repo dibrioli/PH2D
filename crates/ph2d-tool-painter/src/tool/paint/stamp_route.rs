@@ -63,8 +63,9 @@ impl PainterTool {
             // (`smear_wet_base`) and the wash composites over the smeared base. Cumulative methods
             // only — the re-stamp previews (Drag Dot/Anchored/Line) would re-mutate the base every
             // frame. Off (default) → byte-identical. The wet-on-wet dissolve/lift (`wet_rewet`) is
-            // per-pixel in `apply_watercolor`, not here. Smear needs the UNtiled dab CHAIN (a single
-            // source position dab-to-dab), so it keeps the raw `dabs` (its Tiling is a follow-up).
+            // per-pixel in `apply_watercolor`, not here. Smear keeps the raw (UNtiled) dab CHAIN so the
+            // dab-to-dab drag stays continuous, and applies the Tiling wrap INTERNALLY (per-dab offsets +
+            // toroidal lift, `smear_wet_base`) — so an edge-crossing smear also drags the opposite edge.
             if self.paint.brush.wet_smudge > 0.0
                 && !matches!(
                     self.paint.brush.stroke_method,

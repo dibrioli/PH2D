@@ -30,9 +30,18 @@ impl PainterTool {
         // (`stamp_dabs`): snapshot the smear footprint of the BASE, smear, then lerp the gated texels
         // back by `keep` (`splat_keep` — the same weights `restore_deselected_region` /
         // `restore_protected_region` apply to the canvas). Ungated (the default) ⇒ zero-cost path.
+        // Seamless Tiling (doc 13 #2, follow-up a): the smear must wrap like the coverage/color wash
+        // (which tiles via `tiled_dabs`) — otherwise an edge-crossing smear drags paint only on the near
+        // edge and the OPPOSITE edge's wash composites over an un-smeared base (a visible smudge seam).
+        // Both the toroidal LIFT and the far-edge WRITE happen below; the gate footprint must span the
+        // wrapped writes too, so `smear_footprint` folds the same wrap offsets.
+        let tiling = self.paint.tiling;
+        let tiled = tiling[0] || tiling[1];
         let (sel, prot, alock) = self.wet_splat_gates();
         let gate_region = (sel.is_some() || prot.is_some() || alock.is_some())
-            .then(|| Self::smear_footprint(dabs, self.paint.wet_smear_pos, self.source_size))
+            .then(|| {
+                Self::smear_footprint(dabs, self.paint.wet_smear_pos, self.source_size, tiling)
+            })
             .flatten();
         // EDGE-1 wet session: the smear must mutate the base THE COMPOSITE READS — the session
         // base when a wet session is live (falling back to the per-stroke base). On the session's
@@ -67,28 +76,49 @@ impl PainterTool {
         let mut from = self.paint.wet_smear_pos;
         let mut touched: Option<Region> = None;
         for d in dabs {
-            if let Some(prev) = from
-                && let Some(r) = ph2d_painter_brush::smear_dab(
-                    buf,
-                    w,
-                    h,
-                    prev,
-                    d.center,
-                    &BrushSpec {
-                        radius_px: d.radius_px,
-                        ..spec
-                    },
-                    smudge * d.coverage,
-                    [false, false],
-                )
-            {
-                let rect = Region {
-                    x: r.x,
-                    y: r.y,
-                    w: r.w,
-                    h: r.h,
+            if let Some(prev) = from {
+                let amount = smudge * d.coverage;
+                // One wrap offset applied to BOTH the lift (`prev`) and the stamp (`d.center`) — the wrapped
+                // copy keeps the same displacement, so an edge-crossing drag also smears the base on the
+                // opposite edge (mirror of the plain-brush Smear route, `stamp_route::smear_dabs`). The lift
+                // reads toroidally via `smear_dab`'s `wrap`. Off ⇒ one `[0,0]` offset + no-wrap (byte-identical).
+                let mut offs = [[0.0f32; 2]; 9];
+                let n = if tiled {
+                    super::tiling::tiled_offsets_into(
+                        d.center,
+                        d.radius_px,
+                        (w, h),
+                        tiling,
+                        &mut offs,
+                    )
+                } else {
+                    1
                 };
-                touched = Some(touched.map_or(rect, |acc| union_region(acc, rect)));
+                for &off in &offs[..n] {
+                    let f = [prev[0] + off[0], prev[1] + off[1]];
+                    let t = [d.center[0] + off[0], d.center[1] + off[1]];
+                    if let Some(r) = ph2d_painter_brush::smear_dab(
+                        buf,
+                        w,
+                        h,
+                        f,
+                        t,
+                        &BrushSpec {
+                            radius_px: d.radius_px,
+                            ..spec
+                        },
+                        amount,
+                        tiling,
+                    ) {
+                        let rect = Region {
+                            x: r.x,
+                            y: r.y,
+                            w: r.w,
+                            h: r.h,
+                        };
+                        touched = Some(touched.map_or(rect, |acc| union_region(acc, rect)));
+                    }
+                }
             }
             from = Some(d.center);
         }
@@ -140,28 +170,40 @@ impl PainterTool {
     }
 
     /// The base-buffer footprint a smear batch can touch: the union of each dab's disc (± radius + 1 px)
-    /// plus the chain's previous position (the lift source), clamped to the canvas. `None` when empty /
+    /// plus the chain's previous position (the lift source), **including the Tiling wrap copies** (the
+    /// smear stamps the wrapped dab too, so a gated snapshot/restore must cover the opposite edge — else a
+    /// wrapped smear escapes the selection / protection mask). Clamped to the canvas. `None` when empty /
     /// fully off-canvas. Mirror of [`Self::dab_batch_region`] but keyed on the WET smear chain
-    /// (`wet_smear_pos`), not the plain-Smear one.
-    fn smear_footprint(dabs: &[Dab], prev: Option<[f32; 2]>, (w, h): (u32, u32)) -> Option<Region> {
+    /// (`wet_smear_pos`), not the plain-Smear one. Tiling off ⇒ one `[0,0]` offset (byte-identical bbox).
+    fn smear_footprint(
+        dabs: &[Dab],
+        prev: Option<[f32; 2]>,
+        (w, h): (u32, u32),
+        tiling: [bool; 2],
+    ) -> Option<Region> {
         if w == 0 || h == 0 || dabs.is_empty() {
             return None;
         }
         let (mut minx, mut miny, mut maxx, mut maxy) = (f32::MAX, f32::MAX, f32::MIN, f32::MIN);
+        // Fold a centre's disc AND its wrap copies (the same offsets the smear stamps at).
+        let mut fold = |c: [f32; 2], r: f32| {
+            let mut offs = [[0.0f32; 2]; 9];
+            let n = super::tiling::tiled_offsets_into(c, r, (w, h), tiling, &mut offs);
+            for &o in &offs[..n] {
+                minx = minx.min(c[0] + o[0] - r);
+                maxx = maxx.max(c[0] + o[0] + r);
+                miny = miny.min(c[1] + o[1] - r);
+                maxy = maxy.max(c[1] + o[1] + r);
+            }
+        };
         let mut max_r = 0.0_f32;
         for d in dabs {
             let r = d.radius_px + 1.0;
             max_r = max_r.max(r);
-            minx = minx.min(d.center[0] - r);
-            maxx = maxx.max(d.center[0] + r);
-            miny = miny.min(d.center[1] - r);
-            maxy = maxy.max(d.center[1] + r);
+            fold(d.center, r);
         }
         if let Some(p) = prev {
-            minx = minx.min(p[0] - max_r);
-            maxx = maxx.max(p[0] + max_r);
-            miny = miny.min(p[1] - max_r);
-            maxy = maxy.max(p[1] + max_r);
+            fold(p, max_r);
         }
         let x0 = minx.floor().max(0.0) as u32;
         let y0 = miny.floor().max(0.0) as u32;

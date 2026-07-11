@@ -10913,6 +10913,74 @@ fn watercolor_smudge_true_smears_the_painted_paint() {
     );
 }
 
+/// **Watercolor Smudge wraps across the Tiling seam (doc 13 #2, follow-up a — Enio 2026-07-11).** With
+/// Tiling on, the coverage/color wash already wraps (`tiled_dabs`); the TRUE SMEAR must wrap too, or the
+/// far edge's wash composites over an UN-smeared base — a visible smudge seam. A rightward smear crossing
+/// the RIGHT edge lifts the right-edge paint toroidally and stamps it onto the wrapped LEFT edge, so a red
+/// right-edge band gets dragged onto the left edge (unreachable without the wrap). RED before the fix:
+/// under Tiling the left edge is identical at smudge 0 vs 0.9 (the smear never touched the far edge).
+#[test]
+fn watercolor_smudge_wraps_across_the_tiling_seam() {
+    let size = 64u32;
+    fn run(smudge: f32, tiling: bool) -> PainterTool {
+        let size = 64u32;
+        // White canvas with a RED right THIRD (x∈[42,63]) — plenty of paint for the wrapped smear to drag.
+        let mut src = vec![255u8; (size * size * 4) as usize];
+        for y in 0..size {
+            for x in 42..size {
+                let i = ((y * size + x) * 4) as usize;
+                src[i..i + 4].copy_from_slice(&[230u8, 15, 15, 255]);
+            }
+        }
+        let mut t = PainterTool::default();
+        t.set_source(src, size, size);
+        t.paint.brush = BrushSpec {
+            radius_px: 6.0,
+            color: [0.1, 0.2, 0.85], // blue wash, so any RED on the far edge can only be dragged base
+            space_attenuation: false,
+            watercolor: true,
+            edge_gain: 0.0,
+            granulation: 0.0,
+            warp: 0.0,
+            fill: 0.12, // very light wash so the (smeared) base reads through clearly
+            depth: 1.0,
+            wet_smudge: smudge,
+            wet_rewet: 0.0, // isolate the physical smear from the wet-on-wet rewet
+            ..Default::default()
+        };
+        for slot in &mut t.paint.brush_by_mode {
+            *slot = t.paint.brush;
+        }
+        t.paint.tiling = [tiling, false];
+        // Rightward stroke near the right edge, crossing the seam (dabs at x≈52..72, radius 6 ⇒ the copies
+        // wrap onto the left edge); a dense step (2 px) so the drag accumulates, y=32.
+        assert!(t.on_canvas_pointer(cp([50.0, 32.0], PointerPhase::Down)));
+        let mut x = 50.0f32;
+        while x < 74.0 {
+            x += 2.0;
+            t.on_canvas_pointer(cp([x, 32.0], PointerPhase::Move));
+        }
+        assert!(t.on_canvas_pointer(cp([x, 32.0], PointerPhase::Up)));
+        t
+    }
+    let redness = |c: [u8; 4]| i32::from(c[0]) - (i32::from(c[1]) + i32::from(c[2])) / 2;
+    let (lx, ly) = (2u32, 32u32); // a wrapped left-edge pixel
+    let base = run(0.0, true); // Tiling on, no smudge: wash-only far edge (wash wraps in both runs)
+    let smeared = run(0.9, true); // Tiling on + smudge: the wrapped smear drags red onto the far edge
+    let off = run(0.9, false); // Tiling OFF: the smear can't reach the far edge (proves it's the wrap)
+    let b = px(&base, size, lx, ly);
+    let s = px(&smeared, size, lx, ly);
+    let o = px(&off, size, lx, ly);
+    assert!(
+        redness(s) > redness(b) + 20,
+        "the wrapped smear dragged red onto the far edge: smeared {s:?} vs wash-only {b:?}"
+    );
+    assert!(
+        redness(s) > redness(o) + 20,
+        "the far-edge red is the Tiling WRAP, not a non-tiled path: tiled {s:?} vs off {o:?}"
+    );
+}
+
 /// Watercolor **dirty-rect** — the live recomposite is LOCAL to the frame's new dabs (wet_edges
 /// `renderFrame`), so the per-frame cost tracks the brush, not the grown stroke (the old cumulative-bbox
 /// recomposite was ~quadratic along a stroke — the "Performance muito aquém do MVP" symptom). Proof by

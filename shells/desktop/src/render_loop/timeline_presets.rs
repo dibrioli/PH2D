@@ -24,6 +24,10 @@ pub(crate) enum Preset {
     Linear,
     /// Freeze the drawn handles into an editable bézier.
     Custom,
+    /// Toggle roving (AE "rove across time") — not an interpolation: the key's
+    /// TIME becomes derived. Like [`Preset::Custom`] it cannot broadcast one
+    /// absolute value; the toggle direction reads the keys' current state.
+    Rove,
     /// One of the 30 easing family × mode combinations.
     Eased(ph2d_anim::Easing),
 }
@@ -46,6 +50,9 @@ pub(crate) fn preset_for(item: ph2d_editor::NodeId, mode: u8) -> Option<Preset> 
     }
     if item == c::CTX_MENU_TL_CUSTOM {
         return Some(Preset::Custom);
+    }
+    if item == c::CTX_MENU_TL_ROVE {
+        return Some(Preset::Rove);
     }
     let mode = match mode {
         c::TL_EASE_MODE_IN => M::In,
@@ -104,6 +111,22 @@ fn single_key(state: &TimelineState, preset: Preset, target: u64, key: u64) -> V
     let target = AnimTarget::new(target);
     let key = KeyId::new(key);
     let bulk = state.selection.contains(SelectedKey { target, key });
+    // `Rove` is a toggle, not an interpolation: all-roving flips off, anything
+    // else flips on (so a mixed selection converges to roving first).
+    if matches!(preset, Preset::Rove) {
+        let sel = SelectedKey { target, key };
+        return vec![if bulk {
+            TimelineIntent::SetSelectedRove {
+                on: !all_roving(state, state.selection.keys()),
+            }
+        } else {
+            TimelineIntent::SetRove {
+                target,
+                key,
+                on: !all_roving(state, std::slice::from_ref(&sel)),
+            }
+        }];
+    }
     // `Custom` has no single `Interp` to broadcast: every key freezes ITS own
     // handles, so it crosses as its own intent rather than a shared value.
     if matches!(preset, Preset::Custom) {
@@ -143,18 +166,26 @@ fn column(state: &TimelineState, preset: Preset, t: f64) -> Vec<TimelineIntent> 
     if keys.is_empty() {
         return Vec::new();
     }
-    let bulk_edit = if matches!(preset, Preset::Custom) {
-        TimelineIntent::ConvertSelectionToBezier
-    } else {
-        TimelineIntent::SetSelectedInterp {
-            interp: absolute(preset),
-        }
-    };
     // The same disambiguation the Key scope uses: right-clicking a column whose
     // keys are ALL already selected retunes the WHOLE selection — several
     // selected columns must not collapse to the clicked one first (the original
     // bug: the unconditional ClearSelection below threw the rest away).
-    if keys.iter().all(|k| state.selection.contains(*k)) {
+    let whole_selection = keys.iter().all(|k| state.selection.contains(*k));
+    let bulk_edit = match preset {
+        Preset::Custom => TimelineIntent::ConvertSelectionToBezier,
+        // The toggle direction reads whichever key set the edit will cover.
+        Preset::Rove => TimelineIntent::SetSelectedRove {
+            on: if whole_selection {
+                !all_roving(state, state.selection.keys())
+            } else {
+                !all_roving(state, &keys)
+            },
+        },
+        _ => TimelineIntent::SetSelectedInterp {
+            interp: absolute(preset),
+        },
+    };
+    if whole_selection {
         return vec![bulk_edit];
     }
     let mut out = Vec::with_capacity(keys.len() + 2);
@@ -196,106 +227,26 @@ fn absolute(preset: Preset) -> ph2d_anim::Interp {
         Preset::Linear => Interp::Linear,
         Preset::Eased(e) => Interp::Eased(e),
         Preset::Custom => unreachable!("Custom is relative to each key's own curve"),
+        Preset::Rove => unreachable!("Rove toggles a flag, it is not an interpolation"),
     }
+}
+
+/// `true` iff every key in `keys` currently roves. Empty = `false`, so the
+/// menu toggle's first press always turns roving ON.
+fn all_roving(state: &TimelineState, keys: &[ph2d_timeline::SelectedKey]) -> bool {
+    !keys.is_empty()
+        && keys.iter().all(|k| {
+            state
+                .doc
+                .active_clip()
+                .track(k.target)
+                .is_some_and(|tr| tr.is_roving(k.key))
+        })
 }
 
 #[cfg(test)]
-mod preset_tests {
-    use super::*;
-    use ph2d_editor::ids as c;
-
-    /// Every row the overlay paints must resolve — the anti-dead-menu gate.
-    #[test]
-    fn every_published_menu_row_resolves_to_a_preset() {
-        // Leaves of the top-level menu (the three cascade rows are editor-core's).
-        for (id, label, _) in c::TIMELINE_SEGMENT_MENU {
-            let is_cascade = id == c::CTX_MENU_TL_EASE_IN
-                || id == c::CTX_MENU_TL_EASE_OUT
-                || id == c::CTX_MENU_TL_EASE_INOUT;
-            if is_cascade {
-                continue;
-            }
-            assert!(
-                preset_for(id, ph2d_editor::interaction::TL_NO_EASE_MODE).is_some(),
-                "top-level row {label:?} paints but resolves to nothing"
-            );
-        }
-        // Every family, under every mode the three cascades can open.
-        for mode in [
-            c::TL_EASE_MODE_IN,
-            c::TL_EASE_MODE_OUT,
-            c::TL_EASE_MODE_INOUT,
-        ] {
-            for (id, label, _) in c::TIMELINE_EASE_MENU {
-                assert!(
-                    matches!(preset_for(id, mode), Some(Preset::Eased(_))),
-                    "family {label:?} paints but resolves to nothing under mode {mode}"
-                );
-            }
-        }
-    }
-
-    #[test]
-    fn a_family_row_without_a_mode_resolves_to_nothing() {
-        // Only the cascade grants a mode; a family id arriving without one must
-        // not silently become "In".
-        assert_eq!(
-            preset_for(
-                c::CTX_MENU_TL_FAM_BOUNCE,
-                ph2d_editor::interaction::TL_NO_EASE_MODE
-            ),
-            None
-        );
-    }
-
-    #[test]
-    fn the_three_cascade_rows_are_not_leaves() {
-        for id in [
-            c::CTX_MENU_TL_EASE_IN,
-            c::CTX_MENU_TL_EASE_OUT,
-            c::CTX_MENU_TL_EASE_INOUT,
-        ] {
-            assert_eq!(
-                preset_for(id, ph2d_editor::interaction::TL_NO_EASE_MODE),
-                None,
-                "a cascade row must open a submenu, never set an interp"
-            );
-        }
-    }
-
-    #[test]
-    fn each_mode_and_family_reaches_its_own_easing() {
-        use ph2d_anim::{Easing, EasingFamily as F, EasingMode as M};
-        assert_eq!(
-            preset_for(c::CTX_MENU_TL_FAM_ELASTIC, c::TL_EASE_MODE_OUT),
-            Some(Preset::Eased(Easing::new(F::Elastic, M::Out)))
-        );
-        assert_eq!(
-            preset_for(c::CTX_MENU_TL_FAM_SINE, c::TL_EASE_MODE_INOUT),
-            Some(Preset::Eased(Easing::new(F::Sine, M::InOut)))
-        );
-    }
-
-    /// The 30 combinations are distinct — a copy-paste slip in the family match
-    /// would map two rows to the same easing and half the menu would be a lie.
-    #[test]
-    fn the_thirty_easing_rows_are_all_different() {
-        let mut seen = std::collections::BTreeSet::new();
-        for mode in [
-            c::TL_EASE_MODE_IN,
-            c::TL_EASE_MODE_OUT,
-            c::TL_EASE_MODE_INOUT,
-        ] {
-            for (id, _, _) in c::TIMELINE_EASE_MENU {
-                let Some(Preset::Eased(e)) = preset_for(id, mode) else {
-                    panic!("not an easing")
-                };
-                assert!(seen.insert(format!("{e:?}")), "duplicate easing: {e:?}");
-            }
-        }
-        assert_eq!(seen.len(), 30);
-    }
-}
+#[path = "timeline_presets_menu_tests.rs"]
+mod preset_tests;
 
 #[cfg(test)]
 #[path = "timeline_presets_tests.rs"]

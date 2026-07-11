@@ -568,6 +568,10 @@ pub const CTX_MENU_TL_HOLD: NodeId = hash_node_id("ctx_menu_tl_hold");
 pub const CTX_MENU_TL_LINEAR: NodeId = hash_node_id("ctx_menu_tl_linear");
 /// Freeze the drawn handles into an editable bézier (`Interp::to_bezier`).
 pub const CTX_MENU_TL_CUSTOM: NodeId = hash_node_id("ctx_menu_tl_custom");
+/// Toggle roving (AE "rove across time"): the key's time stops being authored
+/// and is derived so the value travels at constant speed between its pinned
+/// neighbours.
+pub const CTX_MENU_TL_ROVE: NodeId = hash_node_id("ctx_menu_tl_rove");
 /// Cascade row: easing families, accelerating from rest.
 pub const CTX_MENU_TL_EASE_IN: NodeId = hash_node_id("ctx_menu_tl_ease_in");
 /// Cascade row: easing families, decelerating to rest.
@@ -612,13 +616,14 @@ pub const TL_EASE_MODE_INOUT: u8 = 2;
 /// it, and the shell's gate proves every row resolves to something. A row added
 /// here and forgotten in the shell is a compile-green menu item that does
 /// nothing; that is the bug this shape exists to make impossible.
-pub const TIMELINE_SEGMENT_MENU: [(NodeId, &str, Option<[u8; 4]>); 6] = [
+pub const TIMELINE_SEGMENT_MENU: [(NodeId, &str, Option<[u8; 4]>); 7] = [
     (CTX_MENU_TL_HOLD, "Hold", None),
     (CTX_MENU_TL_LINEAR, "Linear", None),
     (CTX_MENU_TL_EASE_IN, "Ease In \u{25b6}", None),
     (CTX_MENU_TL_EASE_OUT, "Ease Out \u{25b6}", None),
     (CTX_MENU_TL_EASE_INOUT, "Ease In-Out \u{25b6}", None),
     (CTX_MENU_TL_CUSTOM, "Custom (B\u{e9}zier)", None),
+    (CTX_MENU_TL_ROVE, "Rove Across Time", None),
 ];
 
 /// The easing-family submenu, shared by all three modes (the mode rides in the

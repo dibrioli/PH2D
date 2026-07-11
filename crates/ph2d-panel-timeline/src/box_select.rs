@@ -112,6 +112,7 @@ mod tests {
             value: 0.0,
             interp: Interp::Linear,
             selected: false,
+            roving: false,
         };
         let row = |target: u64, keys: Vec<KeyView>| TrackView {
             target: AnimTarget::new(target),

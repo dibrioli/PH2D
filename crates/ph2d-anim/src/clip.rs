@@ -95,6 +95,14 @@ impl Clip {
             .map(|(_, track)| track)
     }
 
+    /// Re-derive every roving key's time in every track
+    /// ([`Track::resolve_roving`]). Idempotent; call after any batch of edits.
+    pub fn resolve_roving(&mut self) {
+        for (_, track) in &mut self.tracks {
+            track.resolve_roving();
+        }
+    }
+
     /// The track bound to `target` for mutation (first match).
     pub fn track_mut(&mut self, target: AnimTarget) -> Option<&mut Track> {
         self.tracks

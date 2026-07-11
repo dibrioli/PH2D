@@ -60,7 +60,8 @@ pub fn apply(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
     // must not park a pick the shell cannot resolve.
     let is_leaf = id == ids::CTX_MENU_TL_HOLD
         || id == ids::CTX_MENU_TL_LINEAR
-        || id == ids::CTX_MENU_TL_CUSTOM;
+        || id == ids::CTX_MENU_TL_CUSTOM
+        || id == ids::CTX_MENU_TL_ROVE;
     let is_family = ids::TIMELINE_EASE_MENU.iter().any(|(fam, _, _)| *fam == id);
     if !(is_leaf || (is_family && open_mode != TL_NO_EASE_MODE)) {
         return false;

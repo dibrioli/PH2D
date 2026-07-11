@@ -34,6 +34,9 @@ const TWIRL_BASE_HALF: f32 = 5.0; // LITERAL-PX-OK: row twirl triangle half-base
 /// Height of the twirl triangle, flat edge to apex.
 const TWIRL_TIP: f32 = 9.0; // LITERAL-PX-OK: row twirl triangle height
 const DIAMOND_H: f32 = 4.5; // LITERAL-PX-OK: keyframe diamond half-size
+/// A ROVING key draws as a small dot instead of the diamond (AE convention:
+/// its time is derived, not authored).
+const ROVE_DOT_R: f32 = 2.5; // LITERAL-PX-OK: roving key dot radius
 /// Horizontal half-width of a key's clickable hit rect (larger than the visual
 /// diamond so a small target is easy to grab).
 pub(crate) const KEY_HIT_HW: f32 = 7.0; // LITERAL-PX-OK: keyframe grab half-width
@@ -221,7 +224,18 @@ fn paint_lane_keys(
         } else {
             ColorToken::TimelineKey
         };
-        paint_diamond(ctx, kx, cy, DIAMOND_H, resolve(tok, theme));
+        if k.roving {
+            // AE convention: a roving key is a small circle, not a diamond.
+            ph2d_editor_core::paint::fill_circle(
+                ctx.scene,
+                kx,
+                cy,
+                ROVE_DOT_R,
+                resolve(tok, theme),
+            );
+        } else {
+            paint_diamond(ctx, kx, cy, DIAMOND_H, resolve(tok, theme));
+        }
         // Hit target keyed by identity (stable across frames/reorders). The grab
         // rect follows the drawn (previewed) position.
         let id = ids::timeline_key_hit_id(track.target.get(), k.id.get());

@@ -122,6 +122,7 @@ mod tests {
             value: v,
             interp,
             selected: false,
+            roving: false,
         }
     }
 

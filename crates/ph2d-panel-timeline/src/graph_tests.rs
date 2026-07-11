@@ -21,6 +21,7 @@ fn key(t: f64, v: f32) -> ph2d_timeline::KeyView {
         value: v,
         interp: Interp::Linear,
         selected: false,
+        roving: false,
     }
 }
 

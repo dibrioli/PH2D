@@ -130,6 +130,23 @@ pub enum TimelineIntent {
     /// each key converts from the curve IT had, so a mixed selection stays mixed
     /// and nothing moves on screen — it only becomes draggable.
     ConvertSelectionToBezier,
+    /// Mark / unmark one key as **roving** (AE "rove across time"): its time
+    /// stops being authored and is derived so the value travels at constant
+    /// speed between the pinned neighbours. Boundary keys never rove.
+    SetRove {
+        /// Track target.
+        target: AnimTarget,
+        /// Key id.
+        key: KeyId,
+        /// `true` to rove, `false` to pin at the currently derived time.
+        on: bool,
+    },
+    /// Mark / unmark **every selected key** as roving, across any number of
+    /// tracks. One undo step. A no-op with nothing selected.
+    SetSelectedRove {
+        /// `true` to rove, `false` to pin.
+        on: bool,
+    },
 
     // ── markers (W4.T3; each is one undo step) ──────────────────────────────
     /// Add a marker at `t_seconds` with `label` (user content; the shell
@@ -371,6 +388,18 @@ pub fn apply_intent(state: &mut TimelineState, playhead: &mut Playhead, intent: 
                 }
             });
         }),
+        I::SetRove { target, key, on } => edit(state, |doc, _| {
+            if let Some(track) = doc.active_clip_mut().track_mut(target) {
+                track.set_roving(key, on);
+            }
+        }),
+        I::SetSelectedRove { on } => edit(state, |doc, sel| {
+            for_selected_tracks(doc, sel, |track, ids| {
+                for &id in ids {
+                    track.set_roving(id, on);
+                }
+            });
+        }),
 
         // selection
         I::SelectSingle(k) => state.selection.set_single(k),
@@ -426,12 +455,19 @@ fn edit(state: &mut TimelineState, f: impl FnOnce(&mut TimelineDoc, &mut Selecti
     // Inside a `BeginEdit`/`EndEdit` bracket the caller owns the undo step: just
     // mutate, and let the bracket's commit fold every frame of the gesture into
     // one. Outside it, the edit is atomic and brackets itself.
+    //
+    // Every branch re-derives the roving keys' times after the mutation — the
+    // single choke point that keeps "time ∝ value travel" true through every
+    // authoring path (add/move/scale/paste/value/interp/rove), idempotent and
+    // cheap, and folded into the same undo step as the edit it follows.
     if state.history.is_open() {
         f(&mut state.doc, &mut state.selection);
+        state.doc.active_clip_mut().resolve_roving();
         return;
     }
     state.history.begin(&state.doc);
     f(&mut state.doc, &mut state.selection);
+    state.doc.active_clip_mut().resolve_roving();
     state.history.commit_if_changed(&state.doc);
 }
 

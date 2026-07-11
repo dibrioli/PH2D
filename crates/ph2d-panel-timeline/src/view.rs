@@ -365,6 +365,7 @@ mod tests {
                         value: 0.0,
                         interp: Interp::Linear,
                         selected: false,
+                        roving: false,
                     })
                     .collect(),
             }],

@@ -24,6 +24,7 @@ fn snap(sel0: bool, sel1: bool) -> TimelineViewSnapshot {
         value: v,
         interp: Interp::Linear,
         selected,
+        roving: false,
     };
     TimelineViewSnapshot {
         fps: 60.0,

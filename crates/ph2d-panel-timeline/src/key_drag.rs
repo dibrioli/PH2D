@@ -192,6 +192,7 @@ mod tests {
                     value: 0.0,
                     interp: Interp::Linear,
                     selected: true,
+                    roving: false,
                 }],
             }],
             ..snap()

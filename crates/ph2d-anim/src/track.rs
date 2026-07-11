@@ -74,6 +74,11 @@ pub struct Track {
     keys: Vec<Key>,
     /// Stable ids, parallel to `keys` (same index ⇒ same key).
     ids: Vec<KeyId>,
+    /// Roving flags, parallel to `keys` — a roving key's TIME is derived, not
+    /// authored ([`Track::resolve_roving`]). Persistent CONTENT (unlike `ids`):
+    /// it serializes and participates in equality. Kept as a parallel vec so
+    /// [`Key`] stays a plain `(t, value, interp)` literal everywhere.
+    roving: Vec<bool>,
     /// Next id to hand out (monotonic).
     next_id: u64,
     /// Returned when the track is empty (documented explicit default).
@@ -84,21 +89,26 @@ pub struct Track {
 
 /// Content equality ignores the atomic playback `cursor` (a transient sampling
 /// hint) and the session-local `ids`/`next_id` — two tracks are equal when they
-/// hold the same keys + default. Used by history dedup ([`crate::TimelineHistory`]).
+/// hold the same keys + roving flags + default. Used by history dedup
+/// ([`crate::TimelineHistory`]).
 impl PartialEq for Track {
     fn eq(&self, other: &Self) -> bool {
-        self.keys == other.keys && self.default == other.default
+        self.keys == other.keys && self.roving == other.roving && self.default == other.default
     }
 }
 
-/// Serde proxy for [`Track`] — persists only keys + default and rebuilds through
-/// [`Track::new`] (fresh ids, reset cursor; the atomic cursor + session-local
-/// ids never serialize).
+/// Serde proxy for [`Track`] — persists keys + roving flags + default and
+/// rebuilds through [`Track::new`] (fresh ids, reset cursor; the atomic cursor
+/// + session-local ids never serialize).
 #[derive(Serialize, Deserialize)]
 struct TrackData {
     keys: Vec<Key>,
     #[serde(with = "crate::anim_value_serde")]
     default: AnimValue,
+    /// Appended last (postcard positional). A payload shorter than `keys` pads
+    /// with `false` on load — tolerant of a pre-roving producer.
+    #[serde(default)]
+    roving: Vec<bool>,
 }
 
 impl From<Track> for TrackData {
@@ -106,13 +116,18 @@ impl From<Track> for TrackData {
         Self {
             keys: t.keys,
             default: t.default,
+            roving: t.roving,
         }
     }
 }
 
 impl From<TrackData> for Track {
     fn from(d: TrackData) -> Self {
-        Track::new(d.keys).with_default(d.default)
+        let mut roving = d.roving;
+        roving.resize(d.keys.len(), false);
+        let mut t = Track::new(d.keys).with_default(d.default);
+        t.roving = roving;
+        t
     }
 }
 
@@ -129,6 +144,7 @@ impl Track {
         let ids = (0..keys.len() as u64).map(KeyId).collect();
         Self {
             next_id: keys.len() as u64,
+            roving: vec![false; keys.len()],
             keys,
             ids,
             default,
@@ -212,6 +228,7 @@ impl Track {
         self.next_id += 1;
         self.keys.insert(idx, Key { t, value, interp });
         self.ids.insert(idx, id);
+        self.roving.insert(idx, false);
         self.invalidate_cursor();
         id
     }
@@ -253,6 +270,7 @@ impl Track {
             Some(i) => {
                 self.keys.remove(i);
                 self.ids.remove(i);
+                self.roving.remove(i);
                 self.invalidate_cursor();
                 true
             }
@@ -337,6 +355,7 @@ impl Track {
             if stationary && moved_times.iter().any(|t| *t == self.keys[i].t) {
                 self.keys.remove(i);
                 self.ids.remove(i);
+                self.roving.remove(i);
             } else {
                 i += 1;
             }
@@ -364,6 +383,7 @@ impl Track {
         for &i in idxs.iter().rev() {
             self.keys.remove(i);
             self.ids.remove(i);
+            self.roving.remove(i);
         }
         if !idxs.is_empty() {
             self.invalidate_cursor();
@@ -395,13 +415,21 @@ impl Track {
 
     // ─── Internals ──────────────────────────────────────────────────────────
 
-    /// Re-sort keys + ids in lockstep by time (stable) and reset the cursor.
+    /// Re-sort keys + ids + roving flags in lockstep by time (stable) and reset
+    /// the cursor.
     fn resort(&mut self) {
-        let mut pairs: Vec<(Key, KeyId)> = self.keys.drain(..).zip(self.ids.drain(..)).collect();
-        pairs.sort_by_key(|p| p.0.t);
-        for (k, id) in pairs {
+        let mut triples: Vec<(Key, KeyId, bool)> = self
+            .keys
+            .drain(..)
+            .zip(self.ids.drain(..))
+            .zip(self.roving.drain(..))
+            .map(|((k, id), r)| (k, id, r))
+            .collect();
+        triples.sort_by_key(|p| p.0.t);
+        for (k, id, r) in triples {
             self.keys.push(k);
             self.ids.push(id);
+            self.roving.push(r);
         }
         self.invalidate_cursor();
     }
@@ -475,9 +503,15 @@ impl Clone for Track {
         Self {
             keys: self.keys.clone(),
             ids: self.ids.clone(),
+            roving: self.roving.clone(),
             next_id: self.next_id,
             default: self.default,
             cursor: AtomicUsize::new(self.cursor.load(Ordering::Relaxed)),
         }
     }
 }
+
+// Roving keys ("rove across time") — child module so the parallel `roving` vec
+// stays a private invariant of `Track`.
+#[path = "rove.rs"]
+mod rove;

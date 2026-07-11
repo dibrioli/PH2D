@@ -981,3 +981,159 @@ fn moving_a_marker_that_does_not_exist_is_a_harmless_noop() {
     apply_intent(&mut st, &mut ph, I::RemoveMarker { index: 9 });
     assert_eq!(st.doc, before, "out-of-range marker ops change nothing");
 }
+
+// ─── Roving keys (W5) ────────────────────────────────────────────────────────
+
+/// TX keys (0 s → 0, 3 s → 10, 4 s → 30); returns `(target, middle key id)`.
+fn rove_rig(
+    st: &mut TimelineState,
+    ph: &mut Playhead,
+) -> (ph2d_anim::AnimTarget, ph2d_anim::KeyId) {
+    for (t, v) in [(0.0, 0.0f32), (3.0, 10.0), (4.0, 30.0)] {
+        add_key(st, ph, 1, PropKind::TranslationX, t, v);
+    }
+    let target = st
+        .doc
+        .binding_for(1, PropKind::TranslationX)
+        .unwrap()
+        .target;
+    let track = st.doc.active_clip().track(target).unwrap();
+    let mid = track
+        .keys()
+        .iter()
+        .zip(track.ids())
+        .find(|(k, _)| (k.t.to_seconds() - 3.0).abs() < 1e-9)
+        .map(|(_, id)| *id)
+        .unwrap();
+    (target, mid)
+}
+
+fn times_of(st: &TimelineState, target: ph2d_anim::AnimTarget) -> Vec<f64> {
+    st.doc
+        .active_clip()
+        .track(target)
+        .unwrap()
+        .keys()
+        .iter()
+        .map(|k| k.t.to_seconds())
+        .collect()
+}
+
+#[test]
+fn rove_derives_the_time_and_every_later_edit_reflows_it() {
+    // Value 10 is ⅓ of the 0→30 travel: roving slides the key from its
+    // authored 3 s to 4/3 s (constant value speed).
+    let mut st = TimelineState::new();
+    let mut ph = Playhead::new(DT);
+    let (target, mid) = rove_rig(&mut st, &mut ph);
+    apply_intent(
+        &mut st,
+        &mut ph,
+        I::SetRove {
+            target,
+            key: mid,
+            on: true,
+        },
+    );
+    let t = times_of(&st, target)[1];
+    assert!((t - 4.0 / 3.0).abs() < 1e-5, "t = {t}, expected 4/3");
+    // Editing the VALUE re-derives the time through the same choke point —
+    // 15 is half the travel, so the key reflows to 2 s.
+    apply_intent(
+        &mut st,
+        &mut ph,
+        I::SetKeyValue {
+            target,
+            key: mid,
+            value: AnimValue::Float(15.0),
+        },
+    );
+    let t = times_of(&st, target)[1];
+    assert!(
+        (t - 2.0).abs() < 1e-5,
+        "value edit reflowed to {t}, expected 2"
+    );
+    // And dragging a PINNED neighbour reflows the span: select the last key
+    // (4 s) and shift it +2 s → the roving key rides to 3 s.
+    let track = st.doc.active_clip().track(target).unwrap();
+    let last = *track.ids().last().unwrap();
+    apply_intent(
+        &mut st,
+        &mut ph,
+        I::SelectSingle(SelectedKey { target, key: last }),
+    );
+    apply_intent(&mut st, &mut ph, I::MoveSelectedKeys { delta_seconds: 2.0 });
+    let t = times_of(&st, target)[1];
+    assert!(
+        (t - 3.0).abs() < 1e-5,
+        "neighbour drag reflowed to {t}, expected 3"
+    );
+}
+
+#[test]
+fn rove_is_one_undo_step_and_unroving_pins_the_derived_time() {
+    let mut st = TimelineState::new();
+    let mut ph = Playhead::new(DT);
+    let (target, mid) = rove_rig(&mut st, &mut ph);
+    let before = st.doc.clone();
+    apply_intent(
+        &mut st,
+        &mut ph,
+        I::SetRove {
+            target,
+            key: mid,
+            on: true,
+        },
+    );
+    // One Ctrl+Z restores the authored time AND the flag.
+    apply_intent(&mut st, &mut ph, I::Undo);
+    assert_eq!(st.doc, before, "rove + reflow undo as one step");
+    apply_intent(&mut st, &mut ph, I::Redo);
+    // Un-roving PINS the key where the resolver put it — nothing moves.
+    apply_intent(
+        &mut st,
+        &mut ph,
+        I::SetRove {
+            target,
+            key: mid,
+            on: false,
+        },
+    );
+    let t = times_of(&st, target)[1];
+    assert!((t - 4.0 / 3.0).abs() < 1e-5, "unrove pinned at {t}");
+    assert!(
+        !st.doc.active_clip().track(target).unwrap().is_roving(mid),
+        "flag cleared"
+    );
+}
+
+#[test]
+fn set_selected_rove_covers_the_selection_and_the_upsert_path_reflows() {
+    let mut st = TimelineState::new();
+    let mut ph = Playhead::new(DT);
+    let (target, mid) = rove_rig(&mut st, &mut ph);
+    apply_intent(
+        &mut st,
+        &mut ph,
+        I::SelectSingle(SelectedKey { target, key: mid }),
+    );
+    apply_intent(&mut st, &mut ph, I::SetSelectedRove { on: true });
+    assert!(st.doc.active_clip().track(target).unwrap().is_roving(mid));
+    let t = times_of(&st, target)[1];
+    assert!((t - 4.0 / 3.0).abs() < 1e-5, "bulk rove reflowed to {t}");
+    // Auto-key reaches the document directly (upsert, no intent): re-keying
+    // the LAST pose to 60 doubles the travel → the roving key reflows to
+    // 4 · 10/60 = 2/3 s. Proves the doc-level choke point.
+    st.doc.upsert_key(
+        1,
+        PropKind::TranslationX,
+        s(4.0),
+        AnimValue::Float(60.0),
+        Interp::Linear,
+    );
+    let t = times_of(&st, target)[1];
+    assert!(
+        (t - 2.0 / 3.0).abs() < 1e-5,
+        "upsert reflowed to {t}, expected 2/3"
+    );
+}

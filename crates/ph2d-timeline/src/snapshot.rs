@@ -29,6 +29,9 @@ pub struct KeyView {
     pub interp: Interp,
     /// Whether this key is in the current selection.
     pub selected: bool,
+    /// Whether this key roves (its time is derived, not authored) — drawn as a
+    /// small dot instead of the full diamond/anchor, AE-style.
+    pub roving: bool,
 }
 
 /// One track row as the panel sees it.
@@ -123,7 +126,8 @@ impl TimelineViewSnapshot {
             row.missing = b.missing;
             row.keys.clear();
             if let Some(track) = clip.track(b.target) {
-                for (k, &id) in track.keys().iter().zip(track.ids()) {
+                for ((k, &id), &roving) in track.keys().iter().zip(track.ids()).zip(track.roving())
+                {
                     row.keys.push(KeyView {
                         id,
                         t_seconds: k.t.to_seconds(),
@@ -136,6 +140,7 @@ impl TimelineViewSnapshot {
                             target: b.target,
                             key: id,
                         }),
+                        roving,
                     });
                 }
             }

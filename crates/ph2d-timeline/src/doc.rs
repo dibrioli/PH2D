@@ -18,7 +18,9 @@ use crate::prop::PropKind;
 
 /// On-disk schema version for the timeline document (HR-14). Written explicitly
 /// as the first field (never trust `serde(default)` under a positional format).
-pub const DOC_VERSION: u32 = 1;
+/// v2: tracks carry per-key roving flags (`TrackData.roving`, appended field —
+/// postcard is positional, so a v1 blob is rejected rather than misread).
+pub const DOC_VERSION: u32 = 2;
 
 /// The default display frame rate for a fresh document.
 pub const DEFAULT_FPS: f64 = 24.0;
@@ -246,6 +248,9 @@ impl TimelineDoc {
             .active_clip_mut()
             .track_or_insert(target, || Track::new(vec![]).with_default(value));
         let id = track.upsert_value(t, value, interp);
+        // Auto-key reaches the document directly (no intent), so this is its
+        // roving choke point: a re-keyed value shifts the derived times.
+        track.resolve_roving();
         (target, id)
     }
 

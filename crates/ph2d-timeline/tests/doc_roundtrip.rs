@@ -87,9 +87,11 @@ fn allocator_reseats_past_loaded_bindings() {
 }
 
 #[test]
-fn schema_version_is_one() {
-    assert_eq!(DOC_VERSION, 1);
-    assert_eq!(TimelineDoc::new().version, 1);
+fn schema_version_is_two() {
+    // v2 = per-key roving flags appended to the track payload (postcard is
+    // positional: a v1 blob must be REJECTED by the version gate, not misread).
+    assert_eq!(DOC_VERSION, 2);
+    assert_eq!(TimelineDoc::new().version, 2);
 }
 
 #[test]

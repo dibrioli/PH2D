@@ -30,6 +30,9 @@ use crate::state::TimelinePanelState;
 const CURVE_STEP_PX: f32 = 2.0; // LITERAL-PX-OK: curve polyline sample spacing
 const CURVE_W: f32 = 1.5; // LITERAL-PX-OK: curve stroke width
 const ANCHOR_R: f32 = 3.0; // LITERAL-PX-OK: key anchor dot radius
+/// A roving key's anchor draws smaller — its time is derived, not authored
+/// (the dope-sheet strip makes the same distinction with a dot vs a diamond).
+const ROVE_ANCHOR_R: f32 = 1.8; // LITERAL-PX-OK: roving key anchor radius
 const ANCHOR_HIT_R: f32 = 7.0; // LITERAL-PX-OK: key anchor grab radius
 const HANDLE_R: f32 = 3.5; // LITERAL-PX-OK: bezier handle dot radius
 const HANDLE_HIT_R: f32 = 7.0; // LITERAL-PX-OK: bezier handle grab radius
@@ -244,7 +247,8 @@ fn paint_anchors(
         } else {
             ColorToken::TimelineKey
         };
-        fill_circle(ctx.scene, x, y, ANCHOR_R, resolve(tok, theme));
+        let r = if k.roving { ROVE_ANCHOR_R } else { ANCHOR_R };
+        fill_circle(ctx.scene, x, y, r, resolve(tok, theme));
 
         // A key dragged (or eased) beyond the band is drawn clipped; leaving its
         // grab target behind would let it be grabbed through another row.

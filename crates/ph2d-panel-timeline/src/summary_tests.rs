@@ -15,6 +15,7 @@ fn snap(sel: &[(u64, u64)]) -> TimelineViewSnapshot {
         value: 0.0,
         interp: Interp::Linear,
         selected: sel.contains(&(target, id)),
+        roving: false,
     };
     let track = |target: u64, prop, keys| TrackView {
         target: AnimTarget::new(target),

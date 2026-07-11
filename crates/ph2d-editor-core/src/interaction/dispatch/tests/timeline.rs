@@ -117,6 +117,73 @@ fn update_streams_past_the_rect_edge() {
     assert_eq!((g[1].x, g[1].y), (999.0, 999.0));
 }
 
+#[test]
+fn double_clicking_a_marker_emits_a_double_click_gesture() {
+    // Two taps on the same marker within the double-click window (the test clock
+    // is fixed at 0, so any two Downs qualify) upgrade the SECOND tap to
+    // DoubleClick — the phase the panel turns into "open the rename field".
+    let (mut store, hits) = timeline_setup(TimelineHitKind::Marker { index: 0 });
+    let arena = Bump::new();
+    for _ in 0..2 {
+        let _ = dispatch_pointer(
+            &mut store,
+            &hits,
+            pointer(PointerKind::Down, 60.0, 60.0),
+            &arena,
+        );
+        let _ = dispatch_pointer(
+            &mut store,
+            &hits,
+            pointer(PointerKind::Up, 60.0, 60.0),
+            &arena,
+        );
+    }
+    let g: Vec<_> = store.drain_timeline_gestures().collect();
+    assert_eq!(g.len(), 4, "Begin, Click, Begin, DoubleClick");
+    assert_eq!(
+        g[1].phase,
+        GesturePhase::Click,
+        "the first tap is a plain click"
+    );
+    assert_eq!(
+        g[3].phase,
+        GesturePhase::DoubleClick,
+        "the second tap upgrades to DoubleClick"
+    );
+    assert!(matches!(g[3].kind, TimelineHitKind::Marker { index: 0 }));
+}
+
+#[test]
+fn double_clicking_a_key_stays_a_click_double_click_is_markers_only() {
+    // The DoubleClick upgrade is gated to markers: a fast double-tap on a key
+    // diamond must still read as two plain Clicks, so no other timeline surface
+    // changes behaviour from the double-click plumbing.
+    let (mut store, hits) = timeline_setup(TimelineHitKind::Key { target: 1, key: 0 });
+    let arena = Bump::new();
+    for _ in 0..2 {
+        let _ = dispatch_pointer(
+            &mut store,
+            &hits,
+            pointer(PointerKind::Down, 60.0, 60.0),
+            &arena,
+        );
+        let _ = dispatch_pointer(
+            &mut store,
+            &hits,
+            pointer(PointerKind::Up, 60.0, 60.0),
+            &arena,
+        );
+    }
+    let g: Vec<_> = store.drain_timeline_gestures().collect();
+    assert_eq!(g.len(), 4);
+    assert_eq!(g[1].phase, GesturePhase::Click);
+    assert_eq!(
+        g[3].phase,
+        GesturePhase::Click,
+        "a key never upgrades to DoubleClick"
+    );
+}
+
 fn wheel_mod(x: f32, y: f32, delta_x: f32, delta_y: f32, shift: bool, ctrl: bool) -> WheelEvent {
     WheelEvent {
         x,

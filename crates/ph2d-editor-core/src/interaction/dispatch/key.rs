@@ -258,9 +258,10 @@ pub fn dispatch_key<'frame>(
                     return events.into_bump_slice();
                 }
                 // M14.7 polish: Esc on the rename TextInput emits
-                // `Cancel` so hero can drop the rename mode without
-                // committing.
-                if id == crate::ids::HIER_RENAME_INPUT
+                // `Cancel` so the panel can drop the rename mode without
+                // committing (hierarchy row rename + timeline marker rename).
+                if (id == crate::ids::HIER_RENAME_INPUT
+                    || id == crate::ids::TIMELINE_MARKER_RENAME_INPUT)
                     && matches!(store.get(id), Some(InteractiveState::TextInput { .. }))
                 {
                     if let Some(InteractiveState::TextInput { state, .. }) = store.get_mut(id) {

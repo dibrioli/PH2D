@@ -72,7 +72,11 @@ pub(super) fn dispatch_down<'frame>(
     {
         store.set_active(Some(id));
         store.set_active_rect(Some(rect));
-        store.begin_timeline_press(event.x, event.y);
+        // Record the down for double-click detection here (the general path at
+        // the bottom returns early past this capture, so it never runs for a
+        // timeline surface). The Up reads the flag back to open a marker rename.
+        let is_double = store.record_pointer_down(Some(id), event.timestamp_ns);
+        store.begin_timeline_press(event.x, event.y, is_double);
         let mods = store.gesture_mods();
         store.push_timeline_gesture(TimelineGesture {
             surface,

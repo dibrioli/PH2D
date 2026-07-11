@@ -99,6 +99,19 @@ pub(crate) fn apply_event(
                 .push(EditorAction::TimelinePanelEvent(PanelEvent::Toggle(id, on)));
             EventOutcome::Consumed
         }
+        // Marker rename field (W4.T3). Enter → Submit, click-away → Blur both
+        // commit (the `take` inside makes the Enter→Submit+Blur pair idempotent);
+        // Esc → Cancel abandons it.
+        WidgetEvent::Submit(id) | WidgetEvent::Blur(id)
+            if id == ids::TIMELINE_MARKER_RENAME_INPUT =>
+        {
+            crate::marker_rename::commit(state, host.store());
+            EventOutcome::Consumed
+        }
+        WidgetEvent::Cancel(id) if id == ids::TIMELINE_MARKER_RENAME_INPUT => {
+            crate::marker_rename::cancel(state);
+            EventOutcome::Consumed
+        }
         _ => EventOutcome::Ignored,
     }
 }

@@ -100,7 +100,7 @@ fn dragging_the_start_handle_never_panics_on_a_sub_frame_loop() {
     // bound collapses the start to 0 instead of crashing.
     let mut st = TimelinePanelState::default();
     let s = TimelineViewSnapshot {
-        fps: 60.0,          // one frame = 16.7 ms
+        fps: 60.0, // one frame = 16.7 ms
         frame_snap: false,
         loop_range: Some((0.0, 0.01)), // 10 ms < one frame
         ..TimelineViewSnapshot::default()

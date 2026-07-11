@@ -88,6 +88,7 @@ impl WidgetStore {
             timeline_gestures: Vec::new(),
             timeline_moved: false,
             timeline_press: (0.0, 0.0),
+            timeline_double: false,
             timeline_wheel: BTreeMap::new(),
             timeline_canvas: BTreeMap::new(),
             alt_held: false,

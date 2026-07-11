@@ -107,6 +107,9 @@ pub struct TimelinePanelState {
     pub loop_drag: Option<LoopDrag>,
     /// Storage index of the marker being dragged on the ruler (W4.T3), if any.
     pub marker_drag: Option<usize>,
+    /// The marker whose inline rename field is open (W4.T3), opened by a
+    /// double-click on its pennant. `None` when no rename is in flight.
+    pub marker_rename: Option<MarkerRename>,
     /// In-progress box-select (marquee) drag over an empty lane.
     pub box_drag: Option<BoxDrag>,
     /// A box-select that just finished, waiting to be resolved against the key
@@ -211,6 +214,19 @@ pub struct LoopDrag {
     pub start_range: (f64, f64),
 }
 
+/// An open marker rename. The field text lives in the `WidgetStore` (like every
+/// other `TextInput`); this only tracks WHICH marker is being renamed and whether
+/// `paint` has already seeded the field + claimed focus (done once, on the first
+/// frame the rename is open — re-seeding every frame would stomp the user's typing
+/// and reset the caret).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct MarkerRename {
+    /// Storage index of the marker being renamed.
+    pub index: usize,
+    /// The field has been registered + seeded with the current label + focused.
+    pub opened: bool,
+}
+
 /// A press that landed on a Summary column.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct SummaryPress {
@@ -286,6 +302,7 @@ impl Default for TimelinePanelState {
             summary_press: None,
             loop_drag: None,
             marker_drag: None,
+            marker_rename: None,
             box_drag: None,
             box_commit: None,
             rect: None,

@@ -27,6 +27,7 @@ mod interact;
 mod key_drag;
 mod loop_drag;
 mod marker_drag;
+mod marker_rename;
 mod paint;
 pub mod populate;
 mod resize;

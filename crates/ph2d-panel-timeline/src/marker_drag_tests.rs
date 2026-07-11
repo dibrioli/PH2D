@@ -141,6 +141,68 @@ fn dragging_streams_absolute_moves_inside_one_bracket() {
 }
 
 #[test]
+fn a_double_click_arms_the_rename_and_raises_no_edit() {
+    let mut st = TimelinePanelState::default();
+    let s = snap();
+    // The pair's second press: Begin opens an empty bracket, DoubleClick closes
+    // it and arms the rename for this marker (paint seeds + focuses next frame).
+    apply(
+        &mut st,
+        0.0,
+        100.0,
+        &s,
+        0,
+        gesture(GesturePhase::Begin, 100.0, false),
+    );
+    apply(
+        &mut st,
+        0.0,
+        100.0,
+        &s,
+        0,
+        gesture(GesturePhase::DoubleClick, 100.0, false),
+    );
+    assert_eq!(
+        state::drain_intents(),
+        vec![TimelineIntent::BeginEdit, TimelineIntent::EndEdit],
+        "the double-click closes its empty bracket and raises no document edit"
+    );
+    assert_eq!(
+        st.marker_rename.map(|m| (m.index, m.opened)),
+        Some((0, false)),
+        "the rename is armed for marker 0, not yet seeded"
+    );
+    assert!(st.marker_drag.is_none());
+}
+
+#[test]
+fn an_alt_double_click_deletes_and_never_opens_a_rename() {
+    let mut st = TimelinePanelState::default();
+    let s = snap();
+    apply(
+        &mut st,
+        0.0,
+        100.0,
+        &s,
+        0,
+        gesture(GesturePhase::Begin, 100.0, true),
+    );
+    apply(
+        &mut st,
+        0.0,
+        100.0,
+        &s,
+        0,
+        gesture(GesturePhase::DoubleClick, 100.0, true),
+    );
+    assert!(
+        st.marker_rename.is_none(),
+        "Alt is the delete modifier — a double-click with it never renames"
+    );
+    let _ = state::drain_intents();
+}
+
+#[test]
 fn a_move_never_goes_negative() {
     let mut st = TimelinePanelState::default();
     let s = snap();

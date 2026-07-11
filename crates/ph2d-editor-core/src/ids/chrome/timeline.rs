@@ -58,6 +58,10 @@ pub const TIMELINE_ADD_MARKER: NodeId = hash_node_id("timeline.add_marker");
 /// Padlock on the Summary channel — toggles the column lock (see
 /// [`crate::interaction::TimelineHitKind::SummaryLock`]).
 pub const TIMELINE_SUMMARY_LOCK: NodeId = hash_node_id("timeline.summary_lock");
+/// Inline single-line `TextInput` for renaming a marker (W4.T3), opened by a
+/// double-click on the marker's pennant. One shared field (only one rename is
+/// open at a time — the panel tracks which marker index).
+pub const TIMELINE_MARKER_RENAME_INPUT: NodeId = hash_node_id("timeline.marker_rename_input");
 
 // ── Resize grippers (4 edges + 4 corners) ────────────────────────────────────
 /// Left edge.

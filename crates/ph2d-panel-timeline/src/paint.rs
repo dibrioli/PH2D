@@ -188,6 +188,17 @@ pub(crate) fn paint(state: &mut TimelinePanelState, ctx: &mut PaintCtx) {
 
     // "+Track" property dropdown overlay — painted last so it sits on top.
     tracks::paint_add_track_popover(ctx, theme, header, state.add_track_open);
+    // The inline marker-rename field, if one is open — painted after everything
+    // so it overlays the ruler + lanes it floats over.
+    crate::marker_rename::paint(
+        state,
+        ctx,
+        theme,
+        g.time_area,
+        view_start,
+        px_per_s,
+        &snapshot,
+    );
 
     set_last_content_h(content_h);
     set_last_visible_h(g.rows.h);

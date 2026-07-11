@@ -229,8 +229,21 @@ pub(super) fn dispatch_up<'frame>(
         // W2.E5b — end a timeline-surface capture: End if it dragged, else Click
         // (a tap). No apply_click/focus side effects — the panel owns semantics.
         if let Some((surface, kind)) = store.timeline_surface_at_id(active) {
-            let phase = if store.take_timeline_moved() {
+            let dragged = store.take_timeline_moved();
+            // Consume the double-click flag regardless (keeps it from leaking to
+            // the next tap), but only a MARKER tap upgrades to `DoubleClick` —
+            // every other surface treats a second tap as a plain Click, so this
+            // stays a no-op behaviour change for keys / lanes / braces.
+            let double = store.take_timeline_double();
+            let phase = if dragged {
                 GesturePhase::End
+            } else if double
+                && matches!(
+                    kind,
+                    crate::interaction::types::TimelineHitKind::Marker { .. }
+                )
+            {
+                GesturePhase::DoubleClick
             } else {
                 GesturePhase::Click
             };

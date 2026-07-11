@@ -37,10 +37,14 @@ impl WidgetStore {
     }
 
     /// Arm a fresh timeline capture at the Down point: not yet a drag, and this
-    /// is the origin the slop is measured from.
-    pub fn begin_timeline_press(&mut self, x: f32, y: f32) {
+    /// is the origin the slop is measured from. `double` is whether this Down was
+    /// the second of a double-click (from [`WidgetStore::record_pointer_down`]);
+    /// the Up reads it back to choose `DoubleClick` over `Click` (markers only —
+    /// see `pointer_up`).
+    pub fn begin_timeline_press(&mut self, x: f32, y: f32, double: bool) {
         self.timeline_press = (x, y);
         self.timeline_moved = false;
+        self.timeline_double = double;
     }
 
     /// Promote the capture to a DRAG once the pointer has travelled past
@@ -60,6 +64,12 @@ impl WidgetStore {
     /// Read + reset the "timeline capture moved" flag (Up chooses End vs Click).
     pub fn take_timeline_moved(&mut self) -> bool {
         std::mem::take(&mut self.timeline_moved)
+    }
+
+    /// Read + reset the "this capture began as a double-click" flag (Up chooses
+    /// `DoubleClick` over `Click` for a marker — e.g. to open its rename field).
+    pub fn take_timeline_double(&mut self) -> bool {
+        std::mem::take(&mut self.timeline_double)
     }
 
     // ── Wheel: anchored zoom + pan + scroll ──────────────────────────────
@@ -117,7 +127,7 @@ mod tests {
         // Without this, a twirl (which only answers to Click) is a coin flip: the
         // dispatch used to call the capture "moved" on the first pixel of travel.
         let mut store = WidgetStore::with_capacity(0);
-        store.begin_timeline_press(100.0, 50.0);
+        store.begin_timeline_press(100.0, 50.0, false);
         store.note_timeline_pointer(101.0, 52.0);
         store.note_timeline_pointer(100.0, 47.0);
         assert!(!store.take_timeline_moved(), "still a tap");
@@ -126,7 +136,7 @@ mod tests {
     #[test]
     fn travelling_past_the_slop_makes_it_a_drag_for_good() {
         let mut store = WidgetStore::with_capacity(0);
-        store.begin_timeline_press(100.0, 50.0);
+        store.begin_timeline_press(100.0, 50.0, false);
         store.note_timeline_pointer(100.0 + TIMELINE_DRAG_SLOP_PX + 0.1, 50.0);
         // Coming back inside the slop does NOT demote it — a drag stays a drag.
         store.note_timeline_pointer(100.0, 50.0);
@@ -137,11 +147,23 @@ mod tests {
     #[test]
     fn each_press_rearms_the_slop_from_its_own_origin() {
         let mut store = WidgetStore::with_capacity(0);
-        store.begin_timeline_press(0.0, 0.0);
+        store.begin_timeline_press(0.0, 0.0, false);
         store.note_timeline_pointer(500.0, 0.0);
         assert!(store.take_timeline_moved());
-        store.begin_timeline_press(500.0, 0.0);
+        store.begin_timeline_press(500.0, 0.0, false);
         store.note_timeline_pointer(501.0, 0.0);
         assert!(!store.take_timeline_moved(), "measured from the new Down");
+    }
+
+    #[test]
+    fn the_double_click_flag_round_trips_and_resets_on_read() {
+        let mut store = WidgetStore::with_capacity(0);
+        store.begin_timeline_press(10.0, 10.0, true);
+        assert!(store.take_timeline_double(), "the double flag is readable");
+        assert!(!store.take_timeline_double(), "and resets on read");
+        // A fresh single-click press clears it.
+        store.begin_timeline_press(10.0, 10.0, true);
+        store.begin_timeline_press(10.0, 10.0, false);
+        assert!(!store.take_timeline_double(), "re-armed by the latest Down");
     }
 }

@@ -80,6 +80,11 @@ const HIT_PARITY_ALLOW: &[(&str, &str)] = &[
     // by the timeline-surface pointer path, not by widget events — same shape as
     // `TIMELINE_LABEL_SPLIT`, so no `populate.rs` entry by design.
     ("ph2d-panel-timeline", "TIMELINE_SUMMARY_LOCK"),
+    // Inline marker-rename `TextInput`: registered in `marker_rename.rs` only
+    // while a rename is open (double-click a marker), seeded + focused there and
+    // committed via the Submit/Blur/Cancel arms in `event.rs`. Same shape as
+    // `HIER_RENAME_INPUT` — a dynamic rename field, never a static populate widget.
+    ("ph2d-panel-timeline", "TIMELINE_MARKER_RENAME_INPUT"),
 ];
 
 /// Editor-core global registration files (hero chrome). Shared ids like panel

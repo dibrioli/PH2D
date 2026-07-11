@@ -10,7 +10,7 @@
 use ph2d_editor_core::interaction::{GesturePhase, TimelineGesture};
 use ph2d_timeline::{TimelineIntent, TimelineViewSnapshot};
 
-use crate::state::{self, TimelinePanelState};
+use crate::state::{self, MarkerRename, TimelinePanelState};
 
 /// Interpret one marker gesture at storage `index`. `time_x` is the ruler's left
 /// edge (where `view_start` maps).
@@ -35,7 +35,7 @@ pub(crate) fn apply(
             state.marker_drag = None;
             state::push_intent(TimelineIntent::EndEdit);
         }
-        GesturePhase::Click | GesturePhase::DoubleClick => {
+        GesturePhase::Click => {
             state.marker_drag = None;
             if g.mods.alt {
                 // Alt+click removes — folds into the open bracket as one step.
@@ -48,6 +48,21 @@ pub(crate) fn apply(
                 if let Some(&(t, _)) = snap.markers.get(index) {
                     state::push_intent(TimelineIntent::Scrub(t));
                 }
+            }
+        }
+        GesturePhase::DoubleClick => {
+            // A double-click on the pennant opens the inline rename field. The
+            // Begin that preceded this pushed BeginEdit; close that empty bracket
+            // (the rename commits later as its own one-step edit). Alt is the
+            // delete modifier — the first click of the pair already removed the
+            // marker, so an Alt double-click just closes the bracket, no rename.
+            state.marker_drag = None;
+            state::push_intent(TimelineIntent::EndEdit);
+            if !g.mods.alt {
+                state.marker_rename = Some(MarkerRename {
+                    index,
+                    opened: false,
+                });
             }
         }
     }

@@ -617,6 +617,9 @@ pub struct WidgetStore {
     /// Pointer position at the timeline capture's Down, the origin the drag slop
     /// is measured from.
     pub(super) timeline_press: (f32, f32),
+    /// Whether the active timeline capture began as the second Down of a
+    /// double-click — read on Up so a marker tap can open its rename field.
+    pub(super) timeline_double: bool,
     /// Per-surface accumulated wheel (anchored zoom + pan + row scroll), drained
     /// by the timeline panel. Mirror of `graph_zoom`.
     pub(super) timeline_wheel: BTreeMap<NodeId, TimelineWheel>,

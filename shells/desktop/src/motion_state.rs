@@ -56,8 +56,8 @@ pub(crate) struct MotionState {
 impl MotionState {
     /// Build the boot state: register every node op + the **default document** —
     /// a single, focused scene: the pulse loop (`pulse.beat` metronome →
-    /// `motion.step` + `motion.strobe`), the module's most recent work
-    /// (docs/Motion Nodes/06, 08, 09). The earlier showcase scenes (the Cavalry
+    /// `pulse.counter` → `motion.drive` + `motion.strobe`), the module's most
+    /// recent work (docs/Motion Nodes/06, 08, 09, 12). The earlier showcase scenes (the Cavalry
     /// grid rig and the particle fountain) were removed to keep the boot
     /// document focused; they live in git history and every node keeps its own
     /// unit tests. Transport paused at tick 0 (the bridge auto-plays on tool entry).
@@ -90,11 +90,11 @@ impl MotionState {
 ///
 /// The scene — built in the `strobe` sibling module — is the smallest closed
 /// pulse loop: a `pulse.beat` metronome emits the pulse straight from the
-/// playhead and fans it out to a `motion.step` (sweeping the grid in discrete
-/// notches) and a `motion.strobe` (flashing it), both on the same beat. No
-/// transform channel is involved in the clocking (doc 09 killed the
-/// oscillate-Rotation-into-a-threshold hack). See docs/Motion Nodes/06 (pulse),
-/// 08 (step) and 09 (beat + naming).
+/// playhead; a `pulse.counter` reduces it to a value that a `motion.drive`
+/// routes onto X (sweeping the grid in discrete notches), and a `motion.strobe`
+/// flashes it, all on the same beat. No transform channel is involved in the
+/// clocking (doc 09 killed the oscillate-Rotation-into-a-threshold hack). See
+/// docs/Motion Nodes/06 (pulse), 08 (counter), 09 (beat + naming), 12 (value).
 ///
 /// The earlier showcase scenes were removed to keep the boot document focused on
 /// the recent implementation: the **Cavalry grid rig** (clone / orbit / falloff /

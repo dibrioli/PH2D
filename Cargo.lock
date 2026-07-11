@@ -5197,6 +5197,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-node-motion-drive"
+version = "0.0.0"
+dependencies = [
+ "ph2d-node-registry",
+ "ph2d-nodegraph",
+]
+
+[[package]]
 name = "ph2d-node-motion-emitter"
 version = "0.0.0"
 dependencies = [
@@ -5365,6 +5373,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-node-pulse-counter"
+version = "0.0.0"
+dependencies = [
+ "ph2d-node-registry",
+ "ph2d-nodegraph",
+]
+
+[[package]]
 name = "ph2d-node-pulse-threshold"
 version = "0.0.0"
 dependencies = [
@@ -5391,6 +5407,7 @@ dependencies = [
  "ph2d-node-force-vortex",
  "ph2d-node-force-wind",
  "ph2d-node-motion-clone",
+ "ph2d-node-motion-drive",
  "ph2d-node-motion-emitter",
  "ph2d-node-motion-falloff",
  "ph2d-node-motion-grid",
@@ -5412,6 +5429,7 @@ dependencies = [
  "ph2d-node-motion-transform",
  "ph2d-node-motion-wiggle",
  "ph2d-node-pulse-beat",
+ "ph2d-node-pulse-counter",
  "ph2d-node-pulse-threshold",
  "ph2d-node-registry",
  "ph2d-node-sync",

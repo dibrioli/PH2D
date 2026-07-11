@@ -23,6 +23,7 @@ ph2d-node-force-drag = { path = "../ph2d-node-force-drag" }
 ph2d-node-force-vortex = { path = "../ph2d-node-force-vortex" }
 ph2d-node-force-wind = { path = "../ph2d-node-force-wind" }
 ph2d-node-motion-clone = { path = "../ph2d-node-motion-clone" }
+ph2d-node-motion-drive = { path = "../ph2d-node-motion-drive" }
 ph2d-node-motion-emitter = { path = "../ph2d-node-motion-emitter" }
 ph2d-node-motion-falloff = { path = "../ph2d-node-motion-falloff" }
 ph2d-node-motion-grid = { path = "../ph2d-node-motion-grid" }
@@ -44,6 +45,7 @@ ph2d-node-motion-trail = { path = "../ph2d-node-motion-trail" }
 ph2d-node-motion-transform = { path = "../ph2d-node-motion-transform" }
 ph2d-node-motion-wiggle = { path = "../ph2d-node-motion-wiggle" }
 ph2d-node-pulse-beat = { path = "../ph2d-node-pulse-beat" }
+ph2d-node-pulse-counter = { path = "../ph2d-node-pulse-counter" }
 ph2d-node-pulse-threshold = { path = "../ph2d-node-pulse-threshold" }
 # <ph2d-node-sync:end>
 

@@ -1,7 +1,7 @@
 //! Headless demo/cook tests for `motion_state` (split for the HR-18 600-LOC
 //! shell cap; declared there as a `#[path]` sibling, so `super` is
 //! `motion_state`). Cook the default document — now the single pulse-loop scene
-//! (a `pulse.beat` metronome → `motion.step` + `motion.strobe`) — through the
+//! (a `pulse.beat` metronome → `pulse.counter` → `motion.drive` + `motion.strobe`) — through the
 //! REAL registry, exactly as the bridge does.
 
 use super::*;
@@ -15,9 +15,10 @@ fn new_builds_the_well_typed_pulse_document() {
         state.doc.graph.node(state.sinks[0]).unwrap().type_name,
         "motion.output"
     );
-    // 7 nodes: grid, move, tint, step, strobe, output, beat. No oscillator and
-    // no threshold: the beat IS the source (doc 09 killed the channel clock).
-    assert_eq!(state.doc.graph.nodes().len(), 7);
+    // 8 nodes: grid, move, tint, drive, strobe, output, beat, counter. The
+    // sweep is now COMPOSED (pulse.counter → motion.drive) instead of bundled
+    // in motion.step — the value domain (doc 12).
+    assert_eq!(state.doc.graph.nodes().len(), 8);
     assert!(state.doc.graph.validate(&state.registry).is_ok());
     assert_eq!(state.transport.playhead(1.0 / 60.0), 0.0); // paused at tick 0
 }
@@ -109,27 +110,28 @@ fn the_pulse_loop_strobes_the_grid_in_time() {
     ));
 }
 
-/// The STEP is alive end to end in the default document: the same beat that
-/// flashes the grid also STEPS it — the grid's X centroid sweeps in discrete
-/// notches and, being a Zigzag, turns around (up then back down) instead of
-/// drifting off. Proves the pulse→persistent-value bridge (docs/Motion
-/// Nodes/08, renamed by 09) through the REAL registry: an event driving a
-/// PERSISTENT value, the inverse of the strobe's decay.
+/// The VALUE DOMAIN is alive end to end in the default document: the same beat
+/// that flashes the grid also STEPS it — `pulse.counter` reduces the beat to a
+/// value and `motion.drive` routes it onto X, so the grid's X centroid sweeps in
+/// discrete notches and, being a Zigzag, turns around (up then back down)
+/// instead of drifting off. Proves the pulse→value→channel path (docs/Motion
+/// Nodes/08, 12) through the REAL registry: a value produced by one node,
+/// consumed by another, made visible.
 ///
-/// Falsifiable: a dead step (no pulse, or a stuck tick) leaves the X centroid
-/// CONSTANT — the sweep is the evidence; and a runaway (counting every tick, or
-/// a wrap that never folds) would break the symmetric bound or never turn
-/// around.
+/// Falsifiable: a dead counter/drive (no pulse, stuck tick, or the value never
+/// reaching the channel) leaves the X centroid CONSTANT — the sweep is the
+/// evidence; and a runaway (counting every tick, or a wrap that never folds)
+/// would break the symmetric bound or never turn around.
 #[test]
-fn the_step_sweeps_the_grid_in_discrete_notches() {
+fn the_value_domain_sweeps_the_grid_in_discrete_notches() {
     use ph2d_nodegraph::attr::Column;
 
     let state = MotionState::new();
     let strobe_sink = *state.sinks.last().unwrap();
     let mut cook = ph2d_nodegraph::cook::Cook::new();
 
-    // Mean X across the grid each tick. The step shifts every dot by the same
-    // `count · step`, so the centroid = base(-1.0) + count·0.5 — a clean proxy
+    // Mean X across the grid each tick. The drive shifts every dot by the same
+    // `count · scale`, so the centroid = base(-1.0) + count·0.5 — a clean proxy
     // for the count. Long enough (8 s ≈ 6 beats at 1.4 s) to reach the zigzag
     // top (count 4 → +1.0) and fold back down.
     let mut centroid = Vec::new();
@@ -150,10 +152,10 @@ fn the_step_sweeps_the_grid_in_discrete_notches() {
 
     let hi = centroid.iter().copied().fold(f32::MIN, f32::max);
     let lo = centroid.iter().copied().fold(f32::MAX, f32::min);
-    // It SWEEPS: a dead step would give a flat centroid.
+    // It SWEEPS: a dead value path would give a flat centroid.
     assert!(
         hi - lo > 1.0,
-        "the step must sweep the grid (hi {hi} vs lo {lo}); a flat X = a dead step"
+        "the drive must sweep the grid (hi {hi} vs lo {lo}); a flat X = a dead value path"
     );
     // It stays within the symmetric Zigzag reach about the -1.0 pre-offset centre
     // (0..4 counts · 0.5 = 0..2.0 → centroid in [-1.0, 1.0]); a runaway that counts
@@ -177,7 +179,7 @@ fn the_step_sweeps_the_grid_in_discrete_notches() {
 }
 
 /// The default document replays bit-identically. The three `pre` self-loops of
-/// the pulse loop — the beat's cycle index, the step's monotonic tick, and the
+/// the pulse loop — the beat's cycle index, the counter's monotonic tick, and the
 /// strobe's decaying `glow` — carry only integer/flag state, so two runs match
 /// exactly (HR-5).
 #[test]

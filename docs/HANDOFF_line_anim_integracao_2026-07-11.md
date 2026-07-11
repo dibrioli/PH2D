@@ -171,6 +171,20 @@ novos de slope + 154 anim+timeline + 290 total com painel + clippy `--all-target
 
 ---
 
+## 10. Feature W5 — weighted / value-space tangents
+
+**O quê:** handles com **peso** — `Interp::BezierW{x1,dy1,x2,dy2}`, bézier no plano `(u, valor)`: x = influência (fração, clamp CSS, MESMO solver Newton do `remap`), **dy = offset ABSOLUTO em valor** (semântica AE keyframe-velocity / Blender F-curve). Fecha o gap documentado do `handle_coords` ("Value-space tangents... W5 backlog"): **segmento flat agora curva**, e speed-edit em flat funciona.
+
+**Compat (o ponto de auditoria nº 1):** variant **apendado por ÚLTIMO** no enum → índices postcard estáveis → **saves v1 seguem legíveis** (DOC_VERSION inalterado); um arquivo NOVO com keys W não abre em build antigo (forward-incompat esperada). O caminho de sampling **legado é byte-idêntico**: `interpolate` ramifica SÓ no W (`lerp(remap)` intocado); goldens de `ph2d-anim` + o golden bit-a-bit `sample_keys ↔ Track::sample` provam.
+
+**Superfície:** `ph2d-anim` (variant + motor no módulo irmão `curve_weighted.rs` + `Interp::value/value_slope` + `slope_tests` extraído p/ `curve_slope_tests.rs` pelo LOC cap) · `ph2d-timeline` (`segment_handle_points` — posições value-space p/ QUALQUER interp; producers `weighted_with_handle`/`weighted_with_endpoint_speed`; `sample_keys` lockstep; speed.rs migrado pro funil `value_slope`; `out/in_handle_y_for_speed` REMOVIDOS — substituídos pelo producer) · painel (`resolve_drag` produz W nos dois modos; paint via `segment_handle_points`; o freeze do flat morreu). **Zero contrato congelado** (`AnimValue`/`sample(t)` intocados; `Interp` não é gateado); zero id novo.
+
+**Semântica de UX:** todo drag de tangente (valor E speed) converte pro W — **lossless** (o lado não-arrastado mantém a posição exata em que é desenhado; equivalência N↔W provada por teste). Presets (Hold/Linear/famílias/Custom) seguem normalizados — um preset é uma FORMA, independente dos valores.
+
+**Prova:** 5 testes no motor (flat-bulge — a red-assertion da feature · equivalência lossless · derivada vs fd · cascata degenerada/vertical · legado == caminho antigo) + golden `sample_keys` estendido com key W + drags do painel re-especificados (flat toma o valor · overshoot em dy · speed em flat) + round-trip serde com W + **2 mutações dirigidas**: (a) remover o branch W do `interpolate` → o golden bit-a-bit acusa o desalinhamento painel↔runtime; (b) zerar o dy no motor → flat-bulge vermelho. 506/506 nas 4 crates; clippy `--all-targets` verde. O produtor de speed tinha um bug pego pelo compilador durante o build (retunava as DUAS pontas) — corrigido + teste reforçado (a outra ponta não se move).
+
+---
+
 ## Cauda da W4 ainda aberta (para a próxima rodada — decisão do Enio)
 
 - **W4.T4** — docar a timeline no `motion_timeline_slot` quando o split do Motion está ativo (coordenação leve com Motion).

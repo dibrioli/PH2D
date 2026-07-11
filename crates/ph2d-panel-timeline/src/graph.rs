@@ -19,7 +19,7 @@
 
 use ph2d_editor_core::zones::Rect;
 use ph2d_timeline::{
-    Interp, TimelineIntent, TrackView, handle_coords, in_handle_y_for_speed, out_handle_y_for_speed,
+    TimelineIntent, TrackView, weighted_with_endpoint_speed, weighted_with_handle,
 };
 
 use crate::state::{self, HandleDrag, TimelinePanelState};
@@ -200,16 +200,6 @@ pub(crate) fn apply_handle_gesture(
     }
 }
 
-/// The segment's two handles in normalized timing space — the curve's TANGENTS
-/// at its anchors, whatever the interpolation. `Hold`/`Eased` have no two-handle
-/// form, and drawing them at the linear positions put the dots on the straight
-/// chord instead of on the curve; dragging one converts to `Bezier` from exactly
-/// where it is drawn.
-pub(crate) fn handle_pair(interp: Interp) -> [(f64, f64); 2] {
-    let ((a, b), (c, d)) = interp.tangent_handles();
-    [(a, b), (c, d)]
-}
-
 /// Turn this frame of an in-flight handle drag into a `SetInterp`, now that the
 /// band's value↔pixel mapping is known. Closes the undo bracket on the last one.
 pub(crate) fn resolve_drag(
@@ -231,34 +221,18 @@ pub(crate) fn resolve_drag(
         return; // the last key owns no segment
     };
     let k0 = &track.keys[i];
-    let old = handle_pair(k0.interp);
-    let (t0, v0) = (k0.t_seconds, f64::from(k0.value));
-    let (t1, v1) = (k1.t_seconds, f64::from(k1.value));
+    // Every tangent drag lands on a WEIGHTED (value-space) pair — the strictly
+    // more expressive form: the untouched handle keeps the exact position it is
+    // drawn at (a lossless conversion for any interp), and a flat segment
+    // finally takes the drag (its `dy` is absolute, the gap the normalized form
+    // could not express).
     let interp = if state.speed_view {
-        // Speed edit: the pointer's y is a VELOCITY. Solve the endpoint's handle
-        // `y` that reaches it, keeping the handle's `x` (influence). A flat
-        // segment (no value change) has no speed to scale — keep the handle.
-        let speed = band.value(d.y);
-        if d.which == 0 {
-            let (x1, y1) = (old[0].0, old[0].1);
-            let ny = out_handle_y_for_speed(t0, v0, t1, v1, x1, speed).unwrap_or(y1);
-            k0.interp.with_out_handle(x1, ny)
-        } else {
-            let (x2, y2) = (old[1].0, old[1].1);
-            let ny = in_handle_y_for_speed(t0, v0, t1, v1, x2, speed).unwrap_or(y2);
-            k0.interp.with_in_handle(x2, ny)
-        }
+        // Speed edit: the pointer's y is a VELOCITY — retune that endpoint's
+        // tangent, keeping its influence.
+        weighted_with_endpoint_speed(k0, k1, d.which, band.value(d.y))
     } else {
-        // Value edit: map the pointer (time, value) straight to the handle's
-        // normalized coords. A flat segment has no representable handle `y` — keep
-        // the one it had rather than snapping onto the line (see `handle_coords`).
-        let (hx, hy) = handle_coords(t0, v0, t1, v1, view.t(d.x), band.value(d.y));
-        let hy = hy.unwrap_or(old[d.which as usize].1);
-        if d.which == 0 {
-            k0.interp.with_out_handle(hx, hy)
-        } else {
-            k0.interp.with_in_handle(hx, hy)
-        }
+        // Value edit: the dragged handle follows the pointer in (time, value).
+        weighted_with_handle(k0, k1, d.which, view.t(d.x), band.value(d.y))
     };
     state::push_intent(TimelineIntent::SetInterp {
         target: track.target,

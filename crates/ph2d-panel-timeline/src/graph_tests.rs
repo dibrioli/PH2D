@@ -2,6 +2,14 @@
 //! (`#[path]`) so the band/handle source stays under the 600-LOC panel cap.
 //! Pure relocation of the `#[cfg(test)] mod tests` block — no test changed.
 use super::*;
+use ph2d_timeline::Interp;
+
+/// Test-local view of [`Interp::tangent_handles`] (the production paint reads
+/// value-space positions from `ph2d_timeline::segment_handle_points` instead).
+fn handle_pair(interp: Interp) -> [(f64, f64); 2] {
+    let ((a, b), (c, d)) = interp.tangent_handles();
+    [(a, b), (c, d)]
+}
 
 const BAND: Rect = Rect::new(100.0, 50.0, 400.0, 100.0);
 
@@ -132,19 +140,20 @@ fn drag_out_handle(interp: Interp, x: f32, y: f32) -> Vec<TimelineIntent> {
 }
 
 #[test]
-fn dragging_an_out_handle_converts_a_hold_segment_to_bezier() {
+fn dragging_an_out_handle_converts_a_hold_segment_to_a_weighted_bezier() {
     // Band fits 0..10 with 10% padding, so the midpoint v = 5 lands at
     // y = 50 either way. x = 25 px is t = 0.25 s.
     let got = drag_out_handle(Interp::Hold, 25.0, 50.0);
-    // (hx, hy) = (0.25, 0.5); the IN handle keeps the TANGENT it was drawn
-    // at (flat, for a Hold), not the linear default.
-    let want = Interp::bezier(0.25, 0.5, 2.0 / 3.0, 0.0);
+    // The drag lands on the WEIGHTED form: out handle at (t = 0.25, v = 5) →
+    // (x1 = 0.25, dy1 = 5); the IN handle keeps the exact position it was
+    // DRAWN at (a Hold's flat part: v0 = 0 → dy2 = 0 − v1 = −10).
+    let want = Interp::bezier_w(0.25, 5.0, 2.0 / 3.0, -10.0);
     assert!(
         got.iter().any(|i| matches!(
             i,
             TimelineIntent::SetInterp { interp, .. } if *interp == want
         )),
-        "a Hold segment must upgrade to Bezier on the first drag: {got:?}"
+        "a Hold segment must upgrade to a weighted bezier on the first drag: {got:?}"
     );
 }
 
@@ -188,19 +197,20 @@ fn dragging_a_speed_handle_retunes_the_tangent_to_that_velocity() {
     let band = Band::fit(ROW, Some((0.0, 40.0)));
     let got = drag_out_handle_speed(Interp::Linear, &band, 50.0);
     let Some(TimelineIntent::SetInterp {
-        interp: Interp::Bezier { x1, y1, .. },
+        interp: Interp::BezierW { x1, dy1, .. },
         ..
     }) = got
         .iter()
         .rev()
         .find(|i| matches!(i, TimelineIntent::SetInterp { .. }))
     else {
-        panic!("no SetInterp in {got:?}")
+        panic!("no weighted SetInterp in {got:?}")
     };
-    let start_slope = y1 / x1;
+    // Weighted endpoint velocity = dy1 / (x1·span); span = 1 s.
+    let velocity = dy1 / x1;
     assert!(
-        (start_slope - 2.0).abs() < 1e-9,
-        "start slope for v=20 at rate 10 must be 2: {start_slope}"
+        (velocity - 20.0).abs() < 1e-9,
+        "start velocity must be the 20 the pointer asked: {velocity}"
     );
     assert!(
         (x1 - 1.0 / 3.0).abs() < 1e-9,
@@ -209,14 +219,16 @@ fn dragging_a_speed_handle_retunes_the_tangent_to_that_velocity() {
 }
 
 #[test]
-fn a_speed_drag_on_a_flat_segment_keeps_the_handle() {
-    // v0 == v1: there is no velocity to scale, so the inverse declines and the
-    // segment stays where it was — no spurious tangent change.
+fn a_speed_drag_on_a_flat_segment_now_authors_real_velocity() {
+    // v0 == v1: the old normalized inverse had no value change to scale and
+    // declined. Weighted tangents carry ABSOLUTE offsets, so the drag works —
+    // the flat segment leaves the key at exactly the velocity the pointer asks.
     let mut tr = track(Interp::bezier(0.3, 0.7, 0.6, 0.2));
     for k in &mut tr.keys {
         k.value = 5.0; // flatten: dv = 0
     }
     let band = Band::fit(ROW, Some((-10.0, 10.0)));
+    let asked = band.value(10.0); // the velocity the pointer lands on
     let mut st = TimelinePanelState {
         speed_view: true,
         ..TimelinePanelState::default()
@@ -225,12 +237,19 @@ fn a_speed_drag_on_a_flat_segment_keeps_the_handle() {
     apply_handle_gesture(&mut st, 9, 1, 0, gesture(GesturePhase::Update, 50.0, 10.0));
     resolve_drag(&mut st, &band, VIEW, &tr);
     let got = state::drain_intents();
+    let Some(TimelineIntent::SetInterp {
+        interp: Interp::BezierW { x1, dy1, .. },
+        ..
+    }) = got
+        .iter()
+        .find(|i| matches!(i, TimelineIntent::SetInterp { .. }))
+    else {
+        panic!("no weighted SetInterp in {got:?}")
+    };
+    let velocity = dy1 / x1; // span = 1 s
     assert!(
-        got.iter().any(|i| matches!(
-            i,
-            TimelineIntent::SetInterp { interp: Interp::Bezier { y1, .. }, .. } if (*y1 - 0.7).abs() < 1e-9
-        )),
-        "a flat segment's out handle y stays 0.7: {got:?}"
+        (velocity - asked).abs() < 1e-9,
+        "the flat segment takes the asked velocity {asked}: {velocity}"
     );
 }
 
@@ -240,56 +259,63 @@ fn dragging_past_the_next_key_pins_the_handle_at_the_segment_end() {
     // function has no single solution, so x clamps.
     let got = drag_out_handle(Interp::Linear, 900.0, 50.0);
     let Some(TimelineIntent::SetInterp {
-        interp: Interp::Bezier { x1, .. },
+        interp: Interp::BezierW { x1, .. },
         ..
     }) = got
         .iter()
         .find(|i| matches!(i, TimelineIntent::SetInterp { .. }))
     else {
-        panic!("no SetInterp in {got:?}")
+        panic!("no weighted SetInterp in {got:?}")
     };
     assert_eq!(*x1, 1.0);
 }
 
 #[test]
 fn dragging_above_the_keys_overshoots_instead_of_clamping() {
-    // y = 0 is v = 11, past the segment's end value of 10 ⇒ hy = 1.1.
+    // y = 0 is v = 11, past the segment's end value of 10 ⇒ dy1 = 11 — the
+    // handle rides past the segment's own value change.
     let got = drag_out_handle(Interp::Linear, 50.0, 0.0);
     let Some(TimelineIntent::SetInterp {
-        interp: Interp::Bezier { y1, .. },
+        interp: Interp::BezierW { dy1, .. },
         ..
     }) = got
         .iter()
         .find(|i| matches!(i, TimelineIntent::SetInterp { .. }))
     else {
-        panic!("no SetInterp in {got:?}")
+        panic!("no weighted SetInterp in {got:?}")
     };
-    assert!(*y1 > 1.0, "overshoot must survive: y1 = {y1}");
+    assert!(*dy1 > 10.0, "overshoot must survive: dy1 = {dy1}");
 }
 
 #[test]
-fn a_flat_segment_keeps_the_handle_y_it_already_had() {
-    // v0 == v1: the normalized value axis is degenerate. Dragging must edit
-    // the timing (x) without snapping y onto the line.
+fn a_flat_segment_finally_takes_the_dragged_value() {
+    // v0 == v1: the normalized value axis was degenerate, so the old form
+    // froze the handle's y. Weighted tangents carry ABSOLUTE offsets — the
+    // drag lands exactly where the pointer points, and the flat segment
+    // curves (the gap that motivated W5's value-space tangents).
     let mut tr = track(Interp::bezier(0.4, 0.9, 0.6, 0.1));
     tr.keys[1].value = 0.0;
     let band = Band::fit(ROW, Some((0.0, 0.0)));
+    let dragged_v = band.value(90.0);
     let mut st = TimelinePanelState::default();
     apply_handle_gesture(&mut st, 9, 1, 0, gesture(GesturePhase::Begin, 0.0, 0.0));
     apply_handle_gesture(&mut st, 9, 1, 0, gesture(GesturePhase::End, 10.0, 90.0));
     resolve_drag(&mut st, &band, VIEW, &tr);
     let got = state::drain_intents();
     let Some(TimelineIntent::SetInterp {
-        interp: Interp::Bezier { x1, y1, .. },
+        interp: Interp::BezierW { x1, dy1, .. },
         ..
     }) = got
         .iter()
         .find(|i| matches!(i, TimelineIntent::SetInterp { .. }))
     else {
-        panic!("no SetInterp in {got:?}")
+        panic!("no weighted SetInterp in {got:?}")
     };
     assert!((*x1 - 0.1).abs() < 1e-9, "x still tracks the pointer");
-    assert_eq!(*y1, 0.9, "y kept, not reset to 0");
+    assert!(
+        (*dy1 - dragged_v).abs() < 1e-9 && *dy1 != 0.0,
+        "the flat segment takes the dragged value {dragged_v}: {dy1}"
+    );
 }
 
 #[test]

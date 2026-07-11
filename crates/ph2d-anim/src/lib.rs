@@ -55,6 +55,7 @@
 pub(crate) mod anim_value_serde;
 pub mod clip;
 pub mod curve;
+pub(crate) mod curve_weighted;
 pub mod easing;
 pub mod time;
 pub mod track;

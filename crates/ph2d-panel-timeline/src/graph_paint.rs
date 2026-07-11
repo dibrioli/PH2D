@@ -15,13 +15,13 @@ use ph2d_editor_core::paint::{
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::zones::Rect;
 use ph2d_timeline::{
-    KeyView, TrackView, drawn_extent, handle_point, sample_keys, sample_speed,
-    segment_endpoint_speed, speed_extent,
+    KeyView, TrackView, drawn_extent, sample_keys, sample_speed, segment_endpoint_speed,
+    segment_handle_points, speed_extent,
 };
 use ph2d_tokens::{ColorToken, Radius, Spacing, StrokeToken, Theme, TypeToken};
 
 use crate::anchor_drag;
-use crate::graph::{self, Band, TimeView, handle_pair, resolve_drag};
+use crate::graph::{self, Band, TimeView, resolve_drag};
 use crate::ids;
 use crate::state::TimelinePanelState;
 
@@ -289,15 +289,11 @@ fn paint_handles(
         if !(k0.selected || k1.selected) {
             continue;
         }
-        for (which, (hx, hy)) in handle_pair(k0.interp).into_iter().enumerate() {
+        // One source for every interp: the value-space handle positions
+        // (`BezierW` places its absolute offsets; the normalized forms map
+        // their tangent handles through the value change — same dots as ever).
+        for (which, (t, v)) in segment_handle_points(k0, k1).into_iter().enumerate() {
             let which = which as u8;
-            let (t, v) = handle_point(
-                k0.t_seconds,
-                f64::from(k0.value),
-                k1.t_seconds,
-                f64::from(k1.value),
-                (hx, hy),
-            );
             let (px, py) = (view.x(t), band.y(v));
             let anchor = if which == 0 { k0 } else { k1 };
             let (ax, ay) = (view.x(anchor.t_seconds), band.y(f64::from(anchor.value)));

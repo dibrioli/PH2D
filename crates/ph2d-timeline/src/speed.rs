@@ -13,12 +13,11 @@
 //! a `Hold` reads as a clean zero, never a differenced jump spike. A vertical
 //! tangent is `±∞` — display code skips non-finite samples.
 //!
-//! Editing the speed at a segment endpoint maps back to that segment's bézier
-//! tangent slope, keeping the handle's timing (influence) fixed. For a cubic
-//! through `(0,0)/(1,1)` the endpoint slopes are `y1/x1` (start) and
-//! `(1 - y2)/(1 - x2)` (end), so `velocity = (dv/span) · slope`. Inverting that
-//! gives the handle `y` for a target velocity — see [`out_handle_y_for_speed`] /
-//! [`in_handle_y_for_speed`].
+//! Editing the speed at a segment endpoint retunes that side's tangent while
+//! keeping its influence — the inverse lives in
+//! [`crate::graph::weighted_with_endpoint_speed`], which produces a
+//! value-space [`ph2d_anim::Interp::BezierW`] (so it works on a flat segment
+//! too: `dy` is absolute, `velocity(start) = dy1 / (x1·span)`).
 
 use crate::snapshot::KeyView;
 
@@ -40,12 +39,15 @@ pub fn sample_speed(keys: &[KeyView], t: f64) -> Option<f32> {
         .min(keys.len() - 2);
     let (k0, k1) = (&keys[idx], &keys[idx + 1]);
     let span = k1.t_seconds - k0.t_seconds;
-    let dv = f64::from(k1.value) - f64::from(k0.value);
     if span <= 0.0 {
         return Some(0.0);
     }
     let u = ((t - k0.t_seconds) / span).clamp(0.0, 1.0); // CLAMP-OK: normalized u
-    Some((dv * k0.interp.slope(u) / span) as f32)
+    Some(
+        (k0.interp
+            .value_slope(f64::from(k0.value), f64::from(k1.value), u)
+            / span) as f32,
+    )
 }
 
 /// The velocity at one end of a segment — where the speed graph pins that
@@ -63,9 +65,10 @@ pub fn segment_endpoint_speed(k0: &KeyView, k1: &KeyView, which: u8) -> f64 {
     if span <= 0.0 {
         return 0.0;
     }
-    let dv = f64::from(k1.value) - f64::from(k0.value);
     let u = if which == 0 { 0.0 } else { 1.0 };
-    dv * k0.interp.slope(u) / span
+    k0.interp
+        .value_slope(f64::from(k0.value), f64::from(k1.value), u)
+        / span
 }
 
 /// The `(min, max)` velocity the speed graph draws across `[t0, t1]`: the
@@ -105,50 +108,6 @@ pub fn speed_extent(keys: &[KeyView], t0: f64, t1: f64, samples: usize) -> Optio
         }
     }
     Some((lo, hi))
-}
-
-/// The normalized OUT-handle `y` (`P1.y`) that makes a segment START at velocity
-/// `speed`, keeping the handle's `x` (influence) at `x1`. `None` on a degenerate
-/// segment (no span or no value change — there is no velocity to scale), so the
-/// caller keeps the handle's current `y`.
-///
-/// `velocity(start) = (dv/span) · (y1 / x1)`  ⇒  `y1 = x1 · speed / (dv/span)`.
-#[must_use]
-pub fn out_handle_y_for_speed(
-    t0: f64,
-    v0: f64,
-    t1: f64,
-    v1: f64,
-    x1: f64,
-    speed: f64,
-) -> Option<f64> {
-    let rate = value_rate(t0, v0, t1, v1)?;
-    (x1 != 0.0).then(|| x1 * speed / rate)
-}
-
-/// The normalized IN-handle `y` (`P2.y`) that makes a segment END at velocity
-/// `speed`, keeping the handle's `x` at `x2`. `None` on a degenerate segment.
-///
-/// `velocity(end) = (dv/span) · ((1 - y2) / (1 - x2))`  ⇒
-/// `y2 = 1 - (1 - x2) · speed / (dv/span)`.
-#[must_use]
-pub fn in_handle_y_for_speed(
-    t0: f64,
-    v0: f64,
-    t1: f64,
-    v1: f64,
-    x2: f64,
-    speed: f64,
-) -> Option<f64> {
-    let rate = value_rate(t0, v0, t1, v1)?;
-    (x2 != 1.0).then(|| 1.0 - (1.0 - x2) * speed / rate)
-}
-
-/// The segment's average value rate `dv / span`, or `None` when it is degenerate
-/// (zero span or zero value change) — the reference the endpoint slope scales.
-fn value_rate(t0: f64, v0: f64, t1: f64, v1: f64) -> Option<f64> {
-    let (dt, dv) = (t1 - t0, v1 - v0);
-    (dt != 0.0 && dv != 0.0).then_some(dv / dt)
 }
 
 #[cfg(test)]
@@ -231,24 +190,34 @@ mod tests {
     }
 
     #[test]
-    fn the_out_handle_inverse_hits_the_target_start_speed_exactly() {
-        // dv/span = 5; ask for a 15 start speed (3× the linear rate), influence
-        // x1 = 1/3. Solve y1, then the ANALYTIC start slope must reproduce 15.
-        let x1 = 1.0 / 3.0;
-        let y1 = out_handle_y_for_speed(0.0, 0.0, 2.0, 10.0, x1, 15.0).unwrap();
-        let start_speed = (y1 / x1) * (10.0 / 2.0); // (dv/span) · (y1/x1)
-        assert!(
-            (start_speed - 15.0).abs() < 1e-9,
-            "start speed = {start_speed}"
-        );
-    }
-
-    #[test]
-    fn the_in_handle_inverse_hits_the_target_end_speed_exactly() {
-        let x2 = 2.0 / 3.0;
-        let y2 = in_handle_y_for_speed(0.0, 0.0, 2.0, 10.0, x2, 15.0).unwrap();
-        let end_speed = ((1.0 - y2) / (1.0 - x2)) * (10.0 / 2.0);
-        assert!((end_speed - 15.0).abs() < 1e-9, "end speed = {end_speed}");
+    fn the_weighted_inverse_hits_the_target_endpoint_speed_exactly() {
+        // Round-trip through the producer: ask an endpoint for a velocity,
+        // read it back through the ANALYTIC endpoint speed. Both ends, on a
+        // sloped segment AND on a flat one — the flat case is the capability
+        // weighted tangents add (the old normalized inverse had no value
+        // change to scale and declined).
+        use crate::graph::weighted_with_endpoint_speed;
+        for (v0, v1) in [(0.0f32, 10.0f32), (5.0, 5.0)] {
+            let k0 = key(0.0, v0, Interp::Linear);
+            let k1 = key(2.0, v1, Interp::Linear);
+            for which in [0u8, 1u8] {
+                let before_other = segment_endpoint_speed(&k0, &k1, 1 - which);
+                let mut k0w = k0.clone();
+                k0w.interp = weighted_with_endpoint_speed(&k0, &k1, which, 15.0);
+                let got = segment_endpoint_speed(&k0w, &k1, which);
+                assert!(
+                    (got - 15.0).abs() < 1e-9,
+                    "v0={v0} which={which}: asked 15, read {got}"
+                );
+                // The OTHER endpoint keeps the speed it had — retuning one
+                // side must not silently re-ease the far end.
+                let other = segment_endpoint_speed(&k0w, &k1, 1 - which);
+                assert!(
+                    (other - before_other).abs() < 1e-9,
+                    "v0={v0} which={which}: far end moved {before_other} -> {other}"
+                );
+            }
+        }
     }
 
     #[test]
@@ -309,32 +278,35 @@ mod tests {
     }
 
     #[test]
-    fn a_flat_segment_has_no_speed_to_scale() {
-        // dv == 0: the endpoint slope is undefined, so the inverse declines and
-        // the caller keeps the handle where it was.
-        assert_eq!(out_handle_y_for_speed(0.0, 5.0, 1.0, 5.0, 0.33, 9.0), None);
-        assert_eq!(in_handle_y_for_speed(0.0, 5.0, 1.0, 5.0, 0.66, 9.0), None);
+    fn a_flat_weighted_segment_shows_the_speed_its_tangents_author() {
+        // The capability weighted tangents add to the SPEED graph: a flat
+        // segment (dv = 0) whose handles are lifted +2 in value has real,
+        // non-zero velocity — it accelerates up, crests, and dives back.
+        let k0 = key(0.0, 5.0, Interp::bezier_w(1.0 / 3.0, 2.0, 2.0 / 3.0, 2.0));
+        let keys = [k0, key(1.0, 5.0, Interp::Linear)];
+        let start = sample_speed(&keys, 0.0).unwrap();
+        let mid = sample_speed(&keys, 0.5).unwrap();
+        assert!(start > 0.0, "rising off the first key: {start}");
+        assert!(mid.abs() < 1e-6, "flat at the symmetric crest: {mid}");
+        // The dive back is the start's mirror.
+        let end = sample_speed(&keys, 1.0).unwrap();
+        assert!((end + start).abs() < 1e-3, "symmetric dive: {end}");
     }
 
     #[test]
     fn setting_the_out_handle_from_a_speed_moves_the_sampled_start_speed_that_way() {
-        // End to end against the numeric sampler: a segment eased slow-in has a
-        // low start speed; solving the handle for a HIGHER start speed and reading
-        // the sampler back shows the start speed rose toward the target.
-        let x1 = 1.0 / 3.0;
-        let before = [
-            key(0.0, 0.0, Interp::bezier(x1, 0.05, 0.66, 1.0)), // slow in
-            key(2.0, 10.0, Interp::Linear),
-        ];
-        let s0 = sample_speed(&before, 0.02).unwrap();
-        let y1 = out_handle_y_for_speed(0.0, 0.0, 2.0, 10.0, x1, 12.0).unwrap();
-        let after = [
-            key(0.0, 0.0, Interp::bezier(x1, y1, 0.66, 1.0)),
-            key(2.0, 10.0, Interp::Linear),
-        ];
-        let s1 = sample_speed(&after, 0.02).unwrap();
+        // End to end against the sampler: a segment eased slow-in has a low
+        // start speed; retuning the endpoint to a HIGHER speed through the
+        // weighted producer and reading the sampler back lands on the target.
+        use crate::graph::weighted_with_endpoint_speed;
+        let k0 = key(0.0, 0.0, Interp::bezier(1.0 / 3.0, 0.05, 0.66, 1.0)); // slow in
+        let k1 = key(2.0, 10.0, Interp::Linear);
+        let s0 = sample_speed(&[k0.clone(), k1.clone()], 0.02).unwrap();
+        let mut k0w = k0.clone();
+        k0w.interp = weighted_with_endpoint_speed(&k0, &k1, 0, 12.0);
+        let s1 = sample_speed(&[k0w, k1], 0.02).unwrap();
         assert!(s1 > s0, "start speed rose: {s0} -> {s1}");
-        // ...and lands near the 12 asked for (forward-difference tolerance).
+        // ...and lands near the 12 asked for (sampled just off the endpoint).
         assert!((s1 - 12.0).abs() < 0.5, "near the target 12: {s1}");
     }
 }

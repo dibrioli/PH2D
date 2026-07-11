@@ -11,7 +11,7 @@
 //! copy of the interpolation living in paint code would silently drift. Here it
 //! is pinned by a golden test against the real sampler.
 
-use ph2d_anim::{AnimValue, LinearInterp};
+use ph2d_anim::{AnimValue, Interp, LinearInterp};
 
 use crate::snapshot::KeyView;
 
@@ -37,6 +37,13 @@ pub fn sample_keys(keys: &[KeyView], t: f64) -> Option<f32> {
     } else {
         0.0
     };
+    // Lockstep with `ph2d_anim::curve::interpolate` (the golden below pins the
+    // pair bit-for-bit): a weighted segment's `dy` is absolute, so the scalar
+    // evaluates through `Interp::value`; the normalized variants keep the
+    // original lerp float path.
+    if let Interp::BezierW { .. } = k0.interp {
+        return Some(k0.interp.value(f64::from(k0.value), f64::from(k1.value), u) as f32);
+    }
     match AnimValue::lerp(
         AnimValue::Float(k0.value),
         AnimValue::Float(k1.value),
@@ -98,25 +105,100 @@ pub fn drawn_extent(keys: &[KeyView], t0: f64, t1: f64, samples: usize) -> Optio
         if !(k0.selected || k1.selected) || k1.t_seconds < t0 || k0.t_seconds > t1 {
             continue;
         }
-        // Exact control points only. A `Hold`/`Eased` segment's handles are
-        // TANGENTS the editor derives for display; a steep preset (Expo, Back)
-        // would drag the whole band's fit out to meet a hint, squashing the
-        // curve the author came to look at. Those get clipped instead.
-        let Some(((x1, y1), (x2, y2))) = k0.interp.handles() else {
+        // Exact control points only (`Bezier`/`BezierW`). A `Hold`/`Eased`
+        // segment's handles are TANGENTS the editor derives for display; a
+        // steep preset (Expo, Back) would drag the whole band's fit out to
+        // meet a hint, squashing the curve the author came to look at. Those
+        // get clipped instead.
+        if !matches!(k0.interp, Interp::Bezier { .. } | Interp::BezierW { .. }) {
             continue;
-        };
-        for h in [(x1, y1), (x2, y2)] {
-            let (_, v) = handle_point(
-                k0.t_seconds,
-                f64::from(k0.value),
-                k1.t_seconds,
-                f64::from(k1.value),
-                h,
-            );
+        }
+        for (_, v) in segment_handle_points(k0, k1) {
             include(v as f32);
         }
     }
     (lo <= hi).then_some((lo, hi))
+}
+
+/// The absolute `(time, value)` positions of a segment's two handles — out
+/// (`P1`, index 0) then in (`P2`, index 1) — for ANY interpolation: `BezierW`
+/// places its `dy` offsets directly; every normalized variant maps its
+/// [`Interp::tangent_handles`] through the segment's value change (the exact
+/// positions the value graph has always drawn). This is the value-space
+/// counterpart of [`handle_point`], and the one source the panel paints and
+/// drags from.
+#[must_use]
+pub fn segment_handle_points(k0: &KeyView, k1: &KeyView) -> [(f64, f64); 2] {
+    let (t0, v0) = (k0.t_seconds, f64::from(k0.value));
+    let (t1, v1) = (k1.t_seconds, f64::from(k1.value));
+    if let Interp::BezierW { x1, dy1, x2, dy2 } = k0.interp {
+        let span = t1 - t0;
+        return [(t0 + x1 * span, v0 + dy1), (t0 + x2 * span, v1 + dy2)];
+    }
+    let (h_out, h_in) = k0.interp.tangent_handles();
+    [
+        handle_point(t0, v0, t1, v1, h_out),
+        handle_point(t0, v0, t1, v1, h_in),
+    ]
+}
+
+/// A weighted tangent pair from one dragged handle: `which` (`0` = out, `1` =
+/// in) moves to the absolute `(t, v)` while the OTHER handle keeps the exact
+/// position it is drawn at (see [`segment_handle_points`]) — converting a
+/// normalized segment to `BezierW` without the far end jumping, and editing a
+/// flat segment's shape at all (the `handle_coords` gap this replaces: `dy` is
+/// absolute, so `v0 == v1` no longer freezes the handle's value axis).
+#[must_use]
+pub fn weighted_with_handle(k0: &KeyView, k1: &KeyView, which: u8, t: f64, v: f64) -> Interp {
+    let pts = segment_handle_points(k0, k1);
+    let (out, inn) = if which == 0 {
+        ((t, v), pts[1])
+    } else {
+        (pts[0], (t, v))
+    };
+    weighted_from_points(k0, k1, out, inn)
+}
+
+/// A weighted tangent pair whose `which` endpoint moves at `speed` (value
+/// units per second), keeping both influences and the other side's offset.
+/// Inverse of the endpoint velocity: `v(start) = dy1 / (x1·span)` and
+/// `v(end) = −dy2 / ((1−x2)·span)`. A degenerate influence (`x1 == 0` /
+/// `x2 == 1`) has no finite tangent to retune — the handle keeps its offset.
+#[must_use]
+pub fn weighted_with_endpoint_speed(k0: &KeyView, k1: &KeyView, which: u8, speed: f64) -> Interp {
+    let span = k1.t_seconds - k0.t_seconds;
+    let (t0, v0) = (k0.t_seconds, f64::from(k0.value));
+    let v1 = f64::from(k1.value);
+    let [out, inn] = segment_handle_points(k0, k1);
+    let x1 = if span > 0.0 { (out.0 - t0) / span } else { 0.0 };
+    let x2 = if span > 0.0 { (inn.0 - t0) / span } else { 1.0 };
+    // Only the ASKED endpoint is retuned; the other side keeps the offset it
+    // is drawn at (a speed edit on one key must not silently re-ease the far
+    // end of the segment).
+    let (mut dy1, mut dy2) = (out.1 - v0, inn.1 - v1);
+    if which == 0 {
+        if x1 > 0.0 {
+            dy1 = speed * x1 * span;
+        }
+    } else if x2 < 1.0 {
+        dy2 = -speed * (1.0 - x2) * span;
+    }
+    Interp::bezier_w(x1, dy1, x2, dy2)
+}
+
+/// The `BezierW` whose handles sit at the absolute points `out` / `inn`.
+/// Influences clamp to the segment (monotone timing, as everywhere); a
+/// zero-span segment pins them at its ends.
+fn weighted_from_points(k0: &KeyView, k1: &KeyView, out: (f64, f64), inn: (f64, f64)) -> Interp {
+    let (t0, v0) = (k0.t_seconds, f64::from(k0.value));
+    let (t1, v1) = (k1.t_seconds, f64::from(k1.value));
+    let span = t1 - t0;
+    let (x1, x2) = if span > 0.0 {
+        ((out.0 - t0) / span, (inn.0 - t0) / span)
+    } else {
+        (0.0, 1.0)
+    };
+    Interp::bezier_w(x1, out.1 - v0, x2, inn.1 - v1)
 }
 
 /// The `(time, value)` point of a segment handle whose normalized timing-space
@@ -179,6 +261,7 @@ mod tests {
             Interp::Linear,
             Interp::Hold,
             Interp::bezier(0.2, 1.4, 0.8, -0.3), // overshoot both ends
+            Interp::bezier_w(0.3, 4.0, 0.7, -2.5), // weighted (value-space)
             Interp::Eased(ph2d_anim::Easing::new(
                 ph2d_anim::EasingFamily::Cubic,
                 ph2d_anim::EasingMode::InOut,

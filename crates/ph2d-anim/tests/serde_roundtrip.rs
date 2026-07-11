@@ -41,6 +41,11 @@ fn sample_track() -> Track {
             interp: Interp::bezier(0.42, 0.0, 0.58, 1.0),
         },
         Key {
+            t: s(3.5),
+            value: AnimValue::Float(2.5),
+            interp: Interp::bezier_w(0.25, 3.0, 0.75, -1.5),
+        },
+        Key {
             t: s(4.0),
             value: AnimValue::Bool(true),
             interp: Interp::Linear,

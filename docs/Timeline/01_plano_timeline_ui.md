@@ -233,9 +233,22 @@ keys em massa → undo — tudo pela UI.
 ### W5 — Backlog (pós-v1; ordem sugerida por valor)
 
 Performing por gesto (Dreams-style, gravar durante o play) · ~~speed graph~~ ✅ **(landou
-2026-07-11)** · weighted/value-space tangents · roving keys · keyframe-layers/NLA blend · time
-remap · multi-clip UI + nó `motion.clip` (seam Motion) · markers→signals/eventos · API MCP/Luau da
-timeline (HR-10) · bake procedural⇄keys (ponte Cavalry) · export.
+2026-07-11)** · ~~weighted/value-space tangents~~ ✅ **(landou 2026-07-11)** · roving keys ·
+keyframe-layers/NLA blend · time remap · multi-clip UI + nó `motion.clip` (seam Motion) ·
+markers→signals/eventos · API MCP/Luau da timeline (HR-10) · bake procedural⇄keys (ponte Cavalry) ·
+export.
+
+**Weighted tangents (W5, FECHADO 2026-07-11):** `Interp::BezierW{x1,dy1,x2,dy2}` — bézier no plano
+`(u, valor)` com influência x (fração, mesmo solver) e **dy absoluto** (AE/Blender): segmento flat
+curva. Variant apendado por último (postcard estável; saves antigos legíveis — o inverso não, como
+esperado). Motor `ph2d-anim/curve_weighted.rs`; funil `Interp::value/value_slope` (legado
+byte-idêntico via lerp(remap) — goldens provam). Painel: todo drag (valor e speed) produz W via
+`segment_handle_points`/`weighted_with_handle`/`weighted_with_endpoint_speed` — lossless, lado
+não-arrastado fica onde é desenhado; o freeze do flat (`handle_coords` → `None`) morreu, e
+speed-edit em flat funciona. Extent inclui os control points exatos de `Bezier`+`BezierW`. Testes:
+5 no motor (flat-bulge · equivalência lossless N↔W · derivada vs fd · cascata/vertical ·
+legado==caminho antigo) + golden do sample_keys com key W (bit-a-bit c/ `Track::sample`) + drags do
+painel atualizados + 2 mutações (lockstep painel↔runtime · dy no motor).
 
 **Speed graph (W5, FECHADO 2026-07-11 + auditoria padrão-ouro no mesmo dia):** 2ª vista do graph
 editor plotando velocidade (`d(value)/dt`) — toggle **Speed** panel-local na barra de transporte.

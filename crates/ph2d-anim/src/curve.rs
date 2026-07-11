@@ -37,6 +37,28 @@ pub enum Interp {
         /// `P2.y` (may leave `[0, 1]` to overshoot).
         y2: f64,
     },
+    /// A **weighted / value-space** tangent pair (W5): a cubic bézier in the
+    /// `(u, value)` plane, `P1 = (x1, v0 + dy1)`, `P2 = (x2, v1 + dy2)` — AE
+    /// keyframe-velocity / Blender F-curve semantics. `x` is an influence
+    /// fraction (clamped to `[0, 1]` like [`Interp::Bezier`]); `dy` is an
+    /// ABSOLUTE value offset from its anchor, which is what lets a flat
+    /// segment (`v0 == v1`) curve — the normalized form scales its handle y
+    /// by the value change and a zero change has nothing to scale.
+    ///
+    /// Scalar-exact through [`Interp::value`]; a non-scalar [`AnimValue`]
+    /// blends by the unit-span remap instead (unreachable in the v1 timeline,
+    /// whose properties are all `Float`). Appended LAST so postcard's variant
+    /// indexes — and every saved document — stay stable.
+    BezierW {
+        /// `P1.x` — the out handle's influence, kept in `[0, 1]`.
+        x1: f64,
+        /// `P1.y − v0` — the out handle's absolute value offset from its key.
+        dy1: f64,
+        /// `P2.x` — the in handle's influence, kept in `[0, 1]`.
+        x2: f64,
+        /// `P2.y − v1` — the in handle's absolute value offset from its key.
+        dy2: f64,
+    },
 }
 
 impl Interp {
@@ -53,10 +75,27 @@ impl Interp {
         }
     }
 
+    /// Build a weighted (value-space) tangent pair, clamping the influence
+    /// `x` coordinates into `[0, 1]` (monotone timing — same rule as
+    /// [`Interp::bezier`]). The `dy`s are free: they are absolute value
+    /// offsets, and overshoot is their whole point.
+    #[must_use]
+    pub fn bezier_w(x1: f64, dy1: f64, x2: f64, dy2: f64) -> Self {
+        Interp::BezierW {
+            x1: x1.clamp(0.0, 1.0),
+            dy1,
+            x2: x2.clamp(0.0, 1.0),
+            dy2,
+        }
+    }
+
     /// Map a normalized segment fraction `u` to an eased fraction `v`.
     ///
     /// `Hold` returns `0.0` (so a downstream `lerp(start, end, 0)` holds the
     /// start value — `Hold` needs no special-casing at the call site).
+    /// `BezierW` has no normalized form — it reads as its unit-span curve
+    /// (`dy` treated as a fraction), the documented fallback for non-scalar
+    /// blends; scalars evaluate exactly through [`Interp::value`].
     #[must_use]
     pub fn remap(self, u: f64) -> f64 {
         let u = u.clamp(0.0, 1.0);
@@ -65,6 +104,39 @@ impl Interp {
             Interp::Linear => u,
             Interp::Eased(e) => e.eval(u),
             Interp::Bezier { x1, y1, x2, y2 } => solve_cubic_bezier(x1, y1, x2, y2, u),
+            Interp::BezierW { x1, dy1, x2, dy2 } => {
+                crate::curve_weighted::value(0.0, 1.0, x1, dy1, x2, dy2, u)
+            }
+        }
+    }
+
+    /// The segment's VALUE at `u`, given its endpoint values — the scalar
+    /// funnel the graph editor and the speed graph read. The normalized
+    /// variants blend `v0 + (v1 − v0) · remap(u)`; `BezierW` evaluates its
+    /// value-axis bézier exactly (its `dy`s are absolute, so a flat segment
+    /// can curve).
+    #[must_use]
+    pub fn value(self, v0: f64, v1: f64, u: f64) -> f64 {
+        match self {
+            Interp::BezierW { x1, dy1, x2, dy2 } => {
+                crate::curve_weighted::value(v0, v1, x1, dy1, x2, dy2, u.clamp(0.0, 1.0))
+            }
+            _ => v0 + (v1 - v0) * self.remap(u),
+        }
+    }
+
+    /// `d(value)/du` at `u`, given the endpoint values — what the speed graph
+    /// plots (divide by the segment span for units-per-second). The normalized
+    /// variants scale [`Interp::slope`] by the value change; `BezierW`
+    /// differentiates its value axis directly (same parametric chain rule +
+    /// degenerate cascade). May be `±∞` at a vertical tangent.
+    #[must_use]
+    pub fn value_slope(self, v0: f64, v1: f64, u: f64) -> f64 {
+        match self {
+            Interp::BezierW { x1, dy1, x2, dy2 } => {
+                crate::curve_weighted::value_slope(v0, v1, x1, dy1, x2, dy2, u.clamp(0.0, 1.0))
+            }
+            _ => (v1 - v0) * self.slope(u),
         }
     }
 
@@ -88,6 +160,11 @@ impl Interp {
             Interp::Linear => 1.0,
             Interp::Eased(e) => eased_slope(e, u),
             Interp::Bezier { x1, y1, x2, y2 } => bezier_slope(x1, y1, x2, y2, u),
+            // The unit-span slope (`dy` read as a fraction) — consistent with
+            // what `remap` samples. Value-space callers use `value_slope`.
+            Interp::BezierW { x1, dy1, x2, dy2 } => {
+                crate::curve_weighted::value_slope(0.0, 1.0, x1, dy1, x2, dy2, u.clamp(0.0, 1.0))
+            }
         }
     }
 
@@ -123,7 +200,10 @@ impl Interp {
         match self {
             Interp::Bezier { x1, y1, x2, y2 } => Some(((x1, y1), (x2, y2))),
             Interp::Linear => Some(Self::LINEAR_HANDLES),
-            Interp::Hold | Interp::Eased(_) => None,
+            // `BezierW` IS a two-handle form, but not a normalized one — its
+            // `dy`s are value-space and need the endpoint values to place
+            // (`ph2d-timeline`'s segment-handle helpers own that mapping).
+            Interp::Hold | Interp::Eased(_) | Interp::BezierW { .. } => None,
         }
     }
 
@@ -157,6 +237,11 @@ impl Interp {
                 let m1 = endpoint_slope(e, 1.0);
                 ((x1, m0 * x1), (x2, 1.0 - m1 * (1.0 - x2)))
             }
+            // No normalized form (value-space `dy` needs the endpoint values,
+            // which this signature cannot see). Only the influence survives;
+            // value-space callers use `ph2d-timeline`'s segment-handle helpers
+            // — no production path reaches here with a `BezierW`.
+            Interp::BezierW { x1, x2, .. } => ((x1, 0.0), (x2, 1.0)),
         }
     }
 
@@ -190,7 +275,9 @@ impl Interp {
     #[must_use]
     pub fn to_bezier(self) -> Interp {
         match self {
-            Interp::Bezier { .. } => self,
+            // Both bézier forms ARE already the editable two-handle shape the
+            // graph draws — "make this editable" has nothing left to do.
+            Interp::Bezier { .. } | Interp::BezierW { .. } => self,
             _ => {
                 let ((x1, y1), (x2, y2)) = self.tangent_handles();
                 Interp::bezier(x1, y1, x2, y2)
@@ -223,7 +310,15 @@ fn endpoint_slope(e: Easing, u: f64) -> f64 {
 /// Blend two values across a segment: `lerp(v0, v1, interp.remap(u))`.
 ///
 /// Shared by [`crate::Track`] and [`AnimCurve`] so both interpolate identically.
+/// A weighted segment's `dy` is ABSOLUTE, so a scalar evaluates exactly through
+/// [`Interp::value`] instead of the normalized lerp funnel; every other
+/// `AnimValue` kind falls back to the unit-span remap blend (unreachable in the
+/// v1 timeline, whose properties are all `Float`). The normalized variants keep
+/// the original `lerp(remap)` float path bit-for-bit.
 pub(crate) fn interpolate(v0: AnimValue, v1: AnimValue, interp: Interp, u: f64) -> AnimValue {
+    if let (Interp::BezierW { .. }, AnimValue::Float(a), AnimValue::Float(b)) = (interp, v0, v1) {
+        return AnimValue::Float(interp.value(f64::from(a), f64::from(b), u) as f32);
+    }
     AnimValue::lerp(v0, v1, interp.remap(u))
 }
 
@@ -407,8 +502,9 @@ fn bezier_axis(p1: f64, p2: f64, s: f64) -> f64 {
     ((a * s + b) * s + c) * s
 }
 
-/// Derivative of [`bezier_axis`] w.r.t. `s`.
-fn bezier_axis_deriv(p1: f64, p2: f64, s: f64) -> f64 {
+/// Derivative of [`bezier_axis`] w.r.t. `s`. `pub(crate)`: `curve_weighted`
+/// differentiates its timing axis with the SAME polynomial.
+pub(crate) fn bezier_axis_deriv(p1: f64, p2: f64, s: f64) -> f64 {
     let c = 3.0 * p1;
     let b = 3.0 * (p2 - p1) - c;
     let a = 1.0 - c - b;
@@ -425,9 +521,10 @@ fn solve_cubic_bezier(x1: f64, y1: f64, x2: f64, y2: f64, x: f64) -> f64 {
 }
 
 /// The parameter half of [`solve_cubic_bezier`]: the `s` with
-/// `bezier_x(s) == x`. Split out so [`bezier_slope`] differentiates the SAME
-/// solve `remap` samples — a second solver would drift.
-fn solve_bezier_param(x1: f64, x2: f64, x: f64) -> f64 {
+/// `bezier_x(s) == x`. Split out so [`bezier_slope`] — and `curve_weighted`'s
+/// value-space evaluation — differentiate the SAME solve `remap` samples; a
+/// second solver would drift.
+pub(crate) fn solve_bezier_param(x1: f64, x2: f64, x: f64) -> f64 {
     const EPS: f64 = 1e-7;
     let x = x.clamp(0.0, 1.0);
 
@@ -532,72 +629,5 @@ fn eased_slope(e: Easing, u: f64) -> f64 {
 }
 
 #[cfg(test)]
-mod slope_tests {
-    use super::*;
-    use crate::easing::{EasingFamily, EasingMode};
-
-    /// Central difference of `remap` — the ground truth the analytic slope must
-    /// reproduce (`remap` is what the runtime plays).
-    fn fd(interp: Interp, u: f64) -> f64 {
-        let h = 1e-5;
-        (interp.remap(u + h) - interp.remap(u - h)) / (2.0 * h)
-    }
-
-    #[test]
-    fn the_slope_is_the_derivative_of_the_remap_that_plays() {
-        let cases = [
-            Interp::Linear,
-            Interp::Hold,
-            Interp::bezier(0.42, 0.0, 0.58, 1.0), // CSS ease-in-out
-            Interp::bezier(0.2, 1.4, 0.8, -0.3),  // overshoot both ends
-            Interp::Eased(Easing::new(EasingFamily::Cubic, EasingMode::InOut)),
-        ];
-        for interp in cases {
-            for i in 1..100 {
-                let u = f64::from(i) / 100.0;
-                let (got, want) = (interp.slope(u), fd(interp, u));
-                assert!(
-                    (got - want).abs() < 1e-3 + want.abs() * 1e-2,
-                    "{interp:?} at u = {u}: slope {got} vs finite-diff {want}"
-                );
-            }
-        }
-    }
-
-    #[test]
-    fn bezier_endpoint_slopes_match_the_css_reference() {
-        // CSS `ease` (0.25, 0.1, 0.25, 1.0): start = y1/x1 = 0.4; end has
-        // P2 short of P3, so end = (y2-1)/(x2-1) = 0/(−0.75) = 0. Tolerance:
-        // the chain rule reaches these through `3·p` products, one ULP off
-        // the exact ratios.
-        let ease = Interp::bezier(0.25, 0.1, 0.25, 1.0);
-        assert!((ease.slope(0.0) - 0.4).abs() < 1e-12);
-        assert!(ease.slope(1.0).abs() < 1e-12);
-        // Hold is flat everywhere; Linear is the identity.
-        assert_eq!(Interp::Hold.slope(0.0), 0.0);
-        assert_eq!(Interp::Linear.slope(0.5), 1.0);
-    }
-
-    #[test]
-    fn a_coincident_control_point_falls_through_the_reference_cascade() {
-        // P1 = (0, 0): the start tangent is the line toward P2 — the
-        // `InitGradients` second branch (y2/x2).
-        let i = Interp::bezier(0.0, 0.0, 0.5, 0.25);
-        assert_eq!(i.slope(0.0), 0.5);
-        // P2 = (1, 1): the end tangent falls through to P1.
-        let i = Interp::bezier(0.5, 0.5, 1.0, 1.0);
-        assert_eq!(i.slope(1.0), 1.0);
-        // Both coincident on one side: the tangent degenerates to the chord.
-        let i = Interp::bezier(0.0, 0.0, 1.0, 1.0);
-        assert_eq!(i.slope(0.0), 1.0);
-    }
-
-    #[test]
-    fn a_vertical_tangent_reads_infinite_not_a_lie() {
-        // P1 = (0, 1): the curve leaves the origin straight up — the value
-        // moves instantly. The slope is the true limit (+∞), which display
-        // code skips as non-finite; reporting 0 here would hide real motion.
-        let i = Interp::bezier(0.0, 1.0, 0.58, 1.0);
-        assert!(i.slope(0.0).is_infinite() && i.slope(0.0) > 0.0);
-    }
-}
+#[path = "curve_slope_tests.rs"]
+mod slope_tests;

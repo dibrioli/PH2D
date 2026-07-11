@@ -14,22 +14,14 @@
 use crate::stroke::FlipStroke;
 use serde::{Deserialize, Serialize};
 
-/// Um desenho: os traços + a contagem de frames que o usam.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+/// Um desenho: os traços + a contagem de frames que o usam. `Default` = vazio,
+/// `users = 0` (o refcount é acertado quando um frame o referencia).
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct FlipDrawing {
     /// Os traços deste desenho, em ordem de z (fundo → topo).
     pub strokes: Vec<FlipStroke>,
     /// Quantos frames referenciam este desenho (refcount). `0` = reclamável.
     users: u32,
-}
-
-impl Default for FlipDrawing {
-    fn default() -> Self {
-        Self {
-            strokes: Vec::new(),
-            users: 0,
-        }
-    }
 }
 
 impl FlipDrawing {

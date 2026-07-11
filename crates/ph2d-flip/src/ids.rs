@@ -22,17 +22,13 @@ pub struct DrawingId(pub u32);
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct LayerId(pub u32);
 
-/// Id estável de um material (paleta de traço/fill). `0` = material default.
-/// A paleta em si não é modelada no W0 (materiais ricos vêm sob demanda, W1/W4);
-/// o stroke só carrega a referência.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+/// Id estável de um material (paleta de traço/fill). `0` = material default
+/// (o que `Default` devolve). A paleta em si não é modelada no W0 (materiais
+/// ricos vêm sob demanda, W1/W4); o stroke só carrega a referência.
+#[derive(
+    Copy, Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize,
+)]
 pub struct MaterialId(pub u32);
-
-impl Default for MaterialId {
-    fn default() -> Self {
-        Self(0)
-    }
-}
 
 /// Id estável de um objeto Flip dentro da cena ([`crate::FlipDoc`]). É o que a
 /// entidade ECS carrega (`ph2d_ecs::FlipObjectRef(u64)`), por isso `u64` — a

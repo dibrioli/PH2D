@@ -12552,7 +12552,10 @@ fn watercolor_shape_editor_bake_runs_the_wash() {
     line_brush(&mut wet, true);
     draw_and_commit(&mut wet);
 
-    assert!(differs(&plain, &blank), "the line committed paint (control)");
+    assert!(
+        differs(&plain, &blank),
+        "the line committed paint (control)"
+    );
     assert!(
         differs(&wet, &plain),
         "watercolor optics ran on the shape bake (was byte-identical to plain before #3)"
@@ -12618,8 +12621,8 @@ fn watercolor_shape_preview_leaves_no_trail() {
     }
 }
 
-/// **The watercolor wash ignores the Brush Blend mode (doc 13 #4).** The optical deposit is source-over
-/// + Beer–Lambert optics — `BrushBlend` is never read on the wash path, so the Brush Blend dropdown is
+/// **The watercolor wash ignores the Brush Blend mode (doc 13 #4).** The optical deposit is source-over +
+/// Beer–Lambert optics — `BrushBlend` is never read on the wash path, so the Brush Blend dropdown is
 /// INERT in watercolor mode (why the panel hides it there). Two washes identical but for `brush.blend`
 /// bake byte-for-byte. Refutable: wiring blend into the wash turns this RED (and would un-justify the hide).
 #[test]

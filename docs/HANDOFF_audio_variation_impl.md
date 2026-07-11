@@ -10,7 +10,7 @@
 
 ## 1. Identidade
 - **Branch:** `line/audio` · **merge-base com main:** `1c7c9a22` (= HEAD do main integrado).
-- **HEAD atual:** `9d3abcd0`. **Commits à frente do main:** **13** (9 abaixo + `58b9a27d`/`1bf0c509`/`7b744fa3` De-Hum-docs/Leveler/Leveler-docs + `9d3abcd0` feat De-Plosive) —
+- **HEAD atual:** `376c1b06`. **Commits à frente do main:** **15** (9 abaixo + `58b9a27d`/`1bf0c509`/`7b744fa3` De-Hum-docs/Leveler/Leveler-docs + `9d3abcd0` feat De-Plosive + `bd25a5a7` De-Plosive-docs + `376c1b06` feat Radio+Helmet) —
   1. `ecd2587a feat(audio): W6 variation containers — random/sequence/shuffle + jitter + weights`
   2. `e48e237b docs(audio): W6 variation containers — tracker + handoff`
   3. `6bf70ca1 feat(audio): W6 import por convenção — Add Folder popula o set (natural sort)`
@@ -21,7 +21,7 @@
   8. `49edfaa1 docs(audio): auditoria de intermitências (3 fixes + 3 deferidos)`
   9. `755f51e8 feat(audio): W4 voz — De-Hum (efeito #19 da rack), sem dep, sem tocar o core RT`
 - Árvore limpa. Fast-forward puro sobre o main atual (a linha foi resetada ao main recém-integrado antes de começar).
-- **Nota:** o **W4 (tratamento de voz)** já tem **3 efeitos novos da rack** — **De-Hum** (#19), **Leveler/AGC** (#20), **De-Plosive** (#21) — completando a trinca de limpeza (De-Hum/De-Ess/De-Plosive). Sem dep, sem contrato, painel auto; só `ph2d-audio-edit`+shell/audio, nada foundational. De-Plosive ficou em módulo próprio (`fx/deplosive.rs`, espelho de `deess.rs`) pra NÃO estourar `fx/dynamics.rs` (662/700 — próximo efeito de dynamics = split). Continuação: Comms FX (rádio/capacete como preset; Telephone já existe) · Creature/pitch-shift (precisa do cluster FFT — dep + ADR).
+- **Nota:** o **W4 (tratamento de voz)** já tem **3 efeitos novos da rack** — **De-Hum** (#19), **Leveler/AGC** (#20), **De-Plosive** (#21) — completando a trinca de limpeza (De-Hum/De-Ess/De-Plosive). Sem dep, sem contrato, painel auto; só `ph2d-audio-edit`+shell/audio, nada foundational. De-Plosive ficou em módulo próprio (`fx/deplosive.rs`, espelho de `deess.rs`) pra NÃO estourar `fx/dynamics.rs` (662/700 — próximo efeito de dynamics = split). **Comms FX landou** (`376c1b06`): presets de fábrica **Radio** + **Helmet** ao lado do Telephone — **puro data no shell** (`fx_presets.rs`, `FACTORY` 7→9; painel puxa os nomes sozinho por `set_preset_names`), zero dep/contrato, cobertos por `every_factory_stage_resolves`/`factory_presets_are_audible`. Continuação: Creature/pitch-shift (precisa do cluster FFT — dep `realfft` + ADR + OK do Enio).
 
 ## 2. Foundational / compartilhado tocado (e por quê)
 Só **um** arquivo fora das crates do módulo de áudio, e **aditivo**:

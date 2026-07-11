@@ -79,7 +79,7 @@ pub(crate) fn paint(state: &mut TimelinePanelState, ctx: &mut PaintCtx) {
     paint_panel_corner_dot_bl(rect, ctx.scene, theme);
     let title_size = paint_panel_title(
         rect,
-        "Timeline",
+        ph2d_i18n::tr("panel.timeline.title"),
         PANEL_HEADER_CLOSE_RESERVE,
         ctx.scene,
         ctx.text_system,

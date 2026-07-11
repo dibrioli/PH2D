@@ -72,9 +72,13 @@ fn resolve(
     let min_len = min_len(snap);
     let at = |px: f32| time_at(view_start, time_x, px_per_s, px, snap);
     match d.edge {
-        // Start handle: cannot cross the end (leave at least one frame), nor go
-        // below zero.
-        0 => (at(x).clamp(0.0, b0 - min_len), b0),
+        // Start handle: keep it in [0, end − one frame]. The upper bound is
+        // guarded to stay ≥ 0 so a tiny loop never inverts the range — a raw
+        // `.clamp(0.0, b0 - min_len)` panics when `b0 < min_len` (min > max).
+        0 => {
+            let hi = (b0 - min_len).max(0.0);
+            (at(x).max(0.0).min(hi), b0)
+        }
         // End handle: cannot cross the start.
         1 => (a0, at(x).max(a0 + min_len)),
         // Body: rigid translation, clamped so the start stays at or after zero

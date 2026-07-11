@@ -81,6 +81,24 @@ pub fn tr(key: &str) -> &'static str {
         "tool.trim_transparency.toast.unavailable" => "Trim unavailable for this sprite",
         "tool.make_square.toast.already_square" => "Sprite is already square",
         "tool.make_square.toast.unavailable" => "Make Square unavailable for this sprite",
+        // Timeline panel (W2.E9) — dope-sheet + graph editor + transport chrome.
+        // English by canon (feedback_app_ui_english_only); routed through tr() so
+        // the strings live in one table for the eventual Fluent migration.
+        "panel.timeline.title" => "Timeline",
+        "panel.timeline.summary" => "Summary",
+        "panel.timeline.add_track" => "+ Track  \u{25be}",
+        "panel.timeline.add_marker" => "+M",
+        "panel.timeline.time_seconds" => "Time(s)",
+        "panel.timeline.frame" => "Frame",
+        "panel.timeline.loop" => "Loop",
+        "panel.timeline.autokey" => "AutoKey",
+        "panel.timeline.snap" => "Snap",
+        "panel.timeline.prop.translate_x" => "Translate X",
+        "panel.timeline.prop.translate_y" => "Translate Y",
+        "panel.timeline.prop.rotation" => "Rotation",
+        "panel.timeline.prop.scale_x" => "Scale X",
+        "panel.timeline.prop.scale_y" => "Scale Y",
+        "panel.timeline.prop.opacity" => "Opacity",
         // Pass-through for unknown keys so the missing entry is
         // visible in the UI (the rendered key is intentionally ugly).
         _ => leak_key(key),
@@ -107,6 +125,10 @@ mod tests {
         assert_eq!(tr("tool.trim_transparency.tooltip"), "Trim Transparency");
         assert_eq!(tr("tool.make_square.label"), "SQUAR");
         assert_eq!(tr("edit.undo.label"), "Undo");
+        // Timeline panel chrome (W2.E9).
+        assert_eq!(tr("panel.timeline.title"), "Timeline");
+        assert_eq!(tr("panel.timeline.loop"), "Loop");
+        assert_eq!(tr("panel.timeline.prop.translate_x"), "Translate X");
     }
 
     #[test]

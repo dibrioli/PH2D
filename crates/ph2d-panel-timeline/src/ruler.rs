@@ -10,6 +10,7 @@
 //! major / 0.5 s minor ticks at the default zoom.
 
 use ph2d_editor_core::interaction::{InteractiveState, TimelineHitKind};
+use ph2d_editor_core::math::safe_clamp;
 use ph2d_editor_core::paint::{fill_rounded_rect, paint_text, resolve};
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::widget::SliderState;
@@ -58,7 +59,7 @@ pub(crate) fn paint(
         ctx.scene,
         strip,
         Radius::Xs.px(),
-        resolve(ColorToken::Bg2, theme),
+        resolve(ColorToken::TimelineRulerBg, theme),
     );
     // The loop's shaded band goes BEHIND the ticks + labels so it tints the strip
     // without hiding the time numbers.
@@ -96,7 +97,7 @@ pub(crate) fn paint(
             ctx.scene,
             line,
             Radius::Xs.px(),
-            resolve(ColorToken::Accent, theme),
+            resolve(ColorToken::TimelinePlayhead, theme),
         );
     }
 
@@ -137,14 +138,14 @@ fn paint_loop_band(
         return;
     };
     let right = region.x + region.w;
-    let x0 = time_to_x(a).clamp(region.x, right);
-    let x1 = time_to_x(b).clamp(region.x, right);
+    let x0 = safe_clamp(time_to_x(a), region.x, right);
+    let x1 = safe_clamp(time_to_x(b), region.x, right);
     if x1 > x0 {
         fill_rounded_rect(
             ctx.scene,
             Rect::new(x0, region.y, x1 - x0, RULER_H),
             Radius::Xs.px(),
-            resolve(ColorToken::AccentSoft, theme),
+            resolve(ColorToken::TimelineLoopRegion, theme),
         );
     }
 }
@@ -163,8 +164,8 @@ fn paint_loop_braces(
         return;
     };
     let right = region.x + region.w;
-    let x0 = time_to_x(a).clamp(region.x, right);
-    let x1 = time_to_x(b).clamp(region.x, right);
+    let x0 = safe_clamp(time_to_x(a), region.x, right);
+    let x1 = safe_clamp(time_to_x(b), region.x, right);
     // Body grab (move the whole range) UNDER the edge handles, registered first so
     // the edges win where they overlap.
     if x1 - x0 > BRACE_HIT_HW * 2.0 {
@@ -192,12 +193,12 @@ fn paint_loop_braces(
         if !onscreen {
             continue;
         }
-        let clamped = x.clamp(region.x, right);
+        let clamped = safe_clamp(x, region.x, right);
         fill_rounded_rect(
             ctx.scene,
             Rect::new(clamped - BRACE_W * 0.5, region.y, BRACE_W, RULER_H),
             Radius::Xs.px(),
-            resolve(ColorToken::Accent, theme),
+            resolve(ColorToken::TimelineLoopBrace, theme),
         );
         // A little tick at the top, on the INNER side, so the brace reads as a
         // bracket [ or ] rather than a second playhead line.
@@ -210,7 +211,7 @@ fn paint_loop_braces(
             ctx.scene,
             Rect::new(tick_x, region.y, BRACE_W, StrokeToken::Thick.px()),
             Radius::Xs.px(),
-            resolve(ColorToken::Accent, theme),
+            resolve(ColorToken::TimelineLoopBrace, theme),
         );
         let hit = Rect::new(
             clamped - BRACE_HIT_HW,
@@ -239,7 +240,7 @@ fn paint_markers(
         if x < region.x - half || x > right + half {
             continue;
         }
-        let color = resolve(ColorToken::Warn, theme);
+        let color = resolve(ColorToken::TimelineMarker, theme);
         // The stem: a 1px line down the ruler strip, marking the exact time.
         fill_rounded_rect(
             ctx.scene,
@@ -347,7 +348,7 @@ fn paint_ticks(
             ctx.scene,
             tick,
             Radius::Xs.px(),
-            resolve(ColorToken::Text3, theme),
+            resolve(ColorToken::TimelineRulerTick, theme),
         );
         if label {
             let font = TypeToken::Sm.px();

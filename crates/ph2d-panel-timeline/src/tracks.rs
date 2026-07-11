@@ -47,7 +47,11 @@ pub(crate) fn paint_add_track(ctx: &mut PaintCtx, theme: Theme, header: Rect) {
         .store()
         .button_state(ids::TIMELINE_ADD_TRACK)
         .unwrap_or(ButtonState::Normal);
-    let btn = Button::new(ids::TIMELINE_ADD_TRACK, "+ Track  \u{25be}").state(state);
+    let btn = Button::new(
+        ids::TIMELINE_ADD_TRACK,
+        ph2d_i18n::tr("panel.timeline.add_track"),
+    )
+    .state(state);
     paint_button(&btn, header, ctx.scene, ctx.text_system, theme);
     ctx.host
         .hit_index_mut()
@@ -76,14 +80,14 @@ pub(crate) fn paint_add_track_popover(ctx: &mut PaintCtx, theme: Theme, anchor: 
         resolve(ColorToken::Border, theme),
     );
     let mut y = list.y;
-    for (id, label) in ids::ADDPROP_BUTTONS {
+    for (id, prop) in ids::ADDPROP_BUTTONS {
         let r = Rect::new(list.x, y, list.w, ROW_H_PX);
         let state = ctx
             .host
             .store()
             .button_state(id)
             .unwrap_or(ButtonState::Normal);
-        let btn = Button::new(id, label).state(state);
+        let btn = Button::new(id, prop_label(prop)).state(state);
         paint_button(&btn, r, ctx.scene, ctx.text_system, theme);
         ctx.host.hit_index_mut().register(id, r);
         y += ROW_H_PX;
@@ -152,14 +156,14 @@ pub(crate) fn paint_rows(
                 ctx,
                 theme,
                 Rect::new(region.x, y, region.w, ROW_H_PX),
-                ColorToken::Bg2,
+                ColorToken::TimelineRowAlt,
             );
         }
         paint_twirl(ctx, theme, state, region.x, y, track.target.get());
         let font = TypeToken::Sm.px();
         let text = format!("{}  #{}", prop_label(track.prop), track.entity % 10_000);
         let color = if track.missing {
-            ColorToken::Danger
+            ColorToken::TimelineMissing
         } else {
             ColorToken::Text1
         };
@@ -213,9 +217,9 @@ fn paint_lane_keys(
             continue;
         }
         let tok = if k.selected {
-            ColorToken::Accent
+            ColorToken::TimelineKeySelected
         } else {
-            ColorToken::Text1
+            ColorToken::TimelineKey
         };
         paint_diamond(ctx, kx, cy, DIAMOND_H, resolve(tok, theme));
         // Hit target keyed by identity (stable across frames/reorders). The grab
@@ -376,12 +380,12 @@ pub(crate) fn paint_diamond(
 /// The display label for a property (the panel's presentation of `PropKind`).
 fn prop_label(p: PropKind) -> &'static str {
     match p {
-        PropKind::TranslationX => "Translate X",
-        PropKind::TranslationY => "Translate Y",
-        PropKind::Rotation => "Rotation",
-        PropKind::ScaleX => "Scale X",
-        PropKind::ScaleY => "Scale Y",
-        PropKind::Opacity => "Opacity",
+        PropKind::TranslationX => ph2d_i18n::tr("panel.timeline.prop.translate_x"),
+        PropKind::TranslationY => ph2d_i18n::tr("panel.timeline.prop.translate_y"),
+        PropKind::Rotation => ph2d_i18n::tr("panel.timeline.prop.rotation"),
+        PropKind::ScaleX => ph2d_i18n::tr("panel.timeline.prop.scale_x"),
+        PropKind::ScaleY => ph2d_i18n::tr("panel.timeline.prop.scale_y"),
+        PropKind::Opacity => ph2d_i18n::tr("panel.timeline.prop.opacity"),
     }
 }
 

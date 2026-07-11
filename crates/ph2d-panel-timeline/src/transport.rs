@@ -75,7 +75,14 @@ pub(crate) fn paint_bar(
     } else {
         DEFAULT_FPS
     };
-    label(ctx, theme, "Time(s)", x, y, CHIP_LABEL_W);
+    label(
+        ctx,
+        theme,
+        ph2d_i18n::tr("panel.timeline.time_seconds"),
+        x,
+        y,
+        CHIP_LABEL_W,
+    );
     x += CHIP_LABEL_W + gap * 0.5;
     x = chip(
         ctx,
@@ -87,7 +94,14 @@ pub(crate) fn paint_bar(
         1.0 / fps,
         2,
     ) + gap;
-    label(ctx, theme, "Frame", x, y, CHIP_LABEL_W);
+    label(
+        ctx,
+        theme,
+        ph2d_i18n::tr("panel.timeline.frame"),
+        x,
+        y,
+        CHIP_LABEL_W,
+    );
     x += CHIP_LABEL_W + gap * 0.5;
     x = chip(
         ctx,
@@ -107,7 +121,7 @@ pub(crate) fn paint_bar(
         x,
         y,
         ids::TIMELINE_LOOP,
-        "Loop",
+        ph2d_i18n::tr("panel.timeline.loop"),
         snap.loop_range.is_some(),
     ) + gap;
     x = toggle(
@@ -116,7 +130,7 @@ pub(crate) fn paint_bar(
         x,
         y,
         ids::TIMELINE_AUTOKEY,
-        "AutoKey",
+        ph2d_i18n::tr("panel.timeline.autokey"),
         snap.auto_key,
     ) + gap;
     x = toggle(
@@ -125,7 +139,7 @@ pub(crate) fn paint_bar(
         x,
         y,
         ids::TIMELINE_SNAP,
-        "Snap",
+        ph2d_i18n::tr("panel.timeline.snap"),
         snap.frame_snap,
     ) + gap;
 
@@ -145,7 +159,11 @@ fn add_marker_button(ctx: &mut PaintCtx, theme: Theme, x: f32, y: f32) {
         .store()
         .button_state(ids::TIMELINE_ADD_MARKER)
         .unwrap_or(ButtonState::Normal);
-    let btn = Button::new(ids::TIMELINE_ADD_MARKER, "+M").state(state);
+    let btn = Button::new(
+        ids::TIMELINE_ADD_MARKER,
+        ph2d_i18n::tr("panel.timeline.add_marker"),
+    )
+    .state(state);
     paint_button(&btn, rect, ctx.scene, ctx.text_system, theme);
     ctx.host
         .hit_index_mut()

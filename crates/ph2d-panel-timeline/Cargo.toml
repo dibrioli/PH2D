@@ -29,6 +29,8 @@ ph2d-vector = { path = "../ph2d-vector" }
 ph2d-timeline = { path = "../ph2d-timeline" }
 # `PointerButton` on the dope-sheet gesture (filter drags to the primary button).
 ph2d-host = { path = "../ph2d-host" }
+# UI strings (HR-15) — chrome labels routed through `tr()` (W2.E9).
+ph2d-i18n = { path = "../ph2d-i18n" }
 
 [dev-dependencies]
 # Behavioral seam harness (MockPanelHost) for the transport wire test

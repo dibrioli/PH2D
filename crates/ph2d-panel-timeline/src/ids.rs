@@ -15,12 +15,13 @@ pub use ph2d_editor_core::ids::{
 };
 
 /// The six "+Track" property buttons paired with their [`ph2d_timeline::PropKind`],
-/// in `PropKind::ALL` order. Used by paint (labels) + the shell (id → PropKind).
-pub const ADDPROP_BUTTONS: [(ph2d_a11y::NodeId, &str); 6] = [
-    (TIMELINE_ADDPROP_TX, "Translate X"),
-    (TIMELINE_ADDPROP_TY, "Translate Y"),
-    (TIMELINE_ADDPROP_ROT, "Rotation"),
-    (TIMELINE_ADDPROP_SX, "Scale X"),
-    (TIMELINE_ADDPROP_SY, "Scale Y"),
-    (TIMELINE_ADDPROP_OPACITY, "Opacity"),
+/// in `PropKind::ALL` order. Used by paint (the label comes from `prop_label`, the
+/// single i18n source) + the hit/populate wiring (which ignores the second field).
+pub const ADDPROP_BUTTONS: [(ph2d_a11y::NodeId, ph2d_timeline::PropKind); 6] = [
+    (TIMELINE_ADDPROP_TX, ph2d_timeline::PropKind::TranslationX),
+    (TIMELINE_ADDPROP_TY, ph2d_timeline::PropKind::TranslationY),
+    (TIMELINE_ADDPROP_ROT, ph2d_timeline::PropKind::Rotation),
+    (TIMELINE_ADDPROP_SX, ph2d_timeline::PropKind::ScaleX),
+    (TIMELINE_ADDPROP_SY, ph2d_timeline::PropKind::ScaleY),
+    (TIMELINE_ADDPROP_OPACITY, ph2d_timeline::PropKind::Opacity),
 ];

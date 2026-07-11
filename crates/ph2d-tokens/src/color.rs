@@ -421,6 +421,43 @@ color_tokens! {
 
     /// `attr-write` — gold badge for attribute-write on a node.
     AttrWrite => "attr-write",
+
+    // ── Timeline panel (W2.E9) ─────────────────────────────────────
+    // Dedicated, retintable slots for the animation timeline. Seeded
+    // byte-identical to the generic tokens they used to borrow, so a
+    // theme can recolor the timeline without touching global accent.
+    /// `timeline-ruler-bg` — ruler strip background.
+    TimelineRulerBg => "timeline-ruler-bg",
+    /// `timeline-ruler-tick` — ruler tick marks (minor + major).
+    TimelineRulerTick => "timeline-ruler-tick",
+    /// `timeline-playhead` — playhead scrubber line across ruler + lanes.
+    TimelinePlayhead => "timeline-playhead",
+    /// `timeline-row-alt` — zebra alternate-row fill in the track list.
+    TimelineRowAlt => "timeline-row-alt",
+    /// `timeline-key` — unselected keyframe diamond / curve anchor.
+    TimelineKey => "timeline-key",
+    /// `timeline-key-selected` — selected keyframe diamond / curve anchor.
+    TimelineKeySelected => "timeline-key-selected",
+    /// `timeline-key-active` — keyframe / anchor / handle while dragging.
+    TimelineKeyActive => "timeline-key-active",
+    /// `timeline-curve` — animation curve stroke in the graph editor.
+    TimelineCurve => "timeline-curve",
+    /// `timeline-handle` — bézier tangent handle dot (idle).
+    TimelineHandle => "timeline-handle",
+    /// `timeline-handle-line` — bézier tangent line.
+    TimelineHandleLine => "timeline-handle-line",
+    /// `timeline-loop-region` — shaded loop-range band.
+    TimelineLoopRegion => "timeline-loop-region",
+    /// `timeline-loop-brace` — loop brace bars + inner ticks.
+    TimelineLoopBrace => "timeline-loop-brace",
+    /// `timeline-marker` — marker stem line + pennant triangle.
+    TimelineMarker => "timeline-marker",
+    /// `timeline-summary-key` — amber master (summary) diamond.
+    TimelineSummaryKey => "timeline-summary-key",
+    /// `timeline-summary-ring` — summary column selection ring.
+    TimelineSummaryRing => "timeline-summary-ring",
+    /// `timeline-missing` — track label whose bound object is missing.
+    TimelineMissing => "timeline-missing",
 }
 
 impl ColorToken {
@@ -512,6 +549,72 @@ mod tests {
         assert_eq!(r, g);
         assert_eq!(g, b);
         assert!((90..=110).contains(&r), "expected ~99, got {r}");
+    }
+
+    /// Every timeline token (W2.E9) resolves in every theme. `resolve` panics
+    /// on a key that's in the enum but missing from a theme's JSON table, so
+    /// this is the permanent guard against an enum/`tokens.json` mismatch —
+    /// including the Workshop *overrides* for the accent-derived slots. Asserts
+    /// resolution only, never a specific value, so a later retint won't fight it.
+    #[test]
+    fn every_timeline_token_resolves_in_all_themes() {
+        const TIMELINE: &[ColorToken] = &[
+            ColorToken::TimelineRulerBg,
+            ColorToken::TimelineRulerTick,
+            ColorToken::TimelinePlayhead,
+            ColorToken::TimelineRowAlt,
+            ColorToken::TimelineKey,
+            ColorToken::TimelineKeySelected,
+            ColorToken::TimelineKeyActive,
+            ColorToken::TimelineCurve,
+            ColorToken::TimelineHandle,
+            ColorToken::TimelineHandleLine,
+            ColorToken::TimelineLoopRegion,
+            ColorToken::TimelineLoopBrace,
+            ColorToken::TimelineMarker,
+            ColorToken::TimelineSummaryKey,
+            ColorToken::TimelineSummaryRing,
+            ColorToken::TimelineMissing,
+        ];
+        for theme in [
+            Theme::Forge,
+            Theme::Workshop,
+            Theme::Sunstone,
+            Theme::Blueprint,
+        ] {
+            for &tok in TIMELINE {
+                // Panics here if the key is absent for this theme.
+                let _ = tok.resolve(theme);
+            }
+        }
+    }
+
+    /// The 9 accent-derived timeline slots must carry a Workshop *override* —
+    /// otherwise they'd inherit forge's pink and the timeline would visibly
+    /// change hue under Workshop (a silent regression the seed intends to avoid).
+    /// Guards it by asserting Workshop differs from Forge for those slots (they
+    /// were seeded byte-identical to accent/-soft/-press, which Workshop retints).
+    #[test]
+    fn workshop_retints_the_accent_derived_timeline_slots() {
+        for tok in [
+            ColorToken::TimelinePlayhead,
+            ColorToken::TimelineKeySelected,
+            ColorToken::TimelineKeyActive,
+            ColorToken::TimelineCurve,
+            ColorToken::TimelineHandle,
+            ColorToken::TimelineHandleLine,
+            ColorToken::TimelineLoopRegion,
+            ColorToken::TimelineLoopBrace,
+            ColorToken::TimelineSummaryRing,
+        ] {
+            let forge = tok.resolve(Theme::Forge);
+            let workshop = tok.resolve(Theme::Workshop);
+            assert_ne!(
+                (forge.r, forge.g, forge.b),
+                (workshop.r, workshop.g, workshop.b),
+                "{tok:?} must have a Workshop override, not inherit forge"
+            );
+        }
     }
 
     /// **WCAG 2.2 AA gate** — text-on-bg1 contrast ≥ 4.5:1 across the 4 themes.

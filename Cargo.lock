@@ -5689,6 +5689,7 @@ dependencies = [
  "ph2d-a11y",
  "ph2d-editor-core",
  "ph2d-host",
+ "ph2d-i18n",
  "ph2d-timeline",
  "ph2d-tokens",
  "ph2d-ui-testkit",

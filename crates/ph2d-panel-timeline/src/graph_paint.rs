@@ -194,7 +194,7 @@ fn paint_curve(ctx: &mut PaintCtx, theme: Theme, band: &Band, view: TimeView, ke
         ctx.scene,
         &points,
         CURVE_W,
-        resolve(ColorToken::Accent, theme),
+        resolve(ColorToken::TimelineCurve, theme),
     );
 }
 
@@ -219,11 +219,11 @@ fn paint_anchors(
             continue;
         }
         let tok = if anchor_drag::is_dragging(state, target, k) {
-            ColorToken::AccentPress
+            ColorToken::TimelineKeyActive
         } else if k.selected {
-            ColorToken::Accent
+            ColorToken::TimelineKeySelected
         } else {
-            ColorToken::Text1
+            ColorToken::TimelineKey
         };
         fill_circle(ctx.scene, x, y, ANCHOR_R, resolve(tok, theme));
 
@@ -289,15 +289,15 @@ fn paint_handles(
                 ctx.scene,
                 &[(ax, ay), (px, py)],
                 StrokeToken::Thin.px(),
-                resolve(ColorToken::AccentSoft, theme),
+                resolve(ColorToken::TimelineHandleLine, theme),
             );
             let dragged = state
                 .handle_drag
                 .is_some_and(|d| d.target == target && d.key == k0.id.get() && d.which == which);
             let tok = if dragged {
-                ColorToken::AccentPress
+                ColorToken::TimelineKeyActive
             } else {
-                ColorToken::Accent
+                ColorToken::TimelineHandle
             };
             fill_circle(ctx.scene, px, py, HANDLE_R, resolve(tok, theme));
 

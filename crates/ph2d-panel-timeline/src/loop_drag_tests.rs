@@ -94,6 +94,43 @@ fn the_start_cannot_go_negative() {
 }
 
 #[test]
+fn dragging_the_start_handle_never_panics_on_a_sub_frame_loop() {
+    // A loop shorter than one frame makes `end − one_frame` negative, so a raw
+    // `.clamp(0.0, b0 - min_len)` would panic (min > max). The guarded upper
+    // bound collapses the start to 0 instead of crashing.
+    let mut st = TimelinePanelState::default();
+    let s = TimelineViewSnapshot {
+        fps: 60.0,          // one frame = 16.7 ms
+        frame_snap: false,
+        loop_range: Some((0.0, 0.01)), // 10 ms < one frame
+        ..TimelineViewSnapshot::default()
+    };
+    apply(
+        &mut st,
+        0.0,
+        100.0,
+        &s,
+        0,
+        gesture(0, GesturePhase::Begin, 100.0),
+    );
+    apply(
+        &mut st,
+        0.0,
+        100.0,
+        &s,
+        0,
+        gesture(0, GesturePhase::Update, 50.0),
+    );
+    match state::drain_intents().last() {
+        Some(TimelineIntent::SetLoop(Some((a, b)))) => {
+            assert_eq!(*a, 0.0, "start collapses to 0, not a panic");
+            assert!((*b - 0.01).abs() < 1e-9, "end unchanged");
+        }
+        o => panic!("expected SetLoop, got {o:?}"),
+    }
+}
+
+#[test]
 fn dragging_the_body_moves_both_ends_and_keeps_the_length() {
     // Body grabbed at x = 100 (t = 1); dragged to x = 150 (t = 1.5) → +0.5 s.
     // Both ends shift; the 2 s length is preserved.

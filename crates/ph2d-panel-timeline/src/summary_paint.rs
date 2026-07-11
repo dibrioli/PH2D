@@ -33,10 +33,6 @@ const RING_W: f32 = 1.5; // LITERAL-PX-OK: summary diamond keyline / selection r
 /// The rule that separates the master row from the tracks it summarises.
 const RULE_H: f32 = 1.0; // LITERAL-PX-OK: summary row bottom rule
 
-/// The row's label. English by canon (`feedback_app_ui_english_only`); it joins
-/// the `panel.timeline.*` i18n sweep with the rest of this panel's strings.
-const SUMMARY_LABEL: &str = "Summary";
-
 /// Side of the square padlock button at the right of the Summary label.
 const LOCK_SIZE: f32 = 14.0; // LITERAL-PX-OK: summary column-lock padlock button side
 
@@ -86,7 +82,7 @@ pub(crate) fn paint(
     ph2d_editor_core::text_elide::paint_text_elided(
         ctx.text_system,
         ctx.scene,
-        SUMMARY_LABEL,
+        ph2d_i18n::tr("panel.timeline.summary"),
         region.x + Spacing::Sm.px(),
         y + (ROW_H_PX - font) * 0.5,
         font,
@@ -163,11 +159,12 @@ fn paint_column(
     }
     let cy = row.y + ROW_H_PX * 0.5;
     // The ring reads "grabbed", the amber reads "master row". Selection is a RING
-    // rather than a second hue on purpose: `accent` is orange in the Sunstone
-    // theme, close enough to `warn` that a hue swap alone would leave selected and
-    // unselected columns telling the same story there.
+    // rather than a second hue on purpose: `timeline-summary-ring` seeds from
+    // `accent`, which is orange in the Sunstone theme — close enough to the
+    // `warn`-seeded `timeline-summary-key` that a hue swap alone would leave
+    // selected and unselected columns telling the same story there.
     let ring = if c.all_selected {
-        ColorToken::Accent
+        ColorToken::TimelineSummaryRing
     } else {
         ColorToken::BorderStrong
     };
@@ -177,7 +174,7 @@ fn paint_column(
         x,
         cy,
         SUMMARY_DIAMOND_H,
-        resolve(ColorToken::Warn, theme),
+        resolve(ColorToken::TimelineSummaryKey, theme),
     );
 
     let id = ids::timeline_summary_hit_id(c.t_bits());

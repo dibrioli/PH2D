@@ -46,12 +46,7 @@ fn pixel_camera() -> CameraRaw {
 /// uniforme), de `min` a `max` em mundo.
 fn filled_square(min: Vec2, max: Vec2, color: Rgba) -> FlipDrawing {
     let mut s = FlipStroke::new();
-    for p in [
-        min,
-        Vec2::new(max.x, min.y),
-        max,
-        Vec2::new(min.x, max.y),
-    ] {
+    for p in [min, Vec2::new(max.x, min.y), max, Vec2::new(min.x, max.y)] {
         s.push_point(Point {
             pos: p,
             width: 0.5,
@@ -269,7 +264,11 @@ fn two_layers_multiply_composites_like_painter() {
         top_only[0]
     );
     // Alpha coberto ≈ 1 nas três (as camadas são opacas).
-    assert!(overlap[3] > 0.9, "cobertura alpha na sobreposição = {}", overlap[3]);
+    assert!(
+        overlap[3] > 0.9,
+        "cobertura alpha na sobreposição = {}",
+        overlap[3]
+    );
 }
 
 #[test]

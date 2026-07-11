@@ -89,12 +89,7 @@ fn frame_rect() -> FlipStroke {
 /// `max` em mundo.
 fn filled_rect(min: Vec2, max: Vec2, color: Rgba) -> FlipStroke {
     let mut s = FlipStroke::new();
-    for corner in [
-        min,
-        Vec2::new(max.x, min.y),
-        max,
-        Vec2::new(min.x, max.y),
-    ] {
+    for corner in [min, Vec2::new(max.x, min.y), max, Vec2::new(min.x, max.y)] {
         s.push_point(Point {
             pos: corner,
             width: 0.04,

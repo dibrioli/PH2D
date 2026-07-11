@@ -212,7 +212,10 @@ impl FlipCompose {
             let mut pass = enc.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("ph2d-flip stage: resolve to straight"),
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                    view: self.straight_view.as_ref().expect("ensure criou o straight"),
+                    view: self
+                        .straight_view
+                        .as_ref()
+                        .expect("ensure criou o straight"),
                     depth_slice: None,
                     resolve_target: None,
                     ops: wgpu::Operations {

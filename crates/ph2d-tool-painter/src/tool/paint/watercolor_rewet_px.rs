@@ -10,8 +10,21 @@ use super::watercolor_field::{
     BACKRUN_POOL, LIFT_MAX, Luts, NoiseTile, REWET_LIFT, REWET_POOL, RewetFields, SOAK_DISSOLVE,
     SOAK_LIFT, WetStrokeStyle, box_blur, paper_h_px, sample_bilinear,
 };
+use super::{PaintMode, PainterTool};
 use ph2d_painter_brush::TextureSettings;
 use ph2d_painter_brush::texture::{ImageMask, angle_basis, sample_tiled_rot};
+
+impl PainterTool {
+    /// Whether the watercolor optical render-path drives this stroke: Watercolor on, the normal **Paint**
+    /// brush (not Smear/Blur/Clone/Mask/Inpaint/Fill/Selection/Deform), not erasing. Off ⇒ byte-identical
+    /// plain brush (the whole path is skipped, deposit + composite alike). Split from `watercolor_render`
+    /// (workspace LOC cap); the gate on the render path lives with the per-pixel terms it guards.
+    pub(super) fn watercolor_render_active(&self) -> bool {
+        self.paint.brush.watercolor
+            && matches!(self.paint.paint_mode, PaintMode::Paint)
+            && !self.paint.eraser
+    }
+}
 
 /// Fill the canvas-anchored `paper_h` cache for the region's MISSES (`NaN`), serially, so the parallel
 /// composite reads it immutably (perf memo; single-substrate only — the caller gates on `!multi()`).

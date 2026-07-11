@@ -353,7 +353,7 @@ pub fn read_markers(bytes: &[u8]) -> Vec<Marker> {
     let u32_at =
         |o: usize| u32::from_le_bytes([bytes[o], bytes[o + 1], bytes[o + 2], bytes[o + 3]]);
     let mut positions: Vec<(u32, u32)> = Vec::new(); // (id, frame)
-    let mut labels: std::collections::HashMap<u32, String> = std::collections::HashMap::new();
+    let mut labels: std::collections::BTreeMap<u32, String> = std::collections::BTreeMap::new();
     let mut pos = 12;
     while pos + 8 <= bytes.len() {
         let id = &bytes[pos..pos + 4];
@@ -399,8 +399,8 @@ fn parse_cue(body: &[u8]) -> Vec<(u32, u32)> {
 }
 
 /// Parse a `LIST/adtl` chunk body into `id → label`.
-fn parse_adtl(body: &[u8]) -> std::collections::HashMap<u32, String> {
-    let mut map = std::collections::HashMap::new();
+fn parse_adtl(body: &[u8]) -> std::collections::BTreeMap<u32, String> {
+    let mut map = std::collections::BTreeMap::new();
     let u32_at = |o: usize| u32::from_le_bytes([body[o], body[o + 1], body[o + 2], body[o + 3]]);
     let mut pos = 4; // skip the "adtl" tag
     while pos + 8 <= body.len() {

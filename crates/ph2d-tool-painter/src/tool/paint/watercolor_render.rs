@@ -34,15 +34,6 @@ pub(super) const SS0: f32 = 0.12; // LITERAL-PX-OK: coverage-hardening smoothste
 pub(super) const SS1: f32 = 0.60; // LITERAL-PX-OK: coverage-hardening smoothstep high edge (wet_edges)
 
 impl PainterTool {
-    /// Whether the watercolor optical render-path drives this stroke: Watercolor on, the normal **Paint**
-    /// brush (not Smear/Blur/Clone/Mask/Inpaint/Fill/Selection/Deform), not erasing. Off ⇒ byte-identical
-    /// plain brush (the whole path is skipped, deposit + composite alike).
-    pub(super) fn watercolor_render_active(&self) -> bool {
-        self.paint.brush.watercolor
-            && matches!(self.paint.paint_mode, PaintMode::Paint)
-            && !self.paint.eraser
-    }
-
     /// Composite the watercolor wash over the frozen base ([`PaintState::watercolor_base`](super::PaintState)).
     ///
     /// Reads the coverage + deposited-colour buffers, reconstructs the optical density `D`, and applies

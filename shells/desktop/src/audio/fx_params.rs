@@ -279,6 +279,7 @@ mod tests {
                 "Leveler",
                 "Transient",
                 "Saturate",
+                "Distortion",
                 "Bitcrush",
                 "Widen",
                 "Reverb",

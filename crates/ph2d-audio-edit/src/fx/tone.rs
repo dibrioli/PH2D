@@ -120,6 +120,49 @@ pub(super) fn stereo_width(data: &SampleData, width: f32) -> SampleData {
     SampleData::from_interleaved(out, data.format())
 }
 
+/// Distortion's darkest / brightest post-filter cutoff (Hz), swept by `tone`.
+/// The min is `pub(super)` so the warmup pre-roll can size on the longest-ringing case.
+pub(super) const DISTORT_TONE_MIN_HZ: f32 = 800.0;
+const DISTORT_TONE_MAX_HZ: f32 = 16_000.0;
+/// Pre-gain at full `drive` (drive 1 → ×31 into the clipper): heavy, square-ish grit.
+const DISTORT_MAX_PRE: f32 = 30.0;
+
+/// **Distortion**: a cubic hard-clipper — grittier than [`saturate`]'s `tanh` — with a
+/// post low-pass **Tone** control. `drive` (0..1) blends dry→clipped *and* drives the
+/// signal harder into the clip, so the onset off 0 is smooth (no level jump) while full
+/// drive is a loud, clipped square. `tone` sweeps a low-pass that tames the fizz. This
+/// is called only for `drive > 0`; at 0 the rack bypasses it.
+pub(super) fn distortion(data: &SampleData, drive: f32, tone: f32) -> SampleData {
+    let sr = data.format().sample_rate as f32;
+    let drive = drive.clamp(0.0, 1.0);
+    let pre = 1.0 + drive * DISTORT_MAX_PRE;
+    // Cubic soft-clip scaled by 1.5 so its ±2/3 plateau reaches full scale — a loud,
+    // saturated output rather than an attenuated one.
+    let shaped: Vec<f32> = data
+        .samples()
+        .iter()
+        .map(|&x| {
+            let d = pre * x;
+            let f = if d >= 1.0 {
+                2.0 / 3.0
+            } else if d <= -1.0 {
+                -2.0 / 3.0
+            } else {
+                d - d * d * d / 3.0
+            };
+            // Blend by drive: at drive→0 this is the dry signal (a smooth onset).
+            (1.0 - drive) * x + drive * (f * 1.5)
+        })
+        .collect();
+    let shaped = SampleData::from_interleaved(shaped, data.format());
+    let cutoff = DISTORT_TONE_MIN_HZ * (DISTORT_TONE_MAX_HZ / DISTORT_TONE_MIN_HZ).powf(tone);
+    // The low-pass rings past ±1 on the clipped square (Gibbs overshoot); clamp back —
+    // a distortion hitting the ceiling is expected, not a bug.
+    let lp = biquad_all(&shaped, BiquadCoeffs::lowpass(sr, cutoff, 0.707));
+    let out: Vec<f32> = lp.samples().iter().map(|v| v.clamp(-1.0, 1.0)).collect();
+    SampleData::from_interleaved(out, data.format())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -229,5 +272,49 @@ mod tests {
         let nyq = (c.b0 - c.b1 + c.b2) / (1.0 - c.a1 + c.a2);
         assert!((dc - 1.0).abs() < 0.02, "bell moved DC: {dc}");
         assert!((nyq - 1.0).abs() < 0.02, "bell moved Nyquist: {nyq}");
+    }
+
+    fn sine_300() -> SampleData {
+        let tau = std::f32::consts::TAU;
+        let x: Vec<f32> = (0..4_800)
+            .map(|n| 0.6 * (tau * 300.0 * n as f32 / 48_000.0).sin())
+            .collect();
+        SampleData::from_interleaved(x, AudioFormat::mono(48_000))
+    }
+
+    /// Crest factor (peak / RMS) — a clean sine sits near √2 ≈ 1.414; clipping
+    /// flattens the wave toward a square, dropping it toward 1.
+    fn crest(s: &[f32]) -> f32 {
+        let peak = s.iter().fold(0.0f32, |m, v| m.max(v.abs()));
+        let rms = (s.iter().map(|v| v * v).sum::<f32>() / s.len() as f32).sqrt();
+        peak / rms.max(1e-9)
+    }
+
+    /// Distortion flattens the wave (clipping drops the crest factor) and never
+    /// exceeds full scale.
+    #[test]
+    fn distortion_clips_and_stays_bounded() {
+        let d = sine_300();
+        let out = distortion(&d, 1.0, 1.0);
+        assert!(
+            out.samples().iter().all(|v| v.abs() <= 1.0 + 1e-4),
+            "distortion exceeded full scale"
+        );
+        // Skip the low-pass's settling at the head.
+        let cd = crest(&d.samples()[500..]);
+        let co = crest(&out.samples()[500..]);
+        assert!(co < cd, "distortion did not flatten the wave: {co} vs {cd}");
+    }
+
+    /// `drive` is a real knob: more drive clips harder, so the crest keeps dropping.
+    #[test]
+    fn more_drive_flattens_more() {
+        let d = sine_300();
+        let light = crest(&distortion(&d, 0.3, 1.0).samples()[500..]);
+        let heavy = crest(&distortion(&d, 1.0, 1.0).samples()[500..]);
+        assert!(
+            heavy < light,
+            "heavier drive must flatten more: {heavy} vs {light}"
+        );
     }
 }

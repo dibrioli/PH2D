@@ -99,6 +99,11 @@ static TRANSIENT: [FxParamSpec; 2] = [
 ];
 // Linear (not log) so the neutral point can sit at exactly 0.
 static SATURATE: [FxParamSpec; 1] = [spec("Drive", 0.0, 12.0, false, 0.0, "x", false)];
+// Drive is the arm (0 = clean = pass-through). Tone sweeps the post low-pass.
+static DISTORTION: [FxParamSpec; 2] = [
+    spec("Drive", 0.0, 1.0, false, 0.0, "", false),
+    spec("Tone", 0.0, 1.0, false, 0.5, "", false),
+];
 static BITCRUSH: [FxParamSpec; 2] = [
     // Neutral = full depth, no decimation.
     spec("Bits", 1.0, 16.0, false, 16.0, "", true),
@@ -185,7 +190,7 @@ static PITCH_SHIFT: [FxParamSpec; 2] = [
 
 /// The effects the selector cycles, in order — grouped tone → dynamics → character
 /// → space, the way a rack is laid out.
-pub(crate) static KINDS: [FxKind; 28] = [
+pub(crate) static KINDS: [FxKind; 29] = [
     FxKind {
         name: "Low-Pass",
         params: &LOW_PASS,
@@ -349,6 +354,17 @@ pub(crate) static KINDS: [FxKind; 28] = [
         params: &SATURATE,
         arms: &[0], // Drive
         build: |v| FxCommand::Plain(Effect::Saturate { drive: v[0] }),
+    },
+    FxKind {
+        name: "Distortion",
+        params: &DISTORTION,
+        arms: &[0], // Drive
+        build: |v| {
+            FxCommand::Plain(Effect::Distortion {
+                drive: v[0],
+                tone: v[1],
+            })
+        },
     },
     FxKind {
         name: "Bitcrush",

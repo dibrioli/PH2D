@@ -36,7 +36,7 @@ use dynamics::{compress, gate, leveler, limit};
 use modulation::{auto_pan, doubler, modulated_delay, phaser, ring_mod, trance_gate, tremolo};
 use pitch::{PITCH_BYPASS_ST, pitch_shift};
 use space::{pingpong, render_wet};
-use tone::{HUM_Q, biquad_all, bitcrush, dehum, saturate, stereo_width};
+use tone::{HUM_Q, biquad_all, bitcrush, dehum, distortion, saturate, stereo_width};
 use transient::{TRANSIENT_BYPASS, transient_shape};
 
 /// Chorus base delay (ms): a detuned doubling sits well behind the dry signal.
@@ -63,6 +63,8 @@ const EQ_BYPASS_GAIN_DB: f32 = 1e-3;
 const LIMITER_BYPASS_CEILING_DB: f32 = 0.0;
 /// Drive below this is inaudible (and `tanh(k)` underflows the normalizer).
 const SATURATE_BYPASS_DRIVE: f32 = 1e-3;
+/// Distortion drive (0..1) below this is a clean pass-through → bypass.
+const DISTORT_BYPASS_DRIVE: f32 = 1e-4;
 /// Bit depth at or above this, with no decimation, is transparent → bypass.
 const BITCRUSH_BYPASS_BITS: u32 = 16;
 /// A modulation effect fully dry (`mix`/`depth` at 0) passes the signal through.
@@ -180,6 +182,10 @@ pub enum Effect {
     },
     /// `tanh` soft-clip saturation (warmth / drive). Neutral at `drive` 0.
     Saturate { drive: f32 },
+    /// **Distortion**: a cubic hard-clipper (grittier than `Saturate`) with a post
+    /// low-pass **Tone**. `drive` (0..1) blends dry→clipped and drives harder; `tone`
+    /// tames the fizz. Neutral at `drive` 0.
+    Distortion { drive: f32, tone: f32 },
     /// Lo-fi bit-depth reduction to `bits` + sample-hold decimation by
     /// `downsample` (≥1 = no decimation).
     Bitcrush { bits: u32, downsample: u32 },
@@ -343,6 +349,9 @@ impl Effect {
                 transient_shape(data, attack, sustain)
             }
             Effect::Saturate { drive } if drive >= SATURATE_BYPASS_DRIVE => saturate(data, drive),
+            Effect::Distortion { drive, tone } if drive > DISTORT_BYPASS_DRIVE => {
+                distortion(data, drive, tone)
+            }
             Effect::Bitcrush { bits, downsample }
                 if bits < BITCRUSH_BYPASS_BITS || downsample > 1 =>
             {
@@ -448,6 +457,11 @@ impl Effect {
             // The pitch shifter's delay line starts empty; without a pre-roll its taps
             // read silence for the first grain and the region swells in. Fill it.
             Effect::PitchShift { .. } => pitch::GRAIN.min(cap),
+            // Distortion's post low-pass would click at a selection edge without a
+            // pre-roll; size it on the darkest (longest-ringing) tone.
+            Effect::Distortion { .. } => {
+                biquad_warmup(tone::DISTORT_TONE_MIN_HZ, 0.707, sample_rate, TAUS).min(cap)
+            }
             // The compressor and the gate prime their own envelope on the region's
             // first frame; the phaser's all-pass state settles in a handful of
             // samples; tremolo is memoryless. None need a pre-roll.
@@ -478,6 +492,7 @@ impl Effect {
             || matches!(*self, Effect::Limiter { ceiling_db, .. }
                 if ceiling_db >= LIMITER_BYPASS_CEILING_DB)
             || matches!(*self, Effect::Saturate { drive } if drive < SATURATE_BYPASS_DRIVE)
+            || matches!(*self, Effect::Distortion { drive, .. } if drive <= DISTORT_BYPASS_DRIVE)
             || matches!(*self, Effect::Bitcrush { bits, downsample }
                 if bits >= BITCRUSH_BYPASS_BITS && downsample <= 1)
             || matches!(*self, Effect::StereoWidth { width } if (width - 1.0).abs() <= f32::EPSILON)

@@ -436,7 +436,7 @@ mod tests {
         .unwrap();
         assert!(
             p.verts.iter().any(|v| (v.anchor[1] - 1.0).abs() < 1e-6),
-            "y=1000 (topo da fonte) → +1.0 em world (y-up)"
+            "y=1000 (topo da fonte) -> +1.0 em world (y-up)"
         );
         assert!(p.verts.iter().any(|v| v.anchor[1].abs() < 1e-6));
     }

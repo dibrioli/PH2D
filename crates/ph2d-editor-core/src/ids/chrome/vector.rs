@@ -140,6 +140,8 @@ pub const VECTOR_MODE_POLYGON: NodeId = hash_node_id("vector.mode.polygon");
 pub const VECTOR_MODE_STAR: NodeId = hash_node_id("vector.mode.star");
 pub const VECTOR_MODE_RRECT: NodeId = hash_node_id("vector.mode.rrect");
 pub const VECTOR_MODE_SPIRAL: NodeId = hash_node_id("vector.mode.spiral");
+/// Text mode: clica no canvas e digita (glyphs viram VecPaths). Botão do mode row.
+pub const VECTOR_MODE_TEXT: NodeId = hash_node_id("vector.mode.text");
 /// Polygon "Sides" slider (3..12) — shown only in Polygon mode; drives
 /// `VectorTool::polygon_sides`.
 pub const VECTOR_SIDES: NodeId = hash_node_id("vector.sides");

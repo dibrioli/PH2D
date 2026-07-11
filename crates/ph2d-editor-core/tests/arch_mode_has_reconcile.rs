@@ -28,6 +28,11 @@ use std::path::{Path, PathBuf};
 /// new tools/panels DO; resist the urge).
 const BENIGN_SET_MODE: &[(&str, &str)] = &[
     (
+        "set_mode",
+        "VectorTool draw-mode: single-field write (`self.mode = mode`), same as the \
+         per-mode arms of `handle_panel_event`; the shell mirrors it, nothing derived",
+    ),
+    (
         "set_tool_view_mode",
         "TopBar icon view mode — purely visual, no dependent caches",
     ),

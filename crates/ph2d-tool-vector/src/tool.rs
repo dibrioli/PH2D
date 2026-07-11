@@ -336,6 +336,7 @@ impl Tool for VectorTool {
                 self.mode = DrawMode::RoundRect
             }
             PanelEvent::Click(id) if id == ids::VECTOR_MODE_SPIRAL => self.mode = DrawMode::Spiral,
+            PanelEvent::Click(id) if id == ids::VECTOR_MODE_TEXT => self.mode = DrawMode::Text,
             // Stroke cap / join segmented rows + Dash slider. These are Style →
             // restyle the selected path (mirror of colour/width).
             PanelEvent::Click(id) if id == ids::VECTOR_CAP_BUTT => self.set_cap(StrokeCap::Butt),

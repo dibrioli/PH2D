@@ -34,6 +34,7 @@ impl BodyCtx<'_> {
             (ids::VECTOR_MODE_SPIRAL, "Spiral", DrawMode::Spiral),
             (ids::VECTOR_MODE_LINE, "Line", DrawMode::Line),
             (ids::VECTOR_MODE_ARC, "Arc", DrawMode::Arc),
+            (ids::VECTOR_MODE_TEXT, "Text", DrawMode::Text),
         ];
         let mode_cols = 3usize;
         let seg_gap = Spacing::Sm.px();

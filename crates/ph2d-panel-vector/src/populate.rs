@@ -128,6 +128,7 @@ fn populate_shape(store: &mut WidgetStore) {
     button(store, ids::VECTOR_MODE_SPIRAL);
     button(store, ids::VECTOR_MODE_LINE);
     button(store, ids::VECTOR_MODE_ARC);
+    button(store, ids::VECTOR_MODE_TEXT);
 
     // Polygon Sides slider — seeded at the tool's default (`sides_to_slider(5)`).
     // Registered unconditionally (the store is mode-agnostic); the panel only

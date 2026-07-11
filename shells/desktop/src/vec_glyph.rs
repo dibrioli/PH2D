@@ -15,7 +15,7 @@
 //! `S + ⅔(Q−S)` e `E + ⅔(Q−E)`; a cúbica usa `c1`/`c2` diretos.
 
 use ph2d_vec_edit::PenStyle;
-use ph2d_vec_scene::{Contour, FillRule, Paint, StrokeSpec, VecPath, VecVertex};
+use ph2d_vec_scene::{Contour, FillRule, Paint, StrokeSpec, VecPath, VecVertex, VertexKind};
 use ph2d_vector_font::{AxisTag, GlyphOutline, PathCommand, VariableFont};
 
 /// Resolve o Style do Pen (fill/stroke/width em px) no par (fill, stroke) que cada
@@ -241,6 +241,19 @@ impl Build {
         if self.contours.is_empty() {
             return None;
         }
+        // Marca as junções curva↔reta (EXATAMENTE um lado com alça) como Smooth: a
+        // alça lateral zero passa a mostrar um ghost agarrável já na criação da letra
+        // (Enio 2026-07-11). Não muda geometria/render — só habilita o toco lateral.
+        // Quinas retas (ambas as alças zero) e pontos com as duas alças ficam intactos.
+        for contour in &mut self.contours {
+            for v in contour.iter_mut() {
+                let in_zero = dist2(v.in_handle, v.anchor) <= 1e-12;
+                let out_zero = dist2(v.out_handle, v.anchor) <= 1e-12;
+                if in_zero != out_zero {
+                    v.kind = VertexKind::Smooth;
+                }
+            }
+        }
         let mut iter = self.contours.into_iter();
         let verts = iter.next()?;
         let subpaths: Vec<Contour> = iter
@@ -404,6 +417,55 @@ mod tests {
         .unwrap();
         assert!((p.verts[0].out_handle[0] - 300.0).abs() < 1e-4, "out = c1");
         assert!((p.verts[1].in_handle[0] - 700.0).abs() < 1e-4, "in = c2");
+    }
+
+    /// Junção curva↔reta vira Smooth (a alça lateral zero mostra ghost na criação da
+    /// letra); quina line-line (triângulo) fica Corner. Não muda posições de alça.
+    #[test]
+    fn curve_line_junctions_are_smooth_so_lateral_ghosts_show() {
+        // Curva de v0 a v1 + fecho reto v1→v0: cada ponta tem UM lado com alça.
+        let p = glyph_to_vec_path(
+            &outline(vec![
+                PathCommand::MoveTo(Vec2::new(0.0, 0.0)),
+                PathCommand::CurveTo {
+                    c1: Vec2::new(0.0, 500.0),
+                    c2: Vec2::new(1000.0, 500.0),
+                    to: Vec2::new(1000.0, 0.0),
+                },
+                PathCommand::Close,
+            ]),
+            1.0 / 1000.0,
+            [0.0, 0.0],
+            Some(black()),
+            None,
+        )
+        .unwrap();
+        assert!(
+            p.verts
+                .iter()
+                .all(|v| v.kind == ph2d_vec_scene::VertexKind::Smooth),
+            "junções curva↔reta = Smooth"
+        );
+        // Um triângulo (line-line em toda quina) permanece Corner.
+        let tri = glyph_to_vec_path(
+            &outline(vec![
+                PathCommand::MoveTo(Vec2::new(0.0, 0.0)),
+                PathCommand::LineTo(Vec2::new(600.0, 0.0)),
+                PathCommand::LineTo(Vec2::new(300.0, 600.0)),
+                PathCommand::Close,
+            ]),
+            1.0 / 1000.0,
+            [0.0, 0.0],
+            Some(black()),
+            None,
+        )
+        .unwrap();
+        assert!(
+            tri.verts
+                .iter()
+                .all(|v| v.kind == ph2d_vec_scene::VertexKind::Corner),
+            "quinas retas ficam Corner"
+        );
     }
 
     /// Um glyph sem contorno fechável (espaço) devolve `None`.

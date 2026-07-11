@@ -5,6 +5,7 @@
 //! `watercolor_field::{value_noise_tiled, warp_axis, NoiseTile, …}`. HR-5: transcendental-free.
 
 use ph2d_painter_brush::TextureKind;
+use ph2d_painter_brush::TextureMapping;
 use ph2d_painter_brush::TextureSettings;
 use ph2d_painter_brush::texture::{TEX_TILE_BASE_PX, analytic_tile_period, lattice_tileable};
 
@@ -190,6 +191,24 @@ pub(super) fn snap_slot_size(mut s: TextureSettings, tile: NoiseTile) -> Texture
     };
     let p = tile.slot_period();
     s.size = [snap(s.size[0], p[0], rep[0]), snap(s.size[1], p[1], rep[1])];
+    s
+}
+
+/// Convert a **ViewPlane** (dab-relative) Grain slot to the canvas-anchored Size that reproduces the SAME
+/// feature scale the brush shows — so the watercolor granulation MATCHES the brush's grain (Enio
+/// 2026-07-11). The wash samples the Grain slot canvas-anchored ([`sample_tiled_rot`]: `rel =
+/// px·size/TILE_BASE`), while the brush's default ViewPlane maps `size` per DAB RADIUS (`rel =
+/// (px−c)/radius·size`). So the IDENTICAL `size` renders ~`TILE_BASE/radius`× COARSER in the wash — a 40-px
+/// brush turns a fine Voronoi (cells ~40 px) into giant 256-px blobs ("muito pior"). This is
+/// kind-independent (a mapping/scale gap), but shows worst on cellular kinds (Voronoi / Grid / Checker).
+/// Rescaling `size` by `TILE_BASE/radius` makes the canvas sample reproduce the ViewPlane scale EXACTLY
+/// (`px·(size·TILE_BASE/radius)/TILE_BASE = px·size/radius`). A **Tiled** / **Stencil** grain is ALREADY
+/// canvas-anchored like the wash (matches the brush) ⇒ unchanged; inactive ⇒ unchanged.
+pub(super) fn grain_view_to_canvas_size(mut s: TextureSettings, radius_px: f32) -> TextureSettings {
+    if s.is_active() && matches!(s.mapping, TextureMapping::ViewPlane) {
+        let k = TEX_TILE_BASE_PX / radius_px.max(1.0);
+        s.size = [s.size[0] * k, s.size[1] * k];
+    }
     s
 }
 
@@ -480,6 +499,65 @@ mod tests {
             ..Default::default()
         };
         assert_eq!(snap_slot_size(raw, NoiseTile::NONE).size, raw.size);
+    }
+
+    /// **Watercolor grain now matches the brush's ViewPlane scale (Enio 2026-07-11).** The wash samples the
+    /// Grain slot canvas-anchored (`px·size/256`), but the brush's default ViewPlane maps `size` per DAB
+    /// RADIUS, so the SAME grain rendered ~`256/radius`× COARSER in the wash — a fine Voronoi became giant
+    /// blobs. `grain_view_to_canvas_size` rescales the Size so the canvas sample reproduces the brush's
+    /// feature scale EXACTLY. Proof = value correspondence: the converted canvas sample equals the brush's
+    /// ViewPlane `sample` at the matching coord; the RAW (unconverted) canvas sample DIVERGES (the bug). It's
+    /// kind-INDEPENDENT (a mapping/scale gap) — shown here on Voronoi + Stripes + Grid (worst on Voronoi).
+    #[test]
+    fn watercolor_grain_matches_the_brush_viewplane_scale() {
+        use ph2d_painter_brush::texture::{TexDabBasis, angle_basis, sample, sample_tiled_rot};
+        let basis = TexDabBasis::identity();
+        let rot = angle_basis(0);
+        let radius = 40.0f32;
+        for kind in [
+            TextureKind::Voronoi,
+            TextureKind::Stripes,
+            TextureKind::Grid,
+        ] {
+            let gtex = TextureSettings {
+                kind,
+                mapping: TextureMapping::ViewPlane,
+                size: [1.3, 1.3],
+                ..Default::default()
+            };
+            let scaled = grain_view_to_canvas_size(gtex, radius);
+            let mut raw_diverges = false;
+            for px in (0..512).step_by(3) {
+                // Brush ViewPlane (the reference the user compares against): a dab at the origin, radius R.
+                let brush_v = sample(&gtex, &basis, px, 0, [0.0, 0.0], radius, None);
+                // Watercolor canvas sample of the CONVERTED grain — reproduces the brush's tex coord exactly
+                // (`px·(size·256/R)/256 = px·size/R`), so the value MATCHES the brush.
+                let wash = sample_tiled_rot(&scaled, px, 0, None, rot);
+                assert!(
+                    (brush_v - wash).abs() < 1e-4,
+                    "{kind:?} px={px}: brush {brush_v} vs wash {wash} (scale must match)"
+                );
+                // Control: the RAW (unconverted) canvas sample uses base-256 → diverges from the brush.
+                let wash_raw = sample_tiled_rot(&gtex, px, 0, None, rot);
+                if (brush_v - wash_raw).abs() > 0.1 {
+                    raw_diverges = true;
+                }
+            }
+            assert!(
+                raw_diverges,
+                "{kind:?}: the RAW (unconverted) wash must diverge from the brush — the coarse bug"
+            );
+        }
+        // A Tiled Grain is already canvas-anchored (matches the brush) ⇒ unchanged; inactive ⇒ unchanged.
+        let tiled = TextureSettings {
+            kind: TextureKind::Voronoi,
+            mapping: TextureMapping::Tiled,
+            size: [1.3, 1.3],
+            ..Default::default()
+        };
+        assert_eq!(grain_view_to_canvas_size(tiled, radius).size, tiled.size);
+        let off = TextureSettings::default(); // kind None
+        assert_eq!(grain_view_to_canvas_size(off, radius).size, off.size);
     }
 
     /// The lattice wrap is a no-op off-tiling and under rotation: `sample_tiled_rot_wrapped` with a zero

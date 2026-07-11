@@ -231,7 +231,13 @@ impl PainterTool {
         // The Granulation map is the **Grain** slot (`brush.texture`) — used only when "Same as Paper"
         // is off; otherwise the granulation settles into the paper's own tooth. (`gran_own_map` +
         // `gran_rot` moved into `SubstrateSession`, which resolves them per owner — #13.)
-        let gran_tex = snap_slot_size(brush.texture, noise_tile);
+        // Match the brush's grain SCALE (Enio 2026-07-11): rescale a ViewPlane Grain so the wash's
+        // canvas-anchored sample reproduces the brush's feature scale, then snap for the tiling seam as
+        // before (see `grain_view_to_canvas_size` for the why — the ~256/radius× coarsening bug).
+        let gran_tex = snap_slot_size(
+            grain_view_to_canvas_size(brush.texture, brush.radius_px),
+            noise_tile,
+        );
         let gran_img = self.paint.texture_image.as_ref().map(|i| i.as_mask());
         let paper_depth = brush.paper_depth.clamp(0.0, 1.0);
         // Fallback pigment when the colour buffer is faint (straight brush colour → sRGB bytes).

@@ -11,7 +11,11 @@
 ## 0. Estado da linha (commits locais desta jornada, do mais novo pro mais velho)
 
 ```
-d9df426f fix(watercolor): overlay some além da costura — tiles do Repeat Image cobriam o chrome ← ÚLTIMO (resolve §1)
+<novo> fix(watercolor): grain casa a ESCALA do brush (ViewPlane→canvas por radius) ← ÚLTIMO
+<novo> feat(watercolor): Dots/Scales tilam seamless via hash-wrap (#2 Fase 2 completa)
+<novo> feat(watercolor): patterns analíticos tilam seamless sob Tiling (#2 Fase 2)
+<novo> feat(watercolor): Smudge (TRUE SMEAR) wrapa na costura do Tiling (#2 fu-a)
+d9df426f fix(watercolor): overlay some além da costura — tiles do Repeat Image cobriam o chrome (resolve §1)
 4fa05563 feat(watercolor): overlay editável CONTÍNUO (uma cópia), sem partir nos tiles
 49216a01 feat(watercolor): edit-in-tile multi-shape — badges tiladas + grab de qualquer forma
 27bcd421 feat(watercolor): overlay 3×3 nos tiles p/ Ellipse/Polygon/Line (paridade visual)

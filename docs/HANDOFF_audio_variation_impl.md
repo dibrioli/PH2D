@@ -10,7 +10,7 @@
 
 ## 1. Identidade
 - **Branch:** `line/audio` · **merge-base com main:** `1c7c9a22` (= HEAD do main integrado).
-- **HEAD atual:** `755f51e8`. **Commits à frente do main:** **9** —
+- **HEAD atual:** `1bf0c509`. **Commits à frente do main:** **11** (9 abaixo + `58b9a27d` docs De-Hum + `1bf0c509` feat Leveler) —
   1. `ecd2587a feat(audio): W6 variation containers — random/sequence/shuffle + jitter + weights`
   2. `e48e237b docs(audio): W6 variation containers — tracker + handoff`
   3. `6bf70ca1 feat(audio): W6 import por convenção — Add Folder popula o set (natural sort)`
@@ -21,7 +21,7 @@
   8. `49edfaa1 docs(audio): auditoria de intermitências (3 fixes + 3 deferidos)`
   9. `755f51e8 feat(audio): W4 voz — De-Hum (efeito #19 da rack), sem dep, sem tocar o core RT`
 - Árvore limpa. Fast-forward puro sobre o main atual (a linha foi resetada ao main recém-integrado antes de começar).
-- **Nota:** o commit 9 abre o **W4 (tratamento de voz)** — De-Hum é um efeito novo da rack (sem dep, sem contrato, painel auto). Continuação natural: Leveler/AGC · De-Plosive · Comms FX (preset). Só `ph2d-audio-edit`+shell/audio; nada foundational.
+- **Nota:** os commits 9+11 abrem o **W4 (tratamento de voz)** — **De-Hum** (#19) + **Leveler/AGC** (#20) são efeitos novos da rack (sem dep, sem contrato, painel auto; só `ph2d-audio-edit`+shell/audio, nada foundational). `fx/dynamics.rs` está 662/700 — próximo efeito de dynamics = split. Continuação: De-Plosive · Comms FX (preset) · Creature/pitch (precisa do cluster FFT).
 
 ## 2. Foundational / compartilhado tocado (e por quê)
 Só **um** arquivo fora das crates do módulo de áudio, e **aditivo**:

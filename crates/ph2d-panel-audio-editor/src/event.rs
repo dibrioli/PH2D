@@ -10,7 +10,7 @@ use crate::{
     AEDIT_MARK_DEL, AEDIT_MONO, AEDIT_NORM_LUFS, AEDIT_NORMALIZE, AEDIT_PLAY, AEDIT_PRESET_APPLY,
     AEDIT_PRESET_LOAD, AEDIT_PRESET_NEXT, AEDIT_PRESET_PREV, AEDIT_PRESET_SAVE, AEDIT_REDO,
     AEDIT_REVERSE, AEDIT_SILENCE, AEDIT_STOP, AEDIT_TRIM, AEDIT_UNDO, AudioEditCmd,
-    AudioEditorPanel, loop_state, presets, snapshot,
+    AudioEditorPanel, loop_state, presets, snapshot, variation_state,
 };
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::ids;
@@ -56,6 +56,97 @@ fn asset_click(id: NodeId) -> Option<EventOutcome> {
         return None;
     }
     Some(EventOutcome::Consumed)
+}
+
+/// Variation-container clicks (W6). Returns `Some(Consumed)` when `id` is a variation
+/// control. Selecting a row, cycling the strategy, and Add / Load are always live; Play
+/// / Remove / Weight / Save need a variation to exist (the panel dims them, and — a dim
+/// being cosmetic — the seam refuses them too, mirroring the range ops). Extracted, like
+/// [`asset_click`], to keep `apply_event` under the panel fn-LOC cap.
+fn variation_click(id: NodeId) -> Option<EventOutcome> {
+    use crate::{
+        AEDIT_VAR_ADD, AEDIT_VAR_LOAD, AEDIT_VAR_PLAY, AEDIT_VAR_REMOVE, AEDIT_VAR_ROWS,
+        AEDIT_VAR_SAVE, AEDIT_VAR_STRAT_NEXT, AEDIT_VAR_STRAT_PREV, AEDIT_VAR_WEIGHT_DOWN,
+        AEDIT_VAR_WEIGHT_UP,
+    };
+    if let Some(i) = AEDIT_VAR_ROWS.iter().position(|r| *r == id) {
+        variation_state::select(i);
+        return Some(EventOutcome::Consumed);
+    }
+    let has_any = variation_state::count() > 0;
+    if id == AEDIT_VAR_ADD {
+        variation_state::request_add();
+    } else if id == AEDIT_VAR_LOAD {
+        variation_state::request_load();
+    } else if id == AEDIT_VAR_STRAT_PREV {
+        variation_state::cycle_strategy(-1);
+    } else if id == AEDIT_VAR_STRAT_NEXT {
+        variation_state::cycle_strategy(1);
+    } else if id == AEDIT_VAR_PLAY {
+        if has_any {
+            variation_state::request_play();
+        }
+    } else if id == AEDIT_VAR_REMOVE {
+        if has_any {
+            variation_state::request_remove();
+        }
+    } else if id == AEDIT_VAR_SAVE {
+        if has_any {
+            variation_state::request_save();
+        }
+    } else if id == AEDIT_VAR_WEIGHT_DOWN {
+        if has_any {
+            variation_state::bump_weight(-1);
+        }
+    } else if id == AEDIT_VAR_WEIGHT_UP {
+        if has_any {
+            variation_state::bump_weight(1);
+        }
+    } else {
+        return None;
+    }
+    Some(EventOutcome::Consumed)
+}
+
+/// Map an edit-op / rack-commit button id to its one-shot [`AudioEditCmd`] (`None` for
+/// any other id). Extracted from `apply_event` so it stays under the panel fn-LOC cap;
+/// the selection guard + `request_edit` stay in `apply_event` (they read snapshot).
+fn edit_cmd_for(id: NodeId) -> Option<AudioEditCmd> {
+    if id == AEDIT_UNDO {
+        Some(AudioEditCmd::Undo)
+    } else if id == AEDIT_REDO {
+        Some(AudioEditCmd::Redo)
+    } else if id == AEDIT_NORMALIZE {
+        Some(AudioEditCmd::NormalizePeak)
+    } else if id == AEDIT_NORM_LUFS {
+        Some(AudioEditCmd::NormalizeLufs)
+    } else if id == AEDIT_REVERSE {
+        Some(AudioEditCmd::Reverse)
+    } else if id == AEDIT_DC {
+        Some(AudioEditCmd::RemoveDc)
+    } else if id == AEDIT_INVERT {
+        Some(AudioEditCmd::Invert)
+    } else if id == AEDIT_GAIN_DOWN {
+        Some(AudioEditCmd::GainDown)
+    } else if id == AEDIT_GAIN_UP {
+        Some(AudioEditCmd::GainUp)
+    } else if id == AEDIT_TRIM {
+        Some(AudioEditCmd::Trim)
+    } else if id == AEDIT_CUT {
+        Some(AudioEditCmd::Cut)
+    } else if id == AEDIT_SILENCE {
+        Some(AudioEditCmd::Silence)
+    } else if id == AEDIT_FADE_IN {
+        Some(AudioEditCmd::FadeIn)
+    } else if id == AEDIT_FADE_OUT {
+        Some(AudioEditCmd::FadeOut)
+    } else if id == AEDIT_FX_APPLY {
+        Some(AudioEditCmd::ApplyFx)
+    } else if id == AEDIT_FX_CANCEL {
+        Some(AudioEditCmd::CancelFx)
+    } else {
+        None
+    }
 }
 
 pub(crate) fn apply_event(
@@ -169,6 +260,10 @@ pub(crate) fn apply_event(
         if let Some(outcome) = loop_click(id) {
             return outcome;
         }
+        // Variation containers (W6) — extracted like the above.
+        if let Some(outcome) = variation_click(id) {
+            return outcome;
+        }
         // Chain rows: the eye toggles a stage in/out of the render, the row selects it.
         if let Some(i) = AEDIT_FX_STAGE_ONS.iter().position(|s| *s == id) {
             snapshot::toggle_fx_stage_enabled(i);
@@ -179,42 +274,7 @@ pub(crate) fn apply_event(
             return EventOutcome::Consumed;
         }
         // Edit ops → arm the matching one-shot command for the shell.
-        let edit = if id == AEDIT_UNDO {
-            Some(AudioEditCmd::Undo)
-        } else if id == AEDIT_REDO {
-            Some(AudioEditCmd::Redo)
-        } else if id == AEDIT_NORMALIZE {
-            Some(AudioEditCmd::NormalizePeak)
-        } else if id == AEDIT_NORM_LUFS {
-            Some(AudioEditCmd::NormalizeLufs)
-        } else if id == AEDIT_REVERSE {
-            Some(AudioEditCmd::Reverse)
-        } else if id == AEDIT_DC {
-            Some(AudioEditCmd::RemoveDc)
-        } else if id == AEDIT_INVERT {
-            Some(AudioEditCmd::Invert)
-        } else if id == AEDIT_GAIN_DOWN {
-            Some(AudioEditCmd::GainDown)
-        } else if id == AEDIT_GAIN_UP {
-            Some(AudioEditCmd::GainUp)
-        } else if id == AEDIT_TRIM {
-            Some(AudioEditCmd::Trim)
-        } else if id == AEDIT_CUT {
-            Some(AudioEditCmd::Cut)
-        } else if id == AEDIT_SILENCE {
-            Some(AudioEditCmd::Silence)
-        } else if id == AEDIT_FADE_IN {
-            Some(AudioEditCmd::FadeIn)
-        } else if id == AEDIT_FADE_OUT {
-            Some(AudioEditCmd::FadeOut)
-        } else if id == AEDIT_FX_APPLY {
-            Some(AudioEditCmd::ApplyFx)
-        } else if id == AEDIT_FX_CANCEL {
-            Some(AudioEditCmd::CancelFx)
-        } else {
-            None
-        };
-        if let Some(cmd) = edit {
+        if let Some(cmd) = edit_cmd_for(id) {
             // Range ops act on the SELECTION. `target()` silently falls back to the
             // whole clip, so an unguarded Silence with no selection would zero the
             // entire buffer. The panel dims them, but a dim is cosmetic — refuse to
@@ -249,6 +309,18 @@ pub(crate) fn apply_event(
     {
         let v = host.store().slider(id).map(|(_, v)| v).unwrap_or(0.0);
         loop_state::set_xfade_norm(v);
+        return EventOutcome::Consumed;
+    }
+    // The variation pitch/gain jitter sliders — the shell reads them each frame.
+    if let WidgetEvent::ValueChanged(id) = ev
+        && (id == crate::AEDIT_VAR_PITCH || id == crate::AEDIT_VAR_GAIN)
+    {
+        let v = host.store().slider(id).map(|(_, v)| v).unwrap_or(0.0);
+        if id == crate::AEDIT_VAR_PITCH {
+            variation_state::set_pitch_norm(v);
+        } else {
+            variation_state::set_gain_norm(v);
+        }
         return EventOutcome::Consumed;
     }
     EventOutcome::Ignored

@@ -176,6 +176,18 @@ pub(crate) fn paint(_state: &mut AudioEditorState, ctx: &mut PaintCtx) {
         theme,
         hit_index,
     );
+    // Variation containers (W6) — a set of clips the runtime plays one of per trigger.
+    // Independent of the loaded clip (its own file set), so it is not gated on `loaded`.
+    let y = crate::paint_variation::paint_variation_section(
+        y,
+        x,
+        w,
+        ROW_H,
+        scene,
+        text_system,
+        theme,
+        hit_index,
+    );
 
     // Edit ops (W2) — whole-clip, one-shot; each commits an undo step. Then the
     // effects rack. `final_y` is the bottom of the painted content, still carrying

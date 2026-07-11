@@ -22,6 +22,14 @@ use ph2d_panel_audio_editor::{
     take_batch_lufs, take_clear_loop, take_del_marker, take_edit_cmd, take_load, take_load_preset,
     take_play_pause, take_save_preset, take_set_loop, take_stop, take_toggle_mono,
 };
+use ph2d_panel_audio_editor::{
+    AEDIT_VAR_ADD, AEDIT_VAR_GAIN, AEDIT_VAR_LOAD, AEDIT_VAR_PITCH, AEDIT_VAR_PLAY,
+    AEDIT_VAR_REMOVE, AEDIT_VAR_ROWS, AEDIT_VAR_SAVE, AEDIT_VAR_STRAT_NEXT, AEDIT_VAR_STRAT_PREV,
+    AEDIT_VAR_WEIGHT_DOWN, AEDIT_VAR_WEIGHT_UP, gain_jitter_norm, pitch_jitter_norm,
+    set_strategy_name, set_variation_names, take_add_variation, take_load_variation_set,
+    take_play_variation, take_remove_variation, take_save_variation_set, take_strategy_step,
+    take_weight_step, variation_sel,
+};
 use ph2d_ui_testkit::MockPanelHost;
 
 /// The shell publishes the effect-kind table each frame; without it the rack has no
@@ -540,4 +548,162 @@ fn preset_save_and_load_arm_their_file_intents() {
     assert!(take_save_preset(), "Save click never armed the save intent");
     host.apply_panel_event::<AudioEditorPanel>(&mut state, WidgetEvent::Click(AEDIT_PRESET_LOAD));
     assert!(take_load_preset(), "Load click never armed the load intent");
+}
+
+/// Variation containers (W6). Add and Load are always live (Add builds the set, Load
+/// reads a manifest); their clicks must reach the file-picker one-shots.
+#[test]
+fn variation_add_and_load_arm_their_intents() {
+    let mut host = MockPanelHost::with_panel::<AudioEditorPanel>();
+    let mut state = AudioEditorState;
+    let _ = take_add_variation();
+    let _ = take_load_variation_set();
+
+    host.apply_panel_event::<AudioEditorPanel>(&mut state, WidgetEvent::Click(AEDIT_VAR_ADD));
+    assert!(take_add_variation(), "Add click never armed the add intent");
+    assert!(!take_add_variation(), "the intent is one-shot");
+
+    host.apply_panel_event::<AudioEditorPanel>(&mut state, WidgetEvent::Click(AEDIT_VAR_LOAD));
+    assert!(
+        take_load_variation_set(),
+        "Load click never armed its intent"
+    );
+}
+
+/// Play / Remove / Save act on the set, so — like the range ops — they must refuse to
+/// fire until a variation exists (the shell publishes the row labels; the panel dims
+/// them, and a dim being cosmetic, the seam refuses too).
+#[test]
+fn variation_play_remove_save_need_a_variation() {
+    let mut host = MockPanelHost::with_panel::<AudioEditorPanel>();
+    let mut state = AudioEditorState;
+    let _ = take_play_variation();
+    let _ = take_remove_variation();
+    let _ = take_save_variation_set();
+
+    // Empty set: all three are inert.
+    set_variation_names(&[]);
+    for id in [AEDIT_VAR_PLAY, AEDIT_VAR_REMOVE, AEDIT_VAR_SAVE] {
+        host.apply_panel_event::<AudioEditorPanel>(&mut state, WidgetEvent::Click(id));
+    }
+    assert!(!take_play_variation(), "Play fired with no variations");
+    assert!(!take_remove_variation(), "Remove fired with no variations");
+    assert!(!take_save_variation_set(), "Save fired with no variations");
+
+    // Once the shell reports a clip, they come alive.
+    set_variation_names(&["step_01.wav  \u{00d7}1.0".into()]);
+    host.apply_panel_event::<AudioEditorPanel>(&mut state, WidgetEvent::Click(AEDIT_VAR_PLAY));
+    assert!(take_play_variation(), "Play never armed its intent");
+    host.apply_panel_event::<AudioEditorPanel>(&mut state, WidgetEvent::Click(AEDIT_VAR_REMOVE));
+    assert!(take_remove_variation(), "Remove never armed its intent");
+    host.apply_panel_event::<AudioEditorPanel>(&mut state, WidgetEvent::Click(AEDIT_VAR_SAVE));
+    assert!(take_save_variation_set(), "Save never armed its intent");
+}
+
+/// Clicking a list row selects it through the seam (the shell reads `variation_sel`
+/// to resolve Remove / Weight); the selection clamps to the published count.
+#[test]
+fn variation_row_click_selects_and_clamps() {
+    let mut host = MockPanelHost::with_panel::<AudioEditorPanel>();
+    let mut state = AudioEditorState;
+    set_variation_names(&["a".into(), "b".into(), "c".into()]);
+
+    host.apply_panel_event::<AudioEditorPanel>(&mut state, WidgetEvent::Click(AEDIT_VAR_ROWS[2]));
+    assert_eq!(variation_sel(), 2, "row 2 click did not select stage 2");
+
+    // A row past the count is registered (fixed id array) but the selection clamps.
+    set_variation_names(&["a".into()]);
+    host.apply_panel_event::<AudioEditorPanel>(&mut state, WidgetEvent::Click(AEDIT_VAR_ROWS[2]));
+    assert_eq!(
+        variation_sel(),
+        0,
+        "selection must clamp to the shrunken set"
+    );
+}
+
+/// The strategy selector must accumulate signed cycle steps through the seam, and
+/// browsing it must NOT arm any other one-shot.
+#[test]
+fn variation_strategy_selector_accumulates_steps() {
+    let mut host = MockPanelHost::with_panel::<AudioEditorPanel>();
+    let mut state = AudioEditorState;
+    let _ = take_strategy_step();
+    set_strategy_name("Shuffle");
+
+    host.apply_panel_event::<AudioEditorPanel>(
+        &mut state,
+        WidgetEvent::Click(AEDIT_VAR_STRAT_NEXT),
+    );
+    host.apply_panel_event::<AudioEditorPanel>(
+        &mut state,
+        WidgetEvent::Click(AEDIT_VAR_STRAT_NEXT),
+    );
+    host.apply_panel_event::<AudioEditorPanel>(
+        &mut state,
+        WidgetEvent::Click(AEDIT_VAR_STRAT_PREV),
+    );
+    assert_eq!(
+        take_strategy_step(),
+        1,
+        "net cycle steps did not reach the shell"
+    );
+    assert_eq!(take_strategy_step(), 0, "the accumulator resets on drain");
+}
+
+/// Weight ÷2 / ×2 bump the selected entry through the seam, but only with a variation
+/// present (net doubling steps; positive = ×2, negative = ÷2).
+#[test]
+fn variation_weight_bumps_need_a_variation() {
+    let mut host = MockPanelHost::with_panel::<AudioEditorPanel>();
+    let mut state = AudioEditorState;
+    let _ = take_weight_step();
+
+    set_variation_names(&[]);
+    host.apply_panel_event::<AudioEditorPanel>(&mut state, WidgetEvent::Click(AEDIT_VAR_WEIGHT_UP));
+    assert_eq!(
+        take_weight_step(),
+        0,
+        "weight bump fired with no variations"
+    );
+
+    set_variation_names(&["a".into()]);
+    host.apply_panel_event::<AudioEditorPanel>(&mut state, WidgetEvent::Click(AEDIT_VAR_WEIGHT_UP));
+    host.apply_panel_event::<AudioEditorPanel>(&mut state, WidgetEvent::Click(AEDIT_VAR_WEIGHT_UP));
+    host.apply_panel_event::<AudioEditorPanel>(
+        &mut state,
+        WidgetEvent::Click(AEDIT_VAR_WEIGHT_DOWN),
+    );
+    assert_eq!(
+        take_weight_step(),
+        1,
+        "net weight steps did not reach the shell"
+    );
+}
+
+/// Dragging the pitch / gain jitter sliders must publish their normalized positions
+/// through the seam (the shell reads them each frame to build the container jitter).
+#[test]
+fn variation_jitter_sliders_publish_their_positions() {
+    let mut host = MockPanelHost::with_panel::<AudioEditorPanel>();
+    let mut state = AudioEditorState;
+
+    host.set_slider_value(AEDIT_VAR_PITCH, 0.75);
+    host.apply_panel_event::<AudioEditorPanel>(
+        &mut state,
+        WidgetEvent::ValueChanged(AEDIT_VAR_PITCH),
+    );
+    assert!(
+        (pitch_jitter_norm() - 0.75).abs() < 1e-4,
+        "the pitch-jitter slider never reached the shell"
+    );
+
+    host.set_slider_value(AEDIT_VAR_GAIN, 0.4);
+    host.apply_panel_event::<AudioEditorPanel>(
+        &mut state,
+        WidgetEvent::ValueChanged(AEDIT_VAR_GAIN),
+    );
+    assert!(
+        (gain_jitter_norm() - 0.4).abs() < 1e-4,
+        "the gain-jitter slider never reached the shell"
+    );
 }

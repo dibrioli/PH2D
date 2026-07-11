@@ -360,6 +360,52 @@ impl crate::App {
                     audio.editor_del_marker();
                 }
                 ed::set_marker_count(audio.editor_marker_count());
+
+                // Variation containers (W6): a set of clips the runtime plays one of per
+                // trigger. Add opens a file picker (decode + cache); Play auditions the
+                // next pick (strategy + jitter) through the preview voice; Save/Load are
+                // manifest files. The panel owns the selected row + jitter sliders; the
+                // shell owns the set, the decoded clips and the picker. Publish the row
+                // labels + strategy name + count back each frame.
+                if ed::take_add_variation()
+                    && let Some(path) = rfd::FileDialog::new()
+                        .add_filter("audio", &["wav", "flac", "ogg", "mp3", "aiff", "aif"])
+                        .pick_file()
+                {
+                    audio.editor_add_variation(&path);
+                }
+                if ed::take_remove_variation() {
+                    audio.editor_remove_variation(ed::variation_sel());
+                }
+                let strat_steps = ed::take_strategy_step();
+                if strat_steps != 0 {
+                    audio.editor_cycle_variation_strategy(strat_steps);
+                }
+                let weight_steps = ed::take_weight_step();
+                if weight_steps != 0 {
+                    audio.editor_bump_variation_weight(ed::variation_sel(), weight_steps);
+                }
+                audio.editor_set_variation_jitter(ed::pitch_jitter_norm(), ed::gain_jitter_norm());
+                if ed::take_play_variation() {
+                    audio.editor_play_variation();
+                }
+                if ed::take_save_variation_set()
+                    && let Some(path) = rfd::FileDialog::new()
+                        .add_filter("PH2D variation set", &["txt"])
+                        .set_file_name("variations.txt")
+                        .save_file()
+                {
+                    audio.editor_save_variation_set(&path);
+                }
+                if ed::take_load_variation_set()
+                    && let Some(path) = rfd::FileDialog::new()
+                        .add_filter("PH2D variation set", &["txt"])
+                        .pick_file()
+                {
+                    audio.editor_load_variation_set(&path);
+                }
+                ed::set_variation_names(&audio.editor_variation_names());
+                ed::set_strategy_name(audio.editor_variation_strategy());
             }
         }
         // Coalesced painter Move: stamp the LATEST buffered canvas position ONCE this frame, replacing

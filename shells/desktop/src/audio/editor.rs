@@ -11,6 +11,7 @@ mod batch;
 mod fx_rack;
 mod loops;
 mod markers;
+mod variation;
 
 use super::AudioSystem;
 use ph2d_audio::PlayParams;
@@ -85,6 +86,13 @@ pub(super) struct AudioEditorRuntime {
     /// Signature `(ptr, len)` of the base buffer `mono_view` was built from — so the
     /// downmix is not recomputed every frame.
     mono_sig: Option<(usize, usize)>,
+    /// Variation container (W6 asset-prep): the model (entries + strategy + jitter),
+    /// its decoded clips (index-aligned with `variation_set.entries`; `None` = decode
+    /// failed), and the picker's selection state. Independent of the loaded clip — it
+    /// is its own set of files, auditioned through the preview voice.
+    variation_set: ph2d_audio_edit::VariationSet,
+    variation_clips: Vec<Option<ph2d_audio::SampleData>>,
+    variation_picker: ph2d_audio_edit::VariationPicker,
 }
 
 impl AudioSystem {

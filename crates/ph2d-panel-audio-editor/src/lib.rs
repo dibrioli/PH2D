@@ -22,10 +22,12 @@ mod paint;
 mod paint_edit;
 mod paint_fx;
 mod paint_loop;
+mod paint_variation;
 mod populate;
 pub mod presets;
 pub mod snapshot;
 pub mod state;
+pub mod variation_state;
 
 pub use state::AudioEditorState;
 
@@ -172,6 +174,51 @@ pub const AEDIT_LOOP_XFADE: NodeId = hash_node_id("audio_editor_loop_xfade");
 pub const AEDIT_MARK_ADD: NodeId = hash_node_id("audio_editor_mark_add");
 /// Delete the cue marker nearest the playhead.
 pub const AEDIT_MARK_DEL: NodeId = hash_node_id("audio_editor_mark_del");
+
+// Variation containers (W6 asset-prep) — a set of clips the runtime plays one of per
+// trigger (Random / Sequence / Shuffle) with per-play pitch/gain jitter + per-entry
+// weights. Authored + auditioned + saved here; the shell owns the `VariationSet`, the
+// decoded clips and the picker. See `paint_variation.rs` + `variation_state.rs`.
+/// How many variation rows the list can hold (bounds the row-id array + Add).
+pub const MAX_VARIATIONS: usize = 12;
+/// Add a variation (the shell opens a file picker + decodes).
+pub const AEDIT_VAR_ADD: NodeId = hash_node_id("audio_editor_var_add");
+/// Remove the selected variation.
+pub const AEDIT_VAR_REMOVE: NodeId = hash_node_id("audio_editor_var_remove");
+/// Audition the next variation (pick per strategy + jitter → preview).
+pub const AEDIT_VAR_PLAY: NodeId = hash_node_id("audio_editor_var_play");
+/// Previous pick strategy in the `◀ name ▶` selector.
+pub const AEDIT_VAR_STRAT_PREV: NodeId = hash_node_id("audio_editor_var_strat_prev");
+/// Next pick strategy.
+pub const AEDIT_VAR_STRAT_NEXT: NodeId = hash_node_id("audio_editor_var_strat_next");
+/// Halve the selected variation's weight.
+pub const AEDIT_VAR_WEIGHT_DOWN: NodeId = hash_node_id("audio_editor_var_weight_down");
+/// Double the selected variation's weight.
+pub const AEDIT_VAR_WEIGHT_UP: NodeId = hash_node_id("audio_editor_var_weight_up");
+/// Save the variation set to a manifest file (native dialog).
+pub const AEDIT_VAR_SAVE: NodeId = hash_node_id("audio_editor_var_save");
+/// Load a variation set from a manifest file (native dialog).
+pub const AEDIT_VAR_LOAD: NodeId = hash_node_id("audio_editor_var_load");
+/// Pitch-jitter slider (normalized `0..1`; the shell maps it to `± semitones`).
+pub const AEDIT_VAR_PITCH: NodeId = hash_node_id("audio_editor_var_pitch");
+/// Gain-jitter slider (normalized `0..1`; the shell maps it to `± dB`).
+pub const AEDIT_VAR_GAIN: NodeId = hash_node_id("audio_editor_var_gain");
+
+/// Variation list row ids (click selects the row). Sized to [`MAX_VARIATIONS`].
+pub const AEDIT_VAR_ROWS: [NodeId; MAX_VARIATIONS] = [
+    hash_node_id("audio_editor_var_row0"),
+    hash_node_id("audio_editor_var_row1"),
+    hash_node_id("audio_editor_var_row2"),
+    hash_node_id("audio_editor_var_row3"),
+    hash_node_id("audio_editor_var_row4"),
+    hash_node_id("audio_editor_var_row5"),
+    hash_node_id("audio_editor_var_row6"),
+    hash_node_id("audio_editor_var_row7"),
+    hash_node_id("audio_editor_var_row8"),
+    hash_node_id("audio_editor_var_row9"),
+    hash_node_id("audio_editor_var_row10"),
+    hash_node_id("audio_editor_var_row11"),
+];
 
 /// Parameter slider 0.
 pub const AEDIT_FX_P0: NodeId = hash_node_id("audio_editor_fx_p0");
@@ -367,6 +414,30 @@ pub use loop_state::take_set_loop;
 pub use loop_state::take_toggle_mono;
 /// Panel → shell: the loop crossfade slider position (`0..1`).
 pub use loop_state::xfade_norm;
+
+// Variation containers (W6 asset-prep).
+/// Shell → panel: the current strategy's display name (selector readout).
+pub use variation_state::set_strategy_name;
+/// Shell → panel: the variation row labels (name + weight), in list order.
+pub use variation_state::set_variation_names;
+/// Panel → shell: whether the user asked to add a variation (one-shot; file picker).
+pub use variation_state::take_add_variation;
+/// Panel → shell: whether the user asked to load a variation set (one-shot; dialog).
+pub use variation_state::take_load_variation_set;
+/// Panel → shell: whether the user asked to audition the next variation (one-shot).
+pub use variation_state::take_play_variation;
+/// Panel → shell: whether the user asked to remove the selected variation (one-shot).
+pub use variation_state::take_remove_variation;
+/// Panel → shell: whether the user asked to save the variation set (one-shot; dialog).
+pub use variation_state::take_save_variation_set;
+/// Panel → shell: net strategy-cycle steps since the last drain (0 = none).
+pub use variation_state::take_strategy_step;
+/// Panel → shell: net weight-doubling steps for the selected entry (0 = none).
+pub use variation_state::take_weight_step;
+/// Panel → shell: the selected variation row (Remove / Weight target).
+pub use variation_state::variation_sel;
+/// Panel → shell: the pitch- / gain-jitter slider positions `0..1`.
+pub use variation_state::{gain_jitter_norm, pitch_jitter_norm};
 
 // Chain presets (W3).
 /// Panel → shell: which factory preset the selector shows (the shell builds it).

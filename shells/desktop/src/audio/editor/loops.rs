@@ -206,5 +206,8 @@ impl AudioSystem {
             clip.add_marker(frames / 4, "M1");
             clip.add_marker(frames * 3 / 4, "M2");
         }
+        // Seed a variation container too (four pitched blips) so the Variations
+        // section is live on launch — Play Variation cycles them.
+        self.editor_variation_smoke();
     }
 }

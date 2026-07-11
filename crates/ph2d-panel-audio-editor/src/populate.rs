@@ -8,7 +8,10 @@ use crate::{
     AEDIT_LOAD, AEDIT_LOOP, AEDIT_LOOP_CLEAR, AEDIT_LOOP_SET, AEDIT_LOOP_XFADE, AEDIT_MARK_ADD,
     AEDIT_MARK_DEL, AEDIT_MONO, AEDIT_NAME, AEDIT_NORM_LUFS, AEDIT_NORMALIZE, AEDIT_PLAY,
     AEDIT_PRESET_APPLY, AEDIT_PRESET_LOAD, AEDIT_PRESET_NEXT, AEDIT_PRESET_PREV, AEDIT_PRESET_SAVE,
-    AEDIT_REDO, AEDIT_REVERSE, AEDIT_SILENCE, AEDIT_STOP, AEDIT_TRIM, AEDIT_UNDO, loop_state,
+    AEDIT_REDO, AEDIT_REVERSE, AEDIT_SILENCE, AEDIT_STOP, AEDIT_TRIM, AEDIT_UNDO, AEDIT_VAR_ADD,
+    AEDIT_VAR_GAIN, AEDIT_VAR_LOAD, AEDIT_VAR_PITCH, AEDIT_VAR_PLAY, AEDIT_VAR_REMOVE,
+    AEDIT_VAR_ROWS, AEDIT_VAR_SAVE, AEDIT_VAR_STRAT_NEXT, AEDIT_VAR_STRAT_PREV,
+    AEDIT_VAR_WEIGHT_DOWN, AEDIT_VAR_WEIGHT_UP, loop_state, variation_state,
 };
 use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::{BlenderHitKind, InteractiveState, WidgetStore};
@@ -99,8 +102,37 @@ pub(crate) fn populate(store: &mut WidgetStore) {
         // Markers (W6): Add at playhead · Delete nearest.
         AEDIT_MARK_ADD,
         AEDIT_MARK_DEL,
+        // Variation containers (W6): Add · Remove · Play · strategy selector ·
+        // Weight ÷2/×2 · Save · Load.
+        AEDIT_VAR_ADD,
+        AEDIT_VAR_REMOVE,
+        AEDIT_VAR_PLAY,
+        AEDIT_VAR_STRAT_PREV,
+        AEDIT_VAR_STRAT_NEXT,
+        AEDIT_VAR_WEIGHT_DOWN,
+        AEDIT_VAR_WEIGHT_UP,
+        AEDIT_VAR_SAVE,
+        AEDIT_VAR_LOAD,
     ] {
         store.register(id, button());
+    }
+
+    // Variation list rows — clicking a row selects it (Remove / Weight target).
+    for id in AEDIT_VAR_ROWS {
+        store.register(id, button());
+    }
+
+    // Variation pitch/gain jitter sliders — normalized 0..1 (the shell maps them to
+    // a `± semitones` / `± dB` range), seeded neutral.
+    for id in [AEDIT_VAR_PITCH, AEDIT_VAR_GAIN] {
+        store.register(
+            id,
+            InteractiveState::Slider {
+                state: SliderState::Normal,
+                value: variation_state::DEFAULT_JITTER_NORM,
+                orientation: SliderOrientation::Horizontal,
+            },
+        );
     }
 
     // Loop crossfade slider — normalized 0..1 (the shell maps it to ms), seeded at

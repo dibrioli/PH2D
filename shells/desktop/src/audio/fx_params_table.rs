@@ -138,10 +138,16 @@ static TREMOLO: [FxParamSpec; 2] = [
     spec("Rate", 0.1, 16.0, true, 5.0, "Hz", false),
     spec("Depth", 0.0, 1.0, false, 0.0, "", false),
 ];
+// Mix is the arm (0 = dry = pass-through). Freq is the carrier, log-swept across the
+// low-mid band where the robot/metallic character lives.
+static RING_MOD: [FxParamSpec; 2] = [
+    spec("Freq", 20.0, 4_000.0, true, 500.0, "Hz", false),
+    spec("Mix", 0.0, 1.0, false, 0.0, "", false),
+];
 
 /// The effects the selector cycles, in order — grouped tone → dynamics → character
 /// → space, the way a rack is laid out.
-pub(crate) static KINDS: [FxKind; 21] = [
+pub(crate) static KINDS: [FxKind; 22] = [
     FxKind {
         name: "Low-Pass",
         params: &LOW_PASS,
@@ -384,6 +390,17 @@ pub(crate) static KINDS: [FxKind; 21] = [
             FxCommand::Plain(Effect::Tremolo {
                 rate: v[0],
                 depth: v[1],
+            })
+        },
+    },
+    FxKind {
+        name: "Ring Mod",
+        params: &RING_MOD,
+        arms: &[1], // Mix
+        build: |v| {
+            FxCommand::Plain(Effect::RingMod {
+                freq: v[0],
+                mix: v[1],
             })
         },
     },

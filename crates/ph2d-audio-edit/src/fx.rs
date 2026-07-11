@@ -31,7 +31,7 @@ use ph2d_audio::dsp::{BiquadCoeffs, Delay, Reverb};
 use deess::deess;
 use deplosive::deplosive;
 use dynamics::{compress, gate, leveler, limit};
-use modulation::{modulated_delay, phaser, tremolo};
+use modulation::{modulated_delay, phaser, ring_mod, tremolo};
 use space::render_wet;
 use tone::{HUM_Q, biquad_all, bitcrush, dehum, saturate, stereo_width};
 
@@ -211,6 +211,15 @@ pub enum Effect {
         /// Modulation depth (0..1); 1 dips to silence at each trough.
         depth: f32,
     },
+    /// **Ring modulator**: multiplies the signal by an audio-rate sine carrier at
+    /// `freq` — the robot / metallic voice. `mix` crossfades dry→wet. Neutral at
+    /// `mix` 0 (fully dry).
+    RingMod {
+        /// Carrier frequency (Hz).
+        freq: f32,
+        /// Dry→wet crossfade (0..1).
+        mix: f32,
+    },
 }
 
 impl Effect {
@@ -307,6 +316,7 @@ impl Effect {
                 phaser(data, rate, depth, mix)
             }
             Effect::Tremolo { rate, depth } if depth > MOD_BYPASS => tremolo(data, rate, depth),
+            Effect::RingMod { freq, mix } if mix > MOD_BYPASS => ring_mod(data, freq, mix),
             _ => data.clone(),
         }
     }
@@ -394,6 +404,7 @@ impl Effect {
                 Effect::Chorus { mix, .. }
                     | Effect::Flanger { mix, .. }
                     | Effect::Phaser { mix, .. }
+                    | Effect::RingMod { mix, .. }
                     if mix <= MOD_BYPASS)
             || matches!(*self, Effect::Tremolo { depth, .. } if depth <= MOD_BYPASS)
             || matches!(*self, Effect::DeHum { depth, .. } if depth <= HUM_BYPASS_DEPTH)

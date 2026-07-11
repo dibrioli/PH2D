@@ -284,6 +284,7 @@ mod tests {
                 "Flanger",
                 "Phaser",
                 "Tremolo",
+                "Ring Mod",
             ]
         );
         assert_eq!(all_default_norms().len(), KINDS.len());

@@ -1,9 +1,10 @@
-//! Modulation effects for the rack: chorus, flanger, phaser, tremolo.
+//! Modulation effects for the rack: chorus, flanger, phaser, tremolo, ring mod.
 //!
-//! All four are driven by a **sine LFO** and are **length-preserving** (they route
-//! through [`crate::in_range_warm`] like the filters). Chorus and flanger share a
-//! modulated fractional-delay line; the phaser is a modulated all-pass cascade;
-//! tremolo is amplitude modulation.
+//! All are **length-preserving** (they route through [`crate::in_range_warm`] like
+//! the filters). Chorus and flanger share a modulated fractional-delay line; the
+//! phaser is a modulated all-pass cascade; tremolo is sub-audio amplitude modulation;
+//! ring mod is amplitude modulation by an *audio-rate* carrier. The first four ride a
+//! **sine LFO**; the ring modulator's sine is the carrier itself.
 //!
 //! Control thread only — allocates and uses `sin`/`tan` freely.
 
@@ -143,6 +144,40 @@ pub(super) fn tremolo(data: &SampleData, rate_hz: f32, depth: f32) -> SampleData
         let gain = 1.0 - depth * (0.5 - 0.5 * lfo); // 1 .. 1-depth
         for c in 0..ch {
             out[f * ch + c] = src[f * ch + c] * gain;
+        }
+    }
+    SampleData::from_interleaved(out, data.format())
+}
+
+/// **Ring modulator**: multiplies the signal by a sine **carrier** at `freq` — the
+/// classic robot / Dalek / metallic voice. Where tremolo is amplitude modulation at a
+/// *sub-audio* rate (a wobble you hear as loudness), the carrier here sits *in* the
+/// audio band, so it splits every input partial into sum-and-difference sidebands: an
+/// inharmonic, clangorous timbre. One carrier drives both channels (a per-channel
+/// phase would smear a stereo source), and `mix` crossfades dry→wet, so `mix` 0 is a
+/// pass-through — the neutral point the rack's bypass relies on.
+///
+/// Output stays bounded: it is a convex blend of `x` and `x·carrier`, both `≤ |x|`.
+pub(super) fn ring_mod(data: &SampleData, freq: f32, mix: f32) -> SampleData {
+    let sr = data.format().sample_rate as f32;
+    let ch = channels(data);
+    let frames = data.frame_count();
+    let mix = mix.clamp(0.0, 1.0);
+    let step = TAU * freq / sr;
+    let src = data.samples();
+    let mut out = src.to_vec();
+    // Accumulate and wrap the phase instead of `sin(step * f)`: over a long clip the
+    // bare argument grows large enough to lose carrier precision.
+    let mut phase = 0.0f32;
+    for f in 0..frames {
+        let carrier = phase.sin();
+        for c in 0..ch {
+            let x = src[f * ch + c];
+            out[f * ch + c] = (1.0 - mix) * x + mix * (x * carrier);
+        }
+        phase += step;
+        if phase >= TAU {
+            phase -= TAU;
         }
     }
     SampleData::from_interleaved(out, data.format())
@@ -304,5 +339,59 @@ mod tests {
         // The input is identical L/R, so any L≠R is the phase offset at work.
         let diff: f32 = (0..4_800).map(|f| (s[f * 2] - s[f * 2 + 1]).abs()).sum();
         assert!(diff > 1.0, "channels stayed in lockstep: diff {diff}");
+    }
+
+    /// Mix 0 is a byte-identical pass-through — the rack's neutral point.
+    #[test]
+    fn ring_mod_at_zero_mix_is_identity() {
+        let d = probe();
+        assert_eq!(ring_mod(&d, 500.0, 0.0).samples(), d.samples());
+    }
+
+    /// The defining behaviour, pinned exactly: fully wet, a DC input becomes the
+    /// carrier itself (`x·sin` with x constant), so a 0.5 DC through a 100 Hz carrier
+    /// comes out a 100 Hz sine of amplitude 0.5 — swinging symmetrically through zero.
+    #[test]
+    fn ring_mod_turns_dc_into_the_carrier() {
+        let d = mono(vec![0.5f32; 48_000]);
+        let out = ring_mod(&d, 100.0, 1.0);
+        let s = out.samples();
+        let peak = s.iter().fold(0.0f32, |m, v| m.max(v.abs()));
+        let min = s.iter().fold(0.0f32, |m, v| m.min(*v));
+        let mean = s.iter().sum::<f32>() / s.len() as f32;
+        assert!(
+            (peak - 0.5).abs() < 0.01,
+            "carrier peak should be 0.5, got {peak}"
+        );
+        assert!(min < -0.4, "carrier must swing negative, got {min}");
+        assert!(
+            mean.abs() < 0.01,
+            "a symmetric carrier averages to ~0, got {mean}"
+        );
+    }
+
+    /// `mix` is a real knob: a deeper blend deviates further from the dry signal.
+    #[test]
+    fn ring_mod_mix_scales_the_effect() {
+        let d = probe();
+        let dev = |out: &SampleData| -> f32 {
+            out.samples()
+                .iter()
+                .zip(d.samples())
+                .map(|(a, b)| (a - b).abs())
+                .sum()
+        };
+        let shallow = ring_mod(&d, 500.0, 0.3);
+        let deep = ring_mod(&d, 500.0, 1.0);
+        assert!(
+            dev(&deep) > dev(&shallow),
+            "deeper mix must deviate more: {} vs {}",
+            dev(&deep),
+            dev(&shallow)
+        );
+        assert!(
+            deep.samples().iter().all(|s| s.abs() <= 1.0 + 1e-4),
+            "ring mod clipped"
+        );
     }
 }

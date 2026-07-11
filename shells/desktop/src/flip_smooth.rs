@@ -48,6 +48,55 @@ pub(crate) fn active_smooth(raw: &[Vec2], smoothing: f32) -> Vec<Vec2> {
     cur
 }
 
+/// Distância perpendicular de `p` à reta `a→b` (transcendental-free além do
+/// `sqrt` do comprimento). `|cross(ab, ap)| / |ab|`.
+fn perp_dist(p: Vec2, a: Vec2, b: Vec2) -> f32 {
+    let ab = b - a;
+    let ap = p - a;
+    let len = (ab.x * ab.x + ab.y * ab.y).sqrt();
+    if len < 1e-9 {
+        return (ap.x * ap.x + ap.y * ap.y).sqrt();
+    }
+    (ab.x * ap.y - ab.y * ap.x).abs() / len
+}
+
+/// **Simplify RDP** (Ramer–Douglas–Peucker) do pen-up (`paint.cc:1673-1799`):
+/// devolve os ÍNDICES a manter (assim o chamador filtra as pressões junto),
+/// preservando os pontos que desviam > `tol` (em MUNDO) da corda. Reduz a
+/// contagem de pontos sem mudar a forma visível. `< 3` pontos = mantém tudo.
+#[must_use]
+pub(crate) fn simplify_rdp(points: &[Vec2], tol: f32) -> Vec<usize> {
+    let n = points.len();
+    if n < 3 {
+        return (0..n).collect();
+    }
+    let mut keep = vec![false; n];
+    keep[0] = true;
+    keep[n - 1] = true;
+    // Pilha explícita (evita recursão profunda num traço longo).
+    let mut stack = vec![(0usize, n - 1)];
+    while let Some((first, last)) = stack.pop() {
+        if last <= first + 1 {
+            continue;
+        }
+        let mut max_d = 0.0;
+        let mut idx = first;
+        for i in (first + 1)..last {
+            let d = perp_dist(points[i], points[first], points[last]);
+            if d > max_d {
+                max_d = d;
+                idx = i;
+            }
+        }
+        if max_d > tol {
+            keep[idx] = true;
+            stack.push((first, idx));
+            stack.push((idx, last));
+        }
+    }
+    (0..n).filter(|&i| keep[i]).collect()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -105,5 +154,32 @@ mod tests {
         // ~20 está muito além).
         let d = (after[5] - before[5]).x.abs() + (after[5] - before[5]).y.abs();
         assert!(d < 1e-4, "ponto distante congelou (Δ={d})");
+    }
+
+    #[test]
+    fn rdp_collapses_a_straight_line_to_endpoints() {
+        let raw = line(20);
+        let keep = simplify_rdp(&raw, 0.5);
+        assert_eq!(keep, vec![0, 19], "reta vira só as pontas");
+    }
+
+    #[test]
+    fn rdp_keeps_a_corner() {
+        // "V": desce e sobe → o vértice do fundo é preservado.
+        let raw = vec![
+            Vec2::new(0.0, 0.0),
+            Vec2::new(1.0, -1.0),
+            Vec2::new(2.0, -2.0), // vértice
+            Vec2::new(3.0, -1.0),
+            Vec2::new(4.0, 0.0),
+        ];
+        let keep = simplify_rdp(&raw, 0.2);
+        assert!(keep.contains(&2), "o canto do V é mantido: {keep:?}");
+        assert!(keep.len() < 5, "mas os colineares somem");
+    }
+
+    #[test]
+    fn rdp_preserves_short_strokes() {
+        assert_eq!(simplify_rdp(&line(2), 0.5), vec![0, 1]);
     }
 }

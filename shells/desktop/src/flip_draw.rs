@@ -133,12 +133,18 @@ pub(crate) fn bake_stroke(
         return false;
     };
 
-    // Active smoothing (T2.7): o mesmo que o preview mostrou (o baked casa com o
-    // que se via). As pressões seguem 1:1 (o smooth só move posições).
+    // Active smoothing (T2.7): o mesmo que o preview mostrou. As pressões seguem
+    // 1:1 (o smooth só move posições).
     let smoothed = crate::flip_smooth::active_smooth(points, style.smoothing);
+    // Simplify RDP no pen-up (T2.8): reduz a contagem preservando a forma. Só no
+    // BAKE (o preview mostra denso; o commit é enxuto). `tol` em MUNDO (~0.75px).
+    let tol = 0.75 * px_to_world;
+    let keep = crate::flip_smooth::simplify_rdp(&smoothed, tol);
+    let pts: Vec<Vec2> = keep.iter().map(|&i| smoothed[i]).collect();
+    let prs: Vec<f32> = keep.iter().map(|&i| pressures[i]).collect();
     drawing
         .strokes
-        .push(build_stroke(style, &smoothed, pressures, px_to_world));
+        .push(build_stroke(style, &pts, &prs, px_to_world));
     true
 }
 

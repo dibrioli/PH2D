@@ -1,8 +1,83 @@
-# HANDOFF de integração — linha `line/MotionNodes` (pulse.beat + rename motion.step) — 2026-07-10
+# HANDOFF de integração — linha `line/MotionNodes` (família pulse + domínio de valor, docs 06–14) — smoke aprovado 2026-07-11
 
 > Documento do protocolo DIRETRIZ §1.5.9: a linha fechou, **não integra nem pusha** — este handoff
 > vai pro **agente integrador dedicado** que o Enio abrir. Worktree:
 > `/home/enio/Documentos/Projetos/PH2D/Worktrees/line-MotionNodes`.
+
+---
+
+## §1.5.9 — BRIEFING DO INTEGRADOR (consolidado — LER PRIMEIRO)
+
+> A linha inteira (16 commits, docs 06–14) num resumo factual, no formato da DIRETRIZ §1.5.9. O log
+> rodada-a-rodada (§§0, 8–11 abaixo) é detalhe de apoio. **Smoke APROVADO pelo Enio (2026-07-11).**
+> A linha **não integrou nem pushou** — aguarda o integrador.
+
+### 1. Identidade
+- Branch **`line/MotionNodes`** · **fork base (estável) = merge-base com `main` = `54fc9ecf`**
+  (= o tip ATUAL do main → fork recente, **sem drift pré-fork**).
+- **Tip da branch:** `git rev-parse HEAD` no worktree (inclui ESTE commit de handoff); **~17
+  commits**, último commit de FEATURE = `fc48db5b` (o handoff é o commit de docs no topo).
+- **Auto-contida:** commits sequenciais, sem dependência de outra linha → integra como bloco único.
+
+### 2. Foundational/compartilhado tocado (fora de `crates/ph2d-node-*`) — tudo ADITIVO
+| Arquivo | O quê | Nota p/ o integrador |
+|---|---|---|
+| `crates/ph2d-nodegraph/src/cook.rs` (+54) + `cook_tests.rs` | `pub struct CookCheckpoint` + `Cook::checkpoint()`/`restore()` — métodos INERENTES novos (M2.N2, doc 11). `NodeOp`/`OpResolver`/`NodeManifest` **intactos** | **foundational (o substrato)** — conflita só se outra linha tocar `cook.rs`; hand-merge/Mergiraf, é aditivo |
+| `crates/ph2d-eval-motion/*` | avaliador do Motion: `checkpoint.rs` (novo), `lib.rs` split → `eval_tests.rs`/`scrub_tests.rs`, `MotionCookPump::{scrub_to_scoped,advance_or_scrub_scoped,cook_sinks_into}` | módulo-owned; baixo |
+| `shells/desktop/src/motion_state.rs`, `motion_state_tests.rs`, `motion_demo_strobe.rs` (novo), `render_loop/motion_bridge*.rs` | cena boot (3 cadeias de valor) + bridge do Motion; `motion_demo_particles.rs` DELETADO | shell, módulo-owned; baixo |
+| `SKILL_Stack_PH2D_Definitiva.md` (+44) | §11.13 (família pulse/value) — doc | conflita só se outra linha editar §11.13; hand-merge aditivo |
+| `Cargo.lock` (+99) | só as 11 crates PATH novas | regenera (`cargo build`) na árvore combinada |
+
+### 3. Ponto de conflito MECÂNICO (o único esperado): `ph2d-node-registry-init`
+- `src/lib.rs` (+11) e `Cargo.toml` (+11) são **GERADOS** (região `<ph2d-node-sync>`). QUALQUER
+  outra linha que adicione um nó conflita aqui.
+- **Resolução — NÃO fundir à mão:** depois de juntar as árvores, rode **`cargo run -p
+  ph2d-node-sync`** — regenera determinísticamente dos `crates/ph2d-node-*`; o gate `staleness`
+  (em `ph2d-node-registry-init`) prova sync.
+
+**Símbolos novos (grep de mesmo-símbolo, §1.5.5):**
+- 11 crates-nó novas, tipos (string, namespaced, únicos): `pulse.beat`, `pulse.counter`,
+  `pulse.threshold`, `pulse.sample_hold`, `value.lfo`, `value.map_range`, `value.instance_field`,
+  `motion.drive`, `motion.step`, `motion.strobe`, `motion.noise`.
+- nodegraph/eval-motion: `CookCheckpoint`, `CheckpointRing`, `RECENT_CAPACITY=300`,
+  `Cook::checkpoint/restore`, os 3 métodos do pump.
+- **ZERO** `NodeId` numérico / token / variant de enum congelado novos. **ZERO dep EXTERNA nova**
+  (só path crates) → machete/deny/audit/RUSTSEC não mexem.
+
+### 4. Contratos congelados encostados: **NENHUM**
+Gate `architecture_contract_surface` verde (`NodeOp`=2 / `OpResolver`=1 / `NodeManifest`=8). O
+`motion.step` foi **rename** (git mv de `pulse-counter`), não toca superfície. Sem ADR necessário.
+
+### 5. O que só o `ship.sh` pega (o gate de integração `foundational-integrate.sh` NÃO roda)
+- **Drift pré-fork: BAIXO** — fork == tip atual do main (`54fc9ecf`), então fmt/typos/style_edition
+  batem com o main de hoje. ([[project_integration_prefork_lines_ship_drift]] não morde aqui.)
+  Ainda assim rode **`ship.sh` completo** na árvore combinada (fmt 1.95, typos, clippy
+  `--all-targets`+features, machete, deny, audit, nextest `ci-test`).
+- Round-4 já aplicou um fmt-fix (`eval_tests.rs` dedent do split); round-6 fmt verde local (pin 1.95).
+- `nextest-impacted` funciona (a linha só ADICIONA crates; a quebra de rename do round-1 cicatrizou).
+  `advisory-db` local pode envelhecer → `ship.sh` roda audit fresco.
+
+### 6. Procedimento sugerido + smoke
+- **Se main não moveu de `54fc9ecf`:** `git merge --ff-only line/MotionNodes` → fast-forward limpo,
+  depois `ship.sh`.
+- **Se main moveu (outra linha integrou antes):** rebase em cima do main novo → esperar UM conflito
+  mecânico em `ph2d-node-registry-init/{src/lib.rs,Cargo.toml}` (resolve com `cargo run -p
+  ph2d-node-sync`, **não à mão**) + `Cargo.lock` (regenera) + possível `SKILL_Stack §11.13` /
+  `cook.rs` (hand-merge aditivo). Depois `scripts/foundational-integrate.sh` (gate da árvore
+  combinada) + `ship.sh`.
+- **Smoke: APROVADO (Enio, 2026-07-11)** — cena Motion, 3 cadeias de valor (X broadcast · Y
+  sample-and-hold · Size gradiente por-elemento). `cd Worktrees/line-MotionNodes && cargo run -p
+  ph2d-host-desktop`.
+- **NÃO smokado / sem UI ainda:** scrub-para-trás (M2.N2 checkpoint/restore) — só headless
+  (`a_loop_range_replays_the_simulation_from_its_start`); o loop-wrap está wirado no bridge, sem
+  botão de loop na UI. Keyframes deferidos pra linha da timeline.
+
+**Resumo:** *Linha `MotionNodes` pronta (HEAD `fc48db5b`, 16 commits, fork em `54fc9ecf`). Aditiva:
+11 crates-nó + `Cook::checkpoint/restore` em nodegraph (contrato intacto) + cena/bridge do shell.
+Único conflito mecânico = codegen `registry-init` → `ph2d-node-sync`. Zero contrato congelado, zero
+dep externa. Smoke aprovado. Aguardo ordem de integração.*
+
+---
 
 ## 0. O que a linha entrega (missão do doc 09)
 

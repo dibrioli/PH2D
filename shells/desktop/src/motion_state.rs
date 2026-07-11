@@ -55,11 +55,11 @@ pub(crate) struct MotionState {
 
 impl MotionState {
     /// Build the boot state: register every node op + the **default document** — on
-    /// the left a **radial array** of rings that swings round (`motion.distribute_
-    /// radial`); on the right a **180-point Voronoi** that relaxes into a honeycomb
-    /// (`motion.voronoi`, `relax` live — the parallelised Lloyd on show) and is made
-    /// symmetric by a **mirror** (`motion.mirror`). Each animated by a `value.lfo`.
-    /// Kept deliberately small (docs/Motion Nodes/12, 25). The earlier scenes (the
+    /// the left a spinning **mandala** (a Fibonacci spiral folded 8-fold by
+    /// `motion.kaleidoscope`); on the right a tight grid that **packs apart** into a
+    /// breathing circle-packing (`motion.collide`, the Push-Apart relaxation with an
+    /// animated radius). Each animated by a `value.lfo`.
+    /// Kept deliberately small (docs/Motion Nodes/12, 26). The earlier scenes (the
     /// Cavalry grid rig, the sim scenes, the deformer scenes) and the earlier
     /// value/pulse + M3/M4 chains were removed to keep the boot document focused; they
     /// live in git history and every node keeps its own unit tests + stays registered
@@ -92,12 +92,11 @@ impl MotionState {
 /// is well-typed.
 ///
 /// The scenes — built in the `strobe` sibling module — are two side-by-side layouts
-/// animated by the value domain: on the LEFT a **radial array** of concentric rings
-/// whose `spin` is a `value.lfo` swinging it round (`motion.distribute_radial`); on the
-/// RIGHT a **180-point Voronoi** whose `relax` is a `value.lfo` playing Lloyd's
-/// relaxation (the parallelised, real-time-at-this-count fix on show — see
-/// docs/plans/2026-07-gpu-resident-node-pipeline.md), then reflected into a symmetric
-/// honeycomb by `motion.mirror`. See docs/Motion Nodes/12 (value), 25 (radial + mirror).
+/// animated by the value domain: on the LEFT a **mandala** — a small Fibonacci spiral
+/// folded into 8-fold mirrored symmetry (`motion.kaleidoscope`) whose `spin` is a
+/// `value.lfo` turning it; on the RIGHT a tight 8×8 grid **pushed apart** into a circle-
+/// packing (`motion.collide`) whose `spread` is a `value.lfo` breathing the disc radius.
+/// See docs/Motion Nodes/12 (value), 26 (kaleidoscope + collide).
 ///
 /// The earlier scenes were removed to keep the boot document small and legible: the
 /// **Cavalry grid rig**, the sim scenes, the deformer scenes, and the earlier value,

@@ -25,6 +25,7 @@ ph2d-node-force-wind = { path = "../ph2d-node-force-wind" }
 ph2d-node-motion-bend = { path = "../ph2d-node-motion-bend" }
 ph2d-node-motion-boids = { path = "../ph2d-node-motion-boids" }
 ph2d-node-motion-clone = { path = "../ph2d-node-motion-clone" }
+ph2d-node-motion-collide = { path = "../ph2d-node-motion-collide" }
 ph2d-node-motion-distribute-radial = { path = "../ph2d-node-motion-distribute-radial" }
 ph2d-node-motion-drive = { path = "../ph2d-node-motion-drive" }
 ph2d-node-motion-emitter = { path = "../ph2d-node-motion-emitter" }
@@ -33,6 +34,7 @@ ph2d-node-motion-fibonacci = { path = "../ph2d-node-motion-fibonacci" }
 ph2d-node-motion-four-point-warp = { path = "../ph2d-node-motion-four-point-warp" }
 ph2d-node-motion-grid = { path = "../ph2d-node-motion-grid" }
 ph2d-node-motion-integrate = { path = "../ph2d-node-motion-integrate" }
+ph2d-node-motion-kaleidoscope = { path = "../ph2d-node-motion-kaleidoscope" }
 ph2d-node-motion-lattice = { path = "../ph2d-node-motion-lattice" }
 ph2d-node-motion-look-at = { path = "../ph2d-node-motion-look-at" }
 ph2d-node-motion-mirror = { path = "../ph2d-node-motion-mirror" }

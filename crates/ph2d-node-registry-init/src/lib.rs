@@ -25,6 +25,7 @@ pub fn register_all_nodes(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     ph2d_node_motion_bend::register(reg)?;
     ph2d_node_motion_boids::register(reg)?;
     ph2d_node_motion_clone::register(reg)?;
+    ph2d_node_motion_collide::register(reg)?;
     ph2d_node_motion_distribute_radial::register(reg)?;
     ph2d_node_motion_drive::register(reg)?;
     ph2d_node_motion_emitter::register(reg)?;
@@ -33,6 +34,7 @@ pub fn register_all_nodes(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     ph2d_node_motion_four_point_warp::register(reg)?;
     ph2d_node_motion_grid::register(reg)?;
     ph2d_node_motion_integrate::register(reg)?;
+    ph2d_node_motion_kaleidoscope::register(reg)?;
     ph2d_node_motion_lattice::register(reg)?;
     ph2d_node_motion_look_at::register(reg)?;
     ph2d_node_motion_mirror::register(reg)?;

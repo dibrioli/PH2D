@@ -5263,6 +5263,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-node-motion-collide"
+version = "0.0.0"
+dependencies = [
+ "ph2d-node-registry",
+ "ph2d-nodegraph",
+]
+
+[[package]]
 name = "ph2d-node-motion-distribute-radial"
 version = "0.0.0"
 dependencies = [
@@ -5320,6 +5328,14 @@ dependencies = [
 
 [[package]]
 name = "ph2d-node-motion-integrate"
+version = "0.0.0"
+dependencies = [
+ "ph2d-node-registry",
+ "ph2d-nodegraph",
+]
+
+[[package]]
+name = "ph2d-node-motion-kaleidoscope"
 version = "0.0.0"
 dependencies = [
  "ph2d-node-registry",
@@ -5612,6 +5628,7 @@ dependencies = [
  "ph2d-node-motion-bend",
  "ph2d-node-motion-boids",
  "ph2d-node-motion-clone",
+ "ph2d-node-motion-collide",
  "ph2d-node-motion-distribute-radial",
  "ph2d-node-motion-drive",
  "ph2d-node-motion-emitter",
@@ -5620,6 +5637,7 @@ dependencies = [
  "ph2d-node-motion-four-point-warp",
  "ph2d-node-motion-grid",
  "ph2d-node-motion-integrate",
+ "ph2d-node-motion-kaleidoscope",
  "ph2d-node-motion-lattice",
  "ph2d-node-motion-look-at",
  "ph2d-node-motion-mirror",

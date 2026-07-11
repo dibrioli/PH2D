@@ -26,6 +26,7 @@ pub fn register_all_nodes(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     ph2d_node_motion_drive::register(reg)?;
     ph2d_node_motion_emitter::register(reg)?;
     ph2d_node_motion_falloff::register(reg)?;
+    ph2d_node_motion_fibonacci::register(reg)?;
     ph2d_node_motion_grid::register(reg)?;
     ph2d_node_motion_integrate::register(reg)?;
     ph2d_node_motion_move::register(reg)?;
@@ -43,6 +44,7 @@ pub fn register_all_nodes(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     ph2d_node_motion_tint::register(reg)?;
     ph2d_node_motion_trail::register(reg)?;
     ph2d_node_motion_transform::register(reg)?;
+    ph2d_node_motion_twist::register(reg)?;
     ph2d_node_motion_wiggle::register(reg)?;
     ph2d_node_pulse_beat::register(reg)?;
     ph2d_node_pulse_compare::register(reg)?;

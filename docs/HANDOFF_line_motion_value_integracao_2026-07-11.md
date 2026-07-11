@@ -1,4 +1,4 @@
-# HANDOFF de integração — linha `line/motion-value` (Math + Compare, doc 16 · Switch + On Change, doc 17)
+# HANDOFF de integração — linha `line/motion-value` (Math+Compare doc 16 · Switch+OnChange doc 17 · Fibonacci+Twist doc 18)
 
 > Documento do protocolo DIRETRIZ §1.5.9: a linha fechou, **não integra nem pusha** — este handoff
 > vai pro **agente integrador dedicado** que o Enio abrir. Worktree:
@@ -11,9 +11,10 @@
 ### 1. Identidade
 - Branch **`line/motion-value`** · **fork base (merge-base com `main`) = `1c7c9a22`** (= o tip ATUAL
   do main no momento da abertura → fork fresco, **sem drift pré-fork**).
-- **DUAS fatias** na linha: fatia 4 (**Math + Compare**, doc 16, commit `9ba2f6ad`) + fatia 5
-  (**Switch + On Change**, doc 17). Cada uma = 2 crates-nó + a cena boot reescrita. **A cena boot atual
-  demonstra a fatia 5** (switch+on_change); os nós da fatia 4 (math/compare) ficam registrados/drop-in.
+- **TRÊS fatias** na linha: fatia 4 (**Math + Compare**, doc 16) + fatia 5 (**Switch + On Change**, doc 17)
+  + fatia M3.1 (**Fibonacci + Twist**, doc 18 — abre o M3). Cada uma = 2 crates-nó + a cena boot reescrita.
+  **A cena boot atual demonstra a fatia M3.1** (um girassol que torce); os nós das fatias 4–5 ficam
+  registrados/drop-in.
 - **Auto-contida:** sem dependência de outra linha → integra como bloco único.
 
 ### 2. Foundational/compartilhado tocado (fora de `crates/ph2d-node-*`) — tudo ADITIVO
@@ -35,12 +36,12 @@
   `ph2d-node-registry-init`) prova sync.
 
 **Símbolos novos (grep de mesmo-símbolo, §1.5.5):**
-- **4 crates-nó novas**, tipos (string, namespaced, únicos): fatia 4 **`value.math`**, **`pulse.compare`**;
-  fatia 5 **`value.switch`**, **`pulse.on_change`**. Grep de colisão:
-  `grep -rn '"value.math"\|"pulse.compare"\|"value.switch"\|"pulse.on_change"' crates/`.
-- pub consts locais: `value_math::VALUE`, `pulse_compare::{VALUE,PULSE}`, `value_switch::VALUE`,
-  `pulse_on_change::{VALUE,PULSE}` (mirrors do tipo, não símbolos compartilhados). Colunas de stream novas
-  `cmp_armed` (compare), `oc_prev`/`oc_primed` (on_change) — locais ao stream, sem registro global.
+- **6 crates-nó novas**, tipos (string, namespaced, únicos): fatia 4 **`value.math`**/**`pulse.compare`**;
+  fatia 5 **`value.switch`**/**`pulse.on_change`**; fatia M3.1 **`motion.fibonacci`**/**`motion.twist`**.
+  Grep de colisão: `grep -rn '"value.math"\|"pulse.compare"\|"value.switch"\|"pulse.on_change"\|"motion.fibonacci"\|"motion.twist"' crates/`.
+- pub consts / colunas locais (mirrors do tipo / cols locais ao stream, sem registro global): os `VALUE`/
+  `PULSE` por-crate, `cmp_armed`, `oc_prev`/`oc_primed`. Cada crate de M3.1 tem um `trig.rs` local
+  (`cos_sin_cycles`, copiado de `motion.orbit` — convenção leaf, sem símbolo compartilhado).
 - **ZERO** `NodeId` numérico / token / variant de enum congelado novos. **ZERO dep EXTERNA nova**
   (só path crates) → machete/deny/audit/RUSTSEC não mexem.
 
@@ -66,34 +67,34 @@ fechamento. Fan-out aditivo (caminho A). Sem ADR necessário.
   ph2d-node-sync`, **não à mão**) + `Cargo.lock` (regenera). O `motion_demo_strobe.rs`/`motion_state*`
   só conflitam se outra linha também editar a cena Motion (improvável — cada módulo tem a sua). Depois
   `scripts/foundational-integrate.sh` (gate da árvore combinada) + `ship.sh`.
-- **Smoke: fatia 4 (math+compare) APROVADA (Enio, 2026-07-11); fatia 5 (switch+on_change) PENDENTE.** O
-  Enio aprovou o smoke da fatia 4 e pediu p/ **simplificar** ("com tantos nós fica difícil entender o
-  conceito"); desde então a cena boot é sempre PEQUENA e isola a fatia mais recente. A cena atual demonstra
-  a **fatia 5** (headless provado por `the_switch_routes_the_size_between_two_patterns` +
-  `the_on_change_flashes_the_grid_on_each_pattern_flip`). Smoke:
+- **Smoke: fatias 4 (math+compare) e 5 (switch+on_change) APROVADAS (Enio, 2026-07-11); fatia M3.1
+  (fibonacci+twist) PENDENTE.** Desde o feedback do Enio ("com tantos nós fica difícil entender o
+  conceito") a cena boot é sempre PEQUENA e isola a fatia mais recente. A cena atual demonstra a **M3.1**
+  (headless provado por `the_fibonacci_lays_out_a_phyllotaxis_spiral` +
+  `the_twist_coils_the_spiral_over_time`). Smoke:
   ```bash
   cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-motion-value && cargo run -p ph2d-host-desktop
   ```
-  Tool **Motion** → uma grade 3×4 cujo padrão de TAMANHO **alterna entre um gradiente ordenado e um
-  scatter aleatório** (o `value.switch` roteando `instance_field` Ramp ↔ Random, `select` = uma
-  `value.lfo` lenta) E **pisca branco a cada troca** (o `pulse.on_change` → strobe). Roteamento + detecção
-  de mudança. No editor: dropar `value.switch` (select + in0..in3) e `pulse.on_change` depois de qualquer
-  valor em degraus (counter/sample_hold/switch).
+  Tool **Motion** → um **girassol de 180 sementes** (o `motion.fibonacci`, golden-angle phyllotaxis) que
+  **enrola e desenrola** no tempo (o `motion.twist`, com o `amount` dirigido por uma `value.lfo`), as
+  sementes graduadas pequenas→grandes do centro à borda. O pipeline M3 *gerar → deformar*. No editor:
+  dropar `motion.fibonacci` (Source) e `motion.twist` (com um valor no `amount` pra animar).
 
-**Resumo:** *Linha `motion-value` com DUAS fatias (fork em `1c7c9a22`). Aditiva: 4 crates-nó
-(`value.math`+`pulse.compare` doc 16; `value.switch`+`pulse.on_change` doc 17) + a cena boot pequena
-(demonstra a fatia 5). Único conflito mecânico = codegen `registry-init` → `ph2d-node-sync`. Zero
-substrato, zero contrato congelado, zero dep externa. Fatia 4 smoke-aprovada; fatia 5 pendente. Aguardo
-ordem de integração.*
+**Resumo:** *Linha `motion-value` com TRÊS fatias (fork em `1c7c9a22`). Aditiva: 6 crates-nó
+(`value.math`+`pulse.compare` doc 16; `value.switch`+`pulse.on_change` doc 17 → domínio de valor completo;
+`motion.fibonacci`+`motion.twist` doc 18 → abre o M3) + a cena boot pequena (demonstra a M3.1). Único
+conflito mecânico = codegen `registry-init` → `ph2d-node-sync` (42 crates). Zero substrato, zero contrato
+congelado, zero dep externa. Fatias 4–5 smoke-aprovadas; M3.1 pendente. Aguardo ordem de integração.*
 
 ---
 
-## 0. O que a linha entrega (fatias 4 e 5 do domínio de valor — docs 16 e 17)
+## 0. O que a linha entrega (fatias 4–5 = domínio de valor completo · M3.1 = abre o M3 — docs 16, 17, 18)
 
-Fecha TODOS os follow-ups nomeados dos docs 12–14 §5, pesquisando o padrão-ouro ANTES de codar
-(DIRETIVA §1). Com estas 4 crates o **vocabulário-núcleo do domínio de valor está completo**. Detalhe +
-pesquisa: [`docs/Motion Nodes/16_math_compare_nota_adr.md`](Motion%20Nodes/16_math_compare_nota_adr.md)
-e [`17_switch_on_change_nota_adr.md`](Motion%20Nodes/17_switch_on_change_nota_adr.md).
+Fecha TODOS os follow-ups nomeados dos docs 12–14 §5 (fatias 4–5 → vocabulário de valor COMPLETO) e abre
+o **M3** (fatia M3.1: 1ª distribuição + 1º deformer), sempre pesquisando o padrão-ouro ANTES de codar
+(DIRETIVA §1). Detalhe + pesquisa: [`16_…`](Motion%20Nodes/16_math_compare_nota_adr.md),
+[`17_…`](Motion%20Nodes/17_switch_on_change_nota_adr.md),
+[`18_fibonacci_twist_nota_adr.md`](Motion%20Nodes/18_fibonacci_twist_nota_adr.md).
 
 **Fatia 4 (doc 16):**
 - **`value.math`** (`ph2d-node-value-math`): o **1º combinador de DOIS campos** — 6 ops
@@ -110,33 +111,40 @@ e [`17_switch_on_change_nota_adr.md`](Motion%20Nodes/17_switch_on_change_nota_ad
 - **`pulse.on_change`** (`ph2d-node-pulse-on-change`): o **detector de mudança** (Max/Pd `change`) — dispara
   quando `|v−prev| > epsilon` (dual do compare: derivada, não nível). Sequencial (`oc_prev`/`oc_primed` no
   `pre`), prime na 1ª tick, `Pure`.
-- **Cena boot** (a última reescrita, pedida pelo Enio p/ simplificar): PEQUENA (~11 nós), isola a fatia 5 —
-  `value.switch` roteia o Size entre Ramp e Random (padrão alterna), `pulse.on_change` pisca o strobe no
-  flip. Os nós da fatia 4 ficam registrados/drop-in.
+**Fatia M3.1 (doc 18) — abre o M3:**
+- **`motion.fibonacci`** (`ph2d-node-motion-fibonacci`): a distribuição **phyllotaxis** de Vogel —
+  `count` sementes em `r = spacing·√i`, ângulo `i·golden`. Source node (como `motion.grid`), count capado,
+  trig transcendental-free (`cos_sin_cycles`, copiado de `motion.orbit`). `Pure`.
+- **`motion.twist`** (`ph2d-node-motion-twist`): o **deformer** Twist — rotaciona cada elemento por
+  `angle·amount_i·(r/r_max)` (borda gira, centro fica; preserva raio). O `amount` é um **input de valor**
+  (animável por `value.lfo`); desconectado → 1.0. Falloff-masked. `Pure`.
+- **Cena boot** (a última reescrita): PEQUENA (~8 nós), um **girassol que torce** — `fibonacci` → `twist`
+  (amount ← `value.lfo`), sementes graduadas por `instance_field`. O pipeline M3 *gerar → deformar*, com
+  o domínio de valor animando o deformer. Playhead-pura (sem estado `pre`).
 
-## 1. Gates no fechamento (paridade §7) — última fatia (5)
-- **Unit:** `value.switch` 5 + `pulse.on_change` 6 (falsificados). Fatia 4: `value.math` 7 +
-  `pulse.compare` 7.
+## 1. Gates no fechamento (paridade §7) — última fatia (M3.1)
+- **Unit:** `motion.fibonacci` 6 + `motion.twist` 7 (falsificados). Fatias 4–5: math 7 / compare 7 /
+  switch 5 / on_change 6.
 - **Integração (shell, registry real):** `cargo test -p ph2d-host-desktop --bins motion` = **24 passed**
-  (inclui `the_switch_routes_the_size_between_two_patterns` +
-  `the_on_change_flashes_the_grid_on_each_pattern_flip` + loop-replay ajustado + motion_bridge params).
-  `ph2d-eval-motion` + membrane gate verdes.
+  (inclui `the_fibonacci_lays_out_a_phyllotaxis_spiral` + `the_twist_coils_the_spiral_over_time` +
+  loop-replay REESCRITO com doc próprio + motion_bridge params). `ph2d-eval-motion` + membrane gate verdes.
 - **Contrato:** `ph2d-nodegraph --test architecture_contract_surface` = 3 pass (NodeOp=2/OpResolver=1/
   NodeManifest=8, intacto).
-- **Registry:** `ph2d-node-registry-init --test staleness` = 2 pass (em sync após `node-sync`, 40 crates).
+- **Registry:** `ph2d-node-registry-init --test staleness` = 2 pass (em sync após `node-sync`, 42 crates).
 - **Lint/estilo:** `clippy --all-targets` (crates novas + registry-init + shell `--bins`) = 0 warnings ·
   `cargo fmt` pin 1.95 (style_edition 2024) · `typos` 0 (bare, docs excluídos) · `cargo machete` 0 ·
-  sweep HR-5 (`\.(sin|cos|tan|atan2|exp|ln|log|powf|powi)\b`) = 0 na produção das crates novas.
-- **LOC:** fatia 5 `value.switch` 278 / `pulse.on_change` 238 (cap 700); fatia 4 `value.math` 380 /
-  `pulse.compare` 351; shell `motion_demo_strobe.rs` 182 / `motion_state_tests.rs` 185 /
-  `motion_state.rs` 118 (cap 600). Todos folgados.
+  sweep HR-5 (`\.(sin|cos|tan|atan2|exp|ln|log|powf|powi)\b`) = 0 na produção (o trig é o `cos_sin_cycles`
+  parabólico, não transcendental).
+- **LOC:** M3.1 `motion.fibonacci` 235 / `motion.twist` 321 (cap 700); shell `motion_demo_strobe.rs` 141 /
+  `motion_state_tests.rs` 164 / `motion_state.rs` 118 (cap 600). Todos folgados.
 
-## 2. Follow-up restante (doc 17 §5)
-Com Switch + On Change o **vocabulário-núcleo do domínio de valor está COMPLETO** (produzir → combinar →
-amostrar → comparar → detectar-mudança → remapear → rotear → dirigir).
-- **`motion.delay`** — atrasa um canal N ticks (eco/time-shift puro, distinto do `motion.trail`) — o
-  último utilitário do M2 (doc 01 §3).
-- **M3** — distribuições avançadas (Fibonacci/Poisson/Voronoi/Path) + deformers (lattice/bend/twist/
-  morph/look-at/boids/verlet-rope) — o próximo grande passo (geometria/distribuições), doc 01 §3.
+## 2. Follow-up restante (doc 18 §5) — M3 aberto
+Vocabulário de valor COMPLETO (fatias 4–5); M3 aberto com Fibonacci+Twist (o padrão *gerar → deformar
+dirigido por valor*). O que segue (doc 01 §3):
+- **Distribuições:** `motion.distribute-poisson` (Bridson) · `-voronoi` (Lloyd) · `-path` (vector.*) ·
+  `motion.lattice`.
+- **Deformers:** `motion.bend` · `-four-point-warp` · `motion.morph` · `-look-at` · `-slit-scan`.
+- **Sim/agentes:** `motion.boids` · `-verlet-rope` · `-soft-body` (XPBD) · `-pin-constraint`.
+- Straggler do M2: `motion.delay` (eco/time-shift puro).
 
-*"Linha `motion-value` com 2 fatias (fork em `1c7c9a22`). Handoff acima. Aguardo ordem de integração."*
+*"Linha `motion-value` com 3 fatias (fork em `1c7c9a22`). Handoff acima. Aguardo ordem de integração."*

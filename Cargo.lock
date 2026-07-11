@@ -5271,6 +5271,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-node-motion-fibonacci"
+version = "0.0.0"
+dependencies = [
+ "ph2d-node-registry",
+ "ph2d-nodegraph",
+]
+
+[[package]]
 name = "ph2d-node-motion-grid"
 version = "0.0.0"
 dependencies = [
@@ -5407,6 +5415,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-node-motion-twist"
+version = "0.0.0"
+dependencies = [
+ "ph2d-node-registry",
+ "ph2d-nodegraph",
+]
+
+[[package]]
 name = "ph2d-node-motion-wiggle"
 version = "0.0.0"
 dependencies = [
@@ -5484,6 +5500,7 @@ dependencies = [
  "ph2d-node-motion-drive",
  "ph2d-node-motion-emitter",
  "ph2d-node-motion-falloff",
+ "ph2d-node-motion-fibonacci",
  "ph2d-node-motion-grid",
  "ph2d-node-motion-integrate",
  "ph2d-node-motion-move",
@@ -5501,6 +5518,7 @@ dependencies = [
  "ph2d-node-motion-tint",
  "ph2d-node-motion-trail",
  "ph2d-node-motion-transform",
+ "ph2d-node-motion-twist",
  "ph2d-node-motion-wiggle",
  "ph2d-node-pulse-beat",
  "ph2d-node-pulse-compare",

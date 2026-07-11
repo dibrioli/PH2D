@@ -26,6 +26,7 @@ ph2d-node-motion-clone = { path = "../ph2d-node-motion-clone" }
 ph2d-node-motion-drive = { path = "../ph2d-node-motion-drive" }
 ph2d-node-motion-emitter = { path = "../ph2d-node-motion-emitter" }
 ph2d-node-motion-falloff = { path = "../ph2d-node-motion-falloff" }
+ph2d-node-motion-fibonacci = { path = "../ph2d-node-motion-fibonacci" }
 ph2d-node-motion-grid = { path = "../ph2d-node-motion-grid" }
 ph2d-node-motion-integrate = { path = "../ph2d-node-motion-integrate" }
 ph2d-node-motion-move = { path = "../ph2d-node-motion-move" }
@@ -43,6 +44,7 @@ ph2d-node-motion-time-remap = { path = "../ph2d-node-motion-time-remap" }
 ph2d-node-motion-tint = { path = "../ph2d-node-motion-tint" }
 ph2d-node-motion-trail = { path = "../ph2d-node-motion-trail" }
 ph2d-node-motion-transform = { path = "../ph2d-node-motion-transform" }
+ph2d-node-motion-twist = { path = "../ph2d-node-motion-twist" }
 ph2d-node-motion-wiggle = { path = "../ph2d-node-motion-wiggle" }
 ph2d-node-pulse-beat = { path = "../ph2d-node-pulse-beat" }
 ph2d-node-pulse-compare = { path = "../ph2d-node-pulse-compare" }

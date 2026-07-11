@@ -55,17 +55,15 @@ pub(crate) struct MotionState {
 
 impl MotionState {
     /// Build the boot state: register every node op + the **default document** —
-    /// one small, focused scene that isolates the two newest value-domain nodes
-    /// (doc 17) on a single grid: a `value.switch` routes the Size between an
-    /// ordered `instance_field` Ramp and a Random scatter as a `value.lfo` `select`
-    /// cycles, and a `pulse.on_change` fires a `motion.strobe` flash the tick the
-    /// pattern flips. Kept deliberately small (~11 nodes) so each new node reads on
-    /// its own (docs/Motion Nodes/12, 14, 17). The earlier scenes (the Cavalry grid
-    /// rig, the particle fountain) and the earlier value chains (metronome/counter/
-    /// sample-hold/math/compare/per-channel drives) were removed to keep the boot
-    /// document focused; they live in git history and every node keeps its own unit
-    /// tests + stays registered (drop them in the editor). Transport paused at tick
-    /// 0 (the bridge auto-plays on tool entry).
+    /// the M3 opener: a **twisting sunflower**. A `motion.fibonacci` lays out a
+    /// golden-angle phyllotaxis spiral, and a `motion.twist` (its strength a
+    /// `value.lfo`) coils and uncoils it in time, the seeds sized small→big by a
+    /// `value.instance_field` Ramp. Kept deliberately small (~8 nodes) so each new
+    /// node reads on its own (docs/Motion Nodes/12, 14, 18). The earlier scenes (the
+    /// Cavalry grid rig, the particle fountain) and the earlier value/pulse chains
+    /// were removed to keep the boot document focused; they live in git history and
+    /// every node keeps its own unit tests + stays registered (drop them in the
+    /// editor). Transport paused at tick 0 (the bridge auto-plays on tool entry).
     pub(crate) fn new() -> Self {
         let mut registry = NodeRegistry::new();
         ph2d_node_registry_init::register_all_nodes(&mut registry)
@@ -93,19 +91,20 @@ impl MotionState {
 /// module's most recent work). Returns its sink (the Output node) if the graph
 /// is well-typed.
 ///
-/// The scene — built in the `strobe` sibling module — isolates the two newest
-/// value-domain nodes (doc 17) on a single grid: a `value.switch` routes the Size
-/// between an ordered `value.instance_field` Ramp and a Random scatter as a
-/// `value.lfo` `select` cycles `0 ↔ 1` (the routing), and a `pulse.on_change`
-/// watches the switched value and fires a `motion.strobe` flash the tick the
-/// pattern flips (the change-detection). See docs/Motion Nodes/12 (value),
-/// 14 (instance_field), 17 (switch+on_change).
+/// The scene — built in the `strobe` sibling module — is the M3 opener: a
+/// **twisting sunflower**. A `motion.fibonacci` mints a golden-angle phyllotaxis
+/// spiral (`r = spacing·√i`); a `motion.twist` rotates each seed by an angle that
+/// grows with its radius, its strength a `value.lfo` so the spiral coils and
+/// uncoils in time; a `value.instance_field` Ramp → `value.map_range` sizes the
+/// seeds small→big by index. The M3 *generate → deform* pipeline, with the value
+/// domain animating the deformer. See docs/Motion Nodes/12 (value),
+/// 14 (instance_field), 18 (fibonacci+twist).
 ///
 /// The earlier scenes were removed to keep the boot document small and legible:
-/// the **Cavalry grid rig**, the **particle fountain**, and the earlier value
-/// chains (metronome/counter/drive, sample-hold, math, compare, per-channel
-/// drives). They remain in git history and every node keeps its own unit tests;
-/// the nodes stay registered, so any of them can be dropped back in the editor.
+/// the **Cavalry grid rig**, the **particle fountain**, and the earlier value/pulse
+/// chains (metronome/counter/drive, sample-hold, math, compare, switch, on_change).
+/// They remain in git history and every node keeps its own unit tests; the nodes
+/// stay registered, so any of them can be dropped back in the editor.
 fn build_default_document(g: &mut Graph, reg: &NodeRegistry) -> Option<Vec<NodeId>> {
     let scene = strobe::build(g)?;
     // Same "validate on load" the editor runs before cooking — proves the authored

@@ -514,31 +514,69 @@ fn every_output_node_is_a_render_sink() {
 /// M2.N2 end to end through the REAL registry + transport: a `loop_range` that
 /// wraps the playhead backwards **replays the simulation from the loop start**
 /// instead of showing the marching-future state. This is the reachable payoff of
-/// checkpoint/restore — the default value scene (a `pulse.on_change` firing a
-/// decaying `motion.strobe` flash the tick a `value.switch` flips — both sequential
-/// `pre`-loop nodes) looped, cooked exactly as the bridge cooks it
-/// (`advance_or_scrub_scoped`), must produce the IDENTICAL frame sequence per lap.
+/// checkpoint/restore.
 ///
-/// The marching signal is the brightest dot's tint red: the blue base (0.25)
-/// spikes to ~0.9 when the switch flips (the lfo crosses `0.5`, ~tick 61), then the
-/// strobe glow decays back — bright flash, dim tail within the lap.
+/// It builds its OWN minimal SEQUENTIAL doc — a `pulse.beat` → `motion.strobe`
+/// (both hold `pre` state) — rather than the boot scene, so it stays meaningful
+/// whatever the boot scene is (the current sunflower is a pure playhead function,
+/// with no `pre` state to replay). The doc is cooked exactly as the bridge cooks
+/// it (`advance_or_scrub_scoped`); the marching signal is the max instance size
+/// (the strobe swells it on each beat, then the glow decays).
 ///
-/// Falsifiable: the flash-then-decay makes a mid frame bright and the tail dim
+/// Falsifiable: the beat-then-decay makes a beat frame bright and the tail dim
 /// (`hi > lo·1.5`); a naive forward pump at the wrap would carry the dim, decayed
-/// glow into the new lap — so `lap2` would match the dim tail, not replay the
-/// flash. The scrub path is what makes `lap2 == lap1`.
+/// glow into the new lap — so `lap2` would match the dim tail, not replay the beat.
+/// The scrub path is what makes `lap2 == lap1`.
 #[test]
 fn a_loop_range_replays_the_simulation_from_its_start() {
     use ph2d_eval_motion::MotionCookPump;
     use ph2d_nodegraph::cook::TimeScopes;
+    use ph2d_nodegraph::graph::{Edge, Graph};
 
-    let state = MotionState::new(); // the value-switch default doc (sequential nodes)
+    let state = MotionState::new(); // reuse the real registry (every op registered)
+    let registry = &state.registry;
     let (uv, size) = (state.default_uv_rect, state.default_size);
     let scopes = TimeScopes::new();
-    let sinks = &state.sinks;
-    const LAP: u64 = 90; // ticks per lap — long enough to contain a switch flip
+    const LAP: u64 = 45; // ticks per lap
 
-    // Cook one lap, capturing each frame's brightest flash (max tint red).
+    // A minimal sequential doc: a 2×2 grid → beat → strobe → output. The beat's
+    // cycle index and the strobe's glow ride `pre` self-loops, so the loop wrap has
+    // real state to restore.
+    let mut g = Graph::new();
+    let grid = g.add_node("motion.grid");
+    let beat = g.add_node("pulse.beat");
+    let strobe = g.add_node("motion.strobe");
+    let output = g.add_node("motion.output");
+    for (from, to) in [
+        ((grid, 0), (beat, 0)),
+        ((grid, 0), (strobe, 0)),
+        ((beat, 0), (strobe, 1)),
+        ((strobe, 0), (output, 0)),
+    ] {
+        g.connect(Edge {
+            from,
+            to,
+            delayed: false,
+        })
+        .unwrap();
+    }
+    for (n, port) in [(beat, 1), (strobe, 2)] {
+        g.connect(Edge {
+            from: (n, 0),
+            to: (n, port),
+            delayed: true,
+        })
+        .unwrap();
+    }
+    g.set_param(grid, "rows", 2.0);
+    g.set_param(grid, "cols", 2.0);
+    g.set_param(beat, "period", 0.5); // beats at ticks 0 and 30 (within the lap)
+    g.set_param(strobe, "decay", 0.85);
+    g.set_param(strobe, "size_boost", 2.0);
+    g.validate(registry).unwrap();
+    let sinks = vec![output];
+
+    // Cook one lap, capturing each frame's strobe silhouette (max instance size).
     let lap = |pump: &mut MotionCookPump| -> Vec<f32> {
         let mut sig = Vec::new();
         let mut transport = ph2d_motion_doc::MotionTransport {
@@ -552,9 +590,9 @@ fn a_loop_range_replays_the_simulation_from_its_start() {
             transport.advance(1);
             let tick = transport.tick;
             pump.advance_or_scrub_scoped(
-                &state.doc.graph,
-                &state.registry,
-                sinks,
+                &g,
+                registry,
+                &sinks,
                 tick,
                 |t| t as f64 / 60.0,
                 uv,
@@ -564,7 +602,7 @@ fn a_loop_range_replays_the_simulation_from_its_start() {
             sig.push(
                 pump.instances
                     .iter()
-                    .map(|i| i.tint[0])
+                    .map(|i| i.size[0])
                     .fold(0.0_f32, f32::max),
             );
         }
@@ -579,7 +617,7 @@ fn a_loop_range_replays_the_simulation_from_its_start() {
     let lo = lap1.iter().cloned().fold(f32::MAX, f32::min);
     assert!(
         hi > lo * 1.5,
-        "the strobe flash marches within a lap (bright flash vs dim tail): {lo}..{hi}"
+        "the strobe swell marches within a lap (bright beat vs dim tail): {lo}..{hi}"
     );
     assert_eq!(
         lap2, lap1,

@@ -6,17 +6,39 @@
 //! persistable. Kept OUT of the lean `ph2d-audio` core so no writer dependency
 //! reaches the mixer — mirroring how `ph2d-audio-decode` isolates Symphonia.
 //!
-//! ## Scope (W1)
+//! ## Scope
 //!
 //! Canonical RIFF/WAVE: PCM 16-bit, PCM 24-bit, and IEEE-float 32-bit. These
-//! round-trip cleanly through `ph2d-audio-decode` (Symphonia `wav`+`pcm`). Loop
-//! (`smpl`) and marker (`cue`) chunks, plus Ogg Vorbis / Opus, arrive with the
-//! game asset-prep wave (`docs/Audio/02_plano_implementacao_completo.md` §6).
+//! round-trip cleanly through `ph2d-audio-decode` (Symphonia `wav`+`pcm`). The
+//! game asset-prep wave (`docs/Audio/02_plano_implementacao_completo.md` §6) adds
+//! the loop (`smpl`) chunk — [`WavMeta`] carries loop regions that
+//! [`encode_wav_with_meta`] writes and [`read_loop_regions`] reads back. Marker
+//! (`cue`) chunks and Ogg Vorbis / Opus are still to come.
 
 use std::io::Write;
 use std::path::Path;
 
 use ph2d_audio::{Sample, SampleData};
+
+/// A loop region for the `smpl` chunk, in **frames**, half-open `start..end`
+/// (matching `ph2d_audio_edit::EditClip::loop_region`). Stored in the WAV's `smpl`
+/// chunk so the loop survives re-decode and a game runtime can loop sample-exact.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct LoopRegion {
+    /// First frame of the loop.
+    pub start: u32,
+    /// One past the last looped frame (exclusive). The `smpl` chunk stores the
+    /// INCLUSIVE last frame (`end - 1`); the conversion is handled at the boundary.
+    pub end: u32,
+}
+
+/// Side-car metadata written alongside the audio (currently loop regions). Empty by
+/// default, so [`encode_wav`] stays byte-for-byte the bare `fmt`+`data` file.
+#[derive(Debug, Clone, Default)]
+pub struct WavMeta {
+    /// Loop regions for the `smpl` chunk (usually one). None ⇒ no `smpl` chunk.
+    pub loops: Vec<LoopRegion>,
+}
 
 /// Errors from encoding / writing audio.
 #[derive(Debug, thiserror::Error)]
@@ -64,23 +86,49 @@ impl BitDepth {
     }
 }
 
-/// Encode `data` to an in-memory canonical RIFF/WAVE byte buffer.
+/// Encode `data` to an in-memory canonical RIFF/WAVE byte buffer (no side-car
+/// metadata). Byte-for-byte a bare `fmt`+`data` file — see [`encode_wav_with_meta`]
+/// to attach loop points.
 ///
 /// Interleaving and channel count come straight from the clip's format; the
 /// float samples are quantised (with clamp to `[-1.0, 1.0]`) for the integer
 /// depths and written verbatim for [`BitDepth::Float32`].
 pub fn encode_wav(data: &SampleData, depth: BitDepth) -> Result<Vec<u8>, EncodeError> {
+    encode_wav_with_meta(data, depth, &WavMeta::default())
+}
+
+/// Fixed part of a `smpl` chunk (9 × u32), before the per-loop records.
+const SMPL_HEADER_LEN: usize = 36;
+/// Bytes per loop record in a `smpl` chunk (6 × u32).
+const SMPL_LOOP_LEN: usize = 24;
+
+/// Encode `data` with side-car [`WavMeta`] — the audio plus a `smpl` chunk when
+/// `meta.loops` is non-empty. The `smpl` chunk is written BEFORE `data` so any
+/// reader that stops walking chunks at `data` still parses it; unknown-chunk
+/// skippers (Symphonia) ignore it and decode the audio unchanged.
+pub fn encode_wav_with_meta(
+    data: &SampleData,
+    depth: BitDepth,
+    meta: &WavMeta,
+) -> Result<Vec<u8>, EncodeError> {
     let format = data.format();
     let channels = format.channel_count();
     let bytes_per = depth.bytes_per_sample();
     let samples = data.samples();
 
     let data_len_usize = samples.len() * bytes_per;
-    // RIFF size is `36 + data_len`; both must fit u32.
     let data_len = u32::try_from(data_len_usize).map_err(|_| EncodeError::TooLarge)?;
-    let riff_len = 36u32.checked_add(data_len).ok_or(EncodeError::TooLarge)?;
 
-    let mut v = Vec::with_capacity(44 + data_len_usize);
+    // Optional smpl chunk body (header + one record per loop); `None` ⇒ omit it.
+    let smpl = (!meta.loops.is_empty()).then(|| smpl_chunk(&meta.loops, format.sample_rate));
+    let smpl_total = smpl.as_ref().map_or(0, |b| 8 + b.len()); // 8 = "smpl" + size
+
+    // RIFF size covers everything after the 8-byte RIFF header: "WAVE" (4) + fmt
+    // (8+16) + optional smpl (8+n) + data (8+data_len).
+    let riff_len = u32::try_from(4 + 24 + smpl_total + 8 + data_len_usize)
+        .map_err(|_| EncodeError::TooLarge)?;
+
+    let mut v = Vec::with_capacity(44 + smpl_total + data_len_usize);
     v.extend_from_slice(b"RIFF");
     v.extend_from_slice(&riff_len.to_le_bytes());
     v.extend_from_slice(b"WAVE");
@@ -96,6 +144,13 @@ pub fn encode_wav(data: &SampleData, depth: BitDepth) -> Result<Vec<u8>, EncodeE
     v.extend_from_slice(&byte_rate.to_le_bytes());
     v.extend_from_slice(&block_align.to_le_bytes());
     v.extend_from_slice(&depth.bits().to_le_bytes());
+
+    // smpl chunk (loop points), if any.
+    if let Some(body) = smpl {
+        v.extend_from_slice(b"smpl");
+        v.extend_from_slice(&(body.len() as u32).to_le_bytes());
+        v.extend_from_slice(&body);
+    }
 
     // data chunk.
     v.extend_from_slice(b"data");
@@ -125,10 +180,100 @@ pub fn encode_wav(data: &SampleData, depth: BitDepth) -> Result<Vec<u8>, EncodeE
 
 /// Encode `data` and write it to `path` (creating / truncating the file).
 pub fn write_wav(path: &Path, data: &SampleData, depth: BitDepth) -> Result<(), EncodeError> {
-    let bytes = encode_wav(data, depth)?;
+    write_wav_with_meta(path, data, depth, &WavMeta::default())
+}
+
+/// Encode `data` with [`WavMeta`] (loop points) and write it to `path`.
+pub fn write_wav_with_meta(
+    path: &Path,
+    data: &SampleData,
+    depth: BitDepth,
+    meta: &WavMeta,
+) -> Result<(), EncodeError> {
+    let bytes = encode_wav_with_meta(data, depth, meta)?;
     let mut f = std::fs::File::create(path)?;
     f.write_all(&bytes)?;
     Ok(())
+}
+
+/// Build the body of a `smpl` chunk (everything after the 8-byte chunk header) for
+/// `loops` at `sample_rate`. Per the sampler chunk spec: a fixed 9-word header then
+/// one 6-word record per loop. Loop `end` is written INCLUSIVE (`region.end - 1`).
+fn smpl_chunk(loops: &[LoopRegion], sample_rate: u32) -> Vec<u8> {
+    // Nanoseconds per frame — the sample period the spec asks for.
+    let sample_period = (1_000_000_000f64 / sample_rate.max(1) as f64).round() as u32;
+    let mut b = Vec::with_capacity(SMPL_HEADER_LEN + loops.len() * SMPL_LOOP_LEN);
+    let mut w = |x: u32| b.extend_from_slice(&x.to_le_bytes());
+    w(0); // manufacturer
+    w(0); // product
+    w(sample_period);
+    w(60); // MIDI unity note (middle C) — a neutral default
+    w(0); // MIDI pitch fraction
+    w(0); // SMPTE format
+    w(0); // SMPTE offset
+    w(loops.len() as u32); // number of sample loops
+    w(0); // sampler-specific data byte count
+    for (i, lp) in loops.iter().enumerate() {
+        w(i as u32); // cue-point identifier
+        w(0); // type: 0 = forward loop
+        w(lp.start); // loop start (frame)
+        w(lp.end.saturating_sub(1)); // loop end (INCLUSIVE last frame)
+        w(0); // fraction
+        w(0); // play count: 0 = loop forever
+    }
+    b
+}
+
+/// Read loop regions back out of an encoded WAV's `smpl` chunk. Walks the RIFF
+/// chunk list directly (independent of the audio decoder, which ignores `smpl`) and
+/// converts the INCLUSIVE `smpl` loop end back to our half-open `end`. Returns empty
+/// for a WAV with no `smpl` chunk or malformed bytes.
+pub fn read_loop_regions(bytes: &[u8]) -> Vec<LoopRegion> {
+    // Header: "RIFF" <u32 size> "WAVE" then a flat list of `<id:4><size:u32><body>`
+    // chunks (each padded to an even length).
+    if bytes.len() < 12 || &bytes[0..4] != b"RIFF" || &bytes[8..12] != b"WAVE" {
+        return Vec::new();
+    }
+    let u32_at =
+        |o: usize| u32::from_le_bytes([bytes[o], bytes[o + 1], bytes[o + 2], bytes[o + 3]]);
+    let mut pos = 12;
+    while pos + 8 <= bytes.len() {
+        let id = &bytes[pos..pos + 4];
+        let size = u32_at(pos + 4) as usize;
+        let body = pos + 8;
+        if body + size > bytes.len() {
+            break;
+        }
+        if id == b"smpl" {
+            return parse_smpl(&bytes[body..body + size]);
+        }
+        // Chunks are word-aligned: an odd size carries a pad byte.
+        pos = body + size + (size & 1);
+    }
+    Vec::new()
+}
+
+/// Parse the body of a `smpl` chunk into loop regions (INCLUSIVE end → half-open).
+fn parse_smpl(body: &[u8]) -> Vec<LoopRegion> {
+    if body.len() < SMPL_HEADER_LEN {
+        return Vec::new();
+    }
+    let u32_at = |o: usize| u32::from_le_bytes([body[o], body[o + 1], body[o + 2], body[o + 3]]);
+    let n = u32_at(28) as usize; // cSampleLoops
+    let mut out = Vec::with_capacity(n);
+    for i in 0..n {
+        let base = SMPL_HEADER_LEN + i * SMPL_LOOP_LEN;
+        if base + SMPL_LOOP_LEN > body.len() {
+            break;
+        }
+        let start = u32_at(base + 8);
+        let end_inclusive = u32_at(base + 12);
+        out.push(LoopRegion {
+            start,
+            end: end_inclusive.saturating_add(1),
+        });
+    }
+    out
 }
 
 /// Quantise a `[-1.0, 1.0]` sample to signed 16-bit (round-to-nearest, clamped).
@@ -200,6 +345,77 @@ mod tests {
         assert_eq!(sample_to_i16(-2.0), -32_767);
         let [b0, b1, b2, _] = sample_to_i24_le(2.0);
         assert_eq!(i32::from_le_bytes([b0, b1, b2, 0]), 8_388_607);
+    }
+
+    #[test]
+    fn smpl_loop_round_trips_and_audio_still_decodes() {
+        let frames = 500;
+        let mut interleaved = Vec::with_capacity(frames * 2);
+        for i in 0..frames {
+            let t = i as f32 / frames as f32;
+            interleaved.push(t * 2.0 - 1.0);
+            interleaved.push(0.5 - t);
+        }
+        let src = SampleData::from_interleaved(interleaved, AudioFormat::stereo(48_000));
+        let meta = WavMeta {
+            loops: vec![LoopRegion {
+                start: 100,
+                end: 400,
+            }],
+        };
+
+        let bytes = encode_wav_with_meta(&src, BitDepth::Pcm16, &meta).expect("encode");
+
+        // The loop region survives the write → read (half-open end preserved).
+        let back_loops = read_loop_regions(&bytes);
+        assert_eq!(back_loops, meta.loops, "smpl loop must round-trip exactly");
+
+        // Symphonia ignores the unknown `smpl` chunk and still decodes the audio.
+        let audio = ph2d_audio_decode::decode(&bytes).expect("decode with smpl present");
+        assert_eq!(
+            audio.frame_count(),
+            frames,
+            "smpl must not corrupt the audio"
+        );
+        assert_eq!(audio.format().channels, ChannelLayout::Stereo);
+    }
+
+    #[test]
+    fn no_loop_is_byte_identical_to_bare_encode() {
+        // The metadata path must not change the bytes when there are no loops — the
+        // regression guard for existing callers / fixtures.
+        let src =
+            SampleData::from_interleaved(vec![0.1, -0.2, 0.3, -0.4], AudioFormat::mono(44_100));
+        let bare = encode_wav(&src, BitDepth::Pcm16).unwrap();
+        let empty = encode_wav_with_meta(&src, BitDepth::Pcm16, &WavMeta::default()).unwrap();
+        assert_eq!(
+            bare, empty,
+            "empty meta must be byte-for-byte the bare file"
+        );
+        assert!(read_loop_regions(&bare).is_empty(), "no smpl chunk to find");
+    }
+
+    #[test]
+    fn reads_smpl_placed_before_data() {
+        // The `smpl` chunk sits between `fmt ` and `data`; the walker must skip `fmt `.
+        let src = SampleData::from_interleaved(vec![0.0; 20], AudioFormat::mono(48_000));
+        let meta = WavMeta {
+            loops: vec![
+                LoopRegion { start: 2, end: 8 },
+                LoopRegion { start: 9, end: 15 },
+            ],
+        };
+        let bytes = encode_wav_with_meta(&src, BitDepth::Float32, &meta).unwrap();
+        assert_eq!(
+            &bytes[36..40],
+            b"smpl",
+            "smpl comes right after the fmt chunk"
+        );
+        assert_eq!(
+            read_loop_regions(&bytes),
+            meta.loops,
+            "both loops round-trip"
+        );
     }
 
     #[test]

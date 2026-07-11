@@ -1,0 +1,157 @@
+//! The Loop-points section of the Audio Editor panel (W6 — asset-prep).
+//!
+//! A loop region defined from the waveform selection, snapped to zero crossings,
+//! and auditioned click-free (a crossfaded repeat). It is metadata — not a
+//! destructive edit — and is written to the exported WAV's `smpl` chunk so a game
+//! runtime loops sample-exact.
+//!
+//! UI-only: the panel holds the audition toggle + the crossfade slider position and
+//! arms Set/Clear/Snap intents; the shell owns the `EditClip` loop region, the
+//! crossfade DSP, and the export. The readout `(start, end)` seconds come published
+//! from the shell (`loop_state::set_loop_span`).
+
+use crate::paint::{ClippedHits, button, toggle};
+use crate::{
+    AEDIT_LOOP_AUDITION, AEDIT_LOOP_CLEAR, AEDIT_LOOP_SET, AEDIT_LOOP_SNAP, AEDIT_LOOP_XFADE,
+    loop_state,
+};
+use ph2d_editor_core::paint::{paint_text, paint_text_centered, resolve};
+use ph2d_editor_core::widget::{Slider, SliderOrientation, paint_slider, paint_slider_track};
+use ph2d_editor_core::zones::Rect;
+use ph2d_text::TextSystem;
+use ph2d_tokens::{ColorToken, Spacing, Theme, TypeToken};
+use ph2d_vector::VectorScene;
+
+/// Paint the loop section starting at `y`; returns the `y` below it. `loaded` dims
+/// everything when there is no clip; `has_sel` gates "Set" (it adopts the selection).
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn paint_loop_section(
+    mut y: f32,
+    x: f32,
+    w: f32,
+    loaded: bool,
+    has_sel: bool,
+    row_h: f32,
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &mut ClippedHits,
+) -> f32 {
+    let gap = Spacing::Sm.px();
+    let has_loop = loop_state::has_loop();
+
+    // Header: "Loop" left, the region readout right.
+    let label_h = TypeToken::Xs.px();
+    paint_text(
+        text_system,
+        scene,
+        "Loop",
+        x,
+        y,
+        label_h,
+        w,
+        resolve(ColorToken::Text2, theme),
+    );
+    paint_text_centered(
+        text_system,
+        scene,
+        &readout(),
+        Rect::new(x, y, w, label_h),
+        label_h,
+        resolve(
+            if has_loop {
+                ColorToken::Text1
+            } else {
+                ColorToken::Text2
+            },
+            theme,
+        ),
+    );
+    y += label_h + Spacing::Sm.px();
+
+    // Set (from selection) | Clear.
+    let half = ((w - gap) * 0.5).max(1.0);
+    button(
+        Rect::new(x, y, half, row_h),
+        "Set Loop",
+        loaded && has_sel,
+        AEDIT_LOOP_SET,
+        scene,
+        text_system,
+        theme,
+        hit_index,
+    );
+    button(
+        Rect::new(x + half + gap, y, half, row_h),
+        "Clear",
+        has_loop,
+        AEDIT_LOOP_CLEAR,
+        scene,
+        text_system,
+        theme,
+        hit_index,
+    );
+    y += row_h + gap;
+
+    // Snap to zero crossings | Audition toggle.
+    button(
+        Rect::new(x, y, half, row_h),
+        "Snap Zero",
+        has_loop,
+        AEDIT_LOOP_SNAP,
+        scene,
+        text_system,
+        theme,
+        hit_index,
+    );
+    toggle(
+        Rect::new(x + half + gap, y, half, row_h),
+        "Audition",
+        loop_state::loop_audition(),
+        has_loop,
+        AEDIT_LOOP_AUDITION,
+        scene,
+        text_system,
+        theme,
+        hit_index,
+    );
+    y += row_h + gap;
+
+    // Crossfade slider (normalized 0..1 → ms, mapped shell-side). Labelled; no numeric
+    // readout — it is a feel control and the exact ms is the shell's business.
+    paint_text_centered(
+        text_system,
+        scene,
+        "Crossfade",
+        Rect::new(x, y, w, label_h),
+        TypeToken::Xs.px(),
+        resolve(ColorToken::Text2, theme),
+    );
+    y += label_h + Spacing::Xs.px();
+    let track = Rect::new(x, y, w, Spacing::Md.px());
+    if has_loop {
+        let mut slider =
+            Slider::new(AEDIT_LOOP_XFADE, "Crossfade").orientation(SliderOrientation::Horizontal);
+        slider.set_value(loop_state::xfade_norm());
+        paint_slider(&slider, track, scene, theme);
+        hit_index.register(AEDIT_LOOP_XFADE, track);
+    } else {
+        // Inert track (no thumb, not hit-registered) when there is nothing to audition.
+        paint_slider_track(
+            track,
+            loop_state::xfade_norm(),
+            SliderOrientation::Horizontal,
+            scene,
+            theme,
+        );
+    }
+    y + Spacing::Md.px() + Spacing::Md.px()
+}
+
+/// The region readout: `1.20\u{2013}3.40s`, or `No loop` when unset.
+fn readout() -> String {
+    match loop_state::loop_span() {
+        Some((s, e)) => format!("{s:.2}\u{2013}{e:.2}s"),
+        None => "No loop".to_string(),
+    }
+}

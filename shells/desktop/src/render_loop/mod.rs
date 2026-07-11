@@ -312,6 +312,27 @@ impl crate::App {
                 // Global A/B — hear/see/export the dry clip without losing the chain.
                 audio.editor_fx_set_bypass(ed::fx_bypass());
                 ed::set_fx_auditioning(audio.editor_fx_auditioning());
+
+                // Loop points (W6 — asset-prep). Drain the Set/Snap/Clear one-shots
+                // onto the clip's loop region, then reconcile the click-free audition
+                // with the toggle — it commandeers the preview voice while on. Publish
+                // the region + the REAL audition state back, so the readout + the
+                // toggle track the runtime (the toggle goes dark if the loop is
+                // cleared). Runs after the transport, so a main Play cleanly takes the
+                // voice back from the audition.
+                if ed::take_set_loop() {
+                    audio.editor_set_loop_from_selection();
+                }
+                if ed::take_snap_loop() {
+                    audio.editor_snap_loop();
+                }
+                if ed::take_clear_loop() {
+                    audio.editor_clear_loop();
+                }
+                let xfade_frames = audio.editor_xfade_frames(ed::xfade_norm());
+                audio.editor_update_loop_audition(ed::loop_audition(), xfade_frames);
+                ed::set_loop_span(audio.editor_loop_span());
+                ed::set_loop_audition(audio.editor_loop_auditioning());
             }
         }
         // Coalesced painter Move: stamp the LATEST buffered canvas position ONCE this frame, replacing

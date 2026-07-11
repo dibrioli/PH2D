@@ -6,12 +6,13 @@
 
 ---
 
-## 0. TL;DR do estado atual (2026-07-09)
+## 0. TL;DR do estado atual (2026-07-10)
 
-**A linha está LIMPA, verde e sincronizada com o `main`** (integração concluída;
-o integrador rebaseou os commits — SHAs novos — e ainda acrescentou `split
-audio.rs` sob HR-18, fix de `fmt` drift `style_edition 2024` e AVIF no CI).
-Nada pendente de integrar. Ponto de partida pronto para feature nova.
+**A linha está verde**, mas **à frente do `main` integrado** (`54fc9ecf`) com commits
+locais **não integrados**: `bdacc038` presets · `52b2df34` modulação · `ef0bcaab` fix
+slider "0" · **W6 Bloco 1 loop points** (este). O último ponto de integração adicionou
+`split audio.rs` (HR-18), fix `fmt` drift `style_edition 2024` e AVIF no CI. **Integração
+e ship são decisão exclusiva do Enio** — a linha fecha, entrega este handoff e para.
 
 **O bug "meter vivo, sem som" está RESOLVIDO** e **não era código**: o
 WirePlumber guardava `mute:true` por-app em `stream-properties`. Detalhe +
@@ -338,6 +339,57 @@ abaixo é histórico — não re-investigue.
   - **`fx_params.rs` estourou o cap de 600 do shell (HR-18)** → tabela extraída pra
     `audio/fx_params_table.rs` (447 + 262). O cap do shell é **600**, não os 700 do
     workspace — foi `shells/desktop/tests/file_loc_caps.rs` que pegou.
+- **W6 Bloco 1 — Loop points + `smpl` chunk + audição click-free (2026-07-10)**.
+  Primeiro bloco do **asset-prep de games**: uma **região de loop** no clipe (metadado,
+  NÃO edição de undo), snap a zero-crossing, **audição contínua sem clique**, e o loop
+  escrito no **`smpl` chunk** do WAV (sobrevive re-decode). Fim-a-fim: DSP → encode →
+  painel → shell → overlay.
+  - **DSP (`ph2d-audio-edit/src/loops.rs`)** — `crossfaded_loop(data, region, xfade)`:
+    o **pre-loop crossfade** clássico. Um loop cru `[s,e)` salta `data[e-1]→data[s]` na
+    volta; a cauda é fundida (equal-power sin/cos) nos `L` frames que **precedem** `s`,
+    então o último frame pousa em `data[s-1]` e a volta vira o passo contínuo `s-1→s` do
+    próprio sinal. `L = min(xfade, s, region_len)` → loop começando no frame 0 (sem
+    lead-in) degrada pra cópia crua (por isso o Snap existe). Teste prova que a costura
+    cai 10× vs. o loop cru.
+  - **`EditClip`** ganhou `loop_region: Option<Range>` (metadado, mesma disciplina da
+    `selection`: **sobrevive undo/redo**, só clampa quando um edit encurta o clipe, some
+    no load) + `set_loop_from_selection`/`snap_loop_to_zero_crossing`/`clear_loop`/
+    `loop_audition_buffer(xfade)`. **Não** entra na timeline de undo (não é sample data).
+  - **Encode (`ph2d-audio-encode`)** — `WavMeta { loops: Vec<LoopRegion> }` +
+    `encode_wav_with_meta`/`write_wav_with_meta` + `read_loop_regions` (walker RIFF
+    próprio — o Symphonia ignora `smpl`). O chunk fica **ANTES do `data`** (leitor que
+    para no `data` ainda o vê). `LoopRegion.end` é **half-open**; o `smpl` guarda o
+    último frame **inclusivo** (`end-1`) — conversão só na fronteira. `encode_wav` sem
+    loops é **byte-idêntico** ao arquivo antigo (teste de regressão).
+  - **Áudio click-free reusa TODO o preview existente**: a audição toca o buffer
+    crossfadeado em `set_preview_looping(true)` — **zero mudança na RT thread**. O
+    `AudioSystem::editor_update_loop_audition` é edge-triggered + change-gated
+    (`loop_sig = (start,end,xfade)`): liga/desliga e faz hot-swap sem restart quando a
+    região/crossfade muda. A audição **comanda a preview voice** enquanto ligada —
+    `editor_set_looping` é **guardado** (o toggle Loop principal não pode desligar o
+    loop por baixo) e Play/Stop/Load a **soltam** (limpam `loop_auditioning`).
+    `replace_data` clampa o cursor, então hot-swap de buffer menor (após Snap) é seguro.
+  - **Painel** (`ph2d-panel-audio-editor`) — seção **Loop** nova (`paint_loop.rs`, sob a
+    transport): readout `1.20–3.40s`/`No loop` · **Set Loop** (da seleção) · **Clear** ·
+    **Snap Zero** · **Audition** (toggle) · slider **Crossfade**. Estado em
+    `loop_state.rs` (thread-local, padrão `presets.rs`): 2 persistentes (audition +
+    xfade norm) + 3 intents one-shot + `set_loop_span`/`set_loop_audition` shell→painel.
+    Guardas: Set exige seleção; Clear/Snap/Audition exigem loop (dim + recusa no seam).
+  - **Overlay** — `draw_loop_region` desenha um **frame verde** (`ColorToken::Success`,
+    distinto da banda azul de seleção) marcando o loop.
+  - **Export** carrega o loop do clipe committed pro `WavMeta`, clampado ao buffer
+    exportado.
+  - ⚠️ **LOC dance (HR-18/panel gate):** o `cargo fmt` (style_edition 2024) re-expandiu
+    a chamada nova e estourou `paint.rs` pra 603 → extraí `paint_edit_section` pra
+    `paint_edit.rs` (paint.rs 493). E `apply_event` passou de 200 LOC → extraí
+    `loop_click`. **Meça DEPOIS do fmt** (a memória avisa: fmt re-expande multi-arg).
+  - **Ready-to-smoke:** `PH2D_AUDIO_LOOP_SMOKE=1` (novo em `main.rs` +
+    `editor_loop_smoke`) põe um tom 220 Hz de 2 s no editor com um loop no terço do
+    meio **não-snapado** (endpoints mid-phase = clicaria cru) → abrir o pill Audio
+    Editor mostra os brackets verdes; Audition com Crossfade em 0 vs. default = o A/B
+    click ↔ click-free.
+  - **Aberto (resto do W6):** containers de variação · markers/cue (`cue`/`LIST adtl`) ·
+    force-to-mono · batch LUFS · codec/residência + export OGG/Opus · import por convenção.
 - **Atalhos:** `Ctrl+Z` undo · `Ctrl+Shift+Z` / `Ctrl+Y` redo (roteados ao
   `EditClip` quando o painel WAVE está aberto com clipe carregado).
 - **Fix:** `cpal::Stream` é dropado no `on_close_request`, não no drop-cascade do
@@ -358,11 +410,20 @@ tudo do snapshot. `MAX_FX_PARAMS = 4`: um efeito com 5 params exige subir a
 constante nos dois lados (painel + shell) e criar mais um id de slider.
 
 **Próximo (plano vivo: [`docs/Audio/02_plano_implementacao_completo.md`](Audio/02_plano_implementacao_completo.md)):**
-1. **W3 Bloco 3b** — **FX chain reordenável + presets** (salvar/carregar) +
-   preview A/B, fechando o critério de aceitação do W3.
-2. Resto do DSP do W3: limiter true-peak, gate/expander, de-esser, multibanda,
-   convolução (FFT particionado), chorus/flanger/phaser, tremolo/auto-pan.
-3. Depois: W4 (voz) ∥ W5 (espectral/FFT) → W6 (asset-prep) → W7 (ML).
+1. **W6 — resto do asset-prep** (o bloco de loops acabou de landar): containers de
+   variação (random/round-robin/avoid-repeat) · markers/cue · force-to-mono · batch
+   LUFS · codec/residência + **export OGG/Opus** (1 dep nova → ADR + `deny`) · import
+   por convenção. O essencial (variação, mono, markers, batch LUFS) é DSP puro sem dep.
+2. **Cluster FFT** (compartilha `realfft`/`rustfft`, 1 dep + 1 ADR): **reverb por
+   convolução** (fecha os efeitos do W3) · **W5 espectral** (spectrograma, repair,
+   denoise) · **W4 pitch/formant** (PSOLA/phase-vocoder clean-room).
+3. **W4 voz** (parte não-FFT): de-hum, de-click/de-crackle, de-plosive, leveler/AGC.
+4. **W7 ML** (opt-in, feature `audio-ml`): DeepFilterNet, Demucs.
+
+**Dívida sinalizada:** `snapshot.rs` do painel está **600/600** (no teto). O estado da
+FX-chain deveria sair pra um irmão `fx_chain.rs` **antes** do próximo bloco que mexa em
+`snapshot.rs`. Este bloco não tocou lá (o estado de loop foi pra `loop_state.rs`), então
+não bloqueou — mas fica anotado.
 
 **Protocolo (Modo L):** trabalhe e comite **nesta linha** (`git commit
 --no-verify`), **sem push**. Você **não integra nem faz ship** — fecha, escreve o

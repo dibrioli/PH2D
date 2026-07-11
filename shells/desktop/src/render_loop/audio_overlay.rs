@@ -109,6 +109,11 @@ pub(super) fn draw_audio_overlay(
     if let Some((s, e)) = audio.editor_selection() {
         draw_selection(scene, wave, clip.frame_count() as u64, s, e, theme);
     }
+    // Loop brackets (W6) — the region that will be written to the `smpl` chunk and
+    // auditioned click-free. A green frame, distinct from the blue selection band.
+    if let Some((ls, le)) = audio.editor_loop_frames() {
+        draw_loop_region(scene, wave, clip.frame_count() as u64, ls, le, theme);
+    }
     crate::audio::set_wave_view(Some(crate::audio::WaveView {
         rect: wave,
         frames: clip.frame_count() as u64,
@@ -255,4 +260,28 @@ fn draw_selection(scene: &mut VectorScene, area: Rect, total: u64, s: u64, e: u6
     );
     fill_rounded_rect(scene, Rect::new(x0, area.y, 1.0, area.h), 0.0, edge);
     fill_rounded_rect(scene, Rect::new(x1 - 1.0, area.y, 1.0, area.h), 0.0, edge);
+}
+
+/// Draw the loop region `[s, e)` (frames) as a green bracket frame — two vertical
+/// edges joined by thin top + bottom rails — so it reads as the loop span without
+/// obscuring the waveform (unlike the translucent selection band it may overlap).
+fn draw_loop_region(scene: &mut VectorScene, area: Rect, total: u64, s: u64, e: u64, theme: Theme) {
+    if total == 0 || e <= s {
+        return;
+    }
+    let x_of = |f: u64| area.x + (f as f32 / total as f32) * area.w;
+    let x0 = x_of(s);
+    let x1 = x_of(e);
+    let col = resolve(ColorToken::Success, theme);
+    let w = (x1 - x0).max(1.0);
+    // Vertical edges (2 px) + top/bottom rails (2 px) framing the region.
+    fill_rounded_rect(scene, Rect::new(x0, area.y, 2.0, area.h), 0.0, col);
+    fill_rounded_rect(scene, Rect::new(x1 - 2.0, area.y, 2.0, area.h), 0.0, col);
+    fill_rounded_rect(scene, Rect::new(x0, area.y, w, 2.0), 0.0, col);
+    fill_rounded_rect(
+        scene,
+        Rect::new(x0, area.y + area.h - 2.0, w, 2.0),
+        0.0,
+        col,
+    );
 }

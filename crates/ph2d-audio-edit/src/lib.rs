@@ -23,11 +23,13 @@
 //! Plan: `docs/Audio/02_plano_implementacao_completo.md`.
 
 mod fx;
+mod loops;
 mod ops;
 mod peaks;
 mod truepeak;
 
 pub use fx::{Effect, TailEffect};
+pub use loops::crossfaded_loop;
 pub use ops::{
     FadeDir, FadeShape, in_range, in_range_tail, in_range_warm, peak, snap_to_zero_crossing,
 };
@@ -50,6 +52,11 @@ pub struct EditClip {
     peaks: PeakCache,
     /// Selection in **frames**, `start..end`. `None` = nothing selected.
     selection: Option<Range<usize>>,
+    /// Loop region in **frames**, `start..end` (half-open). Metadata, NOT part of
+    /// the undo timeline — it is not sample data, so it survives undo/redo and only
+    /// clamps when an edit shrinks the clip (mirror of `selection`). Drives the
+    /// click-free audition ([`crossfaded_loop`]) and the exported `smpl` chunk.
+    loop_region: Option<Range<usize>>,
     /// Undo timeline — snapshots of `data`; `cursor` is the current one. Cheap:
     /// each snapshot is an `Arc<[f32]>` refcount bump. A fresh clip / `set_data`
     /// resets it; every edit `commit`s a new snapshot (truncating the redo tail).
@@ -72,6 +79,7 @@ impl EditClip {
             data,
             peaks,
             selection: None,
+            loop_region: None,
         }
     }
 
@@ -109,13 +117,19 @@ impl EditClip {
             let end = sel.end.min(frames);
             self.selection = (start < end).then_some(start..end);
         }
+        if let Some(lp) = &self.loop_region {
+            let start = lp.start.min(frames);
+            let end = lp.end.min(frames);
+            self.loop_region = (start < end).then_some(start..end);
+        }
     }
 
     /// Replace the clip and **reset** the undo timeline (the load path — a new
-    /// clip starts a fresh history).
+    /// clip starts a fresh history + a fresh loop).
     pub fn set_data(&mut self, data: SampleData) {
         self.history = vec![data.clone()];
         self.cursor = 0;
+        self.loop_region = None;
         self.install(data);
     }
 
@@ -281,12 +295,63 @@ impl EditClip {
 
     /// Set the selection (frames); an empty or inverted range clears it.
     pub fn set_selection(&mut self, range: Option<Range<usize>>) {
-        self.selection = range.and_then(|r| {
-            let frames = self.frame_count();
-            let start = r.start.min(frames);
-            let end = r.end.min(frames);
-            (start < end).then_some(start..end)
-        });
+        self.selection = range.and_then(|r| self.clamp_frames(r));
+    }
+
+    /// Clamp a frame range to the clip, returning `None` if it collapses.
+    fn clamp_frames(&self, r: Range<usize>) -> Option<Range<usize>> {
+        let frames = self.frame_count();
+        let start = r.start.min(frames);
+        let end = r.end.min(frames);
+        (start < end).then_some(start..end)
+    }
+
+    /// The current loop region (frames), if any. Half-open `start..end`.
+    pub fn loop_region(&self) -> Option<Range<usize>> {
+        self.loop_region.clone()
+    }
+
+    /// Whether a loop region is set.
+    pub fn has_loop(&self) -> bool {
+        self.loop_region.is_some()
+    }
+
+    /// Set the loop region (frames); an empty or inverted range clears it.
+    pub fn set_loop_region(&mut self, range: Option<Range<usize>>) {
+        self.loop_region = range.and_then(|r| self.clamp_frames(r));
+    }
+
+    /// Adopt the current selection as the loop region (no-op with no selection).
+    pub fn set_loop_from_selection(&mut self) {
+        if let Some(sel) = self.selection.clone() {
+            self.loop_region = self.clamp_frames(sel);
+        }
+    }
+
+    /// Clear the loop region.
+    pub fn clear_loop(&mut self) {
+        self.loop_region = None;
+    }
+
+    /// Snap both loop endpoints to the nearest zero crossing within `window` frames
+    /// (per [`snap_to_zero_crossing`]). No-op without a loop, or if the snap would
+    /// collapse the region.
+    pub fn snap_loop_to_zero_crossing(&mut self, window: usize) {
+        if let Some(lp) = self.loop_region.clone() {
+            let start = ops::snap_to_zero_crossing(&self.data, lp.start, window);
+            let end = ops::snap_to_zero_crossing(&self.data, lp.end, window);
+            if start < end {
+                self.loop_region = Some(start..end);
+            }
+        }
+    }
+
+    /// Build the click-free looping buffer for the current loop region with an
+    /// `xfade`-frame pre-loop crossfade — the buffer the shell auditions on repeat.
+    /// `None` when no loop is set.
+    pub fn loop_audition_buffer(&self, xfade: usize) -> Option<SampleData> {
+        let lp = self.loop_region.clone()?;
+        loops::crossfaded_loop(&self.data, lp, xfade)
     }
 
     /// Reduce a visible window to `columns` per-channel min/max pairs.
@@ -498,6 +563,84 @@ mod tests {
         // the result stays byte-identical to applying the op directly.
         let whole = EditClip::new(d.clone());
         assert_eq!(whole.render_effect(fx).samples(), fx.apply(&d).samples());
+    }
+
+    /// Loop metadata: adopted from the selection, survives undo/redo (it is not
+    /// sample data), clamps when an edit shrinks the clip, and clears on a new load.
+    #[test]
+    fn loop_region_is_metadata_that_survives_undo_and_clamps() {
+        let d = SampleData::from_interleaved(vec![0.5; 20_000], AudioFormat::stereo(48_000));
+        let mut clip = EditClip::new(d); // 10_000 frames
+        assert!(!clip.has_loop());
+
+        clip.set_selection(Some(2_000..8_000));
+        clip.set_loop_from_selection();
+        assert_eq!(clip.loop_region(), Some(2_000..8_000));
+
+        // An edit (gain) does NOT disturb the loop, and undo leaves it alone.
+        clip.apply_gain(0.5);
+        assert_eq!(
+            clip.loop_region(),
+            Some(2_000..8_000),
+            "edit keeps the loop"
+        );
+        assert!(clip.undo());
+        assert_eq!(
+            clip.loop_region(),
+            Some(2_000..8_000),
+            "undo keeps the loop"
+        );
+
+        // Trimming to 0..5_000 shrinks the clip → the loop clamps to the new length.
+        clip.set_selection(Some(0..5_000));
+        clip.apply_trim();
+        assert_eq!(clip.frame_count(), 5_000);
+        assert_eq!(
+            clip.loop_region(),
+            Some(2_000..5_000),
+            "loop clamps to the clip"
+        );
+
+        // A new clip clears the loop.
+        clip.set_data(SampleData::from_interleaved(
+            vec![0.0; 1_000],
+            AudioFormat::stereo(48_000),
+        ));
+        assert!(!clip.has_loop(), "load clears the loop");
+    }
+
+    /// Snap moves both endpoints onto zero crossings; the audition buffer is the
+    /// region length and loops without a click.
+    #[test]
+    fn loop_snap_and_audition_buffer() {
+        // A mono sine: zero crossings are dense, so a small window always finds one.
+        let step = std::f32::consts::TAU * 200.0 / 48_000.0;
+        let v: Vec<f32> = (0..4_800).map(|i| (i as f32 * step).sin()).collect();
+        let mut clip = EditClip::new(SampleData::from_interleaved(v, AudioFormat::mono(48_000)));
+        clip.set_selection(Some(1_001..3_099));
+        clip.set_loop_from_selection();
+        clip.snap_loop_to_zero_crossing(64);
+        let lp = clip.loop_region().unwrap();
+        let sample = |f: usize| clip.data().samples()[f];
+        let crosses = |f: usize| f > 0 && (sample(f - 1) <= 0.0) != (sample(f) <= 0.0);
+        assert!(crosses(lp.start), "loop start on a zero crossing");
+        assert!(crosses(lp.end), "loop end on a zero crossing");
+
+        let buf = clip.loop_audition_buffer(256).expect("loop is set");
+        assert_eq!(buf.frame_count(), lp.len());
+        // The crossfade drives the seam down to the source's OWN continuity at the
+        // loop point — `|data[start] − data[start-1]|`, one adjacent-sample step — not
+        // to zero. That is the click-free floor: the wrap becomes the source's natural
+        // `start-1 → start` transition.
+        let natural = (sample(lp.start) - sample(lp.start - 1)).abs();
+        assert!(
+            loops::seam_step(&buf) <= natural + 1e-3,
+            "audition seam {} must reach the natural step {natural}",
+            loops::seam_step(&buf)
+        );
+        // No loop → no audition buffer.
+        clip.clear_loop();
+        assert!(clip.loop_audition_buffer(256).is_none());
     }
 
     #[test]

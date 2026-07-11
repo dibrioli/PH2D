@@ -141,6 +141,11 @@ impl App {
             if let Some(path) = std::env::var_os("PH2D_AUDIO_FILE") {
                 a.play_file(std::path::Path::new(&path));
             }
+            // Stage a ready-to-audition loop in the editor (open the Audio Editor pill
+            // to see it) — the W6 loop-points smoke, no file picking needed.
+            if std::env::var_os("PH2D_AUDIO_LOOP_SMOKE").is_some() {
+                a.editor_loop_smoke();
+            }
         }
         Self {
             window: None,

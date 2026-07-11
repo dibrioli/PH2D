@@ -8,6 +8,7 @@
 //! trick, one level deeper) — this file is the transport, the clip and the edits.
 
 mod fx_rack;
+mod loops;
 
 use super::AudioSystem;
 use ph2d_audio::PlayParams;
@@ -53,6 +54,14 @@ pub(super) struct AudioEditorRuntime {
     fx_head_sig: Option<fx_rack::HeadSig>,
     /// Global A/B: the dry clip sounds/shows/exports while the chain is kept intact.
     fx_bypass: bool,
+    /// Loop audition (W6): `true` iff the preview voice currently holds the
+    /// crossfaded loop buffer rather than the full clip. Any action that reloads the
+    /// preview with something else (Play from start, Stop, Load) clears it;
+    /// [`AudioSystem::editor_update_loop_audition`] is the only place that sets it.
+    loop_auditioning: bool,
+    /// Change-gate for the loop audition — `(start, end, xfade_frames)`. The
+    /// crossfaded buffer is rebuilt only when the region or crossfade actually moved.
+    loop_sig: Option<(usize, usize, usize)>,
 }
 
 impl AudioSystem {
@@ -81,6 +90,8 @@ impl AudioSystem {
             .to_string();
         self.editor.clip = Some(ph2d_audio_edit::EditClip::new(data));
         self.editor.state = EditorTransport::Stopped;
+        self.editor.loop_auditioning = false;
+        self.editor.loop_sig = None;
         self.editor_fx_discard();
     }
 
@@ -127,6 +138,10 @@ impl AudioSystem {
                     {
                         self.editor.state = EditorTransport::Playing;
                         self.editor.started = false;
+                        // The main transport now owns the preview voice — the loop
+                        // audition (if any) no longer holds it.
+                        self.editor.loop_auditioning = false;
+                        self.editor.loop_sig = None;
                     }
                 }
             }
@@ -145,6 +160,8 @@ impl AudioSystem {
     pub(crate) fn editor_stop(&mut self) {
         let _ = self.engine.stop_preview();
         self.editor.state = EditorTransport::Stopped;
+        self.editor.loop_auditioning = false;
+        self.editor.loop_sig = None;
     }
 
     /// Write the loaded clip out to `path` as a 16-bit PCM WAV.
@@ -156,8 +173,39 @@ impl AudioSystem {
         let Some(clip) = self.editor_sounding() else {
             return;
         };
-        match ph2d_audio_encode::write_wav(path, clip.data(), ph2d_audio_encode::BitDepth::Pcm16) {
-            Ok(()) => println!("audio: exported {} (WAV PCM16)", path.display()),
+        // Carry the loop region into the WAV's `smpl` chunk so the loop is sample-exact
+        // on re-import / in a game runtime. The loop is metadata on the COMMITTED clip;
+        // clamp it to the exported buffer (a length-preserving audition keeps the frame
+        // indices, a reverb tail only extends past the loop end).
+        let frames = clip.frame_count() as u32;
+        let loops: Vec<_> = self
+            .editor
+            .clip
+            .as_ref()
+            .and_then(|c| c.loop_region())
+            .and_then(|lp| {
+                let start = (lp.start as u32).min(frames);
+                let end = (lp.end as u32).min(frames);
+                (start < end).then_some(ph2d_audio_encode::LoopRegion { start, end })
+            })
+            .into_iter()
+            .collect();
+        let meta = ph2d_audio_encode::WavMeta { loops };
+        match ph2d_audio_encode::write_wav_with_meta(
+            path,
+            clip.data(),
+            ph2d_audio_encode::BitDepth::Pcm16,
+            &meta,
+        ) {
+            Ok(()) => println!(
+                "audio: exported {} (WAV PCM16{})",
+                path.display(),
+                if meta.loops.is_empty() {
+                    ""
+                } else {
+                    ", smpl loop"
+                }
+            ),
             Err(e) => eprintln!("audio: export failed for {}: {e}", path.display()),
         }
     }
@@ -292,6 +340,11 @@ impl AudioSystem {
     /// Push the Loop toggle to the sounding preview live (so toggling Loop during
     /// playback takes effect immediately). Change-gated so it doesn't flood the ring.
     pub(crate) fn editor_set_looping(&self, looping: bool) {
+        // The loop audition forces looping on the preview; the main Loop toggle must
+        // not reach in and turn it off underneath it.
+        if self.editor.loop_auditioning {
+            return;
+        }
         if self.editor.last_loop.get() != looping {
             self.editor.last_loop.set(looping);
             let _ = self.engine.set_preview_looping(looping);

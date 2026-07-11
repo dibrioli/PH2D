@@ -1,0 +1,146 @@
+//! Loop-region state for the Audio Editor panel (W6 — asset-prep loop points).
+//!
+//! The panel owns only intents + display state; the shell owns the `EditClip` loop
+//! region, the click-free crossfade, and the `smpl` export. Two persistent controls
+//! (Audition toggle + crossfade slider position) and three one-shot intents (Set
+//! from selection · Clear · Snap to zero crossings) the bridge drains each frame.
+//!
+//! Thread-local, like `snapshot`/`presets` — the panel and the shell bridge both run
+//! on the main thread.
+
+use std::cell::Cell;
+
+thread_local! {
+    /// Panel → shell: whether the click-free loop region is auditioning (persistent).
+    static LOOP_AUDITION: Cell<bool> = const { Cell::new(false) };
+    /// Panel → shell: the loop crossfade slider position, normalized `0..1`. The
+    /// shell maps it onto a real crossfade length in ms.
+    static XFADE_NORM: Cell<f32> = const { Cell::new(DEFAULT_XFADE_NORM) };
+    /// Shell → panel: the loop region as `(start_secs, end_secs)` for the readout,
+    /// or `None` when no loop is set. Doubles as the has-loop signal.
+    static LOOP_SPAN: Cell<Option<(f64, f64)>> = const { Cell::new(None) };
+    /// Panel → shell one-shots (drained by the bridge each frame).
+    static SET_LOOP_REQ: Cell<bool> = const { Cell::new(false) };
+    static CLEAR_LOOP_REQ: Cell<bool> = const { Cell::new(false) };
+    static SNAP_LOOP_REQ: Cell<bool> = const { Cell::new(false) };
+}
+
+/// Default crossfade slider position (≈ the shell's mid-length crossfade).
+pub(crate) const DEFAULT_XFADE_NORM: f32 = 0.3; // LITERAL-PX-OK: normalized 0..1 slider default
+
+/// Panel: flip the loop audition on/off.
+pub(crate) fn toggle_loop_audition() {
+    LOOP_AUDITION.with(|c| c.set(!c.get()));
+}
+
+/// Panel → shell: whether the loop is auditioning.
+pub fn loop_audition() -> bool {
+    LOOP_AUDITION.with(Cell::get)
+}
+
+/// Shell → panel: force the audition state (the shell turns it off when the loop is
+/// cleared, so the toggle can't stay lit over nothing).
+pub fn set_loop_audition(on: bool) {
+    LOOP_AUDITION.with(|c| c.set(on));
+}
+
+/// Panel: record the crossfade slider position.
+pub(crate) fn set_xfade_norm(v: f32) {
+    XFADE_NORM.with(|c| c.set(v.clamp(0.0, 1.0)));
+}
+
+/// Panel → shell: the crossfade slider position (`0..1`).
+pub fn xfade_norm() -> f32 {
+    XFADE_NORM.with(Cell::get)
+}
+
+/// Shell → panel: publish the loop region as `(start_secs, end_secs)` (or `None`).
+pub fn set_loop_span(span: Option<(f64, f64)>) {
+    LOOP_SPAN.with(|c| c.set(span));
+}
+
+/// The loop region as `(start_secs, end_secs)`, if any (for the readout).
+pub(crate) fn loop_span() -> Option<(f64, f64)> {
+    LOOP_SPAN.with(Cell::get)
+}
+
+/// Whether a loop region is set (drives the Clear/Snap/Audition enablement).
+pub(crate) fn has_loop() -> bool {
+    LOOP_SPAN.with(|c| c.get().is_some())
+}
+
+/// Panel: arm "set the loop region from the current selection".
+pub(crate) fn request_set_loop() {
+    SET_LOOP_REQ.with(|c| c.set(true));
+}
+
+/// Shell: take the pending set-loop request (one-shot).
+pub fn take_set_loop() -> bool {
+    SET_LOOP_REQ.with(|c| c.replace(false))
+}
+
+/// Panel: arm "clear the loop region".
+pub(crate) fn request_clear_loop() {
+    CLEAR_LOOP_REQ.with(|c| c.set(true));
+}
+
+/// Shell: take the pending clear-loop request (one-shot).
+pub fn take_clear_loop() -> bool {
+    CLEAR_LOOP_REQ.with(|c| c.replace(false))
+}
+
+/// Panel: arm "snap both loop endpoints to zero crossings".
+pub(crate) fn request_snap_loop() {
+    SNAP_LOOP_REQ.with(|c| c.set(true));
+}
+
+/// Shell: take the pending snap-loop request (one-shot).
+pub fn take_snap_loop() -> bool {
+    SNAP_LOOP_REQ.with(|c| c.replace(false))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn audition_toggles_and_the_shell_can_force_it_off() {
+        set_loop_audition(false);
+        toggle_loop_audition();
+        assert!(loop_audition());
+        set_loop_audition(false);
+        assert!(
+            !loop_audition(),
+            "shell can force it off when the loop clears"
+        );
+    }
+
+    #[test]
+    fn span_drives_has_loop_and_the_readout() {
+        set_loop_span(None);
+        assert!(!has_loop());
+        assert_eq!(loop_span(), None);
+        set_loop_span(Some((1.25, 3.5)));
+        assert!(has_loop());
+        assert_eq!(loop_span(), Some((1.25, 3.5)));
+    }
+
+    #[test]
+    fn intents_are_one_shot() {
+        request_set_loop();
+        request_snap_loop();
+        assert!(take_set_loop() && take_snap_loop());
+        assert!(!take_set_loop() && !take_snap_loop());
+        request_clear_loop();
+        assert!(take_clear_loop());
+        assert!(!take_clear_loop());
+    }
+
+    #[test]
+    fn xfade_norm_clamps() {
+        set_xfade_norm(1.4);
+        assert_eq!(xfade_norm(), 1.0);
+        set_xfade_norm(-0.2);
+        assert_eq!(xfade_norm(), 0.0);
+    }
+}

@@ -6,12 +6,10 @@
 //! Ao finalizar (sair do modo Text), os glyphs ficam na cena como formas normais e a
 //! sessão some — o recolor passa a ser por-seleção, in-place (ver [`sync_active_text_style`]).
 
+use ph2d_tool_vector::TextAlign;
 use ph2d_vec_scene::{Paint, StrokeSpec, VecPathId};
 
-use crate::vec_glyph::{resolve_style, text_advance_width, text_to_vec_paths};
-
-/// Entrelinha como múltiplo do tamanho.
-const LINE_SPACING: f64 = 1.2;
+use crate::vec_glyph::{TextLayout, caret_x_offset, resolve_style, text_to_vec_paths};
 
 /// Uma sessão de digitação de texto no canvas (`DrawMode::Text`). O texto vive como
 /// glyphs (`VecPath`s) na cena; esta struct guarda o ponto de inserção e QUAIS paths
@@ -24,6 +22,12 @@ pub(crate) struct VecTextEdit {
     pub size: f64,
     /// Peso da fonte variável (eixo `wght`, ex. 100..900) aplicado ao contorno.
     pub weight: f32,
+    /// Entrelinha como múltiplo do tamanho (leading).
+    pub line_height: f64,
+    /// Espaçamento entre glyphs como fração do tamanho (tracking, em).
+    pub tracking: f64,
+    /// Alinhamento horizontal do bloco (L/C/R) em relação à origem.
+    pub align: TextAlign,
     /// Família de fonte escolhida (`None` = a InterVariable embutida). Resolvida em
     /// `VariableFont` por `vec_font::resolve` a cada regen.
     pub family: Option<String>,
@@ -72,6 +76,9 @@ impl crate::app_state::App {
             origin: world,
             size: self.vec_text_size, // o tamanho corrente do painel (Size slider)
             weight: self.vec_text_weight, // o peso corrente (Weight slider)
+            line_height: self.vec_text_line_height, // entrelinha corrente
+            tracking: self.vec_text_tracking, // tracking corrente
+            align: self.vec_text_align, // alinhamento corrente
             family: self.vec_text_family.clone(), // a família corrente (Font picker)
             fill,
             stroke,
@@ -137,7 +144,7 @@ fn regen_into(scene: &mut ph2d_vec_scene::VecScene, edit: &mut VecTextEdit) {
     let paths = text_to_vec_paths(
         &font,
         &edit.text,
-        edit.size,
+        &layout_of(edit),
         &axes_of(edit),
         edit.origin,
         &edit.fill,
@@ -145,6 +152,16 @@ fn regen_into(scene: &mut ph2d_vec_scene::VecScene, edit: &mut VecTextEdit) {
     );
     for path in paths {
         edit.ids.push(scene.push_path(path));
+    }
+}
+
+/// Os knobs de layout da sessão num `TextLayout` (o que o converter consome).
+fn layout_of(edit: &VecTextEdit) -> TextLayout {
+    TextLayout {
+        size: edit.size,
+        line_height: edit.line_height,
+        tracking: edit.tracking,
+        align: edit.align,
     }
 }
 
@@ -224,6 +241,52 @@ pub(crate) fn apply_text_weight(
     }
 }
 
+/// Aplica a entrelinha vinda do slider Line-height do painel (múltiplo do tamanho):
+/// atualiza o default corrente da shell + a sessão ativa + regenera. Mirror de
+/// [`apply_text_size`].
+pub(crate) fn apply_text_line_height(
+    edit: &mut Option<VecTextEdit>,
+    line_height_field: &mut f64,
+    scene: &mut ph2d_vec_scene::VecScene,
+    line_height: f64,
+) {
+    *line_height_field = line_height;
+    if let Some(edit) = edit.as_mut() {
+        edit.line_height = line_height;
+        regen_into(scene, edit);
+    }
+}
+
+/// Aplica o tracking vindo do slider do painel (fração do tamanho, em): atualiza o
+/// default corrente da shell + a sessão ativa + regenera. Mirror de [`apply_text_size`].
+pub(crate) fn apply_text_tracking(
+    edit: &mut Option<VecTextEdit>,
+    tracking_field: &mut f64,
+    scene: &mut ph2d_vec_scene::VecScene,
+    tracking: f64,
+) {
+    *tracking_field = tracking;
+    if let Some(edit) = edit.as_mut() {
+        edit.tracking = tracking;
+        regen_into(scene, edit);
+    }
+}
+
+/// Aplica o alinhamento (botões L/C/R do painel): atualiza o default corrente da shell
+/// + a sessão ativa + regenera (cada linha se reposiciona). Mirror de [`apply_text_size`].
+pub(crate) fn apply_text_align(
+    edit: &mut Option<VecTextEdit>,
+    align_field: &mut TextAlign,
+    scene: &mut ph2d_vec_scene::VecScene,
+    align: TextAlign,
+) {
+    *align_field = align;
+    if let Some(edit) = edit.as_mut() {
+        edit.align = align;
+        regen_into(scene, edit);
+    }
+}
+
 /// Cicla a família de fonte (botões `<`/`>` do painel) por `dir` (+1/−1): atualiza o
 /// default corrente da shell (`family_field`) e, se há sessão ativa, a família dela +
 /// regenera com a nova fonte. `None` = a InterVariable embutida. Mirror de
@@ -296,8 +359,8 @@ pub(crate) fn caret_of(edit: Option<&VecTextEdit>) -> Option<([f64; 2], [f64; 2]
     let font = crate::vec_font::resolve(edit.family.as_deref());
     let last_line = edit.text.rsplit('\n').next().unwrap_or("");
     let line_idx = edit.text.matches('\n').count();
-    let cx = edit.origin[0] + text_advance_width(&font, last_line, edit.size, &axes_of(edit));
-    let baseline = edit.origin[1] - line_idx as f64 * edit.size * LINE_SPACING;
+    let cx = edit.origin[0] + caret_x_offset(&font, last_line, &layout_of(edit), &axes_of(edit));
+    let baseline = edit.origin[1] - line_idx as f64 * edit.size * edit.line_height;
     Some((
         [cx, baseline - 0.2 * edit.size],
         [cx, baseline + 0.72 * edit.size],
@@ -320,6 +383,9 @@ mod tests {
             origin: [5.0, 2.0],
             size: 1.0,
             weight: 400.0,
+            line_height: 1.2,
+            tracking: 0.0,
+            align: TextAlign::Left,
             family: None,
             fill: Some(black()),
             stroke: None,
@@ -345,6 +411,9 @@ mod tests {
             origin: [0.0, 0.0],
             size: 1.0,
             weight: 400.0,
+            line_height: 1.2,
+            tracking: 0.0,
+            align: TextAlign::Left,
             family: None,
             fill: Some(black()),
             stroke: None,
@@ -367,6 +436,9 @@ mod tests {
             origin: [0.0, 0.0],
             size: 1.0,
             weight: 400.0,
+            line_height: 1.2,
+            tracking: 0.0,
+            align: TextAlign::Left,
             family: None,
             fill: Some(black()),
             stroke: None,

@@ -1048,6 +1048,10 @@ impl crate::App {
             // Text Weight slider (`wght` axis) — updates the active session + the
             // weight a new session starts at.
             let mut pending_vec_text_weight: Option<f32> = None;
+            // Paragraph: line-height (× size), tracking (em), and alignment (L/C/R).
+            let mut pending_vec_text_line_height: Option<f64> = None;
+            let mut pending_vec_text_tracking: Option<f64> = None;
+            let mut pending_vec_text_align: Option<ph2d_tool_vector::TextAlign> = None;
             // Text font-family cycle (`<` = -1 / `>` = +1) from the panel picker.
             let mut pending_vec_font_cycle: Option<i32> = None;
             // Font dropdown option pick — index into `vec_font::pickable_families()`.
@@ -1168,6 +1172,12 @@ impl crate::App {
                                 pending_vec_font_cycle = Some(1);
                             } else if *id == ph2d_editor::ids::VECTOR_TEXT_FONT_IMPORT {
                                 pending_vec_font_import = true;
+                            } else if *id == ph2d_editor::ids::VECTOR_TEXT_ALIGN_LEFT {
+                                pending_vec_text_align = Some(ph2d_tool_vector::TextAlign::Left);
+                            } else if *id == ph2d_editor::ids::VECTOR_TEXT_ALIGN_CENTER {
+                                pending_vec_text_align = Some(ph2d_tool_vector::TextAlign::Center);
+                            } else if *id == ph2d_editor::ids::VECTOR_TEXT_ALIGN_RIGHT {
+                                pending_vec_text_align = Some(ph2d_tool_vector::TextAlign::Right);
                             }
                         }
                         // Transform fields (X/Y/W/H) are numeric SetValue document
@@ -1197,6 +1207,16 @@ impl crate::App {
                                 pending_vec_text_weight = Some(
                                     ph2d_tool_vector::params::slider_to_text_weight(*v as f32)
                                         as f32,
+                                );
+                            } else if *id == ph2d_editor::ids::VECTOR_TEXT_LINE_HEIGHT {
+                                // Track 0..1 → line height (× size); shared mapping.
+                                pending_vec_text_line_height = Some(
+                                    ph2d_tool_vector::params::slider_to_text_line_height(*v as f32),
+                                );
+                            } else if *id == ph2d_editor::ids::VECTOR_TEXT_TRACKING {
+                                // Track 0..1 → tracking (em fraction); shared mapping.
+                                pending_vec_text_tracking = Some(
+                                    ph2d_tool_vector::params::slider_to_text_tracking(*v as f32),
                                 );
                             }
                         }
@@ -1969,6 +1989,30 @@ impl crate::App {
                     weight,
                 );
             }
+            if let Some(lh) = pending_vec_text_line_height {
+                crate::vec_text::apply_text_line_height(
+                    &mut self.vec_text_edit,
+                    &mut self.vec_text_line_height,
+                    vec_scene,
+                    lh,
+                );
+            }
+            if let Some(tr) = pending_vec_text_tracking {
+                crate::vec_text::apply_text_tracking(
+                    &mut self.vec_text_edit,
+                    &mut self.vec_text_tracking,
+                    vec_scene,
+                    tr,
+                );
+            }
+            if let Some(align) = pending_vec_text_align {
+                crate::vec_text::apply_text_align(
+                    &mut self.vec_text_edit,
+                    &mut self.vec_text_align,
+                    vec_scene,
+                    align,
+                );
+            }
             if let Some(dir) = pending_vec_font_cycle {
                 crate::vec_text::cycle_text_font(
                     &mut self.vec_text_edit,
@@ -2204,6 +2248,12 @@ impl crate::App {
             ph2d_panel_vector::set_current_text_font(
                 (self.vec_draw_config.mode == ph2d_tool_vector::DrawMode::Text)
                     .then(|| crate::vec_font::display_name(self.vec_text_family.as_deref())),
+            );
+            // Publica o alinhamento corrente para o painel destacar o botão L/C/R ativo.
+            #[cfg(feature = "panel-vector")]
+            ph2d_panel_vector::set_current_text_align(
+                (self.vec_draw_config.mode == ph2d_tool_vector::DrawMode::Text)
+                    .then_some(self.vec_text_align),
             );
             // Dropdown de fonte: constrói as previews (nome de cada família na fonte
             // dela) SÓ quando o painel pede — i.e. na 1ª abertura do dropdown. Assim o

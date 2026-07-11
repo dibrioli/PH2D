@@ -75,8 +75,8 @@ impl BodyCtx<'_> {
         y + used + self.row_gap
     }
 
-    /// A labelled 3-across segmented button row (Cap / Join).
-    fn segmented3(
+    /// A labelled 3-across segmented button row (Cap / Join / text Align).
+    pub(crate) fn segmented3(
         &mut self,
         label: &str,
         opts: [(ph2d_a11y::NodeId, &str, bool); 3],

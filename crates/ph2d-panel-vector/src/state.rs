@@ -10,7 +10,7 @@
 
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::zones::Rect;
-use ph2d_tool_vector::{VectorStyleSnapshot, VertexType};
+use ph2d_tool_vector::{TextAlign, VectorStyleSnapshot, VertexType};
 use ph2d_vector::BezPath;
 use std::cell::{Cell, RefCell};
 
@@ -56,6 +56,9 @@ thread_local! {
     /// Rótulo da família de fonte corrente do texto (embutida ou do sistema),
     /// publicado pela shell. Exibido entre os botões `<`/`>` do seletor de fonte.
     static CURRENT_TEXT_FONT: RefCell<Option<String>> = const { RefCell::new(None) };
+    /// Alinhamento horizontal corrente do texto (L/C/R), publicado pela shell no modo
+    /// Text — destaca o botão ativo na seção Paragraph. `None` fora do modo Text.
+    static CURRENT_TEXT_ALIGN: Cell<Option<TextAlign>> = const { Cell::new(None) };
     /// Rotation-field accumulator: the angle (degrees) the Angle chip last
     /// reported THIS gesture. `event` emits the DELTA `(current − this)` so the
     /// shell rotates incrementally; reset to 0 by `paint` whenever the field is
@@ -276,6 +279,16 @@ pub fn set_current_text_font(name: Option<String>) {
 /// O rótulo da família de fonte corrente este frame (para o seletor `<` nome `>`).
 pub(crate) fn current_text_font() -> Option<String> {
     CURRENT_TEXT_FONT.with(|c| c.borrow().clone())
+}
+
+/// Publica o alinhamento horizontal corrente do texto (`None` fora do modo Text).
+pub fn set_current_text_align(align: Option<TextAlign>) {
+    CURRENT_TEXT_ALIGN.with(|c| c.set(align));
+}
+
+/// O alinhamento corrente este frame (destaca o botão L/C/R ativo). `None` = default.
+pub(crate) fn current_text_align() -> Option<TextAlign> {
+    CURRENT_TEXT_ALIGN.with(Cell::get)
 }
 
 /// Uma família selecionável no dropdown de fonte, já com o **nome renderizado no

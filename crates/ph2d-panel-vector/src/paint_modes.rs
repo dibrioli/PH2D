@@ -15,12 +15,13 @@ use ph2d_editor_core::widget::{
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ColorToken, Spacing};
-use ph2d_tool_vector::VectorStyleSnapshot;
 use ph2d_tool_vector::params::{
-    DEFAULT_TEXT_SIZE, DEFAULT_TEXT_WEIGHT, DrawMode, arc_degrees_to_slider, radius_to_slider,
-    sides_to_slider, spiral_turns_to_slider, star_inner_to_slider, star_points_to_slider,
-    text_size_to_slider, text_weight_to_slider,
+    DEFAULT_TEXT_LINE_HEIGHT, DEFAULT_TEXT_SIZE, DEFAULT_TEXT_TRACKING, DEFAULT_TEXT_WEIGHT,
+    DrawMode, arc_degrees_to_slider, radius_to_slider, sides_to_slider, spiral_turns_to_slider,
+    star_inner_to_slider, star_points_to_slider, text_line_height_to_slider, text_size_to_slider,
+    text_tracking_to_slider, text_weight_to_slider,
 };
+use ph2d_tool_vector::{TextAlign, VectorStyleSnapshot};
 
 impl BodyCtx<'_> {
     /// Draw-mode grid (Pen / shapes) + the active mode's per-shape sliders.
@@ -233,6 +234,7 @@ impl BodyCtx<'_> {
             y,
         );
         y = self.font_picker_row(y);
+        y = self.paragraph_section(y);
         // Read-only string preview (the active session's text, or a hint when empty).
         y = self.section_label("Text", y);
         let text = state::current_text().unwrap_or_default();
@@ -298,6 +300,71 @@ impl BodyCtx<'_> {
         y += self.row_h + self.row_gap;
         // Import a font file (.ttf/.otf) as the current text font.
         self.action_button(ids::VECTOR_TEXT_FONT_IMPORT, "Import Font...", y)
+    }
+
+    /// Paragraph controls (Text mode): alignment L / C / R + Line-height + Tracking.
+    fn paragraph_section(&mut self, mut y: f32) -> f32 {
+        y = self.section_label("Paragraph", y);
+        let align = state::current_text_align().unwrap_or(TextAlign::Left);
+        y = self.segmented3(
+            "Align",
+            [
+                (
+                    ids::VECTOR_TEXT_ALIGN_LEFT,
+                    "Left",
+                    align == TextAlign::Left,
+                ),
+                (
+                    ids::VECTOR_TEXT_ALIGN_CENTER,
+                    "Center",
+                    align == TextAlign::Center,
+                ),
+                (
+                    ids::VECTOR_TEXT_ALIGN_RIGHT,
+                    "Right",
+                    align == TextAlign::Right,
+                ),
+            ],
+            y,
+        );
+        // Line-height slider (× size).
+        let lh_track = self
+            .store
+            .slider(ids::VECTOR_TEXT_LINE_HEIGHT)
+            .map(|(_, v)| v)
+            .unwrap_or_else(|| text_line_height_to_slider(DEFAULT_TEXT_LINE_HEIGHT));
+        let lh_val = self
+            .store
+            .number_value(ids::VECTOR_TEXT_LINE_HEIGHT_NUM)
+            .unwrap_or(DEFAULT_TEXT_LINE_HEIGHT);
+        y = self.slider_row(
+            "Line height",
+            ids::VECTOR_TEXT_LINE_HEIGHT,
+            ids::VECTOR_TEXT_LINE_HEIGHT_NUM,
+            lh_track,
+            lh_val,
+            &format!("{lh_val:.2}"),
+            y,
+        );
+        // Tracking slider (em fraction).
+        let tr_track = self
+            .store
+            .slider(ids::VECTOR_TEXT_TRACKING)
+            .map(|(_, v)| v)
+            .unwrap_or_else(|| text_tracking_to_slider(DEFAULT_TEXT_TRACKING));
+        let tr_val = self
+            .store
+            .number_value(ids::VECTOR_TEXT_TRACKING_NUM)
+            .unwrap_or(DEFAULT_TEXT_TRACKING);
+        self.slider_row(
+            "Tracking",
+            ids::VECTOR_TEXT_TRACKING,
+            ids::VECTOR_TEXT_TRACKING_NUM,
+            tr_track,
+            tr_val,
+            &format!("{tr_val:.2}"),
+            y,
+        )
     }
 
     /// A small square action button (used by the font-picker `<` / `>`).

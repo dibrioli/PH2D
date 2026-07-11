@@ -164,6 +164,16 @@ pub const VECTOR_TEXT_FONT_IMPORT: NodeId = hash_node_id("vector.text.font_impor
 /// open popover lists every pickable family rendered **in its own outline** (real
 /// style preview). Option clicks route by [`vector_text_font_option_id`].
 pub const VECTOR_TEXT_FONT_DD: NodeId = hash_node_id("vector.text.font_dd");
+/// Paragraph section (Text mode): horizontal alignment L / C / R (segmented, sets
+/// `VecTextEdit::align`), line height (leading, × size) + its chip, and tracking
+/// (letter-spacing, em fraction) + its chip.
+pub const VECTOR_TEXT_ALIGN_LEFT: NodeId = hash_node_id("vector.text.align_left");
+pub const VECTOR_TEXT_ALIGN_CENTER: NodeId = hash_node_id("vector.text.align_center");
+pub const VECTOR_TEXT_ALIGN_RIGHT: NodeId = hash_node_id("vector.text.align_right");
+pub const VECTOR_TEXT_LINE_HEIGHT: NodeId = hash_node_id("vector.text.line_height");
+pub const VECTOR_TEXT_LINE_HEIGHT_NUM: NodeId = hash_node_id("vector.text.line_height_num");
+pub const VECTOR_TEXT_TRACKING: NodeId = hash_node_id("vector.text.tracking");
+pub const VECTOR_TEXT_TRACKING_NUM: NodeId = hash_node_id("vector.text.tracking_num");
 
 /// Stable [`NodeId`] for the `index`-th family row in the open font dropdown
 /// (index into the shell's pickable list `[bundled] ++ imported ++ system`). Runtime

@@ -17,14 +17,17 @@ use ph2d_editor_core::widget::{
 };
 use ph2d_tool_vector::params::{
     ARC_DEGREES_SLIDER_OFFSET, ARC_DEGREES_SLIDER_SCALE, DASH_SLIDER_OFFSET, DASH_SLIDER_SCALE,
-    DEFAULT_TEXT_SIZE, DEFAULT_TEXT_WEIGHT, GAP_DEFAULT, GAP_SLIDER_OFFSET, GAP_SLIDER_SCALE,
-    OPACITY_SLIDER_OFFSET, OPACITY_SLIDER_SCALE, RADIUS_SLIDER_OFFSET, RADIUS_SLIDER_SCALE,
-    SIDES_SLIDER_OFFSET, SIDES_SLIDER_SCALE, SPIRAL_TURNS_SLIDER_OFFSET, SPIRAL_TURNS_SLIDER_SCALE,
-    STAR_INNER_SLIDER_OFFSET, STAR_INNER_SLIDER_SCALE, STAR_POINTS_SLIDER_OFFSET,
-    STAR_POINTS_SLIDER_SCALE, TEXT_SIZE_SLIDER_OFFSET, TEXT_SIZE_SLIDER_SCALE,
+    DEFAULT_TEXT_LINE_HEIGHT, DEFAULT_TEXT_SIZE, DEFAULT_TEXT_TRACKING, DEFAULT_TEXT_WEIGHT,
+    GAP_DEFAULT, GAP_SLIDER_OFFSET, GAP_SLIDER_SCALE, OPACITY_SLIDER_OFFSET, OPACITY_SLIDER_SCALE,
+    RADIUS_SLIDER_OFFSET, RADIUS_SLIDER_SCALE, SIDES_SLIDER_OFFSET, SIDES_SLIDER_SCALE,
+    SPIRAL_TURNS_SLIDER_OFFSET, SPIRAL_TURNS_SLIDER_SCALE, STAR_INNER_SLIDER_OFFSET,
+    STAR_INNER_SLIDER_SCALE, STAR_POINTS_SLIDER_OFFSET, STAR_POINTS_SLIDER_SCALE,
+    TEXT_LINE_HEIGHT_SLIDER_OFFSET, TEXT_LINE_HEIGHT_SLIDER_SCALE, TEXT_SIZE_SLIDER_OFFSET,
+    TEXT_SIZE_SLIDER_SCALE, TEXT_TRACKING_SLIDER_OFFSET, TEXT_TRACKING_SLIDER_SCALE,
     TEXT_WEIGHT_SLIDER_OFFSET, TEXT_WEIGHT_SLIDER_SCALE, WIDTH_SLIDER_OFFSET, WIDTH_SLIDER_SCALE,
     arc_degrees_to_slider, gap_to_slider, radius_to_slider, sides_to_slider,
-    spiral_turns_to_slider, star_inner_to_slider, star_points_to_slider, text_size_to_slider,
+    spiral_turns_to_slider, star_inner_to_slider, star_points_to_slider,
+    text_line_height_to_slider, text_size_to_slider, text_tracking_to_slider,
     text_weight_to_slider,
 };
 use ph2d_tool_vector::{
@@ -246,6 +249,28 @@ fn populate_shape(store: &mut WidgetStore) {
             open: false,
             selected_index: None,
         },
+    );
+    // Paragraph: alignment L / C / R (buttons) + Line-height slider + Tracking slider.
+    button(store, ids::VECTOR_TEXT_ALIGN_LEFT);
+    button(store, ids::VECTOR_TEXT_ALIGN_CENTER);
+    button(store, ids::VECTOR_TEXT_ALIGN_RIGHT);
+    slider_chip(
+        store,
+        ids::VECTOR_TEXT_LINE_HEIGHT,
+        ids::VECTOR_TEXT_LINE_HEIGHT_NUM,
+        text_line_height_to_slider(DEFAULT_TEXT_LINE_HEIGHT),
+        DEFAULT_TEXT_LINE_HEIGHT,
+        TEXT_LINE_HEIGHT_SLIDER_SCALE,
+        TEXT_LINE_HEIGHT_SLIDER_OFFSET,
+    );
+    slider_chip(
+        store,
+        ids::VECTOR_TEXT_TRACKING,
+        ids::VECTOR_TEXT_TRACKING_NUM,
+        text_tracking_to_slider(DEFAULT_TEXT_TRACKING),
+        DEFAULT_TEXT_TRACKING,
+        TEXT_TRACKING_SLIDER_SCALE,
+        TEXT_TRACKING_SLIDER_OFFSET,
     );
 
     populate_transform_fields(store);

@@ -651,6 +651,15 @@ pub(crate) struct App {
     /// Peso (`wght`) que a próxima sessão de texto começa e que o slider Weight do
     /// painel edita. Persiste entre sessões.
     pub(crate) vec_text_weight: f32,
+    /// Entrelinha (múltiplo do tamanho) corrente do texto — slider Line-height do
+    /// painel; persiste entre sessões.
+    pub(crate) vec_text_line_height: f64,
+    /// Tracking (fração do tamanho, em) corrente do texto — slider Tracking do painel;
+    /// persiste entre sessões.
+    pub(crate) vec_text_tracking: f64,
+    /// Alinhamento horizontal corrente do texto (L/C/R) — botões do painel; persiste
+    /// entre sessões.
+    pub(crate) vec_text_align: ph2d_tool_vector::TextAlign,
     /// Família de fonte corrente do texto (`None` = InterVariable embutida). Os botões
     /// `<`/`>` do painel ciclam; persiste entre sessões.
     pub(crate) vec_text_family: Option<String>,

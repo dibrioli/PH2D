@@ -77,6 +77,8 @@ pub(crate) fn apply_event(
                 || id == ids::VECTOR_ARC_DEGREES
                 || id == ids::VECTOR_TEXT_SIZE
                 || id == ids::VECTOR_TEXT_WEIGHT
+                || id == ids::VECTOR_TEXT_LINE_HEIGHT
+                || id == ids::VECTOR_TEXT_TRACKING
                 || id == ids::VECTOR_STROKE_OPACITY
                 || id == ids::VECTOR_FILL_OPACITY
                 || id == ids::VECTOR_DASH
@@ -104,6 +106,8 @@ pub(crate) fn apply_event(
                 || id == ids::VECTOR_SPIRAL_TURNS_NUM
                 || id == ids::VECTOR_TEXT_SIZE_NUM
                 || id == ids::VECTOR_TEXT_WEIGHT_NUM
+                || id == ids::VECTOR_TEXT_LINE_HEIGHT_NUM
+                || id == ids::VECTOR_TEXT_TRACKING_NUM
                 || id == ids::VECTOR_STROKE_OPACITY_NUM
                 || id == ids::VECTOR_FILL_OPACITY_NUM
                 || id == ids::VECTOR_DASH_NUM
@@ -119,74 +123,7 @@ pub(crate) fn apply_event(
         // (sets the mode); Boolean clicks are picked up by the shell drain, which
         // applies the op to the document (they are not Style edits, so the tool
         // ignores them). Same forwarder shape either way.
-        WidgetEvent::Click(id)
-            if id == ids::VECTOR_MODE_SELECT
-                || id == ids::VECTOR_MODE_NODE
-                || id == ids::VECTOR_MODE_PEN
-                || id == ids::VECTOR_MODE_RECT
-                || id == ids::VECTOR_MODE_ELLIPSE
-                || id == ids::VECTOR_MODE_POLYGON
-                || id == ids::VECTOR_MODE_STAR
-                || id == ids::VECTOR_MODE_RRECT
-                || id == ids::VECTOR_MODE_SPIRAL
-                || id == ids::VECTOR_MODE_LINE
-                || id == ids::VECTOR_MODE_ARC
-                || id == ids::VECTOR_MODE_TEXT
-                || id == ids::VECTOR_TEXT_FONT_PREV
-                || id == ids::VECTOR_TEXT_FONT_NEXT
-                || id == ids::VECTOR_TEXT_FONT_IMPORT
-                || id == ids::VECTOR_CAP_BUTT
-                || id == ids::VECTOR_CAP_ROUND
-                || id == ids::VECTOR_CAP_SQUARE
-                || id == ids::VECTOR_JOIN_MITER
-                || id == ids::VECTOR_JOIN_ROUND
-                || id == ids::VECTOR_JOIN_BEVEL
-                || id == ids::VECTOR_VERT_CORNER
-                || id == ids::VECTOR_VERT_SMOOTH
-                || id == ids::VECTOR_VERT_SYMMETRIC
-                || id == ids::VECTOR_VERT_DELETE
-                || id == ids::VECTOR_BOOL_UNION
-                || id == ids::VECTOR_BOOL_SUBTRACT
-                || id == ids::VECTOR_BOOL_INTERSECT
-                || id == ids::VECTOR_BOOL_EXCLUDE
-                || id == ids::VECTOR_COMPOUND_MAKE
-                || id == ids::VECTOR_COMPOUND_RELEASE
-                || id == ids::VECTOR_FILL_RULE_NONZERO
-                || id == ids::VECTOR_FILL_RULE_EVENODD
-                || id == ids::VECTOR_SNAP_OFF
-                || id == ids::VECTOR_SNAP_ON
-                || id == ids::VECTOR_ARRANGE_DUPLICATE
-                || id == ids::VECTOR_ARRANGE_TO_BACK
-                || id == ids::VECTOR_ARRANGE_BACKWARD
-                || id == ids::VECTOR_ARRANGE_FORWARD
-                || id == ids::VECTOR_ARRANGE_TO_FRONT
-                || id == ids::VECTOR_ARRANGE_FLIP_H
-                || id == ids::VECTOR_ARRANGE_FLIP_V
-                || id == ids::VECTOR_ARRANGE_ROTATE_CW
-                || id == ids::VECTOR_ARRANGE_ROTATE_CCW
-                || id == ids::VECTOR_PATH_SMOOTH
-                || id == ids::VECTOR_PATH_SHARPEN
-                || id == ids::VECTOR_PATH_SIMPLIFY
-                || id == ids::VECTOR_PATH_SUBDIVIDE
-                || id == ids::VECTOR_PATH_CLOSE
-                || id == ids::VECTOR_FILL_KIND_SOLID
-                || id == ids::VECTOR_FILL_KIND_LINEAR
-                || id == ids::VECTOR_FILL_KIND_RADIAL
-                || id == ids::VECTOR_FILL_KIND_MULTI
-                || id == ids::VECTOR_GRAD_ADD_POINT
-                || id == ids::VECTOR_GRAD_REMOVE_POINT
-                || id == ids::VECTOR_GRAD_ADD_STOP
-                || id == ids::VECTOR_GRAD_REMOVE_STOP
-                || id == ids::VECTOR_ALIGN_LEFT
-                || id == ids::VECTOR_ALIGN_HCENTER
-                || id == ids::VECTOR_ALIGN_RIGHT
-                || id == ids::VECTOR_ALIGN_TOP
-                || id == ids::VECTOR_ALIGN_VCENTER
-                || id == ids::VECTOR_ALIGN_BOTTOM
-                || id == ids::VECTOR_DISTRIBUTE_H
-                || id == ids::VECTOR_DISTRIBUTE_V
-                || id == ids::VECTOR_PIVOT_EDIT =>
-        {
+        WidgetEvent::Click(id) if forwards_plain_click(id) => {
             seam_reset_button(host, id);
             host.bus_mut()
                 .push(EditorAction::ToolPanelEvent(PanelEvent::Click(id)));
@@ -222,4 +159,80 @@ pub(crate) fn apply_event(
         _ => false,
     };
     EventOutcome::from_bool(consumed)
+}
+
+/// Ids dos botões cujo `Click` o painel apenas ENCAMINHA (`PanelEvent::Click`) para o
+/// shell/tool aplicar (modos, Cap/Join, Vertex, Boolean, Arrange, Fill kind, Align/
+/// Distribute, alinhamento de texto…). Extraído de `apply_event` para caber no teto de
+/// 200 LOC por função dos painéis — a lista só cresce.
+fn forwards_plain_click(id: ph2d_a11y::NodeId) -> bool {
+    id == ids::VECTOR_MODE_SELECT
+        || id == ids::VECTOR_MODE_NODE
+        || id == ids::VECTOR_MODE_PEN
+        || id == ids::VECTOR_MODE_RECT
+        || id == ids::VECTOR_MODE_ELLIPSE
+        || id == ids::VECTOR_MODE_POLYGON
+        || id == ids::VECTOR_MODE_STAR
+        || id == ids::VECTOR_MODE_RRECT
+        || id == ids::VECTOR_MODE_SPIRAL
+        || id == ids::VECTOR_MODE_LINE
+        || id == ids::VECTOR_MODE_ARC
+        || id == ids::VECTOR_MODE_TEXT
+        || id == ids::VECTOR_TEXT_FONT_PREV
+        || id == ids::VECTOR_TEXT_FONT_NEXT
+        || id == ids::VECTOR_TEXT_FONT_IMPORT
+        || id == ids::VECTOR_TEXT_ALIGN_LEFT
+        || id == ids::VECTOR_TEXT_ALIGN_CENTER
+        || id == ids::VECTOR_TEXT_ALIGN_RIGHT
+        || id == ids::VECTOR_CAP_BUTT
+        || id == ids::VECTOR_CAP_ROUND
+        || id == ids::VECTOR_CAP_SQUARE
+        || id == ids::VECTOR_JOIN_MITER
+        || id == ids::VECTOR_JOIN_ROUND
+        || id == ids::VECTOR_JOIN_BEVEL
+        || id == ids::VECTOR_VERT_CORNER
+        || id == ids::VECTOR_VERT_SMOOTH
+        || id == ids::VECTOR_VERT_SYMMETRIC
+        || id == ids::VECTOR_VERT_DELETE
+        || id == ids::VECTOR_BOOL_UNION
+        || id == ids::VECTOR_BOOL_SUBTRACT
+        || id == ids::VECTOR_BOOL_INTERSECT
+        || id == ids::VECTOR_BOOL_EXCLUDE
+        || id == ids::VECTOR_COMPOUND_MAKE
+        || id == ids::VECTOR_COMPOUND_RELEASE
+        || id == ids::VECTOR_FILL_RULE_NONZERO
+        || id == ids::VECTOR_FILL_RULE_EVENODD
+        || id == ids::VECTOR_SNAP_OFF
+        || id == ids::VECTOR_SNAP_ON
+        || id == ids::VECTOR_ARRANGE_DUPLICATE
+        || id == ids::VECTOR_ARRANGE_TO_BACK
+        || id == ids::VECTOR_ARRANGE_BACKWARD
+        || id == ids::VECTOR_ARRANGE_FORWARD
+        || id == ids::VECTOR_ARRANGE_TO_FRONT
+        || id == ids::VECTOR_ARRANGE_FLIP_H
+        || id == ids::VECTOR_ARRANGE_FLIP_V
+        || id == ids::VECTOR_ARRANGE_ROTATE_CW
+        || id == ids::VECTOR_ARRANGE_ROTATE_CCW
+        || id == ids::VECTOR_PATH_SMOOTH
+        || id == ids::VECTOR_PATH_SHARPEN
+        || id == ids::VECTOR_PATH_SIMPLIFY
+        || id == ids::VECTOR_PATH_SUBDIVIDE
+        || id == ids::VECTOR_PATH_CLOSE
+        || id == ids::VECTOR_FILL_KIND_SOLID
+        || id == ids::VECTOR_FILL_KIND_LINEAR
+        || id == ids::VECTOR_FILL_KIND_RADIAL
+        || id == ids::VECTOR_FILL_KIND_MULTI
+        || id == ids::VECTOR_GRAD_ADD_POINT
+        || id == ids::VECTOR_GRAD_REMOVE_POINT
+        || id == ids::VECTOR_GRAD_ADD_STOP
+        || id == ids::VECTOR_GRAD_REMOVE_STOP
+        || id == ids::VECTOR_ALIGN_LEFT
+        || id == ids::VECTOR_ALIGN_HCENTER
+        || id == ids::VECTOR_ALIGN_RIGHT
+        || id == ids::VECTOR_ALIGN_TOP
+        || id == ids::VECTOR_ALIGN_VCENTER
+        || id == ids::VECTOR_ALIGN_BOTTOM
+        || id == ids::VECTOR_DISTRIBUTE_H
+        || id == ids::VECTOR_DISTRIBUTE_V
+        || id == ids::VECTOR_PIVOT_EDIT
 }

@@ -27,7 +27,7 @@ pub mod params;
 pub mod tool;
 
 pub use params::{
-    DrawMode, StrokeCap, StrokeJoin, VectorDrawConfig, VectorStyleSnapshot, VertexType,
+    DrawMode, StrokeCap, StrokeJoin, TextAlign, VectorDrawConfig, VectorStyleSnapshot, VertexType,
     px_to_slider, slider_to_px,
 };
 pub use tool::{

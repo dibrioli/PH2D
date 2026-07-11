@@ -14,9 +14,22 @@
 //! não vetores-tangente. Quad `S–Q–E` sobe pra cúbica com controles absolutos
 //! `S + ⅔(Q−S)` e `E + ⅔(Q−E)`; a cúbica usa `c1`/`c2` diretos.
 
+use ph2d_tool_vector::TextAlign;
 use ph2d_vec_edit::PenStyle;
 use ph2d_vec_scene::{Contour, FillRule, Paint, StrokeSpec, VecPath, VecVertex, VertexKind};
 use ph2d_vector_font::{AxisTag, GlyphOutline, PathCommand, VariableFont};
+
+/// Os knobs de layout de um bloco de texto (tudo o que NÃO é fonte/eixo/cor). Agrupa
+/// tamanho + tipografia num só parâmetro para o converter não estourar o número de
+/// argumentos. `line_height` é múltiplo do tamanho; `tracking` é fração do tamanho (em)
+/// somada entre glyphs; `align` posiciona cada linha em relação à origem (o clique).
+#[derive(Clone, Copy, Debug)]
+pub(crate) struct TextLayout {
+    pub size: f64,
+    pub line_height: f64,
+    pub tracking: f64,
+    pub align: TextAlign,
+}
 
 /// Resolve o Style do Pen (fill/stroke/width em px) no par (fill, stroke) que cada
 /// glyph-path recebe — mesma regra das formas (`shape.rs`): sem preenchimento quando
@@ -32,67 +45,94 @@ pub(crate) fn resolve_style(
     (fill, stroke)
 }
 
-/// Layout linear de uma string em `VecPath`s — um por glyph com contorno, posicionado
-/// pelo avanço horizontal. `font_size` em unidades de world; `axes` são os valores dos
-/// eixos variáveis (ex. `wght`) aplicados ao contorno E ao avanço (métrica muda com o
-/// peso). `\n` desce uma linha (entrelinha 1.2·size). Sem shaping complexo — advance-only.
+/// Layout de uma string em `VecPath`s — um por glyph com contorno. Cada linha (`\n`
+/// separa) é medida e deslocada pelo alinhamento; `tracking` abre/fecha o espaço entre
+/// glyphs; `line_height` (× tamanho) é a entrelinha. `axes` (ex. `wght`) valem no
+/// contorno E no avanço (a métrica muda com o peso). Advance-only, sem shaping complexo.
 #[must_use]
 pub(crate) fn text_to_vec_paths(
     font: &VariableFont,
     text: &str,
-    font_size: f64,
+    layout: &TextLayout,
     axes: &[(AxisTag, f32)],
     origin: [f64; 2],
     fill: &Option<Paint>,
     stroke: &Option<StrokeSpec>,
 ) -> Vec<VecPath> {
-    let upem = f64::from(font.units_per_em().max(1));
-    let scale = font_size / upem;
-    let line_h = font_size * 1.2;
+    let scale = layout.size / f64::from(font.units_per_em().max(1));
+    let line_h = layout.size * layout.line_height;
+    let track_px = layout.size * layout.tracking;
     let mut out = Vec::new();
-    let (mut pen_x, mut pen_y) = (0.0, 0.0);
-    for ch in text.chars() {
-        if ch == '\n' {
-            pen_x = 0.0;
-            pen_y -= line_h; // linhas descem = y menor (world y-up)
-            continue;
+    let mut pen_y = 0.0;
+    for line in text.split('\n') {
+        let width = line_advance(font, line, scale, track_px, axes);
+        let mut pen_x = align_offset(layout.align, width);
+        for ch in line.chars() {
+            let Some(gid) = font.glyph_for_char(ch) else {
+                continue;
+            };
+            let advance = f64::from(font.advance(gid, axes).unwrap_or(0.0)) * scale;
+            if let Ok(outline) = font.outline(gid, axes)
+                && let Some(path) = glyph_to_vec_path(
+                    &outline,
+                    scale,
+                    [origin[0] + pen_x, origin[1] + pen_y],
+                    fill.clone(),
+                    *stroke,
+                )
+            {
+                out.push(path);
+            }
+            pen_x += advance + track_px;
         }
-        let Some(gid) = font.glyph_for_char(ch) else {
-            continue;
-        };
-        let advance = f64::from(font.advance(gid, axes).unwrap_or(0.0));
-        if let Ok(outline) = font.outline(gid, axes)
-            && let Some(path) = glyph_to_vec_path(
-                &outline,
-                scale,
-                [origin[0] + pen_x, origin[1] + pen_y],
-                fill.clone(),
-                *stroke,
-            )
-        {
-            out.push(path);
-        }
-        pen_x += advance * scale;
+        pen_y -= line_h; // linhas descem = y menor (world y-up)
     }
     out
 }
 
-/// Largura de avanço total de uma string (uma linha), em unidades de world. Usada
-/// para centralizar um bloco de texto. `axes` no mesmo `location` do layout (o avanço
-/// muda com o peso), senão o cursor descasa do glyph em pesos não-default.
-#[must_use]
-pub(crate) fn text_advance_width(
+/// Largura visual de UMA linha em world: soma dos avanços + `tracking` entre glyphs
+/// (`n−1` gaps). `axes` no mesmo `location` do layout (o avanço muda com o peso).
+fn line_advance(
     font: &VariableFont,
-    text: &str,
-    font_size: f64,
+    line: &str,
+    scale: f64,
+    track_px: f64,
     axes: &[(AxisTag, f32)],
 ) -> f64 {
-    let scale = font_size / f64::from(font.units_per_em().max(1));
-    text.chars()
-        .filter(|&c| c != '\n')
-        .filter_map(|c| font.glyph_for_char(c))
-        .map(|g| f64::from(font.advance(g, axes).unwrap_or(0.0)) * scale)
-        .sum()
+    let mut width = 0.0;
+    let mut glyphs = 0usize;
+    for ch in line.chars() {
+        if let Some(g) = font.glyph_for_char(ch) {
+            width += f64::from(font.advance(g, axes).unwrap_or(0.0)) * scale;
+            glyphs += 1;
+        }
+    }
+    width + track_px * glyphs.saturating_sub(1) as f64
+}
+
+/// Deslocamento em x da 1ª coluna de uma linha de largura `width`, dado o alinhamento:
+/// esquerda começa na origem, centro a centraliza, direita a termina nela.
+fn align_offset(align: TextAlign, width: f64) -> f64 {
+    match align {
+        TextAlign::Left => 0.0,
+        TextAlign::Center => -width / 2.0,
+        TextAlign::Right => -width,
+    }
+}
+
+/// Deslocamento em x (a partir de `origin.x`) do CURSOR na ponta de `last_line`: o
+/// offset de alinhamento + a largura da linha (com tracking). Usado pelo caret.
+#[must_use]
+pub(crate) fn caret_x_offset(
+    font: &VariableFont,
+    last_line: &str,
+    layout: &TextLayout,
+    axes: &[(AxisTag, f32)],
+) -> f64 {
+    let scale = layout.size / f64::from(font.units_per_em().max(1));
+    let track_px = layout.size * layout.tracking;
+    let width = line_advance(font, last_line, scale, track_px, axes);
+    align_offset(layout.align, width) + width
 }
 
 /// Converte o contorno de um glyph em um `VecPath` compound preenchido. `scale` =
@@ -509,8 +549,14 @@ mod tests {
                 .map(|v| v.anchor[1])
                 .fold(f64::INFINITY, f64::min)
         };
-        let one = text_to_vec_paths(font, "A", 1.0, &[], [0.0, 0.0], &Some(black()), &None);
-        let two = text_to_vec_paths(font, "A\nA", 1.0, &[], [0.0, 0.0], &Some(black()), &None);
+        let lay = TextLayout {
+            size: 1.0,
+            line_height: 1.2,
+            tracking: 0.0,
+            align: TextAlign::Left,
+        };
+        let one = text_to_vec_paths(font, "A", &lay, &[], [0.0, 0.0], &Some(black()), &None);
+        let two = text_to_vec_paths(font, "A\nA", &lay, &[], [0.0, 0.0], &Some(black()), &None);
         assert!(
             min_y(&one) >= -1e-6,
             "linha única: baseline em 0, sem descer"
@@ -518,6 +564,84 @@ mod tests {
         assert!(
             min_y(&two) < -0.5,
             "a 2ª linha desce abaixo da baseline da 1ª"
+        );
+    }
+
+    /// Centralizar uma linha a desloca para a ESQUERDA da origem (o bloco fica
+    /// centrado no ponto de clique); alinhar à direita a termina na origem.
+    #[test]
+    fn alignment_shifts_the_line_horizontally() {
+        let font = VariableFont::new(ph2d_text::inter_variable_ttf().to_vec()).expect("embutida");
+        let min_x = |paths: &[VecPath]| {
+            paths
+                .iter()
+                .flat_map(|p| p.verts.iter())
+                .map(|v| v.anchor[0])
+                .fold(f64::INFINITY, f64::min)
+        };
+        let lay = |align| TextLayout {
+            size: 1.0,
+            line_height: 1.2,
+            tracking: 0.0,
+            align,
+        };
+        let left = text_to_vec_paths(
+            &font,
+            "AA",
+            &lay(TextAlign::Left),
+            &[],
+            [0.0, 0.0],
+            &Some(black()),
+            &None,
+        );
+        let center = text_to_vec_paths(
+            &font,
+            "AA",
+            &lay(TextAlign::Center),
+            &[],
+            [0.0, 0.0],
+            &Some(black()),
+            &None,
+        );
+        let right = text_to_vec_paths(
+            &font,
+            "AA",
+            &lay(TextAlign::Right),
+            &[],
+            [0.0, 0.0],
+            &Some(black()),
+            &None,
+        );
+        assert!(
+            min_x(&center) < min_x(&left),
+            "centralizado começa à esquerda do alinhado à esquerda"
+        );
+        assert!(
+            min_x(&right) < min_x(&center),
+            "à direita começa ainda mais à esquerda (termina na origem)"
+        );
+    }
+
+    /// Tracking positivo abre o espaço entre glyphs, então a mesma string ocupa mais
+    /// largura (o cursor avança mais).
+    #[test]
+    fn positive_tracking_widens_the_line() {
+        let font = VariableFont::new(ph2d_text::inter_variable_ttf().to_vec()).expect("embutida");
+        let base = TextLayout {
+            size: 1.0,
+            line_height: 1.2,
+            tracking: 0.0,
+            align: TextAlign::Left,
+        };
+        let wide = TextLayout {
+            tracking: 0.3,
+            ..base
+        };
+        let narrow = caret_x_offset(&font, "AAA", &base, &[]);
+        let opened = caret_x_offset(&font, "AAA", &wide, &[]);
+        assert!(
+            opened > narrow + 0.5,
+            "tracking abre a linha (0.3·size × 2 gaps)"
         );
     }
 }

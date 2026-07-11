@@ -87,6 +87,70 @@ pub fn text_weight_to_slider(weight: f64) -> f32 {
         .clamp(0.0, 1.0)
 }
 
+/// Text line height (leading) as a MULTIPLE of the glyph size. 1.2 is the common
+/// default; the range spans tight (0.8) to airy (3.0). Shared by the panel (seed +
+/// chip mapping) and the shell drain (track → line height).
+pub const TEXT_LINE_HEIGHT_MIN: f64 = 0.8;
+pub const TEXT_LINE_HEIGHT_MAX: f64 = 3.0;
+/// Default line height for a new text session (1.2× the size).
+pub const DEFAULT_TEXT_LINE_HEIGHT: f64 = 1.2;
+
+/// Affine slider mapping `line_height = track * SCALE + OFFSET` (track `0..=1`).
+pub const TEXT_LINE_HEIGHT_SLIDER_SCALE: f32 = (TEXT_LINE_HEIGHT_MAX - TEXT_LINE_HEIGHT_MIN) as f32;
+pub const TEXT_LINE_HEIGHT_SLIDER_OFFSET: f32 = TEXT_LINE_HEIGHT_MIN as f32;
+
+/// Normalized slider track `0..=1` → line height `MIN..=MAX`.
+#[must_use]
+pub fn slider_to_text_line_height(track: f32) -> f64 {
+    TEXT_LINE_HEIGHT_MIN
+        + f64::from(track.clamp(0.0, 1.0)) * (TEXT_LINE_HEIGHT_MAX - TEXT_LINE_HEIGHT_MIN)
+}
+
+/// Line height → normalized slider track `0..=1` (inverse of [`slider_to_text_line_height`]).
+#[must_use]
+pub fn text_line_height_to_slider(line_height: f64) -> f32 {
+    (((line_height.clamp(TEXT_LINE_HEIGHT_MIN, TEXT_LINE_HEIGHT_MAX) - TEXT_LINE_HEIGHT_MIN)
+        / (TEXT_LINE_HEIGHT_MAX - TEXT_LINE_HEIGHT_MIN)) as f32)
+        .clamp(0.0, 1.0)
+}
+
+/// Text letter-spacing (tracking) as a FRACTION of the glyph size (em), added between
+/// glyphs. 0 = the font's native spacing; negative tightens, positive opens up.
+pub const TEXT_TRACKING_MIN: f64 = -0.1;
+pub const TEXT_TRACKING_MAX: f64 = 0.5;
+/// Default tracking for a new text session (0 = native spacing).
+pub const DEFAULT_TEXT_TRACKING: f64 = 0.0;
+
+/// Affine slider mapping `tracking = track * SCALE + OFFSET` (track `0..=1`).
+pub const TEXT_TRACKING_SLIDER_SCALE: f32 = (TEXT_TRACKING_MAX - TEXT_TRACKING_MIN) as f32;
+pub const TEXT_TRACKING_SLIDER_OFFSET: f32 = TEXT_TRACKING_MIN as f32;
+
+/// Normalized slider track `0..=1` → tracking (em fraction) `MIN..=MAX`.
+#[must_use]
+pub fn slider_to_text_tracking(track: f32) -> f64 {
+    TEXT_TRACKING_MIN + f64::from(track.clamp(0.0, 1.0)) * (TEXT_TRACKING_MAX - TEXT_TRACKING_MIN)
+}
+
+/// Tracking (em fraction) → normalized slider track `0..=1` (inverse of
+/// [`slider_to_text_tracking`]).
+#[must_use]
+pub fn text_tracking_to_slider(tracking: f64) -> f32 {
+    (((tracking.clamp(TEXT_TRACKING_MIN, TEXT_TRACKING_MAX) - TEXT_TRACKING_MIN)
+        / (TEXT_TRACKING_MAX - TEXT_TRACKING_MIN)) as f32)
+        .clamp(0.0, 1.0)
+}
+
+/// Horizontal text alignment for a text block (mirror of the panel's L / C / R row).
+/// `Left` = lines start at the click origin; `Center` = centred on it; `Right` = lines
+/// end at it. Lives in the tool crate (the panel deps this, not the shell).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
+pub enum TextAlign {
+    #[default]
+    Left,
+    Center,
+    Right,
+}
+
 /// The canvas gesture the Vector tool performs (ADR-0108 Fase 1). `Pen` is the
 /// draw + edit-anchor gesture (`PenTool`); the shape modes are drag-to-size
 /// (`ShapeTool`). The tool owns the mode; the docked panel's segmented row sets

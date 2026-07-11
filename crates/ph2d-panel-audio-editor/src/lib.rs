@@ -167,6 +167,12 @@ pub const AEDIT_LOOP_CLEAR: NodeId = hash_node_id("audio_editor_loop_clear");
 /// Loop crossfade length slider (normalized `0..1`; the shell maps it to ms).
 pub const AEDIT_LOOP_XFADE: NodeId = hash_node_id("audio_editor_loop_xfade");
 
+// Markers / cue points (W6) — named timeline points exported to the WAV `cue`+`adtl`.
+/// Add a cue marker at the playhead.
+pub const AEDIT_MARK_ADD: NodeId = hash_node_id("audio_editor_mark_add");
+/// Delete the cue marker nearest the playhead.
+pub const AEDIT_MARK_DEL: NodeId = hash_node_id("audio_editor_mark_del");
+
 /// Parameter slider 0.
 pub const AEDIT_FX_P0: NodeId = hash_node_id("audio_editor_fx_p0");
 /// Parameter slider 1.
@@ -343,12 +349,18 @@ pub use snapshot::{set_fx_kind_defaults, set_fx_kind_names, set_fx_param_views};
 // Loop points + batch + force-mono (W6 asset-prep).
 /// Shell → panel: publish the loop region as `(start_secs, end_secs)` for the readout.
 pub use loop_state::set_loop_span;
+/// Shell → panel: publish the marker count (readout + Del enablement).
+pub use loop_state::set_marker_count;
 /// Shell → panel: publish whether force-mono is engaged (lights the toggle).
 pub use loop_state::set_mono_on;
+/// Panel → shell: whether the user asked to add a marker at the playhead (one-shot).
+pub use loop_state::take_add_marker;
 /// Panel → shell: whether the user asked to batch-normalize a folder (one-shot).
 pub use loop_state::take_batch_lufs;
 /// Panel → shell: whether the user asked to clear the loop (one-shot).
 pub use loop_state::take_clear_loop;
+/// Panel → shell: whether the user asked to delete the nearest marker (one-shot).
+pub use loop_state::take_del_marker;
 /// Panel → shell: whether the user asked to set the loop from the selection (one-shot).
 pub use loop_state::take_set_loop;
 /// Panel → shell: whether the user asked to flip the force-mono toggle (one-shot).

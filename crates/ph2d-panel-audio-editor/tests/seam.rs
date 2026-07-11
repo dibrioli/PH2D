@@ -13,14 +13,14 @@ use ph2d_panel_audio_editor::{
     AEDIT_BATCH_LUFS, AEDIT_FADE_IN, AEDIT_FX_ADD, AEDIT_FX_APPLY, AEDIT_FX_BYPASS,
     AEDIT_FX_CANCEL, AEDIT_FX_DOWN, AEDIT_FX_NEXT, AEDIT_FX_P0, AEDIT_FX_PREV, AEDIT_FX_REMOVE,
     AEDIT_FX_RESET, AEDIT_FX_S0_ON, AEDIT_FX_S1, AEDIT_FX_UP, AEDIT_LOAD, AEDIT_LOOP,
-    AEDIT_LOOP_CLEAR, AEDIT_LOOP_SET, AEDIT_MONO, AEDIT_NORMALIZE, AEDIT_PLAY, AEDIT_PRESET_APPLY,
-    AEDIT_PRESET_LOAD, AEDIT_PRESET_NEXT, AEDIT_PRESET_PREV, AEDIT_PRESET_SAVE, AEDIT_SILENCE,
-    AEDIT_STOP, AEDIT_TRIM, AudioEditCmd, AudioEditorPanel, MAX_FX_STAGES, clear_fx_dirty,
-    fx_bypass, fx_chain, fx_dirty, fx_sel, fx_sel_stage, looping, preset_sel, reset_fx_chain,
-    set_fx_kind_defaults, set_fx_kind_names, set_has_selection, set_loop_span, set_preset_names,
-    take_apply_preset, take_batch_lufs, take_clear_loop, take_edit_cmd, take_load,
-    take_load_preset, take_play_pause, take_save_preset, take_set_loop, take_stop,
-    take_toggle_mono,
+    AEDIT_LOOP_CLEAR, AEDIT_LOOP_SET, AEDIT_MARK_ADD, AEDIT_MARK_DEL, AEDIT_MONO, AEDIT_NORMALIZE,
+    AEDIT_PLAY, AEDIT_PRESET_APPLY, AEDIT_PRESET_LOAD, AEDIT_PRESET_NEXT, AEDIT_PRESET_PREV,
+    AEDIT_PRESET_SAVE, AEDIT_SILENCE, AEDIT_STOP, AEDIT_TRIM, AudioEditCmd, AudioEditorPanel,
+    MAX_FX_STAGES, clear_fx_dirty, fx_bypass, fx_chain, fx_dirty, fx_sel, fx_sel_stage, looping,
+    preset_sel, reset_fx_chain, set_fx_kind_defaults, set_fx_kind_names, set_has_selection,
+    set_loop_span, set_marker_count, set_preset_names, take_add_marker, take_apply_preset,
+    take_batch_lufs, take_clear_loop, take_del_marker, take_edit_cmd, take_load, take_load_preset,
+    take_play_pause, take_save_preset, take_set_loop, take_stop, take_toggle_mono,
 };
 use ph2d_ui_testkit::MockPanelHost;
 
@@ -450,6 +450,29 @@ fn force_mono_toggle_and_batch_lufs_reach_their_intents() {
         "Batch LUFS click never armed the folder-op intent"
     );
     assert!(!take_batch_lufs(), "the intent is one-shot");
+}
+
+/// Markers (W6): Add arms its intent unconditionally; Delete needs some markers to
+/// exist (the shell publishes the count) — the panel dims it and the seam refuses it.
+#[test]
+fn marker_add_fires_and_delete_needs_markers() {
+    let mut host = MockPanelHost::with_panel::<AudioEditorPanel>();
+    let mut state = AudioEditorState;
+    let _ = take_add_marker();
+    let _ = take_del_marker();
+
+    host.apply_panel_event::<AudioEditorPanel>(&mut state, WidgetEvent::Click(AEDIT_MARK_ADD));
+    assert!(take_add_marker(), "Add Marker never armed its intent");
+
+    // No markers yet: Delete is inert.
+    set_marker_count(0);
+    host.apply_panel_event::<AudioEditorPanel>(&mut state, WidgetEvent::Click(AEDIT_MARK_DEL));
+    assert!(!take_del_marker(), "Delete fired with no markers");
+
+    // Once the shell reports markers, Delete comes alive.
+    set_marker_count(2);
+    host.apply_panel_event::<AudioEditorPanel>(&mut state, WidgetEvent::Click(AEDIT_MARK_DEL));
+    assert!(take_del_marker(), "Delete never armed its intent");
 }
 
 /// Clear acts on an EXISTING loop — the shell publishes whether one is set

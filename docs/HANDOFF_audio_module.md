@@ -434,6 +434,35 @@ abaixo é histórico — não re-investigue.
     R 223 Hz) → 2 lanes no overlay; **Force Mono** (toggle) colapsa em 1 e clicar de
     novo volta pra 2. Batch LUFS: clique o botão → escolha uma pasta com WAVs → cópias
     normalizadas em `normalized/`.
+- **W6 Bloco 4 — Markers / cue points (2026-07-11)**. Pontos nomeados na timeline
+  (transição/sync/sustain pro runtime do jogo), exportados nos chunks `cue`+`LIST/adtl`
+  do WAV — **fecha o critério "smpl/cue sobrevivem re-decode"**. Sem dep nova.
+  - **`EditClip`** ganhou `markers: Vec<Marker { frame, name }>` (metadado como o loop:
+    sobrevive undo, clampa/dropa quando um edit encurta o clipe, some no load). Métodos
+    `add_marker` (clamp + insert **ordenado por frame**, no-op se já há um no mesmo
+    frame), `remove_marker_near(frame, window)` (o mais próximo dentro da janela),
+    `clear_markers`. **`lib.rs` estava em 698/700** → extraí os testes pra
+    `src/tests.rs` (`mod tests;`) antes de add o campo (senão estourava).
+  - **Encode (`ph2d-audio-encode`)** — `WavMeta.markers` + chunks `cue ` (posições, id =
+    índice) + `LIST/adtl` `labl` (nomes, casados por id) + `read_markers` (walker RIFF,
+    junta posição↔nome, ordena por frame). Ficam ANTES do `data` (com o smpl); Symphonia
+    ignora os dois. Teste prova cue+adtl round-trip, coexistência com smpl, e áudio
+    decoda. `Marker` do encode = `{frame:u32, name}`; o shell converte.
+  - **Painel** — seção **Markers** nova (`paint_markers_section` em `paint_loop.rs`, sob
+    o Loop): readout `N markers`/`No markers` + **Add Marker** (no playhead) | **Delete**
+    (o mais próximo). Estado em `loop_state.rs` (2 intents one-shot + `marker_count`).
+  - **Shell** (`audio/editor/markers.rs`) — `editor_add_marker` (auto-nome `M{n}` no
+    `editor_playhead_frame`), `editor_del_marker` (nearest, janela ~50 ms),
+    `editor_markers`/`editor_marker_count`. Export carrega os markers pro `WavMeta`.
+  - **Overlay** — `draw_markers`: linha fina **roxa** da régua ao fim da waveform + nome
+    no topo (distinta do loop verde / seleção azul / playhead laranja).
+  - **`apply_event` estourou 200 LOC** de novo → extraí `asset_click` (batch · mono ·
+    markers), como o `loop_click`.
+  - **Ready-to-smoke:** o `PH2D_AUDIO_LOOP_SMOKE=1` agora já vem com 2 markers (M1/M2) —
+    flags roxas visíveis ao abrir o pill; Add põe um no playhead, Delete tira o mais
+    perto, Export grava o `cue`+`adtl`.
+  - **Aberto no W6:** containers de variação (random/round-robin) · export OGG/Opus (dep
+    + ADR) · import por convenção. Rename de marker (in-place TextInput) é follow-up.
 - **Atalhos:** `Ctrl+Z` undo · `Ctrl+Shift+Z` / `Ctrl+Y` redo (roteados ao
   `EditClip` quando o painel WAVE está aberto com clipe carregado).
 - **Fix:** `cpal::Stream` é dropado no `on_close_request`, não no drop-cascade do
@@ -454,10 +483,10 @@ tudo do snapshot. `MAX_FX_PARAMS = 4`: um efeito com 5 params exige subir a
 constante nos dois lados (painel + shell) e criar mais um id de slider.
 
 **Próximo (plano vivo: [`docs/Audio/02_plano_implementacao_completo.md`](Audio/02_plano_implementacao_completo.md)):**
-1. **W6 — resto do asset-prep** (loops + force-mono + batch LUFS já landaram): containers
-   de variação (random/round-robin/avoid-repeat) · markers/cue · codec/residência +
-   **export OGG/Opus** (1 dep nova → ADR + `deny`) · import por convenção. O essencial
-   restante (variação, markers) é DSP/metadado puro sem dep.
+1. **W6 — resto do asset-prep** (loops + force-mono + batch LUFS + markers/cue já
+   landaram): containers de variação (random/round-robin/avoid-repeat) · codec/residência
+   + **export OGG/Opus** (1 dep nova → ADR + `deny`) · import por convenção. O essencial
+   restante (variação) é DSP puro sem dep.
 2. **Cluster FFT** (compartilha `realfft`/`rustfft`, 1 dep + 1 ADR): **reverb por
    convolução** (fecha os efeitos do W3) · **W5 espectral** (spectrograma, repair,
    denoise) · **W4 pitch/formant** (PSOLA/phase-vocoder clean-room).

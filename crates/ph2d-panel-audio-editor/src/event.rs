@@ -6,11 +6,11 @@ use crate::{
     AEDIT_FADE_OUT, AEDIT_FX_ADD, AEDIT_FX_APPLY, AEDIT_FX_BYPASS, AEDIT_FX_CANCEL, AEDIT_FX_DOWN,
     AEDIT_FX_NEXT, AEDIT_FX_PARAMS, AEDIT_FX_PREV, AEDIT_FX_REMOVE, AEDIT_FX_RESET,
     AEDIT_FX_STAGE_ONS, AEDIT_FX_STAGES, AEDIT_FX_UP, AEDIT_GAIN_DOWN, AEDIT_GAIN_UP, AEDIT_INVERT,
-    AEDIT_LOAD, AEDIT_LOOP, AEDIT_LOOP_CLEAR, AEDIT_LOOP_SET, AEDIT_LOOP_XFADE, AEDIT_MONO,
-    AEDIT_NORM_LUFS, AEDIT_NORMALIZE, AEDIT_PLAY, AEDIT_PRESET_APPLY, AEDIT_PRESET_LOAD,
-    AEDIT_PRESET_NEXT, AEDIT_PRESET_PREV, AEDIT_PRESET_SAVE, AEDIT_REDO, AEDIT_REVERSE,
-    AEDIT_SILENCE, AEDIT_STOP, AEDIT_TRIM, AEDIT_UNDO, AudioEditCmd, AudioEditorPanel, loop_state,
-    presets, snapshot,
+    AEDIT_LOAD, AEDIT_LOOP, AEDIT_LOOP_CLEAR, AEDIT_LOOP_SET, AEDIT_LOOP_XFADE, AEDIT_MARK_ADD,
+    AEDIT_MARK_DEL, AEDIT_MONO, AEDIT_NORM_LUFS, AEDIT_NORMALIZE, AEDIT_PLAY, AEDIT_PRESET_APPLY,
+    AEDIT_PRESET_LOAD, AEDIT_PRESET_NEXT, AEDIT_PRESET_PREV, AEDIT_PRESET_SAVE, AEDIT_REDO,
+    AEDIT_REVERSE, AEDIT_SILENCE, AEDIT_STOP, AEDIT_TRIM, AEDIT_UNDO, AudioEditCmd,
+    AudioEditorPanel, loop_state, presets, snapshot,
 };
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::ids;
@@ -35,6 +35,27 @@ fn loop_click(id: NodeId) -> Option<EventOutcome> {
         return Some(EventOutcome::Consumed);
     }
     None
+}
+
+/// W6 asset-prep clicks that arm a `loop_state` intent (Batch LUFS · force-mono toggle ·
+/// add / delete marker). Returns `Some(Consumed)` when handled — extracted, like
+/// [`loop_click`], to keep `apply_event` under the panel fn-LOC cap.
+fn asset_click(id: NodeId) -> Option<EventOutcome> {
+    if id == AEDIT_BATCH_LUFS {
+        loop_state::request_batch_lufs();
+    } else if id == AEDIT_MONO {
+        loop_state::request_toggle_mono();
+    } else if id == AEDIT_MARK_ADD {
+        loop_state::request_add_marker();
+    } else if id == AEDIT_MARK_DEL {
+        // Delete needs some markers (the panel dims it; the seam refuses it too).
+        if loop_state::marker_count() > 0 {
+            loop_state::request_del_marker();
+        }
+    } else {
+        return None;
+    }
+    Some(EventOutcome::Consumed)
 }
 
 pub(crate) fn apply_event(
@@ -74,17 +95,10 @@ pub(crate) fn apply_event(
             snapshot::request_export();
             return EventOutcome::Consumed;
         }
-        // Batch LUFS — a folder op (not tied to the loaded clip); the bridge opens a
-        // folder picker and normalizes every audio file to the target loudness.
-        if id == AEDIT_BATCH_LUFS {
-            loop_state::request_batch_lufs();
-            return EventOutcome::Consumed;
-        }
-        // Force-to-mono — a NON-destructive output toggle (like the fx Bypass); the
-        // shell flips the downmix view without touching the clip.
-        if id == AEDIT_MONO {
-            loop_state::request_toggle_mono();
-            return EventOutcome::Consumed;
+        // W6 asset-prep clicks (Batch LUFS · force-mono toggle · markers) — extracted
+        // so `apply_event` stays under the panel fn-LOC cap.
+        if let Some(outcome) = asset_click(id) {
+            return outcome;
         }
         // Effects rack selector: cycle the SELECTED stage's kind. Its parameters are
         // re-seeded with the new effect's neutral defaults, so the stage is a no-op

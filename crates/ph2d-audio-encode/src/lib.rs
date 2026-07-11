@@ -11,9 +11,9 @@
 //! Canonical RIFF/WAVE: PCM 16-bit, PCM 24-bit, and IEEE-float 32-bit. These
 //! round-trip cleanly through `ph2d-audio-decode` (Symphonia `wav`+`pcm`). The
 //! game asset-prep wave (`docs/Audio/02_plano_implementacao_completo.md` §6) adds
-//! the loop (`smpl`) chunk — [`WavMeta`] carries loop regions that
-//! [`encode_wav_with_meta`] writes and [`read_loop_regions`] reads back. Marker
-//! (`cue`) chunks and Ogg Vorbis / Opus are still to come.
+//! side-car chunks via [`WavMeta`]: loop regions (`smpl`, [`read_loop_regions`]) and
+//! named cue markers (`cue `+`LIST/adtl`, [`read_markers`]), both written by
+//! [`encode_wav_with_meta`]. Ogg Vorbis / Opus are still to come.
 
 use std::io::Write;
 use std::path::Path;
@@ -32,12 +32,23 @@ pub struct LoopRegion {
     pub end: u32,
 }
 
-/// Side-car metadata written alongside the audio (currently loop regions). Empty by
-/// default, so [`encode_wav`] stays byte-for-byte the bare `fmt`+`data` file.
+/// A named cue point for the `cue `+`LIST/adtl` chunks, at frame `frame`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Marker {
+    /// Sample-frame position of the cue point.
+    pub frame: u32,
+    /// Label, written as an `adtl`/`labl` sub-chunk.
+    pub name: String,
+}
+
+/// Side-car metadata written alongside the audio (loop regions + cue markers). Empty
+/// by default, so [`encode_wav`] stays byte-for-byte the bare `fmt`+`data` file.
 #[derive(Debug, Clone, Default)]
 pub struct WavMeta {
-    /// Loop regions for the `smpl` chunk (usually one). None ⇒ no `smpl` chunk.
+    /// Loop regions for the `smpl` chunk (usually one). Empty ⇒ no `smpl` chunk.
     pub loops: Vec<LoopRegion>,
+    /// Cue markers for the `cue `+`LIST/adtl` chunks. Empty ⇒ neither chunk.
+    pub markers: Vec<Marker>,
 }
 
 /// Errors from encoding / writing audio.
@@ -122,13 +133,18 @@ pub fn encode_wav_with_meta(
     // Optional smpl chunk body (header + one record per loop); `None` ⇒ omit it.
     let smpl = (!meta.loops.is_empty()).then(|| smpl_chunk(&meta.loops, format.sample_rate));
     let smpl_total = smpl.as_ref().map_or(0, |b| 8 + b.len()); // 8 = "smpl" + size
+    // Optional cue + LIST/adtl chunks (marker positions + their labels).
+    let cue = (!meta.markers.is_empty()).then(|| cue_chunk(&meta.markers));
+    let adtl = (!meta.markers.is_empty()).then(|| adtl_chunk(&meta.markers));
+    let cue_total = cue.as_ref().map_or(0, |b| 8 + b.len());
+    let adtl_total = adtl.as_ref().map_or(0, |b| 8 + b.len());
 
     // RIFF size covers everything after the 8-byte RIFF header: "WAVE" (4) + fmt
-    // (8+16) + optional smpl (8+n) + data (8+data_len).
-    let riff_len = u32::try_from(4 + 24 + smpl_total + 8 + data_len_usize)
+    // (8+16) + optional smpl / cue / LIST + data (8+data_len).
+    let riff_len = u32::try_from(4 + 24 + smpl_total + cue_total + adtl_total + 8 + data_len_usize)
         .map_err(|_| EncodeError::TooLarge)?;
 
-    let mut v = Vec::with_capacity(44 + smpl_total + data_len_usize);
+    let mut v = Vec::with_capacity(44 + smpl_total + cue_total + adtl_total + data_len_usize);
     v.extend_from_slice(b"RIFF");
     v.extend_from_slice(&riff_len.to_le_bytes());
     v.extend_from_slice(b"WAVE");
@@ -148,6 +164,17 @@ pub fn encode_wav_with_meta(
     // smpl chunk (loop points), if any.
     if let Some(body) = smpl {
         v.extend_from_slice(b"smpl");
+        v.extend_from_slice(&(body.len() as u32).to_le_bytes());
+        v.extend_from_slice(&body);
+    }
+    // cue + LIST/adtl chunks (marker positions + labels), if any.
+    if let Some(body) = cue {
+        v.extend_from_slice(b"cue ");
+        v.extend_from_slice(&(body.len() as u32).to_le_bytes());
+        v.extend_from_slice(&body);
+    }
+    if let Some(body) = adtl {
+        v.extend_from_slice(b"LIST");
         v.extend_from_slice(&(body.len() as u32).to_le_bytes());
         v.extend_from_slice(&body);
     }
@@ -276,6 +303,124 @@ fn parse_smpl(body: &[u8]) -> Vec<LoopRegion> {
     out
 }
 
+/// Bytes per cue point in a `cue ` chunk (6 × u32).
+const CUE_POINT_LEN: usize = 24;
+
+/// Build the body of a `cue ` chunk: a count then one 24-byte record per marker. Each
+/// cue point's identifier is its index (matched to a label in the `adtl` chunk) and
+/// its `dwSampleOffset` (+ `dwPosition`) is the marker frame.
+fn cue_chunk(markers: &[Marker]) -> Vec<u8> {
+    let mut b = Vec::with_capacity(4 + markers.len() * CUE_POINT_LEN);
+    b.extend_from_slice(&(markers.len() as u32).to_le_bytes()); // dwCuePoints
+    for (i, m) in markers.iter().enumerate() {
+        b.extend_from_slice(&(i as u32).to_le_bytes()); // dwName (identifier)
+        b.extend_from_slice(&m.frame.to_le_bytes()); // dwPosition (play order)
+        b.extend_from_slice(b"data"); // fccChunk — the cue is into the data chunk
+        b.extend_from_slice(&0u32.to_le_bytes()); // dwChunkStart
+        b.extend_from_slice(&0u32.to_le_bytes()); // dwBlockStart
+        b.extend_from_slice(&m.frame.to_le_bytes()); // dwSampleOffset (the frame)
+    }
+    b
+}
+
+/// Build the body of a `LIST` chunk of type `adtl` (associated data): one `labl`
+/// sub-chunk per marker carrying its cue-point id + null-terminated name.
+fn adtl_chunk(markers: &[Marker]) -> Vec<u8> {
+    let mut b = Vec::new();
+    b.extend_from_slice(b"adtl");
+    for (i, m) in markers.iter().enumerate() {
+        let name = m.name.as_bytes();
+        let labl_size = 4 + name.len() + 1; // dwCuePointID + text + null
+        b.extend_from_slice(b"labl");
+        b.extend_from_slice(&(labl_size as u32).to_le_bytes());
+        b.extend_from_slice(&(i as u32).to_le_bytes()); // dwCuePointID
+        b.extend_from_slice(name);
+        b.push(0); // null terminator
+        if labl_size % 2 == 1 {
+            b.push(0); // pad each sub-chunk to an even length
+        }
+    }
+    b
+}
+
+/// Read cue markers back from an encoded WAV — joins the `cue ` positions with their
+/// `adtl`/`labl` names by cue-point id. Walks the RIFF chunk list directly (the audio
+/// decoder ignores both). Returns markers sorted by frame; empty if there are none.
+pub fn read_markers(bytes: &[u8]) -> Vec<Marker> {
+    if bytes.len() < 12 || &bytes[0..4] != b"RIFF" || &bytes[8..12] != b"WAVE" {
+        return Vec::new();
+    }
+    let u32_at =
+        |o: usize| u32::from_le_bytes([bytes[o], bytes[o + 1], bytes[o + 2], bytes[o + 3]]);
+    let mut positions: Vec<(u32, u32)> = Vec::new(); // (id, frame)
+    let mut labels: std::collections::HashMap<u32, String> = std::collections::HashMap::new();
+    let mut pos = 12;
+    while pos + 8 <= bytes.len() {
+        let id = &bytes[pos..pos + 4];
+        let size = u32_at(pos + 4) as usize;
+        let body = pos + 8;
+        if body + size > bytes.len() {
+            break;
+        }
+        if id == b"cue " {
+            positions = parse_cue(&bytes[body..body + size]);
+        } else if id == b"LIST" && size >= 4 && &bytes[body..body + 4] == b"adtl" {
+            labels = parse_adtl(&bytes[body..body + size]);
+        }
+        pos = body + size + (size & 1);
+    }
+    let mut out: Vec<Marker> = positions
+        .into_iter()
+        .map(|(id, frame)| Marker {
+            frame,
+            name: labels.get(&id).cloned().unwrap_or_default(),
+        })
+        .collect();
+    out.sort_by_key(|m| m.frame);
+    out
+}
+
+/// Parse a `cue ` chunk body into `(id, sample_offset)` pairs.
+fn parse_cue(body: &[u8]) -> Vec<(u32, u32)> {
+    if body.len() < 4 {
+        return Vec::new();
+    }
+    let u32_at = |o: usize| u32::from_le_bytes([body[o], body[o + 1], body[o + 2], body[o + 3]]);
+    let n = u32_at(0) as usize;
+    let mut out = Vec::with_capacity(n);
+    for i in 0..n {
+        let base = 4 + i * CUE_POINT_LEN;
+        if base + CUE_POINT_LEN > body.len() {
+            break;
+        }
+        out.push((u32_at(base), u32_at(base + 20))); // id, dwSampleOffset
+    }
+    out
+}
+
+/// Parse a `LIST/adtl` chunk body into `id → label`.
+fn parse_adtl(body: &[u8]) -> std::collections::HashMap<u32, String> {
+    let mut map = std::collections::HashMap::new();
+    let u32_at = |o: usize| u32::from_le_bytes([body[o], body[o + 1], body[o + 2], body[o + 3]]);
+    let mut pos = 4; // skip the "adtl" tag
+    while pos + 8 <= body.len() {
+        let sub_id = &body[pos..pos + 4];
+        let sub_size = u32_at(pos + 4) as usize;
+        let sub_body = pos + 8;
+        if sub_body + sub_size > body.len() {
+            break;
+        }
+        if sub_id == b"labl" && sub_size >= 4 {
+            let id = u32_at(sub_body);
+            let text = &body[sub_body + 4..sub_body + sub_size];
+            let end = text.iter().position(|&b| b == 0).unwrap_or(text.len());
+            map.insert(id, String::from_utf8_lossy(&text[..end]).into_owned());
+        }
+        pos = sub_body + sub_size + (sub_size & 1);
+    }
+    map
+}
+
 /// Quantise a `[-1.0, 1.0]` sample to signed 16-bit (round-to-nearest, clamped).
 #[inline]
 fn sample_to_i16(s: Sample) -> i16 {
@@ -362,6 +507,7 @@ mod tests {
                 start: 100,
                 end: 400,
             }],
+            ..Default::default()
         };
 
         let bytes = encode_wav_with_meta(&src, BitDepth::Pcm16, &meta).expect("encode");
@@ -378,6 +524,66 @@ mod tests {
             "smpl must not corrupt the audio"
         );
         assert_eq!(audio.format().channels, ChannelLayout::Stereo);
+    }
+
+    #[test]
+    fn cue_markers_round_trip_and_audio_still_decodes() {
+        let src = SampleData::from_interleaved(vec![0.0; 2_000], AudioFormat::stereo(48_000));
+        let meta = WavMeta {
+            loops: Vec::new(),
+            markers: vec![
+                Marker {
+                    frame: 100,
+                    name: "intro".to_string(),
+                },
+                Marker {
+                    frame: 500,
+                    name: "hit".to_string(),
+                },
+            ],
+        };
+        let bytes = encode_wav_with_meta(&src, BitDepth::Pcm16, &meta).expect("encode");
+
+        // Markers (position + label) round-trip, sorted by frame.
+        assert_eq!(
+            read_markers(&bytes),
+            meta.markers,
+            "cue+adtl must round-trip"
+        );
+        // Symphonia ignores the cue + LIST chunks and still decodes the audio.
+        let audio = ph2d_audio_decode::decode(&bytes).expect("decode with cue/LIST present");
+        assert_eq!(
+            audio.frame_count(),
+            1_000,
+            "markers must not corrupt the audio"
+        );
+    }
+
+    #[test]
+    fn loops_and_markers_coexist_in_one_file() {
+        let src = SampleData::from_interleaved(vec![0.1; 40], AudioFormat::mono(48_000));
+        let meta = WavMeta {
+            loops: vec![LoopRegion { start: 4, end: 30 }],
+            markers: vec![Marker {
+                frame: 12,
+                name: "M".to_string(),
+            }],
+        };
+        let bytes = encode_wav_with_meta(&src, BitDepth::Float32, &meta).unwrap();
+        assert_eq!(
+            read_loop_regions(&bytes),
+            meta.loops,
+            "smpl survives alongside cue"
+        );
+        assert_eq!(
+            read_markers(&bytes),
+            meta.markers,
+            "cue survives alongside smpl"
+        );
+        assert!(
+            ph2d_audio_decode::decode(&bytes).is_ok(),
+            "audio still decodes"
+        );
     }
 
     #[test]
@@ -404,6 +610,7 @@ mod tests {
                 LoopRegion { start: 2, end: 8 },
                 LoopRegion { start: 9, end: 15 },
             ],
+            ..Default::default()
         };
         let bytes = encode_wav_with_meta(&src, BitDepth::Float32, &meta).unwrap();
         assert_eq!(

@@ -164,6 +164,18 @@ pub(crate) fn paint(_state: &mut AudioEditorState, ctx: &mut PaintCtx) {
         theme,
         hit_index,
     );
+    // Markers (W6) — named cue points at the playhead, exported to `cue`+`adtl`.
+    let y = crate::paint_loop::paint_markers_section(
+        y,
+        x,
+        w,
+        loaded,
+        ROW_H,
+        scene,
+        text_system,
+        theme,
+        hit_index,
+    );
 
     // Edit ops (W2) — whole-clip, one-shot; each commits an undo step. Then the
     // effects rack. `final_y` is the bottom of the painted content, still carrying

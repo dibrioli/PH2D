@@ -346,6 +346,16 @@ impl crate::App {
                 }
                 audio.editor_loop_live_update();
                 ed::set_loop_span(audio.editor_loop_span());
+
+                // Markers (W6): Add a cue at the playhead / Delete the nearest; publish
+                // the count for the panel readout + Del enablement.
+                if ed::take_add_marker() {
+                    audio.editor_add_marker();
+                }
+                if ed::take_del_marker() {
+                    audio.editor_del_marker();
+                }
+                ed::set_marker_count(audio.editor_marker_count());
             }
         }
         // Coalesced painter Move: stamp the LATEST buffered canvas position ONCE this frame, replacing

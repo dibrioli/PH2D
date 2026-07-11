@@ -128,6 +128,16 @@ pub(super) fn draw_audio_overlay(
     if let Some((ls, le)) = audio.editor_loop_frames() {
         draw_loop_region(scene, wave, clip.frame_count() as u64, ls, le, theme);
     }
+    // Cue markers (W6) — named points written to the `cue`+`adtl` chunks. Purple
+    // flags in the ruler with a thin line down the wave, distinct from every band.
+    draw_markers(
+        scene,
+        text,
+        ruler,
+        wave,
+        clip.frame_count() as u64,
+        &audio.editor_markers(),
+    );
     crate::audio::set_wave_view(Some(crate::audio::WaveView {
         rect: wave,
         ruler,
@@ -331,4 +341,42 @@ fn draw_loop_region(scene: &mut VectorScene, area: Rect, total: u64, s: u64, e: 
         0.0,
         col,
     );
+}
+
+/// Draw cue markers: a thin **purple** line from the ruler down through the waveform,
+/// with the name at the top of the wave — distinct from the loop (green), selection
+/// (blue) and playhead (orange).
+fn draw_markers(
+    scene: &mut VectorScene,
+    text: &mut TextSystem,
+    ruler: Rect,
+    wave: Rect,
+    total: u64,
+    markers: &[(u64, String)],
+) {
+    if total == 0 {
+        return;
+    }
+    // Purple — a shell overlay may use literal colors (the `no_literal_color` gate
+    // scans panels + editor-core, not the shell); mirrors the selection band.
+    let col = ph2d_vector::Color::from_rgba8(198, 140, 246, 230);
+    let lw = 26.0; // LITERAL-PX-OK: marker label box width (chrome)
+    for (frame, name) in markers {
+        let x = wave.x + (*frame as f32 / total as f32).clamp(0.0, 1.0) * wave.w;
+        fill_rounded_rect(
+            scene,
+            Rect::new(x, ruler.y, 1.0, wave.y + wave.h - ruler.y),
+            0.0,
+            col,
+        );
+        let lx = (x + 2.0).min(wave.x + wave.w - lw);
+        paint_text_centered(
+            text,
+            scene,
+            name,
+            Rect::new(lx, wave.y, lw, TypeToken::Xs.px()),
+            TypeToken::Xs.px(),
+            col,
+        );
+    }
 }

@@ -28,6 +28,41 @@ thread_local! {
     static TOGGLE_MONO_REQ: Cell<bool> = const { Cell::new(false) };
     /// Shell → panel: whether force-mono is currently engaged (lights the toggle).
     static MONO_ON: Cell<bool> = const { Cell::new(false) };
+    /// Panel → shell one-shots: add a marker at the playhead / delete the nearest.
+    static ADD_MARKER_REQ: Cell<bool> = const { Cell::new(false) };
+    static DEL_MARKER_REQ: Cell<bool> = const { Cell::new(false) };
+    /// Shell → panel: how many markers exist (for the readout + Del enablement).
+    static MARKER_COUNT: Cell<usize> = const { Cell::new(0) };
+}
+
+/// Panel: arm "add a cue marker at the playhead".
+pub(crate) fn request_add_marker() {
+    ADD_MARKER_REQ.with(|c| c.set(true));
+}
+
+/// Shell: take the pending add-marker request (one-shot).
+pub fn take_add_marker() -> bool {
+    ADD_MARKER_REQ.with(|c| c.replace(false))
+}
+
+/// Panel: arm "delete the marker nearest the playhead".
+pub(crate) fn request_del_marker() {
+    DEL_MARKER_REQ.with(|c| c.set(true));
+}
+
+/// Shell: take the pending delete-marker request (one-shot).
+pub fn take_del_marker() -> bool {
+    DEL_MARKER_REQ.with(|c| c.replace(false))
+}
+
+/// Shell → panel: publish the marker count.
+pub fn set_marker_count(n: usize) {
+    MARKER_COUNT.with(|c| c.set(n));
+}
+
+/// How many markers exist (readout + Del enablement).
+pub(crate) fn marker_count() -> usize {
+    MARKER_COUNT.with(Cell::get)
 }
 
 /// Panel: arm "flip the force-mono output toggle".

@@ -10,6 +10,7 @@
 mod batch;
 mod fx_rack;
 mod loops;
+mod markers;
 
 use super::AudioSystem;
 use ph2d_audio::PlayParams;
@@ -320,7 +321,23 @@ impl AudioSystem {
             })
             .into_iter()
             .collect();
-        let meta = ph2d_audio_encode::WavMeta { loops };
+        // Carry the cue markers too (clamped to the exported buffer).
+        let markers: Vec<_> = self
+            .editor
+            .clip
+            .as_ref()
+            .map(|c| {
+                c.markers()
+                    .iter()
+                    .filter(|m| (m.frame as u32) < frames)
+                    .map(|m| ph2d_audio_encode::Marker {
+                        frame: m.frame as u32,
+                        name: m.name.clone(),
+                    })
+                    .collect()
+            })
+            .unwrap_or_default();
+        let meta = ph2d_audio_encode::WavMeta { loops, markers };
         match ph2d_audio_encode::write_wav_with_meta(
             path,
             clip.data(),

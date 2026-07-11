@@ -12,7 +12,9 @@
 //! (`loop_state::set_loop_span`).
 
 use crate::paint::{ClippedHits, button};
-use crate::{AEDIT_LOOP_CLEAR, AEDIT_LOOP_SET, AEDIT_LOOP_XFADE, loop_state};
+use crate::{
+    AEDIT_LOOP_CLEAR, AEDIT_LOOP_SET, AEDIT_LOOP_XFADE, AEDIT_MARK_ADD, AEDIT_MARK_DEL, loop_state,
+};
 use ph2d_editor_core::paint::{paint_text, paint_text_centered, resolve};
 use ph2d_editor_core::widget::{Slider, SliderOrientation, paint_slider, paint_slider_track};
 use ph2d_editor_core::zones::Rect;
@@ -128,4 +130,81 @@ fn readout() -> String {
         Some((s, e)) => format!("{s:.2}\u{2013}{e:.2}s"),
         None => "No loop".to_string(),
     }
+}
+
+/// The Markers section (W6): a header + count readout, then **Add Marker** (at the
+/// playhead) | **Delete** (nearest). Cue points exported to the WAV `cue`+`adtl` so a
+/// game runtime can react to them. Returns the `y` below it.
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn paint_markers_section(
+    mut y: f32,
+    x: f32,
+    w: f32,
+    loaded: bool,
+    row_h: f32,
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &mut ClippedHits,
+) -> f32 {
+    let gap = Spacing::Sm.px();
+    let count = loop_state::marker_count();
+    let label_h = TypeToken::Xs.px();
+
+    // Header: "Markers" left, count right.
+    paint_text(
+        text_system,
+        scene,
+        "Markers",
+        x,
+        y,
+        label_h,
+        w,
+        resolve(ColorToken::Text2, theme),
+    );
+    let readout = match count {
+        0 => "No markers".to_string(),
+        1 => "1 marker".to_string(),
+        n => format!("{n} markers"),
+    };
+    paint_text_centered(
+        text_system,
+        scene,
+        &readout,
+        Rect::new(x, y, w, label_h),
+        label_h,
+        resolve(
+            if count > 0 {
+                ColorToken::Text1
+            } else {
+                ColorToken::Text2
+            },
+            theme,
+        ),
+    );
+    y += label_h + Spacing::Sm.px();
+
+    // Add (at playhead) | Delete (nearest).
+    let half = ((w - gap) * 0.5).max(1.0);
+    button(
+        Rect::new(x, y, half, row_h),
+        "Add Marker",
+        loaded,
+        AEDIT_MARK_ADD,
+        scene,
+        text_system,
+        theme,
+        hit_index,
+    );
+    button(
+        Rect::new(x + half + gap, y, half, row_h),
+        "Delete",
+        count > 0,
+        AEDIT_MARK_DEL,
+        scene,
+        text_system,
+        theme,
+        hit_index,
+    );
+    y + row_h + Spacing::Md.px()
 }

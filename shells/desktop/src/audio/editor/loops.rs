@@ -202,6 +202,9 @@ impl AudioSystem {
             // Direct, un-snapped region (bypasses the auto-snap in Set) so the
             // crossfade has a real click to remove.
             clip.set_loop_region(Some(frames * 35 / 100..frames * 65 / 100));
+            // A couple of cue markers so the purple flags are visible on load.
+            clip.add_marker(frames / 4, "M1");
+            clip.add_marker(frames * 3 / 4, "M2");
         }
     }
 }

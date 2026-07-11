@@ -23,6 +23,7 @@ pub(crate) mod bgremoval_preview;
 mod color_equalization_bridge;
 mod cooked_texture_bridge;
 mod equalize_sizes_bridge;
+mod flip_pass;
 mod gizmo_prune;
 mod hierarchy;
 mod image_edit;
@@ -421,9 +422,10 @@ impl crate::App {
             vector_scene,
             vec_scene,
             // ADR-0113: cena Flip. A ponte objeto↔entidade é reconciliada todo
-            // frame (abaixo, ao lado do vetor). No W0 é no-op — nenhuma tool cria
-            // objetos ainda; o render entra no W1.
+            // frame (abaixo, ao lado do vetor). O RENDER é no present phase.
             flip,
+            // ADR-0113 W1: o rasterizador é usado no present.rs, não aqui.
+            flip_render: _,
             text_system,
             hero_screen,
             hero_arena,

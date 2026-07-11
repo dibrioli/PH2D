@@ -36,6 +36,7 @@ mod app_state;
 mod atlas_loader;
 mod audio;
 mod cursor_pos;
+mod flip_demo;
 mod flip_entities;
 mod forwarding;
 mod hero_bridge;

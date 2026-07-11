@@ -210,6 +210,8 @@ ph2d-vec-boolean = { path = "../../crates/ph2d-vec-boolean" }
 # ADR-0113: documento do Flip (animação quadro-a-quadro). W0 = dados + ponte ECS
 # (flip_entities) + undo/save; render e tool vêm nas waves seguintes.
 ph2d-flip = { path = "../../crates/ph2d-flip" }
+# ADR-0113 W1: pipeline wgpu dedicado do traço do Flip (passe no present.rs).
+ph2d-flip-render = { path = "../../crates/ph2d-flip-render" }
 ph2d-text = { path = "../../crates/ph2d-text" }
 # bevy_ecs is required as a direct dep so `#[derive(Component)]` can
 # resolve its `::bevy_ecs::*` absolute paths. The shell is the

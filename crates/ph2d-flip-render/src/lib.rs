@@ -21,5 +21,6 @@ mod pipeline;
 
 pub use pack::{
     FLAG_CLOSED, FLAG_END_FLAT, FLAG_START_FLAT, FlipGpuData, GpuPoint, GpuStroke, pack_drawing,
+    pack_drawings,
 };
 pub use pipeline::{CameraRaw, FlipRenderer};

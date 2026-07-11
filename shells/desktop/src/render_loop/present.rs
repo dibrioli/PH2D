@@ -53,6 +53,9 @@ impl crate::App {
             // Motion Nodes M0.T13: read the center split to frame the scene into
             // its sub-rect (set by the bridge earlier this frame).
             hero_screen,
+            // ADR-0113 W1: a cena Flip + o rasterizador do traço (passe 1b abaixo).
+            flip,
+            flip_render,
             ..
         } = gfx;
         let window_size = surface.size();
@@ -122,6 +125,18 @@ impl crate::App {
                     wgpu::Color { r, g, b, a: 1.0 },
                     motion_slice,
                     scene_viewport,
+                );
+                // Pass 1b: Flip strokes (ADR-0113 W1) into `game_rt`, amostrado
+                //   pelo playhead, MESMA câmera dos sprites. LoadOp::Load preserva
+                //   os sprites por baixo. No-op sem objeto Flip (default).
+                super::flip_pass::render(
+                    flip,
+                    flip_render,
+                    &self.playhead,
+                    game_rt,
+                    camera,
+                    window_size,
+                    surface.gpu(),
                 );
                 // Pass 2: AgX tonemap
                 //   target: `tonemap.output_view()` (Bgra8UnormSrgb LDR)

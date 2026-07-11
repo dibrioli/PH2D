@@ -97,29 +97,26 @@ fn stroke_flags(closed: bool, cap: (Cap, Cap)) -> u32 {
     f
 }
 
-/// Empacota um desenho inteiro em `points` + `strokes`. A ordem dos traços é
-/// preservada (é a ordem de z do desenho, fundo → topo).
-#[must_use]
-pub fn pack_drawing(drawing: &FlipDrawing) -> FlipGpuData {
-    let mut points = Vec::new();
-    let mut strokes = Vec::with_capacity(drawing.strokes.len());
-    let mut point_stroke = Vec::new();
-    for (sid, s) in drawing.strokes.iter().enumerate() {
-        let first_point = points.len() as u32;
+/// Anexa os traços de `drawing` aos acumuladores (o `sid` de cada traço é o
+/// índice GLOBAL em `strokes`, então `point_stroke` casa entre desenhos).
+fn append_drawing(g: &mut FlipGpuData, drawing: &FlipDrawing) {
+    for s in &drawing.strokes {
+        let sid = g.strokes.len() as u32;
+        let first_point = g.points.len() as u32;
         let pos = s.positions();
         let w = s.widths();
         let op = s.opacities();
         let col = s.colors();
         for i in 0..pos.len() {
-            points.push(GpuPoint {
+            g.points.push(GpuPoint {
                 pos: [pos[i].x, pos[i].y],
                 width: w[i],
                 opacity: op[i],
                 color: col[i].0,
             });
-            point_stroke.push(sid as u32);
+            g.point_stroke.push(sid);
         }
-        strokes.push(GpuStroke {
+        g.strokes.push(GpuStroke {
             first_point,
             point_count: pos.len() as u32,
             flags: stroke_flags(s.closed, s.cap),
@@ -128,11 +125,27 @@ pub fn pack_drawing(drawing: &FlipDrawing) -> FlipGpuData {
             _pad: [0; 3],
         });
     }
-    FlipGpuData {
-        points,
-        strokes,
-        point_stroke,
+}
+
+/// Empacota um desenho inteiro. A ordem dos traços é preservada (ordem de z do
+/// desenho, fundo → topo).
+#[must_use]
+pub fn pack_drawing(drawing: &FlipDrawing) -> FlipGpuData {
+    let mut g = FlipGpuData::default();
+    append_drawing(&mut g, drawing);
+    g
+}
+
+/// Achata VÁRIOS desenhos ativos (ex.: as camadas de um objeto no quadro atual)
+/// num único buffer, na ordem dada (fundo → topo). O blend/opacity por-camada é
+/// do T1.7 — aqui tudo compõe chapado no mesmo passe.
+#[must_use]
+pub fn pack_drawings(drawings: &[&FlipDrawing]) -> FlipGpuData {
+    let mut g = FlipGpuData::default();
+    for d in drawings {
+        append_drawing(&mut g, d);
     }
+    g
 }
 
 #[cfg(test)]
@@ -210,6 +223,32 @@ mod tests {
         let g = pack_drawing(&FlipDrawing::new());
         assert!(g.is_empty());
         assert_eq!(g.point_count(), 0);
+    }
+
+    #[test]
+    fn pack_drawings_flattens_multiple_with_global_stroke_ids() {
+        // Dois desenhos (ex.: camadas BG+FG ativas): os sids ficam GLOBAIS e
+        // point_stroke casa entre eles.
+        let mut d0 = FlipDrawing::new();
+        let mut s = FlipStroke::new();
+        s.push_default(Vec2::new(0.0, 0.0));
+        s.push_default(Vec2::new(1.0, 0.0));
+        d0.strokes.push(s);
+        let mut d1 = FlipDrawing::new();
+        let mut s = FlipStroke::new();
+        s.push_default(Vec2::new(2.0, 0.0));
+        d1.strokes.push(s);
+
+        let g = pack_drawings(&[&d0, &d1]);
+        assert_eq!(g.strokes.len(), 2, "1 traço de cada desenho");
+        assert_eq!(g.point_count(), 3, "2 + 1 pontos");
+        // Traço 1 (do d1) tem sid GLOBAL 1 e offset 2.
+        assert_eq!(g.strokes[1].first_point, 2);
+        assert_eq!(g.point_stroke, vec![0, 0, 1]);
+        // Vazio no meio não quebra.
+        let empty = FlipDrawing::new();
+        let g2 = pack_drawings(&[&d0, &empty, &d1]);
+        assert_eq!(g2.point_stroke, vec![0, 0, 1]);
     }
 
     #[test]

@@ -4855,6 +4855,7 @@ dependencies = [
  "ph2d-editor",
  "ph2d-eval-motion",
  "ph2d-flip",
+ "ph2d-flip-render",
  "ph2d-gpu",
  "ph2d-host",
  "ph2d-i18n",

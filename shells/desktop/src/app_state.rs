@@ -113,6 +113,9 @@ pub(crate) struct AppGfx {
     /// `FlipObjectRef`, ponte mantida por `flip_entities::sync`. Mirror do
     /// `vec_scene` — document ≠ tool. Guardada no `ProjectState` (undo/save).
     pub(crate) flip: ph2d_flip::FlipDoc,
+    /// ADR-0113 W1: o pipeline wgpu que rasteriza o traço do Flip no `game_rt`
+    /// (HDR), amostrado pelo playhead. Criado 1× (device + formato do game_rt).
+    pub(crate) flip_render: ph2d_flip_render::FlipRenderer,
     /// Motion Nodes runtime state (M0.T8): document + transport + persistent
     /// `Cook` + node registry + reused instance buffer. Cooked per frame by
     /// `render_loop::motion_bridge` while the `motion` tool is active. Mirror of

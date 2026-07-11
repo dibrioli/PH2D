@@ -377,6 +377,11 @@ pub(crate) fn build_initial_state(
         _ => ph2d_vec_scene::VecScene::new(),
     };
 
+    // ADR-0113 W1: rasterizador do traço do Flip, no formato HDR do game_rt.
+    // Criado ANTES do literal (o `surface` é movido pra dentro dele).
+    let flip_render =
+        ph2d_flip_render::FlipRenderer::new(&surface.gpu().device, ph2d_render::GameRt::FORMAT);
+
     let gfx = AppGfx {
         surface,
         renderer,
@@ -399,8 +404,12 @@ pub(crate) fn build_initial_state(
         vector_scene,
         // ADR-0108 Fase 0: `vec_scene` escolhido logo acima (smiley ou grade N).
         vec_scene,
-        // ADR-0113: cena Flip vazia no boot (a tool do W2 cria objetos).
-        flip: ph2d_flip::FlipDoc::new(),
+        // ADR-0113: cena Flip + demo ready-to-smoke (a tool do W2 cria objetos
+        // interativamente; aqui um objeto animado pra abrir e ver na hora).
+        flip: crate::flip_demo::demo_scene(),
+        // ADR-0113 W1: rasterizador do traço, no formato HDR do game_rt (criado
+        // logo acima, antes do literal — `surface` já foi movido aqui).
+        flip_render,
         // Motion Nodes M0.T8: boot state = default grid→transform→clone vertical
         // + full node registry + paused transport (cooked per frame by the bridge).
         // Its instances sample one opaque atlas tile (computed above) so the raw

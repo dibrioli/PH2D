@@ -34,7 +34,11 @@
 //!
 //! Positional per-instance (v1), matching the family: `in`/`pulse`/`state` pair
 //! by row order. Under a uniform clock every row shares one count (a global beat);
-//! per-instance generalises to per-dot pulses for free.
+//! per-instance generalises to per-dot pulses for free. **Known limitation
+//! (matching `pulse.threshold`):** a COUNT CHANGE misaligns the rows — new
+//! instances restart the staircase at 0 while survivors keep theirs, so a
+//! churning stream (the emitter) desyncs a "global" beat. Id-keyed pairing
+//! (as `motion.integrate`/`motion.spring` already do) is the v2 follow-up.
 
 #![forbid(unsafe_code)]
 
@@ -411,5 +415,35 @@ mod tests {
         }
         assert_eq!(count(&state), 0.0);
         assert_eq!(x(&state), 0.0, "no displacement, no panic");
+    }
+
+    /// A STABLE multi-instance stream steps in lockstep under a global beat
+    /// (audit 2026-07-10: every test above uses n = 1, so the positional
+    /// pairing across rows was untested). Three dots, two beats: every row
+    /// carries the same count and the same displacement off its own base.
+    #[test]
+    fn a_stable_multi_instance_stream_steps_in_lockstep() {
+        let p = params(16, LimitMode::Wrap);
+        let three = || {
+            Stream::new(3).with(
+                "P",
+                Column::Vec2(vec![[0.0, 0.0], [10.0, 0.0], [20.0, 0.0]]),
+            )
+        };
+        let fire3 = |v: f32| Stream::new(3).with(PULSE_COL, Column::Scalar(vec![v; 3]));
+        let mut state = Stream::new(3);
+        for _ in 0..2 {
+            state = step(&three(), &fire3(1.0), &state, &p);
+            state = step(&three(), &fire3(0.0), &state, &p);
+        }
+        match state.get(COUNT_COL).unwrap() {
+            Column::Scalar(v) => assert_eq!(v, &vec![2.0; 3], "one count, all rows"),
+            _ => panic!(),
+        }
+        match state.get("P").unwrap() {
+            // count 2 · step 1 off each row's OWN fresh base.
+            Column::Vec2(v) => assert_eq!(v, &vec![[2.0, 0.0], [12.0, 0.0], [22.0, 0.0]]),
+            _ => panic!(),
+        }
     }
 }

@@ -12,18 +12,20 @@
 //!
 //! ```text
 //! rest ──fwd──> integrate.rest                 (the live upstream chain)
-//! integrate.out ──pre──> force₁ ─…─ forceₙ ──fwd──> integrate.state
+//! integrate.out ──pre──> force₁ ─…─ forceₙ ──fwd──> integrate.forces
 //! ```
 //!
-//! With no forces the loop is the plain self-loop `out --pre--> state` (the
-//! editor auto-wires it on add: an input named `state` with the output's type
-//! is the sequential-node convention). At tick 0 the `pre` reads Empty → the
-//! node **seeds** from `rest` (`sim_d = 0`, `vel` = rest's `vel` column or
-//! zero) and nothing moves; from tick 1 on it steps.
+//! With no forces the loop is the plain self-loop `out --pre--> forces` (the
+//! editor auto-wires it on add: the plumbing recognises a feedback input named
+//! `state` OR `forces` with the output's type — `motion_bridge_plumbing.rs`;
+//! this node names it `forces` because the force chain is what plugs in). At
+//! tick 0 the `pre` reads Empty → the node **seeds** from `rest` (`sim_d = 0`,
+//! `vel` = rest's `vel` column or zero) and nothing moves; from tick 1 on it
+//! steps.
 //!
 //! ## Column contract
 //!
-//! - Reads from `state`: `vel`, `sim_d`, `sim_t`, and the transient `accel`
+//! - Reads from `forces`: `vel`, `sim_d`, `sim_t`, and the transient `accel`
 //!   the in-loop forces accumulated. `accel` is **consumed** (never emitted) so
 //!   every tick starts from zero acceleration.
 //! - Emits: every non-sim column copied **live from `rest`** (tint/size/uv/
@@ -91,10 +93,14 @@ pub const MANIFEST: NodeManifest = NodeManifest {
         name: "out",
         ty: INST_VEC2,
     }],
-    // Pure: the tick enters the fingerprint via the consumed `pre` edge (plan
-    // §1.3), and dt is derived from the state's own `sim_t` — not the playhead
-    // directly, so no `Temporal` marking is needed.
-    effect: Effect::Pure,
+    // Temporal: `eval` reads `ctx.playhead()` (it stamps `sim_t` and derives
+    // `dt = playhead − sim_t`), and only a Temporal manifest folds the playhead
+    // into the memo fingerprint. The consumed `pre` edge already forces a
+    // re-cook per tick, which masks this during forward playback — but a
+    // same-tick re-cook at a moved playhead (checkpoint/restore scrub, M2.N2)
+    // would return a stale `sim_t`/trajectory under `Pure`. Convention: reads
+    // playhead ⇒ Temporal (`motion.oscillator`, `pulse.beat`).
+    effect: Effect::Temporal,
     clock: Clock::Frame,
     params: &[],
     lowerings: &[LoweringKind::Cpu],

@@ -344,4 +344,27 @@ mod tests {
             "still arms at rise; the bad fall is ignored"
         );
     }
+
+    /// `Both` fires on the arm AND the disarm crossing — one pulse each way
+    /// (audit 2026-07-10: the third `EdgeDir` was untested). Rise-only and
+    /// Fall-only each see exactly one of the two.
+    #[test]
+    fn the_both_direction_fires_on_arm_and_disarm() {
+        let signal = [0.0, 0.8, 0.1]; // arm at 0.8, disarm at 0.1.
+        let run = |edge: EdgeDir| {
+            let mut state = Stream::new(1);
+            let mut fired = Vec::new();
+            for &v in &signal {
+                let input = Stream::new(1).with("P", Column::Vec2(vec![[0.0, v]]));
+                state = step(&input, &state, 0.5, 0.3, edge, 1);
+                if let Some(Column::Scalar(s)) = state.get(PULSE_COL) {
+                    fired.push(s[0]);
+                }
+            }
+            fired
+        };
+        assert_eq!(run(EdgeDir::Both), vec![0.0, 1.0, 1.0], "both crossings");
+        assert_eq!(run(EdgeDir::Rise), vec![0.0, 1.0, 0.0], "arm only");
+        assert_eq!(run(EdgeDir::Fall), vec![0.0, 0.0, 1.0], "disarm only");
+    }
 }

@@ -262,6 +262,69 @@ mod tests {
         );
     }
 
+    /// The focus field gates the force (audit 2026-07-10: untested until now):
+    /// gustless wind at strength 3 scales per-instance by the `falloff` column
+    /// — 1.0 blows full, 0.25 a quarter, 0.0 not at all.
+    #[test]
+    fn falloff_scales_the_force_per_instance() {
+        static FSRC_MAN: NodeManifest = NodeManifest {
+            id: NodeTypeId::of("force.wind.test.fsrc"),
+            name: "force.wind.test.fsrc",
+            inputs: &[],
+            outputs: &[PortSpec {
+                name: "out",
+                ty: INST_VEC2,
+            }],
+            effect: Effect::Pure,
+            clock: Clock::Frame,
+            params: &[],
+            lowerings: &[LoweringKind::Cpu],
+        };
+        struct FSrc;
+        impl NodeOp for FSrc {
+            fn manifest(&self) -> &'static NodeManifest {
+                &FSRC_MAN
+            }
+            fn eval(&self, ctx: &mut EvalCtx<'_>) {
+                ctx.emit(
+                    Stream::new(3)
+                        .with("P", Column::Vec2(vec![[0.0, 0.0]; 3]))
+                        .with("falloff", Column::Scalar(vec![1.0, 0.25, 0.0])),
+                );
+            }
+        }
+        struct FOps;
+        impl OpResolver for FOps {
+            fn resolve(&self, ty: NodeTypeId) -> Option<&dyn NodeOp> {
+                match ty {
+                    t if t == FSRC_MAN.id => Some(&FSrc),
+                    t if t == MANIFEST.id => Some(&ForceWind),
+                    _ => None,
+                }
+            }
+        }
+        let mut g = Graph::new();
+        let src = g.add_node("force.wind.test.fsrc");
+        let w = g.add_node("force.wind");
+        g.connect(Edge {
+            from: (src, 0),
+            to: (w, 0),
+            delayed: false,
+        })
+        .unwrap();
+        g.set_param(w, "gust", 0.0);
+        g.set_param(w, "strength", 3.0);
+        let mut cook = Cook::new();
+        let out = cook.cook(&g, &FOps, w, 0.0).unwrap();
+        let a = match out[0].as_stream().get("accel").unwrap() {
+            Column::Vec2(v) => v.clone(),
+            _ => panic!("accel"),
+        };
+        assert!((a[0][0] - 3.0).abs() < 1e-5, "full falloff: full strength");
+        assert!((a[1][0] - 0.75).abs() < 1e-5, "quarter falloff: a quarter");
+        assert_eq!(a[2], [0.0, 0.0], "falloff 0: untouched");
+    }
+
     #[test]
     fn registers_and_resolves() {
         let mut reg = NodeRegistry::new();

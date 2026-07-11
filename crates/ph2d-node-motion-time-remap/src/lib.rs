@@ -357,4 +357,88 @@ mod tests {
             other => panic!("expected the input stream verbatim, got {other:?}"),
         }
     }
+
+    /// The SAFETY refusal the editor leans on (audit 2026-07-10 flagged it as
+    /// untested): a sequential node (one fed by a `pre` edge — spring,
+    /// integrate) in the remapper's FORWARD upstream must be detected, so the
+    /// wire is refused instead of the scene going dark at cook time
+    /// (`SequentialInTimeScope`).
+    #[test]
+    fn detects_a_sequential_node_in_the_forward_upstream_only() {
+        use ph2d_nodegraph::graph::{Edge, Graph};
+        let fwd = |from, to| Edge {
+            from: (from, 0),
+            to: (to, 0),
+            delayed: false,
+        };
+
+        // src → spring(⟲ pre self-loop on port 1) → remap: upstream IS
+        // sequential → refused.
+        let mut g = Graph::new();
+        let src = g.add_node("test.src");
+        let spring = g.add_node("test.spring");
+        let remap = g.add_node("motion.time_remap");
+        g.connect(fwd(src, spring)).unwrap();
+        g.connect(Edge {
+            from: (spring, 0),
+            to: (spring, 1),
+            delayed: true,
+        })
+        .unwrap();
+        g.connect(fwd(spring, remap)).unwrap();
+        assert!(
+            scopes_a_sequential_node(&g, remap),
+            "a pre-fed node upstream must be refused"
+        );
+
+        // src → remap → spring(⟲): the sequential node is DOWNSTREAM — the
+        // remapper never rewrites its clock → allowed.
+        let mut g = Graph::new();
+        let src = g.add_node("test.src");
+        let remap = g.add_node("motion.time_remap");
+        let spring = g.add_node("test.spring");
+        g.connect(fwd(src, remap)).unwrap();
+        g.connect(fwd(remap, spring)).unwrap();
+        g.connect(Edge {
+            from: (spring, 0),
+            to: (spring, 1),
+            delayed: true,
+        })
+        .unwrap();
+        assert!(
+            !scopes_a_sequential_node(&g, remap),
+            "downstream sequential nodes are not scoped"
+        );
+
+        // spring(⟲) --pre--> remap: reachable only across a `pre` edge — not a
+        // cook-time dependency, the remapped clock never crosses it → allowed.
+        let mut g = Graph::new();
+        let spring = g.add_node("test.spring");
+        let remap = g.add_node("motion.time_remap");
+        g.connect(Edge {
+            from: (spring, 0),
+            to: (spring, 1),
+            delayed: true,
+        })
+        .unwrap();
+        g.connect(Edge {
+            from: (spring, 0),
+            to: (remap, 0),
+            delayed: true,
+        })
+        .unwrap();
+        assert!(
+            !scopes_a_sequential_node(&g, remap),
+            "a pre edge does not carry the remapped clock upstream"
+        );
+
+        // A purely combinational upstream chain → allowed.
+        let mut g = Graph::new();
+        let src = g.add_node("test.src");
+        let mid = g.add_node("test.mid");
+        let remap = g.add_node("motion.time_remap");
+        g.connect(fwd(src, mid)).unwrap();
+        g.connect(fwd(mid, remap)).unwrap();
+        assert!(!scopes_a_sequential_node(&g, remap));
+    }
 }

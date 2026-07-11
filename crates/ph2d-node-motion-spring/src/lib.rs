@@ -67,9 +67,14 @@ pub const MANIFEST: NodeManifest = NodeManifest {
         name: "out",
         ty: INST_VEC2,
     }],
-    // Pure: the tick enters the fingerprint via the consumed `pre` edge; dt
-    // derives from the state's own `sim_t`.
-    effect: Effect::Pure,
+    // Temporal: `eval` reads `ctx.playhead()` (it stamps `sim_t` and derives
+    // `dt` from it), and only a Temporal manifest folds the playhead into the
+    // memo fingerprint. The consumed `pre` edge already forces a re-cook per
+    // tick, which masks this during forward playback — but a same-tick re-cook
+    // at a moved playhead (checkpoint/restore scrub, M2.N2) would return a
+    // stale trajectory under `Pure`. Convention: reads playhead ⇒ Temporal
+    // (`motion.oscillator`, `pulse.beat`).
+    effect: Effect::Temporal,
     clock: Clock::Frame,
     params: &[
         ParamSpec {
@@ -236,7 +241,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         max: 3.0,
         step: 1.0,
         widget: ParamWidget::Enum {
-            labels: &["X", "Y", "Rot", "Size"],
+            labels: &["X", "Y", "Rotation", "Size"],
         },
     },
     ParamUiHint {

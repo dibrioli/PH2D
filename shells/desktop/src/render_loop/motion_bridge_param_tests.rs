@@ -119,7 +119,8 @@ fn opening_the_picker_does_not_quantize_an_unmoved_colour() {
 
 /// A behaviour's enum / boolean params resolve to NAMED widget rows, not
 /// number sliders: the selected stagger node yields an `Enum` Channel row
-/// (X/Y/Rot/Size), an `Enum` Easing row, and a `Toggle` Reverse row — the
+/// (X/Y/Rotation/Size — one vocabulary across the whole family, audit
+/// 2026-07-10), an `Enum` Easing row, and a `Toggle` Reverse row — the
 /// exact fix the Enio asked for (no memorising slider steps).
 #[test]
 fn stagger_params_are_named_enums_and_a_checkbox() {
@@ -137,7 +138,7 @@ fn stagger_params_are_named_enums_and_a_checkbox() {
             _ => None,
         })
         .expect("channel is a named Enum row, not a slider");
-    assert_eq!(channel.labels, ["X", "Y", "Rot", "Size"]);
+    assert_eq!(channel.labels, ["X", "Y", "Rotation", "Size"]);
     let ease = snap
         .rows
         .iter()

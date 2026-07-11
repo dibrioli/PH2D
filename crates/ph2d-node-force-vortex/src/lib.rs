@@ -254,6 +254,67 @@ mod tests {
         );
     }
 
+    /// The focus field gates the force (audit 2026-07-10: untested until now):
+    /// two instances at the SAME point, one at falloff 0 — only the focused one
+    /// is spun. A vortex ignoring the mask would accelerate both equally.
+    #[test]
+    fn falloff_zero_gates_the_force() {
+        static FSRC_MAN: NodeManifest = NodeManifest {
+            id: NodeTypeId::of("force.vortex.test.fsrc"),
+            name: "force.vortex.test.fsrc",
+            inputs: &[],
+            outputs: &[PortSpec {
+                name: "out",
+                ty: INST_VEC2,
+            }],
+            effect: Effect::Pure,
+            clock: Clock::Frame,
+            params: &[],
+            lowerings: &[LoweringKind::Cpu],
+        };
+        struct FSrc;
+        impl NodeOp for FSrc {
+            fn manifest(&self) -> &'static NodeManifest {
+                &FSRC_MAN
+            }
+            fn eval(&self, ctx: &mut EvalCtx<'_>) {
+                ctx.emit(
+                    Stream::new(2)
+                        .with("P", Column::Vec2(vec![[2.0, 0.0]; 2]))
+                        .with("falloff", Column::Scalar(vec![1.0, 0.0])),
+                );
+            }
+        }
+        struct FOps;
+        impl OpResolver for FOps {
+            fn resolve(&self, ty: NodeTypeId) -> Option<&dyn NodeOp> {
+                match ty {
+                    t if t == FSRC_MAN.id => Some(&FSrc),
+                    t if t == MANIFEST.id => Some(&ForceVortex),
+                    _ => None,
+                }
+            }
+        }
+        let mut g = Graph::new();
+        let src = g.add_node("force.vortex.test.fsrc");
+        let vx = g.add_node("force.vortex");
+        g.connect(Edge {
+            from: (src, 0),
+            to: (vx, 0),
+            delayed: false,
+        })
+        .unwrap();
+        g.set_param(vx, "clockwise", 1.0);
+        let mut cook = Cook::new();
+        let out = cook.cook(&g, &FOps, vx, 0.0).unwrap();
+        let a = match out[0].as_stream().get("accel").unwrap() {
+            Column::Vec2(v) => v.clone(),
+            _ => panic!("accel"),
+        };
+        assert!((a[0][1] + 8.0 / 3.0).abs() < 1e-4, "focused: full spin");
+        assert_eq!(a[1], [0.0, 0.0], "falloff 0: untouched");
+    }
+
     #[test]
     fn registers_and_resolves() {
         let mut reg = NodeRegistry::new();

@@ -13,8 +13,9 @@
 //!   Size a scale delta on the unit identity `[1,1]`.
 //! - `min` (-1), `max` (1): the ramp endpoints (channel-native units).
 //! - `ease_curve` (0): curve family — `0` Linear, `1` Quad, `2` Cubic, `3` Quart,
-//!   `4` Quint, `5` Circ, `6` Back, `7` Bounce (all polynomial →
-//!   transcendental-free, HR-5).
+//!   `4` Quint, `5` Circ, `6` Back, `7` Bounce. All polynomial except Circ,
+//!   which uses IEEE `sqrt` — correctly rounded, so still deterministic (HR-5;
+//!   no transcendentals anywhere).
 //! - `ease_dir` (0): the family's direction — `0` In, `1` Out, `2` In-Out.
 //! - `reverse` (0/1): mirror the ramp (last instance takes `min`).
 //!
@@ -152,7 +153,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         max: 3.0,
         step: 1.0,
         widget: ParamWidget::Enum {
-            labels: &["X", "Y", "Rot", "Size"],
+            labels: &["X", "Y", "Rotation", "Size"],
         },
     },
     ParamUiHint {
@@ -307,6 +308,70 @@ mod tests {
     fn single_instance_takes_min() {
         // n == 1 → raw = 0 → delta = min (no divide-by-zero on `n-1`).
         assert_eq!(stagger_delta(3.0, 9.0, 0, 0, 0.0, 1.0), 3.0);
+    }
+
+    /// The focus field gates the ramp (audit 2026-07-10: untested until now):
+    /// a source that carries `falloff` [1, 0.5, 0] sees the linear 0→2 ramp
+    /// scaled per instance — the masked tail doesn't move at all.
+    #[test]
+    fn falloff_scales_the_ramp_per_instance() {
+        static FSRC_MAN: NodeManifest = NodeManifest {
+            id: NodeTypeId::of("motion.stagger.test.fsrc"),
+            name: "motion.stagger.test.fsrc",
+            inputs: &[],
+            outputs: &[PortSpec {
+                name: "out",
+                ty: INST_VEC2,
+            }],
+            effect: Effect::Pure,
+            clock: Clock::Frame,
+            params: &[],
+            lowerings: &[LoweringKind::Cpu],
+        };
+        struct FSrc;
+        impl NodeOp for FSrc {
+            fn manifest(&self) -> &'static NodeManifest {
+                &FSRC_MAN
+            }
+            fn eval(&self, ctx: &mut EvalCtx<'_>) {
+                ctx.emit(
+                    Stream::new(3)
+                        .with("P", Column::Vec2(vec![[0.0, 0.0]; 3]))
+                        .with("falloff", Column::Scalar(vec![1.0, 0.5, 0.0])),
+                );
+            }
+        }
+        struct FOps;
+        impl OpResolver for FOps {
+            fn resolve(&self, ty: NodeTypeId) -> Option<&dyn NodeOp> {
+                match ty {
+                    t if t == FSRC_MAN.id => Some(&FSrc),
+                    t if t == MANIFEST.id => Some(&MotionStagger),
+                    _ => None,
+                }
+            }
+        }
+        let mut g = Graph::new();
+        let src = g.add_node("motion.stagger.test.fsrc");
+        let st = g.add_node("motion.stagger");
+        g.connect(Edge {
+            from: (src, 0),
+            to: (st, 0),
+            delayed: false,
+        })
+        .unwrap();
+        g.set_param(st, "channel", 1.0); // Y
+        g.set_param(st, "min", 0.0);
+        g.set_param(st, "max", 2.0);
+        let mut cook = Cook::new();
+        let out = cook.cook(&g, &FOps, st, 0.0).unwrap();
+        match out[0].as_stream().get("P").unwrap() {
+            // Linear raw = 0, 0.5, 1 → Δy = 0, 1, 2; × falloff [1, 0.5, 0]
+            // → 0, 0.5, 0. The masked LAST instance stays put even though the
+            // raw ramp peaks there.
+            Column::Vec2(v) => assert_eq!(v, &vec![[0.0, 0.0], [0.0, 0.5], [0.0, 0.0]]),
+            _ => panic!("P"),
+        }
     }
 
     #[test]

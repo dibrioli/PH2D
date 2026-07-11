@@ -298,6 +298,67 @@ mod tests {
         assert_eq!(falloff_of(&g, &Ops, foc), vec![1.0, 0.0, 0.0]);
     }
 
+    /// Fields COMPOSE multiplicatively (audit 2026-07-10: the promise at the
+    /// `base * field` site was untested): an upstream `falloff` column is
+    /// multiplied by this field, never overwritten — two stacked focus nodes
+    /// intersect their regions.
+    #[test]
+    fn a_prior_falloff_column_is_multiplied_not_overwritten() {
+        static FSRC_MAN: NodeManifest = NodeManifest {
+            id: NodeTypeId::of("motion.falloff.test.fsrc"),
+            name: "motion.falloff.test.fsrc",
+            inputs: &[],
+            outputs: &[PortSpec {
+                name: "out",
+                ty: INST_VEC2,
+            }],
+            effect: Effect::Pure,
+            clock: Clock::Frame,
+            params: &[],
+            lowerings: &[LoweringKind::Cpu],
+        };
+        struct FSrc;
+        impl NodeOp for FSrc {
+            fn manifest(&self) -> &'static NodeManifest {
+                &FSRC_MAN
+            }
+            fn eval(&self, ctx: &mut EvalCtx<'_>) {
+                ctx.emit(
+                    Stream::new(2)
+                        .with("P", Column::Vec2(vec![[0.0, 0.0], [10.0, 0.0]]))
+                        .with("falloff", Column::Scalar(vec![0.5, 0.8])),
+                );
+            }
+        }
+        struct FOps;
+        impl OpResolver for FOps {
+            fn resolve(&self, ty: NodeTypeId) -> Option<&dyn NodeOp> {
+                match ty {
+                    t if t == FSRC_MAN.id => Some(&FSrc),
+                    t if t == MANIFEST.id => Some(&MotionFalloff),
+                    _ => None,
+                }
+            }
+        }
+        let mut g = Graph::new();
+        let src = g.add_node("motion.falloff.test.fsrc");
+        let foc = g.add_node("motion.falloff");
+        g.connect(Edge {
+            from: (src, 0),
+            to: (foc, 0),
+            delayed: false,
+        })
+        .unwrap();
+        // Defaults (Circle, radius 5, centre origin): field = 1 at x=0, 0 at
+        // x=10. Composed with the carried [0.5, 0.8]: 0.5·1 and 0.8·0.
+        let mut cook = Cook::new();
+        let out = cook.cook(&g, &FOps, foc, 0.0).unwrap();
+        match out[0].as_stream().get("falloff").unwrap() {
+            Column::Scalar(v) => assert_eq!(v, &vec![0.5, 0.0]),
+            _ => panic!("falloff"),
+        }
+    }
+
     #[test]
     fn invert_flips_the_mask() {
         let mut g = Graph::new();

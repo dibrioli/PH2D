@@ -11,6 +11,15 @@
 //! instance: `full = P * scale + (offset_x, offset_y)`, then the falloff blends
 //! `P' = lerp(P, full, falloff)` (`falloff = 0` keeps `P`, `1` takes the full
 //! transform).
+//!
+//! **Scope vs its siblings (audit 2026-07-10):** `scale` here scales POSITIONS
+//! about the world origin (the layout spreads/contracts; dot size is
+//! untouched) — a different thing from `motion.scale`, which scales the `size`
+//! column (each sprite grows; layout untouched). And with `scale = 1` this
+//! node degenerates to exactly `motion.move` (offset·falloff). It stays: it is
+//! the only node that scales the layout, and the combined `P·s + o` affine is
+//! one node instead of two. Reach for `move` for a plain offset, `scale` for
+//! sprite size, and this for spreading a layout about the origin.
 
 use ph2d_node_registry::{NodeRegistry, RegistryError};
 use ph2d_nodegraph::attr::{Column, Stream};

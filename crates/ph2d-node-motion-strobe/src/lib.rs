@@ -16,6 +16,11 @@
 //! applied to the FRESH upstream `in` each tick (size/tint), so the boost never
 //! compounds into the geometry; only `glow` persists.
 //!
+//! The multiplicative `falloff` column masks the APPLIED look (size boost +
+//! flash), like every behaviour — a focus field chooses which dots flash. The
+//! glow memory itself is unmasked, so an animated field fades a live flash
+//! without retriggering it.
+//!
 //! Positional per-instance (v1), matching `pulse.threshold`: `in`/`pulse`/`state`
 //! pair by row order. The focus rig has a stable count.
 
@@ -114,6 +119,10 @@ fn step(input: &Stream, pulse: &Stream, state: &Stream, p: &Params) -> Stream {
     let n = input.count();
     let pulses = scalar_col(pulse, PULSE_COL, n, 0.0);
     let prev_glow = scalar_col(state, GLOW_COL, n, 0.0);
+    // The focus field masks the APPLICATION (like every behaviour): a dot at
+    // falloff 0 never visibly flashes. The envelope itself stays unmasked so a
+    // falloff animated over a live glow fades the look, not the memory.
+    let falloff = scalar_col(input, "falloff", n, 1.0);
 
     let glow: Vec<f32> = (0..n)
         .map(|i| glow_of(pulses[i], prev_glow[i], p.decay).clamp(0.0, 1.0))
@@ -124,7 +133,7 @@ fn step(input: &Stream, pulse: &Stream, state: &Stream, p: &Params) -> Stream {
     let mut size = vec2_col(input, "size", n, [1.0, 1.0]);
     let mut tint = vec4_col(input, "tint", n, [1.0, 1.0, 1.0, 1.0]);
     for i in 0..n {
-        let g = glow[i];
+        let g = glow[i] * falloff[i].clamp(0.0, 1.0);
         let k = 1.0 + p.size_boost * g;
         size[i] = [size[i][0] * k, size[i][1] * k];
         // Lerp RGB toward the flash colour by amount·glow; alpha untouched (a
@@ -232,8 +241,11 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         widget: ParamWidget::Slider,
     },
     // The flash colour authored as one swatch → OKLCH picker (the canonical
-    // colour UI), driving the three linear channels. `flash_amount` stays a
-    // plain slider (it is an intensity, not a colour channel).
+    // colour UI, like `motion.tint`), driving the three linear channels with
+    // `flash_amount` riding the picker's 4th (alpha) slot as the intensity.
+    // No standalone `flash_amount` row: the params bridge SUPPRESSES the row of
+    // any param folded into a Color group (`motion_bridge_params.rs`,
+    // `consumed`), so a dedicated Slider hint here would be dead code.
     ParamUiHint {
         param: "flash_r",
         label: "Flash",
@@ -243,14 +255,6 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         widget: ParamWidget::Color {
             channels: ["flash_r", "flash_g", "flash_b", "flash_amount"],
         },
-    },
-    ParamUiHint {
-        param: "flash_amount",
-        label: "Flash Amount",
-        min: 0.0,
-        max: 1.0,
-        step: 0.01,
-        widget: ParamWidget::Slider,
     },
 ];
 
@@ -353,6 +357,42 @@ mod tests {
         let s = step(&dot(), &fire(0.0), &s, &p); // glow 0.5
         let s = step(&dot(), &fire(1.0), &s, &p); // re-fire
         assert_eq!(glow(&s), 1.0, "retrigger resets to full, not 0.5+something");
+    }
+
+    /// The focus field gates the flash: two dots pulse together, but the one at
+    /// falloff 0 keeps its plain look while its neighbour lights up. The glow
+    /// MEMORY is per-instance and unmasked (the envelope keeps decaying), only
+    /// the applied look is masked — so animating the field over a live glow
+    /// fades the flash in and out without restarting it.
+    #[test]
+    fn falloff_zero_gates_the_flash_without_touching_the_envelope() {
+        let p = params();
+        let two = Stream::new(2)
+            .with("P", Column::Vec2(vec![[0.0, 0.0], [1.0, 0.0]]))
+            .with("size", Column::Vec2(vec![[1.0, 1.0]; 2]))
+            .with("tint", Column::Vec4(vec![[0.2, 0.2, 0.2, 1.0]; 2]))
+            .with("falloff", Column::Scalar(vec![1.0, 0.0]));
+        let fire2 = Stream::new(2).with(PULSE_COL, Column::Scalar(vec![1.0, 1.0]));
+        let s = step(&two, &fire2, &Stream::new(2), &p);
+        match s.get("size").unwrap() {
+            Column::Vec2(v) => {
+                assert_eq!(v[0], [2.0, 2.0], "focused dot flashes");
+                assert_eq!(v[1], [1.0, 1.0], "masked dot stays plain");
+            }
+            _ => panic!(),
+        }
+        match s.get("tint").unwrap() {
+            Column::Vec4(v) => {
+                assert_eq!(v[0], [1.0, 1.0, 1.0, 1.0], "focused dot lights up");
+                assert_eq!(v[1], [0.2, 0.2, 0.2, 1.0], "masked dot untouched");
+            }
+            _ => panic!(),
+        }
+        // The envelope itself is NOT masked: both instances carry full glow.
+        match s.get(GLOW_COL).unwrap() {
+            Column::Scalar(v) => assert_eq!(v, &vec![1.0, 1.0], "memory unmasked"),
+            _ => panic!(),
+        }
     }
 
     /// A bare positional stream (no size/tint) still gets those columns created

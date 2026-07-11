@@ -24,13 +24,16 @@
 //!
 //! `P` (the emitter's origin — displacement is the integrator's job), `vel` (the
 //! muzzle velocity the integrator seeds from), `id` (the spawn index — stable
-//! identity), `age`/`life` (seconds; a fade/size node can read them), and
-//! `Index`/`Count` (positional, oldest-first — so `motion.tint` in Gradient mode
-//! paints the stream by age for free).
+//! identity), `age`/`life` (seconds; a fade/size node can read them), `size`
+//! (a `Vec2` column `[size, size]` — the square particle quad; a column, NOT
+//! the scalar param it is set from), and `Index`/`Count` (positional,
+//! oldest-first — so `motion.tint` in Gradient mode paints the stream by age
+//! for free).
 //!
 //! Params: `rate` (particles/sec), `life` (sec), `speed`, `angle` (degrees CCW
 //! from +X; `90` is up in this Y-up world), `spread` (degrees of cone),
-//! `x`/`y` (origin), `seed`, `max` (hard cap — the newest `max` survive).
+//! `x`/`y` (origin), `seed`, `max` (hard cap — the newest `max` survive), and
+//! `size` (world-space side of each particle quad).
 
 use ph2d_node_registry::{NodeRegistry, RegistryError};
 use ph2d_nodegraph::attr::{Column, Stream};
@@ -447,6 +450,48 @@ mod tests {
         let s = emit(&spec(), 0.5);
         match s.get("size").unwrap() {
             Column::Vec2(v) => assert!(v.iter().all(|q| *q == [0.2, 0.2])),
+            _ => panic!("size"),
+        }
+    }
+
+    /// The `eval` seam itself (audit 2026-07-10: every behavioural test above
+    /// drives `emit()` directly, so the ctx.param/ctx.playhead → `Spec` wiring
+    /// was untested): cook the REAL node with overridden params and assert the
+    /// alive set reflects them — rate·window rows, all at the (x, y) origin,
+    /// sized by the `size` param as a Vec2 column.
+    #[test]
+    fn eval_maps_params_and_playhead_into_the_spec() {
+        use ph2d_nodegraph::cook::{Cook, OpResolver};
+        use ph2d_nodegraph::graph::Graph;
+        struct Ops;
+        impl OpResolver for Ops {
+            fn resolve(&self, ty: NodeTypeId) -> Option<&dyn NodeOp> {
+                (ty == MANIFEST.id).then_some(&MotionEmitter as &dyn NodeOp)
+            }
+        }
+        let mut g = Graph::new();
+        let em = g.add_node("motion.emitter");
+        for (name, v) in [
+            ("rate", 2.0),
+            ("life", 1.0),
+            ("speed", 0.0),
+            ("x", 3.0),
+            ("y", 4.0),
+            ("size", 0.25),
+        ] {
+            g.set_param(em, name, v);
+        }
+        let mut cook = Cook::new();
+        // t = 0.9, rate 2 → births at 0 and 0.5, both younger than life 1.
+        let out = cook.cook(&g, &Ops, em, 0.9).unwrap();
+        let s = out[0].as_stream();
+        assert_eq!(s.count(), 2, "rate × window alive");
+        match s.get("P").unwrap() {
+            Column::Vec2(v) => assert_eq!(v, &vec![[3.0, 4.0]; 2], "the (x,y) origin"),
+            _ => panic!("P"),
+        }
+        match s.get("size").unwrap() {
+            Column::Vec2(v) => assert_eq!(v, &vec![[0.25, 0.25]; 2], "size param → Vec2 column"),
             _ => panic!("size"),
         }
     }

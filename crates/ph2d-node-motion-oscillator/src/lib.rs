@@ -192,8 +192,9 @@ use ph2d_node_registry::{ParamUiHint, ParamWidget};
 
 /// Param UI hints (M1.P1). `channel` / `wave` are **named** selectors (segmented
 /// buttons) — never number sliders. The enum option index IS the param value
-/// (channel 0..3; wave 0..3 = Parabolic/Triangle/Square/Saw — "Sine" is the
-/// user-facing name for the transcendental-free parabolic approximation).
+/// (channel 0..3; wave 0..4 = Sine/Tri/Square/Saw/Spike — "Sine" is the
+/// user-facing name for the transcendental-free parabolic approximation,
+/// "Spike" a narrow unipolar pulse at the cycle start).
 static PARAM_HINTS: &[ParamUiHint] = &[
     ParamUiHint {
         param: "channel",
@@ -202,7 +203,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         max: 3.0,
         step: 1.0,
         widget: ParamWidget::Enum {
-            labels: &["X", "Y", "Rot", "Size"],
+            labels: &["X", "Y", "Rotation", "Size"],
         },
     },
     ParamUiHint {

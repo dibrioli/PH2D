@@ -127,7 +127,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         max: 3.0,
         step: 1.0,
         widget: ParamWidget::Enum {
-            labels: &["X", "Y", "Rot", "Size"],
+            labels: &["X", "Y", "Rotation", "Size"],
         },
     },
     ParamUiHint {
@@ -245,6 +245,70 @@ mod tests {
         // The whole point of the transcendental-free noise: identical playhead →
         // identical output, every time (HR-5 replay).
         assert_eq!(wiggle_y_at(0.9), wiggle_y_at(0.9));
+    }
+
+    /// The focus field gates the jitter (audit 2026-07-10: untested until now):
+    /// with `falloff` [1, 0] the second instance sits perfectly still while the
+    /// first wiggles — a wiggle ignoring the mask would shake both.
+    #[test]
+    fn falloff_zero_pins_the_masked_instance() {
+        static FSRC_MAN: NodeManifest = NodeManifest {
+            id: NodeTypeId::of("motion.wiggle.test.fsrc"),
+            name: "motion.wiggle.test.fsrc",
+            inputs: &[],
+            outputs: &[PortSpec {
+                name: "out",
+                ty: INST_VEC2,
+            }],
+            effect: Effect::Pure,
+            clock: Clock::Frame,
+            params: &[],
+            lowerings: &[LoweringKind::Cpu],
+        };
+        struct FSrc;
+        impl NodeOp for FSrc {
+            fn manifest(&self) -> &'static NodeManifest {
+                &FSRC_MAN
+            }
+            fn eval(&self, ctx: &mut EvalCtx<'_>) {
+                ctx.emit(
+                    Stream::new(2)
+                        .with("P", Column::Vec2(vec![[0.0, 0.0]; 2]))
+                        .with("falloff", Column::Scalar(vec![1.0, 0.0])),
+                );
+            }
+        }
+        struct FOps;
+        impl OpResolver for FOps {
+            fn resolve(&self, ty: NodeTypeId) -> Option<&dyn NodeOp> {
+                match ty {
+                    t if t == FSRC_MAN.id => Some(&FSrc),
+                    t if t == MANIFEST.id => Some(&MotionWiggle),
+                    _ => None,
+                }
+            }
+        }
+        let mut g = Graph::new();
+        let src = g.add_node("motion.wiggle.test.fsrc");
+        let w = g.add_node("motion.wiggle");
+        g.connect(Edge {
+            from: (src, 0),
+            to: (w, 0),
+            delayed: false,
+        })
+        .unwrap();
+        g.set_param(w, "channel", 1.0); // Y
+        g.set_param(w, "amplitude", 2.0);
+        // A playhead where the focused row's noise is visibly non-zero.
+        let mut cook = Cook::new();
+        let out = cook.cook(&g, &FOps, w, 0.7).unwrap();
+        match out[0].as_stream().get("P").unwrap() {
+            Column::Vec2(v) => {
+                assert!(v[0][1].abs() > 1e-4, "focused instance wiggles: {:?}", v[0]);
+                assert_eq!(v[1], [0.0, 0.0], "masked instance is pinned");
+            }
+            _ => panic!("P"),
+        }
     }
 
     #[test]

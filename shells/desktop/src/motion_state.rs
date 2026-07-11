@@ -55,15 +55,15 @@ pub(crate) struct MotionState {
 
 impl MotionState {
     /// Build the boot state: register every node op + the **default document** —
-    /// the M3 morph opener: a **sunflower dissolving into a blue-noise cloud**. A
-    /// `motion.fibonacci` spiral and a `motion.scatter` blue-noise cloud are
-    /// crossfaded by `motion.morph` (its `blend` a `value.lfo`), the seeds sized
-    /// small→big by a `value.instance_field` Ramp. Kept deliberately small (~9
-    /// nodes) so each new node reads on its own (docs/Motion Nodes/12, 18, 19). The
-    /// earlier scenes (the Cavalry grid rig, the particle fountain) and the earlier
-    /// value/pulse chains were removed to keep the boot document focused; they live
-    /// in git history and every node keeps its own unit tests + stays registered
-    /// (drop them in the editor). Transport paused at tick 0 (bridge auto-plays).
+    /// an M3 deformer scene: a **grid that curls while its squares track a moving
+    /// target**. A `motion.bend` wraps the grid onto an arc (its `amount` a
+    /// `value.lfo`) and a `motion.look_at` aims each square's rotation at a target
+    /// slid by another `value.lfo`. Kept deliberately small (~7 nodes) so each new
+    /// node reads on its own (docs/Motion Nodes/12, 20). The earlier scenes (the
+    /// Cavalry grid rig, the particle fountain) and the earlier value/pulse + M3
+    /// chains were removed to keep the boot document focused; they live in git
+    /// history and every node keeps its own unit tests + stays registered (drop them
+    /// in the editor). Transport paused at tick 0 (bridge auto-plays).
     pub(crate) fn new() -> Self {
         let mut registry = NodeRegistry::new();
         ph2d_node_registry_init::register_all_nodes(&mut registry)
@@ -91,19 +91,19 @@ impl MotionState {
 /// module's most recent work). Returns its sink (the Output node) if the graph
 /// is well-typed.
 ///
-/// The scene — built in the `strobe` sibling module — is the M3 morph opener: a
-/// **sunflower dissolving into a blue-noise cloud**. A `motion.fibonacci` spiral
-/// and a `motion.scatter` blue-noise cloud (best-candidate, exact count) are
-/// crossfaded by `motion.morph`, whose `blend` is a slow `value.lfo` so the two
-/// shapes trade in time; a `value.instance_field` Ramp → `value.map_range` sizes
-/// the seeds small→big by index. Two M3 distributions bridged by a value-driven
-/// deformer. See docs/Motion Nodes/12 (value), 18 (fibonacci), 19 (scatter+morph).
+/// The scene — built in the `strobe` sibling module — is an M3 deformer scene: a
+/// **grid that curls while its squares track a moving target**. A `motion.bend`
+/// wraps the grid's X extent onto a circular arc (its `amount` a `value.lfo` that
+/// curls it up and down); a `motion.look_at` aims each square's `rot` at a target
+/// point whose `target_x` a second `value.lfo` slides left↔right, so the field
+/// swivels to follow. Two M3 deformers, each animated by the value domain. See
+/// docs/Motion Nodes/12 (value), 20 (bend+look_at).
 ///
 /// The earlier scenes were removed to keep the boot document small and legible:
-/// the **Cavalry grid rig**, the **particle fountain**, and the earlier value/pulse
-/// chains (metronome/counter/drive, sample-hold, math, compare, switch, on_change,
-/// twist). They remain in git history and every node keeps its own unit tests; the
-/// nodes stay registered, so any of them can be dropped back in the editor.
+/// the **Cavalry grid rig**, the **particle fountain**, and the earlier value,
+/// pulse and M3 chains (math, compare, switch, on_change, fibonacci, twist,
+/// scatter, morph). They remain in git history and every node keeps its own unit
+/// tests; the nodes stay registered, so any of them can be dropped in the editor.
 fn build_default_document(g: &mut Graph, reg: &NodeRegistry) -> Option<Vec<NodeId>> {
     let scene = strobe::build(g)?;
     // Same "validate on load" the editor runs before cooking — proves the authored

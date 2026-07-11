@@ -22,6 +22,7 @@ ph2d-node-force-curl = { path = "../ph2d-node-force-curl" }
 ph2d-node-force-drag = { path = "../ph2d-node-force-drag" }
 ph2d-node-force-vortex = { path = "../ph2d-node-force-vortex" }
 ph2d-node-force-wind = { path = "../ph2d-node-force-wind" }
+ph2d-node-motion-bend = { path = "../ph2d-node-motion-bend" }
 ph2d-node-motion-clone = { path = "../ph2d-node-motion-clone" }
 ph2d-node-motion-drive = { path = "../ph2d-node-motion-drive" }
 ph2d-node-motion-emitter = { path = "../ph2d-node-motion-emitter" }
@@ -29,6 +30,7 @@ ph2d-node-motion-falloff = { path = "../ph2d-node-motion-falloff" }
 ph2d-node-motion-fibonacci = { path = "../ph2d-node-motion-fibonacci" }
 ph2d-node-motion-grid = { path = "../ph2d-node-motion-grid" }
 ph2d-node-motion-integrate = { path = "../ph2d-node-motion-integrate" }
+ph2d-node-motion-look-at = { path = "../ph2d-node-motion-look-at" }
 ph2d-node-motion-morph = { path = "../ph2d-node-motion-morph" }
 ph2d-node-motion-move = { path = "../ph2d-node-motion-move" }
 ph2d-node-motion-noise = { path = "../ph2d-node-motion-noise" }

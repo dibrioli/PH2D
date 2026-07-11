@@ -1,33 +1,28 @@
-//! The M3 morph demo — the **sole scene of the default Motion document**: a
-//! **sunflower that dissolves into a blue-noise cloud and reforms**. A small scene
-//! (~9 nodes) showing an M3 distribution and the crossfade deformer. A `#[path]`
+//! The M3 deformer demo — the **sole scene of the default Motion document**: a
+//! grid that **curls like a wave while every square turns to track a moving
+//! target**. A small scene (~7 nodes) showing two M3 deformers. A `#[path]`
 //! sibling of `motion_state`, kept out of it for the LOC cap.
 //!
 //! ```text
-//! fibonacci ─┐
-//! scatter ───┼→ morph → tint → drive_size → output
-//! lfo ───────┘ (blend)
-//! morph → instance_field → size_range → drive_size.value
+//! grid → bend → look_at → tint → output
+//!        │(amount)  │(target_x)
+//!        lfo_bend   lfo_target
 //! ```
 //!
-//! - **fibonacci** (`motion.fibonacci`, doc 18): the ordered golden-angle spiral
-//!   (180 seeds) — the morph's `a`.
-//! - **scatter** (`motion.scatter`, doc 19): the M3 **blue-noise** distribution
-//!   (180 points, best-candidate) — an evenly-random cloud, the exact opposite of
-//!   the spiral's order — the morph's `b`.
-//! - **morph** (`motion.morph`, doc 19): the **vertex crossfade** — it lerps each
-//!   seed from its spiral position toward its scatter position by a `blend` VALUE,
-//!   driven by a slow `value.lfo`, so the sunflower **melts into the cloud and
-//!   reforms** in time (the value domain animating an M3 deformer).
-//! - **instance_field(Ramp) → size_range → drive_size**: sizes the seeds small→big
-//!   by index, so each keeps its size as it migrates.
+//! - **bend** (`motion.bend`, doc 20): the arc deformer — wraps the grid's X extent
+//!   onto a circular arc, so the rows curl up/down while the centre column holds;
+//!   its `amount` is a `value.lfo` (±1), so the grid **curls up and uncurls** in
+//!   time.
+//! - **look_at** (`motion.look_at`, doc 20): orients each square's `rot` at a
+//!   target point; the `target_x` is a `value.lfo` that slides the target left↔right,
+//!   so the whole field **turns to follow it** (arrows tracking a cursor).
 //!
-//! The payoff: a **golden-angle sunflower dissolving into an even blue-noise cloud
-//! and back** — order ⇄ randomness, two M3 distributions bridged by a crossfade,
-//! the *generate → deform (value-driven)* pattern again. See docs/Motion Nodes/18
-//! (fibonacci), 19 (scatter+morph). The whole value/pulse vocabulary stays
-//! registered (drop it in the editor). Pure function of the playhead (the lfo is
-//! Temporal; nothing holds `pre` state).
+//! The payoff: a bending sheet of squares that all **swivel to face a passing
+//! point** — two M3 deformers (an arc-wrap and an orient-toward), each animated by
+//! the value domain, on one legible grid. See docs/Motion Nodes/20 (bend+look_at).
+//! The whole value/pulse vocabulary + the other M3 nodes stay registered (drop them
+//! in the editor). Pure function of the playhead (the lfos are Temporal; no `pre`
+//! state).
 
 use ph2d_nodegraph::graph::{Edge, Graph, NodeId, Pos};
 
@@ -35,20 +30,24 @@ use ph2d_nodegraph::graph::{Edge, Graph, NodeId, Pos};
 const ROW_Y: f32 = 0.0;
 const COL_W: f32 = 220.0;
 
-/// Author the morph scene into `g`; returns its Output node (the sink).
+/// Author the bend + look-at scene into `g`; returns its Output node (the sink).
 pub(crate) fn build(g: &mut Graph) -> Option<NodeId> {
-    let fibonacci = g.add_node("motion.fibonacci");
-    let scatter = g.add_node("motion.scatter");
-    let morph = g.add_node("motion.morph");
+    let grid = g.add_node("motion.grid");
+    let bend = g.add_node("motion.bend");
+    let look_at = g.add_node("motion.look_at");
     let tint = g.add_node("motion.tint");
-    let drive_size = g.add_node("motion.drive");
     let output = g.add_node("motion.output");
-    let instance_field = g.add_node("value.instance_field");
-    let size_range = g.add_node("value.map_range");
-    let lfo = g.add_node("value.lfo");
+    let lfo_bend = g.add_node("value.lfo");
+    let lfo_target = g.add_node("value.lfo");
 
-    // Visible trunk: morph → tint → drive_size → output.
-    for (n, col) in [(morph, 1.0), (tint, 2.0), (drive_size, 3.0), (output, 4.0)] {
+    // Visible trunk: grid → bend → look_at → tint → output.
+    for (n, col) in [
+        (grid, 0.0),
+        (bend, 1.0),
+        (look_at, 2.0),
+        (tint, 3.0),
+        (output, 4.0),
+    ] {
         g.set_pos(
             n,
             Pos {
@@ -57,7 +56,12 @@ pub(crate) fn build(g: &mut Graph) -> Option<NodeId> {
             },
         );
     }
-    for (from, to) in [(morph, tint), (tint, drive_size), (drive_size, output)] {
+    for (from, to) in [
+        (grid, bend),
+        (bend, look_at),
+        (look_at, tint),
+        (tint, output),
+    ] {
         g.connect(Edge {
             from: (from, 0),
             to: (to, 0),
@@ -66,15 +70,11 @@ pub(crate) fn build(g: &mut Graph) -> Option<NodeId> {
         .ok()?;
     }
 
-    // The two shapes feed the morph; the lfo animates its blend. The morphed
-    // stream sizes its seeds by index and drives Size.
+    // The two lfos animate the deformers: one curls the bend, the other slides the
+    // look-at target.
     for (from, to) in [
-        ((fibonacci, 0), (morph, 0)),      // spiral → morph.a
-        ((scatter, 0), (morph, 1)),        // blue-noise → morph.b
-        ((lfo, 0), (morph, 2)),            // lfo → morph.blend
-        ((morph, 0), (instance_field, 0)), // morphed count → instance_field
-        ((instance_field, 0), (size_range, 0)),
-        ((size_range, 0), (drive_size, 1)), // graded size → drive_size.value
+        ((lfo_bend, 0), (bend, 1)),      // lfo → bend.amount (curl up/down)
+        ((lfo_target, 0), (look_at, 1)), // lfo → look_at.target_x (slide the aim)
     ] {
         g.connect(Edge {
             from,
@@ -83,13 +83,7 @@ pub(crate) fn build(g: &mut Graph) -> Option<NodeId> {
         })
         .ok()?;
     }
-    for (n, col, dy) in [
-        (fibonacci, 0.0, 220.0),
-        (scatter, 0.0, 340.0),
-        (lfo, 0.0, 460.0),
-        (instance_field, 2.0, 220.0),
-        (size_range, 3.0, 220.0),
-    ] {
+    for (n, col, dy) in [(lfo_bend, 1.0, 220.0), (lfo_target, 2.0, 220.0)] {
         g.set_pos(
             n,
             Pos {
@@ -99,34 +93,33 @@ pub(crate) fn build(g: &mut Graph) -> Option<NodeId> {
         );
     }
 
-    // Shape a: a 180-seed sunflower, rim at ~2 world units.
-    g.set_param(fibonacci, "count", 180.0);
-    g.set_param(fibonacci, "spacing", 0.15);
-    // Shape b: 180 blue-noise points in a 4×4 field (~±2, the sunflower's extent).
-    g.set_param(scatter, "count", 180.0);
-    g.set_param(scatter, "width", 4.0);
-    g.set_param(scatter, "height", 4.0);
-    g.set_param(scatter, "seed", 3.0);
-    // A warm amber base (a sunflower).
+    // A 4×5 grid of squares (default size), well spaced so a bend/turn reads.
+    g.set_param(grid, "rows", 4.0);
+    g.set_param(grid, "cols", 5.0);
+    g.set_param(grid, "gap_x", 1.0);
+    g.set_param(grid, "gap_y", 1.0);
+    // bend: up to 70° over the grid's X extent; `amount` (±1 lfo) curls it either way.
+    g.set_param(bend, "angle", 70.0);
+    g.set_param(bend, "pivot_x", 0.0);
+    g.set_param(bend, "pivot_y", 0.0);
+    // look_at: target_y stays 0 (unconnected); target_x slides with the lfo.
+    g.set_param(look_at, "offset", 0.0);
+    // A warm amber base.
     g.set_param(tint, "mode", 0.0); // Solid
     g.set_param(tint, "r", 0.95);
     g.set_param(tint, "g", 0.70);
     g.set_param(tint, "b", 0.20);
-    // Seeds sized by index (Ramp) — small at the centre, larger at the rim.
-    g.set_param(instance_field, "mode", 1.0); // Ramp
-    g.set_param(size_range, "in_lo", 0.0);
-    g.set_param(size_range, "in_hi", 1.0);
-    g.set_param(size_range, "out_lo", 0.04);
-    g.set_param(size_range, "out_hi", 0.13);
-    g.set_param(drive_size, "channel", 3.0); // Size
-    g.set_param(drive_size, "scale", 1.0);
-    g.set_param(drive_size, "mode", 1.0); // Set
-    // lfo → blend: a slow (4 s) sine kept in [0, 1] (amplitude 0.5, offset 0.5),
-    // so the morph eases spiral → cloud → spiral. Unconnected `in` → a length-1
-    // GLOBAL blend (the whole set crossfades together).
-    g.set_param(lfo, "wave", 0.0); // Sine
-    g.set_param(lfo, "period", 4.0);
-    g.set_param(lfo, "amplitude", 0.5);
-    g.set_param(lfo, "offset", 0.5);
+    // lfo_bend → amount: a slow (5 s) sine, amplitude 1, offset 0 → ±1 → the grid
+    // curls up and down. Unconnected `in` → a length-1 GLOBAL amount (one curvature).
+    g.set_param(lfo_bend, "wave", 0.0); // Sine
+    g.set_param(lfo_bend, "period", 5.0);
+    g.set_param(lfo_bend, "amplitude", 1.0);
+    g.set_param(lfo_bend, "offset", 0.0);
+    // lfo_target → target_x: a faster (3 s) sine sliding the target across ±2.5, so
+    // the squares swivel to track it.
+    g.set_param(lfo_target, "wave", 0.0); // Sine
+    g.set_param(lfo_target, "period", 3.0);
+    g.set_param(lfo_target, "amplitude", 2.5);
+    g.set_param(lfo_target, "offset", 0.0);
     Some(output)
 }

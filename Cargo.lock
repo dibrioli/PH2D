@@ -5239,6 +5239,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-node-motion-bend"
+version = "0.0.0"
+dependencies = [
+ "ph2d-node-registry",
+ "ph2d-nodegraph",
+]
+
+[[package]]
 name = "ph2d-node-motion-clone"
 version = "0.0.0"
 dependencies = [
@@ -5288,6 +5296,14 @@ dependencies = [
 
 [[package]]
 name = "ph2d-node-motion-integrate"
+version = "0.0.0"
+dependencies = [
+ "ph2d-node-registry",
+ "ph2d-nodegraph",
+]
+
+[[package]]
+name = "ph2d-node-motion-look-at"
 version = "0.0.0"
 dependencies = [
  "ph2d-node-registry",
@@ -5512,6 +5528,7 @@ dependencies = [
  "ph2d-node-force-drag",
  "ph2d-node-force-vortex",
  "ph2d-node-force-wind",
+ "ph2d-node-motion-bend",
  "ph2d-node-motion-clone",
  "ph2d-node-motion-drive",
  "ph2d-node-motion-emitter",
@@ -5519,6 +5536,7 @@ dependencies = [
  "ph2d-node-motion-fibonacci",
  "ph2d-node-motion-grid",
  "ph2d-node-motion-integrate",
+ "ph2d-node-motion-look-at",
  "ph2d-node-motion-morph",
  "ph2d-node-motion-move",
  "ph2d-node-motion-noise",

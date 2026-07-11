@@ -255,6 +255,22 @@ novos de slope + 154 anim+timeline + 290 total com painel + clippy `--all-target
 
 ---
 
+## 15. Rodada de bugs do smoke do rove (Enio, 2026-07-11) — 3 relatos, 2 causas-raiz
+
+| # | Relato | Causa | Fix |
+|---|---|---|---|
+| B5 | Menu de easing não fecha ao clicar fora | As capturas de graph/dope-sheet em `pointer_down.rs` rodavam ANTES do close-on-outside: o menu flutua SOBRE o dope-sheet, o clique "fora" caía na superfície de baixo, capturava e `return`ava — menu aberto + box-select começado embaixo | Com menu aberto, Down não-Secondary numa superfície graph/timeline = **dismissal puro** (fecha e consome; Secondary segue relocando o menu). Teste `a_primary_down_over_the_dope_sheet_closes_an_open_menu_instead_of_dragging` |
+| B6 | "Autoplay criando frames" (keyframes surgindo sem tocar em nada) | O apply escreve `world = curve(t_raw)`, mas o diff do autokey comparava `curve(t_snap)`: **pausar no meio do play** deixa o playhead fora da fronteira de frame (dt da sim 1/60 × display 1/24) e a pose intocada lia como "arrastada" → armado (default!) mintava key do nada | Diff no **t_src CRU** (a MESMA transform da escrita — lição do §13/[[feedback_derived_coordinate_seed_must_match_sample]]); o insert segue no tempo snapado. Testes `a_pose_on_its_curve_at_an_off_frame_pause_keys_nothing` (vermelho antes) |
+| B7 | Undo "não volta completamente, resíduos" | MESMA causa do B6, ramo desarmado: a pose intocada lia off-curve → entidade **pinada** (`displaced`) → o apply parava de escrevê-la → undo mudava o doc e o sprite não seguia (até o playhead mexer — por isso "nem sempre") | Idem B6 (pin usa o mesmo diff). Teste `an_untouched_pose_at_an_off_frame_pause_is_not_pinned` (vermelho antes) |
+
+**Superfície:** `pointer_down.rs` (bloco dismissal) + `autokey_pass.rs` (`t_diff` cru) + testes; `autokey_pass` tests extraídos p/ **`autokey_pass_tests.rs`** (LOC cap, 621→210). Zero símbolo novo, zero contrato. Gate: 1277/1277 nas 4 crates + clippy `--all-targets` + fmt pin.
+
+**Confirmado como DESIGN (não bug):** rove com interp **Eased** — o rove iguala a velocidade **MÉDIA** (`|Δv|/Δt`) entre vizinhos pinados redistribuindo os TEMPOS; a forma instantânea (sinos) é autorada pelo easing de cada segmento e fica. Velocidade constante plana = interp Linear (smoke OK do Enio).
+
+**Smoke do Enio (pendente):** (a) menu de presets/easing aberto → clique no dope-sheet fora → fecha, sem box-select fantasma; (b) play → pause no meio → **nenhum** key novo aparece (AutoKey ON) e, com AutoKey OFF, editar/undo na timeline move o sprite imediatamente (sem resíduo).
+
+---
+
 ## Cauda da W4 ainda aberta (para a próxima rodada — decisão do Enio)
 
 - **W4.T4** — docar a timeline no `motion_timeline_slot` quando o split do Motion está ativo (coordenação leve com Motion).

@@ -3,8 +3,9 @@
 //! `motion_state`). Cook the default document — now the single pulse-loop scene
 //! (a `pulse.beat` metronome → `pulse.counter` → drive for X + a `value.lfo` →
 //! `pulse.sample_hold` → `value.map_range` → drive for Y + a
-//! `value.instance_field` → `value.map_range` → drive for Size + `motion.strobe`)
-//! — through the REAL registry, exactly as the bridge does.
+//! `value.instance_field` → `value.map_range` → drive for Size + a
+//! `value.math` → `pulse.compare` → `pulse.counter` → drive for Rotation +
+//! `motion.strobe`) — through the REAL registry, exactly as the bridge does.
 
 use super::*;
 
@@ -17,12 +18,15 @@ fn new_builds_the_well_typed_pulse_document() {
         state.doc.graph.node(state.sinks[0]).unwrap().type_name,
         "motion.output"
     );
-    // 15 nodes: grid, move, tint, drive_x, drive_y, drive_size, strobe, output,
-    // beat, counter, lfo, sample_hold, map_range, instance_field, size_range.
-    // THREE value chains — discrete beat→counter→drive_x (X, broadcast),
-    // sample-and-held lfo→sample_hold→map_range→drive_y (Y), and per-element
-    // instance_field→size_range→drive_size (Size) — the value domain (docs 12-14).
-    assert_eq!(state.doc.graph.nodes().len(), 15);
+    // 21 nodes: grid, move, tint, drive_x, drive_y, drive_size, drive_rot, strobe,
+    // output, beat, counter, lfo, sample_hold, map_range, instance_field,
+    // size_range, lfo_g, math, compare, counter_r, rot_range.
+    // FOUR value chains — discrete beat→counter→drive_x (X, broadcast),
+    // sample-and-held lfo→sample_hold→map_range→drive_y (Y), per-element
+    // instance_field→size_range→drive_size (Size), and the value→pulse round trip
+    // instance_field×lfo_g→math→compare→counter_r→rot_range→drive_rot (Rotation) —
+    // the value domain (docs 12-14, 16).
+    assert_eq!(state.doc.graph.nodes().len(), 21);
     assert!(state.doc.graph.validate(&state.registry).is_ok());
     assert_eq!(state.transport.playhead(1.0 / 60.0), 0.0); // paused at tick 0
 }
@@ -303,11 +307,12 @@ fn the_instance_field_chain_gives_the_grid_a_size_gradient() {
     );
 }
 
-/// The default document replays bit-identically. The four `pre` self-loops of
-/// the scene — the beat's cycle index, the counter's monotonic tick, the
-/// sample_hold's held value, and the strobe's decaying `glow` — carry only
-/// integer/flag/sampled state, so two runs match exactly (HR-5; the LFO,
-/// map_ranges and instance_field are stateless pure functions).
+/// The default document replays bit-identically. The six `pre` self-loops of
+/// the scene — the beat's cycle index, the two counters' monotonic ticks, the
+/// sample_hold's held value, the compare's armed flag, and the strobe's decaying
+/// `glow` — carry only integer/flag/sampled state, so two runs match exactly
+/// (HR-5; the LFOs, map_ranges, math and instance_field are stateless pure
+/// functions).
 #[test]
 fn the_default_document_replays_deterministically() {
     use ph2d_eval_motion::MotionCookPump;
@@ -335,4 +340,85 @@ fn the_default_document_replays_deterministically() {
         frames
     };
     assert_eq!(run(), run(), "two runs of the same document match exactly");
+}
+
+/// The VALUE→PULSE ROUND TRIP (Rotation) is alive end to end (doc 16): a
+/// `value.math` MULTIPLIES the per-element `instance_field` Ramp by a global
+/// `value.lfo` (the doc-12 `1→N` broadcast) into a field whose amplitude is
+/// GRADED by index; a `pulse.compare` fires a pulse only where that field crosses
+/// the threshold; a `pulse.counter` accumulates the crossings and a
+/// `value.map_range` reshapes the count onto Rotation. So the grid's UPPER dots
+/// (whose graded amplitude clears the threshold) ratchet their tilt while the
+/// LOWER dots stay put — the continuous value domain feeding the discrete pulse
+/// domain and back, made visible.
+///
+/// The chain is SEQUENTIAL (compare + counter hold `pre` state), so we pump ticks
+/// in order (cook → advance_tick), exactly as playback does. We track each dot's
+/// PEAK rotation over the pump (robust to the 0..90° wrap).
+///
+/// Falsifiable three ways: a dead chain (math/compare/counter broken) leaves every
+/// dot at rot 0 (no dot ever ratchets); a BROADCAST COLLAPSE of the math field —
+/// or a compare that ignores the threshold and fires everything — makes ALL dots
+/// ratchet together (no dot stays at 0), so the still/firing split proves it is
+/// per-element AND genuinely thresholded; and a bypassed `rot_range` would let the
+/// raw count through and blow past the 90° bound.
+#[test]
+fn the_value_to_pulse_round_trip_ratchets_the_rotation() {
+    use ph2d_nodegraph::attr::Column;
+
+    let state = MotionState::new();
+    let sink = *state.sinks.last().unwrap();
+    let mut cook = ph2d_nodegraph::cook::Cook::new();
+
+    // Pump ~5 s (300 ticks). The global LFO's 0.5 s period fires the comparator
+    // ~twice a second, so the firing dots accumulate several counts and wrap.
+    let mut peak_rot: Vec<f32> = Vec::new();
+    for k in 0..=300u64 {
+        let t = k as f64 / 60.0;
+        let out = cook
+            .cook(&state.doc.graph, &state.registry, sink, t)
+            .unwrap();
+        let rots: Vec<f32> = match out[0].as_stream().get("rot") {
+            Some(Column::Scalar(v)) => v.clone(),
+            _ => Vec::new(),
+        };
+        if peak_rot.is_empty() {
+            peak_rot = vec![0.0; rots.len()];
+        }
+        for (peak, &r) in peak_rot.iter_mut().zip(rots.iter()) {
+            *peak = peak.max(r.abs());
+        }
+        cook.advance_tick(&state.doc.graph, &state.registry, t)
+            .unwrap();
+    }
+    assert!(
+        peak_rot.len() >= 4,
+        "need the full grid, got {}",
+        peak_rot.len()
+    );
+
+    // A dot "fires" if it ever ratcheted past one count-step (~11.25°); it "stays"
+    // if it never left ~0.
+    let firing = peak_rot.iter().filter(|&&r| r > 10.0).count();
+    let still = peak_rot.iter().filter(|&&r| r < 1.0e-3).count();
+
+    // ALIVE + ELEMENT-WISE + THRESHOLDED: some upper dots ratchet, some lower dots
+    // never do. A dead chain → firing == 0; a broadcast/every-dot-fires bug →
+    // still == 0.
+    assert!(
+        firing >= 3,
+        "the upper dots must ratchet their rotation (got {firing} firing); a dead round trip leaves 0"
+    );
+    assert!(
+        still >= 3,
+        "the lower dots must stay put (got {still} still); a broadcast collapse or an \
+         unthresholded compare would ratchet every dot"
+    );
+    // BOUNDED by rot_range (0..90°): a bypassed map would leak the raw count and
+    // overshoot.
+    let max = peak_rot.iter().copied().fold(0.0_f32, f32::max);
+    assert!(
+        max <= 90.5,
+        "the ratchet is bounded by rot_range to 90° (max {max}); a raw count would overshoot"
+    );
 }

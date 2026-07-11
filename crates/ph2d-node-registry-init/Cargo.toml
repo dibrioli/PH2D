@@ -45,12 +45,14 @@ ph2d-node-motion-trail = { path = "../ph2d-node-motion-trail" }
 ph2d-node-motion-transform = { path = "../ph2d-node-motion-transform" }
 ph2d-node-motion-wiggle = { path = "../ph2d-node-motion-wiggle" }
 ph2d-node-pulse-beat = { path = "../ph2d-node-pulse-beat" }
+ph2d-node-pulse-compare = { path = "../ph2d-node-pulse-compare" }
 ph2d-node-pulse-counter = { path = "../ph2d-node-pulse-counter" }
 ph2d-node-pulse-sample-hold = { path = "../ph2d-node-pulse-sample-hold" }
 ph2d-node-pulse-threshold = { path = "../ph2d-node-pulse-threshold" }
 ph2d-node-value-instance-field = { path = "../ph2d-node-value-instance-field" }
 ph2d-node-value-lfo = { path = "../ph2d-node-value-lfo" }
 ph2d-node-value-map-range = { path = "../ph2d-node-value-map-range" }
+ph2d-node-value-math = { path = "../ph2d-node-value-math" }
 # <ph2d-node-sync:end>
 
 [dev-dependencies]

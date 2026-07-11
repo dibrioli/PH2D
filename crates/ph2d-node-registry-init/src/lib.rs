@@ -45,12 +45,14 @@ pub fn register_all_nodes(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     ph2d_node_motion_transform::register(reg)?;
     ph2d_node_motion_wiggle::register(reg)?;
     ph2d_node_pulse_beat::register(reg)?;
+    ph2d_node_pulse_compare::register(reg)?;
     ph2d_node_pulse_counter::register(reg)?;
     ph2d_node_pulse_sample_hold::register(reg)?;
     ph2d_node_pulse_threshold::register(reg)?;
     ph2d_node_value_instance_field::register(reg)?;
     ph2d_node_value_lfo::register(reg)?;
     ph2d_node_value_map_range::register(reg)?;
+    ph2d_node_value_math::register(reg)?;
     // <ph2d-node-sync:end>
     Ok(())
 }

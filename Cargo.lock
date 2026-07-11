@@ -5423,6 +5423,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-node-pulse-compare"
+version = "0.0.0"
+dependencies = [
+ "ph2d-node-registry",
+ "ph2d-nodegraph",
+]
+
+[[package]]
 name = "ph2d-node-pulse-counter"
 version = "0.0.0"
 dependencies = [
@@ -5487,6 +5495,7 @@ dependencies = [
  "ph2d-node-motion-transform",
  "ph2d-node-motion-wiggle",
  "ph2d-node-pulse-beat",
+ "ph2d-node-pulse-compare",
  "ph2d-node-pulse-counter",
  "ph2d-node-pulse-sample-hold",
  "ph2d-node-pulse-threshold",
@@ -5495,6 +5504,7 @@ dependencies = [
  "ph2d-node-value-instance-field",
  "ph2d-node-value-lfo",
  "ph2d-node-value-map-range",
+ "ph2d-node-value-math",
 ]
 
 [[package]]
@@ -5519,6 +5529,14 @@ dependencies = [
 
 [[package]]
 name = "ph2d-node-value-map-range"
+version = "0.0.0"
+dependencies = [
+ "ph2d-node-registry",
+ "ph2d-nodegraph",
+]
+
+[[package]]
+name = "ph2d-node-value-math"
 version = "0.0.0"
 dependencies = [
  "ph2d-node-registry",

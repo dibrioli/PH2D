@@ -6,7 +6,10 @@
 
 ## 1. Identidade
 - **Branch:** `line/audio` · **HEAD:** `ecd2587a` · **merge-base com main:** `1c7c9a22` (= HEAD do main integrado).
-- **Commits à frente do main:** **1** — `ecd2587a feat(audio): W6 variation containers — random/sequence/shuffle + jitter + weights`.
+- **HEAD atual:** `6bf70ca1`. **Commits à frente do main:** **3** —
+  1. `ecd2587a feat(audio): W6 variation containers — random/sequence/shuffle + jitter + weights`
+  2. `e48e237b docs(audio): W6 variation containers — tracker + handoff`
+  3. `6bf70ca1 feat(audio): W6 import por convenção — Add Folder popula o set (natural sort)`
 - Árvore limpa. Fast-forward puro sobre o main atual (a linha foi resetada ao main recém-integrado antes de começar).
 
 ## 2. Foundational / compartilhado tocado (e por quê)
@@ -16,9 +19,9 @@ Só **um** arquivo fora das crates do módulo de áudio, e **aditivo**:
 Os outros 2 arquivos de shell tocados são do **próprio módulo de áudio** (não compartilhados por outra linha): `shells/desktop/src/audio/editor.rs` (3 campos novos em `AudioEditorRuntime` + `mod variation;`) e `shells/desktop/src/audio/editor/loops.rs` (1 linha: chama `editor_variation_smoke()` no fim do smoke existente). O resto é 100% dentro de `crates/ph2d-audio-edit/` e `crates/ph2d-panel-audio-editor/` (as crates do módulo).
 
 ## 3. Símbolos novos que poderiam COLIDIR (grep de mesmo-símbolo, §1.5.5)
-- **NENHUM `NodeId(NNN)` inteiro alocado.** Todos os 23 ids novos do painel são `hash_node_id("audio_editor_var_*")` — strings namespaced pelo prefixo `audio_editor_var_`, definidas **na crate do painel** (`ph2d-panel-audio-editor/src/lib.rs`), não em `editor-core`. Colisão com outra linha exigiria a mesma string literal — praticamente impossível fora do módulo de áudio. (Contraste com a lição `NodeId(832)`/`AUDIO_EDITOR_SCROLLBAR_ID=NodeId(834)`: **este bloco NÃO alocou nenhum id foundational de `editor-core`.**)
+- **NENHUM `NodeId(NNN)` inteiro alocado.** Todos os **24** ids novos do painel são `hash_node_id("audio_editor_var_*")` (incl. `audio_editor_var_add_folder`) — strings namespaced pelo prefixo `audio_editor_var_`, definidas **na crate do painel** (`ph2d-panel-audio-editor/src/lib.rs`), não em `editor-core`. Colisão com outra linha exigiria a mesma string literal — praticamente impossível fora do módulo de áudio. (Contraste com a lição `NodeId(832)`/`AUDIO_EDITOR_SCROLLBAR_ID=NodeId(834)`: **este bloco NÃO alocou nenhum id foundational de `editor-core`.**)
 - Consts novas, todas locais às crates do módulo: `MAX_VARIATIONS = 12` (painel + um espelho local no shell, com comentário), `WEIGHT_RANGE`/`MAX_JITTER` (exportadas de `ph2d-audio-edit`), `MAX_PITCH_JITTER_ST`/`MAX_GAIN_JITTER_DB = 12.0` (shell). Sem entrada em lista ordenada compartilhada, sem token novo, sem variant de enum foundational.
-- Tipos/APIs públicos novos em `ph2d-audio-edit`: `PickStrategy`, `Variation`, `VariationSet`, `VariationPicker`, `Jitter`, `WEIGHT_RANGE`, `parse_variation_set`, `serialize_variation_set` — aditivos (novo módulo `variation`), não mexem em `EditClip`/`ops`/`fx`.
+- Tipos/APIs públicos novos em `ph2d-audio-edit`: `PickStrategy`, `Variation`, `VariationSet`, `VariationPicker`, `Jitter`, `WEIGHT_RANGE`, `natural_cmp`, `parse_variation_set`, `serialize_variation_set` — aditivos (novo módulo `variation`), não mexem em `EditClip`/`ops`/`fx`.
 
 ## 4. Contratos congelados (§4)
 **Nenhum encostado.** Áudio não adiciona `Tool`/`Node` gateado; `SCHEMA_VERSION` intacto (o manifesto de variação é um arquivo-texto próprio `.txt`, **não** o save do projeto). Nenhum ADR necessário.
@@ -36,13 +39,14 @@ Os outros 2 arquivos de shell tocados são do **próprio módulo de áudio** (n�
   ```
   cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-audio && PH2D_AUDIO_LOOP_SMOKE=1 cargo run -p ph2d-host-desktop
   ```
-  Abra o pill **Audio Editor** → seção **Variations** já vem com 4 blips (C-E-G-C, em `$TMPDIR/ph2d_variation_smoke/`). Aperte **Play Variation** repetido: **Shuffle** nunca repete o mesmo em seguida; troque a estratégia no `◀ ▶` (Random/Sequence/Shuffle); suba **Pitch jitter**/**Gain jitter** e cada toque varia; **Weight ×2** numa linha selecionada a torna mais provável; **Save…**/**Load…** gravam/leem o manifesto `.txt`. **Veredito: APPROVE pending smoke.**
+  Abra o pill **Audio Editor** → seção **Variations** já vem com 4 blips (C-E-G-C, em `$TMPDIR/ph2d_variation_smoke/`; o smoke agora **importa a pasta** via `Add Folder`, exercitando o natural-sort). Aperte **Play Variation** repetido: **Shuffle** nunca repete o mesmo em seguida; troque a estratégia no `◀ ▶` (Random/Sequence/Shuffle); suba **Pitch jitter**/**Gain jitter** e cada toque varia; **Weight ×2** numa linha selecionada a torna mais provável; **Add Folder…** re-importa a mesma pasta; **Save…**/**Load…** gravam/leem o manifesto `.txt`. **Veredito: APPROVE pending smoke.**
 
 ## 7. O que landou (resumo p/ o tracker)
 Container de variação estilo Wwise/FMOD, **autorado + auditado + salvo** no painel do Audio Editor (o caminho de trigger em runtime segue **bloqueado** — sem tick de script por-frame; por isso a **audição é o consumidor vivo** e o **manifesto** é o entregável persistido, mesma forma dos presets de FX-chain — NÃO virou entidade ECS / asset novo, o que seria fio órfão).
 - **Modelo puro** `ph2d-audio-edit/src/variation.rs`: `PickStrategy{Random,Sequence,Shuffle}`, `VariationSet{entries,strategy,pitch/gain_jitter}`, `VariationPicker` (splitmix64, pick ponderado, shuffle avoid-repeat, jitter `2^(±st/12)`/`10^(±dB/20)` via `exp2` — HR-5 não vale aqui, é control-thread), manifesto texto tolerante (`serialize`/`parse`, keyed-by-content, pula lixo).
 - **Painel** (`variation_state.rs` + `paint_variation.rs`, UI-only + thread-local bridge): lista selecionável · seletor de estratégia · Add/Remove/Play · Weight ÷2/×2 · sliders Pitch/Gain jitter · Save/Load. `apply_event` ganhou `variation_click`; extraí `edit_cmd_for` p/ manter `apply_event` sob o cap de 200 LOC/fn (fmt re-expandiu → 207).
-- **Shell** (`audio/editor/variation.rs`): dona `VariationSet` + cache de clipes decodados (index-aligned) + `VariationPicker`; `editor_play_variation` toca o pick com jitter pela **preview voice** (borrow transiente — a audição é one-shot, não mexe no transporte do clipe carregado). Smoke `editor_variation_smoke` semeia 4 blips via `write_wav`.
-- **Aberto no W6:** export OGG/Opus (dep + ADR) · import por convenção. Follow-ups da variação: enable-toggle por-entry na UI (o modelo/manifesto já carregam `enabled`, só falta o botão); overlay não desenha o set (é set de arquivos, não timeline — proposital).
+- **Shell** (`audio/editor/variation.rs`): dona `VariationSet` + cache de clipes decodados (index-aligned) + `VariationPicker`; `editor_play_variation` toca o pick com jitter pela **preview voice** (borrow transiente — a audição é one-shot, não mexe no transporte do clipe carregado). Smoke `editor_variation_smoke` semeia 4 blips via `write_wav` + `editor_add_variation_folder`.
+- **Import por convenção (commit `6bf70ca1`):** botão **Add Folder…** → `rfd::pick_folder` → `editor_add_variation_folder(dir)` varre a pasta, filtra por extensão de áudio (`is_audio_path`), **ordena natural** (`ph2d_audio_edit::natural_cmp` — `step_2` < `step_10`, Sequence depende) e adiciona até o cap (reusa `editor_add_variation`, que no-opa cheio). É o `name_01..NN → grupo`: aponta pra pasta do grupo e pega o set inteiro num clique. Append (não limpa o set). Novo id `AEDIT_VAR_ADD_FOLDER` (string-hashed) + intent + seam.
+- **Aberto no W6:** export OGG/Opus (dep + ADR). Follow-ups da variação: enable-toggle por-entry na UI (o modelo/manifesto já carregam `enabled`, só falta o botão); manifesto guarda caminho ABSOLUTO (relativo à pasta do manifesto = mais portátil, follow-up); overlay não desenha o set (é set de arquivos, não timeline — proposital).
 
-*"Linha `audio` pronta (HEAD `ecd2587a`, 1 commit). Handoff de integração acima. Aguardo ordem de integração."*
+*"Linha `audio` pronta (HEAD `6bf70ca1`, 3 commits). Handoff de integração acima. Aguardo ordem de integração."*

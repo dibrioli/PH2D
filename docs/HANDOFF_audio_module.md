@@ -483,9 +483,15 @@ abaixo é histórico — não re-investigue.
     (index-aligned) + o picker; `editor_play_variation` toca o pick com jitter pela **preview
     voice** (one-shot transiente, não mexe no transporte). Ponte em `render_loop/mod.rs`
     (bloco aditivo após Markers). Novos campos em `AudioEditorRuntime`.
+  - **Import por convenção (commit `6bf70ca1`):** botão **Add Folder…** varre uma pasta,
+    filtra por extensão, **ordena natural** (`natural_cmp`: `step_2` < `step_10`, Sequence
+    depende) e adiciona até o cap — o `name_01..NN → grupo` num clique. Reusa
+    `editor_add_variation` (no-opa cheio); append. Id `AEDIT_VAR_ADD_FOLDER` (string-hashed) + seam.
   - **Ready-to-smoke:** `PH2D_AUDIO_LOOP_SMOKE=1` semeia 4 blips (C-E-G-C) na seção Variations
-    → **Play Variation** repetido cicla; troque a estratégia; suba o jitter; Weight ×2 enviesa.
+    (via **Add Folder** — dogfooda o import) → **Play Variation** repetido cicla; troque a
+    estratégia; suba o jitter; Weight ×2 enviesa; **Add Folder…** re-importa a pasta.
   - **Aberto (variação):** enable-toggle por-entry na UI (modelo/manifesto já têm `enabled`) ·
+    manifesto guarda caminho absoluto (relativo = follow-up de portabilidade) ·
     overlay não desenha o set (é set de arquivos, não timeline — proposital).
 - **Atalhos:** `Ctrl+Z` undo · `Ctrl+Shift+Z` / `Ctrl+Y` redo (roteados ao
   `EditClip` quando o painel WAVE está aberto com clipe carregado).

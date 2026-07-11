@@ -461,8 +461,32 @@ abaixo é histórico — não re-investigue.
   - **Ready-to-smoke:** o `PH2D_AUDIO_LOOP_SMOKE=1` agora já vem com 2 markers (M1/M2) —
     flags roxas visíveis ao abrir o pill; Add põe um no playhead, Delete tira o mais
     perto, Export grava o `cue`+`adtl`.
-  - **Aberto no W6:** containers de variação (random/round-robin) · export OGG/Opus (dep
-    + ADR) · import por convenção. Rename de marker (in-place TextInput) é follow-up.
+  - **Aberto no W6 (à época):** ~~containers de variação~~ (Bloco 5, abaixo) · export OGG/Opus
+    (dep + ADR) · import por convenção. Rename de marker (in-place TextInput) é follow-up.
+- **W6 Bloco 5 — Variation containers (2026-07-11, `line/audio`, commit `ecd2587a` — NÃO
+  integrado; handoff [`HANDOFF_audio_variation_impl.md`](HANDOFF_audio_variation_impl.md))**.
+  Container estilo **Wwise Random/Sequence** / FMOD Multi-Instrument: um set de clipes que
+  toca **um** por trigger (Random / Sequence / Shuffle-avoid-repeat) com jitter de pitch/gain
+  por-play + **pesos** por-entry. **Autorado + auditado + salvo** no painel; o trigger em
+  runtime segue bloqueado (§1), então a **audição É o consumidor vivo** e o **manifesto `.txt`**
+  é o entregável (mesma forma dos presets de FX — NÃO virou entidade ECS / asset novo).
+  - **Modelo puro** `ph2d-audio-edit/src/variation.rs`: `PickStrategy`/`VariationSet`/
+    `VariationPicker` (splitmix64, pick ponderado, shuffle sem repetir seguido, jitter
+    `2^(±st/12)`/`10^(±dB/20)` em `exp2`) + manifesto tolerante (`serialize`/`parse`, keyed
+    by-content). Control-thread → HR-3/HR-5 não valem (aloca + transcendentais livres). 11 testes.
+  - **Painel** (`variation_state.rs` + `paint_variation.rs`, UI-only): lista selecionável ·
+    seletor `◀ estratégia ▶` · Add/Remove/Play · Weight ÷2/×2 · sliders Pitch/Gain jitter ·
+    Save/Load. Estado thread-local (fora do `snapshot.rs`, que segue 600/600). `apply_event`
+    ganhou `variation_click`; extraí `edit_cmd_for` p/ ficar sob 200 LOC/fn (fmt re-expandiu).
+    5 testes de estado + **6 de seam**.
+  - **Shell** (`audio/editor/variation.rs`): dona o `VariationSet` + cache de clipes decodados
+    (index-aligned) + o picker; `editor_play_variation` toca o pick com jitter pela **preview
+    voice** (one-shot transiente, não mexe no transporte). Ponte em `render_loop/mod.rs`
+    (bloco aditivo após Markers). Novos campos em `AudioEditorRuntime`.
+  - **Ready-to-smoke:** `PH2D_AUDIO_LOOP_SMOKE=1` semeia 4 blips (C-E-G-C) na seção Variations
+    → **Play Variation** repetido cicla; troque a estratégia; suba o jitter; Weight ×2 enviesa.
+  - **Aberto (variação):** enable-toggle por-entry na UI (modelo/manifesto já têm `enabled`) ·
+    overlay não desenha o set (é set de arquivos, não timeline — proposital).
 - **Atalhos:** `Ctrl+Z` undo · `Ctrl+Shift+Z` / `Ctrl+Y` redo (roteados ao
   `EditClip` quando o painel WAVE está aberto com clipe carregado).
 - **Fix:** `cpal::Stream` é dropado no `on_close_request`, não no drop-cascade do

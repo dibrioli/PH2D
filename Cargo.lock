@@ -5279,6 +5279,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-node-motion-distribute-curve"
+version = "0.0.0"
+dependencies = [
+ "ph2d-node-registry",
+ "ph2d-nodegraph",
+]
+
+[[package]]
 name = "ph2d-node-motion-distribute-radial"
 version = "0.0.0"
 dependencies = [
@@ -5471,6 +5479,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-node-motion-spline-wrap"
+version = "0.0.0"
+dependencies = [
+ "ph2d-node-registry",
+ "ph2d-nodegraph",
+]
+
+[[package]]
 name = "ph2d-node-motion-spring"
 version = "0.0.0"
 dependencies = [
@@ -5646,6 +5662,7 @@ dependencies = [
  "ph2d-node-motion-clone",
  "ph2d-node-motion-collide",
  "ph2d-node-motion-cull",
+ "ph2d-node-motion-distribute-curve",
  "ph2d-node-motion-distribute-radial",
  "ph2d-node-motion-drive",
  "ph2d-node-motion-emitter",
@@ -5670,6 +5687,7 @@ dependencies = [
  "ph2d-node-motion-soft-body",
  "ph2d-node-motion-sort",
  "ph2d-node-motion-spherize",
+ "ph2d-node-motion-spline-wrap",
  "ph2d-node-motion-spring",
  "ph2d-node-motion-stagger",
  "ph2d-node-motion-step",

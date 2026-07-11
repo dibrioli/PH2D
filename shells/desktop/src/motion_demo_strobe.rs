@@ -1,55 +1,37 @@
-//! The M3 structure demo — the **default Motion document**: two grids revealed by a
-//! shared `value.lfo` sweeping a **cull** fraction, differing only in how a **sort**
-//! orders the reveal. On the LEFT `motion.sort` orders **radially**, so the cull wipes
-//! the grid in from the centre out; on the RIGHT it orders **randomly**, so the same
-//! cull dissolves it in scattered specks. One `value.lfo` fans out to both culls (a
-//! value driving two scenes at once). Two independent scenes (each its own
-//! `motion.output` sink — the bridge composes several into one draw), kept small so each
-//! new node reads on its own. A `#[path]` sibling of `motion_state`, kept out for the
-//! LOC cap.
+//! The M3 curve demo — the **default Motion document**: on the LEFT a marquee of dots
+//! **flowing along a Bézier path** (`motion.distribute_curve`, its `offset` ramped by a
+//! saw `value.lfo`); on the RIGHT a grid ribbon **wrapped onto an S-curve**
+//! (`motion.spline_wrap`, its `amount` swept by a sine `value.lfo` so it flattens and
+//! re-wraps). Both curves are authored in the nodes' own params — self-contained, no
+//! vector document. Two independent scenes (each its own `motion.output` sink — the
+//! bridge composes several into one draw), kept small so each new node reads on its own.
+//! A `#[path]` sibling of `motion_state`, kept out for the LOC cap.
 //!
 //! ```text
-//! LEFT  (radial wipe):     grid → sort(Radial) → cull → tint(amber) → move(−6) → output
-//! RIGHT (random dissolve): grid → sort(Random) → cull → tint(cyan)  → move(+6) → output
-//! shared value.lfo → both culls' amount (one clock, two reveals)
+//! LEFT  (marquee): distribute_curve → tint(amber) → move(−6) → output   lfo(saw)  → offset
+//! RIGHT (ribbon):  grid → spline_wrap → tint(cyan) → move(+6) → output   lfo(sine) → amount
 //! ```
 //!
-//! - **sort** (`motion.sort`, doc 27): reorders the stream by a key. On its own it looks
-//!   like nothing changed — it sets the *order* the reveal happens in (Radial vs Random).
-//! - **cull** (`motion.cull`, doc 27): keeps the first `amount·n` elements; the `amount`
-//!   `value.lfo` sweeps, so the grid fills and empties — a reveal whose *shape* is the
-//!   upstream sort (a centre-out wipe on the left, a dissolve on the right).
+//! - **distribute_curve** (`motion.distribute_curve`, doc 28): dots spaced evenly by arc
+//!   length along a Bézier; the saw `offset` slides them so they flow down the path.
+//! - **spline_wrap** (`motion.spline_wrap`, doc 28): a 3×12 grid mapped onto the S-curve;
+//!   the sine `amount` blends flat → wrapped, so the ribbon bends onto the curve and back.
 //!
-//! See docs/Motion Nodes/27 (sort + cull). The whole value/pulse vocabulary + the other
-//! M3/M4 nodes stay registered (drop them in the editor).
+//! See docs/Motion Nodes/28 (distribute_curve + spline_wrap). The whole value/pulse
+//! vocabulary + the other M3/M4 nodes stay registered (drop them in the editor).
 
 use ph2d_nodegraph::graph::{Edge, Graph, NodeId, Pos};
 
 const COL_W: f32 = 200.0;
-const LEFT_ROW: f32 = 0.0;
-const RIGHT_ROW: f32 = 320.0;
+const MARQUEE_ROW: f32 = 0.0;
+const RIBBON_ROW: f32 = 320.0;
 
-/// Author both scenes into `g`, sharing one `value.lfo` that drives both culls; returns
-/// their Output nodes (the sinks), the left scene's first so the sink order is stable.
+/// Author both scenes into `g`; returns their Output nodes (the sinks), the marquee
+/// scene's first so the sink order is stable (id-ascending).
 pub(crate) fn build(g: &mut Graph) -> Option<Vec<NodeId>> {
-    // The shared reveal clock: a 5 s sine about 0.55, ±0.4 → amount ∈ [0.15, 0.95] (the
-    // grids fill and empty without ever fully clearing or filling).
-    let lfo = g.add_node("value.lfo");
-    g.set_pos(
-        lfo,
-        Pos {
-            x: 2.0 * COL_W,
-            y: 160.0,
-        },
-    );
-    g.set_param(lfo, "wave", 0.0); // Sine
-    g.set_param(lfo, "period", 5.0);
-    g.set_param(lfo, "amplitude", 0.4);
-    g.set_param(lfo, "offset", 0.55);
-
-    let left = build_reveal_scene(g, lfo, LEFT_ROW, 0.0, -6.0, [0.95, 0.70, 0.20])?;
-    let right = build_reveal_scene(g, lfo, RIGHT_ROW, 3.0, 6.0, [0.25, 0.80, 0.95])?;
-    Some(vec![left, right])
+    let marquee = build_marquee_scene(g)?;
+    let ribbon = build_ribbon_scene(g)?;
+    Some(vec![marquee, ribbon])
 }
 
 /// Connect `from` → `to` on the given ports, an immediate (non-delayed) edge.
@@ -62,61 +44,106 @@ fn wire(g: &mut Graph, from: (NodeId, u16), to: (NodeId, u16)) -> Option<()> {
     .ok()
 }
 
-/// One reveal scene: a grid ordered by `sort_key` (0 Radial / 3 Random), culled by the
-/// shared `lfo`, tinted `rgb`, shifted to `dx`. Returns its Output node.
-fn build_reveal_scene(
-    g: &mut Graph,
-    lfo: NodeId,
-    row: f32,
-    sort_key: f32,
-    dx: f32,
-    rgb: [f32; 3],
-) -> Option<NodeId> {
-    let grid = g.add_node("motion.grid");
-    let sort = g.add_node("motion.sort");
-    let cull = g.add_node("motion.cull");
+/// LEFT: dots flowing along a Bézier path. Returns its Output node.
+fn build_marquee_scene(g: &mut Graph) -> Option<NodeId> {
+    let curve = g.add_node("motion.distribute_curve");
     let tint = g.add_node("motion.tint");
     let mv = g.add_node("motion.move");
     let output = g.add_node("motion.output");
+    let lfo = g.add_node("value.lfo");
+
+    for (n, col) in [(curve, 0.0), (tint, 1.0), (mv, 2.0), (output, 3.0)] {
+        g.set_pos(
+            n,
+            Pos {
+                x: col * COL_W,
+                y: MARQUEE_ROW,
+            },
+        );
+    }
+    g.set_pos(
+        lfo,
+        Pos {
+            x: 0.0,
+            y: MARQUEE_ROW + 160.0,
+        },
+    );
+
+    wire(g, (curve, 0), (tint, 0))?;
+    wire(g, (tint, 0), (mv, 0))?;
+    wire(g, (mv, 0), (output, 0))?;
+    wire(g, (lfo, 0), (curve, 0))?; // → offset
+
+    // 24 dots on the default S-curve, flowing left.
+    g.set_param(curve, "count", 24.0);
+    g.set_param(tint, "mode", 0.0); // Solid
+    g.set_param(tint, "r", 0.95);
+    g.set_param(tint, "g", 0.70);
+    g.set_param(tint, "b", 0.20);
+    g.set_param(mv, "dx", -6.0);
+    g.set_param(mv, "dy", 0.0);
+    // lfo → offset: a saw ramping 0→1 (amp 0.5 about 0.5 → waveform·0.5+0.5 = frac) so the
+    // marquee flows one way and loops.
+    g.set_param(lfo, "wave", 3.0); // Saw
+    g.set_param(lfo, "period", 4.0);
+    g.set_param(lfo, "amplitude", 0.5);
+    g.set_param(lfo, "offset", 0.5);
+    Some(output)
+}
+
+/// RIGHT: a grid ribbon wrapped onto an S-curve. Returns its Output node.
+fn build_ribbon_scene(g: &mut Graph) -> Option<NodeId> {
+    let grid = g.add_node("motion.grid");
+    let wrap = g.add_node("motion.spline_wrap");
+    let tint = g.add_node("motion.tint");
+    let mv = g.add_node("motion.move");
+    let output = g.add_node("motion.output");
+    let lfo = g.add_node("value.lfo");
 
     for (n, col) in [
         (grid, 0.0),
-        (sort, 1.0),
-        (cull, 2.0),
-        (tint, 3.0),
-        (mv, 4.0),
-        (output, 5.0),
+        (wrap, 1.0),
+        (tint, 2.0),
+        (mv, 3.0),
+        (output, 4.0),
     ] {
         g.set_pos(
             n,
             Pos {
                 x: col * COL_W,
-                y: row,
+                y: RIBBON_ROW,
             },
         );
     }
+    g.set_pos(
+        lfo,
+        Pos {
+            x: COL_W,
+            y: RIBBON_ROW + 160.0,
+        },
+    );
 
-    wire(g, (grid, 0), (sort, 0))?;
-    wire(g, (sort, 0), (cull, 0))?;
-    wire(g, (cull, 0), (tint, 0))?;
+    wire(g, (grid, 0), (wrap, 0))?;
+    wire(g, (wrap, 0), (tint, 0))?;
     wire(g, (tint, 0), (mv, 0))?;
     wire(g, (mv, 0), (output, 0))?;
-    wire(g, (lfo, 0), (cull, 1))?; // shared reveal clock → cull amount
+    wire(g, (lfo, 0), (wrap, 1))?; // → amount
 
-    // A 10×10 grid (100 dots, ~4.5 wide) centred on the origin — the sort's Radial
-    // centre. `sort_key` picks Radial (centre-out) or Random (dissolve).
-    g.set_param(grid, "rows", 10.0);
-    g.set_param(grid, "cols", 10.0);
-    g.set_param(grid, "gap_x", 0.5);
-    g.set_param(grid, "gap_y", 0.5);
-    g.set_param(sort, "key", sort_key);
-    g.set_param(sort, "seed", 7.0); // only used by the Random key
-    g.set_param(cull, "mode", 0.0); // Fraction — keep the first amount·n (post-sort)
-    g.set_param(tint, "mode", 0.0); // Solid
-    g.set_param(tint, "r", rgb[0]);
-    g.set_param(tint, "g", rgb[1]);
-    g.set_param(tint, "b", rgb[2]);
-    g.set_param(mv, "dx", dx);
+    // A 3×12 grid ribbon (36 dots) wrapped onto the default S-curve, on the right.
+    g.set_param(grid, "rows", 3.0);
+    g.set_param(grid, "cols", 12.0);
+    g.set_param(grid, "gap_x", 0.4);
+    g.set_param(grid, "gap_y", 0.4);
+    g.set_param(mv, "dx", 6.0);
     g.set_param(mv, "dy", 0.0);
+    g.set_param(tint, "mode", 0.0); // Solid
+    g.set_param(tint, "r", 0.25);
+    g.set_param(tint, "g", 0.80);
+    g.set_param(tint, "b", 0.95);
+    // lfo → amount: a sine about 0.5, ±0.5 → amount ∈ [0, 1] (flat ↔ wrapped).
+    g.set_param(lfo, "wave", 0.0); // Sine
+    g.set_param(lfo, "period", 5.0);
+    g.set_param(lfo, "amplitude", 0.5);
+    g.set_param(lfo, "offset", 0.5);
     Some(output)
 }

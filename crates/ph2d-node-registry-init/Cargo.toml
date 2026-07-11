@@ -27,6 +27,7 @@ ph2d-node-motion-boids = { path = "../ph2d-node-motion-boids" }
 ph2d-node-motion-clone = { path = "../ph2d-node-motion-clone" }
 ph2d-node-motion-collide = { path = "../ph2d-node-motion-collide" }
 ph2d-node-motion-cull = { path = "../ph2d-node-motion-cull" }
+ph2d-node-motion-distribute-curve = { path = "../ph2d-node-motion-distribute-curve" }
 ph2d-node-motion-distribute-radial = { path = "../ph2d-node-motion-distribute-radial" }
 ph2d-node-motion-drive = { path = "../ph2d-node-motion-drive" }
 ph2d-node-motion-emitter = { path = "../ph2d-node-motion-emitter" }
@@ -51,6 +52,7 @@ ph2d-node-motion-scatter = { path = "../ph2d-node-motion-scatter" }
 ph2d-node-motion-soft-body = { path = "../ph2d-node-motion-soft-body" }
 ph2d-node-motion-sort = { path = "../ph2d-node-motion-sort" }
 ph2d-node-motion-spherize = { path = "../ph2d-node-motion-spherize" }
+ph2d-node-motion-spline-wrap = { path = "../ph2d-node-motion-spline-wrap" }
 ph2d-node-motion-spring = { path = "../ph2d-node-motion-spring" }
 ph2d-node-motion-stagger = { path = "../ph2d-node-motion-stagger" }
 ph2d-node-motion-step = { path = "../ph2d-node-motion-step" }

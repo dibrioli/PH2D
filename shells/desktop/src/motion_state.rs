@@ -54,12 +54,11 @@ pub(crate) struct MotionState {
 }
 
 impl MotionState {
-    /// Build the boot state: register every node op + the **default document** — two
-    /// grids revealed by a shared `value.lfo` sweeping a **cull** fraction, differing
-    /// only in how a **sort** orders the reveal: on the left `motion.sort` orders
-    /// **radially** (the cull wipes in from the centre); on the right **randomly** (the
-    /// cull dissolves it in specks).
-    /// Kept deliberately small (docs/Motion Nodes/12, 27). The earlier scenes (the
+    /// Build the boot state: register every node op + the **default document** — on the
+    /// left a marquee of dots **flowing along a Bézier path** (`motion.distribute_curve`,
+    /// `offset` ramped by a saw `value.lfo`); on the right a grid ribbon **wrapped onto an
+    /// S-curve** (`motion.spline_wrap`, `amount` swept by a sine `value.lfo`).
+    /// Kept deliberately small (docs/Motion Nodes/12, 28). The earlier scenes (the
     /// Cavalry grid rig, the sim scenes, the deformer scenes) and the earlier
     /// value/pulse + M3/M4 chains were removed to keep the boot document focused; they
     /// live in git history and every node keeps its own unit tests + stays registered
@@ -91,11 +90,11 @@ impl MotionState {
 /// module's most recent work). Returns their sinks (the Output nodes) if the graph
 /// is well-typed.
 ///
-/// The scenes — built in the `strobe` sibling module — are two 10×10 grids revealed by a
-/// shared `value.lfo` sweeping a `motion.cull` fraction, differing only in how a
-/// `motion.sort` orders the reveal: on the LEFT the sort is **radial** (a centre-out
-/// wipe); on the RIGHT it is **random** (a dissolve). One lfo fans out to both culls.
-/// See docs/Motion Nodes/12 (value), 27 (sort + cull).
+/// The scenes — built in the `strobe` sibling module — are two curve layouts animated by
+/// the value domain: on the LEFT a `motion.distribute_curve` marquee whose `offset` a saw
+/// `value.lfo` ramps (dots flow down the Bézier); on the RIGHT a `motion.spline_wrap`
+/// ribbon (a 3×12 grid) whose `amount` a sine `value.lfo` sweeps (flat ↔ wrapped onto the
+/// S-curve). See docs/Motion Nodes/12 (value), 28 (distribute_curve + spline_wrap).
 ///
 /// The earlier scenes were removed to keep the boot document small and legible: the
 /// **Cavalry grid rig**, the sim scenes, the deformer scenes, and the earlier value,

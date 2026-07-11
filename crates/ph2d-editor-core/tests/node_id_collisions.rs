@@ -510,6 +510,26 @@ const CHROME_IDS: &[(&str, NodeId)] = &[
     ("VECTOR_FILL_RULE_EVENODD", ids::VECTOR_FILL_RULE_EVENODD),
     ("VECTOR_SNAP_OFF", ids::VECTOR_SNAP_OFF),
     ("VECTOR_SNAP_ON", ids::VECTOR_SNAP_ON),
+    // Flip tool Style panel (ADR-0113 W2 docked `ph2d-panel-flip`).
+    ("FLIP_PANEL", ids::FLIP_PANEL),
+    ("FLIP_CLOSE", ids::FLIP_CLOSE),
+    ("FLIP_MODE_SELECT", ids::FLIP_MODE_SELECT),
+    ("FLIP_MODE_DRAW", ids::FLIP_MODE_DRAW),
+    ("FLIP_MODE_ERASE", ids::FLIP_MODE_ERASE),
+    ("FLIP_SIZE", ids::FLIP_SIZE),
+    ("FLIP_SIZE_NUM", ids::FLIP_SIZE_NUM),
+    ("FLIP_HARDNESS", ids::FLIP_HARDNESS),
+    ("FLIP_HARDNESS_NUM", ids::FLIP_HARDNESS_NUM),
+    ("FLIP_OPACITY", ids::FLIP_OPACITY),
+    ("FLIP_OPACITY_NUM", ids::FLIP_OPACITY_NUM),
+    ("FLIP_SMOOTHING", ids::FLIP_SMOOTHING),
+    ("FLIP_SMOOTHING_NUM", ids::FLIP_SMOOTHING_NUM),
+    ("FLIP_STROKE_SWATCH", ids::FLIP_STROKE_SWATCH),
+    ("FLIP_ERASE_SOFT", ids::FLIP_ERASE_SOFT),
+    ("FLIP_ERASE_HARD", ids::FLIP_ERASE_HARD),
+    ("FLIP_ERASE_STROKE", ids::FLIP_ERASE_STROKE),
+    ("FLIP_LAYER_ADD", ids::FLIP_LAYER_ADD),
+    ("FLIP_LAYER_DELETE", ids::FLIP_LAYER_DELETE),
 ];
 
 /// Pairwise uniqueness across every chrome [`NodeId`]. O(n²) over ~200
@@ -632,6 +652,45 @@ fn painter_dynamic_ids_dont_collide_with_chrome_or_each_other() {
             assert!(
                 seen.insert(id),
                 "painter_layer_blend_option_id({lid}, {mode}) (id {id:#018x}) collides with another dynamic id",
+            );
+        }
+    }
+}
+
+/// The Flip layers panel's per-row ids (ADR-0113 W2, from `flip_layer_widget_id`)
+/// must collide neither with any fixed chrome const nor with each other — same
+/// guard the painter dynamic ids get, extended to the Flip per-row id space.
+#[test]
+fn flip_dynamic_ids_dont_collide_with_chrome_or_each_other() {
+    use ids::FlipLayerWidget::{Blend, Lock, MoveDown, MoveUp, Opacity, Row, Visibility};
+
+    let chrome: std::collections::BTreeSet<u64> = CHROME_IDS.iter().map(|(_, id)| id.0).collect();
+    let mut seen: std::collections::BTreeSet<u64> = std::collections::BTreeSet::new();
+
+    let kinds = [Row, Visibility, Lock, Opacity, Blend, MoveUp, MoveDown];
+    let layer_ids = [0u64, 1, 2, 3, 7, 42, 255, 1000, 0x_dead_beef, u64::MAX];
+
+    for &lid in &layer_ids {
+        for &kind in &kinds {
+            let id = ids::flip_layer_widget_id(lid, kind).0;
+            assert!(
+                !chrome.contains(&id),
+                "flip_layer_widget_id({lid}, {kind:?}) (id {id:#018x}) collides with a chrome const",
+            );
+            assert!(
+                seen.insert(id),
+                "flip_layer_widget_id({lid}, {kind:?}) (id {id:#018x}) collides with another dynamic id",
+            );
+        }
+        for mode in 0u8..28 {
+            let id = ids::flip_layer_blend_option_id(lid, mode).0;
+            assert!(
+                !chrome.contains(&id),
+                "flip_layer_blend_option_id({lid}, {mode}) (id {id:#018x}) collides with a chrome const",
+            );
+            assert!(
+                seen.insert(id),
+                "flip_layer_blend_option_id({lid}, {mode}) (id {id:#018x}) collides with another dynamic id",
             );
         }
     }

@@ -178,6 +178,12 @@ pub const VECTOR_SCROLLBAR_ID: NodeId = NodeId(833);
 /// routes drag-scroll without aliasing the Audio Mixer / Inspector that share the
 /// dock slot. Next free id is `835`; re-read the collision note above before taking it.
 pub const AUDIO_EDITOR_SCROLLBAR_ID: NodeId = NodeId(834);
+/// Flip Style docked-panel scrollbar (ADR-0113 W2) — the panel body (Mode +
+/// Brush + Color + Erase + the Layers stack) overflows the dock height once a
+/// few layers are added. Independent thumb id so dispatch routes drag-scroll
+/// without aliasing the Inspector / Vector panels that share the dock slot.
+/// Next free id is `836`; re-read the collision note above before taking it.
+pub const FLIP_SCROLLBAR_ID: NodeId = NodeId(835);
 
 #[cfg(test)]
 mod tests {
@@ -206,6 +212,7 @@ mod tests {
             ("AUDIO_MIXER", AUDIO_MIXER_SCROLLBAR_ID),
             ("VECTOR", VECTOR_SCROLLBAR_ID),
             ("AUDIO_EDITOR", AUDIO_EDITOR_SCROLLBAR_ID),
+            ("FLIP", FLIP_SCROLLBAR_ID),
             ("DROPDOWN", crate::widget::DROPDOWN_SCROLLBAR_ID),
         ];
         for (i, (na, a)) in ids.iter().enumerate() {

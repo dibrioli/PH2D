@@ -32,6 +32,17 @@ const BENIGN_SET_MODE: &[(&str, &str)] = &[
         "TopBar icon view mode — purely visual, no dependent caches",
     ),
     (
+        "set_mode",
+        "FlipTool canvas mode (Select/Draw/Erase): a single `mode` field write on a \
+         deliberately-thin tool (ADR-0113). No derived cache — the shell reads `mode()` \
+         fresh each frame from the published snapshot to route input + the gizmo.",
+    ),
+    (
+        "set_erase_mode",
+        "FlipTool erase sub-mode (Soft/Hard/Stroke): a single `erase` field write, read \
+         fresh at erase time by `flip_erase::erase_at`. No derived cache keyed on it.",
+    ),
+    (
         "set_blender_channel_mode",
         "BlenderPicker RGB↔HSV display only; channel values are derived per-paint",
     ),

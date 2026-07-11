@@ -17,6 +17,7 @@
 use super::{NodeId, hash_node_id};
 
 mod bgremoval;
+mod flip;
 mod image_tools;
 mod inspector;
 mod motion;
@@ -41,6 +42,7 @@ mod topbar;
 mod vector;
 
 pub use bgremoval::*;
+pub use flip::*;
 pub use image_tools::*;
 pub use inspector::*;
 pub use motion::*;

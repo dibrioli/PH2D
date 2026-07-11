@@ -267,7 +267,11 @@ pub(super) fn publish(
             if sim.world().get::<Sprite>(sim_entity).is_none() {
                 // Não é sprite: uma forma vetorial ou um objeto Flip — cada um lê o
                 // gizmo de sprite da sua bbox local + `Transform`.
-                if sim.world().get::<ph2d_ecs::VecPathRef>(sim_entity).is_some() {
+                if sim
+                    .world()
+                    .get::<ph2d_ecs::VecPathRef>(sim_entity)
+                    .is_some()
+                {
                     if !vec_gizmo_on {
                         return None;
                     }
@@ -281,7 +285,11 @@ pub(super) fn publish(
                         pivot_tool_active,
                     );
                 }
-                if sim.world().get::<ph2d_ecs::FlipObjectRef>(sim_entity).is_some() {
+                if sim
+                    .world()
+                    .get::<ph2d_ecs::FlipObjectRef>(sim_entity)
+                    .is_some()
+                {
                     if !flip_gizmo_on {
                         return None;
                     }

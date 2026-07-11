@@ -24,13 +24,13 @@
 use ph2d_core::Playhead;
 use ph2d_flip::{FlipDoc, FlipDrawing, FlipObjectId, LayerId};
 use ph2d_flip_render::{CameraRaw, FlipCompose, FlipGpuData, FlipRenderer, pack_drawing};
-use ph2d_vec_scene::Xform;
 use ph2d_gpu::GpuContext;
 use ph2d_host::WindowSize;
 use ph2d_render::layer_compositor::{
     LayerCompositor, LayerOp, LayerPixelProvider, LayerPixels, Region,
 };
 use ph2d_render::{Camera2d, GameRt};
+use ph2d_vec_scene::Xform;
 use std::collections::BTreeMap;
 
 /// A sessão de composição por-camada do Flip: o `LayerCompositor` do Painter, o
@@ -275,8 +275,14 @@ fn composite_layers(
                 cam_obj = fold_model(cam, &l.model);
                 &cam_obj
             };
-            let slice = flip_compose
-                .stage_layer(&gpu.device, &gpu.queue, flip_render, layer_cam, data, (w, h));
+            let slice = flip_compose.stage_layer(
+                &gpu.device,
+                &gpu.queue,
+                flip_render,
+                layer_cam,
+                data,
+                (w, h),
+            );
             if let Err(e) =
                 compositor.inject_slice_from_texture(gpu, &ops, l.key, slice, w, h, (0, 0, w, h), 0)
             {
@@ -503,7 +509,11 @@ fn fold_model(base: &CameraRaw, model: &Xform) -> CameraRaw {
             *wjr = s;
         }
     }
-    CameraRaw::new(w, base.viewport, base.px_per_world * model.mean_scale() as f32)
+    CameraRaw::new(
+        w,
+        base.viewport,
+        base.px_per_world * model.mean_scale() as f32,
+    )
 }
 
 /// Converte a `Camera2d` (mundo→clip ortográfico) no uniform do passe. O
@@ -610,11 +620,20 @@ mod tests {
         // Translação (10, 5): o local (3, 2) deve cair no clip do mundo (13, 7).
         let t = fold_model(&base, &Xform([1.0, 0.0, 0.0, 1.0, 10.0, 5.0]));
         let p = apply4(&t.world_to_clip, 3.0, 2.0);
-        assert!((p[0] - 13.0).abs() < 1e-4 && (p[1] - 7.0).abs() < 1e-4, "{p:?}");
-        assert!((t.px_per_world - 100.0).abs() < 1e-4, "translação não escala");
+        assert!(
+            (p[0] - 13.0).abs() < 1e-4 && (p[1] - 7.0).abs() < 1e-4,
+            "{p:?}"
+        );
+        assert!(
+            (t.px_per_world - 100.0).abs() < 1e-4,
+            "translação não escala"
+        );
         // Escala 2×: a espessura (px_per_world) dobra e o local (1,0) vira mundo (2,0).
         let s = fold_model(&base, &Xform([2.0, 0.0, 0.0, 2.0, 0.0, 0.0]));
-        assert!((s.px_per_world - 200.0).abs() < 1e-4, "escala engrossa o traço");
+        assert!(
+            (s.px_per_world - 200.0).abs() < 1e-4,
+            "escala engrossa o traço"
+        );
         let q = apply4(&s.world_to_clip, 1.0, 0.0);
         assert!((q[0] - 2.0).abs() < 1e-4 && q[1].abs() < 1e-4, "{q:?}");
     }

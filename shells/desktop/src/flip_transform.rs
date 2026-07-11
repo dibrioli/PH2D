@@ -155,7 +155,9 @@ mod tests {
         let oid = doc.push_object("Obj");
         let obj = doc.object_mut(oid).unwrap();
         let l = obj.add_layer("L");
-        let d = obj.insert_frame(l, 0, Hold::Implicit, KeyKind::Keyframe).unwrap();
+        let d = obj
+            .insert_frame(l, 0, Hold::Implicit, KeyKind::Keyframe)
+            .unwrap();
         let mut s = FlipStroke::new();
         s.push_default(ph2d_core::Vec2::new(a[0], a[1]));
         s.push_default(ph2d_core::Vec2::new(b[0], b[1]));
@@ -198,7 +200,10 @@ mod tests {
         // Afim ∘ local reconstrói o mundo: o canto local sobe para (30,40).
         let x = object_xform(&sim, e);
         let w = x.apply([f64::from(hi[0]), f64::from(hi[1])]);
-        assert!((w[0] - 30.0).abs() < 1e-4 && (w[1] - 40.0).abs() < 1e-4, "{w:?}");
+        assert!(
+            (w[0] - 30.0).abs() < 1e-4 && (w[1] - 40.0).abs() < 1e-4,
+            "{w:?}"
+        );
 
         // Idempotente.
         settle_origins(&mut sim, &mut doc, &map, None);
@@ -227,7 +232,10 @@ mod tests {
     #[test]
     fn a_parented_object_is_left_alone() {
         let (mut doc, mut sim, map, _oid, e) = doc_with_segment([10.0, 20.0], [30.0, 40.0]);
-        let parent = sim.world_mut().spawn((Transform::IDENTITY, Name::new("G"))).id();
+        let parent = sim
+            .world_mut()
+            .spawn((Transform::IDENTITY, Name::new("G")))
+            .id();
         sim.world_mut().entity_mut(e).insert(ChildOf(parent));
         settle_origins(&mut sim, &mut doc, &map, None);
         assert_eq!(

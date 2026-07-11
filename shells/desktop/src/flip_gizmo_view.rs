@@ -78,7 +78,10 @@ pub(crate) fn view(
     let (anchor, half_intrinsic) = anchor_half(sim, doc, entity)?;
     let wt = world_transform(sim, entity);
     let (sx, sy) = (wt.scale.x, wt.scale.y);
-    let half = [(half_intrinsic[0] * sx).abs(), (half_intrinsic[1] * sy).abs()];
+    let half = [
+        (half_intrinsic[0] * sx).abs(),
+        (half_intrinsic[1] * sy).abs(),
+    ];
     // Invariante idêntica à do sprite: quad center = pivot + R·(anchor ⊙ scale).
     let (ax, ay) = (anchor[0] * sx, anchor[1] * sy);
     let (sin_r, cos_r) = libm::sincosf(wt.rotation); // T1.3.5 bit-idêntico cross-OS
@@ -136,7 +139,11 @@ fn contains_object(
     let local = inv.apply([f64::from(p[0]), f64::from(p[1])]);
     let scale = x.mean_scale();
     // O raio é WORLD; o teste é LOCAL → converte o raio pela escala do objeto.
-    let r_local = if scale > 0.0 { stroke_hit_r / scale } else { stroke_hit_r };
+    let r_local = if scale > 0.0 {
+        stroke_hit_r / scale
+    } else {
+        stroke_hit_r
+    };
     let r2 = r_local * r_local;
     let Some(obj) = doc.object(oid) else {
         return false;
@@ -292,7 +299,9 @@ mod tests {
         let oid = doc.push_object("Obj");
         let obj = doc.object_mut(oid).unwrap();
         let l = obj.add_layer("L");
-        let d = obj.insert_frame(l, 0, Hold::Implicit, KeyKind::Keyframe).unwrap();
+        let d = obj
+            .insert_frame(l, 0, Hold::Implicit, KeyKind::Keyframe)
+            .unwrap();
         let mut s = FlipStroke::new();
         s.push_default(ph2d_core::Vec2::new(a[0], a[1]));
         s.push_default(ph2d_core::Vec2::new(b[0], b[1]));
@@ -323,7 +332,10 @@ mod tests {
     fn the_gizmo_box_follows_the_transform() {
         let (doc, mut sim, _, _, e) = doc_with_segment([-1.0, -1.0], [1.0, 1.0]);
         let cam = Camera2d::default();
-        let ws = WindowSize { width: 800, height: 600 };
+        let ws = WindowSize {
+            width: 800,
+            height: 600,
+        };
         sim.world_mut().entity_mut(e).insert(Transform {
             translation: ph2d_core::Vec2::new(10.0, 5.0),
             scale: ph2d_core::Vec2::new(3.0, 3.0),

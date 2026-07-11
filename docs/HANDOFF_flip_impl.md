@@ -467,8 +467,40 @@ que o split/soft leem).
 
 ---
 
+## Smoke do Enio (2026-07-11) — 3 corrigidos, 1 gap aberto (Select)
+
+O Enio smokou o W2 e apontou 4 itens. **3 corrigidos** (commit `ce88bbc7`/`f84dcdb2`):
+1. **Desenho suave ≠ traço assado** ✅ — o bake decimava com RDP 0.75px (mais
+   anguloso que o preview). Agora assa o MESMO `active_smooth` do preview (RDP
+   0.05px, só colinear puro). `flip_draw::bake_stroke`.
+2. **Blend "não funciona"** ✅ — a lógica decode→apply está PROVADA (testes
+   `flip_layers`); o sintoma era a camada de **fundo** (compõe contra nada = blend
+   no-op). Agora o chip de blend some no fundo (igual ao Painter). `paint_layers`.
+3. **Borracha Soft com borda dura no bake** ✅ — o `cleanup_soft` dividia o traço
+   nos pontos apagados (cap plano = borda dura). Agora preserva os pontos de
+   opacidade reduzida (gradiente macio); só descarta traços 100% apagados.
+
+**4. "Select não funciona" — GAP REAL, aberto (T2.4 incompleto).** O objeto Flip é
+uma entidade ECS (`FlipObjectRef`), mas **nunca foi ligado ao gizmo/picking**: o
+picking de canvas é especializado por meio (sprite = `Sprite`, vetor =
+`VecPathRef`), e a entidade Flip não tem nenhum dos dois → não é clicável nem
+transformável. Além disso o **render do Flip ignora o `Transform` da entidade**
+(a geometria é MUNDO com `Transform` identidade — `flip_pass` compõe direto). Pra
+o "Select move o objeto" (ADR-0111) valer, falta um pacote focado:
+- `flip_gizmo_view` (espelho do `vec_gizmo_view`): `anchor_half`/`view`/
+  `contains_world`/`pick_all_at_world` a partir da bbox de MUNDO das strokes.
+- **render aplica o `Transform`**: `flip_pass` estagia cada objeto com
+  `world_to_clip · model` (multiplicação de matriz — sem mudar shader; o
+  `CameraRaw.world_to_clip` já é o afim). + geometria LOCAL (settle do pivô no
+  centro, `bake` convertendo world→local na fronteira) pra rotate/scale certos.
+- **fiar o picking do Flip** nos ~10 sites de `input_dispatch` hoje vetor-only
+  (Down-pick, contains, marquee) + publicar a `GizmoView` em `snapshots.rs:265`.
+É invasivo no dispatch de seleção (vetor-especializado) — melhor com smoke. Não
+foi feito nesta sessão por risco (sem GUI aqui). **Estimativa ~250-350 LOC.**
+
 ## Aberto (fora do W0/W1/W2, por design)
 
+- **Select/gizmo do objeto Flip** (acima) — o gap de maior valor imediato.
 - **W3 (próximo):** Frames · Ghost Frames · Tween — guia em **§W3-NEXT** acima.
 - **Refinos do painel/borracha (não-bloqueantes):** duplicar/agrupar camada
   (só `add`/`delete`/reorder landaram; `FlipObject` não tem `duplicate_layer`);

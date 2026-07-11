@@ -1,133 +1,129 @@
 //! Headless demo/cook tests for `motion_state` (split for the HR-18 600-LOC
 //! shell cap; declared there as a `#[path]` sibling, so `super` is
-//! `motion_state`). Cook the default document — now the M3 deformer scene: a grid
-//! curled by `motion.bend` whose squares are aimed by `motion.look_at` at a moving
-//! target — through the REAL registry, exactly as the bridge does.
+//! `motion_state`). Cook the default document — now two M4 simulation scenes: a
+//! `motion.verlet_rope` whip and a `motion.boids` flock, each a sequential sim on
+//! the `pre` self-loop — through the REAL registry, exactly as the bridge does.
 
 use super::*;
 use ph2d_nodegraph::attr::Column;
+use ph2d_nodegraph::cook::Cook;
 
-/// The grid's per-element rotations (degrees) at playhead `t`.
-fn rotations_at(state: &MotionState, t: f64) -> Vec<f32> {
-    let sink = *state.sinks.last().unwrap();
-    let mut cook = ph2d_nodegraph::cook::Cook::new();
+/// The emitted `P` column of one sink at playhead `t` (no tick advance).
+fn positions_at(state: &MotionState, cook: &mut Cook, sink: NodeId, t: f64) -> Vec<[f32; 2]> {
     let out = cook
         .cook(&state.doc.graph, &state.registry, sink, t)
         .unwrap();
-    match out[0].as_stream().get("rot") {
-        Some(Column::Scalar(v)) => v.clone(),
+    match out[0].as_stream().get("P") {
+        Some(Column::Vec2(v)) => v.clone(),
         _ => Vec::new(),
     }
+}
+
+fn centroid(pos: &[[f32; 2]]) -> [f32; 2] {
+    let n = pos.len() as f32;
+    let s = pos
+        .iter()
+        .fold([0.0f32; 2], |a, p| [a[0] + p[0], a[1] + p[1]]);
+    [s[0] / n, s[1] / n]
 }
 
 #[test]
 fn new_builds_the_well_typed_value_document() {
     let state = MotionState::new();
-    assert_eq!(state.sinks.len(), 1, "the deformer scene is the sole scene");
-    assert_eq!(
-        state.doc.graph.node(state.sinks[0]).unwrap().type_name,
-        "motion.output"
-    );
-    // 7 nodes: grid, bend, look_at, tint, output, lfo_bend, lfo_target. The two
-    // newest nodes (doc 20) — a `motion.bend` arc and a `motion.look_at` aim, each
-    // animated by a `value.lfo`.
-    assert_eq!(state.doc.graph.nodes().len(), 7);
+    // Two independent scenes → two Output sinks (the whip and the flock).
+    assert_eq!(state.sinks.len(), 2, "two sim scenes → two sinks");
+    for sink in &state.sinks {
+        assert_eq!(
+            state.doc.graph.node(*sink).unwrap().type_name,
+            "motion.output"
+        );
+    }
+    // 8 nodes: {rope, tint, output, lfo} × 2 scenes. The two newest nodes (doc 21)
+    // — a `motion.verlet_rope` and a `motion.boids`, each herded by a `value.lfo`.
+    assert_eq!(state.doc.graph.nodes().len(), 8);
     assert!(state.doc.graph.validate(&state.registry).is_ok());
     assert_eq!(state.transport.playhead(1.0 / 60.0), 0.0); // paused at tick 0
 }
 
-/// `motion.bend` is alive end to end (doc 20): the `amount` lfo (±1) wraps the
-/// grid's X extent onto an arc that curls up and uncurls, so a rim corner sweeps a
-/// wide path over time. Falsifiable: a dead bend leaves the flat grid STILL — the
-/// corner never moves.
+/// `motion.verlet_rope` is alive end to end (doc 21): gravity hangs the strand and
+/// the `anchor_x` lfo whips it, so the free tail FALLS below the anchor and SWEEPS
+/// sideways as the pin slides. Falsifiable: a dead rope (no gravity, no sim) leaves
+/// the tail flat at the anchor's height and still.
 #[test]
-fn the_bend_curls_the_grid_over_time() {
+fn the_verlet_rope_whips_from_the_moving_anchor() {
     let state = MotionState::new();
-    // Pump ~5 s (the bend lfo's full period). Track the top-left rim corner (index
-    // 0, at x=-2 — a max-|x| point, so the bend moves it the most).
-    let mut corner: Vec<[f32; 2]> = Vec::new();
-    let mut cook = ph2d_nodegraph::cook::Cook::new();
-    let sink = *state.sinks.last().unwrap();
-    for k in 0..=300u64 {
+    let rope_sink = state.sinks[0]; // the rope scene's Output (added first)
+    let mut cook = Cook::new();
+    let mut tail: Vec<[f32; 2]> = Vec::new();
+    for k in 0..=200u64 {
         let t = k as f64 / 60.0;
-        let out = cook
-            .cook(&state.doc.graph, &state.registry, sink, t)
-            .unwrap();
-        if let Some(Column::Vec2(v)) = out[0].as_stream().get("P") {
-            corner.push(v[0]);
+        let pos = positions_at(&state, &mut cook, rope_sink, t);
+        if let Some(last) = pos.last() {
+            tail.push(*last);
         }
         cook.advance_tick(&state.doc.graph, &state.registry, t)
             .unwrap();
     }
-    assert!(corner.len() > 250, "pumped the bend period");
-    let (mut xhi, mut xlo, mut yhi, mut ylo) = (f32::MIN, f32::MAX, f32::MIN, f32::MAX);
-    for &[x, y] in &corner {
+    assert!(tail.len() > 180, "pumped the rope");
+    let (mut xhi, mut xlo, mut ylo) = (f32::MIN, f32::MAX, f32::MAX);
+    for &[x, y] in &tail {
         xhi = xhi.max(x);
         xlo = xlo.min(x);
-        yhi = yhi.max(y);
         ylo = ylo.min(y);
     }
     assert!(
-        (xhi - xlo) + (yhi - ylo) > 1.0,
-        "the bend sweeps the rim corner (Δx {} + Δy {}); a dead bend pins it flat",
-        xhi - xlo,
-        yhi - ylo
+        ylo < -1.0,
+        "gravity hangs the free tail below the anchor (min y {ylo})"
+    );
+    assert!(
+        xhi - xlo > 0.5,
+        "the sliding anchor whips the tail sideways (Δx {})",
+        xhi - xlo
     );
 }
 
-/// `motion.look_at` is alive end to end (doc 20): each square aims its `rot` at the
-/// target, and the `target_x` lfo slides the target, so the squares SWIVEL to
-/// follow. At any instant the squares face it from DIFFERENT angles (a spread of
-/// rotations), and a given square's aim TURNS as the target moves.
-///
-/// Falsifiable: a dead look_at leaves every `rot` at 0 (no spread, no motion); a
-/// look_at that ignored position would give every square the SAME rotation (no
-/// spread across the grid).
+/// `motion.boids` is alive end to end (doc 21): the flock is homed on the right by
+/// its seek pull, and the `target_x` lfo slides the target, so the whole swarm
+/// WHEELS to chase it — the centroid stays on the right and tracks the sliding
+/// target over time. Falsifiable: a flock that ignored the target would neither
+/// gather on the right nor track its motion.
 #[test]
-fn the_look_at_aims_each_square_at_the_moving_target() {
+fn the_boids_flock_seeks_the_moving_target() {
     let state = MotionState::new();
-
-    // A SPREAD across the grid: at t=0 (target at 0) the 20 squares sit at different
-    // places, so they face the centre from different angles.
-    let rot0 = rotations_at(&state, 0.0);
-    assert_eq!(rot0.len(), 20, "the 4×5 grid");
-    let hi = rot0.iter().copied().fold(f32::MIN, f32::max);
-    let lo = rot0.iter().copied().fold(f32::MAX, f32::min);
-    assert!(
-        hi - lo > 30.0,
-        "the squares face the target from different angles (spread {}°); a position-blind aim would be uniform",
-        hi - lo
-    );
-
-    // It TURNS over time: as the target slides, a corner square's aim changes. Track
-    // index 0's rotation across ~1.5 s (half the target lfo's 3 s period).
-    let mut cook = ph2d_nodegraph::cook::Cook::new();
-    let sink = *state.sinks.last().unwrap();
-    let mut aim0: Vec<f32> = Vec::new();
-    for k in 0..=90u64 {
+    let boids_sink = state.sinks[1]; // the flock scene's Output (added second)
+    let mut cook = Cook::new();
+    let mut cx: Vec<f32> = Vec::new();
+    for k in 0..=240u64 {
         let t = k as f64 / 60.0;
-        let out = cook
-            .cook(&state.doc.graph, &state.registry, sink, t)
-            .unwrap();
-        if let Some(Column::Scalar(v)) = out[0].as_stream().get("rot") {
-            aim0.push(v[0]);
-        }
+        let pos = positions_at(&state, &mut cook, boids_sink, t);
+        assert!(!pos.is_empty(), "the flock has agents");
+        let c = centroid(&pos);
+        assert!(c[0].is_finite() && c[1].is_finite(), "bounded flock");
+        cx.push(c[0]);
         cook.advance_tick(&state.doc.graph, &state.registry, t)
             .unwrap();
     }
-    let aim_hi = aim0.iter().copied().fold(f32::MIN, f32::max);
-    let aim_lo = aim0.iter().copied().fold(f32::MAX, f32::min);
+    let mean = cx.iter().sum::<f32>() / cx.len() as f32;
+    let (hi, lo) = (
+        cx.iter().copied().fold(f32::MIN, f32::max),
+        cx.iter().copied().fold(f32::MAX, f32::min),
+    );
     assert!(
-        aim_hi - aim_lo > 15.0,
-        "a square's aim turns as the target slides (range {}°); a dead look_at is fixed",
-        aim_hi - aim_lo
+        mean > 2.0,
+        "the flock is homed on the right (mean centroid x {mean})"
+    );
+    assert!(
+        hi - lo > 1.0,
+        "the centroid tracks the sliding target (x range {})",
+        hi - lo
     );
 }
 
-/// The default document replays bit-identically. The scene holds NO `pre` state
-/// (grid/bend/look_at/tint are Pure; the lfos are stateless Temporal reads of the
-/// playhead), so it is a pure function of the tick and two runs match exactly
-/// (HR-5 — the parabolic trig and the atan2 approximation are deterministic).
+/// The default document replays bit-identically. Both scenes are deterministic
+/// (Verlet + constraint relaxation, boids arithmetic + a hashed seed; the lfos are
+/// stateless playhead reads), so two runs of the same document match exactly
+/// (HR-5). This drives the FULL sequential pump (state on the `pre` loop), so it
+/// also proves the sims step reproducibly, not just the pure nodes.
 #[test]
 fn the_default_document_replays_deterministically() {
     use ph2d_eval_motion::MotionCookPump;
@@ -135,7 +131,7 @@ fn the_default_document_replays_deterministically() {
         let state = MotionState::new();
         let mut pump = MotionCookPump::new();
         let mut frames = Vec::new();
-        for k in 0..30u64 {
+        for k in 0..40u64 {
             pump.pump(
                 &state.doc.graph,
                 &state.registry,

@@ -23,6 +23,7 @@ ph2d-node-force-drag = { path = "../ph2d-node-force-drag" }
 ph2d-node-force-vortex = { path = "../ph2d-node-force-vortex" }
 ph2d-node-force-wind = { path = "../ph2d-node-force-wind" }
 ph2d-node-motion-bend = { path = "../ph2d-node-motion-bend" }
+ph2d-node-motion-boids = { path = "../ph2d-node-motion-boids" }
 ph2d-node-motion-clone = { path = "../ph2d-node-motion-clone" }
 ph2d-node-motion-drive = { path = "../ph2d-node-motion-drive" }
 ph2d-node-motion-emitter = { path = "../ph2d-node-motion-emitter" }
@@ -49,6 +50,7 @@ ph2d-node-motion-tint = { path = "../ph2d-node-motion-tint" }
 ph2d-node-motion-trail = { path = "../ph2d-node-motion-trail" }
 ph2d-node-motion-transform = { path = "../ph2d-node-motion-transform" }
 ph2d-node-motion-twist = { path = "../ph2d-node-motion-twist" }
+ph2d-node-motion-verlet-rope = { path = "../ph2d-node-motion-verlet-rope" }
 ph2d-node-motion-wiggle = { path = "../ph2d-node-motion-wiggle" }
 ph2d-node-pulse-beat = { path = "../ph2d-node-pulse-beat" }
 ph2d-node-pulse-compare = { path = "../ph2d-node-pulse-compare" }

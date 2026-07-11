@@ -55,15 +55,17 @@ pub(crate) struct MotionState {
 
 impl MotionState {
     /// Build the boot state: register every node op + the **default document** —
-    /// an M3 deformer scene: a **grid that curls while its squares track a moving
-    /// target**. A `motion.bend` wraps the grid onto an arc (its `amount` a
-    /// `value.lfo`) and a `motion.look_at` aims each square's rotation at a target
-    /// slid by another `value.lfo`. Kept deliberately small (~7 nodes) so each new
-    /// node reads on its own (docs/Motion Nodes/12, 20). The earlier scenes (the
-    /// Cavalry grid rig, the particle fountain) and the earlier value/pulse + M3
-    /// chains were removed to keep the boot document focused; they live in git
-    /// history and every node keeps its own unit tests + stays registered (drop them
-    /// in the editor). Transport paused at tick 0 (bridge auto-plays).
+    /// two small M4 simulation scenes side by side: a **whip** that swings and
+    /// falls from a sliding anchor (`motion.verlet_rope`) on the left, and a
+    /// **flock** that wheels after a moving target (`motion.boids`) on the right.
+    /// Each is a sequential sim on the `pre` self-loop, herded by a `value.lfo`.
+    /// Kept deliberately small (two ~4-node scenes) so each new node reads on its
+    /// own (docs/Motion Nodes/12, 21). The earlier scenes (the Cavalry grid rig,
+    /// the particle fountain, the bend/look-at deformer grid) and the earlier
+    /// value/pulse + M3 chains were removed to keep the boot document focused; they
+    /// live in git history and every node keeps its own unit tests + stays
+    /// registered (drop them in the editor). Transport paused at tick 0 (bridge
+    /// auto-plays).
     pub(crate) fn new() -> Self {
         let mut registry = NodeRegistry::new();
         ph2d_node_registry_init::register_all_nodes(&mut registry)
@@ -87,29 +89,30 @@ impl MotionState {
     }
 }
 
-/// Author the **default document** into `g`: one small value-domain scene (the
-/// module's most recent work). Returns its sink (the Output node) if the graph
+/// Author the **default document** into `g`: two small M4 simulation scenes (the
+/// module's most recent work). Returns their sinks (the Output nodes) if the graph
 /// is well-typed.
 ///
-/// The scene — built in the `strobe` sibling module — is an M3 deformer scene: a
-/// **grid that curls while its squares track a moving target**. A `motion.bend`
-/// wraps the grid's X extent onto a circular arc (its `amount` a `value.lfo` that
-/// curls it up and down); a `motion.look_at` aims each square's `rot` at a target
-/// point whose `target_x` a second `value.lfo` slides left↔right, so the field
-/// swivels to follow. Two M3 deformers, each animated by the value domain. See
-/// docs/Motion Nodes/12 (value), 20 (bend+look_at).
+/// The scenes — built in the `strobe` sibling module — are two side-by-side
+/// sequential sims: on the LEFT a **verlet-rope whip** pinned at a `value.lfo`-slid
+/// anchor (gravity hangs it, the sliding pin whips it); on the RIGHT a **boids
+/// flock** with a seek pull toward a `value.lfo`-slid target (so the swarm wheels
+/// to chase it). Two simulations on the `pre` self-loop — one constrained, one
+/// emergent — each herded by the value domain. See docs/Motion Nodes/12 (value),
+/// 21 (verlet-rope + boids).
 ///
 /// The earlier scenes were removed to keep the boot document small and legible:
-/// the **Cavalry grid rig**, the **particle fountain**, and the earlier value,
-/// pulse and M3 chains (math, compare, switch, on_change, fibonacci, twist,
-/// scatter, morph). They remain in git history and every node keeps its own unit
-/// tests; the nodes stay registered, so any of them can be dropped in the editor.
+/// the **Cavalry grid rig**, the **particle fountain**, the **bend/look-at deformer
+/// grid**, and the earlier value, pulse and M3 chains (math, compare, switch,
+/// on_change, fibonacci, twist, scatter, morph). They remain in git history and
+/// every node keeps its own unit tests; the nodes stay registered, so any of them
+/// can be dropped in the editor.
 fn build_default_document(g: &mut Graph, reg: &NodeRegistry) -> Option<Vec<NodeId>> {
-    let scene = strobe::build(g)?;
+    let sinks = strobe::build(g)?;
     // Same "validate on load" the editor runs before cooking — proves the authored
     // graph is well-typed and membrane-clean.
     g.validate(reg).ok()?;
-    Some(vec![scene])
+    Some(sinks)
 }
 #[cfg(test)]
 #[path = "motion_state_tests.rs"]

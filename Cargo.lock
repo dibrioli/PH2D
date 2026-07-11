@@ -5247,6 +5247,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-node-motion-boids"
+version = "0.0.0"
+dependencies = [
+ "ph2d-node-registry",
+ "ph2d-nodegraph",
+]
+
+[[package]]
 name = "ph2d-node-motion-clone"
 version = "0.0.0"
 dependencies = [
@@ -5455,6 +5463,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-node-motion-verlet-rope"
+version = "0.0.0"
+dependencies = [
+ "ph2d-node-registry",
+ "ph2d-nodegraph",
+]
+
+[[package]]
 name = "ph2d-node-motion-wiggle"
 version = "0.0.0"
 dependencies = [
@@ -5529,6 +5545,7 @@ dependencies = [
  "ph2d-node-force-vortex",
  "ph2d-node-force-wind",
  "ph2d-node-motion-bend",
+ "ph2d-node-motion-boids",
  "ph2d-node-motion-clone",
  "ph2d-node-motion-drive",
  "ph2d-node-motion-emitter",
@@ -5555,6 +5572,7 @@ dependencies = [
  "ph2d-node-motion-trail",
  "ph2d-node-motion-transform",
  "ph2d-node-motion-twist",
+ "ph2d-node-motion-verlet-rope",
  "ph2d-node-motion-wiggle",
  "ph2d-node-pulse-beat",
  "ph2d-node-pulse-compare",

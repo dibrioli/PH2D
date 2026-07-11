@@ -365,6 +365,25 @@ impl AudioSystem {
         }
     }
 
+    /// Write the loaded clip out to `path` as compressed **Ogg Vorbis** (VBR, ADR-0113).
+    /// Like [`Self::editor_export`], it writes what is SOUNDING (audition / mono view /
+    /// bypass), so the file matches the waveform. Ogg Vorbis carries no `smpl`/`cue`
+    /// side-car, so loop points + markers are a WAV-only feature — the audio is exported;
+    /// re-import the loop from the source WAV if you need sample-exact looping.
+    pub(crate) fn editor_export_ogg(&self, path: &std::path::Path) {
+        let Some(clip) = self.editor_sounding() else {
+            return;
+        };
+        match ph2d_audio_encode::write_ogg(
+            path,
+            clip.data(),
+            ph2d_audio_encode::OGG_DEFAULT_QUALITY,
+        ) {
+            Ok(()) => println!("audio: exported {} (Ogg Vorbis VBR)", path.display()),
+            Err(e) => eprintln!("audio: ogg export failed for {}: {e}", path.display()),
+        }
+    }
+
     /// Advance transport state on a natural end-of-clip (a non-looping preview
     /// that finished). Call once per frame from the bridge.
     pub(crate) fn editor_poll(&mut self) {

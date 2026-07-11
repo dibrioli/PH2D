@@ -240,6 +240,16 @@ impl crate::App {
                 {
                     audio.editor_export(&path);
                 }
+                // Export compressed Ogg Vorbis (ADR-0113).
+                if ed::take_export_ogg()
+                    && audio.editor_loaded()
+                    && let Some(path) = rfd::FileDialog::new()
+                        .add_filter("Ogg Vorbis", &["ogg"])
+                        .set_file_name("export.ogg")
+                        .save_file()
+                {
+                    audio.editor_export_ogg(&path);
+                }
                 // Batch LUFS — pick a folder; normalize every audio file in it to
                 // −16 LUFS, writing copies under `<folder>/normalized/`.
                 if ed::take_batch_lufs()

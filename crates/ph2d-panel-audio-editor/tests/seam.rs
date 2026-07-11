@@ -22,6 +22,7 @@ use ph2d_panel_audio_editor::{
     take_batch_lufs, take_clear_loop, take_del_marker, take_edit_cmd, take_load, take_load_preset,
     take_play_pause, take_save_preset, take_set_loop, take_stop, take_toggle_mono,
 };
+use ph2d_panel_audio_editor::{AEDIT_EXPORT_OGG, take_export_ogg};
 use ph2d_panel_audio_editor::{
     AEDIT_VAR_ADD, AEDIT_VAR_ADD_FOLDER, AEDIT_VAR_GAIN, AEDIT_VAR_LOAD, AEDIT_VAR_PITCH,
     AEDIT_VAR_PLAY, AEDIT_VAR_REMOVE, AEDIT_VAR_ROWS, AEDIT_VAR_SAVE, AEDIT_VAR_STRAT_NEXT,
@@ -548,6 +549,20 @@ fn preset_save_and_load_arm_their_file_intents() {
     assert!(take_save_preset(), "Save click never armed the save intent");
     host.apply_panel_event::<AudioEditorPanel>(&mut state, WidgetEvent::Click(AEDIT_PRESET_LOAD));
     assert!(take_load_preset(), "Load click never armed the load intent");
+}
+
+/// Export OGG (ADR-0113) must arm its one-shot through the seam. Like Export WAV it
+/// always arms (the shell bridge writes only when a clip is loaded), so a dead arm
+/// leaves the button painted and the compressed-export path silently unreachable.
+#[test]
+fn export_ogg_arms_its_intent() {
+    let mut host = MockPanelHost::with_panel::<AudioEditorPanel>();
+    let mut state = AudioEditorState;
+    let _ = take_export_ogg();
+
+    host.apply_panel_event::<AudioEditorPanel>(&mut state, WidgetEvent::Click(AEDIT_EXPORT_OGG));
+    assert!(take_export_ogg(), "Export OGG click never armed its intent");
+    assert!(!take_export_ogg(), "the intent is one-shot");
 }
 
 /// Variation containers (W6). Add, Add Folder and Load are always live (Add builds the

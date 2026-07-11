@@ -9,8 +9,8 @@
 
 use crate::state::AudioEditorState;
 use crate::{
-    AEDIT_BATCH_LUFS, AEDIT_CLOSE, AEDIT_EXPORT, AEDIT_FX_PARAMS, AEDIT_LOAD, AEDIT_LOOP,
-    AEDIT_NAME, AEDIT_PANEL, AEDIT_PLAY, AEDIT_STOP, AudioEditorPanel, snapshot,
+    AEDIT_BATCH_LUFS, AEDIT_CLOSE, AEDIT_EXPORT, AEDIT_EXPORT_OGG, AEDIT_FX_PARAMS, AEDIT_LOAD,
+    AEDIT_LOOP, AEDIT_NAME, AEDIT_PANEL, AEDIT_PLAY, AEDIT_STOP, AudioEditorPanel, snapshot,
 };
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::interaction::InteractiveState;
@@ -328,7 +328,7 @@ fn paint_transport_section(
     );
     y += ROW_H + Spacing::Md.px();
 
-    // Load | Export side by side.
+    // Load | Export WAV side by side.
     button(
         Rect::new(x, y, half, ROW_H),
         "Load\u{2026}",
@@ -341,9 +341,22 @@ fn paint_transport_section(
     );
     button(
         Rect::new(x + half + gap, y, half, ROW_H),
-        "Export\u{2026}",
+        "Export WAV\u{2026}",
         t.loaded,
         AEDIT_EXPORT,
+        scene,
+        text_system,
+        theme,
+        hit_index,
+    );
+    y += ROW_H + Spacing::Sm.px();
+
+    // Export as compressed Ogg Vorbis (ADR-0113) — full width, needs a loaded clip.
+    button(
+        Rect::new(x, y, w, ROW_H),
+        "Export OGG\u{2026}",
+        t.loaded,
+        AEDIT_EXPORT_OGG,
         scene,
         text_system,
         theme,

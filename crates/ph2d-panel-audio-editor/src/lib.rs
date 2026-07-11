@@ -55,6 +55,8 @@ pub const AEDIT_LOOP: NodeId = hash_node_id("audio_editor_loop");
 pub const AEDIT_LOAD: NodeId = hash_node_id("audio_editor_load");
 /// Export button — the shell writes the current clip out (WAV).
 pub const AEDIT_EXPORT: NodeId = hash_node_id("audio_editor_export");
+/// Export as compressed Ogg Vorbis (ADR-0113) — the shell writes a `.ogg`.
+pub const AEDIT_EXPORT_OGG: NodeId = hash_node_id("audio_editor_export_ogg");
 
 // Edit ops (W2 §5) — one-shot: click arms an `AudioEditCmd` the shell applies to
 // the `EditClip` (undo timeline). Whole-clip ops (no selection needed).
@@ -410,6 +412,8 @@ pub use loop_state::take_batch_lufs;
 pub use loop_state::take_clear_loop;
 /// Panel → shell: whether the user asked to delete the nearest marker (one-shot).
 pub use loop_state::take_del_marker;
+/// Panel → shell: whether the user asked to export the clip as Ogg Vorbis (one-shot).
+pub use loop_state::take_export_ogg;
 /// Panel → shell: whether the user asked to set the loop from the selection (one-shot).
 pub use loop_state::take_set_loop;
 /// Panel → shell: whether the user asked to flip the force-mono toggle (one-shot).

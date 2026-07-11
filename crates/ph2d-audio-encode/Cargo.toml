@@ -16,6 +16,7 @@ authors.workspace = true
 [dependencies]
 ph2d-audio = { path = "../ph2d-audio" }
 thiserror = "2"
+vorbis_rs = "0.5.5"
 
 [dev-dependencies]
 # Round-trip the encoded bytes back through the real decoder in tests.

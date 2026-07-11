@@ -13,7 +13,10 @@
 //! game asset-prep wave (`docs/Audio/02_plano_implementacao_completo.md` §6) adds
 //! side-car chunks via [`WavMeta`]: loop regions (`smpl`, [`read_loop_regions`]) and
 //! named cue markers (`cue `+`LIST/adtl`, [`read_markers`]), both written by
-//! [`encode_wav_with_meta`]. Ogg Vorbis / Opus are still to come.
+//! [`encode_wav_with_meta`]. Compressed delivery: **Ogg Vorbis** ([`encode_ogg`] /
+//! [`write_ogg`], ADR-0113) via the vendored reference libvorbis (safe API, no system
+//! lib). Opus is a separate follow-up (its Rust paths force `unsafe` here or a system
+//! libopus — see ADR-0113).
 
 use std::io::Write;
 use std::path::Path;
@@ -61,6 +64,11 @@ pub enum EncodeError {
     /// (WAV caps a chunk at 4 GiB; larger needs RF64/W64, not yet supported).
     #[error("clip too large for a 32-bit WAV (needs RF64/W64)")]
     TooLarge,
+    /// A compressed codec (Ogg Vorbis) rejected the clip or failed mid-encode. The
+    /// message is the underlying codec error; kept as a `String` so the public error
+    /// stays decoupled from the codec crate.
+    #[error("compressed encode failed: {0}")]
+    Codec(String),
 }
 
 /// Sample encoding for a WAV file.
@@ -218,6 +226,69 @@ pub fn write_wav_with_meta(
     meta: &WavMeta,
 ) -> Result<(), EncodeError> {
     let bytes = encode_wav_with_meta(data, depth, meta)?;
+    let mut f = std::fs::File::create(path)?;
+    f.write_all(&bytes)?;
+    Ok(())
+}
+
+// ---------------------------------------------------------------------------------
+// Ogg Vorbis (compressed, lossy) — for game asset delivery. Encoder = the reference
+// libvorbis with the aoTuV/Lancer patchsets, vendored + built from source by
+// `vorbis_rs` (BSD-3-Clause, safe API, no system library / bindgen). Royalty-free
+// (Xiph), same HR-1 patent criterion as Symphonia's Vorbis DECODER — which also gives
+// us a free round-trip check. Opus is a separate follow-up (ADR-0113): its only Rust
+// paths force `unsafe` into this crate or a system libopus, so it needs its own call.
+// ---------------------------------------------------------------------------------
+
+/// Vorbis VBR quality, `0.0`..=`1.0` (libvorbis `-q`; higher = larger/better). The
+/// default is a game-friendly middle ground.
+pub const OGG_DEFAULT_QUALITY: f32 = 0.5;
+
+/// Encode `data` to an in-memory Ogg Vorbis stream at VBR `quality` (`0..=1`).
+///
+/// `SampleData` is interleaved `f32`; libvorbis wants **planar** per-channel blocks,
+/// so this de-interleaves first. Lossy: the bytes will NOT match the input
+/// sample-for-sample (unlike WAV), but re-decode through `ph2d-audio-decode` yields a
+/// perceptually-equal clip of the same duration/layout.
+pub fn encode_ogg(data: &SampleData, quality: f32) -> Result<Vec<u8>, EncodeError> {
+    use std::num::{NonZeroU8, NonZeroU32};
+    use vorbis_rs::{VorbisBitrateManagementStrategy, VorbisEncoderBuilder};
+
+    let format = data.format();
+    let sample_rate =
+        NonZeroU32::new(format.sample_rate).ok_or_else(|| EncodeError::Codec("0 Hz".into()))?;
+    let channels = NonZeroU8::new(format.channel_count() as u8)
+        .ok_or_else(|| EncodeError::Codec("0 channels".into()))?;
+    let ch = channels.get() as usize;
+
+    // De-interleave into one buffer per channel.
+    let frames = data.frame_count();
+    let mut planar: Vec<Vec<f32>> = vec![Vec::with_capacity(frames); ch];
+    for (i, &s) in data.samples().iter().enumerate() {
+        planar[i % ch].push(s);
+    }
+
+    let mut out = Vec::new();
+    let mut builder = VorbisEncoderBuilder::new(sample_rate, channels, &mut out)
+        .map_err(|e| EncodeError::Codec(e.to_string()))?;
+    builder.bitrate_management_strategy(VorbisBitrateManagementStrategy::QualityVbr {
+        target_quality: quality.clamp(-0.1, 1.0),
+    });
+    let mut encoder = builder
+        .build()
+        .map_err(|e| EncodeError::Codec(e.to_string()))?;
+    encoder
+        .encode_audio_block(&planar)
+        .map_err(|e| EncodeError::Codec(e.to_string()))?;
+    encoder
+        .finish()
+        .map_err(|e| EncodeError::Codec(e.to_string()))?;
+    Ok(out)
+}
+
+/// Encode `data` to Ogg Vorbis at VBR `quality` and write it to `path`.
+pub fn write_ogg(path: &Path, data: &SampleData, quality: f32) -> Result<(), EncodeError> {
+    let bytes = encode_ogg(data, quality)?;
     let mut f = std::fs::File::create(path)?;
     f.write_all(&bytes)?;
     Ok(())
@@ -439,204 +510,4 @@ fn sample_to_i24_le(s: Sample) -> [u8; 4] {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-    use ph2d_audio::{AudioFormat, ChannelLayout};
-
-    #[test]
-    fn pcm16_round_trips_through_the_decoder() {
-        // A stereo ramp so order + interleave survive.
-        let frames = 200;
-        let mut interleaved = Vec::with_capacity(frames * 2);
-        for i in 0..frames {
-            let t = i as f32 / frames as f32; // 0..1
-            interleaved.push(t * 2.0 - 1.0); // L: -1..1 ramp
-            interleaved.push(0.5 - t); // R: 0.5..-0.5 ramp
-        }
-        let src = SampleData::from_interleaved(interleaved, AudioFormat::stereo(48_000));
-
-        let bytes = encode_wav(&src, BitDepth::Pcm16).expect("encode");
-        let back = ph2d_audio_decode::decode(&bytes).expect("decode");
-
-        assert_eq!(back.format().sample_rate, 48_000);
-        assert_eq!(back.format().channels, ChannelLayout::Stereo);
-        assert_eq!(back.frame_count(), frames);
-        // PCM16 round-trip tolerance. The error is quantisation (½ LSB) plus the
-        // standard encode-by-32767 / decode-by-32768 scale asymmetry — together
-        // ~1.5 LSB near full scale (≈4.5e-5). 1e-4 covers it with margin.
-        for (a, b) in src.samples().iter().zip(back.samples()) {
-            assert!((a - b).abs() < 1e-4, "sample drift {a} vs {b}");
-        }
-    }
-
-    #[test]
-    fn float32_round_trips_bit_close() {
-        let src = SampleData::from_interleaved(
-            vec![0.123_456, -0.987_654, 0.0, 1.0, -1.0, 0.5],
-            AudioFormat::stereo(44_100),
-        );
-        let bytes = encode_wav(&src, BitDepth::Float32).expect("encode");
-        let back = ph2d_audio_decode::decode(&bytes).expect("decode");
-        assert_eq!(back.frame_count(), 3);
-        for (a, b) in src.samples().iter().zip(back.samples()) {
-            assert!((a - b).abs() < 1e-6, "float drift {a} vs {b}");
-        }
-    }
-
-    #[test]
-    fn clamps_out_of_range_on_quantise() {
-        // Values beyond [-1,1] must clamp, not wrap.
-        assert_eq!(sample_to_i16(2.0), 32_767);
-        assert_eq!(sample_to_i16(-2.0), -32_767);
-        let [b0, b1, b2, _] = sample_to_i24_le(2.0);
-        assert_eq!(i32::from_le_bytes([b0, b1, b2, 0]), 8_388_607);
-    }
-
-    #[test]
-    fn smpl_loop_round_trips_and_audio_still_decodes() {
-        let frames = 500;
-        let mut interleaved = Vec::with_capacity(frames * 2);
-        for i in 0..frames {
-            let t = i as f32 / frames as f32;
-            interleaved.push(t * 2.0 - 1.0);
-            interleaved.push(0.5 - t);
-        }
-        let src = SampleData::from_interleaved(interleaved, AudioFormat::stereo(48_000));
-        let meta = WavMeta {
-            loops: vec![LoopRegion {
-                start: 100,
-                end: 400,
-            }],
-            ..Default::default()
-        };
-
-        let bytes = encode_wav_with_meta(&src, BitDepth::Pcm16, &meta).expect("encode");
-
-        // The loop region survives the write → read (half-open end preserved).
-        let back_loops = read_loop_regions(&bytes);
-        assert_eq!(back_loops, meta.loops, "smpl loop must round-trip exactly");
-
-        // Symphonia ignores the unknown `smpl` chunk and still decodes the audio.
-        let audio = ph2d_audio_decode::decode(&bytes).expect("decode with smpl present");
-        assert_eq!(
-            audio.frame_count(),
-            frames,
-            "smpl must not corrupt the audio"
-        );
-        assert_eq!(audio.format().channels, ChannelLayout::Stereo);
-    }
-
-    #[test]
-    fn cue_markers_round_trip_and_audio_still_decodes() {
-        let src = SampleData::from_interleaved(vec![0.0; 2_000], AudioFormat::stereo(48_000));
-        let meta = WavMeta {
-            loops: Vec::new(),
-            markers: vec![
-                Marker {
-                    frame: 100,
-                    name: "intro".to_string(),
-                },
-                Marker {
-                    frame: 500,
-                    name: "hit".to_string(),
-                },
-            ],
-        };
-        let bytes = encode_wav_with_meta(&src, BitDepth::Pcm16, &meta).expect("encode");
-
-        // Markers (position + label) round-trip, sorted by frame.
-        assert_eq!(
-            read_markers(&bytes),
-            meta.markers,
-            "cue+adtl must round-trip"
-        );
-        // Symphonia ignores the cue + LIST chunks and still decodes the audio.
-        let audio = ph2d_audio_decode::decode(&bytes).expect("decode with cue/LIST present");
-        assert_eq!(
-            audio.frame_count(),
-            1_000,
-            "markers must not corrupt the audio"
-        );
-    }
-
-    #[test]
-    fn loops_and_markers_coexist_in_one_file() {
-        let src = SampleData::from_interleaved(vec![0.1; 40], AudioFormat::mono(48_000));
-        let meta = WavMeta {
-            loops: vec![LoopRegion { start: 4, end: 30 }],
-            markers: vec![Marker {
-                frame: 12,
-                name: "M".to_string(),
-            }],
-        };
-        let bytes = encode_wav_with_meta(&src, BitDepth::Float32, &meta).unwrap();
-        assert_eq!(
-            read_loop_regions(&bytes),
-            meta.loops,
-            "smpl survives alongside cue"
-        );
-        assert_eq!(
-            read_markers(&bytes),
-            meta.markers,
-            "cue survives alongside smpl"
-        );
-        assert!(
-            ph2d_audio_decode::decode(&bytes).is_ok(),
-            "audio still decodes"
-        );
-    }
-
-    #[test]
-    fn no_loop_is_byte_identical_to_bare_encode() {
-        // The metadata path must not change the bytes when there are no loops — the
-        // regression guard for existing callers / fixtures.
-        let src =
-            SampleData::from_interleaved(vec![0.1, -0.2, 0.3, -0.4], AudioFormat::mono(44_100));
-        let bare = encode_wav(&src, BitDepth::Pcm16).unwrap();
-        let empty = encode_wav_with_meta(&src, BitDepth::Pcm16, &WavMeta::default()).unwrap();
-        assert_eq!(
-            bare, empty,
-            "empty meta must be byte-for-byte the bare file"
-        );
-        assert!(read_loop_regions(&bare).is_empty(), "no smpl chunk to find");
-    }
-
-    #[test]
-    fn reads_smpl_placed_before_data() {
-        // The `smpl` chunk sits between `fmt ` and `data`; the walker must skip `fmt `.
-        let src = SampleData::from_interleaved(vec![0.0; 20], AudioFormat::mono(48_000));
-        let meta = WavMeta {
-            loops: vec![
-                LoopRegion { start: 2, end: 8 },
-                LoopRegion { start: 9, end: 15 },
-            ],
-            ..Default::default()
-        };
-        let bytes = encode_wav_with_meta(&src, BitDepth::Float32, &meta).unwrap();
-        assert_eq!(
-            &bytes[36..40],
-            b"smpl",
-            "smpl comes right after the fmt chunk"
-        );
-        assert_eq!(
-            read_loop_regions(&bytes),
-            meta.loops,
-            "both loops round-trip"
-        );
-    }
-
-    #[test]
-    fn header_is_well_formed() {
-        let src = SampleData::from_interleaved(vec![0.0; 10], AudioFormat::mono(22_050));
-        let bytes = encode_wav(&src, BitDepth::Pcm16).unwrap();
-        assert_eq!(&bytes[0..4], b"RIFF");
-        assert_eq!(&bytes[8..12], b"WAVE");
-        assert_eq!(&bytes[12..16], b"fmt ");
-        assert_eq!(&bytes[36..40], b"data");
-        // data_len = 10 samples * 2 bytes.
-        assert_eq!(
-            u32::from_le_bytes([bytes[40], bytes[41], bytes[42], bytes[43]]),
-            20
-        );
-    }
-}
+mod tests;

@@ -26,6 +26,7 @@ thread_local! {
 
     /// Panel → shell one-shots (drained by the bridge each frame).
     static ADD_REQ: Cell<bool> = const { Cell::new(false) };
+    static ADD_FOLDER_REQ: Cell<bool> = const { Cell::new(false) };
     static REMOVE_REQ: Cell<bool> = const { Cell::new(false) };
     static PLAY_REQ: Cell<bool> = const { Cell::new(false) };
     static SAVE_REQ: Cell<bool> = const { Cell::new(false) };
@@ -104,6 +105,15 @@ pub(crate) fn request_add() {
 /// Shell: take the pending add request (one-shot).
 pub fn take_add_variation() -> bool {
     ADD_REQ.with(|c| c.replace(false))
+}
+
+/// Panel: arm "add every clip in a folder" (the bridge opens a folder picker).
+pub(crate) fn request_add_folder() {
+    ADD_FOLDER_REQ.with(|c| c.set(true));
+}
+/// Shell: take the pending add-folder request (one-shot).
+pub fn take_add_variation_folder() -> bool {
+    ADD_FOLDER_REQ.with(|c| c.replace(false))
 }
 
 /// Panel: arm "remove the selected variation".

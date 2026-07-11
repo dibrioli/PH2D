@@ -183,6 +183,8 @@ pub const AEDIT_MARK_DEL: NodeId = hash_node_id("audio_editor_mark_del");
 pub const MAX_VARIATIONS: usize = 12;
 /// Add a variation (the shell opens a file picker + decodes).
 pub const AEDIT_VAR_ADD: NodeId = hash_node_id("audio_editor_var_add");
+/// Add every clip in a folder (import by convention — `name_01..NN → group`).
+pub const AEDIT_VAR_ADD_FOLDER: NodeId = hash_node_id("audio_editor_var_add_folder");
 /// Remove the selected variation.
 pub const AEDIT_VAR_REMOVE: NodeId = hash_node_id("audio_editor_var_remove");
 /// Audition the next variation (pick per strategy + jitter → preview).
@@ -422,6 +424,8 @@ pub use variation_state::set_strategy_name;
 pub use variation_state::set_variation_names;
 /// Panel → shell: whether the user asked to add a variation (one-shot; file picker).
 pub use variation_state::take_add_variation;
+/// Panel → shell: whether the user asked to import a folder of variations (one-shot).
+pub use variation_state::take_add_variation_folder;
 /// Panel → shell: whether the user asked to load a variation set (one-shot; dialog).
 pub use variation_state::take_load_variation_set;
 /// Panel → shell: whether the user asked to audition the next variation (one-shot).

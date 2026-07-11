@@ -343,6 +343,61 @@ pub fn parse(text: &str) -> VariationSet {
     set
 }
 
+/// Compare two file names "naturally" — digit runs compare by numeric value, so
+/// `step_2` sorts before `step_10` (plain lexicographic would put `_10` first). Used
+/// by the folder import so an unpadded `_1..NN` set still lands in order (Sequence
+/// depends on it). Case-sensitive on the non-digit runs; leading zeros don't matter.
+pub fn natural_cmp(a: &str, b: &str) -> std::cmp::Ordering {
+    use std::cmp::Ordering;
+    let (mut ai, mut bi) = (a.chars().peekable(), b.chars().peekable());
+    loop {
+        match (ai.peek().copied(), bi.peek().copied()) {
+            (None, None) => return Ordering::Equal,
+            (None, Some(_)) => return Ordering::Less,
+            (Some(_), None) => return Ordering::Greater,
+            (Some(ca), Some(cb)) => {
+                if ca.is_ascii_digit() && cb.is_ascii_digit() {
+                    // Compare whole digit runs by numeric value (strip leading zeros).
+                    let na: String = take_digits(&mut ai);
+                    let nb: String = take_digits(&mut bi);
+                    let (ta, tb) = (na.trim_start_matches('0'), nb.trim_start_matches('0'));
+                    let ord = ta.len().cmp(&tb.len()).then_with(|| ta.cmp(tb));
+                    if ord != Ordering::Equal {
+                        return ord;
+                    }
+                    // Equal numeric value → the shorter original (fewer leading zeros)
+                    // sorts first, a stable tiebreak.
+                    let ord = na.len().cmp(&nb.len());
+                    if ord != Ordering::Equal {
+                        return ord;
+                    }
+                } else {
+                    let ord = ca.cmp(&cb);
+                    if ord != Ordering::Equal {
+                        return ord;
+                    }
+                    ai.next();
+                    bi.next();
+                }
+            }
+        }
+    }
+}
+
+/// Consume and return the leading run of ASCII digits from `it`.
+fn take_digits(it: &mut std::iter::Peekable<std::str::Chars<'_>>) -> String {
+    let mut s = String::new();
+    while let Some(&c) = it.peek() {
+        if c.is_ascii_digit() {
+            s.push(c);
+            it.next();
+        } else {
+            break;
+        }
+    }
+    s
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -510,5 +565,32 @@ entry | bad-weight.wav | xyz | off
         assert_eq!(PickStrategy::Random.cycled(1), PickStrategy::Sequence);
         assert_eq!(PickStrategy::Random.cycled(-1), PickStrategy::Shuffle);
         assert_eq!(PickStrategy::Shuffle.cycled(1), PickStrategy::Random);
+    }
+
+    #[test]
+    fn natural_sort_orders_numeric_suffixes() {
+        let mut v = vec![
+            "step_10.wav",
+            "step_2.wav",
+            "step_1.wav",
+            "step_20.wav",
+            "step_3.wav",
+        ];
+        v.sort_by(|a, b| natural_cmp(a, b));
+        assert_eq!(
+            v,
+            vec![
+                "step_1.wav",
+                "step_2.wav",
+                "step_3.wav",
+                "step_10.wav",
+                "step_20.wav"
+            ],
+            "unpadded numbers must sort by value, not lexically"
+        );
+        // Zero-padded names sort the same way, and a shorter run wins ties.
+        let mut z = vec!["a_09", "a_10", "a_1", "a_01"];
+        z.sort_by(|a, b| natural_cmp(a, b));
+        assert_eq!(z, vec!["a_1", "a_01", "a_09", "a_10"]);
     }
 }

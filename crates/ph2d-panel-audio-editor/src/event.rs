@@ -65,9 +65,9 @@ fn asset_click(id: NodeId) -> Option<EventOutcome> {
 /// [`asset_click`], to keep `apply_event` under the panel fn-LOC cap.
 fn variation_click(id: NodeId) -> Option<EventOutcome> {
     use crate::{
-        AEDIT_VAR_ADD, AEDIT_VAR_LOAD, AEDIT_VAR_PLAY, AEDIT_VAR_REMOVE, AEDIT_VAR_ROWS,
-        AEDIT_VAR_SAVE, AEDIT_VAR_STRAT_NEXT, AEDIT_VAR_STRAT_PREV, AEDIT_VAR_WEIGHT_DOWN,
-        AEDIT_VAR_WEIGHT_UP,
+        AEDIT_VAR_ADD, AEDIT_VAR_ADD_FOLDER, AEDIT_VAR_LOAD, AEDIT_VAR_PLAY, AEDIT_VAR_REMOVE,
+        AEDIT_VAR_ROWS, AEDIT_VAR_SAVE, AEDIT_VAR_STRAT_NEXT, AEDIT_VAR_STRAT_PREV,
+        AEDIT_VAR_WEIGHT_DOWN, AEDIT_VAR_WEIGHT_UP,
     };
     if let Some(i) = AEDIT_VAR_ROWS.iter().position(|r| *r == id) {
         variation_state::select(i);
@@ -76,6 +76,8 @@ fn variation_click(id: NodeId) -> Option<EventOutcome> {
     let has_any = variation_state::count() > 0;
     if id == AEDIT_VAR_ADD {
         variation_state::request_add();
+    } else if id == AEDIT_VAR_ADD_FOLDER {
+        variation_state::request_add_folder();
     } else if id == AEDIT_VAR_LOAD {
         variation_state::request_load();
     } else if id == AEDIT_VAR_STRAT_PREV {

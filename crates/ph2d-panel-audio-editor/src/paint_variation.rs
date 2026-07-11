@@ -12,9 +12,10 @@
 
 use crate::paint::{ClippedHits, button};
 use crate::{
-    AEDIT_VAR_ADD, AEDIT_VAR_GAIN, AEDIT_VAR_LOAD, AEDIT_VAR_PITCH, AEDIT_VAR_PLAY,
-    AEDIT_VAR_REMOVE, AEDIT_VAR_ROWS, AEDIT_VAR_SAVE, AEDIT_VAR_STRAT_NEXT, AEDIT_VAR_STRAT_PREV,
-    AEDIT_VAR_WEIGHT_DOWN, AEDIT_VAR_WEIGHT_UP, MAX_VARIATIONS, variation_state,
+    AEDIT_VAR_ADD, AEDIT_VAR_ADD_FOLDER, AEDIT_VAR_GAIN, AEDIT_VAR_LOAD, AEDIT_VAR_PITCH,
+    AEDIT_VAR_PLAY, AEDIT_VAR_REMOVE, AEDIT_VAR_ROWS, AEDIT_VAR_SAVE, AEDIT_VAR_STRAT_NEXT,
+    AEDIT_VAR_STRAT_PREV, AEDIT_VAR_WEIGHT_DOWN, AEDIT_VAR_WEIGHT_UP, MAX_VARIATIONS,
+    variation_state,
 };
 use ph2d_editor_core::paint::{fill_rounded_rect, paint_text, paint_text_centered, resolve};
 use ph2d_editor_core::widget::{Slider, SliderOrientation, paint_slider};
@@ -118,7 +119,7 @@ pub(crate) fn paint_variation_section(
     // The clip list (selectable rows).
     y = paint_var_list(y, x, w, scene, text_system, theme, hit_index);
 
-    // Add | Remove.
+    // Add file | Add folder (import by convention: a folder of `name_01..NN`).
     let half = ((w - gap) * 0.5).max(1.0);
     button(
         Rect::new(x, y, half, row_h),
@@ -132,6 +133,19 @@ pub(crate) fn paint_variation_section(
     );
     button(
         Rect::new(x + half + gap, y, half, row_h),
+        "Add Folder\u{2026}",
+        true,
+        AEDIT_VAR_ADD_FOLDER,
+        scene,
+        text_system,
+        theme,
+        hit_index,
+    );
+    y += row_h + gap;
+
+    // Remove the selected variation.
+    button(
+        Rect::new(x, y, w, row_h),
         "Remove",
         has_any,
         AEDIT_VAR_REMOVE,

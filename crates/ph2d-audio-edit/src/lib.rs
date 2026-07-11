@@ -38,7 +38,7 @@ pub use ops::{
 pub use peaks::{ColumnPeaks, DEFAULT_BIN_SIZE, PeakCache, column_peaks};
 pub use truepeak::{OVERSAMPLE, true_peak};
 pub use variation::{
-    Jitter, PickStrategy, Variation, VariationPicker, VariationSet, WEIGHT_RANGE,
+    Jitter, PickStrategy, Variation, VariationPicker, VariationSet, WEIGHT_RANGE, natural_cmp,
     parse as parse_variation_set, serialize as serialize_variation_set,
 };
 

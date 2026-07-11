@@ -23,12 +23,12 @@ use ph2d_panel_audio_editor::{
     take_play_pause, take_save_preset, take_set_loop, take_stop, take_toggle_mono,
 };
 use ph2d_panel_audio_editor::{
-    AEDIT_VAR_ADD, AEDIT_VAR_GAIN, AEDIT_VAR_LOAD, AEDIT_VAR_PITCH, AEDIT_VAR_PLAY,
-    AEDIT_VAR_REMOVE, AEDIT_VAR_ROWS, AEDIT_VAR_SAVE, AEDIT_VAR_STRAT_NEXT, AEDIT_VAR_STRAT_PREV,
-    AEDIT_VAR_WEIGHT_DOWN, AEDIT_VAR_WEIGHT_UP, gain_jitter_norm, pitch_jitter_norm,
-    set_strategy_name, set_variation_names, take_add_variation, take_load_variation_set,
-    take_play_variation, take_remove_variation, take_save_variation_set, take_strategy_step,
-    take_weight_step, variation_sel,
+    AEDIT_VAR_ADD, AEDIT_VAR_ADD_FOLDER, AEDIT_VAR_GAIN, AEDIT_VAR_LOAD, AEDIT_VAR_PITCH,
+    AEDIT_VAR_PLAY, AEDIT_VAR_REMOVE, AEDIT_VAR_ROWS, AEDIT_VAR_SAVE, AEDIT_VAR_STRAT_NEXT,
+    AEDIT_VAR_STRAT_PREV, AEDIT_VAR_WEIGHT_DOWN, AEDIT_VAR_WEIGHT_UP, gain_jitter_norm,
+    pitch_jitter_norm, set_strategy_name, set_variation_names, take_add_variation,
+    take_add_variation_folder, take_load_variation_set, take_play_variation, take_remove_variation,
+    take_save_variation_set, take_strategy_step, take_weight_step, variation_sel,
 };
 use ph2d_ui_testkit::MockPanelHost;
 
@@ -550,18 +550,30 @@ fn preset_save_and_load_arm_their_file_intents() {
     assert!(take_load_preset(), "Load click never armed the load intent");
 }
 
-/// Variation containers (W6). Add and Load are always live (Add builds the set, Load
-/// reads a manifest); their clicks must reach the file-picker one-shots.
+/// Variation containers (W6). Add, Add Folder and Load are always live (Add builds the
+/// set one clip at a time, Add Folder imports a folder by convention, Load reads a
+/// manifest); their clicks must reach the file/folder-picker one-shots.
 #[test]
 fn variation_add_and_load_arm_their_intents() {
     let mut host = MockPanelHost::with_panel::<AudioEditorPanel>();
     let mut state = AudioEditorState;
     let _ = take_add_variation();
+    let _ = take_add_variation_folder();
     let _ = take_load_variation_set();
 
     host.apply_panel_event::<AudioEditorPanel>(&mut state, WidgetEvent::Click(AEDIT_VAR_ADD));
     assert!(take_add_variation(), "Add click never armed the add intent");
     assert!(!take_add_variation(), "the intent is one-shot");
+
+    host.apply_panel_event::<AudioEditorPanel>(
+        &mut state,
+        WidgetEvent::Click(AEDIT_VAR_ADD_FOLDER),
+    );
+    assert!(
+        take_add_variation_folder(),
+        "Add Folder click never armed the import intent"
+    );
+    assert!(!take_add_variation_folder(), "the intent is one-shot");
 
     host.apply_panel_event::<AudioEditorPanel>(&mut state, WidgetEvent::Click(AEDIT_VAR_LOAD));
     assert!(

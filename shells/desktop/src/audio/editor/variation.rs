@@ -41,6 +41,35 @@ impl AudioSystem {
         self.editor.variation_clips.push(Some(data));
     }
 
+    /// Import by convention: add every decodable audio clip in `dir` to the set (the
+    /// `name_01..NN → group` convention — point at a per-group folder and get the whole
+    /// set in one click), **natural-sorted** so an unpadded run still lands in order
+    /// (Sequence depends on it). Stops at the cap; non-audio / undecodable files are
+    /// skipped. Appends to the current set (does not clear it).
+    pub(crate) fn editor_add_variation_folder(&mut self, dir: &Path) {
+        let mut paths: Vec<std::path::PathBuf> = match std::fs::read_dir(dir) {
+            Ok(rd) => rd
+                .filter_map(|e| e.ok().map(|e| e.path()))
+                .filter(|p| p.is_file() && is_audio_path(p))
+                .collect(),
+            Err(e) => {
+                eprintln!("audio: cannot read folder {}: {e}", dir.display());
+                return;
+            }
+        };
+        paths.sort_by(|a, b| {
+            ph2d_audio_edit::natural_cmp(
+                &a.file_name().unwrap_or_default().to_string_lossy(),
+                &b.file_name().unwrap_or_default().to_string_lossy(),
+            )
+        });
+        // `editor_add_variation` no-ops once the set is full, so this naturally stops at
+        // the cap without decoding the overflow.
+        for p in paths {
+            self.editor_add_variation(&p);
+        }
+    }
+
     /// Remove the variation at `sel` (both the entry and its cached clip).
     pub(crate) fn editor_remove_variation(&mut self, sel: usize) {
         if sel < self.editor.variation_set.entries.len() {
@@ -157,12 +186,14 @@ impl AudioSystem {
         self.editor.variation_set.strategy.name()
     }
 
-    /// Dev smoke (`PH2D_AUDIO_LOOP_SMOKE=1`, called from `editor_loop_smoke`): seed a
-    /// four-clip variation set of short pitched blips written to the temp dir, so the
-    /// Variations section is populated on launch. Open the Audio Editor pill and hit
-    /// **Play Variation** repeatedly: Shuffle never repeats back-to-back; raise **Pitch
-    /// jitter** / **Gain jitter** and each press varies; **Weight ×2** on a row biases
-    /// it; the strategy selector switches Random / Sequence / Shuffle.
+    /// Dev smoke (`PH2D_AUDIO_LOOP_SMOKE=1`, called from `editor_loop_smoke`): write a
+    /// four-clip set of short pitched blips to a temp folder, then populate the set by
+    /// **importing that folder** — so the smoke dogfoods `editor_add_variation_folder`
+    /// (scan + natural-sort) instead of adding each by hand. Open the Audio Editor pill:
+    /// the Variations section comes filled. Hit **Play Variation** repeatedly (Shuffle
+    /// never repeats back-to-back); raise **Pitch/Gain jitter**; **Weight ×2** biases a
+    /// row; the selector switches Random / Sequence / Shuffle. **Add Folder…** re-imports
+    /// the same `$TMPDIR/ph2d_variation_smoke/` folder if you want to see it live.
     pub(crate) fn editor_variation_smoke(&mut self) {
         use ph2d_audio::{AudioFormat, SampleData};
         let sr = 48_000u32;
@@ -181,12 +212,10 @@ impl AudioSystem {
             }
             let data = SampleData::from_interleaved(v, AudioFormat::mono(sr));
             let path = dir.join(format!("blip_{:02}.wav", i + 1));
-            if ph2d_audio_encode::write_wav(&path, &data, ph2d_audio_encode::BitDepth::Pcm16)
-                .is_ok()
-            {
-                self.editor_add_variation(&path);
-            }
+            let _ = ph2d_audio_encode::write_wav(&path, &data, ph2d_audio_encode::BitDepth::Pcm16);
         }
+        // Import the folder we just wrote — exercises the scan + natural sort.
+        self.editor_add_variation_folder(&dir);
         // Jitter starts at 0 (the panel's sliders own it and the bridge pushes their
         // position every frame) — the four distinct pitches carry the variation, and
         // raising the Pitch/Gain jitter sliders makes each press vary further.
@@ -210,4 +239,14 @@ fn decode_file(path: &Path) -> Option<SampleData> {
             None
         }
     }
+}
+
+/// Whether `path` has an audio extension the folder import considers (same set as the
+/// file picker). Decode still gates the real add — this only skips obvious non-audio.
+fn is_audio_path(path: &Path) -> bool {
+    const AUDIO_EXTS: [&str; 6] = ["wav", "flac", "ogg", "mp3", "aiff", "aif"];
+    path.extension()
+        .and_then(|e| e.to_str())
+        .map(|e| e.to_ascii_lowercase())
+        .is_some_and(|e| AUDIO_EXTS.contains(&e.as_str()))
 }

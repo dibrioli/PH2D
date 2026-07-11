@@ -374,6 +374,13 @@ impl crate::App {
                 {
                     audio.editor_add_variation(&path);
                 }
+                // Import by convention: a folder of `name_01..NN` → the whole set,
+                // natural-sorted.
+                if ed::take_add_variation_folder()
+                    && let Some(dir) = rfd::FileDialog::new().pick_folder()
+                {
+                    audio.editor_add_variation_folder(&dir);
+                }
                 if ed::take_remove_variation() {
                     audio.editor_remove_variation(ed::variation_sel());
                 }

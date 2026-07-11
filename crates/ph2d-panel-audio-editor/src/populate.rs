@@ -9,8 +9,8 @@ use crate::{
     AEDIT_MARK_DEL, AEDIT_MONO, AEDIT_NAME, AEDIT_NORM_LUFS, AEDIT_NORMALIZE, AEDIT_PLAY,
     AEDIT_PRESET_APPLY, AEDIT_PRESET_LOAD, AEDIT_PRESET_NEXT, AEDIT_PRESET_PREV, AEDIT_PRESET_SAVE,
     AEDIT_REDO, AEDIT_REVERSE, AEDIT_SILENCE, AEDIT_STOP, AEDIT_TRIM, AEDIT_UNDO, AEDIT_VAR_ADD,
-    AEDIT_VAR_GAIN, AEDIT_VAR_LOAD, AEDIT_VAR_PITCH, AEDIT_VAR_PLAY, AEDIT_VAR_REMOVE,
-    AEDIT_VAR_ROWS, AEDIT_VAR_SAVE, AEDIT_VAR_STRAT_NEXT, AEDIT_VAR_STRAT_PREV,
+    AEDIT_VAR_ADD_FOLDER, AEDIT_VAR_GAIN, AEDIT_VAR_LOAD, AEDIT_VAR_PITCH, AEDIT_VAR_PLAY,
+    AEDIT_VAR_REMOVE, AEDIT_VAR_ROWS, AEDIT_VAR_SAVE, AEDIT_VAR_STRAT_NEXT, AEDIT_VAR_STRAT_PREV,
     AEDIT_VAR_WEIGHT_DOWN, AEDIT_VAR_WEIGHT_UP, loop_state, variation_state,
 };
 use ph2d_editor_core::ids;
@@ -102,9 +102,10 @@ pub(crate) fn populate(store: &mut WidgetStore) {
         // Markers (W6): Add at playhead · Delete nearest.
         AEDIT_MARK_ADD,
         AEDIT_MARK_DEL,
-        // Variation containers (W6): Add · Remove · Play · strategy selector ·
-        // Weight ÷2/×2 · Save · Load.
+        // Variation containers (W6): Add · Add Folder · Remove · Play · strategy
+        // selector · Weight ÷2/×2 · Save · Load.
         AEDIT_VAR_ADD,
+        AEDIT_VAR_ADD_FOLDER,
         AEDIT_VAR_REMOVE,
         AEDIT_VAR_PLAY,
         AEDIT_VAR_STRAT_PREV,

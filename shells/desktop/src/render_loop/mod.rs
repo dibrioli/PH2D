@@ -2068,7 +2068,7 @@ impl crate::App {
             // pen-vs-shape routing (the downcast lives in the bridge).
             self.vec_draw_config = vec_cfg;
 
-            // ADR-0113 W2 T2.17 (ready-to-smoke): ativar a tool Flip num documento
+            // ADR-0114 W2 T2.17 (ready-to-smoke): ativar a tool Flip num documento
             // VAZIO cria um objeto inicial (1 camada) pra desenhar na hora — sem
             // ele o `bake_stroke` sai (não há objeto). Só na borda de ativação;
             // um doc já povoado (ex. PH2D_FLIP_DEMO) não é tocado.
@@ -2090,6 +2090,20 @@ impl crate::App {
                 flip_bridge::publish(hero, tools, flip, self.flip_active_layer);
             self.flip_active = flip_active;
             self.flip_style = flip_style;
+
+            // Texto em edição herda o Style do painel em TEMPO REAL: o bridge acabou
+            // de copiar Fill/Stroke/Width/Cap/Join do painel para o Pen; se mudou,
+            // regenera os glyphs da sessão com o novo Paint (antes do `sync`, para as
+            // entidades reconciliarem os paths novos neste mesmo frame). Sair do modo
+            // Text (inclusive pelo botão do painel) COMMITA a sessão — senão o recolor
+            // de multisseleção pegaria letras não-selecionadas e o gizmo sumiria.
+            crate::vec_text::sync_active_text_style(
+                &mut self.vec_text_edit,
+                self.vec_draw_config.mode,
+                &self.vec_pen,
+                vec_px_to_world,
+                vec_scene,
+            );
 
             // ADR-0110 — a árvore do editor é a Hierarquia. Reconcilia documento e
             // entidades (path novo ⇒ entidade; entidade apagada ⇒ path), projeta a

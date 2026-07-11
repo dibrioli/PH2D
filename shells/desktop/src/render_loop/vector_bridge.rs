@@ -234,13 +234,20 @@ pub(super) fn dispatch(
             .and_then(|f| selected_grad_color(f, h))
             .is_some()
     });
-    if tool.take_apply_to_selected()
-        && let Some(sel) = pen.selected()
-    {
+    if tool.take_apply_to_selected() {
+        // Restyle EVERY selected path, not just the primary — a multi-selection
+        // (marquee, Shift+click, or all the glyphs of a text block) recolours as one
+        // (Enio 2026-07-11). A gradient-handle recolour is the one exception: the
+        // handle addresses the PRIMARY path's fill slot, so it stays single-path.
+        let sel_ids: Vec<ph2d_vec_scene::VecPathId> = if active_handle.is_some() {
+            pen.selected().into_iter().collect()
+        } else {
+            pen.selected_paths().to_vec()
+        };
         let new_stroke = rgba(stroke);
         let new_fill = if fill[3] == 0 { None } else { Some(rgba(fill)) };
         let new_w = tool.stroke_width_px() * px_to_world;
-        let will_change = scene.paths().iter().find(|p| p.id == sel).is_some_and(|p| {
+        let differs = |p: &ph2d_vec_scene::VecPath| {
             let stroke_differs = p.stroke.is_some_and(|s| {
                 s.color != new_stroke
                     || s.cap != cap
@@ -260,6 +267,13 @@ pub(super) fn dispatch(
                     && p.fill.as_ref().map(Paint::primary_color) != new_fill
             };
             stroke_differs || fill_differs
+        };
+        let will_change = sel_ids.iter().any(|&id| {
+            scene
+                .paths()
+                .iter()
+                .find(|p| p.id == id)
+                .is_some_and(&differs)
         });
         if will_change {
             RECOLOR_PRE.with(|c| {
@@ -267,7 +281,10 @@ pub(super) fn dispatch(
                     *c.borrow_mut() = Some(scene.clone());
                 }
             });
-            if let Some(path) = scene.path_mut(sel) {
+            for &id in &sel_ids {
+                let Some(path) = scene.path_mut(id) else {
+                    continue;
+                };
                 if let Some(old) = path.stroke {
                     // Keep the path's width unless the Width slider is being dragged
                     // (mirror of the pre-existing width behaviour); apply the rest.

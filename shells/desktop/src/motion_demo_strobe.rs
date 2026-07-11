@@ -159,13 +159,13 @@ fn build_voronoi_scene(g: &mut Graph) -> Option<NodeId> {
     })
     .ok()?; // → relax
 
-    // A 48-point cloud in a 5×5 domain, shifted onto the right half. The `relax` lfo
-    // re-runs Lloyd every frame, so `count`/`iterations` are kept modest (the grid
-    // `res` also scales with count) to stay real-time — see the node's cost note.
-    g.set_param(voronoi, "count", 48.0);
+    // A 96-point cloud in a 5×5 domain, shifted onto the right half. The `relax` lfo
+    // re-runs Lloyd every frame; the node parallelises the search across cores (and the
+    // grid `res` scales with count), so ~100 animated points stay real-time.
+    g.set_param(voronoi, "count", 96.0);
     g.set_param(voronoi, "width", 5.0);
     g.set_param(voronoi, "height", 5.0);
-    g.set_param(voronoi, "iterations", 6.0);
+    g.set_param(voronoi, "iterations", 8.0);
     g.set_param(mv, "dx", 6.0);
     g.set_param(mv, "dy", 0.0);
     // A cool cyan cloud.

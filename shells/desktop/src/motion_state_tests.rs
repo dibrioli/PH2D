@@ -101,7 +101,7 @@ fn the_voronoi_relaxes_into_an_even_honeycomb() {
     for k in 0..=300u64 {
         let t = k as f64 / 60.0; // ~5 s = the relax lfo's full period
         let pos = positions_at(&state, voronoi_sink, t);
-        assert_eq!(pos.len(), 48, "the 48-point cloud");
+        assert_eq!(pos.len(), 96, "the 96-point cloud");
         gaps.push(min_pair(&pos));
         cx.push(mean_x(&pos));
     }

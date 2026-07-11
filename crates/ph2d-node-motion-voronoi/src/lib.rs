@@ -117,31 +117,55 @@ fn seed_points(count: usize, w: f32, h: f32, seed: u32) -> Vec<[f32; 2]> {
         .collect()
 }
 
+/// The centred world position of grid sample `s` (row-major over `res×res`).
+fn sample_pos(s: usize, w: f32, h: f32, res: usize) -> [f32; 2] {
+    let (gy, gx) = (s / res, s % res);
+    [
+        ((gx as f32 + 0.5) / res as f32 - 0.5) * w,
+        ((gy as f32 + 0.5) / res as f32 - 0.5) * h,
+    ]
+}
+
+/// The index of the point nearest to `sp` (squared distance — no `sqrt`).
+fn nearest(sp: [f32; 2], points: &[[f32; 2]]) -> u32 {
+    let mut best = 0u32;
+    let mut best_d = f32::MAX;
+    for (j, p) in points.iter().enumerate() {
+        let (dx, dy) = (sp[0] - p[0], sp[1] - p[1]);
+        let d = dx * dx + dy * dy;
+        if d < best_d {
+            best_d = d;
+            best = j as u32;
+        }
+    }
+    best
+}
+
 /// One Lloyd iteration: assign every grid sample to its nearest point, then move each
 /// point to the mean of its assigned samples. Points with no samples hold still.
+///
+/// The nearest-point search (the `O(res²·count)` hot loop) runs **across cores** with
+/// rayon; the accumulation stays a single ordered pass, so the result is **bit-identical
+/// to the serial version** (float addition order is preserved — the replay-hash gate is
+/// unaffected). This is what lets an animated `relax` stay real-time on a many-core box;
+/// it is a constant-factor (cores×) win, not a change to the `O(count²)` scaling.
 fn lloyd_step(points: &[[f32; 2]], w: f32, h: f32, res: usize) -> Vec<[f32; 2]> {
+    use rayon::prelude::*;
     let n = points.len();
+    // Parallel, order-preserving: sample s → its nearest point index.
+    let assign: Vec<u32> = (0..res * res)
+        .into_par_iter()
+        .map(|s| nearest(sample_pos(s, w, h, res), points))
+        .collect();
+    // Sequential ordered accumulate (fixed addition order → deterministic).
     let mut sum = vec![[0.0f32; 2]; n];
     let mut count = vec![0u32; n];
-    for gy in 0..res {
-        let sy = ((gy as f32 + 0.5) / res as f32 - 0.5) * h;
-        for gx in 0..res {
-            let sx = ((gx as f32 + 0.5) / res as f32 - 0.5) * w;
-            // Nearest point (squared distance — no sqrt).
-            let mut best = 0usize;
-            let mut best_d = f32::MAX;
-            for (j, p) in points.iter().enumerate() {
-                let (dx, dy) = (sx - p[0], sy - p[1]);
-                let d = dx * dx + dy * dy;
-                if d < best_d {
-                    best_d = d;
-                    best = j;
-                }
-            }
-            sum[best][0] += sx;
-            sum[best][1] += sy;
-            count[best] += 1;
-        }
+    for (s, &idx) in assign.iter().enumerate() {
+        let sp = sample_pos(s, w, h, res);
+        let j = idx as usize;
+        sum[j][0] += sp[0];
+        sum[j][1] += sp[1];
+        count[j] += 1;
     }
     points
         .iter()

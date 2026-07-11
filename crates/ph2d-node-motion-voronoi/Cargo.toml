@@ -12,3 +12,7 @@ authors.workspace = true
 [dependencies]
 ph2d-nodegraph = { path = "../ph2d-nodegraph" }
 ph2d-node-registry = { path = "../ph2d-node-registry" }
+# Lloyd's relaxation is O(iterations·res²·count) and re-runs per frame when `relax`
+# is animated; the nearest-point search parallelises across cores (deterministic —
+# the accumulation stays ordered). Already a workspace dep (ph2d-tool-painter).
+rayon = "1"

@@ -46,7 +46,11 @@
   fibonacci/twist/bend), `hash.rs` (`hash3`, em scatter/boids/**lattice**/**voronoi**), `atan2_approx`
   inline em look_at, `shape.rs` (módulo irmão do soft_body). Colunas de estado de stream (`rope_prev`,
   `vel`, `sb_vel`, `wave_h`/`wave_prev`, `sim_t`) são **locais, não símbolos**.
-- **ZERO** `NodeId` numérico / token / variant de enum congelado novos. **ZERO dep EXTERNA nova**.
+- **ZERO** `NodeId` numérico / token / variant de enum congelado novos. **UMA dep externa nova, mas já no
+  workspace:** `ph2d-node-motion-voronoi` usa `rayon = "1"` (paralelizar a busca do Lloyd — já era dep do
+  `ph2d-tool-painter`, então nada novo no lockfile/RUSTSEC). **Nota replay-hash:** o output do voronoi mudou
+  (res adaptativa; a paralelização é bit-idêntica ao serial, mas a res-adaptativa não) → se algum golden de
+  replay-hash cobre a cena Motion, re-lockar no ship.
 
 ### 4. Contratos congelados encostados: **NENHUM**
 Gate `architecture_contract_surface` verde (2/1/8). Fan-out aditivo (caminho A). Sem ADR necessário. As sims

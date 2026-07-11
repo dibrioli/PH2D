@@ -42,12 +42,16 @@ stippling ponderado 2002 + jump-flood na GPU). Veredito:
   **se organizar numa colmeia e dissolver** (mostra o próprio algoritmo). Seed hasheado, `Effect::Pure`.
   Testado por **Lloyd empareja a nuvem** (min-gap da CVT ≫ ruído branco), **relax lerpa** (0=seed, 0.5=meio,
   1=CVT), pontos dentro do domínio, replay + seed re-rola.
-- **Custo (Enio reportou queda de fps — CORRIGIDO):** um cook é `O(iterations · res² · count)`. Com `relax`
-  **desconectado** (CVT estático) o memo cacheia → livre. Mas **animar `relax`** re-roda a relaxação INTEIRA
-  todo frame (raw+CVT são fixos, mas um nó `Pure` não cacheia entre frames). O `RESOLUTION=64²` fixo custava
-  **12.8 ms/frame em debug** (77% do budget 60fps) na cena. Fix: **`res` adaptativa ao count**
-  (`√(count·16)`, clamp [20,96]) → a grade escala com o trabalho; a cena (count 64→48, iters 10→6) caiu pra
-  **1.2 ms/frame**. Módulo doc tem a nota de custo; `iterations` default 12→8 (Lloyd converge rápido).
+- **Custo (Enio reportou queda de fps — CORRIGIDO 2×):** um cook é `O(iterations · res² · count)`. Com
+  `relax` **desconectado** (CVT estático) o memo cacheia → livre. Mas **animar `relax`** re-roda a relaxação
+  INTEIRA todo frame (raw+CVT são fixos, mas um nó `Pure` não cacheia entre frames). (1) O `RESOLUTION=64²`
+  fixo custava **12.8 ms/frame em debug** → **`res` adaptativa ao count** (`√(count·16)`, clamp [20,96]) + cena
+  mais leve → ~1.2 ms. (2) Enio reportou count 180 → 20fps; o cook era **single-thread num core** (o walk do
+  `Cook` chama `op.eval` em série; a máquina tem 32). Fix: a **busca do ponto mais próximo paraleliza com
+  rayon** (o `O(res²·count)`), acumulação segue ordenada → **bit-idêntico ao serial** (replay-hash intacto).
+  count 180 caiu de ~20ms → **3 ms** (debug, ~8×; bandwidth-bound). A cena subiu p/ count 96. **`O(count²)` do
+  Lloyd NÃO muda** — count ~2000 animado ainda custa ~64ms; pra milhões, é lowering GPU (`LoweringKind::Wgsl`,
+  desenhado mas não implementado — decisão estratégica do Enio).
 
 ## 3. O que foi adicionado (fatia)
 

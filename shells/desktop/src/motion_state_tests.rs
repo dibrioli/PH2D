@@ -1,9 +1,9 @@
 //! Headless demo/cook tests for `motion_state` (split for the HR-18 600-LOC
 //! shell cap; declared there as a `#[path]` sibling, so `super` is
-//! `motion_state`). Cook the default document — now the M3 opener: a
-//! `motion.fibonacci` phyllotaxis spiral reshaped by an animated `motion.twist`
-//! (a **twisting sunflower**) — through the REAL registry, exactly as the bridge
-//! does.
+//! `motion_state`). Cook the default document — now the M3 morph opener: a
+//! `motion.fibonacci` spiral crossfaded by `motion.morph` into a `motion.scatter`
+//! blue-noise cloud (**a sunflower dissolving into a cloud and back**) — through
+//! the REAL registry, exactly as the bridge does.
 
 use super::*;
 
@@ -11,129 +11,99 @@ fn radius(p: [f32; 2]) -> f32 {
     (p[0] * p[0] + p[1] * p[1]).sqrt()
 }
 
+/// The grid's positions at playhead `t`.
+fn positions_at(state: &MotionState, t: f64) -> Vec<[f32; 2]> {
+    use ph2d_nodegraph::attr::Column;
+    let sink = *state.sinks.last().unwrap();
+    let mut cook = ph2d_nodegraph::cook::Cook::new();
+    let out = cook
+        .cook(&state.doc.graph, &state.registry, sink, t)
+        .unwrap();
+    match out[0].as_stream().get("P") {
+        Some(Column::Vec2(v)) => v.clone(),
+        _ => Vec::new(),
+    }
+}
+
 #[test]
 fn new_builds_the_well_typed_value_document() {
     let state = MotionState::new();
     // One focused scene → one Output node → one render sink.
-    assert_eq!(state.sinks.len(), 1, "the sunflower is the sole scene");
+    assert_eq!(state.sinks.len(), 1, "the morph scene is the sole scene");
     assert_eq!(
         state.doc.graph.node(state.sinks[0]).unwrap().type_name,
         "motion.output"
     );
-    // 8 nodes: fibonacci, twist, tint, drive_size, output, instance_field,
-    // size_range, lfo. The two newest nodes (doc 18) — a `motion.fibonacci`
-    // spiral reshaped by an animated `motion.twist`.
-    assert_eq!(state.doc.graph.nodes().len(), 8);
+    // 9 nodes: fibonacci, scatter, morph, tint, drive_size, output, instance_field,
+    // size_range, lfo. The two newest nodes (doc 19) — a `motion.scatter` blue-noise
+    // cloud crossfaded with the `motion.fibonacci` spiral by `motion.morph`.
+    assert_eq!(state.doc.graph.nodes().len(), 9);
     assert!(state.doc.graph.validate(&state.registry).is_ok());
     assert_eq!(state.transport.playhead(1.0 / 60.0), 0.0); // paused at tick 0
 }
 
-/// `motion.fibonacci` is alive end to end (doc 18): the seeds sit on a Vogel
-/// spiral, so their radius grows as `spacing·√i` — the centre seed at 0, the rim
-/// at `spacing·√(N−1)`. The `twist` downstream only ROTATES (radius-preserving),
-/// so the √i growth survives to the sink.
+/// `motion.morph` + `motion.scatter` are alive end to end (doc 19): the `blend`
+/// lfo eases the crossfade, so at the trough (t=3 s, blend≈0) the grid IS the
+/// ordered `motion.fibonacci` spiral, and at the peak (t=1 s, blend≈1) it IS the
+/// `motion.scatter` cloud — the two shapes really trade.
 ///
-/// Falsifiable: a grid / uniform / dead generator has no centre-to-rim radius
-/// growth — sampled seeds at 1/4/1/2/3/4 through the index would not climb.
+/// Falsifiable: a dead morph (stuck at `a`) leaves the peak frame IDENTICAL to the
+/// trough (no crossfade); a dead scatter would make the peak frame the spiral too.
+/// We prove the trough frame is the spiral (radii climb by index) AND the peak
+/// frame is a very different shape (large total displacement) that fills the
+/// scatter field (so it is the cloud, not the spiral).
 #[test]
-fn the_fibonacci_lays_out_a_phyllotaxis_spiral() {
-    use ph2d_nodegraph::attr::Column;
-
+fn the_morph_dissolves_the_spiral_into_the_scatter() {
     let state = MotionState::new();
-    let sink = *state.sinks.last().unwrap();
-    let mut cook = ph2d_nodegraph::cook::Cook::new();
-    let out = cook
-        .cook(&state.doc.graph, &state.registry, sink, 0.0)
-        .unwrap();
-    let p: Vec<[f32; 2]> = match out[0].as_stream().get("P") {
-        Some(Column::Vec2(v)) => v.clone(),
-        _ => Vec::new(),
-    };
-    let n = p.len();
-    assert_eq!(n, 180, "the 180 sunflower seeds");
+    let spiral = positions_at(&state, 3.0); // blend ≈ 0 → all fibonacci
+    let cloud = positions_at(&state, 1.0); // blend ≈ 1 → all scatter
+    let n = spiral.len();
+    assert_eq!(n, 180, "the 180 seeds");
+    assert_eq!(cloud.len(), 180, "the morph keeps the paired count");
 
-    // The centre seed sits at the origin; the rim at spacing·√(N−1) ≈ 0.15·√179 ≈ 2.
-    assert!(radius(p[0]) < 0.05, "seed 0 at the centre: {:?}", p[0]);
-    let rim = 0.15 * ((n - 1) as f32).sqrt();
-    assert!(
-        (radius(p[n - 1]) - rim).abs() < 0.02,
-        "rim at spacing·√(N-1): {}",
-        radius(p[n - 1])
-    );
-    // The radius CLIMBS with the index (√i) — sampled quartiles strictly increase.
+    // TROUGH is the ordered spiral: radii climb by index (the Vogel √i).
     let sample = [1, n / 4, n / 2, 3 * n / 4, n - 1];
     for w in sample.windows(2) {
         assert!(
-            radius(p[w[1]]) > radius(p[w[0]]),
-            "radius grows from seed {} ({}) to {} ({})",
+            radius(spiral[w[1]]) > radius(spiral[w[0]]),
+            "blend≈0 is the spiral: radius grows from {} to {}",
             w[0],
-            radius(p[w[0]]),
-            w[1],
-            radius(p[w[1]])
+            w[1]
         );
     }
-}
-
-/// `motion.twist` is alive end to end (doc 18): a `value.lfo` drives its `amount`,
-/// so the spiral COILS and uncoils over time. We track the rim seed: its position
-/// sweeps a wide arc (the twist animates) while its RADIUS stays constant (the
-/// twist is a rotation about the centre, not a scale).
-///
-/// The scene is a pure function of the playhead (the lfo is Temporal), so we cook
-/// each tick directly. Falsifiable two ways: a dead twist leaves the rim seed
-/// STILL (no arc); a non-rotation deform would change its radius as it moves.
-#[test]
-fn the_twist_coils_the_spiral_over_time() {
-    use ph2d_nodegraph::attr::Column;
-
-    let state = MotionState::new();
-    let sink = *state.sinks.last().unwrap();
-    let mut cook = ph2d_nodegraph::cook::Cook::new();
-
-    // Pump one full lfo period (~4 s = 240 ticks). Track the rim seed (last index).
-    let mut rim_pos: Vec<[f32; 2]> = Vec::new();
-    for k in 0..=240u64 {
-        let t = k as f64 / 60.0;
-        let out = cook
-            .cook(&state.doc.graph, &state.registry, sink, t)
-            .unwrap();
-        if let Some(Column::Vec2(v)) = out[0].as_stream().get("P") {
-            rim_pos.push(*v.last().unwrap());
-        }
-        cook.advance_tick(&state.doc.graph, &state.registry, t)
-            .unwrap();
-    }
-    assert!(rim_pos.len() > 200, "pumped the full period");
-
-    // COILS: the rim seed sweeps a wide arc as `amount` animates the twist. A dead
-    // twist would pin it in place.
-    let (mut xhi, mut xlo, mut yhi, mut ylo) = (f32::MIN, f32::MAX, f32::MIN, f32::MAX);
-    for &[x, y] in &rim_pos {
-        xhi = xhi.max(x);
-        xlo = xlo.min(x);
-        yhi = yhi.max(y);
-        ylo = ylo.min(y);
-    }
+    // PEAK is a very different shape — the morph really crossfaded. A dead morph
+    // would leave the peak identical to the trough (displacement 0).
+    let displacement: f32 = spiral
+        .iter()
+        .zip(cloud.iter())
+        .map(|(a, b)| ((a[0] - b[0]).powi(2) + (a[1] - b[1]).powi(2)).sqrt())
+        .sum();
     assert!(
-        (xhi - xlo) + (yhi - ylo) > 1.0,
-        "the rim seed sweeps a wide arc (Δx {} + Δy {}); a dead twist would pin it",
-        xhi - xlo,
-        yhi - ylo
+        displacement > 50.0,
+        "the shapes crossfade (total displacement {displacement}); a dead morph = 0"
     );
-    // ROTATION, NOT SCALE: the rim seed's radius is preserved as it moves — the
-    // twist rotates about the centre. A deform that scaled would break this.
-    let rhi = rim_pos.iter().map(|&p| radius(p)).fold(f32::MIN, f32::max);
-    let rlo = rim_pos.iter().map(|&p| radius(p)).fold(f32::MAX, f32::min);
+    // PEAK fills the scatter field (±2 in a 4×4), so it is the cloud reaching the
+    // output — and NOT the spiral (whose index-radius order the cloud lacks).
+    for p in &cloud {
+        assert!(
+            p[0].abs() <= 2.2 && p[1].abs() <= 2.2,
+            "cloud point in the field: {p:?}"
+        );
+    }
+    let cloud_ordered = sample
+        .windows(2)
+        .all(|w| radius(cloud[w[1]]) > radius(cloud[w[0]]));
     assert!(
-        rhi - rlo < 0.05,
-        "the twist preserves the rim seed's radius ([{rlo}, {rhi}]); a scale would not"
+        !cloud_ordered,
+        "the cloud has no index→radius order (it is not the spiral)"
     );
 }
 
 /// The default document replays bit-identically. The scene holds NO `pre` state
-/// (fibonacci/twist/instance_field/size_range/tint/drive are Pure; the lfo is a
-/// stateless Temporal read of the playhead), so it is a pure function of the tick
-/// and two runs match exactly (HR-5 — the parabolic trig is deterministic).
+/// (fibonacci/scatter/morph/instance_field/size_range/tint/drive are Pure; the lfo
+/// is a stateless Temporal read of the playhead), so it is a pure function of the
+/// tick and two runs match exactly (HR-5 — the hash and parabolic trig are
+/// deterministic).
 #[test]
 fn the_default_document_replays_deterministically() {
     use ph2d_eval_motion::MotionCookPump;

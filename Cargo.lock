@@ -5295,6 +5295,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-node-motion-morph"
+version = "0.0.0"
+dependencies = [
+ "ph2d-node-registry",
+ "ph2d-nodegraph",
+]
+
+[[package]]
 name = "ph2d-node-motion-move"
 version = "0.0.0"
 dependencies = [
@@ -5344,6 +5352,14 @@ dependencies = [
 
 [[package]]
 name = "ph2d-node-motion-scale"
+version = "0.0.0"
+dependencies = [
+ "ph2d-node-registry",
+ "ph2d-nodegraph",
+]
+
+[[package]]
+name = "ph2d-node-motion-scatter"
 version = "0.0.0"
 dependencies = [
  "ph2d-node-registry",
@@ -5503,6 +5519,7 @@ dependencies = [
  "ph2d-node-motion-fibonacci",
  "ph2d-node-motion-grid",
  "ph2d-node-motion-integrate",
+ "ph2d-node-motion-morph",
  "ph2d-node-motion-move",
  "ph2d-node-motion-noise",
  "ph2d-node-motion-orbit",
@@ -5510,6 +5527,7 @@ dependencies = [
  "ph2d-node-motion-output",
  "ph2d-node-motion-rotate",
  "ph2d-node-motion-scale",
+ "ph2d-node-motion-scatter",
  "ph2d-node-motion-spring",
  "ph2d-node-motion-stagger",
  "ph2d-node-motion-step",

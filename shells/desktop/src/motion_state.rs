@@ -55,15 +55,15 @@ pub(crate) struct MotionState {
 
 impl MotionState {
     /// Build the boot state: register every node op + the **default document** —
-    /// the M3 opener: a **twisting sunflower**. A `motion.fibonacci` lays out a
-    /// golden-angle phyllotaxis spiral, and a `motion.twist` (its strength a
-    /// `value.lfo`) coils and uncoils it in time, the seeds sized small→big by a
-    /// `value.instance_field` Ramp. Kept deliberately small (~8 nodes) so each new
-    /// node reads on its own (docs/Motion Nodes/12, 14, 18). The earlier scenes (the
-    /// Cavalry grid rig, the particle fountain) and the earlier value/pulse chains
-    /// were removed to keep the boot document focused; they live in git history and
-    /// every node keeps its own unit tests + stays registered (drop them in the
-    /// editor). Transport paused at tick 0 (the bridge auto-plays on tool entry).
+    /// the M3 morph opener: a **sunflower dissolving into a blue-noise cloud**. A
+    /// `motion.fibonacci` spiral and a `motion.scatter` blue-noise cloud are
+    /// crossfaded by `motion.morph` (its `blend` a `value.lfo`), the seeds sized
+    /// small→big by a `value.instance_field` Ramp. Kept deliberately small (~9
+    /// nodes) so each new node reads on its own (docs/Motion Nodes/12, 18, 19). The
+    /// earlier scenes (the Cavalry grid rig, the particle fountain) and the earlier
+    /// value/pulse chains were removed to keep the boot document focused; they live
+    /// in git history and every node keeps its own unit tests + stays registered
+    /// (drop them in the editor). Transport paused at tick 0 (bridge auto-plays).
     pub(crate) fn new() -> Self {
         let mut registry = NodeRegistry::new();
         ph2d_node_registry_init::register_all_nodes(&mut registry)
@@ -91,20 +91,19 @@ impl MotionState {
 /// module's most recent work). Returns its sink (the Output node) if the graph
 /// is well-typed.
 ///
-/// The scene — built in the `strobe` sibling module — is the M3 opener: a
-/// **twisting sunflower**. A `motion.fibonacci` mints a golden-angle phyllotaxis
-/// spiral (`r = spacing·√i`); a `motion.twist` rotates each seed by an angle that
-/// grows with its radius, its strength a `value.lfo` so the spiral coils and
-/// uncoils in time; a `value.instance_field` Ramp → `value.map_range` sizes the
-/// seeds small→big by index. The M3 *generate → deform* pipeline, with the value
-/// domain animating the deformer. See docs/Motion Nodes/12 (value),
-/// 14 (instance_field), 18 (fibonacci+twist).
+/// The scene — built in the `strobe` sibling module — is the M3 morph opener: a
+/// **sunflower dissolving into a blue-noise cloud**. A `motion.fibonacci` spiral
+/// and a `motion.scatter` blue-noise cloud (best-candidate, exact count) are
+/// crossfaded by `motion.morph`, whose `blend` is a slow `value.lfo` so the two
+/// shapes trade in time; a `value.instance_field` Ramp → `value.map_range` sizes
+/// the seeds small→big by index. Two M3 distributions bridged by a value-driven
+/// deformer. See docs/Motion Nodes/12 (value), 18 (fibonacci), 19 (scatter+morph).
 ///
 /// The earlier scenes were removed to keep the boot document small and legible:
 /// the **Cavalry grid rig**, the **particle fountain**, and the earlier value/pulse
-/// chains (metronome/counter/drive, sample-hold, math, compare, switch, on_change).
-/// They remain in git history and every node keeps its own unit tests; the nodes
-/// stay registered, so any of them can be dropped back in the editor.
+/// chains (metronome/counter/drive, sample-hold, math, compare, switch, on_change,
+/// twist). They remain in git history and every node keeps its own unit tests; the
+/// nodes stay registered, so any of them can be dropped back in the editor.
 fn build_default_document(g: &mut Graph, reg: &NodeRegistry) -> Option<Vec<NodeId>> {
     let scene = strobe::build(g)?;
     // Same "validate on load" the editor runs before cooking — proves the authored

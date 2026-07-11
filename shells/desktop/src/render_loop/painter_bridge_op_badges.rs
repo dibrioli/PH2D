@@ -37,7 +37,7 @@ pub(super) fn draw_op_badges(
     ) else {
         return;
     };
-    let affine = super::bgremoval_preview::sprite_image_to_screen_affine(
+    let base_affine = super::bgremoval_preview::sprite_image_to_screen_affine(
         iw,
         ih,
         tr,
@@ -46,7 +46,6 @@ pub(super) fn draw_op_badges(
         window_size,
     );
     use ph2d_vector::{Affine, BezPath, Brush, Color, Point, Stroke};
-    let map = |p: [f32; 2]| affine * Point::new(f64::from(p[0]), f64::from(p[1]));
     // Parked shapes have no live gizmo, so they get a faint AABB frame (so they read as still-selectable)
     // + the SAME doubled centre square + op glyph the active gizmo draws (`center_glyph_handle`).
     let frame_col = Color::new([1.0, 0.85, 0.15, 0.35]); // LITERAL-COLOR-OK: parked-shape frame
@@ -55,24 +54,30 @@ pub(super) fn draw_op_badges(
         super::painter_bridge_gizmo::GIZMO_ACCENTS[0],
     );
     let scene = vector_scene.inner_mut();
-    for b in &badges {
-        let p0 = map([b.bbox[0], b.bbox[1]]);
-        let p1 = map([b.bbox[2], b.bbox[1]]);
-        let p2 = map([b.bbox[2], b.bbox[3]]);
-        let p3 = map([b.bbox[0], b.bbox[3]]);
-        let mut frame = BezPath::new();
-        frame.move_to(p0);
-        frame.line_to(p1);
-        frame.line_to(p2);
-        frame.line_to(p3);
-        frame.close_path();
-        scene.stroke(
-            &Stroke::new(1.0),
-            Affine::IDENTITY,
-            &Brush::Solid(frame_col),
-            None,
-            &frame,
-        );
-        super::painter_bridge_gizmo::center_glyph_handle(scene, map(b.center), &pal, b.glyph);
+    // Edit-in-tile (Enio 2026-07-11): draw every parked shape's badge in each visible wrapped tile too, so a
+    // multi-shape set is selectable/re-editable from any tile — matching the active editor's tiled overlay.
+    for (ox, oy) in super::painter_bridge_overlays::overlay_tile_offsets(painter, iw, ih) {
+        let affine = base_affine * Affine::translate((ox, oy));
+        let map = |p: [f32; 2]| affine * Point::new(f64::from(p[0]), f64::from(p[1]));
+        for b in &badges {
+            let p0 = map([b.bbox[0], b.bbox[1]]);
+            let p1 = map([b.bbox[2], b.bbox[1]]);
+            let p2 = map([b.bbox[2], b.bbox[3]]);
+            let p3 = map([b.bbox[0], b.bbox[3]]);
+            let mut frame = BezPath::new();
+            frame.move_to(p0);
+            frame.line_to(p1);
+            frame.line_to(p2);
+            frame.line_to(p3);
+            frame.close_path();
+            scene.stroke(
+                &Stroke::new(1.0),
+                Affine::IDENTITY,
+                &Brush::Solid(frame_col),
+                None,
+                &frame,
+            );
+            super::painter_bridge_gizmo::center_glyph_handle(scene, map(b.center), &pal, b.glyph);
+        }
     }
 }

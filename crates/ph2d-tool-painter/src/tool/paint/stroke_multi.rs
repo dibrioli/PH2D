@@ -391,12 +391,13 @@ impl PainterTool {
     /// a grab on a WRAPPED overlay copy edits the original. `[0, 0]` when off-tiling, no active shape, or the
     /// snapped point misses the shape's grab region (a new-shape / empty click stays where it was clicked).
     fn shape_edit_tile_offset(&self, pos: [f32; 2]) -> [f32; 2] {
+        if !(self.paint.tiling[0] || self.paint.tiling[1]) {
+            return [0.0, 0.0];
+        }
         let (fw, fh) = self.source_size;
         let (fw, fh) = (fw as f32, fh as f32);
-        let Some(bb) = self.capture_shape().and_then(|s| self.shape_state_bbox(&s)) else {
-            return [0.0, 0.0];
-        };
-        // `bb = [minx, miny, maxx, maxy]`. Snap to the nearest whole-sprite tile of the bbox centre per axis.
+        let tol = self.paint.shape_grab_tol_px.max(4.0);
+        // Snap `p` to the nearest whole-sprite tile of the `[lo, hi]` span centre.
         let snap = |p: f32, lo: f32, hi: f32, period: f32| -> f32 {
             if period > 0.0 {
                 ((p - (lo + hi) * 0.5) / period).round() * period
@@ -404,27 +405,38 @@ impl PainterTool {
                 0.0
             }
         };
-        let o = [
-            if self.paint.tiling[0] {
-                snap(pos[0], bb[0], bb[2], fw)
-            } else {
-                0.0
-            },
-            if self.paint.tiling[1] {
-                snap(pos[1], bb[1], bb[3], fh)
-            } else {
-                0.0
-            },
-        ];
-        // Only wrap when the snapped pointer actually lands in the shape's grab region — else it's a click in
-        // empty space (a NEW shape) and must stay put.
-        let tol = self.paint.shape_grab_tol_px.max(4.0);
-        let s = [pos[0] - o[0], pos[1] - o[1]];
-        let inside = s[0] >= bb[0] - tol
-            && s[0] <= bb[2] + tol
-            && s[1] >= bb[1] - tol
-            && s[1] <= bb[3] + tol;
-        if inside { o } else { [0.0, 0.0] }
+        // Consider the ACTIVE shape + every PARKED shape (`bb = [minx, miny, maxx, maxy]`): use the tile
+        // offset of the FIRST whose grab region the snapped pointer lands in — so a grab OR a shape-switch
+        // click works from ANY tile (multi-shape). No hit ⇒ empty click (new shape) → no wrap.
+        let active = self.capture_shape().and_then(|s| self.shape_state_bbox(&s));
+        let parked = self
+            .paint
+            .parked_shapes
+            .iter()
+            .filter_map(|s| self.shape_state_bbox(&s.state));
+        for bb in active.into_iter().chain(parked) {
+            let o = [
+                if self.paint.tiling[0] {
+                    snap(pos[0], bb[0], bb[2], fw)
+                } else {
+                    0.0
+                },
+                if self.paint.tiling[1] {
+                    snap(pos[1], bb[1], bb[3], fh)
+                } else {
+                    0.0
+                },
+            ];
+            let s = [pos[0] - o[0], pos[1] - o[1]];
+            if s[0] >= bb[0] - tol
+                && s[0] <= bb[2] + tol
+                && s[1] >= bb[1] - tol
+                && s[1] <= bb[3] + tol
+            {
+                return o;
+            }
+        }
+        [0.0, 0.0]
     }
 
     /// Cycle the ACTIVE shape's Operation (+ → − → o), keep the panel mode in sync, and recompose (a boolean

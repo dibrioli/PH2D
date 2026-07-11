@@ -190,6 +190,58 @@ pub fn rounded_rect(a: [f64; 2], b: [f64; 2], radius: f64) -> VecPath {
     }
 }
 
+/// Segmento reto de `a` a `b`: dois vértices de quina, **aberto** (sem fill — uma
+/// linha não tem interior). A primitiva mais básica de um editor vetorial.
+#[must_use]
+pub fn line(a: [f64; 2], b: [f64; 2]) -> VecPath {
+    VecPath {
+        verts: vec![VecVertex::corner(a), VecVertex::corner(b)],
+        closed: false,
+        ..VecPath::default()
+    }
+}
+
+/// Teto de graus de um arco (uma volta inteira). O slider real fica em 1..360.
+pub const MAX_ARC_DEGREES: f64 = 360.0;
+
+/// Arco de elipse centrado em `center` (semi-eixos `rx`/`ry`), abrindo `degrees`
+/// graus a partir das 3h (0°), sentido anti-horário. **Aberto**, vértices suaves com
+/// handles bézier tangentes ao círculo — liso ao renderizar e editável ponto a ponto.
+///
+/// Divide o arco em segmentos de ≤90° e usa o comprimento de handle exato de cada
+/// segmento (`(4/3)·tan(α/4)·r`), a generalização de [`KAPPA`] (que é esse valor
+/// para α=90°). `degrees` clampado a `[1, 360]`. Trig de geometria de editor (não é
+/// sim determinística — vello já usa trig internamente), como [`regular_polygon`].
+#[must_use]
+pub fn arc(center: [f64; 2], rx: f64, ry: f64, degrees: f64) -> VecPath {
+    let (cx, cy) = (center[0], center[1]);
+    let total = degrees.clamp(1.0, MAX_ARC_DEGREES).to_radians();
+    // Segmentos de no máximo 90° (π/2) para o bézier aproximar bem.
+    let n_seg = (total / std::f64::consts::FRAC_PI_2).ceil().max(1.0) as usize;
+    let seg = total / n_seg as f64;
+    // Comprimento de handle (em fração do raio) que faz uma cúbica seguir o arco de
+    // ângulo `seg`: (4/3)·tan(seg/4). Para seg=π/2 isto é exatamente KAPPA.
+    let h = (4.0 / 3.0) * (seg / 4.0).tan();
+    let mut verts = Vec::with_capacity(n_seg + 1);
+    for i in 0..=n_seg {
+        let a = seg * i as f64;
+        let (s, c) = a.sin_cos();
+        let anchor = [cx + rx * c, cy + ry * s];
+        // Tangente ao arco em `a` é (−sin, cos); o handle é ela × h × raio.
+        let (tx, ty) = (-rx * s * h, ry * c * h);
+        verts.push(VecVertex::smooth(
+            anchor,
+            [anchor[0] - tx, anchor[1] - ty],
+            [anchor[0] + tx, anchor[1] + ty],
+        ));
+    }
+    VecPath {
+        verts,
+        closed: false,
+        ..VecPath::default()
+    }
+}
+
 /// Blob-círculo preenchido (usa [`ellipse`] com `rx = ry`), para a cena-demo.
 pub(crate) fn blob(c: [f64; 2], r: f64, fill: Rgba8) -> VecPath {
     let mut p = ellipse(c, r, r);

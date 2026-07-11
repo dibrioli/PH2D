@@ -679,3 +679,106 @@ fn pen_mode_still_starts_a_new_path_on_empty_canvas() {
     );
     assert_eq!(scene.paths().len(), 1);
 }
+
+// ── Bug 2 (Enio 2026-07-09): fechar/continuar formas abertas ────────────────
+
+/// Clicar na PONTA de uma linha aberta a reabre para continuar; fechar no outro
+/// extremo vira uma forma fechada.
+#[test]
+fn clicking_an_open_endpoint_reopens_the_path_to_continue_and_close() {
+    let mut scene = VecScene::new();
+    let mut pen = PenTool::new();
+    // Uma linha de 2 pontos, parada (não ativa).
+    scene.push_path(ph2d_vec_scene::line([0.0, 0.0], [10.0, 0.0]));
+    assert_eq!(pen.selected(), None);
+
+    // Clica na PONTA (último vértice) → reabre o path (agarra, não cria outro).
+    assert_eq!(
+        pen.on_press(&mut scene, [10.0, 0.0], PTW, false, &mut nosnap),
+        PenClick::Grabbed
+    );
+    assert_eq!(scene.paths().len(), 1, "não criou path novo");
+    assert!(pen.is_drawing(), "reabriu para desenhar");
+    pen.on_release();
+
+    // Adiciona um 3º ponto.
+    assert_eq!(
+        pen.on_press(&mut scene, [10.0, 10.0], PTW, false, &mut nosnap),
+        PenClick::Added
+    );
+    assert_eq!(scene.paths()[0].verts.len(), 3);
+    pen.on_release();
+
+    // Clica de volta no PRIMEIRO ponto (0,0) → fecha (triângulo).
+    assert_eq!(
+        pen.on_press(&mut scene, [0.02, 0.0], PTW, false, &mut nosnap),
+        PenClick::Closed
+    );
+    assert!(scene.paths()[0].closed, "virou forma fechada");
+    assert!(scene.paths()[0].fill.is_some(), "forma fechada ganha fill");
+}
+
+/// Clicar no PRIMEIRO vértice reverte o path (o cabeçote passa a ser o fim), então
+/// continuar adiciona na direção certa.
+#[test]
+fn reopening_at_the_first_vertex_reverses_the_path() {
+    let mut scene = VecScene::new();
+    let mut pen = PenTool::new();
+    scene.push_path(ph2d_vec_scene::line([0.0, 0.0], [10.0, 0.0]));
+
+    // Clica no PRIMEIRO vértice (0,0) → reverte: agora a ordem é [(10,0),(0,0)].
+    pen.on_press(&mut scene, [0.0, 0.0], PTW, false, &mut nosnap);
+    assert_eq!(scene.paths()[0].verts[0].anchor, [10.0, 0.0], "revertido");
+    assert_eq!(scene.paths()[0].verts[1].anchor, [0.0, 0.0]);
+    pen.on_release();
+
+    // Continua a partir de (0,0) (agora o cabeçote).
+    pen.on_press(&mut scene, [0.0, -10.0], PTW, false, &mut nosnap);
+    assert_eq!(scene.paths()[0].verts.last().unwrap().anchor, [0.0, -10.0]);
+}
+
+/// Desenhar até tocar o endpoint de OUTRO path aberto FUNDE os dois num só objeto
+/// (Enio 2026-07-09) — a via de fechar formas com várias linhas.
+#[test]
+fn drawing_onto_another_open_endpoint_joins_the_two_paths() {
+    let mut scene = VecScene::new();
+    let mut pen = PenTool::new();
+    // Path B: uma linha parada, endpoints em (10,0) e (20,0).
+    let b = scene.push_path(ph2d_vec_scene::line([10.0, 0.0], [20.0, 0.0]));
+
+    // Desenha um path novo A começando em (0,0).
+    pen.on_press(&mut scene, [0.0, 0.0], PTW, false, &mut nosnap);
+    pen.on_release();
+    assert_eq!(scene.paths().len(), 2, "A criado além de B");
+
+    // Continua A até tocar o PRIMEIRO endpoint de B (10,0) → funde.
+    assert_eq!(
+        pen.on_press(&mut scene, [10.0, 0.0], PTW, false, &mut nosnap),
+        PenClick::Added
+    );
+    // B sumiu; sobrou um só objeto.
+    assert_eq!(scene.paths().len(), 1, "os dois viraram um");
+    assert!(scene.paths().iter().all(|p| p.id != b), "B foi consumido");
+    // A agora tem os pontos de A + os de B: (0,0) · (10,0) · (20,0).
+    let a = &scene.paths()[0];
+    assert_eq!(a.verts.len(), 3);
+    assert_eq!(a.verts[0].anchor, [0.0, 0.0]);
+    assert_eq!(a.verts[1].anchor, [10.0, 0.0]);
+    assert_eq!(a.verts[2].anchor, [20.0, 0.0]);
+}
+
+/// Tocar o ÚLTIMO endpoint de B reverte B na costura (a linha segue contínua).
+#[test]
+fn joining_at_the_far_endpoint_reverses_the_consumed_path() {
+    let mut scene = VecScene::new();
+    let mut pen = PenTool::new();
+    scene.push_path(ph2d_vec_scene::line([10.0, 0.0], [20.0, 0.0]));
+    pen.on_press(&mut scene, [0.0, 0.0], PTW, false, &mut nosnap);
+    pen.on_release();
+    // Toca o ÚLTIMO endpoint de B (20,0) → junta revertendo: A = (0,0)·(20,0)·(10,0).
+    pen.on_press(&mut scene, [20.0, 0.0], PTW, false, &mut nosnap);
+    let a = &scene.paths()[0];
+    assert_eq!(a.verts.len(), 3);
+    assert_eq!(a.verts[1].anchor, [20.0, 0.0]);
+    assert_eq!(a.verts[2].anchor, [10.0, 0.0], "B foi revertido na junção");
+}

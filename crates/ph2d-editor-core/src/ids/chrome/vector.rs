@@ -126,6 +126,13 @@ pub const VECTOR_GAP_NUM: NodeId = hash_node_id("vector.gap_num");
 pub const VECTOR_MODE_SELECT: NodeId = hash_node_id("vector.mode.select");
 /// Seta branca — edita âncoras/handles, sem gizmo (ADR-0112).
 pub const VECTOR_MODE_NODE: NodeId = hash_node_id("vector.mode.node");
+/// Linha reta (segmento aberto).
+pub const VECTOR_MODE_LINE: NodeId = hash_node_id("vector.mode.line");
+/// Arco de elipse (aberto), span em `VECTOR_ARC_DEGREES`.
+pub const VECTOR_MODE_ARC: NodeId = hash_node_id("vector.mode.arc");
+/// Slider do span do arco (graus).
+pub const VECTOR_ARC_DEGREES: NodeId = hash_node_id("vector.arc.degrees");
+pub const VECTOR_ARC_DEGREES_NUM: NodeId = hash_node_id("vector.arc.degrees_num");
 pub const VECTOR_MODE_PEN: NodeId = hash_node_id("vector.mode.pen");
 pub const VECTOR_MODE_RECT: NodeId = hash_node_id("vector.mode.rect");
 pub const VECTOR_MODE_ELLIPSE: NodeId = hash_node_id("vector.mode.ellipse");

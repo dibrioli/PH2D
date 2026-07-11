@@ -118,22 +118,29 @@ fn mode_button_click_switches_tool_mode_through_seam() {
         "precondition: default is Select"
     );
 
-    let outcome = host.apply_panel_event::<VectorPanel>(
-        &mut panel_state,
-        WidgetEvent::Click(ids::VECTOR_MODE_RECT),
-    );
-    assert_eq!(
-        outcome,
-        EventOutcome::Consumed,
-        "mode button ignored — `event.rs` arm for VECTOR_MODE_* is missing"
-    );
-
-    drain_into_tool(&mut host, &mut tool);
-    assert_eq!(
-        tool.mode(),
-        DrawMode::Rectangle,
-        "mode click never reached the tool through the seam"
-    );
+    // Cada botão de modo tem de chegar ao tool pelo seam. Line/Arc foram o smoke
+    // que falhou (Enio 2026-07-09): pintados + registrados, mas ausentes da
+    // allowlist de `event.rs` → o clique nunca virava `ToolPanelEvent`.
+    for (id, want) in [
+        (ids::VECTOR_MODE_RECT, DrawMode::Rectangle),
+        (ids::VECTOR_MODE_LINE, DrawMode::Line),
+        (ids::VECTOR_MODE_ARC, DrawMode::Arc),
+        (ids::VECTOR_MODE_NODE, DrawMode::Node),
+    ] {
+        let outcome =
+            host.apply_panel_event::<VectorPanel>(&mut panel_state, WidgetEvent::Click(id));
+        assert_eq!(
+            outcome,
+            EventOutcome::Consumed,
+            "mode button ignored — `event.rs` allowlist for VECTOR_MODE_* is missing this id"
+        );
+        drain_into_tool(&mut host, &mut tool);
+        assert_eq!(
+            tool.mode(),
+            want,
+            "mode click never reached the tool through the seam"
+        );
+    }
 }
 
 /// A Cap button + the Dash and Gap sliders reach the tool through the seam —

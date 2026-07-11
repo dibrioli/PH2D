@@ -1246,3 +1246,245 @@ fn a_world_delta_moves_a_scaled_shape_by_exactly_that_delta() {
     // Guardado em local: 10 / 2 = 5.
     assert!((scene.paths()[0].verts[0].anchor[0] - 5.0).abs() < 1e-9);
 }
+
+#[test]
+fn line_is_two_open_corner_verts() {
+    let l = line([0.0, 0.0], [3.0, 4.0]);
+    assert_eq!(l.verts.len(), 2);
+    assert!(!l.closed);
+    assert_eq!(l.verts[0].anchor, [0.0, 0.0]);
+    assert_eq!(l.verts[1].anchor, [3.0, 4.0]);
+}
+
+#[test]
+fn arc_is_open_and_spans_the_requested_angle() {
+    // Semicírculo (180°) de raio 1 centrado na origem: começa em (1,0), termina em (-1,0).
+    let a = arc([0.0, 0.0], 1.0, 1.0, 180.0);
+    assert!(!a.closed);
+    assert!((a.verts.first().unwrap().anchor[0] - 1.0).abs() < 1e-9);
+    let last = a.verts.last().unwrap().anchor;
+    assert!(
+        (last[0] + 1.0).abs() < 1e-9 && last[1].abs() < 1e-9,
+        "termina em (-1,0): {last:?}"
+    );
+    // 180° = 2 segmentos de 90° = 3 vértices.
+    assert_eq!(a.verts.len(), 3);
+}
+
+// ── Weld de forma nova (Enio 2026-07-09): "basta os nós ficarem próximos" ────────
+
+/// Amostra a curva de um path em MUNDO (usado nos testes de preservação do weld).
+#[cfg(test)]
+fn sample_world_curve(p: &VecPath, x: &Xform) -> Vec<[f64; 2]> {
+    let mut out = Vec::new();
+    for w in p.verts.windows(2) {
+        let (a, b) = (&w[0], &w[1]);
+        for k in 0..=8 {
+            let t = k as f64 / 8.0;
+            let u = 1.0 - t;
+            out.push(x.apply([
+                u * u * u * a.anchor[0]
+                    + 3.0 * u * u * t * a.out_handle[0]
+                    + 3.0 * u * t * t * b.in_handle[0]
+                    + t * t * t * b.anchor[0],
+                u * u * u * a.anchor[1]
+                    + 3.0 * u * u * t * a.out_handle[1]
+                    + 3.0 * u * t * t * b.in_handle[1]
+                    + t * t * t * b.anchor[1],
+            ]));
+        }
+    }
+    out
+}
+
+/// Três linhas desenhadas uma a uma (como no app) formam um triângulo: cada nova
+/// solda na anterior e a terceira fecha numa região preenchida.
+#[test]
+fn weld_new_line_chains_into_a_closed_filled_triangle() {
+    let mut scene = VecScene::new();
+    let xf = VecXforms::new();
+    let fill = Some(Paint::solid(Rgba8::new(200, 100, 50, 255)));
+
+    let l1 = scene.push_path(line([0.0, 0.0], [10.0, 0.0]));
+    assert_eq!(
+        scene.weld_new_shape(l1, &xf, 0.5, fill.clone()),
+        0,
+        "sozinha não solda"
+    );
+
+    let l2 = scene.push_path(line([10.0, 0.0], [5.0, 8.0]));
+    assert!(scene.weld_new_shape(l2, &xf, 0.5, fill.clone()) >= 1);
+
+    let l3 = scene.push_path(line([5.0, 8.0], [0.0, 0.0]));
+    assert!(
+        scene.weld_new_shape(l3, &xf, 0.5, fill) >= 2,
+        "solda 2 pontas + fecha"
+    );
+
+    assert_eq!(scene.paths().len(), 1, "um objeto só");
+    let p = &scene.paths()[0];
+    assert!(p.closed && p.fill.is_some(), "fechou e preencheu");
+    assert_eq!(p.verts.len(), 3);
+}
+
+/// O BUG do Enio: com a ponta da forma nova apenas PRÓXIMA (não exata), a curva
+/// pré-existente (o arco) deve ficar IDÊNTICA — a nova é que snapa nela. (Uma emenda
+/// ingênua deslocaria o arco por ~`tol`.)
+#[test]
+fn weld_snaps_the_new_shape_and_never_moves_the_existing_arc() {
+    let mut scene = VecScene::new();
+    let arc_path = arc([0.0, 0.0], 10.0, 10.0, 180.0);
+    let arc_id = scene.push_path(arc_path.clone());
+
+    // Arco assentado com xform (rotação 90° × escala 2 + translação).
+    let xf = Xform([0.0, 2.0, -2.0, 0.0, 100.0, 50.0]);
+    let mut xforms = VecXforms::new();
+    xforms.insert(arc_id, xf);
+    // Cada ponto amostrado do arco em MUNDO — a curva que precisa sobreviver.
+    let arc_world = sample_world_curve(&scene.paths()[0], &xf);
+
+    // Linha nova (identidade) cuja ponta cai PERTO — não em cima — do fim do arco.
+    let end_world = xf.apply(arc_path.verts.last().unwrap().anchor);
+    let near = [end_world[0] + 6.0, end_world[1] - 5.0]; // ~7.8 de distância
+    let l = scene.push_path(line(near, [near[0] + 40.0, near[1]]));
+    assert!(
+        scene.weld_new_shape(l, &xforms, 12.0, None) >= 1,
+        "solda dentro de tol"
+    );
+    assert_eq!(scene.paths().len(), 1);
+
+    // Todo ponto do arco pré-existente ainda aparece EXATO na curva do objeto fundido
+    // (o arco entra revertido e no fim do array — a ordem muda, a geometria não).
+    let merged = &scene.paths()[0];
+    let merged_world = sample_world_curve(merged, &crate::xform_of(&xforms, merged.id));
+    for a in &arc_world {
+        let nearest = merged_world
+            .iter()
+            .map(|m| (m[0] - a[0]).hypot(m[1] - a[1]))
+            .fold(f64::INFINITY, f64::min);
+        assert!(
+            nearest < 1e-6,
+            "ponto do arco {a:?} sumiu/deformou (dist {nearest})"
+        );
+    }
+}
+
+/// Pontas longe não soldam.
+#[test]
+fn weld_new_shape_leaves_distant_endpoints_alone() {
+    let mut scene = VecScene::new();
+    let xf = VecXforms::new();
+    scene.push_path(line([0.0, 0.0], [10.0, 0.0]));
+    let l = scene.push_path(line([50.0, 50.0], [60.0, 50.0]));
+    assert_eq!(scene.weld_new_shape(l, &xf, 0.5, None), 0);
+    assert_eq!(scene.paths().len(), 2);
+}
+
+/// O cenário EXATO do smoke do Enio: um arco (semicírculo) e uma linha fechando a
+/// base tocando as DUAS pontas dele. O arco NÃO pode deformar (uma perde-a-ponta
+/// ingênua o achatava) e a base de fecho tem de ficar RETA.
+#[test]
+fn weld_line_closing_an_arc_keeps_the_curve_and_a_straight_base() {
+    let mut scene = VecScene::new();
+    let xf = VecXforms::new(); // identidade: mundo = local
+    let arc_path = arc([0.0, 0.0], 100.0, 100.0, 180.0);
+    let arc_anchors: Vec<[f64; 2]> = arc_path.verts.iter().map(|v| v.anchor).collect();
+    scene.push_path(arc_path.clone());
+    assert_eq!(arc_anchors.len(), 3, "semicírculo = 3 vértices");
+
+    // Linha da ponta esquerda à direita do arco, cada extremo ~5px de distância.
+    let left = arc_anchors.first().unwrap();
+    let right = arc_anchors.last().unwrap();
+    let l = scene.push_path(line(
+        [left[0] + 3.0, left[1] + 4.0],
+        [right[0] - 3.0, right[1] + 4.0],
+    ));
+    let fill = Some(Paint::solid(Rgba8::new(80, 140, 240, 255)));
+    let n = scene.weld_new_shape(l, &xf, 12.0, fill);
+    assert!(n >= 2, "solda + fecha (foi {n})");
+
+    assert_eq!(scene.paths().len(), 1, "um objeto");
+    let p = &scene.paths()[0];
+    assert!(p.closed && p.fill.is_some(), "fechou e preencheu");
+    assert_eq!(
+        p.verts.len(),
+        3,
+        "só os 3 vértices do arco (a linha virou o fecho)"
+    );
+
+    // Os 3 anchors do arco sobreviveram EXATOS.
+    for a in &arc_anchors {
+        let hit = p
+            .verts
+            .iter()
+            .any(|v| (v.anchor[0] - a[0]).hypot(v.anchor[1] - a[1]) < 1e-9);
+        assert!(hit, "anchor do arco {a:?} sumiu");
+    }
+    // A aresta de fecho (último → primeiro) é RETA: os handles adjacentes colapsam
+    // no anchor (uma linha, não uma tangente de arco).
+    let first = p.verts.first().unwrap();
+    let last = p.verts.last().unwrap();
+    assert!(
+        (first.in_handle[0] - first.anchor[0]).hypot(first.in_handle[1] - first.anchor[1]) < 1e-9,
+        "in do 1º vértice é reto (base)"
+    );
+    assert!(
+        (last.out_handle[0] - last.anchor[0]).hypot(last.out_handle[1] - last.anchor[1]) < 1e-9,
+        "out do último vértice é reto (base)"
+    );
+}
+
+/// `rigid_snap_delta`: o deslocamento que encaixa a ponta mais próxima — a base do
+/// snap ao mover uma forma com o gizmo (Enio 2026-07-10).
+#[test]
+fn rigid_snap_delta_matches_the_nearest_endpoint() {
+    let mut scene = VecScene::new();
+    scene.push_path(line([0.0, 0.0], [10.0, 0.0])); // ponta em (10,0)
+    let b = scene.push_path(line([13.0, 2.0], [30.0, 2.0])); // ponta (13,2) ~3.6 de (10,0)
+    let xf = VecXforms::new();
+
+    let delta = scene.rigid_snap_delta(b, &xf, 5.0).unwrap();
+    assert!(
+        (delta[0] + 3.0).abs() < 1e-9 && (delta[1] + 2.0).abs() < 1e-9,
+        "encaixa (13,2)→(10,0): {delta:?}"
+    );
+    // Longe demais → sem snap.
+    assert!(scene.rigid_snap_delta(b, &xf, 1.0).is_none());
+}
+
+/// `align_snap_delta`: o snap completo de editor vetorial — eixos X e Y
+/// INDEPENDENTES, casando bordas da bbox (Enio 2026-07-10).
+#[test]
+fn align_snap_aligns_edges_independently_in_x_and_y() {
+    let mut scene = VecScene::new();
+    // A: bbox left=0 cx=5 right=10, top=0 cy=5 bottom=10.
+    scene.push_path(rectangle([0.0, 0.0], [10.0, 10.0]));
+    // B: bbox left=11 …, top=11 … — B.left a 1 de A.right, B.top a 1 de A.bottom.
+    let b = scene.push_path(rectangle([11.0, 11.0], [21.0, 21.0]));
+    let xf = VecXforms::new();
+
+    let [dx, dy] = scene.align_snap_delta(b, &xf, 1.5);
+    assert!((dx + 1.0).abs() < 1e-9, "X: B.left(11)→A.right(10): {dx}");
+    assert!((dy + 1.0).abs() < 1e-9, "Y: B.top(11)→A.bottom(10): {dy}");
+    // Fora da tolerância → sem snap; align nunca funde.
+    assert_eq!(scene.align_snap_delta(b, &xf, 0.5), [0.0, 0.0]);
+    assert_eq!(scene.paths().len(), 2, "align NÃO funde");
+}
+
+/// Centro alinha com centro num eixo enquanto o outro fica livre.
+/// B tem largura 4 e cx=5.5: só o centro cai na tolerância (as bordas 3.5/7.5 ficam
+/// longe de toda linha de A), então o snap é inequivocamente cx↔cx.
+#[test]
+fn align_snap_snaps_center_to_center_on_one_axis() {
+    let mut scene = VecScene::new();
+    scene.push_path(rectangle([0.0, 0.0], [10.0, 10.0])); // cx=5, cy=5
+    let b = scene.push_path(rectangle([3.5, 80.0], [7.5, 84.0])); // cx=5.5, Y bem longe
+    let xf = VecXforms::new();
+
+    let [dx, dy] = scene.align_snap_delta(b, &xf, 0.8);
+    assert!(
+        (dx + 0.5).abs() < 1e-9,
+        "X centro↔centro: B.cx(5.5)→A.cx(5): {dx}"
+    );
+    assert_eq!(dy, 0.0, "Y livre (bbox de A longe)");
+}

@@ -258,31 +258,52 @@ impl PenTool {
                 .find(|pp| pp.id == id)
                 .and_then(|pp| pp.verts.first())
                 .map(|v| self.to_world(id, v.anchor));
-            let anchor_local = self.to_local(id, snap(p));
+            let snapped = snap(p);
+            let anchor_local = self.to_local(id, snapped);
+            // Fechar: o cursor voltou ao PRIMEIRO ponto do path ativo (≥3 vértices).
+            let close = scene
+                .paths()
+                .iter()
+                .find(|pp| pp.id == id)
+                .is_some_and(|pp| pp.verts.len() >= 3)
+                && first_world.is_some_and(|fw| {
+                    let (dx, dy) = (p[0] - fw[0], p[1] - fw[1]);
+                    (dx * dx + dy * dy).sqrt() <= close_dist
+                });
+            if close {
+                let Some(path) = scene.path_mut(id) else {
+                    return PenClick::Ignored;
+                };
+                path.closed = true;
+                path.fill = Some(Paint::solid(self.style.fill));
+                self.active = None;
+                self.dragging = false;
+                return PenClick::Closed;
+            }
+            // Clicar sobre o endpoint de OUTRO path aberto FUNDE os dois num só
+            // objeto (Enio 2026-07-09) — a via de construir uma forma fechada com
+            // várias linhas/arcos/traços.
+            if let Some(click) = self.join_open_path(scene, id, snapped, close_dist) {
+                return click;
+            }
             let Some(path) = scene.path_mut(id) else {
                 self.active = None;
                 self.dragging = false;
                 return PenClick::Ignored;
             };
-            if path.verts.len() >= 3
-                && let Some(fw) = first_world
-            {
-                let (dx, dy) = (p[0] - fw[0], p[1] - fw[1]);
-                if (dx * dx + dy * dy).sqrt() <= close_dist {
-                    path.closed = true;
-                    path.fill = Some(Paint::solid(self.style.fill));
-                    self.active = None;
-                    self.dragging = false;
-                    return PenClick::Closed;
-                }
-            }
             path.verts.push(VecVertex::corner(anchor_local));
             self.selected_verts = vec![path.verts.len() - 1];
             self.dragging = true;
             return PenClick::Added;
         }
 
-        // Parado → hit-test para EDITAR um ponto existente.
+        // Parado → CONTINUAR um path aberto pelo seu endpoint tem prioridade: clicar
+        // na ponta de uma linha/arco a reativa para seguir desenhando (e, fechando no
+        // outro extremo, vira uma forma fechada). Convenção da Pen do Illustrator.
+        if self.reopen_endpoint(scene, p, hit_r) {
+            return PenClick::Grabbed;
+        }
+        // hit-test para EDITAR um ponto existente.
         if let Some(g) = self.hit_test(scene, p, hit_r) {
             self.grab_vertex(scene, g, alt);
             return PenClick::Grabbed;
@@ -455,6 +476,116 @@ impl PenTool {
 
     /// Acha a âncora/handle mais próxima de `p` dentro do raio `r`. Handles só do
     /// path selecionado (é onde os gizmos aparecem); âncoras de todos os paths.
+    /// Se `p` (mundo) cai num ENDPOINT (1º ou último vértice) de um path ABERTO,
+    /// reabre-o para continuar desenhando dele. O cabeçote de desenho é sempre o
+    /// ÚLTIMO vértice, então clicar no 1º **reverte** o path (e troca in/out handles,
+    /// que também invertem de papel). É o que permite continuar uma linha de onde
+    /// parou e fechá-la numa forma (Enio 2026-07-09). `false` se nenhum endpoint.
+    fn reopen_endpoint(&mut self, scene: &mut VecScene, p: [f64; 2], hit_r: f64) -> bool {
+        let r2 = hit_r * hit_r;
+        let found = scene.paths().iter().find_map(|path| {
+            if path.closed || path.verts.len() < 2 || !self.view.is_pickable(path.id) {
+                return None;
+            }
+            let xf = self.xf(path.id);
+            // Endpoints são só do contorno primário (`verts`), em world.
+            if dist2(p, xf.apply(path.verts.last()?.anchor)) <= r2 {
+                return Some((path.id, false));
+            }
+            (dist2(p, xf.apply(path.verts.first()?.anchor)) <= r2).then_some((path.id, true))
+        });
+        let Some((id, is_first)) = found else {
+            return false;
+        };
+        if is_first && let Some(path) = scene.path_mut(id) {
+            path.verts.reverse();
+            for v in &mut path.verts {
+                std::mem::swap(&mut v.in_handle, &mut v.out_handle);
+            }
+        }
+        let last_idx = scene
+            .paths()
+            .iter()
+            .find(|pp| pp.id == id)
+            .map_or(0, |pp| pp.verts.len().saturating_sub(1));
+        self.active = Some(id);
+        self.selected = Some(id);
+        self.selected_paths = vec![id];
+        self.selected_verts = vec![last_idx];
+        true
+    }
+
+    /// Funde OUTRO path aberto `B` no path ativo `active` quando `p` (mundo) cai num
+    /// endpoint de B: anexa os vértices de B a A e remove B — os dois viram um só
+    /// objeto (Enio 2026-07-09). Se o endpoint tocado é o ÚLTIMO de B, B é revertido
+    /// antes (o costura segue contínua). `None` se nenhum endpoint de outro path.
+    ///
+    /// A geometria de B está no espaço LOCAL de B; sobe ao mundo pelo afim de B e
+    /// desce ao espaço local de A — a mesma regra de fronteira do resto da tool.
+    fn join_open_path(
+        &mut self,
+        scene: &mut VecScene,
+        active: VecPathId,
+        p_world: [f64; 2],
+        hit_r: f64,
+    ) -> Option<PenClick> {
+        let r2 = hit_r * hit_r;
+        let (bid, b_first) = scene.paths().iter().find_map(|path| {
+            if path.id == active || path.closed || path.verts.is_empty() {
+                return None;
+            }
+            if !self.view.is_pickable(path.id) {
+                return None;
+            }
+            let xf = self.xf(path.id);
+            if dist2(p_world, xf.apply(path.verts.first()?.anchor)) <= r2 {
+                Some((path.id, true))
+            } else if dist2(p_world, xf.apply(path.verts.last()?.anchor)) <= r2 {
+                Some((path.id, false))
+            } else {
+                None
+            }
+        })?;
+        // Vértices de B em MUNDO, na ordem de junção.
+        let xf_b = self.xf(bid);
+        let mut b_world: Vec<VecVertex> = scene
+            .paths()
+            .iter()
+            .find(|pp| pp.id == bid)?
+            .verts
+            .iter()
+            .map(|v| VecVertex {
+                anchor: xf_b.apply(v.anchor),
+                in_handle: xf_b.apply(v.in_handle),
+                out_handle: xf_b.apply(v.out_handle),
+                kind: v.kind,
+            })
+            .collect();
+        if !b_first {
+            // Tocou o ÚLTIMO de B → percorre B de trás pra frente; in/out trocam de
+            // papel ao inverter o sentido.
+            b_world.reverse();
+            for v in &mut b_world {
+                std::mem::swap(&mut v.in_handle, &mut v.out_handle);
+            }
+        }
+        let inv_a = self.xf(active).inverse()?;
+        let a = scene.path_mut(active)?;
+        for v in b_world {
+            a.verts.push(VecVertex {
+                anchor: inv_a.apply(v.anchor),
+                in_handle: inv_a.apply(v.in_handle),
+                out_handle: inv_a.apply(v.out_handle),
+                kind: v.kind,
+            });
+        }
+        let last = a.verts.len().saturating_sub(1);
+        scene.remove_path(bid);
+        self.selected_verts = vec![last];
+        self.dragging = false;
+        Some(PenClick::Added)
+    }
+
     /// Agarra `g` para arrastar: reduz a seleção de objeto ao path tocado e a de
     /// vértice ao vértice tocado (salvo quando ele já estava num grupo selecionado,
     /// caso em que o arrasto move o grupo).

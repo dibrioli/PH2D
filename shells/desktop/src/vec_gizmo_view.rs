@@ -27,6 +27,19 @@ use ph2d_vec_scene::{VecPathId, VecScene, VecViewState};
 use crate::vec_entities::VecEntityMap;
 use crate::vec_transform::{world_transform, xform_of_transform};
 
+/// Raio de captura do traço, em pixels de tela (× zoom → world). Formas abertas
+/// (linha, arco, pen não-fechado) são pegas por proximidade do traço.
+const STROKE_HIT_PX: f64 = 8.0;
+
+/// `STROKE_HIT_PX` convertido a world-units no zoom atual.
+#[must_use]
+pub(crate) fn stroke_hit_r(camera: &Camera2d, window_size: WindowSize) -> f64 {
+    let w0 = camera.screen_to_world((0.0, 0.0), window_size);
+    let w1 = camera.screen_to_world((1.0, 0.0), window_size);
+    let px = ((f64::from(w1[0] - w0[0])).powi(2) + (f64::from(w1[1] - w0[1])).powi(2)).sqrt();
+    STROKE_HIT_PX * px
+}
+
 /// O `anchor` e o meio-tamanho **intrínsecos** (pré-escala) da forma de `entity`,
 /// na linguagem que o gizmo de sprite fala. `None` se a entidade não é um path, ou
 /// se o path está vazio.
@@ -101,32 +114,53 @@ pub(crate) fn view(
 ///
 /// É o análogo vetorial de `pick_sprite_at_world` para uma entidade já conhecida —
 /// o que decide se um Down no interior da forma inicia um move (e não um pan).
+///
+/// `stroke_hit_r` (world-units) é o raio de captura do TRAÇO: uma forma ABERTA
+/// (linha, arco, pen não-fechado) não tem interior, então sem isso ela nunca seria
+/// pega — e o gizmo de Select nunca a agarraria (Enio 2026-07-09).
 #[must_use]
 pub(crate) fn contains_world(
     sim: &SimWorld,
     scene: &VecScene,
     entity: Entity,
     p: [f32; 2],
+    stroke_hit_r: f64,
 ) -> bool {
     let Some(vp) = sim.world().get::<VecPathRef>(entity) else {
         return false;
     };
-    contains_path(sim, scene, entity, vp.0, p)
+    contains_path(sim, scene, entity, vp.0, p, stroke_hit_r)
 }
 
-/// `p` (mundo) está dentro do path `id`, cuja entidade é `entity`?
+/// Amostras por segmento na varredura de proximidade do traço.
+const STROKE_SAMPLES: u32 = 24;
+
+/// `p` (mundo) pega o path `id`: no INTERIOR (formas fechadas) OU a ≤ `stroke_hit_r`
+/// do TRAÇO (formas abertas e a borda de fechadas).
 fn contains_path(
     sim: &SimWorld,
     scene: &VecScene,
     entity: Entity,
     id: VecPathId,
     p: [f32; 2],
+    stroke_hit_r: f64,
 ) -> bool {
     let x = xform_of_transform(world_transform(sim, entity));
     let Some(inv) = x.inverse() else {
-        return false; // forma colapsada: sem interior
+        return false; // forma colapsada
     };
-    scene.path_contains_point(id, inv.apply([f64::from(p[0]), f64::from(p[1])]))
+    let local = inv.apply([f64::from(p[0]), f64::from(p[1])]);
+    if scene.path_contains_point(id, local) {
+        return true;
+    }
+    // Proximidade do traço: a curva é local, o raio é world → converte pela escala.
+    let Some(path) = scene.paths().iter().find(|pp| pp.id == id) else {
+        return false;
+    };
+    if let Some((_, _, d2)) = ph2d_vec_scene::nearest_point_on_path(path, local, STROKE_SAMPLES) {
+        return d2.sqrt() * x.mean_scale() <= stroke_hit_r;
+    }
+    false
 }
 
 /// Toda forma vetorial sob `p` (mundo), **do topo para o fundo** — a lista que o
@@ -141,6 +175,7 @@ pub(crate) fn pick_all_at_world(
     view_state: &VecViewState,
     map: &VecEntityMap,
     p: [f32; 2],
+    stroke_hit_r: f64,
 ) -> Vec<u64> {
     let mut out = Vec::new();
     for path in scene.paths().iter().rev() {
@@ -151,7 +186,9 @@ pub(crate) fn pick_all_at_world(
             continue;
         };
         let e = Entity::from_bits(bits);
-        if sim.world().get_entity(e).is_ok() && contains_path(sim, scene, e, path.id, p) {
+        if sim.world().get_entity(e).is_ok()
+            && contains_path(sim, scene, e, path.id, p, stroke_hit_r)
+        {
             out.push(bits);
         }
     }
@@ -169,8 +206,9 @@ fn pick_at_world(
     view_state: &VecViewState,
     map: &VecEntityMap,
     p: [f32; 2],
+    stroke_hit_r: f64,
 ) -> Option<u64> {
-    pick_all_at_world(sim, scene, view_state, map, p)
+    pick_all_at_world(sim, scene, view_state, map, p, stroke_hit_r)
         .into_iter()
         .next()
 }
@@ -230,7 +268,40 @@ mod tests {
     use super::*;
     use ph2d_core::Vec2;
     use ph2d_ecs::Transform;
-    use ph2d_vec_scene::rectangle;
+    use ph2d_vec_scene::{line, rectangle};
+
+    /// REGRESSÃO (Enio 2026-07-09: "line e arc não podem ser transformadas com o
+    /// gizmo"). Uma forma ABERTA não tem interior — sem raio de traço ela nunca é
+    /// pega, e o gizmo de Select nunca a agarra. Com raio, o clique no traço pega.
+    #[test]
+    fn an_open_line_is_picked_by_stroke_proximity_not_interior() {
+        let mut sim = SimWorld::default();
+        let mut scene = VecScene::new();
+        let mut map = VecEntityMap::new();
+        let id = scene.push_path(line([0.0, 0.0], [10.0, 0.0]));
+        let e = sim
+            .world_mut()
+            .spawn((Transform::IDENTITY, VecPathRef(id)))
+            .id();
+        map.insert(id, e.to_bits());
+        let vs = VecViewState::default();
+        // Um clique 0.4 ACIMA da linha (fora do traço): sem raio não pega — uma linha
+        // aberta não tem interior.
+        assert_eq!(
+            pick_at_world(&sim, &scene, &vs, &map, [5.0, 0.4], 0.0),
+            None
+        );
+        // Com raio 1.0 (> 0.4): pega pela proximidade do traço.
+        assert_eq!(
+            pick_at_world(&sim, &scene, &vs, &map, [5.0, 0.4], 1.0),
+            Some(e.to_bits())
+        );
+        // Longe do traço, mesmo com raio: não pega.
+        assert_eq!(
+            pick_at_world(&sim, &scene, &vs, &map, [5.0, 5.0], 1.0),
+            None
+        );
+    }
 
     fn scene_with_square() -> (SimWorld, VecScene, VecEntityMap, Entity) {
         let mut sim = SimWorld::default();
@@ -282,19 +353,19 @@ mod tests {
     fn picking_finds_the_shape_where_the_transform_puts_it() {
         let (mut sim, scene, map, e) = scene_with_square();
         let vs = VecViewState::default();
-        assert!(pick_at_world(&sim, &scene, &vs, &map, [0.0, 0.0]).is_some());
+        assert!(pick_at_world(&sim, &scene, &vs, &map, [0.0, 0.0], 0.0).is_some());
 
         sim.world_mut().entity_mut(e).insert(Transform {
             translation: Vec2::new(50.0, 0.0),
             ..Transform::IDENTITY
         });
         assert_eq!(
-            pick_at_world(&sim, &scene, &vs, &map, [0.0, 0.0]),
+            pick_at_world(&sim, &scene, &vs, &map, [0.0, 0.0], 0.0),
             None,
             "a origem ficou vazia"
         );
         assert_eq!(
-            pick_at_world(&sim, &scene, &vs, &map, [50.0, 0.0]),
+            pick_at_world(&sim, &scene, &vs, &map, [50.0, 0.0], 0.0),
             Some(e.to_bits()),
             "a forma está onde o transform a pôs"
         );
@@ -309,12 +380,18 @@ mod tests {
             hidden: vec![id],
             locked: Vec::new(),
         };
-        assert_eq!(pick_at_world(&sim, &scene, &hidden, &map, [0.0, 0.0]), None);
+        assert_eq!(
+            pick_at_world(&sim, &scene, &hidden, &map, [0.0, 0.0], 0.0),
+            None
+        );
         let locked = VecViewState {
             hidden: Vec::new(),
             locked: vec![id],
         };
-        assert_eq!(pick_at_world(&sim, &scene, &locked, &map, [0.0, 0.0]), None);
+        assert_eq!(
+            pick_at_world(&sim, &scene, &locked, &map, [0.0, 0.0], 0.0),
+            None
+        );
     }
 
     /// O marquee pega a forma pela bbox de MUNDO.

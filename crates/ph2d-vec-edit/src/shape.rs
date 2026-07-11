@@ -29,6 +29,10 @@ pub enum ShapeKind {
     Star,
     RoundRect,
     Spiral,
+    /// Segmento reto (aberto, sem fill).
+    Line,
+    /// Arco de elipse de `arc_degrees` graus (aberto, sem fill).
+    Arc,
 }
 
 /// Per-shape parameters (the shell mirrors these from the Vector tool). Only the
@@ -45,6 +49,8 @@ pub struct ShapeParams {
     pub corner_radius_px: f64,
     /// Spiral turn count.
     pub spiral_turns: u32,
+    /// Arc span in degrees (`ShapeKind::Arc`).
+    pub arc_degrees: f64,
 }
 
 impl Default for ShapeParams {
@@ -55,6 +61,7 @@ impl Default for ShapeParams {
             star_inner_ratio: 0.5,
             corner_radius_px: 8.0,
             spiral_turns: 3,
+            arc_degrees: 180.0,
         }
     }
 }
@@ -220,9 +227,16 @@ impl ShapeTool {
                 let (c, rx, ry) = bbox_center_radii(self.start, cur);
                 ph2d_vec_scene::spiral(c, rx, ry, self.params.spiral_turns)
             }
+            ShapeKind::Line => ph2d_vec_scene::line(self.start, cur),
+            ShapeKind::Arc => {
+                let (c, rx, ry) = bbox_center_radii(self.start, cur);
+                ph2d_vec_scene::arc(c, rx, ry, self.params.arc_degrees)
+            }
         };
         let stroke_w = self.style.stroke_w_px * self.px_to_world;
-        path.fill = if self.style.fill.a == 0 {
+        // Formas ABERTAS (linha, arco) nunca têm fill — não há interior.
+        let open = matches!(self.kind, ShapeKind::Line | ShapeKind::Arc);
+        path.fill = if open || self.style.fill.a == 0 {
             None
         } else {
             Some(ph2d_vec_scene::Paint::solid(self.style.fill))

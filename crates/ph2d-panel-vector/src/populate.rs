@@ -14,17 +14,18 @@ use crate::ids;
 use ph2d_editor_core::interaction::{InteractiveState, WidgetStore};
 use ph2d_editor_core::widget::{ButtonState, SliderOrientation, SliderState, TextInputState};
 use ph2d_tool_vector::params::{
-    DASH_SLIDER_OFFSET, DASH_SLIDER_SCALE, GAP_DEFAULT, GAP_SLIDER_OFFSET, GAP_SLIDER_SCALE,
-    OPACITY_SLIDER_OFFSET, OPACITY_SLIDER_SCALE, RADIUS_SLIDER_OFFSET, RADIUS_SLIDER_SCALE,
-    SIDES_SLIDER_OFFSET, SIDES_SLIDER_SCALE, SPIRAL_TURNS_SLIDER_OFFSET, SPIRAL_TURNS_SLIDER_SCALE,
-    STAR_INNER_SLIDER_OFFSET, STAR_INNER_SLIDER_SCALE, STAR_POINTS_SLIDER_OFFSET,
-    STAR_POINTS_SLIDER_SCALE, WIDTH_SLIDER_OFFSET, WIDTH_SLIDER_SCALE, gap_to_slider,
+    ARC_DEGREES_SLIDER_OFFSET, ARC_DEGREES_SLIDER_SCALE, DASH_SLIDER_OFFSET, DASH_SLIDER_SCALE,
+    GAP_DEFAULT, GAP_SLIDER_OFFSET, GAP_SLIDER_SCALE, OPACITY_SLIDER_OFFSET, OPACITY_SLIDER_SCALE,
+    RADIUS_SLIDER_OFFSET, RADIUS_SLIDER_SCALE, SIDES_SLIDER_OFFSET, SIDES_SLIDER_SCALE,
+    SPIRAL_TURNS_SLIDER_OFFSET, SPIRAL_TURNS_SLIDER_SCALE, STAR_INNER_SLIDER_OFFSET,
+    STAR_INNER_SLIDER_SCALE, STAR_POINTS_SLIDER_OFFSET, STAR_POINTS_SLIDER_SCALE,
+    WIDTH_SLIDER_OFFSET, WIDTH_SLIDER_SCALE, arc_degrees_to_slider, gap_to_slider,
     radius_to_slider, sides_to_slider, spiral_turns_to_slider, star_inner_to_slider,
     star_points_to_slider,
 };
 use ph2d_tool_vector::{
-    DEFAULT_CORNER_RADIUS_PX, DEFAULT_POLYGON_SIDES, DEFAULT_SPIRAL_TURNS, DEFAULT_STAR_INNER,
-    DEFAULT_STAR_POINTS, DEFAULT_STROKE_WIDTH_PX, px_to_slider,
+    DEFAULT_ARC_DEGREES, DEFAULT_CORNER_RADIUS_PX, DEFAULT_POLYGON_SIDES, DEFAULT_SPIRAL_TURNS,
+    DEFAULT_STAR_INNER, DEFAULT_STAR_POINTS, DEFAULT_STROKE_WIDTH_PX, px_to_slider,
 };
 
 /// Linear-gradient Angle slider mapping: track `0..1` → `0..360` degrees.
@@ -125,6 +126,8 @@ fn populate_shape(store: &mut WidgetStore) {
     button(store, ids::VECTOR_MODE_STAR);
     button(store, ids::VECTOR_MODE_RRECT);
     button(store, ids::VECTOR_MODE_SPIRAL);
+    button(store, ids::VECTOR_MODE_LINE);
+    button(store, ids::VECTOR_MODE_ARC);
 
     // Polygon Sides slider — seeded at the tool's default (`sides_to_slider(5)`).
     // Registered unconditionally (the store is mode-agnostic); the panel only
@@ -192,6 +195,15 @@ fn populate_shape(store: &mut WidgetStore) {
         f64::from(DEFAULT_SPIRAL_TURNS),
         SPIRAL_TURNS_SLIDER_SCALE,
         SPIRAL_TURNS_SLIDER_OFFSET,
+    );
+    slider_chip(
+        store,
+        ids::VECTOR_ARC_DEGREES,
+        ids::VECTOR_ARC_DEGREES_NUM,
+        arc_degrees_to_slider(DEFAULT_ARC_DEGREES),
+        DEFAULT_ARC_DEGREES,
+        ARC_DEGREES_SLIDER_SCALE,
+        ARC_DEGREES_SLIDER_OFFSET,
     );
 
     populate_transform_fields(store);

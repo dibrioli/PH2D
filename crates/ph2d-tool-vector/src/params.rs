@@ -52,6 +52,8 @@ pub enum DrawMode {
     Star,
     RoundRect,
     Spiral,
+    Line,
+    Arc,
 }
 
 /// UI-facing vertex type for the docked panel's Vertex section (mirror of
@@ -210,6 +212,24 @@ pub const SPIRAL_TURNS_SLIDER_OFFSET: f32 = SPIRAL_TURNS_MIN as f32;
 pub fn slider_to_spiral_turns(track: f32) -> u32 {
     (SPIRAL_TURNS_MIN as f32 + track.clamp(0.0, 1.0) * SPIRAL_TURNS_SLIDER_SCALE).round() as u32
 }
+/// Span mínimo/máximo de um arco (graus). O slider mapeia linearmente.
+pub const ARC_DEGREES_MIN: f64 = 1.0;
+pub const ARC_DEGREES_MAX: f64 = 360.0;
+pub const ARC_DEGREES_SLIDER_SCALE: f32 = (ARC_DEGREES_MAX - ARC_DEGREES_MIN) as f32;
+pub const ARC_DEGREES_SLIDER_OFFSET: f32 = ARC_DEGREES_MIN as f32;
+
+/// Track `[0,1]` → graus `[1, 360]`.
+#[must_use]
+pub fn slider_to_arc_degrees(track: f32) -> f64 {
+    f64::from(ARC_DEGREES_SLIDER_OFFSET + track.clamp(0.0, 1.0) * ARC_DEGREES_SLIDER_SCALE)
+}
+
+/// Graus → track `[0,1]`.
+#[must_use]
+pub fn arc_degrees_to_slider(deg: f64) -> f32 {
+    (((deg as f32) - ARC_DEGREES_SLIDER_OFFSET) / ARC_DEGREES_SLIDER_SCALE).clamp(0.0, 1.0)
+}
+
 /// Spiral turns → normalized track (inverse of [`slider_to_spiral_turns`]).
 #[must_use]
 pub fn spiral_turns_to_slider(n: u32) -> f32 {
@@ -246,6 +266,7 @@ pub struct VectorDrawConfig {
     pub star_inner_ratio: f64,
     pub corner_radius_px: f64,
     pub spiral_turns: u32,
+    pub arc_degrees: f64,
 }
 
 impl Default for VectorDrawConfig {
@@ -257,6 +278,7 @@ impl Default for VectorDrawConfig {
             star_inner_ratio: super::tool::DEFAULT_STAR_INNER,
             corner_radius_px: super::tool::DEFAULT_CORNER_RADIUS_PX,
             spiral_turns: super::tool::DEFAULT_SPIRAL_TURNS,
+            arc_degrees: super::tool::DEFAULT_ARC_DEGREES,
         }
     }
 }
@@ -283,6 +305,8 @@ pub struct VectorStyleSnapshot {
     pub gap: f64,
     /// Turn count for `DrawMode::Spiral`.
     pub spiral_turns: u32,
+    /// Span in degrees for `DrawMode::Arc`.
+    pub arc_degrees: f64,
 }
 
 impl Default for VectorStyleSnapshot {
@@ -301,6 +325,7 @@ impl Default for VectorStyleSnapshot {
             dash: 0.0,
             gap: GAP_DEFAULT,
             spiral_turns: super::tool::DEFAULT_SPIRAL_TURNS,
+            arc_degrees: super::tool::DEFAULT_ARC_DEGREES,
         }
     }
 }

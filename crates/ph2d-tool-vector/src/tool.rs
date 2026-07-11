@@ -25,9 +25,9 @@ use ph2d_editor_core::ids;
 use ph2d_editor_core::tool::{PanelEvent, Tool};
 
 use crate::params::{
-    DrawMode, StrokeCap, StrokeJoin, VectorDrawConfig, VectorStyleSnapshot, slider_to_dash,
-    slider_to_gap, slider_to_opacity, slider_to_px, slider_to_radius, slider_to_sides,
-    slider_to_spiral_turns, slider_to_star_inner, slider_to_star_points,
+    DrawMode, StrokeCap, StrokeJoin, VectorDrawConfig, VectorStyleSnapshot, slider_to_arc_degrees,
+    slider_to_dash, slider_to_gap, slider_to_opacity, slider_to_px, slider_to_radius,
+    slider_to_sides, slider_to_spiral_turns, slider_to_star_inner, slider_to_star_points,
 };
 
 /// Curated stroke / fill preset palette: `(key, label, sRGB8)`. Retained as the
@@ -58,6 +58,8 @@ pub const DEFAULT_STAR_INNER: f64 = 0.5;
 pub const DEFAULT_CORNER_RADIUS_PX: f64 = 12.0;
 /// Default spiral turn count.
 pub const DEFAULT_SPIRAL_TURNS: u32 = 3;
+/// Default span de um arco novo (semicírculo).
+pub const DEFAULT_ARC_DEGREES: f64 = 180.0;
 
 /// Look up a palette colour by key (defaults only — the live path is the picker).
 fn color_of(key: &str) -> Option<[u8; 4]> {
@@ -88,6 +90,8 @@ pub struct VectorTool {
     corner_radius_px: f64,
     /// Turn count for `DrawMode::Spiral`.
     spiral_turns: u32,
+    /// Span in degrees for `DrawMode::Arc`, held in `1..=360`.
+    arc_degrees: f64,
     /// Stroke cap / join + dash & gap as multiples of the stroke width
     /// (`dash = 0` = solid; `gap` is the space between dashes).
     cap: StrokeCap,
@@ -111,6 +115,7 @@ impl Default for VectorTool {
             star_inner_ratio: DEFAULT_STAR_INNER,
             corner_radius_px: DEFAULT_CORNER_RADIUS_PX,
             spiral_turns: DEFAULT_SPIRAL_TURNS,
+            arc_degrees: DEFAULT_ARC_DEGREES,
             cap: StrokeCap::Butt,
             join: StrokeJoin::Miter,
             dash: 0.0,
@@ -195,6 +200,7 @@ impl VectorTool {
             star_inner_ratio: self.star_inner_ratio,
             corner_radius_px: self.corner_radius_px,
             spiral_turns: self.spiral_turns,
+            arc_degrees: self.arc_degrees,
         }
     }
 
@@ -226,6 +232,7 @@ impl VectorTool {
             star_inner_ratio: self.star_inner_ratio,
             corner_radius_px: self.corner_radius_px,
             spiral_turns: self.spiral_turns,
+            arc_degrees: self.arc_degrees,
             cap: self.cap,
             join: self.join,
             dash: self.dash,
@@ -290,6 +297,9 @@ impl Tool for VectorTool {
             PanelEvent::SetValue(id, v) if id == ids::VECTOR_SPIRAL_TURNS => {
                 self.spiral_turns = slider_to_spiral_turns(v as f32);
             }
+            PanelEvent::SetValue(id, v) if id == ids::VECTOR_ARC_DEGREES => {
+                self.arc_degrees = slider_to_arc_degrees(v as f32);
+            }
             // Opacity sliders own the fill/stroke alpha (the single source). The
             // picker only sets RGB. `0 %` alpha ⇒ invisible (no fill).
             PanelEvent::SetValue(id, v) if id == ids::VECTOR_FILL_OPACITY => {
@@ -305,6 +315,8 @@ impl Tool for VectorTool {
             PanelEvent::Click(id) if id == ids::VECTOR_MODE_SELECT => self.mode = DrawMode::Select,
             PanelEvent::Click(id) if id == ids::VECTOR_MODE_NODE => self.mode = DrawMode::Node,
             PanelEvent::Click(id) if id == ids::VECTOR_MODE_PEN => self.mode = DrawMode::Pen,
+            PanelEvent::Click(id) if id == ids::VECTOR_MODE_LINE => self.mode = DrawMode::Line,
+            PanelEvent::Click(id) if id == ids::VECTOR_MODE_ARC => self.mode = DrawMode::Arc,
             PanelEvent::Click(id) if id == ids::VECTOR_MODE_RECT => self.mode = DrawMode::Rectangle,
             PanelEvent::Click(id) if id == ids::VECTOR_MODE_ELLIPSE => {
                 self.mode = DrawMode::Ellipse
@@ -430,6 +442,8 @@ mod tests {
             (ids::VECTOR_MODE_PEN, DrawMode::Pen),
             (ids::VECTOR_MODE_NODE, DrawMode::Node),
             (ids::VECTOR_MODE_SELECT, DrawMode::Select),
+            (ids::VECTOR_MODE_LINE, DrawMode::Line),
+            (ids::VECTOR_MODE_ARC, DrawMode::Arc),
         ] {
             Tool::handle_panel_event(&mut t, PanelEvent::Click(id));
             assert_eq!(t.mode(), want);

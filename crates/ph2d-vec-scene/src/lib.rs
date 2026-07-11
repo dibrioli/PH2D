@@ -45,8 +45,8 @@ mod reshape;
 /// + the demo scene — a sibling module (LOC cap).
 mod shapes;
 pub use shapes::{
-    MAX_POLYGON_SIDES, MAX_SPIRAL_TURNS, ellipse, rectangle, regular_polygon, rounded_rect, spiral,
-    star,
+    MAX_ARC_DEGREES, MAX_POLYGON_SIDES, MAX_SPIRAL_TURNS, arc, ellipse, line, rectangle,
+    regular_polygon, rounded_rect, spiral, star,
 };
 
 #[cfg(test)]

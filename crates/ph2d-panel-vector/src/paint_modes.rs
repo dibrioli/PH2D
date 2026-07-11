@@ -12,8 +12,8 @@ use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::Spacing;
 use ph2d_tool_vector::VectorStyleSnapshot;
 use ph2d_tool_vector::params::{
-    DrawMode, radius_to_slider, sides_to_slider, spiral_turns_to_slider, star_inner_to_slider,
-    star_points_to_slider,
+    DrawMode, arc_degrees_to_slider, radius_to_slider, sides_to_slider, spiral_turns_to_slider,
+    star_inner_to_slider, star_points_to_slider,
 };
 
 impl BodyCtx<'_> {
@@ -32,6 +32,8 @@ impl BodyCtx<'_> {
             (ids::VECTOR_MODE_STAR, "Star", DrawMode::Star),
             (ids::VECTOR_MODE_RRECT, "Round", DrawMode::RoundRect),
             (ids::VECTOR_MODE_SPIRAL, "Spiral", DrawMode::Spiral),
+            (ids::VECTOR_MODE_LINE, "Line", DrawMode::Line),
+            (ids::VECTOR_MODE_ARC, "Arc", DrawMode::Arc),
         ];
         let mode_cols = 3usize;
         let seg_gap = Spacing::Sm.px();
@@ -151,6 +153,26 @@ impl BodyCtx<'_> {
                     "Turns",
                     ids::VECTOR_SPIRAL_TURNS,
                     ids::VECTOR_SPIRAL_TURNS_NUM,
+                    track,
+                    val,
+                    &format!("{}", val.round() as i64),
+                    y,
+                );
+            }
+            DrawMode::Arc => {
+                let track = self
+                    .store
+                    .slider(ids::VECTOR_ARC_DEGREES)
+                    .map(|(_, v)| v)
+                    .unwrap_or_else(|| arc_degrees_to_slider(snap.arc_degrees));
+                let val = self
+                    .store
+                    .number_value(ids::VECTOR_ARC_DEGREES_NUM)
+                    .unwrap_or(snap.arc_degrees);
+                y = self.slider_row(
+                    "Degrees",
+                    ids::VECTOR_ARC_DEGREES,
+                    ids::VECTOR_ARC_DEGREES_NUM,
                     track,
                     val,
                     &format!("{}", val.round() as i64),

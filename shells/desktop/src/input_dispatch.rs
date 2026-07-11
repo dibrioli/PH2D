@@ -53,6 +53,7 @@ mod keyboard;
 pub(crate) mod painter_canvas_input;
 pub(crate) mod painter_falloff_input;
 pub(crate) mod protect_brush;
+mod vec_snap;
 
 /// Deslocamento diagonal de um paste/duplicate, em pixels de tela (o zoom converte
 /// para world) — a cópia não nasce exatamente sob o original.
@@ -1148,6 +1149,8 @@ fn shape_kind_for_mode(mode: ph2d_tool_vector::DrawMode) -> Option<ph2d_vec_edit
         DrawMode::Star => Some(ShapeKind::Star),
         DrawMode::RoundRect => Some(ShapeKind::RoundRect),
         DrawMode::Spiral => Some(ShapeKind::Spiral),
+        DrawMode::Line => Some(ShapeKind::Line),
+        DrawMode::Arc => Some(ShapeKind::Arc),
     }
 }
 
@@ -1159,6 +1162,7 @@ fn shape_params(cfg: &ph2d_tool_vector::VectorDrawConfig) -> ph2d_vec_edit::Shap
         star_inner_ratio: cfg.star_inner_ratio,
         corner_radius_px: cfg.corner_radius_px,
         spiral_turns: cfg.spiral_turns,
+        arc_degrees: cfg.arc_degrees,
     }
 }
 
@@ -1993,6 +1997,10 @@ impl App {
         // (MovePivot / scale / rotate / translate). Extracted to the
         // `gizmo_drag` sibling to keep this dispatch hub readable.
         self.advance_gizmo_drag();
+        // Enio 2026-07-10: snap vetorial em TEMPO REAL — depois de o advance seguir o
+        // cursor, gruda a forma arrastada no vizinho mais próximo (ponta p/ aberta,
+        // vértice p/ fechada). Roda todo Move, então a forma prende/solta ao vivo.
+        self.snap_dragged_vec_during_drag();
         // Drag-in-progress: forward pointer to active tool panel
         // hit-test → updates slider value continuously.
         if self.dragging.is_some() {
@@ -2346,6 +2354,30 @@ impl App {
                         let committed = if let Some(gfx) = self.gfx.as_mut() {
                             let c = self.vec_shape.on_release(&mut gfx.vec_scene);
                             if c {
+                                // Solda os endpoints da forma recém-criada com nós
+                                // vizinhos: basta ficarem próximos para se fundirem, e
+                                // várias linhas/arcos fecham numa forma (Enio
+                                // 2026-07-09). A forma nova ainda não tem entidade
+                                // (o sync roda depois), então está na identidade; a
+                                // geometria PRÉ-existente nunca se mexe (só a nova
+                                // snapa nela). Ao fechar num laço, recebe o fill do
+                                // estilo atual — como uma região desenhada pela pen.
+                                if let Some(new_id) = self.vec_shape.selected() {
+                                    let fill = self.vec_pen.style().fill;
+                                    let fill_on_close =
+                                        (fill.a != 0).then(|| ph2d_vec_scene::Paint::solid(fill));
+                                    let xforms =
+                                        crate::vec_transform::build(&gfx.sim, &self.vec_entities);
+                                    let win = gfx.surface.size();
+                                    let tol =
+                                        crate::vec_gizmo_view::stroke_hit_r(&gfx.camera, win) * 1.5;
+                                    gfx.vec_scene.weld_new_shape(
+                                        new_id,
+                                        &xforms,
+                                        tol,
+                                        fill_on_close,
+                                    );
+                                }
                                 self.vec_history.commit_if_changed(&gfx.vec_scene);
                             } else {
                                 self.vec_history.cancel();
@@ -2355,8 +2387,14 @@ impl App {
                             false
                         };
                         if committed {
-                            // Select the new shape so it's immediately editable.
-                            self.vec_pen.select(self.vec_shape.selected());
+                            // Seleciona a forma nova para edição imediata — a menos que
+                            // o weld a tenha fundido noutro objeto (o id sumiu).
+                            let sel = self.vec_shape.selected().filter(|id| {
+                                self.gfx.as_ref().is_some_and(|g| {
+                                    g.vec_scene.paths().iter().any(|p| p.id == *id)
+                                })
+                            });
+                            self.vec_pen.select(sel);
                         }
                         return;
                     }
@@ -2560,6 +2598,7 @@ impl App {
                             &vec_view,
                             &self.vec_entities,
                             world_pos,
+                            crate::vec_gizmo_view::stroke_hit_r(&gfx.camera, window_size),
                         );
                         hits.extend(ph2d_render::pick_sprites_at_world(
                             gfx.present.world_mut(),
@@ -2605,6 +2644,41 @@ impl App {
                             | Some(ph2d_editor::GizmoDragKind::ScaleEdge { .. })
                             | Some(ph2d_editor::GizmoDragKind::Rotate)
                     );
+                    // Enio 2026-07-10: uma forma vetorial ABERTA (linha/arco/pen aberto)
+                    // tem bbox FINA — o interior "Translate" do gizmo de sprite colapsa
+                    // e os handles de scale/rotate cobrem o traço inteiro, roubando o
+                    // clique (o hit-walk é back-to-front, handles vencem). Resultado:
+                    // arrastar a linha a ESCALAVA em vez de mover, e o snap-ao-mover
+                    // (que só dispara num Translate) nunca rodava. Se o cursor está
+                    // sobre o TRAÇO de uma forma vetorial aberta, o arrasto é um
+                    // Translate dela: pula o branch de handle e cai no canvas-pick.
+                    // Handles de quina FORA do traço (arco/linha diagonal) seguem
+                    // escalando — a checagem é só do traço.
+                    let over_open_vec_stroke = {
+                        let window_size = gfx.surface.size();
+                        let world_pos = gfx.camera.screen_to_world((evt.x, evt.y), window_size);
+                        let vec_view =
+                            crate::vec_entities::view_state(&gfx.sim, &self.vec_entities);
+                        let hits = crate::vec_gizmo_view::pick_all_at_world(
+                            &gfx.sim,
+                            &gfx.vec_scene,
+                            &vec_view,
+                            &self.vec_entities,
+                            world_pos,
+                            crate::vec_gizmo_view::stroke_hit_r(&gfx.camera, window_size),
+                        );
+                        hits.first().is_some_and(|&bits| {
+                            gfx.sim
+                                .world()
+                                .get::<ph2d_ecs::VecPathRef>(ph2d_ecs::Entity::from_bits(bits))
+                                .is_some_and(|vp| {
+                                    gfx.vec_scene
+                                        .paths()
+                                        .iter()
+                                        .any(|p| p.id == vp.0 && !p.closed)
+                                })
+                        })
+                    };
                     // Also recognize Translate from a keyed bbox-interior
                     // hit — clicking the interior of an extra or the global
                     // gizmo should open a group translate via the
@@ -2648,6 +2722,7 @@ impl App {
                                     &gfx.vec_scene,
                                     entity,
                                     world_pos,
+                                    crate::vec_gizmo_view::stroke_hit_r(&gfx.camera, window_size),
                                 );
                         if (on_pivot_dot || on_object)
                             && !ph2d_ecs::is_locked_for_edit(gfx.sim.world(), entity)
@@ -2694,6 +2769,7 @@ impl App {
                     if began_pivot {
                         // MovePivot drag opened; Move events drive it.
                     } else if is_specific_handle
+                        && !over_open_vec_stroke
                         && let Some(gkind) = effective_kind
                         && let Some(entity_bits) = match effective_target {
                             ph2d_editor::GizmoTarget::ExtraIndividual(bits) => Some(bits),
@@ -2826,7 +2902,8 @@ impl App {
                         && (hit_id.is_none()
                             || matches!(gizmo_kind, Some(ph2d_editor::GizmoDragKind::Translate))
                             || hit_id == Some(ph2d_editor::gizmo::ids::GIZMO_PIVOT)
-                            || is_keyed_translate)
+                            || is_keyed_translate
+                            || over_open_vec_stroke)
                     {
                         // Canvas pick (M14.7 A) — see commit history
                         // for the four conditions enumerated.
@@ -2842,11 +2919,23 @@ impl App {
                             &vec_view,
                             &self.vec_entities,
                             world_pos,
+                            crate::vec_gizmo_view::stroke_hit_r(&gfx.camera, window_size),
                         );
                         hits.extend(ph2d_render::pick_sprites_at_world(
                             gfx.present.world_mut(),
                             world_pos,
                         ));
+                        // Uma forma ABERTA (linha/arco) não é pega pelo interior — só
+                        // pelo traço. Mas clicar no INTERIOR do gizmo dela (hit
+                        // Translate) É o pedido de mover: a bbox inteira é área de
+                        // arrasto, como num sprite. Sem nada sob o cursor, cai na
+                        // seleção atual (Enio 2026-07-09).
+                        if hits.is_empty()
+                            && matches!(gizmo_kind, Some(ph2d_editor::GizmoDragKind::Translate))
+                            && let Some(sel) = hero.gizmo.selection
+                        {
+                            hits.push(sel);
+                        }
                         let same_list = !hits.is_empty() && hits == self.cycle_pick_hits;
                         if !same_list {
                             self.cycle_pick_world = Some(world_pos);
@@ -3129,7 +3218,84 @@ impl App {
                     }
                     // Drop the drag — Transform is already committed
                     // up to the latest Move position.
+                    let ended_drag = hero.gizmo.drag;
                     hero.gizmo.drag = None;
+                    // Snap vetorial ao MOVER (Enio 2026-07-10): um Translate que
+                    // acabou de reposicionar formas vetoriais ABERTAS solda as pontas
+                    // que ficaram perto de nós vizinhos — o mesmo weld da criação. A
+                    // forma movida cede o endpoint; a vizinha é sacrossanta. Formas
+                    // fechadas não têm endpoints, então passam intactas.
+                    // Qualquer manipulação da forma (mover / escalar / rotacionar) que
+                    // aproxime as pontas deve soldar — só o MovePivot (que mexe no pivô,
+                    // não na forma) fica de fora. O `rigid_snap_delta` só desliza para o
+                    // encaixe, então serve de ajuste fino pós-scale/rotate também.
+                    if ended_drag
+                        .is_some_and(|d| !matches!(d.kind, ph2d_editor::GizmoDragKind::MovePivot))
+                    {
+                        let mut moved_bits = vec![ended_drag.unwrap().entity_bits];
+                        moved_bits.extend(self.group_drag_starts.iter().map(|s| s.entity_bits));
+                        let moved_ids: Vec<_> = moved_bits
+                            .iter()
+                            .filter_map(|&b| {
+                                gfx.sim
+                                    .world()
+                                    .get::<ph2d_ecs::VecPathRef>(ph2d_ecs::Entity::from_bits(b))
+                                    .map(|v| v.0)
+                            })
+                            .collect();
+                        if !moved_ids.is_empty() {
+                            let fill = self.vec_pen.style().fill;
+                            let fill_on_close =
+                                (fill.a != 0).then(|| ph2d_vec_scene::Paint::solid(fill));
+                            let win = gfx.surface.size();
+                            let tol = crate::vec_gizmo_view::stroke_hit_r(&gfx.camera, win) * 1.5;
+                            let mut welded = false;
+                            for id in moved_ids {
+                                // Recomputa os xforms a cada solda (uma fusão muda o
+                                // scene) e pula o que já foi consumido por outra.
+                                if !gfx.vec_scene.paths().iter().any(|p| p.id == id) {
+                                    continue;
+                                }
+                                let Some(bits) = self.vec_entities.get(&id).copied() else {
+                                    continue;
+                                };
+                                let closed =
+                                    gfx.vec_scene.paths().iter().any(|p| p.id == id && p.closed);
+                                // Alinhamento final (X/Y independentes: bordas / centros /
+                                // vértices) — vale p/ toda forma, o mesmo snap do arraste.
+                                let xforms =
+                                    crate::vec_transform::build(&gfx.sim, &self.vec_entities);
+                                let align = gfx.vec_scene.align_snap_delta(id, &xforms, tol);
+                                vec_snap::slide_entity_world(&mut gfx.sim, bits, align);
+                                // Só a forma ABERTA funde: encaixa a PONTA num endpoint
+                                // vizinho (RÍGIDO, sem distorcer) e solda — a ponta já
+                                // coincide, uma segunda ponta (fecho) cede o mínimo.
+                                if !closed {
+                                    let xforms =
+                                        crate::vec_transform::build(&gfx.sim, &self.vec_entities);
+                                    if let Some(rd) =
+                                        gfx.vec_scene.rigid_snap_delta(id, &xforms, tol)
+                                    {
+                                        vec_snap::slide_entity_world(&mut gfx.sim, bits, rd);
+                                    }
+                                    let xforms =
+                                        crate::vec_transform::build(&gfx.sim, &self.vec_entities);
+                                    if gfx.vec_scene.weld_new_shape(
+                                        id,
+                                        &xforms,
+                                        tol,
+                                        fill_on_close.clone(),
+                                    ) > 0
+                                    {
+                                        welded = true;
+                                    }
+                                }
+                            }
+                            if welded {
+                                self.vec_history.commit_if_changed(&gfx.vec_scene);
+                            }
+                        }
+                    }
                     // Onda 1: release the group-translate snapshot so
                     // the next single-select drag doesn't accidentally
                     // pull stale extras along.

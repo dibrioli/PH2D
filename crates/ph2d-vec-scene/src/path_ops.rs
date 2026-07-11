@@ -8,7 +8,7 @@
 //! mover/escalar/rodar leva o buraco junto, e as bboxes enquadram a forma toda.
 
 use crate::compound::contour_segments;
-use crate::{FillRule, FlipAxis, Paint, Rotate90, VecPath, VecPathId, VecScene};
+use crate::{FillRule, FlipAxis, Paint, Rotate90, VecPath, VecPathId, VecScene, VecVertex};
 
 /// Amostras por segmento cúbico nas varreduras de geometria (bbox / containment).
 /// Apertado o bastante p/ o gizmo e transcendental-free.
@@ -112,6 +112,337 @@ impl VecScene {
         };
         bake_xform(path, x);
         true
+    }
+
+    /// Inverte a ordem dos vértices do contorno primário do path `id` — o 1º vira o
+    /// último. Os handles in/out trocam de papel (o sentido inverteu). `false` se o
+    /// id sumiu. Usado para orientar uma junção de paths (weld) na direção certa.
+    pub fn reverse_path(&mut self, id: VecPathId) -> bool {
+        let Some(path) = self.paths.iter_mut().find(|p| p.id == id) else {
+            return false;
+        };
+        path.verts.reverse();
+        for v in &mut path.verts {
+            std::mem::swap(&mut v.in_handle, &mut v.out_handle);
+        }
+        true
+    }
+
+    /// O endpoint (1º ou último vértice) do path `id` **em coordenadas de MUNDO**,
+    /// pelo afim de `xforms`. `None` se o id sumiu ou o path está vazio.
+    #[must_use]
+    pub fn endpoint_world(
+        &self,
+        xforms: &crate::VecXforms,
+        id: VecPathId,
+        first: bool,
+    ) -> Option<[f64; 2]> {
+        let path = self.paths.iter().find(|p| p.id == id)?;
+        let v = if first {
+            path.verts.first()?
+        } else {
+            path.verts.last()?
+        };
+        Some(crate::xform_of(xforms, id).apply(v.anchor))
+    }
+
+    /// Funde `src` no FIM de `dst`: anexa os vértices de `src` (convertidos do afim
+    /// dele para o de `dst`) ao contorno primário de `dst`, e **remove** `src`. Os
+    /// dois viram um só path. `reverse_src` percorre `src` de trás pra frente
+    /// (trocando handles). `false` se um id sumiu ou o afim de `dst` é degenerado.
+    ///
+    /// É a primitiva do weld de endpoints: geometria local de `src` → mundo → local
+    /// de `dst`, a mesma regra de fronteira. `weld_junction` funde o vértice de emenda
+    /// (o 1º de `src`, que coincide com o último de `dst`) num só — o último de `dst`
+    /// herda a tangente de saída de `src`, e a duplicata some. Sem ele, uma emenda
+    /// deixaria dois vértices sobrepostos.
+    pub fn merge_path_into(
+        &mut self,
+        dst: VecPathId,
+        src: VecPathId,
+        xforms: &crate::VecXforms,
+        reverse_src: bool,
+        weld_junction: bool,
+    ) -> bool {
+        let Some(inv_dst) = crate::xform_of(xforms, dst).inverse() else {
+            return false;
+        };
+        let src_xf = crate::xform_of(xforms, src);
+        let Some(src_path) = self.paths.iter().find(|p| p.id == src) else {
+            return false;
+        };
+        let mut mapped: Vec<VecVertex> = src_path
+            .verts
+            .iter()
+            .map(|v| VecVertex {
+                anchor: inv_dst.apply(src_xf.apply(v.anchor)),
+                in_handle: inv_dst.apply(src_xf.apply(v.in_handle)),
+                out_handle: inv_dst.apply(src_xf.apply(v.out_handle)),
+                kind: v.kind,
+            })
+            .collect();
+        if reverse_src {
+            mapped.reverse();
+            for v in &mut mapped {
+                std::mem::swap(&mut v.in_handle, &mut v.out_handle);
+            }
+        }
+        let Some(d) = self.paths.iter_mut().find(|p| p.id == dst) else {
+            return false;
+        };
+        if weld_junction
+            && !mapped.is_empty()
+            && let Some(last) = d.verts.last_mut()
+        {
+            // A emenda coincide (o weld só chega aqui quando coincide): o vértice de
+            // junção é um só, com o in do lado de `dst` e o out do lado de `src`.
+            last.out_handle = mapped[0].out_handle;
+            mapped.remove(0);
+        }
+        d.verts.extend(mapped);
+        self.remove_path(src);
+        true
+    }
+
+    /// Move o endpoint (1º ou último vértice) do path `id` para que caia EXATAMENTE
+    /// em `target_world`. Translada o vértice inteiro (âncora + os dois handles), de
+    /// modo que a tangente ali se preserva — só o ponto de emenda anda. Usado no weld
+    /// para a forma NOVA ceder ao nó pré-existente sem que este se mexa.
+    fn snap_endpoint_world(
+        &mut self,
+        id: VecPathId,
+        xforms: &crate::VecXforms,
+        first: bool,
+        target_world: [f64; 2],
+    ) {
+        let Some(inv) = crate::xform_of(xforms, id).inverse() else {
+            return;
+        };
+        let t = inv.apply(target_world);
+        if let Some(p) = self.paths.iter_mut().find(|p| p.id == id) {
+            let v = if first {
+                p.verts.first_mut()
+            } else {
+                p.verts.last_mut()
+            };
+            if let Some(v) = v {
+                let d = [t[0] - v.anchor[0], t[1] - v.anchor[1]];
+                for pt in [&mut v.anchor, &mut v.in_handle, &mut v.out_handle] {
+                    pt[0] += d[0];
+                    pt[1] += d[1];
+                }
+            }
+        }
+    }
+
+    /// O deslocamento em MUNDO que encaixa a ponta mais próxima do path aberto `id`
+    /// num nó de endpoint de OUTRO path aberto (≤ `tol`), ou `None` se nenhuma ponta
+    /// está perto. O chamador soma isso ao `Transform` da forma — ela desliza inteira
+    /// e RÍGIDA para o encaixe (nada de geometria distorcida), como o snap de um
+    /// editor CAD. Depois um `weld_new_shape` funde de fato (a ponta já coincide).
+    #[must_use]
+    pub fn rigid_snap_delta(
+        &self,
+        id: VecPathId,
+        xforms: &crate::VecXforms,
+        tol: f64,
+    ) -> Option<[f64; 2]> {
+        let t2 = tol * tol;
+        let d2 = |a: [f64; 2], b: [f64; 2]| (a[0] - b[0]).powi(2) + (a[1] - b[1]).powi(2);
+        if self
+            .paths
+            .iter()
+            .find(|p| p.id == id)
+            .is_some_and(|p| p.closed)
+        {
+            return None;
+        }
+        let nf = self.endpoint_world(xforms, id, true)?;
+        let nl = self.endpoint_world(xforms, id, false)?;
+        let mut best: Option<([f64; 2], f64)> = None;
+        for p in self
+            .paths
+            .iter()
+            .filter(|p| p.id != id && !p.closed && !p.verts.is_empty())
+        {
+            let (Some(bf), Some(bl)) = (
+                self.endpoint_world(xforms, p.id, true),
+                self.endpoint_world(xforms, p.id, false),
+            ) else {
+                continue;
+            };
+            for npt in [nf, nl] {
+                for bpt in [bf, bl] {
+                    let dd = d2(npt, bpt);
+                    if dd <= t2 && best.is_none_or(|(_, bd)| dd < bd) {
+                        best = Some(([bpt[0] - npt[0], bpt[1] - npt[1]], dd));
+                    }
+                }
+            }
+        }
+        best.map(|(delta, _)| delta)
+    }
+
+    /// As coordenadas X e Y "snapáveis" do path `id` em MUNDO: as três linhas da bbox
+    /// de curva em cada eixo (esquerda/centro/direita em X; topo/centro/baixo em Y)
+    /// mais cada âncora. É a matéria-prima do snap de alinhamento — casando X-com-X e
+    /// Y-com-Y cobrem-se bordas, centros e vértices (incl. vértice↔centro).
+    fn snap_axes_world(&self, xforms: &crate::VecXforms, id: VecPathId) -> (Vec<f64>, Vec<f64>) {
+        let mut xs = Vec::new();
+        let mut ys = Vec::new();
+        if let Some((lo, hi)) = self.path_world_curve_bbox(xforms, id) {
+            xs.extend([lo[0], (lo[0] + hi[0]) * 0.5, hi[0]]);
+            ys.extend([lo[1], (lo[1] + hi[1]) * 0.5, hi[1]]);
+        }
+        if let Some(p) = self.paths.iter().find(|p| p.id == id) {
+            let x = crate::xform_of(xforms, id);
+            for v in &p.verts {
+                let w = x.apply(v.anchor);
+                xs.push(w[0]);
+                ys.push(w[1]);
+            }
+        }
+        (xs, ys)
+    }
+
+    /// O deslocamento `[dx, dy]` em MUNDO que **alinha** o path `id` a outra forma —
+    /// o snap completo de editor vetorial. Os eixos são INDEPENDENTES: X gruda quando
+    /// uma linha snapável (borda/centro/vértice) do `id` cai a ≤ `tol` de uma do
+    /// vizinho (alinhamento vertical), e Y idem (horizontal). Cobre borda↔borda,
+    /// centro↔centro, vértice↔centro, vértice↔vértice — de referências possivelmente
+    /// diferentes em cada eixo, como Figma. Só DESLIZA (o chamador soma ao
+    /// `Transform`); nunca distorce nem funde. `[0, 0]` se nada está perto.
+    #[must_use]
+    pub fn align_snap_delta(&self, id: VecPathId, xforms: &crate::VecXforms, tol: f64) -> [f64; 2] {
+        let (mxs, mys) = self.snap_axes_world(xforms, id);
+        if mxs.is_empty() {
+            return [0.0, 0.0];
+        }
+        let (mut oxs, mut oys) = (Vec::new(), Vec::new());
+        for p in self
+            .paths
+            .iter()
+            .filter(|p| p.id != id && !p.verts.is_empty())
+        {
+            let (xs, ys) = self.snap_axes_world(xforms, p.id);
+            oxs.extend(xs);
+            oys.extend(ys);
+        }
+        // Menor deslocamento (≤ tol) que faz alguma linha do `id` coincidir com uma do
+        // vizinho, por eixo.
+        let best = |mine: &[f64], other: &[f64]| -> f64 {
+            let mut b: Option<f64> = None;
+            for &m in mine {
+                for &o in other {
+                    let d = o - m;
+                    if d.abs() <= tol && b.is_none_or(|bd: f64| d.abs() < bd.abs()) {
+                        b = Some(d);
+                    }
+                }
+            }
+            b.unwrap_or(0.0)
+        };
+        [best(&mxs, &oxs), best(&mys, &oys)]
+    }
+
+    /// **Solda** os endpoints da forma RECÉM-CRIADA `new_id` aos nós de endpoint de
+    /// outros paths abertos que estejam a ≤ `tol` (mundo). É o que permite fechar uma
+    /// forma com várias linhas/arcos/traços da pen: **basta os nós ficarem próximos**
+    /// (Enio 2026-07-09). Devolve quantas soldas/fechamentos houve.
+    ///
+    /// A geometria PRÉ-EXISTENTE é sacrossanta — nunca se mexe. Quem cede é a forma
+    /// nova: seu endpoint snapa EXATO no nó vizinho antes de fundir, então a curva já
+    /// desenhada fica idêntica (sem o deslocamento de ~`tol` que uma emenda ingênua
+    /// causaria). Se os dois extremos da forma nova acabam no mesmo ponto, ela fecha e
+    /// (sendo agora uma região) recebe `fill_on_close`. `tol` é world-units.
+    pub fn weld_new_shape(
+        &mut self,
+        new_id: VecPathId,
+        xforms: &crate::VecXforms,
+        tol: f64,
+        fill_on_close: Option<Paint>,
+    ) -> usize {
+        let t2 = tol * tol;
+        let d2 = |a: [f64; 2], b: [f64; 2]| (a[0] - b[0]).powi(2) + (a[1] - b[1]).powi(2);
+        let mut welds = 0usize;
+
+        // No máximo 2 fusões — um alvo por endpoint da forma nova.
+        for _ in 0..2 {
+            let (Some(nf), Some(nl)) = (
+                self.endpoint_world(xforms, new_id, true),
+                self.endpoint_world(xforms, new_id, false),
+            ) else {
+                break;
+            };
+            // Melhor alvo: (B, endpoint-da-nova-é-first, endpoint-de-B-é-first, ponto).
+            let others: Vec<VecPathId> = self
+                .paths
+                .iter()
+                .filter(|p| p.id != new_id && !p.closed && !p.verts.is_empty())
+                .map(|p| p.id)
+                .collect();
+            let mut best: Option<(VecPathId, bool, bool, [f64; 2], f64)> = None;
+            for b in others {
+                let (Some(bf), Some(bl)) = (
+                    self.endpoint_world(xforms, b, true),
+                    self.endpoint_world(xforms, b, false),
+                ) else {
+                    continue;
+                };
+                for (n_first, npt) in [(true, nf), (false, nl)] {
+                    for (b_first, bpt) in [(true, bf), (false, bl)] {
+                        let dd = d2(npt, bpt);
+                        if dd <= t2 && best.is_none_or(|(.., bd)| dd < bd) {
+                            best = Some((b, n_first, b_first, bpt, dd));
+                        }
+                    }
+                }
+            }
+            let Some((b, n_first, b_first, bpt, _)) = best else {
+                break;
+            };
+            // A nova cede: seu endpoint snapa EXATO no nó pré-existente `bpt`.
+            self.snap_endpoint_world(new_id, xforms, n_first, bpt);
+            // Orienta para o FIM da nova ligar ao INÍCIO de B, e funde B na nova.
+            if n_first {
+                self.reverse_path(new_id);
+            }
+            self.merge_path_into(new_id, b, xforms, !b_first, true);
+            welds += 1;
+        }
+
+        // Fecha se a forma nova virou um laço (extremos ≤ tol em mundo). Depois das
+        // fusões acima o array é `[verts-da-nova…, verts-do-existente…]` — o 1º vértice
+        // é o lado NOVO, o último é o lado EXISTENTE (o arco/curva pré-desenhado).
+        if welds > 0
+            && let Some(p) = self.paths.iter().find(|p| p.id == new_id)
+            && p.verts.len() >= 3
+            && let (Some(first_w), Some(last_w)) = (
+                self.endpoint_world(xforms, new_id, true),
+                self.endpoint_world(xforms, new_id, false),
+            )
+            && d2(first_w, last_w) <= t2
+        {
+            // O fecho é uma EMENDA, não um pop: o 1º vértice (novo) snapa EXATO no
+            // último (existente, sacrossanto), o vértice de fecho herda a tangente de
+            // SAÍDA do lado novo — a aresta de fecho fica com o handle certo (reta se a
+            // nova era uma linha) — e a duplicata do 1º some. Sem isso, um `pop()` cego
+            // apagaria a ponta do arco e o deformaria.
+            self.snap_endpoint_world(new_id, xforms, true, last_w);
+            if let Some(p) = self.paths.iter_mut().find(|p| p.id == new_id) {
+                let first_out = p.verts.first().map(|v| v.out_handle);
+                if let (Some(out), Some(last)) = (first_out, p.verts.last_mut()) {
+                    last.out_handle = out;
+                }
+                p.verts.remove(0);
+                p.closed = true;
+                if let Some(fp) = fill_on_close {
+                    p.fill = Some(fp);
+                }
+            }
+            welds += 1;
+        }
+        welds
     }
 
     /// Bounding box da curva do path `id` **em coordenadas de MUNDO** (ADR-0111): cada

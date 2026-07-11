@@ -55,16 +55,16 @@ pub(crate) struct MotionState {
 
 impl MotionState {
     /// Build the boot state: register every node op + the **default document** —
-    /// two small M3 distribution scenes side by side: a **hexagonal lattice** that
-    /// melts and reforms (`motion.lattice`) on the left, and a random cloud that
-    /// **relaxes into a honeycomb** via Lloyd's algorithm (`motion.voronoi`) on the
-    /// right. Each is animated by a `value.lfo`. Kept deliberately small (two
-    /// ~5-node scenes) so each new node reads on its own (docs/Motion Nodes/12, 23).
-    /// The earlier scenes (the Cavalry grid rig, the deformer grid, the rope+flock,
-    /// the jelly+ripple sims) and the earlier value/pulse + M3/M4 chains were removed
-    /// to keep the boot document focused; they live in git history and every node
-    /// keeps its own unit tests + stays registered (drop them in the editor).
-    /// Transport paused at tick 0 (bridge auto-plays).
+    /// two small M3 deformer scenes side by side: a grid billowing into
+    /// **perspective** as its corners are pinned (`motion.four_point_warp`) on the
+    /// left, and a grid **bulging and pinching** like a lens (`motion.spherize`) on
+    /// the right. Each is animated by a `value.lfo`. Kept deliberately small (two
+    /// linear chains) so each new node reads on its own (docs/Motion Nodes/12, 24).
+    /// The earlier scenes (the Cavalry grid rig, the sim scenes, the distributions)
+    /// and the earlier value/pulse + M3/M4 chains were removed to keep the boot
+    /// document focused; they live in git history and every node keeps its own unit
+    /// tests + stays registered (drop them in the editor). Transport paused at tick 0
+    /// (bridge auto-plays).
     pub(crate) fn new() -> Self {
         let mut registry = NodeRegistry::new();
         ph2d_node_registry_init::register_all_nodes(&mut registry)
@@ -92,19 +92,18 @@ impl MotionState {
 /// module's most recent work). Returns their sinks (the Output nodes) if the graph
 /// is well-typed.
 ///
-/// The scenes — built in the `strobe` sibling module — are two side-by-side
-/// distributions animated by the value domain: on the LEFT a **hexagonal lattice**
-/// whose `jitter` is a `value.lfo` (the honeycomb melts toward noise and reforms);
-/// on the RIGHT a random cloud whose `relax` is a `value.lfo` playing **Lloyd's
-/// relaxation** forward (the points organise into a centroidal-Voronoi honeycomb and
-/// dissolve back). Two M3 distributions rounding out the family (`grid`, `fibonacci`,
-/// `scatter` are the others). See docs/Motion Nodes/12 (value), 23 (lattice + voronoi).
+/// The scenes — built in the `strobe` sibling module — are two side-by-side deformers
+/// animated by the value domain: on the LEFT a grid whose corners are pinned into a
+/// keystone, its `warp` a `value.lfo` billowing it into **perspective** and flat again
+/// (`motion.four_point_warp`, a projective corner-pin); on the RIGHT a grid whose
+/// `amount` is a `value.lfo` swinging from pinch to **bulge** like a lens
+/// (`motion.spherize`, a radial distortion). Two distinct deformer families. See
+/// docs/Motion Nodes/12 (value), 24 (four-point-warp + spherize).
 ///
-/// The earlier scenes were removed to keep the boot document small and legible:
-/// the **Cavalry grid rig**, the **particle fountain**, the **deformer grids**, the
-/// **rope+flock and jelly+ripple sims**, and the earlier value, pulse and M3/M4
-/// chains. They remain in git history and every node keeps its own unit tests; the
-/// nodes stay registered, so any of them can be dropped in the editor.
+/// The earlier scenes were removed to keep the boot document small and legible: the
+/// **Cavalry grid rig**, the sim scenes, the distribution scenes, and the earlier
+/// value, pulse and M3/M4 chains. They remain in git history and every node keeps its
+/// own unit tests; the nodes stay registered, so any of them can be dropped.
 fn build_default_document(g: &mut Graph, reg: &NodeRegistry) -> Option<Vec<NodeId>> {
     let sinks = strobe::build(g)?;
     // Same "validate on load" the editor runs before cooking — proves the authored

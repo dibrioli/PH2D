@@ -5295,6 +5295,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-node-motion-four-point-warp"
+version = "0.0.0"
+dependencies = [
+ "ph2d-node-registry",
+ "ph2d-nodegraph",
+]
+
+[[package]]
 name = "ph2d-node-motion-grid"
 version = "0.0.0"
 dependencies = [
@@ -5400,6 +5408,14 @@ dependencies = [
 
 [[package]]
 name = "ph2d-node-motion-soft-body"
+version = "0.0.0"
+dependencies = [
+ "ph2d-node-registry",
+ "ph2d-nodegraph",
+]
+
+[[package]]
+name = "ph2d-node-motion-spherize"
 version = "0.0.0"
 dependencies = [
  "ph2d-node-registry",
@@ -5584,6 +5600,7 @@ dependencies = [
  "ph2d-node-motion-emitter",
  "ph2d-node-motion-falloff",
  "ph2d-node-motion-fibonacci",
+ "ph2d-node-motion-four-point-warp",
  "ph2d-node-motion-grid",
  "ph2d-node-motion-integrate",
  "ph2d-node-motion-lattice",
@@ -5598,6 +5615,7 @@ dependencies = [
  "ph2d-node-motion-scale",
  "ph2d-node-motion-scatter",
  "ph2d-node-motion-soft-body",
+ "ph2d-node-motion-spherize",
  "ph2d-node-motion-spring",
  "ph2d-node-motion-stagger",
  "ph2d-node-motion-step",

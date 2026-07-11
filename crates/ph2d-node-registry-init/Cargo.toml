@@ -41,6 +41,7 @@ ph2d-node-motion-output = { path = "../ph2d-node-motion-output" }
 ph2d-node-motion-rotate = { path = "../ph2d-node-motion-rotate" }
 ph2d-node-motion-scale = { path = "../ph2d-node-motion-scale" }
 ph2d-node-motion-scatter = { path = "../ph2d-node-motion-scatter" }
+ph2d-node-motion-soft-body = { path = "../ph2d-node-motion-soft-body" }
 ph2d-node-motion-spring = { path = "../ph2d-node-motion-spring" }
 ph2d-node-motion-stagger = { path = "../ph2d-node-motion-stagger" }
 ph2d-node-motion-step = { path = "../ph2d-node-motion-step" }
@@ -51,6 +52,7 @@ ph2d-node-motion-trail = { path = "../ph2d-node-motion-trail" }
 ph2d-node-motion-transform = { path = "../ph2d-node-motion-transform" }
 ph2d-node-motion-twist = { path = "../ph2d-node-motion-twist" }
 ph2d-node-motion-verlet-rope = { path = "../ph2d-node-motion-verlet-rope" }
+ph2d-node-motion-wave = { path = "../ph2d-node-motion-wave" }
 ph2d-node-motion-wiggle = { path = "../ph2d-node-motion-wiggle" }
 ph2d-node-pulse-beat = { path = "../ph2d-node-pulse-beat" }
 ph2d-node-pulse-compare = { path = "../ph2d-node-pulse-compare" }

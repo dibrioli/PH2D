@@ -5391,6 +5391,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-node-motion-soft-body"
+version = "0.0.0"
+dependencies = [
+ "ph2d-node-registry",
+ "ph2d-nodegraph",
+]
+
+[[package]]
 name = "ph2d-node-motion-spring"
 version = "0.0.0"
 dependencies = [
@@ -5464,6 +5472,14 @@ dependencies = [
 
 [[package]]
 name = "ph2d-node-motion-verlet-rope"
+version = "0.0.0"
+dependencies = [
+ "ph2d-node-registry",
+ "ph2d-nodegraph",
+]
+
+[[package]]
+name = "ph2d-node-motion-wave"
 version = "0.0.0"
 dependencies = [
  "ph2d-node-registry",
@@ -5563,6 +5579,7 @@ dependencies = [
  "ph2d-node-motion-rotate",
  "ph2d-node-motion-scale",
  "ph2d-node-motion-scatter",
+ "ph2d-node-motion-soft-body",
  "ph2d-node-motion-spring",
  "ph2d-node-motion-stagger",
  "ph2d-node-motion-step",
@@ -5573,6 +5590,7 @@ dependencies = [
  "ph2d-node-motion-transform",
  "ph2d-node-motion-twist",
  "ph2d-node-motion-verlet-rope",
+ "ph2d-node-motion-wave",
  "ph2d-node-motion-wiggle",
  "ph2d-node-pulse-beat",
  "ph2d-node-pulse-compare",

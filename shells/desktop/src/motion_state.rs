@@ -55,17 +55,17 @@ pub(crate) struct MotionState {
 
 impl MotionState {
     /// Build the boot state: register every node op + the **default document** —
-    /// two small M4 simulation scenes side by side: a **whip** that swings and
-    /// falls from a sliding anchor (`motion.verlet_rope`) on the left, and a
-    /// **flock** that wheels after a moving target (`motion.boids`) on the right.
-    /// Each is a sequential sim on the `pre` self-loop, herded by a `value.lfo`.
-    /// Kept deliberately small (two ~4-node scenes) so each new node reads on its
-    /// own (docs/Motion Nodes/12, 21). The earlier scenes (the Cavalry grid rig,
-    /// the particle fountain, the bend/look-at deformer grid) and the earlier
-    /// value/pulse + M3 chains were removed to keep the boot document focused; they
-    /// live in git history and every node keeps its own unit tests + stays
-    /// registered (drop them in the editor). Transport paused at tick 0 (bridge
-    /// auto-plays).
+    /// two small M4 continuum-media simulation scenes side by side: a **jelly**
+    /// that wobbles from a sliding pin (`motion.soft_body`, shape-matching) on the
+    /// left, and a **ripple field** that radiates concentric waves from a driven
+    /// centre (`motion.wave`) on the right. Each is a sequential sim on the `pre`
+    /// self-loop, driven by a `value.lfo`. Kept deliberately small (two ~4-node
+    /// scenes) so each new node reads on its own (docs/Motion Nodes/12, 22). The
+    /// earlier scenes (the Cavalry grid rig, the deformer grid, the rope+flock) and
+    /// the earlier value/pulse + M3 chains were removed to keep the boot document
+    /// focused; they live in git history and every node keeps its own unit tests +
+    /// stays registered (drop them in the editor). Transport paused at tick 0
+    /// (bridge auto-plays).
     pub(crate) fn new() -> Self {
         let mut registry = NodeRegistry::new();
         ph2d_node_registry_init::register_all_nodes(&mut registry)
@@ -94,19 +94,19 @@ impl MotionState {
 /// is well-typed.
 ///
 /// The scenes — built in the `strobe` sibling module — are two side-by-side
-/// sequential sims: on the LEFT a **verlet-rope whip** pinned at a `value.lfo`-slid
-/// anchor (gravity hangs it, the sliding pin whips it); on the RIGHT a **boids
-/// flock** with a seek pull toward a `value.lfo`-slid target (so the swarm wheels
-/// to chase it). Two simulations on the `pre` self-loop — one constrained, one
-/// emergent — each herded by the value domain. See docs/Motion Nodes/12 (value),
-/// 21 (verlet-rope + boids).
+/// sequential sims: on the LEFT a **soft-body jelly** pinned at a `value.lfo`-slid
+/// anchor (gravity sags it, the sliding pin wobbles it, shape-matching springs it
+/// back); on the RIGHT a **wave field** whose centre cell is driven by a
+/// `value.lfo`, radiating concentric ripples that swell the dots. Two continuum
+/// simulations on the `pre` self-loop — one a deformable body, one a propagating
+/// field — each driven by the value domain. See docs/Motion Nodes/12 (value),
+/// 22 (soft-body + wave).
 ///
 /// The earlier scenes were removed to keep the boot document small and legible:
 /// the **Cavalry grid rig**, the **particle fountain**, the **bend/look-at deformer
-/// grid**, and the earlier value, pulse and M3 chains (math, compare, switch,
-/// on_change, fibonacci, twist, scatter, morph). They remain in git history and
-/// every node keeps its own unit tests; the nodes stay registered, so any of them
-/// can be dropped in the editor.
+/// grid**, the **rope+flock sims**, and the earlier value, pulse and M3 chains.
+/// They remain in git history and every node keeps its own unit tests; the nodes
+/// stay registered, so any of them can be dropped in the editor.
 fn build_default_document(g: &mut Graph, reg: &NodeRegistry) -> Option<Vec<NodeId>> {
     let sinks = strobe::build(g)?;
     // Same "validate on load" the editor runs before cooking — proves the authored

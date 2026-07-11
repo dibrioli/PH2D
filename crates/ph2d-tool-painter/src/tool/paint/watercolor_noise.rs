@@ -6,7 +6,7 @@
 
 use ph2d_painter_brush::TextureKind;
 use ph2d_painter_brush::TextureSettings;
-use ph2d_painter_brush::texture::{TEX_TILE_BASE_PX, lattice_tileable};
+use ph2d_painter_brush::texture::{TEX_TILE_BASE_PX, analytic_tile_period, lattice_tileable};
 
 // ── Deterministic value noise (integer hash; HR-5 transcendental-free) ───────────────────────────────
 // Distinct seeds keep the two warp axes + the paper grain decorrelated (else the boundary would ripple
@@ -148,43 +148,48 @@ pub(super) fn paper_height(x: f32, y: f32, tile: NoiseTile) -> f32 {
         + 0.35 * value_noise_tiled(x, y, 2.5, SEED_GRAIN_FINE, tile)
 }
 
-/// #2b/#2c (doc 13): snap a slot texture's **Size** so a WHOLE number of tiles/cells spans the sprite on
-/// each tiled axis, making the slot repeat seamlessly across the sprite seam (matching the procedural
-/// noise). Covers the two BITMAP kinds — an **Image** (`fract`-wrapped UV, repeating every 2 units of
-/// `rel` because `sample_image` maps `cu = rel·0.5 + 0.5`) and the baked 256² **Paper** tiles
-/// (`PaperCold`/`Rough`/`Hot`, every 1 unit of `rel`) — AND the LATTICE procedurals (#2c: Noise / Clouds
-/// / Voronoi / … via [`lattice_tileable`]), whose hash-wrap ([`sample_tiled_rot_wrapped`]) is seam-free
-/// only when the `rel`-span is a whole number of cells (`rep = 1`). Analytic patterns (Checker / Stripes
-/// / Bricks / …) tile by cell parity and aren't snapped here — a follow-up. Non-tiled axis / tiling off ⇒
-/// unchanged (byte-identical). The Size quantises to the nearest whole count (inherent to a fixed period:
-/// it can only repeat a WHOLE number of times) — imperceptible at fine scales. Rotation ≠ 0 still seams
-/// (a rotated tile/lattice grid can't align with the axis-aligned seam) — the documented limitation.
+/// #2b/#2c/#2-fase2 (doc 13): snap a slot texture's **Size** so a WHOLE number of tiles/cells/periods
+/// spans the sprite on each tiled axis, making the slot repeat seamlessly across the sprite seam
+/// (matching the procedural noise). Covers the two BITMAP kinds — an **Image** (`fract`-wrapped UV,
+/// repeating every 2 units of `rel` because `sample_image` maps `cu = rel·0.5 + 0.5`) and the baked 256²
+/// **Paper** tiles (`PaperCold`/`Rough`/`Hot`, every 1 unit of `rel`) — the LATTICE procedurals (#2c:
+/// Noise / Clouds / Voronoi / … via [`lattice_tileable`]), whose hash-wrap ([`sample_tiled_rot_wrapped`])
+/// is seam-free only when the `rel`-span is a whole number of cells (period `1`) — AND the ANALYTIC
+/// patterns (Fase 2: Checker / Stripes / Grid / Bricks / Waves / … via [`analytic_tile_period`]), which
+/// are already exactly periodic, so aligning the span to a whole number of their per-axis period tiles
+/// them with no sampler change. Non-tiled axis / tiling off / non-tileable kind (Magic / Marble / Wood /
+/// Triangles / Hexagons) ⇒ unchanged (byte-identical). The Size quantises to the nearest whole count
+/// (inherent to a fixed period — it can only repeat a WHOLE number of times), imperceptible at fine
+/// scales. Rotation ≠ 0 still seams (a rotated grid can't align with the axis-aligned seam) — documented.
 pub(super) fn snap_slot_size(mut s: TextureSettings, tile: NoiseTile) -> TextureSettings {
-    // The tile period in `rel` units per kind: a bitmap repeats on its baked period (Image every 2,
-    // baked Paper every 1); a LATTICE procedural (doc 13 #2c) has no fixed tile, but its hash-wrap
-    // (`sample_tiled_rot_wrapped`) is seam-free only when a WHOLE number of cells spans the sprite —
-    // i.e. `rel`-span integer, so `rep = 1`. Analytic patterns tile by cell parity ⇒ not snapped here.
-    let rep = match s.kind {
-        TextureKind::Image => 2.0,
-        TextureKind::PaperCold | TextureKind::PaperRough | TextureKind::PaperHot => 1.0,
-        k if lattice_tileable(k) => 1.0,
-        _ => return s,
+    // The period in `rel` units per axis `[u, v]`: a bitmap repeats on its baked period (Image every 2,
+    // baked Paper every 1); a LATTICE procedural (doc 13 #2c) snaps to a whole cell count (period 1) so
+    // its hash-wrap is seam-free; an ANALYTIC pattern (Fase 2) snaps to its own per-axis period (a `0.0`
+    // axis is constant/ignored ⇒ left unchanged). A non-tileable kind returns unchanged.
+    let rep: [f32; 2] = match s.kind {
+        TextureKind::Image => [2.0, 2.0],
+        TextureKind::PaperCold | TextureKind::PaperRough | TextureKind::PaperHot => [1.0, 1.0],
+        k if lattice_tileable(k) => [1.0, 1.0],
+        k => match analytic_tile_period(k, s.params) {
+            Some(p) => p,
+            None => return s,
+        },
     };
-    let snap = |size: f32, period_px: f32| {
-        if period_px > 0.0 {
-            // Round the texture's span across the sprite to a whole number of tile-periods `rep` so the
-            // seam lands on a tile boundary (a fixed tile can only repeat a WHOLE number of times).
+    let snap = |size: f32, period_px: f32, rep: f32| {
+        if period_px > 0.0 && rep > 0.0 {
+            // Round the texture's span across the sprite to a whole number of periods `rep` so the seam
+            // lands on a period boundary (a fixed period can only repeat a WHOLE number of times).
             let reps = (period_px * size / (TEX_TILE_BASE_PX * rep))
                 .round()
                 .max(1.0)
                 * rep;
             reps * TEX_TILE_BASE_PX / period_px
         } else {
-            size
+            size // untiled axis, or an ignored/constant analytic axis ⇒ leave it
         }
     };
     let p = tile.slot_period();
-    s.size = [snap(s.size[0], p[0]), snap(s.size[1], p[1])];
+    s.size = [snap(s.size[0], p[0], rep[0]), snap(s.size[1], p[1], rep[1])];
     s
 }
 
@@ -304,15 +309,15 @@ mod tests {
             seams,
             "control: an unsnapped image should seam across the sprite"
         );
-        // Off-tiling + ANALYTIC (non-lattice) kinds ⇒ unchanged (byte-identical). A lattice kind IS
-        // snapped now (its wrap needs an integer span) — covered by `slot_lattice_tiles_seamlessly`.
+        // Off-tiling ⇒ unchanged (byte-identical), for every kind. A NON-tileable kind (turbulence-based
+        // Marble/Magic/Wood; irrational Triangles/Hexagons) stays unchanged even under tiling.
         assert_eq!(snap_slot_size(raw, NoiseTile::NONE).size, raw.size);
-        let analytic = TextureSettings {
-            kind: TextureKind::Checker,
+        let non_tileable = TextureSettings {
+            kind: TextureKind::Marble,
             size: [1.37, 0.83],
             ..Default::default()
         };
-        assert_eq!(snap_slot_size(analytic, tile).size, analytic.size);
+        assert_eq!(snap_slot_size(non_tileable, tile).size, non_tileable.size);
     }
 
     /// **#2c: a LATTICE procedural (Noise) tiles seamlessly under Tiling.** Snapping Size to a whole
@@ -379,6 +384,91 @@ mod tests {
                 "control: unsnapped {kind:?} should seam across the sprite"
             );
         }
+    }
+
+    /// **Fase 2: every ANALYTIC pattern tiles seamlessly under Tiling.** An analytic pattern is already
+    /// exactly periodic, so snapping Size to a whole number of its per-axis period (`analytic_tile_period`)
+    /// lands the seam on a period boundary — no sampler change. Proves `sample(0,y) == sample(pw,y)` and
+    /// `sample(x,0) == sample(x,ph)` for all tileable kinds; the RAW size seams (the control). Ignored
+    /// axes (Stripes/Gradient are constant on v) are seamless at any size, so their seam holds trivially.
+    #[test]
+    fn slot_analytic_pattern_tiles_seamlessly_under_tiling() {
+        // Import the variants by name (NOT a glob — a `TextureKind::None` glob would shadow `Option::None`
+        // in the `sample_tiled_rot(.., None, ..)` calls).
+        use ph2d_painter_brush::TextureKind::{
+            Bricks, Checker, Chevron, Crosshatch, Diamonds, Dots, Gradient, Grid, Hexagons, Magic,
+            Marble, Scales, Stripes, Triangles, Waves, Weave, Wood,
+        };
+        use ph2d_painter_brush::texture::{analytic_tile_period, angle_basis, sample_tiled_rot};
+        let (pw, ph) = (200i64, 140i64);
+        let tile = NoiseTile::new((pw as usize, ph as usize), [true, true]);
+        let rot = angle_basis(0);
+        // Every kind `analytic_tile_period` accepts. Excluded on purpose: turbulence (Marble/Magic/Wood),
+        // irrational period (Triangles/Hexagons), hash-jittered (Dots/Scales) — guarded below.
+        let kinds = [
+            Checker, Diamonds, Stripes, Grid, Crosshatch, Waves, Chevron, Weave, Bricks, Gradient,
+        ];
+        for kind in kinds {
+            assert!(
+                analytic_tile_period(kind, [0.5; ph2d_painter_brush::MAX_TEX_PARAMS]).is_some(),
+                "{kind:?} must be analytic-tileable"
+            );
+            let raw = TextureSettings {
+                kind,
+                size: [2.6, 3.1],
+                ..Default::default()
+            };
+            let snapped = snap_slot_size(raw, tile);
+            // The field must actually VARY across the sprite (guards a degenerate constant).
+            let varies = (0..pw).step_by(7).any(|x| {
+                (sample_tiled_rot(&snapped, x, 21, None, rot)
+                    - sample_tiled_rot(&snapped, 3, 21, None, rot))
+                .abs()
+                    > 1e-3
+            });
+            assert!(varies, "{kind:?} snapped field is degenerate/constant");
+            for y in [3i64, 19, 41, 111] {
+                let a = sample_tiled_rot(&snapped, 0, y, None, rot);
+                let b = sample_tiled_rot(&snapped, pw, y, None, rot);
+                assert!((a - b).abs() < 2e-3, "{kind:?} X seam at y={y}: {a} vs {b}");
+            }
+            for x in [5i64, 27, 63, 177] {
+                let a = sample_tiled_rot(&snapped, x, 0, None, rot);
+                let b = sample_tiled_rot(&snapped, x, ph, None, rot);
+                assert!((a - b).abs() < 2e-3, "{kind:?} Y seam at x={x}: {a} vs {b}");
+            }
+            // Control: the RAW (unsnapped) size seams somewhere across the sprite (proves the snap fixes
+            // it). Checked on both axes — a 1D kind (Stripes/Gradient) seams on its live axis.
+            let x_seams = (0..ph).any(|y| {
+                (sample_tiled_rot(&raw, 0, y, None, rot) - sample_tiled_rot(&raw, pw, y, None, rot))
+                    .abs()
+                    > 2e-3
+            });
+            let y_seams = (0..pw).any(|x| {
+                (sample_tiled_rot(&raw, x, 0, None, rot) - sample_tiled_rot(&raw, x, ph, None, rot))
+                    .abs()
+                    > 2e-3
+            });
+            assert!(
+                x_seams || y_seams,
+                "control: unsnapped {kind:?} should seam across the sprite"
+            );
+        }
+        // The excluded kinds are NOT snap-tileable (turbulence / irrational / hash-jitter) — documents the
+        // boundary refutably so a future edit can't silently (mis)snap one.
+        for kind in [Marble, Magic, Wood, Triangles, Hexagons, Dots, Scales] {
+            assert!(
+                analytic_tile_period(kind, [0.5; ph2d_painter_brush::MAX_TEX_PARAMS]).is_none(),
+                "{kind:?} must NOT be analytic-snap-tileable"
+            );
+        }
+        // Off-tiling ⇒ unchanged (byte-identical) for an analytic kind.
+        let raw = TextureSettings {
+            kind: Stripes,
+            size: [1.37, 0.83],
+            ..Default::default()
+        };
+        assert_eq!(snap_slot_size(raw, NoiseTile::NONE).size, raw.size);
     }
 
     /// The lattice wrap is a no-op off-tiling and under rotation: `sample_tiled_rot_wrapped` with a zero

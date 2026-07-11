@@ -33,7 +33,7 @@ pub(super) fn sample_kind(
 /// True when `kind` is a **lattice** procedural that [`sample_kind_t`] can wrap at an integer period for
 /// seamless any-size tiling (the value-noise family + Voronoi). A caller that snaps a slot's Size for
 /// sprite-seamless tiling ([`super::sample_tiled_rot_wrapped`]) must snap THESE to an integer `rel`-span;
-/// analytic patterns (Checker / Stripes / Bricks / …) tile by cell parity and are a separate follow-up.
+/// analytic patterns snap to their own period instead ([`analytic_tile_period`]).
 #[must_use]
 pub fn lattice_tileable(kind: TextureKind) -> bool {
     matches!(
@@ -46,6 +46,43 @@ pub fn lattice_tileable(kind: TextureKind) -> bool {
             | TextureKind::Grain
             | TextureKind::Voronoi
     )
+}
+
+/// The fundamental **period** (in `rel` units, per axis `[u, v]`) of an ANALYTIC pattern — `Some` when the
+/// kind is exactly periodic with a RATIONAL period, so a caller can snap the slot Size to make the sprite
+/// span an integer number of periods and the pattern tiles **seam-free with no sampler change** (analytic
+/// patterns are already exactly periodic; only the seam needs aligning — unlike the lattice, which also
+/// needs its hash wrapped). A `0.0` on an axis = that axis is ignored / constant (any Size is seamless
+/// there — don't snap it). `None` = NOT snap-tileable: the turbulence kinds (Magic / Marble / Wood — noise,
+/// not periodic → they'd need the lattice hash-wrap); the IRRATIONAL-period kinds (Triangles `√3`, Hexagons
+/// `√3·g` — a pixel seam can never land exactly on an irrational period); and the HASH-JITTERED kinds
+/// (Dots / Scales — their `Randomness` knob offsets each cell by an UNWRAPPED `hash2`, so like the lattice
+/// they'd need the hash wrapped at the period, not just a size snap — a follow-up). The frequency knob is
+/// slot `2` of `params[2..]` (the shared `Frequency` → coordinate multiplier `freq_mul`), matching each
+/// sampler below; period-only kinds (Checker / Bricks / …) ignore `params`.
+#[must_use]
+pub fn analytic_tile_period(
+    kind: TextureKind,
+    params: [f32; super::MAX_TEX_PARAMS],
+) -> Option<[f32; 2]> {
+    let k = &params[2..];
+    // A frequency-knob pattern (`f = frac(coord · g)`, `g = freq_mul(knob 1)`) repeats every `1/g`.
+    let per = 1.0 / freq_mul(knob(k, 1));
+    Some(match kind {
+        // Cell-parity lattices — period 2, independent of the knobs (Softness only blurs the edge).
+        TextureKind::Checker | TextureKind::Diamonds => [2.0, 2.0],
+        // Frequency-driven directional / mesh patterns.
+        TextureKind::Stripes => [per, 0.0], // v ignored → seamless on v at any Size
+        TextureKind::Grid | TextureKind::Crosshatch => [per, per],
+        TextureKind::Waves => [1.0, per], // ripple reads `wave01(u)` (period 1); bands run `v · g`
+        TextureKind::Chevron => [per, 1.0], // zig runs `u · g`; bands `wave01(v)` (period 1)
+        TextureKind::Weave => [2.0 * per, 2.0 * per], // over/under parity → period `2/g`
+        // Bricks: period 1 across (Bond only SHIFTS the row), 2 down (alternating rows). No hash.
+        TextureKind::Bricks => [1.0, 2.0],
+        // Gradient (Blender Blend): `Repeat` = knob 1 → `1 + 5·knob` ramps per unit; v ignored.
+        TextureKind::Gradient => [1.0 / (1.0 + knob(k, 1) * 5.0), 0.0],
+        _ => return None,
+    })
 }
 
 /// [`sample_kind`] with a lattice **wrap** period `(pu, pv)` in cells (`[0, 0]` = no wrap ⇒ byte-identical):

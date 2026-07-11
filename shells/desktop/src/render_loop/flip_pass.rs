@@ -478,7 +478,11 @@ mod tests {
         let a = line(Vec2::new(0.0, 0.0), Vec2::new(1.0, 1.0));
         let a2 = line(Vec2::new(0.0, 0.0), Vec2::new(1.0, 1.0));
         let moved = line(Vec2::new(0.0, 0.0), Vec2::new(1.0, 1.0001));
-        assert_eq!(drawing_hash(&a), drawing_hash(&a2), "idêntico -> mesmo hash");
+        assert_eq!(
+            drawing_hash(&a),
+            drawing_hash(&a2),
+            "idêntico -> mesmo hash"
+        );
         assert_ne!(
             drawing_hash(&a),
             drawing_hash(&moved),

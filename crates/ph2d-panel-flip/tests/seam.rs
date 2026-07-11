@@ -27,8 +27,10 @@ fn size_slider_drag_reaches_tool() {
     let mut tool = FlipTool::default();
 
     host.set_slider_value(ids::FLIP_SIZE, 1.0);
-    let outcome = host
-        .apply_panel_event::<FlipPanel>(&mut panel_state, WidgetEvent::ValueChanged(ids::FLIP_SIZE));
+    let outcome = host.apply_panel_event::<FlipPanel>(
+        &mut panel_state,
+        WidgetEvent::ValueChanged(ids::FLIP_SIZE),
+    );
     assert_eq!(
         outcome,
         EventOutcome::Consumed,

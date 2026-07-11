@@ -566,6 +566,7 @@ fn chrome_node_ids_are_pairwise_unique() {
         ids::TIMELINE_SEGMENT_MENU
             .iter()
             .chain(ids::TIMELINE_EASE_MENU.iter())
+            .chain(ids::TIMELINE_TRACK_MENU.iter())
             .map(|(id, label, _)| (*id, *label)),
     );
     sorted.sort_by_key(|(id, _)| id.0);

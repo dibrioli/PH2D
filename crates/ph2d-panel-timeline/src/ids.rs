@@ -12,8 +12,10 @@ pub use ph2d_editor_core::ids::{
     TIMELINE_RESIZE_TR, TIMELINE_RULER, TIMELINE_SCROLLBAR, TIMELINE_SNAP, TIMELINE_SPEED,
     TIMELINE_SUMMARY_LOCK, TIMELINE_TIME_NUM, timeline_anchor_hit_id, timeline_graph_resize_id,
     timeline_handle_hit_id, timeline_key_hit_id, timeline_loop_brace_id, timeline_marker_hit_id,
-    timeline_summary_hit_id, timeline_twirl_id,
+    timeline_row_id, timeline_summary_hit_id, timeline_twirl_id,
 };
+
+pub use ph2d_editor_core::ids::CTX_MENU_TL_DELETE_TRACK;
 
 /// The "+Track" property buttons paired with their [`ph2d_timeline::PropKind`]:
 /// the six scene properties in `PropKind::ALL` order, then **Time Remap** (the

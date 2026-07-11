@@ -163,6 +163,27 @@ pub(crate) fn paint_rows(
             );
         }
         paint_twirl(ctx, theme, state, region.x, y, track.target.get());
+        // The label slice (after the twirl) is a right-click surface: dispatch
+        // opens the track-row context menu on it (Delete Track). Inert to
+        // primary gestures — see the `Row` arm in `interact`.
+        let row_id = ids::timeline_row_id(track.target.get());
+        let row_hit = Rect::new(
+            region.x + TWIRL_W,
+            y,
+            (label_w - TWIRL_W).max(0.0),
+            ROW_H_PX,
+        );
+        ctx.host.store_mut().register(
+            row_id,
+            InteractiveState::TimelineSurface {
+                parent: ids::TIMELINE_PANEL,
+                kind: TimelineHitKind::Row {
+                    target: track.target.get(),
+                },
+                canvas: row_hit,
+            },
+        );
+        ctx.host.hit_index_mut().register(row_id, row_hit);
         let font = TypeToken::Sm.px();
         let text = format!("{}  #{}", prop_label(track.prop), track.entity % 10_000);
         let color = if track.missing {

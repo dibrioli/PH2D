@@ -5732,6 +5732,7 @@ name = "ph2d-panel-timeline"
 version = "0.0.0"
 dependencies = [
  "ph2d-a11y",
+ "ph2d-core",
  "ph2d-editor-core",
  "ph2d-host",
  "ph2d-i18n",

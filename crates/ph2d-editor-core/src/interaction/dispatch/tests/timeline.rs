@@ -377,6 +377,32 @@ fn right_clicking_a_graph_anchor_opens_the_same_menu() {
 }
 
 #[test]
+fn right_clicking_a_row_label_opens_the_track_menu() {
+    // A track row's LABEL owns the whole-track menu (Delete Track) — not the
+    // per-key preset menu, and never a drag capture.
+    use crate::interaction::ContextMenuKind;
+    let (mut store, hits) = timeline_setup(TimelineHitKind::Row { target: 42 });
+    let arena = Bump::new();
+    let _ = dispatch_pointer(
+        &mut store,
+        &hits,
+        rmb(PointerKind::Down, 60.0, 60.0),
+        &arena,
+    );
+    assert_eq!(
+        store.context_menu().map(|r| r.kind),
+        Some(ContextMenuKind::TimelineTrack { target: 42 }),
+        "right-click on a track row label must open the track menu"
+    );
+    assert_eq!(
+        store.drain_timeline_gestures().count(),
+        0,
+        "and must NOT start a drag gesture"
+    );
+    assert_eq!(store.active_id(), None, "nor capture the pointer");
+}
+
+#[test]
 fn right_clicking_a_summary_column_scopes_the_menu_to_the_whole_column() {
     // The Summary diamond stands for every key at that time; its preset must
     // reach all of them, not the one key that happens to be first.

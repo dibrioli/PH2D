@@ -336,6 +336,8 @@ pub fn paint_context_menu_overlay(
         // populate pass and the shell's resolver can never drift apart.
         ContextMenuKind::TimelineSegment { .. } => &ids::TIMELINE_SEGMENT_MENU,
         ContextMenuKind::TimelineSegmentEase { .. } => &ids::TIMELINE_EASE_MENU,
+        // Timeline track row (label column): whole-track actions.
+        ContextMenuKind::TimelineTrack { .. } => &ids::TIMELINE_TRACK_MENU,
     };
 
     if matches!(req.kind, ContextMenuKind::SceneList) {

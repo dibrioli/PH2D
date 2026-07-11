@@ -105,6 +105,14 @@ pub fn timeline_twirl_id(target: u64) -> NodeId {
     dynamic_id("timeline.twirl", &[target])
 }
 
+/// A stable `NodeId` for one track row's LABEL (the name column slice after the
+/// twirl), keyed by the track's `AnimTarget`. Right-clicking it opens the
+/// track-row context menu ([`crate::ids::TIMELINE_TRACK_MENU`]).
+#[must_use]
+pub fn timeline_row_id(target: u64) -> NodeId {
+    dynamic_id("timeline.row", &[target])
+}
+
 /// A stable `NodeId` for one expanded row's graph-height grip, keyed by the
 /// track's `AnimTarget` (every grip drags the same shared height).
 #[must_use]

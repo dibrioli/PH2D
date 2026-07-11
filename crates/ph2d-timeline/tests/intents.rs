@@ -58,6 +58,50 @@ fn add_key_binds_creates_track_selects_and_is_one_undo_step() {
 }
 
 #[test]
+fn unbind_removes_the_binding_and_its_track_in_one_undo_step() {
+    // The "Delete Track" menu lands here: the binding AND its keyed track go
+    // together, and one undo brings both back (keys included).
+    let mut st = TimelineState::new();
+    let mut ph = Playhead::new(DT);
+    add_key(&mut st, &mut ph, 1, PropKind::TranslationX, 0.0, 5.0);
+    add_key(&mut st, &mut ph, 1, PropKind::TranslationX, 1.0, 9.0);
+    let target = st
+        .doc
+        .binding_for(1, PropKind::TranslationX)
+        .unwrap()
+        .target;
+
+    apply_intent(
+        &mut st,
+        &mut ph,
+        I::Unbind {
+            entity: 1,
+            prop: PropKind::TranslationX,
+        },
+    );
+    assert!(
+        st.doc.binding_for(1, PropKind::TranslationX).is_none(),
+        "the binding is gone"
+    );
+    assert!(
+        st.doc.active_clip().track(target).is_none(),
+        "and its track went with it"
+    );
+
+    // One undo restores binding + track + keys.
+    apply_intent(&mut st, &mut ph, I::Undo);
+    let b = st
+        .doc
+        .binding_for(1, PropKind::TranslationX)
+        .expect("undo restores the binding");
+    assert_eq!(
+        st.doc.active_clip().track(b.target).unwrap().len(),
+        2,
+        "undo restores the track with its keys"
+    );
+}
+
+#[test]
 fn move_selected_keys_shifts_only_selection() {
     let mut st = TimelineState::new();
     let mut ph = Playhead::new(DT);

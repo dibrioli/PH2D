@@ -85,28 +85,34 @@ pub(super) fn handle_down_menus(
             .filter(|row| store.is_hierarchy_row(*row))
         });
         // W3.E4: right-click a timeline key — its dope-sheet diamond or its graph
-        // anchor — to retune the interpolation leaving it. Resolved before the
+        // anchor — to retune the interpolation leaving it; a track row's LABEL
+        // opens the whole-track menu instead (Delete Track). Resolved before the
         // panel-under fallback for the same reason the hierarchy row is: the
         // target lives inside the timeline panel, and the broader menu must not
         // win over the specific one.
-        let timeline_seg = hit_id
+        let timeline_menu = hit_id
             .and_then(|id| store.timeline_surface_at_id(id))
             .and_then(|(_, kind)| {
                 use crate::interaction::{TimelineHitKind as K, TimelineInterpScope as S};
                 match kind {
                     K::Key { target, key } | K::CurveAnchor { target, key } => {
-                        Some(S::Key { target, key })
+                        Some(ContextMenuKind::TimelineSegment {
+                            scope: S::Key { target, key },
+                        })
                     }
                     // A Summary column: the preset lands on every key at that time.
-                    K::SummaryKey { t_bits } => Some(S::Column { t_bits }),
+                    K::SummaryKey { t_bits } => Some(ContextMenuKind::TimelineSegment {
+                        scope: S::Column { t_bits },
+                    }),
+                    K::Row { target } => Some(ContextMenuKind::TimelineTrack { target }),
                     _ => None,
                 }
             });
-        if let Some(scope) = timeline_seg {
+        if let Some(kind) = timeline_menu {
             store.open_context_menu(ContextMenuRequest {
                 x: event.x,
                 y: event.y,
-                kind: ContextMenuKind::TimelineSegment { scope },
+                kind,
             });
         } else if let Some(row) = hier_row_id {
             store.open_context_menu(ContextMenuRequest {

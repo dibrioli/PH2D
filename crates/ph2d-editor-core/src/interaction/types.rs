@@ -237,6 +237,11 @@ pub enum ContextMenuKind {
         scope: TimelineInterpScope,
         mode: u8,
     },
+    /// Right-clicked a timeline track row's LABEL (the left name column). Menu
+    /// offers whole-track actions (`ids::TIMELINE_TRACK_MENU`, currently Delete
+    /// Track). `target` is the row's raw `AnimTarget` — opaque here; the
+    /// timeline panel resolves it against its snapshot and raises the intent.
+    TimelineTrack { target: u64 },
 }
 
 /// What a timeline preset pick applies to. Both variants are opaque here —
@@ -417,6 +422,10 @@ pub enum TimelineHitKind {
     /// A track row's expand/collapse twirl — a click opens that track's graph
     /// editor (`target` is its raw `AnimTarget`).
     Twirl { target: u64 },
+    /// A track row's LABEL (the name column after the twirl). Inert to primary
+    /// gestures — it exists so a right-click can open the track-row context
+    /// menu ([`ContextMenuKind::TimelineTrack`], Delete Track).
+    Row { target: u64 },
     /// The padlock on the Summary channel — a click toggles the column lock. When
     /// locked (default), grabbing any single key grabs its whole time column;
     /// unlocked, keys move independently. Panel-local view state, no payload.

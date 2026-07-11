@@ -115,6 +115,37 @@ pub(crate) fn apply_event(
                 .push(EditorAction::TimelinePanelEvent(PanelEvent::Toggle(id, on)));
             EventOutcome::Consumed
         }
+        // Track-row context menu: Delete Track. The Down that preceded this
+        // Click already CLOSED the menu, parking the request — read
+        // `context_menu().or_else(last_context_menu())` (the same gotcha the
+        // presets menu documents; reading only the open one ships a menu that
+        // does nothing). The request carries the raw `AnimTarget`; the snapshot
+        // row resolves it back to the `(entity, prop)` the Unbind intent needs.
+        // A row gone from the snapshot since the menu opened (deleted
+        // meanwhile) resolves to nothing — the action expires with its target.
+        WidgetEvent::Click(id) if id == ids::CTX_MENU_TL_DELETE_TRACK => {
+            use ph2d_editor_core::interaction::ContextMenuKind;
+            let req = host
+                .store()
+                .context_menu()
+                .or_else(|| host.store().last_context_menu());
+            if let Some(ContextMenuKind::TimelineTrack { target }) = req.map(|r| r.kind) {
+                if let Some(track) = crate::state::current_snapshot()
+                    .tracks
+                    .iter()
+                    .find(|t| t.target.get() == target)
+                {
+                    crate::state::push_intent(ph2d_timeline::TimelineIntent::Unbind {
+                        entity: track.entity,
+                        prop: track.prop,
+                    });
+                }
+                host.store_mut().close_context_menu();
+                // Spent: a later stray Click on this id must not delete again.
+                host.store_mut().consume_last_context_menu();
+            }
+            EventOutcome::Consumed
+        }
         // Marker rename field (W4.T3). Enter → Submit, click-away → Blur both
         // commit (the `take` inside makes the Enter→Submit+Blur pair idempotent);
         // Esc → Cancel abandons it.

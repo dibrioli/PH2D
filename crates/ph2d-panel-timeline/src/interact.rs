@@ -124,6 +124,11 @@ pub(crate) fn dispatch_primary(
             }
         }
         TimelineHitKind::Twirl { target } => apply_twirl(state, target, g),
+        // The row label is a right-click surface only (the track menu opens on
+        // the Secondary Down, in dispatch, before any gesture streams). Primary
+        // click/drag on a name is deliberately inert — the twirl toggles, the
+        // diamonds select; the label itself has no primary affordance.
+        TimelineHitKind::Row { .. } => {}
         TimelineHitKind::LabelSplitter => resize::apply_label_drag(state, g),
         TimelineHitKind::GraphResize => resize::apply_graph_resize(state, g),
         TimelineHitKind::CurveAnchor { target, key } => {

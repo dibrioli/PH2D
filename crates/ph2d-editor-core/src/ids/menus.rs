@@ -626,6 +626,20 @@ pub const TIMELINE_SEGMENT_MENU: [(NodeId, &str, Option<[u8; 4]>); 7] = [
     (CTX_MENU_TL_ROVE, "Rove Across Time", None),
 ];
 
+// ── Timeline track-row menu ─────────────────────────────────────────────────
+// Right-click a track row's LABEL (the left name column) for actions on the
+// whole track. Same one-table-three-consumers shape as the segment menu.
+/// Delete the track: unbind the row's `(entity, prop)` — binding + keys go in
+/// one undo step (`TimelineIntent::Unbind`).
+pub const CTX_MENU_TL_DELETE_TRACK: NodeId = hash_node_id("ctx_menu_tl_delete_track");
+
+/// The track-row menu, in paint order. One table, three consumers — the
+/// overlay paints it, `pre_populate` registers it, and the timeline panel's
+/// `apply_event` resolves every row (a row added here and unhandled there is a
+/// menu item that silently does nothing — the bug this table shape prevents).
+pub const TIMELINE_TRACK_MENU: [(NodeId, &str, Option<[u8; 4]>); 1] =
+    [(CTX_MENU_TL_DELETE_TRACK, "Delete Track", None)];
+
 /// The easing-family submenu, shared by all three modes (the mode rides in the
 /// `ContextMenuKind`). Ordered gentlest-first, with the two non-monotone
 /// families (overshoot, bounce) last — the order animators scan.

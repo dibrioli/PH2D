@@ -15,6 +15,47 @@
 | [6](#bug-6--simplify-quase-bom--offset-arredondava-as-quinas--refit--vértice-reconstruído) | Simplify "quase bom" + offset arredondava as quinas | Simplify/Merge (`curve_refit`) | ✅ Resolvido (refit Schneider corner-split + vértice por interseção de bordas) | 2026-07-05 |
 | [7](#bug-7--aquarela-grave-queda-de-fps--build-profile--composite-2frame--loops-seriais-não-os-algoritmos) | Aquarela: "grave queda de FPS" — build profile + composite 2×/frame + loops seriais, NÃO os algoritmos | Watercolor render-path + dev profile + heartbeat do shell | ✅ Resolvido (60fps em release com todos os knobs; validado pelo Enio via frame profiler) | 2026-07-07 |
 | [8](#bug-8--aquarela-borda-duraserrilhada-nas-junções--retângulo-no-preview--6-fixes-verdes-sem-efeito-o-harness-reproduzia-o-mecanismo-não-o-contexto) | Aquarela: borda dura/serrilhada nas junções (Charge<1 / Rewet) + "retângulo no preview" — 6 fixes verdes sem efeito | Watercolor mixer + render (blend do pigmento, estilo por dono) | ✅ Resolvido (smoke Enio 2026-07-09; clareamento preservado, fronteira orgânica) | 2026-07-09 |
+| [9](#bug-9--preview-de-umidade-retângulo-na-união--o-pour-re-molhava-o-vizinho-dentro-do-bbox) | Preview de umidade: "retângulo maldito/gigante" na união de traços úmidos | Moisture pour (`pour_canvas_wet`) + overlay do shell | ✅ Resolvido (pour por-footprint-dona; blur do véu foi tentativa errada) | 2026-07-11 |
+
+---
+
+## Bug #9 — Preview de umidade: "retângulo" na união — o pour re-molhava o vizinho dentro do BBOX
+
+**Sintoma (Enio, cruz/blob de traços úmidos):** um retângulo escuro axis-aligned na união quando um traço
+cruza/cobre outro traço AINDA ÚMIDO — sumia no pen-up-e-secar, "aparecia e desaparecia". O `Preview=0`
+(slider da Wetness) matava → **é o overlay de umidade** (não o wash).
+
+**Pista falsa (custou 1 take):** dumpei o mapa de umidade + o wash tool-side numa junção FRESCA → **cruzes
+limpas**, zero retângulo. Conclusão precipitada: "o tool está certo, o bug é no draw do shell". Errado — o
+teste não tinha SECAGEM entre os traços (o contexto real). Reproduzindo COM `paint_tick` entre A e B o
+retângulo apareceu no dump: os braços de A recuados (secagem edges-to-center) + a região de B a 255.
+
+**Causa-raiz:** `stroke_coverage` é a UNIÃO da sessão. O `pour_canvas_wet` iterava o RECT do traço
+(`wet_stroke_dirty`) e despejava a cobertura da UNIÃO → **re-molhava a 255 os pixels do wash ANTERIOR que
+caíam dentro do bbox do traço novo** = um retângulo (o bbox) preenchido com a umidade do vizinho. O fix
+anterior (#4, rect por-traço em vez do cumulativo) só ENCOLHEU o retângulo pro bbox do último traço; a raiz
+é despejar a UNIÃO em vez da FOOTPRINT do traço.
+
+**Tentativa ERRADA (revertida):** achei que era degrau fresh-vs-decaído e **borrei o alpha do véu**
+(`box_blur_f32`). O blur só ESPALHOU o retângulo real → "ficou gigante" (Enio). Sintoma tratado, causa
+intacta.
+
+**Fix:** `pour_canvas_wet` restringe à **footprint DONA** — `wet_styles.owner[i] == cur_o` (recência). A
+sobreposição que o traço de fato molhou entra (o owner-map já é a footprint por recência); os pixels
+só-do-vizinho não são tocados. `has_owner` falso ⇒ pour do rect todo (comportamento pré-owner-map).
+RED→GREEN: sonda de A dentro do bbox do B-diagonal mas FORA da footprint de B — **179 → 255** sem o
+owner-check, **fica 179** com (`watercolor_overlapping_bbox_does_not_rewet_the_neighbour_wash`).
+
+**Lições:**
+1. **Reproduza o CONTEXTO, não só o mecanismo** (de novo, [[feedback_harness_reproduces_mechanism_not_context]]):
+   a cruz-limpa mentia porque faltava a SECAGEM. O "tool-side limpo" só vale se o teste tem o mesmo estado
+   (aqui: um vizinho parcialmente seco). Quando o dump contradiz o report, **cheque o que o teste NÃO tem**.
+2. **Retângulo axis-aligned = operação por RECT, não por forma.** Sempre que o artefato é um retângulo, o
+   suspeito é um `for y in rect { for x in rect }` que devia ser por footprint/cobertura. Aqui o pour.
+3. **Blur é tratar sintoma.** Se o campo tem um degrau/patch ERRADO, borrar só o espalha. Ache a fonte do
+   patch (o pour da união) antes de suavizar.
+4. **Owner-map É a footprint por recência** — o jeito canônico de dizer "só o que ESTE traço pintou" na
+   sessão única; reusável pra qualquer op que não pode tocar o vizinho (mesma família do #13/#4).
 
 ---
 

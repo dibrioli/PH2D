@@ -36,13 +36,16 @@ use dynamics::{compress, gate, leveler, limit};
 use modulation::{auto_pan, doubler, modulated_delay, phaser, ring_mod, trance_gate, tremolo};
 use pitch::{PITCH_BYPASS_ST, pitch_shift};
 use space::{pingpong, render_wet};
-use tone::{HUM_Q, biquad_all, bitcrush, dehum, distortion, saturate, stereo_width};
+use tone::{HUM_Q, biquad_all, bitcrush, dehum, distortion, exciter, saturate, stereo_width};
 use transient::{TRANSIENT_BYPASS, transient_shape};
 
 /// Chorus base delay (ms): a detuned doubling sits well behind the dry signal.
 const CHORUS_BASE_MS: f32 = 18.0;
 /// Flanger base delay (ms): a sweeping comb needs a very short tap.
 const FLANGER_BASE_MS: f32 = 2.0;
+/// Vibrato base delay (ms): small — just enough headroom for the pitch sweep to stay
+/// on a positive tap. Vibrato is a fully-wet modulated delay (no dry, no feedback).
+const VIBRATO_BASE_MS: f32 = 5.0;
 
 // Every effect must be a **byte-identical no-op** at its neutral parameters, so
 // the editor can select it (and audition it) without touching the audio until the
@@ -186,6 +189,12 @@ pub enum Effect {
     /// low-pass **Tone**. `drive` (0..1) blends dry→clipped and drives harder; `tone`
     /// tames the fizz. Neutral at `drive` 0.
     Distortion { drive: f32, tone: f32 },
+    /// **Exciter**: adds high-frequency sparkle by generating harmonics of the band
+    /// above `freq` and mixing them back in by `amount`. Neutral at `amount` 0.
+    Exciter { freq: f32, amount: f32 },
+    /// **Vibrato**: pitch modulation — a fully-wet swept delay line at `rate`, sweep
+    /// `depth_ms`. Neutral at `depth_ms` 0 (a fixed delay is bypassed).
+    Vibrato { rate: f32, depth_ms: f32 },
     /// Lo-fi bit-depth reduction to `bits` + sample-hold decimation by
     /// `downsample` (≥1 = no decimation).
     Bitcrush { bits: u32, downsample: u32 },
@@ -352,6 +361,11 @@ impl Effect {
             Effect::Distortion { drive, tone } if drive > DISTORT_BYPASS_DRIVE => {
                 distortion(data, drive, tone)
             }
+            Effect::Exciter { freq, amount } if amount > MOD_BYPASS => exciter(data, freq, amount),
+            // Fully wet, no feedback: the swept delay becomes pitch modulation.
+            Effect::Vibrato { rate, depth_ms } if depth_ms > MOD_BYPASS => {
+                modulated_delay(data, VIBRATO_BASE_MS, depth_ms, rate, 0.0, 1.0)
+            }
             Effect::Bitcrush { bits, downsample }
                 if bits < BITCRUSH_BYPASS_BITS || downsample > 1 =>
             {
@@ -462,6 +476,12 @@ impl Effect {
             Effect::Distortion { .. } => {
                 biquad_warmup(tone::DISTORT_TONE_MIN_HZ, 0.707, sample_rate, TAUS).min(cap)
             }
+            // The exciter's high-pass is a biquad — same edge-click risk.
+            Effect::Exciter { freq, .. } => biquad_warmup(freq, 0.707, sample_rate, TAUS).min(cap),
+            // Vibrato is a modulated delay line that starts empty (like chorus/flanger).
+            Effect::Vibrato { depth_ms, .. } => {
+                (((VIBRATO_BASE_MS + depth_ms) * 0.001 * sample_rate as f32) as usize).min(cap)
+            }
             // The compressor and the gate prime their own envelope on the region's
             // first frame; the phaser's all-pass state settles in a handful of
             // samples; tremolo is memoryless. None need a pre-roll.
@@ -493,6 +513,8 @@ impl Effect {
                 if ceiling_db >= LIMITER_BYPASS_CEILING_DB)
             || matches!(*self, Effect::Saturate { drive } if drive < SATURATE_BYPASS_DRIVE)
             || matches!(*self, Effect::Distortion { drive, .. } if drive <= DISTORT_BYPASS_DRIVE)
+            || matches!(*self, Effect::Exciter { amount, .. } if amount <= MOD_BYPASS)
+            || matches!(*self, Effect::Vibrato { depth_ms, .. } if depth_ms <= MOD_BYPASS)
             || matches!(*self, Effect::Bitcrush { bits, downsample }
                 if bits >= BITCRUSH_BYPASS_BITS && downsample <= 1)
             || matches!(*self, Effect::StereoWidth { width } if (width - 1.0).abs() <= f32::EPSILON)

@@ -163,6 +163,34 @@ pub(super) fn distortion(data: &SampleData, drive: f32, tone: f32) -> SampleData
     SampleData::from_interleaved(out, data.format())
 }
 
+/// Makeup on the exciter's generated harmonics — they come out well below the band
+/// they were derived from, so a little gain buys audible sparkle before the clamp.
+const EXCITER_DRIVE: f32 = 2.5;
+
+/// **Exciter / enhancer**: adds high-frequency sparkle by generating harmonics of the
+/// signal's own high band and mixing them back in. The band above `freq` is isolated
+/// with a high-pass, shaped by `x·|x|` (a soft squaring that raises overtones above it),
+/// and added back scaled by `amount`. Because the harmonics sit *above* the crossover,
+/// the effect reads as air/presence, not distortion. Neutral at `amount` 0. Control
+/// thread only.
+pub(super) fn exciter(data: &SampleData, freq: f32, amount: f32) -> SampleData {
+    let sr = data.format().sample_rate as f32;
+    // The high band whose overtones we will generate.
+    let hb = biquad_all(data, BiquadCoeffs::highpass(sr, freq, 0.707));
+    let src = data.samples();
+    let out: Vec<f32> = src
+        .iter()
+        .zip(hb.samples())
+        .map(|(&x, &h)| {
+            // `h·|h|`: sign-preserving, so it adds no DC for a symmetric band, and its
+            // energy lands in overtones above the crossover.
+            let harm = h * h.abs();
+            (x + amount * EXCITER_DRIVE * harm).clamp(-1.0, 1.0)
+        })
+        .collect();
+    SampleData::from_interleaved(out, data.format())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -315,6 +343,34 @@ mod tests {
         assert!(
             heavy < light,
             "heavier drive must flatten more: {heavy} vs {light}"
+        );
+    }
+
+    /// THE exciter contract: it manufactures overtones *above* the signal's band. A
+    /// clean 3 kHz tone gains real energy above 6 kHz that was not there before.
+    #[test]
+    fn exciter_adds_energy_above_the_band() {
+        let tau = std::f32::consts::TAU;
+        let x: Vec<f32> = (0..4_800)
+            .map(|n| 0.5 * (tau * 3_000.0 * n as f32 / 48_000.0).sin())
+            .collect();
+        let d = SampleData::from_interleaved(x, AudioFormat::mono(48_000));
+        let out = exciter(&d, 2_000.0, 1.0);
+        let above_6k = |s: &SampleData| {
+            biquad_all(s, BiquadCoeffs::highpass(48_000.0, 6_000.0, 0.707)).samples()[500..]
+                .iter()
+                .map(|v| v * v)
+                .sum::<f32>()
+        };
+        let hi_in = above_6k(&d);
+        let hi_out = above_6k(&out);
+        assert!(
+            hi_out > hi_in * 2.0,
+            "exciter added no high harmonics: {hi_out} vs {hi_in}"
+        );
+        assert!(
+            out.samples().iter().all(|v| v.abs() <= 1.0 + 1e-4),
+            "exciter clipped"
         );
     }
 }

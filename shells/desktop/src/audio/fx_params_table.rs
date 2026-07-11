@@ -111,6 +111,11 @@ static BITCRUSH: [FxParamSpec; 2] = [
 ];
 // Neutral at width 1.0 (mid/side passthrough), the middle of the range.
 static WIDEN: [FxParamSpec; 1] = [spec("Width", 0.0, 2.0, false, 1.0, "x", false)];
+// Amount is the arm (0 = no harmonics added). Freq is the crossover into the band.
+static EXCITER: [FxParamSpec; 2] = [
+    spec("Freq", 1_000.0, 10_000.0, true, 3_000.0, "Hz", false),
+    spec("Amount", 0.0, 1.0, false, 0.0, "", false),
+];
 static REVERB: [FxParamSpec; 4] = [
     spec("Room", 0.0, 1.0, false, 0.7, "", false),
     spec("Damp", 0.0, 1.0, false, 0.5, "", false),
@@ -139,6 +144,11 @@ static CHORUS: [FxParamSpec; 3] = [
     spec("Rate", 0.05, 8.0, true, 1.0, "Hz", false),
     spec("Depth", 0.5, 15.0, false, 5.0, "ms", false),
     spec("Mix", 0.0, 1.0, false, 0.0, "", false),
+];
+// Depth is the arm (0 ms = fixed delay = bypass). Rate is the wobble speed.
+static VIBRATO: [FxParamSpec; 2] = [
+    spec("Rate", 0.1, 12.0, true, 5.0, "Hz", false),
+    spec("Depth", 0.0, 12.0, false, 0.0, "ms", false),
 ];
 static FLANGER: [FxParamSpec; 4] = [
     spec("Rate", 0.05, 8.0, true, 0.4, "Hz", false),
@@ -190,7 +200,7 @@ static PITCH_SHIFT: [FxParamSpec; 2] = [
 
 /// The effects the selector cycles, in order — grouped tone → dynamics → character
 /// → space, the way a rack is laid out.
-pub(crate) static KINDS: [FxKind; 29] = [
+pub(crate) static KINDS: [FxKind; 31] = [
     FxKind {
         name: "Low-Pass",
         params: &LOW_PASS,
@@ -384,6 +394,17 @@ pub(crate) static KINDS: [FxKind; 29] = [
         build: |v| FxCommand::Plain(Effect::StereoWidth { width: v[0] }),
     },
     FxKind {
+        name: "Exciter",
+        params: &EXCITER,
+        arms: &[1], // Amount
+        build: |v| {
+            FxCommand::Plain(Effect::Exciter {
+                freq: v[0],
+                amount: v[1],
+            })
+        },
+    },
+    FxKind {
         name: "Reverb",
         params: &REVERB,
         arms: &[2], // Mix
@@ -445,6 +466,17 @@ pub(crate) static KINDS: [FxKind; 29] = [
                 depth_ms: v[1],
                 feedback: v[2],
                 mix: v[3],
+            })
+        },
+    },
+    FxKind {
+        name: "Vibrato",
+        params: &VIBRATO,
+        arms: &[1], // Depth
+        build: |v| {
+            FxCommand::Plain(Effect::Vibrato {
+                rate: v[0],
+                depth_ms: v[1],
             })
         },
     },

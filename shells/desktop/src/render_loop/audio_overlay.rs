@@ -219,22 +219,32 @@ fn draw_waveform(
         );
         for c in 0..columns {
             let (lo, hi) = peaks.get(c, ch);
-            let amp = hi.abs().max(lo.abs()).clamp(0.0, 1.0);
             let col_x = area.x + c as f32 * area.w / columns as f32;
-            // Reflect around the centre; a 2 px floor keeps silence a visible seam.
-            let h = (amp * half * 2.0).max(2.0);
+            // Signed min/max envelope (NOT abs): `hi` above the centre, `lo` below.
+            let (top_y, h) = column_bar(lo, hi, center, half);
             let color = match played_x {
                 Some(px) if col_x > px => unplayed,
                 _ => played,
             };
-            fill_rounded_rect(
-                scene,
-                Rect::new(col_x, center - h * 0.5, BAR_W, h),
-                BAR_W * 0.5,
-                color,
-            );
+            fill_rounded_rect(scene, Rect::new(col_x, top_y, BAR_W, h), BAR_W * 0.5, color);
         }
     }
+}
+
+/// The vertical extent of one waveform column as a **signed** min/max envelope:
+/// `hi` (column max) above the centre, `lo` (column min) below (screen y grows down).
+/// Returns `(top_y, height)`. A 2 px floor keeps silence a visible seam. Unlike an
+/// `abs()` envelope this preserves polarity — so **Invert** (which flips `(lo,hi)` to
+/// `(-hi,-lo)`), DC-offset and asymmetric transients are visible, not collapsed to the
+/// same bar (2026-07-11 audit: the old `|hi|.max(|lo|)` made Invert invisible).
+fn column_bar(lo: f32, hi: f32, center: f32, half: f32) -> (f32, f32) {
+    let hi = hi.clamp(-1.0, 1.0);
+    let lo = lo.clamp(-1.0, 1.0);
+    let top = center - hi * half; // hi ≥ lo, and up = smaller y
+    let bot = center - lo * half;
+    let h = (bot - top).max(2.0);
+    let midpoint = (top + bot) * 0.5;
+    (midpoint - h * 0.5, h)
 }
 
 /// The time ruler: a **darker, inset strip** (so it reads as the click-to-scrub zone)
@@ -378,5 +388,44 @@ fn draw_markers(
             TypeToken::Xs.px(),
             col,
         );
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::column_bar;
+
+    /// The signed envelope must DISTINGUISH a column from its polarity-inverse — the
+    /// property the old `abs()` bar violated, making Invert invisible. Inverting a
+    /// column `(lo,hi) → (-hi,-lo)` mirrors the bar across the centre: same height (same
+    /// energy), but the top edge moves. Guards the 2026-07-11 audit fix.
+    #[test]
+    fn invert_mirrors_the_bar_instead_of_repeating_it() {
+        let (center, half) = (100.0f32, 50.0f32);
+        // Asymmetric column: mostly positive.
+        let (top_a, h_a) = column_bar(-0.3, 0.8, center, half);
+        // Its polarity inverse: (lo,hi) = (-0.8, 0.3), mostly negative.
+        let (top_b, h_b) = column_bar(-0.8, 0.3, center, half);
+        assert!(
+            (h_a - h_b).abs() < 1e-4,
+            "inverting must preserve the bar height (energy): {h_a} vs {h_b}"
+        );
+        assert!(
+            (top_a - top_b).abs() > 1.0,
+            "inverting must move the bar (abs() left it identical): {top_a} vs {top_b}"
+        );
+        // The positive column reaches higher (smaller y) than its negative inverse.
+        assert!(
+            top_a < top_b,
+            "the mostly-positive column must sit higher on screen"
+        );
+    }
+
+    /// Silence (all-zero column) still draws a visible 2 px seam centred on the axis.
+    #[test]
+    fn silence_keeps_a_two_pixel_seam() {
+        let (top, h) = column_bar(0.0, 0.0, 100.0, 50.0);
+        assert_eq!(h, 2.0);
+        assert!((top - 99.0).abs() < 1e-4, "the seam straddles the centre");
     }
 }

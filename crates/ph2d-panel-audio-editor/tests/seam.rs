@@ -734,3 +734,35 @@ fn variation_jitter_sliders_publish_their_positions() {
         "the gain-jitter slider never reached the shell"
     );
 }
+
+/// A rapid second click on the SAME button arrives as `WidgetEvent::DoubleClick` (the
+/// dispatcher upgrades a 2nd Down within 350 ms). The panel has no double-click
+/// semantics — every button is a discrete action — so a `DoubleClick` must behave like
+/// a `Click`. If it doesn't, the 2nd press is silently dropped and the op "sometimes
+/// does nothing" (intermittent by timing). Reproduces the 2026-07-11 multi-agent audit
+/// finding; guards the normalization at the top of `apply_event`. Drives both an edit
+/// button (Normalize) and a transport button (Play) to prove the fix is global, not
+/// per-branch.
+#[test]
+fn a_double_click_is_treated_as_a_click() {
+    let mut host = MockPanelHost::with_panel::<AudioEditorPanel>();
+    let mut state = AudioEditorState;
+    let _ = take_edit_cmd();
+    let _ = take_play_pause();
+
+    host.apply_panel_event::<AudioEditorPanel>(
+        &mut state,
+        WidgetEvent::DoubleClick(AEDIT_NORMALIZE),
+    );
+    assert_eq!(
+        take_edit_cmd(),
+        Some(AudioEditCmd::NormalizePeak),
+        "a fast double-click on an edit button was swallowed — DoubleClick isn't treated as Click"
+    );
+
+    host.apply_panel_event::<AudioEditorPanel>(&mut state, WidgetEvent::DoubleClick(AEDIT_PLAY));
+    assert!(
+        take_play_pause(),
+        "a double-click on Play was swallowed — the normalization must cover the whole panel"
+    );
+}

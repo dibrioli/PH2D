@@ -159,6 +159,17 @@ pub(crate) fn apply_event(
     host: &mut dyn PanelHostInternal,
     ev: WidgetEvent,
 ) -> EventOutcome {
+    // A rapid second click on the same button arrives as `DoubleClick` (the dispatcher
+    // upgrades a 2nd Down within 350 ms). NO panel button has double-click semantics —
+    // every one is a discrete action — so a `DoubleClick` must behave like a `Click`,
+    // else the 2nd press is silently dropped and the op "sometimes does nothing"
+    // (2026-07-11 multi-agent audit). Normalizing here covers every branch below,
+    // including the `loop_click`/`asset_click`/`variation_click` sub-handlers. Matches
+    // `ph2d-panel-motion-graph` / `ph2d-panel-timeline`, which unify `Click|DoubleClick`.
+    let ev = match ev {
+        WidgetEvent::DoubleClick(id) => WidgetEvent::Click(id),
+        other => other,
+    };
     if let WidgetEvent::Click(id) = ev {
         // TopBar pill toggles the panel (mirrors the Audio Mixer pattern).
         if id == ids::TOPBAR_AUDIO_EDITOR {

@@ -222,12 +222,20 @@ impl App {
             // undo runs in `painter_bridge::dispatch`, the downcast-
             // allowed site, via the transient flags set here.
             KeyCode::KeyZ if self.modifiers.super_key() || self.modifiers.control_key() => {
-                // Audio Editor owns Cmd/Ctrl+Z (undo) / +Shift (redo) while its
-                // WAVE panel is open with a clip loaded: the user is editing audio
-                // there, so keyboard undo must step the `EditClip` timeline rather
-                // than the painter/image bus. Only consumes the key when the editor
-                // can actually act — otherwise it falls through to the painter/image
-                // undo below, so global undo still works when there's no audio edit.
+                // Audio Editor owns Cmd/Ctrl+Z (undo) / +Shift (redo) while its WAVE
+                // panel is open with a clip loaded: the user is editing audio there, so
+                // keyboard undo steps the `EditClip` timeline, not the painter/image bus
+                // or the global object undo.
+                //
+                // It consumes the chord UNCONDITIONALLY here (applies the op only when
+                // there is one to apply, but always returns). The old code fell through
+                // to the global undo once the audio timeline was exhausted "so global
+                // undo still works when there's no audio edit" — but that made one extra
+                // Ctrl+Z JUMP THE WHOLE SCENE (the global undo restores the WorldSnapshot
+                // + clears selection). The audio-timeline boundary is invisible to the
+                // user, so it read as "undo sometimes doesn't work / does something
+                // weird" (2026-07-11 multi-agent audit, A1). A focused modal editor owns
+                // its own Ctrl+Z, like the painter/motion/timeline undos do.
                 #[cfg(feature = "panel-audio-editor")]
                 {
                     let audio_open = gfx
@@ -250,8 +258,8 @@ impl App {
                             } else {
                                 ph2d_panel_audio_editor::AudioEditCmd::Undo
                             });
-                            return;
                         }
+                        return;
                     }
                 }
                 let painter_active = gfx

@@ -31,7 +31,7 @@ const MIN_W: f32 = 260.0; // LITERAL-PX-OK: overlay default minimum width (chrom
 const DEFAULT_H: f32 = 260.0; // LITERAL-PX-OK: overlay default height (chrome)
 const TOP_MARGIN: f32 = 72.0; // LITERAL-PX-OK: below the TopBar (chrome)
 const HEADER_H: f32 = 26.0; // LITERAL-PX-OK: overlay title-bar height (chrome)
-const RULER_H: f32 = 16.0; // LITERAL-PX-OK: time-ruler strip height (chrome)
+const RULER_H: f32 = 22.0; // LITERAL-PX-OK: time-ruler strip height (chrome; tall = clickable)
 /// Width reserved on the right for the docked Audio Editor panel (matches its
 /// `PANEL_W`), so the overlay's default position doesn't cover it.
 const EDITOR_PANEL_W: f32 = 240.0; // LITERAL-PX-OK: docked editor panel width (chrome)
@@ -94,14 +94,19 @@ pub(super) fn draw_audio_overlay(
         resolve(ColorToken::Text2, theme),
     );
 
-    // Waveform + ruler area (below the header).
-    let body_top = rect.y + HEADER_H;
-    let ruler_top = rect.y + rect.h - RULER_H;
+    // Layout: the time RULER sits at the TOP (like a timeline / DAW) — a darker,
+    // taller strip the user clicks + drags to position the playhead — then the
+    // waveform fills the rest. Ruler and waveform share the same x/width so screen-x
+    // maps straight to clip time.
+    let inset = Spacing::Sm.px();
+    let content_x = rect.x + inset;
+    let content_w = (rect.w - inset * 2.0).max(1.0);
+    let ruler = Rect::new(content_x, rect.y + HEADER_H, content_w, RULER_H);
     let wave = Rect::new(
-        rect.x + Spacing::Sm.px(),
-        body_top,
-        (rect.w - Spacing::Sm.px() * 2.0).max(1.0),
-        (ruler_top - body_top).max(1.0),
+        content_x,
+        ruler.y + RULER_H,
+        content_w,
+        (rect.y + rect.h - (ruler.y + RULER_H) - inset).max(1.0),
     );
     // The playhead frame (offset into the loop region while it loops), computed once:
     // it drives both the waveform's played/unplayed shading and the playhead line.
@@ -111,6 +116,7 @@ pub(super) fn draw_audio_overlay(
     // Only split played/unplayed once playback has advanced; a stopped clip shows the
     // whole waveform lit.
     let played_x = (ph_frame > 0).then(|| wave.x + played_frac * wave.w);
+    draw_ruler(scene, text, clip, ruler, theme);
     draw_waveform(scene, clip, wave, played_x, theme);
     // Selection highlight (under the playhead) + publish the wave viewport so the
     // shell can hit-test a press over it and map screen-x → clip frame.
@@ -124,13 +130,15 @@ pub(super) fn draw_audio_overlay(
     }
     crate::audio::set_wave_view(Some(crate::audio::WaveView {
         rect: wave,
-        ruler: Rect::new(wave.x, ruler_top, wave.w, RULER_H),
+        ruler,
         frames: clip.frame_count() as u64,
     }));
-    draw_ruler(scene, text, clip, wave, ruler_top, theme);
-    // The line stays inside the green brackets while looping (the region plays as its
-    // own buffer, whose frames start at 0 — `ph_frame` already carries the offset).
-    draw_playhead(scene, wave, played_frac, theme);
+    // The playhead spans the ruler AND the waveform (one continuous bar), so grabbing
+    // it in the ruler reads as moving the same line. It stays inside the green loop
+    // brackets while looping (the region plays as its own buffer whose frames start at
+    // 0 — `ph_frame` already carries the offset).
+    let play_area = Rect::new(wave.x, ruler.y, wave.w, wave.y + wave.h - ruler.y);
+    draw_playhead(scene, play_area, played_frac, theme);
 
     // Register drag + resize handle hit rects into the hero hit-index so the
     // shared BlenderHit dispatch moves/resizes the overlay next frame.
@@ -219,34 +227,48 @@ fn draw_waveform(
     }
 }
 
-/// Draw a few evenly-spaced time ticks + labels along the ruler strip.
+/// The time ruler: a **darker, inset strip** (so it reads as the click-to-scrub zone)
+/// filling `ruler`, with evenly-spaced time ticks + labels. Sits at the TOP of the
+/// overlay (timeline convention); `ruler` shares the waveform's x/width so a click maps
+/// straight to clip time.
 fn draw_ruler(
     scene: &mut VectorScene,
     text: &mut TextSystem,
     clip: &ph2d_audio_edit::EditClip,
-    area: Rect,
-    ruler_top: f32,
+    ruler: Rect,
     theme: Theme,
 ) {
+    // Darker inset backing — the visual affordance that this strip is grabbable.
+    fill_rounded_rect(
+        scene,
+        ruler,
+        Radius::Xs.px(),
+        resolve(ColorToken::Bg1, theme),
+    );
     let dur = clip.duration_secs();
     let ticks = 5;
     let tick_col = resolve(ColorToken::Border, theme);
     let label_col = resolve(ColorToken::Text2, theme);
+    let tick_h = ruler.h * 0.4; // short marks along the bottom edge, ruler-style
     for i in 0..=ticks {
         let frac = i as f32 / ticks as f32;
-        let x = area.x + frac * area.w;
-        fill_rounded_rect(scene, Rect::new(x, ruler_top, 1.0, RULER_H), 0.0, tick_col);
+        let x = ruler.x + frac * ruler.w;
+        fill_rounded_rect(
+            scene,
+            Rect::new(x, ruler.y + ruler.h - tick_h, 1.0, tick_h),
+            0.0,
+            tick_col,
+        );
         let secs = dur * frac as f64;
         let label = format!("{secs:.1}s");
         let lw = 34.0; // LITERAL-PX-OK: tick label box width (chrome)
-        // Keep the whole label box inside the waveform area so the first/last
-        // ticks don't spill their text past the timeline edges.
-        let lx = (x - lw * 0.5).clamp(area.x, (area.x + area.w - lw).max(area.x));
+        // Keep the whole label box inside the strip so the first/last don't spill.
+        let lx = (x - lw * 0.5).clamp(ruler.x, (ruler.x + ruler.w - lw).max(ruler.x));
         paint_text_centered(
             text,
             scene,
             &label,
-            Rect::new(lx, ruler_top + 2.0, lw, TypeToken::Xs.px()),
+            Rect::new(lx, ruler.y + 1.0, lw, TypeToken::Xs.px()),
             TypeToken::Xs.px(),
             label_col,
         );

@@ -1,0 +1,23 @@
+[package]
+name = "ph2d-flip-render"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+[dependencies]
+# Documento Flip (fonte da geometria a rasterizar).
+ph2d-flip = { path = "../ph2d-flip" }
+# Vec2 + math (posições, câmera ortográfica).
+ph2d-core = { path = "../ph2d-core" }
+# Pipeline wgpu dedicado (ADR-0113 §Decisão 5): o traço do Flip NÃO vai pela
+# vello::Scene — vai por este passe wgpu, pela performance de tempo real. wgpu 28
+# em lockstep com ph2d-render/ph2d-gpu.
+wgpu = "28"
+# Empacotamento de storage buffers (Pod/Zeroable + cast_slice), mesma convenção
+# do `instance_buffer` do ph2d-render.
+bytemuck = { version = "1", features = ["derive"] }

@@ -4802,6 +4802,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-flip-render"
+version = "0.0.0"
+dependencies = [
+ "bytemuck",
+ "ph2d-core",
+ "ph2d-flip",
+ "wgpu",
+]
+
+[[package]]
 name = "ph2d-gpu"
 version = "0.0.0"
 dependencies = [

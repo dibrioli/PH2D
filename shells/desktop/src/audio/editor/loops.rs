@@ -43,6 +43,7 @@ impl AudioSystem {
             self.editor.playing_loop_region = false;
             self.editor.loop_sig = None;
             self.editor.state = EditorTransport::Stopped;
+            self.editor.scrub_frame = None;
         }
     }
 
@@ -115,22 +116,45 @@ impl AudioSystem {
 
     /// Seek the preview by grabbing the playhead: map a **full-clip** frame to the
     /// voice's current buffer — the region (offset by its start) while looping a
-    /// region, else the whole clip. No-op with no clip / no voice.
-    pub(crate) fn editor_scrub_to_frame(&self, full_frame: u64) {
-        if self.editor.playing_loop_region {
-            if let Some(lp) = self.editor.clip.as_ref().and_then(|c| c.loop_region()) {
-                let (s, e) = (lp.start as u64, lp.end as u64);
-                let _ = self.engine.seek_preview(full_frame.clamp(s, e) - s);
+    /// region, else the whole clip — AND record it as the manual playhead override so
+    /// the drawn bar follows the mouse even while stopped/paused (when the engine does
+    /// not republish `preview_frame`).
+    pub(crate) fn editor_scrub_to_frame(&mut self, full_frame: u64) {
+        let visual = if self.editor.playing_loop_region {
+            match self.editor.clip.as_ref().and_then(|c| c.loop_region()) {
+                Some(lp) => {
+                    let (s, e) = (lp.start as u64, lp.end as u64);
+                    let clamped = full_frame.clamp(s, e);
+                    let _ = self.engine.seek_preview(clamped - s);
+                    clamped
+                }
+                None => full_frame,
             }
         } else {
             let _ = self.engine.seek_preview(full_frame);
+            full_frame
+        };
+        self.editor.scrub_frame = Some(visual);
+    }
+
+    /// End a ruler scrub. If playback is advancing, hand the playhead back to it;
+    /// otherwise leave the manual position frozen where the user dropped it (stopped /
+    /// paused → the bar stays put).
+    pub(crate) fn editor_end_scrub(&mut self) {
+        if self.editor.state == EditorTransport::Playing {
+            self.editor.scrub_frame = None;
         }
     }
 
-    /// The frame to DRAW the playhead at (full-clip timebase). While looping a region
-    /// the preview reports frames within the region buffer, so offset by the loop
-    /// start — otherwise the line sweeps at the far left, OUTSIDE the loop brackets.
+    /// The frame to DRAW the playhead at (full-clip timebase). A live scrub override
+    /// wins (the bar follows the mouse); otherwise it's the preview position — offset
+    /// by the loop start while looping a region (the region plays as its own buffer
+    /// whose frames start at 0, so without the offset the line sweeps at the far left,
+    /// OUTSIDE the loop brackets).
     pub(crate) fn editor_playhead_frame(&self) -> u64 {
+        if let Some(f) = self.editor.scrub_frame {
+            return f;
+        }
         let raw = self.engine.preview_frame();
         if self.editor.playing_loop_region {
             let start = self

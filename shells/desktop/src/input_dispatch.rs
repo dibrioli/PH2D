@@ -1893,7 +1893,7 @@ impl App {
         }
         if let Some(view) = crate::audio::wave_view() {
             let frame = crate::audio::frame_at_x(&view, x);
-            if let Some(a) = self.audio.as_ref() {
+            if let Some(a) = self.audio.as_mut() {
                 a.editor_scrub_to_frame(frame);
             }
         }
@@ -2110,7 +2110,7 @@ impl App {
                     self.audio_ruler_frame_at(self.last_pointer.0, self.last_pointer.1) =>
             {
                 self.audio_scrub_drag = true;
-                if let Some(a) = self.audio.as_ref() {
+                if let Some(a) = self.audio.as_mut() {
                     a.editor_scrub_to_frame(frame);
                 }
                 return;
@@ -2128,6 +2128,11 @@ impl App {
             }
             PointerKind::Up if self.audio_scrub_drag => {
                 self.audio_scrub_drag = false;
+                // Hand the playhead back to playback if it's advancing; else the
+                // manual position stays where it was dropped.
+                if let Some(a) = self.audio.as_mut() {
+                    a.editor_end_scrub();
+                }
                 return;
             }
             PointerKind::Up if self.audio_sel_drag.take().is_some() => return,

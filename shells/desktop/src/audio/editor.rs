@@ -67,6 +67,12 @@ pub(super) struct AudioEditorRuntime {
     /// The crossfade length (frames) the panel's slider currently asks for, refreshed
     /// each frame so `editor_toggle_play` / `editor_loop_live_update` read one source.
     pending_xfade: usize,
+    /// Manual playhead override (full-clip frame) while scrubbing the ruler. The
+    /// engine only republishes `preview_frame` while a voice is actively rendering, so
+    /// a seek while stopped/paused would not move the drawn playhead — this makes the
+    /// bar follow the mouse. Cleared when playback takes authority back (Play / resume
+    /// / Stop / Load, or a scrub release while playing).
+    scrub_frame: Option<u64>,
 }
 
 impl AudioSystem {
@@ -97,6 +103,7 @@ impl AudioSystem {
         self.editor.state = EditorTransport::Stopped;
         self.editor.playing_loop_region = false;
         self.editor.loop_sig = None;
+        self.editor.scrub_frame = None;
         self.editor_fx_discard();
     }
 
@@ -172,6 +179,7 @@ impl AudioSystem {
                     self.editor.started = false;
                     self.editor.playing_loop_region = plays_region;
                     self.editor.loop_sig = sig;
+                    self.editor.scrub_frame = None; // playback drives the playhead now
                 }
             }
             EditorTransport::Playing => {
@@ -181,6 +189,7 @@ impl AudioSystem {
             EditorTransport::Paused => {
                 let _ = self.engine.pause_preview(false);
                 self.editor.state = EditorTransport::Playing;
+                self.editor.scrub_frame = None; // resume from the (possibly scrubbed) cursor
             }
         }
     }
@@ -191,6 +200,7 @@ impl AudioSystem {
         self.editor.state = EditorTransport::Stopped;
         self.editor.playing_loop_region = false;
         self.editor.loop_sig = None;
+        self.editor.scrub_frame = None; // rewind to the start
     }
 
     /// Write the loaded clip out to `path` as a 16-bit PCM WAV.

@@ -49,6 +49,16 @@ pub struct FlipRenderer {
     bind_group: Option<wgpu::BindGroup>,
     /// Nº de vértices a desenhar no próximo/último `render` (= point_count · 6).
     vertex_count: u32,
+    // Depth-buffer para a ordem 2D (GP §2): profundidade por-traço + teste
+    // GREATER. Redimensionado sob demanda pra casar o alvo.
+    depth_texture: Option<wgpu::Texture>,
+    depth_view: Option<wgpu::TextureView>,
+    depth_size: (u32, u32),
+}
+
+impl FlipRenderer {
+    /// Formato do depth-buffer da ordem 2D.
+    pub const DEPTH_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Depth32Float;
 }
 
 impl FlipRenderer {
@@ -126,7 +136,15 @@ impl FlipRenderer {
                 unclipped_depth: false,
                 conservative: false,
             },
-            depth_stencil: None,
+            depth_stencil: Some(wgpu::DepthStencilState {
+                format: Self::DEPTH_FORMAT,
+                depth_write_enabled: true,
+                // GREATER: traço mais novo (profundidade maior) ganha; o mesmo
+                // traço (mesma profundidade) não recompõe o auto-overlap.
+                depth_compare: wgpu::CompareFunction::Greater,
+                stencil: wgpu::StencilState::default(),
+                bias: wgpu::DepthBiasState::default(),
+            }),
             multisample: wgpu::MultisampleState {
                 count: 1,
                 mask: !0,
@@ -152,7 +170,41 @@ impl FlipRenderer {
             point_stroke_buf: None,
             bind_group: None,
             vertex_count: 0,
+            depth_texture: None,
+            depth_view: None,
+            depth_size: (0, 0),
         }
+    }
+
+    /// Garante um depth-buffer do tamanho `size` (recria se mudou). Chame antes de
+    /// abrir a render pass — a view é o `depth_stencil_attachment` dela.
+    pub fn ensure_depth(&mut self, device: &wgpu::Device, size: (u32, u32)) {
+        if self.depth_view.is_some() && self.depth_size == size {
+            return;
+        }
+        let tex = device.create_texture(&wgpu::TextureDescriptor {
+            label: Some("ph2d-flip depth"),
+            size: wgpu::Extent3d {
+                width: size.0.max(1),
+                height: size.1.max(1),
+                depth_or_array_layers: 1,
+            },
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format: Self::DEPTH_FORMAT,
+            usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
+            view_formats: &[],
+        });
+        self.depth_view = Some(tex.create_view(&wgpu::TextureViewDescriptor::default()));
+        self.depth_texture = Some(tex);
+        self.depth_size = size;
+    }
+
+    /// A view do depth-buffer atual (após [`Self::ensure_depth`]). `None` antes.
+    #[must_use]
+    pub fn depth_view(&self) -> Option<&wgpu::TextureView> {
+        self.depth_view.as_ref()
     }
 
     /// Sobe `data` + `camera` pra GPU e reconstrói o bind group. Chame antes de

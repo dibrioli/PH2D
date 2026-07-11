@@ -34,6 +34,7 @@ pub(crate) fn render(
     }
     let cam = camera_raw(camera, window);
     flip_render.upload(&gpu.device, &gpu.queue, &cam, &data);
+    flip_render.ensure_depth(&gpu.device, (window.width, window.height));
 
     let mut encoder = gpu
         .device
@@ -52,7 +53,18 @@ pub(crate) fn render(
                     store: wgpu::StoreOp::Store,
                 },
             })],
-            depth_stencil_attachment: None,
+            // Depth próprio do Flip (ordem 2D), limpo a 0 → GREATER deixa tudo
+            // passar; o descarte é ok (só vale dentro do passe).
+            depth_stencil_attachment: flip_render.depth_view().map(|v| {
+                wgpu::RenderPassDepthStencilAttachment {
+                    view: v,
+                    depth_ops: Some(wgpu::Operations {
+                        load: wgpu::LoadOp::Clear(0.0),
+                        store: wgpu::StoreOp::Discard,
+                    }),
+                    stencil_ops: None,
+                }
+            }),
             timestamp_writes: None,
             occlusion_query_set: None,
             multiview_mask: None,

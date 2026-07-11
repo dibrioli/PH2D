@@ -69,6 +69,7 @@ fn render(device: &wgpu::Device, queue: &wgpu::Queue, drawing: &FlipDrawing) -> 
 
     let mut fr = FlipRenderer::new(device, format);
     fr.upload(device, queue, &pixel_camera(), &pack_drawing(drawing));
+    fr.ensure_depth(device, (W, H));
 
     let mut encoder =
         device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
@@ -84,7 +85,16 @@ fn render(device: &wgpu::Device, queue: &wgpu::Queue, drawing: &FlipDrawing) -> 
                     store: wgpu::StoreOp::Store,
                 },
             })],
-            depth_stencil_attachment: None,
+            depth_stencil_attachment: fr.depth_view().map(|v| {
+                wgpu::RenderPassDepthStencilAttachment {
+                    view: v,
+                    depth_ops: Some(wgpu::Operations {
+                        load: wgpu::LoadOp::Clear(0.0),
+                        store: wgpu::StoreOp::Discard,
+                    }),
+                    stencil_ops: None,
+                }
+            }),
             timestamp_writes: None,
             occlusion_query_set: None,
             multiview_mask: None,
@@ -208,6 +218,61 @@ fn straight_stroke_paints_a_band_and_leaves_background_empty() {
     assert!(alpha_at(&px, 32, 32) > 200);
     assert_eq!(alpha_at(&px, 32, 20), 0, "fora da banda (acima)");
     assert_eq!(alpha_at(&px, 32, 44), 0, "fora da banda (abaixo)");
+}
+
+#[test]
+#[ignore = "requires a GPU adapter; run with --ignored"]
+fn newer_stroke_draws_over_older_at_crossing() {
+    let Some((device, queue)) = device() else {
+        return;
+    };
+    // Mesmo desenho: traço 0 = vermelho horizontal, traço 1 = azul vertical. No
+    // cruzamento (32,32), o mais novo (sid 1, profundidade maior, GREATER ganha)
+    // fica por cima → azul.
+    let mut d = FlipDrawing::new();
+    let mut red = FlipStroke::new();
+    red.push_point(Point {
+        pos: Vec2::new(6.0, 32.0),
+        width: 10.0,
+        opacity: 1.0,
+        color: Rgba::new(1.0, 0.0, 0.0, 1.0),
+    });
+    red.push_point(Point {
+        pos: Vec2::new(58.0, 32.0),
+        width: 10.0,
+        opacity: 1.0,
+        color: Rgba::new(1.0, 0.0, 0.0, 1.0),
+    });
+    red.hardness = 1.0;
+    let mut blue = FlipStroke::new();
+    blue.push_point(Point {
+        pos: Vec2::new(32.0, 6.0),
+        width: 10.0,
+        opacity: 1.0,
+        color: Rgba::new(0.0, 0.0, 1.0, 1.0),
+    });
+    blue.push_point(Point {
+        pos: Vec2::new(32.0, 58.0),
+        width: 10.0,
+        opacity: 1.0,
+        color: Rgba::new(0.0, 0.0, 1.0, 1.0),
+    });
+    blue.hardness = 1.0;
+    d.strokes.push(red);
+    d.strokes.push(blue);
+
+    let px = render(&device, &queue, &d);
+    // No braço só-vermelho: vermelho. No braço só-azul: azul. No cruzamento: azul.
+    let only_red = rgb_at(&px, 12, 32);
+    let cross = rgb_at(&px, 32, 32);
+    assert!(
+        only_red[0] > 200 && only_red[2] < 60,
+        "braço vermelho: {only_red:?}"
+    );
+    assert!(
+        cross[2] > 200 && cross[0] < 60,
+        "cruzamento é azul (mais novo por cima): {cross:?}"
+    );
 }
 
 #[test]

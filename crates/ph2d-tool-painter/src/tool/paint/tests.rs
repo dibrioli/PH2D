@@ -2362,6 +2362,38 @@ fn open_curve_midpoint_selected() -> PainterTool {
     t
 }
 
+/// **A shape is editable from its wrapped Tiling copy (Enio 2026-07-11).** With seamless Tiling the shape's
+/// wash + editable overlay show in the neighbour tiles; grabbing a control point on a COPY must edit the
+/// ORIGINAL. The shape-editor pointer folds into the sprite space on each tiled axis, so a grab in the
+/// right tile (`x + w`) hits the in-sprite anchor and the drag moves it. Off-tiling ⇒ the raw coord.
+#[test]
+fn shape_editable_from_a_wrapped_tile_under_tiling() {
+    let mut t = open_curve_midpoint_selected(); // endpoints (8,32) & (56,32), now editing
+    t.paint.tiling = [true, false]; // wrap on X
+
+    let has = |t: &PainterTool, x: f32, y: f32| {
+        t.curve_overlay()
+            .unwrap()
+            .points
+            .iter()
+            .any(|p| (p[0] - x).abs() < 2.0 && (p[1] - y).abs() < 2.0)
+    };
+    assert!(has(&t, 56.0, 32.0), "the (56,32) endpoint exists");
+
+    // Grab the (56,32) endpoint via its RIGHT-tile ghost at (56+64, 32) = (120,32) and drag +5 → the wrap
+    // folds 120→56 (grab) and 125→61 (drag), so the ORIGINAL anchor moves to (61,32).
+    t.on_canvas_pointer(cp([120.0, 32.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([125.0, 32.0], PointerPhase::Move));
+    t.on_canvas_pointer(cp([125.0, 32.0], PointerPhase::Up));
+
+    assert!(
+        has(&t, 61.0, 32.0),
+        "grabbing the wrapped-tile ghost moved the original anchor to (61,32): {:?}",
+        t.curve_overlay().unwrap().points
+    );
+    assert!(has(&t, 8.0, 32.0), "the other endpoint stayed put");
+}
+
 #[test]
 fn handle_kind_menu_pick_updates_the_selected_point() {
     // The right-click menu's wire u8 (0=Free 1=Aligned 2=Vector 3=Auto) routes to the selected point and

@@ -318,7 +318,25 @@ impl PainterTool {
     /// a PARKED shape re-activate it (parking the current one first); on a Down in EMPTY space with a
     /// complete active shape, park it so the following `*_down` begins a fresh shape. Then dispatch to the
     /// active editor by method (the classic single-shape path). Line point-placement is never interrupted.
-    pub(super) fn route_shape_pointer_multi(&mut self, ev: CanvasPointer) -> bool {
+    pub(super) fn route_shape_pointer_multi(&mut self, mut ev: CanvasPointer) -> bool {
+        // Seamless Tiling (edit-in-tile, Enio 2026-07-11): the shape's wash + editable overlay are drawn in
+        // the wrapped neighbour tiles too, so a grab/drag on a tile COPY must edit the ORIGINAL — fold the
+        // pointer into the sprite space on each tiled axis. Suppressed WHILE a Free Hand path is being drawn
+        // (that raw capture stays continuous, else it jumps at the seam). Off-tiling ⇒ unchanged.
+        let drawing_freehand = self
+            .paint
+            .curve
+            .as_ref()
+            .is_some_and(|c| c.is_drawing_freehand());
+        if !drawing_freehand {
+            let (fw, fh) = self.source_size;
+            if self.paint.tiling[0] && fw > 0 {
+                ev.pos[0] = ev.pos[0].rem_euclid(fw as f32);
+            }
+            if self.paint.tiling[1] && fh > 0 {
+                ev.pos[1] = ev.pos[1].rem_euclid(fh as f32);
+            }
+        }
         let slop = self.paint.shape_grab_tol_px;
         match ev.phase {
             PointerPhase::Down => {

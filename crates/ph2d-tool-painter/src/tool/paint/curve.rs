@@ -77,6 +77,15 @@ pub(super) struct CurveEditor {
     pub(super) added_point: bool,
 }
 
+impl CurveEditor {
+    /// `true` while the initial **Free Hand** path is being drawn (Down→drag→Up, before the fit). The raw
+    /// capture must stay continuous — so seamless-Tiling pointer wrap is suppressed during this phase, else
+    /// the captured path would jump at the seam. Once fitted (`editing`), grabs/drags CAN wrap (edit-in-tile).
+    pub(super) fn is_drawing_freehand(&self) -> bool {
+        self.freehand && !self.editing
+    }
+}
+
 /// A read-only snapshot of the Curve editor for the shell's overlay (control dots + auto-smoothed spine).
 pub struct CurveOverlay {
     /// Control points (image-space px) — drawn as draggable dots.

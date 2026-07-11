@@ -602,23 +602,22 @@ impl PenTool {
             && let Some(path) = scene.paths().iter().find(|pp| pp.id == sel)
         {
             let xf = self.xf(sel);
-            // Handles de QUALQUER tipo, desde que não-degenerados (offset da
-            // âncora) — cusps (Corner) e Symmetric também têm handles agarráveis,
-            // não só Smooth. Handle tem prioridade sobre âncora (checado antes).
-            for (i, v) in path.verts_all().enumerate() {
-                if dist2(v.in_handle, v.anchor) > 1e-18 && dist2(p, xf.apply(v.in_handle)) <= r2 {
-                    return Some(Grab {
-                        path: sel,
-                        vert: i,
-                        part: Part::In,
-                    });
-                }
-                if dist2(v.out_handle, v.anchor) > 1e-18 && dist2(p, xf.apply(v.out_handle)) <= r2 {
-                    return Some(Grab {
-                        path: sel,
-                        vert: i,
-                        part: Part::Out,
-                    });
+            // Handles agarráveis na posição de EXIBIÇÃO (`ghost_handle`): a alça real
+            // quando deslocada; ou o TOCO sintético de um ponto Smooth/Symmetric cuja
+            // alça é zero (a "alça lateral" antes invisível) — assim ela é agarrável
+            // sem a curva ter mudado (o `on_drag` é que escreve a alça real). A quina
+            // de um Corner não sintetiza toco. Handle tem prioridade sobre âncora.
+            for i in 0..path.total_verts() {
+                for (out, part) in [(false, Part::In), (true, Part::Out)] {
+                    if let Some(h) = ph2d_vec_scene::ghost_handle(path, i, out)
+                        && dist2(p, xf.apply(h)) <= r2
+                    {
+                        return Some(Grab {
+                            path: sel,
+                            vert: i,
+                            part,
+                        });
+                    }
                 }
             }
         }

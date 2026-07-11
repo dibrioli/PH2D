@@ -495,6 +495,73 @@ fn retype_to_corner_keeps_handle_positions_as_a_cusp() {
     assert_eq!(cusp.out_handle, grown.out_handle);
 }
 
+/// Uma alça deslocada é devolvida tal-e-qual (não sintetiza).
+#[test]
+fn ghost_handle_returns_the_real_offset_handle() {
+    let p = VecPath {
+        verts: vec![
+            VecVertex::corner([0.0, 0.0]),
+            VecVertex::smooth([4.0, 0.0], [4.0, 0.0], [6.0, 0.0]), // in zero, out offset
+            VecVertex::corner([8.0, 0.0]),
+        ],
+        closed: false,
+        ..VecPath::default()
+    };
+    assert_eq!(
+        ghost_handle(&p, 1, true),
+        Some([6.0, 0.0]),
+        "out real devolvida"
+    );
+}
+
+/// A alça LATERAL invisível (zero) de um ponto Smooth vira um toco OPOSTO à outra
+/// alça, com o comprimento dela — o caso que o Enio pediu (2026-07-11).
+#[test]
+fn ghost_handle_synthesizes_the_invisible_lateral_smooth_stub() {
+    let p = VecPath {
+        verts: vec![
+            VecVertex::corner([0.0, 0.0]),
+            VecVertex::smooth([4.0, 0.0], [4.0, 0.0], [6.0, 0.0]),
+            VecVertex::corner([8.0, 0.0]),
+        ],
+        closed: false,
+        ..VecPath::default()
+    };
+    // Âncora (4,0), out em (6,0) = +2 em x → toco IN oposto em (2,0).
+    let stub = ghost_handle(&p, 1, false).expect("toco lateral visível");
+    assert!(
+        (stub[0] - 2.0).abs() < 1e-9 && stub[1].abs() < 1e-9,
+        "toco oposto à out: {stub:?}"
+    );
+}
+
+/// Um Corner reto (alças zero) NÃO sintetiza toco — a quina fica limpa.
+#[test]
+fn ghost_handle_is_none_for_a_straight_corner() {
+    let p = corner_triangle();
+    assert_eq!(ghost_handle(&p, 1, false), None);
+    assert_eq!(ghost_handle(&p, 1, true), None);
+}
+
+/// Ambas as alças zero num Smooth: os tocos seguem a tangente prev→next (out no +t,
+/// in no −t). Vizinhos no eixo x → out aponta +x, in aponta −x.
+#[test]
+fn ghost_handle_falls_back_to_the_neighbor_tangent_when_both_are_zero() {
+    let p = VecPath {
+        verts: vec![
+            VecVertex::corner([0.0, 0.0]),
+            VecVertex::smooth([4.0, 0.0], [4.0, 0.0], [4.0, 0.0]), // ambas zero
+            VecVertex::corner([8.0, 0.0]),
+        ],
+        closed: false,
+        ..VecPath::default()
+    };
+    let out = ghost_handle(&p, 1, true).expect("toco out");
+    assert!(out[0] > 4.0 && out[1].abs() < 1e-9, "out no +x: {out:?}");
+    let inn = ghost_handle(&p, 1, false).expect("toco in");
+    assert!(inn[0] < 4.0 && inn[1].abs() < 1e-9, "in no −x: {inn:?}");
+}
+
 #[test]
 fn retype_is_noop_when_kind_and_geometry_already_match() {
     let mut p = corner_triangle();

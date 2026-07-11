@@ -147,34 +147,51 @@ pub fn draw_overlays(
         // its Bézier handles + per-vertex picks.
         let in_set = selected_paths.contains(&path.id);
         if is_sel {
-            for v in path.verts_all() {
+            for (i, v) in path.verts_all().enumerate() {
                 let a = transform * Point::new(v.anchor[0], v.anchor[1]);
-                // Draw a handle only when it is offset from the anchor — cusps
-                // (Corner), Smooth and Symmetric all show their non-degenerate
-                // handles; a straight corner (handle == anchor) shows nothing.
-                for h in [v.in_handle, v.out_handle] {
-                    let (dx, dy) = (h[0] - v.anchor[0], h[1] - v.anchor[1]);
-                    if dx * dx + dy * dy <= 1e-18 {
+                // Draw each handle at its DISPLAY position: a real (offset) handle
+                // as-is, and a Smooth/Symmetric point's zero-length ("invisible")
+                // handle as a grabbable GHOST stub along the smooth tangent — without
+                // touching geometry (the curve only changes when the user drags it).
+                // A straight Corner's zero handle stays hidden (`ghost_handle` = None).
+                for out in [false, true] {
+                    let real = if out { v.out_handle } else { v.in_handle };
+                    let (dx, dy) = (real[0] - v.anchor[0], real[1] - v.anchor[1]);
+                    let is_ghost = dx * dx + dy * dy <= 1e-18;
+                    let Some(h) = ph2d_vec_scene::ghost_handle(path, i, out) else {
                         continue;
-                    }
+                    };
                     let hp = transform * Point::new(h[0], h[1]);
                     let mut line = BezPath::new();
                     line.move_to(a);
                     line.line_to(hp);
+                    // Ghost stubs are dimmer + hollow so the user reads them as
+                    // "suggested, not yet affecting the curve".
+                    let line_a = if is_ghost { 120 } else { 200 };
                     target.inner_mut().stroke(
                         &Stroke::new(1.0),
                         Affine::IDENTITY,
-                        &Brush::Solid(Color::from_rgba8(120, 190, 230, 200)),
+                        &Brush::Solid(Color::from_rgba8(120, 190, 230, line_a)),
                         None,
                         &line,
                     );
-                    target.inner_mut().fill(
-                        Fill::NonZero,
-                        Affine::IDENTITY,
-                        &Brush::Solid(Color::from_rgba8(120, 190, 230, 255)),
-                        None,
-                        &Circle::new(hp, 3.5),
-                    );
+                    if is_ghost {
+                        target.inner_mut().stroke(
+                            &Stroke::new(1.2),
+                            Affine::IDENTITY,
+                            &Brush::Solid(Color::from_rgba8(120, 190, 230, 220)),
+                            None,
+                            &Circle::new(hp, 3.5),
+                        );
+                    } else {
+                        target.inner_mut().fill(
+                            Fill::NonZero,
+                            Affine::IDENTITY,
+                            &Brush::Solid(Color::from_rgba8(120, 190, 230, 255)),
+                            None,
+                            &Circle::new(hp, 3.5),
+                        );
+                    }
                 }
             }
         }

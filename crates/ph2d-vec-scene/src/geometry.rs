@@ -126,6 +126,63 @@ fn neighbor_tangent(verts: &[VecVertex], closed: bool, i: usize) -> Option<([f64
     Some(([d[0] / len, d[1] / len], len * 0.5 * AUTO_SMOOTH_FRAC))
 }
 
+/// Comprimento² mínimo para uma alça contar como "visível" (não-degenerada) — o
+/// mesmo limiar que o overlay e o hit-test usam para pular alças coincidentes.
+const GHOST_EPS_SQ: f64 = 1e-18;
+
+/// Posição de EXIBIÇÃO de uma alça (in/out) de um vértice, para que um ponto
+/// Smooth/Symmetric com alça de comprimento zero ("invisível") ainda mostre um toco
+/// agarrável — SEM tocar a geometria (a curva só muda quando o usuário arrasta o
+/// toco). Devolve:
+/// - a alça REAL quando já está deslocada da âncora (não-degenerada);
+/// - para Smooth/Symmetric com alça zero: um deslocamento sintético ao longo da
+///   tangente suave — oposto à outra alça (com o comprimento dela) se ela estiver
+///   deslocada, senão a tangente dos vizinhos —, para que os DOIS lados de um ponto
+///   suave apareçam (a "alça lateral" antes invisível);
+/// - `None` para a alça zero de um Corner (quina reta não mostra nada, de propósito)
+///   ou quando não há de que sintetizar (contorno degenerado).
+///
+/// `out` escolhe a alça de saída (`true`) ou de entrada (`false`). Em espaço LOCAL do
+/// path (igual às alças do `VecVertex`); o chamador aplica o Transform. Pura (só lê).
+#[must_use]
+pub fn ghost_handle(path: &VecPath, i: usize, out: bool) -> Option<[f64; 2]> {
+    let (c, local) = path.locate_vert(i)?;
+    let (verts, closed) = path.contour(c)?;
+    ghost_in_contour(verts, closed, local, out)
+}
+
+fn ghost_in_contour(verts: &[VecVertex], closed: bool, i: usize, out: bool) -> Option<[f64; 2]> {
+    let v = verts.get(i)?;
+    let a = v.anchor;
+    let (this, other) = if out {
+        (v.out_handle, v.in_handle)
+    } else {
+        (v.in_handle, v.out_handle)
+    };
+    if sq_dist(this, a) > GHOST_EPS_SQ {
+        return Some(this); // alça real já visível
+    }
+    if v.kind == VertexKind::Corner {
+        return None; // a quina de um cusp fica oculta
+    }
+    if sq_dist(other, a) > GHOST_EPS_SQ {
+        // Oposto à outra alça (continuação suave), mesmo comprimento.
+        let d = normalize([a[0] - other[0], a[1] - other[1]])?;
+        let len = sq_dist(other, a).sqrt();
+        Some([a[0] + d[0] * len, a[1] + d[1] * len])
+    } else {
+        // Ambas zero: tangente dos vizinhos (out no +t, in no −t).
+        let (t, base) = neighbor_tangent(verts, closed, i)?;
+        let dir = if out { t } else { [-t[0], -t[1]] };
+        Some([a[0] + dir[0] * base, a[1] + dir[1] * base])
+    }
+}
+
+fn sq_dist(p: [f64; 2], a: [f64; 2]) -> f64 {
+    let (dx, dy) = (p[0] - a[0], p[1] - a[1]);
+    dx * dx + dy * dy
+}
+
 /// Normaliza `v`; `None` se ~zero.
 fn normalize(v: [f64; 2]) -> Option<[f64; 2]> {
     let l = (v[0] * v[0] + v[1] * v[1]).sqrt();

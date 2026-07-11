@@ -4700,6 +4700,37 @@ fn paper_kind_change_resets_params_to_kind_defaults_matching_grain() {
     );
 }
 
+/// **Comprehensive guard: EVERY kind renders the same in Paper and Grain (Enio 2026-07-11).** The whole
+/// bug class the smoke surfaced is "a slot doesn't reset its params to the kind defaults, so the same kind
+/// looks different per slot". This sweeps all `TextureKind`s: after selecting a kind in BOTH slots, their
+/// params must be equal (both = the kind's `param_specs` defaults). Catches any future slot-setter that
+/// forgets the reset, for any kind — not just the reported Voronoi.
+#[test]
+fn every_kind_resets_paper_params_to_match_grain() {
+    use ph2d_painter_brush::TextureKind;
+    let mut t = white_canvas(32, 8.0);
+    let mut seen = std::collections::BTreeSet::new();
+    for k in 0u8..40 {
+        let wire = TextureKind::from_u8(k).to_u8(); // canonical wire (unknown → None), dedup below
+        if !seen.insert(wire) {
+            continue;
+        }
+        t.set_brush_paper_kind(wire);
+        t.set_brush_texture_kind(wire);
+        assert_eq!(
+            t.brush_settings().paper_params,
+            t.brush_settings().texture_params,
+            "kind {:?}: Paper and Grain params must match after a kind change",
+            TextureKind::from_u8(wire)
+        );
+    }
+    assert!(
+        seen.len() > 15,
+        "the sweep must cover the full kind set, not just a few: {}",
+        seen.len()
+    );
+}
+
 #[test]
 fn ramp_move_stop_can_cross_a_neighbour_by_id() {
     use ph2d_color::{ColorRamp, RampColorMode, RampInterp, RampStop};

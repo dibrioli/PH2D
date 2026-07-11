@@ -1,0 +1,24 @@
+[package]
+name = "ph2d-flip"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+[dependencies]
+# Vec2 (glam com feature serde já ligada no ph2d-core) para as posições de ponto.
+# ph2d-core é a fundação universal — depender dela nunca inverte camada.
+ph2d-core = { path = "../ph2d-core" }
+# BlendMode canônico de 22 modos (mesmo enum que o compositor do Painter usa —
+# W1.T1.7 pluga direto, zero mapeamento). Reusar em vez de recriar um enum
+# paralelo de 22 variantes (DIRETIVA_IMPLEMENTACAO §5). Deps leves: serde +
+# ph2d-color, sem bevy/gpu.
+ph2d-painter-effects = { path = "../ph2d-painter-effects" }
+# Modelo puro serializável: undo por snapshot + save (mesma disciplina do
+# ph2d-vec-scene). postcard = wire format canônico do repo.
+serde = { version = "1", features = ["derive"] }
+postcard = { version = "1", features = ["alloc"] }

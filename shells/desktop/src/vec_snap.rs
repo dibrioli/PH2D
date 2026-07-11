@@ -27,8 +27,9 @@ use ph2d_vec_render::Guide;
 use ph2d_vec_scene::VecPathId;
 
 /// Distância máxima de encaixe EM FORMA, em pixels de tela (convertida para world
-/// pelo zoom). A grade tem o raio de magnetismo dela.
-const SNAP_PX: f64 = 8.0;
+/// pelo zoom). A grade tem o raio de magnetismo dela. 10px dá um ímã confortável
+/// (8 era tímido p/ mouse); Alt ignora o snap quando atrapalha.
+const SNAP_PX: f64 = 10.0;
 
 /// Ajustes de snap do módulo vetorial. Só o encaixe em FORMAS — a grade é do
 /// subsistema universal.
@@ -77,6 +78,14 @@ pub(crate) fn guides_of(r: &SnapResult) -> Vec<Guide> {
         }
     }
     out
+}
+
+/// O snap-por-arraste do gizmo é um snap de TRANSLAÇÃO: só se aplica ao gesto
+/// `Translate` (deslizar a forma inteira pelo delta). Em scale/rotate/move-pivot esse
+/// deslize brigaria com o gesto. Pura p/ ser testável sem gfx.
+#[must_use]
+pub(crate) fn snap_applies_during_drag(kind: ph2d_editor::GizmoDragKind) -> bool {
+    matches!(kind, ph2d_editor::GizmoDragKind::Translate)
 }
 
 impl App {
@@ -210,7 +219,12 @@ impl App {
             self.vec_snap_guides.clear();
             return;
         };
-        if matches!(drag.kind, ph2d_editor::GizmoDragKind::MovePivot) {
+        // O snap-por-arraste é um snap de TRANSLAÇÃO (desliza a forma inteira pelo
+        // delta de encaixe). Só vale no gesto Translate — em scale/rotate/move-pivot,
+        // deslizar a forma brigaria com o gesto (o canto/pivô que deveria ficar fixo
+        // saltaria de lado).
+        if !snap_applies_during_drag(drag.kind) {
+            self.vec_snap_guides.clear();
             return;
         }
         let mut bits = vec![drag.entity_bits];
@@ -266,8 +280,26 @@ pub(crate) fn slide_entity_world(sim: &mut SimWorld, bits: u64, delta: [f64; 2])
 
 #[cfg(test)]
 mod tests {
-    use super::guides_of;
+    use super::{guides_of, snap_applies_during_drag};
+    use ph2d_editor::GizmoDragKind;
     use ph2d_vec_edit::snap::{SnapAxis, SnapResult};
+
+    /// O snap-por-arraste é translação-só: scale/rotate/move-pivot NÃO deslizam a
+    /// forma (senão o canto/pivô âncora saltaria durante o gesto).
+    #[test]
+    fn drag_snap_only_applies_to_translate() {
+        assert!(snap_applies_during_drag(GizmoDragKind::Translate));
+        assert!(!snap_applies_during_drag(GizmoDragKind::Rotate));
+        assert!(!snap_applies_during_drag(GizmoDragKind::MovePivot));
+        assert!(!snap_applies_during_drag(GizmoDragKind::ScaleCorner {
+            dx_sign: 1.0,
+            dy_sign: -1.0,
+        }));
+        assert!(!snap_applies_during_drag(GizmoDragKind::ScaleEdge {
+            axis: 0,
+            sign: 1.0,
+        }));
+    }
 
     /// Um encaixe em X faz a fonte deslocada dividir o `x` com o alvo → a guia sai
     /// VERTICAL. É o que torna a linha legível: ela liga os dois pontos alinhados.

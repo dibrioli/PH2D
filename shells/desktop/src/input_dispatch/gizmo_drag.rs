@@ -52,6 +52,24 @@ impl App {
         }
         let content_center = self.pivot_content_center;
 
+        // Scale-snap vetorial: se a forma arrastada é vetorial e o gesto é scale, o
+        // canto arrastado encaixa nas OUTRAS formas (bordas/centros/vértices), como no
+        // translate. Recolhe os alvos + cfg agora, fora do borrow mutável de gfx.
+        let vec_scale_ids = if matches!(
+            drag.kind,
+            ph2d_editor::GizmoDragKind::ScaleCorner { .. }
+                | ph2d_editor::GizmoDragKind::ScaleEdge { .. }
+        ) {
+            self.dragged_vec_path_ids(drag.entity_bits)
+        } else {
+            Vec::new()
+        };
+        let vec_scale_snap = !vec_scale_ids.is_empty();
+        let vec_cfg = self.vec_snap_cfg(self.vec_px_to_world());
+        if vec_scale_snap {
+            self.vec_rebuild_snap_targets(&vec_scale_ids, &[]);
+        }
+
         if let Some(gfx) = self.gfx.as_mut()
             && let Some(hero) = gfx.hero_screen.as_mut()
             && let Some(mut drag) = hero.gizmo.drag
@@ -185,7 +203,35 @@ impl App {
                 } else {
                     drag
                 };
-                let new_t = if is_scale {
+                let new_t = if is_scale && vec_scale_snap {
+                    // Encaixa o CANTO arrastado (cursor) nas outras formas + grade e
+                    // publica as guias — mesmo motor do translate, mas quem aplica é o
+                    // gizmo (o cursor encaixado dirige a razão de escala, pivô fixo). O
+                    // bloco interno solta os borrows do closure antes de gravar as guias.
+                    let targets = &self.vec_snap_targets;
+                    let mut guides: Vec<ph2d_vec_render::Guide> = Vec::new();
+                    let snap_state = &mut hero.grid.snap_state;
+                    let t = {
+                        let mut snap_closure = |w: [f32; 2]| -> [f32; 2] {
+                            let p = [f64::from(w[0]), f64::from(w[1])];
+                            let mut grid = |q: [f64; 2]| crate::vec_snap::ask_grid(snap_state, q);
+                            let r =
+                                ph2d_vec_edit::snap::snap(&[p], targets, vec_cfg, Some(&mut grid));
+                            guides = crate::vec_snap::guides_of(&r);
+                            let s = r.apply(p);
+                            [s[0] as f32, s[1] as f32]
+                        };
+                        ph2d_editor::compute_gizmo_transform(
+                            &drag_for_math,
+                            &cam,
+                            mods,
+                            snap,
+                            Some(&mut snap_closure),
+                        )
+                    };
+                    self.vec_snap_guides = guides;
+                    t
+                } else if is_scale {
                     let snap_state = &mut hero.grid.snap_state;
                     let mut snap_closure = |w: [f32; 2]| -> [f32; 2] {
                         snap_state.snap_world(w, sprite_half_rendered)

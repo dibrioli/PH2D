@@ -80,12 +80,28 @@ pub(crate) fn guides_of(r: &SnapResult) -> Vec<Guide> {
     out
 }
 
-/// O snap-por-arraste do gizmo é um snap de TRANSLAÇÃO: só se aplica ao gesto
-/// `Translate` (deslizar a forma inteira pelo delta). Em scale/rotate/move-pivot esse
-/// deslize brigaria com o gesto. Pura p/ ser testável sem gfx.
+/// O que `snap_dragged_vec_during_drag` faz com as guias, por tipo de arraste do
+/// gizmo. Pura p/ ser testável sem gfx — trava a política de snap-por-gesto.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub(crate) enum DragSnap {
+    /// Translate: o snap desliza a forma inteira pelo delta (feito aqui no shell).
+    SlideTranslate,
+    /// Scale: o encaixe acontece DENTRO do gizmo (`advance_gizmo_drag` alimenta o
+    /// `world_snap_fn` com os alvos vetoriais e já publica as guias) — não mexemos.
+    GizmoOwnsGuides,
+    /// Rotate/MovePivot: sem snap espacial de posição — as guias saem da tela.
+    ClearGuides,
+}
+
+/// Roteia o gesto do gizmo para a disposição de snap correspondente.
 #[must_use]
-pub(crate) fn snap_applies_during_drag(kind: ph2d_editor::GizmoDragKind) -> bool {
-    matches!(kind, ph2d_editor::GizmoDragKind::Translate)
+pub(crate) fn drag_snap_kind(kind: ph2d_editor::GizmoDragKind) -> DragSnap {
+    use ph2d_editor::GizmoDragKind::{MovePivot, Rotate, ScaleCorner, ScaleEdge, Translate};
+    match kind {
+        Translate => DragSnap::SlideTranslate,
+        ScaleCorner { .. } | ScaleEdge { .. } => DragSnap::GizmoOwnsGuides,
+        Rotate | MovePivot => DragSnap::ClearGuides,
+    }
 }
 
 impl App {
@@ -203,12 +219,35 @@ impl App {
         r.delta()
     }
 
+    /// Os `VecPathId` das entidades `bits` que são vetoriais (o resto é ignorado).
+    pub(crate) fn vec_ids_of_bits(&self, bits: &[u64]) -> Vec<VecPathId> {
+        self.gfx.as_ref().map_or_else(Vec::new, |g| {
+            bits.iter()
+                .filter_map(|&b| {
+                    g.sim
+                        .world()
+                        .get::<VecPathRef>(Entity::from_bits(b))
+                        .map(|v| v.0)
+                })
+                .collect()
+        })
+    }
+
+    /// As formas vetoriais arrastadas por um gizmo: a primária (`primary_bits`) mais
+    /// os membros do grupo. Usado para EXCLUIR o que se move dos alvos de snap (uma
+    /// forma não encaixa em si mesma), tanto no translate quanto no scale.
+    pub(crate) fn dragged_vec_path_ids(&self, primary_bits: u64) -> Vec<VecPathId> {
+        let mut bits = vec![primary_bits];
+        bits.extend(self.group_drag_starts.iter().map(|s| s.entity_bits));
+        self.vec_ids_of_bits(&bits)
+    }
+
     /// Snap vetorial em TEMPO REAL durante um arraste de gizmo: chamado a cada
     /// `CursorMoved`, logo depois de `advance_gizmo_drag` seguir o cursor. Encaixa a
     /// forma/grupo (bordas/centros/vértices, X e Y independentes, mais a grade) e
     /// desliza TODOS os membros pelo mesmo delta — um grupo alinha como bloco rígido.
-    /// As guias aparecem no frame. No-op se não há drag, se é `MovePivot`, ou se nada
-    /// arrastado é vetorial.
+    /// As guias aparecem no frame. Só o gesto Translate desliza aqui (scale encaixa
+    /// dentro do gizmo; rotate/move-pivot não têm snap de posição).
     pub(crate) fn snap_dragged_vec_during_drag(&mut self) {
         let drag = self
             .gfx
@@ -219,26 +258,20 @@ impl App {
             self.vec_snap_guides.clear();
             return;
         };
-        // O snap-por-arraste é um snap de TRANSLAÇÃO (desliza a forma inteira pelo
-        // delta de encaixe). Só vale no gesto Translate — em scale/rotate/move-pivot,
-        // deslizar a forma brigaria com o gesto (o canto/pivô que deveria ficar fixo
-        // saltaria de lado).
-        if !snap_applies_during_drag(drag.kind) {
-            self.vec_snap_guides.clear();
-            return;
+        // O snap de translação (deslizar a forma pelo delta) é feito AQUI. Scale
+        // encaixa dentro do gizmo (advance_gizmo_drag, que já publica as guias) — só
+        // saímos. Rotate/MovePivot não têm snap de posição — as guias saem.
+        match drag_snap_kind(drag.kind) {
+            DragSnap::SlideTranslate => {}
+            DragSnap::GizmoOwnsGuides => return,
+            DragSnap::ClearGuides => {
+                self.vec_snap_guides.clear();
+                return;
+            }
         }
         let mut bits = vec![drag.entity_bits];
         bits.extend(self.group_drag_starts.iter().map(|s| s.entity_bits));
-        let ids: Vec<VecPathId> = self.gfx.as_ref().map_or_else(Vec::new, |g| {
-            bits.iter()
-                .filter_map(|&b| {
-                    g.sim
-                        .world()
-                        .get::<VecPathRef>(Entity::from_bits(b))
-                        .map(|v| v.0)
-                })
-                .collect()
-        });
+        let ids = self.vec_ids_of_bits(&bits);
         if ids.is_empty() {
             return;
         }
@@ -280,25 +313,35 @@ pub(crate) fn slide_entity_world(sim: &mut SimWorld, bits: u64, delta: [f64; 2])
 
 #[cfg(test)]
 mod tests {
-    use super::{guides_of, snap_applies_during_drag};
+    use super::{DragSnap, drag_snap_kind, guides_of};
     use ph2d_editor::GizmoDragKind;
     use ph2d_vec_edit::snap::{SnapAxis, SnapResult};
 
-    /// O snap-por-arraste é translação-só: scale/rotate/move-pivot NÃO deslizam a
-    /// forma (senão o canto/pivô âncora saltaria durante o gesto).
+    /// A política de snap-por-gesto: Translate desliza a forma (aqui), Scale deixa o
+    /// gizmo encaixar (não mexe nas guias), Rotate/MovePivot limpam. Se scale voltasse
+    /// a "SlideTranslate" o canto âncora saltaria; se limpasse, a guia do scale sumiria.
     #[test]
-    fn drag_snap_only_applies_to_translate() {
-        assert!(snap_applies_during_drag(GizmoDragKind::Translate));
-        assert!(!snap_applies_during_drag(GizmoDragKind::Rotate));
-        assert!(!snap_applies_during_drag(GizmoDragKind::MovePivot));
-        assert!(!snap_applies_during_drag(GizmoDragKind::ScaleCorner {
-            dx_sign: 1.0,
-            dy_sign: -1.0,
-        }));
-        assert!(!snap_applies_during_drag(GizmoDragKind::ScaleEdge {
-            axis: 0,
-            sign: 1.0,
-        }));
+    fn drag_snap_kind_routes_by_gesture() {
+        assert_eq!(
+            drag_snap_kind(GizmoDragKind::Translate),
+            DragSnap::SlideTranslate
+        );
+        assert_eq!(drag_snap_kind(GizmoDragKind::Rotate), DragSnap::ClearGuides);
+        assert_eq!(
+            drag_snap_kind(GizmoDragKind::MovePivot),
+            DragSnap::ClearGuides
+        );
+        assert_eq!(
+            drag_snap_kind(GizmoDragKind::ScaleCorner {
+                dx_sign: 1.0,
+                dy_sign: -1.0,
+            }),
+            DragSnap::GizmoOwnsGuides,
+        );
+        assert_eq!(
+            drag_snap_kind(GizmoDragKind::ScaleEdge { axis: 0, sign: 1.0 }),
+            DragSnap::GizmoOwnsGuides,
+        );
     }
 
     /// Um encaixe em X faz a fonte deslocada dividir o `x` com o alvo → a guia sai

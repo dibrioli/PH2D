@@ -55,6 +55,7 @@ pub(super) fn cascade_anchor(hero: &HeroScreen, row_id: NodeId) -> (f32, f32) {
 mod curve_point_handle;
 mod falloff_handle;
 mod fill_modal;
+mod flip_toggle;
 mod image_actions;
 mod image_tools_toggle;
 mod io_menu;
@@ -122,6 +123,7 @@ pub fn dispatch_all(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
         || curve_point_handle::apply(hero, event)
         || falloff_handle::apply(hero, event)
         || vector_toggle::apply(hero, event)
+        || flip_toggle::apply(hero, event)
         || motion_toggle::apply(hero, event)
         || timeline_segment::apply(hero, event)
     // <ph2d-chrome-sync:dispatch-end>

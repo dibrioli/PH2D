@@ -75,6 +75,13 @@ pub fn topbar_clusters() -> Vec<(ph2d_a11y::NodeId, TopBarCluster)> {
             ids::TOPBAR_MOTION,
             TopBarCluster::single("MOTION", IconId::MotionNodes),
         ),
+        // Flip drawing tool — the single `flip_tools` pill (ADR-0113 W2). Click
+        // activates it via `flip_toggle::apply` →
+        // `EditorAction::ActivateTool { tool_id: "flip" }`.
+        (
+            ids::TOPBAR_FLIP,
+            TopBarCluster::single("FLIP", IconId::Flip),
+        ),
         (ids::TOPBAR_PLAY_BUTTON, TopBarCluster::play()),
         (ids::TOPBAR_RIGHT_LAYERS, TopBarCluster::right()),
         // Widget Gallery (palette) — toggles a floating reference

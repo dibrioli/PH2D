@@ -1478,7 +1478,7 @@ impl crate::App {
                 // `find_activatable_stateful_tool` helper.
                 let activating_cluster: Option<&'static str> = ph2d_editor::installed_registry()
                     .and_then(|reg| {
-                        ["image_tools", "vector_tools", "motion_tools"]
+                        ["image_tools", "vector_tools", "motion_tools", "flip_tools"]
                             .into_iter()
                             .find(|&cluster_name| {
                                 reg.cluster(cluster_name).iter().any(|m| {
@@ -1495,7 +1495,7 @@ impl crate::App {
                 // toggle so they're always-on (the pill is direct-activate).
                 let gate_on = match activating_cluster {
                     Some("image_tools") => hero.image_edit.mode_on,
-                    Some("vector_tools") | Some("motion_tools") => true,
+                    Some("vector_tools") | Some("motion_tools") | Some("flip_tools") => true,
                     _ => false,
                 };
                 // O pill de um cluster direct-activate ALTERNA: clicar na ferramenta
@@ -1505,8 +1505,10 @@ impl crate::App {
                 // `image_tools` ficam de fora: quem manda neles é o toggle IMG.
                 let already_active = tools.active().map(ph2d_editor::Tool::id)
                     == Some(ph2d_editor::ToolId::new(tool_id));
-                let toggles_off =
-                    matches!(activating_cluster, Some("vector_tools" | "motion_tools"));
+                let toggles_off = matches!(
+                    activating_cluster,
+                    Some("vector_tools" | "motion_tools" | "flip_tools")
+                );
                 if gate_on && already_active && toggles_off {
                     tools.activate_default();
                     self.title_dirty = true;

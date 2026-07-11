@@ -36,6 +36,9 @@ pub fn populate(store: &mut WidgetStore) {
         // (painted + hit-indexed in the fixture → MUST be registered here or the
         // pill is dead on click). Motion Nodes M0.T9.
         ids::TOPBAR_MOTION,
+        // Flip pill — same parity requirement (registered here or dead on click).
+        // ADR-0113 W2.
+        ids::TOPBAR_FLIP,
         ids::TOPBAR_WIDGET_GALLERY,
         ids::TOPBAR_GRID_SETTINGS,
         ids::TOPBAR_SETTINGS,

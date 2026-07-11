@@ -53,6 +53,11 @@ pub const TOPBAR_VECTOR: NodeId = hash_node_id("vector");
 /// active-tool Pressed-highlight reconcile discovers the pill via
 /// `hash_node_id(manifest.id)`. Click routes through `chrome::motion_toggle`.
 pub const TOPBAR_MOTION: NodeId = hash_node_id("motion");
+/// Flip tool pill (ADR-0113 W2). **Hash key = `hash_node_id("flip")`** (the
+/// manifest id, like [`TOPBAR_VECTOR`]) so the active-tool Pressed-highlight
+/// reconcile discovers the pill via `hash_node_id(manifest.id)`. Click routes
+/// through `chrome::flip_toggle` → `ActivateTool { tool_id: "flip" }`.
+pub const TOPBAR_FLIP: NodeId = hash_node_id("flip");
 /// Widget Gallery cluster — toggles the floating reference panel
 /// that showcases every canonical widget (Inputs / Slider /
 /// Switches / Lists / Vector / Status / Color / Actions / Identity /

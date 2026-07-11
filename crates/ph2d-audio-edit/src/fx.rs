@@ -28,7 +28,7 @@ use ph2d_audio::SampleData;
 use ph2d_audio::dsp::{BiquadCoeffs, Delay, Reverb};
 
 use deess::deess;
-use dynamics::{compress, gate, limit};
+use dynamics::{compress, gate, leveler, limit};
 use modulation::{modulated_delay, phaser, tremolo};
 use space::render_wet;
 use tone::{HUM_Q, biquad_all, bitcrush, dehum, saturate, stereo_width};
@@ -63,6 +63,8 @@ const BITCRUSH_BYPASS_BITS: u32 = 16;
 const MOD_BYPASS: f32 = 0.0;
 /// De-Hum at `depth` 0 makes 0 dB cuts (a pass-through), so it is the neutral point.
 const HUM_BYPASS_DEPTH: f32 = 0.0;
+/// The leveler at `amount` 0 leaves the gain at unity — a pass-through.
+const LEVELER_BYPASS_AMOUNT: f32 = 0.0;
 
 /// A single length-preserving offline effect. Each variant has a **neutral point**
 /// at which [`Effect::apply`] returns its input untouched (see
@@ -135,6 +137,17 @@ pub enum Effect {
         ceiling_db: f32,
         /// Look-ahead and recovery radius, in seconds.
         release_secs: f32,
+    },
+    /// **Leveler / AGC**: slow automatic gain toward `target_db` RMS, evening out a
+    /// voice's loudness over time (±12 dB range). `amount` (0..1) crossfades the gain
+    /// toward unity; `speed_secs` is the envelope time constant. Neutral at `amount` 0.
+    Leveler {
+        /// Target RMS level (dBFS).
+        target_db: f32,
+        /// How much of the computed gain to apply (0 = bypass … 1 = full).
+        amount: f32,
+        /// Envelope time constant (seconds): larger = slower, gentler ride.
+        speed_secs: f32,
     },
     /// `tanh` soft-clip saturation (warmth / drive). Neutral at `drive` 0.
     Saturate { drive: f32 },
@@ -237,6 +250,12 @@ impl Effect {
                 ceiling_db,
                 release_secs,
             } if ceiling_db < LIMITER_BYPASS_CEILING_DB => limit(data, ceiling_db, release_secs),
+            // Amount 0 leaves the gain at unity — a pass-through (and would still round).
+            Effect::Leveler {
+                target_db,
+                amount,
+                speed_secs,
+            } if amount > LEVELER_BYPASS_AMOUNT => leveler(data, target_db, amount, speed_secs),
             Effect::Saturate { drive } if drive >= SATURATE_BYPASS_DRIVE => saturate(data, drive),
             Effect::Bitcrush { bits, downsample }
                 if bits < BITCRUSH_BYPASS_BITS || downsample > 1 =>
@@ -356,6 +375,7 @@ impl Effect {
                     if mix <= MOD_BYPASS)
             || matches!(*self, Effect::Tremolo { depth, .. } if depth <= MOD_BYPASS)
             || matches!(*self, Effect::DeHum { depth, .. } if depth <= HUM_BYPASS_DEPTH)
+            || matches!(*self, Effect::Leveler { amount, .. } if amount <= LEVELER_BYPASS_AMOUNT)
     }
 }
 

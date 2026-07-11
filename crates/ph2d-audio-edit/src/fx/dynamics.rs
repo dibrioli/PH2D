@@ -17,6 +17,54 @@ pub(super) fn time_coeff(secs: f32, sr: f32) -> f32 {
     1.0 - (-1.0 / (secs * sr)).exp()
 }
 
+/// Leveler gain clamp (±12 dB) — a slow AGC evens a voice out; it must not swing more
+/// than this or amplify near-silence into audible noise.
+const LEVELER_MAX_GAIN: f32 = 4.0; // +12 dB
+const LEVELER_MIN_GAIN: f32 = 0.25; // −12 dB
+/// RMS floor so a silent stretch's `target / rms` doesn't blow up before the clamp.
+const LEVELER_FLOOR: f32 = 1e-4;
+
+/// **Leveler / AGC**: slow automatic gain toward a target RMS, evening out a voice's
+/// loudness over time. A one-pole mean-square envelope (`speed_secs` time constant)
+/// drives `gain = target / rms`, clamped to ±12 dB; `amount` (0..1) crossfades that
+/// gain toward unity (0 = bypass — the neutral point). The envelope is **primed at the
+/// target**, so the gain starts at 1.0 and eases in — no startup jump (the same idea as
+/// the compressor's `prime`). Length-preserving; control thread, so `powf`/`exp` are
+/// free.
+pub(super) fn leveler(
+    data: &SampleData,
+    target_db: f32,
+    amount: f32,
+    speed_secs: f32,
+) -> SampleData {
+    let sr = data.format().sample_rate as f32;
+    let ch = channels(data);
+    let target = 10f32.powf(target_db / 20.0);
+    let coeff = time_coeff(speed_secs, sr); // one-pole step toward the new level
+    let amount = amount.clamp(0.0, 1.0);
+    let mut ms = target * target; // prime at target → first gain ≈ 1.0
+    let frames = data.frame_count();
+    let mut out = data.samples().to_vec();
+    for f in 0..frames {
+        // Mean square across channels for a single, phase-coherent gain.
+        let mut frame_ms = 0.0;
+        for c in 0..ch {
+            let x = out[f * ch + c];
+            frame_ms += x * x;
+        }
+        frame_ms /= ch as f32;
+        ms += coeff * (frame_ms - ms);
+        let rms = ms.sqrt().max(LEVELER_FLOOR);
+        let gain = (target / rms).clamp(LEVELER_MIN_GAIN, LEVELER_MAX_GAIN);
+        let g = 1.0 + amount * (gain - 1.0);
+        for c in 0..ch {
+            let i = f * ch + c;
+            out[i] = (out[i] * g).clamp(-1.0, 1.0);
+        }
+    }
+    SampleData::from_interleaved(out, data.format())
+}
+
 /// The interleaved peak of frame `f` across every channel. Dynamics are
 /// **stereo-linked** — a per-channel gain swings the image on every transient.
 pub(super) fn frame_peak(src: &[f32], ch: usize, f: usize) -> f32 {
@@ -580,5 +628,35 @@ mod tests {
             "channels got different gains: {gain_l} vs {gain_r}"
         );
         assert!(gain_l < 1.0, "the loud channel was not limited at all");
+    }
+
+    #[test]
+    fn leveler_lifts_a_quiet_signal_toward_the_target() {
+        let sr = 48_000usize;
+        let n = sr / 2; // 0.5 s
+        // A very quiet 300 Hz tone; the leveler (target −12 dB) should bring it UP.
+        let quiet: Vec<f32> = (0..n)
+            .map(|i| (i as f32 * std::f32::consts::TAU * 300.0 / sr as f32).sin() * 0.03)
+            .collect();
+        let d = SampleData::from_interleaved(quiet, AudioFormat::mono(48_000));
+        let out = leveler(&d, -12.0, 1.0, 0.1);
+        // Skip the ease-in and compare the settled tail's RMS.
+        let rms = |s: &[f32]| (s.iter().map(|x| x * x).sum::<f32>() / s.len() as f32).sqrt();
+        let in_rms = rms(&d.samples()[n * 3 / 4..]);
+        let out_rms = rms(&out.samples()[n * 3 / 4..]);
+        assert!(
+            out_rms > in_rms * 2.0,
+            "leveler did not lift the quiet signal: {in_rms} -> {out_rms}"
+        );
+    }
+
+    #[test]
+    fn leveler_at_zero_amount_is_identity() {
+        // amount 0 → gain stays 1.0 → pass-through (the rack's neutral point).
+        let d = SampleData::from_interleaved(vec![0.1, -0.2, 0.3, -0.4], AudioFormat::mono(48_000));
+        let out = leveler(&d, -12.0, 0.0, 0.5);
+        for (a, b) in d.samples().iter().zip(out.samples()) {
+            assert!((a - b).abs() < 1e-6, "0-amount leveler altered the signal");
+        }
     }
 }

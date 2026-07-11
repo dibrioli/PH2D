@@ -273,6 +273,7 @@ mod tests {
                 "Gate",
                 "De-Esser",
                 "Limiter",
+                "Leveler",
                 "Saturate",
                 "Bitcrush",
                 "Widen",

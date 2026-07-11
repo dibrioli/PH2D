@@ -77,6 +77,12 @@ static LIMITER: [FxParamSpec; 2] = [
     // Doubles as the look-ahead: the gain dips this far ahead of every peak.
     spec("Release", 0.002, 0.2, true, 0.02, "s", false),
 ];
+// Amount is the arm (0 = unity gain = pass-through). Speed maps log (a time param).
+static LEVELER: [FxParamSpec; 3] = [
+    spec("Target", -30.0, -6.0, false, -18.0, "dB", false),
+    spec("Amount", 0.0, 1.0, false, 0.0, "", false),
+    spec("Speed", 0.05, 2.0, true, 0.5, "s", false),
+];
 // Linear (not log) so the neutral point can sit at exactly 0.
 static SATURATE: [FxParamSpec; 1] = [spec("Drive", 0.0, 12.0, false, 0.0, "x", false)];
 static BITCRUSH: [FxParamSpec; 2] = [
@@ -127,7 +133,7 @@ static TREMOLO: [FxParamSpec; 2] = [
 
 /// The effects the selector cycles, in order — grouped tone → dynamics → character
 /// → space, the way a rack is laid out.
-pub(crate) static KINDS: [FxKind; 19] = [
+pub(crate) static KINDS: [FxKind; 20] = [
     FxKind {
         name: "Low-Pass",
         params: &LOW_PASS,
@@ -247,6 +253,18 @@ pub(crate) static KINDS: [FxKind; 19] = [
             FxCommand::Plain(Effect::Limiter {
                 ceiling_db: v[0],
                 release_secs: v[1],
+            })
+        },
+    },
+    FxKind {
+        name: "Leveler",
+        params: &LEVELER,
+        arms: &[1], // Amount
+        build: |v| {
+            FxCommand::Plain(Effect::Leveler {
+                target_db: v[0],
+                amount: v[1],
+                speed_secs: v[2],
             })
         },
     },

@@ -335,8 +335,12 @@ impl PainterTool {
         // from FORMING on gated-out texels, but warp/dissolve sampling can still REACH them —
         // the keep-LERP on the final bytes below is the exact restore semantics of the canvas
         // gates, a hard guarantee independent of reach. Both `None` ⇒ keep ≡ 1, byte-identical.
-        let (gate_sel, gate_prot) = self.wet_splat_gates();
+        let (gate_sel, gate_prot, gate_alock) = self.wet_splat_gates();
         let gate_on = gate_sel.is_some() || gate_prot.is_some();
+        // Alpha-lock (§2.10, doc 13 #8): the splats already gated the wash to the frozen α; here we PIN
+        // the composite's α to that same frozen base so a warp-reached transparent texel can't take a
+        // deposit and the silhouette never creeps outward. Off ⇒ byte-identical (no pin).
+        let alock_on = gate_alock.is_some();
         let gsel: Option<&[u8]> = gate_sel.as_deref().map(Vec::as_slice);
         let gprot: Option<&[u8]> = gate_prot.as_deref().map(Vec::as_slice);
         let out = Arc::make_mut(&mut self.canvas_rgba);
@@ -673,7 +677,7 @@ impl PainterTool {
                     // frozen base — the canvas gates' exact restore semantics, warp/diffusion-proof
                     // (see the gate hoist above the loop). Ungated (default) writes paint verbatim.
                     if gate_on {
-                        let keep = watercolor_accum::splat_keep(gsel, gprot, gy * fw + gx);
+                        let keep = watercolor_accum::splat_keep(gsel, gprot, None, gy * fw + gx);
                         if keep < 1.0 {
                             for (c, p) in px.iter_mut().enumerate() {
                                 let painted = f32::from(*p);
@@ -683,6 +687,11 @@ impl PainterTool {
                                     .clamp(0.0, 255.0) as u8;
                             }
                         }
+                    }
+                    // Alpha-lock: freeze the layer's α to the frozen base — colour deposits into the
+                    // existing paint (the splats already scaled coverage by α), the α itself never moves.
+                    if alock_on {
+                        px[3] = base[gi + 3];
                     }
                     row[gx * 4] = px[0];
                     row[gx * 4 + 1] = px[1];

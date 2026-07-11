@@ -24,10 +24,17 @@ pub(super) fn feather(dn: f32) -> f32 {
 /// `apply_watercolor`, over a frozen base), so instead the wash never FORMS on gated-out texels:
 /// the coverage / colour / soak splats scale by this weight, the optics read "no paint here"
 /// (`cw = 0`) and the composite leaves the frozen base verbatim — the same end state the restore
-/// path produces. Callers pass `None` for an inactive gate (both `None` = ungated fast path,
+/// path produces. A THIRD gate (`alock`, doc 13 #8) is the **alpha-lock**: the frozen-base RGBA, whose
+/// α scales the deposit so the wash forms only into existing paint (0 where transparent) — same family,
+/// same machinery. Callers pass `None` for an inactive gate (all `None` = ungated fast path,
 /// byte-identical to before the gates existed).
 #[inline]
-pub(super) fn splat_keep(sel: Option<&[u8]>, prot: Option<&[u8]>, gidx: usize) -> f32 {
+pub(super) fn splat_keep(
+    sel: Option<&[u8]>,
+    prot: Option<&[u8]>,
+    alock: Option<&[u8]>,
+    gidx: usize,
+) -> f32 {
     let mut keep = 1.0f32;
     if let Some(m) = sel {
         keep *= m.get(gidx).map_or(1.0, |&v| f32::from(v) / 255.0);
@@ -36,6 +43,13 @@ pub(super) fn splat_keep(sel: Option<&[u8]>, prot: Option<&[u8]>, gidx: usize) -
         && (gidx * 4 + 2) < s.len()
     {
         keep *= crate::compositor::mask_value(s, gidx);
+    }
+    // Alpha-lock (§2.10): scale by the frozen base's existing α (RGBA, α at `*4 + 3`) — the wash forms
+    // proportional to the paint already there, so transparent texels (α = 0) never take a deposit.
+    if let Some(a) = alock
+        && (gidx * 4 + 3) < a.len()
+    {
+        keep *= f32::from(a[gidx * 4 + 3]) / 255.0;
     }
     keep
 }
@@ -173,14 +187,25 @@ impl PainterTool {
     /// The two active paint-gate buffers for the watercolor splats (`None` each when its gate is off):
     /// the selection mask + the protection scratch, as cloned `Arc` handles so the splat loops can hold
     /// them alongside their `&mut` buffer borrows. See [`splat_keep`].
-    pub(super) fn wet_splat_gates(&self) -> (SplatGate, SplatGate) {
+    pub(super) fn wet_splat_gates(&self) -> (SplatGate, SplatGate, SplatGate) {
         let sel = self
             .selection_restricts_paint()
             .then(|| Arc::clone(&self.paint.selection_mask));
         let prot = self
             .mask_protection_active()
             .then(|| Arc::clone(&self.paint.mask_scratch_rgba));
-        (sel, prot)
+        // Alpha-lock (§2.10, doc 13 #8): gate by the FROZEN base the composite reads — the session base
+        // during a wet session, else the per-stroke base — so the α reference matches the composite's.
+        let alock = self
+            .active_alpha_locked()
+            .then(|| {
+                self.paint
+                    .wet_session_base
+                    .clone()
+                    .or_else(|| self.paint.watercolor_base.clone())
+            })
+            .flatten();
+        (sel, prot, alock)
     }
 
     /// The manual Shape-driven stamp context when **Automatic is OFF** (doc 13 #1); `None` =
@@ -265,9 +290,10 @@ impl PainterTool {
         if water > 0.0 && self.paint.stroke_water.len() != fw * fh {
             self.paint.stroke_water = vec![0u8; fw * fh];
         }
-        // Selection + protection gates ([`splat_keep`]): the wash never forms on gated-out texels.
-        let (sel, prot) = self.wet_splat_gates();
-        let gated = sel.is_some() || prot.is_some();
+        // Selection + protection + alpha-lock gates ([`splat_keep`]): the wash never forms on
+        // gated-out texels (nor beyond the layer's existing alpha when locked).
+        let (sel, prot, alock) = self.wet_splat_gates();
+        let gated = sel.is_some() || prot.is_some() || alock.is_some();
         // Shape "Automatic" OFF ⇒ the Shape section drives the stamp ([`WetShapeStamp`]); `None`
         // (default) = the built-in feather (byte-identical historical path). The colour splat REPLAYS
         // the same rng stream (it re-reads `tex_rng` and is the one that advances it), so both passes
@@ -367,6 +393,7 @@ impl PainterTool {
                         splat_keep(
                             sel.as_deref().map(Vec::as_slice),
                             prot.as_deref().map(Vec::as_slice),
+                            alock.as_deref().map(Vec::as_slice),
                             idx,
                         )
                     } else {
@@ -455,9 +482,9 @@ impl PainterTool {
         // brush colour with the surface it picked up (Charge/Pull). Off (default `wet_charge = 1`) ⇒
         // each dab's own colour (byte-identical). Computed BEFORE borrowing `stroke_color`.
         let mixed = self.wet_mix_dab_colors(dabs);
-        // Selection + protection gates — twin of the coverage splat (see [`splat_keep`]).
-        let (sel, prot) = self.wet_splat_gates();
-        let gated = sel.is_some() || prot.is_some();
+        // Selection + protection + alpha-lock gates — twin of the coverage splat (see [`splat_keep`]).
+        let (sel, prot, alock) = self.wet_splat_gates();
+        let gated = sel.is_some() || prot.is_some() || alock.is_some();
         // Shape "Automatic" OFF: REPLAY the coverage pass's rng stream from the same seed (identical
         // per-dab Random bases ⇒ colour and coverage agree pixel-wise), then ADVANCE the stroke
         // stream here — net one advance per batch, like every other stamp route.
@@ -504,6 +531,7 @@ impl PainterTool {
                         splat_keep(
                             sel.as_deref().map(Vec::as_slice),
                             prot.as_deref().map(Vec::as_slice),
+                            alock.as_deref().map(Vec::as_slice),
                             base + x,
                         )
                     } else {

@@ -158,8 +158,8 @@ impl PainterTool {
         // Selection + protection gates: water doesn't pool on gated-out texels either (the soak
         // deepens lift/dissolve — letting it accumulate outside the selection would deepen the
         // dissolve just inside the boundary from paint the user masked off). See `splat_keep`.
-        let (sel, prot) = self.wet_splat_gates();
-        let gated = sel.is_some() || prot.is_some();
+        let (sel, prot, alock) = self.wet_splat_gates();
+        let gated = sel.is_some() || prot.is_some() || alock.is_some();
         let soak = &mut self.paint.wet_soak;
         let mut grew = false;
         for y in y0..y1 {
@@ -176,6 +176,7 @@ impl PainterTool {
                     super::watercolor_accum::splat_keep(
                         sel.as_deref().map(Vec::as_slice),
                         prot.as_deref().map(Vec::as_slice),
+                        alock.as_deref().map(Vec::as_slice),
                         idx,
                     )
                 } else {

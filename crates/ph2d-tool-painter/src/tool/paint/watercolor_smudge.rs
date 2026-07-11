@@ -30,8 +30,8 @@ impl PainterTool {
         // (`stamp_dabs`): snapshot the smear footprint of the BASE, smear, then lerp the gated texels
         // back by `keep` (`splat_keep` — the same weights `restore_deselected_region` /
         // `restore_protected_region` apply to the canvas). Ungated (the default) ⇒ zero-cost path.
-        let (sel, prot) = self.wet_splat_gates();
-        let gate_region = (sel.is_some() || prot.is_some())
+        let (sel, prot, alock) = self.wet_splat_gates();
+        let gate_region = (sel.is_some() || prot.is_some() || alock.is_some())
             .then(|| Self::smear_footprint(dabs, self.paint.wet_smear_pos, self.source_size))
             .flatten();
         // EDGE-1 wet session: the smear must mutate the base THE COMPOSITE READS — the session
@@ -101,6 +101,7 @@ impl PainterTool {
                     let keep = super::watercolor_accum::splat_keep(
                         sel.as_deref().map(Vec::as_slice),
                         prot.as_deref().map(Vec::as_slice),
+                        alock.as_deref().map(Vec::as_slice),
                         gidx,
                     );
                     if keep >= 1.0 {

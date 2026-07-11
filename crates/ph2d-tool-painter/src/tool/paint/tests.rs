@@ -12586,6 +12586,122 @@ fn watercolor_respects_selection_and_protection_masks() {
     }
 }
 
+/// **Alpha-lock (doc 13 #8) — the watercolor wash paints only into EXISTING alpha.**
+/// Canvas = left half opaque white (α=255), right half transparent (α=0); alpha-lock ON; a wet stroke
+/// (Ragged Edge on, so the warped sampling can REACH the transparent side) straddles the α boundary.
+/// The opaque side takes the wash with its alpha preserved; the transparent side stays fully
+/// transparent — the layer's silhouette is frozen, exactly like the non-wc dab (`acc[3] = pre_alpha`).
+/// RED before the fix: the composite deposits `cov_a` alpha wherever coverage reaches, transparent or
+/// not (`out_a = ab + (1−ab)·cov_a` with `ab = 0` ⇒ `out_a = cov_a > 0`).
+#[test]
+fn watercolor_alpha_lock_paints_only_into_existing_alpha() {
+    let size = 64u32;
+    let mut src = vec![0u8; (size * size * 4) as usize];
+    for y in 0..size {
+        for x in 0..size / 2 {
+            let i = ((y * size + x) * 4) as usize;
+            src[i..i + 4].copy_from_slice(&[255, 255, 255, 255]);
+        }
+    }
+    let mut t = PainterTool::default();
+    t.set_source(src, size, size);
+    t.paint.brush = BrushSpec {
+        radius_px: 8.0,
+        hardness: 1.0,
+        falloff: Falloff::Constant,
+        color: [0.1, 0.2, 0.7],
+        space_attenuation: false,
+        watercolor: true,
+        fill: 0.6,
+        depth: 2.0,
+        edge_gain: 2.0,
+        edge_spread: 4.0,
+        warp: 4.0, // Ragged Edge ON: the warped sampling reaches the transparent side (composite gate)
+        wet_rewet: 1.0,
+        ..Default::default()
+    };
+    for slot in &mut t.paint.brush_by_mode {
+        *slot = t.paint.brush;
+    }
+    let active = t.layers.active().expect("active layer");
+    t.layers.get_mut(active).expect("layer").alpha_locked = true;
+
+    // Stroke centred on the α boundary (x=32), radius 8 ⇒ the disc covers x∈[24,40].
+    assert!(t.on_canvas_pointer(cp([32.0, 32.0], PointerPhase::Down)));
+    t.on_canvas_pointer(cp([32.0, 32.0], PointerPhase::Up));
+
+    // Opaque side: the wash landed (colour moved) and the alpha is still fully opaque.
+    let inside = px(&t, size, 26, 32);
+    assert_ne!(
+        [inside[0], inside[1], inside[2]],
+        [255, 255, 255],
+        "opaque side took the watercolor wash"
+    );
+    assert_eq!(inside[3], 255, "opaque side alpha preserved");
+
+    // Transparent side (inside the disc at x=36/38, and warp-reach at x=44): alpha-lock froze it.
+    for x in [36u32, 38, 44] {
+        assert_eq!(
+            px(&t, size, x, 32)[3],
+            0,
+            "alpha-lock kept the transparent side transparent (x={x})"
+        );
+    }
+}
+
+/// **Alpha-lock is a no-op where the layer is fully opaque (byte-identical, §0.6).** On an opaque
+/// canvas every texel has `ka = 1` ⇒ the splat gate is `1.0` and the composite's α-pin re-writes the
+/// already-opaque α — so a locked stroke must be byte-for-byte the same as the unlocked one.
+#[test]
+fn watercolor_alpha_lock_is_a_noop_on_fully_opaque() {
+    fn wet(t: &mut PainterTool) {
+        t.paint.brush = BrushSpec {
+            radius_px: 8.0,
+            hardness: 1.0,
+            falloff: Falloff::Constant,
+            color: [0.1, 0.2, 0.7],
+            space_attenuation: false,
+            watercolor: true,
+            fill: 0.6,
+            depth: 2.0,
+            edge_gain: 2.0,
+            edge_spread: 4.0,
+            warp: 4.0,
+            wet_rewet: 1.0,
+            ..Default::default()
+        };
+        for slot in &mut t.paint.brush_by_mode {
+            *slot = t.paint.brush;
+        }
+    }
+    fn stroke(t: &mut PainterTool) {
+        assert!(t.on_canvas_pointer(cp([24.0, 32.0], PointerPhase::Down)));
+        t.on_canvas_pointer(cp([40.0, 32.0], PointerPhase::Move));
+        t.on_canvas_pointer(cp([40.0, 32.0], PointerPhase::Up));
+    }
+    let size = 64u32;
+
+    let mut unlocked = white_canvas(size, 8.0);
+    wet(&mut unlocked);
+    stroke(&mut unlocked);
+
+    let mut locked = white_canvas(size, 8.0);
+    wet(&mut locked);
+    let active = locked.layers.active().expect("active layer");
+    locked.layers.get_mut(active).expect("layer").alpha_locked = true;
+    stroke(&mut locked);
+
+    for y in 0..size {
+        for x in 0..size {
+            assert_eq!(
+                px(&locked, size, x, y),
+                px(&unlocked, size, x, y),
+                "alpha-lock changed a fully-opaque pixel at ({x},{y})"
+            );
+        }
+    }
+}
+
 /// **Shape "Automatic" (doc 13 #1) — the continuity + capability contract.**
 /// (a) CONTINUITY: unchecking Automatic (which auto-selects the `Falloff::Watercolor` preset — the
 /// built-in feather as a curve) paints a stroke BYTE-IDENTICAL to Automatic: the manual path with the

@@ -119,6 +119,22 @@ impl VariableFont {
             .map_err(|e| FontFaceError::Draw(e.to_string()))?;
         Ok(GlyphOutline::new(pen.commands, self.units_per_em))
     }
+
+    /// Avanço horizontal do glyph em UNIDADES DE DESIGN (mesmo `location` dos eixos
+    /// do [`Self::outline`]). `None` = sem métrica; o chamador de layout usa 0.
+    pub fn advance(&self, glyph: GlyphId, axis_values: &[(AxisTag, f32)]) -> Option<f32> {
+        let font = self.font();
+        let settings: Vec<(String, f32)> = axis_values
+            .iter()
+            .map(|(t, v)| (t.as_str().to_owned(), *v))
+            .collect();
+        let location: Location = font
+            .axes()
+            .location(settings.iter().map(|(t, v)| (t.as_str(), *v)));
+        let gid = skrifa::GlyphId::new(glyph.0);
+        font.glyph_metrics(Size::unscaled(), &location)
+            .advance_width(gid)
+    }
 }
 
 /// Collects skrifa pen calls into neutral [`PathCommand`]s.

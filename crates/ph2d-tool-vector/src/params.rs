@@ -54,6 +54,9 @@ pub enum DrawMode {
     Spiral,
     Line,
     Arc,
+    /// Texto: clica no canvas e digita; cada glyph vira um `VecPath` preenchido
+    /// (ADR-0108). Não é uma shape-tool nem cria pelo Pen — o shell trata o gesto.
+    Text,
 }
 
 /// UI-facing vertex type for the docked panel's Vertex section (mirror of

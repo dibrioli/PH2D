@@ -1140,8 +1140,9 @@ fn shape_kind_for_mode(mode: ph2d_tool_vector::DrawMode) -> Option<ph2d_vec_edit
     use ph2d_tool_vector::DrawMode;
     use ph2d_vec_edit::ShapeKind;
     match mode {
-        // Select/Node não desenham (ADR-0112); Pen desenha à mão livre.
-        DrawMode::Select | DrawMode::Node | DrawMode::Pen => None,
+        // Select/Node não desenham (ADR-0112); Pen desenha à mão livre; Text é
+        // digitação (tratada à parte no shell), não uma shape-tool.
+        DrawMode::Select | DrawMode::Node | DrawMode::Pen | DrawMode::Text => None,
         DrawMode::Rectangle => Some(ShapeKind::Rectangle),
         DrawMode::Ellipse => Some(ShapeKind::Ellipse),
         DrawMode::Polygon => Some(ShapeKind::Polygon),
@@ -2325,6 +2326,19 @@ impl App {
                         self.vec_grad_drag = Some(i);
                         if let Some(gfx) = self.gfx.as_ref() {
                             self.vec_history.begin(&gfx.vec_scene);
+                        }
+                        return;
+                    }
+                    // Modo Text: o clique põe/reposiciona o cursor de texto no ponto
+                    // clicado (finalizando a edição anterior). A digitação vem pelo
+                    // teclado; nada de shape/pen aqui.
+                    if self.vec_draw_config.mode == ph2d_tool_vector::DrawMode::Text {
+                        let w = self.gfx.as_ref().map(|gfx| {
+                            gfx.camera
+                                .screen_to_world(self.last_pointer, gfx.surface.size())
+                        });
+                        if let Some(w) = w {
+                            self.vec_text_click([f64::from(w[0]), f64::from(w[1])]);
                         }
                         return;
                     }

@@ -47,6 +47,46 @@ impl App {
             timestamp_ns: Self::timestamp_ns(),
         });
 
+        // Texto vetorial: enquanto uma sessão de digitação está ativa (modo Text +
+        // clicou no canvas), as teclas vão pro TEXTO — antes dos atalhos de forma e
+        // do forward pros widgets. Ctrl/Super passam (Ctrl+Z etc. seguem globais).
+        if self.vector_tool_active()
+            && self.vec_text_editing()
+            && state == ElementState::Pressed
+            && !self.modifiers.control_key()
+            && !self.modifiers.super_key()
+        {
+            if let PhysicalKey::Code(code) = physical_key {
+                match code {
+                    KeyCode::Backspace => {
+                        self.vec_text_backspace();
+                        return;
+                    }
+                    KeyCode::Escape => {
+                        self.vec_text_finish();
+                        return;
+                    }
+                    KeyCode::Enter | KeyCode::NumpadEnter => {
+                        self.vec_text_newline();
+                        return;
+                    }
+                    _ => {}
+                }
+            }
+            if let Some(s) = text.as_ref() {
+                let mut typed = false;
+                for ch in s.chars() {
+                    if !ch.is_control() {
+                        self.vec_text_append(ch);
+                        typed = true;
+                    }
+                }
+                if typed {
+                    return;
+                }
+            }
+        }
+
         // ADR-0108 Fase 1: modo vetorial (flag PH2D_VEC_PEN) — U/I/D/X fazem a
         // booleana (Union/Intersect/Difference/Exclude) das 2 últimas regiões
         // fechadas; Delete/Backspace apaga o path
@@ -72,6 +112,13 @@ impl App {
             if matches!(code, KeyCode::Delete | KeyCode::Backspace)
                 && self.vec_delete_selected_vertex_or_path()
             {
+                return;
+            }
+            // Texto vetorial: `T` entra/sai do modo Text (atalho-padrão de ferramenta
+            // de texto). Enquanto uma sessão de texto está ATIVA, o `T` é capturado
+            // antes daqui (vira a letra digitada) — este ramo só troca o modo.
+            if code == KeyCode::KeyT {
+                self.vec_text_toggle_mode();
                 return;
             }
         }

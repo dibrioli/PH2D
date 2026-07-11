@@ -84,7 +84,9 @@ mod snapshots;
 mod upscale_bridge;
 // ADR-0108 cutover: the single Vector-tool bridge (style sync + recolour).
 // Rendering of `AppGfx.vec_scene` stays inline below (ph2d_vec_render).
-mod vector_bridge;
+// pub(crate): `set_mode` é chamado do `vec_text` (o `T` troca o modo pela allowlist
+// de downcast deste bridge).
+pub(crate) mod vector_bridge;
 
 use crate::*;
 
@@ -2183,6 +2185,11 @@ impl crate::App {
             // qualquer modo, inclusive o gizmo-move do Select (P1, ADR-0112).
             if overlay.snap_guides {
                 ph2d_vec_render::draw_snap_guides(&self.vec_snap_guides, cam_affine, vector_scene);
+            }
+            // Cursor de texto (modo Text): na ponta da última linha em edição. Lê só o
+            // campo `vec_text_edit` (fn livre), pra não colidir com o borrow de gfx.
+            if let Some((a, b)) = crate::vec_text::caret_of(self.vec_text_edit.as_ref()) {
+                ph2d_vec_render::draw_text_caret(a, b, cam_affine, vector_scene);
             }
             // Drain the Painter Falloff right-click handle menu choice (chrome
             // parked the HandleType wire u8 in `pending_falloff_point_handle`) →

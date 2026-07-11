@@ -50,6 +50,14 @@ const WGHT_TAG: u32 = tag_from_bytes(b"wght");
 /// in this directory).
 const INTER_VARIABLE_TTF: &[u8] = include_bytes!("../fonts/InterVariable.ttf");
 
+/// Os bytes da fonte embutida (InterVariable, OFL). Exposto para quem precisa dos
+/// contornos crus dos glyphs — ex. texto VETORIAL (skrifa → `VecPath`), que não passa
+/// pelo pipeline parley/vello de UI.
+#[must_use]
+pub fn inter_variable_ttf() -> &'static [u8] {
+    INTER_VARIABLE_TTF
+}
+
 /// Family name registered when bundled Inter loads successfully.
 /// Falls back to `sans-serif` if registration fails (corrupted bytes,
 /// future fontique breaking change, etc.) so we never panic at startup.

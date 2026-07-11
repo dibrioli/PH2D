@@ -155,6 +155,13 @@ impl VectorTool {
         self.mode
     }
 
+    /// Set the canvas draw-mode. The panel's mode row goes through
+    /// `handle_panel_event`; this is the equivalent entry point for a keyboard
+    /// shortcut (e.g. `T` → [`DrawMode::Text`]) driven from the shell.
+    pub fn set_mode(&mut self, mode: DrawMode) {
+        self.mode = mode;
+    }
+
     /// Current polygon side count (only meaningful in `DrawMode::Polygon`).
     #[must_use]
     pub fn polygon_sides(&self) -> u32 {

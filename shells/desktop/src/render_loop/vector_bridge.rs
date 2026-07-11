@@ -105,6 +105,19 @@ thread_local! {
     static RECOLOR_PRE: RefCell<Option<VecScene>> = const { RefCell::new(None) };
 }
 
+/// Troca o modo de desenho da tool Vector (a tool é a dona; o shell só espelha). O
+/// downcast fica confinado a este bridge (allowlist da gate
+/// `no_downcast_to_concrete_tool_in_shell`); o resto do shell chama por aqui. No-op se
+/// a tool Vector não está no registry.
+pub(crate) fn set_mode(tools: &mut ToolRegistry, mode: ph2d_tool_vector::DrawMode) {
+    if let Some(tool) = tools.tool_by_id_mut(&ToolId::new("vector")).and_then(|t| {
+        t.as_any_mut()
+            .downcast_mut::<ph2d_tool_vector::VectorTool>()
+    }) {
+        tool.set_mode(mode);
+    }
+}
+
 /// Per-frame Vector-tool plumbing. Safe to call every frame; a no-op when the
 /// Vector tool is absent from the registry.
 /// Returns the tool's current [`VectorDrawConfig`] so the shell can mirror it

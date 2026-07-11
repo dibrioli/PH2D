@@ -28,6 +28,23 @@ const GUIDE: Color = Color::from_rgba8(90, 200, 235, 230);
 /// Meia-aresta da cruz que marca a ponta de uma guia, em pixels de tela.
 const TICK_PX: f64 = 4.0;
 
+/// Cursor de texto (modo Text): um segmento vertical SÓLIDO no ponto de inserção,
+/// screen-space via `transform`. `a`/`b` são as pontas em world (base e topo).
+pub fn draw_text_caret(a: [f64; 2], b: [f64; 2], transform: Affine, target: &mut VectorScene) {
+    let pa = transform * Point::new(a[0], a[1]);
+    let pb = transform * Point::new(b[0], b[1]);
+    let mut line = BezPath::new();
+    line.move_to(pa);
+    line.line_to(pb);
+    target.inner_mut().stroke(
+        &Stroke::new(1.5),
+        Affine::IDENTITY,
+        &Brush::Solid(GUIDE),
+        None,
+        &line,
+    );
+}
+
 /// Desenha as guias de snap ativas neste frame (screen-space, via `transform`).
 pub fn draw_snap_guides(guides: &[Guide], transform: Affine, target: &mut VectorScene) {
     let dashed = Stroke::new(1.0).with_dashes(0.0, [4.0, 3.0]);

@@ -642,6 +642,9 @@ pub(crate) struct App {
     pub(crate) vec_snap_targets: ph2d_vec_edit::SnapTargets,
     /// Smart guides to draw this frame (cleared at Up / when nothing snapped).
     pub(crate) vec_snap_guides: Vec<ph2d_vec_render::Guide>,
+    /// Edição de texto em curso (modo `DrawMode::Text`): o ponto de inserção, o
+    /// conteúdo e os glyphs já na cena. `None` = sem cursor de texto ativo.
+    pub(crate) vec_text_edit: Option<crate::vec_text::VecTextEdit>,
     /// `VecPathId` → entidade ECS que o representa na Hierarquia (ADR-0110). O
     /// invariante "um path ⟺ uma entidade" é mantido por `vec_entities::sync`.
     pub(crate) vec_entities: crate::vec_entities::VecEntityMap,

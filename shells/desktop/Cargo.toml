@@ -215,11 +215,14 @@ ph2d-vec-render = { path = "../../crates/ph2d-vec-render" }
 ph2d-vec-edit = { path = "../../crates/ph2d-vec-edit" }
 # ADR-0108 Fase 1: booleanas edit-time (union/intersect/subtract via linesweeper).
 ph2d-vec-boolean = { path = "../../crates/ph2d-vec-boolean" }
-# ADR-0113: documento do Flip (animação quadro-a-quadro). W0 = dados + ponte ECS
+# ADR-0114: documento do Flip (animação quadro-a-quadro). W0 = dados + ponte ECS
 # (flip_entities) + undo/save; render e tool vêm nas waves seguintes.
 ph2d-flip = { path = "../../crates/ph2d-flip" }
-# ADR-0113 W1: pipeline wgpu dedicado do traço do Flip (passe no present.rs).
+# ADR-0114 W1: pipeline wgpu dedicado do traço do Flip (passe no present.rs).
 ph2d-flip-render = { path = "../../crates/ph2d-flip-render" }
+# Texto vetorial (W1): glyph outlines (skrifa) → VecPath do motor novo. O crate é
+# foundational mas está FORA do gate congelado (que só escaneia -doc/-traits).
+ph2d-vector-font = { path = "../../crates/ph2d-vector-font" }
 ph2d-text = { path = "../../crates/ph2d-text" }
 # bevy_ecs is required as a direct dep so `#[derive(Component)]` can
 # resolve its `::bevy_ecs::*` absolute paths. The shell is the

@@ -69,6 +69,7 @@ mod vec_gizmo_view;
 mod vec_overlay;
 mod vec_selection;
 mod vec_snap;
+mod vec_text;
 mod vec_transform;
 mod winit_host;
 
@@ -254,6 +255,7 @@ impl App {
             vec_snap: crate::vec_snap::VecSnapSettings::default(),
             vec_snap_targets: ph2d_vec_edit::SnapTargets::default(),
             vec_snap_guides: Vec::new(),
+            vec_text_edit: None,
             vec_entities: Default::default(),
             flip_entities: Default::default(),
             vec_sel: Default::default(),

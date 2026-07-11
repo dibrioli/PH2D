@@ -10,12 +10,14 @@
 
 ## 1. Identidade
 - **Branch:** `line/audio` · **merge-base com main:** `1c7c9a22` (= HEAD do main integrado).
-- **HEAD atual:** `c37efcd3`. **Commits à frente do main:** **5** —
+- **HEAD atual:** `845561b8`. **Commits à frente do main:** **7** —
   1. `ecd2587a feat(audio): W6 variation containers — random/sequence/shuffle + jitter + weights`
   2. `e48e237b docs(audio): W6 variation containers — tracker + handoff`
   3. `6bf70ca1 feat(audio): W6 import por convenção — Add Folder popula o set (natural sort)`
   4. `80add6ed docs(audio): W6 import por convenção — tracker + handoff`
   5. `c37efcd3 feat(audio): W6 export Ogg Vorbis via vorbis_rs (ADR-0113); Opus adiado`
+  6. `fd3a5fa6 docs(audio): W6 Ogg Vorbis export — tracker + handoff`
+  7. `845561b8 fix(audio): undo/redo/invert intermitentes — 3 causas da auditoria multiagente`
 - Árvore limpa. Fast-forward puro sobre o main atual (a linha foi resetada ao main recém-integrado antes de começar).
 
 ## 2. Foundational / compartilhado tocado (e por quê)
@@ -60,4 +62,17 @@ Container de variação estilo Wwise/FMOD, **autorado + auditado + salvo** no pa
 - **Export Ogg Vorbis (commit `c37efcd3`, ADR-0113):** `ph2d-audio-encode::{encode_ogg,write_ogg}` via `vorbis_rs` (API segura → `forbid(unsafe_code)` mantido; de-interleava p/ planar; VBR `OGG_DEFAULT_QUALITY=0.5`). **Round-trip provado** (2 testes: encode → `ph2d_audio_decode` re-decoda estéreo+mono, mesmo layout/duração/RMS). UI: botão **Export OGG…** (transport; **Export…**→**Export WAV…**), intent em `loop_state.rs` (não em `snapshot.rs`, que está 600/600), `editor_export_ogg` escreve o SOUNDING clip (Ogg não carrega `smpl`/`cue` → loop/markers seguem WAV-only). Testes de `ph2d-audio-encode` extraídos p/ `src/tests.rs` (lib.rs 767→513, sob 700). **Opus adiado** (ADR-0113 §Opus): via Rust força `unsafe` neste crate (`unsafe-libopus`) ou libopus de sistema (`audiopus`) — recomendação = crate irmão isolado `ph2d-audio-opus` (puro-Rust, `unsafe` contido), decisão própria pro próximo passo.
 - **Aberto no W6:** Opus (acima) · codec/residência por-asset + readout tamanho/RAM. Follow-ups da variação: enable-toggle por-entry na UI (o modelo/manifesto já carregam `enabled`); manifesto guarda caminho ABSOLUTO (relativo = mais portátil, follow-up); overlay não desenha o set (proposital).
 
-*"Linha `audio` pronta (HEAD `c37efcd3`, 5 commits; **+1 dep nova `vorbis_rs`**). Handoff de integração acima. Aguardo ordem de integração."*
+## 8. Bugfix — auditoria de intermitências (commit `845561b8`, 2026-07-11)
+
+Enio reportou undo/redo e invert "quase sempre funcionam, mas nem sempre". **3 auditores paralelos** (roteamento de teclado · caminho de botão · mecânica/publish) acharam **3 bugs reais e independentes** (file:line + asserção-vermelha). **Corrigi os 3 do meu escopo:**
+- **A2 (intermitente dos BOTÕES):** `apply_event` só casava `Click`; um 2º clique no mesmo botão em <350ms vira `DoubleClick` → `Ignored` → intent nunca armava. Fix: normalizo `DoubleClick→Click` no topo do `apply_event` (`event.rs`, cobre todos os botões; casa com motion-graph/timeline). **Seam test dirige o DoubleClick** (RED→GREEN, mutation-proof).
+- **A1 (intermitente do TECLADO):** Ctrl+Z só era consumido pelo áudio quando `can_undo`; ao esgotar a pilha do `EditClip` **vazava pro undo GLOBAL**, restaurando o WorldSnapshot + limpando seleção → "pulava a cena". Fix: áudio aberto+carregado **consome o chord incondicionalmente** (`input_handlers.rs`, KeyZ) — como painter/motion/timeline. ⚠️ **Muda um comentário-decisão** (o fall-through era documentado como intencional) — mudei porque o dono reportou o resultado como bug; racional novo no comentário.
+- **A3 (Invert "não aparece"):** a waveform colapsava cada coluna em `abs()` → Invert (flip de sinal) ficava idêntico. Fix: envelope min/max **assinado** (`audio_overlay.rs`, `column_bar` + 2 unit tests); dado já em `ColumnPeaks`. (Tom puro invertido segue idêntico — física.)
+
+**⚠️ DEFERIDOS — outros donos (NÃO consertei; [[feedback_audit_scope_discipline]]):**
+- **Amplificador do undo global (dono: undo.rs / sim):** os sprites da cena default têm `Velocity` e bouncam TODO frame (`sim_extract.rs`, sim não-gated em play/pause), então `post_frame_undo` grava passos ESPÚRIOS no undo global. Foi o que fazia o vazamento do A1 "pular a cena" em vez de no-op. Meu fix do A1 tira o áudio da jogada, mas o undo global continua gravando lixo e o Ctrl+Z global fora do áudio ainda recua um frame de bounce. **Fix real = gatear a sim em play/pause OU `post_frame_undo` ignorar diffs só-de-sim.**
+- **Timeline/motion preemptam o Ctrl+Z do áudio (A1 Achado 2, cross-line):** os blocos timeline/motion (`input_dispatch/keyboard.rs:180-231`) rodam ANTES do bloco de áudio; com o painel Timeline aberto + áudio aberto, Ctrl+Z pode ir pro timeline. Recomendação do auditor: **centralizar a prioridade de undo** (audio > painter > motion > timeline > global) num ponto só, em vez de blocos espalhados com `return`.
+- **`EDIT_CMD` coalescing (secundário, meu):** dois cliques de edição no MESMO frame de 16ms colapsam (Cell de slot único, só botão). O fix do A2 remove o caso comum (janela de 350ms); o mesmo-frame é bem mais raro. Hardening opcional: fila em vez de Cell.
+- **Gap de teste do teclado:** o fix do A1 **não tem asserção-vermelha** — não existe harness headless que dirija `handle_editor_key` num `App` completo (o auditor confirmou). Follow-up: construir esse harness OU extrair a decisão de roteamento pra fn testável.
+
+*"Linha `audio` pronta (HEAD `845561b8`, 7 commits; **+1 dep nova `vorbis_rs`** · **+3 bugfixes de auditoria**, 3 itens deferidos a outros donos no §8). Handoff de integração acima. Aguardo ordem de integração."*

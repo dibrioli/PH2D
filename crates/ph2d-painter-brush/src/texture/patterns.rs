@@ -10,9 +10,11 @@ use super::{ImageMask, TextureKind};
 use crate::ramp_alpha::RampAlphaMode;
 
 mod layer;
+mod math;
 mod paper_tile;
 mod specs;
 pub use layer::render_texture_layer;
+use math::*;
 pub use specs::{ParamSpec, param_specs};
 
 /// Evaluate `kind` at texture coords `tex` (after the mapping resolved them), shaped by the kind's
@@ -25,23 +27,56 @@ pub(super) fn sample_kind(
     params: [f32; super::MAX_TEX_PARAMS],
     image: Option<&ImageMask>,
 ) -> f32 {
+    sample_kind_t(kind, tex, params, image, [0, 0])
+}
+
+/// True when `kind` is a **lattice** procedural that [`sample_kind_t`] can wrap at an integer period for
+/// seamless any-size tiling (the value-noise family + Voronoi). A caller that snaps a slot's Size for
+/// sprite-seamless tiling ([`super::sample_tiled_rot_wrapped`]) must snap THESE to an integer `rel`-span;
+/// analytic patterns (Checker / Stripes / Bricks / …) tile by cell parity and are a separate follow-up.
+#[must_use]
+pub fn lattice_tileable(kind: TextureKind) -> bool {
+    matches!(
+        kind,
+        TextureKind::Noise
+            | TextureKind::Clouds
+            | TextureKind::DistortedNoise
+            | TextureKind::Musgrave
+            | TextureKind::Stucci
+            | TextureKind::Grain
+            | TextureKind::Voronoi
+    )
+}
+
+/// [`sample_kind`] with a lattice **wrap** period `(pu, pv)` in cells (`[0, 0]` = no wrap ⇒ byte-identical):
+/// the [`lattice_tileable`] kinds repeat seamlessly across a sprite span of exactly that many cells.
+/// Non-lattice kinds ignore it (analytic / bitmap tiling is handled by their own period, not the hash).
+#[must_use]
+pub(super) fn sample_kind_t(
+    kind: TextureKind,
+    tex: [f32; 2],
+    params: [f32; super::MAX_TEX_PARAMS],
+    image: Option<&ImageMask>,
+    period: [i32; 2],
+) -> f32 {
     let (u, v) = (tex[0], tex[1]);
+    let (pu, pv) = (period[0], period[1]);
     let k = &params[2..]; // the kind's shape knobs (see `param_specs`)
     let raw = match kind {
         TextureKind::None => 1.0,
-        TextureKind::Noise => noise(u, v, k),
+        TextureKind::Noise => noise_t(u, v, k, pu, pv),
         TextureKind::Checker => checker(u, v, k),
-        TextureKind::Voronoi => voronoi(u, v, k),
+        TextureKind::Voronoi => voronoi_t(u, v, k, pu, pv),
         TextureKind::Stripes => stripes(u, v, k),
-        TextureKind::Clouds => clouds(u, v, k),
-        TextureKind::DistortedNoise => distorted_noise(u, v, k),
+        TextureKind::Clouds => clouds_t(u, v, k, pu, pv),
+        TextureKind::DistortedNoise => distorted_noise_t(u, v, k, pu, pv),
         TextureKind::Magic => magic(u, v, k),
         TextureKind::Marble => marble(u, v, k),
-        TextureKind::Musgrave => musgrave(u, v, k),
+        TextureKind::Musgrave => musgrave_t(u, v, k, pu, pv),
         TextureKind::Wood => wood(u, v, k),
-        TextureKind::Stucci => stucci(u, v, k),
+        TextureKind::Stucci => stucci_t(u, v, k, pu, pv),
         TextureKind::Gradient => gradient(u, k),
-        TextureKind::Grain => grain(u, v, k),
+        TextureKind::Grain => grain_t(u, v, k, pu, pv),
         TextureKind::Crosshatch => crosshatch(u, v, k),
         TextureKind::Dots => dots(u, v, k),
         TextureKind::Grid => grid(u, v, k),
@@ -167,25 +202,33 @@ fn gain_from(rough: f32) -> f32 {
     0.30 + rough.clamp(0.0, 1.0) * 0.50
 }
 
-/// Distort `(u, v)` by a noise field, amount `0..1` (the `Warp` knob; `0` = identity).
-fn warp_uv(u: f32, v: f32, amt: f32) -> (f32, f32) {
+/// Distort `(u, v)` by a noise field, amount `0..1` (the `Warp` knob; `0` = identity), with the
+/// displacement field wrapped at integer period `(pu, pv)` cells (`0` = no wrap). The offsets
+/// `+5.2`/`+1.3`/… only phase-shift a field that is already `pu`-periodic, so the warped coord
+/// `wu = u + a·dx(u)` still satisfies `wu(u + pu) = wu(u) + pu` — periodicity survives the warp.
+fn warp_uv_t(u: f32, v: f32, amt: f32, pu: i32, pv: i32) -> (f32, f32) {
     if amt <= 1e-4 {
         return (u, v);
     }
     let a = amt * 2.5;
-    let dx = value_noise(u + 5.2, v + 1.3) - 0.5;
-    let dy = value_noise(u - 1.7, v + 8.4) - 0.5;
+    let dx = value_noise_t(u + 5.2, v + 1.3, pu, pv) - 0.5;
+    let dy = value_noise_t(u - 1.7, v + 8.4, pu, pv) - 0.5;
     (u + a * dx, v + a * dy)
 }
 
-/// fBm with a tunable persistence `gain` (see [`fbm`], which fixes `gain = 0.5`).
-fn fbm_g(u: f32, v: f32, octaves: u32, gain: f32) -> f32 {
+/// fBm with a tunable persistence `gain` (see [`fbm`], which fixes `gain = 0.5`), with the lattice
+/// wrapped at integer base period `(pu, pv)` cells (`0` = no wrap). Each octave samples at `freq×` the
+/// coords, so its lattice period is `pu·freq` — an integer while `freq` stays a power of two, keeping
+/// every octave seam-free at the same sprite span. `(0, 0)` = byte-identical to the plain fBm.
+fn fbm_g_t(u: f32, v: f32, octaves: u32, gain: f32, pu: i32, pv: i32) -> f32 {
     let (mut sum, mut amp, mut freq, mut norm) = (0.0, 1.0, 1.0, 0.0);
+    let mut fi = 1; // integer octave multiplier — doubles with `freq` so the period scales with it
     for _ in 0..octaves {
-        sum += amp * value_noise(u * freq, v * freq);
+        sum += amp * value_noise_t(u * freq, v * freq, pu * fi, pv * fi);
         norm += amp;
         amp *= gain;
         freq *= 2.0;
+        fi *= 2;
     }
     sum / norm.max(1e-6)
 }
@@ -234,20 +277,35 @@ fn band_soft(x: f32, w: f32, soft: f32) -> f32 {
 
 /// One octave of value noise in `[0, 1]`: hashed lattice values, smoothstep-interpolated.
 fn value_noise(u: f32, v: f32) -> f32 {
+    value_noise_t(u, v, 0, 0)
+}
+
+/// [`value_noise`] with the lattice hash wrapped at integer period `(pu, pv)` cells (`0` = no wrap),
+/// so it tiles seamlessly across a sprite span of exactly that many cells: cell `pu` reuses cell `0`'s
+/// hash, so `noise(u) == noise(u + pu)`. `(0, 0)` = byte-identical to the plain field.
+fn value_noise_t(u: f32, v: f32, pu: i32, pv: i32) -> f32 {
     let (x0, y0) = (ifloor(u), ifloor(v));
     let (sx, sy) = (smoothstep(u - u.floor()), smoothstep(v - v.floor()));
-    let n00 = hash2(x0, y0);
-    let n10 = hash2(x0 + 1, y0);
-    let n01 = hash2(x0, y0 + 1);
-    let n11 = hash2(x0 + 1, y0 + 1);
+    let n00 = hash2w(x0, y0, pu, pv);
+    let n10 = hash2w(x0 + 1, y0, pu, pv);
+    let n01 = hash2w(x0, y0 + 1, pu, pv);
+    let n11 = hash2w(x0 + 1, y0 + 1, pu, pv);
     lerp(lerp(n00, n10, sx), lerp(n01, n11, sx), sy)
 }
 
 /// **Noise**: fractal value noise. `Detail` = octaves, `Roughness` = persistence, `Warp` = domain
-/// distortion. At the defaults (Detail `0`) it is a single octave — the classic fine grain.
-fn noise(u: f32, v: f32, k: &[f32]) -> f32 {
-    let (wu, wv) = warp_uv(u, v, knob(k, 2));
-    fbm_g(wu, wv, octaves_from(knob(k, 0)), gain_from(knob(k, 1)))
+/// distortion. At the defaults (Detail `0`) it is a single octave — the classic fine grain. Wrapped
+/// at integer period `(pu, pv)` cells for seamless any-size tiling (`0` = no wrap ⇒ byte-identical).
+fn noise_t(u: f32, v: f32, k: &[f32], pu: i32, pv: i32) -> f32 {
+    let (wu, wv) = warp_uv_t(u, v, knob(k, 2), pu, pv);
+    fbm_g_t(
+        wu,
+        wv,
+        octaves_from(knob(k, 0)),
+        gain_from(knob(k, 1)),
+        pu,
+        pv,
+    )
 }
 
 /// **Checker**: 2-colour cells by integer-cell parity. `Softness` blurs the cell edges (`0` = hard).
@@ -277,7 +335,10 @@ fn cell_distance(ex: f32, ey: f32, m: f32) -> f32 {
 /// **Voronoi** cellular noise over the 3×3 neighbour cells. `Randomness` jitters cell centres off the
 /// grid; `Smoothness` rounds the cell joins (polynomial [`smin`]); `Metric` morphs the cell shape
 /// (Euclidean→Chebyshev→Manhattan); `Edges` crossfades the F1 cell field to the F2−F1 crack field.
-fn voronoi(u: f32, v: f32, k: &[f32]) -> f32 {
+/// Wrapped at integer period `(pu, pv)` cells for seamless any-size tiling (`0` = no wrap): only the
+/// cell-centre HASH wraps (cell `p` reuses cell `0`'s jitter), while the cell POSITION stays unwrapped,
+/// so the seam glues the same jittered lattice without folding the coordinate.
+fn voronoi_t(u: f32, v: f32, k: &[f32], pu: i32, pv: i32) -> f32 {
     let rand = knob(k, 0);
     let smooth = knob(k, 1) * 0.5;
     let metric = knob(k, 2);
@@ -287,9 +348,11 @@ fn voronoi(u: f32, v: f32, k: &[f32]) -> f32 {
     for dy in -1..=1 {
         for dx in -1..=1 {
             let (gx, gy) = (cx + dx, cy + dy);
-            // Jitter the cell point toward random (rand 0 → grid centre, 1 → fully hashed).
-            let jx = lerp(0.5, hash2(gx, gy), rand);
-            let jy = lerp(0.5, hash2(gy, gx), rand);
+            // Jitter the cell point toward random (rand 0 → grid centre, 1 → fully hashed); the hash
+            // wraps at the period so a border cell matches its wrapped-around twin (swapped axes ⇒
+            // swapped periods).
+            let jx = lerp(0.5, hash2w(gx, gy, pu, pv), rand);
+            let jy = lerp(0.5, hash2w(gy, gx, pv, pu), rand);
             let (ex, ey) = ((gx as f32 + jx - u).abs(), (gy as f32 + jy - v).abs());
             let d = cell_distance(ex, ey, metric);
             if d < f1 {
@@ -306,17 +369,33 @@ fn voronoi(u: f32, v: f32, k: &[f32]) -> f32 {
 }
 
 /// **Clouds**: fractal noise (soft, billowy). `Detail` = octaves, `Roughness` = persistence, `Warp`.
-fn clouds(u: f32, v: f32, k: &[f32]) -> f32 {
-    let (wu, wv) = warp_uv(u, v, knob(k, 2));
-    fbm_g(wu, wv, octaves_from(knob(k, 0)), gain_from(knob(k, 1)))
+/// Wrapped at integer period `(pu, pv)` cells for seamless any-size tiling (`0` = no wrap).
+fn clouds_t(u: f32, v: f32, k: &[f32], pu: i32, pv: i32) -> f32 {
+    let (wu, wv) = warp_uv_t(u, v, knob(k, 2), pu, pv);
+    fbm_g_t(
+        wu,
+        wv,
+        octaves_from(knob(k, 0)),
+        gain_from(knob(k, 1)),
+        pu,
+        pv,
+    )
 }
 
-/// **Distorted Noise**: noise sampled at a noise-warped coordinate. `Distortion` = warp, `Detail` = octaves.
-fn distorted_noise(u: f32, v: f32, k: &[f32]) -> f32 {
+/// **Distorted Noise**: noise sampled at a noise-warped coordinate. `Distortion` = warp, `Detail` =
+/// octaves. Wrapped at integer period `(pu, pv)` cells for seamless tiling (`0` = no wrap).
+fn distorted_noise_t(u: f32, v: f32, k: &[f32], pu: i32, pv: i32) -> f32 {
     let amt = knob(k, 0) * 3.2;
-    let dx = value_noise(u + 3.1, v + 1.7) - 0.5;
-    let dy = value_noise(u - 2.3, v + 4.9) - 0.5;
-    fbm_g(u + amt * dx, v + amt * dy, octaves_from(knob(k, 1)), 0.55)
+    let dx = value_noise_t(u + 3.1, v + 1.7, pu, pv) - 0.5;
+    let dy = value_noise_t(u - 2.3, v + 4.9, pu, pv) - 0.5;
+    fbm_g_t(
+        u + amt * dx,
+        v + amt * dy,
+        octaves_from(knob(k, 1)),
+        0.55,
+        pu,
+        pv,
+    )
 }
 
 /// **Magic**: nested periodic waves. `Distortion` = wave coupling, `Complexity` = adds a 4th term.
@@ -336,19 +415,22 @@ fn marble(u: f32, v: f32, k: &[f32]) -> f32 {
     wave01((u + v) * 1.5 * g + turbulence(u, v, 5) * (knob(k, 0) * 6.0))
 }
 
-/// **Musgrave**: ridged multifractal. `Detail` = octaves, `Roughness` = persistence, `Sharpness` = ridge exponent.
-fn musgrave(u: f32, v: f32, k: &[f32]) -> f32 {
+/// **Musgrave**: ridged multifractal. `Detail` = octaves, `Roughness` = persistence, `Sharpness` = ridge
+/// exponent. Wrapped at integer period `(pu, pv)` cells for seamless any-size tiling (`0` = no wrap).
+fn musgrave_t(u: f32, v: f32, k: &[f32], pu: i32, pv: i32) -> f32 {
     let gain = gain_from(knob(k, 1));
     let sharp = knob(k, 2);
     let (mut value, mut amp, mut freq, mut norm, mut weight) = (0.0, 1.0, 1.0, 0.0, 1.0);
+    let mut fi = 1; // integer octave multiplier — the lattice period scales with `freq`
     for _ in 0..octaves_from(knob(k, 0)) {
-        let ridge = 1.0 - (2.0 * value_noise(u * freq, v * freq) - 1.0).abs();
+        let ridge = 1.0 - (2.0 * value_noise_t(u * freq, v * freq, pu * fi, pv * fi) - 1.0).abs();
         let r2 = ridge * ridge;
         value += lerp(r2, r2 * r2, sharp) * weight * amp;
         weight = (ridge * 2.0).clamp(0.0, 1.0);
         norm += amp;
         amp *= gain;
         freq *= 2.0;
+        fi *= 2;
     }
     (value / norm.max(1e-6)).clamp(0.0, 1.0)
 }
@@ -362,9 +444,10 @@ fn wood(u: f32, v: f32, k: &[f32]) -> f32 {
 
 /// **Stucci**: thresholded fractal noise — rough plaster. `Detail` = octaves, `Depth` = threshold
 /// spread, `Warp` = domain distortion.
-fn stucci(u: f32, v: f32, k: &[f32]) -> f32 {
-    let (wu, wv) = warp_uv(u, v, knob(k, 2));
-    let n = fbm_g(wu, wv, octaves_from(knob(k, 0)), 0.55);
+/// Wrapped at integer period `(pu, pv)` cells for seamless any-size tiling (`0` = no wrap).
+fn stucci_t(u: f32, v: f32, k: &[f32], pu: i32, pv: i32) -> f32 {
+    let (wu, wv) = warp_uv_t(u, v, knob(k, 2), pu, pv);
+    let n = fbm_g_t(wu, wv, octaves_from(knob(k, 0)), 0.55, pu, pv);
     let depth = 0.2 + knob(k, 1) * 0.6;
     smoothstep(((n - 0.35) / depth).clamp(0.0, 1.0))
 }
@@ -384,10 +467,20 @@ fn gradient(u: f32, k: &[f32]) -> f32 {
 
 // ── Painting-useful extras ──────────────────────────────────────────────────────────────────
 
-/// **Grain**: fine fractal noise — paper / canvas tooth. `Detail`, `Roughness`, `Warp`.
-fn grain(u: f32, v: f32, k: &[f32]) -> f32 {
-    let (wu, wv) = warp_uv(u * 6.0, v * 6.0, knob(k, 2));
-    fbm_g(wu, wv, octaves_from(knob(k, 0)), gain_from(knob(k, 1)))
+/// **Grain**: fine fractal noise — paper / canvas tooth. `Detail`, `Roughness`, `Warp`. Wrapped at
+/// integer period `(pu, pv)` cells for seamless any-size tiling (`0` = no wrap). Grain samples at `6×`
+/// the coords, so the lattice period across the same sprite span is `6·p` cells.
+fn grain_t(u: f32, v: f32, k: &[f32], pu: i32, pv: i32) -> f32 {
+    let (pu, pv) = (pu * 6, pv * 6);
+    let (wu, wv) = warp_uv_t(u * 6.0, v * 6.0, knob(k, 2), pu, pv);
+    fbm_g_t(
+        wu,
+        wv,
+        octaves_from(knob(k, 0)),
+        gain_from(knob(k, 1)),
+        pu,
+        pv,
+    )
 }
 
 /// **Crosshatch**: crossed diagonal hatch lines. `Thickness` = line width, `Frequency` = line count.
@@ -554,60 +647,6 @@ fn sample_image(img: &ImageMask, u: f32, v: f32) -> f32 {
     let top = lerp(at(xi0, yi0), at(xi1, yi0), tx);
     let bot = lerp(at(xi0, yi1), at(xi1, yi1), tx);
     lerp(top, bot, ty)
-}
-
-// ── Shared noise / math helpers (transcendental-free) ───────────────────────────────────────
-
-/// Turbulence: octaves of the *absolute* signed noise `|2·noise−1|` — sharper, veiny (Marble / Wood).
-fn turbulence(u: f32, v: f32, octaves: u32) -> f32 {
-    let (mut sum, mut amp, mut freq, mut norm) = (0.0, 0.5, 1.0, 0.0);
-    for _ in 0..octaves {
-        sum += amp * (2.0 * value_noise(u * freq, v * freq) - 1.0).abs();
-        norm += amp;
-        amp *= 0.5;
-        freq *= 2.0;
-    }
-    sum / norm.max(1e-6)
-}
-
-/// Smooth period-1 wave in `[0, 1]` — `0` at integers, `1` at half-integers — the dependency-free
-/// stand-in for `(1−cos 2πx)/2`: a triangle wave run through [`smoothstep`].
-fn wave01(x: f32) -> f32 {
-    let t = x - x.floor();
-    smoothstep(1.0 - (2.0 * t - 1.0).abs())
-}
-
-/// Coverage of a thin line at each integer of `x`: `1` on the line, ramping to `0` at distance `w`.
-fn ridge_line(x: f32, w: f32) -> f32 {
-    let d = (x - (x + 0.5).floor()).abs(); // distance to the nearest integer, `[0, 0.5]`
-    (1.0 - (d / w).min(1.0)).max(0.0)
-}
-
-/// Hash an integer lattice point to `[0, 1)` — the value-noise / Voronoi randomness.
-fn hash2(ix: i32, iy: i32) -> f32 {
-    let mut h = (ix as u32).wrapping_mul(0x9E37_79B1) ^ (iy as u32).wrapping_mul(0x85EB_CA77);
-    h ^= h >> 15;
-    h = h.wrapping_mul(0x2C1B_3C6D);
-    h ^= h >> 12;
-    h = h.wrapping_mul(0x297A_2D39);
-    h ^= h >> 15;
-    ((h >> 8) as f32) / ((1u32 << 24) as f32)
-}
-
-/// Hermite smoothstep `3t² − 2t³` on a value already in `[0, 1]` (polynomial — no transcendental).
-fn smoothstep(t: f32) -> f32 {
-    t * t * (3.0 - 2.0 * t)
-}
-
-/// Linear interpolate.
-fn lerp(a: f32, b: f32, t: f32) -> f32 {
-    a + (b - a) * t
-}
-
-/// `floor` to `i32` (integer cell index) — avoids the `as i32` truncation-toward-zero bug for
-/// negative coordinates.
-fn ifloor(x: f32) -> i32 {
-    x.floor() as i32
 }
 
 #[cfg(test)]

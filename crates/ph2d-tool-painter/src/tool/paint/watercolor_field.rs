@@ -537,10 +537,16 @@ pub(super) fn paper_h_px(
     tile: NoiseTile,
 ) -> f32 {
     if paper_active {
-        // Paper SLOT texture (image / procedural pattern): sampled at the texture's own period +
-        // rotation, NOT the sprite's — sprite-seamless slot textures are a follow-up (doc 13 #2).
-        ph2d_painter_brush::texture::sample_tiled_rot(
-            paper_tex, gx as i64, gy as i64, paper_img, paper_rot,
+        // Paper SLOT texture at its own Size/rotation, made seamless across the SPRITE tiling seam:
+        // a bitmap kind was Size-snapped (doc 13 #2b), a LATTICE procedural wraps its hash at the
+        // sprite period (`slot_period`, doc 13 #2c). Off-tiling / rotated / non-lattice ⇒ byte-identical.
+        ph2d_painter_brush::texture::sample_tiled_rot_wrapped(
+            paper_tex,
+            gx as i64,
+            gy as i64,
+            paper_img,
+            paper_rot,
+            tile.slot_period(),
         )
     } else {
         paper_height(gx as f32, gy as f32, tile)

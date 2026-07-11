@@ -94,8 +94,8 @@ fn voronoi_randomness_and_edges_change_the_field() {
     let (mut diff, mut n) = (0.0f32, 0.0f32);
     for i in 0..60 {
         let (u, v) = (i as f32 * 0.41, i as f32 * 0.29);
-        let a = voronoi(u, v, cells);
-        let b = voronoi(u, v, cracks);
+        let a = voronoi_t(u, v, cells, 0, 0);
+        let b = voronoi_t(u, v, cracks, 0, 0);
         assert!(
             (0.0..=1.0).contains(&a) && (0.0..=1.0).contains(&b),
             "bounded"

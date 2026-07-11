@@ -12,7 +12,7 @@ use super::watercolor_field::{
 };
 use super::{PaintMode, PainterTool};
 use ph2d_painter_brush::TextureSettings;
-use ph2d_painter_brush::texture::{ImageMask, angle_basis, sample_tiled_rot};
+use ph2d_painter_brush::texture::{ImageMask, angle_basis, sample_tiled_rot_wrapped};
 
 impl PainterTool {
     /// Whether the watercolor optical render-path drives this stroke: Watercolor on, the normal **Paint**
@@ -538,12 +538,15 @@ impl<'a> SubstrateSession<'a> {
             )
         });
         let gran_h = if gran_own_map {
-            Some(sample_tiled_rot(
+            // Grain slot made sprite-seamless like the paper (doc 13 #2c): lattice wrap at the sprite
+            // period. Off-tiling / rotated / non-lattice ⇒ byte-identical to the plain tiled sample.
+            Some(sample_tiled_rot_wrapped(
                 gran,
                 gx as i64,
                 gy as i64,
                 self.gran_img.as_ref(),
                 gran_rot,
+                self.tile.slot_period(),
             ))
         } else if gran_use_paper {
             Some(paper_h)

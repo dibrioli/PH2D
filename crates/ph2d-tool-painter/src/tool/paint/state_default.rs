@@ -163,6 +163,7 @@ impl Default for PaintState {
             dry_rate_per_s: super::watercolor_backdrop::CANVAS_WET_DRY_DEFAULT,
             wet_preview_intensity: super::watercolor_backdrop::WET_PREVIEW_DEFAULT,
             wet_session_wetness: 0.0,
+            wet_shape_active: false,
             wet_session_base: None,
             wet_session_canvas: None,
             wet_styles: Default::default(),

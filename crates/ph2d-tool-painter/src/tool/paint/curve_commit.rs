@@ -79,8 +79,10 @@ impl PainterTool {
             }
             self.clear_parked_shapes();
             self.paint.stroke_undo = None;
+            self.paint.wet_shape_active = false; // #3: end the shape wash session (ground rebuilds next)
             return true;
         }
+        self.paint.wet_shape_active = false; // #3: end the shape wash session on cancel
         cancelled
     }
 
@@ -92,6 +94,7 @@ impl PainterTool {
         self.polygon_discard();
         self.line_discard();
         self.clear_parked_shapes();
+        self.paint.wet_shape_active = false; // #3: end any shape wash session on teardown
     }
 
     /// Route a Stroke-panel **shape button** Click (Apply / Apply & Keep / Delete / Edit / Operation mode /

@@ -12503,6 +12503,121 @@ fn watercolor_wet_mix_exit_edge_keeps_pickup() {
     );
 }
 
+/// **Shape-editor bake runs the watercolor wash (doc 13 #3).** A shape editor (here a Line) committed
+/// with a Watercolor brush must bake the OPTICAL wash (frozen base + rim / Ragged-Edge warp) — not the
+/// plain source-over deposit. RED before #3: the shape editors stamp WITHOUT the stroke lifecycle, so no
+/// base is frozen (`watercolor_base` stays `None`), the `stamp_dabs` watercolor gate is false, and the
+/// bake is BYTE-IDENTICAL to the same shape drawn with Watercolor OFF. GREEN: the optics diverge it.
+#[test]
+fn watercolor_shape_editor_bake_runs_the_wash() {
+    fn line_brush(t: &mut PainterTool, watercolor: bool) {
+        t.paint.brush = BrushSpec {
+            radius_px: 8.0,
+            hardness: 1.0,
+            falloff: Falloff::Constant,
+            color: [0.15, 0.25, 0.75],
+            space_attenuation: false,
+            watercolor,
+            fill: 0.6,
+            depth: 2.0,
+            edge_gain: 2.5,
+            edge_spread: 4.0,
+            warp: 3.0, // Ragged Edge on — a signature only the wash produces
+            stroke_method: StrokeMethod::Line,
+            ..Default::default()
+        };
+        for slot in &mut t.paint.brush_by_mode {
+            *slot = t.paint.brush;
+        }
+    }
+    fn draw_and_commit(t: &mut PainterTool) {
+        t.on_canvas_pointer(cp([8.0, 32.0], PointerPhase::Down)); // corner 1
+        t.on_canvas_pointer(cp([8.0, 32.0], PointerPhase::Up));
+        t.on_canvas_pointer(cp([8.0, 44.0], PointerPhase::Down)); // corner 2 (press)
+        t.on_canvas_pointer(cp([56.0, 32.0], PointerPhase::Move)); // drag to the final spot
+        t.on_canvas_pointer(cp([56.0, 32.0], PointerPhase::Up));
+        assert!(t.commit_open_shape(), "Apply baked the open line");
+    }
+    let size = 64u32;
+    let differs = |a: &PainterTool, b: &PainterTool| {
+        (0..size * size).any(|i| px(a, size, i % size, i / size) != px(b, size, i % size, i / size))
+    };
+    let blank = white_canvas(size, 8.0);
+
+    let mut plain = white_canvas(size, 8.0);
+    line_brush(&mut plain, false);
+    draw_and_commit(&mut plain);
+
+    let mut wet = white_canvas(size, 8.0);
+    line_brush(&mut wet, true);
+    draw_and_commit(&mut wet);
+
+    assert!(differs(&plain, &blank), "the line committed paint (control)");
+    assert!(
+        differs(&wet, &plain),
+        "watercolor optics ran on the shape bake (was byte-identical to plain before #3)"
+    );
+}
+
+/// **A watercolor shape preview leaves no trail (doc 13 #3).** The moving/resizing shape preview
+/// re-composites the wash each frame over the restored-pristine canvas — including the rim/warp that
+/// reach BEYOND the dab bbox. If the save/restore footprint didn't cover that reach, a wrong drag would
+/// leave a rim trail. Proof: a line dragged straight to its final corner and the SAME line dragged
+/// through two wrong spots first must bake BYTE-IDENTICALLY (the wobble peels clean).
+#[test]
+fn watercolor_shape_preview_leaves_no_trail() {
+    fn line_brush(t: &mut PainterTool) {
+        t.paint.brush = BrushSpec {
+            radius_px: 8.0,
+            hardness: 1.0,
+            falloff: Falloff::Constant,
+            color: [0.15, 0.25, 0.75],
+            space_attenuation: false,
+            watercolor: true,
+            fill: 0.6,
+            depth: 2.0,
+            edge_gain: 2.5,
+            edge_spread: 4.0,
+            warp: 3.0,
+            stroke_method: StrokeMethod::Line,
+            ..Default::default()
+        };
+        for slot in &mut t.paint.brush_by_mode {
+            *slot = t.paint.brush;
+        }
+    }
+    let size = 64u32;
+
+    // Straight to the final corner.
+    let mut direct = white_canvas(size, 8.0);
+    line_brush(&mut direct);
+    direct.on_canvas_pointer(cp([8.0, 32.0], PointerPhase::Down));
+    direct.on_canvas_pointer(cp([8.0, 32.0], PointerPhase::Up));
+    direct.on_canvas_pointer(cp([56.0, 32.0], PointerPhase::Down));
+    direct.on_canvas_pointer(cp([56.0, 32.0], PointerPhase::Up));
+    assert!(direct.commit_open_shape(), "direct line baked");
+
+    // Same final corner, but dragged through two WRONG spots first.
+    let mut wobbled = white_canvas(size, 8.0);
+    line_brush(&mut wobbled);
+    wobbled.on_canvas_pointer(cp([8.0, 32.0], PointerPhase::Down));
+    wobbled.on_canvas_pointer(cp([8.0, 32.0], PointerPhase::Up));
+    wobbled.on_canvas_pointer(cp([30.0, 8.0], PointerPhase::Down)); // wrong 1
+    wobbled.on_canvas_pointer(cp([44.0, 56.0], PointerPhase::Move)); // wrong 2
+    wobbled.on_canvas_pointer(cp([56.0, 32.0], PointerPhase::Move)); // final
+    wobbled.on_canvas_pointer(cp([56.0, 32.0], PointerPhase::Up));
+    assert!(wobbled.commit_open_shape(), "wobbled line baked");
+
+    for i in 0..size * size {
+        let (x, y) = (i % size, i / size);
+        assert_eq!(
+            px(&wobbled, size, x, y),
+            px(&direct, size, x, y),
+            "wobble left a wash trail at ({x},{y}) — the preview footprint missed the rim reach"
+        );
+    }
+}
+
 /// **Watercolor respects the Selection + protection-mask gates** (the audit hole, Enio 2026-07-07):
 /// the optical path used to short-circuit BEFORE the canvas gates in `stamp_dabs`, so a watercolor
 /// stroke painted straight through an active selection and the Sculpt-style protection scratch.

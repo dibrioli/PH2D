@@ -485,6 +485,12 @@ pub(crate) struct PaintState {
     /// EXISTING paint even with the brush's own Rewet at `0` (Rebelle "Wet the layer"). `0` = no forcing
     /// (byte-identical). Cleared by [`Self::dry_session_now`] (the session's teardown / drying deadline).
     wet_session_wetness: f32,
+    /// #3 (doc 13): a SHAPE-editor watercolor preview is live (Curve/Line/Circle/Polygon/Free Hand with
+    /// Watercolor on). Shapes have no `paint_begin`, so the wash ground (backdrop / substrate — expensive,
+    /// static within the session) is frozen ONCE lazily on the first `stamp_drag_preview_watercolor` and
+    /// this flag guards the rebuild; torn down (false) at the shape commit / cancel. `false` = no shape
+    /// wash session ⇒ the freehand path is untouched.
+    wet_shape_active: bool,
     /// EDGE-1 per-stroke style (doc 13 topo): session param table + per-pixel owner map — an
     /// older wash keeps ITS look on the union re-bake ([`watercolor_field::WetSessionStyles`]).
     wet_styles: watercolor_field::WetSessionStyles,

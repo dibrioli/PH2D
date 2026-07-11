@@ -227,7 +227,13 @@ impl PainterTool {
                 }
             }
         }
-        self.stamp_drag_preview(&dabs);
+        // #3 (doc 13): with Watercolor on, the shape's preview/bake runs the OPTICAL wash (frozen base +
+        // rim / warp) instead of the plain deposit — the shape editors' one seam into the render-path.
+        if self.watercolor_render_active() {
+            self.stamp_drag_preview_watercolor(&dabs);
+        } else {
+            self.stamp_drag_preview(&dabs);
+        }
     }
 
     /// Fill `out` with the dabs for one parked shape, applying the LIVE Offset slider so the one global

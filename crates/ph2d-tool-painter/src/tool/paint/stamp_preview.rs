@@ -69,6 +69,62 @@ impl PainterTool {
     /// Safe to call for any method (a no-op unless a preview is live).
     pub(super) fn commit_drag_preview(&mut self) {
         self.paint.drag_preview = None;
+        // #3: end any shape watercolor session so the ground (backdrop) rebuilds fresh for the next shape
+        // or a freehand stroke. Harmless to the freehand brush, which never sets this flag.
+        self.paint.wet_shape_active = false;
+    }
+
+    /// Watercolor variant of [`Self::stamp_drag_preview`] for the SHAPE editors (doc 13 #3): instead of a
+    /// plain source-over deposit, composite the optical wash (frozen base + rim / Ragged-Edge warp /
+    /// granulation) each preview frame. It reuses the SAME restore/save machinery, so the shape commit
+    /// (`commit_drag_preview` keeps the last preview), cancel (peel `drag_preview`) and undo are all
+    /// byte-unchanged — only HOW the preview pixels are produced differs. The wash GROUND (backdrop /
+    /// substrate — a full layers-below composite, static within the session) is frozen ONCE via
+    /// `wet_shape_active`; the base is re-pointed at the restored-pristine canvas each frame;
+    /// `apply_watercolor(true)` bakes the settled look + drops the base, so the last preview IS the bake.
+    pub(super) fn stamp_drag_preview_watercolor(&mut self, dabs: &[Dab]) {
+        // Peel the previous frame's footprint → the pristine (pre-shape) canvas.
+        if let Some(prev) = self.paint.drag_preview.take() {
+            self.restore_region(&prev.rect, &prev.pixels);
+        }
+        // Save the pristine pixels under the wash's INFLUENCE footprint (dab bbox + rim/warp reach), so the
+        // next frame restores everything `apply_watercolor` will have written — else the rim leaves a trail.
+        let Some(rect) = self.watercolor_preview_footprint(dabs) else {
+            return; // empty batch (no dabs) — the peel above already cleared the last preview
+        };
+        let pixels = self.save_region(&rect);
+        self.paint.drag_preview = Some(DragPreview { rect, pixels });
+        // Freeze the ground ONCE per shape session (expensive: `build_wet_backdrop` composites the layers
+        // below; static within the session). Subsequent frames keep it; the base is re-pointed below.
+        if !self.paint.wet_shape_active {
+            self.freeze_watercolor_ground(false);
+            self.paint.wet_shape_active = true;
+        }
+        // The optical base is THIS frame's restored-pristine canvas (cheap `Arc` clone); shapes are not a
+        // wet session, so rebuild the whole shape's coverage fresh each frame.
+        self.paint.watercolor_base = Some(Arc::clone(&self.canvas_rgba));
+        self.paint.wet_session_base = None;
+        self.clear_wet_coverage();
+        self.clear_wet_color();
+        self.accumulate_wet_coverage(dabs);
+        self.accumulate_wet_color(dabs);
+        self.apply_watercolor(true);
+    }
+
+    /// The save/restore footprint for a watercolor shape preview: each dab's bbox inflated by the wash's
+    /// influence reach (rim `edge_spread` + Ragged-Edge `warp`), so the restore peels EVERYTHING
+    /// `apply_watercolor` wrote (its `pad`). Over-inflation is safe — extra pristine pixels restore to a
+    /// no-op; under-inflation would leave a rim trail. `None` when the batch is empty.
+    fn watercolor_preview_footprint(&self, dabs: &[Dab]) -> Option<Region> {
+        let b = &self.paint.brush;
+        // Match `apply_watercolor`'s max reach (`spread * 2` when watered/soaked) + warp + slack.
+        let pad = b.edge_spread.round().clamp(0.0, 48.0) * 2.0 + b.warp.max(0.0).ceil() + 4.0;
+        dabs.iter().fold(None, |acc, d| {
+            match (acc, self.dab_bbox(d.center, d.radius_px + pad)) {
+                (Some(a), Some(r)) => Some(union_region(a, r)),
+                (a, r) => a.or(r),
+            }
+        })
     }
 
     /// Stamp the dabs a `begin`/`extend` produced. Drag Dot, Anchored AND Line are interactive

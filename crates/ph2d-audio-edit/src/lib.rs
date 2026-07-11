@@ -31,7 +31,8 @@ mod truepeak;
 pub use fx::{Effect, TailEffect};
 pub use loops::crossfaded_loop;
 pub use ops::{
-    FadeDir, FadeShape, in_range, in_range_tail, in_range_warm, peak, snap_to_zero_crossing,
+    FadeDir, FadeShape, force_mono, in_range, in_range_tail, in_range_warm, normalize_lufs, peak,
+    snap_to_zero_crossing,
 };
 pub use peaks::{ColumnPeaks, DEFAULT_BIN_SIZE, PeakCache, column_peaks};
 pub use truepeak::{OVERSAMPLE, true_peak};
@@ -219,6 +220,17 @@ impl EditClip {
     pub fn apply_remove_dc_offset(&mut self) {
         let t = self.target();
         self.commit(ops::in_range(&self.data, t, ops::remove_dc_offset));
+    }
+
+    /// Downmix the WHOLE clip to mono (for 3D positional audio). No-op if already
+    /// mono. Whole-clip only — a mono selection inside a stereo clip is meaningless —
+    /// so it ignores the selection; the frame count is preserved, so the selection and
+    /// loop survive.
+    pub fn apply_force_mono(&mut self) {
+        if self.data.format().channel_count() <= 1 {
+            return;
+        }
+        self.commit(ops::force_mono(&self.data));
     }
 
     /// Render an offline [`Effect`] over the target range **without committing** —
@@ -641,6 +653,35 @@ mod tests {
         // No loop → no audition buffer.
         clip.clear_loop();
         assert!(clip.loop_audition_buffer(256).is_none());
+    }
+
+    /// Force-to-mono downmixes the whole clip (mean of channels), preserves the frame
+    /// count, is undoable, and is a no-op on an already-mono clip.
+    #[test]
+    fn force_mono_downmixes_preserves_frames_and_undoes() {
+        // Stereo: frame 0 = (0.2, 0.6) → 0.4; frame 1 = (-0.4, 0.0) → -0.2.
+        let d =
+            SampleData::from_interleaved(vec![0.2, 0.6, -0.4, 0.0], AudioFormat::stereo(48_000));
+        let mut clip = EditClip::new(d);
+        assert_eq!(clip.frame_count(), 2);
+        clip.set_loop_region(Some(0..2));
+
+        clip.apply_force_mono();
+        assert_eq!(clip.data().format().channel_count(), 1, "now mono");
+        assert_eq!(clip.frame_count(), 2, "frames preserved");
+        assert_eq!(clip.data().samples(), &[0.4, -0.2]);
+        assert_eq!(clip.loop_region(), Some(0..2), "loop survives the downmix");
+
+        assert!(clip.undo(), "force-mono is undoable");
+        assert_eq!(clip.data().format().channel_count(), 2, "back to stereo");
+
+        // Already mono → no-op, no new undo step.
+        let mut mono = EditClip::new(SampleData::from_interleaved(
+            vec![0.1, 0.2],
+            AudioFormat::mono(48_000),
+        ));
+        mono.apply_force_mono();
+        assert!(!mono.can_undo(), "no-op on a mono clip");
     }
 
     #[test]

@@ -236,6 +236,13 @@ impl crate::App {
                 {
                     audio.editor_export(&path);
                 }
+                // Batch LUFS — pick a folder; normalize every audio file in it to
+                // −16 LUFS, writing copies under `<folder>/normalized/`.
+                if ed::take_batch_lufs()
+                    && let Some(dir) = rfd::FileDialog::new().pick_folder()
+                {
+                    audio.editor_batch_lufs(&dir, -16.0); // LITERAL-PX-OK: −16 LUFS target
+                }
                 // Cache the loop crossfade the panel asks for BEFORE Play reads it —
                 // Play plays the click-free region when Loop is on and a region is set.
                 audio.editor_set_pending_xfade(audio.editor_xfade_frames(ed::xfade_norm()));

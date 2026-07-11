@@ -406,7 +406,28 @@ abaixo é histórico — não re-investigue.
     verdes; ligar **Loop** + **Play** com Crossfade em 0 vs. default = o A/B click ↔
     click-free. Arrastar a régua move o playhead.
   - **Aberto (resto do W6):** containers de variação · markers/cue (`cue`/`LIST adtl`) ·
-    force-to-mono · batch LUFS · codec/residência + export OGG/Opus · import por convenção.
+    codec/residência + export OGG/Opus · import por convenção.
+- **W6 Bloco 3 — Force-to-mono + Batch LUFS (2026-07-10)**. Dois preparos de biblioteca
+  de jogo, sem dep nova.
+  - **Force Mono** (`ops::force_mono` + `EditClip::apply_force_mono`, `AudioEditCmd::ForceMono`):
+    downmix do CLIPE INTEIRO (média dos canais) → mono, pra som 3D posicional (que
+    precisa ser mono pra panejar no espaço). Op destrutiva (undo timeline); no-op se já
+    mono; **preserva a contagem de frames** (só muda o layout de canal), então seleção +
+    loop sobrevivem. Botão na seção Edit (`Invert | Force Mono`). O overlay redesenha 1
+    lane automaticamente (lê `channel_count`).
+  - **Batch LUFS** (`shells/desktop/src/audio/editor/batch.rs`): normaliza uma PASTA
+    inteira a um alvo (−16 LUFS) escrevendo cópias em `<pasta>/normalized/` (PCM16).
+    **Não-destrutivo** (originais intactos). Reusa decode + `normalize_lufs` (re-exportado
+    de `ph2d-audio-edit`) + encode — zero dep nova. Botão **"Batch LUFS…"** na transport
+    (sempre ativo — é op de pasta, independe do clipe carregado); a ponte abre
+    `rfd::pick_folder`. Core testável = free fn `batch_lufs_dir` (o método
+    `editor_batch_lufs` só delega), teste e2e cria tmpdir + tom quieto → confere cópia
+    mais alta + `.txt` ignorado.
+  - **Intent do batch** foi pra `loop_state.rs` (renomeado no doc pra "asset-prep panel
+    state": loop + batch) — o `snapshot.rs` está em 600/600, então não dava pra add lá.
+  - **Ready-to-smoke:** o `PH2D_AUDIO_LOOP_SMOKE=1` agora gera um tom **estéreo** (L 220 /
+    R 223 Hz) → 2 lanes no overlay; **Force Mono** colapsa em 1. Batch LUFS: clique o
+    botão → escolha uma pasta com WAVs → cópias normalizadas em `normalized/`.
 - **Atalhos:** `Ctrl+Z` undo · `Ctrl+Shift+Z` / `Ctrl+Y` redo (roteados ao
   `EditClip` quando o painel WAVE está aberto com clipe carregado).
 - **Fix:** `cpal::Stream` é dropado no `on_close_request`, não no drop-cascade do
@@ -427,10 +448,10 @@ tudo do snapshot. `MAX_FX_PARAMS = 4`: um efeito com 5 params exige subir a
 constante nos dois lados (painel + shell) e criar mais um id de slider.
 
 **Próximo (plano vivo: [`docs/Audio/02_plano_implementacao_completo.md`](Audio/02_plano_implementacao_completo.md)):**
-1. **W6 — resto do asset-prep** (o bloco de loops acabou de landar): containers de
-   variação (random/round-robin/avoid-repeat) · markers/cue · force-to-mono · batch
-   LUFS · codec/residência + **export OGG/Opus** (1 dep nova → ADR + `deny`) · import
-   por convenção. O essencial (variação, mono, markers, batch LUFS) é DSP puro sem dep.
+1. **W6 — resto do asset-prep** (loops + force-mono + batch LUFS já landaram): containers
+   de variação (random/round-robin/avoid-repeat) · markers/cue · codec/residência +
+   **export OGG/Opus** (1 dep nova → ADR + `deny`) · import por convenção. O essencial
+   restante (variação, markers) é DSP/metadado puro sem dep.
 2. **Cluster FFT** (compartilha `realfft`/`rustfft`, 1 dep + 1 ADR): **reverb por
    convolução** (fecha os efeitos do W3) · **W5 espectral** (spectrograma, repair,
    denoise) · **W4 pitch/formant** (PSOLA/phase-vocoder clean-room).

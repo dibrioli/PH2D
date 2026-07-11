@@ -70,6 +70,10 @@ pub const AEDIT_REVERSE: NodeId = hash_node_id("audio_editor_reverse");
 pub const AEDIT_DC: NodeId = hash_node_id("audio_editor_dc");
 /// Invert polarity.
 pub const AEDIT_INVERT: NodeId = hash_node_id("audio_editor_invert");
+/// Force-to-mono (downmix the whole clip for 3D positional audio).
+pub const AEDIT_MONO: NodeId = hash_node_id("audio_editor_mono");
+/// Batch LUFS — normalize a whole folder of audio to a target loudness (file op).
+pub const AEDIT_BATCH_LUFS: NodeId = hash_node_id("audio_editor_batch_lufs");
 /// Gain −3 dB.
 pub const AEDIT_GAIN_DOWN: NodeId = hash_node_id("audio_editor_gain_down");
 /// Gain +3 dB.
@@ -237,6 +241,8 @@ pub enum AudioEditCmd {
     RemoveDc,
     /// Invert polarity.
     Invert,
+    /// Downmix the whole clip to mono (for 3D positional audio).
+    ForceMono,
     /// Gain −3 dB.
     GainDown,
     /// Gain +3 dB.
@@ -335,9 +341,11 @@ pub use snapshot::{set_duration_secs, set_loaded, set_playing, set_position_secs
 /// `(label, formatted value)` pairs.
 pub use snapshot::{set_fx_kind_defaults, set_fx_kind_names, set_fx_param_views};
 
-// Loop points (W6).
+// Loop points + batch (W6 asset-prep).
 /// Shell → panel: publish the loop region as `(start_secs, end_secs)` for the readout.
 pub use loop_state::set_loop_span;
+/// Panel → shell: whether the user asked to batch-normalize a folder (one-shot).
+pub use loop_state::take_batch_lufs;
 /// Panel → shell: whether the user asked to clear the loop (one-shot).
 pub use loop_state::take_clear_loop;
 /// Panel → shell: whether the user asked to set the loop from the selection (one-shot).

@@ -7,6 +7,7 @@
 //! The effects **chain** runtime lives in the `fx_rack` submodule (same visibility
 //! trick, one level deeper) — this file is the transport, the clip and the edits.
 
+mod batch;
 mod fx_rack;
 mod loops;
 
@@ -370,6 +371,7 @@ impl AudioSystem {
                 Cmd::Reverse => clip.apply_reverse(),
                 Cmd::RemoveDc => clip.apply_remove_dc_offset(),
                 Cmd::Invert => clip.apply_invert(),
+                Cmd::ForceMono => clip.apply_force_mono(),
                 Cmd::GainDown => clip.apply_gain(GAIN_DOWN),
                 Cmd::GainUp => clip.apply_gain(GAIN_UP),
                 // Range ops (act on the selection).

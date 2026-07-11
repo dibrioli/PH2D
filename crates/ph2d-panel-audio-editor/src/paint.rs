@@ -9,8 +9,8 @@
 
 use crate::state::AudioEditorState;
 use crate::{
-    AEDIT_CLOSE, AEDIT_EXPORT, AEDIT_FX_PARAMS, AEDIT_LOAD, AEDIT_LOOP, AEDIT_NAME, AEDIT_PANEL,
-    AEDIT_PLAY, AEDIT_STOP, AudioEditorPanel, snapshot,
+    AEDIT_BATCH_LUFS, AEDIT_CLOSE, AEDIT_EXPORT, AEDIT_FX_PARAMS, AEDIT_LOAD, AEDIT_LOOP,
+    AEDIT_NAME, AEDIT_PANEL, AEDIT_PLAY, AEDIT_STOP, AudioEditorPanel, snapshot,
 };
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::interaction::InteractiveState;
@@ -320,6 +320,19 @@ fn paint_transport_section(
         "Export\u{2026}",
         t.loaded,
         AEDIT_EXPORT,
+        scene,
+        text_system,
+        theme,
+        hit_index,
+    );
+    y += ROW_H + Spacing::Sm.px();
+
+    // Batch LUFS — a FOLDER op (independent of the loaded clip), so always enabled.
+    button(
+        Rect::new(x, y, w, ROW_H),
+        "Batch LUFS\u{2026}",
+        true,
+        AEDIT_BATCH_LUFS,
         scene,
         text_system,
         theme,

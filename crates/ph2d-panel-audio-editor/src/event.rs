@@ -2,14 +2,15 @@
 
 use crate::state::AudioEditorState;
 use crate::{
-    AEDIT_CLOSE, AEDIT_CUT, AEDIT_DC, AEDIT_EXPORT, AEDIT_FADE_IN, AEDIT_FADE_OUT, AEDIT_FX_ADD,
-    AEDIT_FX_APPLY, AEDIT_FX_BYPASS, AEDIT_FX_CANCEL, AEDIT_FX_DOWN, AEDIT_FX_NEXT,
-    AEDIT_FX_PARAMS, AEDIT_FX_PREV, AEDIT_FX_REMOVE, AEDIT_FX_RESET, AEDIT_FX_STAGE_ONS,
-    AEDIT_FX_STAGES, AEDIT_FX_UP, AEDIT_GAIN_DOWN, AEDIT_GAIN_UP, AEDIT_INVERT, AEDIT_LOAD,
-    AEDIT_LOOP, AEDIT_LOOP_CLEAR, AEDIT_LOOP_SET, AEDIT_LOOP_XFADE, AEDIT_NORM_LUFS,
-    AEDIT_NORMALIZE, AEDIT_PLAY, AEDIT_PRESET_APPLY, AEDIT_PRESET_LOAD, AEDIT_PRESET_NEXT,
-    AEDIT_PRESET_PREV, AEDIT_PRESET_SAVE, AEDIT_REDO, AEDIT_REVERSE, AEDIT_SILENCE, AEDIT_STOP,
-    AEDIT_TRIM, AEDIT_UNDO, AudioEditCmd, AudioEditorPanel, loop_state, presets, snapshot,
+    AEDIT_BATCH_LUFS, AEDIT_CLOSE, AEDIT_CUT, AEDIT_DC, AEDIT_EXPORT, AEDIT_FADE_IN,
+    AEDIT_FADE_OUT, AEDIT_FX_ADD, AEDIT_FX_APPLY, AEDIT_FX_BYPASS, AEDIT_FX_CANCEL, AEDIT_FX_DOWN,
+    AEDIT_FX_NEXT, AEDIT_FX_PARAMS, AEDIT_FX_PREV, AEDIT_FX_REMOVE, AEDIT_FX_RESET,
+    AEDIT_FX_STAGE_ONS, AEDIT_FX_STAGES, AEDIT_FX_UP, AEDIT_GAIN_DOWN, AEDIT_GAIN_UP, AEDIT_INVERT,
+    AEDIT_LOAD, AEDIT_LOOP, AEDIT_LOOP_CLEAR, AEDIT_LOOP_SET, AEDIT_LOOP_XFADE, AEDIT_MONO,
+    AEDIT_NORM_LUFS, AEDIT_NORMALIZE, AEDIT_PLAY, AEDIT_PRESET_APPLY, AEDIT_PRESET_LOAD,
+    AEDIT_PRESET_NEXT, AEDIT_PRESET_PREV, AEDIT_PRESET_SAVE, AEDIT_REDO, AEDIT_REVERSE,
+    AEDIT_SILENCE, AEDIT_STOP, AEDIT_TRIM, AEDIT_UNDO, AudioEditCmd, AudioEditorPanel, loop_state,
+    presets, snapshot,
 };
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::ids;
@@ -71,6 +72,12 @@ pub(crate) fn apply_event(
         }
         if id == AEDIT_EXPORT {
             snapshot::request_export();
+            return EventOutcome::Consumed;
+        }
+        // Batch LUFS — a folder op (not tied to the loaded clip); the bridge opens a
+        // folder picker and normalizes every audio file to the target loudness.
+        if id == AEDIT_BATCH_LUFS {
+            loop_state::request_batch_lufs();
             return EventOutcome::Consumed;
         }
         // Effects rack selector: cycle the SELECTED stage's kind. Its parameters are
@@ -166,6 +173,8 @@ pub(crate) fn apply_event(
             Some(AudioEditCmd::RemoveDc)
         } else if id == AEDIT_INVERT {
             Some(AudioEditCmd::Invert)
+        } else if id == AEDIT_MONO {
+            Some(AudioEditCmd::ForceMono)
         } else if id == AEDIT_GAIN_DOWN {
             Some(AudioEditCmd::GainDown)
         } else if id == AEDIT_GAIN_UP {

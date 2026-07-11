@@ -8,8 +8,8 @@
 use crate::paint::{ClippedHits, ROW_H, button};
 use crate::{
     AEDIT_CUT, AEDIT_DC, AEDIT_FADE_IN, AEDIT_FADE_OUT, AEDIT_GAIN_DOWN, AEDIT_GAIN_UP,
-    AEDIT_INVERT, AEDIT_NORM_LUFS, AEDIT_NORMALIZE, AEDIT_REDO, AEDIT_REVERSE, AEDIT_SILENCE,
-    AEDIT_TRIM, AEDIT_UNDO,
+    AEDIT_INVERT, AEDIT_MONO, AEDIT_NORM_LUFS, AEDIT_NORMALIZE, AEDIT_REDO, AEDIT_REVERSE,
+    AEDIT_SILENCE, AEDIT_TRIM, AEDIT_UNDO,
 };
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::zones::Rect;
@@ -68,12 +68,22 @@ pub(crate) fn paint_edit_section(
         }
         y += ROW_H + gap;
     }
-    // Invert — full width.
+    // Invert | Force Mono (downmix the whole clip for 3D positional audio).
     button(
-        Rect::new(x, y, w, ROW_H),
-        "Invert Polarity",
+        Rect::new(x, y, half, ROW_H),
+        "Invert",
         loaded,
         AEDIT_INVERT,
+        scene,
+        text_system,
+        theme,
+        hit_index,
+    );
+    button(
+        Rect::new(x + half + gap, y, half, ROW_H),
+        "Force Mono",
+        loaded,
+        AEDIT_MONO,
         scene,
         text_system,
         theme,

@@ -170,21 +170,33 @@ impl AudioSystem {
         }
     }
 
-    /// Dev smoke (`PH2D_AUDIO_LOOP_SMOKE=1`): stage a loop with no file picking. Loads
-    /// a 2 s 220 Hz tone and sets a loop over its middle third **UN-snapped** on
-    /// purpose (endpoints mid-phase → a raw loop would click), so turning **Loop** on
-    /// and pressing **Play** with the Crossfade at 0 vs. the default is the click →
-    /// click-free A/B. Open the Audio Editor pill to see the green loop brackets;
-    /// Export writes the `smpl` chunk.
+    /// Dev smoke (`PH2D_AUDIO_LOOP_SMOKE=1`): stage a demo clip with no file picking —
+    /// a 2 s **stereo** tone (L 220 Hz, R 223 Hz, so it's genuinely two channels) with
+    /// a loop over its middle third **UN-snapped** on purpose (endpoints mid-phase → a
+    /// raw loop would click). Open the Audio Editor pill to see the two-lane waveform +
+    /// green loop brackets. Demos three things: turning **Loop** on and pressing
+    /// **Play** with the Crossfade at 0 vs. the default is the click → click-free A/B;
+    /// **Force Mono** collapses the two lanes into one; **Export** writes the `smpl`
+    /// chunk (and **Batch LUFS** normalizes a whole folder).
     pub(crate) fn editor_loop_smoke(&mut self) {
-        use ph2d_audio::AudioFormat;
-        let data = super::super::signals::sine_tone(AudioFormat::mono(48_000), 220.0, 2.0, 0.4);
+        use ph2d_audio::{AudioFormat, SampleData};
+        let sr = 48_000u32;
+        let frames = sr as usize * 2; // 2 s
+        let l_step = std::f32::consts::TAU * 220.0 / sr as f32;
+        let r_step = std::f32::consts::TAU * 223.0 / sr as f32; // detuned → real stereo + downmix
+        let mut v = Vec::with_capacity(frames * 2);
+        for i in 0..frames {
+            v.push((i as f32 * l_step).sin() * 0.4);
+            v.push((i as f32 * r_step).sin() * 0.4);
+        }
+        let data = SampleData::from_interleaved(v, AudioFormat::stereo(sr));
         let _ = self.engine.stop_preview();
         self.editor.name = "loop-smoke".to_string();
         self.editor.clip = Some(ph2d_audio_edit::EditClip::new(data));
         self.editor.state = EditorTransport::Stopped;
         self.editor.playing_loop_region = false;
         self.editor.loop_sig = None;
+        self.editor.scrub_frame = Some(0);
         if let Some(clip) = self.editor.clip.as_mut() {
             let frames = clip.frame_count();
             // Direct, un-snapped region (bypasses the auto-snap in Set) so the

@@ -10,16 +10,16 @@ use ph2d_editor_core::interaction::WidgetEvent;
 use ph2d_editor_core::panel::EventOutcome;
 use ph2d_panel_audio_editor::state::AudioEditorState;
 use ph2d_panel_audio_editor::{
-    AEDIT_FADE_IN, AEDIT_FX_ADD, AEDIT_FX_APPLY, AEDIT_FX_BYPASS, AEDIT_FX_CANCEL, AEDIT_FX_DOWN,
-    AEDIT_FX_NEXT, AEDIT_FX_P0, AEDIT_FX_PREV, AEDIT_FX_REMOVE, AEDIT_FX_RESET, AEDIT_FX_S0_ON,
-    AEDIT_FX_S1, AEDIT_FX_UP, AEDIT_LOAD, AEDIT_LOOP, AEDIT_LOOP_CLEAR, AEDIT_LOOP_SET,
-    AEDIT_NORMALIZE, AEDIT_PLAY, AEDIT_PRESET_APPLY, AEDIT_PRESET_LOAD, AEDIT_PRESET_NEXT,
-    AEDIT_PRESET_PREV, AEDIT_PRESET_SAVE, AEDIT_SILENCE, AEDIT_STOP, AEDIT_TRIM, AudioEditCmd,
-    AudioEditorPanel, MAX_FX_STAGES, clear_fx_dirty, fx_bypass, fx_chain, fx_dirty, fx_sel,
-    fx_sel_stage, looping, preset_sel, reset_fx_chain, set_fx_kind_defaults, set_fx_kind_names,
-    set_has_selection, set_loop_span, set_preset_names, take_apply_preset, take_clear_loop,
-    take_edit_cmd, take_load, take_load_preset, take_play_pause, take_save_preset, take_set_loop,
-    take_stop,
+    AEDIT_BATCH_LUFS, AEDIT_FADE_IN, AEDIT_FX_ADD, AEDIT_FX_APPLY, AEDIT_FX_BYPASS,
+    AEDIT_FX_CANCEL, AEDIT_FX_DOWN, AEDIT_FX_NEXT, AEDIT_FX_P0, AEDIT_FX_PREV, AEDIT_FX_REMOVE,
+    AEDIT_FX_RESET, AEDIT_FX_S0_ON, AEDIT_FX_S1, AEDIT_FX_UP, AEDIT_LOAD, AEDIT_LOOP,
+    AEDIT_LOOP_CLEAR, AEDIT_LOOP_SET, AEDIT_MONO, AEDIT_NORMALIZE, AEDIT_PLAY, AEDIT_PRESET_APPLY,
+    AEDIT_PRESET_LOAD, AEDIT_PRESET_NEXT, AEDIT_PRESET_PREV, AEDIT_PRESET_SAVE, AEDIT_SILENCE,
+    AEDIT_STOP, AEDIT_TRIM, AudioEditCmd, AudioEditorPanel, MAX_FX_STAGES, clear_fx_dirty,
+    fx_bypass, fx_chain, fx_dirty, fx_sel, fx_sel_stage, looping, preset_sel, reset_fx_chain,
+    set_fx_kind_defaults, set_fx_kind_names, set_has_selection, set_loop_span, set_preset_names,
+    take_apply_preset, take_batch_lufs, take_clear_loop, take_edit_cmd, take_load,
+    take_load_preset, take_play_pause, take_save_preset, take_set_loop, take_stop,
 };
 use ph2d_ui_testkit::MockPanelHost;
 
@@ -420,6 +420,30 @@ fn loop_set_arms_only_with_a_selection() {
     set_has_selection(true);
     host.apply_panel_event::<AudioEditorPanel>(&mut state, WidgetEvent::Click(AEDIT_LOOP_SET));
     assert!(take_set_loop(), "Set Loop never armed the set-loop intent");
+}
+
+/// Force-to-mono rides the edit-command seam like the other whole-clip ops; Batch
+/// LUFS is a folder op that arms its own one-shot the bridge turns into a picker.
+#[test]
+fn force_mono_and_batch_lufs_reach_their_intents() {
+    let mut host = MockPanelHost::with_panel::<AudioEditorPanel>();
+    let mut state = AudioEditorState;
+    let _ = take_edit_cmd();
+    let _ = take_batch_lufs();
+
+    host.apply_panel_event::<AudioEditorPanel>(&mut state, WidgetEvent::Click(AEDIT_MONO));
+    assert_eq!(
+        take_edit_cmd(),
+        Some(AudioEditCmd::ForceMono),
+        "Force Mono click never armed the edit command"
+    );
+
+    host.apply_panel_event::<AudioEditorPanel>(&mut state, WidgetEvent::Click(AEDIT_BATCH_LUFS));
+    assert!(
+        take_batch_lufs(),
+        "Batch LUFS click never armed the folder-op intent"
+    );
+    assert!(!take_batch_lufs(), "the intent is one-shot");
 }
 
 /// Clear acts on an EXISTING loop — the shell publishes whether one is set

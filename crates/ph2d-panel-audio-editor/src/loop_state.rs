@@ -1,10 +1,11 @@
-//! Loop-region state for the Audio Editor panel (W6 — asset-prep loop points).
+//! Asset-prep panel state for the Audio Editor (W6): **loop points** + **batch LUFS**.
 //!
 //! The panel owns only intents + display state; the shell owns the `EditClip` loop
-//! region, the click-free crossfade, and the `smpl` export. One persistent control
-//! (the crossfade slider position) and two one-shot intents (Set from selection ·
-//! Clear) the bridge drains each frame. There is **no** Audition control — the loop
-//! plays via the transport's Loop toggle + Play, so the panel doesn't track playback.
+//! region, the click-free crossfade, the `smpl` export, and the folder batch. Loop:
+//! one persistent control (the crossfade slider position) and two one-shot intents
+//! (Set from selection · Clear); the loop plays via the transport's Loop toggle + Play
+//! (no Audition control). Batch LUFS: one one-shot intent the bridge turns into a
+//! folder picker.
 //!
 //! Thread-local, like `snapshot`/`presets` — the panel and the shell bridge both run
 //! on the main thread.
@@ -21,6 +22,19 @@ thread_local! {
     /// Panel → shell one-shots (drained by the bridge each frame).
     static SET_LOOP_REQ: Cell<bool> = const { Cell::new(false) };
     static CLEAR_LOOP_REQ: Cell<bool> = const { Cell::new(false) };
+    /// Panel → shell: normalize a whole folder of audio to a target loudness.
+    static BATCH_LUFS_REQ: Cell<bool> = const { Cell::new(false) };
+}
+
+/// Panel: arm "batch-normalize a folder to a target LUFS".
+pub(crate) fn request_batch_lufs() {
+    BATCH_LUFS_REQ.with(|c| c.set(true));
+}
+
+/// Shell: take the pending batch-LUFS request (one-shot; the bridge opens a folder
+/// picker).
+pub fn take_batch_lufs() -> bool {
+    BATCH_LUFS_REQ.with(|c| c.replace(false))
 }
 
 /// Default crossfade slider position (≈ the shell's mid-length crossfade).
@@ -101,5 +115,12 @@ mod tests {
         assert_eq!(xfade_norm(), 1.0);
         set_xfade_norm(-0.2);
         assert_eq!(xfade_norm(), 0.0);
+    }
+
+    #[test]
+    fn batch_lufs_intent_is_one_shot() {
+        request_batch_lufs();
+        assert!(take_batch_lufs());
+        assert!(!take_batch_lufs());
     }
 }

@@ -6,7 +6,7 @@
 
 use std::ops::Range;
 
-use ph2d_audio::{SampleData, dsp};
+use ph2d_audio::{AudioFormat, SampleData, dsp};
 
 /// A fade/envelope shape (rising 0→1 across the range for a fade-IN; the fade-OUT
 /// is the mirror). All are smooth and click-free at the endpoints.
@@ -212,6 +212,27 @@ pub fn normalize_lufs(data: &SampleData, target_lufs: f32) -> SampleData {
     }
     let gain_db = target_lufs - cur;
     gain(data, 10.0f32.powf(gain_db / 20.0))
+}
+
+/// Downmix every channel to a single mono channel (arithmetic mean per frame), for
+/// **3D positional audio** — which must be mono to pan in space. A clip that is
+/// already mono returns unchanged. Frame count is preserved; only the channel layout
+/// (and interleaved sample count) changes.
+pub fn force_mono(data: &SampleData) -> SampleData {
+    let ch = channels(data);
+    if ch <= 1 {
+        return data.clone();
+    }
+    let frames = data.frame_count();
+    let src = data.samples();
+    let inv = 1.0 / ch as f32;
+    let mut out = Vec::with_capacity(frames);
+    for f in 0..frames {
+        let base = f * ch;
+        let sum: f32 = src[base..base + ch].iter().copied().sum();
+        out.push(sum * inv);
+    }
+    SampleData::from_interleaved(out, AudioFormat::mono(data.format().sample_rate))
 }
 
 /// Reverse the clip in time (frame order), keeping channel interleave intact.

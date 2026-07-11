@@ -173,12 +173,13 @@ fn vs_main(@builtin(vertex_index) vi: u32) -> VsOut {
     }
 
     let screen_pos = center + side * miter * (half * scale);
-    // Ordem 2D (GP §2): profundidade constante por traço = (sid+2)·2e-7, teste
-    // GREATER — o traço mais novo (sid maior) ganha, e o auto-overlap de UM traço
+    // Ordem 2D (GP §2): profundidade por traço = (2·sid+2)·2e-7, teste GREATER —
+    // o traço mais novo (sid maior) ganha, e o auto-overlap de UM traço
     // (junções/miter) não recompõe (mesma profundidade → o 2º fragmento falha o
-    // GREATER, sem double-blend).
+    // GREATER, sem double-blend). O fill do mesmo traço fica em (2·sid+1), logo
+    // abaixo → o traço ganha sobre o próprio fill.
     let c = to_clip(screen_pos);
-    let depth = f32(sid + 2u) * 2e-7;
+    let depth = f32(2u * sid + 2u) * 2e-7;
     out.clip = vec4<f32>(c.xy, depth, 1.0);
     out.v_perp = side;
     out.hardness = st.hardness;

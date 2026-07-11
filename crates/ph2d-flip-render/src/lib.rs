@@ -16,9 +16,11 @@
 //! W1 incremental: **T1.1 = packing** (este módulo, headless). Vertex/fragment
 //! shader + passe entram a seguir.
 
+mod fill;
 mod pack;
 mod pipeline;
 
+pub use fill::{FillVertex, triangulate};
 pub use pack::{
     FLAG_CLOSED, FLAG_END_FLAT, FLAG_START_FLAT, FlipGpuData, GpuPoint, GpuStroke, pack_drawing,
     pack_drawings,

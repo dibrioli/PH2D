@@ -7,7 +7,7 @@
 //! traço da camada FG saltar entre os 3 quadros-chave.
 
 use ph2d_core::Vec2;
-use ph2d_flip::{FlipDoc, FlipStroke, Hold, KeyKind, Point, Rgba};
+use ph2d_flip::{Fill, FlipDoc, FlipStroke, Hold, KeyKind, Point, Rgba};
 
 /// A cena Flip de boot: vazia por padrão; o objeto-demo sob `PH2D_FLIP_DEMO`.
 pub(crate) fn demo_scene() -> FlipDoc {
@@ -20,13 +20,13 @@ pub(crate) fn demo_scene() -> FlipDoc {
     let obj = doc.object_mut(oid).expect("objeto recém-criado existe");
     obj.fps = 12.0;
 
-    // BG: uma moldura segurando a animação inteira (1 desenho, hold implícito).
+    // BG: uma moldura + um quadrado PREENCHIDO (prova o fill), segurando a
+    // animação inteira (1 desenho, hold implícito).
     let bg = obj.add_layer("BG");
     if let Some(d) = obj.insert_frame(bg, 0, Hold::Implicit, KeyKind::Keyframe) {
-        obj.drawing_mut(d)
-            .expect("desenho recém-criado")
-            .strokes
-            .push(frame_rect());
+        let dr = obj.drawing_mut(d).expect("desenho recém-criado");
+        dr.strokes.push(filled_square());
+        dr.strokes.push(frame_rect());
     }
 
     // FG: 3 quadros-chave (0/8/16) com um traço que salta + varia a hardness.
@@ -66,6 +66,33 @@ fn frame_rect() -> FlipStroke {
     }
     s.closed = true;
     s.hardness = 1.0;
+    s
+}
+
+/// Um quadrado fechado PREENCHIDO (fill verde translúcido, contorno fino) no
+/// canto direito — a prova visual do T1.6 (fill triangulado).
+fn filled_square() -> FlipStroke {
+    let mut s = FlipStroke::new();
+    let outline = Rgba::new(0.2, 0.7, 0.3, 1.0);
+    for corner in [
+        Vec2::new(1.4, -1.4),
+        Vec2::new(2.4, -1.4),
+        Vec2::new(2.4, -0.4),
+        Vec2::new(1.4, -0.4),
+    ] {
+        s.push_point(Point {
+            pos: corner,
+            width: 0.04,
+            opacity: 1.0,
+            color: outline,
+        });
+    }
+    s.closed = true;
+    s.hardness = 1.0;
+    s.fill = Some(Fill {
+        color: Rgba::new(0.2, 0.7, 0.3, 1.0),
+        opacity: 0.5,
+    });
     s
 }
 

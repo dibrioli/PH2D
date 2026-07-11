@@ -9,6 +9,7 @@
 //! chamador DEPOIS do `render`). v1 reescreve os buffers a cada chamada — o
 //! rebind barato / dirty-flag é o T1.8.
 
+use crate::fill::FillVertex;
 use crate::pack::FlipGpuData;
 
 /// A câmera do passe, no layout do uniform WGSL (80 bytes, align 16).
@@ -49,6 +50,10 @@ pub struct FlipRenderer {
     bind_group: Option<wgpu::BindGroup>,
     /// Nº de vértices a desenhar no próximo/último `render` (= point_count · 6).
     vertex_count: u32,
+    // Fill (T1.6): pipeline de triângulos flat + vertex buffer + contagem.
+    fill_pipeline: wgpu::RenderPipeline,
+    fill_buf: Option<wgpu::Buffer>,
+    fill_count: u32,
     // Depth-buffer para a ordem 2D (GP §2): profundidade por-traço + teste
     // GREATER. Redimensionado sob demanda pra casar o alvo.
     depth_texture: Option<wgpu::Texture>,
@@ -111,45 +116,67 @@ impl FlipRenderer {
                 compilation_options: wgpu::PipelineCompilationOptions::default(),
                 targets: &[Some(wgpu::ColorTargetState {
                     format: target_format,
-                    blend: Some(wgpu::BlendState {
-                        // Premultiplicado over: src já vem multiplicado por alpha.
-                        color: wgpu::BlendComponent {
-                            src_factor: wgpu::BlendFactor::One,
-                            dst_factor: wgpu::BlendFactor::OneMinusSrcAlpha,
-                            operation: wgpu::BlendOperation::Add,
-                        },
-                        alpha: wgpu::BlendComponent {
-                            src_factor: wgpu::BlendFactor::One,
-                            dst_factor: wgpu::BlendFactor::OneMinusSrcAlpha,
-                            operation: wgpu::BlendOperation::Add,
-                        },
-                    }),
+                    blend: Some(premult_over()),
                     write_mask: wgpu::ColorWrites::ALL,
                 })],
             }),
-            primitive: wgpu::PrimitiveState {
-                topology: wgpu::PrimitiveTopology::TriangleList,
-                strip_index_format: None,
-                front_face: wgpu::FrontFace::Ccw,
-                cull_mode: None, // fitas podem virar CW/CCW conforme a curva
-                polygon_mode: wgpu::PolygonMode::Fill,
-                unclipped_depth: false,
-                conservative: false,
+            primitive: tri_list(),
+            depth_stencil: Some(depth_greater(Self::DEPTH_FORMAT)),
+            multisample: no_msaa(),
+            multiview_mask: None,
+            cache: None,
+        });
+
+        // Fill: triângulos flat (vertex buffer FillVertex), mesma câmera (bgl),
+        // mesmo depth (profundidade menor → o traço fica por cima).
+        let fill_shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+            label: Some("ph2d-flip fill shader"),
+            source: wgpu::ShaderSource::Wgsl(include_str!("shaders/flip_fill.wgsl").into()),
+        });
+        let fill_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+            label: Some("ph2d-flip fill pipeline"),
+            layout: Some(&layout),
+            vertex: wgpu::VertexState {
+                module: &fill_shader,
+                entry_point: Some("vs_main"),
+                compilation_options: wgpu::PipelineCompilationOptions::default(),
+                buffers: &[wgpu::VertexBufferLayout {
+                    array_stride: std::mem::size_of::<FillVertex>() as u64,
+                    step_mode: wgpu::VertexStepMode::Vertex,
+                    // pos @0 (offset 0), depth @1 (offset 8), color @2 (offset 16);
+                    // o `_pad` (offset 12) é só alinhamento.
+                    attributes: &[
+                        wgpu::VertexAttribute {
+                            format: wgpu::VertexFormat::Float32x2,
+                            offset: 0,
+                            shader_location: 0,
+                        },
+                        wgpu::VertexAttribute {
+                            format: wgpu::VertexFormat::Float32,
+                            offset: 8,
+                            shader_location: 1,
+                        },
+                        wgpu::VertexAttribute {
+                            format: wgpu::VertexFormat::Float32x4,
+                            offset: 16,
+                            shader_location: 2,
+                        },
+                    ],
+                }],
             },
-            depth_stencil: Some(wgpu::DepthStencilState {
-                format: Self::DEPTH_FORMAT,
-                depth_write_enabled: true,
-                // GREATER: traço mais novo (profundidade maior) ganha; o mesmo
-                // traço (mesma profundidade) não recompõe o auto-overlap.
-                depth_compare: wgpu::CompareFunction::Greater,
-                stencil: wgpu::StencilState::default(),
-                bias: wgpu::DepthBiasState::default(),
+            fragment: Some(wgpu::FragmentState {
+                module: &fill_shader,
+                entry_point: Some("fs_main"),
+                compilation_options: wgpu::PipelineCompilationOptions::default(),
+                targets: &[Some(wgpu::ColorTargetState {
+                    format: target_format,
+                    blend: Some(premult_over()),
+                    write_mask: wgpu::ColorWrites::ALL,
+                })],
             }),
-            multisample: wgpu::MultisampleState {
-                count: 1,
-                mask: !0,
-                alpha_to_coverage_enabled: false,
-            },
+            primitive: tri_list(),
+            depth_stencil: Some(depth_greater(Self::DEPTH_FORMAT)),
+            multisample: no_msaa(),
             multiview_mask: None,
             cache: None,
         });
@@ -170,6 +197,9 @@ impl FlipRenderer {
             point_stroke_buf: None,
             bind_group: None,
             vertex_count: 0,
+            fill_pipeline,
+            fill_buf: None,
+            fill_count: 0,
             depth_texture: None,
             depth_view: None,
             depth_size: (0, 0),
@@ -219,8 +249,21 @@ impl FlipRenderer {
         queue.write_buffer(&self.camera_buf, 0, bytemuck::bytes_of(camera));
         if data.is_empty() {
             self.vertex_count = 0;
+            self.fill_count = 0;
             self.bind_group = None;
             return;
+        }
+        // Fill (T1.6): vertex buffer de triângulos flat, se houver.
+        if data.fills.is_empty() {
+            self.fill_count = 0;
+        } else {
+            self.fill_buf = Some(vertex_buffer(
+                device,
+                queue,
+                "ph2d-flip fills",
+                bytemuck::cast_slice(&data.fills),
+            ));
+            self.fill_count = data.fills.len() as u32;
         }
         let points = storage_buffer(
             device,
@@ -271,19 +314,90 @@ impl FlipRenderer {
         self.vertex_count = data.point_count() as u32 * 6;
     }
 
-    /// Codifica o draw do traço numa render pass já aberta no alvo (o chamador
-    /// controla load/clear). No-op se o último [`Self::upload`] não tinha geometria.
+    /// Codifica os draws (fill ABAIXO, traço por cima) numa render pass já aberta
+    /// no alvo (color + o depth desta struct). No-op se o último [`Self::upload`]
+    /// não tinha geometria. A ordem 2D vem do depth, mas emitir o fill antes é o
+    /// convencional (fill-first).
     pub fn draw(&self, pass: &mut wgpu::RenderPass<'_>) {
         let Some(bg) = self.bind_group.as_ref() else {
             return;
         };
-        if self.vertex_count == 0 {
-            return;
-        }
-        pass.set_pipeline(&self.pipeline);
         pass.set_bind_group(0, bg, &[]);
-        pass.draw(0..self.vertex_count, 0..1);
+        // Fill primeiro.
+        if let Some(fb) = self.fill_buf.as_ref()
+            && self.fill_count > 0
+        {
+            pass.set_pipeline(&self.fill_pipeline);
+            pass.set_vertex_buffer(0, fb.slice(..));
+            pass.draw(0..self.fill_count, 0..1);
+        }
+        // Traço por cima (o bind group segue válido: mesma bgl nos dois pipelines).
+        if self.vertex_count > 0 {
+            pass.set_pipeline(&self.pipeline);
+            pass.draw(0..self.vertex_count, 0..1);
+        }
     }
+}
+
+/// Blend premultiplicado over (src já vem multiplicado por alpha).
+fn premult_over() -> wgpu::BlendState {
+    let over = wgpu::BlendComponent {
+        src_factor: wgpu::BlendFactor::One,
+        dst_factor: wgpu::BlendFactor::OneMinusSrcAlpha,
+        operation: wgpu::BlendOperation::Add,
+    };
+    wgpu::BlendState {
+        color: over,
+        alpha: over,
+    }
+}
+
+/// Depth-state da ordem 2D: escreve + teste GREATER (traço/sid maior ganha).
+fn depth_greater(format: wgpu::TextureFormat) -> wgpu::DepthStencilState {
+    wgpu::DepthStencilState {
+        format,
+        depth_write_enabled: true,
+        depth_compare: wgpu::CompareFunction::Greater,
+        stencil: wgpu::StencilState::default(),
+        bias: wgpu::DepthBiasState::default(),
+    }
+}
+
+fn tri_list() -> wgpu::PrimitiveState {
+    wgpu::PrimitiveState {
+        topology: wgpu::PrimitiveTopology::TriangleList,
+        strip_index_format: None,
+        front_face: wgpu::FrontFace::Ccw,
+        cull_mode: None,
+        polygon_mode: wgpu::PolygonMode::Fill,
+        unclipped_depth: false,
+        conservative: false,
+    }
+}
+
+fn no_msaa() -> wgpu::MultisampleState {
+    wgpu::MultisampleState {
+        count: 1,
+        mask: !0,
+        alpha_to_coverage_enabled: false,
+    }
+}
+
+/// Cria um vertex buffer e escreve os bytes (v1: recriado a cada upload).
+fn vertex_buffer(
+    device: &wgpu::Device,
+    queue: &wgpu::Queue,
+    label: &str,
+    bytes: &[u8],
+) -> wgpu::Buffer {
+    let buf = device.create_buffer(&wgpu::BufferDescriptor {
+        label: Some(label),
+        size: bytes.len() as u64,
+        usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
+        mapped_at_creation: false,
+    });
+    queue.write_buffer(&buf, 0, bytes);
+    buf
 }
 
 /// Uma entrada de bind-group-layout para um storage buffer read-only no vertex.

@@ -14,7 +14,14 @@
 //!
 //! Puro (sem wgpu) — testável headless. O upload pra GPU envolve estas structs.
 
+use crate::fill::{FillVertex, triangulate};
+use ph2d_core::Vec2;
 use ph2d_flip::{Cap, FlipDrawing};
+
+/// Espaçamento de profundidade por-traço (GP §2, `2e-7`). Cada traço ocupa 2
+/// slots: fill em `2·sid+1`, traço em `2·sid+2` (o traço ganha o GREATER sobre o
+/// próprio fill; sids maiores ficam por cima).
+pub(crate) const DEPTH_STEP: f32 = 2e-7;
 
 /// `stroke.closed` (traço cíclico). Sem este bit = aberto.
 pub const FLAG_CLOSED: u32 = 1 << 0;
@@ -66,6 +73,9 @@ pub struct FlipGpuData {
     /// vertex shader achar `first_point`/`point_count`/`flags` do vizinho (clamp
     /// aberto / wrap fechado) sem varrer a tabela.
     pub point_stroke: Vec<u32>,
+    /// Vértices de fill (triângulos já triangulados), dos traços fechados com
+    /// preenchimento. Rasterizados ABAIXO do traço (profundidade menor).
+    pub fills: Vec<FillVertex>,
 }
 
 impl FlipGpuData {
@@ -124,6 +134,28 @@ fn append_drawing(g: &mut FlipGpuData, drawing: &FlipDrawing) {
             material: s.material.0,
             _pad: [0; 3],
         });
+
+        // Fill: só traço FECHADO com preenchimento. Triangula os pontos e emite
+        // os triângulos com a cor premultiplicada + a profundidade do fill.
+        if s.closed
+            && let Some(f) = s.fill
+        {
+            let pts: Vec<Vec2> = pos.to_vec();
+            let tris = triangulate(&pts);
+            let depth = (2 * sid + 1) as f32 * DEPTH_STEP;
+            let a = f.color.a() * f.opacity;
+            // Premultiplicado (o fragment de fill não multiplica de novo).
+            let color = [f.color.r() * a, f.color.g() * a, f.color.b() * a, a];
+            for &vi in &tris {
+                let p = pts[vi as usize];
+                g.fills.push(FillVertex {
+                    pos: [p.x, p.y],
+                    depth,
+                    _pad: 0.0,
+                    color,
+                });
+            }
+        }
     }
 }
 

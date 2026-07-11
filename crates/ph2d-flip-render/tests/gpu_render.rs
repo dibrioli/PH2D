@@ -6,7 +6,7 @@
 //! `--ignored`; skip gracioso sem GPU), como os testes do `ph2d-gpu`.
 
 use ph2d_core::Vec2;
-use ph2d_flip::{FlipDrawing, FlipStroke, Point, Rgba};
+use ph2d_flip::{Fill, FlipDrawing, FlipStroke, Point, Rgba};
 use ph2d_flip_render::{CameraRaw, FlipRenderer, pack_drawing};
 
 const W: u32 = 64;
@@ -272,6 +272,53 @@ fn newer_stroke_draws_over_older_at_crossing() {
     assert!(
         cross[2] > 200 && cross[0] < 60,
         "cruzamento é azul (mais novo por cima): {cross:?}"
+    );
+}
+
+#[test]
+#[ignore = "requires a GPU adapter; run with --ignored"]
+fn filled_closed_stroke_renders_fill_under_stroke() {
+    let Some((device, queue)) = device() else {
+        return;
+    };
+    // Quadrado fechado: traço vermelho, fill azul. Centro = azul (fill dentro);
+    // borda = vermelho (traço por cima do próprio fill).
+    let mut d = FlipDrawing::new();
+    let mut s = FlipStroke::new();
+    let red = Rgba::new(1.0, 0.0, 0.0, 1.0);
+    for corner in [
+        Vec2::new(16.0, 16.0),
+        Vec2::new(48.0, 16.0),
+        Vec2::new(48.0, 48.0),
+        Vec2::new(16.0, 48.0),
+    ] {
+        s.push_point(Point {
+            pos: corner,
+            width: 6.0,
+            opacity: 1.0,
+            color: red,
+        });
+    }
+    s.closed = true;
+    s.hardness = 1.0;
+    s.fill = Some(Fill {
+        color: Rgba::new(0.0, 0.0, 1.0, 1.0),
+        opacity: 1.0,
+    });
+    d.strokes.push(s);
+
+    let px = render(&device, &queue, &d);
+    // Centro bem dentro: azul (fill).
+    let center = rgb_at(&px, 32, 32);
+    assert!(
+        center[2] > 200 && center[0] < 60,
+        "centro é o fill azul: {center:?}"
+    );
+    // Na borda esquerda (x=16): vermelho (traço por cima do fill).
+    let border = rgb_at(&px, 16, 32);
+    assert!(
+        border[0] > 180 && border[2] < 90,
+        "borda é o traço vermelho: {border:?}"
     );
 }
 

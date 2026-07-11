@@ -30,9 +30,10 @@ const TICK_MINOR_S: f64 = 0.5; // LITERAL-PX-OK: unlabelled tick interval (secon
 const BRACE_W: f32 = 3.0; // LITERAL-PX-OK: loop-brace bar width
 /// Half-width of a brace's grab target — wider than the bar so it is easy to hit.
 const BRACE_HIT_HW: f32 = 6.0; // LITERAL-PX-OK: loop-brace grab half-width
-/// Width + height of a marker pennant.
-const MARKER_W: f32 = 6.0; // LITERAL-PX-OK: marker pennant width
-const MARKER_H: f32 = 9.0; // LITERAL-PX-OK: marker pennant height
+/// Width + height of a marker pennant. Wider than tall so the triangle reads as
+/// a flag pinned to the time, not a thin spike.
+const MARKER_W: f32 = 12.0; // LITERAL-PX-OK: marker pennant width
+const MARKER_H: f32 = 8.0; // LITERAL-PX-OK: marker pennant height
 /// Extra grab padding either side of a marker pennant.
 const MARKER_HIT_PAD: f32 = 4.0; // LITERAL-PX-OK: marker grab padding
 

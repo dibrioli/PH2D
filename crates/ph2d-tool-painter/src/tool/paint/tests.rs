@@ -13505,6 +13505,64 @@ fn watercolor_overlapping_bbox_does_not_rewet_the_neighbour_wash() {
     );
 }
 
+/// **#18 (Enio smoke 2026-07-11):** mudar params de Wash (Body/Concentration/Edge/Opacity) entre traços e
+/// cruzar um traço úmido não pode imprimir borda dura na junção — os params por-dono degrauavam na fronteira
+/// de posse (Bug #8 lição #4). O campo suavizado (`build_style_field`) espalha os params na fronteira.
+#[test]
+fn watercolor_param_change_junction_is_soft() {
+    let size = 96u32;
+    let mut t = white_canvas(size, 8.0);
+    // A: vertical band x=48, params X (Body alto, Concentration alta) → renderiza ESCURO.
+    t.paint.brush = BrushSpec {
+        radius_px: 9.0,
+        hardness: 1.0,
+        falloff: Falloff::Constant,
+        color: [0.1, 0.3, 0.9],
+        space_attenuation: false,
+        watercolor: true,
+        fill: 0.6,
+        depth: 2.0,
+        edge_gain: 0.0,
+        warp: 0.0,
+        granulation: 0.0,
+        ..Default::default()
+    };
+    for slot in &mut t.paint.brush_by_mode {
+        *slot = t.paint.brush;
+    }
+    assert!(t.on_canvas_pointer(cp([48.0, 15.0], PointerPhase::Down)));
+    let mut y = 15.0;
+    while y < 80.0 {
+        y += 2.0;
+        t.on_canvas_pointer(cp([48.0, y], PointerPhase::Move));
+    }
+    t.on_canvas_pointer(cp([48.0, 80.0], PointerPhase::Up));
+    // B: horizontal band y=48 crossing A, params Y (Body baixo) → CLARO. Mesma sessão úmida.
+    t.paint.brush.fill = 0.12;
+    t.paint.brush.depth = 1.0;
+    for slot in &mut t.paint.brush_by_mode {
+        *slot = t.paint.brush;
+    }
+    assert!(t.on_canvas_pointer(cp([15.0, 48.0], PointerPhase::Down)));
+    let mut x = 15.0;
+    while x < 80.0 {
+        x += 2.0;
+        t.on_canvas_pointer(cp([x, 48.0], PointerPhase::Move));
+    }
+    t.on_canvas_pointer(cp([80.0, 48.0], PointerPhase::Up));
+    // Max |grad| do verde ao longo de x=48, cruzando a fronteira A(escuro)/B(claro) em y~40. Sem o campo
+    // suavizado os params degrauam ali (medido 118 bytes/px); com o campo, ~13.
+    let g = |yy: u32| f32::from(px(&t, size, 48, yy)[1]);
+    let mut maxg = 0.0f32;
+    for yy in 33..47u32 {
+        maxg = maxg.max((g(yy + 1) - g(yy)).abs());
+    }
+    assert!(
+        maxg < 22.0,
+        "a junção com params trocados deve ser SUAVE, não degrau (grad {maxg} bytes/px)"
+    );
+}
+
 /// **#2 (Enio smoke 2026-07-11):** a umidade é lançada AO VIVO durante o traço — o damp aparece enquanto
 /// pinta, não só no mouse-up ("a umidade só aparece no mouse up. isso é muito feio"). Sem SOLTAR, o mapa de
 /// umidade já tem que estar populado sobre a região pintada (o pour antes rodava só no bake).

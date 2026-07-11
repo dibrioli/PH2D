@@ -21,7 +21,8 @@
 
 use super::watercolor_field::*;
 use super::watercolor_rewet_px::{
-    apply_wet_lift, blur_of, build_wet_field, inner_blur_set, rewet_px, sample_wet_field, style_at,
+    apply_wet_lift, blur_of, build_style_field, build_wet_field, inner_blur_set, params_differ,
+    rewet_px, sample_wet_field, style_at,
 };
 use super::*;
 use ph2d_painter_brush::blend::ryb_mix;
@@ -297,6 +298,10 @@ impl PainterTool {
         // fronteira de dono nos termos wet-driven; sem rewet/água/estilos nem constrói.
         let wet_field = ((wet_any > 0.0 || watered) && has_style && style_owner.len() == n)
             .then(|| build_wet_field(style_owner, style_table, fw, (rx0, ry0), (rw, rh)));
+        // #18: continuous wash params smoothed across the owner boundary — only when the owners' params
+        // actually differ (else `None` ⇒ discrete `st`, byte-identical). See `build_style_field`.
+        let style_field = (has_style && style_owner.len() == n && params_differ(style_table))
+            .then(|| build_style_field(style_owner, style_table, fw, (rx0, ry0), (rw, rh)));
 
         let color_buf = &self.paint.stroke_color;
         // Substrate memoisation (perf, byte-identical): `paper_h` is canvas-anchored, so compute
@@ -355,6 +360,11 @@ impl PainterTool {
                     // the displacement needs the amp first); owner 0 = current brush, old path.
                     let st_warp =
                         style_at(has_style, style_owner, style_table, cur_style, gy * fw + gx).warp;
+                    // #18: smooth the Warp amplitude across the owner boundary (else the new stroke's
+                    // RaggedEdge re-warps the old wash's junction — a hard artefact). PRE-warp `(lx, ly)`.
+                    let st_warp = style_field
+                        .as_ref()
+                        .map_or(st_warp, |sf| sf.sample_warp(lx, ly, st_warp));
                     let (sx, sy) = if st_warp > 0.0 {
                         let wx =
                             warp_axis(gx as f32, gy as f32, SEED_WARP_X_A, SEED_WARP_X_B) * st_warp;
@@ -387,6 +397,13 @@ impl PainterTool {
                     let wgy = (ry0 as f32 + sy).clamp(0.0, (fh - 1) as f32) as usize;
                     let widx = wgy * fw + wgx;
                     let st = style_at(has_style, style_owner, style_table, cur_style, widx);
+                    // #18: fill/depth/edge/opacity SMOOTHED across the owner boundary (else they step = a
+                    // hard junction); geometry/colour stay DISCRETE (Bug #8 lição #4). `None` ⇒ discrete.
+                    let (st_fill, st_depth, st_edge_gain, st_opacity) = style_field
+                        .as_ref()
+                        .map_or((st.fill, st.depth, st.edge_gain, st.opacity), |sf| {
+                            sf.sample(sx, sy, (st.fill, st.depth, st.edge_gain, st.opacity))
+                        });
                     // A pixel owned by a COMMITTED stroke renders SETTLED (its bake's dry state):
                     // the live flag re-rendered baked washes back to the wet settle (rectangle).
                     let owner_px = if has_style { style_owner[widx] } else { 0 };
@@ -411,7 +428,7 @@ impl PainterTool {
                     // or lingered (soak), fainter where the brush barely deposited (a depleted
                     // trail's dry tail). Zero reads beyond fields that already exist.
                     let gain_px =
-                        st.edge_gain * (1.0 + EDGE_SOAK_BOOST * soak_v) * (0.5 + 0.5 * col_a);
+                        st_edge_gain * (1.0 + EDGE_SOAK_BOOST * soak_v) * (0.5 + 0.5 * col_a);
                     // EDGE-3 (Curtis §4.3.3, conservação): rim = unsharp ASSINADO — o lobo
                     // negativo (franja, `inner > cw`) EMPALIDECE (o pigmento da borda MIGROU do
                     // interior; era clampado ≥0 = wash uniforme com contorno). Doc 12 §W-C.
@@ -442,9 +459,9 @@ impl PainterTool {
                     // harder, and the pooling follows the paper tooth (a wetter bloom is ragged, not a
                     // clean ring). This is what makes the Spread read intense + organic under Wet even
                     // before any old paint is involved (Enio 2026-07-06 "mais intenso e menos uniforme").
-                    let mut fill_px = st.fill;
+                    let mut fill_px = st_fill;
                     if st_wet_px > 0.0 {
-                        fill_px = st.fill
+                        fill_px = st_fill
                             * (1.0 - (WET_THIN * st_wet_px * st.spread_thin * inner).min(0.95));
                         let ragged =
                             (1.0 + (paper_h - 0.5) * 2.0 * WET_RAGGED * st_wet_px).max(0.0);
@@ -488,7 +505,7 @@ impl PainterTool {
                         rw_px.wet_paint,
                     );
                     density += rw_px.pool;
-                    let od = density * st.depth;
+                    let od = density * st_depth;
 
                     // Pigment colour: depositado vs brush por lerp PROPORCIONAL (`ca8/255`, a
                     // fração de pigmento do depósito). A janela fixa `COL_LO..COL_HI` (take 6)
@@ -554,7 +571,7 @@ impl PainterTool {
                     // BODY / OPACITY (doc 13 #17): pure Beer–Lambert only subtracts, so a light-valued
                     // pigment barely deposits ("azul e amarelo quase não aparecem"). Body lays the pigment's
                     // OWN colour over the transmittance result ([`watercolor_lut::Luts::body_cov`]; `0` ⇒ no-op).
-                    let body_cov = lut.body_cov(st.opacity, od);
+                    let body_cov = lut.body_cov(st_opacity, od);
                     let mut rgb = [0u8; 3];
                     let mut t_lum = 0.0f32;
                     let mut t_min = 1.0f32;

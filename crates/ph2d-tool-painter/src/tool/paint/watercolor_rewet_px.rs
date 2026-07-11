@@ -94,6 +94,121 @@ pub(super) fn sample_wet_field(
     })
 }
 
+/// Per-owner **continuous** wash params (fill/depth/edge_gain/opacity/warp) smoothed ACROSS the owner
+/// boundary — the [`build_wet_field`] treatment (`blur(v·m)/blur(m)`) generalised to the params that feed
+/// CONTINUOUS terms (#18, Bug #8 lição #4). Read DISCRETELY via [`style_at`], they STEP at the junction:
+/// changing Body/Concentration/Edge/Opacity/RaggedEdge and crossing a still-wet neighbour prints a hard
+/// edge (and the new stroke's Warp re-warps the OLD wash's boundary). Built ONLY when the owners' params
+/// actually differ ([`params_differ`]) — uniform ⇒ the discrete path, byte-identical. Window-local layout.
+pub(super) struct StyleField {
+    fill: Vec<f32>,
+    depth: Vec<f32>,
+    edge_gain: Vec<f32>,
+    opacity: Vec<f32>,
+    warp: Vec<f32>,
+    mask: Vec<f32>,
+    rw: usize,
+    rh: usize,
+}
+
+/// Do any two OWNED strokes (the table) differ in a continuous param? If not, the discrete resolution is
+/// already seamless — skip the field (byte-identical). The current stroke IS the last table entry.
+pub(super) fn params_differ(table: &[WetStrokeStyle]) -> bool {
+    let d = |a: &WetStrokeStyle, b: &WetStrokeStyle| {
+        a.fill != b.fill
+            || a.depth != b.depth
+            || a.edge_gain != b.edge_gain
+            || a.opacity != b.opacity
+            || a.warp != b.warp
+    };
+    table
+        .first()
+        .is_some_and(|first| table.iter().any(|s| d(s, first)))
+}
+
+pub(super) fn build_style_field(
+    style_owner: &[u8],
+    table: &[WetStrokeStyle],
+    fw: usize,
+    (rx0, ry0): (usize, usize),
+    (rw, rh): (usize, usize),
+) -> StyleField {
+    let n = rw * rh;
+    let mut fill = vec![0.0f32; n];
+    let mut depth = vec![0.0f32; n];
+    let mut edge_gain = vec![0.0f32; n];
+    let mut opacity = vec![0.0f32; n];
+    let mut warp = vec![0.0f32; n];
+    let mut mask = vec![0.0f32; n];
+    for wy in 0..rh {
+        let gy = ry0 + wy;
+        for wx in 0..rw {
+            // ONLY owned pixels (a real wash) contribute — masked by ownership like `build_wet_field`, so
+            // an unowned GAP never leaks the current brush's params into a neighbour that doesn't touch it
+            // (the non-contact guard; else two non-overlapping washes would bleed across the gap).
+            let o = style_owner[gy * fw + (rx0 + wx)];
+            if o == 0 {
+                continue;
+            }
+            let s = &table[(o as usize - 1).min(table.len() - 1)];
+            let i = wy * rw + wx;
+            fill[i] = s.fill;
+            depth[i] = s.depth;
+            edge_gain[i] = s.edge_gain;
+            opacity[i] = s.opacity;
+            warp[i] = s.warp;
+            mask[i] = 1.0;
+        }
+    }
+    let r = WET_FIELD_BLUR_PX;
+    StyleField {
+        fill: box_blur(&fill, rw, rh, r),
+        depth: box_blur(&depth, rw, rh, r),
+        edge_gain: box_blur(&edge_gain, rw, rh, r),
+        opacity: box_blur(&opacity, rw, rh, r),
+        warp: box_blur(&warp, rw, rh, r),
+        mask: box_blur(&mask, rw, rh, r),
+        rw,
+        rh,
+    }
+}
+
+impl StyleField {
+    /// Smoothed (fill, depth, edge_gain, opacity) at the WARPED window-local `(sx, sy)` — same sample
+    /// point as the wet field + the discrete `st`. `fb` (the discrete values) covers a mass-less miss.
+    #[inline]
+    pub(super) fn sample(
+        &self,
+        sx: f32,
+        sy: f32,
+        fb: (f32, f32, f32, f32),
+    ) -> (f32, f32, f32, f32) {
+        let m = sample_bilinear(&self.mask, self.rw, self.rh, sx, sy);
+        if m > 1e-4 {
+            (
+                sample_bilinear(&self.fill, self.rw, self.rh, sx, sy) / m,
+                sample_bilinear(&self.depth, self.rw, self.rh, sx, sy) / m,
+                sample_bilinear(&self.edge_gain, self.rw, self.rh, sx, sy) / m,
+                sample_bilinear(&self.opacity, self.rw, self.rh, sx, sy) / m,
+            )
+        } else {
+            fb
+        }
+    }
+
+    /// Smoothed Warp AMPLITUDE at the PRE-warp window-local `(lx, ly)` (the displacement needs the amp
+    /// first, so it reads un-warped — matching the discrete `st_warp`). `fb` covers a mass-less miss.
+    #[inline]
+    pub(super) fn sample_warp(&self, lx: f32, ly: f32, fb: f32) -> f32 {
+        let m = sample_bilinear(&self.mask, self.rw, self.rh, lx, ly);
+        if m > 1e-4 {
+            sample_bilinear(&self.warp, self.rw, self.rh, lx, ly) / m
+        } else {
+            fb
+        }
+    }
+}
+
 /// Resolve the per-pixel OWNER stroke's style (EDGE-1 per-stroke params — recency ownership: an
 /// older wash keeps ITS Concentration/Edge/water on the union re-bake, Enio 2026-07-09). Owner `0`
 /// / no style map ⇒ the current brush's style, the exact pre-style path.

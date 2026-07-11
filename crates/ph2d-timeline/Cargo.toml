@@ -31,6 +31,8 @@ ph2d-ecs = { path = "../ph2d-ecs" }
 ph2d-core = { path = "../ph2d-core" }
 # Versioned document persistence (HR-14) + panel snapshot/intent (de)serialization.
 serde = { version = "1", features = ["derive"] }
+# Versioned on-disk format for the timeline document (W4 save/load).
+postcard = { version = "1", features = ["alloc"] }
 # Opacity resolver only (feature-gated): the `Sprite` component whose tint alpha
 # is the sprite opacity channel.
 ph2d-render = { path = "../ph2d-render", optional = true }

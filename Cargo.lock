@@ -5835,6 +5835,7 @@ dependencies = [
  "ph2d-core",
  "ph2d-ecs",
  "ph2d-render",
+ "postcard",
  "serde",
  "serde_json",
 ]

@@ -91,3 +91,32 @@ fn schema_version_is_one() {
     assert_eq!(DOC_VERSION, 1);
     assert_eq!(TimelineDoc::new().version, 1);
 }
+
+#[test]
+fn to_bytes_from_bytes_round_trips_the_document() {
+    use ph2d_timeline::{PropKind, TimelineDoc};
+    let mut doc = TimelineDoc::new();
+    let target = doc.bind(1, PropKind::TranslationX);
+    doc.bindings_mut()[0].wire_id = ph2d_timeline::WireId(42);
+    doc.add_marker(ph2d_anim::RationalTime::from_seconds(1.0), "beat");
+    let _ = target;
+    let bytes = doc.to_bytes().expect("serialize");
+    let back = TimelineDoc::from_bytes(&bytes).expect("deserialize");
+    assert_eq!(back.bindings()[0].wire_id, ph2d_timeline::WireId(42));
+    assert_eq!(back.markers()[0].label, "beat");
+}
+
+#[test]
+fn from_bytes_rejects_a_future_schema_version() {
+    // A postcard blob whose first field (version) is a value this build doesn't
+    // know must be refused, not silently misread.
+    use ph2d_timeline::TimelineDoc;
+    let good = TimelineDoc::new().to_bytes().unwrap();
+    // The version is the first varint; bump it well past DOC_VERSION.
+    let mut bad = good.clone();
+    bad[0] = 0x7f; // a large single-byte varint, != DOC_VERSION (1)
+    assert!(
+        TimelineDoc::from_bytes(&bad).is_err(),
+        "wrong-version file rejected"
+    );
+}

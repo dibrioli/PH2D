@@ -27,6 +27,7 @@ pub mod doc;
 pub mod graph;
 pub mod history;
 pub mod intent;
+pub mod persist;
 pub mod prop;
 pub mod snapshot;
 pub mod sprite;
@@ -40,6 +41,7 @@ pub use doc::{DEFAULT_FPS, DOC_VERSION, Marker, NamedClip, TimelineDoc};
 pub use graph::{drawn_extent, handle_coords, handle_point, sample_keys, value_extent};
 pub use history::{HISTORY_CAP, TimelineHistory};
 pub use intent::{TimelineIntent, apply_intent, snap_time};
+pub use persist::{resolve_entities, stamp_wire_ids};
 pub use prop::PropKind;
 pub use snapshot::{KeyView, TimelineViewSnapshot, TrackView};
 // The anim vocab the public snapshot/doc API names, re-exported so consumers of

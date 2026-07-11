@@ -100,6 +100,30 @@ impl TimelineDoc {
         }
     }
 
+    /// Serialize the document to the versioned on-disk format (postcard). The
+    /// schema `version` is the first field, so a loader can reject or migrate an
+    /// older file before trusting the rest (W4 save; HR-14).
+    ///
+    /// Bindings serialize by `wire_id`; the live `entity` bits are `#[serde(skip)]`
+    /// — stamp the wire ids first (see [`crate::stamp_wire_ids`]).
+    pub fn to_bytes(&self) -> Result<Vec<u8>, String> {
+        postcard::to_allocvec(self).map_err(|e| e.to_string())
+    }
+
+    /// Load a document saved by [`Self::to_bytes`], rejecting a schema version
+    /// this build does not understand. The loaded bindings have null `entity`
+    /// bits — resolve them with [`crate::resolve_entities`].
+    pub fn from_bytes(bytes: &[u8]) -> Result<Self, String> {
+        let doc: TimelineDoc = postcard::from_bytes(bytes).map_err(|e| e.to_string())?;
+        if doc.version != DOC_VERSION {
+            return Err(format!(
+                "timeline schema version {} != {DOC_VERSION}",
+                doc.version
+            ));
+        }
+        Ok(doc)
+    }
+
     /// The clip currently edited.
     #[must_use]
     pub fn active_clip(&self) -> &Clip {

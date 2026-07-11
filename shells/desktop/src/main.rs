@@ -53,6 +53,7 @@ mod palette_persist;
 mod render_loop;
 mod sim_populate;
 mod theme;
+mod timeline_persist;
 mod vec_entities;
 mod vec_gizmo_view;
 mod vec_selection;

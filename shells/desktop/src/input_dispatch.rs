@@ -1651,6 +1651,43 @@ impl App {
             .unwrap_or_else(|_| "ph2d_vec_scene.postcard".to_string())
     }
 
+    /// W4: write the timeline document to its sidecar (Ctrl+S while the timeline
+    /// panel is the context). Tracks are named by their object's name so they
+    /// reconnect on load (see `timeline_persist`).
+    fn timeline_save_to_sidecar(&mut self) {
+        let result = {
+            let Some(gfx) = self.gfx.as_ref() else {
+                return;
+            };
+            crate::timeline_persist::save(&mut self.timeline, gfx.sim.world())
+        };
+        let msg = match result {
+            Ok(n) => format!("Timeline saved · {n} track(s)"),
+            Err(e) => format!("Timeline save failed: {e}"),
+        };
+        if let Some(gfx) = self.gfx.as_mut() {
+            gfx.toasts.push(Toast::info(msg));
+        }
+    }
+
+    /// W4: load the timeline document from its sidecar (Ctrl+O), reconnecting
+    /// tracks to the live objects by name. Toasts how many of N reconnected.
+    fn timeline_load_from_sidecar(&mut self) {
+        let result = {
+            let Some(gfx) = self.gfx.as_mut() else {
+                return;
+            };
+            crate::timeline_persist::load(&mut self.timeline, gfx.sim.world_mut())
+        };
+        let msg = match result {
+            Ok((n, total)) => format!("Timeline loaded · {n}/{total} track(s) reconnected"),
+            Err(e) => format!("Timeline load failed: {e}"),
+        };
+        if let Some(gfx) = self.gfx.as_mut() {
+            gfx.toasts.push(Toast::info(msg));
+        }
+    }
+
     /// ADR-0108 cutover: is the Vector drawing tool the active tool? Gates the
     /// Pen input hooks (replaces the retired `PH2D_VEC_PEN` test flag).
     /// Põe a ORIGEM (o pivô) do path selecionado sob o cursor, sem mover a forma.

@@ -386,11 +386,13 @@ mod tests {
         }
     }
 
-    /// **Fase 2: every ANALYTIC pattern tiles seamlessly under Tiling.** An analytic pattern is already
-    /// exactly periodic, so snapping Size to a whole number of its per-axis period (`analytic_tile_period`)
-    /// lands the seam on a period boundary — no sampler change. Proves `sample(0,y) == sample(pw,y)` and
-    /// `sample(x,0) == sample(x,ph)` for all tileable kinds; the RAW size seams (the control). Ignored
-    /// axes (Stripes/Gradient are constant on v) are seamless at any size, so their seam holds trivially.
+    /// **Fase 2: every ANALYTIC pattern tiles seamlessly under Tiling.** The pure-periodic patterns are
+    /// already exactly periodic, so snapping Size to a whole number of their per-axis period
+    /// (`analytic_tile_period`) lands the seam on a period boundary — no sampler change. The HASH-JITTERED
+    /// ones (Dots/Scales) additionally need the cell-jitter hash wrapped (`sample_tiled_rot_wrapped` passes
+    /// the period, gated by `analytic_needs_hash_wrap`). Proves `sample(0,y) == sample(pw,y)` and
+    /// `sample(x,0) == sample(x,ph)` for all tileable kinds; the RAW (unsnapped, unwrapped) size seams (the
+    /// control). Ignored axes (Stripes/Gradient constant on v) are seamless at any size (seam holds trivially).
     #[test]
     fn slot_analytic_pattern_tiles_seamlessly_under_tiling() {
         // Import the variants by name (NOT a glob — a `TextureKind::None` glob would shadow `Option::None`
@@ -399,14 +401,20 @@ mod tests {
             Bricks, Checker, Chevron, Crosshatch, Diamonds, Dots, Gradient, Grid, Hexagons, Magic,
             Marble, Scales, Stripes, Triangles, Waves, Weave, Wood,
         };
-        use ph2d_painter_brush::texture::{analytic_tile_period, angle_basis, sample_tiled_rot};
+        use ph2d_painter_brush::texture::{
+            analytic_needs_hash_wrap, analytic_tile_period, angle_basis, sample_tiled_rot,
+            sample_tiled_rot_wrapped,
+        };
         let (pw, ph) = (200i64, 140i64);
         let tile = NoiseTile::new((pw as usize, ph as usize), [true, true]);
         let rot = angle_basis(0);
-        // Every kind `analytic_tile_period` accepts. Excluded on purpose: turbulence (Marble/Magic/Wood),
-        // irrational period (Triangles/Hexagons), hash-jittered (Dots/Scales) — guarded below.
+        let per = tile.slot_period(); // the sprite period the hash-wrap kinds (Dots/Scales) need
+        // Every kind `analytic_tile_period` accepts — the pure-periodic ones (snap only) AND Dots/Scales
+        // (snap + cell-hash wrap). Excluded on purpose: turbulence (Marble/Magic/Wood), irrational period
+        // (Triangles/Hexagons) — guarded below.
         let kinds = [
             Checker, Diamonds, Stripes, Grid, Crosshatch, Waves, Chevron, Weave, Bricks, Gradient,
+            Dots, Scales,
         ];
         for kind in kinds {
             assert!(
@@ -419,26 +427,26 @@ mod tests {
                 ..Default::default()
             };
             let snapped = snap_slot_size(raw, tile);
-            // The field must actually VARY across the sprite (guards a degenerate constant).
-            let varies = (0..pw).step_by(7).any(|x| {
-                (sample_tiled_rot(&snapped, x, 21, None, rot)
-                    - sample_tiled_rot(&snapped, 3, 21, None, rot))
-                .abs()
-                    > 1e-3
-            });
+            // Sample the seamless form: the wrap is a no-op for the pure kinds (their gate is off, so
+            // `per` is ignored) and lands the hash wrap for Dots/Scales.
+            let s = |x: i64, y: i64| sample_tiled_rot_wrapped(&snapped, x, y, None, rot, per);
+            // The field must actually VARY across the sprite (guards a degenerate constant). Scan a 2-D
+            // grid — a 1-D line can miss a sparse pattern's features (e.g. gaps between Dots rows).
+            let v0 = s(3, 5);
+            let varies = (0..pw)
+                .step_by(11)
+                .any(|x| (0..ph).step_by(13).any(|y| (s(x, y) - v0).abs() > 1e-3));
             assert!(varies, "{kind:?} snapped field is degenerate/constant");
             for y in [3i64, 19, 41, 111] {
-                let a = sample_tiled_rot(&snapped, 0, y, None, rot);
-                let b = sample_tiled_rot(&snapped, pw, y, None, rot);
+                let (a, b) = (s(0, y), s(pw, y));
                 assert!((a - b).abs() < 2e-3, "{kind:?} X seam at y={y}: {a} vs {b}");
             }
             for x in [5i64, 27, 63, 177] {
-                let a = sample_tiled_rot(&snapped, x, 0, None, rot);
-                let b = sample_tiled_rot(&snapped, x, ph, None, rot);
+                let (a, b) = (s(x, 0), s(x, ph));
                 assert!((a - b).abs() < 2e-3, "{kind:?} Y seam at x={x}: {a} vs {b}");
             }
-            // Control: the RAW (unsnapped) size seams somewhere across the sprite (proves the snap fixes
-            // it). Checked on both axes — a 1D kind (Stripes/Gradient) seams on its live axis.
+            // Control: the RAW (unsnapped, unwrapped) size seams somewhere across the sprite (proves the
+            // snap+wrap fixes it). Checked on both axes — a 1D kind (Stripes/Gradient) seams on its live axis.
             let x_seams = (0..ph).any(|y| {
                 (sample_tiled_rot(&raw, 0, y, None, rot) - sample_tiled_rot(&raw, pw, y, None, rot))
                     .abs()
@@ -454,9 +462,12 @@ mod tests {
                 "control: unsnapped {kind:?} should seam across the sprite"
             );
         }
-        // The excluded kinds are NOT snap-tileable (turbulence / irrational / hash-jitter) — documents the
+        // Dots/Scales are hash-jittered (need the wrap); the pure kinds are NOT — refutable boundary.
+        assert!(analytic_needs_hash_wrap(Dots) && analytic_needs_hash_wrap(Scales));
+        assert!(!analytic_needs_hash_wrap(Checker) && !analytic_needs_hash_wrap(Grid));
+        // The excluded kinds are NOT snap-tileable (turbulence / irrational period) — documents the
         // boundary refutably so a future edit can't silently (mis)snap one.
-        for kind in [Marble, Magic, Wood, Triangles, Hexagons, Dots, Scales] {
+        for kind in [Marble, Magic, Wood, Triangles, Hexagons] {
             assert!(
                 analytic_tile_period(kind, [0.5; ph2d_painter_brush::MAX_TEX_PARAMS]).is_none(),
                 "{kind:?} must NOT be analytic-snap-tileable"

@@ -357,7 +357,9 @@ impl Default for TextureSettings {
     }
 }
 
-pub use patterns::{ParamSpec, analytic_tile_period, lattice_tileable, param_specs};
+pub use patterns::{
+    ParamSpec, analytic_needs_hash_wrap, analytic_tile_period, lattice_tileable, param_specs,
+};
 
 impl TextureSettings {
     /// Whether the texture actually modulates anything (a kind is assigned).

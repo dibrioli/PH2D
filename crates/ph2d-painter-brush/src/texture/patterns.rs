@@ -13,9 +13,11 @@ mod layer;
 mod math;
 mod paper_tile;
 mod specs;
+mod tileable;
 pub use layer::render_texture_layer;
 use math::*;
 pub use specs::{ParamSpec, param_specs};
+pub use tileable::{analytic_needs_hash_wrap, analytic_tile_period, lattice_tileable};
 
 /// Evaluate `kind` at texture coords `tex` (after the mapping resolved them), shaped by the kind's
 /// `params` (slots `0`/`1` = universal Contrast / Brightness, slot `2` = the kind's shape knob; see
@@ -28,61 +30,6 @@ pub(super) fn sample_kind(
     image: Option<&ImageMask>,
 ) -> f32 {
     sample_kind_t(kind, tex, params, image, [0, 0])
-}
-
-/// True when `kind` is a **lattice** procedural that [`sample_kind_t`] can wrap at an integer period for
-/// seamless any-size tiling (the value-noise family + Voronoi). A caller that snaps a slot's Size for
-/// sprite-seamless tiling ([`super::sample_tiled_rot_wrapped`]) must snap THESE to an integer `rel`-span;
-/// analytic patterns snap to their own period instead ([`analytic_tile_period`]).
-#[must_use]
-pub fn lattice_tileable(kind: TextureKind) -> bool {
-    matches!(
-        kind,
-        TextureKind::Noise
-            | TextureKind::Clouds
-            | TextureKind::DistortedNoise
-            | TextureKind::Musgrave
-            | TextureKind::Stucci
-            | TextureKind::Grain
-            | TextureKind::Voronoi
-    )
-}
-
-/// The fundamental **period** (in `rel` units, per axis `[u, v]`) of an ANALYTIC pattern — `Some` when the
-/// kind is exactly periodic with a RATIONAL period, so a caller can snap the slot Size to make the sprite
-/// span an integer number of periods and the pattern tiles **seam-free with no sampler change** (analytic
-/// patterns are already exactly periodic; only the seam needs aligning — unlike the lattice, which also
-/// needs its hash wrapped). A `0.0` on an axis = that axis is ignored / constant (any Size is seamless
-/// there — don't snap it). `None` = NOT snap-tileable: the turbulence kinds (Magic / Marble / Wood — noise,
-/// not periodic → they'd need the lattice hash-wrap); the IRRATIONAL-period kinds (Triangles `√3`, Hexagons
-/// `√3·g` — a pixel seam can never land exactly on an irrational period); and the HASH-JITTERED kinds
-/// (Dots / Scales — their `Randomness` knob offsets each cell by an UNWRAPPED `hash2`, so like the lattice
-/// they'd need the hash wrapped at the period, not just a size snap — a follow-up). The frequency knob is
-/// slot `2` of `params[2..]` (the shared `Frequency` → coordinate multiplier `freq_mul`), matching each
-/// sampler below; period-only kinds (Checker / Bricks / …) ignore `params`.
-#[must_use]
-pub fn analytic_tile_period(
-    kind: TextureKind,
-    params: [f32; super::MAX_TEX_PARAMS],
-) -> Option<[f32; 2]> {
-    let k = &params[2..];
-    // A frequency-knob pattern (`f = frac(coord · g)`, `g = freq_mul(knob 1)`) repeats every `1/g`.
-    let per = 1.0 / freq_mul(knob(k, 1));
-    Some(match kind {
-        // Cell-parity lattices — period 2, independent of the knobs (Softness only blurs the edge).
-        TextureKind::Checker | TextureKind::Diamonds => [2.0, 2.0],
-        // Frequency-driven directional / mesh patterns.
-        TextureKind::Stripes => [per, 0.0], // v ignored → seamless on v at any Size
-        TextureKind::Grid | TextureKind::Crosshatch => [per, per],
-        TextureKind::Waves => [1.0, per], // ripple reads `wave01(u)` (period 1); bands run `v · g`
-        TextureKind::Chevron => [per, 1.0], // zig runs `u · g`; bands `wave01(v)` (period 1)
-        TextureKind::Weave => [2.0 * per, 2.0 * per], // over/under parity → period `2/g`
-        // Bricks: period 1 across (Bond only SHIFTS the row), 2 down (alternating rows). No hash.
-        TextureKind::Bricks => [1.0, 2.0],
-        // Gradient (Blender Blend): `Repeat` = knob 1 → `1 + 5·knob` ramps per unit; v ignored.
-        TextureKind::Gradient => [1.0 / (1.0 + knob(k, 1) * 5.0), 0.0],
-        _ => return None,
-    })
 }
 
 /// [`sample_kind`] with a lattice **wrap** period `(pu, pv)` in cells (`[0, 0]` = no wrap ⇒ byte-identical):
@@ -115,7 +62,7 @@ pub(super) fn sample_kind_t(
         TextureKind::Gradient => gradient(u, k),
         TextureKind::Grain => grain_t(u, v, k, pu, pv),
         TextureKind::Crosshatch => crosshatch(u, v, k),
-        TextureKind::Dots => dots(u, v, k),
+        TextureKind::Dots => dots_t(u, v, k, pu, pv),
         TextureKind::Grid => grid(u, v, k),
         TextureKind::Bricks => bricks(u, v, k),
         TextureKind::Waves => waves(u, v, k),
@@ -123,7 +70,7 @@ pub(super) fn sample_kind_t(
         TextureKind::Diamonds => diamonds(u, v, k),
         TextureKind::Triangles => triangles(u, v, k),
         TextureKind::Hexagons => hexagons(u, v, k),
-        TextureKind::Scales => scales(u, v, k),
+        TextureKind::Scales => scales_t(u, v, k, pu, pv),
         TextureKind::Weave => weave(u, v, k),
         // Paper presets: pre-baked seamless 256² tooth tiles (GRAN-2 rota 2 — the old on-the-fly
         // generator's spectrum was a low-frequency blotch, ~90-98% of the energy at λ > 32 px,
@@ -229,7 +176,7 @@ pub fn render_texture_preview(
 
 /// Read kind knob `i` from the `&params[2..]` slice (default `0.5` if a kind reads beyond its specs).
 #[inline]
-fn knob(k: &[f32], i: usize) -> f32 {
+pub(super) fn knob(k: &[f32], i: usize) -> f32 {
     k.get(i).copied().unwrap_or(0.5)
 }
 
@@ -298,7 +245,7 @@ fn octaves_from(d: f32) -> u32 {
 }
 
 /// Map a `Frequency` knob to a coordinate multiplier `0.3..=2.3×` (`0.35` ≈ `1×`) — pattern repeats.
-fn freq_mul(f: f32) -> f32 {
+pub(super) fn freq_mul(f: f32) -> f32 {
     0.3 + f.clamp(0.0, 1.0) * 2.0
 }
 
@@ -528,11 +475,15 @@ fn crosshatch(u: f32, v: f32, k: &[f32]) -> f32 {
 }
 
 /// **Dots** (halftone): a round dot per tile. `Radius` = dot size, `Softness` = edge, `Randomness` = jitter.
-fn dots(u: f32, v: f32, k: &[f32]) -> f32 {
+/// The `Randomness` jitter hashes each cell, so seamless tiling needs the hash wrapped at integer period
+/// `(pu, pv)` cells (`analytic_needs_hash_wrap`); `(0, 0)` = no wrap ⇒ byte-identical to the plain field.
+fn dots_t(u: f32, v: f32, k: &[f32], pu: i32, pv: i32) -> f32 {
     let rand = knob(k, 2);
     let (cu, cv) = ((u + 0.5).floor(), (v + 0.5).floor());
-    let ju = (hash2(cu as i32, cv as i32) - 0.5) * rand;
-    let jv = (hash2(cv as i32 + 7, cu as i32 + 3) - 0.5) * rand;
+    // The jitter hash wraps per axis so cell `p` reuses cell `0`'s offset (the second read swaps the axes,
+    // so it swaps the periods too) — the same trick as the lattice / Voronoi hash-wrap.
+    let ju = (hash2w(cu as i32, cv as i32, pu, pv) - 0.5) * rand;
+    let jv = (hash2w(cv as i32 + 7, cu as i32 + 3, pv, pu) - 0.5) * rand;
     let (du, dv) = (u - cu - ju, v - cv - jv);
     let d = (du * du + dv * dv).sqrt();
     let r = (0.12 + knob(k, 0) * 0.46).max(0.02);
@@ -629,13 +580,17 @@ fn hexagons(u: f32, v: f32, k: &[f32]) -> f32 {
 }
 
 /// **Scales** (fish-scale): overlapping rows of ringed discs. `Radius` = scale size, `Softness` = edge,
-/// `Randomness` = per-scale jitter.
-fn scales(u: f32, v: f32, k: &[f32]) -> f32 {
+/// `Randomness` = per-scale jitter. The jitter hashes each scale, so seamless tiling needs the hash wrapped
+/// at integer period `(pu, pv)` cells (`analytic_needs_hash_wrap`; `(0, 0)` = no wrap ⇒ byte-identical). The
+/// row-parity offset (`off`) repeats only every 2 rows, so a seamless `pv` must be EVEN — the caller's
+/// Size-snap guarantees it (Scales' `v` period is `2`, so the snapped span is a whole number of 2-row
+/// periods → `pv` even → the wrapped row keeps its parity).
+fn scales_t(u: f32, v: f32, k: &[f32], pu: i32, pv: i32) -> f32 {
     let rand = knob(k, 2);
     let row = v.floor();
     let off = if (row as i32) & 1 == 0 { 0.0 } else { 0.5 };
     let base = (u - off + 0.5).floor() + off; // nearest scale centre on this row
-    let cx = base + (hash2(base as i32, row as i32) - 0.5) * rand;
+    let cx = base + (hash2w(base as i32, row as i32, pu, pv) - 0.5) * rand;
     let (dx, dy) = (u - cx, v - row);
     let d = (dx * dx + dy * dy).sqrt();
     let r = 0.4 + knob(k, 0) * 0.6;

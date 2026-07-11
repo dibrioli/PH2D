@@ -12,14 +12,14 @@ use ph2d_panel_audio_editor::state::AudioEditorState;
 use ph2d_panel_audio_editor::{
     AEDIT_FADE_IN, AEDIT_FX_ADD, AEDIT_FX_APPLY, AEDIT_FX_BYPASS, AEDIT_FX_CANCEL, AEDIT_FX_DOWN,
     AEDIT_FX_NEXT, AEDIT_FX_P0, AEDIT_FX_PREV, AEDIT_FX_REMOVE, AEDIT_FX_RESET, AEDIT_FX_S0_ON,
-    AEDIT_FX_S1, AEDIT_FX_UP, AEDIT_LOAD, AEDIT_LOOP, AEDIT_LOOP_AUDITION, AEDIT_LOOP_CLEAR,
-    AEDIT_LOOP_SET, AEDIT_LOOP_SNAP, AEDIT_NORMALIZE, AEDIT_PLAY, AEDIT_PRESET_APPLY,
-    AEDIT_PRESET_LOAD, AEDIT_PRESET_NEXT, AEDIT_PRESET_PREV, AEDIT_PRESET_SAVE, AEDIT_SILENCE,
-    AEDIT_STOP, AEDIT_TRIM, AudioEditCmd, AudioEditorPanel, MAX_FX_STAGES, clear_fx_dirty,
-    fx_bypass, fx_chain, fx_dirty, fx_sel, fx_sel_stage, loop_audition, looping, preset_sel,
-    reset_fx_chain, set_fx_kind_defaults, set_fx_kind_names, set_has_selection, set_loop_audition,
-    set_loop_span, set_preset_names, take_apply_preset, take_clear_loop, take_edit_cmd, take_load,
-    take_load_preset, take_play_pause, take_save_preset, take_set_loop, take_snap_loop, take_stop,
+    AEDIT_FX_S1, AEDIT_FX_UP, AEDIT_LOAD, AEDIT_LOOP, AEDIT_LOOP_CLEAR, AEDIT_LOOP_SET,
+    AEDIT_NORMALIZE, AEDIT_PLAY, AEDIT_PRESET_APPLY, AEDIT_PRESET_LOAD, AEDIT_PRESET_NEXT,
+    AEDIT_PRESET_PREV, AEDIT_PRESET_SAVE, AEDIT_SILENCE, AEDIT_STOP, AEDIT_TRIM, AudioEditCmd,
+    AudioEditorPanel, MAX_FX_STAGES, clear_fx_dirty, fx_bypass, fx_chain, fx_dirty, fx_sel,
+    fx_sel_stage, looping, preset_sel, reset_fx_chain, set_fx_kind_defaults, set_fx_kind_names,
+    set_has_selection, set_loop_span, set_preset_names, take_apply_preset, take_clear_loop,
+    take_edit_cmd, take_load, take_load_preset, take_play_pause, take_save_preset, take_set_loop,
+    take_stop,
 };
 use ph2d_ui_testkit::MockPanelHost;
 
@@ -422,35 +422,23 @@ fn loop_set_arms_only_with_a_selection() {
     assert!(take_set_loop(), "Set Loop never armed the set-loop intent");
 }
 
-/// Clear / Snap / Audition act on an EXISTING loop — the shell publishes whether one
-/// is set (`set_loop_span`), and the seam must refuse them (and the toggle stay dark)
-/// until there is a loop, then wire through once there is.
+/// Clear acts on an EXISTING loop — the shell publishes whether one is set
+/// (`set_loop_span`), and the seam must refuse it (the button stays dim) until there
+/// is a loop, then wire through once there is. (Snap folded into Set; Audition removed
+/// — the loop plays via Loop + Play.)
 #[test]
-fn loop_clear_snap_audition_need_a_loop_then_wire_through() {
+fn loop_clear_needs_a_loop_then_wires_through() {
     let mut host = MockPanelHost::with_panel::<AudioEditorPanel>();
     let mut state = AudioEditorState;
     let _ = take_clear_loop();
-    let _ = take_snap_loop();
 
-    // No loop yet: every loop-region control is inert.
+    // No loop yet: Clear is inert.
     set_loop_span(None);
-    set_loop_audition(false);
     host.apply_panel_event::<AudioEditorPanel>(&mut state, WidgetEvent::Click(AEDIT_LOOP_CLEAR));
-    host.apply_panel_event::<AudioEditorPanel>(&mut state, WidgetEvent::Click(AEDIT_LOOP_SNAP));
-    host.apply_panel_event::<AudioEditorPanel>(&mut state, WidgetEvent::Click(AEDIT_LOOP_AUDITION));
     assert!(!take_clear_loop(), "Clear fired with no loop");
-    assert!(!take_snap_loop(), "Snap fired with no loop");
-    assert!(!loop_audition(), "Audition lit with nothing to audition");
 
-    // Once the shell reports a loop, the controls come alive.
+    // Once the shell reports a loop, Clear comes alive.
     set_loop_span(Some((0.5, 1.5)));
-    host.apply_panel_event::<AudioEditorPanel>(&mut state, WidgetEvent::Click(AEDIT_LOOP_SNAP));
-    assert!(take_snap_loop(), "Snap never armed its intent");
-    host.apply_panel_event::<AudioEditorPanel>(&mut state, WidgetEvent::Click(AEDIT_LOOP_AUDITION));
-    assert!(
-        loop_audition(),
-        "Audition toggle never engaged through the seam"
-    );
     host.apply_panel_event::<AudioEditorPanel>(&mut state, WidgetEvent::Click(AEDIT_LOOP_CLEAR));
     assert!(take_clear_loop(), "Clear never armed its intent");
 }

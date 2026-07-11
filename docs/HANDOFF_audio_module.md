@@ -349,8 +349,8 @@ abaixo é histórico — não re-investigue.
     volta; a cauda é fundida (equal-power sin/cos) nos `L` frames que **precedem** `s`,
     então o último frame pousa em `data[s-1]` e a volta vira o passo contínuo `s-1→s` do
     próprio sinal. `L = min(xfade, s, region_len)` → loop começando no frame 0 (sem
-    lead-in) degrada pra cópia crua (por isso o Snap existe). Teste prova que a costura
-    cai 10× vs. o loop cru.
+    lead-in) degrada pra cópia crua (o auto-snap do Set ajuda alinhando os pontos).
+    Teste prova que a costura cai 10× vs. o loop cru.
   - **`EditClip`** ganhou `loop_region: Option<Range>` (metadado, mesma disciplina da
     `selection`: **sobrevive undo/redo**, só clampa quando um edit encurta o clipe, some
     no load) + `set_loop_from_selection`/`snap_loop_to_zero_crossing`/`clear_loop`/
@@ -361,20 +361,37 @@ abaixo é histórico — não re-investigue.
     para no `data` ainda o vê). `LoopRegion.end` é **half-open**; o `smpl` guarda o
     último frame **inclusivo** (`end-1`) — conversão só na fronteira. `encode_wav` sem
     loops é **byte-idêntico** ao arquivo antigo (teste de regressão).
-  - **Áudio click-free reusa TODO o preview existente**: a audição toca o buffer
-    crossfadeado em `set_preview_looping(true)` — **zero mudança na RT thread**. O
-    `AudioSystem::editor_update_loop_audition` é edge-triggered + change-gated
-    (`loop_sig = (start,end,xfade)`): liga/desliga e faz hot-swap sem restart quando a
-    região/crossfade muda. A audição **comanda a preview voice** enquanto ligada —
-    `editor_set_looping` é **guardado** (o toggle Loop principal não pode desligar o
-    loop por baixo) e Play/Stop/Load a **soltam** (limpam `loop_auditioning`).
-    `replace_data` clampa o cursor, então hot-swap de buffer menor (após Snap) é seguro.
-  - **Painel** (`ph2d-panel-audio-editor`) — seção **Loop** nova (`paint_loop.rs`, sob a
-    transport): readout `1.20–3.40s`/`No loop` · **Set Loop** (da seleção) · **Clear** ·
-    **Snap Zero** · **Audition** (toggle) · slider **Crossfade**. Estado em
-    `loop_state.rs` (thread-local, padrão `presets.rs`): 2 persistentes (audition +
-    xfade norm) + 3 intents one-shot + `set_loop_span`/`set_loop_audition` shell→painel.
-    Guardas: Set exige seleção; Clear/Snap/Audition exigem loop (dim + recusa no seam).
+  - **Áudio click-free reusa TODO o preview existente**: o loop toca o buffer
+    crossfadeado em `set_preview_looping(true)` — **zero mudança na RT thread**.
+    `replace_data` clampa o cursor, então hot-swap de buffer menor é seguro.
+  - **UI unificada (revisão pós-smoke do Enio, 2026-07-10):** o design inicial tinha um
+    botão **Audition** próprio + um **Snap Zero** — confundia com o toggle **Loop** que
+    já existia, e um bug fazia o **Stop não funcionar** (a ponte relia `loop_audition()`
+    a cada frame e re-disparava a audição logo após o Stop limpá-la). **Fix + simplificação:**
+    - **Audition REMOVIDO** — o loop toca por **Loop (toggle) + Play**: `editor_toggle_play`
+      vê `looping && has_loop` → toca a região crossfadeada em repeat; senão o clipe
+      inteiro. Play é one-shot (não persiste), então **Stop/Pause funcionam** sem nada
+      pra re-disparar. `editor_set_looping` fica guardado por `playing_loop_region` (o
+      toggle Loop não desliga o loop por baixo).
+    - **Snap REMOVIDO como botão** — dobrado no **Set Loop** (auto-snap a zero-crossing);
+      move os pontos < 1 ms (invisível), só previne o clique. `editor_loop_live_update`
+      faz hot-swap enquanto a região toca (o slider Crossfade atualiza ao vivo) e
+      **nunca inicia** playback (por isso não briga com o Stop).
+    - **Playhead corrigido:** a região toca como buffer próprio (frames 0..len), então
+      `preview_frame` mapeado no clipe inteiro punha a linha no canto esquerdo, FORA dos
+      brackets. `editor_playhead_frame` soma `loop_start` → a linha fica **dentro** do loop.
+    - **Scrubbing:** arrastar a **régua** (strip de tempo) move o playhead
+      (`editor_scrub_to_frame` → `seek_preview`, mapeado à região quando em loop). A régua
+      é o novo hit-region publicado em `WaveView.ruler`; o corpo da waveform continua
+      fazendo seleção. Estado `audio_scrub_drag` no `App`.
+    - **Waveform "pro":** barras arredondadas espelhadas no centro (`BAR_PITCH`/`BAR_W`)
+      + **shading played/unplayed** (Accent até o playhead, Text2 depois) — em vez do
+      envelope min/max chapado. Silêncio vira um traço fino (piso 2 px).
+  - **Painel** (`ph2d-panel-audio-editor`) — seção **Loop** (`paint_loop.rs`, sob a
+    transport): readout `1.20–3.40s`/`No loop` · **Set Loop** (da seleção, auto-snap) ·
+    **Clear** · slider **Crossfade**. Estado em `loop_state.rs` (thread-local): 1
+    persistente (xfade norm) + 2 intents one-shot + `set_loop_span` shell→painel.
+    Guardas: Set exige seleção; Clear exige loop (dim + recusa no seam).
   - **Overlay** — `draw_loop_region` desenha um **frame verde** (`ColorToken::Success`,
     distinto da banda azul de seleção) marcando o loop.
   - **Export** carrega o loop do clipe committed pro `WavMeta`, clampado ao buffer
@@ -383,11 +400,11 @@ abaixo é histórico — não re-investigue.
     a chamada nova e estourou `paint.rs` pra 603 → extraí `paint_edit_section` pra
     `paint_edit.rs` (paint.rs 493). E `apply_event` passou de 200 LOC → extraí
     `loop_click`. **Meça DEPOIS do fmt** (a memória avisa: fmt re-expande multi-arg).
-  - **Ready-to-smoke:** `PH2D_AUDIO_LOOP_SMOKE=1` (novo em `main.rs` +
-    `editor_loop_smoke`) põe um tom 220 Hz de 2 s no editor com um loop no terço do
-    meio **não-snapado** (endpoints mid-phase = clicaria cru) → abrir o pill Audio
-    Editor mostra os brackets verdes; Audition com Crossfade em 0 vs. default = o A/B
-    click ↔ click-free.
+  - **Ready-to-smoke:** `PH2D_AUDIO_LOOP_SMOKE=1` (em `main.rs` + `editor_loop_smoke`)
+    põe um tom 220 Hz de 2 s no editor com um loop no terço do meio **não-snapado**
+    (endpoints mid-phase = clicaria cru) → abrir o pill Audio Editor mostra os brackets
+    verdes; ligar **Loop** + **Play** com Crossfade em 0 vs. default = o A/B click ↔
+    click-free. Arrastar a régua move o playhead.
   - **Aberto (resto do W6):** containers de variação · markers/cue (`cue`/`LIST adtl`) ·
     force-to-mono · batch LUFS · codec/residência + export OGG/Opus · import por convenção.
 - **Atalhos:** `Ctrl+Z` undo · `Ctrl+Shift+Z` / `Ctrl+Y` redo (roteados ao

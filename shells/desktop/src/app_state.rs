@@ -363,6 +363,11 @@ pub(crate) struct App {
     /// button is held over the overlay waveform (`None` = not selecting).
     #[cfg(feature = "panel-audio-editor")]
     pub(crate) audio_sel_drag: Option<u64>,
+    /// Audio Editor playhead scrub: `true` while the primary button is held over the
+    /// overlay's time RULER, dragging the playhead (seek). Distinct from the waveform
+    /// selection drag (which lives in the wave body above the ruler).
+    #[cfg(feature = "panel-audio-editor")]
+    pub(crate) audio_scrub_drag: bool,
     /// Input snapshot pumped by the gilrs adapter each frame.
     pub(crate) input: InputState,
     /// M14.4b.bis: middle-button camera pan state.

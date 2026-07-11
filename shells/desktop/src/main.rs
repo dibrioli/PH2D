@@ -180,6 +180,8 @@ impl App {
             audio,
             #[cfg(feature = "panel-audio-editor")]
             audio_sel_drag: None,
+            #[cfg(feature = "panel-audio-editor")]
+            audio_scrub_drag: false,
             input: InputState::new(),
             pan_anchor: None,
             held_button: None,

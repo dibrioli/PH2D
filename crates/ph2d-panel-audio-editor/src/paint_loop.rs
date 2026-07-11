@@ -1,20 +1,18 @@
 //! The Loop-points section of the Audio Editor panel (W6 — asset-prep).
 //!
-//! A loop region defined from the waveform selection, snapped to zero crossings,
-//! and auditioned click-free (a crossfaded repeat). It is metadata — not a
+//! A loop region defined from the waveform selection (auto-snapped to zero crossings)
+//! with a **Crossfade** slider that tunes the click-free seam. It is metadata — not a
 //! destructive edit — and is written to the exported WAV's `smpl` chunk so a game
-//! runtime loops sample-exact.
+//! runtime loops sample-exact. It **plays via the transport's Loop toggle + Play**
+//! (no separate Audition control): Loop on + a region set → Play loops the region.
 //!
-//! UI-only: the panel holds the audition toggle + the crossfade slider position and
-//! arms Set/Clear/Snap intents; the shell owns the `EditClip` loop region, the
-//! crossfade DSP, and the export. The readout `(start, end)` seconds come published
-//! from the shell (`loop_state::set_loop_span`).
+//! UI-only: the panel holds the crossfade slider position and arms Set/Clear intents;
+//! the shell owns the `EditClip` loop region, the crossfade DSP, playback and the
+//! export. The readout `(start, end)` seconds are published by the shell
+//! (`loop_state::set_loop_span`).
 
-use crate::paint::{ClippedHits, button, toggle};
-use crate::{
-    AEDIT_LOOP_AUDITION, AEDIT_LOOP_CLEAR, AEDIT_LOOP_SET, AEDIT_LOOP_SNAP, AEDIT_LOOP_XFADE,
-    loop_state,
-};
+use crate::paint::{ClippedHits, button};
+use crate::{AEDIT_LOOP_CLEAR, AEDIT_LOOP_SET, AEDIT_LOOP_XFADE, loop_state};
 use ph2d_editor_core::paint::{paint_text, paint_text_centered, resolve};
 use ph2d_editor_core::widget::{Slider, SliderOrientation, paint_slider, paint_slider_track};
 use ph2d_editor_core::zones::Rect;
@@ -86,30 +84,6 @@ pub(crate) fn paint_loop_section(
         "Clear",
         has_loop,
         AEDIT_LOOP_CLEAR,
-        scene,
-        text_system,
-        theme,
-        hit_index,
-    );
-    y += row_h + gap;
-
-    // Snap to zero crossings | Audition toggle.
-    button(
-        Rect::new(x, y, half, row_h),
-        "Snap Zero",
-        has_loop,
-        AEDIT_LOOP_SNAP,
-        scene,
-        text_system,
-        theme,
-        hit_index,
-    );
-    toggle(
-        Rect::new(x + half + gap, y, half, row_h),
-        "Audition",
-        loop_state::loop_audition(),
-        has_loop,
-        AEDIT_LOOP_AUDITION,
         scene,
         text_system,
         theme,

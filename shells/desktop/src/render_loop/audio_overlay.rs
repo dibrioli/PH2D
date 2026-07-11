@@ -103,7 +103,15 @@ pub(super) fn draw_audio_overlay(
         (rect.w - Spacing::Sm.px() * 2.0).max(1.0),
         (ruler_top - body_top).max(1.0),
     );
-    draw_waveform(scene, clip, wave, theme);
+    // The playhead frame (offset into the loop region while it loops), computed once:
+    // it drives both the waveform's played/unplayed shading and the playhead line.
+    let ph_frame = audio.editor_playhead_frame();
+    let total = clip.frame_count().max(1) as f32;
+    let played_frac = (ph_frame as f32 / total).clamp(0.0, 1.0);
+    // Only split played/unplayed once playback has advanced; a stopped clip shows the
+    // whole waveform lit.
+    let played_x = (ph_frame > 0).then(|| wave.x + played_frac * wave.w);
+    draw_waveform(scene, clip, wave, played_x, theme);
     // Selection highlight (under the playhead) + publish the wave viewport so the
     // shell can hit-test a press over it and map screen-x → clip frame.
     if let Some((s, e)) = audio.editor_selection() {
@@ -116,10 +124,13 @@ pub(super) fn draw_audio_overlay(
     }
     crate::audio::set_wave_view(Some(crate::audio::WaveView {
         rect: wave,
+        ruler: Rect::new(wave.x, ruler_top, wave.w, RULER_H),
         frames: clip.frame_count() as u64,
     }));
     draw_ruler(scene, text, clip, wave, ruler_top, theme);
-    draw_playhead(scene, clip, wave, audio.editor_preview_frame(), theme);
+    // The line stays inside the green brackets while looping (the region plays as its
+    // own buffer, whose frames start at 0 — `ph_frame` already carries the offset).
+    draw_playhead(scene, wave, played_frac, theme);
 
     // Register drag + resize handle hit rects into the hero hit-index so the
     // shared BlenderHit dispatch moves/resizes the overlay next frame.
@@ -150,36 +161,58 @@ fn default_rect(viewport: Rect) -> Rect {
     Rect::new(x, viewport.y + TOP_MARGIN, w, DEFAULT_H)
 }
 
-/// Draw the clip's min/max envelope across `area`, one lane per channel.
+/// Pitch (px) between waveform bars — the bar plus its gap.
+const BAR_PITCH: f32 = 3.0; // LITERAL-PX-OK: waveform bar pitch (chrome)
+/// Width (px) of each waveform bar; the remainder of the pitch is the gap.
+const BAR_W: f32 = 2.0; // LITERAL-PX-OK: waveform bar width (chrome)
+
+/// Draw the clip as a **mirrored, rounded bar** waveform, one lane per channel.
+///
+/// Each bar is the column's peak amplitude reflected around the centre (the classic
+/// symmetric look, cleaner than a raw min/max envelope), pill-rounded with a thin gap
+/// — a modern, calm read. `played_x` (screen x of the playhead) splits the bars into
+/// **played** (accent) and **unplayed** (muted); `None` lights the whole waveform
+/// (stopped / at the very start).
 fn draw_waveform(
     scene: &mut VectorScene,
     clip: &ph2d_audio_edit::EditClip,
     area: Rect,
+    played_x: Option<f32>,
     theme: Theme,
 ) {
     let channels = clip.data().format().channel_count().max(1);
-    let columns = (area.w as usize).clamp(1, 4096);
+    let columns = ((area.w / BAR_PITCH) as usize).clamp(1, 4096);
     let peaks = clip.column_peaks(0, clip.frame_count(), columns);
-    let color = resolve(ColorToken::Accent, theme);
+    let played = resolve(ColorToken::Accent, theme);
+    let unplayed = resolve(ColorToken::Text2, theme);
     let mid = resolve(ColorToken::Border, theme);
 
     let lane_h = area.h / channels as f32;
     for ch in 0..channels {
         let lane_top = area.y + ch as f32 * lane_h;
         let center = lane_top + lane_h * 0.5;
-        let half = (lane_h * 0.5 - 1.0).max(1.0);
+        let half = (lane_h * 0.5 - BAR_PITCH).max(1.0);
         // Zero line.
-        fill_rounded_rect(scene, Rect::new(area.x, center, area.w, 1.0), 0.0, mid);
+        fill_rounded_rect(
+            scene,
+            Rect::new(area.x, center - 0.5, area.w, 1.0),
+            0.0,
+            mid,
+        );
         for c in 0..columns {
             let (lo, hi) = peaks.get(c, ch);
+            let amp = hi.abs().max(lo.abs()).clamp(0.0, 1.0);
             let col_x = area.x + c as f32 * area.w / columns as f32;
-            let y_top = center - hi.clamp(-1.0, 1.0) * half;
-            let y_bot = center - lo.clamp(-1.0, 1.0) * half;
-            let h = (y_bot - y_top).max(1.0);
+            // Reflect around the centre; a 2 px floor keeps silence a visible seam.
+            let h = (amp * half * 2.0).max(2.0);
+            let color = match played_x {
+                Some(px) if col_x > px => unplayed,
+                _ => played,
+            };
             fill_rounded_rect(
                 scene,
-                Rect::new(col_x, y_top, (area.w / columns as f32).max(1.0), h),
-                0.0,
+                Rect::new(col_x, center - h * 0.5, BAR_W, h),
+                BAR_W * 0.5,
                 color,
             );
         }
@@ -220,17 +253,9 @@ fn draw_ruler(
     }
 }
 
-/// Draw the playback playhead as a vertical line at the current preview frame.
-fn draw_playhead(
-    scene: &mut VectorScene,
-    clip: &ph2d_audio_edit::EditClip,
-    area: Rect,
-    frame: u64,
-    theme: Theme,
-) {
-    let total = clip.frame_count().max(1) as f64;
-    let frac = (frame as f64 / total).clamp(0.0, 1.0) as f32;
-    let x = area.x + frac * area.w;
+/// Draw the playback playhead as a vertical line at `frac` (0..1) across `area`.
+fn draw_playhead(scene: &mut VectorScene, area: Rect, frac: f32, theme: Theme) {
+    let x = area.x + frac.clamp(0.0, 1.0) * area.w;
     fill_rounded_rect(
         scene,
         Rect::new(x, area.y, 2.0, area.h),

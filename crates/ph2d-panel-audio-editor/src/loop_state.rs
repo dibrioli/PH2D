@@ -1,9 +1,10 @@
 //! Loop-region state for the Audio Editor panel (W6 — asset-prep loop points).
 //!
 //! The panel owns only intents + display state; the shell owns the `EditClip` loop
-//! region, the click-free crossfade, and the `smpl` export. Two persistent controls
-//! (Audition toggle + crossfade slider position) and three one-shot intents (Set
-//! from selection · Clear · Snap to zero crossings) the bridge drains each frame.
+//! region, the click-free crossfade, and the `smpl` export. One persistent control
+//! (the crossfade slider position) and two one-shot intents (Set from selection ·
+//! Clear) the bridge drains each frame. There is **no** Audition control — the loop
+//! plays via the transport's Loop toggle + Play, so the panel doesn't track playback.
 //!
 //! Thread-local, like `snapshot`/`presets` — the panel and the shell bridge both run
 //! on the main thread.
@@ -11,8 +12,6 @@
 use std::cell::Cell;
 
 thread_local! {
-    /// Panel → shell: whether the click-free loop region is auditioning (persistent).
-    static LOOP_AUDITION: Cell<bool> = const { Cell::new(false) };
     /// Panel → shell: the loop crossfade slider position, normalized `0..1`. The
     /// shell maps it onto a real crossfade length in ms.
     static XFADE_NORM: Cell<f32> = const { Cell::new(DEFAULT_XFADE_NORM) };
@@ -22,27 +21,10 @@ thread_local! {
     /// Panel → shell one-shots (drained by the bridge each frame).
     static SET_LOOP_REQ: Cell<bool> = const { Cell::new(false) };
     static CLEAR_LOOP_REQ: Cell<bool> = const { Cell::new(false) };
-    static SNAP_LOOP_REQ: Cell<bool> = const { Cell::new(false) };
 }
 
 /// Default crossfade slider position (≈ the shell's mid-length crossfade).
 pub(crate) const DEFAULT_XFADE_NORM: f32 = 0.3; // LITERAL-PX-OK: normalized 0..1 slider default
-
-/// Panel: flip the loop audition on/off.
-pub(crate) fn toggle_loop_audition() {
-    LOOP_AUDITION.with(|c| c.set(!c.get()));
-}
-
-/// Panel → shell: whether the loop is auditioning.
-pub fn loop_audition() -> bool {
-    LOOP_AUDITION.with(Cell::get)
-}
-
-/// Shell → panel: force the audition state (the shell turns it off when the loop is
-/// cleared, so the toggle can't stay lit over nothing).
-pub fn set_loop_audition(on: bool) {
-    LOOP_AUDITION.with(|c| c.set(on));
-}
 
 /// Panel: record the crossfade slider position.
 pub(crate) fn set_xfade_norm(v: f32) {
@@ -89,31 +71,9 @@ pub fn take_clear_loop() -> bool {
     CLEAR_LOOP_REQ.with(|c| c.replace(false))
 }
 
-/// Panel: arm "snap both loop endpoints to zero crossings".
-pub(crate) fn request_snap_loop() {
-    SNAP_LOOP_REQ.with(|c| c.set(true));
-}
-
-/// Shell: take the pending snap-loop request (one-shot).
-pub fn take_snap_loop() -> bool {
-    SNAP_LOOP_REQ.with(|c| c.replace(false))
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn audition_toggles_and_the_shell_can_force_it_off() {
-        set_loop_audition(false);
-        toggle_loop_audition();
-        assert!(loop_audition());
-        set_loop_audition(false);
-        assert!(
-            !loop_audition(),
-            "shell can force it off when the loop clears"
-        );
-    }
 
     #[test]
     fn span_drives_has_loop_and_the_readout() {
@@ -128,9 +88,8 @@ mod tests {
     #[test]
     fn intents_are_one_shot() {
         request_set_loop();
-        request_snap_loop();
-        assert!(take_set_loop() && take_snap_loop());
-        assert!(!take_set_loop() && !take_snap_loop());
+        assert!(take_set_loop());
+        assert!(!take_set_loop());
         request_clear_loop();
         assert!(take_clear_loop());
         assert!(!take_clear_loop());

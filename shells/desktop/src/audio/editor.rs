@@ -54,14 +54,19 @@ pub(super) struct AudioEditorRuntime {
     fx_head_sig: Option<fx_rack::HeadSig>,
     /// Global A/B: the dry clip sounds/shows/exports while the chain is kept intact.
     fx_bypass: bool,
-    /// Loop audition (W6): `true` iff the preview voice currently holds the
-    /// crossfaded loop buffer rather than the full clip. Any action that reloads the
-    /// preview with something else (Play from start, Stop, Load) clears it;
-    /// [`AudioSystem::editor_update_loop_audition`] is the only place that sets it.
-    loop_auditioning: bool,
-    /// Change-gate for the loop audition — `(start, end, xfade_frames)`. The
-    /// crossfaded buffer is rebuilt only when the region or crossfade actually moved.
+    /// Loop-region playback (W6): `true` iff the preview voice currently holds the
+    /// crossfaded loop buffer rather than the full clip — i.e. Play was pressed with
+    /// Loop on and a region set. Any action that reloads the preview (Play a full
+    /// clip, Stop, Load, Clear loop) clears it; `editor_toggle_play` is where it goes
+    /// true.
+    playing_loop_region: bool,
+    /// Change-gate for the loop buffer — `(start, end, xfade_frames)`. While a region
+    /// is playing, `editor_loop_live_update` hot-swaps a fresh buffer only when this
+    /// moves (so tuning the Crossfade slider updates the sounding loop).
     loop_sig: Option<(usize, usize, usize)>,
+    /// The crossfade length (frames) the panel's slider currently asks for, refreshed
+    /// each frame so `editor_toggle_play` / `editor_loop_live_update` read one source.
+    pending_xfade: usize,
 }
 
 impl AudioSystem {
@@ -90,7 +95,7 @@ impl AudioSystem {
             .to_string();
         self.editor.clip = Some(ph2d_audio_edit::EditClip::new(data));
         self.editor.state = EditorTransport::Stopped;
-        self.editor.loop_auditioning = false;
+        self.editor.playing_loop_region = false;
         self.editor.loop_sig = None;
         self.editor_fx_discard();
     }
@@ -121,28 +126,52 @@ impl AudioSystem {
 
     /// Cycle the transport: Stopped → play from 0, Playing → pause, Paused →
     /// resume. `looping` is read at play-from-start time.
+    ///
+    /// **Loop unifies with the region (W6):** when Loop is on AND a loop region is set,
+    /// Play plays the **click-free crossfaded region** on repeat (the green brackets);
+    /// otherwise it plays the whole sounding clip (looping per the toggle). There is no
+    /// separate Audition control — Loop + Play *is* the audition, so Stop/Pause behave
+    /// normally with nothing to re-trigger them.
     pub(crate) fn editor_toggle_play(&mut self, looping: bool) {
         match self.editor.state {
             EditorTransport::Stopped => {
-                // Play what is currently SHOWING — the audition when the rack is
-                // previewing, so pressing Play mid-audition hears the effect.
-                if let Some(clip) = self.editor_sounding() {
-                    let params = PlayParams {
-                        looping,
-                        ..PlayParams::default()
-                    };
-                    if self
-                        .engine
-                        .play_preview(clip.data().clone(), params)
-                        .is_ok()
-                    {
-                        self.editor.state = EditorTransport::Playing;
-                        self.editor.started = false;
-                        // The main transport now owns the preview voice — the loop
-                        // audition (if any) no longer holds it.
-                        self.editor.loop_auditioning = false;
-                        self.editor.loop_sig = None;
-                    }
+                let xfade = self.editor.pending_xfade;
+                // Region buffer only when Loop is on and a region exists.
+                let region = looping
+                    .then(|| {
+                        self.editor
+                            .clip
+                            .as_ref()
+                            .and_then(|c| c.loop_audition_buffer(xfade))
+                    })
+                    .flatten();
+                let plays_region = region.is_some();
+                let sig = plays_region
+                    .then(|| {
+                        self.editor
+                            .clip
+                            .as_ref()
+                            .and_then(|c| c.loop_region())
+                            .map(|lp| (lp.start, lp.end, xfade))
+                    })
+                    .flatten();
+                // Region buffer, or the sounding clip (audition when the rack previews).
+                let buf = match region {
+                    Some(b) => Some(b),
+                    None => self.editor_sounding().map(|c| c.data().clone()),
+                };
+                let Some(buf) = buf else {
+                    return;
+                };
+                let params = PlayParams {
+                    looping,
+                    ..PlayParams::default()
+                };
+                if self.engine.play_preview(buf, params).is_ok() {
+                    self.editor.state = EditorTransport::Playing;
+                    self.editor.started = false;
+                    self.editor.playing_loop_region = plays_region;
+                    self.editor.loop_sig = sig;
                 }
             }
             EditorTransport::Playing => {
@@ -160,7 +189,7 @@ impl AudioSystem {
     pub(crate) fn editor_stop(&mut self) {
         let _ = self.engine.stop_preview();
         self.editor.state = EditorTransport::Stopped;
-        self.editor.loop_auditioning = false;
+        self.editor.playing_loop_region = false;
         self.editor.loop_sig = None;
     }
 
@@ -266,11 +295,6 @@ impl AudioSystem {
         self.editor_sounding()
     }
 
-    /// The preview's current playback frame (for the overlay playhead).
-    pub(crate) fn editor_preview_frame(&self) -> u64 {
-        self.engine.preview_frame()
-    }
-
     /// Apply a one-shot edit command from the panel to the loaded clip (each
     /// commits an undo step; undo/redo step the timeline). Keeps the preview
     /// PLAYING (and looping): the edited buffer is hot-swapped into the sounding
@@ -342,7 +366,7 @@ impl AudioSystem {
     pub(crate) fn editor_set_looping(&self, looping: bool) {
         // The loop audition forces looping on the preview; the main Loop toggle must
         // not reach in and turn it off underneath it.
-        if self.editor.loop_auditioning {
+        if self.editor.playing_loop_region {
             return;
         }
         if self.editor.last_loop.get() != looping {

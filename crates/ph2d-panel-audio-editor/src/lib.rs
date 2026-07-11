@@ -151,17 +151,14 @@ pub const AEDIT_PRESET_SAVE: NodeId = hash_node_id("audio_editor_preset_save");
 /// Load a user preset file into the chain (native dialog).
 pub const AEDIT_PRESET_LOAD: NodeId = hash_node_id("audio_editor_preset_load");
 
-// Loop points (W6 — asset-prep). Set the loop region from the selection, snap its
-// ends to zero crossings, audition it click-free (crossfaded), Clear it. The loop is
-// metadata (not an undo edit) and is written to the exported WAV's `smpl` chunk.
-/// Set the loop region from the current waveform selection.
+// Loop points (W6 — asset-prep). Set the loop region from the selection (auto-snapped
+// to zero crossings) or Clear it; the Crossfade slider tunes the click-free seam. The
+// loop is metadata (not an undo edit), plays via **Loop + Play** (no separate Audition
+// control), and is written to the exported WAV's `smpl` chunk.
+/// Set the loop region from the current waveform selection (auto-snaps to zero cross).
 pub const AEDIT_LOOP_SET: NodeId = hash_node_id("audio_editor_loop_set");
 /// Clear the loop region.
 pub const AEDIT_LOOP_CLEAR: NodeId = hash_node_id("audio_editor_loop_clear");
-/// Snap both loop endpoints to the nearest zero crossings.
-pub const AEDIT_LOOP_SNAP: NodeId = hash_node_id("audio_editor_loop_snap");
-/// Audition the loop region on repeat (click-free crossfade) — a toggle.
-pub const AEDIT_LOOP_AUDITION: NodeId = hash_node_id("audio_editor_loop_audition");
 /// Loop crossfade length slider (normalized `0..1`; the shell maps it to ms).
 pub const AEDIT_LOOP_XFADE: NodeId = hash_node_id("audio_editor_loop_xfade");
 
@@ -339,18 +336,12 @@ pub use snapshot::{set_duration_secs, set_loaded, set_playing, set_position_secs
 pub use snapshot::{set_fx_kind_defaults, set_fx_kind_names, set_fx_param_views};
 
 // Loop points (W6).
-/// Panel → shell: whether the loop region is auditioning (drives the preview buffer).
-pub use loop_state::loop_audition;
-/// Shell → panel: force the audition state off (loop cleared).
-pub use loop_state::set_loop_audition;
 /// Shell → panel: publish the loop region as `(start_secs, end_secs)` for the readout.
 pub use loop_state::set_loop_span;
 /// Panel → shell: whether the user asked to clear the loop (one-shot).
 pub use loop_state::take_clear_loop;
 /// Panel → shell: whether the user asked to set the loop from the selection (one-shot).
 pub use loop_state::take_set_loop;
-/// Panel → shell: whether the user asked to snap the loop to zero crossings (one-shot).
-pub use loop_state::take_snap_loop;
 /// Panel → shell: the loop crossfade slider position (`0..1`).
 pub use loop_state::xfade_norm;
 

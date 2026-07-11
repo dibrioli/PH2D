@@ -6,21 +6,20 @@ use crate::{
     AEDIT_FX_APPLY, AEDIT_FX_BYPASS, AEDIT_FX_CANCEL, AEDIT_FX_DOWN, AEDIT_FX_NEXT,
     AEDIT_FX_PARAMS, AEDIT_FX_PREV, AEDIT_FX_REMOVE, AEDIT_FX_RESET, AEDIT_FX_STAGE_ONS,
     AEDIT_FX_STAGES, AEDIT_FX_UP, AEDIT_GAIN_DOWN, AEDIT_GAIN_UP, AEDIT_INVERT, AEDIT_LOAD,
-    AEDIT_LOOP, AEDIT_LOOP_AUDITION, AEDIT_LOOP_CLEAR, AEDIT_LOOP_SET, AEDIT_LOOP_SNAP,
-    AEDIT_LOOP_XFADE, AEDIT_NORM_LUFS, AEDIT_NORMALIZE, AEDIT_PLAY, AEDIT_PRESET_APPLY,
-    AEDIT_PRESET_LOAD, AEDIT_PRESET_NEXT, AEDIT_PRESET_PREV, AEDIT_PRESET_SAVE, AEDIT_REDO,
-    AEDIT_REVERSE, AEDIT_SILENCE, AEDIT_STOP, AEDIT_TRIM, AEDIT_UNDO, AudioEditCmd,
-    AudioEditorPanel, loop_state, presets, snapshot,
+    AEDIT_LOOP, AEDIT_LOOP_CLEAR, AEDIT_LOOP_SET, AEDIT_LOOP_XFADE, AEDIT_NORM_LUFS,
+    AEDIT_NORMALIZE, AEDIT_PLAY, AEDIT_PRESET_APPLY, AEDIT_PRESET_LOAD, AEDIT_PRESET_NEXT,
+    AEDIT_PRESET_PREV, AEDIT_PRESET_SAVE, AEDIT_REDO, AEDIT_REVERSE, AEDIT_SILENCE, AEDIT_STOP,
+    AEDIT_TRIM, AEDIT_UNDO, AudioEditCmd, AudioEditorPanel, loop_state, presets, snapshot,
 };
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::WidgetEvent;
 use ph2d_editor_core::panel::{EventOutcome, Panel, PanelHostInternal};
 
-/// Loop-points clicks (W6). Returns `Some(Consumed)` when `id` is a loop control, so
-/// `apply_event` stays under the panel's 200-LOC function cap. Set adopts the
-/// SELECTION (refuse without one); Clear/Snap/Audition need an existing loop — the
-/// panel dims them and the seam refuses too, since a dim is only cosmetic.
+/// Loop-points clicks (W6). Returns `Some(Consumed)` when `id` is a loop control. Set
+/// adopts the SELECTION (refuse without one); Clear needs an existing loop — the panel
+/// dims them and the seam refuses too, since a dim is only cosmetic. The loop plays
+/// via the transport's Loop toggle + Play, so there is no Audition control here.
 fn loop_click(id: NodeId) -> Option<EventOutcome> {
     if id == AEDIT_LOOP_SET {
         if snapshot::has_selection() {
@@ -31,18 +30,6 @@ fn loop_click(id: NodeId) -> Option<EventOutcome> {
     if id == AEDIT_LOOP_CLEAR {
         if loop_state::has_loop() {
             loop_state::request_clear_loop();
-        }
-        return Some(EventOutcome::Consumed);
-    }
-    if id == AEDIT_LOOP_SNAP {
-        if loop_state::has_loop() {
-            loop_state::request_snap_loop();
-        }
-        return Some(EventOutcome::Consumed);
-    }
-    if id == AEDIT_LOOP_AUDITION {
-        if loop_state::has_loop() {
-            loop_state::toggle_loop_audition();
         }
         return Some(EventOutcome::Consumed);
     }

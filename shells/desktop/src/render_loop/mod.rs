@@ -236,6 +236,9 @@ impl crate::App {
                 {
                     audio.editor_export(&path);
                 }
+                // Cache the loop crossfade the panel asks for BEFORE Play reads it —
+                // Play plays the click-free region when Loop is on and a region is set.
+                audio.editor_set_pending_xfade(audio.editor_xfade_frames(ed::xfade_norm()));
                 if ed::take_play_pause() {
                     audio.editor_toggle_play(ed::looping());
                 }
@@ -313,26 +316,19 @@ impl crate::App {
                 audio.editor_fx_set_bypass(ed::fx_bypass());
                 ed::set_fx_auditioning(audio.editor_fx_auditioning());
 
-                // Loop points (W6 — asset-prep). Drain the Set/Snap/Clear one-shots
-                // onto the clip's loop region, then reconcile the click-free audition
-                // with the toggle — it commandeers the preview voice while on. Publish
-                // the region + the REAL audition state back, so the readout + the
-                // toggle track the runtime (the toggle goes dark if the loop is
-                // cleared). Runs after the transport, so a main Play cleanly takes the
-                // voice back from the audition.
+                // Loop points (W6 — asset-prep). Set (from selection, auto-snapped) /
+                // Clear the region; there is no separate Audition — Loop + Play plays
+                // the region (handled above). While a region loops, hot-swap a fresh
+                // crossfaded buffer when the Crossfade slider or the region moves.
+                // Publish the region span for the panel readout.
                 if ed::take_set_loop() {
                     audio.editor_set_loop_from_selection();
-                }
-                if ed::take_snap_loop() {
-                    audio.editor_snap_loop();
                 }
                 if ed::take_clear_loop() {
                     audio.editor_clear_loop();
                 }
-                let xfade_frames = audio.editor_xfade_frames(ed::xfade_norm());
-                audio.editor_update_loop_audition(ed::loop_audition(), xfade_frames);
+                audio.editor_loop_live_update();
                 ed::set_loop_span(audio.editor_loop_span());
-                ed::set_loop_audition(audio.editor_loop_auditioning());
             }
         }
         // Coalesced painter Move: stamp the LATEST buffered canvas position ONCE this frame, replacing

@@ -1872,6 +1872,34 @@ impl App {
         true
     }
 
+    /// The clip frame under `(x, y)` if it's inside the overlay's time RULER — for
+    /// starting a playhead scrub (seek). The ruler is the strip below the waveform;
+    /// dragging it scrubs, while the wave body above it makes a selection.
+    #[cfg(feature = "panel-audio-editor")]
+    fn audio_ruler_frame_at(&self, x: f32, y: f32) -> Option<u64> {
+        let view = crate::audio::wave_view()?;
+        self.audio.as_ref()?.editor_clip()?;
+        let r = view.ruler;
+        (x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h)
+            .then(|| crate::audio::frame_at_x(&view, x))
+    }
+
+    /// Seek the preview to the cursor `x` while a scrub is live. Returns `true` if
+    /// scrubbing (the caller early-returns so the drag doesn't also pan).
+    #[cfg(feature = "panel-audio-editor")]
+    fn audio_scrub_move(&mut self, x: f32) -> bool {
+        if !self.audio_scrub_drag {
+            return false;
+        }
+        if let Some(view) = crate::audio::wave_view() {
+            let frame = crate::audio::frame_at_x(&view, x);
+            if let Some(a) = self.audio.as_ref() {
+                a.editor_scrub_to_frame(frame);
+            }
+        }
+        true
+    }
+
     pub(crate) fn on_cursor_moved(&mut self, position: PhysicalPosition<f64>) {
         // Diagnostics: count every raw winit move (input rate), paired with `paint_stamps_this_frame`
         // in the HUD so the coalescing is visible (high events → 1 stamp).
@@ -1900,6 +1928,12 @@ impl App {
         // return so it doesn't also pan / drive a gizmo.
         #[cfg(feature = "panel-audio-editor")]
         if self.audio_sel_drag_move(self.last_pointer.0) {
+            return;
+        }
+        // Audio Editor playhead scrub drag (SHELL-only): dragging the time ruler seeks
+        // the preview. Early-return so it doesn't also pan.
+        #[cfg(feature = "panel-audio-editor")]
+        if self.audio_scrub_move(self.last_pointer.0) {
             return;
         }
         // Keep the brush-size ring gizmo following the cursor while the
@@ -2070,6 +2104,18 @@ impl App {
         // outside the waveform rect) to the shared BlenderHit dispatch.
         #[cfg(feature = "panel-audio-editor")]
         match kind {
+            // Press on the RULER strip → grab the playhead and scrub (seek).
+            PointerKind::Down
+                if let Some(frame) =
+                    self.audio_ruler_frame_at(self.last_pointer.0, self.last_pointer.1) =>
+            {
+                self.audio_scrub_drag = true;
+                if let Some(a) = self.audio.as_ref() {
+                    a.editor_scrub_to_frame(frame);
+                }
+                return;
+            }
+            // Press on the WAVE body → start a selection (cleared to a point).
             PointerKind::Down
                 if let Some(frame) =
                     self.audio_wave_frame_at(self.last_pointer.0, self.last_pointer.1) =>
@@ -2078,6 +2124,10 @@ impl App {
                 if let Some(a) = self.audio.as_mut() {
                     a.editor_clear_selection();
                 }
+                return;
+            }
+            PointerKind::Up if self.audio_scrub_drag => {
+                self.audio_scrub_drag = false;
                 return;
             }
             PointerKind::Up if self.audio_sel_drag.take().is_some() => return,

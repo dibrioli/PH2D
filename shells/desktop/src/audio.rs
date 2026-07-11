@@ -494,6 +494,9 @@ impl AudioSystem {
 #[derive(Clone, Copy)]
 pub(crate) struct WaveView {
     pub rect: ph2d_editor::zones::Rect,
+    /// The time-ruler strip below the waveform — the playhead scrub hit-region (the
+    /// wave body above it is the selection region). Same x/width as `rect`.
+    pub ruler: ph2d_editor::zones::Rect,
     pub frames: u64,
 }
 

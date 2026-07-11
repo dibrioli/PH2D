@@ -3,14 +3,13 @@
 //! private `AudioSystem`/`AudioEditorRuntime` fields (Rust descendant visibility) —
 //! same trick as `fx_rack`.
 //!
-//! The loop region lives on the `EditClip` (metadata, not an undo edit). This file
-//! drives it from the panel intents: adopt it from the selection, snap its ends to
-//! zero crossings, and audition it **click-free** by playing the crossfaded loop
-//! buffer (`EditClip::loop_audition_buffer`) on repeat through the preview voice —
-//! reusing the whole-buffer preview loop, no RT-thread change.
+//! The loop region lives on the `EditClip` (metadata, not an undo edit). It is played
+//! **click-free** by the transport: when **Loop** is on and a region is set, **Play**
+//! loops the crossfaded region buffer (`EditClip::loop_audition_buffer`) — reusing the
+//! whole-buffer preview loop, no RT-thread change. There is no separate Audition
+//! control; Loop + Play *is* the audition (see `editor_toggle_play`).
 
 use super::{AudioSystem, EditorTransport};
-use ph2d_audio::PlayParams;
 
 /// Longest loop crossfade the slider reaches, in milliseconds (mapped from the
 /// panel's normalized `0..1`). 50 ms is a generous seam blend; the DSP clamps it to
@@ -21,37 +20,33 @@ const LOOP_XFADE_MAX_MS: f32 = 50.0;
 const SNAP_WINDOW_DIV: usize = 200;
 
 impl AudioSystem {
-    /// Adopt the current selection as the loop region (no-op with no selection).
+    /// Adopt the current selection as the loop region, **snapping both ends to zero
+    /// crossings** (no-op with no selection). Snap is folded into Set so a loop always
+    /// starts on clean crossings without a separate button — it moves the endpoints by
+    /// under a millisecond, so there is nothing to see, only the click it prevents.
     pub(crate) fn editor_set_loop_from_selection(&mut self) {
         if let Some(clip) = self.editor.clip.as_mut() {
             clip.set_loop_from_selection();
-        }
-    }
-
-    /// Snap both loop endpoints to the nearest zero crossings.
-    pub(crate) fn editor_snap_loop(&mut self) {
-        if let Some(clip) = self.editor.clip.as_mut() {
             let window = (clip.data().format().sample_rate as usize / SNAP_WINDOW_DIV).max(1);
             clip.snap_loop_to_zero_crossing(window);
         }
     }
 
-    /// Clear the loop region. Stops the audition if it was running (it now loops over
-    /// nothing).
+    /// Clear the loop region. Stops region playback if it was running (nothing left to
+    /// loop).
     pub(crate) fn editor_clear_loop(&mut self) {
         if let Some(clip) = self.editor.clip.as_mut() {
             clip.clear_loop();
         }
-        if self.editor.loop_auditioning {
+        if self.editor.playing_loop_region {
             let _ = self.engine.stop_preview();
-            self.editor.loop_auditioning = false;
+            self.editor.playing_loop_region = false;
             self.editor.loop_sig = None;
             self.editor.state = EditorTransport::Stopped;
         }
     }
 
-    /// The loop region as `(start_secs, end_secs)`, if any (for the panel readout +
-    /// the overlay).
+    /// The loop region as `(start_secs, end_secs)`, if any (for the panel readout).
     pub(crate) fn editor_loop_span(&self) -> Option<(f64, f64)> {
         let clip = self.editor.clip.as_ref()?;
         let lp = clip.loop_region()?;
@@ -62,38 +57,10 @@ impl AudioSystem {
         ))
     }
 
-    /// Dev smoke (`PH2D_AUDIO_LOOP_SMOKE=1`): stage a ready-to-audition loop with no
-    /// file picking. Loads a 2 s 220 Hz tone into the editor and sets a loop over its
-    /// middle third — left UN-snapped on purpose, so its endpoints sit mid-phase and a
-    /// raw loop WOULD click: toggling Audition with the crossfade at 0 vs. the default
-    /// is the click → click-free A/B. Open the Audio Editor pill to see the green loop
-    /// brackets; Export writes the `smpl` chunk.
-    pub(crate) fn editor_loop_smoke(&mut self) {
-        use ph2d_audio::AudioFormat;
-        let data = super::super::signals::sine_tone(AudioFormat::mono(48_000), 220.0, 2.0, 0.4);
-        let _ = self.engine.stop_preview();
-        self.editor.name = "loop-smoke".to_string();
-        self.editor.clip = Some(ph2d_audio_edit::EditClip::new(data));
-        self.editor.state = EditorTransport::Stopped;
-        self.editor.loop_auditioning = false;
-        self.editor.loop_sig = None;
-        if let Some(clip) = self.editor.clip.as_mut() {
-            let frames = clip.frame_count();
-            clip.set_selection(Some(frames * 35 / 100..frames * 65 / 100));
-            clip.set_loop_from_selection();
-        }
-    }
-
     /// The loop region as `(start, end)` frames, if any (for the overlay brackets).
     pub(crate) fn editor_loop_frames(&self) -> Option<(u64, u64)> {
         let lp = self.editor.clip.as_ref()?.loop_region()?;
         Some((lp.start as u64, lp.end as u64))
-    }
-
-    /// Whether the loop is currently auditioning (published back so the panel toggle
-    /// tracks the real runtime state — e.g. it goes dark when the loop is cleared).
-    pub(crate) fn editor_loop_auditioning(&self) -> bool {
-        self.editor.loop_auditioning
     }
 
     /// Map the panel's normalized crossfade position (`0..1`) to a frame count at the
@@ -109,54 +76,96 @@ impl AudioSystem {
         (ms * 0.001 * sr as f32).round() as usize
     }
 
-    /// Reconcile the loop audition with what the panel asks for, each frame. Edge-
-    /// triggered + change-gated: starts the click-free loop on the preview voice when
-    /// `want` turns on, stops it when it turns off, and hot-swaps a fresh crossfaded
-    /// buffer (no restart) when the region or crossfade changes while it plays.
-    pub(crate) fn editor_update_loop_audition(&mut self, want: bool, xfade_frames: usize) {
-        let sig = self
+    /// Cache the crossfade the panel asks for, so the transport reads one source.
+    pub(crate) fn editor_set_pending_xfade(&mut self, frames: usize) {
+        self.editor.pending_xfade = frames;
+    }
+
+    /// While a loop region is playing, hot-swap a freshly crossfaded buffer when the
+    /// region or crossfade changed — so tuning the Crossfade slider (or moving the
+    /// loop) updates the sounding loop live. **Never starts playback**, so it cannot
+    /// fight Stop (that was the bug when a persistent Audition toggle drove this).
+    pub(crate) fn editor_loop_live_update(&mut self) {
+        if !self.editor.playing_loop_region {
+            return;
+        }
+        let xfade = self.editor.pending_xfade;
+        let Some(sig) = self
             .editor
             .clip
             .as_ref()
             .and_then(|c| c.loop_region())
-            .map(|lp| (lp.start, lp.end, xfade_frames));
-        let want = want && sig.is_some();
-
-        if !want {
-            if self.editor.loop_auditioning {
-                let _ = self.engine.stop_preview();
-                self.editor.loop_auditioning = false;
-                self.editor.loop_sig = None;
-                self.editor.state = EditorTransport::Stopped;
-            }
-            return;
-        }
-        // Already looping this exact region + crossfade → nothing to do.
-        if self.editor.loop_auditioning && self.editor.loop_sig == sig {
-            return;
-        }
-        let Some(buf) = self
-            .editor
-            .clip
-            .as_ref()
-            .and_then(|c| c.loop_audition_buffer(xfade_frames))
+            .map(|lp| (lp.start, lp.end, xfade))
         else {
             return;
         };
-        if self.editor.loop_auditioning {
-            // Same audition, moved region/crossfade → hot-swap, keeping the loop going.
-            let _ = self.engine.set_preview_data(buf);
-        } else {
-            let params = PlayParams {
-                looping: true,
-                ..PlayParams::default()
-            };
-            if self.engine.play_preview(buf, params).is_ok() {
-                self.editor.loop_auditioning = true;
-                self.editor.state = EditorTransport::Playing;
-                self.editor.started = false;
-            }
+        if self.editor.loop_sig == Some(sig) {
+            return;
         }
-        self.editor.loop_sig = sig;
+        if let Some(buf) = self
+            .editor
+            .clip
+            .as_ref()
+            .and_then(|c| c.loop_audition_buffer(xfade))
+        {
+            let _ = self.engine.set_preview_data(buf);
+            self.editor.loop_sig = Some(sig);
+        }
+    }
+
+    /// Seek the preview by grabbing the playhead: map a **full-clip** frame to the
+    /// voice's current buffer — the region (offset by its start) while looping a
+    /// region, else the whole clip. No-op with no clip / no voice.
+    pub(crate) fn editor_scrub_to_frame(&self, full_frame: u64) {
+        if self.editor.playing_loop_region {
+            if let Some(lp) = self.editor.clip.as_ref().and_then(|c| c.loop_region()) {
+                let (s, e) = (lp.start as u64, lp.end as u64);
+                let _ = self.engine.seek_preview(full_frame.clamp(s, e) - s);
+            }
+        } else {
+            let _ = self.engine.seek_preview(full_frame);
+        }
+    }
+
+    /// The frame to DRAW the playhead at (full-clip timebase). While looping a region
+    /// the preview reports frames within the region buffer, so offset by the loop
+    /// start — otherwise the line sweeps at the far left, OUTSIDE the loop brackets.
+    pub(crate) fn editor_playhead_frame(&self) -> u64 {
+        let raw = self.engine.preview_frame();
+        if self.editor.playing_loop_region {
+            let start = self
+                .editor
+                .clip
+                .as_ref()
+                .and_then(|c| c.loop_region())
+                .map(|lp| lp.start as u64)
+                .unwrap_or(0);
+            start + raw
+        } else {
+            raw
+        }
+    }
+
+    /// Dev smoke (`PH2D_AUDIO_LOOP_SMOKE=1`): stage a loop with no file picking. Loads
+    /// a 2 s 220 Hz tone and sets a loop over its middle third **UN-snapped** on
+    /// purpose (endpoints mid-phase → a raw loop would click), so turning **Loop** on
+    /// and pressing **Play** with the Crossfade at 0 vs. the default is the click →
+    /// click-free A/B. Open the Audio Editor pill to see the green loop brackets;
+    /// Export writes the `smpl` chunk.
+    pub(crate) fn editor_loop_smoke(&mut self) {
+        use ph2d_audio::AudioFormat;
+        let data = super::super::signals::sine_tone(AudioFormat::mono(48_000), 220.0, 2.0, 0.4);
+        let _ = self.engine.stop_preview();
+        self.editor.name = "loop-smoke".to_string();
+        self.editor.clip = Some(ph2d_audio_edit::EditClip::new(data));
+        self.editor.state = EditorTransport::Stopped;
+        self.editor.playing_loop_region = false;
+        self.editor.loop_sig = None;
+        if let Some(clip) = self.editor.clip.as_mut() {
+            let frames = clip.frame_count();
+            // Direct, un-snapped region (bypasses the auto-snap in Set) so the
+            // crossfade has a real click to remove.
+            clip.set_loop_region(Some(frames * 35 / 100..frames * 65 / 100));
+        }
     }
 }

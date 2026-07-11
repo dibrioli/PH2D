@@ -339,6 +339,12 @@ pub(crate) struct PaintState {
     stroke_op_mode: stroke_multi::StrokeOp,
     /// Pending op-cycle **tap** (Down pos on the active shape's centre square): Up without a drag cycles the op; a drag past the slop clears it + moves the shape. [`stroke_multi`].
     op_tap: Option<[f32; 2]>,
+    /// Seamless-Tiling **edit-in-tile** offset (Enio 2026-07-11): a shape's overlay is drawn in the wrapped
+    /// neighbour tiles, so a grab there must edit the ORIGINAL. Fixed at the grab Down = the tile offset (px)
+    /// that lands the pointer on the active shape's bbox (`route_shape_pointer_multi`); subtracted from every
+    /// pointer of the gesture so the drag is CONTINUOUS (no seam jump — unlike a per-sample wrap) and works
+    /// for geometry drawn beyond the sprite. `[0, 0]` = no wrap (off-tiling / drawing / empty-space click).
+    shape_edit_wrap: [f32; 2],
     /// Pending SELECTION op-cycle tap — Down on a shape's centre-move square arms `Some((shape, pos))`; Up without a drag past the slop cycles THAT shape's Add↔Remove op; a drag clears it + moves the shape. Mirrors [`op_tap`] but selection toggles only Add/Remove. [`selection_gizmo`].
     selection_op_tap: Option<(usize, [f32; 2])>,
     /// Control-handle grab radius (image px) for the shape editors — shell forwards a footprint-scaled value.

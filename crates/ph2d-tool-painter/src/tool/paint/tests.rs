@@ -2394,6 +2394,32 @@ fn shape_editable_from_a_wrapped_tile_under_tiling() {
     assert!(has(&t, 8.0, 32.0), "the other endpoint stayed put");
 }
 
+/// **An in-sprite grab drags CONTINUOUSLY past the seam — no wrap jump (Enio 2026-07-11).** The edit-in-tile
+/// offset is fixed at the grab Down, so a handle grabbed inside the sprite keeps offset `0` and follows the
+/// pointer BEYOND the sprite — instead of the per-sample `rem_euclid` that snapped it to the opposite edge
+/// mid-drag (the Ellipse/Polygon "size jump" bug). The anchor lands at the raw target, not its wrapped twin.
+#[test]
+fn shape_in_sprite_grab_drags_past_the_seam_without_wrapping() {
+    let mut t = open_curve_midpoint_selected(); // endpoints (8,32) & (56,32)
+    t.paint.tiling = [true, false]; // wrap on X
+
+    // Grab the (56,32) endpoint INSIDE the sprite (offset stays 0), then drag PAST the right edge to x=80.
+    t.on_canvas_pointer(cp([56.0, 32.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([80.0, 32.0], PointerPhase::Move));
+    t.on_canvas_pointer(cp([80.0, 32.0], PointerPhase::Up));
+
+    let pts = t.curve_overlay().unwrap().points;
+    assert!(
+        pts.iter()
+            .any(|p| (p[0] - 80.0).abs() < 3.0 && (p[1] - 32.0).abs() < 3.0),
+        "the anchor followed the pointer beyond the sprite (x≈80): {pts:?}"
+    );
+    assert!(
+        !pts.iter().any(|p| (p[0] - 16.0).abs() < 3.0),
+        "the anchor must NOT wrap to x=16 (80 mod 64) — the old per-sample rem_euclid jump: {pts:?}"
+    );
+}
+
 #[test]
 fn handle_kind_menu_pick_updates_the_selected_point() {
     // The right-click menu's wire u8 (0=Free 1=Aligned 2=Vector 3=Auto) routes to the selected point and

@@ -320,22 +320,22 @@ impl PainterTool {
     /// active editor by method (the classic single-shape path). Line point-placement is never interrupted.
     pub(super) fn route_shape_pointer_multi(&mut self, mut ev: CanvasPointer) -> bool {
         // Seamless Tiling (edit-in-tile, Enio 2026-07-11): the shape's wash + editable overlay are drawn in
-        // the wrapped neighbour tiles too, so a grab/drag on a tile COPY must edit the ORIGINAL — fold the
-        // pointer into the sprite space on each tiled axis. Suppressed WHILE a Free Hand path is being drawn
-        // (that raw capture stays continuous, else it jumps at the seam). Off-tiling ⇒ unchanged.
+        // the wrapped neighbour tiles too, so a grab/drag on a tile COPY must edit the ORIGINAL. Fix ONE tile
+        // offset at the grab Down — the copy that lands the pointer on the active shape's bbox — and subtract
+        // it from EVERY pointer of the gesture. A fixed per-gesture offset (not a per-sample `rem_euclid`)
+        // keeps the drag continuous across the seam (no size jump on Ellipse/Polygon) AND edits geometry drawn
+        // beyond the sprite. Suppressed while a Free Hand path is DRAWN (raw capture stays continuous).
         let drawing_freehand = self
             .paint
             .curve
             .as_ref()
             .is_some_and(|c| c.is_drawing_freehand());
         if !drawing_freehand {
-            let (fw, fh) = self.source_size;
-            if self.paint.tiling[0] && fw > 0 {
-                ev.pos[0] = ev.pos[0].rem_euclid(fw as f32);
+            if ev.phase == PointerPhase::Down {
+                self.paint.shape_edit_wrap = self.shape_edit_tile_offset(ev.pos);
             }
-            if self.paint.tiling[1] && fh > 0 {
-                ev.pos[1] = ev.pos[1].rem_euclid(fh as f32);
-            }
+            ev.pos[0] -= self.paint.shape_edit_wrap[0];
+            ev.pos[1] -= self.paint.shape_edit_wrap[1];
         }
         let slop = self.paint.shape_grab_tol_px;
         match ev.phase {
@@ -384,6 +384,47 @@ impl PainterTool {
         };
         let c = [(bb[0] + bb[2]) * 0.5, (bb[1] + bb[3]) * 0.5];
         dist2(pos, c) <= tol * tol
+    }
+
+    /// The seamless-Tiling **edit-in-tile** offset for a grab at `pos` ([`PaintState::shape_edit_wrap`]): the
+    /// tile offset (px — whole sprite periods per tiled axis) that lands `pos` on the ACTIVE shape's bbox, so
+    /// a grab on a WRAPPED overlay copy edits the original. `[0, 0]` when off-tiling, no active shape, or the
+    /// snapped point misses the shape's grab region (a new-shape / empty click stays where it was clicked).
+    fn shape_edit_tile_offset(&self, pos: [f32; 2]) -> [f32; 2] {
+        let (fw, fh) = self.source_size;
+        let (fw, fh) = (fw as f32, fh as f32);
+        let Some(bb) = self.capture_shape().and_then(|s| self.shape_state_bbox(&s)) else {
+            return [0.0, 0.0];
+        };
+        // `bb = [minx, miny, maxx, maxy]`. Snap to the nearest whole-sprite tile of the bbox centre per axis.
+        let snap = |p: f32, lo: f32, hi: f32, period: f32| -> f32 {
+            if period > 0.0 {
+                ((p - (lo + hi) * 0.5) / period).round() * period
+            } else {
+                0.0
+            }
+        };
+        let o = [
+            if self.paint.tiling[0] {
+                snap(pos[0], bb[0], bb[2], fw)
+            } else {
+                0.0
+            },
+            if self.paint.tiling[1] {
+                snap(pos[1], bb[1], bb[3], fh)
+            } else {
+                0.0
+            },
+        ];
+        // Only wrap when the snapped pointer actually lands in the shape's grab region — else it's a click in
+        // empty space (a NEW shape) and must stay put.
+        let tol = self.paint.shape_grab_tol_px.max(4.0);
+        let s = [pos[0] - o[0], pos[1] - o[1]];
+        let inside = s[0] >= bb[0] - tol
+            && s[0] <= bb[2] + tol
+            && s[1] >= bb[1] - tol
+            && s[1] <= bb[3] + tol;
+        if inside { o } else { [0.0, 0.0] }
     }
 
     /// Cycle the ACTIVE shape's Operation (+ → − → o), keep the panel mode in sync, and recompose (a boolean

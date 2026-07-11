@@ -151,5 +151,36 @@ scrub para trás determinístico ([doc 11](Motion%20Nodes/11_checkpoint_restore_
   loop-wrap está wirado; um botão de loop na UI é follow-up). Headless já prova via
   `a_loop_range_replays_the_simulation_from_its_start`.
 
-*"Linha `MotionNodes` pronta (HEAD no worktree, 10 commits). Handoff acima. Aguardo ordem de
+## 9. Rodada 4 (mesmo dia): o domínio de VALOR (P2 do doc 09) — doc 12
+
+Pesquisado o padrão-ouro ANTES de codar (Cavalry, TD CHOP, Houdini detail↔point, Max, vvvv, Faust)
+e implementada a **fatia 1** do domínio de valor ([doc 12](Motion%20Nodes/12_dominio_de_valor_nota_adr.md)).
+**Fan-out aditivo (caminho A) — contratos congelados intocados** (confirmado: o tipo de valor
+`Instances/Scalar/Frame` já existe, usado pelos `debug.*`; o gate só conta `NodeOp`/`OpResolver`/
+`NodeManifest`). Commits adicionais na mesma linha:
+
+- **crate nova `ph2d-node-pulse-counter`** (tipo `pulse.counter`): o REDUTOR PURO `pulse → value`
+  (núcleo de contagem do `motion.step` menos o canal; emite a coluna `v`). Reutiliza o nome que o
+  doc 09 §4.2 deixou livre.
+- **crate nova `ph2d-node-motion-drive`** (tipo `motion.drive`): o consumidor `value → canal` com
+  `scale`/`mode` (Add/Set/Multiply), falloff-masked. Contém a **regra de broadcast 1→N**
+  (`channel::value_at`).
+- **cena boot reconstruída**: `beat → pulse.counter → motion.drive(X)` no lugar de
+  `beat → motion.step` — **visual idêntico**, agora composável; `motion.step` fica registrado.
+  8 nós (era 7); teste do shell atualizado (contagem + nome do teste + doc-comments).
+- **`ph2d-node-registry-init` regenerado** (32 crates — **ponto de merge textual**; resolver
+  rodando `cargo run -p ph2d-node-sync` na árvore combinada).
+- **Símbolos novos:** tipos `pulse.counter`/`motion.drive`, as 2 crates, `pulse_counter::VALUE`.
+  **Nenhum** contrato/id/token/dep novo.
+- **Gates:** nextest 195 (rdeps das crates novas + registry-init + shell), contrato intacto
+  (`architecture_contract_surface` NodeOp=2/OpResolver=1/NodeManifest=8), registry staleness em
+  sync, clippy 0, fmt 1.95, typos 0, machete 0, HR-5 0, LOC ok.
+- **Smoke (Enio):** `cd <worktree> && cargo run -p ph2d-host-desktop` → tool Motion → a grade varre
+  X e pisca no beat (idêntico ao smoke anterior), agora dirigido por `pulse.counter → motion.drive`.
+  No editor dá pra dropar um 2º `motion.drive` e apontar o MESMO counter pra Rotação (o ganho do
+  domínio de valor; headless em `one_value_fans_out_to_two_channels`).
+- **Follow-up nomeado (fan-out, doc 12 §5):** `value.lfo` · `value.map_range` · `pulse.sample_hold`
+  · `pulse.compare` · `value.instance_field` (o único que minta campo len-N) · `value.switch`.
+
+*"Linha `MotionNodes` pronta (HEAD no worktree, 12 commits). Handoff acima. Aguardo ordem de
 integração."*

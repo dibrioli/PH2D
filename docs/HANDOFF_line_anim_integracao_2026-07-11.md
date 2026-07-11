@@ -241,6 +241,20 @@ novos de slope + 154 anim+timeline + 290 total com painel + clippy `--all-target
 
 ---
 
+## 14. Feature — deletar track pelo botão direito (`10cb7771`)
+
+**O quê (pedido do Enio, 2026-07-11):** R-click na **LABEL** de uma row de track (coluna de nomes, depois do twirl) abre um menu de contexto de track novo com **"Delete Track"** → remove o binding + a track + os keys em **1 passo de undo** (`TimelineIntent::Unbind`, que já existia no motor **sem nenhuma cobertura** — ganhou o teste `unbind_removes_the_binding_and_its_track_in_one_undo_step`).
+
+**Arquitetura (espelha o menu de presets + o menu da hierarquia):** o hit da label é `TimelineHitKind::Row { target }`; o Secondary Down (em `pointer_down_menus.rs`) abre `ContextMenuKind::TimelineTrack { target }`, cuja tabela `TIMELINE_TRACK_MENU` vive em `ids/menus.rs` (uma tabela, três consumidores: overlay pinta, `pre_populate` registra, o `event.rs` do painel resolve). O painel consome o request (`context_menu().or_else(last_context_menu())` — o gotcha do menu-fechado-no-Down), resolve `target → (entity, prop)` pelo `current_snapshot()` e empurra o `Unbind` pelo canal `drain_intents()` existente — **zero mudança no shell**. Primary na label é **deliberadamente inerte** (arm comentado no `interact.rs`); o splitter continua ganhando na fronteira (hit index back-to-front, splitter registra depois).
+
+**Símbolos novos (grep de colisão):** `CTX_MENU_TL_DELETE_TRACK` (`hash("ctx_menu_tl_delete_track")`) · `TIMELINE_TRACK_MENU` · `TimelineHitKind::Row` · `ContextMenuKind::TimelineTrack` · `timeline_row_id` (`dynamic_id("timeline.row")`) · dev-dep novo `ph2d-core` no painel (Playhead nos seam tests). Zero contrato congelado (`TimelineHitKind`/`ContextMenuKind` não são gateados).
+
+**Prova:** dispatch test (R-click na Row → menu de track, **sem** gesture/captura) · seam test com o fluxo de produção (request parkeado → Click → `Unbind` exato + request gasto) · **expiração** (row sumiu do snapshot → zero intent) · **gate anti-item-morto executável** (`every_track_menu_row_is_handled_by_the_panel` — row nova na tabela sem arm no event.rs fica vermelha) · **2 mutações dirigidas** (mapear Row→None no dispatch → teste vermelho; neutralizar o push_intent → seam vermelho). Gate: 1274/1274 nas 4 crates + clippy `--all-targets` + fmt pin + LOC caps.
+
+**Smoke do Enio (pendente):** row de track → botão direito na **label** (nome) → "Delete Track" → a track some (curvas incluídas); **Ctrl+Z do painel** (undo da timeline) traz binding+keys de volta. R-click num **diamond** continua abrindo o menu de presets; arrastar o **splitter** na borda da coluna continua funcionando.
+
+---
+
 ## Cauda da W4 ainda aberta (para a próxima rodada — decisão do Enio)
 
 - **W4.T4** — docar a timeline no `motion_timeline_slot` quando o split do Motion está ativo (coordenação leve com Motion).

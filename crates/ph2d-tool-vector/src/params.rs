@@ -32,6 +32,34 @@ pub fn px_to_slider(px: f64) -> f32 {
     (((px - WIDTH_MIN_PX) / (WIDTH_MAX_PX - WIDTH_MIN_PX)) as f32).clamp(0.0, 1.0)
 }
 
+/// Text glyph size in WORLD units — the Text-mode Size slider's range. The editor
+/// view is ~10 world-units tall, so 1.0 reads comfortably. Shared by the panel
+/// (seed + chip mapping) and the shell drain (track → size), like the Width family.
+pub const TEXT_SIZE_MIN: f64 = 0.05;
+pub const TEXT_SIZE_MAX: f64 = 8.0;
+/// Default glyph size for a new text session (world units).
+pub const DEFAULT_TEXT_SIZE: f64 = 1.0;
+
+/// Affine slider mapping `size = track * SCALE + OFFSET` (track `0..=1`), consumed
+/// by `WidgetStore::link_slider_number_mapped` so the size chip mirrors the slider.
+pub const TEXT_SIZE_SLIDER_SCALE: f32 = (TEXT_SIZE_MAX - TEXT_SIZE_MIN) as f32;
+pub const TEXT_SIZE_SLIDER_OFFSET: f32 = TEXT_SIZE_MIN as f32;
+
+/// Normalized slider track `0..=1` → glyph size (world units) `MIN..=MAX`.
+#[must_use]
+pub fn slider_to_text_size(track: f32) -> f64 {
+    TEXT_SIZE_MIN + f64::from(track.clamp(0.0, 1.0)) * (TEXT_SIZE_MAX - TEXT_SIZE_MIN)
+}
+
+/// Glyph size (world units) → normalized slider track `0..=1` (inverse of
+/// [`slider_to_text_size`]); seeds the knob from the shell's current size.
+#[must_use]
+pub fn text_size_to_slider(size: f64) -> f32 {
+    (((size.clamp(TEXT_SIZE_MIN, TEXT_SIZE_MAX) - TEXT_SIZE_MIN) / (TEXT_SIZE_MAX - TEXT_SIZE_MIN))
+        as f32)
+        .clamp(0.0, 1.0)
+}
+
 /// The canvas gesture the Vector tool performs (ADR-0108 Fase 1). `Pen` is the
 /// draw + edit-anchor gesture (`PenTool`); the shape modes are drag-to-size
 /// (`ShapeTool`). The tool owns the mode; the docked panel's segmented row sets

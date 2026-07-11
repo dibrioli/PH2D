@@ -1042,6 +1042,9 @@ impl crate::App {
                 None;
             // Transform Angle field (R) — a relative rotation delta (degrees).
             let mut pending_vec_rotate_by: Option<f64> = None;
+            // Text Size slider (world units) — updates the active session + the
+            // size a new session starts at.
+            let mut pending_vec_text_size: Option<f64> = None;
             let mut transform_edit: Option<ph2d_editor::InspectorTransformInfo> = None;
             let mut visibility_edit: Option<ph2d_editor::InspectorVisibilityInfo> = None;
             let mut sprite_source_change: Option<(u64, RequestedSpriteStrategy)> = None;
@@ -1170,6 +1173,10 @@ impl crate::App {
                             } else if *id == ph2d_editor::ids::VECTOR_GRAD_JITTER {
                                 // Track 0..1 → jitter 0..1 (already a fraction).
                                 pending_vec_grad_jitter = Some(*v);
+                            } else if *id == ph2d_editor::ids::VECTOR_TEXT_SIZE {
+                                // Track 0..1 → glyph size (world units); shared mapping.
+                                pending_vec_text_size =
+                                    Some(ph2d_tool_vector::params::slider_to_text_size(*v as f32));
                             }
                         }
                         // ADR-0113 W2: Flip layer ops (add/delete/select/visibility/
@@ -1918,6 +1925,14 @@ impl crate::App {
                     deg,
                 );
             }
+            if let Some(size) = pending_vec_text_size {
+                crate::vec_text::apply_text_size(
+                    &mut self.vec_text_edit,
+                    &mut self.vec_text_size,
+                    vec_scene,
+                    size,
+                );
+            }
             if let Some(op) = pending_vec_path_shape {
                 crate::input_dispatch::apply_vec_path_shape(
                     vec_scene,
@@ -2103,6 +2118,12 @@ impl crate::App {
                 &self.vec_pen,
                 vec_px_to_world,
                 vec_scene,
+            );
+            // Publica a string da sessão ativa para o painel exibir (read-only na
+            // A2). `None` quando não há sessão de texto (mostra o hint).
+            #[cfg(feature = "panel-vector")]
+            ph2d_panel_vector::set_current_text(
+                self.vec_text_edit.as_ref().map(|e| e.text.clone()),
             );
 
             // ADR-0110 — a árvore do editor é a Hierarquia. Reconcilia documento e

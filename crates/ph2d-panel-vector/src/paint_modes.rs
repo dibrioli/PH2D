@@ -6,14 +6,16 @@
 
 use crate::ids;
 use crate::paint_sections::BodyCtx;
+use crate::state;
+use ph2d_editor_core::paint::{paint_text, resolve};
 use ph2d_editor_core::widget::ButtonState;
 use ph2d_editor_core::widget::panel_chrome::paint_segmented_button;
 use ph2d_editor_core::zones::Rect;
-use ph2d_tokens::Spacing;
+use ph2d_tokens::{ColorToken, Spacing};
 use ph2d_tool_vector::VectorStyleSnapshot;
 use ph2d_tool_vector::params::{
-    DrawMode, arc_degrees_to_slider, radius_to_slider, sides_to_slider, spiral_turns_to_slider,
-    star_inner_to_slider, star_points_to_slider,
+    DEFAULT_TEXT_SIZE, DrawMode, arc_degrees_to_slider, radius_to_slider, sides_to_slider,
+    spiral_turns_to_slider, star_inner_to_slider, star_points_to_slider, text_size_to_slider,
 };
 
 impl BodyCtx<'_> {
@@ -180,8 +182,51 @@ impl BodyCtx<'_> {
                     y,
                 );
             }
+            DrawMode::Text => y = self.text_size_and_string(y),
             _ => {}
         }
         y
+    }
+
+    /// Text-mode controls: the glyph Size slider + a read-only preview of the
+    /// active session's string (typed on the canvas — the editable field is A3).
+    fn text_size_and_string(&mut self, mut y: f32) -> f32 {
+        let track = self
+            .store
+            .slider(ids::VECTOR_TEXT_SIZE)
+            .map(|(_, v)| v)
+            .unwrap_or_else(|| text_size_to_slider(DEFAULT_TEXT_SIZE));
+        let val = self
+            .store
+            .number_value(ids::VECTOR_TEXT_SIZE_NUM)
+            .unwrap_or(DEFAULT_TEXT_SIZE);
+        y = self.slider_row(
+            "Size",
+            ids::VECTOR_TEXT_SIZE,
+            ids::VECTOR_TEXT_SIZE_NUM,
+            track,
+            val,
+            &format!("{val:.2}"),
+            y,
+        );
+        // Read-only string preview (the active session's text, or a hint when empty).
+        y = self.section_label("Text", y);
+        let text = state::current_text().unwrap_or_default();
+        let (shown, color) = if text.trim().is_empty() {
+            ("Click the canvas and type".to_owned(), ColorToken::Text2)
+        } else {
+            (text.replace('\n', " / "), ColorToken::Text1)
+        };
+        paint_text(
+            self.text_system,
+            self.scene,
+            &shown,
+            self.inner_x,
+            y,
+            self.font,
+            self.inner_w,
+            resolve(color, self.theme),
+        );
+        y + self.row_h + self.row_gap
     }
 }

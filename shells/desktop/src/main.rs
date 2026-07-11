@@ -66,6 +66,7 @@ mod timeline_persist;
 mod undo;
 mod vec_entities;
 mod vec_gizmo_view;
+mod vec_glyph;
 mod vec_overlay;
 mod vec_selection;
 mod vec_snap;
@@ -256,6 +257,7 @@ impl App {
             vec_snap_targets: ph2d_vec_edit::SnapTargets::default(),
             vec_snap_guides: Vec::new(),
             vec_text_edit: None,
+            vec_text_size: ph2d_tool_vector::params::DEFAULT_TEXT_SIZE,
             vec_entities: Default::default(),
             flip_entities: Default::default(),
             vec_sel: Default::default(),

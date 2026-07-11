@@ -46,6 +46,10 @@ thread_local! {
     static CURRENT_SNAP: Cell<bool> = const { Cell::new(true) };
     /// "Set Center" armado: a próxima pressão no canvas reposiciona a origem.
     static CURRENT_PIVOT_EDIT: Cell<bool> = const { Cell::new(false) };
+    /// Texto da sessão de edição ativa (modo Text). `None` = sem sessão. Só
+    /// LEITURA no painel (display); a digitação segue no canvas (A2). Publicado
+    /// pela shell a cada frame.
+    static CURRENT_TEXT: RefCell<Option<String>> = const { RefCell::new(None) };
     /// Rotation-field accumulator: the angle (degrees) the Angle chip last
     /// reported THIS gesture. `event` emits the DELTA `(current − this)` so the
     /// shell rotates incrementally; reset to 0 by `paint` whenever the field is
@@ -231,4 +235,15 @@ pub fn set_current_pivot_edit(armed: bool) {
 
 pub(crate) fn pivot_edit_armed() -> bool {
     CURRENT_PIVOT_EDIT.with(|c| c.get())
+}
+
+/// Publica o texto da sessão de edição ativa (`None` = sem sessão de texto).
+/// A shell chama a cada frame; o painel só o exibe (read-only na A2).
+pub fn set_current_text(text: Option<String>) {
+    CURRENT_TEXT.with(|c| *c.borrow_mut() = text);
+}
+
+/// O texto da sessão ativa este frame (`None` ⇒ nada a exibir).
+pub(crate) fn current_text() -> Option<String> {
+    CURRENT_TEXT.with(|c| c.borrow().clone())
 }

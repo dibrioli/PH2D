@@ -142,6 +142,11 @@ pub const VECTOR_MODE_RRECT: NodeId = hash_node_id("vector.mode.rrect");
 pub const VECTOR_MODE_SPIRAL: NodeId = hash_node_id("vector.mode.spiral");
 /// Text mode: clica no canvas e digita (glyphs viram VecPaths). Botão do mode row.
 pub const VECTOR_MODE_TEXT: NodeId = hash_node_id("vector.mode.text");
+/// Text "Size" slider (world units) — shown only in Text mode; drives the glyph
+/// size of the active session + the size a new session starts at.
+pub const VECTOR_TEXT_SIZE: NodeId = hash_node_id("vector.text.size");
+/// Value chip paired with [`VECTOR_TEXT_SIZE`].
+pub const VECTOR_TEXT_SIZE_NUM: NodeId = hash_node_id("vector.text.size_num");
 /// Polygon "Sides" slider (3..12) — shown only in Polygon mode; drives
 /// `VectorTool::polygon_sides`.
 pub const VECTOR_SIDES: NodeId = hash_node_id("vector.sides");

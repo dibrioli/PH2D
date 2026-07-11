@@ -23,6 +23,9 @@ use ph2d_tool_vector::params::{
     radius_to_slider, sides_to_slider, spiral_turns_to_slider, star_inner_to_slider,
     star_points_to_slider,
 };
+use ph2d_tool_vector::params::{
+    DEFAULT_TEXT_SIZE, TEXT_SIZE_SLIDER_OFFSET, TEXT_SIZE_SLIDER_SCALE, text_size_to_slider,
+};
 use ph2d_tool_vector::{
     DEFAULT_ARC_DEGREES, DEFAULT_CORNER_RADIUS_PX, DEFAULT_POLYGON_SIDES, DEFAULT_SPIRAL_TURNS,
     DEFAULT_STAR_INNER, DEFAULT_STAR_POINTS, DEFAULT_STROKE_WIDTH_PX, px_to_slider,
@@ -205,6 +208,18 @@ fn populate_shape(store: &mut WidgetStore) {
         DEFAULT_ARC_DEGREES,
         ARC_DEGREES_SLIDER_SCALE,
         ARC_DEGREES_SLIDER_OFFSET,
+    );
+
+    // Text "Size" slider (world units) — shown only in Text mode; seeded at the
+    // default glyph size. The shell drain maps the track back to a size.
+    slider_chip(
+        store,
+        ids::VECTOR_TEXT_SIZE,
+        ids::VECTOR_TEXT_SIZE_NUM,
+        text_size_to_slider(DEFAULT_TEXT_SIZE),
+        DEFAULT_TEXT_SIZE,
+        TEXT_SIZE_SLIDER_SCALE,
+        TEXT_SIZE_SLIDER_OFFSET,
     );
 
     populate_transform_fields(store);

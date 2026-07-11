@@ -124,6 +124,36 @@ fn ruler_scrub_maps_value_to_time_and_raises_scrub() {
 }
 
 #[test]
+fn speed_toggle_flips_the_view_locally() {
+    // The speed-graph view is panel-local view state (like +Track), not a
+    // document command: the Toggled event must flip `speed_view` and raise NO
+    // shell event.
+    let mut host = MockPanelHost::with_panel::<TimelinePanel>();
+    let mut state = TimelinePanelState::default();
+    assert!(!state.speed_view, "value view by default");
+
+    let outcome = host
+        .apply_panel_event::<TimelinePanel>(&mut state, WidgetEvent::Toggled(ids::TIMELINE_SPEED));
+    assert_eq!(
+        outcome,
+        EventOutcome::Consumed,
+        "the Speed toggle arm is missing from event.rs"
+    );
+    assert!(state.speed_view, "Speed toggle flips the panel-local view");
+    assert!(
+        timeline_events(&mut host).is_empty(),
+        "the speed view is not a document command — it must not reach the shell"
+    );
+
+    // A second toggle flips it back.
+    host.apply_panel_event::<TimelinePanel>(&mut state, WidgetEvent::Toggled(ids::TIMELINE_SPEED));
+    assert!(
+        !state.speed_view,
+        "toggling again returns to the value view"
+    );
+}
+
+#[test]
 fn snap_toggle_raises_toggle_event() {
     let mut host = MockPanelHost::with_panel::<TimelinePanel>();
     let mut state = TimelinePanelState::default();

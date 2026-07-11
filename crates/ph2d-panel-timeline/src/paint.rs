@@ -94,7 +94,7 @@ pub(crate) fn paint(state: &mut TimelinePanelState, ctx: &mut PaintCtx) {
     );
 
     let body = geom::body(rect, title_size);
-    let after_transport = transport::paint_bar(ctx, theme, body, &snapshot);
+    let after_transport = transport::paint_bar(ctx, theme, body, &snapshot, state.speed_view);
     let g = geom::resolve(rect, after_transport, state.label_w);
     // Write the clamped width back, so a drag that ran past the bounds does not
     // have to be dragged all the way back before the column moves again.

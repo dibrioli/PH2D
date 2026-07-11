@@ -14,7 +14,9 @@ use ph2d_editor_core::paint::{
 };
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::zones::Rect;
-use ph2d_timeline::{KeyView, TrackView, drawn_extent, handle_point, sample_keys};
+use ph2d_timeline::{
+    KeyView, TrackView, drawn_extent, handle_point, sample_keys, sample_speed, speed_extent,
+};
 use ph2d_tokens::{ColorToken, Radius, Spacing, StrokeToken, Theme, TypeToken};
 
 use crate::anchor_drag;
@@ -61,12 +63,15 @@ pub(crate) fn paint_track(
     // visible handles, not just the key values: fitting the keys alone let a
     // strong ease spill out of the band onto the next row. An in-flight drag
     // freezes the fit instead (see `graph::band_for`).
-    let band = graph::band_for(
-        state,
-        band_rect,
-        target,
-        drawn_extent_of(&band_rect, view, track),
-    );
+    // The speed view fits to the VELOCITY extent (always spanning the zero line);
+    // the value view to what the curve+handles draw. A drag freezes the fit (see
+    // `graph::band_for`).
+    let extent = if state.speed_view {
+        speed_extent_of(&band_rect, view, track)
+    } else {
+        drawn_extent_of(&band_rect, view, track)
+    };
+    let band = graph::band_for(state, band_rect, target, extent);
     paint_frame(ctx, theme, rect, band_rect, label_w, &band);
     if track.keys.is_empty() {
         return;
@@ -74,12 +79,25 @@ pub(crate) fn paint_track(
     // Everything below is confined to the band: a drag can push a handle past the
     // frozen range, and it must not draw over the neighbouring rows.
     ctx.scene.push_clip(&rect_to_vello(band_rect));
-    paint_curve(ctx, theme, &band, view, &track.keys);
-    paint_anchors(ctx, theme, state, &band, view, track);
-    paint_handles(ctx, theme, state, &band, view, track);
+    if state.speed_view {
+        // Speed graph (W5): the velocity curve over a zero-velocity reference,
+        // with each selected segment's endpoints as editable speed handles.
+        paint_zero_line(ctx, theme, &band);
+        paint_speed_curve(ctx, theme, &band, view, &track.keys);
+        paint_speed_handles(ctx, theme, state, &band, view, track);
+    } else {
+        paint_curve(ctx, theme, &band, view, &track.keys);
+        paint_anchors(ctx, theme, state, &band, view, track);
+        paint_handles(ctx, theme, state, &band, view, track);
+    }
     ctx.scene.pop_layer();
+    // A handle drag resolves against the band it can finally see — `resolve_drag`
+    // reads `state.speed_view` to map the pointer as a velocity or a value. Value
+    // anchors move a key's VALUE; the speed view has none, so it skips them.
     resolve_drag(state, &band, view, track);
-    anchor_drag::resolve_drag(state, &band, track);
+    if !state.speed_view {
+        anchor_drag::resolve_drag(state, &band, track);
+    }
     paint_height_grip(ctx, theme, state, rect, target);
 }
 
@@ -303,6 +321,140 @@ fn paint_handles(
 
             // A handle a drag pushed outside the frozen band is drawn clipped;
             // do not leave a grab target for it floating over another row.
+            if py < band.rect.y || py > band.rect.y + band.rect.h {
+                continue;
+            }
+            let id = ids::timeline_handle_hit_id(target, k0.id.get(), which);
+            let hit = Rect::new(
+                px - HANDLE_HIT_R,
+                py - HANDLE_HIT_R,
+                HANDLE_HIT_R * 2.0,
+                HANDLE_HIT_R * 2.0,
+            );
+            ctx.host.store_mut().register(
+                id,
+                InteractiveState::TimelineSurface {
+                    parent: ids::TIMELINE_PANEL,
+                    kind: TimelineHitKind::CurveHandle {
+                        target,
+                        key: k0.id.get(),
+                        which,
+                    },
+                    canvas: band.rect,
+                },
+            );
+            ctx.host.hit_index_mut().register(id, hit);
+        }
+    }
+}
+
+/// The velocity extent of what the speed view draws across the visible window, at
+/// the polyline's sample density (always widened to include the zero line).
+fn speed_extent_of(band_rect: &Rect, view: TimeView, track: &TrackView) -> Option<(f32, f32)> {
+    let samples = (band_rect.w / CURVE_STEP_PX).ceil() as usize;
+    speed_extent(
+        &track.keys,
+        view.t(band_rect.x),
+        view.t(band_rect.x + band_rect.w),
+        samples,
+    )
+}
+
+/// A faint horizontal reference at velocity 0, so acceleration (above) and
+/// deceleration / reversal (below) read at a glance.
+fn paint_zero_line(ctx: &mut PaintCtx, theme: Theme, band: &Band) {
+    let y = band.y(0.0);
+    stroke_polyline(
+        ctx.scene,
+        &[(band.rect.x, y), (band.rect.x + band.rect.w, y)],
+        StrokeToken::Thin.px(),
+        resolve(ColorToken::Border, theme),
+    );
+}
+
+/// The velocity curve `d(value)/dt`, sampled every [`CURVE_STEP_PX`] through the
+/// same easing the runtime plays (see [`ph2d_timeline::sample_speed`]). Drawn in
+/// the accent, so it never reads as the value curve it replaces.
+fn paint_speed_curve(
+    ctx: &mut PaintCtx,
+    theme: Theme,
+    band: &Band,
+    view: TimeView,
+    keys: &[KeyView],
+) {
+    let (left, right) = (band.rect.x, band.rect.x + band.rect.w);
+    if right <= left {
+        return;
+    }
+    let n = ((right - left) / CURVE_STEP_PX).ceil() as usize + 1;
+    let mut points = Vec::with_capacity(n);
+    for i in 0..n {
+        let x = (left + i as f32 * CURVE_STEP_PX).min(right);
+        if let Some(s) = sample_speed(keys, view.t(x)) {
+            points.push((x, band.y(f64::from(s))));
+        }
+    }
+    stroke_polyline(
+        ctx.scene,
+        &points,
+        CURVE_W,
+        resolve(ColorToken::Accent, theme),
+    );
+}
+
+/// Each selected segment's start/end VELOCITY as a draggable dot at the same time
+/// as its value handle. Dragging one vertically retunes that endpoint's speed →
+/// the bézier tangent (`graph::resolve_drag` in speed mode). Reuses the value
+/// handles' `CurveHandle` id/hit — only one of the two is painted per frame.
+fn paint_speed_handles(
+    ctx: &mut PaintCtx,
+    theme: Theme,
+    state: &TimelinePanelState,
+    band: &Band,
+    view: TimeView,
+    track: &TrackView,
+) {
+    let target = track.target.get();
+    for w in track.keys.windows(2) {
+        let (k0, k1) = (&w[0], &w[1]);
+        if !(k0.selected || k1.selected) {
+            continue;
+        }
+        let span = k1.t_seconds - k0.t_seconds;
+        let rate = if span != 0.0 {
+            (f64::from(k1.value) - f64::from(k0.value)) / span
+        } else {
+            0.0
+        };
+        // Endpoint slopes of the cubic → velocities: `(dv/span)·y1/x1` at the
+        // start, `(dv/span)·(1-y2)/(1-x2)` at the end. A degenerate influence
+        // (x1==0 / x2==1) has no slope; show it flat on the zero line.
+        let h = handle_pair(k0.interp);
+        let out_speed = if h[0].0 != 0.0 {
+            rate * h[0].1 / h[0].0
+        } else {
+            0.0
+        };
+        let in_speed = if h[1].0 != 1.0 {
+            rate * (1.0 - h[1].1) / (1.0 - h[1].0)
+        } else {
+            0.0
+        };
+        for (which, hx, speed) in [(0u8, h[0].0, out_speed), (1u8, h[1].0, in_speed)] {
+            let t = k0.t_seconds + hx * span;
+            let (px, py) = (view.x(t), band.y(speed));
+            if px < band.rect.x || px > band.rect.x + band.rect.w {
+                continue;
+            }
+            let dragged = state
+                .handle_drag
+                .is_some_and(|d| d.target == target && d.key == k0.id.get() && d.which == which);
+            let tok = if dragged {
+                ColorToken::TimelineKeyActive
+            } else {
+                ColorToken::TimelineHandle
+            };
+            fill_circle(ctx.scene, px, py, HANDLE_R, resolve(tok, theme));
             if py < band.rect.y || py > band.rect.y + band.rect.h {
                 continue;
             }

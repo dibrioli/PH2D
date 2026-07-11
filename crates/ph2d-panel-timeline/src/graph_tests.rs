@@ -160,6 +160,80 @@ fn the_whole_drag_is_one_undo_bracket() {
     assert_eq!(edits, 2, "one SetInterp per frame, both inside the bracket");
 }
 
+/// Drive a full out-handle drag in SPEED mode to pointer `y`, returning intents.
+/// The `x` is irrelevant to a speed edit (only `y = velocity` moves the tangent);
+/// `band` maps velocity ↔ pixels.
+fn drag_out_handle_speed(interp: Interp, band: &Band, y: f32) -> Vec<TimelineIntent> {
+    let tr = track(interp);
+    let mut st = TimelinePanelState {
+        speed_view: true,
+        ..TimelinePanelState::default()
+    };
+    apply_handle_gesture(&mut st, 9, 1, 0, gesture(GesturePhase::Begin, 0.0, 0.0));
+    apply_handle_gesture(&mut st, 9, 1, 0, gesture(GesturePhase::Update, 50.0, y));
+    resolve_drag(&mut st, band, VIEW, &tr);
+    apply_handle_gesture(&mut st, 9, 1, 0, gesture(GesturePhase::End, 50.0, y));
+    resolve_drag(&mut st, band, VIEW, &tr);
+    assert!(st.handle_drag.is_none(), "the drag closed itself");
+    state::drain_intents()
+}
+
+#[test]
+fn dragging_a_speed_handle_retunes_the_tangent_to_that_velocity() {
+    // The speed-graph edit, end to end. Track 0→10 over 0..1 s ⇒ value rate = 10.
+    // A band mapping velocity 0..40 over the 100 px row puts y = 50 at velocity 20
+    // (44 − 0.5·48, with the 10 % pad). The resulting bézier's START slope must be
+    // y1/x1 = velocity/rate = 2, and the influence x1 kept at the Linear handle's
+    // 1/3 (speed edits change only the slope, not the timing).
+    let band = Band::fit(ROW, Some((0.0, 40.0)));
+    let got = drag_out_handle_speed(Interp::Linear, &band, 50.0);
+    let Some(TimelineIntent::SetInterp {
+        interp: Interp::Bezier { x1, y1, .. },
+        ..
+    }) = got
+        .iter()
+        .rev()
+        .find(|i| matches!(i, TimelineIntent::SetInterp { .. }))
+    else {
+        panic!("no SetInterp in {got:?}")
+    };
+    let start_slope = y1 / x1;
+    assert!(
+        (start_slope - 2.0).abs() < 1e-9,
+        "start slope for v=20 at rate 10 must be 2: {start_slope}"
+    );
+    assert!(
+        (x1 - 1.0 / 3.0).abs() < 1e-9,
+        "the influence x is kept, not moved: {x1}"
+    );
+}
+
+#[test]
+fn a_speed_drag_on_a_flat_segment_keeps_the_handle() {
+    // v0 == v1: there is no velocity to scale, so the inverse declines and the
+    // segment stays where it was — no spurious tangent change.
+    let mut tr = track(Interp::bezier(0.3, 0.7, 0.6, 0.2));
+    for k in &mut tr.keys {
+        k.value = 5.0; // flatten: dv = 0
+    }
+    let band = Band::fit(ROW, Some((-10.0, 10.0)));
+    let mut st = TimelinePanelState {
+        speed_view: true,
+        ..TimelinePanelState::default()
+    };
+    apply_handle_gesture(&mut st, 9, 1, 0, gesture(GesturePhase::Begin, 0.0, 0.0));
+    apply_handle_gesture(&mut st, 9, 1, 0, gesture(GesturePhase::Update, 50.0, 10.0));
+    resolve_drag(&mut st, &band, VIEW, &tr);
+    let got = state::drain_intents();
+    assert!(
+        got.iter().any(|i| matches!(
+            i,
+            TimelineIntent::SetInterp { interp: Interp::Bezier { y1, .. }, .. } if (*y1 - 0.7).abs() < 1e-9
+        )),
+        "a flat segment's out handle y stays 0.7: {got:?}"
+    );
+}
+
 #[test]
 fn dragging_past_the_next_key_pins_the_handle_at_the_segment_end() {
     // x = 900 px is t = 9 s, far past k1 at t = 1. A non-monotone timing

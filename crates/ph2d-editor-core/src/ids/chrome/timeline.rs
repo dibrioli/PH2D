@@ -32,6 +32,9 @@ pub const TIMELINE_LOOP: NodeId = hash_node_id("timeline.loop");
 pub const TIMELINE_AUTOKEY: NodeId = hash_node_id("timeline.autokey");
 /// Frame-snap toggle.
 pub const TIMELINE_SNAP: NodeId = hash_node_id("timeline.snap");
+/// Speed-graph view toggle (W5) — flips every expanded graph band between the
+/// VALUE curve and the VELOCITY (speed) curve. Panel-local view state.
+pub const TIMELINE_SPEED: NodeId = hash_node_id("timeline.speed");
 
 // ── Track list + ruler ───────────────────────────────────────────────────────
 /// "+ Track" button (adds a binding for the selected object's property).

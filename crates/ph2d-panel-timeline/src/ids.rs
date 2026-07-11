@@ -9,9 +9,9 @@ pub use ph2d_editor_core::ids::{
     TIMELINE_NEXT_FRAME, TIMELINE_PANEL, TIMELINE_PLAY, TIMELINE_PREV_FRAME, TIMELINE_RESIZE_B,
     TIMELINE_RESIZE_BL, TIMELINE_RESIZE_BR, TIMELINE_RESIZE_L, TIMELINE_RESIZE_R,
     TIMELINE_RESIZE_T, TIMELINE_RESIZE_TL, TIMELINE_RESIZE_TR, TIMELINE_RULER, TIMELINE_SCROLLBAR,
-    TIMELINE_SNAP, TIMELINE_SUMMARY_LOCK, TIMELINE_TIME_NUM, timeline_anchor_hit_id,
-    timeline_graph_resize_id, timeline_handle_hit_id, timeline_key_hit_id, timeline_loop_brace_id,
-    timeline_marker_hit_id, timeline_summary_hit_id, timeline_twirl_id,
+    TIMELINE_SNAP, TIMELINE_SPEED, TIMELINE_SUMMARY_LOCK, TIMELINE_TIME_NUM,
+    timeline_anchor_hit_id, timeline_graph_resize_id, timeline_handle_hit_id, timeline_key_hit_id,
+    timeline_loop_brace_id, timeline_marker_hit_id, timeline_summary_hit_id, timeline_twirl_id,
 };
 
 /// The six "+Track" property buttons paired with their [`ph2d_timeline::PropKind`],

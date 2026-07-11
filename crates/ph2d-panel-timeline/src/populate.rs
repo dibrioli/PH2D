@@ -71,4 +71,5 @@ pub(crate) fn populate(store: &mut WidgetStore) {
     toggle(store, ids::TIMELINE_LOOP, false);
     toggle(store, ids::TIMELINE_AUTOKEY, false);
     toggle(store, ids::TIMELINE_SNAP, true);
+    toggle(store, ids::TIMELINE_SPEED, false);
 }

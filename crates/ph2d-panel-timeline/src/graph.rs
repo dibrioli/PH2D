@@ -18,7 +18,9 @@
 //! gesture.
 
 use ph2d_editor_core::zones::Rect;
-use ph2d_timeline::{Interp, TimelineIntent, TrackView, handle_coords};
+use ph2d_timeline::{
+    Interp, TimelineIntent, TrackView, handle_coords, in_handle_y_for_speed, out_handle_y_for_speed,
+};
 
 use crate::state::{self, HandleDrag, TimelinePanelState};
 
@@ -229,23 +231,34 @@ pub(crate) fn resolve_drag(
         return; // the last key owns no segment
     };
     let k0 = &track.keys[i];
-    let (t, v) = (view.t(d.x), band.value(d.y));
-    let (hx, hy) = handle_coords(
-        k0.t_seconds,
-        f64::from(k0.value),
-        k1.t_seconds,
-        f64::from(k1.value),
-        t,
-        v,
-    );
-    // A flat segment has no representable handle `y` — keep the one it had
-    // rather than snapping the handle onto the line (see `graph::handle_coords`).
     let old = handle_pair(k0.interp);
-    let hy = hy.unwrap_or(old[d.which as usize].1);
-    let interp = if d.which == 0 {
-        k0.interp.with_out_handle(hx, hy)
+    let (t0, v0) = (k0.t_seconds, f64::from(k0.value));
+    let (t1, v1) = (k1.t_seconds, f64::from(k1.value));
+    let interp = if state.speed_view {
+        // Speed edit: the pointer's y is a VELOCITY. Solve the endpoint's handle
+        // `y` that reaches it, keeping the handle's `x` (influence). A flat
+        // segment (no value change) has no speed to scale — keep the handle.
+        let speed = band.value(d.y);
+        if d.which == 0 {
+            let (x1, y1) = (old[0].0, old[0].1);
+            let ny = out_handle_y_for_speed(t0, v0, t1, v1, x1, speed).unwrap_or(y1);
+            k0.interp.with_out_handle(x1, ny)
+        } else {
+            let (x2, y2) = (old[1].0, old[1].1);
+            let ny = in_handle_y_for_speed(t0, v0, t1, v1, x2, speed).unwrap_or(y2);
+            k0.interp.with_in_handle(x2, ny)
+        }
     } else {
-        k0.interp.with_in_handle(hx, hy)
+        // Value edit: map the pointer (time, value) straight to the handle's
+        // normalized coords. A flat segment has no representable handle `y` — keep
+        // the one it had rather than snapping onto the line (see `handle_coords`).
+        let (hx, hy) = handle_coords(t0, v0, t1, v1, view.t(d.x), band.value(d.y));
+        let hy = hy.unwrap_or(old[d.which as usize].1);
+        if d.which == 0 {
+            k0.interp.with_out_handle(hx, hy)
+        } else {
+            k0.interp.with_in_handle(hx, hy)
+        }
     };
     state::push_intent(TimelineIntent::SetInterp {
         target: track.target,

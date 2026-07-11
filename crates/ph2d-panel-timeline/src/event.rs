@@ -93,6 +93,14 @@ pub(crate) fn apply_event(
                 )));
             EventOutcome::Consumed
         }
+        // Speed-graph view toggle (W5) — panel-local view state, NOT a document
+        // command: flip it here (no bus/intent), like the +Track dropdown. The
+        // transport bar mirrors `speed_view` back into the store's switch each
+        // paint, so the painted toggle follows this flip.
+        WidgetEvent::Toggled(id) if id == ids::TIMELINE_SPEED => {
+            state.speed_view = !state.speed_view;
+            EventOutcome::Consumed
+        }
         WidgetEvent::Toggled(id) if is_toggle(id) => {
             let on = host.store().toggle(id).map(|(_, on)| on).unwrap_or(false);
             host.bus_mut()

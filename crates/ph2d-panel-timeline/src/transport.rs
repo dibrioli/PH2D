@@ -36,6 +36,7 @@ pub(crate) fn paint_bar(
     theme: Theme,
     body: Rect,
     snap: &TimelineViewSnapshot,
+    speed_view: bool,
 ) -> f32 {
     let gap = Spacing::Sm.px();
     let y = body.y;
@@ -141,6 +142,17 @@ pub(crate) fn paint_bar(
         ids::TIMELINE_SNAP,
         ph2d_i18n::tr("panel.timeline.snap"),
         snap.frame_snap,
+    ) + gap;
+    // Speed-graph view (W5) — panel-local, NOT a document command: flips every
+    // expanded graph band between the value curve and the velocity curve.
+    x = toggle(
+        ctx,
+        theme,
+        x,
+        y,
+        ids::TIMELINE_SPEED,
+        ph2d_i18n::tr("panel.timeline.speed"),
+        speed_view,
     ) + gap;
 
     // "+M" — drop a marker at the playhead (W4.T3). Same one-click authoring as

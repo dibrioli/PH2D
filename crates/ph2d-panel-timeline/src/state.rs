@@ -87,6 +87,10 @@ pub struct TimelinePanelState {
     /// Tracks (by raw `AnimTarget`) whose graph editor is expanded. Panel-local
     /// view state — never undoable, never saved.
     pub expanded: Vec<u64>,
+    /// Speed-graph view (W5): every expanded graph band plots VELOCITY
+    /// (`d(value)/dt`) instead of the value curve, toggled from the transport
+    /// bar. Panel-local view state — never undoable, never saved.
+    pub speed_view: bool,
     /// The Summary channel's column lock, toggled by its padlock. **Closed by
     /// default:** grabbing any single key grabs its whole time column, so keys
     /// stay vertically aligned. Open it to move keys independently. Either way,
@@ -296,6 +300,7 @@ impl Default for TimelinePanelState {
             graph_h: crate::graph::GRAPH_H_DEFAULT,
             graph_resize: None,
             expanded: Vec::new(),
+            speed_view: false,
             column_lock: true,
             handle_drag: None,
             anchor_drag: None,

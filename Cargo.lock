@@ -5263,6 +5263,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-node-motion-distribute-radial"
+version = "0.0.0"
+dependencies = [
+ "ph2d-node-registry",
+ "ph2d-nodegraph",
+]
+
+[[package]]
 name = "ph2d-node-motion-drive"
 version = "0.0.0"
 dependencies = [
@@ -5328,6 +5336,14 @@ dependencies = [
 
 [[package]]
 name = "ph2d-node-motion-look-at"
+version = "0.0.0"
+dependencies = [
+ "ph2d-node-registry",
+ "ph2d-nodegraph",
+]
+
+[[package]]
+name = "ph2d-node-motion-mirror"
 version = "0.0.0"
 dependencies = [
  "ph2d-node-registry",
@@ -5596,6 +5612,7 @@ dependencies = [
  "ph2d-node-motion-bend",
  "ph2d-node-motion-boids",
  "ph2d-node-motion-clone",
+ "ph2d-node-motion-distribute-radial",
  "ph2d-node-motion-drive",
  "ph2d-node-motion-emitter",
  "ph2d-node-motion-falloff",
@@ -5605,6 +5622,7 @@ dependencies = [
  "ph2d-node-motion-integrate",
  "ph2d-node-motion-lattice",
  "ph2d-node-motion-look-at",
+ "ph2d-node-motion-mirror",
  "ph2d-node-motion-morph",
  "ph2d-node-motion-move",
  "ph2d-node-motion-noise",

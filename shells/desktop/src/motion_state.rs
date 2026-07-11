@@ -54,17 +54,16 @@ pub(crate) struct MotionState {
 }
 
 impl MotionState {
-    /// Build the boot state: register every node op + the **default document** —
-    /// two small M3 deformer scenes side by side: a grid billowing into
-    /// **perspective** as its corners are pinned (`motion.four_point_warp`) on the
-    /// left, and a grid **bulging and pinching** like a lens (`motion.spherize`) on
-    /// the right. Each is animated by a `value.lfo`. Kept deliberately small (two
-    /// linear chains) so each new node reads on its own (docs/Motion Nodes/12, 24).
-    /// The earlier scenes (the Cavalry grid rig, the sim scenes, the distributions)
-    /// and the earlier value/pulse + M3/M4 chains were removed to keep the boot
-    /// document focused; they live in git history and every node keeps its own unit
-    /// tests + stays registered (drop them in the editor). Transport paused at tick 0
-    /// (bridge auto-plays).
+    /// Build the boot state: register every node op + the **default document** — on
+    /// the left a **radial array** of rings that swings round (`motion.distribute_
+    /// radial`); on the right a **180-point Voronoi** that relaxes into a honeycomb
+    /// (`motion.voronoi`, `relax` live — the parallelised Lloyd on show) and is made
+    /// symmetric by a **mirror** (`motion.mirror`). Each animated by a `value.lfo`.
+    /// Kept deliberately small (docs/Motion Nodes/12, 25). The earlier scenes (the
+    /// Cavalry grid rig, the sim scenes, the deformer scenes) and the earlier
+    /// value/pulse + M3/M4 chains were removed to keep the boot document focused; they
+    /// live in git history and every node keeps its own unit tests + stays registered
+    /// (drop them in the editor). Transport paused at tick 0 (bridge auto-plays).
     pub(crate) fn new() -> Self {
         let mut registry = NodeRegistry::new();
         ph2d_node_registry_init::register_all_nodes(&mut registry)
@@ -92,18 +91,18 @@ impl MotionState {
 /// module's most recent work). Returns their sinks (the Output nodes) if the graph
 /// is well-typed.
 ///
-/// The scenes — built in the `strobe` sibling module — are two side-by-side deformers
-/// animated by the value domain: on the LEFT a grid whose corners are pinned into a
-/// keystone, its `warp` a `value.lfo` billowing it into **perspective** and flat again
-/// (`motion.four_point_warp`, a projective corner-pin); on the RIGHT a grid whose
-/// `amount` is a `value.lfo` swinging from pinch to **bulge** like a lens
-/// (`motion.spherize`, a radial distortion). Two distinct deformer families. See
-/// docs/Motion Nodes/12 (value), 24 (four-point-warp + spherize).
+/// The scenes — built in the `strobe` sibling module — are two side-by-side layouts
+/// animated by the value domain: on the LEFT a **radial array** of concentric rings
+/// whose `spin` is a `value.lfo` swinging it round (`motion.distribute_radial`); on the
+/// RIGHT a **180-point Voronoi** whose `relax` is a `value.lfo` playing Lloyd's
+/// relaxation (the parallelised, real-time-at-this-count fix on show — see
+/// docs/plans/2026-07-gpu-resident-node-pipeline.md), then reflected into a symmetric
+/// honeycomb by `motion.mirror`. See docs/Motion Nodes/12 (value), 25 (radial + mirror).
 ///
 /// The earlier scenes were removed to keep the boot document small and legible: the
-/// **Cavalry grid rig**, the sim scenes, the distribution scenes, and the earlier
-/// value, pulse and M3/M4 chains. They remain in git history and every node keeps its
-/// own unit tests; the nodes stay registered, so any of them can be dropped.
+/// **Cavalry grid rig**, the sim scenes, the deformer scenes, and the earlier value,
+/// pulse and M3/M4 chains. They remain in git history and every node keeps its own unit
+/// tests; the nodes stay registered, so any of them can be dropped.
 fn build_default_document(g: &mut Graph, reg: &NodeRegistry) -> Option<Vec<NodeId>> {
     let sinks = strobe::build(g)?;
     // Same "validate on load" the editor runs before cooking — proves the authored

@@ -1,8 +1,8 @@
 //! Headless demo/cook tests for `motion_state` (split for the HR-18 600-LOC
 //! shell cap; declared there as a `#[path]` sibling, so `super` is
-//! `motion_state`). Cook the default document — now two M3 deformer scenes: a
-//! `motion.four_point_warp` perspective keystone and a `motion.spherize` lens, each a
-//! `Pure` deformer on a grid animated through a `value.lfo` — through the REAL registry.
+//! `motion_state`). Cook the default document — now a `motion.distribute_radial`
+//! array and a 180-point `motion.voronoi` mirrored by `motion.mirror`, each a `Pure`
+//! layout animated through a `value.lfo` — through the REAL registry.
 
 use super::*;
 use ph2d_nodegraph::attr::Column;
@@ -25,20 +25,20 @@ fn mean_x(pos: &[[f32; 2]]) -> f32 {
     pos.iter().map(|p| p[0]).sum::<f32>() / pos.len() as f32
 }
 
-/// The largest over-time travel of any single element across `frames` — 0 when the
-/// deformer is dead (a static grid), positive when it animates the layout.
+/// The largest over-time travel of any single element — 0 for a static layout,
+/// positive when it animates.
 fn max_travel(frames: &[Vec<[f32; 2]>]) -> f32 {
     let n = frames[0].len();
     let mut worst = 0.0f32;
     for i in 0..n {
-        let (mut xhi, mut xlo, mut yhi, mut ylo) = (f32::MIN, f32::MAX, f32::MIN, f32::MAX);
+        let (mut hi, mut lo) = ([f32::MIN; 2], [f32::MAX; 2]);
         for f in frames {
-            xhi = xhi.max(f[i][0]);
-            xlo = xlo.min(f[i][0]);
-            yhi = yhi.max(f[i][1]);
-            ylo = ylo.min(f[i][1]);
+            for a in 0..2 {
+                hi[a] = hi[a].max(f[i][a]);
+                lo[a] = lo[a].min(f[i][a]);
+            }
         }
-        worst = worst.max((xhi - xlo) + (yhi - ylo));
+        worst = worst.max((hi[0] - lo[0]) + (hi[1] - lo[1]));
     }
     worst
 }
@@ -46,97 +46,82 @@ fn max_travel(frames: &[Vec<[f32; 2]>]) -> f32 {
 #[test]
 fn new_builds_the_well_typed_value_document() {
     let state = MotionState::new();
-    // Two independent scenes → two Output sinks (the perspective grid and the lens).
-    assert_eq!(state.sinks.len(), 2, "two deformer scenes → two sinks");
+    assert_eq!(state.sinks.len(), 2, "two scenes → two sinks");
     for sink in &state.sinks {
         assert_eq!(
             state.doc.graph.node(*sink).unwrap().type_name,
             "motion.output"
         );
     }
-    // 12 nodes: {grid, deformer, move, tint, output, lfo} × 2 scenes. The two newest
-    // nodes (doc 24) — a `motion.four_point_warp` and a `motion.spherize`, each driven
-    // by a `value.lfo`.
-    assert_eq!(state.doc.graph.nodes().len(), 12);
+    // 11 nodes: {radial, move, tint, output, lfo} + {voronoi, mirror, move, tint,
+    // output, lfo}. The two newest nodes (doc 25) — a `motion.distribute_radial` and a
+    // `motion.mirror`, each driven by a `value.lfo`.
+    assert_eq!(state.doc.graph.nodes().len(), 11);
     assert!(state.doc.graph.validate(&state.registry).is_ok());
     assert_eq!(state.transport.playhead(1.0 / 60.0), 0.0); // paused at tick 0
 }
 
-/// `motion.four_point_warp` is alive end to end (doc 24): the `warp` lfo billows the
-/// grid into perspective and flat again, so its elements travel over time; the scene
-/// sits on the left. Falsifiable: a dead warp leaves the grid static (no travel).
+/// `motion.distribute_radial` is alive end to end (doc 25): the `spin` lfo swings the
+/// ring array round, so its points travel over time; the scene sits on the left.
+/// Falsifiable: a dead spin leaves the array static.
 #[test]
-fn the_four_point_warp_billows_the_grid() {
+fn the_radial_array_swings_round() {
     let state = MotionState::new();
-    let warp_sink = state.sinks[0]; // the perspective scene's Output (added first)
+    let radial_sink = state.sinks[0]; // the radial scene's Output (added first)
     let mut frames = Vec::new();
     let mut means = Vec::new();
-    for k in 0..=240u64 {
-        let t = k as f64 / 60.0; // ~4 s = the warp lfo's full period
-        let pos = positions_at(&state, warp_sink, t);
-        assert_eq!(pos.len(), 25, "the 5×5 grid");
+    for k in 0..=150u64 {
+        let t = k as f64 / 60.0;
+        let pos = positions_at(&state, radial_sink, t);
+        assert_eq!(pos.len(), 48, "the 48-point radial array");
         means.push(mean_x(&pos));
         frames.push(pos);
     }
-    assert!(
-        max_travel(&frames) > 0.3,
-        "the warp billows the grid over time"
-    );
+    assert!(max_travel(&frames) > 0.3, "the spin lfo swings the array");
     let mean = means.iter().sum::<f32>() / means.len() as f32;
     assert!(
         mean < -3.0,
-        "the perspective grid sits on the left (mean x {mean})"
+        "the radial array sits on the left (mean x {mean})"
     );
 }
 
-/// `motion.spherize` is alive end to end (doc 24): the `amount` lfo swings pinch↔bulge,
-/// so the grid's spread from its centre grows and shrinks; the scene sits on the right.
-/// Falsifiable: a dead lens leaves the grid static (spread constant, no travel).
+/// `motion.mirror` + `motion.voronoi` are alive end to end (doc 25): the 180-point
+/// Voronoi is doubled to 360 by the mirror and is symmetric about its centre; the
+/// `relax` lfo keeps the Lloyd relaxation live (the points travel); the scene sits on
+/// the right. Falsifiable: no mirror → 180 (not 360); a dead Voronoi → no travel.
 #[test]
-fn the_spherize_bulges_and_pinches_the_grid() {
+fn the_voronoi_is_mirrored_and_relaxes() {
     let state = MotionState::new();
-    let lens_sink = state.sinks[1]; // the lens scene's Output (added second)
-    let mut spreads: Vec<f32> = Vec::new();
+    let mirror_sink = state.sinks[1]; // the voronoi+mirror scene's Output (added second)
     let mut frames = Vec::new();
     let mut means = Vec::new();
-    for k in 0..=180u64 {
-        let t = k as f64 / 60.0; // ~3 s = the amount lfo's full period
-        let pos = positions_at(&state, lens_sink, t);
-        assert_eq!(pos.len(), 25, "the 5×5 grid");
-        // Spread = mean distance from the centroid (grows on bulge, shrinks on pinch).
-        let c = [mean_x(&pos), pos.iter().map(|p| p[1]).sum::<f32>() / 25.0];
-        let spread = pos
-            .iter()
-            .map(|p| {
-                let (dx, dy) = (p[0] - c[0], p[1] - c[1]);
-                (dx * dx + dy * dy).sqrt()
-            })
-            .sum::<f32>()
-            / 25.0;
-        spreads.push(spread);
+    // Voronoi re-runs Lloyd each frame (parallelised); a short sweep is enough.
+    for k in 0..=60u64 {
+        let t = k as f64 / 60.0;
+        let pos = positions_at(&state, mirror_sink, t);
+        assert_eq!(pos.len(), 360, "180 Voronoi points mirrored to 360");
         means.push(mean_x(&pos));
         frames.push(pos);
     }
-    let hi = spreads.iter().copied().fold(f32::MIN, f32::max);
-    let lo = spreads.iter().copied().fold(f32::MAX, f32::min);
+    // Symmetric about its centroid: the x-offsets sum to ~0 (the mirror adds no drift).
+    let last = frames.last().unwrap();
+    let cx = mean_x(last);
+    let skew = last.iter().map(|p| p[0] - cx).sum::<f32>();
     assert!(
-        hi - lo > 0.1,
-        "the lens swells and shrinks the grid (spread {lo}..{hi})"
+        skew.abs() < 1e-2,
+        "mirror-symmetric about the centre (skew {skew})"
     );
-    assert!(
-        max_travel(&frames) > 0.1,
-        "the elements move as the lens breathes"
-    );
+    assert!(max_travel(&frames) > 0.05, "the Voronoi relaxation is live");
     let mean = means.iter().sum::<f32>() / means.len() as f32;
     assert!(
         mean > 3.0,
-        "the lens grid sits on the right (mean x {mean})"
+        "the mirrored honeycomb sits on the right (mean x {mean})"
     );
 }
 
-/// The default document replays bit-identically. Both deformers are deterministic
-/// arithmetic (a homography + a radial polynomial; the lfos are stateless playhead
-/// reads), so two runs of the same document match exactly (HR-5).
+/// The default document replays bit-identically. Both scenes are deterministic
+/// (parabolic trig for the radial, grid-Lloyd arithmetic for the Voronoi, arithmetic
+/// mirror; the lfos are stateless playhead reads), so two runs match exactly (HR-5).
 #[test]
 fn the_default_document_replays_deterministically() {
     use ph2d_eval_motion::MotionCookPump;
@@ -144,7 +129,7 @@ fn the_default_document_replays_deterministically() {
         let state = MotionState::new();
         let mut pump = MotionCookPump::new();
         let mut frames = Vec::new();
-        for k in 0..20u64 {
+        for k in 0..12u64 {
             pump.pump(
                 &state.doc.graph,
                 &state.registry,

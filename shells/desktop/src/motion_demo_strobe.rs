@@ -1,91 +1,68 @@
-//! The M3 deformer demo — the **default Motion document**: two small, side-by-side
-//! deformers, each animated by the value domain. On the LEFT a grid billows into
-//! **perspective** as its corners are pinned (`motion.four_point_warp`); on the RIGHT
-//! a grid **bulges and pinches** like a lens (`motion.spherize`). Two independent
-//! scenes (each its own `motion.output` sink — the bridge composes several into one
-//! draw), kept deliberately small so each new node reads on its own. A `#[path]`
-//! sibling of `motion_state`, kept out of it for the LOC cap.
+//! The M3 distribution demo — the **default Motion document**: on the LEFT a **radial
+//! array** of rings that rotates (`motion.distribute_radial`); on the RIGHT a **180-point
+//! Voronoi** cloud that relaxes into a honeycomb (`motion.voronoi`, animated) and is
+//! made symmetric by a **mirror** (`motion.mirror`). The right scene deliberately runs
+//! Voronoi at a stress count (180, `relax` live) so the parallelised Lloyd is visible
+//! in the app — the perf fix in the flesh. Two independent scenes (each its own
+//! `motion.output` sink — the bridge composes several into one draw), kept small so
+//! each new node reads on its own. A `#[path]` sibling of `motion_state`, kept out for
+//! the LOC cap.
 //!
 //! ```text
-//! LEFT  (perspective): grid → four_point_warp → move(−6) → tint(amber) → output   lfo → warp
-//! RIGHT (lens):        grid → spherize        → move(+6) → tint(cyan)  → output   lfo → amount
+//! LEFT  (radial): distribute_radial → move(−6) → tint(amber) → output   lfo → spin
+//! RIGHT (mirror): voronoi → mirror → move(+6) → tint(cyan)  → output     lfo → relax
 //! ```
 //!
-//! - **four_point_warp** (`motion.four_point_warp`, doc 24): the projective corner-pin;
-//!   the top corners are pinned inward (a keystone) and the `warp` `value.lfo` billows
-//!   the grid into perspective and flattens it back — straight lines stay straight.
-//! - **spherize** (`motion.spherize`, doc 24): the radial lens; the `amount` `value.lfo`
-//!   swings from pinch to bulge, so the grid's centre swells out and sucks back in.
+//! - **distribute_radial** (`motion.distribute_radial`, doc 25): rings of points; the
+//!   `spin` `value.lfo` swings the whole array round.
+//! - **voronoi + mirror** (`motion.mirror`, doc 25): the 180-point Voronoi relaxes via
+//!   Lloyd (parallelised — smooth at this count), then `motion.mirror` reflects it
+//!   across the vertical axis into a symmetric honeycomb (360 dots).
 //!
-//! The payoff: two distinct deformer families (an affine/projective warp and a
-//! nonlinear radial lens), each driven by the value domain, on one legible canvas. See
-//! docs/Motion Nodes/24 (four-point-warp + spherize). The whole value/pulse vocabulary
-//! + the other M3/M4 nodes stay registered (drop them in the editor).
+//! See docs/Motion Nodes/25 (radial + mirror). The whole value/pulse vocabulary + the
+//! other M3/M4 nodes stay registered (drop them in the editor).
 
 use ph2d_nodegraph::graph::{Edge, Graph, NodeId, Pos};
 
 const COL_W: f32 = 220.0;
-/// The two scenes' card rows in graph space (stacked, so the editor reads cleanly).
-const WARP_ROW: f32 = 0.0;
-const LENS_ROW: f32 = 320.0;
+const RADIAL_ROW: f32 = 0.0;
+const MIRROR_ROW: f32 = 320.0;
 
-/// Author both deformer scenes into `g`; returns their Output nodes (the sinks), the
-/// perspective scene's first so the sink order is stable (id-ascending).
+/// Author both scenes into `g`; returns their Output nodes (the sinks), the radial
+/// scene's first so the sink order is stable (id-ascending).
 pub(crate) fn build(g: &mut Graph) -> Option<Vec<NodeId>> {
-    let warp_out = build_warp_scene(g)?;
-    let lens_out = build_lens_scene(g)?;
-    Some(vec![warp_out, lens_out])
+    let radial_out = build_radial_scene(g)?;
+    let mirror_out = build_mirror_scene(g)?;
+    Some(vec![radial_out, mirror_out])
 }
 
-/// A `grid → deformer → move → tint → output` chain with an lfo into the deformer's
-/// animation input. Returns the Output node. `deformer`/`anim_port` name the node type
-/// and which input the lfo drives.
-fn build_scene(
-    g: &mut Graph,
-    row: f32,
-    deformer: &str,
-    anim_port: u16,
-    dx: f32,
-    rgb: [f32; 3],
-) -> Option<(NodeId, NodeId, NodeId)> {
-    let grid = g.add_node("motion.grid");
-    let def = g.add_node(deformer);
+/// LEFT: a rotating radial array. Returns its Output node.
+fn build_radial_scene(g: &mut Graph) -> Option<NodeId> {
+    let radial = g.add_node("motion.distribute_radial");
     let mv = g.add_node("motion.move");
     let tint = g.add_node("motion.tint");
     let output = g.add_node("motion.output");
     let lfo = g.add_node("value.lfo");
 
-    for (n, col) in [
-        (grid, 0.0),
-        (def, 1.0),
-        (mv, 2.0),
-        (tint, 3.0),
-        (output, 4.0),
-    ] {
+    for (n, col) in [(radial, 0.0), (mv, 1.0), (tint, 2.0), (output, 3.0)] {
         g.set_pos(
             n,
             Pos {
                 x: col * COL_W,
-                y: row,
+                y: RADIAL_ROW,
             },
         );
     }
     g.set_pos(
         lfo,
         Pos {
-            x: COL_W,
-            y: row + 160.0,
+            x: 0.0,
+            y: RADIAL_ROW + 160.0,
         },
     );
 
     g.connect(Edge {
-        from: (grid, 0),
-        to: (def, 0),
-        delayed: false,
-    })
-    .ok()?;
-    g.connect(Edge {
-        from: (def, 0),
+        from: (radial, 0),
         to: (mv, 0),
         delayed: false,
     })
@@ -104,55 +81,111 @@ fn build_scene(
     .ok()?;
     g.connect(Edge {
         from: (lfo, 0),
-        to: (def, anim_port),
+        to: (radial, 0),
         delayed: false,
     })
-    .ok()?;
+    .ok()?; // → spin
 
-    // A 5×5 grid, moved onto its half of the canvas.
-    g.set_param(grid, "rows", 5.0);
-    g.set_param(grid, "cols", 5.0);
-    g.set_param(grid, "gap_x", 0.7);
-    g.set_param(grid, "gap_y", 0.7);
-    g.set_param(mv, "dx", dx);
+    // 48 points over 3 rings, on the left half.
+    g.set_param(radial, "count", 48.0);
+    g.set_param(radial, "rings", 3.0);
+    g.set_param(radial, "radius", 2.5);
+    g.set_param(radial, "inner", 0.6);
+    g.set_param(mv, "dx", -6.0);
     g.set_param(mv, "dy", 0.0);
     g.set_param(tint, "mode", 0.0); // Solid
-    g.set_param(tint, "r", rgb[0]);
-    g.set_param(tint, "g", rgb[1]);
-    g.set_param(tint, "b", rgb[2]);
-    Some((def, lfo, output))
-}
-
-/// LEFT: a grid keystoned into perspective. Returns its Output node.
-fn build_warp_scene(g: &mut Graph) -> Option<NodeId> {
-    let (warp, lfo, output) = build_scene(
-        g,
-        WARP_ROW,
-        "motion.four_point_warp",
-        1,
-        -6.0,
-        [0.95, 0.70, 0.20],
-    )?;
-    // Pin the top corners inward (a keystone) — `warp` scales the offset 0→1.
-    g.set_param(warp, "tl_dx", 1.2); // top-left → right
-    g.set_param(warp, "tr_dx", -1.2); // top-right → left
-    // lfo → warp: a slow (4 s) sine about 0.5, ±0.5 → warp ∈ [0, 1] (billow in/out).
+    g.set_param(tint, "r", 0.95);
+    g.set_param(tint, "g", 0.70);
+    g.set_param(tint, "b", 0.20);
+    // lfo → spin: a slow (6 s) sine, ±180° → the array swings round and back.
     g.set_param(lfo, "wave", 0.0); // Sine
-    g.set_param(lfo, "period", 4.0);
-    g.set_param(lfo, "amplitude", 0.5);
-    g.set_param(lfo, "offset", 0.5);
+    g.set_param(lfo, "period", 6.0);
+    g.set_param(lfo, "amplitude", 180.0);
+    g.set_param(lfo, "offset", 0.0);
     Some(output)
 }
 
-/// RIGHT: a grid bulging and pinching like a lens. Returns its Output node.
-fn build_lens_scene(g: &mut Graph) -> Option<NodeId> {
-    let (spherize, lfo, output) =
-        build_scene(g, LENS_ROW, "motion.spherize", 1, 6.0, [0.25, 0.80, 0.95])?;
-    g.set_param(spherize, "radius", 2.5);
-    // lfo → amount: a 3 s sine about 0, ±0.6 → amount ∈ [−0.6, 0.6] (pinch ↔ bulge).
+/// RIGHT: a 180-point Voronoi (the perf stress) relaxing, then mirrored. Returns its
+/// Output node.
+fn build_mirror_scene(g: &mut Graph) -> Option<NodeId> {
+    let voronoi = g.add_node("motion.voronoi");
+    let mirror = g.add_node("motion.mirror");
+    let mv = g.add_node("motion.move");
+    let tint = g.add_node("motion.tint");
+    let output = g.add_node("motion.output");
+    let lfo = g.add_node("value.lfo");
+
+    for (n, col) in [
+        (voronoi, 0.0),
+        (mirror, 1.0),
+        (mv, 2.0),
+        (tint, 3.0),
+        (output, 4.0),
+    ] {
+        g.set_pos(
+            n,
+            Pos {
+                x: col * COL_W,
+                y: MIRROR_ROW,
+            },
+        );
+    }
+    g.set_pos(
+        lfo,
+        Pos {
+            x: 0.0,
+            y: MIRROR_ROW + 160.0,
+        },
+    );
+
+    g.connect(Edge {
+        from: (voronoi, 0),
+        to: (mirror, 0),
+        delayed: false,
+    })
+    .ok()?;
+    g.connect(Edge {
+        from: (mirror, 0),
+        to: (mv, 0),
+        delayed: false,
+    })
+    .ok()?;
+    g.connect(Edge {
+        from: (mv, 0),
+        to: (tint, 0),
+        delayed: false,
+    })
+    .ok()?;
+    g.connect(Edge {
+        from: (tint, 0),
+        to: (output, 0),
+        delayed: false,
+    })
+    .ok()?;
+    g.connect(Edge {
+        from: (lfo, 0),
+        to: (voronoi, 0),
+        delayed: false,
+    })
+    .ok()?; // → relax
+
+    // 180 Voronoi points (the count that used to drop to 20fps) in a 4×4 domain,
+    // Lloyd re-run every frame via the animated `relax` — now parallelised.
+    g.set_param(voronoi, "count", 180.0);
+    g.set_param(voronoi, "width", 4.0);
+    g.set_param(voronoi, "height", 4.0);
+    g.set_param(voronoi, "iterations", 8.0);
+    g.set_param(mirror, "axis", 0.0); // Vertical → a symmetric honeycomb (360 dots)
+    g.set_param(mv, "dx", 6.0);
+    g.set_param(mv, "dy", 0.0);
+    g.set_param(tint, "mode", 0.0); // Solid
+    g.set_param(tint, "r", 0.25);
+    g.set_param(tint, "g", 0.80);
+    g.set_param(tint, "b", 0.95);
+    // lfo → relax: a 5 s sine about 0.5, ±0.5 → relax ∈ [0, 1] (organise/dissolve).
     g.set_param(lfo, "wave", 0.0); // Sine
-    g.set_param(lfo, "period", 3.0);
-    g.set_param(lfo, "amplitude", 0.6);
-    g.set_param(lfo, "offset", 0.0);
+    g.set_param(lfo, "period", 5.0);
+    g.set_param(lfo, "amplitude", 0.5);
+    g.set_param(lfo, "offset", 0.5);
     Some(output)
 }

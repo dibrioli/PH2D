@@ -12618,6 +12618,50 @@ fn watercolor_shape_preview_leaves_no_trail() {
     }
 }
 
+/// **The watercolor wash ignores the Brush Blend mode (doc 13 #4).** The optical deposit is source-over
+/// + Beer–Lambert optics — `BrushBlend` is never read on the wash path, so the Brush Blend dropdown is
+/// INERT in watercolor mode (why the panel hides it there). Two washes identical but for `brush.blend`
+/// bake byte-for-byte. Refutable: wiring blend into the wash turns this RED (and would un-justify the hide).
+#[test]
+fn watercolor_wash_ignores_the_brush_blend_mode() {
+    fn wash(t: &mut PainterTool, blend: ph2d_painter_brush::BrushBlend) {
+        t.paint.brush = BrushSpec {
+            radius_px: 8.0,
+            hardness: 1.0,
+            falloff: Falloff::Constant,
+            color: [0.15, 0.25, 0.75],
+            space_attenuation: false,
+            watercolor: true,
+            fill: 0.6,
+            depth: 2.0,
+            edge_gain: 2.5,
+            edge_spread: 4.0,
+            warp: 3.0,
+            blend, // the wash must ignore this entirely
+            ..Default::default()
+        };
+        for slot in &mut t.paint.brush_by_mode {
+            *slot = t.paint.brush;
+        }
+        assert!(t.on_canvas_pointer(cp([16.0, 32.0], PointerPhase::Down)));
+        t.on_canvas_pointer(cp([48.0, 32.0], PointerPhase::Move));
+        t.on_canvas_pointer(cp([48.0, 32.0], PointerPhase::Up));
+    }
+    let size = 64u32;
+    let mut mix = white_canvas(size, 8.0);
+    wash(&mut mix, ph2d_painter_brush::BrushBlend::Mix);
+    let mut mult = white_canvas(size, 8.0);
+    wash(&mut mult, ph2d_painter_brush::BrushBlend::Multiply);
+    for i in 0..size * size {
+        let (x, y) = (i % size, i / size);
+        assert_eq!(
+            px(&mix, size, x, y),
+            px(&mult, size, x, y),
+            "brush Blend changed the wash at ({x},{y}) — it must be inert in watercolor"
+        );
+    }
+}
+
 /// **Watercolor respects the Selection + protection-mask gates** (the audit hole, Enio 2026-07-07):
 /// the optical path used to short-circuit BEFORE the canvas gates in `stamp_dabs`, so a watercolor
 /// stroke painted straight through an active selection and the Sculpt-style protection scratch.

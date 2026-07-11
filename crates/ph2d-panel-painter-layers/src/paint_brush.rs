@@ -104,20 +104,27 @@ pub(crate) fn paint_brush_body(
     // 1. Blend · 2. Color — hidden in Smear/Blur/Clone (process pixels) AND Mask (paints a grayscale
     //    value from the ramp/luma, no colour).
     if !brush.paints_no_color() && !brush.is_mask {
-        let (ny, blend_open) = paint_dropdown_row(
-            ctx,
-            theme,
-            x,
-            content_w,
-            y,
-            "Blend",
-            core_ids::PAINTER_BRUSH_BLEND,
-            brush.blend,
-            BrushBlend::from_u8(brush.blend).name(),
-        );
-        y = ny;
-        if let Some(r) = blend_open {
-            state::set_pending_brush_blend_dd(Some((r, brush.blend)));
+        // #4 (doc 13): the Blend dropdown is INERT in Watercolor mode — the optical wash deposits
+        // source-over + its own Beer–Lambert optics, never `BrushBlend` (the layer's own Blend still
+        // applies). Hide the dead control there rather than leave it clickable-but-dead (UI honesty;
+        // mirrors the Composite card, which also hides in watercolor). KEEP Color — the wash's pigment
+        // IS the brush colour. Not painted ⇒ not hit-indexed ⇒ inert; the `populate` register stays.
+        if !brush.watercolor {
+            let (ny, blend_open) = paint_dropdown_row(
+                ctx,
+                theme,
+                x,
+                content_w,
+                y,
+                "Blend",
+                core_ids::PAINTER_BRUSH_BLEND,
+                brush.blend,
+                BrushBlend::from_u8(brush.blend).name(),
+            );
+            y = ny;
+            if let Some(r) = blend_open {
+                state::set_pending_brush_blend_dd(Some((r, brush.blend)));
+            }
         }
         y = paint_color_swatch_row(ctx, theme, x, content_w, y, brush);
     }

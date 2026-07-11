@@ -318,21 +318,31 @@ fn draw_wetness_overlay(
     // reads as damp paper, not a grey wash; the slider (`intensity`) scales the max veil alpha. Vello
     // premultiplies on draw.
     const TINT: [u8; 3] = [34, 31, 28]; // LITERAL-COLOR-OK: damp-paper darkening (near-neutral, faint warm)
+    const BLUR_R: usize = 8; // LITERAL-PX-OK: veil softening radius (canvas px) — wet paper has no hard moisture edges
     let max_alpha = intensity * 0.55; // LITERAL-COLOR-OK: slider 0..1 → veil alpha 0..0.55 at full wetness
     let cwu = cw as usize;
-    let mut veil = vec![0u8; rw * rh * 4];
+    // Local moisture → veil alpha, then a separable box blur. A stroke re-wetting a RECEDING wash pours
+    // a fresh 255 patch against the neighbour's decayed (edges-first) moisture — a sharp rectangular step
+    // the raw per-pixel veil printed as the "retângulo na união" (Enio 2026-07-11, confirmado com Preview 0).
+    // Blurring the alpha reads it as a soft damp gradient (+ a soft organic fringe past the wet edge),
+    // never a hard patch. Cosmetic-only: the moisture map itself is untouched.
+    let mut alpha = vec![0.0f32; rw * rh];
     for y in 0..rh {
         let src = (ry0 as usize + y) * cwu + rx0 as usize;
         let dst = y * rw;
         for x in 0..rw {
-            let w = wet[src + x];
-            if w > 0 {
-                let p = (dst + x) * 4;
-                veil[p] = TINT[0];
-                veil[p + 1] = TINT[1];
-                veil[p + 2] = TINT[2];
-                veil[p + 3] = ((f32::from(w) / 255.0) * max_alpha * 255.0) as u8;
-            }
+            alpha[dst + x] = f32::from(wet[src + x]) / 255.0 * max_alpha;
+        }
+    }
+    let alpha = box_blur_f32(&alpha, rw, rh, BLUR_R);
+    let mut veil = vec![0u8; rw * rh * 4];
+    for (i, &a) in alpha.iter().enumerate() {
+        if a > 0.002 {
+            let p = i * 4;
+            veil[p] = TINT[0];
+            veil[p + 1] = TINT[1];
+            veil[p + 2] = TINT[2];
+            veil[p + 3] = (a * 255.0).clamp(0.0, 255.0) as u8;
         }
     }
     // `base` maps FULL image-px → screen; the sub-image rides it after a translate to the rect origin.
@@ -352,6 +362,49 @@ fn draw_wetness_overlay(
         affine,
         ph2d_vector::ImageQuality::Low,
     );
+}
+
+/// Separable box blur of a `w×h` f32 map (sliding window, O(w·h) — safe on a full-canvas wet map). Edge
+/// pixels normalize by the FULL window, so the field FADES softly at the boundary (the damp fringe we want).
+fn box_blur_f32(src: &[f32], w: usize, h: usize, r: usize) -> Vec<f32> {
+    if r == 0 || w == 0 || h == 0 {
+        return src.to_vec();
+    }
+    let win = (2 * r + 1) as f32;
+    let mut tmp = vec![0.0f32; w * h];
+    for y in 0..h {
+        let base = y * w;
+        let mut acc = 0.0f32;
+        for x in 0..(r + 1).min(w) {
+            acc += src[base + x];
+        }
+        for x in 0..w {
+            tmp[base + x] = acc / win;
+            if x + r + 1 < w {
+                acc += src[base + x + r + 1];
+            }
+            if x >= r {
+                acc -= src[base + x - r];
+            }
+        }
+    }
+    let mut out = vec![0.0f32; w * h];
+    for x in 0..w {
+        let mut acc = 0.0f32;
+        for y in 0..(r + 1).min(h) {
+            acc += tmp[y * w + x];
+        }
+        for y in 0..h {
+            out[y * w + x] = acc / win;
+            if y + r + 1 < h {
+                acc += tmp[(y + r + 1) * w + x];
+            }
+            if y >= r {
+                acc -= tmp[(y - r) * w + x];
+            }
+        }
+    }
+    out
 }
 
 #[allow(clippy::too_many_arguments)]

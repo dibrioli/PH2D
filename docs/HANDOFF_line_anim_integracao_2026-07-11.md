@@ -199,7 +199,23 @@ novos de slope + 154 anim+timeline + 290 total com painel + clippy `--all-target
 
 **§11.1 — Fix "Time bugado" (smoke do Enio: criar key Time travava a autoria de pose):** duas metades. **(a)** `remapped_time` extrapolava por HOLD fora dos keys — UM key semeado pelo K congelava o relógio da entidade pra sempre (0 keys = identidade, 1 key = freeze: descontinuidade). Agora **extrapola em slope 1** (identidade deslocada pelo key de borda); exceção: **último key `Hold` = freeze-frame** (o freeze do AE sobrevive — o teste antigo de freeze usava Hold e passou intacto). **(b)** autoria em tempo cru vs apply em tempo remapeado: auto-key (diff + insert), pin de pose deslocada e K agora usam o **relógio da entidade** (`remapped_time`, agora `pub`; `key_insert_time` no bridge) — o key landa no tempo FONTE, onde o apply amostra, e a pose gruda. A track Time em si segue keyando no tempo do playhead. Consequência de exibição: sob remap ≠ identidade, um K no playhead `t` desenha o key da cena na régua no tempo-fonte (as tracks são autoradas em tempo-fonte — modelo precomp do AE). **4 mutantes dirigidos** (hold-extrapolation · diff armado em t cru · pin em t cru · K em t cru) → cada um derruba seu teste. 51 + 205 verdes; clippy + LOC ok. Commit `56217b44`.
 
-**Próximo (fila do Enio): roving keys.**
+---
+
+## 12. Feature W5 — roving keys (AE "rove across time")
+
+**O quê:** key marcado **roving** perde o tempo autorado — só o VALOR é autorado; `Track::resolve_roving` (novo módulo `rove.rs`, FILHO de `track.rs`) deriva o tempo pra **velocidade de valor constante** entre os vizinhos pinados (tempo ∝ |Δv| acumulado — total travel, não displacement; travel zero = uniforme; **keys de borda nunca rovam** — flag mantida, ignorada). Idempotente, sem alloc.
+
+**Dado:** flags = **vec paralelo persistente** no `Track` (padrão dos `ids`, mas entra no `PartialEq` + serde via `TrackData.roving` apendado com pad-on-load) — `Key` fica literal puro nos ~54 sites. **`DOC_VERSION` 1→2** (postcard posicional: v1 é REJEITADO pelo gate de versão, não deslido; nenhum writer de produção existia). Mantido em 6 sites de mutação (insert/remove/merge-moved/remove_keys/resort zip3/clone).
+
+**Choke points:** `edit()` no intent.rs re-resolve após TODA mutação por intent (mesmo undo step — undo restaura tempo autorado E flag em 1 passo) + `doc.upsert_key` re-resolve (caminho direto do auto-key). Efeito: editar valor de key roving, arrastar vizinho pinado, K/auto-key na track — tudo refloa na hora.
+
+**UI:** menu R-click ganhou a 7ª linha **"Rove Across Time"** (`CTX_MENU_TL_ROVE`, tabela única `TIMELINE_SEGMENT_MENU` 6→7 — overlay/pre_populate/gate anti-item-morto andam juntos; `is_leaf` no `timeline_segment.rs`). Shell: `Preset::Rove` = **toggle** (all-roving → off; misto → converge ON), escopo espelha os presets (key solto = per-key `SetRove` sem mexer na seleção · key selecionado = `SetSelectedRove` em massa · coluna Summary = seleciona e aplica). Painel: roving desenha **circulinho** no dope-sheet (vs diamond, convenção AE) e **âncora menor** no graph; hit targets inalterados; `KeyView.roving` no snapshot (zip a 3, buffer reuse — dhat verde). Arrastar a âncora de um key roving no graph: o valor pega, o tempo re-deriva no mesmo frame (a componente horizontal "volta" — tempo não é seu pra arrastar; pra pinar, desmarque no menu — un-rove **pina no tempo derivado**, nada se move).
+
+**Símbolos novos (grep de colisão):** `Track::{roving,is_roving,set_roving,resolve_roving}` · `Clip::resolve_roving` · `TimelineIntent::{SetRove,SetSelectedRove}` · `CTX_MENU_TL_ROVE` (`hash("ctx_menu_tl_rove")`) · `KeyView.roving` · `Preset::Rove` · consts `ROVE_DOT_R`/`ROVE_ANCHOR_R` · arquivo novo `timeline_presets_menu_tests.rs` (preset_tests extraído pelo LOC cap). Zero contrato congelado.
+
+**Prova:** 5 testes no motor (proporcional · run acumulado · reversing=travel · zero-travel uniforme + bordas pinadas · flags seguem keys por edits+serde) + 3 de intents (reflow por valor/vizinho/upsert · 1 undo step + un-rove pina · bulk) + 3 do menu (resolve+toggle · misto converge · coluna) + **mutação dirigida 4/4** (resolvedor morto → 4 vermelhos · choke edit() · hook upsert · direção do toggle). Suítes das 5 crates verdes + clippy `--all-targets` + LOC caps + dhat. Commit `5b8b6e7f`.
+
+**Fila do Enio: vazia — aguardando smoke (time remap + roving) e próxima ordem.**
 
 ---
 

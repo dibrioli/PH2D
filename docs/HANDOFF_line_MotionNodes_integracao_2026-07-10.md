@@ -217,5 +217,44 @@ mesma linha:
   `LFO → Counter → SampleHold → drive`) · `value.instance_field` (minta campo len-N) ·
   `value.switch` · `value.math` (1º combinador de 2 campos de valor).
 
-*"Linha `MotionNodes` pronta (HEAD no worktree, 14 commits). Handoff acima. Aguardo ordem de
+## 11. Rodada 6 (2026-07-11): Sample & Hold + Instance Field (fatia 3) — doc 14
+
+Fecha mais 2 follow-ups do doc 13 §5 e **completa o combo canônico do doc 09** `LFO → SampleHold →
+drive`, de novo pesquisando o padrão-ouro antes de codar (Max `sah~`, TD Hold CHOP, Houdini
+`@ptnum`, Cavalry Index, vvvv spread). **Fan-out aditivo — contratos congelados intocados**
+([doc 14](Motion%20Nodes/14_sample_hold_instance_field_nota_adr.md)). Commits adicionais na mesma linha:
+
+- **crate nova `ph2d-node-pulse-sample-hold`** (tipo `pulse.sample_hold`): o SAMPLER
+  `(value, pulse) → value`. Amostra na borda de subida, segura entre; prime na 1ª tick; broadcast do
+  pulse (len-1→N). Sequencial (estado no `pre` do porto `state`), `Effect::Pure`, sem params.
+  Confirmado que **não duplica `pulse.threshold`** (esse lê canal de transform, é gerador de pulso;
+  este é sampler sobre o domínio de valor).
+- **crate nova `ph2d-node-value-instance-field`** (tipo `value.instance_field`): o MINTADOR de campo
+  len-N da identidade — Index/Ramp/Random. Random reusa o hash `splitmix` do `motion.emitter`
+  (`hash.rs` copiado, leaf, HR-5, stateless). `in` opcional (só contagem); `Effect::Pure`.
+- **cena boot com 3ª cadeia**: Y virou **sample-and-hold** (`lfo → sample_hold ← beat → map_range →
+  drive_y` — a onda contínua vira escada) e Size ganhou **gradiente por-elemento**
+  (`instance_field → size_range → drive_size`). **15 nós** (era 11); `drive`→`drive_x/y/size`, 4
+  pre-loops (beat/counter/sample_hold/strobe). Testes do shell: Y test reescrito p/ o `sah~`
+  (segura-entre-beats/degrau/element-wise) + teste novo do gradiente de Size; strobe re-baseado (base
+  virou o gradiente ~0.3..0.55, flash ×3.2 ainda > 1.5).
+- **`ph2d-node-registry-init` regenerado** (36 crates — **ponto de merge textual**; resolver rodando
+  `cargo run -p ph2d-node-sync` na árvore combinada).
+- **Símbolos novos:** tipos `pulse.sample_hold`/`value.instance_field`, as 2 crates, os 2 `VALUE`
+  locais + `value_instance_field::hash`. **Nenhum** contrato/id/token/dep novo.
+- **Gates:** 15 pass (2 crates novas) + 26 pass (shell motion, inclui os 2 testes novos), contrato
+  intacto (2/1/8), registry staleness em sync, clippy 0, fmt 1.95, typos 0, machete 0, HR-5 0, LOC ok
+  (lib.rs 298/268, cap 700; arquivos do shell < 600).
+- **Nota de higiene (Modo L):** o cwd do Bash resetou pro repo **primário** (`main`) após um
+  /compact; peguei via `git ls-files` (strobe/drive "sumindo") — todos os comandos até então eram
+  read-only, **main intocado em 54fc9ecf**, worktree íntegro. Daqui pra frente todo Bash com `cd`
+  absoluto no worktree ([[feedback-sed-relative-path-hits-primary-cwd]]).
+- **Smoke (Enio):** `cd <worktree> && cargo run -p ph2d-host-desktop` → tool Motion → a grade
+  **desliza em X por beats, os dots pulam pra novas alturas seguradas em Y a cada beat, sobre um
+  gradiente fixo de tamanho pequeno→grande**, tudo piscando no beat. No editor: `value.instance_field`
+  (Index/Ramp/Random) e `pulse.sample_hold` (entre um `value.lfo` e um `motion.drive`) são drop-in.
+- **Follow-up restante (doc 14 §5):** `pulse.compare` (a ponte valor→pulse genuína) · `value.switch`
+  · `value.math` (1º combinador de 2 campos de valor).
+
+*"Linha `MotionNodes` pronta (HEAD no worktree, 16 commits). Handoff acima. Aguardo ordem de
 integração."*

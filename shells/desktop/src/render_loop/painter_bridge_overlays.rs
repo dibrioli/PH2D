@@ -11,6 +11,34 @@ use ph2d_render::Camera2d;
 use ph2d_tool_painter::PainterTool;
 use ph2d_vector::VectorScene;
 
+/// The image-space tile offsets (px) to REPLICATE a shape-editor overlay across, matching the wash's
+/// Repeat-Image 3×3 (edit-in-tile, Enio 2026-07-11): the shape's wash + geometry show in the wrapped
+/// neighbour tiles, so the editable chrome is drawn there too (and the tool folds a tile grab back onto the
+/// sprite geometry). Just `[(0, 0)]` unless Repeat Image AND Tiling are on for that axis (⇒ centre tile only,
+/// unchanged). Shared by every stroke-shape overlay (curve / ellipse / polygon / line).
+pub(super) fn overlay_tile_offsets(painter: &PainterTool, iw: u32, ih: u32) -> Vec<(f64, f64)> {
+    let repeat = painter.repeat_image();
+    let tiling = painter.brush_tiling();
+    let (iwf, ihf) = (f64::from(iw), f64::from(ih));
+    let xs: &[f64] = if repeat && tiling[0] {
+        &[-iwf, 0.0, iwf]
+    } else {
+        &[0.0]
+    };
+    let ys: &[f64] = if repeat && tiling[1] {
+        &[-ihf, 0.0, ihf]
+    } else {
+        &[0.0]
+    };
+    let mut out = Vec::with_capacity(xs.len() * ys.len());
+    for &oy in ys {
+        for &ox in xs {
+            out.push((ox, oy));
+        }
+    }
+    out
+}
+
 /// Draw every Painter editing overlay for the active tool into `vector_scene`.
 #[allow(clippy::too_many_arguments)]
 pub(super) fn draw_overlays(
@@ -312,7 +340,7 @@ fn draw_ellipse_overlay(
             )
         {
             // image-px → screen via the FULL sprite affine, so the handles ride scale / AR / rotation.
-            let affine = super::bgremoval_preview::sprite_image_to_screen_affine(
+            let base_affine = super::bgremoval_preview::sprite_image_to_screen_affine(
                 iw,
                 ih,
                 tr,
@@ -320,35 +348,39 @@ fn draw_ellipse_overlay(
                 camera,
                 window_size,
             );
-            use ph2d_vector::Point;
-            let map = |p: [f32; 2]| affine * Point::new(f64::from(p[0]), f64::from(p[1]));
+            use ph2d_vector::{Affine, Point};
             // Ellipse stroke gizmo = fluorescent YELLOW (distinct stroke-shape accent).
             let pal = super::painter_bridge_gizmo::palette_accent(
                 hero.theme,
                 super::painter_bridge_gizmo::GIZMO_ACCENTS[0],
             );
-            let scene = vector_scene.inner_mut();
-            // Outline + handles in the Sprite-gizmo style (theme tokens, a touch darker): the axis + centre
-            // handles are rounded squares, the rotate handle is a circle. Matches the selection gizmos.
-            if overlay.perimeter.len() >= 2 {
-                let pts: Vec<Point> = overlay.perimeter.iter().map(|&p| map(p)).collect();
-                super::painter_bridge_gizmo::stroke_box(scene, &pts, &pal);
-            }
             let op_glyph = painter.active_op_glyph();
-            for (i, &h) in overlay.handles.iter().enumerate() {
-                let p = map(h);
-                if i == 4 {
-                    super::painter_bridge_gizmo::circle_handle(scene, p, &pal);
-                } else if i == 5 && op_glyph.is_some() {
-                    // Centre-move square (index 5) DOUBLED with the Operation glyph.
-                    super::painter_bridge_gizmo::center_glyph_handle(
-                        scene,
-                        p,
-                        &pal,
-                        op_glyph.unwrap(),
-                    );
-                } else {
-                    super::painter_bridge_gizmo::square_handle(scene, p, &pal);
+            let scene = vector_scene.inner_mut();
+            // Edit-in-tile: draw the gizmo in each visible wrapped tile too (`overlay_tile_offsets`).
+            for (ox, oy) in overlay_tile_offsets(painter, iw, ih) {
+                let affine = base_affine * Affine::translate((ox, oy));
+                let map = |p: [f32; 2]| affine * Point::new(f64::from(p[0]), f64::from(p[1]));
+                // Outline + handles in the Sprite-gizmo style: the axis + centre handles are rounded squares,
+                // the rotate handle is a circle. Matches the selection gizmos.
+                if overlay.perimeter.len() >= 2 {
+                    let pts: Vec<Point> = overlay.perimeter.iter().map(|&p| map(p)).collect();
+                    super::painter_bridge_gizmo::stroke_box(scene, &pts, &pal);
+                }
+                for (i, &h) in overlay.handles.iter().enumerate() {
+                    let p = map(h);
+                    if i == 4 {
+                        super::painter_bridge_gizmo::circle_handle(scene, p, &pal);
+                    } else if i == 5 && op_glyph.is_some() {
+                        // Centre-move square (index 5) DOUBLED with the Operation glyph.
+                        super::painter_bridge_gizmo::center_glyph_handle(
+                            scene,
+                            p,
+                            &pal,
+                            op_glyph.unwrap(),
+                        );
+                    } else {
+                        super::painter_bridge_gizmo::square_handle(scene, p, &pal);
+                    }
                 }
             }
         }
@@ -380,7 +412,7 @@ fn draw_polygon_overlay(
             )
         {
             // image-px → screen via the FULL sprite affine, so the handles ride scale / AR / rotation.
-            let affine = super::bgremoval_preview::sprite_image_to_screen_affine(
+            let base_affine = super::bgremoval_preview::sprite_image_to_screen_affine(
                 iw,
                 ih,
                 tr,
@@ -388,36 +420,40 @@ fn draw_polygon_overlay(
                 camera,
                 window_size,
             );
-            use ph2d_vector::Point;
-            let map = |p: [f32; 2]| affine * Point::new(f64::from(p[0]), f64::from(p[1]));
+            use ph2d_vector::{Affine, Point};
             // Polygon stroke gizmo = fluorescent PINK (distinct stroke-shape accent).
             let pal = super::painter_bridge_gizmo::palette_accent(
                 hero.theme,
                 super::painter_bridge_gizmo::GIZMO_ACCENTS[1],
             );
-            let scene = vector_scene.inner_mut();
-            // Sprite-gizmo style (theme tokens, a touch darker): outline box + axis/centre squares + the
-            // rotate & sides handles as circles. Matches the selection gizmos.
-            if overlay.perimeter.len() >= 2 {
-                let pts: Vec<Point> = overlay.perimeter.iter().map(|&p| map(p)).collect();
-                super::painter_bridge_gizmo::stroke_box(scene, &pts, &pal);
-            }
             let op_glyph = painter.active_op_glyph();
-            for (i, &h) in overlay.handles.iter().enumerate() {
-                let p = map(h);
-                match i {
-                    4 => super::painter_bridge_gizmo::circle_handle(scene, p, &pal), // rotate
-                    5 => super::painter_bridge_gizmo::diamond_handle(scene, p, &pal), // sides (distinct)
-                    6 if op_glyph.is_some() => {
-                        // Centre-move square (index 6) DOUBLED with the Operation glyph.
-                        super::painter_bridge_gizmo::center_glyph_handle(
-                            scene,
-                            p,
-                            &pal,
-                            op_glyph.unwrap(),
-                        );
+            let scene = vector_scene.inner_mut();
+            // Edit-in-tile: draw the gizmo in each visible wrapped tile too (`overlay_tile_offsets`).
+            for (ox, oy) in overlay_tile_offsets(painter, iw, ih) {
+                let affine = base_affine * Affine::translate((ox, oy));
+                let map = |p: [f32; 2]| affine * Point::new(f64::from(p[0]), f64::from(p[1]));
+                // Sprite-gizmo style: outline box + axis/centre squares + the rotate & sides handles as
+                // circles. Matches the selection gizmos.
+                if overlay.perimeter.len() >= 2 {
+                    let pts: Vec<Point> = overlay.perimeter.iter().map(|&p| map(p)).collect();
+                    super::painter_bridge_gizmo::stroke_box(scene, &pts, &pal);
+                }
+                for (i, &h) in overlay.handles.iter().enumerate() {
+                    let p = map(h);
+                    match i {
+                        4 => super::painter_bridge_gizmo::circle_handle(scene, p, &pal), // rotate
+                        5 => super::painter_bridge_gizmo::diamond_handle(scene, p, &pal), // sides (distinct)
+                        6 if op_glyph.is_some() => {
+                            // Centre-move square (index 6) DOUBLED with the Operation glyph.
+                            super::painter_bridge_gizmo::center_glyph_handle(
+                                scene,
+                                p,
+                                &pal,
+                                op_glyph.unwrap(),
+                            );
+                        }
+                        _ => super::painter_bridge_gizmo::square_handle(scene, p, &pal),
                     }
-                    _ => super::painter_bridge_gizmo::square_handle(scene, p, &pal),
                 }
             }
         }

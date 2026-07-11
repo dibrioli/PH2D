@@ -34,7 +34,7 @@ pub(super) fn draw_line_overlay(
                 sim.world().get::<ph2d_render::Sprite>(entity),
             )
         {
-            let affine = super::bgremoval_preview::sprite_image_to_screen_affine(
+            let base_affine = super::bgremoval_preview::sprite_image_to_screen_affine(
                 iw,
                 ih,
                 tr,
@@ -45,153 +45,153 @@ pub(super) fn draw_line_overlay(
             use ph2d_vector::{
                 Affine, BezPath, Brush, Circle, Color, Fill, Point, RoundedRect, Stroke,
             };
-            let map = |p: [f32; 2]| affine * Point::new(f64::from(p[0]), f64::from(p[1]));
             // Line stroke gizmo = fluorescent ORANGE (each stroke shape type gets a distinct accent).
             let pal = super::painter_bridge_gizmo::palette_accent(
                 hero.theme,
                 super::painter_bridge_gizmo::GIZMO_ACCENTS[3],
             );
-            let scene = vector_scene.inner_mut();
-            // Transform gizmo (editing phase) — drawn FIRST (under the segments + dots) so the editing
-            // geometry stays visually dominant. Identical to the Curve gizmo (shared helper).
-            if let Some(gz) = overlay.transform_gizmo.as_ref() {
-                super::painter_bridge_gizmo::draw_transform_gizmo(scene, gz, affine, &pal, cursor);
-            }
-            // Segments through the committed corner points (themed frame colour, open or closed).
-            let pts = &overlay.points;
-            if pts.len() >= 2 {
-                let sp: Vec<Point> = pts.iter().map(|&p| map(p)).collect();
-                if overlay.closed && pts.len() >= 3 {
-                    super::painter_bridge_gizmo::stroke_box(scene, &sp, &pal);
-                } else {
-                    super::painter_bridge_gizmo::stroke_open(scene, &sp, &pal);
-                }
-            }
-            // A themed Sprite-gizmo handle at each committed corner; the SELECTED corner reads as a circle.
-            for (i, &p) in overlay.points.iter().enumerate() {
-                let sp = map(p);
-                if overlay.selected == Some(i) {
-                    super::painter_bridge_gizmo::circle_handle(scene, sp, &pal);
-                } else {
-                    super::painter_bridge_gizmo::square_handle(scene, sp, &pal);
-                }
-            }
-            // Per-corner CAD gizmos: a CIRCLE (Fillet) + a SQUARE (Chamfer) handle at each real corner;
-            // the active mod is accented (orange). Shapes carry the meaning — round = round the corner,
-            // square = straight bevel.
+            let op_glyph = painter.active_op_glyph();
             let handle = Color::new([0.80, 0.84, 0.92, 0.92]); // LITERAL-COLOR-OK: corner handle
             let hot = Color::new([1.0, 0.62, 0.20, 1.0]); // LITERAL-COLOR-OK: active corner mod
             let edge = Color::new([0.12, 0.13, 0.16, 0.9]); // LITERAL-COLOR-OK: handle outline
             let value_col = Color::new([0.62, 0.78, 1.0, 0.92]); // LITERAL-COLOR-OK: overlay value text (line hue)
-            // Fillet / Chamfer amount labels (px), collected here + painted after the last `scene` use.
+            let dim = Color::new([0.55, 0.72, 1.0, 0.6]); // LITERAL-COLOR-OK: dimension guide (line hue, translucent)
+            // Value labels (text) are collected here + painted AFTER the `scene` borrow ends — centre tile only.
             let mut corner_labels: Vec<(String, Point)> = Vec::new();
-            // Same visual size as the transform gizmo's square handles (half-extent 6 px → 12 px).
-            for g in &overlay.corner_gizmos {
-                let fc = if g.active == 1 { hot } else { handle };
-                let fillet = Circle::new(map(g.fillet_handle), 6.0);
-                scene.fill(
-                    Fill::NonZero,
-                    Affine::IDENTITY,
-                    &Brush::Solid(fc),
-                    None,
-                    &fillet,
-                );
-                scene.stroke(
-                    &Stroke::new(1.0),
-                    Affine::IDENTITY,
-                    &Brush::Solid(edge),
-                    None,
-                    &fillet,
-                );
-                let s = map(g.chamfer_handle);
-                let cc = if g.active == 2 { hot } else { handle };
-                let sq = RoundedRect::new(s.x - 6.0, s.y - 6.0, s.x + 6.0, s.y + 6.0, 2.0);
-                scene.fill(
-                    Fill::NonZero,
-                    Affine::IDENTITY,
-                    &Brush::Solid(cc),
-                    None,
-                    &sq,
-                );
-                scene.stroke(
-                    &Stroke::new(1.0),
-                    Affine::IDENTITY,
-                    &Brush::Solid(edge),
-                    None,
-                    &sq,
-                );
-                // Fillet / Chamfer amount (px) beside the ACTIVE handle, placed just beyond it along the
-                // edge from the vertex — same value language as the Line dimensions.
-                if g.active != 0 {
-                    let handle_img = if g.active == 1 {
-                        g.fillet_handle
-                    } else {
-                        g.chamfer_handle
-                    };
-                    let vtx = map(g.vertex);
-                    let hnd = map(handle_img);
-                    let (ex, ey) = (hnd.x - vtx.x, hnd.y - vtx.y);
-                    let l = (ex * ex + ey * ey).sqrt();
-                    let (ux, uy) = if l > 1e-6 {
-                        (ex / l, ey / l)
-                    } else {
-                        (0.0, -1.0)
-                    };
-                    corner_labels.push((
-                        format!("{:.0}", g.amount),
-                        Point::new(hnd.x + ux * 13.0, hnd.y + uy * 13.0),
-                    ));
+            let mut dim_labels: Vec<(String, Point)> = Vec::new();
+            let scene = vector_scene.inner_mut();
+            // Edit-in-tile (Enio 2026-07-11): draw the editable chrome (gizmo + segments + corner dots + CAD
+            // handles + centre move) in EACH visible wrapped tile too (`overlay_tile_offsets`), so a Line is
+            // grabbable there; the auxiliary VALUE labels (dimensions + fillet/chamfer amounts) stay on centre.
+            for (ox, oy) in super::painter_bridge_overlays::overlay_tile_offsets(painter, iw, ih) {
+                let affine = base_affine * Affine::translate((ox, oy));
+                let map = |p: [f32; 2]| affine * Point::new(f64::from(p[0]), f64::from(p[1]));
+                let is_centre = ox == 0.0 && oy == 0.0;
+                // Transform gizmo (editing phase) — drawn FIRST (under the segments + dots).
+                if let Some(gz) = overlay.transform_gizmo.as_ref() {
+                    super::painter_bridge_gizmo::draw_transform_gizmo(
+                        scene, gz, affine, &pal, cursor,
+                    );
                 }
-            }
-            // Centre MOVE handle LAST — above the segments, corner dots and per-corner CAD gizmos so the
-            // drag-the-whole-shape handle stays grabbable on top (Enio 2026-07-04: highest z-index for the
-            // centre rectangle). Editing-phase only (the translucent dimension guides below are drawing-phase).
-            if let Some(gz) = overlay.transform_gizmo.as_ref() {
-                super::painter_bridge_gizmo::draw_transform_center(
-                    scene,
-                    gz,
-                    affine,
-                    &pal,
-                    painter.active_op_glyph(),
-                );
-            }
-            // Live **dimensions** (drawing phase, "Dimensions" on): thin translucent CAD guides — the
-            // dx/dy legs to the previous point + the px / corner-angle numbers, in the line-guide hue.
-            if let Some(d) = overlay.dimensions.as_ref() {
-                let dim = Color::new([0.55, 0.72, 1.0, 0.6]); // LITERAL-COLOR-OK: dimension guide (line hue, translucent)
-                let (legs, labels) = dimension_geometry(d, &map);
-                for (a, b) in &legs {
-                    let mut path = BezPath::new();
-                    path.move_to(*a);
-                    path.line_to(*b);
-                    scene.stroke(
-                        &Stroke::new(0.75),
+                // Segments through the committed corner points (themed frame colour, open or closed).
+                let pts = &overlay.points;
+                if pts.len() >= 2 {
+                    let sp: Vec<Point> = pts.iter().map(|&p| map(p)).collect();
+                    if overlay.closed && pts.len() >= 3 {
+                        super::painter_bridge_gizmo::stroke_box(scene, &sp, &pal);
+                    } else {
+                        super::painter_bridge_gizmo::stroke_open(scene, &sp, &pal);
+                    }
+                }
+                // A handle at each committed corner; the SELECTED corner reads as a circle.
+                for (i, &p) in overlay.points.iter().enumerate() {
+                    let sp = map(p);
+                    if overlay.selected == Some(i) {
+                        super::painter_bridge_gizmo::circle_handle(scene, sp, &pal);
+                    } else {
+                        super::painter_bridge_gizmo::square_handle(scene, sp, &pal);
+                    }
+                }
+                // Per-corner CAD gizmos: a CIRCLE (Fillet) + a SQUARE (Chamfer) handle at each real corner;
+                // the active mod is accented (orange). Round = round the corner, square = straight bevel.
+                for g in &overlay.corner_gizmos {
+                    let fc = if g.active == 1 { hot } else { handle };
+                    let fillet = Circle::new(map(g.fillet_handle), 6.0);
+                    scene.fill(
+                        Fill::NonZero,
                         Affine::IDENTITY,
-                        &Brush::Solid(dim),
+                        &Brush::Solid(fc),
                         None,
-                        &path,
+                        &fillet,
+                    );
+                    scene.stroke(
+                        &Stroke::new(1.0),
+                        Affine::IDENTITY,
+                        &Brush::Solid(edge),
+                        None,
+                        &fillet,
+                    );
+                    let s = map(g.chamfer_handle);
+                    let cc = if g.active == 2 { hot } else { handle };
+                    let sq = RoundedRect::new(s.x - 6.0, s.y - 6.0, s.x + 6.0, s.y + 6.0, 2.0);
+                    scene.fill(
+                        Fill::NonZero,
+                        Affine::IDENTITY,
+                        &Brush::Solid(cc),
+                        None,
+                        &sq,
+                    );
+                    scene.stroke(
+                        &Stroke::new(1.0),
+                        Affine::IDENTITY,
+                        &Brush::Solid(edge),
+                        None,
+                        &sq,
+                    );
+                    // Fillet / Chamfer amount (px) beside the ACTIVE handle — centre tile only.
+                    if is_centre && g.active != 0 {
+                        let handle_img = if g.active == 1 {
+                            g.fillet_handle
+                        } else {
+                            g.chamfer_handle
+                        };
+                        let vtx = map(g.vertex);
+                        let hnd = map(handle_img);
+                        let (ex, ey) = (hnd.x - vtx.x, hnd.y - vtx.y);
+                        let l = (ex * ex + ey * ey).sqrt();
+                        let (ux, uy) = if l > 1e-6 {
+                            (ex / l, ey / l)
+                        } else {
+                            (0.0, -1.0)
+                        };
+                        corner_labels.push((
+                            format!("{:.0}", g.amount),
+                            Point::new(hnd.x + ux * 13.0, hnd.y + uy * 13.0),
+                        ));
+                    }
+                }
+                // Centre MOVE handle LAST — above the segments, corner dots and CAD gizmos so the
+                // drag-the-whole-shape handle stays grabbable on top (highest z-index for the centre square).
+                if let Some(gz) = overlay.transform_gizmo.as_ref() {
+                    super::painter_bridge_gizmo::draw_transform_center(
+                        scene, gz, affine, &pal, op_glyph,
                     );
                 }
-                // Labels — AFTER the last `scene` use, so the VectorScene is free for text rendering.
-                for (text, center) in &labels {
-                    let r = ph2d_editor::zones::Rect::new(
-                        center.x as f32 - 40.0,
-                        center.y as f32 - 8.0,
-                        80.0,
-                        16.0,
-                    );
-                    ph2d_editor::paint::paint_text_centered(
-                        text_system,
-                        vector_scene,
-                        text,
-                        r,
-                        11.0,
-                        dim,
-                    );
+                // Live **dimensions** (drawing phase) — thin translucent CAD guides, dx/dy legs; centre only.
+                if is_centre && let Some(d) = overlay.dimensions.as_ref() {
+                    let (legs, labels) = dimension_geometry(d, &map);
+                    for (a, b) in &legs {
+                        let mut path = BezPath::new();
+                        path.move_to(*a);
+                        path.line_to(*b);
+                        scene.stroke(
+                            &Stroke::new(0.75),
+                            Affine::IDENTITY,
+                            &Brush::Solid(dim),
+                            None,
+                            &path,
+                        );
+                    }
+                    dim_labels = labels;
                 }
             }
-            // Fillet / Chamfer amount labels (editing phase) — after the last `scene` use, so the
-            // VectorScene is free for text. `corner_labels` is empty while drawing (no gizmos then).
+            // Labels — AFTER the last `scene` use, so the VectorScene is free for text rendering (centre tile).
+            for (text, center) in &dim_labels {
+                let r = ph2d_editor::zones::Rect::new(
+                    center.x as f32 - 40.0,
+                    center.y as f32 - 8.0,
+                    80.0,
+                    16.0,
+                );
+                ph2d_editor::paint::paint_text_centered(
+                    text_system,
+                    vector_scene,
+                    text,
+                    r,
+                    11.0,
+                    dim,
+                );
+            }
             for (text, center) in &corner_labels {
                 let r = ph2d_editor::zones::Rect::new(
                     center.x as f32 - 40.0,

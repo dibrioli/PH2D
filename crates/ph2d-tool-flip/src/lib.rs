@@ -24,10 +24,13 @@ pub mod params;
 pub mod tool;
 
 pub use params::{
-    EraseMode, FlipMode, FlipStyleSnapshot, WIDTH_MAX_PX, WIDTH_MIN_PX, px_to_slider, slider_to_px,
-    slider_to_unit,
+    EraseMode, FlipMode, FlipStyleSnapshot, OPACITY_SLIDER_SCALE, WIDTH_MAX_PX, WIDTH_MIN_PX,
+    WIDTH_SLIDER_OFFSET, WIDTH_SLIDER_SCALE, px_to_slider, slider_to_px, slider_to_unit,
 };
-pub use tool::{DEFAULT_STROKE, DEFAULT_WIDTH_PX, FlipTool};
+pub use tool::{
+    DEFAULT_HARDNESS, DEFAULT_OPACITY, DEFAULT_SMOOTHING, DEFAULT_STROKE, DEFAULT_WIDTH_PX,
+    FlipTool,
+};
 
 use ph2d_a11y::Role;
 use ph2d_core::MemoryBudget;

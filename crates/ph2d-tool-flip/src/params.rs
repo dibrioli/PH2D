@@ -35,6 +35,14 @@ pub enum EraseMode {
 pub const WIDTH_MIN_PX: f64 = 1.0;
 pub const WIDTH_MAX_PX: f64 = 64.0;
 
+/// Mapa afim do slider Size → chip px (o painel usa em `link_slider_number_mapped`:
+/// `px = track·SCALE + OFFSET`). Mantém painel e tool em lock-step com
+/// [`slider_to_px`]/[`px_to_slider`].
+pub const WIDTH_SLIDER_OFFSET: f32 = WIDTH_MIN_PX as f32;
+pub const WIDTH_SLIDER_SCALE: f32 = (WIDTH_MAX_PX - WIDTH_MIN_PX) as f32;
+/// Mapa do slider Opacity → chip (`0..1` → `0..100 %`).
+pub const OPACITY_SLIDER_SCALE: f32 = 100.0;
+
 /// Slider normalizado `0..=1` → largura px `MIN..=MAX`.
 #[must_use]
 pub fn slider_to_px(track: f32) -> f64 {
@@ -56,6 +64,8 @@ pub fn slider_to_unit(track: f32) -> f32 {
 }
 
 /// O snapshot que o painel docado pinta (a tool projeta o estilo por frame).
+/// `Default` espelha os defaults da `FlipTool` (o painel pinta isto antes do 1º
+/// push do shell).
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct FlipStyleSnapshot {
     /// Cor do traço (sRGB8) — a mesma que o picker OKLCH devolve.
@@ -72,4 +82,21 @@ pub struct FlipStyleSnapshot {
     pub mode: FlipMode,
     /// Modo de borracha atual (só relevante em `FlipMode::Erase`).
     pub erase: EraseMode,
+}
+
+impl Default for FlipStyleSnapshot {
+    fn default() -> Self {
+        // Espelha os defaults da `FlipTool` (o painel pinta isto antes do 1º
+        // push do shell). As consts vivem no `tool.rs` (evita ciclo params↔tool),
+        // então repetimos os valores aqui — cobertos por um teste no `tool.rs`.
+        Self {
+            stroke: [240, 240, 245, 255],
+            width_px: 6.0,
+            hardness: 1.0,
+            opacity: 1.0,
+            smoothing: 0.5,
+            mode: FlipMode::Select,
+            erase: EraseMode::Soft,
+        }
+    }
 }

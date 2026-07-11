@@ -11,12 +11,19 @@
 //! converte pra `Rgba` linear ao assar o traço no `FlipDoc`.
 
 use ph2d_editor_core::floating_panel::{FloatingPanel, PanelAnchor, ToolId};
+use ph2d_editor_core::ids;
 use ph2d_editor_core::tool::{PanelEvent, Tool};
 
-use crate::params::{EraseMode, FlipMode, FlipStyleSnapshot};
+use crate::params::{EraseMode, FlipMode, FlipStyleSnapshot, slider_to_px, slider_to_unit};
 
 /// Largura default do traço (px de tela) — uma linha média.
 pub const DEFAULT_WIDTH_PX: f64 = 6.0;
+/// Dureza default da borda `0..=1` (borda dura).
+pub const DEFAULT_HARDNESS: f32 = 1.0;
+/// Opacidade default do traço `0..=1`.
+pub const DEFAULT_OPACITY: f32 = 1.0;
+/// Intensidade default do active smoothing `0..=1`.
+pub const DEFAULT_SMOOTHING: f32 = 0.5;
 /// Cor default do traço (sRGB8) — quase-branco, como o Vector.
 pub const DEFAULT_STROKE: [u8; 4] = [240, 240, 245, 255];
 
@@ -37,13 +44,12 @@ impl Default for FlipTool {
         Self {
             stroke: DEFAULT_STROKE,
             width_px: DEFAULT_WIDTH_PX,
-            hardness: 1.0,
-            opacity: 1.0,
-            smoothing: 0.5,
-            // INTERINO (W2): default = Draw pra o pill já desenhar no smoke; sem
-            // UI de modo ainda. Volta a Select (gizmo, arbitragem ADR-0112) quando
-            // os botões de modo do painel landarem (T2.15).
-            mode: FlipMode::Draw,
+            hardness: DEFAULT_HARDNESS,
+            opacity: DEFAULT_OPACITY,
+            smoothing: DEFAULT_SMOOTHING,
+            // Default = Select (gizmo transforma o objeto; arbitragem ADR-0112).
+            // O painel docado (T2.15) tem a linha de modos Select/Draw/Erase.
+            mode: FlipMode::Select,
             erase: EraseMode::Soft,
         }
     }
@@ -99,6 +105,26 @@ impl FlipTool {
     pub fn set_mode(&mut self, mode: FlipMode) {
         self.mode = mode;
     }
+    /// Define o modo de borracha (botões Soft/Hard/Stroke do painel).
+    pub fn set_erase_mode(&mut self, mode: EraseMode) {
+        self.erase = mode;
+    }
+    /// Define a largura do traço em px de tela.
+    pub fn set_width_px(&mut self, px: f64) {
+        self.width_px = px;
+    }
+    /// Define a dureza da borda `0..=1` (clampada).
+    pub fn set_hardness(&mut self, h: f32) {
+        self.hardness = h.clamp(0.0, 1.0);
+    }
+    /// Define a opacidade do traço `0..=1` (clampada).
+    pub fn set_opacity(&mut self, o: f32) {
+        self.opacity = o.clamp(0.0, 1.0);
+    }
+    /// Define a intensidade do active smoothing `0..=1` (clampada).
+    pub fn set_smoothing(&mut self, s: f32) {
+        self.smoothing = s.clamp(0.0, 1.0);
+    }
 
     /// Projeta o estilo no snapshot que o painel docado pinta.
     #[must_use]
@@ -137,9 +163,37 @@ impl Tool for FlipTool {
         panel
     }
 
-    fn handle_panel_event(&mut self, _event: PanelEvent) {
+    fn handle_panel_event(&mut self, event: PanelEvent) {
         // Os controles do painel docado (`ids::FLIP_*`) chegam aqui via
-        // `ToolPanelEvent` — wirados no bloco de painel do W2 (T2.13-T2.16).
+        // `ToolPanelEvent`. Só os que editam o ESTILO da tool (modo + brush)
+        // são tratados aqui; as ops de CAMADA (add/delete/reorder/visibility/
+        // blend/opacity) são edições de DOCUMENTO e ficam com o drain do shell
+        // (mesmo padrão do Vector: Boolean/Arrange caem no drain, não na tool).
+        match event {
+            // Linha de modos Select/Draw/Erase (gizmo só no Select — o shell lê
+            // `mode()` pra rotear input + publicar o `GizmoView`).
+            PanelEvent::Click(id) if id == ids::FLIP_MODE_SELECT => self.mode = FlipMode::Select,
+            PanelEvent::Click(id) if id == ids::FLIP_MODE_DRAW => self.mode = FlipMode::Draw,
+            PanelEvent::Click(id) if id == ids::FLIP_MODE_ERASE => self.mode = FlipMode::Erase,
+            // Sub-modo da borracha.
+            PanelEvent::Click(id) if id == ids::FLIP_ERASE_SOFT => self.erase = EraseMode::Soft,
+            PanelEvent::Click(id) if id == ids::FLIP_ERASE_HARD => self.erase = EraseMode::Hard,
+            PanelEvent::Click(id) if id == ids::FLIP_ERASE_STROKE => self.erase = EraseMode::Stroke,
+            // Sliders de brush (track `0..1` → valor; o mapa afim é o mesmo do painel).
+            PanelEvent::SetValue(id, v) if id == ids::FLIP_SIZE => {
+                self.width_px = slider_to_px(v as f32);
+            }
+            PanelEvent::SetValue(id, v) if id == ids::FLIP_HARDNESS => {
+                self.hardness = slider_to_unit(v as f32);
+            }
+            PanelEvent::SetValue(id, v) if id == ids::FLIP_OPACITY => {
+                self.opacity = slider_to_unit(v as f32);
+            }
+            PanelEvent::SetValue(id, v) if id == ids::FLIP_SMOOTHING => {
+                self.smoothing = slider_to_unit(v as f32);
+            }
+            _ => {}
+        }
     }
 
     fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
@@ -156,8 +210,34 @@ mod tests {
         let t = FlipTool::new();
         assert_eq!(t.stroke_rgba(), DEFAULT_STROKE);
         assert_eq!(t.width_px(), DEFAULT_WIDTH_PX);
-        assert_eq!(t.mode(), FlipMode::Draw); // INTERINO W2 (Select volta em T2.15)
+        assert_eq!(t.mode(), FlipMode::Select); // gizmo por default (ADR-0112)
         assert_eq!(t.hardness(), 1.0);
+    }
+
+    #[test]
+    fn default_snapshot_matches_fresh_tool() {
+        // The panel paints `FlipStyleSnapshot::default()` before the shell's 1st
+        // push; it must equal the fresh tool's snapshot so nothing "jumps".
+        assert_eq!(FlipStyleSnapshot::default(), FlipTool::new().ui_snapshot());
+    }
+
+    #[test]
+    fn panel_events_drive_mode_and_brush() {
+        let mut t = FlipTool::new();
+        t.handle_panel_event(PanelEvent::Click(ids::FLIP_MODE_DRAW));
+        assert_eq!(t.mode(), FlipMode::Draw);
+        t.handle_panel_event(PanelEvent::Click(ids::FLIP_MODE_ERASE));
+        assert_eq!(t.mode(), FlipMode::Erase);
+        t.handle_panel_event(PanelEvent::Click(ids::FLIP_ERASE_HARD));
+        assert_eq!(t.erase_mode(), EraseMode::Hard);
+        // Size slider at full track → WIDTH_MAX_PX.
+        t.handle_panel_event(PanelEvent::SetValue(ids::FLIP_SIZE, 1.0));
+        assert_eq!(t.width_px(), crate::params::WIDTH_MAX_PX);
+        t.handle_panel_event(PanelEvent::SetValue(ids::FLIP_HARDNESS, 0.25));
+        assert!((t.hardness() - 0.25).abs() < 1e-6);
+        // A layer-op id (document edit) is ignored by the tool.
+        t.handle_panel_event(PanelEvent::Click(ids::FLIP_LAYER_ADD));
+        assert_eq!(t.mode(), FlipMode::Erase, "layer op didn't touch the tool");
     }
 
     #[test]

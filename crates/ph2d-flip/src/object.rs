@@ -97,6 +97,34 @@ impl FlipObject {
         true
     }
 
+    /// Sobe a camada `id` um passo na ordem de z (rumo ao topo). Troca com a
+    /// vizinha de cima (índice maior); os desenhos/refcount não mudam (só a
+    /// ordem do slice). Devolve `false` se `id` não existe ou já é o topo.
+    pub fn raise_layer(&mut self, id: LayerId) -> bool {
+        let Some(i) = self.layer_index(id) else {
+            return false;
+        };
+        if i + 1 >= self.layers.len() {
+            return false;
+        }
+        self.layers.swap(i, i + 1);
+        true
+    }
+
+    /// Desce a camada `id` um passo na ordem de z (rumo ao fundo). Troca com a
+    /// vizinha de baixo (índice menor). Devolve `false` se `id` não existe ou já
+    /// é o fundo.
+    pub fn lower_layer(&mut self, id: LayerId) -> bool {
+        let Some(i) = self.layer_index(id) else {
+            return false;
+        };
+        if i == 0 {
+            return false;
+        }
+        self.layers.swap(i, i - 1);
+        true
+    }
+
     #[must_use]
     pub fn layer(&self, id: LayerId) -> Option<&FlipLayer> {
         self.layers.iter().find(|l| l.id == id)
@@ -332,6 +360,24 @@ mod tests {
         assert_eq!(o.drawing(d).unwrap().users(), 1);
         assert_eq!(o.drawing_at(l, 0), Some(d));
         assert_eq!(o.drawing_at(l, 5), Some(d), "segura");
+    }
+
+    #[test]
+    fn raise_and_lower_reorder_layers_without_touching_drawings() {
+        let mut o = FlipObject::new(FlipObjectId(1), "Obj");
+        let a = o.add_layer("A"); // índice 0 (fundo)
+        let b = o.add_layer("B"); // índice 1
+        let c = o.add_layer("C"); // índice 2 (topo)
+        let ids = |o: &FlipObject| o.layers().iter().map(|l| l.id).collect::<Vec<_>>();
+        assert_eq!(ids(&o), vec![a, b, c]);
+
+        assert!(o.raise_layer(a)); // A sobe: [B, A, C]
+        assert_eq!(ids(&o), vec![b, a, c]);
+        assert!(!o.raise_layer(c), "C já é o topo");
+        assert!(o.lower_layer(c)); // C desce: [B, C, A]
+        assert_eq!(ids(&o), vec![b, c, a]);
+        assert!(!o.lower_layer(b), "B já é o fundo");
+        assert!(!o.raise_layer(LayerId(999)), "id inexistente");
     }
 
     #[test]

@@ -25,10 +25,10 @@ mod tests {
         let mut reg = ComponentRegistry::new();
         register_ecs_components(&mut reg);
         register_script_components(&mut reg);
-        // 24 ecs components (4 foundational + 16 W3 sorting/visibility/
-        // sampling/mask + 1 §10 BlendMode + 3 ADR-0110/undo: Locked/
-        // GroupedChildren/VecPathRef) + 1 script component (LuauScript).
-        assert_eq!(reg.len(), 25);
+        // 25 ecs components (4 foundational + 16 W3 sorting/visibility/
+        // sampling/mask + 1 §10 BlendMode + 4 undo: Locked/GroupedChildren/
+        // VecPathRef/FlipObjectRef) + 1 script component (LuauScript).
+        assert_eq!(reg.len(), 26);
         assert!(reg.get_by_name("ph2d::script::LuauScript").is_some());
     }
 }

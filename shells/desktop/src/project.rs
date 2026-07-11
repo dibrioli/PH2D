@@ -13,7 +13,10 @@
 use crate::undo::{ProjectState, ProjectUndo};
 
 /// Versão do formato de arquivo de projeto. Bump ⇒ migração ou hard-break.
-const PROJECT_SCHEMA: u32 = 1;
+/// v2 (ADR-0113): `ProjectState` ganhou o campo `flip: FlipDoc` (3º) — postcard é
+/// posicional, então um arquivo v1 não desserializa. Sem custo real: a
+/// persistência ainda é stub (sem diálogo de arquivo), sem saves publicados.
+const PROJECT_SCHEMA: u32 = 2;
 
 /// O conteúdo de um arquivo de projeto.
 #[derive(serde::Serialize, serde::Deserialize)]

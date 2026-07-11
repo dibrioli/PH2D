@@ -563,5 +563,121 @@ fn reading_an_undeclared_param_panics() {
     let _ = cook.cook(&g, &BadOps, n, 0.0);
 }
 
+/// Build the accumulator loop `gen → acc.incr ; acc.out --pre--> acc.feedback`.
+/// Frame `T` (after `T` advance_ticks) is `[T+1, 2(T+1), 3(T+1)]` — a stateful
+/// recurrence over the tick, the smallest stand-in for a spring/integrator.
+fn acc_loop() -> (Graph, NodeId) {
+    let mut g = Graph::new();
+    let generator = g.add_node("test.gen");
+    let acc = g.add_node("test.acc");
+    g.connect(Edge {
+        from: (generator, 0),
+        to: (acc, 0),
+        delayed: false,
+    })
+    .unwrap();
+    g.connect(Edge {
+        from: (acc, 0),
+        to: (acc, 1),
+        delayed: true,
+    })
+    .unwrap();
+    (g, acc)
+}
+
+/// The M2.N2 core: a checkpoint taken **before** a frame's cook, restored later,
+/// reproduces that exact frame — and re-simulating forward from it matches the
+/// original forward trajectory bit-for-bit (deterministic re-sim, the whole
+/// point of backwards scrub). This is GGPO save/load/advance.
+#[test]
+fn checkpoint_then_restore_reproduces_a_past_frame_and_resim_is_bit_exact() {
+    let (g, acc) = acc_loop();
+    let o = ops();
+    let mut cook = Cook::new();
+
+    // Play forward, recording each frame AND the checkpoint that produces it
+    // (taken right before that frame's cook — the state the prior advance_tick
+    // left). This mirrors what the forward pump records into its ring.
+    let mut frames = Vec::new();
+    let mut cp = std::collections::BTreeMap::new();
+    for t in 0..8u64 {
+        cp.insert(t, cook.checkpoint());
+        frames.push(out_scalars(&cook.cook(&g, &o, acc, 0.0).unwrap()[0]));
+        cook.advance_tick(&g, &o, 0.0).unwrap();
+    }
+    // Sanity: the recurrence really moved (frame 3 ≠ frame 5).
+    assert_eq!(frames[3], vec![4.0, 8.0, 12.0]);
+    assert_ne!(frames[3], frames[5]);
+
+    // Scrub back to frame 3: restore its checkpoint → the very next cook IS
+    // frame 3, not the future state the cook currently holds.
+    cook.restore(&cp[&3]);
+    assert_eq!(
+        out_scalars(&cook.cook(&g, &o, acc, 0.0).unwrap()[0]),
+        frames[3],
+        "restore reproduces the exact past frame"
+    );
+    // Re-sim forward from the restore: frames 4 and 5 come out bit-identical to
+    // the original forward run (no drift — the sim is deterministic).
+    cook.advance_tick(&g, &o, 0.0).unwrap();
+    assert_eq!(
+        out_scalars(&cook.cook(&g, &o, acc, 0.0).unwrap()[0]),
+        frames[4]
+    );
+    cook.advance_tick(&g, &o, 0.0).unwrap();
+    assert_eq!(
+        out_scalars(&cook.cook(&g, &o, acc, 0.0).unwrap()[0]),
+        frames[5]
+    );
+}
+
+/// FALSIFICATION of the whole feature: WITHOUT restore, re-cooking at an earlier
+/// playhead reads the CURRENT (future) `pre` state — the exact garbage a naive
+/// backwards scrub produces. The checkpoint/restore is what turns this future
+/// value into the correct past frame.
+#[test]
+fn without_restore_a_rewound_cook_reads_the_future_not_the_past() {
+    let (g, acc) = acc_loop();
+    let o = ops();
+    let mut cook = Cook::new();
+    let mut frames = Vec::new();
+    for _ in 0..6u64 {
+        frames.push(out_scalars(&cook.cook(&g, &o, acc, 0.0).unwrap()[0]));
+        cook.advance_tick(&g, &o, 0.0).unwrap();
+    }
+    // "Scrub back to frame 3" the naive way — just cook again, no restore. The
+    // pre feedback still holds frame 5's output, so this is frame 6's value,
+    // matching NO past frame. (frame 6 would be [7,14,21].)
+    let naive = out_scalars(&cook.cook(&g, &o, acc, 0.0).unwrap()[0]);
+    assert_eq!(naive, vec![7.0, 14.0, 21.0], "reads the marching future");
+    assert!(
+        !frames.contains(&naive),
+        "the naive rewound cook matches no past frame — the bug checkpoint fixes"
+    );
+}
+
+/// A checkpoint of a fresh cook is the tick-0 seed: restoring it returns the
+/// simulation to its start (empty `pre` → the seed frame), the anchor a far
+/// scrub re-sims from. Restoring the seed after playing forward rewinds to
+/// frame 0 exactly.
+#[test]
+fn the_initial_checkpoint_is_the_tick_zero_seed() {
+    let (g, acc) = acc_loop();
+    let o = ops();
+    let mut cook = Cook::new();
+    let seed = cook.checkpoint();
+    let frame0 = out_scalars(&cook.cook(&g, &o, acc, 0.0).unwrap()[0]);
+    for _ in 0..5u64 {
+        cook.advance_tick(&g, &o, 0.0).unwrap();
+        cook.cook(&g, &o, acc, 0.0).unwrap();
+    }
+    cook.restore(&seed);
+    assert_eq!(
+        out_scalars(&cook.cook(&g, &o, acc, 0.0).unwrap()[0]),
+        frame0,
+        "the seed rewinds to the start frame"
+    );
+}
+
 #[path = "cook_scope_tests.rs"]
 mod scope;

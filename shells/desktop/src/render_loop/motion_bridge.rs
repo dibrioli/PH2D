@@ -178,29 +178,33 @@ pub(super) fn dispatch(
     let scopes = ph2d_node_motion_time_remap::time_scopes(&motion.doc.graph, &motion.registry);
     for _ in 0..frame_ticks {
         motion.transport.advance(1);
-        let playhead = motion.playhead(fixed_dt);
         let tick = motion.transport.tick;
-        motion.pump.pump_scoped(
+        // `advance_or_scrub` (not a plain forward pump): `advance(1)` may WRAP
+        // backwards inside a `loop_range`, and that jump must replay the sim from
+        // the loop's start (restore + re-sim) instead of reading the marching
+        // future — the M2.N2 scrub path, transparently (a spring loops correctly).
+        motion.pump.advance_or_scrub_scoped(
             &motion.doc.graph,
             &motion.registry,
             &motion.sinks,
             tick,
-            playhead,
+            |t| t as f64 * fixed_dt,
             motion.default_uv_rect,
             motion.default_size,
             &scopes,
         );
     }
     // Catch-up for a frame with no fixed step or a paused transport: a dirty
-    // edit (param drag, rewire) still re-cooks this frame. No-op when clean.
-    let playhead = motion.playhead(fixed_dt);
+    // edit (param drag, rewire) still re-cooks this frame; a transport tick set
+    // directly (a future ruler seek, `reset`) is rendered here — `advance_or_scrub`
+    // restores + re-sims if that tick jumped. No-op when clean and unchanged.
     let tick = motion.transport.tick;
-    motion.pump.pump_scoped(
+    motion.pump.advance_or_scrub_scoped(
         &motion.doc.graph,
         &motion.registry,
         &motion.sinks,
         tick,
-        playhead,
+        |t| t as f64 * fixed_dt,
         motion.default_uv_rect,
         motion.default_size,
         &scopes,

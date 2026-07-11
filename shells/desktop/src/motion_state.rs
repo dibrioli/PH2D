@@ -82,11 +82,6 @@ impl MotionState {
             default_size: [0.4, 0.4],
         }
     }
-
-    /// Current playhead in seconds for the given fixed timestep.
-    pub(crate) fn playhead(&self, fixed_dt: f64) -> f64 {
-        self.transport.playhead(fixed_dt)
-    }
 }
 
 /// Author the **default document** into `g`: a single pulse-loop scene (the

@@ -19,7 +19,7 @@ fn new_builds_the_well_typed_pulse_document() {
     // no threshold: the beat IS the source (doc 09 killed the channel clock).
     assert_eq!(state.doc.graph.nodes().len(), 7);
     assert!(state.doc.graph.validate(&state.registry).is_ok());
-    assert_eq!(state.playhead(1.0 / 60.0), 0.0); // paused at tick 0
+    assert_eq!(state.transport.playhead(1.0 / 60.0), 0.0); // paused at tick 0
 }
 
 /// The pulse loop is alive end to end in the default document: the metronome

@@ -79,17 +79,21 @@ fn grid_stagger_oscillator_cook_through_the_real_registry() {
 fn transport_play_advances_time_and_pause_freezes_it() {
     let mut motion = MotionState::new();
     let dt = 1.0 / 60.0;
-    assert_eq!(motion.playhead(dt), 0.0, "starts paused at t=0");
+    assert_eq!(motion.transport.playhead(dt), 0.0, "starts paused at t=0");
     motion.transport.play();
     motion.transport.advance(30);
-    let t = motion.playhead(dt);
+    let t = motion.transport.playhead(dt);
     assert!(
         t > 0.0,
         "playing advances the playhead -> behaviours animate"
     );
     motion.transport.toggle(); // -> paused
     motion.transport.advance(30);
-    assert_eq!(motion.playhead(dt), t, "paused freezes the playhead");
+    assert_eq!(
+        motion.transport.playhead(dt),
+        t,
+        "paused freezes the playhead"
+    );
 }
 
 /// The #1->#2 producer/consumer seam through the REAL registry: the grid's
@@ -505,4 +509,76 @@ fn every_output_node_is_a_render_sink() {
         size,
     );
     assert_eq!(motion.pump.instances.len(), 0, "no Output -> empty render");
+}
+
+/// M2.N2 end to end through the REAL registry + transport: a `loop_range` that
+/// wraps the playhead backwards **replays the simulation from the loop start**
+/// instead of showing the marching-future state. This is the reachable payoff of
+/// checkpoint/restore — the default pulse loop (a `pulse.beat` metronome driving
+/// a decaying strobe) looped, cooked exactly as the bridge cooks it
+/// (`advance_or_scrub_scoped`), must produce the IDENTICAL frame sequence on
+/// every lap.
+///
+/// Falsifiable: the strobe's start-beat glow makes the first frame bright and a
+/// late frame dim (`sig[0] != sig[last]`); a naive forward pump at the wrap would
+/// carry the dim, decayed glow into the new lap — so `lap2[0]` would match the
+/// dim tail, not the bright start. The scrub path is what makes `lap2 == lap1`.
+#[test]
+fn a_loop_range_replays_the_simulation_from_its_start() {
+    use ph2d_eval_motion::MotionCookPump;
+    use ph2d_nodegraph::cook::TimeScopes;
+
+    let state = MotionState::new(); // the pulse-loop default doc (sequential nodes)
+    let (uv, size) = (state.default_uv_rect, state.default_size);
+    let scopes = TimeScopes::new();
+    let sinks = &state.sinks;
+    const LAP: u64 = 45; // ticks per lap
+
+    // Cook one lap, capturing each frame's strobe silhouette (max instance size).
+    let lap = |pump: &mut MotionCookPump| -> Vec<f32> {
+        let mut sig = Vec::new();
+        let mut transport = ph2d_motion_doc::MotionTransport {
+            playing: true,
+            loop_range: Some((0, LAP)),
+            ..Default::default()
+        };
+        // Drive the wrap: `advance` moves the transport (wrapping at LAP), and the
+        // pump's `advance_or_scrub` restores + re-sims on the backwards jump.
+        for _ in 0..LAP {
+            transport.advance(1);
+            let tick = transport.tick;
+            pump.advance_or_scrub_scoped(
+                &state.doc.graph,
+                &state.registry,
+                sinks,
+                tick,
+                |t| t as f64 / 60.0,
+                uv,
+                size,
+                &scopes,
+            );
+            sig.push(
+                pump.instances
+                    .iter()
+                    .map(|i| i.size[0])
+                    .fold(0.0_f32, f32::max),
+            );
+        }
+        sig
+    };
+
+    let mut pump = MotionCookPump::new();
+    let lap1 = lap(&mut pump); // ticks 1..=LAP  (LAP wraps to 0)
+    let lap2 = lap(&mut pump); // wraps back through 0 → must replay lap1
+
+    let hi = lap1.iter().cloned().fold(0.0_f32, f32::max);
+    let lo = lap1.iter().cloned().fold(f32::MAX, f32::min);
+    assert!(
+        hi > lo * 1.5,
+        "the strobe glow marches within a lap (bright beat vs dim tail): {lo}..{hi}"
+    );
+    assert_eq!(
+        lap2, lap1,
+        "the loop wrap replays the sim identically; a marching-future frame would diverge"
+    );
 }

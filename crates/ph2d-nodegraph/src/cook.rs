@@ -221,6 +221,30 @@ struct Cached {
     fingerprint: Fingerprint,
 }
 
+/// A snapshot of the **simulation state** carried across ticks — the `pre`-edge
+/// feedback ([`Cook::prev_outputs`]) plus the sequential tick counter — captured
+/// by [`Cook::checkpoint`] and reinstated by [`Cook::restore`] (plan §1.4,
+/// M2.N2). Enough to reproduce any later frame by restoring and re-cooking
+/// forward: GGPO's *"buffer sufficient to restore"*, and bit-exact here because
+/// the cook is deterministic (no transcendentals, hashed RNG — ADR-0032, HR-5).
+///
+/// **Why this is all of it:** on the pull side no node keeps hidden per-node
+/// state — every sequential node (integrate/spring/step/strobe/trail/threshold/
+/// beat) carries its entire recurrence in stream columns on its `pre` self-loop
+/// (ADR-0032, verified by the 2026-07-10 node audit). So the `pre` snapshots ARE
+/// the simulation; the memo cache and the revision clock are derivable and are
+/// deliberately excluded (the cache is stale for a rewound clock; the revision
+/// clock stays live so a restore reads as a change and redraws).
+///
+/// The clone is a deep copy of the state columns (`O(state size)`); an `Arc`/COW
+/// column would make it cheap for large particle sets — a measured follow-up
+/// (the GGRS sparse-saving path keys off exactly this cost).
+#[derive(Clone, Default)]
+pub struct CookCheckpoint {
+    prev_outputs: BTreeMap<NodeId, Vec<CookValue>>,
+    tick: u64,
+}
+
 /// Incremental cook engine. Holds the memo cache and the previous-tick snapshot
 /// across cooks; reusing the same `Cook` across frames is what makes
 /// re-evaluation cheap and `pre` feedback work.
@@ -300,6 +324,36 @@ impl Cook {
             .retain(|(_, key), _| *key == SCOPE_ROOT || live.contains(key));
         self.tick += 1;
         Ok(())
+    }
+
+    /// Capture the current simulation state — the `pre` feedback + the sequential
+    /// tick — for later [`Self::restore`] (plan §1.4, M2.N2). Take it at the
+    /// point in the tick loop where cooking `target` would reproduce a specific
+    /// frame: i.e. **before that frame's `cook`**, which is exactly the state
+    /// left by the previous frame's [`Self::advance_tick`]. Then a scrub is
+    /// `restore(nearest checkpoint ≤ target)` followed by `cook; advance_tick`
+    /// forward to `target` — bit-exact, because it walks the identical cook path
+    /// as forward playback (GGPO save/load/advance).
+    pub fn checkpoint(&self) -> CookCheckpoint {
+        CookCheckpoint {
+            prev_outputs: self.prev_outputs.clone(),
+            tick: self.tick,
+        }
+    }
+
+    /// Reinstate a [`Self::checkpoint`]ed simulation state, so the next `cook`
+    /// reproduces the frame that checkpoint was taken before. The memo cache is
+    /// **cleared** — its entries are stale for a rewound clock (a sequential
+    /// node's fingerprint keys on the tick, a `Temporal` node's on the playhead,
+    /// both of which just jumped), so a stale hit would serve a future frame
+    /// (GGPO's *"invalidate the forward memo"*). The monotonic revision clock is
+    /// **kept** so the recompute reads as a change downstream and the scene
+    /// redraws. Scope lanes are dropped with the cache.
+    pub fn restore(&mut self, cp: &CookCheckpoint) {
+        self.prev_outputs = cp.prev_outputs.clone();
+        self.tick = cp.tick;
+        self.cache.clear();
+        self.live_keys.clear();
     }
 
     /// Cook `target`'s outputs at `playhead`, pulling upstream on demand and

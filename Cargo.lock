@@ -5311,6 +5311,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-node-motion-lattice"
+version = "0.0.0"
+dependencies = [
+ "ph2d-node-registry",
+ "ph2d-nodegraph",
+]
+
+[[package]]
 name = "ph2d-node-motion-look-at"
 version = "0.0.0"
 dependencies = [
@@ -5479,6 +5487,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-node-motion-voronoi"
+version = "0.0.0"
+dependencies = [
+ "ph2d-node-registry",
+ "ph2d-nodegraph",
+]
+
+[[package]]
 name = "ph2d-node-motion-wave"
 version = "0.0.0"
 dependencies = [
@@ -5569,6 +5585,7 @@ dependencies = [
  "ph2d-node-motion-fibonacci",
  "ph2d-node-motion-grid",
  "ph2d-node-motion-integrate",
+ "ph2d-node-motion-lattice",
  "ph2d-node-motion-look-at",
  "ph2d-node-motion-morph",
  "ph2d-node-motion-move",
@@ -5590,6 +5607,7 @@ dependencies = [
  "ph2d-node-motion-transform",
  "ph2d-node-motion-twist",
  "ph2d-node-motion-verlet-rope",
+ "ph2d-node-motion-voronoi",
  "ph2d-node-motion-wave",
  "ph2d-node-motion-wiggle",
  "ph2d-node-pulse-beat",

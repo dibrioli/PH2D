@@ -1,59 +1,58 @@
-//! The M4.2 simulation demo — the **default Motion document**: two small,
-//! side-by-side continuum-media simulations. On the LEFT a **jelly** hangs and
-//! wobbles from a sliding pin (`motion.soft_body`, shape-matching); on the RIGHT a
-//! **ripple field** radiates concentric waves from a driven centre (`motion.wave`).
-//! Two independent scenes (each its own `motion.output` sink — the bridge composes
-//! several into one draw), kept deliberately small so each new node reads on its
-//! own. A `#[path]` sibling of `motion_state`, kept out of it for the LOC cap.
+//! The M3 distribution demo — the **default Motion document**: two small,
+//! side-by-side point distributions, each animated by the value domain. On the LEFT
+//! a **hexagonal lattice** melts toward noise and reforms (`motion.lattice`); on the
+//! RIGHT a random cloud **relaxes into a honeycomb** and dissolves via Lloyd's
+//! algorithm (`motion.voronoi`). Two independent scenes (each its own `motion.output`
+//! sink — the bridge composes several into one draw), kept deliberately small so each
+//! new node reads on its own. A `#[path]` sibling of `motion_state`, kept out of it
+//! for the LOC cap.
 //!
 //! ```text
-//! LEFT  (jelly):   soft_body → tint(magenta) → output   lfo_anchor → soft_body.anchor_x
-//!                  soft_body --pre--> soft_body.state
-//! RIGHT (ripple):  wave      → tint(cyan)    → output    lfo_drive  → wave.drive
-//!                  wave --pre--> wave.state
+//! LEFT  (lattice): lattice → move(−6) → tint(amber) → output   lfo_jitter → lattice.jitter
+//! RIGHT (voronoi): voronoi → move(+6) → tint(cyan)  → output   lfo_relax  → voronoi.relax
 //! ```
 //!
-//! - **soft-body** (`motion.soft_body`, doc 22): a shape-matching mesh pinned at its
-//!   top row; gravity sags it and the `anchor_x` `value.lfo` slides the pin, so the
-//!   whole body **wobbles like jelly** and springs back to shape.
-//! - **wave** (`motion.wave`, doc 22): the discrete wave equation; the `drive`
-//!   `value.lfo` oscillates the centre cell, so ripples **propagate outward** as
-//!   expanding rings of larger dots.
+//! - **lattice** (`motion.lattice`, doc 23): the hexagonal (triangular) packing; the
+//!   `jitter` `value.lfo` displaces each point by a hashed offset, so the honeycomb
+//!   **shimmers and reforms**.
+//! - **voronoi** (`motion.voronoi`, doc 23): Lloyd's relaxation toward a centroidal
+//!   Voronoi tessellation; the `relax` `value.lfo` plays that relaxation forward, so
+//!   the cloud **organises into an even honeycomb and dissolves back**.
 //!
-//! The payoff: two continuum simulations on the `pre` self-loop — one a deformable
-//! body, one a propagating field — each driven by the value domain, on one legible
-//! canvas (the discrete-agent counterpart is doc 21's rope + flock). See
-//! docs/Motion Nodes/22 (soft-body + wave). The whole value/pulse vocabulary + the
-//! other M3/M4 nodes stay registered (drop them in the editor).
+//! The payoff: the two ordered/organic distributions that round out the family
+//! (`grid`, `fibonacci`, `scatter` are the others), each driven by the value domain,
+//! on one legible canvas. See docs/Motion Nodes/23 (lattice + voronoi). The whole
+//! value/pulse vocabulary + the other M3/M4 nodes stay registered (drop them in).
 
 use ph2d_nodegraph::graph::{Edge, Graph, NodeId, Pos};
 
 const COL_W: f32 = 220.0;
 /// The two scenes' card rows in graph space (stacked, so the editor reads cleanly).
-const JELLY_ROW: f32 = 0.0;
-const WAVE_ROW: f32 = 320.0;
+const LATTICE_ROW: f32 = 0.0;
+const VORONOI_ROW: f32 = 320.0;
 
-/// Author both sim scenes into `g`; returns their Output nodes (the sinks), the
-/// jelly's first so the sink order is stable (id-ascending).
+/// Author both distribution scenes into `g`; returns their Output nodes (the sinks),
+/// the lattice's first so the sink order is stable (id-ascending).
 pub(crate) fn build(g: &mut Graph) -> Option<Vec<NodeId>> {
-    let jelly_out = build_soft_body_scene(g)?;
-    let wave_out = build_wave_scene(g)?;
-    Some(vec![jelly_out, wave_out])
+    let lattice_out = build_lattice_scene(g)?;
+    let voronoi_out = build_voronoi_scene(g)?;
+    Some(vec![lattice_out, voronoi_out])
 }
 
-/// LEFT: a jelly pinned at a sliding anchor. Returns its Output node.
-fn build_soft_body_scene(g: &mut Graph) -> Option<NodeId> {
-    let body = g.add_node("motion.soft_body");
+/// LEFT: a hexagonal lattice shimmering under jitter. Returns its Output node.
+fn build_lattice_scene(g: &mut Graph) -> Option<NodeId> {
+    let lattice = g.add_node("motion.lattice");
+    let mv = g.add_node("motion.move");
     let tint = g.add_node("motion.tint");
     let output = g.add_node("motion.output");
     let lfo = g.add_node("value.lfo");
 
-    for (n, col) in [(body, 0.0), (tint, 1.0), (output, 2.0)] {
+    for (n, col) in [(lattice, 0.0), (mv, 1.0), (tint, 2.0), (output, 3.0)] {
         g.set_pos(
             n,
             Pos {
                 x: col * COL_W,
-                y: JELLY_ROW,
+                y: LATTICE_ROW,
             },
         );
     }
@@ -61,12 +60,18 @@ fn build_soft_body_scene(g: &mut Graph) -> Option<NodeId> {
         lfo,
         Pos {
             x: 0.0,
-            y: JELLY_ROW + 160.0,
+            y: LATTICE_ROW + 160.0,
         },
     );
 
     g.connect(Edge {
-        from: (body, 0),
+        from: (lattice, 0),
+        to: (mv, 0),
+        delayed: false,
+    })
+    .ok()?;
+    g.connect(Edge {
+        from: (mv, 0),
         to: (tint, 0),
         delayed: false,
     })
@@ -79,52 +84,45 @@ fn build_soft_body_scene(g: &mut Graph) -> Option<NodeId> {
     .ok()?;
     g.connect(Edge {
         from: (lfo, 0),
-        to: (body, 0),
+        to: (lattice, 0),
         delayed: false,
     })
-    .ok()?; // → anchor_x
-    g.connect(Edge {
-        from: (body, 0),
-        to: (body, 2),
-        delayed: true,
-    })
-    .ok()?; // pre state loop
+    .ok()?; // → jitter
 
-    // A 4×4 jelly, gooey (low stiffness) so it wobbles, hung on the left (x≈−6).
-    g.set_param(body, "rows", 4.0);
-    g.set_param(body, "cols", 4.0);
-    g.set_param(body, "spacing", 0.6);
-    g.set_param(body, "gravity", 9.0);
-    g.set_param(body, "stiffness", 0.35);
-    g.set_param(body, "stretch", 0.3); // a little linear give → squash & stretch
-    g.set_param(body, "pin", 1.0); // top row pinned to the anchor
-    // A warm magenta blob.
+    // A 6×7 hex lattice, shifted onto the left half.
+    g.set_param(lattice, "rows", 6.0);
+    g.set_param(lattice, "cols", 7.0);
+    g.set_param(lattice, "spacing", 0.7);
+    g.set_param(mv, "dx", -6.0);
+    g.set_param(mv, "dy", 0.0);
+    // A warm amber honeycomb.
     g.set_param(tint, "mode", 0.0); // Solid
     g.set_param(tint, "r", 0.95);
-    g.set_param(tint, "g", 0.25);
-    g.set_param(tint, "b", 0.70);
-    // lfo → anchor_x: a slow (3 s) sine about x = −6, ±1.2 → the pin slides and the
-    // jelly wobbles. Unconnected `in` → a length-1 GLOBAL value (one anchor).
+    g.set_param(tint, "g", 0.70);
+    g.set_param(tint, "b", 0.20);
+    // lfo → jitter: a slow (4 s) sine about 0.25, ±0.25 → jitter ∈ [0, 0.5] (world
+    // units), so the packing melts toward noise and snaps back.
     g.set_param(lfo, "wave", 0.0); // Sine
-    g.set_param(lfo, "period", 3.0);
-    g.set_param(lfo, "amplitude", 1.2);
-    g.set_param(lfo, "offset", -6.0);
+    g.set_param(lfo, "period", 4.0);
+    g.set_param(lfo, "amplitude", 0.25);
+    g.set_param(lfo, "offset", 0.25);
     Some(output)
 }
 
-/// RIGHT: a ripple field driven at its centre. Returns its Output node.
-fn build_wave_scene(g: &mut Graph) -> Option<NodeId> {
-    let wave = g.add_node("motion.wave");
+/// RIGHT: a cloud relaxing into a CVT via Lloyd. Returns its Output node.
+fn build_voronoi_scene(g: &mut Graph) -> Option<NodeId> {
+    let voronoi = g.add_node("motion.voronoi");
+    let mv = g.add_node("motion.move");
     let tint = g.add_node("motion.tint");
     let output = g.add_node("motion.output");
     let lfo = g.add_node("value.lfo");
 
-    for (n, col) in [(wave, 0.0), (tint, 1.0), (output, 2.0)] {
+    for (n, col) in [(voronoi, 0.0), (mv, 1.0), (tint, 2.0), (output, 3.0)] {
         g.set_pos(
             n,
             Pos {
                 x: col * COL_W,
-                y: WAVE_ROW,
+                y: VORONOI_ROW,
             },
         );
     }
@@ -132,12 +130,18 @@ fn build_wave_scene(g: &mut Graph) -> Option<NodeId> {
         lfo,
         Pos {
             x: 0.0,
-            y: WAVE_ROW + 160.0,
+            y: VORONOI_ROW + 160.0,
         },
     );
 
     g.connect(Edge {
-        from: (wave, 0),
+        from: (voronoi, 0),
+        to: (mv, 0),
+        delayed: false,
+    })
+    .ok()?;
+    g.connect(Edge {
+        from: (mv, 0),
         to: (tint, 0),
         delayed: false,
     })
@@ -150,35 +154,28 @@ fn build_wave_scene(g: &mut Graph) -> Option<NodeId> {
     .ok()?;
     g.connect(Edge {
         from: (lfo, 0),
-        to: (wave, 0),
+        to: (voronoi, 0),
         delayed: false,
     })
-    .ok()?; // → drive
-    g.connect(Edge {
-        from: (wave, 0),
-        to: (wave, 1),
-        delayed: true,
-    })
-    .ok()?; // pre state loop
+    .ok()?; // → relax
 
-    // A 13×13 ripple grid, centred on the right (x≈+6).
-    g.set_param(wave, "rows", 13.0);
-    g.set_param(wave, "cols", 13.0);
-    g.set_param(wave, "spacing", 0.45);
-    g.set_param(wave, "speed", 0.35);
-    g.set_param(wave, "damping", 0.02);
-    g.set_param(wave, "center_x", 6.0);
-    g.set_param(wave, "center_y", 0.0);
-    // A cool cyan field.
+    // A 64-point cloud in a 5×5 domain, shifted onto the right half.
+    g.set_param(voronoi, "count", 64.0);
+    g.set_param(voronoi, "width", 5.0);
+    g.set_param(voronoi, "height", 5.0);
+    g.set_param(voronoi, "iterations", 10.0);
+    g.set_param(mv, "dx", 6.0);
+    g.set_param(mv, "dy", 0.0);
+    // A cool cyan cloud.
     g.set_param(tint, "mode", 0.0); // Solid
     g.set_param(tint, "r", 0.25);
-    g.set_param(tint, "g", 0.85);
+    g.set_param(tint, "g", 0.80);
     g.set_param(tint, "b", 0.95);
-    // lfo → drive: a fast (1.5 s) sine oscillating the centre cell → continuous
-    // ripples radiate outward.
+    // lfo → relax: a slow (5 s) sine about 0.5, ±0.5 → relax ∈ [0, 1], so the cloud
+    // organises into a honeycomb and dissolves back to noise.
     g.set_param(lfo, "wave", 0.0); // Sine
-    g.set_param(lfo, "period", 1.5);
-    g.set_param(lfo, "amplitude", 1.0);
-    g.set_param(lfo, "offset", 0.0);
+    g.set_param(lfo, "period", 5.0);
+    g.set_param(lfo, "amplitude", 0.5);
+    g.set_param(lfo, "offset", 0.5);
     Some(output)
 }

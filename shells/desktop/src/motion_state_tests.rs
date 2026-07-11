@@ -1,123 +1,123 @@
 //! Headless demo/cook tests for `motion_state` (split for the HR-18 600-LOC
 //! shell cap; declared there as a `#[path]` sibling, so `super` is
-//! `motion_state`). Cook the default document — now two M4 continuum-media
-//! simulation scenes: a `motion.soft_body` jelly and a `motion.wave` ripple field,
-//! each a sequential sim on the `pre` self-loop — through the REAL registry.
+//! `motion_state`). Cook the default document — now two M3 distribution scenes: a
+//! `motion.lattice` hex packing and a `motion.voronoi` Lloyd relaxation, each a
+//! `Pure` distribution animated through a `value.lfo` — through the REAL registry.
 
 use super::*;
 use ph2d_nodegraph::attr::Column;
 use ph2d_nodegraph::cook::Cook;
 
-/// A named Vec2 column of one sink at playhead `t` (no tick advance).
-fn column_at(
-    state: &MotionState,
-    cook: &mut Cook,
-    sink: NodeId,
-    t: f64,
-    col: &str,
-) -> Vec<[f32; 2]> {
+/// The `P` column of one sink at playhead `t`. Both scenes are `Pure` (no `pre`
+/// state), so cooking at a playhead is enough — no tick advance.
+fn positions_at(state: &MotionState, sink: NodeId, t: f64) -> Vec<[f32; 2]> {
+    let mut cook = Cook::new();
     let out = cook
         .cook(&state.doc.graph, &state.registry, sink, t)
         .unwrap();
-    match out[0].as_stream().get(col) {
+    match out[0].as_stream().get("P") {
         Some(Column::Vec2(v)) => v.clone(),
         _ => Vec::new(),
     }
 }
 
+fn mean_x(pos: &[[f32; 2]]) -> f32 {
+    pos.iter().map(|p| p[0]).sum::<f32>() / pos.len() as f32
+}
+
+/// The smallest pairwise distance in the set (the packing floor).
+fn min_pair(pos: &[[f32; 2]]) -> f32 {
+    let mut m = f32::MAX;
+    for (i, a) in pos.iter().enumerate() {
+        for b in &pos[i + 1..] {
+            let (dx, dy) = (a[0] - b[0], a[1] - b[1]);
+            m = m.min((dx * dx + dy * dy).sqrt());
+        }
+    }
+    m
+}
+
 #[test]
 fn new_builds_the_well_typed_value_document() {
     let state = MotionState::new();
-    // Two independent scenes → two Output sinks (the jelly and the ripple field).
-    assert_eq!(state.sinks.len(), 2, "two sim scenes → two sinks");
+    // Two independent scenes → two Output sinks (the lattice and the voronoi cloud).
+    assert_eq!(state.sinks.len(), 2, "two distribution scenes → two sinks");
     for sink in &state.sinks {
         assert_eq!(
             state.doc.graph.node(*sink).unwrap().type_name,
             "motion.output"
         );
     }
-    // 8 nodes: {sim, tint, output, lfo} × 2 scenes. The two newest nodes (doc 22)
-    // — a `motion.soft_body` and a `motion.wave`, each driven by a `value.lfo`.
-    assert_eq!(state.doc.graph.nodes().len(), 8);
+    // 10 nodes: {dist, move, tint, output, lfo} × 2 scenes. The two newest nodes
+    // (doc 23) — a `motion.lattice` and a `motion.voronoi`, each driven by a `value.lfo`.
+    assert_eq!(state.doc.graph.nodes().len(), 10);
     assert!(state.doc.graph.validate(&state.registry).is_ok());
     assert_eq!(state.transport.playhead(1.0 / 60.0), 0.0); // paused at tick 0
 }
 
-/// `motion.soft_body` is alive end to end (doc 22): gravity sags the jelly below its
-/// pinned top row while the `anchor_x` lfo slides the pin, so the body hangs AND
-/// sweeps sideways. Falsifiable: a dead body (no gravity, no sim) sits flat at the
-/// anchor and still.
+/// `motion.lattice` is alive end to end (doc 23): the `jitter` lfo displaces the hex
+/// points, so a given point SWEEPS as the jitter breathes; the packing sits on the
+/// left half. Falsifiable: a dead jitter would freeze every point in place.
 #[test]
-fn the_soft_body_hangs_and_wobbles_from_the_moving_anchor() {
+fn the_lattice_shimmers_under_the_jitter_lfo() {
     let state = MotionState::new();
-    let jelly_sink = state.sinks[0]; // the soft-body scene's Output (added first)
-    let mut cook = Cook::new();
-    let mut mean_x: Vec<f32> = Vec::new();
-    let (mut last_top, mut last_bottom) = (0.0f32, 0.0f32);
-    for k in 0..=200u64 {
-        let t = k as f64 / 60.0;
-        let pos = column_at(&state, &mut cook, jelly_sink, t, "P");
-        assert_eq!(pos.len(), 16, "the 4×4 mesh");
-        mean_x.push(pos.iter().map(|q| q[0]).sum::<f32>() / 16.0);
-        // Top row = indices 0..4, bottom row = 12..16 (row-major, row 0 at top).
-        last_top = pos[0..4].iter().map(|q| q[1]).sum::<f32>() / 4.0;
-        last_bottom = pos[12..16].iter().map(|q| q[1]).sum::<f32>() / 4.0;
-        cook.advance_tick(&state.doc.graph, &state.registry, t)
-            .unwrap();
+    let lattice_sink = state.sinks[0]; // the lattice scene's Output (added first)
+    let mut p0: Vec<[f32; 2]> = Vec::new();
+    let mut means: Vec<f32> = Vec::new();
+    for k in 0..=240u64 {
+        let t = k as f64 / 60.0; // ~4 s = the jitter lfo's full period
+        let pos = positions_at(&state, lattice_sink, t);
+        assert_eq!(pos.len(), 42, "the 6×7 lattice");
+        p0.push(pos[0]);
+        means.push(mean_x(&pos));
+    }
+    // Point 0 sweeps as the jitter grows and shrinks.
+    let (mut xhi, mut xlo, mut yhi, mut ylo) = (f32::MIN, f32::MAX, f32::MIN, f32::MAX);
+    for &[x, y] in &p0 {
+        xhi = xhi.max(x);
+        xlo = xlo.min(x);
+        yhi = yhi.max(y);
+        ylo = ylo.min(y);
     }
     assert!(
-        last_bottom < last_top - 1.0,
-        "gravity hangs the body below the pinned top"
+        (xhi - xlo) + (yhi - ylo) > 0.2,
+        "the jitter lfo shimmers the lattice (point 0 sweep Δ {})",
+        (xhi - xlo) + (yhi - ylo)
     );
-    let mean = mean_x.iter().sum::<f32>() / mean_x.len() as f32;
-    assert!(mean < -3.0, "the jelly hangs on the left (mean x {mean})");
-    let (hi, lo) = (
-        mean_x.iter().copied().fold(f32::MIN, f32::max),
-        mean_x.iter().copied().fold(f32::MAX, f32::min),
-    );
-    assert!(
-        hi - lo > 0.5,
-        "the sliding anchor sweeps the body (Δx {})",
-        hi - lo
-    );
+    let mean = means.iter().sum::<f32>() / means.len() as f32;
+    assert!(mean < -3.0, "the lattice sits on the left (mean x {mean})");
 }
 
-/// `motion.wave` is alive end to end (doc 22): the driven centre radiates ripples
-/// that swell the dots, so the emitted `size` column develops a SPREAD across the
-/// grid (rings of large and small dots) while staying bounded. Falsifiable: a dead
-/// field (no drive, no sim) leaves every dot at the flat baseline size.
+/// `motion.voronoi` is alive end to end (doc 23): the `relax` lfo plays Lloyd's
+/// relaxation forward, so the cloud's minimum pairwise gap GROWS when relaxed (even
+/// honeycomb) and shrinks when raw (clumped white noise); the cloud sits on the right.
+/// Falsifiable: a fixed cloud's min-gap would not change over time.
 #[test]
-fn the_wave_ripples_outward_from_the_driven_center() {
+fn the_voronoi_relaxes_into_an_even_honeycomb() {
     let state = MotionState::new();
-    let wave_sink = state.sinks[1]; // the wave scene's Output (added second)
-    let mut cook = Cook::new();
-    let mut seen_spread = 0.0f32;
-    let mut sizes = Vec::new();
-    for k in 0..=180u64 {
-        let t = k as f64 / 60.0;
-        sizes = column_at(&state, &mut cook, wave_sink, t, "size");
-        assert_eq!(sizes.len(), 169, "the 13×13 field");
-        let hi = sizes.iter().map(|s| s[0]).fold(f32::MIN, f32::max);
-        let lo = sizes.iter().map(|s| s[0]).fold(f32::MAX, f32::min);
-        seen_spread = seen_spread.max(hi - lo);
-        cook.advance_tick(&state.doc.graph, &state.registry, t)
-            .unwrap();
+    let voronoi_sink = state.sinks[1]; // the voronoi scene's Output (added second)
+    let mut gaps: Vec<f32> = Vec::new();
+    let mut cx: Vec<f32> = Vec::new();
+    for k in 0..=300u64 {
+        let t = k as f64 / 60.0; // ~5 s = the relax lfo's full period
+        let pos = positions_at(&state, voronoi_sink, t);
+        assert_eq!(pos.len(), 64, "the 64-point cloud");
+        gaps.push(min_pair(&pos));
+        cx.push(mean_x(&pos));
     }
+    let hi = gaps.iter().copied().fold(f32::MIN, f32::max);
+    let lo = gaps.iter().copied().fold(f32::MAX, f32::min);
     assert!(
-        seen_spread > 0.1,
-        "the ripples make rings of different dot sizes (max spread {seen_spread})"
+        hi > lo * 1.4,
+        "Lloyd relaxation opens the min gap (relaxed {hi} vs raw {lo})"
     );
-    assert!(
-        sizes.iter().all(|s| s[0].is_finite() && s[0] > 0.0),
-        "the field stays bounded and positive"
-    );
+    let mean = cx.iter().sum::<f32>() / cx.len() as f32;
+    assert!(mean > 3.0, "the cloud sits on the right (mean x {mean})");
 }
 
-/// The default document replays bit-identically. Both scenes are deterministic
-/// (shape-matching via a closed-form 2D polar decomposition; the wave equation is
-/// pure arithmetic; the lfos are stateless playhead reads), so two runs of the same
-/// document match exactly (HR-5). This drives the FULL sequential pump (state on the
-/// `pre` loop), so it also proves the sims step reproducibly, not just the pure ops.
+/// The default document replays bit-identically. Both distributions are deterministic
+/// (hashed seed, grid-Lloyd arithmetic; the lfos are stateless playhead reads), so
+/// two runs of the same document match exactly (HR-5).
 #[test]
 fn the_default_document_replays_deterministically() {
     use ph2d_eval_motion::MotionCookPump;
@@ -125,7 +125,7 @@ fn the_default_document_replays_deterministically() {
         let state = MotionState::new();
         let mut pump = MotionCookPump::new();
         let mut frames = Vec::new();
-        for k in 0..40u64 {
+        for k in 0..20u64 {
             pump.pump(
                 &state.doc.graph,
                 &state.registry,
@@ -138,7 +138,7 @@ fn the_default_document_replays_deterministically() {
             frames.push(
                 pump.instances
                     .iter()
-                    .map(|i| (i.world_pos, i.tint, i.basis))
+                    .map(|i| (i.world_pos, i.tint))
                     .collect::<Vec<_>>(),
             );
         }

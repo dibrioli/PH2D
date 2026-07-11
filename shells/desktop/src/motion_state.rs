@@ -55,17 +55,16 @@ pub(crate) struct MotionState {
 
 impl MotionState {
     /// Build the boot state: register every node op + the **default document** —
-    /// two small M4 continuum-media simulation scenes side by side: a **jelly**
-    /// that wobbles from a sliding pin (`motion.soft_body`, shape-matching) on the
-    /// left, and a **ripple field** that radiates concentric waves from a driven
-    /// centre (`motion.wave`) on the right. Each is a sequential sim on the `pre`
-    /// self-loop, driven by a `value.lfo`. Kept deliberately small (two ~4-node
-    /// scenes) so each new node reads on its own (docs/Motion Nodes/12, 22). The
-    /// earlier scenes (the Cavalry grid rig, the deformer grid, the rope+flock) and
-    /// the earlier value/pulse + M3 chains were removed to keep the boot document
-    /// focused; they live in git history and every node keeps its own unit tests +
-    /// stays registered (drop them in the editor). Transport paused at tick 0
-    /// (bridge auto-plays).
+    /// two small M3 distribution scenes side by side: a **hexagonal lattice** that
+    /// melts and reforms (`motion.lattice`) on the left, and a random cloud that
+    /// **relaxes into a honeycomb** via Lloyd's algorithm (`motion.voronoi`) on the
+    /// right. Each is animated by a `value.lfo`. Kept deliberately small (two
+    /// ~5-node scenes) so each new node reads on its own (docs/Motion Nodes/12, 23).
+    /// The earlier scenes (the Cavalry grid rig, the deformer grid, the rope+flock,
+    /// the jelly+ripple sims) and the earlier value/pulse + M3/M4 chains were removed
+    /// to keep the boot document focused; they live in git history and every node
+    /// keeps its own unit tests + stays registered (drop them in the editor).
+    /// Transport paused at tick 0 (bridge auto-plays).
     pub(crate) fn new() -> Self {
         let mut registry = NodeRegistry::new();
         ph2d_node_registry_init::register_all_nodes(&mut registry)
@@ -94,19 +93,18 @@ impl MotionState {
 /// is well-typed.
 ///
 /// The scenes — built in the `strobe` sibling module — are two side-by-side
-/// sequential sims: on the LEFT a **soft-body jelly** pinned at a `value.lfo`-slid
-/// anchor (gravity sags it, the sliding pin wobbles it, shape-matching springs it
-/// back); on the RIGHT a **wave field** whose centre cell is driven by a
-/// `value.lfo`, radiating concentric ripples that swell the dots. Two continuum
-/// simulations on the `pre` self-loop — one a deformable body, one a propagating
-/// field — each driven by the value domain. See docs/Motion Nodes/12 (value),
-/// 22 (soft-body + wave).
+/// distributions animated by the value domain: on the LEFT a **hexagonal lattice**
+/// whose `jitter` is a `value.lfo` (the honeycomb melts toward noise and reforms);
+/// on the RIGHT a random cloud whose `relax` is a `value.lfo` playing **Lloyd's
+/// relaxation** forward (the points organise into a centroidal-Voronoi honeycomb and
+/// dissolve back). Two M3 distributions rounding out the family (`grid`, `fibonacci`,
+/// `scatter` are the others). See docs/Motion Nodes/12 (value), 23 (lattice + voronoi).
 ///
 /// The earlier scenes were removed to keep the boot document small and legible:
-/// the **Cavalry grid rig**, the **particle fountain**, the **bend/look-at deformer
-/// grid**, the **rope+flock sims**, and the earlier value, pulse and M3 chains.
-/// They remain in git history and every node keeps its own unit tests; the nodes
-/// stay registered, so any of them can be dropped in the editor.
+/// the **Cavalry grid rig**, the **particle fountain**, the **deformer grids**, the
+/// **rope+flock and jelly+ripple sims**, and the earlier value, pulse and M3/M4
+/// chains. They remain in git history and every node keeps its own unit tests; the
+/// nodes stay registered, so any of them can be dropped in the editor.
 fn build_default_document(g: &mut Graph, reg: &NodeRegistry) -> Option<Vec<NodeId>> {
     let sinks = strobe::build(g)?;
     // Same "validate on load" the editor runs before cooking — proves the authored

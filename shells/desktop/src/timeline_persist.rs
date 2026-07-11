@@ -13,7 +13,9 @@
 //! line), only the `wire_of`/`entity_of` closures change.
 
 use ph2d_ecs::{Entity, Name, World};
-use ph2d_timeline::{TimelineState, WireId, resolve_entities, stamp_wire_ids};
+use ph2d_timeline::{
+    TimelineState, WireId, refresh_and_heal_bindings, resolve_entities, stamp_wire_ids,
+};
 
 /// FNV-1a of a name → a stable non-null `WireId`. Names are unique, so this is a
 /// stable per-object id; `NULL` is reserved, so a hash that lands on 0 is nudged.
@@ -35,6 +37,34 @@ fn wire_of(world: &World, entity_bits: u64) -> WireId {
         Some(name) => wire_id_for_name(name.as_str()),
         None => WireId::NULL,
     }
+}
+
+/// Per-frame identity upkeep (called by `timeline_bridge::run`, after the apply
+/// refreshed the `missing` flags): live bindings keep their name-hash stamped,
+/// and missing ones try to reconnect to a live entity with the same name. This
+/// is what makes a track survive its object — deleting the object hides its
+/// rows; the global undo respawns it with FRESH entity bits but the same
+/// `Name`, and the binding heals, rows back. Returns how many healed.
+///
+/// Steady state (nothing missing) touches no allocation (HR-3: the bridge's
+/// paused path is gated zero-alloc): the name map is only built when a missing
+/// binding exists to resolve.
+pub(crate) fn upkeep(timeline: &mut TimelineState, world: &mut World) -> usize {
+    let any_missing = timeline.doc.bindings().iter().any(|b| b.missing);
+    let by_wire: std::collections::BTreeMap<u64, u64> = if any_missing {
+        let mut q = world.query::<(Entity, &Name)>();
+        q.iter(world)
+            .map(|(e, name)| (wire_id_for_name(name.as_str()).0, e.to_bits()))
+            .collect()
+    } else {
+        std::collections::BTreeMap::new() // alloc-free
+    };
+    let world = &*world;
+    refresh_and_heal_bindings(
+        &mut timeline.doc,
+        |bits| wire_of(world, bits),
+        |w| by_wire.get(&w.0).copied(),
+    )
 }
 
 /// Where the sidecar is written. Env-overridable like the vector save.
@@ -125,6 +155,37 @@ mod tests {
                 interp: ph2d_anim::Interp::Linear,
             },
         );
+    }
+
+    #[test]
+    fn upkeep_reconnects_a_deleted_objects_track_when_it_comes_back_by_name() {
+        // The delete → global-undo cycle: the undo restores the world by
+        // RESPAWNING, so "the same object" returns under fresh entity bits with
+        // the same Name. The binding must follow it.
+        let mut sim = SimWorld::new();
+        let old = sim.world_mut().spawn(Name::new("hero")).id();
+        let mut timeline = TimelineState::new();
+        key(&mut timeline, old.to_bits());
+
+        // Frame upkeep while alive: stamps the name-hash (0 healed).
+        assert_eq!(upkeep(&mut timeline, sim.world_mut()), 0);
+
+        // The object is deleted; the apply pass flags the binding missing.
+        sim.world_mut().despawn(old);
+        ph2d_timeline::apply_from_doc(sim.world_mut(), &mut timeline.doc, 0.0);
+        assert!(timeline.doc.bindings()[0].missing, "flagged by liveness");
+        assert_eq!(
+            upkeep(&mut timeline, sim.world_mut()),
+            0,
+            "no same-name entity yet: stays dormant"
+        );
+
+        // The undo respawns it — fresh bits, same name.
+        let reborn = sim.world_mut().spawn(Name::new("hero")).id();
+        assert_ne!(reborn, old, "a respawn hands out fresh bits");
+        assert_eq!(upkeep(&mut timeline, sim.world_mut()), 1, "healed");
+        assert_eq!(timeline.doc.bindings()[0].entity, reborn.to_bits());
+        assert!(!timeline.doc.bindings()[0].missing);
     }
 
     #[test]

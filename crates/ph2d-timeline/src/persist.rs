@@ -50,6 +50,44 @@ pub fn resolve_entities(doc: &mut TimelineDoc, entity_of: impl Fn(WireId) -> Opt
     resolved
 }
 
+/// Session-time identity upkeep — the same wire-id machinery, run per frame
+/// instead of at the save/load boundary.
+///
+/// Two halves: every LIVE binding refreshes its `wire_id` from its object (so
+/// the name-hash is already stored when the entity later dies), and every
+/// MISSING binding with a known `wire_id` tries to reconnect. This is what lets
+/// a track survive its object: deleting the object hides its rows (the snapshot
+/// skips missing bindings), and when an object with the same name comes back —
+/// the global editor undo restores the world by RESPAWNING, so the same object
+/// returns under fresh entity bits — the binding heals and the rows return.
+///
+/// Returns how many bindings healed. Steady state (nothing missing, `entity_of`
+/// never called) allocates nothing.
+pub fn refresh_and_heal_bindings(
+    doc: &mut TimelineDoc,
+    wire_of: impl Fn(u64) -> WireId,
+    entity_of: impl Fn(WireId) -> Option<u64>,
+) -> usize {
+    let mut healed = 0;
+    for b in doc.bindings_mut() {
+        if !b.missing {
+            // Keep NULL from erasing a stored hash: an object that lost its
+            // name (or a transient) keeps the last identity it had.
+            let w = wire_of(b.entity);
+            if !w.is_null() {
+                b.wire_id = w;
+            }
+        } else if !b.wire_id.is_null()
+            && let Some(entity) = entity_of(b.wire_id)
+        {
+            b.entity = entity;
+            b.missing = false;
+            healed += 1;
+        }
+    }
+    healed
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -123,6 +161,44 @@ mod tests {
         assert_eq!(loaded.bindings()[1].entity, 0);
         // The track and its keys survive — the binding is dormant, not deleted.
         assert_eq!(loaded.bindings().len(), 2);
+    }
+
+    #[test]
+    fn a_missing_binding_heals_back_to_a_live_entity_with_its_wire_id() {
+        // Session-time upkeep: entity 10's binding got its name-hash stamped
+        // while alive (wire 100); the object died (missing) and came back under
+        // fresh bits (11) — the binding must reconnect, and the live one (20)
+        // must keep refreshing its stamp.
+        let mut st = two_bound();
+        let healed = refresh_and_heal_bindings(
+            &mut st.doc,
+            |e| WireId(e * 10), // live stamp: 10→100, 20→200
+            |_| None,
+        );
+        assert_eq!(healed, 0, "nothing missing yet");
+        assert_eq!(st.doc.bindings()[0].wire_id, WireId(100), "stamped live");
+
+        // Entity 10 dies (the apply flags it), then respawns as 11 (same name).
+        st.doc.bindings_mut()[0].missing = true;
+        let healed = refresh_and_heal_bindings(
+            &mut st.doc,
+            |e| WireId(e * 10),
+            |w| (w == WireId(100)).then_some(11),
+        );
+        assert_eq!(healed, 1, "the dead binding reconnected");
+        assert_eq!(st.doc.bindings()[0].entity, 11, "to the fresh bits");
+        assert!(!st.doc.bindings()[0].missing);
+        // A missing binding whose object is still gone stays dormant, and a
+        // NULL live stamp (object lost its name) never erases a stored hash.
+        st.doc.bindings_mut()[1].missing = true;
+        let healed = refresh_and_heal_bindings(&mut st.doc, |_| WireId::NULL, |_| None);
+        assert_eq!(healed, 0);
+        assert_eq!(
+            st.doc.bindings()[0].wire_id,
+            WireId(100),
+            "a NULL stamp keeps the hash the binding already had"
+        );
+        assert!(st.doc.bindings()[1].missing, "still dormant, not dropped");
     }
 
     #[test]

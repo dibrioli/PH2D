@@ -40,7 +40,10 @@ pub struct TrackView {
     pub prop: PropKind,
     /// The bound entity bits (for the row's object name lookup).
     pub entity: u64,
-    /// `true` when the bound entity is dead → the row shows a "missing" badge.
+    /// `true` when the bound entity is dead. Currently always `false` in a
+    /// published snapshot: `rebuild` hides missing bindings entirely (their rows
+    /// leave the panel and return if the binding heals by name). Kept for a
+    /// future partial-missing display.
     pub missing: bool,
     /// The row's keys, in time order.
     pub keys: Vec<KeyView>,
@@ -92,23 +95,28 @@ impl TimelineViewSnapshot {
             self.markers.push((m.t.to_seconds(), m.label.clone()));
         }
 
-        // Track rows: one per binding, in binding order. Reuse the outer Vec and
-        // each row's `keys` Vec across rebuilds.
+        // Track rows: one per LIVE binding, in binding order — a missing binding
+        // (its object was deleted) paints no row; the data stays dormant in the
+        // document and the row returns if the binding heals (an undo brings the
+        // object back under the same name — `refresh_and_heal_bindings`). Reuse
+        // the outer Vec and each row's `keys` Vec across rebuilds.
         let clip = doc.active_clip();
-        let n = doc.bindings().len();
-        if self.tracks.len() > n {
-            self.tracks.truncate(n);
-        }
-        while self.tracks.len() < n {
-            self.tracks.push(TrackView {
-                target: AnimTarget::new(0),
-                prop: PropKind::TranslationX,
-                entity: 0,
-                missing: false,
-                keys: Vec::new(),
-            });
-        }
-        for (row, b) in self.tracks.iter_mut().zip(doc.bindings()) {
+        let mut rows = 0;
+        for b in doc.bindings() {
+            if b.missing {
+                continue;
+            }
+            if self.tracks.len() == rows {
+                self.tracks.push(TrackView {
+                    target: AnimTarget::new(0),
+                    prop: PropKind::TranslationX,
+                    entity: 0,
+                    missing: false,
+                    keys: Vec::new(),
+                });
+            }
+            let row = &mut self.tracks[rows];
+            rows += 1;
             row.target = b.target;
             row.prop = b.prop;
             row.entity = b.entity;
@@ -132,6 +140,7 @@ impl TimelineViewSnapshot {
                 }
             }
         }
+        self.tracks.truncate(rows);
     }
 }
 
@@ -175,5 +184,45 @@ mod tests {
         let cap = snap.tracks[0].keys.capacity();
         snap.rebuild(&st, &ph);
         assert_eq!(snap.tracks[0].keys.capacity(), cap, "key buffer reused");
+    }
+
+    #[test]
+    fn a_missing_binding_paints_no_row() {
+        // Deleting an object must take its rows off the panel this frame (the
+        // data stays dormant in the document; healing brings the row back).
+        let mut st = TimelineState::new();
+        let mut ph = Playhead::new(1.0 / 60.0);
+        for entity in [1u64, 2] {
+            apply_intent(
+                &mut st,
+                &mut ph,
+                Ix::AddKey {
+                    entity,
+                    prop: PropKind::TranslationX,
+                    t: s(0.0),
+                    value: AnimValue::Float(0.0),
+                    interp: Interp::Linear,
+                },
+            );
+        }
+        let mut snap = TimelineViewSnapshot::default();
+        snap.rebuild(&st, &ph);
+        assert_eq!(snap.tracks.len(), 2, "both objects alive: two rows");
+
+        // Entity 1's object dies (the apply pass flags it).
+        st.doc.bindings_mut()[0].missing = true;
+        snap.rebuild(&st, &ph);
+        assert_eq!(snap.tracks.len(), 1, "the dead object's row is gone");
+        assert_eq!(snap.tracks[0].entity, 2, "the live row survived");
+        assert_eq!(
+            st.doc.bindings().len(),
+            2,
+            "the document keeps the dormant binding — hidden, not dropped"
+        );
+
+        // It heals (the object came back) → the row returns.
+        st.doc.bindings_mut()[0].missing = false;
+        snap.rebuild(&st, &ph);
+        assert_eq!(snap.tracks.len(), 2, "healed: the row is back");
     }
 }

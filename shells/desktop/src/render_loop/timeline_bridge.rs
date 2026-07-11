@@ -17,21 +17,36 @@ use ph2d_editor::tool::PanelEvent;
 use ph2d_timeline::{PropKind, TimelineIntent, TimelineState, apply_from_doc_except, apply_intent};
 
 /// Drain pending intents into `timeline`, then apply its document to `world` at
-/// the current `playhead` time. `live_entity` (the entity whose gizmo is being
-/// dragged this frame, if any) is left untouched by the apply so the document
-/// does not fight the live manipulation. Call each frame in the apply pass,
-/// after `apply_sprite_animations`.
+/// the current `playhead` time. The apply leaves untouched: `live_entity` (the
+/// entity whose gizmo is being dragged this frame, if any) and every entity in
+/// `ak.displaced` (a pose the user displaced while paused, waiting for a manual
+/// K — see `autokey_pass`), so the document does not fight the manipulation.
+/// Call each frame in the apply pass, after `apply_sprite_animations`.
 pub(crate) fn run(
     world: &mut World,
     timeline: &mut TimelineState,
     playhead: &mut Playhead,
     intents: &mut Vec<TimelineIntent>,
     live_entity: Option<u64>,
+    ak: &mut super::autokey_pass::AutokeyState,
 ) {
     for intent in intents.drain(..) {
         apply_intent(timeline, playhead, intent);
     }
-    apply_from_doc_except(world, &mut timeline.doc, playhead.time(), live_entity);
+    // A playhead move (scrub, play, frame step) reclaims every displaced pose
+    // for the animation — Blender semantics: the un-keyed pose is discarded.
+    if playhead.time() != ak.displaced_t {
+        ak.displaced.clear();
+        ak.displaced_t = playhead.time();
+    }
+    let displaced = &ak.displaced;
+    apply_from_doc_except(world, &mut timeline.doc, playhead.time(), |bits| {
+        live_entity == Some(bits) || displaced.contains(&bits)
+    });
+    // Identity upkeep: a deleted object's rows leave the view (the apply above
+    // just flagged them missing), and an object that comes back under the same
+    // name — the global undo respawns entities with FRESH bits — reconnects.
+    crate::timeline_persist::upkeep(timeline, world);
 }
 
 /// Translate a transport [`PanelEvent`] (by widget id) into a [`TimelineIntent`].

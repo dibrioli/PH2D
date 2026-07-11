@@ -345,15 +345,10 @@ pub(crate) struct App {
     /// Set by the `K` key: on the next frame, insert a keyframe at the playhead
     /// on every track bound to the selected sprite (capturing its current pose).
     pub(crate) timeline_insert_key: bool,
-    /// Whether a gizmo drag was in flight last frame — used to bracket an
-    /// AutoKey drag into a SINGLE undo step (begin on the opening frame, commit
-    /// when it ends) instead of one step per recorded frame.
-    pub(crate) timeline_drag_active: bool,
-    /// Last frame's sampled pose per selected sprite, for auto-key's first-touch
-    /// auto-create of UNBOUND properties (a bound property compares to its own
-    /// curve, so it needs no baseline). Rebuilt from the live selection every
-    /// frame — an entity that leaves the selection drops out.
-    pub(crate) autokey_baseline: std::collections::BTreeMap<u64, ph2d_timeline::PoseSample>,
+    /// The auto-key / displaced-pose machinery's state: the per-entity pose
+    /// baseline, the drag undo-bracket flag, and the displaced-pin set (see
+    /// `render_loop::autokey_pass`).
+    pub(crate) autokey: crate::render_loop::autokey_pass::AutokeyState,
     pub(crate) last_frame: Instant,
     pub(crate) pending_resize: Option<WindowSize>,
     /// FLUID-DRAG present-mode override: the configured mode saved while a live resize streams (the

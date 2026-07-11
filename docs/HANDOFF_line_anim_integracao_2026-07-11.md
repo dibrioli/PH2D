@@ -158,6 +158,19 @@ novos de slope + 154 anim+timeline + 290 total com painel + clippy `--all-target
 
 ---
 
+## 9. Rodada de bugs de UX (Enio, smoke 2026-07-11) — 4 fixes
+
+| # | Bug (reportado) | Causa | Fix |
+|---|---|---|---|
+| B1 | Multi-seleção via Summary + R-click easing não aplicava a todos | `column()` em `timeline_presets.rs` fazia `ClearSelection` incondicional — descartava a seleção e aplicava só na coluna clicada | Coluna cujas keys **já estão todas selecionadas** → `SetSelectedInterp` na seleção INTEIRA (espelho exato do scope `Key`); fora da seleção → comportamento antigo. Teste `a_selected_column_retunes_the_whole_selection_not_just_itself` + mutação |
+| B2 | Deletar objeto animado não removia as curvas da timeline | Design antigo: binding `missing` ganhava badge e a row FICAVA | Rows de binding missing **somem do snapshot** (dado fica dormente no doc) + **heal por nome**: `refresh_and_heal_bindings` (ph2d-timeline) + `timeline_persist::upkeep` por-frame (zero-alloc se nada missing) re-stampa `wire_id` por `Name` e reconecta quando um objeto de mesmo nome reaparece — **delete + undo global cura a animação** (o undo respawna com bits NOVOS e mesmo Name; antes ficava quebrada pra sempre). Testes: persist unit + snapshot filter + upkeep e2e |
+| B3 | Sem AutoKey, impossível posar o objeto pra criar o 2º key (snap-back) | O apply reescreve `world = curve(t)` todo frame; só a entidade EM drag era pulada — ao soltar o gizmo a pose voltava | **Pin de pose deslocada** (Blender-style): desarmado+pausado, pose bound off-curve entra em `AutokeyState.displaced` e o apply pula (via `apply_from_doc_except` agora com predicado). Pin morre quando o playhead move ou a pose volta à curva (K/undo). Teste `a_disarmed_displaced_pose_pins_the_entity_for_a_manual_k` + mutação |
+| B4 | Selecionar key individual selecionava a coluna/summary inteira | `column_lock` **fechado** por default roteava todo clique de key pro gesto de coluna | Default **aberto** (clique = só a key); o padlock fecha p/ quem quer colunas alinhadas. Testes do interact ajustados |
+
+**Superfície:** `ph2d-timeline` (`apply_from_doc_except` virou predicado `skip: impl Fn(u64)->bool` — API pública minha, único caller externo era o bridge; `persist::refresh_and_heal_bindings` novo; snapshot filtra missing) · `ph2d-panel-timeline` (default do lock + testes) · shell (`AutokeyState` agrupa baseline/drag/displaced — campos do `App` consolidados; bridge limpa o pin na mudança de tempo e chama `upkeep`; `timeline_presets.rs` dividido — `pick_tests` extraído p/ `timeline_presets_tests.rs` pelo LOC cap 600). **Zero contrato congelado; zero id novo.** dhat: `apply_from_doc_is_zero_alloc_steady_state` segue verde (upkeep só aloca com binding missing).
+
+---
+
 ## Cauda da W4 ainda aberta (para a próxima rodada — decisão do Enio)
 
 - **W4.T4** — docar a timeline no `motion_timeline_slot` quando o split do Motion está ativo (coordenação leve com Motion).

@@ -308,10 +308,13 @@ mod tests {
 
     #[test]
     fn locked_pressing_a_key_grabs_its_whole_column() {
-        // The default. Pressing one key at t = 0 selects EVERY key at t = 0, so a
-        // drag moves the vertical group — routed through the Summary machine.
-        let mut st = TimelinePanelState::default();
-        assert!(st.column_lock, "closed by default");
+        // With the padlock CLOSED, pressing one key at t = 0 selects EVERY key
+        // at t = 0, so a drag moves the vertical group — routed through the
+        // Summary machine. (Open is the default — see the test below.)
+        let mut st = TimelinePanelState {
+            column_lock: true,
+            ..TimelinePanelState::default()
+        };
         let key = TimelineHitKind::Key { target: 0, key: 1 };
         feed(
             &mut st,
@@ -333,10 +336,10 @@ mod tests {
 
     #[test]
     fn unlocked_pressing_a_key_grabs_only_that_key() {
-        let mut st = TimelinePanelState {
-            column_lock: false,
-            ..TimelinePanelState::default()
-        };
+        // THE default (Enio 2026-07-11): a key click selects just that key —
+        // it must never silently grab the whole Summary column.
+        let mut st = TimelinePanelState::default();
+        assert!(!st.column_lock, "open by default");
         let key = TimelineHitKind::Key { target: 0, key: 1 };
         feed(
             &mut st,
@@ -358,7 +361,10 @@ mod tests {
     fn a_locked_press_on_a_key_with_no_column_falls_back_to_the_key_itself() {
         // Snapshot lag: the pressed key isn't in the published snapshot. Rather
         // than doing nothing, treat it as a plain key press.
-        let mut st = TimelinePanelState::default();
+        let mut st = TimelinePanelState {
+            column_lock: true,
+            ..TimelinePanelState::default()
+        };
         let key = TimelineHitKind::Key { target: 9, key: 9 };
         feed(
             &mut st,
@@ -378,7 +384,7 @@ mod tests {
     #[test]
     fn clicking_the_padlock_toggles_the_column_lock() {
         let mut st = TimelinePanelState::default();
-        assert!(st.column_lock);
+        assert!(!st.column_lock, "open by default");
         feed(
             &mut st,
             gesture(
@@ -390,7 +396,7 @@ mod tests {
             120.0,
             &snap(),
         );
-        assert!(!st.column_lock, "one click opens it");
+        assert!(st.column_lock, "one click closes it");
         feed(
             &mut st,
             gesture(
@@ -402,7 +408,7 @@ mod tests {
             120.0,
             &snap(),
         );
-        assert!(st.column_lock, "another closes it");
+        assert!(!st.column_lock, "another opens it");
         assert_eq!(
             state::drain_intents(),
             vec![],
@@ -425,6 +431,6 @@ mod tests {
             120.0,
             &snap(),
         );
-        assert!(st.column_lock, "a press is not a toggle");
+        assert!(!st.column_lock, "a press is not a toggle (stays open)");
     }
 }

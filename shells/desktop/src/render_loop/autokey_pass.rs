@@ -17,8 +17,16 @@
 //! While the transport is **playing**, the pass is inert: the pose is the
 //! animation driving the object, not a user edit, so there is nothing to key
 //! (record-during-play "performing" is W5, not v1).
+//!
+//! **Disarmed, the pass pins instead of keying.** Without the pin, posing a
+//! bound object for a manual K was impossible: the apply pass rewrote the pose
+//! from the curve the frame the gesture ended, snapping the object back before
+//! K could record it. So a bound pose the user displaced while paused joins
+//! [`AutokeyState::displaced`], and the apply skips those entities — the pose
+//! holds, Blender-style, until the playhead moves (scrub/play reclaims it for
+//! the animation) or it returns to its curve (a K keyed it, or an undo).
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 use ph2d_anim::{AnimValue, RationalTime};
 use ph2d_core::Playhead;
@@ -27,6 +35,24 @@ use ph2d_editor::HeroScreen;
 use ph2d_timeline::{PoseSample, PropKind, TimelineState, autokey_props};
 
 use super::timeline_bridge::{default_interp, sample_prop_value};
+
+/// The shell-owned state of the auto-key / pose machinery (one per `App`).
+#[derive(Default)]
+pub(crate) struct AutokeyState {
+    /// Last frame's pose per selected entity — the reference for unbound
+    /// first-touch auto-create.
+    pub baseline: BTreeMap<u64, PoseSample>,
+    /// A gizmo-drag undo bracket is open.
+    pub drag_active: bool,
+    /// Entities whose bound pose the user displaced while PAUSED and disarmed.
+    /// The apply pass skips them so the pose holds for a manual K. Cleared by
+    /// the bridge when the playhead moves; an entity heals out here when its
+    /// pose returns to its curve.
+    pub displaced: BTreeSet<u64>,
+    /// The playhead time `displaced` was collected at (the bridge clears the
+    /// set when the time changes).
+    pub displaced_t: f64,
+}
 
 /// Sample a sprite's six animatable values into a [`PoseSample`], in
 /// `PropKind::ALL` order. `None` for a property whose backing component is absent
@@ -44,14 +70,13 @@ fn sample_pose(world: &World, entity: u64) -> PoseSample {
 
 /// Auto-key the current selection. `armed` is `panel_open && auto_key`, resolved
 /// by the caller; the pass additionally goes inert while the transport is playing
-/// (`playhead.is_playing()`). Rebuilds `baseline` from the live selection every
-/// frame (so it tracks selection changes) and brackets the undo step via
-/// `drag_active`.
+/// (`playhead.is_playing()`). Rebuilds the baseline from the live selection every
+/// frame (so it tracks selection changes), brackets the undo step, and manages
+/// the displaced-pose pin (see the module docs).
 pub(crate) fn run(
     timeline: &mut TimelineState,
     playhead: &Playhead,
-    baseline: &mut BTreeMap<u64, PoseSample>,
-    drag_active: &mut bool,
+    ak: &mut AutokeyState,
     hero: &HeroScreen,
     world: &World,
 ) {
@@ -63,15 +88,7 @@ pub(crate) fn run(
         .iter_selected()
         .map(|e| (e, sample_pose(world, e)))
         .collect();
-    apply_samples(
-        timeline,
-        playhead,
-        &samples,
-        drag_now,
-        armed,
-        baseline,
-        drag_active,
-    );
+    apply_samples(timeline, playhead, &samples, drag_now, armed, ak);
 }
 
 /// The pure core of the pass: given each selected sprite's sampled pose, key what
@@ -84,8 +101,7 @@ pub(crate) fn apply_samples(
     samples: &[(u64, PoseSample)],
     drag_now: bool,
     armed: bool,
-    baseline: &mut BTreeMap<u64, PoseSample>,
-    drag_active: &mut bool,
+    ak: &mut AutokeyState,
 ) {
     // While the transport is PLAYING the pose changes every frame because the
     // animation is driving the object, not the user — so auto-key must stay
@@ -95,7 +111,8 @@ pub(crate) fn apply_samples(
     // disagree under frame-snap / float drift, so every played frame would mint a
     // spurious key. The baseline still advances below (exactly as when disarmed),
     // so pausing mid-play never misreads the settled pose as a jump.
-    let armed = armed && !playhead.is_playing();
+    let playing = playhead.is_playing();
+    let armed = armed && !playing;
     let fps = timeline.doc.fps_display;
     let t = ph2d_timeline::snap_time(
         RationalTime::from_seconds(playhead.time()),
@@ -109,21 +126,37 @@ pub(crate) fn apply_samples(
     let mut to_key: Vec<(u64, PropKind, f32)> = Vec::new();
     let mut next_baseline: BTreeMap<u64, PoseSample> = BTreeMap::new();
     for &(entity, pose) in samples {
+        let base = ak.baseline.get(&entity).copied().unwrap_or([None; 6]);
         if armed {
-            let base = baseline.get(&entity).copied().unwrap_or([None; 6]);
             for (prop, v) in autokey_props(&timeline.doc, entity, t, &pose, &base, true) {
                 to_key.push((entity, prop, v));
             }
         }
+        // Displaced-pose pin (paused only — while playing the apply drives the
+        // pose, and the bridge clears the set on the time change anyway).
+        // Disarmed with a bound prop off its curve = the user posed the object
+        // for a manual K: pin it so the apply stops snapping it back. Armed (the
+        // diff is keyed above) or back on-curve (K landed / undo) → heal out.
+        if !playing {
+            // `allow_create = false`: only BOUND props matter here — an unbound
+            // one is never overwritten by the apply, so it needs no pin.
+            let off_curve =
+                !autokey_props(&timeline.doc, entity, t, &pose, &base, false).is_empty();
+            if !armed && off_curve {
+                ak.displaced.insert(entity);
+            } else {
+                ak.displaced.remove(&entity);
+            }
+        }
         next_baseline.insert(entity, pose);
     }
-    *baseline = next_baseline;
+    ak.baseline = next_baseline;
 
     if armed {
         // A gizmo drag opens one step on its first frame; a discrete edit brackets
         // just this frame. Guard on `is_open` so we never nest inside a panel edit
         // bracket already in flight.
-        if drag_now && !*drag_active && !timeline.history.is_open() {
+        if drag_now && !ak.drag_active && !timeline.history.is_open() {
             timeline.history.begin(&timeline.doc);
         }
         let discrete = !drag_now && !to_key.is_empty() && !timeline.history.is_open();
@@ -144,11 +177,11 @@ pub(crate) fn apply_samples(
 
     // Close the gizmo drag's step when the drag ends: one undo step if it changed
     // the document.
-    if *drag_active && !drag_now {
+    if ak.drag_active && !drag_now {
         let doc = timeline.doc.clone();
         timeline.history.commit_if_changed(&doc);
     }
-    *drag_active = drag_now;
+    ak.drag_active = drag_now;
 }
 
 #[cfg(test)]
@@ -205,17 +238,15 @@ mod tests {
         samples: &[(u64, PoseSample)],
         drag_now: bool,
         armed: bool,
-        baseline: &mut BTreeMap<u64, PoseSample>,
-        drag_active: &mut bool,
+        ak: &mut AutokeyState,
     ) {
-        apply_samples(st, ph, samples, drag_now, armed, baseline, drag_active);
+        apply_samples(st, ph, samples, drag_now, armed, ak);
     }
 
     #[test]
     fn a_bound_prop_dragged_off_its_curve_gets_keyed_in_one_undo_step() {
         let (mut st, ph) = state_with_tx_track();
-        let mut base = BTreeMap::new();
-        let mut drag = false;
+        let mut ak = AutokeyState::default();
         let before = st.doc.clone();
         // A discrete edit (no gizmo drag): world x = 7 at t = 0.5, curve says 5.
         frame(
@@ -224,8 +255,7 @@ mod tests {
             &[(E, pose(&[(TX, 7.0)]))],
             false,
             true,
-            &mut base,
-            &mut drag,
+            &mut ak,
         );
         assert_eq!(
             tx_at(&st, 0.5),
@@ -243,16 +273,14 @@ mod tests {
         // undo/paste/scrub (which the apply writes back to the world) is not undone.
         let (mut st, ph) = state_with_tx_track();
         let before = st.doc.clone();
-        let mut base = BTreeMap::new();
-        let mut drag = false;
+        let mut ak = AutokeyState::default();
         frame(
             &mut st,
             &ph,
             &[(E, pose(&[(TX, 5.0)]))],
             false,
             true,
-            &mut base,
-            &mut drag,
+            &mut ak,
         );
         assert_eq!(st.doc, before, "on-curve pose left the document untouched");
     }
@@ -261,19 +289,10 @@ mod tests {
     fn a_gizmo_drag_is_a_single_undo_step_across_many_frames() {
         let (mut st, ph) = state_with_tx_track();
         let before = st.doc.clone();
-        let mut base = BTreeMap::new();
-        let mut drag = false;
+        let mut ak = AutokeyState::default();
         // Three frames of a drag (drag_now = true), the pose creeping 6 → 7 → 8.
         for x in [6.0, 7.0, 8.0] {
-            frame(
-                &mut st,
-                &ph,
-                &[(E, pose(&[(TX, x)]))],
-                true,
-                true,
-                &mut base,
-                &mut drag,
-            );
+            frame(&mut st, &ph, &[(E, pose(&[(TX, x)]))], true, true, &mut ak);
         }
         assert_eq!(tx_at(&st, 0.5), Some(8.0), "the last dragged pose stuck");
         // Drag ends (drag_now = false) → the step commits.
@@ -283,8 +302,7 @@ mod tests {
             &[(E, pose(&[(TX, 8.0)]))],
             false,
             true,
-            &mut base,
-            &mut drag,
+            &mut ak,
         );
         // ONE undo reverts the whole drag, not one frame of it.
         apply_intent(&mut st, &mut Playhead::new(1.0 / 60.0), I::Undo);
@@ -294,8 +312,7 @@ mod tests {
     #[test]
     fn an_unbound_prop_that_moves_auto_creates_a_track() {
         let (mut st, ph) = state_with_tx_track();
-        let mut base = BTreeMap::new();
-        let mut drag = false;
+        let mut ak = AutokeyState::default();
         assert!(st.doc.binding_for(E, PropKind::Rotation).is_none());
         // Frame 1 establishes the baseline (rotation = 0), keys nothing new.
         frame(
@@ -304,8 +321,7 @@ mod tests {
             &[(E, pose(&[(ROT, 0.0)]))],
             false,
             true,
-            &mut base,
-            &mut drag,
+            &mut ak,
         );
         assert!(
             st.doc.binding_for(E, PropKind::Rotation).is_none(),
@@ -318,8 +334,7 @@ mod tests {
             &[(E, pose(&[(ROT, 1.5)]))],
             false,
             true,
-            &mut base,
-            &mut drag,
+            &mut ak,
         );
         assert!(
             st.doc.binding_for(E, PropKind::Rotation).is_some(),
@@ -333,20 +348,18 @@ mod tests {
         // advance, or arming mid-drag would treat a stale pose as a jump.
         let (mut st, ph) = state_with_tx_track();
         let before = st.doc.clone();
-        let mut base = BTreeMap::new();
-        let mut drag = false;
+        let mut ak = AutokeyState::default();
         frame(
             &mut st,
             &ph,
             &[(E, pose(&[(TX, 7.0)]))],
             false,
             false,
-            &mut base,
-            &mut drag,
+            &mut ak,
         );
         assert_eq!(st.doc, before, "disarmed: no key");
         assert_eq!(
-            base.get(&E).and_then(|p| p[TX]),
+            ak.baseline.get(&E).and_then(|p| p[TX]),
             Some(7.0),
             "baseline advanced anyway"
         );
@@ -355,21 +368,66 @@ mod tests {
     #[test]
     fn deselecting_an_entity_drops_it_from_the_baseline() {
         let (mut st, ph) = state_with_tx_track();
-        let mut base = BTreeMap::new();
-        let mut drag = false;
+        let mut ak = AutokeyState::default();
         frame(
             &mut st,
             &ph,
             &[(E, pose(&[(TX, 7.0)]))],
             false,
             true,
-            &mut base,
-            &mut drag,
+            &mut ak,
         );
-        assert!(base.contains_key(&E));
+        assert!(ak.baseline.contains_key(&E));
         // Next frame nothing is selected → the baseline empties.
-        frame(&mut st, &ph, &[], false, true, &mut base, &mut drag);
-        assert!(base.is_empty(), "an unselected entity leaves the baseline");
+        frame(&mut st, &ph, &[], false, true, &mut ak);
+        assert!(
+            ak.baseline.is_empty(),
+            "an unselected entity leaves the baseline"
+        );
+    }
+
+    #[test]
+    fn a_disarmed_displaced_pose_pins_the_entity_for_a_manual_k() {
+        // THE pose-to-pose bug: without auto-key, the apply pass snapped a
+        // posed object back to its curve before K could record it. Disarmed,
+        // an off-curve bound pose must join the displaced set (the apply skips
+        // it); once the pose returns to the curve (K keyed it / an undo), it
+        // heals out.
+        let (mut st, ph) = state_with_tx_track(); // paused; curve says x = 5
+        let mut ak = AutokeyState::default();
+        // Disarmed, pose off-curve (7 vs 5) → pinned, and nothing keyed.
+        let before = st.doc.clone();
+        frame(
+            &mut st,
+            &ph,
+            &[(E, pose(&[(TX, 7.0)]))],
+            false,
+            false,
+            &mut ak,
+        );
+        assert!(ak.displaced.contains(&E), "off-curve disarmed pose pins");
+        assert_eq!(st.doc, before, "disarmed: still no key");
+        // The pose returns to the curve (a K keyed it, or an undo) → heals out.
+        frame(
+            &mut st,
+            &ph,
+            &[(E, pose(&[(TX, 5.0)]))],
+            false,
+            false,
+            &mut ak,
+        );
+        assert!(ak.displaced.is_empty(), "on-curve pose heals the pin out");
+        // Armed, the same off-curve pose is KEYED, never pinned.
+        frame(
+            &mut st,
+            &ph,
+            &[(E, pose(&[(TX, 7.0)]))],
+            false,
+            true,
+            &mut ak,
+        );
+        assert!(ak.displaced.is_empty(), "armed keys instead of pinning");
+        assert_eq!(tx_at(&st, 0.5), Some(7.0), "armed: the pose was keyed");
     }
 
     #[test]
@@ -380,8 +438,7 @@ mod tests {
         // must be inert regardless of the pose.
         let (mut st, mut ph) = state_with_tx_track(); // paused; curve x = 5 at 0.5
         let before = st.doc.clone();
-        let mut base = BTreeMap::new();
-        let mut drag = false;
+        let mut ak = AutokeyState::default();
         // Armed (panel open + auto_key on) and the pose looks off-curve (7 vs 5),
         // but the transport is PLAYING → nothing is keyed.
         ph.play();
@@ -391,12 +448,11 @@ mod tests {
             &[(E, pose(&[(TX, 7.0)]))],
             false,
             true,
-            &mut base,
-            &mut drag,
+            &mut ak,
         );
         assert_eq!(st.doc, before, "playing suppresses auto-key");
         assert_eq!(
-            base.get(&E).and_then(|p| p[TX]),
+            ak.baseline.get(&E).and_then(|p| p[TX]),
             Some(7.0),
             "the baseline still advances while playing (so pausing is not a jump)"
         );
@@ -409,8 +465,7 @@ mod tests {
             &[(E, pose(&[(TX, 7.0)]))],
             false,
             true,
-            &mut base,
-            &mut drag,
+            &mut ak,
         );
         assert_eq!(
             tx_at(&st, 0.5),

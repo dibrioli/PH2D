@@ -18,7 +18,7 @@
 
 #[cfg(feature = "panel-audio-editor")]
 mod audio_overlay;
-mod autokey_pass;
+pub(crate) mod autokey_pass;
 pub(crate) mod bgremoval_preview;
 mod color_equalization_bridge;
 mod cooked_texture_bridge;
@@ -803,6 +803,7 @@ impl crate::App {
             &mut self.playhead,
             &mut self.timeline_intents,
             dragging_entity,
+            &mut self.autokey,
         );
         // The playhead has now moved: a transport jump queued last frame can
         // finally ask the panel to pan to it (the snapshot below carries the
@@ -2799,8 +2800,7 @@ impl crate::App {
             autokey_pass::run(
                 &mut self.timeline,
                 &self.playhead,
-                &mut self.autokey_baseline,
-                &mut self.timeline_drag_active,
+                &mut self.autokey,
                 hero,
                 sim.world(),
             );

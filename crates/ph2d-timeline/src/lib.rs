@@ -42,7 +42,7 @@ pub use doc::{DEFAULT_FPS, DOC_VERSION, Marker, NamedClip, TimelineDoc};
 pub use graph::{drawn_extent, handle_coords, handle_point, sample_keys, value_extent};
 pub use history::{HISTORY_CAP, TimelineHistory};
 pub use intent::{TimelineIntent, apply_intent, snap_time};
-pub use persist::{resolve_entities, stamp_wire_ids};
+pub use persist::{refresh_and_heal_bindings, resolve_entities, stamp_wire_ids};
 pub use prop::PropKind;
 pub use snapshot::{KeyView, TimelineViewSnapshot, TrackView};
 pub use speed::{

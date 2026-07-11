@@ -20,16 +20,22 @@ use crate::sprite::SpriteProp;
 /// the resolved value into each bound entity. Updates each binding's `missing`
 /// flag by liveness. Call once per frame after advancing the Playhead.
 pub fn apply_from_doc(world: &mut World, doc: &mut TimelineDoc, t: f64) {
-    apply_from_doc_except(world, doc, t, None);
+    apply_from_doc_except(world, doc, t, |_| false);
 }
 
-/// Like [`apply_from_doc`], but leaves the entity whose bits are `live` (if any)
-/// untouched — the caller is authoring its transform live this frame (a gizmo
-/// drag), so the document must not fight the manipulation. Its `missing` flag is
+/// Like [`apply_from_doc`], but leaves every entity whose bits `skip` claims
+/// untouched — the caller owns those transforms this frame: the one under a
+/// live gizmo drag, and any pose the user displaced while paused that is
+/// waiting for a manual K (the displaced-pose pin). Their `missing` flags are
 /// still refreshed; only the write is skipped. With auto-key armed the drag
 /// records keys, so once the gesture ends `apply_from_doc` resumes on the newly
 /// recorded pose and the entity holds.
-pub fn apply_from_doc_except(world: &mut World, doc: &mut TimelineDoc, t: f64, live: Option<u64>) {
+pub fn apply_from_doc_except(
+    world: &mut World,
+    doc: &mut TimelineDoc,
+    t: f64,
+    skip: impl Fn(u64) -> bool,
+) {
     let n = doc.bindings().len();
     for i in 0..n {
         let b = &doc.bindings()[i];
@@ -40,9 +46,9 @@ pub fn apply_from_doc_except(world: &mut World, doc: &mut TimelineDoc, t: f64, l
         if !alive {
             continue;
         }
-        // The user is dragging this entity's gizmo — it owns its transform for
-        // the duration of the gesture; don't clobber it from the document.
-        if live == Some(entity_bits) {
+        // The user owns this entity's transform this frame (gizmo drag /
+        // displaced-pose pin) — don't clobber it from the document.
+        if skip(entity_bits) {
             continue;
         }
         // Sample the bound track (skip empty tracks so a just-created binding
@@ -117,7 +123,8 @@ mod tests {
         // Simulate a gizmo drag having just written the dragged entity to 42.
         w.get_mut::<Transform>(dragged).unwrap().translation.x = 42.0;
 
-        apply_from_doc_except(&mut w, &mut doc, 0.0, Some(dragged.to_bits()));
+        let dragged_bits = dragged.to_bits();
+        apply_from_doc_except(&mut w, &mut doc, 0.0, |bits| bits == dragged_bits);
 
         assert_eq!(
             w.get::<Transform>(dragged).unwrap().translation.x,
@@ -130,8 +137,8 @@ mod tests {
             "every other bound entity is still driven from the document"
         );
 
-        // With no live entity, the document reclaims the dragged one too.
-        apply_from_doc_except(&mut w, &mut doc, 0.0, None);
+        // With nothing skipped, the document reclaims the dragged one too.
+        apply_from_doc_except(&mut w, &mut doc, 0.0, |_| false);
         assert_eq!(w.get::<Transform>(dragged).unwrap().translation.x, 5.0);
     }
 }

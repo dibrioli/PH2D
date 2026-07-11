@@ -91,10 +91,11 @@ pub struct TimelinePanelState {
     /// (`d(value)/dt`) instead of the value curve, toggled from the transport
     /// bar. Panel-local view state — never undoable, never saved.
     pub speed_view: bool,
-    /// The Summary channel's column lock, toggled by its padlock. **Closed by
-    /// default:** grabbing any single key grabs its whole time column, so keys
-    /// stay vertically aligned. Open it to move keys independently. Either way,
-    /// grabbing the Summary diamond itself always moves the whole column.
+    /// The Summary channel's column lock, toggled by its padlock. **Open by
+    /// default** (Enio, 2026-07-11): clicking a key selects just that key.
+    /// Close it and grabbing any single key grabs its whole time column, so
+    /// keys stay vertically aligned. Either way, grabbing the Summary diamond
+    /// itself always moves the whole column.
     pub column_lock: bool,
     /// In-progress bézier-handle drag in an expanded track's graph.
     pub handle_drag: Option<HandleDrag>,
@@ -301,7 +302,7 @@ impl Default for TimelinePanelState {
             graph_resize: None,
             expanded: Vec::new(),
             speed_view: false,
-            column_lock: true,
+            column_lock: false,
             handle_drag: None,
             anchor_drag: None,
             summary_press: None,

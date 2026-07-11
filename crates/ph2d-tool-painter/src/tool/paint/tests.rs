@@ -12855,6 +12855,71 @@ fn watercolor_tiling_wraps_the_wash_across_the_seam() {
     );
 }
 
+/// **A dynamic SHAPE's wash crosses the Tiling seam (Enio 2026-07-11).** The shape editors re-stamp
+/// through `stamp_drag_preview_watercolor` (a re-stamp preview, NOT the stroke lifecycle), which took the
+/// RAW dabs — so with seamless Tiling a shape crossing the border was cut there instead of wrapping. RED
+/// before the fix: the left (wrapped) edge stays pristine. GREEN: the tiled dabs form the wash on the
+/// opposite edge too, matching the plain stroke (`stamp_dabs`). Control: tiling OFF leaves it pristine.
+#[test]
+fn watercolor_shape_wash_crosses_the_tiling_seam() {
+    fn line_brush(t: &mut PainterTool) {
+        t.paint.brush = BrushSpec {
+            radius_px: 8.0,
+            hardness: 1.0,
+            falloff: Falloff::Constant,
+            color: [0.15, 0.25, 0.75],
+            space_attenuation: false,
+            watercolor: true,
+            fill: 0.6,
+            depth: 2.0,
+            edge_gain: 2.5,
+            edge_spread: 4.0,
+            stroke_method: StrokeMethod::Line,
+            ..Default::default()
+        };
+        for slot in &mut t.paint.brush_by_mode {
+            *slot = t.paint.brush;
+        }
+    }
+    // A vertical Line at x=62 (r=8 ⇒ footprint [54,70] crosses the far edge at x=64): two clicks place the
+    // start + end anchors, then Apply bakes.
+    fn draw_and_commit(t: &mut PainterTool) {
+        t.on_canvas_pointer(cp([62.0, 20.0], PointerPhase::Down));
+        t.on_canvas_pointer(cp([62.0, 20.0], PointerPhase::Up));
+        t.on_canvas_pointer(cp([62.0, 44.0], PointerPhase::Down));
+        t.on_canvas_pointer(cp([62.0, 44.0], PointerPhase::Up));
+        assert!(t.commit_open_shape(), "Apply baked the open line");
+    }
+    let size = 64u32;
+
+    // Tiling ON (X): the wrapped copy (centre −2, footprint [−10,6]) paints x∈[0,6] on the LEFT edge —
+    // unreachable from x=62 without the wrap (distance 60 ≫ radius 8), so any paint here IS the tile.
+    let mut tiled = white_canvas(size, 8.0);
+    line_brush(&mut tiled);
+    tiled.paint.tiling = [true, false];
+    draw_and_commit(&mut tiled);
+    assert_ne!(
+        px(&tiled, size, 61, 32),
+        [255, 255, 255, 255],
+        "the shape wash landed on the right edge"
+    );
+    assert_ne!(
+        px(&tiled, size, 2, 32),
+        [255, 255, 255, 255],
+        "the shape wash wrapped across the seam onto the left edge (was cut before the fix)"
+    );
+
+    // Control: tiling OFF ⇒ the left edge stays pristine (proves the wrap is what paints it).
+    let mut plain = white_canvas(size, 8.0);
+    line_brush(&mut plain);
+    draw_and_commit(&mut plain);
+    assert_eq!(
+        px(&plain, size, 2, 32),
+        [255, 255, 255, 255],
+        "without tiling the shape wash never reaches the far edge (control)"
+    );
+}
+
 /// **A texture-param change re-renders the still-wet wash — central AND every Tiling copy (Enio
 /// 2026-07-11).** After pen-up the wash bakes, but the last wash stays re-renderable while the paper is
 /// wet: changing the Grain Size re-renders the whole committed wash (not just the next stroke). The setter

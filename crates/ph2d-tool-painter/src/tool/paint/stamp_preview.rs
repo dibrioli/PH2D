@@ -87,9 +87,21 @@ impl PainterTool {
         if let Some(prev) = self.paint.drag_preview.take() {
             self.restore_region(&prev.rect, &prev.pixels);
         }
+        // Seamless Tiling (doc 13 #2): replicate the dabs across the wrapped sprite edges so the SHAPE
+        // preview's wash ALSO forms on the opposite edge — the plain stroke does this in `stamp_dabs`, but
+        // the shape editors re-stamp through HERE (a re-stamp preview, not the stroke lifecycle), so
+        // without it a shape crossing the seam was cut at the border. Both the accumulate AND the
+        // save/restore footprint use the wrapped list. Off ⇒ the raw dabs (byte-identical).
+        let tiled;
+        let wet_dabs: &[Dab] = if self.paint.tiling[0] || self.paint.tiling[1] {
+            tiled = super::tiling::tiled_dabs(dabs, self.source_size, self.paint.tiling);
+            &tiled
+        } else {
+            dabs
+        };
         // Save the pristine pixels under the wash's INFLUENCE footprint (dab bbox + rim/warp reach), so the
         // next frame restores everything `apply_watercolor` will have written — else the rim leaves a trail.
-        let Some(rect) = self.watercolor_preview_footprint(dabs) else {
+        let Some(rect) = self.watercolor_preview_footprint(wet_dabs) else {
             return; // empty batch (no dabs) — the peel above already cleared the last preview
         };
         let pixels = self.save_region(&rect);
@@ -106,25 +118,37 @@ impl PainterTool {
         self.paint.wet_session_base = None;
         self.clear_wet_coverage();
         self.clear_wet_color();
-        self.accumulate_wet_coverage(dabs);
-        self.accumulate_wet_color(dabs);
+        self.accumulate_wet_coverage(wet_dabs);
+        self.accumulate_wet_color(wet_dabs);
         self.apply_watercolor(true);
     }
 
     /// The save/restore footprint for a watercolor shape preview: each dab's bbox inflated by the wash's
     /// influence reach (rim `edge_spread` + Ragged-Edge `warp`), so the restore peels EVERYTHING
     /// `apply_watercolor` wrote (its `pad`). Over-inflation is safe — extra pristine pixels restore to a
-    /// no-op; under-inflation would leave a rim trail. `None` when the batch is empty.
+    /// no-op; under-inflation would leave a rim trail. `None` when the batch is empty. With **Tiling** the
+    /// wash spans the WHOLE tiled axis (`apply_watercolor` renders it there via `dab_batch_region`), so the
+    /// footprint is forced full-axis to match — else the wrapped span leaves a trail on the next peel.
     fn watercolor_preview_footprint(&self, dabs: &[Dab]) -> Option<Region> {
         let b = &self.paint.brush;
         // Match `apply_watercolor`'s max reach (`spread * 2` when watered/soaked) + warp + slack.
         let pad = b.edge_spread.round().clamp(0.0, 48.0) * 2.0 + b.warp.max(0.0).ceil() + 4.0;
-        dabs.iter().fold(None, |acc, d| {
+        let mut r = dabs.iter().fold(None, |acc, d| {
             match (acc, self.dab_bbox(d.center, d.radius_px + pad)) {
                 (Some(a), Some(r)) => Some(union_region(a, r)),
                 (a, r) => a.or(r),
             }
-        })
+        })?;
+        let (fw, fh) = self.source_size;
+        if self.paint.tiling[0] {
+            r.x = 0;
+            r.w = fw;
+        }
+        if self.paint.tiling[1] {
+            r.y = 0;
+            r.h = fh;
+        }
+        Some(r)
     }
 
     /// Stamp the dabs a `begin`/`extend` produced. Drag Dot, Anchored AND Line are interactive

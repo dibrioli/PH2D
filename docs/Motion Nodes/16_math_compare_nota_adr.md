@@ -72,34 +72,42 @@ Divide/Min/Max) via param `op` enum; **exerce a regra de broadcast 1→N entre d
 `cmp_armed` no `pre` do porto `state`. `Effect::Pure`. Prefixo `pulse.*`. `NodeUiCategory::Utility`.
 **Não duplica `pulse.threshold`** (canal de transform) — dual do `sample_hold`, sobre o domínio de valor.
 
-**Cena boot com a 4ª cadeia — o round-trip (Rotation)** (`motion_demo_strobe.rs`), **21 nós** (era 15):
+**Cena boot — uma cena PEQUENA (o Enio pediu p/ simplificar: "com tantos nós fica difícil entender o
+conceito").** A pilha de 4 cadeias (X/Y/Size/Rotation) foi trocada por **uma cena de ~10 nós** que
+isola os dois nós novos num só grid, ambos dirigidos pela MESMA `value.lfo` travelling
+(`motion_demo_strobe.rs`):
 
 ```
-grid → move → tint → drive_x → drive_y → drive_size → drive_rot → strobe → output
-       instance_field × lfo_g → math ⟳ compare ⟳ counter_r → rot_range → drive_rot.value
+grid → tint → drive_size → strobe → output
+       grid → instance_field ─┐
+       grid → lfo ────────────┴→ math → size_range → drive_size.value   (SIZE: contínuo)
+              lfo → compare ⟳ → strobe.pulse                            (FLASH: discreto)
 ```
 
-- **lfo_g** (`value.lfo`, `in` DESCONECTADO → length-1 global) modula tudo.
-- **math** (`value.math`, Multiply) = `instance_field(Ramp, N) × lfo_g(1)` → **broadcast 1→N**: um campo
-  cuja amplitude é GRADUADA por índice (dot 0 fica em 0, o dot do topo oscila ±1 cheio).
-- **compare** fira um pulso quando o `v` de um dot cruza `0.4` (Schmitt até `0.2`); **só os dots cuja
-  amplitude graduada passa do threshold disparam** — a metade de cima.
-- **counter_r** (`pulse.counter`, Wrap 0..8) acumula os cruzamentos; **rot_range** (`value.map_range`)
-  mapeia `0..8 → 0..90°`; **drive_rot** (`motion.drive`, Rotation, Add) → os dots que disparam
-  **catracam** a rotação (e dão a volta); os de baixo ficam parados. O domínio de valor contínuo
-  alimentando o discreto e voltando — o round-trip do doc 16, na tela.
+- **lfo** (`value.lfo`, lê o grid → onda **travelling** length-N) alimenta os DOIS nós novos.
+- **math** (`value.math`, Multiply) = `instance_field(Ramp) × lfo` → cada dot INCHA de tamanho conforme
+  a onda passa, graduado pela posição (um **gradiente espacial modulado no tempo**) — a leitura CONTÍNUA
+  da onda. `size_range` remapeia p/ um span de tamanho visível; `drive_size` escreve em Size.
+- **compare** fira um pulso quando o `v` de um dot cruza `0.5` (Schmitt até `0.1`); o `motion.strobe`
+  vira cada pulso num FLASH branco → os dots piscam num **ripple** conforme a onda varre — a leitura
+  DISCRETA da MESMA onda. (O strobe pisca só COR — `size_boost = 0` — pra Size ficar o sinal puro do
+  `math`.)
 
-O `lfo_g` roda num período de 0.5 s (ritmo diferente do beat de 1.4 s), pra a catraca de rotação ler
-como o próprio relógio. `instance_field` fan-out: alimenta a cadeia de Size (existente) E a `math`.
+Uma onda, mostrada de dois jeitos (incha suave + pisca no cruzamento) — a face contínua e a discreta do
+domínio de valor, lado a lado. As cadeias antigas (metrônomo/counter/sample-hold/drives por-canal) saem
+do boot doc mas ficam **registradas** (drop-in no editor).
 
-**Testes (14 unit + 1 integração):** math (7: cada op, guard de divisão, broadcast 1→N nos 2 sentidos,
+**Testes (14 unit + 3 integração):** math (7: cada op, guard de divisão, broadcast 1→N nos 2 sentidos,
 element-wise N×N, input desconectado = campo zero, através do cook, resolve — falsificados); compare
 (7: dispara-1×-na-borda + banda de histerese, single-threshold chatters, sustained-high = 1 pulso,
 Rise/Fall/Both, banda invertida clampada, element-wise sobre o campo, resolve — falsificados). Integração
-no shell — `the_value_to_pulse_round_trip_ratchets_the_rotation` (**3 falsificações:** cadeia morta →
-0 dots catracam · broadcast-collapse / compare-sem-threshold → nenhum dot fica em 0 · rot_range
-bypassado → estoura o bound de 90°). As 6 cenas/testes anteriores (X/Y/Size/strobe/determinismo)
-seguem verdes — a cadeia nova só ADICIONA e escreve num canal (Rotation) que nenhum teste anterior lê.
+no shell: `the_math_node_modulates_the_size_gradient` (**3 falsificações:** math morto/broadcast → sem
+spread nem movimento · congelado → tamanho não varia no tempo · `size_range` bypassado → estoura o span
+[0.25,0.6]) · `the_compare_bridge_flashes_the_grid_on_the_wave_crossing` (**2 falsificações:** compare
+morto → vermelho preso na base · flash em bloco → sem spread element-wise). O teste de loop-replay do
+doc 11 (`a_loop_range_replays_the_simulation_from_its_start`) foi reapontado do sinal de *tamanho* p/ o
+*flash de cor* (o strobe agora é cor-only) — o mecanismo checkpoint/restore segue exercido (compare +
+strobe são sequenciais).
 
 ## 4. Superfície nova (para o handoff de integração)
 
@@ -109,8 +117,9 @@ seguem verdes — a cadeia nova só ADICIONA e escreve num canal (Rotation) que 
 | crate `ph2d-node-pulse-compare`, tipo `pulse.compare` | nova | nome novo |
 | `value_math::VALUE` / `pulse_compare::{VALUE,PULSE}` (pub const) | pub const | baixo (mirror local dos tipos) |
 | `ph2d-node-registry-init` regenerado (38 crates) | codegen | **conflito provável** com outra linha que adicione nó (região `<ph2d-node-sync>`) → `cargo run -p ph2d-node-sync` |
-| cena boot `motion_demo_strobe.rs` (4ª cadeia, 15→21 nós, +drive_rot/lfo_g/math/compare/counter_r/rot_range) | shell | dentro do próprio módulo Motion |
-| `motion_state.rs` + `motion_state_tests.rs` (contagem 15→21, doc-comments, +1 teste, pre-loops 4→6) | shell | idem |
+| cena boot `motion_demo_strobe.rs` (REESCRITA p/ 1 cena de ~10 nós isolando math+compare; simplificação pedida pelo Enio) | shell | dentro do próprio módulo Motion |
+| `motion_state.rs` + `motion_state_tests.rs` (doc-comments + contagem 10 + 2 testes novos + determinismo) | shell | idem |
+| `render_loop/motion_bridge_tests.rs` (loop-replay do doc 11 reapontado tamanho→cor) | shell | idem |
 
 Coluna de stream nova `cmp_armed` (local ao stream do compare, sem registro global). Nenhum contrato
 congelado, nenhum `NodeId`/token/dep novo. As crates novas só dependem de `ph2d-nodegraph` +

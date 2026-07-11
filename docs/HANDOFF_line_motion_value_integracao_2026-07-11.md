@@ -18,8 +18,9 @@
 ### 2. Foundational/compartilhado tocado (fora de `crates/ph2d-node-*`) — tudo ADITIVO
 | Arquivo | O quê | Nota p/ o integrador |
 |---|---|---|
-| `shells/desktop/src/motion_demo_strobe.rs` | cena boot: +4ª cadeia (Rotation round-trip), 15→21 nós | shell, módulo Motion; baixo |
-| `shells/desktop/src/motion_state.rs` + `motion_state_tests.rs` | doc-comments + contagem 15→21 + 1 teste novo + pre-loops 4→6 | shell, módulo Motion; baixo |
+| `shells/desktop/src/motion_demo_strobe.rs` | cena boot REESCRITA p/ 1 cena de ~10 nós (math+compare isolados) | shell, módulo Motion; baixo |
+| `shells/desktop/src/motion_state.rs` + `motion_state_tests.rs` | doc-comments + contagem 10 + 2 testes novos (math/compare) + determinismo | shell, módulo Motion; baixo |
+| `shells/desktop/src/render_loop/motion_bridge_tests.rs` | loop-replay do doc 11 reapontado tamanho→cor (strobe virou cor-only) | shell, módulo Motion; baixo |
 | `Cargo.lock` | só as 2 crates PATH novas | regenera (`cargo build`) na árvore combinada |
 
 **Nenhum** arquivo de substrato (`ph2d-nodegraph/*`, `ph2d-eval-motion/*`) tocado — esta fatia é
@@ -62,16 +63,19 @@ fechamento. Fan-out aditivo (caminho A). Sem ADR necessário.
   ph2d-node-sync`, **não à mão**) + `Cargo.lock` (regenera). O `motion_demo_strobe.rs`/`motion_state*`
   só conflitam se outra linha também editar a cena Motion (improvável — cada módulo tem a sua). Depois
   `scripts/foundational-integrate.sh` (gate da árvore combinada) + `ship.sh`.
-- **Smoke: PENDENTE (Enio, manual)** — headless já provado (`the_value_to_pulse_round_trip_ratchets_the_rotation`
-  cozinha o registry real). Comando:
+- **Smoke: APROVADO (Enio, 2026-07-11)** — o Enio smokou a versão de round-trip (Rotation) e pediu p/
+  **simplificar** ("com tantos nós fica difícil entender o conceito"). A cena boot foi **reescrita** p/
+  uma cena PEQUENA (~10 nós) que isola os dois nós novos num só grid (headless provado por
+  `the_math_node_modulates_the_size_gradient` + `the_compare_bridge_flashes_the_grid_on_the_wave_crossing`).
+  Re-smoke rápido:
   ```bash
   cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-motion-value && cargo run -p ph2d-host-desktop
   ```
-  Tool **Motion** → a grade 4×3 mantém X (passo no beat) · Y (sample-and-hold) · Size (gradiente) e
-  agora a **metade de cima dos quadrados CATRACA a rotação** (gira em degraus, dá a volta em 90°) num
-  ritmo mais rápido (~0.5 s) que o beat, enquanto a metade de baixo fica parada. No editor: dropar um
-  `value.math` entre dois campos (ex.: `instance_field × lfo`) e um `pulse.compare` depois de qualquer
-  valor (LFO/math) → um pulso quando o valor cruza o limiar (com histerese Rise/Fall/Both).
+  Tool **Motion** → uma grade 3×4 dirigida por UMA `value.lfo` travelling: os quadrados **incham de
+  tamanho** conforme a onda passa (o `value.math` = `instance_field × lfo`, gradiente modulado no tempo)
+  E **piscam branco num ripple** quando a onda cruza o limiar (o `pulse.compare` → strobe). Uma onda,
+  contínua (tamanho) e discreta (flash). No editor: dropar `value.math` entre dois campos e
+  `pulse.compare` depois de qualquer valor (histerese Rise/Fall/Both).
 
 **Resumo:** *Linha `motion-value` pronta (feature `9ba2f6ad`, fork em `1c7c9a22`, 2 commits). Aditiva:
 2 crates-nó (`value.math`, `pulse.compare`) + a 4ª cadeia da cena boot (Rotation round-trip). Único
@@ -95,9 +99,10 @@ codar (DIRETIVA §1). Detalhe técnico + a pesquisa: [`docs/Motion Nodes/16_math
   Núcleo Schmitt portado **verbatim** do `pulse.threshold`; a ÚNICA diferença é o domínio de entrada
   (o campo `v` vs um canal de transform) — por isso os dois **coexistem sem duplicar**. Sequencial
   (`cmp_armed` no `pre` do porto `state`), `Effect::Pure`.
-- **Cena boot — a 4ª cadeia (Rotation round-trip):** `instance_field × lfo_g → math → compare →
-  counter_r → rot_range → drive_rot`. O domínio de valor contínuo alimentando o discreto e voltando,
-  na tela (o ganho que os docs 12–14 mapearam como o fechamento do vocabulário).
+- **Cena boot — REESCRITA p/ uma cena pequena (~10 nós)** após o smoke: o Enio pediu p/ simplificar
+  ("com tantos nós fica difícil entender o conceito"). A pilha de 4 cadeias virou UMA cena que isola os
+  dois nós novos num só grid, ambos dirigidos pela MESMA `value.lfo` travelling — `math` incha o tamanho
+  (contínuo), `compare` pisca o strobe (discreto). Uma onda, dois jeitos.
 
 ## 1. Gates no fechamento (paridade §7)
 - **Unit:** `value.math` 7 + `pulse.compare` 7 (falsificados dos 2 lados).

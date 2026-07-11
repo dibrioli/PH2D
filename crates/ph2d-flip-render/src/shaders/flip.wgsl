@@ -173,11 +173,12 @@ fn vs_main(@builtin(vertex_index) vi: u32) -> VsOut {
     }
 
     let screen_pos = center + side * miter * (half * scale);
-    // Ordem 2D (GP §2): profundidade por traço = (2·sid+2)·2e-7, teste GREATER —
-    // o traço mais novo (sid maior) ganha, e o auto-overlap de UM traço
-    // (junções/miter) não recompõe (mesma profundidade → o 2º fragmento falha o
-    // GREATER, sem double-blend). O fill do mesmo traço fica em (2·sid+1), logo
-    // abaixo → o traço ganha sobre o próprio fill.
+    // Ordem 2D (GP §2): profundidade por traço = (2·sid+2)·2e-7, teste GREATER-EQUAL.
+    // O traço mais novo (sid maior) tem depth estritamente maior e ganha. No MESMO
+    // depth (o traço passando por cima de SI mesmo), o `>=` deixa a parte desenhada
+    // depois (ponto mais adiante na fita) compor por cima — como o GP / uma caneta
+    // real. O fill do mesmo traço fica em (2·sid+1), logo abaixo → o traço ganha
+    // sobre o próprio fill.
     let c = to_clip(screen_pos);
     let depth = f32(2u * sid + 2u) * 2e-7;
     out.clip = vec4<f32>(c.xy, depth, 1.0);
@@ -189,14 +190,19 @@ fn vs_main(@builtin(vertex_index) vi: u32) -> VsOut {
 @fragment
 fn fs_main(in: VsOut) -> @location(0) vec4<f32> {
     let dn = abs(in.v_perp);                 // 0 no eixo, 1 na borda
-    // Falloff de hardness (GP): d = clamp(1-dn,0,1); pow(d, mix(0,10, 1-hard)).
-    let d = clamp(1.0 - dn, 0.0, 1.0);
-    let softness = 1.0 - in.hardness;
-    let shaped = smoothstep(0.0, 1.0, pow(d, mix(0.0, 10.0, softness)));
-    // AA de borda (~meio pixel em unidades normalizadas), robusto p/ borda dura.
+    // Perfil redondo do Grease Pencil (`gpencil_lib.glsl`): NÚCLEO cheio até
+    // `hardness`, depois queda `smoothstep` até a borda —
+    //   mask = 1 - smoothstep(hardness, 1, dn).
+    // `hardness=1` = borda dura (núcleo até a borda); `hardness→0` = fade do centro.
+    // O antigo `pow(1-dn, 10·(1-hard))` decaía cedo demais (o traço saía translúcido
+    // com hardness < 1 — Enio 2026-07-11: "alpha estranho com hardness menor que 1").
+    // O AA (~1px) entra dobrado na MESMA smoothstep: a borda nunca é mais estreita
+    // que o AA, então a borda DURA não aliasa e a MACIA usa o próprio falloff (sem
+    // atenuar duas vezes).
     let aa = max(fwidth(dn), 1e-4);
-    let cov = 1.0 - smoothstep(1.0 - aa, 1.0, dn);
-    let alpha = in.color.a * in.opacity * shaped * cov;
+    let edge0 = min(in.hardness, 1.0 - aa);
+    let mask = 1.0 - smoothstep(edge0, 1.0, dn);
+    let alpha = in.color.a * in.opacity * mask;
     // Saída PREMULTIPLICADA (blend = One, OneMinusSrcAlpha).
     return vec4<f32>(in.color.rgb * alpha, alpha);
 }

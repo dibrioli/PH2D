@@ -277,6 +277,47 @@ fn newer_stroke_draws_over_older_at_crossing() {
 
 #[test]
 #[ignore = "requires a GPU adapter; run with --ignored"]
+fn a_stroke_crossing_itself_draws_the_later_part_on_top() {
+    let Some((device, queue)) = device() else {
+        return;
+    };
+    // UM traço que cruza a SI mesmo (mesmo sid, mesmo depth): o 1º trecho é vermelho
+    // (↘), o 2º é azul (↙); eles se cruzam em (32,32). O trecho DESENHADO DEPOIS
+    // (azul, pontos mais adiante na fita) tem de compor por CIMA — o `GreaterEqual`.
+    // Com GREATER puro o 2º fragmento falhava e o cruzamento saía vermelho (a parte
+    // mais velha por cima) — o bug do Enio 2026-07-11.
+    let mut d = FlipDrawing::new();
+    let mut s = FlipStroke::new();
+    let red = Rgba::new(1.0, 0.0, 0.0, 1.0);
+    let blue = Rgba::new(0.0, 0.0, 1.0, 1.0);
+    // p0→p1 = diagonal ↘ vermelha (passa por (32,32)); p1→p2 = desvio pela direita;
+    // p2→p3 = diagonal ↙ azul (passa por (32,32), desenhada DEPOIS).
+    for (p, c) in [
+        (Vec2::new(16.0, 16.0), red),
+        (Vec2::new(48.0, 48.0), red),
+        (Vec2::new(48.0, 16.0), blue),
+        (Vec2::new(16.0, 48.0), blue),
+    ] {
+        s.push_point(Point {
+            pos: p,
+            width: 8.0,
+            opacity: 1.0,
+            color: c,
+        });
+    }
+    s.hardness = 1.0;
+    d.strokes.push(s);
+
+    let px = render(&device, &queue, &d);
+    let cross = rgb_at(&px, 32, 32);
+    assert!(
+        cross[2] > 150 && cross[0] < cross[2],
+        "auto-cruzamento: o trecho mais NOVO (azul) fica por cima: {cross:?}"
+    );
+}
+
+#[test]
+#[ignore = "requires a GPU adapter; run with --ignored"]
 fn filled_closed_stroke_renders_fill_under_stroke() {
     let Some((device, queue)) = device() else {
         return;

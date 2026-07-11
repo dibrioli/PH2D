@@ -121,7 +121,7 @@ impl FlipRenderer {
                 })],
             }),
             primitive: tri_list(),
-            depth_stencil: Some(depth_greater(Self::DEPTH_FORMAT)),
+            depth_stencil: Some(depth_greater_equal(Self::DEPTH_FORMAT)),
             multisample: no_msaa(),
             multiview_mask: None,
             cache: None,
@@ -175,7 +175,7 @@ impl FlipRenderer {
                 })],
             }),
             primitive: tri_list(),
-            depth_stencil: Some(depth_greater(Self::DEPTH_FORMAT)),
+            depth_stencil: Some(depth_greater_equal(Self::DEPTH_FORMAT)),
             multisample: no_msaa(),
             multiview_mask: None,
             cache: None,
@@ -352,12 +352,18 @@ pub(crate) fn premult_over() -> wgpu::BlendState {
     }
 }
 
-/// Depth-state da ordem 2D: escreve + teste GREATER (traço/sid maior ganha).
-fn depth_greater(format: wgpu::TextureFormat) -> wgpu::DepthStencilState {
+/// Depth-state da ordem 2D: escreve + teste GREATER-**EQUAL**. Entre traços/fills, o
+/// sid maior tem depth estritamente maior e ganha (igual ao GREATER). No mesmo
+/// depth (um traço passando por CIMA de si mesmo — auto-overlap), o `>=` deixa o
+/// fragmento **desenhado depois** (ponto mais adiante na fita) passar e compor por
+/// cima — como uma caneta real / o Grease Pencil (Enio 2026-07-11: "o mesmo traço
+/// quando passa por cima de si mesmo é pintado por baixo"). Com GREATER puro o 2º
+/// fragmento falhava e a parte mais NOVA sumia sob a mais velha.
+fn depth_greater_equal(format: wgpu::TextureFormat) -> wgpu::DepthStencilState {
     wgpu::DepthStencilState {
         format,
         depth_write_enabled: true,
-        depth_compare: wgpu::CompareFunction::Greater,
+        depth_compare: wgpu::CompareFunction::GreaterEqual,
         stencil: wgpu::StencilState::default(),
         bias: wgpu::DepthBiasState::default(),
     }

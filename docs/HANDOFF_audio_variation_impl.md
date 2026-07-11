@@ -10,7 +10,7 @@
 
 ## 1. Identidade
 - **Branch:** `line/audio` · **merge-base com main:** `1c7c9a22` (= HEAD do main integrado).
-- **HEAD atual:** `845561b8`. **Commits à frente do main:** **7** —
+- **HEAD atual:** `755f51e8`. **Commits à frente do main:** **9** —
   1. `ecd2587a feat(audio): W6 variation containers — random/sequence/shuffle + jitter + weights`
   2. `e48e237b docs(audio): W6 variation containers — tracker + handoff`
   3. `6bf70ca1 feat(audio): W6 import por convenção — Add Folder popula o set (natural sort)`
@@ -18,7 +18,10 @@
   5. `c37efcd3 feat(audio): W6 export Ogg Vorbis via vorbis_rs (ADR-0113); Opus adiado`
   6. `fd3a5fa6 docs(audio): W6 Ogg Vorbis export — tracker + handoff`
   7. `845561b8 fix(audio): undo/redo/invert intermitentes — 3 causas da auditoria multiagente`
+  8. `49edfaa1 docs(audio): auditoria de intermitências (3 fixes + 3 deferidos)`
+  9. `755f51e8 feat(audio): W4 voz — De-Hum (efeito #19 da rack), sem dep, sem tocar o core RT`
 - Árvore limpa. Fast-forward puro sobre o main atual (a linha foi resetada ao main recém-integrado antes de começar).
+- **Nota:** o commit 9 abre o **W4 (tratamento de voz)** — De-Hum é um efeito novo da rack (sem dep, sem contrato, painel auto). Continuação natural: Leveler/AGC · De-Plosive · Comms FX (preset). Só `ph2d-audio-edit`+shell/audio; nada foundational.
 
 ## 2. Foundational / compartilhado tocado (e por quê)
 Só **um** arquivo fora das crates do módulo de áudio, e **aditivo**:

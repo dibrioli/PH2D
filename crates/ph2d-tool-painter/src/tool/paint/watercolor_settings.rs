@@ -302,10 +302,29 @@ impl PainterTool {
         self.paint.paper_image_version = self.paint.paper_image_version.wrapping_add(1);
     }
 
-    /// Set the **Paper** slot kind (`TextureKind` wire u8) + force canvas-anchored mapping.
+    /// Set the **Paper** slot kind (`TextureKind` wire u8) + force canvas-anchored mapping, and reset the
+    /// params to the kind's `param_specs` defaults — mirroring the Grain slot (`reset_texture_params`).
+    /// Without the reset the Paper slot kept the neutral `0.5` params, so e.g. Voronoi rendered with
+    /// Randomness `0.5` + Metric `0.5` (Chebyshev = square cells) instead of its own defaults (Randomness
+    /// `1.0` + Metric `0.0` = organic), looking nothing like the same kind in the Grain slot (Enio 2026-07-11).
     pub fn set_brush_paper_kind(&mut self, k: u8) {
         self.paint.brush.paper.kind = TextureKind::from_u8(k);
         self.paint.brush.paper.mapping = TextureMapping::Tiled;
+        self.reset_paper_params();
+    }
+
+    /// Reset the Paper slot params to the active kind's `param_specs` defaults (unused slots stay at the
+    /// neutral `0.5`). The Paper twin of [`PainterTool::reset_texture_params`], called on a kind change so
+    /// each pattern starts from its own sensible knobs — not the generic neutral that mis-renders Voronoi.
+    fn reset_paper_params(&mut self) {
+        let mut params = [0.5; ph2d_painter_brush::MAX_TEX_PARAMS];
+        for (i, s) in ph2d_painter_brush::param_specs(self.paint.brush.paper.kind)
+            .iter()
+            .enumerate()
+        {
+            params[i] = s.default;
+        }
+        self.paint.brush.paper.params = params;
     }
 
     /// Set the **Paper** slot Size on `axis` (0 = x, 1 = y), clamped to `[0.1, 100]`.

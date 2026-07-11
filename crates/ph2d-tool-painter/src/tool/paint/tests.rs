@@ -4667,6 +4667,39 @@ fn texture_params_reset_on_kind_change_and_set_per_slot() {
     );
 }
 
+/// **The Paper slot resets its params on a kind change, exactly like the Grain slot (Enio 2026-07-11).**
+/// Picking Voronoi in Paper used to keep the neutral `[0.5; 6]` params, so it rendered with Randomness
+/// `0.5` + Metric `0.5` (Chebyshev square cells) instead of Voronoi's own defaults (Randomness `1.0` +
+/// Metric `0.0` = organic Euclidean) — looking nothing like the SAME kind in the Grain slot. Now
+/// `set_brush_paper_kind` resets to the kind's `param_specs` defaults, so Paper == Grain for a kind.
+#[test]
+fn paper_kind_change_resets_params_to_kind_defaults_matching_grain() {
+    use ph2d_painter_brush::{TextureKind, param_specs};
+    let mut t = white_canvas(32, 8.0);
+    let wire = TextureKind::Voronoi.to_u8();
+    t.set_brush_paper_kind(wire);
+    t.set_brush_texture_kind(wire);
+    let paper = t.brush_settings().paper_params;
+    let grain = t.brush_settings().texture_params;
+    // Same kind ⇒ Paper and Grain share the kind defaults (the bug left Paper at the neutral 0.5).
+    assert_eq!(
+        paper, grain,
+        "Paper and Grain of the same kind must reset to the SAME param defaults"
+    );
+    // And specifically the VORONOI defaults, not the neutral 0.5 (`param_specs`: Randomness 1.0, Metric 0.0).
+    let specs = param_specs(TextureKind::Voronoi);
+    assert!(
+        (paper[2] - specs[2].default).abs() < 1e-6 && (paper[2] - 1.0).abs() < 1e-6,
+        "Paper Voronoi Randomness reset to 1.0 (was the neutral 0.5): {}",
+        paper[2]
+    );
+    assert!(
+        (paper[4] - specs[4].default).abs() < 1e-6 && paper[4].abs() < 1e-6,
+        "Paper Voronoi Metric reset to 0.0 = Euclidean (was 0.5 = Chebyshev square): {}",
+        paper[4]
+    );
+}
+
 #[test]
 fn ramp_move_stop_can_cross_a_neighbour_by_id() {
     use ph2d_color::{ColorRamp, RampColorMode, RampInterp, RampStop};

@@ -96,6 +96,7 @@ fn build_soft_body_scene(g: &mut Graph) -> Option<NodeId> {
     g.set_param(body, "spacing", 0.6);
     g.set_param(body, "gravity", 9.0);
     g.set_param(body, "stiffness", 0.35);
+    g.set_param(body, "stretch", 0.3); // a little linear give → squash & stretch
     g.set_param(body, "pin", 1.0); // top row pinned to the anchor
     // A warm magenta blob.
     g.set_param(tint, "mode", 0.0); // Solid

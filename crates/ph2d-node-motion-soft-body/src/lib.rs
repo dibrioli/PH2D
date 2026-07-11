@@ -5,18 +5,25 @@
 //! counterpart to the discrete `motion.verlet_rope`/`motion.boids`: a 2D body that
 //! deforms as a whole and always recovers its form.
 //!
-//! **Algorithm — Müller et al., *Meshless Deformations Based on Shape Matching*
-//! (SIGGRAPH 2005), the gold standard for stable soft bodies.** Each step: predict
-//! the particles under gravity + inertia, find the single **best-fit rigid frame**
-//! `(R, c)` of the rest shape to the deformed cloud, pull every particle a fraction
-//! `stiffness` toward its *goal* `R·qᵢ + c` (its rest position, rotated into that
-//! frame), and read velocity back from the position change. Unlike mass-spring or
-//! constraint meshes it is **unconditionally stable** (the goal is always a valid
-//! rigid pose — nothing to explode) and needs no per-edge constraint list.
+//! **Algorithm.** The *shape-matching constraint* is Müller et al., *Meshless
+//! Deformations Based on Shape Matching* (SIGGRAPH 2005): find the single best-fit
+//! frame `(M, c)` of the rest shape to the deformed cloud, whose *goal* for each
+//! particle is `gᵢ = M·qᵢ + c` (`qᵢ = xᵢ⁰ − c₀`). `M` is the **rigid** rotation `R`
+//! (the polar factor of `A_pq = Σ pᵢ qᵢᵀ`), optionally blended with the paper's
+//! area-preserved **linear** map `A = A_pq A_qq⁻¹` by `stretch` (`M = β·A + (1−β)·R`)
+//! for squash & stretch. The frame math lives in the `shape` sibling module.
 //!
-//! The best-fit rotation is the **polar decomposition** of `Apq = Σ (xᵢ−c)(qᵢ)ᵀ`,
-//! which in 2D has a closed form with NO trig: `(cos, sin) ∝ (Apq₀₀+Apq₁₁,
-//! Apq₁₀−Apq₀₁)`, normalised. So `R` costs one `sqrt` (HR-5).
+//! The *integration* is the **Position-Based Dynamics** reformulation of shape
+//! matching (Müller et al. 2007; Matthias Müller's "Ten Minute Physics"), NOT the
+//! 2005 paper's velocity-blend `v += α(g−x)/h`: predict under gravity + inertia,
+//! project each particle a fraction `stiffness` toward its goal (computed from the
+//! *predicted* cloud), then read velocity back as `v = (x_new − x_old)/dt`. Same
+//! author lineage, and the modern-standard, unconditionally-stable scheme (the goal
+//! is always a valid pose — nothing to explode; no per-edge constraint list).
+//!
+//! Masses are uniform here (`wᵢ = mᵢ = 1` — exact for this even grid, so the paper's
+//! mass-weighted centroid/`A_pq` reduce to the plain sums). The 2D polar factor has
+//! a closed form with NO trig, so `R` costs one `sqrt` (HR-5).
 //!
 //! ## Topology (the `pre` self-loop)
 //!
@@ -42,6 +49,9 @@ use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
 use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, ParamSpec, PortSpec};
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
+
+mod shape;
+use shape::{rest_shape, shape_goals};
 
 const INST_VEC2: PortType = PortType::new(Domain::Instances, Dim::Vec2, Clock::Frame);
 /// The value type of the `anchor_*` inputs (mirror of `motion.look_at::VALUE`).
@@ -103,6 +113,12 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             name: "stiffness",
             default: 0.4,
         },
+        // Linear-deformation blend β ∈ [0,1] (Müller 2005): 0 = rigid, higher =
+        // more squash & stretch (area-preserved). Default 0 → pure rigid.
+        ParamSpec {
+            name: "stretch",
+            default: 0.0,
+        },
         ParamSpec {
             name: "damping",
             default: 0.03,
@@ -123,14 +139,14 @@ struct Params {
     spacing: f32,
     gravity: f32,
     stiffness: f32,
+    /// The Müller 2005 linear-deformation blend `β` ∈ [0,1]: 0 = pure rigid (holds
+    /// shape), higher = more squash & stretch (area-preserved).
+    beta: f32,
     damping: f32,
     pin: bool,
 }
 
 impl Params {
-    fn count(&self) -> usize {
-        self.rows * self.cols
-    }
     /// Whether particle `i` is pinned (the top row, indices `0..cols`, when `pin`).
     fn is_pinned(&self, i: usize) -> bool {
         self.pin && i < self.cols
@@ -155,81 +171,11 @@ fn value_head(vals: &[f32]) -> f32 {
     vals.first().copied().unwrap_or(0.0)
 }
 
-/// The rest shape: a `rows×cols` grid centred on the origin (so its centroid is 0,
-/// which the shape match assumes). Row 0 is the TOP (max y). Returned in row-major
-/// order (row 0 first), so `0..cols` is the top row.
-fn rest_shape(p: &Params) -> Vec<[f32; 2]> {
-    let (w, h) = (
-        (p.cols as f32 - 1.0) * p.spacing,
-        (p.rows as f32 - 1.0) * p.spacing,
-    );
-    let mut q = Vec::with_capacity(p.count());
-    for r in 0..p.rows {
-        for c in 0..p.cols {
-            q.push([
-                c as f32 * p.spacing - w * 0.5,
-                h * 0.5 - r as f32 * p.spacing,
-            ]);
-        }
-    }
-    q
-}
-
 /// The pinned target for the top-row particle at grid column `c`: the anchor plus
 /// that particle's rest offset, so the top edge stays a rigid bar sliding with the
 /// anchor.
 fn pin_target(anchor: [f32; 2], rest: &[[f32; 2]], i: usize) -> [f32; 2] {
     [anchor[0] + rest[i][0], anchor[1] + rest[i][1]]
-}
-
-/// The best-fit rotation `(cos, sin)` of the rest shape to the deformed cloud — the
-/// 2D polar decomposition of `Apq`, closed form (HR-5: one `sqrt`). Identity when
-/// the cloud is degenerate.
-fn polar_rotation(apq: [f32; 4]) -> (f32, f32) {
-    // Apq = [[a00, a01],[a10, a11]]; R minimising ‖A − R‖ has cos ∝ a00+a11,
-    // sin ∝ a10−a01.
-    let (c, s) = (apq[0] + apq[3], apq[2] - apq[1]);
-    let mag = (c * c + s * s).sqrt();
-    if mag < EPS {
-        (1.0, 0.0)
-    } else {
-        (c / mag, s / mag)
-    }
-}
-
-/// The shape-match goal for every particle: pull toward `R·qᵢ + c`, the rest shape
-/// rotated into the deformed cloud's best-fit frame. Pure (no state) — the falsifier
-/// for the polar decomposition.
-fn shape_goals(pred: &[[f32; 2]], rest: &[[f32; 2]]) -> Vec<[f32; 2]> {
-    let n = pred.len();
-    if n == 0 {
-        return Vec::new();
-    }
-    // Centroid of the deformed cloud (the rest centroid is 0 by construction).
-    let mut c = [0.0f32; 2];
-    for p in pred {
-        c[0] += p[0];
-        c[1] += p[1];
-    }
-    c = [c[0] / n as f32, c[1] / n as f32];
-    // Apq = Σ (predᵢ − c)(qᵢ)ᵀ.
-    let mut apq = [0.0f32; 4];
-    for i in 0..n {
-        let (dx, dy) = (pred[i][0] - c[0], pred[i][1] - c[1]);
-        apq[0] += dx * rest[i][0];
-        apq[1] += dx * rest[i][1];
-        apq[2] += dy * rest[i][0];
-        apq[3] += dy * rest[i][1];
-    }
-    let (cos, sin) = polar_rotation(apq);
-    rest.iter()
-        .map(|q| {
-            [
-                cos * q[0] - sin * q[1] + c[0],
-                sin * q[0] + cos * q[1] + c[1],
-            ]
-        })
-        .collect()
 }
 
 /// One shape-matching step as a pure function. `pos`/`vel` are this tick's entry
@@ -256,7 +202,7 @@ fn step(
         }
     }
     // Match the rest shape and pull each particle a fraction toward its goal.
-    let goals = shape_goals(&pred, rest);
+    let goals = shape_goals(&pred, rest, p.beta);
     let mut out_pos = vec![[0.0f32; 2]; n];
     let mut out_vel = vec![[0.0f32; 2]; n];
     let keep = 1.0 - p.damping;
@@ -287,7 +233,7 @@ fn step(
 /// The whole node as a pure function: seed on the first tick / a shape change,
 /// else step. Emits `P` + the `sb_vel`/`sim_t` state.
 fn simulate(anchor: [f32; 2], state: &Stream, playhead: f32, p: &Params) -> Stream {
-    let rest = rest_shape(p);
+    let rest = rest_shape(p.rows, p.cols, p.spacing);
     let n = rest.len();
     let s_pos = vec2_col(state, "P");
     let s_vel = vec2_col(state, "sb_vel");
@@ -333,6 +279,7 @@ impl NodeOp for MotionSoftBody {
             spacing: ctx.param("spacing").max(1e-3),
             gravity: ctx.param("gravity"),
             stiffness: ctx.param("stiffness").clamp(0.0, 1.0),
+            beta: ctx.param("stretch").clamp(0.0, 1.0),
             damping: ctx.param("damping").clamp(0.0, 0.99),
             pin: ctx.param("pin") >= 0.5,
         };
@@ -407,6 +354,14 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         widget: ParamWidget::Slider,
     },
     ParamUiHint {
+        param: "stretch",
+        label: "Stretch",
+        min: 0.0,
+        max: 1.0,
+        step: 0.01,
+        widget: ParamWidget::Slider,
+    },
+    ParamUiHint {
         param: "damping",
         label: "Damping",
         min: 0.0,
@@ -437,6 +392,7 @@ mod tests {
             spacing: 0.7,
             gravity,
             stiffness,
+            beta: 0.0,
             damping: 0.0,
             pin,
         }
@@ -479,52 +435,9 @@ mod tests {
         assert!((mean[0] - 2.0).abs() < 1e-4 && (mean[1] - 1.0).abs() < 1e-4);
     }
 
-    /// The polar decomposition is CORRECT: a rest shape placed as a pure rigid pose
-    /// (rotation + translation) shape-matches to ITSELF — every goal equals its
-    /// predicted position, so a rigid body feels no spurious deformation. FALSIFIED
-    /// by a wrong `(cos, sin)`: the goals would twist away from the rigid pose.
-    #[test]
-    fn shape_match_is_rigid_invariant() {
-        let p = params(3, 3, 0.0, 1.0, false);
-        let rest = rest_shape(&p);
-        // A known rigid pose: rotate every rest point by ~37° and translate. (c, s)
-        // is unit to ~1e-6 — the shape match must recover the pure rotation.
-        let (c, s) = (0.79864_f32, 0.60181_f32); // cos/sin 37°
-        let posed: Vec<[f32; 2]> = rest
-            .iter()
-            .map(|q| [c * q[0] - s * q[1] + 5.0, s * q[0] + c * q[1] - 2.0])
-            .collect();
-        let goals = shape_goals(&posed, &rest);
-        for (g, p2) in goals.iter().zip(&posed) {
-            assert!(
-                (g[0] - p2[0]).abs() < 1e-3 && (g[1] - p2[1]).abs() < 1e-3,
-                "rigid pose is its own goal: {g:?} vs {p2:?}"
-            );
-        }
-    }
-
-    /// Shape recovery: deform the body (yank one corner far out) and the shape match
-    /// pulls it back toward the rest shape — its goal is much closer to rest than the
-    /// yanked position. FALSIFIED by no recovery (the goal would stay at the yank).
-    #[test]
-    fn it_recovers_its_shape_after_a_deformation() {
-        let p = params(3, 3, 0.0, 1.0, false);
-        let rest = rest_shape(&p);
-        let mut deformed = rest.clone();
-        deformed[8] = [10.0, 10.0]; // yank the last corner far away
-        let goals = shape_goals(&deformed, &rest);
-        // Squared errors from rest (no transcendental) — the goal must be far closer.
-        let sq = |a: [f32; 2], b: [f32; 2]| {
-            let (dx, dy) = (a[0] - b[0], a[1] - b[1]);
-            dx * dx + dy * dy
-        };
-        let yank_err = sq(deformed[8], rest[8]);
-        let goal_err = sq(goals[8], rest[8]);
-        assert!(
-            goal_err < yank_err * 0.25,
-            "the goal snaps back toward rest (err² {goal_err}) vs the yank (err² {yank_err})"
-        );
-    }
+    // (The pure shape-match geometry — rigid invariance, shape recovery, and the
+    // `beta` linear-deformation mode — is falsified in the `shape` module's own
+    // tests. Here we exercise the full sequential simulation.)
 
     /// Gravity + pin: the pinned top row holds at the anchor while the free body
     /// sags below it over time. FALSIFIED by a dead body (no gravity) — it stays put.
@@ -575,7 +488,7 @@ mod tests {
     #[test]
     fn without_the_state_loop_it_holds_the_rest_mesh() {
         let p = params(3, 3, 12.0, 0.5, true);
-        let rest = rest_shape(&p);
+        let rest = rest_shape(p.rows, p.cols, p.spacing);
         for k in 0..20 {
             let out = simulate([1.0, 0.0], &Stream::new(0), k as f32 / 60.0, &p);
             let pos = vec2_col(&out, "P");
@@ -589,7 +502,7 @@ mod tests {
     #[test]
     fn non_finite_state_recovers() {
         let p = params(2, 2, 9.0, 0.5, false);
-        let rest = rest_shape(&p);
+        let rest = rest_shape(p.rows, p.cols, p.spacing);
         let state = Stream::new(4)
             .with(
                 "P",

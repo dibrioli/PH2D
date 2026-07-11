@@ -110,9 +110,11 @@ ANTES de codar (DIRETIVA §1). Pesquisa por fatia:
 **M4.1 (21):** `motion.verlet_rope` (Verlet/Jakobsen) + `motion.boids` (Reynolds) — partículas discretas.
 
 **Fatia M4.2 (22) — mídia contínua na simulação (sequencial, `pre` self-loop):**
-- **`motion.soft_body`** (`ph2d-node-motion-soft-body`): **shape-matching (Müller 2005)** — malha `rows×cols`
-  que amassa e volta à forma; melhor frame rígido por **decomposição polar 2D em forma fechada** (só `sqrt`,
-  sem trig — testado por invariância rígida); fileira de cima fixada na âncora animável. `Temporal`, Source.
+- **`motion.soft_body`** (`ph2d-node-motion-soft-body` + módulo irmão `shape.rs`): **shape-matching (Müller
+  2005)** — malha `rows×cols` que amassa e volta à forma; frame por **decomposição polar 2D em forma fechada**
+  (só `sqrt`, sem trig) + **modo linear β `stretch`** (squash & stretch, área-preservado); integração
+  **PBD/Ten-Minute-Physics** (predict→project→derivar-velocidade). Fileira de cima fixada na âncora animável.
+  `Temporal`, Source. (Verificado contra as equações canônicas dos autores; atribuição corrigida.)
 - **`motion.wave`** (`ph2d-node-motion-wave`): **equação de onda por diferenças finitas, leapfrog** — grade
   `rows×cols`, Laplaciano de 5 pontos (Neumann), `C=(c·dt)²` clampado sob CFL 0.5, centro dirigido por
   `drive`; altura → `size` (anéis concêntricos). Aritmética pura. `Temporal`, Source.
@@ -120,7 +122,8 @@ ANTES de codar (DIRETIVA §1). Pesquisa por fatia:
   esquerda + um **campo de ondas** (wave, drive ← lfo) à direita — um corpo deformável, um campo que propaga.
 
 ## 1. Gates no fechamento (paridade §7) — última fatia (M4.2)
-- **Unit:** `motion.soft_body` 9 + `motion.wave` 7 (falsificados). Fatias anteriores: math 7 / compare 7 /
+- **Unit:** `motion.soft_body` 11 (7 sim em `lib.rs` + 4 geometria em `shape.rs`, inclui modo-linear β) +
+  `motion.wave` 7 (falsificados). Fatias anteriores: math 7 / compare 7 /
   switch 5 / on_change 6 / fibonacci 6 / twist 7 / scatter 6 / morph 6 / bend 7 / look_at 6 / verlet_rope 9 /
   boids 9.
 - **Integração (shell, registry real):** `cargo test -p ph2d-host-desktop --bin ph2d-host-desktop motion`

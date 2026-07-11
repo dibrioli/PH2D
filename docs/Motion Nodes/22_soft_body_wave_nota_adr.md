@@ -19,16 +19,28 @@ oscilador per-element consegue, porque exige acoplamento espacial + memória tem
 
 ## 2. A pesquisa do padrão-ouro (antes de codar — DIRETIVA §1)
 
-**`motion.soft_body` (o corpo mole):** o padrão-ouro de soft body ESTÁVEL é o **shape-matching de Müller et
-al. — *Meshless Deformations Based on Shape Matching* (SIGGRAPH 2005)**. Veredito:
+**`motion.soft_body` (o corpo mole):** o padrão-ouro é o **shape-matching de Müller et al. — *Meshless
+Deformations Based on Shape Matching* (SIGGRAPH 2005)**. **Verifiquei as equações canônicas contra o material
+dos próprios autores** (regra "no industrial claims"). Veredito:
 
-- Cada passo: prevê as partículas sob gravidade+inércia, acha o **melhor frame rígido** `(R, c)` da forma de
-  repouso na nuvem deformada, puxa cada partícula uma fração `stiffness` rumo ao seu **goal** `R·qᵢ + c`, e
-  lê a velocidade de volta da mudança de posição. **Incondicionalmente estável** (o goal é sempre uma pose
-  rígida válida — nada explode), sem lista de constraints por-aresta. É o motor de blob/jelly gooey.
-- A rotação `R` é a **decomposição polar de `Apq = Σ (xᵢ−c)(qᵢ)ᵀ`**, que em 2D tem **forma fechada SEM trig**:
-  `(cos, sin) ∝ (Apq₀₀+Apq₁₁, Apq₁₀−Apq₀₁)`, normalizado. Um `sqrt` só (HR-5). Testado por **invariância
-  rígida** (uma pose rígida da forma de repouso shape-match para si mesma — o falsificador do sinal do polar).
+- **Shape-matching constraint (2005, verificado idêntico):** acha o **melhor frame** `(M, c)` da forma de
+  repouso na nuvem deformada; o **goal** de cada partícula é `gᵢ = M·qᵢ + c` (`qᵢ = xᵢ⁰ − c₀`). `M` é a
+  rotação **rígida** `R` = fator polar de `A_pq = Σ pᵢ qᵢᵀ` (`R = A_pq S⁻¹`, `S = √(A_pqᵀA_pq)`), que em 2D
+  tem **forma fechada SEM trig**: `(cos,sin) ∝ (A₀₀+A₁₁, A₁₀−A₀₁)`, normalizado — um `sqrt` só (HR-5). Massa
+  **uniforme** (`wᵢ=mᵢ=1`, exato p/ a grade par → os pesos do paper somem). Testado por **invariância rígida**
+  (o falsificador do sinal do polar).
+- **Modo linear (β, 2005 — ADICIONADO nesta auditoria):** o paper também blenda o mapa linear de
+  mínimos-quadrados `A = A_pq A_qq⁻¹`, **com preservação de área** `A / √det(A)` (o `A/det(A)^{1/d}`, d=2),
+  dando `M = β·A + (1−β)·R` — **squash & stretch** de gelatina (o modo rígido puro não deforma). Param
+  `stretch` (β∈[0,1], default 0 = byte-idêntico ao rígido; a cena boot usa 0.3). Testado por
+  **segue-o-stretch** (β=1 acompanha um cisalhamento área-preservante; β=0 volta ao repouso) + **preserva
+  área** (uma escala uniforme ×3 é normalizada de volta).
+- **Integração — divergência HONESTA do paper de 2005:** eu uso a formulação **PBD (Müller et al. 2007 /
+  "Ten Minute Physics")** — *predict → project ao goal → derivar velocidade* `v=(x_new−x_old)/dt` — e **NÃO**
+  o velocity-blend `v += α(g−x)/h` da eq. 12 do paper de 2005 (o goal aqui vem da nuvem PREVISTA, não da
+  atual). Mesma linhagem de autores, é o esquema **moderno-padrão** e incondicionalmente estável — mas o doc
+  foi **corrigido** pra atribuir certo (antes dizia "Müller 2005" pra a integração que é 2007). Geometria em
+  módulo irmão `shape.rs`.
 - A **âncora fixa a fileira de cima** (`anchor_x`/`anchor_y` value inputs): um `value.lfo` desliza o pino e o
   corpo **balança como gelatina**. `Temporal`.
 
@@ -46,8 +58,9 @@ tempo**. Veredito:
 ## 3. O que foi adicionado (fatia M4.2)
 
 **`ph2d-node-motion-soft-body` (drop-crate, o CORPO MOLE):** `(anchor_x?, anchor_y?, state) → out`. Malha
-`rows×cols` shape-matching; fileira de cima fixada na âncora animável (`pin`), gravidade + goal-pull. Estado
-`P`+`sb_vel` no `pre`. `Temporal`, Source, `sqrt` só na decomposição polar 2D.
+`rows×cols` shape-matching (geometria em `shape.rs`); fileira de cima fixada na âncora animável (`pin`),
+gravidade + goal-pull; params `stiffness`/`stretch`(β)/`damping`. Estado `P`+`sb_vel` no `pre`. `Temporal`,
+Source, `sqrt` só na polar 2D + preservação de área.
 
 **`ph2d-node-motion-wave` (drop-crate, o CAMPO DE ONDA):** `(drive?, state) → out`. Grade `rows×cols`, equação
 de onda leapfrog + Laplaciano de 5 pontos (Neumann), centro dirigido por `drive`. Emite `P` (grade fixa) +
@@ -64,7 +77,7 @@ DIREITA  (ripple): wave      → tint(ciano)   → output       lfo_drive  → w
 ```
 
 - **soft_body** (x≈−6): a gravidade pendura o jelly da fileira fixada, o `anchor_x` (`value.lfo` ±1.2)
-  desliza o pino → **balança como gelatina** e volta à forma.
+  desliza o pino → **balança como gelatina** (`stretch`=0.3 → squash & stretch) e volta à forma.
 - **wave** (centro x≈+6): o `drive` (`value.lfo`) oscila a célula central → **ripples concêntricos** incham
   os pontos pra fora.
 
@@ -72,10 +85,12 @@ Duas sims de mídia contínua (um corpo deformável, um campo que propaga), cada
 valor, em regiões separadas do canvas. Pequena e legível (regra do doc 12 / feedback "simplifique"). A
 contraparte discreta é o doc 21 (rope+boids).
 
-**Testes (16 unit + 3 integração):** soft_body (9: seed da malha de repouso na âncora, **invariância rígida**
-[pose rígida = seu próprio goal], **recupera a forma** após deformar, gravidade pendura abaixo da fileira
-fixada, âncora móvel arrasta o corpo, replay determinístico, sem-loop = malha de repouso, NaN recupera, cook
-com pre-loop — falsificados); wave (7: seed plano, **fonte propaga outward** [vs speed 0], **velocidade
+**Testes (18 unit + 3 integração):** soft_body (11: em `shape.rs` — **invariância rígida** [pose rígida = seu
+próprio goal, falsifica o sinal do polar], **recupera a forma** rígida, **modo linear segue o stretch** [β=1
+acompanha, β=0 volta ao repouso], **preserva área** [escala ×3 normalizada]; em `lib.rs` — seed da malha na
+âncora, gravidade pendura abaixo da fileira fixada, âncora móvel arrasta o corpo, replay determinístico,
+sem-loop = malha de repouso, NaN recupera, cook com pre-loop — falsificados); wave (7: seed plano, **fonte
+propaga outward** [vs speed 0], **velocidade
 finita** [vizinho move no tick 2, célula distante ainda 0], **damping limita e silencia**, replay, sem-loop =
 plano, cook emitindo `size` — falsificados). Integração no shell:
 `the_soft_body_hangs_and_wobbles_from_the_moving_anchor` (base afunda abaixo do topo fixado + a âncora varre
@@ -87,7 +102,7 @@ sequencial completo).
 
 | Símbolo | Onde | Risco de colisão |
 |---|---|---|
-| crate `ph2d-node-motion-soft-body`, tipo `motion.soft_body` | nova | nome novo |
+| crate `ph2d-node-motion-soft-body`, tipo `motion.soft_body` (+ módulo irmão `shape.rs`) | nova | nome novo |
 | crate `ph2d-node-motion-wave`, tipo `motion.wave` | nova | nome novo |
 | `ph2d-node-registry-init` regenerado (50 crates) | codegen | **conflito provável** → `cargo run -p ph2d-node-sync` |
 | cena boot `motion_demo_strobe.rs` (reescrita p/ soft_body+wave, 2 cenas, 8 nós) | shell | módulo Motion |

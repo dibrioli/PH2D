@@ -133,9 +133,12 @@ pub(crate) fn bake_stroke(
         return false;
     };
 
+    // Active smoothing (T2.7): o mesmo que o preview mostrou (o baked casa com o
+    // que se via). As pressões seguem 1:1 (o smooth só move posições).
+    let smoothed = crate::flip_smooth::active_smooth(points, style.smoothing);
     drawing
         .strokes
-        .push(build_stroke(style, points, pressures, px_to_world));
+        .push(build_stroke(style, &smoothed, pressures, px_to_world));
     true
 }
 
@@ -221,8 +224,11 @@ impl crate::App {
         }
         let win = gfx.surface.size();
         let px_to_world = gfx.camera.height_world.max(f32::EPSILON) / win.height.max(1) as f32;
+        // Mesmo active smoothing do bake → o preview mostra o traço FINAL.
+        let smoothed = crate::flip_smooth::active_smooth(pts, style.smoothing);
         let mut d = FlipDrawing::default();
-        d.strokes.push(build_stroke(&style, pts, prs, px_to_world));
+        d.strokes
+            .push(build_stroke(&style, &smoothed, prs, px_to_world));
         Some(pack_drawing(&d))
     }
 

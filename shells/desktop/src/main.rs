@@ -39,6 +39,7 @@ mod cursor_pos;
 mod flip_demo;
 mod flip_draw;
 mod flip_entities;
+mod flip_smooth;
 mod forwarding;
 mod hero_bridge;
 mod hero_intents;

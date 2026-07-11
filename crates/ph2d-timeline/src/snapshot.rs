@@ -75,6 +75,8 @@ pub struct TimelineViewSnapshot {
     pub auto_key: bool,
     /// Frame snapping on.
     pub frame_snap: bool,
+    /// Performing (record-during-play) armed.
+    pub performing: bool,
 }
 
 impl TimelineViewSnapshot {
@@ -91,6 +93,7 @@ impl TimelineViewSnapshot {
         self.duration_seconds = doc.active_clip().duration().to_seconds();
         self.auto_key = state.flags.auto_key;
         self.frame_snap = state.flags.frame_snap;
+        self.performing = state.flags.performing;
 
         // Markers (reuse buffer).
         self.markers.clear();

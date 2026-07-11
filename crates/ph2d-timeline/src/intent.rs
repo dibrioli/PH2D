@@ -192,6 +192,8 @@ pub enum TimelineIntent {
     SetAutoKey(bool),
     /// Enable/disable frame snapping of edited/scrubbed times.
     SetFrameSnap(bool),
+    /// Arm/disarm performing (record-during-play, W5).
+    SetPerforming(bool),
 
     // ── history ─────────────────────────────────────────────────────────────
     /// Open an undo bracket around a multi-frame gesture (a graph-handle drag).
@@ -410,6 +412,7 @@ pub fn apply_intent(state: &mut TimelineState, playhead: &mut Playhead, intent: 
         // flags
         I::SetAutoKey(on) => state.flags.auto_key = on,
         I::SetFrameSnap(on) => state.flags.frame_snap = on,
+        I::SetPerforming(on) => state.flags.performing = on,
 
         // history
         I::BeginEdit => state.history.begin(&state.doc),

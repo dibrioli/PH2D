@@ -33,9 +33,14 @@ fn is_chip(id: NodeId) -> bool {
     id == ids::TIMELINE_TIME_NUM || id == ids::TIMELINE_FRAME_NUM
 }
 
-/// The three transport toggles (Toggled → `PanelEvent::Toggle`).
+/// The transport toggles routed to the shell (Toggled → `PanelEvent::Toggle`).
+/// `TIMELINE_SPEED` is deliberately absent — it is a panel-local VIEW toggle,
+/// handled in `apply_event` without reaching the shell.
 fn is_toggle(id: NodeId) -> bool {
-    id == ids::TIMELINE_LOOP || id == ids::TIMELINE_AUTOKEY || id == ids::TIMELINE_SNAP
+    id == ids::TIMELINE_LOOP
+        || id == ids::TIMELINE_AUTOKEY
+        || id == ids::TIMELINE_RECORD
+        || id == ids::TIMELINE_SNAP
 }
 
 pub(crate) fn apply_event(

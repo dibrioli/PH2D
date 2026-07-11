@@ -46,7 +46,8 @@ fn tx_at(st: &TimelineState, t: f64) -> Option<f32> {
     }
 }
 
-/// One frame of the pass with the given selection samples.
+/// One frame of the pass with the given selection samples (performing off —
+/// these tests exercise ordinary auto-key; performing has its own block below).
 fn frame(
     st: &mut TimelineState,
     ph: &Playhead,
@@ -55,7 +56,28 @@ fn frame(
     armed: bool,
     ak: &mut AutokeyState,
 ) {
-    apply_samples(st, ph, samples, drag_now, armed, ak);
+    apply_samples(st, ph, samples, drag_now, armed, false, ak);
+}
+
+/// One frame with performing (record) armed — for the record-during-play tests.
+fn frame_perf(
+    st: &mut TimelineState,
+    ph: &Playhead,
+    samples: &[(u64, PoseSample)],
+    drag_now: bool,
+    armed: bool,
+    ak: &mut AutokeyState,
+) {
+    apply_samples(st, ph, samples, drag_now, armed, true, ak);
+}
+
+fn track_len(st: &TimelineState) -> usize {
+    let target = st
+        .doc
+        .binding_for(E, PropKind::TranslationX)
+        .unwrap()
+        .target;
+    st.doc.active_clip().track(target).unwrap().len()
 }
 
 // Pausing mid-play lands the playhead at a RAW time (multiples of the sim
@@ -410,5 +432,128 @@ fn playing_does_not_auto_key_even_when_the_pose_looks_off_its_curve() {
         tx_at(&st, 0.5),
         Some(7.0),
         "paused: the off-curve pose keys as before"
+    );
+}
+
+// ── Performing / record (W5) — the aviso do Enio, made irrefutable ──────────
+// The rule: while PLAYING, only an active gizmo drag with Record armed writes a
+// key. The passive pose the animation is driving must NEVER mint one — a plain
+// Play (even with AutoKey armed) records nothing.
+
+#[test]
+fn a_plain_play_with_autokey_armed_records_nothing() {
+    // THE bug Enio warned about: play with AutoKey on used to mint keys. Even
+    // with the pose sitting OFF the curve (worst case), no drag = no key.
+    let (mut st, mut ph) = state_with_tx_track();
+    ph.seek(0.5);
+    ph.play();
+    let mut ak = AutokeyState::default();
+    // armed = auto-key on; performing off; NO drag.
+    frame(
+        &mut st,
+        &ph,
+        &[(E, pose(&[(TX, 7.0)]))],
+        false,
+        true,
+        &mut ak,
+    );
+    assert_eq!(
+        track_len(&st),
+        2,
+        "a plain Play (AutoKey armed, no drag) must record nothing"
+    );
+}
+
+#[test]
+fn performing_without_a_drag_records_nothing() {
+    // Record armed, playing, pose off the curve — but no gesture. The animation
+    // playing on its own is not a performance: nothing is recorded.
+    let (mut st, mut ph) = state_with_tx_track();
+    ph.seek(0.5);
+    ph.play();
+    let mut ak = AutokeyState::default();
+    frame_perf(
+        &mut st,
+        &ph,
+        &[(E, pose(&[(TX, 7.0)]))],
+        false,
+        false,
+        &mut ak,
+    );
+    assert_eq!(
+        track_len(&st),
+        2,
+        "Record without a drag records nothing — it is the GESTURE that captures"
+    );
+}
+
+#[test]
+fn performing_with_a_drag_records_the_dragged_pose() {
+    // The feature: playing + Record + a live drag pushing the pose off its curve
+    // → the dragged value is captured at the playhead.
+    let (mut st, mut ph) = state_with_tx_track();
+    ph.seek(0.5);
+    ph.play();
+    let mut ak = AutokeyState::default();
+    // drag_now = true; performing armed (frame_perf).
+    frame_perf(
+        &mut st,
+        &ph,
+        &[(E, pose(&[(TX, 7.0)]))],
+        true,
+        false,
+        &mut ak,
+    );
+    assert_eq!(track_len(&st), 3, "the drag records a key at the playhead");
+    assert_eq!(
+        tx_at(&st, 0.5),
+        Some(7.0),
+        "and it carries the dragged value, not the curve's"
+    );
+}
+
+#[test]
+fn performing_is_inert_when_paused() {
+    // Record is a play-only mode: paused, it changes nothing (paused authoring
+    // is AutoKey / manual K). Pose ON its curve so the pin doesn't engage.
+    let (mut st, mut ph) = state_with_tx_track();
+    ph.seek(0.5);
+    ph.pause();
+    let on_curve = pose(&[(TX, tx_at(&st, 0.5).unwrap())]);
+    let mut ak = AutokeyState::default();
+    // performing on, auto-key OFF, a drag — but PAUSED.
+    frame_perf(&mut st, &ph, &[(E, on_curve)], true, false, &mut ak);
+    assert_eq!(track_len(&st), 2, "Record does nothing while paused");
+}
+
+#[test]
+fn a_performing_session_is_one_undo_step() {
+    // A record spans many played frames (one drag). The whole trajectory must
+    // collapse into ONE undo step, like a gizmo drag — not one per frame.
+    let (mut st, mut ph) = state_with_tx_track();
+    ph.play();
+    let mut ak = AutokeyState::default();
+    // Drag held across three played frames, recording at three times.
+    for (t, v) in [(0.25, 3.0f32), (0.5, 6.0), (0.75, 9.0)] {
+        ph.seek(t);
+        frame_perf(&mut st, &ph, &[(E, pose(&[(TX, v)]))], true, false, &mut ak);
+    }
+    // Release the drag — closes the one bracket.
+    ph.seek(0.75);
+    frame_perf(
+        &mut st,
+        &ph,
+        &[(E, pose(&[(TX, 9.0)]))],
+        false,
+        false,
+        &mut ak,
+    );
+    assert_eq!(track_len(&st), 5, "three recorded keys + the two originals");
+    assert!(st.history.can_undo(), "the session banked an undo step");
+    apply_intent(&mut st, &mut ph, I::Undo);
+    assert_eq!(
+        track_len(&st),
+        2,
+        "ONE undo removes the whole recording session, not just the last frame"
     );
 }

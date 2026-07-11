@@ -116,6 +116,13 @@ pub struct TimelineFlags {
     pub auto_key: bool,
     /// Snap edited/scrubbed times to whole display frames.
     pub frame_snap: bool,
+    /// **Performing / record** armed (W5): while the transport is PLAYING,
+    /// dragging a bound object records its pose live along the playhead — mocap
+    /// by hand. Distinct from `auto_key`, which is inert during play precisely
+    /// so the tocando animation cannot mint keys on its own: record fires ONLY
+    /// with an active manipulation gesture, never the passive pose the curve is
+    /// driving. Off by default — it is a modal, explicit mode.
+    pub performing: bool,
 }
 
 impl Default for TimelineFlags {
@@ -126,6 +133,8 @@ impl Default for TimelineFlags {
             // (the transport pill shows the state and can disarm it).
             auto_key: true,
             frame_snap: true,
+            // Record is modal and deliberate — never armed on its own.
+            performing: false,
         }
     }
 }

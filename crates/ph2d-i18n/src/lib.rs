@@ -92,6 +92,7 @@ pub fn tr(key: &str) -> &'static str {
         "panel.timeline.frame" => "Frame",
         "panel.timeline.loop" => "Loop",
         "panel.timeline.autokey" => "AutoKey",
+        "panel.timeline.record" => "Record",
         "panel.timeline.snap" => "Snap",
         "panel.timeline.speed" => "Speed",
         "panel.timeline.prop.translate_x" => "Translate X",

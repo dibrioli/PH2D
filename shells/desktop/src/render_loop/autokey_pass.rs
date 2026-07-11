@@ -14,9 +14,15 @@
 //! across the whole gesture; a discrete edit (Inspector field, Reset) is one step
 //! for the frame it lands on.
 //!
-//! While the transport is **playing**, the pass is inert: the pose is the
-//! animation driving the object, not a user edit, so there is nothing to key
-//! (record-during-play "performing" is W5, not v1).
+//! While the transport is **playing**, ordinary auto-key stays inert: the pose
+//! is the animation driving the object, not a user edit, so there is nothing to
+//! key. The ONE exception is **performing / record** (W5): with `Record` armed,
+//! a live gizmo drag records the dragged pose along the playhead (mocap by
+//! hand). The guard is strict on purpose — `performing && drag_now` — so the
+//! passive pose the animation is driving can NEVER mint a key on its own; only
+//! an active manipulation gesture records. (That, plus the diff comparing at
+//! the apply's raw clock below, is why a plain Play — even with AutoKey armed —
+//! records nothing.)
 //!
 //! **Disarmed, the pass pins instead of keying.** Without the pin, posing a
 //! bound object for a manual K was impossible: the apply pass rewrote the pose
@@ -80,7 +86,11 @@ pub(crate) fn run(
     hero: &HeroScreen,
     world: &World,
 ) {
-    let armed = hero.is_panel_visible("timeline") && timeline.flags.auto_key;
+    let panel_open = hero.is_panel_visible("timeline");
+    let armed = panel_open && timeline.flags.auto_key;
+    // Performing needs the panel open too (same gate as auto-key): record is a
+    // timeline authoring mode, meaningless when its UI is hidden.
+    let performing = panel_open && timeline.flags.performing;
     let drag_now = hero.gizmo.drag.is_some();
     // Sample every selected sprite's live pose, in selection order.
     let samples: Vec<(u64, PoseSample)> = hero
@@ -88,7 +98,9 @@ pub(crate) fn run(
         .iter_selected()
         .map(|e| (e, sample_pose(world, e)))
         .collect();
-    apply_samples(timeline, playhead, &samples, drag_now, armed, ak);
+    apply_samples(
+        timeline, playhead, &samples, drag_now, armed, performing, ak,
+    );
 }
 
 /// The pure core of the pass: given each selected sprite's sampled pose, key what
@@ -101,18 +113,24 @@ pub(crate) fn apply_samples(
     samples: &[(u64, PoseSample)],
     drag_now: bool,
     armed: bool,
+    performing: bool,
     ak: &mut AutokeyState,
 ) {
-    // While the transport is PLAYING the pose changes every frame because the
-    // animation is driving the object, not the user — so auto-key must stay
-    // silent (v1 has no record-during-play "performing"; that is W5). Without
-    // this, the apply pass writes world = curve(raw playhead t) each frame while
-    // the off-curve diff below compares against curve(snapped t); the two
-    // disagree under frame-snap / float drift, so every played frame would mint a
-    // spurious key. The baseline still advances below (exactly as when disarmed),
-    // so pausing mid-play never misreads the settled pose as a jump.
+    // Whether this frame CAPTURES the pose into keys.
+    //  - Paused: ordinary auto-key (`armed`) — a UI edit off the curve keys.
+    //  - Playing: ONLY performing, and ONLY with a live gizmo drag. The pose
+    //    changes every played frame because the animation drives it, not the
+    //    user — so capturing the passive pose would mint a key per frame (the
+    //    "autoplay creates keyframes" bug). Requiring an active drag makes that
+    //    impossible: a plain Play, even with AutoKey armed, never records.
+    // The baseline still advances below regardless, so pausing mid-play never
+    // misreads the settled pose as a jump.
     let playing = playhead.is_playing();
-    let armed = armed && !playing;
+    let capturing = if playing {
+        performing && drag_now
+    } else {
+        armed
+    };
     let fps = timeline.doc.fps_display;
     let t = ph2d_timeline::snap_time(
         RationalTime::from_seconds(playhead.time()),
@@ -148,7 +166,11 @@ pub(crate) fn apply_samples(
         // as the Time-remap K seed: compare where you read.
         let t_diff = RationalTime::from_seconds(t_src);
         let base = ak.baseline.get(&entity).copied().unwrap_or([None; 6]);
-        if armed {
+        if capturing {
+            // Performing (playing) records only what the DRAG pushed off the
+            // curve; under a plain Play the drag is the sole source of an
+            // off-curve pose, so this naturally captures just the dragged
+            // entity's trajectory, key per display frame.
             for (prop, v) in autokey_props(&timeline.doc, entity, t_diff, &pose, &base, true) {
                 to_key.push((entity, prop, v, t_e));
             }
@@ -163,7 +185,7 @@ pub(crate) fn apply_samples(
             // one is never overwritten by the apply, so it needs no pin.
             let off_curve =
                 !autokey_props(&timeline.doc, entity, t_diff, &pose, &base, false).is_empty();
-            if !armed && off_curve {
+            if !capturing && off_curve {
                 ak.displaced.insert(entity);
             } else {
                 ak.displaced.remove(&entity);
@@ -173,10 +195,12 @@ pub(crate) fn apply_samples(
     }
     ak.baseline = next_baseline;
 
-    if armed {
+    if capturing {
         // A gizmo drag opens one step on its first frame; a discrete edit brackets
         // just this frame. Guard on `is_open` so we never nest inside a panel edit
-        // bracket already in flight.
+        // bracket already in flight. A performing session is a drag, so it takes
+        // the drag branch — the whole record (across every played frame) commits
+        // as ONE undo step when the drag ends, below.
         if drag_now && !ak.drag_active && !timeline.history.is_open() {
             timeline.history.begin(&timeline.doc);
         }

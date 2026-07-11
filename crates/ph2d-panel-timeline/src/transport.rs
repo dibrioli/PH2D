@@ -134,6 +134,17 @@ pub(crate) fn paint_bar(
         ph2d_i18n::tr("panel.timeline.autokey"),
         snap.auto_key,
     ) + gap;
+    // Record / performing (W5) — records the pose LIVE while playing + dragging,
+    // sits next to AutoKey (its paused counterpart).
+    x = toggle(
+        ctx,
+        theme,
+        x,
+        y,
+        ids::TIMELINE_RECORD,
+        ph2d_i18n::tr("panel.timeline.record"),
+        snap.performing,
+    ) + gap;
     x = toggle(
         ctx,
         theme,

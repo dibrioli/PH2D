@@ -169,6 +169,28 @@ fn snap_toggle_raises_toggle_event() {
     );
 }
 
+#[test]
+fn record_toggle_raises_toggle_event() {
+    // The Record (performing) toggle must reach the shell as a document command
+    // (→ SetPerforming), NOT stay panel-local like the Speed view toggle.
+    let mut host = MockPanelHost::with_panel::<TimelinePanel>();
+    let mut state = TimelinePanelState::default();
+    // Turn it on in the store, then fire the event (dispatch re-reads the store).
+    host.set_toggle_on(ids::TIMELINE_RECORD, true);
+    let outcome = host
+        .apply_panel_event::<TimelinePanel>(&mut state, WidgetEvent::Toggled(ids::TIMELINE_RECORD));
+    assert_eq!(
+        outcome,
+        EventOutcome::Consumed,
+        "the Record toggle arm is missing from event.rs"
+    );
+    assert_eq!(
+        timeline_events(&mut host),
+        vec![PanelEvent::Toggle(ids::TIMELINE_RECORD, true)],
+        "Record must reach the shell so it arms performing (SetPerforming)"
+    );
+}
+
 /// A real document with one bound `(entity, prop)` row, its snapshot published
 /// — the same objects the shell hands the live panel. Returns the row's raw
 /// `AnimTarget`.

@@ -90,6 +90,7 @@ pub(crate) fn intent_for_transport(
             I::SetLoop(None)
         }),
         PanelEvent::Toggle(id, on) if id == ids::TIMELINE_AUTOKEY => Some(I::SetAutoKey(on)),
+        PanelEvent::Toggle(id, on) if id == ids::TIMELINE_RECORD => Some(I::SetPerforming(on)),
         PanelEvent::Toggle(id, on) if id == ids::TIMELINE_SNAP => Some(I::SetFrameSnap(on)),
         _ => None,
     }
@@ -241,6 +242,10 @@ mod tests {
         assert_eq!(
             intent_for_transport(&PanelEvent::Toggle(ids::TIMELINE_AUTOKEY, true), &st, &ph),
             Some(TimelineIntent::SetAutoKey(true))
+        );
+        assert_eq!(
+            intent_for_transport(&PanelEvent::Toggle(ids::TIMELINE_RECORD, true), &st, &ph),
+            Some(TimelineIntent::SetPerforming(true))
         );
         assert_eq!(
             intent_for_transport(&PanelEvent::Toggle(ids::TIMELINE_SNAP, false), &st, &ph),

@@ -124,6 +124,17 @@ impl MockPanelHost {
         }
     }
 
+    /// Set a registered toggle's stored on-state — what the paint pass mirrors
+    /// from the snapshot before dispatch emits `Toggled(id)`. Panics if `id` is
+    /// absent or not a `Toggle`.
+    pub fn set_toggle_on(&mut self, id: NodeId, on: bool) {
+        match self.store.get_mut(id) {
+            Some(InteractiveState::Toggle { on: o, .. }) => *o = on,
+            Some(_) => panic!("set_toggle_on: {id:?} is registered but is not a Toggle"),
+            None => panic!("set_toggle_on: {id:?} is not registered (did populate run?)"),
+        }
+    }
+
     /// Drain everything the panel pushed onto the action bus so far. The
     /// shell does the same each frame; tests inspect the result to assert
     /// the panel actually emitted the right [`EditorAction`].

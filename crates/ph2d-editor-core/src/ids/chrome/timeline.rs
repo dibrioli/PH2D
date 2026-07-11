@@ -30,6 +30,8 @@ pub const TIMELINE_FRAME_NUM: NodeId = hash_node_id("timeline.frame_num");
 pub const TIMELINE_LOOP: NodeId = hash_node_id("timeline.loop");
 /// Auto-key arm toggle.
 pub const TIMELINE_AUTOKEY: NodeId = hash_node_id("timeline.autokey");
+/// Performing (record-during-play, W5) arm toggle.
+pub const TIMELINE_RECORD: NodeId = hash_node_id("timeline.record");
 /// Frame-snap toggle.
 pub const TIMELINE_SNAP: NodeId = hash_node_id("timeline.snap");
 /// Speed-graph view toggle (W5) — flips every expanded graph band between the

@@ -282,6 +282,16 @@ impl PainterTool {
             granulation_use_paper: brush.granulation_use_paper,
             texture: gran_tex,
         };
+        // Seamless Tiling (doc 13 #2): the canvas-anchored PROCEDURAL noises (RaggedEdge warp, paper
+        // granulation, backrun jag) wrap at the sprite period on the tiled axes, so their fields are
+        // periodic and the painted texture — not just the coverage — is continuous across the seam.
+        // Tiling off ⇒ `NoiseTile::NONE` ⇒ byte-identical. (Paper/Grain SLOT textures still sample at
+        // their own period/rotation — sprite-seamless slot textures are a follow-up.)
+        let noise_tile = if self.paint.tiling[0] || self.paint.tiling[1] {
+            NoiseTile::new((fw, fh), self.paint.tiling)
+        } else {
+            NoiseTile::NONE
+        };
         // #13 (doc 14): per-owner SUBSTRATE. Single-substrate sessions resolve to the globals
         // (byte-identical + cache live); a multi-substrate session (paper/grain changed mid-session)
         // resolves paper/grain per OWNER so a baked wash keeps ITS substrate (kills "aplica a tudo").
@@ -290,6 +300,7 @@ impl PainterTool {
             style_table,
             paper_img,
             gran_img,
+            noise_tile,
         );
         // Raw per-pixel soak for the granulation settle (GRAN-1) — read-only in the parallel loop.
         let soak_buf = &self.paint.wet_soak;
@@ -325,6 +336,7 @@ impl PainterTool {
                             paper_rot,
                             x0 + bx,
                             gy,
+                            noise_tile,
                         );
                     }
                 }
@@ -370,10 +382,20 @@ impl PainterTool {
                         .as_ref()
                         .map_or(st_warp, |sf| sf.sample_warp(lx, ly, st_warp));
                     let (sx, sy) = if st_warp > 0.0 {
-                        let wx =
-                            warp_axis(gx as f32, gy as f32, SEED_WARP_X_A, SEED_WARP_X_B) * st_warp;
-                        let wy =
-                            warp_axis(gx as f32, gy as f32, SEED_WARP_Y_A, SEED_WARP_Y_B) * st_warp;
+                        let wx = warp_axis(
+                            gx as f32,
+                            gy as f32,
+                            SEED_WARP_X_A,
+                            SEED_WARP_X_B,
+                            noise_tile,
+                        ) * st_warp;
+                        let wy = warp_axis(
+                            gx as f32,
+                            gy as f32,
+                            SEED_WARP_Y_A,
+                            SEED_WARP_Y_B,
+                            noise_tile,
+                        ) * st_warp;
                         (lx + wx, ly + wy)
                     } else {
                         (lx, ly)
@@ -383,7 +405,7 @@ impl PainterTool {
                     // water pool is live paint-surface even where the PIGMENT coverage is zero
                     // (pure water, Dilution 1), so the early-out only fires where BOTH are dry.
                     let (water, wxg, wyg) = if watered {
-                        water_at(water_buf, fw, fh, gx, gy)
+                        water_at(water_buf, fw, fh, gx, gy, noise_tile)
                     } else {
                         (0.0, 0.0, 0.0)
                     };

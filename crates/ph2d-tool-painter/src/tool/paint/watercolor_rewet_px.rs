@@ -7,8 +7,8 @@
 //! fields (the ADR-0109 parallel-composite invariants hold: no cross-pixel state, no RNG).
 
 use super::watercolor_field::{
-    BACKRUN_POOL, LIFT_MAX, Luts, REWET_LIFT, REWET_POOL, RewetFields, SOAK_DISSOLVE, SOAK_LIFT,
-    WetStrokeStyle, box_blur, paper_h_px, sample_bilinear,
+    BACKRUN_POOL, LIFT_MAX, Luts, NoiseTile, REWET_LIFT, REWET_POOL, RewetFields, SOAK_DISSOLVE,
+    SOAK_LIFT, WetStrokeStyle, box_blur, paper_h_px, sample_bilinear,
 };
 use ph2d_painter_brush::TextureSettings;
 use ph2d_painter_brush::texture::{ImageMask, angle_basis, sample_tiled_rot};
@@ -371,6 +371,8 @@ pub(super) struct SubstrateSession<'a> {
     // Per-owner Angle bases (multi only; index 0 = current brush, k = table[k-1]).
     paper_rots: Vec<[f32; 2]>,
     gran_rots: Vec<[f32; 2]>,
+    // Seamless Tiling (doc 13 #2): periodic sprite wrap for the built-in paper granulation noise.
+    tile: NoiseTile,
 }
 
 impl<'a> SubstrateSession<'a> {
@@ -380,6 +382,7 @@ impl<'a> SubstrateSession<'a> {
         table: &[WetStrokeStyle],
         paper_img: Option<ImageMask<'a>>,
         gran_img: Option<ImageMask<'a>>,
+        tile: NoiseTile,
     ) -> Self {
         // Multi iff any owner's substrate differs from the first (the current stroke's style is IN
         // the table — pushed at pen-down — so the live brush is covered; unowned pixels are outside
@@ -420,6 +423,7 @@ impl<'a> SubstrateSession<'a> {
             gran_img,
             paper_rots,
             gran_rots,
+            tile,
         }
     }
 
@@ -481,6 +485,7 @@ impl<'a> SubstrateSession<'a> {
                 paper_rot,
                 gx,
                 gy,
+                self.tile,
             )
         });
         let gran_h = if gran_own_map {

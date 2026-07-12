@@ -263,6 +263,9 @@ pub fn register_ecs_components(reg: &mut ComponentRegistry) {
     // derivada deles). Sem registrar, um save/undo perderia a "forma-ness" e o texto
     // não saberia se re-cozinhar / converter em curvas.
     reg.register::<crate::VecShape>("ph2d::ecs::VecShape");
+    // Sem este registro, o conector seria DESCARTADO pelo snapshot — o undo e o save o
+    // perderiam em silêncio (foi o que aconteceu com Locked/GroupedChildren/VecPathRef).
+    reg.register::<crate::VecConnector>("ph2d::ecs::VecConnector");
 }
 
 #[cfg(test)]

@@ -63,6 +63,11 @@ pub use route::route;
 
 mod loops;
 
+/// **Por qual lado a linha sai** (a âncora flutuante): o quadrante da diagonal da CAIXA, com
+/// histerese para a saída não piscar quando o alvo passa pela diagonal.
+mod side;
+pub use side::side_towards;
+
 #[cfg(test)]
 #[path = "route_tests.rs"]
 mod tests;

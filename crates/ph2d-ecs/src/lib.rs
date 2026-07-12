@@ -86,6 +86,13 @@ pub use transform_versioned::{
 };
 pub use vec_path_ref::VecPathRef;
 pub use vec_shape::{MAX_SHAPE_VALUES, VecShape, VecTextParams};
+
+/// **O CONECTOR** — a linha que gruda em duas formas e as segue. Espelha o padrão da Live
+/// Shape: o componente guarda a RELAÇÃO, a geometria é uma função pura dela. O alvo é um
+/// `VecPathId` (o id do documento), nunca bits de entidade — o undo respawna tudo com bits
+/// novos, e um conector guardado por bits se soltaria a cada Ctrl+Z.
+mod vec_connector;
+pub use vec_connector::{Anchor, ConnectorEnd, RouteKind, VecConnector};
 pub use visibility::Visibility;
 pub use visibility_layer::{EnableMode, OnScreenEnabler, VisibilityLayer};
 

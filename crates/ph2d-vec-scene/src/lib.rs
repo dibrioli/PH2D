@@ -111,6 +111,11 @@ pub use iso::{iso_cone, iso_cube, iso_pyramid};
 mod marker;
 pub use marker::{ALL_MARKERS, Marker, end_tangent, trim_path};
 
+/// **Onde uma linha ENCOSTA numa forma** — a borda real (o contorno achatado), não a caixa
+/// envolvente. É o que faz um conector parar na estrela em vez de por baixo dela.
+mod boundary;
+pub use boundary::{boundary_hit, outline};
+
 /// O CATÁLOGO de formas paramétricas: o enum único (`ShapeKind`), os valores de cada
 /// forma e o `cook` que os transforma em geometria. A forma é DADO — é o que faz uma
 /// forma nova custar uma linha de tabela em vez de oito lugares.

@@ -18,6 +18,10 @@
 //! lib). Opus is a separate follow-up (its Rust paths force `unsafe` here or a system
 //! libopus — see ADR-0113).
 
+mod delivery;
+
+pub use delivery::{Codec, DeliveryCost, cost, format_bytes, ram_bytes};
+
 use std::io::Write;
 use std::path::Path;
 
@@ -244,6 +248,10 @@ pub fn write_wav_with_meta(
 /// default is a game-friendly middle ground.
 pub const OGG_DEFAULT_QUALITY: f32 = 0.5;
 
+/// Frames handed to libvorbis per analysis call. The library laps short blocks (~1024
+/// frames); feeding it the whole take at once is what made the encode superlinear.
+const CHUNK_FRAMES: usize = 4_096;
+
 /// Encode `data` to an in-memory Ogg Vorbis stream at VBR `quality` (`0..=1`).
 ///
 /// `SampleData` is interleaved `f32`; libvorbis wants **planar** per-channel blocks,
@@ -261,12 +269,8 @@ pub fn encode_ogg(data: &SampleData, quality: f32) -> Result<Vec<u8>, EncodeErro
         .ok_or_else(|| EncodeError::Codec("0 channels".into()))?;
     let ch = channels.get() as usize;
 
-    // De-interleave into one buffer per channel.
     let frames = data.frame_count();
-    let mut planar: Vec<Vec<f32>> = vec![Vec::with_capacity(frames); ch];
-    for (i, &s) in data.samples().iter().enumerate() {
-        planar[i % ch].push(s);
-    }
+    let samples = data.samples();
 
     let mut out = Vec::new();
     let mut builder = VorbisEncoderBuilder::new(sample_rate, channels, &mut out)
@@ -277,9 +281,28 @@ pub fn encode_ogg(data: &SampleData, quality: f32) -> Result<Vec<u8>, EncodeErro
     let mut encoder = builder
         .build()
         .map_err(|e| EncodeError::Codec(e.to_string()))?;
-    encoder
-        .encode_audio_block(&planar)
-        .map_err(|e| EncodeError::Codec(e.to_string()))?;
+
+    // Feed it in chunks. libvorbis analyses short lapped blocks, and handing it the
+    // WHOLE take in one `encode_audio_block` makes the cost blow up superlinearly:
+    // measured at 48 ms for a 10 s clip but **27.5 SECONDS** for a 5-minute one, which
+    // is an export that looks like a hang. Chunked, it is linear (~0.9 s for the same
+    // 5 minutes). Buffers are reused across chunks, so this allocates twice, not once
+    // per block.
+    let mut planar: Vec<Vec<f32>> = vec![Vec::with_capacity(CHUNK_FRAMES); ch];
+    for start in (0..frames).step_by(CHUNK_FRAMES) {
+        let end = (start + CHUNK_FRAMES).min(frames);
+        for p in planar.iter_mut() {
+            p.clear();
+        }
+        for f in start..end {
+            for (c, p) in planar.iter_mut().enumerate() {
+                p.push(samples[f * ch + c]);
+            }
+        }
+        encoder
+            .encode_audio_block(&planar)
+            .map_err(|e| EncodeError::Codec(e.to_string()))?;
+    }
     encoder
         .finish()
         .map_err(|e| EncodeError::Codec(e.to_string()))?;

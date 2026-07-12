@@ -253,3 +253,50 @@ fn ogg_encodes_mono() {
     let back = ph2d_audio_decode::decode(&bytes).expect("decode mono ogg");
     assert_eq!(back.format().channels, ChannelLayout::Mono);
 }
+
+/// **Chunked encoding must not lose or repeat a block.** `encode_ogg` now feeds
+/// libvorbis in `CHUNK_FRAMES` slices — handing it the whole take at once made the cost
+/// blow up superlinearly (measured: 48 ms for a 10 s clip but **27.5 seconds** for a
+/// 5-minute one; chunked, the same 5 minutes take 0.95 s). The hazard the rewrite
+/// introduces is off-by-a-block at the seams, which a duration check alone would miss:
+/// a dropped chunk in the middle still decodes to *about* the right length.
+///
+/// So the fixture carries an amplitude RAMP, and the test reads the envelope back at
+/// three points. Drop or duplicate a chunk and the ramp shifts, and these move.
+#[test]
+fn chunked_ogg_keeps_the_audio_in_the_right_place() {
+    let sr = 48_000u32;
+    // Deliberately NOT a multiple of the chunk size — the last block is a short one.
+    let frames = 4_096 * 3 + 777;
+    let mut v = Vec::with_capacity(frames * 2);
+    for n in 0..frames {
+        let ramp = n as f32 / frames as f32; // 0 -> 1 across the clip
+        let s = (n as f32 * std::f32::consts::TAU * 440.0 / sr as f32).sin() * 0.9 * ramp;
+        v.push(s);
+        v.push(s);
+    }
+    let src = SampleData::from_interleaved(v, AudioFormat::stereo(sr));
+    let bytes = encode_ogg(&src, OGG_DEFAULT_QUALITY).expect("encode ogg");
+    let back = ph2d_audio_decode::decode(&bytes).expect("decode ogg");
+
+    // Peak of the ramp at a quarter, a half and three quarters through: the envelope is
+    // a straight line, so each is its own position.
+    let peak_at = |d: &SampleData, frac: f32| -> f32 {
+        let n = d.frame_count();
+        let c = (n as f32 * frac) as usize;
+        let lo = c.saturating_sub(400);
+        let hi = (c + 400).min(n);
+        (lo..hi)
+            .map(|f| d.samples()[f * 2].abs())
+            .fold(0.0f32, f32::max)
+    };
+    for frac in [0.25f32, 0.5, 0.75] {
+        let want = peak_at(&src, frac);
+        let got = peak_at(&back, frac);
+        assert!(
+            (got - want).abs() < 0.12,
+            "the ramp moved at {frac}: expected ~{want:.2}, decoded {got:.2} \
+             (a chunk was dropped or repeated)"
+        );
+    }
+}

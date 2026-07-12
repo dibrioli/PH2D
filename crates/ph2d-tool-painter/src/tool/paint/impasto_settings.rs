@@ -71,6 +71,10 @@ impl PainterTool {
                 self.set_brush_impasto_body(*v as f32);
                 true
             }
+            PanelEvent::SetValue(id, v) if *id == core_ids::PAINTER_IMPASTO_PUSH => {
+                self.set_brush_impasto_push(*v as f32);
+                true
+            }
             PanelEvent::SetValue(id, v) if *id == core_ids::PAINTER_IMPASTO_PLOW => {
                 self.set_brush_impasto_plow(*v as f32);
                 true
@@ -150,6 +154,15 @@ impl PainterTool {
     /// it laid, and the profile is a pure function of it.
     pub fn set_brush_impasto_body(&mut self, v: f32) {
         self.paint.brush.impasto_body = v.clamp(0.0, 1.0);
+        self.refresh_live_relief();
+    }
+
+    /// **Push** — how much of the paint already on the canvas this brush shoves aside (volume
+    /// conservation). Live on the last stroke too, and that is not an accident of the implementation but
+    /// the reason for it: the displacement is a pure function of `(ground, footprint)`, so it re-derives
+    /// like every other knob in the card — and re-deriving never erodes the same ground twice.
+    pub fn set_brush_impasto_push(&mut self, v: f32) {
+        self.paint.brush.impasto_push = v.clamp(0.0, 1.0);
         self.refresh_live_relief();
     }
 

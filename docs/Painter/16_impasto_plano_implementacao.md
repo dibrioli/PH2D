@@ -832,3 +832,69 @@ dependente de máquina; um gate de igualdade passaria com uma cópia profunda. M
 **Nota de escopo:** eu havia dito que este problema "não era meu" e que seria reportado a outra linha. **Era
 meu** — é a crate do Painter. O que era verdade é que ele **precede o impasto** e é peça de trabalho distinta.
 Não há outra linha a quem reportar.
+
+---
+
+## 13. Fase 11 — **conservação de volume** (2026-07-12): a tinta não pode se interpenetrar
+
+A última peça que a pesquisa mapeou e o produto não tinha. Até aqui, um traço sobre tinta grossa
+simplesmente **empilhava** sobre ela, como se dois corpos de tinta pudessem ocupar o mesmo espaço. Tinta de
+verdade não pode: o pincel **abre um canal** e o material deslocado **se levanta como uma crista nas bordas
+do traço**. É a coisa mais reconhecível do impasto, e é o que separa **tinta** de um bump map.
+
+### 13.1 A decisão de projeto que vem ANTES da primeira linha de código
+
+O caminho óbvio é deslocar **por-dab, destrutivamente**, na camada. Ele tem **dois defeitos fatais** aqui:
+
+1. As **shape tools re-estampam a forma inteira a cada pointer-move**. Um operador destrutivo acumularia a
+   cada frame: em dois segundos de ajuste de curva, um cânion.
+2. Um deslocamento destrutivo **não é re-derivável** — `Push` seria o **único knob morto** num card cujo
+   propósito inteiro é que todo knob siga vivo depois do traço (§10.3).
+
+Então o deslocamento é derivado da **PEGADA**, não da trajetória: função pura de `(chão, footprint)`,
+aplicada no commit sobre uma **cópia** do chão (o armazenado fica pristino). Logo é **idempotente**, re-deriva
+com o resto do card, e o problema do re-stamp **não existe**.
+
+**O preço, nomeado:** o traço desloca como *uma forma*, não como uma lâmina em movimento — **não há bow wave
+correndo à frente da ponta**. Isso é deferido, não esquecido.
+
+### 13.2 A aritmética
+
+`push_ground` (em `impasto_settle.rs`): **morde** o chão sob a pegada (∝ cobertura × Push), soma o que
+tirou, e **devolve tudo** num **rim** — a pegada borrada para fora, menos ela mesma — normalizado pelo peso
+real do rim (tinta empurrada contra a borda do canvas se redistribui no rim que sobra, em vez de sumir).
+
+⇒ **Σh não muda.** Nada é criado, nada é destruído: só se move.
+
+### 13.3 Gates (3 mutações provadas vermelhas)
+
+- **Conservação** — o canvas devolve exatamente a tinta que tinha. É o que faz disto física e não efeito, e
+  é o que a versão ingênua quebra em silêncio: um "deslocamento" feito de blend/smear **faz média**, e média
+  **perde volume** — arraste o bastante e a escultura derrete. **MUT M** (morde e não devolve) = 14,8% de
+  perda. **MUT N** (normaliza por constante) = 1,9%.
+- **O percept** — canal onde passou, **crista ao lado**. Conservação sozinha não dá isso: espalhar o
+  material uniformemente pelo canvas conservaria perfeitamente e não se veria nada.
+- **Vivo e idempotente** — o knob mexe num traço **já dado**, e re-derivar 12× não come o chão duas vezes.
+  **MUT O** (mutar a base armazenada) = vermelho.
+
+### 13.4 Dois achados no caminho
+
+- **O pincel seco era um no-op.** O kernel recusava registrar qualquer ingrediente com Depth 0
+  (`deposits_height()`), otimização correta enquanto "altura" só significava *depositar*. Com Push, a
+  **pegada é ela mesma um ingrediente** — e Depth 0 + Push alto é exatamente a **espátula**, o uso mais
+  físico que existe. Agora o gate é `touches_height()` = deposita **ou** empurra.
+- **O blur transposto.** O rim usa raio 12, e o passe vertical lia com *stride* — 25 cache-lines por texel:
+  **+22 ms** no pen-up em 4096². Transpondo (mesmos taps, **mesma ordem de soma**, zero bits diferentes) cai
+  para **+10 ms**. E a **soma exata** foi mantida de propósito: a janela deslizante O(n) foi escrita, e o
+  gate de byte-identidade **a rejeitou** — uma soma corrente acumula erro *ao longo da linha*, então o
+  resultado passaria a depender da **largura do buffer**, e todo o corte da §11 repousa em o blur de uma
+  JANELA ser bit-a-bit o blur do CANVAS. Um blur mais rápido que muda o número não é mais rápido, é errado.
+
+### 13.5 Perf
+
+| @4096² | por-movimento | pen-up |
+|---|---|---|
+| Push 0 (default) | 2,45 ms | 22,7 ms |
+| Push 1 (máximo, arando tinta grossa) | 2,47 ms | 33,2 ms |
+
+Default `0` ⇒ **byte-idêntico** a um build sem Push.

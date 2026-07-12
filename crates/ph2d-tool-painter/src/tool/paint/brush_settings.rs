@@ -366,6 +366,9 @@ pub struct BrushSettings {
     /// **Body** (`0..1`) — the relief's cross-section: `1` = level film with a wall, `0` = the
     /// silhouette's own profile (perfectly rounded).
     pub impasto_body: f32,
+    /// **Push** (`0..1`) — volume conservation: how much of the paint already on the canvas this brush
+    /// shoves aside as it passes (it stands up as a ridge along the stroke's edges).
+    pub impasto_push: f32,
     /// **Plow** (`0..1`) — how strongly the Smear drags EXISTING relief (the palette knife).
     pub impasto_plow: f32,
     /// Whether the **Plow** row applies (`PainterTool::impasto_plow_applies`): the Smear, and only it.

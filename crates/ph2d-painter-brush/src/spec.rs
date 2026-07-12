@@ -300,6 +300,19 @@ pub struct BrushSpec {
     /// and it does not need the `impasto` master switch either: a stroke can plow relief that some other
     /// brush laid down.
     pub impasto_plow: f32,
+    /// **Push**, `0..1`: how much of the paint ALREADY on the canvas this brush shoves aside as it passes
+    /// — volume conservation, and the thing that separates paint from a bump map.
+    ///
+    /// `0` (the default) = the stroke piles onto whatever is under it, as if two bodies of paint could
+    /// occupy the same space. `1` = the brush ploughs its footprint clean and every bit of the displaced
+    /// material stands up as a **ridge along the edges of the stroke** — nothing is created, nothing is
+    /// destroyed, it only moves.
+    ///
+    /// It acts on the GROUND (the relief that was there before this stroke), never on the stroke's own
+    /// deposit: a brush pushes the paint it finds, not the paint it is laying. Derived from the stroke's
+    /// footprint rather than its path, so it re-derives live with the rest of the Body card and survives
+    /// the shape editors' re-stamp (see `impasto_settle::push_ground`).
+    pub impasto_push: f32,
 }
 
 impl Default for BrushSpec {
@@ -382,6 +395,7 @@ impl Default for BrushSpec {
             impasto_smoothing: 1.0,
             impasto_body: 0.0,
             impasto_plow: 0.0, // o padrão do Smear é arrastar a COR e deixar o corpo onde está
+            impasto_push: 0.0, // sem deslocamento: um traço empilha sobre o que já estava (byte-idêntico)
         }
     }
 }
@@ -477,6 +491,18 @@ impl BrushSpec {
         self.impasto && self.impasto_draw_to.writes_depth() && self.impasto_depth != 0.0
     }
 
+    /// Whether this brush's dabs touch the height field **at all** — it lays body down, or it shoves
+    /// existing body around, or both.
+    ///
+    /// Not the same question as [`Self::deposits_height`], and the difference is a real brush: at
+    /// **Depth 0 with Push up** the brush carries no paint and still moves the paint it finds. That is a
+    /// dry brush, and it is a palette knife — the tool that does nothing BUT displace. Gating the height
+    /// pass on the deposit alone made that brush a no-op, and it is the most physical use of Push there is.
+    #[must_use]
+    pub fn touches_height(&self) -> bool {
+        self.deposits_height() || (self.impasto && self.effective_impasto_push() > 0.0)
+    }
+
     /// Whether this brush's dabs deposit **pigment**. Only [`DrawTo::Depth`] — *with the master switch
     /// on* — suppresses it. With impasto off, [`Self::impasto_draw_to`] is not read at all, so a brush
     /// left on "Depth" in a previous session paints normally again the moment impasto is unticked; the
@@ -526,6 +552,12 @@ impl BrushSpec {
     #[must_use]
     pub fn effective_impasto_body(&self) -> f32 {
         self.impasto_body.clamp(0.0, 1.0)
+    }
+
+    /// [`Self::impasto_push`], clamped — how much of the ground this brush shoves aside.
+    #[must_use]
+    pub fn effective_impasto_push(&self) -> f32 {
+        self.impasto_push.clamp(0.0, 1.0)
     }
 
     /// Compose the dab silhouette from a Shape sample `shape_val` and the round `falloff` envelope. The

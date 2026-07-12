@@ -91,7 +91,7 @@ fn paint_body_card(
     y: f32,
     brush: &BrushSettings,
 ) -> f32 {
-    let (ix, iw, mut ry, next_y) = card_frame(ctx, theme, x, content_w, y, "Body", 5);
+    let (ix, iw, mut ry, next_y) = card_frame(ctx, theme, x, content_w, y, "Body", 6);
     ry = card_row(
         ctx,
         theme,
@@ -117,6 +117,23 @@ fn paint_body_card(
         "Body",
         core_ids::PAINTER_IMPASTO_BODY,
         brush.impasto_body,
+        0.0,
+        UNIT_MAX,
+        number_field::FINE_STEP,
+        2,
+    );
+    // Push = volume conservation: how much of the paint already on the canvas this brush shoves aside.
+    // It sits under Body because it is the other half of the same question — what the paint DOES when the
+    // brush arrives: pile up (Body), or get out of the way (Push).
+    ry = card_row(
+        ctx,
+        theme,
+        ix,
+        iw,
+        ry,
+        "Push",
+        core_ids::PAINTER_IMPASTO_PUSH,
+        brush.impasto_push,
         0.0,
         UNIT_MAX,
         number_field::FINE_STEP,

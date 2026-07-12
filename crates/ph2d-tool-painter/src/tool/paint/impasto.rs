@@ -23,7 +23,9 @@
 //!    Smoothing — re-derives the LAST stroke live, and none of them is a special case (Enio,
 //!    2026-07-12: *"coloque todos os parâmetros vivos em tempo real para ajustes depois do traço"*).
 
-use super::impasto_settle::{RELIEF_EPS, SETTLE_REACH_PX, for_each_in, owned, settle};
+use super::impasto_settle::{
+    PUSH_REACH_PX, RELIEF_EPS, SETTLE_REACH_PX, for_each_in, owned, push_ground, settle,
+};
 use super::region::grow_region;
 use super::{PaintMode, Region, union_region};
 use crate::tool::PainterTool;
@@ -55,8 +57,8 @@ impl PainterTool {
             return;
         }
         let erasing = self.paint.eraser;
-        if !erasing && !brush.deposits_height() {
-            return; // depth 0 / Draw To = Color ⇒ pigment only, no body
+        if !erasing && !brush.touches_height() {
+            return; // no body laid AND none shoved aside ⇒ pigment only
         }
         let (w, h) = self.source_size;
         let n = (w as usize) * (h as usize);
@@ -385,14 +387,16 @@ impl PainterTool {
         else {
             return;
         };
-        // THE WINDOW. The stroke touched `bbox`; the settle reaches `SETTLE_MAX_PX` beyond it and the
-        // relief is exactly ZERO past that, so everything the commit does — derive, settle, re-base,
-        // diff — belongs inside this rect and nowhere else. Cropping is not an approximation: the blur
+        // THE WINDOW. The stroke touched `bbox`; the settle reaches `SETTLE_MAX_PX` beyond it, the
+        // displacement's rim reaches `PUSH_REACH_PX`, and the relief is exactly ZERO past both — so
+        // everything the commit does (derive, settle, PUSH, re-base, diff) belongs inside this rect and
+        // nowhere else. Both reaches are CONSTANTS, which is what keeps the window a function of the
+        // stroke and not of the brush. Cropping is not an approximation: the blur
         // of a zero field is zero, and the settle CLAMPS at its buffer's edge, which for a window whose
         // border is already zero replicates the same zero the whole-canvas pass would have read. The
         // result is byte-identical, and it is gated as byte-identical.
         let (w, h) = self.source_size;
-        let Some(rect) = grow_region(bbox, SETTLE_REACH_PX, w, h) else {
+        let Some(rect) = grow_region(bbox, SETTLE_REACH_PX + PUSH_REACH_PX, w, h) else {
             return;
         };
 
@@ -482,6 +486,31 @@ impl PainterTool {
         //    flips the layer's `has_relief` and that invalidates the composite.
         let base = std::mem::take(&mut self.paint.live_relief_base);
         let has_base = base.len() == cells;
+
+        // 2b. PUSH — volume conservation. The brush shoves the paint that was already there out of its
+        //     way, and it has to go somewhere: it stands up as a ridge along the edges of the stroke.
+        //     This is what separates paint from a bump map (`push_ground`).
+        //
+        //     It works on a COPY of the ground; the stored one stays pristine. That is what makes the
+        //     whole card idempotent — raise Push, lower it, raise it again, and the ground is never
+        //     eroded twice. A destructive plough would have been eaten alive by the SHAPE editors, which
+        //     re-stamp the whole shape on every pointer move.
+        let pushed = if has_base && brush.effective_impasto_push() > 0.0 {
+            let mut g = base.clone();
+            let mut footprint: Vec<f32> = Vec::with_capacity(cells);
+            for_each_in(rect, w, |i| footprint.push(self.paint.live_paint[i]));
+            push_ground(
+                &mut g,
+                &footprint,
+                rect.w,
+                rect.h,
+                brush.effective_impasto_push(),
+            )
+            .then_some(g)
+        } else {
+            None
+        };
+        let ground = pushed.as_ref().unwrap_or(&base);
         let target = std::sync::Arc::make_mut(
             self.heights
                 .entry(layer)
@@ -498,8 +527,8 @@ impl PainterTool {
                 let i = (rect.y as usize + ry) * (w as usize) + rect.x as usize + rx;
                 // Strokes ADD — up to the glass ceiling (see [`H_CEIL`]). A lone stroke never reaches it
                 // (`|depth| ≤ 1`), so the clamp only ever bites where strokes genuinely pile up.
-                let ground = if has_base { base[c] } else { 0.0 };
-                let next = (field[c] + ground).clamp(-H_CEIL, H_CEIL);
+                let under = if has_base { ground[c] } else { 0.0 };
+                let next = (field[c] + under).clamp(-H_CEIL, H_CEIL);
                 if next != 0.0 {
                     any_relief = true;
                 }
@@ -515,7 +544,8 @@ impl PainterTool {
                 target[i] = next;
             }
         }
-        self.paint.live_relief_base = base; // the ground is re-read on every knob edit — put it back
+        drop(pushed);
+        self.paint.live_relief_base = base; // PRISTINE — the ground is re-read on every knob edit
 
         // 4. A layer that carried nothing before this stroke and carries nothing now (Depth 0) drops its
         //    entry — but a layer with relief ELSEWHERE keeps it: the window is all this call can speak

@@ -358,7 +358,11 @@ pub fn accumulate_dab_height(
     if !fields.fits(n) || width == 0 || height == 0 {
         return None;
     }
-    if spec.effective_impasto_depth() == 0.0 {
+    // A dab with no depth AND no push has nothing to say about the height field. With push, it has:
+    // the FOOTPRINT is itself an ingredient (it is what the displacement bites with), so a brush that
+    // carries no paint and only shoves must still record where it passed. Bailing on depth alone made
+    // the dry brush — the most physical use of Push there is — a silent no-op.
+    if spec.effective_impasto_depth() == 0.0 && spec.effective_impasto_push() == 0.0 {
         return None;
     }
     // The same fold the colour kernel applies: pressure × Flow × Strength. A light, thin stroke is

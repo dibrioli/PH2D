@@ -43,6 +43,12 @@ pub const PAINTER_IMPASTO_DRAW_DEPTH: NodeId = hash_node_id("painter_brush.impas
 /// **Smoothing** (`0..1`) — how far the deposit settles under its own weight at stroke end.
 /// `SetValue` → `set_brush_impasto_smoothing`.
 pub const PAINTER_IMPASTO_SMOOTHING: NodeId = hash_node_id("painter_brush.impasto_smoothing");
+/// **Push** (`0..1`) — **volume conservation**: how much of the paint ALREADY on the canvas this brush
+/// shoves aside as it passes. `0` (default) = a stroke piles onto what is under it, as if two bodies of
+/// paint could occupy the same space; up = the brush ploughs a channel and the displaced material stands
+/// up as a ridge along the stroke's edges. Nothing is created, nothing destroyed — it only moves.
+/// Live on the last stroke (a pure function of ground × footprint). `SetValue` → `set_brush_impasto_push`.
+pub const PAINTER_IMPASTO_PUSH: NodeId = hash_node_id("painter_brush.impasto_push");
 /// **Plow** (`0..1`) — how strongly the **Smear** drags EXISTING relief along with the colour: the
 /// palette knife. Painted only in the Smear (the one mode that deposits no paint and still has
 /// something to say about the body), where it replaces the whole Body card — there is no Depth to set
@@ -86,9 +92,10 @@ pub const PAINTER_IMPASTO_CLICKS: [NodeId; 8] = [
 
 /// The Impasto **SetValue** number-fields — one membership check for the panel's number-field forward
 /// (`is_param_field`) and its register loop.
-pub const PAINTER_IMPASTO_FIELDS: [NodeId; 7] = [
+pub const PAINTER_IMPASTO_FIELDS: [NodeId; 8] = [
     PAINTER_IMPASTO_DEPTH,
     PAINTER_IMPASTO_BODY,
+    PAINTER_IMPASTO_PUSH,
     PAINTER_IMPASTO_PLOW,
     PAINTER_IMPASTO_SMOOTHING,
     PAINTER_IMPASTO_LIGHT_ANGLE,

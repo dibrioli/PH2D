@@ -17286,6 +17286,7 @@ fn impasto_perf_kill_criterion() {
     // only ever watched the drag. A budget whose other half nobody spends is not a budget.
     use std::time::Instant;
     const MOVES: u32 = 20;
+    static PROBE_PUSH: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
     // The same stroke with the feature OFF and ON. The number that matters is the DELTA - the frame
     // already costs something without Impasto, and charging that to Impasto would flatter it.
     let run = |size: u32, impasto: bool| -> (f64, f64, f64) {
@@ -17297,6 +17298,11 @@ fn impasto_perf_kill_criterion() {
             space_attenuation: false,
             impasto,
             impasto_depth: 0.7,
+            impasto_push: if impasto {
+                f32::from_bits(PROBE_PUSH.load(std::sync::atomic::Ordering::Relaxed))
+            } else {
+                0.0
+            },
             ..Default::default()
         };
         t.paint.brush = b;
@@ -17304,13 +17310,25 @@ fn impasto_perf_kill_criterion() {
             *slot = b;
         }
         let mid = (size / 2) as f32;
+        // A GROUND stroke first: without paint already on the canvas, Push has nothing to shove and the
+        // measurement would be of a code path that never ran. (It flattered the first run of this probe.)
         t.on_canvas_pointer(cp([200.0, mid], PointerPhase::Down));
+        for i in 0..MOVES {
+            t.on_canvas_pointer(cp(
+                [220.0 + f64::from(i) as f32 * 40.0, mid],
+                PointerPhase::Move,
+            ));
+        }
+        t.on_canvas_pointer(cp([1020.0, mid], PointerPhase::Up));
+        let _ = t.take_preview_arc();
+
+        t.on_canvas_pointer(cp([200.0, mid + 30.0], PointerPhase::Down));
         let _ = t.take_preview_arc();
         let (mut worst, mut total) = (0.0f64, 0.0f64);
         for i in 0..MOVES {
             let x = 220.0 + f64::from(i) * 40.0;
             let t0 = Instant::now();
-            t.on_canvas_pointer(cp([x as f32, mid], PointerPhase::Move));
+            t.on_canvas_pointer(cp([x as f32, mid + 30.0], PointerPhase::Move));
             let _ = t.take_preview_arc(); // deposit + composite + light: what a frame really costs
             let ms = t0.elapsed().as_secs_f64() * 1000.0;
             worst = worst.max(ms);
@@ -17318,14 +17336,16 @@ fn impasto_perf_kill_criterion() {
         }
         // The other half of the budget: the commit (derive + settle + re-base + the re-light of what moved).
         let t0 = Instant::now();
-        t.on_canvas_pointer(cp([1020.0, mid], PointerPhase::Up));
+        t.on_canvas_pointer(cp([1020.0, mid + 30.0], PointerPhase::Up));
         let _ = t.take_preview_arc();
         let up = t0.elapsed().as_secs_f64() * 1000.0;
         (total / f64::from(MOVES), worst, up)
     };
-    for size in [2048u32, 4096] {
+    for (size, push) in [(2048u32, 0.0f32), (4096, 0.0), (4096, 1.0)] {
+        PROBE_PUSH.store(push.to_bits(), std::sync::atomic::Ordering::Relaxed);
         let (off_mean, off_worst, off_up) = run(size, false);
         let (on_mean, on_worst, on_up) = run(size, true);
+        println!("--- Push = {push} ---");
         println!(
             "@{size}px r100 - impasto OFF: mean {off_mean:.2} ms/move, worst {off_worst:.2}, pen-up {off_up:.2} ms\n\
              @{size}px r100 - impasto  ON: mean {on_mean:.2} ms/move, worst {on_worst:.2}, pen-up {on_up:.2} ms\n\
@@ -19729,4 +19749,191 @@ fn an_undo_snapshot_never_copies_the_pixels_of_a_layer_the_stroke_did_not_touch(
              copy them (this is 64 MB per layer per stroke at 4096, twice per undo entry, 300 entries deep)"
         );
     }
+}
+
+// ── Impasto (#16) — VOLUME CONSERVATION: the brush shoves paint aside (plan §13) ───────────────────
+
+/// A canvas with a thick slab of paint already on it — the ground a second stroke has to plough through.
+fn slab_canvas(size: u32) -> (PainterTool, RtLayerId) {
+    let mut t = impasto_canvas(size);
+    let mut b = t.paint.brush;
+    b.radius_px = 30.0;
+    b.hardness = 1.0;
+    b.falloff = Falloff::Constant; // a flat slab: a level ground makes the ridge unambiguous
+    b.impasto_depth = 1.0;
+    b.impasto_body = 1.0;
+    b.impasto_smoothing = 0.0;
+    t.paint.brush = b;
+    for slot in &mut t.paint.brush_by_mode {
+        *slot = b;
+    }
+    // A broad field of thick paint across the middle of the canvas.
+    t.on_canvas_pointer(cp([20.0, 80.0], PointerPhase::Down));
+    for x in 1..=8 {
+        t.on_canvas_pointer(cp([20.0 + 15.0 * x as f32, 80.0], PointerPhase::Move));
+    }
+    t.on_canvas_pointer(cp([140.0, 80.0], PointerPhase::Up));
+    let layer = t.layers.active().expect("a layer");
+    (t, layer)
+}
+
+/// Total relief on the layer — the *volume* of paint. Conservation is a statement about this number.
+fn volume(t: &PainterTool, layer: RtLayerId) -> f32 {
+    t.heights.get(&layer).map_or(0.0, |f| f.iter().sum())
+}
+
+#[test]
+fn impasto_push_conserves_the_paint_it_shoves() {
+    // THE claim, and the one that makes this physics rather than an effect: **nothing is created and
+    // nothing is destroyed — the paint only moves.** A stroke that ploughs through a slab must leave the
+    // canvas holding exactly as much paint as it found.
+    //
+    // Everything else about Push is a matter of taste and can be argued about with the eyes. This cannot.
+    // It is also the property the naive build silently breaks: a "displacement" implemented as a blend or
+    // a smear AVERAGES, and averaging loses volume — drag long enough and the sculpture melts. (The Plow
+    // knife does exactly that today, deliberately: it drags the body along with the pigment, which is a
+    // different gesture. This is the conservative one.)
+    let size = 200u32;
+    let (mut t, layer) = slab_canvas(size);
+    let before = volume(&t, layer);
+    assert!(before > 100.0, "there is a real slab to plough ({before})");
+
+    // A second stroke, crossing it, with the brush shoving everything aside.
+    let mut b = t.paint.brush;
+    b.radius_px = 12.0;
+    b.impasto_depth = 0.0; // deposit NOTHING: isolate the displacement from the deposit
+    b.impasto_push = 1.0;
+    t.paint.brush = b;
+    for slot in &mut t.paint.brush_by_mode {
+        *slot = b;
+    }
+    t.on_canvas_pointer(cp([80.0, 40.0], PointerPhase::Down));
+    for y in 1..=6 {
+        t.on_canvas_pointer(cp([80.0, 40.0 + 12.0 * y as f32], PointerPhase::Move));
+    }
+    t.on_canvas_pointer(cp([80.0, 120.0], PointerPhase::Up));
+
+    let after = volume(&t, layer);
+    let drift = (after - before).abs() / before;
+    assert!(
+        drift < 1e-3,
+        "the paint is conserved: {before} of it went in, {after} came out ({:.2}% drift). A \
+         displacement that loses volume is a smear, not a plough",
+        drift * 100.0
+    );
+}
+
+#[test]
+fn impasto_push_ploughs_a_channel_and_stands_the_paint_up_at_its_edges() {
+    // The percept, stated as the artist sees it: drag a brush through thick paint and it leaves a CHANNEL
+    // with RIDGES along its edges. Conservation alone does not give you that — a pass that took paint from
+    // the middle and spread it uniformly over the whole canvas would conserve perfectly and look like
+    // nothing at all. So: the paint under the stroke goes DOWN, and the paint just outside it goes UP.
+    let size = 200u32;
+    let (mut t, layer) = slab_canvas(size);
+    let at = |t: &PainterTool, x: u32, y: u32| {
+        t.heights
+            .get(&layer)
+            .map_or(0.0, |f| f[(y * size + x) as usize])
+    };
+    let (in_path, at_rim) = (at(&t, 80, 80), at(&t, 80 + 18, 80));
+    assert!(
+        in_path > 0.5 && at_rim > 0.5,
+        "the slab is level to begin with ({in_path} in the path, {at_rim} beside it)"
+    );
+
+    let mut b = t.paint.brush;
+    b.radius_px = 12.0;
+    b.impasto_depth = 0.0; // no deposit: what changes is the ground, and only the ground
+    b.impasto_push = 1.0;
+    t.paint.brush = b;
+    for slot in &mut t.paint.brush_by_mode {
+        *slot = b;
+    }
+    t.on_canvas_pointer(cp([80.0, 40.0], PointerPhase::Down));
+    for y in 1..=6 {
+        t.on_canvas_pointer(cp([80.0, 40.0 + 12.0 * y as f32], PointerPhase::Move));
+    }
+    t.on_canvas_pointer(cp([80.0, 120.0], PointerPhase::Up));
+
+    let channel = at(&t, 80, 80);
+    let ridge = at(&t, 80 + 18, 80);
+    assert!(
+        channel < in_path * 0.2,
+        "the brush ploughs a CHANNEL where it passed ({in_path} → {channel})"
+    );
+    assert!(
+        ridge > at_rim * 1.05,
+        "…and the paint it displaced STANDS UP beside it ({at_rim} → {ridge}) — without this the \
+         volume is conserved and the eye sees nothing"
+    );
+}
+
+#[test]
+fn impasto_push_is_a_live_knob_and_never_erodes_the_ground_twice() {
+    // Push is derived from the stroke's FOOTPRINT, not driven along its path — which is what lets it be a
+    // pure function of `(ground, footprint)`. Two things follow, and both are the point:
+    //
+    //  1. It is LIVE: dial it after the stroke and the ridge grows and shrinks under the artist's hand,
+    //     like every other knob in the Body card (§10.3).
+    //  2. It is IDEMPOTENT: re-deriving never eats the ground a second time. A destructive per-dab plough
+    //     would, and the SHAPE editors — which re-stamp the whole shape on every pointer move — would
+    //     have carved a canyon in a couple of seconds. That is the whole reason for the design.
+    //
+    // The gesture is the real one: lay a loaded stroke across the slab with the knob OFF, then reach for
+    // the knob. (An earlier fixture laid the stroke with Depth 0 AND Push 0 — so it never touched the
+    // height field at all, the live ingredients still belonged to the SLAB, and the re-derive was quietly
+    // re-deriving the wrong stroke. The gate caught it; the fixture was wrong, not the tool.)
+    let size = 200u32;
+    let (mut t, layer) = slab_canvas(size);
+    let mut b = t.paint.brush;
+    b.radius_px = 12.0;
+    b.impasto_depth = 0.5; // a loaded brush, as an artist would hold it
+    b.impasto_push = 0.0; // …with the knob off
+    t.paint.brush = b;
+    for slot in &mut t.paint.brush_by_mode {
+        *slot = b;
+    }
+    t.on_canvas_pointer(cp([80.0, 40.0], PointerPhase::Down));
+    for y in 1..=6 {
+        t.on_canvas_pointer(cp([80.0, 40.0 + 12.0 * y as f32], PointerPhase::Move));
+    }
+    t.on_canvas_pointer(cp([80.0, 120.0], PointerPhase::Up));
+
+    let off: Vec<f32> = t.heights.get(&layer).expect("relief").as_ref().clone();
+    let rim = |f: &[f32]| f[(80 * size + 80 + 18) as usize];
+    let vol = |f: &[f32]| f.iter().sum::<f32>();
+
+    // Reach for the knob — AFTER the stroke.
+    t.set_brush_impasto_push(1.0);
+    let pushed: Vec<f32> = t.heights.get(&layer).expect("relief").as_ref().clone();
+    assert!(
+        rim(&pushed) > rim(&off) * 1.05,
+        "the ridge rises under the artist's hand, on a stroke already laid ({} → {})",
+        rim(&off),
+        rim(&pushed)
+    );
+
+    // Re-derive a dozen times. The ground is never eaten twice.
+    for _ in 0..12 {
+        t.set_brush_impasto_push(1.0);
+    }
+    let again: Vec<f32> = t.heights.get(&layer).expect("relief").as_ref().clone();
+    assert_eq!(
+        again, pushed,
+        "idempotent: re-deriving does not plough the same ground again (a destructive per-dab plough \
+         would have dug a canyon here, and the shape editors re-stamp every pointer move)"
+    );
+
+    // …and all the way back down: the field returns EXACTLY to what it was before the knob was touched.
+    t.set_brush_impasto_push(0.0);
+    let back: Vec<f32> = t.heights.get(&layer).expect("relief").as_ref().clone();
+    assert_eq!(
+        back,
+        off,
+        "Push 0 gives the ground back bit for bit — it displaces, it does not destroy (volume \
+         {} vs {})",
+        vol(&back),
+        vol(&off)
+    );
 }

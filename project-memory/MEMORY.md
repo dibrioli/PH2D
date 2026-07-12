@@ -79,6 +79,7 @@
 - [Gate verde contradito? RENDERIZE e olhe](feedback_render_and_look_when_a_green_gate_is_contradicted.md) — igualdade-de-conjuntos não vê névoa; o pixel é o oráculo, a métrica é sombra dele
 - [Heurística exige TAXA de falso-positivo](feedback_heuristic_needs_false_positive_rate.md) — detector verde num fixture é sorte do seed; meça FP sobre 200 realizações de ruído
 - [Tolerância folgada esconde viés sistemático](feedback_loose_oracle_hides_systematic_bias.md) — pitch shifter passou 3 jornadas 54 cents baixo; asserte o valor EXATO na unidade que o usuário ouve
+- [Mute o CÓDIGO, não só o teste](feedback_mutate_the_code_not_just_the_test.md) — gate verde na mutação = ou o gate é frouxo, ou o seu COMENTÁRIO está errado
 - [Lens diversity](feedback_audit_lens_diversity.md) — rotacionar lentes; ≥2 paralelas; gates executáveis > claims verbais
 - [Scope discipline](feedback_audit_scope_discipline.md) — bug em crate alheio = handoff pro owner, não fixo eu mesmo
 - [No industrial claims](feedback_no_industrial_claims_without_verification.md) — zero claim técnico em ADR sem grep/cargo-search/WebFetch

@@ -5812,7 +5812,9 @@ dependencies = [
  "ph2d-node-rig-fabrik",
  "ph2d-node-rig-fk",
  "ph2d-node-rig-ik-2bone",
+ "ph2d-node-rig-rubber-hose",
  "ph2d-node-rig-skeleton",
+ "ph2d-node-rig-skin-deformer",
  "ph2d-node-sync",
  "ph2d-node-value-instance-field",
  "ph2d-node-value-lfo",
@@ -5846,7 +5848,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-node-rig-rubber-hose"
+version = "0.0.0"
+dependencies = [
+ "ph2d-node-registry",
+ "ph2d-nodegraph",
+]
+
+[[package]]
 name = "ph2d-node-rig-skeleton"
+version = "0.0.0"
+dependencies = [
+ "ph2d-node-registry",
+ "ph2d-nodegraph",
+]
+
+[[package]]
+name = "ph2d-node-rig-skin-deformer"
 version = "0.0.0"
 dependencies = [
  "ph2d-node-registry",

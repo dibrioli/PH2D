@@ -86,7 +86,9 @@ ph2d-node-pulse-threshold = { path = "../ph2d-node-pulse-threshold" }
 ph2d-node-rig-fabrik = { path = "../ph2d-node-rig-fabrik" }
 ph2d-node-rig-fk = { path = "../ph2d-node-rig-fk" }
 ph2d-node-rig-ik-2bone = { path = "../ph2d-node-rig-ik-2bone" }
+ph2d-node-rig-rubber-hose = { path = "../ph2d-node-rig-rubber-hose" }
 ph2d-node-rig-skeleton = { path = "../ph2d-node-rig-skeleton" }
+ph2d-node-rig-skin-deformer = { path = "../ph2d-node-rig-skin-deformer" }
 ph2d-node-value-instance-field = { path = "../ph2d-node-value-instance-field" }
 ph2d-node-value-lfo = { path = "../ph2d-node-value-lfo" }
 ph2d-node-value-map-range = { path = "../ph2d-node-value-map-range" }

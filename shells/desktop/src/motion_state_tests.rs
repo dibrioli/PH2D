@@ -1,18 +1,20 @@
 //! Headless demo/cook tests for `motion_state` (split for the HR-18 600-LOC
 //! shell cap; declared there as a `#[path]` sibling, so `super` is
-//! `motion_state`). Cook the default document — now the two rig scenes (a skeleton at
-//! rest and the same limb posed + resolved into a wave) — through the REAL registry,
-//! tick by tick, so the whole chain is exercised and not just the node in isolation.
+//! `motion_state`). Cook the default document — now the rig-closing scenes (an elbowless
+//! rubber hose, and flesh SKINNED to a FABRIK tentacle) — through the REAL registry, tick
+//! by tick, so the whole chain is exercised and not just the node in isolation.
 
 use super::*;
 use ph2d_nodegraph::attr::Column;
 use ph2d_nodegraph::cook::Cook;
 
-/// The demo's arm (law of cosines) and tentacle (FABRIK) — see `motion_demo_strobe`.
-const ARM_JOINTS: usize = 3;
-const ARM_BONE: f32 = 1.5;
-const TENTACLE_JOINTS: usize = 10;
-const TENTACLE_BONE: f32 = 0.34;
+/// The demo's rubber hose and its skinned tentacle — see `motion_demo_strobe`.
+const HOSE_JOINTS: usize = 9;
+const HOSE_BONE: f32 = 0.36;
+const HOSE_TIP: usize = HOSE_JOINTS - 1;
+/// The flesh: a 5 x 24 strip of points, skinned to the tentacle (whose bones are never
+/// drawn — the skin IS the right-hand scene).
+const FLESH_POINTS: usize = 5 * 24;
 
 /// Drive `ticks` fixed steps of the real cook (advancing the `pre` edges, exactly as the
 /// shell's pump does) and return every tick's positions for `sink`. The wave scene only
@@ -54,7 +56,7 @@ fn new_builds_the_well_typed_rig_document() {
     assert_eq!(
         state.sinks.len(),
         4,
-        "arm, tentacle, and a goal dot beside each"
+        "the hose, the flesh, and a goal dot beside each"
     );
     for sink in &state.sinks {
         assert_eq!(
@@ -62,108 +64,136 @@ fn new_builds_the_well_typed_rig_document() {
             "motion.output"
         );
     }
-    // 19 nodes: the shared goal {grid, move, oscillator, orbit} + the arm {skeleton,
-    // ik_2bone, scale, move, output} + the tentacle {skeleton, fabrik, scale, move, output}
-    // + the goal dots {scale, move, output, move, output}. The newest nodes (doc 41); the
-    // oscillator is what makes the goal breathe in and out, so the elbow actually flexes.
-    assert_eq!(state.doc.graph.nodes().len(), 19);
+    // 22 nodes: the goal {grid, move, oscillator, orbit} + the hose {skeleton, rubber_hose,
+    // scale, move, output} + the skinned tentacle {skeleton, fabrik, grid, move,
+    // skin_deformer, scale, move, output} + the goal dots {scale, move, output, move,
+    // output}. The newest nodes (doc 42).
+    assert_eq!(state.doc.graph.nodes().len(), 22);
     assert!(state.doc.graph.validate(&state.registry).is_ok());
 }
 
-/// **Both solvers, through the whole chain** (doc 41): each limb's TIP lands on the goal
-/// dot that is drawn beside it — measured on what actually reaches `motion.output`, not on
-/// the solver's internal arithmetic. The goal orbits, so this is a moving target: it holds
-/// at every tick, from every direction of approach.
+/// **The rubber hose, through the whole chain** (doc 42): the tip lands on the goal that is
+/// drawn beside it (the other sink is the oracle — "these two rendered dots coincide"), the
+/// bones stay rigid, the root stays nailed, and — the whole point of the node — there is
+/// **NO ELBOW**: every joint turns by the same angle, so the limb is one arc.
 ///
-/// The oracle is the OTHER SINK. The goal dot is its own little scene (the same orbiting
-/// point, moved by the same offset as the limb that chases it), so "the hand is on the
-/// goal" is literally "these two rendered dots coincide" — no recomputation of the
-/// solver's own maths to check the solver's own maths.
-///
-/// FALSIFIED five ways: the `target` port never wired (the limb sits at its rest pose and
-/// never tracks) · the solver writing positions instead of a pose (the bones would drift
-/// off their lengths through the FK downstream) · the root not nailed (the whole limb
-/// would walk toward the goal) · a solver that stretches to reach · the goal dot moved by
-/// a different offset than its limb (they would never coincide).
+/// FALSIFIED four ways: the `target` wire missing (the hose never tracks) · a solver that
+/// concentrates the bend in one joint (an elbow: the turns would not all be equal) · a hose
+/// that stretches to reach · a curl that never changes (which is what a goal at a FIXED
+/// distance would give — so the guard also demands that the curl varies over the run).
 #[test]
-fn both_limbs_land_their_tip_on_the_orbiting_goal() {
+fn the_hose_curls_onto_the_goal_with_no_elbow_anywhere() {
     let state = MotionState::new();
     let ticks = 90;
-    let arm = run_scene(&state, state.sinks[0], ticks);
-    let tentacle = run_scene(&state, state.sinks[1], ticks);
-    let arm_goal = run_scene(&state, state.sinks[2], ticks);
-    let tentacle_goal = run_scene(&state, state.sinks[3], ticks);
+    let hose = run_scene(&state, state.sinks[0], ticks);
+    let goal = run_scene(&state, state.sinks[2], ticks);
+    assert_eq!(
+        hose[0].len(),
+        HOSE_JOINTS,
+        "the whole chain reaches the sink"
+    );
 
-    assert_eq!(arm[0].len(), ARM_JOINTS, "the arm reaches the sink");
-    assert_eq!(tentacle[0].len(), TENTACLE_JOINTS);
-    assert_eq!(arm_goal[0].len(), 1, "the goal is one dot");
-
-    // The goal really moves (otherwise "it tracks" is a vacuous claim).
-    let travel = (0..ticks)
-        .map(|k| dist(arm_goal[k][0], arm_goal[0][0]))
-        .fold(0.0, f32::max);
-    assert!(travel > 2.0, "the goal orbits (travelled {travel})");
-
+    let mut curls = Vec::new();
     for k in 0..ticks {
-        // The tolerance is the pose round trip (approximate atan2 + cos/sin), not slack in
-        // the solvers: the law of cosines is exact and FABRIK converges to 1e-4.
-        let arm_miss = dist(arm[k][ARM_JOINTS - 1], arm_goal[k][0]);
-        assert!(arm_miss < 0.03, "tick {k}: the hand missed by {arm_miss}");
-        let tip_miss = dist(tentacle[k][TENTACLE_JOINTS - 1], tentacle_goal[k][0]);
-        assert!(
-            tip_miss < 0.03,
-            "tick {k}: the tentacle missed by {tip_miss}"
-        );
-
-        // Nailed roots, rigid bones — at every tick of the chase.
-        assert_eq!(arm[k][0], arm[0][0], "tick {k}: the arm's root walked");
-        assert_eq!(
-            tentacle[k][0], tentacle[0][0],
-            "tick {k}: the tentacle's root walked"
-        );
-        for (i, len) in bone_lengths(&arm[k]).iter().enumerate() {
+        let miss = dist(hose[k][HOSE_TIP], goal[k][0]);
+        assert!(miss < 0.05, "tick {k}: the hose missed the goal by {miss}");
+        assert_eq!(hose[k][0], hose[0][0], "tick {k}: the root walked");
+        for (i, len) in bone_lengths(&hose[k]).iter().enumerate() {
             assert!(
-                (len - ARM_BONE).abs() < 1e-3,
-                "tick {k}: arm bone {i} = {len}"
+                (len - HOSE_BONE).abs() < 1e-3,
+                "tick {k}: bone {i} stretched to {len}"
             );
         }
-        for (i, len) in bone_lengths(&tentacle[k]).iter().enumerate() {
+
+        // Every turn along the limb, wrapped into (-180, 180]. Constant curvature = no
+        // elbow; the spread across the limb is what a corner would blow up.
+        let t: Vec<f32> = (2..HOSE_JOINTS)
+            .map(|i| {
+                let a = heading(hose[k][i - 1], hose[k][i - 2]);
+                let b = heading(hose[k][i], hose[k][i - 1]);
+                wrap(b - a)
+            })
+            .collect();
+        let lo = t.iter().copied().fold(f32::MAX, f32::min);
+        let hi = t.iter().copied().fold(f32::MIN, f32::max);
+        assert!(
+            hi - lo < 1.0,
+            "tick {k}: the turns are not all equal ({lo} .. {hi}) — that is an elbow"
+        );
+        curls.push(hi.abs());
+    }
+
+    // …and the curl CHANGES: the goal breathes in and out, so the hose coils and uncoils.
+    let (lo, hi) = (
+        curls.iter().copied().fold(f32::MAX, f32::min),
+        curls.iter().copied().fold(f32::MIN, f32::max),
+    );
+    assert!(hi - lo > 5.0, "the hose coils and uncoils ({lo}° .. {hi}°)");
+}
+
+/// **The skin, through the whole chain** (doc 42): the right-hand scene draws NO bones —
+/// every dot on screen is a point of flesh, moved by Linear Blend Skinning from the
+/// skeleton's rest pose to its solved one.
+///
+/// FALSIFIED four ways: `rig.skin_deformer` not wired (the flesh would sit in its rest strip
+/// forever) · the `rest` and `posed` wires swapped or one of them cut (the deformation is
+/// their DIFFERENCE — with both the same, nothing moves) · a skin that tears (the flesh's
+/// own shape would fly apart) · a skin bound to nothing (the points would collapse).
+#[test]
+fn the_flesh_follows_the_bones_it_is_skinned_to() {
+    let state = MotionState::new();
+    let ticks = 90;
+    let flesh = run_scene(&state, state.sinks[1], ticks);
+    assert_eq!(
+        flesh[0].len(),
+        FLESH_POINTS,
+        "the whole strip reaches the sink"
+    );
+
+    // The flesh MOVES — a lot, and not as one rigid block (it is being deformed, not
+    // translated): the far end travels much farther than the end by the root.
+    let travel = |i: usize| {
+        (0..ticks)
+            .map(|k| dist(flesh[k][i], flesh[0][i]))
+            .fold(0.0, f32::max)
+    };
+    let near_root = travel(2); // the bottom row of the strip
+    let far_out = travel(FLESH_POINTS - 3); // the top row
+    assert!(far_out > 1.0, "the far end of the flesh swings ({far_out})");
+    assert!(
+        far_out > 3.0 * near_root,
+        "the flesh DEFORMS rather than moving rigidly (near {near_root}, far {far_out})"
+    );
+
+    // And it does not tear: neighbouring points of the strip stay neighbours. (A skin whose
+    // weights blow up would scatter the cloud; this is the cheap, decisive check.)
+    for k in [0, 30, 60, 89] {
+        for i in 1..FLESH_POINTS {
+            let d = dist(flesh[k][i], flesh[k][i - 1]);
             assert!(
-                (len - TENTACLE_BONE).abs() < 1e-3,
-                "tick {k}: tentacle bone {i} = {len}"
+                d < 1.0,
+                "tick {k}: the flesh tore between {} and {i}",
+                i - 1
             );
         }
     }
+}
 
-    // **The elbow FLEXES** — the assertion Enio's smoke caught me not making. Asserting
-    // only that the elbow sits OFF the root→hand line proves it is bent; it does not prove
-    // it ever BENDS. A goal on a fixed-radius orbit around the arm's own root gives the
-    // triangle (root, elbow, hand) three constant sides — and a triangle with fixed sides
-    // has fixed angles, so the arm just rotates rigidly with the elbow locked, and passes
-    // an "is bent" test all day. The goal's distance must therefore vary (the demo
-    // modulates the orbit's radius), and the guard must measure the RANGE of the bend.
-    let elbow_offsets: Vec<f32> = (0..ticks)
-        .map(|k| {
-            let (a, e, h) = (arm[k][0], arm[k][1], arm[k][2]);
-            let (dx, dy) = (h[0] - a[0], h[1] - a[1]);
-            let reach = (dx * dx + dy * dy).sqrt().max(f32::EPSILON);
-            // The elbow's distance from the root-to-hand line: 0 = a straight arm.
-            ((e[0] - a[0]) * dy - (e[1] - a[1]) * dx).abs() / reach
-        })
-        .collect();
-    let lo = elbow_offsets.iter().copied().fold(f32::MAX, f32::min);
-    let hi = elbow_offsets.iter().copied().fold(f32::MIN, f32::max);
-    assert!(lo > 0.2, "the elbow is never straight ({lo})");
-    assert!(
-        hi - lo > 0.5,
-        "the elbow FLEXES: it folds and opens across the run ({lo} .. {hi})"
-    );
+/// The heading of `a` seen from `b`, in degrees, and the wrap that keeps a difference of two
+/// headings honest across ±180° (without it, a turn of +42° reads as -318° and every guard
+/// about constant curvature reports an elbow that is not there).
+fn heading(a: [f32; 2], b: [f32; 2]) -> f32 {
+    (a[1] - b[1]).atan2(a[0] - b[0]).to_degrees()
+}
 
-    // …because the reach itself changes. If this is flat, the guard above is vacuous.
-    let reaches: Vec<f32> = (0..ticks).map(|k| dist(arm[k][0], arm[k][2])).collect();
-    let spread = reaches.iter().copied().fold(f32::MIN, f32::max)
-        - reaches.iter().copied().fold(f32::MAX, f32::min);
-    assert!(spread > 1.0, "the goal moves nearer and farther ({spread})");
+fn wrap(mut t: f32) -> f32 {
+    while t <= -180.0 {
+        t += 360.0;
+    }
+    while t > 180.0 {
+        t -= 360.0;
+    }
+    t
 }
 
 /// **A node dropped at its DEFAULT params may not change a single instance** — the

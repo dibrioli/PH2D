@@ -1,79 +1,80 @@
-//! The M4 IK demo — the **default Motion document**: two limbs **chasing the same
-//! orbiting goal**. On the LEFT a three-joint arm solved in closed form by the law of
-//! cosines (`rig.ik_2bone`); on the RIGHT a ten-joint tentacle solved iteratively by
-//! **FABRIK** (`rig.fabrik`). The goal itself is drawn as a fat dot beside each limb, so
-//! what the limbs are reaching for is visible and not a matter of faith.
+//! The M4 rig-closing demo — the **default Motion document**: two limbs chasing the same
+//! breathing goal, showing the slice's two nodes.
+//!
+//! - **LEFT — `rig.rubber_hose`**: a limb with **no elbow**. Its curvature is constant, so
+//!   it curls into one smooth arc instead of hinging. Put it beside yesterday's `ik_2bone`
+//!   and the whole point of the style is visible at a glance.
+//! - **RIGHT — `rig.skin_deformer`**: a cloud of points **skinned** to a FABRIK tentacle.
+//!   The skeleton is never drawn; what you see is the *flesh* following it (Linear Blend
+//!   Skinning, envelope weights).
 //!
 //! ```text
-//!  goal:  grid(1) ─> move(2, 0) ─> oscillator(X) ─> orbit ─┬────────────────────────┐
-//!                                               │                                 │
-//!  LEFT  arm: skeleton(3) ─> ik_2bone <─────────┤                                 │
-//!                              └─> scale ─> move(−7) ─> output                    │
-//!  RIGHT tentacle: skeleton(10) ─> fabrik <─────┘                                 │
-//!                              └─> scale ─> move(+7) ─> output                    │
-//!  goal dots:                             scale(big) ─> move(−7) ─> output  <─────┤
-//!                                                    ─> move(+7) ─> output  <─────┘
+//!  goal:  grid(1) ─> move(2, 0) ─> oscillator(X) ─> orbit ─┬───────────┐
+//!  LEFT:  skeleton(9) ─> rubber_hose <─────────────────────┤           │
+//!                           └─> scale ─> move(−7) ─> output            │
+//!  RIGHT: skeleton(8) ─┬─────────────────────────> skin.rest           │
+//!                      └─> fabrik <───────────────┤                    │
+//!                            └──────────────────> skin.posed           │
+//!         grid(5×24) ─> move ─────────────────────> skin.in            │
+//!                            skin └─> scale ─> move(+7) ─> output       │
+//!  goal dots:                       scale(big) ─> move(∓7) ─> output <─┘
 //! ```
 //!
-//! **Four sinks, no merge node.** Every `motion.output` in the document lowers onto the
-//! same draw buffer, so the goal dot is its own little scene rather than something
-//! concatenated into the limb's stream. (`motion.combine` would have worked too — but it
-//! zero-fills the columns an input lacks, so merging a tinted goal into an untinted
-//! skeleton would paint the whole limb transparent black. Sinks compose without that.)
+//! **The bind pose is a WIRE.** `rig.skin_deformer` takes the skeleton twice — once as
+//! authored (`rest`) and once as solved (`posed`) — because a skin IS the difference
+//! between those two. Nothing is snapshotted behind your back at a moment you have to
+//! remember: the bind is a thing you can see in the graph, and cut.
 //!
-//! The limbs are solved at the ORIGIN and moved apart afterwards, so both can chase the
-//! same goal; each goal dot is moved by the same offset as the limb it belongs to.
-//!
-//! Both solvers write a **pose** (angles), never positions — so the bones are rigid, the
-//! root stays nailed, and an unreachable goal extends the limb instead of stretching it
-//! (doc 41). Drag `Iterations` on FABRIK down to 1 and watch it lag behind the goal.
+//! The goal BREATHES in and out (an oscillator on X upstream of the orbit, where +X is the
+//! radial direction). A goal at a fixed radius around a limb's own root would keep the
+//! reach constant — and a hose whose reach never changes never changes its curl, the same
+//! trap that made the elbow look frozen the day before (doc 41 §6-bis).
 
 use ph2d_nodegraph::graph::{Edge, Graph, NodeId, Pos};
 
 const COL_W: f32 = 190.0;
 const GOAL_ROW: f32 = -170.0;
-const ARM_ROW: f32 = 0.0;
-const TENTACLE_ROW: f32 = 200.0;
-const DOT_ROW: f32 = 400.0;
+const HOSE_ROW: f32 = 0.0;
+const SKIN_ROW: f32 = 200.0;
+const FLESH_ROW: f32 = 340.0;
+const DOT_ROW: f32 = 480.0;
 
-/// The quad size the limbs ask for, and the fatter one the goal gets — the lowering's
-/// fallback for a stream with no `size` column is the IDENTITY (doc 39), so a document
-/// that wants small quads says so.
+/// Quad sizes: the hose's joints, the flesh's points, and the fat goal dot. (The lowering's
+/// fallback for a stream with no `size` column is the IDENTITY — doc 39 — so a document
+/// that wants small quads says so, with a `motion.scale`.)
 const JOINT_QUAD: f32 = 0.28;
+const FLESH_QUAD: f32 = 0.16;
 const GOAL_QUAD: f32 = 0.6;
 
-/// How far the goal orbits from the limbs' shared root, and how fast (`motion.orbit`'s
-/// speed is DEGREES PER SECOND — 90 is a quarter turn a second, a lap every four).
+/// The goal's orbit, and the pulse that makes its distance breathe (`motion.orbit`'s speed
+/// is DEGREES PER SECOND).
 const GOAL_RADIUS: f32 = 2.0;
 const GOAL_SPEED: f32 = 90.0;
-
-/// **The goal BREATHES in and out** — and it has to.
-///
-/// A goal on a fixed-radius orbit around the arm's own root gives the triangle
-/// `(root, elbow, hand)` three CONSTANT sides (`l1`, `l2`, and the radius), and a triangle
-/// with fixed sides has fixed angles: the arm would just rotate rigidly, elbow locked, and
-/// never demonstrate the solver at all. So the goal's distance is modulated (an oscillator
-/// on X, upstream of the orbit, where +X *is* the radial direction) and the reach sweeps
-/// `2.0 ± 0.9` — the elbow folds hard at 1.1 and opens out near full stretch at 2.9.
 const GOAL_PULSE: f32 = 0.9;
 const GOAL_PULSE_HZ: f32 = 0.35;
 
-/// The arm: three joints, two bones — reach 3.0, comfortably past the goal's orbit, so
-/// the elbow really has to bend rather than sitting at full stretch.
-const ARM_BONE: f32 = 1.5;
-/// The tentacle: ten joints of 0.34 — reach 3.06, about the same, so the two solvers are
-/// answering the same question with very different machinery.
-const TENTACLE_JOINTS: f32 = 10.0;
-const TENTACLE_BONE: f32 = 0.34;
+/// The hose: nine joints of 0.36 — a reach of 2.88, so the breathing goal (1.1 .. 2.9) has
+/// it curling from a tight coil to nearly straight.
+const HOSE_JOINTS: f32 = 9.0;
+const HOSE_BONE: f32 = 0.36;
 
-/// Author every scene into `g`; returns the four Output nodes (the sinks), in the order
-/// the tests read them: arm · tentacle · the arm's goal dot · the tentacle's goal dot.
+/// The skinned tentacle: eight joints of 0.42 (reach 2.94), with the flesh wrapped around
+/// its rest pose — a strip of points over the limb, which stands straight up from the root.
+const SKIN_JOINTS: f32 = 8.0;
+const SKIN_BONE: f32 = 0.42;
+const FLESH_COLS: f32 = 5.0;
+const FLESH_ROWS: f32 = 24.0;
+const FLESH_GAP_X: f32 = 0.16;
+const FLESH_GAP_Y: f32 = 0.13;
+
+/// Author every scene into `g`; returns the four Output nodes (the sinks), in the order the
+/// tests read them: the hose · the flesh · the hose's goal dot · the tentacle's goal dot.
 pub(crate) fn build(g: &mut Graph) -> Option<Vec<NodeId>> {
     let goal = build_goal(g)?;
-    let arm = build_arm(g, goal)?;
-    let tentacle = build_tentacle(g, goal)?;
+    let hose = build_hose(g, goal)?;
+    let flesh = build_skinned_tentacle(g, goal)?;
     let (dot_l, dot_r) = build_goal_dots(g, goal)?;
-    Some(vec![arm, tentacle, dot_l, dot_r])
+    Some(vec![hose, flesh, dot_l, dot_r])
 }
 
 /// Connect `from` → `to` on the given ports, an immediate (non-delayed) edge.
@@ -86,8 +87,7 @@ fn wire(g: &mut Graph, from: (NodeId, u16), to: (NodeId, u16)) -> Option<()> {
     .ok()
 }
 
-/// Wire a straight chain left-to-right (port 0 to port 0), laying one card per column
-/// starting at `col`.
+/// Wire a straight chain left-to-right (port 0 to port 0), one card per column from `col`.
 fn chain(g: &mut Graph, row: f32, col: usize, nodes: &[NodeId]) -> Option<()> {
     for (i, n) in nodes.iter().enumerate() {
         g.set_pos(
@@ -104,8 +104,7 @@ fn chain(g: &mut Graph, row: f32, col: usize, nodes: &[NodeId]) -> Option<()> {
     Some(())
 }
 
-/// The shared goal: a single point orbiting the origin. Returns the node both solvers
-/// (and both goal dots) read.
+/// The shared goal: one point orbiting the origin, its distance breathing in and out.
 fn build_goal(g: &mut Graph) -> Option<NodeId> {
     let grid = g.add_node("motion.grid");
     let out = g.add_node("motion.move");
@@ -117,10 +116,8 @@ fn build_goal(g: &mut Graph) -> Option<NodeId> {
     g.set_param(grid, "cols", 1.0);
     // Push the point off the pivot — an orbit around the point itself would stand still.
     g.set_param(out, "dx", GOAL_RADIUS);
-    g.set_param(out, "dy", 0.0);
-    // Channel 0 = X. The point sits on the +x axis at this stage, so an X wobble IS a
-    // change of RADIUS — which is the whole point (see GOAL_PULSE): without it the reach
-    // never changes and the elbow angle is frozen.
+    // Channel 0 = X. The point sits on the +x axis here, so an X wobble IS a change of
+    // RADIUS — which is what makes the limbs' reach (and so their curl) change at all.
     g.set_param(pulse, "channel", 0.0);
     g.set_param(pulse, "amplitude", GOAL_PULSE);
     g.set_param(pulse, "frequency", GOAL_PULSE_HZ);
@@ -129,47 +126,62 @@ fn build_goal(g: &mut Graph) -> Option<NodeId> {
     Some(orbit)
 }
 
-/// LEFT: the three-joint arm, solved by the law of cosines. Returns its Output.
-fn build_arm(g: &mut Graph, goal: NodeId) -> Option<NodeId> {
+/// LEFT: the elbowless limb. Returns its Output.
+fn build_hose(g: &mut Graph, goal: NodeId) -> Option<NodeId> {
     let skel = g.add_node("rig.skeleton");
-    let ik = g.add_node("rig.ik_2bone");
+    let hose = g.add_node("rig.rubber_hose");
     let scale = g.add_node("motion.scale");
     let mv = g.add_node("motion.move");
     let output = g.add_node("motion.output");
-    chain(g, ARM_ROW, 1, &[skel, ik, scale, mv, output])?;
-    wire(g, (goal, 0), (ik, 1))?; // the goal feeds the solver's `target` port
+    chain(g, HOSE_ROW, 1, &[skel, hose, scale, mv, output])?;
+    wire(g, (goal, 0), (hose, 1))?;
 
-    g.set_param(skel, "joints", 3.0);
-    g.set_param(skel, "length", ARM_BONE);
-    g.set_param(skel, "angle", 0.0);
+    g.set_param(skel, "joints", HOSE_JOINTS);
+    g.set_param(skel, "length", HOSE_BONE);
     g.set_param(skel, "root_angle", 90.0);
     g.set_param(scale, "amount", JOINT_QUAD);
     g.set_param(mv, "dx", -7.0);
     Some(output)
 }
 
-/// RIGHT: the ten-joint tentacle, solved by FABRIK. Returns its Output.
-fn build_tentacle(g: &mut Graph, goal: NodeId) -> Option<NodeId> {
+/// RIGHT: a FABRIK tentacle with FLESH on it — the skeleton itself is never drawn.
+fn build_skinned_tentacle(g: &mut Graph, goal: NodeId) -> Option<NodeId> {
     let skel = g.add_node("rig.skeleton");
     let solver = g.add_node("rig.fabrik");
+    let flesh = g.add_node("motion.grid");
+    let flesh_place = g.add_node("motion.move");
+    let skin = g.add_node("rig.skin_deformer");
     let scale = g.add_node("motion.scale");
     let mv = g.add_node("motion.move");
     let output = g.add_node("motion.output");
-    chain(g, TENTACLE_ROW, 1, &[skel, solver, scale, mv, output])?;
-    wire(g, (goal, 0), (solver, 1))?;
 
-    g.set_param(skel, "joints", TENTACLE_JOINTS);
-    g.set_param(skel, "length", TENTACLE_BONE);
-    g.set_param(skel, "angle", 0.0);
+    chain(g, SKIN_ROW, 1, &[skel, solver])?;
+    chain(g, FLESH_ROW, 1, &[flesh, flesh_place])?;
+    chain(g, SKIN_ROW, 3, &[skin, scale, mv, output])?;
+    wire(g, (goal, 0), (solver, 1))?;
+    // The three wires that make a skin: the points, the BIND pose, the SOLVED pose.
+    wire(g, (flesh_place, 0), (skin, 0))?;
+    wire(g, (skel, 0), (skin, 1))?; // rest — the skeleton as authored
+    wire(g, (solver, 0), (skin, 2))?; // posed — the same skeleton, solved
+
+    g.set_param(skel, "joints", SKIN_JOINTS);
+    g.set_param(skel, "length", SKIN_BONE);
     g.set_param(skel, "root_angle", 90.0);
     g.set_param(solver, "iterations", 12.0);
-    g.set_param(scale, "amount", JOINT_QUAD);
+    // A strip of points laid over the limb's rest pose, which stands straight up from the
+    // origin — so the flesh starts wrapped around the bones it is bound to.
+    g.set_param(flesh, "rows", FLESH_ROWS);
+    g.set_param(flesh, "cols", FLESH_COLS);
+    g.set_param(flesh, "gap_x", FLESH_GAP_X);
+    g.set_param(flesh, "gap_y", FLESH_GAP_Y);
+    g.set_param(flesh_place, "dy", (SKIN_JOINTS - 1.0) * SKIN_BONE * 0.5);
+    g.set_param(scale, "amount", FLESH_QUAD);
     g.set_param(mv, "dx", 7.0);
     Some(output)
 }
 
-/// The goal, drawn as a fat dot beside each limb — the same point, moved by the same
-/// offset as the limb that chases it. Returns both Outputs.
+/// The goal, drawn as a fat dot beside each limb — the same point, moved by the same offset
+/// as the limb that chases it. Returns both Outputs.
 fn build_goal_dots(g: &mut Graph, goal: NodeId) -> Option<(NodeId, NodeId)> {
     let scale = g.add_node("motion.scale");
     let mv_l = g.add_node("motion.move");

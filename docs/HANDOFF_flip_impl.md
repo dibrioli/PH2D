@@ -567,6 +567,21 @@ fix); candidato natural a W3/edit-mode. NÃO foi feito nesta rodada.
 > redonda sem miter, sem double-blend, e alpha correto com hardness baixo. Ref viva:
 > `/home/enio/Downloads/blender-5.2-grease-pencil-ref` → `draw_grease_pencil_lib.glsl`.
 
+## Smoke do Enio (2026-07-11, 6ª rodada) — acúmulo de cor nas QUINAS (spikes/estrelas)
+
+**Quinas afiadas acumulavam cor (spike/estrela na bissetriz); cruzamentos não** ✅ — o Enio
+suspeitou das "normais da face" e acertou: a **fita conectada por miter DOBRAVA** sobre si
+numa quina afiada (bowtie = triângulo invertido/auto-sobreposto), e o premult-over acumulava
+ao longo da dobra. Fix = **estado EXATO do GP 2D** (`gpencil_cache_utils.cc:449`:
+`WRITE_DEPTH | BLEND_ALPHA_PREMUL | DEPTH_GREATER`): geometria volta a quad-**stadium**
+CONVEXO (nunca dobra) + depth **GREATER estrito** + write-depth → a 2ª face no mesmo pixel
+(quina/junção/cruzamento da mesma linha) é **descartada, não misturada** → zero acúmulo. Numa
+cor sólida a sobreposição vira união limpa. O fragment analítico segue carregando a forma
+redonda. Isto **subsome a 5ª rodada** (o descarte também mata o bead das junções retas).
+`GreaterEqual` + fita-conectada foram ABANDONADOS (acumulavam / bowtie). GPU: novos
+`a_sharp_corner_does_not_accumulate_color` + `a_stroke_crossing_itself_is_a_clean_opaque_union`
++ 6 = 8 render + 2 composite verdes.
+
 ## Smoke do Enio (2026-07-11, 5ª rodada) — "mastigado" (bead) com hardness baixo
 
 **Linha "mastigada" com hardness < 1** ✅ — beads a cada ponto. Causa: os quads-stadium

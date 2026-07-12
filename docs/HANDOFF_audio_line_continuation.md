@@ -230,3 +230,79 @@ typos                                                              # ⚠️ não
 cargo deny check && cargo machete                                  # só se mexeu em deps
 ```
 Depois: **escreva o handoff de integração (regra H) e PARE.**
+
+---
+
+## §N — Cortes, peças, Move/Scale (2026-07-12, commits `971908af` · `6e0e94a5` · `3d1b72df`)
+
+**Pedido do Enio:** *"Split at Markers deveria apenas dividir o clip. Cada parte cortada deve ser
+selecionável e arrastável para ser posicionada em outros locais de corte (entre clips). Precisamos
+de um botão Split para cortar na posição do playhead. Coloque botões no topo da seção Edit para as
+operações básicas: Mover, Escalonar (reduz o tempo sem cortar a faixa), copiar, Cortar, colar."*
+
+### A decisão de modelo
+
+O documento **não** virou uma track multi-clipe (posições livres, gaps, sobreposições). O pedido diz
+que as peças são soltas **"em outros locais de corte"** — os alvos de soltura são as fronteiras que
+já existem. Isso é uma **permutação**, não um arranjo. E uma permutação de um buffer ainda é um
+buffer, então **playback, export, rack de efeitos, delivery e peak cache não mudaram uma linha**.
+
+Modelo: **um buffer + uma lista de cortes** (`ph2d-audio-edit/src/pieces.rs`). `n` cortes = `n+1`
+peças.
+
+### O que a feature obrigou a consertar
+
+`structure.rs` (novo): **cuts + markers + loop viram UM valor** (`Structure`) que viaja no passo de
+undo, e `FrameMap` carrega posições por cima de splice/trim/stretch/permute.
+
+Isso não é arquitetura por gosto — um reorder move áudio *e* fronteiras de uma vez, e um undo que
+restaurasse as amostras mas não os cortes desenharia cada emenda em cima do áudio errado. Ao fazê-lo,
+matou **um bug anterior às peças**: um ripple delete deslocava as amostras e **não** os markers, então
+todo cue depois do corte caía silenciosamente em cima de áudio diferente. Gate:
+`a_ripple_delete_slides_the_markers_it_did_not_delete`.
+
+Semântica de `FrameMap::range`: o que decide o destino de uma faixa cortada ao meio **não** é "cruza
+runs", é se o mapa **preserva a ordem**. Em ordem (delete/trim/stretch) → encolhe (o que todo DAW faz).
+Permutado → não há imagem honesta → é limpa.
+
+### `wsola::stretch` (o "Escalonar")
+
+Time-stretch pitch-preserving. A busca de similaridade roda **UMA vez sobre a soma dos canais** e
+todos os canais são fatiados nos **mesmos offsets** — por canal, cada um se alinha à *sua* forma de
+onda, os dois recebem time-warps diferentes e a imagem estéreo passeia. O pitch-shift mantém seu
+caminho por-canal **intocado** (a rack é byte-idêntica sob gate; isto é operação nova, não mudança
+naquela).
+
+### UI
+
+- Topo do Edit = **toolbar**: `[Select|Move|Scale]` (grupo, exatamente um armado) + `[Cut|Copy|Paste]`
+  + `[Split|Clear Cuts]`. Cut/Copy/Paste subiram das linhas de baixo.
+- **Split at Markers agora SÓ divide.** A escrita de arquivos manteve o comportamento, pegou o nome
+  honesto (**Export Pieces**) e mudou para **Delivery** — onde emitir mora, e onde o codec que ela
+  emite foi precificado. O laço variação (`<stem>_01..NN` → importador por convenção) segue fechado.
+- Overlay: emendas em **branco** (as outras 4 cores já estavam tomadas: seleção azul, loop verde,
+  markers roxo, playhead laranja), caret de inserção no Move, borda-fantasma no Scale.
+- Nada é commitado durante o arrasto (WSOLA de 3 min não roda 60×/s); o **release** faz a edição,
+  1 passo de undo.
+
+### Gates (todos mutation-tested)
+
+`crates/ph2d-audio-edit/tests/pieces_and_structure.rs` (18) — permutação · reorder byte-reversível ·
+undo restaura os cortes · markers colados no áudio (reorder E ripple delete) · stretch muda
+comprimento e não pitch · **canais travados juntos** · split não move amostra.
+
+⚠️ **O gate estéreo nasceu CEGO** — passava com o bug (busca por-canal) reintroduzido, porque um
+canal atrasado tem auto-similaridade idêntica e as duas buscas dão a mesma resposta. Só a mutação
+mostrou. Agora usa **carriers diferentes sob envelope compartilhado**: baseline 0,01 frames de desvio,
+mutante 20,4. Se alguém mexer no sinal de teste, **re-mute**.
+
+`crates/ph2d-panel-audio-editor/tests/seam.rs` (+6) + `no_dead_buttons.rs` (estendido).
+
+### Aberto / não coberto
+
+- **A fiação do gesto no shell não é gateável headless** (`AudioSystem::new()` precisa de device de
+  áudio; nenhum teste em `shells/desktop/tests/` constrói um). Press→grab→drag→release é
+  smoke-verificado, não gateado. Se a linha ganhar um `AudioSystem` mockável, este é o primeiro
+  cliente.
+- Peça arrastada só troca de lugar **entre fronteiras existentes** (é o que foi pedido). Posição
+  livre com gaps exigiria o modelo multi-clipe que foi deliberadamente recusado.

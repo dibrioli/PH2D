@@ -53,14 +53,41 @@ antes da 1ª chave não há nada; depois da última, o desenho segura. Ligar um 
 chip da tira liga os DOIS lados em Loop/Ping-Pong (senão o scrub para trás mostraria vazio no
 meio de um ciclo).
 
-**Gotcha que custaria um bug silencioso:** o atalho "se o ciclo é o default, use o caminho cru"
-está ERRADO. Com uma sentinela, o caminho cru devolve vazio depois dela — e é justamente o `post`
-que decide se aquilo é o fim do desenho ou um hold. Por isso `drawing_at_cycled` **sempre** passa
-pelo `map_frame`. (Sem isso, fixar a exposição da última chave APAGARIA a arte.)
+**Gotcha 1 — o render tem de amostrar PELO CICLO.** O `collect_layers` chamava
+`FlipLayer::drawing_at` (o caminho cru), então Loop e Ping-Pong **não faziam nada**: o último
+desenho segurava para sempre ("extrapola o último quadro" — smoke do Enio). O render usa
+`drawing_at_cycled`. Gate: `flip_pass::tests::the_render_samples_through_the_cycle`.
 
-- **Autoria usa o caminho CRU** (`FlipLayer::drawing_at`), amostragem usa o ciclado
-  (`drawing_at_cycled`). Editar o quadro 30 de um `Loop` não pode escrever no desenho do quadro
-  6: ele cria uma chave em 30 (que passa a ser o fim do vão). **Amostrar ≠ autorar.**
+**Gotcha 2 — o atalho "ciclo default ⇒ caminho cru" está ERRADO.** Com uma sentinela, o cru
+devolve vazio depois dela — e é justamente o `post` que decide se aquilo é o fim do desenho ou um
+hold. Por isso `drawing_at_cycled` **sempre** passa pelo `map_frame`. (Sem isso, fixar a exposição
+da última chave APAGARIA a arte.)
+
+**Gotcha 3 — a autoria não segue o mesmo mapa que a leitura, e a diferença não é onde parece.**
+São TRÊS transforms, não duas:
+
+| Transform | O que responde | Quem usa |
+|---|---|---|
+| `drawing_at` (cru) | "o que a chave em/antes deste quadro diz" | a mecânica interna |
+| `source_frame` | "**qual quadro do vão está na tela**" | render, fantasmas, a célula destacada na tira, as ops de chave |
+| `authoring_frame` | "**em qual quadro este gesto escreve**" | caneta, borracha (via `flip_autokey`) |
+
+`authoring_frame` mapeia pelo ciclo **só onde o tempo REPETE**:
+- sob `Loop`/`PingPong`, o quadro 30 não é tempo novo — é o vão de novo. Desenhar ali edita o
+  desenho que está na tela, e a edição aparece em **todas as voltas** (é o que um ciclo
+  significa). Autorar no quadro cru criaria uma chave em 30 e **quebraria o ciclo** que o usuário
+  acabou de ligar.
+- sob `Hold`/`None` (os defaults), o quadro depois do vão **é tempo novo**: o último desenho está
+  só segurando a tela. Desenhar ali cria a chave ALI — é assim que a animação cresce, quadro a
+  quadro. Mapear de volta mataria o autokey (foi o que um teste pegou na hora).
+
+Gate: `layer::tests::authoring_follows_the_cycle_only_where_time_repeats`.
+
+**Ligar um ciclo dá exposição real à última célula.** O hold implícito da última chave é infinito,
+então sem sentinela o vão fecha em `última + 1` e ela expõe UM quadro — num Loop, um piscar. Ao
+escolher Loop/Ping-Pong, a tira materializa a exposição da última chave **igual à da anterior** (o
+ritmo que o animador já estabeleceu; `1` se não há anterior). Não é mágica escondida: a célula
+alarga visivelmente na tira e a caixa **Hold** a edita. Idempotente.
 
 ---
 
@@ -152,6 +179,16 @@ Quatro peças, cada uma com uma razão:
 Os inbetweens nascem **`KeyKind::Breakdown`**, e re-tweenar **exclui os breakdowns do intervalo
 antes de recomeçar** — regenerar é idempotente (não se tweena tween). O fator usa o denominador
 `to − from` (posição ABSOLUTA no intervalo), o que faz easing e scrub baterem com o que se vê.
+
+**Gotcha (smoke do Enio) — os extremos do tween são KEYFRAMES, não "o próximo desenho".** Depois
+de gerar 3 inbetweens, o próximo *desenho* passa a ser um **breakdown**; usar
+`next_drawing_key` fazia o 2º Add interpolar entre a chave 0 e o inbetween em 2 (lixo entre 0 e 2)
+em vez de **regenerar** o intervalo 0→8. A tira usa `keyframe_at_or_before` + `next_keyframe_key`
+(o `exclude_breakdowns` do GP existe exatamente por isto). E `tween()` **compacta os desenhos**
+depois de descartar os breakdowns velhos — o que remapeia os `DrawingId`, então os extremos só
+podem ser resolvidos DEPOIS da compactação. Gates:
+`tween::tests::{the_next_tween_target_skips_the_breakdowns_it_just_made,
+the_document_op_creates_breakdowns_and_is_idempotent}`.
 
 **Correções sobre o original (`02 §3`):** fator por CAMADA (não o da camada ativa para todas),
 fills por FATIA (o original tem um `fill(0.0)` de array inteiro — wipe latente), e fade-in

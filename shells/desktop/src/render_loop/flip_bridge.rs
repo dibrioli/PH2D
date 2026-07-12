@@ -73,7 +73,10 @@ fn strip_snapshot(
             ..Default::default()
         };
     };
-    let frame = obj.frame_at(playhead);
+    // O quadro-FONTE: sob um Loop, a célula destacada tem de ser a que está NA TELA
+    // (a do vão), não a do quadro cru — que na 2ª volta já saiu da tira.
+    let raw = obj.frame_at(playhead);
+    let frame = layer.source_frame(raw);
     let cells = layer
         .cells()
         .into_iter()

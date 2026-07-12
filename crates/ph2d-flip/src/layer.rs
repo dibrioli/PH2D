@@ -10,7 +10,7 @@
 //! portada 1:1 do Grease Pencil 5.2 (`blenkernel/intern/grease_pencil.cc`, ver
 //! `02_referencia §1`), clean-room.
 
-use crate::cycle::{LayerCycle, map_frame};
+use crate::cycle::{CycleMode, LayerCycle, map_frame};
 use crate::frame::{FlipFrame, Hold, KeyKind};
 use crate::ids::{DrawingId, Frame, LayerId};
 use ph2d_painter_effects::BlendMode;
@@ -147,14 +147,56 @@ impl FlipLayer {
         (end > first).then_some((first, end))
     }
 
+    /// **O quadro-FONTE que o quadro `frame` mostra** — o quadro do ciclo. Dentro do
+    /// vão é a identidade; fora, o pre/post behavior mapeia de volta para dentro
+    /// (Loop/PingPong) ou para a borda (Hold). Quando nada aparece (`None` do
+    /// [`map_frame`], ou camada sem chave), devolve o próprio `frame`.
+    ///
+    /// É o que a TIRA destaca e o que os fantasmas usam como "agora".
+    #[must_use]
+    pub fn source_frame(&self, frame: Frame) -> Frame {
+        self.span()
+            .and_then(|s| map_frame(self.cycle, s, frame))
+            .unwrap_or(frame)
+    }
+
+    /// **O quadro em que a AUTORIA age** — e ele NÃO é sempre o quadro-fonte.
+    ///
+    /// A distinção é o que separa "tempo novo" de "tempo repetido":
+    /// - sob uma **repetição** (`Loop`/`PingPong`), o tempo fora do vão **não é tempo
+    ///   novo** — é o vão de novo. Desenhar no quadro 30 de um Loop de 12 tem de editar
+    ///   o desenho que está NA TELA (o quadro 6), e a edição aparece em todas as
+    ///   voltas. Autorar no quadro cru criaria uma chave em 30, esticando o vão e
+    ///   QUEBRANDO o ciclo que o usuário acabou de ligar. (Memória
+    ///   `feedback_derived_coordinate_seed_must_match_sample`.)
+    /// - sob `Hold`/`None` (os defaults), o tempo depois do vão **é tempo novo**: o
+    ///   último desenho está só segurando a tela. Desenhar ali cria a chave ALI — é
+    ///   assim que uma animação cresce, quadro a quadro. Mapear de volta para a última
+    ///   chave mataria o autokey.
+    #[must_use]
+    pub fn authoring_frame(&self, frame: Frame) -> Frame {
+        let Some(span) = self.span() else {
+            return frame;
+        };
+        let side = if frame < span.0 {
+            self.cycle.pre
+        } else if frame >= span.1 {
+            self.cycle.post
+        } else {
+            return frame; // dentro do vão: identidade, sempre
+        };
+        match side {
+            CycleMode::Loop | CycleMode::PingPong => {
+                map_frame(self.cycle, span, frame).unwrap_or(frame)
+            }
+            CycleMode::None | CycleMode::Hold => frame,
+        }
+    }
+
     /// **O desenho ativo no quadro `frame`, honrando o ciclo da camada** — o que o
     /// RENDER amostra. Dentro do vão é idêntico a [`Self::drawing_at`]; fora, o
     /// pre/post behavior decide (nada / segura / repete / vai-e-volta).
     ///
-    /// A **autoria** (desenhar, apagar, keyar) usa o caminho CRU
-    /// ([`Self::drawing_at`]): editar o quadro 30 de um `Loop` não pode escrever no
-    /// desenho do quadro 6 — ele cria uma chave em 30 (que passa a ser o fim do
-    /// vão). Amostrar ≠ autorar.
     /// (O ciclo default reproduz o caminho cru EXATAMENTE — mas o mapeamento roda
     /// sempre, porque uma camada com **sentinela de fim** precisa dele: no cru, o
     /// quadro depois da sentinela é vazio, e é o `post` que decide se aquilo é o
@@ -194,6 +236,32 @@ impl FlipLayer {
     #[must_use]
     pub fn active_key(&self, frame: Frame) -> Option<Frame> {
         self.frames.range(..=frame).next_back().map(|(&k, _)| k)
+    }
+
+    /// A próxima chave que é um **KEYFRAME** (pula breakdowns E sentinelas) — os
+    /// EXTREMOS entre os quais o tween interpola.
+    ///
+    /// Usar `next_drawing_key` aqui é o bug clássico: depois de gerar 3 inbetweens,
+    /// o "desenho seguinte" passa a ser um BREAKDOWN, e re-tweenar interpolaria entre
+    /// a chave e o próprio inbetween (gerando lixo entre 0 e 2 em vez de regenerar
+    /// entre 0 e 8). O `exclude_breakdowns` do GP existe por isto.
+    #[must_use]
+    pub fn next_keyframe_key(&self, frame: Frame) -> Option<Frame> {
+        self.frames
+            .range((Bound::Excluded(frame), Bound::Unbounded))
+            .find(|(_, f)| f.drawing.is_some() && f.kind == KeyKind::Keyframe)
+            .map(|(&k, _)| k)
+    }
+
+    /// O KEYFRAME em `frame` ou antes dele (pula breakdowns) — o extremo A do tween
+    /// quando o playhead parou em cima de um inbetween.
+    #[must_use]
+    pub fn keyframe_at_or_before(&self, frame: Frame) -> Option<Frame> {
+        self.frames
+            .range(..=frame)
+            .rev()
+            .find(|(_, f)| f.drawing.is_some() && f.kind == KeyKind::Keyframe)
+            .map(|(&k, _)| k)
     }
 
     /// As chaves REAIS em ordem, com a exposição (nº de quadros) de cada uma — a
@@ -429,6 +497,39 @@ mod tests {
         assert_eq!(l.drawing_at_cycled(5), d(0), "5 → 0 (o vão tem 5 quadros)");
         assert_eq!(l.drawing_at_cycled(9), d(1), "9 → 4");
         assert_eq!(l.drawing_at_cycled(-1), None, "o outro lado não ciclou");
+    }
+
+    /// **Amostrar e autorar divergem — e a divergência não é onde parece.**
+    ///
+    /// Sob `Hold` (o default), o quadro depois do vão MOSTRA o último desenho, mas
+    /// autorar ali cria uma chave NOVA: o tempo depois do vão é tempo novo, e é assim
+    /// que a animação cresce. Sob `Loop`, o mesmo quadro mostra o desenho do vão E
+    /// autorar ali edita ESSE desenho: o tempo é o vão de novo, e escrever no quadro
+    /// cru quebraria o ciclo.
+    #[test]
+    fn authoring_follows_the_cycle_only_where_time_repeats() {
+        let mut l = keyed(&[0, 4]); // vão [0, 5) — as duas chaves e mais nada
+
+        // Hold (default): o quadro 20 MOSTRA o desenho de 4 …
+        assert_eq!(l.source_frame(20), 4);
+        assert_eq!(l.drawing_at_cycled(20), d(1));
+        // … mas autorar nele é autorar EM 20 (a chave nova nasce ali).
+        assert_eq!(l.authoring_frame(20), 20, "Hold: o tempo lá fora é NOVO");
+
+        // Loop: o quadro 20 é o quadro 0 de novo — mostrar E autorar caem no 0.
+        l.cycle = LayerCycle {
+            pre: CycleMode::Loop,
+            post: CycleMode::Loop,
+        };
+        assert_eq!(l.source_frame(20), 0, "20 % 5 = 0");
+        assert_eq!(
+            l.authoring_frame(20),
+            0,
+            "Loop: editar a 2ª volta edita o vão"
+        );
+        // Dentro do vão é sempre identidade, em qualquer ciclo.
+        assert_eq!(l.authoring_frame(3), 3);
+        assert_eq!(l.source_frame(3), 3);
     }
 
     /// Navegação por DESENHO (o flip do animador): pula os holds, e a partir do

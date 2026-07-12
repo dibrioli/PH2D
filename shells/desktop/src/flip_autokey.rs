@@ -49,8 +49,17 @@ pub(crate) fn target_drawing(
     if obj.layer(lid).is_some_and(|l| l.locked) {
         return None; // camada travada recusa qualquer gesto (regra do GP)
     }
-    let frame = obj.frame_at(playhead);
-    // O que está na tela AGORA (o desenho do hold em curso), no relógio cru.
+    // **O quadro de AUTORIA** (`authoring_frame`), que não é sempre o quadro cru nem
+    // sempre o quadro-fonte: sob um Loop/Ping-Pong o tempo fora do vão é o vão DE NOVO,
+    // então o gesto edita o desenho que está na tela (e a edição aparece em todas as
+    // voltas, que é o que um ciclo significa). Sob Hold/None — os defaults — o tempo
+    // depois do vão é tempo NOVO, e é ali que a chave nova nasce; mapear de volta
+    // mataria o autokey. Detalhe em `FlipLayer::authoring_frame`.
+    let frame = obj.layer(lid).map_or_else(
+        || obj.frame_at(playhead),
+        |l| l.authoring_frame(obj.frame_at(playhead)),
+    );
+    // O que está na tela AGORA (o desenho do hold em curso), no quadro de autoria.
     let on_screen = obj.layer(lid).and_then(|l| l.drawing_at(frame));
 
     if !strip.autokey {

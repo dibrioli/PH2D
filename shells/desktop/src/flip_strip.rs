@@ -66,6 +66,47 @@ fn seek(playhead: &mut Playhead, fps: f32, f: Frame) {
     playhead.seek_frame(i64::from(f.max(0)), f64::from(fps));
 }
 
+/// O **quadro-fonte** da camada agora: sob um ciclo, o quadro do vão que está sendo
+/// exibido. Toda op de chave age NELE (a célula que se vê é a que se edita).
+fn source_frame(flip: &FlipDoc, oid: FlipObjectId, lid: LayerId, playhead: &Playhead) -> Frame {
+    let Some(obj) = flip.object(oid) else {
+        return 0;
+    };
+    let raw = obj.frame_at(playhead);
+    obj.layer(lid).map_or(raw, |l| l.source_frame(raw))
+}
+
+/// **Ligar um ciclo dá uma exposição REAL à última célula.**
+///
+/// O hold implícito da última chave é infinito — sem sentinela, o vão fecha em
+/// `última + 1` e ela expõe UM quadro. Num Loop isso é um piscar: as outras células
+/// seguram 8 quadros e a última passa num frame. Então, ao ligar Loop/Ping-Pong,
+/// materializamos a exposição da última chave **igual à da anterior** (o ritmo que o
+/// animador já estabeleceu; `1` se não há anterior).
+///
+/// Não é mágica escondida: a exposição vira uma sentinela VISÍVEL (a célula alarga na
+/// tira) e editável (a caixa **Hold**). Idempotente — se a última chave já tem
+/// exposição fixa, nada muda.
+fn ensure_cycle_span(flip: &mut FlipDoc, oid: FlipObjectId, lid: LayerId) -> bool {
+    let Some(layer) = flip.object(oid).and_then(|o| o.layer(lid)) else {
+        return false;
+    };
+    let cells = layer.cells();
+    let Some(&(last, _, _)) = cells.last() else {
+        return false;
+    };
+    if layer.duration_at(last) != 0 {
+        return false; // já tem sentinela: a exposição é explícita, respeita
+    }
+    let prev = cells
+        .len()
+        .checked_sub(2)
+        .and_then(|i| cells.get(i))
+        .map_or(1, |&(_, _, e)| e);
+    flip.object_mut(oid)
+        .is_some_and(|o| o.set_exposure(lid, last, prev))
+}
+
 /// Aplica um evento do painel da tira. Devolve `true` se MUDOU O DOCUMENTO (o
 /// caller marca a edição; transporte e seleção não são passos de undo).
 pub(crate) fn apply_panel_event(
@@ -82,7 +123,9 @@ pub(crate) fn apply_panel_event(
         return false;
     };
     let fps = flip.object(oid).map_or(24.0, |o| o.fps);
-    let frame = flip.object(oid).map_or(0, |o| o.frame_at(playhead));
+    // O quadro-FONTE (o do ciclo): sob um Loop, a célula que se vê na 2ª volta é a do
+    // vão, e é NELA que as ops de chave agem (duplicar/apagar/expor o que está na tela).
+    let frame = source_frame(flip, oid, lid, playhead);
     // A chave ATIVA agora — a origem de quase toda op (duplicar, apagar, expor).
     let key = flip
         .object(oid)
@@ -231,13 +274,19 @@ pub(crate) fn apply_panel_event(
             false
         }
         PanelEvent::Click(id) if *id == ids::FLIP_TWEEN_ADD => {
-            let Some(from) = key else { return false };
-            let Some(to) = flip
-                .object(oid)
-                .and_then(|o| o.layer(lid))
-                .and_then(|l| l.next_drawing_key(from))
-            else {
-                return false; // sem a chave seguinte não há entre o quê interpolar
+            // Os extremos do tween são **KEYFRAMES** — nunca os breakdowns que ele
+            // mesmo gerou. Usar o "próximo desenho" fazia o 2º Add interpolar entre a
+            // chave e o inbetween vizinho (lixo entre 0 e 2) em vez de REGENERAR o
+            // intervalo 0→8. E parado em cima de um inbetween, o extremo A é a chave
+            // anterior — clicar Add de novo regenera, não empilha.
+            let Some(layer) = flip.object(oid).and_then(|o| o.layer(lid)) else {
+                return false;
+            };
+            let (Some(from), Some(to)) = (
+                layer.keyframe_at_or_before(frame),
+                layer.next_keyframe_key(frame),
+            ) else {
+                return false; // sem os dois extremos não há entre o quê interpolar
             };
             let made = flip.object_mut(oid).map_or(0, |o| {
                 o.tween(TweenRequest {
@@ -257,6 +306,11 @@ pub(crate) fn apply_panel_event(
                 return false;
             };
             let (pre, post) = cycle_pair(mode);
+            // Loop/Ping-Pong repetem o VÃO — e o vão só tem fim quando a última chave
+            // tem exposição real. Sem isso ela expõe 1 quadro e o ciclo "pisca" no fim.
+            if matches!(post, CycleMode::Loop | CycleMode::PingPong) {
+                ensure_cycle_span(flip, oid, lid);
+            }
             if let Some(l) = flip.object_mut(oid).and_then(|o| o.layer_mut(lid)) {
                 l.cycle.pre = pre;
                 l.cycle.post = post;
@@ -304,9 +358,11 @@ impl crate::App {
         let Some(obj) = gfx.flip.object(oid) else {
             return;
         };
-        let frame = obj.frame_at(&self.playhead);
         let fps = obj.fps;
         let Some(layer) = obj.layer(lid) else { return };
+        // No quadro-FONTE: sob um Loop, navegar a partir da 2ª volta tem de andar
+        // dentro do vão (no quadro cru não haveria vizinho nenhum).
+        let frame = layer.source_frame(obj.frame_at(&self.playhead));
         let to = if next {
             layer.next_drawing_key(frame)
         } else {

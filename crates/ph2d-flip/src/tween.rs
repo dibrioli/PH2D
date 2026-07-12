@@ -323,13 +323,11 @@ impl FlipObject {
         let Some(layer) = self.layer(req.layer) else {
             return 0;
         };
-        let (Some(da), Some(db)) = (
-            layer.frames().get(&from).and_then(|f| f.drawing),
-            layer.frames().get(&to).and_then(|f| f.drawing),
-        ) else {
-            return 0;
-        };
-        // Limpa os breakdowns antigos do intervalo (regeneração idempotente).
+        // Limpa os breakdowns antigos do intervalo (regeneração idempotente) e
+        // RECLAMA os desenhos deles. A compactação REMAPEIA os `DrawingId`, então os
+        // extremos só podem ser resolvidos DEPOIS (resolvê-los antes deixaria `da`/
+        // `db` apontando para o desenho errado — o bug silencioso do índice
+        // posicional).
         let stale: Vec<Frame> = layer
             .frames()
             .range((from + 1)..to)
@@ -339,6 +337,17 @@ impl FlipObject {
         for k in stale {
             self.remove_frame(req.layer, k);
         }
+        self.remove_unused_drawings();
+
+        let Some(layer) = self.layer(req.layer) else {
+            return 0;
+        };
+        let (Some(da), Some(db)) = (
+            layer.frames().get(&from).and_then(|f| f.drawing),
+            layer.frames().get(&to).and_then(|f| f.drawing),
+        ) else {
+            return 0;
+        };
         // Os quadros livres do intervalo (o que sobrou de chaves reais fica).
         let count = req.count.min((gap - 1) as u32);
         let a = self.drawing(da).expect("chave A tem desenho").clone();
@@ -566,5 +575,54 @@ mod tests {
             .map(|(k, _, _)| *k)
             .collect();
         assert_eq!(frames, vec![0, 4, 8], "os antigos sumiram");
+        // E o inbetween novo é o do MEIO do caminho — prova de que a regeneração
+        // interpolou entre os EXTREMOS (0 e 8), não entre a chave e um breakdown
+        // sobrevivente. Com os ids remapeados pela compactação, um `da`/`db` resolvido
+        // ANTES apontaria para o desenho errado e este valor sairia torto.
+        let mid = o.drawing_at(l, 4).unwrap();
+        assert_eq!(
+            pts(&o.drawing(mid).unwrap().strokes[0]),
+            vec![(0.0, 5.0), (10.0, 5.0)],
+            "o inbetween regenerado é a média dos extremos"
+        );
+    }
+
+    /// **O bug do smoke:** depois de gerar inbetweens, a chave "seguinte" para um novo
+    /// tween tem de ser o próximo **KEYFRAME** — não o breakdown vizinho. Sem isso, o
+    /// 2º Add interpolaria entre a chave 0 e o inbetween 2 (lixo entre 0 e 2), em vez
+    /// de regenerar o intervalo 0→8.
+    #[test]
+    fn the_next_tween_target_skips_the_breakdowns_it_just_made() {
+        let mut o = FlipObject::new(FlipObjectId(1), "O");
+        let l = o.add_layer("L");
+        let a = o
+            .insert_frame(l, 0, Hold::Implicit, KeyKind::Keyframe)
+            .unwrap();
+        let b = o
+            .insert_frame(l, 8, Hold::Implicit, KeyKind::Keyframe)
+            .unwrap();
+        o.drawing_mut(a)
+            .unwrap()
+            .strokes
+            .push(stroke(&[(0.0, 0.0), (10.0, 0.0)]));
+        o.drawing_mut(b)
+            .unwrap()
+            .strokes
+            .push(stroke(&[(0.0, 10.0), (10.0, 10.0)]));
+        o.tween(TweenRequest {
+            layer: l,
+            from: 0,
+            to: 8,
+            count: 3,
+            options: TweenOptions::default(),
+        });
+        let layer = o.layer(l).unwrap();
+        // O próximo DESENHO depois de 0 é o breakdown em 2 …
+        assert_eq!(layer.next_drawing_key(0), Some(2));
+        // … mas o próximo KEYFRAME (o extremo do tween) continua sendo o 8.
+        assert_eq!(layer.next_keyframe_key(0), Some(8));
+        // E parado EM CIMA de um inbetween, o extremo A é a chave 0 (não o breakdown).
+        assert_eq!(layer.keyframe_at_or_before(4), Some(0));
+        assert_eq!(layer.next_keyframe_key(4), Some(8));
     }
 }

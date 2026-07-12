@@ -29,6 +29,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::curve::{Interp, interpolate};
 use crate::curve_fit::FitKey;
+use crate::curve_prep::FitChannel;
 use crate::time::RationalTime;
 
 /// Stable identity of a key within its [`Track`] — monotonic, never reused, so
@@ -52,9 +53,16 @@ impl KeyId {
     }
 }
 
-/// The keys of a time range as fit input: their ids, and their `(time, value)`
-/// samples (low-passed). Returned by [`Track::range_samples`].
-pub type RangeSamples = (Vec<KeyId>, Vec<(f64, f64)>);
+/// The keys of a time range as fit input, PREPARED for the channel they carry.
+/// Returned by [`Track::range_samples`].
+#[derive(Debug, Clone, PartialEq)]
+pub struct RangeSamples {
+    /// The ids of the keys the fit will replace.
+    pub ids: Vec<KeyId>,
+    /// Their `(time, value)` samples: angle-unwrapped if the channel is angular,
+    /// and low-passed.
+    pub samples: Vec<(f64, f64)>,
+}
 
 /// One keyframe: a time, a value, and the interpolation leaving it.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
@@ -414,25 +422,31 @@ impl Track {
         t_min: f64,
         t_max: f64,
         tol: f64,
+        channel: FitChannel,
         smooth_passes: usize,
     ) -> bool {
-        let Some((ids, samples)) = self.range_samples(t_min, t_max, smooth_passes) else {
+        let Some(rs) = self.range_samples(t_min, t_max, channel, smooth_passes) else {
             return false;
         };
-        let fitted = crate::fit_fcurve(&samples, tol);
-        self.apply_fit(&ids, &samples, &fitted)
+        let fitted = crate::fit_fcurve(&rs.samples, tol, channel.bounds);
+        self.apply_fit(&rs.ids, &rs.samples, &fitted)
     }
 
-    /// The low-passed `(time, value)` samples of the non-roving scalar keys in
-    /// `[t_min, t_max]`, with their ids — the input a fit consumes. `None` when
-    /// there is nothing to fit (fewer than 3 in-range keys, or a non-scalar key
-    /// in range). Public so a caller can fit SEVERAL tracks together and align
-    /// their key times ([`Track::simplify_range_at`]).
+    /// The PREPARED `(time, value)` samples of the non-roving scalar keys in
+    /// `[t_min, t_max]`, with their ids — the input a fit consumes. `channel` says
+    /// what the numbers mean (an angle is unwrapped, a bounded channel carries its
+    /// bound) and `smooth_passes` low-passes the tremor out
+    /// ([`crate::curve_prep::prepare`]).
+    ///
+    /// `None` when there is nothing to fit (fewer than 3 in-range keys, or a
+    /// non-scalar key in range). Public so a caller can fit SEVERAL tracks
+    /// together and align their key times ([`Track::simplify_range_at`]).
     #[must_use]
     pub fn range_samples(
         &self,
         t_min: f64,
         t_max: f64,
+        channel: FitChannel,
         smooth_passes: usize,
     ) -> Option<RangeSamples> {
         let mut ids = Vec::new();
@@ -452,26 +466,28 @@ impl Track {
         if samples.len() < 3 {
             return None;
         }
-        crate::smooth_values(&mut samples, smooth_passes);
-        Some((ids, samples))
+        crate::prepare(&mut samples, channel, smooth_passes);
+        Some(RangeSamples { ids, samples })
     }
 
     /// Like [`Track::simplify_range`], but the fitted keys land at the GIVEN
     /// times — the aligned-columns path ([`crate::fit_fcurve_at`]). Every track of
     /// one recording session re-fitted at the same times reads as clean dope-sheet
     /// columns, so an animator can grab a column and re-time every channel at once.
+    ///
     pub fn simplify_range_at(
         &mut self,
         t_min: f64,
         t_max: f64,
         times: &[f64],
+        channel: FitChannel,
         smooth_passes: usize,
     ) -> bool {
-        let Some((ids, samples)) = self.range_samples(t_min, t_max, smooth_passes) else {
+        let Some(rs) = self.range_samples(t_min, t_max, channel, smooth_passes) else {
             return false;
         };
-        let fitted = crate::fit_fcurve_at(&samples, times);
-        self.apply_fit(&ids, &samples, &fitted)
+        let fitted = crate::fit_fcurve_at(&rs.samples, times, channel.bounds);
+        self.apply_fit(&rs.ids, &rs.samples, &fitted)
     }
 
     /// Swap the keys `ids` (the fitted range) for `fitted`. No-op when the fit did

@@ -2,7 +2,8 @@
 //! bulk edits, cursor safety) and the `Interp` bézier-handle helpers.
 
 use ph2d_anim::{
-    AnimValue, AttributeEvaluator, Easing, EasingFamily, EasingMode, Interp, RationalTime, Track,
+    AnimValue, AttributeEvaluator, Easing, EasingFamily, EasingMode, FitChannel, Interp,
+    RationalTime, Track,
 };
 
 fn as_f(v: AnimValue) -> f32 {
@@ -454,7 +455,7 @@ fn simplify_range_replaces_dense_keys_with_a_precise_minimal_fit() {
         tr.insert_key(secs(t), AnimValue::Float(v as f32), Interp::Linear);
     }
     assert_eq!(tr.len(), n);
-    let changed = tr.simplify_range(0.0, 4.0, 0.25, 0);
+    let changed = tr.simplify_range(0.0, 4.0, 0.25, FitChannel::LINEAR, 0);
     assert!(changed, "the dense run simplified");
     assert!(
         tr.len() < n / 10,
@@ -483,7 +484,7 @@ fn simplify_range_leaves_keys_outside_the_range_untouched() {
         let v = (t * 6.0).sin();
         tr.insert_key(secs(t), AnimValue::Float(v as f32), Interp::Linear);
     }
-    tr.simplify_range(1.0, 2.0, 0.05, 0);
+    tr.simplify_range(1.0, 2.0, 0.05, FitChannel::LINEAR, 0);
     // The outside key survives with its value and its Hold interp.
     assert_eq!(tr.key(before).map(|k| k.interp), Some(Interp::Hold));
     assert!((tr_at(&tr, 0.0) - 9.0).abs() < 1e-6, "pre-range value held");
@@ -495,7 +496,7 @@ fn simplify_range_is_a_noop_below_three_keys() {
     tr.insert_key(secs(0.0), AnimValue::Float(0.0), Interp::Linear);
     tr.insert_key(secs(1.0), AnimValue::Float(1.0), Interp::Linear);
     assert!(
-        !tr.simplify_range(0.0, 1.0, 0.1, 0),
+        !tr.simplify_range(0.0, 1.0, 0.1, FitChannel::LINEAR, 0),
         "two keys: nothing to fit"
     );
     assert_eq!(tr.len(), 2);

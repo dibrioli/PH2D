@@ -333,12 +333,21 @@ fn simplify_recorded(timeline: &mut TimelineState, record: &BTreeMap<(u64, PropK
             let Some(track) = timeline.doc.active_clip().track(target) else {
                 continue;
             };
-            let Some((_, samples)) = track.range_samples(span.t_min, span.t_max, REC_SMOOTH_PASSES)
+            let channel = prop.fit_channel();
+            let Some(rs) = track.range_samples(span.t_min, span.t_max, channel, REC_SMOOTH_PASSES)
             else {
                 continue;
             };
-            let tol = value_tol(&span);
-            times.extend(ph2d_anim::fit_fcurve(&samples, tol).iter().map(|k| k.t));
+            // Tolerance off the PREPARED samples, not the raw `RecSpan`: an angle
+            // channel's raw extent is one wrapped turn (~2π) however many times it
+            // actually spun, so a raw-derived tolerance would be far too tight for
+            // the unwrapped curve the fit now sees.
+            let tol = value_tol(&rs.samples);
+            times.extend(
+                ph2d_anim::fit_fcurve(&rs.samples, tol, channel.bounds)
+                    .iter()
+                    .map(|k| k.t),
+            );
         }
         if times.is_empty() {
             continue;
@@ -357,7 +366,13 @@ fn simplify_recorded(timeline: &mut TimelineState, record: &BTreeMap<(u64, PropK
                 continue;
             };
             if let Some(track) = timeline.doc.active_clip_mut().track_mut(target) {
-                track.simplify_range_at(span.t_min, span.t_max, &columns, REC_SMOOTH_PASSES);
+                track.simplify_range_at(
+                    span.t_min,
+                    span.t_max,
+                    &columns,
+                    prop.fit_channel(),
+                    REC_SMOOTH_PASSES,
+                );
             }
         }
     }
@@ -365,8 +380,15 @@ fn simplify_recorded(timeline: &mut TimelineState, record: &BTreeMap<(u64, PropK
 
 /// The fit tolerance for one recorded track: a fraction of ITS value range, with
 /// an absolute floor so a near-constant channel is not held to an impossible bar.
-fn value_tol(span: &RecSpan) -> f64 {
-    (REC_SIMPLIFY_REL * (span.v_max - span.v_min)).max(REC_SIMPLIFY_FLOOR)
+/// Measured on the PREPARED samples (see the caller) — the range the fit will
+/// actually see, which for an unwrapped spin is every turn, not one.
+fn value_tol(samples: &[(f64, f64)]) -> f64 {
+    let (mut v_min, mut v_max) = (f64::MAX, f64::MIN);
+    for &(_, v) in samples {
+        v_min = v_min.min(v);
+        v_max = v_max.max(v);
+    }
+    (REC_SIMPLIFY_REL * (v_max - v_min)).max(REC_SIMPLIFY_FLOOR)
 }
 
 #[cfg(test)]

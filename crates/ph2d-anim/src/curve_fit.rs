@@ -36,15 +36,15 @@
 //! time (a handle may not run backward in time — Blender's `correct_bezpart`,
 //! expressed here in normalised segment coordinates). Transcendental-free (HR-5).
 //!
+//! What a channel means beyond its numbers — an angle that wraps, a hard bound the
+//! curve may not leave — is prepared by the sibling [`crate::curve_prep`]. The
+//! bound reaches the fit here and clamps the fitted control points; by the
+//! convex-hull property that holds the whole curve inside it.
+//!
 //! References cross-checked against the canonical `FitCurves.c` (Graphics Gems),
 //! Inkscape/2geom `bezier-utils.cpp` (the hardened Newton guards + the Wu–Barsky
 //! `α < ε·chord` fallback used below, not the book's `α < 0`), and Blender's
-//! F-curve tools. **Deliberately deferred** (v1 fits smooth gizmo mocap well; add
-//! when the input demands it): a corner pre-pass that keeps sharp cusps as BROKEN
-//! (non-aligned) tangents rather than smoothing them under one shared centre
-//! tangent; a value-overshoot clamp for bounded channels (opacity's runtime
-//! `clamp(0,1)` already catches the display side); a rotation unwrap before
-//! fitting multi-turn Euler spins; and a low-pass pre-filter for noisy input.
+//! F-curve tools.
 
 use crate::curve::Interp;
 
@@ -94,12 +94,15 @@ pub fn smooth_values(samples: &mut [(f64, f64)], passes: usize) {
 /// cubic-Bézier [`FitKey`]s whose reconstructed curve stays within `tol` — an
 /// ABSOLUTE value tolerance in the samples' own units — of every sample.
 ///
+/// `bounds` are the channel's hard limits, which the fitted curve may not leave
+/// (`None` = unbounded) — see [`crate::curve_prep::FitChannel`].
+///
 /// Returns the samples' endpoints unchanged (a fit always pins the ends) and as
 /// few interior keys as the tolerance allows. Fewer than 3 distinct-time samples
 /// pass through as-is (nothing to simplify). A dead-flat run collapses to its two
 /// endpoints. Deterministic; runs once, off the hot path (end of a record drag).
 #[must_use]
-pub fn fit_fcurve(samples: &[(f64, f64)], tol: f64) -> Vec<FitKey> {
+pub fn fit_fcurve(samples: &[(f64, f64)], tol: f64, bounds: Option<(f64, f64)>) -> Vec<FitKey> {
     let Some(prep) = Prep::new(samples) else {
         return trivial_keys(samples);
     };
@@ -109,7 +112,7 @@ pub fn fit_fcurve(samples: &[(f64, f64)], tol: f64) -> Vec<FitKey> {
     // turn to count as a real extremum.
     let min_prom = (4.0 * tol_n).max(0.02);
     let anchors = anchor_indices(&prep.norm, min_prom);
-    prep.build_keys(&anchors, tol_n, RUN_SPLIT_DEPTH)
+    prep.build_keys(&anchors, tol_n, RUN_SPLIT_DEPTH, bounds)
 }
 
 /// Fit `samples` with the key times FORCED to `times` — the **aligned-columns**
@@ -122,14 +125,20 @@ pub fn fit_fcurve(samples: &[(f64, f64)], tol: f64) -> Vec<FitKey> {
 /// never split — a split would insert a key OFF the shared column grid and break
 /// the alignment. Times outside the samples' range are ignored; the two
 /// endpoints are always pinned. `times` need not be sorted or unique.
+///
+/// `bounds` are as in [`fit_fcurve`].
 #[must_use]
-pub fn fit_fcurve_at(samples: &[(f64, f64)], times: &[f64]) -> Vec<FitKey> {
+pub fn fit_fcurve_at(
+    samples: &[(f64, f64)],
+    times: &[f64],
+    bounds: Option<(f64, f64)>,
+) -> Vec<FitKey> {
     let Some(prep) = Prep::new(samples) else {
         return trivial_keys(samples);
     };
     let anchors = prep.indices_for_times(times);
     // No split (`depth = 0`): the keys land exactly on the shared columns.
-    prep.build_keys(&anchors, f64::INFINITY, 0)
+    prep.build_keys(&anchors, f64::INFINITY, 0, bounds)
 }
 
 /// Fewer than 3 distinct-time samples (or a degenerate span): pass them through.
@@ -224,7 +233,14 @@ impl Prep {
     }
 
     /// Fit each run between consecutive `anchors` and convert to [`FitKey`]s.
-    fn build_keys(&self, anchors: &[usize], tol_n: f64, depth: u32) -> Vec<FitKey> {
+    /// `bounds` (channel units) clamp the fitted curve's value range.
+    fn build_keys(
+        &self,
+        anchors: &[usize],
+        tol_n: f64,
+        depth: u32,
+        bounds: Option<(f64, f64)>,
+    ) -> Vec<FitKey> {
         let mut segs: Vec<[P; 4]> = Vec::new();
         for w in anchors.windows(2) {
             fit_run(&self.norm[w[0]..=w[1]], tol_n, depth, &mut segs);
@@ -234,6 +250,27 @@ impl Prep {
         // segment (clamped so the curve stays a function of time).
         let denorm_t = |tn: f64| self.t0 + tn * self.t_span;
         let denorm_v = |vn: f64| self.v_min + vn * self.v_span;
+        // Bounds in the normalised value axis. A cubic Bézier lies inside the convex
+        // hull of its control points, so clamping ALL FOUR of a segment's value
+        // coordinates to the bound keeps the whole curve inside it — exactly, not
+        // approximately. Least-squares alone happily overshoots a channel that
+        // settles ON its bound (an opacity fading to 1.0 reconstructs to 1.003),
+        // which the graph editor draws even where the runtime clamps the display.
+        //
+        // The KEYS are clamped too, not just the handles: a recording carries
+        // tremor, so a fade that rests at 1.0 has samples at 1.004 — the endpoints
+        // are NOT inside the bound by construction, and a key at 1.004 opacity is
+        // not a thing that exists.
+        let bounds_n = bounds.map(|(lo, hi)| {
+            (
+                (lo - self.v_min) / self.v_span,
+                (hi - self.v_min) / self.v_span,
+            )
+        });
+        let clamp_v = |vn: f64| match bounds_n {
+            Some((lo, hi)) => vn.clamp(lo, hi),
+            None => vn,
+        };
         let mut out = Vec::with_capacity(segs.len() + 1);
         for seg in &segs {
             let [p0, c0, c1, p1] = *seg;
@@ -243,11 +280,12 @@ impl Prep {
             } else {
                 (1.0 / 3.0, 2.0 / 3.0)
             };
-            let dy1 = (c0[1] - p0[1]) * self.v_span;
-            let dy2 = (c1[1] - p1[1]) * self.v_span;
+            let (p0v, p1v) = (clamp_v(p0[1]), clamp_v(p1[1]));
+            let dy1 = (clamp_v(c0[1]) - p0v) * self.v_span;
+            let dy2 = (clamp_v(c1[1]) - p1v) * self.v_span;
             out.push(FitKey {
                 t: denorm_t(p0[0]),
-                v: denorm_v(p0[1]),
+                v: denorm_v(p0v),
                 interp: Interp::bezier_w(x1, dy1, x2, dy2),
             });
         }
@@ -255,7 +293,7 @@ impl Prep {
         if let Some(last) = segs.last() {
             out.push(FitKey {
                 t: denorm_t(last[3][0]),
-                v: denorm_v(last[3][1]),
+                v: denorm_v(clamp_v(last[3][1])),
                 interp: Interp::Linear,
             });
         }

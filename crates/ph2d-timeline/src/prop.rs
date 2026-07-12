@@ -106,6 +106,33 @@ impl PropKind {
             PropKind::Opacity | PropKind::TimeRemap => None,
         }
     }
+
+    /// What a record-cleanup fit must know about this channel beyond its numbers
+    /// ([`ph2d_anim::FitChannel`]) — the property's SEMANTICS, which live here
+    /// with the property and not in the fit (which stays a pure numeric routine).
+    ///
+    /// [`PropKind::Rotation`] is **angular**: the rotate gizmo writes it through
+    /// `atan2`, so a recorded spin arrives as a ±2π sawtooth and must be unwrapped
+    /// or a two-turn spin reconstructs as a net rotation of zero.
+    /// [`PropKind::Opacity`] is **bounded** to `[0, 1]` — the alpha of
+    /// `Sprite.tint`; a least-squares cubic through a fade that settles on 1.0
+    /// otherwise overshoots past it, which the graph editor draws.
+    ///
+    /// The rest are unbounded scalars. [`PropKind::TimeRemap`] never records (it
+    /// is not in [`PropKind::ALL`], the auto-key pose list), so its value here is
+    /// only the safe default.
+    #[must_use]
+    pub const fn fit_channel(self) -> ph2d_anim::FitChannel {
+        match self {
+            PropKind::Rotation => ph2d_anim::FitChannel::ANGLE,
+            PropKind::Opacity => ph2d_anim::FitChannel::bounded(0.0, 1.0),
+            PropKind::TranslationX
+            | PropKind::TranslationY
+            | PropKind::ScaleX
+            | PropKind::ScaleY
+            | PropKind::TimeRemap => ph2d_anim::FitChannel::LINEAR,
+        }
+    }
 }
 
 #[cfg(test)]

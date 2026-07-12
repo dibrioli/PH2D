@@ -309,3 +309,161 @@ fn a_session_aligns_every_track_of_an_object_on_shared_key_times() {
         );
     }
 }
+
+// ── Channel semantics of the record cleanup (rotation unwrap · opacity bounds) ─
+
+#[test]
+fn a_recorded_two_turn_spin_survives_the_cleanup() {
+    // THE product-level assertion for the rotation unwrap. The rotate gizmo writes
+    // `Transform.rotation` as `start + (atan2(now) - atan2(start))`, and both
+    // `atan2`s live in `(-PI, PI]` — so the pose this pass samples during a spin is
+    // a +-2PI SAWTOOTH. Fitted as a plain scalar it used to reconstruct a 2-turn
+    // spin as a net rotation of ~zero: the spin was simply gone.
+    //
+    // Driven through the real `simplify_recorded` seam, not the fit's own tests —
+    // the damage was never in either half, it was in the channel semantics between
+    // them ([[feedback_tool_unit_green_integration_dead]]).
+    use ph2d_anim::AttributeEvaluator;
+    use std::f64::consts::{PI, TAU};
+
+    let mut st = TimelineState::new();
+    let mut ph = Playhead::new(1.0 / 60.0);
+    for (t, v) in [(0.0, 0.0f32), (2.0, 0.0)] {
+        apply_intent(
+            &mut st,
+            &mut ph,
+            I::AddKey {
+                entity: E,
+                prop: PropKind::Rotation,
+                t: RationalTime::from_seconds(t),
+                value: AnimValue::Float(v),
+                interp: ph2d_anim::Interp::Linear,
+            },
+        );
+    }
+    let target = st.doc.binding_for(E, PropKind::Rotation).unwrap().target;
+
+    // Perform a continuous two-turn spin (plus a radian, so the gesture ENDS on a
+    // pose that differs from the seed key — otherwise the last frame diffs to zero,
+    // no key is recorded there, and the range the cleanup owns stops short of it).
+    let total = 2.0 * TAU + 1.0;
+    let truth = |t: f64| total * (t / 2.0);
+    let wrapped = |t: f64| {
+        let mut a = truth(t) % TAU;
+        if a > PI {
+            a -= TAU;
+        }
+        a
+    };
+    ph.play();
+    let mut ak = AutokeyState::default();
+    let frames = 120;
+    for i in 0..frames {
+        let t = 2.0 * f64::from(i) / f64::from(frames - 1);
+        ph.seek(t);
+        frame_perf(
+            &mut st,
+            &ph,
+            &[(E, pose(&[(ROT, wrapped(t) as f32)]))],
+            true,
+            false,
+            &mut ak,
+        );
+    }
+    // Release: the session ends, the cleanup runs.
+    frame_perf(
+        &mut st,
+        &ph,
+        &[(E, pose(&[(ROT, wrapped(2.0) as f32)]))],
+        false,
+        false,
+        &mut ak,
+    );
+
+    let tr = st.doc.active_clip().track(target).unwrap();
+    let at = |t: f64| match tr.sample(t) {
+        AnimValue::Float(v) => f64::from(v),
+        _ => unreachable!(),
+    };
+    // It really turned twice, and it never un-spins on the way.
+    let span = at(2.0) - at(0.0);
+    assert!(
+        (span - total).abs() < 0.35,
+        "the spin really turned {total:.2} rad; the cleaned track replays {span:.2} \
+         (before the unwrap: 0.00 — the whole spin was gone)"
+    );
+    let mut prev = at(0.0);
+    for i in 1..=200 {
+        let now = at(2.0 * f64::from(i) / 200.0);
+        assert!(
+            now >= prev - 0.02,
+            "a forward spin never snaps backward: {prev:.3} -> {now:.3}"
+        );
+        prev = now;
+    }
+}
+
+#[test]
+fn a_recorded_fade_is_cleaned_up_inside_the_opacity_bounds() {
+    // Opacity is `[0, 1]`. A least-squares cubic through a fade that settles ON the
+    // bound overshoots past it; the runtime clamps the display, but the graph
+    // editor draws the CURVE.
+    use ph2d_anim::AttributeEvaluator;
+    const OPACITY: usize = 5;
+
+    let mut st = TimelineState::new();
+    let mut ph = Playhead::new(1.0 / 60.0);
+    for (t, v) in [(0.0, 0.0f32), (1.5, 1.0)] {
+        apply_intent(
+            &mut st,
+            &mut ph,
+            I::AddKey {
+                entity: E,
+                prop: PropKind::Opacity,
+                t: RationalTime::from_seconds(t),
+                value: AnimValue::Float(v),
+                interp: ph2d_anim::Interp::Linear,
+            },
+        );
+    }
+    let target = st.doc.binding_for(E, PropKind::Opacity).unwrap().target;
+
+    ph.play();
+    let mut ak = AutokeyState::default();
+    let frames = 90;
+    for i in 0..frames {
+        let t = 1.5 * f64::from(i) / f64::from(frames - 1);
+        ph.seek(t);
+        // Fade in fast, then rest exactly on the bound.
+        let v = if t < 0.5 { 2.0 * t } else { 1.0 };
+        frame_perf(
+            &mut st,
+            &ph,
+            &[(E, pose(&[(OPACITY, v as f32)]))],
+            true,
+            false,
+            &mut ak,
+        );
+    }
+    frame_perf(
+        &mut st,
+        &ph,
+        &[(E, pose(&[(OPACITY, 1.0)]))],
+        false,
+        false,
+        &mut ak,
+    );
+
+    let tr = st.doc.active_clip().track(target).unwrap();
+    for i in 0..=300 {
+        let t = 1.5 * f64::from(i) / 300.0;
+        let v = match tr.sample(t) {
+            AnimValue::Float(v) => f64::from(v),
+            _ => unreachable!(),
+        };
+        assert!(
+            (-1e-5..=1.0 + 1e-5).contains(&v),
+            "the cleaned fade stays inside [0, 1]: {v} at t={t}"
+        );
+    }
+}

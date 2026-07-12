@@ -7,6 +7,7 @@
 //! former `tool/layers.rs` god-file (pure move).
 
 use super::super::*;
+use crate::layers::ReliefComposite;
 
 impl PainterTool {
     /// Set a layer's visibility (layers panel edit). No-op if `id` unknown.
@@ -31,6 +32,32 @@ impl PainterTool {
     /// Set a layer's blend mode. No-op if `id` unknown.
     pub fn set_layer_blend_mode(&mut self, id: RtLayerId, mode: BlendMode) {
         self.layers.set_blend_mode(id, mode);
+        self.invalidate_composite();
+    }
+
+    /// Set a layer's **Impasto depth** (`-1..1`) — the live, permanent handle on everything ever
+    /// sculpted on it (`Layer::impasto_depth`). No-op if `id` unknown.
+    ///
+    /// It composites, it does not re-sculpt: the height plane is untouched and `0` is a mute, not an
+    /// erase. That is what lets it be the ONE knob that still reaches a stroke laid an hour ago — the
+    /// brush's own Depth is baked into each stroke as it lands and afterwards only the last one is
+    /// still live.
+    pub fn set_layer_impasto_depth(&mut self, id: RtLayerId, depth: f32) {
+        self.layers.set_impasto_depth(id, depth);
+        self.invalidate_composite();
+    }
+
+    /// [`Self::set_layer_impasto_depth`] from a **bare slider's** `0..1` track — the panel's per-row
+    /// sliders (opacity, and now this) store normalised and the tool maps to the domain, exactly like
+    /// `set_brush_size_norm`. `0.5` is the zero: the two halves of the track mean opposite things.
+    pub fn set_layer_impasto_depth_norm(&mut self, id: RtLayerId, norm: f32) {
+        let depth = norm.clamp(0.0, 1.0).mul_add(2.0, -1.0); // CLAMP-OK: 0..1 track → -1..1 domain
+        self.set_layer_impasto_depth(id, depth);
+    }
+
+    /// Set how a layer's relief meets the relief below it (`Add` / `Level`). No-op if `id` unknown.
+    pub fn set_layer_impasto_composite(&mut self, id: RtLayerId, mode: ReliefComposite) {
+        self.layers.set_impasto_composite(id, mode);
         self.invalidate_composite();
     }
 

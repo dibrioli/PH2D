@@ -19,7 +19,10 @@ use crate::undo::{ProjectState, ProjectUndo};
 /// v3: `ProjectFile` ganhou os **documentos do Painter** (3º campo). Sem eles o projeto salvava um
 /// sprite apontando para uma textura de runtime que morre com o processo — pintar, salvar e reabrir
 /// devolvia o quadro em branco. Ver [`crate::project_painter`].
-const PROJECT_SCHEMA: u32 = 3;
+/// v4: o `Layer` do Painter ganhou o **Impasto por camada** (`impasto_depth` / `impasto_composite` /
+/// `has_relief`) — postcard é posicional, então um documento pintado v3 lê lixo nos campos seguintes.
+/// Rejeitar é a única leitura honesta.
+const PROJECT_SCHEMA: u32 = 4;
 
 /// O conteúdo de um arquivo de projeto.
 #[derive(serde::Serialize, serde::Deserialize)]

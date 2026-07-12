@@ -2,6 +2,7 @@
 //! routes the panel events; `RasterEditTool` is the shell push / composite-preview / Apply-bake interface.
 
 use super::*;
+use crate::layers::ReliefComposite;
 
 impl Tool for PainterTool {
     fn id(&self) -> ToolId {
@@ -171,6 +172,18 @@ impl Tool for PainterTool {
                         }
                         PainterLayerWidget::MoveUp => self.move_layer_up(layer),
                         PainterLayerWidget::MoveDown => self.move_layer_down(layer),
+                        PainterLayerWidget::ImpastoLevel => {
+                            let now = self
+                                .layers
+                                .get(layer)
+                                .map(|l| l.impasto_composite)
+                                .unwrap_or_default();
+                            let next = match now {
+                                ReliefComposite::Add => ReliefComposite::Level,
+                                ReliefComposite::Level => ReliefComposite::Add,
+                            };
+                            self.set_layer_impasto_composite(layer, next);
+                        }
                         PainterLayerWidget::MaskInvert => self.toggle_mask_inverted(layer),
                         PainterLayerWidget::MaskApply => {
                             self.apply_mask(layer);
@@ -225,6 +238,9 @@ impl Tool for PainterTool {
                 } else if let Some((layer, kind)) = self.decode_layer_widget(id) {
                     match kind {
                         PainterLayerWidget::Opacity => self.set_layer_opacity(layer, v as f32),
+                        PainterLayerWidget::ImpastoDepth => {
+                            self.set_layer_impasto_depth_norm(layer, v as f32)
+                        }
                         PainterLayerWidget::AdjParam0 => {
                             self.set_adjustment_param(layer, 0, v as f32)
                         }

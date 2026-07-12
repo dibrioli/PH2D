@@ -132,13 +132,9 @@ const FN_OVERAGE_OK: &[(&str, &str, usize, &str)] = &[
         202,
         "unmasked by the 2026-07-10 parser fix; field-by-field mirror, 2 LOC over — split is mechanical",
     ),
-    // Painter W4 adjustment dispatch + param rows grew with the bespoke kinds.
-    (
-        "ph2d-panel-painter-layers/src/event.rs",
-        "apply_event_impl",
-        281,
-        "Painter W4 adjustment event dispatch; re-baselined 299→281 by the comment-aware parser",
-    ),
+    // (The painter-layers `apply_event_impl` allowance is GONE: adding the per-layer Impasto rows
+    // pushed it over its 281, so the `ValueChanged` arm was extracted whole into `route_value_changed`
+    // — 181 LOC, under the 200 cap, no allowance needed. Which is exactly what the cap is for.)
     (
         "ph2d-panel-painter-layers/src/paint.rs",
         "paint",

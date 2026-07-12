@@ -6,6 +6,7 @@
 //! points are `pub(crate)` so the orchestrator can call them.
 
 use crate::paint::register_button;
+use crate::paint_rows_relief::paint_relief_line;
 use ph2d_editor_core::IconId;
 use ph2d_editor_core::ids::{PainterLayerWidget, painter_layer_widget_id};
 use ph2d_editor_core::interaction::{HierarchyDragState, InteractiveState, WidgetStore};
@@ -25,9 +26,9 @@ use std::collections::BTreeSet;
 // hence the single-line LITERAL-PX-OK justifications.
 const LAYER_INDENT_STEP: f32 = 14.0; // LITERAL-PX-OK: per-nesting-level indent for group children
 const BLEND_CHIP_W: f32 = 92.0; // LITERAL-PX-OK: blend-mode dropdown chip column width
-const OPACITY_PCT_W: f32 = 44.0; // LITERAL-PX-OK: plain "NN%" readout column right of the bare opacity slider
+pub(crate) const OPACITY_PCT_W: f32 = 44.0; // LITERAL-PX-OK: plain "NN%" readout column right of the bare opacity slider
 const REORDER_W: f32 = 16.0; // LITERAL-PX-OK: far-right reorder button column width
-const PCT_SCALE: f32 = 100.0; // LITERAL-PX-OK: opacity fraction-to-percent scale, not a design value
+pub(crate) const PCT_SCALE: f32 = 100.0; // LITERAL-PX-OK: fraction-to-percent scale, not a design value
 const DROP_BAR_H: f32 = 2.0; // LITERAL-PX-OK: W3.T3.8 drag drop-indicator bar thickness
 const GHOST_PAD: f32 = 7.0; // LITERAL-PX-OK: floating drag-ghost pill horizontal text padding
 const DROP_BAND_TOP: f32 = 0.3; // LITERAL-PX-OK: top 30% = insert-before band (mirror of find_painter_layer_drop)
@@ -175,8 +176,17 @@ fn paint_layer_row(
     let cell_gap = Spacing::Sm.px();
     let row_gap = Spacing::Xs.px();
     let label_y = y + (ROW_H_PX - font) * 0.5;
-    let row_total_h = ROW_H_PX * 2.0 + row_gap;
+    // A third line, and ONLY for a layer that carries relief (`has_relief`, projected by the tool):
+    // the Impasto depth. Every other document — every document, until someone sculpts one — is exactly
+    // the two-line row it always was, with no impasto chrome anywhere in the panel.
+    let relief_h = if layer.has_relief {
+        ROW_H_PX + row_gap
+    } else {
+        0.0
+    };
+    let row_total_h = ROW_H_PX * 2.0 + row_gap + relief_h;
     let op_y = y + ROW_H_PX + row_gap;
+    let depth_y = op_y + ROW_H_PX + row_gap;
     // The far-right column is reserved (on every row, for alignment) for the
     // reorder buttons; the rest of the row content stops at `content_right`.
     let reorder_x = x + w - REORDER_W;
@@ -320,7 +330,7 @@ fn paint_layer_row(
     // ── Opacity: a BARE slider (no numeric chip, hence no per-row Vello clip,
     // which was the panel FPS sink) plus a plain "NN%" readout (line 2). ──
     let op_slider = painter_layer_widget_id(id.0, PainterLayerWidget::Opacity);
-    register_opacity(ctx.host.store_mut(), op_slider, layer.opacity);
+    register_bare_slider(ctx.host.store_mut(), op_slider, layer.opacity);
     let pct = (layer.opacity * PCT_SCALE).round();
     let slider_w = (content_right - x - OPACITY_PCT_W - cell_gap).max(0.0);
     let st = ctx
@@ -351,7 +361,11 @@ fn paint_layer_row(
         resolve(ColorToken::Text2, theme),
     );
 
-    op_y + ROW_H_PX + Spacing::Sm.px()
+    if layer.has_relief {
+        paint_relief_line(ctx, theme, layer, x, content_right, depth_y, font, cell_gap);
+    }
+
+    y + row_total_h + Spacing::Sm.px()
 }
 
 /// Live drop indicator for an in-progress layer drag, painted on top of the
@@ -511,10 +525,11 @@ pub(crate) fn paint_reorder_btn(
     }
 }
 
-/// `register_if_absent` the per-row opacity slider (bare, `0..1` storage). The
+/// `register_if_absent` a per-row BARE slider (`0..1` storage) — opacity, and the relief line's
+/// Impasto depth. The
 /// dispatch maps a drag to a fresh value from the registered hit rect; the
 /// panel forwards the resulting `ValueChanged` as `SetValue` to the tool.
-fn register_opacity(store: &mut WidgetStore, slider: ph2d_a11y::NodeId, value: f32) {
+pub(crate) fn register_bare_slider(store: &mut WidgetStore, slider: ph2d_a11y::NodeId, value: f32) {
     store.register_if_absent(
         slider,
         InteractiveState::Slider {

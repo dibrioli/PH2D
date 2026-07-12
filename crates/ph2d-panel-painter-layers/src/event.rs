@@ -194,6 +194,9 @@ fn apply_event_impl(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
                     | PainterLayerWidget::MaskInvert
                     | PainterLayerWidget::MaskApply
                     | PainterLayerWidget::MaskView
+                    // The relief-composite chip (Add ↔ Level) — a bare click; the tool cycles the mode
+                    // (source of truth = the layer).
+                    | PainterLayerWidget::ImpastoLevel
                     // Adjustment toggle rack (W4 BATCH-1) — bare click, the tool
                     // flips the boolean param slot (source of truth = params).
                     | PainterLayerWidget::AdjToggle0
@@ -213,112 +216,118 @@ fn apply_event_impl(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
         }
         // Per-row opacity slider drag — forward the dispatched `0..1` (the linked chip edit
         // propagates back to the slider, so its ValueChanged arrives here too — single route).
-        WidgetEvent::ValueChanged(id) => {
-            // W4 §3 — a Curves control-point 2-D drag stashed `(parent, ch, idx, x, y)` → drain it.
-            if let Some((parent, ch, idx, x, y)) = host.store_mut().take_curve_point_drag() {
-                if let Some(stack) = state::current_layers() {
-                    if let Some(layer) = stack
-                        .all_ids()
-                        .find(|l| painter_curve_editor_id(l.0) == parent)
-                    {
-                        // Remember the touched point so the "−" button knows what to drop.
-                        state::set_selected_curve_point(Some((layer.0, ch, usize::from(idx))));
-                        host.bus_mut().push(EditorAction::ToolPanelEvent(
-                            PanelEvent::SelectOption(
-                                core_ids::PAINTER_CURVE_EDIT,
-                                format!("{}:{ch}:{idx}:{x}:{y}", layer.0),
-                            ),
-                        ));
-                    } else if let Some(layer) = stack
-                        .all_ids()
-                        .find(|l| painter_gradient_editor_id(l.0) == parent)
-                    {
-                        // Gradient Map stop drag — `x` is the new offset; selecting the
-                        // dragged stop drives its color sliders + the "−" button.
-                        state::set_selected_gradient_stop(layer.0, usize::from(idx));
-                        host.bus_mut().push(EditorAction::ToolPanelEvent(
-                            PanelEvent::SelectOption(
-                                core_ids::PAINTER_GRADIENT_EDIT,
-                                format!("{}:{idx}:{x}", layer.0),
-                            ),
-                        ));
-                    }
-                }
-                return true;
-            }
-            let Some(stack) = state::current_layers() else {
-                return false;
-            };
-            // Per-row sliders: opacity + the adjustment param slots (0..1).
-            if let Some((layer, kind)) = decode(&stack, id) {
-                // Channel Mixer weight slider (AdjParam0..3 on a ChannelMixer layer): forward the
-                // active output tab + slot via PAINTER_MIXER_EDIT (generic SetValue can't carry the row).
-                if let Some(slot) = adj_param_slot(kind)
-                    && slot <= 3
-                    && layer_is_channel_mixer(&stack, layer)
-                {
-                    let v = host.store().slider(id).map(|(_, v)| v).unwrap_or(0.0);
-                    let out = state::active_mixer_channel(layer.0).min(2);
-                    host.bus_mut()
-                        .push(EditorAction::ToolPanelEvent(PanelEvent::SelectOption(
-                            core_ids::PAINTER_MIXER_EDIT,
-                            format!("{}:{out}:{slot}:{v}", layer.0),
-                        )));
-                    return true;
-                }
-                // Selective Color CMYK slider (AdjParam0..3): forward bucket + slot via PAINTER_SELCOLOR_EDIT.
-                if let Some(slot) = adj_param_slot(kind)
-                    && slot <= 3
-                    && layer_is_selective_color(&stack, layer)
-                {
-                    let v = host.store().slider(id).map(|(_, v)| v).unwrap_or(0.0);
-                    let bucket = state::active_selective_bucket(layer.0).min(8);
-                    host.bus_mut()
-                        .push(EditorAction::ToolPanelEvent(PanelEvent::SelectOption(
-                            core_ids::PAINTER_SELCOLOR_EDIT,
-                            format!("{}:{bucket}:{slot}:{v}", layer.0),
-                        )));
-                    return true;
-                }
-                // Gradient Map RGB slider (AdjParam0..2 on a GradientMap layer):
-                // forward the selected stop + slot via PAINTER_GRADIENT_COLOR.
-                if let Some(slot) = adj_param_slot(kind)
-                    && slot <= 2
-                    && layer_is_gradient_map(&stack, layer)
-                {
-                    let v = host.store().slider(id).map(|(_, v)| v).unwrap_or(0.0);
-                    let stop = state::selected_gradient_stop(layer.0);
-                    host.bus_mut()
-                        .push(EditorAction::ToolPanelEvent(PanelEvent::SelectOption(
-                            core_ids::PAINTER_GRADIENT_COLOR,
-                            format!("{}:{stop}:{slot}:{v}", layer.0),
-                        )));
-                    return true;
-                }
-                if matches!(
-                    kind,
-                    PainterLayerWidget::Opacity
-                        | PainterLayerWidget::AdjParam0
-                        | PainterLayerWidget::AdjParam1
-                        | PainterLayerWidget::AdjParam2
-                        | PainterLayerWidget::AdjParam3
-                        | PainterLayerWidget::AdjParam4
-                        | PainterLayerWidget::AdjParam5
-                        | PainterLayerWidget::AdjParam6
-                        | PainterLayerWidget::AdjParam7
-                ) {
-                    let v = host.store().slider(id).map(|(_, v)| v).unwrap_or(0.0);
-                    host.bus_mut()
-                        .push(EditorAction::ToolPanelEvent(PanelEvent::SetValue(
-                            id, v as f64,
-                        )));
-                    return true;
-                }
-            }
-            false
-        }
+        WidgetEvent::ValueChanged(id) => route_value_changed(host, id),
         _ => false,
     }
+}
+
+/// The `ValueChanged` half of the per-row dispatch: the Curves 2-D drag drain, then the per-row
+/// sliders (opacity, the layer's Impasto depth, the adjustment param slots). Split out of
+/// `apply_event_impl` for the panel's per-function LOC cap — a pure move, no behaviour.
+fn route_value_changed(host: &mut dyn PanelHostInternal, id: ph2d_a11y::NodeId) -> bool {
+    // W4 §3 — a Curves control-point 2-D drag stashed `(parent, ch, idx, x, y)` → drain it.
+    if let Some((parent, ch, idx, x, y)) = host.store_mut().take_curve_point_drag() {
+        if let Some(stack) = state::current_layers() {
+            if let Some(layer) = stack
+                .all_ids()
+                .find(|l| painter_curve_editor_id(l.0) == parent)
+            {
+                // Remember the touched point so the "−" button knows what to drop.
+                state::set_selected_curve_point(Some((layer.0, ch, usize::from(idx))));
+                host.bus_mut()
+                    .push(EditorAction::ToolPanelEvent(PanelEvent::SelectOption(
+                        core_ids::PAINTER_CURVE_EDIT,
+                        format!("{}:{ch}:{idx}:{x}:{y}", layer.0),
+                    )));
+            } else if let Some(layer) = stack
+                .all_ids()
+                .find(|l| painter_gradient_editor_id(l.0) == parent)
+            {
+                // Gradient Map stop drag — `x` is the new offset; selecting the
+                // dragged stop drives its color sliders + the "−" button.
+                state::set_selected_gradient_stop(layer.0, usize::from(idx));
+                host.bus_mut()
+                    .push(EditorAction::ToolPanelEvent(PanelEvent::SelectOption(
+                        core_ids::PAINTER_GRADIENT_EDIT,
+                        format!("{}:{idx}:{x}", layer.0),
+                    )));
+            }
+        }
+        return true;
+    }
+    let Some(stack) = state::current_layers() else {
+        return false;
+    };
+    // Per-row sliders: opacity + the adjustment param slots (0..1).
+    if let Some((layer, kind)) = decode(&stack, id) {
+        // Channel Mixer weight slider (AdjParam0..3 on a ChannelMixer layer): forward the
+        // active output tab + slot via PAINTER_MIXER_EDIT (generic SetValue can't carry the row).
+        if let Some(slot) = adj_param_slot(kind)
+            && slot <= 3
+            && layer_is_channel_mixer(&stack, layer)
+        {
+            let v = host.store().slider(id).map(|(_, v)| v).unwrap_or(0.0);
+            let out = state::active_mixer_channel(layer.0).min(2);
+            host.bus_mut()
+                .push(EditorAction::ToolPanelEvent(PanelEvent::SelectOption(
+                    core_ids::PAINTER_MIXER_EDIT,
+                    format!("{}:{out}:{slot}:{v}", layer.0),
+                )));
+            return true;
+        }
+        // Selective Color CMYK slider (AdjParam0..3): forward bucket + slot via PAINTER_SELCOLOR_EDIT.
+        if let Some(slot) = adj_param_slot(kind)
+            && slot <= 3
+            && layer_is_selective_color(&stack, layer)
+        {
+            let v = host.store().slider(id).map(|(_, v)| v).unwrap_or(0.0);
+            let bucket = state::active_selective_bucket(layer.0).min(8);
+            host.bus_mut()
+                .push(EditorAction::ToolPanelEvent(PanelEvent::SelectOption(
+                    core_ids::PAINTER_SELCOLOR_EDIT,
+                    format!("{}:{bucket}:{slot}:{v}", layer.0),
+                )));
+            return true;
+        }
+        // Gradient Map RGB slider (AdjParam0..2 on a GradientMap layer):
+        // forward the selected stop + slot via PAINTER_GRADIENT_COLOR.
+        if let Some(slot) = adj_param_slot(kind)
+            && slot <= 2
+            && layer_is_gradient_map(&stack, layer)
+        {
+            let v = host.store().slider(id).map(|(_, v)| v).unwrap_or(0.0);
+            let stop = state::selected_gradient_stop(layer.0);
+            host.bus_mut()
+                .push(EditorAction::ToolPanelEvent(PanelEvent::SelectOption(
+                    core_ids::PAINTER_GRADIENT_COLOR,
+                    format!("{}:{stop}:{slot}:{v}", layer.0),
+                )));
+            return true;
+        }
+        if matches!(
+            kind,
+            PainterLayerWidget::Opacity
+                    // The layer's Impasto depth — same bare-slider wire as opacity (`0..1`), and the
+                    // tool maps the track onto the signed domain (`set_layer_impasto_depth_norm`).
+                    | PainterLayerWidget::ImpastoDepth
+                    | PainterLayerWidget::AdjParam0
+                    | PainterLayerWidget::AdjParam1
+                    | PainterLayerWidget::AdjParam2
+                    | PainterLayerWidget::AdjParam3
+                    | PainterLayerWidget::AdjParam4
+                    | PainterLayerWidget::AdjParam5
+                    | PainterLayerWidget::AdjParam6
+                    | PainterLayerWidget::AdjParam7
+        ) {
+            let v = host.store().slider(id).map(|(_, v)| v).unwrap_or(0.0);
+            host.bus_mut()
+                .push(EditorAction::ToolPanelEvent(PanelEvent::SetValue(
+                    id, v as f64,
+                )));
+            return true;
+        }
+    }
+    false
 }
 
 /// Decode a per-row widget id → `(layer, kind)` via the published snapshot.

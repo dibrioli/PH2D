@@ -304,6 +304,13 @@ pub enum PainterLayerWidget {
     OpacityChip,
     /// The blend-mode dropdown chip (opens the blend popover).
     Blend,
+    /// (Relief-bearing rows only) the **Impasto depth** slider (stores `-1..1`) — the layer's relief as
+    /// a composite parameter, sibling of [`Self::Opacity`]. Painted only where there is relief to act
+    /// on (`Layer::has_relief`), so a document nobody has sculpted shows none of this.
+    ImpastoDepth,
+    /// (Relief-bearing rows only) the **Level** toggle — flips the layer's relief composite between
+    /// `Add` (paint piles up) and `Level` (this layer's paint buries the texture under it).
+    ImpastoLevel,
     /// The move-up (↑) reorder button — moves the layer toward the front/top.
     MoveUp,
     /// The move-down (↓) reorder button — moves the layer toward the back.
@@ -356,6 +363,8 @@ impl PainterLayerWidget {
             Self::Opacity => "opacity",
             Self::OpacityChip => "opacity_chip",
             Self::Blend => "blend",
+            Self::ImpastoDepth => "impasto_depth",
+            Self::ImpastoLevel => "impasto_level",
             Self::MoveUp => "move_up",
             Self::MoveDown => "move_down",
             Self::MaskInvert => "mask_invert",
@@ -378,12 +387,14 @@ impl PainterLayerWidget {
     }
 
     /// All kinds, in a fixed order — the decoder iterates this.
-    pub const ALL: [PainterLayerWidget; 23] = [
+    pub const ALL: [PainterLayerWidget; 25] = [
         Self::Row,
         Self::Visibility,
         Self::Opacity,
         Self::OpacityChip,
         Self::Blend,
+        Self::ImpastoDepth,
+        Self::ImpastoLevel,
         Self::MoveUp,
         Self::MoveDown,
         Self::MaskInvert,

@@ -174,6 +174,14 @@ mod tests {
         t.on_canvas_pointer(cp([16.0, 16.0], PointerPhase::Down));
         t.on_canvas_pointer(cp([16.0, 16.0], PointerPhase::Up));
 
+        // …and then TUNE that relief at the layer (§10.8): a depth and a composite mode. These are
+        // composite parameters, so nothing about the height field records them — if the file forgot
+        // them, a reopened painting would come back with its relief at full strength and piling up,
+        // which reads to the artist as "my settings were thrown away".
+        let sculpted = t.layers.active().expect("a layer");
+        t.set_layer_impasto_depth(sculpted, -0.4);
+        t.set_layer_impasto_composite(sculpted, crate::layers::ReliefComposite::Level);
+
         let layers_before = t.layers.root().len();
         assert!(layers_before >= 2, "the document really is multi-layer");
         let relief_before: Vec<f32> = t
@@ -228,5 +236,24 @@ mod tests {
             .cloned()
             .expect("the relief came back too");
         assert_eq!(relief_after, relief_before, "…exactly as it was sculpted");
+
+        // The per-layer composite came back with it. (Postcard is positional, which is why the project
+        // schema had to go 3 → 4 the moment `Layer` grew these fields: a v3 file would have read the
+        // NEXT field's bytes as this one's.)
+        let restored = t2
+            .layers
+            .all_ids()
+            .find_map(|id| t2.layers.get(id).filter(|l| l.has_relief))
+            .expect("the sculpted layer came back, and it knows it carries relief");
+        assert!(
+            (restored.impasto_depth - (-0.4)).abs() < 1e-6,
+            "the layer's Impasto depth survived the disk (got {})",
+            restored.impasto_depth
+        );
+        assert_eq!(
+            restored.impasto_composite,
+            crate::layers::ReliefComposite::Level,
+            "…and so did how it meets the relief below it"
+        );
     }
 }

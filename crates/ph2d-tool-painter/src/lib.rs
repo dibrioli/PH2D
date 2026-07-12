@@ -31,8 +31,8 @@ pub use compositor::{
     LayerImage, LayerPixelSource, MapPixelSource, Region, composite, composite_region,
 };
 pub use layers::{
-    GroupLayer, HARD_CAP_LAYERS, Layer, LayerId, LayerKind, LayerModifiers, LayerStack,
-    MAX_GROUP_DEPTH, MaskLayer, RasterLayer, TextureLayer,
+    DEPTH_NEUTRAL, GroupLayer, HARD_CAP_LAYERS, Layer, LayerId, LayerKind, LayerModifiers,
+    LayerStack, MAX_GROUP_DEPTH, MaskLayer, RasterLayer, ReliefComposite, TextureLayer,
 };
 pub use params::PainterParams;
 /// O documento pintado, serializável — a unidade que o arquivo de projeto guarda.

@@ -159,6 +159,11 @@ impl PainterTool {
         self.heights = doc.heights;
         self.covers = doc.covers;
         self.drop_live_relief();
+        // The stack and the relief travelled together, so the `has_relief` flags arrive already true —
+        // EXCEPT for a document that came off disk from a build that never sculpted it. Re-deriving is
+        // O(layers) and makes the flag self-healing at every door into a document: it can never be the
+        // thing that lies to the panel.
+        self.sync_relief_flags();
         self.layer_pixel_versions = doc.layer_pixel_versions;
         self.source_size = doc.source_size;
         self.resolve_symmetry_geometry(); // re-pin the auto-centre symmetry pivot to the restored canvas

@@ -25,6 +25,7 @@
 //! have been the obvious thing, and it would have compounded the shading a little more every frame.
 
 use super::Region;
+use crate::layers::ReliefComposite;
 use crate::tool::PainterTool;
 
 /// How many CANVAS PIXELS of physical paint height `h = 1.0` (one full-Depth stroke) represents.
@@ -107,11 +108,29 @@ fn gloss_body(cover: f32) -> f32 {
     paint_body(cover)
 }
 
+/// One layer's contribution to the composed relief, in z-order.
+struct ReliefLayer<'a> {
+    /// The committed height plane. `None` for the active layer when it has only a live stroke on it.
+    height: Option<&'a [f32]>,
+    /// Its paint coverage, when it has one.
+    cover: Option<&'a [u8]>,
+    /// The layer's own **Impasto depth** (`Layer::impasto_depth`) — `1` composites as sculpted, `0`
+    /// mutes, negative inverts the relief.
+    depth: f32,
+    /// How this layer meets the relief below it.
+    composite: ReliefComposite,
+    /// This is the ACTIVE layer, so the open stroke rides on it (`live_h`/`live_c` fold in here — at
+    /// this layer's z, under this layer's depth, not on top of the whole pile).
+    active: bool,
+}
+
 /// The relief + coverage the light reads, sampled straight out of the layer store — no composed buffer,
 /// no per-frame allocation. See [`PainterTool::impasto_fields`].
 struct ReliefFields<'a> {
-    /// Every visible layer that carries relief: its height, and its coverage when it has one.
-    committed: Vec<(&'a [f32], Option<&'a [u8]>)>,
+    /// Every visible layer that carries relief, **bottom-up** — the order it composites in. The order
+    /// is load-bearing now: [`ReliefComposite::Level`] buries what is *under* it, and until it existed
+    /// the fold was a commutative sum that could iterate in any order at all.
+    layers: Vec<ReliefLayer<'a>>,
     /// The open stroke's relief on the active layer (`None` outside a stroke, or while erasing — an
     /// erase mutates the layer in place, so there is nothing separate to add).
     live_h: Option<&'a [f32]>,
@@ -128,24 +147,57 @@ impl ReliefFields<'_> {
     /// dirty rect's edge exactly as a full recompose would) — and to the glass ceiling, so the LIVE
     /// stroke over an already-full pile shows the same paint the commit is about to store (no pop at
     /// pen-up), and stacked layers top out exactly as stacked strokes do.
+    ///
+    /// The fold walks the layers bottom-up, each one scaled by its own depth and joined to the pile
+    /// under it by its own composite mode.
     #[inline]
     fn height_at(&self, x: i64, y: i64) -> f32 {
         let i = self.index(x, y);
-        let mut h = self.live_h.map_or(0.0, |l| l[i]);
-        for (field, _) in &self.committed {
-            h += field[i];
+        let mut h = 0.0f32;
+        for l in &self.layers {
+            let mut own = l.height.map_or(0.0, |f| f[i]);
+            if l.active {
+                own += self.live_h.map_or(0.0, |s| s[i]);
+            }
+            own *= l.depth;
+            match l.composite {
+                ReliefComposite::Add => h += own,
+                // Bury, in proportion to this layer's own paint: solid paint IS the surface, bare paint
+                // shows the pile below untouched. Anything else would make an empty region of a `Level`
+                // layer flatten the whole painting.
+                ReliefComposite::Level => {
+                    let c = self.layer_cover_at(l, i);
+                    h = h * (1.0 - c) + own * c;
+                }
+            }
         }
         h.clamp(-super::impasto::H_CEIL, super::impasto::H_CEIL)
     }
 
+    /// One layer's own paint coverage at `i` (`0..1`) — including the open stroke when it is the active
+    /// one. This is the `Level` fold's weight; it is NOT [`Self::cover_at`], which is the whole
+    /// canvas's.
+    #[inline]
+    fn layer_cover_at(&self, l: &ReliefLayer<'_>, i: usize) -> f32 {
+        let mut c = l.cover.map_or(0.0, |cv| f32::from(cv[i]) / 255.0);
+        if l.active {
+            c = c.max(self.live_c.map_or(0.0, |s| s[i]));
+        }
+        c.clamp(0.0, 1.0)
+    }
+
     /// Paint coverage at a canvas pixel (`0..1`) — the MAX over the layers, not the sum: it is a
     /// presence, not a quantity (two layers of paint over one pixel do not make it 200% paint).
+    ///
+    /// Deliberately NOT scaled by the layers' Impasto depth: this is what the light uses to decide it is
+    /// looking at *paint* rather than paper ([`paint_body`]), and muting a layer's relief does not make
+    /// its pigment any less present on the canvas.
     #[inline]
     fn cover_at(&self, x: i64, y: i64) -> f32 {
         let i = self.index(x, y);
         let mut c = self.live_c.map_or(0.0, |l| l[i]);
-        for (_, cover) in &self.committed {
-            if let Some(cv) = cover {
+        for l in &self.layers {
+            if let Some(cv) = l.cover {
                 c = c.max(f32::from(cv[i]) / 255.0);
             }
         }
@@ -295,30 +347,51 @@ impl PainterTool {
             return None;
         }
         let active = self.layers.active();
-        let mut committed: Vec<(&[f32], Option<&[u8]>)> = Vec::new();
-        // Only layers that were actually sculpted have an entry — the map is lazy, so this is empty for
-        // every document nobody has used Impasto on.
-        for (id, field) in &self.heights {
-            if field.len() == n && self.layer_effectively_visible(*id) {
-                let cover = self
-                    .covers
-                    .get(id)
-                    .map(Vec::as_slice)
-                    .filter(|c| c.len() == n);
-                committed.push((field.as_slice(), cover));
-            }
-        }
         // The open stroke rides on the active layer — which may not have a committed entry yet.
         let live_visible = active.is_some_and(|a| self.layer_effectively_visible(a));
         let live_h = (live_visible && self.paint.stroke_height.len() == n && !self.paint.eraser)
             .then_some(self.paint.stroke_height.as_slice());
         let live_c = (live_visible && self.paint.stroke_paint.len() == n && !self.paint.eraser)
             .then_some(self.paint.stroke_paint.as_slice());
-        if committed.is_empty() && live_h.is_none() {
+
+        // Bottom-up, because `Level` is not commutative. Only layers that were actually sculpted have
+        // an entry — the map is lazy, so this is empty for every document nobody has used Impasto on
+        // (plus the active layer, when a live stroke is in flight on a layer that has none yet).
+        let mut layers: Vec<ReliefLayer<'_>> = Vec::new();
+        for id in self.layers.z_order_bottom_up() {
+            if !self.layer_effectively_visible(id) {
+                continue;
+            }
+            let is_active = active == Some(id);
+            let height = self
+                .heights
+                .get(&id)
+                .map(Vec::as_slice)
+                .filter(|f| f.len() == n);
+            let carries_live = is_active && live_h.is_some();
+            if height.is_none() && !carries_live {
+                continue;
+            }
+            let Some(layer) = self.layers.get(id) else {
+                continue;
+            };
+            layers.push(ReliefLayer {
+                height,
+                cover: self
+                    .covers
+                    .get(&id)
+                    .map(Vec::as_slice)
+                    .filter(|c| c.len() == n),
+                depth: layer.impasto_depth,
+                composite: layer.impasto_composite,
+                active: is_active,
+            });
+        }
+        if layers.is_empty() {
             return None;
         }
         Some(ReliefFields {
-            committed,
+            layers,
             live_h,
             live_c,
             width: w as usize,
@@ -383,6 +456,21 @@ impl PainterTool {
 fn light_pixel(v: f32, mul: f32, add: f32) -> f32 {
     let lit = (v * mul).clamp(0.0, 1.0);
     (lit + add * (1.0 - lit)).clamp(0.0, 1.0)
+}
+
+#[cfg(test)]
+impl PainterTool {
+    /// The **composed** relief at a canvas pixel — depth-scaled, mode-folded, ceiling-clamped: exactly
+    /// the number the light reads.
+    ///
+    /// Deliberately the light's OWN sampler, not a re-implementation of the fold for the gates to
+    /// compare against. An oracle that re-derives the thing it is testing agrees with the bug
+    /// ([[feedback_oracle_must_model_appearance_not_implementation]]); this one asks the pass what it
+    /// sees. (`layer_height_view` is a different question — one layer's raw plane, before any of this.)
+    pub(crate) fn composed_relief_at(&self, x: u32, y: u32) -> f32 {
+        self.impasto_fields()
+            .map_or(0.0, |f| f.height_at(i64::from(x), i64::from(y)))
+    }
 }
 
 #[cfg(test)]

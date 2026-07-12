@@ -587,3 +587,62 @@ em Paint vale o Body, em Smear vale a faca, **nunca os dois**.
 Perf: **1.99 ms/move** (a faca é O(footprint), sem solver). Fica **fora**: conservação de volume real
 (IMPaSTo/WetBrush — a crista que se ergue à frente da lâmina). O que existe é a versão degenerada e
 barata, que é exatamente o que a Corel faz.
+
+---
+
+### 10.8 **Composite Depth por camada** (2026-07-12) — o relevo vira parâmetro de composição
+
+Fechado o item que o §6 nomeava como o próximo (`Composite Depth por camada` + escala por camada).
+
+**O buraco que ele tapa.** O Depth do pincel é **assado em cada traço** no momento em que ele pousa; o
+re-derive vivo (§10.3) alcança **só o último**. Ou seja: no instante em que você dá a 2ª pincelada, a
+espessura da 1ª está congelada — e até aqui **nada no produto voltava a tocá-la**. O Depth de camada
+alcança: é um parâmetro de **composição**, então age sobre *tudo que já foi esculpido naquela camada*,
+para sempre, sem re-esculpir um texel. É a barganha da opacidade, um eixo ao lado: `0` **muda**, não
+apaga — e o gate termina subindo de volta e exigindo a escultura de volta **bit a bit**.
+
+**Onde mora.** Linha 3 da row da camada, no painel de Layers — ao lado da opacidade, no mesmo formato
+(slider bare + leitura + um chip). A profundidade da tinta de uma camada é a *opacidade da espessura
+dela*; não pertence a um painel modal noutro lugar. E ela só é pintada em camadas **que têm relevo**
+(`Layer::has_relief`) — documento que ninguém esculpiu não mostra chrome de impasto em lugar nenhum.
+
+**4 modos viraram 2 — e isso é o achado.** O plano pedia `Add`/`Subtract`/`Replace`/`Ignore`. Três deles
+são **leituras de um único número com sinal**: `+` empilha, `0` muda, `−` cava. Um enum que duplica um
+slider é *exatamente* o segundo-ganho que esta seção já teve de matar uma vez (o antigo "Amount", §10.1).
+Sobra o único que a escala **não** consegue dizer:
+
+- **`Level`** — a tinta espessa e opaca desta camada **soterra** a textura debaixo dela em vez de herdá-la,
+  pesada pela própria cobertura (`h = h_abaixo·(1−c) + h_meu·c`). É o "composite, don't add" da pesquisa
+  ([17_impasto_deposito_pesquisa2.md](17_impasto_deposito_pesquisa2.md)). Onde a tinta é sólida a superfície
+  é **desta** camada; onde ela é rala, o que está embaixo aparece intacto — senão uma região vazia de uma
+  camada `Level` achataria o quadro inteiro.
+
+**A ordem do fold virou carga.** `Level` **não comuta**. Enquanto o composite era só uma soma, o fold podia
+iterar o mapa de alturas em ordem de **chave** — e ninguém percebia, porque soma comuta. Agora ele caminha a
+**ordem-z** (`LayerStack::z_order_bottom_up`, de baixo pra cima, recursivo nos grupos), e o traço vivo entra
+**no slot da camada ativa** (sob o Depth dela), não empilhado por cima de tudo. O gate `impasto_level_buries_
+what_is_under_it_in_the_stacking_order` é construído para que **ordem de id e ordem-z discordem** (duas camadas
+criadas numa ordem, empilhadas na outra): folde por chave e a resposta sai errada — mutação provada vermelha
+(0.5 em vez de 0.25).
+
+**O seam que quase matou tudo em silêncio.** O painel só reaprende a stack quando `layers_revision` muda — e
+**uma pincelada é edit de PIXEL**, não bump de revisão. Esculpir a 1ª crista numa camada acenderia o flag e o
+painel **nunca ficaria sabendo**: a linha de Depth só apareceria depois que algum edit de camada não-relacionado
+bumpasse a revisão por acidente. Um teste que só lê o flag fica **verde** com esse bug ([[feedback_tool_unit_
+green_integration_dead]]) — então o gate lê a **revisão** também, e a mutação (`sync_relief_flags` sem
+`invalidate_composite`) derruba.
+
+**Gates (5 mutações, todas provadas vermelhas):** (A) fold ignorando `l.depth` · (B) `Level` = `Add` · (C)
+`sync_relief_flags` fora do depósito (flag mente) · (D) fold em ordem de chave · (E) revisão não bumpada
+(painel nunca sabe). Mais o gate de persistência estendido: `impasto_depth`/`impasto_composite` atravessam o
+disco (**PROJECT_SCHEMA 3 → 4** — postcard é posicional; um arquivo v3 leria os bytes do campo seguinte).
+
+**Perf:** 2.35 ms/move (era 1.99 — o fold ordenado custou ~0.36 ms). Alvo ≤4, kill em 8: passa.
+
+**Débito latente pago no caminho:** os gates de contagem de componentes ECS de `ph2d-render` e `ph2d-script`
+estavam **vermelhos desde `0a90ed31`** (o `PaintedDoc` registrado na persistência: 27 → 28) e a linha reportou
+verde. `nextest-impacted` não os toca; só `cargo test --workspace` pega. Lição já catalogada
+([[feedback_ship_parity_gaps_ci_only]]) — e desta vez ela cobrou.
+
+**Continua fora do 1º corte:** passe de luz na GPU (perf não pede) · conservação de volume real da faca ·
+relevo do PAPEL (**exige ordem nova do Enio** — acopla impasto↔aquarela) · múltiplas luzes / IBL.

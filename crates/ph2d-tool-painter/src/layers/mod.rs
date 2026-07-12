@@ -36,6 +36,11 @@ pub const MAX_GROUP_DEPTH: usize = 8;
 /// this; the stack itself only enforces the hard ceiling.
 pub const HARD_CAP_LAYERS: usize = 999;
 
+/// A layer's [`Layer::impasto_depth`] that changes nothing: the relief composites exactly as sculpted.
+/// The neutral element of the whole feature — every layer is born here, so a document that never
+/// touches Impasto composites byte-identically to one built before it existed.
+pub const DEPTH_NEUTRAL: f32 = 1.0;
+
 /// Stable per-canvas layer identity. Allocated monotonically by
 /// [`LayerStack`]; never reused within a stack's lifetime so stale handles
 /// (undo, cache keys) resolve unambiguously.
@@ -90,6 +95,26 @@ pub enum LayerKind {
     Texture(TextureLayer),
 }
 
+/// How a layer's **relief** enters the composed height field the Impasto light reads
+/// (`docs/Painter/16_impasto_plano_implementacao.md` §6 — "Composite Depth por camada").
+///
+/// The default is [`Self::Add`], and it is the physical one: paint laid over paint is *more material*,
+/// so the heights sum. [`Self::Level`] is the painter's override — thick opaque paint that **buries**
+/// the texture under it instead of inheriting it, weighted by its own coverage. It is the one behaviour
+/// a depth *scale* cannot express, which is the only reason it is a mode and not a number: `Add` with a
+/// negative scale already carves, and `Add` with scale `0` already ignores.
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub enum ReliefComposite {
+    /// The layer's relief is ADDED to what is under it (paint piles up). The default.
+    #[default]
+    Add,
+    /// The layer's relief REPLACES what is under it, in proportion to its own paint coverage: where
+    /// this layer's paint is solid, the surface is *this* layer's; where it is bare, the layers below
+    /// show through untouched. (A `Level` layer with no relief at all still buries — that is what makes
+    /// it a scrape, and why the panel only offers it on layers that carry relief.)
+    Level,
+}
+
 /// A single layer: identity + kind + composite params + modifier flags.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Layer {
@@ -110,6 +135,26 @@ pub struct Layer {
     pub is_reference: bool,
     /// Optional grayscale mask child (§2.7).
     pub mask: Option<LayerId>,
+    /// **Impasto depth** of this layer's relief in `[-1, 1]` — the opacity of thickness.
+    ///
+    /// `1` (the default) composites the relief as it was sculpted; `0` mutes it without destroying it;
+    /// negative INVERTS it (the ridges become grooves). Unlike the brush's Depth — which is baked into
+    /// each stroke as it lands and afterwards only reaches the *last* one — this is a live handle on
+    /// **everything ever sculpted on the layer**, and it is the only one. Sibling of [`Self::opacity`]
+    /// in every sense: a composite parameter, non-destructive, and edited from the same row.
+    pub impasto_depth: f32,
+    /// How this layer's relief meets the relief BELOW it. See [`ReliefComposite`].
+    pub impasto_composite: ReliefComposite,
+    /// Whether this layer carries any relief at all — a **projection** of the tool's height map
+    /// (`PainterTool::heights`), not an authority.
+    ///
+    /// The panel needs it and cannot derive it: the pixels (and the relief) live in the tool, while the
+    /// panel only ever sees a clone of this stack. It is what decides whether the Depth row is painted
+    /// on a row at all, so a document nobody has sculpted shows no impasto chrome anywhere. The tool is
+    /// the single writer (`PainterTool::sync_relief_flags`, called wherever `heights` changes), and a
+    /// gate pins the invariant — a stale flag here means a knob that does nothing, the exact species
+    /// this line has already exterminated twice.
+    pub has_relief: bool,
 }
 
 impl Layer {
@@ -126,6 +171,9 @@ impl Layer {
             clipping: false,
             is_reference: false,
             mask: None,
+            impasto_depth: DEPTH_NEUTRAL,
+            impasto_composite: ReliefComposite::Add,
+            has_relief: false,
         }
     }
 

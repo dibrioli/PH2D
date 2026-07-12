@@ -250,6 +250,7 @@ impl PainterTool {
             self.drop_live_relief();
             self.heights.insert(active, field);
             self.covers.insert(active, cover);
+            self.sync_relief_flags();
         } else {
             self.paint.stroke_height = field;
             self.paint.stroke_paint = paint;
@@ -329,6 +330,7 @@ impl PainterTool {
         self.drop_live_relief();
         self.heights.insert(active, field);
         self.covers.insert(active, cover);
+        self.sync_relief_flags();
         if let Some(rect) = touched {
             self.mark_dirty(rect);
         }
@@ -421,6 +423,40 @@ impl PainterTool {
             self.heights.remove(&layer);
         } else {
             self.heights.insert(layer, field);
+        }
+        self.sync_relief_flags();
+    }
+
+    /// Publish onto the layer stack the one fact about relief the PANEL cannot derive: which layers
+    /// carry any (`Layer::has_relief`).
+    ///
+    /// The relief lives here, in the tool, next to the pixels; the panel only ever sees a clone of the
+    /// stack. So this is a projection, and the direction matters — the height map is the authority and
+    /// the flag is downstream of it, never the reverse. It is what lets the Depth row appear on exactly
+    /// the rows it can act on, and it is why a document nobody has sculpted shows no impasto chrome at
+    /// all.
+    ///
+    /// Called wherever `heights` changes (every one of them, which is the invariant the gate pins).
+    /// `O(layers)` and allocation-free: it reads a `BTreeMap` key, it does not scan a canvas.
+    pub(crate) fn sync_relief_flags(&mut self) {
+        let mut changed = false;
+        let ids: Vec<crate::tool::RtLayerId> = self.layers.all_ids().collect();
+        for id in ids {
+            let has = self.heights.contains_key(&id);
+            if let Some(l) = self.layers.get_mut(id)
+                && l.has_relief != has
+            {
+                l.has_relief = has;
+                changed = true;
+            }
+        }
+        // The panel republishes on the layer revision, and NOTHING else bumps it here: a paint stroke
+        // is a pixel edit, not a structural one. Without this, sculpting the first ridge on a layer
+        // would set the flag and the panel would never hear about it — the Depth row would appear only
+        // after some unrelated layer edit happened to bump the revision. (Guarded, so the hot path of a
+        // stroke that changes no flag costs nothing.)
+        if changed {
+            self.invalidate_composite();
         }
     }
 

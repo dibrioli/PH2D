@@ -19100,3 +19100,204 @@ fn impasto_plow_drags_the_relief_with_the_paint() {
         c(34, 40)
     );
 }
+
+// ── Impasto (#16) — the relief as a per-LAYER composite (plan §10.8) ───────────────────────────────
+
+#[test]
+fn impasto_layer_depth_reaches_strokes_the_brush_no_longer_can() {
+    // THE claim of the whole feature. The brush's Depth is baked into each stroke as it lands; the live
+    // re-derive (`refresh_live_relief`) reaches only the LAST one. So the moment you lay a second
+    // stroke, the first one's thickness is frozen — and until now nothing in the product could ever
+    // touch it again. The layer's Depth can: it is a COMPOSITE parameter, so it acts on everything ever
+    // sculpted on the layer, forever, without re-sculpting a single texel.
+    //
+    // (This is opacity's exact bargain, one axis over: `0` mutes, it does not erase. Which is why the
+    // gate ends by turning it back up and demanding the sculpture return *bit for bit*.)
+    let mut t = impasto_canvas(60);
+    t.on_canvas_pointer(cp([15.0, 30.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([15.0, 30.0], PointerPhase::Up));
+    t.on_canvas_pointer(cp([45.0, 30.0], PointerPhase::Down)); // the first stroke is now HISTORY
+    t.on_canvas_pointer(cp([45.0, 30.0], PointerPhase::Up));
+    let layer = t.layers.active().expect("a layer");
+
+    let (old, new) = (t.composed_relief_at(15, 30), t.composed_relief_at(45, 30));
+    assert!(old > 0.1 && new > 0.1, "both strokes stand ({old} / {new})");
+
+    // Down to zero: BOTH vanish from the light — including the one the brush can no longer reach.
+    t.set_layer_impasto_depth(layer, 0.0);
+    assert_eq!(
+        (t.composed_relief_at(15, 30), t.composed_relief_at(45, 30)),
+        (0.0, 0.0),
+        "Depth 0 mutes the layer's whole relief, the old stroke included"
+    );
+
+    // Negative INVERTS: the ridge becomes a groove. (A scale, not a switch — this is the reading that
+    // makes the plan's `Subtract` mode redundant, and a redundant mode is a dead knob waiting.)
+    t.set_layer_impasto_depth(layer, -1.0);
+    assert!(
+        t.composed_relief_at(15, 30) < -0.1,
+        "negative Depth carves what it used to raise ({})",
+        t.composed_relief_at(15, 30)
+    );
+
+    // And back up: the sculpture returns EXACTLY. Nothing was destroyed — that is the whole difference
+    // between a composite parameter and an edit.
+    t.set_layer_impasto_depth(layer, 1.0);
+    assert!(
+        (t.composed_relief_at(15, 30) - old).abs() < 1e-6
+            && (t.composed_relief_at(45, 30) - new).abs() < 1e-6,
+        "the relief comes back bit for bit ({} / {})",
+        t.composed_relief_at(15, 30),
+        t.composed_relief_at(45, 30)
+    );
+}
+
+#[test]
+fn impasto_level_buries_what_is_under_it_in_the_stacking_order() {
+    // `Level` is the one thing the depth SCALE cannot say: thick opaque paint whose surface REPLACES
+    // the texture under it instead of inheriting it (the research's "composite, don't add" —
+    // `docs/Painter/17_impasto_deposito_pesquisa2.md`). Everything else the plan listed as a mode —
+    // Add / Subtract / Ignore — is a reading of the signed slider, and shipping them as an enum would
+    // have been the old "Amount" all over again.
+    //
+    // And `Level` is what makes the fold's ORDER load-bearing. Until it existed the composite was a
+    // plain sum, and a sum commutes — so the first cut folded the height map in `BTreeMap` key order
+    // and nobody could tell. This gate is built so that key order and Z-ORDER DISAGREE: two layers
+    // created in one order, then stacked in the other. Fold by key and the answer is wrong.
+    let size = 60u32;
+    let mut t = impasto_canvas(size);
+    // Ground floor: a thick ridge on the base layer.
+    let mut b = t.paint.brush;
+    b.impasto_depth = 0.8;
+    t.paint.brush = b;
+    for slot in &mut t.paint.brush_by_mode {
+        *slot = b;
+    }
+    t.on_canvas_pointer(cp([30.0, 30.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([30.0, 30.0], PointerPhase::Up));
+    let ground = t.composed_relief_at(30, 30);
+    assert!(ground > 0.5, "the base carries a ridge ({ground})");
+
+    // Two layers ABOVE it, created low-then-high (so their ids ascend)…
+    let mid = t.add_raster_layer("mid").expect("a layer");
+    let top = t.add_raster_layer("top").expect("a layer");
+    // …then stacked the OTHER way round: `top` (the higher id) is pushed BELOW `mid`. Now the id order
+    // (mid, top) and the z-order (top, mid) disagree, which is the whole point of the fixture.
+    t.move_layer_down(top);
+    let z = t.layers.z_order_bottom_up();
+    let (zi_top, zi_mid) = (
+        z.iter().position(|&i| i == top).expect("top in z"),
+        z.iter().position(|&i| i == mid).expect("mid in z"),
+    );
+    assert!(zi_top < zi_mid, "the fixture stacks `top` UNDER `mid`");
+    assert!(top.0 > mid.0, "…while its id sorts AFTER it");
+
+    // Each of them lays its own thin skin of paint over the same spot.
+    let mut thin = t.paint.brush;
+    thin.impasto_depth = 0.25;
+    t.paint.brush = thin;
+    for slot in &mut t.paint.brush_by_mode {
+        *slot = thin;
+    }
+    for l in [top, mid] {
+        t.select_layer(l);
+        t.on_canvas_pointer(cp([30.0, 30.0], PointerPhase::Down));
+        t.on_canvas_pointer(cp([30.0, 30.0], PointerPhase::Up));
+    }
+    let piled = t.composed_relief_at(30, 30);
+    assert!(
+        piled > ground,
+        "with everything on Add, paint piles up ({piled} over {ground})"
+    );
+
+    // Now the TOPMOST layer (`mid`) levels: its own skin becomes the surface, and the mountain under it
+    // — the base's ridge AND `top`'s skin — is buried.
+    t.set_layer_impasto_composite(mid, crate::layers::ReliefComposite::Level);
+    let levelled = t.composed_relief_at(30, 30);
+    assert!(
+        levelled < ground,
+        "Level buries the pile beneath it ({levelled} vs a ground of {ground})"
+    );
+    // The mutation that this fixture exists to kill: folding in key order would put `top` LAST, so its
+    // skin would be ADDED on top of the levelled surface. The answer would land near `levelled + top's
+    // own skin` instead of `mid`'s skin alone.
+    let mid_alone = t
+        .layer_height_view(mid)
+        .map(|f| f[(30 * size + 30) as usize]);
+    assert!(
+        (levelled - mid_alone.expect("mid has relief")).abs() < 1e-5,
+        "…down to exactly the levelling layer's OWN body — a fold in id order would leave the layer \
+         below it stacked back on top ({levelled} vs {mid_alone:?})"
+    );
+
+    // Base (the default) is untouched: Add still sums, or none of the above means anything.
+    t.set_layer_impasto_composite(mid, crate::layers::ReliefComposite::Add);
+    assert!(
+        (t.composed_relief_at(30, 30) - piled).abs() < 1e-6,
+        "back on Add, the pile returns exactly"
+    );
+}
+
+#[test]
+fn impasto_the_panel_learns_a_layer_has_relief_the_moment_it_does() {
+    // The Depth row is painted on a row only `if layer.has_relief` — a flag the tool PROJECTS from its
+    // height map, because the relief lives with the pixels and the panel only ever sees a clone of the
+    // stack. Two ways that goes wrong, and both are this house's greatest hits:
+    //
+    //   1. The flag drifts from the map ⇒ a knob on a layer it cannot act on, or no knob on a layer it
+    //      could ([[feedback_tool_unit_green_integration_dead]]). So: pin the INVARIANT, not a value.
+    //   2. The flag is right and the panel never hears about it. The snapshot republishes on
+    //      `layers_revision`, and a paint stroke is a PIXEL edit — it does not bump it. Sculpt the first
+    //      ridge on a layer and the row would appear only after some unrelated layer edit happened to
+    //      bump the revision by accident. That is a bug you cannot see in a unit test that only reads
+    //      the flag, so this gate reads the revision too.
+    let mut t = impasto_canvas(40);
+    let layer = t.layers.active().expect("a layer");
+    let other = t.add_raster_layer("untouched").expect("a layer");
+    t.select_layer(layer);
+
+    let invariant = |t: &PainterTool, where_: &str| {
+        for id in t.layers.all_ids() {
+            let flag = t.layers.get(id).expect("layer").has_relief;
+            let truth = t.heights.contains_key(&id);
+            assert_eq!(
+                flag, truth,
+                "{where_}: layer {id:?} flag {flag} vs map {truth}"
+            );
+        }
+    };
+    invariant(&t, "a fresh canvas");
+    assert!(
+        !t.layers.get(layer).expect("layer").has_relief,
+        "nothing is sculpted yet"
+    );
+
+    let rev_before = t.layers_revision();
+    t.on_canvas_pointer(cp([20.0, 20.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([20.0, 20.0], PointerPhase::Up));
+
+    invariant(&t, "after the first stroke");
+    assert!(
+        t.layers.get(layer).expect("layer").has_relief,
+        "the sculpted layer says so"
+    );
+    assert!(
+        !t.layers.get(other).expect("layer").has_relief,
+        "…and the untouched one does not"
+    );
+    assert_ne!(
+        t.layers_revision(),
+        rev_before,
+        "the panel must be TOLD — an unchanged revision means it never republishes the stack, so the \
+         Depth row never appears however right the flag is"
+    );
+
+    // Undo takes the relief back, and the flag goes with it: the snapshot carries the stack and the
+    // height map together, so they cannot come back disagreeing.
+    assert!(t.undo_last(), "the stroke is one undo step");
+    invariant(&t, "after undo");
+    assert!(
+        !t.layers.get(layer).expect("layer").has_relief,
+        "undo un-sculpts the layer, and the row goes with it"
+    );
+}

@@ -273,6 +273,50 @@ impl LayerStack {
         }
     }
 
+    /// Set a layer's **Impasto depth** (`-1..1`) — see [`Layer::impasto_depth`]. No-op if `id` unknown.
+    pub fn set_impasto_depth(&mut self, id: LayerId, depth: f32) {
+        if let Some(l) = self.get_mut(id) {
+            l.impasto_depth = depth.clamp(-1.0, 1.0); // CLAMP-OK: signed unit depth (the panel's track)
+        }
+    }
+
+    /// Set how this layer's relief meets the relief below it. No-op if `id` unknown.
+    pub fn set_impasto_composite(&mut self, id: LayerId, mode: ReliefComposite) {
+        if let Some(l) = self.get_mut(id) {
+            l.impasto_composite = mode;
+        }
+    }
+
+    /// The z-order of every layer, **bottom-up** — the order the relief composites in.
+    ///
+    /// [`Self::root`] and a group's children are stored top-to-bottom (index 0 = topmost, matching the
+    /// panel), so this reverses and recurses. It exists because [`ReliefComposite::Level`] is
+    /// order-dependent: "bury what is under me" has no meaning without a *under me*. (Plain `Add` sums,
+    /// and addition commutes — which is exactly why the first cut could get away with folding the
+    /// height map in `BTreeMap` key order and nobody noticed. The moment a non-commutative mode exists,
+    /// that iteration order is a bug waiting for its second layer.)
+    ///
+    /// Masks are not in the z-order (they are owner-attached), so they never appear here.
+    #[must_use]
+    pub fn z_order_bottom_up(&self) -> Vec<LayerId> {
+        let mut out = Vec::with_capacity(self.arena.len());
+        self.push_z_order(&self.root, &mut out, 0);
+        out
+    }
+
+    fn push_z_order(&self, ids: &[LayerId], out: &mut Vec<LayerId>, depth: usize) {
+        if depth > MAX_GROUP_DEPTH {
+            return;
+        }
+        for &id in ids.iter().rev() {
+            let Some(l) = self.get(id) else { continue };
+            if let LayerKind::Group(g) = &l.kind {
+                self.push_z_order(&g.children, out, depth + 1);
+            }
+            out.push(id);
+        }
+    }
+
     /// Set a layer's clipping-mask modifier (§2.8) — non-destructive; the
     /// compositor clips it to the nearest non-clipping raster below. No-op if
     /// `id` is unknown.

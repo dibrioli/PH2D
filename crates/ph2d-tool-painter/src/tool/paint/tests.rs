@@ -17589,15 +17589,15 @@ fn impasto_shadowed_paint_is_dark_but_never_black() {
     );
 }
 
-/// How much of the height variance along a straight stroke is a pure function of the DAB PHASE
-/// (`x mod spacing`). 1.0 = the relief is corrugated at exactly the dab pitch; ~0 = it is not.
-fn dab_phase_variance(mapping: ph2d_painter_brush::TextureMapping) -> f32 {
+/// The relief a straight Grain-sourced stroke lays down under `mapping` — the shared fixture for the
+/// two questions below (is there relief at all, and does it corrugate).
+fn grain_relief_stroke(mapping: ph2d_painter_brush::TextureMapping) -> (Vec<f32>, usize) {
     use ph2d_painter_brush::TextureKind;
     let size = 320u32;
     let mut t = PainterTool::default();
     t.set_source(vec![255u8; (size * size * 4) as usize], size, size);
     let mut b = BrushSpec {
-        radius_px: 40.0, // the smoke's brush — spacing = 0.10 × 2 × 40 = 8 px exactly
+        radius_px: 40.0, // spacing = 0.10 × 2 × 40 = 8 px exactly
         color: [0.9, 0.1, 0.1],
         space_attenuation: false,
         impasto: true,
@@ -17617,7 +17617,25 @@ fn dab_phase_variance(mapping: ph2d_painter_brush::TextureMapping) -> f32 {
     t.on_canvas_pointer(cp([280.0, 160.0], PointerPhase::Move));
     t.on_canvas_pointer(cp([280.0, 160.0], PointerPhase::Up));
     let h = relief(&t);
-    let line: Vec<f32> = (70..270).map(|x| h[(160 * size + x) as usize]).collect();
+    // The height straight down the centreline of the stroke.
+    (
+        (70..270).map(|x| h[(160 * size + x) as usize]).collect(),
+        step,
+    )
+}
+
+/// Peak relief of that stroke — used to keep the ratio below from being computed over an empty field.
+fn relief_peak(mapping: ph2d_painter_brush::TextureMapping) -> f32 {
+    grain_relief_stroke(mapping)
+        .0
+        .iter()
+        .fold(0.0f32, |m, &v| m.max(v.abs()))
+}
+
+/// How much of the height variance along a straight stroke is a pure function of the DAB PHASE
+/// (`x mod spacing`). 1.0 = the relief is corrugated at exactly the dab pitch; ~0 = it is not.
+fn dab_phase_variance(mapping: ph2d_painter_brush::TextureMapping) -> f32 {
+    let (line, step) = grain_relief_stroke(mapping);
     let mean = line.iter().sum::<f32>() / line.len() as f32;
     let total: f32 = line.iter().map(|x| (x - mean) * (x - mean)).sum();
     if total <= 0.0 {
@@ -17652,6 +17670,14 @@ fn impasto_grain_relief_corrugates_unless_the_grain_is_anchored_to_the_canvas() 
     // So: `DepthSource::Grain` wants a canvas-anchored Grain. The smoke arms it that way, and this gate
     // is here so that the day someone "simplifies" the mapping, the corduroy does not come back silently.
     use ph2d_painter_brush::TextureMapping;
+    // ANTI-VACUITY, first. `dab_phase_variance` divides by the total variance — so if the relief were
+    // zero (which is EXACTLY what the Grain source was doing before the `GRAIN_GROOVE` fix), it returns
+    // 0 and the "must not corrugate" assertion below passes while proving nothing. This gate shipped
+    // green in that state for one commit. Never again: check there is relief to talk about.
+    assert!(
+        relief_peak(TextureMapping::ViewPlane) > 0.15 && relief_peak(TextureMapping::Tiled) > 0.15,
+        "sanity: both configurations actually lay down relief — else the ratios below are vacuous"
+    );
     let dab_relative = dab_phase_variance(TextureMapping::ViewPlane);
     let canvas_anchored = dab_phase_variance(TextureMapping::Tiled);
     assert!(
@@ -17663,5 +17689,221 @@ fn impasto_grain_relief_corrugates_unless_the_grain_is_anchored_to_the_canvas() 
         canvas_anchored < 0.2,
         "a canvas-anchored grain must NOT corrugate: consecutive dabs have to bite different noise \
          (got {canvas_anchored:.2}, expected ~0.02)"
+    );
+}
+
+#[test]
+#[ignore = "diagnostic — run with --ignored --nocapture"]
+fn flat_probe_exact_smoke_arming() {
+    // Enio's second smoke came out completely FLAT. Reproduce the smoke's arming EXACTLY — through the
+    // same public setters, in the same order, not by hand-building a BrushSpec — and report what the
+    // relief and the shading actually are. (Hand-building the spec is how a probe agrees with itself and
+    // misses the product.)
+    let size = 240u32;
+    let mut t = PainterTool::default();
+    t.set_source(vec![255u8; (size * size * 4) as usize], size, size);
+    t.set_brush_size_px(40.0);
+    t.set_brush_texture_kind(ph2d_painter_brush::TextureKind::Noise.to_u8());
+    t.set_brush_texture_mapping(ph2d_painter_brush::TextureMapping::Tiled.to_u8());
+    t.toggle_brush_impasto();
+    t.set_brush_impasto_depth(0.7);
+    t.set_brush_impasto_source(DepthSource::Grain.to_u8());
+    t.set_brush_impasto_smoothing(0.15);
+
+    let b = t.paint.brush;
+    println!(
+        "spec: impasto={} depth={} source={:?} grain_kind={:?} grain_mapping={:?} grain_active={} \
+         radius={}",
+        b.impasto,
+        b.impasto_depth,
+        b.impasto_source,
+        b.texture.kind,
+        b.texture.mapping,
+        b.texture.is_active(),
+        b.radius_px
+    );
+    println!(
+        "deposits_height={} deposits_color={}",
+        b.deposits_height(),
+        b.deposits_color()
+    );
+
+    t.on_canvas_pointer(cp([80.0, 60.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([140.0, 120.0], PointerPhase::Move));
+    t.on_canvas_pointer(cp([90.0, 180.0], PointerPhase::Up));
+
+    let h = relief(&t);
+    let hmax = h.iter().fold(0.0f32, |m, &v| m.max(v.abs()));
+    let nonzero = h.iter().filter(|v| v.abs() > 1e-6).count();
+    println!("relief: {} pixels, max |h| = {hmax:.4}", nonzero);
+
+    println!("impasto_visible = {}", t.impasto_visible());
+    t.invalidate_composite();
+    let shaded = lit(&mut t);
+    t.paint.impasto_show = false;
+    t.invalidate_composite();
+    let plain = lit(&mut t);
+    let mut worst = 0i32;
+    let mut moved = 0u32;
+    for i in (0..plain.len()).step_by(4) {
+        let d = (i32::from(shaded[i + 1]) - i32::from(plain[i + 1])).abs();
+        if d > 2 {
+            moved += 1;
+        }
+        worst = worst.max(d);
+    }
+    println!("light: {moved} pixels moved >2 levels, worst {worst} levels");
+
+    // Compare against the mapping that DID show relief, and against Grain off entirely — the height is
+    // `depth × coverage × w × g`, so a weak `g` alone can gut it.
+    use ph2d_painter_brush::{TextureKind, TextureMapping};
+    for (name, kind, mapping, tex_size) in [
+        (
+            "Grain OFF (Uniform src)",
+            TextureKind::None,
+            TextureMapping::Tiled,
+            1.0f32,
+        ),
+        (
+            "Noise ViewPlane",
+            TextureKind::Noise,
+            TextureMapping::ViewPlane,
+            1.0,
+        ),
+        (
+            "Noise Tiled size 1.0",
+            TextureKind::Noise,
+            TextureMapping::Tiled,
+            1.0,
+        ),
+        (
+            "Noise Tiled size 0.2",
+            TextureKind::Noise,
+            TextureMapping::Tiled,
+            0.2,
+        ),
+        (
+            "Noise Tiled size 0.1",
+            TextureKind::Noise,
+            TextureMapping::Tiled,
+            0.1,
+        ),
+    ] {
+        let mut t = PainterTool::default();
+        t.set_source(vec![255u8; (size * size * 4) as usize], size, size);
+        let mut b = BrushSpec {
+            radius_px: 40.0,
+            color: [0.9, 0.1, 0.1],
+            space_attenuation: false,
+            impasto: true,
+            impasto_depth: 0.7,
+            impasto_source: if matches!(kind, TextureKind::None) {
+                DepthSource::Uniform
+            } else {
+                DepthSource::Grain
+            },
+            impasto_smoothing: 0.15,
+            ..Default::default()
+        };
+        b.texture.kind = kind;
+        b.texture.mapping = mapping;
+        b.texture.size = [tex_size, tex_size];
+        t.paint.brush = b;
+        for slot in &mut t.paint.brush_by_mode {
+            *slot = b;
+        }
+        t.on_canvas_pointer(cp([80.0, 60.0], PointerPhase::Down));
+        t.on_canvas_pointer(cp([140.0, 120.0], PointerPhase::Move));
+        t.on_canvas_pointer(cp([90.0, 180.0], PointerPhase::Up));
+        let h = relief(&t);
+        let hmax = h.iter().fold(0.0f32, |m, &v| m.max(v.abs()));
+        // Steepest local slope — what the light actually reads.
+        let mut slope = 0.0f32;
+        for y in 1..size as usize - 1 {
+            for x in 1..size as usize - 1 {
+                let g = (h[y * size as usize + x + 1] - h[y * size as usize + x - 1]).abs() * 0.5;
+                slope = slope.max(g);
+            }
+        }
+        t.invalidate_composite();
+        let sh = lit(&mut t);
+        t.paint.impasto_show = false;
+        t.invalidate_composite();
+        let pl = lit(&mut t);
+        let worst = (0..pl.len())
+            .step_by(4)
+            .map(|i| (i32::from(sh[i + 1]) - i32::from(pl[i + 1])).abs())
+            .max()
+            .unwrap_or(0);
+        println!(
+            "  {name:24} max|h|={hmax:.3}  steepest slope={slope:.4}/px  light moves up to {worst} levels"
+        );
+    }
+}
+
+#[test]
+fn impasto_grain_textures_the_body_instead_of_removing_it() {
+    // Enio's second smoke came out FLAT (2026-07-12), and this was half the reason. The funnel is
+    // `h = depth · coverage · w · g`, so `DepthSource::Grain` was MULTIPLYING the body by the grain —
+    // and a Noise grain's samples average well under half. The artist asked for Depth 0.7 and got 0.21:
+    // a bristle brush laying a third of the paint it should. A tuft does not deposit a third of the
+    // paint; it deposits the paint, with GROOVES in it.
+    //
+    // (The other half was `SLOPE_GAIN`, which I had picked by taste at 8 — a real stroke's steepest
+    // slope is 0.026/px, so it tilted the normal 6° and lit nothing. Both were mine.)
+    use ph2d_painter_brush::{TextureKind, TextureMapping};
+    let body = |grain: bool| -> (f32, f32) {
+        let size = 240u32;
+        let mut t = PainterTool::default();
+        t.set_source(vec![255u8; (size * size * 4) as usize], size, size);
+        let mut b = BrushSpec {
+            radius_px: 40.0,
+            color: [0.9, 0.1, 0.1],
+            space_attenuation: false,
+            impasto: true,
+            impasto_depth: 0.7,
+            impasto_source: if grain {
+                DepthSource::Grain
+            } else {
+                DepthSource::Uniform
+            },
+            impasto_smoothing: 0.0,
+            ..Default::default()
+        };
+        if grain {
+            b.texture.kind = TextureKind::Noise;
+            b.texture.mapping = TextureMapping::Tiled;
+        }
+        t.paint.brush = b;
+        for slot in &mut t.paint.brush_by_mode {
+            *slot = b;
+        }
+        t.on_canvas_pointer(cp([80.0, 60.0], PointerPhase::Down));
+        t.on_canvas_pointer(cp([140.0, 120.0], PointerPhase::Move));
+        t.on_canvas_pointer(cp([90.0, 180.0], PointerPhase::Up));
+        let h = relief(&t);
+        let peak = h.iter().fold(0.0f32, |m, &v| m.max(v.abs()));
+        // Spread of the relief INSIDE the stroke — the striations. A body with no variation is not a
+        // bristle mark; a gate that only checked the peak would happily accept flat paint.
+        let inside: Vec<f32> = h.iter().copied().filter(|v| v.abs() > 0.05).collect();
+        let (lo, hi) = inside
+            .iter()
+            .fold((f32::MAX, f32::MIN), |(l, h), &v| (l.min(v), h.max(v)));
+        (peak, hi - lo)
+    };
+    let (uniform_peak, _) = body(false);
+    let (grain_peak, grain_spread) = body(true);
+    assert!(
+        (uniform_peak - 0.7).abs() < 0.02,
+        "sanity: Uniform lays the Depth the artist asked for ({uniform_peak:.2})"
+    );
+    assert!(
+        grain_peak > uniform_peak * 0.5,
+        "the Grain must TEXTURE the body, not remove it: peak {grain_peak:.2} vs Uniform's \
+         {uniform_peak:.2} — the artist asked for thick paint and got a film"
+    );
+    assert!(
+        grain_spread > 0.1,
+        "...and it must still carry striations ({grain_spread:.2}) — a smooth body is not a bristle mark"
     );
 }

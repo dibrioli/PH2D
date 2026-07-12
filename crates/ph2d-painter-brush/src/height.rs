@@ -135,6 +135,16 @@ impl DrawTo {
     }
 }
 
+/// How deep the Grain's grooves cut into the body, with [`DepthSource::Grain`].
+///
+/// The grain must **carve grooves out of a full body**, not scale the body away. The naive
+/// `h = depth · w · g` does the latter: a Noise grain's samples average well under half, so the paint
+/// came out at ~30% of the Depth the artist asked for — a bristle brush laying a third of the paint
+/// it should (measured on Enio's smoke: `max|h| = 0.21` where Uniform gave `0.70`). Here the grain
+/// modulates *down* from the full thickness: where the grain is full the paint reaches Depth, where it
+/// is empty the groove cuts this deep. That is what a tuft actually leaves behind. // CLAMP-OK
+const GRAIN_GROOVE: f32 = 0.65;
+
 /// One dab's inputs to the height kernel — the *same* resolved frames the colour kernel is handed for
 /// that dab (its footprint, its Shape basis, its Grain basis). The caller resolves them once and gives
 /// both kernels the same ones; that is the whole trick.
@@ -227,7 +237,11 @@ pub fn accumulate_dab_height(
             }
             let mut a = w;
             if use_grain && let Some(b) = dab.grain {
-                a *= crate::dab::grain_at(spec, b, dab.grain_image, px, py, dab.center, radius);
+                // Grooves cut out of a FULL body — never `a *= g`. A grain's samples average well under
+                // half, so multiplying by it does not texture the paint, it removes two thirds of it.
+                // See [`GRAIN_GROOVE`].
+                let g = crate::dab::grain_at(spec, b, dab.grain_image, px, py, dab.center, radius);
+                a *= 1.0 - GRAIN_GROOVE * (1.0 - g.clamp(0.0, 1.0));
             }
             let h = depth * coverage * a;
             if h == 0.0 {

@@ -27,10 +27,14 @@
 use super::Region;
 use crate::tool::PainterTool;
 
-/// Slope gain at Amount = 1: how steep a wall a height step of 1.0 across one pixel becomes. Pure UI
-/// taste (there is no physical scale for "one unit of paint"), picked so a default-depth dab reads as
-/// thick paint rather than a bas-relief coin. // CLAMP-OK
-const SLOPE_GAIN: f32 = 8.0;
+/// Slope gain at Amount = 1: how steep a wall a height step of 1.0 across one pixel becomes.
+///
+/// **Measured, not guessed.** The first cut used `8.0`, chosen by taste, and the relief came out
+/// FLAT — because a real stroke's steepest slope is only ~0.026 height-units per pixel, which at
+/// gain 8 tilts the normal about 6°: nothing. Calibrated against an actual dragged stroke
+/// (`flat_probe_exact_smoke_arming`): at 40 the shading moves the pixels ~90 levels, which reads as
+/// thick paint. The relative-shading bounds (`AMBIENT`..2×) keep it from blowing out. // CLAMP-OK
+const SLOPE_GAIN: f32 = 40.0;
 
 /// Blinn-Phong shininess exponent. Tight enough that the highlight rides the *crest* of a ridge
 /// instead of washing over its flanks. // CLAMP-OK
@@ -56,11 +60,13 @@ const AMBIENT: f32 = 0.35;
 /// Height (in deposit units) below which the relief is a *film*, not a *body*.
 ///
 /// The normal comes from the **slope**, not the height — so a vanishingly thin layer of paint whose
-/// grain swings per texel has micro-slopes as steep as a real ridge's, and gets shaded just as hard.
-/// On the brush's near-invisible falloff tail that draws a halo of shadow over paint the eye cannot
-/// see: relief where there is no paint. Below this height the pass fades smoothly to a no-op, so thin
-/// paint is thin paint. // CLAMP-OK
-const BODY_MIN: f32 = 0.06;
+/// grain swings per texel has micro-slopes as steep as a real ridge's, and would be shaded just as
+/// hard, drawing a halo of shadow over paint the eye cannot even see. The `body` factor below this
+/// height scales the SLOPE (a film drapes; it does not stand up in ridges) *and* fades the effect, so
+/// the tail dies quadratically. Calibrated: with the slope scaled and this at 0.20, exactly zero
+/// unpainted pixels are shaded, while the relief still reads at full strength — fading the effect
+/// alone could not do both (`impasto_light_does_not_shade_paint_that_is_not_there`). // CLAMP-OK
+const BODY_MIN: f32 = 0.20;
 
 /// The lighting environment, resolved once per pass.
 struct Light {
@@ -131,9 +137,11 @@ impl Light {
         if body <= 0.0 {
             return (1.0, 0.0);
         }
-        // Surface normal from the gradient: a rising slope tilts the normal AGAINST the rise.
+        // Surface normal from the gradient: a rising slope tilts the normal AGAINST the rise. The slope
+        // is scaled by the BODY — a film of paint drapes, it does not stand up in ridges — so the
+        // brush's invisible falloff tail flattens out quadratically instead of catching hard shadows.
         let n = {
-            let v = [-dhx * self.gain, -dhy * self.gain, 1.0];
+            let v = [-dhx * self.gain * body, -dhy * self.gain * body, 1.0];
             let len = (v[0] * v[0] + v[1] * v[1] + v[2] * v[2]).sqrt().max(1e-6);
             [v[0] / len, v[1] / len, v[2] / len]
         };

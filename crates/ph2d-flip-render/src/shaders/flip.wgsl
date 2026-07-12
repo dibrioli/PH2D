@@ -1,17 +1,22 @@
-// Flip — rasterização de traço (ADR-0113, W1 T1.2/T1.3), clean-room do Grease
-// Pencil 5.2 (draw_grease_pencil_lib.glsl), adaptado ao 2D-ortográfico do PH2D:
-// a matemática 3D do GP COLAPSA — sem perspectiva, thickness_px = raio·zoom, e o
-// plano do traço É o plano da tela.
+// Flip — rasterização de traço (ADR-0113, W1), clean-room do Grease Pencil 5.2
+// (`draw_grease_pencil_lib.glsl`), adaptado ao 2D-ortográfico do PH2D: a matemática
+// 3D do GP COLAPSA — sem perspectiva, `thickness_px = raio·zoom`, e o plano do
+// traço É o plano da tela.
 //
-// Um draw não-instanciado de `total_points * 6` vértices: cada ponto vira um quad
-// (2 triângulos) para o segmento ponto→próximo. O vertex shader expande o segmento
-// numa fita em SCREEN-SPACE com junção por miter (clampado). O fragment aplica a
-// máscara de hardness (pow/smoothstep) + AA por fwidth.
+// **Cobertura ANALÍTICA (como o GP).** Cada segmento vira um quad que só precisa
+// COBRIR a fita (retângulo + tampas); a forma EXATA sai no fragment, da **distância
+// do pixel à linha-de-centro** (`gpencil_stroke_segment_mask`). Clampar o parâmetro
+// ao segmento dá **junções e tampas REDONDAS de graça** — sem miter, sem spikes, e
+// (crucial) sem double-blend nas quinas: dois quads adjacentes calculam a MESMA
+// distância à mesma reta, então a cobertura é consistente e o depth só escolhe um.
+// Era o bug das quinas/curvas com hardness baixo (a coordenada `v_perp` por-quad
+// distorcia nas junções). O perfil de hardness é o do GP (`pow` + smoothstep), com
+// AA de ~1px por `fwidth` (o GP conta com MSAA; aqui não há).
 
 struct Camera {
     world_to_clip: mat4x4<f32>,
     viewport: vec2<f32>,   // px
-    px_per_world: f32,     // pixels por unidade de mundo (zoom da Camera2d)
+    px_per_world: f32,     // escala de espessura (1 = tela absoluta; object scale quando escalado)
     _pad: f32,
 }
 
@@ -39,16 +44,19 @@ struct GpuStroke {
 @group(0) @binding(3) var<storage, read> point_stroke: array<u32>;
 
 const FLAG_CLOSED: u32 = 1u;
-// Miter clampado (evita spikes em quinas afiadas). O GP quebra pra bevel; aqui o
-// clamp do comprimento é a aproximação de v1.
-const MITER_LIMIT: f32 = 4.0;
+const FLAG_START_FLAT: u32 = 2u;
+const FLAG_END_FLAT: u32 = 4u;
 
 struct VsOut {
     @builtin(position) clip: vec4<f32>,
-    @location(0) v_perp: f32,       // -1..+1 através da fita (0 = eixo)
-    @location(1) color: vec4<f32>,  // cor por-ponto interpolada
-    @location(2) opacity: f32,
-    @location(3) hardness: f32,
+    // Extremos do segmento em SCREEN-SPACE (bottom-up, como `to_screen`), CONSTANTES
+    // no quad → o fragment mede a distância do pixel a esta reta.
+    @location(0) @interpolate(flat) ss_p1: vec2<f32>,
+    @location(1) @interpolate(flat) ss_p2: vec2<f32>,
+    @location(2) color: vec4<f32>,   // cor por-ponto interpolada
+    @location(3) opacity: f32,
+    @location(4) thickness: f32,      // espessura (px de tela) interpolada a→b
+    @location(5) @interpolate(flat) hardness: f32,
 }
 
 fn to_screen(world: vec2<f32>) -> vec2<f32> {
@@ -79,8 +87,7 @@ fn vs_main(@builtin(vertex_index) vi: u32) -> VsOut {
     let closed = (st.flags & FLAG_CLOSED) != 0u;
     let li = gp - first;
 
-    // Segmento a=gp → b=próximo. A cauda de um traço ABERTO não tem segmento
-    // adiante → degenera (fora do NDC, clipado).
+    // Segmento a=gp → b=próximo. A cauda de um traço ABERTO degenera (clipada).
     var next_gp = gp;
     var degenerate = false;
     if (li + 1u < count) {
@@ -95,113 +102,94 @@ fn vs_main(@builtin(vertex_index) vi: u32) -> VsOut {
         return out;
     }
 
-    // Predecessor de a (miter em a) e sucessor de b (miter em b), com clamp
-    // aberto / wrap fechado — nunca cruza a fronteira do traço.
-    var prev_gp = gp;
-    if (li > 0u) {
-        prev_gp = gp - 1u;
-    } else if (closed) {
-        prev_gp = last;
-    }
-    let b_li = next_gp - first;
-    var nn_gp = next_gp;
-    if (b_li + 1u < count) {
-        nn_gp = next_gp + 1u;
-    } else if (closed) {
-        nn_gp = first;
-    }
-
     let a = points[gp];
     let b = points[next_gp];
     let sa = to_screen(a.pos);
     let sb = to_screen(b.pos);
-    let sp = to_screen(points[prev_gp].pos);
-    let sn = to_screen(points[nn_gp].pos);
+    let r_a = max(a.width * 0.5 * cam.px_per_world, 0.0);
+    let r_b = max(b.width * 0.5 * cam.px_per_world, 0.0);
 
     let seg = sb - sa;
     let seg_len = max(length(seg), 1e-6);
-    let d_seg = seg / seg_len;
-    let n_seg = perp(d_seg);
+    let dir = seg / seg_len;
+    let nrm = perp(dir);
 
-    // Miter em a.
-    var miter_a = n_seg;
-    var scale_a = 1.0;
-    if (prev_gp != gp) {
-        let d_prev = normalize(sa - sp);
-        let tang = normalize(d_prev + d_seg);
-        let m = perp(tang);
-        miter_a = m;
-        scale_a = 1.0 / max(dot(m, n_seg), 1.0 / MITER_LIMIT);
-    }
-    // Miter em b.
-    var miter_b = n_seg;
-    var scale_b = 1.0;
-    if (nn_gp != next_gp) {
-        let d_next = normalize(sn - sb);
-        let tang = normalize(d_seg + d_next);
-        let m = perp(tang);
-        miter_b = m;
-        scale_b = 1.0 / max(dot(m, n_seg), 1.0 / MITER_LIMIT);
-    }
+    // Tampas: um EXTREMO de traço aberto marcado `Flat` corta reto (quad não estende
+    // além do ponto → a borda vira a reta perpendicular). Todo o resto (junções
+    // internas e tampas Round) estende `r` ao longo da reta → a distância clampada
+    // desenha a tampa/junção REDONDA, e os quads vizinhos cobrem a quina sem gap.
+    let is_start = (li == 0u) && !closed;
+    let is_end = (next_gp == last) && !closed;
+    let flat_start = is_start && ((st.flags & FLAG_START_FLAT) != 0u);
+    let flat_end = is_end && ((st.flags & FLAG_END_FLAT) != 0u);
+    let ext_a = select(r_a, 0.0, flat_start);
+    let ext_b = select(r_b, 0.0, flat_end);
 
-    let half_a = a.width * 0.5 * cam.px_per_world;
-    let half_b = b.width * 0.5 * cam.px_per_world;
-
-    // Mapeamento do canto: quad = 2 triângulos [0,1,2, 2,1,3].
-    // idx 0=(a,esq) 1=(a,dir) 2=(b,esq) 3=(b,dir).
+    // Quad = 2 triângulos [0,1,2, 2,1,3]; idx 0=(a,esq) 1=(a,dir) 2=(b,esq) 3=(b,dir).
     var idx = ci;
     if (ci == 3u) { idx = 2u; }
     else if (ci == 4u) { idx = 1u; }
     else if (ci == 5u) { idx = 3u; }
     let at_b = idx >= 2u;
     let right = (idx == 1u) || (idx == 3u);
-    let side = select(1.0, -1.0, right); // esq=+1, dir=-1
+    let side = select(1.0, -1.0, right);
 
-    var center = sa;
-    var miter = miter_a;
-    var scale = scale_a;
-    var half = half_a;
-    out.color = a.color;
-    out.opacity = a.opacity;
+    var corner: vec2<f32>;
     if (at_b) {
-        center = sb;
-        miter = miter_b;
-        scale = scale_b;
-        half = half_b;
+        corner = sb + dir * ext_b + nrm * (side * r_b);
         out.color = b.color;
         out.opacity = b.opacity;
+        out.thickness = 2.0 * r_b;
+    } else {
+        corner = sa - dir * ext_a + nrm * (side * r_a);
+        out.color = a.color;
+        out.opacity = a.opacity;
+        out.thickness = 2.0 * r_a;
     }
 
-    let screen_pos = center + side * miter * (half * scale);
-    // Ordem 2D (GP §2): profundidade por traço = (2·sid+2)·2e-7, teste GREATER-EQUAL.
-    // O traço mais novo (sid maior) tem depth estritamente maior e ganha. No MESMO
-    // depth (o traço passando por cima de SI mesmo), o `>=` deixa a parte desenhada
-    // depois (ponto mais adiante na fita) compor por cima — como o GP / uma caneta
-    // real. O fill do mesmo traço fica em (2·sid+1), logo abaixo → o traço ganha
-    // sobre o próprio fill.
-    let c = to_clip(screen_pos);
-    let depth = f32(2u * sid + 2u) * 2e-7;
-    out.clip = vec4<f32>(c.xy, depth, 1.0);
-    out.v_perp = side;
+    // Ordem 2D (GP §2): profundidade por-traço = (2·sid+2)·2e-7, teste GreaterEqual.
+    // O sid maior tem depth estritamente maior e ganha; no MESMO depth (auto-overlap)
+    // a parte desenhada depois compõe por cima. Fill do traço em (2·sid+1), abaixo.
+    out.clip = to_clip(corner);
+    out.clip.z = f32(2u * sid + 2u) * 2e-7;
+    out.ss_p1 = sa;
+    out.ss_p2 = sb;
     out.hardness = st.hardness;
     return out;
 }
 
+// Perfil redondo do Grease Pencil (`gpencil_stroke_hardess_mask`): núcleo cheio até
+// `hardness`, queda `pow`+smoothstep até a borda. `dn` = distância normalizada à
+// linha-de-centro (0 centro, 1 borda). `aa` (~1px) fecha a borda com AA — o GP usa
+// MSAA; aqui a cobertura é analítica, então o AA sai do `fwidth`.
+fn hardness_mask(dn: f32, hardness: f32, aa: f32) -> f32 {
+    let inv = clamp(1.0 - dn, 0.0, 1.0); // 1 no centro, 0 na borda
+    var profile: f32;
+    if (hardness > 0.999) {
+        profile = 1.0; // borda dura: o núcleo é chapado; a borda é o AA abaixo
+    } else {
+        let soft = 1.0 - hardness;
+        profile = smoothstep(0.0, 1.0, pow(inv, mix(0.0, 10.0, soft)));
+    }
+    let edge = 1.0 - smoothstep(1.0 - aa, 1.0, dn); // AA na borda do raio (dn=1)
+    return profile * edge;
+}
+
 @fragment
 fn fs_main(in: VsOut) -> @location(0) vec4<f32> {
-    let dn = abs(in.v_perp);                 // 0 no eixo, 1 na borda
-    // Perfil redondo do Grease Pencil (`gpencil_lib.glsl`): NÚCLEO cheio até
-    // `hardness`, depois queda `smoothstep` até a borda —
-    //   mask = 1 - smoothstep(hardness, 1, dn).
-    // `hardness=1` = borda dura (núcleo até a borda); `hardness→0` = fade do centro.
-    // O antigo `pow(1-dn, 10·(1-hard))` decaía cedo demais (o traço saía translúcido
-    // com hardness < 1 — Enio 2026-07-11: "alpha estranho com hardness menor que 1").
-    // O AA (~1px) entra dobrado na MESMA smoothstep: a borda nunca é mais estreita
-    // que o AA, então a borda DURA não aliasa e a MACIA usa o próprio falloff (sem
-    // atenuar duas vezes).
+    // Pixel em SCREEN-SPACE bottom-up (o `@builtin(position)` é top-down → flip Y
+    // p/ casar `to_screen`).
+    let frag = vec2<f32>(in.clip.x, cam.viewport.y - in.clip.y);
+    let pos1 = frag - in.ss_p1;
+    let line1 = in.ss_p2 - in.ss_p1;
+    let len_sq = max(dot(line1, line1), 1e-6);
+    // Distância à linha-de-centro CLAMPADA ao segmento → junções/tampas redondas.
+    let t1 = clamp(dot(pos1, line1) / len_sq, 0.0, 1.0);
+    let dist = length(pos1 - t1 * line1); // px de tela
+    let radius = max(in.thickness * 0.5, 1e-4);
+    let dn = dist / radius; // 0 centro, 1 borda
     let aa = max(fwidth(dn), 1e-4);
-    let edge0 = min(in.hardness, 1.0 - aa);
-    let mask = 1.0 - smoothstep(edge0, 1.0, dn);
+    let mask = hardness_mask(dn, in.hardness, aa);
     let alpha = in.color.a * in.opacity * mask;
     // Saída PREMULTIPLICADA (blend = One, OneMinusSrcAlpha).
     return vec4<f32>(in.color.rgb * alpha, alpha);

@@ -318,6 +318,54 @@ fn a_stroke_crossing_itself_draws_the_later_part_on_top() {
 
 #[test]
 #[ignore = "requires a GPU adapter; run with --ignored"]
+fn a_sharp_corner_is_a_round_join_without_an_outward_spike() {
+    let Some((device, queue)) = device() else {
+        return;
+    };
+    // Um "L" de 90° (um traço, 3 pontos): horizontal (10,32)→(32,32) e vertical
+    // (32,32)→(32,54). A junção deve ser REDONDA (disco de raio r=4 em torno de
+    // (32,32)) — sem o SPIKE de miter que a cobertura por-quad antiga cuspia na
+    // quina externa (o artefato do Enio 2026-07-11 com hardness baixo nas curvas).
+    let mut d = FlipDrawing::new();
+    let mut s = FlipStroke::new();
+    let blue = Rgba::new(0.2, 0.3, 1.0, 1.0);
+    for p in [
+        Vec2::new(10.0, 32.0),
+        Vec2::new(32.0, 32.0),
+        Vec2::new(32.0, 54.0),
+    ] {
+        s.push_point(Point {
+            pos: p,
+            width: 8.0,
+            opacity: 1.0,
+            color: blue,
+        });
+    }
+    // A junção é GEOMÉTRICA (independe de hardness); hardness baixo só tornava o
+    // artefato mais visível. Testa a geometria com borda dura (o perfil macio é
+    // coberto por `hardness_controls_edge_falloff`).
+    s.hardness = 1.0;
+    d.strokes.push(s);
+
+    let px = render(&device, &queue, &d);
+    // Dentro do disco da junção (dist ~2.8 < r=4): coberto (junção redonda).
+    assert!(
+        alpha_at(&px, 34, 34) > 120,
+        "a junção redonda cobre a quina: {}",
+        alpha_at(&px, 34, 34)
+    );
+    // Fora do disco, na quina EXTERNA (dist ~7 > 4): vazio — um miter cuspiria spike.
+    assert_eq!(
+        alpha_at(&px, 37, 27),
+        0,
+        "sem spike de miter na quina externa"
+    );
+    // Bem longe: vazio.
+    assert_eq!(alpha_at(&px, 50, 10), 0, "canto oposto vazio");
+}
+
+#[test]
+#[ignore = "requires a GPU adapter; run with --ignored"]
 fn filled_closed_stroke_renders_fill_under_stroke() {
     let Some((device, queue)) = device() else {
         return;

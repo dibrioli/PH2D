@@ -73,10 +73,11 @@ impl FlipRenderer {
         let bgl = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("ph2d-flip bgl"),
             entries: &[
-                // camera (uniform)
+                // camera (uniform) — VERTEX (posições/espessura) + FRAGMENT (o
+                // viewport.y para o flip-Y da cobertura analítica em screen-space).
                 wgpu::BindGroupLayoutEntry {
                     binding: 0,
-                    visibility: wgpu::ShaderStages::VERTEX,
+                    visibility: wgpu::ShaderStages::VERTEX | wgpu::ShaderStages::FRAGMENT,
                     ty: wgpu::BindingType::Buffer {
                         ty: wgpu::BufferBindingType::Uniform,
                         has_dynamic_offset: false,

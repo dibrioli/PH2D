@@ -206,6 +206,35 @@ impl App {
                 }));
                 self.title_dirty = true;
             }
+            // Motion Nodes F2: Ctrl+D duplicates the selection, `K` arms the knife,
+            // `P` arms the probe. Pushed HERE, on the same proven cursor check as
+            // F / Delete / A / Space below — `dispatch/key.rs` also maps these three,
+            // but that path goes through the focus gate this file exists to bypass,
+            // and the panel never saw them (Enio, smoke 2026-07-12: "Ctrl+D não
+            // duplica"). The panel's handling is idempotent, so a double push from
+            // both paths is harmless.
+            //
+            // **These arms must sit ABOVE the global `K`** (timeline insert-key)
+            // — a match arm below it is unreachable, and the knife would silently
+            // never arm. Clippy's `unreachable_pattern` is what caught it.
+            KeyCode::KeyD if over_motion_graph && cmd_chord => {
+                if let Some(hero) = gfx.hero_screen.as_mut() {
+                    hero.store
+                        .push_graph_key(ph2d_editor::interaction::GraphKey::Duplicate);
+                }
+            }
+            KeyCode::KeyK if over_motion_graph && !cmd_chord => {
+                if let Some(hero) = gfx.hero_screen.as_mut() {
+                    hero.store
+                        .push_graph_key(ph2d_editor::interaction::GraphKey::Knife);
+                }
+            }
+            KeyCode::KeyP if over_motion_graph && !cmd_chord => {
+                if let Some(hero) = gfx.hero_screen.as_mut() {
+                    hero.store
+                        .push_graph_key(ph2d_editor::interaction::GraphKey::Probe);
+                }
+            }
             // Insert a keyframe at the playhead on every track bound to the
             // selected sprite (captures its current pose). Processed next frame
             // in the render loop, which has the world to sample from.

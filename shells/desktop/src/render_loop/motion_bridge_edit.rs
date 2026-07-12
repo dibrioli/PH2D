@@ -109,6 +109,117 @@ pub(super) fn duplicate(motion: &mut MotionState, nodes: Vec<u32>) -> Vec<u32> {
     copies
 }
 
+/// **Smart-connect**: the artist dragged a wire into empty space and picked a node
+/// type from the filtered menu. Add that node AND wire the dragged output into the
+/// first input the wire fits — **one undo step**, because it was one gesture (an
+/// add the artist then has to wire by hand is just the add-menu they already had).
+///
+/// The connect goes through the same authority as a hand-drawn wire (cycle,
+/// occupied input, typing, membrane); the menu's filter is a courtesy — it hides
+/// what cannot fit — not a licence to skip the check. If the wire is refused, the
+/// node still lands (the artist asked for it) and the toast says why.
+pub(super) fn smart_connect(
+    motion: &mut MotionState,
+    toasts: &mut ToastQueue,
+    from_node: u32,
+    from_port: u16,
+    to_type: &str,
+    x: f32,
+    y: f32,
+) {
+    use ph2d_nodegraph::cook::OpResolver;
+
+    let pre = motion.doc.clone();
+    let target = motion.doc.graph.add_node(to_type.to_string());
+    motion.doc.graph.set_pos(target, Pos { x, y });
+    // A sequential node arrives with its `pre` self-loop plumbed, like any other.
+    plumbing::reconcile_after(&mut motion.doc.graph, &motion.registry, &pre.graph);
+
+    // The dragged output's type → the first input on the new node that takes it.
+    let out_ty = motion
+        .doc
+        .graph
+        .node(NodeId(from_node))
+        .and_then(|n| motion.registry.resolve(n.type_id()))
+        .and_then(|op| op.manifest().outputs.get(from_port as usize))
+        .map(|p| p.ty);
+    let port = out_ty.and_then(|ty| {
+        motion
+            .doc
+            .graph
+            .node(target)
+            .and_then(|n| motion.registry.resolve(n.type_id()))
+            .and_then(|op| op.manifest().inputs.iter().position(|i| i.ty == ty))
+    });
+    if let Some(port) = port {
+        let edge = Edge {
+            from: (NodeId(from_node), from_port),
+            to: (target, port as u16),
+            delayed: false,
+        };
+        let mut trial = motion.doc.graph.clone();
+        if trial.connect(edge).is_ok() && trial.validate(&motion.registry).is_ok() {
+            motion.doc.graph = trial;
+        } else {
+            toasts.push(ph2d_editor::Toast::info(
+                "That wire cannot land there - the node was added unconnected",
+            ));
+        }
+    }
+    motion.history.push_undo(pre);
+    motion.pump.mark_dirty();
+}
+
+/// Read the probed node and fold the reading into its ring — the sparkline's data.
+/// Called once per frame, AFTER the cook, so it reads what the graph actually
+/// produced this tick.
+///
+/// It reuses the pump's own `Cook` (whose memo already holds this tick's results
+/// and whose `pre` feedback is the live simulation state), so probing a node costs
+/// a memo lookup, not a second evaluation of the chain — and it can never see a
+/// different tick than the render did.
+///
+/// **What the number is:** a VALUE stream reads out its scalar (the `v` column,
+/// first element); anything else reads out how many instances it carries. Those
+/// are the two questions an artist actually asks a wire ("what is it worth?" /
+/// "how many are there?"), and the label says which one is on screen.
+pub(super) fn sample_probe(
+    motion: &mut MotionState,
+    playhead: f64,
+) -> Option<ph2d_panel_motion_graph::ProbeView> {
+    use ph2d_nodegraph::attr::Column;
+
+    let node = motion.probe?;
+    if motion.doc.graph.node(node).is_none() {
+        // The probed node was deleted — the probe goes with it.
+        motion.probe = None;
+        motion.probe_ring.clear();
+        return None;
+    }
+    let out = motion
+        .pump
+        .cook
+        .cook(&motion.doc.graph, &motion.registry, node, playhead)
+        .ok()?;
+    let stream = out.first()?.as_stream();
+    let (label, value) = match stream.get("v") {
+        Some(Column::Scalar(v)) if !v.is_empty() => ("value".to_string(), v[0]),
+        _ => ("instances".to_string(), stream.count() as f32),
+    };
+
+    let ring = &mut motion.probe_ring;
+    if ring.len() >= ph2d_panel_motion_graph::PROBE_SAMPLES {
+        ring.remove(0);
+    }
+    ring.push(value);
+    Some(ph2d_panel_motion_graph::ProbeView {
+        node: node.0,
+        label,
+        value,
+        samples: ring.clone(),
+    })
+}
+
 /// Cut every wire the knife crossed — **one undo step for the whole stroke** (a
 /// knife that cut five wires and needed five Ctrl+Z would be a trap).
 ///

@@ -190,6 +190,7 @@ mod tests {
             nodes: vec![node_with_inputs(7, 100.0, 2)],
             edges: vec![],
             backdrops: vec![],
+            probe: None,
         };
         let view = View::new(Rect::new(0.0, 0.0, 800.0, 600.0), ViewState::default());
         // Input 0 center: (100, HEADER_H + ROW_H*0.5) = (100, 37).
@@ -209,6 +210,7 @@ mod tests {
         let menu = AddMenu {
             screen: (290.0, 190.0),
             spawn: (0.0, 0.0),
+            connect_from: None,
         };
         let p = add_menu_panel(&menu, 3, canvas);
         assert!(p.x + p.w <= canvas.x + canvas.w + 0.01);

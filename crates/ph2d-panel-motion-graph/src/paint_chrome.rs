@@ -33,6 +33,12 @@ pub(crate) const CHROME_SPLIT_V: u16 = 1;
 pub(crate) const CHROME_FIT: u16 = 2;
 /// Add a group backdrop — framing the selection when there is one (F2).
 pub(crate) const CHROME_BACKDROP: u16 = 3;
+/// Arm the knife (F2) — the chip reads ACTIVE while armed, which is what makes the
+/// mode visible: a `K` that silently changed what the next drag does is a mystery
+/// (Enio, smoke 2026-07-12: "não entendi K o que faz").
+pub(crate) const CHROME_KNIFE: u16 = 4;
+/// Arm the probe (F2) — same: armed = active ring, and the next click picks a node.
+pub(crate) const CHROME_PROBE: u16 = 5;
 
 fn split_divider_hit_id() -> NodeId {
     fnv_id("motion_graph/split_divider")
@@ -51,6 +57,8 @@ pub(crate) fn draw_split_chrome(
     center: Rect,
     theme: Theme,
     hits: &mut Vec<(NodeId, GraphHitKind, Rect)>,
+    knife_armed: bool,
+    probe_armed: bool,
 ) {
     let vertical = rect.x > center.x + 0.5;
     // Divider line + a forgiving grab band straddling the boundary edge.
@@ -94,6 +102,8 @@ pub(crate) fn draw_split_chrome(
         (CHROME_SPLIT_V, IconId::SplitVertical, vertical),
         (CHROME_FIT, IconId::FitView, false),
         (CHROME_BACKDROP, IconId::Backdrop, false),
+        (CHROME_KNIFE, IconId::Knife, knife_armed),
+        (CHROME_PROBE, IconId::Probe, probe_armed),
     ];
     let row_y = rect.y + rect.h - TOOLBAR_INSET - CHIP_SIZE;
     for (i, (id, icon, active)) in chips.into_iter().enumerate() {

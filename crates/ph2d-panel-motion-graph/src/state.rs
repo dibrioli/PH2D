@@ -96,6 +96,12 @@ pub(crate) struct AddMenu {
     /// Graph-space point the chosen node lands at (the R-click point mapped
     /// through the view — stable under a later pan/zoom while the menu is open).
     pub spawn: (f32, f32),
+    /// **Smart-connect** (F2): the output socket a wire was dragged FROM and
+    /// dropped on empty canvas. When set, the popup lists only the node types with
+    /// an input this wire can feed, and picking one both creates it AND wires it —
+    /// the gesture already said what it wanted, so making the artist draw the wire
+    /// a second time would be asking twice.
+    pub connect_from: Option<(u32, u16)>,
 }
 
 /// Retained panel state.
@@ -114,6 +120,13 @@ pub struct MotionGraphPanelState {
     /// Open add-node popup, or `None`. Opened by R-click on empty canvas / `A`;
     /// closed by picking a row, clicking away, or Esc.
     pub(crate) add_menu: Option<AddMenu>,
+    /// `P` armed the probe: the NEXT click on a node picks it as the probe target.
+    /// Disarmed by the pick, by Esc, or by a second `P` — same three exits as the
+    /// knife (a mode you cannot leave is a trap).
+    pub(crate) probe_armed: bool,
+    /// The node whose output the probe is reading (its readout + sparkline draw
+    /// beside the card). `None` = no probe.
+    pub(crate) probe: Option<u32>,
     /// `K` armed the knife: the NEXT left-drag on the canvas slices wires instead
     /// of rubber-band selecting. Disarmed by the stroke itself, by Esc, or by a
     /// second `K` — a mode that cannot be left is a trap, so it has three exits.

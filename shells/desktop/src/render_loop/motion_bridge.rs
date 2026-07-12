@@ -151,9 +151,15 @@ pub(super) fn dispatch(
         } else {
             ph2d_panel_motion_graph::set_current_node_catalog(Vec::new());
         }
+        // The probe's reading for this frame (a memo lookup on the pump's own cook —
+        // see `edit::sample_probe`). Taken before the snapshot borrow.
+        let probe = motion_active
+            .then(|| edit::sample_probe(motion, motion.transport.playhead(fixed_dt)))
+            .flatten();
         ph2d_panel_motion_graph::set_current_motion_graph(motion_active.then(|| {
             let mut snap =
                 ph2d_panel_motion_graph::snapshot_from(&motion.doc.graph, &motion.registry);
+            snap.probe = probe;
             // The backdrops ride the DOCUMENT, not the graph (they are decoration
             // and never cook), so `snapshot_from` — which only sees the graph —
             // cannot know them. Resolve them here, into the panel's own view type.
@@ -343,6 +349,19 @@ fn apply_graph_intents(
                 edit::duplicate(motion, nodes);
             }
             GraphIntent::CutWires { targets } => edit::cut_wires(motion, toasts, targets),
+            GraphIntent::SmartConnect {
+                from_node,
+                from_port,
+                to_type,
+                x,
+                y,
+            } => edit::smart_connect(motion, toasts, from_node, from_port, to_type, x, y),
+            // The probe is a READOUT: it points at a node and reads what that node
+            // already cooks. No document edit, no undo step, no `mark_dirty`.
+            GraphIntent::SetProbe { node } => {
+                motion.probe = node.map(ph2d_nodegraph::graph::NodeId);
+                motion.probe_ring.clear();
+            }
             // Split chrome (E9) — UI-only (no cook / undo). `with_t` clamps the
             // fraction; orientation flips preserve it.
             GraphIntent::SetSplit { t } => {
@@ -584,6 +603,9 @@ fn build_catalog(
                 type_name: m.name,
                 display: ui.map(|u| u.display_name).unwrap_or(m.name),
                 category: ui.map(|u| u.category).unwrap_or(NodeUiCategory::Utility),
+                // Straight off the manifest (`&'static`), so the panel can filter
+                // the smart-connect menu by what each type can actually take.
+                inputs: m.inputs,
             }
         })
         .collect();

@@ -165,3 +165,85 @@ fn the_knife_refuses_managed_state_wiring() {
         "the managed state wire survived the blade"
     );
 }
+
+/// **Smart-connect through the shell**: the node is added at the drop point AND
+/// wired to the socket the drag came from — in ONE undo step, because it was one
+/// gesture. FALSIFIED if the node landed unconnected (the artist drew a wire and
+/// got an orphan) or if it took two Ctrl+Z to take back.
+#[test]
+fn smart_connect_adds_and_wires_in_one_undo_step() {
+    let mut motion = MotionState::new();
+    motion.doc.graph = Graph::new();
+    let grid = motion.doc.graph.add_node("motion.grid");
+    let mut toasts = ToastQueue::default();
+
+    edit::smart_connect(
+        &mut motion,
+        &mut toasts,
+        grid.0,
+        0,
+        "motion.move",
+        300.0,
+        80.0,
+    );
+
+    let g = &motion.doc.graph;
+    let target = g
+        .nodes()
+        .iter()
+        .find(|n| n.type_name == "motion.move")
+        .expect("the picked node was added");
+    assert_eq!(g.pos(target.id).map(|p| (p.x, p.y)), Some((300.0, 80.0)));
+    assert_eq!(
+        g.input_edge(target.id, 0).map(|(from, _, _)| from),
+        Some(grid),
+        "and it arrived WIRED to the socket the drag came from"
+    );
+
+    let back = motion.history.undo(&motion.doc).expect("one step");
+    assert!(
+        back.graph
+            .nodes()
+            .iter()
+            .all(|n| n.type_name != "motion.move"),
+        "one Ctrl+Z takes back the whole gesture"
+    );
+}
+
+/// The probe reads the node the artist pointed at — through the pump's OWN cook, so
+/// it can never report a different tick than the one on screen. A `motion.grid`
+/// carries instances, so the readout counts them.
+#[test]
+fn the_probe_reads_the_node_it_points_at() {
+    let mut motion = MotionState::new();
+    motion.doc.graph = Graph::new();
+    let grid = motion.doc.graph.add_node("motion.grid");
+    motion.doc.graph.set_param(grid, "rows", 4.0);
+    motion.doc.graph.set_param(grid, "cols", 5.0);
+    motion.probe = Some(grid);
+
+    let view = edit::sample_probe(&mut motion, 0.0).expect("the probe read the node");
+    assert_eq!(view.node, grid.0);
+    assert_eq!(view.label, "instances");
+    assert_eq!(view.value, 20.0, "a 4×5 grid carries 20 instances");
+    assert_eq!(view.samples, vec![20.0], "and the ring started filling");
+
+    // A second tick appends (the sparkline is a history, not a single reading).
+    let view = edit::sample_probe(&mut motion, 1.0 / 60.0).unwrap();
+    assert_eq!(view.samples.len(), 2);
+}
+
+/// A probe pointed at a node that is then DELETED clears itself — a readout of a
+/// node that no longer exists is a lie, and the panel would draw it beside nothing.
+#[test]
+fn the_probe_lets_go_of_a_deleted_node() {
+    let mut motion = MotionState::new();
+    motion.doc.graph = Graph::new();
+    let grid = motion.doc.graph.add_node("motion.grid");
+    motion.probe = Some(grid);
+    assert!(edit::sample_probe(&mut motion, 0.0).is_some());
+
+    motion.doc.graph.remove_node(grid);
+    assert!(edit::sample_probe(&mut motion, 0.0).is_none());
+    assert!(motion.probe.is_none(), "the probe let go");
+}

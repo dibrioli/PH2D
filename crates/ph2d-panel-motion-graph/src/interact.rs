@@ -16,7 +16,7 @@
 //! Nuke, Houdini — is middle-pans / left-selects, and that is what this is now.
 
 use crate::geom::{self, View};
-use crate::snapshot::{GraphIntent, GraphViewSnapshot, current_catalog, push_intent};
+use crate::snapshot::{GraphIntent, GraphViewSnapshot, push_intent};
 use crate::state::{AddMenu, Interaction, MotionGraphPanelState};
 use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::{
@@ -85,6 +85,11 @@ fn apply_key(state: &mut MotionGraphPanelState, k: GraphKey, rect: Rect) {
             state.interaction = Interaction::Idle;
             state.add_menu = None;
             state.knife_armed = false;
+            state.probe_armed = false;
+            // Esc also puts the probe away — it is a readout, not a commitment.
+            if state.probe.take().is_some() {
+                push_intent(GraphIntent::SetProbe { node: None });
+            }
         }
         // Ctrl+D — duplicate the selection (the shell mints the copies, wires the
         // links INTERNAL to the selection, and hands the copies back as the new
@@ -95,8 +100,12 @@ fn apply_key(state: &mut MotionGraphPanelState, k: GraphKey, rect: Rect) {
             });
         }
         // `K` arms the knife: the next left-drag slices wires instead of selecting.
-        // A second K disarms it (so does Esc, and so does the stroke itself).
+        // A second K disarms it (so does Esc, and so does the stroke itself). The
+        // toolbar chip mirrors the state (Accent ring) — a mode with no visible
+        // sign is a mystery (Enio, smoke: "não entendi K o que faz").
         GraphKey::Knife => state.knife_armed = !state.knife_armed,
+        // `P` arms the probe: the next click on a node points the readout at it.
+        GraphKey::Probe => state.probe_armed = !state.probe_armed,
         // Delete the selection (orphan edges go with the nodes, shell-side).
         // Empty selection → no intent (idempotent against the double key
         // dispatch: M0 focus gate + the shell's cursor push). Node and backdrop
@@ -123,11 +132,11 @@ fn apply_key(state: &mut MotionGraphPanelState, k: GraphKey, rect: Rect) {
             state.add_menu = Some(AddMenu {
                 screen: center,
                 spawn,
+                connect_from: None,
             });
         }
         // Space — toggle transport play/pause (the shell owns the transport).
         GraphKey::TogglePlay => push_intent(GraphIntent::TogglePlay),
-        // Duplicate / knife / probe land later.
         _ => {}
     }
 }
@@ -151,6 +160,7 @@ fn apply_gesture(
             state.add_menu = Some(AddMenu {
                 screen: (g.x, g.y),
                 spawn,
+                connect_from: None,
             });
             state.interaction = Interaction::Idle;
         }
@@ -203,6 +213,8 @@ fn apply_gesture(
             }
             crate::paint_chrome::CHROME_FIT => state.fitted = false,
             crate::paint_chrome::CHROME_BACKDROP => add_backdrop(state, rect, snap),
+            crate::paint_chrome::CHROME_KNIFE => state.knife_armed = !state.knife_armed,
+            crate::paint_chrome::CHROME_PROBE => state.probe_armed = !state.probe_armed,
             _ => {}
         },
         // A backdrop's header: select it (a backdrop and a node are never selected
@@ -409,7 +421,7 @@ fn apply_background(
             if let Some(menu) = state.add_menu.take() {
                 // A primary click while the menu is open closes it; a click on a
                 // row also adds that node at the menu's spawn point.
-                resolve_add_menu(&menu, rect, g.x, g.y);
+                resolve_add_menu(&menu, rect, snap, g.x, g.y);
             } else {
                 // A plain tap on empty canvas clears the selection — including a
                 // selected backdrop (the tap goes THROUGH its click-through body).
@@ -455,18 +467,32 @@ fn apply_background(
     }
 }
 
-/// Resolve a primary click at `(x, y)` against the open add-menu: if it lands on
-/// a catalog row, emit `AddNode` at the menu's graph-space spawn point.
-fn resolve_add_menu(menu: &AddMenu, rect: Rect, x: f32, y: f32) {
-    let catalog = current_catalog();
+/// Resolve a primary click at `(x, y)` against the open add-menu: if it lands on a
+/// catalog row, emit `AddNode` at the menu's graph-space spawn point — and, when
+/// the menu was opened by a wire dropped in space (**smart-connect**), a `Connect`
+/// right behind it, so the node arrives already wired to what asked for it.
+fn resolve_add_menu(menu: &AddMenu, rect: Rect, snap: &GraphViewSnapshot, x: f32, y: f32) {
+    let catalog = crate::snapshot::menu_catalog(snap, menu.connect_from);
     let panel = geom::add_menu_panel(menu, catalog.len(), rect);
     for (i, c) in catalog.iter().enumerate() {
         if geom::add_menu_row(panel, i).contains(x, y) {
-            push_intent(GraphIntent::AddNode {
-                type_name: c.type_name,
-                x: menu.spawn.0,
-                y: menu.spawn.1,
-            });
+            // Smart-connect is ONE intent, not an add followed by a connect: it was
+            // one gesture, so it must be one undo step (and the shell, which mints
+            // the id, is the only one that can name the node it just created).
+            match menu.connect_from {
+                Some((from_node, from_port)) => push_intent(GraphIntent::SmartConnect {
+                    from_node,
+                    from_port,
+                    to_type: c.type_name,
+                    x: menu.spawn.0,
+                    y: menu.spawn.1,
+                }),
+                None => push_intent(GraphIntent::AddNode {
+                    type_name: c.type_name,
+                    x: menu.spawn.0,
+                    y: menu.spawn.1,
+                }),
+            }
             return;
         }
     }
@@ -474,6 +500,15 @@ fn resolve_add_menu(menu: &AddMenu, rect: Rect, x: f32, y: f32) {
 
 /// Node-body gestures: select on press, multi-drag with a live `MoveNodes`.
 fn apply_node(state: &mut MotionGraphPanelState, g: GraphGesture, node: u32) {
+    // Probe armed: this press PICKS the node to read instead of selecting/dragging
+    // it. The pick disarms (three exits, like the knife).
+    if state.probe_armed && g.phase == GesturePhase::Begin {
+        state.probe_armed = false;
+        state.probe = Some(node);
+        push_intent(GraphIntent::SetProbe { node: Some(node) });
+        state.interaction = Interaction::Idle;
+        return;
+    }
     match g.phase {
         GesturePhase::Begin => {
             state.selected_backdrop = None; // one subject at a time (see the state docs)
@@ -556,12 +591,24 @@ fn apply_socket_out(
                 target,
                 ..
             } = std::mem::take(&mut state.interaction)
-                && let Some((to_node, to_port, _compat)) = target
             {
+                let Some((to_node, to_port, _compat)) = target else {
+                    // **Smart-connect**: dropped on empty canvas. The gesture already
+                    // said what it wanted — a consumer for THIS wire — so open the
+                    // add-menu filtered to the node types that can take it, and wire
+                    // it on the pick. (Dropping in space used to be a silent no-op:
+                    // the artist drew a wire and got nothing back.)
+                    let spawn = View::new(rect, state.view).graph(g.x, g.y);
+                    state.add_menu = Some(AddMenu {
+                        screen: (g.x, g.y),
+                        spawn,
+                        connect_from: Some((from_node, from_port)),
+                    });
+                    return;
+                };
                 // Emit regardless of the local compatibility flag — the shell is
                 // the authority (cycle / occupied / typing / membrane) and raises
-                // the refusal toast. Dropping in empty space (target None) is a
-                // no-op (smart-connect is deferred).
+                // the refusal toast.
                 push_intent(GraphIntent::Connect {
                     from_node,
                     from_port,

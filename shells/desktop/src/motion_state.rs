@@ -56,6 +56,10 @@ pub(crate) struct MotionState {
     /// **below** the default grid spacing (`1.0`) so bare instances render as
     /// distinct dots rather than a merged solid band.
     pub(crate) default_size: [f32; 2],
+    /// F2 probe: the node whose output the editor is reading, and the ring of its
+    /// most recent readings (oldest first). UI-only — it never touches the cook.
+    pub(crate) probe: Option<NodeId>,
+    pub(crate) probe_ring: Vec<f32>,
 }
 
 impl MotionState {
@@ -86,6 +90,8 @@ impl MotionState {
             // Distinct dots with clear gaps for a bare generator (a scale/strobe
             // that writes a `size` column overrides this fallback).
             default_size: [0.4, 0.4],
+            probe: None,
+            probe_ring: Vec::new(),
         }
     }
 }

@@ -337,6 +337,7 @@ mod tests {
             nodes: vec![node(1, 20.0, 50.0), node(2, 240.0, 50.0)],
             edges: vec![],
             backdrops: vec![],
+            probe: None,
         };
         let view = View::new(CANVAS, ViewState::default());
 

@@ -153,6 +153,12 @@ pub(crate) fn paint(state: &mut MotionGraphPanelState, ctx: &mut PaintCtx) {
     if let Interaction::DrawWire { .. } = &state.interaction {
         draw_wire_ghost(ctx, &snap, state, &view, theme);
     }
+    // The probe readout, over the cards (it is a HUD, not part of the graph).
+    if let Some(p) = &snap.probe
+        && let Some(n) = snap.nodes.iter().find(|n| n.id == p.node)
+    {
+        crate::probe::draw(ctx, p, n, &view, theme);
+    }
     // The knife stroke — Danger, because it is one: what it crosses gets cut.
     if let Interaction::Knife { anchor, cur } = state.interaction {
         stroke_polyline(
@@ -189,7 +195,15 @@ pub(crate) fn paint(state: &mut MotionGraphPanelState, ctx: &mut PaintCtx) {
     // SplitH / SplitV / Fit toolbar. Drawn + hit-registered above the graph
     // content so they win a click there, and OUTSIDE the clip — the divider line
     // straddles the panel's own top edge and the clip would halve it.
-    crate::paint_chrome::draw_split_chrome(ctx, rect, center, theme, &mut hits);
+    crate::paint_chrome::draw_split_chrome(
+        ctx,
+        rect,
+        center,
+        theme,
+        &mut hits,
+        state.knife_armed,
+        state.probe_armed,
+    );
     // While the add-menu is open, a full-canvas Background shield registered LAST
     // makes every click resolve as Background — so a menu row drawn over a card /
     // socket still reaches the menu, and a click off the menu dismisses it

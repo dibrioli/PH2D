@@ -243,4 +243,5 @@ fn forwards_plain_click(id: ph2d_a11y::NodeId) -> bool {
         || id == ids::VECTOR_DISTRIBUTE_H
         || id == ids::VECTOR_DISTRIBUTE_V
         || id == ids::VECTOR_PIVOT_EDIT
+        || id == ids::VECTOR_CONVERT_TO_CURVES
 }

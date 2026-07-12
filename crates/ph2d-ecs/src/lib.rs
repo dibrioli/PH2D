@@ -54,6 +54,7 @@ pub mod sorting;
 pub mod transform;
 pub mod transform_versioned;
 pub mod vec_path_ref;
+pub mod vec_shape;
 pub mod visibility;
 pub mod visibility_layer;
 
@@ -82,6 +83,7 @@ pub use transform_versioned::{
     TransformV1, TransformVersioned, load_transform, migrate_v1_to_v2, save_transform,
 };
 pub use vec_path_ref::VecPathRef;
+pub use vec_shape::{VecShape, VecTextParams};
 pub use visibility::Visibility;
 pub use visibility_layer::{EnableMode, OnScreenEnabler, VisibilityLayer};
 

@@ -3,20 +3,29 @@
 //! mudança de Style. O converter puro (glyph → `VecPath`) mora no módulo irmão
 //! [`crate::vec_glyph`]; aqui é só o estado + as ações do `App`.
 //!
-//! Ao finalizar (sair do modo Text), os glyphs ficam na cena como formas normais e a
-//! sessão some — o recolor passa a ser por-seleção, in-place (ver [`sync_active_text_style`]).
+//! O texto VIVO é UM `VecPath` compound (todos os glyphs num path só) + o componente
+//! `VecShape::Text` na entidade — um objeto editável (Live Shape, estilo Figma), até
+//! "Convert to Curves" ([`convert_text_selection_to_curves`]) explodir num grupo de
+//! paths por-letra. Sair do modo Text apenas COMMITA a sessão (o objeto permanece).
 
+use ph2d_ecs::{Entity, SimWorld, Transform, VecShape, VecTextParams};
 use ph2d_tool_vector::TextAlign;
-use ph2d_vec_scene::{Paint, StrokeSpec, VecPathId};
+use ph2d_vec_scene::{Paint, StrokeSpec, VecPathId, VecScene};
+use ph2d_vector_font::AxisTag;
 
-use crate::vec_glyph::{TextLayout, caret_x_offset, resolve_style, text_to_vec_paths};
+use crate::vec_entities::{VecEntityMap, group_entities};
+use crate::vec_glyph::{
+    TextLayout, caret_x_offset, resolve_style, text_to_compound_path, text_to_vec_paths,
+};
 
 /// Uma sessão de digitação de texto no canvas (`DrawMode::Text`). O texto vive como
-/// glyphs (`VecPath`s) na cena; esta struct guarda o ponto de inserção e QUAIS paths
-/// são desta sessão, para regenerá-los a cada tecla. Ao finalizar, os glyphs ficam na
-/// cena como formas normais e a sessão some.
+/// UM `VecPath` compound na cena (campo [`Self::id`]); esta struct guarda o ponto de
+/// inserção + os parâmetros, re-cozinhando o compound a cada tecla/mudança. Ao
+/// finalizar, o objeto de texto permanece (Live Shape) — a sessão só some.
 pub(crate) struct VecTextEdit {
-    /// Baseline da PRIMEIRA linha, em world (y-up).
+    /// Baseline da PRIMEIRA linha em MUNDO (o ponto do clique). A geometria nasce na
+    /// baseline local [0,0] e é centrada no local 0 (o pivô); o `Transform` da
+    /// entidade = `origin + center`, então a baseline fica no clique e o pivô no centro.
     pub origin: [f64; 2],
     /// Tamanho em unidades de world.
     pub size: f64,
@@ -41,8 +50,15 @@ pub(crate) struct VecTextEdit {
     pub stroke: Option<StrokeSpec>,
     /// Conteúdo digitado.
     pub text: String,
-    /// Os paths dos glyphs atualmente na cena (regenerados a cada mudança).
-    pub ids: Vec<VecPathId>,
+    /// O ÚNICO `VecPath` compound do texto vivo na cena (todos os glyphs num path só —
+    /// um objeto). `None` enquanto não há geometria (string vazia). Atualizado
+    /// IN-PLACE a cada mudança para o id — e a entidade + o `VecShape` — ficarem
+    /// estáveis (sem churn de despawn/respawn a cada tecla).
+    pub id: Option<VecPathId>,
+    /// Centro da bbox do layout (coords relativas à baseline, ANTES de centrar) — o
+    /// deslocamento que centra a geometria no local 0. O `Transform` da entidade =
+    /// `origin + center`, então a baseline fica no clique. Recalculado a cada regen.
+    pub center: [f64; 2],
 }
 
 impl crate::app_state::App {
@@ -88,7 +104,8 @@ impl crate::app_state::App {
             fill,
             stroke,
             text: String::new(),
-            ids: Vec::new(),
+            id: None,
+            center: [0.0, 0.0],
         });
     }
 
@@ -138,25 +155,47 @@ impl crate::app_state::App {
     }
 }
 
-/// Remove os glyphs antigos da sessão e empurra os do texto corrente. Recebe a cena
-/// explicitamente (não `self.gfx`) para ser chamável tanto do caminho de teclado
-/// (`vec_text_regen`) quanto do render loop, onde `gfx` já está com borrow dividido.
+/// Re-cozinha o `VecPath` compound do texto a partir do estado corrente. Atualiza o
+/// path IN-PLACE (id estável ⇒ a entidade e o `VecShape` da forma persistem, sem
+/// churn a cada tecla); cria na 1ª geometria e remove quando o texto fica vazio.
+/// Recebe a cena explicitamente para ser chamável do teclado e do render loop.
 fn regen_into(scene: &mut ph2d_vec_scene::VecScene, edit: &mut VecTextEdit) {
     let font = crate::vec_font::resolve(edit.family.as_deref());
-    for id in edit.ids.drain(..) {
-        scene.remove_path(id);
-    }
-    let paths = text_to_vec_paths(
+    // Cozinha na BASELINE local (origem [0,0]); centra no local 0 para o pivô nascer
+    // no centro (Live Shapes) — a posição no mundo é a translação do `Transform`.
+    let compound = text_to_compound_path(
         &font,
         &edit.text,
         &layout_of(edit),
         &axes_of(edit),
-        edit.origin,
+        [0.0, 0.0],
         &edit.fill,
         &edit.stroke,
-    );
-    for path in paths {
-        edit.ids.push(scene.push_path(path));
+    )
+    .map(|mut c| {
+        let center = crate::vec_glyph::path_center(&c);
+        crate::vec_glyph::offset_path(&mut c, [-center[0], -center[1]]);
+        edit.center = center;
+        c
+    });
+    match (edit.id, compound) {
+        // Atualiza in-place preservando o id (a entidade/gizmo/seleção ficam).
+        (Some(id), Some(mut np)) => {
+            if let Some(p) = scene.path_mut(id) {
+                np.id = id;
+                *p = np;
+            } else {
+                // O path foi removido por fora (ex.: Delete) — recria.
+                edit.id = Some(scene.push_path(np));
+            }
+        }
+        (None, Some(np)) => edit.id = Some(scene.push_path(np)),
+        // Texto ficou vazio: some o objeto (a entidade despawna no próximo sync).
+        (Some(id), None) => {
+            scene.remove_path(id);
+            edit.id = None;
+        }
+        (None, None) => {}
     }
 }
 
@@ -395,12 +434,178 @@ pub(crate) fn caret_of(edit: Option<&VecTextEdit>) -> Option<([f64; 2], [f64; 2]
     let font = crate::vec_font::resolve(edit.family.as_deref());
     let last_line = edit.text.rsplit('\n').next().unwrap_or("");
     let line_idx = edit.text.matches('\n').count();
+    // Geometria centrada no local 0 + `Transform = origin + center`: o mundo =
+    // baseline-rel − center + (origin + center) = origin + baseline-rel; o center
+    // cancela, então o caret usa a baseline no clique (a mesma transform da geometria).
     let cx = edit.origin[0] + caret_x_offset(&font, last_line, &layout_of(edit), &axes_of(edit));
     let baseline = edit.origin[1] - line_idx as f64 * edit.size * edit.line_height;
     Some((
         [cx, baseline - 0.2 * edit.size],
         [cx, baseline + 0.72 * edit.size],
     ))
+}
+
+/// Os parâmetros primitivos ([`VecTextParams`]) da sessão — o que vai no componente
+/// `VecShape::Text` da entidade (a fonte da verdade AUTORADA do texto vivo).
+fn text_params(edit: &VecTextEdit) -> VecTextParams {
+    VecTextParams {
+        text: edit.text.clone(),
+        origin: edit.origin,
+        family: edit.family.clone(),
+        size: edit.size,
+        weight: edit.weight,
+        line_height: edit.line_height,
+        tracking: edit.tracking,
+        align: align_to_u8(edit.align),
+        axes: edit
+            .extra_axes
+            .iter()
+            .map(|(t, v)| (t.to_bytes(), *v))
+            .collect(),
+    }
+}
+
+fn align_to_u8(a: TextAlign) -> u8 {
+    match a {
+        TextAlign::Left => 0,
+        TextAlign::Center => 1,
+        TextAlign::Right => 2,
+    }
+}
+
+/// Pendura/atualiza o `VecShape::Text` na entidade do compound do texto ativo, para o
+/// objeto lembrar que é texto (re-cook, painel, Convert, save/undo). Chamado a cada
+/// frame com sessão viva, DEPOIS do `sync` (a entidade já existe). Idempotente.
+pub(crate) fn upsert_text_shape(sim: &mut SimWorld, map: &VecEntityMap, edit: &VecTextEdit) {
+    let Some(id) = edit.id else { return };
+    let Some(&bits) = map.get(&id) else { return };
+    let params = text_params(edit);
+    if let Ok(mut e) = sim.world_mut().get_entity_mut(Entity::from_bits(bits)) {
+        e.insert(VecShape::Text(params));
+        // A geometria é centrada no local 0 (pivô no centro); posiciona a baseline no
+        // clique via `Transform = origin + center`. Só na sessão viva — depois o gizmo
+        // é dono da pose (o modo Select não chama isto, então a translação congela).
+        if let Some(mut t) = e.get_mut::<Transform>() {
+            t.translation = ph2d_core::Vec2::new(
+                (edit.origin[0] + edit.center[0]) as f32,
+                (edit.origin[1] + edit.center[1]) as f32,
+            );
+        }
+    }
+}
+
+/// `TextLayout` + a `location` de eixos ([wght] ++ extras) a partir dos parâmetros
+/// primitivos — o inverso de [`text_params`], para re-cozinhar no Convert.
+fn layout_of_params(p: &VecTextParams) -> TextLayout {
+    TextLayout {
+        size: p.size,
+        line_height: p.line_height,
+        tracking: p.tracking,
+        align: match p.align {
+            1 => TextAlign::Center,
+            2 => TextAlign::Right,
+            _ => TextAlign::Left,
+        },
+    }
+}
+
+fn axes_of_params(p: &VecTextParams) -> Vec<(AxisTag, f32)> {
+    let mut axes = Vec::with_capacity(1 + p.axes.len());
+    axes.push((AxisTag::WEIGHT, p.weight));
+    axes.extend(p.axes.iter().map(|(b, v)| (AxisTag::new(*b), *v)));
+    axes
+}
+
+/// "Convert to Curves": para cada objeto de TEXTO na seleção, re-cozinha os glyphs
+/// como paths INDIVIDUAIS (no lugar/pose do objeto), agrupa-os (Ungroup depois separa
+/// por letra) e descarta o compound + `VecShape`. Formas não-texto ficam intactas.
+/// Devolve a nova seleção (os glyph-paths criados + os ids não convertidos).
+pub(crate) fn convert_text_selection_to_curves(
+    sim: &mut SimWorld,
+    scene: &mut VecScene,
+    map: &mut VecEntityMap,
+    selection: &[VecPathId],
+) -> Vec<VecPathId> {
+    // (paths dos glyphs a criar por objeto de texto, id do compound a remover).
+    let mut converted: Vec<(Vec<VecPathId>, VecPathId)> = Vec::new();
+    let mut untouched: Vec<VecPathId> = Vec::new();
+    for &id in selection {
+        let Some(&bits) = map.get(&id) else {
+            untouched.push(id);
+            continue;
+        };
+        let entity = Entity::from_bits(bits);
+        let Some(VecShape::Text(params)) = sim.world().get::<VecShape>(entity).cloned() else {
+            untouched.push(id); // não é texto (Fase 1 só converte texto)
+            continue;
+        };
+        // Estilo herdado do compound; glyphs re-cozidos por-letra.
+        let (fill, stroke) = scene
+            .paths()
+            .iter()
+            .find(|p| p.id == id)
+            .map_or((None, None), |p| (p.fill.clone(), p.stroke));
+        let font = crate::vec_font::resolve(params.family.as_deref());
+        let layout = layout_of_params(&params);
+        let axes = axes_of_params(&params);
+        // Os glyphs são cozidos na BASELINE local e centrados pelo MESMO offset do
+        // compound (para caírem na mesma pose), depois a pose do objeto (mundo) é
+        // assada em cada um — assim ficam exatamente onde o texto estava.
+        let center = text_to_compound_path(
+            &font,
+            &params.text,
+            &layout,
+            &axes,
+            [0.0, 0.0],
+            &fill,
+            &stroke,
+        )
+        .map_or([0.0, 0.0], |c| crate::vec_glyph::path_center(&c));
+        let glyphs = text_to_vec_paths(
+            &font,
+            &params.text,
+            &layout,
+            &axes,
+            [0.0, 0.0],
+            &fill,
+            &stroke,
+        );
+        if glyphs.is_empty() {
+            untouched.push(id);
+            continue;
+        }
+        let xf = crate::vec_transform::xform_of_transform(crate::vec_transform::world_transform(
+            sim, entity,
+        ));
+        let mut new_ids = Vec::new();
+        for mut g in glyphs {
+            crate::vec_glyph::offset_path(&mut g, [-center[0], -center[1]]);
+            ph2d_vec_scene::bake_xform(&mut g, &xf);
+            new_ids.push(scene.push_path(g));
+        }
+        converted.push((new_ids, id));
+    }
+    if converted.is_empty() {
+        return untouched;
+    }
+    // Remove os compounds; reconcilia entidades (glyph-paths spawnam, compounds
+    // despawnam). Assenta o pivô de CADA letra no seu centro (ADR-0112) ANTES de
+    // agrupar — depois de agrupadas elas têm `ChildOf` e o settle as pula.
+    for (_, compound) in &converted {
+        scene.remove_path(*compound);
+    }
+    crate::vec_entities::sync(sim, scene, map);
+    crate::vec_transform::settle_origins(sim, scene, map, &[]);
+    let mut result = untouched;
+    for (glyph_ids, _) in converted {
+        let members: Vec<u64> = glyph_ids
+            .iter()
+            .filter_map(|p| map.get(p).copied())
+            .collect();
+        group_entities(sim, &members, "Text".to_owned());
+        result.extend(glyph_ids);
+    }
+    result
 }
 
 #[cfg(test)]
@@ -427,7 +632,8 @@ mod tests {
             fill: Some(black()),
             stroke: None,
             text: "Hi".to_string(),
-            ids: Vec::new(),
+            id: None,
+            center: [0.0, 0.0],
         };
         let (a, b) = caret_of(Some(&edit)).expect("caret com edição ativa");
         assert!(a[0] > 5.0, "o cursor avançou à direita da origem");
@@ -456,7 +662,8 @@ mod tests {
             fill: Some(black()),
             stroke: None,
             text: "A".to_string(),
-            ids: Vec::new(),
+            id: None,
+            center: [0.0, 0.0],
         });
         let pen = ph2d_vec_edit::PenTool::default();
         sync_active_text_style(&mut edit, DrawMode::Select, &pen, 0.01, &mut scene);
@@ -482,7 +689,8 @@ mod tests {
             fill: Some(black()),
             stroke: None,
             text: "A".to_string(),
-            ids: Vec::new(),
+            id: None,
+            center: [0.0, 0.0],
         });
         regen_into(&mut scene, edit.as_mut().unwrap());
         assert_eq!(scene.paths().len(), 1, "o glyph foi para a cena");
@@ -492,13 +700,7 @@ mod tests {
             ..PenStyle::default()
         });
         sync_active_text_style(&mut edit, DrawMode::Text, &pen, 0.0, &mut scene);
-        let gid = edit
-            .as_ref()
-            .unwrap()
-            .ids
-            .first()
-            .copied()
-            .expect("um glyph");
+        let gid = edit.as_ref().unwrap().id.expect("o compound do texto");
         let fill = scene
             .paths()
             .iter()
@@ -506,8 +708,69 @@ mod tests {
             .and_then(|p| p.fill.clone());
         assert!(
             matches!(fill, Some(Paint::Solid(c)) if c.g == 200),
-            "o glyph adotou o novo fill do painel ao vivo"
+            "o texto adotou o novo fill do painel ao vivo"
         );
-        assert_eq!(scene.paths().len(), 1, "regen substitui, não acumula");
+        assert_eq!(
+            scene.paths().len(),
+            1,
+            "regen atualiza o compound in-place, não acumula"
+        );
+    }
+
+    /// O texto vivo é UM objeto (compound + `VecShape::Text`); "Convert to Curves"
+    /// explode num grupo de paths por-letra, some com o compound e re-seleciona os
+    /// glyphs. É o coração do modelo Live Shapes para texto.
+    #[test]
+    fn convert_explodes_text_into_a_grouped_per_letter_set() {
+        use ph2d_ecs::ChildOf;
+        let mut sim = SimWorld::default();
+        let mut scene = VecScene::new();
+        let mut map = VecEntityMap::new();
+        let mut edit = Some(VecTextEdit {
+            origin: [0.0, 0.0],
+            size: 1.0,
+            weight: 400.0,
+            line_height: 1.2,
+            tracking: 0.0,
+            align: TextAlign::Left,
+            extra_axes: Vec::new(),
+            family: None,
+            fill: Some(black()),
+            stroke: None,
+            text: "Hi".to_string(),
+            id: None,
+            center: [0.0, 0.0],
+        });
+        // Texto vivo: 1 compound + entidade + VecShape::Text.
+        regen_into(&mut scene, edit.as_mut().unwrap());
+        crate::vec_entities::sync(&mut sim, &mut scene, &mut map);
+        upsert_text_shape(&mut sim, &map, edit.as_ref().unwrap());
+        let compound = edit.unwrap().id.expect("o compound do texto");
+        assert_eq!(scene.paths().len(), 1, "texto vivo = UM objeto");
+
+        // Converte em curvas.
+        let new_sel = convert_text_selection_to_curves(&mut sim, &mut scene, &mut map, &[compound]);
+        assert!(
+            scene.paths().len() >= 2,
+            "explodiu em vários glyph-paths (H, i)"
+        );
+        assert!(
+            !scene.paths().iter().any(|p| p.id == compound),
+            "o compound do texto sumiu"
+        );
+        assert_eq!(
+            new_sel.len(),
+            scene.paths().len(),
+            "a seleção são os glyphs"
+        );
+        // Todo glyph-path virou filho de um grupo.
+        let grouped = new_sel
+            .iter()
+            .filter(|id| {
+                map.get(id)
+                    .is_some_and(|&b| sim.world().get::<ChildOf>(Entity::from_bits(b)).is_some())
+            })
+            .count();
+        assert_eq!(grouped, new_sel.len(), "todos os glyphs num grupo");
     }
 }

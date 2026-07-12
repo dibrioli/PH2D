@@ -151,6 +151,10 @@ pub(crate) fn settle_origins(
         .filter(|&(_, e)| {
             sim.world().get_entity(e).is_ok()
                 && sim.world().get::<ph2d_ecs::ChildOf>(e).is_none()
+                // Live Shapes (texto/forma paramétrica): geometria DERIVADA dos
+                // parâmetros e re-cozinhada — assentar o pivô no meio brigaria com o
+                // re-cook (a origem fica onde a forma foi criada; "Set Center" move).
+                && sim.world().get::<ph2d_ecs::VecShape>(e).is_none()
                 && sim
                     .world()
                     .get::<Transform>(e)

@@ -251,9 +251,13 @@ pub fn register_ecs_components(reg: &mut ComponentRegistry) {
     // ADR-0110: a referência que faz de um path vetorial uma entidade. Sem ela um
     // save do mundo perderia o vínculo path↔entidade e o load duplicaria as formas.
     reg.register::<crate::VecPathRef>("ph2d::ecs::VecPathRef");
-    // ADR-0113: idem para um objeto Flip (animação quadro-a-quadro). Sem ela o
+    // ADR-0114: idem para um objeto Flip (animação quadro-a-quadro). Sem ela o
     // save perderia o vínculo objeto↔entidade e o load duplicaria os objetos Flip.
     reg.register::<crate::FlipObjectRef>("ph2d::ecs::FlipObjectRef");
+    // Live Shapes: os parâmetros de uma forma paramétrica viva (a geometria é
+    // derivada deles). Sem registrar, um save/undo perderia a "forma-ness" e o texto
+    // não saberia se re-cozinhar / converter em curvas.
+    reg.register::<crate::VecShape>("ph2d::ecs::VecShape");
 }
 
 #[cfg(test)]
@@ -286,8 +290,9 @@ mod tests {
         // 4 foundational (Transform/Name/Visibility/RootOrder) + 16 W3
         // sorting/visibility/sampling/mask components (incl. Mask2D source)
         // + 1 §10 BlendMode + 4 save/undo
-        // (Locked/GroupedChildren/VecPathRef/FlipObjectRef).
-        assert_eq!(reg.len(), 25);
+        // (Locked/GroupedChildren/VecPathRef/FlipObjectRef)
+        // + 1 Live Shapes (VecShape).
+        assert_eq!(reg.len(), 26);
         assert!(reg.get_by_name("ph2d::ecs::Transform").is_some());
         assert!(reg.get_by_name("ph2d::ecs::Name").is_some());
         assert!(reg.get_by_name("ph2d::ecs::Visibility").is_some());
@@ -296,6 +301,7 @@ mod tests {
         assert!(reg.get_by_name("ph2d::ecs::GroupedChildren").is_some());
         assert!(reg.get_by_name("ph2d::ecs::VecPathRef").is_some());
         assert!(reg.get_by_name("ph2d::ecs::FlipObjectRef").is_some());
+        assert!(reg.get_by_name("ph2d::ecs::VecShape").is_some());
         assert!(reg.get_by_name("ph2d::ecs::ZIndexOverride").is_some());
         assert!(reg.get_by_name("ph2d::ecs::YSort").is_some());
         assert!(reg.get_by_name("ph2d::ecs::TextureFilter").is_some());

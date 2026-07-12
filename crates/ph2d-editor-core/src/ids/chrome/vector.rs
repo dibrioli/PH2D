@@ -174,6 +174,9 @@ pub const VECTOR_TEXT_LINE_HEIGHT: NodeId = hash_node_id("vector.text.line_heigh
 pub const VECTOR_TEXT_LINE_HEIGHT_NUM: NodeId = hash_node_id("vector.text.line_height_num");
 pub const VECTOR_TEXT_TRACKING: NodeId = hash_node_id("vector.text.tracking");
 pub const VECTOR_TEXT_TRACKING_NUM: NodeId = hash_node_id("vector.text.tracking_num");
+/// "Convert to Curves" — assa a forma VIVA selecionada (texto/paramétrica) em paths
+/// crus: texto explode num grupo de paths por-letra; formas descartam só o `VecShape`.
+pub const VECTOR_CONVERT_TO_CURVES: NodeId = hash_node_id("vector.convert_to_curves");
 
 /// Stable [`NodeId`] for the `index`-th family row in the open font dropdown
 /// (index into the shell's pickable list `[bundled] ++ imported ++ system`). Runtime

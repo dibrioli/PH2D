@@ -124,6 +124,7 @@ fn populate_shape(store: &mut WidgetStore) {
     );
 
     // Draw-mode segmented buttons (Pen / Rect / Oval / Poly / Star / Round).
+    button(store, ids::VECTOR_CONVERT_TO_CURVES);
     button(store, ids::VECTOR_MODE_SELECT);
     button(store, ids::VECTOR_MODE_NODE);
     button(store, ids::VECTOR_MODE_PEN);

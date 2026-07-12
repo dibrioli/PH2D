@@ -49,6 +49,9 @@ thread_local! {
     static CURRENT_SNAP: Cell<bool> = const { Cell::new(true) };
     /// "Set Center" armado: a próxima pressão no canvas reposiciona a origem.
     static CURRENT_PIVOT_EDIT: Cell<bool> = const { Cell::new(false) };
+    /// A seleção tem alguma forma VIVA (paramétrica/texto, com `VecShape`) —
+    /// habilita o botão "Convert to Curves". Publicado pela shell.
+    static CURRENT_CONVERTIBLE: Cell<bool> = const { Cell::new(false) };
     /// Texto da sessão de edição ativa (modo Text). `None` = sem sessão. Só
     /// LEITURA no painel (display); a digitação segue no canvas (A2). Publicado
     /// pela shell a cada frame.
@@ -260,6 +263,15 @@ pub fn set_current_pivot_edit(armed: bool) {
 
 pub(crate) fn pivot_edit_armed() -> bool {
     CURRENT_PIVOT_EDIT.with(|c| c.get())
+}
+
+/// Publica se a seleção tem forma viva convertível (habilita "Convert to Curves").
+pub fn set_current_convertible(v: bool) {
+    CURRENT_CONVERTIBLE.with(|c| c.set(v));
+}
+
+pub(crate) fn convertible() -> bool {
+    CURRENT_CONVERTIBLE.with(Cell::get)
 }
 
 /// Publica o texto da sessão de edição ativa (`None` = sem sessão de texto).

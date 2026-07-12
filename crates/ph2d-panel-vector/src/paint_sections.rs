@@ -329,6 +329,13 @@ impl BodyCtx<'_> {
 
     /// Vertex type (conditional) + Boolean ops + Arrange (Duplicate + z-order).
     pub(crate) fn vertex_boolean_arrange(&mut self, mut y: f32) -> f32 {
+        // Convert to Curves — for a selected LIVE shape (text / parametric): bake it
+        // into raw paths (text explodes into a per-letter group). Only when the
+        // selection has something convertible.
+        if state::convertible() {
+            y = self.action_button(ids::VECTOR_CONVERT_TO_CURVES, "Convert to Curves", y);
+            y += self.row_gap - Spacing::Xs.px();
+        }
         // Vertex type (rich handle editing) — only with a vertex selected.
         if let Some(vtype) = state::current_vertex_type() {
             y = self.section_label("Vertex", y);

@@ -1060,6 +1060,8 @@ impl crate::App {
             let mut pending_vec_font_pick: Option<usize> = None;
             // "Import Font…" button — opens a native picker for a .ttf/.otf.
             let mut pending_vec_font_import = false;
+            // "Convert to Curves" — bake the selected live shape(s) into raw paths.
+            let mut pending_vec_convert = false;
             let mut transform_edit: Option<ph2d_editor::InspectorTransformInfo> = None;
             let mut visibility_edit: Option<ph2d_editor::InspectorVisibilityInfo> = None;
             let mut sprite_source_change: Option<(u64, RequestedSpriteStrategy)> = None;
@@ -1180,6 +1182,8 @@ impl crate::App {
                                 pending_vec_text_align = Some(ph2d_tool_vector::TextAlign::Center);
                             } else if *id == ph2d_editor::ids::VECTOR_TEXT_ALIGN_RIGHT {
                                 pending_vec_text_align = Some(ph2d_tool_vector::TextAlign::Right);
+                            } else if *id == ph2d_editor::ids::VECTOR_CONVERT_TO_CURVES {
+                                pending_vec_convert = true;
                             }
                         }
                         // Transform fields (X/Y/W/H) are numeric SetValue document
@@ -2321,10 +2325,40 @@ impl crate::App {
             // entidades (path novo ⇒ entidade; entidade apagada ⇒ path), projeta a
             // ordem de z da árvore na pilha, e lê visibilidade/trava herdadas.
             crate::vec_entities::sync(sim, vec_scene, &mut self.vec_entities);
-            // ADR-0113: idem para os objetos Flip (objeto novo ⇒ entidade; entidade
+            // ADR-0114: idem para os objetos Flip (objeto novo ⇒ entidade; entidade
             // apagada ⇒ objeto). No W0 é no-op (nenhuma tool cria objetos ainda); a
             // tool do W2 passa a populá-lo.
             crate::flip_entities::sync(sim, flip, &mut self.flip_entities);
+            // Live Shapes: mantém o `VecShape::Text` na entidade do texto ativo (a
+            // entidade já existe pós-sync) para o objeto lembrar que é texto — re-cook,
+            // painel, Convert e save/undo. Idempotente; só com sessão viva.
+            if let Some(edit) = self.vec_text_edit.as_ref() {
+                crate::vec_text::upsert_text_shape(sim, &self.vec_entities, edit);
+            }
+            // "Convert to Curves": assa a(s) forma(s) viva(s) selecionada(s) em paths
+            // crus (o texto explode num grupo por-letra) e re-seleciona o resultado.
+            if pending_vec_convert {
+                let sel: Vec<ph2d_vec_scene::VecPathId> = self.vec_pen.selected_paths().to_vec();
+                let new_sel = crate::vec_text::convert_text_selection_to_curves(
+                    sim,
+                    vec_scene,
+                    &mut self.vec_entities,
+                    &sel,
+                );
+                self.vec_pen.select_many(&new_sel);
+            }
+            // Habilita "Convert to Curves" quando a seleção tem forma viva (`VecShape`).
+            #[cfg(feature = "panel-vector")]
+            {
+                let convertible = self.vec_pen.selected_paths().iter().any(|id| {
+                    self.vec_entities.get(id).is_some_and(|&bits| {
+                        sim.world()
+                            .get::<ph2d_ecs::VecShape>(ph2d_ecs::Entity::from_bits(bits))
+                            .is_some()
+                    })
+                });
+                ph2d_panel_vector::set_current_convertible(convertible);
+            }
             // ADR-0112: a origem (o pivô) de um path nasce no centro do MUNDO. Assim
             // que a forma pára de crescer, ela vai para o centro dela.
             // Os dois gestos que escrevem geometria em MUNDO a cada frame: a caneta e

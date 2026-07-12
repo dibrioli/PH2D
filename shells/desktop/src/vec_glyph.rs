@@ -90,6 +90,73 @@ pub(crate) fn text_to_vec_paths(
     out
 }
 
+/// O texto inteiro como UM `VecPath` compound (todos os contornos de todos os glyphs
+/// — externos + furos — num só path, `NonZero`). É a geometria do texto VIVO: um
+/// objeto, um pick, um gizmo. `None` se não houver glyph com área (string vazia/só
+/// espaços). Para "Convert to Curves", use [`text_to_vec_paths`] (um path por glyph).
+#[must_use]
+pub(crate) fn text_to_compound_path(
+    font: &VariableFont,
+    text: &str,
+    layout: &TextLayout,
+    axes: &[(AxisTag, f32)],
+    origin: [f64; 2],
+    fill: &Option<Paint>,
+    stroke: &Option<StrokeSpec>,
+) -> Option<VecPath> {
+    let glyphs = text_to_vec_paths(font, text, layout, axes, origin, &None, &None);
+    // Concatena o contorno externo + os furos de cada glyph num único compound.
+    let mut contours: Vec<Contour> = Vec::new();
+    for g in glyphs {
+        contours.push(Contour {
+            verts: g.verts,
+            closed: g.closed,
+        });
+        contours.extend(g.subpaths);
+    }
+    let mut iter = contours.into_iter();
+    let first = iter.next()?;
+    Some(VecPath {
+        verts: first.verts,
+        closed: true,
+        fill: fill.clone(),
+        stroke: *stroke,
+        subpaths: iter.collect(),
+        fill_rule: FillRule::NonZero,
+        ..Default::default()
+    })
+}
+
+/// Centro da bbox (âncoras + alças) de um `VecPath` — o ponto que vira o pivô da
+/// forma viva (Live Shapes: a geometria nasce centrada no local 0). `[0,0]` se vazio.
+#[must_use]
+pub(crate) fn path_center(path: &VecPath) -> [f64; 2] {
+    let mut lo = [f64::INFINITY; 2];
+    let mut hi = [f64::NEG_INFINITY; 2];
+    for v in path.verts_all() {
+        for p in [v.anchor, v.in_handle, v.out_handle] {
+            lo[0] = lo[0].min(p[0]);
+            lo[1] = lo[1].min(p[1]);
+            hi[0] = hi[0].max(p[0]);
+            hi[1] = hi[1].max(p[1]);
+        }
+    }
+    if lo[0].is_finite() {
+        [(lo[0] + hi[0]) * 0.5, (lo[1] + hi[1]) * 0.5]
+    } else {
+        [0.0, 0.0]
+    }
+}
+
+/// Desloca toda a geometria de `path` (âncoras + alças, em todos os contornos) por `d`.
+pub(crate) fn offset_path(path: &mut VecPath, d: [f64; 2]) {
+    path.for_each_vert_mut(|v| {
+        v.anchor = [v.anchor[0] + d[0], v.anchor[1] + d[1]];
+        v.in_handle = [v.in_handle[0] + d[0], v.in_handle[1] + d[1]];
+        v.out_handle = [v.out_handle[0] + d[0], v.out_handle[1] + d[1]];
+    });
+}
+
 /// Largura visual de UMA linha em world: soma dos avanços + `tracking` entre glyphs
 /// (`n−1` gaps). `axes` no mesmo `location` do layout (o avanço muda com o peso).
 fn line_advance(
@@ -619,6 +686,30 @@ mod tests {
         assert!(
             min_x(&right) < min_x(&center),
             "à direita começa ainda mais à esquerda (termina na origem)"
+        );
+    }
+
+    /// O texto vivo é UM path compound com todos os contornos: "Hi" = H (1) + ponto e
+    /// haste do i (2) → 1 verts + ≥2 subpaths, um objeto só.
+    #[test]
+    fn compound_path_merges_all_glyph_contours() {
+        let font = VariableFont::new(ph2d_text::inter_variable_ttf().to_vec()).expect("embutida");
+        let lay = TextLayout {
+            size: 1.0,
+            line_height: 1.2,
+            tracking: 0.0,
+            align: TextAlign::Left,
+        };
+        let one = text_to_compound_path(&font, "Hi", &lay, &[], [0.0, 0.0], &Some(black()), &None)
+            .unwrap();
+        assert!(
+            !one.subpaths.is_empty(),
+            "vários glyphs/furos viram subpaths do mesmo path"
+        );
+        assert!(
+            text_to_compound_path(&font, "   ", &lay, &[], [0.0, 0.0], &Some(black()), &None)
+                .is_none(),
+            "só espaços = sem geometria"
         );
     }
 

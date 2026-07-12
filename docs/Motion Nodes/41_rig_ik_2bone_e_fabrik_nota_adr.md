@@ -100,6 +100,37 @@ compõem sem esse pedágio.)
 desenhados coincidem" — nada de recomputar a matemática do solver pra conferir a matemática do solver
 ([[feedback_oracle_must_model_appearance_not_implementation]]).
 
+## 6-bis. O smoke do Enio pegou DUAS coisas (2026-07-12)
+
+> *"o cotovelo dobra — o cotovelo fica sempre no mesmo ângulo. é isso mesmo?"*
+
+**(a) A demo era uma mentira geométrica.** O alvo orbitava em raio **constante** em volta da **própria raiz do
+braço** → o triângulo (raiz, cotovelo, mão) tinha os **três lados fixos** (1.5, 1.5, 2.4) — e um triângulo de
+lados fixos tem **ângulos fixos**. O braço girava **rígido**. O cotovelo estava dobrado e nunca *dobrava*.
+
+E a minha guarda afirmava exatamente a coisa fraca: que o cotovelo ficava **fora** da linha raiz→mão (verdade,
+e constante). *Provar que está dobrado não é provar que dobra.* Agora o alvo **respira** (oscillator no X,
+upstream do orbit, onde +X **é** a direção radial → o alcance varre 2.0 ± 0.9) e a guarda mede o **RANGE** da
+flexão, mais uma asserção de que a distância do alvo realmente varia (senão a primeira é vácua).
+
+**(b) E isso destapou um BUG REAL no `rig.fabrik`** — a **degenerescência colinear**, que só um teste de
+corrente inteira encontra. Com raiz, juntas e alvo **na mesma reta**, o FABRIK **não tem gradiente**: o passe
+backward arrasta a cadeia por aquela reta e o forward a empurra de volta — uma cadeia reta **nunca dobra** pra
+alcançar um alvo mais perto que sua extensão total. Ela **empaca esticada**, errando por **exatamente a folga**
+(o miss de `0.33` = `3.06 − 2.73`).
+
+**Não é exótico, é o DEFAULT aqui:** o nó é `Pure` (sem `pre`, por design), então ele parte da **pose de
+repouso** do `rig.skeleton` todo frame — e ela é **exatamente reta**. Qualquer alvo alinhado com o membro cai
+na degenerescência. (O paper nunca esbarra: as cadeias dele carregam a pose do frame **anterior**, que nunca é
+exatamente reta.) **Fix:** `break_collinearity` — arqueia as juntas internas um fio de cabelo fora da reta,
+determinístico, e **só** quando a cadeia é de fato colinear **e** o alvo é de fato mais perto que a extensão
+total (alvo em extensão máxima quer a resposta reta, e a recebe). Guarda:
+`a_straight_chain_still_folds_to_a_goal_on_its_own_axis`.
+
+**Trade-off documentado:** um solver stateless não tem coerência temporal — ao cruzar a reta, o lado da dobra
+pode inverter. Um `rig.fabrik` sequencial (com `pre`, semeado pela pose anterior) resolveria isso; fica pra
+quando alguém precisar.
+
 ## 7. Superfície nova (pro integrador)
 
 | Item | Valor |

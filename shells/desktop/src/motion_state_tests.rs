@@ -62,10 +62,11 @@ fn new_builds_the_well_typed_rig_document() {
             "motion.output"
         );
     }
-    // 18 nodes: the shared goal {grid, move, orbit} + the arm {skeleton, ik_2bone, scale,
-    // move, output} + the tentacle {skeleton, fabrik, scale, move, output} + the goal dots
-    // {scale, move, output, move, output}. The newest nodes (doc 41).
-    assert_eq!(state.doc.graph.nodes().len(), 18);
+    // 19 nodes: the shared goal {grid, move, oscillator, orbit} + the arm {skeleton,
+    // ik_2bone, scale, move, output} + the tentacle {skeleton, fabrik, scale, move, output}
+    // + the goal dots {scale, move, output, move, output}. The newest nodes (doc 41); the
+    // oscillator is what makes the goal breathe in and out, so the elbow actually flexes.
+    assert_eq!(state.doc.graph.nodes().len(), 19);
     assert!(state.doc.graph.validate(&state.registry).is_ok());
 }
 
@@ -134,22 +135,35 @@ fn both_limbs_land_their_tip_on_the_orbiting_goal() {
         }
     }
 
-    // The arm's elbow BENDS — it is not just pointing straight at the goal (which is what
-    // a solver that only ever extends would do, and would still pass every assertion above
-    // whenever the goal happens to sit at full reach).
-    let off_line = (0..ticks)
+    // **The elbow FLEXES** — the assertion Enio's smoke caught me not making. Asserting
+    // only that the elbow sits OFF the root→hand line proves it is bent; it does not prove
+    // it ever BENDS. A goal on a fixed-radius orbit around the arm's own root gives the
+    // triangle (root, elbow, hand) three constant sides — and a triangle with fixed sides
+    // has fixed angles, so the arm just rotates rigidly with the elbow locked, and passes
+    // an "is bent" test all day. The goal's distance must therefore vary (the demo
+    // modulates the orbit's radius), and the guard must measure the RANGE of the bend.
+    let elbow_offsets: Vec<f32> = (0..ticks)
         .map(|k| {
             let (a, e, h) = (arm[k][0], arm[k][1], arm[k][2]);
             let (dx, dy) = (h[0] - a[0], h[1] - a[1]);
             let reach = (dx * dx + dy * dy).sqrt().max(f32::EPSILON);
-            // The elbow's distance from the root-to-hand line.
+            // The elbow's distance from the root-to-hand line: 0 = a straight arm.
             ((e[0] - a[0]) * dy - (e[1] - a[1]) * dx).abs() / reach
         })
-        .fold(f32::MAX, f32::min);
+        .collect();
+    let lo = elbow_offsets.iter().copied().fold(f32::MAX, f32::min);
+    let hi = elbow_offsets.iter().copied().fold(f32::MIN, f32::max);
+    assert!(lo > 0.2, "the elbow is never straight ({lo})");
     assert!(
-        off_line > 0.4,
-        "the elbow bends off the reach line ({off_line})"
+        hi - lo > 0.5,
+        "the elbow FLEXES: it folds and opens across the run ({lo} .. {hi})"
     );
+
+    // …because the reach itself changes. If this is flat, the guard above is vacuous.
+    let reaches: Vec<f32> = (0..ticks).map(|k| dist(arm[k][0], arm[k][2])).collect();
+    let spread = reaches.iter().copied().fold(f32::MIN, f32::max)
+        - reaches.iter().copied().fold(f32::MAX, f32::min);
+    assert!(spread > 1.0, "the goal moves nearer and farther ({spread})");
 }
 
 /// **A node dropped at its DEFAULT params may not change a single instance** — the

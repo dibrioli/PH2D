@@ -82,6 +82,52 @@ pub const MANIFEST: NodeManifest = NodeManifest {
     lowerings: &[LoweringKind::Cpu],
 };
 
+/// How far off the line to bow a collinear chain, as a fraction of its reach — big enough
+/// to escape the degenerate basin, small enough that the first iteration erases any trace
+/// of it.
+const BOW: f32 = 0.02;
+
+/// **Break the collinear tie.** FABRIK has NO gradient when the root, every joint and the
+/// goal lie on ONE LINE: the backward pass drags the chain along that line and the forward
+/// pass pushes it straight back, so a straight limb can never FOLD to reach a goal nearer
+/// than its full extension — it stalls at full stretch, missing by exactly the slack.
+///
+/// The paper never meets this, because its chains carry the PREVIOUS FRAME's pose and are
+/// therefore never exactly straight. This node is `Pure` (no `pre` loop, by design) and
+/// starts from `rig.skeleton`'s rest pose — which is exactly straight. So the degeneracy
+/// is not an edge case here, it is the DEFAULT whenever the goal happens to line up with
+/// the limb's rest direction.
+///
+/// The fix is the standard one: bow the interior joints a hair off the line — deterministic
+/// (HR-5), and only when the chain really is collinear AND the goal really is nearer than
+/// full stretch (a goal at or beyond full reach wants the straight answer, and gets it).
+fn break_collinearity(p: &mut [[f32; 2]], len: &[f32], goal: [f32; 2]) {
+    let n = p.len();
+    let reach: f32 = len[1..n].iter().sum();
+    let to_goal = [goal[0] - p[0][0], goal[1] - p[0][1]];
+    let d = (to_goal[0] * to_goal[0] + to_goal[1] * to_goal[1]).sqrt();
+    if reach - d < BOW * reach {
+        return; // the goal is at (or past) full stretch: straight IS the answer
+    }
+    let u = pose::unit(to_goal, [1.0, 0.0]);
+    // How far the chain currently strays from the root→goal line.
+    let bend = (1..n)
+        .map(|i| {
+            let v = [p[i][0] - p[0][0], p[i][1] - p[0][1]];
+            (v[0] * u[1] - v[1] * u[0]).abs()
+        })
+        .fold(0.0, f32::max);
+    if bend > BOW * reach {
+        return; // already off the line — the iteration has a direction to fall in
+    }
+    let perp = [-u[1], u[0]];
+    let bow = BOW * reach;
+    for q in p.iter_mut().take(n - 1).skip(1) {
+        q[0] += perp[0] * bow;
+        q[1] += perp[1] * bow;
+    }
+}
+
 /// One FABRIK solve: the chain's world positions, reaching for `goal` from its anchored
 /// root. `len[i]` is the bone from joint `i-1` into joint `i`.
 fn fabrik(p: &mut [[f32; 2]], len: &[f32], goal: [f32; 2], iterations: usize) {
@@ -89,6 +135,7 @@ fn fabrik(p: &mut [[f32; 2]], len: &[f32], goal: [f32; 2], iterations: usize) {
     if n < 2 {
         return;
     }
+    break_collinearity(p, len, goal);
     let anchor = p[0];
     for _ in 0..iterations {
         // BACKWARD: the tip takes the goal, and the chain is dragged after it.
@@ -289,6 +336,39 @@ mod tests {
         let (one, many) = (miss(1.0), miss(16.0));
         assert!(many <= one + 1e-4, "1 pass {one}, 16 passes {many}");
         assert!(many < 0.02, "it converges onto the goal ({many})");
+    }
+
+    /// **The collinear degeneracy** — the one that only a whole-chain smoke test finds.
+    ///
+    /// A STRAIGHT chain asked to reach a goal ON ITS OWN AXIS, nearer than full stretch,
+    /// has no gradient: every FABRIK pass drags it along that same line and pushes it back,
+    /// so it stalls fully extended and misses by exactly the slack (here `5 − 3.5 = 1.5`).
+    /// FALSIFIED by removing `break_collinearity` — the tip lands at 5, not 3.5.
+    ///
+    /// This is not exotic: this node is `Pure`, so it starts from the skeleton's REST pose
+    /// every frame, and that pose is exactly straight. Any goal that lines up with the limb
+    /// hits it. (The paper's chains never do, because they carry the previous frame's pose.)
+    #[test]
+    fn a_straight_chain_still_folds_to_a_goal_on_its_own_axis() {
+        // The rest chain lies along +x with a reach of 5; the goal sits at 3.5 along it.
+        let p = ps(&reach(&tentacle(6), &point(3.5, 0.0), 12.0));
+        let miss = dist(p[5], [3.5, 0.0]);
+        assert!(
+            miss < 0.02,
+            "the tip stalled at full stretch, missing by {miss}"
+        );
+        // It got there by BENDING, not by shrinking a bone.
+        for i in 1..6 {
+            assert!((dist(p[i], p[i - 1]) - BONE).abs() < 1e-3);
+        }
+        let bowed = (1..5).map(|i| p[i][1].abs()).fold(0.0f32, f32::max);
+        assert!(bowed > 0.1, "the chain bowed off the axis ({bowed})");
+
+        // …and a goal AT full stretch still gets the straight answer (no gratuitous bow).
+        let straight = ps(&reach(&tentacle(6), &point(5.0, 0.0), 12.0));
+        for (i, q) in straight.iter().enumerate() {
+            assert!(q[1].abs() < 0.02, "joint {i} bowed for nothing: {q:?}");
+        }
     }
 
     /// No goal wired = no-op (not "reach for the origin"), and a stream that is not a

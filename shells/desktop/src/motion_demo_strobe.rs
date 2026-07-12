@@ -5,7 +5,7 @@
 //! what the limbs are reaching for is visible and not a matter of faith.
 //!
 //! ```text
-//!  goal:      grid(1) ─> move(2.4, 0) ─> orbit ─┬─────────────────────────────────┐
+//!  goal:  grid(1) ─> move(2, 0) ─> oscillator(X) ─> orbit ─┬────────────────────────┐
 //!                                               │                                 │
 //!  LEFT  arm: skeleton(3) ─> ik_2bone <─────────┤                                 │
 //!                              └─> scale ─> move(−7) ─> output                    │
@@ -44,8 +44,19 @@ const GOAL_QUAD: f32 = 0.6;
 
 /// How far the goal orbits from the limbs' shared root, and how fast (`motion.orbit`'s
 /// speed is DEGREES PER SECOND — 90 is a quarter turn a second, a lap every four).
-const GOAL_RADIUS: f32 = 2.4;
+const GOAL_RADIUS: f32 = 2.0;
 const GOAL_SPEED: f32 = 90.0;
+
+/// **The goal BREATHES in and out** — and it has to.
+///
+/// A goal on a fixed-radius orbit around the arm's own root gives the triangle
+/// `(root, elbow, hand)` three CONSTANT sides (`l1`, `l2`, and the radius), and a triangle
+/// with fixed sides has fixed angles: the arm would just rotate rigidly, elbow locked, and
+/// never demonstrate the solver at all. So the goal's distance is modulated (an oscillator
+/// on X, upstream of the orbit, where +X *is* the radial direction) and the reach sweeps
+/// `2.0 ± 0.9` — the elbow folds hard at 1.1 and opens out near full stretch at 2.9.
+const GOAL_PULSE: f32 = 0.9;
+const GOAL_PULSE_HZ: f32 = 0.35;
 
 /// The arm: three joints, two bones — reach 3.0, comfortably past the goal's orbit, so
 /// the elbow really has to bend rather than sitting at full stretch.
@@ -98,14 +109,22 @@ fn chain(g: &mut Graph, row: f32, col: usize, nodes: &[NodeId]) -> Option<()> {
 fn build_goal(g: &mut Graph) -> Option<NodeId> {
     let grid = g.add_node("motion.grid");
     let out = g.add_node("motion.move");
+    let pulse = g.add_node("motion.oscillator");
     let orbit = g.add_node("motion.orbit");
-    chain(g, GOAL_ROW, 0, &[grid, out, orbit])?;
+    chain(g, GOAL_ROW, 0, &[grid, out, pulse, orbit])?;
 
     g.set_param(grid, "rows", 1.0);
     g.set_param(grid, "cols", 1.0);
     // Push the point off the pivot — an orbit around the point itself would stand still.
     g.set_param(out, "dx", GOAL_RADIUS);
     g.set_param(out, "dy", 0.0);
+    // Channel 0 = X. The point sits on the +x axis at this stage, so an X wobble IS a
+    // change of RADIUS — which is the whole point (see GOAL_PULSE): without it the reach
+    // never changes and the elbow angle is frozen.
+    g.set_param(pulse, "channel", 0.0);
+    g.set_param(pulse, "amplitude", GOAL_PULSE);
+    g.set_param(pulse, "frequency", GOAL_PULSE_HZ);
+    g.set_param(pulse, "phase_stagger", 0.0);
     g.set_param(orbit, "speed", GOAL_SPEED);
     Some(orbit)
 }
@@ -143,7 +162,7 @@ fn build_tentacle(g: &mut Graph, goal: NodeId) -> Option<NodeId> {
     g.set_param(skel, "length", TENTACLE_BONE);
     g.set_param(skel, "angle", 0.0);
     g.set_param(skel, "root_angle", 90.0);
-    g.set_param(solver, "iterations", 10.0);
+    g.set_param(solver, "iterations", 12.0);
     g.set_param(scale, "amount", JOINT_QUAD);
     g.set_param(mv, "dx", 7.0);
     Some(output)

@@ -244,6 +244,15 @@ const WIDGET_DELEGATE_MARKERS: &[&str] = &[
 /// Panel files that paint via vector/text primitives only (no widget
 /// interaction → no a11y to wire). Each entry: (path key, why).
 const PANEL_A11Y_DELEGATE_OK: &[(&str, &str)] = &[
+    // Painter Brush appearance sections (6–11) — a thin ORCHESTRATOR split from
+    // `paint_brush.rs` for the 200-LOC/fn + 600-LOC/file caps. It owns no widget:
+    // every row it paints is a call into a section module (`paint_shape`,
+    // `paint_texture`, `paint_stroke`, `paint_symmetry`, `paint_watercolor`, …),
+    // and each of those wires its own AccessKit nodes via the canonical primitives.
+    (
+        "ph2d-panel-painter-layers/src/paint_brush_sections.rs",
+        "orchestrator only — every section it calls wires its own a11y (paint_shape/_texture/_stroke/…)",
+    ),
     // Vector path-reshape subsection — a thin section painter split from
     // `paint_sections.rs` for the LOC cap. Its buttons delegate to
     // `BodyCtx::row2` / `action_button` (in paint_sections), which paint via the
